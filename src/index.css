@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Reddit Sans', 'IBM Plex Sans JP', BlinkMacSystemFont, system-ui, sans-serif;
   --font-serif: 'Lora', Georgia, serif;
 }
 
