@@ -7,6 +7,16 @@ import type { Feed } from '@/types';
 
 export const runtime = 'edge';
 
+/** URL が http/https スキームか検証する */
+function isValidHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 /** HTML から RSS/Atom の URL を検出して返す。見つからなければ null */
 async function discoverFeedUrl(url: string): Promise<string | null> {
   try {
@@ -45,9 +55,11 @@ export async function POST(request: Request) {
   const body = await request.json() as { url?: string };
   let url = body?.url?.trim();
   if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 });
+  if (!isValidHttpUrl(url)) return NextResponse.json({ error: 'Invalid URL: must be http or https' }, { status: 400 });
 
   const discovered = await discoverFeedUrl(url);
   if (discovered && discovered !== url) url = discovered;
+  if (!isValidHttpUrl(url)) return NextResponse.json({ error: 'Discovered feed URL is invalid' }, { status: 400 });
 
   const list = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
   if (list.some((f) => f.url === url)) {
