@@ -1,0 +1,17 @@
+name = "rss-reader"
+main = "src/worker.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [
+  { pattern = "rss.0g0.xyz", custom_domain = true }
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rss-reader-db"
+database_id = "0f54e1ec-3ac4-48b9-9941-64b84848adeb"
+migrations_dir = "./migrations"
+
+[triggers]
+crons = ["*/30 * * * *"]
