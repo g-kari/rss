@@ -10,6 +10,7 @@ import { useFeeds } from './hooks/useFeeds';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
 
 type Theme = 'light' | 'dark';
+type FontSize = 'small' | 'medium' | 'large';
 type MobilePane = 'sidebar' | 'list' | 'view';
 
 function loadSet(key: string): Set<string> {
@@ -38,6 +39,12 @@ function loadTheme(): Theme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+function loadFontSize(): FontSize {
+  const stored = localStorage.getItem('rss-font-size');
+  if (stored === 'small' || stored === 'medium' || stored === 'large') return stored;
+  return 'medium';
+}
+
 const loadReadIds = () => loadSet('rss-read');
 const loadBookmarkIds = () => loadSet('rss-bookmarks');
 
@@ -50,6 +57,7 @@ export default function App() {
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
+  const [fontSize, setFontSize] = useState<FontSize>(loadFontSize);
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const [mobilePane, setMobilePane] = useState<MobilePane>('sidebar');
 
@@ -60,6 +68,11 @@ export default function App() {
 
   const toggleTheme = useCallback(() => {
     setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+  }, []);
+
+  const onChangeFontSize = useCallback((size: FontSize) => {
+    setFontSize(size);
+    localStorage.setItem('rss-font-size', size);
   }, []);
 
   const onChangeLayout = useCallback((l: Layout) => {
@@ -301,6 +314,8 @@ export default function App() {
           isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
           onToggleBookmark={toggleBookmark}
           onMobileBack={() => setMobilePane('list')}
+          fontSize={fontSize}
+          onChangeFontSize={onChangeFontSize}
         />
       </div>
     </div>
