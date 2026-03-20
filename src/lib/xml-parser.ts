@@ -68,10 +68,21 @@ function extractImage(item: any): string {
     }
   }
 
-  // 3. enclosure (画像タイプ)
+  // 3. enclosure (type=image/* または URL が画像拡張子・不正 type の場合も許容)
   const enc = item.enclosure;
-  if (enc?.['@_url'] && String(enc['@_type'] ?? '').startsWith('image/'))
-    return String(enc['@_url']);
+  if (enc?.['@_url']) {
+    const encType = String(enc['@_type'] ?? '');
+    const encUrl = String(enc['@_url']);
+    const isAudioVideo = encType.startsWith('audio/') || encType.startsWith('video/');
+    const looksLikeImage = /\.(jpe?g|png|gif|webp|avif)(\?|$)/i.test(encUrl);
+    if (encType.startsWith('image/') || (!isAudioVideo && looksLikeImage)) {
+      return encUrl;
+    }
+    // Zenn など type="false" 等の不正値でも URL があれば採用
+    if (encUrl && !isAudioVideo && encType !== '' && !encType.includes('/')) {
+      return encUrl;
+    }
+  }
 
   // 4. content/description 中の最初の <img>
   const html = str(item['content:encoded'] ?? item.description ?? item.content ?? item.summary ?? '');
