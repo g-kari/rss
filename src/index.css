@@ -7,7 +7,7 @@
 
 html, body, #root {
   height: 100%;
-  background-color: #111111;
+  background-color: #fafaf9; /* stone-50 */
 }
 
 * {
@@ -15,16 +15,36 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #d6d3d1; /* stone-300 */
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #444;
+  background: #a8a29e; /* stone-400 */
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out both;
 }

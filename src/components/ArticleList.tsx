@@ -43,63 +43,68 @@ export default function ArticleList({
   const hasMore = visible.length < filtered.length;
 
   return (
-    <section className="flex flex-col min-h-0 overflow-hidden border-r border-zinc-800 bg-zinc-950">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800 bg-zinc-900">
-        <span className="text-xs font-medium text-zinc-500">
-          記事 {filtered.length > 0 && <span className="text-zinc-600">({filtered.length})</span>}
+    <section className="flex flex-col min-h-0 overflow-hidden border-r border-stone-200 bg-stone-50">
+      {/* ヘッダー */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 bg-white">
+        <span className="text-[11px] tracking-[0.12em] uppercase text-stone-400">
+          記事{filtered.length > 0 && <span className="ml-1 text-stone-300">({filtered.length})</span>}
         </span>
-        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={unreadOnly}
-            onChange={(e) => { setUnreadOnly(e.target.checked); setPage(1); }}
-            className="w-3 h-3 accent-indigo-500"
-          />
-          <span className="text-xs text-zinc-600">未読のみ</span>
-        </label>
+        <button
+          onClick={() => { setUnreadOnly((v) => !v); setPage(1); }}
+          className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
+            unreadOnly
+              ? 'border-stone-800 bg-stone-800 text-white'
+              : 'border-stone-200 text-stone-400 hover:border-stone-400 hover:text-stone-600'
+          }`}
+        >
+          未読
+        </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-900">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {articles.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-40 text-zinc-700 gap-1">
-            <p className="text-xs">記事を読み込み中...</p>
+          <div className="flex items-center justify-center h-40">
+            <p className="text-[12px] text-stone-300">読み込み中...</p>
           </div>
         )}
 
         {articles.length > 0 && filtered.length === 0 && (
-          <div className="flex items-center justify-center h-40 text-zinc-700">
-            <p className="text-xs">記事がありません</p>
+          <div className="flex items-center justify-center h-40">
+            <p className="text-[12px] text-stone-300">記事がありません</p>
           </div>
         )}
 
-        {visible.map((article) => {
+        {visible.map((article, i) => {
           const isRead = readIds.has(article.id);
           const isSelected = selectedArticleId === article.id;
           return (
             <div
               key={article.id}
               onClick={() => onSelectArticle(article)}
-              className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                isSelected ? 'bg-zinc-800' : 'hover:bg-zinc-900'
+              className={`flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-stone-100 transition-all duration-200 animate-fade-up ${
+                isSelected
+                  ? 'bg-white shadow-[inset_2px_0_0_0_#292524]'
+                  : 'hover:bg-white/70'
               }`}
+              style={{ animationDelay: `${Math.min(i, 20) * 25}ms` }}
             >
               <div className="flex-1 min-w-0">
                 <h3
-                  className={`text-[13px] leading-snug line-clamp-2 mb-1 ${
-                    isRead ? 'text-zinc-600 font-normal' : 'text-zinc-200 font-medium'
+                  className={`text-[13px] leading-snug line-clamp-2 mb-1 transition-colors duration-200 ${
+                    isRead ? 'text-stone-400 font-normal' : 'text-stone-700 font-medium'
                   }`}
                 >
                   {article.title || '(タイトルなし)'}
                 </h3>
                 {article.summary && (
-                  <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed mb-1.5">
+                  <p className="text-[11px] text-stone-400 line-clamp-2 leading-relaxed mb-1">
                     {article.summary}
                   </p>
                 )}
-                <span className="text-xs text-zinc-700">{timeAgo(article.publishedAt)}</span>
+                <span className="text-[11px] text-stone-300">{timeAgo(article.publishedAt)}</span>
               </div>
               {!isRead && (
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-rose-400 flex-shrink-0" />
               )}
             </div>
           );
@@ -108,12 +113,13 @@ export default function ArticleList({
         {hasMore && (
           <button
             onClick={() => setPage((p) => p + 1)}
-            className="w-full py-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            className="w-full py-4 text-[11px] tracking-[0.08em] text-stone-300 hover:text-stone-500 transition-colors duration-200"
           >
-            さらに読み込む ({filtered.length - visible.length} 件)
+            さらに読み込む ({filtered.length - visible.length})
           </button>
         )}
       </div>
     </section>
   );
 }
+

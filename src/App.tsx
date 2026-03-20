@@ -68,8 +68,8 @@ export default function App() {
   // ローディング
   if (user === undefined) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
-        <div className="w-2 h-2 rounded-full bg-zinc-700 animate-pulse" />
+      <div className="flex h-screen items-center justify-center bg-stone-50">
+        <div className="w-1.5 h-1.5 rounded-full bg-stone-300 animate-pulse" />
       </div>
     );
   }
@@ -77,14 +77,14 @@ export default function App() {
   // 未ログイン
   if (!user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
-        <div className="text-center">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-6">
-            RSS Reader
+      <div className="flex h-screen items-center justify-center bg-stone-50">
+        <div className="text-center animate-fade-up">
+          <p className="text-[11px] tracking-[0.3em] uppercase text-stone-400 mb-10">
+            RSS
           </p>
           <a
             href="/api/auth/login"
-            className="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded transition-colors"
+            className="inline-block px-7 py-2.5 bg-stone-800 hover:bg-stone-700 text-white text-[12px] tracking-[0.08em] rounded-full transition-all duration-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
           >
             0g0 ID でログイン
           </a>
@@ -95,8 +95,8 @@ export default function App() {
 
   return (
     <div
-      className="grid h-screen font-sans antialiased bg-zinc-950 text-zinc-200"
-      style={{ gridTemplateColumns: '200px 380px 1fr', gridTemplateRows: '100%' }}
+      className="grid h-screen font-sans antialiased bg-stone-50 text-stone-800"
+      style={{ gridTemplateColumns: '200px 360px 1fr', gridTemplateRows: '100%' }}
     >
       <FeedSidebar
         feeds={feeds}
