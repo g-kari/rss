@@ -3,6 +3,9 @@ import type { HonoEnv } from '../types';
 
 const app = new Hono<HonoEnv>();
 
+const FETCH_TIMEOUT_MS = 10_000; // 10秒
+const MAX_CONTENT_BYTES = 5 * 1024 * 1024; // 5 MB
+
 function sanitizeHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -60,6 +63,9 @@ app.get('/', async (c) => {
     return c.json({ error: 'Invalid URL' }, 400);
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
   try {
     const res = await fetch(url, {
       headers: {
@@ -67,16 +73,55 @@ app.get('/', async (c) => {
         Accept: 'text/html,application/xhtml+xml',
       },
       redirect: 'follow',
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
+
     if (!res.ok) return c.json({ error: `${res.status} ${res.statusText}` }, 502);
 
     const ct = res.headers.get('content-type') ?? '';
     if (!ct.includes('html')) return c.json({ error: 'Not an HTML page' }, 415);
 
-    const html = await res.text();
+    // Content-Length ヘッダーで事前チェック
+    const contentLength = res.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > MAX_CONTENT_BYTES) {
+      return c.json({ error: 'Page too large' }, 413);
+    }
+
+    // ストリーミングでサイズ上限を強制
+    const reader = res.body?.getReader();
+    if (!reader) return c.json({ error: 'No response body' }, 502);
+
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > MAX_CONTENT_BYTES) {
+          return c.json({ error: 'Page too large' }, 413);
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.cancel().catch(() => {});
+    }
+
+    const merged = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    const html = new TextDecoder().decode(merged);
     const content = extractMainContent(html);
     return c.json({ content });
   } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      return c.json({ error: 'Request timeout' }, 504);
+    }
     return c.json({ error: String(err) }, 502);
   }
 });

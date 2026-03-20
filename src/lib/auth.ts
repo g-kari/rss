@@ -13,6 +13,8 @@ interface JwkWithKid extends JsonWebKey {
 
 const keyCache = new Map<string, CryptoKey>();
 let jwksCache: JwkWithKid[] | null = null;
+let jwksCacheExpiry = 0;
+const JWKS_CACHE_TTL_MS = 60 * 60 * 1000; // 1時間
 
 function base64urlToBytes(str: string): Uint8Array {
   const padded = str.replace(/-/g, '+').replace(/_/g, '/').padEnd(
@@ -23,11 +25,17 @@ function base64urlToBytes(str: string): Uint8Array {
 }
 
 async function getJwks(authBaseUrl: string): Promise<JwkWithKid[]> {
-  if (jwksCache) return jwksCache;
+  const now = Date.now();
+  if (jwksCache && now < jwksCacheExpiry) return jwksCache;
+
+  // キャッシュ期限切れ時はキーキャッシュも破棄（ローテーション対応）
+  keyCache.clear();
+
   const res = await fetch(`${authBaseUrl}/.well-known/jwks.json`);
   if (!res.ok) throw new Error(`JWKS fetch failed: ${res.status}`);
   const { keys } = await res.json<{ keys: JwkWithKid[] }>();
   jwksCache = keys;
+  jwksCacheExpiry = now + JWKS_CACHE_TTL_MS;
   return keys;
 }
 
