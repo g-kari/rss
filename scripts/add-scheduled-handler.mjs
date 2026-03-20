@@ -7,7 +7,7 @@
  * 生成 wrangler.json に反映しないため、ビルド後にパッチを当てる。
  */
 
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { build } from 'esbuild';
 import { resolve } from 'path';
 
@@ -62,7 +62,13 @@ writeFileSync(WORKER_PATH, patched);
 console.log('scheduled handler added to worker.js');
 
 // 3. dist/rss_reader/wrangler.json に不足バインディングをマージ
+// このファイルは opennextjs-cloudflare deploy 時に生成されるため、
+// CI のビルドステップでは存在しない場合がある → その場合はスキップ
 const WRANGLER_JSON_PATH = 'dist/rss_reader/wrangler.json';
+if (!existsSync(WRANGLER_JSON_PATH)) {
+  console.log('dist/rss_reader/wrangler.json not found, skipping wrangler.json patch');
+  process.exit(0);
+}
 const wranglerJson = JSON.parse(readFileSync(WRANGLER_JSON_PATH, 'utf-8'));
 
 // global_fetch_strictly_public フラグを追加
