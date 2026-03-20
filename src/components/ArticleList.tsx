@@ -169,10 +169,19 @@ export default function ArticleList({
               {article.summary}
             </p>
           )}
-          <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+            {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
+          </div>
         </div>
-        {!isRead && (
-          <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
+        {article.ogImage && (
+          <img
+            src={article.ogImage}
+            alt=""
+            className="w-14 h-14 object-cover rounded flex-shrink-0"
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
         )}
       </div>
     );
