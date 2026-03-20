@@ -8,6 +8,7 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 interface FeedsState {
   feeds: Feed[];
   articles: Article[];
+  loadingArticles: boolean;
   newArticleCount: number;
   onFeedAdded: (feed: Feed) => void;
   removeFeed: (id: string) => void;
@@ -17,11 +18,13 @@ interface FeedsState {
 export function useFeeds(user: UserProfile | null | undefined): FeedsState {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
+  const [loadingArticles, setLoadingArticles] = useState(false);
   const [newArticleCount, setNewArticleCount] = useState(0);
   const latestArticleIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
+    setLoadingArticles(true);
     fetch('/api/feeds')
       .then((r) => r.json() as Promise<Feed[]>)
       .then(setFeeds)
@@ -32,7 +35,8 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
         setArticles(data);
         latestArticleIdRef.current = data[0]?.id ?? null;
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setLoadingArticles(false));
   }, [user]);
 
   // 5分ごとに記事を再取得して新着件数を通知する
@@ -72,5 +76,5 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     setNewArticleCount(0);
   }, []);
 
-  return { feeds, articles, newArticleCount, onFeedAdded, removeFeed, dismissNewArticles };
+  return { feeds, articles, loadingArticles, newArticleCount, onFeedAdded, removeFeed, dismissNewArticles };
 }

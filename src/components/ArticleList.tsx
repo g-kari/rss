@@ -11,6 +11,7 @@ interface Props {
   bookmarkIds: Set<string>;
   selectedArticleId: string | null;
   layout: Layout;
+  loading?: boolean;
   onChangeLayout: (layout: Layout) => void;
   onSelectArticle: (article: Article) => void;
 }
@@ -82,6 +83,7 @@ export default function ArticleList({
   bookmarkIds,
   selectedArticleId,
   layout,
+  loading = false,
   onChangeLayout,
   onSelectArticle,
 }: Props) {
@@ -353,12 +355,12 @@ export default function ArticleList({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {articles.length === 0 && (
+        {loading && articles.length === 0 && (
           <div className="flex items-center justify-center h-40">
             <p className="text-[12px] text-text-faint">読み込み中...</p>
           </div>
         )}
-        {articles.length > 0 && filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className="flex items-center justify-center h-40">
             <p className="text-[12px] text-text-faint">記事がありません</p>
           </div>
