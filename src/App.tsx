@@ -42,7 +42,7 @@ const loadBookmarkIds = () => loadSet('rss-bookmarks');
 
 export default function App() {
   const { user, betaRestricted } = useAuth();
-  const { feeds, articles, onFeedAdded, removeFeed } = useFeeds(user);
+  const { feeds, articles, newArticleCount, onFeedAdded, removeFeed, dismissNewArticles } = useFeeds(user);
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
@@ -233,9 +233,24 @@ export default function App() {
 
   return (
     <div
-      className="grid h-screen font-sans antialiased bg-surface-base text-text-strong"
+      className="relative grid h-screen font-sans antialiased bg-surface-base text-text-strong"
       style={{ gridTemplateColumns: '200px 360px 1fr', gridTemplateRows: '100%' }}
     >
+      {newArticleCount > 0 && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-ink text-ink-text text-[12px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] animate-fade-up">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
+          新着記事 {newArticleCount} 件
+          <button
+            onClick={dismissNewArticles}
+            className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+            aria-label="通知を閉じる"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M2 2l8 8M10 2l-8 8"/>
+            </svg>
+          </button>
+        </div>
+      )}
       <FeedSidebar
         feeds={feeds}
         articles={articles}

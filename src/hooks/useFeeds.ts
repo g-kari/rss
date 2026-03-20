@@ -1,18 +1,24 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Feed, Article, UserProfile } from '../types';
+
+const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
 interface FeedsState {
   feeds: Feed[];
   articles: Article[];
+  newArticleCount: number;
   onFeedAdded: (feed: Feed) => void;
   removeFeed: (id: string) => void;
+  dismissNewArticles: () => void;
 }
 
 export function useFeeds(user: UserProfile | null | undefined): FeedsState {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
+  const [newArticleCount, setNewArticleCount] = useState(0);
+  const latestArticleIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -22,8 +28,33 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
       .catch(console.error);
     fetch('/api/articles')
       .then((r) => r.json() as Promise<Article[]>)
-      .then(setArticles)
+      .then((data) => {
+        setArticles(data);
+        latestArticleIdRef.current = data[0]?.id ?? null;
+      })
       .catch(console.error);
+  }, [user]);
+
+  // 5分ごとに記事を再取得して新着件数を通知する
+  useEffect(() => {
+    if (!user) return;
+
+    const timer = setInterval(() => {
+      fetch('/api/articles')
+        .then((r) => r.json() as Promise<Article[]>)
+        .then((data) => {
+          const prevTopId = latestArticleIdRef.current;
+          if (prevTopId === null) return;
+          const newIdx = data.findIndex((a) => a.id === prevTopId);
+          const count = newIdx > 0 ? newIdx : 0;
+          setArticles(data);
+          latestArticleIdRef.current = data[0]?.id ?? prevTopId;
+          if (count > 0) setNewArticleCount((prev) => prev + count);
+        })
+        .catch(console.error);
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(timer);
   }, [user]);
 
   const onFeedAdded = useCallback((feed: Feed) => {
@@ -37,5 +68,9 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     setArticles((prev) => prev.filter((a) => a.feedId !== id));
   }, []);
 
-  return { feeds, articles, onFeedAdded, removeFeed };
+  const dismissNewArticles = useCallback(() => {
+    setNewArticleCount(0);
+  }, []);
+
+  return { feeds, articles, newArticleCount, onFeedAdded, removeFeed, dismissNewArticles };
 }
