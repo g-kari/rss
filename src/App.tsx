@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import FeedSidebar from './components/FeedSidebar';
 import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
-import type { Article, Feed, UserProfile, Layout } from './types';
+import type { Article, Layout } from './types';
+import { useAuth } from './hooks/useAuth';
+import { useFeeds } from './hooks/useFeeds';
+import { useKeyboardNav } from './hooks/useKeyboardNav';
 
 type Theme = 'light' | 'dark';
 
@@ -36,21 +39,15 @@ const loadReadIds = () => loadSet('rss-read');
 const loadBookmarkIds = () => loadSet('rss-bookmarks');
 
 export default function App() {
-  const [user, setUser] = useState<UserProfile | null | undefined>(undefined); // undefined = loading
-  const [betaRestricted, setBetaRestricted] = useState(false);
-  const [feeds, setFeeds] = useState<Feed[]>([]);
-  const [articles, setArticles] = useState<Article[]>([]);
+  const { user, betaRestricted } = useAuth();
+  const { feeds, articles, onFeedAdded, removeFeed } = useFeeds(user);
+
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [layout, setLayout] = useState<Layout>(loadLayout);
-
-  const onChangeLayout = useCallback((l: Layout) => {
-    setLayout(l);
-    localStorage.setItem('rss-layout', l);
-  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -61,33 +58,10 @@ export default function App() {
     setTheme((t) => (t === 'light' ? 'dark' : 'light'));
   }, []);
 
-  useEffect(() => {
-    // URL パラメーターでベータ制限リダイレクトを検出
-    if (new URLSearchParams(window.location.search).get('beta') === 'denied') {
-      setBetaRestricted(true);
-      setUser(null);
-      return;
-    }
-    fetch('/api/auth/me')
-      .then((r) => r.json<{ user: UserProfile | null; betaRestricted?: boolean }>())
-      .then(({ user, betaRestricted }) => {
-        if (betaRestricted) setBetaRestricted(true);
-        setUser(user);
-      })
-      .catch(() => setUser(null));
+  const onChangeLayout = useCallback((l: Layout) => {
+    setLayout(l);
+    localStorage.setItem('rss-layout', l);
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    fetch('/api/feeds')
-      .then((r) => r.json<Feed[]>())
-      .then(setFeeds)
-      .catch(console.error);
-    fetch('/api/articles')
-      .then((r) => r.json<Article[]>())
-      .then(setArticles)
-      .catch(console.error);
-  }, [user]);
 
   const markRead = useCallback((articleId: string) => {
     setReadIds((prev) => {
@@ -117,50 +91,29 @@ export default function App() {
     });
   }, []);
 
-  // キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、o 元記事を開く、b ブックマーク切り替え、m 全て既読
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      const list =
-        selectedFeedId === '__bookmarks__'
-          ? articles.filter((a) => bookmarkIds.has(a.id))
-          : selectedFeedId
-            ? articles.filter((a) => a.feedId === selectedFeedId)
-            : articles;
-      const idx = selectedArticle ? list.findIndex((a) => a.id === selectedArticle.id) : -1;
-      if (e.key === 'j' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        const next = list[idx + 1];
-        if (next) { setSelectedArticle(next); markRead(next.id); }
-      } else if (e.key === 'k' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (idx > 0) { const prev = list[idx - 1]; setSelectedArticle(prev); markRead(prev.id); }
-      } else if (e.key === 'o' && selectedArticle?.link) {
-        window.open(selectedArticle.link, '_blank', 'noopener,noreferrer');
-      } else if (e.key === 'b' && selectedArticle) {
-        toggleBookmark(selectedArticle.id);
-      } else if (e.key === 'm') {
-        markAllRead(selectedFeedId === '__bookmarks__' ? null : selectedFeedId);
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedFeedId, selectedArticle, markRead, markAllRead, bookmarkIds, toggleBookmark]);
-
-  function onFeedAdded(feed: Feed) {
-    setFeeds((prev) => [...prev, feed]);
-  }
-
   function onFeedDeleted(id: string) {
-    setFeeds((prev) => prev.filter((f) => f.id !== id));
-    setArticles((prev) => prev.filter((a) => a.feedId !== id));
+    removeFeed(id);
     if (selectedFeedId === id) {
       setSelectedFeedId(null);
       setSelectedArticle(null);
     }
   }
 
-  const bookmarkCount = articles.filter((a) => bookmarkIds.has(a.id)).length;
+  const bookmarkCount = useMemo(
+    () => articles.filter((a) => bookmarkIds.has(a.id)).length,
+    [articles, bookmarkIds],
+  );
+
+  useKeyboardNav({
+    articles,
+    selectedFeedId,
+    selectedArticle,
+    bookmarkIds,
+    setSelectedArticle,
+    markRead,
+    markAllRead,
+    toggleBookmark,
+  });
 
   // ローディング
   if (user === undefined) {
