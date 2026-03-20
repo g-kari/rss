@@ -1,9 +1,10 @@
 /**
- * Post-build script: Cron ハンドラーを .open-next/worker.js に追加する
+ * Post-build script:
+ *  1. Cron ハンドラーを .open-next/worker.js に追加する
+ *  2. OpenNext 生成の wrangler.json に wrangler.toml の追加設定をマージする
  *
- * @opennextjs/cloudflare は scheduled イベントをサポートしていないため、
- * ビルド後に scheduled エクスポートを worker.js に追記する。
- * esbuild で src/cron/fetch.ts をバンドルし、その成果物を動的 import して使用する。
+ * @opennextjs/cloudflare は scheduled イベントや一部バインディングを
+ * 生成 wrangler.json に反映しないため、ビルド後にパッチを当てる。
  */
 
 import { readFileSync, writeFileSync } from 'fs';
@@ -59,3 +60,38 @@ if (patched === worker) {
 
 writeFileSync(WORKER_PATH, patched);
 console.log('scheduled handler added to worker.js');
+
+// 3. dist/rss_reader/wrangler.json に不足バインディングをマージ
+const WRANGLER_JSON_PATH = 'dist/rss_reader/wrangler.json';
+const wranglerJson = JSON.parse(readFileSync(WRANGLER_JSON_PATH, 'utf-8'));
+
+// global_fetch_strictly_public フラグを追加
+if (!wranglerJson.compatibility_flags.includes('global_fetch_strictly_public')) {
+  wranglerJson.compatibility_flags.push('global_fetch_strictly_public');
+}
+
+// NEXT_INC_CACHE_R2_BUCKET を追加
+const hasCache = wranglerJson.r2_buckets?.some((b) => b.binding === 'NEXT_INC_CACHE_R2_BUCKET');
+if (!hasCache) {
+  wranglerJson.r2_buckets = [
+    ...(wranglerJson.r2_buckets ?? []),
+    { binding: 'NEXT_INC_CACHE_R2_BUCKET', bucket_name: 'rss-reader-cache' },
+  ];
+}
+
+// WORKER_SELF_REFERENCE サービスバインディングを追加
+const hasSelfRef = wranglerJson.services?.some((s) => s.binding === 'WORKER_SELF_REFERENCE');
+if (!hasSelfRef) {
+  wranglerJson.services = [
+    ...(wranglerJson.services ?? []),
+    { binding: 'WORKER_SELF_REFERENCE', service: 'rss-reader' },
+  ];
+}
+
+// IMAGES バインディングを追加
+if (!wranglerJson.images) {
+  wranglerJson.images = { binding: 'IMAGES' };
+}
+
+writeFileSync(WRANGLER_JSON_PATH, JSON.stringify(wranglerJson, null, 2));
+console.log('wrangler.json patched with extra bindings');

@@ -3,5 +3,9 @@
 
 interface CloudflareEnv {
   RSS_DATA: R2Bucket;
+  NEXT_INC_CACHE_R2_BUCKET: R2Bucket;
   AI: Ai;
+  ASSETS: Fetcher;
+  WORKER_SELF_REFERENCE: Fetcher;
+  IMAGES: ImagesBinding;
 }

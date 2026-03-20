@@ -1,8 +1,8 @@
 import type { NextConfig } from 'next';
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
 
-const nextConfig: NextConfig = {
-  // Cloudflare Workers ではサーバーサイド機能を edge runtime で動かす
-  // API routes は各 route.ts で指定
-};
+initOpenNextCloudflareForDev();
+
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

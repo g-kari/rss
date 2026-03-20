@@ -1,7 +1,7 @@
 name = "rss-reader"
 main = ".open-next/worker.js"
 compatibility_date = "2024-11-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 
 routes = [
   { pattern = "rss.0g0.xyz", custom_domain = true }
@@ -9,6 +9,14 @@ routes = [
 
 [assets]
 directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "rss-reader"
+
+[images]
+binding = "IMAGES"
 
 [vars]
 AUTH_BASE_URL = "https://id.0g0.xyz"
@@ -19,6 +27,10 @@ BETA_ALLOWED_SUBS = "551a6605-2ca0-4196-b823-5676dbd585a3"
 [[r2_buckets]]
 binding = "RSS_DATA"
 bucket_name = "rss-reader-data"
+
+[[r2_buckets]]
+binding = "NEXT_INC_CACHE_R2_BUCKET"
+bucket_name = "rss-reader-cache"
 
 [ai]
 binding = "AI"
