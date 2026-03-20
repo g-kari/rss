@@ -4,37 +4,83 @@
 
 - `strict: true` 前提。`any` は使わない
 - 型は `interface` で定義 (`src/types.ts` に集約)
-- Workers の環境変数は `Env` インターフェースで型付け
+- Cloudflare バインディングは `src/cloudflare-env.d.ts` の `CloudflareEnv` インターフェースで拡張
   ```typescript
-  export interface Env {
-    GITHUB_TOKEN: string;
-    GITHUB_OWNER: string;
-    GITHUB_REPO: string;
-    GITHUB_BRANCH: string;
+  // src/cloudflare-env.d.ts
+  interface CloudflareEnv {
+    RSS_DATA: R2Bucket;
+    AI: Ai;
   }
   ```
+- `tsconfig.json` の `types` に `"@cloudflare/workers-types"` を含める
 - `tsconfig.json` の `lib` に `"DOM"` と `"DOM.Iterable"` を含める (Workers + React 共存)
+
+## Next.js App Router
+
+- Route Handlers は `app/api/**/{route}.ts` に配置
+- `export const dynamic = 'force-dynamic'` を SSR ページに付ける (localStorage 使用のため)
+- Server Components でブラウザ API (`localStorage` 等) は使わない
+- クライアントコンポーネントには `'use client'` ディレクティブを先頭に付ける
+
+### Route Handler パターン
+
+```typescript
+// app/api/example/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { requireSession } from '@/lib/server-auth';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+export async function GET(req: NextRequest) {
+  const result = await requireSession();
+  if ('error' in result) return result.error;
+  const { session } = result;
+
+  const { env } = await getCloudflareContext({ async: true });
+  // env.RSS_DATA, env.AI が利用可能
+
+  const res = NextResponse.json({ data });
+  return applyRefreshedTokens(res, session);
+}
+```
+
+- 成功: `NextResponse.json(data)`
+- エラー: `NextResponse.json({ error: msg }, { status: N })`
+- `getCloudflareContext()` は認証チェックの**後**に呼ぶ
+
+### 環境変数アクセス
+
+```typescript
+// 文字列 vars / シークレット → process.env
+const AUTH_BASE_URL = process.env.AUTH_BASE_URL!;
+
+// Cloudflare バインディング (R2, AI) → getCloudflareContext()
+const { env } = await getCloudflareContext({ async: true });
+env.RSS_DATA.get('key');
+```
 
 ## React
 
 - 関数コンポーネントのみ。クラスコンポーネントは使わない
 - `export default function ComponentName(...)` 形式
 - Props は `interface Props { ... }` で定義し、同ファイル内に書く
-- `useState` / `useEffect` / `useMemo` のみ。複雑な状態管理ライブラリは使わない
-- データ取得は `App.tsx` で一括、子コンポーネントへは props で渡す
+- `useState` / `useEffect` / `useMemo` / `useCallback` のみ。複雑な状態管理ライブラリは使わない
+- データ取得ロジックは custom hooks (`src/hooks/`) に分離
 - コンポーネントは API を呼ばない (FeedSidebar の add/delete は例外)
 
-### ファイル取得パターン
+### データ取得パターン (hooks)
 
 ```typescript
-// App.tsx での初期データ取得
+// src/hooks/useFeeds.ts
 useEffect(() => {
-  fetch('/data/feeds.json')
-    .then((r) => r.json<Feed[]>())
+  if (!user) return;
+  fetch('/api/feeds')
+    .then((r) => r.json() as Promise<Feed[]>)
     .then(setFeeds)
     .catch(console.error);
-}, []);
+}, [user]);
 ```
+
+**注意**: `r.json<T>()` は Hono 固有。Next.js では `r.json() as Promise<T>` を使う。
 
 ### クライアントサイドフィルタリング
 
@@ -46,35 +92,29 @@ const filtered = useMemo(() => {
 }, [articles, feedId, readIds, unreadOnly]);
 ```
 
-## Hono (Workers API)
+## 認証ヘルパー (`src/lib/server-auth.ts`)
 
 ```typescript
-// src/worker.ts
-const app = new Hono<{ Bindings: Env }>();
-app.use('/api/*', cors());
-app.route('/api/feeds', feedsRoutes);
-export default { fetch: app.fetch };
+// セッション取得 (cookie から JWT 検証 + 自動リフレッシュ)
+const result = await requireSession();
+if ('error' in result) return result.error;  // 401 NextResponse
+const { session } = result;
+
+// リフレッシュされたトークンをレスポンスに付与
+return applyRefreshedTokens(NextResponse.json(data), session);
+
+// ベータアクセス確認 (process.env.BETA_ALLOWED_SUBS)
+if (!isBetaAllowed(session.sub)) return NextResponse.redirect('/');
 ```
 
-- ルートは `src/routes/` に分割
-- `c.json(data)` / `c.json({ error: msg }, status)` で統一
-- エラーハンドリングは `app.onError` で一括
-
-### GitHub Contents API パターン
+## R2 ヘルパー (`src/lib/r2.ts`)
 
 ```typescript
-// Unicode-safe base64
-const base64 = btoa(
-  String.fromCharCode(...new TextEncoder().encode(JSON.stringify(data, null, 2)))
-);
+// 読み込み
+const data = await readR2Json<Feed[]>(env.RSS_DATA, `users/${sub}/feeds.json`);
 
-// ファイル読み込み
-const res = await fetch(
-  `https://api.github.com/repos/${owner}/${repo}/contents/path/to/file`,
-  { headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'rss-reader' } }
-);
-const { content, sha } = await res.json();
-const decoded = JSON.parse(atob(content.replace(/\n/g, '')));
+// 書き込み
+await writeR2Json(env.RSS_DATA, `users/${sub}/feeds.json`, feeds);
 ```
 
 ## RSS パーサー (`src/lib/xml-parser.ts`)
@@ -84,22 +124,21 @@ const decoded = JSON.parse(atob(content.replace(/\n/g, '')));
 - `toArray()` ヘルパーで配列正規化 (単一要素が object になる挙動を吸収)
 - `stripHtml()` でサマリーからタグを除去
 
-## scripts/fetch.mjs
+## Cron (`src/cron/fetch.ts`)
 
-- `"type": "module"` が `package.json` に必須 (`@cloudflare/vite-plugin` が ESM only)
-- Node.js 20 前提
-- 最大 2000 件、`publishedAt` 降順ソート
-- 既存記事は `guid` でデduplication
+- `FetchEnv = Pick<CloudflareEnv, 'RSS_DATA'>` 型を使う (AI 不要)
+- `fetchAllUsers(env: FetchEnv)` → R2 のユーザー一覧を列挙して全員分取得
+- `fetchArticles(userId: string, env: FetchEnv)` → 特定ユーザーの RSS 取得
 
 ## 命名規則
 
 | 対象 | 規則 | 例 |
 |---|---|---|
-| 型・インターフェース | PascalCase | `Feed`, `Article`, `Env` |
+| 型・インターフェース | PascalCase | `Feed`, `Article`, `AuthSession` |
 | React コンポーネント | PascalCase | `FeedSidebar`, `ArticleList` |
 | 関数・変数 | camelCase | `markRead`, `selectedFeedId` |
-| JSONフィールド | camelCase | `feedId`, `publishedAt`, `siteUrl` |
-| GitHub Actions ファイル | kebab-case | `fetch.yml`, `deploy.yml` |
+| JSON フィールド | camelCase | `feedId`, `publishedAt`, `siteUrl` |
+| Route Handler ファイル | `route.ts` (Next.js 規約) | `app/api/feeds/route.ts` |
 
 **注意**: DB (D1) を使っていた時代の snake_case (`published_at`, `feed_id`) は完全に廃止済み。
 JSON データは全て camelCase。
@@ -111,3 +150,6 @@ JSON データは全て camelCase。
 - 外部アイコンライブラリ (インライン SVG のみ)
 - `any` 型の使用
 - 16進数カラーのハードコード
+- Hono の `c.json<T>()` パターン (Next.js Route Handlers では使えない)
+- `r.json<T>()` (ブラウザ fetch には型引数なし。`r.json() as Promise<T>` を使う)
+- モジュールレベルのキャッシュ変数 (Edge Runtime では各リクエストで再実行される)
