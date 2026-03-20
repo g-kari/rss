@@ -10,6 +10,7 @@ import { useFeeds } from './hooks/useFeeds';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
 
 type Theme = 'light' | 'dark';
+type MobilePane = 'sidebar' | 'list' | 'view';
 
 function loadSet(key: string): Set<string> {
   try {
@@ -50,6 +51,7 @@ export default function App() {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [layout, setLayout] = useState<Layout>(loadLayout);
+  const [mobilePane, setMobilePane] = useState<MobilePane>('sidebar');
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -233,7 +235,7 @@ export default function App() {
 
   return (
     <div
-      className="relative grid h-screen font-sans antialiased bg-surface-base text-text-strong"
+      className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
       style={{ gridTemplateColumns: '200px 360px 1fr', gridTemplateRows: '100%' }}
     >
       {newArticleCount > 0 && (
@@ -251,44 +253,54 @@ export default function App() {
           </button>
         </div>
       )}
-      <FeedSidebar
-        feeds={feeds}
-        articles={articles}
-        readIds={readIds}
-        bookmarkCount={bookmarkCount}
-        selectedFeedId={selectedFeedId}
-        user={user}
-        theme={theme}
-        onSelectFeed={(id) => {
-          setSelectedFeedId(id);
-          setSelectedArticle(null);
-        }}
-        onFeedAdded={onFeedAdded}
-        onFeedDeleted={onFeedDeleted}
-        onFeedsImported={replaceFeeds}
-        onMarkAllRead={markAllRead}
-        onToggleTheme={toggleTheme}
-      />
-      <ArticleList
-        articles={articles}
-        feeds={feeds}
-        feedId={selectedFeedId}
-        readIds={readIds}
-        bookmarkIds={bookmarkIds}
-        selectedArticleId={selectedArticle?.id ?? null}
-        layout={layout}
-        loading={loadingArticles}
-        onChangeLayout={onChangeLayout}
-        onSelectArticle={(article) => {
-          setSelectedArticle(article);
-          markRead(article.id);
-        }}
-      />
-      <ArticleView
-        article={selectedArticle}
-        isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
-        onToggleBookmark={toggleBookmark}
-      />
+      <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'sidebar' ? 'hidden lg:block' : ''}`}>
+        <FeedSidebar
+          feeds={feeds}
+          articles={articles}
+          readIds={readIds}
+          bookmarkCount={bookmarkCount}
+          selectedFeedId={selectedFeedId}
+          user={user}
+          theme={theme}
+          onSelectFeed={(id) => {
+            setSelectedFeedId(id);
+            setSelectedArticle(null);
+            setMobilePane('list');
+          }}
+          onFeedAdded={onFeedAdded}
+          onFeedDeleted={onFeedDeleted}
+          onFeedsImported={replaceFeeds}
+          onMarkAllRead={markAllRead}
+          onToggleTheme={toggleTheme}
+        />
+      </div>
+      <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'list' ? 'hidden lg:block' : ''}`}>
+        <ArticleList
+          articles={articles}
+          feeds={feeds}
+          feedId={selectedFeedId}
+          readIds={readIds}
+          bookmarkIds={bookmarkIds}
+          selectedArticleId={selectedArticle?.id ?? null}
+          layout={layout}
+          loading={loadingArticles}
+          onChangeLayout={onChangeLayout}
+          onMobileBack={() => setMobilePane('sidebar')}
+          onSelectArticle={(article) => {
+            setSelectedArticle(article);
+            markRead(article.id);
+            setMobilePane('view');
+          }}
+        />
+      </div>
+      <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'view' ? 'hidden lg:block' : ''}`}>
+        <ArticleView
+          article={selectedArticle}
+          isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
+          onToggleBookmark={toggleBookmark}
+          onMobileBack={() => setMobilePane('list')}
+        />
+      </div>
     </div>
   );
 }

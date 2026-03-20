@@ -14,6 +14,7 @@ interface Props {
   loading?: boolean;
   onChangeLayout: (layout: Layout) => void;
   onSelectArticle: (article: Article) => void;
+  onMobileBack?: () => void;
 }
 
 /** ogImage がない場合、YouTube URL からサムネイルを生成 */
@@ -86,6 +87,7 @@ export default function ArticleList({
   loading = false,
   onChangeLayout,
   onSelectArticle,
+  onMobileBack,
 }: Props) {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [query, setQuery] = useState('');
@@ -306,13 +308,26 @@ export default function ArticleList({
   }
 
   return (
-    <section className="flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-base">
+    <section className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-base">
       {/* ヘッダー */}
       <div className="flex flex-col border-b border-border-default bg-surface-elevated">
         <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-[11px] tracking-[0.12em] uppercase text-text-muted">
-            記事{filtered.length > 0 && <span className="ml-1 text-text-faint">({filtered.length})</span>}
-          </span>
+          <div className="flex items-center gap-1">
+            {onMobileBack && (
+              <button
+                onClick={onMobileBack}
+                className="lg:hidden -ml-1 mr-1 p-1.5 text-text-muted hover:text-text-strong transition-colors"
+                aria-label="フィード一覧に戻る"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 3L5 8l5 5"/>
+                </svg>
+              </button>
+            )}
+            <span className="text-[11px] tracking-[0.12em] uppercase text-text-muted">
+              記事{filtered.length > 0 && <span className="ml-1 text-text-faint">({filtered.length})</span>}
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             {/* レイアウト切替 */}
             <div className="flex items-center gap-0.5">

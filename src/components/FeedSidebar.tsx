@@ -129,7 +129,7 @@ export default function FeedSidebar({
   const totalUnread = unreadCount();
 
   return (
-    <aside className="flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
+    <aside className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
       {/* ヘッダー */}
       <div className="px-4 py-3.5 border-b border-border-default flex items-center justify-between">
         <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">RSS</span>

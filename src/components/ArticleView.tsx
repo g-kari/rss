@@ -9,6 +9,7 @@ interface Props {
   article: Article | null;
   isBookmarked: boolean;
   onToggleBookmark: (id: string) => void;
+  onMobileBack?: () => void;
 }
 
 interface EmbedInfo {
@@ -122,7 +123,7 @@ function saveCache(id: string, content: string) {
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
-export default function ArticleView({ article, isBookmarked, onToggleBookmark }: Props) {
+export default function ArticleView({ article, isBookmarked, onToggleBookmark, onMobileBack }: Props) {
   // キャッシュをレンダリング時に同期取得 → 記事切り替え時もフラッシュなし
   const cachedContent = useMemo(
     () => (article?.id ? loadCache(article.id) : null),
@@ -180,7 +181,18 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
 
   if (!article) {
     return (
-      <main className="overflow-y-auto flex items-center justify-center bg-surface-base">
+      <main className="h-full relative overflow-y-auto flex items-center justify-center bg-surface-base">
+        {onMobileBack && (
+          <button
+            onClick={onMobileBack}
+            className="lg:hidden absolute top-3 left-3 p-1.5 text-text-muted hover:text-text-strong transition-colors"
+            aria-label="記事一覧に戻る"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 3L5 8l5 5"/>
+            </svg>
+          </button>
+        )}
         <div className="text-center animate-fade-in">
           <svg className="w-8 h-8 mx-auto mb-3 text-text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -207,10 +219,21 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
   const hasContent = !!(processedContent || article.summary);
 
   return (
-    <main className="overflow-y-auto bg-surface-elevated animate-fade-in">
-      <div className="max-w-2xl mx-auto px-10 py-12">
+    <main className="h-full overflow-y-auto bg-surface-elevated animate-fade-in">
+      <div className="max-w-2xl mx-auto px-4 py-6 lg:px-10 lg:py-12">
         {/* メタ */}
         <div className="flex items-center gap-4 mb-5 text-[11px] text-text-muted">
+          {onMobileBack && (
+            <button
+              onClick={onMobileBack}
+              className="lg:hidden -ml-1 mr-1 p-1.5 text-text-muted hover:text-text-strong transition-colors flex-shrink-0"
+              aria-label="記事一覧に戻る"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 3L5 8l5 5"/>
+              </svg>
+            </button>
+          )}
           {article.publishedAt && (
             <time className="tracking-[0.04em]">
               {new Date(article.publishedAt).toLocaleDateString('ja-JP', {
