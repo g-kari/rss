@@ -131,21 +131,6 @@ function saveCache(id: string, content: string) {
   } catch { /* storage full */ }
 }
 
-/* ── AI 結果キャッシュ (localStorage) ── */
-const AI_CACHE_PREFIX = 'rss-ai:';
-const AI_CACHE_MAX = 30;
-
-function loadAiCache(id: string, mode: AiMode): string | null {
-  try { return localStorage.getItem(`${AI_CACHE_PREFIX}${id}:${mode}`); } catch { return null; }
-}
-
-function saveAiCache(id: string, mode: AiMode, text: string) {
-  try {
-    const keys = Object.keys(localStorage).filter((k) => k.startsWith(AI_CACHE_PREFIX));
-    if (keys.length >= AI_CACHE_MAX) localStorage.removeItem(keys[0]);
-    localStorage.setItem(`${AI_CACHE_PREFIX}${id}:${mode}`, text);
-  } catch { /* storage full */ }
-}
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
@@ -169,15 +154,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
   }, [article?.id]);
 
   const runAi = useCallback(async (mode: AiMode, contentHtml: string) => {
-    // 同じモードを再クリック → 非表示
     if (aiResult?.mode === mode) { setAiResult(null); return; }
-
-    // キャッシュがあれば即表示
-    if (article?.id) {
-      const cached = loadAiCache(article.id, mode);
-      if (cached) { setAiResult({ mode, text: cached }); return; }
-    }
-
     setAiLoading(mode);
     try {
       const endpoint = mode === 'summary' ? '/api/ai/summarize' : '/api/ai/translate';
@@ -187,14 +164,11 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
         body: JSON.stringify({ text: contentHtml }),
       });
       const data = await res.json() as { result?: string; error?: string };
-      if (data.result) {
-        if (article?.id) saveAiCache(article.id, mode, data.result);
-        setAiResult({ mode, text: data.result });
-      }
+      if (data.result) setAiResult({ mode, text: data.result });
     } finally {
       setAiLoading(null);
     }
-  }, [aiResult, article?.id]);
+  }, [aiResult]);
 
   async function fetchFullContent() {
     if (!article?.link) return;
