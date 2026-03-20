@@ -205,7 +205,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
           <div className="relative mb-8" style={{ paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '8px' }}>
             <iframe
               className="absolute inset-0 w-full h-full"
-              src={`https://www.youtube.com/embed/${ytId}`}
+              src={`https://www.youtube-nocookie.com/embed/${ytId}?origin=https://rss.0g0.xyz`}
               title={article.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
