@@ -5,6 +5,7 @@ interface ParsedItem {
   title: string;
   link: string;
   summary: string;
+  content: string;
   publishedAt: string | null;
 }
 
@@ -29,6 +30,15 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').trim();
 }
 
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    .replace(/href\s*=\s*["']javascript:[^"']*["']/gi, '')
+    .trim();
+}
+
 function str(val: unknown): string {
   if (val == null) return '';
   if (typeof val === 'object' && '#text' in (val as object))
@@ -46,13 +56,17 @@ export function parseFeed(xml: string): ParsedFeed {
     return {
       title: stripHtml(str(ch.title)),
       siteUrl: str(ch.link),
-      items: toArray(ch.item).map((item) => ({
-        guid: str(item.guid?.['#text'] ?? item.guid ?? item.link),
-        title: stripHtml(str(item.title)),
-        link: str(item.link),
-        summary: stripHtml(str(item.description)).slice(0, 500),
-        publishedAt: item.pubDate ? new Date(str(item.pubDate)).toISOString() : null,
-      })),
+      items: toArray(ch.item).map((item) => {
+        const raw = str(item['content:encoded'] ?? item.description ?? '');
+        return {
+          guid: str(item.guid?.['#text'] ?? item.guid ?? item.link),
+          title: stripHtml(str(item.title)),
+          link: str(item.link),
+          summary: stripHtml(raw).slice(0, 200),
+          content: sanitizeHtml(raw),
+          publishedAt: item.pubDate ? new Date(str(item.pubDate)).toISOString() : null,
+        };
+      }),
     };
   }
 
@@ -65,6 +79,7 @@ export function parseFeed(xml: string): ParsedFeed {
       siteUrl: feedLinks.find((l) => l['@_rel'] !== 'self')?.['@_href'] ?? '',
       items: toArray(feed.entry).map((entry) => {
         const entryLinks = toArray<{ '@_rel'?: string; '@_href'?: string }>(entry.link);
+        const raw = str(entry.content ?? entry.summary ?? '');
         return {
           guid: str(entry.id),
           title: stripHtml(str(entry.title)),
@@ -72,7 +87,8 @@ export function parseFeed(xml: string): ParsedFeed {
             entryLinks.find((l) => l['@_rel'] !== 'self')?.['@_href'] ??
             entryLinks[0]?.['@_href'] ??
             '',
-          summary: stripHtml(str(entry.summary ?? entry.content)).slice(0, 500),
+          summary: stripHtml(raw).slice(0, 200),
+          content: sanitizeHtml(raw),
           publishedAt: entry.published ?? entry.updated ?? null,
         };
       }),

@@ -30,6 +30,7 @@ async function fetchUserArticles(env: Env, userId: string): Promise<void> {
           title: item.title,
           link: item.link,
           summary: item.summary,
+          content: item.content,
           publishedAt: item.publishedAt,
           createdAt: existingByGuid.get(item.guid)?.createdAt ?? new Date().toISOString(),
         })

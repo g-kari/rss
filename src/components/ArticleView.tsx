@@ -52,7 +52,12 @@ export default function ArticleView({ article }: Props) {
         <div className="border-t border-stone-100 mb-8" />
 
         {/* 本文 */}
-        {article.summary ? (
+        {article.content ? (
+          <div
+            className="article-content"
+            dangerouslySetInnerHTML={{ __html: article.content }}
+          />
+        ) : article.summary ? (
           <p className="font-serif text-[16px] leading-[1.9] text-stone-600 tracking-[0.02em]">
             {article.summary}
           </p>

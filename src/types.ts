@@ -13,6 +13,7 @@ export interface Article {
   title: string;
   link: string;
   summary: string;
+  content?: string;
   publishedAt: string | null;
   createdAt: string;
 }
