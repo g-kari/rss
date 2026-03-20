@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#09090b"/>
+      <stop offset="100%" stop-color="#18181b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle border frame -->
+  <rect x="32" y="32" width="1136" height="566" rx="16" fill="none" stroke="#27272a" stroke-width="1"/>
+
+  <!-- RSS icon -->
+  <g transform="translate(96, 120)">
+    <rect width="88" height="88" rx="18" fill="#1c1c1f" stroke="#3f3f46" stroke-width="1"/>
+    <circle cx="26" cy="62" r="9" fill="#e4e4e7"/>
+    <path d="M26 42 A20 20 0 0 1 46 62" stroke="#e4e4e7" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M26 24 A38 38 0 0 1 64 62" stroke="#e4e4e7" stroke-width="8" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Site label -->
+  <text x="204" y="177" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="13" fill="#52525b" letter-spacing="3">RSS READER</text>
+
+  <!-- Main headline -->
+  <text x="96" y="310" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="80" font-weight="300" fill="#e4e4e7" letter-spacing="-2">Simple.</text>
+  <text x="96" y="400" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="80" font-weight="300" fill="#e4e4e7" letter-spacing="-2">Fast. Minimal.</text>
+
+  <!-- Tagline -->
+  <text x="96" y="458" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="24" fill="#71717a">AI summary &amp; translation · 4 layouts · Dark / Light theme</text>
+
+  <!-- Feature pills -->
+  <rect x="96" y="494" width="148" height="32" rx="16" fill="#1c1c1f" stroke="#27272a" stroke-width="1"/>
+  <text x="170" y="515" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="13" fill="#a1a1aa">Dark / Light</text>
+
+  <rect x="258" y="494" width="148" height="32" rx="16" fill="#1c1c1f" stroke="#27272a" stroke-width="1"/>
+  <text x="332" y="515" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="13" fill="#a1a1aa">4 Layouts</text>
+
+  <rect x="420" y="494" width="168" height="32" rx="16" fill="#1c1c1f" stroke="#27272a" stroke-width="1"/>
+  <text x="504" y="515" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="13" fill="#a1a1aa">AI Powered</text>
+
+  <!-- URL -->
+  <text x="1104" y="592" text-anchor="end" font-family="-apple-system, system-ui, sans-serif" font-size="18" fill="#3f3f46">rss.0g0.xyz</text>
+</svg>
