@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import type { HonoEnv, Feed } from '../types';
+import type { HonoEnv, Feed, Article } from '../types';
 import { r2Get, r2Put } from '../lib/r2';
 import { fetchArticles } from '../cron/fetch';
 
@@ -42,6 +42,15 @@ app.delete('/:id', async (c) => {
   const id = c.req.param('id');
   const list = await r2Get<Feed[]>(c.env.RSS_DATA, `users/${userId}/feeds.json`, []);
   await r2Put(c.env.RSS_DATA, `users/${userId}/feeds.json`, list.filter((f) => f.id !== id));
+
+  // 削除されたフィードの記事も一緒に削除
+  const articles = await r2Get<Article[]>(c.env.RSS_DATA, `users/${userId}/articles.json`, []);
+  await r2Put(
+    c.env.RSS_DATA,
+    `users/${userId}/articles.json`,
+    articles.filter((a) => a.feedId !== id),
+  );
+
   return c.json({ ok: true });
 });
 

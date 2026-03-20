@@ -58,6 +58,7 @@ export default function App() {
 
   function onFeedDeleted(id: string) {
     setFeeds((prev) => prev.filter((f) => f.id !== id));
+    setArticles((prev) => prev.filter((a) => a.feedId !== id));
     if (selectedFeedId === id) {
       setSelectedFeedId(null);
       setSelectedArticle(null);

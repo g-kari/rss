@@ -56,7 +56,11 @@ export default function FeedSidebar({
 
   async function deleteFeed(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    await fetch(`/api/feeds/${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/feeds/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      setError('フィードの削除に失敗しました');
+      return;
+    }
     onFeedDeleted(id);
   }
 
