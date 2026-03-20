@@ -4,27 +4,27 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "deploy": "npm run build && wrangler deploy",
+    "dev": "next dev",
+    "build": "next build",
+    "preview": "wrangler dev",
+    "deploy": "npx @opennextjs/cloudflare build && wrangler deploy",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "fast-xml-parser": "^5.5.8",
-    "hono": "^4.12.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.29.1",
     "@cloudflare/workers-types": "^4.20260317.1",
-    "@tailwindcss/vite": "^4.1.0",
+    "@opennextjs/cloudflare": "^1.17.1",
+    "@tailwindcss/postcss": "^4.2.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
+    "next": "^16.1.5",
+    "postcss": "^8.5.8",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1",
     "wrangler": "^4.75.0"
   }
 }

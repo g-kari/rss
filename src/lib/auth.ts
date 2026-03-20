@@ -1,5 +1,3 @@
-import type { Env } from '../types';
-
 export interface JWTPayload {
   sub: string;
   exp: number;
@@ -33,7 +31,7 @@ async function getJwks(authBaseUrl: string): Promise<JwkWithKid[]> {
 
   const res = await fetch(`${authBaseUrl}/.well-known/jwks.json`);
   if (!res.ok) throw new Error(`JWKS fetch failed: ${res.status}`);
-  const { keys } = await res.json<{ keys: JwkWithKid[] }>();
+  const { keys } = await res.json() as { keys: JwkWithKid[] };
   jwksCache = keys;
   jwksCacheExpiry = now + JWKS_CACHE_TTL_MS;
   return keys;
@@ -109,47 +107,45 @@ export interface TokenData {
   };
 }
 
-export async function exchangeCode(
-  code: string,
-  redirectTo: string,
-  env: Env
-): Promise<TokenData | null> {
-  const res = await fetch(`${env.AUTH_BASE_URL}/auth/exchange`, {
+export async function exchangeCode(code: string, redirectTo: string): Promise<TokenData | null> {
+  const authBaseUrl = process.env.AUTH_BASE_URL!;
+  const res = await fetch(`${authBaseUrl}/auth/exchange`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: basicAuthHeader(env.CLIENT_ID, env.CLIENT_SECRET),
+      Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
     },
     body: JSON.stringify({ code, redirect_to: redirectTo }),
   });
   if (!res.ok) return null;
-  const { data } = await res.json<{ data: TokenData }>();
+  const { data } = await res.json() as { data: TokenData };
   return data;
 }
 
 export async function refreshTokens(
-  refreshToken: string,
-  env: Env
+  refreshToken: string
 ): Promise<{ access_token: string; refresh_token: string } | null> {
-  const res = await fetch(`${env.AUTH_BASE_URL}/auth/refresh`, {
+  const authBaseUrl = process.env.AUTH_BASE_URL!;
+  const res = await fetch(`${authBaseUrl}/auth/refresh`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: basicAuthHeader(env.CLIENT_ID, env.CLIENT_SECRET),
+      Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
     },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
   if (!res.ok) return null;
-  const { data } = await res.json<{ data: { access_token: string; refresh_token: string } }>();
+  const { data } = await res.json() as { data: { access_token: string; refresh_token: string } };
   return data;
 }
 
-export async function revokeToken(refreshToken: string, env: Env): Promise<void> {
-  await fetch(`${env.AUTH_BASE_URL}/auth/logout`, {
+export async function revokeToken(refreshToken: string): Promise<void> {
+  const authBaseUrl = process.env.AUTH_BASE_URL!;
+  await fetch(`${authBaseUrl}/auth/logout`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: basicAuthHeader(env.CLIENT_ID, env.CLIENT_SECRET),
+      Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
     },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });

@@ -1,10 +1,13 @@
-import type { Env, Feed, Article } from '../types';
+import type { Feed, Article } from '../types';
+
 import { parseFeed } from '../lib/xml-parser';
+
+type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA'>;
 import { r2Get, r2Put } from '../lib/r2';
 
 const MAX_ARTICLES = 2000;
 
-async function fetchUserArticles(env: Env, userId: string): Promise<void> {
+async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
   const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${userId}/feeds.json`, []);
   if (feeds.length === 0) return;
 
@@ -62,13 +65,13 @@ async function fetchUserArticles(env: Env, userId: string): Promise<void> {
 }
 
 // フィード追加時の即時フェッチ
-export async function fetchArticles(env: Env, userId: string): Promise<void> {
+export async function fetchArticles(env: FetchEnv, userId: string): Promise<void> {
   await fetchUserArticles(env, userId);
 }
 
 // Cron: 全ユーザーをフェッチ
-export async function fetchAllUsers(env: Env): Promise<void> {
+export async function fetchAllUsers(env: FetchEnv): Promise<void> {
   const listed = await env.RSS_DATA.list({ prefix: 'users/', delimiter: '/' });
-  const userIds = listed.delimitedPrefixes.map((p) => p.slice('users/'.length, -1));
-  await Promise.allSettled(userIds.map((id) => fetchUserArticles(env, id)));
+  const userIds = listed.delimitedPrefixes.map((p: string) => p.slice('users/'.length, -1));
+  await Promise.allSettled(userIds.map((id: string) => fetchUserArticles(env, id)));
 }

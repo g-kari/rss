@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import type { Feed, Article, UserProfile } from '../types';
 
@@ -47,11 +49,11 @@ export default function FeedSidebar({
         body: JSON.stringify({ url: newUrl.trim() }),
       });
       if (!res.ok) {
-        const data = await res.json<{ error: string }>();
+        const data = await res.json() as { error: string };
         setError(data.error ?? 'Failed to add feed');
         return;
       }
-      const feed = await res.json<Feed>();
+      const feed = await res.json() as Feed;
       setNewUrl('');
       setInputOpen(false);
       onFeedAdded(feed);

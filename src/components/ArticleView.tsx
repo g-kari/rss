@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Article } from '../types';
 
@@ -149,7 +151,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: contentHtml }),
       });
-      const data = await res.json<{ result?: string; error?: string }>();
+      const data = await res.json() as { result?: string; error?: string };
       if (data.result) setAiResult({ mode, text: data.result });
     } finally {
       setAiLoading(null);
@@ -162,7 +164,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
     setFetchError('');
     try {
       const res = await fetch(`/api/content?url=${encodeURIComponent(article.link)}`);
-      const data = await res.json<{ content?: string; error?: string }>();
+      const data = await res.json() as { content?: string; error?: string };
       if (data.content) {
         saveCache(article.id, data.content);
         setFetchedContent(data.content);

@@ -1,0 +1,3 @@
+{
+  "/api/auth/logout/route": "app-edge-has-no-entrypoint"
+}
