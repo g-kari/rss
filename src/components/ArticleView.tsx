@@ -4,12 +4,22 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Article } from '../types';
 
 type AiMode = 'summary' | 'translation';
+type FontSize = 'small' | 'medium' | 'large';
+
+const FONT_SIZE_CLASSES: Record<FontSize, string> = {
+  small: 'text-[14px] leading-[1.75]',
+  medium: 'text-[16px] leading-[1.9]',
+  large: 'text-[19px] leading-[2.0]',
+};
+const FONT_SIZE_CYCLE: FontSize[] = ['small', 'medium', 'large'];
 
 interface Props {
   article: Article | null;
   isBookmarked: boolean;
   onToggleBookmark: (id: string) => void;
   onMobileBack?: () => void;
+  fontSize?: FontSize;
+  onChangeFontSize?: (size: FontSize) => void;
 }
 
 interface EmbedInfo {
@@ -123,7 +133,7 @@ function saveCache(id: string, content: string) {
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
-export default function ArticleView({ article, isBookmarked, onToggleBookmark, onMobileBack }: Props) {
+export default function ArticleView({ article, isBookmarked, onToggleBookmark, onMobileBack, fontSize = 'medium', onChangeFontSize }: Props) {
   // キャッシュをレンダリング時に同期取得 → 記事切り替え時もフラッシュなし
   const cachedContent = useMemo(
     () => (article?.id ? loadCache(article.id) : null),
@@ -254,9 +264,33 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
             </a>
           )}
 
+          {/* フォントサイズ切り替え */}
+          {onChangeFontSize && (
+            <div className="ml-auto flex items-center gap-0.5">
+              {FONT_SIZE_CYCLE.map((size) => (
+                <button
+                  key={size}
+                  onClick={() => onChangeFontSize(size)}
+                  title={size === 'small' ? '小' : size === 'medium' ? '中' : '大'}
+                  className={`px-1.5 py-0.5 rounded transition-colors duration-150 ${
+                    fontSize === size
+                      ? 'text-text-strong'
+                      : 'text-text-faint hover:text-text-muted'
+                  }`}
+                  style={{
+                    fontSize: size === 'small' ? '10px' : size === 'medium' ? '12px' : '14px',
+                    lineHeight: 1,
+                  }}
+                >
+                  A
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* AI ボタン */}
           {hasContent && (
-            <div className="ml-auto flex items-center gap-1">
+            <div className={`${onChangeFontSize || !hasContent ? '' : 'ml-auto'} flex items-center gap-1`}>
               {(['summary', 'translation'] as AiMode[]).map((mode) => {
                 const isActive = aiResult?.mode === mode;
                 return (
@@ -281,7 +315,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
           <button
             onClick={() => onToggleBookmark(article.id)}
             title={isBookmarked ? 'ブックマーク解除 (b)' : 'ブックマーク (b)'}
-            className={`transition-colors duration-200 ${hasContent ? '' : 'ml-auto'} ${
+            className={`transition-colors duration-200 ${!hasContent && !onChangeFontSize ? 'ml-auto' : ''} ${
               isBookmarked ? 'text-bookmark hover:text-text-muted' : 'text-text-faint hover:text-bookmark'
             }`}
           >
@@ -348,11 +382,11 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
         {/* 本文 */}
         {processedContent ? (
           <div
-            className="article-content"
+            className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}
             dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         ) : article.summary ? (
-          <p className="font-serif text-[16px] leading-[1.9] text-text-default tracking-[0.02em]">
+          <p className={`font-serif ${FONT_SIZE_CLASSES[fontSize]} text-text-default tracking-[0.02em]`}>
             {article.summary}
           </p>
         ) : !embedInfo ? (
