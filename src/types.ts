@@ -18,8 +18,5 @@ export interface Article {
 }
 
 export interface Env {
-  GITHUB_TOKEN: string;
-  GITHUB_OWNER: string;
-  GITHUB_REPO: string;
-  GITHUB_BRANCH: string;
+  RSS_DATA: R2Bucket;
 }

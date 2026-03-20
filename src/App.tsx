@@ -25,12 +25,12 @@ export default function App() {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
 
   useEffect(() => {
-    fetch('/data/feeds.json')
+    fetch('/api/feeds')
       .then((r) => r.json<Feed[]>())
       .then(setFeeds)
       .catch(console.error);
 
-    fetch('/data/articles.json')
+    fetch('/api/articles')
       .then((r) => r.json<Article[]>())
       .then(setArticles)
       .catch(console.error);

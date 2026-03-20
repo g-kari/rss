@@ -7,10 +7,9 @@ routes = [
   { pattern = "rss.0g0.xyz", custom_domain = true }
 ]
 
-[vars]
-GITHUB_OWNER = "g-kari"
-GITHUB_REPO = "rss"
-GITHUB_BRANCH = "master"
+[[r2_buckets]]
+binding = "RSS_DATA"
+bucket_name = "rss-reader-data"
 
-# シークレットは以下で設定:
-# npx wrangler secret put GITHUB_TOKEN
+[triggers]
+crons = ["*/30 * * * *"]
