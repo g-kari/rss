@@ -26,6 +26,13 @@ binding = "AI"
 [triggers]
 crons = ["*/30 * * * *"]
 
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 # シークレットは以下で設定:
 # npx wrangler secret put CLIENT_ID
 # npx wrangler secret put CLIENT_SECRET
