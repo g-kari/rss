@@ -16,9 +16,10 @@ function extractYouTubeId(url: string): string | null {
   return m?.[1] ?? null;
 }
 
+/** YouTube の iframe だけをレスポンシブラッパーで包む */
 function processContent(html: string): string {
   return html.replace(
-    /<iframe([\s\S]*?)>([\s\S]*?)<\/iframe>/gi,
+    /<iframe([^>]*src=["'][^"']*(?:youtube(?:-nocookie)?\.com\/embed)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
     (_match, attrs, inner) =>
       `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
       `<iframe${attrs} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
@@ -26,7 +27,27 @@ function processContent(html: string): string {
   );
 }
 
-/** RSS content が「短い」とみなす閾値 */
+/** YouTube article の場合、コンテンツ内の iframe を除去（二重埋め込み防止）*/
+function stripIframes(html: string): string {
+  return html.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+}
+
+/* ── 全文キャッシュ (localStorage) ── */
+const CACHE_PREFIX = 'rss-content:';
+const CACHE_MAX = 15;
+
+function loadCache(id: string): string | null {
+  try { return localStorage.getItem(`${CACHE_PREFIX}${id}`); } catch { return null; }
+}
+
+function saveCache(id: string, content: string) {
+  try {
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith(CACHE_PREFIX));
+    if (keys.length >= CACHE_MAX) localStorage.removeItem(keys[0]);
+    localStorage.setItem(`${CACHE_PREFIX}${id}`, content);
+  } catch { /* storage full */ }
+}
+
 const SHORT_CONTENT_THRESHOLD = 400;
 
 export default function ArticleView({ article, isBookmarked, onToggleBookmark }: Props) {
@@ -36,15 +57,20 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
 
-  // 記事が変わったらリセット
+  // 記事が変わったらキャッシュ確認 → リセット
   useEffect(() => {
-    setFetchedContent(null);
     setFetchError('');
     setAiResult(null);
+    if (article?.id) {
+      const cached = loadCache(article.id);
+      setFetchedContent(cached ?? null);
+    } else {
+      setFetchedContent(null);
+    }
   }, [article?.id]);
 
   const runAi = useCallback(async (mode: AiMode, contentHtml: string) => {
-    if (aiResult?.mode === mode) { setAiResult(null); return; } // トグル
+    if (aiResult?.mode === mode) { setAiResult(null); return; }
     setAiLoading(mode);
     try {
       const endpoint = mode === 'summary' ? '/api/ai/summarize' : '/api/ai/translate';
@@ -68,7 +94,8 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
       const res = await fetch(`/api/content?url=${encodeURIComponent(article.link)}`);
       const data = await res.json<{ content?: string; error?: string }>();
       if (data.content) {
-        setFetchedContent(processContent(data.content));
+        saveCache(article.id, data.content);
+        setFetchedContent(data.content);
       } else {
         setFetchError(data.error ?? '取得できませんでした');
       }
@@ -93,10 +120,18 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
   }
 
   const ytId = article.link ? extractYouTubeId(article.link) : null;
-  const displayContent = fetchedContent ?? (article.content ? processContent(article.content) : null);
+
+  // YouTube 記事は iframe を除去して二重埋め込みを防ぐ
+  const rawContent = fetchedContent ?? article.content ?? null;
+  const processedContent = rawContent
+    ? ytId
+      ? stripIframes(rawContent)         // YouTube → iframe 除去のみ
+      : processContent(rawContent)       // 通常 → YouTube iframe をレスポンシブ化
+    : null;
+
   const isShortContent = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
-  const canFetch = !ytId && article.link && (isShortContent || !displayContent) && !fetchedContent;
-  const hasContent = !!(displayContent || article.summary);
+  const canFetch = !ytId && article.link && (isShortContent || !processedContent) && !fetchedContent;
+  const hasContent = !!(processedContent || article.summary);
 
   return (
     <main className="overflow-y-auto bg-surface-elevated animate-fade-in">
@@ -122,16 +157,16 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
               元記事 ↗
             </a>
           )}
+
           {/* AI ボタン */}
           {hasContent && (
             <div className="ml-auto flex items-center gap-1">
               {(['summary', 'translation'] as AiMode[]).map((mode) => {
                 const isActive = aiResult?.mode === mode;
-                const isLoading = aiLoading === mode;
                 return (
                   <button
                     key={mode}
-                    onClick={() => runAi(mode, displayContent ?? article.summary ?? '')}
+                    onClick={() => runAi(mode, processedContent ?? article.summary ?? '')}
                     disabled={!!aiLoading}
                     title={mode === 'summary' ? 'AI 要約' : '日本語翻訳'}
                     className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
@@ -140,16 +175,17 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
                         : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
                     }`}
                   >
-                    {isLoading ? '…' : mode === 'summary' ? '要約' : '日本語'}
+                    {aiLoading === mode ? '…' : mode === 'summary' ? '要約' : '日本語'}
                   </button>
                 );
               })}
             </div>
           )}
+
           <button
             onClick={() => onToggleBookmark(article.id)}
             title={isBookmarked ? 'ブックマーク解除 (b)' : 'ブックマーク (b)'}
-            className={`transition-colors duration-200 ${
+            className={`transition-colors duration-200 ${hasContent ? '' : 'ml-auto'} ${
               isBookmarked ? 'text-bookmark hover:text-text-muted' : 'text-text-faint hover:text-bookmark'
             }`}
           >
@@ -171,7 +207,8 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
               className="absolute inset-0 w-full h-full"
               src={`https://www.youtube.com/embed/${ytId}`}
               title={article.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
               style={{ border: 0, borderRadius: '8px' }}
             />
@@ -191,7 +228,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
         )}
 
         {/* OGP 画像 (YouTube 以外、本文なし時) */}
-        {!ytId && article.ogImage && !displayContent && (
+        {!ytId && article.ogImage && !processedContent && (
           <img
             src={article.ogImage}
             alt=""
@@ -202,17 +239,15 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
         )}
 
         {/* 本文 */}
-        {displayContent ? (
+        {processedContent ? (
           <div
             className="article-content"
-            dangerouslySetInnerHTML={{ __html: displayContent }}
+            dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         ) : article.summary ? (
-          <>
-            <p className="font-serif text-[16px] leading-[1.9] text-text-default tracking-[0.02em]">
-              {article.summary}
-            </p>
-          </>
+          <p className="font-serif text-[16px] leading-[1.9] text-text-default tracking-[0.02em]">
+            {article.summary}
+          </p>
         ) : !ytId ? (
           <div className="text-center py-12">
             <p className="text-[12px] text-text-faint mb-4 tracking-[0.04em]">本文のプレビューはありません</p>
