@@ -4,6 +4,7 @@ import { r2Get, r2Put } from '@/lib/r2';
 import { fetchArticles } from '@/cron/fetch';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { XMLParser } from 'fast-xml-parser';
+import { isValidFeedUrl } from '@/lib/url';
 import type { Feed } from '@/types';
 
 export const runtime = 'edge';
@@ -69,13 +70,7 @@ export async function POST(request: Request) {
   const added: Feed[] = [];
   for (const entry of feedEntries) {
     if (existingUrls.has(entry.url)) continue;
-    // SSRF 対策: http/https 以外のスキームを持つ URL をスキップ
-    try {
-      const parsed = new URL(entry.url);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue;
-    } catch {
-      continue;
-    }
+    if (!isValidFeedUrl(entry.url)) continue; // SSRF 対策
     const newFeed: Feed = {
       id: crypto.randomUUID(),
       url: entry.url,

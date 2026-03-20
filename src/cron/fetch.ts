@@ -1,6 +1,7 @@
 import type { Feed, Article } from '../types';
 
 import { parseFeed } from '../lib/xml-parser';
+import { isValidFeedUrl } from '../lib/url';
 
 type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA'>;
 import { r2Get, r2Put } from '../lib/r2';
@@ -16,16 +17,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
 
   const results = await Promise.allSettled(
     feeds.map(async (feed) => {
-      // SSRF 対策: http/https 以外のスキームを持つ URL をスキップ
-      let parsedUrl: URL;
-      try {
-        parsedUrl = new URL(feed.url);
-      } catch {
-        throw new Error(`Invalid feed URL: ${feed.url}`);
-      }
-      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-        throw new Error(`Invalid feed URL scheme: ${feed.url}`);
-      }
+      if (!isValidFeedUrl(feed.url)) throw new Error(`Invalid feed URL: ${feed.url}`); // SSRF 対策
       const res = await fetch(feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
       if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
       const xml = await res.text();
