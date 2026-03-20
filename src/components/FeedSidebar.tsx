@@ -12,6 +12,7 @@ interface Props {
   onSelectFeed: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
+  onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
 }
 
@@ -26,6 +27,7 @@ export default function FeedSidebar({
   onSelectFeed,
   onFeedAdded,
   onFeedDeleted,
+  onMarkAllRead,
   onToggleTheme,
 }: Props) {
   const [newUrl, setNewUrl] = useState('');
@@ -137,21 +139,36 @@ export default function FeedSidebar({
 
       {/* フィードリスト */}
       <nav className="flex-1 min-h-0 overflow-y-auto py-2">
-        <button
+        <div
           onClick={() => onSelectFeed(null)}
-          className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
+          className={`group flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 ${
             selectedFeedId === null
               ? 'text-text-strong bg-surface-subtle'
               : 'text-text-muted hover:text-text-strong hover:bg-surface-hover'
           }`}
         >
           <span className="text-[13px] tracking-[0.02em]">すべて</span>
-          {totalUnread > 0 && (
-            <span className="text-[11px] text-text-muted tabular-nums">
-              {totalUnread > 99 ? '99+' : totalUnread}
-            </span>
-          )}
-        </button>
+          <span className="flex items-center gap-1 flex-shrink-0">
+            {totalUnread > 0 && (
+              <span className="text-[11px] text-text-muted tabular-nums">
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </span>
+            )}
+            {totalUnread > 0 && (
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onMarkAllRead(null); }}
+                  className="p-0.5 text-text-faint hover:text-text-default transition-colors duration-150"
+                  title="全て既読 (m)"
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1.5 5l2.5 2.5L8.5 2.5" />
+                  </svg>
+                </button>
+              </span>
+            )}
+          </span>
+        </div>
 
         <button
           onClick={() => onSelectFeed('__bookmarks__')}
@@ -194,7 +211,18 @@ export default function FeedSidebar({
                 {count > 0 && (
                   <span className="text-[11px] text-text-muted tabular-nums">{count > 99 ? '99+' : count}</span>
                 )}
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5">
+                  {count > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onMarkAllRead(feed.id); }}
+                      className="p-0.5 text-text-faint hover:text-text-default transition-colors duration-150"
+                      title="全て既読"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1.5 5l2.5 2.5L8.5 2.5" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     onClick={(e) => deleteFeed(feed.id, e)}
                     className="p-0.5 text-text-faint hover:text-rose-400 transition-colors duration-150"
