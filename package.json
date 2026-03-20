@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "preview": "wrangler dev",
-    "deploy": "npx @opennextjs/cloudflare build && wrangler deploy",
+    "build:cf": "npx @opennextjs/cloudflare build",
+    "deploy": "npm run build:cf && wrangler deploy",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
