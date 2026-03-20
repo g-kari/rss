@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import FeedSidebar from './components/FeedSidebar';
 import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
@@ -44,13 +44,34 @@ export default function App() {
       .catch(console.error);
   }, [user]);
 
-  function markRead(articleId: string) {
+  const markRead = useCallback((articleId: string) => {
     setReadIds((prev) => {
       const next = new Set(prev).add(articleId);
       saveReadIds(next);
       return next;
     });
-  }
+  }, []);
+
+  // キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、o 元記事を開く
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const list = selectedFeedId ? articles.filter((a) => a.feedId === selectedFeedId) : articles;
+      const idx = selectedArticle ? list.findIndex((a) => a.id === selectedArticle.id) : -1;
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = list[idx + 1];
+        if (next) { setSelectedArticle(next); markRead(next.id); }
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (idx > 0) { const prev = list[idx - 1]; setSelectedArticle(prev); markRead(prev.id); }
+      } else if (e.key === 'o' && selectedArticle?.link) {
+        window.open(selectedArticle.link, '_blank', 'noopener,noreferrer');
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [articles, selectedFeedId, selectedArticle, markRead]);
 
   function onFeedAdded(feed: Feed) {
     setFeeds((prev) => [...prev, feed]);

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Article } from '../types';
 
 interface Props {
@@ -32,6 +32,15 @@ export default function ArticleList({
 }: Props) {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(1);
+
+  // 選択記事が変わったらリスト内で自動スクロール
+  useEffect(() => {
+    if (selectedArticleId) {
+      document
+        .getElementById(`article-${selectedArticleId}`)
+        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [selectedArticleId]);
 
   const filtered = useMemo(() => {
     let list = feedId ? articles.filter((a) => a.feedId === feedId) : articles;
@@ -80,6 +89,7 @@ export default function ArticleList({
           return (
             <div
               key={article.id}
+              id={`article-${article.id}`}
               onClick={() => onSelectArticle(article)}
               className={`flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-stone-100 transition-all duration-200 animate-fade-up ${
                 isSelected
