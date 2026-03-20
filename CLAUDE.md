@@ -10,6 +10,11 @@ Cloudflare Workers + React の RSS リーダー (SaaS)。`rss.0g0.xyz` でホス
 - ファイル全体の読み書きより、必要なシンボルだけを読んで効率よく作業する
 - `get_symbols_overview` でファイルの構造を把握してから詳細を読む
 
+### URL が貼られた場合
+
+チャットに URL (http:// / https://) が貼られたときは **Cloudflare Markdown MCP** (`mcp__cloudflare__markdown_from_url`) を使って Markdown に変換する。
+ツールが利用できない場合は `WebFetch` でフォールバックする。
+
 ## スタック
 
 | レイヤー | 技術 |
