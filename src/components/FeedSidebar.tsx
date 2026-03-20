@@ -64,138 +64,111 @@ export default function FeedSidebar({ selectedFeedId, onSelectFeed }: Props) {
   const totalUnread = feeds.reduce((sum, f) => sum + (f.unread_count ?? 0), 0);
 
   return (
-    <aside className="flex flex-col h-full border-r border-white/[0.06] bg-[#0f1117]/80 backdrop-blur-sm">
-      {/* ロゴ */}
-      <div className="px-4 pt-5 pb-4 border-b border-white/[0.06]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7M6 17a1 1 0 110 2 1 1 0 010-2z" />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-zinc-200 tracking-tight">RSS</span>
-          </div>
-          <button
-            onClick={() => setInputOpen((v) => !v)}
-            className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06] transition-all duration-150 active:scale-95"
-            title="フィードを追加"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        </div>
+    <aside className="flex flex-col min-h-0 overflow-hidden border-r border-zinc-800 bg-zinc-900">
+      {/* ヘッダー */}
+      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+        <span className="text-sm font-semibold text-zinc-200">RSS</span>
+        <button
+          onClick={() => setInputOpen((v) => !v)}
+          className="text-zinc-600 hover:text-zinc-300 transition-colors"
+          title="フィードを追加"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
 
-        {/* フィード追加フォーム */}
-        {inputOpen && (
-          <form onSubmit={addFeed} className="mt-3 space-y-2">
+      {/* フィード追加フォーム */}
+      {inputOpen && (
+        <div className="px-3 py-2 border-b border-zinc-800 bg-zinc-900/80">
+          <form onSubmit={addFeed} className="space-y-2">
             <input
               type="url"
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               placeholder="https://example.com/feed"
               autoFocus
-              className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all"
+              className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-zinc-500"
             />
-            {error && <p className="text-red-400 text-[11px]">{error}</p>}
-            <div className="flex gap-2">
+            {error && <p className="text-red-400 text-xs">{error}</p>}
+            <div className="flex gap-1.5">
               <button
                 type="submit"
                 disabled={adding}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors active:scale-95"
+                className="flex-1 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 rounded px-2 py-1.5 text-xs text-zinc-200 transition-colors"
               >
                 {adding ? '追加中...' : '追加'}
               </button>
               <button
                 type="button"
                 onClick={() => { setInputOpen(false); setError(''); }}
-                className="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 rounded-lg hover:bg-white/[0.05] transition-colors"
+                className="px-2 py-1.5 text-xs text-zinc-500 hover:text-zinc-300 rounded hover:bg-zinc-800 transition-colors"
               >
-                キャンセル
+                ×
               </button>
             </div>
           </form>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ナビゲーション */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        <p className="px-2 pb-1.5 text-[10px] font-semibold text-zinc-600 uppercase tracking-widest">
-          すべて
-        </p>
-
+      <nav className="flex-1 min-h-0 overflow-y-auto py-1">
         <button
           onClick={() => onSelectFeed(null)}
-          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
+          className={`w-full flex items-center justify-between px-3 py-1.5 text-[13px] transition-colors ${
             selectedFeedId === null
-              ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-300'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05]'
+              ? 'bg-zinc-800 text-zinc-200'
+              : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
           }`}
         >
-          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h18M3 12h18M3 17h18" />
-          </svg>
-          <span className="flex-1 text-left truncate text-xs font-medium">すべての記事</span>
+          <span>すべて</span>
           {totalUnread > 0 && (
-            <span className="text-[10px] font-semibold text-indigo-400 bg-indigo-400/10 rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-              {totalUnread > 99 ? '99+' : totalUnread}
-            </span>
+            <span className="text-xs text-zinc-500">{totalUnread > 99 ? '99+' : totalUnread}</span>
           )}
         </button>
 
         {feeds.length > 0 && (
-          <p className="px-2 pt-3 pb-1.5 text-[10px] font-semibold text-zinc-600 uppercase tracking-widest">
-            フィード
-          </p>
+          <div className="mt-3 px-3 mb-1">
+            <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest">フィード</p>
+          </div>
         )}
 
         {feeds.map((feed) => (
           <div
             key={feed.id}
             onClick={() => onSelectFeed(feed.id)}
-            className={`group flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
+            className={`group flex items-center justify-between px-3 py-1.5 cursor-pointer transition-colors ${
               selectedFeedId === feed.id
-                ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-300'
-                : (feed.unread_count ?? 0) > 0
-                ? 'text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.05]'
-                : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05] opacity-60'
+                ? 'bg-zinc-800 text-zinc-200'
+                : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
             }`}
           >
-            {/* 未読ドット */}
-            <span
-              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all ${
-                (feed.unread_count ?? 0) > 0 ? 'bg-indigo-400' : 'bg-transparent'
-              }`}
-            />
-            <span className="flex-1 text-xs font-medium truncate">
+            <span className={`text-[13px] truncate flex-1 ${(feed.unread_count ?? 0) > 0 ? 'text-zinc-200' : ''}`}>
               {feed.title || feed.url}
             </span>
-            {(feed.unread_count ?? 0) > 0 && selectedFeedId !== feed.id && (
-              <span className="text-[10px] font-semibold text-zinc-500 min-w-[18px] text-right">
-                {feed.unread_count}
+            <span className="flex items-center gap-1 ml-1 flex-shrink-0">
+              {(feed.unread_count ?? 0) > 0 && (
+                <span className="text-xs text-zinc-500">{feed.unread_count}</span>
+              )}
+              <span className="opacity-0 group-hover:opacity-100 flex gap-0.5 transition-opacity">
+                <button
+                  onClick={(e) => refreshFeed(feed.id, e)}
+                  className="p-0.5 text-zinc-600 hover:text-zinc-300 transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0115 0M20 15a9 9 0 01-15 0" />
+                  </svg>
+                </button>
+                <button
+                  onClick={(e) => deleteFeed(feed.id, e)}
+                  className="p-0.5 text-zinc-600 hover:text-red-400 transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </span>
-            )}
-            {/* アクションボタン（hover時のみ） */}
-            <span className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-              <button
-                onClick={(e) => refreshFeed(feed.id, e)}
-                className="p-0.5 rounded text-zinc-600 hover:text-zinc-300 transition-colors"
-                title="更新"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0115 0M20 15a9 9 0 01-15 0" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => deleteFeed(feed.id, e)}
-                className="p-0.5 rounded text-zinc-600 hover:text-red-400 transition-colors"
-                title="削除"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </span>
           </div>
         ))}
