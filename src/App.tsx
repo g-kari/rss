@@ -90,14 +90,19 @@ export default function App() {
 
   const markAllRead = useCallback((feedId: string | null) => {
     setReadIds((prev) => {
-      const ids = feedId
-        ? articles.filter((a) => a.feedId === feedId).map((a) => a.id)
-        : articles.map((a) => a.id);
+      let ids: string[];
+      if (feedId === '__bookmarks__') {
+        ids = articles.filter((a) => bookmarkIds.has(a.id)).map((a) => a.id);
+      } else if (feedId) {
+        ids = articles.filter((a) => a.feedId === feedId).map((a) => a.id);
+      } else {
+        ids = articles.map((a) => a.id);
+      }
       const next = new Set([...prev, ...ids]);
       saveSet('rss-read', next);
       return next;
     });
-  }, [articles]);
+  }, [articles, bookmarkIds]);
 
   const toggleBookmark = useCallback((articleId: string) => {
     setBookmarkIds((prev) => {

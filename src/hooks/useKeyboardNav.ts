@@ -47,7 +47,7 @@ export function useKeyboardNav({
       } else if (e.key === 'b' && selectedArticle) {
         toggleBookmark(selectedArticle.id);
       } else if (e.key === 'm') {
-        markAllRead(selectedFeedId === '__bookmarks__' ? null : selectedFeedId);
+        markAllRead(selectedFeedId);
       }
     }
     document.addEventListener('keydown', handleKeyDown);
