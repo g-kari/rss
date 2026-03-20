@@ -14,9 +14,12 @@ export interface Article {
   link: string;
   summary: string;
   content?: string;
+  ogImage?: string;
   publishedAt: string | null;
   createdAt: string;
 }
+
+export type Layout = 'compact' | 'list' | 'card' | 'magazine';
 
 export interface UserProfile {
   id: string;       // 0g0 内部ユーザーID
@@ -28,6 +31,7 @@ export interface UserProfile {
 
 export interface Env {
   RSS_DATA: R2Bucket;
+  AI: Ai;
   AUTH_BASE_URL: string;
   APP_BASE_URL: string;
   CLIENT_ID: string;

@@ -6,6 +6,7 @@ interface ParsedItem {
   link: string;
   summary: string;
   content: string;
+  ogImage: string;
   publishedAt: string | null;
 }
 
@@ -46,6 +47,38 @@ function str(val: unknown): string {
   return String(val);
 }
 
+/** RSS item / Atom entry から最初の画像 URL を取得 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractImage(item: any): string {
+  // 1. media:thumbnail
+  const thumb = item['media:thumbnail'];
+  if (thumb?.['@_url']) return String(thumb['@_url']);
+
+  // 2. media:content (画像タイプ)
+  const mc = item['media:content'];
+  const mcArr = Array.isArray(mc) ? mc : mc ? [mc] : [];
+  for (const m of mcArr) {
+    if (
+      m?.['@_url'] &&
+      (m['@_medium'] === 'image' || String(m['@_type'] ?? '').startsWith('image/'))
+    ) {
+      return String(m['@_url']);
+    }
+  }
+
+  // 3. enclosure (画像タイプ)
+  const enc = item.enclosure;
+  if (enc?.['@_url'] && String(enc['@_type'] ?? '').startsWith('image/'))
+    return String(enc['@_url']);
+
+  // 4. content/description 中の最初の <img>
+  const html = str(item['content:encoded'] ?? item.description ?? item.content ?? item.summary ?? '');
+  const m = html.match(/<img[^>]+src=["']([^"'#][^"']{4,})["']/i);
+  if (m?.[1] && !m[1].startsWith('data:')) return m[1];
+
+  return '';
+}
+
 export function parseFeed(xml: string): ParsedFeed {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed: any = parser.parse(xml);
@@ -64,6 +97,7 @@ export function parseFeed(xml: string): ParsedFeed {
           link: str(item.link),
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
+          ogImage: extractImage(item),
           publishedAt: item.pubDate ? new Date(str(item.pubDate)).toISOString() : null,
         };
       }),
@@ -89,6 +123,7 @@ export function parseFeed(xml: string): ParsedFeed {
             '',
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
+          ogImage: extractImage(entry),
           publishedAt: entry.published ?? entry.updated ?? null,
         };
       }),

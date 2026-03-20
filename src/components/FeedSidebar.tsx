@@ -8,9 +8,11 @@ interface Props {
   bookmarkCount: number;
   selectedFeedId: string | null;
   user: UserProfile;
+  theme: 'light' | 'dark';
   onSelectFeed: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
+  onToggleTheme: () => void;
 }
 
 export default function FeedSidebar({
@@ -20,9 +22,11 @@ export default function FeedSidebar({
   bookmarkCount,
   selectedFeedId,
   user,
+  theme,
   onSelectFeed,
   onFeedAdded,
   onFeedDeleted,
+  onToggleTheme,
 }: Props) {
   const [newUrl, setNewUrl] = useState('');
   const [adding, setAdding] = useState(false);
@@ -79,14 +83,14 @@ export default function FeedSidebar({
   const totalUnread = unreadCount();
 
   return (
-    <aside className="flex flex-col min-h-0 overflow-hidden border-r border-stone-200 bg-white">
+    <aside className="flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
       {/* ヘッダー */}
-      <div className="px-4 py-3.5 border-b border-stone-200 flex items-center justify-between">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-stone-400">RSS</span>
+      <div className="px-4 py-3.5 border-b border-border-default flex items-center justify-between">
+        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">RSS</span>
         <button
           onClick={() => setInputOpen((v) => !v)}
           className={`w-5 h-5 flex items-center justify-center rounded transition-all duration-200 ${
-            inputOpen ? 'text-stone-600 bg-stone-100' : 'text-stone-300 hover:text-stone-600 hover:bg-stone-100'
+            inputOpen ? 'text-text-default bg-surface-subtle' : 'text-text-faint hover:text-text-default hover:bg-surface-subtle'
           }`}
           title="フィードを追加"
         >
@@ -99,7 +103,7 @@ export default function FeedSidebar({
 
       {/* 追加フォーム */}
       {inputOpen && (
-        <div className="px-3 py-2.5 border-b border-stone-100 bg-stone-50 animate-fade-up">
+        <div className="px-3 py-2.5 border-b border-border-subtle bg-surface-base animate-fade-up">
           <form onSubmit={addFeed}>
             <input
               type="url"
@@ -108,21 +112,21 @@ export default function FeedSidebar({
               onChange={(e) => setNewUrl(e.target.value)}
               disabled={adding}
               autoFocus
-              className="w-full text-[12px] bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-stone-700 placeholder-stone-300 outline-none focus:border-stone-400 transition-colors duration-200"
+              className="w-full text-[12px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
             />
             {error && <p className="text-[11px] text-rose-400 mt-1.5">{error}</p>}
             <div className="flex gap-1.5 mt-1.5">
               <button
                 type="submit"
                 disabled={adding}
-                className="flex-1 text-[11px] tracking-[0.06em] py-1.5 bg-stone-800 hover:bg-stone-700 text-white rounded-lg transition-all duration-200 disabled:opacity-40"
+                className="flex-1 text-[11px] tracking-[0.06em] py-1.5 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
               >
                 {adding ? '追加中...' : '追加'}
               </button>
               <button
                 type="button"
                 onClick={() => { setInputOpen(false); setError(''); }}
-                className="text-[11px] px-3 py-1.5 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-all duration-200"
+                className="text-[11px] px-3 py-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200"
               >
                 ✕
               </button>
@@ -137,13 +141,13 @@ export default function FeedSidebar({
           onClick={() => onSelectFeed(null)}
           className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
             selectedFeedId === null
-              ? 'text-stone-800 bg-stone-100'
-              : 'text-stone-400 hover:text-stone-700 hover:bg-stone-50'
+              ? 'text-text-strong bg-surface-subtle'
+              : 'text-text-muted hover:text-text-strong hover:bg-surface-hover'
           }`}
         >
           <span className="text-[13px] tracking-[0.02em]">すべて</span>
           {totalUnread > 0 && (
-            <span className="text-[11px] text-stone-400 tabular-nums">
+            <span className="text-[11px] text-text-muted tabular-nums">
               {totalUnread > 99 ? '99+' : totalUnread}
             </span>
           )}
@@ -153,13 +157,13 @@ export default function FeedSidebar({
           onClick={() => onSelectFeed('__bookmarks__')}
           className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
             selectedFeedId === '__bookmarks__'
-              ? 'text-stone-800 bg-stone-100'
-              : 'text-stone-400 hover:text-stone-700 hover:bg-stone-50'
+              ? 'text-text-strong bg-surface-subtle'
+              : 'text-text-muted hover:text-text-strong hover:bg-surface-hover'
           }`}
         >
           <span className="text-[13px] tracking-[0.02em]">ブックマーク</span>
           {bookmarkCount > 0 && (
-            <span className="text-[11px] text-stone-400 tabular-nums">
+            <span className="text-[11px] text-text-muted tabular-nums">
               {bookmarkCount > 99 ? '99+' : bookmarkCount}
             </span>
           )}
@@ -167,7 +171,7 @@ export default function FeedSidebar({
 
         {feeds.length > 0 && (
           <div className="mx-4 my-2">
-            <div className="border-t border-stone-100" />
+            <div className="border-t border-border-subtle" />
           </div>
         )}
 
@@ -180,20 +184,20 @@ export default function FeedSidebar({
               onClick={() => onSelectFeed(feed.id)}
               className={`group flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 animate-fade-up ${
                 isSelected
-                  ? 'text-stone-800 bg-stone-100'
-                  : 'text-stone-400 hover:text-stone-700 hover:bg-stone-50'
+                  ? 'text-text-strong bg-surface-subtle'
+                  : 'text-text-muted hover:text-text-strong hover:bg-surface-hover'
               }`}
               style={{ animationDelay: `${i * 40}ms` }}
             >
               <span className="text-[13px] tracking-[0.02em] truncate flex-1">{feed.title || feed.url}</span>
               <span className="flex items-center gap-1 ml-1 flex-shrink-0">
                 {count > 0 && (
-                  <span className="text-[11px] text-stone-400 tabular-nums">{count > 99 ? '99+' : count}</span>
+                  <span className="text-[11px] text-text-muted tabular-nums">{count > 99 ? '99+' : count}</span>
                 )}
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                   <button
                     onClick={(e) => deleteFeed(feed.id, e)}
-                    className="p-0.5 text-stone-300 hover:text-rose-400 transition-colors duration-150"
+                    className="p-0.5 text-text-faint hover:text-rose-400 transition-colors duration-150"
                     title="削除"
                   >
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -209,16 +213,31 @@ export default function FeedSidebar({
       </nav>
 
       {/* ユーザー情報 */}
-      <div className="px-3 py-2.5 border-t border-stone-100 flex items-center gap-2">
+      <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-2">
         {user.picture ? (
           <img src={user.picture} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
         ) : (
-          <div className="w-5 h-5 rounded-full bg-stone-200 flex-shrink-0" />
+          <div className="w-5 h-5 rounded-full bg-surface-subtle flex-shrink-0" />
         )}
-        <span className="text-[11px] text-stone-400 truncate flex-1">{user.name}</span>
+        <span className="text-[11px] text-text-muted truncate flex-1">{user.name}</span>
+        <button
+          onClick={onToggleTheme}
+          className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
+          title={theme === 'dark' ? 'ライトモード' : 'ダークモード'}
+        >
+          {theme === 'dark' ? (
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+            </svg>
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+            </svg>
+          )}
+        </button>
         <button
           onClick={logout}
-          className="text-stone-300 hover:text-stone-500 transition-colors duration-200 flex-shrink-0"
+          className="text-text-faint hover:text-text-soft transition-colors duration-200 flex-shrink-0"
           title="ログアウト"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -229,4 +248,3 @@ export default function FeedSidebar({
     </aside>
   );
 }
-

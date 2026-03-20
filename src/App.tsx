@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import FeedSidebar from './components/FeedSidebar';
 import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
-import type { Article, Feed, UserProfile } from './types';
+import type { Article, Feed, UserProfile, Layout } from './types';
+
+type Theme = 'light' | 'dark';
 
 function loadSet(key: string): Set<string> {
   try {
@@ -17,6 +19,19 @@ function saveSet(key: string, ids: Set<string>) {
   localStorage.setItem(key, JSON.stringify([...ids]));
 }
 
+function loadLayout(): Layout {
+  const stored = localStorage.getItem('rss-layout');
+  if (stored === 'compact' || stored === 'list' || stored === 'card' || stored === 'magazine')
+    return stored;
+  return 'list';
+}
+
+function loadTheme(): Theme {
+  const stored = localStorage.getItem('rss-theme');
+  if (stored === 'light' || stored === 'dark') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 const loadReadIds = () => loadSet('rss-read');
 const loadBookmarkIds = () => loadSet('rss-bookmarks');
 
@@ -28,6 +43,22 @@ export default function App() {
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [theme, setTheme] = useState<Theme>(loadTheme);
+  const [layout, setLayout] = useState<Layout>(loadLayout);
+
+  const onChangeLayout = useCallback((l: Layout) => {
+    setLayout(l);
+    localStorage.setItem('rss-layout', l);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('rss-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+  }, []);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -111,8 +142,8 @@ export default function App() {
   // ローディング
   if (user === undefined) {
     return (
-      <div className="flex h-screen items-center justify-center bg-stone-50">
-        <div className="w-1.5 h-1.5 rounded-full bg-stone-300 animate-pulse" />
+      <div className="flex h-screen items-center justify-center bg-surface-base">
+        <div className="w-1.5 h-1.5 rounded-full bg-surface-subtle animate-pulse" />
       </div>
     );
   }
@@ -120,14 +151,14 @@ export default function App() {
   // 未ログイン
   if (!user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-stone-50">
+      <div className="flex h-screen items-center justify-center bg-surface-base">
         <div className="text-center animate-fade-up">
-          <p className="text-[11px] tracking-[0.3em] uppercase text-stone-400 mb-10">
+          <p className="text-[11px] tracking-[0.3em] uppercase text-text-muted mb-10">
             RSS
           </p>
           <a
             href="/api/auth/login"
-            className="inline-block px-7 py-2.5 bg-stone-800 hover:bg-stone-700 text-white text-[12px] tracking-[0.08em] rounded-full transition-all duration-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+            className="inline-block px-7 py-2.5 bg-ink hover:bg-ink-hover text-ink-text text-[12px] tracking-[0.08em] rounded-full transition-all duration-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
           >
             0g0 ID でログイン
           </a>
@@ -138,7 +169,7 @@ export default function App() {
 
   return (
     <div
-      className="grid h-screen font-sans antialiased bg-stone-50 text-stone-800"
+      className="grid h-screen font-sans antialiased bg-surface-base text-text-strong"
       style={{ gridTemplateColumns: '200px 360px 1fr', gridTemplateRows: '100%' }}
     >
       <FeedSidebar
@@ -148,19 +179,24 @@ export default function App() {
         bookmarkCount={bookmarkCount}
         selectedFeedId={selectedFeedId}
         user={user}
+        theme={theme}
         onSelectFeed={(id) => {
           setSelectedFeedId(id);
           setSelectedArticle(null);
         }}
         onFeedAdded={onFeedAdded}
         onFeedDeleted={onFeedDeleted}
+        onToggleTheme={toggleTheme}
       />
       <ArticleList
         articles={articles}
+        feeds={feeds}
         feedId={selectedFeedId}
         readIds={readIds}
         bookmarkIds={bookmarkIds}
         selectedArticleId={selectedArticle?.id ?? null}
+        layout={layout}
+        onChangeLayout={onChangeLayout}
         onSelectArticle={(article) => {
           setSelectedArticle(article);
           markRead(article.id);

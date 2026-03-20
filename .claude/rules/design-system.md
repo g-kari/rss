@@ -1,40 +1,63 @@
 # デザインシステム
 
-フラットミニマル。Oksskolten ライク。ダーク一択。
+フラットミニマル。Oksskolten ライク。ライト/ダーク切り替え対応。
 
-## カラーパレット (Tailwind zinc/indigo)
+## カラーシステム
 
-| 用途 | クラス | 備考 |
-|---|---|---|
-| 背景 (最深) | `bg-zinc-950` | メインコンテンツ背景 |
-| 背景 (サイドバー) | `bg-zinc-900` | FeedSidebar |
-| 背景 (ホバー・選択) | `bg-zinc-800` | 選択済みアイテム |
-| 背景 (薄ホバー) | `bg-zinc-800/50` | 非選択ホバー |
-| ボーダー | `border-zinc-800` | 仕切り線 |
-| テキスト (主) | `text-zinc-200` | 未読タイトル・選択中 |
-| テキスト (副) | `text-zinc-400` | 非選択フィード名 |
-| テキスト (補助) | `text-zinc-500` | バッジ数字・ラベル |
-| テキスト (弱) | `text-zinc-600` | 既読タイトル・プレースホルダー |
-| テキスト (極弱) | `text-zinc-700` | タイムスタンプ・空状態 |
-| アクセント (未読ドット) | `bg-indigo-500` | w-1.5 h-1.5 rounded-full |
-| アクセント (リンク) | `text-indigo-400` | hover: `text-indigo-300` |
-| エラー | `text-red-400` | エラーメッセージ |
+### セマンティックカラートークン (`src/index.css` の `@theme` + `[data-theme="dark"]`)
 
-**禁止**: 16進数カラー (`#...`) をハードコードしない。必ず Tailwind クラスを使う。
+コンポーネントでは **セマンティックトークン** を使う。石版色やzinc値を直接書かない。
+
+| トークン | ライト (stone) | ダーク (zinc) | 用途 |
+|---|---|---|---|
+| `surface-base` | stone-50 | zinc-950 | メイン背景 |
+| `surface-elevated` | white | zinc-900 | サイドバー・カード |
+| `surface-subtle` | stone-100 | zinc-800 | 選択済みアイテム |
+| `surface-hover` | stone-50 | zinc-800/50 | ホバー状態 |
+| `border-default` | stone-200 | zinc-800 | 主ボーダー |
+| `border-subtle` | stone-100 | zinc-800/50 | 薄ボーダー |
+| `text-strong` | stone-800 | zinc-200 | 見出し・選択中 |
+| `text-default` | stone-600 | zinc-400 | 通常テキスト |
+| `text-soft` | stone-500 | zinc-500 | 本文 |
+| `text-muted` | stone-400 | zinc-600 | バッジ数字・ラベル |
+| `text-faint` | stone-300 | zinc-700 | タイムスタンプ・空状態 |
+| `ink` | stone-800 | zinc-200 | 主アクション背景 |
+| `ink-hover` | stone-700 | zinc-300 | 主アクションホバー |
+| `ink-text` | white | zinc-950 | 主アクション上のテキスト |
+| `accent-dot` | rose-400 | indigo-500 | 未読ドット |
+| `bookmark` | amber-400 | amber-400 | ブックマーク |
+
+**使用例**: `bg-surface-base`, `text-text-strong`, `border-border-default`, `bg-ink`, `text-ink-text`
+
+### 非セマンティック (変更不要な固定色)
+
+| 用途 | クラス |
+|---|---|
+| エラーテキスト | `text-rose-400` |
+| ブックマーク済み | `text-bookmark` (= `text-[var(--color-bookmark)]`) |
+
+**禁止**: 16進数カラー (`#...`) をコンポーネントにハードコードしない。`src/index.css` 内の CSS 変数定義のみ例外。
+
+## テーマ切り替え
+
+- `document.documentElement.dataset.theme = 'dark' | 'light'` で切り替え
+- `localStorage('rss-theme')` で永続化
+- 初回アクセス時は `prefers-color-scheme` に従う
+- `FeedSidebar` のフッターに太陽/月アイコンボタン
 
 ## タイポグラフィ
 
 | 用途 | クラス |
 |---|---|
-| UI フォント | `font-sans` (Inter) |
+| UI フォント | `font-sans` (Reddit Sans + IBM Plex Sans JP) |
 | 記事本文 | `font-serif` (Lora) |
-| 記事タイトル (ArticleView) | `text-2xl font-bold tracking-tight text-zinc-100` |
-| 未読記事タイトル | `text-[13px] font-medium text-zinc-200` |
-| 既読記事タイトル | `text-[13px] font-normal text-zinc-600` |
-| 記事本文 | `text-[16px] leading-[1.8] tracking-[0.01em] text-zinc-400` |
-| メタ情報 | `text-xs text-zinc-600` |
+| 記事タイトル (ArticleView) | `text-[22px] font-light text-text-strong tracking-[0.02em]` |
+| 未読記事タイトル | `text-[13px] font-medium text-text-strong` |
+| 既読記事タイトル | `text-[13px] font-normal text-text-muted` |
+| 記事本文 | `text-[16px] leading-[1.9] tracking-[0.02em] text-text-soft` (`.article-content`) |
+| メタ情報 | `text-[11px] text-text-muted` |
 | フィード名 | `text-[13px]` |
-| セクションヘッダー | `text-[10px] font-semibold uppercase tracking-widest text-zinc-600` |
+| セクションヘッダー | `text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted` |
 
 ## レイアウト
 
@@ -42,8 +65,8 @@
 
 ```tsx
 <div
-  className="grid h-screen font-sans antialiased bg-zinc-950 text-zinc-200"
-  style={{ gridTemplateColumns: '200px 380px 1fr', gridTemplateRows: '100%' }}
+  className="grid h-screen font-sans antialiased bg-surface-base text-text-strong"
+  style={{ gridTemplateColumns: '200px 360px 1fr', gridTemplateRows: '100%' }}
 >
 ```
 
@@ -65,9 +88,10 @@
 ### カスタムスクロールバー (`src/index.css`)
 
 ```css
-::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: theme(colors.zinc.700); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--color-text-faint); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 ```
 
 ## コンポーネントパターン
@@ -75,19 +99,33 @@
 ### 選択状態の切り替え
 
 ```tsx
-className={`... ${isSelected ? 'bg-zinc-800 text-zinc-200' : 'hover:bg-zinc-800/50 text-zinc-400 hover:text-zinc-200'}`}
+className={`... ${isSelected ? 'bg-surface-subtle text-text-strong' : 'hover:bg-surface-hover text-text-muted hover:text-text-strong'}`}
+```
+
+### 選択記事のインジケーター (ArticleList)
+
+```tsx
+isSelected
+  ? 'bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]'
+  : 'hover:bg-surface-hover'
 ```
 
 ### 未読バッジ (ドット)
 
 ```tsx
-{!isRead && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />}
+{!isRead && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
 ```
 
 ### 未読カウント数字
 
 ```tsx
-{count > 0 && <span className="text-xs text-zinc-500">{count > 99 ? '99+' : count}</span>}
+{count > 0 && <span className="text-[11px] text-text-muted tabular-nums">{count > 99 ? '99+' : count}</span>}
+```
+
+### 主アクションボタン (インク系)
+
+```tsx
+className="bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200"
 ```
 
 ### ホバーで表示するアクションボタン
@@ -103,4 +141,4 @@ className={`... ${isSelected ? 'bg-zinc-800 text-zinc-200' : 'hover:bg-zinc-800/
 ## アイコン
 
 インラインSVG のみ使用。外部アイコンライブラリは導入しない。
-`stroke="currentColor"` + `strokeWidth={2}` が標準。
+`stroke="currentColor"` + `strokeWidth={1.5}` が標準。

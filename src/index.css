@@ -3,11 +3,48 @@
 @theme {
   --font-sans: 'Reddit Sans', 'IBM Plex Sans JP', BlinkMacSystemFont, system-ui, sans-serif;
   --font-serif: 'Lora', Georgia, serif;
+  /* セマンティックカラー (デフォルト = ライトテーマ / stone パレット) */
+  --color-surface-base: #fafaf9;      /* stone-50: メイン背景 */
+  --color-surface-elevated: #ffffff;   /* white: サイドバー・カード */
+  --color-surface-subtle: #f5f5f4;     /* stone-100: 選択状態 */
+  --color-surface-hover: #fafaf9;      /* stone-50: ホバー */
+  --color-border-default: #e7e5e4;     /* stone-200: 主ボーダー */
+  --color-border-subtle: #f5f5f4;      /* stone-100: 薄ボーダー */
+  --color-text-strong: #292524;        /* stone-800: 見出し・選択 */
+  --color-text-default: #57534e;       /* stone-600: 通常テキスト */
+  --color-text-soft: #78716c;          /* stone-500: 本文 */
+  --color-text-muted: #a8a29e;         /* stone-400: 薄テキスト */
+  --color-text-faint: #d6d3d1;         /* stone-300: 最弱テキスト */
+  --color-ink: #292524;                /* stone-800: 主アクション背景 */
+  --color-ink-hover: #44403c;          /* stone-700: 主アクションホバー */
+  --color-ink-text: #ffffff;           /* white: 主アクション上のテキスト */
+  --color-accent-dot: #fb7185;         /* rose-400: 未読ドット */
+  --color-bookmark: #fbbf24;           /* amber-400: ブックマーク */
+}
+
+/* ダークテーマ (zinc/indigo パレット) */
+[data-theme="dark"] {
+  --color-surface-base: #09090b;           /* zinc-950 */
+  --color-surface-elevated: #18181b;        /* zinc-900 */
+  --color-surface-subtle: #27272a;          /* zinc-800 */
+  --color-surface-hover: rgba(39, 39, 42, 0.5); /* zinc-800/50 */
+  --color-border-default: #27272a;          /* zinc-800 */
+  --color-border-subtle: rgba(39, 39, 42, 0.5);
+  --color-text-strong: #e4e4e7;             /* zinc-200 */
+  --color-text-default: #a1a1aa;            /* zinc-400 */
+  --color-text-soft: #71717a;               /* zinc-500 */
+  --color-text-muted: #52525b;              /* zinc-600 */
+  --color-text-faint: #3f3f46;              /* zinc-700 */
+  --color-ink: #e4e4e7;                     /* zinc-200 */
+  --color-ink-hover: #d4d4d8;               /* zinc-300 */
+  --color-ink-text: #09090b;                /* zinc-950 */
+  --color-accent-dot: #6366f1;              /* indigo-500 */
+  --color-bookmark: #fbbf24;
 }
 
 html, body, #root {
   height: 100%;
-  background-color: #fafaf9; /* stone-50 */
+  background-color: var(--color-surface-base);
 }
 
 * {
@@ -18,11 +55,11 @@ html, body, #root {
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #d6d3d1; /* stone-300 */
+  background: var(--color-text-faint);
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a29e; /* stone-400 */
+  background: var(--color-text-muted);
 }
 
 @keyframes fadeUp {
@@ -54,7 +91,7 @@ html, body, #root {
   font-family: var(--font-serif);
   font-size: 16px;
   line-height: 1.9;
-  color: #78716c; /* stone-500 */
+  color: var(--color-text-soft);
   letter-spacing: 0.02em;
 }
 .article-content p { margin-bottom: 1.25em; }
@@ -64,7 +101,7 @@ html, body, #root {
 .article-content h4 {
   font-family: var(--font-sans);
   font-weight: 500;
-  color: #292524; /* stone-800 */
+  color: var(--color-text-strong);
   margin-top: 1.75em;
   margin-bottom: 0.5em;
   line-height: 1.4;
@@ -74,13 +111,13 @@ html, body, #root {
 .article-content h2 { font-size: 1.1em; }
 .article-content h3 { font-size: 1em; }
 .article-content a {
-  color: #57534e; /* stone-600 */
+  color: var(--color-text-default);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: #d6d3d1; /* stone-300 */
+  text-decoration-color: var(--color-text-faint);
   transition: color 0.15s ease;
 }
-.article-content a:hover { color: #292524; }
+.article-content a:hover { color: var(--color-text-strong); }
 .article-content img {
   max-width: 100%;
   border-radius: 4px;
@@ -93,13 +130,13 @@ html, body, #root {
 }
 .article-content li { margin-bottom: 0.3em; }
 .article-content blockquote {
-  border-left: 2px solid #e7e5e4; /* stone-200 */
+  border-left: 2px solid var(--color-border-default);
   padding-left: 1em;
   margin: 1.25em 0;
-  color: #a8a29e; /* stone-400 */
+  color: var(--color-text-muted);
 }
 .article-content pre {
-  background: #f5f5f4; /* stone-100 */
+  background: var(--color-surface-subtle);
   padding: 1em 1.25em;
   border-radius: 6px;
   overflow-x: auto;
@@ -109,7 +146,7 @@ html, body, #root {
 }
 .article-content code {
   font-family: ui-monospace, monospace;
-  background: #f5f5f4;
+  background: var(--color-surface-subtle);
   padding: 0.1em 0.35em;
   border-radius: 3px;
   font-size: 0.875em;
@@ -123,7 +160,7 @@ html, body, #root {
 .article-content figcaption {
   font-family: var(--font-sans);
   font-size: 0.8em;
-  color: #a8a29e;
+  color: var(--color-text-muted);
   text-align: center;
   margin-top: 0.5em;
 }

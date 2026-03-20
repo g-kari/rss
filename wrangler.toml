@@ -15,6 +15,9 @@ APP_BASE_URL = "https://rss.0g0.xyz"
 binding = "RSS_DATA"
 bucket_name = "rss-reader-data"
 
+[ai]
+binding = "AI"
+
 [triggers]
 crons = ["*/30 * * * *"]
 
