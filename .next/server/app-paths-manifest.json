@@ -1,0 +1,16 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/ai/summarize/route": "app-edge-has-no-entrypoint",
+  "/api/ai/translate/route": "app-edge-has-no-entrypoint",
+  "/api/articles/route": "app-edge-has-no-entrypoint",
+  "/api/auth/callback/route": "app-edge-has-no-entrypoint",
+  "/api/auth/login/route": "app-edge-has-no-entrypoint",
+  "/api/auth/logout/route": "app-edge-has-no-entrypoint",
+  "/api/auth/me/route": "app-edge-has-no-entrypoint",
+  "/api/content/route": "app-edge-has-no-entrypoint",
+  "/api/feeds/[id]/route": "app-edge-has-no-entrypoint",
+  "/api/feeds/route": "app-edge-has-no-entrypoint",
+  "/api/health/route": "app-edge-has-no-entrypoint",
+  "/page": "app/page.js"
+}

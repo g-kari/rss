@@ -40,7 +40,3 @@ export interface Env {
   BETA_ALLOWED_SUBS?: string;
 }
 
-export type HonoEnv = {
-  Bindings: Env;
-  Variables: { userId: string };
-};

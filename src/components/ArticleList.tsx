@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useMemo, useEffect, type ReactElement } from 'react';
 import type { Article, Feed, Layout } from '../types';
 

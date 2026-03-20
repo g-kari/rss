@@ -1,0 +1,16 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/ai/summarize/route": "/api/ai/summarize",
+  "/api/ai/translate/route": "/api/ai/translate",
+  "/api/articles/route": "/api/articles",
+  "/api/auth/callback/route": "/api/auth/callback",
+  "/api/auth/login/route": "/api/auth/login",
+  "/api/auth/logout/route": "/api/auth/logout",
+  "/api/auth/me/route": "/api/auth/me",
+  "/api/content/route": "/api/content",
+  "/api/feeds/[id]/route": "/api/feeds/[id]",
+  "/api/feeds/route": "/api/feeds",
+  "/api/health/route": "/api/health",
+  "/page": "/"
+}

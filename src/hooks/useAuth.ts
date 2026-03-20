@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import type { UserProfile } from '../types';
 
@@ -18,7 +20,7 @@ export function useAuth(): AuthState {
       return;
     }
     fetch('/api/auth/me')
-      .then((r) => r.json<{ user: UserProfile | null; betaRestricted?: boolean }>())
+      .then((r) => r.json() as Promise<{ user: UserProfile | null; betaRestricted?: boolean }>)
       .then(({ user, betaRestricted }) => {
         if (betaRestricted) setBetaRestricted(true);
         setUser(user);

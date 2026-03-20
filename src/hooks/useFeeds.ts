@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useCallback } from 'react';
 import type { Feed, Article, UserProfile } from '../types';
 
@@ -15,11 +17,11 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
   useEffect(() => {
     if (!user) return;
     fetch('/api/feeds')
-      .then((r) => r.json<Feed[]>())
+      .then((r) => r.json() as Promise<Feed[]>)
       .then(setFeeds)
       .catch(console.error);
     fetch('/api/articles')
-      .then((r) => r.json<Article[]>())
+      .then((r) => r.json() as Promise<Article[]>)
       .then(setArticles)
       .catch(console.error);
   }, [user]);
