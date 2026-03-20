@@ -5,6 +5,7 @@ interface Props {
   feeds: Feed[];
   articles: Article[];
   readIds: Set<string>;
+  bookmarkCount: number;
   selectedFeedId: string | null;
   user: UserProfile;
   onSelectFeed: (id: string | null) => void;
@@ -16,6 +17,7 @@ export default function FeedSidebar({
   feeds,
   articles,
   readIds,
+  bookmarkCount,
   selectedFeedId,
   user,
   onSelectFeed,
@@ -143,6 +145,22 @@ export default function FeedSidebar({
           {totalUnread > 0 && (
             <span className="text-[11px] text-stone-400 tabular-nums">
               {totalUnread > 99 ? '99+' : totalUnread}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => onSelectFeed('__bookmarks__')}
+          className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
+            selectedFeedId === '__bookmarks__'
+              ? 'text-stone-800 bg-stone-100'
+              : 'text-stone-400 hover:text-stone-700 hover:bg-stone-50'
+          }`}
+        >
+          <span className="text-[13px] tracking-[0.02em]">ブックマーク</span>
+          {bookmarkCount > 0 && (
+            <span className="text-[11px] text-stone-400 tabular-nums">
+              {bookmarkCount > 99 ? '99+' : bookmarkCount}
             </span>
           )}
         </button>

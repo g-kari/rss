@@ -2,9 +2,11 @@ import type { Article } from '../types';
 
 interface Props {
   article: Article | null;
+  isBookmarked: boolean;
+  onToggleBookmark: (id: string) => void;
 }
 
-export default function ArticleView({ article }: Props) {
+export default function ArticleView({ article, isBookmarked, onToggleBookmark }: Props) {
   if (!article) {
     return (
       <main className="overflow-y-auto flex items-center justify-center bg-stone-50">
@@ -42,6 +44,17 @@ export default function ArticleView({ article }: Props) {
               元記事 ↗
             </a>
           )}
+          <button
+            onClick={() => onToggleBookmark(article.id)}
+            title={isBookmarked ? 'ブックマーク解除 (b)' : 'ブックマーク (b)'}
+            className={`ml-auto transition-colors duration-200 ${
+              isBookmarked ? 'text-amber-400 hover:text-stone-400' : 'text-stone-300 hover:text-amber-400'
+            }`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+            </svg>
+          </button>
         </div>
 
         {/* タイトル */}

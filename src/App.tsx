@@ -4,24 +4,28 @@ import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
 import type { Article, Feed, UserProfile } from './types';
 
-function loadReadIds(): Set<string> {
+function loadSet(key: string): Set<string> {
   try {
-    const stored = localStorage.getItem('rss-read');
+    const stored = localStorage.getItem(key);
     return new Set(stored ? JSON.parse(stored) : []);
   } catch {
     return new Set();
   }
 }
 
-function saveReadIds(ids: Set<string>) {
-  localStorage.setItem('rss-read', JSON.stringify([...ids]));
+function saveSet(key: string, ids: Set<string>) {
+  localStorage.setItem(key, JSON.stringify([...ids]));
 }
+
+const loadReadIds = () => loadSet('rss-read');
+const loadBookmarkIds = () => loadSet('rss-bookmarks');
 
 export default function App() {
   const [user, setUser] = useState<UserProfile | null | undefined>(undefined); // undefined = loading
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
+  const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
 
@@ -47,16 +51,30 @@ export default function App() {
   const markRead = useCallback((articleId: string) => {
     setReadIds((prev) => {
       const next = new Set(prev).add(articleId);
-      saveReadIds(next);
+      saveSet('rss-read', next);
       return next;
     });
   }, []);
 
-  // キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、o 元記事を開く
+  const toggleBookmark = useCallback((articleId: string) => {
+    setBookmarkIds((prev) => {
+      const next = new Set(prev);
+      next.has(articleId) ? next.delete(articleId) : next.add(articleId);
+      saveSet('rss-bookmarks', next);
+      return next;
+    });
+  }, []);
+
+  // キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、o 元記事を開く、b ブックマーク切り替え
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      const list = selectedFeedId ? articles.filter((a) => a.feedId === selectedFeedId) : articles;
+      const list =
+        selectedFeedId === '__bookmarks__'
+          ? articles.filter((a) => bookmarkIds.has(a.id))
+          : selectedFeedId
+            ? articles.filter((a) => a.feedId === selectedFeedId)
+            : articles;
       const idx = selectedArticle ? list.findIndex((a) => a.id === selectedArticle.id) : -1;
       if (e.key === 'j' || e.key === 'ArrowDown') {
         e.preventDefault();
@@ -67,11 +85,13 @@ export default function App() {
         if (idx > 0) { const prev = list[idx - 1]; setSelectedArticle(prev); markRead(prev.id); }
       } else if (e.key === 'o' && selectedArticle?.link) {
         window.open(selectedArticle.link, '_blank', 'noopener,noreferrer');
+      } else if (e.key === 'b' && selectedArticle) {
+        toggleBookmark(selectedArticle.id);
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedFeedId, selectedArticle, markRead]);
+  }, [articles, selectedFeedId, selectedArticle, markRead, bookmarkIds, toggleBookmark]);
 
   function onFeedAdded(feed: Feed) {
     setFeeds((prev) => [...prev, feed]);
@@ -85,6 +105,8 @@ export default function App() {
       setSelectedArticle(null);
     }
   }
+
+  const bookmarkCount = articles.filter((a) => bookmarkIds.has(a.id)).length;
 
   // ローディング
   if (user === undefined) {
@@ -123,6 +145,7 @@ export default function App() {
         feeds={feeds}
         articles={articles}
         readIds={readIds}
+        bookmarkCount={bookmarkCount}
         selectedFeedId={selectedFeedId}
         user={user}
         onSelectFeed={(id) => {
@@ -136,13 +159,18 @@ export default function App() {
         articles={articles}
         feedId={selectedFeedId}
         readIds={readIds}
+        bookmarkIds={bookmarkIds}
         selectedArticleId={selectedArticle?.id ?? null}
         onSelectArticle={(article) => {
           setSelectedArticle(article);
           markRead(article.id);
         }}
       />
-      <ArticleView article={selectedArticle} />
+      <ArticleView
+        article={selectedArticle}
+        isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
+        onToggleBookmark={toggleBookmark}
+      />
     </div>
   );
 }

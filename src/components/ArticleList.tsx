@@ -5,6 +5,7 @@ interface Props {
   articles: Article[];
   feedId: string | null;
   readIds: Set<string>;
+  bookmarkIds: Set<string>;
   selectedArticleId: string | null;
   onSelectArticle: (article: Article) => void;
 }
@@ -27,10 +28,12 @@ export default function ArticleList({
   articles,
   feedId,
   readIds,
+  bookmarkIds,
   selectedArticleId,
   onSelectArticle,
 }: Props) {
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
 
   // 選択記事が変わったらリスト内で自動スクロール
@@ -43,10 +46,21 @@ export default function ArticleList({
   }, [selectedArticleId]);
 
   const filtered = useMemo(() => {
-    let list = feedId ? articles.filter((a) => a.feedId === feedId) : articles;
+    let list =
+      feedId === '__bookmarks__'
+        ? articles.filter((a) => bookmarkIds.has(a.id))
+        : feedId
+          ? articles.filter((a) => a.feedId === feedId)
+          : articles;
     if (unreadOnly) list = list.filter((a) => !readIds.has(a.id));
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      list = list.filter(
+        (a) => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q),
+      );
+    }
     return list;
-  }, [articles, feedId, readIds, unreadOnly]);
+  }, [articles, feedId, readIds, bookmarkIds, unreadOnly, query]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
@@ -54,20 +68,31 @@ export default function ArticleList({
   return (
     <section className="flex flex-col min-h-0 overflow-hidden border-r border-stone-200 bg-stone-50">
       {/* ヘッダー */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 bg-white">
-        <span className="text-[11px] tracking-[0.12em] uppercase text-stone-400">
-          記事{filtered.length > 0 && <span className="ml-1 text-stone-300">({filtered.length})</span>}
-        </span>
-        <button
-          onClick={() => { setUnreadOnly((v) => !v); setPage(1); }}
-          className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
-            unreadOnly
-              ? 'border-stone-800 bg-stone-800 text-white'
-              : 'border-stone-200 text-stone-400 hover:border-stone-400 hover:text-stone-600'
-          }`}
-        >
-          未読
-        </button>
+      <div className="flex flex-col border-b border-stone-200 bg-white">
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-[11px] tracking-[0.12em] uppercase text-stone-400">
+            記事{filtered.length > 0 && <span className="ml-1 text-stone-300">({filtered.length})</span>}
+          </span>
+          <button
+            onClick={() => { setUnreadOnly((v) => !v); setPage(1); }}
+            className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
+              unreadOnly
+                ? 'border-stone-800 bg-stone-800 text-white'
+                : 'border-stone-200 text-stone-400 hover:border-stone-400 hover:text-stone-600'
+            }`}
+          >
+            未読
+          </button>
+        </div>
+        <div className="px-3 pb-2.5">
+          <input
+            type="search"
+            placeholder="検索..."
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            className="w-full text-[12px] bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-stone-700 placeholder-stone-300 outline-none focus:border-stone-400 transition-colors duration-200"
+          />
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
