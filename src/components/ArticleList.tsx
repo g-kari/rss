@@ -13,6 +13,16 @@ interface Props {
   onSelectArticle: (article: Article) => void;
 }
 
+/** ogImage がない場合、YouTube URL からサムネイルを生成 */
+function resolveThumbnail(article: Article): string | undefined {
+  if (article.ogImage) return article.ogImage;
+  const yt = article.link?.match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+  );
+  if (yt) return `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg`;
+  return undefined;
+}
+
 function timeAgo(iso: string | null): string {
   if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
@@ -144,6 +154,7 @@ export default function ArticleList({
   function renderList(article: Article, i: number) {
     const isRead = readIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
+    const thumb = resolveThumbnail(article);
     return (
       <div
         key={article.id}
@@ -174,9 +185,9 @@ export default function ArticleList({
             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
           </div>
         </div>
-        {article.ogImage && (
+        {thumb && (
           <img
-            src={article.ogImage}
+            src={thumb}
             alt=""
             className="w-14 h-14 object-cover rounded flex-shrink-0"
             loading="lazy"
@@ -192,6 +203,7 @@ export default function ArticleList({
     const isRead = readIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
     const feedName = feedMap.get(article.feedId) ?? '';
+    const thumb = resolveThumbnail(article);
     return (
       <div
         key={article.id}
@@ -204,9 +216,9 @@ export default function ArticleList({
         }`}
         style={{ animationDelay: `${Math.min(i, 20) * 25}ms` }}
       >
-        {article.ogImage && (
+        {thumb && (
           <img
-            src={article.ogImage}
+            src={thumb}
             alt=""
             className="w-full h-24 object-cover flex-shrink-0"
             loading="lazy"
@@ -224,7 +236,7 @@ export default function ArticleList({
           >
             {article.title || '(タイトルなし)'}
           </h3>
-          {article.summary && !article.ogImage && (
+          {article.summary && !thumb && (
             <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed">
               {article.summary}
             </p>
@@ -243,6 +255,7 @@ export default function ArticleList({
     const isRead = readIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
     const feedName = feedMap.get(article.feedId) ?? '';
+    const thumb = resolveThumbnail(article);
     return (
       <div
         key={article.id}
@@ -254,9 +267,9 @@ export default function ArticleList({
             : 'border-border-default hover:border-text-muted bg-surface-elevated'
         }`}
       >
-        {article.ogImage && (
+        {thumb && (
           <img
-            src={article.ogImage}
+            src={thumb}
             alt=""
             className="w-full h-36 object-cover"
             loading="lazy"

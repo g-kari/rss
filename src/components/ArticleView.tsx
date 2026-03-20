@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Article } from '../types';
 
 type AiMode = 'summary' | 'translation';
@@ -9,14 +9,84 @@ interface Props {
   onToggleBookmark: (id: string) => void;
 }
 
-function extractYouTubeId(url: string): string | null {
-  const m = url.match(
-    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-  );
-  return m?.[1] ?? null;
+interface EmbedInfo {
+  embedUrl: string;
+  type: 'video' | 'audio';
+  audioHeight?: number;
+  allow: string;
 }
 
-/** YouTube の iframe だけをレスポンシブラッパーで包む */
+/** 埋め込み可能なサービスの URL パターンマッチ */
+function extractEmbedInfo(url: string): EmbedInfo | null {
+  const ALLOW_VIDEO = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+  const ALLOW_AUDIO = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+
+  // YouTube
+  const yt = url.match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+  );
+  if (yt) return {
+    embedUrl: `https://www.youtube-nocookie.com/embed/${yt[1]}?origin=https://rss.0g0.xyz`,
+    type: 'video',
+    allow: ALLOW_VIDEO,
+  };
+
+  // Vimeo
+  const vim = url.match(/vimeo\.com\/(\d+)/);
+  if (vim) return {
+    embedUrl: `https://player.vimeo.com/video/${vim[1]}`,
+    type: 'video',
+    allow: 'autoplay; fullscreen; picture-in-picture',
+  };
+
+  // ニコニコ動画
+  const nico = url.match(/nicovideo\.jp\/watch\/((?:sm|nm|so|lv)\d+|\d+)/);
+  if (nico) return {
+    embedUrl: `https://embed.nicovideo.jp/watch/${nico[1]}?autoplay=0`,
+    type: 'video',
+    allow: ALLOW_VIDEO,
+  };
+
+  // Twitch クリップ
+  const twitchClip = url.match(/clips\.twitch\.tv\/([A-Za-z0-9_-]+)/);
+  if (twitchClip) return {
+    embedUrl: `https://clips.twitch.tv/embed?clip=${twitchClip[1]}&parent=rss.0g0.xyz`,
+    type: 'video',
+    allow: 'autoplay; fullscreen',
+  };
+
+  // Twitch チャンネル / VOD
+  const twitchVideo = url.match(/twitch\.tv\/videos\/(\d+)/);
+  if (twitchVideo) return {
+    embedUrl: `https://player.twitch.tv/?video=${twitchVideo[1]}&parent=rss.0g0.xyz`,
+    type: 'video',
+    allow: 'autoplay; fullscreen',
+  };
+  const twitchCh = url.match(/twitch\.tv\/([A-Za-z0-9_]+)$/);
+  if (twitchCh) return {
+    embedUrl: `https://player.twitch.tv/?channel=${twitchCh[1]}&parent=rss.0g0.xyz`,
+    type: 'video',
+    allow: 'autoplay; fullscreen',
+  };
+
+  // Spotify
+  const spotify = url.match(
+    /open\.spotify\.com\/(track|album|playlist|episode|artist)\/([A-Za-z0-9]+)/,
+  );
+  if (spotify) {
+    const isShort = spotify[1] === 'track' || spotify[1] === 'episode';
+    return {
+      embedUrl: `https://open.spotify.com/embed/${spotify[1]}/${spotify[2]}`,
+      type: 'audio',
+      audioHeight: isShort ? 152 : 380,
+      allow: ALLOW_AUDIO,
+    };
+  }
+
+  return null;
+}
+
+/** RSS コンテンツ内の iframe をレスポンシブラッパーで包む（YouTube origin のみ） */
 function processContent(html: string): string {
   return html.replace(
     /<iframe([^>]*src=["'][^"']*(?:youtube(?:-nocookie)?\.com\/embed)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
@@ -27,7 +97,7 @@ function processContent(html: string): string {
   );
 }
 
-/** YouTube article の場合、コンテンツ内の iframe を除去（二重埋め込み防止）*/
+/** 埋め込み表示する場合、コンテンツ内の iframe を除去（二重埋め込み防止） */
 function stripIframes(html: string): string {
   return html.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
 }
@@ -51,22 +121,22 @@ function saveCache(id: string, content: string) {
 const SHORT_CONTENT_THRESHOLD = 400;
 
 export default function ArticleView({ article, isBookmarked, onToggleBookmark }: Props) {
+  // キャッシュをレンダリング時に同期取得 → 記事切り替え時もフラッシュなし
+  const cachedContent = useMemo(
+    () => (article?.id ? loadCache(article.id) : null),
+    [article?.id],
+  );
   const [fetchedContent, setFetchedContent] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState('');
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
 
-  // 記事が変わったらキャッシュ確認 → リセット
+  // 記事が変わったら fetch 状態のみリセット（キャッシュは useMemo で自動更新）
   useEffect(() => {
     setFetchError('');
     setAiResult(null);
-    if (article?.id) {
-      const cached = loadCache(article.id);
-      setFetchedContent(cached ?? null);
-    } else {
-      setFetchedContent(null);
-    }
+    setFetchedContent(null);
   }, [article?.id]);
 
   const runAi = useCallback(async (mode: AiMode, contentHtml: string) => {
@@ -119,18 +189,19 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
     );
   }
 
-  const ytId = article.link ? extractYouTubeId(article.link) : null;
+  const embedInfo = article.link ? extractEmbedInfo(article.link) : null;
 
-  // YouTube 記事は iframe を除去して二重埋め込みを防ぐ
-  const rawContent = fetchedContent ?? article.content ?? null;
+  // 取得済みコンテンツ: フェッチ結果 > キャッシュ > RSS 本文
+  const storedContent = fetchedContent ?? cachedContent;
+  const rawContent = storedContent ?? article.content ?? null;
   const processedContent = rawContent
-    ? ytId
-      ? stripIframes(rawContent)         // YouTube → iframe 除去のみ
-      : processContent(rawContent)       // 通常 → YouTube iframe をレスポンシブ化
+    ? embedInfo
+      ? stripIframes(rawContent)
+      : processContent(rawContent)
     : null;
 
   const isShortContent = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
-  const canFetch = !ytId && article.link && (isShortContent || !processedContent) && !fetchedContent;
+  const canFetch = !embedInfo && article.link && isShortContent && !storedContent;
   const hasContent = !!(processedContent || article.summary);
 
   return (
@@ -147,7 +218,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
               })}
             </time>
           )}
-          {article.link && !ytId && (
+          {article.link && !embedInfo && (
             <a
               href={article.link}
               target="_blank"
@@ -200,22 +271,33 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
           {article.title}
         </h1>
 
-        {/* YouTube 埋め込み */}
-        {ytId && (
+        {/* メディア埋め込み */}
+        {embedInfo && embedInfo.type === 'video' && (
           <div className="relative mb-8" style={{ paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '8px' }}>
             <iframe
               className="absolute inset-0 w-full h-full"
-              src={`https://www.youtube-nocookie.com/embed/${ytId}?origin=https://rss.0g0.xyz`}
+              src={embedInfo.embedUrl}
               title={article.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allow={embedInfo.allow}
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
               style={{ border: 0, borderRadius: '8px' }}
             />
           </div>
         )}
+        {embedInfo && embedInfo.type === 'audio' && (
+          <div className="mb-8 rounded-xl overflow-hidden">
+            <iframe
+              src={embedInfo.embedUrl}
+              title={article.title}
+              allow={embedInfo.allow}
+              height={embedInfo.audioHeight ?? 152}
+              style={{ border: 0, width: '100%', borderRadius: '12px' }}
+            />
+          </div>
+        )}
 
-        {!ytId && <div className="border-t border-border-subtle mb-8" />}
+        {!embedInfo && <div className="border-t border-border-subtle mb-8" />}
 
         {/* AI 結果パネル */}
         {aiResult && (
@@ -227,8 +309,8 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
           </div>
         )}
 
-        {/* OGP 画像 (YouTube 以外、本文なし時) */}
-        {!ytId && article.ogImage && !processedContent && (
+        {/* OGP 画像 (埋め込みなし・本文なし時) */}
+        {!embedInfo && article.ogImage && !processedContent && (
           <img
             src={article.ogImage}
             alt=""
@@ -248,7 +330,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark }:
           <p className="font-serif text-[16px] leading-[1.9] text-text-default tracking-[0.02em]">
             {article.summary}
           </p>
-        ) : !ytId ? (
+        ) : !embedInfo ? (
           <div className="text-center py-12">
             <p className="text-[12px] text-text-faint mb-4 tracking-[0.04em]">本文のプレビューはありません</p>
             {article.link && (

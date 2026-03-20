@@ -50,13 +50,15 @@ function str(val: unknown): string {
 /** RSS item / Atom entry から最初の画像 URL を取得 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractImage(item: any): string {
-  // 1. media:thumbnail
-  const thumb = item['media:thumbnail'];
+  // 1. media:thumbnail (直下 or media:group 内)
+  const thumb = item['media:thumbnail'] ?? item['media:group']?.['media:thumbnail'];
   if (thumb?.['@_url']) return String(thumb['@_url']);
+  // 配列の場合は最初の要素
+  if (Array.isArray(thumb) && thumb[0]?.['@_url']) return String(thumb[0]['@_url']);
 
-  // 2. media:content (画像タイプ)
-  const mc = item['media:content'];
-  const mcArr = Array.isArray(mc) ? mc : mc ? [mc] : [];
+  // 2. media:content (画像タイプ、直下 or media:group 内)
+  const mcRaw = item['media:content'] ?? item['media:group']?.['media:content'];
+  const mcArr = Array.isArray(mcRaw) ? mcRaw : mcRaw ? [mcRaw] : [];
   for (const m of mcArr) {
     if (
       m?.['@_url'] &&
