@@ -9,10 +9,12 @@ interface FeedsState {
   feeds: Feed[];
   articles: Article[];
   loadingArticles: boolean;
+  refreshing: boolean;
   newArticleCount: number;
   onFeedAdded: (feed: Feed) => void;
   removeFeed: (id: string) => void;
   replaceFeeds: (feeds: Feed[]) => void;
+  refreshFeeds: () => Promise<void>;
   dismissNewArticles: () => void;
 }
 
@@ -20,8 +22,16 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [newArticleCount, setNewArticleCount] = useState(0);
   const latestArticleIdRef = useRef<string | null>(null);
+
+  async function fetchAndSetArticles() {
+    const data = await fetch('/api/articles').then((r) => r.json() as Promise<Article[]>);
+    setArticles(data);
+    latestArticleIdRef.current = data[0]?.id ?? null;
+    return data;
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -30,12 +40,7 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
       .then((r) => r.json() as Promise<Feed[]>)
       .then(setFeeds)
       .catch(console.error);
-    fetch('/api/articles')
-      .then((r) => r.json() as Promise<Article[]>)
-      .then((data) => {
-        setArticles(data);
-        latestArticleIdRef.current = data[0]?.id ?? null;
-      })
+    fetchAndSetArticles()
       .catch(console.error)
       .finally(() => setLoadingArticles(false));
   }, [user]);
@@ -77,19 +82,32 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     setFeeds(newFeeds);
     // インポート後に記事を再取得する
     setLoadingArticles(true);
-    fetch('/api/articles')
-      .then((r) => r.json() as Promise<Article[]>)
-      .then((data) => {
-        setArticles(data);
-        latestArticleIdRef.current = data[0]?.id ?? null;
-      })
+    fetchAndSetArticles()
       .catch(console.error)
       .finally(() => setLoadingArticles(false));
+  }, []);
+
+  const refreshFeeds = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetch('/api/feeds/refresh', { method: 'POST' });
+      const [feedsData, articlesData] = await Promise.all([
+        fetch('/api/feeds').then((r) => r.json() as Promise<Feed[]>),
+        fetch('/api/articles').then((r) => r.json() as Promise<Article[]>),
+      ]);
+      setFeeds(feedsData);
+      setArticles(articlesData);
+      latestArticleIdRef.current = articlesData[0]?.id ?? null;
+    } catch (err) {
+      console.error('Refresh failed:', err);
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   const dismissNewArticles = useCallback(() => {
     setNewArticleCount(0);
   }, []);
 
-  return { feeds, articles, loadingArticles, newArticleCount, onFeedAdded, removeFeed, replaceFeeds, dismissNewArticles };
+  return { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, replaceFeeds, refreshFeeds, dismissNewArticles };
 }

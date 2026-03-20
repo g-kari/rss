@@ -11,12 +11,14 @@ interface Props {
   selectedFeedId: string | null;
   user: UserProfile;
   theme: 'light' | 'dark';
+  refreshing: boolean;
   onSelectFeed: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
   onFeedsImported: (feeds: Feed[]) => void;
   onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
+  onRefresh: () => void;
 }
 
 export default function FeedSidebar({
@@ -33,6 +35,8 @@ export default function FeedSidebar({
   onFeedsImported,
   onMarkAllRead,
   onToggleTheme,
+  onRefresh,
+  refreshing,
 }: Props) {
   const [newUrl, setNewUrl] = useState('');
   const [adding, setAdding] = useState(false);
@@ -143,6 +147,20 @@ export default function FeedSidebar({
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
             <line x1="5.5" y1="1" x2="5.5" y2="10" />
             <line x1="1" y1="5.5" x2="10" y2="5.5" />
+          </svg>
+        </button>
+        <button
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="w-5 h-5 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all duration-200 disabled:opacity-40"
+          title="フィードを更新"
+        >
+          <svg
+            width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5"
+            className={refreshing ? 'animate-spin' : ''}
+          >
+            <path strokeLinecap="round" d="M9.5 2A4.5 4.5 0 1 0 10 6.5" />
+            <polyline strokeLinecap="round" strokeLinejoin="round" points="7.5,0.5 9.5,2 8,4" />
           </svg>
         </button>
       </div>
