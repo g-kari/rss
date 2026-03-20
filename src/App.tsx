@@ -42,7 +42,7 @@ const loadBookmarkIds = () => loadSet('rss-bookmarks');
 
 export default function App() {
   const { user, betaRestricted } = useAuth();
-  const { feeds, articles, loadingArticles, newArticleCount, onFeedAdded, removeFeed, dismissNewArticles } = useFeeds(user);
+  const { feeds, articles, loadingArticles, newArticleCount, onFeedAdded, removeFeed, replaceFeeds, dismissNewArticles } = useFeeds(user);
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
@@ -265,6 +265,7 @@ export default function App() {
         }}
         onFeedAdded={onFeedAdded}
         onFeedDeleted={onFeedDeleted}
+        onFeedsImported={replaceFeeds}
         onMarkAllRead={markAllRead}
         onToggleTheme={toggleTheme}
       />

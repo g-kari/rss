@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Feed, Article, UserProfile } from '../types';
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
   onSelectFeed: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
+  onFeedsImported: (feeds: Feed[]) => void;
   onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
 }
@@ -29,6 +30,7 @@ export default function FeedSidebar({
   onSelectFeed,
   onFeedAdded,
   onFeedDeleted,
+  onFeedsImported,
   onMarkAllRead,
   onToggleTheme,
 }: Props) {
@@ -36,6 +38,8 @@ export default function FeedSidebar({
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [inputOpen, setInputOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function addFeed(e: React.FormEvent) {
     e.preventDefault();
@@ -77,6 +81,44 @@ export default function FeedSidebar({
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     window.location.reload();
+  }
+
+  function exportOpml() {
+    window.location.href = '/api/feeds/export';
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setError('');
+    try {
+      const text = await file.text();
+      const res = await fetch('/api/feeds/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/xml' },
+        body: text,
+      });
+      if (!res.ok) {
+        const data = await res.json() as { error: string };
+        setError(data.error ?? 'インポートに失敗しました');
+        return;
+      }
+      const data = await res.json() as { added: number; skipped: number };
+      if (data.added > 0) {
+        const feedsRes = await fetch('/api/feeds');
+        if (feedsRes.ok) {
+          const allFeeds = await feedsRes.json() as Feed[];
+          onFeedsImported(allFeeds);
+        }
+      }
+      setError(data.added > 0 ? `${data.added}件インポートしました` : 'すべて登録済みです');
+    } catch {
+      setError('インポートに失敗しました');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   }
 
   function unreadCount(feedId?: string) {
@@ -250,6 +292,34 @@ export default function FeedSidebar({
           <div className="w-5 h-5 rounded-full bg-surface-subtle flex-shrink-0" />
         )}
         <span className="text-[11px] text-text-muted truncate flex-1">{user.name}</span>
+        {/* OPMLインポート */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".opml,.xml"
+          className="hidden"
+          onChange={handleImportFile}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={importing}
+          className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0 disabled:opacity-40"
+          title="OPMLインポート"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+          </svg>
+        </button>
+        {/* OPMLエクスポート */}
+        <button
+          onClick={exportOpml}
+          className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
+          title="OPMLエクスポート"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+        </button>
         <button
           onClick={onToggleTheme}
           className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
