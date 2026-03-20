@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import type { Feed, Article } from '../types';
+import type { Feed, Article, UserProfile } from '../types';
 
 interface Props {
   feeds: Feed[];
   articles: Article[];
   readIds: Set<string>;
   selectedFeedId: string | null;
+  user: UserProfile;
   onSelectFeed: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
@@ -16,6 +17,7 @@ export default function FeedSidebar({
   articles,
   readIds,
   selectedFeedId,
+  user,
   onSelectFeed,
   onFeedAdded,
   onFeedDeleted,
@@ -58,6 +60,11 @@ export default function FeedSidebar({
     onFeedDeleted(id);
   }
 
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.reload();
+  }
+
   function unreadCount(feedId?: string) {
     const feedArticles = feedId ? articles.filter((a) => a.feedId === feedId) : articles;
     return feedArticles.filter((a) => !readIds.has(a.id)).length;
@@ -92,7 +99,6 @@ export default function FeedSidebar({
               className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-zinc-500"
             />
             {error && <p className="text-red-400 text-xs">{error}</p>}
-            <p className="text-xs text-zinc-600">追加後、数分でデプロイされます</p>
             <div className="flex gap-1.5">
               <button
                 type="submit"
@@ -169,6 +175,25 @@ export default function FeedSidebar({
           );
         })}
       </nav>
+
+      {/* ユーザー情報 + ログアウト */}
+      <div className="px-3 py-2 border-t border-zinc-800 flex items-center gap-2">
+        {user.picture ? (
+          <img src={user.picture} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
+        ) : (
+          <div className="w-5 h-5 rounded-full bg-zinc-700 flex-shrink-0" />
+        )}
+        <span className="text-xs text-zinc-500 truncate flex-1">{user.name}</span>
+        <button
+          onClick={logout}
+          className="text-zinc-700 hover:text-zinc-400 transition-colors flex-shrink-0"
+          title="ログアウト"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </button>
+      </div>
     </aside>
   );
 }

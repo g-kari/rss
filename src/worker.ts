@@ -1,13 +1,22 @@
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import type { Env } from './types';
+import type { Env, HonoEnv } from './types';
 import feedsRoutes from './routes/feeds';
 import articlesRoutes from './routes/articles';
-import { fetchArticles } from './cron/fetch';
+import authRoutes from './routes/auth';
+import { requireAuth } from './middleware/auth';
+import { fetchAllUsers } from './cron/fetch';
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<HonoEnv>();
 
-app.use('/api/*', cors());
+// 認証不要
+app.route('/api/auth', authRoutes);
+
+// 認証必須
+app.use('/api/feeds', requireAuth);
+app.use('/api/feeds/*', requireAuth);
+app.use('/api/articles', requireAuth);
+app.use('/api/articles/*', requireAuth);
+
 app.route('/api/feeds', feedsRoutes);
 app.route('/api/articles', articlesRoutes);
 
@@ -21,6 +30,6 @@ app.onError((err, c) => {
 export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(fetchArticles(env));
+    ctx.waitUntil(fetchAllUsers(env));
   },
 };

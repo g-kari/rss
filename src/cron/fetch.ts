@@ -4,16 +4,16 @@ import { r2Get, r2Put } from '../lib/r2';
 
 const MAX_ARTICLES = 2000;
 
-export async function fetchArticles(env: Env): Promise<void> {
-  const feeds = await r2Get<Feed[]>(env.RSS_DATA, 'feeds.json', []);
-  const existing = await r2Get<Article[]>(env.RSS_DATA, 'articles.json', []);
+async function fetchUserArticles(env: Env, userId: string): Promise<void> {
+  const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${userId}/feeds.json`, []);
+  if (feeds.length === 0) return;
+
+  const existing = await r2Get<Article[]>(env.RSS_DATA, `users/${userId}/articles.json`, []);
   const existingByGuid = new Map(existing.map((a) => [a.guid, a]));
 
   const results = await Promise.allSettled(
     feeds.map(async (feed) => {
-      const res = await fetch(feed.url, {
-        headers: { 'User-Agent': 'rss-reader/1.0' },
-      });
+      const res = await fetch(feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
       if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
       const xml = await res.text();
       const parsed = parseFeed(xml);
@@ -37,7 +37,7 @@ export async function fetchArticles(env: Env): Promise<void> {
     })
   );
 
-  await r2Put(env.RSS_DATA, 'feeds.json', feeds);
+  await r2Put(env.RSS_DATA, `users/${userId}/feeds.json`, feeds);
 
   const fresh: Article[] = [];
   for (const r of results) {
@@ -56,5 +56,17 @@ export async function fetchArticles(env: Env): Promise<void> {
     })
     .slice(0, MAX_ARTICLES);
 
-  await r2Put(env.RSS_DATA, 'articles.json', sorted);
+  await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sorted);
+}
+
+// フィード追加時の即時フェッチ
+export async function fetchArticles(env: Env, userId: string): Promise<void> {
+  await fetchUserArticles(env, userId);
+}
+
+// Cron: 全ユーザーをフェッチ
+export async function fetchAllUsers(env: Env): Promise<void> {
+  const listed = await env.RSS_DATA.list({ prefix: 'users/', delimiter: '/' });
+  const userIds = listed.delimitedPrefixes.map((p) => p.slice('users/'.length, -1));
+  await Promise.allSettled(userIds.map((id) => fetchUserArticles(env, id)));
 }
