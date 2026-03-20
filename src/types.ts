@@ -36,6 +36,8 @@ export interface Env {
   APP_BASE_URL: string;
   CLIENT_ID: string;
   CLIENT_SECRET: string;
+  /** カンマ区切りの許可 sub リスト。空文字または未設定なら制限なし */
+  BETA_ALLOWED_SUBS?: string;
 }
 
 export type HonoEnv = {

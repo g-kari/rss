@@ -10,6 +10,9 @@ routes = [
 [vars]
 AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL = "https://rss.0g0.xyz"
+# ベータアクセス制限: 許可する sub をカンマ区切りで列挙。空文字なら制限なし
+# 例: BETA_ALLOWED_SUBS = "sub1,sub2,sub3"
+BETA_ALLOWED_SUBS = ""
 
 [[r2_buckets]]
 binding = "RSS_DATA"

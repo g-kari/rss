@@ -3,6 +3,7 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { HonoEnv, UserProfile } from '../types';
 import { verifyJwt, exchangeCode, revokeToken, refreshTokens } from '../lib/auth';
 import { r2Get, r2Put } from '../lib/r2';
+import { isBetaAllowed } from '../middleware/auth';
 
 const app = new Hono<HonoEnv>();
 
@@ -46,6 +47,11 @@ app.get('/callback', async (c) => {
   const payload = await verifyJwt(tokens.access_token, c.env.AUTH_BASE_URL);
   const sub = payload?.sub ?? tokens.user.id;
 
+  // ベータアクセス制限チェック
+  if (!isBetaAllowed(sub, c.env)) {
+    return c.redirect('/?beta=denied');
+  }
+
   // プロフィールを R2 に保存
   const profile: UserProfile = {
     id: tokens.user.id,
@@ -83,6 +89,9 @@ app.get('/me', async (c) => {
   if (token) {
     const payload = await verifyJwt(token, c.env.AUTH_BASE_URL);
     if (payload) {
+      if (!isBetaAllowed(payload.sub, c.env)) {
+        return c.json({ user: null, betaRestricted: true });
+      }
       const profile = await r2Get<UserProfile | null>(
         c.env.RSS_DATA,
         `users/${payload.sub}/profile.json`,
@@ -99,6 +108,9 @@ app.get('/me', async (c) => {
     if (refreshed) {
       const payload = await verifyJwt(refreshed.access_token, c.env.AUTH_BASE_URL);
       if (payload) {
+        if (!isBetaAllowed(payload.sub, c.env)) {
+          return c.json({ user: null, betaRestricted: true });
+        }
         setCookie(c, 'access_token', refreshed.access_token, { ...COOKIE_OPTS, maxAge: 900 });
         setCookie(c, 'refresh_token', refreshed.refresh_token, {
           ...COOKIE_OPTS,

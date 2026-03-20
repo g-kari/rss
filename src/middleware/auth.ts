@@ -1,7 +1,14 @@
 import type { Context, Next } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
-import type { HonoEnv } from '../types';
+import type { Env, HonoEnv } from '../types';
 import { verifyJwt, refreshTokens } from '../lib/auth';
+
+/** BETA_ALLOWED_SUBS が設定されている場合、sub がリストに含まれるか確認 */
+export function isBetaAllowed(sub: string, env: Env): boolean {
+  const list = env.BETA_ALLOWED_SUBS?.trim();
+  if (!list) return true; // 空 = 制限なし
+  return list.split(',').map((s) => s.trim()).includes(sub);
+}
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -43,6 +50,10 @@ export async function requireAuth(c: Context<HonoEnv>, next: Next): Promise<Resp
 
   if (!userId) {
     return c.json({ error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+  }
+
+  if (!isBetaAllowed(userId, c.env)) {
+    return c.json({ error: { code: 'BETA_RESTRICTED', message: 'Beta access only' } }, 403);
   }
 
   c.set('userId', userId);
