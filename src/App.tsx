@@ -97,6 +97,17 @@ export default function App() {
     });
   }, []);
 
+  const markAllRead = useCallback((feedId: string | null) => {
+    setReadIds((prev) => {
+      const ids = feedId
+        ? articles.filter((a) => a.feedId === feedId).map((a) => a.id)
+        : articles.map((a) => a.id);
+      const next = new Set([...prev, ...ids]);
+      saveSet('rss-read', next);
+      return next;
+    });
+  }, [articles]);
+
   const toggleBookmark = useCallback((articleId: string) => {
     setBookmarkIds((prev) => {
       const next = new Set(prev);
@@ -106,7 +117,7 @@ export default function App() {
     });
   }, []);
 
-  // キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、o 元記事を開く、b ブックマーク切り替え
+  // キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、o 元記事を開く、b ブックマーク切り替え、m 全て既読
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -128,11 +139,13 @@ export default function App() {
         window.open(selectedArticle.link, '_blank', 'noopener,noreferrer');
       } else if (e.key === 'b' && selectedArticle) {
         toggleBookmark(selectedArticle.id);
+      } else if (e.key === 'm') {
+        markAllRead(selectedFeedId === '__bookmarks__' ? null : selectedFeedId);
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedFeedId, selectedArticle, markRead, bookmarkIds, toggleBookmark]);
+  }, [articles, selectedFeedId, selectedArticle, markRead, markAllRead, bookmarkIds, toggleBookmark]);
 
   function onFeedAdded(feed: Feed) {
     setFeeds((prev) => [...prev, feed]);
@@ -282,6 +295,7 @@ export default function App() {
         }}
         onFeedAdded={onFeedAdded}
         onFeedDeleted={onFeedDeleted}
+        onMarkAllRead={markAllRead}
         onToggleTheme={toggleTheme}
       />
       <ArticleList
