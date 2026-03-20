@@ -7,11 +7,10 @@ routes = [
   { pattern = "rss.0g0.xyz", custom_domain = true }
 ]
 
-[[d1_databases]]
-binding = "DB"
-database_name = "rss-reader-db"
-database_id = "0f54e1ec-3ac4-48b9-9941-64b84848adeb"
-migrations_dir = "./migrations"
+[vars]
+GITHUB_OWNER = "g-kari"
+GITHUB_REPO = "rss"
+GITHUB_BRANCH = "master"
 
-[triggers]
-crons = ["*/30 * * * *"]
+# シークレットは以下で設定:
+# npx wrangler secret put GITHUB_TOKEN

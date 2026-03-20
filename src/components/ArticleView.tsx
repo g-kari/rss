@@ -23,9 +23,9 @@ export default function ArticleView({ article }: Props) {
       <div className="max-w-2xl mx-auto px-8 py-10">
         {/* メタ */}
         <div className="flex items-center gap-3 mb-4 text-xs text-zinc-600">
-          {article.published_at && (
+          {article.publishedAt && (
             <time>
-              {new Date(article.published_at).toLocaleDateString('ja-JP', {
+              {new Date(article.publishedAt).toLocaleDateString('ja-JP', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',

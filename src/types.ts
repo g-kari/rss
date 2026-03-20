@@ -2,25 +2,24 @@ export interface Feed {
   id: string;
   url: string;
   title: string;
-  site_url: string;
-  last_fetched_at: string | null;
-  error_count: number;
-  created_at: string;
-  unread_count?: number;
+  siteUrl: string;
+  lastFetchedAt: string | null;
 }
 
 export interface Article {
   id: string;
-  feed_id: string;
+  feedId: string;
   guid: string;
   title: string;
   link: string;
   summary: string;
-  published_at: string | null;
-  created_at: string;
-  is_read?: boolean | number;
+  publishedAt: string | null;
+  createdAt: string;
 }
 
 export interface Env {
-  DB: D1Database;
+  GITHUB_TOKEN: string;
+  GITHUB_OWNER: string;
+  GITHUB_REPO: string;
+  GITHUB_BRANCH: string;
 }
