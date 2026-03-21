@@ -313,6 +313,7 @@ export default function ArticleList({
   /* ── card ── */
   function renderCard(article: Article, i: number) {
     const isRead = readIds.has(article.id);
+    const isBookmarked = bookmarkIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
     const feedName = feedMap.get(article.feedId) ?? '';
     const thumb = resolveThumbnail(article);
@@ -321,7 +322,7 @@ export default function ArticleList({
         key={article.id}
         id={`article-${article.id}`}
         onClick={() => handleSelect(article)}
-        className={`flex flex-col cursor-pointer rounded-lg border transition-all duration-200 animate-fade-up overflow-hidden ${
+        className={`group flex flex-col cursor-pointer rounded-lg border transition-all duration-200 animate-fade-up overflow-hidden ${
           isSelected
             ? 'border-text-strong bg-surface-elevated'
             : 'border-border-default hover:border-text-muted bg-surface-elevated'
@@ -358,7 +359,38 @@ export default function ArticleList({
               <span className="text-[10px] text-text-faint flex-shrink-0">{timeAgo(article.publishedAt)}</span>
               {article.author && <span className="text-[10px] text-text-faint truncate">{article.author}</span>}
             </div>
-            {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
+            <div className="flex items-center">
+              {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:hidden" />}
+              {/* ホバーアクション */}
+              <div className="hidden group-hover:flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => onToggleRead(article.id)}
+                  title={isRead ? '未読にする' : '既読にする'}
+                  className="w-5 h-5 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150"
+                >
+                  {isRead ? (
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="6" cy="6" r="4.5"/>
+                    </svg>
+                  ) : (
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+                      <circle cx="6" cy="6" r="3.5"/>
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => onToggleBookmark(article.id)}
+                  title={isBookmarked ? 'ブックマーク解除' : 'ブックマーク'}
+                  className={`w-5 h-5 flex items-center justify-center rounded transition-all duration-150 ${
+                    isBookmarked ? 'text-bookmark' : 'text-text-faint hover:text-text-muted hover:bg-surface-subtle'
+                  }`}
+                >
+                  <svg width="9" height="11" viewBox="0 0 11 13" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 1h9v11l-4.5-3L1 12V1z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -368,6 +400,7 @@ export default function ArticleList({
   /* ── magazine ── */
   function renderMagazineFeatured(article: Article) {
     const isRead = readIds.has(article.id);
+    const isBookmarked = bookmarkIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
     const feedName = feedMap.get(article.feedId) ?? '';
     const thumb = resolveThumbnail(article);
@@ -376,7 +409,7 @@ export default function ArticleList({
         key={article.id}
         id={`article-${article.id}`}
         onClick={() => handleSelect(article)}
-        className={`cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 animate-fade-up ${
+        className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 animate-fade-up ${
           isSelected
             ? 'border-text-strong bg-surface-elevated'
             : 'border-border-default hover:border-text-muted bg-surface-elevated'
@@ -409,7 +442,38 @@ export default function ArticleList({
           )}
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
-            {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot" />}
+            <div className="flex items-center">
+              {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:hidden" />}
+              {/* ホバーアクション */}
+              <div className="hidden group-hover:flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => onToggleRead(article.id)}
+                  title={isRead ? '未読にする' : '既読にする'}
+                  className="w-6 h-6 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150"
+                >
+                  {isRead ? (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="6" cy="6" r="4.5"/>
+                    </svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                      <circle cx="6" cy="6" r="3.5"/>
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => onToggleBookmark(article.id)}
+                  title={isBookmarked ? 'ブックマーク解除' : 'ブックマーク'}
+                  className={`w-6 h-6 flex items-center justify-center rounded transition-all duration-150 ${
+                    isBookmarked ? 'text-bookmark' : 'text-text-faint hover:text-text-muted hover:bg-surface-subtle'
+                  }`}
+                >
+                  <svg width="11" height="13" viewBox="0 0 11 13" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 1h9v11l-4.5-3L1 12V1z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
