@@ -8,6 +8,7 @@ import type { Article, Layout, FontSize } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useFeeds } from './hooks/useFeeds';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
+import { useFilteredArticles } from './hooks/useFilteredArticles';
 
 type Theme = 'light' | 'dark';
 type MobilePane = 'sidebar' | 'list' | 'view';
@@ -218,6 +219,18 @@ export default function App() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const {
+    filtered,
+    visible,
+    hasMore,
+    unreadOnly,
+    toggleUnreadOnly,
+    query,
+    updateQuery,
+    searchRef,
+    sentinelRef,
+  } = useFilteredArticles({ articles, feedId: selectedFeedId, readIds, bookmarkIds });
+
   useKeyboardNav({
     articles,
     selectedFeedId,
@@ -234,6 +247,9 @@ export default function App() {
     onChangeFontSize,
     layout,
     onChangeLayout,
+    unreadOnly,
+    toggleUnreadOnly,
+    searchRef,
   });
 
   // ローディング
@@ -450,11 +466,8 @@ export default function App() {
       </div>
       <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'list' ? 'hidden lg:block' : ''}`}>
         <ArticleList
-          articles={articles}
           feeds={feeds}
-          feedId={selectedFeedId}
           readIds={readIds}
-          bookmarkIds={bookmarkIds}
           selectedArticleId={selectedArticle?.id ?? null}
           layout={layout}
           loading={loadingArticles}
@@ -465,6 +478,15 @@ export default function App() {
             markRead(article.id);
             setMobilePane('view');
           }}
+          filtered={filtered}
+          visible={visible}
+          hasMore={hasMore}
+          unreadOnly={unreadOnly}
+          toggleUnreadOnly={toggleUnreadOnly}
+          query={query}
+          updateQuery={updateQuery}
+          searchRef={searchRef}
+          sentinelRef={sentinelRef}
         />
       </div>
       <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'view' ? 'hidden lg:block' : ''}`}>

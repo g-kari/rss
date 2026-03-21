@@ -1,21 +1,27 @@
 'use client';
 
-import { useMemo, useEffect, type ReactElement } from 'react';
+import { useMemo, useEffect, type ReactElement, type RefObject } from 'react';
 import type { Article, Feed, Layout } from '../types';
-import { useFilteredArticles } from '../hooks/useFilteredArticles';
 
 interface Props {
-  articles: Article[];
   feeds: Feed[];
-  feedId: string | null;
   readIds: Set<string>;
-  bookmarkIds: Set<string>;
   selectedArticleId: string | null;
   layout: Layout;
   loading?: boolean;
   onChangeLayout: (layout: Layout) => void;
   onSelectArticle: (article: Article) => void;
   onMobileBack?: () => void;
+  // useFilteredArticles からの状態（App.tsx で管理）
+  filtered: Article[];
+  visible: Article[];
+  hasMore: boolean;
+  unreadOnly: boolean;
+  toggleUnreadOnly: () => void;
+  query: string;
+  updateQuery: (q: string) => void;
+  searchRef: RefObject<HTMLInputElement | null>;
+  sentinelRef: RefObject<HTMLDivElement | null>;
 }
 
 /** ogImage がない場合、YouTube URL からサムネイルを生成 */
@@ -76,45 +82,24 @@ const LAYOUT_ICONS: Record<Layout, ReactElement> = {
 const LAYOUTS: Layout[] = ['compact', 'list', 'card', 'magazine'];
 
 export default function ArticleList({
-  articles,
   feeds,
-  feedId,
   readIds,
-  bookmarkIds,
   selectedArticleId,
   layout,
   loading = false,
   onChangeLayout,
   onSelectArticle,
   onMobileBack,
+  filtered,
+  visible,
+  hasMore,
+  unreadOnly,
+  toggleUnreadOnly,
+  query,
+  updateQuery,
+  searchRef,
+  sentinelRef,
 }: Props) {
-  const {
-    filtered,
-    visible,
-    hasMore,
-    unreadOnly,
-    toggleUnreadOnly,
-    query,
-    updateQuery,
-    searchRef,
-    sentinelRef,
-  } = useFilteredArticles({ articles, feedId, readIds, bookmarkIds });
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === '/') {
-        e.preventDefault();
-        searchRef.current?.focus();
-      } else if (e.key === 'u') {
-        e.preventDefault();
-        toggleUnreadOnly();
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [searchRef, toggleUnreadOnly]);
-
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
 
   useEffect(() => {
@@ -376,7 +361,7 @@ export default function ArticleList({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {loading && articles.length === 0 && (
+        {loading && filtered.length === 0 && (
           <div className="flex items-center justify-center h-40">
             <p className="text-[12px] text-text-faint">読み込み中...</p>
           </div>
