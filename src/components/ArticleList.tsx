@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, type ReactElement, type RefObject } from 'react';
+import { useMemo, useEffect, type ReactElement, type ReactNode, type RefObject } from 'react';
 import type { Article, Feed, Layout } from '../types';
 
 interface Props {
@@ -44,6 +44,38 @@ function timeAgo(iso: string | null): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}日前`;
   return new Date(iso).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+}
+
+/** 検索クエリに一致する箇所をハイライト表示 */
+function highlightText(text: string, query: string): ReactNode {
+  const q = query.trim().toLowerCase();
+  if (!q) return text;
+  const parts: ReactNode[] = [];
+  let remaining = text;
+  let lower = text.toLowerCase();
+  let idx = lower.indexOf(q);
+  let key = 0;
+  while (idx !== -1) {
+    if (idx > 0) parts.push(remaining.slice(0, idx));
+    parts.push(
+      <mark
+        key={key++}
+        style={{
+          background: 'var(--color-highlight)',
+          color: 'inherit',
+          borderRadius: '2px',
+          paddingInline: '1px',
+        }}
+      >
+        {remaining.slice(idx, idx + q.length)}
+      </mark>,
+    );
+    remaining = remaining.slice(idx + q.length);
+    lower = remaining.toLowerCase();
+    idx = lower.indexOf(q);
+  }
+  if (remaining) parts.push(remaining);
+  return <>{parts}</>;
 }
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
@@ -136,7 +168,7 @@ export default function ArticleList({
             isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
           }`}
         >
-          {article.title || '(タイトルなし)'}
+          {highlightText(article.title || '(タイトルなし)', query)}
         </span>
         <span className="text-[11px] text-text-faint flex-shrink-0">{timeAgo(article.publishedAt)}</span>
       </div>
@@ -166,11 +198,11 @@ export default function ArticleList({
               isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
             }`}
           >
-            {article.title || '(タイトルなし)'}
+            {highlightText(article.title || '(タイトルなし)', query)}
           </h3>
           {article.summary && (
             <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed mb-1">
-              {article.summary}
+              {highlightText(article.summary, query)}
             </p>
           )}
           <div className="flex items-center gap-2">
@@ -227,11 +259,11 @@ export default function ArticleList({
               isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
             }`}
           >
-            {article.title || '(タイトルなし)'}
+            {highlightText(article.title || '(タイトルなし)', query)}
           </h3>
           {article.summary && !thumb && (
             <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed">
-              {article.summary}
+              {highlightText(article.summary, query)}
             </p>
           )}
           <div className="flex items-center justify-between mt-auto pt-1">
@@ -278,11 +310,11 @@ export default function ArticleList({
               isRead ? 'text-text-muted' : 'text-text-strong'
             }`}
           >
-            {article.title || '(タイトルなし)'}
+            {highlightText(article.title || '(タイトルなし)', query)}
           </h3>
           {article.summary && (
             <p className="text-[12px] text-text-muted line-clamp-2 leading-relaxed mb-2">
-              {article.summary}
+              {highlightText(article.summary, query)}
             </p>
           )}
           <div className="flex items-center justify-between">
