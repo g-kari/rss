@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback, type ReactElement } from 'react';
+import { useMemo, useEffect, type ReactElement } from 'react';
 import type { Article, Feed, Layout } from '../types';
+import { useFilteredArticles } from '../hooks/useFilteredArticles';
 
 interface Props {
   articles: Article[];
@@ -38,8 +39,6 @@ function timeAgo(iso: string | null): string {
   if (days < 7) return `${days}日前`;
   return new Date(iso).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
 }
-
-const PAGE_SIZE = 30;
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
   compact: (
@@ -89,11 +88,17 @@ export default function ArticleList({
   onSelectArticle,
   onMobileBack,
 }: Props) {
-  const [unreadOnly, setUnreadOnly] = useState(false);
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const {
+    filtered,
+    visible,
+    hasMore,
+    unreadOnly,
+    toggleUnreadOnly,
+    query,
+    updateQuery,
+    searchRef,
+    sentinelRef,
+  } = useFilteredArticles({ articles, feedId, readIds, bookmarkIds });
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -103,18 +108,14 @@ export default function ArticleList({
         searchRef.current?.focus();
       } else if (e.key === 'u') {
         e.preventDefault();
-        setUnreadOnly((v) => !v);
-        setPage(1);
+        toggleUnreadOnly();
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [searchRef, toggleUnreadOnly]);
 
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
-
-  // フィード切り替え時にページをリセット
-  useEffect(() => { setPage(1); }, [feedId]);
 
   useEffect(() => {
     if (selectedArticleId) {
@@ -123,41 +124,6 @@ export default function ArticleList({
         ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }, [selectedArticleId]);
-
-  const loadMore = useCallback(() => {
-    setPage((p) => p + 1);
-  }, []);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMore(); },
-      { rootMargin: '120px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loadMore]);
-
-  const filtered = useMemo(() => {
-    let list =
-      feedId === '__bookmarks__'
-        ? articles.filter((a) => bookmarkIds.has(a.id))
-        : feedId
-          ? articles.filter((a) => a.feedId === feedId)
-          : articles;
-    if (unreadOnly) list = list.filter((a) => !readIds.has(a.id));
-    if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      list = list.filter(
-        (a) => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [articles, feedId, readIds, bookmarkIds, unreadOnly, query]);
-
-  const visible = filtered.slice(0, page * PAGE_SIZE);
-  const hasMore = visible.length < filtered.length;
 
   function handleSelect(article: Article) {
     onSelectArticle(article);
@@ -383,7 +349,7 @@ export default function ArticleList({
               ))}
             </div>
             <button
-              onClick={() => { setUnreadOnly((v) => !v); setPage(1); }}
+              onClick={toggleUnreadOnly}
               className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
                 unreadOnly
                   ? 'border-ink bg-ink text-ink-text'
@@ -400,9 +366,9 @@ export default function ArticleList({
             type="search"
             placeholder="検索... (/ でフォーカス)"
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            onChange={(e) => updateQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Escape') { setQuery(''); setPage(1); searchRef.current?.blur(); }
+              if (e.key === 'Escape') { updateQuery(''); searchRef.current?.blur(); }
             }}
             className="w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
           />
