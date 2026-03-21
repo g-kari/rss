@@ -232,6 +232,8 @@ export default function App() {
     showToast,
     fontSize,
     onChangeFontSize,
+    layout,
+    onChangeLayout,
   });
 
   // ローディング
@@ -395,6 +397,7 @@ export default function App() {
                 ['u', '未読フィルター切替'],
                 ['c', 'リンクをコピー'],
                 ['f', 'フォントサイズ切替'],
+                ['l', 'レイアウト切替'],
                 ['/', '記事を検索'],
                 ['?', 'このヘルプを表示'],
               ].map(([key, desc]) => (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import type { Article, FontSize } from '../types';
+import type { Article, FontSize, Layout } from '../types';
 
 interface KeyboardNavOptions {
   articles: Article[];
@@ -17,9 +17,11 @@ interface KeyboardNavOptions {
   showToast: (msg: string) => void;
   fontSize: FontSize;
   onChangeFontSize: (size: FontSize) => void;
+  layout: Layout;
+  onChangeLayout: (layout: Layout) => void;
 }
 
-// キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、n/p 次/前の未読記事、o 元記事を開く、b ブックマーク切り替え、c リンクコピー、m 全て既読
+// キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、n/p 次/前の未読記事、o 元記事を開く、b ブックマーク切り替え、c リンクコピー、m 全て既読、l レイアウト切替
 export function useKeyboardNav({
   articles,
   selectedFeedId,
@@ -34,6 +36,8 @@ export function useKeyboardNav({
   showToast,
   fontSize,
   onChangeFontSize,
+  layout,
+  onChangeLayout,
 }: KeyboardNavOptions): void {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -80,9 +84,15 @@ export function useKeyboardNav({
         onChangeFontSize(next);
         const labels: Record<FontSize, string> = { small: '小', medium: '中', large: '大' };
         showToast(`文字サイズ: ${labels[next]}`);
+      } else if (e.key === 'l') {
+        const cycle: Layout[] = ['compact', 'list', 'card', 'magazine'];
+        const next = cycle[(cycle.indexOf(layout) + 1) % cycle.length];
+        onChangeLayout(next);
+        const labels: Record<Layout, string> = { compact: 'コンパクト', list: 'リスト', card: 'カード', magazine: 'マガジン' };
+        showToast(`レイアウト: ${labels[next]}`);
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize]);
+  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize, layout, onChangeLayout]);
 }
