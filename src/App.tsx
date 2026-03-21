@@ -86,6 +86,8 @@ export default function App() {
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const [mobilePane, setMobilePane] = useState<MobilePane>('sidebar');
   const [showHelp, setShowHelp] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ログイン後にサーバーの既読・ブックマーク状態をマージ
   useEffect(() => {
@@ -121,6 +123,12 @@ export default function App() {
     syncTimerRef.current = setTimeout(() => {
       saveReadState(localReadRef.current, localBookmarkRef.current);
     }, 2000);
+  }, []);
+
+  const showToast = useCallback((msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(msg);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }, []);
 
   useEffect(() => {
@@ -222,6 +230,7 @@ export default function App() {
     markAllRead,
     toggleBookmark,
     toggleRead,
+    showToast,
   });
 
   // ローディング
@@ -343,6 +352,13 @@ export default function App() {
       className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
       style={{ gridTemplateColumns: '200px 360px 1fr', gridTemplateRows: '100%' }}
     >
+      {/* トースト通知 */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] tracking-[0.04em] px-4 py-2 bg-ink text-ink-text rounded-full shadow-lg animate-fade-up pointer-events-none">
+          {toast}
+        </div>
+      )}
+
       {/* キーボードショートカット ヘルプ */}
       {showHelp && (
         <div
@@ -375,6 +391,7 @@ export default function App() {
                 ['b', 'ブックマーク切替'],
                 ['r', '既読 / 未読切替'],
                 ['m', '全既読にする'],
+                ['c', 'リンクをコピー'],
                 ['/', '記事を検索'],
                 ['?', 'このヘルプを表示'],
               ].map(([key, desc]) => (
@@ -452,6 +469,7 @@ export default function App() {
           onMobileBack={() => setMobilePane('list')}
           fontSize={fontSize}
           onChangeFontSize={onChangeFontSize}
+          showToast={showToast}
         />
       </div>
     </div>
