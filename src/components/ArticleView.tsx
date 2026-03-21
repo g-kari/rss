@@ -254,6 +254,9 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
               })}
             </time>
           )}
+          {article.author && (
+            <span className="tracking-[0.04em] text-text-muted">{article.author}</span>
+          )}
           {article.link && !embedInfo && (
             <a
               href={article.link}
