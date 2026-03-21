@@ -4,6 +4,7 @@ export interface Feed {
   title: string;
   siteUrl: string;
   lastFetchedAt: string | null;
+  fetchError: string | null;
 }
 
 export interface Article {

@@ -26,6 +26,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
       feed.title = parsed.title || feed.title;
       feed.siteUrl = parsed.siteUrl || feed.siteUrl;
       feed.lastFetchedAt = new Date().toISOString();
+      feed.fetchError = null;
 
       return parsed.items.map(
         (item): Article => ({
@@ -44,12 +45,19 @@ async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
     })
   );
 
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      feeds[i].fetchError = result.reason instanceof Error ? result.reason.message : String(result.reason);
+      console.error('Feed fetch failed:', result.reason);
+    }
+  });
+
   await r2Put(env.RSS_DATA, `users/${userId}/feeds.json`, feeds);
 
   const fresh: Article[] = [];
   for (const r of results) {
     if (r.status === 'fulfilled') fresh.push(...r.value);
-    else console.error('Feed fetch failed:', r.reason);
+    else void 0; // already logged above
   }
 
   const merged = new Map<string, Article>(existingByGuid);

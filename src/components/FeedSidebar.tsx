@@ -66,8 +66,23 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
         <span className="text-[13px] tracking-[0.02em] truncate flex-1" title="ダブルクリックでタイトルを編集">{feed.title || feed.url}</span>
       )}
       <span className="flex items-center gap-1 ml-1 flex-shrink-0">
-        {count > 0 && (
+        {feed.fetchError && (
+          <span
+            className="text-rose-400 flex-shrink-0 group-hover:hidden"
+            title={`取得エラー: ${feed.fetchError}`}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 1L9 9H1z" />
+              <line x1="5" y1="4.5" x2="5" y2="6.5" />
+              <circle cx="5" cy="7.8" r="0.3" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
+        )}
+        {count > 0 && !feed.fetchError && (
           <span className="text-[11px] text-text-muted tabular-nums group-hover:hidden">{count > 99 ? '99+' : count}</span>
+        )}
+        {count > 0 && feed.fetchError && (
+          <span className="text-[11px] text-rose-400 tabular-nums group-hover:hidden">{count > 99 ? '99+' : count}</span>
         )}
         <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5">
           {/* ピン留めボタン */}
