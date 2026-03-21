@@ -31,7 +31,7 @@ export async function GET() {
   const result = await requireSession();
   if ('error' in result) return result.error;
   const { session } = result;
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
   return applyRefreshedTokens(NextResponse.json(feeds), session);
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   const result = await requireSession();
   if ('error' in result) return result.error;
   const { session } = result;
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   const body = await request.json() as { url?: string };
   let url = body?.url?.trim();

@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   const result = await requireSession();
   if ('error' in result) return result.error;
   const { session } = result;
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   const text = await request.text();
   if (!text || text.length > 1_000_000) {

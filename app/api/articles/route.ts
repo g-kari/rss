@@ -10,7 +10,7 @@ export async function GET() {
   const result = await requireSession();
   if ('error' in result) return result.error;
   const { session } = result;
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   const articles = await r2Get<Article[]>(env.RSS_DATA, `users/${session.userId}/articles.json`, []);
   return applyRefreshedTokens(NextResponse.json(articles), session);
