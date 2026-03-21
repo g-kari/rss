@@ -104,6 +104,15 @@ export default function App() {
     });
   }, [articles, bookmarkIds]);
 
+  const toggleRead = useCallback((articleId: string) => {
+    setReadIds((prev) => {
+      const next = new Set(prev);
+      next.has(articleId) ? next.delete(articleId) : next.add(articleId);
+      saveSet('rss-read', next);
+      return next;
+    });
+  }, []);
+
   const toggleBookmark = useCallback((articleId: string) => {
     setBookmarkIds((prev) => {
       const next = new Set(prev);
@@ -131,10 +140,12 @@ export default function App() {
     selectedFeedId,
     selectedArticle,
     bookmarkIds,
+    readIds,
     setSelectedArticle,
     markRead,
     markAllRead,
     toggleBookmark,
+    toggleRead,
   });
 
   // ローディング

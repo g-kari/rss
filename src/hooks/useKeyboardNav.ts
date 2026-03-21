@@ -8,10 +8,12 @@ interface KeyboardNavOptions {
   selectedFeedId: string | null;
   selectedArticle: Article | null;
   bookmarkIds: Set<string>;
+  readIds: Set<string>;
   setSelectedArticle: (article: Article) => void;
   markRead: (id: string) => void;
   markAllRead: (feedId: string | null) => void;
   toggleBookmark: (id: string) => void;
+  toggleRead: (id: string) => void;
 }
 
 // キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、o 元記事を開く、b ブックマーク切り替え、m 全て既読
@@ -20,10 +22,12 @@ export function useKeyboardNav({
   selectedFeedId,
   selectedArticle,
   bookmarkIds,
+  readIds,
   setSelectedArticle,
   markRead,
   markAllRead,
   toggleBookmark,
+  toggleRead,
 }: KeyboardNavOptions): void {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -46,11 +50,13 @@ export function useKeyboardNav({
         window.open(selectedArticle.link, '_blank', 'noopener,noreferrer');
       } else if (e.key === 'b' && selectedArticle) {
         toggleBookmark(selectedArticle.id);
+      } else if (e.key === 'r' && selectedArticle) {
+        toggleRead(selectedArticle.id);
       } else if (e.key === 'm') {
         markAllRead(selectedFeedId);
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, setSelectedArticle, markRead, markAllRead, toggleBookmark]);
+  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead]);
 }
