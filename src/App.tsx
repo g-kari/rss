@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import FeedSidebar from './components/FeedSidebar';
 import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
@@ -48,12 +48,37 @@ function loadFontSize(): FontSize {
 const loadReadIds = () => loadSet('rss-read');
 const loadBookmarkIds = () => loadSet('rss-bookmarks');
 
+async function fetchReadState(): Promise<{ readIds: string[]; bookmarkIds: string[] } | null> {
+  try {
+    const res = await fetch('/api/read-state');
+    if (!res.ok) return null;
+    return res.json() as Promise<{ readIds: string[]; bookmarkIds: string[] }>;
+  } catch {
+    return null;
+  }
+}
+
+async function saveReadState(readIds: Set<string>, bookmarkIds: Set<string>): Promise<void> {
+  try {
+    await fetch('/api/read-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ readIds: [...readIds], bookmarkIds: [...bookmarkIds] }),
+    });
+  } catch {
+    // サーバー同期失敗は無視（localStorage は保存済み）
+  }
+}
+
 export default function App() {
   const { user, betaRestricted } = useAuth();
   const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, replaceFeeds, refreshFeeds, dismissNewArticles } = useFeeds(user);
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const localReadRef = useRef(readIds);
+  const localBookmarkRef = useRef(bookmarkIds);
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
@@ -61,6 +86,42 @@ export default function App() {
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const [mobilePane, setMobilePane] = useState<MobilePane>('sidebar');
   const [showHelp, setShowHelp] = useState(false);
+
+  // ログイン後にサーバーの既読・ブックマーク状態をマージ
+  useEffect(() => {
+    if (!user) return;
+    fetchReadState().then((state) => {
+      if (!state) return;
+      setReadIds((prev) => {
+        const merged = new Set([...prev, ...state.readIds]);
+        saveSet('rss-read', merged);
+        localReadRef.current = merged;
+        return merged;
+      });
+      setBookmarkIds((prev) => {
+        const merged = new Set([...prev, ...state.bookmarkIds]);
+        saveSet('rss-bookmarks', merged);
+        localBookmarkRef.current = merged;
+        return merged;
+      });
+    });
+  }, [user]);
+
+  // 既読・ブックマーク変更時にデバウンスしてサーバーへ保存
+  useEffect(() => {
+    localReadRef.current = readIds;
+  }, [readIds]);
+
+  useEffect(() => {
+    localBookmarkRef.current = bookmarkIds;
+  }, [bookmarkIds]);
+
+  const scheduleSyncToServer = useCallback(() => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      saveReadState(localReadRef.current, localBookmarkRef.current);
+    }, 2000);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -87,7 +148,8 @@ export default function App() {
       saveSet('rss-read', next);
       return next;
     });
-  }, []);
+    scheduleSyncToServer();
+  }, [scheduleSyncToServer]);
 
   const markAllRead = useCallback((feedId: string | null) => {
     setReadIds((prev) => {
@@ -103,7 +165,8 @@ export default function App() {
       saveSet('rss-read', next);
       return next;
     });
-  }, [articles, bookmarkIds]);
+    scheduleSyncToServer();
+  }, [articles, bookmarkIds, scheduleSyncToServer]);
 
   const toggleRead = useCallback((articleId: string) => {
     setReadIds((prev) => {
@@ -112,7 +175,8 @@ export default function App() {
       saveSet('rss-read', next);
       return next;
     });
-  }, []);
+    scheduleSyncToServer();
+  }, [scheduleSyncToServer]);
 
   const toggleBookmark = useCallback((articleId: string) => {
     setBookmarkIds((prev) => {
@@ -121,7 +185,8 @@ export default function App() {
       saveSet('rss-bookmarks', next);
       return next;
     });
-  }, []);
+    scheduleSyncToServer();
+  }, [scheduleSyncToServer]);
 
   function onFeedDeleted(id: string) {
     removeFeed(id);
