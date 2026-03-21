@@ -85,6 +85,18 @@ function highlightText(text: string, query: string): ReactNode {
   return <>{parts}</>;
 }
 
+/** 推定読了時間（分）。HTML タグを除去して文字数・語数から算出 */
+function readingTime(html: string): number {
+  const text = html.replace(/<[^>]+>/g, '').trim();
+  if (!text) return 0;
+  const cjk = (text.match(/[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g) ?? []).length;
+  const mins =
+    cjk / text.length > 0.3
+      ? Math.ceil(text.length / 400) // 日本語: 約400字/分
+      : Math.ceil(text.split(/\s+/).filter(Boolean).length / 200); // 英語: 約200語/分
+  return Math.max(1, mins);
+}
+
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
   compact: (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
@@ -263,6 +275,11 @@ export default function ArticleList({
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
             {article.author && <span className="text-[11px] text-text-faint truncate max-w-[100px]">{article.author}</span>}
+            {(() => {
+              const src = article.content ?? article.summary;
+              const mins = src ? readingTime(src) : 0;
+              return mins > 1 ? <span className="text-[11px] text-text-faint">約{mins}分</span> : null;
+            })()}
             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
           </div>
         </div>
@@ -441,7 +458,14 @@ export default function ArticleList({
             </p>
           )}
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+              {(() => {
+                const src = article.content ?? article.summary;
+                const mins = src ? readingTime(src) : 0;
+                return mins > 1 ? <span className="text-[11px] text-text-faint">約{mins}分</span> : null;
+              })()}
+            </div>
             <div className="flex items-center">
               {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:hidden" />}
               {/* ホバーアクション */}
