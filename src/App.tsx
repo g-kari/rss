@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import FeedSidebar from './components/FeedSidebar';
 import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
-import type { Article, Layout, FontSize } from './types';
+import type { Feed, Article, Layout, FontSize } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useFeeds } from './hooks/useFeeds';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
@@ -73,7 +73,7 @@ async function saveReadState(readIds: Set<string>, bookmarkIds: Set<string>): Pr
 
 export default function App() {
   const { user, betaRestricted } = useAuth();
-  const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, replaceFeeds, refreshFeeds, dismissNewArticles } = useFeeds(user);
+  const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, dismissNewArticles } = useFeeds(user);
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
@@ -213,6 +213,10 @@ export default function App() {
       setSelectedFeedId(null);
       setSelectedArticle(null);
     }
+  }
+
+  function onFeedRenamed(feed: Feed) {
+    updateFeed(feed);
   }
 
   const bookmarkCount = useMemo(
@@ -473,6 +477,7 @@ export default function App() {
           }}
           onFeedAdded={onFeedAdded}
           onFeedDeleted={onFeedDeleted}
+          onFeedRenamed={onFeedRenamed}
           onFeedsImported={replaceFeeds}
           onMarkAllRead={markAllRead}
           onToggleTheme={toggleTheme}
