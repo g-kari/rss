@@ -38,6 +38,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
           summary: item.summary,
           content: item.content,
           ogImage: item.ogImage || existingByGuid.get(item.guid)?.ogImage,
+          author: item.author || existingByGuid.get(item.guid)?.author,
           publishedAt: item.publishedAt,
           createdAt: existingByGuid.get(item.guid)?.createdAt ?? new Date().toISOString(),
         })

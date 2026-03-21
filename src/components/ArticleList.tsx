@@ -225,6 +225,7 @@ export default function ArticleList({
           )}
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+            {article.author && <span className="text-[11px] text-text-faint truncate max-w-[100px]">{article.author}</span>}
             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
           </div>
         </div>
@@ -285,7 +286,10 @@ export default function ArticleList({
             </p>
           )}
           <div className="flex items-center justify-between mt-auto pt-1">
-            <span className="text-[10px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-[10px] text-text-faint flex-shrink-0">{timeAgo(article.publishedAt)}</span>
+              {article.author && <span className="text-[10px] text-text-faint truncate">{article.author}</span>}
+            </div>
             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
           </div>
         </div>

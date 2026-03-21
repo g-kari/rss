@@ -7,6 +7,7 @@ interface ParsedItem {
   summary: string;
   content: string;
   ogImage: string;
+  author: string;
   publishedAt: string | null;
 }
 
@@ -122,6 +123,7 @@ export function parseFeed(xml: string): ParsedFeed {
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
           ogImage: extractImage(item),
+          author: stripHtml(str(item['dc:creator'] ?? item.author ?? '')).trim(),
           publishedAt: item.pubDate ? new Date(str(item.pubDate)).toISOString() : null,
         };
       }),
@@ -148,6 +150,7 @@ export function parseFeed(xml: string): ParsedFeed {
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
           ogImage: extractImage(entry),
+          author: stripHtml(str(entry.author?.name ?? entry.author ?? feed.author?.name ?? '')).trim(),
           publishedAt: entry.published ?? entry.updated ?? null,
         };
       }),

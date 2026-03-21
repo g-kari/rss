@@ -16,6 +16,7 @@ export interface Article {
   summary: string;
   content?: string;
   ogImage?: string;
+  author?: string;
   publishedAt: string | null;
   createdAt: string;
 }
