@@ -8,6 +8,7 @@ interface Props {
   feeds: Feed[];
   readIds: Set<string>;
   selectedArticleId: string | null;
+  selectedFeedId: string | null;
   layout: Layout;
   loading?: boolean;
   onChangeLayout: (layout: Layout) => void;
@@ -120,6 +121,7 @@ export default function ArticleList({
   feeds,
   readIds,
   selectedArticleId,
+  selectedFeedId,
   layout,
   loading = false,
   onChangeLayout,
@@ -139,6 +141,9 @@ export default function ArticleList({
 }: Props) {
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
 
+  // 複数フィードを横断表示するとき（すべて・ブックマーク）はフィード名を表示する
+  const showFeedName = selectedFeedId === null || selectedFeedId === '__bookmarks__';
+
   useEffect(() => {
     if (selectedArticleId) {
       document
@@ -155,6 +160,7 @@ export default function ArticleList({
   function renderCompact(article: Article, i: number) {
     const isRead = readIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
+    const feedName = showFeedName ? (feedMap.get(article.feedId) ?? '') : '';
     return (
       <div
         key={article.id}
@@ -175,6 +181,9 @@ export default function ArticleList({
         >
           {highlightText(article.title || '(タイトルなし)', query)}
         </span>
+        {feedName && (
+          <span className="text-[11px] text-text-faint truncate max-w-[80px] flex-shrink-0">{feedName}</span>
+        )}
         <span className="text-[11px] text-text-faint flex-shrink-0">{timeAgo(article.publishedAt)}</span>
       </div>
     );
@@ -185,6 +194,7 @@ export default function ArticleList({
     const isRead = readIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
     const thumb = resolveThumbnail(article);
+    const feedName = showFeedName ? (feedMap.get(article.feedId) ?? '') : '';
     return (
       <div
         key={article.id}
@@ -198,6 +208,9 @@ export default function ArticleList({
         style={{ animationDelay: `${Math.min(i, 20) * 25}ms` }}
       >
         <div className="flex-1 min-w-0">
+          {feedName && (
+            <span className="text-[10px] text-text-faint tracking-[0.04em] mb-0.5 block truncate">{feedName}</span>
+          )}
           <h3
             className={`text-[13px] leading-snug line-clamp-2 mb-1 transition-colors duration-200 ${
               isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
