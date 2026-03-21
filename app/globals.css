@@ -20,6 +20,7 @@
   --color-ink-text: #ffffff;           /* white: 主アクション上のテキスト */
   --color-accent-dot: #fb7185;         /* rose-400: 未読ドット */
   --color-bookmark: #fbbf24;           /* amber-400: ブックマーク */
+  --color-highlight: #fef3c7;          /* amber-100: 検索ハイライト */
 }
 
 /* ダークテーマ (zinc/indigo パレット) */
@@ -40,6 +41,7 @@
   --color-ink-text: #09090b;                /* zinc-950 */
   --color-accent-dot: #6366f1;              /* indigo-500 */
   --color-bookmark: #fbbf24;
+  --color-highlight: rgba(99, 102, 241, 0.18); /* indigo-500/18: 検索ハイライト */
 }
 
 html, body {
