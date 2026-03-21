@@ -138,6 +138,15 @@ export default function App() {
     localStorage.setItem('rss-theme', theme);
   }, [theme]);
 
+  const totalUnread = useMemo(
+    () => articles.filter((a) => !readIds.has(a.id)).length,
+    [articles, readIds],
+  );
+
+  useEffect(() => {
+    document.title = totalUnread > 0 ? `(${totalUnread}) RSS Reader` : 'RSS Reader';
+  }, [totalUnread]);
+
   const toggleTheme = useCallback(() => {
     setTheme((t) => (t === 'light' ? 'dark' : 'light'));
   }, []);
