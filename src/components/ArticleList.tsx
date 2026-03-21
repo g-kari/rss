@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useEffect, type ReactElement, type ReactNode, type RefObject } from 'react';
-import type { Article, Feed, Layout } from '../types';
+import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
 
 interface Props {
@@ -25,6 +25,8 @@ interface Props {
   toggleUnreadOnly: () => void;
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
+  dateRange: DateRange;
+  cycleDateRange: () => void;
   query: string;
   updateQuery: (q: string) => void;
   searchRef: RefObject<HTMLInputElement | null>;
@@ -152,6 +154,8 @@ export default function ArticleList({
   toggleUnreadOnly,
   sortOrder,
   toggleSortOrder,
+  dateRange,
+  cycleDateRange,
   query,
   updateQuery,
   searchRef,
@@ -552,6 +556,17 @@ export default function ArticleList({
               }`}
             >
               未読
+            </button>
+            <button
+              onClick={cycleDateRange}
+              title="日付フィルター切り替え (d)"
+              className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
+                dateRange !== 'all'
+                  ? 'border-ink bg-ink text-ink-text'
+                  : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
+              }`}
+            >
+              {dateRange === 'all' ? '日付' : dateRange === 'today' ? '今日' : dateRange === 'week' ? '今週' : '今月'}
             </button>
             <button
               onClick={toggleSortOrder}

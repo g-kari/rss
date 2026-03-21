@@ -23,6 +23,7 @@ export interface Article {
 
 export type Layout = 'compact' | 'list' | 'card' | 'magazine';
 export type FontSize = 'small' | 'medium' | 'large';
+export type DateRange = 'all' | 'today' | 'week' | 'month';
 
 export interface UserProfile {
   id: string;       // 0g0 内部ユーザーID

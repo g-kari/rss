@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import type { Article } from '../types';
+import type { Article, DateRange } from '../types';
 
 const PAGE_SIZE = 30;
 
@@ -12,11 +12,29 @@ interface Options {
 
 export type SortOrder = 'newest' | 'oldest';
 
+function getDateRangeStart(range: DateRange): Date | null {
+  if (range === 'all') return null;
+  const now = new Date();
+  if (range === 'today') {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  if (range === 'week') {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 7);
+    return d;
+  }
+  // month
+  const d = new Date(now);
+  d.setMonth(d.getMonth() - 1);
+  return d;
+}
+
 export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [dateRange, setDateRange] = useState<DateRange>('all');
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +56,12 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: 
 
   const toggleSortOrder = useCallback(() => {
     setSortOrder((v) => (v === 'newest' ? 'oldest' : 'newest'));
+    setPage(1);
+  }, []);
+
+  const cycleDateRange = useCallback(() => {
+    const cycle: DateRange[] = ['all', 'today', 'week', 'month'];
+    setDateRange((v) => cycle[(cycle.indexOf(v) + 1) % cycle.length]);
     setPage(1);
   }, []);
 
@@ -72,11 +96,18 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: 
         (a) => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q),
       );
     }
+    const rangeStart = getDateRangeStart(dateRange);
+    if (rangeStart) {
+      list = list.filter((a) => {
+        if (!a.publishedAt) return false;
+        return new Date(a.publishedAt) >= rangeStart;
+      });
+    }
     if (sortOrder === 'oldest') {
       list = [...list].reverse();
     }
     return list;
-  }, [articles, feedId, readIds, bookmarkIds, unreadOnly, query, sortOrder]);
+  }, [articles, feedId, readIds, bookmarkIds, unreadOnly, query, sortOrder, dateRange]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
@@ -89,6 +120,8 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: 
     toggleUnreadOnly,
     sortOrder,
     toggleSortOrder,
+    dateRange,
+    cycleDateRange,
     query,
     updateQuery,
     searchRef,
