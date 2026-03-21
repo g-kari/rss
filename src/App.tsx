@@ -60,6 +60,7 @@ export default function App() {
   const [fontSize, setFontSize] = useState<FontSize>(loadFontSize);
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const [mobilePane, setMobilePane] = useState<MobilePane>('sidebar');
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -134,6 +135,16 @@ export default function App() {
     () => articles.filter((a) => bookmarkIds.has(a.id)).length,
     [articles, bookmarkIds],
   );
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === '?') setShowHelp((v) => !v);
+      if (e.key === 'Escape') setShowHelp(false);
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useKeyboardNav({
     articles,
@@ -267,6 +278,48 @@ export default function App() {
       className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
       style={{ gridTemplateColumns: '200px 360px 1fr', gridTemplateRows: '100%' }}
     >
+      {/* キーボードショートカット ヘルプ */}
+      {showHelp && (
+        <div
+          className="absolute inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm"
+          onClick={() => setShowHelp(false)}
+        >
+          <div
+            className="bg-surface-elevated border border-border-default rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.2)] p-6 w-72"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">キーボードショートカット</span>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="text-text-faint hover:text-text-muted transition-colors"
+                aria-label="閉じる"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M2 2l10 10M12 2L2 12"/>
+                </svg>
+              </button>
+            </div>
+            <ul className="space-y-2">
+              {[
+                ['j / ↓', '次の記事'],
+                ['k / ↑', '前の記事'],
+                ['o', '元記事を開く'],
+                ['b', 'ブックマーク切替'],
+                ['r', '既読 / 未読切替'],
+                ['m', '全既読にする'],
+                ['/', '記事を検索'],
+                ['?', 'このヘルプを表示'],
+              ].map(([key, desc]) => (
+                <li key={key} className="flex items-center justify-between">
+                  <kbd className="text-[11px] font-mono px-1.5 py-0.5 rounded border border-border-default bg-surface-base text-text-muted">{key}</kbd>
+                  <span className="text-[12px] text-text-soft">{desc}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
       {newArticleCount > 0 && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-ink text-ink-text text-[12px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] animate-fade-up">
           <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />

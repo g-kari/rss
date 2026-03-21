@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, type ReactElement } from 'react';
+import { useState, useMemo, useEffect, useRef, type ReactElement } from 'react';
 import type { Article, Feed, Layout } from '../types';
 
 interface Props {
@@ -92,6 +92,19 @@ export default function ArticleList({
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === '/') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
 
@@ -360,10 +373,14 @@ export default function ArticleList({
         </div>
         <div className="px-3 pb-2.5">
           <input
+            ref={searchRef}
             type="search"
-            placeholder="検索..."
+            placeholder="検索... (/ でフォーカス)"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') { setQuery(''); setPage(1); searchRef.current?.blur(); }
+            }}
             className="w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
           />
         </div>
