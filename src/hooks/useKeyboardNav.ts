@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import type { Article } from '../types';
+import type { Article, FontSize } from '../types';
 
 interface KeyboardNavOptions {
   articles: Article[];
@@ -15,6 +15,8 @@ interface KeyboardNavOptions {
   toggleBookmark: (id: string) => void;
   toggleRead: (id: string) => void;
   showToast: (msg: string) => void;
+  fontSize: FontSize;
+  onChangeFontSize: (size: FontSize) => void;
 }
 
 // キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、n/p 次/前の未読記事、o 元記事を開く、b ブックマーク切り替え、c リンクコピー、m 全て既読
@@ -30,6 +32,8 @@ export function useKeyboardNav({
   toggleBookmark,
   toggleRead,
   showToast,
+  fontSize,
+  onChangeFontSize,
 }: KeyboardNavOptions): void {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -70,9 +74,15 @@ export function useKeyboardNav({
         }).catch(() => {
           showToast('コピーに失敗しました');
         });
+      } else if (e.key === 'f') {
+        const cycle: FontSize[] = ['small', 'medium', 'large'];
+        const next = cycle[(cycle.indexOf(fontSize) + 1) % cycle.length];
+        onChangeFontSize(next);
+        const labels: Record<FontSize, string> = { small: '小', medium: '中', large: '大' };
+        showToast(`文字サイズ: ${labels[next]}`);
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead, showToast]);
+  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize]);
 }
