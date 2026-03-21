@@ -4,13 +4,12 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import FeedSidebar from './components/FeedSidebar';
 import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
-import type { Article, Layout } from './types';
+import type { Article, Layout, FontSize } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useFeeds } from './hooks/useFeeds';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
 
 type Theme = 'light' | 'dark';
-type FontSize = 'small' | 'medium' | 'large';
 type MobilePane = 'sidebar' | 'list' | 'view';
 
 function loadSet(key: string): Set<string> {
@@ -231,6 +230,8 @@ export default function App() {
     toggleBookmark,
     toggleRead,
     showToast,
+    fontSize,
+    onChangeFontSize,
   });
 
   // ローディング
@@ -392,6 +393,7 @@ export default function App() {
                 ['r', '既読 / 未読切替'],
                 ['m', '全既読にする'],
                 ['c', 'リンクをコピー'],
+                ['f', 'フォントサイズ切替'],
                 ['/', '記事を検索'],
                 ['?', 'このヘルプを表示'],
               ].map(([key, desc]) => (

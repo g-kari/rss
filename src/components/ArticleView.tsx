@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Article } from '../types';
+import type { Article, FontSize } from '../types';
 
 type AiMode = 'summary' | 'translation';
-type FontSize = 'small' | 'medium' | 'large';
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   small: 'text-[14px] leading-[1.75]',
