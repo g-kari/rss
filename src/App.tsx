@@ -260,12 +260,11 @@ export default function App() {
   } = useFilteredArticles({ articles, feedId: selectedFeedId, readIds, bookmarkIds });
 
   useKeyboardNav({
-    articles,
+    filteredArticles: filtered,
     feeds,
     pinnedFeedIds,
     selectedFeedId,
     selectedArticle,
-    bookmarkIds,
     readIds,
     setSelectedArticle,
     onSelectFeed: (id) => {
