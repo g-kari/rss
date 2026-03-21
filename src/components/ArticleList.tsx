@@ -1,20 +1,27 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, type ReactElement } from 'react';
+import { useMemo, useEffect, type ReactElement, type RefObject } from 'react';
 import type { Article, Feed, Layout } from '../types';
 
 interface Props {
-  articles: Article[];
   feeds: Feed[];
-  feedId: string | null;
   readIds: Set<string>;
-  bookmarkIds: Set<string>;
   selectedArticleId: string | null;
   layout: Layout;
   loading?: boolean;
   onChangeLayout: (layout: Layout) => void;
   onSelectArticle: (article: Article) => void;
   onMobileBack?: () => void;
+  // useFilteredArticles からの状態（App.tsx で管理）
+  filtered: Article[];
+  visible: Article[];
+  hasMore: boolean;
+  unreadOnly: boolean;
+  toggleUnreadOnly: () => void;
+  query: string;
+  updateQuery: (q: string) => void;
+  searchRef: RefObject<HTMLInputElement | null>;
+  sentinelRef: RefObject<HTMLDivElement | null>;
 }
 
 /** ogImage がない場合、YouTube URL からサムネイルを生成 */
@@ -38,8 +45,6 @@ function timeAgo(iso: string | null): string {
   if (days < 7) return `${days}日前`;
   return new Date(iso).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
 }
-
-const PAGE_SIZE = 30;
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
   compact: (
@@ -77,43 +82,25 @@ const LAYOUT_ICONS: Record<Layout, ReactElement> = {
 const LAYOUTS: Layout[] = ['compact', 'list', 'card', 'magazine'];
 
 export default function ArticleList({
-  articles,
   feeds,
-  feedId,
   readIds,
-  bookmarkIds,
   selectedArticleId,
   layout,
   loading = false,
   onChangeLayout,
   onSelectArticle,
   onMobileBack,
+  filtered,
+  visible,
+  hasMore,
+  unreadOnly,
+  toggleUnreadOnly,
+  query,
+  updateQuery,
+  searchRef,
+  sentinelRef,
 }: Props) {
-  const [unreadOnly, setUnreadOnly] = useState(false);
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === '/') {
-        e.preventDefault();
-        searchRef.current?.focus();
-      } else if (e.key === 'u') {
-        e.preventDefault();
-        setUnreadOnly((v) => !v);
-        setPage(1);
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
-
-  // フィード切り替え時にページをリセット
-  useEffect(() => { setPage(1); }, [feedId]);
 
   useEffect(() => {
     if (selectedArticleId) {
@@ -122,26 +109,6 @@ export default function ArticleList({
         ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }, [selectedArticleId]);
-
-  const filtered = useMemo(() => {
-    let list =
-      feedId === '__bookmarks__'
-        ? articles.filter((a) => bookmarkIds.has(a.id))
-        : feedId
-          ? articles.filter((a) => a.feedId === feedId)
-          : articles;
-    if (unreadOnly) list = list.filter((a) => !readIds.has(a.id));
-    if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      list = list.filter(
-        (a) => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [articles, feedId, readIds, bookmarkIds, unreadOnly, query]);
-
-  const visible = filtered.slice(0, page * PAGE_SIZE);
-  const hasMore = visible.length < filtered.length;
 
   function handleSelect(article: Article) {
     onSelectArticle(article);
@@ -367,7 +334,7 @@ export default function ArticleList({
               ))}
             </div>
             <button
-              onClick={() => { setUnreadOnly((v) => !v); setPage(1); }}
+              onClick={toggleUnreadOnly}
               className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
                 unreadOnly
                   ? 'border-ink bg-ink text-ink-text'
@@ -384,9 +351,9 @@ export default function ArticleList({
             type="search"
             placeholder="検索... (/ でフォーカス)"
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            onChange={(e) => updateQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Escape') { setQuery(''); setPage(1); searchRef.current?.blur(); }
+              if (e.key === 'Escape') { updateQuery(''); searchRef.current?.blur(); }
             }}
             className="w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
           />
@@ -394,7 +361,7 @@ export default function ArticleList({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {loading && articles.length === 0 && (
+        {loading && filtered.length === 0 && (
           <div className="flex items-center justify-center h-40">
             <p className="text-[12px] text-text-faint">読み込み中...</p>
           </div>
@@ -428,14 +395,7 @@ export default function ArticleList({
           </>
         )}
 
-        {hasMore && (
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            className="w-full py-4 text-[11px] tracking-[0.08em] text-text-faint hover:text-text-soft transition-colors duration-200"
-          >
-            さらに読み込む ({filtered.length - visible.length})
-          </button>
-        )}
+        {hasMore && <div ref={sentinelRef} className="h-10" aria-hidden />}
       </div>
     </section>
   );

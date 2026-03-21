@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type RefObject } from 'react';
 import type { Article, FontSize, Layout } from '../types';
 
 interface KeyboardNavOptions {
@@ -19,9 +19,12 @@ interface KeyboardNavOptions {
   onChangeFontSize: (size: FontSize) => void;
   layout: Layout;
   onChangeLayout: (layout: Layout) => void;
+  unreadOnly: boolean;
+  toggleUnreadOnly: () => void;
+  searchRef: RefObject<HTMLInputElement | null>;
 }
 
-// キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、n/p 次/前の未読記事、o 元記事を開く、b ブックマーク切り替え、c リンクコピー、m 全て既読、l レイアウト切替
+// キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、n/p 次/前の未読記事、o 元記事を開く、b ブックマーク切り替え、c リンクコピー、m 全て既読、l レイアウト切替、u 未読フィルター切替、/ 検索フォーカス
 export function useKeyboardNav({
   articles,
   selectedFeedId,
@@ -38,6 +41,9 @@ export function useKeyboardNav({
   onChangeFontSize,
   layout,
   onChangeLayout,
+  unreadOnly,
+  toggleUnreadOnly,
+  searchRef,
 }: KeyboardNavOptions): void {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -90,9 +96,16 @@ export function useKeyboardNav({
         onChangeLayout(next);
         const labels: Record<Layout, string> = { compact: 'コンパクト', list: 'リスト', card: 'カード', magazine: 'マガジン' };
         showToast(`レイアウト: ${labels[next]}`);
+      } else if (e.key === 'u') {
+        e.preventDefault();
+        toggleUnreadOnly();
+        showToast(!unreadOnly ? '未読フィルター: ON' : '未読フィルター: OFF');
+      } else if (e.key === '/') {
+        e.preventDefault();
+        searchRef.current?.focus();
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize, layout, onChangeLayout]);
+  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize, layout, onChangeLayout, unreadOnly, toggleUnreadOnly, searchRef]);
 }
