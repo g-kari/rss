@@ -112,6 +112,9 @@ export default function ArticleList({
 
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
 
+  // フィード切り替え時にページをリセット
+  useEffect(() => { setPage(1); }, [feedId]);
+
   useEffect(() => {
     if (selectedArticleId) {
       document
