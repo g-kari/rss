@@ -13,6 +13,7 @@ interface FeedsState {
   newArticleCount: number;
   onFeedAdded: (feed: Feed) => void;
   removeFeed: (id: string) => void;
+  updateFeed: (feed: Feed) => void;
   replaceFeeds: (feeds: Feed[]) => void;
   refreshFeeds: () => Promise<void>;
   dismissNewArticles: () => void;
@@ -78,6 +79,10 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     setArticles((prev) => prev.filter((a) => a.feedId !== id));
   }, []);
 
+  const updateFeed = useCallback((feed: Feed) => {
+    setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
+  }, []);
+
   const replaceFeeds = useCallback((newFeeds: Feed[]) => {
     setFeeds(newFeeds);
     // インポート後に記事を再取得する
@@ -109,5 +114,5 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     setNewArticleCount(0);
   }, []);
 
-  return { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, replaceFeeds, refreshFeeds, dismissNewArticles };
+  return { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, dismissNewArticles };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useMemo } from 'react';
+import { useRef, useState, useMemo, useCallback } from 'react';
 import type { Feed, Article, UserProfile } from '../types';
 
 interface FeedItemProps {
@@ -13,12 +13,37 @@ interface FeedItemProps {
   onMarkAllRead: () => void;
   onDelete: (e: React.MouseEvent) => void;
   onTogglePin: (e: React.MouseEvent) => void;
+  onRename: (title: string) => Promise<void>;
 }
 
-function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect, onMarkAllRead, onDelete, onTogglePin }: FeedItemProps) {
+function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect, onMarkAllRead, onDelete, onTogglePin, onRename }: FeedItemProps) {
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditTitle(feed.title || feed.url);
+    setEditing(true);
+    setTimeout(() => { inputRef.current?.select(); }, 0);
+  }, [feed.title, feed.url]);
+
+  const commitEdit = useCallback(async () => {
+    setEditing(false);
+    const trimmed = editTitle.trim();
+    if (!trimmed || trimmed === (feed.title || feed.url)) return;
+    await onRename(trimmed);
+  }, [editTitle, feed.title, feed.url, onRename]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') { e.preventDefault(); void commitEdit(); }
+    if (e.key === 'Escape') { setEditing(false); }
+  }, [commitEdit]);
+
   return (
     <div
-      onClick={onSelect}
+      onClick={editing ? undefined : onSelect}
+      onDoubleClick={editing ? undefined : startEdit}
       className={`group flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 animate-fade-up ${
         isSelected
           ? 'text-text-strong bg-surface-subtle'
@@ -26,7 +51,20 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
       }`}
       style={{ animationDelay: `${animationIndex * 40}ms` }}
     >
-      <span className="text-[13px] tracking-[0.02em] truncate flex-1">{feed.title || feed.url}</span>
+      {editing ? (
+        <input
+          ref={inputRef}
+          type="text"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onBlur={() => { void commitEdit(); }}
+          onKeyDown={handleKeyDown}
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 text-[13px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted min-w-0"
+        />
+      ) : (
+        <span className="text-[13px] tracking-[0.02em] truncate flex-1" title="ダブルクリックでタイトルを編集">{feed.title || feed.url}</span>
+      )}
       <span className="flex items-center gap-1 ml-1 flex-shrink-0">
         {count > 0 && (
           <span className="text-[11px] text-text-muted tabular-nums group-hover:hidden">{count > 99 ? '99+' : count}</span>
@@ -82,6 +120,7 @@ interface Props {
   onSelectFeed: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
+  onFeedRenamed: (feed: Feed) => void;
   onFeedsImported: (feeds: Feed[]) => void;
   onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
@@ -100,6 +139,7 @@ export default function FeedSidebar({
   onSelectFeed,
   onFeedAdded,
   onFeedDeleted,
+  onFeedRenamed,
   onFeedsImported,
   onMarkAllRead,
   onToggleTheme,
@@ -150,6 +190,20 @@ export default function FeedSidebar({
       return;
     }
     onFeedDeleted(id);
+  }
+
+  async function renameFeed(id: string, title: string) {
+    const res = await fetch(`/api/feeds/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    });
+    if (!res.ok) {
+      setError('フィードのタイトル変更に失敗しました');
+      return;
+    }
+    const updated = await res.json() as Feed;
+    onFeedRenamed(updated);
   }
 
   async function logout() {
@@ -350,6 +404,7 @@ export default function FeedSidebar({
               onMarkAllRead={() => onMarkAllRead(feed.id)}
               onDelete={(e) => deleteFeed(feed.id, e)}
               onTogglePin={(e) => { e.stopPropagation(); onTogglePinFeed(feed.id); }}
+              onRename={(title) => renameFeed(feed.id, title)}
             />
           );
         })}
@@ -375,6 +430,7 @@ export default function FeedSidebar({
               onMarkAllRead={() => onMarkAllRead(feed.id)}
               onDelete={(e) => deleteFeed(feed.id, e)}
               onTogglePin={(e) => { e.stopPropagation(); onTogglePinFeed(feed.id); }}
+              onRename={(title) => renameFeed(feed.id, title)}
             />
           );
         })}
