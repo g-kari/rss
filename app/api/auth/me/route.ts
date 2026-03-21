@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const cookieStore = await cookies();
   const token = cookieStore.get('access_token')?.value;
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   // URL パラメーターでベータ制限リダイレクトを検出
   const url = new URL(request.url);

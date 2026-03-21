@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   }
 
   // プロフィールを R2 に保存
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
   const profile: UserProfile = {
     id: tokens.user.id,
     sub,

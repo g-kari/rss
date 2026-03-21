@@ -18,7 +18,7 @@ export async function GET() {
   const result = await requireSession();
   if ('error' in result) return result.error;
   const { session } = result;
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   const state = await r2Get<ReadState>(env.RSS_DATA, r2Key(session.userId), {
     readIds: [],
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const result = await requireSession();
   if ('error' in result) return result.error;
   const { session } = result;
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   const body = (await req.json()) as Partial<ReadState>;
   const readIds = Array.isArray(body.readIds) ? (body.readIds as string[]) : [];

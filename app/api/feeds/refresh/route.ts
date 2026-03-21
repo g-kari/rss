@@ -9,7 +9,7 @@ export async function POST() {
   const result = await requireSession();
   if ('error' in result) return result.error;
   const { session } = result;
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   await fetchArticles(env, session.userId);
   return applyRefreshedTokens(NextResponse.json({ ok: true }), session);
