@@ -1,16 +1,19 @@
 'use client';
 
 import { useEffect, type RefObject } from 'react';
-import type { Article, FontSize, Layout } from '../types';
+import type { Article, Feed, FontSize, Layout } from '../types';
 import type { SortOrder } from './useFilteredArticles';
 
 interface KeyboardNavOptions {
   articles: Article[];
+  feeds: Feed[];
+  pinnedFeedIds: Set<string>;
   selectedFeedId: string | null;
   selectedArticle: Article | null;
   bookmarkIds: Set<string>;
   readIds: Set<string>;
   setSelectedArticle: (article: Article) => void;
+  onSelectFeed: (id: string | null) => void;
   markRead: (id: string) => void;
   markAllRead: (feedId: string | null) => void;
   toggleBookmark: (id: string) => void;
@@ -30,11 +33,14 @@ interface KeyboardNavOptions {
 // キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、n/p 次/前の未読記事、o 元記事を開く、b ブックマーク切り替え、c リンクコピー、m 全て既読、l レイアウト切替、u 未読フィルター切替、/ 検索フォーカス
 export function useKeyboardNav({
   articles,
+  feeds,
+  pinnedFeedIds,
   selectedFeedId,
   selectedArticle,
   bookmarkIds,
   readIds,
   setSelectedArticle,
+  onSelectFeed,
   markRead,
   markAllRead,
   toggleBookmark,
@@ -111,9 +117,31 @@ export function useKeyboardNav({
       } else if (e.key === '/') {
         e.preventDefault();
         searchRef.current?.focus();
+      } else if (e.key === ']') {
+        e.preventDefault();
+        const ordered = [
+          null,
+          ...feeds.filter((f) => pinnedFeedIds.has(f.id)),
+          ...feeds.filter((f) => !pinnedFeedIds.has(f.id)),
+        ];
+        const cur = ordered.findIndex((f) => (f === null ? selectedFeedId === null : f.id === selectedFeedId));
+        const next = ordered[(cur + 1) % ordered.length];
+        onSelectFeed(next ? next.id : null);
+        showToast(next ? (next.title || next.url) : '全記事');
+      } else if (e.key === '[') {
+        e.preventDefault();
+        const ordered = [
+          null,
+          ...feeds.filter((f) => pinnedFeedIds.has(f.id)),
+          ...feeds.filter((f) => !pinnedFeedIds.has(f.id)),
+        ];
+        const cur = ordered.findIndex((f) => (f === null ? selectedFeedId === null : f.id === selectedFeedId));
+        const prev = ordered[(cur - 1 + ordered.length) % ordered.length];
+        onSelectFeed(prev ? prev.id : null);
+        showToast(prev ? (prev.title || prev.url) : '全記事');
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize, layout, onChangeLayout, unreadOnly, toggleUnreadOnly, sortOrder, toggleSortOrder, searchRef]);
+  }, [articles, feeds, pinnedFeedIds, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, onSelectFeed, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize, layout, onChangeLayout, unreadOnly, toggleUnreadOnly, sortOrder, toggleSortOrder, searchRef]);
 }
