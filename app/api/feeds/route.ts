@@ -63,6 +63,7 @@ export async function POST(request: Request) {
     title: url,
     siteUrl: '',
     lastFetchedAt: null,
+    fetchError: null,
   };
   list.push(newFeed);
   await r2Put(env.RSS_DATA, `users/${session.userId}/feeds.json`, list);

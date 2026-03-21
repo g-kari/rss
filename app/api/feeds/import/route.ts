@@ -77,6 +77,7 @@ export async function POST(request: Request) {
       title: entry.title,
       siteUrl: entry.siteUrl,
       lastFetchedAt: null,
+      fetchError: null,
     };
     list.push(newFeed);
     existingUrls.add(entry.url);
