@@ -500,6 +500,7 @@ export default function App() {
         <ArticleList
           feeds={feeds}
           readIds={readIds}
+          bookmarkIds={bookmarkIds}
           selectedArticleId={selectedArticle?.id ?? null}
           selectedFeedId={selectedFeedId}
           layout={layout}
@@ -511,6 +512,8 @@ export default function App() {
             markRead(article.id);
             setMobilePane('view');
           }}
+          onToggleRead={toggleRead}
+          onToggleBookmark={toggleBookmark}
           filtered={filtered}
           visible={visible}
           hasMore={hasMore}

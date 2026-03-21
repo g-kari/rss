@@ -7,12 +7,15 @@ import type { SortOrder } from '../hooks/useFilteredArticles';
 interface Props {
   feeds: Feed[];
   readIds: Set<string>;
+  bookmarkIds: Set<string>;
   selectedArticleId: string | null;
   selectedFeedId: string | null;
   layout: Layout;
   loading?: boolean;
   onChangeLayout: (layout: Layout) => void;
   onSelectArticle: (article: Article) => void;
+  onToggleRead: (id: string) => void;
+  onToggleBookmark: (id: string) => void;
   onMobileBack?: () => void;
   // useFilteredArticles からの状態（App.tsx で管理）
   filtered: Article[];
@@ -120,12 +123,15 @@ const LAYOUTS: Layout[] = ['compact', 'list', 'card', 'magazine'];
 export default function ArticleList({
   feeds,
   readIds,
+  bookmarkIds,
   selectedArticleId,
   selectedFeedId,
   layout,
   loading = false,
   onChangeLayout,
   onSelectArticle,
+  onToggleRead,
+  onToggleBookmark,
   onMobileBack,
   filtered,
   visible,
@@ -159,6 +165,7 @@ export default function ArticleList({
   /* ── compact ── */
   function renderCompact(article: Article, i: number) {
     const isRead = readIds.has(article.id);
+    const isBookmarked = bookmarkIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
     const feedName = showFeedName ? (feedMap.get(article.feedId) ?? '') : '';
     return (
@@ -166,7 +173,7 @@ export default function ArticleList({
         key={article.id}
         id={`article-${article.id}`}
         onClick={() => handleSelect(article)}
-        className={`flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
+        className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
           isSelected
             ? 'bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]'
             : 'hover:bg-surface-hover'
@@ -182,9 +189,38 @@ export default function ArticleList({
           {highlightText(article.title || '(タイトルなし)', query)}
         </span>
         {feedName && (
-          <span className="text-[11px] text-text-faint truncate max-w-[80px] flex-shrink-0">{feedName}</span>
+          <span className="text-[11px] text-text-faint truncate max-w-[80px] flex-shrink-0 group-hover:hidden">{feedName}</span>
         )}
-        <span className="text-[11px] text-text-faint flex-shrink-0">{timeAgo(article.publishedAt)}</span>
+        <span className="text-[11px] text-text-faint flex-shrink-0 group-hover:hidden">{timeAgo(article.publishedAt)}</span>
+        {/* ホバーアクション */}
+        <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => onToggleRead(article.id)}
+            title={isRead ? '未読にする' : '既読にする'}
+            className="w-6 h-6 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150"
+          >
+            {isRead ? (
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="6" cy="6" r="4.5"/>
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <circle cx="6" cy="6" r="3.5"/>
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={() => onToggleBookmark(article.id)}
+            title={isBookmarked ? 'ブックマーク解除' : 'ブックマーク'}
+            className={`w-6 h-6 flex items-center justify-center rounded transition-all duration-150 ${
+              isBookmarked ? 'text-bookmark' : 'text-text-faint hover:text-text-muted hover:bg-surface-subtle'
+            }`}
+          >
+            <svg width="11" height="13" viewBox="0 0 11 13" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 1h9v11l-4.5-3L1 12V1z"/>
+            </svg>
+          </button>
+        </div>
       </div>
     );
   }
@@ -192,6 +228,7 @@ export default function ArticleList({
   /* ── list (デフォルト) ── */
   function renderList(article: Article, i: number) {
     const isRead = readIds.has(article.id);
+    const isBookmarked = bookmarkIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
     const thumb = resolveThumbnail(article);
     const feedName = showFeedName ? (feedMap.get(article.feedId) ?? '') : '';
@@ -200,7 +237,7 @@ export default function ArticleList({
         key={article.id}
         id={`article-${article.id}`}
         onClick={() => handleSelect(article)}
-        className={`flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
+        className={`group flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
           isSelected
             ? 'bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]'
             : 'hover:bg-surface-hover'
@@ -229,15 +266,46 @@ export default function ArticleList({
             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
           </div>
         </div>
-        {thumb && (
-          <img
-            src={thumb}
-            alt=""
-            className="w-14 h-14 object-cover rounded flex-shrink-0"
-            loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        )}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          {thumb && (
+            <img
+              src={thumb}
+              alt=""
+              className="w-14 h-14 object-cover rounded"
+              loading="lazy"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
+          {/* ホバーアクション */}
+          <div className="hidden group-hover:flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => onToggleRead(article.id)}
+              title={isRead ? '未読にする' : '既読にする'}
+              className="w-6 h-6 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150"
+            >
+              {isRead ? (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="6" cy="6" r="4.5"/>
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                  <circle cx="6" cy="6" r="3.5"/>
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={() => onToggleBookmark(article.id)}
+              title={isBookmarked ? 'ブックマーク解除' : 'ブックマーク'}
+              className={`w-6 h-6 flex items-center justify-center rounded transition-all duration-150 ${
+                isBookmarked ? 'text-bookmark' : 'text-text-faint hover:text-text-muted hover:bg-surface-subtle'
+              }`}
+            >
+              <svg width="11" height="13" viewBox="0 0 11 13" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 1h9v11l-4.5-3L1 12V1z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
