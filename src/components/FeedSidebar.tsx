@@ -3,6 +3,72 @@
 import { useRef, useState, useMemo } from 'react';
 import type { Feed, Article, UserProfile } from '../types';
 
+interface FeedItemProps {
+  feed: Feed;
+  count: number;
+  isSelected: boolean;
+  isPinned: boolean;
+  animationIndex: number;
+  onSelect: () => void;
+  onMarkAllRead: () => void;
+  onDelete: (e: React.MouseEvent) => void;
+  onTogglePin: (e: React.MouseEvent) => void;
+}
+
+function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect, onMarkAllRead, onDelete, onTogglePin }: FeedItemProps) {
+  return (
+    <div
+      onClick={onSelect}
+      className={`group flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 animate-fade-up ${
+        isSelected
+          ? 'text-text-strong bg-surface-subtle'
+          : 'text-text-muted hover:text-text-strong hover:bg-surface-hover'
+      }`}
+      style={{ animationDelay: `${animationIndex * 40}ms` }}
+    >
+      <span className="text-[13px] tracking-[0.02em] truncate flex-1">{feed.title || feed.url}</span>
+      <span className="flex items-center gap-1 ml-1 flex-shrink-0">
+        {count > 0 && (
+          <span className="text-[11px] text-text-muted tabular-nums group-hover:hidden">{count > 99 ? '99+' : count}</span>
+        )}
+        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5">
+          {/* ピン留めボタン */}
+          <button
+            onClick={onTogglePin}
+            className={`p-0.5 transition-colors duration-150 ${isPinned ? 'text-text-default' : 'text-text-faint hover:text-text-default'}`}
+            title={isPinned ? 'ピン解除' : 'ピン留め'}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 1L6.5 4H9L7 6l.5 3L5 7.5 2.5 9 3 6 1 4h2.5z" />
+            </svg>
+          </button>
+          {count > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onMarkAllRead(); }}
+              className="p-0.5 text-text-faint hover:text-text-default transition-colors duration-150"
+              title="全て既読"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1.5 5l2.5 2.5L8.5 2.5" />
+              </svg>
+            </button>
+          )}
+          <button
+            onClick={onDelete}
+            className="p-0.5 text-text-faint hover:text-rose-400 transition-colors duration-150"
+            title="削除"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <line x1="1" y1="1" x2="9" y2="9" />
+              <line x1="9" y1="1" x2="1" y2="9" />
+            </svg>
+          </button>
+        </span>
+      </span>
+    </div>
+  );
+}
+
 interface Props {
   feeds: Feed[];
   articles: Article[];
@@ -12,6 +78,7 @@ interface Props {
   user: UserProfile;
   theme: 'light' | 'dark';
   refreshing: boolean;
+  pinnedFeedIds: Set<string>;
   onSelectFeed: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
@@ -19,6 +86,7 @@ interface Props {
   onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
   onRefresh: () => void;
+  onTogglePinFeed: (id: string) => void;
 }
 
 export default function FeedSidebar({
@@ -37,6 +105,8 @@ export default function FeedSidebar({
   onToggleTheme,
   onRefresh,
   refreshing,
+  pinnedFeedIds,
+  onTogglePinFeed,
 }: Props) {
   const [newUrl, setNewUrl] = useState('');
   const [adding, setAdding] = useState(false);
@@ -136,6 +206,12 @@ export default function FeedSidebar({
     }
     return { unreadByFeed: byFeed, totalUnread: total };
   }, [articles, readIds]);
+
+  const { pinnedFeeds, unpinnedFeeds } = useMemo(() => {
+    const pinned = feeds.filter((f) => pinnedFeedIds.has(f.id));
+    const unpinned = feeds.filter((f) => !pinnedFeedIds.has(f.id));
+    return { pinnedFeeds: pinned, unpinnedFeeds: unpinned };
+  }, [feeds, pinnedFeedIds]);
 
   return (
     <aside className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
@@ -259,50 +335,47 @@ export default function FeedSidebar({
           </div>
         )}
 
-        {feeds.map((feed, i) => {
+        {pinnedFeeds.map((feed, i) => {
           const count = unreadByFeed.get(feed.id) ?? 0;
           const isSelected = selectedFeedId === feed.id;
           return (
-            <div
+            <FeedItem
               key={feed.id}
-              onClick={() => onSelectFeed(feed.id)}
-              className={`group flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 animate-fade-up ${
-                isSelected
-                  ? 'text-text-strong bg-surface-subtle'
-                  : 'text-text-muted hover:text-text-strong hover:bg-surface-hover'
-              }`}
-              style={{ animationDelay: `${i * 40}ms` }}
-            >
-              <span className="text-[13px] tracking-[0.02em] truncate flex-1">{feed.title || feed.url}</span>
-              <span className="flex items-center gap-1 ml-1 flex-shrink-0">
-                {count > 0 && (
-                  <span className="text-[11px] text-text-muted tabular-nums">{count > 99 ? '99+' : count}</span>
-                )}
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5">
-                  {count > 0 && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onMarkAllRead(feed.id); }}
-                      className="p-0.5 text-text-faint hover:text-text-default transition-colors duration-150"
-                      title="全て既読"
-                    >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M1.5 5l2.5 2.5L8.5 2.5" />
-                      </svg>
-                    </button>
-                  )}
-                  <button
-                    onClick={(e) => deleteFeed(feed.id, e)}
-                    className="p-0.5 text-text-faint hover:text-rose-400 transition-colors duration-150"
-                    title="削除"
-                  >
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <line x1="1" y1="1" x2="9" y2="9" />
-                      <line x1="9" y1="1" x2="1" y2="9" />
-                    </svg>
-                  </button>
-                </span>
-              </span>
-            </div>
+              feed={feed}
+              count={count}
+              isSelected={isSelected}
+              isPinned={true}
+              animationIndex={i}
+              onSelect={() => onSelectFeed(feed.id)}
+              onMarkAllRead={() => onMarkAllRead(feed.id)}
+              onDelete={(e) => deleteFeed(feed.id, e)}
+              onTogglePin={(e) => { e.stopPropagation(); onTogglePinFeed(feed.id); }}
+            />
+          );
+        })}
+
+        {pinnedFeeds.length > 0 && unpinnedFeeds.length > 0 && (
+          <div className="mx-4 my-1.5">
+            <div className="border-t border-border-subtle" />
+          </div>
+        )}
+
+        {unpinnedFeeds.map((feed, i) => {
+          const count = unreadByFeed.get(feed.id) ?? 0;
+          const isSelected = selectedFeedId === feed.id;
+          return (
+            <FeedItem
+              key={feed.id}
+              feed={feed}
+              count={count}
+              isSelected={isSelected}
+              isPinned={false}
+              animationIndex={pinnedFeeds.length + i}
+              onSelect={() => onSelectFeed(feed.id)}
+              onMarkAllRead={() => onMarkAllRead(feed.id)}
+              onDelete={(e) => deleteFeed(feed.id, e)}
+              onTogglePin={(e) => { e.stopPropagation(); onTogglePinFeed(feed.id); }}
+            />
           );
         })}
       </nav>
