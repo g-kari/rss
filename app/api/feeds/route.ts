@@ -4,28 +4,10 @@ import { r2Get, r2Put } from '@/lib/r2';
 import { fetchArticles } from '@/cron/fetch';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { isValidFeedUrl } from '@/lib/url';
+import { discoverFeedUrl } from '@/lib/feed-discovery';
 import type { Feed } from '@/types';
 
 export const runtime = 'edge';
-
-/** HTML から RSS/Atom の URL を検出して返す。見つからなければ null */
-async function discoverFeedUrl(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'rss-reader/1.0' }, redirect: 'follow' });
-    if (!res.ok) return null;
-    const ct = res.headers.get('content-type') ?? '';
-    if (ct.includes('xml') || ct.includes('rss') || ct.includes('atom')) return url;
-    const html = await res.text();
-    const m =
-      html.match(/<link[^>]+rel=["']alternate["'][^>]+type=["']application\/(rss|atom)\+xml["'][^>]+href=["']([^"']+)["']/i) ??
-      html.match(/<link[^>]+type=["']application\/(rss|atom)\+xml["'][^>]+href=["']([^"']+)["']/i);
-    if (!m) return null;
-    const href = m[2];
-    return href.startsWith('http') ? href : new URL(href, url).toString();
-  } catch {
-    return null;
-  }
-}
 
 export async function GET() {
   const result = await requireSession();
