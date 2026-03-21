@@ -168,7 +168,10 @@ export default function FeedSidebar({
   const [error, setError] = useState('');
   const [inputOpen, setInputOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [feedSearch, setFeedSearch] = useState('');
+  const [feedSearchOpen, setFeedSearchOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const feedSearchRef = useRef<HTMLInputElement>(null);
 
   async function addFeed(e: React.FormEvent) {
     e.preventDefault();
@@ -277,16 +280,38 @@ export default function FeedSidebar({
   }, [articles, readIds]);
 
   const { pinnedFeeds, unpinnedFeeds } = useMemo(() => {
-    const pinned = feeds.filter((f) => pinnedFeedIds.has(f.id));
-    const unpinned = feeds.filter((f) => !pinnedFeedIds.has(f.id));
+    const q = feedSearch.trim().toLowerCase();
+    const matchFeed = (f: Feed) => !q || (f.title || f.url).toLowerCase().includes(q);
+    const pinned = feeds.filter((f) => pinnedFeedIds.has(f.id) && matchFeed(f));
+    const unpinned = feeds.filter((f) => !pinnedFeedIds.has(f.id) && matchFeed(f));
     return { pinnedFeeds: pinned, unpinnedFeeds: unpinned };
-  }, [feeds, pinnedFeedIds]);
+  }, [feeds, pinnedFeedIds, feedSearch]);
 
   return (
     <aside className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
       {/* ヘッダー */}
       <div className="px-4 py-3.5 border-b border-border-default flex items-center justify-between">
         <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">RSS</span>
+        <button
+          onClick={() => {
+            const next = !feedSearchOpen;
+            setFeedSearchOpen(next);
+            if (next) {
+              setTimeout(() => feedSearchRef.current?.focus(), 0);
+            } else {
+              setFeedSearch('');
+            }
+          }}
+          className={`w-5 h-5 flex items-center justify-center rounded transition-all duration-200 ${
+            feedSearchOpen ? 'text-text-default bg-surface-subtle' : 'text-text-faint hover:text-text-default hover:bg-surface-subtle'
+          }`}
+          title="フィードを検索"
+        >
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="4.5" cy="4.5" r="3" />
+            <line x1="7" y1="7" x2="10" y2="10" strokeLinecap="round" />
+          </svg>
+        </button>
         <button
           onClick={() => setInputOpen((v) => !v)}
           className={`w-5 h-5 flex items-center justify-center rounded transition-all duration-200 ${
@@ -346,6 +371,26 @@ export default function FeedSidebar({
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* フィード検索 */}
+      {feedSearchOpen && (
+        <div className="px-3 py-2 border-b border-border-subtle animate-fade-up">
+          <input
+            ref={feedSearchRef}
+            type="text"
+            placeholder="フィードを検索..."
+            value={feedSearch}
+            onChange={(e) => setFeedSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setFeedSearch('');
+                setFeedSearchOpen(false);
+              }
+            }}
+            className="w-full text-[12px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
+          />
         </div>
       )}
 
