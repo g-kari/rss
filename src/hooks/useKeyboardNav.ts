@@ -16,7 +16,7 @@ interface KeyboardNavOptions {
   toggleRead: (id: string) => void;
 }
 
-// キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、o 元記事を開く、b ブックマーク切り替え、m 全て既読
+// キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、n/p 次/前の未読記事、o 元記事を開く、b ブックマーク切り替え、m 全て既読
 export function useKeyboardNav({
   articles,
   selectedFeedId,
@@ -50,6 +50,14 @@ export function useKeyboardNav({
         window.open(selectedArticle.link, '_blank', 'noopener,noreferrer');
       } else if (e.key === 'b' && selectedArticle) {
         toggleBookmark(selectedArticle.id);
+      } else if (e.key === 'n') {
+        e.preventDefault();
+        const nextUnread = list.slice(idx + 1).find((a) => !readIds.has(a.id));
+        if (nextUnread) { setSelectedArticle(nextUnread); markRead(nextUnread.id); }
+      } else if (e.key === 'p') {
+        e.preventDefault();
+        const prevUnread = list.slice(0, idx < 0 ? undefined : idx).reverse().find((a) => !readIds.has(a.id));
+        if (prevUnread) { setSelectedArticle(prevUnread); markRead(prevUnread.id); }
       } else if (e.key === 'r' && selectedArticle) {
         toggleRead(selectedArticle.id);
       } else if (e.key === 'm') {
