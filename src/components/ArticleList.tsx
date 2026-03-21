@@ -100,6 +100,10 @@ export default function ArticleList({
       if (e.key === '/') {
         e.preventDefault();
         searchRef.current?.focus();
+      } else if (e.key === 'u') {
+        e.preventDefault();
+        setUnreadOnly((v) => !v);
+        setPage(1);
       }
     }
     document.addEventListener('keydown', handleKeyDown);
