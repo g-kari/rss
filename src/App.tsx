@@ -501,6 +501,7 @@ export default function App() {
           feeds={feeds}
           readIds={readIds}
           selectedArticleId={selectedArticle?.id ?? null}
+          selectedFeedId={selectedFeedId}
           layout={layout}
           loading={loadingArticles}
           onChangeLayout={onChangeLayout}
