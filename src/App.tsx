@@ -251,6 +251,8 @@ export default function App() {
     toggleUnreadOnly,
     sortOrder,
     toggleSortOrder,
+    dateRange,
+    cycleDateRange,
     query,
     updateQuery,
     searchRef,
@@ -283,6 +285,8 @@ export default function App() {
     toggleUnreadOnly,
     sortOrder,
     toggleSortOrder,
+    dateRange,
+    cycleDateRange,
     searchRef,
   });
 
@@ -445,6 +449,7 @@ export default function App() {
                 ['r', '既読 / 未読切替'],
                 ['m', '全既読にする'],
                 ['u', '未読フィルター切替'],
+                ['d', '日付フィルター切替'],
                 ['s', 'ソート順切替'],
                 ['c', 'リンクをコピー'],
                 ['f', 'フォントサイズ切替'],
@@ -528,6 +533,8 @@ export default function App() {
           toggleUnreadOnly={toggleUnreadOnly}
           sortOrder={sortOrder}
           toggleSortOrder={toggleSortOrder}
+          dateRange={dateRange}
+          cycleDateRange={cycleDateRange}
           query={query}
           updateQuery={updateQuery}
           searchRef={searchRef}

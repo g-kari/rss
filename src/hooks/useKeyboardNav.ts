@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, type RefObject } from 'react';
-import type { Article, Feed, FontSize, Layout } from '../types';
+import type { Article, Feed, FontSize, Layout, DateRange } from '../types';
 import type { SortOrder } from './useFilteredArticles';
 
 interface KeyboardNavOptions {
@@ -27,10 +27,12 @@ interface KeyboardNavOptions {
   toggleUnreadOnly: () => void;
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
+  dateRange: DateRange;
+  cycleDateRange: () => void;
   searchRef: RefObject<HTMLInputElement | null>;
 }
 
-// キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、n/p 次/前の未読記事、o 元記事を開く、b ブックマーク切り替え、c リンクコピー、m 全て既読、l レイアウト切替、u 未読フィルター切替、/ 検索フォーカス
+// キーボードナビゲーション: j/↓ 次の記事、k/↑ 前の記事、n/p 次/前の未読記事、o 元記事を開く、b ブックマーク切り替え、c リンクコピー、m 全て既読、l レイアウト切替、u 未読フィルター切替、d 日付フィルター切替、/ 検索フォーカス
 export function useKeyboardNav({
   articles,
   feeds,
@@ -54,6 +56,8 @@ export function useKeyboardNav({
   toggleUnreadOnly,
   sortOrder,
   toggleSortOrder,
+  dateRange,
+  cycleDateRange,
   searchRef,
 }: KeyboardNavOptions): void {
   useEffect(() => {
@@ -114,6 +118,12 @@ export function useKeyboardNav({
       } else if (e.key === 's') {
         toggleSortOrder();
         showToast(sortOrder === 'newest' ? 'ソート: 古い順' : 'ソート: 新しい順');
+      } else if (e.key === 'd') {
+        e.preventDefault();
+        cycleDateRange();
+        const next: DateRange[] = ['all', 'today', 'week', 'month'];
+        const labels: Record<DateRange, string> = { all: '全期間', today: '今日', week: '今週', month: '今月' };
+        showToast(`日付フィルター: ${labels[next[(next.indexOf(dateRange) + 1) % next.length]]}`);
       } else if (e.key === '/') {
         e.preventDefault();
         searchRef.current?.focus();
@@ -143,5 +153,5 @@ export function useKeyboardNav({
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, feeds, pinnedFeedIds, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, onSelectFeed, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize, layout, onChangeLayout, unreadOnly, toggleUnreadOnly, sortOrder, toggleSortOrder, searchRef]);
+  }, [articles, feeds, pinnedFeedIds, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, onSelectFeed, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize, layout, onChangeLayout, unreadOnly, toggleUnreadOnly, sortOrder, toggleSortOrder, dateRange, cycleDateRange, searchRef]);
 }
