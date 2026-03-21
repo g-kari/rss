@@ -20,6 +20,7 @@ interface Props {
   onMobileBack?: () => void;
   fontSize?: FontSize;
   onChangeFontSize?: (size: FontSize) => void;
+  showToast?: (msg: string) => void;
 }
 
 interface EmbedInfo {
@@ -134,7 +135,7 @@ function saveCache(id: string, content: string) {
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
-export default function ArticleView({ article, isBookmarked, onToggleBookmark, onMobileBack, fontSize = 'medium', onChangeFontSize }: Props) {
+export default function ArticleView({ article, isBookmarked, onToggleBookmark, onMobileBack, fontSize = 'medium', onChangeFontSize, showToast }: Props) {
   // キャッシュをレンダリング時に同期取得 → 記事切り替え時もフラッシュなし
   const cachedContent = useMemo(
     () => (article?.id ? loadCache(article.id) : null),
@@ -311,6 +312,25 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
                 );
               })}
             </div>
+          )}
+
+          {article.link && showToast && (
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(article.link!).then(() => {
+                  showToast('リンクをコピーしました');
+                }).catch(() => {
+                  showToast('コピーに失敗しました');
+                });
+              }}
+              title="リンクをコピー (c)"
+              className="text-text-faint hover:text-text-muted transition-colors duration-200"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </button>
           )}
 
           <button
