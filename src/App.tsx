@@ -259,11 +259,17 @@ export default function App() {
 
   useKeyboardNav({
     articles,
+    feeds,
+    pinnedFeedIds,
     selectedFeedId,
     selectedArticle,
     bookmarkIds,
     readIds,
     setSelectedArticle,
+    onSelectFeed: (id) => {
+      setSelectedFeedId(id);
+      setSelectedArticle(null);
+    },
     markRead,
     markAllRead,
     toggleBookmark,
@@ -444,6 +450,7 @@ export default function App() {
                 ['f', 'フォントサイズ切替'],
                 ['l', 'レイアウト切替'],
                 ['/', '記事を検索'],
+                ['] / [', '次 / 前のフィード'],
                 ['?', 'このヘルプを表示'],
               ].map(([key, desc]) => (
                 <li key={key} className="flex items-center justify-between">
