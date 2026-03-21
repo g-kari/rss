@@ -47,6 +47,7 @@ function loadFontSize(): FontSize {
 
 const loadReadIds = () => loadSet('rss-read');
 const loadBookmarkIds = () => loadSet('rss-bookmarks');
+const loadPinnedFeedIds = () => loadSet('rss-pinned');
 
 async function fetchReadState(): Promise<{ readIds: string[]; bookmarkIds: string[] } | null> {
   try {
@@ -76,6 +77,7 @@ export default function App() {
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
+  const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localReadRef = useRef(readIds);
   const localBookmarkRef = useRef(bookmarkIds);
@@ -195,6 +197,15 @@ export default function App() {
     });
     scheduleSyncToServer();
   }, [scheduleSyncToServer]);
+
+  const togglePinFeed = useCallback((feedId: string) => {
+    setPinnedFeedIds((prev) => {
+      const next = new Set(prev);
+      next.has(feedId) ? next.delete(feedId) : next.add(feedId);
+      saveSet('rss-pinned', next);
+      return next;
+    });
+  }, []);
 
   function onFeedDeleted(id: string) {
     removeFeed(id);
@@ -462,6 +473,8 @@ export default function App() {
           onToggleTheme={toggleTheme}
           onRefresh={refreshFeeds}
           refreshing={refreshing}
+          pinnedFeedIds={pinnedFeedIds}
+          onTogglePinFeed={togglePinFeed}
         />
       </div>
       <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'list' ? 'hidden lg:block' : ''}`}>
