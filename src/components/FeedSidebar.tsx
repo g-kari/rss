@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import type { Feed, Article, UserProfile } from '../types';
 
 interface Props {
@@ -125,12 +125,17 @@ export default function FeedSidebar({
     }
   }
 
-  function unreadCount(feedId?: string) {
-    const feedArticles = feedId ? articles.filter((a) => a.feedId === feedId) : articles;
-    return feedArticles.filter((a) => !readIds.has(a.id)).length;
-  }
-
-  const totalUnread = unreadCount();
+  const { unreadByFeed, totalUnread } = useMemo(() => {
+    const byFeed = new Map<string, number>();
+    let total = 0;
+    for (const a of articles) {
+      if (!readIds.has(a.id)) {
+        byFeed.set(a.feedId, (byFeed.get(a.feedId) ?? 0) + 1);
+        total++;
+      }
+    }
+    return { unreadByFeed: byFeed, totalUnread: total };
+  }, [articles, readIds]);
 
   return (
     <aside className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
@@ -255,7 +260,7 @@ export default function FeedSidebar({
         )}
 
         {feeds.map((feed, i) => {
-          const count = unreadCount(feed.id);
+          const count = unreadByFeed.get(feed.id) ?? 0;
           const isSelected = selectedFeedId === feed.id;
           return (
             <div
