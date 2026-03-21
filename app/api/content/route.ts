@@ -15,8 +15,8 @@ function sanitizeHtml(html: string): string {
     // <object>, <embed> を除去
     .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
     .replace(/<embed\b[^>]*\/?>/gi, '')
-    // インラインイベントハンドラを除去
-    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    // インラインイベントハンドラを除去（/ 区切りのバイパス対策として [\s/]+ を使用）
+    .replace(/[\s/]+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
     // javascript: スキームを除去（クォートあり・なし両対応）
     .replace(/(?:href|src|action)\s*=\s*["']javascript:[^"']*["']/gi, '')
     .replace(/(?:href|src|action)\s*=\s*javascript:[^\s>]*/gi, '')
