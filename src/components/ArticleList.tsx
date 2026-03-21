@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, type ReactElement } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, type ReactElement } from 'react';
 import type { Article, Feed, Layout } from '../types';
 
 interface Props {
@@ -93,6 +93,7 @@ export default function ArticleList({
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const searchRef = useRef<HTMLInputElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -122,6 +123,21 @@ export default function ArticleList({
         ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }, [selectedArticleId]);
+
+  const loadMore = useCallback(() => {
+    setPage((p) => p + 1);
+  }, []);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { rootMargin: '120px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const filtered = useMemo(() => {
     let list =
@@ -428,14 +444,7 @@ export default function ArticleList({
           </>
         )}
 
-        {hasMore && (
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            className="w-full py-4 text-[11px] tracking-[0.08em] text-text-faint hover:text-text-soft transition-colors duration-200"
-          >
-            さらに読み込む ({filtered.length - visible.length})
-          </button>
-        )}
+        {hasMore && <div ref={sentinelRef} className="h-10" aria-hidden />}
       </div>
     </section>
   );
