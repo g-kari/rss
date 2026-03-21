@@ -2,6 +2,7 @@
 
 import { useEffect, type RefObject } from 'react';
 import type { Article, FontSize, Layout } from '../types';
+import type { SortOrder } from './useFilteredArticles';
 
 interface KeyboardNavOptions {
   articles: Article[];
@@ -21,6 +22,8 @@ interface KeyboardNavOptions {
   onChangeLayout: (layout: Layout) => void;
   unreadOnly: boolean;
   toggleUnreadOnly: () => void;
+  sortOrder: SortOrder;
+  toggleSortOrder: () => void;
   searchRef: RefObject<HTMLInputElement | null>;
 }
 
@@ -43,6 +46,8 @@ export function useKeyboardNav({
   onChangeLayout,
   unreadOnly,
   toggleUnreadOnly,
+  sortOrder,
+  toggleSortOrder,
   searchRef,
 }: KeyboardNavOptions): void {
   useEffect(() => {
@@ -100,6 +105,9 @@ export function useKeyboardNav({
         e.preventDefault();
         toggleUnreadOnly();
         showToast(!unreadOnly ? '未読フィルター: ON' : '未読フィルター: OFF');
+      } else if (e.key === 's') {
+        toggleSortOrder();
+        showToast(sortOrder === 'newest' ? 'ソート: 古い順' : 'ソート: 新しい順');
       } else if (e.key === '/') {
         e.preventDefault();
         searchRef.current?.focus();
@@ -107,5 +115,5 @@ export function useKeyboardNav({
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize, layout, onChangeLayout, unreadOnly, toggleUnreadOnly, searchRef]);
+  }, [articles, selectedFeedId, selectedArticle, bookmarkIds, readIds, setSelectedArticle, markRead, markAllRead, toggleBookmark, toggleRead, showToast, fontSize, onChangeFontSize, layout, onChangeLayout, unreadOnly, toggleUnreadOnly, sortOrder, toggleSortOrder, searchRef]);
 }

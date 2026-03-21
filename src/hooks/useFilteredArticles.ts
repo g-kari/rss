@@ -10,10 +10,13 @@ interface Options {
   bookmarkIds: Set<string>;
 }
 
+export type SortOrder = 'newest' | 'oldest';
+
 export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -30,6 +33,11 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: 
 
   const updateQuery = useCallback((q: string) => {
     setQuery(q);
+    setPage(1);
+  }, []);
+
+  const toggleSortOrder = useCallback(() => {
+    setSortOrder((v) => (v === 'newest' ? 'oldest' : 'newest'));
     setPage(1);
   }, []);
 
@@ -64,8 +72,11 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: 
         (a) => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q),
       );
     }
+    if (sortOrder === 'oldest') {
+      list = [...list].reverse();
+    }
     return list;
-  }, [articles, feedId, readIds, bookmarkIds, unreadOnly, query]);
+  }, [articles, feedId, readIds, bookmarkIds, unreadOnly, query, sortOrder]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
@@ -76,6 +87,8 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: 
     hasMore,
     unreadOnly,
     toggleUnreadOnly,
+    sortOrder,
+    toggleSortOrder,
     query,
     updateQuery,
     searchRef,
