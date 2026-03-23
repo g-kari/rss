@@ -1,37 +1,36 @@
-# RSS Reader — Cloudflare Workers
+# RSS Reader
 
-Cloudflare Workers + D1 で動くセルフホスト RSS リーダー。
+Next.js 16 + Cloudflare Workers で動くセルフホスト RSS リーダー。`rss.0g0.xyz` でホスト中。
 
 ## 技術スタック
 
-- **バックエンド**: Hono.js on Cloudflare Workers
-- **DB**: Cloudflare D1 (SQLite)
-- **フロントエンド**: React + TypeScript + Tailwind CSS v4
-- **自動更新**: Cloudflare Workers Cron Trigger（30分ごと）
+| レイヤー | 技術 |
+|---|---|
+| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare |
+| フロントエンド | React 19 + TypeScript + Tailwind CSS v4 |
+| API | Next.js Route Handlers (`app/api/**`) |
+| 認証 | 0g0 ID (OAuth2 + ES256 JWT) |
+| データ | Cloudflare R2 (`rss-reader-data`) — ユーザー別 JSON |
+| AI | Workers AI (要約・翻訳) |
+| 自動更新 | Cloudflare Cron Trigger（30分ごと） |
+| デプロイ | @opennextjs/cloudflare + wrangler |
 
 ## セットアップ
 
-### 1. D1 データベース作成
+### 1. R2 バケット作成
 
 ```bash
-npx wrangler d1 create rss-reader-db
+npx wrangler r2 bucket create rss-reader-data
+npx wrangler r2 bucket create rss-reader-cache
 ```
 
-出力された `database_id` を `wrangler.toml` に記入:
+### 2. シークレット設定
 
-```toml
-[[d1_databases]]
-database_id = "ここに貼り付け"
-```
-
-### 2. マイグレーション適用
+0g0 ID でアプリを登録して取得した `CLIENT_ID` / `CLIENT_SECRET` を設定:
 
 ```bash
-# ローカル開発用
-npx wrangler d1 migrations apply rss-reader-db --local
-
-# 本番用
-npx wrangler d1 migrations apply rss-reader-db
+npx wrangler secret put CLIENT_ID
+npx wrangler secret put CLIENT_SECRET
 ```
 
 ### 3. 依存パッケージインストール
@@ -43,10 +42,12 @@ npm install
 ### 4. ローカル開発
 
 ```bash
+# Next.js dev server (localhost:3000)
 npm run dev
-```
 
-→ http://localhost:5173 でアクセス
+# Cloudflare Workers ローカルエミュレーション
+npx wrangler dev
+```
 
 ### 5. デプロイ
 
@@ -54,14 +55,77 @@ npm run dev
 npm run deploy
 ```
 
+## wrangler.toml 設定
+
+`wrangler.toml` の `[vars]` を環境に合わせて更新:
+
+```toml
+[vars]
+AUTH_BASE_URL = "https://id.0g0.xyz"        # 0g0 ID エンドポイント
+APP_BASE_URL  = "https://your-domain.com"   # アプリのドメイン
+BETA_ALLOWED_SUBS = ""                      # ベータ制限: カンマ区切り sub リスト。空文字で制限なし
+```
+
 ## API
+
+### 認証
 
 | メソッド | パス | 説明 |
 |---------|------|------|
-| GET | `/api/feeds` | フィード一覧（未読数付き） |
+| GET | `/api/auth/login` | OAuth2 認証開始 |
+| GET | `/api/auth/callback` | OAuth2 コールバック |
+| GET | `/api/auth/me` | セッション確認・自動リフレッシュ |
+| POST | `/api/auth/logout` | ログアウト（cookie クリア） |
+
+### フィード
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | `/api/feeds` | フィード一覧取得 |
 | POST | `/api/feeds` | フィード追加 `{ url: string }` |
 | DELETE | `/api/feeds/:id` | フィード削除 |
-| POST | `/api/feeds/:id/refresh` | 手動更新 |
-| GET | `/api/articles` | 記事一覧（`?feedId=&page=1&limit=30&unreadOnly=true`） |
-| PATCH | `/api/articles/:id/read` | 既読にする |
-| PATCH | `/api/articles/:id/unread` | 未読に戻す |
+
+### 記事
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | `/api/articles` | 記事一覧取得 |
+| GET | `/api/content?url=...` | 記事フルテキスト取得プロキシ |
+
+### AI
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| POST | `/api/ai/summarize` | 記事要約 (Workers AI) |
+| POST | `/api/ai/translate` | 記事翻訳 (Workers AI) |
+
+### その他
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | `/api/health` | ヘルスチェック |
+
+## データ構造 (R2)
+
+```
+users/{sub}/profile.json    # UserProfile (ログイン時に保存)
+users/{sub}/feeds.json      # Feed[]
+users/{sub}/articles.json   # Article[] (max 2000, publishedAt 降順)
+```
+
+`sub` = 0g0 ID のペアワイズ識別子 (JWT の `sub` クレーム)
+
+## 読み取り状態
+
+サーバーサイドでは管理しない。`localStorage['rss-read']` にブラウザ側で保持。
+
+## 開発コマンド
+
+```bash
+npm run dev         # Next.js dev server (localhost:3000)
+npm run build       # next build
+npm run preview     # wrangler dev (Workers ローカルエミュレーション)
+npm run build:cf    # @opennextjs/cloudflare build
+npm run deploy      # build:cf + wrangler deploy
+npm run typecheck   # TypeScript 型チェック
+```
