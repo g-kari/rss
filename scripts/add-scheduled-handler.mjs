@@ -9,27 +9,31 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 
-// 1. prefetch-hints.json の loadManifest 呼び出しを無害化する
-//    Next.js 16.2+ が追加した prefetch-hints.json は @opennextjs/cloudflare の
-//    ビルド時グロブ (**/{*-manifest,required-server-files}.json) にマッチしないため
-//    実行時に "Unexpected loadManifest" エラーが発生する。
+// 1. 未知マニフェストの loadManifest 呼び出しを無害化する
+//    @opennextjs/cloudflare はビルド時グロブ
+//    (**/{*-manifest,required-server-files}.json) にマッチするファイルのみ
+//    インライン化する。Next.js が追加した prefetch-hints.json や
+//    subresource-integrity-manifest.json など非対応ファイルへの呼び出しは
+//    実行時に "Unexpected loadManifest" エラーになる。
+//    → グロブ外のファイルは {} を返して無害化する汎用パッチを適用する。
 //    ※パッチ対象は .open-next/worker.js ではなく、
 //      @opennextjs/cloudflare がバンドル済みの handler.mjs
 const HANDLER_PATH = '.open-next/server-functions/default/handler.mjs';
 if (!existsSync(HANDLER_PATH)) {
-  console.warn(`prefetch-hints patch: ${HANDLER_PATH} not found, skipping`);
+  console.warn(`loadManifest patch: ${HANDLER_PATH} not found, skipping`);
 } else {
   const handlerSrc = readFileSync(HANDLER_PATH, 'utf-8');
   // バックティックは \x60 でエスケープ、変数名（path2 等）を動的にキャプチャ
-  const prefetchPatch = handlerSrc.replace(
+  // グロブ外の任意のマニフェストを {} で返し、エラーは既知ファイルのみにとどめる
+  const patched = handlerSrc.replace(
     /throw new Error\(\x60Unexpected loadManifest\(\$\{([^}]+)\}\) call!\x60\)/,
-    'if ($1.endsWith("server/prefetch-hints.json")) { return {}; } throw new Error(`Unexpected loadManifest(${$1}) call!`)',
+    'return {};',
   );
-  if (prefetchPatch === handlerSrc) {
-    console.warn('prefetch-hints patch: pattern not found in handler.mjs — may need regex update');
+  if (patched === handlerSrc) {
+    console.warn('loadManifest patch: pattern not found in handler.mjs — may need regex update');
   } else {
-    writeFileSync(HANDLER_PATH, prefetchPatch);
-    console.log('prefetch-hints.json loadManifest patch applied to handler.mjs');
+    writeFileSync(HANDLER_PATH, patched);
+    console.log('loadManifest patch applied to handler.mjs (unknown manifests return {})');
   }
 }
 
