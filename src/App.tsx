@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import FeedSidebar from './components/FeedSidebar';
 import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
@@ -72,6 +73,9 @@ async function saveReadState(readIds: Set<string>, bookmarkIds: Set<string>): Pr
 }
 
 export default function App() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const { user, betaRestricted } = useAuth();
   const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, dismissNewArticles } = useFeeds(user);
 
@@ -81,8 +85,10 @@ export default function App() {
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localReadRef = useRef(readIds);
   const localBookmarkRef = useRef(bookmarkIds);
-  const [selectedFeedId, setSelectedFeedId] = useState<string | null>(null);
+  const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() => searchParams.get('feed'));
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  // URL から復元すべき記事 ID（記事ロード完了後に解決）
+  const pendingArticleIdRef = useRef<string | null>(searchParams.get('article'));
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [fontSize, setFontSize] = useState<FontSize>(loadFontSize);
   const [layout, setLayout] = useState<Layout>(loadLayout);
@@ -132,6 +138,25 @@ export default function App() {
     setToast(msg);
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }, []);
+
+  // 選択状態を URL クエリパラメータに同期（リロード復元用）
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedFeedId) params.set('feed', selectedFeedId);
+    if (selectedArticle) params.set('article', selectedArticle.id);
+    const search = params.toString();
+    router.replace(search ? `/?${search}` : '/');
+  }, [selectedFeedId, selectedArticle, router]);
+
+  // 記事ロード完了後に URL の article パラメータを復元
+  useEffect(() => {
+    if (!pendingArticleIdRef.current || articles.length === 0) return;
+    const article = articles.find((a) => a.id === pendingArticleIdRef.current);
+    if (article) {
+      setSelectedArticle(article);
+      pendingArticleIdRef.current = null;
+    }
+  }, [articles]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
