@@ -110,6 +110,24 @@ npm run typecheck    # TypeScript 型チェック
 | `CLIENT_ID` | `npx wrangler secret put CLIENT_ID` |
 | `CLIENT_SECRET` | `npx wrangler secret put CLIENT_SECRET` |
 
+## @opennextjs/cloudflare 制約事項（必読）
+
+### `export const runtime = 'edge'` は使用禁止
+
+Route Handler に `export const runtime = 'edge'` を書いてはいけない。
+`@opennextjs/cloudflare` は Edge Runtime 非対応（公式ドキュメント Get Started Step 9 参照）。
+書いた場合、デプロイ後に `TypeError: Cannot read properties of undefined (reading 'default')` が発生する。
+
+新しい Route Handler を作成する際も絶対に書かないこと。
+
+### Next.js バージョンは `~16.1.7` に固定
+
+Next.js 16.2.0 以降で追加された `prefetch-hints.json` / `subresource-integrity-manifest.json` は
+`@opennextjs/cloudflare` のビルド時グロブ外のため、実行時に `Unexpected loadManifest` エラーが発生する。
+`@opennextjs/cloudflare` 側で修正されるまで `~16.1.7` に固定する。
+
+バージョンを上げる場合は必ず本番デプロイ後にエラーログを確認すること。
+
 ## 規約ドキュメント
 
 - `.claude/rules/design-system.md` — カラーパレット・タイポグラフィ・レイアウト

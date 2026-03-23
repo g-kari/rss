@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { revokeToken } from '@/lib/auth';
 
-export const runtime = 'edge';
 
 export async function POST() {
   const cookieStore = await cookies();

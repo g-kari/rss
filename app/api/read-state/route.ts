@@ -3,7 +3,6 @@ import { requireSession, applyRefreshedTokens } from '@/lib/server-auth';
 import { r2Get, r2Put } from '@/lib/r2';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-export const runtime = 'edge';
 
 interface ReadState {
   readIds: string[];

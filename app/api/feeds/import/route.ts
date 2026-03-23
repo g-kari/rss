@@ -7,7 +7,6 @@ import { XMLParser } from 'fast-xml-parser';
 import { isValidFeedUrl } from '@/lib/url';
 import type { Feed } from '@/types';
 
-export const runtime = 'edge';
 
 interface OpmlOutline {
   '@_xmlUrl'?: string;

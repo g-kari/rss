@@ -4,7 +4,6 @@ import { r2Get, r2Put } from '@/lib/r2';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { Feed, Article } from '@/types';
 
-export const runtime = 'edge';
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const result = await requireSession();
