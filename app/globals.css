@@ -95,23 +95,30 @@ html, body {
   line-height: 1.9;
   color: var(--color-text-soft);
   letter-spacing: 0.02em;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .article-content p { margin-bottom: 1.25em; }
 .article-content h1,
 .article-content h2,
 .article-content h3,
-.article-content h4 {
+.article-content h4,
+.article-content h5,
+.article-content h6 {
   font-family: var(--font-sans);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text-strong);
   margin-top: 1.75em;
   margin-bottom: 0.5em;
   line-height: 1.4;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
-.article-content h1 { font-size: 1.2em; }
-.article-content h2 { font-size: 1.1em; }
-.article-content h3 { font-size: 1em; }
+.article-content h1 { font-size: 1.35em; }
+.article-content h2 { font-size: 1.2em; border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 0.3em; }
+.article-content h3 { font-size: 1.05em; }
+.article-content h4,
+.article-content h5,
+.article-content h6 { font-size: 1em; }
 .article-content a {
   color: var(--color-text-default);
   text-decoration: underline;
@@ -120,23 +127,69 @@ html, body {
   transition: color 0.15s ease;
 }
 .article-content a:hover { color: var(--color-text-strong); }
+
+/* 画像: 固定幅を上書きしてコンテナに収める */
 .article-content img {
-  max-width: 100%;
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
   border-radius: 4px;
   margin: 1.25em 0;
+  display: block;
 }
+.article-content figure { margin: 1.25em 0; }
+.article-content figcaption {
+  font-family: var(--font-sans);
+  font-size: 0.8em;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: 0.5em;
+}
+
+/* リスト */
 .article-content ul,
 .article-content ol {
   padding-left: 1.5em;
   margin-bottom: 1.25em;
 }
 .article-content li { margin-bottom: 0.3em; }
+.article-content li > ul,
+.article-content li > ol { margin-bottom: 0; }
+
+/* タスクリスト (Qiita / Zenn の GFM チェックボックス) */
+.article-content ul.contains-task-list,
+.article-content ul:has(> li > input[type="checkbox"]) {
+  list-style: none;
+  padding-left: 0.25em;
+}
+.article-content li.task-list-item,
+.article-content li:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+.article-content input[type="checkbox"] {
+  margin-top: 0.35em;
+  flex-shrink: 0;
+  accent-color: var(--color-text-default);
+}
+
+/* 引用 */
 .article-content blockquote {
-  border-left: 2px solid var(--color-border-default);
+  border-left: 3px solid var(--color-border-default);
   padding-left: 1em;
   margin: 1.25em 0;
   color: var(--color-text-muted);
 }
+
+/* 水平線 */
+.article-content hr {
+  border: none;
+  border-top: 1px solid var(--color-border-default);
+  margin: 2em 0;
+}
+
+/* コードブロック */
 .article-content pre {
   background: var(--color-surface-subtle);
   padding: 1em 1.25em;
@@ -147,7 +200,7 @@ html, body {
   line-height: 1.6;
 }
 .article-content code {
-  font-family: ui-monospace, monospace;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
   background: var(--color-surface-subtle);
   padding: 0.1em 0.35em;
   border-radius: 3px;
@@ -158,11 +211,115 @@ html, body {
   padding: 0;
   font-size: inherit;
 }
-.article-content figure { margin: 1.25em 0; }
-.article-content figcaption {
+
+/* Qiita / Zenn: コードブロックのファイル名ラベル */
+.article-content .code-block-filename,
+.article-content [data-filename],
+.article-content .filename {
   font-family: var(--font-sans);
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: var(--color-text-muted);
-  text-align: center;
-  margin-top: 0.5em;
+  background: var(--color-border-default);
+  padding: 0.25em 0.75em;
+  border-radius: 4px 4px 0 0;
+  display: inline-block;
+  margin-bottom: -4px;
+}
+
+/* テーブル: 横スクロール対応 */
+.article-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25em 0;
+  font-size: 0.9em;
+  font-family: var(--font-sans);
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.article-content table th,
+.article-content table td {
+  border: 1px solid var(--color-border-default);
+  padding: 0.5em 0.75em;
+  text-align: left;
+  white-space: nowrap;
+  min-width: 80px;
+}
+.article-content table th {
+  background: var(--color-surface-subtle);
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+.article-content table tr:nth-child(even) td {
+  background: var(--color-surface-hover);
+}
+
+/* Zenn callout / note ボックス (.msg) */
+.article-content .msg,
+.article-content [class*="msg--"],
+.article-content .callout,
+.article-content .note,
+.article-content .warn,
+.article-content .alert {
+  padding: 0.75em 1em;
+  border-radius: 6px;
+  margin: 1.25em 0;
+  font-family: var(--font-sans);
+  font-size: 0.9em;
+  line-height: 1.7;
+  border-left: 3px solid var(--color-border-default);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-default);
+}
+.article-content .msg--alert,
+.article-content .warn,
+.article-content .alert {
+  border-left-color: #fb7185;
+  background: rgba(251, 113, 133, 0.06);
+}
+
+/* details / summary (アコーディオン) */
+.article-content details {
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  padding: 0.5em 0.75em;
+  margin: 1.25em 0;
+}
+.article-content summary {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-text-default);
+  padding: 0.25em 0;
+}
+.article-content details[open] summary { margin-bottom: 0.5em; }
+
+/* 定義リスト */
+.article-content dt {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  color: var(--color-text-strong);
+  margin-top: 0.75em;
+}
+.article-content dd {
+  margin-left: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+/* マーク・ハイライト */
+.article-content mark {
+  background: var(--color-highlight);
+  padding: 0.05em 0.2em;
+  border-radius: 2px;
+}
+
+/* kbd */
+.article-content kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8em;
+  padding: 0.1em 0.4em;
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-default);
 }
