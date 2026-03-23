@@ -3,7 +3,7 @@ import type { Feed, Article } from '../types';
 import { parseFeed } from '../lib/xml-parser';
 import { isValidFeedUrl } from '../lib/url';
 
-type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA'>;
+type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA' | 'FINDME_RSS'>;
 import { r2Get, r2Put } from '../lib/r2';
 
 const MAX_ARTICLES = 2000;
@@ -13,6 +13,25 @@ const MAX_ARTICLES = 2000;
  * 手動リフレッシュ (forceRetry=true) は常に再試行する。
  */
 const CONSECUTIVE_ERROR_SKIP_THRESHOLD = 5;
+
+/**
+ * ホスト名 → サービスバインディングキーのマッピング。
+ * 同一アカウントの Worker は HTTP を経由しないため Bot 検出を回避できる。
+ */
+const SERVICE_BINDING_HOSTS: Partial<Record<string, keyof FetchEnv>> = {
+  'findme-rss.0g0.xyz': 'FINDME_RSS',
+};
+
+/** サービスバインディングまたはグローバル fetch でリクエストを送る */
+function fetchViaBinding(env: FetchEnv, url: string, init?: RequestInit): Promise<Response> {
+  const hostname = new URL(url).hostname;
+  const bindingKey = SERVICE_BINDING_HOSTS[hostname];
+  if (bindingKey) {
+    const binding = env[bindingKey] as Fetcher | undefined;
+    if (binding) return binding.fetch(url, init);
+  }
+  return fetch(url, init);
+}
 
 async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = false): Promise<void> {
   const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${userId}/feeds.json`, []);
@@ -28,7 +47,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
         return [];
       }
       if (!isValidFeedUrl(feed.url)) throw new Error(`Invalid feed URL: ${feed.url}`); // SSRF 対策
-      const res = await fetch(feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
+      const res = await fetchViaBinding(env, feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
       if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
       const xml = await res.text();
       const parsed = parseFeed(xml);

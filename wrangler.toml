@@ -15,6 +15,10 @@ binding = "ASSETS"
 binding = "WORKER_SELF_REFERENCE"
 service = "rss-reader"
 
+[[services]]
+binding = "FINDME_RSS"
+service = "findme-rss"
+
 [images]
 binding = "IMAGES"
 
