@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Article, FontSize } from '../types';
 
 type AiMode = 'summary' | 'translation';
@@ -157,12 +157,14 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
   const [fetchError, setFetchError] = useState('');
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   // 記事が変わったら fetch 状態のみリセット（キャッシュは useMemo で自動更新）
   useEffect(() => {
     setFetchError('');
     setAiResult(null);
     setFetchedContent(null);
+    setScrollProgress(0);
   }, [article?.id]);
 
   const runAi = useCallback(async (mode: AiMode, contentHtml: string) => {
@@ -241,8 +243,20 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
   const canFetch = !embedInfo && article.link && isShortContent && !storedContent;
   const hasContent = !!(processedContent || article.summary);
 
+  function handleScroll(e: React.UIEvent<HTMLElement>) {
+    const el = e.currentTarget;
+    const scrollable = el.scrollHeight - el.clientHeight;
+    setScrollProgress(scrollable > 0 ? Math.round((el.scrollTop / scrollable) * 100) : 0);
+  }
+
   return (
-    <main className="h-full overflow-y-auto bg-surface-elevated animate-fade-in">
+    <main className="h-full overflow-y-auto bg-surface-elevated animate-fade-in relative" onScroll={handleScroll}>
+      {scrollProgress > 0 && (
+        <div
+          className="sticky top-0 left-0 h-[2px] bg-ink z-10 transition-[width] duration-75 ease-linear"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      )}
       <div className="max-w-2xl mx-auto px-4 py-6 lg:px-10 lg:py-12">
         {/* メタ */}
         <div className="flex items-center gap-4 mb-5 text-[11px] text-text-muted">
