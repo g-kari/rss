@@ -8,7 +8,13 @@ import { r2Get, r2Put } from '../lib/r2';
 
 const MAX_ARTICLES = 2000;
 
-async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
+/**
+ * 連続エラー回数がこの閾値以上のフィードはクロン実行時にスキップする。
+ * 手動リフレッシュ (forceRetry=true) は常に再試行する。
+ */
+const CONSECUTIVE_ERROR_SKIP_THRESHOLD = 5;
+
+async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = false): Promise<void> {
   const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${userId}/feeds.json`, []);
   if (feeds.length === 0) return;
 
@@ -17,6 +23,10 @@ async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
 
   const results = await Promise.allSettled(
     feeds.map(async (feed) => {
+      // クロン実行時: 連続エラーが閾値以上のフィードはスキップ（4xx 等の永続的エラーを無限リトライしない）
+      if (!forceRetry && (feed.consecutiveErrors ?? 0) >= CONSECUTIVE_ERROR_SKIP_THRESHOLD) {
+        return [];
+      }
       if (!isValidFeedUrl(feed.url)) throw new Error(`Invalid feed URL: ${feed.url}`); // SSRF 対策
       const res = await fetch(feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
       if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
@@ -27,6 +37,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
       feed.siteUrl = parsed.siteUrl || feed.siteUrl;
       feed.lastFetchedAt = new Date().toISOString();
       feed.fetchError = null;
+      feed.consecutiveErrors = 0;
 
       return parsed.items.map(
         (item): Article => ({
@@ -48,6 +59,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
 
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
+      feeds[i].consecutiveErrors = (feeds[i].consecutiveErrors ?? 0) + 1;
       feeds[i].fetchError = result.reason instanceof Error ? result.reason.message : String(result.reason);
       console.error('Feed fetch failed:', result.reason);
     }
@@ -75,9 +87,9 @@ async function fetchUserArticles(env: FetchEnv, userId: string): Promise<void> {
   await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sorted);
 }
 
-// フィード追加時の即時フェッチ
+// フィード追加・手動リフレッシュ時の即時フェッチ（エラー状態に関わらず強制再試行）
 export async function fetchArticles(env: FetchEnv, userId: string): Promise<void> {
-  await fetchUserArticles(env, userId);
+  await fetchUserArticles(env, userId, true);
 }
 
 // Cron: 全ユーザーをフェッチ

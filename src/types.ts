@@ -5,6 +5,8 @@ export interface Feed {
   siteUrl: string;
   lastFetchedAt: string | null;
   fetchError: string | null;
+  /** 連続フェッチ失敗回数。成功時にリセット。クロンでの再試行抑制に使用 */
+  consecutiveErrors?: number;
 }
 
 export interface Article {
