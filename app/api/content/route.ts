@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/server-auth';
+import { isValidFeedUrl } from '@/lib/url';
 
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -25,7 +26,56 @@ function sanitizeHtml(html: string): string {
     .trim();
 }
 
-function extractMainContent(html: string): string {
+/**
+ * img タグの固定 width / height 属性を除去してレスポンシブ表示を保証する。
+ * CSS で max-width: 100% を指定しているが、inline style や属性の上書きに対応する。
+ */
+function fixImageDimensions(html: string): string {
+  // width/height 属性を除去
+  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
+    const cleaned = attrs
+      .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
+      .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
+      // inline style の width/height も除去
+      .replace(/\s+style\s*=\s*"([^"]*)"/gi, (_s, style: string) => {
+        const cleaned2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
+        return cleaned2 ? ` style="${cleaned2}"` : '';
+      })
+      .replace(/\s+style\s*=\s*'([^']*)'/gi, (_s, style: string) => {
+        const cleaned2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
+        return cleaned2 ? ` style="${cleaned2}"` : '';
+      });
+    return `<img${cleaned}>`;
+  });
+}
+
+/**
+ * table タグをレスポンシブスクロール可能なラッパーで包む。
+ * globals.css の .article-content table では display: block + overflow-x: auto を指定しているが、
+ * ネストされた table には table タグの display 制御だけでは不十分なケースがあるため wrapper で補完する。
+ */
+function wrapTables(html: string): string {
+  return html.replace(
+    /(<table\b[^>]*>[\s\S]*?<\/table>)/gi,
+    '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.25em 0">$1</div>',
+  );
+}
+
+/**
+ * サイト固有のノイズ要素を除去する。
+ * Qiita / Zenn に見られる「いいね」「シェア」「関連記事」等のUIを取り除く。
+ */
+function removeNoise(html: string): string {
+  // Qiita: header/footer ツールバー、サイドバー
+  html = html.replace(/<div[^>]+class="[^"]*(?:LikesButton|StockButton|ShareButtons|SideBar|ArticleHeader|ArticleFooter|FollowButton)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+  // Zenn: チャプター選択、関連記事
+  html = html.replace(/<div[^>]+class="[^"]*(?:ChapterList|RelatedArticles|TocItem)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+  // 汎用: "related", "recommend", "share", "sns" を含む div
+  html = html.replace(/<div[^>]+class="[^"]*(?:related|recommend|share|sns|toc-|side-)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+  return html;
+}
+
+function extractMainContent(html: string, pageUrl: string): string {
   const cleaned = html
     .replace(/<head\b[\s\S]*?<\/head>/gi, '')
     .replace(/<nav\b[\s\S]*?<\/nav>/gi, '')
@@ -35,22 +85,44 @@ function extractMainContent(html: string): string {
     .replace(/<form\b[\s\S]*?<\/form>/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '');
 
+  function postProcess(content: string): string {
+    const noised = removeNoise(content);
+    const imgFixed = fixImageDimensions(noised);
+    const tableFixed = wrapTables(imgFixed);
+    return sanitizeHtml(tableFixed);
+  }
+
+  // --- サイト固有セレクター ---
+
+  // Qiita: itemprop="articleBody" または class="it-MdContent"
+  const qiitaBody = cleaned.match(/<(?:\w+)[^>]+itemprop=["']articleBody["'][^>]*>([\s\S]*?)<\/(?:\w+)>/i);
+  if (qiitaBody?.[1]) return postProcess(qiitaBody[1]);
+
+  const qiitaMd = cleaned.match(/<(?:\w+)[^>]+class=["'][^"']*it-MdContent[^"']*["'][^>]*>([\s\S]*?)<\/(?:\w+)>/i);
+  if (qiitaMd?.[1]) return postProcess(qiitaMd[1]);
+
+  // Zenn: class="znc"
+  const zennContent = cleaned.match(/<(?:\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*?)<\/(?:\w+)>/i);
+  if (zennContent?.[1]) return postProcess(zennContent[1]);
+
+  // --- 汎用セレクター ---
+
   const article = cleaned.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
-  if (article?.[1]) return sanitizeHtml(article[1]);
+  if (article?.[1]) return postProcess(article[1]);
 
   const main = cleaned.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
-  if (main?.[1]) return sanitizeHtml(main[1]);
+  if (main?.[1]) return postProcess(main[1]);
 
   const roleMain = cleaned.match(/<(\w+)[^>]+role=["']main["'][^>]*>([\s\S]*?)<\/\1>/i);
-  if (roleMain?.[2]) return sanitizeHtml(roleMain[2]);
+  if (roleMain?.[2]) return postProcess(roleMain[2]);
 
   const classContent = cleaned.match(
-    /<(\w+)[^>]+class=["'][^"']*(?:post|entry|article)[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i,
+    /<(\w+)[^>]+class=["'][^"']*(?:post|entry|article|content)[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i,
   );
-  if (classContent?.[2]) return sanitizeHtml(classContent[2]);
+  if (classContent?.[2]) return postProcess(classContent[2]);
 
   const body = cleaned.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
-  return sanitizeHtml(body?.[1] ?? cleaned);
+  return postProcess(body?.[1] ?? cleaned);
 }
 
 export async function GET(request: Request) {
@@ -60,11 +132,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url).searchParams.get('url');
   if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 });
 
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')
-      return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
-  } catch {
+  if (!isValidFeedUrl(url)) {
     return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
   }
 
@@ -109,7 +177,7 @@ export async function GET(request: Request) {
     let offset = 0;
     for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
     const html = new TextDecoder().decode(merged);
-    return NextResponse.json({ content: extractMainContent(html) });
+    return NextResponse.json({ content: extractMainContent(html, url) });
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === 'AbortError')
