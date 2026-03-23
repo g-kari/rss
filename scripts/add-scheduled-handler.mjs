@@ -9,23 +9,28 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 
-const WORKER_PATH = '.open-next/worker.js';
-
 // 1. prefetch-hints.json の loadManifest 呼び出しを無害化する
 //    Next.js 16.2+ が追加した prefetch-hints.json は @opennextjs/cloudflare の
 //    ビルド時グロブ (**/{*-manifest,required-server-files}.json) にマッチしないため
 //    実行時に "Unexpected loadManifest" エラーが発生する。
-//    throw の直前に空オブジェクトを返す分岐を挿入してエラーを回避する。
-const workerSrc = readFileSync(WORKER_PATH, 'utf-8');
-const prefetchPatch = workerSrc.replace(
-  /throw new Error\(\s*`Unexpected loadManifest\(\$\{([^}]+)\}\) call!`\s*\)/,
-  'if ($1.endsWith("server/prefetch-hints.json")) { return {}; }\n  throw new Error(`Unexpected loadManifest(${$1}) call!`)',
-);
-if (prefetchPatch === workerSrc) {
-  console.warn('prefetch-hints patch: pattern not found in worker.js — may need regex update');
+//    ※パッチ対象は .open-next/worker.js ではなく、
+//      @opennextjs/cloudflare がバンドル済みの handler.mjs
+const HANDLER_PATH = '.open-next/server-functions/default/handler.mjs';
+if (!existsSync(HANDLER_PATH)) {
+  console.warn(`prefetch-hints patch: ${HANDLER_PATH} not found, skipping`);
 } else {
-  writeFileSync(WORKER_PATH, prefetchPatch);
-  console.log('prefetch-hints.json loadManifest patch applied to worker.js');
+  const handlerSrc = readFileSync(HANDLER_PATH, 'utf-8');
+  // バックティックは \x60 でエスケープ、変数名（path2 等）を動的にキャプチャ
+  const prefetchPatch = handlerSrc.replace(
+    /throw new Error\(\x60Unexpected loadManifest\(\$\{([^}]+)\}\) call!\x60\)/,
+    'if ($1.endsWith("server/prefetch-hints.json")) { return {}; } throw new Error(`Unexpected loadManifest(${$1}) call!`)',
+  );
+  if (prefetchPatch === handlerSrc) {
+    console.warn('prefetch-hints patch: pattern not found in handler.mjs — may need regex update');
+  } else {
+    writeFileSync(HANDLER_PATH, prefetchPatch);
+    console.log('prefetch-hints.json loadManifest patch applied to handler.mjs');
+  }
 }
 
 // 2. dist/rss_reader/wrangler.json に不足バインディングをマージ
