@@ -61,7 +61,24 @@ if (patched === worker) {
 writeFileSync(WORKER_PATH, patched);
 console.log('scheduled handler added to worker.js');
 
-// 3. dist/rss_reader/wrangler.json に不足バインディングをマージ
+// 3. prefetch-hints.json の loadManifest 呼び出しを無害化する
+//    Next.js 16.2+ が追加した prefetch-hints.json は @opennextjs/cloudflare の
+//    ビルド時グロブ (**/{*-manifest,required-server-files}.json) にマッチしないため
+//    実行時に "Unexpected loadManifest" エラーが発生する。
+//    throw の直前に空オブジェクトを返す分岐を挿入してエラーを回避する。
+const workerAfterCron = readFileSync(WORKER_PATH, 'utf-8');
+const prefetchPatch = workerAfterCron.replace(
+  /throw new Error\(`Unexpected loadManifest\(\$\{([^}]+)\}\) call!`\)/,
+  'if ($1.endsWith("server/prefetch-hints.json")) { return {}; }\n  throw new Error(`Unexpected loadManifest(${$1}) call!`)',
+);
+if (prefetchPatch === workerAfterCron) {
+  console.warn('prefetch-hints patch: pattern not found, skipping (may already be patched)');
+} else {
+  writeFileSync(WORKER_PATH, prefetchPatch);
+  console.log('prefetch-hints.json loadManifest patch applied to worker.js');
+}
+
+// 4. dist/rss_reader/wrangler.json に不足バインディングをマージ
 // このファイルは opennextjs-cloudflare deploy 時に生成されるため、
 // CI のビルドステップでは存在しない場合がある → その場合はスキップ
 const WRANGLER_JSON_PATH = 'dist/rss_reader/wrangler.json';
