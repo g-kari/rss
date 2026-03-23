@@ -3,7 +3,6 @@ import { requireSession, applyRefreshedTokens } from '@/lib/server-auth';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { fetchArticles } from '@/cron/fetch';
 
-export const runtime = 'edge';
 
 export async function POST() {
   const result = await requireSession();

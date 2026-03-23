@@ -4,7 +4,6 @@ import { r2Get } from '@/lib/r2';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { Feed } from '@/types';
 
-export const runtime = 'edge';
 
 function buildOpml(feeds: Feed[]): string {
   const outlines = feeds

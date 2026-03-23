@@ -4,7 +4,6 @@ import { r2Get } from '@/lib/r2';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { Article } from '@/types';
 
-export const runtime = 'edge';
 
 export async function GET() {
   const result = await requireSession();

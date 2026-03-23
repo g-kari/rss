@@ -6,7 +6,6 @@ import { isBetaAllowed, COOKIE_OPTS } from '@/lib/server-auth';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { UserProfile } from '@/types';
 
-export const runtime = 'edge';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

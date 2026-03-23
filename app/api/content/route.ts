@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/server-auth';
 
-export const runtime = 'edge';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_CONTENT_BYTES = 5 * 1024 * 1024;

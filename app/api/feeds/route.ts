@@ -7,7 +7,6 @@ import { isValidFeedUrl } from '@/lib/url';
 import { discoverFeedUrl } from '@/lib/feed-discovery';
 import type { Feed } from '@/types';
 
-export const runtime = 'edge';
 
 export async function GET() {
   const result = await requireSession();
