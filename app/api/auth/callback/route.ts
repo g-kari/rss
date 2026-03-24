@@ -7,6 +7,21 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { UserProfile } from '@/types';
 
 /**
+ * 認証エラーレスポンスを生成し、auth_state クッキーを削除する。
+ * 失敗後も同じ state での再試行を防ぐため、全エラーパスで削除する。
+ */
+function authError(message: string, status: number): Response {
+  const cookieClear = `auth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+  return new Response(`<p>${message}</p>`, {
+    status,
+    headers: {
+      'Content-Type': 'text/html',
+      'Set-Cookie': cookieClear,
+    },
+  });
+}
+
+/**
  * CSRF state をタイミング攻撃耐性のある方法で比較する。
  * Web Crypto の HMAC を使い、両値の署名を同一キーで生成して XOR 比較することで
  * 文字列長・内容が異なる場合でも処理時間を均一化する。
@@ -35,17 +50,17 @@ export async function GET(request: Request) {
   const savedState = cookieStore.get('auth_state')?.value;
 
   if (!code || !state || !savedState) {
-    return new Response('<p>認証エラー: state 不一致</p>', { status: 400, headers: { 'Content-Type': 'text/html' } });
+    return authError('認証エラー: state 不一致', 400);
   }
   if (!(await timingSafeStringEqual(state, savedState))) {
-    return new Response('<p>認証エラー: state 不一致</p>', { status: 400, headers: { 'Content-Type': 'text/html' } });
+    return authError('認証エラー: state 不一致', 400);
   }
 
   const appBaseUrl = process.env.APP_BASE_URL!;
   const callbackUrl = `${appBaseUrl}/api/auth/callback`;
   const tokens = await exchangeCode(code, callbackUrl);
   if (!tokens) {
-    return new Response('<p>認証エラー: トークン交換失敗</p>', { status: 401, headers: { 'Content-Type': 'text/html' } });
+    return authError('認証エラー: トークン交換失敗', 401);
   }
 
   const authBaseUrl = process.env.AUTH_BASE_URL!;

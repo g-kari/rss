@@ -13,8 +13,18 @@ const securityHeaders = [
     value: 'DENY',
   },
   {
+    // レガシーな XSS フィルター（IE/旧 Safari）を明示的に無効化する。
+    // Chrome v78 以降はこのヘッダーを完全削除済みで影響なし。
+    // 一方、有効にするとフィルター自体が情報漏洩に悪用されるリスクがあるため 0 を設定する。
+    // XSS 対策は Content-Security-Policy で行う。
     key: 'X-XSS-Protection',
-    value: '1; mode=block',
+    value: '0',
+  },
+  {
+    // クロスオリジンのウィンドウが opener 参照を通じて本ウィンドウを操作するのを防ぐ。
+    // OAuth2 フローは popup ではなくリダイレクトを使用しているため safe。
+    key: 'Cross-Origin-Opener-Policy',
+    value: 'same-origin',
   },
   {
     key: 'Referrer-Policy',
