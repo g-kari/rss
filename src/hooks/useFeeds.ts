@@ -16,6 +16,7 @@ interface FeedsState {
   updateFeed: (feed: Feed) => void;
   replaceFeeds: (feeds: Feed[]) => void;
   refreshFeeds: () => Promise<void>;
+  retryFeed: (feedId: string) => Promise<void>;
   dismissNewArticles: () => void;
 }
 
@@ -110,9 +111,19 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     }
   }, []);
 
+  const retryFeed = useCallback(async (feedId: string): Promise<void> => {
+    const res = await fetch(`/api/feeds/${feedId}/refresh`, { method: 'POST' });
+    if (!res.ok) return;
+    const feed = await res.json() as Feed;
+    setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
+    const refreshed = await fetch('/api/articles').then((r) => r.json() as Promise<Article[]>);
+    setArticles(refreshed);
+    latestArticleIdRef.current = refreshed[0]?.id ?? null;
+  }, []);
+
   const dismissNewArticles = useCallback(() => {
     setNewArticleCount(0);
   }, []);
 
-  return { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, dismissNewArticles };
+  return { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles };
 }

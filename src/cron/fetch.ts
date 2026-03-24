@@ -111,6 +111,71 @@ export async function fetchArticles(env: FetchEnv, userId: string): Promise<void
   await fetchUserArticles(env, userId, true);
 }
 
+/**
+ * 単一フィードを強制再取得してアーティクルをマージする。
+ * エラー状態（consecutiveErrors / fetchError）もリセットを試みる。
+ * フィードが見つからない場合は null を返す。
+ */
+export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: string): Promise<Feed | null> {
+  const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${userId}/feeds.json`, []);
+  const feedIndex = feeds.findIndex((f) => f.id === feedId);
+  if (feedIndex < 0) return null;
+  const feed = feeds[feedIndex];
+
+  if (!isValidFeedUrl(feed.url)) throw new Error(`Invalid feed URL: ${feed.url}`);
+
+  const existing = await r2Get<Article[]>(env.RSS_DATA, `users/${userId}/articles.json`, []);
+  const existingByGuid = new Map(existing.map((a) => [a.guid, a]));
+
+  try {
+    const res = await fetchViaBinding(env, feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
+    if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
+    const xml = await res.text();
+    const parsed = parseFeed(xml);
+
+    feed.title = parsed.title || feed.title;
+    feed.siteUrl = parsed.siteUrl || feed.siteUrl;
+    feed.lastFetchedAt = new Date().toISOString();
+    feed.fetchError = null;
+    feed.consecutiveErrors = 0;
+
+    const newArticles = parsed.items.map(
+      (item): Article => ({
+        id: existingByGuid.get(item.guid)?.id ?? crypto.randomUUID(),
+        feedId: feed.id,
+        guid: item.guid,
+        title: item.title,
+        link: item.link,
+        summary: item.summary,
+        content: item.content,
+        ogImage: item.ogImage || existingByGuid.get(item.guid)?.ogImage,
+        author: item.author || existingByGuid.get(item.guid)?.author,
+        publishedAt: item.publishedAt,
+        createdAt: existingByGuid.get(item.guid)?.createdAt ?? new Date().toISOString(),
+      })
+    );
+    for (const a of newArticles) existingByGuid.set(a.guid, a);
+  } catch (e) {
+    feed.consecutiveErrors = (feed.consecutiveErrors ?? 0) + 1;
+    feed.fetchError = e instanceof Error ? e.message : String(e);
+    console.error('Single feed fetch failed:', e);
+  }
+
+  await r2Put(env.RSS_DATA, `users/${userId}/feeds.json`, feeds);
+
+  const sorted = [...existingByGuid.values()]
+    .sort((a, b) => {
+      const at = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const bt = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return bt - at;
+    })
+    .slice(0, MAX_ARTICLES);
+
+  await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sorted);
+
+  return feed;
+}
+
 // Cron: 全ユーザーをフェッチ
 export async function fetchAllUsers(env: FetchEnv): Promise<void> {
   const listed = await env.RSS_DATA.list({ prefix: 'users/', delimiter: '/' });
