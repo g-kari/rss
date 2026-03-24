@@ -182,8 +182,10 @@ export default function App() {
     const article = articles.find((a) => a.id === pendingArticleIdRef.current);
     if (article) {
       setSelectedArticle(article);
-      pendingArticleIdRef.current = null;
     }
+    // 記事が見つかった場合も見つからなかった場合も、ロード済みならクリアする
+    // クリアしないとポーリング毎に古い ID を検索し続けてしまう
+    pendingArticleIdRef.current = null;
   }, [articles]);
 
   useEffect(() => {
