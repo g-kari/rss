@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Article, FontSize } from '../types';
 import { readingTime } from '../lib/article-utils';
-import { STORAGE_KEYS, storageGet, storageSet, storageRemove, storageListKeys } from '../lib/storage';
+import { STORAGE_KEYS, storageGet, storageSet, storageRemove } from '../lib/storage';
+import { contentLruCache, aiLruCache } from '../lib/lru-cache';
 import { extractEmbedInfo, processContent, stripIframes } from '../lib/embed-utils';
 
 type AiMode = 'summary' | 'translation';
@@ -31,35 +32,20 @@ interface Props {
   onSelectNext?: () => void;
 }
 
-/* ── 全文キャッシュ (localStorage) ── */
-const CACHE_MAX = 15;
-
-/* ── AI 結果キャッシュ (localStorage) ── */
-const AI_CACHE_MAX = 30;
-
 function loadCache(id: string): string | null {
-  return storageGet(`${STORAGE_KEYS.CONTENT_CACHE_PREFIX}${id}`);
+  return contentLruCache.get(id);
 }
 
-function saveCache(id: string, content: string) {
-  const key = `${STORAGE_KEYS.CONTENT_CACHE_PREFIX}${id}`;
-  // 既存キーを先に削除して末尾に再挿入 → Object.keys() 順序が LRU 順になる
-  storageRemove(key);
-  const keys = storageListKeys(STORAGE_KEYS.CONTENT_CACHE_PREFIX);
-  if (keys.length >= CACHE_MAX) storageRemove(keys[0]);
-  storageSet(key, content);
+function saveCache(id: string, content: string): void {
+  contentLruCache.set(id, content);
 }
 
 function loadAiCache(articleId: string, mode: AiMode): string | null {
-  return storageGet(`${STORAGE_KEYS.AI_CACHE_PREFIX}${articleId}:${mode}`);
+  return aiLruCache.get(`${articleId}:${mode}`);
 }
 
 function saveAiCache(articleId: string, mode: AiMode, text: string): void {
-  const key = `${STORAGE_KEYS.AI_CACHE_PREFIX}${articleId}:${mode}`;
-  storageRemove(key);
-  const keys = storageListKeys(STORAGE_KEYS.AI_CACHE_PREFIX);
-  if (keys.length >= AI_CACHE_MAX) storageRemove(keys[0]);
-  storageSet(key, text);
+  aiLruCache.set(`${articleId}:${mode}`, text);
 }
 
 
