@@ -15,7 +15,7 @@ const DISCOVERY_TIMEOUT_MS = 5_000;
 /** HTML 読み込み上限バイト数。<head> は通常この範囲内にある */
 const MAX_DISCOVERY_BYTES = 64 * 1024;
 
-/** 一般的な RSS/Atom フィードパス候補 */
+/** 一般的な RSS/Atom/JSON Feed パス候補 */
 const COMMON_FEED_PATHS = [
   '/feed',
   '/rss',
@@ -23,11 +23,12 @@ const COMMON_FEED_PATHS = [
   '/atom.xml',
   '/feed.xml',
   '/index.xml',
+  '/feed.json',        // JSON Feed
   '/feeds/posts/default', // Blogger
 ] as const;
 
 function isFeedContentType(ct: string): boolean {
-  return ct.includes('xml') || ct.includes('rss') || ct.includes('atom');
+  return ct.includes('xml') || ct.includes('rss') || ct.includes('atom') || ct.includes('feed+json');
 }
 
 /**
