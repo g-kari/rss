@@ -10,6 +10,7 @@ interface Options {
   readIds: Set<string>;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
+  selectedArticleId?: string | null;
 }
 
 export type SortOrder = 'newest' | 'oldest';
@@ -31,7 +32,7 @@ function getDateRangeStart(range: DateRange): Date | null {
   return d;
 }
 
-export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, readingListIds }: Options) {
+export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, readingListIds, selectedArticleId }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === '1');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -104,7 +105,8 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
           : feedId
             ? articles.filter((a) => a.feedId === feedId)
             : articles;
-    if (unreadOnly) list = list.filter((a) => !readIds.has(a.id));
+    // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
+    if (unreadOnly) list = list.filter((a) => !readIds.has(a.id) || a.id === selectedArticleId);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter(
@@ -122,7 +124,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
       list = [...list].reverse();
     }
     return list;
-  }, [articles, feedId, readIds, bookmarkIds, readingListIds, unreadOnly, query, sortOrder, dateRange]);
+  }, [articles, feedId, readIds, bookmarkIds, readingListIds, unreadOnly, query, sortOrder, dateRange, selectedArticleId]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;

@@ -312,7 +312,7 @@ export default function App() {
     updateQuery,
     searchRef,
     sentinelRef,
-  } = useFilteredArticles({ articles, feedId: selectedFeedId, readIds, bookmarkIds, readingListIds });
+  } = useFilteredArticles({ articles, feedId: selectedFeedId, readIds, bookmarkIds, readingListIds, selectedArticleId: selectedArticle?.id });
 
   const currentIndex = useMemo(
     () => (selectedArticle ? filtered.findIndex((a) => a.id === selectedArticle.id) : -1),

@@ -442,7 +442,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
         )}
 
         {/* OGP 画像 (埋め込みなし・全文未取得時) */}
-        {!embedInfo && article.ogImage && !storedContent && (
+        {!embedInfo && article.ogImage && (
           <img
             src={article.ogImage}
             alt=""
