@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/server-auth';
-import { isValidFeedUrl } from '@/lib/url';
+import { isValidFeedUrl, isFetchBlocked } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
 import { detectCharset, extractMainContent } from '@/lib/content';
@@ -18,6 +18,9 @@ export async function GET(request: Request) {
 
   if (!isValidFeedUrl(url)) {
     return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
+  }
+  if (isFetchBlocked(url)) {
+    return NextResponse.json({ error: 'Domain is blocked for fetch' }, { status: 403 });
   }
 
   const { ctx } = await getCloudflareContext({ async: true });

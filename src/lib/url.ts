@@ -40,6 +40,29 @@ function isPrivateHost(hostname: string): boolean {
   return false;
 }
 
+/**
+ * コンテンツ・画像フェッチをブロックするドメインのリスト。
+ * Anubis 等のボット対策で JS PoW を要求し、サーバーサイドフェッチが常に失敗するドメインを登録する。
+ */
+const FETCH_BLOCKED_DOMAINS = [
+  'nitter.privacyredirect.com',
+];
+
+/**
+ * 指定 URL のドメインがフェッチブロックリストに含まれているかを返す。
+ * `/api/content` および `/api/image-proxy` でのフェッチ前に使用する。
+ */
+export function isFetchBlocked(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    return FETCH_BLOCKED_DOMAINS.some(
+      (blocked) => hostname === blocked || hostname.endsWith(`.${blocked}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function isValidFeedUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
