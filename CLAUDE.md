@@ -205,7 +205,7 @@ npm run test:e2e:ui                     # UI モードでデバッグ
 
 ```
 removeNoise            → EC ギャラリー / Qiita・Zenn UI のノイズ除去
-transformZennCardEmbeds   → 非 zenn.dev の embed.zenn.studio/card iframe を外部リンクに変換
+transformZennLinkEmbeds   → embed.zenn.studio の card/tweet iframe を外部リンクに変換
 transformZennMermaidEmbeds → zenn.dev の mermaid を <pre><code> に変換
 fixLazyImages          → data-src → src 解決、Shopify _NNNx → _800x 高解像度化
 fixImageDimensions     → 相対パス絶対URL化 / loading="lazy" 追加

@@ -109,12 +109,13 @@ export function removeNoise(html: string): string {
 }
 
 /**
- * embed.zenn.studio/card iframe を外部リンクに変換する。
+ * embed.zenn.studio の card / tweet iframe を外部リンクに変換する。
  *
- * Zenn CMS が生成する card embed は以下の形式:
+ * Zenn CMS が生成する embed は以下のいずれかの形式:
  * <span class="embed-block zenn-embedded zenn-embedded-card">
- *   <iframe src="https://embed.zenn.studio/card#zenn-embedded__xxx"
- *     data-content="https%3A%2F%2Fexample.com%2Farticle"
+ * <span class="embed-block zenn-embedded zenn-embedded-tweet">
+ *   <iframe src="https://embed.zenn.studio/{type}#zenn-embedded__xxx"
+ *     data-content="https%3A%2F%2F..."
  *     ...></iframe>
  * </span>
  *
@@ -122,39 +123,9 @@ export function removeNoise(html: string): string {
  * "Loading..." のまま表示されるため、data-content から元 URL を取り出してリンクに変換する。
  * zenn.dev / 非 zenn.dev を問わず全ドメインで適用する。
  */
-export function transformZennCardEmbeds(content: string): string {
+export function transformZennLinkEmbeds(content: string): string {
   return content.replace(
-    /<span\b[^>]*\bzenn-embedded-card\b[^>]*>[\s\S]*?<\/span>/gi,
-    (spanMatch) => {
-      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
-      if (!dcMatch) return spanMatch;
-      try {
-        const url = decodeURIComponent(dcMatch[1]);
-        // javascript: / data: 等の危険スキームをブロック（XSS 防止）
-        if (!/^https?:\/\//i.test(url)) return spanMatch;
-        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
-      } catch {
-        return spanMatch;
-      }
-    },
-  );
-}
-
-/**
- * embed.zenn.studio/tweet iframe を外部リンクに変換する。
- *
- * Zenn CMS が生成する tweet embed は以下の形式:
- * <span class="embed-block zenn-embedded zenn-embedded-tweet">
- *   <iframe src="https://embed.zenn.studio/tweet#zenn-embedded__xxx"
- *     data-content="https%3A%2F%2Fx.com%2Fuser%2Fstatus%2F123"
- *     ...></iframe>
- * </span>
- *
- * card embed と同様に JS なしでは表示されないため、data-content から元 URL を取り出してリンクに変換する。
- */
-export function transformZennTweetEmbeds(content: string): string {
-  return content.replace(
-    /<span\b[^>]*\bzenn-embedded-tweet\b[^>]*>[\s\S]*?<\/span>/gi,
+    /<span\b[^>]*\bzenn-embedded-(?:card|tweet)\b[^>]*>[\s\S]*?<\/span>/gi,
     (spanMatch) => {
       const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
       if (!dcMatch) return spanMatch;
@@ -253,8 +224,7 @@ export function rewriteImageUrls(html: string): string {
 export function postProcess(content: string, pageUrl = ''): string {
   const steps: Array<(html: string) => string> = [
     (html) => removeNoise(html),
-    (html) => transformZennCardEmbeds(html),
-    (html) => transformZennTweetEmbeds(html),
+    (html) => transformZennLinkEmbeds(html),
     (html) => transformZennMermaidEmbeds(html, pageUrl),
     (html) => fixLazyImages(html),
     (html) => fixImageDimensions(html, pageUrl),
