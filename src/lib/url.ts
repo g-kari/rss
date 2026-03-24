@@ -84,7 +84,11 @@ function isPrivateHost(hostname: string): boolean {
   return false;
 }
 
+/** URL の最大許容長。DoS・ストレージ肥大化対策。 */
+export const MAX_URL_LENGTH = 2048;
+
 export function isValidFeedUrl(url: string): boolean {
+  if (url.length > MAX_URL_LENGTH) return false;
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
