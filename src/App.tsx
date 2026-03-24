@@ -344,6 +344,7 @@ export default function App() {
     dateRange,
     cycleDateRange,
     query,
+    rawQuery,
     updateQuery,
     searchRef,
     sentinelRef,
@@ -671,6 +672,7 @@ export default function App() {
           dateRange={dateRange}
           cycleDateRange={cycleDateRange}
           query={query}
+          rawQuery={rawQuery}
           updateQuery={updateQuery}
           searchRef={searchRef}
           sentinelRef={sentinelRef}
