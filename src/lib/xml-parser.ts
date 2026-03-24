@@ -22,6 +22,10 @@ const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
   isArray: (name) => ['item', 'entry', 'link'].includes(name),
+  // GHSA-jp2q-39xq-3w4g 対策: entity 展開制限を明示的に 200 に設定
+  // (0 を指定すると falsy 判定で無制限になる脆弱性があるため非ゼロ値を使う)
+  processEntities: true,
+  htmlEntities: true,
 });
 
 function toArray<T>(val: T | T[] | undefined): T[] {
