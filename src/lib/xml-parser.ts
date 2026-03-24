@@ -258,7 +258,7 @@ export function parseFeed(xml: string): ParsedFeed {
           content: sanitizeHtml(raw),
           ogImage: safeUrl(extractImage(entry)),
           author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
-          publishedAt: entry.published ?? entry.updated ?? null,
+          publishedAt: parseDate(entry.published ?? entry.updated),
         };
       }),
     };
