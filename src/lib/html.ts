@@ -126,6 +126,23 @@ export function sanitizeHtml(html: string): string {
     // SVG <foreignObject> を除去（任意の HTML を埋め込める危険な要素）
     .replace(/<foreignObject\b[^<]*(?:(?!<\/foreignObject>)<[^<]*)*<\/foreignObject>/gi, '')
     .replace(/<foreignObject\b[^>]*\/>/gi, '')
+    // SVG アニメーション要素を除去（attributeName 経由のイベントハンドラ注入防止）
+    // <animate attributeName="href" to="javascript:alert(1)"> 等で href/イベントハンドラを
+    // 動的に書き換えられるため、animate / animateTransform / animateMotion / set を除去する
+    .replace(/<animate\b[^>]*\/?>/gi, '')
+    .replace(/<animateTransform\b[^>]*\/?>/gi, '')
+    .replace(/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion>/gi, '')
+    .replace(/<animateMotion\b[^>]*\/?>/gi, '')
+    .replace(/<set\b[^>]*\/?>/gi, '')
+    // SVG <use> の外部参照を除去（クロスオリジン SVG 読み込みによるプライバシー侵害防止）
+    // href / xlink:href が # のみのフラグメント参照は同一ドキュメント内なので安全、それ以外を除去
+    .replace(/<use\b([^>]*)>/gi, (_m, attrs: string) => {
+      const hrefMatch = attrs.match(/\b(?:xlink:)?href\s*=\s*["']([^"']*?)["']/i);
+      const href = hrefMatch?.[1] ?? '';
+      // フラグメントのみ (#id) は許可、外部 URL や空 href は除去
+      return /^#[^#]*$/.test(href) ? _m : '';
+    })
+    .replace(/<\/use>/gi, '')
     // <iframe> は信頼済みドメイン以外を除去
     .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
       const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
