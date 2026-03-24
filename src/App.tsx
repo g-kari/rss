@@ -10,45 +10,33 @@ import { useAuth } from './hooks/useAuth';
 import { useFeeds } from './hooks/useFeeds';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
 import { useFilteredArticles } from './hooks/useFilteredArticles';
+import { STORAGE_KEYS, storageGet, storageSet, loadSet, saveSet } from './lib/storage';
 
 type Theme = 'light' | 'dark';
 type MobilePane = 'sidebar' | 'list' | 'view';
 
-function loadSet(key: string): Set<string> {
-  try {
-    const stored = localStorage.getItem(key);
-    return new Set(stored ? JSON.parse(stored) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function saveSet(key: string, ids: Set<string>) {
-  localStorage.setItem(key, JSON.stringify([...ids]));
-}
-
 function loadLayout(): Layout {
-  const stored = localStorage.getItem('rss-layout');
+  const stored = storageGet(STORAGE_KEYS.LAYOUT);
   if (stored === 'compact' || stored === 'list' || stored === 'card' || stored === 'magazine')
     return stored;
   return 'list';
 }
 
 function loadTheme(): Theme {
-  const stored = localStorage.getItem('rss-theme');
+  const stored = storageGet(STORAGE_KEYS.THEME);
   if (stored === 'light' || stored === 'dark') return stored;
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function loadFontSize(): FontSize {
-  const stored = localStorage.getItem('rss-font-size');
+  const stored = storageGet(STORAGE_KEYS.FONT_SIZE);
   if (stored === 'small' || stored === 'medium' || stored === 'large') return stored;
   return 'medium';
 }
 
-const loadReadIds = () => loadSet('rss-read');
-const loadBookmarkIds = () => loadSet('rss-bookmarks');
-const loadPinnedFeedIds = () => loadSet('rss-pinned');
+const loadReadIds = () => loadSet(STORAGE_KEYS.READ_IDS);
+const loadBookmarkIds = () => loadSet(STORAGE_KEYS.BOOKMARK_IDS);
+const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
 
 async function fetchReadState(): Promise<{ readIds: string[]; bookmarkIds: string[] } | null> {
   try {
@@ -104,13 +92,13 @@ export default function App() {
       if (!state) return;
       setReadIds((prev) => {
         const merged = new Set([...prev, ...state.readIds]);
-        saveSet('rss-read', merged);
+        saveSet(STORAGE_KEYS.READ_IDS, merged);
         localReadRef.current = merged;
         return merged;
       });
       setBookmarkIds((prev) => {
         const merged = new Set([...prev, ...state.bookmarkIds]);
-        saveSet('rss-bookmarks', merged);
+        saveSet(STORAGE_KEYS.BOOKMARK_IDS, merged);
         localBookmarkRef.current = merged;
         return merged;
       });
@@ -160,7 +148,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem('rss-theme', theme);
+    storageSet(STORAGE_KEYS.THEME, theme);
   }, [theme]);
 
   const totalUnread = useMemo(
@@ -178,18 +166,18 @@ export default function App() {
 
   const onChangeFontSize = useCallback((size: FontSize) => {
     setFontSize(size);
-    localStorage.setItem('rss-font-size', size);
+    storageSet(STORAGE_KEYS.FONT_SIZE, size);
   }, []);
 
   const onChangeLayout = useCallback((l: Layout) => {
     setLayout(l);
-    localStorage.setItem('rss-layout', l);
+    storageSet(STORAGE_KEYS.LAYOUT, l);
   }, []);
 
   const markRead = useCallback((articleId: string) => {
     setReadIds((prev) => {
       const next = new Set(prev).add(articleId);
-      saveSet('rss-read', next);
+      saveSet(STORAGE_KEYS.READ_IDS, next);
       return next;
     });
     scheduleSyncToServer();
@@ -206,7 +194,7 @@ export default function App() {
         ids = articles.map((a) => a.id);
       }
       const next = new Set([...prev, ...ids]);
-      saveSet('rss-read', next);
+      saveSet(STORAGE_KEYS.READ_IDS, next);
       return next;
     });
     scheduleSyncToServer();
@@ -216,7 +204,7 @@ export default function App() {
     setReadIds((prev) => {
       const next = new Set(prev);
       next.has(articleId) ? next.delete(articleId) : next.add(articleId);
-      saveSet('rss-read', next);
+      saveSet(STORAGE_KEYS.READ_IDS, next);
       return next;
     });
     scheduleSyncToServer();
@@ -226,7 +214,7 @@ export default function App() {
     setBookmarkIds((prev) => {
       const next = new Set(prev);
       next.has(articleId) ? next.delete(articleId) : next.add(articleId);
-      saveSet('rss-bookmarks', next);
+      saveSet(STORAGE_KEYS.BOOKMARK_IDS, next);
       return next;
     });
     scheduleSyncToServer();
@@ -236,7 +224,7 @@ export default function App() {
     setPinnedFeedIds((prev) => {
       const next = new Set(prev);
       next.has(feedId) ? next.delete(feedId) : next.add(feedId);
-      saveSet('rss-pinned', next);
+      saveSet(STORAGE_KEYS.PINNED_FEED_IDS, next);
       return next;
     });
   }, []);

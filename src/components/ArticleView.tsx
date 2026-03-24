@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Article, FontSize } from '../types';
 import { readingTime } from '../lib/article-utils';
+import { STORAGE_KEYS, storageGet, storageSet, storageRemove, storageListKeys } from '../lib/storage';
 
 type AiMode = 'summary' | 'translation';
 
@@ -117,19 +118,16 @@ function stripIframes(html: string): string {
 }
 
 /* ── 全文キャッシュ (localStorage) ── */
-const CACHE_PREFIX = 'rss-content:';
 const CACHE_MAX = 15;
 
 function loadCache(id: string): string | null {
-  try { return localStorage.getItem(`${CACHE_PREFIX}${id}`); } catch { return null; }
+  return storageGet(`${STORAGE_KEYS.CONTENT_CACHE_PREFIX}${id}`);
 }
 
 function saveCache(id: string, content: string) {
-  try {
-    const keys = Object.keys(localStorage).filter((k) => k.startsWith(CACHE_PREFIX));
-    if (keys.length >= CACHE_MAX) localStorage.removeItem(keys[0]);
-    localStorage.setItem(`${CACHE_PREFIX}${id}`, content);
-  } catch { /* storage full */ }
+  const keys = storageListKeys(STORAGE_KEYS.CONTENT_CACHE_PREFIX);
+  if (keys.length >= CACHE_MAX) storageRemove(keys[0]);
+  storageSet(`${STORAGE_KEYS.CONTENT_CACHE_PREFIX}${id}`, content);
 }
 
 
@@ -150,10 +148,8 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
   const [scrollProgress, setScrollProgress] = useState(0);
   // 最後に使った AI モードを localStorage で永続化（記事切り替え後も自動実行）
   const [stickyAiMode, setStickyAiMode] = useState<AiMode | null>(() => {
-    try {
-      const v = localStorage.getItem('rss-ai-mode');
-      return v === 'summary' || v === 'translation' ? v : null;
-    } catch { return null; }
+    const v = storageGet(STORAGE_KEYS.AI_MODE);
+    return v === 'summary' || v === 'translation' ? v : null;
   });
   const stickyAiModeRef = useRef(stickyAiMode);
   stickyAiModeRef.current = stickyAiMode;
@@ -181,11 +177,11 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
     if (aiResult?.mode === mode) {
       setAiResult(null);
       setStickyAiMode(null);
-      try { localStorage.removeItem('rss-ai-mode'); } catch { /* ignore */ }
+      storageRemove(STORAGE_KEYS.AI_MODE);
       return;
     }
     setStickyAiMode(mode);
-    try { localStorage.setItem('rss-ai-mode', mode); } catch { /* ignore */ }
+    storageSet(STORAGE_KEYS.AI_MODE, mode);
     doRunAi(mode, contentHtml);
   }, [aiResult, doRunAi]);
 
