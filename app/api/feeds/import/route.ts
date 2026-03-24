@@ -7,6 +7,7 @@ import { XMLParser } from 'fast-xml-parser';
 import { isValidFeedUrl } from '@/lib/url';
 import type { Feed } from '@/types';
 
+const MAX_FEEDS_PER_USER = 1000;
 
 interface OpmlOutline {
   '@_xmlUrl'?: string;
@@ -64,10 +65,16 @@ export async function POST(request: Request) {
   }
 
   const list = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
+  const remainingSlots = MAX_FEEDS_PER_USER - list.length;
+  if (remainingSlots <= 0) {
+    return NextResponse.json({ error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` }, { status: 422 });
+  }
+
   const existingUrls = new Set(list.map((f) => f.url));
 
   const added: Feed[] = [];
   for (const entry of feedEntries) {
+    if (added.length >= remainingSlots) break; // 上限に達したら打ち切り
     if (existingUrls.has(entry.url)) continue;
     if (!isValidFeedUrl(entry.url)) continue; // SSRF 対策
     const newFeed: Feed = {

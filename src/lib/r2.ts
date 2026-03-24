@@ -1,13 +1,23 @@
 export async function r2Get<T>(bucket: R2Bucket, key: string, fallback: T): Promise<T> {
-  const obj = await bucket.get(key);
-  if (!obj) return fallback;
-  return obj.json<T>();
+  try {
+    const obj = await bucket.get(key);
+    if (!obj) return fallback;
+    return await obj.json<T>();
+  } catch (e) {
+    console.error(`[r2Get] Failed to read ${key}:`, e);
+    return fallback;
+  }
 }
 
 export async function r2Put(bucket: R2Bucket, key: string, data: unknown): Promise<void> {
-  await bucket.put(key, JSON.stringify(data), {
-    httpMetadata: { contentType: 'application/json' },
-  });
+  try {
+    await bucket.put(key, JSON.stringify(data), {
+      httpMetadata: { contentType: 'application/json' },
+    });
+  } catch (e) {
+    console.error(`[r2Put] Failed to write ${key}:`, e);
+    throw e;
+  }
 }
 
 /** 文字列の SHA-256 ハッシュ（16進）を返す。キャッシュキー生成などに使用 */
