@@ -96,6 +96,10 @@ export function sanitizeHtml(html: string): string {
     .replace(/<link\b[^>]*\/?>/gi, '')
     // <base> タグを除去（相対 URL ハイジャック防止）
     .replace(/<base\b[^>]*\/?>/gi, '')
+    // <noscript> を除去（JavaScript 無効環境でのレンダリング防止）
+    .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
+    // <template> を除去（DOM ツリーに挿入可能な任意 HTML の封じ込め）
+    .replace(/<template\b[^<]*(?:(?!<\/template>)<[^<]*)*<\/template>/gi, '')
     // <object>, <embed> を除去
     .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
     .replace(/<embed\b[^>]*\/?>/gi, '')
