@@ -9,6 +9,8 @@ export function sanitizeHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // <link> タグを除去（React 19 のリソースホイスティングによる無限ループ防止）
+    .replace(/<link\b[^>]*\/?>/gi, '')
     // <base> タグを除去（相対 URL ハイジャック防止）
     .replace(/<base\b[^>]*\/?>/gi, '')
     // <object>, <embed> を除去
