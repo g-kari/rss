@@ -511,6 +511,52 @@ test.describe('sanitizeHtml — SVG アニメーション要素によるイン�
   });
 });
 
+test.describe('sanitizeHtml — ReDoS 耐性', () => {
+  // [\s\S]*? (非貪欲) を使うことで、閉じタグが見つからない場合でも
+  // O(n) の線形スキャンで完了し、exponential backtracking が発生しない。
+  // 旧パターン [^<]*(?:(?!<\/tag>)<[^<]*)* は 未閉じタグ × 大量の < 文字で
+  // O(n²) のバックトラッキングが発生する可能性があった。
+
+  test('<script> タグに < を大量に含む入力でタイムアウトしない（未閉じタグ）', () => {
+    // </script> がない: 除去はされないが1秒以内に完了すること
+    const input = '<p>前</p><script>' + '<x>'.repeat(3000) + 'alert(1)<p>後</p>';
+    const start = Date.now();
+    sanitizeHtml(input);
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(1000);
+  });
+
+  test('<style> タグに < を大量に含む入力でタイムアウトしない（未閉じタグ）', () => {
+    const input = '<p>前</p><style>' + '<x>'.repeat(3000) + 'body{color:red}<p>後</p>';
+    const start = Date.now();
+    sanitizeHtml(input);
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(1000);
+  });
+
+  test('<noscript> タグに < を大量に含む入力でタイムアウトしない（未閉じタグ）', () => {
+    const input = '<p>前</p><noscript>' + '<x>'.repeat(3000) + '<img src="x"><p>後</p>';
+    const start = Date.now();
+    sanitizeHtml(input);
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(1000);
+  });
+
+  test('正常に閉じた大きな <script> ブロックが除去される', () => {
+    // 正しく閉じられた大量コンテンツでも正常に除去されること
+    const content = 'var x = 1;\n'.repeat(1000);
+    const input = `<p>前</p><script type="text/javascript">${content}</script><p>後</p>`;
+    const start = Date.now();
+    const result = sanitizeHtml(input);
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(1000);
+    expect(result).not.toContain('<script');
+    expect(result).not.toContain('var x = 1');
+    expect(result).toContain('<p>前</p>');
+    expect(result).toContain('<p>後</p>');
+  });
+});
+
 test.describe('sanitizeHtml — 正常コンテンツの保持', () => {
   test('通常の段落・リンク・画像が保持される', () => {
     const html =

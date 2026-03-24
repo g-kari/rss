@@ -110,21 +110,26 @@ function isTrustedIframeSrc(src: string): boolean {
 
 export function sanitizeHtml(html: string): string {
   return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // 閉じタグを持つブロック要素を除去。
+    // [\s\S]*? (非貪欲) を使用することで、tempered greedy token パターン
+    // [^<]*(?:(?!<\/tag>)<[^<]*)* による ReDoS（カタストロフィックバックトラッキング）を防ぐ。
+    // <tag> 未閉じの場合は次の </ まで除去するため、開始タグが残ることもあるが
+    // セキュリティ上は許容範囲（後続のイベントハンドラ除去が補完する）。
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
     // <link> タグを除去（React 19 のリソースホイスティングによる無限ループ防止）
     .replace(/<link\b[^>]*\/?>/gi, '')
     // <base> タグを除去（相対 URL ハイジャック防止）
     .replace(/<base\b[^>]*\/?>/gi, '')
     // <noscript> を除去（JavaScript 無効環境でのレンダリング防止）
-    .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, '')
     // <template> を除去（DOM ツリーに挿入可能な任意 HTML の封じ込め）
-    .replace(/<template\b[^<]*(?:(?!<\/template>)<[^<]*)*<\/template>/gi, '')
+    .replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, '')
     // <object>, <embed> を除去
     .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
     .replace(/<embed\b[^>]*\/?>/gi, '')
     // SVG <foreignObject> を除去（任意の HTML を埋め込める危険な要素）
-    .replace(/<foreignObject\b[^<]*(?:(?!<\/foreignObject>)<[^<]*)*<\/foreignObject>/gi, '')
+    .replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject>/gi, '')
     .replace(/<foreignObject\b[^>]*\/>/gi, '')
     // SVG アニメーション要素を除去（attributeName 経由のイベントハンドラ注入防止）
     // <animate attributeName="href" to="javascript:alert(1)"> 等で href/イベントハンドラを
