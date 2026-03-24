@@ -72,7 +72,9 @@ export async function GET(request: Request) {
 
     // HTML エンティティをデコード（&amp; → & など）
     // imgix 等の CDN は URL 中の & をそのまま期待するため必須
-    const image = unescapeHtml(m?.[1] ?? '');
+    const raw = unescapeHtml(m?.[1] ?? '');
+    // data: / javascript: 等の危険スキームをブロック（XSS 防止）
+    const image = /^https?:\/\//i.test(raw) ? raw : '';
 
     // Cloudflare Cache API に保存（fire-and-forget）
     const cacheRes = new Response(JSON.stringify({ image }), {

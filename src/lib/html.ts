@@ -12,8 +12,15 @@ export function unescapeHtml(s: string): string {
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
-    .replace(/&#(\d+);/gi, (_m, d) => String.fromCharCode(Number(d)))
-    .replace(/&#x([0-9a-f]+);/gi, (_m, h) => String.fromCharCode(parseInt(h, 16)));
+    .replace(/&#(\d+);/gi, (_m, d) => {
+      const code = Number(d);
+      // 制御文字（0–31, 127）は除去して空文字を返す（NUL/BEL等のインジェクション防止）
+      return code > 31 && code !== 127 ? String.fromCharCode(code) : '';
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_m, h) => {
+      const code = parseInt(h, 16);
+      return code > 31 && code !== 127 ? String.fromCharCode(code) : '';
+    });
 }
 
 /** HTML タグを除去してプレーンテキストに変換する（AI 入力用） */
