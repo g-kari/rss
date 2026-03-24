@@ -37,6 +37,21 @@ export interface UserProfile {
   picture: string | null;
 }
 
+/** Web Push サブスクリプション（PushSubscription.toJSON() の表現） */
+export interface PushSubscriptionRecord {
+  endpoint: string;
+  expirationTime: number | null;
+  keys: {
+    p256dh: string; // base64url — ユーザーエージェントの公開鍵 (65 bytes uncompressed P-256)
+    auth: string;   // base64url — 認証シークレット (16 bytes)
+  };
+}
+
+/** R2 に保存するユーザーの Push 通知設定 */
+export interface PushConfig {
+  subscriptions: PushSubscriptionRecord[];
+}
+
 export interface Env {
   RSS_DATA: R2Bucket;
   AI: Ai;

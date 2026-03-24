@@ -88,3 +88,56 @@ self.addEventListener('fetch', (e) => {
       .catch(() => caches.match(e.request).then((cached) => cached ?? Response.error()))
   );
 });
+
+// -------------------------------------------------------------------------
+// Web Push 通知
+// -------------------------------------------------------------------------
+
+/** push イベント: サーバーからの通知を受け取り OS 通知を表示する */
+self.addEventListener('push', (e) => {
+  if (!e.data) return;
+
+  let data = { title: 'RSS Reader', body: '新着記事があります', url: '/' };
+  try {
+    data = { ...data, ...e.data.json() };
+  } catch {
+    // パース失敗時はデフォルト値を使用
+  }
+
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      // 同じタグで上書きすることで通知が積み重なることを防ぐ
+      tag: 'rss-new-articles',
+      renotify: true,
+      data: { url: data.url },
+    }),
+  );
+});
+
+/** notificationclick イベント: 通知クリックでアプリを開く */
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = e.notification.data?.url ?? '/';
+
+  e.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // 既存タブがあればフォーカス
+        for (const client of windowClients) {
+          try {
+            if (new URL(client.url).origin === self.location.origin) {
+              return client.focus();
+            }
+          } catch {
+            // URL パース失敗は無視
+          }
+        }
+        // なければ新規タブで開く
+        return self.clients.openWindow(url);
+      }),
+  );
+});

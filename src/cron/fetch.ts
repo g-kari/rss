@@ -1,7 +1,8 @@
-import type { Feed, Article } from '../types';
+import type { Feed, Article, PushConfig } from '../types';
 
 import { parseFeed, type ParsedItem } from '../lib/xml-parser';
 import { isValidFeedUrl } from '../lib/url';
+import { sendPushToAll, type PushPayload } from '../lib/web-push';
 
 type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA' | 'FINDME_RSS'>;
 import { r2Get, r2Put } from '../lib/r2';
@@ -187,10 +188,76 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
     else void 0; // already logged above
   }
 
+  // 新着記事（既存 Map に存在しなかったもの）を検出
+  const newArticles = fresh.filter((a) => !existingByKey.has(articleKey(a.feedId, a.guid)));
+
   const merged = new Map<string, Article>(existingByKey);
   for (const a of fresh) merged.set(articleKey(a.feedId, a.guid), a);
 
   await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sortAndSlice(merged.values()));
+
+  // 新着記事がある場合は Push 通知を送信
+  if (newArticles.length > 0) {
+    await sendPushNotificationsForUser(env, userId, newArticles, feeds);
+  }
+}
+
+/**
+ * ユーザーの Push サブスクリプションに新着記事の通知を送る。
+ * 失効したサブスクリプション (404/410) は自動的に削除する。
+ */
+async function sendPushNotificationsForUser(
+  env: FetchEnv,
+  userId: string,
+  newArticles: Article[],
+  feeds: Feed[],
+): Promise<void> {
+  const pushKey = `users/${userId}/push.json`;
+  const config = await r2Get<PushConfig>(env.RSS_DATA, pushKey, { subscriptions: [] });
+  if (config.subscriptions.length === 0) return;
+
+  const payload = buildPushPayload(newArticles, feeds);
+  const remaining = await sendPushToAll(config.subscriptions, payload);
+
+  // 失効したサブスクリプションを除去して書き戻す
+  if (remaining.length !== config.subscriptions.length) {
+    config.subscriptions = remaining;
+    await r2Put(env.RSS_DATA, pushKey, config);
+  }
+}
+
+/** 新着記事リストから通知ペイロードを生成する */
+function buildPushPayload(newArticles: Article[], feeds: Feed[]): PushPayload {
+  const count = newArticles.length;
+
+  if (count === 1) {
+    const article = newArticles[0];
+    const feed = feeds.find((f) => f.id === article.feedId);
+    const feedName = feed?.title ?? 'RSS';
+    return {
+      title: feedName,
+      body: article.title || '新着記事',
+      url: '/',
+    };
+  }
+
+  // 全記事が同一フィードの場合
+  const feedIds = [...new Set(newArticles.map((a) => a.feedId))];
+  if (feedIds.length === 1) {
+    const feed = feeds.find((f) => f.id === feedIds[0]);
+    const feedName = feed?.title ?? 'RSS';
+    return {
+      title: feedName,
+      body: `${count} 件の新着記事`,
+      url: '/',
+    };
+  }
+
+  return {
+    title: 'RSS Reader',
+    body: `${count} 件の新着記事`,
+    url: '/',
+  };
 }
 
 // フィード追加・手動リフレッシュ時の即時フェッチ（エラー状態に関わらず強制再試行）

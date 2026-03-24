@@ -167,6 +167,10 @@ interface Props {
   onTogglePinFeed: (id: string) => void;
   canInstall?: boolean;
   onInstall?: () => void;
+  pushSupported?: boolean;
+  pushSubscribed?: boolean;
+  pushLoading?: boolean;
+  onTogglePush?: () => void;
 }
 
 export default function FeedSidebar({
@@ -192,6 +196,10 @@ export default function FeedSidebar({
   onTogglePinFeed,
   canInstall,
   onInstall,
+  pushSupported,
+  pushSubscribed,
+  pushLoading,
+  onTogglePush,
 }: Props) {
   const [newUrl, setNewUrl] = useState('');
   const [adding, setAdding] = useState(false);
@@ -588,6 +596,24 @@ export default function FeedSidebar({
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5" />
             </svg>
+          </button>
+        )}
+        {pushSupported && (
+          <button
+            onClick={onTogglePush}
+            disabled={pushLoading}
+            className={`transition-colors duration-200 flex-shrink-0 ${pushSubscribed ? 'text-accent-dot' : 'text-text-faint hover:text-text-muted'} disabled:opacity-50`}
+            title={pushSubscribed ? 'プッシュ通知をオフ' : 'プッシュ通知をオン'}
+          >
+            {pushSubscribed ? (
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.143 17.082a24.248 24.248 0 003.844.148m-3.844-.148a23.856 23.856 0 01-5.455-1.31 8.964 8.964 0 002.3-5.542m3.155 6.852a3 3 0 005.667 1.97m1.965-2.277L21 21m-4.225-4.225a23.81 23.81 0 003.536-1.003A8.967 8.967 0 0118 9.75V9A6 6 0 006.53 6.53m10.245 10.245L6.53 6.53M3 3l3.53 3.53" />
+              </svg>
+            )}
           </button>
         )}
         <button
