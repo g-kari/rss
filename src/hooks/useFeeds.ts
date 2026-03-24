@@ -29,7 +29,9 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
   const latestArticleIdRef = useRef<string | null>(null);
 
   async function fetchAndSetArticles() {
-    const data = await fetch('/api/articles').then((r) => r.json() as Promise<Article[]>);
+    const res = await fetch('/api/articles');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as Article[];
     setArticles(data);
     latestArticleIdRef.current = data[0]?.id ?? null;
     return data;
@@ -53,7 +55,7 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
 
     const timer = setInterval(() => {
       fetch('/api/articles')
-        .then((r) => r.json() as Promise<Article[]>)
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Article[]>; })
         .then((data) => {
           const prevTopId = latestArticleIdRef.current;
           if (prevTopId === null) return;
@@ -110,11 +112,15 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
   }, []);
 
   const retryFeed = useCallback(async (feedId: string): Promise<void> => {
-    const res = await fetch(`/api/feeds/${feedId}/refresh`, { method: 'POST' });
-    if (!res.ok) return;
-    const feed = await res.json() as Feed;
-    setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
-    await fetchAndSetArticles();
+    try {
+      const res = await fetch(`/api/feeds/${feedId}/refresh`, { method: 'POST' });
+      if (!res.ok) return;
+      const feed = await res.json() as Feed;
+      setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
+      await fetchAndSetArticles();
+    } catch (err) {
+      console.error('retryFeed failed:', err);
+    }
   }, []);
 
   const dismissNewArticles = useCallback(() => {
