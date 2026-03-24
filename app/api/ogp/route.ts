@@ -26,7 +26,9 @@ export async function GET(request: Request) {
   const cached = await cfCache.match(cacheKey);
   if (cached) {
     const data = await cached.json() as { image: string };
-    return NextResponse.json(data, { headers: { 'X-Cache': 'HIT' } });
+    // 旧キャッシュに &amp; エンコードの URL が残っている場合に備えてデコードし直す
+    const image = /^https?:\/\//i.test(unescapeHtml(data.image)) ? unescapeHtml(data.image) : data.image;
+    return NextResponse.json({ image }, { headers: { 'X-Cache': 'HIT' } });
   }
 
   const controller = new AbortController();
