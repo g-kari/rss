@@ -1,6 +1,17 @@
 import { XMLParser } from 'fast-xml-parser';
 import { sanitizeHtml } from './html';
 
+/** HTML エンティティをデコードする（URL 中の &amp; → & など） */
+function unescapeHtml(s: string): string {
+  return s
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(\d+);/gi, (_m, d) => String.fromCharCode(Number(d)))
+    .replace(/&#x([0-9a-f]+);/gi, (_m, h) => String.fromCharCode(parseInt(h, 16)));
+}
+
 export interface ParsedItem {
   guid: string;
   title: string;
@@ -84,7 +95,7 @@ function extractImage(item: any): string {
   // 4. content/description 中の最初の <img>
   const html = str(item['content:encoded'] ?? item.description ?? item.content ?? item.summary ?? '');
   const m = html.match(/<img[^>]+src=["']([^"'#][^"']{4,})["']/i);
-  if (m?.[1] && !m[1].startsWith('data:')) return m[1];
+  if (m?.[1] && !m[1].startsWith('data:')) return unescapeHtml(m[1]);
 
   return '';
 }
