@@ -85,8 +85,10 @@ function removeNoise(html: string): string {
  * Zenn の mermaid embed iframe を mermaid ソースのコードブロックに変換する。
  * embed.zenn.studio/mermaid は親ページの Zenn スクリプト（postMessage）がないと
  * "Loading..." のまま表示されるため、data-content から直接ソースを取り出す。
+ * zenn.dev のみ適用。他ドメイン（classmethod 等）では変換しない。
  */
-function transformZennMermaidEmbeds(content: string): string {
+function transformZennMermaidEmbeds(content: string, pageUrl = ''): string {
+  if (!pageUrl.includes('zenn.dev')) return content;
   return content.replace(
     /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
     (spanMatch) => {
@@ -123,7 +125,12 @@ function fixLazyImages(html: string): string {
     const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
     if (dataSrcMatch) {
       const resolved = dataSrcMatch[1].replace(/\{width\}/g, '800');
-      fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
+      if (/\bsrc=["'][^"']*["']/i.test(fixed)) {
+        fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
+      } else {
+        // src 属性なしの遅延ロード画像: src を先頭に追加
+        fixed = ` src="${resolved}"` + fixed;
+      }
     }
 
     // Shopify: _NNNx / _NNNxNNN / _NNNx@Nx サフィックスを _800x に置換
@@ -137,13 +144,14 @@ function fixLazyImages(html: string): string {
 }
 
 /** コンテンツ抽出後の後処理パイプライン */
-function postProcess(content: string): string {
+function postProcess(content: string, pageUrl = ''): string {
   return sanitizeHtml(
     wrapTables(
       fixImageDimensions(
         fixLazyImages(
           transformZennMermaidEmbeds(
             removeNoise(content),
+            pageUrl,
           ),
         ),
       ),
@@ -194,52 +202,52 @@ function extractMainContent(html: string, pageUrl: string): string {
 
   // Qiita: itemprop="articleBody" または class="it-MdContent"
   const qiitaBody = cleaned.match(/<(\w+)[^>]+itemprop=["']articleBody["'][^>]*>([\s\S]*)<\/\1>/i);
-  if (qiitaBody?.[2]) return postProcess(qiitaBody[2]);
+  if (qiitaBody?.[2]) return postProcess(qiitaBody[2], pageUrl);
 
   const qiitaMd = cleaned.match(/<(\w+)[^>]+class=["'][^"']*it-MdContent[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
-  if (qiitaMd?.[2]) return postProcess(qiitaMd[2]);
+  if (qiitaMd?.[2]) return postProcess(qiitaMd[2], pageUrl);
 
   // Zenn (zenn.dev): class="znc" を <article> より優先
   // 他ドメイン (classmethod 等 Zenn の記事システムを流用するサイト) では
   // <article> を先に試し、なければ znc にフォールバックする
   const zncMatch = cleaned.match(/<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
-  if (zncMatch?.[2] && pageUrl.includes('zenn.dev')) return postProcess(zncMatch[2]);
+  if (zncMatch?.[2] && pageUrl.includes('zenn.dev')) return postProcess(zncMatch[2], pageUrl);
 
   // --- EC / 商品ページセレクター ---
 
   // Schema.org itemprop="description" (Shopify 等の EC サイト全般)
   const schemaDesc = cleaned.match(/<(\w+)[^>]+itemprop=["']description["'][^>]*>([\s\S]*)<\/\1>/i);
-  if (schemaDesc?.[2]) return postProcess(schemaDesc[2]);
+  if (schemaDesc?.[2]) return postProcess(schemaDesc[2], pageUrl);
 
   // Shopify: product__description / product-single__description / product-description 等
   // description は通常テキストのみなので、商品メイン画像を別途収集して先頭に付与する
   const shopifyDesc = cleaned.match(/<(\w+)[^>]+class=["'][^"']*product[^"']*description[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
   if (shopifyDesc?.[2]) {
     const mainImgs = [...cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)].map((m) => m[0]);
-    return postProcess(buildImageSlider(mainImgs) + shopifyDesc[2]);
+    return postProcess(buildImageSlider(mainImgs) + shopifyDesc[2], pageUrl);
   }
 
   // --- 汎用セレクター ---
 
   const article = cleaned.match(/<article\b[^>]*>([\s\S]*)<\/article>/i);
-  if (article?.[1]) return postProcess(article[1]);
+  if (article?.[1]) return postProcess(article[1], pageUrl);
 
   // 非 zenn.dev で <article> なし、znc がある場合のフォールバック
-  if (zncMatch?.[2]) return postProcess(zncMatch[2]);
+  if (zncMatch?.[2]) return postProcess(zncMatch[2], pageUrl);
 
   const main = cleaned.match(/<main\b[^>]*>([\s\S]*)<\/main>/i);
-  if (main?.[1]) return postProcess(main[1]);
+  if (main?.[1]) return postProcess(main[1], pageUrl);
 
   const roleMain = cleaned.match(/<(\w+)[^>]+role=["']main["'][^>]*>([\s\S]*)<\/\1>/i);
-  if (roleMain?.[2]) return postProcess(roleMain[2]);
+  if (roleMain?.[2]) return postProcess(roleMain[2], pageUrl);
 
   const classContent = cleaned.match(
     /<(\w+)[^>]+class=["'][^"']*(?:post|entry|article|content)[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
   );
-  if (classContent?.[2]) return postProcess(classContent[2]);
+  if (classContent?.[2]) return postProcess(classContent[2], pageUrl);
 
   const body = cleaned.match(/<body\b[^>]*>([\s\S]*)<\/body>/i);
-  return postProcess(body?.[1] ?? cleaned);
+  return postProcess(body?.[1] ?? cleaned, pageUrl);
 }
 
 export async function GET(request: Request) {

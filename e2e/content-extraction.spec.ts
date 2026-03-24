@@ -83,7 +83,8 @@ test.describe('detectCharset — 文字エンコーディング検出', () => {
 });
 
 // app/api/content/route.ts の transformZennMermaidEmbeds と同一ロジック（複製）
-function transformZennMermaidEmbeds(content: string): string {
+function transformZennMermaidEmbeds(content: string, pageUrl = ''): string {
+  if (!pageUrl.includes('zenn.dev')) return content;
   return content.replace(
     /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
     (spanMatch) => {
@@ -110,7 +111,11 @@ function fixLazyImages(html: string): string {
     const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
     if (dataSrcMatch) {
       const resolved = dataSrcMatch[1].replace(/\{width\}/g, '800');
-      fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
+      if (/\bsrc=["'][^"']*["']/i.test(fixed)) {
+        fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
+      } else {
+        fixed = ` src="${resolved}"` + fixed;
+      }
     }
     fixed = fixed.replace(
       /(src=["'][^"']*?)_\d+x\d*(?:@\d+x)?\.(jpg|jpeg|png|webp|gif)(["'])/gi,
@@ -153,17 +158,27 @@ test.describe('fixLazyImages — 遅延ロード・Shopify サムネイル解決
     const result = fixLazyImages(html);
     expect(result).toContain('src="//cdn/image.png"');
   });
+
+  test('src なしで data-src だけある遅延ロード画像に src を追加する', () => {
+    // Shopify 等で src を省略した完全遅延ロードパターン
+    const html = '<img class="lazyload" data-src="//cdn/product_{width}x.jpg" alt="商品">';
+    const result = fixLazyImages(html);
+    expect(result).toContain('src="//cdn/product_800x.jpg"');
+  });
 });
 
 test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
+  const ZENN_URL = 'https://zenn.dev/user/articles/example';
+  const OTHER_URL = 'https://dev.classmethod.jp/articles/example';
+
   const makeMermaidSpan = (encodedContent: string) =>
     `<span class="embed-block zenn-embedded zenn-embedded-mermaid">` +
     `<iframe id="zenn-embedded__abc" src="https://embed.zenn.studio/mermaid#zenn-embedded__abc"` +
     ` data-content="${encodedContent}"></iframe></span>`;
 
-  test('mermaid embed が code ブロックに変換される', () => {
+  test('zenn.dev では mermaid embed が code ブロックに変換される', () => {
     const span = makeMermaidSpan('flowchart%20TD%0A%20%20A%5BStart%5D%20--%3E%20B%5BEnd%5D');
-    const result = transformZennMermaidEmbeds(span);
+    const result = transformZennMermaidEmbeds(span, ZENN_URL);
     expect(result).not.toContain('<iframe');
     expect(result).not.toContain('embed.zenn.studio');
     expect(result).toContain('language-mermaid');
@@ -171,10 +186,24 @@ test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
     expect(result).toContain('A[Start]');
   });
 
-  test('< > & が HTML エスケープされる', () => {
+  test('zenn.dev 以外のドメインでは変換されない（classmethod 等）', () => {
+    const span = makeMermaidSpan('flowchart%20TD%0A%20%20A%5BStart%5D%20--%3E%20B%5BEnd%5D');
+    const result = transformZennMermaidEmbeds(span, OTHER_URL);
+    // 変換されずそのまま返る
+    expect(result).toBe(span);
+    expect(result).toContain('<iframe');
+  });
+
+  test('pageUrl 省略時は変換されない', () => {
+    const span = makeMermaidSpan('flowchart%20TD%0A%20%20A%5BStart%5D%20--%3E%20B%5BEnd%5D');
+    const result = transformZennMermaidEmbeds(span);
+    expect(result).toBe(span);
+  });
+
+  test('< > & が HTML エスケープされる (zenn.dev)', () => {
     // mermaid source: A[a<b] --> B{c>d}
     const span = makeMermaidSpan('A%5Ba%3Cb%5D%20--%3E%20B%7Bc%3Ed%7D');
-    const result = transformZennMermaidEmbeds(span);
+    const result = transformZennMermaidEmbeds(span, ZENN_URL);
     expect(result).toContain('&lt;');
     expect(result).toContain('&gt;');
     expect(result).not.toContain('<b');
@@ -184,7 +213,7 @@ test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
     const span =
       `<span class="embed-block zenn-embedded zenn-embedded-mermaid">` +
       `<iframe src="https://embed.zenn.studio/mermaid#id"></iframe></span>`;
-    const result = transformZennMermaidEmbeds(span);
+    const result = transformZennMermaidEmbeds(span, ZENN_URL);
     expect(result).toContain('<iframe');
   });
 
@@ -192,14 +221,14 @@ test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
     const otherEmbed =
       `<span class="embed-block zenn-embedded zenn-embedded-tweet">` +
       `<iframe src="https://embed.zenn.studio/twitter/xxx"></iframe></span>`;
-    const result = transformZennMermaidEmbeds(otherEmbed);
+    const result = transformZennMermaidEmbeds(otherEmbed, ZENN_URL);
     expect(result).toContain('<iframe');
     expect(result).toContain('embed.zenn.studio/twitter');
   });
 
   test('mermaid embed を含まない通常テキストは変更されない', () => {
     const html = '<p>通常のテキスト</p><pre><code>コードブロック</code></pre>';
-    expect(transformZennMermaidEmbeds(html)).toBe(html);
+    expect(transformZennMermaidEmbeds(html, ZENN_URL)).toBe(html);
   });
 });
 
