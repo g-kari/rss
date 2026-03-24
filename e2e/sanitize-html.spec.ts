@@ -11,30 +11,55 @@ import { test, expect } from '@playwright/test';
 
 // src/lib/html.ts の sanitizeHtml と同一ロジック（サーバー不要で実行するために複製）
 // 本番コードを変更した場合はこちらも同期すること
-const TRUSTED_IFRAME_DOMAINS = [
-  'youtube.com/embed',
-  'youtube-nocookie.com/embed',
-  'player.vimeo.com',
-  'open.spotify.com/embed',
-  'w.soundcloud.com',
-  'player.twitch.tv',
-  'clips.twitch.tv/embed',
-  'embed.nicovideo.jp',
-  'embed.zenn.studio',
-];
+
+/**
+ * iframe の src が信頼済みドメインかどうかを URL パースで厳密に検証する。
+ *
+ * 部分文字列マッチ (includes) を使うと
+ * `https://evil.com/youtube.com/embed/abc` のような URL でバイパスできるため、
+ * hostname と pathname をそれぞれ完全一致・プレフィックス一致で確認する。
+ */
+function isTrustedIframeSrc(src: string): boolean {
+  const normalized = src.startsWith('//') ? 'https:' + src : src;
+  let url: URL;
+  try {
+    url = new URL(normalized);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+
+  const h = url.hostname;
+  const p = url.pathname;
+
+  return (
+    ((h === 'www.youtube.com' || h === 'youtube.com') && p.startsWith('/embed/')) ||
+    ((h === 'www.youtube-nocookie.com' || h === 'youtube-nocookie.com') &&
+      p.startsWith('/embed/')) ||
+    h === 'player.vimeo.com' ||
+    (h === 'open.spotify.com' && p.startsWith('/embed/')) ||
+    h === 'w.soundcloud.com' ||
+    h === 'player.twitch.tv' ||
+    (h === 'clips.twitch.tv' && p.startsWith('/embed')) ||
+    h === 'embed.nicovideo.jp' ||
+    h === 'embed.zenn.studio'
+  );
+}
 
 function sanitizeHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // <link> タグを除去（React 19 のリソースホイスティングによる無限ループ防止）
+    .replace(/<link\b[^>]*\/?>/gi, '')
     .replace(/<base\b[^>]*\/?>/gi, '')
     .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
     .replace(/<embed\b[^>]*\/?>/gi, '')
-    // <iframe> は信頼済みドメイン以外を除去
+    // <iframe> は信頼済みドメイン以外を除去（URL パースで厳密に検証）
     .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
       const srcMatch = (attrs as string).match(/src\s*=\s*["']([^"']+)["']/i);
       const src = srcMatch?.[1] ?? '';
-      return TRUSTED_IFRAME_DOMAINS.some((d) => src.includes(d)) ? _m : '';
+      return isTrustedIframeSrc(src) ? _m : '';
     })
     .replace(/<iframe\b[^>]*\/>/gi, '')
     .replace(/<meta\b[^>]*http-equiv\s*=\s*["']refresh["'][^>]*\/?>/gi, '')
@@ -74,6 +99,12 @@ test.describe('sanitizeHtml — XSS 攻撃ベクトル', () => {
     const result = sanitizeHtml('<p>本文</p><style>body{background:url(x)onerror=alert(1)}</style>');
     expect(result).not.toContain('<style>');
     expect(result).toContain('<p>本文</p>');
+  });
+
+  test('<link> タグが除去される（React 19 リソースホイスティング防止）', () => {
+    const result = sanitizeHtml('<link rel="stylesheet" href="https://evil.example/x.css">本文');
+    expect(result).not.toContain('<link');
+    expect(result).toContain('本文');
   });
 
   test('<base> タグが除去される（相対 URL ハイジャック防止）', () => {
@@ -178,13 +209,24 @@ test.describe('sanitizeHtml — 信頼済み <iframe> の保持', () => {
     expect(result).not.toContain('<iframe');
   });
 
-  test('信頼済みドメインに似た偽ドメインが除去される', () => {
+  test('信頼済みドメインに似た偽ドメインが除去される（サブドメイン偽装）', () => {
     // youtube.com.evil.example/embed のような偽装は除去されること
+    // isTrustedIframeSrc は hostname の完全一致で検証するため、このような偽装も確実に除去する
     const result = sanitizeHtml(
       '<iframe src="https://youtube.com.evil.example/embed/abc"></iframe>'
     );
-    // trusted check は src.includes(d) なので "youtube.com/embed" は含まれない → 除去される
     expect(result).not.toContain('evil.example');
+    expect(result).not.toContain('<iframe');
+  });
+
+  test('パスに信頼済みドメインを含む偽 URL が除去される（パスインジェクション）', () => {
+    // https://evil.com/youtube.com/embed/abc のような URL は
+    // src.includes('youtube.com/embed') では通過してしまうが、
+    // URL パース（isTrustedIframeSrc）では hostname = evil.com で却下される
+    const result = sanitizeHtml(
+      '<iframe src="https://evil.com/youtube.com/embed/abc"></iframe>'
+    );
+    expect(result).not.toContain('evil.com');
     expect(result).not.toContain('<iframe');
   });
 });
