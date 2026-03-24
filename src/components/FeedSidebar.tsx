@@ -114,22 +114,20 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
               </svg>
             </button>
           )}
-          {feed.fetchError && (
-            <button
-              onClick={handleRetry}
-              disabled={retrying}
-              className="p-0.5 text-rose-400 hover:text-rose-300 transition-colors duration-150 disabled:opacity-40"
-              title="再試行"
+          <button
+            onClick={handleRetry}
+            disabled={retrying}
+            className={`p-0.5 transition-colors duration-150 disabled:opacity-40 ${feed.fetchError ? 'text-rose-400 hover:text-rose-300' : 'text-text-faint hover:text-text-default'}`}
+            title={feed.fetchError ? '再試行' : '更新'}
+          >
+            <svg
+              width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              className={retrying ? 'animate-spin' : ''}
             >
-              <svg
-                width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                className={retrying ? 'animate-spin' : ''}
-              >
-                <path d="M8.5 2A4 4 0 1 0 9 5.5" />
-                <polyline points="7,0.5 8.5,2 7,3.5" />
-              </svg>
-            </button>
-          )}
+              <path d="M8.5 2A4 4 0 1 0 9 5.5" />
+              <polyline points="7,0.5 8.5,2 7,3.5" />
+            </svg>
+          </button>
           <button
             onClick={onDelete}
             className="p-0.5 text-text-faint hover:text-rose-400 transition-colors duration-150"
