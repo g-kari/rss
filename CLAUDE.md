@@ -25,7 +25,7 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 | 認証 | 0g0 ID (OAuth2 + ES256 JWT) |
 | データ | R2 (`rss-reader-data`) — ユーザー別 JSON |
 | AI | Workers AI (要約・翻訳) |
-| デプロイ | `npm run deploy` → @opennextjs/cloudflare build + wrangler deploy |
+| デプロイ | Cloudflare Workers の CI/CD (master push → 自動ビルド＆デプロイ) |
 
 ## ディレクトリ
 
@@ -139,13 +139,18 @@ ai-cache/translation/{sha256}  # AI 翻訳キャッシュ (永続)
          → /
 ```
 
+## デプロイ
+
+**本番デプロイは Cloudflare Workers の CI/CD が担う。**
+`master` ブランチに push すると Cloudflare Workers 側で自動的にビルド＆デプロイが実行される。
+GitHub Actions (`deploy.yml`) は存在しない。`npm run deploy` をローカルで手動実行する必要もない。
+
 ## 開発
 
 ```bash
 npm run dev          # Next.js dev server (localhost:3000)
 npm run build        # next build
 npx wrangler dev     # Workers local emulation (@opennextjs/cloudflare)
-npm run deploy       # @opennextjs/cloudflare build + wrangler deploy
 npm run typecheck    # TypeScript 型チェック
 ```
 
