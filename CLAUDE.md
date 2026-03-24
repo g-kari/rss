@@ -103,6 +103,36 @@ npm run deploy       # @opennextjs/cloudflare build + wrangler deploy
 npm run typecheck    # TypeScript 型チェック
 ```
 
+## 修正後の必須テスト手順
+
+**バグ修正・ロジック変更を行った場合は、コミット前に必ず動作を検証すること。**
+
+### ロジック単体テスト（node スクリプト）
+
+サーバー不要で検証できる関数（正規表現・パーサー・ユーティリティ等）は `node -e` でインラインスクリプトを書いて動作確認する。
+
+```bash
+# 例: 正規表現の修正前後を比較
+node -e "
+const html = '<article><p>段落1</p><article>inner</article><p>段落2</p></article>';
+const result = html.match(/<article\b[^>]*>([\s\S]*)<\/article>/i);
+console.log(result?.[1]);
+console.log('段落2が含まれるか:', result?.[1].includes('段落2'));
+"
+```
+
+### 確認観点
+
+- 修正した条件分岐・正規表現が期待通りに動作するか
+- 修正前に再現する入力で、修正後は正しく動作するか（before/after 比較）
+- エッジケース（空文字・ネスト・複数要素）で意図しない挙動がないか
+
+### typecheck は常に実行
+
+```bash
+npm run typecheck
+```
+
 ## 必要なシークレット
 
 | キー | 設定方法 |
