@@ -65,6 +65,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
   const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
+  const [aiError, setAiError] = useState('');
   const [scrollProgress, setScrollProgress] = useState(0);
   // 最後に使った AI モードを localStorage で永続化（記事切り替え後も自動実行）
   const [stickyAiMode, setStickyAiMode] = useState<AiMode | null>(() => {
@@ -89,6 +90,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
     }
 
     setAiLoading(mode);
+    setAiError('');
     try {
       const endpoint = mode === 'summary' ? '/api/ai/summarize' : '/api/ai/translate';
       const res = await fetch(endpoint, {
@@ -100,7 +102,11 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
       if (data.result) {
         if (articleId) saveAiCache(articleId, mode, data.result);
         setAiResult({ mode, text: data.result });
+      } else if (data.error) {
+        setAiError(data.error);
       }
+    } catch {
+      setAiError('AI の処理に失敗しました');
     } finally {
       setAiLoading(null);
     }
@@ -156,6 +162,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
   useEffect(() => {
     setFetchError('');
     setAiResult(null);
+    setAiError('');
     setFetchedContent(null);
     setScrollProgress(0);
     setAiLoading(null);
@@ -448,6 +455,9 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
             </p>
             <p className="text-[14px] leading-[1.8] text-text-default">{aiResult.text}</p>
           </div>
+        )}
+        {aiError && (
+          <p className="mb-6 text-[11px] text-rose-400">{aiError}</p>
         )}
 
         {/* OGP 画像 (埋め込みなし) */}
