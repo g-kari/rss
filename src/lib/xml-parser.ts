@@ -210,7 +210,79 @@ function extractImage(item: FeedItem): string {
   return '';
 }
 
+// ── JSON Feed ─────────────────────────────────────────────────────────────────
+
+interface JsonFeedAuthor {
+  name?: string;
+}
+
+interface JsonFeedItem {
+  id?: string;
+  url?: string;
+  external_url?: string;
+  title?: string;
+  content_html?: string;
+  content_text?: string;
+  summary?: string;
+  image?: string;
+  banner_image?: string;
+  date_published?: string;
+  date_modified?: string;
+  authors?: JsonFeedAuthor[];
+  /** JSON Feed v1.0 互換フィールド */
+  author?: JsonFeedAuthor;
+}
+
+interface JsonFeedRoot {
+  version: string;
+  title?: string;
+  home_page_url?: string;
+  authors?: JsonFeedAuthor[];
+  /** JSON Feed v1.0 互換フィールド */
+  author?: JsonFeedAuthor;
+  items?: JsonFeedItem[];
+}
+
+function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
+  const feedAuthors = data.authors ?? (data.author ? [data.author] : []);
+  const items: ParsedItem[] = (data.items ?? []).map((item) => {
+    const raw = item.content_html ?? item.content_text ?? item.summary ?? '';
+    const isHtml = !!item.content_html;
+    const content = isHtml ? sanitizeHtml(raw) : raw;
+    const summary = item.summary
+      ? stripHtml(item.summary).slice(0, 200)
+      : (isHtml ? stripHtml(raw) : raw).slice(0, 200);
+    const itemAuthors = item.authors ?? (item.author ? [item.author] : feedAuthors);
+    const author = itemAuthors.map((a) => a.name ?? '').filter(Boolean).join(', ');
+    return {
+      guid: item.id ?? item.url ?? '',
+      title: item.title ?? '',
+      link: safeUrl(item.url ?? item.external_url ?? ''),
+      summary,
+      content,
+      ogImage: safeUrl(item.image ?? item.banner_image ?? ''),
+      author,
+      publishedAt: parseDate(item.date_published ?? item.date_modified ?? null),
+    };
+  });
+  return { title: data.title ?? '', siteUrl: data.home_page_url ?? '', items };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function parseFeed(xml: string): ParsedFeed {
+  // JSON Feed の検出: 先頭が `{` ならまず JSON としてパースを試みる
+  if (xml.trimStart().startsWith('{')) {
+    try {
+      const data = JSON.parse(xml) as JsonFeedRoot;
+      if (typeof data?.version === 'string' && data.version.includes('jsonfeed.org')) {
+        return parseJsonFeed(data);
+      }
+    } catch {
+      // JSON パース失敗 → XML として継続
+    }
+  }
+
   const parsed = parser.parse(xml) as RawParsedXml;
 
   // RSS 2.0
