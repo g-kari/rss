@@ -39,6 +39,19 @@ export function toPlainText(html: string): string {
 }
 
 /**
+ * inline style 属性から危険な CSS プロパティを除去する。
+ *
+ * - url() 参照を除去: 外部リソース読み込みおよび CSS ベーストラッキング（閲覧行動の漏洩）を防ぐ
+ *   例: background-image:url(https://tracker.example/pixel.gif) でピクセルトラッキングが可能
+ * - position: fixed / sticky を除去: UI 全体を覆うフィッシングオーバーレイを防ぐ
+ */
+function sanitizeStyleAttr(style: string): string {
+  return style
+    .replace(/\burl\s*\([^)]*\)/gi, '')
+    .replace(/\bposition\s*:\s*(fixed|sticky)\b[^;]*(;|$)/gi, '');
+}
+
+/**
  * iframe の src が信頼済みドメインかどうかを URL パースで厳密に検証する。
  *
  * 部分文字列マッチ (includes) を使うと
@@ -107,5 +120,8 @@ export function sanitizeHtml(html: string): string {
     .replace(/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
     // ping 属性を除去（リンククリック時の意図しないリクエスト防止）
     .replace(/\bping\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    // inline style 属性をサニタイズ（CSS トラッキング・フィッシングオーバーレイ防止）
+    .replace(/\bstyle\s*=\s*"([^"]*)"/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
+    .replace(/\bstyle\s*=\s*'([^']*)'/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
     .trim();
 }
