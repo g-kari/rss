@@ -50,6 +50,7 @@ export async function GET(request: Request) {
       headers: {
         'Content-Type': cached.headers.get('Content-Type') ?? 'image/jpeg',
         'Cache-Control': `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
+        'X-Cache': 'HIT',
       },
     });
   }
@@ -116,6 +117,7 @@ export async function GET(request: Request) {
       headers: {
         'Content-Type': imageContentType,
         'Cache-Control': `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
+        'X-Cache': 'MISS',
       },
     });
   } catch (err) {

@@ -308,7 +308,7 @@ export async function GET(request: Request) {
   const cached = await cfCache.match(cacheKey);
   if (cached) {
     const data = await cached.json() as { content: string };
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: { 'X-Cache': 'HIT' } });
   }
 
   const controller = new AbortController();
@@ -361,7 +361,7 @@ export async function GET(request: Request) {
     });
     ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
 
-    return NextResponse.json({ content });
+    return NextResponse.json({ content }, { headers: { 'X-Cache': 'MISS' } });
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === 'AbortError')
