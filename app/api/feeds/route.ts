@@ -7,6 +7,7 @@ import { isValidFeedUrl } from '@/lib/url';
 import { discoverFeedUrl } from '@/lib/feed-discovery';
 import type { Feed } from '@/types';
 
+const MAX_FEEDS_PER_USER = 1000;
 
 export async function GET() {
   const result = await requireSession();
@@ -36,6 +37,9 @@ export async function POST(request: Request) {
   const list = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
   if (list.some((f) => f.url === url)) {
     return NextResponse.json({ error: 'Feed already exists' }, { status: 409 });
+  }
+  if (list.length >= MAX_FEEDS_PER_USER) {
+    return NextResponse.json({ error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` }, { status: 422 });
   }
 
   const newFeed: Feed = {
