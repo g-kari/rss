@@ -92,7 +92,7 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
         {count > 0 && feed.fetchError && (
           <span className="text-[11px] text-rose-400 tabular-nums group-hover:opacity-0 transition-opacity duration-150">{count > 99 ? '99+' : count}</span>
         )}
-        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5">
+        <span className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 flex items-center gap-0.5">
           {/* ピン留めボタン */}
           <button
             onClick={onTogglePin}
@@ -442,7 +442,7 @@ export default function FeedSidebar({
               </span>
             )}
             {totalUnread > 0 && (
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <span className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150">
                 <button
                   onClick={(e) => { e.stopPropagation(); onMarkAllRead(null); }}
                   className="p-0.5 text-text-faint hover:text-text-default transition-colors duration-150"
