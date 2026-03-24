@@ -1,6 +1,6 @@
 import type { Feed, Article } from '../types';
 
-import { parseFeed } from '../lib/xml-parser';
+import { parseFeed, type ParsedItem } from '../lib/xml-parser';
 import { isValidFeedUrl } from '../lib/url';
 
 type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA' | 'FINDME_RSS'>;
@@ -33,6 +33,43 @@ function fetchViaBinding(env: FetchEnv, url: string, init?: RequestInit): Promis
   return fetch(url, init);
 }
 
+/** パース済みアイテムを Article に変換する */
+function buildArticle(item: ParsedItem, feedId: string, existingByGuid: Map<string, Article>): Article {
+  return {
+    id: existingByGuid.get(item.guid)?.id ?? crypto.randomUUID(),
+    feedId,
+    guid: item.guid,
+    title: item.title,
+    link: item.link,
+    summary: item.summary,
+    content: item.content,
+    ogImage: item.ogImage || existingByGuid.get(item.guid)?.ogImage,
+    author: item.author || existingByGuid.get(item.guid)?.author,
+    publishedAt: item.publishedAt,
+    createdAt: existingByGuid.get(item.guid)?.createdAt ?? new Date().toISOString(),
+  };
+}
+
+/** フィード取得成功時のメタデータを更新する */
+function applyFeedSuccess(feed: Feed, parsed: ReturnType<typeof parseFeed>): void {
+  feed.title = parsed.title || feed.title;
+  feed.siteUrl = parsed.siteUrl || feed.siteUrl;
+  feed.lastFetchedAt = new Date().toISOString();
+  feed.fetchError = null;
+  feed.consecutiveErrors = 0;
+}
+
+/** publishedAt 降順ソート + 最大件数でスライス */
+function sortAndSlice(articles: Iterable<Article>): Article[] {
+  return [...articles]
+    .sort((a, b) => {
+      const at = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const bt = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return bt - at;
+    })
+    .slice(0, MAX_ARTICLES);
+}
+
 async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = false): Promise<void> {
   const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${userId}/feeds.json`, []);
   if (feeds.length === 0) return;
@@ -52,27 +89,8 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
       const xml = await res.text();
       const parsed = parseFeed(xml);
 
-      feed.title = parsed.title || feed.title;
-      feed.siteUrl = parsed.siteUrl || feed.siteUrl;
-      feed.lastFetchedAt = new Date().toISOString();
-      feed.fetchError = null;
-      feed.consecutiveErrors = 0;
-
-      return parsed.items.map(
-        (item): Article => ({
-          id: existingByGuid.get(item.guid)?.id ?? crypto.randomUUID(),
-          feedId: feed.id,
-          guid: item.guid,
-          title: item.title,
-          link: item.link,
-          summary: item.summary,
-          content: item.content,
-          ogImage: item.ogImage || existingByGuid.get(item.guid)?.ogImage,
-          author: item.author || existingByGuid.get(item.guid)?.author,
-          publishedAt: item.publishedAt,
-          createdAt: existingByGuid.get(item.guid)?.createdAt ?? new Date().toISOString(),
-        })
-      );
+      applyFeedSuccess(feed, parsed);
+      return parsed.items.map((item) => buildArticle(item, feed.id, existingByGuid));
     })
   );
 
@@ -95,15 +113,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
   const merged = new Map<string, Article>(existingByGuid);
   for (const a of fresh) merged.set(a.guid, a);
 
-  const sorted = [...merged.values()]
-    .sort((a, b) => {
-      const at = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-      const bt = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-      return bt - at;
-    })
-    .slice(0, MAX_ARTICLES);
-
-  await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sorted);
+  await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sortAndSlice(merged.values()));
 }
 
 // フィード追加・手動リフレッシュ時の即時フェッチ（エラー状態に関わらず強制再試行）
@@ -133,28 +143,11 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
     const xml = await res.text();
     const parsed = parseFeed(xml);
 
-    feed.title = parsed.title || feed.title;
-    feed.siteUrl = parsed.siteUrl || feed.siteUrl;
-    feed.lastFetchedAt = new Date().toISOString();
-    feed.fetchError = null;
-    feed.consecutiveErrors = 0;
-
-    const newArticles = parsed.items.map(
-      (item): Article => ({
-        id: existingByGuid.get(item.guid)?.id ?? crypto.randomUUID(),
-        feedId: feed.id,
-        guid: item.guid,
-        title: item.title,
-        link: item.link,
-        summary: item.summary,
-        content: item.content,
-        ogImage: item.ogImage || existingByGuid.get(item.guid)?.ogImage,
-        author: item.author || existingByGuid.get(item.guid)?.author,
-        publishedAt: item.publishedAt,
-        createdAt: existingByGuid.get(item.guid)?.createdAt ?? new Date().toISOString(),
-      })
-    );
-    for (const a of newArticles) existingByGuid.set(a.guid, a);
+    applyFeedSuccess(feed, parsed);
+    for (const item of parsed.items) {
+      const article = buildArticle(item, feed.id, existingByGuid);
+      existingByGuid.set(article.guid, article);
+    }
   } catch (e) {
     feed.consecutiveErrors = (feed.consecutiveErrors ?? 0) + 1;
     feed.fetchError = e instanceof Error ? e.message : String(e);
@@ -162,16 +155,7 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
   }
 
   await r2Put(env.RSS_DATA, `users/${userId}/feeds.json`, feeds);
-
-  const sorted = [...existingByGuid.values()]
-    .sort((a, b) => {
-      const at = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-      const bt = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-      return bt - at;
-    })
-    .slice(0, MAX_ARTICLES);
-
-  await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sorted);
+  await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sortAndSlice(existingByGuid.values()));
 
   return feed;
 }
