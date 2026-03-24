@@ -142,6 +142,24 @@ function authorStr(author: FeedItem['author']): string {
   return str(author);
 }
 
+/**
+ * 危険なスキーム（javascript:, vbscript:, data: 等）を持つ URL を空文字に変換する。
+ * HTMLエンティティデコード後にチェックすることで &#106;avascript: 等のバイパスを防ぐ。
+ */
+function safeUrl(url: string): string {
+  if (!url) return '';
+  // HTMLエンティティをデコードし、先頭の制御文字・空白を除去してスキームを確認
+  const decoded = url
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(\d+);/gi, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/^[\u0000-\u0020\u007F\u00AD\u200B-\u200D\uFEFF]+/, '');
+  return /^https?:\/\//i.test(decoded) ? url : '';
+}
+
 /** XmlAttr または XmlAttr[] から最初の @_url を取得する */
 function firstAttrUrl(val: XmlAttr | XmlAttr[] | undefined): string {
   if (!val) return '';
@@ -206,7 +224,7 @@ export function parseFeed(xml: string): ParsedFeed {
         return {
           guid: str(item.guid ?? item.link),
           title: stripHtml(str(item.title)),
-          link: str(item.link),
+          link: safeUrl(str(item.link)),
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
           ogImage: extractImage(item),
@@ -231,10 +249,11 @@ export function parseFeed(xml: string): ParsedFeed {
         return {
           guid: str(entry.id),
           title: stripHtml(str(entry.title)),
-          link:
+          link: safeUrl(
             entryLinks.find((l) => l['@_rel'] !== 'self')?.['@_href'] ??
             entryLinks[0]?.['@_href'] ??
             '',
+          ),
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
           ogImage: extractImage(entry),
@@ -259,7 +278,7 @@ export function parseFeed(xml: string): ParsedFeed {
         return {
           guid,
           title: stripHtml(str(item.title)),
-          link: str(item.link) || str(item['@_rdf:about']),
+          link: safeUrl(str(item.link) || str(item['@_rdf:about'])),
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
           ogImage: extractImage(item),
