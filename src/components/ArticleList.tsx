@@ -4,6 +4,7 @@ import { useMemo, useEffect, useRef, useState, type ReactElement, type ReactNode
 import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
 import { readingTime } from '../lib/article-utils';
+import { STORAGE_KEYS, storageGet, storageSet } from '../lib/storage';
 
 interface ArticleActionsProps {
   isRead: boolean;
@@ -231,8 +232,15 @@ export default function ArticleList({
     };
   }
 
-  // ogImage がない記事の OGP 画像を遅延フェッチするキャッシュ
-  const [ogpCache, setOgpCache] = useState<Record<string, string>>({});
+  // ogImage がない記事の OGP 画像を遅延フェッチするキャッシュ（localStorage に永続化）
+  const [ogpCache, setOgpCache] = useState<Record<string, string>>(() => {
+    try {
+      const stored = storageGet(STORAGE_KEYS.OGP_CACHE);
+      return stored ? (JSON.parse(stored) as Record<string, string>) : {};
+    } catch {
+      return {};
+    }
+  });
   const fetchingRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -245,7 +253,20 @@ export default function ArticleList({
       fetch(`/api/ogp?url=${encodeURIComponent(a.link)}`)
         .then((r) => r.json() as Promise<{ image: string }>)
         .then(({ image }) => {
-          if (image) setOgpCache((prev) => ({ ...prev, [a.link]: image }));
+          if (image) {
+            setOgpCache((prev) => {
+              const next = { ...prev, [a.link]: image };
+              // キャッシュが肥大化しないよう最大 200 件に制限
+              const keys = Object.keys(next);
+              if (keys.length > 200) {
+                const trimmed = Object.fromEntries(keys.slice(-200).map((k) => [k, next[k]]));
+                storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(trimmed));
+                return trimmed;
+              }
+              storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(next));
+              return next;
+            });
+          }
         })
         .catch(() => {})
         .finally(() => { fetchingRef.current.delete(a.link); });
