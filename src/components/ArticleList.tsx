@@ -3,6 +3,7 @@
 import { useMemo, useEffect, type ReactElement, type ReactNode, type RefObject } from 'react';
 import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
+import { readingTime } from '../lib/article-utils';
 
 interface Props {
   feeds: Feed[];
@@ -87,17 +88,6 @@ function highlightText(text: string, query: string): ReactNode {
   return <>{parts}</>;
 }
 
-/** 推定読了時間（分）。HTML タグを除去して文字数・語数から算出 */
-function readingTime(html: string): number {
-  const text = html.replace(/<[^>]+>/g, '').trim();
-  if (!text) return 0;
-  const cjk = (text.match(/[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g) ?? []).length;
-  const mins =
-    cjk / text.length > 0.3
-      ? Math.ceil(text.length / 400) // 日本語: 約400字/分
-      : Math.ceil(text.split(/\s+/).filter(Boolean).length / 200); // 英語: 約200語/分
-  return Math.max(1, mins);
-}
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
   compact: (
