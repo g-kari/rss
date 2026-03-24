@@ -76,8 +76,19 @@ const parser = new XMLParser({
   attributeNamePrefix: '@_',
   isArray: (name) => ['item', 'entry', 'link'].includes(name),
   // GHSA-jp2q-39xq-3w4g (entity 展開 DoS) は fast-xml-parser v4.2.4 以降で修正済み。
-  // v5.x では entity 展開制限が内部に組み込まれているため追加オプション不要。
-  processEntities: true,
+  // v5.x では processEntities オブジェクト形式で制限値を個別に設定できる。
+  //
+  // デフォルト maxTotalExpansions=1000 では HTML エンティティ（&amp; 等）を多用する
+  // フィード（例: 記事本文が長い技術ブログ）で "Entity expansion limit exceeded" が発生する。
+  // XMLボム攻撃（Billion Laughs）は maxExpansionDepth=10 と maxEntityCount=100 で防ぐ。
+  processEntities: {
+    enabled: true,
+    maxTotalExpansions: 10000,
+    maxEntitySize: 10000,
+    maxExpansionDepth: 10,
+    maxExpandedLength: 500000,
+    maxEntityCount: 100,
+  },
   htmlEntities: true,
 });
 
