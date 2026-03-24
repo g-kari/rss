@@ -11,12 +11,14 @@ interface KeyboardNavOptions {
   selectedFeedId: string | null;
   selectedArticle: Article | null;
   readIds: Set<string>;
+  readingListIds: Set<string>;
   setSelectedArticle: (article: Article) => void;
   onSelectFeed: (id: string | null) => void;
   markRead: (id: string) => void;
   markAllRead: (feedId: string | null) => void;
   toggleBookmark: (id: string) => void;
   toggleRead: (id: string) => void;
+  toggleReadingList: (id: string) => void;
   showToast: (msg: string) => void;
   fontSize: FontSize;
   onChangeFontSize: (size: FontSize) => void;
@@ -44,9 +46,9 @@ const DATE_RANGE_LABELS: Record<DateRange, string> = { all: '全期間', today: 
  * マウント時に 1 回だけ登録する（依存配列なし）。
  *
  * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, o 元記事, b ブックマーク,
- *               r 既読切替, m 全既読, c リンクコピー, f フォントサイズ,
- *               l レイアウト, u 未読フィルター, s ソート, d 日付フィルター,
- *               / 検索, ] 次フィード, [ 前フィード
+ *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー,
+ *               f フォントサイズ, l レイアウト, u 未読フィルター, s ソート,
+ *               d 日付フィルター, / 検索, ] 次フィード, [ 前フィード
  */
 export function useKeyboardNav(options: KeyboardNavOptions): void {
   const ref = useRef(options);
@@ -63,12 +65,14 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         selectedFeedId,
         selectedArticle,
         readIds,
+        readingListIds,
         setSelectedArticle,
         onSelectFeed,
         markRead,
         markAllRead,
         toggleBookmark,
         toggleRead,
+        toggleReadingList,
         showToast,
         fontSize,
         onChangeFontSize,
@@ -117,6 +121,12 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           break;
         case 'b':
           if (selectedArticle) toggleBookmark(selectedArticle.id);
+          break;
+        case 't':
+          if (selectedArticle) {
+            toggleReadingList(selectedArticle.id);
+            showToast(readingListIds.has(selectedArticle.id) ? 'リーディングリストから削除' : 'リーディングリストに追加');
+          }
           break;
         case 'r':
           if (selectedArticle) toggleRead(selectedArticle.id);

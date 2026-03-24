@@ -367,6 +367,7 @@ export default function App() {
     selectedFeedId,
     selectedArticle,
     readIds,
+    readingListIds,
     setSelectedArticle,
     onSelectFeed: (id) => {
       setSelectedFeedId(id);
@@ -376,6 +377,7 @@ export default function App() {
     markAllRead,
     toggleBookmark,
     toggleRead,
+    toggleReadingList,
     showToast,
     fontSize,
     onChangeFontSize,
@@ -571,6 +573,7 @@ export default function App() {
                 ['p', '前の未読記事へ'],
                 ['o', '元記事を開く'],
                 ['b', 'ブックマーク切替'],
+                ['t', 'リーディングリスト切替'],
                 ['r', '既読 / 未読切替'],
                 ['m', '全既読にする'],
                 ['u', '未読フィルター切替'],
