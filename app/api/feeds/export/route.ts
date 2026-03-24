@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireSession, applyRefreshedTokens } from '@/lib/server-auth';
+import { withSession } from '@/lib/server-auth';
 import { r2Get } from '@/lib/r2';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { Feed } from '@/types';
 
 
@@ -28,18 +27,15 @@ function buildOpml(feeds: Feed[]): string {
 }
 
 export async function GET() {
-  const result = await requireSession();
-  if ('error' in result) return result.error;
-  const { session } = result;
-  const { env } = await getCloudflareContext({ async: true });
+  return withSession(async ({ session, env }) => {
+    const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
+    const opml = buildOpml(feeds);
 
-  const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
-  const opml = buildOpml(feeds);
-
-  return applyRefreshedTokens(new NextResponse(opml, {
-    headers: {
-      'Content-Type': 'text/xml; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="feeds.opml"',
-    },
-  }), session);
+    return new NextResponse(opml, {
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="feeds.opml"',
+      },
+    });
+  });
 }

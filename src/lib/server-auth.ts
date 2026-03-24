@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { verifyJwt, refreshTokens } from './auth';
 
 export const COOKIE_OPTS = {
@@ -73,6 +74,30 @@ export function applyRefreshedTokens(
     response.cookies.set('refresh_token', session.refreshedTokens.refresh_token, { ...COOKIE_OPTS, maxAge: 30 * 24 * 60 * 60 });
   }
   return response;
+}
+
+/**
+ * 認証済みリクエストのボイラープレートを共通化するラッパー。
+ * - requireSession() でセッション取得（失敗時は 401 を返す）
+ * - getCloudflareContext() で env / ctx を取得
+ * - ハンドラの戻り値に applyRefreshedTokens() を自動適用
+ *
+ * @example
+ * export async function GET() {
+ *   return withSession(async ({ session, env }) => {
+ *     const data = await r2Get(env.RSS_DATA, `users/${session.userId}/data.json`, []);
+ *     return NextResponse.json(data);
+ *   });
+ * }
+ */
+export async function withSession(
+  handler: (params: { session: AuthSession; env: CloudflareEnv; ctx: ExecutionContext }) => Promise<NextResponse>,
+): Promise<NextResponse> {
+  const result = await requireSession();
+  if ('error' in result) return result.error;
+  const { env, ctx } = await getCloudflareContext({ async: true });
+  const response = await handler({ session: result.session, env, ctx });
+  return applyRefreshedTokens(response, result.session);
 }
 
 /**

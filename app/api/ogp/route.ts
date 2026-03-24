@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireSession, applyRefreshedTokens } from '@/lib/server-auth';
+import { withSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
 import { fetchWithTimeout } from '@/lib/fetch';
 import { unescapeHtml } from '@/lib/html';
@@ -11,18 +10,14 @@ const MAX_BYTES = 512 * 1024; // og:image は先頭 512KB 以内にある
 const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 
 export async function GET(request: Request) {
-  const result = await requireSession();
-  if ('error' in result) return result.error;
-  const { session } = result;
-  return applyRefreshedTokens(await handleGet(request), session);
+  return withSession(({ ctx }) => handleGet(request, ctx));
 }
 
-async function handleGet(request: Request): Promise<NextResponse> {
+async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextResponse> {
   const url = new URL(request.url).searchParams.get('url');
   if (!url) return NextResponse.json({ image: '' });
   if (!isValidFeedUrl(url)) return NextResponse.json({ image: '' });
 
-  const { ctx } = await getCloudflareContext({ async: true });
   const reqUrl = new URL(request.url);
   const cacheKey = new Request(`${reqUrl.origin}/__cache/ogp/${await sha256Hex(url)}`);
   const cfCache = caches.default;

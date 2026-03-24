@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireSession, applyRefreshedTokens } from '@/lib/server-auth';
+import { withSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
 import { fetchWithTimeout } from '@/lib/fetch';
 import {
@@ -18,13 +17,10 @@ const FETCH_TIMEOUT_MS = 10_000;
 const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 
 export async function GET(request: Request) {
-  const result = await requireSession();
-  if ('error' in result) return result.error;
-  const { session } = result;
-  return applyRefreshedTokens(await handleGet(request), session);
+  return withSession(({ ctx }) => handleGet(request, ctx));
 }
 
-async function handleGet(request: Request): Promise<NextResponse> {
+async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextResponse> {
   const url = new URL(request.url).searchParams.get('url');
   if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 });
 
@@ -32,7 +28,6 @@ async function handleGet(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
   }
 
-  const { ctx } = await getCloudflareContext({ async: true });
   const reqUrl = new URL(request.url);
   const cacheKey = new Request(`${reqUrl.origin}/__cache/content/${await sha256Hex(url)}`);
   const cfCache = caches.default;
