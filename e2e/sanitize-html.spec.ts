@@ -1,92 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { sanitizeHtml } from '../src/lib/html';
 
 /**
  * sanitizeHtml の回帰テスト
  *
  * XSS・インジェクション対策のサニタイズ関数が既知の攻撃ベクトルを
  * 正しく除去することを確認する。
- *
- * テスト内に同一ロジックを複製して、サーバー起動なし・認証なしで実行できるようにしている。
  */
-
-// src/lib/html.ts の sanitizeHtml と同一ロジック（サーバー不要で実行するために複製）
-// 本番コードを変更した場合はこちらも同期すること
-
-/**
- * iframe の src が信頼済みドメインかどうかを URL パースで厳密に検証する。
- *
- * 部分文字列マッチ (includes) を使うと
- * `https://evil.com/youtube.com/embed/abc` のような URL でバイパスできるため、
- * hostname と pathname をそれぞれ完全一致・プレフィックス一致で確認する。
- */
-function isTrustedIframeSrc(src: string): boolean {
-  const normalized = src.startsWith('//') ? 'https:' + src : src;
-  let url: URL;
-  try {
-    url = new URL(normalized);
-  } catch {
-    return false;
-  }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
-
-  const h = url.hostname;
-  const p = url.pathname;
-
-  return (
-    ((h === 'www.youtube.com' || h === 'youtube.com') && p.startsWith('/embed/')) ||
-    ((h === 'www.youtube-nocookie.com' || h === 'youtube-nocookie.com') &&
-      p.startsWith('/embed/')) ||
-    h === 'player.vimeo.com' ||
-    (h === 'open.spotify.com' && p.startsWith('/embed/')) ||
-    h === 'w.soundcloud.com' ||
-    h === 'player.twitch.tv' ||
-    (h === 'clips.twitch.tv' && p.startsWith('/embed')) ||
-    h === 'embed.nicovideo.jp' ||
-    h === 'embed.zenn.studio'
-  );
-}
-
-function sanitizeStyleAttr(style: string): string {
-  return style
-    .replace(/\burl\s*\([^)]*\)/gi, '')
-    .replace(/\bposition\s*:\s*(fixed|sticky)\b[^;]*(;|$)/gi, '');
-}
-
-function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    // <link> タグを除去（React 19 のリソースホイスティングによる無限ループ防止）
-    .replace(/<link\b[^>]*\/?>/gi, '')
-    .replace(/<base\b[^>]*\/?>/gi, '')
-    .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
-    .replace(/<embed\b[^>]*\/?>/gi, '')
-    // <iframe> は信頼済みドメイン以外を除去（URL パースで厳密に検証）
-    .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
-      const srcMatch = (attrs as string).match(/src\s*=\s*["']([^"']+)["']/i);
-      const src = srcMatch?.[1] ?? '';
-      return isTrustedIframeSrc(src) ? _m : '';
-    })
-    .replace(/<iframe\b[^>]*\/>/gi, '')
-    .replace(/<meta\b[^>]*http-equiv\s*=\s*["']refresh["'][^>]*\/?>/gi, '')
-    .replace(/[\s/]+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
-    .replace(
-      /(?:href|src|action|formaction)\s*=\s*["'](?:javascript|vbscript):[^"']*["']/gi,
-      ''
-    )
-    .replace(
-      /(?:href|src|action|formaction)\s*=\s*(?:javascript|vbscript):[^\s>]*/gi,
-      ''
-    )
-    .replace(/(?:src|href|action|formaction)\s*=\s*["']data:[^"']*["']/gi, '')
-    .replace(/(?:src|href|action|formaction)\s*=\s*data:[^\s>]*/gi, '')
-    .replace(/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
-    .replace(/\bping\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
-    // inline style 属性をサニタイズ（CSS トラッキング・フィッシングオーバーレイ防止）
-    .replace(/\bstyle\s*=\s*"([^"]*)"/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
-    .replace(/\bstyle\s*=\s*'([^']*)'/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
-    .trim();
-}
 
 test.describe('sanitizeHtml — XSS 攻撃ベクトル', () => {
   test('<script> タグが除去される', () => {
