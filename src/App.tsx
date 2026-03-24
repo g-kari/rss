@@ -77,7 +77,7 @@ export default function App() {
   const router = useRouter();
 
   const { user, betaRestricted } = useAuth();
-  const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, dismissNewArticles } = useFeeds(user);
+  const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles } = useFeeds(user);
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
@@ -527,6 +527,7 @@ export default function App() {
           onMarkAllRead={markAllRead}
           onToggleTheme={toggleTheme}
           onRefresh={refreshFeeds}
+          onRetryFeed={retryFeed}
           refreshing={refreshing}
           pinnedFeedIds={pinnedFeedIds}
           onTogglePinFeed={togglePinFeed}

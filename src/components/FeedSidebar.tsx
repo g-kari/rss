@@ -14,11 +14,13 @@ interface FeedItemProps {
   onDelete: (e: React.MouseEvent) => void;
   onTogglePin: (e: React.MouseEvent) => void;
   onRename: (title: string) => Promise<void>;
+  onRetry: () => Promise<void>;
 }
 
-function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect, onMarkAllRead, onDelete, onTogglePin, onRename }: FeedItemProps) {
+function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect, onMarkAllRead, onDelete, onTogglePin, onRename, onRetry }: FeedItemProps) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
+  const [retrying, setRetrying] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const startEdit = useCallback((e: React.MouseEvent) => {
@@ -39,6 +41,17 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
     if (e.key === 'Enter') { e.preventDefault(); void commitEdit(); }
     if (e.key === 'Escape') { setEditing(false); }
   }, [commitEdit]);
+
+  const handleRetry = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (retrying) return;
+    setRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setRetrying(false);
+    }
+  }, [onRetry, retrying]);
 
   return (
     <div
@@ -69,7 +82,7 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
         {feed.fetchError && (
           <span
             className="text-rose-400 flex-shrink-0 group-hover:hidden"
-            title={`取得エラー: ${feed.fetchError}`}
+            title={`取得エラー: ${feed.fetchError}${(feed.consecutiveErrors ?? 0) >= 5 ? '\n（自動更新が一時停止中）' : ''}`}
           >
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 1L9 9H1z" />
@@ -103,6 +116,22 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M1.5 5l2.5 2.5L8.5 2.5" />
+              </svg>
+            </button>
+          )}
+          {feed.fetchError && (
+            <button
+              onClick={handleRetry}
+              disabled={retrying}
+              className="p-0.5 text-rose-400 hover:text-rose-300 transition-colors duration-150 disabled:opacity-40"
+              title="再試行"
+            >
+              <svg
+                width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                className={retrying ? 'animate-spin' : ''}
+              >
+                <path d="M8.5 2A4 4 0 1 0 9 5.5" />
+                <polyline points="7,0.5 8.5,2 7,3.5" />
               </svg>
             </button>
           )}
@@ -140,6 +169,7 @@ interface Props {
   onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
   onRefresh: () => void;
+  onRetryFeed: (id: string) => Promise<void>;
   onTogglePinFeed: (id: string) => void;
 }
 
@@ -159,6 +189,7 @@ export default function FeedSidebar({
   onMarkAllRead,
   onToggleTheme,
   onRefresh,
+  onRetryFeed,
   refreshing,
   pinnedFeedIds,
   onTogglePinFeed,
@@ -465,6 +496,7 @@ export default function FeedSidebar({
               onDelete={(e) => deleteFeed(feed.id, e)}
               onTogglePin={(e) => { e.stopPropagation(); onTogglePinFeed(feed.id); }}
               onRename={(title) => renameFeed(feed.id, title)}
+              onRetry={() => onRetryFeed(feed.id)}
             />
           );
         })}
@@ -491,6 +523,7 @@ export default function FeedSidebar({
               onDelete={(e) => deleteFeed(feed.id, e)}
               onTogglePin={(e) => { e.stopPropagation(); onTogglePinFeed(feed.id); }}
               onRename={(title) => renameFeed(feed.id, title)}
+              onRetry={() => onRetryFeed(feed.id)}
             />
           );
         })}
