@@ -321,7 +321,7 @@ export default function ArticleList({
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           {thumb && (
             <img
-              src={thumb}
+              src={`/api/image-proxy?url=${encodeURIComponent(thumb)}`}
               alt=""
               className="w-14 h-14 object-cover rounded"
               loading="lazy"

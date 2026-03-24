@@ -444,7 +444,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
         {/* OGP 画像 (埋め込みなし・全文未取得時) */}
         {!embedInfo && article.ogImage && (
           <img
-            src={article.ogImage}
+            src={`/api/image-proxy?url=${encodeURIComponent(article.ogImage)}`}
             alt=""
             className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
             loading="lazy"
