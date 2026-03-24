@@ -11,6 +11,7 @@ import { useFeeds } from './hooks/useFeeds';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
 import { useFilteredArticles } from './hooks/useFilteredArticles';
 import { STORAGE_KEYS, storageGet, storageSet, loadSet, saveSet } from './lib/storage';
+import { updateFaviconBadge } from './lib/favicon';
 
 type Theme = 'light' | 'dark';
 type MobilePane = 'sidebar' | 'list' | 'view';
@@ -158,6 +159,7 @@ export default function App() {
 
   useEffect(() => {
     document.title = totalUnread > 0 ? `(${totalUnread}) RSS Reader` : 'RSS Reader';
+    updateFaviconBadge(totalUnread).catch(() => {});
   }, [totalUnread]);
 
   const toggleTheme = useCallback(() => {
