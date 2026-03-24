@@ -115,6 +115,17 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').trim();
 }
 
+/**
+ * 日付文字列を ISO 8601 形式に変換する。
+ * `new Date().toISOString()` は Invalid Date に対して RangeError を投げるため、
+ * NaN チェックを挟んで不正な日付文字列は null を返す。
+ */
+function parseDate(s: string | undefined | null): string | null {
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function str(val: unknown): string {
   if (val == null) return '';
   if (typeof val === 'object' && '#text' in (val as object))
@@ -200,7 +211,7 @@ export function parseFeed(xml: string): ParsedFeed {
           content: sanitizeHtml(raw),
           ogImage: extractImage(item),
           author: stripHtml(str(item['dc:creator']) || authorStr(item.author)).trim(),
-          publishedAt: item.pubDate ? new Date(str(item.pubDate)).toISOString() : null,
+          publishedAt: parseDate(str(item.pubDate) || null),
         };
       }),
     };
@@ -254,11 +265,7 @@ export function parseFeed(xml: string): ParsedFeed {
           ogImage: extractImage(item),
           author: stripHtml(str(item['dc:creator']) || authorStr(item.author)).trim(),
           // RSS 1.0 は pubDate がなく dc:date （ISO 8601）を使う
-          publishedAt: item.pubDate
-            ? new Date(str(item.pubDate)).toISOString()
-            : item['dc:date']
-              ? new Date(item['dc:date']).toISOString()
-              : null,
+          publishedAt: parseDate(str(item.pubDate) || null) ?? parseDate(item['dc:date'] ?? null),
         };
       }),
     };
