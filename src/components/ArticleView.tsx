@@ -75,6 +75,8 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
   const [fetchedContent, setFetchedContent] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState('');
+  // article.ogImage がない場合に /api/ogp から動的に解決した画像URL
+  const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -152,6 +154,16 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
       setFetching(false);
     }
   }, [article?.link, article?.id, doRunAi]);
+
+  // article.ogImage がない場合に /api/ogp からサムネイルを解決する
+  useEffect(() => {
+    setResolvedOgImage(null);
+    if (!article?.link || article.ogImage) return;
+    fetch(`/api/ogp?url=${encodeURIComponent(article.link)}`)
+      .then((r) => r.json() as Promise<{ image?: string }>)
+      .then(({ image }) => { if (image) setResolvedOgImage(image); })
+      .catch(() => {});
+  }, [article?.id, article?.link, article?.ogImage]);
 
   // 記事が変わったらリセット → sticky モードが設定済みなら自動実行
   // 全文取得が必要な場合は取得後に AI 実行
@@ -452,10 +464,10 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
           </div>
         )}
 
-        {/* OGP 画像 (埋め込みなし・全文未取得時) */}
-        {!embedInfo && article.ogImage && (
+        {/* OGP 画像 (埋め込みなし) */}
+        {!embedInfo && (article.ogImage ?? resolvedOgImage) && (
           <img
-            src={`/api/image-proxy?url=${encodeURIComponent(article.ogImage)}`}
+            src={`/api/image-proxy?url=${encodeURIComponent((article.ogImage ?? resolvedOgImage)!)}`}
             alt=""
             className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
             loading="lazy"
