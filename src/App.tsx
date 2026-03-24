@@ -212,6 +212,8 @@ export default function App() {
       let ids: string[];
       if (feedId === '__bookmarks__') {
         ids = articles.filter((a) => bookmarkIds.has(a.id)).map((a) => a.id);
+      } else if (feedId === '__reading_list__') {
+        ids = articles.filter((a) => readingListIds.has(a.id)).map((a) => a.id);
       } else if (feedId) {
         ids = articles.filter((a) => a.feedId === feedId).map((a) => a.id);
       } else {
@@ -222,7 +224,7 @@ export default function App() {
       return next;
     });
     scheduleSyncToServer();
-  }, [articles, bookmarkIds, scheduleSyncToServer]);
+  }, [articles, bookmarkIds, readingListIds, scheduleSyncToServer]);
 
   const toggleRead = useCallback((articleId: string) => {
     setReadIds((prev) => {
