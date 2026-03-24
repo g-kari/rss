@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireSession } from '@/lib/server-auth';
+import { requireSession, applyRefreshedTokens } from '@/lib/server-auth';
 import { r2Get } from '@/lib/r2';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { Feed } from '@/types';
@@ -36,10 +36,10 @@ export async function GET() {
   const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
   const opml = buildOpml(feeds);
 
-  return new NextResponse(opml, {
+  return applyRefreshedTokens(new NextResponse(opml, {
     headers: {
       'Content-Type': 'text/xml; charset=utf-8',
       'Content-Disposition': 'attachment; filename="feeds.opml"',
     },
-  });
+  }), session);
 }
