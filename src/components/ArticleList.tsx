@@ -93,6 +93,7 @@ interface Props {
   dateRange: DateRange;
   cycleDateRange: () => void;
   query: string;
+  rawQuery: string;
   updateQuery: (q: string) => void;
   searchRef: RefObject<HTMLInputElement | null>;
   sentinelRef: RefObject<HTMLDivElement | null>;
@@ -213,6 +214,7 @@ export default function ArticleList({
   dateRange,
   cycleDateRange,
   query,
+  rawQuery,
   updateQuery,
   searchRef,
   sentinelRef,
@@ -562,7 +564,7 @@ export default function ArticleList({
             ref={searchRef}
             type="search"
             placeholder="検索... (/ でフォーカス)"
-            value={query}
+            value={rawQuery}
             onChange={(e) => updateQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Escape') { updateQuery(''); searchRef.current?.blur(); }

@@ -34,7 +34,8 @@ function getDateRangeStart(range: DateRange): Date | null {
 
 export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, readingListIds, selectedArticleId }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === '1');
-  const [query, setQuery] = useState('');
+  const [rawQuery, setRawQuery] = useState('');  // 入力値（即時更新）
+  const [query, setQuery] = useState('');         // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
     const v = storageGet(STORAGE_KEYS.SORT_ORDER);
@@ -47,8 +48,17 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   // フィード切り替え時にページ・検索クエリをリセット
   useEffect(() => {
     setPage(1);
+    setRawQuery('');
     setQuery('');
   }, [feedId]);
+
+  // 検索クエリのデバウンス（300ms）：頻繁なキー入力でフィルター再計算が走らないよう遅延させる
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQuery(rawQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [rawQuery]);
 
   const toggleUnreadOnly = useCallback(() => {
     setUnreadOnly((v) => {
@@ -60,7 +70,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   }, []);
 
   const updateQuery = useCallback((q: string) => {
-    setQuery(q);
+    setRawQuery(q);
     setPage(1);
   }, []);
 
@@ -139,7 +149,8 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
     toggleSortOrder,
     dateRange,
     cycleDateRange,
-    query,
+    query,        // デバウンス済み（フィルター・ハイライト用）
+    rawQuery,     // 即時値（検索 input の value 用）
     updateQuery,
     searchRef,
     sentinelRef,
