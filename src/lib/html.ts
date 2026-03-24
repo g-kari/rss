@@ -11,10 +11,28 @@ export function sanitizeHtml(html: string): string {
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
     // <base> タグを除去（相対 URL ハイジャック防止）
     .replace(/<base\b[^>]*\/?>/gi, '')
-    // <object>, <embed>, <iframe> を除去
+    // <object>, <embed> を除去
     .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
     .replace(/<embed\b[^>]*\/?>/gi, '')
-    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
+    // <iframe> は信頼済みドメイン以外を除去
+    .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
+      const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
+      const src = srcMatch?.[1] ?? '';
+      const trusted = [
+        'youtube.com/embed',
+        'youtube-nocookie.com/embed',
+        'player.vimeo.com',
+        'open.spotify.com/embed',
+        'w.soundcloud.com',
+        'player.twitch.tv',
+        'clips.twitch.tv/embed',
+        'embed.nicovideo.jp',
+        'embed.zenn.studio',
+      ];
+      return trusted.some((d) => src.includes(d))
+        ? _m
+        : '';
+    })
     .replace(/<iframe\b[^>]*\/>/gi, '')
     // <meta http-equiv="refresh"> を除去（クライアントサイドリダイレクト防止）
     .replace(/<meta\b[^>]*http-equiv\s*=\s*["']refresh["'][^>]*\/?>/gi, '')
