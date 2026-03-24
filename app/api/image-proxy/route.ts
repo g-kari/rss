@@ -9,6 +9,41 @@ const FETCH_TIMEOUT_MS = 10_000;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 
 /**
+ * 先頭バイトから画像フォーマットを検出する（マジックバイト検証）。
+ * Content-Type が application/octet-stream の場合のフォールバックとして使用。
+ */
+function detectImageMimeType(bytes: Uint8Array): string | null {
+  if (bytes.length < 4) return null;
+
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+
+  // PNG: 89 50 4E 47
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+
+  // GIF: 47 49 46 38 (GIF87a / GIF89a)
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return 'image/gif';
+
+  // WebP: RIFF????WEBP
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+  ) return 'image/webp';
+
+  // BMP: 42 4D
+  if (bytes[0] === 0x42 && bytes[1] === 0x4d) return 'image/bmp';
+
+  // AVIF / HEIF: ftyp box (offset 4-7 = "ftyp", brand の先頭 4 bytes が avif / heic / heix)
+  if (bytes.length >= 12 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) {
+    const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
+    if (brand === 'avif' || brand === 'heic' || brand === 'heix') return 'image/avif';
+  }
+
+  return null;
+}
+
+/**
  * 1×1 透明 GIF — フェッチ失敗時のフォールバック。
  * broken image アイコンの代わりに空領域を表示するために返す。
  */
@@ -71,8 +106,12 @@ async function handleGet(request: Request): Promise<Response> {
 
     if (!res.ok) return transparentGif();
 
-    const ct = res.headers.get('content-type') ?? '';
-    if (!ct.startsWith('image/') && !ct.startsWith('application/octet-stream')) {
+    const ct = (res.headers.get('content-type') ?? '').split(';')[0].trim();
+    const isImageType = ct.startsWith('image/');
+    const needsMagicCheck = ct === 'application/octet-stream' || ct === '';
+
+    // image/* でも application/octet-stream でもない場合は拒否
+    if (!isImageType && !needsMagicCheck) {
       return transparentGif();
     }
 
@@ -97,7 +136,15 @@ async function handleGet(request: Request): Promise<Response> {
     let offset = 0;
     for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
 
-    const imageContentType = ct.startsWith('image/') ? ct : 'image/jpeg';
+    // application/octet-stream はマジックバイトで画像を検証して正確な MIME タイプを取得
+    let imageContentType: string;
+    if (isImageType) {
+      imageContentType = ct;
+    } else {
+      const detected = detectImageMimeType(merged);
+      if (!detected) return transparentGif();
+      imageContentType = detected;
+    }
 
     // Cloudflare Cache API に保存（fire-and-forget）
     ctx.waitUntil(
