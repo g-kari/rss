@@ -99,6 +99,9 @@ export function sanitizeHtml(html: string): string {
     // <object>, <embed> を除去
     .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
     .replace(/<embed\b[^>]*\/?>/gi, '')
+    // SVG <foreignObject> を除去（任意の HTML を埋め込める危険な要素）
+    .replace(/<foreignObject\b[^<]*(?:(?!<\/foreignObject>)<[^<]*)*<\/foreignObject>/gi, '')
+    .replace(/<foreignObject\b[^>]*\/>/gi, '')
     // <iframe> は信頼済みドメイン以外を除去
     .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
       const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
@@ -112,12 +115,26 @@ export function sanitizeHtml(html: string): string {
     // [\s/]+ : スペース・タブ・スラッシュ区切り（/ 区切りバイパス対策）
     // (?<=['"]): 引用符直後に on\w+ が来るケース（<img src="x"onerror=...>）のバイパス対策
     .replace(/(?:[\s/]+|(?<=['"]))on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    // xlink:href（SVG）の javascript: / vbscript: / data: スキームを除去（完全な属性名を削除）
+    // 汎用 href パターンより先に処理することで xlink: プレフィックスが残留しないようにする
+    .replace(/xlink:href\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi, '')
+    .replace(/xlink:href\s*=\s*(?:javascript|vbscript|data):[^\s>]*/gi, '')
     // javascript: / vbscript: スキームを除去（クォートあり・なし両対応）
     .replace(/(?:href|src|action|formaction)\s*=\s*["'](?:javascript|vbscript):[^"']*["']/gi, '')
     .replace(/(?:href|src|action|formaction)\s*=\s*(?:javascript|vbscript):[^\s>]*/gi, '')
     // data: URI を src/href/action/formaction から除去（HTML インジェクション防止）
     .replace(/(?:src|href|action|formaction)\s*=\s*["']data:[^"']*["']/gi, '')
     .replace(/(?:src|href|action|formaction)\s*=\s*data:[^\s>]*/gi, '')
+    // xlink:href の HTML エンティティ・先頭空白バイパスを除去
+    // 汎用 href パターンより先に処理することで xlink: プレフィックスが残留しないようにする
+    .replace(/xlink:href\s*=\s*"([^"]*)"/gi, (m, val) => {
+      const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
+      return /^(?:javascript|vbscript|data):/i.test(decoded) ? '' : m;
+    })
+    .replace(/xlink:href\s*=\s*'([^']*)'/gi, (m, val) => {
+      const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
+      return /^(?:javascript|vbscript|data):/i.test(decoded) ? '' : m;
+    })
     // HTML エンティティや先頭空白でエンコードされた危険スキームを除去
     // ブラウザは属性値の HTML エンティティをデコードし先頭の空白・制御文字を無視するため、
     // 例: href="&#106;avascript:..." → &#106; = 'j' → javascript: に、
