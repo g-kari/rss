@@ -105,9 +105,40 @@ function extractMainContent(html: string, pageUrl: string): string {
     .replace(/<form\b[\s\S]*?<\/form>/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '');
 
+  /**
+   * Zenn の mermaid embed iframe を mermaid ソースのコードブロックに変換する。
+   * embed.zenn.studio/mermaid は親ページの Zenn スクリプト（postMessage）がないと
+   * "Loading..." のまま表示されるため、data-content から直接ソースを取り出す。
+   */
+  function transformZennMermaidEmbeds(content: string): string {
+    return content.replace(
+      /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
+      (spanMatch) => {
+        const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
+        if (!dcMatch) return spanMatch;
+        try {
+          const source = decodeURIComponent(dcMatch[1]);
+          const escaped = source
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+          return (
+            `<pre style="background:var(--color-surface-subtle,#f3f3f1);` +
+            `border:1px solid var(--color-border-default,#e7e5e4);` +
+            `border-radius:6px;padding:1em;overflow-x:auto;white-space:pre">` +
+            `<code class="language-mermaid">${escaped}</code></pre>`
+          );
+        } catch {
+          return spanMatch;
+        }
+      },
+    );
+  }
+
   function postProcess(content: string): string {
     const noised = removeNoise(content);
-    const imgFixed = fixImageDimensions(noised);
+    const mermaid = transformZennMermaidEmbeds(noised);
+    const imgFixed = fixImageDimensions(mermaid);
     const tableFixed = wrapTables(imgFixed);
     return sanitizeHtml(tableFixed);
   }
@@ -122,9 +153,11 @@ function extractMainContent(html: string, pageUrl: string): string {
   const qiitaMd = cleaned.match(/<(\w+)[^>]+class=["'][^"']*it-MdContent[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
   if (qiitaMd?.[2]) return postProcess(qiitaMd[2]);
 
-  // Zenn: class="znc"
-  const zennContent = cleaned.match(/<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
-  if (zennContent?.[2]) return postProcess(zennContent[2]);
+  // Zenn (zenn.dev): class="znc" を <article> より優先
+  // 他ドメイン (classmethod 等 Zenn の記事システムを流用するサイト) では
+  // <article> を先に試し、なければ znc にフォールバックする
+  const zncMatch = cleaned.match(/<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
+  if (zncMatch?.[2] && pageUrl.includes('zenn.dev')) return postProcess(zncMatch[2]);
 
   // --- EC / 商品ページセレクター ---
 
@@ -140,6 +173,9 @@ function extractMainContent(html: string, pageUrl: string): string {
 
   const article = cleaned.match(/<article\b[^>]*>([\s\S]*)<\/article>/i);
   if (article?.[1]) return postProcess(article[1]);
+
+  // 非 zenn.dev で <article> なし、znc がある場合のフォールバック
+  if (zncMatch?.[2]) return postProcess(zncMatch[2]);
 
   const main = cleaned.match(/<main\b[^>]*>([\s\S]*)<\/main>/i);
   if (main?.[1]) return postProcess(main[1]);
