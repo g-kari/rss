@@ -16,6 +16,7 @@ export const STORAGE_KEYS = {
   FONT_SIZE: 'rss-font-size',
   AI_MODE: 'rss-ai-mode',
   CONTENT_CACHE_PREFIX: 'rss-content:',
+  AI_CACHE_PREFIX: 'rss-ai:',
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

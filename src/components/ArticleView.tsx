@@ -28,6 +28,9 @@ interface Props {
 /* ── 全文キャッシュ (localStorage) ── */
 const CACHE_MAX = 15;
 
+/* ── AI 結果キャッシュ (localStorage) ── */
+const AI_CACHE_MAX = 30;
+
 function loadCache(id: string): string | null {
   return storageGet(`${STORAGE_KEYS.CONTENT_CACHE_PREFIX}${id}`);
 }
@@ -36,6 +39,16 @@ function saveCache(id: string, content: string) {
   const keys = storageListKeys(STORAGE_KEYS.CONTENT_CACHE_PREFIX);
   if (keys.length >= CACHE_MAX) storageRemove(keys[0]);
   storageSet(`${STORAGE_KEYS.CONTENT_CACHE_PREFIX}${id}`, content);
+}
+
+function loadAiCache(articleId: string, mode: AiMode): string | null {
+  return storageGet(`${STORAGE_KEYS.AI_CACHE_PREFIX}${articleId}:${mode}`);
+}
+
+function saveAiCache(articleId: string, mode: AiMode, text: string): void {
+  const keys = storageListKeys(STORAGE_KEYS.AI_CACHE_PREFIX);
+  if (keys.length >= AI_CACHE_MAX) storageRemove(keys[0]);
+  storageSet(`${STORAGE_KEYS.AI_CACHE_PREFIX}${articleId}:${mode}`, text);
 }
 
 
@@ -63,8 +76,18 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
   stickyAiModeRef.current = stickyAiMode;
 
   /** AI fetch のみ（トグルなし）。記事切り替え時の自動実行にも使用 */
-  const doRunAi = useCallback(async (mode: AiMode, contentHtml: string) => {
+  const doRunAi = useCallback(async (mode: AiMode, contentHtml: string, articleId?: string) => {
     if (!contentHtml.trim()) return;
+
+    // キャッシュヒット時は API コールなし
+    if (articleId) {
+      const cached = loadAiCache(articleId, mode);
+      if (cached) {
+        setAiResult({ mode, text: cached });
+        return;
+      }
+    }
+
     setAiLoading(mode);
     try {
       const endpoint = mode === 'summary' ? '/api/ai/summarize' : '/api/ai/translate';
@@ -74,7 +97,10 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
         body: JSON.stringify({ text: contentHtml }),
       });
       const data = await res.json() as { result?: string; error?: string };
-      if (data.result) setAiResult({ mode, text: data.result });
+      if (data.result) {
+        if (articleId) saveAiCache(articleId, mode, data.result);
+        setAiResult({ mode, text: data.result });
+      }
     } finally {
       setAiLoading(null);
     }
@@ -90,8 +116,8 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
     }
     setStickyAiMode(mode);
     storageSet(STORAGE_KEYS.AI_MODE, mode);
-    doRunAi(mode, contentHtml);
-  }, [aiResult, doRunAi]);
+    doRunAi(mode, contentHtml, article?.id);
+  }, [aiResult, doRunAi, article?.id]);
 
   // 記事が変わったらリセット → sticky モードが設定済みなら自動実行
   useEffect(() => {
@@ -102,7 +128,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
     setAiLoading(null);
     if (stickyAiModeRef.current && article?.id) {
       const content = article.content ?? article.summary;
-      if (content) doRunAi(stickyAiModeRef.current, content);
+      if (content) doRunAi(stickyAiModeRef.current, content, article.id);
     }
   }, [article?.id, doRunAi]);
 
