@@ -11,12 +11,18 @@ const FETCH_TIMEOUT_MS = 10_000;
 const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 
 /**
- * img タグの固定 width / height 属性を除去してレスポンシブ表示を保証する。
- * CSS で max-width: 100% を指定しているが、inline style や属性の上書きに対応する。
+ * img タグの後処理:
+ * - 固定 width / height 属性を除去してレスポンシブ表示を保証
+ * - 相対パスの src を pageUrl ベースで絶対 URL に変換（404 防止）
+ * - loading="lazy" を自動挿入（ブラウザネイティブ遅延ロード）
+ * - 壊れた画像を非表示にする onerror ハンドラを追加
  */
-function fixImageDimensions(html: string): string {
+function fixImageDimensions(html: string, pageUrl = ''): string {
+  let base: URL | null = null;
+  try { base = pageUrl ? new URL(pageUrl) : null; } catch { /* ignore */ }
+
   return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-    const cleaned = attrs
+    let a = attrs
       .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
       .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
       .replace(/\s+style\s*=\s*"([^"]*)"/gi, (_s, style: string) => {
@@ -27,7 +33,22 @@ function fixImageDimensions(html: string): string {
         const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
         return s2 ? ` style="${s2}"` : '';
       });
-    return `<img${cleaned}>`;
+
+    // 相対パスを絶対 URL に変換
+    if (base) {
+      a = a.replace(/\bsrc=["']([^"']+)["']/gi, (_sm, src: string) => {
+        if (/^https?:\/\//i.test(src) || src.startsWith('data:')) return _sm;
+        try { return `src="${new URL(src, base).href}"`; } catch { return _sm; }
+      });
+    }
+
+    // loading="lazy" を追加（既存の loading 属性がなければ）
+    if (!/\bloading\s*=/i.test(a)) a += ' loading="lazy"';
+
+    // 壊れた画像を非表示
+    if (!/\bonerror\s*=/i.test(a)) a += ' onerror="this.style.display=\'none\'"';
+
+    return `<img${a}>`;
   });
 }
 
@@ -158,6 +179,7 @@ function postProcess(content: string, pageUrl = ''): string {
             pageUrl,
           ),
         ),
+        pageUrl,
       ),
     ),
   );

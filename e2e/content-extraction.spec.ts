@@ -167,6 +167,91 @@ test.describe('fixLazyImages — 遅延ロード・Shopify サムネイル解決
   });
 });
 
+// app/api/content/route.ts の fixImageDimensions と同一ロジック（複製）
+function fixImageDimensions(html: string, pageUrl = ''): string {
+  let base: URL | null = null;
+  try { base = pageUrl ? new URL(pageUrl) : null; } catch { /* ignore */ }
+
+  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
+    let a = attrs
+      .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
+      .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
+      .replace(/\s+style\s*=\s*"([^"]*)"/gi, (_s: string, style: string) => {
+        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
+        return s2 ? ` style="${s2}"` : '';
+      })
+      .replace(/\s+style\s*=\s*'([^']*)'/gi, (_s: string, style: string) => {
+        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
+        return s2 ? ` style="${s2}"` : '';
+      });
+
+    if (base) {
+      a = a.replace(/\bsrc=["']([^"']+)["']/gi, (_sm: string, src: string) => {
+        if (/^https?:\/\//i.test(src) || src.startsWith('data:')) return _sm;
+        try { return `src="${new URL(src, base as URL).href}"`; } catch { return _sm; }
+      });
+    }
+
+    if (!/\bloading\s*=/i.test(a)) a += ' loading="lazy"';
+    if (!/\bonerror\s*=/i.test(a)) a += ' onerror="this.style.display=\'none\'"';
+
+    return `<img${a}>`;
+  });
+}
+
+test.describe('fixImageDimensions — 画像後処理', () => {
+  test('固定 width/height 属性を除去する', () => {
+    const html = '<img src="https://example.com/img.jpg" width="640" height="480" alt="test">';
+    const result = fixImageDimensions(html);
+    expect(result).not.toContain('width=');
+    expect(result).not.toContain('height=');
+    expect(result).toContain('src=');
+  });
+
+  test('相対パスを絶対 URL に変換する', () => {
+    const html = '<img src="/images/photo.jpg" alt="写真">';
+    const result = fixImageDimensions(html, 'https://example.com/blog/article');
+    expect(result).toContain('src="https://example.com/images/photo.jpg"');
+  });
+
+  test('./相対パスも絶対 URL に変換する', () => {
+    const html = '<img src="./img/icon.png">';
+    const result = fixImageDimensions(html, 'https://example.com/blog/article');
+    expect(result).toContain('src="https://example.com/blog/img/icon.png"');
+  });
+
+  test('https:// で始まる URL はそのまま保持する', () => {
+    const html = '<img src="https://cdn.example.com/img.jpg">';
+    const result = fixImageDimensions(html, 'https://other.com/');
+    expect(result).toContain('src="https://cdn.example.com/img.jpg"');
+  });
+
+  test('pageUrl なしでは相対パスを変換しない', () => {
+    const html = '<img src="/images/photo.jpg">';
+    const result = fixImageDimensions(html);
+    expect(result).toContain('src="/images/photo.jpg"');
+  });
+
+  test('loading="lazy" を自動追加する', () => {
+    const html = '<img src="https://example.com/img.jpg">';
+    const result = fixImageDimensions(html);
+    expect(result).toContain('loading="lazy"');
+  });
+
+  test('既存の loading 属性は上書きしない', () => {
+    const html = '<img src="https://example.com/img.jpg" loading="eager">';
+    const result = fixImageDimensions(html);
+    expect(result).toContain('loading="eager"');
+    expect(result).not.toContain('loading="lazy"');
+  });
+
+  test('onerror 非表示ハンドラを追加する', () => {
+    const html = '<img src="https://example.com/img.jpg">';
+    const result = fixImageDimensions(html);
+    expect(result).toContain('onerror=');
+  });
+});
+
 test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
   const ZENN_URL = 'https://zenn.dev/user/articles/example';
   const OTHER_URL = 'https://dev.classmethod.jp/articles/example';

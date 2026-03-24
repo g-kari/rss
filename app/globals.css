@@ -134,6 +134,13 @@ html, body {
   border-radius: 4px;
   margin: 1.25em 0;
   display: block;
+  /* 読み込み中のスケルトンプレースホルダ */
+  min-height: 2px;
+  background-color: var(--color-surface-subtle);
+}
+/* 読み込み完了後はスケルトン背景を消す */
+.article-content img[src]:not([src=""]) {
+  background-color: transparent;
 }
 .article-content figure { margin: 1.25em 0; }
 .article-content figcaption {

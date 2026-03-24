@@ -196,6 +196,34 @@ npm run test:e2e:ui                     # UI モードでデバッグ
 
 新しいバグ修正を行った場合は、そのバグを再現するテストケースを `e2e/` に追加してから修正すること。
 
+## 記事本文の画像処理（注意事項）
+
+記事本文の画像処理は `app/api/content/route.ts` の `postProcess` パイプラインで行う。
+
+### 処理パイプライン（適用順）
+
+```
+removeNoise            → EC ギャラリー / Qiita・Zenn UI のノイズ除去
+transformZennMermaidEmbeds → zenn.dev の mermaid を <pre><code> に変換
+fixLazyImages          → data-src → src 解決、Shopify _NNNx → _800x 高解像度化
+fixImageDimensions     → 相対パス絶対URL化 / loading="lazy" 追加 / onerror 非表示
+wrapTables             → <table> を overflow-x:auto でラップ
+sanitizeHtml           → XSS 対策（<script>/<style>/<link>/イベントハンドラ除去）
+```
+
+### ルール
+
+- **`fixImageDimensions` に `pageUrl` を必ず渡す** — 相対パスを絶対URL化するために必要
+- **`sanitizeHtml` は必ずパイプラインの最後に実行** — 途中で実行すると後の処理が無効化される
+- **新しい後処理を追加する場合は `sanitizeHtml` の前に挿入する**
+- **`loading="lazy"` は `fixImageDimensions` で自動付与** — 個別に追加しない
+- **壊れた画像の非表示** — `onerror` ハンドラを `fixImageDimensions` で自動付与
+
+### CSS（`app/globals.css`）
+
+`.article-content img` に `background-color: var(--color-surface-subtle)` でスケルトン表示。
+読み込み完了後は `:not([src=""])` セレクタで背景を消す。
+
 ## 必要なシークレット
 
 | キー | 設定方法 |
