@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, type ReactElement, type ReactNode, type RefObject } from 'react';
+import { useMemo, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react';
 import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
 import { readingTime } from '../lib/article-utils';
@@ -78,9 +78,10 @@ interface Props {
   sentinelRef: RefObject<HTMLDivElement | null>;
 }
 
-/** ogImage がない場合、YouTube URL からサムネイルを生成 */
-function resolveThumbnail(article: Article): string | undefined {
+/** ogImage がない場合、キャッシュ → YouTube URL の順でサムネイルを解決 */
+function resolveThumbnail(article: Article, ogpCache: Record<string, string>): string | undefined {
   if (article.ogImage) return article.ogImage;
+  if (article.link && ogpCache[article.link]) return ogpCache[article.link];
   const yt = article.link?.match(
     /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
   );
@@ -200,6 +201,27 @@ export default function ArticleList({
   // 複数フィードを横断表示するとき（すべて・ブックマーク）はフィード名を表示する
   const showFeedName = selectedFeedId === null || selectedFeedId === '__bookmarks__';
 
+  // ogImage がない記事の OGP 画像を遅延フェッチするキャッシュ
+  const [ogpCache, setOgpCache] = useState<Record<string, string>>({});
+  const fetchingRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const toFetch = visible.filter(
+      (a) => !a.ogImage && a.link && !ogpCache[a.link] && !fetchingRef.current.has(a.link),
+    ).slice(0, 5);
+    if (toFetch.length === 0) return;
+    toFetch.forEach((a) => {
+      fetchingRef.current.add(a.link);
+      fetch(`/api/ogp?url=${encodeURIComponent(a.link)}`)
+        .then((r) => r.json() as Promise<{ image: string }>)
+        .then(({ image }) => {
+          if (image) setOgpCache((prev) => ({ ...prev, [a.link]: image }));
+        })
+        .catch(() => {})
+        .finally(() => { fetchingRef.current.delete(a.link); });
+    });
+  }, [visible, ogpCache]);
+
   useEffect(() => {
     if (selectedArticleId) {
       document
@@ -255,7 +277,7 @@ export default function ArticleList({
     const isRead = readIds.has(article.id);
     const isBookmarked = bookmarkIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
-    const thumb = resolveThumbnail(article);
+    const thumb = resolveThumbnail(article, ogpCache);
     const feedName = showFeedName ? (feedMap.get(article.feedId) ?? '') : '';
     return (
       <div
@@ -321,7 +343,7 @@ export default function ArticleList({
     const isBookmarked = bookmarkIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
     const feedName = feedMap.get(article.feedId) ?? '';
-    const thumb = resolveThumbnail(article);
+    const thumb = resolveThumbnail(article, ogpCache);
     return (
       <div
         key={article.id}
@@ -383,7 +405,7 @@ export default function ArticleList({
     const isBookmarked = bookmarkIds.has(article.id);
     const isSelected = selectedArticleId === article.id;
     const feedName = feedMap.get(article.feedId) ?? '';
-    const thumb = resolveThumbnail(article);
+    const thumb = resolveThumbnail(article, ogpCache);
     return (
       <div
         key={article.id}
