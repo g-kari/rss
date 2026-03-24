@@ -1,4 +1,11 @@
 import { test, expect } from '@playwright/test';
+import {
+  detectCharset,
+  fixLazyImages,
+  fixImageDimensions,
+  transformZennMermaidEmbeds,
+  transformZennLinkEmbeds,
+} from '../src/lib/content';
 
 /**
  * extractMainContent / detectCharset のロジックを node スクリプトで検証する。
@@ -8,21 +15,7 @@ import { test, expect } from '@playwright/test';
  * 修正後のパターンを回帰テストとして定義する。
  */
 
-// src/lib/content.ts の detectCharset と同一ロジック（複製）
-function detectCharset(contentType: string, bodyBytes: Uint8Array): string {
-  const ctMatch = contentType.match(/charset\s*=\s*([^\s;]+)/i);
-  if (ctMatch?.[1]) return ctMatch[1];
-  const preview = new TextDecoder('latin1').decode(bodyBytes.slice(0, 2048));
-  const metaCharset = preview.match(/<meta\b[^>]+charset\s*=\s*["']?([^"'\s;>]+)/i)?.[1];
-  if (metaCharset) return metaCharset;
-  const metaHttp = preview.match(
-    /<meta\b[^>]+content\s*=\s*["'][^"']*;\s*charset\s*=\s*([^"'\s;>]+)/i,
-  )?.[1];
-  if (metaHttp) return metaHttp;
-  return 'utf-8';
-}
-
-// テスト対象と同じ正規表現を抜粋
+// extractMainContent で使われる正規表現フォールバックのロジックを抜粋
 function extractArticle(html: string): string | null {
   const cleaned = html
     .replace(/<head\b[\s\S]*?<\/head>/gi, '')
@@ -82,48 +75,6 @@ test.describe('detectCharset — 文字エンコーディング検出', () => {
   });
 });
 
-// src/lib/content.ts の transformZennMermaidEmbeds と同一ロジック（複製）
-function transformZennMermaidEmbeds(content: string, pageUrl = ''): string {
-  if (!pageUrl.includes('zenn.dev')) return content;
-  return content.replace(
-    /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
-    (spanMatch) => {
-      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
-      if (!dcMatch) return spanMatch;
-      try {
-        const source = decodeURIComponent(dcMatch[1]);
-        const escaped = source
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-        return `<pre><code class="language-mermaid">${escaped}</code></pre>`;
-      } catch {
-        return spanMatch;
-      }
-    },
-  );
-}
-
-// src/lib/content.ts の fixLazyImages と同一ロジック（複製）
-function fixLazyImages(html: string): string {
-  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-    let fixed = attrs;
-    const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
-    if (dataSrcMatch) {
-      const resolved = dataSrcMatch[1].replace(/\{width\}/g, '800');
-      if (/\bsrc=["'][^"']*["']/i.test(fixed)) {
-        fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
-      } else {
-        fixed = ` src="${resolved}"` + fixed;
-      }
-    }
-    fixed = fixed.replace(
-      /(src=["'][^"']*?)_\d+x\d*(?:@\d+x)?\.(jpg|jpeg|png|webp|gif)(["'])/gi,
-      '$1_800x.$2$3',
-    );
-    return `<img${fixed}>`;
-  });
-}
 
 test.describe('fixLazyImages — 遅延ロード・Shopify サムネイル解決', () => {
   test('data-src の {width} プレースホルダーを 800 に解決して src を上書きする', () => {
@@ -167,38 +118,6 @@ test.describe('fixLazyImages — 遅延ロード・Shopify サムネイル解決
   });
 });
 
-// src/lib/content.ts の fixImageDimensions と同一ロジック（複製）
-// 注意: onerror ハンドラは sanitizeHtml で除去されるため付与しない。
-//       画像は /api/image-proxy 経由で配信され、失敗時は透明 GIF が返る。
-function fixImageDimensions(html: string, pageUrl = ''): string {
-  let base: URL | null = null;
-  try { base = pageUrl ? new URL(pageUrl) : null; } catch { /* ignore */ }
-
-  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-    let a = attrs
-      .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
-      .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
-      .replace(/\s+style\s*=\s*"([^"]*)"/gi, (_s: string, style: string) => {
-        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
-        return s2 ? ` style="${s2}"` : '';
-      })
-      .replace(/\s+style\s*=\s*'([^']*)'/gi, (_s: string, style: string) => {
-        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
-        return s2 ? ` style="${s2}"` : '';
-      });
-
-    if (base) {
-      a = a.replace(/\bsrc=["']([^"']+)["']/gi, (_sm: string, src: string) => {
-        if (/^https?:\/\//i.test(src) || src.startsWith('data:')) return _sm;
-        try { return `src="${new URL(src, base as URL).href}"`; } catch { return _sm; }
-      });
-    }
-
-    if (!/\bloading\s*=/i.test(a)) a += ' loading="lazy"';
-
-    return `<img${a}>`;
-  });
-}
 
 test.describe('fixImageDimensions — 画像後処理', () => {
   test('固定 width/height 属性を除去する', () => {
@@ -313,23 +232,6 @@ test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
   });
 });
 
-// src/lib/content.ts の transformZennLinkEmbeds と同一ロジック（複製）
-function transformZennLinkEmbeds(content: string): string {
-  return content.replace(
-    /<span\b[^>]*\bzenn-embedded-(?:card|tweet)\b[^>]*>[\s\S]*?<\/span>/gi,
-    (spanMatch) => {
-      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
-      if (!dcMatch) return spanMatch;
-      try {
-        const url = decodeURIComponent(dcMatch[1]);
-        if (!/^https?:\/\//i.test(url)) return spanMatch;
-        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
-      } catch {
-        return spanMatch;
-      }
-    },
-  );
-}
 
 test.describe('transformZennLinkEmbeds — Zenn card/tweet embed 変換', () => {
   const makeCardSpan = (encodedUrl: string) =>
