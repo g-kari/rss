@@ -95,33 +95,34 @@ function extractMainContent(html: string, pageUrl: string): string {
   // --- サイト固有セレクター ---
 
   // Qiita: itemprop="articleBody" または class="it-MdContent"
-  const qiitaBody = cleaned.match(/<(?:\w+)[^>]+itemprop=["']articleBody["'][^>]*>([\s\S]*?)<\/(?:\w+)>/i);
-  if (qiitaBody?.[1]) return postProcess(qiitaBody[1]);
+  // (\w+) でタグ名を捕捉し \1 で閉じタグを一致させる。greedy で末尾まで取得。
+  const qiitaBody = cleaned.match(/<(\w+)[^>]+itemprop=["']articleBody["'][^>]*>([\s\S]*)<\/\1>/i);
+  if (qiitaBody?.[2]) return postProcess(qiitaBody[2]);
 
-  const qiitaMd = cleaned.match(/<(?:\w+)[^>]+class=["'][^"']*it-MdContent[^"']*["'][^>]*>([\s\S]*?)<\/(?:\w+)>/i);
-  if (qiitaMd?.[1]) return postProcess(qiitaMd[1]);
+  const qiitaMd = cleaned.match(/<(\w+)[^>]+class=["'][^"']*it-MdContent[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
+  if (qiitaMd?.[2]) return postProcess(qiitaMd[2]);
 
   // Zenn: class="znc"
-  const zennContent = cleaned.match(/<(?:\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*?)<\/(?:\w+)>/i);
-  if (zennContent?.[1]) return postProcess(zennContent[1]);
+  const zennContent = cleaned.match(/<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
+  if (zennContent?.[2]) return postProcess(zennContent[2]);
 
   // --- 汎用セレクター ---
 
-  const article = cleaned.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
+  const article = cleaned.match(/<article\b[^>]*>([\s\S]*)<\/article>/i);
   if (article?.[1]) return postProcess(article[1]);
 
-  const main = cleaned.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
+  const main = cleaned.match(/<main\b[^>]*>([\s\S]*)<\/main>/i);
   if (main?.[1]) return postProcess(main[1]);
 
-  const roleMain = cleaned.match(/<(\w+)[^>]+role=["']main["'][^>]*>([\s\S]*?)<\/\1>/i);
+  const roleMain = cleaned.match(/<(\w+)[^>]+role=["']main["'][^>]*>([\s\S]*)<\/\1>/i);
   if (roleMain?.[2]) return postProcess(roleMain[2]);
 
   const classContent = cleaned.match(
-    /<(\w+)[^>]+class=["'][^"']*(?:post|entry|article|content)[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i,
+    /<(\w+)[^>]+class=["'][^"']*(?:post|entry|article|content)[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
   );
   if (classContent?.[2]) return postProcess(classContent[2]);
 
-  const body = cleaned.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+  const body = cleaned.match(/<body\b[^>]*>([\s\S]*)<\/body>/i);
   return postProcess(body?.[1] ?? cleaned);
 }
 
