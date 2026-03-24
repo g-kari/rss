@@ -126,20 +126,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
     doRunAi(mode, contentHtml, article?.id);
   }, [aiResult, doRunAi, article?.id]);
 
-  // 記事が変わったらリセット → sticky モードが設定済みなら自動実行
-  useEffect(() => {
-    setFetchError('');
-    setAiResult(null);
-    setFetchedContent(null);
-    setScrollProgress(0);
-    setAiLoading(null);
-    if (stickyAiModeRef.current && article?.id) {
-      const content = article.content ?? article.summary;
-      if (content) doRunAi(stickyAiModeRef.current, content, article.id);
-    }
-  }, [article?.id, doRunAi]);
-
-  async function fetchFullContent() {
+  const fetchFullContent = useCallback(async (triggerAiMode?: AiMode) => {
     if (!article?.link) return;
     setFetching(true);
     setFetchError('');
@@ -149,6 +136,8 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
       if (data.content) {
         saveCache(article.id, data.content);
         setFetchedContent(data.content);
+        // 全文取得成功後に AI 実行（triggerAiMode が指定されていれば）
+        if (triggerAiMode) doRunAi(triggerAiMode, data.content, article.id);
       } else {
         setFetchError(data.error ?? '取得できませんでした');
       }
@@ -157,7 +146,31 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
     } finally {
       setFetching(false);
     }
-  }
+  }, [article?.link, article?.id, doRunAi]);
+
+  // 記事が変わったらリセット → sticky モードが設定済みなら自動実行
+  // 全文取得が必要な場合は取得後に AI 実行
+  useEffect(() => {
+    setFetchError('');
+    setAiResult(null);
+    setFetchedContent(null);
+    setScrollProgress(0);
+    setAiLoading(null);
+    if (!stickyAiModeRef.current || !article?.id) return;
+    const cached = loadCache(article.id);
+    if (cached) {
+      doRunAi(stickyAiModeRef.current, cached, article.id);
+      return;
+    }
+    const isShort = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
+    if (isShort && article.link) {
+      // コンテンツが短い場合は全文取得してから AI 実行
+      fetchFullContent(stickyAiModeRef.current);
+    } else {
+      const content = article.content ?? article.summary;
+      if (content) doRunAi(stickyAiModeRef.current, content, article.id);
+    }
+  }, [article?.id, doRunAi, fetchFullContent]);
 
   if (!article) {
     return (
@@ -305,8 +318,23 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
                 return (
                   <button
                     key={mode}
-                    onClick={() => runAi(mode, processedContent ?? article.summary ?? '')}
-                    disabled={!!aiLoading}
+                    onClick={() => {
+                      if (canFetch) {
+                        // 全文未取得の場合: まず全文取得してから AI 実行
+                        if (isActive) {
+                          setAiResult(null);
+                          setStickyAiMode(null);
+                          storageRemove(STORAGE_KEYS.AI_MODE);
+                        } else {
+                          setStickyAiMode(mode);
+                          storageSet(STORAGE_KEYS.AI_MODE, mode);
+                          fetchFullContent(mode);
+                        }
+                      } else {
+                        runAi(mode, processedContent ?? article.summary ?? '');
+                      }
+                    }}
+                    disabled={!!aiLoading || fetching}
                     title={mode === 'summary' ? 'AI 要約' : '日本語翻訳'}
                     className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
                       isActive
@@ -314,7 +342,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
                         : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
                     }`}
                   >
-                    {aiLoading === mode ? '…' : mode === 'summary' ? '要約' : '日本語'}
+                    {(aiLoading === mode || (fetching && stickyAiMode === mode)) ? '…' : mode === 'summary' ? '要約' : '日本語'}
                   </button>
                 );
               })}
@@ -449,7 +477,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
         {canFetch && (
           <div className="mt-6 pt-6 border-t border-border-subtle flex flex-col items-center gap-2">
             <button
-              onClick={fetchFullContent}
+              onClick={() => fetchFullContent()}
               disabled={fetching}
               className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200 disabled:opacity-50"
             >
