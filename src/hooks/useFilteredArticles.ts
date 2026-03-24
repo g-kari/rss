@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { Article, DateRange } from '../types';
+import { STORAGE_KEYS, storageGet, storageSet } from '../lib/storage';
 
 const PAGE_SIZE = 30;
 
@@ -31,7 +32,7 @@ function getDateRangeStart(range: DateRange): Date | null {
 }
 
 export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, readingListIds }: Options) {
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === '1');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
@@ -46,7 +47,11 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   }, [feedId]);
 
   const toggleUnreadOnly = useCallback(() => {
-    setUnreadOnly((v) => !v);
+    setUnreadOnly((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.UNREAD_ONLY, next ? '1' : '0');
+      return next;
+    });
     setPage(1);
   }, []);
 
