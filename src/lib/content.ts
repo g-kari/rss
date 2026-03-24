@@ -146,9 +146,17 @@ export function transformZennLinkEmbeds(content: string): string {
  * embed.zenn.studio/mermaid は親ページの Zenn スクリプト（postMessage）がないと
  * "Loading..." のまま表示されるため、data-content から直接ソースを取り出す。
  * zenn.dev のみ適用。他ドメイン（classmethod 等）では変換しない。
+ *
+ * 注意: includes() による部分文字列マッチは "zenn.dev.evil.com" でバイパスできるため、
+ * URL パースでホスト名を正確に検証する。
  */
 export function transformZennMermaidEmbeds(content: string, pageUrl = ''): string {
-  if (!pageUrl.includes('zenn.dev')) return content;
+  let isZennDev = false;
+  try {
+    const h = new URL(pageUrl).hostname;
+    isZennDev = h === 'zenn.dev' || h.endsWith('.zenn.dev');
+  } catch { /* ignore */ }
+  if (!isZennDev) return content;
   return content.replace(
     /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
     (spanMatch) => {
