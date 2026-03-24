@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { sha256Hex } from '@/lib/r2';
-import { fetchWithTimeout } from '@/lib/fetch';
+import { fetchFollowSafeRedirects } from '@/lib/fetch';
 import {
   detectCharset,
   extractMainContent,
@@ -40,9 +40,8 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   }
 
   try {
-    const res = await fetchWithTimeout(url, {
+    const res = await fetchFollowSafeRedirects(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)', Accept: 'text/html,application/xhtml+xml' },
-      redirect: 'follow',
     }, FETCH_TIMEOUT_MS);
 
     if (!res.ok) return NextResponse.json({ error: `${res.status} ${res.statusText}` }, { status: 502 });

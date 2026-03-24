@@ -2,7 +2,7 @@ import { requireSession, applyRefreshedTokensToResponse } from '@/lib/server-aut
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
-import { fetchWithTimeout } from '@/lib/fetch';
+import { fetchFollowSafeRedirects } from '@/lib/fetch';
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const FETCH_TIMEOUT_MS = 10_000;
@@ -61,13 +61,12 @@ async function handleGet(request: Request): Promise<Response> {
   }
 
   try {
-    const res = await fetchWithTimeout(url, {
+    const res = await fetchFollowSafeRedirects(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)',
         'Accept': 'image/*,*/*',
         'Referer': new URL(url).origin + '/',
       },
-      redirect: 'follow',
     }, FETCH_TIMEOUT_MS);
 
     if (!res.ok) return transparentGif();
