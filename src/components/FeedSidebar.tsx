@@ -87,10 +87,10 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
       )}
       <span className="flex items-center gap-1 ml-1 flex-shrink-0">
         {count > 0 && !feed.fetchError && (
-          <span className="text-[11px] text-text-muted tabular-nums group-hover:hidden">{count > 99 ? '99+' : count}</span>
+          <span className="text-[11px] text-text-muted tabular-nums group-hover:opacity-0 transition-opacity duration-150">{count > 99 ? '99+' : count}</span>
         )}
         {count > 0 && feed.fetchError && (
-          <span className="text-[11px] text-rose-400 tabular-nums group-hover:hidden">{count > 99 ? '99+' : count}</span>
+          <span className="text-[11px] text-rose-400 tabular-nums group-hover:opacity-0 transition-opacity duration-150">{count > 99 ? '99+' : count}</span>
         )}
         <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5">
           {/* ピン留めボタン */}

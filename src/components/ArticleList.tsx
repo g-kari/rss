@@ -329,7 +329,7 @@ export default function ArticleList({
             />
           )}
           {/* ホバーアクション */}
-          <div className="hidden group-hover:flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
             <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
           </div>
         </div>
@@ -349,7 +349,7 @@ export default function ArticleList({
         key={article.id}
         id={`article-${article.id}`}
         onClick={() => handleSelect(article)}
-        className={`group flex flex-col cursor-pointer rounded-lg border transition-all duration-200 animate-fade-up overflow-hidden ${
+        className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 animate-fade-up overflow-hidden ${
           isSelected
             ? 'border-text-strong bg-surface-elevated'
             : 'border-border-default hover:border-text-muted bg-surface-elevated'
@@ -387,9 +387,9 @@ export default function ArticleList({
               {article.author && <span className="text-[10px] text-text-faint truncate">{article.author}</span>}
             </div>
             <div className="flex items-center">
-              {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:hidden" />}
+              {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:opacity-0 transition-opacity duration-150" />}
               {/* ホバーアクション */}
-              <div className="hidden group-hover:flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+              <div className="absolute flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto right-2.5 bottom-2.5" onClick={(e) => e.stopPropagation()}>
                 <ArticleActions size="sm" isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
               </div>
             </div>
@@ -452,9 +452,9 @@ export default function ArticleList({
               })()}
             </div>
             <div className="flex items-center">
-              {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:hidden" />}
+              {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />}
               {/* ホバーアクション */}
-              <div className="hidden group-hover:flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                 <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
               </div>
             </div>
