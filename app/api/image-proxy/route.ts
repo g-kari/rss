@@ -1,5 +1,5 @@
 import { requireSession } from '@/lib/server-auth';
-import { isValidFeedUrl, isFetchBlocked } from '@/lib/url';
+import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
 
@@ -37,7 +37,6 @@ export async function GET(request: Request) {
   if (!url) return new Response(null, { status: 400 });
 
   if (!isValidFeedUrl(url)) return new Response(null, { status: 400 });
-  if (isFetchBlocked(url)) return transparentGif();
 
   const { ctx } = await getCloudflareContext({ async: true });
   const reqUrl = new URL(request.url);
