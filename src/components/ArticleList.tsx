@@ -338,7 +338,7 @@ export default function ArticleList({
           <img
             src={thumb}
             alt=""
-            className="w-full h-24 object-cover flex-shrink-0"
+            className="w-full aspect-video object-contain bg-surface-subtle flex-shrink-0"
             loading="lazy"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
@@ -399,7 +399,7 @@ export default function ArticleList({
           <img
             src={thumb}
             alt=""
-            className="w-full h-36 object-cover"
+            className="w-full aspect-video object-contain bg-surface-subtle"
             loading="lazy"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
