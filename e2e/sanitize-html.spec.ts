@@ -53,6 +53,20 @@ test.describe('sanitizeHtml — XSS 攻撃ベクトル', () => {
     expect(result).not.toContain('onerror');
   });
 
+  test('引用符直後のイベントハンドラが除去される（ダブルクォート）', () => {
+    // <img src="x"onerror=...> のように閉じ引用符直後に on属性が来るバイパスを除去する
+    const result = sanitizeHtml('<img src="x"onerror="alert(1)">');
+    expect(result).not.toContain('onerror');
+    expect(result).not.toContain('alert(1)');
+  });
+
+  test('引用符直後のイベントハンドラが除去される（シングルクォート）', () => {
+    // <img src='x'onerror=...> のようなシングルクォート版バイパスを除去する
+    const result = sanitizeHtml("<img src='x'onerror='alert(1)'>");
+    expect(result).not.toContain('onerror');
+    expect(result).not.toContain('alert(1)');
+  });
+
   test('onclick ハンドラが除去される', () => {
     const result = sanitizeHtml('<a onclick="evil()">リンク</a>');
     expect(result).not.toContain('onclick');

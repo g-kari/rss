@@ -108,8 +108,10 @@ export function sanitizeHtml(html: string): string {
     .replace(/<iframe\b[^>]*\/>/gi, '')
     // <meta http-equiv="refresh"> を除去（クライアントサイドリダイレクト防止）
     .replace(/<meta\b[^>]*http-equiv\s*=\s*["']refresh["'][^>]*\/?>/gi, '')
-    // インラインイベントハンドラを除去（/ 区切りのバイパス対策として [\s/]+ を使用）
-    .replace(/[\s/]+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    // インラインイベントハンドラを除去。
+    // [\s/]+ : スペース・タブ・スラッシュ区切り（/ 区切りバイパス対策）
+    // (?<=['"]): 引用符直後に on\w+ が来るケース（<img src="x"onerror=...>）のバイパス対策
+    .replace(/(?:[\s/]+|(?<=['"]))on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
     // javascript: / vbscript: スキームを除去（クォートあり・なし両対応）
     .replace(/(?:href|src|action|formaction)\s*=\s*["'](?:javascript|vbscript):[^"']*["']/gi, '')
     .replace(/(?:href|src|action|formaction)\s*=\s*(?:javascript|vbscript):[^\s>]*/gi, '')
