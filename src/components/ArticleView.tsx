@@ -73,6 +73,9 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
   const stickyAiModeRef = useRef(stickyAiMode);
   stickyAiModeRef.current = stickyAiMode;
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [downloadingImages, setDownloadingImages] = useState(false);
+  const [imageDownloadProgress, setImageDownloadProgress] = useState<{ done: number; total: number } | null>(null);
 
   /** AI fetch のみ（トグルなし）。記事切り替え時の自動実行にも使用 */
   const doRunAi = useCallback(async (mode: AiMode, contentHtml: string, articleId?: string) => {
@@ -147,6 +150,95 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
     }
   }, [article?.link, article?.id, doRunAi]);
 
+  const downloadAllImages = useCallback(async () => {
+    if (!article || downloadingImages) return;
+
+    // 収集: OGP 画像 + 本文内の img タグ（重複排除）
+    const seen = new Set<string>();
+    const toDownload: string[] = [];
+
+    const ogImgSrc = article.ogImage ?? resolvedOgImage;
+    if (ogImgSrc) {
+      const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(ogImgSrc)}`;
+      seen.add(proxyUrl);
+      toDownload.push(proxyUrl);
+    }
+
+    if (contentRef.current) {
+      for (const img of contentRef.current.querySelectorAll('img')) {
+        const src = img.getAttribute('src') ?? '';
+        if (!src || seen.has(src)) continue;
+        if (src.startsWith('/api/image-proxy?') || src.startsWith('http')) {
+          seen.add(src);
+          toDownload.push(src);
+        }
+      }
+    }
+
+    if (toDownload.length === 0) {
+      showToast?.('画像が見つかりませんでした');
+      return;
+    }
+
+    setDownloadingImages(true);
+    setImageDownloadProgress({ done: 0, total: toDownload.length });
+
+    const safeTitle = (article.title ?? 'image')
+      .replace(/[^\w\s\u3040-\u9fff\u30a0-\u30ff\u4e00-\u9fff-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .slice(0, 40) || 'image';
+
+    function mimeToExt(mime: string): string {
+      if (mime.includes('png')) return 'png';
+      if (mime.includes('gif')) return 'gif';
+      if (mime.includes('webp')) return 'webp';
+      if (mime.includes('avif')) return 'avif';
+      if (mime.includes('bmp')) return 'bmp';
+      if (mime.includes('svg')) return 'svg';
+      return 'jpg';
+    }
+
+    let succeeded = 0;
+    for (let i = 0; i < toDownload.length; i++) {
+      setImageDownloadProgress({ done: i, total: toDownload.length });
+      try {
+        const res = await fetch(toDownload[i]);
+        if (!res.ok) continue;
+        const ct = res.headers.get('content-type') ?? 'image/jpeg';
+        // 透明 GIF（フォールバック画像）はスキップ
+        if (ct === 'image/gif') {
+          const clone = res.clone();
+          const buf = await clone.arrayBuffer();
+          if (buf.byteLength <= 64) continue; // 1×1 透明 GIF は 43 bytes
+        }
+        const ext = mimeToExt(ct.split(';')[0].trim());
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `${safeTitle}-${i + 1}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        succeeded++;
+        // ブラウザが連続ダウンロードをブロックしないよう小間隔を置く
+        await new Promise<void>((resolve) => setTimeout(resolve, 400));
+        URL.revokeObjectURL(blobUrl);
+      } catch {
+        // 1枚失敗しても残りを継続
+      }
+    }
+
+    setImageDownloadProgress(null);
+    setDownloadingImages(false);
+    if (succeeded > 0) {
+      showToast?.(`${succeeded} 枚の画像をダウンロードしました`);
+    } else {
+      showToast?.('ダウンロードできる画像がありませんでした');
+    }
+  }, [article, resolvedOgImage, downloadingImages, showToast]);
+
   // article.ogImage がない場合に /api/ogp からサムネイルを解決する
   useEffect(() => {
     setResolvedOgImage(null);
@@ -220,6 +312,9 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
   const isShortContent = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
   const canFetch = !embedInfo && article.link && isShortContent && !storedContent;
   const hasContent = !!(processedContent || article.summary);
+  const hasImages =
+    !!(article.ogImage ?? resolvedOgImage) ||
+    !!(processedContent && /<img\b/i.test(processedContent));
 
   function handleScroll(e: React.UIEvent<HTMLElement>) {
     const el = e.currentTarget;
@@ -369,6 +464,30 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
               </div>
             )}
 
+            {hasImages && (
+              <button
+                onClick={() => { void downloadAllImages(); }}
+                disabled={downloadingImages}
+                title="記事内の画像をすべてダウンロード"
+                className="text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50 flex items-center gap-1"
+              >
+                {downloadingImages && imageDownloadProgress ? (
+                  <span className="text-[10px] tabular-nums tracking-tight">
+                    {imageDownloadProgress.done}/{imageDownloadProgress.total}
+                  </span>
+                ) : null}
+                {downloadingImages ? (
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                )}
+              </button>
+            )}
+
             {article.link && showToast && (
               <button
                 onClick={() => {
@@ -479,6 +598,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
         {/* 本文 */}
         {processedContent ? (
           <div
+            ref={contentRef}
             className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}
             dangerouslySetInnerHTML={{ __html: processedContent }}
           />
