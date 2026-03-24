@@ -1,16 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
-import { sanitizeHtml } from './html';
-
-/** HTML エンティティをデコードする（URL 中の &amp; → & など） */
-function unescapeHtml(s: string): string {
-  return s
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#(\d+);/gi, (_m, d) => String.fromCharCode(Number(d)))
-    .replace(/&#x([0-9a-f]+);/gi, (_m, h) => String.fromCharCode(parseInt(h, 16)));
-}
+import { sanitizeHtml, unescapeHtml } from './html';
 
 export interface ParsedItem {
   guid: string;

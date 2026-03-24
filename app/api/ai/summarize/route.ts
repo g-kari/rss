@@ -2,21 +2,10 @@ import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/server-auth';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { getAiCache, setAiCache } from '@/lib/ai-cache';
+import { toPlainText } from '@/lib/html';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MODEL = '@cf/meta/llama-3.1-8b-instruct' as any;
-
-function toPlainText(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 6000);
-}
 
 export async function POST(request: Request) {
   const result = await requireSession();
@@ -26,7 +15,7 @@ export async function POST(request: Request) {
   if (!text?.trim()) return NextResponse.json({ error: 'text is required' }, { status: 400 });
 
   const { env } = await getCloudflareContext({ async: true });
-  const plain = toPlainText(text);
+  const plain = toPlainText(text).slice(0, 6000);
 
   // キャッシュヒット
   const cached = await getAiCache(env.RSS_DATA, 'summary', plain);

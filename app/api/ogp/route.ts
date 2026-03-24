@@ -3,6 +3,7 @@ import { requireSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
+import { unescapeHtml } from '@/lib/html';
 
 const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BYTES = 512 * 1024; // og:image は先頭 512KB 以内にある
@@ -71,14 +72,7 @@ export async function GET(request: Request) {
 
     // HTML エンティティをデコード（&amp; → & など）
     // imgix 等の CDN は URL 中の & をそのまま期待するため必須
-    const raw = m?.[1] ?? '';
-    const image = raw
-      .replace(/&amp;/gi, '&')
-      .replace(/&lt;/gi, '<')
-      .replace(/&gt;/gi, '>')
-      .replace(/&quot;/gi, '"')
-      .replace(/&#(\d+);/gi, (_m, d) => String.fromCharCode(Number(d)))
-      .replace(/&#x([0-9a-f]+);/gi, (_m, h) => String.fromCharCode(parseInt(h, 16)));
+    const image = unescapeHtml(m?.[1] ?? '');
 
     // Cloudflare Cache API に保存（fire-and-forget）
     const cacheRes = new Response(JSON.stringify({ image }), {
