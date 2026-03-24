@@ -133,7 +133,13 @@ export function transformZennLinkEmbeds(content: string): string {
         const url = decodeURIComponent(dcMatch[1]);
         // javascript: / data: 等の危険スキームをブロック（XSS 防止）
         if (!/^https?:\/\//i.test(url)) return spanMatch;
-        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
+        // URL に " < > & が含まれる場合にHTML属性から脱出されないようHTMLエスケープ
+        const escaped = url
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        return `<p><a href="${escaped}" target="_blank" rel="noopener noreferrer">${escaped}</a></p>`;
       } catch {
         return spanMatch;
       }
