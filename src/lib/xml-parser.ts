@@ -21,6 +21,8 @@ interface FeedItem {
   description?: XmlTextNode;
   'content:encoded'?: XmlTextNode;
   'dc:creator'?: XmlTextNode;
+  'dc:date'?: string;
+  '@_rdf:about'?: string;
   author?: XmlTextNode | { name?: XmlTextNode };
   pubDate?: string;
   published?: string;
@@ -52,6 +54,14 @@ interface RawParsedXml {
     entry?: FeedItem | FeedItem[];
     author?: { name?: XmlTextNode };
   };
+  /** RSS 1.0 / RDF Site Summary */
+  'rdf:RDF'?: {
+    channel?: {
+      title?: XmlTextNode;
+      link?: string;
+    };
+    item?: FeedItem | FeedItem[];
+  };
 }
 
 export interface ParsedItem {
@@ -81,15 +91,19 @@ const parser = new XMLParser({
   // デフォルト maxTotalExpansions=1000 では HTML エンティティ（&amp; 等）を多用する
   // フィード（例: 記事本文が長い技術ブログ）で "Entity expansion limit exceeded" が発生する。
   // XMLボム攻撃（Billion Laughs）は maxExpansionDepth=10 と maxEntityCount=100 で防ぐ。
+  // freee blog など 10000 超のフィードに対応するため 100000 に引き上げる。
   processEntities: {
     enabled: true,
-    maxTotalExpansions: 10000,
+    maxTotalExpansions: 100000,
     maxEntitySize: 10000,
     maxExpansionDepth: 10,
     maxExpandedLength: 500000,
     maxEntityCount: 100,
   },
   htmlEntities: true,
+  // デフォルト 100 では深いネスト構造を持つ HTML コンテンツ埋め込みフィードで
+  // "Maximum nested tags exceeded" が発生する（例: nlab.itmedia.co.jp）
+  maxNestedTags: 500,
 });
 
 function toArray<T>(val: T | T[] | undefined): T[] {
@@ -215,6 +229,36 @@ export function parseFeed(xml: string): ParsedFeed {
           ogImage: extractImage(entry),
           author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
           publishedAt: entry.published ?? entry.updated ?? null,
+        };
+      }),
+    };
+  }
+
+  // RSS 1.0 / RDF Site Summary
+  // <rdf:RDF> がルートで、<channel> と <item> が兄弟要素として並ぶ形式
+  if (parsed?.['rdf:RDF']) {
+    const rdf = parsed['rdf:RDF'];
+    return {
+      title: stripHtml(str(rdf.channel?.title)),
+      siteUrl: str(rdf.channel?.link),
+      items: toArray(rdf.item).map((item) => {
+        const raw = str(item['content:encoded'] ?? item.description ?? '');
+        // RSS 1.0 は guid がなく rdf:about 属性が識別子を兼ねる
+        const guid = str(item.guid ?? item['@_rdf:about'] ?? item.link);
+        return {
+          guid,
+          title: stripHtml(str(item.title)),
+          link: str(item.link) || str(item['@_rdf:about']),
+          summary: stripHtml(raw).slice(0, 200),
+          content: sanitizeHtml(raw),
+          ogImage: extractImage(item),
+          author: stripHtml(str(item['dc:creator']) || authorStr(item.author)).trim(),
+          // RSS 1.0 は pubDate がなく dc:date （ISO 8601）を使う
+          publishedAt: item.pubDate
+            ? new Date(str(item.pubDate)).toISOString()
+            : item['dc:date']
+              ? new Date(item['dc:date']).toISOString()
+              : null,
         };
       }),
     };
