@@ -69,6 +69,32 @@ function removeNoise(html: string): string {
   return html;
 }
 
+/**
+ * HTTP レスポンスから文字エンコーディングを検出する。
+ * 優先順位: Content-Type ヘッダー → HTML meta charset → UTF-8 フォールバック
+ * Shift-JIS / EUC-JP など非 UTF-8 ページ（ITMedia 等）の文字化けを防ぐ。
+ */
+function detectCharset(contentType: string, bodyBytes: Uint8Array): string {
+  // 1. Content-Type ヘッダーの charset を優先（例: text/html; charset=euc-jp）
+  const ctMatch = contentType.match(/charset\s*=\s*([^\s;]+)/i);
+  if (ctMatch?.[1]) return ctMatch[1];
+
+  // 2. HTML 先頭 2KB を Latin-1 でデコード（ASCII 互換なので meta タグは正確に読める）
+  const preview = new TextDecoder('latin1').decode(bodyBytes.slice(0, 2048));
+
+  // <meta charset="shift_jis"> 形式
+  const metaCharset = preview.match(/<meta\b[^>]+charset\s*=\s*["']?([^"'\s;>]+)/i)?.[1];
+  if (metaCharset) return metaCharset;
+
+  // <meta http-equiv="Content-Type" content="text/html; charset=shift_jis"> 形式
+  const metaHttp = preview.match(
+    /<meta\b[^>]+content\s*=\s*["'][^"']*;\s*charset\s*=\s*([^"'\s;>]+)/i,
+  )?.[1];
+  if (metaHttp) return metaHttp;
+
+  return 'utf-8';
+}
+
 function extractMainContent(html: string, pageUrl: string): string {
   const cleaned = html
     .replace(/<head\b[\s\S]*?<\/head>/gi, '')
@@ -181,7 +207,8 @@ export async function GET(request: Request) {
     const merged = new Uint8Array(totalBytes);
     let offset = 0;
     for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
-    const html = new TextDecoder().decode(merged);
+    const charset = detectCharset(ct, merged);
+    const html = new TextDecoder(charset).decode(merged);
     return NextResponse.json({ content: extractMainContent(html, url) });
   } catch (err) {
     clearTimeout(timeoutId);
