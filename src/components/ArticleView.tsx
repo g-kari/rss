@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { Article, FontSize } from '../types';
+import type { Article, FontSize, AiMode } from '../types';
 import { readingTime } from '../lib/article-utils';
 import { STORAGE_KEYS, storageGet, storageSet, storageRemove } from '../lib/storage';
 import { contentLruCache, aiLruCache } from '../lib/lru-cache';
 import { extractEmbedInfo, processContent, stripIframes } from '../lib/embed-utils';
-
-type AiMode = 'summary' | 'translation';
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   small: 'text-[14px] leading-[1.75]',
