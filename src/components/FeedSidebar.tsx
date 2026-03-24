@@ -76,21 +76,16 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
           className="flex-1 text-[13px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted min-w-0"
         />
       ) : (
-        <span className="text-[13px] tracking-[0.02em] truncate flex-1" title="ダブルクリックでタイトルを編集">{feed.title || feed.url}</span>
+        <div className="flex-1 min-w-0">
+          <span className="text-[13px] tracking-[0.02em] truncate block" title="ダブルクリックでタイトルを編集">{feed.title || feed.url}</span>
+          {feed.fetchError && (
+            <span className="text-[10px] text-rose-400 truncate block leading-tight mt-0.5">
+              {(feed.consecutiveErrors ?? 0) >= 5 ? '更新停止 · ' : ''}{feed.fetchError}
+            </span>
+          )}
+        </div>
       )}
       <span className="flex items-center gap-1 ml-1 flex-shrink-0">
-        {feed.fetchError && (
-          <span
-            className="text-rose-400 flex-shrink-0 group-hover:hidden"
-            title={`取得エラー: ${feed.fetchError}${(feed.consecutiveErrors ?? 0) >= 5 ? '\n（自動更新が一時停止中）' : ''}`}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 1L9 9H1z" />
-              <line x1="5" y1="4.5" x2="5" y2="6.5" />
-              <circle cx="5" cy="7.8" r="0.3" fill="currentColor" stroke="none" />
-            </svg>
-          </span>
-        )}
         {count > 0 && !feed.fetchError && (
           <span className="text-[11px] text-text-muted tabular-nums group-hover:hidden">{count > 99 ? '99+' : count}</span>
         )}
