@@ -118,6 +118,18 @@ export function sanitizeHtml(html: string): string {
     // data: URI を src/href/action/formaction から除去（HTML インジェクション防止）
     .replace(/(?:src|href|action|formaction)\s*=\s*["']data:[^"']*["']/gi, '')
     .replace(/(?:src|href|action|formaction)\s*=\s*data:[^\s>]*/gi, '')
+    // HTML エンティティや先頭空白でエンコードされた危険スキームを除去
+    // ブラウザは属性値の HTML エンティティをデコードし先頭の空白・制御文字を無視するため、
+    // 例: href="&#106;avascript:..." → &#106; = 'j' → javascript: に、
+    //     href=" javascript:..." → 先頭空白を無視 → javascript: に化ける
+    .replace(/(?:href|src|action|formaction)\s*=\s*"([^"]*)"/gi, (m, val) => {
+      const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
+      return /^(?:javascript|vbscript|data):/i.test(decoded) ? '' : m;
+    })
+    .replace(/(?:href|src|action|formaction)\s*=\s*'([^']*)'/gi, (m, val) => {
+      const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
+      return /^(?:javascript|vbscript|data):/i.test(decoded) ? '' : m;
+    })
     // srcdoc 属性を除去（iframe フォールバック経由の HTML インジェクション防止）
     .replace(/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
     // ping 属性を除去（リンククリック時の意図しないリクエスト防止）

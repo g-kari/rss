@@ -211,6 +211,49 @@ test.describe('sanitizeHtml — 危険スキーム防止', () => {
   });
 });
 
+test.describe('sanitizeHtml — HTML エンティティ・空白バイパス防止', () => {
+  test('十進エンティティで先頭文字をエンコードした javascript: が除去される（&#106; = j）', () => {
+    // ブラウザは href 属性値の &# エンティティをデコードするため、
+    // &#106;avascript: は javascript: と等価になり XSS が成立する
+    const result = sanitizeHtml('<a href="&#106;avascript:alert(1)">click</a>');
+    expect(result).not.toContain('javascript:');
+    expect(result).not.toContain('&#106;');
+    expect(result).toContain('click');
+  });
+
+  test('十六進エンティティで先頭文字をエンコードした javascript: が除去される（&#x6A; = j）', () => {
+    const result = sanitizeHtml('<a href="&#x6A;avascript:alert(1)">click</a>');
+    expect(result).not.toContain('javascript:');
+    expect(result).not.toContain('&#x6A;');
+    expect(result).toContain('click');
+  });
+
+  test('エンティティエンコードされた data: URI が除去される（&#100; = d）', () => {
+    const result = sanitizeHtml('<img src="&#100;ata:text/html,<script>alert(1)</script>">');
+    expect(result).not.toContain('data:');
+    expect(result).not.toContain('&#100;');
+  });
+
+  test('先頭スペースがある javascript: href が除去される', () => {
+    // ブラウザは href 属性値の先頭空白を無視するため " javascript:" は "javascript:" と同等
+    const result = sanitizeHtml('<a href=" javascript:alert(1)">click</a>');
+    expect(result).not.toContain('javascript:');
+    expect(result).toContain('click');
+  });
+
+  test('先頭改行がある javascript: href が除去される', () => {
+    const result = sanitizeHtml('<a href="\njavascript:alert(1)">click</a>');
+    expect(result).not.toContain('javascript:');
+    expect(result).toContain('click');
+  });
+
+  test('通常の https: URL はエンティティチェックで除去されない', () => {
+    const result = sanitizeHtml('<a href="https://example.com">リンク</a>');
+    expect(result).toContain('href="https://example.com"');
+    expect(result).toContain('リンク');
+  });
+});
+
 test.describe('sanitizeHtml — その他の攻撃ベクトル', () => {
   test('<meta http-equiv="refresh"> が除去される', () => {
     const result = sanitizeHtml(
