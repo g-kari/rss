@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
  * 修正後のパターンを回帰テストとして定義する。
  */
 
-// app/api/content/route.ts の detectCharset と同一ロジック（複製）
+// src/lib/content.ts の detectCharset と同一ロジック（複製）
 function detectCharset(contentType: string, bodyBytes: Uint8Array): string {
   const ctMatch = contentType.match(/charset\s*=\s*([^\s;]+)/i);
   if (ctMatch?.[1]) return ctMatch[1];
@@ -82,7 +82,7 @@ test.describe('detectCharset — 文字エンコーディング検出', () => {
   });
 });
 
-// app/api/content/route.ts の transformZennMermaidEmbeds と同一ロジック（複製）
+// src/lib/content.ts の transformZennMermaidEmbeds と同一ロジック（複製）
 function transformZennMermaidEmbeds(content: string, pageUrl = ''): string {
   if (!pageUrl.includes('zenn.dev')) return content;
   return content.replace(
@@ -104,7 +104,7 @@ function transformZennMermaidEmbeds(content: string, pageUrl = ''): string {
   );
 }
 
-// app/api/content/route.ts の fixLazyImages と同一ロジック（複製）
+// src/lib/content.ts の fixLazyImages と同一ロジック（複製）
 function fixLazyImages(html: string): string {
   return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
     let fixed = attrs;
@@ -167,7 +167,9 @@ test.describe('fixLazyImages — 遅延ロード・Shopify サムネイル解決
   });
 });
 
-// app/api/content/route.ts の fixImageDimensions と同一ロジック（複製）
+// src/lib/content.ts の fixImageDimensions と同一ロジック（複製）
+// 注意: onerror ハンドラは sanitizeHtml で除去されるため付与しない。
+//       画像は /api/image-proxy 経由で配信され、失敗時は透明 GIF が返る。
 function fixImageDimensions(html: string, pageUrl = ''): string {
   let base: URL | null = null;
   try { base = pageUrl ? new URL(pageUrl) : null; } catch { /* ignore */ }
@@ -193,7 +195,6 @@ function fixImageDimensions(html: string, pageUrl = ''): string {
     }
 
     if (!/\bloading\s*=/i.test(a)) a += ' loading="lazy"';
-    if (!/\bonerror\s*=/i.test(a)) a += ' onerror="this.style.display=\'none\'"';
 
     return `<img${a}>`;
   });
@@ -245,11 +246,6 @@ test.describe('fixImageDimensions — 画像後処理', () => {
     expect(result).not.toContain('loading="lazy"');
   });
 
-  test('onerror 非表示ハンドラを追加する', () => {
-    const html = '<img src="https://example.com/img.jpg">';
-    const result = fixImageDimensions(html);
-    expect(result).toContain('onerror=');
-  });
 });
 
 test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
