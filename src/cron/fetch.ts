@@ -9,6 +9,37 @@ import { r2Get, r2Put } from '../lib/r2';
 
 const MAX_ARTICLES = 500;
 
+/** 429 Too Many Requests を表すカスタムエラー。consecutiveErrors にカウントしない */
+export class RateLimitError extends Error {
+  constructor(public readonly retryAfterMs: number) {
+    super(`Rate limited: retry after ${Math.round(retryAfterMs / 1000)}s`);
+    this.name = 'RateLimitError';
+  }
+}
+
+/** Retry-After ヘッダー値（秒数整数または HTTP-date）をミリ秒に変換する */
+const DEFAULT_RATE_LIMIT_MS = 60 * 60 * 1000; // デフォルト 1 時間
+const MAX_RATE_LIMIT_MS = 24 * 60 * 60 * 1000; // 最大 24 時間
+
+export function parseRetryAfter(header: string | null): number {
+  if (!header) return DEFAULT_RATE_LIMIT_MS;
+
+  // 整数秒（例: "3600"）
+  const seconds = parseInt(header, 10);
+  if (!isNaN(seconds) && seconds > 0) {
+    return Math.min(seconds * 1000, MAX_RATE_LIMIT_MS);
+  }
+
+  // HTTP-date 形式（例: "Wed, 01 Jan 2025 00:00:00 GMT"）
+  const date = new Date(header);
+  if (!isNaN(date.getTime())) {
+    const ms = date.getTime() - Date.now();
+    if (ms > 0) return Math.min(ms, MAX_RATE_LIMIT_MS);
+  }
+
+  return DEFAULT_RATE_LIMIT_MS;
+}
+
 /** クロン実行時のフィード並行取得数上限（メモリ・レート制限対策） */
 const FEED_FETCH_CONCURRENCY = 5;
 /** クロン実行時のユーザー並行処理数上限 */
@@ -115,6 +146,21 @@ function applyFeedSuccess(feed: Feed, parsed: ReturnType<typeof parseFeed>): voi
   feed.fetchError = null;
   feed.consecutiveErrors = 0;
   feed.lastErrorAt = null;
+  feed.rateLimitedUntil = null;
+}
+
+/**
+ * 429 レートリミット時のメタデータを更新する。
+ * consecutiveErrors はカウントしない（一時的な制限のため）。
+ */
+function applyFeedRateLimit(feed: Feed, error: RateLimitError): void {
+  feed.rateLimitedUntil = new Date(Date.now() + error.retryAfterMs).toISOString();
+  feed.fetchError = error.message;
+  console.warn('Feed rate limited', {
+    feedId: feed.id,
+    url: feed.url,
+    rateLimitedUntil: feed.rateLimitedUntil,
+  });
 }
 
 /** フィード取得失敗時のメタデータを更新する */
@@ -154,6 +200,12 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
 
   const results = await allSettledWithConcurrency(
     feeds.map((feed) => async () => {
+      // クロン実行時: レートリミット中のフィードは解除時刻まではスキップ
+      if (!forceRetry && feed.rateLimitedUntil) {
+        if (new Date(feed.rateLimitedUntil).getTime() > Date.now()) {
+          return [];
+        }
+      }
       // クロン実行時: 連続エラーが閾値以上のフィードは原則スキップ（4xx 等の永続的エラーを無限リトライしない）
       // ただし FEED_ERROR_RETRY_INTERVAL_MS 以上経過している場合は自動回復の可能性があるため再試行する
       if (!forceRetry && (feed.consecutiveErrors ?? 0) >= CONSECUTIVE_ERROR_SKIP_THRESHOLD) {
@@ -164,6 +216,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
       }
       if (!isValidFeedUrl(feed.url)) throw new Error(`Invalid feed URL: ${feed.url}`); // SSRF 対策
       const res = await fetchViaBinding(env, feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
+      if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
       if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
       const xml = await res.text();
       const parsed = parseFeed(xml);
@@ -176,7 +229,11 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
 
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
-      applyFeedError(feeds[i], result.reason);
+      if (result.reason instanceof RateLimitError) {
+        applyFeedRateLimit(feeds[i], result.reason);
+      } else {
+        applyFeedError(feeds[i], result.reason);
+      }
     }
   });
 
@@ -288,6 +345,7 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
 
   try {
     const res = await fetchViaBinding(env, feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
+    if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
     if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
     const xml = await res.text();
     const parsed = parseFeed(xml);
@@ -298,7 +356,11 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
       existingByKey.set(articleKey(article.feedId, article.guid), article);
     }
   } catch (e) {
-    applyFeedError(feed, e);
+    if (e instanceof RateLimitError) {
+      applyFeedRateLimit(feed, e);
+    } else {
+      applyFeedError(feed, e);
+    }
   }
 
   await r2Put(env.RSS_DATA, `users/${userId}/feeds.json`, feeds);
