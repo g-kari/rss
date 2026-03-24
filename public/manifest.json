@@ -1,23 +1,43 @@
 {
   "name": "RSS Reader",
   "short_name": "RSS",
-  "description": "シンプルな RSS リーダー",
+  "description": "シンプルな RSS リーダー — AI 要約・翻訳対応",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#18181b",
   "theme_color": "#18181b",
+  "orientation": "any",
+  "categories": ["news", "productivity"],
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ]
 }
