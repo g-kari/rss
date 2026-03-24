@@ -103,6 +103,58 @@ function transformZennMermaidEmbeds(content: string): string {
   );
 }
 
+// app/api/content/route.ts の fixLazyImages と同一ロジック（複製）
+function fixLazyImages(html: string): string {
+  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
+    let fixed = attrs;
+    const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
+    if (dataSrcMatch) {
+      const resolved = dataSrcMatch[1].replace(/\{width\}/g, '800');
+      fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
+    }
+    fixed = fixed.replace(
+      /(src=["'][^"']*?)_\d+x\d*(?:@\d+x)?\.(jpg|jpeg|png|webp|gif)(["'])/gi,
+      '$1_800x.$2$3',
+    );
+    return `<img${fixed}>`;
+  });
+}
+
+test.describe('fixLazyImages — 遅延ロード・Shopify サムネイル解決', () => {
+  test('data-src の {width} プレースホルダーを 800 に解決して src を上書きする', () => {
+    const html = '<img src="//cdn/file_300x300.jpg" class="lazyload" data-src="//cdn/file_{width}x.jpg">';
+    const result = fixLazyImages(html);
+    expect(result).toContain('src="//cdn/file_800x.jpg"');
+    expect(result).not.toContain('src="//cdn/file_300x300.jpg"');
+  });
+
+  test('Shopify _NNNxNNN サフィックスを _800x に置換する', () => {
+    const html = '<img src="//cdn/file_300x300.jpg" alt="商品">';
+    const result = fixLazyImages(html);
+    expect(result).toContain('_800x.jpg');
+    expect(result).not.toContain('_300x300.jpg');
+  });
+
+  test('Shopify _NNNx@2x サフィックスを _800x に置換する', () => {
+    const html = '<img src="//cdn/file_530x@2x.jpg">';
+    const result = fixLazyImages(html);
+    expect(result).toContain('_800x.jpg');
+    expect(result).not.toContain('_530x@2x.jpg');
+  });
+
+  test('通常の URL はそのまま保持される', () => {
+    const html = '<img src="https://example.com/image.jpg" alt="test">';
+    const result = fixLazyImages(html);
+    expect(result).toBe(html);
+  });
+
+  test('data-src に {width} がない場合もそのまま src に昇格する', () => {
+    const html = '<img src="placeholder.gif" data-src="//cdn/image.png">';
+    const result = fixLazyImages(html);
+    expect(result).toContain('src="//cdn/image.png"');
+  });
+});
+
 test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
   const makeMermaidSpan = (encodedContent: string) =>
     `<span class="embed-block zenn-embedded zenn-embedded-mermaid">` +

@@ -135,10 +135,38 @@ function extractMainContent(html: string, pageUrl: string): string {
     );
   }
 
+  /**
+   * JS 遅延ロード画像と Shopify サムネイルを高解像度に解決する。
+   * - data-src が有効 URL（{width} プレースホルダー含む）→ 800px 幅に解決して src を上書き
+   * - src の Shopify サイズサフィックス（_300x300 等）→ _800x に置換
+   */
+  function fixLazyImages(html: string): string {
+    return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
+      let fixed = attrs;
+
+      // data-src が存在する場合: {width} を 800 に解決して src を上書き
+      const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
+      if (dataSrcMatch) {
+        const resolved = dataSrcMatch[1].replace(/\{width\}/g, '800');
+        fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
+      }
+
+      // Shopify: src の _NNNx / _NNNxNNN / _NNNx@Nx サフィックスを _800x に置換
+      // 例: _300x300.jpg → _800x.jpg, _530x@2x.jpg → _800x.jpg
+      fixed = fixed.replace(
+        /(src=["'][^"']*?)_\d+x\d*(?:@\d+x)?\.(jpg|jpeg|png|webp|gif)(["'])/gi,
+        '$1_800x.$2$3',
+      );
+
+      return `<img${fixed}>`;
+    });
+  }
+
   function postProcess(content: string): string {
     const noised = removeNoise(content);
     const mermaid = transformZennMermaidEmbeds(noised);
-    const imgFixed = fixImageDimensions(mermaid);
+    const lazy = fixLazyImages(mermaid);
+    const imgFixed = fixImageDimensions(lazy);
     const tableFixed = wrapTables(imgFixed);
     return sanitizeHtml(tableFixed);
   }
@@ -166,8 +194,29 @@ function extractMainContent(html: string, pageUrl: string): string {
   if (schemaDesc?.[2]) return postProcess(schemaDesc[2]);
 
   // Shopify: product__description / product-single__description / product-description 等
+  // description は通常テキストのみなので、商品メイン画像を別途収集して先頭に付与する
   const shopifyDesc = cleaned.match(/<(\w+)[^>]+class=["'][^"']*product[^"']*description[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
-  if (shopifyDesc?.[2]) return postProcess(shopifyDesc[2]);
+  if (shopifyDesc?.[2]) {
+    // product-featured-media クラスを持つ img を収集してスライダーを構築
+    const mainImgs = [...cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)]
+      .map((m) => m[0]);
+    const gallery =
+      mainImgs.length > 0
+        ? `<div style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0;` +
+          `margin:0 0 1.25em;border-radius:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none">` +
+          mainImgs
+            .map(
+              (img) =>
+                `<div style="flex:0 0 100%;scroll-snap-align:start;overflow:hidden;` +
+                `border-radius:8px;background:#f5f5f5;aspect-ratio:1/1">` +
+                img.replace(/<img\b/, '<img style="width:100%;height:100%;object-fit:contain;display:block"') +
+                `</div>`,
+            )
+            .join('') +
+          `</div>`
+        : '';
+    return postProcess(gallery + shopifyDesc[2]);
+  }
 
   // --- 汎用セレクター ---
 
