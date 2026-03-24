@@ -9,6 +9,8 @@ export interface Feed {
   consecutiveErrors?: number;
   /** 最後にフェッチが失敗した日時（ISO 8601）。自動回復の判定に使用 */
   lastErrorAt?: string | null;
+  /** 429 レートリミット解除予定時刻（ISO 8601）。この時刻までクロン取得をスキップ */
+  rateLimitedUntil?: string | null;
 }
 
 export interface Article {
