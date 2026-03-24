@@ -5,6 +5,8 @@
  * localStorage には永続化のみ使用する。
  * Map はキーの挿入順を保持するため、先頭が最も古いエントリになる。
  */
+import { STORAGE_KEYS, storageGet, storageSet, storageRemove, storageListKeys } from './storage';
+
 class LruCache {
   private readonly map = new Map<string, string>();
   private hydrated = false;
@@ -18,16 +20,11 @@ class LruCache {
   private hydrate(): void {
     if (this.hydrated) return;
     this.hydrated = true;
-    try {
-      const keys = Object.keys(localStorage).filter((k) => k.startsWith(this.prefix));
-      for (const key of keys) {
-        const value = localStorage.getItem(key);
-        if (value !== null) {
-          this.map.set(key.slice(this.prefix.length), value);
-        }
+    for (const key of storageListKeys(this.prefix)) {
+      const value = storageGet(key);
+      if (value !== null) {
+        this.map.set(key.slice(this.prefix.length), value);
       }
-    } catch {
-      /* localStorage 利用不可 */
     }
   }
 
@@ -44,23 +41,13 @@ class LruCache {
       const oldestKey = this.map.keys().next().value;
       if (oldestKey !== undefined) {
         this.map.delete(oldestKey);
-        try {
-          localStorage.removeItem(this.prefix + oldestKey);
-        } catch {
-          /* ignore */
-        }
+        storageRemove(this.prefix + oldestKey);
       }
     }
     this.map.set(id, value);
-    try {
-      localStorage.setItem(this.prefix + id, value);
-    } catch {
-      /* storage full — 無視 */
-    }
+    storageSet(this.prefix + id, value);
   }
 }
-
-import { STORAGE_KEYS } from './storage';
 
 /** 記事全文キャッシュ（最大 15 件） */
 export const contentLruCache = new LruCache(STORAGE_KEYS.CONTENT_CACHE_PREFIX, 15);
