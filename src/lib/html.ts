@@ -28,6 +28,43 @@ export function toPlainText(html: string): string {
     .trim();
 }
 
+/**
+ * iframe の src が信頼済みドメインかどうかを URL パースで厳密に検証する。
+ *
+ * 部分文字列マッチ (includes) を使うと
+ * `https://evil.com/?x=youtube.com/embed` のような URL でバイパスできるため、
+ * hostname と pathname をそれぞれ完全一致・プレフィックス一致で確認する。
+ */
+function isTrustedIframeSrc(src: string): boolean {
+  // プロトコル相対 URL を正規化
+  const normalized = src.startsWith('//') ? 'https:' + src : src;
+  let url: URL;
+  try {
+    url = new URL(normalized);
+  } catch {
+    return false;
+  }
+  // https / http のみ許可（javascript: / data: などを排除）
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+
+  const h = url.hostname;
+  const p = url.pathname;
+
+  // ホスト名完全一致 ＋ パスプレフィックス一致で判定
+  return (
+    ((h === 'www.youtube.com' || h === 'youtube.com') && p.startsWith('/embed/')) ||
+    ((h === 'www.youtube-nocookie.com' || h === 'youtube-nocookie.com') &&
+      p.startsWith('/embed/')) ||
+    h === 'player.vimeo.com' ||
+    (h === 'open.spotify.com' && p.startsWith('/embed/')) ||
+    h === 'w.soundcloud.com' ||
+    h === 'player.twitch.tv' ||
+    (h === 'clips.twitch.tv' && p.startsWith('/embed')) ||
+    h === 'embed.nicovideo.jp' ||
+    h === 'embed.zenn.studio'
+  );
+}
+
 export function sanitizeHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -43,20 +80,7 @@ export function sanitizeHtml(html: string): string {
     .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
       const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
       const src = srcMatch?.[1] ?? '';
-      const trusted = [
-        'youtube.com/embed',
-        'youtube-nocookie.com/embed',
-        'player.vimeo.com',
-        'open.spotify.com/embed',
-        'w.soundcloud.com',
-        'player.twitch.tv',
-        'clips.twitch.tv/embed',
-        'embed.nicovideo.jp',
-        'embed.zenn.studio',
-      ];
-      return trusted.some((d) => src.includes(d))
-        ? _m
-        : '';
+      return isTrustedIframeSrc(src) ? _m : '';
     })
     .replace(/<iframe\b[^>]*\/>/gi, '')
     // <meta http-equiv="refresh"> を除去（クライアントサイドリダイレクト防止）
