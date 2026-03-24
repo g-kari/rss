@@ -7,6 +7,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 interface ReadState {
   readIds: string[];
   bookmarkIds: string[];
+  readingListIds: string[];
 }
 
 function r2Key(userId: string) {
@@ -22,6 +23,7 @@ export async function GET() {
   const state = await r2Get<ReadState>(env.RSS_DATA, r2Key(session.userId), {
     readIds: [],
     bookmarkIds: [],
+    readingListIds: [],
   });
   return applyRefreshedTokens(NextResponse.json(state), session);
 }
@@ -34,14 +36,16 @@ export async function POST(req: NextRequest) {
 
   const MAX_READ_IDS = 20_000;
   const MAX_BOOKMARK_IDS = 2_000;
+  const MAX_READING_LIST_IDS = 2_000;
   const MAX_ID_LENGTH = 128;
 
   const body = (await req.json()) as Partial<ReadState>;
 
   const rawRead = Array.isArray(body.readIds) ? body.readIds : [];
   const rawBookmark = Array.isArray(body.bookmarkIds) ? body.bookmarkIds : [];
+  const rawReadingList = Array.isArray(body.readingListIds) ? body.readingListIds : [];
 
-  if (rawRead.length > MAX_READ_IDS || rawBookmark.length > MAX_BOOKMARK_IDS) {
+  if (rawRead.length > MAX_READ_IDS || rawBookmark.length > MAX_BOOKMARK_IDS || rawReadingList.length > MAX_READING_LIST_IDS) {
     return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
   }
 
@@ -50,7 +54,8 @@ export async function POST(req: NextRequest) {
 
   const readIds = rawRead.filter(isValidId);
   const bookmarkIds = rawBookmark.filter(isValidId);
+  const readingListIds = rawReadingList.filter(isValidId);
 
-  await r2Put(env.RSS_DATA, r2Key(session.userId), { readIds, bookmarkIds });
+  await r2Put(env.RSS_DATA, r2Key(session.userId), { readIds, bookmarkIds, readingListIds });
   return applyRefreshedTokens(NextResponse.json({ ok: true }), session);
 }
