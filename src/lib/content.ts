@@ -126,6 +126,8 @@ export function transformZennCardEmbeds(content: string): string {
       if (!dcMatch) return spanMatch;
       try {
         const url = decodeURIComponent(dcMatch[1]);
+        // javascript: / data: 等の危険スキームをブロック（XSS 防止）
+        if (!/^https?:\/\//i.test(url)) return spanMatch;
         return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
       } catch {
         return spanMatch;
@@ -154,6 +156,8 @@ export function transformZennTweetEmbeds(content: string): string {
       if (!dcMatch) return spanMatch;
       try {
         const url = decodeURIComponent(dcMatch[1]);
+        // javascript: / data: 等の危険スキームをブロック（XSS 防止）
+        if (!/^https?:\/\//i.test(url)) return spanMatch;
         return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
       } catch {
         return spanMatch;

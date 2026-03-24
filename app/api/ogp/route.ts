@@ -77,10 +77,13 @@ export async function GET(request: Request) {
     const image = /^https?:\/\//i.test(raw) ? raw : '';
 
     // Cloudflare Cache API に保存（fire-and-forget）
-    const cacheRes = new Response(JSON.stringify({ image }), {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${OGP_CACHE_TTL_SEC}` },
-    });
-    ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
+    // image が空のときはキャッシュしない（og:image なし / 危険スキームで空になった場合を区別しない）
+    if (image) {
+      const cacheRes = new Response(JSON.stringify({ image }), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${OGP_CACHE_TTL_SEC}` },
+      });
+      ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
+    }
 
     return NextResponse.json({ image }, { headers: { 'X-Cache': 'MISS' } });
   } catch {
