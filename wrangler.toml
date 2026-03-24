@@ -27,6 +27,9 @@ AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL = "https://rss.0g0.xyz"
 # ベータアクセス制限: 許可する sub をカンマ区切りで列挙。空文字なら制限なし
 BETA_ALLOWED_SUBS = "551a6605-2ca0-4196-b823-5676dbd585a3"
+# Cloudflare AI toMarkdown API (全文取得フォールバック用)
+# CLOUDFLARE_API_TOKEN は `npx wrangler secret put CLOUDFLARE_API_TOKEN` で設定
+CLOUDFLARE_ACCOUNT_ID = ""
 
 [[r2_buckets]]
 binding = "RSS_DATA"

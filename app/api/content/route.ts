@@ -3,7 +3,14 @@ import { requireSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
-import { detectCharset, extractMainContent } from '@/lib/content';
+import {
+  detectCharset,
+  extractMainContent,
+  fetchMarkdownFromHtml,
+  isContentSufficient,
+  markdownToHtml,
+  postProcessMarkdownContent,
+} from '@/lib/content';
 
 const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60; // 7日
 const FETCH_TIMEOUT_MS = 10_000;
@@ -74,7 +81,19 @@ export async function GET(request: Request) {
     for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
     const charset = detectCharset(ct, merged);
     const html = new TextDecoder(charset).decode(merged);
-    const content = extractMainContent(html, url);
+    const { content: extracted, source } = extractMainContent(html, url);
+    let content = extracted;
+    let contentSource: string = source;
+
+    // 抽出結果が貧弱な場合は Cloudflare AI toMarkdown API でフォールバック
+    if (!isContentSufficient(content)) {
+      const hostname = new URL(url).hostname;
+      const md = await fetchMarkdownFromHtml(html, hostname);
+      if (md) {
+        content = postProcessMarkdownContent(markdownToHtml(md), url);
+        contentSource = 'ai-markdown';
+      }
+    }
 
     // Cloudflare Cache API に保存（fire-and-forget）
     const cacheRes = new Response(JSON.stringify({ content }), {
@@ -82,7 +101,7 @@ export async function GET(request: Request) {
     });
     ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
 
-    return NextResponse.json({ content }, { headers: { 'X-Cache': 'MISS' } });
+    return NextResponse.json({ content }, { headers: { 'X-Cache': 'MISS', 'X-Content-Source': contentSource } });
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === 'AbortError')
