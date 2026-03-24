@@ -3,7 +3,7 @@
  * キー: ai-cache/{mode}/{SHA-256(plainText)}
  */
 
-type AiMode = 'summary' | 'translation';
+import type { AiMode } from '../types';
 
 async function hashText(text: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
