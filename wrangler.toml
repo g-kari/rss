@@ -1,5 +1,4 @@
 name = "rss-reader"
-account_id = "b54ccb4a294a6ecbb74aecc1a8e0b502"
 main = "./worker.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
