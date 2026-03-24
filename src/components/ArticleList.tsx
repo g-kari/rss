@@ -49,6 +49,24 @@ function ArticleActions({ isRead, isBookmarked, size = 'md', onToggleRead, onTog
   );
 }
 
+function ReadingTimeBadge({ article }: { article: Article }) {
+  const src = article.content ?? article.summary;
+  const mins = src ? readingTime(src) : 0;
+  return mins > 1 ? <span className="text-[11px] text-text-faint">約{mins}分</span> : null;
+}
+
+function ArticleThumbnail({ thumb, className }: { thumb: string; className: string }) {
+  return (
+    <img
+      src={`/api/image-proxy?url=${encodeURIComponent(thumb)}`}
+      alt=""
+      className={className}
+      loading="lazy"
+      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+    />
+  );
+}
+
 interface Props {
   feeds: Feed[];
   readIds: Set<string>;
@@ -203,6 +221,16 @@ export default function ArticleList({
   // 複数フィードを横断表示するとき（すべて・ブックマーク）はフィード名を表示する
   const showFeedName = selectedFeedId === null || selectedFeedId === '__bookmarks__';
 
+  function articleState(article: Article) {
+    return {
+      isRead: readIds.has(article.id),
+      isBookmarked: bookmarkIds.has(article.id),
+      isSelected: selectedArticleId === article.id,
+      feedName: feedMap.get(article.feedId) ?? '',
+      thumb: resolveThumbnail(article, ogpCache),
+    };
+  }
+
   // ogImage がない記事の OGP 画像を遅延フェッチするキャッシュ
   const [ogpCache, setOgpCache] = useState<Record<string, string>>({});
   const fetchingRef = useRef<Set<string>>(new Set());
@@ -238,10 +266,7 @@ export default function ArticleList({
 
   /* ── compact ── */
   function renderCompact(article: Article, i: number) {
-    const isRead = readIds.has(article.id);
-    const isBookmarked = bookmarkIds.has(article.id);
-    const isSelected = selectedArticleId === article.id;
-    const feedName = showFeedName ? (feedMap.get(article.feedId) ?? '') : '';
+    const { isRead, isBookmarked, isSelected, feedName } = articleState(article);
     return (
       <div
         key={article.id}
@@ -262,7 +287,7 @@ export default function ArticleList({
         >
           {highlightText(article.title || '(タイトルなし)', query)}
         </span>
-        {feedName && (
+        {showFeedName && feedName && (
           <span className="text-[11px] text-text-faint truncate max-w-[80px] flex-shrink-0 group-hover:hidden">{feedName}</span>
         )}
         <span className="text-[11px] text-text-faint flex-shrink-0 group-hover:hidden">{timeAgo(article.publishedAt)}</span>
@@ -276,11 +301,7 @@ export default function ArticleList({
 
   /* ── list (デフォルト) ── */
   function renderList(article: Article, i: number) {
-    const isRead = readIds.has(article.id);
-    const isBookmarked = bookmarkIds.has(article.id);
-    const isSelected = selectedArticleId === article.id;
-    const thumb = resolveThumbnail(article, ogpCache);
-    const feedName = showFeedName ? (feedMap.get(article.feedId) ?? '') : '';
+    const { isRead, isBookmarked, isSelected, thumb, feedName } = articleState(article);
     return (
       <div
         key={article.id}
@@ -294,7 +315,7 @@ export default function ArticleList({
         style={{ animationDelay: `${Math.min(i, 20) * 25}ms` }}
       >
         <div className="flex-1 min-w-0">
-          {feedName && (
+          {showFeedName && feedName && (
             <span className="text-[10px] text-text-faint tracking-[0.04em] mb-0.5 block truncate">{feedName}</span>
           )}
           <h3
@@ -312,24 +333,12 @@ export default function ArticleList({
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
             {article.author && <span className="text-[11px] text-text-faint truncate max-w-[100px]">{article.author}</span>}
-            {(() => {
-              const src = article.content ?? article.summary;
-              const mins = src ? readingTime(src) : 0;
-              return mins > 1 ? <span className="text-[11px] text-text-faint">約{mins}分</span> : null;
-            })()}
+            <ReadingTimeBadge article={article} />
             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          {thumb && (
-            <img
-              src={`/api/image-proxy?url=${encodeURIComponent(thumb)}`}
-              alt=""
-              className="w-14 h-14 object-cover rounded"
-              loading="lazy"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          )}
+          {thumb && <ArticleThumbnail thumb={thumb} className="w-14 h-14 object-cover rounded" />}
           {/* ホバーアクション */}
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
             <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
@@ -341,11 +350,7 @@ export default function ArticleList({
 
   /* ── card ── */
   function renderCard(article: Article, i: number) {
-    const isRead = readIds.has(article.id);
-    const isBookmarked = bookmarkIds.has(article.id);
-    const isSelected = selectedArticleId === article.id;
-    const feedName = feedMap.get(article.feedId) ?? '';
-    const thumb = resolveThumbnail(article, ogpCache);
+    const { isRead, isBookmarked, isSelected, feedName, thumb } = articleState(article);
     return (
       <div
         key={article.id}
@@ -358,15 +363,7 @@ export default function ArticleList({
         }`}
         style={{ animationDelay: `${Math.min(i, 20) * 25}ms` }}
       >
-        {thumb && (
-          <img
-            src={`/api/image-proxy?url=${encodeURIComponent(thumb)}`}
-            alt=""
-            className="w-full aspect-video object-contain bg-surface-subtle flex-shrink-0"
-            loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        )}
+        {thumb && <ArticleThumbnail thumb={thumb} className="w-full aspect-video object-contain bg-surface-subtle flex-shrink-0" />}
         <div className="p-2.5 flex flex-col gap-1 flex-1">
           {feedName && (
             <span className="text-[10px] text-text-faint truncate tracking-[0.04em]">{feedName}</span>
@@ -403,11 +400,7 @@ export default function ArticleList({
 
   /* ── magazine ── */
   function renderMagazineFeatured(article: Article) {
-    const isRead = readIds.has(article.id);
-    const isBookmarked = bookmarkIds.has(article.id);
-    const isSelected = selectedArticleId === article.id;
-    const feedName = feedMap.get(article.feedId) ?? '';
-    const thumb = resolveThumbnail(article, ogpCache);
+    const { isRead, isBookmarked, isSelected, feedName, thumb } = articleState(article);
     return (
       <div
         key={article.id}
@@ -419,15 +412,7 @@ export default function ArticleList({
             : 'border-border-default hover:border-text-muted bg-surface-elevated'
         }`}
       >
-        {thumb && (
-          <img
-            src={`/api/image-proxy?url=${encodeURIComponent(thumb)}`}
-            alt=""
-            className="w-full aspect-video object-contain bg-surface-subtle"
-            loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        )}
+        {thumb && <ArticleThumbnail thumb={thumb} className="w-full aspect-video object-contain bg-surface-subtle" />}
         <div className="p-3">
           {feedName && (
             <span className="text-[10px] text-text-faint tracking-[0.06em] uppercase">{feedName}</span>
@@ -447,11 +432,7 @@ export default function ArticleList({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
-              {(() => {
-                const src = article.content ?? article.summary;
-                const mins = src ? readingTime(src) : 0;
-                return mins > 1 ? <span className="text-[11px] text-text-faint">約{mins}分</span> : null;
-              })()}
+              <ReadingTimeBadge article={article} />
             </div>
             <div className="flex items-center">
               {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />}
