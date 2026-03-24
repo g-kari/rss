@@ -32,10 +32,16 @@ function isPrivateHost(hostname: string): boolean {
   if (
     hostname === '[::1]' ||          // ループバック
     hostname === '[::]' ||           // 未指定アドレス
-    hostname.startsWith('[fc') ||    // ユニークローカル fc00::/7
-    hostname.startsWith('[fd') ||    // ユニークローカル fd00::/8
-    hostname.startsWith('[fe80') ||  // リンクローカル fe80::/10
-    hostname.startsWith('[::ffff:')  // IPv4マップドIPv6
+    hostname.startsWith('[fc') ||    // ユニークローカル fc00::/7 (fc部分)
+    hostname.startsWith('[fd') ||    // ユニークローカル fc00::/7 (fd部分)
+    // リンクローカル fe80::/10 (fe80:: 〜 febf:: = 第1グループ 0xfe80-0xfebf)
+    // startsWith('[fe80') のみでは [fe90::], [fea0::], [feb0::] 等が漏れるため
+    // 第3ニブルが 8〜b (0x8〜0xb) の全パターンを明示的にチェックする
+    hostname.startsWith('[fe8') ||
+    hostname.startsWith('[fe9') ||
+    hostname.startsWith('[fea') ||
+    hostname.startsWith('[feb') ||
+    hostname.startsWith('[::ffff:')  // IPv4マップドIPv6 (::ffff:0:0/96)
   ) return true;
   return false;
 }
