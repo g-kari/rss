@@ -1,30 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
-
+import { sanitizeHtml } from '@/lib/html';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
-
-function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    // <base> タグを除去（相対 URL ハイジャック防止）
-    .replace(/<base\b[^>]*\/?>/gi, '')
-    // <object>, <embed> を除去
-    .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
-    .replace(/<embed\b[^>]*\/?>/gi, '')
-    // インラインイベントハンドラを除去（/ 区切りのバイパス対策として [\s/]+ を使用）
-    .replace(/[\s/]+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
-    // javascript: スキームを除去（クォートあり・なし両対応）
-    .replace(/(?:href|src|action)\s*=\s*["']javascript:[^"']*["']/gi, '')
-    .replace(/(?:href|src|action)\s*=\s*javascript:[^\s>]*/gi, '')
-    // data: URI を src/href/action から除去（HTML インジェクション防止）
-    .replace(/(?:src|href|action)\s*=\s*["']data:[^"']*["']/gi, '')
-    .replace(/(?:src|href|action)\s*=\s*data:[^\s>]*/gi, '')
-    .trim();
-}
 
 /**
  * img タグの固定 width / height 属性を除去してレスポンシブ表示を保証する。
