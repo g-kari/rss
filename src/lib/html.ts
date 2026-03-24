@@ -5,6 +5,15 @@
  * RSS フィードの content と外部ページ取得の両方で共有する。
  */
 
+/** HTML 特殊文字をエスケープする（テキストを属性値・要素内容として安全に埋め込む） */
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 /** HTML エンティティをデコードする（URL 中の &amp; → & など） */
 export function unescapeHtml(s: string): string {
   return s

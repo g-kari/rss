@@ -10,7 +10,7 @@
 import { marked } from 'marked';
 import { Readability } from '@mozilla/readability';
 import { parseHTML } from 'linkedom/worker';
-import { sanitizeHtml } from './html';
+import { sanitizeHtml, escapeHtml } from './html';
 
 /**
  * img タグの後処理:
@@ -127,6 +127,20 @@ export function removeNoise(html: string): string {
 }
 
 /**
+ * Zenn embed の <span> から data-content 属性を URL デコードして取り出す共通ヘルパー。
+ * デコード失敗時または属性が存在しない場合は null を返す。
+ */
+function extractZennEmbedContent(spanMatch: string): string | null {
+  const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
+  if (!dcMatch) return null;
+  try {
+    return decodeURIComponent(dcMatch[1]);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * embed.zenn.studio の card / tweet iframe を外部リンクに変換する。
  *
  * Zenn CMS が生成する embed は以下のいずれかの形式:
@@ -145,22 +159,13 @@ export function transformZennLinkEmbeds(content: string): string {
   return content.replace(
     /<span\b[^>]*\bzenn-embedded-(?:card|tweet)\b[^>]*>[\s\S]*?<\/span>/gi,
     (spanMatch) => {
-      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
-      if (!dcMatch) return spanMatch;
-      try {
-        const url = decodeURIComponent(dcMatch[1]);
-        // javascript: / data: 等の危険スキームをブロック（XSS 防止）
-        if (!/^https?:\/\//i.test(url)) return spanMatch;
-        // URL に " < > & が含まれる場合にHTML属性から脱出されないようHTMLエスケープ
-        const escaped = url
-          .replace(/&/g, '&amp;')
-          .replace(/"/g, '&quot;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-        return `<p><a href="${escaped}" target="_blank" rel="noopener noreferrer">${escaped}</a></p>`;
-      } catch {
-        return spanMatch;
-      }
+      const url = extractZennEmbedContent(spanMatch);
+      if (url === null) return spanMatch;
+      // javascript: / data: 等の危険スキームをブロック（XSS 防止）
+      if (!/^https?:\/\//i.test(url)) return spanMatch;
+      // URL に " < > & が含まれる場合にHTML属性から脱出されないようHTMLエスケープ
+      const escaped = escapeHtml(url);
+      return `<p><a href="${escaped}" target="_blank" rel="noopener noreferrer">${escaped}</a></p>`;
     },
   );
 }
@@ -184,23 +189,15 @@ export function transformZennMermaidEmbeds(content: string, pageUrl = ''): strin
   return content.replace(
     /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
     (spanMatch) => {
-      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
-      if (!dcMatch) return spanMatch;
-      try {
-        const source = decodeURIComponent(dcMatch[1]);
-        const escaped = source
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-        return (
-          `<pre style="background:var(--color-surface-subtle,#f3f3f1);` +
-          `border:1px solid var(--color-border-default,#e7e5e4);` +
-          `border-radius:6px;padding:1em;overflow-x:auto;white-space:pre">` +
-          `<code class="language-mermaid">${escaped}</code></pre>`
-        );
-      } catch {
-        return spanMatch;
-      }
+      const source = extractZennEmbedContent(spanMatch);
+      if (source === null) return spanMatch;
+      const escaped = escapeHtml(source);
+      return (
+        `<pre style="background:var(--color-surface-subtle,#f3f3f1);` +
+        `border:1px solid var(--color-border-default,#e7e5e4);` +
+        `border-radius:6px;padding:1em;overflow-x:auto;white-space:pre">` +
+        `<code class="language-mermaid">${escaped}</code></pre>`
+      );
     },
   );
 }
