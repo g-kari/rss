@@ -33,15 +33,15 @@ function isFeedContentType(ct: string): boolean {
 
 /**
  * HTML から <link rel="alternate" type="application/rss+xml" href="..."> を検索する。
- * type と href の属性順序は問わない。
+ * RSS 2.0 / Atom / JSON Feed の type を認識する。type と href の属性順序は問わない。
  */
 function extractFeedLinkFromHtml(html: string, baseUrl: string): string | null {
   // type="..." が href="..." より前のパターン
   const patternTypeFirst =
-    /<link[^>]+type=["']application\/(?:rss|atom)\+xml["'][^>]+href=["']([^"']+)["'][^>]*\/?>/gi;
+    /<link[^>]+type=["']application\/(?:(?:rss|atom)\+xml|feed\+json)["'][^>]+href=["']([^"']+)["'][^>]*\/?>/gi;
   // href="..." が type="..." より前のパターン
   const patternHrefFirst =
-    /<link[^>]+href=["']([^"']+)["'][^>]+type=["']application\/(?:rss|atom)\+xml["'][^>]*\/?>/gi;
+    /<link[^>]+href=["']([^"']+)["'][^>]+type=["']application\/(?:(?:rss|atom)\+xml|feed\+json)["'][^>]*\/?>/gi;
 
   for (const pattern of [patternTypeFirst, patternHrefFirst]) {
     pattern.lastIndex = 0;
