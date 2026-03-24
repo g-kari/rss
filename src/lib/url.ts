@@ -25,10 +25,45 @@ const PRIVATE_HOSTNAME_PATTERNS = [
   /\.localhost$/i,
 ];
 
+/**
+ * IPv4互換 IPv6 アドレス (0::/96) がプライベート IPv4 範囲に相当するか検証する。
+ * URL パーサーが [::xxxx:xxxx] 形式に正規化した後のホスト名を受け取る。
+ * 例: [::7f00:1] → 127.0.0.1 (ループバック), [::c0a8:101] → 192.168.1.1 (プライベート)
+ */
+function isPrivateIPv4CompatibleIPv6(hostname: string): boolean {
+  // [::1] (ループバック) と [::] (未指定) は別途チェック済み
+  if (!hostname.startsWith('[::') || hostname === '[::1]' || hostname === '[::]') return false;
+
+  // '[::' の後、']' の前の部分を取得
+  const inner = hostname.slice(3, -1);
+  const parts = inner.split(':');
+
+  // IPv4互換アドレスは [::xxxx:xxxx] の2グループ形式に限定
+  if (parts.length !== 2) return false;
+
+  const high = parseInt(parts[0], 16);
+  const low = parseInt(parts[1], 16);
+  if (isNaN(high) || isNaN(low)) return false;
+
+  const ipv4 = ((high << 16) | low) >>> 0;
+  const b1 = (ipv4 >>> 24) & 0xff;
+  const b2 = (ipv4 >>> 16) & 0xff;
+
+  return (
+    b1 === 127 ||                           // 127.0.0.0/8 ループバック
+    b1 === 10 ||                            // 10.0.0.0/8
+    (b1 === 172 && b2 >= 16 && b2 <= 31) || // 172.16.0.0/12
+    (b1 === 192 && b2 === 168) ||           // 192.168.0.0/16
+    (b1 === 169 && b2 === 254) ||           // 169.254.0.0/16 リンクローカル
+    b1 === 0 ||                             // 0.0.0.0/8
+    b1 === 255                              // 255.0.0.0/8
+  );
+}
+
 function isPrivateHost(hostname: string): boolean {
   if (PRIVATE_HOSTNAME_PATTERNS.some((p) => p.test(hostname))) return true;
   if (PRIVATE_IP_PATTERNS.some((p) => p.test(hostname))) return true;
-  // IPv6 ループバック・ユニークローカル・リンクローカル・未指定・IPv4マップド
+  // IPv6 ループバック・ユニークローカル・リンクローカル・未指定・各種 IPv4 変換
   if (
     hostname === '[::1]' ||          // ループバック
     hostname === '[::]' ||           // 未指定アドレス
@@ -41,7 +76,10 @@ function isPrivateHost(hostname: string): boolean {
     hostname.startsWith('[fe9') ||
     hostname.startsWith('[fea') ||
     hostname.startsWith('[feb') ||
-    hostname.startsWith('[::ffff:')  // IPv4マップドIPv6 (::ffff:0:0/96)
+    hostname.startsWith('[::ffff:') ||  // IPv4マップド IPv6 (::ffff:0:0/96)
+    hostname.startsWith('[::ffff:0:') || // IPv4変換 IPv6 (::ffff:0:0:0/96, RFC 6145)
+    hostname.startsWith('[64:ff9b:') || // NAT64 変換プレフィックス (64:ff9b::/96 および 64:ff9b:1::/48, RFC 6052/8215)
+    isPrivateIPv4CompatibleIPv6(hostname) // IPv4互換 IPv6 (0::/96) でプライベート範囲
   ) return true;
   return false;
 }
