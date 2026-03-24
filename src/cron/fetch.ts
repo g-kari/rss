@@ -188,6 +188,10 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
     else void 0; // already logged above
   }
 
+  // 全フィードがスキップ・失敗・空だった場合は articles.json の更新をスキップ
+  // merged の内容が existingByKey と同一になるため、不要な R2 書き込みを避ける
+  if (fresh.length === 0) return;
+
   // 新着記事（既存 Map に存在しなかったもの）を検出
   const newArticles = fresh.filter((a) => !existingByKey.has(articleKey(a.feedId, a.guid)));
 
