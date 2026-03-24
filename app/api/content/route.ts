@@ -168,18 +168,34 @@ function fixLazyImages(html: string): string {
   });
 }
 
+/**
+ * 記事本文内の外部画像 URL を /api/image-proxy 経由に書き換える。
+ * fixImageDimensions で相対パスが絶対 URL に解決された後に適用する。
+ */
+function rewriteImageUrls(html: string): string {
+  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
+    const rewritten = attrs.replace(
+      /\bsrc=["'](https?:\/\/[^"']+)["']/gi,
+      (_sm, src: string) => `src="/api/image-proxy?url=${encodeURIComponent(src)}"`,
+    );
+    return `<img${rewritten}>`;
+  });
+}
+
 /** コンテンツ抽出後の後処理パイプライン */
 function postProcess(content: string, pageUrl = ''): string {
   return sanitizeHtml(
     wrapTables(
-      fixImageDimensions(
-        fixLazyImages(
-          transformZennMermaidEmbeds(
-            removeNoise(content),
-            pageUrl,
+      rewriteImageUrls(
+        fixImageDimensions(
+          fixLazyImages(
+            transformZennMermaidEmbeds(
+              removeNoise(content),
+              pageUrl,
+            ),
           ),
+          pageUrl,
         ),
-        pageUrl,
       ),
     ),
   );
