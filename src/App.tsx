@@ -84,6 +84,7 @@ export default function App() {
   const [fontSize, setFontSize] = useState<FontSize>(loadFontSize);
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const [mobilePane, setMobilePane] = useState<MobilePane>('sidebar');
+  const prevMobilePaneRef = useRef<MobilePane>('sidebar');
   const [showHelp, setShowHelp] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -319,6 +320,31 @@ export default function App() {
     cycleDateRange,
     searchRef,
   });
+
+  // モバイルペイン前進時に history エントリを積む
+  useEffect(() => {
+    const prev = prevMobilePaneRef.current;
+    if (
+      (prev === 'sidebar' && mobilePane === 'list') ||
+      (prev === 'list' && mobilePane === 'view')
+    ) {
+      window.history.pushState({ mobilePane }, '');
+    }
+    prevMobilePaneRef.current = mobilePane;
+  }, [mobilePane]);
+
+  // popstate（戻るボタン）でアプリ内ペイン遷移を処理
+  useEffect(() => {
+    function onPopState() {
+      setMobilePane((current) => {
+        if (current === 'view') return 'list';
+        if (current === 'list') return 'sidebar';
+        return current;
+      });
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   // ローディング
   if (user === undefined) {
