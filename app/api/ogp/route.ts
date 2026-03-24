@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { r2GetText, r2PutText, sha256Hex } from '@/lib/r2';
+import { sha256Hex } from '@/lib/r2';
 
 const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BYTES = 512 * 1024; // og:image は先頭 512KB 以内にある
-const OGP_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日
+const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 
 export async function GET(request: Request) {
   const result = await requireSession();
@@ -16,16 +16,16 @@ export async function GET(request: Request) {
   if (!url) return NextResponse.json({ image: '' });
   if (!isValidFeedUrl(url)) return NextResponse.json({ image: '' });
 
-  const { env } = await getCloudflareContext({ async: true });
-  const cacheKey = `ogp-cache/${await sha256Hex(url)}`;
+  const { ctx } = await getCloudflareContext({ async: true });
+  const reqUrl = new URL(request.url);
+  const cacheKey = new Request(`${reqUrl.origin}/__cache/ogp/${await sha256Hex(url)}`);
+  const cfCache = caches.default;
 
-  // R2 キャッシュを確認（30日以内なら返す）
-  const cached = await r2GetText(env.RSS_DATA, cacheKey);
+  // Cloudflare Cache API で確認
+  const cached = await cfCache.match(cacheKey);
   if (cached) {
-    const fetchedAt = Number(cached.metadata.fetchedAt ?? 0);
-    if (Date.now() - fetchedAt < OGP_CACHE_TTL_MS) {
-      return NextResponse.json({ image: cached.text });
-    }
+    const data = await cached.json() as { image: string };
+    return NextResponse.json(data);
   }
 
   const controller = new AbortController();
@@ -71,8 +71,11 @@ export async function GET(request: Request) {
 
     const image = m?.[1] ?? '';
 
-    // R2 にキャッシュ保存（fire-and-forget）
-    r2PutText(env.RSS_DATA, cacheKey, image, { fetchedAt: String(Date.now()) }).catch(console.error);
+    // Cloudflare Cache API に保存（fire-and-forget）
+    const cacheRes = new Response(JSON.stringify({ image }), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${OGP_CACHE_TTL_SEC}` },
+    });
+    ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
 
     return NextResponse.json({ image });
   } catch {

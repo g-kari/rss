@@ -3,9 +3,9 @@ import { requireSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { sanitizeHtml } from '@/lib/html';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { r2GetText, r2PutText, sha256Hex } from '@/lib/r2';
+import { sha256Hex } from '@/lib/r2';
 
-const CONTENT_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7日
+const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60; // 7日
 
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
@@ -265,16 +265,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
   }
 
-  const { env } = await getCloudflareContext({ async: true });
-  const cacheKey = `content-cache/${await sha256Hex(url)}`;
+  const { ctx } = await getCloudflareContext({ async: true });
+  const reqUrl = new URL(request.url);
+  const cacheKey = new Request(`${reqUrl.origin}/__cache/content/${await sha256Hex(url)}`);
+  const cfCache = caches.default;
 
-  // R2 キャッシュを確認（7日以内なら返す）
-  const cached = await r2GetText(env.RSS_DATA, cacheKey);
+  // Cloudflare Cache API で確認
+  const cached = await cfCache.match(cacheKey);
   if (cached) {
-    const fetchedAt = Number(cached.metadata.fetchedAt ?? 0);
-    if (Date.now() - fetchedAt < CONTENT_CACHE_TTL_MS) {
-      return NextResponse.json({ content: cached.text });
-    }
+    const data = await cached.json() as { content: string };
+    return NextResponse.json(data);
   }
 
   const controller = new AbortController();
@@ -321,8 +321,11 @@ export async function GET(request: Request) {
     const html = new TextDecoder(charset).decode(merged);
     const content = extractMainContent(html, url);
 
-    // R2 にキャッシュ保存（fire-and-forget）
-    r2PutText(env.RSS_DATA, cacheKey, content, { fetchedAt: String(Date.now()) }).catch(console.error);
+    // Cloudflare Cache API に保存（fire-and-forget）
+    const cacheRes = new Response(JSON.stringify({ content }), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CONTENT_CACHE_TTL_SEC}` },
+    });
+    ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
 
     return NextResponse.json({ content });
   } catch (err) {

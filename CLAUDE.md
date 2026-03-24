@@ -73,48 +73,55 @@ src/
 
 ## キャッシュ方針（重要）
 
-**元サイト側のリソースは一度だけ取得する。** 外部 URL へのフェッチは必ず R2 にキャッシュし、次回以降はキャッシュから返す。
+**元サイト側のリソースは一度だけ取得する。** 外部 URL へのフェッチは必ずキャッシュし、次回以降はキャッシュから返す。
 
-| 対象 | R2 キー | TTL | 実装場所 |
+### キャッシュ層の使い分け
+
+| 対象 | キャッシュ層 | TTL | 実装場所 |
 |---|---|---|---|
-| 記事全文 | `content-cache/{sha256(url)}` | 7日 | `app/api/content/route.ts` |
-| OGP 画像 URL | `ogp-cache/{sha256(url)}` | 30日 | `app/api/ogp/route.ts` |
-| AI 要約 | `ai-cache/summary/{sha256(text)}` | 永続 | `app/api/ai/summarize/route.ts` |
-| AI 翻訳 | `ai-cache/translation/{sha256(text)}` | 永続 | `app/api/ai/translate/route.ts` |
+| 記事全文 | **Cloudflare Cache API** | 7日 | `app/api/content/route.ts` |
+| OGP 画像 URL | **Cloudflare Cache API** | 30日 | `app/api/ogp/route.ts` |
+| AI 要約 | **R2** (`ai-cache/summary/{sha256}`) | 永続 | `app/api/ai/summarize/route.ts` |
+| AI 翻訳 | **R2** (`ai-cache/translation/{sha256}`) | 永続 | `app/api/ai/translate/route.ts` |
 
-### キャッシュ実装パターン
+**R2 は使わない** — 揮発性のキャッシュには Cloudflare Cache API (`caches.default`) を使う。R2 は永続データ（ユーザーデータ・AI 結果）専用。
+
+### Cloudflare Cache API パターン（記事全文・OGP 等）
+
+キャッシュキーは認証情報を含まない合成 URL。`/__cache/` プレフィックスで名前空間を分離する。
 
 ```typescript
-// ① キャッシュキー生成
-const cacheKey = `content-cache/${await sha256Hex(url)}`;
+const { ctx } = await getCloudflareContext({ async: true });
+const reqUrl = new URL(request.url);
+const cacheKey = new Request(`${reqUrl.origin}/__cache/content/${await sha256Hex(url)}`);
+const cfCache = caches.default;
 
-// ② キャッシュ確認
-const cached = await r2GetText(env.RSS_DATA, cacheKey);
-if (cached) {
-  const fetchedAt = Number(cached.metadata.fetchedAt ?? 0);
-  if (Date.now() - fetchedAt < TTL_MS) return NextResponse.json({ content: cached.text });
-}
+// ① キャッシュ確認
+const cached = await cfCache.match(cacheKey);
+if (cached) return NextResponse.json(await cached.json());
 
-// ③ 外部フェッチ（キャッシュミス時のみ）
+// ② 外部フェッチ（キャッシュミス時のみ）
 const content = await fetchFromOrigin(url);
 
-// ④ R2 に保存（fire-and-forget）
-r2PutText(env.RSS_DATA, cacheKey, content, { fetchedAt: String(Date.now()) }).catch(console.error);
+// ③ キャッシュ保存（fire-and-forget）
+const cacheRes = new Response(JSON.stringify({ content }), {
+  headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${TTL_SEC}` },
+});
+ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
 ```
 
 ### 新しい外部フェッチを追加する場合
 
-外部 URL にリクエストする新しいエンドポイントを追加する際は、必ずこのパターンでキャッシュを実装すること。
+外部 URL にリクエストする新しいエンドポイントは、必ずこのパターンで Cloudflare Cache API キャッシュを実装すること。R2 を使わないこと。
 
 ## R2 データ構造
 
 ```
-users/{sub}/profile.json    # UserProfile (ログイン時に保存)
-users/{sub}/feeds.json      # Feed[]
-users/{sub}/articles.json   # Article[] (max 2000, publishedAt 降順)
-content-cache/{sha256}      # 記事全文キャッシュ (7日 TTL)
-ogp-cache/{sha256}          # OGP 画像 URL キャッシュ (30日 TTL)
-ai-cache/{mode}/{sha256}    # AI 要約・翻訳キャッシュ (永続)
+users/{sub}/profile.json       # UserProfile (ログイン時に保存)
+users/{sub}/feeds.json         # Feed[]
+users/{sub}/articles.json      # Article[] (max 2000, publishedAt 降順)
+ai-cache/summary/{sha256}      # AI 要約キャッシュ (永続)
+ai-cache/translation/{sha256}  # AI 翻訳キャッシュ (永続)
 ```
 
 `sub` = 0g0 ID のペアワイズ識別子 (JWT の `sub` クレーム)
