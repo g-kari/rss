@@ -1,7 +1,7 @@
 import { XMLParser } from 'fast-xml-parser';
 import { sanitizeHtml } from './html';
 
-interface ParsedItem {
+export interface ParsedItem {
   guid: string;
   title: string;
   link: string;
