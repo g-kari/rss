@@ -372,13 +372,18 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
             {article.link && showToast && (
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(article.link!).then(() => {
-                    showToast('リンクをコピーしました');
-                  }).catch(() => {
-                    showToast('コピーに失敗しました');
-                  });
+                  if (typeof navigator.share === 'function') {
+                    // Web Share API 対応ブラウザ（モバイル等）はネイティブ共有シートを使用
+                    navigator.share({ url: article.link!, title: article.title }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(article.link!).then(() => {
+                      showToast('リンクをコピーしました');
+                    }).catch(() => {
+                      showToast('コピーに失敗しました');
+                    });
+                  }
                 }}
-                title="リンクをコピー (c)"
+                title="共有 / リンクをコピー (c)"
                 className="text-text-faint hover:text-text-muted transition-colors duration-200"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
