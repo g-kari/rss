@@ -7,7 +7,7 @@
  */
 import { STORAGE_KEYS, storageGet, storageSet, storageRemove, storageListKeys } from './storage';
 
-class LruCache {
+export class LruCache {
   private readonly map = new Map<string, string>();
   private hydrated = false;
 
@@ -30,7 +30,14 @@ class LruCache {
 
   get(id: string): string | null {
     this.hydrate();
-    return this.map.get(id) ?? null;
+    const value = this.map.get(id);
+    if (value === undefined) return null;
+    // LRU: アクセスされたエントリを末尾に移動して「最近使用済み」にする。
+    // これをしないと挿入順の FIFO になり、頻繁にアクセスする記事が
+    // 古いだけで evict されてしまう。
+    this.map.delete(id);
+    this.map.set(id, value);
+    return value;
   }
 
   set(id: string, value: string): void {
