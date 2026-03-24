@@ -144,6 +144,23 @@ export default function App() {
     }, 2000);
   }, []);
 
+  // ページを閉じる前にデバウンス待ちのデータを即時送信
+  useEffect(() => {
+    function onBeforeUnload() {
+      if (syncTimerRef.current === null) return;
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+      const body = JSON.stringify({
+        readIds: [...localReadRef.current],
+        bookmarkIds: [...localBookmarkRef.current],
+        readingListIds: [...localReadingListRef.current],
+      });
+      navigator.sendBeacon('/api/read-state', new Blob([body], { type: 'application/json' }));
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
+
   const showToast = useCallback((msg: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(msg);
