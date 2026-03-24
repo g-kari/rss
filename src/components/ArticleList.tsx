@@ -61,6 +61,7 @@ interface Props {
   onSelectArticle: (article: Article) => void;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
+  onMarkAllRead?: () => void;
   onMobileBack?: () => void;
   // useFilteredArticles からの状態（App.tsx で管理）
   filtered: Article[];
@@ -181,6 +182,7 @@ export default function ArticleList({
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
+  onMarkAllRead,
   onMobileBack,
   filtered,
   visible,
@@ -539,6 +541,18 @@ export default function ArticleList({
                 </svg>
               )}
             </button>
+            {onMarkAllRead && (
+              <button
+                onClick={onMarkAllRead}
+                title="全て既読にする (m)"
+                className="w-6 h-6 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-200"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="6" cy="6" r="4.5"/>
+                  <path d="M3.5 6l1.8 1.8L8.5 4"/>
+                </svg>
+              </button>
+            )}
           </div>
         </div>
         <div className="px-3 pb-2.5">
