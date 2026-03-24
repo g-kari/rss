@@ -16,6 +16,20 @@ interface OpmlOutline {
   outline?: OpmlOutline | OpmlOutline[];
 }
 
+interface RawParsedOpml {
+  opml?: {
+    body?: {
+      outline?: OpmlOutline | OpmlOutline[];
+    };
+  };
+}
+
+const parser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: '@_',
+  isArray: (name) => name === 'outline',
+});
+
 function toArray<T>(val: T | T[] | undefined): T[] {
   if (!val) return [];
   return Array.isArray(val) ? val : [val];
@@ -45,9 +59,7 @@ export async function POST(request: Request) {
 
     let feedEntries: Array<{ url: string; title: string; siteUrl: string }>;
     try {
-      const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', isArray: (name) => name === 'outline' });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parsed: any = parser.parse(text);
+      const parsed = parser.parse(text) as RawParsedOpml;
       const body = parsed?.opml?.body;
       if (!body) throw new Error('No OPML body found');
       feedEntries = toArray<OpmlOutline>(body.outline).flatMap(extractFeeds);
