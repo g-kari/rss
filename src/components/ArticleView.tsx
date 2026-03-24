@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Article, FontSize } from '../types';
 import { readingTime } from '../lib/article-utils';
 
@@ -148,17 +148,19 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  // 最後に使った AI モードを localStorage で永続化（記事切り替え後も自動実行）
+  const [stickyAiMode, setStickyAiMode] = useState<AiMode | null>(() => {
+    try {
+      const v = localStorage.getItem('rss-ai-mode');
+      return v === 'summary' || v === 'translation' ? v : null;
+    } catch { return null; }
+  });
+  const stickyAiModeRef = useRef(stickyAiMode);
+  stickyAiModeRef.current = stickyAiMode;
 
-  // 記事が変わったら fetch 状態のみリセット（キャッシュは useMemo で自動更新）
-  useEffect(() => {
-    setFetchError('');
-    setAiResult(null);
-    setFetchedContent(null);
-    setScrollProgress(0);
-  }, [article?.id]);
-
-  const runAi = useCallback(async (mode: AiMode, contentHtml: string) => {
-    if (aiResult?.mode === mode) { setAiResult(null); return; }
+  /** AI fetch のみ（トグルなし）。記事切り替え時の自動実行にも使用 */
+  const doRunAi = useCallback(async (mode: AiMode, contentHtml: string) => {
+    if (!contentHtml.trim()) return;
     setAiLoading(mode);
     try {
       const endpoint = mode === 'summary' ? '/api/ai/summarize' : '/api/ai/translate';
@@ -172,7 +174,33 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
     } finally {
       setAiLoading(null);
     }
-  }, [aiResult]);
+  }, []);
+
+  /** ボタンクリック用: トグル + モード永続化 */
+  const runAi = useCallback((mode: AiMode, contentHtml: string) => {
+    if (aiResult?.mode === mode) {
+      setAiResult(null);
+      setStickyAiMode(null);
+      try { localStorage.removeItem('rss-ai-mode'); } catch { /* ignore */ }
+      return;
+    }
+    setStickyAiMode(mode);
+    try { localStorage.setItem('rss-ai-mode', mode); } catch { /* ignore */ }
+    doRunAi(mode, contentHtml);
+  }, [aiResult, doRunAi]);
+
+  // 記事が変わったらリセット → sticky モードが設定済みなら自動実行
+  useEffect(() => {
+    setFetchError('');
+    setAiResult(null);
+    setFetchedContent(null);
+    setScrollProgress(0);
+    setAiLoading(null);
+    if (stickyAiModeRef.current && article?.id) {
+      const content = article.content ?? article.summary;
+      if (content) doRunAi(stickyAiModeRef.current, content);
+    }
+  }, [article?.id, doRunAi]);
 
   async function fetchFullContent() {
     if (!article?.link) return;
