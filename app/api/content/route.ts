@@ -52,6 +52,8 @@ function removeNoise(html: string): string {
   html = html.replace(/<div[^>]+class="[^"]*(?:ChapterList|RelatedArticles|TocItem)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
   // 汎用: "related", "recommend", "share", "sns" を含む div
   html = html.replace(/<div[^>]+class="[^"]*(?:related|recommend|share|sns|toc-|side-)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+  // Shopify / EC: 商品画像ギャラリー・サムネイルリスト
+  html = html.replace(/<(?:ul|div)[^>]+class="[^"]*(?:product__media|media-gallery|product-gallery|thumbnail[s]?(?:-list|-wrapper)?|image-gallery|photo-gallery|product-images)[^"]*"[^>]*>[\s\S]*?<\/(?:ul|div)>/gi, '');
   return html;
 }
 
@@ -85,6 +87,16 @@ function extractMainContent(html: string, pageUrl: string): string {
   // Zenn: class="znc"
   const zennContent = cleaned.match(/<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
   if (zennContent?.[2]) return postProcess(zennContent[2]);
+
+  // --- EC / 商品ページセレクター ---
+
+  // Schema.org itemprop="description" (Shopify 等の EC サイト全般)
+  const schemaDesc = cleaned.match(/<(\w+)[^>]+itemprop=["']description["'][^>]*>([\s\S]*)<\/\1>/i);
+  if (schemaDesc?.[2]) return postProcess(schemaDesc[2]);
+
+  // Shopify: product__description / product-single__description / product-description 等
+  const shopifyDesc = cleaned.match(/<(\w+)[^>]+class=["'][^"']*product[^"']*description[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
+  if (shopifyDesc?.[2]) return postProcess(shopifyDesc[2]);
 
   // --- 汎用セレクター ---
 
