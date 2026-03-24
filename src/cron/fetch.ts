@@ -10,9 +10,16 @@ const MAX_ARTICLES = 2000;
 
 /**
  * 連続エラー回数がこの閾値以上のフィードはクロン実行時にスキップする。
+ * ただし FEED_ERROR_RETRY_INTERVAL_MS 経過後は再試行を行う。
  * 手動リフレッシュ (forceRetry=true) は常に再試行する。
  */
 const CONSECUTIVE_ERROR_SKIP_THRESHOLD = 5;
+
+/**
+ * 連続エラーで一時スキップされたフィードを再試行するまでの待機時間（ミリ秒）。
+ * 復旧したフィードを自動検出するため、この間隔で 1 回だけ再試行する。
+ */
+const FEED_ERROR_RETRY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 時間
 
 /** 外部フェッチのタイムアウト（ミリ秒）。ハング防止のため設定する */
 const FETCH_TIMEOUT_MS = 15_000;
@@ -67,6 +74,23 @@ function applyFeedSuccess(feed: Feed, parsed: ReturnType<typeof parseFeed>): voi
   feed.lastFetchedAt = new Date().toISOString();
   feed.fetchError = null;
   feed.consecutiveErrors = 0;
+  feed.lastErrorAt = null;
+}
+
+/** フィード取得失敗時のメタデータを更新する */
+function applyFeedError(feed: Feed, error: unknown): void {
+  feed.consecutiveErrors = Math.min(
+    (feed.consecutiveErrors ?? 0) + 1,
+    CONSECUTIVE_ERROR_SKIP_THRESHOLD,
+  );
+  feed.fetchError = error instanceof Error ? error.message : String(error);
+  feed.lastErrorAt = new Date().toISOString();
+  console.error('Feed fetch failed', {
+    feedId: feed.id,
+    url: feed.url,
+    consecutiveErrors: feed.consecutiveErrors,
+    error,
+  });
 }
 
 /** publishedAt 降順ソート + 最大件数でスライス */
@@ -89,9 +113,13 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
 
   const results = await Promise.allSettled(
     feeds.map(async (feed) => {
-      // クロン実行時: 連続エラーが閾値以上のフィードはスキップ（4xx 等の永続的エラーを無限リトライしない）
+      // クロン実行時: 連続エラーが閾値以上のフィードは原則スキップ（4xx 等の永続的エラーを無限リトライしない）
+      // ただし FEED_ERROR_RETRY_INTERVAL_MS 以上経過している場合は自動回復の可能性があるため再試行する
       if (!forceRetry && (feed.consecutiveErrors ?? 0) >= CONSECUTIVE_ERROR_SKIP_THRESHOLD) {
-        return [];
+        const lastErrorMs = feed.lastErrorAt ? new Date(feed.lastErrorAt).getTime() : 0;
+        if (Date.now() - lastErrorMs < FEED_ERROR_RETRY_INTERVAL_MS) {
+          return [];
+        }
       }
       if (!isValidFeedUrl(feed.url)) throw new Error(`Invalid feed URL: ${feed.url}`); // SSRF 対策
       const res = await fetchViaBinding(env, feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
@@ -106,12 +134,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
 
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
-      feeds[i].consecutiveErrors = Math.min(
-        (feeds[i].consecutiveErrors ?? 0) + 1,
-        CONSECUTIVE_ERROR_SKIP_THRESHOLD,
-      );
-      feeds[i].fetchError = result.reason instanceof Error ? result.reason.message : String(result.reason);
-      console.error('Feed fetch failed:', result.reason);
+      applyFeedError(feeds[i], result.reason);
     }
   });
 
@@ -162,12 +185,7 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
       existingByGuid.set(article.guid, article);
     }
   } catch (e) {
-    feed.consecutiveErrors = Math.min(
-      (feed.consecutiveErrors ?? 0) + 1,
-      CONSECUTIVE_ERROR_SKIP_THRESHOLD,
-    );
-    feed.fetchError = e instanceof Error ? e.message : String(e);
-    console.error('Single feed fetch failed:', e);
+    applyFeedError(feed, e);
   }
 
   await r2Put(env.RSS_DATA, `users/${userId}/feeds.json`, feeds);

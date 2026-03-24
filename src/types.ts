@@ -7,6 +7,8 @@ export interface Feed {
   fetchError: string | null;
   /** 連続フェッチ失敗回数。成功時にリセット。クロンでの再試行抑制に使用 */
   consecutiveErrors?: number;
+  /** 最後にフェッチが失敗した日時（ISO 8601）。自動回復の判定に使用 */
+  lastErrorAt?: string | null;
 }
 
 export interface Article {
