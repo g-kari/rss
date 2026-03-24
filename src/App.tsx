@@ -45,22 +45,22 @@ const loadBookmarkIds = () => loadSet(STORAGE_KEYS.BOOKMARK_IDS);
 const loadReadingListIds = () => loadSet(STORAGE_KEYS.READING_LIST_IDS);
 const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
 
-async function fetchReadState(): Promise<{ readIds: string[]; bookmarkIds: string[] } | null> {
+async function fetchReadState(): Promise<{ readIds: string[]; bookmarkIds: string[]; readingListIds: string[] } | null> {
   try {
     const res = await fetch('/api/read-state');
     if (!res.ok) return null;
-    return res.json() as Promise<{ readIds: string[]; bookmarkIds: string[] }>;
+    return res.json() as Promise<{ readIds: string[]; bookmarkIds: string[]; readingListIds: string[] }>;
   } catch {
     return null;
   }
 }
 
-async function saveReadState(readIds: Set<string>, bookmarkIds: Set<string>): Promise<void> {
+async function saveReadState(readIds: Set<string>, bookmarkIds: Set<string>, readingListIds: Set<string>): Promise<void> {
   try {
     await fetch('/api/read-state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ readIds: [...readIds], bookmarkIds: [...bookmarkIds] }),
+      body: JSON.stringify({ readIds: [...readIds], bookmarkIds: [...bookmarkIds], readingListIds: [...readingListIds] }),
     });
   } catch {
     // サーバー同期失敗は無視（localStorage は保存済み）
@@ -81,6 +81,7 @@ export default function App() {
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localReadRef = useRef(readIds);
   const localBookmarkRef = useRef(bookmarkIds);
+  const localReadingListRef = useRef(readingListIds);
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() => searchParams.get('feed'));
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   // URL から復元すべき記事 ID（記事ロード完了後に解決）
@@ -95,7 +96,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ログイン後にサーバーの既読・ブックマーク状態をマージ
+  // ログイン後にサーバーの既読・ブックマーク・後で読む状態をマージ
   useEffect(() => {
     if (!user) return;
     fetchReadState().then((state) => {
@@ -112,10 +113,16 @@ export default function App() {
         localBookmarkRef.current = merged;
         return merged;
       });
+      setReadingListIds((prev) => {
+        const merged = new Set([...prev, ...(state.readingListIds ?? [])]);
+        saveSet(STORAGE_KEYS.READING_LIST_IDS, merged);
+        localReadingListRef.current = merged;
+        return merged;
+      });
     });
   }, [user]);
 
-  // 既読・ブックマーク変更時にデバウンスしてサーバーへ保存
+  // 既読・ブックマーク・後で読む変更時にデバウンスしてサーバーへ保存
   useEffect(() => {
     localReadRef.current = readIds;
   }, [readIds]);
@@ -124,10 +131,14 @@ export default function App() {
     localBookmarkRef.current = bookmarkIds;
   }, [bookmarkIds]);
 
+  useEffect(() => {
+    localReadingListRef.current = readingListIds;
+  }, [readingListIds]);
+
   const scheduleSyncToServer = useCallback(() => {
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
-      saveReadState(localReadRef.current, localBookmarkRef.current);
+      saveReadState(localReadRef.current, localBookmarkRef.current, localReadingListRef.current);
     }, 2000);
   }, []);
 
@@ -238,7 +249,8 @@ export default function App() {
       saveSet(STORAGE_KEYS.READING_LIST_IDS, next);
       return next;
     });
-  }, []);
+    scheduleSyncToServer();
+  }, [scheduleSyncToServer]);
 
   const togglePinFeed = useCallback((feedId: string) => {
     setPinnedFeedIds((prev) => {
