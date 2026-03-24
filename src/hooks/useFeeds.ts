@@ -97,13 +97,11 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     setRefreshing(true);
     try {
       await fetch('/api/feeds/refresh', { method: 'POST' });
-      const [feedsData, articlesData] = await Promise.all([
+      const [feedsData] = await Promise.all([
         fetch('/api/feeds').then((r) => r.json() as Promise<Feed[]>),
-        fetch('/api/articles').then((r) => r.json() as Promise<Article[]>),
+        fetchAndSetArticles(),
       ]);
       setFeeds(feedsData);
-      setArticles(articlesData);
-      latestArticleIdRef.current = articlesData[0]?.id ?? null;
     } catch (err) {
       console.error('Refresh failed:', err);
     } finally {
@@ -116,9 +114,7 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     if (!res.ok) return;
     const feed = await res.json() as Feed;
     setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
-    const refreshed = await fetch('/api/articles').then((r) => r.json() as Promise<Article[]>);
-    setArticles(refreshed);
-    latestArticleIdRef.current = refreshed[0]?.id ?? null;
+    await fetchAndSetArticles();
   }, []);
 
   const dismissNewArticles = useCallback(() => {
