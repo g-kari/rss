@@ -102,6 +102,8 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
         setAiResult({ mode, text: data.result });
       } else if (data.error) {
         setAiError(data.error);
+      } else {
+        setAiError('AI の処理に失敗しました');
       }
     } catch {
       setAiError('AI の処理に失敗しました');
@@ -272,7 +274,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
               </svg>
             </button>
           )}
-          {article.publishedAt && (
+          {article.publishedAt && !isNaN(new Date(article.publishedAt).getTime()) && (
             <time className="tracking-[0.04em]">
               {new Date(article.publishedAt).toLocaleDateString('ja-JP', {
                 year: 'numeric',
