@@ -290,6 +290,49 @@ test.describe('sanitizeHtml — その他の攻撃ベクトル', () => {
     expect(result).not.toContain('<script>');
     expect(result).not.toContain('alert(1)');
   });
+
+  test('SVG xlink:href の javascript: が除去される（<a> 要素）', () => {
+    const result = sanitizeHtml('<svg><a xlink:href="javascript:alert(1)"><text>click</text></a></svg>');
+    expect(result).not.toContain('javascript:');
+    expect(result).not.toContain('xlink:');
+    expect(result).toContain('click');
+  });
+
+  test('SVG xlink:href の javascript: が除去される（<image> 要素）', () => {
+    const result = sanitizeHtml('<svg><image xlink:href="javascript:alert(1)"/></svg>');
+    expect(result).not.toContain('javascript:');
+    expect(result).not.toContain('xlink:');
+  });
+
+  test('SVG xlink:href の data: URI が除去される（<use> 要素）', () => {
+    const result = sanitizeHtml('<svg><use xlink:href="data:image/svg+xml,<svg><script>alert(1)</script></svg>"/></svg>');
+    expect(result).not.toContain('data:');
+    expect(result).not.toContain('xlink:');
+  });
+
+  test('SVG xlink:href のエンティティエンコードされた javascript: が除去される', () => {
+    const result = sanitizeHtml('<svg><a xlink:href="&#106;avascript:alert(1)"><text>click</text></a></svg>');
+    expect(result).not.toContain('javascript:');
+    expect(result).not.toContain('xlink:');
+    expect(result).toContain('click');
+  });
+
+  test('SVG xlink:href の安全な https: URL は保持される', () => {
+    const result = sanitizeHtml('<svg><image xlink:href="https://example.com/image.png"/></svg>');
+    expect(result).toContain('xlink:href="https://example.com/image.png"');
+  });
+
+  test('SVG <foreignObject> が除去される（HTML 埋め込み防止）', () => {
+    const result = sanitizeHtml('<svg><foreignObject><div><script>alert(1)</script></div></foreignObject></svg>');
+    expect(result).not.toContain('<foreignObject');
+    expect(result).not.toContain('<script>');
+    expect(result).not.toContain('alert(1)');
+  });
+
+  test('SVG <foreignObject> 自己閉じが除去される', () => {
+    const result = sanitizeHtml('<svg><foreignObject width="100%" height="100%"/></svg>');
+    expect(result).not.toContain('<foreignObject');
+  });
 });
 
 test.describe('sanitizeHtml — inline style サニタイズ', () => {
