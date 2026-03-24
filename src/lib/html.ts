@@ -20,7 +20,10 @@ export function unescapeHtml(s: string): string {
     .replace(/&#x([0-9a-f]+);/gi, (_m, h) => {
       const code = parseInt(h, 16);
       return code > 31 && code !== 127 ? String.fromCharCode(code) : '';
-    });
+    })
+    // ゼロ幅文字・C1制御文字・BOM を除去（URL スキームバイパス防止）
+    // 例: "&#x200b;javascript:" → ゼロ幅文字除去後も href バリデーションを確実に通す
+    .replace(/[\u0080-\u009F\u00AD\u200B-\u200D\u2028\u2029\uFEFF]/g, '');
 }
 
 /** HTML タグを除去してプレーンテキストに変換する（AI 入力用） */
