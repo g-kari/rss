@@ -46,6 +46,12 @@ function isTrustedIframeSrc(src: string): boolean {
   );
 }
 
+function sanitizeStyleAttr(style: string): string {
+  return style
+    .replace(/\burl\s*\([^)]*\)/gi, '')
+    .replace(/\bposition\s*:\s*(fixed|sticky)\b[^;]*(;|$)/gi, '');
+}
+
 function sanitizeHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -76,6 +82,9 @@ function sanitizeHtml(html: string): string {
     .replace(/(?:src|href|action|formaction)\s*=\s*data:[^\s>]*/gi, '')
     .replace(/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
     .replace(/\bping\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    // inline style 属性をサニタイズ（CSS トラッキング・フィッシングオーバーレイ防止）
+    .replace(/\bstyle\s*=\s*"([^"]*)"/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
+    .replace(/\bstyle\s*=\s*'([^']*)'/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
     .trim();
 }
 
@@ -303,6 +312,70 @@ test.describe('sanitizeHtml — その他の攻撃ベクトル', () => {
     const result = sanitizeHtml('<svg><script>alert(1)</script></svg>');
     expect(result).not.toContain('<script>');
     expect(result).not.toContain('alert(1)');
+  });
+});
+
+test.describe('sanitizeHtml — inline style サニタイズ', () => {
+  test('style 属性内の url() が除去される（CSS トラッキングピクセル防止）', () => {
+    const result = sanitizeHtml(
+      '<p style="background-image:url(https://tracker.example/pixel.gif)">本文</p>'
+    );
+    expect(result).not.toContain('url(');
+    expect(result).not.toContain('tracker.example');
+    expect(result).toContain('<p style="');
+    expect(result).toContain('本文</p>');
+  });
+
+  test('style 属性内の background url() が除去される（外部リソース読み込み防止）', () => {
+    const result = sanitizeHtml(
+      '<div style="background: url(\'https://evil.example/bg.png\') no-repeat">内容</div>'
+    );
+    expect(result).not.toContain('url(');
+    expect(result).not.toContain('evil.example');
+    expect(result).toContain('内容</div>');
+  });
+
+  test('position: fixed が除去される（フィッシングオーバーレイ防止）', () => {
+    const result = sanitizeHtml(
+      '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:9999">偽UI</div>'
+    );
+    expect(result).not.toMatch(/position\s*:\s*fixed/i);
+    expect(result).toContain('偽UI</div>');
+  });
+
+  test('position: sticky が除去される', () => {
+    const result = sanitizeHtml(
+      '<div style="position:sticky;top:0;background:white">ヘッダー</div>'
+    );
+    expect(result).not.toMatch(/position\s*:\s*sticky/i);
+    expect(result).toContain('ヘッダー</div>');
+  });
+
+  test('シングルクォートの style 属性内の url() が除去される', () => {
+    const result = sanitizeHtml(
+      "<p style='background:url(https://evil.example/x.gif)'>本文</p>"
+    );
+    expect(result).not.toContain('url(');
+    expect(result).not.toContain('evil.example');
+    expect(result).toContain('本文</p>');
+  });
+
+  test('無害な style 属性（color, font-size, text-align 等）は保持される', () => {
+    const result = sanitizeHtml(
+      '<p style="color:red;font-size:16px;text-align:center">本文</p>'
+    );
+    expect(result).toContain('color:red');
+    expect(result).toContain('font-size:16px');
+    expect(result).toContain('text-align:center');
+    expect(result).toContain('本文</p>');
+  });
+
+  test('position: relative は保持される（固定・絶対配置でないため）', () => {
+    const result = sanitizeHtml(
+      '<div style="position:relative;top:10px">内容</div>'
+    );
+    expect(result).toContain('position:relative');
+    expect(result).toContain('内容</div>');
   });
 });
 
