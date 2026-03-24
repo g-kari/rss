@@ -5,7 +5,11 @@
  * - HTML からのメインコンテンツ抽出
  * - 後処理パイプライン（ノイズ除去・画像処理・テーブルラップ・XSS サニタイズ）
  * - 文字エンコーディング検出
+ * - Cloudflare AI toMarkdown API フォールバック
  */
+import { marked } from 'marked';
+import { Readability } from '@mozilla/readability';
+import { parseHTML } from 'linkedom/worker';
 import { sanitizeHtml } from './html';
 
 /**
@@ -284,6 +288,112 @@ export function detectCharset(contentType: string, bodyBytes: Uint8Array): strin
 }
 
 /**
+ * 抽出された HTML コンテンツが十分かどうかを判定する。
+ * タグを除去したテキスト量が minChars 未満の場合は不十分と判断する。
+ */
+export function isContentSufficient(html: string, minChars = 200): boolean {
+  const text = html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  return text.length >= minChars;
+}
+
+/**
+ * Cloudflare AI toMarkdown API に HTML を送信して Markdown を取得する。
+ * CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN が未設定の場合は null を返す。
+ */
+export async function fetchMarkdownFromHtml(
+  html: string,
+  hostname: string,
+): Promise<string | null> {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  if (!accountId || !apiToken) return null;
+
+  try {
+    const formData = new FormData();
+    formData.append('files', new Blob([html], { type: 'text/html' }), 'page.html');
+    formData.append('conversionOptions', JSON.stringify({ hostname }));
+
+    const res = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/tomarkdown`,
+      { method: 'POST', headers: { Authorization: `Bearer ${apiToken}` }, body: formData },
+    );
+    if (!res.ok) return null;
+
+    const json = await res.json() as {
+      result: { data?: string; error?: string }[];
+      success: boolean;
+    };
+    return json.success ? (json.result[0]?.data ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Markdown を HTML に変換する（marked 使用）。
+ */
+export function markdownToHtml(md: string): string {
+  return marked.parse(md, { async: false }) as string;
+}
+
+/**
+ * Markdown → HTML 変換後の後処理パイプライン。
+ * Zenn embed 等は変換時に消失するため、画像処理・テーブル・サニタイズのみ適用する。
+ * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
+ */
+export function postProcessMarkdownContent(html: string, pageUrl = ''): string {
+  const steps: Array<(h: string) => string> = [
+    (h) => fixImageDimensions(h, pageUrl),
+    (h) => rewriteImageUrls(h),
+    (h) => wrapTables(h),
+    (h) => sanitizeHtml(h),
+  ];
+  return steps.reduce((h, step) => step(h), html);
+}
+
+/**
+ * Readability 実行前の前処理。DOM パース精度を上げるためノイズを除去する。
+ * - <picture> を単純化して <img> のみ残す
+ * - <noscript> 内の画像を救出（遅延ロード対策）
+ * - 不要な属性を除去（data-content / data-src は保持）
+ * - <style> / <script> を除去
+ */
+export function preClean(html: string): string {
+  let h = html;
+  h = h.replace(/<picture\b[^>]*>([\s\S]*?)<\/picture>/gi, (_m, inner: string) => {
+    const img = inner.match(/<img\b[^>]*>/i);
+    return img ? img[0] : '';
+  });
+  h = h.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (_m, inner: string) =>
+    /<img\b/i.test(inner) ? inner : '',
+  );
+  h = h.replace(/\s+(?:data-(?!content\b|src\b)[a-z][a-z0-9-]*|aria-[a-z-]+|on[a-z]+)=["'][^"']*["']/gi, '');
+  h = h.replace(/<style\b[\s\S]*?<\/style>/gi, '');
+  h = h.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  return h;
+}
+
+/**
+ * @mozilla/readability + linkedom/worker を使って記事本文を抽出する。
+ * 失敗した場合は null を返す（fail-open 設計）。
+ */
+export function extractWithReadability(html: string, url: string): string | null {
+  try {
+    const { document } = parseHTML(preClean(html));
+    try {
+      const base = document.createElement('base');
+      (base as unknown as { href: string }).href = url;
+      document.head.appendChild(base);
+    } catch { /* ignore */ }
+
+    const article = new Readability(document as unknown as Document).parse();
+    return article?.content ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * <head> / <nav> / <header> 等のページクローム要素を除去してコンテンツ部分のみ残す。
  */
 export function stripPageChrome(html: string): string {
@@ -299,9 +409,26 @@ export function stripPageChrome(html: string): string {
 
 /**
  * HTML からメインコンテンツを抽出する。
+ * Readability.js 優先、失敗時は正規表現ベースにフォールバックする。
+ * - readability: @mozilla/readability + linkedom で高精度抽出
+ * - regex: サイト固有セレクター → EC セレクター → 汎用セレクターのフォールバック
+ */
+export function extractMainContent(
+  html: string,
+  pageUrl: string,
+): { content: string; source: 'readability' | 'regex' } {
+  const rc = extractWithReadability(html, pageUrl);
+  if (rc && isContentSufficient(rc)) {
+    return { content: postProcess(rc, pageUrl), source: 'readability' };
+  }
+  return { content: extractWithRegex(html, pageUrl), source: 'regex' };
+}
+
+/**
+ * 正規表現ベースのフォールバック抽出。
  * サイト固有セレクター → EC 商品ページ → 汎用セレクターの順でフォールバックする。
  */
-export function extractMainContent(html: string, pageUrl: string): string {
+function extractWithRegex(html: string, pageUrl: string): string {
   const cleaned = stripPageChrome(html);
 
   // --- サイト固有セレクター ---

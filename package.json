@@ -14,7 +14,10 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "fast-xml-parser": "^5.5.8",
+    "linkedom": "^0.18.12",
+    "marked": "^17.0.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
