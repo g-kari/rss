@@ -1,6 +1,59 @@
 import { XMLParser } from 'fast-xml-parser';
 import { sanitizeHtml, unescapeHtml } from './html';
 
+/** XML 属性を持つノード（fast-xml-parser の属性プレフィックス "@_" 付き） */
+interface XmlAttr {
+  '@_url'?: string;
+  '@_medium'?: string;
+  '@_type'?: string;
+  '@_rel'?: string;
+  '@_href'?: string;
+}
+
+/** fast-xml-parser がテキストノードをオブジェクト化した場合の形 */
+type XmlTextNode = { '#text'?: string | number } | string | number | null | undefined;
+
+/** RSS item / Atom entry の共通フィールド */
+interface FeedItem {
+  guid?: { '#text'?: string | number } | string;
+  title?: XmlTextNode;
+  link?: string | XmlAttr | XmlAttr[];
+  description?: XmlTextNode;
+  'content:encoded'?: XmlTextNode;
+  'dc:creator'?: XmlTextNode;
+  author?: XmlTextNode | { name?: XmlTextNode };
+  pubDate?: string;
+  published?: string;
+  updated?: string;
+  id?: string;
+  content?: XmlTextNode;
+  summary?: XmlTextNode;
+  enclosure?: XmlAttr;
+  'media:thumbnail'?: XmlAttr | XmlAttr[];
+  'media:content'?: XmlAttr | XmlAttr[];
+  'media:group'?: {
+    'media:thumbnail'?: XmlAttr | XmlAttr[];
+    'media:content'?: XmlAttr | XmlAttr[];
+  };
+}
+
+/** fast-xml-parser が返すトップレベル構造 */
+interface RawParsedXml {
+  rss?: {
+    channel?: {
+      title?: XmlTextNode;
+      link?: string;
+      item?: FeedItem | FeedItem[];
+    };
+  };
+  feed?: {
+    title?: XmlTextNode;
+    link?: XmlAttr | XmlAttr[];
+    entry?: FeedItem | FeedItem[];
+    author?: { name?: XmlTextNode };
+  };
+}
+
 export interface ParsedItem {
   guid: string;
   title: string;
@@ -44,14 +97,28 @@ function str(val: unknown): string {
   return String(val);
 }
 
+/** author フィールドから表示名を取得する（Atom の author.name / RSS の dc:creator 両対応） */
+function authorStr(author: FeedItem['author']): string {
+  if (!author) return '';
+  if (typeof author === 'object' && author !== null && 'name' in author) {
+    return str((author as { name?: unknown }).name);
+  }
+  return str(author);
+}
+
+/** XmlAttr または XmlAttr[] から最初の @_url を取得する */
+function firstAttrUrl(val: XmlAttr | XmlAttr[] | undefined): string {
+  if (!val) return '';
+  const first = Array.isArray(val) ? val[0] : val;
+  return first?.['@_url'] ? String(first['@_url']) : '';
+}
+
 /** RSS item / Atom entry から最初の画像 URL を取得 */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractImage(item: any): string {
+function extractImage(item: FeedItem): string {
   // 1. media:thumbnail (直下 or media:group 内)
   const thumb = item['media:thumbnail'] ?? item['media:group']?.['media:thumbnail'];
-  if (thumb?.['@_url']) return String(thumb['@_url']);
-  // 配列の場合は最初の要素
-  if (Array.isArray(thumb) && thumb[0]?.['@_url']) return String(thumb[0]['@_url']);
+  const thumbUrl = firstAttrUrl(thumb);
+  if (thumbUrl) return thumbUrl;
 
   // 2. media:content (画像タイプ、直下 or media:group 内)
   const mcRaw = item['media:content'] ?? item['media:group']?.['media:content'];
@@ -90,8 +157,7 @@ function extractImage(item: any): string {
 }
 
 export function parseFeed(xml: string): ParsedFeed {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parsed: any = parser.parse(xml);
+  const parsed = parser.parse(xml) as RawParsedXml;
 
   // RSS 2.0
   if (parsed?.rss?.channel) {
@@ -102,13 +168,13 @@ export function parseFeed(xml: string): ParsedFeed {
       items: toArray(ch.item).map((item) => {
         const raw = str(item['content:encoded'] ?? item.description ?? '');
         return {
-          guid: str(item.guid?.['#text'] ?? item.guid ?? item.link),
+          guid: str(item.guid ?? item.link),
           title: stripHtml(str(item.title)),
           link: str(item.link),
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
           ogImage: extractImage(item),
-          author: stripHtml(str(item['dc:creator'] ?? item.author ?? '')).trim(),
+          author: stripHtml(str(item['dc:creator']) || authorStr(item.author)).trim(),
           publishedAt: item.pubDate ? new Date(str(item.pubDate)).toISOString() : null,
         };
       }),
@@ -123,7 +189,8 @@ export function parseFeed(xml: string): ParsedFeed {
       title: stripHtml(str(feed.title)),
       siteUrl: feedLinks.find((l) => l['@_rel'] !== 'self')?.['@_href'] ?? '',
       items: toArray(feed.entry).map((entry) => {
-        const entryLinks = toArray<{ '@_rel'?: string; '@_href'?: string }>(entry.link);
+        // Atom の link は isArray 設定により常に XmlAttr[] になる
+        const entryLinks = toArray<XmlAttr>(entry.link as XmlAttr | XmlAttr[] | undefined);
         const raw = str(entry.content ?? entry.summary ?? '');
         return {
           guid: str(entry.id),
@@ -135,7 +202,7 @@ export function parseFeed(xml: string): ParsedFeed {
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
           ogImage: extractImage(entry),
-          author: stripHtml(str(entry.author?.name ?? entry.author ?? feed.author?.name ?? '')).trim(),
+          author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
           publishedAt: entry.published ?? entry.updated ?? null,
         };
       }),
