@@ -67,6 +67,7 @@ src/
     server-auth.ts           # requireSession() / applyRefreshedTokens() / isBetaAllowed()
     r2.ts                    # R2 read/write ヘルパー
     xml-parser.ts            # fast-xml-parser ラッパー (RSS 2.0 + Atom)
+    content.ts               # 全文取得後処理パイプライン (コンテンツ抽出・画像処理・サニタイズ)
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env) — RSS 取得
 ```
@@ -198,15 +199,17 @@ npm run test:e2e:ui                     # UI モードでデバッグ
 
 ## 記事本文の画像処理（注意事項）
 
-記事本文の画像処理は `app/api/content/route.ts` の `postProcess` パイプラインで行う。
+記事本文の画像処理は `src/lib/content.ts` の `postProcess` パイプラインで行う。
 
 ### 処理パイプライン（適用順）
 
 ```
 removeNoise            → EC ギャラリー / Qiita・Zenn UI のノイズ除去
+transformZennCardEmbeds   → 非 zenn.dev の embed.zenn.studio/card iframe を外部リンクに変換
 transformZennMermaidEmbeds → zenn.dev の mermaid を <pre><code> に変換
 fixLazyImages          → data-src → src 解決、Shopify _NNNx → _800x 高解像度化
-fixImageDimensions     → 相対パス絶対URL化 / loading="lazy" 追加 / onerror 非表示
+fixImageDimensions     → 相対パス絶対URL化 / loading="lazy" 追加
+rewriteImageUrls       → 画像 URL を /api/image-proxy 経由に書き換え
 wrapTables             → <table> を overflow-x:auto でラップ
 sanitizeHtml           → XSS 対策（<script>/<style>/<link>/イベントハンドラ除去）
 ```
@@ -217,7 +220,7 @@ sanitizeHtml           → XSS 対策（<script>/<style>/<link>/イベントハ�
 - **`sanitizeHtml` は必ずパイプラインの最後に実行** — 途中で実行すると後の処理が無効化される
 - **新しい後処理を追加する場合は `sanitizeHtml` の前に挿入する**
 - **`loading="lazy"` は `fixImageDimensions` で自動付与** — 個別に追加しない
-- **壊れた画像の非表示** — `onerror` ハンドラを `fixImageDimensions` で自動付与
+- **`onerror` ハンドラは付与しない** — `sanitizeHtml` でイベントハンドラが除去されるため不要。壊れた画像は `/api/image-proxy` が透明 GIF を返すことで対処する
 
 ### CSS（`app/globals.css`）
 
