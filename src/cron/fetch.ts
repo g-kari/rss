@@ -309,8 +309,13 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
 
 // Cron: 全ユーザーをフェッチ
 export async function fetchAllUsers(env: FetchEnv): Promise<void> {
-  const listed = await env.RSS_DATA.list({ prefix: 'users/', delimiter: '/' });
-  const userIds = listed.delimitedPrefixes.map((p: string) => p.slice('users/'.length, -1));
+  const userIds: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const listed = await env.RSS_DATA.list({ prefix: 'users/', delimiter: '/', cursor });
+    userIds.push(...listed.delimitedPrefixes.map((p: string) => p.slice('users/'.length, -1)));
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
   await allSettledWithConcurrency(
     userIds.map((id: string) => () => fetchUserArticles(env, id)),
     USER_FETCH_CONCURRENCY,
