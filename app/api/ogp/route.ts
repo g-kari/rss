@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireSession } from '@/lib/server-auth';
+import { requireSession, applyRefreshedTokens } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
@@ -13,7 +13,11 @@ const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 export async function GET(request: Request) {
   const result = await requireSession();
   if ('error' in result) return result.error;
+  const { session } = result;
+  return applyRefreshedTokens(await handleGet(request), session);
+}
 
+async function handleGet(request: Request): Promise<NextResponse> {
   const url = new URL(request.url).searchParams.get('url');
   if (!url) return NextResponse.json({ image: '' });
   if (!isValidFeedUrl(url)) return NextResponse.json({ image: '' });
@@ -88,3 +92,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ image: '' });
   }
 }
+

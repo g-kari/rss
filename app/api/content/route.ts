@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireSession } from '@/lib/server-auth';
+import { requireSession, applyRefreshedTokens } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
@@ -20,7 +20,11 @@ const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 export async function GET(request: Request) {
   const result = await requireSession();
   if ('error' in result) return result.error;
+  const { session } = result;
+  return applyRefreshedTokens(await handleGet(request), session);
+}
 
+async function handleGet(request: Request): Promise<NextResponse> {
   const url = new URL(request.url).searchParams.get('url');
   if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 });
 
@@ -105,3 +109,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to fetch page' }, { status: 502 });
   }
 }
+

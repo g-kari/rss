@@ -1,4 +1,4 @@
-import { requireSession } from '@/lib/server-auth';
+import { requireSession, applyRefreshedTokensToResponse } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
@@ -33,7 +33,11 @@ function transparentGif(): Response {
 export async function GET(request: Request) {
   const result = await requireSession();
   if ('error' in result) return result.error;
+  const { session } = result;
+  return applyRefreshedTokensToResponse(await handleGet(request), session);
+}
 
+async function handleGet(request: Request): Promise<Response> {
   const url = new URL(request.url).searchParams.get('url');
   if (!url) return new Response(null, { status: 400 });
 
@@ -123,3 +127,4 @@ export async function GET(request: Request) {
     return transparentGif();
   }
 }
+

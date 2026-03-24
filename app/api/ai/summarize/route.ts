@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireSession } from '@/lib/server-auth';
+import { requireSession, applyRefreshedTokens } from '@/lib/server-auth';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { getAiCache, setAiCache } from '@/lib/ai-cache';
 import { toPlainText } from '@/lib/html';
@@ -10,16 +10,17 @@ const MODEL = '@cf/meta/llama-3.1-8b-instruct' as any;
 export async function POST(request: Request) {
   const result = await requireSession();
   if ('error' in result) return result.error;
+  const { session } = result;
 
   const { text } = await request.json() as { text?: string };
-  if (!text?.trim()) return NextResponse.json({ error: 'text is required' }, { status: 400 });
+  if (!text?.trim()) return applyRefreshedTokens(NextResponse.json({ error: 'text is required' }, { status: 400 }), session);
 
   const { env } = await getCloudflareContext({ async: true });
   const plain = toPlainText(text).slice(0, 6000);
 
   // キャッシュヒット
   const cached = await getAiCache(env.RSS_DATA, 'summary', plain);
-  if (cached) return NextResponse.json({ result: cached });
+  if (cached) return applyRefreshedTokens(NextResponse.json({ result: cached }), session);
 
   // AI 実行
   const response = await env.AI.run(MODEL, {
@@ -33,5 +34,5 @@ export async function POST(request: Request) {
 
   if (summary) await setAiCache(env.RSS_DATA, 'summary', plain, summary);
 
-  return NextResponse.json({ result: summary });
+  return applyRefreshedTokens(NextResponse.json({ result: summary }), session);
 }

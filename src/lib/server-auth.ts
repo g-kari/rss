@@ -63,7 +63,7 @@ export async function requireSession(): Promise<{ session: AuthSession } | { err
   return { session };
 }
 
-/** リフレッシュされたトークンがある場合に Response に cookie をセットする */
+/** リフレッシュされたトークンがある場合に NextResponse に cookie をセットする */
 export function applyRefreshedTokens(
   response: NextResponse,
   session: AuthSession,
@@ -73,4 +73,20 @@ export function applyRefreshedTokens(
     response.cookies.set('refresh_token', session.refreshedTokens.refresh_token, { ...COOKIE_OPTS, maxAge: 30 * 24 * 60 * 60 });
   }
   return response;
+}
+
+/**
+ * バイナリレスポンス（Response）にもリフレッシュ済みトークン Cookie をセットする。
+ * image-proxy など NextResponse を使わないエンドポイント用。
+ */
+export function applyRefreshedTokensToResponse(
+  response: Response,
+  session: AuthSession,
+): Response {
+  if (!session.refreshedTokens) return response;
+  const cookiePath = `; Path=/; HttpOnly; Secure; SameSite=Lax`;
+  const headers = new Headers(response.headers);
+  headers.append('Set-Cookie', `access_token=${session.refreshedTokens.access_token}; Max-Age=900${cookiePath}`);
+  headers.append('Set-Cookie', `refresh_token=${session.refreshedTokens.refresh_token}; Max-Age=${30 * 24 * 60 * 60}${cookiePath}`);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
