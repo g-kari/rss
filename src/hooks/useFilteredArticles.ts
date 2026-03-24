@@ -8,6 +8,7 @@ interface Options {
   feedId: string | null;
   readIds: Set<string>;
   bookmarkIds: Set<string>;
+  readingListIds: Set<string>;
 }
 
 export type SortOrder = 'newest' | 'oldest';
@@ -29,7 +30,7 @@ function getDateRangeStart(range: DateRange): Date | null {
   return d;
 }
 
-export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: Options) {
+export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, readingListIds }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -86,9 +87,11 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: 
     let list =
       feedId === '__bookmarks__'
         ? articles.filter((a) => bookmarkIds.has(a.id))
-        : feedId
-          ? articles.filter((a) => a.feedId === feedId)
-          : articles;
+        : feedId === '__reading_list__'
+          ? articles.filter((a) => readingListIds.has(a.id))
+          : feedId
+            ? articles.filter((a) => a.feedId === feedId)
+            : articles;
     if (unreadOnly) list = list.filter((a) => !readIds.has(a.id));
     if (query.trim()) {
       const q = query.trim().toLowerCase();
@@ -107,7 +110,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds }: 
       list = [...list].reverse();
     }
     return list;
-  }, [articles, feedId, readIds, bookmarkIds, unreadOnly, query, sortOrder, dateRange]);
+  }, [articles, feedId, readIds, bookmarkIds, readingListIds, unreadOnly, query, sortOrder, dateRange]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;

@@ -19,6 +19,8 @@ interface Props {
   article: Article | null;
   isBookmarked: boolean;
   onToggleBookmark: (id: string) => void;
+  isInReadingList: boolean;
+  onToggleReadingList: (id: string) => void;
   onMobileBack?: () => void;
   fontSize?: FontSize;
   onChangeFontSize?: (size: FontSize) => void;
@@ -55,7 +57,7 @@ function saveAiCache(articleId: string, mode: AiMode, text: string): void {
 const SHORT_CONTENT_THRESHOLD = 400;
 
 
-export default function ArticleView({ article, isBookmarked, onToggleBookmark, onMobileBack, fontSize = 'medium', onChangeFontSize, showToast }: Props) {
+export default function ArticleView({ article, isBookmarked, onToggleBookmark, isInReadingList, onToggleReadingList, onMobileBack, fontSize = 'medium', onChangeFontSize, showToast }: Props) {
   // キャッシュをレンダリング時に同期取得 → 記事切り替え時もフラッシュなし
   const cachedContent = useMemo(
     () => (article?.id ? loadCache(article.id) : null),
@@ -316,6 +318,18 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, o
             </button>
           )}
 
+          <button
+            onClick={() => onToggleReadingList(article.id)}
+            title={isInReadingList ? '後で読むから削除' : '後で読む'}
+            className={`transition-colors duration-200 ${
+              isInReadingList ? 'text-text-default hover:text-text-muted' : 'text-text-faint hover:text-text-default'
+            }`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={isInReadingList ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 6v6l4 2" />
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+          </button>
           <button
             onClick={() => onToggleBookmark(article.id)}
             title={isBookmarked ? 'ブックマーク解除 (b)' : 'ブックマーク (b)'}

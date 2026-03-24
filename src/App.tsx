@@ -37,6 +37,7 @@ function loadFontSize(): FontSize {
 
 const loadReadIds = () => loadSet(STORAGE_KEYS.READ_IDS);
 const loadBookmarkIds = () => loadSet(STORAGE_KEYS.BOOKMARK_IDS);
+const loadReadingListIds = () => loadSet(STORAGE_KEYS.READING_LIST_IDS);
 const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
 
 async function fetchReadState(): Promise<{ readIds: string[]; bookmarkIds: string[] } | null> {
@@ -70,6 +71,7 @@ export default function App() {
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
+  const [readingListIds, setReadingListIds] = useState<Set<string>>(loadReadingListIds);
   const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localReadRef = useRef(readIds);
@@ -222,6 +224,15 @@ export default function App() {
     scheduleSyncToServer();
   }, [scheduleSyncToServer]);
 
+  const toggleReadingList = useCallback((articleId: string) => {
+    setReadingListIds((prev) => {
+      const next = new Set(prev);
+      next.has(articleId) ? next.delete(articleId) : next.add(articleId);
+      saveSet(STORAGE_KEYS.READING_LIST_IDS, next);
+      return next;
+    });
+  }, []);
+
   const togglePinFeed = useCallback((feedId: string) => {
     setPinnedFeedIds((prev) => {
       const next = new Set(prev);
@@ -248,6 +259,11 @@ export default function App() {
     [articles, bookmarkIds],
   );
 
+  const readingListCount = useMemo(
+    () => articles.filter((a) => readingListIds.has(a.id)).length,
+    [articles, readingListIds],
+  );
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -272,7 +288,7 @@ export default function App() {
     updateQuery,
     searchRef,
     sentinelRef,
-  } = useFilteredArticles({ articles, feedId: selectedFeedId, readIds, bookmarkIds });
+  } = useFilteredArticles({ articles, feedId: selectedFeedId, readIds, bookmarkIds, readingListIds });
 
   useKeyboardNav({
     filteredArticles: filtered,
@@ -502,6 +518,7 @@ export default function App() {
           articles={articles}
           readIds={readIds}
           bookmarkCount={bookmarkCount}
+          readingListCount={readingListCount}
           selectedFeedId={selectedFeedId}
           user={user}
           theme={theme}
@@ -561,6 +578,8 @@ export default function App() {
           article={selectedArticle}
           isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
           onToggleBookmark={toggleBookmark}
+          isInReadingList={selectedArticle ? readingListIds.has(selectedArticle.id) : false}
+          onToggleReadingList={toggleReadingList}
           onMobileBack={() => setMobilePane('list')}
           fontSize={fontSize}
           onChangeFontSize={onChangeFontSize}
