@@ -440,6 +440,77 @@ test.describe('sanitizeHtml — inline style サニタイズ', () => {
   });
 });
 
+test.describe('sanitizeHtml — SVG アニメーション要素によるインジェクション防止', () => {
+  test('<animate> 要素が除去される', () => {
+    const result = sanitizeHtml(
+      '<svg><a><animate attributeName="href" to="javascript:alert(1)"/>クリック</a></svg>'
+    );
+    expect(result).not.toContain('<animate');
+    expect(result).not.toContain('javascript:');
+    expect(result).toContain('クリック');
+  });
+
+  test('<animate> によるイベントハンドラ注入が除去される', () => {
+    const result = sanitizeHtml(
+      '<svg><circle r="10"><animate attributeName="onmouseover" values="alert(1)"/></circle></svg>'
+    );
+    expect(result).not.toContain('<animate');
+    expect(result).not.toContain('onmouseover');
+  });
+
+  test('<animateTransform> 要素が除去される', () => {
+    const result = sanitizeHtml(
+      '<svg><rect><animateTransform attributeName="onclick" type="rotate" values="alert(1)"/></rect></svg>'
+    );
+    expect(result).not.toContain('<animateTransform');
+    expect(result).not.toContain('onclick');
+  });
+
+  test('<set> 要素が除去される', () => {
+    const result = sanitizeHtml(
+      '<svg><a><set attributeName="href" to="javascript:alert(1)"/>テキスト</a></svg>'
+    );
+    expect(result).not.toContain('<set');
+    expect(result).not.toContain('javascript:');
+    expect(result).toContain('テキスト');
+  });
+
+  test('<animateMotion> 要素が除去される', () => {
+    const result = sanitizeHtml(
+      '<svg><circle><animateMotion dur="10s" repeatCount="indefinite"><mpath href="#path"/></animateMotion></circle></svg>'
+    );
+    expect(result).not.toContain('<animateMotion');
+  });
+
+  test('SVG <use> の外部参照が除去される（HTTP URL）', () => {
+    const result = sanitizeHtml(
+      '<svg><use href="https://attacker.com/evil.svg#xss"></use></svg>'
+    );
+    expect(result).not.toContain('<use');
+    expect(result).not.toContain('attacker.com');
+  });
+
+  test('SVG <use> の外部参照が除去される（xlink:href）', () => {
+    const result = sanitizeHtml(
+      '<svg><use xlink:href="https://attacker.com/evil.svg#xss"></use></svg>'
+    );
+    expect(result).not.toContain('<use');
+    expect(result).not.toContain('attacker.com');
+  });
+
+  test('SVG <use> の空 href が除去される', () => {
+    const result = sanitizeHtml('<svg><use href=""></use></svg>');
+    expect(result).not.toContain('<use');
+  });
+
+  test('SVG <use> の同一ドキュメント内フラグメント参照は保持される', () => {
+    const result = sanitizeHtml(
+      '<svg><defs><circle id="c" r="10"/></defs><use href="#c"></use></svg>'
+    );
+    expect(result).toContain('<use href="#c">');
+  });
+});
+
 test.describe('sanitizeHtml — 正常コンテンツの保持', () => {
   test('通常の段落・リンク・画像が保持される', () => {
     const html =
