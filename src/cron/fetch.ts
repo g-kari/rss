@@ -6,7 +6,7 @@ import { isValidFeedUrl } from '../lib/url';
 type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA' | 'FINDME_RSS'>;
 import { r2Get, r2Put } from '../lib/r2';
 
-const MAX_ARTICLES = 2000;
+const MAX_ARTICLES = 500;
 
 /**
  * 連続エラー回数がこの閾値以上のフィードはクロン実行時にスキップする。
@@ -59,7 +59,8 @@ function buildArticle(item: ParsedItem, feedId: string, existingByGuid: Map<stri
     title: item.title,
     link: item.link,
     summary: item.summary,
-    content: item.content,
+    // content は articles.json に保存しない（JSON 肥大化を防ぐ）
+    // 表示時は /api/content 経由でオンデマンド取得する
     ogImage: item.ogImage || existingByGuid.get(item.guid)?.ogImage,
     author: item.author || existingByGuid.get(item.guid)?.author,
     publishedAt: item.publishedAt,
