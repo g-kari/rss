@@ -6,6 +6,7 @@
  * 2. HTML なら `<link rel="alternate" type="application/rss+xml">` タグを検索
  * 3. 見つからなければ一般的なパス (/feed, /rss など) を並列プローブ
  */
+import { isValidFeedUrl } from './url';
 
 /** 一般的な RSS/Atom フィードパス候補 */
 const COMMON_FEED_PATHS = [
@@ -39,7 +40,10 @@ function extractFeedLinkFromHtml(html: string, baseUrl: string): string | null {
     const m = pattern.exec(html);
     if (m?.[1]) {
       try {
-        return new URL(m[1], baseUrl).toString();
+        const resolved = new URL(m[1], baseUrl).toString();
+        // SSRF 対策: プライベートIPへのアクセスを拒否
+        if (!isValidFeedUrl(resolved)) continue;
+        return resolved;
       } catch {
         continue;
       }

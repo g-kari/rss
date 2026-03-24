@@ -28,8 +28,15 @@ const PRIVATE_HOSTNAME_PATTERNS = [
 function isPrivateHost(hostname: string): boolean {
   if (PRIVATE_HOSTNAME_PATTERNS.some((p) => p.test(hostname))) return true;
   if (PRIVATE_IP_PATTERNS.some((p) => p.test(hostname))) return true;
-  // IPv6 ループバック・ユニークローカル
-  if (hostname === '[::1]' || hostname.startsWith('[fc') || hostname.startsWith('[fd')) return true;
+  // IPv6 ループバック・ユニークローカル・リンクローカル・未指定・IPv4マップド
+  if (
+    hostname === '[::1]' ||          // ループバック
+    hostname === '[::]' ||           // 未指定アドレス
+    hostname.startsWith('[fc') ||    // ユニークローカル fc00::/7
+    hostname.startsWith('[fd') ||    // ユニークローカル fd00::/8
+    hostname.startsWith('[fe80') ||  // リンクローカル fe80::/10
+    hostname.startsWith('[::ffff:')  // IPv4マップドIPv6
+  ) return true;
   return false;
 }
 

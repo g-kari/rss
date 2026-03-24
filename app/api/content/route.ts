@@ -183,6 +183,7 @@ export async function GET(request: Request) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === 'AbortError')
       return NextResponse.json({ error: 'Request timeout' }, { status: 504 });
-    return NextResponse.json({ error: String(err) }, { status: 502 });
+    console.error('[content] fetch error:', err);
+    return NextResponse.json({ error: 'Failed to fetch page' }, { status: 502 });
   }
 }
