@@ -636,6 +636,7 @@ export default function App() {
           onSelectArticle={selectArticle}
           onToggleRead={toggleRead}
           onToggleBookmark={toggleBookmark}
+          onMarkAllRead={() => markAllRead(selectedFeedId)}
           filtered={filtered}
           visible={visible}
           hasMore={hasMore}
