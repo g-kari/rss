@@ -184,21 +184,17 @@ function rewriteImageUrls(html: string): string {
 
 /** コンテンツ抽出後の後処理パイプライン */
 function postProcess(content: string, pageUrl = ''): string {
-  return sanitizeHtml(
-    wrapTables(
-      rewriteImageUrls(
-        fixImageDimensions(
-          fixLazyImages(
-            transformZennMermaidEmbeds(
-              removeNoise(content),
-              pageUrl,
-            ),
-          ),
-          pageUrl,
-        ),
-      ),
-    ),
-  );
+  // 各ステップを適用順に並べる。sanitizeHtml は XSS 対策のため必ず最後に実行すること
+  const steps: Array<(html: string) => string> = [
+    (html) => removeNoise(html),
+    (html) => transformZennMermaidEmbeds(html, pageUrl),
+    (html) => fixLazyImages(html),
+    (html) => fixImageDimensions(html, pageUrl),
+    (html) => rewriteImageUrls(html),
+    (html) => wrapTables(html),
+    (html) => sanitizeHtml(html),
+  ];
+  return steps.reduce((html, step) => step(html), content);
 }
 
 /**
