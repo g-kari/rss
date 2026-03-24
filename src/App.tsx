@@ -16,6 +16,11 @@ import { updateFaviconBadge } from './lib/favicon';
 type Theme = 'light' | 'dark';
 type MobilePane = 'sidebar' | 'list' | 'view';
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 function loadLayout(): Layout {
   const stored = storageGet(STORAGE_KEYS.LAYOUT);
   if (stored === 'compact' || stored === 'list' || stored === 'card' || stored === 'magazine')
@@ -85,6 +90,7 @@ export default function App() {
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const [mobilePane, setMobilePane] = useState<MobilePane>('sidebar');
   const prevMobilePaneRef = useRef<MobilePane>('sidebar');
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -243,6 +249,23 @@ export default function App() {
     });
   }, []);
 
+  // PWA インストールプロンプトを捕捉（Chrome / Android）
+  useEffect(() => {
+    function onBeforeInstall(e: Event) {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+  }, []);
+
+  const installApp = useCallback(async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setInstallPrompt(null);
+  }, [installPrompt]);
+
   function onFeedDeleted(id: string) {
     removeFeed(id);
     if (selectedFeedId === id) {
@@ -290,6 +313,19 @@ export default function App() {
     searchRef,
     sentinelRef,
   } = useFilteredArticles({ articles, feedId: selectedFeedId, readIds, bookmarkIds, readingListIds });
+
+  const currentIndex = useMemo(
+    () => (selectedArticle ? filtered.findIndex((a) => a.id === selectedArticle.id) : -1),
+    [selectedArticle, filtered],
+  );
+  const prevArticle = currentIndex > 0 ? filtered[currentIndex - 1] : null;
+  const nextArticle = currentIndex >= 0 && currentIndex < filtered.length - 1 ? filtered[currentIndex + 1] : null;
+
+  const selectArticle = useCallback((article: Article) => {
+    setSelectedArticle(article);
+    markRead(article.id);
+    setMobilePane('view');
+  }, [markRead]);
 
   useKeyboardNav({
     filteredArticles: filtered,
@@ -564,6 +600,8 @@ export default function App() {
           refreshing={refreshing}
           pinnedFeedIds={pinnedFeedIds}
           onTogglePinFeed={togglePinFeed}
+          canInstall={!!installPrompt}
+          onInstall={installApp}
         />
       </div>
       <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'list' ? 'hidden lg:block' : ''}`}>
@@ -577,11 +615,7 @@ export default function App() {
           loading={loadingArticles}
           onChangeLayout={onChangeLayout}
           onMobileBack={() => setMobilePane('sidebar')}
-          onSelectArticle={(article) => {
-            setSelectedArticle(article);
-            markRead(article.id);
-            setMobilePane('view');
-          }}
+          onSelectArticle={selectArticle}
           onToggleRead={toggleRead}
           onToggleBookmark={toggleBookmark}
           filtered={filtered}
@@ -610,6 +644,10 @@ export default function App() {
           fontSize={fontSize}
           onChangeFontSize={onChangeFontSize}
           showToast={showToast}
+          prevArticle={prevArticle}
+          nextArticle={nextArticle}
+          onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
+          onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
         />
       </div>
     </div>

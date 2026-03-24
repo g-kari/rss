@@ -25,6 +25,10 @@ interface Props {
   fontSize?: FontSize;
   onChangeFontSize?: (size: FontSize) => void;
   showToast?: (msg: string) => void;
+  prevArticle?: Article | null;
+  nextArticle?: Article | null;
+  onSelectPrev?: () => void;
+  onSelectNext?: () => void;
 }
 
 /* ── 全文キャッシュ (localStorage) ── */
@@ -57,7 +61,7 @@ function saveAiCache(articleId: string, mode: AiMode, text: string): void {
 const SHORT_CONTENT_THRESHOLD = 400;
 
 
-export default function ArticleView({ article, isBookmarked, onToggleBookmark, isInReadingList, onToggleReadingList, onMobileBack, fontSize = 'medium', onChangeFontSize, showToast }: Props) {
+export default function ArticleView({ article, isBookmarked, onToggleBookmark, isInReadingList, onToggleReadingList, onMobileBack, fontSize = 'medium', onChangeFontSize, showToast, prevArticle, nextArticle, onSelectPrev, onSelectNext }: Props) {
   // キャッシュをレンダリング時に同期取得 → 記事切り替え時もフラッシュなし
   const cachedContent = useMemo(
     () => (article?.id ? loadCache(article.id) : null),
@@ -76,6 +80,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
   });
   const stickyAiModeRef = useRef(stickyAiMode);
   stickyAiModeRef.current = stickyAiMode;
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   /** AI fetch のみ（トグルなし）。記事切り替え時の自動実行にも使用 */
   const doRunAi = useCallback(async (mode: AiMode, contentHtml: string, articleId?: string) => {
@@ -199,8 +204,25 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
     setScrollProgress(scrollable > 0 ? Math.round((el.scrollTop / scrollable) * 100) : 0);
   }
 
+  function handleTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (!touchStartRef.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    // 水平方向が縦スクロールより優位で、かつ閾値を超えた場合のみ遷移
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0 && onSelectNext) onSelectNext();
+    else if (dx > 0 && onSelectPrev) onSelectPrev();
+  }
+
   return (
-    <main className="h-full overflow-y-auto bg-surface-elevated animate-fade-in relative" onScroll={handleScroll}>
+    <main className="h-full overflow-y-auto bg-surface-elevated animate-fade-in relative" onScroll={handleScroll} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {scrollProgress > 0 && (
         <div
           className="sticky top-0 left-0 h-[2px] bg-ink z-10 transition-[width] duration-75 ease-linear"
@@ -450,6 +472,40 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
             {fetchError && (
               <p className="text-[11px] text-rose-400">{fetchError}</p>
             )}
+          </div>
+        )}
+
+        {/* 前後記事ナビゲーション */}
+        {(prevArticle || nextArticle) && (
+          <div className="mt-12 pt-6 border-t border-border-subtle flex items-stretch gap-3">
+            {prevArticle ? (
+              <button
+                onClick={onSelectPrev}
+                className="flex-1 text-left px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
+              >
+                <span className="flex items-center gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 2L4 6l4 4"/>
+                  </svg>
+                  前の記事
+                </span>
+                <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">{prevArticle.title}</span>
+              </button>
+            ) : <div className="flex-1" />}
+            {nextArticle ? (
+              <button
+                onClick={onSelectNext}
+                className="flex-1 text-right px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
+              >
+                <span className="flex items-center justify-end gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
+                  次の記事
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 2l4 4-4 4"/>
+                  </svg>
+                </span>
+                <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">{nextArticle.title}</span>
+              </button>
+            ) : <div className="flex-1" />}
           </div>
         )}
       </div>
