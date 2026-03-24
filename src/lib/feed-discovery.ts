@@ -7,6 +7,13 @@
  * 3. 見つからなければ一般的なパス (/feed, /rss など) を並列プローブ
  */
 import { isValidFeedUrl } from './url';
+import { fetchWithTimeout } from './fetch';
+
+/** フィード探索時の外部フェッチタイムアウト（ミリ秒）*/
+const DISCOVERY_TIMEOUT_MS = 5_000;
+
+/** HTML 読み込み上限バイト数。<head> は通常この範囲内にある */
+const MAX_DISCOVERY_BYTES = 64 * 1024;
 
 /** 一般的な RSS/Atom フィードパス候補 */
 const COMMON_FEED_PATHS = [
@@ -67,11 +74,11 @@ async function probeCommonFeedPaths(baseUrl: string): Promise<string | null> {
   const results = await Promise.allSettled(
     COMMON_FEED_PATHS.map(async (path) => {
       const url = origin + path;
-      const res = await fetch(url, {
+      const res = await fetchWithTimeout(url, {
         method: 'HEAD',
         headers: { 'User-Agent': 'rss-reader/1.0' },
         redirect: 'follow',
-      });
+      }, DISCOVERY_TIMEOUT_MS);
       const ct = res.headers.get('content-type') ?? '';
       if (res.ok && isFeedContentType(ct)) return url;
       throw new Error('not a feed');
@@ -92,16 +99,36 @@ async function probeCommonFeedPaths(baseUrl: string): Promise<string | null> {
  */
 export async function discoverFeedUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { 'User-Agent': 'rss-reader/1.0' },
       redirect: 'follow',
-    });
+    }, DISCOVERY_TIMEOUT_MS);
     if (!res.ok) return null;
 
     const ct = res.headers.get('content-type') ?? '';
     if (isFeedContentType(ct)) return url;
 
-    const html = await res.text();
+    // HTML を先頭 MAX_DISCOVERY_BYTES だけ読んで <link> を探す
+    // （<head> セクションはこの範囲内に収まる）
+    const reader = res.body?.getReader();
+    if (!reader) return null;
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        total += value.byteLength;
+        if (total >= MAX_DISCOVERY_BYTES) break;
+      }
+    } finally {
+      reader.cancel().catch(() => {});
+    }
+    const merged = new Uint8Array(total);
+    let offset = 0;
+    for (const c of chunks) { merged.set(c, offset); offset += c.byteLength; }
+    const html = new TextDecoder().decode(merged);
 
     const fromLink = extractFeedLinkFromHtml(html, url);
     if (fromLink) return fromLink;
