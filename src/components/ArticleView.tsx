@@ -223,6 +223,13 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
   }
 
   function handleTouchStart(e: React.TouchEvent) {
+    // 横スクロール可能な要素（コードブロック・テーブル等）の上ではスワイプ検知しない
+    let node = e.target as Element | null;
+    while (node && node !== e.currentTarget) {
+      const ox = getComputedStyle(node).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && node.scrollWidth > node.clientWidth) return;
+      node = node.parentElement;
+    }
     const t = e.touches[0];
     touchStartRef.current = { x: t.clientX, y: t.clientY };
   }
@@ -249,7 +256,8 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
       )}
       <div className="max-w-2xl mx-auto px-4 py-6 lg:px-10 lg:py-12">
         {/* メタ */}
-        <div className="flex items-center gap-4 mb-5 text-[11px] text-text-muted">
+        {/* メタ行 + アクション行（スマホでは2行に折り返す） */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5 text-[11px] text-text-muted">
           {onMobileBack && (
             <button
               onClick={onMobileBack}
@@ -291,111 +299,114 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
             ) : null;
           })()}
 
-          {/* フォントサイズ切り替え */}
-          {onChangeFontSize && (
-            <div className="ml-auto flex items-center gap-0.5">
-              {FONT_SIZE_CYCLE.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => onChangeFontSize(size)}
-                  title={size === 'small' ? '小' : size === 'medium' ? '中' : '大'}
-                  className={`px-1.5 py-0.5 rounded transition-colors duration-150 ${
-                    fontSize === size
-                      ? 'text-text-strong'
-                      : 'text-text-faint hover:text-text-muted'
-                  }`}
-                  style={{
-                    fontSize: size === 'small' ? '10px' : size === 'medium' ? '12px' : '14px',
-                    lineHeight: 1,
-                  }}
-                >
-                  A
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* AI ボタン */}
-          {hasContent && (
-            <div className={`${onChangeFontSize || !hasContent ? '' : 'ml-auto'} flex items-center gap-1`}>
-              {(['summary', 'translation'] as AiMode[]).map((mode) => {
-                const isActive = aiResult?.mode === mode;
-                return (
+          {/* アクションボタン群（常にひとかたまりで右端に配置） */}
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* フォントサイズ切り替え */}
+            {onChangeFontSize && (
+              <div className="flex items-center gap-0.5 mr-1">
+                {FONT_SIZE_CYCLE.map((size) => (
                   <button
-                    key={mode}
-                    onClick={() => {
-                      if (canFetch) {
-                        // 全文未取得の場合: まず全文取得してから AI 実行
-                        if (isActive) {
-                          setAiResult(null);
-                          setStickyAiMode(null);
-                          storageRemove(STORAGE_KEYS.AI_MODE);
-                        } else {
-                          setStickyAiMode(mode);
-                          storageSet(STORAGE_KEYS.AI_MODE, mode);
-                          fetchFullContent(mode);
-                        }
-                      } else {
-                        runAi(mode, processedContent ?? article.summary ?? '');
-                      }
-                    }}
-                    disabled={!!aiLoading || fetching}
-                    title={mode === 'summary' ? 'AI 要約' : '日本語翻訳'}
-                    className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
-                      isActive
-                        ? 'border-ink bg-ink text-ink-text'
-                        : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
+                    key={size}
+                    onClick={() => onChangeFontSize(size)}
+                    title={size === 'small' ? '小' : size === 'medium' ? '中' : '大'}
+                    className={`px-1.5 py-0.5 rounded transition-colors duration-150 ${
+                      fontSize === size
+                        ? 'text-text-strong'
+                        : 'text-text-faint hover:text-text-muted'
                     }`}
+                    style={{
+                      fontSize: size === 'small' ? '10px' : size === 'medium' ? '12px' : '14px',
+                      lineHeight: 1,
+                    }}
                   >
-                    {(aiLoading === mode || (fetching && stickyAiMode === mode)) ? '…' : mode === 'summary' ? '要約' : '日本語'}
+                    A
                   </button>
-                );
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          {article.link && showToast && (
+            {/* AI ボタン */}
+            {hasContent && (
+              <div className="flex items-center gap-1 mr-1">
+                {(['summary', 'translation'] as AiMode[]).map((mode) => {
+                  const isActive = aiResult?.mode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      onClick={() => {
+                        if (canFetch) {
+                          // 全文未取得の場合: まず全文取得してから AI 実行
+                          if (isActive) {
+                            setAiResult(null);
+                            setStickyAiMode(null);
+                            storageRemove(STORAGE_KEYS.AI_MODE);
+                          } else {
+                            setStickyAiMode(mode);
+                            storageSet(STORAGE_KEYS.AI_MODE, mode);
+                            fetchFullContent(mode);
+                          }
+                        } else {
+                          runAi(mode, processedContent ?? article.summary ?? '');
+                        }
+                      }}
+                      disabled={!!aiLoading || fetching}
+                      title={mode === 'summary' ? 'AI 要約' : '日本語翻訳'}
+                      className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
+                        isActive
+                          ? 'border-ink bg-ink text-ink-text'
+                          : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
+                      }`}
+                    >
+                      {(aiLoading === mode || (fetching && stickyAiMode === mode)) ? '…' : mode === 'summary' ? '要約' : '日本語'}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {article.link && showToast && (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(article.link!).then(() => {
+                    showToast('リンクをコピーしました');
+                  }).catch(() => {
+                    showToast('コピーに失敗しました');
+                  });
+                }}
+                title="リンクをコピー (c)"
+                className="text-text-faint hover:text-text-muted transition-colors duration-200"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                  <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </button>
+            )}
+
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(article.link!).then(() => {
-                  showToast('リンクをコピーしました');
-                }).catch(() => {
-                  showToast('コピーに失敗しました');
-                });
-              }}
-              title="リンクをコピー (c)"
-              className="text-text-faint hover:text-text-muted transition-colors duration-200"
+              onClick={() => onToggleReadingList(article.id)}
+              title={isInReadingList ? '後で読むから削除' : '後で読む'}
+              className={`transition-colors duration-200 ${
+                isInReadingList ? 'text-text-default hover:text-text-muted' : 'text-text-faint hover:text-text-default'
+              }`}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-                <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={isInReadingList ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 6v6l4 2" />
+                <circle cx="12" cy="12" r="9" />
               </svg>
             </button>
-          )}
-
-          <button
-            onClick={() => onToggleReadingList(article.id)}
-            title={isInReadingList ? '後で読むから削除' : '後で読む'}
-            className={`transition-colors duration-200 ${
-              isInReadingList ? 'text-text-default hover:text-text-muted' : 'text-text-faint hover:text-text-default'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={isInReadingList ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 6v6l4 2" />
-              <circle cx="12" cy="12" r="9" />
-            </svg>
-          </button>
-          <button
-            onClick={() => onToggleBookmark(article.id)}
-            title={isBookmarked ? 'ブックマーク解除 (b)' : 'ブックマーク (b)'}
-            className={`transition-colors duration-200 ${!hasContent && !onChangeFontSize ? 'ml-auto' : ''} ${
-              isBookmarked ? 'text-bookmark hover:text-text-muted' : 'text-text-faint hover:text-bookmark'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
-            </svg>
-          </button>
+            <button
+              onClick={() => onToggleBookmark(article.id)}
+              title={isBookmarked ? 'ブックマーク解除 (b)' : 'ブックマーク (b)'}
+              className={`transition-colors duration-200 ${
+                isBookmarked ? 'text-bookmark hover:text-text-muted' : 'text-text-faint hover:text-bookmark'
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* タイトル */}
