@@ -313,15 +313,16 @@ test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
   });
 });
 
-// src/lib/content.ts の transformZennCardEmbeds と同一ロジック（複製）
-function transformZennCardEmbeds(content: string): string {
+// src/lib/content.ts の transformZennLinkEmbeds と同一ロジック（複製）
+function transformZennLinkEmbeds(content: string): string {
   return content.replace(
-    /<span\b[^>]*\bzenn-embedded-card\b[^>]*>[\s\S]*?<\/span>/gi,
+    /<span\b[^>]*\bzenn-embedded-(?:card|tweet)\b[^>]*>[\s\S]*?<\/span>/gi,
     (spanMatch) => {
       const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
       if (!dcMatch) return spanMatch;
       try {
         const url = decodeURIComponent(dcMatch[1]);
+        if (!/^https?:\/\//i.test(url)) return spanMatch;
         return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
       } catch {
         return spanMatch;
@@ -330,41 +331,36 @@ function transformZennCardEmbeds(content: string): string {
   );
 }
 
-// src/lib/content.ts の transformZennTweetEmbeds と同一ロジック（複製）
-function transformZennTweetEmbeds(content: string): string {
-  return content.replace(
-    /<span\b[^>]*\bzenn-embedded-tweet\b[^>]*>[\s\S]*?<\/span>/gi,
-    (spanMatch) => {
-      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
-      if (!dcMatch) return spanMatch;
-      try {
-        const url = decodeURIComponent(dcMatch[1]);
-        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
-      } catch {
-        return spanMatch;
-      }
-    },
-  );
-}
-
-test.describe('transformZennCardEmbeds — Zenn card embed 変換', () => {
+test.describe('transformZennLinkEmbeds — Zenn card/tweet embed 変換', () => {
   const makeCardSpan = (encodedUrl: string) =>
     `<span class="embed-block zenn-embedded zenn-embedded-card">` +
     `<iframe id="zenn-embedded__xxx" src="https://embed.zenn.studio/card#zenn-embedded__xxx"` +
     ` data-content="${encodedUrl}" frameborder="0" scrolling="no" loading="lazy"></iframe></span>`;
 
-  test('data-content から URL をデコードしてリンクに変換する', () => {
+  const makeTweetSpan = (encodedUrl: string) =>
+    `<span class="embed-block zenn-embedded zenn-embedded-tweet">` +
+    `<iframe src="https://embed.zenn.studio/tweet#zenn-embedded__xxx"` +
+    ` data-content="${encodedUrl}" frameborder="0" scrolling="no"></iframe></span>`;
+
+  test('card embed の data-content から URL をデコードしてリンクに変換する', () => {
     const span = makeCardSpan('https%3A%2F%2Fdev.classmethod.jp%2Farticles%2Fexample%2F');
-    const result = transformZennCardEmbeds(span);
+    const result = transformZennLinkEmbeds(span);
     expect(result).not.toContain('<iframe');
     expect(result).not.toContain('embed.zenn.studio');
     expect(result).toContain('<a href="https://dev.classmethod.jp/articles/example/"');
-    expect(result).toContain('https://dev.classmethod.jp/articles/example/');
+  });
+
+  test('tweet embed の data-content から X/Twitter URL をデコードしてリンクに変換する', () => {
+    const span = makeTweetSpan('https%3A%2F%2Fx.com%2Ftenntenn%2Fstatus%2F1808029094111858945%3Fs%3D20');
+    const result = transformZennLinkEmbeds(span);
+    expect(result).not.toContain('<iframe');
+    expect(result).not.toContain('embed.zenn.studio');
+    expect(result).toContain('<a href="https://x.com/tenntenn/status/1808029094111858945?s=20"');
   });
 
   test('zenn.dev 内の card embed も変換される（スキップしない）', () => {
     const span = makeCardSpan('https%3A%2F%2Fzenn.dev%2Fknowledgework%2Farticles%2F0160b8d008d1e9');
-    const result = transformZennCardEmbeds(span);
+    const result = transformZennLinkEmbeds(span);
     expect(result).not.toContain('<iframe');
     expect(result).toContain('<a href="https://zenn.dev/knowledgework/articles/0160b8d008d1e9"');
   });
@@ -373,58 +369,20 @@ test.describe('transformZennCardEmbeds — Zenn card embed 変換', () => {
     const span =
       `<span class="embed-block zenn-embedded zenn-embedded-card">` +
       `<iframe src="https://embed.zenn.studio/card#id"></iframe></span>`;
-    const result = transformZennCardEmbeds(span);
+    const result = transformZennLinkEmbeds(span);
     expect(result).toContain('<iframe');
   });
 
-  test('card 以外の zenn embed (tweet) は変換されない', () => {
-    const tweetSpan =
-      `<span class="embed-block zenn-embedded zenn-embedded-tweet">` +
-      `<iframe src="https://embed.zenn.studio/tweet#id" data-content="https%3A%2F%2Fx.com%2F123"></iframe></span>`;
-    const result = transformZennCardEmbeds(tweetSpan);
-    expect(result).toBe(tweetSpan);
+  test('javascript: スキームの URL はブロックされる', () => {
+    const span = makeCardSpan('javascript%3Aalert(1)');
+    const result = transformZennLinkEmbeds(span);
+    expect(result).toBe(span);
     expect(result).toContain('<iframe');
   });
 
-  test('card embed を含まない通常テキストは変更されない', () => {
+  test('embed を含まない通常テキストは変更されない', () => {
     const html = '<p>通常のテキスト</p><a href="https://example.com">リンク</a>';
-    expect(transformZennCardEmbeds(html)).toBe(html);
-  });
-});
-
-test.describe('transformZennTweetEmbeds — Zenn tweet embed 変換', () => {
-  const makeTweetSpan = (encodedUrl: string) =>
-    `<span class="embed-block zenn-embedded zenn-embedded-tweet">` +
-    `<iframe src="https://embed.zenn.studio/tweet#zenn-embedded__xxx"` +
-    ` data-content="${encodedUrl}" frameborder="0" scrolling="no"></iframe></span>`;
-
-  test('data-content から X/Twitter URL をデコードしてリンクに変換する', () => {
-    const span = makeTweetSpan('https%3A%2F%2Fx.com%2Ftenntenn%2Fstatus%2F1808029094111858945%3Fs%3D20');
-    const result = transformZennTweetEmbeds(span);
-    expect(result).not.toContain('<iframe');
-    expect(result).not.toContain('embed.zenn.studio');
-    expect(result).toContain('<a href="https://x.com/tenntenn/status/1808029094111858945?s=20"');
-  });
-
-  test('data-content がない span はそのまま保持される', () => {
-    const span =
-      `<span class="embed-block zenn-embedded zenn-embedded-tweet">` +
-      `<iframe src="https://embed.zenn.studio/tweet#id"></iframe></span>`;
-    const result = transformZennTweetEmbeds(span);
-    expect(result).toContain('<iframe');
-  });
-
-  test('tweet 以外の zenn embed (card) は変換されない', () => {
-    const cardSpan =
-      `<span class="embed-block zenn-embedded zenn-embedded-card">` +
-      `<iframe src="https://embed.zenn.studio/card#id" data-content="https%3A%2F%2Fexample.com"></iframe></span>`;
-    const result = transformZennTweetEmbeds(cardSpan);
-    expect(result).toBe(cardSpan);
-  });
-
-  test('tweet embed を含まない通常テキストは変更されない', () => {
-    const html = '<p>通常のテキスト</p>';
-    expect(transformZennTweetEmbeds(html)).toBe(html);
+    expect(transformZennLinkEmbeds(html)).toBe(html);
   });
 });
 
