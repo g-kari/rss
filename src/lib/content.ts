@@ -45,6 +45,24 @@ export function fixImageDimensions(html: string, pageUrl = ''): string {
         if (/^https?:\/\//i.test(src) || src.startsWith('data:')) return _sm;
         try { return `src="${new URL(src, base).href}"`; } catch { return _sm; }
       });
+      // srcset 内の相対 URL も絶対 URL に変換
+      a = a.replace(/\bsrcset=["']([^"']+)["']/gi, (_sm, srcset: string) => {
+        const resolved = srcset
+          .split(',')
+          .map((part) => {
+            const trimmed = part.trim();
+            if (!trimmed) return '';
+            const m = trimmed.match(/^(\S+)(\s.*)?$/);
+            if (!m) return part;
+            const url = m[1];
+            const descriptor = m[2] ?? '';
+            if (/^https?:\/\//i.test(url) || url.startsWith('data:')) return trimmed;
+            try { return new URL(url, base).href + descriptor; } catch { return trimmed; }
+          })
+          .filter(Boolean)
+          .join(', ');
+        return `srcset="${resolved}"`;
+      });
     }
 
     // loading="lazy" を追加（既存の loading 属性がなければ）
@@ -207,6 +225,16 @@ export function fixLazyImages(html: string): string {
       }
     }
 
+    // data-srcset を srcset に昇格（遅延ロード対応）
+    const dataSrcsetMatch = fixed.match(/\bdata-srcset=["']([^"']+)["']/i);
+    if (dataSrcsetMatch) {
+      if (/\bsrcset=["'][^"']*["']/i.test(fixed)) {
+        fixed = fixed.replace(/\bsrcset=["'][^"']*["']/i, `srcset="${dataSrcsetMatch[1]}"`);
+      } else {
+        fixed += ` srcset="${dataSrcsetMatch[1]}"`;
+      }
+    }
+
     // Shopify: _NNNx / _NNNxNNN / _NNNx@Nx サフィックスを _800x に置換
     fixed = fixed.replace(
       /(src=["'][^"']*?)_\d+x\d*(?:@\d+x)?\.(jpg|jpeg|png|webp|gif)(["'])/gi,
@@ -218,14 +246,46 @@ export function fixLazyImages(html: string): string {
 }
 
 /**
+ * srcset 属性内の各 URL に変換関数を適用するヘルパー。
+ * 形式: "url1 descriptor1, url2 descriptor2, ..."
+ * URL が http(s) でない場合（data: など）は変換をスキップする。
+ */
+function transformSrcset(srcset: string, rewriteUrl: (url: string) => string): string {
+  return srcset
+    .split(',')
+    .map((part) => {
+      const trimmed = part.trim();
+      if (!trimmed) return '';
+      const m = trimmed.match(/^(\S+)(\s.*)?$/);
+      if (!m) return part;
+      const url = m[1];
+      const descriptor = m[2] ?? '';
+      return rewriteUrl(url) + descriptor;
+    })
+    .filter(Boolean)
+    .join(', ');
+}
+
+/**
  * 記事本文内の外部画像 URL を /api/image-proxy 経由に書き換える。
  * fixImageDimensions で相対パスが絶対 URL に解決された後に適用する。
+ * src と srcset の両方を対象とする。
  */
 export function rewriteImageUrls(html: string): string {
   return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-    const rewritten = attrs.replace(
+    let rewritten = attrs.replace(
       /\bsrc=["'](https?:\/\/[^"']+)["']/gi,
       (_sm, src: string) => `src="/api/image-proxy?url=${encodeURIComponent(src)}"`,
+    );
+    rewritten = rewritten.replace(
+      /\bsrcset=["']([^"']+)["']/gi,
+      (_sm, srcset: string) => {
+        const proxied = transformSrcset(srcset, (url) => {
+          if (!/^https?:\/\//i.test(url)) return url;
+          return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+        });
+        return `srcset="${proxied}"`;
+      },
     );
     return `<img${rewritten}>`;
   });
