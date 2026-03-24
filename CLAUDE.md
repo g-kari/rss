@@ -133,6 +133,24 @@ console.log('段落2が含まれるか:', result?.[1].includes('段落2'));
 npm run typecheck
 ```
 
+### E2E テスト
+
+バグ修正・新機能追加後は Playwright E2E テストも実行する。
+
+```bash
+npm run test:e2e                        # 全テスト実行
+npx playwright test e2e/xxx.spec.ts     # 特定ファイルのみ
+npm run test:e2e:ui                     # UI モードでデバッグ
+```
+
+| ファイル | 対象 |
+|---|---|
+| `e2e/landing.spec.ts` | 未ログイン時のランディングページ |
+| `e2e/api-health.spec.ts` | API エンドポイントの基本動作・認証ガード |
+| `e2e/content-extraction.spec.ts` | 全文取得 `extractMainContent` の回帰テスト |
+
+新しいバグ修正を行った場合は、そのバグを再現するテストケースを `e2e/` に追加してから修正すること。
+
 ## 必要なシークレット
 
 | キー | 設定方法 |
