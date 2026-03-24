@@ -5,6 +5,50 @@ import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
 import { readingTime } from '../lib/article-utils';
 
+interface ArticleActionsProps {
+  isRead: boolean;
+  isBookmarked: boolean;
+  size?: 'sm' | 'md';
+  onToggleRead: () => void;
+  onToggleBookmark: () => void;
+}
+
+function ArticleActions({ isRead, isBookmarked, size = 'md', onToggleRead, onToggleBookmark }: ArticleActionsProps) {
+  const btn = size === 'sm' ? 'w-5 h-5' : 'w-6 h-6';
+  const icon = size === 'sm' ? 10 : 12;
+  const bicon = size === 'sm' ? { w: 9, h: 11 } : { w: 11, h: 13 };
+  return (
+    <>
+      <button
+        onClick={onToggleRead}
+        title={isRead ? '未読にする' : '既読にする'}
+        className={`${btn} flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150`}
+      >
+        {isRead ? (
+          <svg width={icon} height={icon} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="6" cy="6" r="4.5"/>
+          </svg>
+        ) : (
+          <svg width={icon} height={icon} viewBox="0 0 12 12" fill="currentColor">
+            <circle cx="6" cy="6" r="3.5"/>
+          </svg>
+        )}
+      </button>
+      <button
+        onClick={onToggleBookmark}
+        title={isBookmarked ? 'ブックマーク解除' : 'ブックマーク'}
+        className={`${btn} flex items-center justify-center rounded transition-all duration-150 ${
+          isBookmarked ? 'text-bookmark' : 'text-text-faint hover:text-text-muted hover:bg-surface-subtle'
+        }`}
+      >
+        <svg width={bicon.w} height={bicon.h} viewBox="0 0 11 13" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 1h9v11l-4.5-3L1 12V1z"/>
+        </svg>
+      </button>
+    </>
+  );
+}
+
 interface Props {
   feeds: Feed[];
   readIds: Set<string>;
@@ -200,32 +244,7 @@ export default function ArticleList({
         <span className="text-[11px] text-text-faint flex-shrink-0 group-hover:hidden">{timeAgo(article.publishedAt)}</span>
         {/* ホバーアクション */}
         <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => onToggleRead(article.id)}
-            title={isRead ? '未読にする' : '既読にする'}
-            className="w-6 h-6 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150"
-          >
-            {isRead ? (
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="6" cy="6" r="4.5"/>
-              </svg>
-            ) : (
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                <circle cx="6" cy="6" r="3.5"/>
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={() => onToggleBookmark(article.id)}
-            title={isBookmarked ? 'ブックマーク解除' : 'ブックマーク'}
-            className={`w-6 h-6 flex items-center justify-center rounded transition-all duration-150 ${
-              isBookmarked ? 'text-bookmark' : 'text-text-faint hover:text-text-muted hover:bg-surface-subtle'
-            }`}
-          >
-            <svg width="11" height="13" viewBox="0 0 11 13" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 1h9v11l-4.5-3L1 12V1z"/>
-            </svg>
-          </button>
+          <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
         </div>
       </div>
     );
@@ -289,32 +308,7 @@ export default function ArticleList({
           )}
           {/* ホバーアクション */}
           <div className="hidden group-hover:flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => onToggleRead(article.id)}
-              title={isRead ? '未読にする' : '既読にする'}
-              className="w-6 h-6 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150"
-            >
-              {isRead ? (
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="6" cy="6" r="4.5"/>
-                </svg>
-              ) : (
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                  <circle cx="6" cy="6" r="3.5"/>
-                </svg>
-              )}
-            </button>
-            <button
-              onClick={() => onToggleBookmark(article.id)}
-              title={isBookmarked ? 'ブックマーク解除' : 'ブックマーク'}
-              className={`w-6 h-6 flex items-center justify-center rounded transition-all duration-150 ${
-                isBookmarked ? 'text-bookmark' : 'text-text-faint hover:text-text-muted hover:bg-surface-subtle'
-              }`}
-            >
-              <svg width="11" height="13" viewBox="0 0 11 13" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 1h9v11l-4.5-3L1 12V1z"/>
-              </svg>
-            </button>
+            <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
           </div>
         </div>
       </div>
@@ -374,32 +368,7 @@ export default function ArticleList({
               {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:hidden" />}
               {/* ホバーアクション */}
               <div className="hidden group-hover:flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => onToggleRead(article.id)}
-                  title={isRead ? '未読にする' : '既読にする'}
-                  className="w-5 h-5 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150"
-                >
-                  {isRead ? (
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="6" cy="6" r="4.5"/>
-                    </svg>
-                  ) : (
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
-                      <circle cx="6" cy="6" r="3.5"/>
-                    </svg>
-                  )}
-                </button>
-                <button
-                  onClick={() => onToggleBookmark(article.id)}
-                  title={isBookmarked ? 'ブックマーク解除' : 'ブックマーク'}
-                  className={`w-5 h-5 flex items-center justify-center rounded transition-all duration-150 ${
-                    isBookmarked ? 'text-bookmark' : 'text-text-faint hover:text-text-muted hover:bg-surface-subtle'
-                  }`}
-                >
-                  <svg width="9" height="11" viewBox="0 0 11 13" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 1h9v11l-4.5-3L1 12V1z"/>
-                  </svg>
-                </button>
+                <ArticleActions size="sm" isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
               </div>
             </div>
           </div>
@@ -464,32 +433,7 @@ export default function ArticleList({
               {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:hidden" />}
               {/* ホバーアクション */}
               <div className="hidden group-hover:flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => onToggleRead(article.id)}
-                  title={isRead ? '未読にする' : '既読にする'}
-                  className="w-6 h-6 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150"
-                >
-                  {isRead ? (
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="6" cy="6" r="4.5"/>
-                    </svg>
-                  ) : (
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                      <circle cx="6" cy="6" r="3.5"/>
-                    </svg>
-                  )}
-                </button>
-                <button
-                  onClick={() => onToggleBookmark(article.id)}
-                  title={isBookmarked ? 'ブックマーク解除' : 'ブックマーク'}
-                  className={`w-6 h-6 flex items-center justify-center rounded transition-all duration-150 ${
-                    isBookmarked ? 'text-bookmark' : 'text-text-faint hover:text-text-muted hover:bg-surface-subtle'
-                  }`}
-                >
-                  <svg width="11" height="13" viewBox="0 0 11 13" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 1h9v11l-4.5-3L1 12V1z"/>
-                  </svg>
-                </button>
+                <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
               </div>
             </div>
           </div>
