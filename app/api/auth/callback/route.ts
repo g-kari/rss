@@ -21,26 +21,6 @@ function authError(message: string, status: number): Response {
   });
 }
 
-/**
- * CSRF state をタイミング攻撃耐性のある方法で比較する。
- * Web Crypto の HMAC を使い、両値の署名を同一キーで生成して XOR 比較することで
- * 文字列長・内容が異なる場合でも処理時間を均一化する。
- */
-async function timingSafeStringEqual(a: string, b: string): Promise<boolean> {
-  if (a.length !== b.length) return false;
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.generateKey({ name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const [sigA, sigB] = await Promise.all([
-    crypto.subtle.sign('HMAC', key, enc.encode(a)),
-    crypto.subtle.sign('HMAC', key, enc.encode(b)),
-  ]);
-  const va = new Uint8Array(sigA);
-  const vb = new Uint8Array(sigB);
-  let diff = 0;
-  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
-  return diff === 0;
-}
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -49,10 +29,9 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
   const savedState = cookieStore.get('auth_state')?.value;
 
-  if (!code || !state || !savedState) {
-    return authError('認証エラー: state 不一致', 400);
-  }
-  if (!(await timingSafeStringEqual(state, savedState))) {
+  // state は HttpOnly cookie で管理されており攻撃者は値を読めないため、
+  // タイミング攻撃は非現実的。通常の文字列比較で十分。
+  if (!code || !state || !savedState || state !== savedState) {
     return authError('認証エラー: state 不一致', 400);
   }
 
