@@ -107,35 +107,57 @@ export function removeNoise(html: string): string {
 /**
  * embed.zenn.studio/card iframe を外部リンクに変換する。
  *
- * classmethod 等、Zenn CMS を使うが zenn.dev でホストされていないサイトでは、
- * 記事内の bare URL が `<iframe src="embed.zenn.studio/card?...url=<encoded>">` に
- * 変換されている。Zenn の JS がないため "Loading..." のまま表示されるため、
- * `url` クエリパラメータから元 URL を取り出してリンクとして表示する。
+ * Zenn CMS が生成する card embed は以下の形式:
+ * <span class="embed-block zenn-embedded zenn-embedded-card">
+ *   <iframe src="https://embed.zenn.studio/card#zenn-embedded__xxx"
+ *     data-content="https%3A%2F%2Fexample.com%2Farticle"
+ *     ...></iframe>
+ * </span>
  *
- * zenn.dev 自体のページは Zenn の JS でレンダリングされるためそのまま残す。
+ * embed.zenn.studio の iframe は親ページの Zenn JS（postMessage）がないと
+ * "Loading..." のまま表示されるため、data-content から元 URL を取り出してリンクに変換する。
+ * zenn.dev / 非 zenn.dev を問わず全ドメインで適用する。
  */
-export function transformZennCardEmbeds(content: string, pageUrl = ''): string {
-  if (pageUrl.includes('zenn.dev')) return content;
-
+export function transformZennCardEmbeds(content: string): string {
   return content.replace(
-    // 自己終了 <iframe ... /> と通常 <iframe ...></iframe> の両方に対応
-    /<iframe\b([^>]*)(?:\/>|>([\s\S]*?)<\/iframe>)/gi,
-    (_match, attrs: string) => {
-      const srcMatch = attrs.match(/\bsrc=["']([^"']*)["']/i);
-      const src = srcMatch?.[1] ?? '';
-      if (!src.includes('embed.zenn.studio/card')) return _match;
-
+    /<span\b[^>]*\bzenn-embedded-card\b[^>]*>[\s\S]*?<\/span>/gi,
+    (spanMatch) => {
+      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
+      if (!dcMatch) return spanMatch;
       try {
-        const iframeUrl = new URL(src);
-        const linkedUrl = iframeUrl.searchParams.get('url');
-        if (linkedUrl) {
-          const decoded = decodeURIComponent(linkedUrl);
-          const titleMatch = attrs.match(/\btitle=["']([^"']*)["']/i);
-          const label = titleMatch?.[1] ? titleMatch[1] : decoded;
-          return `<a href="${decoded}" target="_blank" rel="noopener noreferrer">${label}</a>`;
-        }
-      } catch { /* ignore */ }
-      return '';
+        const url = decodeURIComponent(dcMatch[1]);
+        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
+      } catch {
+        return spanMatch;
+      }
+    },
+  );
+}
+
+/**
+ * embed.zenn.studio/tweet iframe を外部リンクに変換する。
+ *
+ * Zenn CMS が生成する tweet embed は以下の形式:
+ * <span class="embed-block zenn-embedded zenn-embedded-tweet">
+ *   <iframe src="https://embed.zenn.studio/tweet#zenn-embedded__xxx"
+ *     data-content="https%3A%2F%2Fx.com%2Fuser%2Fstatus%2F123"
+ *     ...></iframe>
+ * </span>
+ *
+ * card embed と同様に JS なしでは表示されないため、data-content から元 URL を取り出してリンクに変換する。
+ */
+export function transformZennTweetEmbeds(content: string): string {
+  return content.replace(
+    /<span\b[^>]*\bzenn-embedded-tweet\b[^>]*>[\s\S]*?<\/span>/gi,
+    (spanMatch) => {
+      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
+      if (!dcMatch) return spanMatch;
+      try {
+        const url = decodeURIComponent(dcMatch[1]);
+        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
+      } catch {
+        return spanMatch;
+      }
     },
   );
 }
@@ -223,7 +245,8 @@ export function rewriteImageUrls(html: string): string {
 export function postProcess(content: string, pageUrl = ''): string {
   const steps: Array<(html: string) => string> = [
     (html) => removeNoise(html),
-    (html) => transformZennCardEmbeds(html, pageUrl),
+    (html) => transformZennCardEmbeds(html),
+    (html) => transformZennTweetEmbeds(html),
     (html) => transformZennMermaidEmbeds(html, pageUrl),
     (html) => fixLazyImages(html),
     (html) => fixImageDimensions(html, pageUrl),
