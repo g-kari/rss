@@ -358,7 +358,7 @@ export default function ArticleList({
       >
         {thumb && (
           <img
-            src={thumb}
+            src={`/api/image-proxy?url=${encodeURIComponent(thumb)}`}
             alt=""
             className="w-full aspect-video object-contain bg-surface-subtle flex-shrink-0"
             loading="lazy"
@@ -419,7 +419,7 @@ export default function ArticleList({
       >
         {thumb && (
           <img
-            src={thumb}
+            src={`/api/image-proxy?url=${encodeURIComponent(thumb)}`}
             alt=""
             className="w-full aspect-video object-contain bg-surface-subtle"
             loading="lazy"
