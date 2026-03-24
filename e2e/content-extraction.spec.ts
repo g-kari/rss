@@ -82,6 +82,75 @@ test.describe('detectCharset — 文字エンコーディング検出', () => {
   });
 });
 
+// app/api/content/route.ts の transformZennMermaidEmbeds と同一ロジック（複製）
+function transformZennMermaidEmbeds(content: string): string {
+  return content.replace(
+    /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
+    (spanMatch) => {
+      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
+      if (!dcMatch) return spanMatch;
+      try {
+        const source = decodeURIComponent(dcMatch[1]);
+        const escaped = source
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        return `<pre><code class="language-mermaid">${escaped}</code></pre>`;
+      } catch {
+        return spanMatch;
+      }
+    },
+  );
+}
+
+test.describe('transformZennMermaidEmbeds — Zenn mermaid 変換', () => {
+  const makeMermaidSpan = (encodedContent: string) =>
+    `<span class="embed-block zenn-embedded zenn-embedded-mermaid">` +
+    `<iframe id="zenn-embedded__abc" src="https://embed.zenn.studio/mermaid#zenn-embedded__abc"` +
+    ` data-content="${encodedContent}"></iframe></span>`;
+
+  test('mermaid embed が code ブロックに変換される', () => {
+    const span = makeMermaidSpan('flowchart%20TD%0A%20%20A%5BStart%5D%20--%3E%20B%5BEnd%5D');
+    const result = transformZennMermaidEmbeds(span);
+    expect(result).not.toContain('<iframe');
+    expect(result).not.toContain('embed.zenn.studio');
+    expect(result).toContain('language-mermaid');
+    expect(result).toContain('flowchart TD');
+    expect(result).toContain('A[Start]');
+  });
+
+  test('< > & が HTML エスケープされる', () => {
+    // mermaid source: A[a<b] --> B{c>d}
+    const span = makeMermaidSpan('A%5Ba%3Cb%5D%20--%3E%20B%7Bc%3Ed%7D');
+    const result = transformZennMermaidEmbeds(span);
+    expect(result).toContain('&lt;');
+    expect(result).toContain('&gt;');
+    expect(result).not.toContain('<b');
+  });
+
+  test('data-content がない iframe はそのまま保持される', () => {
+    const span =
+      `<span class="embed-block zenn-embedded zenn-embedded-mermaid">` +
+      `<iframe src="https://embed.zenn.studio/mermaid#id"></iframe></span>`;
+    const result = transformZennMermaidEmbeds(span);
+    expect(result).toContain('<iframe');
+  });
+
+  test('mermaid 以外の Zenn embed は変換されない', () => {
+    const otherEmbed =
+      `<span class="embed-block zenn-embedded zenn-embedded-tweet">` +
+      `<iframe src="https://embed.zenn.studio/twitter/xxx"></iframe></span>`;
+    const result = transformZennMermaidEmbeds(otherEmbed);
+    expect(result).toContain('<iframe');
+    expect(result).toContain('embed.zenn.studio/twitter');
+  });
+
+  test('mermaid embed を含まない通常テキストは変更されない', () => {
+    const html = '<p>通常のテキスト</p><pre><code>コードブロック</code></pre>';
+    expect(transformZennMermaidEmbeds(html)).toBe(html);
+  });
+});
+
 test.describe('extractMainContent 回帰テスト', () => {
   test('article ネスト: 後半本文が切れない', () => {
     const html = '<html><body><article class="main"><h1>Title</h1><article class="inner">inner</article><p>後半の本文</p></article></body></html>';
