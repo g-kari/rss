@@ -27,6 +27,7 @@ AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL = "https://rss.0g0.xyz"
 # ベータアクセス制限: 許可する sub をカンマ区切りで列挙。空文字なら制限なし
 BETA_ALLOWED_SUBS = "551a6605-2ca0-4196-b823-5676dbd585a3"
+VAPID_SUBJECT = "mailto:admin@0g0.xyz"
 # Cloudflare AI toMarkdown API (全文取得フォールバック用)
 # CLOUDFLARE_API_TOKEN は `npx wrangler secret put CLOUDFLARE_API_TOKEN` で設定
 
@@ -57,3 +58,7 @@ invocation_logs = true
 # シークレットは以下で設定:
 # npx wrangler secret put CLIENT_ID
 # npx wrangler secret put CLIENT_SECRET
+#
+# Push 通知用 VAPID 鍵 (node scripts/generate-vapid-keys.mjs で生成):
+# npx wrangler secret put VAPID_PUBLIC_KEY
+# npx wrangler secret put VAPID_PRIVATE_KEY

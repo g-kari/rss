@@ -8,6 +8,7 @@ import ArticleView from './components/ArticleView';
 import type { Feed, Article, Layout, FontSize } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useFeeds } from './hooks/useFeeds';
+import { usePushNotifications } from './hooks/usePushNotifications';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
 import { useFilteredArticles } from './hooks/useFilteredArticles';
 import { STORAGE_KEYS, storageGet, storageSet, loadSet, saveSet } from './lib/storage';
@@ -73,6 +74,7 @@ export default function App() {
 
   const { user, betaRestricted } = useAuth();
   const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles } = useFeeds(user);
+  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush } = usePushNotifications(user);
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
@@ -614,6 +616,10 @@ export default function App() {
           onTogglePinFeed={togglePinFeed}
           canInstall={!!installPrompt}
           onInstall={installApp}
+          pushSupported={pushSupported}
+          pushSubscribed={pushSubscribed}
+          pushLoading={pushLoading}
+          onTogglePush={togglePush}
         />
       </div>
       <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'list' ? 'hidden lg:block' : ''}`}>
