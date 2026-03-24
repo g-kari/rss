@@ -11,19 +11,17 @@ const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
  * CSS で max-width: 100% を指定しているが、inline style や属性の上書きに対応する。
  */
 function fixImageDimensions(html: string): string {
-  // width/height 属性を除去
   return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
     const cleaned = attrs
       .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
       .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
-      // inline style の width/height も除去
       .replace(/\s+style\s*=\s*"([^"]*)"/gi, (_s, style: string) => {
-        const cleaned2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
-        return cleaned2 ? ` style="${cleaned2}"` : '';
+        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
+        return s2 ? ` style="${s2}"` : '';
       })
       .replace(/\s+style\s*=\s*'([^']*)'/gi, (_s, style: string) => {
-        const cleaned2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
-        return cleaned2 ? ` style="${cleaned2}"` : '';
+        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
+        return s2 ? ` style="${s2}"` : '';
       });
     return `<img${cleaned}>`;
   });
@@ -31,13 +29,33 @@ function fixImageDimensions(html: string): string {
 
 /**
  * table タグをレスポンシブスクロール可能なラッパーで包む。
- * globals.css の .article-content table では display: block + overflow-x: auto を指定しているが、
- * ネストされた table には table タグの display 制御だけでは不十分なケースがあるため wrapper で補完する。
  */
 function wrapTables(html: string): string {
   return html.replace(
     /(<table\b[^>]*>[\s\S]*?<\/table>)/gi,
     '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.25em 0">$1</div>',
+  );
+}
+
+/**
+ * img タグ配列から CSS scroll-snap スライダー HTML を生成する。
+ * removeNoise の EC ギャラリー変換と shopifyDesc の商品画像ギャラリーで共用。
+ */
+function buildImageSlider(imgs: string[]): string {
+  if (imgs.length === 0) return '';
+  const slides = imgs
+    .map(
+      (img) =>
+        `<div style="flex:0 0 100%;scroll-snap-align:start;overflow:hidden;border-radius:8px;background:#f5f5f5;aspect-ratio:1/1">` +
+        img.replace(/<img\b/, '<img style="width:100%;height:100%;object-fit:contain;display:block"') +
+        `</div>`,
+    )
+    .join('');
+  return (
+    `<div style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0;` +
+    `margin:0 0 1.25em;border-radius:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none">` +
+    slides +
+    `</div>`
   );
 }
 
@@ -55,18 +73,82 @@ function removeNoise(html: string): string {
   // EC / Shopify: 商品画像ギャラリーを CSS scroll-snap スライダーに変換
   html = html.replace(
     /<(?:ul|div)[^>]+class="[^"]*(?:product__media|media-gallery|product-gallery|thumbnail[s]?(?:-list|-wrapper)?|image-gallery|photo-gallery|product-images)[^"]*"[^>]*>([\s\S]*?)<\/(?:ul|div)>/gi,
-    (_match, inner) => {
+    (_match, inner: string) => {
       const imgs = [...inner.matchAll(/<img\b[^>]*>/gi)].map((m) => m[0]);
-      if (imgs.length === 0) return '';
-      const slides = imgs.map((img) =>
-        `<div style="flex:0 0 100%;scroll-snap-align:start;overflow:hidden;border-radius:8px;background:#f5f5f5;aspect-ratio:1/1">` +
-        img.replace(/<img\b/, '<img style="width:100%;height:100%;object-fit:contain;display:block"') +
-        `</div>`,
-      ).join('');
-      return `<div style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0;margin:0 0 1.25em;border-radius:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none">${slides}</div>`;
+      return buildImageSlider(imgs);
     },
   );
   return html;
+}
+
+/**
+ * Zenn の mermaid embed iframe を mermaid ソースのコードブロックに変換する。
+ * embed.zenn.studio/mermaid は親ページの Zenn スクリプト（postMessage）がないと
+ * "Loading..." のまま表示されるため、data-content から直接ソースを取り出す。
+ */
+function transformZennMermaidEmbeds(content: string): string {
+  return content.replace(
+    /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
+    (spanMatch) => {
+      const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
+      if (!dcMatch) return spanMatch;
+      try {
+        const source = decodeURIComponent(dcMatch[1]);
+        const escaped = source
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        return (
+          `<pre style="background:var(--color-surface-subtle,#f3f3f1);` +
+          `border:1px solid var(--color-border-default,#e7e5e4);` +
+          `border-radius:6px;padding:1em;overflow-x:auto;white-space:pre">` +
+          `<code class="language-mermaid">${escaped}</code></pre>`
+        );
+      } catch {
+        return spanMatch;
+      }
+    },
+  );
+}
+
+/**
+ * JS 遅延ロード画像と Shopify サムネイルを高解像度に解決する。
+ * - data-src が有効 URL（{width} プレースホルダー含む）→ 800px 幅に解決して src を上書き
+ * - src の Shopify サイズサフィックス（_300x300 等）→ _800x に置換
+ */
+function fixLazyImages(html: string): string {
+  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
+    let fixed = attrs;
+
+    const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
+    if (dataSrcMatch) {
+      const resolved = dataSrcMatch[1].replace(/\{width\}/g, '800');
+      fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
+    }
+
+    // Shopify: _NNNx / _NNNxNNN / _NNNx@Nx サフィックスを _800x に置換
+    fixed = fixed.replace(
+      /(src=["'][^"']*?)_\d+x\d*(?:@\d+x)?\.(jpg|jpeg|png|webp|gif)(["'])/gi,
+      '$1_800x.$2$3',
+    );
+
+    return `<img${fixed}>`;
+  });
+}
+
+/** コンテンツ抽出後の後処理パイプライン */
+function postProcess(content: string): string {
+  return sanitizeHtml(
+    wrapTables(
+      fixImageDimensions(
+        fixLazyImages(
+          transformZennMermaidEmbeds(
+            removeNoise(content),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /**
@@ -75,18 +157,14 @@ function removeNoise(html: string): string {
  * Shift-JIS / EUC-JP など非 UTF-8 ページ（ITMedia 等）の文字化けを防ぐ。
  */
 function detectCharset(contentType: string, bodyBytes: Uint8Array): string {
-  // 1. Content-Type ヘッダーの charset を優先（例: text/html; charset=euc-jp）
   const ctMatch = contentType.match(/charset\s*=\s*([^\s;]+)/i);
   if (ctMatch?.[1]) return ctMatch[1];
 
-  // 2. HTML 先頭 2KB を Latin-1 でデコード（ASCII 互換なので meta タグは正確に読める）
   const preview = new TextDecoder('latin1').decode(bodyBytes.slice(0, 2048));
 
-  // <meta charset="shift_jis"> 形式
   const metaCharset = preview.match(/<meta\b[^>]+charset\s*=\s*["']?([^"'\s;>]+)/i)?.[1];
   if (metaCharset) return metaCharset;
 
-  // <meta http-equiv="Content-Type" content="text/html; charset=shift_jis"> 形式
   const metaHttp = preview.match(
     /<meta\b[^>]+content\s*=\s*["'][^"']*;\s*charset\s*=\s*([^"'\s;>]+)/i,
   )?.[1];
@@ -95,8 +173,11 @@ function detectCharset(contentType: string, bodyBytes: Uint8Array): string {
   return 'utf-8';
 }
 
-function extractMainContent(html: string, pageUrl: string): string {
-  const cleaned = html
+/**
+ * <head> / <nav> / <header> 等のページクローム要素を除去してコンテンツ部分のみ残す。
+ */
+function stripPageChrome(html: string): string {
+  return html
     .replace(/<head\b[\s\S]*?<\/head>/gi, '')
     .replace(/<nav\b[\s\S]*?<\/nav>/gi, '')
     .replace(/<header\b[\s\S]*?<\/header>/gi, '')
@@ -104,77 +185,14 @@ function extractMainContent(html: string, pageUrl: string): string {
     .replace(/<aside\b[\s\S]*?<\/aside>/gi, '')
     .replace(/<form\b[\s\S]*?<\/form>/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '');
+}
 
-  /**
-   * Zenn の mermaid embed iframe を mermaid ソースのコードブロックに変換する。
-   * embed.zenn.studio/mermaid は親ページの Zenn スクリプト（postMessage）がないと
-   * "Loading..." のまま表示されるため、data-content から直接ソースを取り出す。
-   */
-  function transformZennMermaidEmbeds(content: string): string {
-    return content.replace(
-      /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
-      (spanMatch) => {
-        const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
-        if (!dcMatch) return spanMatch;
-        try {
-          const source = decodeURIComponent(dcMatch[1]);
-          const escaped = source
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-          return (
-            `<pre style="background:var(--color-surface-subtle,#f3f3f1);` +
-            `border:1px solid var(--color-border-default,#e7e5e4);` +
-            `border-radius:6px;padding:1em;overflow-x:auto;white-space:pre">` +
-            `<code class="language-mermaid">${escaped}</code></pre>`
-          );
-        } catch {
-          return spanMatch;
-        }
-      },
-    );
-  }
-
-  /**
-   * JS 遅延ロード画像と Shopify サムネイルを高解像度に解決する。
-   * - data-src が有効 URL（{width} プレースホルダー含む）→ 800px 幅に解決して src を上書き
-   * - src の Shopify サイズサフィックス（_300x300 等）→ _800x に置換
-   */
-  function fixLazyImages(html: string): string {
-    return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-      let fixed = attrs;
-
-      // data-src が存在する場合: {width} を 800 に解決して src を上書き
-      const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
-      if (dataSrcMatch) {
-        const resolved = dataSrcMatch[1].replace(/\{width\}/g, '800');
-        fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
-      }
-
-      // Shopify: src の _NNNx / _NNNxNNN / _NNNx@Nx サフィックスを _800x に置換
-      // 例: _300x300.jpg → _800x.jpg, _530x@2x.jpg → _800x.jpg
-      fixed = fixed.replace(
-        /(src=["'][^"']*?)_\d+x\d*(?:@\d+x)?\.(jpg|jpeg|png|webp|gif)(["'])/gi,
-        '$1_800x.$2$3',
-      );
-
-      return `<img${fixed}>`;
-    });
-  }
-
-  function postProcess(content: string): string {
-    const noised = removeNoise(content);
-    const mermaid = transformZennMermaidEmbeds(noised);
-    const lazy = fixLazyImages(mermaid);
-    const imgFixed = fixImageDimensions(lazy);
-    const tableFixed = wrapTables(imgFixed);
-    return sanitizeHtml(tableFixed);
-  }
+function extractMainContent(html: string, pageUrl: string): string {
+  const cleaned = stripPageChrome(html);
 
   // --- サイト固有セレクター ---
 
   // Qiita: itemprop="articleBody" または class="it-MdContent"
-  // (\w+) でタグ名を捕捉し \1 で閉じタグを一致させる。greedy で末尾まで取得。
   const qiitaBody = cleaned.match(/<(\w+)[^>]+itemprop=["']articleBody["'][^>]*>([\s\S]*)<\/\1>/i);
   if (qiitaBody?.[2]) return postProcess(qiitaBody[2]);
 
@@ -197,25 +215,8 @@ function extractMainContent(html: string, pageUrl: string): string {
   // description は通常テキストのみなので、商品メイン画像を別途収集して先頭に付与する
   const shopifyDesc = cleaned.match(/<(\w+)[^>]+class=["'][^"']*product[^"']*description[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
   if (shopifyDesc?.[2]) {
-    // product-featured-media クラスを持つ img を収集してスライダーを構築
-    const mainImgs = [...cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)]
-      .map((m) => m[0]);
-    const gallery =
-      mainImgs.length > 0
-        ? `<div style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0;` +
-          `margin:0 0 1.25em;border-radius:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none">` +
-          mainImgs
-            .map(
-              (img) =>
-                `<div style="flex:0 0 100%;scroll-snap-align:start;overflow:hidden;` +
-                `border-radius:8px;background:#f5f5f5;aspect-ratio:1/1">` +
-                img.replace(/<img\b/, '<img style="width:100%;height:100%;object-fit:contain;display:block"') +
-                `</div>`,
-            )
-            .join('') +
-          `</div>`
-        : '';
-    return postProcess(gallery + shopifyDesc[2]);
+    const mainImgs = [...cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)].map((m) => m[0]);
+    return postProcess(buildImageSlider(mainImgs) + shopifyDesc[2]);
   }
 
   // --- 汎用セレクター ---
