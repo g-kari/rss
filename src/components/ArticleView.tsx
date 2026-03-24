@@ -446,7 +446,7 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
           <img
             src={article.ogImage}
             alt=""
-            className="w-full rounded-lg object-cover mb-6 aspect-[1.91/1]"
+            className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
             loading="lazy"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
