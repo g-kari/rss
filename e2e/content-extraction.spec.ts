@@ -3,6 +3,8 @@ import {
   detectCharset,
   fixLazyImages,
   fixImageDimensions,
+  rewriteImageUrls,
+  wrapTables,
   transformZennMermaidEmbeds,
   transformZennLinkEmbeds,
 } from '../src/lib/content';
@@ -285,6 +287,85 @@ test.describe('transformZennLinkEmbeds — Zenn card/tweet embed 変換', () => 
   test('embed を含まない通常テキストは変更されない', () => {
     const html = '<p>通常のテキスト</p><a href="https://example.com">リンク</a>';
     expect(transformZennLinkEmbeds(html)).toBe(html);
+  });
+});
+
+test.describe('rewriteImageUrls — 画像プロキシ書き換え', () => {
+  test('https:// の src を /api/image-proxy 経由に書き換える', () => {
+    const html = '<img src="https://example.com/photo.jpg" alt="写真">';
+    const result = rewriteImageUrls(html);
+    expect(result).toContain('src="/api/image-proxy?url=');
+    expect(result).toContain(encodeURIComponent('https://example.com/photo.jpg'));
+    expect(result).not.toContain('src="https://example.com');
+  });
+
+  test('http:// の src も /api/image-proxy 経由に書き換える', () => {
+    const html = '<img src="http://example.com/photo.jpg">';
+    const result = rewriteImageUrls(html);
+    expect(result).toContain('/api/image-proxy?url=');
+    expect(result).toContain(encodeURIComponent('http://example.com/photo.jpg'));
+  });
+
+  test('相対パスの src は書き換えない', () => {
+    const html = '<img src="/images/local.jpg" alt="ローカル">';
+    const result = rewriteImageUrls(html);
+    expect(result).toBe(html);
+  });
+
+  test('srcset の各 URL を /api/image-proxy 経由に書き換える', () => {
+    const html = '<img src="https://cdn.example.com/img.jpg" srcset="https://cdn.example.com/img@2x.jpg 2x, https://cdn.example.com/img@3x.jpg 3x">';
+    const result = rewriteImageUrls(html);
+    expect(result).toContain('/api/image-proxy?url=');
+    // 2x / 3x のディスクリプタが保持されるか確認
+    expect(result).toContain('2x');
+    expect(result).toContain('3x');
+  });
+
+  test('srcset の data: URL は書き換えない', () => {
+    const html = '<img srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">';
+    const result = rewriteImageUrls(html);
+    // data: URL は書き換えないこと
+    expect(result).not.toContain('/api/image-proxy?url=');
+  });
+
+  test('複数の img タグを同時に処理する', () => {
+    const html =
+      '<img src="https://example.com/a.jpg">' +
+      '<p>テキスト</p>' +
+      '<img src="https://example.com/b.jpg">';
+    const result = rewriteImageUrls(html);
+    const proxyMatches = result.match(/\/api\/image-proxy\?url=/g);
+    expect(proxyMatches).toHaveLength(2);
+  });
+});
+
+test.describe('wrapTables — テーブルのレスポンシブラップ', () => {
+  test('<table> が overflow-x:auto のラッパーで囲まれる', () => {
+    const html = '<table><tr><td>セル</td></tr></table>';
+    const result = wrapTables(html);
+    expect(result).toContain('overflow-x:auto');
+    expect(result).toContain('<table>');
+    expect(result).toContain('セル');
+  });
+
+  test('ラッパー div が table の前後にある通常コンテンツを変更しない', () => {
+    const html = '<p>前</p><table><tr><td>テーブル</td></tr></table><p>後</p>';
+    const result = wrapTables(html);
+    expect(result).toContain('<p>前</p>');
+    expect(result).toContain('<p>後</p>');
+    expect(result).toContain('overflow-x:auto');
+  });
+
+  test('class 属性付き <table> も処理する', () => {
+    const html = '<table class="data-table"><tr><th>ヘッダー</th></tr></table>';
+    const result = wrapTables(html);
+    expect(result).toContain('overflow-x:auto');
+    expect(result).toContain('class="data-table"');
+  });
+
+  test('テーブルのないコンテンツは変更しない', () => {
+    const html = '<p>テキスト</p><ul><li>項目</li></ul>';
+    expect(wrapTables(html)).toBe(html);
   });
 });
 

@@ -335,6 +335,47 @@ test.describe('sanitizeHtml — その他の攻撃ベクトル', () => {
   });
 });
 
+test.describe('sanitizeHtml — <noscript> / <template> 除去', () => {
+  test('<noscript> タグとその内容が除去される', () => {
+    const result = sanitizeHtml(
+      '<p>本文</p><noscript><img src="x" onerror="alert(1)"></noscript>'
+    );
+    expect(result).not.toContain('<noscript');
+    expect(result).not.toContain('onerror');
+    expect(result).toContain('<p>本文</p>');
+  });
+
+  test('<noscript> 内のスクリプトが除去される', () => {
+    const result = sanitizeHtml(
+      '<noscript><script>document.cookie="x=1"</script></noscript><p>本文</p>'
+    );
+    expect(result).not.toContain('<noscript');
+    expect(result).not.toContain('<script>');
+    expect(result).not.toContain('document.cookie');
+    expect(result).toContain('<p>本文</p>');
+  });
+
+  test('<template> タグとその内容が除去される', () => {
+    const result = sanitizeHtml(
+      '<p>本文</p><template><div><script>alert(1)</script></div></template>'
+    );
+    expect(result).not.toContain('<template');
+    expect(result).not.toContain('<script>');
+    expect(result).not.toContain('alert(1)');
+    expect(result).toContain('<p>本文</p>');
+  });
+
+  test('複数行 <noscript> が除去される', () => {
+    const result = sanitizeHtml(
+      '<p>前</p>\n<noscript>\n  <p>フォールバック</p>\n</noscript>\n<p>後</p>'
+    );
+    expect(result).not.toContain('<noscript');
+    expect(result).not.toContain('フォールバック');
+    expect(result).toContain('<p>前</p>');
+    expect(result).toContain('<p>後</p>');
+  });
+});
+
 test.describe('sanitizeHtml — inline style サニタイズ', () => {
   test('style 属性内の url() が除去される（CSS トラッキングピクセル防止）', () => {
     const result = sanitizeHtml(
