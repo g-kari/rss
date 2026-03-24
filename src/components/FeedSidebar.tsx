@@ -546,7 +546,7 @@ export default function FeedSidebar({
       {/* ユーザー情報 */}
       <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-2">
         {user.picture ? (
-          <img src={user.picture} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
+          <img src={`/api/image-proxy?url=${encodeURIComponent(user.picture)}`} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
         ) : (
           <div className="w-5 h-5 rounded-full bg-surface-subtle flex-shrink-0" />
         )}
