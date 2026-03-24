@@ -79,10 +79,19 @@ function fetchViaBinding(env: FetchEnv, url: string, init?: RequestInit): Promis
     .finally(() => clearTimeout(timeoutId));
 }
 
+/**
+ * フィード ID と GUID を組み合わせた複合キーを生成する。
+ * 複数フィードが同じ GUID を持つ場合に記事が上書きされるのを防ぐ。
+ */
+function articleKey(feedId: string, guid: string): string {
+  return `${feedId}|${guid}`;
+}
+
 /** パース済みアイテムを Article に変換する */
-function buildArticle(item: ParsedItem, feedId: string, existingByGuid: Map<string, Article>): Article {
+function buildArticle(item: ParsedItem, feedId: string, existingByKey: Map<string, Article>): Article {
+  const existing = existingByKey.get(articleKey(feedId, item.guid));
   return {
-    id: existingByGuid.get(item.guid)?.id ?? crypto.randomUUID(),
+    id: existing?.id ?? crypto.randomUUID(),
     feedId,
     guid: item.guid,
     title: item.title,
@@ -90,10 +99,10 @@ function buildArticle(item: ParsedItem, feedId: string, existingByGuid: Map<stri
     summary: item.summary,
     // content は articles.json に保存しない（JSON 肥大化を防ぐ）
     // 表示時は /api/content 経由でオンデマンド取得する
-    ogImage: item.ogImage || existingByGuid.get(item.guid)?.ogImage,
-    author: item.author || existingByGuid.get(item.guid)?.author,
+    ogImage: item.ogImage || existing?.ogImage,
+    author: item.author || existing?.author,
     publishedAt: item.publishedAt,
-    createdAt: existingByGuid.get(item.guid)?.createdAt ?? new Date().toISOString(),
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
   };
 }
 
@@ -123,12 +132,12 @@ function applyFeedError(feed: Feed, error: unknown): void {
   });
 }
 
-/** publishedAt 降順ソート + 最大件数でスライス */
+/** publishedAt 降順ソート + 最大件数でスライス。publishedAt が null の場合は createdAt にフォールバック */
 function sortAndSlice(articles: Iterable<Article>): Article[] {
   return [...articles]
     .sort((a, b) => {
-      const at = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-      const bt = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      const at = new Date(a.publishedAt ?? a.createdAt).getTime();
+      const bt = new Date(b.publishedAt ?? b.createdAt).getTime();
       return bt - at;
     })
     .slice(0, MAX_ARTICLES);
@@ -139,7 +148,8 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
   if (feeds.length === 0) return;
 
   const existing = await r2Get<Article[]>(env.RSS_DATA, `users/${userId}/articles.json`, []);
-  const existingByGuid = new Map(existing.map((a) => [a.guid, a]));
+  // feedId と guid の複合キーで管理し、異なるフィード間での GUID 衝突を防ぐ
+  const existingByKey = new Map(existing.map((a) => [articleKey(a.feedId, a.guid), a]));
 
   const results = await allSettledWithConcurrency(
     feeds.map((feed) => async () => {
@@ -158,7 +168,7 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
       const parsed = parseFeed(xml);
 
       applyFeedSuccess(feed, parsed);
-      return parsed.items.map((item) => buildArticle(item, feed.id, existingByGuid));
+      return parsed.items.map((item) => buildArticle(item, feed.id, existingByKey));
     }),
     FEED_FETCH_CONCURRENCY,
   );
@@ -177,8 +187,8 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
     else void 0; // already logged above
   }
 
-  const merged = new Map<string, Article>(existingByGuid);
-  for (const a of fresh) merged.set(a.guid, a);
+  const merged = new Map<string, Article>(existingByKey);
+  for (const a of fresh) merged.set(articleKey(a.feedId, a.guid), a);
 
   await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sortAndSlice(merged.values()));
 }
@@ -202,7 +212,8 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
   if (!isValidFeedUrl(feed.url)) throw new Error(`Invalid feed URL: ${feed.url}`);
 
   const existing = await r2Get<Article[]>(env.RSS_DATA, `users/${userId}/articles.json`, []);
-  const existingByGuid = new Map(existing.map((a) => [a.guid, a]));
+  // feedId と guid の複合キーで管理し、異なるフィード間での GUID 衝突を防ぐ
+  const existingByKey = new Map(existing.map((a) => [articleKey(a.feedId, a.guid), a]));
 
   try {
     const res = await fetchViaBinding(env, feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
@@ -212,15 +223,15 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
 
     applyFeedSuccess(feed, parsed);
     for (const item of parsed.items) {
-      const article = buildArticle(item, feed.id, existingByGuid);
-      existingByGuid.set(article.guid, article);
+      const article = buildArticle(item, feed.id, existingByKey);
+      existingByKey.set(articleKey(article.feedId, article.guid), article);
     }
   } catch (e) {
     applyFeedError(feed, e);
   }
 
   await r2Put(env.RSS_DATA, `users/${userId}/feeds.json`, feeds);
-  await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sortAndSlice(existingByGuid.values()));
+  await r2Put(env.RSS_DATA, `users/${userId}/articles.json`, sortAndSlice(existingByKey.values()));
 
   return feed;
 }
