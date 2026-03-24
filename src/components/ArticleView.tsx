@@ -214,6 +214,16 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
         }
         const ext = mimeToExt(ct.split(';')[0].trim());
         const blob = await res.blob();
+        // 小さい画像（アイコン・トラッキングピクセル等）を除外
+        // createImageBitmap で実寸を確認し、短辺が 100px 未満はスキップ
+        try {
+          const bmp = await createImageBitmap(blob);
+          const { width, height } = bmp;
+          bmp.close();
+          if (width < 100 || height < 100) continue;
+        } catch {
+          // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
+        }
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = blobUrl;
