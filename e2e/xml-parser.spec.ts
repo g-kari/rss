@@ -191,6 +191,106 @@ test.describe('parseFeed — 危険スキーム URL の排除', () => {
     expect(result.items[0].link).toBe('');
   });
 
+  test('file: スキームは空文字に変換される', () => {
+    const result = parseFeed(makeRss('file:///etc/passwd'));
+    expect(result.items[0].link).toBe('');
+  });
+});
+
+test.describe('parseFeed — 危険スキーム URL を持つ ogImage の排除', () => {
+  test('media:thumbnail に javascript: URL があれば空文字になる', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>記事</title>
+      <link>https://example.com/1</link>
+      <guid>urn:test:og-1</guid>
+      <media:thumbnail url="javascript:alert(1)"/>
+      <description>テスト</description>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe('');
+  });
+
+  test('media:thumbnail に data: URL があれば空文字になる', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>記事</title>
+      <link>https://example.com/2</link>
+      <guid>urn:test:og-2</guid>
+      <media:thumbnail url="data:text/html,&lt;script&gt;alert(1)&lt;/script&gt;"/>
+      <description>テスト</description>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe('');
+  });
+
+  test('content/description 内の <img src="javascript:"> は空文字になる', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>記事</title>
+      <link>https://example.com/3</link>
+      <guid>urn:test:og-3</guid>
+      <description><![CDATA[<p>本文</p><img src="javascript:alert(1)">]]></description>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe('');
+  });
+
+  test('media:thumbnail に正常な https: URL は保持される', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>記事</title>
+      <link>https://example.com/4</link>
+      <guid>urn:test:og-4</guid>
+      <media:thumbnail url="https://example.com/thumb.jpg"/>
+      <description>テスト</description>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe('https://example.com/thumb.jpg');
+  });
+
+  test('Atom entry の ogImage も safeUrl が適用される', () => {
+    const atom = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+  <title>Test</title>
+  <entry>
+    <id>urn:test:og-5</id>
+    <title>記事</title>
+    <link href="https://example.com/5"/>
+    <media:thumbnail url="javascript:alert(1)"/>
+    <summary>テスト</summary>
+  </entry>
+</feed>`;
+    const result = parseFeed(atom);
+    expect(result.items[0].ogImage).toBe('');
+  });
+});
+
+test.describe('parseFeed — RSS 1.0 の危険スキーム URL 排除', () => {
   test('RSS 1.0 の link にも適用される', () => {
     const rdf = `<?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"

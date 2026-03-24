@@ -227,7 +227,7 @@ export function parseFeed(xml: string): ParsedFeed {
           link: safeUrl(str(item.link)),
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
-          ogImage: extractImage(item),
+          ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item['dc:creator']) || authorStr(item.author)).trim(),
           publishedAt: parseDate(str(item.pubDate) || null),
         };
@@ -256,7 +256,7 @@ export function parseFeed(xml: string): ParsedFeed {
           ),
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
-          ogImage: extractImage(entry),
+          ogImage: safeUrl(extractImage(entry)),
           author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
           publishedAt: entry.published ?? entry.updated ?? null,
         };
@@ -281,7 +281,7 @@ export function parseFeed(xml: string): ParsedFeed {
           link: safeUrl(str(item.link) || str(item['@_rdf:about'])),
           summary: stripHtml(raw).slice(0, 200),
           content: sanitizeHtml(raw),
-          ogImage: extractImage(item),
+          ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item['dc:creator']) || authorStr(item.author)).trim(),
           // RSS 1.0 は pubDate がなく dc:date （ISO 8601）を使う
           publishedAt: parseDate(str(item.pubDate) || null) ?? parseDate(item['dc:date'] ?? null),
