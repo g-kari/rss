@@ -3,6 +3,7 @@ import { requireSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
+import { fetchWithTimeout } from '@/lib/fetch';
 import {
   detectCharset,
   extractMainContent,
@@ -39,16 +40,11 @@ export async function GET(request: Request) {
     return NextResponse.json(data, { headers: { 'X-Cache': 'HIT' } });
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)', Accept: 'text/html,application/xhtml+xml' },
       redirect: 'follow',
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    }, FETCH_TIMEOUT_MS);
 
     if (!res.ok) return NextResponse.json({ error: `${res.status} ${res.statusText}` }, { status: 502 });
 
@@ -103,7 +99,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ content }, { headers: { 'X-Cache': 'MISS', 'X-Content-Source': contentSource } });
   } catch (err) {
-    clearTimeout(timeoutId);
     if (err instanceof Error && err.name === 'AbortError')
       return NextResponse.json({ error: 'Request timeout' }, { status: 504 });
     console.error('[content] fetch error:', err);

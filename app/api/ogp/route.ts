@@ -3,6 +3,7 @@ import { requireSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
+import { fetchWithTimeout } from '@/lib/fetch';
 import { unescapeHtml } from '@/lib/html';
 
 const FETCH_TIMEOUT_MS = 5_000;
@@ -31,19 +32,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ image }, { headers: { 'X-Cache': 'HIT' } });
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)',
         Accept: 'text/html',
       },
       redirect: 'follow',
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    }, FETCH_TIMEOUT_MS);
     if (!res.ok) return NextResponse.json({ image: '' });
 
     // 先頭 MAX_BYTES だけ読んで og:image を探す
@@ -89,7 +85,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ image }, { headers: { 'X-Cache': 'MISS' } });
   } catch {
-    clearTimeout(timeoutId);
     return NextResponse.json({ image: '' });
   }
 }

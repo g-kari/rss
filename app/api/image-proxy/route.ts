@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
+import { fetchWithTimeout } from '@/lib/fetch';
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const FETCH_TIMEOUT_MS = 10_000;
@@ -55,20 +56,15 @@ export async function GET(request: Request) {
     });
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)',
         'Accept': 'image/*,*/*',
         'Referer': new URL(url).origin + '/',
       },
       redirect: 'follow',
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    }, FETCH_TIMEOUT_MS);
 
     if (!res.ok) return transparentGif();
 
@@ -121,7 +117,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (err) {
-    clearTimeout(timeoutId);
     if (err instanceof Error && err.name !== 'AbortError') {
       console.error('[image-proxy] fetch error:', err);
     }
