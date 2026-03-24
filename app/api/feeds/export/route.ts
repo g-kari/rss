@@ -5,12 +5,21 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { Feed } from '@/types';
 
 
+/** XML 属性値に使用できない文字をエスケープする */
+function escapeXmlAttr(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function buildOpml(feeds: Feed[]): string {
   const outlines = feeds
     .map((f) => {
-      const title = f.title.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const xmlUrl = f.url.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-      const htmlUrl = f.siteUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      const title = escapeXmlAttr(f.title);
+      const xmlUrl = escapeXmlAttr(f.url);
+      const htmlUrl = escapeXmlAttr(f.siteUrl);
       return `    <outline text="${title}" title="${title}" type="rss" xmlUrl="${xmlUrl}" htmlUrl="${htmlUrl}"/>`;
     })
     .join('\n');

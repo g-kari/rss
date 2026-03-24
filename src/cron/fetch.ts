@@ -14,6 +14,9 @@ const MAX_ARTICLES = 2000;
  */
 const CONSECUTIVE_ERROR_SKIP_THRESHOLD = 5;
 
+/** 外部フェッチのタイムアウト（ミリ秒）。ハング防止のため設定する */
+const FETCH_TIMEOUT_MS = 15_000;
+
 /**
  * ホスト名 → サービスバインディングキーのマッピング。
  * 同一アカウントの Worker は HTTP を経由しないため Bot 検出を回避できる。
@@ -22,7 +25,11 @@ const SERVICE_BINDING_HOSTS: Partial<Record<string, keyof FetchEnv>> = {
   'findme-rss.0g0.xyz': 'FINDME_RSS',
 };
 
-/** サービスバインディングまたはグローバル fetch でリクエストを送る */
+/**
+ * サービスバインディングまたはグローバル fetch でリクエストを送る。
+ * 外部フェッチには FETCH_TIMEOUT_MS のタイムアウトを適用する。
+ * サービスバインディング（同一アカウント内 Worker）はタイムアウトを設けない。
+ */
 function fetchViaBinding(env: FetchEnv, url: string, init?: RequestInit): Promise<Response> {
   const hostname = new URL(url).hostname;
   const bindingKey = SERVICE_BINDING_HOSTS[hostname];
@@ -30,7 +37,10 @@ function fetchViaBinding(env: FetchEnv, url: string, init?: RequestInit): Promis
     const binding = env[bindingKey] as Fetcher | undefined;
     if (binding) return binding.fetch(url, init);
   }
-  return fetch(url, init);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { ...init, signal: controller.signal })
+    .finally(() => clearTimeout(timeoutId));
 }
 
 /** パース済みアイテムを Article に変換する */
@@ -96,7 +106,10 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
 
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
-      feeds[i].consecutiveErrors = (feeds[i].consecutiveErrors ?? 0) + 1;
+      feeds[i].consecutiveErrors = Math.min(
+        (feeds[i].consecutiveErrors ?? 0) + 1,
+        CONSECUTIVE_ERROR_SKIP_THRESHOLD,
+      );
       feeds[i].fetchError = result.reason instanceof Error ? result.reason.message : String(result.reason);
       console.error('Feed fetch failed:', result.reason);
     }
@@ -149,7 +162,10 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
       existingByGuid.set(article.guid, article);
     }
   } catch (e) {
-    feed.consecutiveErrors = (feed.consecutiveErrors ?? 0) + 1;
+    feed.consecutiveErrors = Math.min(
+      (feed.consecutiveErrors ?? 0) + 1,
+      CONSECUTIVE_ERROR_SKIP_THRESHOLD,
+    );
     feed.fetchError = e instanceof Error ? e.message : String(e);
     console.error('Single feed fetch failed:', e);
   }
