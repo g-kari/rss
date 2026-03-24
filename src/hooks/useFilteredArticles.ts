@@ -35,7 +35,10 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === '1');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
+    const v = storageGet(STORAGE_KEYS.SORT_ORDER);
+    return v === 'oldest' ? 'oldest' : 'newest';
+  });
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -61,7 +64,11 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   }, []);
 
   const toggleSortOrder = useCallback(() => {
-    setSortOrder((v) => (v === 'newest' ? 'oldest' : 'newest'));
+    setSortOrder((v) => {
+      const next = v === 'newest' ? 'oldest' : 'newest';
+      storageSet(STORAGE_KEYS.SORT_ORDER, next);
+      return next;
+    });
     setPage(1);
   }, []);
 

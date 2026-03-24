@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
   CONTENT_CACHE_PREFIX: 'rss-content:',
   AI_CACHE_PREFIX: 'rss-ai:',
   UNREAD_ONLY: 'rss-unread-only',
+  SORT_ORDER: 'rss-sort-order',
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
