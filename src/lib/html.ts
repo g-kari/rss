@@ -35,6 +35,17 @@ export function unescapeHtml(s: string): string {
     .replace(/[\u0080-\u009F\u00AD\u200B-\u200D\u2028\u2029\uFEFF]/g, '');
 }
 
+/**
+ * URL 属性値が危険なスキームを含むかどうかを判定する。
+ * HTML エンティティデコードと先頭制御文字除去後に javascript: / vbscript: / data: を検出する。
+ * ブラウザは属性値の HTML エンティティをデコードし先頭の空白・制御文字を無視するため、
+ * 例: href="&#106;avascript:..." → &#106; = 'j' → javascript: に化けることがある。
+ */
+function hasDangerousScheme(val: string): boolean {
+  const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
+  return /^(?:javascript|vbscript|data):/i.test(decoded);
+}
+
 /** HTML タグを除去してプレーンテキストに変換する（AI 入力用） */
 export function toPlainText(html: string): string {
   return html
@@ -140,26 +151,11 @@ export function sanitizeHtml(html: string): string {
     .replace(/(?:src|href|action|formaction)\s*=\s*data:[^\s>]*/gi, '')
     // xlink:href の HTML エンティティ・先頭空白バイパスを除去
     // 汎用 href パターンより先に処理することで xlink: プレフィックスが残留しないようにする
-    .replace(/xlink:href\s*=\s*"([^"]*)"/gi, (m, val) => {
-      const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
-      return /^(?:javascript|vbscript|data):/i.test(decoded) ? '' : m;
-    })
-    .replace(/xlink:href\s*=\s*'([^']*)'/gi, (m, val) => {
-      const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
-      return /^(?:javascript|vbscript|data):/i.test(decoded) ? '' : m;
-    })
-    // HTML エンティティや先頭空白でエンコードされた危険スキームを除去
-    // ブラウザは属性値の HTML エンティティをデコードし先頭の空白・制御文字を無視するため、
-    // 例: href="&#106;avascript:..." → &#106; = 'j' → javascript: に、
-    //     href=" javascript:..." → 先頭空白を無視 → javascript: に化ける
-    .replace(/(?:href|src|action|formaction)\s*=\s*"([^"]*)"/gi, (m, val) => {
-      const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
-      return /^(?:javascript|vbscript|data):/i.test(decoded) ? '' : m;
-    })
-    .replace(/(?:href|src|action|formaction)\s*=\s*'([^']*)'/gi, (m, val) => {
-      const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
-      return /^(?:javascript|vbscript|data):/i.test(decoded) ? '' : m;
-    })
+    .replace(/xlink:href\s*=\s*"([^"]*)"/gi, (m, val) => (hasDangerousScheme(val) ? '' : m))
+    .replace(/xlink:href\s*=\s*'([^']*)'/gi, (m, val) => (hasDangerousScheme(val) ? '' : m))
+    // HTML エンティティや先頭空白でエンコードされた危険スキームを除去（hasDangerousScheme で検出）
+    .replace(/(?:href|src|action|formaction)\s*=\s*"([^"]*)"/gi, (m, val) => (hasDangerousScheme(val) ? '' : m))
+    .replace(/(?:href|src|action|formaction)\s*=\s*'([^']*)'/gi, (m, val) => (hasDangerousScheme(val) ? '' : m))
     // srcdoc 属性を除去（iframe フォールバック経由の HTML インジェクション防止）
     .replace(/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
     // ping 属性を除去（リンククリック時の意図しないリクエスト防止）
