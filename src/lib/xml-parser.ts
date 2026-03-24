@@ -75,8 +75,8 @@ const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
   isArray: (name) => ['item', 'entry', 'link'].includes(name),
-  // GHSA-jp2q-39xq-3w4g 対策: entity 展開制限を明示的に 200 に設定
-  // (0 を指定すると falsy 判定で無制限になる脆弱性があるため非ゼロ値を使う)
+  // GHSA-jp2q-39xq-3w4g (entity 展開 DoS) は fast-xml-parser v4.2.4 以降で修正済み。
+  // v5.x では entity 展開制限が内部に組み込まれているため追加オプション不要。
   processEntities: true,
   htmlEntities: true,
 });

@@ -8,6 +8,35 @@ import { r2Get, r2Put } from '../lib/r2';
 
 const MAX_ARTICLES = 500;
 
+/** クロン実行時のフィード並行取得数上限（メモリ・レート制限対策） */
+const FEED_FETCH_CONCURRENCY = 5;
+/** クロン実行時のユーザー並行処理数上限 */
+const USER_FETCH_CONCURRENCY = 3;
+
+/**
+ * 並行実行数を上限で制限しつつ Promise.allSettled 相当の結果を返す。
+ * 外部サーバーへの同時接続数を抑えレート制限を回避する。
+ */
+async function allSettledWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number,
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = new Array(tasks.length);
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (next < tasks.length) {
+      const i = next++;
+      try {
+        results[i] = { status: 'fulfilled', value: await tasks[i]() };
+      } catch (reason) {
+        results[i] = { status: 'rejected', reason };
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+  return results;
+}
+
 /**
  * 連続エラー回数がこの閾値以上のフィードはクロン実行時にスキップする。
  * ただし FEED_ERROR_RETRY_INTERVAL_MS 経過後は再試行を行う。
@@ -112,8 +141,8 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
   const existing = await r2Get<Article[]>(env.RSS_DATA, `users/${userId}/articles.json`, []);
   const existingByGuid = new Map(existing.map((a) => [a.guid, a]));
 
-  const results = await Promise.allSettled(
-    feeds.map(async (feed) => {
+  const results = await allSettledWithConcurrency(
+    feeds.map((feed) => async () => {
       // クロン実行時: 連続エラーが閾値以上のフィードは原則スキップ（4xx 等の永続的エラーを無限リトライしない）
       // ただし FEED_ERROR_RETRY_INTERVAL_MS 以上経過している場合は自動回復の可能性があるため再試行する
       if (!forceRetry && (feed.consecutiveErrors ?? 0) >= CONSECUTIVE_ERROR_SKIP_THRESHOLD) {
@@ -130,7 +159,8 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
 
       applyFeedSuccess(feed, parsed);
       return parsed.items.map((item) => buildArticle(item, feed.id, existingByGuid));
-    })
+    }),
+    FEED_FETCH_CONCURRENCY,
   );
 
   results.forEach((result, i) => {
@@ -199,5 +229,8 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
 export async function fetchAllUsers(env: FetchEnv): Promise<void> {
   const listed = await env.RSS_DATA.list({ prefix: 'users/', delimiter: '/' });
   const userIds = listed.delimitedPrefixes.map((p: string) => p.slice('users/'.length, -1));
-  await Promise.allSettled(userIds.map((id: string) => fetchUserArticles(env, id)));
+  await allSettledWithConcurrency(
+    userIds.map((id: string) => () => fetchUserArticles(env, id)),
+    USER_FETCH_CONCURRENCY,
+  );
 }
