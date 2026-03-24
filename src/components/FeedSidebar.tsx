@@ -151,6 +151,7 @@ interface Props {
   articles: Article[];
   readIds: Set<string>;
   bookmarkCount: number;
+  readingListCount: number;
   selectedFeedId: string | null;
   user: UserProfile;
   theme: 'light' | 'dark';
@@ -173,6 +174,7 @@ export default function FeedSidebar({
   articles,
   readIds,
   bookmarkCount,
+  readingListCount,
   selectedFeedId,
   user,
   theme,
@@ -465,6 +467,21 @@ export default function FeedSidebar({
           {bookmarkCount > 0 && (
             <span className="text-[11px] text-text-muted tabular-nums">
               {bookmarkCount > 99 ? '99+' : bookmarkCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => onSelectFeed('__reading_list__')}
+          className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
+            selectedFeedId === '__reading_list__'
+              ? 'text-text-strong bg-surface-subtle'
+              : 'text-text-muted hover:text-text-strong hover:bg-surface-hover'
+          }`}
+        >
+          <span className="text-[13px] tracking-[0.02em]">後で読む</span>
+          {readingListCount > 0 && (
+            <span className="text-[11px] text-text-muted tabular-nums">
+              {readingListCount > 99 ? '99+' : readingListCount}
             </span>
           )}
         </button>
