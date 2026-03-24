@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withSession } from '@/lib/server-auth';
-import { isValidFeedUrl } from '@/lib/url';
+import { isValidFeedUrl, MAX_URL_LENGTH } from '@/lib/url';
 import { sha256Hex } from '@/lib/r2';
 import { fetchWithTimeout } from '@/lib/fetch';
 import { unescapeHtml } from '@/lib/html';
@@ -70,8 +70,8 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     // HTML エンティティをデコード（&amp; → & など）
     // imgix 等の CDN は URL 中の & をそのまま期待するため必須
     const raw = unescapeHtml(m?.[1] ?? '');
-    // data: / javascript: 等の危険スキームをブロック（XSS 防止）
-    const image = /^https?:\/\//i.test(raw) ? raw : '';
+    // data: / javascript: 等の危険スキームをブロック、URL 長超過も除外（XSS / DoS 防止）
+    const image = /^https?:\/\//i.test(raw) && raw.length <= MAX_URL_LENGTH ? raw : '';
 
     // Cloudflare Cache API に保存（fire-and-forget）
     // image が空のときはキャッシュしない（og:image なし / 危険スキームで空になった場合を区別しない）
