@@ -126,9 +126,14 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           break;
         case 'c':
           if (selectedArticle?.link) {
-            navigator.clipboard.writeText(selectedArticle.link)
-              .then(() => showToast('リンクをコピーしました'))
-              .catch(() => showToast('コピーに失敗しました'));
+            if (typeof navigator.share === 'function') {
+              navigator.share({ url: selectedArticle.link, title: selectedArticle.title })
+                .catch(() => {});
+            } else {
+              navigator.clipboard.writeText(selectedArticle.link)
+                .then(() => showToast('リンクをコピーしました'))
+                .catch(() => showToast('コピーに失敗しました'));
+            }
           }
           break;
         case 'f': {
