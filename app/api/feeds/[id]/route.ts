@@ -13,12 +13,15 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const { env } = await getCloudflareContext({ async: true });
 
   const list = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
+  if (!list.some((f) => f.id === id)) {
+    return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
+  }
   await r2Put(env.RSS_DATA, `users/${session.userId}/feeds.json`, list.filter((f) => f.id !== id));
 
   const articles = await r2Get<Article[]>(env.RSS_DATA, `users/${session.userId}/articles.json`, []);
   await r2Put(env.RSS_DATA, `users/${session.userId}/articles.json`, articles.filter((a) => a.feedId !== id));
 
-  return NextResponse.json({ ok: true });
+  return applyRefreshedTokens(NextResponse.json({ ok: true }), session);
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
