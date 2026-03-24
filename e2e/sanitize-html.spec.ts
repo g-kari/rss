@@ -9,6 +9,20 @@ import { test, expect } from '@playwright/test';
  * テスト内に同一ロジックを複製して、サーバー起動なし・認証なしで実行できるようにしている。
  */
 
+// src/lib/html.ts の sanitizeHtml と同一ロジック（サーバー不要で実行するために複製）
+// 本番コードを変更した場合はこちらも同期すること
+const TRUSTED_IFRAME_DOMAINS = [
+  'youtube.com/embed',
+  'youtube-nocookie.com/embed',
+  'player.vimeo.com',
+  'open.spotify.com/embed',
+  'w.soundcloud.com',
+  'player.twitch.tv',
+  'clips.twitch.tv/embed',
+  'embed.nicovideo.jp',
+  'embed.zenn.studio',
+];
+
 function sanitizeHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -16,7 +30,12 @@ function sanitizeHtml(html: string): string {
     .replace(/<base\b[^>]*\/?>/gi, '')
     .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
     .replace(/<embed\b[^>]*\/?>/gi, '')
-    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
+    // <iframe> は信頼済みドメイン以外を除去
+    .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
+      const srcMatch = (attrs as string).match(/src\s*=\s*["']([^"']+)["']/i);
+      const src = srcMatch?.[1] ?? '';
+      return TRUSTED_IFRAME_DOMAINS.some((d) => src.includes(d)) ? _m : '';
+    })
     .replace(/<iframe\b[^>]*\/>/gi, '')
     .replace(/<meta\b[^>]*http-equiv\s*=\s*["']refresh["'][^>]*\/?>/gi, '')
     .replace(/[\s/]+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
@@ -99,6 +118,73 @@ test.describe('sanitizeHtml — <iframe> 防止', () => {
       '<iframe srcdoc="<script>alert(1)</script>"></iframe>'
     );
     expect(result).not.toContain('srcdoc');
+    expect(result).not.toContain('<iframe');
+  });
+});
+
+test.describe('sanitizeHtml — 信頼済み <iframe> の保持', () => {
+  test('YouTube embed が保持される', () => {
+    const iframe = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" allowfullscreen></iframe>';
+    const result = sanitizeHtml(`<p>動画</p>${iframe}`);
+    expect(result).toContain('youtube.com/embed');
+    expect(result).toContain('<iframe');
+    expect(result).toContain('<p>動画</p>');
+  });
+
+  test('YouTube Privacy Enhanced (youtube-nocookie.com) が保持される', () => {
+    const iframe = '<iframe src="https://www.youtube-nocookie.com/embed/abc123"></iframe>';
+    const result = sanitizeHtml(iframe);
+    expect(result).toContain('youtube-nocookie.com/embed');
+  });
+
+  test('Vimeo embed が保持される', () => {
+    const iframe = '<iframe src="https://player.vimeo.com/video/123456"></iframe>';
+    const result = sanitizeHtml(iframe);
+    expect(result).toContain('player.vimeo.com');
+  });
+
+  test('Spotify embed が保持される', () => {
+    const iframe = '<iframe src="https://open.spotify.com/embed/track/abc"></iframe>';
+    const result = sanitizeHtml(iframe);
+    expect(result).toContain('open.spotify.com/embed');
+  });
+
+  test('SoundCloud embed が保持される', () => {
+    const iframe = '<iframe src="https://w.soundcloud.com/player/?url=..."></iframe>';
+    const result = sanitizeHtml(iframe);
+    expect(result).toContain('w.soundcloud.com');
+  });
+
+  test('Twitch embed が保持される', () => {
+    const iframe = '<iframe src="https://player.twitch.tv/?channel=test"></iframe>';
+    const result = sanitizeHtml(iframe);
+    expect(result).toContain('player.twitch.tv');
+  });
+
+  test('NicoNico embed が保持される', () => {
+    const iframe = '<iframe src="https://embed.nicovideo.jp/watch/sm9"></iframe>';
+    const result = sanitizeHtml(iframe);
+    expect(result).toContain('embed.nicovideo.jp');
+  });
+
+  test('Zenn embed が保持される', () => {
+    const iframe = '<iframe src="https://embed.zenn.studio/articles/xxx"></iframe>';
+    const result = sanitizeHtml(iframe);
+    expect(result).toContain('embed.zenn.studio');
+  });
+
+  test('信頼済み src のない <iframe> (src 属性なし) が除去される', () => {
+    const result = sanitizeHtml('<iframe></iframe>');
+    expect(result).not.toContain('<iframe');
+  });
+
+  test('信頼済みドメインに似た偽ドメインが除去される', () => {
+    // youtube.com.evil.example/embed のような偽装は除去されること
+    const result = sanitizeHtml(
+      '<iframe src="https://youtube.com.evil.example/embed/abc"></iframe>'
+    );
+    // trusted check は src.includes(d) なので "youtube.com/embed" は含まれない → 除去される
+    expect(result).not.toContain('evil.example');
     expect(result).not.toContain('<iframe');
   });
 });
