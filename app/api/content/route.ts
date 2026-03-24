@@ -52,8 +52,6 @@ function removeNoise(html: string): string {
   html = html.replace(/<div[^>]+class="[^"]*(?:ChapterList|RelatedArticles|TocItem)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
   // 汎用: "related", "recommend", "share", "sns" を含む div
   html = html.replace(/<div[^>]+class="[^"]*(?:related|recommend|share|sns|toc-|side-)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
-  // Shopify / EC: 商品画像ギャラリー・サムネイルリスト
-  html = html.replace(/<(?:ul|div)[^>]+class="[^"]*(?:product__media|media-gallery|product-gallery|thumbnail[s]?(?:-list|-wrapper)?|image-gallery|photo-gallery|product-images)[^"]*"[^>]*>[\s\S]*?<\/(?:ul|div)>/gi, '');
   return html;
 }
 
