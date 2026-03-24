@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   const result = await requireSession();
   if ('error' in result) return result.error;
   const { session } = result;
-  const { env } = await getCloudflareContext({ async: true });
+  const { env, ctx } = await getCloudflareContext({ async: true });
 
   const text = await request.text();
   if (!text || text.length > 1_000_000) {
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
   if (added.length > 0) {
     await r2Put(env.RSS_DATA, `users/${session.userId}/feeds.json`, list);
-    fetchArticles(env, session.userId).catch(console.error);
+    ctx.waitUntil(fetchArticles(env, session.userId).catch(console.error));
   }
 
   return applyRefreshedTokens(

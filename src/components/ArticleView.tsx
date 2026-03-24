@@ -42,9 +42,12 @@ function loadCache(id: string): string | null {
 }
 
 function saveCache(id: string, content: string) {
+  const key = `${STORAGE_KEYS.CONTENT_CACHE_PREFIX}${id}`;
+  // 既存キーを先に削除して末尾に再挿入 → Object.keys() 順序が LRU 順になる
+  storageRemove(key);
   const keys = storageListKeys(STORAGE_KEYS.CONTENT_CACHE_PREFIX);
   if (keys.length >= CACHE_MAX) storageRemove(keys[0]);
-  storageSet(`${STORAGE_KEYS.CONTENT_CACHE_PREFIX}${id}`, content);
+  storageSet(key, content);
 }
 
 function loadAiCache(articleId: string, mode: AiMode): string | null {
@@ -52,9 +55,11 @@ function loadAiCache(articleId: string, mode: AiMode): string | null {
 }
 
 function saveAiCache(articleId: string, mode: AiMode, text: string): void {
+  const key = `${STORAGE_KEYS.AI_CACHE_PREFIX}${articleId}:${mode}`;
+  storageRemove(key);
   const keys = storageListKeys(STORAGE_KEYS.AI_CACHE_PREFIX);
   if (keys.length >= AI_CACHE_MAX) storageRemove(keys[0]);
-  storageSet(`${STORAGE_KEYS.AI_CACHE_PREFIX}${articleId}:${mode}`, text);
+  storageSet(key, text);
 }
 
 

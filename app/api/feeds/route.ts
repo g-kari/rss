@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const result = await requireSession();
   if ('error' in result) return result.error;
   const { session } = result;
-  const { env } = await getCloudflareContext({ async: true });
+  const { env, ctx } = await getCloudflareContext({ async: true });
 
   const body = await request.json() as { url?: string };
   let url = body?.url?.trim();
@@ -49,8 +49,8 @@ export async function POST(request: Request) {
   list.push(newFeed);
   await r2Put(env.RSS_DATA, `users/${session.userId}/feeds.json`, list);
 
-  // バックグラウンドで記事取得
-  fetchArticles(env, session.userId).catch(console.error);
+  // バックグラウンドで記事取得（waitUntil でレスポンス送信後も Workers が処理を継続する）
+  ctx.waitUntil(fetchArticles(env, session.userId).catch(console.error));
 
   return applyRefreshedTokens(NextResponse.json(newFeed, { status: 201 }), session);
 }
