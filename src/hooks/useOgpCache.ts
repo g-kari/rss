@@ -55,13 +55,11 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
               const next = { ...prev, [a.link]: image };
               // キャッシュが肥大化しないよう最大 200 件に制限
               const keys = Object.keys(next);
-              if (keys.length > MAX_OGP_CACHE_SIZE) {
-                const trimmed = Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]));
-                storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(trimmed));
-                return trimmed;
-              }
-              storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(next));
-              return next;
+              const result = keys.length > MAX_OGP_CACHE_SIZE
+                ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
+                : next;
+              storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(result));
+              return result;
             });
           } else {
             // OGP 画像なし: セッション内で再フェッチしないようマーク

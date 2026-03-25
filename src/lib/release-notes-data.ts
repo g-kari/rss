@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (43)
+
+### リファクタリング
+- **\`useOgpCache\` キャッシュ保存の重複解消** — \`setOgpCache\` コールバック内で条件分岐ごとに重複していた \`storageSet\` 呼び出しを、結果を \`result\` 変数にまとめて 1 回の呼び出しに統一
+- **\`useFilteredArticles\` ボリュームトグルのヘルパー抽出** — \`toggleUnreadOnly\` / \`toggleBookmarkOnly\` で重複していた boolean トグル + localStorage 保存パターンを \`boolToggleWithStorage\` ヘルパー関数として抽出。\`useMemo\` 内の \`selectedArticleId || gracePeriodId\` 判定を \`isActive\` ヘルパーに抽出して可読性向上
+
 ## 2026-03-26 (42)
 
 ### バグ修正

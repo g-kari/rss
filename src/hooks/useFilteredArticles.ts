@@ -4,6 +4,15 @@ import { STORAGE_KEYS, storageGet, storageSet } from '../lib/storage';
 
 const PAGE_SIZE = 30;
 
+/** boolean state をトグルして localStorage に保存するステート更新関数を返す */
+function boolToggleWithStorage(key: string) {
+  return (v: boolean): boolean => {
+    const next = !v;
+    storageSet(key, next ? '1' : '0');
+    return next;
+  };
+}
+
 interface Options {
   articles: Article[];
   feedId: string | null;
@@ -80,20 +89,12 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   }, [rawQuery]);
 
   const toggleUnreadOnly = useCallback(() => {
-    setUnreadOnly((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.UNREAD_ONLY, next ? '1' : '0');
-      return next;
-    });
+    setUnreadOnly(boolToggleWithStorage(STORAGE_KEYS.UNREAD_ONLY));
     setPage(1);
   }, []);
 
   const toggleBookmarkOnly = useCallback(() => {
-    setBookmarkOnly((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.BOOKMARK_ONLY, next ? '1' : '0');
-      return next;
-    });
+    setBookmarkOnly(boolToggleWithStorage(STORAGE_KEYS.BOOKMARK_ONLY));
     setPage(1);
   }, []);
 
@@ -149,8 +150,9 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
             : articles;
     // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
     // gracePeriodId: 直前まで表示していた記事を5秒間保持（未読フィルター中でも前の記事に戻れるように）
-    if (unreadOnly) list = list.filter((a) => !readIds.has(a.id) || a.id === selectedArticleId || a.id === gracePeriodId);
-    if (bookmarkOnly) list = list.filter((a) => bookmarkIds.has(a.id) || a.id === selectedArticleId || a.id === gracePeriodId);
+    const isActive = (id: string) => id === selectedArticleId || id === gracePeriodId;
+    if (unreadOnly) list = list.filter((a) => !readIds.has(a.id) || isActive(a.id));
+    if (bookmarkOnly) list = list.filter((a) => bookmarkIds.has(a.id) || isActive(a.id));
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter(
