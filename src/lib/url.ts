@@ -101,3 +101,20 @@ export function isValidFeedUrl(url: string): boolean {
     return false;
   }
 }
+
+/**
+ * HTTPS URL として有効かどうかを検証する。
+ * プッシュ通知エンドポイント等、HTTPS のみ許可する場面で使用する。
+ * HTTP は拒否し、プライベート IP レンジへのアクセスも拒否する（SSRF 対策）。
+ */
+export function isValidHttpsUrl(url: string): boolean {
+  if (url.length > MAX_URL_LENGTH) return false;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    if (isPrivateHost(parsed.hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}

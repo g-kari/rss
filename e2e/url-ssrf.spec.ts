@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { isValidFeedUrl } from '../src/lib/url';
+import { isValidFeedUrl, isValidHttpsUrl } from '../src/lib/url';
 
 /**
  * isValidFeedUrl の SSRF 対策回帰テスト
@@ -243,5 +243,76 @@ test.describe('isValidFeedUrl — IPv4 変換 IPv6 アドレスを拒否', () =>
 
   test('[64:ff9b::7f00:1] NAT64 変換プレフィックスを拒否する', () => {
     expect(isValidFeedUrl('http://[64:ff9b::7f00:1]/')).toBe(false);
+  });
+});
+
+// =========================================================================
+// isValidHttpsUrl — プッシュ通知エンドポイント用 SSRF 対策
+// =========================================================================
+
+test.describe('isValidHttpsUrl — 有効な URL', () => {
+  test('https の公開 URL を許可する', () => {
+    expect(isValidHttpsUrl('https://fcm.googleapis.com/fcm/send/abc123')).toBe(true);
+  });
+
+  test('https のサブドメイン URL を許可する', () => {
+    expect(isValidHttpsUrl('https://push.services.mozilla.com/wpush/v2/abc')).toBe(true);
+  });
+});
+
+test.describe('isValidHttpsUrl — http を拒否', () => {
+  test('http URL を拒否する（HTTPS のみ許可）', () => {
+    expect(isValidHttpsUrl('http://example.com/push')).toBe(false);
+  });
+
+  test('空文字列を拒否する', () => {
+    expect(isValidHttpsUrl('')).toBe(false);
+  });
+
+  test('不正な URL を拒否する', () => {
+    expect(isValidHttpsUrl('not-a-url')).toBe(false);
+  });
+});
+
+test.describe('isValidHttpsUrl — SSRF 対策（プライベート IP を拒否）', () => {
+  test('127.0.0.1 ループバックを拒否する', () => {
+    expect(isValidHttpsUrl('https://127.0.0.1/push')).toBe(false);
+  });
+
+  test('10.0.0.1 プライベートを拒否する', () => {
+    expect(isValidHttpsUrl('https://10.0.0.1/push')).toBe(false);
+  });
+
+  test('192.168.1.1 プライベートを拒否する', () => {
+    expect(isValidHttpsUrl('https://192.168.1.1/push')).toBe(false);
+  });
+
+  test('172.16.0.1 プライベートを拒否する', () => {
+    expect(isValidHttpsUrl('https://172.16.0.1/push')).toBe(false);
+  });
+
+  test('169.254.1.1 リンクローカルを拒否する', () => {
+    expect(isValidHttpsUrl('https://169.254.1.1/push')).toBe(false);
+  });
+
+  test('localhost を拒否する', () => {
+    expect(isValidHttpsUrl('https://localhost/push')).toBe(false);
+  });
+
+  test('.internal ドメインを拒否する', () => {
+    expect(isValidHttpsUrl('https://api.internal/push')).toBe(false);
+  });
+
+  test('[::1] IPv6 ループバックを拒否する', () => {
+    expect(isValidHttpsUrl('https://[::1]/push')).toBe(false);
+  });
+
+  test('[::ffff:127.0.0.1] IPv4マップド IPv6 を拒否する', () => {
+    expect(isValidHttpsUrl('https://[::ffff:127.0.0.1]/push')).toBe(false);
+  });
+
+  test('2048 文字超の URL を拒否する', () => {
+    const long = 'https://example.com/' + 'a'.repeat(2030);
+    expect(isValidHttpsUrl(long)).toBe(false);
   });
 });

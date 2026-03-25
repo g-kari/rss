@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withSession, parseJsonBody } from '@/lib/server-auth';
 import { r2Get, r2Put } from '@/lib/r2';
+import { isValidHttpsUrl } from '@/lib/url';
 import type { PushConfig, PushSubscriptionRecord } from '@/types';
 
 /** Push サブスクリプションあたりの上限数 */
@@ -26,18 +27,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 });
     }
 
-    // endpoint は HTTPS URL、かつ 2048 文字以内
-    let endpointUrl: URL;
-    try {
-      endpointUrl = new URL(body.endpoint);
-    } catch {
+    // endpoint は HTTPS URL、2048 文字以内、かつプライベート IP レンジ外（SSRF 対策）
+    if (!isValidHttpsUrl(body.endpoint)) {
       return NextResponse.json({ error: 'Invalid endpoint URL' }, { status: 400 });
-    }
-    if (endpointUrl.protocol !== 'https:') {
-      return NextResponse.json({ error: 'endpoint must be HTTPS' }, { status: 400 });
-    }
-    if (body.endpoint.length > 2048) {
-      return NextResponse.json({ error: 'endpoint too long' }, { status: 400 });
     }
 
     // p256dh: 非圧縮 P-256 公開鍵 (65 bytes)、base64url
