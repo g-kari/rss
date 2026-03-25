@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (12)
+
+### セキュリティ
+- **cron の RSS フェッチにリダイレクト安全検証を適用** — \`fetchViaBinding\` が外部 URL に対して \`fetchWithTimeout\`（リダイレクトを素通り）を使っていたため、正規フィード URL からプライベート IP へのリダイレクトで SSRF が成立しえた。\`fetchFollowSafeRedirects\` に切り替え、各リダイレクト先を \`isValidFeedUrl\` で検証するよう修正
+
 ## 2026-03-25 (11)
 
 ### リファクタリング
