@@ -33,6 +33,17 @@ interface Props {
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
+/** target から currentTarget まで祖先を遡り、横スクロール可能な要素があれば true を返す */
+function hasScrollableAncestor(target: EventTarget | null, currentTarget: EventTarget | null): boolean {
+  let node = target as Element | null;
+  while (node && node !== currentTarget) {
+    const ox = getComputedStyle(node).overflowX;
+    if ((ox === 'auto' || ox === 'scroll') && node.scrollWidth > node.clientWidth) return true;
+    node = node.parentElement;
+  }
+  return false;
+}
+
 export default function ArticleView({
   article,
   isBookmarked,
@@ -188,12 +199,7 @@ export default function ArticleView({
 
   function handleWheel(e: React.WheelEvent) {
     // 横スクロール可能な子要素の上ではスキップ
-    let node = e.target as Element | null;
-    while (node && node !== e.currentTarget) {
-      const ox = getComputedStyle(node).overflowX;
-      if ((ox === 'auto' || ox === 'scroll') && node.scrollWidth > node.clientWidth) return;
-      node = node.parentElement;
-    }
+    if (hasScrollableAncestor(e.target, e.currentTarget)) return;
     // 縦スクロールが優位な場合はスキップ
     if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * 0.5) return;
 
@@ -213,12 +219,7 @@ export default function ArticleView({
 
   function handleTouchStart(e: React.TouchEvent) {
     // 横スクロール可能な要素（コードブロック・テーブル等）の上ではスワイプ検知しない
-    let node = e.target as Element | null;
-    while (node && node !== e.currentTarget) {
-      const ox = getComputedStyle(node).overflowX;
-      if ((ox === 'auto' || ox === 'scroll') && node.scrollWidth > node.clientWidth) return;
-      node = node.parentElement;
-    }
+    if (hasScrollableAncestor(e.target, e.currentTarget)) return;
     const t = e.touches[0];
     touchStartRef.current = { x: t.clientX, y: t.clientY };
   }

@@ -115,15 +115,9 @@ export function useReadState(
   // ref を最新の state / props に同期
   useEffect(() => {
     localReadRef.current = readIds;
-  }, [readIds]);
-
-  useEffect(() => {
     localBookmarkRef.current = bookmarkIds;
-  }, [bookmarkIds]);
-
-  useEffect(() => {
     localReadingListRef.current = readingListIds;
-  }, [readingListIds]);
+  }, [readIds, bookmarkIds, readingListIds]);
 
   useEffect(() => {
     articlesRef.current = articles;
