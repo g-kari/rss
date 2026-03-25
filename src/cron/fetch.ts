@@ -377,6 +377,11 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
     const parsed = parseFeed(xml);
 
     applyFeedSuccess(feed, parsed);
+    // 次回の条件付きリクエスト用にキャッシュバリデータを保存
+    const lastModified = res.headers.get('Last-Modified');
+    const etag = res.headers.get('ETag');
+    if (lastModified) feed.lastModified = lastModified;
+    if (etag) feed.etag = etag;
     for (const item of parsed.items) {
       const article = buildArticle(item, feed.id, existingByKey);
       existingByKey.set(articleKey(article.feedId, article.guid), article);
