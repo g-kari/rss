@@ -91,14 +91,18 @@ export function buildImageSlider(imgs: string[]): string {
   const slides = imgs
     .map(
       (img) =>
-        `<div style="flex:0 0 100%;scroll-snap-align:start;overflow:hidden;border-radius:8px;background:#f5f5f5;aspect-ratio:1/1">` +
+        // scroll-snap-stop:always — 高速スワイプ時に複数枚飛ばしを防止
+        `<div style="flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;border-radius:8px;background:#f5f5f5;aspect-ratio:1/1">` +
         img.replace(/<img\b/, '<img style="width:100%;height:100%;object-fit:contain;display:block"') +
         `</div>`,
     )
     .join('');
   return (
-    `<div style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0;` +
-    `margin:0 0 1.25em;border-radius:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none">` +
+    // class="rss-image-slider" — ArticleView で PC 用ナビゲーションボタンを注入するために使用
+    // overscroll-behavior-x:contain — 横スクロールが親要素に伝播するのを防止
+    // -webkit-overflow-scrolling:touch を削除 — CSS scroll-snap との競合を防止
+    `<div class="rss-image-slider" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0;` +
+    `margin:0 0 1.25em;border-radius:8px;overscroll-behavior-x:contain;scrollbar-width:none">` +
     slides +
     `</div>`
   );
