@@ -97,7 +97,10 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
     try {
       await fetch('/api/feeds/refresh', { method: 'POST' });
       const [feedsData] = await Promise.all([
-        fetch('/api/feeds').then((r) => r.json() as Promise<Feed[]>),
+        fetch('/api/feeds').then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json() as Promise<Feed[]>;
+        }),
         fetchAndSetArticles(),
       ]);
       setFeeds(feedsData);
