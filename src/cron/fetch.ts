@@ -163,6 +163,18 @@ function applyFeedRateLimit(feed: Feed, error: RateLimitError): void {
   });
 }
 
+/**
+ * 304 Not Modified 時のメタデータを更新する。
+ * フィードは正常アクセス可能なので consecutiveErrors をリセットし lastFetchedAt を更新する。
+ */
+function applyFeedNotModified(feed: Feed): void {
+  feed.lastFetchedAt = new Date().toISOString();
+  feed.fetchError = null;
+  feed.consecutiveErrors = 0;
+  feed.lastErrorAt = null;
+  feed.rateLimitedUntil = null;
+}
+
 /** フィード取得失敗時のメタデータを更新する */
 function applyFeedError(feed: Feed, error: unknown): void {
   feed.consecutiveErrors = Math.min(
@@ -215,13 +227,29 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
         }
       }
       if (!isValidFeedUrl(feed.url)) throw new Error(`Invalid feed URL: ${feed.url}`); // SSRF 対策
-      const res = await fetchViaBinding(env, feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
+      const reqHeaders: Record<string, string> = { 'User-Agent': 'rss-reader/1.0' };
+      // クロン実行時のみ条件付きリクエストを送信（手動リフレッシュは常に最新データを取得）
+      if (!forceRetry) {
+        if (feed.etag) reqHeaders['If-None-Match'] = feed.etag;
+        if (feed.lastModified) reqHeaders['If-Modified-Since'] = feed.lastModified;
+      }
+      const res = await fetchViaBinding(env, feed.url, { headers: reqHeaders });
       if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
+      // 304 Not Modified: フィードは変更なし — エラー状態をリセットして空配列を返す
+      if (res.status === 304) {
+        applyFeedNotModified(feed);
+        return [];
+      }
       if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
       const xml = await res.text();
       const parsed = parseFeed(xml);
 
       applyFeedSuccess(feed, parsed);
+      // 次回の条件付きリクエスト用にキャッシュバリデータを保存
+      const lastModified = res.headers.get('Last-Modified');
+      const etag = res.headers.get('ETag');
+      if (lastModified) feed.lastModified = lastModified;
+      if (etag) feed.etag = etag;
       return parsed.items.map((item) => buildArticle(item, feed.id, existingByKey));
     }),
     FEED_FETCH_CONCURRENCY,
