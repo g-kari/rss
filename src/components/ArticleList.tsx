@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useEffect, useRef, useState, memo, type ReactElement, type ReactNode, type RefObject } from 'react';
+import { useMemo, useEffect, memo, type ReactElement, type ReactNode, type RefObject } from 'react';
 import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
 import { readingTime } from '../lib/article-utils';
-import { STORAGE_KEYS, storageGet, storageSet } from '../lib/storage';
+import { useOgpCache } from '../hooks/useOgpCache';
 
 interface ArticleActionsProps {
   isRead: boolean;
@@ -435,49 +435,7 @@ export default function ArticleList({
   // 複数フィードを横断表示するとき（すべて・ブックマーク）はフィード名を表示する
   const showFeedName = selectedFeedId === null || selectedFeedId === '__bookmarks__';
 
-  // ogImage がない記事の OGP 画像を遅延フェッチするキャッシュ（localStorage に永続化）
-  const [ogpCache, setOgpCache] = useState<Record<string, string>>(() => {
-    try {
-      const stored = storageGet(STORAGE_KEYS.OGP_CACHE);
-      return stored ? (JSON.parse(stored) as Record<string, string>) : {};
-    } catch {
-      return {};
-    }
-  });
-  const fetchingRef = useRef<Set<string>>(new Set());
-  // setOgpCache 呼び出し後の再トリガーを避けるため ref で最新値を参照する
-  const ogpCacheRef = useRef(ogpCache);
-  ogpCacheRef.current = ogpCache;
-
-  useEffect(() => {
-    const toFetch = visible.filter(
-      (a) => !a.ogImage && a.link && !ogpCacheRef.current[a.link] && !fetchingRef.current.has(a.link),
-    ).slice(0, 5);
-    if (toFetch.length === 0) return;
-    toFetch.forEach((a) => {
-      fetchingRef.current.add(a.link);
-      fetch(`/api/ogp?url=${encodeURIComponent(a.link)}`)
-        .then((r) => r.json() as Promise<{ image: string }>)
-        .then(({ image }) => {
-          if (image) {
-            setOgpCache((prev) => {
-              const next = { ...prev, [a.link]: image };
-              // キャッシュが肥大化しないよう最大 200 件に制限
-              const keys = Object.keys(next);
-              if (keys.length > 200) {
-                const trimmed = Object.fromEntries(keys.slice(-200).map((k) => [k, next[k]]));
-                storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(trimmed));
-                return trimmed;
-              }
-              storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(next));
-              return next;
-            });
-          }
-        })
-        .catch((err) => { console.error('OGP fetch failed:', err); })
-        .finally(() => { fetchingRef.current.delete(a.link); });
-    });
-  }, [visible]);
+  const ogpCache = useOgpCache(visible);
 
   useEffect(() => {
     if (selectedArticleId) {
