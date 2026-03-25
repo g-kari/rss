@@ -453,13 +453,8 @@ export default function App() {
           refreshing={refreshing}
           pinnedFeedIds={pinnedFeedIds}
           onTogglePinFeed={togglePinFeed}
-          canInstall={!!installPrompt}
-          onInstall={installApp}
-          pushSupported={pushSupported}
-          pushSubscribed={pushSubscribed}
-          pushLoading={pushLoading}
-          pushError={pushError}
-          onTogglePush={togglePush}
+          install={{ canInstall: !!installPrompt, onInstall: installApp }}
+          push={{ supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, onToggle: togglePush }}
         />
         </ErrorBoundary>
       </div>
