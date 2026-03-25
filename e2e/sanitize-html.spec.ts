@@ -67,6 +67,14 @@ test.describe('sanitizeHtml — XSS 攻撃ベクトル', () => {
     expect(result).not.toContain('alert(1)');
   });
 
+  test('バックティック直後のイベントハンドラが除去される', () => {
+    // <img src=`x`onerror=...> のようなバックティック版バイパスを除去する
+    // ブラウザは属性値にバックティックを使った場合でも属性の区切りとして扱うことがある
+    const result = sanitizeHtml('<img src=`x`onerror=alert(1)>');
+    expect(result).not.toContain('onerror');
+    expect(result).not.toContain('alert(1)');
+  });
+
   test('onclick ハンドラが除去される', () => {
     const result = sanitizeHtml('<a onclick="evil()">リンク</a>');
     expect(result).not.toContain('onclick');
