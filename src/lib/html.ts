@@ -114,6 +114,28 @@ function isTrustedIframeSrc(src: string): boolean {
   );
 }
 
+/**
+ * SVG <use> 属性が同一ドキュメント内のフラグメント参照のみかどうかを判定する。
+ *
+ * href / xlink:href が "#id" 形式（# のみのフラグメント）なら安全（true を返す）。
+ * 外部 URL・空 href・複数 # は安全でないため false を返す。
+ *
+ * URL エンコード（%23 → #）を解除してから判定する。
+ * ブラウザは属性値を URL デコードして解釈するため、デコード後の値で検証しなければ
+ * バイパスや誤除去が起きる。
+ */
+function isFragmentOnlyUse(attrs: string): boolean {
+  const hrefMatch = attrs.match(/\b(?:xlink:)?href\s*=\s*["']([^"']*?)["']/i);
+  const href = hrefMatch?.[1] ?? '';
+  let decodedHref: string;
+  try {
+    decodedHref = decodeURIComponent(href);
+  } catch {
+    decodedHref = href;
+  }
+  return /^#[^#]*$/.test(decodedHref);
+}
+
 export function sanitizeHtml(html: string): string {
   return html
     // 閉じタグを持つブロック要素を除去。
@@ -155,33 +177,11 @@ export function sanitizeHtml(html: string): string {
     // 注意: </use> の後続削除は行わない。
     // ステップ1が <use>...</use> ペアを一括処理するため、外部参照の </use> は既に除去済み。
     // 孤立した </use> はブラウザが無視するため、セキュリティリスクはない。
-    .replace(/<use\b([^>]*)>([\s\S]*?)<\/use>/gi, (_m, attrs: string) => {
-      const hrefMatch = attrs.match(/\b(?:xlink:)?href\s*=\s*["']([^"']*?)["']/i);
-      const href = hrefMatch?.[1] ?? '';
-      // URL エンコード（%23 → #）を解除してからフラグメント判定する。
-      // ブラウザは属性値を URL デコードして解釈するため、生の href ではなく
-      // デコード後の値で検証しなければバイパスや誤除去が起きる。
-      let decodedHref: string;
-      try {
-        decodedHref = decodeURIComponent(href);
-      } catch {
-        decodedHref = href;
-      }
-      // フラグメントのみ (#id) は許可、外部参照・空 href は要素ごと（フォールバック含む）除去
-      return /^#[^#]*$/.test(decodedHref) ? _m : '';
-    })
+    .replace(/<use\b([^>]*)>([\s\S]*?)<\/use>/gi, (_m, attrs: string) =>
+      isFragmentOnlyUse(attrs) ? _m : '',
+    )
     // 自己閉じタグ・未閉じ開始タグを処理（上記でマッチしなかった残余）
-    .replace(/<use\b([^>]*)>/gi, (_m, attrs: string) => {
-      const hrefMatch = attrs.match(/\b(?:xlink:)?href\s*=\s*["']([^"']*?)["']/i);
-      const href = hrefMatch?.[1] ?? '';
-      let decodedHref: string;
-      try {
-        decodedHref = decodeURIComponent(href);
-      } catch {
-        decodedHref = href;
-      }
-      return /^#[^#]*$/.test(decodedHref) ? _m : '';
-    })
+    .replace(/<use\b([^>]*)>/gi, (_m, attrs: string) => (isFragmentOnlyUse(attrs) ? _m : ''))
     // <iframe> は信頼済みドメイン以外を除去
     .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
       const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
