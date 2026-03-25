@@ -4,6 +4,20 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (33)
+
+### セキュリティ
+- **ページ指定記事取得の購読チェックを追加** — \`GET /api/articles?feed={hash}&page=N\` で購読していないフィードの記事が取得できた問題を修正。\`readUserSubscriptions\` で購読確認してから \`readArticlePage\` を呼ぶよう変更
+
+### バグ修正
+- **\`mergeNewArticles\` の重複チェック範囲を全 ID に拡大** — \`latest.json\` (最新100件) のみで重複チェックしていたため、100件超のフィードで古いページの記事が再挿入される問題を修正。\`SharedFeedMeta.knownIds\` に既知 ID を保持して全期間にわたる重複チェックを実現（上限 10,000件）
+- **\`cascadeOverflow\` の再帰を \`while\` ループに変換** — 最大 499 回の再帰が Workers のスタックを圧迫する可能性を排除
+
+### リファクタリング
+- **\`getUserLatestArticles\` に 2,000 件の上限を追加** — 購読数 × 100件がメモリ上に無制限展開される問題を防止
+- **\`fetch.ts\` の動的 \`import()\` を静的 import に統一** — \`readLatestArticles\` / \`assembleClientFeed\` の非対称な動的 import を解消
+- **\`migrateUserFeedsToSubscriptions\` の不要な R2 二重読み込みを削除** — \`writeFeedMeta\` 直後の \`readFeedMeta\` 再実行を削除し、書き込み済み変数を再利用
+
 ## 2026-03-25 (32)
 
 ### バグ修正
