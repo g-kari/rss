@@ -508,6 +508,33 @@ test.describe('sanitizeHtml — SVG アニメーション要素によるイン�
       '<svg><defs><circle id="c" r="10"/></defs><use href="#c"></use></svg>'
     );
     expect(result).toContain('<use href="#c">');
+    // 閉じタグも保持されること（フラグメント参照は要素ごと許可）
+    expect(result).toContain('</use>');
+  });
+
+  test('SVG <use> 外部参照のフォールバックコンテンツが除去される', () => {
+    // 外部参照の <use href="external">fallback</use> はフォールバック内容ごと除去
+    // 旧実装では "fallback" テキストが露出していた
+    const result = sanitizeHtml(
+      '<svg><use href="https://attacker.com/evil.svg#icon">フォールバック</use></svg>'
+    );
+    expect(result).not.toContain('<use');
+    expect(result).not.toContain('attacker.com');
+    expect(result).not.toContain('フォールバック');
+  });
+
+  test('SVG <use> 外部参照（xlink:href）のフォールバックコンテンツが除去される', () => {
+    const result = sanitizeHtml(
+      '<svg><use xlink:href="https://attacker.com/sprite.svg#icon"><title>代替テキスト</title></use></svg>'
+    );
+    expect(result).not.toContain('<use');
+    expect(result).not.toContain('attacker.com');
+    expect(result).not.toContain('代替テキスト');
+  });
+
+  test('SVG <use> 自己閉じタグ（フラグメント参照）は保持される', () => {
+    const result = sanitizeHtml('<svg><use href="#icon"/></svg>');
+    expect(result).toContain('<use href="#icon"');
   });
 });
 
