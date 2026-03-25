@@ -119,8 +119,9 @@ async function handleGet(request: Request): Promise<Response> {
 
     // SVG は <script> タグや外部リソース参照を含められるため拒否する。
     // ブラウザが SVG を直接開いた場合にスクリプトが実行される可能性があり、
-    // image/svg+xml を信頼してプロキシすることはセキュリティリスクとなる。
-    if (ct === 'image/svg+xml') {
+    // SVG をプロキシすることはセキュリティリスクとなる。
+    // image/svg+xml のほか image/svg・application/svg+xml などの非標準形式も拒否する。
+    if (ct.includes('svg')) {
       return transparentGif();
     }
 
