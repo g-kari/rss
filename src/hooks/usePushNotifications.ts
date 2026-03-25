@@ -10,6 +10,8 @@ export interface PushNotificationState {
   subscribed: boolean;
   /** 購読操作中か */
   loading: boolean;
+  /** 最後に発生したエラーメッセージ (null = エラーなし) */
+  error: string | null;
   /** 購読/解除をトグルする */
   toggle: () => Promise<void>;
 }
@@ -18,6 +20,7 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // マウント時: ブラウザのサポート確認と現在の購読状態を取得
   useEffect(() => {
@@ -36,6 +39,7 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
   const toggle = useCallback(async () => {
     if (!supported || loading) return;
     setLoading(true);
+    setError(null);
 
     try {
       const reg = await navigator.serviceWorker.ready;
@@ -53,11 +57,17 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
       } else {
         // 購読
         const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
+        if (permission !== 'granted') {
+          setError('通知の許可が必要です');
+          return;
+        }
 
         // VAPID 公開鍵を取得
         const keyRes = await fetch('/api/push/vapid-key');
-        if (!keyRes.ok) return;
+        if (!keyRes.ok) {
+          setError('プッシュ通知が設定されていません (503)');
+          return;
+        }
         const { publicKey } = await keyRes.json() as { publicKey: string };
 
         // base64url → Uint8Array に変換
@@ -67,21 +77,28 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
           applicationServerKey: appServerKey,
         });
 
-        await fetch('/api/push/subscribe', {
+        // サーバーに購読情報を保存。失敗した場合はブラウザ側の購読もロールバックする
+        const subRes = await fetch('/api/push/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(sub.toJSON()),
         });
+        if (!subRes.ok) {
+          await sub.unsubscribe();
+          setError('購読の保存に失敗しました');
+          return;
+        }
         setSubscribed(true);
       }
     } catch (err) {
       console.error('Push toggle failed:', err);
+      setError('エラーが発生しました');
     } finally {
       setLoading(false);
     }
   }, [supported, loading]);
 
-  return { supported, subscribed, loading, toggle };
+  return { supported, subscribed, loading, error, toggle };
 }
 
 /** base64url 文字列を Uint8Array に変換する（PushManager.subscribe の applicationServerKey 用） */

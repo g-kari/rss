@@ -170,6 +170,7 @@ interface Props {
   pushSupported?: boolean;
   pushSubscribed?: boolean;
   pushLoading?: boolean;
+  pushError?: string | null;
   onTogglePush?: () => void;
 }
 
@@ -199,6 +200,7 @@ export default function FeedSidebar({
   pushSupported,
   pushSubscribed,
   pushLoading,
+  pushError,
   onTogglePush,
 }: Props) {
   const [newUrl, setNewUrl] = useState('');
@@ -602,8 +604,8 @@ export default function FeedSidebar({
           <button
             onClick={onTogglePush}
             disabled={pushLoading}
-            className={`transition-colors duration-200 flex-shrink-0 ${pushSubscribed ? 'text-accent-dot' : 'text-text-faint hover:text-text-muted'} disabled:opacity-50`}
-            title={pushSubscribed ? 'プッシュ通知をオフ' : 'プッシュ通知をオン'}
+            className={`transition-colors duration-200 flex-shrink-0 ${pushError ? 'text-rose-400' : pushSubscribed ? 'text-accent-dot' : 'text-text-faint hover:text-text-muted'} disabled:opacity-50`}
+            title={pushError ?? (pushSubscribed ? 'プッシュ通知をオフ' : 'プッシュ通知をオン')}
           >
             {pushSubscribed ? (
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

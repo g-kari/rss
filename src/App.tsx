@@ -81,7 +81,7 @@ export default function App() {
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }, []);
   const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles } = useFeeds(user, showToast);
-  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush } = usePushNotifications(user);
+  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, toggle: togglePush } = usePushNotifications(user);
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
@@ -643,6 +643,7 @@ export default function App() {
           pushSupported={pushSupported}
           pushSubscribed={pushSubscribed}
           pushLoading={pushLoading}
+          pushError={pushError}
           onTogglePush={togglePush}
         />
       </div>
