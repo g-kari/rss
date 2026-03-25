@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (7)
+
+### セキュリティ
+- **SVG \`<use>\` href URL デコード検証** — フラグメント参照の判定前に \`decodeURIComponent()\` を適用し、\`%23icon\` のような URL エンコードされた同一ドキュメント参照が誤って除去されなくなった。不正なエンコード（単独 \`%\`）も try/catch で安全に処理
+- **\`Retry-After: 0\` の正常処理** — \`parseRetryAfter()\` の判定を \`seconds > 0\` から \`seconds >= 0\` に修正し、0 秒（即座再試行）を正しく扱えるようにした
+
 ## 2026-03-25 (6)
 
 ### リファクタリング
