@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withSession } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { sha256Hex } from '@/lib/r2';
-import { fetchFollowSafeRedirects } from '@/lib/fetch';
+import { fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
 import {
   detectCharset,
   extractMainContent,
@@ -53,26 +53,9 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     if (contentLength && parseInt(contentLength, 10) > MAX_CONTENT_BYTES)
       return NextResponse.json({ error: 'Page too large' }, { status: 413 });
 
-    const reader = res.body?.getReader();
-    if (!reader) return NextResponse.json({ error: 'No response body' }, { status: 502 });
-
-    const chunks: Uint8Array[] = [];
-    let totalBytes = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        totalBytes += value.byteLength;
-        if (totalBytes > MAX_CONTENT_BYTES) return NextResponse.json({ error: 'Page too large' }, { status: 413 });
-        chunks.push(value);
-      }
-    } finally {
-      reader.cancel().catch(() => {});
-    }
-
-    const merged = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
+    if (!res.body) return NextResponse.json({ error: 'No response body' }, { status: 502 });
+    const merged = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
+    if (merged === null) return NextResponse.json({ error: 'Page too large' }, { status: 413 });
     const charset = detectCharset(ct, merged);
     let html: string;
     try {

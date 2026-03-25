@@ -3,6 +3,37 @@ import { isValidFeedUrl } from '@/lib/url';
 const MAX_REDIRECTS = 5;
 
 /**
+ * ReadableStream からバイト列を最大 maxBytes まで読み込む。
+ * maxBytes を超えた場合は null を返す。
+ */
+export async function readBodyBytes(
+  body: ReadableStream<Uint8Array>,
+  maxBytes: number,
+): Promise<Uint8Array | null> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) return null;
+      chunks.push(value);
+    }
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+  const merged = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return merged;
+}
+
+/**
  * fetch にタイムアウトを付与するラッパー。
  * タイムアウト時は AbortError をスローする。
  */
