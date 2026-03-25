@@ -115,6 +115,13 @@ async function handleGet(request: Request): Promise<Response> {
       return transparentGif();
     }
 
+    // SVG は <script> タグや外部リソース参照を含められるため拒否する。
+    // ブラウザが SVG を直接開いた場合にスクリプトが実行される可能性があり、
+    // image/svg+xml を信頼してプロキシすることはセキュリティリスクとなる。
+    if (ct === 'image/svg+xml') {
+      return transparentGif();
+    }
+
     const reader = res.body?.getReader();
     if (!reader) return transparentGif();
 
@@ -136,15 +143,11 @@ async function handleGet(request: Request): Promise<Response> {
     let offset = 0;
     for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
 
-    // application/octet-stream はマジックバイトで画像を検証して正確な MIME タイプを取得
-    let imageContentType: string;
-    if (isImageType) {
-      imageContentType = ct;
-    } else {
-      const detected = detectImageMimeType(merged);
-      if (!detected) return transparentGif();
-      imageContentType = detected;
-    }
+    // Content-Type ヘッダーは偽装できるため、常にマジックバイトで MIME タイプを検証する。
+    // image/* と宣言されていても実際のバイト列が画像でなければ拒否する。
+    const detected = detectImageMimeType(merged);
+    if (!detected) return transparentGif();
+    const imageContentType = detected;
 
     // Cloudflare Cache API に保存（fire-and-forget）
     ctx.waitUntil(
