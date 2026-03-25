@@ -491,6 +491,10 @@ export default function ArticleView({
           <div
             ref={contentRef}
             className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}
+            // dangerouslySetInnerHTML の中は React がテキストノードを管理しないため
+            // Google 翻訳の <font> 注入と React 調停が衝突しない。
+            // html 要素の translate="no" を上書きして翻訳を許可する。
+            translate="yes"
             dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         ) : article.summary ? (
