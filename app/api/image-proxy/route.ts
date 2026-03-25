@@ -34,10 +34,12 @@ function detectImageMimeType(bytes: Uint8Array): string | null {
   // BMP: 42 4D
   if (bytes[0] === 0x42 && bytes[1] === 0x4d) return 'image/bmp';
 
-  // AVIF / HEIF: ftyp box (offset 4-7 = "ftyp", brand の先頭 4 bytes が avif / heic / heix)
+  // AVIF / HEIF: ftyp box (offset 4-7 = "ftyp", brand の先頭 4 bytes で判別)
+  // HEIC/HEIF は主要ブラウザ未対応のため null を返して拒否する
   if (bytes.length >= 12 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) {
     const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
-    if (brand === 'avif' || brand === 'heic' || brand === 'heix') return 'image/avif';
+    if (brand === 'avif') return 'image/avif';
+    if (brand === 'heic' || brand === 'heix') return null; // HEIC はブラウザ未対応のため拒否
   }
 
   return null;

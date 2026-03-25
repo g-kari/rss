@@ -8,6 +8,7 @@ import type { Feed } from '@/types';
 
 const MAX_FEEDS_PER_USER = 1000;
 const MAX_OPML_ENTRIES = 5000; // 過剰な処理を防ぐ上限
+const MAX_OPML_DEPTH = 50; // 再帰ネスト深度制限（スタックオーバーフロー対策）
 
 interface OpmlOutline {
   '@_xmlUrl'?: string;
@@ -36,7 +37,11 @@ function toArray<T>(val: T | T[] | undefined): T[] {
   return Array.isArray(val) ? val : [val];
 }
 
-function extractFeeds(outline: OpmlOutline): Array<{ url: string; title: string; siteUrl: string }> {
+function extractFeeds(
+  outline: OpmlOutline,
+  depth = 0,
+): Array<{ url: string; title: string; siteUrl: string }> {
+  if (depth > MAX_OPML_DEPTH) return [];
   const results: Array<{ url: string; title: string; siteUrl: string }> = [];
   if (outline['@_xmlUrl']) {
     results.push({
@@ -46,7 +51,7 @@ function extractFeeds(outline: OpmlOutline): Array<{ url: string; title: string;
     });
   }
   for (const child of toArray(outline.outline)) {
-    results.push(...extractFeeds(child));
+    results.push(...extractFeeds(child, depth + 1));
   }
   return results;
 }
