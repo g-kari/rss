@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Article, FontSize, AiMode } from '../types';
-import { readingTime } from '../lib/article-utils';
+import { readingTime, isLikelyJapanese } from '../lib/article-utils';
 import { extractEmbedInfo, processContent, stripIframes } from '../lib/embed-utils';
 import { useArticleContent } from '../hooks/useArticleContent';
 import { useArticleAi } from '../hooks/useArticleAi';
@@ -51,8 +51,11 @@ export default function ArticleView({
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
 
-  const { aiResult, aiLoading, aiError, stickyAiMode, stickyAiModeRef, doRunAi, runAi, resetAi } =
+  const { aiResult, aiLoading, aiError, doRunAi, resetAi } =
     useArticleAi(article?.id);
+
+  // 翻訳結果を本文として表示するフラグ
+  const [showTranslated, setShowTranslated] = useState(false);
 
   const [scrollProgress, setScrollProgress] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -123,23 +126,27 @@ export default function ArticleView({
     injectSliderControls();
   }, [storedContent, article?.id, injectSliderControls]);
 
-  // 記事が変わったら AI 状態をリセット → sticky モードが設定済みなら自動実行
+  // 記事が変わったら AI 状態をリセット。日本語以外の記事は自動翻訳する（全文取得は行わない）
   useEffect(() => {
     resetAi();
     setScrollProgress(0);
-    if (!stickyAiModeRef.current || !article?.id) return;
+    setShowTranslated(false);
+    if (!article?.id) return;
 
-    const isShort = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
-    if (isShort && article.link) {
-      // コンテンツが短い場合は全文取得してから AI 実行
-      fetchFullContent((content) => doRunAi(stickyAiModeRef.current!, content, article.id));
-    } else {
-      const content = storedContent ?? article.content ?? article.summary;
-      if (content) doRunAi(stickyAiModeRef.current, content, article.id);
+    // 記事タイトル + サマリーで言語を判定し、非日本語なら自動翻訳
+    const textToCheck = `${article.title ?? ''} ${article.summary ?? ''}`;
+    if (!isLikelyJapanese(textToCheck)) {
+      const content = article.content ?? article.summary;
+      if (content) doRunAi('translation', content, article.id);
     }
     // article.id が変わったときのみ実行
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.id]);
+
+  // 翻訳結果が届いたら本文を翻訳表示に切り替える
+  useEffect(() => {
+    if (aiResult?.mode === 'translation') setShowTranslated(true);
+  }, [aiResult]);
 
   if (!article) {
     return (
@@ -299,15 +306,23 @@ export default function ArticleView({
                     <button
                       key={mode}
                       onClick={() => {
-                        if (canFetch) {
-                          // 全文未取得の場合: まず全文取得してから AI 実行
-                          if (isActive) {
-                            resetAi();
+                        if (isActive) {
+                          resetAi();
+                          if (mode === 'translation') setShowTranslated(false);
+                          return;
+                        }
+                        if (mode === 'summary') {
+                          // 要約は全文コンテンツを優先して使用する
+                          if (storedContent) {
+                            doRunAi('summary', processedContent ?? article.summary ?? '', article.id);
+                          } else if (article.link) {
+                            fetchFullContent((content) => doRunAi('summary', content, article.id));
                           } else {
-                            fetchFullContent((content) => doRunAi(mode, content, article.id));
+                            doRunAi('summary', article.summary ?? '', article.id);
                           }
                         } else {
-                          runAi(mode, processedContent ?? article.summary ?? '');
+                          // 翻訳は現在のコンテンツを使用（全文取得はしない）
+                          doRunAi('translation', processedContent ?? article.summary ?? '', article.id);
                         }
                       }}
                       disabled={!!aiLoading || fetching}
@@ -318,7 +333,7 @@ export default function ArticleView({
                           : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
                       }`}
                     >
-                      {(aiLoading === mode || (fetching && stickyAiMode === mode)) ? '…' : mode === 'summary' ? '要約' : '日本語'}
+                      {aiLoading === mode ? '…' : mode === 'summary' ? '要約' : '日本語'}
                     </button>
                   );
                 })}
@@ -432,12 +447,10 @@ export default function ArticleView({
 
         {!embedInfo && <div className="border-t border-border-subtle mb-8" />}
 
-        {/* AI 結果パネル */}
-        {aiResult && (
+        {/* AI 要約パネル（翻訳は本文に統合するため非表示） */}
+        {aiResult?.mode === 'summary' && (
           <div className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up">
-            <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint mb-2">
-              {aiResult.mode === 'summary' ? 'AI 要約' : 'AI 翻訳'}
-            </p>
+            <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint mb-2">AI 要約</p>
             <p className="text-[14px] leading-[1.8] text-text-default">{aiResult.text}</p>
           </div>
         )}
@@ -456,8 +469,40 @@ export default function ArticleView({
           />
         )}
 
-        {/* 本文 */}
-        {processedContent ? (
+        {/* 翻訳/元文切り替えバー */}
+        {aiResult?.mode === 'translation' && (
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => setShowTranslated(true)}
+              className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 ${
+                showTranslated
+                  ? 'border-ink bg-ink text-ink-text'
+                  : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
+              }`}
+            >
+              翻訳
+            </button>
+            <button
+              onClick={() => setShowTranslated(false)}
+              className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 ${
+                !showTranslated
+                  ? 'border-ink bg-ink text-ink-text'
+                  : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
+              }`}
+            >
+              原文
+            </button>
+          </div>
+        )}
+
+        {/* 本文（翻訳表示中は翻訳テキストで置き換え） */}
+        {showTranslated && aiResult?.mode === 'translation' ? (
+          <div className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}>
+            {aiResult.text.split('\n').map((line, i) =>
+              line.trim() ? <p key={i}>{line}</p> : null,
+            )}
+          </div>
+        ) : processedContent ? (
           <div
             ref={contentRef}
             className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}
