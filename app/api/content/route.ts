@@ -82,7 +82,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     const cacheRes = new Response(JSON.stringify({ content }), {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CONTENT_CACHE_TTL_SEC}` },
     });
-    ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
+    ctx.waitUntil(cfCache.put(cacheKey, cacheRes).catch((err) => console.error('[content] cache put error:', err)));
 
     return NextResponse.json({ content }, { headers: { 'X-Cache': 'MISS', 'X-Content-Source': contentSource } });
   } catch (err) {

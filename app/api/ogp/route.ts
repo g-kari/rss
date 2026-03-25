@@ -78,7 +78,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
       const cacheRes = new Response(JSON.stringify({ image }), {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${OGP_CACHE_TTL_SEC}` },
       });
-      ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
+      ctx.waitUntil(cfCache.put(cacheKey, cacheRes).catch((err) => console.error('[ogp] cache put error:', err)));
     }
 
     return NextResponse.json({ image }, { headers: { 'X-Cache': 'MISS' } });
