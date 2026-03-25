@@ -11,10 +11,7 @@ import {
   markdownToHtml,
   postProcessMarkdownContent,
 } from '@/lib/content';
-
-const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60; // 7日
-const FETCH_TIMEOUT_MS = 10_000;
-const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
+import { CONTENT_CACHE_TTL_SEC, FETCH_TIMEOUT_MS, MAX_CONTENT_BYTES } from '@/lib/fetch-article-content';
 
 export async function GET(request: Request) {
   return withSession(({ ctx }) => handleGet(request, ctx));
