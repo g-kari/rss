@@ -24,28 +24,38 @@
 
 ### Route Handler パターン
 
+`withSession` を使うのが推奨パターン。認証・env 取得・トークンリフレッシュを一括処理する。
+
 ```typescript
 // app/api/example/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSession } from '@/lib/server-auth';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { withSession, parseJsonBody } from '@/lib/server-auth';
+import { r2Get, r2Put } from '@/lib/r2';
 
-export async function GET(req: NextRequest) {
-  const result = await requireSession();
-  if ('error' in result) return result.error;
-  const { session } = result;
+// GET: データ取得
+export async function GET() {
+  return withSession(async ({ session, env }) => {
+    const data = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
+    return NextResponse.json(data);
+  });
+}
 
-  const { env } = await getCloudflareContext({ async: true });
-  // env.RSS_DATA, env.AI が利用可能
-
-  const res = NextResponse.json({ data });
-  return applyRefreshedTokens(res, session);
+// POST: JSON ボディありの更新
+export async function POST(req: NextRequest) {
+  return withSession(async ({ session, env }) => {
+    const parsed = await parseJsonBody<{ url?: unknown }>(req);
+    if (!parsed.ok) return parsed.error;
+    const { url } = parsed.data;
+    // ...
+    return NextResponse.json({ ok: true });
+  });
 }
 ```
 
+- `withSession` が `requireSession()` + `getCloudflareContext()` + `applyRefreshedTokens()` を内包する
+- `session.userId` = 0g0 ユーザーID（R2 キーに使用）、`session.sub` = JWT sub（JWT 検証用）
 - 成功: `NextResponse.json(data)`
 - エラー: `NextResponse.json({ error: msg }, { status: N })`
-- `getCloudflareContext()` は認証チェックの**後**に呼ぶ
 
 ### 環境変数アクセス
 
@@ -110,11 +120,14 @@ if (!isBetaAllowed(session.sub)) return NextResponse.redirect('/');
 ## R2 ヘルパー (`src/lib/r2.ts`)
 
 ```typescript
-// 読み込み
-const data = await readR2Json<Feed[]>(env.RSS_DATA, `users/${sub}/feeds.json`);
+// 読み込み（fallback: キーが存在しない場合のデフォルト値）
+const data = await r2Get<Feed[]>(env.RSS_DATA, `users/${sub}/feeds.json`, []);
 
 // 書き込み
-await writeR2Json(env.RSS_DATA, `users/${sub}/feeds.json`, feeds);
+await r2Put(env.RSS_DATA, `users/${sub}/feeds.json`, feeds);
+
+// SHA-256 ハッシュ（キャッシュキー生成用）
+const hash = await sha256Hex(url);
 ```
 
 ## RSS パーサー (`src/lib/xml-parser.ts`)

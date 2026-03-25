@@ -6,18 +6,24 @@
 ブラウザ
   └─ React SPA ('use client' コンポーネント)
        └─ Next.js App Router (app/)
-            ├─ /api/auth/*    — 認証フロー (0g0 ID OAuth2)
-            ├─ /api/feeds/*   — フィード CRUD (R2)
-            ├─ /api/articles  — 記事一覧 (R2)
-            ├─ /api/ai/*      — Workers AI (要約・翻訳)
-            └─ /api/content   — フルテキスト取得プロキシ
+            ├─ /api/auth/*        — 認証フロー (0g0 ID OAuth2)
+            ├─ /api/feeds/*       — フィード CRUD + refresh (R2)
+            ├─ /api/articles      — 記事一覧 (R2)
+            ├─ /api/ai/*          — Workers AI (要約・翻訳)
+            ├─ /api/content       — フルテキスト取得プロキシ
+            ├─ /api/read-state    — 既読・ブックマーク・後で読む状態 (R2)
+            ├─ /api/image-proxy   — 外部画像プロキシ
+            ├─ /api/ogp           — OGP 画像 URL 取得
+            ├─ /api/push/*        — Web Push 通知サブスクリプション管理
+            ├─ /api/release-notes — リリースノート
+            └─ /api/health        — ヘルスチェック
 
 Cloudflare Workers (@opennextjs/cloudflare)
   ├─ .open-next/worker.js   → Next.js Route Handlers / SSR
   └─ .open-next/assets/     → 静的アセット (Cloudflare Assets)
 
 Cloudflare Bindings
-  ├─ RSS_DATA (R2)  — users/{sub}/feeds.json, articles.json
+  ├─ RSS_DATA (R2)  — users/{userId}/* (feeds / articles / read-state / push 等)
   └─ AI             — Workers AI モデル
 
 Cron Trigger (wrangler.toml: */30 * * * *)
@@ -40,11 +46,24 @@ app/
     feeds/
       route.ts               # GET (一覧) / POST (追加) /api/feeds
       [id]/route.ts          # DELETE /api/feeds/:id
+      [id]/refresh/route.ts  # POST /api/feeds/:id/refresh — 単体フィード手動更新
+      refresh/route.ts       # POST /api/feeds/refresh — 全フィード手動更新
+      import/route.ts        # POST /api/feeds/import — OPML インポート
+      export/route.ts        # GET /api/feeds/export — OPML エクスポート
     articles/route.ts        # GET /api/articles
     ai/
       summarize/route.ts     # POST /api/ai/summarize (Workers AI)
       translate/route.ts     # POST /api/ai/translate (Workers AI)
     content/route.ts         # GET /api/content?url=... (フルテキストプロキシ)
+    image-proxy/route.ts     # GET /api/image-proxy?url=... (外部画像プロキシ)
+    ogp/route.ts             # GET /api/ogp?url=... (OGP 画像 URL 取得)
+    read-state/route.ts      # GET / POST /api/read-state (既読・ブックマーク・後で読む)
+    release-notes/route.ts   # GET /api/release-notes
+    push/
+      vapid-key/route.ts     # GET /api/push/vapid-key
+      status/route.ts        # GET /api/push/status
+      subscribe/route.ts     # POST /api/push/subscribe
+      unsubscribe/route.ts   # POST /api/push/unsubscribe
     health/route.ts          # GET /api/health
 
 src/
@@ -52,18 +71,42 @@ src/
   types.ts                   # Feed / Article / UserProfile / AuthSession 型
   cloudflare-env.d.ts        # CloudflareEnv 拡張 (RSS_DATA, AI)
   components/
-    FeedSidebar.tsx
-    ArticleList.tsx
-    ArticleView.tsx
+    FeedSidebar.tsx          # サイドバー (フィード管理・ユーザー情報)
+    ArticleList.tsx          # 記事一覧 (4レイアウト対応)
+    ArticleView.tsx          # 記事本文
+    ReleaseNotesModal.tsx    # リリースノートモーダル
+    ErrorBoundary.tsx        # エラー境界
   hooks/
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
-    useFeeds.ts              # /api/feeds + /api/articles fetch
-    useKeyboardNav.ts        # j/k/o/b/m キーボードナビ
+    useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
+    useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/u/d/s/f/l/[/]/?)
+    useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
+    useReadState.ts          # 既読・ブックマーク・後で読む状態 (localStorage + R2 同期)
+    useArticleContent.ts     # /api/content fetch + LRU キャッシュ
+    useArticleAi.ts          # /api/ai/* fetch
+    useOgpCache.ts           # /api/ogp fetch (OGP 画像キャッシュ)
+    useImageDownload.ts      # 記事画像一括ダウンロード
+    usePushNotifications.ts  # Web Push サブスクリプション管理
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
-    server-auth.ts           # requireSession() / applyRefreshedTokens() / isBetaAllowed()
-    r2.ts                    # R2 read/write ヘルパー
+    server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()
+    r2.ts                    # r2Get() / r2Put() / sha256Hex()
     xml-parser.ts            # fast-xml-parser ラッパー (RSS 2.0 + Atom)
+    content.ts               # コンテンツ抽出・後処理パイプライン (Readability + postProcess)
+    html.ts                  # sanitizeHtml() / escapeHtml() / toPlainText()
+    article-utils.ts         # readingTime() / timeAgo() / isLikelyJapanese()
+    fetch.ts                 # RSS/HTML フェッチヘルパー (タイムアウト・リトライ)
+    fetch-article-content.ts # /api/content 内のコンテンツ取得ロジック
+    feed-discovery.ts        # フィード URL 自動検出
+    ai-cache.ts              # AI 結果 R2 キャッシュ
+    ai-route-helper.ts       # AI Route Handler 共通処理
+    embed-utils.ts           # iframe embed 処理ユーティリティ
+    lru-cache.ts             # クライアントサイド LRU キャッシュ
+    storage.ts               # localStorage キー定数・安全なラッパー
+    url.ts                   # URL バリデーションヘルパー
+    favicon.ts               # ファビコン未読バッジ
+    web-push.ts              # Web Push 送信ヘルパー
+    release-notes-data.ts    # RELEASE_NOTES_MARKDOWN 定数 (Workers バンドル用)
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
 ```
@@ -88,10 +131,12 @@ src/
 
 ### 読み取り状態
 
-- サーバーサイド管理なし
-- `localStorage['rss-read']` に既読 article ID の JSON 配列
-- `App.tsx` 起動時にロード → `readIds: Set<string>` として state 管理
-- 記事クリック時に `markRead(id)` → state 更新 + localStorage 保存
+- **クライアント優先、サーバー同期**の二重管理
+- `localStorage` に既読・ブックマーク・後で読む ID を JSON 配列で保存
+- ログイン時に `/api/read-state` (GET) でサーバーデータをマージ（ローカル ∪ サーバー）
+- 状態変更から 2秒後にデバウンスして `/api/read-state` (POST) でサーバーに保存
+- ページ離脱時 (`beforeunload`) は `sendBeacon` で即時送信
+- `useReadState` hook (`src/hooks/useReadState.ts`) が全ロジックを管理
 - 未読カウントはクライアントサイドで計算
 
 ## Cloudflare バインディングへのアクセス
@@ -118,12 +163,17 @@ const CLIENT_ID = process.env.CLIENT_ID!;
 ## R2 データ構造
 
 ```
-users/{sub}/profile.json    # UserProfile (ログイン時に保存)
-users/{sub}/feeds.json      # Feed[]
-users/{sub}/articles.json   # Article[] (max 500, publishedAt 降順)
+users/{userId}/profile.json     # UserProfile (ログイン時に保存)
+users/{userId}/feeds.json       # Feed[]
+users/{userId}/articles.json    # Article[] (max 500, publishedAt 降順)
+users/{userId}/read-state.json  # { readIds, bookmarkIds, readingListIds }
+users/{userId}/push.json        # PushConfig (Web Push サブスクリプション)
+ai-cache/summary/{sha256}       # AI 要約キャッシュ (永続)
+ai-cache/translation/{sha256}   # AI 翻訳キャッシュ (永続)
 ```
 
-`sub` = 0g0 ID のペアワイズ識別子 (JWT の `sub` クレーム)
+`userId` = 0g0 内部ユーザーID（`AuthSession.userId`）
+`sub` クレーム（`AuthSession.sub`）とは別物に注意 — R2 キーには `userId` を使う
 
 ## 認証フロー
 
