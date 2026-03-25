@@ -58,7 +58,13 @@ export async function fetchArticleContent(
     if (merged === null) return null;
 
     const charset = detectCharset(ct, merged);
-    const html = new TextDecoder(charset).decode(merged);
+    let html: string;
+    try {
+      html = new TextDecoder(charset).decode(merged);
+    } catch {
+      // charset が TextDecoder 非対応の場合（RangeError）は UTF-8 でフォールバック
+      html = new TextDecoder('utf-8', { fatal: false }).decode(merged);
+    }
     const { content: extracted } = extractMainContent(html, url);
     let content = extracted;
 
@@ -75,7 +81,7 @@ export async function fetchArticleContent(
         'Cache-Control': `public, max-age=${CONTENT_CACHE_TTL_SEC}`,
       },
     });
-    ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
+    ctx.waitUntil(cfCache.put(cacheKey, cacheRes).catch((err) => console.error('[fetchArticleContent] cache put error:', err)));
 
     return content;
   } catch {
