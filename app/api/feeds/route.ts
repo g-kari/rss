@@ -17,8 +17,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   return withSession(async ({ session, env, ctx }) => {
-    const body = await request.json() as { url?: string };
-    let url = body?.url?.trim();
+    const body = await request.json() as { url?: unknown };
+    if (typeof body?.url !== 'string') return NextResponse.json({ error: 'url is required' }, { status: 400 });
+    let url = body.url.trim();
     if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 });
     if (!isValidFeedUrl(url)) return NextResponse.json({ error: 'Invalid URL: must be http or https' }, { status: 400 });
 
