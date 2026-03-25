@@ -53,23 +53,20 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
   useEffect(() => {
     if (!user) return;
 
-    const timer = setInterval(() => {
-      fetch('/api/articles')
-        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Article[]>; })
-        .then((data) => {
-          const prevTopId = latestArticleIdRef.current;
-          if (prevTopId === null) return;
-          const newIdx = data.findIndex((a) => a.id === prevTopId);
-          const count = newIdx > 0 ? newIdx : 0;
-          setArticles(data);
-          latestArticleIdRef.current = data[0]?.id ?? prevTopId;
-          if (count > 0) setNewArticleCount((prev) => prev + count);
-        })
-        .catch(console.error);
+    const timer = setInterval(async () => {
+      const prevTopId = latestArticleIdRef.current;
+      if (prevTopId === null) return;
+      try {
+        const data = await fetchAndSetArticles();
+        const newIdx = data.findIndex((a) => a.id === prevTopId);
+        if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
+      } catch {
+        // ポーリングエラーはサイレント失敗
+      }
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(timer);
-  }, [user]);
+  }, [user, fetchAndSetArticles]);
 
   const onFeedAdded = useCallback((feed: Feed) => {
     setFeeds((prev) => [...prev, feed]);
