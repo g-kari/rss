@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-25 (18)
+
+### リファクタリング
+- **`useReadState` の toggle 関数を `toggleSetItem` ヘルパーに統合** — `toggleRead` / `toggleBookmark` / `toggleReadingList` で重複していた「Set の追加/削除 + localStorage 保存」ロジックをモジュールレベルの `toggleSetItem` ヘルパーに抽出し、3 箇所のコード重複を解消
+
 ## 2026-03-25 (17)
 
 ### リファクタリング
