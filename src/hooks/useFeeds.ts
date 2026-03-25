@@ -41,7 +41,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
     if (!user) return;
     setLoadingArticles(true);
     fetch('/api/feeds')
-      .then((r) => r.json() as Promise<Feed[]>)
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Feed[]>; })
       .then(setFeeds)
       .catch((err) => { console.error(err); onError?.('フィードの読み込みに失敗しました'); });
     fetchAndSetArticles()
