@@ -18,6 +18,21 @@ function toggleSetItem(
   });
 }
 
+/** サーバーから取得した配列を既存 Set にマージして localStorage と ref を更新する */
+function mergeServerSet(
+  setState: (updater: (prev: Set<string>) => Set<string>) => void,
+  storageKey: string,
+  ref: { current: Set<string> },
+  serverValues: string[],
+): void {
+  setState((prev) => {
+    const merged = new Set([...prev, ...serverValues]);
+    saveSet(storageKey, merged);
+    ref.current = merged;
+    return merged;
+  });
+}
+
 async function fetchReadState(): Promise<{
   readIds: string[];
   bookmarkIds: string[];
@@ -91,24 +106,9 @@ export function useReadState(
     if (!user) return;
     fetchReadState().then((state) => {
       if (!state) return;
-      setReadIds((prev) => {
-        const merged = new Set([...prev, ...state.readIds]);
-        saveSet(STORAGE_KEYS.READ_IDS, merged);
-        localReadRef.current = merged;
-        return merged;
-      });
-      setBookmarkIds((prev) => {
-        const merged = new Set([...prev, ...state.bookmarkIds]);
-        saveSet(STORAGE_KEYS.BOOKMARK_IDS, merged);
-        localBookmarkRef.current = merged;
-        return merged;
-      });
-      setReadingListIds((prev) => {
-        const merged = new Set([...prev, ...(state.readingListIds ?? [])]);
-        saveSet(STORAGE_KEYS.READING_LIST_IDS, merged);
-        localReadingListRef.current = merged;
-        return merged;
-      });
+      mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, localReadRef, state.readIds);
+      mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, localBookmarkRef, state.bookmarkIds);
+      mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, localReadingListRef, state.readingListIds ?? []);
     });
   }, [user]);
 
