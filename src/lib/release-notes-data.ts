@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (19)
+
+### バグ修正
+- **\`waitUntil\` の \`cfCache.put\` にエラーハンドラを追加** — \`content\` / \`ogp\` / \`image-proxy\` ルートで Cloudflare Cache API への保存が失敗してもサイレントに無視されていた問題を修正。\`.catch()\` でエラーをログ出力するよう統一
+
 ## 2026-03-25 (18)
 
 ### リファクタリング
