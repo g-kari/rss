@@ -37,7 +37,7 @@ export async function fetchFollowSafeRedirects(
   let redirectCount = 0;
 
   try {
-    while (redirectCount <= MAX_REDIRECTS) {
+    while (redirectCount < MAX_REDIRECTS) {
       const res = await fetch(currentUrl, {
         ...init,
         signal: controller.signal,
@@ -58,7 +58,7 @@ export async function fetchFollowSafeRedirects(
 
       return res;
     }
-    throw new Error(`Too many redirects (>${MAX_REDIRECTS})`);
+    throw new Error(`Too many redirects (>=${MAX_REDIRECTS})`);
   } finally {
     clearTimeout(timeoutId);
   }

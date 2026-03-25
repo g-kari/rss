@@ -155,8 +155,16 @@ export function sanitizeHtml(html: string): string {
       return isTrustedIframeSrc(src) ? _m : '';
     })
     .replace(/<iframe\b[^>]*\/>/gi, '')
-    // <meta http-equiv="refresh"> を除去（クライアントサイドリダイレクト防止）
-    .replace(/<meta\b[^>]*http-equiv\s*=\s*["']refresh["'][^>]*\/?>/gi, '')
+    // 危険な <meta http-equiv> を除去。
+    // - refresh: クライアントサイドリダイレクト防止
+    // - set-cookie: レスポンスヘッダー偽装による cookie 注入防止
+    // - Content-Security-Policy: 上位 CSP の上書き防止
+    // - X-Frame-Options / Permissions-Policy: セキュリティポリシー上書き防止
+    // - Link: 外部リソース事前読み込みによるプライバシー侵害防止
+    .replace(
+      /<meta\b[^>]*http-equiv\s*=\s*["'](?:refresh|set-cookie|content-security-policy|x-frame-options|permissions-policy|link)["'][^>]*\/?>/gi,
+      '',
+    )
     // インラインイベントハンドラを除去。
     // [\s/]+ : スペース・タブ・スラッシュ区切り（/ 区切りバイパス対策）
     // (?<=['"]): 引用符直後に on\w+ が来るケース（<img src="x"onerror=...>）のバイパス対策
