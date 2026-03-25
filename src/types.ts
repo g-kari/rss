@@ -11,6 +11,10 @@ export interface Feed {
   lastErrorAt?: string | null;
   /** 429 レートリミット解除予定時刻（ISO 8601）。この時刻までクロン取得をスキップ */
   rateLimitedUntil?: string | null;
+  /** 条件付きリクエスト用。最後の成功フェッチの Last-Modified ヘッダー値 */
+  lastModified?: string | null;
+  /** 条件付きリクエスト用。最後の成功フェッチの ETag ヘッダー値 */
+  etag?: string | null;
 }
 
 export interface Article {
