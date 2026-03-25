@@ -133,11 +133,10 @@ export default function ArticleView({
     setShowTranslated(false);
     if (!article?.id) return;
 
-    // 記事タイトル + サマリーで言語を判定し、非日本語なら自動翻訳
+    // 記事タイトル + サマリーで言語を判定し、非日本語なら自動翻訳（サーバー側でコンテンツ取得）
     const textToCheck = `${article.title ?? ''} ${article.summary ?? ''}`;
-    if (!isLikelyJapanese(textToCheck)) {
-      const content = article.content ?? article.summary;
-      if (content) doRunAi('translation', content, article.id);
+    if (!isLikelyJapanese(textToCheck) && article.link) {
+      doRunAi('translation', article.link, article.id);
     }
     // article.id が変わったときのみ実行
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -311,18 +310,9 @@ export default function ArticleView({
                           if (mode === 'translation') setShowTranslated(false);
                           return;
                         }
-                        if (mode === 'summary') {
-                          // 要約は全文コンテンツを優先して使用する
-                          if (storedContent) {
-                            doRunAi('summary', processedContent ?? article.summary ?? '', article.id);
-                          } else if (article.link) {
-                            fetchFullContent((content) => doRunAi('summary', content, article.id));
-                          } else {
-                            doRunAi('summary', article.summary ?? '', article.id);
-                          }
-                        } else {
-                          // 翻訳は現在のコンテンツを使用（全文取得はしない）
-                          doRunAi('translation', processedContent ?? article.summary ?? '', article.id);
+                        // サーバー側でコンテンツを取得して AI 処理
+                        if (article.link) {
+                          doRunAi(mode, article.link, article.id);
                         }
                       }}
                       disabled={!!aiLoading || fetching}
