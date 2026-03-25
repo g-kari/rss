@@ -33,8 +33,9 @@ test.describe('parseRetryAfter — 整数秒形式', () => {
     expect(parseRetryAfter('1')).toBe(1000);
   });
 
-  test('"0" はデフォルト 1 時間を返す（0 秒は無効値）', () => {
-    expect(parseRetryAfter('0')).toBe(ONE_HOUR_MS);
+  test('"0" → 0 ミリ秒（即再試行可）', () => {
+    // Retry-After: 0 は「すぐに再試行してよい」という意味のため 0ms を返す
+    expect(parseRetryAfter('0')).toBe(0);
   });
 
   test('負の値はデフォルト 1 時間を返す', () => {
