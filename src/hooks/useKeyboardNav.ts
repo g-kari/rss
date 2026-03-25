@@ -26,6 +26,8 @@ interface KeyboardNavOptions {
   onChangeLayout: (layout: Layout) => void;
   unreadOnly: boolean;
   toggleUnreadOnly: () => void;
+  bookmarkOnly: boolean;
+  toggleBookmarkOnly: () => void;
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
   dateRange: DateRange;
@@ -47,8 +49,8 @@ const DATE_RANGE_LABELS: Record<DateRange, string> = { all: '全期間', today: 
  *
  * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, o 元記事, b ブックマーク,
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー,
- *               f フォントサイズ, l レイアウト, u 未読フィルター, s ソート,
- *               d 日付フィルター, / 検索, ] 次フィード, [ 前フィード
+ *               f フォントサイズ, l レイアウト, u 未読フィルター, B ブックマークフィルター,
+ *               s ソート, d 日付フィルター, / 検索, ] 次フィード, [ 前フィード
  */
 export function useKeyboardNav(options: KeyboardNavOptions): void {
   const ref = useRef(options);
@@ -80,6 +82,8 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         onChangeLayout,
         unreadOnly,
         toggleUnreadOnly,
+        bookmarkOnly,
+        toggleBookmarkOnly,
         sortOrder,
         toggleSortOrder,
         cycleDateRange,
@@ -162,6 +166,10 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           e.preventDefault();
           toggleUnreadOnly();
           showToast(!unreadOnly ? '未読フィルター: ON' : '未読フィルター: OFF');
+          break;
+        case 'B':
+          toggleBookmarkOnly();
+          showToast(!bookmarkOnly ? 'ブックマークフィルター: ON' : 'ブックマークフィルター: OFF');
           break;
         case 's':
           toggleSortOrder();
