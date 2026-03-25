@@ -446,7 +446,7 @@ export default function ArticleList({
       isRead: readIds.has(article.id),
       isBookmarked: bookmarkIds.has(article.id),
       isSelected: selectedArticleId === article.id,
-      feedName: feedMap.get(article.feedId) ?? '',
+      feedName: feedMap.get(article.feedHash) ?? '',
       thumb: resolveThumbnail(article, ogpCache),
       showFeedName,
       query,

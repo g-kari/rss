@@ -314,7 +314,7 @@ export default function FeedSidebar({
     let total = 0;
     for (const a of articles) {
       if (!readIds.has(a.id)) {
-        byFeed.set(a.feedId, (byFeed.get(a.feedId) ?? 0) + 1);
+        byFeed.set(a.feedHash, (byFeed.get(a.feedHash) ?? 0) + 1);
         total++;
       }
     }

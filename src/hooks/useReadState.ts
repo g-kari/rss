@@ -192,7 +192,7 @@ export function useReadState(
         } else if (feedId === '__reading_list__') {
           ids = arts.filter((a) => rIds.has(a.id)).map((a) => a.id);
         } else if (feedId) {
-          ids = arts.filter((a) => a.feedId === feedId).map((a) => a.id);
+          ids = arts.filter((a) => a.feedHash === feedId).map((a) => a.id);
         } else {
           ids = arts.map((a) => a.id);
         }

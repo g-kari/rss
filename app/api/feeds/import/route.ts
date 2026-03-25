@@ -1,27 +1,28 @@
 import { NextResponse } from 'next/server';
 import { withSession } from '@/lib/server-auth';
-import { r2Get, r2Put } from '@/lib/r2';
-import { fetchArticles } from '@/cron/fetch';
 import { XMLParser } from 'fast-xml-parser';
 import { isValidFeedUrl } from '@/lib/url';
 import { toArray } from '@/lib/xml-parser';
-import type { Feed } from '@/types';
+import {
+  computeFeedHash,
+  readFeedMeta,
+  createFeedMeta,
+  readUserSubscriptions,
+  writeUserSubscriptions,
+} from '@/lib/shared-feed';
+import { fetchArticles } from '@/cron/fetch';
+import type { UserSubscription } from '@/types';
 
 const MAX_FEEDS_PER_USER = 1000;
-const MAX_OPML_ENTRIES = 5000; // 過剰な処理を防ぐ上限
-const MAX_OPML_DEPTH = 50; // 再帰ネスト深度制限（スタックオーバーフロー対策）
-const MAX_TITLE_LENGTH = 500; // フィードタイトルの最大文字数
-const MAX_SITE_URL_LENGTH = 2048; // siteUrl の最大文字数
+const MAX_OPML_ENTRIES = 5000;
+const MAX_OPML_DEPTH = 50;
+const MAX_TITLE_LENGTH = 500;
+const MAX_SITE_URL_LENGTH = 2048;
 
-/** OPML から取得した title をサニタイズする（長さ制限・ヌルバイト除去） */
 function sanitizeTitle(title: string): string {
   return title.replace(/\0/g, '').slice(0, MAX_TITLE_LENGTH);
 }
 
-/**
- * OPML の htmlUrl をサニタイズする。
- * http/https 以外のスキーム（javascript: 等）はブランクに置換する。
- */
 function sanitizeSiteUrl(url: string): string {
   if (!url || url.length > MAX_SITE_URL_LENGTH) return '';
   try {
@@ -97,41 +98,48 @@ export async function POST(request: Request) {
     if (feedEntries.length > MAX_OPML_ENTRIES) {
       return NextResponse.json(
         { error: `OPML contains too many feeds (max ${MAX_OPML_ENTRIES} per import)` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const list = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
-    const remainingSlots = MAX_FEEDS_PER_USER - list.length;
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    const remainingSlots = MAX_FEEDS_PER_USER - subs.length;
     if (remainingSlots <= 0) {
       return NextResponse.json({ error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` }, { status: 422 });
     }
 
-    const existingUrls = new Set(list.map((f) => f.url));
+    const existingHashes = new Set(subs.map((s) => s.feedHash));
+    let addedCount = 0;
 
-    const added: Feed[] = [];
     for (const entry of feedEntries) {
-      if (added.length >= remainingSlots) break; // 上限に達したら打ち切り
-      if (existingUrls.has(entry.url)) continue;
-      if (!isValidFeedUrl(entry.url)) continue; // SSRF 対策
-      const newFeed: Feed = {
-        id: crypto.randomUUID(),
+      if (addedCount >= remainingSlots) break;
+      if (!isValidFeedUrl(entry.url)) continue;
+
+      const feedHash = await computeFeedHash(entry.url);
+      if (existingHashes.has(feedHash)) continue;
+
+      // 共有 meta が無ければ作成
+      const existingMeta = await readFeedMeta(env.RSS_DATA, feedHash);
+      if (!existingMeta) {
+        await createFeedMeta(env.RSS_DATA, feedHash, entry.url, entry.title, entry.siteUrl);
+      }
+
+      const newSub: UserSubscription = {
+        feedHash,
         url: entry.url,
-        title: entry.title,
-        siteUrl: entry.siteUrl,
-        lastFetchedAt: null,
-        fetchError: null,
+        customTitle: entry.title !== entry.url ? entry.title : undefined,
+        subscribedAt: new Date().toISOString(),
       };
-      list.push(newFeed);
-      existingUrls.add(entry.url);
-      added.push(newFeed);
+      subs.push(newSub);
+      existingHashes.add(feedHash);
+      addedCount++;
     }
 
-    if (added.length > 0) {
-      await r2Put(env.RSS_DATA, `users/${session.userId}/feeds.json`, list);
+    if (addedCount > 0) {
+      await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
       ctx.waitUntil(fetchArticles(env, session.userId).catch(console.error));
     }
 
-    return NextResponse.json({ added: added.length, skipped: feedEntries.length - added.length });
+    return NextResponse.json({ added: addedCount, skipped: feedEntries.length - addedCount });
   });
 }
