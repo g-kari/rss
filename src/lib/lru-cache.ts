@@ -4,12 +4,19 @@
  * セッション中はメモリ (Map) から O(1) で読み書きし、
  * localStorage には永続化のみ使用する。
  * Map はキーの挿入順を保持するため、先頭が最も古いエントリになる。
+ *
+ * localStorage への書き込みは非同期バッファリングする。
+ * set() が呼ばれるたびに即座に書き込むのではなく、次のイベントループで
+ * まとめてフラッシュする。これにより連続した set() 呼び出しの I/O を削減する。
  */
 import { STORAGE_KEYS, storageGet, storageSet, storageRemove, storageListKeys } from './storage';
 
 export class LruCache {
   private readonly map = new Map<string, string>();
   private hydrated = false;
+  /** フラッシュ待ちの書き込み。値が null の場合は削除操作 */
+  private readonly pending = new Map<string, string | null>();
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly prefix: string,
@@ -48,11 +55,31 @@ export class LruCache {
       const oldestKey = this.map.keys().next().value;
       if (oldestKey !== undefined) {
         this.map.delete(oldestKey);
-        storageRemove(this.prefix + oldestKey);
+        this.pending.set(oldestKey, null); // 削除を予約
       }
     }
     this.map.set(id, value);
-    storageSet(this.prefix + id, value);
+    this.pending.set(id, value); // 書き込みを予約
+    this.scheduleFlush();
+  }
+
+  /** 次のイベントループで pending をフラッシュするようスケジュール */
+  private scheduleFlush(): void {
+    if (this.flushTimer !== null) return;
+    this.flushTimer = setTimeout(() => this.flush(), 0);
+  }
+
+  /** pending を一括で localStorage に書き込む */
+  private flush(): void {
+    this.flushTimer = null;
+    for (const [key, value] of this.pending) {
+      if (value === null) {
+        storageRemove(this.prefix + key);
+      } else {
+        storageSet(this.prefix + key, value);
+      }
+    }
+    this.pending.clear();
   }
 }
 
