@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (14)
+
+### ドキュメント整備
+- **\`MAX_ARTICLES\` の記述を 2000 → 500 に修正** — \`articles.json\` の最大件数をコードから 2000 → 500 に削減した際、\`CLAUDE.md\`・\`README.md\`・\`.claude/rules/architecture.md\` の記述が更新されず不整合が生じていた。3 ファイルの記述を実装値（500）に合わせて修正
+
 ## 2026-03-25 (13)
 
 ### セキュリティ

@@ -120,7 +120,7 @@ ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
 ```
 users/{sub}/profile.json       # UserProfile (ログイン時に保存)
 users/{sub}/feeds.json         # Feed[]
-users/{sub}/articles.json      # Article[] (max 2000, publishedAt 降順)
+users/{sub}/articles.json      # Article[] (max 500, publishedAt 降順)
 ai-cache/summary/{sha256}      # AI 要約キャッシュ (永続)
 ai-cache/translation/{sha256}  # AI 翻訳キャッシュ (永続)
 ```
