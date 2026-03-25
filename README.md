@@ -110,7 +110,7 @@ BETA_ALLOWED_SUBS = ""                      # ベータ制限: カンマ区切�
 ```
 users/{sub}/profile.json    # UserProfile (ログイン時に保存)
 users/{sub}/feeds.json      # Feed[]
-users/{sub}/articles.json   # Article[] (max 2000, publishedAt 降順)
+users/{sub}/articles.json   # Article[] (max 500, publishedAt 降順)
 ```
 
 `sub` = 0g0 ID のペアワイズ識別子 (JWT の `sub` クレーム)

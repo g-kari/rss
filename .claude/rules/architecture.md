@@ -83,7 +83,7 @@ src/
 2. `fetchAllUsers(env)` が R2 の `users/` プレフィックスを列挙
 3. 各ユーザーの `feeds.json` を読んで全フィードを fetch
 4. `fast-xml-parser` で RSS 2.0 / Atom をパース
-5. `guid` でdeduplication、max 2000件、`publishedAt` 降順
+5. `guid` でdeduplication、max 500件、`publishedAt` 降順
 6. `users/{sub}/articles.json` を更新
 
 ### 読み取り状態
@@ -120,7 +120,7 @@ const CLIENT_ID = process.env.CLIENT_ID!;
 ```
 users/{sub}/profile.json    # UserProfile (ログイン時に保存)
 users/{sub}/feeds.json      # Feed[]
-users/{sub}/articles.json   # Article[] (max 2000, publishedAt 降順)
+users/{sub}/articles.json   # Article[] (max 500, publishedAt 降順)
 ```
 
 `sub` = 0g0 ID のペアワイズ識別子 (JWT の `sub` クレーム)
