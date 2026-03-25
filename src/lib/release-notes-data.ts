@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (39)
+
+### リファクタリング
+- **\`KeyboardShortcutsModal\` コンポーネント抽出** — \`App.tsx\` にインラインで定義されていたキーボードショートカットヘルプモーダル（50行超の JSX）を \`src/components/KeyboardShortcutsModal.tsx\` に独立コンポーネントとして抽出。ショートカット定数を \`SHORTCUTS\` として分離し、\`ReleaseNotesModal\` と同じパターンに統一
+
 ## 2026-03-26 (38)
 
 ### セキュリティ
