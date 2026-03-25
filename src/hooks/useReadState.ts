@@ -65,13 +65,11 @@ export function useReadState(
     loadSet(STORAGE_KEYS.READING_LIST_IDS),
   );
 
-  // 最新の値を保持する ref（デバウンス送信やクロージャ内で使用）
+  // 最新の値を保持する ref（デバウンス送信・クロージャ内で使用）
   const localReadRef = useRef(readIds);
   const localBookmarkRef = useRef(bookmarkIds);
   const localReadingListRef = useRef(readingListIds);
   const articlesRef = useRef(articles);
-  const bookmarkIdsRef = useRef(bookmarkIds);
-  const readingListIdsRef = useRef(readingListIds);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ログイン後にサーバーの既読・ブックマーク・後で読む状態をマージ
@@ -107,12 +105,10 @@ export function useReadState(
 
   useEffect(() => {
     localBookmarkRef.current = bookmarkIds;
-    bookmarkIdsRef.current = bookmarkIds;
   }, [bookmarkIds]);
 
   useEffect(() => {
     localReadingListRef.current = readingListIds;
-    readingListIdsRef.current = readingListIds;
   }, [readingListIds]);
 
   useEffect(() => {
@@ -159,8 +155,8 @@ export function useReadState(
     (feedId: string | null) => {
       setReadIds((prev) => {
         const arts = articlesRef.current;
-        const bIds = bookmarkIdsRef.current;
-        const rIds = readingListIdsRef.current;
+        const bIds = localBookmarkRef.current;
+        const rIds = localReadingListRef.current;
         let ids: string[];
         if (feedId === '__bookmarks__') {
           ids = arts.filter((a) => bIds.has(a.id)).map((a) => a.id);
