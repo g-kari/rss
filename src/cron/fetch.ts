@@ -2,6 +2,7 @@ import type { Feed, Article, PushConfig } from '../types';
 
 import { parseFeed, type ParsedItem } from '../lib/xml-parser';
 import { isValidFeedUrl } from '../lib/url';
+import { fetchWithTimeout } from '../lib/fetch';
 import { sendPushToAll, type PushPayload } from '../lib/web-push';
 
 type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA' | 'FINDME_RSS'>;
@@ -105,10 +106,7 @@ function fetchViaBinding(env: FetchEnv, url: string, init?: RequestInit): Promis
     const binding = env[bindingKey] as Fetcher | undefined;
     if (binding) return binding.fetch(url, init);
   }
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  return fetch(url, { ...init, signal: controller.signal })
-    .finally(() => clearTimeout(timeoutId));
+  return fetchWithTimeout(url, init ?? {}, FETCH_TIMEOUT_MS);
 }
 
 /**
