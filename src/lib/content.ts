@@ -328,21 +328,6 @@ export function rewriteImageUrls(html: string): string {
 }
 
 /**
- * 共通後処理ステップ（画像処理・テーブルラップ・XSS サニタイズ）。
- * postProcess / postProcessMarkdownContent 両方から呼ばれる。
- * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
- */
-function applyBasePostProcess(html: string, pageUrl = ''): string {
-  const steps: Array<(h: string) => string> = [
-    (h) => fixImageDimensions(h, pageUrl),
-    (h) => rewriteImageUrls(h),
-    (h) => wrapTables(h),
-    (h) => sanitizeHtml(h),
-  ];
-  return steps.reduce((h, step) => step(h), html);
-}
-
-/**
  * コンテンツ抽出後の後処理パイプライン。
  * 各ステップを適用順に並べる。sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  */
@@ -352,7 +337,10 @@ export function postProcess(content: string, pageUrl = ''): string {
     (html) => transformZennLinkEmbeds(html),
     (html) => transformZennMermaidEmbeds(html, pageUrl),
     (html) => fixLazyImages(html),
-    (html) => applyBasePostProcess(html, pageUrl),
+    (html) => fixImageDimensions(html, pageUrl),
+    (html) => rewriteImageUrls(html),
+    (html) => wrapTables(html),
+    (html) => sanitizeHtml(html),
   ];
   return steps.reduce((html, step) => step(html), content);
 }
@@ -431,9 +419,16 @@ export function markdownToHtml(md: string): string {
 /**
  * Markdown → HTML 変換後の後処理パイプライン。
  * Zenn embed 等は変換時に消失するため、共通後処理（画像処理・テーブル・サニタイズ）のみ適用する。
+ * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  */
 export function postProcessMarkdownContent(html: string, pageUrl = ''): string {
-  return applyBasePostProcess(html, pageUrl);
+  const steps: Array<(h: string) => string> = [
+    (h) => fixImageDimensions(h, pageUrl),
+    (h) => rewriteImageUrls(h),
+    (h) => wrapTables(h),
+    (h) => sanitizeHtml(h),
+  ];
+  return steps.reduce((h, step) => step(h), html);
 }
 
 /**

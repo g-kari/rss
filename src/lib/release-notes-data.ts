@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (20)
+
+### リファクタリング
+- **\`applyBasePostProcess\` を削除してパイプラインをフラット化** — \`postProcess\` と \`postProcessMarkdownContent\` それぞれが独立した steps 配列を持つ形に変更し、中間ヘルパーを通じたネストを解消して全処理ステップを一箇所で把握できるよう可読性を向上
+
 ## 2026-03-25 (19)
 
 ### バグ修正
