@@ -87,8 +87,10 @@ function isTrustedIframeSrc(src: string): boolean {
   } catch {
     return false;
   }
-  // https / http のみ許可（javascript: / data: などを排除）
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+  // https のみ許可（http: / javascript: / data: などを排除）
+  // 信頼済みドメインは全て HTTPS を提供しており、HTTP を許可する理由がない。
+  // HTTP iframe は中間者攻撃でコンテンツを差し替えられるリスクがある。
+  if (url.protocol !== 'https:') return false;
 
   const h = url.hostname;
   const p = url.pathname;
