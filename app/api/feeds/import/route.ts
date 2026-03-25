@@ -10,6 +10,28 @@ import type { Feed } from '@/types';
 const MAX_FEEDS_PER_USER = 1000;
 const MAX_OPML_ENTRIES = 5000; // 過剰な処理を防ぐ上限
 const MAX_OPML_DEPTH = 50; // 再帰ネスト深度制限（スタックオーバーフロー対策）
+const MAX_TITLE_LENGTH = 500; // フィードタイトルの最大文字数
+const MAX_SITE_URL_LENGTH = 2048; // siteUrl の最大文字数
+
+/** OPML から取得した title をサニタイズする（長さ制限・ヌルバイト除去） */
+function sanitizeTitle(title: string): string {
+  return title.replace(/\0/g, '').slice(0, MAX_TITLE_LENGTH);
+}
+
+/**
+ * OPML の htmlUrl をサニタイズする。
+ * http/https 以外のスキーム（javascript: 等）はブランクに置換する。
+ */
+function sanitizeSiteUrl(url: string): string {
+  if (!url || url.length > MAX_SITE_URL_LENGTH) return '';
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return url;
+  } catch {
+    return '';
+  }
+}
 
 interface OpmlOutline {
   '@_xmlUrl'?: string;
@@ -42,8 +64,8 @@ function extractFeeds(
   if (outline['@_xmlUrl']) {
     results.push({
       url: outline['@_xmlUrl'],
-      title: outline['@_title'] ?? outline['@_text'] ?? outline['@_xmlUrl'],
-      siteUrl: outline['@_htmlUrl'] ?? '',
+      title: sanitizeTitle(outline['@_title'] ?? outline['@_text'] ?? outline['@_xmlUrl']),
+      siteUrl: sanitizeSiteUrl(outline['@_htmlUrl'] ?? ''),
     });
   }
   for (const child of toArray(outline.outline)) {
