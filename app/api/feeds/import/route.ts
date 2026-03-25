@@ -4,6 +4,7 @@ import { r2Get, r2Put } from '@/lib/r2';
 import { fetchArticles } from '@/cron/fetch';
 import { XMLParser } from 'fast-xml-parser';
 import { isValidFeedUrl } from '@/lib/url';
+import { toArray } from '@/lib/xml-parser';
 import type { Feed } from '@/types';
 
 const MAX_FEEDS_PER_USER = 1000;
@@ -31,11 +32,6 @@ const parser = new XMLParser({
   attributeNamePrefix: '@_',
   isArray: (name) => name === 'outline',
 });
-
-function toArray<T>(val: T | T[] | undefined): T[] {
-  if (!val) return [];
-  return Array.isArray(val) ? val : [val];
-}
 
 function extractFeeds(
   outline: OpmlOutline,
