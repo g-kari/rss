@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (36)
+
+### リファクタリング
+- **コンテンツ取得定数を一元化** — `CONTENT_CACHE_TTL_SEC` / `FETCH_TIMEOUT_MS` / `MAX_CONTENT_BYTES` が `fetch-article-content.ts` と `content/route.ts` の両方で同一値として重複していた問題を修正。`fetch-article-content.ts` のみで定義しエクスポート、`route.ts` でインポートするよう変更し、値の乖離によるキャッシュ不整合リスクを排除
+
 ## 2026-03-26 (35)
 
 ### リファクタリング

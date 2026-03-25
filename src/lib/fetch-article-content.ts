@@ -15,9 +15,9 @@ import {
 } from '@/lib/content';
 import { isValidFeedUrl } from '@/lib/url';
 
-const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
-const FETCH_TIMEOUT_MS = 10_000;
-const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
+export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
+export const FETCH_TIMEOUT_MS = 10_000;
+export const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 
 /**
  * URL から記事コンテンツを取得する。
