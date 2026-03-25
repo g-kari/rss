@@ -23,8 +23,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return withSession(async ({ session, env }) => {
-    const body = (await request.json()) as { title?: string };
-    const title = body?.title?.trim();
+    const body = (await request.json()) as { title?: unknown };
+    if (typeof body?.title !== 'string') {
+      return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    }
+    const title = body.title.trim();
     if (!title) return NextResponse.json({ error: 'title is required' }, { status: 400 });
     if (title.length > 200) return NextResponse.json({ error: 'title too long' }, { status: 400 });
 
