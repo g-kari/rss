@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (28)
+
+### リファクタリング
+- **\`fetchAndParseFeed\` ヘルパーを抽出** — \`fetchUserArticles\` と \`fetchSingleFeed\` で重複していた「フェッチ→パース→メタ更新→記事ビルド」ロジックを共通の \`fetchAndParseFeed\` 関数に集約。条件付きリクエスト（ETag/If-Modified-Since）は \`options.conditional\` フラグで制御
+
 ## 2026-03-25 (27)
 
 ### セキュリティ

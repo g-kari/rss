@@ -200,6 +200,43 @@ function sortAndSlice(articles: Iterable<Article>): Article[] {
     .slice(0, MAX_ARTICLES);
 }
 
+/**
+ * 単一フィードをフェッチしてパースし、新着候補の Article 配列を返す。
+ * フィードのメタデータ（etag / lastModified / fetchError 等）を更新する（副作用あり）。
+ * 304 Not Modified の場合はフィード状態をリセットした上で空配列を返す。
+ * エラー時は RateLimitError またはその他の Error をスローする（呼び出し元で処理）。
+ */
+async function fetchAndParseFeed(
+  env: FetchEnv,
+  feed: Feed,
+  existingByKey: Map<string, Article>,
+  options: { conditional?: boolean } = {},
+): Promise<Article[]> {
+  const reqHeaders: Record<string, string> = { 'User-Agent': 'rss-reader/1.0' };
+  if (options.conditional) {
+    if (feed.etag) reqHeaders['If-None-Match'] = feed.etag;
+    if (feed.lastModified) reqHeaders['If-Modified-Since'] = feed.lastModified;
+  }
+  const res = await fetchViaBinding(env, feed.url, { headers: reqHeaders });
+  if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
+  // 304 Not Modified: フィードは変更なし — エラー状態をリセットして空配列を返す
+  if (res.status === 304) {
+    applyFeedNotModified(feed);
+    return [];
+  }
+  if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
+  const xml = await res.text();
+  const parsed = parseFeed(xml);
+
+  applyFeedSuccess(feed, parsed);
+  // 次回の条件付きリクエスト用にキャッシュバリデータを保存
+  const lastModified = res.headers.get('Last-Modified');
+  const etag = res.headers.get('ETag');
+  if (lastModified) feed.lastModified = lastModified;
+  if (etag) feed.etag = etag;
+  return parsed.items.map((item) => buildArticle(item, feed.id, existingByKey));
+}
+
 async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = false): Promise<void> {
   const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${userId}/feeds.json`, []);
   if (feeds.length === 0) return;
@@ -225,30 +262,8 @@ async function fetchUserArticles(env: FetchEnv, userId: string, forceRetry = fal
         }
       }
       if (!isValidFeedUrl(feed.url)) throw new Error(`Invalid feed URL: ${feed.url}`); // SSRF 対策
-      const reqHeaders: Record<string, string> = { 'User-Agent': 'rss-reader/1.0' };
       // クロン実行時のみ条件付きリクエストを送信（手動リフレッシュは常に最新データを取得）
-      if (!forceRetry) {
-        if (feed.etag) reqHeaders['If-None-Match'] = feed.etag;
-        if (feed.lastModified) reqHeaders['If-Modified-Since'] = feed.lastModified;
-      }
-      const res = await fetchViaBinding(env, feed.url, { headers: reqHeaders });
-      if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
-      // 304 Not Modified: フィードは変更なし — エラー状態をリセットして空配列を返す
-      if (res.status === 304) {
-        applyFeedNotModified(feed);
-        return [];
-      }
-      if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
-      const xml = await res.text();
-      const parsed = parseFeed(xml);
-
-      applyFeedSuccess(feed, parsed);
-      // 次回の条件付きリクエスト用にキャッシュバリデータを保存
-      const lastModified = res.headers.get('Last-Modified');
-      const etag = res.headers.get('ETag');
-      if (lastModified) feed.lastModified = lastModified;
-      if (etag) feed.etag = etag;
-      return parsed.items.map((item) => buildArticle(item, feed.id, existingByKey));
+      return fetchAndParseFeed(env, feed, existingByKey, { conditional: !forceRetry });
     }),
     FEED_FETCH_CONCURRENCY,
   );
@@ -370,20 +385,8 @@ export async function fetchSingleFeed(env: FetchEnv, userId: string, feedId: str
   const existingByKey = new Map(existing.map((a) => [articleKey(a.feedId, a.guid), a]));
 
   try {
-    const res = await fetchViaBinding(env, feed.url, { headers: { 'User-Agent': 'rss-reader/1.0' } });
-    if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
-    if (!res.ok) throw new Error(`${res.status} ${feed.url}`);
-    const xml = await res.text();
-    const parsed = parseFeed(xml);
-
-    applyFeedSuccess(feed, parsed);
-    // 次回の条件付きリクエスト用にキャッシュバリデータを保存
-    const lastModified = res.headers.get('Last-Modified');
-    const etag = res.headers.get('ETag');
-    if (lastModified) feed.lastModified = lastModified;
-    if (etag) feed.etag = etag;
-    for (const item of parsed.items) {
-      const article = buildArticle(item, feed.id, existingByKey);
+    const articles = await fetchAndParseFeed(env, feed, existingByKey);
+    for (const article of articles) {
       existingByKey.set(articleKey(article.feedId, article.guid), article);
     }
   } catch (e) {
