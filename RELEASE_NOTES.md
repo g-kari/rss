@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-25 (16)
+
+### リファクタリング
+- **`postProcess` の共通ステップを `applyBasePostProcess` に切り出し** — `postProcess` と `postProcessMarkdownContent` が共有する `fixImageDimensions` / `rewriteImageUrls` / `wrapTables` / `sanitizeHtml` の 4 ステップを private ヘルパーにまとめて重複を解消
+
 ## 2026-03-25 (15)
 
 ### リファクタリング
