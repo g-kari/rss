@@ -82,6 +82,20 @@ function sanitizeStyleAttr(style: string): string {
  * `https://evil.com/?x=youtube.com/embed` のような URL でバイパスできるため、
  * hostname と pathname をそれぞれ完全一致・プレフィックス一致で確認する。
  */
+
+/** ホスト名完全一致 ＋ パスプレフィックス一致で判定するルール。pathPrefix 省略時はホスト名のみで許可。 */
+const TRUSTED_IFRAME_RULES: ReadonlyArray<{ hosts: readonly string[]; pathPrefix?: string }> = [
+  { hosts: ['youtube.com', 'www.youtube.com'], pathPrefix: '/embed/' },
+  { hosts: ['youtube-nocookie.com', 'www.youtube-nocookie.com'], pathPrefix: '/embed/' },
+  { hosts: ['player.vimeo.com'] },
+  { hosts: ['open.spotify.com'], pathPrefix: '/embed/' },
+  { hosts: ['w.soundcloud.com'] },
+  { hosts: ['player.twitch.tv'] },
+  { hosts: ['clips.twitch.tv'], pathPrefix: '/embed' },
+  { hosts: ['embed.nicovideo.jp'] },
+  { hosts: ['embed.zenn.studio'] },
+];
+
 function isTrustedIframeSrc(src: string): boolean {
   // プロトコル相対 URL を正規化
   const normalized = src.startsWith('//') ? 'https:' + src : src;
@@ -99,18 +113,9 @@ function isTrustedIframeSrc(src: string): boolean {
   const h = url.hostname;
   const p = url.pathname;
 
-  // ホスト名完全一致 ＋ パスプレフィックス一致で判定
-  return (
-    ((h === 'www.youtube.com' || h === 'youtube.com') && p.startsWith('/embed/')) ||
-    ((h === 'www.youtube-nocookie.com' || h === 'youtube-nocookie.com') &&
-      p.startsWith('/embed/')) ||
-    h === 'player.vimeo.com' ||
-    (h === 'open.spotify.com' && p.startsWith('/embed/')) ||
-    h === 'w.soundcloud.com' ||
-    h === 'player.twitch.tv' ||
-    (h === 'clips.twitch.tv' && p.startsWith('/embed')) ||
-    h === 'embed.nicovideo.jp' ||
-    h === 'embed.zenn.studio'
+  return TRUSTED_IFRAME_RULES.some(
+    ({ hosts, pathPrefix }) =>
+      hosts.includes(h) && (pathPrefix === undefined || p.startsWith(pathPrefix)),
   );
 }
 

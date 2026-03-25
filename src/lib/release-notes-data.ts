@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (46)
+
+### リファクタリング
+- **\`isTrustedIframeSrc\` ルールをデータ化** — 長大な boolean 式を \`TRUSTED_IFRAME_RULES\` 定数（ホスト名リスト＋パスプレフィックスの配列）に置き換え。ドメインの追加・削除が 1 行で完結するように
+
 ## 2026-03-26 (45)
 
 ### リファクタリング
