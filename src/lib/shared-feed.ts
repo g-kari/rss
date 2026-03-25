@@ -295,30 +295,27 @@ export async function getUserLatestArticles(
   return sorted.slice(0, 2000);
 }
 
-/** 全 feedHash を R2 の feeds/ プレフィックスから列挙する */
-export async function listAllFeedHashes(bucket: R2Bucket): Promise<string[]> {
-  const hashes: string[] = [];
+/** R2 の prefix/ 直下にある ID（ディレクトリ名）を全件列挙する */
+async function listPrefixedIds(bucket: R2Bucket, prefix: string): Promise<string[]> {
+  const ids: string[] = [];
   let cursor: string | undefined;
   do {
-    const listed = await bucket.list({ prefix: 'feeds/', delimiter: '/', cursor });
-    hashes.push(
-      ...listed.delimitedPrefixes.map((p: string) => p.slice('feeds/'.length, -1)),
-    );
+    const listed = await bucket.list({ prefix, delimiter: '/', cursor });
+    ids.push(...listed.delimitedPrefixes.map((p: string) => p.slice(prefix.length, -1)));
     cursor = listed.truncated ? listed.cursor : undefined;
   } while (cursor);
-  return hashes;
+  return ids;
+}
+
+/** 全 feedHash を R2 の feeds/ プレフィックスから列挙する */
+export async function listAllFeedHashes(bucket: R2Bucket): Promise<string[]> {
+  return listPrefixedIds(bucket, 'feeds/');
 }
 
 /** 全ユーザーの subscriptions.json から feedHash → userId[] の逆引きマップを構築する */
 export async function buildFeedUserMap(bucket: R2Bucket): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>();
-  const userIds: string[] = [];
-  let cursor: string | undefined;
-  do {
-    const listed = await bucket.list({ prefix: 'users/', delimiter: '/', cursor });
-    userIds.push(...listed.delimitedPrefixes.map((p: string) => p.slice('users/'.length, -1)));
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
+  const userIds = await listPrefixedIds(bucket, 'users/');
 
   const allSubs = await Promise.all(
     userIds.map(async (uid) => ({ uid, subs: await readUserSubscriptions(bucket, uid) })),
