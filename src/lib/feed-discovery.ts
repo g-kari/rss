@@ -7,7 +7,7 @@
  * 3. 見つからなければ一般的なパス (/feed, /rss など) を並列プローブ
  */
 import { isValidFeedUrl } from './url';
-import { fetchWithTimeout } from './fetch';
+import { fetchFollowSafeRedirects } from './fetch';
 
 /** フィード探索時の外部フェッチタイムアウト（ミリ秒）*/
 const DISCOVERY_TIMEOUT_MS = 5_000;
@@ -75,10 +75,9 @@ async function probeCommonFeedPaths(baseUrl: string): Promise<string | null> {
   const results = await Promise.allSettled(
     COMMON_FEED_PATHS.map(async (path) => {
       const url = origin + path;
-      const res = await fetchWithTimeout(url, {
+      const res = await fetchFollowSafeRedirects(url, {
         method: 'HEAD',
         headers: { 'User-Agent': 'rss-reader/1.0' },
-        redirect: 'follow',
       }, DISCOVERY_TIMEOUT_MS);
       const ct = res.headers.get('content-type') ?? '';
       if (res.ok && isFeedContentType(ct)) return url;
@@ -100,9 +99,8 @@ async function probeCommonFeedPaths(baseUrl: string): Promise<string | null> {
  */
 export async function discoverFeedUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetchWithTimeout(url, {
+    const res = await fetchFollowSafeRedirects(url, {
       headers: { 'User-Agent': 'rss-reader/1.0' },
-      redirect: 'follow',
     }, DISCOVERY_TIMEOUT_MS);
     if (!res.ok) return null;
 
