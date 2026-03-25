@@ -4,6 +4,20 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Article, UserProfile } from '../types';
 import { STORAGE_KEYS, saveSet, loadSet } from '../lib/storage';
 
+/** Set<string> state の toggle（追加/削除）+ localStorage 保存の内部ヘルパー */
+function toggleSetItem(
+  setState: (updater: (prev: Set<string>) => Set<string>) => void,
+  storageKey: string,
+  id: string,
+): void {
+  setState((prev) => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    saveSet(storageKey, next);
+    return next;
+  });
+}
+
 async function fetchReadState(): Promise<{
   readIds: string[];
   bookmarkIds: string[];
@@ -177,41 +191,17 @@ export function useReadState(
   );
 
   const toggleRead = useCallback(
-    (articleId: string) => {
-      setReadIds((prev) => {
-        const next = new Set(prev);
-        next.has(articleId) ? next.delete(articleId) : next.add(articleId);
-        saveSet(STORAGE_KEYS.READ_IDS, next);
-        return next;
-      });
-      scheduleSyncToServer();
-    },
+    (id: string) => { toggleSetItem(setReadIds, STORAGE_KEYS.READ_IDS, id); scheduleSyncToServer(); },
     [scheduleSyncToServer],
   );
 
   const toggleBookmark = useCallback(
-    (articleId: string) => {
-      setBookmarkIds((prev) => {
-        const next = new Set(prev);
-        next.has(articleId) ? next.delete(articleId) : next.add(articleId);
-        saveSet(STORAGE_KEYS.BOOKMARK_IDS, next);
-        return next;
-      });
-      scheduleSyncToServer();
-    },
+    (id: string) => { toggleSetItem(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, id); scheduleSyncToServer(); },
     [scheduleSyncToServer],
   );
 
   const toggleReadingList = useCallback(
-    (articleId: string) => {
-      setReadingListIds((prev) => {
-        const next = new Set(prev);
-        next.has(articleId) ? next.delete(articleId) : next.add(articleId);
-        saveSet(STORAGE_KEYS.READING_LIST_IDS, next);
-        return next;
-      });
-      scheduleSyncToServer();
-    },
+    (id: string) => { toggleSetItem(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, id); scheduleSyncToServer(); },
     [scheduleSyncToServer],
   );
 
