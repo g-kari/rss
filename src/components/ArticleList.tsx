@@ -190,6 +190,10 @@ const LAYOUT_ICONS: Record<Layout, ReactElement> = {
 
 const LAYOUTS: Layout[] = ['compact', 'list', 'card', 'magazine'];
 
+const DATE_RANGE_LABELS: Record<DateRange, string> = {
+  all: '日付', today: '今日', week: '今週', month: '今月',
+};
+
 // ── 各レイアウト用記事アイテムの共通 Props ──────────────────────────────
 
 interface ArticleItemProps {
@@ -202,20 +206,22 @@ interface ArticleItemProps {
   thumb: string | undefined;
   showFeedName: boolean;
   query: string;
-  onSelect: () => void;
-  onToggleRead: () => void;
-  onToggleBookmark: () => void;
+  // 親の安定参照をそのまま渡す（子側でクロージャを生成してメモ比較を壊さない）
+  onSelectArticle: (a: Article) => void;
+  onToggleRead: (id: string) => void;
+  onToggleBookmark: (id: string) => void;
 }
 
 // ── compact ────────────────────────────────────────────────────────────
 
 const CompactArticleItem = memo(function CompactArticleItem({
-  article, index, isRead, isBookmarked, isSelected, feedName, showFeedName, query, onSelect, onToggleRead, onToggleBookmark,
+  article, index, isRead, isBookmarked, isSelected, feedName, showFeedName, query,
+  onSelectArticle, onToggleRead, onToggleBookmark,
 }: ArticleItemProps) {
   return (
     <div
       id={`article-${article.id}`}
-      onClick={onSelect}
+      onClick={() => onSelectArticle(article)}
       className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
         isSelected
           ? 'bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]'
@@ -235,9 +241,8 @@ const CompactArticleItem = memo(function CompactArticleItem({
         <span className="text-[11px] text-text-faint truncate max-w-[80px] flex-shrink-0 group-hover:hidden">{feedName}</span>
       )}
       <span className="text-[11px] text-text-faint flex-shrink-0 group-hover:hidden">{timeAgo(article.publishedAt)}</span>
-      {/* ホバーアクション */}
       <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-        <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={onToggleRead} onToggleBookmark={onToggleBookmark} />
+        <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
       </div>
     </div>
   );
@@ -246,12 +251,13 @@ const CompactArticleItem = memo(function CompactArticleItem({
 // ── list (デフォルト) ──────────────────────────────────────────────────
 
 const ListArticleItem = memo(function ListArticleItem({
-  article, index, isRead, isBookmarked, isSelected, feedName, thumb, showFeedName, query, onSelect, onToggleRead, onToggleBookmark,
+  article, index, isRead, isBookmarked, isSelected, feedName, thumb, showFeedName, query,
+  onSelectArticle, onToggleRead, onToggleBookmark,
 }: ArticleItemProps) {
   return (
     <div
       id={`article-${article.id}`}
-      onClick={onSelect}
+      onClick={() => onSelectArticle(article)}
       className={`group flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
         isSelected
           ? 'bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]'
@@ -284,9 +290,8 @@ const ListArticleItem = memo(function ListArticleItem({
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         {thumb && <ArticleThumbnail thumb={thumb} className="w-14 h-14 object-cover rounded" />}
-        {/* ホバーアクション */}
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-          <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={onToggleRead} onToggleBookmark={onToggleBookmark} />
+          <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
         </div>
       </div>
     </div>
@@ -296,12 +301,13 @@ const ListArticleItem = memo(function ListArticleItem({
 // ── card ───────────────────────────────────────────────────────────────
 
 const CardArticleItem = memo(function CardArticleItem({
-  article, index, isRead, isBookmarked, isSelected, feedName, thumb, showFeedName, query, onSelect, onToggleRead, onToggleBookmark,
+  article, index, isRead, isBookmarked, isSelected, feedName, thumb, showFeedName, query,
+  onSelectArticle, onToggleRead, onToggleBookmark,
 }: ArticleItemProps) {
   return (
     <div
       id={`article-${article.id}`}
-      onClick={onSelect}
+      onClick={() => onSelectArticle(article)}
       className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 animate-fade-up overflow-hidden ${
         isSelected
           ? 'border-text-strong bg-surface-elevated'
@@ -331,13 +337,12 @@ const CardArticleItem = memo(function CardArticleItem({
             <span className="text-[10px] text-text-faint flex-shrink-0">{timeAgo(article.publishedAt)}</span>
             {article.author && <span className="text-[10px] text-text-faint truncate">{article.author}</span>}
           </div>
-          <div className="flex items-center">
+          <>
             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:opacity-0 transition-opacity duration-150" />}
-            {/* ホバーアクション */}
             <div className="absolute flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto right-2.5 bottom-2.5" onClick={(e) => e.stopPropagation()}>
-              <ArticleActions size="sm" isRead={isRead} isBookmarked={isBookmarked} onToggleRead={onToggleRead} onToggleBookmark={onToggleBookmark} />
+              <ArticleActions size="sm" isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
             </div>
-          </div>
+          </>
         </div>
       </div>
     </div>
@@ -347,12 +352,13 @@ const CardArticleItem = memo(function CardArticleItem({
 // ── magazine (フィーチャー記事) ────────────────────────────────────────
 
 const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticleItem({
-  article, isRead, isBookmarked, isSelected, feedName, thumb, showFeedName, query, onSelect, onToggleRead, onToggleBookmark,
+  article, isRead, isBookmarked, isSelected, feedName, thumb, showFeedName, query,
+  onSelectArticle, onToggleRead, onToggleBookmark,
 }: Omit<ArticleItemProps, 'index'>) {
   return (
     <div
       id={`article-${article.id}`}
-      onClick={onSelect}
+      onClick={() => onSelectArticle(article)}
       className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 animate-fade-up ${
         isSelected
           ? 'border-text-strong bg-surface-elevated'
@@ -383,9 +389,8 @@ const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticleItem({
           </div>
           <div className="flex items-center">
             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />}
-            {/* ホバーアクション */}
             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-              <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={onToggleRead} onToggleBookmark={onToggleBookmark} />
+              <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
             </div>
           </div>
         </div>
@@ -440,10 +445,13 @@ export default function ArticleList({
     }
   });
   const fetchingRef = useRef<Set<string>>(new Set());
+  // setOgpCache 呼び出し後の再トリガーを避けるため ref で最新値を参照する
+  const ogpCacheRef = useRef(ogpCache);
+  ogpCacheRef.current = ogpCache;
 
   useEffect(() => {
     const toFetch = visible.filter(
-      (a) => !a.ogImage && a.link && !ogpCache[a.link] && !fetchingRef.current.has(a.link),
+      (a) => !a.ogImage && a.link && !ogpCacheRef.current[a.link] && !fetchingRef.current.has(a.link),
     ).slice(0, 5);
     if (toFetch.length === 0) return;
     toFetch.forEach((a) => {
@@ -469,7 +477,7 @@ export default function ArticleList({
         .catch((err) => { console.error('OGP fetch failed:', err); })
         .finally(() => { fetchingRef.current.delete(a.link); });
     });
-  }, [visible, ogpCache]);
+  }, [visible]);
 
   useEffect(() => {
     if (selectedArticleId) {
@@ -479,7 +487,7 @@ export default function ArticleList({
     }
   }, [selectedArticleId]);
 
-  /** 記事ごとの表示用状態を解決する */
+  /** 記事ごとの表示用状態を解決する（ハンドラは親の安定参照を直接渡す） */
   function resolveItemProps(article: Article, index: number): ArticleItemProps {
     return {
       article,
@@ -491,9 +499,9 @@ export default function ArticleList({
       thumb: resolveThumbnail(article, ogpCache),
       showFeedName,
       query,
-      onSelect: () => onSelectArticle(article),
-      onToggleRead: () => onToggleRead(article.id),
-      onToggleBookmark: () => onToggleBookmark(article.id),
+      onSelectArticle,
+      onToggleRead,
+      onToggleBookmark,
     };
   }
 
@@ -555,7 +563,7 @@ export default function ArticleList({
                   : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
               }`}
             >
-              {dateRange === 'all' ? '日付' : dateRange === 'today' ? '今日' : dateRange === 'week' ? '今週' : '今月'}
+              {DATE_RANGE_LABELS[dateRange]}
             </button>
             <button
               onClick={toggleSortOrder}
