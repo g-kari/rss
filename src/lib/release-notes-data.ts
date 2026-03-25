@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (35)
+
+### リファクタリング
+- **\`cron/fetch.ts\` の死コードを削除** — マイグレーション完了済みの \`migrateUserFeedsToSubscriptions\` 関数、未使用の後方互換エクスポート (\`fetchAllUsers\` エイリアス、\`computeFeedHash\` 等の再エクスポート) を削除。どこからもインポートされていなかったコードを整理
+
 ## 2026-03-25 (34)
 
 ### リファクタリング

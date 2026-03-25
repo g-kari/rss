@@ -1,4 +1,4 @@
-import type { Article, SharedFeedMeta, PushConfig, UserSubscription } from '../types';
+import type { Article, SharedFeedMeta, PushConfig } from '../types';
 
 import { parseFeed, type ParsedItem } from '../lib/xml-parser';
 import { isValidFeedUrl } from '../lib/url';
@@ -13,7 +13,6 @@ import {
   createFeedMeta,
   mergeNewArticles,
   readUserSubscriptions,
-  writeUserSubscriptions,
   listAllFeedHashes,
   buildFeedUserMap,
   readLatestArticles,
@@ -363,70 +362,3 @@ export async function registerAndFetchFeed(
   }
   await fetchAndUpdateSharedFeed(env, feedHash, true);
 }
-
-/**
- * ユーザーの feeds.json（旧形式）から subscriptions.json（新形式）を生成する。
- * マイグレーション・後方互換用。
- */
-export async function migrateUserFeedsToSubscriptions(
-  env: FetchEnv,
-  userId: string,
-): Promise<void> {
-  const oldFeeds = await r2Get<Array<{
-    id: string; url: string; title: string; siteUrl: string;
-    lastFetchedAt: string | null; fetchError: string | null;
-    consecutiveErrors?: number; lastErrorAt?: string | null;
-    rateLimitedUntil?: string | null; lastModified?: string | null; etag?: string | null;
-  }>>(env.RSS_DATA, `users/${userId}/feeds.json`, []);
-
-  if (oldFeeds.length === 0) return;
-
-  const existingSubs = await readUserSubscriptions(env.RSS_DATA, userId);
-  const existingHashes = new Set(existingSubs.map((s) => s.feedHash));
-
-  const newSubs: UserSubscription[] = [...existingSubs];
-  for (const feed of oldFeeds) {
-    const feedHash = await computeFeedHash(feed.url);
-    if (existingHashes.has(feedHash)) continue;
-
-    // 共有 meta が無ければ作成
-    const existingMeta = await readFeedMeta(env.RSS_DATA, feedHash);
-    let createdMeta: SharedFeedMeta | undefined;
-    if (!existingMeta) {
-      createdMeta = {
-        feedHash,
-        url: feed.url,
-        title: feed.title,
-        siteUrl: feed.siteUrl,
-        lastFetchedAt: feed.lastFetchedAt,
-        fetchError: feed.fetchError,
-        consecutiveErrors: feed.consecutiveErrors,
-        lastErrorAt: feed.lastErrorAt,
-        rateLimitedUntil: feed.rateLimitedUntil,
-        lastModified: feed.lastModified,
-        etag: feed.etag,
-        articleCount: 0,
-        pageCount: 0,
-      };
-      await writeFeedMeta(env.RSS_DATA, createdMeta);
-    }
-
-    // 旧 title が共有 meta の title と異なる場合はユーザーがカスタマイズしていたと判断
-    const existingOrCreatedMeta = existingMeta ?? createdMeta;
-    const customTitle =
-      existingOrCreatedMeta && feed.title !== existingOrCreatedMeta.title
-        ? feed.title
-        : undefined;
-    newSubs.push({ feedHash, url: feed.url, customTitle, subscribedAt: new Date().toISOString() });
-    existingHashes.add(feedHash);
-  }
-
-  await writeUserSubscriptions(env.RSS_DATA, userId, newSubs);
-}
-
-// ── 後方互換エクスポート ──────────────────────────────────────────
-
-/** worker.ts の scheduled ハンドラから呼ばれる（後方互換） */
-export { fetchAllFeeds as fetchAllUsers };
-
-export { computeFeedHash, computeArticleId, readFeedMeta, createFeedMeta };
