@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Article, FontSize, AiMode } from '../types';
 import { readingTime } from '../lib/article-utils';
-import { STORAGE_KEYS, storageGet, storageSet, storageRemove } from '../lib/storage';
-import { contentLruCache, aiLruCache } from '../lib/lru-cache';
 import { extractEmbedInfo, processContent, stripIframes } from '../lib/embed-utils';
+import { useArticleContent } from '../hooks/useArticleContent';
+import { useArticleAi } from '../hooks/useArticleAi';
+import { useImageDownload } from '../hooks/useImageDownload';
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   small: 'text-[14px] leading-[1.75]',
@@ -30,259 +31,57 @@ interface Props {
   onSelectNext?: () => void;
 }
 
-function loadCache(id: string): string | null {
-  return contentLruCache.get(id);
-}
-
-function saveCache(id: string, content: string): void {
-  contentLruCache.set(id, content);
-}
-
-function loadAiCache(articleId: string, mode: AiMode): string | null {
-  return aiLruCache.get(`${articleId}:${mode}`);
-}
-
-function saveAiCache(articleId: string, mode: AiMode, text: string): void {
-  aiLruCache.set(`${articleId}:${mode}`, text);
-}
-
-
 const SHORT_CONTENT_THRESHOLD = 400;
 
+export default function ArticleView({
+  article,
+  isBookmarked,
+  onToggleBookmark,
+  isInReadingList,
+  onToggleReadingList,
+  onMobileBack,
+  fontSize = 'medium',
+  onChangeFontSize,
+  showToast,
+  prevArticle,
+  nextArticle,
+  onSelectPrev,
+  onSelectNext,
+}: Props) {
+  const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
+    useArticleContent(article?.id, article?.link, article?.ogImage);
 
-export default function ArticleView({ article, isBookmarked, onToggleBookmark, isInReadingList, onToggleReadingList, onMobileBack, fontSize = 'medium', onChangeFontSize, showToast, prevArticle, nextArticle, onSelectPrev, onSelectNext }: Props) {
-  // キャッシュをレンダリング時に同期取得 → 記事切り替え時もフラッシュなし
-  const cachedContent = useMemo(
-    () => (article?.id ? loadCache(article.id) : null),
-    [article?.id],
-  );
-  const [fetchedContent, setFetchedContent] = useState<string | null>(null);
-  const [fetching, setFetching] = useState(false);
-  const [fetchError, setFetchError] = useState('');
-  // article.ogImage がない場合に /api/ogp から動的に解決した画像URL
-  const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
-  const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
-  const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
-  const [aiError, setAiError] = useState('');
+  const { aiResult, aiLoading, aiError, stickyAiMode, stickyAiModeRef, doRunAi, runAi, resetAi } =
+    useArticleAi(article?.id);
+
   const [scrollProgress, setScrollProgress] = useState(0);
-  // 最後に使った AI モードを localStorage で永続化（記事切り替え後も自動実行）
-  const [stickyAiMode, setStickyAiMode] = useState<AiMode | null>(() => {
-    const v = storageGet(STORAGE_KEYS.AI_MODE);
-    return v === 'summary' || v === 'translation' ? v : null;
-  });
-  const stickyAiModeRef = useRef(stickyAiMode);
-  stickyAiModeRef.current = stickyAiMode;
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [downloadingImages, setDownloadingImages] = useState(false);
-  const [imageDownloadProgress, setImageDownloadProgress] = useState<{ done: number; total: number } | null>(null);
 
-  /** AI fetch のみ（トグルなし）。記事切り替え時の自動実行にも使用 */
-  const doRunAi = useCallback(async (mode: AiMode, contentHtml: string, articleId?: string) => {
-    if (!contentHtml.trim()) return;
+  const { downloadAllImages, downloadingImages, imageDownloadProgress } = useImageDownload(
+    article,
+    resolvedOgImage,
+    contentRef,
+    showToast,
+  );
 
-    // キャッシュヒット時は API コールなし
-    if (articleId) {
-      const cached = loadAiCache(articleId, mode);
-      if (cached) {
-        setAiResult({ mode, text: cached });
-        return;
-      }
-    }
-
-    setAiLoading(mode);
-    setAiError('');
-    try {
-      const endpoint = mode === 'summary' ? '/api/ai/summarize' : '/api/ai/translate';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: contentHtml }),
-      });
-      const data = await res.json() as { result?: string; error?: string };
-      if (data.result) {
-        if (articleId) saveAiCache(articleId, mode, data.result);
-        setAiResult({ mode, text: data.result });
-      } else if (data.error) {
-        setAiError(data.error);
-      } else {
-        setAiError('AI の処理に失敗しました');
-      }
-    } catch {
-      setAiError('AI の処理に失敗しました');
-    } finally {
-      setAiLoading(null);
-    }
-  }, []);
-
-  /** ボタンクリック用: トグル + モード永続化 */
-  const runAi = useCallback((mode: AiMode, contentHtml: string) => {
-    if (aiResult?.mode === mode) {
-      setAiResult(null);
-      setStickyAiMode(null);
-      storageRemove(STORAGE_KEYS.AI_MODE);
-      return;
-    }
-    setStickyAiMode(mode);
-    storageSet(STORAGE_KEYS.AI_MODE, mode);
-    doRunAi(mode, contentHtml, article?.id);
-  }, [aiResult, doRunAi, article?.id]);
-
-  const fetchFullContent = useCallback(async (triggerAiMode?: AiMode) => {
-    if (!article?.link) return;
-    setFetching(true);
-    setFetchError('');
-    try {
-      const res = await fetch(`/api/content?url=${encodeURIComponent(article.link)}`);
-      const data = await res.json() as { content?: string; error?: string };
-      if (data.content) {
-        saveCache(article.id, data.content);
-        setFetchedContent(data.content);
-        // 全文取得成功後に AI 実行（triggerAiMode が指定されていれば）
-        if (triggerAiMode) doRunAi(triggerAiMode, data.content, article.id);
-      } else {
-        setFetchError(data.error ?? '取得できませんでした');
-      }
-    } catch {
-      setFetchError('ネットワークエラー');
-    } finally {
-      setFetching(false);
-    }
-  }, [article?.link, article?.id, doRunAi]);
-
-  const downloadAllImages = useCallback(async () => {
-    if (!article || downloadingImages) return;
-
-    // 収集: OGP 画像 + 本文内の img タグ（重複排除）
-    const seen = new Set<string>();
-    const toDownload: string[] = [];
-
-    const ogImgSrc = article.ogImage ?? resolvedOgImage;
-    if (ogImgSrc) {
-      const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(ogImgSrc)}`;
-      seen.add(proxyUrl);
-      toDownload.push(proxyUrl);
-    }
-
-    if (contentRef.current) {
-      for (const img of contentRef.current.querySelectorAll('img')) {
-        const src = img.getAttribute('src') ?? '';
-        if (!src || seen.has(src)) continue;
-        if (src.startsWith('/api/image-proxy?') || src.startsWith('http')) {
-          seen.add(src);
-          toDownload.push(src);
-        }
-      }
-    }
-
-    if (toDownload.length === 0) {
-      showToast?.('画像が見つかりませんでした');
-      return;
-    }
-
-    setDownloadingImages(true);
-    setImageDownloadProgress({ done: 0, total: toDownload.length });
-
-    const safeTitle = (article.title ?? 'image')
-      .replace(/[^\w\s\u3040-\u9fff\u30a0-\u30ff\u4e00-\u9fff-]/g, '')
-      .trim()
-      .replace(/\s+/g, '-')
-      .slice(0, 40) || 'image';
-
-    function mimeToExt(mime: string): string {
-      if (mime.includes('png')) return 'png';
-      if (mime.includes('gif')) return 'gif';
-      if (mime.includes('webp')) return 'webp';
-      if (mime.includes('avif')) return 'avif';
-      if (mime.includes('bmp')) return 'bmp';
-      if (mime.includes('svg')) return 'svg';
-      return 'jpg';
-    }
-
-    let succeeded = 0;
-    for (let i = 0; i < toDownload.length; i++) {
-      setImageDownloadProgress({ done: i, total: toDownload.length });
-      try {
-        const res = await fetch(toDownload[i]);
-        if (!res.ok) continue;
-        const ct = res.headers.get('content-type') ?? 'image/jpeg';
-        // 透明 GIF（フォールバック画像）はスキップ
-        if (ct === 'image/gif') {
-          const clone = res.clone();
-          const buf = await clone.arrayBuffer();
-          if (buf.byteLength <= 64) continue; // 1×1 透明 GIF は 43 bytes
-        }
-        const ext = mimeToExt(ct.split(';')[0].trim());
-        const blob = await res.blob();
-        // 小さい画像（アイコン・トラッキングピクセル等）を除外
-        // createImageBitmap で実寸を確認し、短辺が 100px 未満はスキップ
-        try {
-          const bmp = await createImageBitmap(blob);
-          const { width, height } = bmp;
-          bmp.close();
-          if (width < 100 || height < 100) continue;
-        } catch {
-          // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
-        }
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = `${safeTitle}-${i + 1}.${ext}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        succeeded++;
-        // ブラウザが連続ダウンロードをブロックしないよう小間隔を置く
-        await new Promise<void>((resolve) => setTimeout(resolve, 400));
-        URL.revokeObjectURL(blobUrl);
-      } catch {
-        // 1枚失敗しても残りを継続
-      }
-    }
-
-    setImageDownloadProgress(null);
-    setDownloadingImages(false);
-    if (succeeded > 0) {
-      showToast?.(`${succeeded} 枚の画像をダウンロードしました`);
-    } else {
-      showToast?.('ダウンロードできる画像がありませんでした');
-    }
-  }, [article, resolvedOgImage, downloadingImages, showToast]);
-
-  // article.ogImage がない場合に /api/ogp からサムネイルを解決する
+  // 記事が変わったら AI 状態をリセット → sticky モードが設定済みなら自動実行
   useEffect(() => {
-    setResolvedOgImage(null);
-    if (!article?.link || article.ogImage) return;
-    fetch(`/api/ogp?url=${encodeURIComponent(article.link)}`)
-      .then((r) => r.json() as Promise<{ image?: string }>)
-      .then(({ image }) => { if (image) setResolvedOgImage(image); })
-      .catch(() => {});
-  }, [article?.id, article?.link, article?.ogImage]);
-
-  // 記事が変わったらリセット → sticky モードが設定済みなら自動実行
-  // 全文取得が必要な場合は取得後に AI 実行
-  useEffect(() => {
-    setFetchError('');
-    setAiResult(null);
-    setAiError('');
-    setFetchedContent(null);
+    resetAi();
     setScrollProgress(0);
-    setAiLoading(null);
     if (!stickyAiModeRef.current || !article?.id) return;
-    const cached = loadCache(article.id);
-    if (cached) {
-      doRunAi(stickyAiModeRef.current, cached, article.id);
-      return;
-    }
+
     const isShort = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
     if (isShort && article.link) {
       // コンテンツが短い場合は全文取得してから AI 実行
-      fetchFullContent(stickyAiModeRef.current);
+      fetchFullContent((content) => doRunAi(stickyAiModeRef.current!, content, article.id));
     } else {
-      const content = article.content ?? article.summary;
+      const content = storedContent ?? article.content ?? article.summary;
       if (content) doRunAi(stickyAiModeRef.current, content, article.id);
     }
-  }, [article?.id, doRunAi, fetchFullContent]);
+    // article.id が変わったときのみ実行
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [article?.id]);
 
   if (!article) {
     return (
@@ -311,7 +110,6 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
   const embedInfo = article.link ? extractEmbedInfo(article.link) : null;
 
   // 取得済みコンテンツ: フェッチ結果 > キャッシュ > RSS 本文
-  const storedContent = fetchedContent ?? cachedContent;
   const rawContent = storedContent ?? article.content ?? null;
   const processedContent = rawContent
     ? embedInfo
@@ -365,7 +163,6 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
         />
       )}
       <div className="max-w-2xl mx-auto px-4 py-6 lg:px-10 lg:py-12">
-        {/* メタ */}
         {/* メタ行 + アクション行（スマホでは2行に折り返す） */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5 text-[11px] text-text-muted">
           {onMobileBack && (
@@ -447,13 +244,9 @@ export default function ArticleView({ article, isBookmarked, onToggleBookmark, i
                         if (canFetch) {
                           // 全文未取得の場合: まず全文取得してから AI 実行
                           if (isActive) {
-                            setAiResult(null);
-                            setStickyAiMode(null);
-                            storageRemove(STORAGE_KEYS.AI_MODE);
+                            resetAi();
                           } else {
-                            setStickyAiMode(mode);
-                            storageSet(STORAGE_KEYS.AI_MODE, mode);
-                            fetchFullContent(mode);
+                            fetchFullContent((content) => doRunAi(mode, content, article.id));
                           }
                         } else {
                           runAi(mode, processedContent ?? article.summary ?? '');
