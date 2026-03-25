@@ -7,6 +7,7 @@ import { isValidFeedUrl } from '@/lib/url';
 import type { Feed } from '@/types';
 
 const MAX_FEEDS_PER_USER = 1000;
+const MAX_OPML_ENTRIES = 5000; // 過剰な処理を防ぐ上限
 
 interface OpmlOutline {
   '@_xmlUrl'?: string;
@@ -69,6 +70,12 @@ export async function POST(request: Request) {
 
     if (feedEntries.length === 0) {
       return NextResponse.json({ error: 'No feeds found in OPML' }, { status: 400 });
+    }
+    if (feedEntries.length > MAX_OPML_ENTRIES) {
+      return NextResponse.json(
+        { error: `OPML contains too many feeds (max ${MAX_OPML_ENTRIES} per import)` },
+        { status: 400 }
+      );
     }
 
     const list = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
