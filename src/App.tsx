@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import type { Feed, Article, Layout, FontSize } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useFeeds } from './hooks/useFeeds';
+import { useReadState } from './hooks/useReadState';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
 import { useFilteredArticles } from './hooks/useFilteredArticles';
@@ -42,32 +43,7 @@ function loadFontSize(): FontSize {
   return 'medium';
 }
 
-const loadReadIds = () => loadSet(STORAGE_KEYS.READ_IDS);
-const loadBookmarkIds = () => loadSet(STORAGE_KEYS.BOOKMARK_IDS);
-const loadReadingListIds = () => loadSet(STORAGE_KEYS.READING_LIST_IDS);
 const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
-
-async function fetchReadState(): Promise<{ readIds: string[]; bookmarkIds: string[]; readingListIds: string[] } | null> {
-  try {
-    const res = await fetch('/api/read-state');
-    if (!res.ok) return null;
-    return res.json() as Promise<{ readIds: string[]; bookmarkIds: string[]; readingListIds: string[] }>;
-  } catch {
-    return null;
-  }
-}
-
-async function saveReadState(readIds: Set<string>, bookmarkIds: Set<string>, readingListIds: Set<string>): Promise<void> {
-  try {
-    await fetch('/api/read-state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ readIds: [...readIds], bookmarkIds: [...bookmarkIds], readingListIds: [...readingListIds] }),
-    });
-  } catch {
-    // サーバー同期失敗は無視（localStorage は保存済み）
-  }
-}
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -84,14 +60,8 @@ export default function App() {
   const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles } = useFeeds(user, showToast);
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, toggle: togglePush } = usePushNotifications(user);
 
-  const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
-  const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(loadBookmarkIds);
-  const [readingListIds, setReadingListIds] = useState<Set<string>>(loadReadingListIds);
+  const { readIds, bookmarkIds, readingListIds, markRead, markAllRead, toggleRead, toggleBookmark, toggleReadingList } = useReadState(user, articles);
   const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
-  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const localReadRef = useRef(readIds);
-  const localBookmarkRef = useRef(bookmarkIds);
-  const localReadingListRef = useRef(readingListIds);
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() => searchParams.get('feed'));
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   // URL から復元すべき記事 ID（記事ロード完了後に解決）
@@ -103,69 +73,6 @@ export default function App() {
   const prevMobilePaneRef = useRef<MobilePane>('sidebar');
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
-
-  // ログイン後にサーバーの既読・ブックマーク・後で読む状態をマージ
-  useEffect(() => {
-    if (!user) return;
-    fetchReadState().then((state) => {
-      if (!state) return;
-      setReadIds((prev) => {
-        const merged = new Set([...prev, ...state.readIds]);
-        saveSet(STORAGE_KEYS.READ_IDS, merged);
-        localReadRef.current = merged;
-        return merged;
-      });
-      setBookmarkIds((prev) => {
-        const merged = new Set([...prev, ...state.bookmarkIds]);
-        saveSet(STORAGE_KEYS.BOOKMARK_IDS, merged);
-        localBookmarkRef.current = merged;
-        return merged;
-      });
-      setReadingListIds((prev) => {
-        const merged = new Set([...prev, ...(state.readingListIds ?? [])]);
-        saveSet(STORAGE_KEYS.READING_LIST_IDS, merged);
-        localReadingListRef.current = merged;
-        return merged;
-      });
-    });
-  }, [user]);
-
-  // 既読・ブックマーク・後で読む変更時にデバウンスしてサーバーへ保存
-  useEffect(() => {
-    localReadRef.current = readIds;
-  }, [readIds]);
-
-  useEffect(() => {
-    localBookmarkRef.current = bookmarkIds;
-  }, [bookmarkIds]);
-
-  useEffect(() => {
-    localReadingListRef.current = readingListIds;
-  }, [readingListIds]);
-
-  const scheduleSyncToServer = useCallback(() => {
-    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-    syncTimerRef.current = setTimeout(() => {
-      saveReadState(localReadRef.current, localBookmarkRef.current, localReadingListRef.current);
-    }, 2000);
-  }, []);
-
-  // ページを閉じる前にデバウンス待ちのデータを即時送信
-  useEffect(() => {
-    function onBeforeUnload() {
-      if (syncTimerRef.current === null) return;
-      clearTimeout(syncTimerRef.current);
-      syncTimerRef.current = null;
-      const body = JSON.stringify({
-        readIds: [...localReadRef.current],
-        bookmarkIds: [...localBookmarkRef.current],
-        readingListIds: [...localReadingListRef.current],
-      });
-      navigator.sendBeacon('/api/read-state', new Blob([body], { type: 'application/json' }));
-    }
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, []);
 
   // 選択状態を URL クエリパラメータに同期（リロード復元用）
   useEffect(() => {
@@ -216,64 +123,6 @@ export default function App() {
     setLayout(l);
     storageSet(STORAGE_KEYS.LAYOUT, l);
   }, []);
-
-  const markRead = useCallback((articleId: string) => {
-    setReadIds((prev) => {
-      const next = new Set(prev).add(articleId);
-      saveSet(STORAGE_KEYS.READ_IDS, next);
-      return next;
-    });
-    scheduleSyncToServer();
-  }, [scheduleSyncToServer]);
-
-  const markAllRead = useCallback((feedId: string | null) => {
-    setReadIds((prev) => {
-      let ids: string[];
-      if (feedId === '__bookmarks__') {
-        ids = articles.filter((a) => bookmarkIds.has(a.id)).map((a) => a.id);
-      } else if (feedId === '__reading_list__') {
-        ids = articles.filter((a) => readingListIds.has(a.id)).map((a) => a.id);
-      } else if (feedId) {
-        ids = articles.filter((a) => a.feedId === feedId).map((a) => a.id);
-      } else {
-        ids = articles.map((a) => a.id);
-      }
-      const next = new Set([...prev, ...ids]);
-      saveSet(STORAGE_KEYS.READ_IDS, next);
-      return next;
-    });
-    scheduleSyncToServer();
-  }, [articles, bookmarkIds, readingListIds, scheduleSyncToServer]);
-
-  const toggleRead = useCallback((articleId: string) => {
-    setReadIds((prev) => {
-      const next = new Set(prev);
-      next.has(articleId) ? next.delete(articleId) : next.add(articleId);
-      saveSet(STORAGE_KEYS.READ_IDS, next);
-      return next;
-    });
-    scheduleSyncToServer();
-  }, [scheduleSyncToServer]);
-
-  const toggleBookmark = useCallback((articleId: string) => {
-    setBookmarkIds((prev) => {
-      const next = new Set(prev);
-      next.has(articleId) ? next.delete(articleId) : next.add(articleId);
-      saveSet(STORAGE_KEYS.BOOKMARK_IDS, next);
-      return next;
-    });
-    scheduleSyncToServer();
-  }, [scheduleSyncToServer]);
-
-  const toggleReadingList = useCallback((articleId: string) => {
-    setReadingListIds((prev) => {
-      const next = new Set(prev);
-      next.has(articleId) ? next.delete(articleId) : next.add(articleId);
-      saveSet(STORAGE_KEYS.READING_LIST_IDS, next);
-      return next;
-    });
-    scheduleSyncToServer();
-  }, [scheduleSyncToServer]);
 
   const togglePinFeed = useCallback((feedId: string) => {
     setPinnedFeedIds((prev) => {
