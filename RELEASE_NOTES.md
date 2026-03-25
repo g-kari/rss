@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-25 (9)
+
+### リファクタリング
+- **`readBodyBytes` ヘルパーを `src/lib/fetch.ts` に抽出** — `app/api/content/route.ts` と `src/lib/fetch-article-content.ts` で重複していた ReadableStream ボディ読み取りロジック（チャンク蓄積・サイズ超過チェック・`Uint8Array` 結合）を共通ヘルパーとして集約
+
 ## 2026-03-25 (8)
 
 ### バグ修正
