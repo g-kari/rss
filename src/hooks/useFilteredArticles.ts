@@ -140,32 +140,33 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   }, [loadMore]);
 
   const filtered = useMemo(() => {
-    let list =
-      feedId === '__bookmarks__'
-        ? articles.filter((a) => bookmarkIds.has(a.id))
-        : feedId === '__reading_list__'
-          ? articles.filter((a) => readingListIds.has(a.id))
-          : feedId
-            ? articles.filter((a) => a.feedHash === feedId)
-            : articles;
     // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
     // gracePeriodId: 直前まで表示していた記事を5秒間保持（未読フィルター中でも前の記事に戻れるように）
     const isActive = (id: string) => id === selectedArticleId || id === gracePeriodId;
-    if (unreadOnly) list = list.filter((a) => !readIds.has(a.id) || isActive(a.id));
-    if (bookmarkOnly) list = list.filter((a) => bookmarkIds.has(a.id) || isActive(a.id));
-    if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      list = list.filter(
-        (a) => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q),
-      );
-    }
+    const q = query.trim().toLowerCase();
     const rangeStart = getDateRangeStart(dateRange);
-    if (rangeStart) {
-      list = list.filter((a) => {
-        if (!a.publishedAt) return false;
-        return new Date(a.publishedAt) >= rangeStart;
-      });
-    }
+
+    let list = articles.filter((a) => {
+      // フィード絞り込み
+      if (feedId === '__bookmarks__') { if (!bookmarkIds.has(a.id)) return false; }
+      else if (feedId === '__reading_list__') { if (!readingListIds.has(a.id)) return false; }
+      else if (feedId && a.feedHash !== feedId) return false;
+
+      // 未読フィルター
+      if (unreadOnly && readIds.has(a.id) && !isActive(a.id)) return false;
+
+      // ブックマークフィルター
+      if (bookmarkOnly && !bookmarkIds.has(a.id) && !isActive(a.id)) return false;
+
+      // 検索クエリ
+      if (q && !a.title.toLowerCase().includes(q) && !a.summary.toLowerCase().includes(q)) return false;
+
+      // 日付範囲
+      if (rangeStart && (!a.publishedAt || new Date(a.publishedAt) < rangeStart)) return false;
+
+      return true;
+    });
+
     if (sortOrder === 'oldest') {
       list = [...list].reverse();
     }
