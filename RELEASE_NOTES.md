@@ -1,5 +1,14 @@
 # リリースノート
 
+## 2026-03-25 (34)
+
+### リファクタリング
+- **cron フィード更新の R2 GET 削減** — `fetchAndParseFeed` が読んだ `existingLatest` を `mergeNewArticles` に渡すことで、フィード更新 1 回あたり `readLatestArticles` の二重 R2 GET を解消
+- **Push 通知ループの `readFeedMeta` 再読み出しを削除** — `fetchAndUpdateSharedFeed` の戻り値を `{ newArticles, meta }` に変更し、`fetchAllFeeds` と `fetchSingleFeed` が同じ meta を再利用するよう変更。全フィード数分の余分な R2 GET を削減
+- **`resetFeedSuccessState` ヘルパーを抽出** — `applyFeedSuccess` と `applyFeedNotModified` で重複していた 5 行（lastFetchedAt/fetchError/consecutiveErrors/lastErrorAt/rateLimitedUntil のリセット）を共通関数に集約し、`applyFeedNotModified` 自体を削除
+- **`assembleClientFeed` の動的 import を静的 import に変換** — `app/api/feeds/route.ts` の `await import('@/lib/shared-feed')` を上部の静的 import に移動
+- **`GET /api/articles?feed={hash}` の page=1 処理を最適化** — フィード指定かつページ未指定の場合に `getUserLatestArticles`（全購読フィード読み込み）を経由していた問題を修正。`readLatestArticles` で当該フィードのみ読むよう変更
+
 ## 2026-03-25 (33)
 
 ### セキュリティ
