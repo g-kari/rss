@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-25 (30)
+
+### リファクタリング
+- **日付範囲フィルターを localStorage に永続化** — `useFilteredArticles` の `dateRange` 設定がページ更新後にリセットされていた問題を修正。`STORAGE_KEYS.DATE_RANGE` キーに保存し、`unreadOnly` / `bookmarkOnly` / `sortOrder` と同様にセッションをまたいで設定が維持されるようにした
+
 ## 2026-03-25 (29)
 
 ### 新機能

@@ -42,7 +42,11 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
     const v = storageGet(STORAGE_KEYS.SORT_ORDER);
     return v === 'oldest' ? 'oldest' : 'newest';
   });
-  const [dateRange, setDateRange] = useState<DateRange>('all');
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const v = storageGet(STORAGE_KEYS.DATE_RANGE);
+    const valid: DateRange[] = ['all', 'today', 'week', 'month'];
+    return valid.includes(v as DateRange) ? (v as DateRange) : 'all';
+  });
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +99,11 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
 
   const cycleDateRange = useCallback(() => {
     const cycle: DateRange[] = ['all', 'today', 'week', 'month'];
-    setDateRange((v) => cycle[(cycle.indexOf(v) + 1) % cycle.length]);
+    setDateRange((v) => {
+      const next = cycle[(cycle.indexOf(v) + 1) % cycle.length];
+      storageSet(STORAGE_KEYS.DATE_RANGE, next);
+      return next;
+    });
     setPage(1);
   }, []);
 
