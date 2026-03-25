@@ -16,6 +16,8 @@ import {
   writeUserSubscriptions,
   listAllFeedHashes,
   buildFeedUserMap,
+  readLatestArticles,
+  assembleClientFeed,
 } from '../lib/shared-feed';
 
 type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA' | 'FINDME_RSS'>;
@@ -191,7 +193,6 @@ async function fetchAndParseFeed(
   if (etag) meta.etag = etag;
 
   // 現在の latest.json から既存記事マップを構築（createdAt 保持用）
-  const { readLatestArticles } = await import('../lib/shared-feed');
   const existingLatest = await readLatestArticles(env.RSS_DATA, meta.feedHash);
   const existingById = new Map(existingLatest.map((a) => [a.id, a]));
 
@@ -349,7 +350,6 @@ export async function fetchSingleFeed(
   const meta = await readFeedMeta(env.RSS_DATA, feedHash);
   if (!meta) return null;
 
-  const { assembleClientFeed } = await import('../lib/shared-feed');
   return assembleClientFeed(meta, sub);
 }
 
@@ -396,8 +396,9 @@ export async function migrateUserFeedsToSubscriptions(
 
     // 共有 meta が無ければ作成
     const existingMeta = await readFeedMeta(env.RSS_DATA, feedHash);
+    let createdMeta: SharedFeedMeta | undefined;
     if (!existingMeta) {
-      const meta: SharedFeedMeta = {
+      createdMeta = {
         feedHash,
         url: feed.url,
         title: feed.title,
@@ -412,11 +413,11 @@ export async function migrateUserFeedsToSubscriptions(
         articleCount: 0,
         pageCount: 0,
       };
-      await writeFeedMeta(env.RSS_DATA, meta);
+      await writeFeedMeta(env.RSS_DATA, createdMeta);
     }
 
     // 旧 title が共有 meta の title と異なる場合はユーザーがカスタマイズしていたと判断
-    const existingOrCreatedMeta = existingMeta ?? await readFeedMeta(env.RSS_DATA, feedHash);
+    const existingOrCreatedMeta = existingMeta ?? createdMeta;
     const customTitle =
       existingOrCreatedMeta && feed.title !== existingOrCreatedMeta.title
         ? feed.title

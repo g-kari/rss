@@ -18,6 +18,8 @@ export interface SharedFeedMeta {
   articleCount: number;
   /** latest.json 以外のページファイル数 (p2, p3, ...) */
   pageCount: number;
+  /** 全ページを通じて既知の記事 ID 一覧（重複チェック用、最大 10,000 件） */
+  knownIds?: string[];
 }
 
 /** ユーザーの購読情報 — users/{userId}/subscriptions.json の要素 */
