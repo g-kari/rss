@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (50)
+
+### リファクタリング
+- **`FeedSidebar` の push/install Props をオブジェクト型に統合** — 7 個のフラット Props (`canInstall`, `onInstall`, `pushSupported`, `pushSubscribed`, `pushLoading`, `pushError`, `onTogglePush`) を `install` / `push` の 2 オブジェクトにまとめ、Props インターフェースを簡素化
+
 ## 2026-03-26 (49)
 
 ### バグ修正

@@ -26,13 +26,8 @@ interface Props {
   onRefresh: () => void;
   onRetryFeed: (id: string) => Promise<void>;
   onTogglePinFeed: (id: string) => void;
-  canInstall?: boolean;
-  onInstall?: () => void;
-  pushSupported?: boolean;
-  pushSubscribed?: boolean;
-  pushLoading?: boolean;
-  pushError?: string | null;
-  onTogglePush?: () => void;
+  install?: { canInstall: boolean; onInstall: () => void };
+  push?: { supported: boolean; subscribed: boolean; loading: boolean; error: string | null; onToggle: () => void };
 }
 
 export default function FeedSidebar({
@@ -56,13 +51,8 @@ export default function FeedSidebar({
   refreshing,
   pinnedFeedIds,
   onTogglePinFeed,
-  canInstall,
-  onInstall,
-  pushSupported,
-  pushSubscribed,
-  pushLoading,
-  pushError,
-  onTogglePush,
+  install,
+  push,
 }: Props) {
   const [newUrl, setNewUrl] = useState('');
   const [adding, setAdding] = useState(false);
@@ -461,9 +451,9 @@ export default function FeedSidebar({
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
         </button>
-        {canInstall && (
+        {install?.canInstall && (
           <button
-            onClick={onInstall}
+            onClick={install.onInstall}
             className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
             title="アプリをインストール"
           >
@@ -472,14 +462,14 @@ export default function FeedSidebar({
             </svg>
           </button>
         )}
-        {pushSupported && (
+        {push?.supported && (
           <button
-            onClick={onTogglePush}
-            disabled={pushLoading}
-            className={`transition-colors duration-200 flex-shrink-0 ${pushError ? 'text-rose-400' : pushSubscribed ? 'text-accent-dot' : 'text-text-faint hover:text-text-muted'} disabled:opacity-50`}
-            title={pushError ?? (pushSubscribed ? 'プッシュ通知をオフ' : 'プッシュ通知をオン')}
+            onClick={push.onToggle}
+            disabled={push.loading}
+            className={`transition-colors duration-200 flex-shrink-0 ${push.error ? 'text-rose-400' : push.subscribed ? 'text-accent-dot' : 'text-text-faint hover:text-text-muted'} disabled:opacity-50`}
+            title={push.error ?? (push.subscribed ? 'プッシュ通知をオフ' : 'プッシュ通知をオン')}
           >
-            {pushSubscribed ? (
+            {push.subscribed ? (
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
               </svg>
