@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-25 (4)
+
+### セキュリティ
+- **SVG 拒否強化** — image-proxy で `image/svg+xml` のみ拒否していたのを `image/svg`・`application/svg+xml` などの非標準形式も拒否するよう修正
+- **iframe HTTP 禁止** — `isTrustedIframeSrc` で HTTP iframe を禁止し HTTPS のみ許可。中間者攻撃によるコンテンツ差し替えを防止
+
 ## 2026-03-25 (3)
 
 ### セキュリティ・改善
