@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (49)
+
+### バグ修正
+- **定期バッチの「Redirect without Location header」エラーを修正** — `fetchFollowSafeRedirects` が `304 Not Modified` を 3xx リダイレクトとして誤処理していた。`304` はリダイレクトではないのでそのまま返すよう修正
+
 ## 2026-03-26 (48)
 
 ### リファクタリング

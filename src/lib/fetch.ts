@@ -75,6 +75,10 @@ export async function fetchFollowSafeRedirects(
         redirect: 'manual',
       });
 
+      // 304 Not Modified はリダイレクトではなく「変更なし」を示す。
+      // Location ヘッダーを持たないため、リダイレクト追跡の対象外としてそのまま返す。
+      if (res.status === 304) return res;
+
       if (res.status >= 300 && res.status < 400) {
         const location = res.headers.get('location');
         if (!location) throw new Error('Redirect without Location header');
