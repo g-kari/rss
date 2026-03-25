@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (40)
+
+### リファクタリング
+- **\`useReadState\` の ref 統一** — \`localReadRef\` / \`localBookmarkRef\` / \`localReadingListRef\` の 3 つに分散していた ref を \`stateRef: { read, bookmarks, readingList }\` の単一 ref オブジェクトに統合。\`mergeServerSet\` のシグネチャを \`ref\` 引数から \`onMerge\` コールバックに変更し、\`saveReadState\` も \`ReadStateSets\` 型 1 引数に整理
+
 ## 2026-03-26 (39)
 
 ### リファクタリング
