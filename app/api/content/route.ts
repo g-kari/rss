@@ -44,7 +44,12 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)', Accept: 'text/html,application/xhtml+xml' },
     }, FETCH_TIMEOUT_MS);
 
-    if (!res.ok) return NextResponse.json({ error: `${res.status} ${res.statusText}` }, { status: 502 });
+    if (!res.ok) {
+      // 4xx はクライアント起因（アクセス不可・存在しない）なのでそのまま返す
+      // 5xx はゲートウェイエラーとして 502 を返す
+      const status = res.status >= 400 && res.status < 500 ? res.status : 502;
+      return NextResponse.json({ error: `${res.status} ${res.statusText}` }, { status });
+    }
 
     const ct = res.headers.get('content-type') ?? '';
     if (!ct.includes('html')) return NextResponse.json({ error: 'Not an HTML page' }, { status: 415 });
