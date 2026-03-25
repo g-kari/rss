@@ -86,6 +86,7 @@ export async function createFeedMeta(
     fetchError: null,
     articleCount: 0,
     pageCount: 0,
+    knownIds: [],
   };
   await writeFeedMeta(bucket, meta);
   return meta;
@@ -120,7 +121,7 @@ function sortByDate(articles: Article[]): Article[] {
 }
 
 /**
- * overflow を pageNum ページに先頭挿入し、溢れたぶんを再帰的に次ページへカスケードする。
+ * overflow を pageNum ページに先頭挿入し、溢れたぶんを次ページへカスケードする。
  * overflow は pageNum ページの既存コンテンツより「新しい」記事（すでにソート済み）。
  * 戻り値: 実際に書き込んだ最大ページ番号。
  */
@@ -130,23 +131,31 @@ async function cascadeOverflow(
   overflow: Article[],
   pageNum: number,
 ): Promise<number> {
-  if (overflow.length === 0 || pageNum > MAX_PAGES) return pageNum - 1;
+  let currentOverflow = overflow;
+  let currentPage = pageNum;
+  let lastWrittenPage = pageNum - 1;
 
-  const key = pageKey(feedHash, pageNum);
-  const existing = await r2Get<Article[]>(bucket, key, []);
+  while (currentOverflow.length > 0 && currentPage <= MAX_PAGES) {
+    const key = pageKey(feedHash, currentPage);
+    const existing = await r2Get<Article[]>(bucket, key, []);
 
-  // overflow (新しい) + existing (古い) を結合してソート
-  const merged = sortByDate([...overflow, ...existing]);
+    // overflow (新しい) + existing (古い) を結合してソート
+    const merged = sortByDate([...currentOverflow, ...existing]);
 
-  if (merged.length <= PAGE_SIZE) {
-    await r2Put(bucket, key, merged);
-    return pageNum;
+    if (merged.length <= PAGE_SIZE) {
+      await r2Put(bucket, key, merged);
+      lastWrittenPage = currentPage;
+      break;
+    }
+
+    const page = merged.slice(0, PAGE_SIZE);
+    currentOverflow = merged.slice(PAGE_SIZE);
+    await r2Put(bucket, key, page);
+    lastWrittenPage = currentPage;
+    currentPage += 1;
   }
 
-  const page = merged.slice(0, PAGE_SIZE);
-  const nextOverflow = merged.slice(PAGE_SIZE);
-  await r2Put(bucket, key, page);
-  return cascadeOverflow(bucket, feedHash, nextOverflow, pageNum + 1);
+  return lastWrittenPage;
 }
 
 /**
@@ -163,11 +172,15 @@ export async function mergeNewArticles(
 
   const latest = await readLatestArticles(bucket, meta.feedHash);
 
-  // latest 内の既存 ID セット
-  const latestIds = new Set(latest.map((a) => a.id));
+  // knownIds が存在する場合はそれを重複チェックに使う（全ページ横断の既知 ID）
+  // 存在しない場合は latest の ID のみでチェック（後方互換）
+  const knownIdsSet =
+    meta.knownIds && meta.knownIds.length > 0
+      ? new Set(meta.knownIds)
+      : new Set(latest.map((a) => a.id));
 
-  // 真に新規の記事（latest に存在しない）
-  const brandNew = fetchedArticles.filter((a) => !latestIds.has(a.id));
+  // 真に新規の記事（既知 ID に存在しない）
+  const brandNew = fetchedArticles.filter((a) => !knownIdsSet.has(a.id));
 
   if (brandNew.length === 0) {
     // タイトル・サマリー等の更新のみ（ID は同じ）
@@ -199,6 +212,14 @@ export async function mergeNewArticles(
     const maxPage = await cascadeOverflow(bucket, meta.feedHash, overflow, 2);
     meta.pageCount = Math.max(meta.pageCount, maxPage - 1); // pageCount は p2以降の数
   }
+
+  // knownIds を更新（新規 ID を追加し、上限 10,000 件を超えた場合は古い順に切り詰め）
+  const KNOWN_IDS_MAX = 10_000;
+  const updatedKnownIds = [...(meta.knownIds ?? latest.map((a) => a.id)), ...brandNew.map((a) => a.id)];
+  meta.knownIds =
+    updatedKnownIds.length > KNOWN_IDS_MAX
+      ? updatedKnownIds.slice(updatedKnownIds.length - KNOWN_IDS_MAX)
+      : updatedKnownIds;
 
   meta.articleCount = (meta.articleCount ?? 0) + brandNew.length;
   return brandNew;
@@ -268,7 +289,8 @@ export async function getUserLatestArticles(
 
   const pages = await Promise.all(subs.map((s) => readLatestArticles(bucket, s.feedHash)));
   const all = pages.flat();
-  return sortByDate(all);
+  const sorted = sortByDate(all);
+  return sorted.slice(0, 2000);
 }
 
 /** 全 feedHash を R2 の feeds/ プレフィックスから列挙する */
