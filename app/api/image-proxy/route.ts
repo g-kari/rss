@@ -154,15 +154,17 @@ async function handleGet(request: Request): Promise<Response> {
 
     // Cloudflare Cache API に保存（fire-and-forget）
     ctx.waitUntil(
-      cfCache.put(
-        cacheKey,
-        new Response(merged, {
-          headers: {
-            'Content-Type': imageContentType,
-            'Cache-Control': `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
-          },
-        }),
-      ),
+      cfCache
+        .put(
+          cacheKey,
+          new Response(merged, {
+            headers: {
+              'Content-Type': imageContentType,
+              'Cache-Control': `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
+            },
+          }),
+        )
+        .catch((err) => console.error('[image-proxy] cache put error:', err)),
     );
 
     return new Response(merged, {
