@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Article, FontSize, AiMode } from '../types';
-import { readingTime, isLikelyJapanese } from '../lib/article-utils';
+import { readingTime } from '../lib/article-utils';
 import { extractEmbedInfo, processContent, stripIframes } from '../lib/embed-utils';
 import { useArticleContent } from '../hooks/useArticleContent';
 import { useArticleAi } from '../hooks/useArticleAi';
@@ -133,11 +133,6 @@ export default function ArticleView({
     setShowTranslated(false);
     if (!article?.id) return;
 
-    // 記事タイトル + サマリーで言語を判定し、非日本語なら自動翻訳（サーバー側でコンテンツ取得）
-    const textToCheck = `${article.title ?? ''} ${article.summary ?? ''}`;
-    if (!isLikelyJapanese(textToCheck) && article.link) {
-      doRunAi('translation', article.link, article.id);
-    }
     // article.id が変わったときのみ実行
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.id]);
