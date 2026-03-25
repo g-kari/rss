@@ -270,7 +270,7 @@ export default function ArticleList({
             });
           }
         })
-        .catch(() => {})
+        .catch((err) => { console.error('OGP fetch failed:', err); })
         .finally(() => { fetchingRef.current.delete(a.link); });
     });
   }, [visible, ogpCache]);
