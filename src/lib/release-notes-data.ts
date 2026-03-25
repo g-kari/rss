@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (42)
+
+### バグ修正
+- **\`useArticleContent\` OGP フェッチのレースコンディション修正** — 記事切り替え時に前の記事の OGP フェッチが完了すると、古い OGP 画像 URL が新しい記事に適用される問題を修正。\`AbortController\` を使用して記事変更時にフェッチを中断するよう変更。全文フェッチ（\`fetchFullContent\`）も同様に中断処理を追加
+
 ## 2026-03-26 (41)
 
 ### リファクタリング
