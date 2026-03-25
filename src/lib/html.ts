@@ -210,8 +210,8 @@ export function sanitizeHtml(html: string): string {
     )
     // インラインイベントハンドラを除去。
     // [\s/]+ : スペース・タブ・スラッシュ区切り（/ 区切りバイパス対策）
-    // (?<=['"]): 引用符直後に on\w+ が来るケース（<img src="x"onerror=...>）のバイパス対策
-    .replace(/(?:[\s/]+|(?<=['"]))on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    // (?<=['"`]): 引用符・バックティック直後に on\w+ が来るケース（<img src="x"onerror=...> や <img src=`x`onerror=...>）のバイパス対策
+    .replace(/(?:[\s/]+|(?<=['"`]))on\w+\s*=\s*(?:"[^"]*"|'[^']*'|`[^`]*`|[^\s>]*)/gi, '')
     // xlink:href（SVG）の javascript: / vbscript: / data: スキームを除去（完全な属性名を削除）
     // 汎用 href パターンより先に処理することで xlink: プレフィックスが残留しないようにする
     .replace(/xlink:href\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi, '')
