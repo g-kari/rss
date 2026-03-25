@@ -22,6 +22,8 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
   });
 
   const fetchingRef = useRef<Set<string>>(new Set());
+  // 画像なし・エラーだったURLをセッション内でキャッシュし無駄なリトライを防止する
+  const noImageRef = useRef<Set<string>>(new Set());
   // setOgpCache 呼び出し後の再トリガーを避けるため ref で最新値を参照する
   const ogpCacheRef = useRef(ogpCache);
   ogpCacheRef.current = ogpCache;
@@ -33,7 +35,8 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
           !a.ogImage &&
           a.link &&
           !ogpCacheRef.current[a.link] &&
-          !fetchingRef.current.has(a.link),
+          !fetchingRef.current.has(a.link) &&
+          !noImageRef.current.has(a.link),
       )
       .slice(0, FETCH_BATCH_SIZE);
 
@@ -42,7 +45,10 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
     toFetch.forEach((a) => {
       fetchingRef.current.add(a.link);
       fetch(`/api/ogp?url=${encodeURIComponent(a.link)}`)
-        .then((r) => r.json() as Promise<{ image: string }>)
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json() as Promise<{ image: string }>;
+        })
         .then(({ image }) => {
           if (image) {
             setOgpCache((prev) => {
@@ -57,10 +63,14 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
               storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(next));
               return next;
             });
+          } else {
+            // OGP 画像なし: セッション内で再フェッチしないようマーク
+            noImageRef.current.add(a.link);
           }
         })
-        .catch((err) => {
-          console.error('OGP fetch failed:', err);
+        .catch(() => {
+          // フェッチエラー: セッション内で再フェッチしないようマーク
+          noImageRef.current.add(a.link);
         })
         .finally(() => {
           fetchingRef.current.delete(a.link);
