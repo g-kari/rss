@@ -23,8 +23,9 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return withSession(async ({ session, env }) => {
-    const body = await parseJsonBody<{ title?: unknown }>(request);
-    if (body instanceof NextResponse) return body;
+    const parsed = await parseJsonBody<{ title?: unknown }>(request);
+    if (!parsed.ok) return parsed.error;
+    const body = parsed.data;
     if (typeof body?.title !== 'string') {
       return NextResponse.json({ error: 'title is required' }, { status: 400 });
     }
