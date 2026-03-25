@@ -74,7 +74,13 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     let offset = 0;
     for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
     const charset = detectCharset(ct, merged);
-    const html = new TextDecoder(charset).decode(merged);
+    let html: string;
+    try {
+      html = new TextDecoder(charset).decode(merged);
+    } catch {
+      // charset が TextDecoder 非対応の場合（RangeError）は UTF-8 でフォールバック
+      html = new TextDecoder('utf-8', { fatal: false }).decode(merged);
+    }
     const { content: extracted, source } = extractMainContent(html, url);
     let content = extracted;
     let contentSource: string = source;

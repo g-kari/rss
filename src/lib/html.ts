@@ -37,12 +37,16 @@ export function unescapeHtml(s: string): string {
 
 /**
  * URL 属性値が危険なスキームを含むかどうかを判定する。
- * HTML エンティティデコードと先頭制御文字除去後に javascript: / vbscript: / data: を検出する。
- * ブラウザは属性値の HTML エンティティをデコードし先頭の空白・制御文字を無視するため、
+ * HTML エンティティデコードと制御文字除去後に javascript: / vbscript: / data: を検出する。
+ * ブラウザは属性値の HTML エンティティをデコードし空白・制御文字を無視するため、
  * 例: href="&#106;avascript:..." → &#106; = 'j' → javascript: に化けることがある。
+ *
+ * 制御文字は先頭だけでなく全体から除去する。
+ * ブラウザが javascript\x00: のようにスキーム名中に埋め込まれた制御文字を無視する場合に
+ * 先頭のみ除去では検出できないため、文字列全体から除去して判定する。
  */
 function hasDangerousScheme(val: string): boolean {
-  const decoded = unescapeHtml(val).replace(/^[\u0000-\u0020\u007F]+/, '');
+  const decoded = unescapeHtml(val).replace(/[\u0000-\u0020\u007F]/g, '');
   return /^(?:javascript|vbscript|data):/i.test(decoded);
 }
 
