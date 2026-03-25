@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (37)
+
+### リファクタリング
+- **\`url.ts\` の URL バリデーション共通化** — \`isValidFeedUrl\` と \`isValidHttpsUrl\` で重複していた URL 長チェック・プロトコル検証・プライベート IP 検証ロジックを内部ヘルパー \`isValidUrl(url, allowHttp)\` に抽出し、2 関数はそれへの薄いラッパーに整理
+- **\`FeedSidebar.tsx\` の未読バッジ重複解消** — フィードエラー有無で条件分岐していた 2 つの \`<span>\` を 1 つに統合。カウント表示の \`count > 99 ? '99+' : count\` パターンを \`formatCount()\` ヘルパーにまとめ、4 箇所の繰り返しを排除
+
 ## 2026-03-26 (36)
 
 ### リファクタリング
