@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import FeedSidebar from './components/FeedSidebar';
 import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
+import ErrorBoundary from './components/ErrorBoundary';
 import type { Feed, Article, Layout, FontSize } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useFeeds } from './hooks/useFeeds';
@@ -613,6 +614,7 @@ export default function App() {
         </div>
       )}
       <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'sidebar' ? 'hidden lg:block' : ''}`}>
+        <ErrorBoundary label="サイドバー">
         <FeedSidebar
           feeds={feeds}
           articles={articles}
@@ -646,8 +648,10 @@ export default function App() {
           pushError={pushError}
           onTogglePush={togglePush}
         />
+        </ErrorBoundary>
       </div>
       <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'list' ? 'hidden lg:block' : ''}`}>
+        <ErrorBoundary label="記事一覧">
         <ArticleList
           feeds={feeds}
           readIds={readIds}
@@ -677,8 +681,10 @@ export default function App() {
           searchRef={searchRef}
           sentinelRef={sentinelRef}
         />
+        </ErrorBoundary>
       </div>
       <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'view' ? 'hidden lg:block' : ''}`}>
+        <ErrorBoundary label="記事表示">
         <ArticleView
           article={selectedArticle}
           isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
@@ -694,6 +700,7 @@ export default function App() {
           onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
           onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
         />
+        </ErrorBoundary>
       </div>
     </div>
   );
