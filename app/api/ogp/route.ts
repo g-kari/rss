@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withSession } from '@/lib/server-auth';
 import { isValidFeedUrl, MAX_URL_LENGTH } from '@/lib/url';
 import { sha256Hex } from '@/lib/r2';
-import { fetchWithTimeout } from '@/lib/fetch';
+import { fetchFollowSafeRedirects } from '@/lib/fetch';
 import { unescapeHtml } from '@/lib/html';
 
 const FETCH_TIMEOUT_MS = 5_000;
@@ -32,12 +32,11 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   }
 
   try {
-    const res = await fetchWithTimeout(url, {
+    const res = await fetchFollowSafeRedirects(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)',
         Accept: 'text/html',
       },
-      redirect: 'follow',
     }, FETCH_TIMEOUT_MS);
     if (!res.ok) return NextResponse.json({ image: '' });
 
