@@ -3,7 +3,7 @@
 import { useMemo, useEffect, memo, type ReactElement, type ReactNode, type RefObject } from 'react';
 import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
-import { readingTime } from '../lib/article-utils';
+import { readingTime, timeAgo } from '../lib/article-utils';
 import { useOgpCache } from '../hooks/useOgpCache';
 
 interface ArticleActionsProps {
@@ -110,17 +110,6 @@ function resolveThumbnail(article: Article, ogpCache: Record<string, string>): s
   return undefined;
 }
 
-function timeAgo(iso: string | null): string {
-  if (!iso) return '';
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}分前`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}時間前`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}日前`;
-  return new Date(iso).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
-}
 
 /** 検索クエリに一致する箇所をハイライト表示 */
 function highlightText(text: string, query: string): ReactNode {
