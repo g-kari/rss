@@ -20,7 +20,7 @@ interface FeedsState {
   dismissNewArticles: () => void;
 }
 
-export function useFeeds(user: UserProfile | null | undefined): FeedsState {
+export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: string) => void): FeedsState {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(false);
@@ -43,11 +43,11 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     fetch('/api/feeds')
       .then((r) => r.json() as Promise<Feed[]>)
       .then(setFeeds)
-      .catch(console.error);
+      .catch((err) => { console.error(err); onError?.('フィードの読み込みに失敗しました'); });
     fetchAndSetArticles()
-      .catch(console.error)
+      .catch((err) => { console.error(err); onError?.('記事の読み込みに失敗しました'); })
       .finally(() => setLoadingArticles(false));
-  }, [user]);
+  }, [user, onError]);
 
   // 5分ごとに記事を再取得して新着件数を通知する
   useEffect(() => {
@@ -91,9 +91,9 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
     // インポート後に記事を再取得する
     setLoadingArticles(true);
     fetchAndSetArticles()
-      .catch(console.error)
+      .catch((err) => { console.error(err); onError?.('記事の読み込みに失敗しました'); })
       .finally(() => setLoadingArticles(false));
-  }, []);
+  }, [onError]);
 
   const refreshFeeds = useCallback(async () => {
     setRefreshing(true);
@@ -106,10 +106,11 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
       setFeeds(feedsData);
     } catch (err) {
       console.error('Refresh failed:', err);
+      onError?.('更新に失敗しました');
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [onError]);
 
   const retryFeed = useCallback(async (feedId: string): Promise<void> => {
     try {
@@ -120,8 +121,9 @@ export function useFeeds(user: UserProfile | null | undefined): FeedsState {
       await fetchAndSetArticles();
     } catch (err) {
       console.error('retryFeed failed:', err);
+      onError?.('フィードの再取得に失敗しました');
     }
-  }, []);
+  }, [onError]);
 
   const dismissNewArticles = useCallback(() => {
     setNewArticleCount(0);
