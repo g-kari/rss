@@ -4,7 +4,7 @@
  */
 
 import { sha256Hex } from '@/lib/r2';
-import { fetchFollowSafeRedirects } from '@/lib/fetch';
+import { fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
 import {
   detectCharset,
   extractMainContent,
@@ -53,29 +53,10 @@ export async function fetchArticleContent(
     const ct = res.headers.get('content-type') ?? '';
     if (!ct.includes('html')) return null;
 
-    const reader = res.body?.getReader();
-    if (!reader) return null;
+    if (!res.body) return null;
+    const merged = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
+    if (merged === null) return null;
 
-    const chunks: Uint8Array[] = [];
-    let totalBytes = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        totalBytes += value.byteLength;
-        if (totalBytes > MAX_CONTENT_BYTES) return null;
-        chunks.push(value);
-      }
-    } finally {
-      reader.cancel().catch(() => {});
-    }
-
-    const merged = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (const chunk of chunks) {
-      merged.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
     const charset = detectCharset(ct, merged);
     const html = new TextDecoder(charset).decode(merged);
     const { content: extracted } = extractMainContent(html, url);
