@@ -106,7 +106,7 @@ const parser = new XMLParser({
   maxNestedTags: 500,
 });
 
-function toArray<T>(val: T | T[] | undefined): T[] {
+export function toArray<T>(val: T | T[] | undefined): T[] {
   if (!val) return [];
   return Array.isArray(val) ? val : [val];
 }
