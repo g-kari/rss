@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (22)
+
+### バグ修正
+- **\`fetchArticleContent\` の TextDecoder に try-catch を追加** — 不正な charset 値が \`detectCharset\` から返された場合に \`TextDecoder\` が \`RangeError\` でクラッシュしていた問題を修正。\`/api/content\` と同様に UTF-8 フォールバックを実装
+- **\`fetchArticleContent\` の \`cfCache.put\` にエラーハンドラを追加** — \`/api/content\` ルートには \`.catch()\` があったが \`fetchArticleContent\` ヘルパーにはなかった不一致を解消
+- **\`/api/content\` のアップストリーム 4xx を正しいステータスコードで返すように修正** — 上流が 404 / 403 / 429 等を返した場合でも常に 502 を返していた問題を修正。4xx はそのまま転送し、5xx のみ 502 にマップするよう変更
+
 ## 2026-03-25 (21)
 
 ### セキュリティ
