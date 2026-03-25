@@ -158,14 +158,29 @@ export function sanitizeHtml(html: string): string {
     .replace(/<use\b([^>]*)>([\s\S]*?)<\/use>/gi, (_m, attrs: string) => {
       const hrefMatch = attrs.match(/\b(?:xlink:)?href\s*=\s*["']([^"']*?)["']/i);
       const href = hrefMatch?.[1] ?? '';
+      // URL エンコード（%23 → #）を解除してからフラグメント判定する。
+      // ブラウザは属性値を URL デコードして解釈するため、生の href ではなく
+      // デコード後の値で検証しなければバイパスや誤除去が起きる。
+      let decodedHref: string;
+      try {
+        decodedHref = decodeURIComponent(href);
+      } catch {
+        decodedHref = href;
+      }
       // フラグメントのみ (#id) は許可、外部参照・空 href は要素ごと（フォールバック含む）除去
-      return /^#[^#]*$/.test(href) ? _m : '';
+      return /^#[^#]*$/.test(decodedHref) ? _m : '';
     })
     // 自己閉じタグ・未閉じ開始タグを処理（上記でマッチしなかった残余）
     .replace(/<use\b([^>]*)>/gi, (_m, attrs: string) => {
       const hrefMatch = attrs.match(/\b(?:xlink:)?href\s*=\s*["']([^"']*?)["']/i);
       const href = hrefMatch?.[1] ?? '';
-      return /^#[^#]*$/.test(href) ? _m : '';
+      let decodedHref: string;
+      try {
+        decodedHref = decodeURIComponent(href);
+      } catch {
+        decodedHref = href;
+      }
+      return /^#[^#]*$/.test(decodedHref) ? _m : '';
     })
     // <iframe> は信頼済みドメイン以外を除去
     .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
