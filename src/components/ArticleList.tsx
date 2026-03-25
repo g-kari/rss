@@ -88,6 +88,8 @@ interface Props {
   hasMore: boolean;
   unreadOnly: boolean;
   toggleUnreadOnly: () => void;
+  bookmarkOnly: boolean;
+  toggleBookmarkOnly: () => void;
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
   dateRange: DateRange;
@@ -409,6 +411,8 @@ export default function ArticleList({
   hasMore,
   unreadOnly,
   toggleUnreadOnly,
+  bookmarkOnly,
+  toggleBookmarkOnly,
   sortOrder,
   toggleSortOrder,
   dateRange,
@@ -500,6 +504,17 @@ export default function ArticleList({
               }`}
             >
               未読
+            </button>
+            <button
+              onClick={toggleBookmarkOnly}
+              title="ブックマークフィルター切替 (B)"
+              className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
+                bookmarkOnly
+                  ? 'border-bookmark bg-bookmark text-ink-text'
+                  : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
+              }`}
+            >
+              ★
             </button>
             <button
               onClick={cycleDateRange}

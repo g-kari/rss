@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
   CONTENT_CACHE_PREFIX: 'rss-content:',
   AI_CACHE_PREFIX: 'rss-ai:',
   UNREAD_ONLY: 'rss-unread-only',
+  BOOKMARK_ONLY: 'rss-bookmark-only',
   SORT_ORDER: 'rss-sort-order',
   OGP_CACHE: 'rss-ogp-cache',
 } as const;

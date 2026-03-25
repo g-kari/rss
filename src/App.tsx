@@ -188,6 +188,8 @@ export default function App() {
     hasMore,
     unreadOnly,
     toggleUnreadOnly,
+    bookmarkOnly,
+    toggleBookmarkOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,
@@ -237,6 +239,8 @@ export default function App() {
     onChangeLayout,
     unreadOnly,
     toggleUnreadOnly,
+    bookmarkOnly,
+    toggleBookmarkOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,
@@ -429,6 +433,7 @@ export default function App() {
                 ['r', '既読 / 未読切替'],
                 ['m', '全既読にする'],
                 ['u', '未読フィルター切替'],
+                ['B', 'ブックマークフィルター切替'],
                 ['d', '日付フィルター切替'],
                 ['s', 'ソート順切替'],
                 ['c', 'リンクをコピー'],
@@ -520,6 +525,8 @@ export default function App() {
           hasMore={hasMore}
           unreadOnly={unreadOnly}
           toggleUnreadOnly={toggleUnreadOnly}
+          bookmarkOnly={bookmarkOnly}
+          toggleBookmarkOnly={toggleBookmarkOnly}
           sortOrder={sortOrder}
           toggleSortOrder={toggleSortOrder}
           dateRange={dateRange}

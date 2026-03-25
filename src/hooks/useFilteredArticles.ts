@@ -34,6 +34,7 @@ function getDateRangeStart(range: DateRange): Date | null {
 
 export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, readingListIds, selectedArticleId }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === '1');
+  const [bookmarkOnly, setBookmarkOnly] = useState(() => storageGet(STORAGE_KEYS.BOOKMARK_ONLY) === '1');
   const [rawQuery, setRawQuery] = useState('');  // 入力値（即時更新）
   const [query, setQuery] = useState('');         // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
@@ -64,6 +65,15 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
     setUnreadOnly((v) => {
       const next = !v;
       storageSet(STORAGE_KEYS.UNREAD_ONLY, next ? '1' : '0');
+      return next;
+    });
+    setPage(1);
+  }, []);
+
+  const toggleBookmarkOnly = useCallback(() => {
+    setBookmarkOnly((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.BOOKMARK_ONLY, next ? '1' : '0');
       return next;
     });
     setPage(1);
@@ -117,6 +127,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
             : articles;
     // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
     if (unreadOnly) list = list.filter((a) => !readIds.has(a.id) || a.id === selectedArticleId);
+    if (bookmarkOnly) list = list.filter((a) => bookmarkIds.has(a.id) || a.id === selectedArticleId);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter(
@@ -134,7 +145,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
       list = [...list].reverse();
     }
     return list;
-  }, [articles, feedId, readIds, bookmarkIds, readingListIds, unreadOnly, query, sortOrder, dateRange, selectedArticleId]);
+  }, [articles, feedId, readIds, bookmarkIds, readingListIds, unreadOnly, bookmarkOnly, query, sortOrder, dateRange, selectedArticleId]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
@@ -145,6 +156,8 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
     hasMore,
     unreadOnly,
     toggleUnreadOnly,
+    bookmarkOnly,
+    toggleBookmarkOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,
