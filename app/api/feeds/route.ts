@@ -9,6 +9,7 @@ import {
   readUserSubscriptions,
   writeUserSubscriptions,
   getUserFeeds,
+  assembleClientFeed,
 } from '@/lib/shared-feed';
 import { registerAndFetchFeed } from '@/cron/fetch';
 import type { UserSubscription } from '@/types';
@@ -63,8 +64,6 @@ export async function POST(request: Request) {
     // バックグラウンドで初回記事取得
     ctx.waitUntil(registerAndFetchFeed(env, url).catch(console.error));
 
-    // クライアント向け Feed を組み立てて返す
-    const { assembleClientFeed } = await import('@/lib/shared-feed');
     return NextResponse.json(assembleClientFeed(meta, newSub), { status: 201 });
   });
 }
