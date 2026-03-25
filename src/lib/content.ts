@@ -328,6 +328,48 @@ export function rewriteImageUrls(html: string): string {
 }
 
 /**
+ * <a> タグに target="_blank" と rel="noopener noreferrer" を付与する。
+ * 記事内リンクを新しいタブで開くことで読書を中断せずリンクを確認できる。
+ * フラグメントのみのリンク (#anchor) は同一ページ内アンカーのためそのまま保持する。
+ * 危険スキーム (javascript: / data: 等) は後続の sanitizeHtml で除去されるためここでは無視する。
+ */
+export function fixExternalLinks(html: string): string {
+  return html.replace(/<a\b([^>]*)>/gi, (_match, attrs: string) => {
+    // href 属性の値を取得
+    const hrefMatch = attrs.match(/\bhref\s*=\s*["']([^"']*?)["']/i);
+    const href = hrefMatch?.[1] ?? '';
+
+    // href なし・フラグメントのみ (#anchor) はそのまま
+    if (!href || href.startsWith('#')) return _match;
+
+    let newAttrs = attrs;
+
+    // target 属性を上書きして必ず新しいタブで開く
+    if (/\btarget\s*=/i.test(newAttrs)) {
+      newAttrs = newAttrs.replace(/\btarget\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, 'target="_blank"');
+    } else {
+      newAttrs += ' target="_blank"';
+    }
+
+    // rel 属性に noopener noreferrer を付与（既存値があれば追記）
+    const relMatch = newAttrs.match(/\brel\s*=\s*"([^"]*)"/i) ?? newAttrs.match(/\brel\s*=\s*'([^']*)'/i);
+    if (!relMatch) {
+      newAttrs += ' rel="noopener noreferrer"';
+    } else {
+      const values = new Set(relMatch[1].split(/\s+/).filter(Boolean));
+      values.add('noopener');
+      values.add('noreferrer');
+      const newRel = [...values].join(' ');
+      newAttrs = newAttrs
+        .replace(/\brel\s*=\s*"[^"]*"/i, `rel="${newRel}"`)
+        .replace(/\brel\s*=\s*'[^']*'/i, `rel="${newRel}"`);
+    }
+
+    return `<a${newAttrs}>`;
+  });
+}
+
+/**
  * コンテンツ抽出後の後処理パイプライン。
  * 各ステップを適用順に並べる。sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  */
@@ -339,6 +381,7 @@ export function postProcess(content: string, pageUrl = ''): string {
     (html) => fixLazyImages(html),
     (html) => fixImageDimensions(html, pageUrl),
     (html) => rewriteImageUrls(html),
+    (html) => fixExternalLinks(html),
     (html) => wrapTables(html),
     (html) => sanitizeHtml(html),
   ];
@@ -425,6 +468,7 @@ export function postProcessMarkdownContent(html: string, pageUrl = ''): string {
   const steps: Array<(h: string) => string> = [
     (h) => fixImageDimensions(h, pageUrl),
     (h) => rewriteImageUrls(h),
+    (h) => fixExternalLinks(h),
     (h) => wrapTables(h),
     (h) => sanitizeHtml(h),
   ];

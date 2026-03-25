@@ -7,6 +7,7 @@ import {
   wrapTables,
   transformZennMermaidEmbeds,
   transformZennLinkEmbeds,
+  fixExternalLinks,
 } from '../src/lib/content';
 import { sanitizeHtml } from '../src/lib/html';
 
@@ -458,5 +459,64 @@ test.describe('extractMainContent 回帰テスト', () => {
     expect(result).toContain('本文');
     expect(result).not.toContain('ナビ');
     expect(result).not.toContain('フッター');
+  });
+});
+
+test.describe('fixExternalLinks', () => {
+  test('外部リンクに target="_blank" と rel="noopener noreferrer" が付与される', () => {
+    const result = fixExternalLinks('<a href="https://example.com">リンク</a>');
+    expect(result).toContain('target="_blank"');
+    expect(result).toContain('rel="noopener noreferrer"');
+    expect(result).toContain('href="https://example.com"');
+  });
+
+  test('フラグメントのみ (#anchor) はそのまま保持される', () => {
+    const input = '<a href="#section">アンカー</a>';
+    const result = fixExternalLinks(input);
+    expect(result).toBe(input);
+  });
+
+  test('href なしはそのまま保持される', () => {
+    const input = '<a>テキスト</a>';
+    const result = fixExternalLinks(input);
+    expect(result).toBe(input);
+  });
+
+  test('既存の target を上書きして "_blank" にする', () => {
+    const result = fixExternalLinks('<a href="https://example.com" target="_self">リンク</a>');
+    expect(result).toContain('target="_blank"');
+    expect(result).not.toContain('target="_self"');
+  });
+
+  test('既存の rel 属性に noopener noreferrer を追記する', () => {
+    const result = fixExternalLinks('<a href="https://example.com" rel="nofollow">リンク</a>');
+    expect(result).toContain('nofollow');
+    expect(result).toContain('noopener');
+    expect(result).toContain('noreferrer');
+  });
+
+  test('既に noopener noreferrer があれば重複追加しない', () => {
+    const result = fixExternalLinks('<a href="https://example.com" rel="noopener noreferrer">リンク</a>');
+    const relMatch = result.match(/rel="([^"]*)"/);
+    const relValues = relMatch?.[1].split(/\s+/) ?? [];
+    expect(relValues.filter((v) => v === 'noopener').length).toBe(1);
+    expect(relValues.filter((v) => v === 'noreferrer').length).toBe(1);
+  });
+
+  test('HTTP リンクにも付与される', () => {
+    const result = fixExternalLinks('<a href="http://example.com">リンク</a>');
+    expect(result).toContain('target="_blank"');
+    expect(result).toContain('rel="noopener noreferrer"');
+  });
+
+  test('複数リンクが混在しても正しく処理される', () => {
+    const html = '<a href="#top">先頭へ</a><a href="https://example.com">外部</a><a>テキスト</a>';
+    const result = fixExternalLinks(html);
+    expect(result).toContain('<a href="#top">先頭へ</a>');
+    expect(result).toContain('target="_blank"');
+    expect(result).toContain('rel="noopener noreferrer"');
+    // アンカーリンクには付与されない
+    const anchorPart = result.split('<a href="https://')[0];
+    expect(anchorPart).not.toContain('target="_blank"');
   });
 });
