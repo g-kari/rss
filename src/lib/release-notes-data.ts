@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (27)
+
+### セキュリティ
+- **OPML インポートの入力サニタイズを強化** — \`extractFeeds\` で取得した \`title\` をヌルバイト除去・500文字に切り詰め、\`siteUrl\`（\`htmlUrl\` 属性）を http/https スキームのみ許可するよう検証。\`javascript:\` など危険なスキームが保存されるのを防止
+
 ## 2026-03-25 (26)
 
 ### 新機能
