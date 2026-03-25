@@ -141,13 +141,26 @@ export function sanitizeHtml(html: string): string {
     .replace(/<set\b[^>]*\/?>/gi, '')
     // SVG <use> の外部参照を除去（クロスオリジン SVG 読み込みによるプライバシー侵害防止）
     // href / xlink:href が # のみのフラグメント参照は同一ドキュメント内なので安全、それ以外を除去
+    //
+    // 処理順序:
+    //   1. <use ...>...</use> ペア: 外部参照ならフォールバックコンテンツごと除去、フラグメント参照は保持
+    //   2. 残余の <use ...> （自己閉じ・未閉じ開始タグ）: 同様に href を検査して除去/保持
+    //
+    // 注意: </use> の後続削除は行わない。
+    // ステップ1が <use>...</use> ペアを一括処理するため、外部参照の </use> は既に除去済み。
+    // 孤立した </use> はブラウザが無視するため、セキュリティリスクはない。
+    .replace(/<use\b([^>]*)>([\s\S]*?)<\/use>/gi, (_m, attrs: string) => {
+      const hrefMatch = attrs.match(/\b(?:xlink:)?href\s*=\s*["']([^"']*?)["']/i);
+      const href = hrefMatch?.[1] ?? '';
+      // フラグメントのみ (#id) は許可、外部参照・空 href は要素ごと（フォールバック含む）除去
+      return /^#[^#]*$/.test(href) ? _m : '';
+    })
+    // 自己閉じタグ・未閉じ開始タグを処理（上記でマッチしなかった残余）
     .replace(/<use\b([^>]*)>/gi, (_m, attrs: string) => {
       const hrefMatch = attrs.match(/\b(?:xlink:)?href\s*=\s*["']([^"']*?)["']/i);
       const href = hrefMatch?.[1] ?? '';
-      // フラグメントのみ (#id) は許可、外部 URL や空 href は除去
       return /^#[^#]*$/.test(href) ? _m : '';
     })
-    .replace(/<\/use>/gi, '')
     // <iframe> は信頼済みドメイン以外を除去
     .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
       const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
