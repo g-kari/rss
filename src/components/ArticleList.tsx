@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react';
+import { useMemo, useEffect, useRef, useState, memo, type ReactElement, type ReactNode, type RefObject } from 'react';
 import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
 import { readingTime } from '../lib/article-utils';
@@ -190,6 +190,212 @@ const LAYOUT_ICONS: Record<Layout, ReactElement> = {
 
 const LAYOUTS: Layout[] = ['compact', 'list', 'card', 'magazine'];
 
+// ── 各レイアウト用記事アイテムの共通 Props ──────────────────────────────
+
+interface ArticleItemProps {
+  article: Article;
+  index: number;
+  isRead: boolean;
+  isBookmarked: boolean;
+  isSelected: boolean;
+  feedName: string;
+  thumb: string | undefined;
+  showFeedName: boolean;
+  query: string;
+  onSelect: () => void;
+  onToggleRead: () => void;
+  onToggleBookmark: () => void;
+}
+
+// ── compact ────────────────────────────────────────────────────────────
+
+const CompactArticleItem = memo(function CompactArticleItem({
+  article, index, isRead, isBookmarked, isSelected, feedName, showFeedName, query, onSelect, onToggleRead, onToggleBookmark,
+}: ArticleItemProps) {
+  return (
+    <div
+      id={`article-${article.id}`}
+      onClick={onSelect}
+      className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
+        isSelected
+          ? 'bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]'
+          : 'hover:bg-surface-hover'
+      }`}
+      style={{ animationDelay: `${Math.min(index, 20) * 15}ms` }}
+    >
+      <span className={`w-1 h-1 rounded-full flex-shrink-0 ${!isRead ? 'bg-accent-dot' : 'bg-transparent'}`} />
+      <span
+        className={`text-[13px] truncate flex-1 transition-colors duration-200 ${
+          isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
+        }`}
+      >
+        {highlightText(article.title || '(タイトルなし)', query)}
+      </span>
+      {showFeedName && feedName && (
+        <span className="text-[11px] text-text-faint truncate max-w-[80px] flex-shrink-0 group-hover:hidden">{feedName}</span>
+      )}
+      <span className="text-[11px] text-text-faint flex-shrink-0 group-hover:hidden">{timeAgo(article.publishedAt)}</span>
+      {/* ホバーアクション */}
+      <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={onToggleRead} onToggleBookmark={onToggleBookmark} />
+      </div>
+    </div>
+  );
+});
+
+// ── list (デフォルト) ──────────────────────────────────────────────────
+
+const ListArticleItem = memo(function ListArticleItem({
+  article, index, isRead, isBookmarked, isSelected, feedName, thumb, showFeedName, query, onSelect, onToggleRead, onToggleBookmark,
+}: ArticleItemProps) {
+  return (
+    <div
+      id={`article-${article.id}`}
+      onClick={onSelect}
+      className={`group flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
+        isSelected
+          ? 'bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]'
+          : 'hover:bg-surface-hover'
+      }`}
+      style={{ animationDelay: `${Math.min(index, 20) * 25}ms` }}
+    >
+      <div className="flex-1 min-w-0">
+        {showFeedName && feedName && (
+          <span className="text-[10px] text-text-faint tracking-[0.04em] mb-0.5 block truncate">{feedName}</span>
+        )}
+        <h3
+          className={`text-[13px] leading-snug line-clamp-2 mb-1 transition-colors duration-200 ${
+            isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
+          }`}
+        >
+          {highlightText(article.title || '(タイトルなし)', query)}
+        </h3>
+        {article.summary && (
+          <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed mb-1">
+            {highlightText(article.summary, query)}
+          </p>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+          {article.author && <span className="text-[11px] text-text-faint truncate max-w-[100px]">{article.author}</span>}
+          <ReadingTimeBadge article={article} />
+          {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
+        </div>
+      </div>
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        {thumb && <ArticleThumbnail thumb={thumb} className="w-14 h-14 object-cover rounded" />}
+        {/* ホバーアクション */}
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+          <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={onToggleRead} onToggleBookmark={onToggleBookmark} />
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ── card ───────────────────────────────────────────────────────────────
+
+const CardArticleItem = memo(function CardArticleItem({
+  article, index, isRead, isBookmarked, isSelected, feedName, thumb, showFeedName, query, onSelect, onToggleRead, onToggleBookmark,
+}: ArticleItemProps) {
+  return (
+    <div
+      id={`article-${article.id}`}
+      onClick={onSelect}
+      className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 animate-fade-up overflow-hidden ${
+        isSelected
+          ? 'border-text-strong bg-surface-elevated'
+          : 'border-border-default hover:border-text-muted bg-surface-elevated'
+      }`}
+      style={{ animationDelay: `${Math.min(index, 20) * 25}ms` }}
+    >
+      {thumb && <ArticleThumbnail thumb={thumb} className="w-full aspect-video object-contain bg-surface-subtle flex-shrink-0" />}
+      <div className="p-2.5 flex flex-col gap-1 flex-1">
+        {showFeedName && feedName && (
+          <span className="text-[10px] text-text-faint truncate tracking-[0.04em]">{feedName}</span>
+        )}
+        <h3
+          className={`text-[12px] leading-snug line-clamp-2 ${
+            isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
+          }`}
+        >
+          {highlightText(article.title || '(タイトルなし)', query)}
+        </h3>
+        {article.summary && !thumb && (
+          <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed">
+            {highlightText(article.summary, query)}
+          </p>
+        )}
+        <div className="flex items-center justify-between mt-auto pt-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[10px] text-text-faint flex-shrink-0">{timeAgo(article.publishedAt)}</span>
+            {article.author && <span className="text-[10px] text-text-faint truncate">{article.author}</span>}
+          </div>
+          <div className="flex items-center">
+            {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:opacity-0 transition-opacity duration-150" />}
+            {/* ホバーアクション */}
+            <div className="absolute flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto right-2.5 bottom-2.5" onClick={(e) => e.stopPropagation()}>
+              <ArticleActions size="sm" isRead={isRead} isBookmarked={isBookmarked} onToggleRead={onToggleRead} onToggleBookmark={onToggleBookmark} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ── magazine (フィーチャー記事) ────────────────────────────────────────
+
+const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticleItem({
+  article, isRead, isBookmarked, isSelected, feedName, thumb, showFeedName, query, onSelect, onToggleRead, onToggleBookmark,
+}: Omit<ArticleItemProps, 'index'>) {
+  return (
+    <div
+      id={`article-${article.id}`}
+      onClick={onSelect}
+      className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 animate-fade-up ${
+        isSelected
+          ? 'border-text-strong bg-surface-elevated'
+          : 'border-border-default hover:border-text-muted bg-surface-elevated'
+      }`}
+    >
+      {thumb && <ArticleThumbnail thumb={thumb} className="w-full aspect-video object-contain bg-surface-subtle" />}
+      <div className="p-3">
+        {showFeedName && feedName && (
+          <span className="text-[10px] text-text-faint tracking-[0.06em] uppercase">{feedName}</span>
+        )}
+        <h3
+          className={`text-[14px] leading-snug font-medium mt-0.5 mb-1.5 ${
+            isRead ? 'text-text-muted' : 'text-text-strong'
+          }`}
+        >
+          {highlightText(article.title || '(タイトルなし)', query)}
+        </h3>
+        {article.summary && (
+          <p className="text-[12px] text-text-muted line-clamp-2 leading-relaxed mb-2">
+            {highlightText(article.summary, query)}
+          </p>
+        )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+            <ReadingTimeBadge article={article} />
+          </div>
+          <div className="flex items-center">
+            {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />}
+            {/* ホバーアクション */}
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+              <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={onToggleRead} onToggleBookmark={onToggleBookmark} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ── メインコンポーネント ───────────────────────────────────────────────
+
 export default function ArticleList({
   feeds,
   readIds,
@@ -223,16 +429,6 @@ export default function ArticleList({
 
   // 複数フィードを横断表示するとき（すべて・ブックマーク）はフィード名を表示する
   const showFeedName = selectedFeedId === null || selectedFeedId === '__bookmarks__';
-
-  function articleState(article: Article) {
-    return {
-      isRead: readIds.has(article.id),
-      isBookmarked: bookmarkIds.has(article.id),
-      isSelected: selectedArticleId === article.id,
-      feedName: feedMap.get(article.feedId) ?? '',
-      thumb: resolveThumbnail(article, ogpCache),
-    };
-  }
 
   // ogImage がない記事の OGP 画像を遅延フェッチするキャッシュ（localStorage に永続化）
   const [ogpCache, setOgpCache] = useState<Record<string, string>>(() => {
@@ -283,191 +479,22 @@ export default function ArticleList({
     }
   }, [selectedArticleId]);
 
-  function handleSelect(article: Article) {
-    onSelectArticle(article);
-  }
-
-  /* ── compact ── */
-  function renderCompact(article: Article, i: number) {
-    const { isRead, isBookmarked, isSelected, feedName } = articleState(article);
-    return (
-      <div
-        key={article.id}
-        id={`article-${article.id}`}
-        onClick={() => handleSelect(article)}
-        className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
-          isSelected
-            ? 'bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]'
-            : 'hover:bg-surface-hover'
-        }`}
-        style={{ animationDelay: `${Math.min(i, 20) * 15}ms` }}
-      >
-        <span className={`w-1 h-1 rounded-full flex-shrink-0 ${!isRead ? 'bg-accent-dot' : 'bg-transparent'}`} />
-        <span
-          className={`text-[13px] truncate flex-1 transition-colors duration-200 ${
-            isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
-          }`}
-        >
-          {highlightText(article.title || '(タイトルなし)', query)}
-        </span>
-        {showFeedName && feedName && (
-          <span className="text-[11px] text-text-faint truncate max-w-[80px] flex-shrink-0 group-hover:hidden">{feedName}</span>
-        )}
-        <span className="text-[11px] text-text-faint flex-shrink-0 group-hover:hidden">{timeAgo(article.publishedAt)}</span>
-        {/* ホバーアクション */}
-        <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
-        </div>
-      </div>
-    );
-  }
-
-  /* ── list (デフォルト) ── */
-  function renderList(article: Article, i: number) {
-    const { isRead, isBookmarked, isSelected, thumb, feedName } = articleState(article);
-    return (
-      <div
-        key={article.id}
-        id={`article-${article.id}`}
-        onClick={() => handleSelect(article)}
-        className={`group flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
-          isSelected
-            ? 'bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]'
-            : 'hover:bg-surface-hover'
-        }`}
-        style={{ animationDelay: `${Math.min(i, 20) * 25}ms` }}
-      >
-        <div className="flex-1 min-w-0">
-          {showFeedName && feedName && (
-            <span className="text-[10px] text-text-faint tracking-[0.04em] mb-0.5 block truncate">{feedName}</span>
-          )}
-          <h3
-            className={`text-[13px] leading-snug line-clamp-2 mb-1 transition-colors duration-200 ${
-              isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
-            }`}
-          >
-            {highlightText(article.title || '(タイトルなし)', query)}
-          </h3>
-          {article.summary && (
-            <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed mb-1">
-              {highlightText(article.summary, query)}
-            </p>
-          )}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
-            {article.author && <span className="text-[11px] text-text-faint truncate max-w-[100px]">{article.author}</span>}
-            <ReadingTimeBadge article={article} />
-            {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          {thumb && <ArticleThumbnail thumb={thumb} className="w-14 h-14 object-cover rounded" />}
-          {/* ホバーアクション */}
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-            <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── card ── */
-  function renderCard(article: Article, i: number) {
-    const { isRead, isBookmarked, isSelected, feedName, thumb } = articleState(article);
-    return (
-      <div
-        key={article.id}
-        id={`article-${article.id}`}
-        onClick={() => handleSelect(article)}
-        className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 animate-fade-up overflow-hidden ${
-          isSelected
-            ? 'border-text-strong bg-surface-elevated'
-            : 'border-border-default hover:border-text-muted bg-surface-elevated'
-        }`}
-        style={{ animationDelay: `${Math.min(i, 20) * 25}ms` }}
-      >
-        {thumb && <ArticleThumbnail thumb={thumb} className="w-full aspect-video object-contain bg-surface-subtle flex-shrink-0" />}
-        <div className="p-2.5 flex flex-col gap-1 flex-1">
-          {feedName && (
-            <span className="text-[10px] text-text-faint truncate tracking-[0.04em]">{feedName}</span>
-          )}
-          <h3
-            className={`text-[12px] leading-snug line-clamp-2 ${
-              isRead ? 'text-text-muted font-normal' : 'text-text-strong font-medium'
-            }`}
-          >
-            {highlightText(article.title || '(タイトルなし)', query)}
-          </h3>
-          {article.summary && !thumb && (
-            <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed">
-              {highlightText(article.summary, query)}
-            </p>
-          )}
-          <div className="flex items-center justify-between mt-auto pt-1">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-[10px] text-text-faint flex-shrink-0">{timeAgo(article.publishedAt)}</span>
-              {article.author && <span className="text-[10px] text-text-faint truncate">{article.author}</span>}
-            </div>
-            <div className="flex items-center">
-              {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:opacity-0 transition-opacity duration-150" />}
-              {/* ホバーアクション */}
-              <div className="absolute flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto right-2.5 bottom-2.5" onClick={(e) => e.stopPropagation()}>
-                <ArticleActions size="sm" isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── magazine ── */
-  function renderMagazineFeatured(article: Article) {
-    const { isRead, isBookmarked, isSelected, feedName, thumb } = articleState(article);
-    return (
-      <div
-        key={article.id}
-        id={`article-${article.id}`}
-        onClick={() => handleSelect(article)}
-        className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 animate-fade-up ${
-          isSelected
-            ? 'border-text-strong bg-surface-elevated'
-            : 'border-border-default hover:border-text-muted bg-surface-elevated'
-        }`}
-      >
-        {thumb && <ArticleThumbnail thumb={thumb} className="w-full aspect-video object-contain bg-surface-subtle" />}
-        <div className="p-3">
-          {feedName && (
-            <span className="text-[10px] text-text-faint tracking-[0.06em] uppercase">{feedName}</span>
-          )}
-          <h3
-            className={`text-[14px] leading-snug font-medium mt-0.5 mb-1.5 ${
-              isRead ? 'text-text-muted' : 'text-text-strong'
-            }`}
-          >
-            {highlightText(article.title || '(タイトルなし)', query)}
-          </h3>
-          {article.summary && (
-            <p className="text-[12px] text-text-muted line-clamp-2 leading-relaxed mb-2">
-              {highlightText(article.summary, query)}
-            </p>
-          )}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
-              <ReadingTimeBadge article={article} />
-            </div>
-            <div className="flex items-center">
-              {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />}
-              {/* ホバーアクション */}
-              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                <ArticleActions isRead={isRead} isBookmarked={isBookmarked} onToggleRead={() => onToggleRead(article.id)} onToggleBookmark={() => onToggleBookmark(article.id)} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  /** 記事ごとの表示用状態を解決する */
+  function resolveItemProps(article: Article, index: number): ArticleItemProps {
+    return {
+      article,
+      index,
+      isRead: readIds.has(article.id),
+      isBookmarked: bookmarkIds.has(article.id),
+      isSelected: selectedArticleId === article.id,
+      feedName: feedMap.get(article.feedId) ?? '',
+      thumb: resolveThumbnail(article, ogpCache),
+      showFeedName,
+      query,
+      onSelect: () => onSelectArticle(article),
+      onToggleRead: () => onToggleRead(article.id),
+      onToggleBookmark: () => onToggleBookmark(article.id),
+    };
   }
 
   return (
@@ -587,15 +614,21 @@ export default function ArticleList({
         )}
 
         {/* compact */}
-        {layout === 'compact' && visible.map((a, i) => renderCompact(a, i))}
+        {layout === 'compact' && visible.map((a, i) => (
+          <CompactArticleItem key={a.id} {...resolveItemProps(a, i)} />
+        ))}
 
         {/* list */}
-        {layout === 'list' && visible.map((a, i) => renderList(a, i))}
+        {layout === 'list' && visible.map((a, i) => (
+          <ListArticleItem key={a.id} {...resolveItemProps(a, i)} />
+        ))}
 
         {/* card */}
         {layout === 'card' && (
           <div className="grid grid-cols-2 gap-2 p-2">
-            {visible.map((a, i) => renderCard(a, i))}
+            {visible.map((a, i) => (
+              <CardArticleItem key={a.id} {...resolveItemProps(a, i)} />
+            ))}
           </div>
         )}
 
@@ -603,9 +636,11 @@ export default function ArticleList({
         {layout === 'magazine' && visible.length > 0 && (
           <>
             <div className="p-2">
-              {renderMagazineFeatured(visible[0])}
+              <MagazineFeaturedArticleItem {...resolveItemProps(visible[0], 0)} />
             </div>
-            {visible.slice(1).map((a, i) => renderCompact(a, i + 1))}
+            {visible.slice(1).map((a, i) => (
+              <CompactArticleItem key={a.id} {...resolveItemProps(a, i + 1)} />
+            ))}
           </>
         )}
 
