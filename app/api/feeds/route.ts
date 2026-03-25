@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withSession } from '@/lib/server-auth';
+import { withSession, parseJsonBody } from '@/lib/server-auth';
 import { r2Get, r2Put } from '@/lib/r2';
 import { fetchArticles } from '@/cron/fetch';
 import { isValidFeedUrl } from '@/lib/url';
@@ -17,7 +17,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   return withSession(async ({ session, env, ctx }) => {
-    const body = await request.json() as { url?: unknown };
+    const body = await parseJsonBody<{ url?: unknown }>(request);
+    if (body instanceof NextResponse) return body;
     if (typeof body?.url !== 'string') return NextResponse.json({ error: 'url is required' }, { status: 400 });
     let url = body.url.trim();
     if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 });
