@@ -29,6 +29,8 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
   const [refreshing, setRefreshing] = useState(false);
   const [newArticleCount, setNewArticleCount] = useState(0);
   const [loadedFeedPages, setLoadedFeedPages] = useState<Map<string, number>>(() => new Map());
+  const loadedFeedPagesRef = useRef(loadedFeedPages);
+  loadedFeedPagesRef.current = loadedFeedPages;
   const latestArticleIdRef = useRef<string | null>(null);
 
   const fetchAndSetArticles = useCallback(async () => {
@@ -134,7 +136,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
 
   // フィードの過去ページを追加読み込みする
   const loadMoreFeedArticles = useCallback(async (feedId: string): Promise<void> => {
-    const currentPage = loadedFeedPages.get(feedId) ?? 1;
+    const currentPage = loadedFeedPagesRef.current.get(feedId) ?? 1;
     const nextPage = currentPage + 1;
     try {
       const res = await fetch(`/api/articles?feed=${feedId}&page=${nextPage}`);
@@ -152,7 +154,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
       console.error('loadMoreFeedArticles failed:', err);
       onError?.('過去の記事の読み込みに失敗しました');
     }
-  }, [loadedFeedPages, onError]);
+  }, [onError]);
 
   return { feeds, articles, loadingArticles, refreshing, newArticleCount, loadedFeedPages, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles, loadMoreFeedArticles };
 }

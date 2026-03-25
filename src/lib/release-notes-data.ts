@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (47)
+
+### バグ修正
+- **\`useFeeds\` の \`loadMoreFeedArticles\` 不要再生成を解消** — \`useCallback\` の依存配列に \`loadedFeedPages\`（Map state）を含めていたため、ページ追加のたびに関数参照が再生成されていた。\`useRef\` でミラーリングして依存配列から除外
+
 ## 2026-03-26 (46)
 
 ### リファクタリング
