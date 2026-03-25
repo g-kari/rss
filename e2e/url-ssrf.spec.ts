@@ -105,6 +105,26 @@ test.describe('isValidFeedUrl — IPv4 プライベートアドレスを拒否',
   test('255.0.0.0 ブロードキャストを拒否する', () => {
     expect(isValidFeedUrl('http://255.0.0.0/feed')).toBe(false);
   });
+
+  test('100.64.0.1 CGNAT 開始アドレスを拒否する', () => {
+    expect(isValidFeedUrl('http://100.64.0.1/feed')).toBe(false);
+  });
+
+  test('100.100.0.1 CGNAT 中間アドレスを拒否する', () => {
+    expect(isValidFeedUrl('http://100.100.0.1/feed')).toBe(false);
+  });
+
+  test('100.127.255.255 CGNAT 末尾アドレスを拒否する', () => {
+    expect(isValidFeedUrl('http://100.127.255.255/feed')).toBe(false);
+  });
+
+  test('100.63.x.x は CGNAT 範囲外なので許可する', () => {
+    expect(isValidFeedUrl('http://100.63.0.1/feed')).toBe(true);
+  });
+
+  test('100.128.x.x は CGNAT 範囲外なので許可する', () => {
+    expect(isValidFeedUrl('http://100.128.0.1/feed')).toBe(true);
+  });
 });
 
 test.describe('isValidFeedUrl — IPv4 バイパス手法（10進数・16進数・8進数）', () => {
