@@ -167,7 +167,7 @@ export async function mergeNewArticles(
   bucket: R2Bucket,
   meta: SharedFeedMeta,
   fetchedArticles: Article[],
-  existingLatest?: Article[],
+  existingLatest?: Article[] | null,
 ): Promise<Article[]> {
   if (fetchedArticles.length === 0) return [];
 

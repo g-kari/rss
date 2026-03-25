@@ -165,7 +165,7 @@ async function fetchAndParseFeed(
   env: FetchEnv,
   meta: SharedFeedMeta,
   options: { conditional?: boolean } = {},
-): Promise<{ articles: Article[]; existingLatest: Article[] }> {
+): Promise<{ articles: Article[]; existingLatest: Article[] | null }> {
   const reqHeaders: Record<string, string> = { 'User-Agent': 'rss-reader/1.0' };
   if (options.conditional) {
     if (meta.etag) reqHeaders['If-None-Match'] = meta.etag;
@@ -175,7 +175,7 @@ async function fetchAndParseFeed(
   if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
   if (res.status === 304) {
     resetFeedSuccessState(meta);
-    return { articles: [], existingLatest: [] };
+    return { articles: [], existingLatest: null };
   }
   if (!res.ok) throw new Error(`${res.status} ${meta.url}`);
 

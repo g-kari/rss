@@ -59,6 +59,7 @@ export default function ArticleView({
 
   const [scrollProgress, setScrollProgress] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const wheelDeltaRef = useRef<{ x: number; timer: ReturnType<typeof setTimeout> | null }>({ x: 0, timer: null });
   const contentRef = useRef<HTMLDivElement>(null);
 
   const { downloadAllImages, downloadingImages, imageDownloadProgress } = useImageDownload(
@@ -185,6 +186,31 @@ export default function ArticleView({
     setScrollProgress(scrollable > 0 ? Math.round((el.scrollTop / scrollable) * 100) : 0);
   }
 
+  function handleWheel(e: React.WheelEvent) {
+    // 横スクロール可能な子要素の上ではスキップ
+    let node = e.target as Element | null;
+    while (node && node !== e.currentTarget) {
+      const ox = getComputedStyle(node).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && node.scrollWidth > node.clientWidth) return;
+      node = node.parentElement;
+    }
+    // 縦スクロールが優位な場合はスキップ
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * 0.5) return;
+
+    const state = wheelDeltaRef.current;
+    state.x += e.deltaX;
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = setTimeout(() => { state.x = 0; }, 400);
+
+    if (state.x > 150 && onSelectNext) {
+      state.x = 0;
+      onSelectNext();
+    } else if (state.x < -150 && onSelectPrev) {
+      state.x = 0;
+      onSelectPrev();
+    }
+  }
+
   function handleTouchStart(e: React.TouchEvent) {
     // 横スクロール可能な要素（コードブロック・テーブル等）の上ではスワイプ検知しない
     let node = e.target as Element | null;
@@ -210,7 +236,7 @@ export default function ArticleView({
   }
 
   return (
-    <main className="h-full overflow-y-auto bg-surface-elevated animate-fade-in relative" onScroll={handleScroll} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+    <main className="h-full overflow-y-auto bg-surface-elevated animate-fade-in relative" onScroll={handleScroll} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onWheel={handleWheel}>
       {scrollProgress > 0 && (
         <div
           className="sticky top-0 left-0 h-[2px] bg-ink z-10 transition-[width] duration-75 ease-linear"

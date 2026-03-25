@@ -8,17 +8,18 @@ export async function GET(request: NextRequest) {
     const feedHash = searchParams.get('feed');
     const page = parseInt(searchParams.get('page') ?? '1', 10);
 
-    // フィード指定: 購読チェックして特定フィードの記事を返す
+    // フィード指定: 購読チェックと記事取得を並列実行
     if (feedHash) {
-      const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+      const fetchArticles = page >= 2
+        ? readArticlePage(env.RSS_DATA, feedHash, page)
+        : readLatestArticles(env.RSS_DATA, feedHash);
+      const [subs, articles] = await Promise.all([
+        readUserSubscriptions(env.RSS_DATA, session.userId),
+        fetchArticles,
+      ]);
       if (!subs.some((s) => s.feedHash === feedHash)) {
         return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
       }
-      if (page >= 2) {
-        const articles = await readArticlePage(env.RSS_DATA, feedHash, page);
-        return NextResponse.json(articles);
-      }
-      const articles = await readLatestArticles(env.RSS_DATA, feedHash);
       return NextResponse.json(articles);
     }
 

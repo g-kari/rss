@@ -50,6 +50,20 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // 直前に選択していた記事を一定時間フィルター対象外にする（未読フィルター中でも前の記事に戻れるように）
+  const [gracePeriodId, setGracePeriodId] = useState<string | null>(null);
+  const gracePeriodTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevSelectedIdRef = useRef<string | null | undefined>(selectedArticleId);
+  useEffect(() => {
+    const prev = prevSelectedIdRef.current;
+    prevSelectedIdRef.current = selectedArticleId;
+    if (prev && prev !== selectedArticleId) {
+      setGracePeriodId(prev);
+      if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
+      gracePeriodTimerRef.current = setTimeout(() => setGracePeriodId(null), 5000);
+    }
+  }, [selectedArticleId]);
+
   // フィード切り替え時にページ・検索クエリをリセット
   useEffect(() => {
     setPage(1);
@@ -134,8 +148,9 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
             ? articles.filter((a) => a.feedHash === feedId)
             : articles;
     // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
-    if (unreadOnly) list = list.filter((a) => !readIds.has(a.id) || a.id === selectedArticleId);
-    if (bookmarkOnly) list = list.filter((a) => bookmarkIds.has(a.id) || a.id === selectedArticleId);
+    // gracePeriodId: 直前まで表示していた記事を5秒間保持（未読フィルター中でも前の記事に戻れるように）
+    if (unreadOnly) list = list.filter((a) => !readIds.has(a.id) || a.id === selectedArticleId || a.id === gracePeriodId);
+    if (bookmarkOnly) list = list.filter((a) => bookmarkIds.has(a.id) || a.id === selectedArticleId || a.id === gracePeriodId);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter(
@@ -153,7 +168,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
       list = [...list].reverse();
     }
     return list;
-  }, [articles, feedId, readIds, bookmarkIds, readingListIds, unreadOnly, bookmarkOnly, query, sortOrder, dateRange, selectedArticleId]);
+  }, [articles, feedId, readIds, bookmarkIds, readingListIds, unreadOnly, bookmarkOnly, query, sortOrder, dateRange, selectedArticleId, gracePeriodId]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
