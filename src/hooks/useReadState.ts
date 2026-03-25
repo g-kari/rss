@@ -21,17 +21,15 @@ function toggleSetItem(
   });
 }
 
-/** サーバーから取得した配列を既存 Set にマージして localStorage と統合 ref を更新する */
+/** サーバーから取得した配列を既存 Set にマージして localStorage を更新する */
 function mergeServerSet(
   setState: (updater: (prev: Set<string>) => Set<string>) => void,
   storageKey: string,
   serverValues: string[],
-  onMerge: (merged: Set<string>) => void,
 ): void {
   setState((prev) => {
     const merged = new Set([...prev, ...serverValues]);
     saveSet(storageKey, merged);
-    onMerge(merged);
     return merged;
   });
 }
@@ -103,12 +101,9 @@ export function useReadState(
     if (!user) return;
     fetchReadState().then((state) => {
       if (!state) return;
-      mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds,
-        (merged) => { stateRef.current = { ...stateRef.current, read: merged }; });
-      mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds,
-        (merged) => { stateRef.current = { ...stateRef.current, bookmarks: merged }; });
-      mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, state.readingListIds ?? [],
-        (merged) => { stateRef.current = { ...stateRef.current, readingList: merged }; });
+      mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds);
+      mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds);
+      mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, state.readingListIds ?? []);
     });
   }, [user]);
 
