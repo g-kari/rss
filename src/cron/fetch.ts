@@ -25,9 +25,9 @@ const MAX_RATE_LIMIT_MS = 24 * 60 * 60 * 1000; // 最大 24 時間
 export function parseRetryAfter(header: string | null): number {
   if (!header) return DEFAULT_RATE_LIMIT_MS;
 
-  // 整数秒（例: "3600"）
+  // 整数秒（例: "3600"、"0" = 即再試行可）
   const seconds = parseInt(header, 10);
-  if (!isNaN(seconds) && seconds > 0) {
+  if (!isNaN(seconds) && seconds >= 0) {
     return Math.min(seconds * 1000, MAX_RATE_LIMIT_MS);
   }
 

@@ -536,6 +536,24 @@ test.describe('sanitizeHtml — SVG アニメーション要素によるイン�
     const result = sanitizeHtml('<svg><use href="#icon"/></svg>');
     expect(result).toContain('<use href="#icon"');
   });
+
+  test('SVG <use> href が %23 (URL エンコードされた #) で始まるフラグメント参照は保持される', () => {
+    // ブラウザは %23icon を #icon にデコードして同一ドキュメント参照として扱う
+    const result = sanitizeHtml('<svg><use href="%23icon"></use></svg>');
+    expect(result).toContain('<use href="%23icon">');
+  });
+
+  test('SVG <use> href が %23 + パス区切りを含む場合でもフラグメント参照として保持される', () => {
+    // %23/../evil.svg は decoded すると #/../evil.svg — # で始まるため保持
+    // ブラウザはこれをフラグメント識別子として扱い、外部リソースを読み込まない
+    const result = sanitizeHtml('<svg><use href="%23/../local-id"></use></svg>');
+    expect(result).toContain('<use href="%23/../local-id">');
+  });
+
+  test('SVG <use> href に不正な URL エンコード（単独 %）が含まれても除去されず保持 or 除去どちらでもクラッシュしない', () => {
+    // decodeURIComponent が例外を投げる入力 — クラッシュせずに処理されること
+    expect(() => sanitizeHtml('<svg><use href="%zz"></use></svg>')).not.toThrow();
+  });
 });
 
 test.describe('sanitizeHtml — ReDoS 耐性', () => {
