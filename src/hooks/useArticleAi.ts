@@ -16,22 +16,22 @@ interface ArticleAiState {
   aiResult: { mode: AiMode; text: string } | null;
   aiLoading: AiMode | null;
   aiError: string;
-  /** AI 実行（キャッシュ優先、API フォールバック） */
-  doRunAi: (mode: AiMode, contentHtml: string, articleId?: string) => Promise<void>;
+  /** AI 実行（LRU キャッシュ優先、サーバー側コンテンツ取得） */
+  doRunAi: (mode: AiMode, url: string, articleId?: string) => Promise<void>;
   resetAi: () => void;
 }
 
-export function useArticleAi(articleId: string | undefined): ArticleAiState {
+export function useArticleAi(_articleId: string | undefined): ArticleAiState {
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
   const [aiError, setAiError] = useState('');
 
-  const doRunAi = useCallback(async (mode: AiMode, contentHtml: string, articleIdArg?: string) => {
-    if (!contentHtml.trim()) return;
+  const doRunAi = useCallback(async (mode: AiMode, url: string, articleId?: string) => {
+    if (!url.trim()) return;
 
-    // キャッシュヒット時は API コールなし
-    if (articleIdArg) {
-      const cached = loadAiCache(articleIdArg, mode);
+    // LRU キャッシュヒット時は API コールなし
+    if (articleId) {
+      const cached = loadAiCache(articleId, mode);
       if (cached) {
         setAiResult({ mode, text: cached });
         return;
@@ -45,11 +45,11 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: contentHtml }),
+        body: JSON.stringify({ url, articleId }),
       });
-      const data = await res.json() as { result?: string; error?: string };
+      const data = (await res.json()) as { result?: string; error?: string };
       if (data.result) {
-        if (articleIdArg) saveAiCache(articleIdArg, mode, data.result);
+        if (articleId) saveAiCache(articleId, mode, data.result);
         setAiResult({ mode, text: data.result });
       } else if (data.error) {
         setAiError(data.error);
@@ -68,9 +68,6 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
     setAiError('');
     setAiLoading(null);
   }, []);
-
-  // articleId は未使用だが、将来のキャッシュ拡張用に引数として保持する
-  void articleId;
 
   return { aiResult, aiLoading, aiError, doRunAi, resetAi };
 }

@@ -34,3 +34,26 @@ export async function setAiCache(
     httpMetadata: { contentType: 'text/plain; charset=utf-8' },
   });
 }
+
+/** articleId をキーとしたキャッシュ取得 */
+export async function getAiCacheById(
+  bucket: R2Bucket,
+  mode: AiMode,
+  articleId: string,
+): Promise<string | null> {
+  const obj = await bucket.get(`ai-cache/${mode}/id-${articleId}`);
+  if (!obj) return null;
+  return obj.text();
+}
+
+/** articleId をキーとしたキャッシュ保存 */
+export async function setAiCacheById(
+  bucket: R2Bucket,
+  mode: AiMode,
+  articleId: string,
+  result: string,
+): Promise<void> {
+  await bucket.put(`ai-cache/${mode}/id-${articleId}`, result, {
+    httpMetadata: { contentType: 'text/plain; charset=utf-8' },
+  });
+}
