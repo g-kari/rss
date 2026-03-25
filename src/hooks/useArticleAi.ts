@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { AiMode } from '../types';
 import { aiLruCache } from '../lib/lru-cache';
 
@@ -21,17 +21,24 @@ interface ArticleAiState {
   resetAi: () => void;
 }
 
-export function useArticleAi(_articleId: string | undefined): ArticleAiState {
+export function useArticleAi(articleId: string | undefined): ArticleAiState {
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
   const [aiError, setAiError] = useState('');
 
-  const doRunAi = useCallback(async (mode: AiMode, url: string, articleId?: string) => {
+  // 記事が変わったら AI 状態を自動リセットする
+  useEffect(() => {
+    setAiResult(null);
+    setAiError('');
+    setAiLoading(null);
+  }, [articleId]);
+
+  const doRunAi = useCallback(async (mode: AiMode, url: string, currentArticleId?: string) => {
     if (!url.trim()) return;
 
     // LRU キャッシュヒット時は API コールなし
-    if (articleId) {
-      const cached = loadAiCache(articleId, mode);
+    if (currentArticleId) {
+      const cached = loadAiCache(currentArticleId, mode);
       if (cached) {
         setAiResult({ mode, text: cached });
         return;
@@ -45,11 +52,11 @@ export function useArticleAi(_articleId: string | undefined): ArticleAiState {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, articleId }),
+        body: JSON.stringify({ url, articleId: currentArticleId }),
       });
       const data = (await res.json()) as { result?: string; error?: string };
       if (data.result) {
-        if (articleId) saveAiCache(articleId, mode, data.result);
+        if (currentArticleId) saveAiCache(currentArticleId, mode, data.result);
         setAiResult({ mode, text: data.result });
       } else if (data.error) {
         setAiError(data.error);

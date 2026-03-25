@@ -127,14 +127,10 @@ export default function ArticleView({
   }, [storedContent, article?.id, injectSliderControls]);
 
   // 記事が変わったら AI 状態をリセット。日本語以外の記事は自動翻訳する（全文取得は行わない）
+  // 記事が変わったらスクロール位置と翻訳表示状態をリセット（AI 状態は useArticleAi が担当）
   useEffect(() => {
-    resetAi();
     setScrollProgress(0);
     setShowTranslated(false);
-    if (!article?.id) return;
-
-    // article.id が変わったときのみ実行
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.id]);
 
   // 翻訳結果が届いたら本文を翻訳表示に切り替える
