@@ -28,14 +28,14 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
   const [newArticleCount, setNewArticleCount] = useState(0);
   const latestArticleIdRef = useRef<string | null>(null);
 
-  async function fetchAndSetArticles() {
+  const fetchAndSetArticles = useCallback(async () => {
     const res = await fetch('/api/articles');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json() as Article[];
     setArticles(data);
     latestArticleIdRef.current = data[0]?.id ?? null;
     return data;
-  }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -47,7 +47,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
     fetchAndSetArticles()
       .catch((err) => { console.error(err); onError?.('記事の読み込みに失敗しました'); })
       .finally(() => setLoadingArticles(false));
-  }, [user, onError]);
+  }, [user, onError, fetchAndSetArticles]);
 
   // 5分ごとに記事を再取得して新着件数を通知する
   useEffect(() => {
@@ -93,7 +93,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
     fetchAndSetArticles()
       .catch((err) => { console.error(err); onError?.('記事の読み込みに失敗しました'); })
       .finally(() => setLoadingArticles(false));
-  }, [onError]);
+  }, [fetchAndSetArticles, onError]);
 
   const refreshFeeds = useCallback(async () => {
     setRefreshing(true);
@@ -110,7 +110,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
     } finally {
       setRefreshing(false);
     }
-  }, [onError]);
+  }, [fetchAndSetArticles, onError]);
 
   const retryFeed = useCallback(async (feedId: string): Promise<void> => {
     try {
@@ -123,7 +123,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
       console.error('retryFeed failed:', err);
       onError?.('フィードの再取得に失敗しました');
     }
-  }, [onError]);
+  }, [fetchAndSetArticles, onError]);
 
   const dismissNewArticles = useCallback(() => {
     setNewArticleCount(0);
