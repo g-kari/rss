@@ -58,7 +58,7 @@ export default function App() {
     setToast(msg);
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }, []);
-  const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles } = useFeeds(user, showToast);
+  const { feeds, articles, loadingArticles, refreshing, newArticleCount, loadedFeedPages, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles, loadMoreFeedArticles } = useFeeds(user, showToast);
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, toggle: togglePush } = usePushNotifications(user);
 
   const { readIds, bookmarkIds, readingListIds, markRead, markAllRead, toggleRead, toggleBookmark, toggleReadingList } = useReadState(user, articles);
@@ -206,6 +206,15 @@ export default function App() {
     () => (selectedArticle ? filtered.findIndex((a) => a.id === selectedArticle.id) : -1),
     [selectedArticle, filtered],
   );
+
+  // 特定フィードを表示中かつ、サーバー側に未取得ページが残っているか
+  const feedHasMorePages = useMemo(() => {
+    if (!selectedFeedId || selectedFeedId.startsWith('__')) return false;
+    const feed = feeds.find((f) => f.id === selectedFeedId);
+    if (!feed?.pageCount) return false;
+    const loadedPage = loadedFeedPages.get(selectedFeedId) ?? 1;
+    return loadedPage <= feed.pageCount;
+  }, [selectedFeedId, feeds, loadedFeedPages]);
   const prevArticle = currentIndex > 0 ? filtered[currentIndex - 1] : null;
   const nextArticle = currentIndex >= 0 && currentIndex < filtered.length - 1 ? filtered[currentIndex + 1] : null;
 
@@ -486,6 +495,8 @@ export default function App() {
           updateQuery={updateQuery}
           searchRef={searchRef}
           sentinelRef={sentinelRef}
+          feedHasMorePages={feedHasMorePages}
+          onLoadMoreFeedArticles={selectedFeedId ? () => loadMoreFeedArticles(selectedFeedId) : undefined}
         />
         </ErrorBoundary>
       </div>

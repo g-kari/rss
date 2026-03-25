@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, memo, type ReactElement, type ReactNode, type RefObject } from 'react';
+import { useMemo, useEffect, useState, memo, type ReactElement, type ReactNode, type RefObject } from 'react';
 import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
 import { readingTime, timeAgo } from '../lib/article-utils';
@@ -99,6 +99,8 @@ interface Props {
   updateQuery: (q: string) => void;
   searchRef: RefObject<HTMLInputElement | null>;
   sentinelRef: RefObject<HTMLDivElement | null>;
+  feedHasMorePages?: boolean;
+  onLoadMoreFeedArticles?: () => Promise<void>;
 }
 
 /** ogImage がない場合、キャッシュ → YouTube URL の順でサムネイルを解決 */
@@ -422,6 +424,8 @@ export default function ArticleList({
   updateQuery,
   searchRef,
   sentinelRef,
+  feedHasMorePages,
+  onLoadMoreFeedArticles,
 }: Props) {
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
 
@@ -615,7 +619,37 @@ export default function ArticleList({
         )}
 
         {hasMore && <div ref={sentinelRef} className="h-10" aria-hidden />}
+        {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
+          <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
+        )}
       </div>
     </section>
+  );
+}
+
+function LoadMoreButton({ onLoad }: { onLoad: () => Promise<void> }) {
+  const [loading, setLoading] = useState(false);
+  return (
+    <div className="flex justify-center py-4">
+      <button
+        onClick={async () => {
+          setLoading(true);
+          try { await onLoad(); } finally { setLoading(false); }
+        }}
+        disabled={loading}
+        className="flex items-center gap-1.5 text-[11px] tracking-[0.06em] px-3 py-1.5 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200 disabled:opacity-50"
+      >
+        {loading ? (
+          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        ) : (
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 1v10M2 7l4 4 4-4"/>
+          </svg>
+        )}
+        {loading ? '読み込み中...' : '過去の記事を読み込む'}
+      </button>
+    </div>
   );
 }
