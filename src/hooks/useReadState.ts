@@ -146,6 +146,21 @@ export function useReadState(
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
 
+  // タブ非表示時（別タブへの切り替えなど）にデバウンス待ちのデータを即時送信
+  // beforeunload はタブを閉じる・ページ遷移時のみ発火するため、
+  // visibilitychange で補完することでタブ切り替え時の状態ロストを防ぐ
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState !== 'hidden') return;
+      if (syncTimerRef.current === null) return;
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+      saveReadState(localReadRef.current, localBookmarkRef.current, localReadingListRef.current);
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
   const scheduleSyncToServer = useCallback(() => {
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
