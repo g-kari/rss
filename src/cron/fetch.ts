@@ -415,7 +415,13 @@ export async function migrateUserFeedsToSubscriptions(
       await writeFeedMeta(env.RSS_DATA, meta);
     }
 
-    newSubs.push({ feedHash, url: feed.url, subscribedAt: new Date().toISOString() });
+    // 旧 title が共有 meta の title と異なる場合はユーザーがカスタマイズしていたと判断
+    const existingOrCreatedMeta = existingMeta ?? await readFeedMeta(env.RSS_DATA, feedHash);
+    const customTitle =
+      existingOrCreatedMeta && feed.title !== existingOrCreatedMeta.title
+        ? feed.title
+        : undefined;
+    newSubs.push({ feedHash, url: feed.url, customTitle, subscribedAt: new Date().toISOString() });
     existingHashes.add(feedHash);
   }
 

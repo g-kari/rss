@@ -53,7 +53,13 @@ export async function readFeedMeta(
 ): Promise<SharedFeedMeta | null> {
   const obj = await bucket.get(metaKey(feedHash));
   if (!obj) return null;
-  return obj.json<SharedFeedMeta>();
+  try {
+    return await obj.json<SharedFeedMeta>();
+  } catch {
+    // meta.json が破損している場合は null を返して再作成を促す
+    console.error(`[shared-feed] Failed to parse meta.json for feedHash=${feedHash}`);
+    return null;
+  }
 }
 
 export async function writeFeedMeta(
