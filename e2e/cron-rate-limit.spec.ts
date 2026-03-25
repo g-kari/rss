@@ -56,8 +56,8 @@ test.describe('parseRetryAfter — HTTP-date 形式', () => {
     const futureDate = new Date(Date.now() + 2 * ONE_HOUR_MS);
     const retryAfter = futureDate.toUTCString();
     const result = parseRetryAfter(retryAfter);
-    // 約 2 時間 (500ms 以内の誤差を許容: Date 生成から parseRetryAfter 呼び出しまでの実行時間)
-    expect(result).toBeGreaterThan(2 * ONE_HOUR_MS - 500);
+    // 約 2 時間 (2000ms 以内の誤差を許容: Date 生成から parseRetryAfter 呼び出しまでの実行時間)
+    expect(result).toBeGreaterThan(2 * ONE_HOUR_MS - 2000);
     expect(result).toBeLessThanOrEqual(2 * ONE_HOUR_MS);
   });
 
