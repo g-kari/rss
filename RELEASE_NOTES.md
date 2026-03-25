@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (45)
+
+### リファクタリング
+- **`shared-feed` R2 ページネーションの重複解消** — `listAllFeedHashes` と `buildFeedUserMap` で重複していた R2 カーソルページネーションロジックを `listPrefixedIds` ヘルパーに抽出
+
 ## 2026-03-26 (44)
 
 ### 新機能
