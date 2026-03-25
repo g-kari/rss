@@ -43,7 +43,9 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // スクリプト: self + インラインは Next.js hydration に必要
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // unsafe-eval は Next.js v13+ の本番ビルドでは不要。
+      // eval()/new Function() を明示的に禁止することで XSS リスクを低減する。
+      "script-src 'self' 'unsafe-inline'",
       // スタイル: self + インライン（Tailwind）
       "style-src 'self' 'unsafe-inline'",
       // 画像: 任意ドメイン（記事サムネイル）+ data URI
