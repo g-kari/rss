@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withSession } from '@/lib/server-auth';
+import { withSession, parseJsonBody } from '@/lib/server-auth';
 import { r2Get, r2Put } from '@/lib/r2';
 
 
@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
     const MAX_READING_LIST_IDS = 2_000;
     const MAX_ID_LENGTH = 128;
 
-    const body = (await req.json()) as Partial<ReadState>;
+    const body = await parseJsonBody<Partial<ReadState>>(req);
+    if (body instanceof NextResponse) return body;
 
     const rawRead = Array.isArray(body.readIds) ? body.readIds : [];
     const rawBookmark = Array.isArray(body.bookmarkIds) ? body.bookmarkIds : [];

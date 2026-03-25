@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withSession } from '@/lib/server-auth';
+import { withSession, parseJsonBody } from '@/lib/server-auth';
 import { getAiCache, setAiCache } from '@/lib/ai-cache';
 import { toPlainText } from '@/lib/html';
 
@@ -9,7 +9,8 @@ const MODEL = '@cf/meta/llama-3.1-8b-instruct' as '@cf/meta/llama-3.1-8b-instruc
 
 export async function POST(request: Request) {
   return withSession(async ({ env }) => {
-    const body = await request.json() as { text?: unknown };
+    const body = await parseJsonBody<{ text?: unknown }>(request);
+    if (body instanceof NextResponse) return body;
     if (typeof body?.text !== 'string' || !body.text.trim()) {
       return NextResponse.json({ error: 'text is required' }, { status: 400 });
     }

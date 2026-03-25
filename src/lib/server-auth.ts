@@ -101,6 +101,22 @@ export async function withSession(
 }
 
 /**
+ * リクエストボディを JSON としてパースする。
+ * 不正な JSON の場合は 400 NextResponse を返す。
+ *
+ * @example
+ * const body = await parseJsonBody<{ url?: unknown }>(request);
+ * if (body instanceof NextResponse) return body;
+ */
+export async function parseJsonBody<T>(request: Request): Promise<T | NextResponse> {
+  try {
+    return (await request.json()) as T;
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+}
+
+/**
  * バイナリレスポンス（Response）にもリフレッシュ済みトークン Cookie をセットする。
  * image-proxy など NextResponse を使わないエンドポイント用。
  */

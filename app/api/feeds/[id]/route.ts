@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withSession } from '@/lib/server-auth';
+import { withSession, parseJsonBody } from '@/lib/server-auth';
 import { r2Get, r2Put } from '@/lib/r2';
 import type { Feed, Article } from '@/types';
 
@@ -23,7 +23,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return withSession(async ({ session, env }) => {
-    const body = (await request.json()) as { title?: unknown };
+    const body = await parseJsonBody<{ title?: unknown }>(request);
+    if (body instanceof NextResponse) return body;
     if (typeof body?.title !== 'string') {
       return NextResponse.json({ error: 'title is required' }, { status: 400 });
     }

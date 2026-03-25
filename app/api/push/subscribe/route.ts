@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withSession } from '@/lib/server-auth';
+import { withSession, parseJsonBody } from '@/lib/server-auth';
 import { r2Get, r2Put } from '@/lib/r2';
 import type { PushConfig, PushSubscriptionRecord } from '@/types';
 
@@ -18,7 +18,8 @@ function isValidBase64url(value: string, minBytes: number, maxBytes: number): bo
 /** Push サブスクリプションを R2 に保存する */
 export async function POST(request: Request) {
   return withSession(async ({ session, env }) => {
-    const body = await request.json() as Partial<PushSubscriptionRecord>;
+    const body = await parseJsonBody<Partial<PushSubscriptionRecord>>(request);
+    if (body instanceof NextResponse) return body;
 
     if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) {
       return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 });
