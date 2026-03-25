@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (24)
+
+### ドキュメント整備
+- **アーキテクチャ・コーディング規約ドキュメントを現状に同期** — \`coding-conventions.md\` の R2 ヘルパー API 名を旧名 (\`readR2Json\`/\`writeR2Json\`) から現在の実装 (\`r2Get\`/\`r2Put\`) に修正。\`architecture.md\` および \`CLAUDE.md\` のディレクトリ構造・API 一覧・R2 データ構造を実装済みの全ファイルに合わせて更新
+
 ## 2026-03-25 (23)
 
 ### 新機能
