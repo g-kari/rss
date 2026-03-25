@@ -11,8 +11,9 @@ const MODEL = '@cf/meta/llama-3.1-8b-instruct' as '@cf/meta/llama-3.1-8b-instruc
 
 export async function POST(request: Request) {
   return withSession(async ({ env, ctx }) => {
-    const body = await parseJsonBody<{ url?: unknown; articleId?: unknown }>(request);
-    if (body instanceof NextResponse) return body;
+    const parsed = await parseJsonBody<{ url?: unknown; articleId?: unknown }>(request);
+    if (!parsed.ok) return parsed.error;
+    const body = parsed.data;
     if (typeof body?.url !== 'string' || !isValidFeedUrl(body.url)) {
       return NextResponse.json({ error: 'url is required' }, { status: 400 });
     }

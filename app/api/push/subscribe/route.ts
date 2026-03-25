@@ -18,8 +18,9 @@ function isValidBase64url(value: string, minBytes: number, maxBytes: number): bo
 /** Push サブスクリプションを R2 に保存する */
 export async function POST(request: Request) {
   return withSession(async ({ session, env }) => {
-    const body = await parseJsonBody<Partial<PushSubscriptionRecord>>(request);
-    if (body instanceof NextResponse) return body;
+    const parsed = await parseJsonBody<Partial<PushSubscriptionRecord>>(request);
+    if (!parsed.ok) return parsed.error;
+    const body = parsed.data;
 
     if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) {
       return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 });

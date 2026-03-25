@@ -31,8 +31,9 @@ export async function POST(req: NextRequest) {
     const MAX_READING_LIST_IDS = 2_000;
     const MAX_ID_LENGTH = 128;
 
-    const body = await parseJsonBody<Partial<ReadState>>(req);
-    if (body instanceof NextResponse) return body;
+    const parsed = await parseJsonBody<Partial<ReadState>>(req);
+    if (!parsed.ok) return parsed.error;
+    const body = parsed.data;
 
     const rawRead = Array.isArray(body.readIds) ? body.readIds : [];
     const rawBookmark = Array.isArray(body.bookmarkIds) ? body.bookmarkIds : [];

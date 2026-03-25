@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (11)
+
+### リファクタリング
+- **\`parseJsonBody\` を Result 型に変更** — 戻り値を \`T | NextResponse\` から \`{ ok: true; data: T } | { ok: false; error: NextResponse }\` に変更し、\`instanceof NextResponse\` チェックを不要にした。全 7 つの Route Handler 呼び出し箇所を \`if (!parsed.ok) return parsed.error\` パターンに統一
+
 ## 2026-03-25 (10)
 
 ### バグ修正

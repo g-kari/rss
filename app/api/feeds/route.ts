@@ -17,8 +17,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   return withSession(async ({ session, env, ctx }) => {
-    const body = await parseJsonBody<{ url?: unknown }>(request);
-    if (body instanceof NextResponse) return body;
+    const parsed = await parseJsonBody<{ url?: unknown }>(request);
+    if (!parsed.ok) return parsed.error;
+    const body = parsed.data;
     if (typeof body?.url !== 'string') return NextResponse.json({ error: 'url is required' }, { status: 400 });
     let url = body.url.trim();
     if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 });

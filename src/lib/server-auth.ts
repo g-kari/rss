@@ -102,17 +102,20 @@ export async function withSession(
 
 /**
  * リクエストボディを JSON としてパースする。
- * 不正な JSON の場合は 400 NextResponse を返す。
+ * 不正な JSON の場合は ok: false と 400 エラーレスポンスを返す。
  *
  * @example
- * const body = await parseJsonBody<{ url?: unknown }>(request);
- * if (body instanceof NextResponse) return body;
+ * const parsed = await parseJsonBody<{ url?: unknown }>(request);
+ * if (!parsed.ok) return parsed.error;
+ * const body = parsed.data;
  */
-export async function parseJsonBody<T>(request: Request): Promise<T | NextResponse> {
+export async function parseJsonBody<T>(
+  request: Request,
+): Promise<{ ok: true; data: T } | { ok: false; error: NextResponse }> {
   try {
-    return (await request.json()) as T;
+    return { ok: true, data: (await request.json()) as T };
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return { ok: false, error: NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) };
   }
 }
 
