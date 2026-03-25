@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (41)
+
+### リファクタリング
+- **`FeedItem` コンポーネント抽出** — `FeedSidebar.tsx` にインラインで定義されていた `FeedItem` コンポーネント（約 120 行）と `formatCount` ユーティリティ関数を `src/components/FeedItem.tsx` に独立ファイルとして抽出。`FeedSidebar.tsx` の行数が 663 → 521 行に削減
+
 ## 2026-03-26 (40)
 
 ### リファクタリング
