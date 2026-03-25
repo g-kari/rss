@@ -131,7 +131,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
         : feedId === '__reading_list__'
           ? articles.filter((a) => readingListIds.has(a.id))
           : feedId
-            ? articles.filter((a) => a.feedId === feedId)
+            ? articles.filter((a) => a.feedHash === feedId)
             : articles;
     // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
     if (unreadOnly) list = list.filter((a) => !readIds.has(a.id) || a.id === selectedArticleId);

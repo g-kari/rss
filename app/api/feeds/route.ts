@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server';
 import { withSession, parseJsonBody } from '@/lib/server-auth';
-import { r2Get, r2Put } from '@/lib/r2';
-import { fetchArticles } from '@/cron/fetch';
 import { isValidFeedUrl } from '@/lib/url';
 import { discoverFeedUrl } from '@/lib/feed-discovery';
-import type { Feed } from '@/types';
+import {
+  computeFeedHash,
+  readFeedMeta,
+  createFeedMeta,
+  readUserSubscriptions,
+  writeUserSubscriptions,
+  getUserFeeds,
+} from '@/lib/shared-feed';
+import { registerAndFetchFeed } from '@/cron/fetch';
+import type { UserSubscription } from '@/types';
 
 const MAX_FEEDS_PER_USER = 1000;
 
 export async function GET() {
   return withSession(async ({ session, env }) => {
-    const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
+    const feeds = await getUserFeeds(env.RSS_DATA, session.userId);
     return NextResponse.json(feeds);
   });
 }
@@ -29,28 +36,35 @@ export async function POST(request: Request) {
     if (discovered && discovered !== url) url = discovered;
     if (!isValidFeedUrl(url)) return NextResponse.json({ error: 'Discovered feed URL is invalid' }, { status: 400 });
 
-    const list = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
-    if (list.some((f) => f.url === url)) {
+    const feedHash = await computeFeedHash(url);
+
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    if (subs.some((s) => s.feedHash === feedHash)) {
       return NextResponse.json({ error: 'Feed already exists' }, { status: 409 });
     }
-    if (list.length >= MAX_FEEDS_PER_USER) {
+    if (subs.length >= MAX_FEEDS_PER_USER) {
       return NextResponse.json({ error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` }, { status: 422 });
     }
 
-    const newFeed: Feed = {
-      id: crypto.randomUUID(),
+    // 共有 meta を作成（他ユーザーがすでに登録している場合は既存を流用）
+    let meta = await readFeedMeta(env.RSS_DATA, feedHash);
+    if (!meta) {
+      meta = await createFeedMeta(env.RSS_DATA, feedHash, url);
+    }
+
+    const newSub: UserSubscription = {
+      feedHash,
       url,
-      title: url,
-      siteUrl: '',
-      lastFetchedAt: null,
-      fetchError: null,
+      subscribedAt: new Date().toISOString(),
     };
-    list.push(newFeed);
-    await r2Put(env.RSS_DATA, `users/${session.userId}/feeds.json`, list);
+    subs.push(newSub);
+    await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
 
-    // バックグラウンドで記事取得（waitUntil でレスポンス送信後も Workers が処理を継続する）
-    ctx.waitUntil(fetchArticles(env, session.userId).catch(console.error));
+    // バックグラウンドで初回記事取得
+    ctx.waitUntil(registerAndFetchFeed(env, url).catch(console.error));
 
-    return NextResponse.json(newFeed, { status: 201 });
+    // クライアント向け Feed を組み立てて返す
+    const { assembleClientFeed } = await import('@/lib/shared-feed');
+    return NextResponse.json(assembleClientFeed(meta, newSub), { status: 201 });
   });
 }

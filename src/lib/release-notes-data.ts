@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-25 (31)
+
+### 新機能
+- **フィード記事ストレージを共有化・永続化** — 記事を \`feeds/{feedHash}/articles/latest.json\` + \`feeds/{feedHash}/articles/p{N}.json\` に保存する共有ストレージへ刷新。従来はユーザーごとに \`articles.json\` (最大 500 件) に保存していたため、フィード更新時に古い記事が消失していた問題を解消。フィード URL が同一であれば複数ユーザー間でデータを共有し R2 容量を削減。記事保持上限を撤廃し全件を永続保持。購読情報は \`users/{userId}/subscriptions.json\` に分離。ID を UUID から sha256 ベースの決定論的 16 文字 hex に変更し、記事 ID がユーザー間・デバイス間で一致するよう統一
+
 ## 2026-03-25 (30)
 
 ### リファクタリング

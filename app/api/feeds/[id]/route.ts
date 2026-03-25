@@ -1,27 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withSession, parseJsonBody } from '@/lib/server-auth';
-import { r2Get, r2Put } from '@/lib/r2';
-import type { Feed, Article } from '@/types';
-
+import {
+  readUserSubscriptions,
+  writeUserSubscriptions,
+  readFeedMeta,
+  assembleClientFeed,
+} from '@/lib/shared-feed';
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: feedHash } = await params;
   return withSession(async ({ session, env }) => {
-    const list = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
-    if (!list.some((f) => f.id === id)) {
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    if (!subs.some((s) => s.feedHash === feedHash)) {
       return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
     }
-    await r2Put(env.RSS_DATA, `users/${session.userId}/feeds.json`, list.filter((f) => f.id !== id));
-
-    const articles = await r2Get<Article[]>(env.RSS_DATA, `users/${session.userId}/articles.json`, []);
-    await r2Put(env.RSS_DATA, `users/${session.userId}/articles.json`, articles.filter((a) => a.feedId !== id));
-
+    // 購読から削除するだけ（共有フィードデータは残す）
+    await writeUserSubscriptions(
+      env.RSS_DATA,
+      session.userId,
+      subs.filter((s) => s.feedHash !== feedHash),
+    );
     return NextResponse.json({ ok: true });
   });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: feedHash } = await params;
   return withSession(async ({ session, env }) => {
     const parsed = await parseJsonBody<{ title?: unknown }>(request);
     if (!parsed.ok) return parsed.error;
@@ -33,13 +37,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!title) return NextResponse.json({ error: 'title is required' }, { status: 400 });
     if (title.length > 200) return NextResponse.json({ error: 'title too long' }, { status: 400 });
 
-    const list = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
-    const feed = list.find((f) => f.id === id);
-    if (!feed) return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    const sub = subs.find((s) => s.feedHash === feedHash);
+    if (!sub) return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
 
-    feed.title = title;
-    await r2Put(env.RSS_DATA, `users/${session.userId}/feeds.json`, list);
+    sub.customTitle = title;
+    await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
 
-    return NextResponse.json(feed);
+    const meta = await readFeedMeta(env.RSS_DATA, feedHash);
+    if (!meta) return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
+
+    return NextResponse.json(assembleClientFeed(meta, sub));
   });
 }

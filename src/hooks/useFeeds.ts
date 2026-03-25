@@ -76,7 +76,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
   // 選択状態のクリアは呼び出し元 (App) が担当する。
   const removeFeed = useCallback((id: string) => {
     setFeeds((prev) => prev.filter((f) => f.id !== id));
-    setArticles((prev) => prev.filter((a) => a.feedId !== id));
+    setArticles((prev) => prev.filter((a) => a.feedHash !== id));
   }, []);
 
   const updateFeed = useCallback((feed: Feed) => {

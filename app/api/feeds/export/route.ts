@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withSession } from '@/lib/server-auth';
-import { r2Get } from '@/lib/r2';
+import { getUserFeeds } from '@/lib/shared-feed';
 import type { Feed } from '@/types';
-
 
 /** XML 属性値に使用できない文字をエスケープする */
 function escapeXmlAttr(s: string): string {
@@ -28,7 +27,7 @@ function buildOpml(feeds: Feed[]): string {
 
 export async function GET() {
   return withSession(async ({ session, env }) => {
-    const feeds = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
+    const feeds = await getUserFeeds(env.RSS_DATA, session.userId);
     const opml = buildOpml(feeds);
 
     return new NextResponse(opml, {
