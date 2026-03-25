@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-25 (32)
+
+### バグ修正
+- **`readFeedMeta` の JSON パースエラーハンドリングを追加** — `meta.json` が破損していた場合、`obj.json()` がスローしてフィード取得 cron 全体が停止する問題を修正。try-catch で包んで `null` を返すようにし、再作成を促すよう修正
+- **マイグレーション時に `customTitle` が失われる問題を修正** — `migrateUserFeedsToSubscriptions` で旧 `feeds.json` の title が共有メタタイトルと異なる場合（ユーザーがカスタムタイトルを設定していた場合）、差分を `customTitle` として保持するよう修正
+
 ## 2026-03-25 (31)
 
 ### 新機能
