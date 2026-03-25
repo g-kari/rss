@@ -73,7 +73,14 @@ export default function App() {
   const router = useRouter();
 
   const { user, betaRestricted } = useAuth();
-  const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles } = useFeeds(user);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(msg);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
+  }, []);
+  const { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles } = useFeeds(user, showToast);
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush } = usePushNotifications(user);
 
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
@@ -95,8 +102,6 @@ export default function App() {
   const prevMobilePaneRef = useRef<MobilePane>('sidebar');
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ログイン後にサーバーの既読・ブックマーク・後で読む状態をマージ
   useEffect(() => {
@@ -159,12 +164,6 @@ export default function App() {
     }
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, []);
-
-  const showToast = useCallback((msg: string) => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToast(msg);
-    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }, []);
 
   // 選択状態を URL クエリパラメータに同期（リロード復元用）
