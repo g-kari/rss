@@ -4,6 +4,11 @@ import { useRef, useState, useMemo, useCallback } from 'react';
 import type { Feed, Article, UserProfile } from '../types';
 import ReleaseNotesModal from './ReleaseNotesModal';
 
+/** 未読カウントを表示用文字列に変換する（100以上は "99+" と表示） */
+function formatCount(n: number): string {
+  return n > 99 ? '99+' : String(n);
+}
+
 interface FeedItemProps {
   feed: Feed;
   count: number;
@@ -87,11 +92,8 @@ function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect,
         </div>
       )}
       <span className="flex items-center gap-1 ml-1 flex-shrink-0">
-        {count > 0 && !feed.fetchError && (
-          <span className="text-[11px] text-text-muted tabular-nums group-hover:opacity-0 transition-opacity duration-150">{count > 99 ? '99+' : count}</span>
-        )}
-        {count > 0 && feed.fetchError && (
-          <span className="text-[11px] text-rose-400 tabular-nums group-hover:opacity-0 transition-opacity duration-150">{count > 99 ? '99+' : count}</span>
+        {count > 0 && (
+          <span className={`text-[11px] ${feed.fetchError ? 'text-rose-400' : 'text-text-muted'} tabular-nums group-hover:opacity-0 transition-opacity duration-150`}>{formatCount(count)}</span>
         )}
         <span className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 flex items-center gap-0.5">
           {/* ピン留めボタン */}
@@ -450,7 +452,7 @@ export default function FeedSidebar({
           <span className="flex items-center gap-1 flex-shrink-0">
             {totalUnread > 0 && (
               <span className="text-[11px] text-text-muted tabular-nums">
-                {totalUnread > 99 ? '99+' : totalUnread}
+                {formatCount(totalUnread)}
               </span>
             )}
             {totalUnread > 0 && (
@@ -480,7 +482,7 @@ export default function FeedSidebar({
           <span className="text-[13px] tracking-[0.02em]">ブックマーク</span>
           {bookmarkCount > 0 && (
             <span className="text-[11px] text-text-muted tabular-nums">
-              {bookmarkCount > 99 ? '99+' : bookmarkCount}
+              {formatCount(bookmarkCount)}
             </span>
           )}
         </button>
@@ -495,7 +497,7 @@ export default function FeedSidebar({
           <span className="text-[13px] tracking-[0.02em]">後で読む</span>
           {readingListCount > 0 && (
             <span className="text-[11px] text-text-muted tabular-nums">
-              {readingListCount > 99 ? '99+' : readingListCount}
+              {formatCount(readingListCount)}
             </span>
           )}
         </button>

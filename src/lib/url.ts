@@ -90,16 +90,20 @@ function isPrivateHost(hostname: string): boolean {
 /** URL の最大許容長。DoS・ストレージ肥大化対策。 */
 export const MAX_URL_LENGTH = 2048;
 
-export function isValidFeedUrl(url: string): boolean {
+/** URL バリデーション共通ロジック。allowHttp=true なら http: も許可する。 */
+function isValidUrl(url: string, allowHttp: boolean): boolean {
   if (url.length > MAX_URL_LENGTH) return false;
   try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
-    if (isPrivateHost(parsed.hostname)) return false;
-    return true;
+    const { protocol, hostname } = new URL(url);
+    const validProtocol = protocol === 'https:' || (allowHttp && protocol === 'http:');
+    return validProtocol && !isPrivateHost(hostname);
   } catch {
     return false;
   }
+}
+
+export function isValidFeedUrl(url: string): boolean {
+  return isValidUrl(url, true);
 }
 
 /**
@@ -108,13 +112,5 @@ export function isValidFeedUrl(url: string): boolean {
  * HTTP は拒否し、プライベート IP レンジへのアクセスも拒否する（SSRF 対策）。
  */
 export function isValidHttpsUrl(url: string): boolean {
-  if (url.length > MAX_URL_LENGTH) return false;
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:') return false;
-    if (isPrivateHost(parsed.hostname)) return false;
-    return true;
-  } catch {
-    return false;
-  }
+  return isValidUrl(url, false);
 }
