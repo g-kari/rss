@@ -42,6 +42,8 @@ export interface Feed {
   consecutiveErrors?: number;
   lastErrorAt?: string | null;
   rateLimitedUntil?: string | null;
+  /** p2.json 以降のページ数（0 = latest.json のみ、1 以上なら過去記事あり） */
+  pageCount?: number;
 }
 
 export interface Article {

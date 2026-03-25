@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (44)
+
+### 新機能
+- **フィード別過去記事ページ読み込み** — 共有フィードモデルの p2.json / p3.json... ページを UI から参照できるように。特定フィードを選択して記事一覧の末尾まで来たとき、サーバー側に未取得ページが残っていれば「過去の記事を読み込む」ボタンが表示される。\`Feed\` 型に \`pageCount\` フィールドを追加し、\`assembleClientFeed\` で \`meta.pageCount\` を含めて返すよう変更。\`useFeeds\` に \`loadedFeedPages\` 状態と \`loadMoreFeedArticles\` 関数を追加
+
 ## 2026-03-26 (43)
 
 ### リファクタリング

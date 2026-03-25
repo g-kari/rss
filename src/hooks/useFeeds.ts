@@ -11,6 +11,7 @@ interface FeedsState {
   loadingArticles: boolean;
   refreshing: boolean;
   newArticleCount: number;
+  loadedFeedPages: Map<string, number>;
   onFeedAdded: (feed: Feed) => void;
   removeFeed: (id: string) => void;
   updateFeed: (feed: Feed) => void;
@@ -18,6 +19,7 @@ interface FeedsState {
   refreshFeeds: () => Promise<void>;
   retryFeed: (feedId: string) => Promise<void>;
   dismissNewArticles: () => void;
+  loadMoreFeedArticles: (feedId: string) => Promise<void>;
 }
 
 export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: string) => void): FeedsState {
@@ -26,6 +28,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
   const [loadingArticles, setLoadingArticles] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [newArticleCount, setNewArticleCount] = useState(0);
+  const [loadedFeedPages, setLoadedFeedPages] = useState<Map<string, number>>(() => new Map());
   const latestArticleIdRef = useRef<string | null>(null);
 
   const fetchAndSetArticles = useCallback(async () => {
@@ -129,5 +132,27 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
     setNewArticleCount(0);
   }, []);
 
-  return { feeds, articles, loadingArticles, refreshing, newArticleCount, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles };
+  // フィードの過去ページを追加読み込みする
+  const loadMoreFeedArticles = useCallback(async (feedId: string): Promise<void> => {
+    const currentPage = loadedFeedPages.get(feedId) ?? 1;
+    const nextPage = currentPage + 1;
+    try {
+      const res = await fetch(`/api/articles?feed=${feedId}&page=${nextPage}`);
+      if (!res.ok) return;
+      const data = await res.json() as Article[];
+      if (data.length === 0) return;
+      setArticles((prev) => {
+        const existingIds = new Set(prev.map((a) => a.id));
+        const newOnes = data.filter((a) => !existingIds.has(a.id));
+        if (newOnes.length === 0) return prev;
+        return [...prev, ...newOnes];
+      });
+      setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
+    } catch (err) {
+      console.error('loadMoreFeedArticles failed:', err);
+      onError?.('過去の記事の読み込みに失敗しました');
+    }
+  }, [loadedFeedPages, onError]);
+
+  return { feeds, articles, loadingArticles, refreshing, newArticleCount, loadedFeedPages, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles, loadMoreFeedArticles };
 }
