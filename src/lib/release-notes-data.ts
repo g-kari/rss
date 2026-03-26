@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (115)
+
+### リファクタリング
+- **Set トグルヘルパー \`toggleSetItem\` を \`storage.ts\` に集約** — \`useReadState.ts\` のファイルローカル関数を \`storage.ts\` の共有エクスポートへ移動し、\`useUIState.ts\` の \`togglePinFeed\` でも再利用。\`useFilteredArticles.ts\` の grace period \`useEffect\` にクリーンアップ関数を追加してタイマーリークを修正
+
 ## 2026-03-27 (114)
 
 ### リファクタリング
