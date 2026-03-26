@@ -56,26 +56,34 @@ export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, o
 
   async function deleteFeed(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    const res = await fetch(`/api/feeds/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
+    try {
+      const res = await fetch(`/api/feeds/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        setError('フィードの削除に失敗しました');
+        return;
+      }
+      onFeedDeleted(id);
+    } catch {
       setError('フィードの削除に失敗しました');
-      return;
     }
-    onFeedDeleted(id);
   }
 
   async function renameFeed(id: string, title: string) {
-    const res = await fetch(`/api/feeds/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title }),
-    });
-    if (!res.ok) {
+    try {
+      const res = await fetch(`/api/feeds/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) {
+        setError('フィードのタイトル変更に失敗しました');
+        return;
+      }
+      const updated = (await res.json()) as Feed;
+      onFeedRenamed(updated);
+    } catch {
       setError('フィードのタイトル変更に失敗しました');
-      return;
     }
-    const updated = (await res.json()) as Feed;
-    onFeedRenamed(updated);
   }
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
