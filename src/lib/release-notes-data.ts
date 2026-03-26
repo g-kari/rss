@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (79)
+
+### リファクタリング
+- **\`buildPushPayload\` の条件分岐を簡略化** — 3 つの早期 \`return\` を条件式 2 本 + 単一 \`return\` に統合。\`count === 1\` の場合は常に \`singleFeed === true\` であることを利用して重複チェックを除去
+- **\`mergeNewArticles\` の \`knownIds\` 判定と切り詰めを簡略化** — \`meta.knownIds && meta.knownIds.length > 0\` を \`meta.knownIds?.length\` に短縮し、\`slice\` による切り詰め条件を \`slice(-KNOWN_IDS_MAX)\` の単一呼び出しに統合
+- **\`loadMoreFeedArticles\` の中間変数 \`currentPage\` を削除** — \`currentPage\` は \`nextPage\` の計算にのみ使用されていたため、\`(ref.get(feedId) ?? 1) + 1\` とインライン化
+
 ## 2026-03-26 (78)
 
 ### バグ修正
