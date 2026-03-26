@@ -73,6 +73,7 @@ export default function ArticleView({
 
   const [scrollProgress, setScrollProgress] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const mouseStartXRef = useRef<number | null>(null);
   const wheelDeltaRef = useRef<{ x: number; timer: ReturnType<typeof setTimeout> | null }>({ x: 0, timer: null });
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -250,6 +251,23 @@ export default function ArticleView({
       state.x = 0;
       onSelectPrev();
     }
+  }
+
+  function handleNavMouseDown(e: React.MouseEvent) {
+    mouseStartXRef.current = e.clientX;
+  }
+
+  function handleNavMouseUp(e: React.MouseEvent) {
+    if (mouseStartXRef.current === null) return;
+    const dx = e.clientX - mouseStartXRef.current;
+    mouseStartXRef.current = null;
+    if (Math.abs(dx) < 60) return;
+    if (dx < 0 && onSelectNext) onSelectNext();
+    else if (dx > 0 && onSelectPrev) onSelectPrev();
+  }
+
+  function handleNavMouseLeave() {
+    mouseStartXRef.current = null;
   }
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -556,7 +574,32 @@ export default function ArticleView({
           </div>
         )}
 
-        {!embedInfo && <div className="border-t border-border-subtle mb-8" />}
+        {!embedInfo && (
+          <div
+            className="group relative flex items-center gap-3 py-5 mb-3 select-none cursor-ew-resize"
+            onMouseDown={handleNavMouseDown}
+            onMouseUp={handleNavMouseUp}
+            onMouseLeave={handleNavMouseLeave}
+          >
+            <div className="flex-1 overflow-hidden flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              {prevArticle && onSelectPrev && (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-faint flex-shrink-0"><path d="M8 2L4 6l4 4"/></svg>
+                  <span className="text-[11px] text-text-faint truncate">{prevArticle.title}</span>
+                </>
+              )}
+            </div>
+            <div className="absolute inset-x-0 top-1/2 border-t border-border-subtle pointer-events-none" />
+            <div className="flex-1 overflow-hidden flex items-center gap-1.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              {nextArticle && onSelectNext && (
+                <>
+                  <span className="text-[11px] text-text-faint truncate">{nextArticle.title}</span>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-faint flex-shrink-0"><path d="M4 2l4 4-4 4"/></svg>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* AI 要約パネル（翻訳は本文に統合するため非表示） */}
         {aiResult?.mode === 'summary' && (
