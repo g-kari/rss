@@ -17,10 +17,10 @@
 | `border-default` | stone-200 | zinc-800 | 主ボーダー |
 | `border-subtle` | stone-100 | zinc-800/50 | 薄ボーダー |
 | `text-strong` | stone-800 | zinc-200 | 見出し・選択中 |
-| `text-default` | stone-600 | zinc-400 | 通常テキスト |
-| `text-soft` | stone-500 | zinc-500 | 本文 |
-| `text-muted` | stone-400 | zinc-600 | バッジ数字・ラベル |
-| `text-faint` | stone-300 | zinc-700 | タイムスタンプ・空状態 |
+| `text-default` | stone-600 | zinc-300 | 通常テキスト |
+| `text-soft` | stone-500 | zinc-400 | 本文 |
+| `text-muted` | stone-400 | zinc-500 | バッジ数字・ラベル |
+| `text-faint` | stone-300 | zinc-600 | タイムスタンプ・空状態 |
 | `ink` | stone-800 | zinc-200 | 主アクション背景 |
 | `ink-hover` | stone-700 | zinc-300 | 主アクションホバー |
 | `ink-text` | white | zinc-950 | 主アクション上のテキスト |

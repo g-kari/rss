@@ -32,10 +32,10 @@
   --color-border-default: #27272a;          /* zinc-800 */
   --color-border-subtle: rgba(39, 39, 42, 0.5);
   --color-text-strong: #e4e4e7;             /* zinc-200 */
-  --color-text-default: #a1a1aa;            /* zinc-400 */
-  --color-text-soft: #71717a;               /* zinc-500 */
-  --color-text-muted: #52525b;              /* zinc-600 */
-  --color-text-faint: #3f3f46;              /* zinc-700 */
+  --color-text-default: #d4d4d8;            /* zinc-300: 通常テキスト */
+  --color-text-soft: #a1a1aa;               /* zinc-400: 本文 (コントラスト比 ~7:1) */
+  --color-text-muted: #71717a;              /* zinc-500: バッジ・ラベル */
+  --color-text-faint: #52525b;              /* zinc-600: タイムスタンプ・空状態 */
   --color-ink: #e4e4e7;                     /* zinc-200 */
   --color-ink-hover: #d4d4d8;               /* zinc-300 */
   --color-ink-text: #09090b;                /* zinc-950 */
