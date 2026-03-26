@@ -129,6 +129,32 @@ export async function parseJsonBody<T>(
 }
 
 /**
+ * バイナリレスポンス（Response）を返す Route Handler 用の withSession 相当ラッパー。
+ * image-proxy など NextResponse を使わないエンドポイントで使用する。
+ * - requireSession() でセッション取得（失敗時は 401 を返す）
+ * - getCloudflareContext() で env / ctx を取得
+ * - ハンドラの戻り値に applyRefreshedTokensToResponse() を自動適用
+ *
+ * @example
+ * export async function GET(request: Request) {
+ *   return withBinarySession(({ ctx }) => handleGet(request, ctx));
+ * }
+ */
+export async function withBinarySession(
+  handler: (params: {
+    session: AuthSession;
+    env: CloudflareEnv;
+    ctx: ExecutionContext;
+  }) => Promise<Response>,
+): Promise<Response> {
+  const result = await requireSession();
+  if ("error" in result) return result.error;
+  const { env, ctx } = await getCloudflareContext({ async: true });
+  const response = await handler({ session: result.session, env, ctx });
+  return applyRefreshedTokensToResponse(response, result.session);
+}
+
+/**
  * バイナリレスポンス（Response）にもリフレッシュ済みトークン Cookie をセットする。
  * image-proxy など NextResponse を使わないエンドポイント用。
  */

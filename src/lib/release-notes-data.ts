@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (108)
+
+### リファクタリング
+- **\`withBinarySession\` ヘルパーを追加して \`image-proxy\` の認証パターンを統一** — \`requireSession\` + \`applyRefreshedTokensToResponse\` の手動ボイラープレートを \`withBinarySession\` に集約。他の Route Handler が使う \`withSession\` と対称なパターンになり、認証フローの一貫性が向上
+
 ## 2026-03-27 (107)
 
 ### バグ修正
