@@ -199,7 +199,7 @@ export default function App() {
       addToHistory(article.id);
       setMobilePane("view");
     },
-    [markRead, addToHistory],
+    [markRead, addToHistory, setMobilePane],
   );
 
   useKeyboardNav({
