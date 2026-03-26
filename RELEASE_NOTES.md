@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-26 (76)
+
+### リファクタリング
+- **ストリーム読み取りの重複コードを除去** — `app/api/ogp/route.ts` と `app/api/image-proxy/route.ts` に存在していた inline ストリーム読み取りループを、既存の `readBodyBytesPartial()` / `readBodyBytes()` ヘルパーに置き換え。合計 ~40 行のコード削減。`readBodyBytes` / `readBodyBytesPartial` の戻り型を `Uint8Array<ArrayBuffer>` に明示化
+- **`unescapeHtml` の二重呼び出しを修正** — `/api/ogp` キャッシュヒット時に `unescapeHtml(data.image)` を 2 回呼んでいた箇所を 1 回に修正
+
 ## 2026-03-26 (75)
 
 ### バグ修正
