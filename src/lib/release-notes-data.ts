@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (126)
+
+### リファクタリング
+- **\`ai-route-helper\` の型統一とキャッシュ保存をバックグラウンド化** — \`cacheType\` パラメータの型を inline リテラル型 \`"summary" | "translation"\` から共通型 \`AiMode\` に統一。AI 結果の R2 キャッシュ保存を \`await\` から \`ctx.waitUntil()\` に変更し、クライアントへのレスポンスをブロックしないように改善
+
 ## 2026-03-27 (125)
 
 ### リファクタリング
