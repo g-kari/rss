@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (111)
+
+### リファクタリング
+- **\`feeds/route.ts\` の冗長な URL バリデーションを除去** — \`discoverFeedUrl\` の内部実装が既に \`isValidFeedUrl\` で検証済みであるため、呼び出し元での重複チェックを削除してコードを簡略化
+
 ## 2026-03-27 (110)
 
 ### リファクタリング
