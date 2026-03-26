@@ -8,6 +8,7 @@ import {
   transformZennMermaidEmbeds,
   transformZennLinkEmbeds,
   fixExternalLinks,
+  transformXTweetEmbeds,
 } from "../src/lib/content";
 import { sanitizeHtml } from "../src/lib/html";
 import { extractEmbedInfo, processContent } from "../src/lib/embed-utils";
@@ -552,6 +553,100 @@ test.describe("fixExternalLinks", () => {
       "https://example.com/articles/123",
     );
     expect(result).toContain('href="https://other.com/page"');
+  });
+});
+
+test.describe("transformXTweetEmbeds — X (Twitter) ツイート埋め込み変換", () => {
+  const makeTweetBlockquote = (tweetUrl: string, content = "ツイート本文") =>
+    `<blockquote class="twitter-tweet"><p>${content}</p>` +
+    `<a href="${tweetUrl}">リンク</a></blockquote>`;
+
+  test("twitter.com の status URL から iframe embed に変換する", () => {
+    const html = makeTweetBlockquote("https://twitter.com/user/status/1234567890123456789");
+    const result = transformXTweetEmbeds(html);
+    expect(result).not.toContain("<blockquote");
+    expect(result).toContain('<div class="tweet-embed-wrapper">');
+    expect(result).toContain("<iframe");
+    expect(result).toContain("platform.twitter.com/embed/Tweet.html");
+    expect(result).toContain("id=1234567890123456789");
+  });
+
+  test("x.com の status URL からも iframe embed に変換する", () => {
+    const html = makeTweetBlockquote("https://x.com/user/status/9876543210987654321");
+    const result = transformXTweetEmbeds(html);
+    expect(result).not.toContain("<blockquote");
+    expect(result).toContain("id=9876543210987654321");
+  });
+
+  test("デフォルトテーマは light である", () => {
+    const html = makeTweetBlockquote("https://twitter.com/user/status/1234567890");
+    const result = transformXTweetEmbeds(html);
+    expect(result).toContain("theme=light");
+    expect(result).not.toContain("theme=dark");
+  });
+
+  test("theme=dark を指定すると dark テーマで埋め込まれる", () => {
+    const html = makeTweetBlockquote("https://twitter.com/user/status/1234567890");
+    const result = transformXTweetEmbeds(html, "dark");
+    expect(result).toContain("theme=dark");
+    expect(result).not.toContain("theme=light");
+  });
+
+  test("dnt=true が付与されてプライバシーが保護される", () => {
+    const html = makeTweetBlockquote("https://twitter.com/user/status/1234567890");
+    const result = transformXTweetEmbeds(html);
+    expect(result).toContain("dnt=true");
+  });
+
+  test("loading=lazy が付与される", () => {
+    const html = makeTweetBlockquote("https://twitter.com/user/status/1234567890");
+    const result = transformXTweetEmbeds(html);
+    expect(result).toContain('loading="lazy"');
+  });
+
+  test("ツイート URL がない blockquote はそのまま保持する", () => {
+    const html =
+      '<blockquote class="twitter-tweet"><p>テキスト</p><a href="https://example.com">別リンク</a></blockquote>';
+    const result = transformXTweetEmbeds(html);
+    expect(result).toContain("<blockquote");
+    expect(result).not.toContain("<iframe");
+  });
+
+  test("twitter-tweet クラスのない blockquote は変換しない", () => {
+    const html =
+      '<blockquote class="other-quote"><p>引用</p><a href="https://twitter.com/user/status/123">Twitter</a></blockquote>';
+    const result = transformXTweetEmbeds(html);
+    expect(result).toContain("<blockquote");
+    expect(result).not.toContain("<iframe");
+  });
+
+  test("blockquote 内の複数リンクのうち最後のリンク（パーマリンク）からツイート ID を取得する", () => {
+    // Twitter の標準埋め込みコードは blockquote 内に本文リンクとパーマリンクの2つのリンクを持つ
+    const html =
+      '<blockquote class="twitter-tweet">' +
+      '<p>ツイート本文 <a href="https://example.com">リンク</a></p>' +
+      '<a href="https://twitter.com/user/status/1111111111111111111">2024-01-01</a>' +
+      "</blockquote>";
+    const result = transformXTweetEmbeds(html);
+    expect(result).toContain("id=1111111111111111111");
+  });
+
+  test("複数のツイート blockquote をすべて変換する", () => {
+    const html =
+      makeTweetBlockquote("https://twitter.com/user/status/1111111111") +
+      "<p>区切り</p>" +
+      makeTweetBlockquote("https://twitter.com/user/status/2222222222");
+    const result = transformXTweetEmbeds(html);
+    expect(result).not.toContain("<blockquote");
+    const iframeCount = (result.match(/<iframe/g) ?? []).length;
+    expect(iframeCount).toBe(2);
+    expect(result).toContain("id=1111111111");
+    expect(result).toContain("id=2222222222");
+  });
+
+  test("ツイートのない通常テキストは変更されない", () => {
+    const html = "<p>通常のテキスト</p><blockquote><p>普通の引用</p></blockquote>";
+    expect(transformXTweetEmbeds(html)).toBe(html);
   });
 });
 

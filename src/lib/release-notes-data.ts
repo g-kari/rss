@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (109)
+
+### ドキュメント整備
+- **\`transformXTweetEmbeds\` の E2E テストを追加** — X (Twitter) ツイート埋め込み変換関数のテストが欠落していたため、\`content-extraction.spec.ts\` に11件の回帰テストを追加。twitter.com / x.com URL からの変換、ライト/ダークテーマ、\`dnt=true\` / \`loading=lazy\` 付与、複数ツイート処理、クラス不一致時のスキップ等を検証
+
 ## 2026-03-27 (108)
 
 ### リファクタリング
