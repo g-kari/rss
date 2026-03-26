@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useEffect, useState, memo, type ReactElement, type ReactNode, type RefObject } from 'react';
+import { useMemo, useEffect, useState, useCallback, useRef, memo, type ReactElement, type ReactNode, type RefObject } from 'react';
 import type { Article, Feed, Layout, DateRange } from '../types';
 import type { SortOrder } from '../hooks/useFilteredArticles';
 import { readingTime, timeAgo } from '../lib/article-utils';
 import { useOgpCache } from '../hooks/useOgpCache';
+import { useSearchHistory } from '../hooks/useSearchHistory';
 
 interface ArticleActionsProps {
   isRead: boolean;
@@ -434,6 +435,45 @@ export default function ArticleList({
 
   const ogpCache = useOgpCache(visible);
 
+  // 検索履歴
+  const { history, addToHistory, removeFromHistory } = useSearchHistory();
+  const [showHistory, setShowHistory] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // フォーカスが検索コンテナ外に移ったら履歴を閉じる
+  const handleSearchBlur = useCallback(
+    (e: React.FocusEvent) => {
+      if (!searchContainerRef.current?.contains(e.relatedTarget as Node)) {
+        setShowHistory(false);
+      }
+    },
+    [],
+  );
+
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Escape') {
+        updateQuery('');
+        searchRef.current?.blur();
+        setShowHistory(false);
+      } else if (e.key === 'Enter' && rawQuery.trim().length >= 2) {
+        addToHistory(rawQuery.trim());
+        setShowHistory(false);
+      }
+    },
+    [rawQuery, updateQuery, addToHistory, searchRef],
+  );
+
+  const applyHistoryItem = useCallback(
+    (q: string) => {
+      updateQuery(q);
+      addToHistory(q);
+      setShowHistory(false);
+      searchRef.current?.focus();
+    },
+    [updateQuery, addToHistory, searchRef],
+  );
+
   useEffect(() => {
     if (selectedArticleId) {
       document
@@ -560,18 +600,47 @@ export default function ArticleList({
             )}
           </div>
         </div>
-        <div className="px-3 pb-2.5">
+        <div className="relative px-3 pb-2.5" ref={searchContainerRef} onBlur={handleSearchBlur}>
           <input
             ref={searchRef}
             type="search"
             placeholder="検索... (/ でフォーカス)"
             value={rawQuery}
             onChange={(e) => updateQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') { updateQuery(''); searchRef.current?.blur(); }
-            }}
+            onKeyDown={handleSearchKeyDown}
+            onFocus={() => { if (history.length > 0) setShowHistory(true); }}
             className="w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
           />
+          {showHistory && history.length > 0 && (
+            <div className="absolute z-20 left-0 right-0 mt-1 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden">
+              {history.map((q) => (
+                <div
+                  key={q}
+                  className="flex items-center justify-between px-2.5 py-1.5 hover:bg-surface-hover cursor-pointer group"
+                >
+                  <button
+                    className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
+                    onMouseDown={(e) => { e.preventDefault(); applyHistoryItem(q); }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-text-faint flex-shrink-0">
+                      <circle cx="5" cy="5" r="3.5"/>
+                      <path d="M8 8l2.5 2.5"/>
+                    </svg>
+                    <span className="text-[11px] text-text-default truncate">{q}</span>
+                  </button>
+                  <button
+                    className="opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-muted transition-opacity flex-shrink-0"
+                    onMouseDown={(e) => { e.preventDefault(); removeFromHistory(q); }}
+                    title="履歴から削除"
+                  >
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                      <path d="M1 1l6 6M7 1L1 7"/>
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
