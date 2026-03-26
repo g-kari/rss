@@ -141,8 +141,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
 
   // フィードの過去ページを追加読み込みする
   const loadMoreFeedArticles = useCallback(async (feedId: string): Promise<void> => {
-    const currentPage = loadedFeedPagesRef.current.get(feedId) ?? 1;
-    const nextPage = currentPage + 1;
+    const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
     try {
       const res = await fetch(`/api/articles?feed=${feedId}&page=${nextPage}`);
       if (!res.ok) return;

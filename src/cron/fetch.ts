@@ -282,14 +282,10 @@ export async function fetchAndUpdateSharedFeed(
 
 function buildPushPayload(newArticles: Article[], feedTitle: string): PushPayload {
   const count = newArticles.length;
-  if (count === 1) {
-    return { title: feedTitle, body: newArticles[0].title || '新着記事', url: '/' };
-  }
-  const feedHashes = [...new Set(newArticles.map((a) => a.feedHash))];
-  if (feedHashes.length === 1) {
-    return { title: feedTitle, body: `${count} 件の新着記事`, url: '/' };
-  }
-  return { title: 'RSS Reader', body: `${count} 件の新着記事`, url: '/' };
+  const singleFeed = new Set(newArticles.map((a) => a.feedHash)).size === 1;
+  const title = singleFeed ? feedTitle : 'RSS Reader';
+  const body = count === 1 ? (newArticles[0].title || '新着記事') : `${count} 件の新着記事`;
+  return { title, body, url: '/' };
 }
 
 async function sendPushForUsers(

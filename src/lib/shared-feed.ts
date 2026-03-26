@@ -175,10 +175,9 @@ export async function mergeNewArticles(
 
   // knownIds が存在する場合はそれを重複チェックに使う（全ページ横断の既知 ID）
   // 存在しない場合は latest の ID のみでチェック（後方互換）
-  const knownIdsSet =
-    meta.knownIds && meta.knownIds.length > 0
-      ? new Set(meta.knownIds)
-      : new Set(latest.map((a) => a.id));
+  const knownIdsSet = meta.knownIds?.length
+    ? new Set(meta.knownIds)
+    : new Set(latest.map((a) => a.id));
 
   // 真に新規の記事（既知 ID に存在しない）
   const brandNew = fetchedArticles.filter((a) => !knownIdsSet.has(a.id));
@@ -217,10 +216,7 @@ export async function mergeNewArticles(
   // knownIds を更新（新規 ID を追加し、上限 10,000 件を超えた場合は古い順に切り詰め）
   const KNOWN_IDS_MAX = 10_000;
   const updatedKnownIds = [...(meta.knownIds ?? latest.map((a) => a.id)), ...brandNew.map((a) => a.id)];
-  meta.knownIds =
-    updatedKnownIds.length > KNOWN_IDS_MAX
-      ? updatedKnownIds.slice(updatedKnownIds.length - KNOWN_IDS_MAX)
-      : updatedKnownIds;
+  meta.knownIds = updatedKnownIds.slice(-KNOWN_IDS_MAX);
 
   meta.articleCount = (meta.articleCount ?? 0) + brandNew.length;
   return brandNew;
