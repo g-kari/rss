@@ -458,13 +458,11 @@ export function transformXTweetEmbeds(html: string, theme: "light" | "dark" = "l
  * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  */
 function applyCorePipeline(html: string, pageUrl = ""): string {
-  return [
-    (h: string) => fixImageDimensions(h, pageUrl),
-    (h: string) => rewriteImageUrls(h),
-    (h: string) => fixExternalLinks(h, pageUrl),
-    (h: string) => wrapTables(h),
-    (h: string) => sanitizeHtml(h),
-  ].reduce((h, step) => step(h), html);
+  let h = fixImageDimensions(html, pageUrl);
+  h = rewriteImageUrls(h);
+  h = fixExternalLinks(h, pageUrl);
+  h = wrapTables(h);
+  return sanitizeHtml(h);
 }
 
 /**
@@ -478,14 +476,12 @@ export function postProcess(
   pageUrl = "",
   theme: "light" | "dark" = "light",
 ): string {
-  const preprocessed = [
-    (h: string) => removeNoise(h),
-    (h: string) => transformZennLinkEmbeds(h),
-    (h: string) => transformZennMermaidEmbeds(h, pageUrl),
-    (h: string) => transformXTweetEmbeds(h, theme),
-    (h: string) => fixLazyImages(h),
-  ].reduce((h, step) => step(h), content);
-  return applyCorePipeline(preprocessed, pageUrl);
+  let h = removeNoise(content);
+  h = transformZennLinkEmbeds(h);
+  h = transformZennMermaidEmbeds(h, pageUrl);
+  h = transformXTweetEmbeds(h, theme);
+  h = fixLazyImages(h);
+  return applyCorePipeline(h, pageUrl);
 }
 
 /**
