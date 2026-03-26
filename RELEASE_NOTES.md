@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-27 (127)
+
+### リファクタリング
+
+- **`localStorage` JSON 読み込みを `loadJson()` ヘルパーに共通化** — `useSearchHistory` / `useReadingHistory` / `useOgpCache` で同一の try-catch + JSON.parse + fallback パターンが重複していたため、`storage.ts` に `loadJson<T>(key, fallback)` ヘルパーを追加して統一
+
 ## 2026-03-27 (126)
 
 ### リファクタリング
