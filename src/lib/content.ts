@@ -7,10 +7,10 @@
  * - 文字エンコーディング検出
  * - Cloudflare AI toMarkdown API フォールバック
  */
-import { marked } from 'marked';
-import { Readability } from '@mozilla/readability';
-import { parseHTML } from 'linkedom/worker';
-import { sanitizeHtml, escapeHtml } from './html';
+import { marked } from "marked";
+import { Readability } from "@mozilla/readability";
+import { parseHTML } from "linkedom/worker";
+import { sanitizeHtml, escapeHtml } from "./html";
 
 /**
  * img タグの後処理:
@@ -22,45 +22,57 @@ import { sanitizeHtml, escapeHtml } from './html';
  * 画像は /api/image-proxy 経由で配信され、失敗時は透明 GIF が返るため
  * broken image アイコンは発生しない。
  */
-export function fixImageDimensions(html: string, pageUrl = ''): string {
+export function fixImageDimensions(html: string, pageUrl = ""): string {
   let base: URL | null = null;
-  try { base = pageUrl ? new URL(pageUrl) : null; } catch { /* ignore */ }
+  try {
+    base = pageUrl ? new URL(pageUrl) : null;
+  } catch {
+    /* ignore */
+  }
 
   return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
     let a = attrs
-      .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
-      .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '')
+      .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "")
+      .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "")
       .replace(/\s+style\s*=\s*"([^"]*)"/gi, (_s, style: string) => {
-        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
-        return s2 ? ` style="${s2}"` : '';
+        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, "").trim();
+        return s2 ? ` style="${s2}"` : "";
       })
       .replace(/\s+style\s*=\s*'([^']*)'/gi, (_s, style: string) => {
-        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, '').trim();
-        return s2 ? ` style="${s2}"` : '';
+        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, "").trim();
+        return s2 ? ` style="${s2}"` : "";
       });
 
     // 相対パスを絶対 URL に変換
     if (base) {
       a = a.replace(/\bsrc=["']([^"']+)["']/gi, (_sm, src: string) => {
-        if (/^https?:\/\//i.test(src) || src.startsWith('data:')) return _sm;
-        try { return `src="${new URL(src, base).href}"`; } catch { return _sm; }
+        if (/^https?:\/\//i.test(src) || src.startsWith("data:")) return _sm;
+        try {
+          return `src="${new URL(src, base).href}"`;
+        } catch {
+          return _sm;
+        }
       });
       // srcset 内の相対 URL も絶対 URL に変換
       a = a.replace(/\bsrcset=["']([^"']+)["']/gi, (_sm, srcset: string) => {
         const resolved = srcset
-          .split(',')
+          .split(",")
           .map((part) => {
             const trimmed = part.trim();
-            if (!trimmed) return '';
+            if (!trimmed) return "";
             const m = trimmed.match(/^(\S+)(\s.*)?$/);
             if (!m) return part;
             const url = m[1];
-            const descriptor = m[2] ?? '';
-            if (/^https?:\/\//i.test(url) || url.startsWith('data:')) return trimmed;
-            try { return new URL(url, base).href + descriptor; } catch { return trimmed; }
+            const descriptor = m[2] ?? "";
+            if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return trimmed;
+            try {
+              return new URL(url, base).href + descriptor;
+            } catch {
+              return trimmed;
+            }
           })
           .filter(Boolean)
-          .join(', ');
+          .join(", ");
         return `srcset="${resolved}"`;
       });
     }
@@ -87,16 +99,19 @@ export function wrapTables(html: string): string {
  * removeNoise の EC ギャラリー変換と shopifyDesc の商品画像ギャラリーで共用。
  */
 export function buildImageSlider(imgs: string[]): string {
-  if (imgs.length === 0) return '';
+  if (imgs.length === 0) return "";
   const slides = imgs
     .map(
       (img) =>
         // scroll-snap-stop:always — 高速スワイプ時に複数枚飛ばしを防止
         `<div style="flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;border-radius:8px;background:#f5f5f5;aspect-ratio:1/1">` +
-        img.replace(/<img\b/, '<img style="width:100%;height:100%;object-fit:contain;display:block"') +
+        img.replace(
+          /<img\b/,
+          '<img style="width:100%;height:100%;object-fit:contain;display:block"',
+        ) +
         `</div>`,
     )
-    .join('');
+    .join("");
   return (
     // class="rss-image-slider" — ArticleView で PC 用ナビゲーションボタンを注入するために使用
     // overscroll-behavior-x:contain — 横スクロールが親要素に伝播するのを防止
@@ -122,8 +137,12 @@ export function buildImageSlider(imgs: string[]): string {
  * ギャラリーが存在しない場合は空配列を返す。
  */
 function extractThumbListImgs(html: string, pageUrl: string): string[] {
-  let origin = '';
-  try { origin = new URL(pageUrl).origin; } catch { /* ignore */ }
+  let origin = "";
+  try {
+    origin = new URL(pageUrl).origin;
+  } catch {
+    /* ignore */
+  }
   if (!origin) return [];
 
   const seen = new Set<string>();
@@ -149,11 +168,20 @@ function extractThumbListImgs(html: string, pageUrl: string): string[] {
  */
 export function removeNoise(html: string): string {
   // Qiita: header/footer ツールバー、サイドバー
-  html = html.replace(/<div[^>]+class="[^"]*(?:LikesButton|StockButton|ShareButtons|SideBar|ArticleHeader|ArticleFooter|FollowButton)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+  html = html.replace(
+    /<div[^>]+class="[^"]*(?:LikesButton|StockButton|ShareButtons|SideBar|ArticleHeader|ArticleFooter|FollowButton)[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
+    "",
+  );
   // Zenn: チャプター選択、関連記事
-  html = html.replace(/<div[^>]+class="[^"]*(?:ChapterList|RelatedArticles|TocItem)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+  html = html.replace(
+    /<div[^>]+class="[^"]*(?:ChapterList|RelatedArticles|TocItem)[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
+    "",
+  );
   // 汎用: "related", "recommend", "share", "sns" を含む div
-  html = html.replace(/<div[^>]+class="[^"]*(?:related|recommend|share|sns|toc-|side-)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+  html = html.replace(
+    /<div[^>]+class="[^"]*(?:related|recommend|share|sns|toc-|side-)[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
+    "",
+  );
   // EC / Shopify: 商品画像ギャラリーを CSS scroll-snap スライダーに変換
   html = html.replace(
     /<(?:ul|div)[^>]+class="[^"]*(?:product__media|media-gallery|product-gallery|thumbnail[s]?(?:-list|-wrapper)?|image-gallery|photo-gallery|product-images)[^"]*"[^>]*>([\s\S]*?)<\/(?:ul|div)>/gi,
@@ -218,12 +246,14 @@ export function transformZennLinkEmbeds(content: string): string {
  * 注意: includes() による部分文字列マッチは "zenn.dev.evil.com" でバイパスできるため、
  * URL パースでホスト名を正確に検証する。
  */
-export function transformZennMermaidEmbeds(content: string, pageUrl = ''): string {
+export function transformZennMermaidEmbeds(content: string, pageUrl = ""): string {
   let isZennDev = false;
   try {
     const h = new URL(pageUrl).hostname;
-    isZennDev = h === 'zenn.dev' || h.endsWith('.zenn.dev');
-  } catch { /* ignore */ }
+    isZennDev = h === "zenn.dev" || h.endsWith(".zenn.dev");
+  } catch {
+    /* ignore */
+  }
   if (!isZennDev) return content;
   return content.replace(
     /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
@@ -252,7 +282,7 @@ export function fixLazyImages(html: string): string {
 
     const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
     if (dataSrcMatch) {
-      const resolved = dataSrcMatch[1].replace(/\{width\}/g, '800');
+      const resolved = dataSrcMatch[1].replace(/\{width\}/g, "800");
       if (/\bsrc=["'][^"']*["']/i.test(fixed)) {
         fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
       } else {
@@ -274,7 +304,7 @@ export function fixLazyImages(html: string): string {
     // Shopify: _NNNx / _NNNxNNN / _NNNx@Nx サフィックスを _800x に置換
     fixed = fixed.replace(
       /(src=["'][^"']*?)_\d+x\d*(?:@\d+x)?\.(jpg|jpeg|png|webp|gif)(["'])/gi,
-      '$1_800x.$2$3',
+      "$1_800x.$2$3",
     );
 
     return `<img${fixed}>`;
@@ -288,18 +318,18 @@ export function fixLazyImages(html: string): string {
  */
 function transformSrcset(srcset: string, rewriteUrl: (url: string) => string): string {
   return srcset
-    .split(',')
+    .split(",")
     .map((part) => {
       const trimmed = part.trim();
-      if (!trimmed) return '';
+      if (!trimmed) return "";
       const m = trimmed.match(/^(\S+)(\s.*)?$/);
       if (!m) return part;
       const url = m[1];
-      const descriptor = m[2] ?? '';
+      const descriptor = m[2] ?? "";
       return rewriteUrl(url) + descriptor;
     })
     .filter(Boolean)
-    .join(', ');
+    .join(", ");
 }
 
 /**
@@ -313,16 +343,13 @@ export function rewriteImageUrls(html: string): string {
       /\bsrc=["'](https?:\/\/[^"']+)["']/gi,
       (_sm, src: string) => `src="/api/image-proxy?url=${encodeURIComponent(src)}"`,
     );
-    rewritten = rewritten.replace(
-      /\bsrcset=["']([^"']+)["']/gi,
-      (_sm, srcset: string) => {
-        const proxied = transformSrcset(srcset, (url) => {
-          if (!/^https?:\/\//i.test(url)) return url;
-          return `/api/image-proxy?url=${encodeURIComponent(url)}`;
-        });
-        return `srcset="${proxied}"`;
-      },
-    );
+    rewritten = rewritten.replace(/\bsrcset=["']([^"']+)["']/gi, (_sm, srcset: string) => {
+      const proxied = transformSrcset(srcset, (url) => {
+        if (!/^https?:\/\//i.test(url)) return url;
+        return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+      });
+      return `srcset="${proxied}"`;
+    });
     return `<img${rewritten}>`;
   });
 }
@@ -334,46 +361,53 @@ export function rewriteImageUrls(html: string): string {
  * フラグメントのみのリンク (#anchor) は同一ページ内アンカーのためそのまま保持する。
  * 危険スキーム (javascript: / data: 等) は後続の sanitizeHtml で除去されるためここでは無視する。
  */
-export function fixExternalLinks(html: string, pageUrl = ''): string {
+export function fixExternalLinks(html: string, pageUrl = ""): string {
   let base: URL | null = null;
-  try { base = pageUrl ? new URL(pageUrl) : null; } catch { /* ignore */ }
+  try {
+    base = pageUrl ? new URL(pageUrl) : null;
+  } catch {
+    /* ignore */
+  }
 
   return html.replace(/<a\b([^>]*)>/gi, (_match, attrs: string) => {
     // href 属性の値を取得
     const hrefMatch = attrs.match(/\bhref\s*=\s*["']([^"']*?)["']/i);
-    const href = hrefMatch?.[1] ?? '';
+    const href = hrefMatch?.[1] ?? "";
 
     // href なし・フラグメントのみ (#anchor) はそのまま
-    if (!href || href.startsWith('#')) return _match;
+    if (!href || href.startsWith("#")) return _match;
 
     let newAttrs = attrs;
 
-    if (base && !/^https?:\/\//i.test(href) && !href.startsWith('data:')) {
+    if (base && !/^https?:\/\//i.test(href) && !href.startsWith("data:")) {
       try {
         const absolute = new URL(href, base).href;
-        newAttrs = newAttrs.replace(
-          /\bhref\s*=\s*["'][^"']*["']/i,
-          `href="${absolute}"`,
-        );
-      } catch { /* 変換失敗時はそのまま */ }
+        newAttrs = newAttrs.replace(/\bhref\s*=\s*["'][^"']*["']/i, `href="${absolute}"`);
+      } catch {
+        /* 変換失敗時はそのまま */
+      }
     }
 
     // target 属性を上書きして必ず新しいタブで開く
     if (/\btarget\s*=/i.test(newAttrs)) {
-      newAttrs = newAttrs.replace(/\btarget\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, 'target="_blank"');
+      newAttrs = newAttrs.replace(
+        /\btarget\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi,
+        'target="_blank"',
+      );
     } else {
       newAttrs += ' target="_blank"';
     }
 
     // rel 属性に noopener noreferrer を付与（既存値があれば追記）
-    const relMatch = newAttrs.match(/\brel\s*=\s*"([^"]*)"/i) ?? newAttrs.match(/\brel\s*=\s*'([^']*)'/i);
+    const relMatch =
+      newAttrs.match(/\brel\s*=\s*"([^"]*)"/i) ?? newAttrs.match(/\brel\s*=\s*'([^']*)'/i);
     if (!relMatch) {
       newAttrs += ' rel="noopener noreferrer"';
     } else {
       const values = new Set(relMatch[1].split(/\s+/).filter(Boolean));
-      values.add('noopener');
-      values.add('noreferrer');
-      const newRel = [...values].join(' ');
+      values.add("noopener");
+      values.add("noreferrer");
+      const newRel = [...values].join(" ");
       newAttrs = newAttrs
         .replace(/\brel\s*=\s*"[^"]*"/i, `rel="${newRel}"`)
         .replace(/\brel\s*=\s*'[^']*'/i, `rel="${newRel}"`);
@@ -388,7 +422,7 @@ export function fixExternalLinks(html: string, pageUrl = ''): string {
  * postProcess / postProcessMarkdownContent の両方で使用する。
  * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  */
-function applyCorePipeline(html: string, pageUrl = ''): string {
+function applyCorePipeline(html: string, pageUrl = ""): string {
   return [
     (h: string) => fixImageDimensions(h, pageUrl),
     (h: string) => rewriteImageUrls(h),
@@ -402,7 +436,7 @@ function applyCorePipeline(html: string, pageUrl = ''): string {
  * コンテンツ抽出後の後処理パイプライン。
  * 各ステップを適用順に並べる。sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  */
-export function postProcess(content: string, pageUrl = ''): string {
+export function postProcess(content: string, pageUrl = ""): string {
   const preprocessed = [
     (h: string) => removeNoise(h),
     (h: string) => transformZennLinkEmbeds(h),
@@ -421,7 +455,7 @@ export function detectCharset(contentType: string, bodyBytes: Uint8Array): strin
   const ctMatch = contentType.match(/charset\s*=\s*([^\s;]+)/i);
   if (ctMatch?.[1]) return ctMatch[1];
 
-  const preview = new TextDecoder('latin1').decode(bodyBytes.slice(0, 2048));
+  const preview = new TextDecoder("latin1").decode(bodyBytes.slice(0, 2048));
 
   const metaCharset = preview.match(/<meta\b[^>]+charset\s*=\s*["']?([^"'\s;>]+)/i)?.[1];
   if (metaCharset) return metaCharset;
@@ -431,7 +465,7 @@ export function detectCharset(contentType: string, bodyBytes: Uint8Array): strin
   )?.[1];
   if (metaHttp) return metaHttp;
 
-  return 'utf-8';
+  return "utf-8";
 }
 
 /**
@@ -439,7 +473,10 @@ export function detectCharset(contentType: string, bodyBytes: Uint8Array): strin
  * タグを除去したテキスト量が minChars 未満の場合は不十分と判断する。
  */
 export function isContentSufficient(html: string, minChars = 200): boolean {
-  const text = html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  const text = html
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   return text.length >= minChars;
 }
 
@@ -457,16 +494,16 @@ export async function fetchMarkdownFromHtml(
 
   try {
     const formData = new FormData();
-    formData.append('files', new Blob([html], { type: 'text/html' }), 'page.html');
-    formData.append('conversionOptions', JSON.stringify({ hostname }));
+    formData.append("files", new Blob([html], { type: "text/html" }), "page.html");
+    formData.append("conversionOptions", JSON.stringify({ hostname }));
 
     const res = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/tomarkdown`,
-      { method: 'POST', headers: { Authorization: `Bearer ${apiToken}` }, body: formData },
+      { method: "POST", headers: { Authorization: `Bearer ${apiToken}` }, body: formData },
     );
     if (!res.ok) return null;
 
-    const json = await res.json() as {
+    const json = (await res.json()) as {
       result: { data?: string; error?: string }[];
       success: boolean;
     };
@@ -488,7 +525,7 @@ export function markdownToHtml(md: string): string {
  * Zenn embed 等は変換時に消失するため、共通後処理（画像処理・テーブル・サニタイズ）のみ適用する。
  * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  */
-export function postProcessMarkdownContent(html: string, pageUrl = ''): string {
+export function postProcessMarkdownContent(html: string, pageUrl = ""): string {
   return applyCorePipeline(html, pageUrl);
 }
 
@@ -503,14 +540,17 @@ export function preClean(html: string): string {
   let h = html;
   h = h.replace(/<picture\b[^>]*>([\s\S]*?)<\/picture>/gi, (_m, inner: string) => {
     const img = inner.match(/<img\b[^>]*>/i);
-    return img ? img[0] : '';
+    return img ? img[0] : "";
   });
   h = h.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (_m, inner: string) =>
-    /<img\b/i.test(inner) ? inner : '',
+    /<img\b/i.test(inner) ? inner : "",
   );
-  h = h.replace(/\s+(?:data-(?!content\b|src\b)[a-z][a-z0-9-]*|aria-[a-z-]+|on[a-z]+)=["'][^"']*["']/gi, '');
-  h = h.replace(/<style\b[\s\S]*?<\/style>/gi, '');
-  h = h.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  h = h.replace(
+    /\s+(?:data-(?!content\b|src\b)[a-z][a-z0-9-]*|aria-[a-z-]+|on[a-z]+)=["'][^"']*["']/gi,
+    "",
+  );
+  h = h.replace(/<style\b[\s\S]*?<\/style>/gi, "");
+  h = h.replace(/<script\b[\s\S]*?<\/script>/gi, "");
   return h;
 }
 
@@ -522,10 +562,12 @@ export function extractWithReadability(html: string, url: string): string | null
   try {
     const { document } = parseHTML(preClean(html));
     try {
-      const base = document.createElement('base');
+      const base = document.createElement("base");
       (base as unknown as { href: string }).href = url;
       document.head.appendChild(base);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     const article = new Readability(document as unknown as Document).parse();
     return article?.content ?? null;
@@ -539,13 +581,13 @@ export function extractWithReadability(html: string, url: string): string | null
  */
 export function stripPageChrome(html: string): string {
   return html
-    .replace(/<head\b[\s\S]*?<\/head>/gi, '')
-    .replace(/<nav\b[\s\S]*?<\/nav>/gi, '')
-    .replace(/<header\b[\s\S]*?<\/header>/gi, '')
-    .replace(/<footer\b[\s\S]*?<\/footer>/gi, '')
-    .replace(/<aside\b[\s\S]*?<\/aside>/gi, '')
-    .replace(/<form\b[\s\S]*?<\/form>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '');
+    .replace(/<head\b[\s\S]*?<\/head>/gi, "")
+    .replace(/<nav\b[\s\S]*?<\/nav>/gi, "")
+    .replace(/<header\b[\s\S]*?<\/header>/gi, "")
+    .replace(/<footer\b[\s\S]*?<\/footer>/gi, "")
+    .replace(/<aside\b[\s\S]*?<\/aside>/gi, "")
+    .replace(/<form\b[\s\S]*?<\/form>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "");
 }
 
 /**
@@ -557,7 +599,7 @@ export function stripPageChrome(html: string): string {
 export function extractMainContent(
   html: string,
   pageUrl: string,
-): { content: string; source: 'readability' | 'regex' } {
+): { content: string; source: "readability" | "regex" } {
   // thumb-list / capt-thumb-list ギャラリーを別途取得する。
   // Readability はリスト形式のギャラリーを本文外と判断して除外することがあるため、
   // 元 HTML から独立して抽出し本文末尾に付与する。
@@ -565,14 +607,14 @@ export function extractMainContent(
   //       width:100%;height:100% インラインスタイルを除去してしまい画像が見切れるため。
   const galleryImgs = extractThumbListImgs(html, pageUrl);
   const buildGallery = () =>
-    galleryImgs.length > 0 ? rewriteImageUrls(buildImageSlider(galleryImgs)) : '';
+    galleryImgs.length > 0 ? rewriteImageUrls(buildImageSlider(galleryImgs)) : "";
 
   const rc = extractWithReadability(html, pageUrl);
   if (rc && isContentSufficient(rc)) {
-    return { content: postProcess(rc, pageUrl) + buildGallery(), source: 'readability' };
+    return { content: postProcess(rc, pageUrl) + buildGallery(), source: "readability" };
   }
   const regexContent = extractWithRegex(html, pageUrl);
-  return { content: regexContent + buildGallery(), source: 'regex' };
+  return { content: regexContent + buildGallery(), source: "regex" };
 }
 
 /**
@@ -588,14 +630,18 @@ function extractWithRegex(html: string, pageUrl: string): string {
   const qiitaBody = cleaned.match(/<(\w+)[^>]+itemprop=["']articleBody["'][^>]*>([\s\S]*)<\/\1>/i);
   if (qiitaBody?.[2]) return postProcess(qiitaBody[2], pageUrl);
 
-  const qiitaMd = cleaned.match(/<(\w+)[^>]+class=["'][^"']*it-MdContent[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
+  const qiitaMd = cleaned.match(
+    /<(\w+)[^>]+class=["'][^"']*it-MdContent[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
+  );
   if (qiitaMd?.[2]) return postProcess(qiitaMd[2], pageUrl);
 
   // Zenn (zenn.dev): class="znc" を <article> より優先
   // 他ドメイン (classmethod 等 Zenn の記事システムを流用するサイト) では
   // <article> を先に試し、なければ znc にフォールバックする
-  const zncMatch = cleaned.match(/<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
-  if (zncMatch?.[2] && pageUrl.includes('zenn.dev')) return postProcess(zncMatch[2], pageUrl);
+  const zncMatch = cleaned.match(
+    /<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
+  );
+  if (zncMatch?.[2] && pageUrl.includes("zenn.dev")) return postProcess(zncMatch[2], pageUrl);
 
   // --- EC / 商品ページセレクター ---
 
@@ -605,9 +651,13 @@ function extractWithRegex(html: string, pageUrl: string): string {
 
   // Shopify: product__description / product-single__description / product-description 等
   // description は通常テキストのみなので、商品メイン画像を別途収集して先頭に付与する
-  const shopifyDesc = cleaned.match(/<(\w+)[^>]+class=["'][^"']*product[^"']*description[^"']*["'][^>]*>([\s\S]*)<\/\1>/i);
+  const shopifyDesc = cleaned.match(
+    /<(\w+)[^>]+class=["'][^"']*product[^"']*description[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
+  );
   if (shopifyDesc?.[2]) {
-    const mainImgs = [...cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)].map((m) => m[0]);
+    const mainImgs = [...cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)].map(
+      (m) => m[0],
+    );
     return postProcess(buildImageSlider(mainImgs) + shopifyDesc[2], pageUrl);
   }
 

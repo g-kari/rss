@@ -8,8 +8,8 @@
  *   users/{userId}/subscriptions.json       — UserSubscription[]
  */
 
-import type { SharedFeedMeta, UserSubscription, Feed, Article } from '../types';
-import { r2Get, r2Put, sha256Hex } from './r2';
+import type { SharedFeedMeta, UserSubscription, Feed, Article } from "../types";
+import { r2Get, r2Put, sha256Hex } from "./r2";
 
 /** 1 ページあたりの記事数 */
 export const PAGE_SIZE = 100;
@@ -65,10 +65,7 @@ export async function readFeedMeta(
   }
 }
 
-export async function writeFeedMeta(
-  bucket: R2Bucket,
-  meta: SharedFeedMeta,
-): Promise<void> {
+export async function writeFeedMeta(bucket: R2Bucket, meta: SharedFeedMeta): Promise<void> {
   await r2Put(bucket, metaKey(meta.feedHash), meta);
 }
 
@@ -84,7 +81,7 @@ export async function createFeedMeta(
     feedHash,
     url,
     title: title ?? url,
-    siteUrl: siteUrl ?? '',
+    siteUrl: siteUrl ?? "",
     lastFetchedAt: null,
     fetchError: null,
     articleCount: 0,
@@ -98,10 +95,7 @@ export async function createFeedMeta(
 // ── 記事ページ読み書き ───────────────────────────────────────────
 
 /** latest.json を読む */
-export async function readLatestArticles(
-  bucket: R2Bucket,
-  feedHash: string,
-): Promise<Article[]> {
+export async function readLatestArticles(bucket: R2Bucket, feedHash: string): Promise<Article[]> {
   return r2Get<Article[]>(bucket, latestKey(feedHash), []);
 }
 
@@ -174,7 +168,7 @@ export async function mergeNewArticles(
 ): Promise<Article[]> {
   if (fetchedArticles.length === 0) return [];
 
-  const latest = existingLatest ?? await readLatestArticles(bucket, meta.feedHash);
+  const latest = existingLatest ?? (await readLatestArticles(bucket, meta.feedHash));
 
   // knownIds が存在する場合はそれを重複チェックに使う（全ページ横断の既知 ID）
   // 存在しない場合は latest の ID のみでチェック（後方互換）
@@ -218,7 +212,10 @@ export async function mergeNewArticles(
 
   // knownIds を更新（新規 ID を追加し、上限 10,000 件を超えた場合は古い順に切り詰め）
   const KNOWN_IDS_MAX = 10_000;
-  const updatedKnownIds = [...(meta.knownIds ?? latest.map((a) => a.id)), ...brandNew.map((a) => a.id)];
+  const updatedKnownIds = [
+    ...(meta.knownIds ?? latest.map((a) => a.id)),
+    ...brandNew.map((a) => a.id),
+  ];
   meta.knownIds = updatedKnownIds.slice(-KNOWN_IDS_MAX);
 
   meta.articleCount = (meta.articleCount ?? 0) + brandNew.length;
@@ -281,10 +278,7 @@ export async function getUserFeeds(bucket: R2Bucket, userId: string): Promise<Fe
  * ユーザーの全購読フィードの latest.json を並行取得してマージ・ソートした記事一覧を返す。
  * 各フィードから最新 PAGE_SIZE 件ずつ取得する。
  */
-export async function getUserLatestArticles(
-  bucket: R2Bucket,
-  userId: string,
-): Promise<Article[]> {
+export async function getUserLatestArticles(bucket: R2Bucket, userId: string): Promise<Article[]> {
   const subs = await readUserSubscriptions(bucket, userId);
   if (subs.length === 0) return [];
 
@@ -299,7 +293,7 @@ async function listPrefixedIds(bucket: R2Bucket, prefix: string): Promise<string
   const ids: string[] = [];
   let cursor: string | undefined;
   do {
-    const listed = await bucket.list({ prefix, delimiter: '/', cursor });
+    const listed = await bucket.list({ prefix, delimiter: "/", cursor });
     ids.push(...listed.delimitedPrefixes.map((p: string) => p.slice(prefix.length, -1)));
     cursor = listed.truncated ? listed.cursor : undefined;
   } while (cursor);
@@ -308,13 +302,13 @@ async function listPrefixedIds(bucket: R2Bucket, prefix: string): Promise<string
 
 /** 全 feedHash を R2 の feeds/ プレフィックスから列挙する */
 export async function listAllFeedHashes(bucket: R2Bucket): Promise<string[]> {
-  return listPrefixedIds(bucket, 'feeds/');
+  return listPrefixedIds(bucket, "feeds/");
 }
 
 /** 全ユーザーの subscriptions.json から feedHash → userId[] の逆引きマップを構築する */
 export async function buildFeedUserMap(bucket: R2Bucket): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>();
-  const userIds = await listPrefixedIds(bucket, 'users/');
+  const userIds = await listPrefixedIds(bucket, "users/");
 
   const allSubs = await Promise.all(
     userIds.map(async (uid) => ({ uid, subs: await readUserSubscriptions(bucket, uid) })),

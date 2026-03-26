@@ -3,8 +3,8 @@
  * /api/content と同じ Cloudflare Cache キーを使うため、キャッシュを共有する。
  */
 
-import { sha256Hex } from '@/lib/r2';
-import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
+import { sha256Hex } from "@/lib/r2";
+import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
 import {
   detectCharset,
   extractMainContent,
@@ -12,11 +12,11 @@ import {
   isContentSufficient,
   markdownToHtml,
   postProcessMarkdownContent,
-} from '@/lib/content';
-import { isValidFeedUrl, normalizeUrlForCache } from '@/lib/url';
+} from "@/lib/content";
+import { isValidFeedUrl, normalizeUrlForCache } from "@/lib/url";
 
 export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
-export { DEFAULT_FETCH_TIMEOUT_MS as FETCH_TIMEOUT_MS } from '@/lib/fetch';
+export { DEFAULT_FETCH_TIMEOUT_MS as FETCH_TIMEOUT_MS } from "@/lib/fetch";
 export const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 
 /** /api/content と共有する Cloudflare Cache キーを生成する。 */
@@ -41,7 +41,7 @@ export async function extractAndCacheContent(
     html = new TextDecoder(charset).decode(bytes);
   } catch {
     // charset が TextDecoder 非対応の場合（RangeError）は UTF-8 でフォールバック
-    html = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    html = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   }
 
   const { content: extracted, source } = extractMainContent(html, url);
@@ -54,16 +54,21 @@ export async function extractAndCacheContent(
     const md = await fetchMarkdownFromHtml(html, hostname);
     if (md) {
       content = postProcessMarkdownContent(markdownToHtml(md), url);
-      contentSource = 'ai-markdown';
+      contentSource = "ai-markdown";
     }
   }
 
   // Cloudflare Cache API に保存（fire-and-forget）
   const cacheRes = new Response(JSON.stringify({ content }), {
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CONTENT_CACHE_TTL_SEC}` },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": `public, max-age=${CONTENT_CACHE_TTL_SEC}`,
+    },
   });
   ctx.waitUntil(
-    caches.default.put(cacheKey, cacheRes).catch((err) => console.error('[content] cache put error:', err)),
+    caches.default
+      .put(cacheKey, cacheRes)
+      .catch((err) => console.error("[content] cache put error:", err)),
   );
 
   return { content, source: contentSource };
@@ -92,13 +97,18 @@ export async function fetchArticleContent(
   try {
     const res = await fetchFollowSafeRedirects(
       url,
-      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)', Accept: 'text/html,application/xhtml+xml' } },
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; rss-reader/1.0)",
+          Accept: "text/html,application/xhtml+xml",
+        },
+      },
       DEFAULT_FETCH_TIMEOUT_MS,
     );
 
     if (!res.ok) return null;
-    const ct = res.headers.get('content-type') ?? '';
-    if (!ct.includes('html')) return null;
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("html")) return null;
     if (!res.body) return null;
 
     const merged = await readBodyBytes(res.body, MAX_CONTENT_BYTES);

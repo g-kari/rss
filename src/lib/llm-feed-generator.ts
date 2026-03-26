@@ -8,11 +8,11 @@
  * 4. 推論したセレクタで HTML をスクレイプし ParsedFeed を返す
  */
 
-import { parseHTML } from 'linkedom/worker';
-import { isValidFeedUrl } from './url';
-import { fetchFollowSafeRedirects } from './fetch';
-import type { SelectorConfig } from '../types';
-import type { ParsedFeed, ParsedItem } from './xml-parser';
+import { parseHTML } from "linkedom/worker";
+import { isValidFeedUrl } from "./url";
+import { fetchFollowSafeRedirects } from "./fetch";
+import type { SelectorConfig } from "../types";
+import type { ParsedFeed, ParsedItem } from "./xml-parser";
 
 /**
  * linkedom の DOM 操作に使用する最小インターフェース。
@@ -33,7 +33,7 @@ interface LDDocument {
 }
 
 // ai-route-helper.ts と同じモデル（workers-types 未掲載のためキャスト）
-const MODEL = '@cf/meta/llama-3.1-8b-instruct' as '@cf/meta/llama-3.1-8b-instruct-fp8';
+const MODEL = "@cf/meta/llama-3.1-8b-instruct" as "@cf/meta/llama-3.1-8b-instruct-fp8";
 
 /** LLM に渡す圧縮リンク構造 */
 interface LinkNode {
@@ -67,15 +67,25 @@ export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] 
   }
 
   const origin = (() => {
-    try { return new URL(baseUrl).origin; } catch { return ''; }
+    try {
+      return new URL(baseUrl).origin;
+    } catch {
+      return "";
+    }
   })();
 
   const nodes: LinkNode[] = [];
   const seen = new Set<string>();
 
-  for (const el of doc.querySelectorAll('a[href]')) {
-    const href: string = el.getAttribute('href') ?? '';
-    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:')) continue;
+  for (const el of doc.querySelectorAll("a[href]")) {
+    const href: string = el.getAttribute("href") ?? "";
+    if (
+      !href ||
+      href.startsWith("#") ||
+      href.startsWith("javascript:") ||
+      href.startsWith("mailto:")
+    )
+      continue;
 
     let abs: string;
     try {
@@ -94,18 +104,15 @@ export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] 
     if (seen.has(abs)) continue;
     seen.add(abs);
 
-    const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT);
+    const text = (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT);
     if (text.length < 5) continue; // アイコン・ボタン類を除外
 
     const c: string[] = el.className.split(/\s+/).filter(Boolean);
 
     const p: Array<[string, string[]]> = [];
     let parent = el.parentElement;
-    while (parent && parent.tagName !== 'BODY' && p.length < ANCESTOR_DEPTH) {
-      p.push([
-        parent.tagName.toLowerCase(),
-        parent.className.split(/\s+/).filter(Boolean),
-      ]);
+    while (parent && parent.tagName !== "BODY" && p.length < ANCESTOR_DEPTH) {
+      p.push([parent.tagName.toLowerCase(), parent.className.split(/\s+/).filter(Boolean)]);
       parent = parent.parentElement;
     }
 
@@ -130,33 +137,35 @@ export async function inferSelectors(
 
   const messages = [
     {
-      role: 'system' as const,
+      role: "system" as const,
       content:
-        'You are a CSS selector expert. Given JSON link structures ' +
-        '(h=href, t=text, c=classes, p=ancestor chain as [tag,classes] pairs), ' +
-        'identify the CSS selector for article/post headline <a> links only ' +
-        '(exclude navigation, footer, sidebar). ' +
+        "You are a CSS selector expert. Given JSON link structures " +
+        "(h=href, t=text, c=classes, p=ancestor chain as [tag,classes] pairs), " +
+        "identify the CSS selector for article/post headline <a> links only " +
+        "(exclude navigation, footer, sidebar). " +
         'Respond with ONLY one JSON line: {"articleLink":"<selector>"}',
     },
     {
-      role: 'user' as const,
+      role: "user" as const,
       content: `Site: ${siteUrl}\nLinks: ${JSON.stringify(links)}`,
     },
   ];
 
   try {
-    const res = (await (ai as Ai).run(MODEL, { messages, max_tokens: 120 })) as { response?: string };
-    const raw = (res.response ?? '').trim();
+    const res = (await (ai as Ai).run(MODEL, { messages, max_tokens: 120 })) as {
+      response?: string;
+    };
+    const raw = (res.response ?? "").trim();
     // JSON ブロックを抽出（```json ... ``` にも対応）
     const match = raw.match(/\{[^}]*"articleLink"\s*:\s*"[^"]+?"[^}]*\}/);
     if (!match) return null;
     const parsed = JSON.parse(match[0]) as Record<string, unknown>;
-    if (typeof parsed.articleLink !== 'string' || !parsed.articleLink) return null;
+    if (typeof parsed.articleLink !== "string" || !parsed.articleLink) return null;
 
     return {
       articleLink: parsed.articleLink,
-      articleTitle: typeof parsed.articleTitle === 'string' ? parsed.articleTitle : undefined,
-      articleDate: typeof parsed.articleDate === 'string' ? parsed.articleDate : undefined,
+      articleTitle: typeof parsed.articleTitle === "string" ? parsed.articleTitle : undefined,
+      articleDate: typeof parsed.articleDate === "string" ? parsed.articleDate : undefined,
       model: MODEL,
       generatedAt: new Date().toISOString(),
     };
@@ -169,7 +178,7 @@ export async function inferSelectors(
 
 function extractPageTitle(html: string): string {
   const m = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  return (m?.[1] ?? '').replace(/\s+/g, ' ').trim();
+  return (m?.[1] ?? "").replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -183,13 +192,17 @@ export async function inferFeedFromUrl(
   ai: Ai,
 ): Promise<{ selectors: SelectorConfig; siteTitle: string; siteUrl: string } | null> {
   try {
-    const res = await fetchFollowSafeRedirects(url, {
-      headers: { 'User-Agent': 'rss-reader/1.0' },
-    }, FETCH_TIMEOUT_MS);
+    const res = await fetchFollowSafeRedirects(
+      url,
+      {
+        headers: { "User-Agent": "rss-reader/1.0" },
+      },
+      FETCH_TIMEOUT_MS,
+    );
     if (!res.ok) return null;
 
-    const ct = res.headers.get('content-type') ?? '';
-    if (!ct.includes('html')) return null;
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("html")) return null;
 
     const html = await res.text();
     const links = extractLinkStructure(html, url);
@@ -228,11 +241,11 @@ export function scrapeFeed(
 
   for (const el of elements.slice(0, 100)) {
     // セレクタが <a> 以外を返した場合は内部の <a> を探す
-    const anchor = el.tagName === 'A' ? el : (el.querySelector('a') ?? null);
+    const anchor = el.tagName === "A" ? el : (el.querySelector("a") ?? null);
     if (!anchor) continue;
 
-    const href = anchor.getAttribute('href') ?? '';
-    if (!href || href.startsWith('#')) continue;
+    const href = anchor.getAttribute("href") ?? "";
+    if (!href || href.startsWith("#")) continue;
 
     let link: string;
     try {
@@ -243,17 +256,17 @@ export function scrapeFeed(
     if (seen.has(link)) continue;
     seen.add(link);
 
-    const title = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+    const title = (el.textContent ?? "").replace(/\s+/g, " ").trim();
     if (!title) continue;
 
     items.push({
       guid: link,
       title,
       link,
-      summary: '',
-      content: '',
-      ogImage: '',
-      author: '',
+      summary: "",
+      content: "",
+      ogImage: "",
+      author: "",
       publishedAt: null,
     });
   }

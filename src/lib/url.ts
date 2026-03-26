@@ -21,12 +21,7 @@ const PRIVATE_IP_PATTERNS = [
   /^255\./,
 ];
 
-const PRIVATE_HOSTNAME_PATTERNS = [
-  /^localhost$/i,
-  /\.local$/i,
-  /\.internal$/i,
-  /\.localhost$/i,
-];
+const PRIVATE_HOSTNAME_PATTERNS = [/^localhost$/i, /\.local$/i, /\.internal$/i, /\.localhost$/i];
 
 /**
  * IPv4互換 IPv6 アドレス (0::/96) がプライベート IPv4 範囲に相当するか検証する。
@@ -35,11 +30,11 @@ const PRIVATE_HOSTNAME_PATTERNS = [
  */
 function isPrivateIPv4CompatibleIPv6(hostname: string): boolean {
   // [::1] (ループバック) と [::] (未指定) は別途チェック済み
-  if (!hostname.startsWith('[::') || hostname === '[::1]' || hostname === '[::]') return false;
+  if (!hostname.startsWith("[::") || hostname === "[::1]" || hostname === "[::]") return false;
 
   // '[::' の後、']' の前の部分を取得
   const inner = hostname.slice(3, -1);
-  const parts = inner.split(':');
+  const parts = inner.split(":");
 
   // IPv4互換アドレスは [::xxxx:xxxx] の2グループ形式に限定
   if (parts.length !== 2) return false;
@@ -53,13 +48,13 @@ function isPrivateIPv4CompatibleIPv6(hostname: string): boolean {
   const b2 = (ipv4 >>> 16) & 0xff;
 
   return (
-    b1 === 127 ||                           // 127.0.0.0/8 ループバック
-    b1 === 10 ||                            // 10.0.0.0/8
+    b1 === 127 || // 127.0.0.0/8 ループバック
+    b1 === 10 || // 10.0.0.0/8
     (b1 === 172 && b2 >= 16 && b2 <= 31) || // 172.16.0.0/12
-    (b1 === 192 && b2 === 168) ||           // 192.168.0.0/16
-    (b1 === 169 && b2 === 254) ||           // 169.254.0.0/16 リンクローカル
-    b1 === 0 ||                             // 0.0.0.0/8
-    b1 === 255                              // 255.0.0.0/8
+    (b1 === 192 && b2 === 168) || // 192.168.0.0/16
+    (b1 === 169 && b2 === 254) || // 169.254.0.0/16 リンクローカル
+    b1 === 0 || // 0.0.0.0/8
+    b1 === 255 // 255.0.0.0/8
   );
 }
 
@@ -69,10 +64,10 @@ function isPrivateIPv4CompatibleIPv6(hostname: string): boolean {
  * fe80::/10 = 上位10ビット 1111111010 → (firstGroup & 0xffc0) === 0xfe80 (0xfe80〜0xfebf)
  */
 function isIPv6LinkLocal(hostname: string): boolean {
-  if (!hostname.startsWith('[fe')) return false;
+  if (!hostname.startsWith("[fe")) return false;
   // '[xxxx:...]' の形式から第1グループを取り出す
   const inner = hostname.slice(1);
-  const end = inner.indexOf(':');
+  const end = inner.indexOf(":");
   if (end < 0) return false;
   const firstGroup = parseInt(inner.slice(0, end), 16);
   if (isNaN(firstGroup)) return false;
@@ -84,16 +79,17 @@ function isPrivateHost(hostname: string): boolean {
   if (PRIVATE_IP_PATTERNS.some((p) => p.test(hostname))) return true;
   // IPv6 ループバック・ユニークローカル・リンクローカル・未指定・各種 IPv4 変換
   if (
-    hostname === '[::1]' ||          // ループバック
-    hostname === '[::]' ||           // 未指定アドレス
-    hostname.startsWith('[fc') ||    // ユニークローカル fc00::/7 (fc部分)
-    hostname.startsWith('[fd') ||    // ユニークローカル fc00::/7 (fd部分)
-    isIPv6LinkLocal(hostname) ||     // リンクローカル fe80::/10 (0xfe80〜0xfebf)
-    hostname.startsWith('[::ffff:') ||  // IPv4マップド IPv6 (::ffff:0:0/96)
-    hostname.startsWith('[::ffff:0:') || // IPv4変換 IPv6 (::ffff:0:0:0/96, RFC 6145)
-    hostname.startsWith('[64:ff9b:') || // NAT64 変換プレフィックス (64:ff9b::/96 および 64:ff9b:1::/48, RFC 6052/8215)
+    hostname === "[::1]" || // ループバック
+    hostname === "[::]" || // 未指定アドレス
+    hostname.startsWith("[fc") || // ユニークローカル fc00::/7 (fc部分)
+    hostname.startsWith("[fd") || // ユニークローカル fc00::/7 (fd部分)
+    isIPv6LinkLocal(hostname) || // リンクローカル fe80::/10 (0xfe80〜0xfebf)
+    hostname.startsWith("[::ffff:") || // IPv4マップド IPv6 (::ffff:0:0/96)
+    hostname.startsWith("[::ffff:0:") || // IPv4変換 IPv6 (::ffff:0:0:0/96, RFC 6145)
+    hostname.startsWith("[64:ff9b:") || // NAT64 変換プレフィックス (64:ff9b::/96 および 64:ff9b:1::/48, RFC 6052/8215)
     isPrivateIPv4CompatibleIPv6(hostname) // IPv4互換 IPv6 (0::/96) でプライベート範囲
-  ) return true;
+  )
+    return true;
   return false;
 }
 
@@ -105,7 +101,7 @@ function isValidUrl(url: string, allowHttp: boolean): boolean {
   if (url.length > MAX_URL_LENGTH) return false;
   try {
     const { protocol, hostname } = new URL(url);
-    const validProtocol = protocol === 'https:' || (allowHttp && protocol === 'http:');
+    const validProtocol = protocol === "https:" || (allowHttp && protocol === "http:");
     return validProtocol && !isPrivateHost(hostname);
   } catch {
     return false;
@@ -134,29 +130,40 @@ export function isValidHttpsUrl(url: string): boolean {
  */
 const TRACKING_PARAMS = new Set([
   // Google Analytics UTM
-  'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
   // Google Ads
-  'gclid', 'gbraid', 'wbraid', 'gclsrc',
+  "gclid",
+  "gbraid",
+  "wbraid",
+  "gclsrc",
   // Facebook / Instagram
-  'fbclid', 'igshid',
+  "fbclid",
+  "igshid",
   // Microsoft Ads
-  'msclkid',
+  "msclkid",
   // Mailchimp
-  'mc_cid', 'mc_eid',
+  "mc_cid",
+  "mc_eid",
   // その他 Analytics
-  '_ga', '_gl',
+  "_ga",
+  "_gl",
 ]);
 
 export function normalizeUrlForCache(url: string): string {
   try {
     const parsed = new URL(url);
-    for (const key of [...parsed.searchParams.keys()]) {
+    for (const key of parsed.searchParams.keys()) {
       if (TRACKING_PARAMS.has(key)) parsed.searchParams.delete(key);
     }
     // パラメータ順序が異なる同一 URL も同じキャッシュキーにする
     parsed.searchParams.sort();
     // フラグメントはサーバー側に送信されないためキャッシュキーには不要
-    parsed.hash = '';
+    parsed.hash = "";
     return parsed.href;
   } catch {
     return url;

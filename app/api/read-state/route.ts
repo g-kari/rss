@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withSession, parseJsonBody } from '@/lib/server-auth';
-import { r2Get, r2Put } from '@/lib/r2';
-
+import { NextRequest, NextResponse } from "next/server";
+import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { r2Get, r2Put } from "@/lib/r2";
 
 interface ReadState {
   readIds: string[];
@@ -39,12 +38,16 @@ export async function POST(req: NextRequest) {
     const rawBookmark = Array.isArray(body.bookmarkIds) ? body.bookmarkIds : [];
     const rawReadingList = Array.isArray(body.readingListIds) ? body.readingListIds : [];
 
-    if (rawRead.length > MAX_READ_IDS || rawBookmark.length > MAX_BOOKMARK_IDS || rawReadingList.length > MAX_READING_LIST_IDS) {
-      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    if (
+      rawRead.length > MAX_READ_IDS ||
+      rawBookmark.length > MAX_BOOKMARK_IDS ||
+      rawReadingList.length > MAX_READING_LIST_IDS
+    ) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 });
     }
 
     const isValidId = (v: unknown): v is string =>
-      typeof v === 'string' && v.length > 0 && v.length <= MAX_ID_LENGTH;
+      typeof v === "string" && v.length > 0 && v.length <= MAX_ID_LENGTH;
 
     const readIds = rawRead.filter(isValidId);
     const bookmarkIds = rawBookmark.filter(isValidId);

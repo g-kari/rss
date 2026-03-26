@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { Component, type ReactNode } from 'react';
+import { Component, type ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
@@ -23,7 +23,11 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
-    console.error(`[ErrorBoundary${this.props.label ? `: ${this.props.label}` : ''}]`, error, info.componentStack);
+    console.error(
+      `[ErrorBoundary${this.props.label ? `: ${this.props.label}` : ""}]`,
+      error,
+      info.componentStack,
+    );
   }
 
   reset() {
@@ -35,11 +39,25 @@ export default class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex flex-col items-center justify-center h-full bg-surface-elevated text-center px-6 gap-3">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="text-text-faint">
-            <rect width="32" height="32" rx="8" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeOpacity="0.2" strokeWidth="0.8" />
-            <path d="M16 10v8M16 22v1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <rect
+              width="32"
+              height="32"
+              rx="8"
+              fill="currentColor"
+              fillOpacity="0.08"
+              stroke="currentColor"
+              strokeOpacity="0.2"
+              strokeWidth="0.8"
+            />
+            <path
+              d="M16 10v8M16 22v1.5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
           <p className="text-[10px] tracking-[0.25em] uppercase text-text-faint">
-            {this.props.label ?? 'Error'}
+            {this.props.label ?? "Error"}
           </p>
           <p className="text-[13px] text-text-muted leading-relaxed max-w-[200px]">
             予期しないエラーが発生しました

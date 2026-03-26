@@ -2,49 +2,52 @@
 @import "katex/dist/katex.min.css";
 
 @theme {
-  --font-sans: var(--loaded-reddit-sans), var(--loaded-ibm-plex-sans-jp), BlinkMacSystemFont, system-ui, sans-serif;
+  --font-sans:
+    var(--loaded-reddit-sans), var(--loaded-ibm-plex-sans-jp), BlinkMacSystemFont, system-ui,
+    sans-serif;
   /* セマンティックカラー (デフォルト = ライトテーマ / stone パレット) */
-  --color-surface-base: #fafaf9;      /* stone-50: メイン背景 */
-  --color-surface-elevated: #ffffff;   /* white: サイドバー・カード */
-  --color-surface-subtle: #f5f5f4;     /* stone-100: 選択状態 */
-  --color-surface-hover: #fafaf9;      /* stone-50: ホバー */
-  --color-border-default: #e7e5e4;     /* stone-200: 主ボーダー */
-  --color-border-subtle: #f5f5f4;      /* stone-100: 薄ボーダー */
-  --color-text-strong: #292524;        /* stone-800: 見出し・選択 */
-  --color-text-default: #57534e;       /* stone-600: 通常テキスト */
-  --color-text-soft: #78716c;          /* stone-500: 本文 */
-  --color-text-muted: #a8a29e;         /* stone-400: 薄テキスト */
-  --color-text-faint: #d6d3d1;         /* stone-300: 最弱テキスト */
-  --color-ink: #292524;                /* stone-800: 主アクション背景 */
-  --color-ink-hover: #44403c;          /* stone-700: 主アクションホバー */
-  --color-ink-text: #ffffff;           /* white: 主アクション上のテキスト */
-  --color-accent-dot: #fb7185;         /* rose-400: 未読ドット */
-  --color-bookmark: #fbbf24;           /* amber-400: ブックマーク */
-  --color-highlight: #fef3c7;          /* amber-100: 検索ハイライト */
+  --color-surface-base: #fafaf9; /* stone-50: メイン背景 */
+  --color-surface-elevated: #ffffff; /* white: サイドバー・カード */
+  --color-surface-subtle: #f5f5f4; /* stone-100: 選択状態 */
+  --color-surface-hover: #fafaf9; /* stone-50: ホバー */
+  --color-border-default: #e7e5e4; /* stone-200: 主ボーダー */
+  --color-border-subtle: #f5f5f4; /* stone-100: 薄ボーダー */
+  --color-text-strong: #292524; /* stone-800: 見出し・選択 */
+  --color-text-default: #57534e; /* stone-600: 通常テキスト */
+  --color-text-soft: #78716c; /* stone-500: 本文 */
+  --color-text-muted: #a8a29e; /* stone-400: 薄テキスト */
+  --color-text-faint: #d6d3d1; /* stone-300: 最弱テキスト */
+  --color-ink: #292524; /* stone-800: 主アクション背景 */
+  --color-ink-hover: #44403c; /* stone-700: 主アクションホバー */
+  --color-ink-text: #ffffff; /* white: 主アクション上のテキスト */
+  --color-accent-dot: #fb7185; /* rose-400: 未読ドット */
+  --color-bookmark: #fbbf24; /* amber-400: ブックマーク */
+  --color-highlight: #fef3c7; /* amber-100: 検索ハイライト */
 }
 
 /* ダークテーマ (zinc/indigo パレット) */
 [data-theme="dark"] {
-  --color-surface-base: #09090b;           /* zinc-950 */
-  --color-surface-elevated: #18181b;        /* zinc-900 */
-  --color-surface-subtle: #27272a;          /* zinc-800 */
+  --color-surface-base: #09090b; /* zinc-950 */
+  --color-surface-elevated: #18181b; /* zinc-900 */
+  --color-surface-subtle: #27272a; /* zinc-800 */
   --color-surface-hover: rgba(39, 39, 42, 0.5); /* zinc-800/50 */
-  --color-border-default: #27272a;          /* zinc-800 */
+  --color-border-default: #27272a; /* zinc-800 */
   --color-border-subtle: rgba(39, 39, 42, 0.5);
-  --color-text-strong: #e4e4e7;             /* zinc-200 */
-  --color-text-default: #d4d4d8;            /* zinc-300: 通常テキスト */
-  --color-text-soft: #a1a1aa;               /* zinc-400: 本文 (コントラスト比 ~7:1) */
-  --color-text-muted: #71717a;              /* zinc-500: バッジ・ラベル */
-  --color-text-faint: #52525b;              /* zinc-600: タイムスタンプ・空状態 */
-  --color-ink: #e4e4e7;                     /* zinc-200 */
-  --color-ink-hover: #d4d4d8;               /* zinc-300 */
-  --color-ink-text: #09090b;                /* zinc-950 */
-  --color-accent-dot: #6366f1;              /* indigo-500 */
+  --color-text-strong: #e4e4e7; /* zinc-200 */
+  --color-text-default: #d4d4d8; /* zinc-300: 通常テキスト */
+  --color-text-soft: #a1a1aa; /* zinc-400: 本文 (コントラスト比 ~7:1) */
+  --color-text-muted: #71717a; /* zinc-500: バッジ・ラベル */
+  --color-text-faint: #52525b; /* zinc-600: タイムスタンプ・空状態 */
+  --color-ink: #e4e4e7; /* zinc-200 */
+  --color-ink-hover: #d4d4d8; /* zinc-300 */
+  --color-ink-text: #09090b; /* zinc-950 */
+  --color-accent-dot: #6366f1; /* indigo-500 */
   --color-bookmark: #fbbf24;
   --color-highlight: rgba(99, 102, 241, 0.18); /* indigo-500/18: 検索ハイライト */
 }
 
-html, body {
+html,
+body {
   height: 100%;
   background-color: var(--color-surface-base);
 }
@@ -54,8 +57,12 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar {
+  width: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
   background: var(--color-text-faint);
   border-radius: 2px;
@@ -76,8 +83,12 @@ html, body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .animate-fade-up {
@@ -96,7 +107,9 @@ html, body {
   overflow-wrap: break-word;
   word-break: break-word;
 }
-.article-content p { margin-bottom: 1.25em; }
+.article-content p {
+  margin-bottom: 1.25em;
+}
 .article-content h1,
 .article-content h2,
 .article-content h3,
@@ -111,12 +124,22 @@ html, body {
   line-height: 1.4;
   letter-spacing: 0.01em;
 }
-.article-content h1 { font-size: 1.35em; }
-.article-content h2 { font-size: 1.2em; border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 0.3em; }
-.article-content h3 { font-size: 1.05em; }
+.article-content h1 {
+  font-size: 1.35em;
+}
+.article-content h2 {
+  font-size: 1.2em;
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding-bottom: 0.3em;
+}
+.article-content h3 {
+  font-size: 1.05em;
+}
 .article-content h4,
 .article-content h5,
-.article-content h6 { font-size: 1em; }
+.article-content h6 {
+  font-size: 1em;
+}
 .article-content a {
   color: var(--color-text-default);
   text-decoration: underline;
@@ -124,7 +147,9 @@ html, body {
   text-decoration-color: var(--color-text-faint);
   transition: color 0.15s ease;
 }
-.article-content a:hover { color: var(--color-text-strong); }
+.article-content a:hover {
+  color: var(--color-text-strong);
+}
 
 /* 画像: 固定幅を上書きしてコンテナに収める */
 .article-content img {
@@ -142,7 +167,9 @@ html, body {
 .article-content img[src]:not([src=""]) {
   background-color: transparent;
 }
-.article-content figure { margin: 1.25em 0; }
+.article-content figure {
+  margin: 1.25em 0;
+}
 .article-content figcaption {
   font-family: var(--font-sans);
   font-size: 0.8em;
@@ -157,9 +184,13 @@ html, body {
   padding-left: 1.5em;
   margin-bottom: 1.25em;
 }
-.article-content li { margin-bottom: 0.3em; }
+.article-content li {
+  margin-bottom: 0.3em;
+}
 .article-content li > ul,
-.article-content li > ol { margin-bottom: 0; }
+.article-content li > ol {
+  margin-bottom: 0;
+}
 
 /* タスクリスト (Qiita / Zenn の GFM チェックボックス) */
 .article-content ul.contains-task-list,
@@ -205,7 +236,7 @@ html, body {
   line-height: 1.6;
 }
 .article-content code {
-  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   background: var(--color-surface-subtle);
   padding: 0.1em 0.35em;
   border-radius: 3px;
@@ -297,7 +328,9 @@ html, body {
   color: var(--color-text-default);
   padding: 0.25em 0;
 }
-.article-content details[open] summary { margin-bottom: 0.5em; }
+.article-content details[open] summary {
+  margin-bottom: 0.5em;
+}
 
 /* 定義リスト */
 .article-content dt {

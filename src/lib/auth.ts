@@ -15,10 +15,10 @@ let jwksCacheExpiry = 0;
 const JWKS_CACHE_TTL_MS = 60 * 60 * 1000; // 1時間
 
 function base64urlToBytes(str: string): Uint8Array {
-  const padded = str.replace(/-/g, '+').replace(/_/g, '/').padEnd(
-    str.length + (4 - (str.length % 4)) % 4,
-    '='
-  );
+  const padded = str
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .padEnd(str.length + ((4 - (str.length % 4)) % 4), "=");
   return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
 }
 
@@ -31,21 +31,21 @@ async function getJwks(authBaseUrl: string): Promise<JwkWithKid[]> {
 
   const res = await fetch(`${authBaseUrl}/.well-known/jwks.json`);
   if (!res.ok) throw new Error(`JWKS fetch failed: ${res.status}`);
-  const { keys } = await res.json() as { keys: JwkWithKid[] };
+  const { keys } = (await res.json()) as { keys: JwkWithKid[] };
   jwksCache = keys;
   jwksCacheExpiry = now + JWKS_CACHE_TTL_MS;
   return keys;
 }
 
 async function getSigningKey(jwk: JwkWithKid): Promise<CryptoKey> {
-  const kid = jwk.kid ?? 'default';
+  const kid = jwk.kid ?? "default";
   if (keyCache.has(kid)) return keyCache.get(kid)!;
   const key = await crypto.subtle.importKey(
-    'jwk',
+    "jwk",
     jwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
+    { name: "ECDSA", namedCurve: "P-256" },
     false,
-    ['verify']
+    ["verify"],
   );
   keyCache.set(kid, key);
   return key;
@@ -53,17 +53,18 @@ async function getSigningKey(jwk: JwkWithKid): Promise<CryptoKey> {
 
 export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWTPayload | null> {
   try {
-    const parts = token.split('.');
+    const parts = token.split(".");
     if (parts.length !== 3) return null;
     const [headerB64, payloadB64, sigB64] = parts;
 
-    const header = JSON.parse(
-      new TextDecoder().decode(base64urlToBytes(headerB64))
-    ) as { alg: string; kid?: string };
-    if (header.alg !== 'ES256') return null;
+    const header = JSON.parse(new TextDecoder().decode(base64urlToBytes(headerB64))) as {
+      alg: string;
+      kid?: string;
+    };
+    if (header.alg !== "ES256") return null;
 
     const payload = JSON.parse(
-      new TextDecoder().decode(base64urlToBytes(payloadB64))
+      new TextDecoder().decode(base64urlToBytes(payloadB64)),
     ) as JWTPayload;
 
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
@@ -77,10 +78,10 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
     const sig = base64urlToBytes(sigB64).buffer as ArrayBuffer;
 
     const valid = await crypto.subtle.verify(
-      { name: 'ECDSA', hash: 'SHA-256' },
+      { name: "ECDSA", hash: "SHA-256" },
       cryptoKey,
       sig,
-      data
+      data,
     );
 
     return valid ? payload : null;
@@ -91,7 +92,7 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
 
 function basicAuthHeader(clientId: string, clientSecret: string): string {
   const creds = new TextEncoder().encode(`${clientId}:${clientSecret}`);
-  const binary = Array.from(creds, (b) => String.fromCharCode(b)).join('');
+  const binary = Array.from(creds, (b) => String.fromCharCode(b)).join("");
   return `Basic ${btoa(binary)}`;
 }
 
@@ -110,41 +111,41 @@ export interface TokenData {
 export async function exchangeCode(code: string, redirectTo: string): Promise<TokenData | null> {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const res = await fetch(`${authBaseUrl}/auth/exchange`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
     },
     body: JSON.stringify({ code, redirect_to: redirectTo }),
   });
   if (!res.ok) return null;
-  const { data } = await res.json() as { data: TokenData };
+  const { data } = (await res.json()) as { data: TokenData };
   return data;
 }
 
 export async function refreshTokens(
-  refreshToken: string
+  refreshToken: string,
 ): Promise<{ access_token: string; refresh_token: string } | null> {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const res = await fetch(`${authBaseUrl}/auth/refresh`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
     },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
   if (!res.ok) return null;
-  const { data } = await res.json() as { data: { access_token: string; refresh_token: string } };
+  const { data } = (await res.json()) as { data: { access_token: string; refresh_token: string } };
   return data;
 }
 
 export async function revokeToken(refreshToken: string): Promise<void> {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   await fetch(`${authBaseUrl}/auth/logout`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
     },
     body: JSON.stringify({ refresh_token: refreshToken }),

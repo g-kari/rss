@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
-import { withSession } from '@/lib/server-auth';
-import { fetchArticles } from '@/cron/fetch';
+import { NextResponse } from "next/server";
+import { withSession } from "@/lib/server-auth";
+import { fetchArticles } from "@/cron/fetch";
 
 export async function POST() {
   return withSession(async ({ session, env }) => {

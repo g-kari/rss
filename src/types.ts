@@ -14,10 +14,10 @@ export interface SelectorConfig {
 
 /** 共有フィードメタデータ — feeds/{feedHash}/meta.json に保存 */
 export interface SharedFeedMeta {
-  feedHash: string;           // sha256Hex(url).slice(0, 16)
-  url: string;                // RSS フィード URL（LLM 生成フィードの場合はサイト URL）
-  title: string;              // RSS XML から取得
-  siteUrl: string;            // RSS XML から取得
+  feedHash: string; // sha256Hex(url).slice(0, 16)
+  url: string; // RSS フィード URL（LLM 生成フィードの場合はサイト URL）
+  title: string; // RSS XML から取得
+  siteUrl: string; // RSS XML から取得
   lastFetchedAt: string | null;
   fetchError: string | null;
   consecutiveErrors?: number;
@@ -40,17 +40,17 @@ export interface SharedFeedMeta {
 
 /** ユーザーの購読情報 — users/{userId}/subscriptions.json の要素 */
 export interface UserSubscription {
-  feedHash: string;       // SharedFeedMeta を参照
-  url: string;            // 表示・重複チェック用
-  customTitle?: string;   // ユーザーが設定したタイトル上書き
-  subscribedAt: string;   // ISO 8601
+  feedHash: string; // SharedFeedMeta を参照
+  url: string; // 表示・重複チェック用
+  customTitle?: string; // ユーザーが設定したタイトル上書き
+  subscribedAt: string; // ISO 8601
 }
 
 /** クライアント向けフィード型（SharedFeedMeta + UserSubscription を合成して返す） */
 export interface Feed {
-  id: string;                   // = feedHash
+  id: string; // = feedHash
   url: string;
-  title: string;                // customTitle ?? meta.title
+  title: string; // customTitle ?? meta.title
   siteUrl: string;
   lastFetchedAt: string | null;
   fetchError: string | null;
@@ -63,9 +63,9 @@ export interface Feed {
 }
 
 export interface Article {
-  id: string;               // sha256Hex(feedUrl + "|" + guid).slice(0, 16) — 決定論的
-  feedHash: string;         // SharedFeedMeta.feedHash を参照（旧 feedId）
-  guid: string;             // RSS XML 由来（サーバー側 dedup 専用）
+  id: string; // sha256Hex(feedUrl + "|" + guid).slice(0, 16) — 決定論的
+  feedHash: string; // SharedFeedMeta.feedHash を参照（旧 feedId）
+  guid: string; // RSS XML 由来（サーバー側 dedup 専用）
   title: string;
   link: string;
   summary: string;
@@ -76,14 +76,14 @@ export interface Article {
   createdAt: string;
 }
 
-export type Layout = 'compact' | 'list' | 'card' | 'magazine';
-export type FontSize = 'small' | 'medium' | 'large';
-export type DateRange = 'all' | 'today' | 'week' | 'month';
-export type AiMode = 'summary' | 'translation';
+export type Layout = "compact" | "list" | "card" | "magazine";
+export type FontSize = "small" | "medium" | "large";
+export type DateRange = "all" | "today" | "week" | "month";
+export type AiMode = "summary" | "translation";
 
 export interface UserProfile {
-  id: string;       // 0g0 内部ユーザーID
-  sub: string;      // ペアワイズ識別子 (JWT sub)
+  id: string; // 0g0 内部ユーザーID
+  sub: string; // ペアワイズ識別子 (JWT sub)
   email: string;
   name: string;
   picture: string | null;
@@ -95,7 +95,7 @@ export interface PushSubscriptionRecord {
   expirationTime: number | null;
   keys: {
     p256dh: string; // base64url — ユーザーエージェントの公開鍵 (65 bytes uncompressed P-256)
-    auth: string;   // base64url — 認証シークレット (16 bytes)
+    auth: string; // base64url — 認証シークレット (16 bytes)
   };
 }
 

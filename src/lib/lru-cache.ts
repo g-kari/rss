@@ -9,7 +9,7 @@
  * set() が呼ばれるたびに即座に書き込むのではなく、次のイベントループで
  * まとめてフラッシュする。これにより連続した set() 呼び出しの I/O を削減する。
  */
-import { STORAGE_KEYS, storageGet, storageSet, storageRemove, storageListKeys } from './storage';
+import { STORAGE_KEYS, storageGet, storageSet, storageRemove, storageListKeys } from "./storage";
 
 export class LruCache {
   private readonly map = new Map<string, string>();

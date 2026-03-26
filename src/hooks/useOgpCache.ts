@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import type { Article } from '../types';
-import { STORAGE_KEYS, storageGet, storageSet } from '../lib/storage';
+import { useState, useEffect, useRef } from "react";
+import type { Article } from "../types";
+import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 
 const MAX_OGP_CACHE_SIZE = 200;
 const FETCH_BATCH_SIZE = 5;
@@ -55,9 +55,10 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
               const next = { ...prev, [a.link]: image };
               // キャッシュが肥大化しないよう最大 200 件に制限
               const keys = Object.keys(next);
-              const result = keys.length > MAX_OGP_CACHE_SIZE
-                ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
-                : next;
+              const result =
+                keys.length > MAX_OGP_CACHE_SIZE
+                  ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
+                  : next;
               storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(result));
               return result;
             });

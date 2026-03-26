@@ -11,6 +11,8 @@
     "deploy": "npm run build:cf && wrangler deploy",
     "typecheck": "tsc --noEmit",
     "lint": "tsgo --noEmit",
+    "check": "vp check",
+    "check:fix": "vp check --fix",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
@@ -36,6 +38,7 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.3",
+    "vite-plus": "^0.1.14",
     "wrangler": "^4.77.0"
   }
 }

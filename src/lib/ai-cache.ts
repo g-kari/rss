@@ -3,8 +3,8 @@
  * キー: ai-cache/{mode}/{SHA-256(plainText)}
  */
 
-import type { AiMode } from '../types';
-import { sha256Hex } from './r2';
+import type { AiMode } from "../types";
+import { sha256Hex } from "./r2";
 
 export async function getAiCache(
   bucket: R2Bucket,
@@ -25,7 +25,7 @@ export async function setAiCache(
 ): Promise<void> {
   const hash = await sha256Hex(plain);
   await bucket.put(`ai-cache/${mode}/${hash}`, result, {
-    httpMetadata: { contentType: 'text/plain; charset=utf-8' },
+    httpMetadata: { contentType: "text/plain; charset=utf-8" },
   });
 }
 
@@ -48,6 +48,6 @@ export async function setAiCacheById(
   result: string,
 ): Promise<void> {
   await bucket.put(`ai-cache/${mode}/id-${articleId}`, result, {
-    httpMetadata: { contentType: 'text/plain; charset=utf-8' },
+    httpMetadata: { contentType: "text/plain; charset=utf-8" },
   });
 }

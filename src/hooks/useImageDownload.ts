@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import type { Article } from '../types';
+import { useState, useCallback } from "react";
+import type { Article } from "../types";
 
 interface ImageDownloadState {
   downloadingImages: boolean;
@@ -10,13 +10,13 @@ interface ImageDownloadState {
 }
 
 function mimeToExt(mime: string): string {
-  if (mime.includes('png')) return 'png';
-  if (mime.includes('gif')) return 'gif';
-  if (mime.includes('webp')) return 'webp';
-  if (mime.includes('avif')) return 'avif';
-  if (mime.includes('bmp')) return 'bmp';
-  if (mime.includes('svg')) return 'svg';
-  return 'jpg';
+  if (mime.includes("png")) return "png";
+  if (mime.includes("gif")) return "gif";
+  if (mime.includes("webp")) return "webp";
+  if (mime.includes("avif")) return "avif";
+  if (mime.includes("bmp")) return "bmp";
+  if (mime.includes("svg")) return "svg";
+  return "jpg";
 }
 
 export function useImageDownload(
@@ -26,7 +26,10 @@ export function useImageDownload(
   showToast?: (msg: string) => void,
 ): ImageDownloadState {
   const [downloadingImages, setDownloadingImages] = useState(false);
-  const [imageDownloadProgress, setImageDownloadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [imageDownloadProgress, setImageDownloadProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
 
   const downloadAllImages = useCallback(async () => {
     if (!article || downloadingImages) return;
@@ -43,10 +46,10 @@ export function useImageDownload(
     }
 
     if (contentRef.current) {
-      for (const img of contentRef.current.querySelectorAll('img')) {
-        const src = img.getAttribute('src') ?? '';
+      for (const img of contentRef.current.querySelectorAll("img")) {
+        const src = img.getAttribute("src") ?? "";
         if (!src || seen.has(src)) continue;
-        if (src.startsWith('/api/image-proxy?') || src.startsWith('http')) {
+        if (src.startsWith("/api/image-proxy?") || src.startsWith("http")) {
           seen.add(src);
           toDownload.push(src);
         }
@@ -54,18 +57,19 @@ export function useImageDownload(
     }
 
     if (toDownload.length === 0) {
-      showToast?.('画像が見つかりませんでした');
+      showToast?.("画像が見つかりませんでした");
       return;
     }
 
     setDownloadingImages(true);
     setImageDownloadProgress({ done: 0, total: toDownload.length });
 
-    const safeTitle = (article.title ?? 'image')
-      .replace(/[^\w\s\u3040-\u9fff\u30a0-\u30ff\u4e00-\u9fff-]/g, '')
-      .trim()
-      .replace(/\s+/g, '-')
-      .slice(0, 40) || 'image';
+    const safeTitle =
+      (article.title ?? "image")
+        .replace(/[^\w\s\u3040-\u9fff\u30a0-\u30ff\u4e00-\u9fff-]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .slice(0, 40) || "image";
 
     let succeeded = 0;
     for (let i = 0; i < toDownload.length; i++) {
@@ -73,14 +77,14 @@ export function useImageDownload(
       try {
         const res = await fetch(toDownload[i]);
         if (!res.ok) continue;
-        const ct = res.headers.get('content-type') ?? 'image/jpeg';
+        const ct = res.headers.get("content-type") ?? "image/jpeg";
         // 透明 GIF（フォールバック画像）はスキップ
-        if (ct === 'image/gif') {
+        if (ct === "image/gif") {
           const clone = res.clone();
           const buf = await clone.arrayBuffer();
           if (buf.byteLength <= 64) continue; // 1×1 透明 GIF は 43 bytes
         }
-        const ext = mimeToExt(ct.split(';')[0].trim());
+        const ext = mimeToExt(ct.split(";")[0].trim());
         const blob = await res.blob();
         // 小さい画像（アイコン・トラッキングピクセル等）を除外
         // createImageBitmap で実寸を確認し、短辺が 100px 未満はスキップ
@@ -93,7 +97,7 @@ export function useImageDownload(
           // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
         }
         const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = blobUrl;
         a.download = `${safeTitle}-${i + 1}.${ext}`;
         document.body.appendChild(a);
@@ -113,7 +117,7 @@ export function useImageDownload(
     if (succeeded > 0) {
       showToast?.(`${succeeded} 枚の画像をダウンロードしました`);
     } else {
-      showToast?.('ダウンロードできる画像がありませんでした');
+      showToast?.("ダウンロードできる画像がありませんでした");
     }
   }, [article, resolvedOgImage, downloadingImages, contentRef, showToast]);
 

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { contentLruCache } from '../lib/lru-cache';
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { contentLruCache } from "../lib/lru-cache";
 
 interface ArticleContentState {
   /** フェッチ済み or キャッシュ済みのコンテンツ（なければ null） */
@@ -20,12 +20,12 @@ export function useArticleContent(
   articleOgImage: string | undefined | null,
 ): ArticleContentState {
   const cachedContent = useMemo(
-    () => (articleId ? contentLruCache.get(articleId) ?? null : null),
+    () => (articleId ? (contentLruCache.get(articleId) ?? null) : null),
     [articleId],
   );
   const [fetchedContent, setFetchedContent] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
-  const [fetchError, setFetchError] = useState('');
+  const [fetchError, setFetchError] = useState("");
   const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
   // fetchFullContent の進行中フェッチを中断するための ref
   const fetchAbortControllerRef = useRef<AbortController | null>(null);
@@ -35,7 +35,7 @@ export function useArticleContent(
     fetchAbortControllerRef.current?.abort();
     fetchAbortControllerRef.current = null;
     setFetchedContent(null);
-    setFetchError('');
+    setFetchError("");
   }, [articleId]);
 
   // OGP 画像の動的解決
@@ -47,39 +47,48 @@ export function useArticleContent(
     const controller = new AbortController();
     fetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
       .then((r) => r.json() as Promise<{ image?: string }>)
-      .then(({ image }) => { if (image) setResolvedOgImage(image); })
-      .catch((err: unknown) => { if (err instanceof Error && err.name === 'AbortError') return; });
+      .then(({ image }) => {
+        if (image) setResolvedOgImage(image);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+      });
     return () => controller.abort();
   }, [articleId, articleLink, articleOgImage]);
 
-  const fetchFullContent = useCallback(async (onFetched?: (content: string) => void) => {
-    if (!articleLink) return;
-    // 前の全文フェッチが進行中なら中断
-    fetchAbortControllerRef.current?.abort();
-    const controller = new AbortController();
-    fetchAbortControllerRef.current = controller;
-    setFetching(true);
-    setFetchError('');
-    try {
-      const res = await fetch(`/api/content?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal });
-      const data = await res.json() as { content?: string; error?: string };
-      if (data.content) {
-        if (articleId) contentLruCache.set(articleId, data.content);
-        setFetchedContent(data.content);
-        onFetched?.(data.content);
-      } else {
-        setFetchError(data.error ?? '取得できませんでした');
+  const fetchFullContent = useCallback(
+    async (onFetched?: (content: string) => void) => {
+      if (!articleLink) return;
+      // 前の全文フェッチが進行中なら中断
+      fetchAbortControllerRef.current?.abort();
+      const controller = new AbortController();
+      fetchAbortControllerRef.current = controller;
+      setFetching(true);
+      setFetchError("");
+      try {
+        const res = await fetch(`/api/content?url=${encodeURIComponent(articleLink)}`, {
+          signal: controller.signal,
+        });
+        const data = (await res.json()) as { content?: string; error?: string };
+        if (data.content) {
+          if (articleId) contentLruCache.set(articleId, data.content);
+          setFetchedContent(data.content);
+          onFetched?.(data.content);
+        } else {
+          setFetchError(data.error ?? "取得できませんでした");
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setFetchError("ネットワークエラー");
+      } finally {
+        if (fetchAbortControllerRef.current === controller) {
+          fetchAbortControllerRef.current = null;
+          setFetching(false);
+        }
       }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      setFetchError('ネットワークエラー');
-    } finally {
-      if (fetchAbortControllerRef.current === controller) {
-        fetchAbortControllerRef.current = null;
-        setFetching(false);
-      }
-    }
-  }, [articleId, articleLink]);
+    },
+    [articleId, articleLink],
+  );
 
   const storedContent = fetchedContent ?? cachedContent;
 

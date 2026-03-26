@@ -3,9 +3,7 @@ main = "./worker.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 
-routes = [
-  { pattern = "rss.0g0.xyz", custom_domain = true }
-]
+routes = [{ pattern = "rss.0g0.xyz", custom_domain = true }]
 
 [assets]
 directory = ".open-next/assets"

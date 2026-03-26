@@ -1,45 +1,45 @@
-import type { NextConfig } from 'next';
-import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 initOpenNextCloudflareForDev();
 
 const securityHeaders = [
   {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff',
+    key: "X-Content-Type-Options",
+    value: "nosniff",
   },
   {
-    key: 'X-Frame-Options',
-    value: 'DENY',
+    key: "X-Frame-Options",
+    value: "DENY",
   },
   {
     // レガシーな XSS フィルター（IE/旧 Safari）を明示的に無効化する。
     // Chrome v78 以降はこのヘッダーを完全削除済みで影響なし。
     // 一方、有効にするとフィルター自体が情報漏洩に悪用されるリスクがあるため 0 を設定する。
     // XSS 対策は Content-Security-Policy で行う。
-    key: 'X-XSS-Protection',
-    value: '0',
+    key: "X-XSS-Protection",
+    value: "0",
   },
   {
     // クロスオリジンのウィンドウが opener 参照を通じて本ウィンドウを操作するのを防ぐ。
     // OAuth2 フローは popup ではなくリダイレクトを使用しているため safe。
-    key: 'Cross-Origin-Opener-Policy',
-    value: 'same-origin',
+    key: "Cross-Origin-Opener-Policy",
+    value: "same-origin",
   },
   {
-    key: 'Referrer-Policy',
-    value: 'strict-origin-when-cross-origin',
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
   },
   {
-    key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=()',
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=()",
   },
   {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=63072000; includeSubDomains; preload',
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
   },
   {
-    key: 'Content-Security-Policy',
+    key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
       // スクリプト: self + インラインは Next.js hydration に必要
@@ -64,7 +64,7 @@ const securityHeaders = [
       "base-uri 'self'",
       // フォーム: self のみ
       "form-action 'self'",
-    ].join('; '),
+    ].join("; "),
   },
 ];
 
@@ -72,7 +72,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: "/:path*",
         headers: securityHeaders,
       },
     ];

@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { STORAGE_KEYS, storageGet, storageSet } from '../lib/storage';
+import { useState, useCallback } from "react";
+import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 
 const MAX_HISTORY = 10;
 

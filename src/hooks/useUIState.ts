@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Layout, FontSize } from '../types';
-import { STORAGE_KEYS, storageGet, storageSet, loadSet, saveSet } from '../lib/storage';
+import { useState, useEffect, useCallback, useRef } from "react";
+import type { Layout, FontSize } from "../types";
+import { STORAGE_KEYS, storageGet, storageSet, loadSet, saveSet } from "../lib/storage";
 
-export type Theme = 'light' | 'dark';
-export type MobilePane = 'sidebar' | 'list' | 'view';
+export type Theme = "light" | "dark";
+export type MobilePane = "sidebar" | "list" | "view";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 function loadStoredEnum<T extends string>(key: string, valid: readonly T[], fallback: T): T {
@@ -17,16 +17,16 @@ function loadStoredEnum<T extends string>(key: string, valid: readonly T[], fall
   return valid.includes(stored as T) ? (stored as T) : fallback;
 }
 
-const LAYOUTS = ['compact', 'list', 'card', 'magazine'] as const;
-const FONT_SIZES = ['small', 'medium', 'large'] as const;
+const LAYOUTS = ["compact", "list", "card", "magazine"] as const;
+const FONT_SIZES = ["small", "medium", "large"] as const;
 
-const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUTS, 'list' as Layout);
-const loadFontSize = () => loadStoredEnum(STORAGE_KEYS.FONT_SIZE, FONT_SIZES, 'medium' as FontSize);
+const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUTS, "list" as Layout);
+const loadFontSize = () => loadStoredEnum(STORAGE_KEYS.FONT_SIZE, FONT_SIZES, "medium" as FontSize);
 
 function loadTheme(): Theme {
   const stored = storageGet(STORAGE_KEYS.THEME);
-  if (stored === 'light' || stored === 'dark') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
@@ -62,7 +62,9 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
-    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
   }, []);
 
   // テーマを DOM に同期
@@ -75,10 +77,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   useEffect(() => {
     const prev = prevMobilePaneRef.current;
     if (
-      (prev === 'sidebar' && mobilePane === 'list') ||
-      (prev === 'list' && mobilePane === 'view')
+      (prev === "sidebar" && mobilePane === "list") ||
+      (prev === "list" && mobilePane === "view")
     ) {
-      window.history.pushState({ mobilePane }, '');
+      window.history.pushState({ mobilePane }, "");
     }
     prevMobilePaneRef.current = mobilePane;
   }, [mobilePane]);
@@ -87,13 +89,13 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   useEffect(() => {
     function onPopState() {
       setMobilePane((current) => {
-        if (current === 'view') return 'list';
-        if (current === 'list') return 'sidebar';
+        if (current === "view") return "list";
+        if (current === "list") return "sidebar";
         return current;
       });
     }
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   // PWA インストールプロンプトを捕捉（Chrome / Android）
@@ -102,23 +104,23 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
     }
-    window.addEventListener('beforeinstallprompt', onBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
   }, []);
 
   // ? キーでヘルプトグル
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === '?') setShowHelp((v) => !v);
-      if (e.key === 'Escape') setShowHelp(false);
+      if (e.key === "?") setShowHelp((v) => !v);
+      if (e.key === "Escape") setShowHelp(false);
     }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+    setTheme((t) => (t === "light" ? "dark" : "light"));
   }, []);
 
   const onChangeFontSize = useCallback((size: FontSize) => {
@@ -134,7 +136,11 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const togglePinFeed = useCallback((feedId: string) => {
     setPinnedFeedIds((prev) => {
       const next = new Set(prev);
-      next.has(feedId) ? next.delete(feedId) : next.add(feedId);
+      if (next.has(feedId)) {
+        next.delete(feedId);
+      } else {
+        next.add(feedId);
+      }
       saveSet(STORAGE_KEYS.PINNED_FEED_IDS, next);
       return next;
     });
@@ -150,7 +156,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     if (!installPrompt) return;
     await installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') setInstallPrompt(null);
+    if (outcome === "accepted") setInstallPrompt(null);
   }, [installPrompt]);
 
   return {

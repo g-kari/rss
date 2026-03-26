@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import FeedSidebar from './components/FeedSidebar';
-import ArticleList from './components/ArticleList';
-import ArticleView from './components/ArticleView';
-import ErrorBoundary from './components/ErrorBoundary';
-import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
-import type { Article } from './types';
-import { useAuth } from './hooks/useAuth';
-import { useFeeds } from './hooks/useFeeds';
-import { useReadState } from './hooks/useReadState';
-import { usePushNotifications } from './hooks/usePushNotifications';
-import { useKeyboardNav } from './hooks/useKeyboardNav';
-import { useFilteredArticles } from './hooks/useFilteredArticles';
-import { useUIState } from './hooks/useUIState';
-import { updateFaviconBadge } from './lib/favicon';
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import FeedSidebar from "./components/FeedSidebar";
+import ArticleList from "./components/ArticleList";
+import ArticleView from "./components/ArticleView";
+import ErrorBoundary from "./components/ErrorBoundary";
+import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
+import type { Article } from "./types";
+import { useAuth } from "./hooks/useAuth";
+import { useFeeds } from "./hooks/useFeeds";
+import { useReadState } from "./hooks/useReadState";
+import { usePushNotifications } from "./hooks/usePushNotifications";
+import { useKeyboardNav } from "./hooks/useKeyboardNav";
+import { useFilteredArticles } from "./hooks/useFilteredArticles";
+import { useUIState } from "./hooks/useUIState";
+import { updateFaviconBadge } from "./lib/favicon";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -23,11 +23,11 @@ export default function App() {
 
   const { user, betaRestricted } = useAuth();
 
-  const initialMobilePane = searchParams.get('article')
-    ? 'view'
-    : searchParams.get('feed')
-      ? 'list'
-      : 'sidebar';
+  const initialMobilePane = searchParams.get("article")
+    ? "view"
+    : searchParams.get("feed")
+      ? "list"
+      : "sidebar";
 
   const {
     theme,
@@ -47,22 +47,54 @@ export default function App() {
     setShowHelp,
   } = useUIState(initialMobilePane);
 
-  const { feeds, articles, loadingArticles, refreshing, newArticleCount, loadedFeedPages, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles, loadMoreFeedArticles } = useFeeds(user, showToast);
-  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, toggle: togglePush } = usePushNotifications(user);
+  const {
+    feeds,
+    articles,
+    loadingArticles,
+    refreshing,
+    newArticleCount,
+    loadedFeedPages,
+    onFeedAdded,
+    removeFeed,
+    updateFeed,
+    replaceFeeds,
+    refreshFeeds,
+    retryFeed,
+    dismissNewArticles,
+    loadMoreFeedArticles,
+  } = useFeeds(user, showToast);
+  const {
+    supported: pushSupported,
+    subscribed: pushSubscribed,
+    loading: pushLoading,
+    error: pushError,
+    toggle: togglePush,
+  } = usePushNotifications(user);
 
-  const { readIds, bookmarkIds, readingListIds, markRead, markAllRead, toggleRead, toggleBookmark, toggleReadingList } = useReadState(user, articles);
-  const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() => searchParams.get('feed'));
+  const {
+    readIds,
+    bookmarkIds,
+    readingListIds,
+    markRead,
+    markAllRead,
+    toggleRead,
+    toggleBookmark,
+    toggleReadingList,
+  } = useReadState(user, articles);
+  const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() =>
+    searchParams.get("feed"),
+  );
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   // URL から復元すべき記事 ID（記事ロード完了後に解決）
-  const pendingArticleIdRef = useRef<string | null>(searchParams.get('article'));
+  const pendingArticleIdRef = useRef<string | null>(searchParams.get("article"));
 
   // 選択状態を URL クエリパラメータに同期（リロード復元用）
   useEffect(() => {
     const params = new URLSearchParams();
-    if (selectedFeedId) params.set('feed', selectedFeedId);
-    if (selectedArticle) params.set('article', selectedArticle.id);
+    if (selectedFeedId) params.set("feed", selectedFeedId);
+    if (selectedArticle) params.set("article", selectedArticle.id);
     const search = params.toString();
-    router.replace(search ? `/?${search}` : '/');
+    router.replace(search ? `/?${search}` : "/");
   }, [selectedFeedId, selectedArticle, router]);
 
   // 記事ロード完了後に URL の article パラメータを復元
@@ -83,7 +115,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    document.title = totalUnread > 0 ? `(${totalUnread}) RSS Reader` : 'RSS Reader';
+    document.title = totalUnread > 0 ? `(${totalUnread}) RSS Reader` : "RSS Reader";
     updateFaviconBadge(totalUnread).catch(() => {});
   }, [totalUnread]);
 
@@ -122,7 +154,14 @@ export default function App() {
     updateQuery,
     searchRef,
     sentinelRef,
-  } = useFilteredArticles({ articles, feedId: selectedFeedId, readIds, bookmarkIds, readingListIds, selectedArticleId: selectedArticle?.id });
+  } = useFilteredArticles({
+    articles,
+    feedId: selectedFeedId,
+    readIds,
+    bookmarkIds,
+    readingListIds,
+    selectedArticleId: selectedArticle?.id,
+  });
 
   const currentIndex = useMemo(
     () => (selectedArticle ? filtered.findIndex((a) => a.id === selectedArticle.id) : -1),
@@ -131,20 +170,24 @@ export default function App() {
 
   // 特定フィードを表示中かつ、サーバー側に未取得ページが残っているか
   const feedHasMorePages = useMemo(() => {
-    if (!selectedFeedId || selectedFeedId.startsWith('__')) return false;
+    if (!selectedFeedId || selectedFeedId.startsWith("__")) return false;
     const feed = feeds.find((f) => f.id === selectedFeedId);
     if (!feed?.pageCount) return false;
     const loadedPage = loadedFeedPages.get(selectedFeedId) ?? 1;
     return loadedPage <= feed.pageCount;
   }, [selectedFeedId, feeds, loadedFeedPages]);
   const prevArticle = currentIndex > 0 ? filtered[currentIndex - 1] : null;
-  const nextArticle = currentIndex >= 0 && currentIndex < filtered.length - 1 ? filtered[currentIndex + 1] : null;
+  const nextArticle =
+    currentIndex >= 0 && currentIndex < filtered.length - 1 ? filtered[currentIndex + 1] : null;
 
-  const selectArticle = useCallback((article: Article) => {
-    setSelectedArticle(article);
-    markRead(article.id);
-    setMobilePane('view');
-  }, [markRead]);
+  const selectArticle = useCallback(
+    (article: Article) => {
+      setSelectedArticle(article);
+      markRead(article.id);
+      setMobilePane("view");
+    },
+    [markRead],
+  );
 
   useKeyboardNav({
     filteredArticles: filtered,
@@ -193,16 +236,38 @@ export default function App() {
   if (betaRestricted) {
     return (
       <div className="min-h-screen bg-surface-base font-sans antialiased flex flex-col items-center justify-center px-8 text-center">
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="mb-6 text-text-faint">
-          <rect width="40" height="40" rx="10" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeOpacity="0.2" strokeWidth="1"/>
-          <path d="M20 12v9M20 27v2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+        <svg
+          width="40"
+          height="40"
+          viewBox="0 0 40 40"
+          fill="none"
+          className="mb-6 text-text-faint"
+        >
+          <rect
+            width="40"
+            height="40"
+            rx="10"
+            fill="currentColor"
+            fillOpacity="0.08"
+            stroke="currentColor"
+            strokeOpacity="0.2"
+            strokeWidth="1"
+          />
+          <path
+            d="M20 12v9M20 27v2"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
         </svg>
         <p className="text-[11px] tracking-[0.3em] uppercase text-text-faint mb-4">Beta Access</p>
         <h1 className="text-[28px] font-light text-text-strong tracking-[-0.01em] mb-3">
           現在クローズドベータ中です
         </h1>
         <p className="text-[14px] text-text-muted leading-relaxed max-w-xs mb-8">
-          このサービスは招待制のベータ版です。<br />アクセス権限をお持ちでない場合はご連絡ください。
+          このサービスは招待制のベータ版です。
+          <br />
+          アクセス権限をお持ちでない場合はご連絡ください。
         </p>
         <a
           href="/api/auth/login"
@@ -221,13 +286,42 @@ export default function App() {
         {/* ヘッダー */}
         <header className="px-8 py-4 flex items-center justify-between border-b border-border-subtle">
           <div className="flex items-center gap-2">
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" className="text-text-strong">
-              <rect width="22" height="22" rx="5" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeOpacity="0.2" strokeWidth="0.8"/>
-              <circle cx="6" cy="16" r="2.5" fill="currentColor"/>
-              <path d="M6 10.5 A5.5 5.5 0 0 1 11.5 16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
-              <path d="M6 5.5 A10.5 10.5 0 0 1 16.5 16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 22 22"
+              fill="none"
+              className="text-text-strong"
+            >
+              <rect
+                width="22"
+                height="22"
+                rx="5"
+                fill="currentColor"
+                fillOpacity="0.08"
+                stroke="currentColor"
+                strokeOpacity="0.2"
+                strokeWidth="0.8"
+              />
+              <circle cx="6" cy="16" r="2.5" fill="currentColor" />
+              <path
+                d="M6 10.5 A5.5 5.5 0 0 1 11.5 16"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+              />
+              <path
+                d="M6 5.5 A10.5 10.5 0 0 1 16.5 16"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+              />
             </svg>
-            <span className="text-[13px] font-medium tracking-[0.04em] text-text-strong">RSS Reader</span>
+            <span className="text-[13px] font-medium tracking-[0.04em] text-text-strong">
+              RSS Reader
+            </span>
           </div>
           <a
             href="/api/auth/login"
@@ -244,35 +338,51 @@ export default function App() {
           </p>
           <h1
             className="text-[52px] sm:text-[64px] font-light text-text-strong tracking-[-0.02em] leading-[1.1] mb-5 animate-fade-up"
-            style={{ animationDelay: '60ms' }}
+            style={{ animationDelay: "60ms" }}
           >
-            シンプルな<br />RSS リーダー
+            シンプルな
+            <br />
+            RSS リーダー
           </h1>
           <p
             className="text-[16px] text-text-muted leading-relaxed mb-10 max-w-sm animate-fade-up"
-            style={{ animationDelay: '120ms' }}
+            style={{ animationDelay: "120ms" }}
           >
-            AI 要約・翻訳、4 種のレイアウト、<br />ダーク / ライトテーマ対応
+            AI 要約・翻訳、4 種のレイアウト、
+            <br />
+            ダーク / ライトテーマ対応
           </p>
           <a
             href="/api/auth/login"
             className="animate-fade-up inline-flex items-center gap-2 px-8 py-3 bg-ink hover:bg-ink-hover text-ink-text text-[13px] tracking-[0.06em] rounded-full transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
-            style={{ animationDelay: '180ms' }}
+            style={{ animationDelay: "180ms" }}
           >
             0g0 ID でログイン
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 7h10M8 3l4 4-4 4"/>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 7h10M8 3l4 4-4 4" />
             </svg>
           </a>
         </main>
 
         {/* 機能カード */}
-        <section className="px-8 pb-16 w-full max-w-2xl mx-auto animate-fade-up" style={{ animationDelay: '240ms' }}>
+        <section
+          className="px-8 pb-16 w-full max-w-2xl mx-auto animate-fade-up"
+          style={{ animationDelay: "240ms" }}
+        >
           <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: '◐', title: 'テーマ', desc: 'ダーク / ライト' },
-              { icon: '⊞', title: 'レイアウト', desc: '4 種類' },
-              { icon: '✦', title: 'AI 機能', desc: '要約・翻訳' },
+              { icon: "◐", title: "テーマ", desc: "ダーク / ライト" },
+              { icon: "⊞", title: "レイアウト", desc: "4 種類" },
+              { icon: "✦", title: "AI 機能", desc: "要約・翻訳" },
             ].map((f) => (
               <div
                 key={f.title}
@@ -297,7 +407,7 @@ export default function App() {
   return (
     <div
       className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
-      style={{ gridTemplateColumns: '200px 360px 1fr', gridTemplateRows: '100%' }}
+      style={{ gridTemplateColumns: "200px 360px 1fr", gridTemplateRows: "100%" }}
     >
       {/* トースト通知 */}
       {toast && (
@@ -317,98 +427,120 @@ export default function App() {
             className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
             aria-label="通知を閉じる"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <path d="M2 2l8 8M10 2l-8 8"/>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <path d="M2 2l8 8M10 2l-8 8" />
             </svg>
           </button>
         </div>
       )}
-      <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'sidebar' ? 'hidden lg:block' : ''}`}>
+      <div
+        className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "sidebar" ? "hidden lg:block" : ""}`}
+      >
         <ErrorBoundary label="サイドバー">
-        <FeedSidebar
-          feeds={feeds}
-          articles={articles}
-          readIds={readIds}
-          bookmarkCount={bookmarkCount}
-          readingListCount={readingListCount}
-          selectedFeedId={selectedFeedId}
-          user={user}
-          theme={theme}
-          onSelectFeed={(id) => {
-            setSelectedFeedId(id);
-            setSelectedArticle(null);
-            setMobilePane('list');
-          }}
-          onFeedAdded={onFeedAdded}
-          onFeedDeleted={onFeedDeleted}
-          onFeedRenamed={updateFeed}
-          onFeedsImported={replaceFeeds}
-          onMarkAllRead={markAllRead}
-          onToggleTheme={toggleTheme}
-          onRefresh={refreshFeeds}
-          onRetryFeed={retryFeed}
-          refreshing={refreshing}
-          pinnedFeedIds={pinnedFeedIds}
-          onTogglePinFeed={togglePinFeed}
-          install={install}
-          push={{ supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, onToggle: togglePush }}
-        />
+          <FeedSidebar
+            feeds={feeds}
+            articles={articles}
+            readIds={readIds}
+            bookmarkCount={bookmarkCount}
+            readingListCount={readingListCount}
+            selectedFeedId={selectedFeedId}
+            user={user}
+            theme={theme}
+            onSelectFeed={(id) => {
+              setSelectedFeedId(id);
+              setSelectedArticle(null);
+              setMobilePane("list");
+            }}
+            onFeedAdded={onFeedAdded}
+            onFeedDeleted={onFeedDeleted}
+            onFeedRenamed={updateFeed}
+            onFeedsImported={replaceFeeds}
+            onMarkAllRead={markAllRead}
+            onToggleTheme={toggleTheme}
+            onRefresh={refreshFeeds}
+            onRetryFeed={retryFeed}
+            refreshing={refreshing}
+            pinnedFeedIds={pinnedFeedIds}
+            onTogglePinFeed={togglePinFeed}
+            install={install}
+            push={{
+              supported: pushSupported,
+              subscribed: pushSubscribed,
+              loading: pushLoading,
+              error: pushError,
+              onToggle: togglePush,
+            }}
+          />
         </ErrorBoundary>
       </div>
-      <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'list' ? 'hidden lg:block' : ''}`}>
+      <div
+        className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""}`}
+      >
         <ErrorBoundary label="記事一覧">
-        <ArticleList
-          feeds={feeds}
-          readIds={readIds}
-          bookmarkIds={bookmarkIds}
-          selectedArticleId={selectedArticle?.id ?? null}
-          selectedFeedId={selectedFeedId}
-          layout={layout}
-          loading={loadingArticles}
-          onChangeLayout={onChangeLayout}
-          onMobileBack={() => setMobilePane('sidebar')}
-          onSelectArticle={selectArticle}
-          onToggleRead={toggleRead}
-          onToggleBookmark={toggleBookmark}
-          onMarkAllRead={() => markAllRead(selectedFeedId)}
-          filtered={filtered}
-          visible={visible}
-          hasMore={hasMore}
-          unreadOnly={unreadOnly}
-          toggleUnreadOnly={toggleUnreadOnly}
-          bookmarkOnly={bookmarkOnly}
-          toggleBookmarkOnly={toggleBookmarkOnly}
-          sortOrder={sortOrder}
-          toggleSortOrder={toggleSortOrder}
-          dateRange={dateRange}
-          cycleDateRange={cycleDateRange}
-          query={query}
-          rawQuery={rawQuery}
-          updateQuery={updateQuery}
-          searchRef={searchRef}
-          sentinelRef={sentinelRef}
-          feedHasMorePages={feedHasMorePages}
-          onLoadMoreFeedArticles={selectedFeedId ? () => loadMoreFeedArticles(selectedFeedId) : undefined}
-        />
+          <ArticleList
+            feeds={feeds}
+            readIds={readIds}
+            bookmarkIds={bookmarkIds}
+            selectedArticleId={selectedArticle?.id ?? null}
+            selectedFeedId={selectedFeedId}
+            layout={layout}
+            loading={loadingArticles}
+            onChangeLayout={onChangeLayout}
+            onMobileBack={() => setMobilePane("sidebar")}
+            onSelectArticle={selectArticle}
+            onToggleRead={toggleRead}
+            onToggleBookmark={toggleBookmark}
+            onMarkAllRead={() => markAllRead(selectedFeedId)}
+            filtered={filtered}
+            visible={visible}
+            hasMore={hasMore}
+            unreadOnly={unreadOnly}
+            toggleUnreadOnly={toggleUnreadOnly}
+            bookmarkOnly={bookmarkOnly}
+            toggleBookmarkOnly={toggleBookmarkOnly}
+            sortOrder={sortOrder}
+            toggleSortOrder={toggleSortOrder}
+            dateRange={dateRange}
+            cycleDateRange={cycleDateRange}
+            query={query}
+            rawQuery={rawQuery}
+            updateQuery={updateQuery}
+            searchRef={searchRef}
+            sentinelRef={sentinelRef}
+            feedHasMorePages={feedHasMorePages}
+            onLoadMoreFeedArticles={
+              selectedFeedId ? () => loadMoreFeedArticles(selectedFeedId) : undefined
+            }
+          />
         </ErrorBoundary>
       </div>
-      <div className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== 'view' ? 'hidden lg:block' : ''}`}>
+      <div
+        className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "view" ? "hidden lg:block" : ""}`}
+      >
         <ErrorBoundary label="記事表示">
-        <ArticleView
-          article={selectedArticle}
-          isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
-          onToggleBookmark={toggleBookmark}
-          isInReadingList={selectedArticle ? readingListIds.has(selectedArticle.id) : false}
-          onToggleReadingList={toggleReadingList}
-          onMobileBack={() => setMobilePane('list')}
-          fontSize={fontSize}
-          onChangeFontSize={onChangeFontSize}
-          showToast={showToast}
-          prevArticle={prevArticle}
-          nextArticle={nextArticle}
-          onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
-          onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
-        />
+          <ArticleView
+            article={selectedArticle}
+            isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
+            onToggleBookmark={toggleBookmark}
+            isInReadingList={selectedArticle ? readingListIds.has(selectedArticle.id) : false}
+            onToggleReadingList={toggleReadingList}
+            onMobileBack={() => setMobilePane("list")}
+            fontSize={fontSize}
+            onChangeFontSize={onChangeFontSize}
+            showToast={showToast}
+            prevArticle={prevArticle}
+            nextArticle={nextArticle}
+            onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
+            onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
+          />
         </ErrorBoundary>
       </div>
     </div>

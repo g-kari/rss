@@ -17,15 +17,15 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 
 ## スタック
 
-| レイヤー | 技術 |
-|---|---|
-| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare |
-| フロントエンド | React 19 + TypeScript + Tailwind v4 (`'use client'`) |
-| API | Next.js Route Handlers (`app/api/**`) |
-| 認証 | 0g0 ID (OAuth2 + ES256 JWT) |
-| データ | R2 (`rss-reader-data`) — ユーザー別 JSON |
-| AI | Workers AI (要約・翻訳) |
-| デプロイ | Cloudflare Workers の CI/CD (master push → 自動ビルド＆デプロイ) |
+| レイヤー       | 技術                                                             |
+| -------------- | ---------------------------------------------------------------- |
+| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare                   |
+| フロントエンド | React 19 + TypeScript + Tailwind v4 (`'use client'`)             |
+| API            | Next.js Route Handlers (`app/api/**`)                            |
+| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                      |
+| データ         | R2 (`rss-reader-data`) — ユーザー別 JSON                         |
+| AI             | Workers AI (要約・翻訳)                                          |
+| デプロイ       | Cloudflare Workers の CI/CD (master push → 自動ビルド＆デプロイ) |
 
 ## ディレクトリ
 
@@ -114,12 +114,12 @@ src/
 
 ### キャッシュ層の使い分け
 
-| 対象 | キャッシュ層 | TTL | 実装場所 |
-|---|---|---|---|
-| 記事全文 | **Cloudflare Cache API** | 7日 | `app/api/content/route.ts` |
-| OGP 画像 URL | **Cloudflare Cache API** | 30日 | `app/api/ogp/route.ts` |
-| AI 要約 | **R2** (`ai-cache/summary/{sha256}`) | 永続 | `app/api/ai/summarize/route.ts` |
-| AI 翻訳 | **R2** (`ai-cache/translation/{sha256}`) | 永続 | `app/api/ai/translate/route.ts` |
+| 対象         | キャッシュ層                             | TTL  | 実装場所                        |
+| ------------ | ---------------------------------------- | ---- | ------------------------------- |
+| 記事全文     | **Cloudflare Cache API**                 | 7日  | `app/api/content/route.ts`      |
+| OGP 画像 URL | **Cloudflare Cache API**                 | 30日 | `app/api/ogp/route.ts`          |
+| AI 要約      | **R2** (`ai-cache/summary/{sha256}`)     | 永続 | `app/api/ai/summarize/route.ts` |
+| AI 翻訳      | **R2** (`ai-cache/translation/{sha256}`) | 永続 | `app/api/ai/translate/route.ts` |
 
 **R2 は使わない** — 揮発性のキャッシュには Cloudflare Cache API (`caches.default`) を使う。R2 は永続データ（ユーザーデータ・AI 結果）専用。
 
@@ -142,7 +142,7 @@ const content = await fetchFromOrigin(url);
 
 // ③ キャッシュ保存（fire-and-forget）
 const cacheRes = new Response(JSON.stringify({ content }), {
-  headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${TTL_SEC}` },
+  headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${TTL_SEC}` },
 });
 ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
 ```
@@ -233,10 +233,10 @@ npx playwright test e2e/xxx.spec.ts     # 特定ファイルのみ
 npm run test:e2e:ui                     # UI モードでデバッグ
 ```
 
-| ファイル | 対象 |
-|---|---|
-| `e2e/landing.spec.ts` | 未ログイン時のランディングページ |
-| `e2e/api-health.spec.ts` | API エンドポイントの基本動作・認証ガード |
+| ファイル                         | 対象                                       |
+| -------------------------------- | ------------------------------------------ |
+| `e2e/landing.spec.ts`            | 未ログイン時のランディングページ           |
+| `e2e/api-health.spec.ts`         | API エンドポイントの基本動作・認証ガード   |
 | `e2e/content-extraction.spec.ts` | 全文取得 `extractMainContent` の回帰テスト |
 
 新しいバグ修正を行った場合は、そのバグを再現するテストケースを `e2e/` に追加してから修正すること。
@@ -273,9 +273,9 @@ sanitizeHtml           → XSS 対策（<script>/<style>/<link>/イベントハ�
 
 ## 必要なシークレット
 
-| キー | 設定方法 |
-|---|---|
-| `CLIENT_ID` | `npx wrangler secret put CLIENT_ID` |
+| キー            | 設定方法                                |
+| --------------- | --------------------------------------- |
+| `CLIENT_ID`     | `npx wrangler secret put CLIENT_ID`     |
 | `CLIENT_SECRET` | `npx wrangler secret put CLIENT_SECRET` |
 
 ## @opennextjs/cloudflare 制約事項（必読）

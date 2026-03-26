@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import type { AiMode } from '../types';
-import { aiLruCache } from '../lib/lru-cache';
+import { useState, useCallback, useEffect, useRef } from "react";
+import type { AiMode } from "../types";
+import { aiLruCache } from "../lib/lru-cache";
 
 interface ArticleAiState {
   aiResult: { mode: AiMode; text: string } | null;
@@ -16,19 +16,21 @@ interface ArticleAiState {
 export function useArticleAi(articleId: string | undefined): ArticleAiState {
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
-  const [aiError, setAiError] = useState('');
+  const [aiError, setAiError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
   const resetAi = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     setAiResult(null);
-    setAiError('');
+    setAiError("");
     setAiLoading(null);
   }, []);
 
   // 記事が変わったら進行中のリクエストをキャンセルして AI 状態を自動リセットする
-  useEffect(() => { resetAi(); }, [articleId, resetAi]);
+  useEffect(() => {
+    resetAi();
+  }, [articleId, resetAi]);
 
   const doRunAi = useCallback(async (mode: AiMode, url: string, currentArticleId?: string) => {
     if (!url.trim()) return;
@@ -48,12 +50,12 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
     abortRef.current = controller;
 
     setAiLoading(mode);
-    setAiError('');
+    setAiError("");
     try {
-      const endpoint = mode === 'summary' ? '/api/ai/summarize' : '/api/ai/translate';
+      const endpoint = mode === "summary" ? "/api/ai/summarize" : "/api/ai/translate";
       const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, articleId: currentArticleId }),
         signal: controller.signal,
       });
@@ -64,11 +66,11 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
       } else if (data.error) {
         setAiError(data.error);
       } else {
-        setAiError('AI の処理に失敗しました');
+        setAiError("AI の処理に失敗しました");
       }
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      setAiError('AI の処理に失敗しました');
+      if (err instanceof Error && err.name === "AbortError") return;
+      setAiError("AI の処理に失敗しました");
     } finally {
       setAiLoading(null);
     }

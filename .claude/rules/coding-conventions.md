@@ -28,9 +28,9 @@
 
 ```typescript
 // app/api/example/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { withSession, parseJsonBody } from '@/lib/server-auth';
-import { r2Get, r2Put } from '@/lib/r2';
+import { NextRequest, NextResponse } from "next/server";
+import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { r2Get, r2Put } from "@/lib/r2";
 
 // GET: データ取得
 export async function GET() {
@@ -65,7 +65,7 @@ const AUTH_BASE_URL = process.env.AUTH_BASE_URL!;
 
 // Cloudflare バインディング (R2, AI) → getCloudflareContext()
 const { env } = await getCloudflareContext({ async: true });
-env.RSS_DATA.get('key');
+env.RSS_DATA.get("key");
 ```
 
 ## React
@@ -83,7 +83,7 @@ env.RSS_DATA.get('key');
 // src/hooks/useFeeds.ts
 useEffect(() => {
   if (!user) return;
-  fetch('/api/feeds')
+  fetch("/api/feeds")
     .then((r) => r.json() as Promise<Feed[]>)
     .then(setFeeds)
     .catch(console.error);
@@ -107,14 +107,14 @@ const filtered = useMemo(() => {
 ```typescript
 // セッション取得 (cookie から JWT 検証 + 自動リフレッシュ)
 const result = await requireSession();
-if ('error' in result) return result.error;  // 401 NextResponse
+if ("error" in result) return result.error; // 401 NextResponse
 const { session } = result;
 
 // リフレッシュされたトークンをレスポンスに付与
 return applyRefreshedTokens(NextResponse.json(data), session);
 
 // ベータアクセス確認 (process.env.BETA_ALLOWED_SUBS)
-if (!isBetaAllowed(session.sub)) return NextResponse.redirect('/');
+if (!isBetaAllowed(session.sub)) return NextResponse.redirect("/");
 ```
 
 ## R2 ヘルパー (`src/lib/r2.ts`)
@@ -145,13 +145,13 @@ const hash = await sha256Hex(url);
 
 ## 命名規則
 
-| 対象 | 規則 | 例 |
-|---|---|---|
-| 型・インターフェース | PascalCase | `Feed`, `Article`, `AuthSession` |
-| React コンポーネント | PascalCase | `FeedSidebar`, `ArticleList` |
-| 関数・変数 | camelCase | `markRead`, `selectedFeedId` |
-| JSON フィールド | camelCase | `feedId`, `publishedAt`, `siteUrl` |
-| Route Handler ファイル | `route.ts` (Next.js 規約) | `app/api/feeds/route.ts` |
+| 対象                   | 規則                      | 例                                 |
+| ---------------------- | ------------------------- | ---------------------------------- |
+| 型・インターフェース   | PascalCase                | `Feed`, `Article`, `AuthSession`   |
+| React コンポーネント   | PascalCase                | `FeedSidebar`, `ArticleList`       |
+| 関数・変数             | camelCase                 | `markRead`, `selectedFeedId`       |
+| JSON フィールド        | camelCase                 | `feedId`, `publishedAt`, `siteUrl` |
+| Route Handler ファイル | `route.ts` (Next.js 規約) | `app/api/feeds/route.ts`           |
 
 **注意**: DB (D1) を使っていた時代の snake_case (`published_at`, `feed_id`) は完全に廃止済み。
 JSON データは全て camelCase。

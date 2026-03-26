@@ -5,7 +5,7 @@
  * - CJK 文字が全体の 3% 以上 → 日本語と判定
  */
 export function isLikelyJapanese(text: string): boolean {
-  const plain = text.replace(/<[^>]+>/g, '').trim();
+  const plain = text.replace(/<[^>]+>/g, "").trim();
   if (plain.length < 20) return true;
   const cjk = (plain.match(/[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uff00-\uffef]/g) ?? []).length;
   return cjk / plain.length > 0.03;
@@ -13,7 +13,7 @@ export function isLikelyJapanese(text: string): boolean {
 
 /** 推定読了時間（分）。HTML タグを除去して文字数・語数から算出 */
 export function readingTime(html: string): number {
-  const text = html.replace(/<[^>]+>/g, '').trim();
+  const text = html.replace(/<[^>]+>/g, "").trim();
   if (!text) return 0;
   const cjk = (text.match(/[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g) ?? []).length;
   const mins =
@@ -33,14 +33,14 @@ export function readingTime(html: string): number {
  * - それ以上は「M月D日」形式
  */
 export function timeAgo(iso: string | null): string {
-  if (!iso) return '';
+  if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60_000) return 'たった今';
+  if (diff < 60_000) return "たった今";
   const mins = Math.floor(diff / 60_000);
   if (mins < 60) return `${mins}分前`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}時間前`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}日前`;
-  return new Date(iso).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+  return new Date(iso).toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
 }

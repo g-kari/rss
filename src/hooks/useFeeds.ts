@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Feed, Article, UserProfile } from '../types';
+import { useState, useEffect, useCallback, useRef } from "react";
+import type { Feed, Article, UserProfile } from "../types";
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
@@ -22,7 +22,10 @@ interface FeedsState {
   loadMoreFeedArticles: (feedId: string) => Promise<void>;
 }
 
-export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: string) => void): FeedsState {
+export function useFeeds(
+  user: UserProfile | null | undefined,
+  onError?: (msg: string) => void,
+): FeedsState {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(false);
@@ -35,9 +38,9 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
   const isPollingRef = useRef(false);
 
   const fetchAndSetArticles = useCallback(async () => {
-    const res = await fetch('/api/articles');
+    const res = await fetch("/api/articles");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json() as Article[];
+    const data = (await res.json()) as Article[];
     setArticles(data);
     latestArticleIdRef.current = data[0]?.id ?? null;
     return data;
@@ -46,12 +49,21 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
   useEffect(() => {
     if (!user) return;
     setLoadingArticles(true);
-    fetch('/api/feeds')
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Feed[]>; })
+    fetch("/api/feeds")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<Feed[]>;
+      })
       .then(setFeeds)
-      .catch((err) => { console.error(err); onError?.('フィードの読み込みに失敗しました'); });
+      .catch((err) => {
+        console.error(err);
+        onError?.("フィードの読み込みに失敗しました");
+      });
     fetchAndSetArticles()
-      .catch((err) => { console.error(err); onError?.('記事の読み込みに失敗しました'); })
+      .catch((err) => {
+        console.error(err);
+        onError?.("記事の読み込みに失敗しました");
+      })
       .finally(() => setLoadingArticles(false));
   }, [user, onError, fetchAndSetArticles]);
 
@@ -93,21 +105,27 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
     setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
   }, []);
 
-  const replaceFeeds = useCallback((newFeeds: Feed[]) => {
-    setFeeds(newFeeds);
-    // インポート後に記事を再取得する
-    setLoadingArticles(true);
-    fetchAndSetArticles()
-      .catch((err) => { console.error(err); onError?.('記事の読み込みに失敗しました'); })
-      .finally(() => setLoadingArticles(false));
-  }, [fetchAndSetArticles, onError]);
+  const replaceFeeds = useCallback(
+    (newFeeds: Feed[]) => {
+      setFeeds(newFeeds);
+      // インポート後に記事を再取得する
+      setLoadingArticles(true);
+      fetchAndSetArticles()
+        .catch((err) => {
+          console.error(err);
+          onError?.("記事の読み込みに失敗しました");
+        })
+        .finally(() => setLoadingArticles(false));
+    },
+    [fetchAndSetArticles, onError],
+  );
 
   const refreshFeeds = useCallback(async () => {
     setRefreshing(true);
     try {
-      await fetch('/api/feeds/refresh', { method: 'POST' });
+      await fetch("/api/feeds/refresh", { method: "POST" });
       const [feedsData] = await Promise.all([
-        fetch('/api/feeds').then((r) => {
+        fetch("/api/feeds").then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json() as Promise<Feed[]>;
         }),
@@ -115,50 +133,71 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
       ]);
       setFeeds(feedsData);
     } catch (err) {
-      console.error('Refresh failed:', err);
-      onError?.('更新に失敗しました');
+      console.error("Refresh failed:", err);
+      onError?.("更新に失敗しました");
     } finally {
       setRefreshing(false);
     }
   }, [fetchAndSetArticles, onError]);
 
-  const retryFeed = useCallback(async (feedId: string): Promise<void> => {
-    try {
-      const res = await fetch(`/api/feeds/${feedId}/refresh`, { method: 'POST' });
-      if (!res.ok) return;
-      const feed = await res.json() as Feed;
-      setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
-      await fetchAndSetArticles();
-    } catch (err) {
-      console.error('retryFeed failed:', err);
-      onError?.('フィードの再取得に失敗しました');
-    }
-  }, [fetchAndSetArticles, onError]);
+  const retryFeed = useCallback(
+    async (feedId: string): Promise<void> => {
+      try {
+        const res = await fetch(`/api/feeds/${feedId}/refresh`, { method: "POST" });
+        if (!res.ok) return;
+        const feed = (await res.json()) as Feed;
+        setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
+        await fetchAndSetArticles();
+      } catch (err) {
+        console.error("retryFeed failed:", err);
+        onError?.("フィードの再取得に失敗しました");
+      }
+    },
+    [fetchAndSetArticles, onError],
+  );
 
   const dismissNewArticles = useCallback(() => {
     setNewArticleCount(0);
   }, []);
 
   // フィードの過去ページを追加読み込みする
-  const loadMoreFeedArticles = useCallback(async (feedId: string): Promise<void> => {
-    const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
-    try {
-      const res = await fetch(`/api/articles?feed=${feedId}&page=${nextPage}`);
-      if (!res.ok) return;
-      const data = await res.json() as Article[];
-      if (data.length === 0) return;
-      setArticles((prev) => {
-        const existingIds = new Set(prev.map((a) => a.id));
-        const newOnes = data.filter((a) => !existingIds.has(a.id));
-        if (newOnes.length === 0) return prev;
-        return [...prev, ...newOnes];
-      });
-      setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
-    } catch (err) {
-      console.error('loadMoreFeedArticles failed:', err);
-      onError?.('過去の記事の読み込みに失敗しました');
-    }
-  }, [onError]);
+  const loadMoreFeedArticles = useCallback(
+    async (feedId: string): Promise<void> => {
+      const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
+      try {
+        const res = await fetch(`/api/articles?feed=${feedId}&page=${nextPage}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as Article[];
+        if (data.length === 0) return;
+        setArticles((prev) => {
+          const existingIds = new Set(prev.map((a) => a.id));
+          const newOnes = data.filter((a) => !existingIds.has(a.id));
+          if (newOnes.length === 0) return prev;
+          return [...prev, ...newOnes];
+        });
+        setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
+      } catch (err) {
+        console.error("loadMoreFeedArticles failed:", err);
+        onError?.("過去の記事の読み込みに失敗しました");
+      }
+    },
+    [onError],
+  );
 
-  return { feeds, articles, loadingArticles, refreshing, newArticleCount, loadedFeedPages, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles, loadMoreFeedArticles };
+  return {
+    feeds,
+    articles,
+    loadingArticles,
+    refreshing,
+    newArticleCount,
+    loadedFeedPages,
+    onFeedAdded,
+    removeFeed,
+    updateFeed,
+    replaceFeeds,
+    refreshFeeds,
+    retryFeed,
+    dismissNewArticles,
+    loadMoreFeedArticles,
+  };
 }

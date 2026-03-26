@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import type { Article, DateRange } from '../types';
-import { STORAGE_KEYS, storageGet, storageSet } from '../lib/storage';
-import { useDebounce } from './useDebounce';
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import type { Article, DateRange } from "../types";
+import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
+import { useDebounce } from "./useDebounce";
 
 const PAGE_SIZE = 30;
 
@@ -9,7 +9,7 @@ const PAGE_SIZE = 30;
 function boolToggleWithStorage(key: string) {
   return (v: boolean): boolean => {
     const next = !v;
-    storageSet(key, next ? '1' : '0');
+    storageSet(key, next ? "1" : "0");
     return next;
   };
 }
@@ -23,15 +23,15 @@ interface Options {
   selectedArticleId?: string | null;
 }
 
-export type SortOrder = 'newest' | 'oldest';
+export type SortOrder = "newest" | "oldest";
 
 function getDateRangeStart(range: DateRange): Date | null {
-  if (range === 'all') return null;
+  if (range === "all") return null;
   const now = new Date();
-  if (range === 'today') {
+  if (range === "today") {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
-  if (range === 'week') {
+  if (range === "week") {
     const d = new Date(now);
     d.setDate(d.getDate() - 7);
     return d;
@@ -42,20 +42,29 @@ function getDateRangeStart(range: DateRange): Date | null {
   return d;
 }
 
-export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, readingListIds, selectedArticleId }: Options) {
-  const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === '1');
-  const [bookmarkOnly, setBookmarkOnly] = useState(() => storageGet(STORAGE_KEYS.BOOKMARK_ONLY) === '1');
-  const [rawQuery, setRawQuery] = useState('');  // 入力値（即時更新）
-  const query = useDebounce(rawQuery, 300);       // デバウンス済みクエリ（フィルター・ハイライト用）
+export function useFilteredArticles({
+  articles,
+  feedId,
+  readIds,
+  bookmarkIds,
+  readingListIds,
+  selectedArticleId,
+}: Options) {
+  const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
+  const [bookmarkOnly, setBookmarkOnly] = useState(
+    () => storageGet(STORAGE_KEYS.BOOKMARK_ONLY) === "1",
+  );
+  const [rawQuery, setRawQuery] = useState(""); // 入力値（即時更新）
+  const query = useDebounce(rawQuery, 300); // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
     const v = storageGet(STORAGE_KEYS.SORT_ORDER);
-    return v === 'oldest' ? 'oldest' : 'newest';
+    return v === "oldest" ? "oldest" : "newest";
   });
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const v = storageGet(STORAGE_KEYS.DATE_RANGE);
-    const valid: DateRange[] = ['all', 'today', 'week', 'month'];
-    return valid.includes(v as DateRange) ? (v as DateRange) : 'all';
+    const valid: DateRange[] = ["all", "today", "week", "month"];
+    return valid.includes(v as DateRange) ? (v as DateRange) : "all";
   });
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -77,7 +86,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   // フィード切り替え時にページ・検索クエリをリセット
   useEffect(() => {
     setPage(1);
-    setRawQuery('');
+    setRawQuery("");
   }, [feedId]);
 
   const toggleUnreadOnly = useCallback(() => {
@@ -97,7 +106,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
 
   const toggleSortOrder = useCallback(() => {
     setSortOrder((v) => {
-      const next = v === 'newest' ? 'oldest' : 'newest';
+      const next = v === "newest" ? "oldest" : "newest";
       storageSet(STORAGE_KEYS.SORT_ORDER, next);
       return next;
     });
@@ -105,7 +114,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   }, []);
 
   const cycleDateRange = useCallback(() => {
-    const cycle: DateRange[] = ['all', 'today', 'week', 'month'];
+    const cycle: DateRange[] = ["all", "today", "week", "month"];
     setDateRange((v) => {
       const next = cycle[(cycle.indexOf(v) + 1) % cycle.length];
       storageSet(STORAGE_KEYS.DATE_RANGE, next);
@@ -125,7 +134,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
       (entries) => {
         if (entries[0].isIntersecting) loadMore();
       },
-      { rootMargin: '120px' },
+      { rootMargin: "120px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -140,9 +149,11 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
 
     let list = articles.filter((a) => {
       // フィード絞り込み
-      if (feedId === '__bookmarks__') { if (!bookmarkIds.has(a.id)) return false; }
-      else if (feedId === '__reading_list__') { if (!readingListIds.has(a.id)) return false; }
-      else if (feedId && a.feedHash !== feedId) return false;
+      if (feedId === "__bookmarks__") {
+        if (!bookmarkIds.has(a.id)) return false;
+      } else if (feedId === "__reading_list__") {
+        if (!readingListIds.has(a.id)) return false;
+      } else if (feedId && a.feedHash !== feedId) return false;
 
       // 未読フィルター
       if (unreadOnly && readIds.has(a.id) && !isActive(a.id)) return false;
@@ -164,11 +175,24 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
       return true;
     });
 
-    if (sortOrder === 'oldest') {
+    if (sortOrder === "oldest") {
       list = [...list].reverse();
     }
     return list;
-  }, [articles, feedId, readIds, bookmarkIds, readingListIds, unreadOnly, bookmarkOnly, query, sortOrder, dateRange, selectedArticleId, gracePeriodId]);
+  }, [
+    articles,
+    feedId,
+    readIds,
+    bookmarkIds,
+    readingListIds,
+    unreadOnly,
+    bookmarkOnly,
+    query,
+    sortOrder,
+    dateRange,
+    selectedArticleId,
+    gracePeriodId,
+  ]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
@@ -185,8 +209,8 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
     toggleSortOrder,
     dateRange,
     cycleDateRange,
-    query,        // デバウンス済み（フィルター・ハイライト用）
-    rawQuery,     // 即時値（検索 input の value 用）
+    query, // デバウンス済み（フィルター・ハイライト用）
+    rawQuery, // 即時値（検索 input の value 用）
     updateQuery,
     searchRef,
     sentinelRef,

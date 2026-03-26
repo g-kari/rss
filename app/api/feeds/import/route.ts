@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { withSession } from '@/lib/server-auth';
-import { XMLParser } from 'fast-xml-parser';
-import { isValidFeedUrl } from '@/lib/url';
-import { toArray } from '@/lib/xml-parser';
+import { NextResponse } from "next/server";
+import { withSession } from "@/lib/server-auth";
+import { XMLParser } from "fast-xml-parser";
+import { isValidFeedUrl } from "@/lib/url";
+import { toArray } from "@/lib/xml-parser";
 import {
   computeFeedHash,
   readFeedMeta,
@@ -10,34 +10,34 @@ import {
   readUserSubscriptions,
   writeUserSubscriptions,
   MAX_FEEDS_PER_USER,
-} from '@/lib/shared-feed';
-import { fetchArticles } from '@/cron/fetch';
-import type { UserSubscription } from '@/types';
+} from "@/lib/shared-feed";
+import { fetchArticles } from "@/cron/fetch";
+import type { UserSubscription } from "@/types";
 const MAX_OPML_ENTRIES = 5000;
 const MAX_OPML_DEPTH = 50;
 const MAX_TITLE_LENGTH = 500;
 const MAX_SITE_URL_LENGTH = 2048;
 
 function sanitizeTitle(title: string): string {
-  return title.replace(/\0/g, '').slice(0, MAX_TITLE_LENGTH);
+  return title.replace(/\u0000/g, "").slice(0, MAX_TITLE_LENGTH);
 }
 
 function sanitizeSiteUrl(url: string): string {
-  if (!url || url.length > MAX_SITE_URL_LENGTH) return '';
+  if (!url || url.length > MAX_SITE_URL_LENGTH) return "";
   try {
     const parsed = new URL(url);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
     return url;
   } catch {
-    return '';
+    return "";
   }
 }
 
 interface OpmlOutline {
-  '@_xmlUrl'?: string;
-  '@_text'?: string;
-  '@_title'?: string;
-  '@_htmlUrl'?: string;
+  "@_xmlUrl"?: string;
+  "@_text"?: string;
+  "@_title"?: string;
+  "@_htmlUrl"?: string;
   outline?: OpmlOutline | OpmlOutline[];
 }
 
@@ -51,8 +51,8 @@ interface RawParsedOpml {
 
 const parser = new XMLParser({
   ignoreAttributes: false,
-  attributeNamePrefix: '@_',
-  isArray: (name) => name === 'outline',
+  attributeNamePrefix: "@_",
+  isArray: (name) => name === "outline",
 });
 
 function extractFeeds(
@@ -61,11 +61,11 @@ function extractFeeds(
 ): Array<{ url: string; title: string; siteUrl: string }> {
   if (depth > MAX_OPML_DEPTH) return [];
   const results: Array<{ url: string; title: string; siteUrl: string }> = [];
-  if (outline['@_xmlUrl']) {
+  if (outline["@_xmlUrl"]) {
     results.push({
-      url: outline['@_xmlUrl'],
-      title: sanitizeTitle(outline['@_title'] ?? outline['@_text'] ?? outline['@_xmlUrl']),
-      siteUrl: sanitizeSiteUrl(outline['@_htmlUrl'] ?? ''),
+      url: outline["@_xmlUrl"],
+      title: sanitizeTitle(outline["@_title"] ?? outline["@_text"] ?? outline["@_xmlUrl"]),
+      siteUrl: sanitizeSiteUrl(outline["@_htmlUrl"] ?? ""),
     });
   }
   for (const child of toArray(outline.outline)) {
@@ -78,21 +78,21 @@ export async function POST(request: Request) {
   return withSession(async ({ session, env, ctx }) => {
     const text = await request.text();
     if (!text || text.length > 1_000_000) {
-      return NextResponse.json({ error: 'Invalid or too large OPML file' }, { status: 400 });
+      return NextResponse.json({ error: "Invalid or too large OPML file" }, { status: 400 });
     }
 
     let feedEntries: Array<{ url: string; title: string; siteUrl: string }>;
     try {
       const parsed = parser.parse(text) as RawParsedOpml;
       const body = parsed?.opml?.body;
-      if (!body) throw new Error('No OPML body found');
+      if (!body) throw new Error("No OPML body found");
       feedEntries = toArray<OpmlOutline>(body.outline).flatMap(extractFeeds);
     } catch {
-      return NextResponse.json({ error: 'Failed to parse OPML' }, { status: 400 });
+      return NextResponse.json({ error: "Failed to parse OPML" }, { status: 400 });
     }
 
     if (feedEntries.length === 0) {
-      return NextResponse.json({ error: 'No feeds found in OPML' }, { status: 400 });
+      return NextResponse.json({ error: "No feeds found in OPML" }, { status: 400 });
     }
     if (feedEntries.length > MAX_OPML_ENTRIES) {
       return NextResponse.json(
@@ -104,7 +104,10 @@ export async function POST(request: Request) {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     const remainingSlots = MAX_FEEDS_PER_USER - subs.length;
     if (remainingSlots <= 0) {
-      return NextResponse.json({ error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` }, { status: 422 });
+      return NextResponse.json(
+        { error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` },
+        { status: 422 },
+      );
     }
 
     const existingHashes = new Set(subs.map((s) => s.feedHash));

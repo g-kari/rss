@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { withSession, parseJsonBody } from '@/lib/server-auth';
-import { isValidFeedUrl } from '@/lib/url';
-import { discoverFeedUrl } from '@/lib/feed-discovery';
-import { inferFeedFromUrl } from '@/lib/llm-feed-generator';
+import { NextResponse } from "next/server";
+import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { isValidFeedUrl } from "@/lib/url";
+import { discoverFeedUrl } from "@/lib/feed-discovery";
+import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import {
   computeFeedHash,
   readFeedMeta,
@@ -13,10 +13,10 @@ import {
   getUserFeeds,
   assembleClientFeed,
   MAX_FEEDS_PER_USER,
-} from '@/lib/shared-feed';
-import type { SelectorConfig } from '@/types';
-import { registerAndFetchFeed } from '@/cron/fetch';
-import type { UserSubscription } from '@/types';
+} from "@/lib/shared-feed";
+import type { SelectorConfig } from "@/types";
+import { registerAndFetchFeed } from "@/cron/fetch";
+import type { UserSubscription } from "@/types";
 
 export async function GET() {
   return withSession(async ({ session, env }) => {
@@ -30,10 +30,12 @@ export async function POST(request: Request) {
     const parsed = await parseJsonBody<{ url?: unknown }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
-    if (typeof body?.url !== 'string') return NextResponse.json({ error: 'url is required' }, { status: 400 });
+    if (typeof body?.url !== "string")
+      return NextResponse.json({ error: "url is required" }, { status: 400 });
     let url = body.url.trim();
-    if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 });
-    if (!isValidFeedUrl(url)) return NextResponse.json({ error: 'Invalid URL: must be http or https' }, { status: 400 });
+    if (!url) return NextResponse.json({ error: "url is required" }, { status: 400 });
+    if (!isValidFeedUrl(url))
+      return NextResponse.json({ error: "Invalid URL: must be http or https" }, { status: 400 });
 
     // 3 段階フォールバック: RSS 探索 → LLM CSS セレクタ推論
     const discovered = await discoverFeedUrl(url);
@@ -41,12 +43,13 @@ export async function POST(request: Request) {
 
     if (discovered) {
       if (discovered !== url) url = discovered;
-      if (!isValidFeedUrl(url)) return NextResponse.json({ error: 'Discovered feed URL is invalid' }, { status: 400 });
+      if (!isValidFeedUrl(url))
+        return NextResponse.json({ error: "Discovered feed URL is invalid" }, { status: 400 });
     } else {
       // RSS が見つからない場合、LLM でページの CSS セレクタを推論
       inferred = await inferFeedFromUrl(url, env.AI);
       if (!inferred) {
-        return NextResponse.json({ error: 'RSS フィードが見つかりませんでした' }, { status: 422 });
+        return NextResponse.json({ error: "RSS フィードが見つかりませんでした" }, { status: 422 });
       }
     }
 
@@ -54,10 +57,13 @@ export async function POST(request: Request) {
 
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     if (subs.some((s) => s.feedHash === feedHash)) {
-      return NextResponse.json({ error: 'Feed already exists' }, { status: 409 });
+      return NextResponse.json({ error: "Feed already exists" }, { status: 409 });
     }
     if (subs.length >= MAX_FEEDS_PER_USER) {
-      return NextResponse.json({ error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` }, { status: 422 });
+      return NextResponse.json(
+        { error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` },
+        { status: 422 },
+      );
     }
 
     // 共有 meta を作成（他ユーザーがすでに登録している場合は既存を流用）

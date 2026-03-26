@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from "react";
 
 interface Props {
   onClose: () => void;
@@ -8,7 +8,7 @@ interface Props {
 
 /** Markdown の簡易パーサー。見出し・箇条書き・太字に対応 */
 function parseMarkdown(md: string): ReactNode[] {
-  const lines = md.split('\n');
+  const lines = md.split("\n");
   const nodes: ReactNode[] = [];
   let key = 0;
   let i = 0;
@@ -16,28 +16,34 @@ function parseMarkdown(md: string): ReactNode[] {
   while (i < lines.length) {
     const line = lines[i];
 
-    if (line.startsWith('# ')) {
+    if (line.startsWith("# ")) {
       nodes.push(
         <h1 key={key++} className="text-[18px] font-light text-text-strong mb-4 mt-2">
           {line.slice(2)}
         </h1>,
       );
-    } else if (line.startsWith('## ')) {
+    } else if (line.startsWith("## ")) {
       nodes.push(
-        <h2 key={key++} className="text-[13px] font-medium text-text-strong mt-5 mb-2 pb-1 border-b border-border-subtle">
+        <h2
+          key={key++}
+          className="text-[13px] font-medium text-text-strong mt-5 mb-2 pb-1 border-b border-border-subtle"
+        >
           {line.slice(3)}
         </h2>,
       );
-    } else if (line.startsWith('### ')) {
+    } else if (line.startsWith("### ")) {
       nodes.push(
-        <h3 key={key++} className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted mt-3 mb-1">
+        <h3
+          key={key++}
+          className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted mt-3 mb-1"
+        >
           {line.slice(4)}
         </h3>,
       );
-    } else if (line.startsWith('- ')) {
+    } else if (line.startsWith("- ")) {
       // 箇条書きをまとめて ul に
       const items: ReactNode[] = [];
-      while (i < lines.length && lines[i].startsWith('- ')) {
+      while (i < lines.length && lines[i].startsWith("- ")) {
         items.push(
           <li key={key++} className="text-[12px] text-text-soft leading-relaxed">
             {renderInline(lines[i].slice(2))}
@@ -51,7 +57,7 @@ function parseMarkdown(md: string): ReactNode[] {
         </ul>,
       );
       continue;
-    } else if (line.trim() === '') {
+    } else if (line.trim() === "") {
       // 空行は無視
     } else {
       nodes.push(
@@ -76,10 +82,17 @@ function renderInline(text: string): ReactNode {
   while ((match = pattern.exec(text)) !== null) {
     if (match.index > last) parts.push(text.slice(last, match.index));
     if (match[1] !== undefined) {
-      parts.push(<strong key={key++} className="text-text-default font-medium">{match[1]}</strong>);
+      parts.push(
+        <strong key={key++} className="text-text-default font-medium">
+          {match[1]}
+        </strong>,
+      );
     } else if (match[2] !== undefined) {
       parts.push(
-        <code key={key++} className="text-[11px] px-1 py-0.5 rounded bg-surface-subtle text-text-default font-mono">
+        <code
+          key={key++}
+          className="text-[11px] px-1 py-0.5 rounded bg-surface-subtle text-text-default font-mono"
+        >
           {match[2]}
         </code>,
       );
@@ -94,19 +107,19 @@ export default function ReleaseNotesModal({ onClose }: Props) {
   const [content, setContent] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/release-notes')
+    fetch("/api/release-notes")
       .then((r) => r.json() as Promise<{ content: string }>)
       .then(({ content: md }) => setContent(md))
-      .catch(() => setContent('読み込みに失敗しました'));
+      .catch(() => setContent("読み込みに失敗しました"));
   }, []);
 
   // Esc キーで閉じる
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
   return (
@@ -128,8 +141,16 @@ export default function ReleaseNotesModal({ onClose }: Props) {
             className="text-text-faint hover:text-text-muted transition-colors"
             aria-label="閉じる"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <path d="M2 2l10 10M12 2L2 12"/>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <path d="M2 2l10 10M12 2L2 12" />
             </svg>
           </button>
         </div>

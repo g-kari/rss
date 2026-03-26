@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import type { UserProfile } from '../types';
+import { useState, useEffect } from "react";
+import type { UserProfile } from "../types";
 
 interface AuthState {
   user: UserProfile | null | undefined; // undefined = ローディング中
@@ -14,7 +14,7 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     // URL パラメーターでベータ制限リダイレクトを検出
-    if (new URLSearchParams(window.location.search).get('beta') === 'denied') {
+    if (new URLSearchParams(window.location.search).get("beta") === "denied") {
       setBetaRestricted(true);
       setUser(null);
       return;
@@ -27,14 +27,17 @@ export function useAuth(): AuthState {
       if (inFlight) return;
       inFlight = true;
       try {
-        const r = await fetch('/api/auth/me');
-        const { user: u, betaRestricted: br } = await r.json() as { user: UserProfile | null; betaRestricted?: boolean };
+        const r = await fetch("/api/auth/me");
+        const { user: u, betaRestricted: br } = (await r.json()) as {
+          user: UserProfile | null;
+          betaRestricted?: boolean;
+        };
         if (!mounted) return;
         if (br) setBetaRestricted(true);
         setUser(u ?? null);
       } catch {
         // ネットワークエラーは現在の認証状態を維持する（不要なログアウトを防ぐ）
-        if (mounted) setUser((prev) => prev === undefined ? null : prev);
+        if (mounted) setUser((prev) => (prev === undefined ? null : prev));
       } finally {
         inFlight = false;
       }
@@ -45,16 +48,16 @@ export function useAuth(): AuthState {
     // タブがフォアグラウンドに戻ったときに再チェック
     // (バックグラウンド中に access_token が期限切れになるケースへの対応)
     function onVisibilityChange() {
-      if (document.visibilityState === 'visible') void checkAuth();
+      if (document.visibilityState === "visible") void checkAuth();
     }
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     // 10分ごとに再チェック (access_token の有効期限 15分より短いサイクルで先回りリフレッシュ)
     const timer = setInterval(checkAuth, 10 * 60 * 1000);
 
     return () => {
       mounted = false;
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       clearInterval(timer);
     };
   }, []);

@@ -11,16 +11,16 @@
  * - RFC 8188: Encrypted Content-Encoding for HTTP
  */
 
-import type { PushSubscriptionRecord } from '../types';
-import { DEFAULT_FETCH_TIMEOUT_MS } from './fetch';
+import type { PushSubscriptionRecord } from "../types";
+import { DEFAULT_FETCH_TIMEOUT_MS } from "./fetch";
 
 // -------------------------------------------------------------------------
 // ユーティリティ
 // -------------------------------------------------------------------------
 
 function base64urlDecode(s: string): Uint8Array<ArrayBuffer> {
-  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = b64 + '==='.slice((b64.length + 3) % 4);
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = b64 + "===".slice((b64.length + 3) % 4);
   const binary = atob(padded);
   const result = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) result[i] = binary.charCodeAt(i);
@@ -28,9 +28,9 @@ function base64urlDecode(s: string): Uint8Array<ArrayBuffer> {
 }
 
 function base64urlEncode(buf: Uint8Array): string {
-  let binary = '';
+  let binary = "";
   for (const byte of buf) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 function concatBytes(...arrays: Uint8Array<ArrayBufferLike>[]): Uint8Array<ArrayBuffer> {
@@ -68,10 +68,8 @@ async function createVapidAuthHeader(
   const now = Math.floor(Date.now() / 1000);
   const exp = now + 12 * 60 * 60; // 12 時間
 
-  const header = base64urlEncode(enc.encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
-  const payload = base64urlEncode(
-    enc.encode(JSON.stringify({ aud: audience, exp, sub: subject })),
-  );
+  const header = base64urlEncode(enc.encode(JSON.stringify({ typ: "JWT", alg: "ES256" })));
+  const payload = base64urlEncode(enc.encode(JSON.stringify({ aud: audience, exp, sub: subject })));
   const signingInput = `${header}.${payload}`;
 
   // P-256 秘密鍵をインポート（raw 32 バイト → JWK 経由）
@@ -83,15 +81,15 @@ async function createVapidAuthHeader(
   const d = base64urlEncode(privRaw);
 
   const privateKey = await crypto.subtle.importKey(
-    'jwk',
-    { kty: 'EC', crv: 'P-256', x, y, d, key_ops: ['sign'] },
-    { name: 'ECDSA', namedCurve: 'P-256' },
+    "jwk",
+    { kty: "EC", crv: "P-256", x, y, d, key_ops: ["sign"] },
+    { name: "ECDSA", namedCurve: "P-256" },
     false,
-    ['sign'],
+    ["sign"],
   );
 
   const sig = await crypto.subtle.sign(
-    { name: 'ECDSA', hash: 'SHA-256' },
+    { name: "ECDSA", hash: "SHA-256" },
     privateKey,
     enc.encode(signingInput),
   );
@@ -111,9 +109,9 @@ async function hkdfSha256(
   info: Uint8Array<ArrayBuffer>,
   length: number,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const baseKey = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
+  const baseKey = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', salt, info },
+    { name: "HKDF", hash: "SHA-256", salt, info },
     baseKey,
     length * 8,
   );
@@ -131,28 +129,28 @@ async function encryptPayload(
   // 乱数 salt (16 bytes) とエフェメラル鍵ペアを生成
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const serverKeyPair = await crypto.subtle.generateKey(
-    { name: 'ECDH', namedCurve: 'P-256' },
+    { name: "ECDH", namedCurve: "P-256" },
     true,
-    ['deriveBits'],
+    ["deriveBits"],
   );
 
   // サーバーエフェメラル公開鍵 (65 bytes uncompressed) — slice() で ArrayBuffer を確保
-  const serverPubSpki = await crypto.subtle.exportKey('spki', serverKeyPair.publicKey);
+  const serverPubSpki = await crypto.subtle.exportKey("spki", serverKeyPair.publicKey);
   const serverPubRaw = new Uint8Array(serverPubSpki).slice(-65);
 
   // クライアント (受信者) の公開鍵をインポート
   const clientPubRaw = base64urlDecode(subscription.keys.p256dh);
   const clientPubKey = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     clientPubRaw,
-    { name: 'ECDH', namedCurve: 'P-256' },
+    { name: "ECDH", namedCurve: "P-256" },
     false,
     [],
   );
 
   // ECDH 共有秘密 (32 bytes)
   const ecdhBits = await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: clientPubKey },
+    { name: "ECDH", public: clientPubKey },
     serverKeyPair.privateKey,
     256,
   );
@@ -166,31 +164,21 @@ async function encryptPayload(
   const prk = await hkdfSha256(
     sharedSecret,
     authSecret,
-    concatBytes(enc.encode('WebPush: info\0'), clientPubRaw, serverPubRaw),
+    concatBytes(enc.encode("WebPush: info\0"), clientPubRaw, serverPubRaw),
     32,
   );
 
   // CEK (16 bytes) の導出
-  const cek = await hkdfSha256(
-    prk,
-    salt,
-    enc.encode('Content-Encoding: aes128gcm\0'),
-    16,
-  );
+  const cek = await hkdfSha256(prk, salt, enc.encode("Content-Encoding: aes128gcm\0"), 16);
 
   // nonce (12 bytes) の導出
-  const nonce = await hkdfSha256(
-    prk,
-    salt,
-    enc.encode('Content-Encoding: nonce\0'),
-    12,
-  );
+  const nonce = await hkdfSha256(prk, salt, enc.encode("Content-Encoding: nonce\0"), 12);
 
   // AES-128-GCM 暗号化 (padding delimiter 0x02 を末尾に追加)
   const paddedPlaintext = concatBytes(plaintext, new Uint8Array([0x02]));
-  const cekKey = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
+  const cekKey = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
   const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: nonce, tagLength: 128 },
+    { name: "AES-GCM", iv: nonce, tagLength: 128 },
     cekKey,
     paddedPlaintext,
   );
@@ -236,7 +224,7 @@ export async function sendPush(
 ): Promise<PushResult> {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT ?? 'mailto:admin@example.com';
+  const subject = process.env.VAPID_SUBJECT ?? "mailto:admin@example.com";
 
   // VAPID 未設定時はスキップ（ローカル開発環境等）
   if (!publicKey || !privateKey) return { ok: false, gone: false };
@@ -253,12 +241,12 @@ export async function sendPush(
   let res: Response;
   try {
     res = await fetch(subscription.endpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: authHeader,
-        'Content-Type': 'application/octet-stream',
-        'Content-Encoding': 'aes128gcm',
-        TTL: '86400',
+        "Content-Type": "application/octet-stream",
+        "Content-Encoding": "aes128gcm",
+        TTL: "86400",
       },
       body: encryptedBody.buffer,
       signal: controller.signal,
@@ -281,12 +269,10 @@ export async function sendPushToAll(
   subscriptions: PushSubscriptionRecord[],
   payload: PushPayload,
 ): Promise<PushSubscriptionRecord[]> {
-  const results = await Promise.allSettled(
-    subscriptions.map((sub) => sendPush(sub, payload)),
-  );
+  const results = await Promise.allSettled(subscriptions.map((sub) => sendPush(sub, payload)));
 
   return subscriptions.filter((_, i) => {
     const r = results[i];
-    return r.status === 'rejected' || !r.value.gone;
+    return r.status === "rejected" || !r.value.gone;
   });
 }

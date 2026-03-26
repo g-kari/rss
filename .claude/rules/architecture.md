@@ -144,7 +144,7 @@ src/
 Route Handlers および cron 内で `getCloudflareContext()` を使う:
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export async function GET() {
   const { env } = await getCloudflareContext({ async: true });
@@ -213,5 +213,6 @@ npm run deploy   # @opennextjs/cloudflare build && wrangler deploy
 ```
 
 ビルド成果物:
-- `.open-next/worker.js`  → Workers スクリプト (wrangler.toml の main)
-- `.open-next/assets/`    → 静的アセット (Cloudflare Assets)
+
+- `.open-next/worker.js` → Workers スクリプト (wrangler.toml の main)
+- `.open-next/assets/` → 静的アセット (Cloudflare Assets)

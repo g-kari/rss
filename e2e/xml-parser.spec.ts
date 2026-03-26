@@ -1,12 +1,12 @@
-import { test, expect } from '@playwright/test';
-import { parseFeed } from '../src/lib/xml-parser';
+import { test, expect } from "@playwright/test";
+import { parseFeed } from "../src/lib/xml-parser";
 
 /**
  * xml-parser.ts の回帰テスト。
  */
 
-test.describe('parseFeed — 不正な日付の安全処理', () => {
-  test('RSS 2.0: 不正な pubDate でも RangeError をスローしない', () => {
+test.describe("parseFeed — 不正な日付の安全処理", () => {
+  test("RSS 2.0: 不正な pubDate でも RangeError をスローしない", () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
@@ -28,7 +28,7 @@ test.describe('parseFeed — 不正な日付の安全処理', () => {
     expect(result.items[0].publishedAt).toBeNull();
   });
 
-  test('RSS 2.0: 存在しない日付（day=0）でも安全に処理する', () => {
+  test("RSS 2.0: 存在しない日付（day=0）でも安全に処理する", () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
@@ -47,10 +47,12 @@ test.describe('parseFeed — 不正な日付の安全処理', () => {
     expect(() => parseFeed(xml)).not.toThrow();
     const result = parseFeed(xml);
     // day=0 は Invalid Date になる実装もある。null か ISO 文字列かを確認する
-    expect(result.items[0].publishedAt === null || typeof result.items[0].publishedAt === 'string').toBe(true);
+    expect(
+      result.items[0].publishedAt === null || typeof result.items[0].publishedAt === "string",
+    ).toBe(true);
   });
 
-  test('RSS 2.0: 正常な pubDate は ISO 8601 文字列に変換する', () => {
+  test("RSS 2.0: 正常な pubDate は ISO 8601 文字列に変換する", () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
@@ -67,10 +69,10 @@ test.describe('parseFeed — 不正な日付の安全処理', () => {
 </rss>`;
 
     const result = parseFeed(xml);
-    expect(result.items[0].publishedAt).toBe('2024-03-25T12:00:00.000Z');
+    expect(result.items[0].publishedAt).toBe("2024-03-25T12:00:00.000Z");
   });
 
-  test('RSS 1.0 (RDF): 不正な dc:date でも RangeError をスローしない', () => {
+  test("RSS 1.0 (RDF): 不正な dc:date でも RangeError をスローしない", () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
          xmlns="http://purl.org/rss/1.0/"
@@ -92,7 +94,7 @@ test.describe('parseFeed — 不正な日付の安全処理', () => {
     expect(result.items[0].publishedAt).toBeNull();
   });
 
-  test('RSS 1.0 (RDF): 正常な dc:date は ISO 8601 文字列に変換する', () => {
+  test("RSS 1.0 (RDF): 正常な dc:date は ISO 8601 文字列に変換する", () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
          xmlns="http://purl.org/rss/1.0/"
@@ -110,11 +112,11 @@ test.describe('parseFeed — 不正な日付の安全処理', () => {
 </rdf:RDF>`;
 
     const result = parseFeed(xml);
-    expect(result.items[0].publishedAt).toBe('2024-03-25T12:00:00.000Z');
+    expect(result.items[0].publishedAt).toBe("2024-03-25T12:00:00.000Z");
   });
 });
 
-test.describe('parseFeed — 危険スキーム URL の排除', () => {
+test.describe("parseFeed — 危険スキーム URL の排除", () => {
   function makeRss(link: string): string {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -131,52 +133,52 @@ test.describe('parseFeed — 危険スキーム URL の排除', () => {
 </rss>`;
   }
 
-  test('javascript: スキームは空文字に変換される', () => {
-    const result = parseFeed(makeRss('javascript:alert(1)'));
-    expect(result.items[0].link).toBe('');
+  test("javascript: スキームは空文字に変換される", () => {
+    const result = parseFeed(makeRss("javascript:alert(1)"));
+    expect(result.items[0].link).toBe("");
   });
 
-  test('JAVASCRIPT: 大文字混在スキームも排除される', () => {
-    const result = parseFeed(makeRss('JAVASCRIPT:alert(1)'));
-    expect(result.items[0].link).toBe('');
+  test("JAVASCRIPT: 大文字混在スキームも排除される", () => {
+    const result = parseFeed(makeRss("JAVASCRIPT:alert(1)"));
+    expect(result.items[0].link).toBe("");
   });
 
-  test('vbscript: スキームは空文字に変換される', () => {
-    const result = parseFeed(makeRss('vbscript:msgbox(1)'));
-    expect(result.items[0].link).toBe('');
+  test("vbscript: スキームは空文字に変換される", () => {
+    const result = parseFeed(makeRss("vbscript:msgbox(1)"));
+    expect(result.items[0].link).toBe("");
   });
 
-  test('data: スキームは空文字に変換される', () => {
-    const result = parseFeed(makeRss('data:text/html,<script>alert(1)</script>'));
-    expect(result.items[0].link).toBe('');
+  test("data: スキームは空文字に変換される", () => {
+    const result = parseFeed(makeRss("data:text/html,<script>alert(1)</script>"));
+    expect(result.items[0].link).toBe("");
   });
 
-  test('&#106;avascript: HTMLエンティティエンコードは排除される', () => {
-    const result = parseFeed(makeRss('&#106;avascript:alert(1)'));
-    expect(result.items[0].link).toBe('');
+  test("&#106;avascript: HTMLエンティティエンコードは排除される", () => {
+    const result = parseFeed(makeRss("&#106;avascript:alert(1)"));
+    expect(result.items[0].link).toBe("");
   });
 
-  test('&#x6A;avascript: 16進エンティティも排除される', () => {
-    const result = parseFeed(makeRss('&#x6A;avascript:alert(1)'));
-    expect(result.items[0].link).toBe('');
+  test("&#x6A;avascript: 16進エンティティも排除される", () => {
+    const result = parseFeed(makeRss("&#x6A;avascript:alert(1)"));
+    expect(result.items[0].link).toBe("");
   });
 
-  test('先頭空白 + javascript: バイパス試行も排除される', () => {
-    const result = parseFeed(makeRss('  javascript:alert(1)'));
-    expect(result.items[0].link).toBe('');
+  test("先頭空白 + javascript: バイパス試行も排除される", () => {
+    const result = parseFeed(makeRss("  javascript:alert(1)"));
+    expect(result.items[0].link).toBe("");
   });
 
-  test('https:// URL は正常に保持される', () => {
-    const result = parseFeed(makeRss('https://example.com/article'));
-    expect(result.items[0].link).toBe('https://example.com/article');
+  test("https:// URL は正常に保持される", () => {
+    const result = parseFeed(makeRss("https://example.com/article"));
+    expect(result.items[0].link).toBe("https://example.com/article");
   });
 
-  test('http:// URL は正常に保持される', () => {
-    const result = parseFeed(makeRss('http://example.com/article'));
-    expect(result.items[0].link).toBe('http://example.com/article');
+  test("http:// URL は正常に保持される", () => {
+    const result = parseFeed(makeRss("http://example.com/article"));
+    expect(result.items[0].link).toBe("http://example.com/article");
   });
 
-  test('Atom の link href にも適用される', () => {
+  test("Atom の link href にも適用される", () => {
     const atom = `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>Test</title>
@@ -188,17 +190,17 @@ test.describe('parseFeed — 危険スキーム URL の排除', () => {
   </entry>
 </feed>`;
     const result = parseFeed(atom);
-    expect(result.items[0].link).toBe('');
+    expect(result.items[0].link).toBe("");
   });
 
-  test('file: スキームは空文字に変換される', () => {
-    const result = parseFeed(makeRss('file:///etc/passwd'));
-    expect(result.items[0].link).toBe('');
+  test("file: スキームは空文字に変換される", () => {
+    const result = parseFeed(makeRss("file:///etc/passwd"));
+    expect(result.items[0].link).toBe("");
   });
 });
 
-test.describe('parseFeed — 危険スキーム URL を持つ ogImage の排除', () => {
-  test('media:thumbnail に javascript: URL があれば空文字になる', () => {
+test.describe("parseFeed — 危険スキーム URL を持つ ogImage の排除", () => {
+  test("media:thumbnail に javascript: URL があれば空文字になる", () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
@@ -214,10 +216,10 @@ test.describe('parseFeed — 危険スキーム URL を持つ ogImage の排除'
   </channel>
 </rss>`;
     const result = parseFeed(xml);
-    expect(result.items[0].ogImage).toBe('');
+    expect(result.items[0].ogImage).toBe("");
   });
 
-  test('media:thumbnail に data: URL があれば空文字になる', () => {
+  test("media:thumbnail に data: URL があれば空文字になる", () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
@@ -233,7 +235,7 @@ test.describe('parseFeed — 危険スキーム URL を持つ ogImage の排除'
   </channel>
 </rss>`;
     const result = parseFeed(xml);
-    expect(result.items[0].ogImage).toBe('');
+    expect(result.items[0].ogImage).toBe("");
   });
 
   test('content/description 内の <img src="javascript:"> は空文字になる', () => {
@@ -251,10 +253,10 @@ test.describe('parseFeed — 危険スキーム URL を持つ ogImage の排除'
   </channel>
 </rss>`;
     const result = parseFeed(xml);
-    expect(result.items[0].ogImage).toBe('');
+    expect(result.items[0].ogImage).toBe("");
   });
 
-  test('media:thumbnail に正常な https: URL は保持される', () => {
+  test("media:thumbnail に正常な https: URL は保持される", () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
@@ -270,10 +272,10 @@ test.describe('parseFeed — 危険スキーム URL を持つ ogImage の排除'
   </channel>
 </rss>`;
     const result = parseFeed(xml);
-    expect(result.items[0].ogImage).toBe('https://example.com/thumb.jpg');
+    expect(result.items[0].ogImage).toBe("https://example.com/thumb.jpg");
   });
 
-  test('Atom entry の ogImage も safeUrl が適用される', () => {
+  test("Atom entry の ogImage も safeUrl が適用される", () => {
     const atom = `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
   <title>Test</title>
@@ -286,12 +288,12 @@ test.describe('parseFeed — 危険スキーム URL を持つ ogImage の排除'
   </entry>
 </feed>`;
     const result = parseFeed(atom);
-    expect(result.items[0].ogImage).toBe('');
+    expect(result.items[0].ogImage).toBe("");
   });
 });
 
-test.describe('parseFeed — RSS 1.0 の危険スキーム URL 排除', () => {
-  test('RSS 1.0 の link にも適用される', () => {
+test.describe("parseFeed — RSS 1.0 の危険スキーム URL 排除", () => {
+  test("RSS 1.0 の link にも適用される", () => {
     const rdf = `<?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
          xmlns="http://purl.org/rss/1.0/">
@@ -306,6 +308,6 @@ test.describe('parseFeed — RSS 1.0 の危険スキーム URL 排除', () => {
   </item>
 </rdf:RDF>`;
     const result = parseFeed(rdf);
-    expect(result.items[0].link).toBe('');
+    expect(result.items[0].link).toBe("");
   });
 });

@@ -8,22 +8,22 @@
 // ── キー定数 ──────────────────────────────────────────────────
 
 export const STORAGE_KEYS = {
-  READ_IDS: 'rss-read',
-  BOOKMARK_IDS: 'rss-bookmarks',
-  READING_LIST_IDS: 'rss-reading-list',
-  PINNED_FEED_IDS: 'rss-pinned',
-  LAYOUT: 'rss-layout',
-  THEME: 'rss-theme',
-  FONT_SIZE: 'rss-font-size',
-  AI_MODE: 'rss-ai-mode',
-  CONTENT_CACHE_PREFIX: 'rss-content:',
-  AI_CACHE_PREFIX: 'rss-ai:',
-  UNREAD_ONLY: 'rss-unread-only',
-  BOOKMARK_ONLY: 'rss-bookmark-only',
-  SORT_ORDER: 'rss-sort-order',
-  DATE_RANGE: 'rss-date-range',
-  OGP_CACHE: 'rss-ogp-cache',
-  SEARCH_HISTORY: 'rss-search-history',
+  READ_IDS: "rss-read",
+  BOOKMARK_IDS: "rss-bookmarks",
+  READING_LIST_IDS: "rss-reading-list",
+  PINNED_FEED_IDS: "rss-pinned",
+  LAYOUT: "rss-layout",
+  THEME: "rss-theme",
+  FONT_SIZE: "rss-font-size",
+  AI_MODE: "rss-ai-mode",
+  CONTENT_CACHE_PREFIX: "rss-content:",
+  AI_CACHE_PREFIX: "rss-ai:",
+  UNREAD_ONLY: "rss-unread-only",
+  BOOKMARK_ONLY: "rss-bookmark-only",
+  SORT_ORDER: "rss-sort-order",
+  DATE_RANGE: "rss-date-range",
+  OGP_CACHE: "rss-ogp-cache",
+  SEARCH_HISTORY: "rss-search-history",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

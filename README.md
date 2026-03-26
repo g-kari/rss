@@ -4,16 +4,16 @@ Next.js 16 + Cloudflare Workers で動くセルフホスト RSS リーダー。`
 
 ## 技術スタック
 
-| レイヤー | 技術 |
-|---|---|
-| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare |
-| フロントエンド | React 19 + TypeScript + Tailwind CSS v4 |
-| API | Next.js Route Handlers (`app/api/**`) |
-| 認証 | 0g0 ID (OAuth2 + ES256 JWT) |
-| データ | Cloudflare R2 (`rss-reader-data`) — ユーザー別 JSON |
-| AI | Workers AI (要約・翻訳) |
-| 自動更新 | Cloudflare Cron Trigger（30分ごと） |
-| デプロイ | @opennextjs/cloudflare + wrangler |
+| レイヤー       | 技術                                                |
+| -------------- | --------------------------------------------------- |
+| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare      |
+| フロントエンド | React 19 + TypeScript + Tailwind CSS v4             |
+| API            | Next.js Route Handlers (`app/api/**`)               |
+| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                         |
+| データ         | Cloudflare R2 (`rss-reader-data`) — ユーザー別 JSON |
+| AI             | Workers AI (要約・翻訳)                             |
+| 自動更新       | Cloudflare Cron Trigger（30分ごと）                 |
+| デプロイ       | @opennextjs/cloudflare + wrangler                   |
 
 ## セットアップ
 
@@ -70,40 +70,40 @@ BETA_ALLOWED_SUBS = ""                      # ベータ制限: カンマ区切�
 
 ### 認証
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| GET | `/api/auth/login` | OAuth2 認証開始 |
-| GET | `/api/auth/callback` | OAuth2 コールバック |
-| GET | `/api/auth/me` | セッション確認・自動リフレッシュ |
-| POST | `/api/auth/logout` | ログアウト（cookie クリア） |
+| メソッド | パス                 | 説明                             |
+| -------- | -------------------- | -------------------------------- |
+| GET      | `/api/auth/login`    | OAuth2 認証開始                  |
+| GET      | `/api/auth/callback` | OAuth2 コールバック              |
+| GET      | `/api/auth/me`       | セッション確認・自動リフレッシュ |
+| POST     | `/api/auth/logout`   | ログアウト（cookie クリア）      |
 
 ### フィード
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| GET | `/api/feeds` | フィード一覧取得 |
-| POST | `/api/feeds` | フィード追加 `{ url: string }` |
-| DELETE | `/api/feeds/:id` | フィード削除 |
+| メソッド | パス             | 説明                           |
+| -------- | ---------------- | ------------------------------ |
+| GET      | `/api/feeds`     | フィード一覧取得               |
+| POST     | `/api/feeds`     | フィード追加 `{ url: string }` |
+| DELETE   | `/api/feeds/:id` | フィード削除                   |
 
 ### 記事
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| GET | `/api/articles` | 記事一覧取得 |
-| GET | `/api/content?url=...` | 記事フルテキスト取得プロキシ |
+| メソッド | パス                   | 説明                         |
+| -------- | ---------------------- | ---------------------------- |
+| GET      | `/api/articles`        | 記事一覧取得                 |
+| GET      | `/api/content?url=...` | 記事フルテキスト取得プロキシ |
 
 ### AI
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| POST | `/api/ai/summarize` | 記事要約 (Workers AI) |
-| POST | `/api/ai/translate` | 記事翻訳 (Workers AI) |
+| メソッド | パス                | 説明                  |
+| -------- | ------------------- | --------------------- |
+| POST     | `/api/ai/summarize` | 記事要約 (Workers AI) |
+| POST     | `/api/ai/translate` | 記事翻訳 (Workers AI) |
 
 ### その他
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| GET | `/api/health` | ヘルスチェック |
+| メソッド | パス          | 説明           |
+| -------- | ------------- | -------------- |
+| GET      | `/api/health` | ヘルスチェック |
 
 ## データ構造 (R2)
 

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useRef, useState } from 'react';
-import type { Feed } from '../types';
+import { useRef, useState } from "react";
+import type { Feed } from "../types";
 
 interface Callbacks {
   onFeedAdded: (feed: Feed) => void;
@@ -15,9 +15,14 @@ export interface ImportMessage {
   isError: boolean;
 }
 
-export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported }: Callbacks) {
+export function useFeedOperations({
+  onFeedAdded,
+  onFeedDeleted,
+  onFeedRenamed,
+  onFeedsImported,
+}: Callbacks) {
   const [adding, setAdding] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState<ImportMessage | null>(null);
   const importMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,23 +37,23 @@ export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, o
   async function addFeed(url: string, onSuccess: () => void) {
     if (!url.trim()) return;
     setAdding(true);
-    setError('');
+    setError("");
     try {
-      const res = await fetch('/api/feeds', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/feeds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
       });
       if (!res.ok) {
         const data = (await res.json()) as { error: string };
-        setError(data.error ?? 'Failed to add feed');
+        setError(data.error ?? "Failed to add feed");
         return;
       }
       const feed = (await res.json()) as Feed;
       onSuccess();
       onFeedAdded(feed);
     } catch {
-      setError('Network error');
+      setError("Network error");
     } finally {
       setAdding(false);
     }
@@ -56,32 +61,32 @@ export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, o
 
   async function deleteFeed(id: string) {
     try {
-      const res = await fetch(`/api/feeds/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/feeds/${id}`, { method: "DELETE" });
       if (!res.ok) {
-        setError('フィードの削除に失敗しました');
+        setError("フィードの削除に失敗しました");
         return;
       }
       onFeedDeleted(id);
     } catch {
-      setError('フィードの削除に失敗しました');
+      setError("フィードの削除に失敗しました");
     }
   }
 
   async function renameFeed(id: string, title: string) {
     try {
       const res = await fetch(`/api/feeds/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
       });
       if (!res.ok) {
-        setError('フィードのタイトル変更に失敗しました');
+        setError("フィードのタイトル変更に失敗しました");
         return;
       }
       const updated = (await res.json()) as Feed;
       onFeedRenamed(updated);
     } catch {
-      setError('フィードのタイトル変更に失敗しました');
+      setError("フィードのタイトル変更に失敗しました");
     }
   }
 
@@ -91,36 +96,50 @@ export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, o
     setImporting(true);
     try {
       const text = await file.text();
-      const res = await fetch('/api/feeds/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/xml' },
+      const res = await fetch("/api/feeds/import", {
+        method: "POST",
+        headers: { "Content-Type": "text/xml" },
         body: text,
       });
       if (!res.ok) {
         const data = (await res.json()) as { error: string };
-        showImportMessage(data.error ?? 'インポートに失敗しました', true);
+        showImportMessage(data.error ?? "インポートに失敗しました", true);
         return;
       }
       const data = (await res.json()) as { added: number; skipped: number };
       if (data.added > 0) {
-        const feedsRes = await fetch('/api/feeds');
+        const feedsRes = await fetch("/api/feeds");
         if (feedsRes.ok) {
           const allFeeds = (await feedsRes.json()) as Feed[];
           onFeedsImported(allFeeds);
         }
       }
-      showImportMessage(data.added > 0 ? `${data.added}件インポートしました` : 'すべて登録済みです', false);
+      showImportMessage(
+        data.added > 0 ? `${data.added}件インポートしました` : "すべて登録済みです",
+        false,
+      );
     } catch {
-      showImportMessage('インポートに失敗しました', true);
+      showImportMessage("インポートに失敗しました", true);
     } finally {
       setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
   function clearError() {
-    setError('');
+    setError("");
   }
 
-  return { adding, error, importing, importMessage, fileInputRef, addFeed, deleteFeed, renameFeed, handleImportFile, clearError };
+  return {
+    adding,
+    error,
+    importing,
+    importMessage,
+    fileInputRef,
+    addFeed,
+    deleteFeed,
+    renameFeed,
+    handleImportFile,
+    clearError,
+  };
 }

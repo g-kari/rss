@@ -1,11 +1,11 @@
-import type { Article, SharedFeedMeta, PushConfig } from '../types';
+import type { Article, SharedFeedMeta, PushConfig } from "../types";
 
-import { parseFeed, type ParsedItem } from '../lib/xml-parser';
-import { scrapeFeed } from '../lib/llm-feed-generator';
-import { isValidFeedUrl } from '../lib/url';
-import { fetchFollowSafeRedirects } from '../lib/fetch';
-import { sendPushToAll, type PushPayload } from '../lib/web-push';
-import { r2Get, r2Put, sha256Hex } from '../lib/r2';
+import { parseFeed, type ParsedItem } from "../lib/xml-parser";
+import { scrapeFeed } from "../lib/llm-feed-generator";
+import { isValidFeedUrl } from "../lib/url";
+import { fetchFollowSafeRedirects } from "../lib/fetch";
+import { sendPushToAll, type PushPayload } from "../lib/web-push";
+import { r2Get, r2Put } from "../lib/r2";
 import {
   computeFeedHash,
   computeArticleId,
@@ -18,9 +18,9 @@ import {
   buildFeedUserMap,
   readLatestArticles,
   assembleClientFeed,
-} from '../lib/shared-feed';
+} from "../lib/shared-feed";
 
-type FetchEnv = Pick<CloudflareEnv, 'RSS_DATA' | 'FINDME_RSS'>;
+type FetchEnv = Pick<CloudflareEnv, "RSS_DATA" | "FINDME_RSS">;
 
 const CONSECUTIVE_ERROR_SKIP_THRESHOLD = 5;
 const FEED_ERROR_RETRY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 時間
@@ -37,7 +37,7 @@ const USER_FETCH_CONCURRENCY = 3;
 export class RateLimitError extends Error {
   constructor(public readonly retryAfterMs: number) {
     super(`Rate limited: retry after ${Math.round(retryAfterMs / 1000)}s`);
-    this.name = 'RateLimitError';
+    this.name = "RateLimitError";
   }
 }
 
@@ -64,15 +64,15 @@ async function allSettledWithConcurrency<T>(
   tasks: (() => Promise<T>)[],
   limit: number,
 ): Promise<PromiseSettledResult<T>[]> {
-  const results: PromiseSettledResult<T>[] = new Array(tasks.length);
+  const results: PromiseSettledResult<T>[] = Array.from({ length: tasks.length });
   let next = 0;
   async function worker(): Promise<void> {
     while (next < tasks.length) {
       const i = next++;
       try {
-        results[i] = { status: 'fulfilled', value: await tasks[i]() };
+        results[i] = { status: "fulfilled", value: await tasks[i]() };
       } catch (reason) {
-        results[i] = { status: 'rejected', reason };
+        results[i] = { status: "rejected", reason };
       }
     }
   }
@@ -83,7 +83,7 @@ async function allSettledWithConcurrency<T>(
 // ── サービスバインディング ────────────────────────────────────────
 
 const SERVICE_BINDING_HOSTS: Partial<Record<string, keyof FetchEnv>> = {
-  'findme-rss.0g0.xyz': 'FINDME_RSS',
+  "findme-rss.0g0.xyz": "FINDME_RSS",
 };
 
 function fetchViaBinding(env: FetchEnv, url: string, init?: RequestInit): Promise<Response> {
@@ -154,7 +154,11 @@ function applyFeedSuccess(meta: SharedFeedMeta, parsed: ReturnType<typeof parseF
 function applyFeedRateLimit(meta: SharedFeedMeta, error: RateLimitError): void {
   meta.rateLimitedUntil = new Date(Date.now() + error.retryAfterMs).toISOString();
   meta.fetchError = error.message;
-  console.warn('Feed rate limited', { feedHash: meta.feedHash, url: meta.url, rateLimitedUntil: meta.rateLimitedUntil });
+  console.warn("Feed rate limited", {
+    feedHash: meta.feedHash,
+    url: meta.url,
+    rateLimitedUntil: meta.rateLimitedUntil,
+  });
 }
 
 function applyFeedError(meta: SharedFeedMeta, error: unknown): void {
@@ -164,7 +168,12 @@ function applyFeedError(meta: SharedFeedMeta, error: unknown): void {
   );
   meta.fetchError = error instanceof Error ? error.message : String(error);
   meta.lastErrorAt = new Date().toISOString();
-  console.error('Feed fetch failed', { feedHash: meta.feedHash, url: meta.url, consecutiveErrors: meta.consecutiveErrors, error });
+  console.error("Feed fetch failed", {
+    feedHash: meta.feedHash,
+    url: meta.url,
+    consecutiveErrors: meta.consecutiveErrors,
+    error,
+  });
 }
 
 // ── フィード取得（共有ストレージ向け）────────────────────────────
@@ -176,9 +185,9 @@ async function fetchAndScrapeWithSelectors(
 ): Promise<{ articles: Article[]; existingLatest: Article[] | null }> {
   const selectors = meta.cssSelectors!;
   const res = await fetchViaBinding(env, meta.url, {
-    headers: { 'User-Agent': 'rss-reader/1.0' },
+    headers: { "User-Agent": "rss-reader/1.0" },
   });
-  if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
+  if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get("Retry-After")));
   if (!res.ok) throw new Error(`${res.status} ${meta.url}`);
 
   const html = await res.text();
@@ -204,13 +213,13 @@ async function fetchAndParseFeed(
     return fetchAndScrapeWithSelectors(env, meta);
   }
 
-  const reqHeaders: Record<string, string> = { 'User-Agent': 'rss-reader/1.0' };
+  const reqHeaders: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
   if (options.conditional) {
-    if (meta.etag) reqHeaders['If-None-Match'] = meta.etag;
-    if (meta.lastModified) reqHeaders['If-Modified-Since'] = meta.lastModified;
+    if (meta.etag) reqHeaders["If-None-Match"] = meta.etag;
+    if (meta.lastModified) reqHeaders["If-Modified-Since"] = meta.lastModified;
   }
   const res = await fetchViaBinding(env, meta.url, { headers: reqHeaders });
-  if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
+  if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get("Retry-After")));
   if (res.status === 304) {
     resetFeedSuccessState(meta);
     return { articles: [], existingLatest: null };
@@ -221,8 +230,8 @@ async function fetchAndParseFeed(
   const parsed = parseFeed(xml);
 
   applyFeedSuccess(meta, parsed);
-  const lastModified = res.headers.get('Last-Modified');
-  const etag = res.headers.get('ETag');
+  const lastModified = res.headers.get("Last-Modified");
+  const etag = res.headers.get("ETag");
   if (lastModified) meta.lastModified = lastModified;
   if (etag) meta.etag = etag;
 
@@ -243,7 +252,7 @@ export async function fetchAndUpdateSharedFeed(
 ): Promise<{ newArticles: Article[]; meta: SharedFeedMeta | null }> {
   const meta = await readFeedMeta(env.RSS_DATA, feedHash);
   if (!meta) {
-    console.warn('fetchAndUpdateSharedFeed: meta not found', { feedHash });
+    console.warn("fetchAndUpdateSharedFeed: meta not found", { feedHash });
     return { newArticles: [], meta: null };
   }
 
@@ -263,7 +272,9 @@ export async function fetchAndUpdateSharedFeed(
 
   let newArticles: Article[] = [];
   try {
-    const { articles: fetched, existingLatest } = await fetchAndParseFeed(env, meta, { conditional: !forceRetry });
+    const { articles: fetched, existingLatest } = await fetchAndParseFeed(env, meta, {
+      conditional: !forceRetry,
+    });
     newArticles = await mergeNewArticles(env.RSS_DATA, meta, fetched, existingLatest);
   } catch (e) {
     if (e instanceof RateLimitError) {
@@ -282,9 +293,9 @@ export async function fetchAndUpdateSharedFeed(
 function buildPushPayload(newArticles: Article[], feedTitle: string): PushPayload {
   const count = newArticles.length;
   const singleFeed = new Set(newArticles.map((a) => a.feedHash)).size === 1;
-  const title = singleFeed ? feedTitle : 'RSS Reader';
-  const body = count === 1 ? (newArticles[0].title || '新着記事') : `${count} 件の新着記事`;
-  return { title, body, url: '/' };
+  const title = singleFeed ? feedTitle : "RSS Reader";
+  const body = count === 1 ? newArticles[0].title || "新着記事" : `${count} 件の新着記事`;
+  return { title, body, url: "/" };
 }
 
 async function sendPushForUsers(
@@ -332,12 +343,12 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
   // Push 通知
   for (let i = 0; i < feedHashes.length; i++) {
     const result = results[i];
-    if (result.status !== 'fulfilled' || result.value.newArticles.length === 0) continue;
+    if (result.status !== "fulfilled" || result.value.newArticles.length === 0) continue;
     const { newArticles, meta } = result.value;
     const feedHash = feedHashes[i];
     const userIds = feedUserMap.get(feedHash) ?? [];
     if (userIds.length === 0) continue;
-    await sendPushForUsers(env, userIds, newArticles, meta?.title ?? 'RSS');
+    await sendPushForUsers(env, userIds, newArticles, meta?.title ?? "RSS");
   }
 }
 
@@ -363,7 +374,7 @@ export async function fetchSingleFeed(
   env: FetchEnv,
   userId: string,
   feedHash: string,
-): Promise<import('../types').Feed | null> {
+): Promise<import("../types").Feed | null> {
   const subs = await readUserSubscriptions(env.RSS_DATA, userId);
   const sub = subs.find((s) => s.feedHash === feedHash);
   if (!sub) return null;
@@ -378,10 +389,7 @@ export async function fetchSingleFeed(
  * 新規フィードを共有ストレージに登録してから初回取得する。
  * 既に meta.json が存在する場合はスキップ（別ユーザーが既に登録済み）。
  */
-export async function registerAndFetchFeed(
-  env: FetchEnv,
-  feedUrl: string,
-): Promise<void> {
+export async function registerAndFetchFeed(env: FetchEnv, feedUrl: string): Promise<void> {
   const feedHash = await computeFeedHash(feedUrl);
   const existing = await readFeedMeta(env.RSS_DATA, feedHash);
   if (!existing) {

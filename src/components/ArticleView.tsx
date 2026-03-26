@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { Article, FontSize, AiMode } from '../types';
-import { readingTime } from '../lib/article-utils';
-import { extractEmbedInfo, processContent, stripIframes } from '../lib/embed-utils';
-import { useArticleContent } from '../hooks/useArticleContent';
-import { useArticleAi } from '../hooks/useArticleAi';
-import { useImageDownload } from '../hooks/useImageDownload';
-import { useContentLinkPreviews } from '../hooks/useContentLinkPreviews';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import type { Article, FontSize, AiMode } from "../types";
+import { readingTime } from "../lib/article-utils";
+import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
+import { useArticleContent } from "../hooks/useArticleContent";
+import { useArticleAi } from "../hooks/useArticleAi";
+import { useImageDownload } from "../hooks/useImageDownload";
+import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
-  small: 'text-[14px] leading-[1.75]',
-  medium: 'text-[16px] leading-[1.9]',
-  large: 'text-[19px] leading-[2.0]',
+  small: "text-[14px] leading-[1.75]",
+  medium: "text-[16px] leading-[1.9]",
+  large: "text-[19px] leading-[2.0]",
 };
-const FONT_SIZE_CYCLE: FontSize[] = ['small', 'medium', 'large'];
+const FONT_SIZE_CYCLE: FontSize[] = ["small", "medium", "large"];
 
 interface Props {
   article: Article | null;
@@ -35,11 +35,14 @@ interface Props {
 const SHORT_CONTENT_THRESHOLD = 400;
 
 /** target から currentTarget まで祖先を遡り、横スクロール可能な要素があれば true を返す */
-function hasScrollableAncestor(target: EventTarget | null, currentTarget: EventTarget | null): boolean {
+function hasScrollableAncestor(
+  target: EventTarget | null,
+  currentTarget: EventTarget | null,
+): boolean {
   let node = target as Element | null;
   while (node && node !== currentTarget) {
     const ox = getComputedStyle(node).overflowX;
-    if ((ox === 'auto' || ox === 'scroll') && node.scrollWidth > node.clientWidth) return true;
+    if ((ox === "auto" || ox === "scroll") && node.scrollWidth > node.clientWidth) return true;
     node = node.parentElement;
   }
   return false;
@@ -52,7 +55,7 @@ export default function ArticleView({
   isInReadingList,
   onToggleReadingList,
   onMobileBack,
-  fontSize = 'medium',
+  fontSize = "medium",
   onChangeFontSize,
   showToast,
   prevArticle,
@@ -63,8 +66,7 @@ export default function ArticleView({
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
 
-  const { aiResult, aiLoading, aiError, doRunAi, resetAi } =
-    useArticleAi(article?.id);
+  const { aiResult, aiLoading, aiError, doRunAi, resetAi } = useArticleAi(article?.id);
 
   // 翻訳結果を本文として表示するフラグ
   const [showTranslated, setShowTranslated] = useState(false);
@@ -75,7 +77,10 @@ export default function ArticleView({
   const [scrollProgress, setScrollProgress] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const mouseStartXRef = useRef<number | null>(null);
-  const wheelDeltaRef = useRef<{ x: number; timer: ReturnType<typeof setTimeout> | null }>({ x: 0, timer: null });
+  const wheelDeltaRef = useRef<{ x: number; timer: ReturnType<typeof setTimeout> | null }>({
+    x: 0,
+    timer: null,
+  });
   const contentRef = useRef<HTMLDivElement>(null);
 
   const { downloadAllImages, downloadingImages, imageDownloadProgress } = useImageDownload(
@@ -89,51 +94,67 @@ export default function ArticleView({
   const injectSliderControls = useCallback(() => {
     const el = contentRef.current;
     if (!el) return;
-    const sliders = el.querySelectorAll<HTMLElement>('.rss-image-slider');
+    const sliders = el.querySelectorAll<HTMLElement>(".rss-image-slider");
     sliders.forEach((slider) => {
-      if (slider.closest('.rss-slider-wrapper')) return; // 二重注入を防止
+      if (slider.closest(".rss-slider-wrapper")) return; // 二重注入を防止
 
       // スライダーを相対配置のラッパーで包む
-      const wrapper = document.createElement('div');
-      wrapper.className = 'rss-slider-wrapper';
-      wrapper.style.cssText = 'position:relative;margin-bottom:1.25em';
-      slider.style.marginBottom = '0';
+      const wrapper = document.createElement("div");
+      wrapper.className = "rss-slider-wrapper";
+      wrapper.style.cssText = "position:relative;margin-bottom:1.25em";
+      slider.style.marginBottom = "0";
       slider.parentNode!.insertBefore(wrapper, slider);
       wrapper.appendChild(slider);
 
-      function makeNavBtn(dir: 'prev' | 'next') {
-        const btn = document.createElement('button');
-        const side = dir === 'prev' ? 'left:8px' : 'right:8px';
-        btn.setAttribute('aria-label', dir === 'prev' ? '前の画像' : '次の画像');
+      function makeNavBtn(dir: "prev" | "next") {
+        const btn = document.createElement("button");
+        const side = dir === "prev" ? "left:8px" : "right:8px";
+        btn.setAttribute("aria-label", dir === "prev" ? "前の画像" : "次の画像");
         btn.style.cssText =
           `position:absolute;${side};top:50%;transform:translateY(-50%);` +
           `width:32px;height:32px;border-radius:50%;` +
           `background:rgba(0,0,0,0.45);color:white;border:none;cursor:pointer;` +
           `display:flex;align-items:center;justify-content:center;` +
           `opacity:0;transition:opacity 0.15s;z-index:1;padding:0;flex-shrink:0`;
-        const path = dir === 'prev' ? 'M9 2L4 7l5 5' : 'M5 2l5 5-5 5';
+        const path = dir === "prev" ? "M9 2L4 7l5 5" : "M5 2l5 5-5 5";
         btn.innerHTML =
           `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="white" ` +
           `stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
           `<path d="${path}"/></svg>`;
-        btn.addEventListener('click', () =>
-          slider.scrollBy({ left: dir === 'prev' ? -slider.clientWidth : slider.clientWidth, behavior: 'smooth' }),
+        btn.addEventListener("click", () =>
+          slider.scrollBy({
+            left: dir === "prev" ? -slider.clientWidth : slider.clientWidth,
+            behavior: "smooth",
+          }),
         );
         wrapper.appendChild(btn);
         return btn;
       }
 
-      const prevBtn = makeNavBtn('prev');
-      const nextBtn = makeNavBtn('next');
-      wrapper.addEventListener('mouseenter', () => { prevBtn.style.opacity = '1'; nextBtn.style.opacity = '1'; });
-      wrapper.addEventListener('mouseleave', () => { prevBtn.style.opacity = '0'; nextBtn.style.opacity = '0'; });
+      const prevBtn = makeNavBtn("prev");
+      const nextBtn = makeNavBtn("next");
+      wrapper.addEventListener("mouseenter", () => {
+        prevBtn.style.opacity = "1";
+        nextBtn.style.opacity = "1";
+      });
+      wrapper.addEventListener("mouseleave", () => {
+        prevBtn.style.opacity = "0";
+        nextBtn.style.opacity = "0";
+      });
 
       // マウスホイールの縦スクロールを横スクロールに変換（PC 操作性向上）
-      slider.addEventListener('wheel', (e: WheelEvent) => {
-        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-        e.preventDefault();
-        slider.scrollBy({ left: e.deltaY > 0 ? slider.clientWidth : -slider.clientWidth, behavior: 'smooth' });
-      }, { passive: false });
+      slider.addEventListener(
+        "wheel",
+        (e: WheelEvent) => {
+          if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+          e.preventDefault();
+          slider.scrollBy({
+            left: e.deltaY > 0 ? slider.clientWidth : -slider.clientWidth,
+            behavior: "smooth",
+          });
+        },
+        { passive: false },
+      );
     });
   }, []);
 
@@ -159,13 +180,13 @@ export default function ArticleView({
         setShareMenuOpen(false);
       }
     }
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [shareMenuOpen]);
 
   // 翻訳結果が届いたら本文を翻訳表示に切り替える
   useEffect(() => {
-    if (aiResult?.mode === 'translation') setShowTranslated(true);
+    if (aiResult?.mode === "translation") setShowTranslated(true);
   }, [aiResult]);
 
   if (!article) {
@@ -177,14 +198,33 @@ export default function ArticleView({
             className="lg:hidden absolute top-3 left-3 p-1.5 text-text-muted hover:text-text-strong transition-colors"
             aria-label="記事一覧に戻る"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 3L5 8l5 5"/>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M10 3L5 8l5 5" />
             </svg>
           </button>
         )}
         <div className="text-center animate-fade-in">
-          <svg className="w-8 h-8 mx-auto mb-3 text-text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          <svg
+            className="w-8 h-8 mx-auto mb-3 text-text-faint"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+            />
           </svg>
           <p className="text-[11px] tracking-[0.1em] text-text-faint">記事を選択</p>
         </div>
@@ -209,19 +249,21 @@ export default function ArticleView({
     if (!contentRef.current || !processedContent) return;
     const el = contentRef.current;
     let cancelled = false;
-    import('katex/contrib/auto-render').then(({ default: renderMathInElement }) => {
+    import("katex/contrib/auto-render").then(({ default: renderMathInElement }) => {
       if (cancelled || !el.isConnected) return;
       renderMathInElement(el, {
         delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false },
-          { left: '\\[', right: '\\]', display: true },
-          { left: '\\(', right: '\\)', display: false },
+          { left: "$$", right: "$$", display: true },
+          { left: "$", right: "$", display: false },
+          { left: "\\[", right: "\\]", display: true },
+          { left: "\\(", right: "\\)", display: false },
         ],
         throwOnError: false,
       });
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [processedContent, showTranslated]);
 
   const isShortContent = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
@@ -246,7 +288,9 @@ export default function ArticleView({
     const state = wheelDeltaRef.current;
     state.x += e.deltaX;
     if (state.timer) clearTimeout(state.timer);
-    state.timer = setTimeout(() => { state.x = 0; }, 400);
+    state.timer = setTimeout(() => {
+      state.x = 0;
+    }, 400);
 
     if (state.x > 150 && onSelectNext) {
       state.x = 0;
@@ -294,7 +338,13 @@ export default function ArticleView({
   }
 
   return (
-    <main className="h-full overflow-y-auto bg-surface-elevated animate-fade-in relative" onScroll={handleScroll} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onWheel={handleWheel}>
+    <main
+      className="h-full overflow-y-auto bg-surface-elevated animate-fade-in relative"
+      onScroll={handleScroll}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onWheel={handleWheel}
+    >
       {scrollProgress > 0 && (
         <div
           className="sticky top-0 left-0 h-[2px] bg-ink z-10 transition-[width] duration-75 ease-linear"
@@ -310,17 +360,26 @@ export default function ArticleView({
               className="lg:hidden -ml-1 mr-1 p-1.5 text-text-muted hover:text-text-strong transition-colors flex-shrink-0"
               aria-label="記事一覧に戻る"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 3L5 8l5 5"/>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M10 3L5 8l5 5" />
               </svg>
             </button>
           )}
           {article.publishedAt && !isNaN(new Date(article.publishedAt).getTime()) && (
             <time className="tracking-[0.04em]">
-              {new Date(article.publishedAt).toLocaleDateString('ja-JP', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
+              {new Date(article.publishedAt).toLocaleDateString("ja-JP", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}
             </time>
           )}
@@ -354,14 +413,14 @@ export default function ArticleView({
                   <button
                     key={size}
                     onClick={() => onChangeFontSize(size)}
-                    title={size === 'small' ? '小' : size === 'medium' ? '中' : '大'}
+                    title={size === "small" ? "小" : size === "medium" ? "中" : "大"}
                     className={`px-1.5 py-0.5 rounded transition-colors duration-150 ${
                       fontSize === size
-                        ? 'text-text-strong'
-                        : 'text-text-faint hover:text-text-muted'
+                        ? "text-text-strong"
+                        : "text-text-faint hover:text-text-muted"
                     }`}
                     style={{
-                      fontSize: size === 'small' ? '10px' : size === 'medium' ? '12px' : '14px',
+                      fontSize: size === "small" ? "10px" : size === "medium" ? "12px" : "14px",
                       lineHeight: 1,
                     }}
                   >
@@ -374,7 +433,7 @@ export default function ArticleView({
             {/* AI ボタン */}
             {hasContent && (
               <div className="flex items-center gap-1 mr-1">
-                {(['summary', 'translation'] as AiMode[]).map((mode) => {
+                {(["summary", "translation"] as AiMode[]).map((mode) => {
                   const isActive = aiResult?.mode === mode;
                   return (
                     <button
@@ -382,7 +441,7 @@ export default function ArticleView({
                       onClick={() => {
                         if (isActive) {
                           resetAi();
-                          if (mode === 'translation') setShowTranslated(false);
+                          if (mode === "translation") setShowTranslated(false);
                           return;
                         }
                         // サーバー側でコンテンツを取得して AI 処理
@@ -391,14 +450,14 @@ export default function ArticleView({
                         }
                       }}
                       disabled={!!aiLoading || fetching}
-                      title={mode === 'summary' ? 'AI 要約' : '日本語翻訳'}
+                      title={mode === "summary" ? "AI 要約" : "日本語翻訳"}
                       className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
                         isActive
-                          ? 'border-ink bg-ink text-ink-text'
-                          : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
+                          ? "border-ink bg-ink text-ink-text"
+                          : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
                       }`}
                     >
-                      {aiLoading === mode ? '…' : mode === 'summary' ? '要約' : '日本語'}
+                      {aiLoading === mode ? "…" : mode === "summary" ? "要約" : "日本語"}
                     </button>
                   );
                 })}
@@ -407,7 +466,9 @@ export default function ArticleView({
 
             {hasImages && (
               <button
-                onClick={() => { void downloadAllImages(); }}
+                onClick={() => {
+                  void downloadAllImages();
+                }}
                 disabled={downloadingImages}
                 title="記事内の画像をすべてダウンロード"
                 className="text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50 flex items-center gap-1"
@@ -418,11 +479,30 @@ export default function ArticleView({
                   </span>
                 ) : null}
                 {downloadingImages ? (
-                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  <svg
+                    className="w-3.5 h-3.5 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
                   </svg>
                 ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                   </svg>
                 )}
@@ -434,24 +514,44 @@ export default function ArticleView({
                 <button
                   onClick={() => setShareMenuOpen((v) => !v)}
                   title="共有 (c)"
-                  className={`transition-colors duration-200 ${shareMenuOpen ? 'text-text-muted' : 'text-text-faint hover:text-text-muted'}`}
+                  className={`transition-colors duration-200 ${shareMenuOpen ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
                     <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
                 </button>
                 {shareMenuOpen && (
                   <div className="absolute right-0 top-full mt-1 z-30 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[140px]">
-                    {typeof navigator.share === 'function' && (
+                    {typeof navigator.share === "function" && (
                       <button
                         onClick={() => {
                           setShareMenuOpen(false);
-                          navigator.share({ url: article.link!, title: article.title }).catch(() => {});
+                          navigator
+                            .share({ url: article.link!, title: article.title })
+                            .catch(() => {});
                         }}
                         className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                         </svg>
                         システムで共有
@@ -461,7 +561,7 @@ export default function ArticleView({
                       onClick={() => {
                         setShareMenuOpen(false);
                         const url = `https://x.com/intent/tweet?url=${encodeURIComponent(article.link!)}&text=${encodeURIComponent(article.title)}`;
-                        window.open(url, '_blank', 'noopener,noreferrer');
+                        window.open(url, "_blank", "noopener,noreferrer");
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
                     >
@@ -473,12 +573,15 @@ export default function ArticleView({
                     <button
                       onClick={() => {
                         setShareMenuOpen(false);
-                        navigator.clipboard.writeText(`${article.title}\n${article.link!}`).then(() => {
-                          showToast('コピーしました。Slack を開きます');
-                          window.open('slack://open', '_blank', 'noopener,noreferrer');
-                        }).catch(() => {
-                          showToast('コピーに失敗しました');
-                        });
+                        navigator.clipboard
+                          .writeText(`${article.title}\n${article.link!}`)
+                          .then(() => {
+                            showToast("コピーしました。Slack を開きます");
+                            window.open("slack://open", "_blank", "noopener,noreferrer");
+                          })
+                          .catch(() => {
+                            showToast("コピーに失敗しました");
+                          });
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
                     >
@@ -491,7 +594,7 @@ export default function ArticleView({
                       onClick={() => {
                         setShareMenuOpen(false);
                         const url = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(article.link!)}`;
-                        window.open(url, '_blank', 'noopener,noreferrer');
+                        window.open(url, "_blank", "noopener,noreferrer");
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
                     >
@@ -503,15 +606,27 @@ export default function ArticleView({
                     <button
                       onClick={() => {
                         setShareMenuOpen(false);
-                        navigator.clipboard.writeText(`${article.title}\n${article.link!}`).then(() => {
-                          showToast('タイトルと URL をコピーしました');
-                        }).catch(() => {
-                          showToast('コピーに失敗しました');
-                        });
+                        navigator.clipboard
+                          .writeText(`${article.title}\n${article.link!}`)
+                          .then(() => {
+                            showToast("タイトルと URL をコピーしました");
+                          })
+                          .catch(() => {
+                            showToast("コピーに失敗しました");
+                          });
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
                         <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                       </svg>
@@ -524,25 +639,49 @@ export default function ArticleView({
 
             <button
               onClick={() => onToggleReadingList(article.id)}
-              title={isInReadingList ? '後で読むから削除' : '後で読む'}
+              title={isInReadingList ? "後で読むから削除" : "後で読む"}
               className={`transition-colors duration-200 ${
-                isInReadingList ? 'text-text-default hover:text-text-muted' : 'text-text-faint hover:text-text-default'
+                isInReadingList
+                  ? "text-text-default hover:text-text-muted"
+                  : "text-text-faint hover:text-text-default"
               }`}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill={isInReadingList ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill={isInReadingList ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M12 6v6l4 2" />
                 <circle cx="12" cy="12" r="9" />
               </svg>
             </button>
             <button
               onClick={() => onToggleBookmark(article.id)}
-              title={isBookmarked ? 'ブックマーク解除 (b)' : 'ブックマーク (b)'}
+              title={isBookmarked ? "ブックマーク解除 (b)" : "ブックマーク (b)"}
               className={`transition-colors duration-200 ${
-                isBookmarked ? 'text-bookmark hover:text-text-muted' : 'text-text-faint hover:text-bookmark'
+                isBookmarked
+                  ? "text-bookmark hover:text-text-muted"
+                  : "text-text-faint hover:text-bookmark"
               }`}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill={isBookmarked ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
+                />
               </svg>
             </button>
           </div>
@@ -554,8 +693,11 @@ export default function ArticleView({
         </h1>
 
         {/* メディア埋め込み */}
-        {embedInfo && embedInfo.type === 'video' && (
-          <div className="relative mb-8" style={{ paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '8px' }}>
+        {embedInfo && embedInfo.type === "video" && (
+          <div
+            className="relative mb-8"
+            style={{ paddingBottom: "56.25%", height: 0, overflow: "hidden", borderRadius: "8px" }}
+          >
             <iframe
               className="absolute inset-0 w-full h-full"
               src={embedInfo.embedUrl}
@@ -563,18 +705,18 @@ export default function ArticleView({
               allow={embedInfo.allow}
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
-              style={{ border: 0, borderRadius: '8px' }}
+              style={{ border: 0, borderRadius: "8px" }}
             />
           </div>
         )}
-        {embedInfo && embedInfo.type === 'audio' && (
+        {embedInfo && embedInfo.type === "audio" && (
           <div className="mb-8 rounded-xl overflow-hidden">
             <iframe
               src={embedInfo.embedUrl}
               title={article.title}
               allow={embedInfo.allow}
               height={embedInfo.audioHeight ?? 152}
-              style={{ border: 0, width: '100%', borderRadius: '12px' }}
+              style={{ border: 0, width: "100%", borderRadius: "12px" }}
             />
           </div>
         )}
@@ -589,7 +731,19 @@ export default function ArticleView({
             <div className="flex-1 overflow-hidden flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               {prevArticle && onSelectPrev && (
                 <>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-faint flex-shrink-0"><path d="M8 2L4 6l4 4"/></svg>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-text-faint flex-shrink-0"
+                  >
+                    <path d="M8 2L4 6l4 4" />
+                  </svg>
                   <span className="text-[11px] text-text-faint truncate">{prevArticle.title}</span>
                 </>
               )}
@@ -599,7 +753,19 @@ export default function ArticleView({
               {nextArticle && onSelectNext && (
                 <>
                   <span className="text-[11px] text-text-faint truncate">{nextArticle.title}</span>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-faint flex-shrink-0"><path d="M4 2l4 4-4 4"/></svg>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-text-faint flex-shrink-0"
+                  >
+                    <path d="M4 2l4 4-4 4" />
+                  </svg>
                 </>
               )}
             </div>
@@ -607,15 +773,13 @@ export default function ArticleView({
         )}
 
         {/* AI 要約パネル（翻訳は本文に統合するため非表示） */}
-        {aiResult?.mode === 'summary' && (
+        {aiResult?.mode === "summary" && (
           <div className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up">
             <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint mb-2">AI 要約</p>
             <p className="text-[14px] leading-[1.8] text-text-default">{aiResult.text}</p>
           </div>
         )}
-        {aiError && (
-          <p className="mb-6 text-[11px] text-rose-400">{aiError}</p>
-        )}
+        {aiError && <p className="mb-6 text-[11px] text-rose-400">{aiError}</p>}
 
         {/* OGP 画像 (埋め込みなし) */}
         {!embedInfo && (article.ogImage ?? resolvedOgImage) && (
@@ -624,19 +788,21 @@ export default function ArticleView({
             alt=""
             className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
             loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
           />
         )}
 
         {/* 翻訳/元文切り替えバー */}
-        {aiResult?.mode === 'translation' && (
+        {aiResult?.mode === "translation" && (
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => setShowTranslated(true)}
               className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 ${
                 showTranslated
-                  ? 'border-ink bg-ink text-ink-text'
-                  : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
+                  ? "border-ink bg-ink text-ink-text"
+                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
               }`}
             >
               翻訳
@@ -645,8 +811,8 @@ export default function ArticleView({
               onClick={() => setShowTranslated(false)}
               className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 ${
                 !showTranslated
-                  ? 'border-ink bg-ink text-ink-text'
-                  : 'border-border-default text-text-muted hover:border-text-muted hover:text-text-default'
+                  ? "border-ink bg-ink text-ink-text"
+                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
               }`}
             >
               原文
@@ -655,11 +821,11 @@ export default function ArticleView({
         )}
 
         {/* 本文（翻訳表示中は翻訳テキストで置き換え） */}
-        {showTranslated && aiResult?.mode === 'translation' ? (
+        {showTranslated && aiResult?.mode === "translation" ? (
           <div className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}>
-            {aiResult.text.split('\n').map((line, i) =>
-              line.trim() ? <p key={i}>{line}</p> : null,
-            )}
+            {aiResult.text
+              .split("\n")
+              .map((line, i) => (line.trim() ? <p key={i}>{line}</p> : null))}
           </div>
         ) : processedContent ? (
           <div
@@ -672,12 +838,12 @@ export default function ArticleView({
             dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         ) : article.summary ? (
-          <p className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}>
-            {article.summary}
-          </p>
+          <p className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}>{article.summary}</p>
         ) : !embedInfo ? (
           <div className="text-center py-12">
-            <p className="text-[12px] text-text-faint mb-4 tracking-[0.04em]">本文のプレビューはありません</p>
+            <p className="text-[12px] text-text-faint mb-4 tracking-[0.04em]">
+              本文のプレビューはありません
+            </p>
             {article.link && (
               <a
                 href={article.link}
@@ -702,15 +868,35 @@ export default function ArticleView({
               >
                 {fetching ? (
                   <>
-                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    <svg
+                      className="w-3.5 h-3.5 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
                     </svg>
                     取得中...
                   </>
                 ) : (
                   <>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                      />
                     </svg>
                     全文を取得
                   </>
@@ -722,15 +908,23 @@ export default function ArticleView({
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                  />
                 </svg>
                 元記事を開く
               </a>
             </div>
-            {fetchError && (
-              <p className="text-[11px] text-rose-400">{fetchError}</p>
-            )}
+            {fetchError && <p className="text-[11px] text-rose-400">{fetchError}</p>}
           </div>
         )}
 
@@ -743,14 +937,27 @@ export default function ArticleView({
                 className="flex-1 text-left px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
               >
                 <span className="flex items-center gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 2L4 6l4 4"/>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M8 2L4 6l4 4" />
                   </svg>
                   前の記事
                 </span>
-                <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">{prevArticle.title}</span>
+                <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
+                  {prevArticle.title}
+                </span>
               </button>
-            ) : <div className="flex-1" />}
+            ) : (
+              <div className="flex-1" />
+            )}
             {nextArticle ? (
               <button
                 onClick={onSelectNext}
@@ -758,13 +965,26 @@ export default function ArticleView({
               >
                 <span className="flex items-center justify-end gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
                   次の記事
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 2l4 4-4 4"/>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M4 2l4 4-4 4" />
                   </svg>
                 </span>
-                <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">{nextArticle.title}</span>
+                <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
+                  {nextArticle.title}
+                </span>
               </button>
-            ) : <div className="flex-1" />}
+            ) : (
+              <div className="flex-1" />
+            )}
           </div>
         )}
       </div>

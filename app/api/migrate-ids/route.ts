@@ -9,9 +9,9 @@
  * このファイルはマイグレーションスクリプトが生成する。
  * ファイルが存在しない場合は空オブジェクトを返す（移行完了後は不要）。
  */
-import { NextResponse } from 'next/server';
-import { withSession } from '@/lib/server-auth';
-import { r2Get } from '@/lib/r2';
+import { NextResponse } from "next/server";
+import { withSession } from "@/lib/server-auth";
+import { r2Get } from "@/lib/r2";
 
 export async function GET() {
   return withSession(async ({ session, env }) => {

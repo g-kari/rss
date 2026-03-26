@@ -1,4 +1,4 @@
-import { isValidFeedUrl } from '@/lib/url';
+import { isValidFeedUrl } from "@/lib/url";
 
 /** 外部 HTTP フェッチのデフォルトタイムアウト（ミリ秒）*/
 export const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
@@ -93,7 +93,7 @@ export async function fetchWithTimeout(
  */
 export async function fetchFollowSafeRedirects(
   url: string,
-  init: Omit<RequestInit, 'redirect'>,
+  init: Omit<RequestInit, "redirect">,
   timeoutMs: number,
 ): Promise<Response> {
   const controller = new AbortController();
@@ -106,7 +106,7 @@ export async function fetchFollowSafeRedirects(
       const res = await fetch(currentUrl, {
         ...init,
         signal: controller.signal,
-        redirect: 'manual',
+        redirect: "manual",
       });
 
       // 304 Not Modified はリダイレクトではなく「変更なし」を示す。
@@ -114,8 +114,8 @@ export async function fetchFollowSafeRedirects(
       if (res.status === 304) return res;
 
       if (res.status >= 300 && res.status < 400) {
-        const location = res.headers.get('location');
-        if (!location) throw new Error('Redirect without Location header');
+        const location = res.headers.get("location");
+        if (!location) throw new Error("Redirect without Location header");
         const nextUrl = new URL(location, currentUrl).href;
         if (!isValidFeedUrl(nextUrl)) {
           throw new Error(`Redirect to blocked URL: ${nextUrl}`);

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Article, UserProfile } from '../types';
-import { STORAGE_KEYS, saveSet, loadSet } from '../lib/storage';
+import { useState, useEffect, useCallback, useRef } from "react";
+import type { Article, UserProfile } from "../types";
+import { STORAGE_KEYS, saveSet, loadSet } from "../lib/storage";
 
 /** 3つの既読状態セットをまとめた型 */
 type ReadStateSets = { read: Set<string>; bookmarks: Set<string>; readingList: Set<string> };
@@ -15,7 +15,11 @@ function toggleSetItem(
 ): void {
   setState((prev) => {
     const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
     saveSet(storageKey, next);
     return next;
   });
@@ -40,7 +44,7 @@ async function fetchReadState(): Promise<{
   readingListIds: string[];
 } | null> {
   try {
-    const res = await fetch('/api/read-state');
+    const res = await fetch("/api/read-state");
     if (!res.ok) return null;
     return res.json() as Promise<{
       readIds: string[];
@@ -54,9 +58,9 @@ async function fetchReadState(): Promise<{
 
 async function saveReadState(sets: ReadStateSets): Promise<void> {
   try {
-    await fetch('/api/read-state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch("/api/read-state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         readIds: [...sets.read],
         bookmarkIds: [...sets.bookmarks],
@@ -92,7 +96,11 @@ export function useReadState(
   );
 
   // 3つのセットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
-  const stateRef = useRef<ReadStateSets>({ read: readIds, bookmarks: bookmarkIds, readingList: readingListIds });
+  const stateRef = useRef<ReadStateSets>({
+    read: readIds,
+    bookmarks: bookmarkIds,
+    readingList: readingListIds,
+  });
   const articlesRef = useRef(articles);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -128,10 +136,10 @@ export function useReadState(
         bookmarkIds: [...bookmarks],
         readingListIds: [...readingList],
       });
-      navigator.sendBeacon('/api/read-state', new Blob([body], { type: 'application/json' }));
+      navigator.sendBeacon("/api/read-state", new Blob([body], { type: "application/json" }));
     }
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
   // タブ非表示時（別タブへの切り替えなど）にデバウンス待ちのデータを即時送信
@@ -139,14 +147,14 @@ export function useReadState(
   // visibilitychange で補完することでタブ切り替え時の状態ロストを防ぐ
   useEffect(() => {
     function onVisibilityChange() {
-      if (document.visibilityState !== 'hidden') return;
+      if (document.visibilityState !== "hidden") return;
       if (syncTimerRef.current === null) return;
       clearTimeout(syncTimerRef.current);
       syncTimerRef.current = null;
       saveReadState(stateRef.current);
     }
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
   const scheduleSyncToServer = useCallback(() => {
@@ -174,9 +182,9 @@ export function useReadState(
         const arts = articlesRef.current;
         const { bookmarks, readingList } = stateRef.current;
         let ids: string[];
-        if (feedId === '__bookmarks__') {
+        if (feedId === "__bookmarks__") {
           ids = arts.filter((a) => bookmarks.has(a.id)).map((a) => a.id);
-        } else if (feedId === '__reading_list__') {
+        } else if (feedId === "__reading_list__") {
           ids = arts.filter((a) => readingList.has(a.id)).map((a) => a.id);
         } else if (feedId) {
           ids = arts.filter((a) => a.feedHash === feedId).map((a) => a.id);
@@ -193,17 +201,26 @@ export function useReadState(
   );
 
   const toggleRead = useCallback(
-    (id: string) => { toggleSetItem(setReadIds, STORAGE_KEYS.READ_IDS, id); scheduleSyncToServer(); },
+    (id: string) => {
+      toggleSetItem(setReadIds, STORAGE_KEYS.READ_IDS, id);
+      scheduleSyncToServer();
+    },
     [scheduleSyncToServer],
   );
 
   const toggleBookmark = useCallback(
-    (id: string) => { toggleSetItem(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, id); scheduleSyncToServer(); },
+    (id: string) => {
+      toggleSetItem(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, id);
+      scheduleSyncToServer();
+    },
     [scheduleSyncToServer],
   );
 
   const toggleReadingList = useCallback(
-    (id: string) => { toggleSetItem(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, id); scheduleSyncToServer(); },
+    (id: string) => {
+      toggleSetItem(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, id);
+      scheduleSyncToServer();
+    },
     [scheduleSyncToServer],
   );
 

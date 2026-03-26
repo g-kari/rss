@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, type RefObject } from 'react';
+import { useEffect, type RefObject } from "react";
 
-export const LINK_PREVIEW_CLASS = 'ogp-link-preview';
+export const LINK_PREVIEW_CLASS = "ogp-link-preview";
 
 interface OgpData {
   image: string;
@@ -19,11 +19,11 @@ function isStandaloneLink(anchor: HTMLAnchorElement): boolean {
   const parent = anchor.parentElement;
   if (!parent) return false;
   const tag = parent.tagName.toLowerCase();
-  if (!['p', 'li', 'div', 'blockquote'].includes(tag)) return false;
+  if (!["p", "li", "div", "blockquote"].includes(tag)) return false;
 
   // 空白テキストノードを除いた意味のある子ノードが anchor のみか確認
   const meaningful = [...parent.childNodes].filter((n) => {
-    if (n.nodeType === Node.TEXT_NODE) return (n.textContent ?? '').trim() !== '';
+    if (n.nodeType === Node.TEXT_NODE) return (n.textContent ?? "").trim() !== "";
     return true;
   });
   return meaningful.length === 1 && meaningful[0] === anchor;
@@ -32,34 +32,34 @@ function isStandaloneLink(anchor: HTMLAnchorElement): boolean {
 function buildPreviewCard(url: string, ogp: OgpData): HTMLAnchorElement | null {
   if (!ogp.image && !ogp.title && !ogp.description) return null;
 
-  const card = document.createElement('a');
+  const card = document.createElement("a");
   card.href = url;
-  card.target = '_blank';
-  card.rel = 'noopener noreferrer';
+  card.target = "_blank";
+  card.rel = "noopener noreferrer";
   card.className = LINK_PREVIEW_CLASS;
 
-  const textDiv = document.createElement('div');
-  textDiv.className = 'ogp-link-preview-text';
+  const textDiv = document.createElement("div");
+  textDiv.className = "ogp-link-preview-text";
 
-  const domain = document.createElement('div');
-  domain.className = 'ogp-link-preview-domain';
+  const domain = document.createElement("div");
+  domain.className = "ogp-link-preview-domain";
   try {
-    domain.textContent = new URL(url).hostname.replace(/^www\./, '');
+    domain.textContent = new URL(url).hostname.replace(/^www\./, "");
   } catch {
-    domain.textContent = '';
+    domain.textContent = "";
   }
   textDiv.appendChild(domain);
 
   if (ogp.title) {
-    const titleEl = document.createElement('div');
-    titleEl.className = 'ogp-link-preview-title';
+    const titleEl = document.createElement("div");
+    titleEl.className = "ogp-link-preview-title";
     titleEl.textContent = ogp.title;
     textDiv.appendChild(titleEl);
   }
 
   if (ogp.description) {
-    const descEl = document.createElement('div');
-    descEl.className = 'ogp-link-preview-description';
+    const descEl = document.createElement("div");
+    descEl.className = "ogp-link-preview-description";
     descEl.textContent = ogp.description;
     textDiv.appendChild(descEl);
   }
@@ -67,11 +67,11 @@ function buildPreviewCard(url: string, ogp: OgpData): HTMLAnchorElement | null {
   card.appendChild(textDiv);
 
   if (ogp.image) {
-    const img = document.createElement('img');
-    img.className = 'ogp-link-preview-image';
+    const img = document.createElement("img");
+    img.className = "ogp-link-preview-image";
     img.src = `/api/image-proxy?url=${encodeURIComponent(ogp.image)}`;
-    img.alt = '';
-    img.loading = 'lazy';
+    img.alt = "";
+    img.loading = "lazy";
     card.appendChild(img);
   }
 
@@ -93,7 +93,7 @@ export function useContentLinkPreviews(
     // 既存のプレビューカードを削除（再レンダリング時の重複防止）
     el.querySelectorAll(`.${LINK_PREVIEW_CLASS}`).forEach((c) => c.remove());
 
-    const anchors = [...el.querySelectorAll<HTMLAnchorElement>('a[href]')].filter(
+    const anchors = [...el.querySelectorAll<HTMLAnchorElement>("a[href]")].filter(
       (a) => /^https?:\/\//i.test(a.href) && isStandaloneLink(a),
     );
     if (anchors.length === 0) return;
@@ -107,7 +107,7 @@ export function useContentLinkPreviews(
         .then((ogp) => {
           if (!el.isConnected) return;
           const card = buildPreviewCard(url, ogp);
-          if (card) anchor.parentElement?.insertAdjacentElement('afterend', card);
+          if (card) anchor.parentElement?.insertAdjacentElement("afterend", card);
         })
         .catch(() => {});
     }
