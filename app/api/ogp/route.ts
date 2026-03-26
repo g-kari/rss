@@ -15,11 +15,11 @@ export async function GET(request: Request) {
 }
 
 async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextResponse> {
-  const url = new URL(request.url).searchParams.get("url");
+  const reqUrl = new URL(request.url);
+  const url = reqUrl.searchParams.get("url");
   if (!url) return NextResponse.json({ image: "" });
   if (!isValidFeedUrl(url)) return NextResponse.json({ image: "" });
 
-  const reqUrl = new URL(request.url);
   const cacheKey = new Request(
     `${reqUrl.origin}/__cache/ogp/${await sha256Hex(normalizeUrlForCache(url))}`,
   );

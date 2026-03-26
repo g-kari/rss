@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (114)
+
+### リファクタリング
+- **\`ogp/route.ts\` と \`image-proxy/route.ts\` の \`new URL(request.url)\` 二重解析を除去** — 各 \`handleGet\` 関数内で \`request.url\` を2回パースしていた箇所を、\`reqUrl\` を先に作成して \`searchParams.get("url")\` を取得するよう統一
+
 ## 2026-03-27 (113)
 
 ### リファクタリング

@@ -82,12 +82,12 @@ export async function GET(request: Request) {
 }
 
 async function handleGet(request: Request, ctx: ExecutionContext): Promise<Response> {
-  const url = new URL(request.url).searchParams.get("url");
+  const reqUrl = new URL(request.url);
+  const url = reqUrl.searchParams.get("url");
   if (!url) return new Response(null, { status: 400 });
 
   if (!isValidFeedUrl(url)) return new Response(null, { status: 400 });
 
-  const reqUrl = new URL(request.url);
   const cacheKey = new Request(
     `${reqUrl.origin}/__cache/image/${await sha256Hex(normalizeUrlForCache(url))}`,
   );
