@@ -92,9 +92,17 @@ export function processContent(html: string): string {
       const fallback = vidMatch
         ? `<a href="https://www.youtube.com/watch?v=${vidMatch[1]}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">YouTube で見る ↗</a>`
         : "";
+      // YouTube は HTTP Referer の提供を必須とするため origin パラメータを付与する
+      const patchedAttrs = attrs.replace(
+        /(src\s*=\s*["'])(https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/[^"']*)(")/i,
+        (_m: string, pre: string, url: string, quote: string) => {
+          const sep = url.includes("?") ? "&" : "?";
+          return `${pre}${url}${sep}origin=https://rss.0g0.xyz${quote}`;
+        },
+      );
       return (
         `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
-        `<iframe${attrs} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
+        `<iframe${patchedAttrs} referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
         `</div>` +
         fallback
       );
