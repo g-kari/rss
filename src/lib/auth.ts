@@ -12,7 +12,7 @@ interface JwkWithKid extends JsonWebKey {
 const keyCache = new Map<string, CryptoKey>();
 let jwksCache: JwkWithKid[] | null = null;
 let jwksCacheExpiry = 0;
-const JWKS_CACHE_TTL_MS = 60 * 60 * 1000; // 1時間
+const JWKS_CACHE_TTL_MS = 15 * 60 * 1000; // 15分
 
 function base64urlToBytes(str: string): Uint8Array {
   const padded = str
@@ -67,7 +67,7 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
       new TextDecoder().decode(base64urlToBytes(payloadB64)),
     ) as JWTPayload;
 
-    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
 
     const jwks = await getJwks(authBaseUrl);
     const jwk = header.kid ? jwks.find((k) => k.kid === header.kid) : jwks[0];
