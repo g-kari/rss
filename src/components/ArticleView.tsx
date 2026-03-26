@@ -7,6 +7,7 @@ import { extractEmbedInfo, processContent, stripIframes } from '../lib/embed-uti
 import { useArticleContent } from '../hooks/useArticleContent';
 import { useArticleAi } from '../hooks/useArticleAi';
 import { useImageDownload } from '../hooks/useImageDownload';
+import { useContentLinkPreviews } from '../hooks/useContentLinkPreviews';
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   small: 'text-[14px] leading-[1.75]',
@@ -200,6 +201,9 @@ export default function ArticleView({
       ? stripIframes(rawContent)
       : processContent(rawContent)
     : null;
+
+  // 本文内スタンドアロンリンクに OGP プレビューカードを注入
+  useContentLinkPreviews(contentRef, processedContent);
 
   useEffect(() => {
     if (!contentRef.current || !processedContent) return;

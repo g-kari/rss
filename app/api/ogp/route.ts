@@ -26,11 +26,14 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   // Cloudflare Cache API で確認
   const cached = await cfCache.match(cacheKey);
   if (cached) {
-    const data = await cached.json() as { image: string };
+    const data = await cached.json() as { image: string; title?: string; description?: string };
     // 旧キャッシュに &amp; エンコードの URL が残っている場合に備えてデコードし直す
     const decoded = unescapeHtml(data.image);
     const image = /^https?:\/\//i.test(decoded) ? decoded : data.image;
-    return NextResponse.json({ image }, { headers: { 'X-Cache': 'HIT' } });
+    return NextResponse.json(
+      { image, title: data.title ?? '', description: data.description ?? '' },
+      { headers: { 'X-Cache': 'HIT' } },
+    );
   }
 
   try {
@@ -47,24 +50,28 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     const merged = await readBodyBytesPartial(res.body, MAX_BYTES);
     const html = new TextDecoder().decode(merged);
 
-    const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-      ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    const extractOgMeta = (property: string): string => {
+      const m = html.match(new RegExp(`<meta[^>]+property=["']og:${property}["'][^>]+content=["']([^"']+)["']`, 'i'))
+        ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${property}["']`, 'i'));
+      return unescapeHtml(m?.[1] ?? '');
+    };
 
-    // HTML エンティティをデコード（&amp; → & など）
-    // imgix 等の CDN は URL 中の & をそのまま期待するため必須
-    const raw = unescapeHtml(m?.[1] ?? '');
-    // data: / javascript: 等の危険スキームをブロック、URL 長超過も除外（XSS / DoS 防止）
-    const image = /^https?:\/\//i.test(raw) && raw.length <= MAX_URL_LENGTH ? raw : '';
+    // og:image — data:/javascript: などの危険スキームと URL 長超過をブロック
+    const rawImage = extractOgMeta('image');
+    const image = /^https?:\/\//i.test(rawImage) && rawImage.length <= MAX_URL_LENGTH ? rawImage : '';
+    const title = extractOgMeta('title').slice(0, 200);
+    const description = extractOgMeta('description').slice(0, 500);
 
     // Cloudflare Cache API に保存（fire-and-forget）
-    // image が空でも短い TTL で負キャッシュ — og:image なしのページへの繰り返しフェッチを防ぐ
-    const ttl = image ? OGP_CACHE_TTL_SEC : OGP_NEGATIVE_CACHE_TTL_SEC;
-    const cacheRes = new Response(JSON.stringify({ image }), {
+    // 全フィールドが空でも短い TTL で負キャッシュ — 繰り返しフェッチを防ぐ
+    const hasContent = !!(image || title || description);
+    const ttl = hasContent ? OGP_CACHE_TTL_SEC : OGP_NEGATIVE_CACHE_TTL_SEC;
+    const cacheRes = new Response(JSON.stringify({ image, title, description }), {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
     });
     ctx.waitUntil(cfCache.put(cacheKey, cacheRes).catch((err) => console.error('[ogp] cache put error:', err)));
 
-    return NextResponse.json({ image }, { headers: { 'X-Cache': 'MISS' } });
+    return NextResponse.json({ image, title, description }, { headers: { 'X-Cache': 'MISS' } });
   } catch {
     return NextResponse.json({ image: '' });
   }
