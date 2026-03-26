@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (57)
+
+### バグ修正
+- **フォントが実際にロードされていなかった問題を修正** — \`globals.css\` で \`Reddit Sans\` / \`IBM Plex Sans JP\` / \`Lora\` を指定していたが \`layout.tsx\` に読み込みコードがなくシステムフォントにフォールバックしていた。\`next/font/google\` で正しくロードし CSS 変数経由で参照するよう修正
+
 ## 2026-03-26 (56)
 
 ### バグ修正

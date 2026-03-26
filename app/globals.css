@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Reddit Sans', 'IBM Plex Sans JP', BlinkMacSystemFont, system-ui, sans-serif;
-  --font-serif: 'Lora', Georgia, serif;
+  --font-sans: var(--loaded-reddit-sans), var(--loaded-ibm-plex-sans-jp), BlinkMacSystemFont, system-ui, sans-serif;
+  --font-serif: var(--loaded-lora), Georgia, serif;
   /* セマンティックカラー (デフォルト = ライトテーマ / stone パレット) */
   --color-surface-base: #fafaf9;      /* stone-50: メイン背景 */
   --color-surface-elevated: #ffffff;   /* white: サイドバー・カード */
