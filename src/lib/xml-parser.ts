@@ -144,19 +144,14 @@ function authorStr(author: FeedItem["author"]): string {
 
 /**
  * 危険なスキーム（javascript:, vbscript:, data: 等）を持つ URL を空文字に変換する。
- * HTMLエンティティデコード後にチェックすることで &#106;avascript: 等のバイパスを防ぐ。
+ * unescapeHtml でエンティティデコード・制御文字除去後にスキームを確認する。
+ * これにより &#106;avascript: 等のバイパスを防ぐ。
  */
 function safeUrl(url: string): string {
   if (!url) return "";
-  // HTMLエンティティをデコードし、先頭の制御文字・空白を除去してスキームを確認
-  const decoded = url
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#(\d+);/gi, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/^[\u0000-\u0020\u007F\u00AD\u200B-\u200D\uFEFF]+/, "");
+  // unescapeHtml: エンティティデコード + ゼロ幅文字除去
+  // 先頭の ASCII 制御文字・空白も除去（ブラウザの URL 正規化に倣う）
+  const decoded = unescapeHtml(url).replace(/^[\u0000-\u0020\u007F]+/, "");
   return /^https?:\/\//i.test(decoded) ? url : "";
 }
 
