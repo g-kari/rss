@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-26 (91)
+
+### リファクタリング
+- **`useArticleAi` の trivial ラッパー関数を削除** — `loadAiCache` / `saveAiCache`（各 1 行のラッパー）を除去し `aiLruCache` を直接呼ぶように変更（8 行削減）
+- **`useUIState` の `loadLayout` / `loadFontSize` を共通化** — 繰り返しの「ストレージ取得 → 有効値確認 → デフォルト返却」パターンを `loadStoredEnum<T>` ヘルパーに統合
+
 ## 2026-03-26 (90)
 
 ### 新機能
