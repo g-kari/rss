@@ -1,5 +1,8 @@
 {
+  "plugins": ["react-hooks", "react", "nextjs", "react-perf"],
   "rules": {
-    "no-control-regex": "off"
+    "no-control-regex": "off",
+    "nextjs/no-img-element": "off",
+    "nextjs/no-html-link-for-pages": "off"
   }
 }

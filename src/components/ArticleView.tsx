@@ -416,6 +416,40 @@ export default function ArticleView({
     if (aiResult?.mode === "translation") setShowTranslated(true);
   }, [aiResult]);
 
+  const embedInfo = article?.link ? extractEmbedInfo(article.link) : null;
+
+  // 取得済みコンテンツ: フェッチ結果 > キャッシュ > RSS 本文
+  const rawContent = storedContent ?? article?.content ?? null;
+  const processedContent = rawContent
+    ? embedInfo
+      ? stripIframes(rawContent)
+      : processContent(rawContent, theme)
+    : null;
+
+  // 本文内スタンドアロンリンクに OGP プレビューカードを注入
+  useContentLinkPreviews(contentRef, processedContent);
+
+  useEffect(() => {
+    if (!contentRef.current || !processedContent) return;
+    const el = contentRef.current;
+    let cancelled = false;
+    import("katex/contrib/auto-render").then(({ default: renderMathInElement }) => {
+      if (cancelled || !el.isConnected) return;
+      renderMathInElement(el, {
+        delimiters: [
+          { left: "$$", right: "$$", display: true },
+          { left: "$", right: "$", display: false },
+          { left: "\\[", right: "\\]", display: true },
+          { left: "\\(", right: "\\)", display: false },
+        ],
+        throwOnError: false,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [processedContent, showTranslated]);
+
   if (!article) {
     return (
       <main className="h-full relative overflow-y-auto flex items-center justify-center bg-surface-base">
@@ -458,40 +492,6 @@ export default function ArticleView({
       </main>
     );
   }
-
-  const embedInfo = article.link ? extractEmbedInfo(article.link) : null;
-
-  // 取得済みコンテンツ: フェッチ結果 > キャッシュ > RSS 本文
-  const rawContent = storedContent ?? article.content ?? null;
-  const processedContent = rawContent
-    ? embedInfo
-      ? stripIframes(rawContent)
-      : processContent(rawContent, theme)
-    : null;
-
-  // 本文内スタンドアロンリンクに OGP プレビューカードを注入
-  useContentLinkPreviews(contentRef, processedContent);
-
-  useEffect(() => {
-    if (!contentRef.current || !processedContent) return;
-    const el = contentRef.current;
-    let cancelled = false;
-    import("katex/contrib/auto-render").then(({ default: renderMathInElement }) => {
-      if (cancelled || !el.isConnected) return;
-      renderMathInElement(el, {
-        delimiters: [
-          { left: "$$", right: "$$", display: true },
-          { left: "$", right: "$", display: false },
-          { left: "\\[", right: "\\]", display: true },
-          { left: "\\(", right: "\\)", display: false },
-        ],
-        throwOnError: false,
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [processedContent, showTranslated]);
 
   const isShortContent = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
   const canFetch = !embedInfo && article.link && isShortContent && !storedContent;
