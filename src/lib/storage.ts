@@ -23,6 +23,7 @@ export const STORAGE_KEYS = {
   SORT_ORDER: 'rss-sort-order',
   DATE_RANGE: 'rss-date-range',
   OGP_CACHE: 'rss-ogp-cache',
+  SEARCH_HISTORY: 'rss-search-history',
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
