@@ -55,24 +55,14 @@ export function fixImageDimensions(html: string, pageUrl = ""): string {
       });
       // srcset 内の相対 URL も絶対 URL に変換
       a = a.replace(/\bsrcset=["']([^"']+)["']/gi, (_sm, srcset: string) => {
-        const resolved = srcset
-          .split(",")
-          .map((part) => {
-            const trimmed = part.trim();
-            if (!trimmed) return "";
-            const m = trimmed.match(/^(\S+)(\s.*)?$/);
-            if (!m) return part;
-            const url = m[1];
-            const descriptor = m[2] ?? "";
-            if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return trimmed;
-            try {
-              return new URL(url, base).href + descriptor;
-            } catch {
-              return trimmed;
-            }
-          })
-          .filter(Boolean)
-          .join(", ");
+        const resolved = transformSrcset(srcset, (url) => {
+          if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return url;
+          try {
+            return new URL(url, base!).href;
+          } catch {
+            return url;
+          }
+        });
         return `srcset="${resolved}"`;
       });
     }
