@@ -32,6 +32,7 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
   const loadedFeedPagesRef = useRef(loadedFeedPages);
   loadedFeedPagesRef.current = loadedFeedPages;
   const latestArticleIdRef = useRef<string | null>(null);
+  const isPollingRef = useRef(false);
 
   const fetchAndSetArticles = useCallback(async () => {
     const res = await fetch('/api/articles');
@@ -61,12 +62,16 @@ export function useFeeds(user: UserProfile | null | undefined, onError?: (msg: s
     const timer = setInterval(async () => {
       const prevTopId = latestArticleIdRef.current;
       if (prevTopId === null) return;
+      if (isPollingRef.current) return; // 前回のフェッチが完了していない場合はスキップ
+      isPollingRef.current = true;
       try {
         const data = await fetchAndSetArticles();
         const newIdx = data.findIndex((a) => a.id === prevTopId);
         if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
       } catch {
         // ポーリングエラーはサイレント失敗
+      } finally {
+        isPollingRef.current = false;
       }
     }, POLL_INTERVAL_MS);
 
