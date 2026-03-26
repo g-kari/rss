@@ -105,7 +105,7 @@ export function useContentLinkPreviews(
       fetch(`/api/ogp?url=${encodeURIComponent(url)}`, { signal: controller.signal })
         .then((r) => r.json() as Promise<OgpData>)
         .then((ogp) => {
-          if (!el.isConnected) return;
+          if (!el.isConnected || !anchor.isConnected) return;
           const card = buildPreviewCard(url, ogp);
           if (card) anchor.parentElement?.insertAdjacentElement("afterend", card);
         })
