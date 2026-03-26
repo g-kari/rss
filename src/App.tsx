@@ -7,73 +7,54 @@ import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
 import ErrorBoundary from './components/ErrorBoundary';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
-import type { Feed, Article, Layout, FontSize } from './types';
+import type { Feed, Article } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useFeeds } from './hooks/useFeeds';
 import { useReadState } from './hooks/useReadState';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
 import { useFilteredArticles } from './hooks/useFilteredArticles';
-import { STORAGE_KEYS, storageGet, storageSet, loadSet, saveSet } from './lib/storage';
+import { useUIState } from './hooks/useUIState';
 import { updateFaviconBadge } from './lib/favicon';
-
-type Theme = 'light' | 'dark';
-type MobilePane = 'sidebar' | 'list' | 'view';
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
-
-function loadLayout(): Layout {
-  const stored = storageGet(STORAGE_KEYS.LAYOUT);
-  if (stored === 'compact' || stored === 'list' || stored === 'card' || stored === 'magazine')
-    return stored;
-  return 'list';
-}
-
-function loadTheme(): Theme {
-  const stored = storageGet(STORAGE_KEYS.THEME);
-  if (stored === 'light' || stored === 'dark') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function loadFontSize(): FontSize {
-  const stored = storageGet(STORAGE_KEYS.FONT_SIZE);
-  if (stored === 'small' || stored === 'medium' || stored === 'large') return stored;
-  return 'medium';
-}
-
-const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
 
 export default function App() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const { user, betaRestricted } = useAuth();
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showToast = useCallback((msg: string) => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToast(msg);
-    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
-  }, []);
+
+  const initialMobilePane = searchParams.get('article')
+    ? 'view'
+    : searchParams.get('feed')
+      ? 'list'
+      : 'sidebar';
+
+  const {
+    theme,
+    toggleTheme,
+    fontSize,
+    onChangeFontSize,
+    layout,
+    onChangeLayout,
+    pinnedFeedIds,
+    togglePinFeed,
+    toast,
+    showToast,
+    mobilePane,
+    setMobilePane,
+    install,
+    showHelp,
+    setShowHelp,
+  } = useUIState(initialMobilePane);
+
   const { feeds, articles, loadingArticles, refreshing, newArticleCount, loadedFeedPages, onFeedAdded, removeFeed, updateFeed, replaceFeeds, refreshFeeds, retryFeed, dismissNewArticles, loadMoreFeedArticles } = useFeeds(user, showToast);
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, toggle: togglePush } = usePushNotifications(user);
 
   const { readIds, bookmarkIds, readingListIds, markRead, markAllRead, toggleRead, toggleBookmark, toggleReadingList } = useReadState(user, articles);
-  const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() => searchParams.get('feed'));
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   // URL から復元すべき記事 ID（記事ロード完了後に解決）
   const pendingArticleIdRef = useRef<string | null>(searchParams.get('article'));
-  const [theme, setTheme] = useState<Theme>(loadTheme);
-  const [fontSize, setFontSize] = useState<FontSize>(loadFontSize);
-  const [layout, setLayout] = useState<Layout>(loadLayout);
-  const [mobilePane, setMobilePane] = useState<MobilePane>('sidebar');
-  const prevMobilePaneRef = useRef<MobilePane>('sidebar');
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
 
   // 選択状態を URL クエリパラメータに同期（リロード復元用）
   useEffect(() => {
@@ -96,11 +77,6 @@ export default function App() {
     pendingArticleIdRef.current = null;
   }, [articles]);
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    storageSet(STORAGE_KEYS.THEME, theme);
-  }, [theme]);
-
   const totalUnread = useMemo(
     () => articles.filter((a) => !readIds.has(a.id)).length,
     [articles, readIds],
@@ -110,46 +86,6 @@ export default function App() {
     document.title = totalUnread > 0 ? `(${totalUnread}) RSS Reader` : 'RSS Reader';
     updateFaviconBadge(totalUnread).catch(() => {});
   }, [totalUnread]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'));
-  }, []);
-
-  const onChangeFontSize = useCallback((size: FontSize) => {
-    setFontSize(size);
-    storageSet(STORAGE_KEYS.FONT_SIZE, size);
-  }, []);
-
-  const onChangeLayout = useCallback((l: Layout) => {
-    setLayout(l);
-    storageSet(STORAGE_KEYS.LAYOUT, l);
-  }, []);
-
-  const togglePinFeed = useCallback((feedId: string) => {
-    setPinnedFeedIds((prev) => {
-      const next = new Set(prev);
-      next.has(feedId) ? next.delete(feedId) : next.add(feedId);
-      saveSet(STORAGE_KEYS.PINNED_FEED_IDS, next);
-      return next;
-    });
-  }, []);
-
-  // PWA インストールプロンプトを捕捉（Chrome / Android）
-  useEffect(() => {
-    function onBeforeInstall(e: Event) {
-      e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
-    }
-    window.addEventListener('beforeinstallprompt', onBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-  }, []);
-
-  const installApp = useCallback(async () => {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') setInstallPrompt(null);
-  }, [installPrompt]);
 
   function onFeedDeleted(id: string) {
     removeFeed(id);
@@ -172,16 +108,6 @@ export default function App() {
     () => articles.filter((a) => readingListIds.has(a.id)).length,
     [articles, readingListIds],
   );
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === '?') setShowHelp((v) => !v);
-      if (e.key === 'Escape') setShowHelp(false);
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   const {
     filtered,
@@ -257,31 +183,6 @@ export default function App() {
     cycleDateRange,
     searchRef,
   });
-
-  // モバイルペイン前進時に history エントリを積む
-  useEffect(() => {
-    const prev = prevMobilePaneRef.current;
-    if (
-      (prev === 'sidebar' && mobilePane === 'list') ||
-      (prev === 'list' && mobilePane === 'view')
-    ) {
-      window.history.pushState({ mobilePane }, '');
-    }
-    prevMobilePaneRef.current = mobilePane;
-  }, [mobilePane]);
-
-  // popstate（戻るボタン）でアプリ内ペイン遷移を処理
-  useEffect(() => {
-    function onPopState() {
-      setMobilePane((current) => {
-        if (current === 'view') return 'list';
-        if (current === 'list') return 'sidebar';
-        return current;
-      });
-    }
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
 
   // ローディング
   if (user === undefined) {
@@ -453,7 +354,7 @@ export default function App() {
           refreshing={refreshing}
           pinnedFeedIds={pinnedFeedIds}
           onTogglePinFeed={togglePinFeed}
-          install={{ canInstall: !!installPrompt, onInstall: installApp }}
+          install={install}
           push={{ supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, error: pushError, onToggle: togglePush }}
         />
         </ErrorBoundary>
