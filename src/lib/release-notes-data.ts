@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (72)
+
+### リファクタリング
+- \`readBodyBytesPartial\` ヘルパーを \`src/lib/fetch.ts\` に追加し、\`discoverFeedUrl\` 内の 20 行のインラインバイト読み込みループを 3 行に簡略化
+
 ## 2026-03-26 (71)
 
 ### 新機能
