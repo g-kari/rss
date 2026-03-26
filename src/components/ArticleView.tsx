@@ -765,7 +765,7 @@ export default function ArticleView({
         </div>
 
         {/* タイトル */}
-        <h1 className="text-[22px] font-light leading-snug text-text-strong tracking-[0.02em] mb-8">
+        <h1 className="text-[22px] font-light leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[91px]">
           {article.title}
         </h1>
 
@@ -798,32 +798,30 @@ export default function ArticleView({
           </div>
         )}
 
-        {!embedInfo && (
-          <div
-            className="group relative flex items-center gap-3 py-5 mb-3 select-none cursor-ew-resize"
-            onMouseDown={handleNavMouseDown}
-            onMouseUp={handleNavMouseUp}
-            onMouseLeave={handleNavMouseLeave}
-          >
-            <div className="flex-1 overflow-hidden flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-              {prevArticle && onSelectPrev && (
-                <>
-                  <ChevronLeftSmall />
-                  <span className="text-[11px] text-text-faint truncate">{prevArticle.title}</span>
-                </>
-              )}
-            </div>
-            <div className="absolute inset-x-0 top-1/2 border-t border-border-subtle pointer-events-none" />
-            <div className="flex-1 overflow-hidden flex items-center gap-1.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-              {nextArticle && onSelectNext && (
-                <>
-                  <span className="text-[11px] text-text-faint truncate">{nextArticle.title}</span>
-                  <ChevronRightSmall />
-                </>
-              )}
-            </div>
+        <div
+          className="group relative flex items-center gap-3 h-[52px] mb-3 select-none cursor-ew-resize"
+          onMouseDown={handleNavMouseDown}
+          onMouseUp={handleNavMouseUp}
+          onMouseLeave={handleNavMouseLeave}
+        >
+          <div className="flex-1 overflow-hidden flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {prevArticle && onSelectPrev && (
+              <>
+                <ChevronLeftSmall />
+                <span className="text-[11px] text-text-faint truncate">{prevArticle.title}</span>
+              </>
+            )}
           </div>
-        )}
+          <div className="absolute inset-x-0 top-1/2 border-t border-border-subtle pointer-events-none" />
+          <div className="flex-1 overflow-hidden flex items-center gap-1.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {nextArticle && onSelectNext && (
+              <>
+                <span className="text-[11px] text-text-faint truncate">{nextArticle.title}</span>
+                <ChevronRightSmall />
+              </>
+            )}
+          </div>
+        </div>
 
         {/* AI 要約パネル（翻訳は本文に統合するため非表示） */}
         {aiResult?.mode === "summary" && (
