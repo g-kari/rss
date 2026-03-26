@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-27 (116)
+
+### リファクタリング
+
+- **`useReadState` のフラッシュロジックを整理** — `beforeunload` と `visibilitychange` の2つの effect を1つに統合し、`serializeReadState()` ヘルパーで `saveReadState` と `sendBeacon` のボディ構築の重複を除去。`read-state/route.ts` の POST ハンドラで `extractIds()` ヘルパーを抽出して3配列の検証・フィルタを一本化
+
 ## 2026-03-27 (115)
 
 ### リファクタリング

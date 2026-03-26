@@ -38,16 +38,21 @@ async function fetchReadState(): Promise<{
   }
 }
 
+/** ReadStateSets を /api/read-state に POST する JSON 文字列にシリアライズする */
+function serializeReadState(sets: ReadStateSets): string {
+  return JSON.stringify({
+    readIds: [...sets.read],
+    bookmarkIds: [...sets.bookmarks],
+    readingListIds: [...sets.readingList],
+  });
+}
+
 async function saveReadState(sets: ReadStateSets): Promise<void> {
   try {
     await fetch("/api/read-state", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        readIds: [...sets.read],
-        bookmarkIds: [...sets.bookmarks],
-        readingListIds: [...sets.readingList],
-      }),
+      body: serializeReadState(sets),
     });
   } catch {
     // サーバー同期失敗は無視（localStorage は保存済み）
@@ -106,37 +111,34 @@ export function useReadState(
     articlesRef.current = articles;
   }, [articles]);
 
-  // ページを閉じる前にデバウンス待ちのデータを即時送信
+  // ページを閉じる前・タブ非表示時にデバウンス待ちのデータを即時送信
+  // - beforeunload: ページ閉じ・遷移時。fetch は中断されるため sendBeacon を使用
+  // - visibilitychange: タブ切り替え時。fetch を使用（beforeunload が発火しないケースを補完）
   useEffect(() => {
-    function onBeforeUnload() {
-      if (syncTimerRef.current === null) return;
+    function flushIfPending(): boolean {
+      if (syncTimerRef.current === null) return false;
       clearTimeout(syncTimerRef.current);
       syncTimerRef.current = null;
-      const { read, bookmarks, readingList } = stateRef.current;
-      const body = JSON.stringify({
-        readIds: [...read],
-        bookmarkIds: [...bookmarks],
-        readingListIds: [...readingList],
-      });
-      navigator.sendBeacon("/api/read-state", new Blob([body], { type: "application/json" }));
+      return true;
     }
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, []);
-
-  // タブ非表示時（別タブへの切り替えなど）にデバウンス待ちのデータを即時送信
-  // beforeunload はタブを閉じる・ページ遷移時のみ発火するため、
-  // visibilitychange で補完することでタブ切り替え時の状態ロストを防ぐ
-  useEffect(() => {
+    function onBeforeUnload() {
+      if (!flushIfPending()) return;
+      navigator.sendBeacon(
+        "/api/read-state",
+        new Blob([serializeReadState(stateRef.current)], { type: "application/json" }),
+      );
+    }
     function onVisibilityChange() {
       if (document.visibilityState !== "hidden") return;
-      if (syncTimerRef.current === null) return;
-      clearTimeout(syncTimerRef.current);
-      syncTimerRef.current = null;
+      if (!flushIfPending()) return;
       saveReadState(stateRef.current);
     }
+    window.addEventListener("beforeunload", onBeforeUnload);
     document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   const scheduleSyncToServer = useCallback(() => {
