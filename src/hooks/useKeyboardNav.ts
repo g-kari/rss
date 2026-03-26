@@ -186,22 +186,15 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           e.preventDefault();
           searchRef.current?.focus();
           break;
-        case ']': {
-          e.preventDefault();
-          const ordered = buildFeedOrder(feeds, pinnedFeedIds);
-          const cur = ordered.findIndex((f) => (f === null ? selectedFeedId === null : f.id === selectedFeedId));
-          const next = ordered[(cur + 1) % ordered.length];
-          onSelectFeed(next?.id ?? null);
-          showToast(next ? (next.title || next.url) : '全記事');
-          break;
-        }
+        case ']':
         case '[': {
           e.preventDefault();
           const ordered = buildFeedOrder(feeds, pinnedFeedIds);
           const cur = ordered.findIndex((f) => (f === null ? selectedFeedId === null : f.id === selectedFeedId));
-          const prev = ordered[(cur - 1 + ordered.length) % ordered.length];
-          onSelectFeed(prev?.id ?? null);
-          showToast(prev ? (prev.title || prev.url) : '全記事');
+          const delta = e.key === ']' ? 1 : -1;
+          const target = ordered[(cur + delta + ordered.length) % ordered.length];
+          onSelectFeed(target?.id ?? null);
+          showToast(target ? (target.title || target.url) : '全記事');
           break;
         }
       }
