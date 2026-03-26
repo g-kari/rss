@@ -12,6 +12,16 @@ import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom/worker";
 import { sanitizeHtml, escapeHtml } from "./html";
 
+/** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */
+function tryParseBase(pageUrl: string): URL | null {
+  if (!pageUrl) return null;
+  try {
+    return new URL(pageUrl);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * img タグの後処理:
  * - 固定 width / height 属性を除去してレスポンシブ表示を保証
@@ -23,12 +33,7 @@ import { sanitizeHtml, escapeHtml } from "./html";
  * broken image アイコンは発生しない。
  */
 export function fixImageDimensions(html: string, pageUrl = ""): string {
-  let base: URL | null = null;
-  try {
-    base = pageUrl ? new URL(pageUrl) : null;
-  } catch {
-    /* ignore */
-  }
+  const base = tryParseBase(pageUrl);
 
   return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
     let a = attrs
@@ -356,12 +361,7 @@ export function rewriteImageUrls(html: string): string {
  * 危険スキーム (javascript: / data: 等) は後続の sanitizeHtml で除去されるためここでは無視する。
  */
 export function fixExternalLinks(html: string, pageUrl = ""): string {
-  let base: URL | null = null;
-  try {
-    base = pageUrl ? new URL(pageUrl) : null;
-  } catch {
-    /* ignore */
-  }
+  const base = tryParseBase(pageUrl);
 
   return html.replace(/<a\b([^>]*)>/gi, (_match, attrs: string) => {
     // href 属性の値を取得
