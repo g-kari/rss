@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (80)
+
+### リファクタリング
+- **\`llm-feed-generator\` の \`any\` 型を専用インターフェースに置換** — linkedom の型定義が DOM 標準と完全互換でないため \`LDElement\` / \`LDDocument\` の最小インターフェースをファイル内に定義し、6 箇所の \`any\` キャストと \`eslint-disable\` コメントを除去
+
 ## 2026-03-26 (79)
 
 ### リファクタリング
