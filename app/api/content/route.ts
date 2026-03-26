@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withSession } from '@/lib/server-auth';
-import { isValidFeedUrl } from '@/lib/url';
+import { isValidFeedUrl, normalizeUrlForCache } from '@/lib/url';
 import { sha256Hex } from '@/lib/r2';
 import { fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
 import {
@@ -26,7 +26,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   }
 
   const reqUrl = new URL(request.url);
-  const cacheKey = new Request(`${reqUrl.origin}/__cache/content/${await sha256Hex(url)}`);
+  const cacheKey = new Request(`${reqUrl.origin}/__cache/content/${await sha256Hex(normalizeUrlForCache(url))}`);
   const cfCache = caches.default;
 
   // Cloudflare Cache API で確認

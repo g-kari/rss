@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (73)
+
+### バグ修正
+- **キャッシュキー URL 正規化** — \`utm_source\` / \`utm_medium\` 等のトラッキングパラメータが異なるだけの同一記事 URL が別々にキャッシュされていた問題を修正。\`normalizeUrlForCache()\` を \`src/lib/url.ts\` に追加し、\`/api/content\` と \`/api/ogp\` の両エンドポイントで使用。パラメータ順序の違いやフラグメント (\`#section\`) の有無も正規化する
+
 ## 2026-03-26 (72)
 
 ### リファクタリング

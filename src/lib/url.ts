@@ -114,3 +114,41 @@ export function isValidFeedUrl(url: string): boolean {
 export function isValidHttpsUrl(url: string): boolean {
   return isValidUrl(url, false);
 }
+
+/**
+ * キャッシュキー生成用に URL を正規化する。
+ * UTM / 広告クリック等の純粋なトラッキングパラメータを除去し、
+ * 残りのパラメータをソートして一意なキャッシュキーが生成されるようにする。
+ *
+ * 同一コンテンツが utm_source 違いで別エントリにキャッシュされるのを防ぐ。
+ */
+const TRACKING_PARAMS = new Set([
+  // Google Analytics UTM
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
+  // Google Ads
+  'gclid', 'gbraid', 'wbraid', 'gclsrc',
+  // Facebook / Instagram
+  'fbclid', 'igshid',
+  // Microsoft Ads
+  'msclkid',
+  // Mailchimp
+  'mc_cid', 'mc_eid',
+  // その他 Analytics
+  '_ga', '_gl',
+]);
+
+export function normalizeUrlForCache(url: string): string {
+  try {
+    const parsed = new URL(url);
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (TRACKING_PARAMS.has(key)) parsed.searchParams.delete(key);
+    }
+    // パラメータ順序が異なる同一 URL も同じキャッシュキーにする
+    parsed.searchParams.sort();
+    // フラグメントはサーバー側に送信されないためキャッシュキーには不要
+    parsed.hash = '';
+    return parsed.href;
+  } catch {
+    return url;
+  }
+}
