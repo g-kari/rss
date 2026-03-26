@@ -10,11 +10,24 @@ interface Callbacks {
   onFeedsImported: (feeds: Feed[]) => void;
 }
 
+export interface ImportMessage {
+  text: string;
+  isError: boolean;
+}
+
 export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported }: Callbacks) {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<ImportMessage | null>(null);
+  const importMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function showImportMessage(text: string, isError: boolean) {
+    setImportMessage({ text, isError });
+    if (importMessageTimerRef.current) clearTimeout(importMessageTimerRef.current);
+    importMessageTimerRef.current = setTimeout(() => setImportMessage(null), 3000);
+  }
 
   async function addFeed(url: string, onSuccess: () => void) {
     if (!url.trim()) return;
@@ -69,7 +82,6 @@ export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, o
     const file = e.target.files?.[0];
     if (!file) return;
     setImporting(true);
-    setError('');
     try {
       const text = await file.text();
       const res = await fetch('/api/feeds/import', {
@@ -79,7 +91,7 @@ export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, o
       });
       if (!res.ok) {
         const data = (await res.json()) as { error: string };
-        setError(data.error ?? 'インポートに失敗しました');
+        showImportMessage(data.error ?? 'インポートに失敗しました', true);
         return;
       }
       const data = (await res.json()) as { added: number; skipped: number };
@@ -90,9 +102,9 @@ export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, o
           onFeedsImported(allFeeds);
         }
       }
-      setError(data.added > 0 ? `${data.added}件インポートしました` : 'すべて登録済みです');
+      showImportMessage(data.added > 0 ? `${data.added}件インポートしました` : 'すべて登録済みです', false);
     } catch {
-      setError('インポートに失敗しました');
+      showImportMessage('インポートに失敗しました', true);
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -103,5 +115,5 @@ export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, o
     setError('');
   }
 
-  return { adding, error, importing, fileInputRef, addFeed, deleteFeed, renameFeed, handleImportFile, clearError };
+  return { adding, error, importing, importMessage, fileInputRef, addFeed, deleteFeed, renameFeed, handleImportFile, clearError };
 }

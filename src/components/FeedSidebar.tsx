@@ -62,7 +62,7 @@ export default function FeedSidebar({
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const feedSearchRef = useRef<HTMLInputElement>(null);
 
-  const { adding, error, importing, fileInputRef, addFeed, deleteFeed, renameFeed, handleImportFile, clearError } =
+  const { adding, error, importing, importMessage, fileInputRef, addFeed, deleteFeed, renameFeed, handleImportFile, clearError } =
     useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported });
 
   function handleAddFeed(e: React.FormEvent) {
@@ -428,6 +428,11 @@ export default function FeedSidebar({
           </svg>
         </button>
       </div>
+      {importMessage && (
+        <div className={`px-3 py-1.5 text-[11px] border-t border-border-subtle ${importMessage.isError ? 'text-rose-400' : 'text-text-muted'}`}>
+          {importMessage.text}
+        </div>
+      )}
       {showReleaseNotes && <ReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
     </aside>
   );
