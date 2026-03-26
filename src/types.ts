@@ -1,7 +1,21 @@
+/** LLM が推論した CSS セレクタ設定（RSS 未対応サイト用） */
+export interface SelectorConfig {
+  /** 記事 <a> タグの CSS セレクタ */
+  articleLink: string;
+  /** 記事タイトル要素のセレクタ（省略時はリンクテキストを使用） */
+  articleTitle?: string;
+  /** 日付要素のセレクタ */
+  articleDate?: string;
+  /** 推論に使用したモデル */
+  model: string;
+  /** セレクタ生成日時（ISO 8601） */
+  generatedAt: string;
+}
+
 /** 共有フィードメタデータ — feeds/{feedHash}/meta.json に保存 */
 export interface SharedFeedMeta {
   feedHash: string;           // sha256Hex(url).slice(0, 16)
-  url: string;                // RSS フィード URL
+  url: string;                // RSS フィード URL（LLM 生成フィードの場合はサイト URL）
   title: string;              // RSS XML から取得
   siteUrl: string;            // RSS XML から取得
   lastFetchedAt: string | null;
@@ -20,6 +34,8 @@ export interface SharedFeedMeta {
   pageCount: number;
   /** 全ページを通じて既知の記事 ID 一覧（重複チェック用、最大 10,000 件） */
   knownIds?: string[];
+  /** LLM が推論した CSS セレクタ設定（RSS 未対応サイト用） */
+  cssSelectors?: SelectorConfig;
 }
 
 /** ユーザーの購読情報 — users/{userId}/subscriptions.json の要素 */

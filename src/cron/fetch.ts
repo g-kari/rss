@@ -1,6 +1,7 @@
 import type { Article, SharedFeedMeta, PushConfig } from '../types';
 
 import { parseFeed, type ParsedItem } from '../lib/xml-parser';
+import { scrapeFeed } from '../lib/llm-feed-generator';
 import { isValidFeedUrl } from '../lib/url';
 import { fetchFollowSafeRedirects } from '../lib/fetch';
 import { sendPushToAll, type PushPayload } from '../lib/web-push';
@@ -160,11 +161,42 @@ function applyFeedError(meta: SharedFeedMeta, error: unknown): void {
  * 304 Not Modified の場合は空配列を返す。
  * エラー時は RateLimitError またはその他 Error をスローする。
  */
+/**
+ * CSS セレクタが設定されている生成フィードの HTML をスクレイプして記事を取得する。
+ */
+async function fetchAndScrapeWithSelectors(
+  env: FetchEnv,
+  meta: SharedFeedMeta,
+): Promise<{ articles: Article[]; existingLatest: Article[] | null }> {
+  const selectors = meta.cssSelectors!;
+  const res = await fetchViaBinding(env, meta.url, {
+    headers: { 'User-Agent': 'rss-reader/1.0' },
+  });
+  if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get('Retry-After')));
+  if (!res.ok) throw new Error(`${res.status} ${meta.url}`);
+
+  const html = await res.text();
+  const parsed = scrapeFeed(html, selectors, meta.siteUrl || meta.url, meta.title);
+  applyFeedSuccess(meta, parsed);
+
+  const existingLatest = await readLatestArticles(env.RSS_DATA, meta.feedHash);
+  const existingById = new Map(existingLatest.map((a) => [a.id, a]));
+  const articles = await Promise.all(
+    parsed.items.map((item) => buildArticle(item, meta.feedHash, meta.url, existingById)),
+  );
+  return { articles, existingLatest };
+}
+
 async function fetchAndParseFeed(
   env: FetchEnv,
   meta: SharedFeedMeta,
   options: { conditional?: boolean } = {},
 ): Promise<{ articles: Article[]; existingLatest: Article[] | null }> {
+  // LLM 生成フィード（CSS セレクタが設定されている場合）はスクレイピングで取得
+  if (meta.cssSelectors) {
+    return fetchAndScrapeWithSelectors(env, meta);
+  }
+
   const reqHeaders: Record<string, string> = { 'User-Agent': 'rss-reader/1.0' };
   if (options.conditional) {
     if (meta.etag) reqHeaders['If-None-Match'] = meta.etag;

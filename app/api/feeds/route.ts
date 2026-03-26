@@ -2,15 +2,18 @@ import { NextResponse } from 'next/server';
 import { withSession, parseJsonBody } from '@/lib/server-auth';
 import { isValidFeedUrl } from '@/lib/url';
 import { discoverFeedUrl } from '@/lib/feed-discovery';
+import { inferFeedFromUrl } from '@/lib/llm-feed-generator';
 import {
   computeFeedHash,
   readFeedMeta,
   createFeedMeta,
+  writeFeedMeta,
   readUserSubscriptions,
   writeUserSubscriptions,
   getUserFeeds,
   assembleClientFeed,
 } from '@/lib/shared-feed';
+import type { SelectorConfig } from '@/types';
 import { registerAndFetchFeed } from '@/cron/fetch';
 import type { UserSubscription } from '@/types';
 
@@ -33,9 +36,20 @@ export async function POST(request: Request) {
     if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 });
     if (!isValidFeedUrl(url)) return NextResponse.json({ error: 'Invalid URL: must be http or https' }, { status: 400 });
 
+    // 3 段階フォールバック: RSS 探索 → LLM CSS セレクタ推論
     const discovered = await discoverFeedUrl(url);
-    if (discovered && discovered !== url) url = discovered;
-    if (!isValidFeedUrl(url)) return NextResponse.json({ error: 'Discovered feed URL is invalid' }, { status: 400 });
+    let inferred: { selectors: SelectorConfig; siteTitle: string; siteUrl: string } | null = null;
+
+    if (discovered) {
+      if (discovered !== url) url = discovered;
+      if (!isValidFeedUrl(url)) return NextResponse.json({ error: 'Discovered feed URL is invalid' }, { status: 400 });
+    } else {
+      // RSS が見つからない場合、LLM でページの CSS セレクタを推論
+      inferred = await inferFeedFromUrl(url, env.AI);
+      if (!inferred) {
+        return NextResponse.json({ error: 'RSS フィードが見つかりませんでした' }, { status: 422 });
+      }
+    }
 
     const feedHash = await computeFeedHash(url);
 
@@ -51,6 +65,14 @@ export async function POST(request: Request) {
     let meta = await readFeedMeta(env.RSS_DATA, feedHash);
     if (!meta) {
       meta = await createFeedMeta(env.RSS_DATA, feedHash, url);
+    }
+
+    // LLM 生成フィードの場合、セレクタとサイト情報をメタに保存
+    if (inferred && !meta.cssSelectors) {
+      meta.cssSelectors = inferred.selectors;
+      if (!meta.title) meta.title = inferred.siteTitle;
+      if (!meta.siteUrl) meta.siteUrl = inferred.siteUrl;
+      await writeFeedMeta(env.RSS_DATA, meta);
     }
 
     const newSub: UserSubscription = {
