@@ -624,7 +624,7 @@ export default function ArticleView({
             dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         ) : article.summary ? (
-          <p className={`font-serif ${FONT_SIZE_CLASSES[fontSize]} text-text-default tracking-[0.02em]`}>
+          <p className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}>
             {article.summary}
           </p>
         ) : !embedInfo ? (
