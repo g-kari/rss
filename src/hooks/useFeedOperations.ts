@@ -54,8 +54,7 @@ export function useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, o
     }
   }
 
-  async function deleteFeed(id: string, e: React.MouseEvent) {
-    e.stopPropagation();
+  async function deleteFeed(id: string) {
     try {
       const res = await fetch(`/api/feeds/${id}`, { method: 'DELETE' });
       if (!res.ok) {

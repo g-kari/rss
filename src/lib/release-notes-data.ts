@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (93)
+
+### リファクタリング
+- **\`FeedItem\` の \`onDelete\` / \`onTogglePin\` プロップから \`React.MouseEvent\` を除去** — UI懸念事項（\`stopPropagation\`）をデータフック（\`useFeedOperations\`）から取り除き、\`FeedItem\` 内部のアクションボタンで一元管理するように変更
+
 ## 2026-03-26 (92)
 
 ### 新機能

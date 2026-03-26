@@ -16,8 +16,8 @@ export interface FeedItemProps {
   animationIndex: number;
   onSelect: () => void;
   onMarkAllRead: () => void;
-  onDelete: (e: React.MouseEvent) => void;
-  onTogglePin: (e: React.MouseEvent) => void;
+  onDelete: () => void;
+  onTogglePin: () => void;
   onRename: (title: string) => Promise<void>;
   onRetry: () => Promise<void>;
 }
@@ -92,7 +92,7 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
           <path d="M5 1L6.5 4H9L7 6l.5 3L5 7.5 2.5 9 3 6 1 4h2.5z" />
         </svg>
       ),
-      onClick: onTogglePin,
+      onClick: (e: React.MouseEvent) => { e.stopPropagation(); onTogglePin(); },
       className: isPinned ? 'text-text-default' : 'text-text-faint hover:text-text-default',
     },
     {
@@ -130,7 +130,7 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
           <line x1="9" y1="1" x2="1" y2="9" />
         </svg>
       ),
-      onClick: onDelete,
+      onClick: (e: React.MouseEvent) => { e.stopPropagation(); onDelete(); },
       className: 'text-text-faint hover:text-rose-400',
       variant: 'danger' as const,
     },

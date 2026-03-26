@@ -292,8 +292,8 @@ export default function FeedSidebar({
               animationIndex={i}
               onSelect={() => onSelectFeed(feed.id)}
               onMarkAllRead={() => onMarkAllRead(feed.id)}
-              onDelete={(e) => deleteFeed(feed.id, e)}
-              onTogglePin={(e) => { e.stopPropagation(); onTogglePinFeed(feed.id); }}
+              onDelete={() => deleteFeed(feed.id)}
+              onTogglePin={() => onTogglePinFeed(feed.id)}
               onRename={(title) => renameFeed(feed.id, title)}
               onRetry={() => onRetryFeed(feed.id)}
             />
@@ -319,8 +319,8 @@ export default function FeedSidebar({
               animationIndex={pinnedFeeds.length + i}
               onSelect={() => onSelectFeed(feed.id)}
               onMarkAllRead={() => onMarkAllRead(feed.id)}
-              onDelete={(e) => deleteFeed(feed.id, e)}
-              onTogglePin={(e) => { e.stopPropagation(); onTogglePinFeed(feed.id); }}
+              onDelete={() => deleteFeed(feed.id)}
+              onTogglePin={() => onTogglePinFeed(feed.id)}
               onRename={(title) => renameFeed(feed.id, title)}
               onRetry={() => onRetryFeed(feed.id)}
             />
