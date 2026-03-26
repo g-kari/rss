@@ -4,6 +4,7 @@
 
 ### バグ修正
 - **`/api/image-proxy` キャッシュキー正規化漏れを修正** — 画像 URL に UTM パラメータ等のトラッキング情報が付いている場合、同一画像が別々にキャッシュされていた問題を修正。`normalizeUrlForCache()` をキャッシュキー生成に適用し、`/api/content` および `/api/ogp` と同じ正規化ロジックに統一
+- **`fetchArticleContent()` キャッシュキー不整合を修正** — `/api/content` Route Handler は `normalizeUrlForCache()` を適用してキャッシュキーを生成していたが、`fetchArticleContent()` ヘルパーは生の URL をそのままハッシュしていた。この不整合により、両コードパスが同一記事を別々にキャッシュしてしまう問題を修正
 
 ## 2026-03-26 (74)
 

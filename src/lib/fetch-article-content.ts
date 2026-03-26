@@ -13,7 +13,7 @@ import {
   markdownToHtml,
   postProcessMarkdownContent,
 } from '@/lib/content';
-import { isValidFeedUrl } from '@/lib/url';
+import { isValidFeedUrl, normalizeUrlForCache } from '@/lib/url';
 
 export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
 export const FETCH_TIMEOUT_MS = 10_000;
@@ -32,7 +32,7 @@ export async function fetchArticleContent(
 ): Promise<string | null> {
   if (!isValidFeedUrl(url)) return null;
 
-  const cacheKey = new Request(`${origin}/__cache/content/${await sha256Hex(url)}`);
+  const cacheKey = new Request(`${origin}/__cache/content/${await sha256Hex(normalizeUrlForCache(url))}`);
   const cfCache = caches.default;
 
   // Cloudflare Cache API で確認（/api/content と同じキー）
