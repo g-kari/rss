@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (74)
+
+### セキュリティ
+- **IPv6 リンクローカルアドレス判定の改善** — SSRF 対策の \`isPrivateHost()\` で \`fe80::/10\` 範囲の判定を \`startsWith\` の手動列挙 4 件からビット演算 \`(firstGroup & 0xffc0) === 0xfe80\` に変更。専用ヘルパー \`isIPv6LinkLocal()\` を追加し、境界値の正確さと保守性を向上
+
 ## 2026-03-26 (73)
 
 ### バグ修正
