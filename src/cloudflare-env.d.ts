@@ -1,3 +1,6 @@
+// CSS ファイルのサイドエフェクトインポートを許可する（tsgo はプラグイン非対応のため明示宣言が必要）
+declare module '*.css' {}
+
 // Cloudflare Workers バインディングを CloudflareEnv に追加する
 // @opennextjs/cloudflare の getCloudflareContext().env で参照される
 
