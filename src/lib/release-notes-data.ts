@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (82)
+
+### リファクタリング
+- **\`useKeyboardNav\` の \`]\` / \`[\` キーハンドラを統合** — フィード切り替え処理（\`buildFeedOrder\` + \`findIndex\` + \`onSelectFeed\` + \`showToast\`）が両ケースで重複していたため、\`delta\` 変数で方向を分岐する単一 \`case\` に統合
+- **\`readBodyBytes\` / \`readBodyBytesPartial\` のチャンクマージを抽出** — \`src/lib/fetch.ts\` の 2 関数で同一の \`Uint8Array\` 結合コード（7 行）が重複していたため \`concatChunks\` ヘルパーに抽出
+
 ## 2026-03-26 (81)
 
 ### リファクタリング

@@ -5,6 +5,17 @@ export const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
 const MAX_REDIRECTS = 5;
 
+/** チャンク配列を 1 つの Uint8Array に結合する */
+function concatChunks(chunks: Uint8Array[], totalBytes: number): Uint8Array<ArrayBuffer> {
+  const merged = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return merged;
+}
+
 /**
  * ReadableStream からバイト列を最大 maxBytes まで読み込む。
  * maxBytes を超えた場合は null を返す。
@@ -27,13 +38,7 @@ export async function readBodyBytes(
   } finally {
     reader.cancel().catch(() => {});
   }
-  const merged = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return merged;
+  return concatChunks(chunks, totalBytes);
 }
 
 /**
@@ -59,13 +64,7 @@ export async function readBodyBytesPartial(
   } finally {
     reader.cancel().catch(() => {});
   }
-  const merged = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return merged;
+  return concatChunks(chunks, totalBytes);
 }
 
 /**
