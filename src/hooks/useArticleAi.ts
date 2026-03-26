@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { AiMode } from '../types';
 import { aiLruCache } from '../lib/lru-cache';
 
@@ -25,9 +25,12 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
   const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
   const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
   const [aiError, setAiError] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
 
-  // 記事が変わったら AI 状態を自動リセットする
+  // 記事が変わったら進行中のリクエストをキャンセルして AI 状態を自動リセットする
   useEffect(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     setAiResult(null);
     setAiError('');
     setAiLoading(null);
@@ -45,6 +48,11 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
       }
     }
 
+    // 既存のリクエストをキャンセルして新しいコントローラーを作成
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setAiLoading(mode);
     setAiError('');
     try {
@@ -53,6 +61,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, articleId: currentArticleId }),
+        signal: controller.signal,
       });
       const data = (await res.json()) as { result?: string; error?: string };
       if (data.result) {
@@ -63,7 +72,8 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
       } else {
         setAiError('AI の処理に失敗しました');
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setAiError('AI の処理に失敗しました');
     } finally {
       setAiLoading(null);
@@ -71,6 +81,8 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
   }, []);
 
   const resetAi = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     setAiResult(null);
     setAiError('');
     setAiLoading(null);
