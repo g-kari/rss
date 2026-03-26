@@ -418,6 +418,41 @@ export function fixExternalLinks(html: string, pageUrl = ""): string {
 }
 
 /**
+ * `<blockquote class="twitter-tweet">` を X (Twitter) 埋め込み iframe に変換する。
+ *
+ * 多くのブログ・メディアサイトは Twitter のスクリプトと一緒に
+ * <blockquote class="twitter-tweet"> を使ってツイートを埋め込む。
+ * RSS リーダーは <script> を除去するため tweet が未展開のまま残ってしまう。
+ * このため blockquote 末尾のパーマリンク URL からツイート ID を取り出し、
+ * platform.twitter.com の iframe 埋め込みに置き換える。
+ *
+ * @param theme - ライト/ダークテーマ（'light' | 'dark'、省略時は 'light'）
+ */
+export function transformXTweetEmbeds(html: string, theme: "light" | "dark" = "light"): string {
+  return html.replace(
+    /<blockquote\b[^>]*\bclass\s*=\s*["'][^"']*\btwitter-tweet\b[^"']*["'][^>]*>([\s\S]*?)<\/blockquote>/gi,
+    (_match, inner: string) => {
+      // blockquote 内の最後のリンクがツイートのパーマリンク
+      const links = [...inner.matchAll(/<a\b[^>]+href\s*=\s*["']([^"']+)["'][^>]*>/gi)];
+      const tweetUrl = links.at(-1)?.[1] ?? "";
+      const idMatch = tweetUrl.match(/(?:twitter|x)\.com\/[^/?#]+\/status\/(\d+)/);
+      if (!idMatch) return _match; // パターン不一致なら元のブロッククォートを保持
+      const tweetId = idMatch[1];
+      return (
+        `<div class="tweet-embed-wrapper">` +
+        `<iframe` +
+        ` src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&dnt=true&theme=${theme}"` +
+        ` style="width:100%;border:0;border-radius:12px;height:550px"` +
+        ` scrolling="no"` +
+        ` loading="lazy"` +
+        `></iframe>` +
+        `</div>`
+      );
+    },
+  );
+}
+
+/**
  * 共通後処理パイプライン（画像処理・リンク修正・テーブルラップ・XSS サニタイズ）。
  * postProcess / postProcessMarkdownContent の両方で使用する。
  * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
@@ -435,12 +470,19 @@ function applyCorePipeline(html: string, pageUrl = ""): string {
 /**
  * コンテンツ抽出後の後処理パイプライン。
  * 各ステップを適用順に並べる。sanitizeHtml は XSS 対策のため必ず最後に実行すること。
+ *
+ * @param theme - X ツイート埋め込みのテーマ（'light' | 'dark'）
  */
-export function postProcess(content: string, pageUrl = ""): string {
+export function postProcess(
+  content: string,
+  pageUrl = "",
+  theme: "light" | "dark" = "light",
+): string {
   const preprocessed = [
     (h: string) => removeNoise(h),
     (h: string) => transformZennLinkEmbeds(h),
     (h: string) => transformZennMermaidEmbeds(h, pageUrl),
+    (h: string) => transformXTweetEmbeds(h, theme),
     (h: string) => fixLazyImages(h),
   ].reduce((h, step) => step(h), content);
   return applyCorePipeline(preprocessed, pageUrl);

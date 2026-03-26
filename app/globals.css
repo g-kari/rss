@@ -417,3 +417,14 @@ body {
   object-fit: cover;
   background-color: var(--color-surface-subtle);
 }
+
+/* X (Twitter) ツイート埋め込みラッパー */
+.tweet-embed-wrapper {
+  margin: 1.25em auto;
+  max-width: 550px;
+}
+.tweet-embed-wrapper iframe {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+}

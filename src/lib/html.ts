@@ -96,6 +96,7 @@ const TRUSTED_IFRAME_RULES: ReadonlyArray<{ hosts: readonly string[]; pathPrefix
   { hosts: ["clips.twitch.tv"], pathPrefix: "/embed" },
   { hosts: ["embed.nicovideo.jp"] },
   { hosts: ["embed.zenn.studio"] },
+  { hosts: ["platform.twitter.com"], pathPrefix: "/embed/" },
 ];
 
 function isTrustedIframeSrc(src: string): boolean {

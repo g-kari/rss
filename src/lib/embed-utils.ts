@@ -1,3 +1,5 @@
+import { transformXTweetEmbeds } from "./content";
+
 /** 埋め込みメディアの情報 */
 export interface EmbedInfo {
   embedUrl: string;
@@ -83,8 +85,13 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
   return null;
 }
 
-/** RSS コンテンツ内の iframe をレスポンシブラッパーで包む（YouTube origin のみ） */
-export function processContent(html: string): string {
+/** RSS コンテンツ内の iframe をレスポンシブラッパーで包む（YouTube origin のみ）。
+ * また X (Twitter) の tweet blockquote をインライン iframe 埋め込みに変換する。
+ *
+ * @param theme - X ツイート埋め込みのテーマ（'light' | 'dark'）
+ */
+export function processContent(html: string, theme: "light" | "dark" = "light"): string {
+  html = transformXTweetEmbeds(html, theme);
   return html.replace(
     /<iframe([^>]*src=["'][^"']*(?:youtube(?:-nocookie)?\.com\/embed)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
     (_match, attrs, inner) => {
