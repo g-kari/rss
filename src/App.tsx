@@ -7,7 +7,7 @@ import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
 import ErrorBoundary from './components/ErrorBoundary';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
-import type { Feed, Article } from './types';
+import type { Article } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useFeeds } from './hooks/useFeeds';
 import { useReadState } from './hooks/useReadState';
@@ -93,10 +93,6 @@ export default function App() {
       setSelectedFeedId(null);
       setSelectedArticle(null);
     }
-  }
-
-  function onFeedRenamed(feed: Feed) {
-    updateFeed(feed);
   }
 
   const bookmarkCount = useMemo(
@@ -345,7 +341,7 @@ export default function App() {
           }}
           onFeedAdded={onFeedAdded}
           onFeedDeleted={onFeedDeleted}
-          onFeedRenamed={onFeedRenamed}
+          onFeedRenamed={updateFeed}
           onFeedsImported={replaceFeeds}
           onMarkAllRead={markAllRead}
           onToggleTheme={toggleTheme}

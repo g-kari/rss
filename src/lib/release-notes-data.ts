@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (84)
+
+### リファクタリング
+- **\`useArticleAi\` のリセットロジック重複を解消** — \`resetAi\` と \`articleId\` 変更 \`useEffect\` に同一の 5 行リセットコードが重複していたため、\`resetAi\` を先に定義して \`useEffect\` から呼び出す形に整理
+- **\`App.tsx\` の \`onFeedRenamed\` ラッパーを削除** — \`updateFeed\` をそのまま渡せる同一シグネチャで、ラッパー関数が不要だったため削除。\`Feed\` 型インポートも合わせて除去
+
 ## 2026-03-26 (83)
 
 ### バグ修正
