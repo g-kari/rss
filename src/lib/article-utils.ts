@@ -1,3 +1,14 @@
+/** CJK 統合漢字・ひらがな・カタカナ・拡張A（読了速度判定用） */
+const CJK_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g;
+
+/** 全角文字を含む広義の CJK（日本語判定用。全角英数記号 \uff00-\uffef を含む） */
+const CJK_WIDE_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uff00-\uffef]/g;
+
+/** HTML タグを除去してプレーンテキストを返す */
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, "").trim();
+}
+
 /**
  * テキストが日本語（CJK 文字を一定割合以上含む）かどうかを判定する。
  * 自動翻訳のトリガー判断に使用する。
@@ -5,17 +16,17 @@
  * - CJK 文字が全体の 3% 以上 → 日本語と判定
  */
 export function isLikelyJapanese(text: string): boolean {
-  const plain = text.replace(/<[^>]+>/g, "").trim();
+  const plain = stripHtml(text);
   if (plain.length < 20) return true;
-  const cjk = (plain.match(/[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uff00-\uffef]/g) ?? []).length;
+  const cjk = (plain.match(CJK_WIDE_PATTERN) ?? []).length;
   return cjk / plain.length > 0.03;
 }
 
 /** 推定読了時間（分）。HTML タグを除去して文字数・語数から算出 */
 export function readingTime(html: string): number {
-  const text = html.replace(/<[^>]+>/g, "").trim();
+  const text = stripHtml(html);
   if (!text) return 0;
-  const cjk = (text.match(/[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g) ?? []).length;
+  const cjk = (text.match(CJK_PATTERN) ?? []).length;
   const mins =
     cjk / text.length > 0.3
       ? Math.ceil(text.length / 400) // 日本語: 約400字/分
