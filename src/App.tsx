@@ -573,6 +573,7 @@ export default function App() {
             nextArticle={nextArticle}
             onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
             onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
+            theme={theme}
           />
         </ErrorBoundary>
       </div>

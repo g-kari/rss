@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { Article, FontSize, AiMode } from "../types";
+import type { Theme } from "../hooks/useUIState";
 import { readingTime } from "../lib/article-utils";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { useArticleContent } from "../hooks/useArticleContent";
@@ -30,6 +31,7 @@ interface Props {
   nextArticle?: Article | null;
   onSelectPrev?: () => void;
   onSelectNext?: () => void;
+  theme?: Theme;
 }
 
 const SHORT_CONTENT_THRESHOLD = 400;
@@ -299,6 +301,7 @@ export default function ArticleView({
   nextArticle,
   onSelectPrev,
   onSelectNext,
+  theme = "light",
 }: Props) {
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -463,7 +466,7 @@ export default function ArticleView({
   const processedContent = rawContent
     ? embedInfo
       ? stripIframes(rawContent)
-      : processContent(rawContent)
+      : processContent(rawContent, theme)
     : null;
 
   // 本文内スタンドアロンリンクに OGP プレビューカードを注入
