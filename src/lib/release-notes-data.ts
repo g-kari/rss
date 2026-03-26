@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (128)
+
+### リファクタリング
+- **\`loadSet()\` を \`loadJson()\` で内部実装** — \`storage.ts\` の \`loadSet\` が独自に行っていた try-catch + JSON.parse パターンを \`loadJson<string[]>(key, [])\` を使って1行に簡略化し、\`loadJson\` との重複を排除
+
 ## 2026-03-27 (127)
 
 ### リファクタリング

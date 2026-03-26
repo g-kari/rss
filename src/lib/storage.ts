@@ -88,12 +88,7 @@ export function loadJson<T>(key: string, fallback: T): T {
 
 /** JSON 配列として保存された Set<string> を読み込む */
 export function loadSet(key: string): Set<string> {
-  const stored = storageGet(key);
-  try {
-    return new Set(stored ? (JSON.parse(stored) as string[]) : []);
-  } catch {
-    return new Set();
-  }
+  return new Set(loadJson<string[]>(key, []));
 }
 
 /** Set<string> を JSON 配列として保存する */
