@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
+import { STORAGE_KEYS, loadJson, storageSet } from "../lib/storage";
 
 interface HistoryEntry {
   articleId: string;
@@ -12,12 +12,7 @@ interface HistoryEntry {
 const MAX_HISTORY = 50;
 
 function loadHistory(): HistoryEntry[] {
-  const stored = storageGet(STORAGE_KEYS.HISTORY);
-  try {
-    return stored ? (JSON.parse(stored) as HistoryEntry[]) : [];
-  } catch {
-    return [];
-  }
+  return loadJson<HistoryEntry[]>(STORAGE_KEYS.HISTORY, []);
 }
 
 /**
