@@ -162,6 +162,15 @@ export async function inferSelectors(
     const parsed = JSON.parse(match[0]) as Record<string, unknown>;
     if (typeof parsed.articleLink !== "string" || !parsed.articleLink) return null;
 
+    // セレクタが構文的に有効かどうかを検証する（linkedom の querySelectorAll で試す）
+    // 無効なセレクタが R2 に永続化されてクロンジョブが繰り返し失敗するのを防ぐ
+    const { document: testDoc } = parseHTML("<html></html>") as { document: LDDocument };
+    try {
+      testDoc.querySelectorAll(parsed.articleLink);
+    } catch {
+      return null;
+    }
+
     return {
       articleLink: parsed.articleLink,
       articleTitle: typeof parsed.articleTitle === "string" ? parsed.articleTitle : undefined,
@@ -235,7 +244,13 @@ export function scrapeFeed(
     return { title: siteTitle, siteUrl, items: [] };
   }
 
-  const elements = Array.from(doc.querySelectorAll(selectors.articleLink));
+  // 無効なセレクタが R2 に残存している場合に備えて SyntaxError をキャッチする
+  let elements: LDElement[];
+  try {
+    elements = Array.from(doc.querySelectorAll(selectors.articleLink));
+  } catch {
+    throw new Error(`CSS セレクタが無効です: ${selectors.articleLink}`);
+  }
   const items: ParsedItem[] = [];
   const seen = new Set<string>();
 
