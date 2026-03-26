@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (54)
+
+### リファクタリング
+- **`useDebounce` フックを作成し検索デバウンス処理を分離** — `useFilteredArticles` 内のインライン `setTimeout` / `query` state を汎用の `useDebounce<T>(value, delay)` フックに置き換え。他フックからも再利用可能に
+
 ## 2026-03-26 (53)
 
 ### バグ修正
