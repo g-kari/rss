@@ -5,3 +5,4 @@ dist
 .next
 .open-next
 tsconfig.tsbuildinfo
+package-lock.json
