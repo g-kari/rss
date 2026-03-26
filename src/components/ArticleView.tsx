@@ -34,6 +34,243 @@ interface Props {
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
+// --- 共通 SVG アイコン ---
+
+const SpinIcon = () => (
+  <svg
+    className="w-3.5 h-3.5 animate-spin"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={1.5}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+    />
+  </svg>
+);
+
+const DownloadIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+  </svg>
+);
+
+const ExternalLinkIcon = ({ size = 14 }: { size?: number }) => (
+  <svg
+    className={`w-[${size}px] h-[${size}px]`}
+    width={size}
+    height={size}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={1.5}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+    />
+  </svg>
+);
+
+const ChevronLeftSmall = ({ width = 12, height = 12 }: { width?: number; height?: number }) => (
+  <svg
+    width={width}
+    height={height}
+    viewBox="0 0 12 12"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M8 2L4 6l4 4" />
+  </svg>
+);
+
+const ChevronRightSmall = ({ width = 12, height = 12 }: { width?: number; height?: number }) => (
+  <svg
+    width={width}
+    height={height}
+    viewBox="0 0 12 12"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M4 2l4 4-4 4" />
+  </svg>
+);
+
+// --- ShareMenu コンポーネント ---
+
+interface ShareMenuProps {
+  article: Article;
+  showToast: (msg: string) => void;
+}
+
+function ShareMenu({ article, showToast }: ShareMenuProps) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
+
+  const itemCls =
+    "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left";
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title="共有 (c)"
+        className={`transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+          <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-30 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+          {typeof navigator.share === "function" && (
+            <button
+              onClick={() => {
+                setOpen(false);
+                navigator.share({ url: article.link!, title: article.title }).catch(() => {});
+              }}
+              className={itemCls}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              システムで共有
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setOpen(false);
+              window.open(
+                `https://x.com/intent/tweet?url=${encodeURIComponent(article.link!)}&text=${encodeURIComponent(article.title)}`,
+                "_blank",
+                "noopener,noreferrer",
+              );
+            }}
+            className={itemCls}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.727-8.833L1.254 2.25H8.08l4.261 5.638 5.903-5.638zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            X でシェア
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              navigator.clipboard
+                .writeText(`${article.title}\n${article.link!}`)
+                .then(() => {
+                  showToast("コピーしました。Slack を開きます");
+                  window.open("slack://open", "_blank", "noopener,noreferrer");
+                })
+                .catch(() => {
+                  showToast("コピーに失敗しました");
+                });
+            }}
+            className={itemCls}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+            </svg>
+            Slack 用にコピー
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              window.open(
+                `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(article.link!)}`,
+                "_blank",
+                "noopener,noreferrer",
+              );
+            }}
+            className={itemCls}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19.365 9.863c.349 0 .63.285.63.63 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
+            </svg>
+            LINE でシェア
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              navigator.clipboard
+                .writeText(`${article.title}\n${article.link!}`)
+                .then(() => {
+                  showToast("タイトルと URL をコピーしました");
+                })
+                .catch(() => {
+                  showToast("コピーに失敗しました");
+                });
+            }}
+            className={itemCls}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+              <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            タイトル + URL をコピー
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** target から currentTarget まで祖先を遡り、横スクロール可能な要素があれば true を返す */
 function hasScrollableAncestor(
   target: EventTarget | null,
@@ -70,9 +307,6 @@ export default function ArticleView({
 
   // 翻訳結果を本文として表示するフラグ
   const [showTranslated, setShowTranslated] = useState(false);
-
-  const [shareMenuOpen, setShareMenuOpen] = useState(false);
-  const shareMenuRef = useRef<HTMLDivElement>(null);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -172,20 +406,7 @@ export default function ArticleView({
       progressBarRef.current.style.display = "none";
     }
     setShowTranslated(false);
-    setShareMenuOpen(false);
   }, [article?.id]);
-
-  // シェアメニュー外タップで閉じる
-  useEffect(() => {
-    if (!shareMenuOpen) return;
-    function onPointerDown(e: PointerEvent) {
-      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) {
-        setShareMenuOpen(false);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [shareMenuOpen]);
 
   // 翻訳結果が届いたら本文を翻訳表示に切り替える
   useEffect(() => {
@@ -484,164 +705,11 @@ export default function ArticleView({
                     {imageDownloadProgress.done}/{imageDownloadProgress.total}
                   </span>
                 ) : null}
-                {downloadingImages ? (
-                  <svg
-                    className="w-3.5 h-3.5 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                  </svg>
-                )}
+                {downloadingImages ? <SpinIcon /> : <DownloadIcon />}
               </button>
             )}
 
-            {article.link && showToast && (
-              <div ref={shareMenuRef} className="relative">
-                <button
-                  onClick={() => setShareMenuOpen((v) => !v)}
-                  title="共有 (c)"
-                  className={`transition-colors duration-200 ${shareMenuOpen ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-                    <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                </button>
-                {shareMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-30 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[140px]">
-                    {typeof navigator.share === "function" && (
-                      <button
-                        onClick={() => {
-                          setShareMenuOpen(false);
-                          navigator
-                            .share({ url: article.link!, title: article.title })
-                            .catch(() => {});
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
-                      >
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={1.5}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                        </svg>
-                        システムで共有
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setShareMenuOpen(false);
-                        const url = `https://x.com/intent/tweet?url=${encodeURIComponent(article.link!)}&text=${encodeURIComponent(article.title)}`;
-                        window.open(url, "_blank", "noopener,noreferrer");
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.727-8.833L1.254 2.25H8.08l4.261 5.638 5.903-5.638zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                      </svg>
-                      X でシェア
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShareMenuOpen(false);
-                        navigator.clipboard
-                          .writeText(`${article.title}\n${article.link!}`)
-                          .then(() => {
-                            showToast("コピーしました。Slack を開きます");
-                            window.open("slack://open", "_blank", "noopener,noreferrer");
-                          })
-                          .catch(() => {
-                            showToast("コピーに失敗しました");
-                          });
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
-                      </svg>
-                      Slack 用にコピー
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShareMenuOpen(false);
-                        const url = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(article.link!)}`;
-                        window.open(url, "_blank", "noopener,noreferrer");
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19.365 9.863c.349 0 .63.285.63.63 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
-                      </svg>
-                      LINE でシェア
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShareMenuOpen(false);
-                        navigator.clipboard
-                          .writeText(`${article.title}\n${article.link!}`)
-                          .then(() => {
-                            showToast("タイトルと URL をコピーしました");
-                          })
-                          .catch(() => {
-                            showToast("コピーに失敗しました");
-                          });
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
-                    >
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-                        <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                      タイトル + URL をコピー
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+            {article.link && showToast && <ShareMenu article={article} showToast={showToast} />}
 
             <button
               onClick={() => onToggleReadingList(article.id)}
@@ -737,19 +805,7 @@ export default function ArticleView({
             <div className="flex-1 overflow-hidden flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               {prevArticle && onSelectPrev && (
                 <>
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-text-faint flex-shrink-0"
-                  >
-                    <path d="M8 2L4 6l4 4" />
-                  </svg>
+                  <ChevronLeftSmall />
                   <span className="text-[11px] text-text-faint truncate">{prevArticle.title}</span>
                 </>
               )}
@@ -759,19 +815,7 @@ export default function ArticleView({
               {nextArticle && onSelectNext && (
                 <>
                   <span className="text-[11px] text-text-faint truncate">{nextArticle.title}</span>
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-text-faint flex-shrink-0"
-                  >
-                    <path d="M4 2l4 4-4 4" />
-                  </svg>
+                  <ChevronRightSmall />
                 </>
               )}
             </div>
@@ -874,36 +918,12 @@ export default function ArticleView({
               >
                 {fetching ? (
                   <>
-                    <svg
-                      className="w-3.5 h-3.5 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      />
-                    </svg>
+                    <SpinIcon />
                     取得中...
                   </>
                 ) : (
                   <>
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-                      />
-                    </svg>
+                    <DownloadIcon />
                     全文を取得
                   </>
                 )}
@@ -914,19 +934,7 @@ export default function ArticleView({
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200"
               >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-                  />
-                </svg>
+                <ExternalLinkIcon size={14} />
                 元記事を開く
               </a>
             </div>
@@ -943,18 +951,7 @@ export default function ArticleView({
                 className="flex-1 text-left px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
               >
                 <span className="flex items-center gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M8 2L4 6l4 4" />
-                  </svg>
+                  <ChevronLeftSmall />
                   前の記事
                 </span>
                 <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
@@ -971,18 +968,7 @@ export default function ArticleView({
               >
                 <span className="flex items-center justify-end gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
                   次の記事
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M4 2l4 4-4 4" />
-                  </svg>
+                  <ChevronRightSmall />
                 </span>
                 <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
                   {nextArticle.title}
