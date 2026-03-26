@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (55)
+
+### バグ修正
+- **記事内の相対 URL リンクが RSS リーダー自身のドメインに解決される問題を修正** — \`fixExternalLinks\` が \`href\` の相対パスを絶対 URL に変換していなかったため、例えば \`<a href="/related">\` が \`https://rss.0g0.xyz/related\` に解決されていた。\`pageUrl\` を受け取って \`fixImageDimensions\` と同様に相対パスを絶対 URL に変換するよう修正
+
 ## 2026-03-26 (54)
 
 ### リファクタリング

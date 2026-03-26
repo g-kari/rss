@@ -519,4 +519,28 @@ test.describe('fixExternalLinks', () => {
     const anchorPart = result.split('<a href="https://')[0];
     expect(anchorPart).not.toContain('target="_blank"');
   });
+
+  test('相対パスの href を pageUrl ベースで絶対 URL に変換する', () => {
+    const result = fixExternalLinks(
+      '<a href="/about">About</a>',
+      'https://example.com/articles/123',
+    );
+    expect(result).toContain('href="https://example.com/about"');
+    expect(result).toContain('target="_blank"');
+    expect(result).toContain('rel="noopener noreferrer"');
+  });
+
+  test('相対パスの href は pageUrl なしでは変換されない', () => {
+    const result = fixExternalLinks('<a href="/about">About</a>');
+    expect(result).toContain('href="/about"');
+    expect(result).toContain('target="_blank"');
+  });
+
+  test('絶対 URL の href は pageUrl があっても上書きされない', () => {
+    const result = fixExternalLinks(
+      '<a href="https://other.com/page">Link</a>',
+      'https://example.com/articles/123',
+    );
+    expect(result).toContain('href="https://other.com/page"');
+  });
 });

@@ -328,12 +328,16 @@ export function rewriteImageUrls(html: string): string {
 }
 
 /**
- * <a> タグに target="_blank" と rel="noopener noreferrer" を付与する。
+ * <a> タグに target="_blank" と rel="noopener noreferrer" を付与し、
+ * 相対 href を pageUrl ベースで絶対 URL に変換する。
  * 記事内リンクを新しいタブで開くことで読書を中断せずリンクを確認できる。
  * フラグメントのみのリンク (#anchor) は同一ページ内アンカーのためそのまま保持する。
  * 危険スキーム (javascript: / data: 等) は後続の sanitizeHtml で除去されるためここでは無視する。
  */
-export function fixExternalLinks(html: string): string {
+export function fixExternalLinks(html: string, pageUrl = ''): string {
+  let base: URL | null = null;
+  try { base = pageUrl ? new URL(pageUrl) : null; } catch { /* ignore */ }
+
   return html.replace(/<a\b([^>]*)>/gi, (_match, attrs: string) => {
     // href 属性の値を取得
     const hrefMatch = attrs.match(/\bhref\s*=\s*["']([^"']*?)["']/i);
@@ -343,6 +347,17 @@ export function fixExternalLinks(html: string): string {
     if (!href || href.startsWith('#')) return _match;
 
     let newAttrs = attrs;
+
+    // 相対パスを絶対 URL に変換（pageUrl が指定されている場合）
+    if (base && !/^https?:\/\//i.test(href) && !href.startsWith('data:')) {
+      try {
+        const absolute = new URL(href, base).href;
+        newAttrs = newAttrs.replace(
+          /\bhref\s*=\s*["'][^"']*["']/i,
+          `href="${absolute}"`,
+        );
+      } catch { /* 変換失敗時はそのまま */ }
+    }
 
     // target 属性を上書きして必ず新しいタブで開く
     if (/\btarget\s*=/i.test(newAttrs)) {
@@ -381,7 +396,7 @@ export function postProcess(content: string, pageUrl = ''): string {
     (html) => fixLazyImages(html),
     (html) => fixImageDimensions(html, pageUrl),
     (html) => rewriteImageUrls(html),
-    (html) => fixExternalLinks(html),
+    (html) => fixExternalLinks(html, pageUrl),
     (html) => wrapTables(html),
     (html) => sanitizeHtml(html),
   ];
@@ -468,7 +483,7 @@ export function postProcessMarkdownContent(html: string, pageUrl = ''): string {
   const steps: Array<(h: string) => string> = [
     (h) => fixImageDimensions(h, pageUrl),
     (h) => rewriteImageUrls(h),
-    (h) => fixExternalLinks(h),
+    (h) => fixExternalLinks(h, pageUrl),
     (h) => wrapTables(h),
     (h) => sanitizeHtml(h),
   ];
