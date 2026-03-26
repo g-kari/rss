@@ -2,7 +2,7 @@ import { requireSession, applyRefreshedTokensToResponse } from '@/lib/server-aut
 import { isValidFeedUrl, normalizeUrlForCache } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
-import { fetchFollowSafeRedirects } from '@/lib/fetch';
+import { fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const FETCH_TIMEOUT_MS = 10_000;
@@ -125,26 +125,9 @@ async function handleGet(request: Request): Promise<Response> {
       return transparentGif();
     }
 
-    const reader = res.body?.getReader();
-    if (!reader) return transparentGif();
-
-    const chunks: Uint8Array[] = [];
-    let totalBytes = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        totalBytes += value.byteLength;
-        if (totalBytes > MAX_IMAGE_BYTES) return transparentGif();
-        chunks.push(value);
-      }
-    } finally {
-      reader.cancel().catch(() => {});
-    }
-
-    const merged = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
+    if (!res.body) return transparentGif();
+    const merged = await readBodyBytes(res.body, MAX_IMAGE_BYTES);
+    if (merged === null) return transparentGif();
 
     // Content-Type ヘッダーは偽装できるため、常にマジックバイトで MIME タイプを検証する。
     // image/* と宣言されていても実際のバイト列が画像でなければ拒否する。

@@ -9,7 +9,7 @@ const MAX_REDIRECTS = 5;
 export async function readBodyBytes(
   body: ReadableStream<Uint8Array>,
   maxBytes: number,
-): Promise<Uint8Array | null> {
+): Promise<Uint8Array<ArrayBuffer> | null> {
   const reader = body.getReader();
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
@@ -41,7 +41,7 @@ export async function readBodyBytes(
 export async function readBodyBytesPartial(
   body: ReadableStream<Uint8Array>,
   maxBytes: number,
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const reader = body.getReader();
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;

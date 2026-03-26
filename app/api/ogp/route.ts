@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withSession } from '@/lib/server-auth';
 import { isValidFeedUrl, MAX_URL_LENGTH, normalizeUrlForCache } from '@/lib/url';
 import { sha256Hex } from '@/lib/r2';
-import { fetchFollowSafeRedirects } from '@/lib/fetch';
+import { fetchFollowSafeRedirects, readBodyBytesPartial } from '@/lib/fetch';
 import { unescapeHtml } from '@/lib/html';
 
 const FETCH_TIMEOUT_MS = 5_000;
@@ -28,7 +28,8 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   if (cached) {
     const data = await cached.json() as { image: string };
     // 旧キャッシュに &amp; エンコードの URL が残っている場合に備えてデコードし直す
-    const image = /^https?:\/\//i.test(unescapeHtml(data.image)) ? unescapeHtml(data.image) : data.image;
+    const decoded = unescapeHtml(data.image);
+    const image = /^https?:\/\//i.test(decoded) ? decoded : data.image;
     return NextResponse.json({ image }, { headers: { 'X-Cache': 'HIT' } });
   }
 
@@ -42,26 +43,8 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     if (!res.ok) return NextResponse.json({ image: '' });
 
     // 先頭 MAX_BYTES だけ読んで og:image を探す
-    const reader = res.body?.getReader();
-    if (!reader) return NextResponse.json({ image: '' });
-
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        total += value.byteLength;
-        if (total >= MAX_BYTES) break;
-      }
-    } finally {
-      reader.cancel().catch(() => {});
-    }
-
-    const merged = new Uint8Array(total);
-    let offset = 0;
-    for (const c of chunks) { merged.set(c, offset); offset += c.byteLength; }
+    if (!res.body) return NextResponse.json({ image: '' });
+    const merged = await readBodyBytesPartial(res.body, MAX_BYTES);
     const html = new TextDecoder().decode(merged);
 
     const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
