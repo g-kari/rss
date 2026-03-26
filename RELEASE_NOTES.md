@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (67)
+
+### リファクタリング
+- `postProcess` / `postProcessMarkdownContent` の共通後処理ステップを内部ヘルパー `applyCorePipeline` に抽出し、コードの重複を解消
+
 ## 2026-03-26 (66)
 
 ### 新機能

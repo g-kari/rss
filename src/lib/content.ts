@@ -384,22 +384,32 @@ export function fixExternalLinks(html: string, pageUrl = ''): string {
 }
 
 /**
+ * 共通後処理パイプライン（画像処理・リンク修正・テーブルラップ・XSS サニタイズ）。
+ * postProcess / postProcessMarkdownContent の両方で使用する。
+ * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
+ */
+function applyCorePipeline(html: string, pageUrl = ''): string {
+  return [
+    (h: string) => fixImageDimensions(h, pageUrl),
+    (h: string) => rewriteImageUrls(h),
+    (h: string) => fixExternalLinks(h, pageUrl),
+    (h: string) => wrapTables(h),
+    (h: string) => sanitizeHtml(h),
+  ].reduce((h, step) => step(h), html);
+}
+
+/**
  * コンテンツ抽出後の後処理パイプライン。
  * 各ステップを適用順に並べる。sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  */
 export function postProcess(content: string, pageUrl = ''): string {
-  const steps: Array<(html: string) => string> = [
-    (html) => removeNoise(html),
-    (html) => transformZennLinkEmbeds(html),
-    (html) => transformZennMermaidEmbeds(html, pageUrl),
-    (html) => fixLazyImages(html),
-    (html) => fixImageDimensions(html, pageUrl),
-    (html) => rewriteImageUrls(html),
-    (html) => fixExternalLinks(html, pageUrl),
-    (html) => wrapTables(html),
-    (html) => sanitizeHtml(html),
-  ];
-  return steps.reduce((html, step) => step(html), content);
+  const preprocessed = [
+    (h: string) => removeNoise(h),
+    (h: string) => transformZennLinkEmbeds(h),
+    (h: string) => transformZennMermaidEmbeds(h, pageUrl),
+    (h: string) => fixLazyImages(h),
+  ].reduce((h, step) => step(h), content);
+  return applyCorePipeline(preprocessed, pageUrl);
 }
 
 /**
@@ -479,14 +489,7 @@ export function markdownToHtml(md: string): string {
  * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  */
 export function postProcessMarkdownContent(html: string, pageUrl = ''): string {
-  const steps: Array<(h: string) => string> = [
-    (h) => fixImageDimensions(h, pageUrl),
-    (h) => rewriteImageUrls(h),
-    (h) => fixExternalLinks(h, pageUrl),
-    (h) => wrapTables(h),
-    (h) => sanitizeHtml(h),
-  ];
-  return steps.reduce((h, step) => step(h), html);
+  return applyCorePipeline(html, pageUrl);
 }
 
 /**
