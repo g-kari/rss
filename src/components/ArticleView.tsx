@@ -451,7 +451,7 @@ export default function ArticleView({
                     <button
                       onClick={() => {
                         setShareMenuOpen(false);
-                        navigator.clipboard.writeText(article.link!).then(() => {
+                        navigator.clipboard.writeText(`${article.title}\n${article.link!}`).then(() => {
                           showToast('Slack 用にコピーしました');
                         }).catch(() => {
                           showToast('コピーに失敗しました');
@@ -480,8 +480,8 @@ export default function ArticleView({
                     <button
                       onClick={() => {
                         setShareMenuOpen(false);
-                        navigator.clipboard.writeText(article.link!).then(() => {
-                          showToast('リンクをコピーしました');
+                        navigator.clipboard.writeText(`${article.title}\n${article.link!}`).then(() => {
+                          showToast('タイトルと URL をコピーしました');
                         }).catch(() => {
                           showToast('コピーに失敗しました');
                         });
@@ -492,7 +492,7 @@ export default function ArticleView({
                         <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
                         <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                       </svg>
-                      URL をコピー
+                      タイトル + URL をコピー
                     </button>
                   </div>
                 )}
