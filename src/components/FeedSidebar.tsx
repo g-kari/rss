@@ -4,6 +4,7 @@ import { useRef, useState, useMemo } from 'react';
 import type { Feed, Article, UserProfile } from '../types';
 import ReleaseNotesModal from './ReleaseNotesModal';
 import FeedItem, { formatCount } from './FeedItem';
+import { useFeedOperations } from '../hooks/useFeedOperations';
 
 interface Props {
   feeds: Feed[];
@@ -55,65 +56,21 @@ export default function FeedSidebar({
   push,
 }: Props) {
   const [newUrl, setNewUrl] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [error, setError] = useState('');
   const [inputOpen, setInputOpen] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [feedSearch, setFeedSearch] = useState('');
   const [feedSearchOpen, setFeedSearchOpen] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const feedSearchRef = useRef<HTMLInputElement>(null);
 
-  async function addFeed(e: React.FormEvent) {
+  const { adding, error, importing, fileInputRef, addFeed, deleteFeed, renameFeed, handleImportFile, clearError } =
+    useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported });
+
+  function handleAddFeed(e: React.FormEvent) {
     e.preventDefault();
-    if (!newUrl.trim()) return;
-    setAdding(true);
-    setError('');
-    try {
-      const res = await fetch('/api/feeds', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: newUrl.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json() as { error: string };
-        setError(data.error ?? 'Failed to add feed');
-        return;
-      }
-      const feed = await res.json() as Feed;
+    addFeed(newUrl, () => {
       setNewUrl('');
       setInputOpen(false);
-      onFeedAdded(feed);
-    } catch {
-      setError('Network error');
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  async function deleteFeed(id: string, e: React.MouseEvent) {
-    e.stopPropagation();
-    const res = await fetch(`/api/feeds/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      setError('フィードの削除に失敗しました');
-      return;
-    }
-    onFeedDeleted(id);
-  }
-
-  async function renameFeed(id: string, title: string) {
-    const res = await fetch(`/api/feeds/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title }),
     });
-    if (!res.ok) {
-      setError('フィードのタイトル変更に失敗しました');
-      return;
-    }
-    const updated = await res.json() as Feed;
-    onFeedRenamed(updated);
   }
 
   async function logout() {
@@ -123,40 +80,6 @@ export default function FeedSidebar({
 
   function exportOpml() {
     window.location.href = '/api/feeds/export';
-  }
-
-  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImporting(true);
-    setError('');
-    try {
-      const text = await file.text();
-      const res = await fetch('/api/feeds/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/xml' },
-        body: text,
-      });
-      if (!res.ok) {
-        const data = await res.json() as { error: string };
-        setError(data.error ?? 'インポートに失敗しました');
-        return;
-      }
-      const data = await res.json() as { added: number; skipped: number };
-      if (data.added > 0) {
-        const feedsRes = await fetch('/api/feeds');
-        if (feedsRes.ok) {
-          const allFeeds = await feedsRes.json() as Feed[];
-          onFeedsImported(allFeeds);
-        }
-      }
-      setError(data.added > 0 ? `${data.added}件インポートしました` : 'すべて登録済みです');
-    } catch {
-      setError('インポートに失敗しました');
-    } finally {
-      setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
   }
 
   const { unreadByFeed, totalUnread } = useMemo(() => {
@@ -235,7 +158,7 @@ export default function FeedSidebar({
       {/* 追加フォーム */}
       {inputOpen && (
         <div className="px-3 py-2.5 border-b border-border-subtle bg-surface-base animate-fade-up">
-          <form onSubmit={addFeed}>
+          <form onSubmit={handleAddFeed}>
             <input
               type="url"
               placeholder="https://..."
@@ -256,7 +179,7 @@ export default function FeedSidebar({
               </button>
               <button
                 type="button"
-                onClick={() => { setInputOpen(false); setError(''); }}
+                onClick={() => { setInputOpen(false); clearError(); }}
                 className="text-[11px] px-3 py-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200"
               >
                 ✕
