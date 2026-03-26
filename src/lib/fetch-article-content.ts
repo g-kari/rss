@@ -3,7 +3,7 @@
  * /api/content と同じ Cloudflare Cache キーを使うため、キャッシュを共有する。
  */
 
-import { sha256Hex } from "@/lib/r2";
+import { buildCacheKey } from "@/lib/r2";
 import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
 import {
   detectCharset,
@@ -13,7 +13,7 @@ import {
   markdownToHtml,
   postProcessMarkdownContent,
 } from "@/lib/content";
-import { isValidFeedUrl, normalizeUrlForCache } from "@/lib/url";
+import { isValidFeedUrl } from "@/lib/url";
 
 export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
 export { DEFAULT_FETCH_TIMEOUT_MS as FETCH_TIMEOUT_MS } from "@/lib/fetch";
@@ -21,7 +21,7 @@ export const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 
 /** /api/content と共有する Cloudflare Cache キーを生成する。 */
 export async function buildContentCacheKey(origin: string, url: string): Promise<Request> {
-  return new Request(`${origin}/__cache/content/${await sha256Hex(normalizeUrlForCache(url))}`);
+  return buildCacheKey(origin, "content", url);
 }
 
 /**
