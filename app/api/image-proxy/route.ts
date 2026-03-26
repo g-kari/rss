@@ -1,6 +1,5 @@
-import { requireSession, applyRefreshedTokensToResponse } from "@/lib/server-auth";
+import { withBinarySession } from "@/lib/server-auth";
 import { isValidFeedUrl, normalizeUrlForCache } from "@/lib/url";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { sha256Hex } from "@/lib/r2";
 import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
 
@@ -79,19 +78,15 @@ function transparentGif(): Response {
 }
 
 export async function GET(request: Request) {
-  const result = await requireSession();
-  if ("error" in result) return result.error;
-  const { session } = result;
-  return applyRefreshedTokensToResponse(await handleGet(request), session);
+  return withBinarySession(({ ctx }) => handleGet(request, ctx));
 }
 
-async function handleGet(request: Request): Promise<Response> {
+async function handleGet(request: Request, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url).searchParams.get("url");
   if (!url) return new Response(null, { status: 400 });
 
   if (!isValidFeedUrl(url)) return new Response(null, { status: 400 });
 
-  const { ctx } = await getCloudflareContext({ async: true });
   const reqUrl = new URL(request.url);
   const cacheKey = new Request(
     `${reqUrl.origin}/__cache/image/${await sha256Hex(normalizeUrlForCache(url))}`,
