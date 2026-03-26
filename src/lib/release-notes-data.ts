@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (81)
+
+### リファクタリング
+- **\`fetchAndParseFeed\`・\`fetchAndScrapeWithSelectors\` の記事ビルド重複を除去** — \`readLatestArticles\` → \`existingById\` マップ構築 → \`buildArticle\` 並列実行の 4 行が両関数に重複していたため \`buildArticlesFromItems\` ヘルパーに抽出。あわせて誤配置の JSDoc を整理
+
 ## 2026-03-26 (80)
 
 ### リファクタリング
