@@ -8,6 +8,11 @@ interface ReadState {
   readingListIds: string[];
 }
 
+const MAX_READ_IDS = 20_000;
+const MAX_BOOKMARK_IDS = 2_000;
+const MAX_READING_LIST_IDS = 2_000;
+const MAX_ID_LENGTH = 128;
+
 function r2Key(userId: string) {
   return `users/${userId}/read-state.json`;
 }
@@ -25,11 +30,6 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   return withSession(async ({ session, env }) => {
-    const MAX_READ_IDS = 20_000;
-    const MAX_BOOKMARK_IDS = 2_000;
-    const MAX_READING_LIST_IDS = 2_000;
-    const MAX_ID_LENGTH = 128;
-
     const parsed = await parseJsonBody<Partial<ReadState>>(req);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;

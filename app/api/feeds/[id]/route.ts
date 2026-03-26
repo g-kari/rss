@@ -30,10 +30,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const parsed = await parseJsonBody<{ title?: unknown }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
-    if (typeof body?.title !== "string") {
-      return NextResponse.json({ error: "title is required" }, { status: 400 });
-    }
-    const title = body.title.trim();
+    const title = typeof body?.title === "string" ? body.title.trim() : "";
     if (!title) return NextResponse.json({ error: "title is required" }, { status: 400 });
     if (title.length > 200) return NextResponse.json({ error: "title too long" }, { status: 400 });
 
