@@ -10,6 +10,7 @@ import {
   fixExternalLinks,
 } from '../src/lib/content';
 import { sanitizeHtml } from '../src/lib/html';
+import { extractEmbedInfo, processContent } from '../src/lib/embed-utils';
 
 /**
  * extractMainContent / detectCharset のロジックを node スクリプトで検証する。
@@ -542,5 +543,90 @@ test.describe('fixExternalLinks', () => {
       'https://example.com/articles/123',
     );
     expect(result).toContain('href="https://other.com/page"');
+  });
+});
+
+
+test.describe('extractEmbedInfo — YouTube URL パターン', () => {
+  test('watch?v= 形式を認識する', () => {
+    const info = extractEmbedInfo('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(info).not.toBeNull();
+    expect(info!.embedUrl).toContain('dQw4w9WgXcQ');
+    expect(info!.type).toBe('video');
+  });
+
+  test('shorts/ 形式を認識する', () => {
+    const info = extractEmbedInfo('https://www.youtube.com/shorts/dQw4w9WgXcQ');
+    expect(info).not.toBeNull();
+    expect(info!.embedUrl).toContain('dQw4w9WgXcQ');
+  });
+
+  test('youtu.be 短縮 URL を認識する', () => {
+    const info = extractEmbedInfo('https://youtu.be/dQw4w9WgXcQ');
+    expect(info).not.toBeNull();
+    expect(info!.embedUrl).toContain('dQw4w9WgXcQ');
+  });
+
+  test('youtu.be に ?si= トラッキングパラメータが付いても認識する', () => {
+    const info = extractEmbedInfo('https://youtu.be/dQw4w9WgXcQ?si=TrackingParam123');
+    expect(info).not.toBeNull();
+    expect(info!.embedUrl).toContain('dQw4w9WgXcQ');
+  });
+
+  test('live/ 形式の YouTube Live URL を認識する（回帰テスト）', () => {
+    const info = extractEmbedInfo('https://www.youtube.com/live/dQw4w9WgXcQ');
+    expect(info).not.toBeNull();
+    expect(info!.embedUrl).toContain('dQw4w9WgXcQ');
+    expect(info!.type).toBe('video');
+  });
+
+  test('live/ 形式に ?feature=shared パラメータが付いても認識する', () => {
+    const info = extractEmbedInfo('https://www.youtube.com/live/dQw4w9WgXcQ?feature=shared');
+    expect(info).not.toBeNull();
+    expect(info!.embedUrl).toContain('dQw4w9WgXcQ');
+  });
+
+  test('YouTube 以外の URL は null を返す', () => {
+    expect(extractEmbedInfo('https://example.com/article')).toBeNull();
+    expect(extractEmbedInfo('https://vimeo.com/123456789')).not.toBeNull(); // Vimeo は対応済み
+  });
+});
+
+
+test.describe('processContent — YouTube iframe レスポンシブラップ', () => {
+  test('YouTube embed iframe をレスポンシブ div でラップする', () => {
+    const html = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" allowfullscreen></iframe>';
+    const result = processContent(html);
+    expect(result).toContain('padding-bottom:56.25%');
+    expect(result).toContain('<iframe');
+    expect(result).toContain('position:absolute');
+  });
+
+  test('youtube-nocookie.com embed もラップする', () => {
+    const html = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" allowfullscreen></iframe>';
+    const result = processContent(html);
+    expect(result).toContain('padding-bottom:56.25%');
+  });
+
+  test('allow 属性が保持される', () => {
+    const html = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
+    const result = processContent(html);
+    expect(result).toContain('allow=');
+    expect(result).toContain('encrypted-media');
+  });
+
+  test('sanitizeHtml を通過した YouTube iframe も正しくラップされる', () => {
+    const raw = '<iframe width="560" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ?si=abc" title="Test" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>';
+    const sanitized = sanitizeHtml(raw);
+    const processed = processContent(sanitized);
+    expect(processed).toContain('<iframe');
+    expect(processed).toContain('padding-bottom:56.25%');
+    expect(processed).toContain('allowfullscreen');
+    expect(processed).toContain('encrypted-media');
+  });
+
+  test('非 YouTube iframe は変更しない', () => {
+    const html = '<iframe src="https://example.com/video"></iframe>';
+    expect(processContent(html)).toBe(html);
   });
 });

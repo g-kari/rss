@@ -13,7 +13,7 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
 
   // YouTube
   const yt = url.match(
-    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
   );
   if (yt) return {
     embedUrl: `https://www.youtube-nocookie.com/embed/${yt[1]}?origin=https://rss.0g0.xyz`,

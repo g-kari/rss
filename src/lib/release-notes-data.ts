@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (69)
+
+### バグ修正
+- **YouTube Live URL の埋め込み対応** — \`youtube.com/live/VIDEO_ID\` 形式の URL が YouTube 動画として認識されず埋め込みが表示されなかった問題を修正。E2E テストに YouTube URL パターンと iframe レスポンシブラップの回帰テストを追加
+
 ## 2026-03-26 (68)
 
 ### パフォーマンス改善
