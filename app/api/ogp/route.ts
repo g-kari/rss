@@ -8,6 +8,7 @@ import { unescapeHtml } from '@/lib/html';
 const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BYTES = 512 * 1024; // og:image は先頭 512KB 以内にある
 const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
+const OGP_NEGATIVE_CACHE_TTL_SEC = 24 * 60 * 60; // 1日（og:image なし・フェッチ失敗）
 
 export async function GET(request: Request) {
   return withSession(({ ctx }) => handleGet(request, ctx));
@@ -73,13 +74,12 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     const image = /^https?:\/\//i.test(raw) && raw.length <= MAX_URL_LENGTH ? raw : '';
 
     // Cloudflare Cache API に保存（fire-and-forget）
-    // image が空のときはキャッシュしない（og:image なし / 危険スキームで空になった場合を区別しない）
-    if (image) {
-      const cacheRes = new Response(JSON.stringify({ image }), {
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${OGP_CACHE_TTL_SEC}` },
-      });
-      ctx.waitUntil(cfCache.put(cacheKey, cacheRes).catch((err) => console.error('[ogp] cache put error:', err)));
-    }
+    // image が空でも短い TTL で負キャッシュ — og:image なしのページへの繰り返しフェッチを防ぐ
+    const ttl = image ? OGP_CACHE_TTL_SEC : OGP_NEGATIVE_CACHE_TTL_SEC;
+    const cacheRes = new Response(JSON.stringify({ image }), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
+    });
+    ctx.waitUntil(cfCache.put(cacheKey, cacheRes).catch((err) => console.error('[ogp] cache put error:', err)));
 
     return NextResponse.json({ image }, { headers: { 'X-Cache': 'MISS' } });
   } catch {
