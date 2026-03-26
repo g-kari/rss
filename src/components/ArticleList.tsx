@@ -87,10 +87,16 @@ function ArticleActions({
   );
 }
 
-function ReadingTimeBadge({ article }: { article: Article }) {
+function ReadingTimeBadge({
+  article,
+  className = "text-[11px] text-text-faint",
+}: {
+  article: Article;
+  className?: string;
+}) {
   const src = article.content ?? article.summary;
   const mins = src ? readingTime(src) : 0;
-  return mins > 1 ? <span className="text-[11px] text-text-faint">約{mins}分</span> : null;
+  return mins > 1 ? <span className={className}>約{mins}分</span> : null;
 }
 
 function ArticleThumbnail({ thumb, className }: { thumb: string; className: string }) {
@@ -456,6 +462,10 @@ const CardArticleItem = memo(function CardArticleItem({
             {article.author && (
               <span className="text-[10px] text-text-faint truncate">{article.author}</span>
             )}
+            <ReadingTimeBadge
+              article={article}
+              className="text-[10px] text-text-faint flex-shrink-0"
+            />
           </div>
           <>
             {!isRead && (
