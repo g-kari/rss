@@ -14,6 +14,9 @@ import { r2Get, r2Put, sha256Hex } from './r2';
 /** 1 ページあたりの記事数 */
 export const PAGE_SIZE = 100;
 
+/** 1 ユーザーあたりの最大フィード購読数 */
+export const MAX_FEEDS_PER_USER = 1000;
+
 /** ページネーションの最大ページ数（1 フィードあたり最大 PAGE_SIZE × MAX_PAGES 件） */
 const MAX_PAGES = 500;
 
