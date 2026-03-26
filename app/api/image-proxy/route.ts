@@ -2,10 +2,9 @@ import { requireSession, applyRefreshedTokensToResponse } from '@/lib/server-aut
 import { isValidFeedUrl, normalizeUrlForCache } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
-import { fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
+import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
-const FETCH_TIMEOUT_MS = 10_000;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 
 /**
@@ -104,7 +103,7 @@ async function handleGet(request: Request): Promise<Response> {
         'Accept': 'image/*,*/*',
         'Referer': new URL(url).origin + '/',
       },
-    }, FETCH_TIMEOUT_MS);
+    }, DEFAULT_FETCH_TIMEOUT_MS);
 
     if (!res.ok) return transparentGif();
 

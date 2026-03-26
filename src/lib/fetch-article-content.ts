@@ -4,7 +4,7 @@
  */
 
 import { sha256Hex } from '@/lib/r2';
-import { fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
+import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
 import {
   detectCharset,
   extractMainContent,
@@ -16,7 +16,7 @@ import {
 import { isValidFeedUrl, normalizeUrlForCache } from '@/lib/url';
 
 export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
-export const FETCH_TIMEOUT_MS = 10_000;
+export { DEFAULT_FETCH_TIMEOUT_MS as FETCH_TIMEOUT_MS } from '@/lib/fetch';
 export const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 
 /**
@@ -46,7 +46,7 @@ export async function fetchArticleContent(
     const res = await fetchFollowSafeRedirects(
       url,
       { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)', Accept: 'text/html,application/xhtml+xml' } },
-      FETCH_TIMEOUT_MS,
+      DEFAULT_FETCH_TIMEOUT_MS,
     );
 
     if (!res.ok) return null;

@@ -12,6 +12,7 @@
  */
 
 import type { PushSubscriptionRecord } from '../types';
+import { DEFAULT_FETCH_TIMEOUT_MS } from './fetch';
 
 // -------------------------------------------------------------------------
 // ユーティリティ
@@ -247,7 +248,7 @@ export async function sendPush(
   const encryptedBody = await body;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_FETCH_TIMEOUT_MS);
 
   let res: Response;
   try {

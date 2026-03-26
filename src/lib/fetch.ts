@@ -1,5 +1,8 @@
 import { isValidFeedUrl } from '@/lib/url';
 
+/** 外部 HTTP フェッチのデフォルトタイムアウト（ミリ秒）*/
+export const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
+
 const MAX_REDIRECTS = 5;
 
 /**
