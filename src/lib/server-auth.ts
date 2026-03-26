@@ -14,10 +14,7 @@ export const COOKIE_OPTS = {
 export function isBetaAllowed(sub: string): boolean {
   const list = process.env.BETA_ALLOWED_SUBS?.trim();
   if (!list) return true;
-  return list
-    .split(",")
-    .map((s) => s.trim())
-    .includes(sub);
+  return list.split(",").some((s) => s.trim() === sub);
 }
 
 export interface AuthSession {

@@ -1,5 +1,12 @@
 # リリースノート
 
+## 2026-03-27 (106)
+
+### リファクタリング
+
+- **`isZennDevUrl` ヘルパーを抽出して Zenn ドメイン判定を一元化** — `transformZennMermaidEmbeds` と `extractWithRegex` で重複していた Zenn ドメイン判定を共通関数に集約。あわせて `extractWithRegex` が `pageUrl.includes("zenn.dev")` の部分文字列マッチ（`zenn.dev.evil.com` でバイパス可能）を使用していた問題を URL パース方式に統一
+- **`isBetaAllowed` を `.some()` に簡略化** — `.map().includes()` による中間配列生成を排除
+
 ## 2026-03-27 (105)
 
 ### バグ修正

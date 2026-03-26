@@ -238,23 +238,27 @@ export function transformZennLinkEmbeds(content: string): string {
 }
 
 /**
+ * pageUrl が zenn.dev ドメインかどうかを URL パースで厳密に検証する。
+ * includes() による部分文字列マッチは "zenn.dev.evil.com" でバイパスできるため、
+ * hostname を正確に検証する。
+ */
+function isZennDevUrl(pageUrl: string): boolean {
+  try {
+    const h = new URL(pageUrl).hostname;
+    return h === "zenn.dev" || h.endsWith(".zenn.dev");
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Zenn の mermaid embed iframe を mermaid ソースのコードブロックに変換する。
  * embed.zenn.studio/mermaid は親ページの Zenn スクリプト（postMessage）がないと
  * "Loading..." のまま表示されるため、data-content から直接ソースを取り出す。
  * zenn.dev のみ適用。他ドメイン（classmethod 等）では変換しない。
- *
- * 注意: includes() による部分文字列マッチは "zenn.dev.evil.com" でバイパスできるため、
- * URL パースでホスト名を正確に検証する。
  */
 export function transformZennMermaidEmbeds(content: string, pageUrl = ""): string {
-  let isZennDev = false;
-  try {
-    const h = new URL(pageUrl).hostname;
-    isZennDev = h === "zenn.dev" || h.endsWith(".zenn.dev");
-  } catch {
-    /* ignore */
-  }
-  if (!isZennDev) return content;
+  if (!isZennDevUrl(pageUrl)) return content;
   return content.replace(
     /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
     (spanMatch) => {
@@ -679,7 +683,7 @@ function extractWithRegex(html: string, pageUrl: string): string {
   const zncMatch = cleaned.match(
     /<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
   );
-  if (zncMatch?.[2] && pageUrl.includes("zenn.dev")) return postProcess(zncMatch[2], pageUrl);
+  if (zncMatch?.[2] && isZennDevUrl(pageUrl)) return postProcess(zncMatch[2], pageUrl);
 
   // --- EC / 商品ページセレクター ---
 
