@@ -50,8 +50,8 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       // 画像: 任意ドメイン（記事サムネイル）+ data URI
       "img-src * data: blob:",
-      // iframe: YouTube・Spotify・Twitch・ニコニコ等の埋め込み許可
-      "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://player.vimeo.com https://w.soundcloud.com https://player.twitch.tv https://clips.twitch.tv https://embed.nicovideo.jp https://embed.zenn.studio",
+      // iframe: YouTube・Spotify・Twitch・ニコニコ・X (Twitter) 等の埋め込み許可
+      "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://player.vimeo.com https://w.soundcloud.com https://player.twitch.tv https://clips.twitch.tv https://embed.nicovideo.jp https://embed.zenn.studio https://platform.twitter.com",
       // メディア: 任意（ポッドキャスト）
       "media-src *",
       // API / WebSocket: self のみ
