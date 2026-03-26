@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (77)
+
+### リファクタリング
+- **フェッチタイムアウト定数を `src/lib/fetch.ts` に一元化** — `10_000ms` の外部フェッチタイムアウトが `fetch-article-content.ts`・`image-proxy/route.ts`・`web-push.ts` の 3 箇所に重複定義されていた問題を修正。`DEFAULT_FETCH_TIMEOUT_MS` を `src/lib/fetch.ts` にエクスポートし、各ファイルからインポートするよう変更
+
 ## 2026-03-26 (76)
 
 ### リファクタリング
