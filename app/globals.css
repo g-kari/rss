@@ -2,7 +2,6 @@
 
 @theme {
   --font-sans: var(--loaded-reddit-sans), var(--loaded-ibm-plex-sans-jp), BlinkMacSystemFont, system-ui, sans-serif;
-  --font-serif: var(--loaded-lora), Georgia, serif;
   /* セマンティックカラー (デフォルト = ライトテーマ / stone パレット) */
   --color-surface-base: #fafaf9;      /* stone-50: メイン背景 */
   --color-surface-elevated: #ffffff;   /* white: サイドバー・カード */
@@ -90,7 +89,7 @@ html, body {
 
 /* 記事本文 HTML レンダリング */
 .article-content {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   color: var(--color-text-soft);
   letter-spacing: 0.02em;
   overflow-wrap: break-word;

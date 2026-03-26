@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (58)
+
+### リファクタリング
+- **記事本文フォントを Lora (serif) から IBM Plex Sans JP (sans-serif) に統一** — デザイン参照元の katasu.me が sans-serif のみ使用しているため Lora を削除。`next/font/google` の Lora 読み込みも除去し、記事本文 `.article-content` を `font-sans` に変更
+
 ## 2026-03-26 (57)
 
 ### バグ修正

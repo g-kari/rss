@@ -49,8 +49,7 @@
 
 | 用途 | クラス |
 |---|---|
-| UI フォント | `font-sans` (Reddit Sans + IBM Plex Sans JP) |
-| 記事本文 | `font-serif` (Lora) |
+| UI フォント・記事本文 | `font-sans` (Reddit Sans + IBM Plex Sans JP) |
 | 記事タイトル (ArticleView) | `text-[22px] font-light text-text-strong tracking-[0.02em]` |
 | 未読記事タイトル | `text-[13px] font-medium text-text-strong` |
 | 既読記事タイトル | `text-[13px] font-normal text-text-muted` |

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Reddit_Sans, IBM_Plex_Sans_JP, Lora } from 'next/font/google';
+import { Reddit_Sans, IBM_Plex_Sans_JP } from 'next/font/google';
 import './globals.css';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
 
@@ -16,11 +16,6 @@ const ibmPlexSansJP = IBM_Plex_Sans_JP({
   variable: '--loaded-ibm-plex-sans-jp',
 });
 
-const lora = Lora({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--loaded-lora',
-});
 
 export const metadata: Metadata = {
   title: 'RSS Reader',
@@ -48,7 +43,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja" translate="no" className={`${redditSans.variable} ${ibmPlexSansJP.variable} ${lora.variable}`}>
+    <html lang="ja" translate="no" className={`${redditSans.variable} ${ibmPlexSansJP.variable}`}>
       <body>
         <ServiceWorkerRegistration />
         {children}
