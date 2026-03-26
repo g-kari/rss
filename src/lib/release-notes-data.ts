@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (51)
+
+### リファクタリング
+- **\`FeedSidebar\` のフィード操作 API を \`useFeedOperations\` フックに分離** — \`addFeed\` / \`deleteFeed\` / \`renameFeed\` / \`handleImportFile\` と関連 state を専用フックに抽出し、\`FeedSidebar\` を 511行 → 434行に削減
+
 ## 2026-03-26 (50)
 
 ### リファクタリング
