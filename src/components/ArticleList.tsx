@@ -116,35 +116,51 @@ function resolveThumbnail(article: Article, ogpCache: Record<string, string>): s
 }
 
 
-/** 検索クエリに一致する箇所をハイライト表示 */
+/** 検索クエリに一致する箇所をハイライト表示（複数ワード対応） */
 function highlightText(text: string, query: string): ReactNode {
-  const q = query.trim().toLowerCase();
-  if (!q) return text;
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return text;
+
+  // 全ワードの出現位置を収集
+  const lowerText = text.toLowerCase();
+  const matches: { start: number; end: number }[] = [];
+  for (const term of terms) {
+    let idx = lowerText.indexOf(term);
+    while (idx !== -1) {
+      matches.push({ start: idx, end: idx + term.length });
+      idx = lowerText.indexOf(term, idx + 1);
+    }
+  }
+  if (matches.length === 0) return text;
+
+  // 開始位置でソートし、重複区間をマージ
+  matches.sort((a, b) => a.start - b.start);
+  const merged: { start: number; end: number }[] = [];
+  for (const m of matches) {
+    const last = merged[merged.length - 1];
+    if (last && m.start <= last.end) {
+      last.end = Math.max(last.end, m.end);
+    } else {
+      merged.push({ ...m });
+    }
+  }
+
   const parts: ReactNode[] = [];
-  let remaining = text;
-  let lower = text.toLowerCase();
-  let idx = lower.indexOf(q);
+  let pos = 0;
   let key = 0;
-  while (idx !== -1) {
-    if (idx > 0) parts.push(remaining.slice(0, idx));
+  for (const { start, end } of merged) {
+    if (start > pos) parts.push(text.slice(pos, start));
     parts.push(
       <mark
         key={key++}
-        style={{
-          background: 'var(--color-highlight)',
-          color: 'inherit',
-          borderRadius: '2px',
-          paddingInline: '1px',
-        }}
+        style={{ background: 'var(--color-highlight)', color: 'inherit', borderRadius: '2px', paddingInline: '1px' }}
       >
-        {remaining.slice(idx, idx + q.length)}
+        {text.slice(start, end)}
       </mark>,
     );
-    remaining = remaining.slice(idx + q.length);
-    lower = remaining.toLowerCase();
-    idx = lower.indexOf(q);
+    pos = end;
   }
-  if (remaining) parts.push(remaining);
+  if (pos < text.length) parts.push(text.slice(pos));
   return <>{parts}</>;
 }
 

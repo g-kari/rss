@@ -150,8 +150,13 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
       // ブックマークフィルター
       if (bookmarkOnly && !bookmarkIds.has(a.id) && !isActive(a.id)) return false;
 
-      // 検索クエリ
-      if (q && !a.title.toLowerCase().includes(q) && !a.summary.toLowerCase().includes(q)) return false;
+      // 検索クエリ（スペース区切りで複数ワード AND 検索）
+      if (q) {
+        const terms = q.split(/\s+/).filter(Boolean);
+        const titleL = a.title.toLowerCase();
+        const summaryL = a.summary.toLowerCase();
+        if (!terms.every((t) => titleL.includes(t) || summaryL.includes(t))) return false;
+      }
 
       // 日付範囲
       if (rangeStart && (!a.publishedAt || new Date(a.publishedAt) < rangeStart)) return false;
