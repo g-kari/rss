@@ -37,6 +37,12 @@ export function useFeeds(
   const latestArticleIdRef = useRef<string | null>(null);
   const isPollingRef = useRef(false);
 
+  const fetchFeedsData = useCallback(async () => {
+    const r = await fetch("/api/feeds");
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json() as Promise<Feed[]>;
+  }, []);
+
   const fetchAndSetArticles = useCallback(async () => {
     const res = await fetch("/api/articles");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -49,11 +55,7 @@ export function useFeeds(
   useEffect(() => {
     if (!user) return;
     setLoadingArticles(true);
-    fetch("/api/feeds")
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<Feed[]>;
-      })
+    fetchFeedsData()
       .then(setFeeds)
       .catch((err) => {
         console.error(err);
@@ -65,7 +67,7 @@ export function useFeeds(
         onError?.("記事の読み込みに失敗しました");
       })
       .finally(() => setLoadingArticles(false));
-  }, [user, onError, fetchAndSetArticles]);
+  }, [user, onError, fetchFeedsData, fetchAndSetArticles]);
 
   // 5分ごとに記事を再取得して新着件数を通知する
   useEffect(() => {
@@ -106,16 +108,18 @@ export function useFeeds(
   }, []);
 
   const replaceFeeds = useCallback(
-    (newFeeds: Feed[]) => {
+    async (newFeeds: Feed[]) => {
       setFeeds(newFeeds);
       // インポート後に記事を再取得する
       setLoadingArticles(true);
-      fetchAndSetArticles()
-        .catch((err) => {
-          console.error(err);
-          onError?.("記事の読み込みに失敗しました");
-        })
-        .finally(() => setLoadingArticles(false));
+      try {
+        await fetchAndSetArticles();
+      } catch (err) {
+        console.error(err);
+        onError?.("記事の読み込みに失敗しました");
+      } finally {
+        setLoadingArticles(false);
+      }
     },
     [fetchAndSetArticles, onError],
   );
@@ -124,13 +128,7 @@ export function useFeeds(
     setRefreshing(true);
     try {
       await fetch("/api/feeds/refresh", { method: "POST" });
-      const [feedsData] = await Promise.all([
-        fetch("/api/feeds").then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json() as Promise<Feed[]>;
-        }),
-        fetchAndSetArticles(),
-      ]);
+      const [feedsData] = await Promise.all([fetchFeedsData(), fetchAndSetArticles()]);
       setFeeds(feedsData);
     } catch (err) {
       console.error("Refresh failed:", err);
@@ -138,7 +136,7 @@ export function useFeeds(
     } finally {
       setRefreshing(false);
     }
-  }, [fetchAndSetArticles, onError]);
+  }, [fetchFeedsData, fetchAndSetArticles, onError]);
 
   const retryFeed = useCallback(
     async (feedId: string): Promise<void> => {

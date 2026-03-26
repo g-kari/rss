@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-27 (113)
+
+### リファクタリング
+
+- **`useFeeds` の `/api/feeds` フェッチロジックを `fetchFeedsData` に集約** — `useEffect` と `refreshFeeds` で重複していた `fetch("/api/feeds")` + okチェック + JSON パースのロジックを `fetchFeedsData` コールバックに抽出して再利用。`replaceFeeds` 内の `.catch().finally()` チェーンも `async/await` に統一
+
 ## 2026-03-27 (112)
 
 ### リファクタリング
