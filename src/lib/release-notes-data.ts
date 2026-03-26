@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (101)
+
+### セキュリティ
+- **OPML インポートの XML entity 展開制限** — \`XMLParser\` にエンティティ展開上限（深度 1・総数 1000・entity 数 50）を設定し、Billion Laughs（XML 爆弾）攻撃を防止
+
 ## 2026-03-26 (100)
 
 ### 新機能
