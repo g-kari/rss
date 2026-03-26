@@ -470,7 +470,8 @@ export default function ArticleView({
                       onClick={() => {
                         setShareMenuOpen(false);
                         navigator.clipboard.writeText(`${article.title}\n${article.link!}`).then(() => {
-                          showToast('Slack 用にコピーしました');
+                          showToast('コピーしました。Slack を開きます');
+                          window.open('slack://open', '_blank', 'noopener,noreferrer');
                         }).catch(() => {
                           showToast('コピーに失敗しました');
                         });
