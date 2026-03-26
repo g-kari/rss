@@ -7,7 +7,10 @@ export function GET(request: Request) {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const callbackUrl = `${appBaseUrl}/api/auth/callback`;
 
+  const clientId = process.env.CLIENT_ID!;
+
   const loginUrl = new URL(`${authBaseUrl}/auth/login`);
+  loginUrl.searchParams.set('client_id', clientId);
   loginUrl.searchParams.set('redirect_to', callbackUrl);
   loginUrl.searchParams.set('state', state);
 
