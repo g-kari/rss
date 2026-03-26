@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { Article, DateRange } from '../types';
 import { STORAGE_KEYS, storageGet, storageSet } from '../lib/storage';
+import { useDebounce } from './useDebounce';
 
 const PAGE_SIZE = 30;
 
@@ -45,7 +46,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === '1');
   const [bookmarkOnly, setBookmarkOnly] = useState(() => storageGet(STORAGE_KEYS.BOOKMARK_ONLY) === '1');
   const [rawQuery, setRawQuery] = useState('');  // 入力値（即時更新）
-  const [query, setQuery] = useState('');         // デバウンス済みクエリ（フィルター・ハイライト用）
+  const query = useDebounce(rawQuery, 300);       // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
     const v = storageGet(STORAGE_KEYS.SORT_ORDER);
@@ -77,16 +78,7 @@ export function useFilteredArticles({ articles, feedId, readIds, bookmarkIds, re
   useEffect(() => {
     setPage(1);
     setRawQuery('');
-    setQuery('');
   }, [feedId]);
-
-  // 検索クエリのデバウンス（300ms）：頻繁なキー入力でフィルター再計算が走らないよう遅延させる
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setQuery(rawQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [rawQuery]);
 
   const toggleUnreadOnly = useCallback(() => {
     setUnreadOnly(boolToggleWithStorage(STORAGE_KEYS.UNREAD_ONLY));
