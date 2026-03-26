@@ -44,7 +44,10 @@ export async function GET(request: Request) {
 
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const payload = await verifyJwt(tokens.access_token, authBaseUrl);
-  const sub = payload?.sub ?? tokens.user.id;
+  if (!payload) {
+    return authError("認証エラー: トークン検証失敗", 401);
+  }
+  const sub = payload.sub;
 
   // ベータアクセス制限チェック
   if (!isBetaAllowed(sub)) {

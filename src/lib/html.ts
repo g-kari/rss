@@ -206,7 +206,11 @@ export function sanitizeHtml(html: string): string {
         const src = srcMatch?.[1] ?? "";
         return isTrustedIframeSrc(src) ? _m : "";
       })
-      .replace(/<iframe\b[^>]*\/>/gi, "")
+      .replace(/<iframe\b([^>]*)\/>/gi, (_m, attrs) => {
+        const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
+        const src = srcMatch?.[1] ?? "";
+        return isTrustedIframeSrc(src) ? _m : "";
+      })
       // 危険な <meta http-equiv> を除去。
       // - refresh: クライアントサイドリダイレクト防止
       // - set-cookie: レスポンスヘッダー偽装による cookie 注入防止

@@ -669,11 +669,11 @@ function extractWithRegex(html: string, pageUrl: string): string {
   // --- サイト固有セレクター ---
 
   // Qiita: itemprop="articleBody" または class="it-MdContent"
-  const qiitaBody = cleaned.match(/<(\w+)[^>]+itemprop=["']articleBody["'][^>]*>([\s\S]*)<\/\1>/i);
+  const qiitaBody = cleaned.match(/<(\w+)[^>]+itemprop=["']articleBody["'][^>]*>([\s\S]*?)<\/\1>/i);
   if (qiitaBody?.[2]) return postProcess(qiitaBody[2], pageUrl);
 
   const qiitaMd = cleaned.match(
-    /<(\w+)[^>]+class=["'][^"']*it-MdContent[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
+    /<(\w+)[^>]+class=["'][^"']*it-MdContent[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i,
   );
   if (qiitaMd?.[2]) return postProcess(qiitaMd[2], pageUrl);
 
@@ -681,20 +681,22 @@ function extractWithRegex(html: string, pageUrl: string): string {
   // 他ドメイン (classmethod 等 Zenn の記事システムを流用するサイト) では
   // <article> を先に試し、なければ znc にフォールバックする
   const zncMatch = cleaned.match(
-    /<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
+    /<(\w+)[^>]+class=["'][^"']*\bznc\b[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i,
   );
   if (zncMatch?.[2] && isZennDevUrl(pageUrl)) return postProcess(zncMatch[2], pageUrl);
 
   // --- EC / 商品ページセレクター ---
 
   // Schema.org itemprop="description" (Shopify 等の EC サイト全般)
-  const schemaDesc = cleaned.match(/<(\w+)[^>]+itemprop=["']description["'][^>]*>([\s\S]*)<\/\1>/i);
+  const schemaDesc = cleaned.match(
+    /<(\w+)[^>]+itemprop=["']description["'][^>]*>([\s\S]*?)<\/\1>/i,
+  );
   if (schemaDesc?.[2]) return postProcess(schemaDesc[2], pageUrl);
 
   // Shopify: product__description / product-single__description / product-description 等
   // description は通常テキストのみなので、商品メイン画像を別途収集して先頭に付与する
   const shopifyDesc = cleaned.match(
-    /<(\w+)[^>]+class=["'][^"']*product[^"']*description[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
+    /<(\w+)[^>]+class=["'][^"']*product[^"']*description[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i,
   );
   if (shopifyDesc?.[2]) {
     const mainImgs = [...cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)].map(
