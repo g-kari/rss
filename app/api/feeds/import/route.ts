@@ -9,11 +9,10 @@ import {
   createFeedMeta,
   readUserSubscriptions,
   writeUserSubscriptions,
+  MAX_FEEDS_PER_USER,
 } from '@/lib/shared-feed';
 import { fetchArticles } from '@/cron/fetch';
 import type { UserSubscription } from '@/types';
-
-const MAX_FEEDS_PER_USER = 1000;
 const MAX_OPML_ENTRIES = 5000;
 const MAX_OPML_DEPTH = 50;
 const MAX_TITLE_LENGTH = 500;

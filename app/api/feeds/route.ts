@@ -12,12 +12,11 @@ import {
   writeUserSubscriptions,
   getUserFeeds,
   assembleClientFeed,
+  MAX_FEEDS_PER_USER,
 } from '@/lib/shared-feed';
 import type { SelectorConfig } from '@/types';
 import { registerAndFetchFeed } from '@/cron/fetch';
 import type { UserSubscription } from '@/types';
-
-const MAX_FEEDS_PER_USER = 1000;
 
 export async function GET() {
   return withSession(async ({ session, env }) => {
