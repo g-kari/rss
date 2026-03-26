@@ -701,20 +701,20 @@ function extractWithRegex(html: string, pageUrl: string): string {
 
   // --- 汎用セレクター ---
 
-  const article = cleaned.match(/<article\b[^>]*>([\s\S]*)<\/article>/i);
+  const article = cleaned.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
   if (article?.[1]) return postProcess(article[1], pageUrl);
 
   // 非 zenn.dev で <article> なし、znc がある場合のフォールバック
   if (zncMatch?.[2]) return postProcess(zncMatch[2], pageUrl);
 
-  const main = cleaned.match(/<main\b[^>]*>([\s\S]*)<\/main>/i);
+  const main = cleaned.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
   if (main?.[1]) return postProcess(main[1], pageUrl);
 
-  const roleMain = cleaned.match(/<(\w+)[^>]+role=["']main["'][^>]*>([\s\S]*)<\/\1>/i);
+  const roleMain = cleaned.match(/<(\w+)[^>]+role=["']main["'][^>]*>([\s\S]*?)<\/\1>/i);
   if (roleMain?.[2]) return postProcess(roleMain[2], pageUrl);
 
   const classContent = cleaned.match(
-    /<(\w+)[^>]+class=["'][^"']*(?:post|entry|article|content)[^"']*["'][^>]*>([\s\S]*)<\/\1>/i,
+    /<(\w+)[^>]+class=["'][^"']*(?:post|entry|article|content)[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i,
   );
   if (classContent?.[2]) return postProcess(classContent[2], pageUrl);
 

@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (105)
+
+### バグ修正
+- **\`scrapeFeed\` の無効 CSS セレクタで cron がクラッシュする問題を修正** — \`querySelectorAll\` が \`SyntaxError\` をスローした際に例外を再スローしていたため、cron ジョブ全体が停止する恐れがあった。空の \`items: []\` を返す graceful degradation に変更
+- **\`extractWithRegex\` の貪欲マッチ正規表現を非貪欲に修正** — \`<article>\`・\`<main>\`・\`role="main"\` 等の汎用セレクターで \`[\\s\\S]*\` を \`[\\s\\S]*?\` に変更。複数の同名タグが存在するページで最後のタグまで誤ってマッチし、余計なコンテンツが混入する問題を解消
+
 ## 2026-03-26 (104)
 
 ### バグ修正

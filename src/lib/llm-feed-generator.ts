@@ -249,7 +249,7 @@ export function scrapeFeed(
   try {
     elements = Array.from(doc.querySelectorAll(selectors.articleLink));
   } catch {
-    throw new Error(`CSS セレクタが無効です: ${selectors.articleLink}`);
+    return { title: siteTitle, siteUrl, items: [] };
   }
   const items: ParsedItem[] = [];
   const seen = new Set<string>();
