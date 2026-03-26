@@ -184,14 +184,28 @@ ai-cache/translation/{sha256}     # AI 翻訳キャッシュ (永続)
 `master` ブランチに push すると Cloudflare Workers 側で自動的にビルド＆デプロイが実行される。
 GitHub Actions (`deploy.yml`) は存在しない。`npm run deploy` をローカルで手動実行する必要もない。
 
-## 開発
+## 開発コマンド
 
 ```bash
+# 開発サーバー
 npm run dev          # Next.js dev server (localhost:3000)
-npm run build        # next build
-npx wrangler dev     # Workers local emulation (@opennextjs/cloudflare)
-npm run typecheck    # TypeScript 型チェック
+npm run preview      # Workers ローカルエミュレーション (wrangler dev)
+
+# ビルド
+npm run build        # next build（動作確認・型チェック込み）
+npm run build:cf     # Cloudflare Workers 向けビルド（CI/CD が自動実行するため手動不要）
+
+# 品質チェック（コミット前に必ず実行）
+npm run check        # vp check — Oxlint + Oxfmt + tsgo 型チェック
+npm run check:fix    # vp check --fix — 自動修正
+npm run typecheck    # tsc --noEmit — Next.js plugin 込みの完全な型チェック
+
+# E2E テスト
+npm run test:e2e     # Playwright 全テスト実行
+npm run test:e2e:ui  # Playwright UI モード（デバッグ用）
 ```
+
+> **デプロイは不要**: `master` push で Cloudflare Workers CI/CD が自動ビルド＆デプロイする。
 
 ## 修正後の必須テスト手順
 
@@ -217,10 +231,11 @@ console.log('段落2が含まれるか:', result?.[1].includes('段落2'));
 - 修正前に再現する入力で、修正後は正しく動作するか（before/after 比較）
 - エッジケース（空文字・ネスト・複数要素）で意図しない挙動がないか
 
-### typecheck は常に実行
+### 品質チェックは常に実行
 
 ```bash
-npm run typecheck
+npm run check        # Oxlint + Oxfmt + tsgo（高速）
+npm run typecheck    # tsc — Next.js plugin 込みの完全な型チェック
 ```
 
 ### E2E テスト
