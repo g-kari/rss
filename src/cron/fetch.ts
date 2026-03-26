@@ -121,6 +121,20 @@ async function buildArticle(
   };
 }
 
+/** latest.json から既存記事マップを構築し、items を Article に変換して返す（createdAt 保持 + 二重 R2 GET 回避） */
+async function buildArticlesFromItems(
+  bucket: R2Bucket,
+  meta: SharedFeedMeta,
+  items: ParsedItem[],
+): Promise<{ articles: Article[]; existingLatest: Article[] }> {
+  const existingLatest = await readLatestArticles(bucket, meta.feedHash);
+  const existingById = new Map(existingLatest.map((a) => [a.id, a]));
+  const articles = await Promise.all(
+    items.map((item) => buildArticle(item, meta.feedHash, meta.url, existingById)),
+  );
+  return { articles, existingLatest };
+}
+
 // ── フィードメタ更新ヘルパー ──────────────────────────────────────
 
 function resetFeedSuccessState(meta: SharedFeedMeta): void {
@@ -155,15 +169,7 @@ function applyFeedError(meta: SharedFeedMeta, error: unknown): void {
 
 // ── フィード取得（共有ストレージ向け）────────────────────────────
 
-/**
- * 単一フィードをフェッチしてパースし、新着 Article を共有ストレージに書き込む。
- * meta を副作用で更新し（呼び出し元が writeFeedMeta する）、新着記事を返す。
- * 304 Not Modified の場合は空配列を返す。
- * エラー時は RateLimitError またはその他 Error をスローする。
- */
-/**
- * CSS セレクタが設定されている生成フィードの HTML をスクレイプして記事を取得する。
- */
+/** CSS セレクタが設定されている生成フィードの HTML をスクレイプして記事を取得する。 */
 async function fetchAndScrapeWithSelectors(
   env: FetchEnv,
   meta: SharedFeedMeta,
@@ -179,14 +185,15 @@ async function fetchAndScrapeWithSelectors(
   const parsed = scrapeFeed(html, selectors, meta.siteUrl || meta.url, meta.title);
   applyFeedSuccess(meta, parsed);
 
-  const existingLatest = await readLatestArticles(env.RSS_DATA, meta.feedHash);
-  const existingById = new Map(existingLatest.map((a) => [a.id, a]));
-  const articles = await Promise.all(
-    parsed.items.map((item) => buildArticle(item, meta.feedHash, meta.url, existingById)),
-  );
-  return { articles, existingLatest };
+  return buildArticlesFromItems(env.RSS_DATA, meta, parsed.items);
 }
 
+/**
+ * 単一フィードをフェッチしてパースし、Article[] を返す。
+ * meta を副作用で更新する（呼び出し元が writeFeedMeta する）。
+ * 304 Not Modified の場合は空配列を返す。
+ * エラー時は RateLimitError またはその他 Error をスローする。
+ */
 async function fetchAndParseFeed(
   env: FetchEnv,
   meta: SharedFeedMeta,
@@ -219,15 +226,7 @@ async function fetchAndParseFeed(
   if (lastModified) meta.lastModified = lastModified;
   if (etag) meta.etag = etag;
 
-  // 現在の latest.json から既存記事マップを構築（createdAt 保持用）
-  // mergeNewArticles に渡して二重 R2 GET を避ける
-  const existingLatest = await readLatestArticles(env.RSS_DATA, meta.feedHash);
-  const existingById = new Map(existingLatest.map((a) => [a.id, a]));
-
-  const articles = await Promise.all(
-    parsed.items.map((item) => buildArticle(item, meta.feedHash, meta.url, existingById)),
-  );
-  return { articles, existingLatest };
+  return buildArticlesFromItems(env.RSS_DATA, meta, parsed.items);
 }
 
 // ── 共有フィード更新（cron / refresh 共用）────────────────────────
