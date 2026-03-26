@@ -1,6 +1,6 @@
 import { withBinarySession } from "@/lib/server-auth";
-import { isValidFeedUrl, normalizeUrlForCache } from "@/lib/url";
-import { sha256Hex } from "@/lib/r2";
+import { isValidFeedUrl } from "@/lib/url";
+import { buildCacheKey } from "@/lib/r2";
 import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
@@ -88,9 +88,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
 
   if (!isValidFeedUrl(url)) return new Response(null, { status: 400 });
 
-  const cacheKey = new Request(
-    `${reqUrl.origin}/__cache/image/${await sha256Hex(normalizeUrlForCache(url))}`,
-  );
+  const cacheKey = await buildCacheKey(reqUrl.origin, "image", url);
   const cfCache = caches.default;
 
   // Cloudflare Cache API で確認
