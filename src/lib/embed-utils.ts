@@ -80,10 +80,17 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
 export function processContent(html: string): string {
   return html.replace(
     /<iframe([^>]*src=["'][^"']*(?:youtube(?:-nocookie)?\.com\/embed)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
-    (_match, attrs, inner) =>
-      `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
-      `<iframe${attrs} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
-      `</div>`,
+    (_match, attrs, inner) => {
+      const vidMatch = attrs.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+      const fallback = vidMatch
+        ? `<a href="https://www.youtube.com/watch?v=${vidMatch[1]}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">YouTube で見る ↗</a>`
+        : '';
+      return (
+        `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
+        `<iframe${attrs} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
+        `</div>` + fallback
+      );
+    },
   );
 }
 

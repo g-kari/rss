@@ -594,18 +594,21 @@ test.describe('extractEmbedInfo — YouTube URL パターン', () => {
 
 
 test.describe('processContent — YouTube iframe レスポンシブラップ', () => {
-  test('YouTube embed iframe をレスポンシブ div でラップする', () => {
+  test('YouTube embed iframe をレスポンシブ div でラップし、フォールバックリンクを追加する', () => {
     const html = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" allowfullscreen></iframe>';
     const result = processContent(html);
     expect(result).toContain('padding-bottom:56.25%');
     expect(result).toContain('<iframe');
     expect(result).toContain('position:absolute');
+    expect(result).toContain('youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(result).toContain('YouTube で見る');
   });
 
-  test('youtube-nocookie.com embed もラップする', () => {
+  test('youtube-nocookie.com embed もラップしフォールバックリンクを追加する', () => {
     const html = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" allowfullscreen></iframe>';
     const result = processContent(html);
     expect(result).toContain('padding-bottom:56.25%');
+    expect(result).toContain('youtube.com/watch?v=dQw4w9WgXcQ');
   });
 
   test('allow 属性が保持される', () => {
