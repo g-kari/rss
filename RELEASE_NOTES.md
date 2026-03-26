@@ -1,5 +1,15 @@
 # リリースノート
 
+## 2026-03-26 (63)
+
+### バグ修正
+- **KaTeX race condition 修正** — 記事をすばやく切り替えた際に古い記事の数式レンダリングが新しい記事の DOM を書き換える問題を修正。`cancelled` フラグと `el.isConnected` チェックで防止
+- **KaTeX 翻訳切り替え後に数式が消える問題を修正** — `showTranslated` を `useEffect` の依存配列に追加
+
+### リファクタリング
+- **`FeedItem` モバイルメニューの色判定を改善** — `action.className?.includes('rose')` という文字列パースを廃止し、`Action` インターフェースに `variant?: 'danger'` を追加して意味を明示
+- **`useUIState` の toast タイマー cleanup を追加** — アンマウント時に `clearTimeout` が呼ばれなかった問題を修正
+
 ## 2026-03-26 (62)
 
 ### リファクタリング
