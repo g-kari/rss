@@ -34,6 +34,38 @@ export async function readBodyBytes(
 }
 
 /**
+ * ReadableStream から先頭 maxBytes バイトだけ読み込む（部分読み込み）。
+ * maxBytes に達した時点で読み込みを打ち切り、収集済みのバイト列を返す。
+ * 上限オーバーで null を返す readBodyBytes と異なり、常に Uint8Array を返す。
+ */
+export async function readBodyBytesPartial(
+  body: ReadableStream<Uint8Array>,
+  maxBytes: number,
+): Promise<Uint8Array> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      totalBytes += value.byteLength;
+      if (totalBytes >= maxBytes) break;
+    }
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+  const merged = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return merged;
+}
+
+/**
  * fetch にタイムアウトを付与するラッパー。
  * タイムアウト時は AbortError をスローする。
  */

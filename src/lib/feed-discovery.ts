@@ -7,7 +7,7 @@
  * 3. 見つからなければ一般的なパス (/feed, /rss など) を並列プローブ
  */
 import { isValidFeedUrl } from './url';
-import { fetchFollowSafeRedirects } from './fetch';
+import { fetchFollowSafeRedirects, readBodyBytesPartial } from './fetch';
 
 /** フィード探索時の外部フェッチタイムアウト（ミリ秒）*/
 const DISCOVERY_TIMEOUT_MS = 5_000;
@@ -109,25 +109,9 @@ export async function discoverFeedUrl(url: string): Promise<string | null> {
 
     // HTML を先頭 MAX_DISCOVERY_BYTES だけ読んで <link> を探す
     // （<head> セクションはこの範囲内に収まる）
-    const reader = res.body?.getReader();
-    if (!reader) return null;
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        total += value.byteLength;
-        if (total >= MAX_DISCOVERY_BYTES) break;
-      }
-    } finally {
-      reader.cancel().catch(() => {});
-    }
-    const merged = new Uint8Array(total);
-    let offset = 0;
-    for (const c of chunks) { merged.set(c, offset); offset += c.byteLength; }
-    const html = new TextDecoder().decode(merged);
+    if (!res.body) return null;
+    const bytes = await readBodyBytesPartial(res.body, MAX_DISCOVERY_BYTES);
+    const html = new TextDecoder().decode(bytes);
 
     const fromLink = extractFeedLinkFromHtml(html, url);
     if (fromLink) return fromLink;
