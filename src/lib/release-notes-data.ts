@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (121)
+
+### 新機能
+- **カードレイアウトに読了時間を表示** — \`ReadingTimeBadge\` に \`className\` prop を追加し、\`CardArticleItem\` のフッターに読了時間（約〇分）を表示。リスト・マガジンフィーチャーレイアウトとの表示統一
+
 ## 2026-03-27 (120)
 
 ### simplify
