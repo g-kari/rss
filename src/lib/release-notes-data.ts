@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (124)
+
+### リファクタリング
+- **Cloudflare Cache キーを \`buildCacheKey()\` に共通化** — \`ogp/route.ts\`・\`image-proxy/route.ts\` でインライン定義されていた \`sha256Hex(normalizeUrlForCache(url))\` パターンを \`r2.ts\` の \`buildCacheKey(origin, type, url)\` に一本化
+
 ## 2026-03-27 (123)
 
 ### セキュリティ
