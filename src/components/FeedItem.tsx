@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import type { Feed } from '../types';
 
 /** 未読カウントを表示用文字列に変換する（100以上は "99+" と表示） */
@@ -26,6 +26,8 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [retrying, setRetrying] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const startEdit = useCallback((e: React.MouseEvent) => {
@@ -58,11 +60,24 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
     }
   }, [onRetry, retrying]);
 
+  // メニュー外タップで閉じる
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [menuOpen]);
+
   return (
     <div
+      ref={menuRef}
       onClick={editing ? undefined : onSelect}
       onDoubleClick={editing ? undefined : startEdit}
-      className={`group flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 animate-fade-up ${
+      className={`group relative flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 animate-fade-up ${
         isSelected
           ? 'text-text-strong bg-surface-subtle'
           : 'text-text-muted hover:text-text-strong hover:bg-surface-hover'
@@ -92,10 +107,11 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
       )}
       <span className="flex items-center gap-1 ml-1 flex-shrink-0">
         {count > 0 && (
-          <span className={`text-[11px] ${feed.fetchError ? 'text-rose-400' : 'text-text-muted'} tabular-nums group-hover:opacity-0 transition-opacity duration-150`}>{formatCount(count)}</span>
+          <span className={`text-[11px] ${feed.fetchError ? 'text-rose-400' : 'text-text-muted'} tabular-nums group-hover:opacity-0 transition-opacity duration-150 ${menuOpen ? 'opacity-0' : ''}`}>{formatCount(count)}</span>
         )}
-        <span className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 flex items-center gap-0.5">
-          {/* ピン留めボタン */}
+
+        {/* デスクトップ: ホバーで表示するアクションボタン群 */}
+        <span className={`opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 flex items-center gap-0.5 ${menuOpen ? '!opacity-0 !pointer-events-none' : ''}`}>
           <button
             onClick={onTogglePin}
             className={`p-0.5 transition-colors duration-150 ${isPinned ? 'text-text-default' : 'text-text-faint hover:text-text-default'}`}
@@ -141,7 +157,74 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
             </svg>
           </button>
         </span>
+
+        {/* モバイル用 ⋮ ボタン (lg 以上では非表示) */}
+        <button
+          onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
+          className="lg:hidden p-1 -mr-1 text-text-faint transition-colors duration-150"
+          title="操作メニュー"
+          aria-label="操作メニューを開く"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+            <circle cx="6" cy="2" r="1.2" />
+            <circle cx="6" cy="6" r="1.2" />
+            <circle cx="6" cy="10" r="1.2" />
+          </svg>
+        </button>
       </span>
+
+      {/* モバイル用ドロップダウンメニュー */}
+      {menuOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-2 top-full z-20 mt-0.5 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[120px]"
+        >
+          <button
+            onClick={(e) => { setMenuOpen(false); onTogglePin(e); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 1L6.5 4H9L7 6l.5 3L5 7.5 2.5 9 3 6 1 4h2.5z" />
+            </svg>
+            {isPinned ? 'ピン解除' : 'ピン留め'}
+          </button>
+          {count > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onMarkAllRead(); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1.5 5l2.5 2.5L8.5 2.5" />
+              </svg>
+              全て既読
+            </button>
+          )}
+          <button
+            onClick={(e) => { setMenuOpen(false); void handleRetry(e); }}
+            disabled={retrying}
+            className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${feed.fetchError ? 'text-rose-400' : 'text-text-default'}`}
+          >
+            <svg
+              width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              className={retrying ? 'animate-spin' : ''}
+            >
+              <path d="M8.5 2A4 4 0 1 0 9 5.5" />
+              <polyline points="7,0.5 8.5,2 7,3.5" />
+            </svg>
+            {feed.fetchError ? '再試行' : '更新'}
+          </button>
+          <button
+            onClick={(e) => { setMenuOpen(false); onDelete(e); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-rose-400 hover:bg-surface-subtle transition-colors text-left"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <line x1="1" y1="1" x2="9" y2="9" />
+              <line x1="9" y1="1" x2="1" y2="9" />
+            </svg>
+            削除
+          </button>
+        </div>
+      )}
     </div>
   );
 }
