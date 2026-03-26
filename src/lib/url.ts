@@ -63,6 +63,22 @@ function isPrivateIPv4CompatibleIPv6(hostname: string): boolean {
   );
 }
 
+/**
+ * IPv6 リンクローカルアドレス fe80::/10 か判定する。
+ * URL ホスト名は "[xxxx:...]" 形式。第1グループの上位10ビットが 0xfe80 かをビット演算で確認する。
+ * fe80::/10 = 上位10ビット 1111111010 → (firstGroup & 0xffc0) === 0xfe80 (0xfe80〜0xfebf)
+ */
+function isIPv6LinkLocal(hostname: string): boolean {
+  if (!hostname.startsWith('[fe')) return false;
+  // '[xxxx:...]' の形式から第1グループを取り出す
+  const inner = hostname.slice(1);
+  const end = inner.indexOf(':');
+  if (end < 0) return false;
+  const firstGroup = parseInt(inner.slice(0, end), 16);
+  if (isNaN(firstGroup)) return false;
+  return (firstGroup & 0xffc0) === 0xfe80;
+}
+
 function isPrivateHost(hostname: string): boolean {
   if (PRIVATE_HOSTNAME_PATTERNS.some((p) => p.test(hostname))) return true;
   if (PRIVATE_IP_PATTERNS.some((p) => p.test(hostname))) return true;
@@ -72,13 +88,7 @@ function isPrivateHost(hostname: string): boolean {
     hostname === '[::]' ||           // 未指定アドレス
     hostname.startsWith('[fc') ||    // ユニークローカル fc00::/7 (fc部分)
     hostname.startsWith('[fd') ||    // ユニークローカル fc00::/7 (fd部分)
-    // リンクローカル fe80::/10 (fe80:: 〜 febf:: = 第1グループ 0xfe80-0xfebf)
-    // startsWith('[fe80') のみでは [fe90::], [fea0::], [feb0::] 等が漏れるため
-    // 第3ニブルが 8〜b (0x8〜0xb) の全パターンを明示的にチェックする
-    hostname.startsWith('[fe8') ||
-    hostname.startsWith('[fe9') ||
-    hostname.startsWith('[fea') ||
-    hostname.startsWith('[feb') ||
+    isIPv6LinkLocal(hostname) ||     // リンクローカル fe80::/10 (0xfe80〜0xfebf)
     hostname.startsWith('[::ffff:') ||  // IPv4マップド IPv6 (::ffff:0:0/96)
     hostname.startsWith('[::ffff:0:') || // IPv4変換 IPv6 (::ffff:0:0:0/96, RFC 6145)
     hostname.startsWith('[64:ff9b:') || // NAT64 変換プレフィックス (64:ff9b::/96 および 64:ff9b:1::/48, RFC 6052/8215)
