@@ -1,6 +1,10 @@
-const CACHE_VERSION = "rss-v2";
+const CACHE_VERSION = "rss-v3";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGE_CACHE = `${CACHE_VERSION}-page`;
+const API_CACHE = `${CACHE_VERSION}-api`;
+
+// stale-while-revalidate でキャッシュする API パス（前方一致）
+const API_CACHE_PATHS = ["/api/articles", "/api/feeds"];
 
 // インストール: 即座に有効化
 self.addEventListener("install", () => {
@@ -24,7 +28,41 @@ self.addEventListener("fetch", (e) => {
 
   const { pathname } = new URL(e.request.url);
 
-  // API: ネットワークのみ（記事・フィードは常に最新を取得）
+  // 記事・フィード API: stale-while-revalidate
+  if (API_CACHE_PATHS.some((p) => pathname.startsWith(p))) {
+    e.respondWith(
+      (async () => {
+        const cache = await caches.open(API_CACHE);
+        const cached = await cache.match(e.request);
+
+        const networkPromise = fetch(e.request)
+          .then((res) => {
+            if (res.ok) cache.put(e.request, res.clone());
+            return res;
+          })
+          .catch(() => null);
+
+        if (cached) {
+          // キャッシュを即座に返しつつ、バックグラウンドでネットワーク更新
+          e.waitUntil(networkPromise);
+          return cached;
+        }
+
+        // キャッシュなし: ネットワークを待つ
+        const res = await networkPromise;
+        if (res) return res;
+
+        // 完全オフライン + キャッシュなし: 空レスポンスを返す
+        return new Response(JSON.stringify([]), {
+          status: 503,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        });
+      })(),
+    );
+    return;
+  }
+
+  // その他の API: ネットワークのみ（認証・コンテンツ取得等は常に最新が必要）
   if (pathname.startsWith("/api/")) return;
 
   // Next.js 静的アセット (content-addressed): キャッシュ優先

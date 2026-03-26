@@ -16,12 +16,14 @@ import { useKeyboardNav } from "./hooks/useKeyboardNav";
 import { useFilteredArticles } from "./hooks/useFilteredArticles";
 import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
+import { useOnlineStatus } from "./hooks/useOnlineStatus";
 
 export default function App() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const { user, betaRestricted } = useAuth();
+  const isOnline = useOnlineStatus();
 
   const initialMobilePane = searchParams.get("article")
     ? "view"
@@ -409,6 +411,25 @@ export default function App() {
       className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
       style={{ gridTemplateColumns: "200px 360px 1fr", gridTemplateRows: "100%" }}
     >
+      {/* オフラインバナー */}
+      {!isOnline && (
+        <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 py-1.5 bg-surface-subtle border-b border-border-default text-[11px] tracking-[0.04em] text-text-muted">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M1 1l10 10M8.5 3.5A4 4 0 0 0 2.5 7M10 5.5A6 6 0 0 0 5 2M4 8a2 2 0 0 1 4 0" />
+          </svg>
+          オフライン — キャッシュされたデータを表示中
+        </div>
+      )}
+
       {/* トースト通知 */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] tracking-[0.04em] px-4 py-2 bg-ink text-ink-text rounded-full shadow-lg animate-fade-up pointer-events-none">
