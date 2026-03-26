@@ -4,14 +4,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { AiMode } from '../types';
 import { aiLruCache } from '../lib/lru-cache';
 
-function loadAiCache(articleId: string, mode: AiMode): string | null {
-  return aiLruCache.get(`${articleId}:${mode}`);
-}
-
-function saveAiCache(articleId: string, mode: AiMode, text: string): void {
-  aiLruCache.set(`${articleId}:${mode}`, text);
-}
-
 interface ArticleAiState {
   aiResult: { mode: AiMode; text: string } | null;
   aiLoading: AiMode | null;
@@ -43,7 +35,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
 
     // LRU キャッシュヒット時は API コールなし
     if (currentArticleId) {
-      const cached = loadAiCache(currentArticleId, mode);
+      const cached = aiLruCache.get(`${currentArticleId}:${mode}`);
       if (cached) {
         setAiResult({ mode, text: cached });
         return;
@@ -67,7 +59,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
       });
       const data = (await res.json()) as { result?: string; error?: string };
       if (data.result) {
-        if (currentArticleId) saveAiCache(currentArticleId, mode, data.result);
+        if (currentArticleId) aiLruCache.set(`${currentArticleId}:${mode}`, data.result);
         setAiResult({ mode, text: data.result });
       } else if (data.error) {
         setAiError(data.error);

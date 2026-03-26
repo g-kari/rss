@@ -12,23 +12,21 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-function loadLayout(): Layout {
-  const stored = storageGet(STORAGE_KEYS.LAYOUT);
-  if (stored === 'compact' || stored === 'list' || stored === 'card' || stored === 'magazine')
-    return stored;
-  return 'list';
+function loadStoredEnum<T extends string>(key: string, valid: readonly T[], fallback: T): T {
+  const stored = storageGet(key);
+  return valid.includes(stored as T) ? (stored as T) : fallback;
 }
+
+const LAYOUTS = ['compact', 'list', 'card', 'magazine'] as const;
+const FONT_SIZES = ['small', 'medium', 'large'] as const;
+
+const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUTS, 'list' as Layout);
+const loadFontSize = () => loadStoredEnum(STORAGE_KEYS.FONT_SIZE, FONT_SIZES, 'medium' as FontSize);
 
 function loadTheme(): Theme {
   const stored = storageGet(STORAGE_KEYS.THEME);
   if (stored === 'light' || stored === 'dark') return stored;
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function loadFontSize(): FontSize {
-  const stored = storageGet(STORAGE_KEYS.FONT_SIZE);
-  if (stored === 'small' || stored === 'medium' || stored === 'large') return stored;
-  return 'medium';
 }
 
 const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
