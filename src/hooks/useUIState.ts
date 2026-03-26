@@ -63,6 +63,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
+  useEffect(() => {
+    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
+  }, []);
+
   // テーマを DOM に同期
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

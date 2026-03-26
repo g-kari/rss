@@ -30,6 +30,7 @@ interface Action {
   disabled?: boolean;
   className?: string;
   show?: boolean;
+  variant?: 'danger';
 }
 
 export default function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect, onMarkAllRead, onDelete, onTogglePin, onRename, onRetry }: FeedItemProps) {
@@ -118,6 +119,7 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
       onClick: handleRetry,
       disabled: retrying,
       className: feed.fetchError ? 'text-rose-400 hover:text-rose-300' : 'text-text-faint hover:text-text-default',
+      variant: feed.fetchError ? ('danger' as const) : undefined,
     },
     {
       key: 'delete',
@@ -130,6 +132,7 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
       ),
       onClick: onDelete,
       className: 'text-text-faint hover:text-rose-400',
+      variant: 'danger' as const,
     },
   ];
 
@@ -215,7 +218,7 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
               onClick={(e) => { setMenuOpen(false); action.onClick(e); }}
               disabled={action.disabled}
               className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
-                action.key === 'delete' ? 'text-rose-400' : (action.className?.includes('rose') ? 'text-rose-400' : 'text-text-default')
+                action.variant === 'danger' ? 'text-rose-400' : 'text-text-default'
               }`}
             >
               {action.icon}
