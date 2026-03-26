@@ -69,6 +69,21 @@ export function storageListKeys(prefix?: string): string[] {
   }
 }
 
+// ── JSON ヘルパー ────────────────────────────────────────────
+
+/**
+ * JSON として保存された値を読み込む。
+ * キーが存在しない・パース失敗時は fallback を返す。
+ */
+export function loadJson<T>(key: string, fallback: T): T {
+  const stored = storageGet(key);
+  try {
+    return stored ? (JSON.parse(stored) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // ── Set<string> ヘルパー ─────────────────────────────────────
 
 /** JSON 配列として保存された Set<string> を読み込む */

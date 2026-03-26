@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { Article } from "../types";
-import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
+import { STORAGE_KEYS, loadJson, storageSet } from "../lib/storage";
 
 const MAX_OGP_CACHE_SIZE = 200;
 const FETCH_BATCH_SIZE = 5;
@@ -12,14 +12,9 @@ const FETCH_BATCH_SIZE = 5;
  * ogImage がない記事の link を /api/ogp に問い合わせ、取得した image URL を返す。
  */
 export function useOgpCache(visible: Article[]): Record<string, string> {
-  const [ogpCache, setOgpCache] = useState<Record<string, string>>(() => {
-    try {
-      const stored = storageGet(STORAGE_KEYS.OGP_CACHE);
-      return stored ? (JSON.parse(stored) as Record<string, string>) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [ogpCache, setOgpCache] = useState<Record<string, string>>(() =>
+    loadJson<Record<string, string>>(STORAGE_KEYS.OGP_CACHE, {}),
+  );
 
   const fetchingRef = useRef<Set<string>>(new Set());
   // 画像なし・エラーだったURLをセッション内でキャッシュし無駄なリトライを防止する

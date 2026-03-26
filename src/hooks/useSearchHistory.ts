@@ -1,15 +1,10 @@
 import { useState, useCallback } from "react";
-import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
+import { STORAGE_KEYS, loadJson, storageSet } from "../lib/storage";
 
 const MAX_HISTORY = 10;
 
 function loadHistory(): string[] {
-  try {
-    const raw = storageGet(STORAGE_KEYS.SEARCH_HISTORY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    return [];
-  }
+  return loadJson<string[]>(STORAGE_KEYS.SEARCH_HISTORY, []);
 }
 
 function saveHistory(history: string[]): void {
