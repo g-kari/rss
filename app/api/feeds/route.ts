@@ -30,9 +30,7 @@ export async function POST(request: Request) {
     const parsed = await parseJsonBody<{ url?: unknown }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
-    if (typeof body?.url !== "string")
-      return NextResponse.json({ error: "url is required" }, { status: 400 });
-    let url = body.url.trim();
+    let url = typeof body?.url === "string" ? body.url.trim() : "";
     if (!url) return NextResponse.json({ error: "url is required" }, { status: 400 });
     if (!isValidFeedUrl(url))
       return NextResponse.json({ error: "Invalid URL: must be http or https" }, { status: 400 });
