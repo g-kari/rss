@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (122)
+
+### リファクタリング
+- **\`article-utils.ts\` の重複を整理** — \`isLikelyJapanese\` と \`readingTime\` で重複していた HTML タグ除去処理（\`/<[^>]+>/g\`）を \`stripHtml\` ヘルパーに、CJK 文字パターンを \`CJK_PATTERN\` / \`CJK_WIDE_PATTERN\` 定数に共通化
+
 ## 2026-03-27 (121)
 
 ### 新機能
