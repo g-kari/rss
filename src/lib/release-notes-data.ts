@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (85)
+
+### リファクタリング
+- **\`MAX_FEEDS_PER_USER\` 定数を \`shared-feed.ts\` に統合** — \`feeds/route.ts\` と \`feeds/import/route.ts\` で重複定義されていた \`MAX_FEEDS_PER_USER = 1000\` を \`src/lib/shared-feed.ts\` に移動し、両ファイルからインポートする形に統一
+
 ## 2026-03-26 (84)
 
 ### リファクタリング
