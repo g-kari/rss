@@ -24,6 +24,7 @@ export const STORAGE_KEYS = {
   DATE_RANGE: "rss-date-range",
   OGP_CACHE: "rss-ogp-cache",
   SEARCH_HISTORY: "rss-search-history",
+  HISTORY: "rss-history",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

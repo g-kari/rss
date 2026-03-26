@@ -12,6 +12,7 @@ interface Props {
   readIds: Set<string>;
   bookmarkCount: number;
   readingListCount: number;
+  historyCount: number;
   selectedFeedId: string | null;
   user: UserProfile;
   theme: "light" | "dark";
@@ -43,6 +44,7 @@ export default function FeedSidebar({
   readIds,
   bookmarkCount,
   readingListCount,
+  historyCount,
   selectedFeedId,
   user,
   theme,
@@ -298,6 +300,21 @@ export default function FeedSidebar({
           </span>
         </div>
 
+        <button
+          onClick={() => onSelectFeed("__history__")}
+          className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
+            selectedFeedId === "__history__"
+              ? "text-text-strong bg-surface-subtle"
+              : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
+          }`}
+        >
+          <span className="text-[13px] tracking-[0.02em]">履歴</span>
+          {historyCount > 0 && (
+            <span className="text-[11px] text-text-muted tabular-nums">
+              {formatCount(historyCount)}
+            </span>
+          )}
+        </button>
         <button
           onClick={() => onSelectFeed("__bookmarks__")}
           className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${

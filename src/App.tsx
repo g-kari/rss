@@ -14,6 +14,7 @@ import { useReadState } from "./hooks/useReadState";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import { useKeyboardNav } from "./hooks/useKeyboardNav";
 import { useFilteredArticles } from "./hooks/useFilteredArticles";
+import { useReadingHistory } from "./hooks/useReadingHistory";
 import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
@@ -129,6 +130,8 @@ export default function App() {
     }
   }
 
+  const { historyIds, historyOrder, addToHistory } = useReadingHistory();
+
   const bookmarkCount = useMemo(
     () => articles.filter((a) => bookmarkIds.has(a.id)).length,
     [articles, bookmarkIds],
@@ -137,6 +140,11 @@ export default function App() {
   const readingListCount = useMemo(
     () => articles.filter((a) => readingListIds.has(a.id)).length,
     [articles, readingListIds],
+  );
+
+  const historyCount = useMemo(
+    () => articles.filter((a) => historyIds.has(a.id)).length,
+    [articles, historyIds],
   );
 
   const {
@@ -162,6 +170,8 @@ export default function App() {
     readIds,
     bookmarkIds,
     readingListIds,
+    historyIds,
+    historyOrder,
     selectedArticleId: selectedArticle?.id,
   });
 
@@ -186,9 +196,10 @@ export default function App() {
     (article: Article) => {
       setSelectedArticle(article);
       markRead(article.id);
+      addToHistory(article.id);
       setMobilePane("view");
     },
-    [markRead],
+    [markRead, addToHistory],
   );
 
   useKeyboardNav({
@@ -472,6 +483,7 @@ export default function App() {
             readIds={readIds}
             bookmarkCount={bookmarkCount}
             readingListCount={readingListCount}
+            historyCount={historyCount}
             selectedFeedId={selectedFeedId}
             user={user}
             theme={theme}
