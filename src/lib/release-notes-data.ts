@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-26 (52)
+
+### バグ修正
+- **inside-games.jp ギャラリー画像の見切れを修正** — \`buildImageSlider\` が付与した \`width:100%;height:100%\` インラインスタイルを \`fixImageDimensions\` が除去して \`overflow:hidden\` でクリップされていた問題を修正。ギャラリースライダーを \`postProcess\` の後に組み立てて \`rewriteImageUrls\` のみ適用するよう変更
+
 ## 2026-03-26 (51)
 
 ### リファクタリング
