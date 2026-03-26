@@ -42,9 +42,7 @@ export async function POST(request: Request) {
     let inferred: { selectors: SelectorConfig; siteTitle: string; siteUrl: string } | null = null;
 
     if (discovered) {
-      if (discovered !== url) url = discovered;
-      if (!isValidFeedUrl(url))
-        return NextResponse.json({ error: "Discovered feed URL is invalid" }, { status: 400 });
+      url = discovered;
     } else {
       // RSS が見つからない場合、LLM でページの CSS セレクタを推論
       inferred = await inferFeedFromUrl(url, env.AI);
