@@ -184,6 +184,23 @@ export default function ArticleView({
       : processContent(rawContent)
     : null;
 
+  // 数式レンダリング: processedContent が変わるたびに KaTeX auto-render を実行
+  useEffect(() => {
+    if (!contentRef.current || !processedContent) return;
+    const el = contentRef.current;
+    import('katex/contrib/auto-render').then(({ default: renderMathInElement }) => {
+      renderMathInElement(el, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false },
+        ],
+        throwOnError: false,
+      });
+    });
+  }, [processedContent]);
+
   const isShortContent = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
   const canFetch = !embedInfo && article.link && isShortContent && !storedContent;
   const hasContent = !!(processedContent || article.summary);

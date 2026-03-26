@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 @theme {
   --font-sans: var(--loaded-reddit-sans), var(--loaded-ibm-plex-sans-jp), BlinkMacSystemFont, system-ui, sans-serif;
