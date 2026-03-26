@@ -85,3 +85,21 @@ export function loadSet(key: string): Set<string> {
 export function saveSet(key: string, ids: Set<string>): void {
   storageSet(key, JSON.stringify([...ids]));
 }
+
+/** Set<string> の要素をトグル（追加/削除）して localStorage に保存する */
+export function toggleSetItem(
+  setState: (updater: (prev: Set<string>) => Set<string>) => void,
+  storageKey: string,
+  id: string,
+): void {
+  setState((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    saveSet(storageKey, next);
+    return next;
+  });
+}

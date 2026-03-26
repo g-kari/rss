@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Layout, FontSize } from "../types";
-import { STORAGE_KEYS, storageGet, storageSet, loadSet, saveSet } from "../lib/storage";
+import { STORAGE_KEYS, storageGet, storageSet, loadSet, toggleSetItem } from "../lib/storage";
 
 export type Theme = "light" | "dark";
 export type MobilePane = "sidebar" | "list" | "view";
@@ -136,16 +136,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   }, []);
 
   const togglePinFeed = useCallback((feedId: string) => {
-    setPinnedFeedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(feedId)) {
-        next.delete(feedId);
-      } else {
-        next.add(feedId);
-      }
-      saveSet(STORAGE_KEYS.PINNED_FEED_IDS, next);
-      return next;
-    });
+    toggleSetItem(setPinnedFeedIds, STORAGE_KEYS.PINNED_FEED_IDS, feedId);
   }, []);
 
   const showToast = useCallback((msg: string) => {
