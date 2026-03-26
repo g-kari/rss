@@ -62,10 +62,7 @@ export function useFeedOperations({
   async function deleteFeed(id: string) {
     try {
       const res = await fetch(`/api/feeds/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        setError("フィードの削除に失敗しました");
-        return;
-      }
+      if (!res.ok) throw new Error();
       onFeedDeleted(id);
     } catch {
       setError("フィードの削除に失敗しました");
@@ -79,10 +76,7 @@ export function useFeedOperations({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
       });
-      if (!res.ok) {
-        setError("フィードのタイトル変更に失敗しました");
-        return;
-      }
+      if (!res.ok) throw new Error();
       const updated = (await res.json()) as Feed;
       onFeedRenamed(updated);
     } catch {
