@@ -49,10 +49,21 @@ interface RawParsedOpml {
   };
 }
 
+// OPML はフィードタイトル等に HTML エンティティ（&amp; 等）を使う場合があるため
+// processEntities: true を維持しつつ、ネスト展開を 1 段階・総展開数を 1000 に制限して
+// Billion Laughs（XML 爆弾）攻撃を防ぐ。
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
   isArray: (name) => name === "outline",
+  processEntities: {
+    enabled: true,
+    maxTotalExpansions: 1000,
+    maxEntitySize: 1000,
+    maxExpansionDepth: 1,
+    maxExpandedLength: 10000,
+    maxEntityCount: 50,
+  },
 });
 
 function extractFeeds(
