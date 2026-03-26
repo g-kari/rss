@@ -110,7 +110,7 @@ export function buildImageSlider(imgs: string[]): string {
 
 /**
  * inside-games.jp 等の thumb-list / capt-thumb-list ギャラリー UL を検出し、
- * フルサイズ (zoom) 画像のスライダー HTML を返す。
+ * フルサイズ (zoom) 画像の img タグ配列を返す。
  * Readability がギャラリー UL を本文外と判断して除外する場合に、
  * extractMainContent で別途呼び出して取得する。
  *
@@ -119,12 +119,12 @@ export function buildImageSlider(imgs: string[]): string {
  * フルサイズ URL の形式:
  *   https://[origin]/imgs/zoom/IMAGE_ID.jpg
  *
- * ギャラリーが存在しない場合は空文字を返す。
+ * ギャラリーが存在しない場合は空配列を返す。
  */
-function extractThumbListGallery(html: string, pageUrl: string): string {
+function extractThumbListImgs(html: string, pageUrl: string): string[] {
   let origin = '';
   try { origin = new URL(pageUrl).origin; } catch { /* ignore */ }
-  if (!origin) return '';
+  if (!origin) return [];
 
   const seen = new Set<string>();
   const imgs: string[] = [];
@@ -136,11 +136,11 @@ function extractThumbListGallery(html: string, pageUrl: string): string {
       const imgId = aMatch[1];
       if (seen.has(imgId)) continue;
       seen.add(imgId);
-      imgs.push(`<img src="${origin}/imgs/zoom/${imgId}.jpg">`);
+      imgs.push(`<img src="${origin}/imgs/zoom/${imgId}.jpg" loading="lazy">`);
     }
   }
 
-  return imgs.length > 0 ? buildImageSlider(imgs) : '';
+  return imgs;
 }
 
 /**
@@ -544,18 +544,18 @@ export function extractMainContent(
   // thumb-list / capt-thumb-list ギャラリーを別途取得する。
   // Readability はリスト形式のギャラリーを本文外と判断して除外することがあるため、
   // 元 HTML から独立して抽出し本文末尾に付与する。
-  const galleryHtml = extractThumbListGallery(html, pageUrl);
+  // NOTE: postProcess 後に追加する — fixImageDimensions が buildImageSlider の
+  //       width:100%;height:100% インラインスタイルを除去してしまい画像が見切れるため。
+  const galleryImgs = extractThumbListImgs(html, pageUrl);
+  const buildGallery = () =>
+    galleryImgs.length > 0 ? rewriteImageUrls(buildImageSlider(galleryImgs)) : '';
 
   const rc = extractWithReadability(html, pageUrl);
   if (rc && isContentSufficient(rc)) {
-    const combined = galleryHtml ? rc + galleryHtml : rc;
-    return { content: postProcess(combined, pageUrl), source: 'readability' };
+    return { content: postProcess(rc, pageUrl) + buildGallery(), source: 'readability' };
   }
   const regexContent = extractWithRegex(html, pageUrl);
-  if (galleryHtml) {
-    return { content: regexContent + postProcess(galleryHtml, pageUrl), source: 'regex' };
-  }
-  return { content: regexContent, source: 'regex' };
+  return { content: regexContent + buildGallery(), source: 'regex' };
 }
 
 /**
