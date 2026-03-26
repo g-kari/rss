@@ -27,14 +27,16 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
   const [aiError, setAiError] = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
-  // 記事が変わったら進行中のリクエストをキャンセルして AI 状態を自動リセットする
-  useEffect(() => {
+  const resetAi = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     setAiResult(null);
     setAiError('');
     setAiLoading(null);
-  }, [articleId]);
+  }, []);
+
+  // 記事が変わったら進行中のリクエストをキャンセルして AI 状態を自動リセットする
+  useEffect(() => { resetAi(); }, [articleId, resetAi]);
 
   const doRunAi = useCallback(async (mode: AiMode, url: string, currentArticleId?: string) => {
     if (!url.trim()) return;
@@ -78,14 +80,6 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
     } finally {
       setAiLoading(null);
     }
-  }, []);
-
-  const resetAi = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setAiResult(null);
-    setAiError('');
-    setAiLoading(null);
   }, []);
 
   return { aiResult, aiLoading, aiError, doRunAi, resetAi };
