@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (120)
+
+### simplify
+- **重複コードを整理（URL パース・エンティティデコード）** — \`content.ts\` の \`fixImageDimensions\` / \`fixExternalLinks\` で同一だった URL パースパターンを \`tryParseBase()\` ヘルパーに共通化。\`xml-parser.ts\` の \`safeUrl()\` で重複していたエンティティデコード処理を既存の \`unescapeHtml()\`（\`html.ts\`）に委譲して重複を除去
+
 ## 2026-03-27 (119)
 
 ### simplify
