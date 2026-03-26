@@ -22,12 +22,22 @@ export interface FeedItemProps {
   onRetry: () => Promise<void>;
 }
 
+interface Action {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  onClick: (e: React.MouseEvent) => void;
+  disabled?: boolean;
+  className?: string;
+  show?: boolean;
+}
+
 export default function FeedItem({ feed, count, isSelected, isPinned, animationIndex, onSelect, onMarkAllRead, onDelete, onTogglePin, onRename, onRetry }: FeedItemProps) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [retrying, setRetrying] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const startEdit = useCallback((e: React.MouseEvent) => {
@@ -60,11 +70,11 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
     }
   }, [onRetry, retrying]);
 
-  // メニュー外タップで閉じる
+  // ドロップダウン外タップで閉じる（dropdownRef の外側のみ対象）
   useEffect(() => {
     if (!menuOpen) return;
     function onPointerDown(e: PointerEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
     }
@@ -72,10 +82,62 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [menuOpen]);
 
+  const actions: Action[] = [
+    {
+      key: 'pin',
+      label: isPinned ? 'ピン解除' : 'ピン留め',
+      icon: (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 1L6.5 4H9L7 6l.5 3L5 7.5 2.5 9 3 6 1 4h2.5z" />
+        </svg>
+      ),
+      onClick: onTogglePin,
+      className: isPinned ? 'text-text-default' : 'text-text-faint hover:text-text-default',
+    },
+    {
+      key: 'read',
+      label: '全て既読',
+      icon: (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1.5 5l2.5 2.5L8.5 2.5" />
+        </svg>
+      ),
+      onClick: (e) => { e.stopPropagation(); onMarkAllRead(); },
+      show: count > 0,
+      className: 'text-text-faint hover:text-text-default',
+    },
+    {
+      key: 'retry',
+      label: feed.fetchError ? '再試行' : '更新',
+      icon: (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={retrying ? 'animate-spin' : ''}>
+          <path d="M8.5 2A4 4 0 1 0 9 5.5" />
+          <polyline points="7,0.5 8.5,2 7,3.5" />
+        </svg>
+      ),
+      onClick: handleRetry,
+      disabled: retrying,
+      className: feed.fetchError ? 'text-rose-400 hover:text-rose-300' : 'text-text-faint hover:text-text-default',
+    },
+    {
+      key: 'delete',
+      label: '削除',
+      icon: (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <line x1="1" y1="1" x2="9" y2="9" />
+          <line x1="9" y1="1" x2="1" y2="9" />
+        </svg>
+      ),
+      onClick: onDelete,
+      className: 'text-text-faint hover:text-rose-400',
+    },
+  ];
+
+  const visibleActions = actions.filter((a) => a.show !== false);
+
   return (
     <div
-      ref={menuRef}
-      onClick={editing ? undefined : onSelect}
+      onClick={editing ? undefined : () => { setMenuOpen(false); onSelect(); }}
       onDoubleClick={editing ? undefined : startEdit}
       className={`group relative flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 animate-fade-up ${
         isSelected
@@ -110,52 +172,19 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
           <span className={`text-[11px] ${feed.fetchError ? 'text-rose-400' : 'text-text-muted'} tabular-nums group-hover:opacity-0 transition-opacity duration-150 ${menuOpen ? 'opacity-0' : ''}`}>{formatCount(count)}</span>
         )}
 
-        {/* デスクトップ: ホバーで表示するアクションボタン群 */}
+        {/* デスクトップ: ホバーで表示 */}
         <span className={`opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 flex items-center gap-0.5 ${menuOpen ? '!opacity-0 !pointer-events-none' : ''}`}>
-          <button
-            onClick={onTogglePin}
-            className={`p-0.5 transition-colors duration-150 ${isPinned ? 'text-text-default' : 'text-text-faint hover:text-text-default'}`}
-            title={isPinned ? 'ピン解除' : 'ピン留め'}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 1L6.5 4H9L7 6l.5 3L5 7.5 2.5 9 3 6 1 4h2.5z" />
-            </svg>
-          </button>
-          {count > 0 && (
+          {visibleActions.map((action) => (
             <button
-              onClick={(e) => { e.stopPropagation(); onMarkAllRead(); }}
-              className="p-0.5 text-text-faint hover:text-text-default transition-colors duration-150"
-              title="全て既読"
+              key={action.key}
+              onClick={action.onClick}
+              disabled={action.disabled}
+              title={action.label}
+              className={`p-0.5 transition-colors duration-150 disabled:opacity-40 ${action.className ?? ''}`}
             >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1.5 5l2.5 2.5L8.5 2.5" />
-              </svg>
+              {action.icon}
             </button>
-          )}
-          <button
-            onClick={handleRetry}
-            disabled={retrying}
-            className={`p-0.5 transition-colors duration-150 disabled:opacity-40 ${feed.fetchError ? 'text-rose-400 hover:text-rose-300' : 'text-text-faint hover:text-text-default'}`}
-            title={feed.fetchError ? '再試行' : '更新'}
-          >
-            <svg
-              width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-              className={retrying ? 'animate-spin' : ''}
-            >
-              <path d="M8.5 2A4 4 0 1 0 9 5.5" />
-              <polyline points="7,0.5 8.5,2 7,3.5" />
-            </svg>
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-0.5 text-text-faint hover:text-rose-400 transition-colors duration-150"
-            title="削除"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <line x1="1" y1="1" x2="9" y2="9" />
-              <line x1="9" y1="1" x2="1" y2="9" />
-            </svg>
-          </button>
+          ))}
         </span>
 
         {/* モバイル用 ⋮ ボタン (lg 以上では非表示) */}
@@ -176,53 +205,23 @@ export default function FeedItem({ feed, count, isSelected, isPinned, animationI
       {/* モバイル用ドロップダウンメニュー */}
       {menuOpen && (
         <div
+          ref={dropdownRef}
           onClick={(e) => e.stopPropagation()}
           className="absolute right-2 top-full z-20 mt-0.5 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[120px]"
         >
-          <button
-            onClick={(e) => { setMenuOpen(false); onTogglePin(e); }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 1L6.5 4H9L7 6l.5 3L5 7.5 2.5 9 3 6 1 4h2.5z" />
-            </svg>
-            {isPinned ? 'ピン解除' : 'ピン留め'}
-          </button>
-          {count > 0 && (
+          {visibleActions.map((action) => (
             <button
-              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onMarkAllRead(); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
+              key={action.key}
+              onClick={(e) => { setMenuOpen(false); action.onClick(e); }}
+              disabled={action.disabled}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
+                action.key === 'delete' ? 'text-rose-400' : (action.className?.includes('rose') ? 'text-rose-400' : 'text-text-default')
+              }`}
             >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1.5 5l2.5 2.5L8.5 2.5" />
-              </svg>
-              全て既読
+              {action.icon}
+              {action.label}
             </button>
-          )}
-          <button
-            onClick={(e) => { setMenuOpen(false); void handleRetry(e); }}
-            disabled={retrying}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${feed.fetchError ? 'text-rose-400' : 'text-text-default'}`}
-          >
-            <svg
-              width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-              className={retrying ? 'animate-spin' : ''}
-            >
-              <path d="M8.5 2A4 4 0 1 0 9 5.5" />
-              <polyline points="7,0.5 8.5,2 7,3.5" />
-            </svg>
-            {feed.fetchError ? '再試行' : '更新'}
-          </button>
-          <button
-            onClick={(e) => { setMenuOpen(false); onDelete(e); }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-rose-400 hover:bg-surface-subtle transition-colors text-left"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <line x1="1" y1="1" x2="9" y2="9" />
-              <line x1="9" y1="1" x2="1" y2="9" />
-            </svg>
-            削除
-          </button>
+          ))}
         </div>
       )}
     </div>

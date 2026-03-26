@@ -348,7 +348,6 @@ export function fixExternalLinks(html: string, pageUrl = ''): string {
 
     let newAttrs = attrs;
 
-    // 相対パスを絶対 URL に変換（pageUrl が指定されている場合）
     if (base && !/^https?:\/\//i.test(href) && !href.startsWith('data:')) {
       try {
         const absolute = new URL(href, base).href;

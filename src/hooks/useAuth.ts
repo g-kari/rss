@@ -21,8 +21,11 @@ export function useAuth(): AuthState {
     }
 
     let mounted = true;
+    let inFlight = false;
 
     async function checkAuth() {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const r = await fetch('/api/auth/me');
         const { user: u, betaRestricted: br } = await r.json() as { user: UserProfile | null; betaRestricted?: boolean };
@@ -31,6 +34,9 @@ export function useAuth(): AuthState {
         setUser(u ?? null);
       } catch {
         // ネットワークエラーは現在の認証状態を維持する（不要なログアウトを防ぐ）
+        if (mounted) setUser((prev) => prev === undefined ? null : prev);
+      } finally {
+        inFlight = false;
       }
     }
 
