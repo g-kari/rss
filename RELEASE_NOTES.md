@@ -1,5 +1,12 @@
 # リリースノート
 
+## 2026-03-27 (119)
+
+### simplify
+
+- **未使用の AI キャッシュ関数を削除** — `ai-cache.ts` の `getAiCache` / `setAiCache`（コンテンツハッシュ方式）はどこからも参照されておらず、実際は `getAiCacheById` / `setAiCacheById`（articleId 方式）のみが使われていたため削除
+- **`useFeedOperations` の重複エラー処理を統合** — `deleteFeed` / `renameFeed` で `if (!res.ok)` 分岐と `catch` ブロックが同一のエラーメッセージをセットしていた重複を `throw` に統一
+
 ## 2026-03-27 (118)
 
 ### simplify
