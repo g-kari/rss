@@ -463,17 +463,14 @@ function applyCorePipeline(html: string, pageUrl = ""): string {
  * コンテンツ抽出後の後処理パイプライン。
  * 各ステップを適用順に並べる。sanitizeHtml は XSS 対策のため必ず最後に実行すること。
  *
- * @param theme - X ツイート埋め込みのテーマ（'light' | 'dark'）
+ * X ツイート埋め込み（blockquote.twitter-tweet）はテーマ依存のため、
+ * サーバー側ではなくクライアント側の processContent() で変換する。
+ * blockquote は sanitizeHtml で除去されないため、キャッシュ後もクライアントで正しいテーマが適用される。
  */
-export function postProcess(
-  content: string,
-  pageUrl = "",
-  theme: "light" | "dark" = "light",
-): string {
+export function postProcess(content: string, pageUrl = ""): string {
   let h = removeNoise(content);
   h = transformZennLinkEmbeds(h);
   h = transformZennMermaidEmbeds(h, pageUrl);
-  h = transformXTweetEmbeds(h, theme);
   h = fixLazyImages(h);
   return applyCorePipeline(h, pageUrl);
 }
