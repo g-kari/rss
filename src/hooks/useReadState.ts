@@ -2,28 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Article, UserProfile } from "../types";
-import { STORAGE_KEYS, saveSet, loadSet } from "../lib/storage";
+import { STORAGE_KEYS, saveSet, loadSet, toggleSetItem } from "../lib/storage";
 
 /** 3つの既読状態セットをまとめた型 */
 type ReadStateSets = { read: Set<string>; bookmarks: Set<string>; readingList: Set<string> };
-
-/** Set<string> state の toggle（追加/削除）+ localStorage 保存の内部ヘルパー */
-function toggleSetItem(
-  setState: (updater: (prev: Set<string>) => Set<string>) => void,
-  storageKey: string,
-  id: string,
-): void {
-  setState((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    saveSet(storageKey, next);
-    return next;
-  });
-}
 
 /** サーバーから取得した配列を既存 Set にマージして localStorage を更新する */
 function mergeServerSet(

@@ -85,6 +85,9 @@ export function useFilteredArticles({
       if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
       gracePeriodTimerRef.current = setTimeout(() => setGracePeriodId(null), 5000);
     }
+    return () => {
+      if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
+    };
   }, [selectedArticleId]);
 
   // フィード切り替え時にページ・検索クエリをリセット
