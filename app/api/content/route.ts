@@ -1,17 +1,13 @@
 import { NextResponse } from 'next/server';
 import { withSession } from '@/lib/server-auth';
-import { isValidFeedUrl, normalizeUrlForCache } from '@/lib/url';
-import { sha256Hex } from '@/lib/r2';
+import { isValidFeedUrl } from '@/lib/url';
 import { fetchFollowSafeRedirects, readBodyBytes } from '@/lib/fetch';
 import {
-  detectCharset,
-  extractMainContent,
-  fetchMarkdownFromHtml,
-  isContentSufficient,
-  markdownToHtml,
-  postProcessMarkdownContent,
-} from '@/lib/content';
-import { CONTENT_CACHE_TTL_SEC, FETCH_TIMEOUT_MS, MAX_CONTENT_BYTES } from '@/lib/fetch-article-content';
+  buildContentCacheKey,
+  extractAndCacheContent,
+  FETCH_TIMEOUT_MS,
+  MAX_CONTENT_BYTES,
+} from '@/lib/fetch-article-content';
 
 export async function GET(request: Request) {
   return withSession(({ ctx }) => handleGet(request, ctx));
@@ -26,20 +22,22 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   }
 
   const reqUrl = new URL(request.url);
-  const cacheKey = new Request(`${reqUrl.origin}/__cache/content/${await sha256Hex(normalizeUrlForCache(url))}`);
+  const cacheKey = await buildContentCacheKey(reqUrl.origin, url);
   const cfCache = caches.default;
 
   // Cloudflare Cache API で確認
   const cached = await cfCache.match(cacheKey);
   if (cached) {
-    const data = await cached.json() as { content: string };
+    const data = (await cached.json()) as { content: string };
     return NextResponse.json(data, { headers: { 'X-Cache': 'HIT' } });
   }
 
   try {
-    const res = await fetchFollowSafeRedirects(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)', Accept: 'text/html,application/xhtml+xml' },
-    }, FETCH_TIMEOUT_MS);
+    const res = await fetchFollowSafeRedirects(
+      url,
+      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; rss-reader/1.0)', Accept: 'text/html,application/xhtml+xml' } },
+      FETCH_TIMEOUT_MS,
+    );
 
     if (!res.ok) {
       // 4xx はクライアント起因（アクセス不可・存在しない）なのでそのまま返す
@@ -58,33 +56,8 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     if (!res.body) return NextResponse.json({ error: 'No response body' }, { status: 502 });
     const merged = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
     if (merged === null) return NextResponse.json({ error: 'Page too large' }, { status: 413 });
-    const charset = detectCharset(ct, merged);
-    let html: string;
-    try {
-      html = new TextDecoder(charset).decode(merged);
-    } catch {
-      // charset が TextDecoder 非対応の場合（RangeError）は UTF-8 でフォールバック
-      html = new TextDecoder('utf-8', { fatal: false }).decode(merged);
-    }
-    const { content: extracted, source } = extractMainContent(html, url);
-    let content = extracted;
-    let contentSource: string = source;
 
-    // 抽出結果が貧弱な場合は Cloudflare AI toMarkdown API でフォールバック
-    if (!isContentSufficient(content)) {
-      const hostname = new URL(url).hostname;
-      const md = await fetchMarkdownFromHtml(html, hostname);
-      if (md) {
-        content = postProcessMarkdownContent(markdownToHtml(md), url);
-        contentSource = 'ai-markdown';
-      }
-    }
-
-    // Cloudflare Cache API に保存（fire-and-forget）
-    const cacheRes = new Response(JSON.stringify({ content }), {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CONTENT_CACHE_TTL_SEC}` },
-    });
-    ctx.waitUntil(cfCache.put(cacheKey, cacheRes).catch((err) => console.error('[content] cache put error:', err)));
+    const { content, source: contentSource } = await extractAndCacheContent(merged, ct, url, cacheKey, ctx);
 
     return NextResponse.json({ content }, { headers: { 'X-Cache': 'MISS', 'X-Content-Source': contentSource } });
   } catch (err) {
@@ -94,4 +67,3 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     return NextResponse.json({ error: 'Failed to fetch page' }, { status: 502 });
   }
 }
-

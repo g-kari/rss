@@ -1,5 +1,10 @@
 # リリースノート
 
+## 2026-03-26 (89)
+
+### リファクタリング
+- **`/api/content` と `fetchArticleContent()` の重複ロジックを共通化** — HTML デコード・メインコンテンツ抽出・AI Markdown フォールバック・Cloudflare Cache 保存の処理が両ファイルに重複していた。`buildContentCacheKey()` と `extractAndCacheContent()` を `fetch-article-content.ts` に切り出し、`route.ts` はこれらを呼び出すように変更。今後この領域でバグが発生しても修正箇所が一箇所で済むようになった
+
 ## 2026-03-26 (88)
 
 ### 新機能
