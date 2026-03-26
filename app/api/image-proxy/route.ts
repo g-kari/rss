@@ -1,5 +1,5 @@
 import { requireSession, applyRefreshedTokensToResponse } from '@/lib/server-auth';
-import { isValidFeedUrl } from '@/lib/url';
+import { isValidFeedUrl, normalizeUrlForCache } from '@/lib/url';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { sha256Hex } from '@/lib/r2';
 import { fetchFollowSafeRedirects } from '@/lib/fetch';
@@ -82,7 +82,7 @@ async function handleGet(request: Request): Promise<Response> {
 
   const { ctx } = await getCloudflareContext({ async: true });
   const reqUrl = new URL(request.url);
-  const cacheKey = new Request(`${reqUrl.origin}/__cache/image/${await sha256Hex(url)}`);
+  const cacheKey = new Request(`${reqUrl.origin}/__cache/image/${await sha256Hex(normalizeUrlForCache(url))}`);
   const cfCache = caches.default;
 
   // Cloudflare Cache API で確認
