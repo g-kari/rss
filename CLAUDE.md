@@ -269,9 +269,14 @@ transformZennMermaidEmbeds → zenn.dev の mermaid を <pre><code> に変換
 fixLazyImages          → data-src → src 解決、Shopify _NNNx → _800x 高解像度化
 fixImageDimensions     → 相対パス絶対URL化 / loading="lazy" 追加
 rewriteImageUrls       → 画像 URL を /api/image-proxy 経由に書き換え
+fixExternalLinks       → 相対リンクを絶対URL化 / target="_blank" rel="noopener noreferrer" 付与
 wrapTables             → <table> を overflow-x:auto でラップ
 sanitizeHtml           → XSS 対策（<script>/<style>/<link>/イベントハンドラ除去）
 ```
+
+> **X (Twitter) ツイート埋め込み** (`blockquote.twitter-tweet`) はテーマ依存のため、
+> サーバー側 `postProcess` では変換せず、クライアント側 `processContent()` (embed-utils.ts) で適用する。
+> これにより、全文取得後もダークモード等のユーザーテーマが正しく反映される。
 
 ### ルール
 
