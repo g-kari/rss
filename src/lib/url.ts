@@ -157,7 +157,8 @@ const TRACKING_PARAMS = new Set([
 export function normalizeUrlForCache(url: string): string {
   try {
     const parsed = new URL(url);
-    for (const key of parsed.searchParams.keys()) {
+    // イテレーション中に削除するとキーがスキップされるため、先に収集してから削除する
+    for (const key of Array.from(parsed.searchParams.keys())) {
       if (TRACKING_PARAMS.has(key)) parsed.searchParams.delete(key);
     }
     // パラメータ順序が異なる同一 URL も同じキャッシュキーにする

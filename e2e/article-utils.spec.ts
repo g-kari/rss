@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { readingTime } from "../src/lib/article-utils";
+import { readingTime, timeAgo } from "../src/lib/article-utils";
 
 /**
  * readingTime の単体テスト。
@@ -118,5 +118,113 @@ test.describe("readingTime — HTML タグ除去の正確さ", () => {
     const para = "<p>" + "word ".repeat(100) + "</p>";
     // 4 段落 = 400 語 → ceil(400/200) = 2
     expect(readingTime(para.repeat(4))).toBe(2);
+  });
+});
+
+// ==========================================================================
+// timeAgo のテスト
+// ==========================================================================
+
+/**
+ * timeAgo の単体テスト。
+ *
+ * 内部で Date.now() を使用するため、テスト時刻からの相対的な
+ * ISO 文字列を動的に生成してテストする。
+ */
+
+test.describe("timeAgo — 特殊入力", () => {
+  test("null は空文字列を返す", () => {
+    expect(timeAgo(null)).toBe("");
+  });
+
+  test("未来の日時（時計のズレ等）は「たった今」を返す", () => {
+    const future = new Date(Date.now() + 60_000).toISOString();
+    expect(timeAgo(future)).toBe("たった今");
+  });
+});
+
+test.describe("timeAgo — たった今（1 分未満）", () => {
+  test("30 秒前は「たった今」を返す", () => {
+    const iso = new Date(Date.now() - 30_000).toISOString();
+    expect(timeAgo(iso)).toBe("たった今");
+  });
+
+  test("59 秒前は「たった今」を返す", () => {
+    const iso = new Date(Date.now() - 59_000).toISOString();
+    expect(timeAgo(iso)).toBe("たった今");
+  });
+});
+
+test.describe("timeAgo — 〇分前（1 時間未満）", () => {
+  test("1 分前は「1分前」を返す", () => {
+    const iso = new Date(Date.now() - 60_000).toISOString();
+    expect(timeAgo(iso)).toBe("1分前");
+  });
+
+  test("5 分前は「5分前」を返す", () => {
+    const iso = new Date(Date.now() - 5 * 60_000).toISOString();
+    expect(timeAgo(iso)).toBe("5分前");
+  });
+
+  test("59 分前は「59分前」を返す", () => {
+    const iso = new Date(Date.now() - 59 * 60_000).toISOString();
+    expect(timeAgo(iso)).toBe("59分前");
+  });
+});
+
+test.describe("timeAgo — 〇時間前（24 時間未満）", () => {
+  test("1 時間前は「1時間前」を返す", () => {
+    const iso = new Date(Date.now() - 60 * 60_000).toISOString();
+    expect(timeAgo(iso)).toBe("1時間前");
+  });
+
+  test("6 時間前は「6時間前」を返す", () => {
+    const iso = new Date(Date.now() - 6 * 60 * 60_000).toISOString();
+    expect(timeAgo(iso)).toBe("6時間前");
+  });
+
+  test("23 時間前は「23時間前」を返す", () => {
+    const iso = new Date(Date.now() - 23 * 60 * 60_000).toISOString();
+    expect(timeAgo(iso)).toBe("23時間前");
+  });
+});
+
+test.describe("timeAgo — 〇日前（7 日未満）", () => {
+  test("1 日前は「1日前」を返す", () => {
+    const iso = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+    expect(timeAgo(iso)).toBe("1日前");
+  });
+
+  test("3 日前は「3日前」を返す", () => {
+    const iso = new Date(Date.now() - 3 * 24 * 60 * 60_000).toISOString();
+    expect(timeAgo(iso)).toBe("3日前");
+  });
+
+  test("6 日前は「6日前」を返す", () => {
+    const iso = new Date(Date.now() - 6 * 24 * 60 * 60_000).toISOString();
+    expect(timeAgo(iso)).toBe("6日前");
+  });
+});
+
+test.describe("timeAgo — M月D日形式（7 日以上）", () => {
+  test("7 日以上前は「M月D日」形式を返す", () => {
+    const date = new Date(Date.now() - 8 * 24 * 60 * 60_000);
+    const iso = date.toISOString();
+    const expected = date.toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
+    expect(timeAgo(iso)).toBe(expected);
+  });
+
+  test("30 日前は「M月D日」形式を返す", () => {
+    const date = new Date(Date.now() - 30 * 24 * 60 * 60_000);
+    const iso = date.toISOString();
+    const expected = date.toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
+    expect(timeAgo(iso)).toBe(expected);
+  });
+
+  test("365 日前は「M月D日」形式を返す", () => {
+    const date = new Date(Date.now() - 365 * 24 * 60 * 60_000);
+    const iso = date.toISOString();
+    const expected = date.toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
+    expect(timeAgo(iso)).toBe(expected);
   });
 });

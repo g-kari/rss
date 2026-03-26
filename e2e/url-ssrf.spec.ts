@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { isValidFeedUrl, isValidHttpsUrl } from "../src/lib/url";
+import { isValidFeedUrl, isValidHttpsUrl, normalizeUrlForCache } from "../src/lib/url";
 
 /**
  * isValidFeedUrl の SSRF 対策回帰テスト
@@ -314,5 +314,141 @@ test.describe("isValidHttpsUrl — SSRF 対策（プライベート IP を拒否
   test("2048 文字超の URL を拒否する", () => {
     const long = "https://example.com/" + "a".repeat(2030);
     expect(isValidHttpsUrl(long)).toBe(false);
+  });
+});
+
+// ==========================================================================
+// normalizeUrlForCache のテスト
+// ==========================================================================
+
+/**
+ * normalizeUrlForCache の単体テスト。
+ *
+ * UTM パラメータ等のトラッキングパラメータを除去し、
+ * 残りのパラメータをソートして一意なキャッシュキーを生成することを検証する。
+ */
+
+test.describe("normalizeUrlForCache — クリーンな URL はそのまま通過", () => {
+  test("クエリなしの URL はそのまま返す", () => {
+    expect(normalizeUrlForCache("https://example.com/article/123")).toBe(
+      "https://example.com/article/123",
+    );
+  });
+
+  test("トラッキングパラメータを含まない URL はそのまま返す", () => {
+    expect(normalizeUrlForCache("https://example.com/?page=2&sort=date")).toBe(
+      "https://example.com/?page=2&sort=date",
+    );
+  });
+});
+
+test.describe("normalizeUrlForCache — UTM パラメータを除去", () => {
+  test("utm_source を除去する", () => {
+    const url = "https://example.com/?utm_source=twitter";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("utm_medium を除去する", () => {
+    const url = "https://example.com/?utm_medium=social";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("utm_campaign を除去する", () => {
+    const url = "https://example.com/?utm_campaign=spring2025";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("utm_term を除去する", () => {
+    const url = "https://example.com/?utm_term=rss+reader";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("utm_content を除去する", () => {
+    const url = "https://example.com/?utm_content=banner";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("utm_id を除去する", () => {
+    const url = "https://example.com/?utm_id=abc123";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("全 UTM パラメータを一括除去する", () => {
+    const url =
+      "https://example.com/?utm_source=x&utm_medium=social&utm_campaign=test&utm_term=foo&utm_content=bar&utm_id=1";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+});
+
+test.describe("normalizeUrlForCache — 広告・Analytics パラメータを除去", () => {
+  test("gclid（Google Ads）を除去する", () => {
+    const url = "https://example.com/?gclid=TeSter123";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("fbclid（Facebook）を除去する", () => {
+    const url = "https://example.com/?fbclid=AbCdEf123";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("msclkid（Microsoft Ads）を除去する", () => {
+    const url = "https://example.com/?msclkid=abc123";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("mc_cid（Mailchimp）を除去する", () => {
+    const url = "https://example.com/?mc_cid=abc123";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("_ga（Google Analytics）を除去する", () => {
+    const url = "https://example.com/?_ga=2.123456.1234567890.1234567890";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+});
+
+test.describe("normalizeUrlForCache — 有効パラメータを保持・トラッキングのみ除去", () => {
+  test("コンテンツパラメータを保持して UTM のみ除去する", () => {
+    const url = "https://example.com/?page=2&utm_source=rss&sort=new";
+    const result = normalizeUrlForCache(url);
+    expect(result).toContain("page=2");
+    expect(result).toContain("sort=new");
+    expect(result).not.toContain("utm_source");
+  });
+});
+
+test.describe("normalizeUrlForCache — パラメータのソート", () => {
+  test("クエリパラメータをアルファベット順にソートする", () => {
+    const url1 = "https://example.com/?z=last&a=first&m=middle";
+    const url2 = "https://example.com/?m=middle&z=last&a=first";
+    expect(normalizeUrlForCache(url1)).toBe(normalizeUrlForCache(url2));
+  });
+
+  test("ソート後に同一キャッシュキーになる", () => {
+    const url1 = "https://example.com/?b=2&a=1";
+    const url2 = "https://example.com/?a=1&b=2";
+    expect(normalizeUrlForCache(url1)).toBe(normalizeUrlForCache(url2));
+  });
+});
+
+test.describe("normalizeUrlForCache — フラグメントを除去", () => {
+  test("URL フラグメント（#section）を除去する", () => {
+    const url = "https://example.com/article#section2";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/article");
+  });
+
+  test("フラグメントと UTM を同時に除去する", () => {
+    const url = "https://example.com/article?utm_source=rss#comments";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/article");
+  });
+});
+
+test.describe("normalizeUrlForCache — 不正な URL は元の文字列を返す", () => {
+  test("不正な URL は変換せずそのまま返す", () => {
+    expect(normalizeUrlForCache("not-a-url")).toBe("not-a-url");
+  });
+
+  test("空文字列は空文字列を返す", () => {
+    expect(normalizeUrlForCache("")).toBe("");
   });
 });
