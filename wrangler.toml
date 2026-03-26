@@ -41,7 +41,7 @@ bucket_name = "rss-reader-cache"
 binding = "AI"
 
 [build]
-command = "npm run build:cf"
+command = "pnpm run build:cf"
 
 [triggers]
 crons = ["*/30 * * * *"]
