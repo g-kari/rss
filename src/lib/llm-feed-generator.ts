@@ -14,6 +14,24 @@ import { fetchFollowSafeRedirects } from './fetch';
 import type { SelectorConfig } from '../types';
 import type { ParsedFeed, ParsedItem } from './xml-parser';
 
+/**
+ * linkedom の DOM 操作に使用する最小インターフェース。
+ * linkedom の型定義は DOM 標準と完全には互換していないため、
+ * 必要なプロパティ・メソッドのみを定義して `any` を排除する。
+ */
+interface LDElement {
+  getAttribute(name: string): string | null;
+  textContent: string | null;
+  className: string;
+  tagName: string;
+  parentElement: LDElement | null;
+  querySelector(selector: string): LDElement | null;
+}
+
+interface LDDocument {
+  querySelectorAll(selector: string): Iterable<LDElement>;
+}
+
 // ai-route-helper.ts と同じモデル（workers-types 未掲載のためキャスト）
 const MODEL = '@cf/meta/llama-3.1-8b-instruct' as '@cf/meta/llama-3.1-8b-instruct-fp8';
 
@@ -41,10 +59,9 @@ const FETCH_TIMEOUT_MS = 8_000;
  * ナビ・フッター・外部リンクは除外し、最大 MAX_LINKS 件を返す。
  */
 export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let doc: any;
+  let doc: LDDocument;
   try {
-    ({ document: doc } = parseHTML(html));
+    ({ document: doc } = parseHTML(html) as { document: LDDocument });
   } catch {
     return [];
   }
@@ -56,8 +73,7 @@ export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] 
   const nodes: LinkNode[] = [];
   const seen = new Set<string>();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const el of Array.from(doc.querySelectorAll('a[href]')) as any[]) {
+  for (const el of doc.querySelectorAll('a[href]')) {
     const href: string = el.getAttribute('href') ?? '';
     if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:')) continue;
 
@@ -78,17 +94,17 @@ export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] 
     if (seen.has(abs)) continue;
     seen.add(abs);
 
-    const text = ((el.textContent ?? '') as string).replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT);
+    const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT);
     if (text.length < 5) continue; // アイコン・ボタン類を除外
 
-    const c: string[] = ((el.className ?? '') as string).split(/\s+/).filter(Boolean);
+    const c: string[] = el.className.split(/\s+/).filter(Boolean);
 
     const p: Array<[string, string[]]> = [];
     let parent = el.parentElement;
     while (parent && parent.tagName !== 'BODY' && p.length < ANCESTOR_DEPTH) {
       p.push([
-        (parent.tagName as string).toLowerCase(),
-        ((parent.className ?? '') as string).split(/\s+/).filter(Boolean),
+        parent.tagName.toLowerCase(),
+        parent.className.split(/\s+/).filter(Boolean),
       ]);
       parent = parent.parentElement;
     }
@@ -199,26 +215,23 @@ export function scrapeFeed(
   siteUrl: string,
   siteTitle: string,
 ): ParsedFeed {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let doc: any;
+  let doc: LDDocument;
   try {
-    ({ document: doc } = parseHTML(html));
+    ({ document: doc } = parseHTML(html) as { document: LDDocument });
   } catch {
     return { title: siteTitle, siteUrl, items: [] };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const elements: any[] = Array.from(doc.querySelectorAll(selectors.articleLink));
+  const elements = Array.from(doc.querySelectorAll(selectors.articleLink));
   const items: ParsedItem[] = [];
   const seen = new Set<string>();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const el of elements.slice(0, 100) as any[]) {
+  for (const el of elements.slice(0, 100)) {
     // セレクタが <a> 以外を返した場合は内部の <a> を探す
     const anchor = el.tagName === 'A' ? el : (el.querySelector('a') ?? null);
     if (!anchor) continue;
 
-    const href: string = anchor.getAttribute('href') ?? '';
+    const href = anchor.getAttribute('href') ?? '';
     if (!href || href.startsWith('#')) continue;
 
     let link: string;
@@ -230,7 +243,7 @@ export function scrapeFeed(
     if (seen.has(link)) continue;
     seen.add(link);
 
-    const title = ((el.textContent ?? '') as string).replace(/\s+/g, ' ').trim();
+    const title = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
     if (!title) continue;
 
     items.push({
