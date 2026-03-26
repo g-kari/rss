@@ -43,8 +43,10 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
       url,
       {
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; rss-reader/1.0)",
-          Accept: "text/html",
+          "User-Agent":
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
         },
       },
       FETCH_TIMEOUT_MS,
