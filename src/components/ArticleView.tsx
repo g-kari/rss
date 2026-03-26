@@ -74,7 +74,7 @@ export default function ArticleView({
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
 
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const progressBarRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const mouseStartXRef = useRef<number | null>(null);
   const wheelDeltaRef = useRef<{ x: number; timer: ReturnType<typeof setTimeout> | null }>({
@@ -167,7 +167,10 @@ export default function ArticleView({
   // 記事が変わったら AI 状態をリセット。日本語以外の記事は自動翻訳する（全文取得は行わない）
   // 記事が変わったらスクロール位置と翻訳表示状態をリセット（AI 状態は useArticleAi が担当）
   useEffect(() => {
-    setScrollProgress(0);
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = "0%";
+      progressBarRef.current.style.display = "none";
+    }
     setShowTranslated(false);
     setShareMenuOpen(false);
   }, [article?.id]);
@@ -276,7 +279,11 @@ export default function ArticleView({
   function handleScroll(e: React.UIEvent<HTMLElement>) {
     const el = e.currentTarget;
     const scrollable = el.scrollHeight - el.clientHeight;
-    setScrollProgress(scrollable > 0 ? Math.round((el.scrollTop / scrollable) * 100) : 0);
+    const progress = scrollable > 0 ? Math.round((el.scrollTop / scrollable) * 100) : 0;
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${progress}%`;
+      progressBarRef.current.style.display = progress > 0 ? "" : "none";
+    }
   }
 
   function handleWheel(e: React.WheelEvent) {
@@ -345,12 +352,11 @@ export default function ArticleView({
       onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
     >
-      {scrollProgress > 0 && (
-        <div
-          className="sticky top-0 left-0 h-[2px] bg-ink z-10 transition-[width] duration-75 ease-linear"
-          style={{ width: `${scrollProgress}%` }}
-        />
-      )}
+      <div
+        ref={progressBarRef}
+        className="sticky top-0 left-0 h-[2px] bg-ink z-10 transition-[width] duration-75 ease-linear"
+        style={{ display: "none" }}
+      />
       <div className="max-w-2xl mx-auto px-4 py-6 lg:px-10 lg:py-12">
         {/* メタ行 + アクション行（スマホでは2行に折り返す） */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5 text-[11px] text-text-muted">
