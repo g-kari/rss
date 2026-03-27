@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (162)
+
+### リファクタリング
+- \`articles\` 配列の線形検索を \`Map\` キャッシュに最適化 — \`handleToggleBookmark\` / \`handleToggleReadingList\` / \`handleToggleLike\` の \`articles.find()\` O(n) を \`articleMap.get()\` O(1) に変更
+
 ## 2026-03-27 (161)
 
 ### 新機能
