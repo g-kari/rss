@@ -36,6 +36,8 @@ export interface SharedFeedMeta {
   knownIds?: string[];
   /** LLM が推論した CSS セレクタ設定（RSS 未対応サイト用） */
   cssSelectors?: SelectorConfig;
+  /** フェッチ時に付与する Cookie ヘッダー値（年齢確認ゲート等の突破に使用） */
+  requestCookie?: string;
 }
 
 /** フィードごとのキーワードフィルター */

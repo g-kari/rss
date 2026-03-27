@@ -35,7 +35,7 @@ export function useFeedOperations({
     importMessageTimerRef.current = setTimeout(() => setImportMessage(null), 3000);
   }
 
-  async function addFeed(url: string, onSuccess: () => void) {
+  async function addFeed(url: string, onSuccess: () => void, cookie?: string) {
     if (!url.trim()) return;
     setAdding(true);
     setError("");
@@ -43,7 +43,7 @@ export function useFeedOperations({
       const res = await apiFetch("/api/feeds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: url.trim(), ...(cookie ? { cookie } : {}) }),
       });
       if (!res.ok) {
         const data = (await res.json()) as { error: string };

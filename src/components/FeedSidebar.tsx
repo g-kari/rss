@@ -89,6 +89,8 @@ export default function FeedSidebar({
   push,
 }: Props) {
   const [newUrl, setNewUrl] = useState("");
+  const [newCookie, setNewCookie] = useState("");
+  const [cookieOpen, setCookieOpen] = useState(false);
   const [inputOpen, setInputOpen] = useState(false);
   const [feedSearch, setFeedSearch] = useState("");
   const [feedSearchOpen, setFeedSearchOpen] = useState(false);
@@ -125,10 +127,16 @@ export default function FeedSidebar({
 
   function handleAddFeed(e: React.FormEvent) {
     e.preventDefault();
-    addFeed(newUrl, () => {
-      setNewUrl("");
-      setInputOpen(false);
-    });
+    addFeed(
+      newUrl,
+      () => {
+        setNewUrl("");
+        setNewCookie("");
+        setCookieOpen(false);
+        setInputOpen(false);
+      },
+      newCookie || undefined,
+    );
   }
 
   async function handleSaveArticle(mode: "bookmark" | "reading_list") {
@@ -282,6 +290,24 @@ export default function FeedSidebar({
               autoFocus
               className="w-full text-[12px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
             />
+            {/* Cookie オプション（年齢確認ゲート等の突破用） */}
+            <button
+              type="button"
+              onClick={() => setCookieOpen((v) => !v)}
+              className="mt-1.5 text-[10px] text-text-faint hover:text-text-muted transition-colors duration-200"
+            >
+              {cookieOpen ? "▾ Cookie を隠す" : "▸ Cookie を設定（任意）"}
+            </button>
+            {cookieOpen && (
+              <input
+                type="text"
+                placeholder="例: age_check_done=1"
+                value={newCookie}
+                onChange={(e) => setNewCookie(e.target.value)}
+                disabled={adding}
+                className="mt-1 w-full text-[11px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
+              />
+            )}
             {error && <p className="text-[11px] text-rose-400 mt-1.5">{error}</p>}
             <div className="flex gap-1.5 mt-1.5">
               <button
@@ -295,6 +321,8 @@ export default function FeedSidebar({
                 type="button"
                 onClick={() => {
                   setInputOpen(false);
+                  setCookieOpen(false);
+                  setNewCookie("");
                   clearError();
                 }}
                 className="text-[11px] px-3 py-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200"

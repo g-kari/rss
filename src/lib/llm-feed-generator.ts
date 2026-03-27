@@ -199,15 +199,12 @@ function extractPageTitle(html: string): string {
 export async function inferFeedFromUrl(
   url: string,
   ai: Ai,
+  cookie?: string,
 ): Promise<{ selectors: SelectorConfig; siteTitle: string; siteUrl: string } | null> {
   try {
-    const res = await fetchFollowSafeRedirects(
-      url,
-      {
-        headers: { "User-Agent": "rss-reader/1.0" },
-      },
-      FETCH_TIMEOUT_MS,
-    );
+    const headers: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
+    if (cookie) headers["Cookie"] = cookie;
+    const res = await fetchFollowSafeRedirects(url, { headers }, FETCH_TIMEOUT_MS);
     if (!res.ok) return null;
 
     const ct = res.headers.get("content-type") ?? "";

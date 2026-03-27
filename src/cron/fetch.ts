@@ -190,9 +190,9 @@ async function fetchAndScrapeWithSelectors(
   meta: SharedFeedMeta,
 ): Promise<{ articles: Article[]; existingLatest: Article[] | null }> {
   const selectors = meta.cssSelectors!;
-  const res = await fetchViaBinding(env, meta.url, {
-    headers: { "User-Agent": "rss-reader/1.0" },
-  });
+  const headers: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
+  if (meta.requestCookie) headers["Cookie"] = meta.requestCookie;
+  const res = await fetchViaBinding(env, meta.url, { headers });
   if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get("Retry-After")));
   if (!res.ok) throw new Error(`${res.status} ${meta.url}`);
 
@@ -220,6 +220,7 @@ async function fetchAndParseFeed(
   }
 
   const reqHeaders: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
+  if (meta.requestCookie) reqHeaders["Cookie"] = meta.requestCookie;
   if (options.conditional) {
     if (meta.etag) reqHeaders["If-None-Match"] = meta.etag;
     if (meta.lastModified) reqHeaders["If-Modified-Since"] = meta.lastModified;
