@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (152)
+
+### リファクタリング
+- **記事フィルタリングを \`matchesKeywordFilter\` 直接呼び出しに簡素化** — \`GET /api/articles\` の全件取得パスで各記事を \`applyKeywordFilter([a], filter).length > 0\` とシングルトン配列にラップしていた処理を \`matchesKeywordFilter(a, filter)\` の直接呼び出しに変更。\`filterMap.size > 0\` の事前チェックも不要になり3行削減
+
 ## 2026-03-27 (151)
 
 ### 新機能

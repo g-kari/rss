@@ -7,7 +7,7 @@ import {
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
-import { applyKeywordFilter } from "@/lib/keyword-filter";
+import { applyKeywordFilter, matchesKeywordFilter } from "@/lib/keyword-filter";
 import type { Article, KeywordFilter } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -45,13 +45,10 @@ export async function GET(request: NextRequest) {
     for (const sub of subs) {
       if (sub.filter) filterMap.set(sub.feedHash, sub.filter);
     }
-    const filteredFeedArticles =
-      filterMap.size > 0
-        ? feedArticles.filter((a) => {
-            const filter = filterMap.get(a.feedHash);
-            return filter ? applyKeywordFilter([a], filter).length > 0 : true;
-          })
-        : feedArticles;
+    const filteredFeedArticles = feedArticles.filter((a) => {
+      const filter = filterMap.get(a.feedHash);
+      return !filter || matchesKeywordFilter(a, filter);
+    });
 
     const all = [...savedArticles, ...filteredFeedArticles].sort((a, b) => {
       const at = new Date(a.publishedAt ?? a.createdAt).getTime();
