@@ -47,20 +47,28 @@ app/
       refresh/route.ts       # POST /api/feeds/refresh — 全フィード手動更新
       import/route.ts        # POST /api/feeds/import — OPML インポート
       export/route.ts        # GET /api/feeds/export — OPML エクスポート
-    articles/route.ts        # GET /api/articles
+    articles/
+      route.ts               # GET /api/articles
+      save/route.ts          # POST /api/articles/save — 記事保存
     ai/
       summarize/route.ts     # POST /api/ai/summarize (Workers AI)
       translate/route.ts     # POST /api/ai/translate (Workers AI)
     content/route.ts         # GET /api/content?url=... (フルテキストプロキシ)
+    engagement/route.ts      # GET / POST /api/engagement — エンゲージメント記録
     image-proxy/route.ts     # GET /api/image-proxy?url=... (外部画像プロキシ)
     ogp/route.ts             # GET /api/ogp?url=... (OGP 画像 URL 取得)
     read-state/route.ts      # GET / POST /api/read-state
+    recommendations/
+      route.ts               # GET /api/recommendations — フィード推薦一覧
+      dismiss/route.ts       # POST /api/recommendations/dismiss — 推薦を非表示
+      refresh/route.ts       # POST /api/recommendations/refresh — 推薦を更新
     release-notes/route.ts   # GET /api/release-notes
     push/
       vapid-key/route.ts     # GET /api/push/vapid-key
       status/route.ts        # GET /api/push/status
       subscribe/route.ts     # POST /api/push/subscribe
       unsubscribe/route.ts   # POST /api/push/unsubscribe
+      test/route.ts          # POST /api/push/test — Push 通知テスト送信
     health/route.ts          # GET /api/health
 
 src/
@@ -69,21 +77,36 @@ src/
   cloudflare-env.d.ts        # CloudflareEnv 拡張 (RSS_DATA, AI)
   components/
     FeedSidebar.tsx          # サイドバー 200px (フィード管理 + ユーザー情報)
+    FeedItem.tsx             # フィードアイテム（コンテキストメニュー付き）
+    FeedFilterModal.tsx      # キーワードフィルター設定モーダル
     ArticleList.tsx          # 記事一覧 360px
     ArticleView.tsx          # 記事本文 1fr
+    RecommendationSection.tsx # フィード推薦セクション
+    KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
     ReleaseNotesModal.tsx    # リリースノートモーダル
+    NSFWEyeAnimation.tsx     # NSFW コンテンツ表示アニメーション
+    ServiceWorkerRegistration.tsx # Service Worker 登録コンポーネント
     ErrorBoundary.tsx        # エラー境界
   hooks/
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
-    useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/u/d/s/f/l/[/]/?)
+    useFeedOperations.ts     # フィード CRUD 操作
+    useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
+    useUIState.ts            # UI 状態管理（テーマ・レイアウト・モーダル等）
     useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
     useReadState.ts          # 既読・ブックマーク・後で読む (localStorage + R2 同期)
+    useReadingHistory.ts     # 閲覧履歴管理
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
     useArticleAi.ts          # /api/ai/* fetch
+    useContentLinkPreviews.ts # 記事本文内リンクのプレビュー取得
+    useEngagement.ts         # エンゲージメント記録 (/api/engagement)
+    useRecommendations.ts    # フィード推薦 (/api/recommendations) fetch
     useOgpCache.ts           # /api/ogp fetch キャッシュ
     useImageDownload.ts      # 記事画像一括ダウンロード
     usePushNotifications.ts  # Web Push サブスクリプション管理
+    useSearchHistory.ts      # 検索履歴管理 (localStorage)
+    useOnlineStatus.ts       # オンライン/オフライン状態
+    useDebounce.ts           # デバウンスユーティリティ
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()
@@ -97,8 +120,14 @@ src/
     feed-discovery.ts        # フィード URL 自動検出
     ai-cache.ts              # AI 結果 R2 キャッシュ
     ai-route-helper.ts       # AI Route Handler 共通処理
+    api-fetch.ts             # 認証付きクライアントサイド fetch ラッパー
     embed-utils.ts           # iframe embed 処理
+    engagement-score.ts      # エンゲージメントスコア計算ロジック
+    keyword-filter.ts        # キーワードフィルタリングマッチング
+    llm-feed-generator.ts    # LLM で RSS のないサイトからフィード生成
     lru-cache.ts             # クライアントサイド LRU キャッシュ
+    recommendation.ts        # フィード推薦ロジック
+    shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     storage.ts               # localStorage キー定数・安全なラッパー
     url.ts                   # URL バリデーション
     favicon.ts               # ファビコン未読バッジ
