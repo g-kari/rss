@@ -221,7 +221,7 @@ export async function generatePopularFeeds(
   bucket: R2Bucket,
   subscribedFeedHashes: Set<string>,
 ): Promise<RecommendedFeed[]> {
-  const feedUserMap = await buildFeedUserMap(bucket);
+  const { feedUserMap } = await buildFeedUserMap(bucket);
 
   // 未購読フィードを購読者数降順でソート
   const ranked = [...feedUserMap.entries()]

@@ -302,9 +302,13 @@ export async function listAllFeedHashes(bucket: R2Bucket): Promise<string[]> {
   return listPrefixedIds(bucket, "feeds/");
 }
 
-/** 全ユーザーの subscriptions.json から feedHash → userId[] の逆引きマップを構築する */
-export async function buildFeedUserMap(bucket: R2Bucket): Promise<Map<string, string[]>> {
-  const map = new Map<string, string[]>();
+/** 全ユーザーの subscriptions.json から feedHash → userId[] および feedHash → requestCookie のマップを構築する */
+export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
+  feedUserMap: Map<string, string[]>;
+  feedCookieMap: Map<string, string>;
+}> {
+  const feedUserMap = new Map<string, string[]>();
+  const feedCookieMap = new Map<string, string>();
   const userIds = await listPrefixedIds(bucket, "users/");
 
   const allSubs = await Promise.all(
@@ -312,10 +316,14 @@ export async function buildFeedUserMap(bucket: R2Bucket): Promise<Map<string, st
   );
   for (const { uid, subs } of allSubs) {
     for (const s of subs) {
-      const users = map.get(s.feedHash) ?? [];
+      const users = feedUserMap.get(s.feedHash) ?? [];
       users.push(uid);
-      map.set(s.feedHash, users);
+      feedUserMap.set(s.feedHash, users);
+      // 最初に見つかった requestCookie を採用する（購読者間で共有 Cookie として使用）
+      if (s.requestCookie && !feedCookieMap.has(s.feedHash)) {
+        feedCookieMap.set(s.feedHash, s.requestCookie);
+      }
     }
   }
-  return map;
+  return { feedUserMap, feedCookieMap };
 }
