@@ -1,3 +1,5 @@
+import type { DateRange } from "../types";
+
 /** CJK 統合漢字・ひらがな・カタカナ・拡張A（読了速度判定用） */
 const CJK_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g;
 
@@ -83,6 +85,15 @@ export function articleMatchesQuery(
 export function cycleValue<T>(cycle: readonly T[], current: T): T {
   return cycle[(cycle.indexOf(current) + 1) % cycle.length];
 }
+
+export const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month"];
+
+export const DATE_RANGE_LABELS: Record<DateRange, string> = {
+  all: "全期間",
+  today: "今日",
+  week: "今週",
+  month: "今月",
+};
 
 /**
  * ISO 日時文字列を「〇分前」形式の相対時間に変換する。

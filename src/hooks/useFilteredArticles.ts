@@ -3,7 +3,7 @@ import type { Article, DateRange, Feed } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { matchesKeywordFilter } from "../lib/keyword-filter";
-import { articleMatchesQuery, cycleValue } from "../lib/article-utils";
+import { articleMatchesQuery, cycleValue, DATE_RANGE_CYCLE } from "../lib/article-utils";
 
 const PAGE_SIZE = 30;
 
@@ -75,8 +75,7 @@ export function useFilteredArticles({
   });
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const v = storageGet(STORAGE_KEYS.DATE_RANGE);
-    const valid: DateRange[] = ["all", "today", "week", "month"];
-    return valid.includes(v as DateRange) ? (v as DateRange) : "all";
+    return DATE_RANGE_CYCLE.includes(v as DateRange) ? (v as DateRange) : "all";
   });
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -128,14 +127,15 @@ export function useFilteredArticles({
     setPage(1);
   }, []);
 
-  const cycleDateRange = useCallback(() => {
-    const cycle: DateRange[] = ["all", "today", "week", "month"];
+  const cycleDateRange = useCallback((): DateRange => {
+    let nextValue = "all" as DateRange;
     setDateRange((v) => {
-      const next = cycleValue(cycle, v);
-      storageSet(STORAGE_KEYS.DATE_RANGE, next);
-      return next;
+      nextValue = cycleValue(DATE_RANGE_CYCLE, v);
+      storageSet(STORAGE_KEYS.DATE_RANGE, nextValue);
+      return nextValue;
     });
     setPage(1);
+    return nextValue;
   }, []);
 
   const loadMore = useCallback(() => {

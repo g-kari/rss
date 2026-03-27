@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (170)
+
+### リファクタリング
+
+- **`DATE_RANGE_CYCLE` / `DATE_RANGE_LABELS` を `article-utils` に一元化** — `useKeyboardNav` と `useFilteredArticles` に重複定義されていた日付範囲の定数を `src/lib/article-utils.ts` に移動して共有化。あわせて `cycleDateRange` が次の値を返すよう変更し、`d` キー処理を `f` / `l` と同一パターンに統一
+
 ## 2026-03-28 (169)
 
 ### リファクタリング
