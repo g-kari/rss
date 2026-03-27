@@ -45,7 +45,8 @@ const securityHeaders = [
       // スクリプト: self + インラインは Next.js hydration に必要
       // unsafe-eval は Next.js v13+ の本番ビルドでは不要。
       // eval()/new Function() を明示的に禁止することで XSS リスクを低減する。
-      "script-src 'self' 'unsafe-inline'",
+      // static.cloudflareinsights.com: Cloudflare Web Analytics が自動注入する beacon スクリプト
+      "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
       // スタイル: self + インライン（Tailwind）
       "style-src 'self' 'unsafe-inline'",
       // 画像: 任意ドメイン（記事サムネイル）+ data URI
@@ -54,8 +55,8 @@ const securityHeaders = [
       "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://player.vimeo.com https://w.soundcloud.com https://player.twitch.tv https://clips.twitch.tv https://embed.nicovideo.jp https://embed.zenn.studio https://platform.twitter.com",
       // メディア: 任意（ポッドキャスト）
       "media-src *",
-      // API / WebSocket: self のみ
-      "connect-src 'self'",
+      // API / WebSocket: self + Cloudflare Web Analytics のデータ送信先
+      "connect-src 'self' https://cloudflareinsights.com",
       // フォント: self
       "font-src 'self'",
       // オブジェクト禁止

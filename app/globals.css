@@ -454,6 +454,22 @@ body {
   color: var(--color-text-default);
 }
 
+/* ── 画像スライダー ──────────────────────────────────────────── */
+/* aspect-ratio:1/1 + overflow:hidden の組み合わせによる見切れを解消。
+   fixImageDimensions が inline style の width/height を除去するため、
+   CSS ルールで管理して除去を回避する。 */
+.rss-slider-slide {
+  overflow: hidden;
+  border-radius: 8px;
+  background-color: var(--color-surface-subtle);
+}
+.rss-slider-slide img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
 /* ── OGP リンクプレビューカード（Twitter OGP スタイル） ─────── */
 .ogp-link-preview {
   display: block;

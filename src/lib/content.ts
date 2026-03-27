@@ -99,11 +99,9 @@ export function buildImageSlider(imgs: string[]): string {
     .map(
       (img) =>
         // scroll-snap-stop:always — 高速スワイプ時に複数枚飛ばしを防止
-        `<div style="flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;border-radius:8px;background:#f5f5f5;aspect-ratio:1/1">` +
-        img.replace(
-          /<img\b/,
-          '<img style="width:100%;height:100%;object-fit:contain;display:block"',
-        ) +
+        // class="rss-slider-slide" — CSS でサイズ管理（fixImageDimensions に除去されないよう inline style を使わない）
+        `<div class="rss-slider-slide" style="flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always">` +
+        img +
         `</div>`,
     )
     .join("");
