@@ -2,13 +2,8 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { Article, DateRange, Feed } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
-import { matchesKeywordFilter } from "../lib/keyword-filter";
-import {
-  articleMatchesQuery,
-  cycleValue,
-  DATE_RANGE_CYCLE,
-  getDateRangeStart,
-} from "../lib/article-utils";
+import { cycleValue, DATE_RANGE_CYCLE } from "../lib/article-utils";
+import { filterAndSortArticles } from "../lib/article-filter";
 
 const PAGE_SIZE = 30;
 
@@ -132,94 +127,55 @@ export function useFilteredArticles({
     setPage((p) => p + 1);
   }, []);
 
-  // フィードごとのキーワードフィルターマップ（キーワードは事前小文字化済み）
-  const feedFilterMap = useMemo(() => {
-    const map = new Map<string, NonNullable<Feed["filter"]>>();
-    for (const f of feeds) {
-      if (f.filter && (f.filter.include.length > 0 || f.filter.exclude.length > 0)) {
-        map.set(f.id, {
-          ...f.filter,
-          include: f.filter.include.map((kw) => kw.toLowerCase()),
-          exclude: f.filter.exclude.map((kw) => kw.toLowerCase()),
-        });
-      }
-    }
-    return map;
-  }, [feeds]);
+  // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
+  // gracePeriodId: 直前まで表示していた記事を5秒間保持（未読フィルター中でも前の記事に戻れるように）
+  const activeIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (selectedArticleId) ids.add(selectedArticleId);
+    if (gracePeriodId) ids.add(gracePeriodId);
+    return ids;
+  }, [selectedArticleId, gracePeriodId]);
 
-  const filtered = useMemo(() => {
-    // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
-    // gracePeriodId: 直前まで表示していた記事を5秒間保持（未読フィルター中でも前の記事に戻れるように）
-    const isActive = (id: string) => id === selectedArticleId || id === gracePeriodId;
-    const q = query.trim().toLowerCase();
-    const rangeStart = getDateRangeStart(dateRange);
-
-    let list = articles.filter((a) => {
-      // フィード絞り込み
-      if (feedId === "__bookmarks__") {
-        if (!bookmarkIds.has(a.id)) return false;
-      } else if (feedId === "__reading_list__") {
-        if (!readingListIds.has(a.id)) return false;
-      } else if (feedId === "__likes__") {
-        if (!likeIds.has(a.id)) return false;
-      } else if (feedId === "__history__") {
-        if (!historyIds.has(a.id)) return false;
-      } else if (feedId && a.feedHash !== feedId) return false;
-
-      // NSFW フィード — NSFW モードでなければ非表示
-      if (!nsfwMode && nsfwFeedIds.has(a.feedHash) && !isActive(a.id)) return false;
-
-      // キーワードフィルター（アクティブな記事はフィルタ対象外）
-      if (!isActive(a.id)) {
-        const kf = feedFilterMap.get(a.feedHash);
-        if (kf && !matchesKeywordFilter(a, kf)) return false;
-      }
-
-      // 未読フィルター
-      if (unreadOnly && readIds.has(a.id) && !isActive(a.id)) return false;
-
-      // ブックマークフィルター
-      if (bookmarkOnly && !bookmarkIds.has(a.id) && !isActive(a.id)) return false;
-
-      // 検索クエリ（title・summary・author・categories を AND 検索）
-      if (q && !articleMatchesQuery(a, q)) return false;
-
-      // 日付範囲
-      if (rangeStart && (!a.publishedAt || new Date(a.publishedAt) < rangeStart)) return false;
-
-      return true;
-    });
-
-    // 履歴モードは viewedAt 降順（最近閲覧順）で固定
-    if (feedId === "__history__") {
-      const orderMap = new Map(historyOrder.map((id, i) => [id, i]));
-      list = [...list].sort(
-        (a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity),
-      );
-    } else if (sortOrder === "oldest") {
-      list = [...list].reverse();
-    }
-    return list;
-  }, [
-    articles,
-    feedId,
-    feedFilterMap,
-    readIds,
-    bookmarkIds,
-    readingListIds,
-    likeIds,
-    historyIds,
-    historyOrder,
-    unreadOnly,
-    bookmarkOnly,
-    query,
-    sortOrder,
-    dateRange,
-    selectedArticleId,
-    gracePeriodId,
-    nsfwMode,
-    nsfwFeedIds,
-  ]);
+  const filtered = useMemo(
+    () =>
+      filterAndSortArticles(articles, {
+        feedId,
+        feeds,
+        readIds,
+        bookmarkIds,
+        readingListIds,
+        likeIds,
+        historyIds,
+        historyOrder,
+        unreadOnly,
+        bookmarkOnly,
+        query,
+        sortOrder,
+        dateRange,
+        activeIds,
+        nsfwMode,
+        nsfwFeedIds,
+      }),
+    [
+      articles,
+      feedId,
+      feeds,
+      readIds,
+      bookmarkIds,
+      readingListIds,
+      likeIds,
+      historyIds,
+      historyOrder,
+      unreadOnly,
+      bookmarkOnly,
+      query,
+      sortOrder,
+      dateRange,
+      activeIds,
+      nsfwMode,
+      nsfwFeedIds,
+    ],
+  );
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
