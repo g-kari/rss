@@ -710,7 +710,7 @@ export default function ArticleList({
                 <button
                   key={l}
                   onClick={() => onChangeLayout(l)}
-                  className={`w-6 h-6 flex items-center justify-center rounded transition-all duration-200 ${
+                  className={`w-6 h-6 flex items-center justify-center rounded-full transition-all duration-200 ${
                     layout === l
                       ? "text-text-strong bg-surface-subtle"
                       : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
@@ -756,7 +756,7 @@ export default function ArticleList({
             <button
               onClick={toggleSortOrder}
               title={sortOrder === "newest" ? "古い順に切り替え (s)" : "新しい順に切り替え (s)"}
-              className="w-6 h-6 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-200"
+              className="w-6 h-6 flex items-center justify-center rounded-full text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-200"
             >
               {sortOrder === "newest" ? (
                 <svg
@@ -790,7 +790,7 @@ export default function ArticleList({
               <button
                 onClick={onMarkAllRead}
                 title="全て既読にする (m)"
-                className="w-6 h-6 flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-200"
+                className="w-6 h-6 flex items-center justify-center rounded-full text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-200"
               >
                 <svg
                   width="12"
