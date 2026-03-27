@@ -7,7 +7,7 @@ import type {
 import { r2Get, r2Put, sha256Hex } from "./r2";
 import { scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
 import { discoverFeedUrl } from "./feed-discovery";
-import { readFeedMeta, readLatestArticles } from "./shared-feed";
+import { buildFeedUserMap, readFeedMeta, readLatestArticles } from "./shared-feed";
 import { fetchWithTimeout } from "./fetch";
 
 // gemma-3-12b-it: 日本語・英語混在タイトルのトピック抽出に使用
@@ -214,6 +214,58 @@ export async function generateWebSearchFeeds(
   return results;
 }
 
+// ── 人気フィードランキング ────────────────────────────────────────
+
+/**
+ * 他ユーザーの購読数が多いフィードを推薦する。
+ * subscribedFeedHashes に含まれるフィード（既購読）は除外する。
+ */
+export async function generatePopularFeeds(
+  bucket: R2Bucket,
+  subscribedFeedHashes: Set<string>,
+): Promise<RecommendedFeed[]> {
+  const feedUserMap = await buildFeedUserMap(bucket);
+
+  // 未購読フィードを購読者数降順でソート
+  const ranked = [...feedUserMap.entries()]
+    .filter(([feedHash]) => !subscribedFeedHashes.has(feedHash))
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 10);
+
+  if (ranked.length === 0) return [];
+
+  const maxCount = ranked[0][1].length;
+
+  const results: RecommendedFeed[] = [];
+  await Promise.allSettled(
+    ranked.map(async ([feedHash, userIds]) => {
+      try {
+        const meta = await readFeedMeta(bucket, feedHash);
+        if (!meta?.url) return;
+
+        const subscriberCount = userIds.length;
+        // 購読者数を 0.5〜0.85 に正規化（Web 検索 0.9 より低く設定）
+        const score = maxCount > 1 ? 0.5 + (subscriberCount / maxCount) * 0.35 : 0.5;
+
+        const id = (await sha256Hex(`pop_${meta.url}`)).slice(0, 12);
+        results.push({
+          id,
+          feedUrl: meta.url,
+          title: meta.title ?? meta.url,
+          siteUrl: meta.siteUrl ?? meta.url,
+          reason: `${subscriberCount}人が購読中`,
+          source: "popular" as const,
+          score,
+        });
+      } catch {
+        // メタ取得失敗はスキップ
+      }
+    }),
+  );
+
+  return results;
+}
+
 // ── メインのレコメンド生成関数 ──────────────────────────────────
 
 export async function generateRecommendations(params: {
@@ -229,20 +281,36 @@ export async function generateRecommendations(params: {
     entries: [],
   });
 
-  // 購読済み URL の Set を構築
+  // 購読済み URL / feedHash の Set を構築
   const subscribedUrls = new Set(subscriptions.map((s) => s.url));
+  const subscribedFeedHashes = new Set(subscriptions.map((s) => s.feedHash));
 
   // トピック抽出（Gemma AI）
   const topics = await extractUserTopics(bucket, subscriptions, engagement, ai);
 
-  // Web 検索でフィードを発見
-  const webResults = await generateWebSearchFeeds(topics, subscribedUrls);
+  // Web 検索と人気フィードを並列実行
+  const [webSettled, popularSettled] = await Promise.allSettled([
+    generateWebSearchFeeds(topics, subscribedUrls),
+    generatePopularFeeds(bucket, subscribedFeedHashes),
+  ]);
+
+  const webResults = webSettled.status === "fulfilled" ? webSettled.value : [];
+  const popularResults = popularSettled.status === "fulfilled" ? popularSettled.value : [];
+
+  // feedUrl で重複排除してマージ（Web 検索を優先）
+  const seenFeedUrls = new Set<string>();
+  const merged: RecommendedFeed[] = [];
+  for (const feed of [...webResults, ...popularResults]) {
+    if (seenFeedUrls.has(feed.feedUrl)) continue;
+    seenFeedUrls.add(feed.feedUrl);
+    merged.push(feed);
+  }
 
   // 既存の dismiss 済みを除外してキャッシュ
   const existingCache = await readCache(bucket, userId);
   const dismissedIds = new Set(existingCache?.dismissedIds ?? []);
 
-  const recommendations = webResults
+  const recommendations = merged
     .filter((r) => !dismissedIds.has(r.id))
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_RECOMMENDATIONS);
