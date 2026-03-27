@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (190)
+
+### バグ修正
+
+- **\`useFilteredArticles\` のデフォルト引数をモジュール定数に変更** — \`likeIds\`・\`historyIds\`・\`nsfwFeedIds\`・\`historyOrder\`・\`feeds\` のデフォルトに毎回新しいオブジェクトを生成していた問題を修正。モジュールレベルの \`EMPTY_SET\` / \`EMPTY_STR_ARRAY\` / \`EMPTY_FEED_ARRAY\` 定数に差し替え、\`useMemo\` 依存配列での不要な再計算を防止
+
 ## 2026-03-28 (189)
 
 ### リファクタリング
