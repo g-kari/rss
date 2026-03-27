@@ -20,6 +20,7 @@ interface Props {
   theme: "light" | "dark";
   refreshing: boolean;
   pinnedFeedIds: Set<string>;
+  nsfwMode: boolean;
   onSelectFeed: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
@@ -32,6 +33,8 @@ interface Props {
   onRefresh: () => void;
   onRetryFeed: (id: string) => Promise<void>;
   onTogglePinFeed: (id: string) => void;
+  onActivateNsfw: () => void;
+  onToggleNsfwFeed: (feed: Feed) => void;
   recommendations?: RecommendedFeed[];
   recommendationsLoading?: boolean;
   recommendationsRefreshing?: boolean;
@@ -71,6 +74,9 @@ export default function FeedSidebar({
   refreshing,
   pinnedFeedIds,
   onTogglePinFeed,
+  nsfwMode,
+  onActivateNsfw,
+  onToggleNsfwFeed,
   recommendations,
   recommendationsLoading,
   recommendationsRefreshing,
@@ -166,9 +172,13 @@ export default function FeedSidebar({
     <aside className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
       {/* ヘッダー */}
       <div className="px-4 py-3.5 border-b border-border-default flex items-center justify-between">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <button
+          onClick={onActivateNsfw}
+          className={`text-[10px] font-medium tracking-[0.25em] uppercase transition-colors duration-200 select-none cursor-default ${nsfwMode ? "text-rose-400" : "text-text-muted"}`}
+          title={nsfwMode ? "NSFWモード中" : ""}
+        >
           RSS
-        </span>
+        </button>
         <button
           onClick={() => {
             const next = !feedSearchOpen;
@@ -501,6 +511,7 @@ export default function FeedSidebar({
               onRename={(title) => renameFeed(feed.id, title)}
               onRetry={() => onRetryFeed(feed.id)}
               onFilterSave={(filter) => saveFilter(feed.id, filter)}
+              onToggleNsfw={() => onToggleNsfwFeed(feed)}
             />
           );
         })}
@@ -529,6 +540,7 @@ export default function FeedSidebar({
               onRename={(title) => renameFeed(feed.id, title)}
               onRetry={() => onRetryFeed(feed.id)}
               onFilterSave={(filter) => saveFilter(feed.id, filter)}
+              onToggleNsfw={() => onToggleNsfwFeed(feed)}
             />
           );
         })}

@@ -79,6 +79,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
+    // nsfw の更新（存在する場合のみ）
+    if ("nsfw" in body) {
+      if (typeof body.nsfw !== "boolean")
+        return NextResponse.json({ error: "nsfw must be a boolean" }, { status: 400 });
+      sub.nsfw = body.nsfw;
+    }
+
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
 
     const meta = await readFeedMeta(env.RSS_DATA, feedHash);

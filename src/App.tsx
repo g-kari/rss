@@ -7,6 +7,7 @@ import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
+import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
 import type { Article, KeywordFilter } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
@@ -51,6 +52,10 @@ export default function App() {
     install,
     showHelp,
     setShowHelp,
+    nsfwMode,
+    showNSFWAnimation,
+    activateNSFW,
+    onNSFWAnimationComplete,
   } = useUIState(initialMobilePane);
 
   const {
@@ -137,6 +142,20 @@ export default function App() {
     updateFaviconBadge(totalUnread).catch(() => {});
   }, [totalUnread]);
 
+  const toggleNsfwFeed = useCallback(
+    async (feed: import("./types").Feed) => {
+      const res = await apiFetch(`/api/feeds/${feed.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nsfw: !feed.nsfw }),
+      });
+      if (!res.ok) return;
+      const updated = (await res.json()) as import("./types").Feed;
+      updateFeed(updated);
+    },
+    [updateFeed],
+  );
+
   const saveFilter = useCallback(
     async (feedId: string, filter: KeywordFilter | null) => {
       const res = await apiFetch(`/api/feeds/${feedId}`, {
@@ -189,6 +208,8 @@ export default function App() {
 
   const { historyIds, historyOrder, addToHistory } = useReadingHistory();
 
+  const nsfwFeedIds = useMemo(() => new Set(feeds.filter((f) => f.nsfw).map((f) => f.id)), [feeds]);
+
   const { bookmarkCount, readingListCount, historyCount } = useMemo(() => {
     let bm = 0,
       rl = 0,
@@ -228,6 +249,8 @@ export default function App() {
     historyIds,
     historyOrder,
     selectedArticleId: selectedArticle?.id,
+    nsfwMode,
+    nsfwFeedIds,
   });
 
   const currentIndex = useMemo(
@@ -552,6 +575,8 @@ export default function App() {
 
       {/* キーボードショートカット ヘルプ */}
       {showHelp && <KeyboardShortcutsModal onClose={() => setShowHelp(false)} />}
+      {/* NSFW 目が開くアニメーション */}
+      {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
       {newArticleCount > 0 && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-ink text-ink-text text-[12px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] animate-fade-up">
           <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
@@ -607,6 +632,9 @@ export default function App() {
             refreshing={refreshing}
             pinnedFeedIds={pinnedFeedIds}
             onTogglePinFeed={togglePinFeed}
+            nsfwMode={nsfwMode}
+            onActivateNsfw={activateNSFW}
+            onToggleNsfwFeed={toggleNsfwFeed}
             recommendations={recommendations}
             recommendationsLoading={recommendationsLoading}
             recommendationsRefreshing={recommendationsRefreshing}

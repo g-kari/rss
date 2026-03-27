@@ -26,6 +26,7 @@ export const STORAGE_KEYS = {
   OGP_CACHE: "rss-ogp-cache",
   SEARCH_HISTORY: "rss-search-history",
   HISTORY: "rss-history",
+  NSFW_MODE: "rss-nsfw-mode",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
