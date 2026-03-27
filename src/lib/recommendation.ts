@@ -14,6 +14,11 @@ import { buildContentCacheKey } from "./fetch-article-content";
 // gemma-3-12b-it: 日本語・英語混在タイトルのトピック抽出に使用
 const MODEL = "@cf/google/gemma-3-12b-it" as Parameters<Ai["run"]>[0];
 
+/** Promise.allSettled の結果から fulfilled かつ非 null の値だけを収集する */
+function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
+  return settled.flatMap((r) => (r.status === "fulfilled" && r.value ? [r.value] : []));
+}
+
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 時間
 const MAX_RECOMMENDATIONS = 20;
 
@@ -183,7 +188,6 @@ export async function generateWebSearchFeeds(
   }
 
   // discoverFeedUrl() を並列実行
-  const results: RecommendedFeed[] = [];
   const checks = candidates.slice(0, 10).map(async (candidate) => {
     try {
       const feedUrl = await discoverFeedUrl(candidate.url);
@@ -205,14 +209,7 @@ export async function generateWebSearchFeeds(
     }
   });
 
-  const settled = await Promise.allSettled(checks);
-  for (const r of settled) {
-    if (r.status === "fulfilled" && r.value) {
-      results.push(r.value);
-    }
-  }
-
-  return results;
+  return fulfilledValues(await Promise.allSettled(checks));
 }
 
 // ── 人気フィードランキング ────────────────────────────────────────
@@ -237,34 +234,31 @@ export async function generatePopularFeeds(
 
   const maxCount = ranked[0][1].length;
 
-  const results: RecommendedFeed[] = [];
-  await Promise.allSettled(
-    ranked.map(async ([feedHash, userIds]) => {
-      try {
-        const meta = await readFeedMeta(bucket, feedHash);
-        if (!meta?.url) return;
+  const checks = ranked.map(async ([feedHash, userIds]) => {
+    try {
+      const meta = await readFeedMeta(bucket, feedHash);
+      if (!meta?.url) return null;
 
-        const subscriberCount = userIds.length;
-        // 購読者数を 0.5〜0.85 に正規化（Web 検索 0.9 より低く設定）
-        const score = maxCount > 1 ? 0.5 + (subscriberCount / maxCount) * 0.35 : 0.5;
+      const subscriberCount = userIds.length;
+      // 購読者数を 0.5〜0.85 に正規化（Web 検索 0.9 より低く設定）
+      const score = maxCount > 1 ? 0.5 + (subscriberCount / maxCount) * 0.35 : 0.5;
 
-        const id = (await sha256Hex(`pop_${meta.url}`)).slice(0, 12);
-        results.push({
-          id,
-          feedUrl: meta.url,
-          title: meta.title ?? meta.url,
-          siteUrl: meta.siteUrl ?? meta.url,
-          reason: `${subscriberCount}人が購読中`,
-          source: "popular" as const,
-          score,
-        });
-      } catch {
-        // メタ取得失敗はスキップ
-      }
-    }),
-  );
+      const id = (await sha256Hex(`pop_${meta.url}`)).slice(0, 12);
+      return {
+        id,
+        feedUrl: meta.url,
+        title: meta.title ?? meta.url,
+        siteUrl: meta.siteUrl ?? meta.url,
+        reason: `${subscriberCount}人が購読中`,
+        source: "popular" as const,
+        score,
+      };
+    } catch {
+      return null;
+    }
+  });
 
-  return results;
+  return fulfilledValues(await Promise.allSettled(checks));
 }
 
 // ── リンク発見（Link Discovery） ─────────────────────────────────
@@ -354,7 +348,6 @@ export async function generateLinkDiscoveryFeeds(
   if (candidates.length === 0) return [];
 
   // discoverFeedUrl() を並列実行
-  const results: RecommendedFeed[] = [];
   const checks = candidates.map(async ({ url, articleTitle }) => {
     try {
       const feedUrl = await discoverFeedUrl(url);
@@ -376,14 +369,7 @@ export async function generateLinkDiscoveryFeeds(
     }
   });
 
-  const settled = await Promise.allSettled(checks);
-  for (const r of settled) {
-    if (r.status === "fulfilled" && r.value) {
-      results.push(r.value);
-    }
-  }
-
-  return results;
+  return fulfilledValues(await Promise.allSettled(checks));
 }
 
 // ── メインのレコメンド生成関数 ──────────────────────────────────
@@ -410,15 +396,13 @@ export async function generateRecommendations(params: {
   const topics = await extractUserTopics(bucket, subscriptions, engagement, ai);
 
   // Web 検索・人気フィード・リンク発見を並列実行
-  const [webSettled, popularSettled, linkSettled] = await Promise.allSettled([
-    generateWebSearchFeeds(topics, subscribedUrls),
-    generatePopularFeeds(bucket, subscribedFeedHashes),
-    generateLinkDiscoveryFeeds(bucket, engagement, subscribedUrls, origin),
-  ]);
-
-  const webResults = webSettled.status === "fulfilled" ? webSettled.value : [];
-  const popularResults = popularSettled.status === "fulfilled" ? popularSettled.value : [];
-  const linkResults = linkSettled.status === "fulfilled" ? linkSettled.value : [];
+  const [webResults, popularResults, linkResults] = (
+    await Promise.allSettled([
+      generateWebSearchFeeds(topics, subscribedUrls),
+      generatePopularFeeds(bucket, subscribedFeedHashes),
+      generateLinkDiscoveryFeeds(bucket, engagement, subscribedUrls, origin),
+    ])
+  ).map((r) => (r.status === "fulfilled" ? r.value : []));
 
   // feedUrl で重複排除してマージ（Web 検索 → リンク発見 → 人気 の優先度）
   const seenFeedUrls = new Set<string>();
