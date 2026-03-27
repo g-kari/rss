@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { Feed, KeywordFilter } from "../types";
 
 interface Props {
@@ -146,7 +147,7 @@ export default function FeedFilterModal({ feed, onClose, onSave }: Props) {
   const hasFilter =
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={(e) => {
@@ -245,6 +246,7 @@ export default function FeedFilterModal({ feed, onClose, onSave }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
