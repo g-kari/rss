@@ -6,6 +6,9 @@ import { cycleValue, DATE_RANGE_CYCLE } from "../lib/article-utils";
 import { filterAndSortArticles } from "../lib/article-filter";
 
 const PAGE_SIZE = 30;
+const EMPTY_SET = new Set<string>();
+const EMPTY_STR_ARRAY: string[] = [];
+const EMPTY_FEED_ARRAY: Feed[] = [];
 
 /** boolean state をトグルして localStorage に保存するステート更新関数を返す */
 function boolToggleWithStorage(key: string) {
@@ -35,17 +38,17 @@ export type SortOrder = "newest" | "oldest";
 
 export function useFilteredArticles({
   articles,
-  feeds = [],
+  feeds = EMPTY_FEED_ARRAY,
   feedId,
   readIds,
   bookmarkIds,
   readingListIds,
-  likeIds = new Set<string>(),
-  historyIds = new Set<string>(),
-  historyOrder = [],
+  likeIds = EMPTY_SET,
+  historyIds = EMPTY_SET,
+  historyOrder = EMPTY_STR_ARRAY,
   selectedArticleId,
   nsfwMode = false,
-  nsfwFeedIds = new Set<string>(),
+  nsfwFeedIds = EMPTY_SET,
 }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
