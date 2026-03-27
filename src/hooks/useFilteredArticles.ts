@@ -130,12 +130,16 @@ export function useFilteredArticles({
     setPage((p) => p + 1);
   }, []);
 
-  // フィードごとのキーワードフィルターマップ
+  // フィードごとのキーワードフィルターマップ（キーワードは事前小文字化済み）
   const feedFilterMap = useMemo(() => {
     const map = new Map<string, NonNullable<Feed["filter"]>>();
     for (const f of feeds) {
       if (f.filter && (f.filter.include.length > 0 || f.filter.exclude.length > 0)) {
-        map.set(f.id, f.filter);
+        map.set(f.id, {
+          ...f.filter,
+          include: f.filter.include.map((kw) => kw.toLowerCase()),
+          exclude: f.filter.exclude.map((kw) => kw.toLowerCase()),
+        });
       }
     }
     return map;

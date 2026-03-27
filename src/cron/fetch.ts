@@ -1,6 +1,7 @@
 import type { Article, SharedFeedMeta, PushConfig } from "../types";
 
 import { parseFeed, type ParsedItem } from "../lib/xml-parser";
+import { compareByPublishedAtDesc } from "../lib/article-utils";
 import { scrapeFeed } from "../lib/llm-feed-generator";
 import { isValidFeedUrl } from "../lib/url";
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "../lib/fetch";
@@ -241,14 +242,7 @@ async function fetchAndParseFeed(
   // 巨大フィードの初回取得で cascadeOverflow の R2 操作が爆発しないよう
   // publishedAt 降順で最新 FEED_MAX_ITEMS 件に切り詰める
   if (parsed.items.length > FEED_MAX_ITEMS) {
-    // ISO 8601 文字列は辞書順と時系列順が一致するため文字列比較で降順ソート（null は末尾）
-    parsed.items = parsed.items
-      .sort((a, b) => {
-        const ap = a.publishedAt ?? "";
-        const bp = b.publishedAt ?? "";
-        return bp > ap ? 1 : bp < ap ? -1 : 0;
-      })
-      .slice(0, FEED_MAX_ITEMS);
+    parsed.items = parsed.items.sort(compareByPublishedAtDesc).slice(0, FEED_MAX_ITEMS);
   }
 
   applyFeedSuccess(meta, parsed);

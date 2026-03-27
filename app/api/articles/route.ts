@@ -44,7 +44,13 @@ export async function GET(request: NextRequest) {
     // フィードごとのキーワードフィルターを適用
     const filterMap = new Map<string, KeywordFilter>();
     for (const sub of subs) {
-      if (sub.filter) filterMap.set(sub.feedHash, sub.filter);
+      if (sub.filter) {
+        filterMap.set(sub.feedHash, {
+          ...sub.filter,
+          include: sub.filter.include.map((kw) => kw.toLowerCase()),
+          exclude: sub.filter.exclude.map((kw) => kw.toLowerCase()),
+        });
+      }
     }
     const filteredFeedArticles = feedArticles.filter((a) => {
       const filter = filterMap.get(a.feedHash);
