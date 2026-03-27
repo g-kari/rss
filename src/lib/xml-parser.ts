@@ -211,7 +211,8 @@ function safeUrl(url: string): string {
   // unescapeHtml: エンティティデコード + ゼロ幅文字除去
   // 先頭の ASCII 制御文字・空白も除去（ブラウザの URL 正規化に倣う）
   const decoded = unescapeHtml(url).replace(/^[\u0000-\u0020\u007F]+/, "");
-  return /^https?:\/\//i.test(decoded) ? url : "";
+  // decoded を返すことで HTML エンティティ（&amp; 等）を正規化した URL を格納する
+  return /^https?:\/\//i.test(decoded) ? decoded : "";
 }
 
 /** XmlAttr または XmlAttr[] から最初の @_url を取得する */

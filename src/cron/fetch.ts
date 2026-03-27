@@ -245,7 +245,8 @@ async function fetchAndParseFeed(
         if (!a.publishedAt && !b.publishedAt) return 0;
         if (!a.publishedAt) return 1;
         if (!b.publishedAt) return -1;
-        return b.publishedAt.localeCompare(a.publishedAt);
+        // ISO 8601 文字列は辞書順と時系列順が一致するため比較演算子で降順ソート
+        return b.publishedAt > a.publishedAt ? 1 : -1;
       })
       .slice(0, FEED_MAX_ITEMS);
   }
