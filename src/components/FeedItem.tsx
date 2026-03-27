@@ -66,7 +66,7 @@ interface Action {
   key: string;
   label: string;
   icon: React.ReactNode;
-  onClick: (e: React.MouseEvent) => void;
+  onClick: () => void;
   disabled?: boolean;
   className?: string;
   show?: boolean;
@@ -139,19 +139,15 @@ export default function FeedItem({
     [commitEdit],
   );
 
-  const handleRetry = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (retrying) return;
-      setRetrying(true);
-      try {
-        await onRetry();
-      } finally {
-        setRetrying(false);
-      }
-    },
-    [onRetry, retrying],
-  );
+  const handleRetry = useCallback(async () => {
+    if (retrying) return;
+    setRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setRetrying(false);
+    }
+  }, [onRetry, retrying]);
 
   const hasFilter =
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
@@ -161,10 +157,7 @@ export default function FeedItem({
       key: "nsfw",
       label: feed.nsfw ? "NSFW解除" : "NSFW設定",
       icon: <NsfwIcon />,
-      onClick: (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onToggleNsfw?.();
-      },
+      onClick: () => onToggleNsfw?.(),
       show: !!onToggleNsfw,
       className: feed.nsfw
         ? "text-rose-400 hover:text-rose-300"
@@ -174,11 +167,7 @@ export default function FeedItem({
       key: "filter",
       label: hasFilter ? "フィルター設定中" : "キーワードフィルター",
       icon: <FilterIcon />,
-      onClick: (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setMenuOpen(false);
-        setFilterModalOpen(true);
-      },
+      onClick: () => setFilterModalOpen(true),
       show: !!onFilterSave,
       className: hasFilter ? "text-text-default" : "text-text-faint hover:text-text-default",
     },
@@ -199,10 +188,7 @@ export default function FeedItem({
           <path d="M5 1L6.5 4H9L7 6l.5 3L5 7.5 2.5 9 3 6 1 4h2.5z" />
         </svg>
       ),
-      onClick: (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onTogglePin();
-      },
+      onClick: () => onTogglePin(),
       className: isPinned ? "text-text-default" : "text-text-faint hover:text-text-default",
     },
     {
@@ -222,10 +208,7 @@ export default function FeedItem({
           <path d="M1.5 5l2.5 2.5L8.5 2.5" />
         </svg>
       ),
-      onClick: (e) => {
-        e.stopPropagation();
-        onMarkAllRead();
-      },
+      onClick: () => onMarkAllRead(),
       show: count > 0,
       className: "text-text-faint hover:text-text-default",
     },
@@ -271,10 +254,7 @@ export default function FeedItem({
           <line x1="9" y1="1" x2="1" y2="9" />
         </svg>
       ),
-      onClick: (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onDelete();
-      },
+      onClick: () => onDelete(),
       className: "text-text-faint hover:text-rose-400",
       variant: "danger" as const,
     },
@@ -362,7 +342,10 @@ export default function FeedItem({
           {visibleActions.map((action) => (
             <button
               key={action.key}
-              onClick={action.onClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                action.onClick();
+              }}
               disabled={action.disabled}
               title={action.label}
               className={`p-0.5 transition-colors duration-150 disabled:opacity-40 ${action.className ?? ""}`}
@@ -412,8 +395,9 @@ export default function FeedItem({
                 <button
                   key={action.key}
                   onClick={(e) => {
+                    e.stopPropagation();
                     setMenuOpen(false);
-                    action.onClick(e);
+                    action.onClick();
                   }}
                   disabled={action.disabled}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
