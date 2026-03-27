@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
-import { isValidFeedUrl, MAX_URL_LENGTH } from "@/lib/url";
+import { isValidFeedUrl } from "@/lib/url";
 import { buildCacheKey } from "@/lib/r2";
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "@/lib/fetch";
 import { unescapeHtml } from "@/lib/html";
@@ -9,6 +9,8 @@ const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BYTES = 512 * 1024; // og:image は先頭 512KB 以内にある
 const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const OGP_NEGATIVE_CACHE_TTL_SEC = 24 * 60 * 60; // 1日（og:image なし・フェッチ失敗）
+// OGP 画像 URL は imgix 等のCDNで長くなる場合がある（Qiita例: ~2700文字）
+const MAX_OGP_IMAGE_URL_LENGTH = 8192;
 
 export async function GET(request: Request) {
   return withSession(({ ctx }) => handleGet(request, ctx));
@@ -68,9 +70,10 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     };
 
     // og:image — data:/javascript: などの危険スキームと URL 長超過をブロック
+    // OGP 画像 URL は imgix 等 CDN で長くなるため、汎用 MAX_URL_LENGTH より大きい専用上限を使用
     const rawImage = extractOgMeta("image");
     const image =
-      /^https?:\/\//i.test(rawImage) && rawImage.length <= MAX_URL_LENGTH ? rawImage : "";
+      /^https?:\/\//i.test(rawImage) && rawImage.length <= MAX_OGP_IMAGE_URL_LENGTH ? rawImage : "";
     const title = extractOgMeta("title").slice(0, 200);
     const description = extractOgMeta("description").slice(0, 500);
 

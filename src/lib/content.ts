@@ -10,7 +10,7 @@
 import { marked } from "marked";
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom/worker";
-import { sanitizeHtml, escapeHtml } from "./html";
+import { sanitizeHtml, escapeHtml, unescapeHtml } from "./html";
 
 /** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */
 function tryParseBase(pageUrl: string): URL | null {
@@ -340,12 +340,12 @@ export function rewriteImageUrls(html: string): string {
   return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
     let rewritten = attrs.replace(
       /\bsrc=["'](https?:\/\/[^"']+)["']/gi,
-      (_sm, src: string) => `src="/api/image-proxy?url=${encodeURIComponent(src)}"`,
+      (_sm, src: string) => `src="/api/image-proxy?url=${encodeURIComponent(unescapeHtml(src))}"`,
     );
     rewritten = rewritten.replace(/\bsrcset=["']([^"']+)["']/gi, (_sm, srcset: string) => {
       const proxied = transformSrcset(srcset, (url) => {
         if (!/^https?:\/\//i.test(url)) return url;
-        return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+        return `/api/image-proxy?url=${encodeURIComponent(unescapeHtml(url))}`;
       });
       return `srcset="${proxied}"`;
     });
