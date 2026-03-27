@@ -28,6 +28,7 @@ interface Options {
   readIds: Set<string>;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
+  likeIds?: Set<string>;
   historyIds?: Set<string>;
   historyOrder?: string[];
   selectedArticleId?: string | null;
@@ -44,6 +45,7 @@ export function useFilteredArticles({
   readIds,
   bookmarkIds,
   readingListIds,
+  likeIds = new Set<string>(),
   historyIds = new Set<string>(),
   historyOrder = [],
   selectedArticleId,
@@ -158,6 +160,8 @@ export function useFilteredArticles({
         if (!bookmarkIds.has(a.id)) return false;
       } else if (feedId === "__reading_list__") {
         if (!readingListIds.has(a.id)) return false;
+      } else if (feedId === "__likes__") {
+        if (!likeIds.has(a.id)) return false;
       } else if (feedId === "__history__") {
         if (!historyIds.has(a.id)) return false;
       } else if (feedId && a.feedHash !== feedId) return false;
@@ -203,6 +207,7 @@ export function useFilteredArticles({
     readIds,
     bookmarkIds,
     readingListIds,
+    likeIds,
     historyIds,
     historyOrder,
     unreadOnly,

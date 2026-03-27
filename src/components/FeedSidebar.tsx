@@ -14,6 +14,7 @@ interface Props {
   readIds: Set<string>;
   bookmarkCount: number;
   readingListCount: number;
+  likeCount: number;
   historyCount: number;
   selectedFeedId: string | null;
   user: UserProfile;
@@ -58,6 +59,7 @@ export default function FeedSidebar({
   readIds,
   bookmarkCount,
   readingListCount,
+  likeCount,
   historyCount,
   selectedFeedId,
   user,
@@ -448,6 +450,21 @@ export default function FeedSidebar({
             )}
           </button>
         </div>
+        <button
+          onClick={() => onSelectFeed("__likes__")}
+          className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
+            selectedFeedId === "__likes__"
+              ? "text-text-strong bg-surface-subtle"
+              : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
+          }`}
+        >
+          <span className="text-[13px] tracking-[0.02em]">いいね</span>
+          {likeCount > 0 && (
+            <span className="text-[11px] text-text-muted tabular-nums">
+              {formatCount(likeCount)}
+            </span>
+          )}
+        </button>
 
         {/* URL から記事を保存 */}
         <div className="px-4 py-1">

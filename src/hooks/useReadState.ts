@@ -178,12 +178,14 @@ export function useReadState(
     (feedId: string | null) => {
       setReadIds((prev) => {
         const arts = articlesRef.current;
-        const { bookmarks, readingList } = stateRef.current;
+        const { bookmarks, readingList, likes } = stateRef.current;
         let ids: string[];
         if (feedId === "__bookmarks__") {
           ids = arts.filter((a) => bookmarks.has(a.id)).map((a) => a.id);
         } else if (feedId === "__reading_list__") {
           ids = arts.filter((a) => readingList.has(a.id)).map((a) => a.id);
+        } else if (feedId === "__likes__") {
+          ids = arts.filter((a) => likes.has(a.id)).map((a) => a.id);
         } else if (feedId) {
           ids = arts.filter((a) => a.feedHash === feedId).map((a) => a.id);
         } else {

@@ -4,11 +4,21 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (188)
+
+### 新機能
+
+- **「いいね」した記事の一覧ビューをサイドバーに追加** — \`likeIds\` はすでに追跡されていたが専用ビューが存在しなかった。サイドバーに「いいね」エントリを追加し、\`useFilteredArticles\` に \`__likes__\` フィードIDサポートを実装。\`markAllRead\` にも \`__likes__\` ケースを追加
+
+### バグ修正
+
+- **\`release-notes-data.ts\` のエスケープなしバッククォートを修正** — テンプレートリテラル内の未エスケープバッククォートを \`\\\`\` に修正
+
 ## 2026-03-28 (187)
 
 ### リファクタリング
 
-- **`FeedItem` のアクションハンドラから `e.stopPropagation()` を集約** — `actions` 配列の各 `onClick` で個別に呼んでいた `e.stopPropagation()` をレンダリング層（デスクトップ・モバイルの button `onClick`）に一元化。`Action.onClick` の型を `() => void` に簡略化し、各アクションの実装から不要なイベント引数を除去
+- **\`FeedItem\` のアクションハンドラから \`e.stopPropagation()\` を集約** — \`actions\` 配列の各 \`onClick\` で個別に呼んでいた \`e.stopPropagation()\` をレンダリング層（デスクトップ・モバイルの button \`onClick\`）に一元化。\`Action.onClick\` の型を \`() => void\` に簡略化し、各アクションの実装から不要なイベント引数を除去
 
 ## 2026-03-28 (186)
 
