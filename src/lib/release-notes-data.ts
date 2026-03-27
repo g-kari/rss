@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (134)
+
+### セキュリティ
+- **\`scrapeFeed\` で抽出した記事リンクの URL スキームを検証** — LLM 生成フィードのスクレイピング処理で、\`javascript:\` 等の危険スキームを持つ \`href\` が記事リンクとして保存され XSS の踏み台になりうる問題を修正。\`http(s)://\` 以外の URL を除外するよう \`scrapeFeed\` に検証を追加（RSS の xml-parser が使う \`safeUrl()\` と同水準）
+
 ## 2026-03-27 (133)
 
 ### リファクタリング
