@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (129)
+
+### リファクタリング
+- **Push 設定の R2 キー生成を \`userPushKey()\` に集約** — \`users/\${userId}/push.json\` のキー文字列が \`push/subscribe\`・\`push/unsubscribe\`・\`push/status\` の各 Route Handler と \`cron/fetch.ts\` の計4箇所に散在していたため、\`r2.ts\` に \`userPushKey(userId)\` ヘルパーを追加して統一
+
 ## 2026-03-27 (128)
 
 ### リファクタリング
