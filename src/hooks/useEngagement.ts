@@ -3,6 +3,7 @@
 import { useCallback, useRef } from "react";
 import type { EngagementAction, UserProfile } from "../types";
 import { storageGet, storageSet } from "../lib/storage";
+import { apiFetch } from "../lib/api-fetch";
 
 const BUFFER_KEY = "rss-engagement-buffer";
 const MAX_BUFFER = 100;
@@ -28,7 +29,7 @@ async function flushBuffer(): Promise<void> {
   try {
     await Promise.all(
       buffer.map((entry) =>
-        fetch("/api/engagement", {
+        apiFetch("/api/engagement", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(entry),

@@ -37,6 +37,7 @@ interface FeedItem {
     "media:thumbnail"?: XmlAttr | XmlAttr[];
     "media:content"?: XmlAttr | XmlAttr[];
   };
+  category?: XmlTextNode | XmlTextNode[];
 }
 
 /** fast-xml-parser が返すトップレベル構造 */
@@ -73,6 +74,7 @@ export interface ParsedItem {
   ogImage: string;
   author: string;
   publishedAt: string | null;
+  categories: string[];
 }
 
 export interface ParsedFeed {
@@ -84,7 +86,7 @@ export interface ParsedFeed {
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
-  isArray: (name) => ["item", "entry", "link"].includes(name),
+  isArray: (name) => ["item", "entry", "link", "category"].includes(name),
   // GHSA-jp2q-39xq-3w4g (entity 展開 DoS) は fast-xml-parser v4.2.4 以降で修正済み。
   // v5.x では processEntities オブジェクト形式で制限値を個別に設定できる。
   //
@@ -230,6 +232,7 @@ interface JsonFeedItem {
   authors?: JsonFeedAuthor[];
   /** JSON Feed v1.0 互換フィールド */
   author?: JsonFeedAuthor;
+  tags?: string[];
 }
 
 interface JsonFeedRoot {
@@ -265,6 +268,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
       ogImage: safeUrl(item.image ?? item.banner_image ?? ""),
       author,
       publishedAt: parseDate(item.date_published ?? item.date_modified ?? null),
+      categories: item.tags ?? [],
     };
   });
   return { title: data.title ?? "", siteUrl: data.home_page_url ?? "", items };
@@ -304,6 +308,9 @@ export function parseFeed(xml: string): ParsedFeed {
           ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
           publishedAt: parseDate(str(item.pubDate) || null),
+          categories: toArray(item.category)
+            .map((c) => str(c))
+            .filter(Boolean),
         };
       }),
     };
@@ -333,6 +340,13 @@ export function parseFeed(xml: string): ParsedFeed {
           ogImage: safeUrl(extractImage(entry)),
           author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
           publishedAt: parseDate(entry.published ?? entry.updated),
+          categories: toArray(entry.category)
+            .map((c) =>
+              typeof c === "object" && c !== null && "@_term" in c
+                ? String((c as { "@_term"?: unknown })["@_term"] ?? "")
+                : str(c),
+            )
+            .filter(Boolean),
         };
       }),
     };
@@ -359,6 +373,9 @@ export function parseFeed(xml: string): ParsedFeed {
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
           // RSS 1.0 は pubDate がなく dc:date （ISO 8601）を使う
           publishedAt: parseDate(str(item.pubDate) || null) ?? parseDate(item["dc:date"] ?? null),
+          categories: toArray(item.category)
+            .map((c) => str(c))
+            .filter(Boolean),
         };
       }),
     };

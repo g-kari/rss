@@ -10,6 +10,39 @@ export const COOKIE_OPTS = {
   path: "/",
 };
 
+/** リフレッシュリクエストの重複実行を防ぐ Map（refreshToken → Promise） */
+const inflightRefresh = new Map<
+  string,
+  Promise<{ access_token: string; refresh_token: string } | null>
+>();
+
+/** refreshTokens の重複呼び出しを deduplication する */
+function deduplicatedRefresh(
+  refreshToken: string,
+): Promise<{ access_token: string; refresh_token: string } | null> {
+  const inflight = inflightRefresh.get(refreshToken);
+  if (inflight) return inflight;
+  const p = refreshTokens(refreshToken).finally(() => {
+    inflightRefresh.delete(refreshToken);
+  });
+  inflightRefresh.set(refreshToken, p);
+  return p;
+}
+
+/** JWT ペイロードの exp クレームを base64 デコードで取得する（署名検証なし） */
+function getJwtExp(token: string): number | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
+      exp?: number;
+    };
+    return typeof payload.exp === "number" ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
 /** BETA_ALLOWED_SUBS が設定されている場合、sub がリストに含まれるか確認 */
 export function isBetaAllowed(sub: string): boolean {
   const list = process.env.BETA_ALLOWED_SUBS?.trim();
@@ -20,6 +53,8 @@ export function isBetaAllowed(sub: string): boolean {
 export interface AuthSession {
   userId: string;
   refreshedTokens?: { access_token: string; refresh_token: string };
+  /** リフレッシュ試行が失敗した場合 true。Cookie クリアが必要 */
+  refreshFailed?: boolean;
 }
 
 /**
@@ -42,7 +77,7 @@ export async function getAuthSession(): Promise<AuthSession | null> {
   // アクセストークン期限切れ → リフレッシュ試行
   const refreshToken = cookieStore.get("refresh_token")?.value;
   if (refreshToken) {
-    const refreshed = await refreshTokens(refreshToken);
+    const refreshed = await deduplicatedRefresh(refreshToken);
     if (refreshed) {
       const payload = await verifyJwt(refreshed.access_token, authBaseUrl);
       if (payload) {
@@ -50,6 +85,8 @@ export async function getAuthSession(): Promise<AuthSession | null> {
         return { userId: payload.sub, refreshedTokens: refreshed };
       }
     }
+    // リフレッシュ失敗 → 壊れた Cookie をクリアするためセッションに失敗フラグを付与
+    return { userId: "", refreshFailed: true };
   }
 
   return null;
@@ -60,8 +97,15 @@ export async function requireSession(): Promise<
   { session: AuthSession } | { error: NextResponse }
 > {
   const session = await getAuthSession();
-  if (!session) {
-    return { error: NextResponse.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 }) };
+  if (!session || session.refreshFailed) {
+    const res = NextResponse.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 });
+    if (session?.refreshFailed) {
+      // リフレッシュ失敗時は壊れた Cookie を削除する
+      res.cookies.delete("access_token");
+      res.cookies.delete("refresh_token");
+      res.cookies.delete("token_exp");
+    }
+    return { error: res };
   }
   return { session };
 }
@@ -77,6 +121,17 @@ export function applyRefreshedTokens(response: NextResponse, session: AuthSessio
       ...COOKIE_OPTS,
       maxAge: 30 * 24 * 60 * 60,
     });
+    // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
+    const exp = getJwtExp(session.refreshedTokens.access_token);
+    if (exp !== null) {
+      response.cookies.set("token_exp", String(exp), {
+        maxAge: 900,
+        httpOnly: false,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+      });
+    }
   }
   return response;
 }
@@ -170,6 +225,11 @@ export function applyRefreshedTokensToResponse(response: Response, session: Auth
     "Set-Cookie",
     `refresh_token=${session.refreshedTokens.refresh_token}; Max-Age=${30 * 24 * 60 * 60}${cookiePath}`,
   );
+  // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
+  const exp = getJwtExp(session.refreshedTokens.access_token);
+  if (exp !== null) {
+    headers.append("Set-Cookie", `token_exp=${exp}; Max-Age=900; Path=/; Secure; SameSite=Lax`);
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

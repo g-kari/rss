@@ -286,6 +286,7 @@ export function scrapeFeed(
       ogImage: "",
       author: "",
       publishedAt: null,
+      categories: [],
     });
   }
 

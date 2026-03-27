@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Feed, Article, UserProfile } from "../types";
 import { useOnlineStatus } from "./useOnlineStatus";
+import { apiFetch } from "../lib/api-fetch";
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
@@ -42,13 +43,13 @@ export function useFeeds(
   const prevIsOnlineRef = useRef(isOnline);
 
   const fetchFeedsData = useCallback(async () => {
-    const r = await fetch("/api/feeds");
+    const r = await apiFetch("/api/feeds");
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json() as Promise<Feed[]>;
   }, []);
 
   const fetchAndSetArticles = useCallback(async () => {
-    const res = await fetch("/api/articles");
+    const res = await apiFetch("/api/articles");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = (await res.json()) as Article[];
     setArticles(data);
@@ -156,7 +157,7 @@ export function useFeeds(
   const refreshFeeds = useCallback(async () => {
     setRefreshing(true);
     try {
-      await fetch("/api/feeds/refresh", { method: "POST" });
+      await apiFetch("/api/feeds/refresh", { method: "POST" });
       const [feedsData] = await Promise.all([fetchFeedsData(), fetchAndSetArticles()]);
       setFeeds(feedsData);
     } catch (err) {
@@ -170,7 +171,7 @@ export function useFeeds(
   const retryFeed = useCallback(
     async (feedId: string): Promise<void> => {
       try {
-        const res = await fetch(`/api/feeds/${feedId}/refresh`, { method: "POST" });
+        const res = await apiFetch(`/api/feeds/${feedId}/refresh`, { method: "POST" });
         if (!res.ok) return;
         const feed = (await res.json()) as Feed;
         setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
@@ -192,7 +193,7 @@ export function useFeeds(
     async (feedId: string): Promise<void> => {
       const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
       try {
-        const res = await fetch(`/api/articles?feed=${feedId}&page=${nextPage}`);
+        const res = await apiFetch(`/api/articles?feed=${feedId}&page=${nextPage}`);
         if (!res.ok) return;
         const data = (await res.json()) as Article[];
         if (data.length === 0) return;

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { Feed } from "../types";
+import { apiFetch } from "../lib/api-fetch";
 
 interface Callbacks {
   onFeedAdded: (feed: Feed) => void;
@@ -39,7 +40,7 @@ export function useFeedOperations({
     setAdding(true);
     setError("");
     try {
-      const res = await fetch("/api/feeds", {
+      const res = await apiFetch("/api/feeds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
@@ -61,7 +62,7 @@ export function useFeedOperations({
 
   async function deleteFeed(id: string) {
     try {
-      const res = await fetch(`/api/feeds/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/feeds/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       onFeedDeleted(id);
     } catch {
@@ -71,7 +72,7 @@ export function useFeedOperations({
 
   async function renameFeed(id: string, title: string) {
     try {
-      const res = await fetch(`/api/feeds/${id}`, {
+      const res = await apiFetch(`/api/feeds/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
@@ -90,7 +91,7 @@ export function useFeedOperations({
     setImporting(true);
     try {
       const text = await file.text();
-      const res = await fetch("/api/feeds/import", {
+      const res = await apiFetch("/api/feeds/import", {
         method: "POST",
         headers: { "Content-Type": "text/xml" },
         body: text,
@@ -102,7 +103,7 @@ export function useFeedOperations({
       }
       const data = (await res.json()) as { added: number; skipped: number };
       if (data.added > 0) {
-        const feedsRes = await fetch("/api/feeds");
+        const feedsRes = await apiFetch("/api/feeds");
         if (feedsRes.ok) {
           const allFeeds = (await feedsRes.json()) as Feed[];
           onFeedsImported(allFeeds);

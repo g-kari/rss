@@ -17,6 +17,7 @@ import { useFilteredArticles } from "./hooks/useFilteredArticles";
 import { useReadingHistory } from "./hooks/useReadingHistory";
 import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
+import { apiFetch } from "./lib/api-fetch";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
@@ -147,7 +148,7 @@ export default function App() {
   const onSaveArticleUrl = useCallback(
     async (url: string, mode: "bookmark" | "reading_list") => {
       try {
-        const res = await fetch("/api/articles/save", {
+        const res = await apiFetch("/api/articles/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url }),
@@ -208,6 +209,7 @@ export default function App() {
     sentinelRef,
   } = useFilteredArticles({
     articles,
+    feeds,
     feedId: selectedFeedId,
     readIds,
     bookmarkIds,
@@ -584,6 +586,7 @@ export default function App() {
             onFeedAdded={onFeedAdded}
             onFeedDeleted={onFeedDeleted}
             onFeedRenamed={updateFeed}
+            onFeedFilterSaved={updateFeed}
             onFeedsImported={replaceFeeds}
             onMarkAllRead={markAllRead}
             onToggleTheme={toggleTheme}

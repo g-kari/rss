@@ -7,7 +7,8 @@ import {
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
-import type { Article } from "@/types";
+import { applyKeywordFilter } from "@/lib/keyword-filter";
+import type { Article, KeywordFilter } from "@/types";
 
 export async function GET(request: NextRequest) {
   return withSession(async ({ session, env }) => {
@@ -25,18 +26,34 @@ export async function GET(request: NextRequest) {
         readUserSubscriptions(env.RSS_DATA, session.userId),
         fetchArticles,
       ]);
-      if (!subs.some((s) => s.feedHash === feedHash)) {
+      const sub = subs.find((s) => s.feedHash === feedHash);
+      if (!sub) {
         return NextResponse.json({ error: "Feed not found" }, { status: 404 });
       }
-      return NextResponse.json(articles);
+      return NextResponse.json(applyKeywordFilter(articles, sub.filter));
     }
 
     // デフォルト: 全購読フィードの latest.json + 手動保存記事をマージして返す
-    const [feedArticles, savedArticles] = await Promise.all([
+    const [subs, feedArticles, savedArticles] = await Promise.all([
+      readUserSubscriptions(env.RSS_DATA, session.userId),
       getUserLatestArticles(env.RSS_DATA, session.userId),
       r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
     ]);
-    const all = [...savedArticles, ...feedArticles].sort((a, b) => {
+
+    // フィードごとのキーワードフィルターを適用
+    const filterMap = new Map<string, KeywordFilter>();
+    for (const sub of subs) {
+      if (sub.filter) filterMap.set(sub.feedHash, sub.filter);
+    }
+    const filteredFeedArticles =
+      filterMap.size > 0
+        ? feedArticles.filter((a) => {
+            const filter = filterMap.get(a.feedHash);
+            return filter ? applyKeywordFilter([a], filter).length > 0 : true;
+          })
+        : feedArticles;
+
+    const all = [...savedArticles, ...filteredFeedArticles].sort((a, b) => {
       const at = new Date(a.publishedAt ?? a.createdAt).getTime();
       const bt = new Date(b.publishedAt ?? b.createdAt).getTime();
       return bt - at;

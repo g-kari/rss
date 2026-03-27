@@ -1,0 +1,27 @@
+import type { Article, KeywordFilter } from "../types";
+
+export function matchesKeywordFilter(article: Article, filter: KeywordFilter): boolean {
+  const { include, exclude, matchCategories } = filter;
+
+  const fields = [article.title, article.summary];
+  if (matchCategories && article.categories) {
+    fields.push(...article.categories);
+  }
+  const text = fields.join(" ").toLowerCase();
+
+  if (exclude.length > 0 && exclude.some((kw) => text.includes(kw.toLowerCase()))) {
+    return false;
+  }
+
+  if (include.length > 0 && !include.some((kw) => text.includes(kw.toLowerCase()))) {
+    return false;
+  }
+
+  return true;
+}
+
+export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter): Article[] {
+  if (!filter) return articles;
+  if (filter.include.length === 0 && filter.exclude.length === 0) return articles;
+  return articles.filter((a) => matchesKeywordFilter(a, filter));
+}

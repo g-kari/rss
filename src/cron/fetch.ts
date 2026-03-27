@@ -122,6 +122,7 @@ async function buildArticle(
     author: item.author || existing?.author,
     publishedAt: item.publishedAt,
     createdAt: existing?.createdAt ?? new Date().toISOString(),
+    categories: item.categories.length > 0 ? item.categories : existing?.categories,
   };
 }
 

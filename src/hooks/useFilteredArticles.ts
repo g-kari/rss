@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import type { Article, DateRange } from "../types";
+import type { Article, DateRange, Feed } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
+import { matchesKeywordFilter } from "../lib/keyword-filter";
 
 const PAGE_SIZE = 30;
 
@@ -16,6 +17,7 @@ function boolToggleWithStorage(key: string) {
 
 interface Options {
   articles: Article[];
+  feeds?: Feed[];
   feedId: string | null;
   readIds: Set<string>;
   bookmarkIds: Set<string>;
@@ -46,6 +48,7 @@ function getDateRangeStart(range: DateRange): Date | null {
 
 export function useFilteredArticles({
   articles,
+  feeds = [],
   feedId,
   readIds,
   bookmarkIds,
@@ -134,6 +137,17 @@ export function useFilteredArticles({
     setPage((p) => p + 1);
   }, []);
 
+  // フィードごとのキーワードフィルターマップ
+  const feedFilterMap = useMemo(() => {
+    const map = new Map<string, NonNullable<Feed["filter"]>>();
+    for (const f of feeds) {
+      if (f.filter && (f.filter.include.length > 0 || f.filter.exclude.length > 0)) {
+        map.set(f.id, f.filter);
+      }
+    }
+    return map;
+  }, [feeds]);
+
   const filtered = useMemo(() => {
     // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
     // gracePeriodId: 直前まで表示していた記事を5秒間保持（未読フィルター中でも前の記事に戻れるように）
@@ -150,6 +164,12 @@ export function useFilteredArticles({
       } else if (feedId === "__history__") {
         if (!historyIds.has(a.id)) return false;
       } else if (feedId && a.feedHash !== feedId) return false;
+
+      // キーワードフィルター（アクティブな記事はフィルタ対象外）
+      if (!isActive(a.id)) {
+        const kf = feedFilterMap.get(a.feedHash);
+        if (kf && !matchesKeywordFilter(a, kf)) return false;
+      }
 
       // 未読フィルター
       if (unreadOnly && readIds.has(a.id) && !isActive(a.id)) return false;
@@ -184,6 +204,7 @@ export function useFilteredArticles({
   }, [
     articles,
     feedId,
+    feedFilterMap,
     readIds,
     bookmarkIds,
     readingListIds,

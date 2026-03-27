@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { AiMode } from "../types";
 import { aiLruCache } from "../lib/lru-cache";
+import { apiFetch } from "../lib/api-fetch";
 
 interface ArticleAiState {
   aiResult: { mode: AiMode; text: string } | null;
@@ -53,7 +54,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
     setAiError("");
     try {
       const endpoint = mode === "summary" ? "/api/ai/summarize" : "/api/ai/translate";
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, articleId: currentArticleId }),
