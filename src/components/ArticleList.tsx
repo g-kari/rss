@@ -138,7 +138,7 @@ interface Props {
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
   dateRange: DateRange;
-  cycleDateRange: () => void;
+  cycleDateRange: () => DateRange;
   query: string;
   rawQuery: string;
   updateQuery: (q: string) => void;

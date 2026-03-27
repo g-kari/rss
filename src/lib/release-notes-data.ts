@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (171)
+
+### リファクタリング
+- **\`getDateRangeStart\` を \`article-utils\` に移動** — \`useFilteredArticles\` のプライベート関数だった \`getDateRangeStart\` を \`src/lib/article-utils.ts\` にエクスポートし、\`DATE_RANGE_CYCLE\` / \`DATE_RANGE_LABELS\` と同じモジュールに集約。あわせて \`ArticleList\` の \`cycleDateRange\` プロップ型を \`() => void\` から \`() => DateRange\` に修正
+
 ## 2026-03-28 (170)
 
 ### リファクタリング

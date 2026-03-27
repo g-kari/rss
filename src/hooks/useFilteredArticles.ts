@@ -3,7 +3,12 @@ import type { Article, DateRange, Feed } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { matchesKeywordFilter } from "../lib/keyword-filter";
-import { articleMatchesQuery, cycleValue, DATE_RANGE_CYCLE } from "../lib/article-utils";
+import {
+  articleMatchesQuery,
+  cycleValue,
+  DATE_RANGE_CYCLE,
+  getDateRangeStart,
+} from "../lib/article-utils";
 
 const PAGE_SIZE = 30;
 
@@ -31,23 +36,6 @@ interface Options {
 }
 
 export type SortOrder = "newest" | "oldest";
-
-function getDateRangeStart(range: DateRange): Date | null {
-  if (range === "all") return null;
-  const now = new Date();
-  if (range === "today") {
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  }
-  if (range === "week") {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 7);
-    return d;
-  }
-  // month
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - 1);
-  return d;
-}
 
 export function useFilteredArticles({
   articles,
