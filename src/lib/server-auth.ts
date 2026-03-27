@@ -53,8 +53,6 @@ export function isBetaAllowed(sub: string): boolean {
 export interface AuthSession {
   userId: string;
   refreshedTokens?: { access_token: string; refresh_token: string };
-  /** リフレッシュ試行が失敗した場合 true。Cookie クリアが必要 */
-  refreshFailed?: boolean;
 }
 
 /**
@@ -85,27 +83,23 @@ export async function getAuthSession(): Promise<AuthSession | null> {
         return { userId: payload.sub, refreshedTokens: refreshed };
       }
     }
-    // リフレッシュ失敗 → 壊れた Cookie をクリアするためセッションに失敗フラグを付与
-    return { userId: "", refreshFailed: true };
+    // リフレッシュ失敗 → null を返す（Cookie 削除は me/route のみが担う）
+    return null;
   }
 
   return null;
 }
 
-/** セッション取得 + 認証失敗時は 401 を返すヘルパー */
+/** セッション取得 + 認証失敗時は 401 を返すヘルパー。
+ * Cookie の削除は行わない（me/route のみが担う）。
+ * これにより、並行リクエストの refresh 競合で Cookie が消える問題を防ぐ。
+ */
 export async function requireSession(): Promise<
   { session: AuthSession } | { error: NextResponse }
 > {
   const session = await getAuthSession();
-  if (!session || session.refreshFailed) {
-    const res = NextResponse.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 });
-    if (session?.refreshFailed) {
-      // リフレッシュ失敗時は壊れた Cookie を削除する
-      res.cookies.delete("access_token");
-      res.cookies.delete("refresh_token");
-      res.cookies.delete("token_exp");
-    }
-    return { error: res };
+  if (!session) {
+    return { error: NextResponse.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 }) };
   }
   return { session };
 }
