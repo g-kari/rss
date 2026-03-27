@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Article, UserProfile } from "../types";
 import { STORAGE_KEYS, saveSet, loadSet, toggleSetItem } from "../lib/storage";
+import { apiFetch } from "../lib/api-fetch";
 
 /** 4つの既読状態セットをまとめた型 */
 type ReadStateSets = {
@@ -32,7 +33,7 @@ async function fetchReadState(): Promise<{
   likeIds: string[];
 } | null> {
   try {
-    const res = await fetch("/api/read-state");
+    const res = await apiFetch("/api/read-state");
     if (!res.ok) return null;
     return res.json() as Promise<{
       readIds: string[];
@@ -57,7 +58,7 @@ function serializeReadState(sets: ReadStateSets): string {
 
 async function saveReadState(sets: ReadStateSets): Promise<void> {
   try {
-    await fetch("/api/read-state", {
+    await apiFetch("/api/read-state", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: serializeReadState(sets),

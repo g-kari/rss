@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Article } from "../types";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
+import { apiFetch } from "../lib/api-fetch";
 
 const MAX_OGP_CACHE_SIZE = 200;
 const FETCH_BATCH_SIZE = 5;
@@ -39,7 +40,7 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
 
     toFetch.forEach((a) => {
       fetchingRef.current.add(a.link);
-      fetch(`/api/ogp?url=${encodeURIComponent(a.link)}`)
+      apiFetch(`/api/ogp?url=${encodeURIComponent(a.link)}`)
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json() as Promise<{ image: string }>;

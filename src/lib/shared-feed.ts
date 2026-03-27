@@ -254,6 +254,7 @@ export function assembleClientFeed(meta: SharedFeedMeta, sub: UserSubscription):
     lastErrorAt: meta.lastErrorAt,
     rateLimitedUntil: meta.rateLimitedUntil,
     pageCount: meta.pageCount,
+    filter: sub.filter,
   };
 }
 

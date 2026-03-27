@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { UserProfile } from "../types";
+import { apiFetch } from "../lib/api-fetch";
 
 export interface PushNotificationState {
   /** ブラウザが Web Push をサポートしているか */
@@ -48,7 +49,7 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
       if (existing) {
         // 解除
         await existing.unsubscribe();
-        await fetch("/api/push/unsubscribe", {
+        await apiFetch("/api/push/unsubscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: existing.endpoint }),
@@ -63,7 +64,7 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
         }
 
         // VAPID 公開鍵を取得
-        const keyRes = await fetch("/api/push/vapid-key");
+        const keyRes = await apiFetch("/api/push/vapid-key");
         if (!keyRes.ok) {
           setError("プッシュ通知が設定されていません (503)");
           return;
@@ -78,7 +79,7 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
         });
 
         // サーバーに購読情報を保存。失敗した場合はブラウザ側の購読もロールバックする
-        const subRes = await fetch("/api/push/subscribe", {
+        const subRes = await apiFetch("/api/push/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sub.toJSON()),

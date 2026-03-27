@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { contentLruCache } from "../lib/lru-cache";
+import { apiFetch } from "../lib/api-fetch";
 
 interface ArticleContentState {
   /** フェッチ済み or キャッシュ済みのコンテンツ（なければ null） */
@@ -45,7 +46,7 @@ export function useArticleContent(
     setResolvedOgImage(null);
     if (!articleLink || articleOgImage) return;
     const controller = new AbortController();
-    fetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
+    apiFetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
       .then((r) => r.json() as Promise<{ image?: string }>)
       .then(({ image }) => {
         if (image) setResolvedOgImage(image);
@@ -66,7 +67,7 @@ export function useArticleContent(
       setFetching(true);
       setFetchError("");
       try {
-        const res = await fetch(`/api/content?url=${encodeURIComponent(articleLink)}`, {
+        const res = await apiFetch(`/api/content?url=${encodeURIComponent(articleLink)}`, {
           signal: controller.signal,
         });
         const data = (await res.json()) as { content?: string; error?: string };

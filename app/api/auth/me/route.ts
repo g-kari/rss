@@ -58,12 +58,33 @@ export async function GET(request: Request) {
           ...COOKIE_OPTS,
           maxAge: 30 * 24 * 60 * 60,
         });
+        // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
+        try {
+          const parts = refreshed.access_token.split(".");
+          if (parts.length >= 2) {
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
+              exp?: number;
+            };
+            if (typeof payload.exp === "number") {
+              res.cookies.set("token_exp", String(payload.exp), {
+                maxAge: 900,
+                httpOnly: false,
+                secure: true,
+                sameSite: "lax",
+                path: "/",
+              });
+            }
+          }
+        } catch {
+          // exp 取得失敗は無視
+        }
         return res;
       }
     }
     const res = NextResponse.json({ user: null });
     res.cookies.delete("access_token");
     res.cookies.delete("refresh_token");
+    res.cookies.delete("token_exp");
     return res;
   }
 

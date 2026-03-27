@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useMemo } from "react";
-import type { Feed, Article, UserProfile, RecommendedFeed } from "../types";
+import type { Feed, Article, UserProfile, RecommendedFeed, KeywordFilter } from "../types";
 import ReleaseNotesModal from "./ReleaseNotesModal";
 import FeedItem, { formatCount } from "./FeedItem";
 import RecommendationSection from "./RecommendationSection";
@@ -23,6 +23,7 @@ interface Props {
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
   onFeedRenamed: (feed: Feed) => void;
+  onFeedFilterSaved: (feed: Feed) => void;
   onFeedsImported: (feeds: Feed[]) => void;
   onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
@@ -59,6 +60,7 @@ export default function FeedSidebar({
   onFeedAdded,
   onFeedDeleted,
   onFeedRenamed,
+  onFeedFilterSaved,
   onFeedsImported,
   onMarkAllRead,
   onToggleTheme,
@@ -98,6 +100,17 @@ export default function FeedSidebar({
     handleImportFile,
     clearError,
   } = useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported });
+
+  async function saveFilter(feedId: string, filter: KeywordFilter | null): Promise<void> {
+    const res = await fetch(`/api/feeds/${feedId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filter }),
+    });
+    if (!res.ok) throw new Error("フィルターの保存に失敗しました");
+    const updated = (await res.json()) as Feed;
+    onFeedFilterSaved(updated);
+  }
 
   function handleAddFeed(e: React.FormEvent) {
     e.preventDefault();
@@ -486,6 +499,7 @@ export default function FeedSidebar({
               onTogglePin={() => onTogglePinFeed(feed.id)}
               onRename={(title) => renameFeed(feed.id, title)}
               onRetry={() => onRetryFeed(feed.id)}
+              onFilterSave={(filter) => saveFilter(feed.id, filter)}
             />
           );
         })}
@@ -513,6 +527,7 @@ export default function FeedSidebar({
               onTogglePin={() => onTogglePinFeed(feed.id)}
               onRename={(title) => renameFeed(feed.id, title)}
               onRetry={() => onRetryFeed(feed.id)}
+              onFilterSave={(filter) => saveFilter(feed.id, filter)}
             />
           );
         })}

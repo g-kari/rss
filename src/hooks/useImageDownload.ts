@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import type { Article } from "../types";
+import { apiFetch } from "../lib/api-fetch";
 
 interface ImageDownloadState {
   downloadingImages: boolean;
@@ -75,7 +76,7 @@ export function useImageDownload(
     for (let i = 0; i < toDownload.length; i++) {
       setImageDownloadProgress({ done: i, total: toDownload.length });
       try {
-        const res = await fetch(toDownload[i]);
+        const res = await apiFetch(toDownload[i]);
         if (!res.ok) continue;
         const ct = res.headers.get("content-type") ?? "image/jpeg";
         // 透明 GIF（フォールバック画像）はスキップ

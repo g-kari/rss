@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { apiFetch } from "../lib/api-fetch";
 
 interface Props {
   onClose: () => void;
@@ -107,7 +108,7 @@ export default function ReleaseNotesModal({ onClose }: Props) {
   const [content, setContent] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/release-notes")
+    apiFetch("/api/release-notes")
       .then((r) => r.json() as Promise<{ content: string }>)
       .then(({ content: md }) => setContent(md))
       .catch(() => setContent("読み込みに失敗しました"));

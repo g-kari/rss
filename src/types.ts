@@ -38,12 +38,23 @@ export interface SharedFeedMeta {
   cssSelectors?: SelectorConfig;
 }
 
+/** フィードごとのキーワードフィルター */
+export interface KeywordFilter {
+  /** 含むキーワード (OR: いずれかにマッチで通過。空 = フィルタなし) */
+  include: string[];
+  /** 除外キーワード (OR: いずれかにマッチで除外。空 = フィルタなし) */
+  exclude: string[];
+  /** RSS <category> タグも対象にするか */
+  matchCategories?: boolean;
+}
+
 /** ユーザーの購読情報 — users/{userId}/subscriptions.json の要素 */
 export interface UserSubscription {
   feedHash: string; // SharedFeedMeta を参照
   url: string; // 表示・重複チェック用
   customTitle?: string; // ユーザーが設定したタイトル上書き
   subscribedAt: string; // ISO 8601
+  filter?: KeywordFilter;
 }
 
 /** クライアント向けフィード型（SharedFeedMeta + UserSubscription を合成して返す） */
@@ -60,6 +71,7 @@ export interface Feed {
   rateLimitedUntil?: string | null;
   /** p2.json 以降のページ数（0 = latest.json のみ、1 以上なら過去記事あり） */
   pageCount?: number;
+  filter?: KeywordFilter;
 }
 
 export interface Article {
@@ -74,6 +86,7 @@ export interface Article {
   author?: string;
   publishedAt: string | null;
   createdAt: string;
+  categories?: string[];
 }
 
 export type Layout = "compact" | "list" | "card" | "magazine";

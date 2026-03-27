@@ -2,6 +2,8 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import type { Feed } from "../types";
+import FeedFilterModal from "./FeedFilterModal";
+import type { KeywordFilter } from "../types";
 
 /** 未読カウントを表示用文字列に変換する（100以上は "99+" と表示） */
 export function formatCount(n: number): string {
@@ -20,6 +22,7 @@ export interface FeedItemProps {
   onTogglePin: () => void;
   onRename: (title: string) => Promise<void>;
   onRetry: () => Promise<void>;
+  onFilterSave?: (filter: KeywordFilter | null) => Promise<void>;
 }
 
 interface Action {
@@ -45,11 +48,13 @@ export default function FeedItem({
   onTogglePin,
   onRename,
   onRetry,
+  onFilterSave,
 }: FeedItemProps) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [retrying, setRetrying] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -111,7 +116,35 @@ export default function FeedItem({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [menuOpen]);
 
+  const hasFilter =
+    feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
+
   const actions: Action[] = [
+    {
+      key: "filter",
+      label: hasFilter ? "フィルター設定中" : "キーワードフィルター",
+      icon: (
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M1 2h8M2.5 5h5M4 8h2" />
+        </svg>
+      ),
+      onClick: (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setMenuOpen(false);
+        setFilterModalOpen(true);
+      },
+      show: !!onFilterSave,
+      className: hasFilter ? "text-text-default" : "text-text-faint hover:text-text-default",
+    },
     {
       key: "pin",
       label: isPinned ? "ピン解除" : "ピン留め",
@@ -245,11 +278,30 @@ export default function FeedItem({
         />
       ) : (
         <div className="flex-1 min-w-0">
-          <span
-            className="text-[13px] tracking-[0.02em] truncate block"
-            title="ダブルクリックでタイトルを編集"
-          >
-            {feed.title || feed.url}
+          <span className="flex items-center gap-1 min-w-0">
+            <span
+              className="text-[13px] tracking-[0.02em] truncate"
+              title="ダブルクリックでタイトルを編集"
+            >
+              {feed.title || feed.url}
+            </span>
+            {hasFilter && (
+              <span title="キーワードフィルター設定中">
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="flex-shrink-0 text-text-muted"
+                >
+                  <path d="M1 2h8M2.5 5h5M4 8h2" />
+                </svg>
+              </span>
+            )}
           </span>
           {feed.fetchError && (
             <span className="text-[10px] text-rose-400 truncate block leading-tight mt-0.5">
@@ -327,6 +379,13 @@ export default function FeedItem({
             </button>
           ))}
         </div>
+      )}
+      {filterModalOpen && onFilterSave && (
+        <FeedFilterModal
+          feed={feed}
+          onClose={() => setFilterModalOpen(false)}
+          onSave={onFilterSave}
+        />
       )}
     </div>
   );
