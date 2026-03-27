@@ -252,6 +252,7 @@ export function assembleClientFeed(meta: SharedFeedMeta, sub: UserSubscription):
     rateLimitedUntil: meta.rateLimitedUntil,
     pageCount: meta.pageCount,
     filter: sub.filter,
+    nsfw: sub.nsfw ?? false,
   };
 }
 

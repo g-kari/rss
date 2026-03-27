@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Layout, FontSize } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet, loadSet, toggleSetItem } from "../lib/storage";
 
+/** NSFW 活性化に必要な連打回数 */
+const NSFW_CLICK_COUNT = 5;
+/** 連打として認識する時間ウィンドウ (ms) */
+const NSFW_CLICK_WINDOW = 2000;
+
 export type Theme = "light" | "dark";
 export type MobilePane = "sidebar" | "list" | "view";
 
@@ -49,6 +54,11 @@ export interface UIState {
   install: { canInstall: boolean; onInstall: () => Promise<void> };
   showHelp: boolean;
   setShowHelp: React.Dispatch<React.SetStateAction<boolean>>;
+  nsfwMode: boolean;
+  showNSFWAnimation: boolean;
+  activateNSFW: () => void;
+  deactivateNSFW: () => void;
+  onNSFWAnimationComplete: () => void;
 }
 
 export function useUIState(initialMobilePane: MobilePane): UIState {
@@ -62,6 +72,9 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const prevMobilePaneRef = useRef<MobilePane>(initialMobilePane);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [nsfwMode, setNsfwMode] = useState(() => storageGet(STORAGE_KEYS.NSFW_MODE) === "1");
+  const [showNSFWAnimation, setShowNSFWAnimation] = useState(false);
+  const nsfwClickTimesRef = useRef<number[]>([]);
 
   useEffect(() => {
     return () => {
@@ -145,6 +158,30 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }, []);
 
+  const activateNSFW = useCallback(() => {
+    const now = Date.now();
+    nsfwClickTimesRef.current = [...nsfwClickTimesRef.current, now].filter(
+      (t) => now - t < NSFW_CLICK_WINDOW,
+    );
+    if (nsfwClickTimesRef.current.length >= NSFW_CLICK_COUNT) {
+      nsfwClickTimesRef.current = [];
+      if (!nsfwMode) {
+        setShowNSFWAnimation(true);
+      }
+    }
+  }, [nsfwMode]);
+
+  const deactivateNSFW = useCallback(() => {
+    setNsfwMode(false);
+    storageSet(STORAGE_KEYS.NSFW_MODE, "0");
+  }, []);
+
+  const onNSFWAnimationComplete = useCallback(() => {
+    setShowNSFWAnimation(false);
+    setNsfwMode(true);
+    storageSet(STORAGE_KEYS.NSFW_MODE, "1");
+  }, []);
+
   const installApp = useCallback(async () => {
     if (!installPrompt) return;
     await installPrompt.prompt();
@@ -168,5 +205,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     install: { canInstall: !!installPrompt, onInstall: installApp },
     showHelp,
     setShowHelp,
+    nsfwMode,
+    showNSFWAnimation,
+    activateNSFW,
+    deactivateNSFW,
+    onNSFWAnimationComplete,
   };
 }

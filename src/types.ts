@@ -55,6 +55,8 @@ export interface UserSubscription {
   customTitle?: string; // ユーザーが設定したタイトル上書き
   subscribedAt: string; // ISO 8601
   filter?: KeywordFilter;
+  /** NSFW フラグ — true のとき NSFW モードでのみ記事を表示 */
+  nsfw?: boolean;
 }
 
 /** クライアント向けフィード型（SharedFeedMeta + UserSubscription を合成して返す） */
@@ -72,6 +74,8 @@ export interface Feed {
   /** p2.json 以降のページ数（0 = latest.json のみ、1 以上なら過去記事あり） */
   pageCount?: number;
   filter?: KeywordFilter;
+  /** NSFW フラグ — true のとき NSFW モードでのみ記事を表示 */
+  nsfw?: boolean;
 }
 
 export interface Article {

@@ -23,6 +23,7 @@ export interface FeedItemProps {
   onRename: (title: string) => Promise<void>;
   onRetry: () => Promise<void>;
   onFilterSave?: (filter: KeywordFilter | null) => Promise<void>;
+  onToggleNsfw?: () => void;
 }
 
 interface Action {
@@ -49,6 +50,7 @@ export default function FeedItem({
   onRename,
   onRetry,
   onFilterSave,
+  onToggleNsfw,
 }: FeedItemProps) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -120,6 +122,33 @@ export default function FeedItem({
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
 
   const actions: Action[] = [
+    {
+      key: "nsfw",
+      label: feed.nsfw ? "NSFW解除" : "NSFW設定",
+      icon: (
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <ellipse cx="5" cy="5" rx="4" ry="2.5" />
+          <circle cx="5" cy="5" r="1.5" />
+        </svg>
+      ),
+      onClick: (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onToggleNsfw?.();
+      },
+      show: !!onToggleNsfw,
+      className: feed.nsfw
+        ? "text-rose-400 hover:text-rose-300"
+        : "text-text-faint hover:text-text-default",
+    },
     {
       key: "filter",
       label: hasFilter ? "フィルター設定中" : "キーワードフィルター",
@@ -285,6 +314,24 @@ export default function FeedItem({
             >
               {feed.title || feed.url}
             </span>
+            {feed.nsfw && (
+              <span title="NSFWフィード">
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="flex-shrink-0 text-rose-400"
+                >
+                  <ellipse cx="5" cy="5" rx="4" ry="2.5" />
+                  <circle cx="5" cy="5" r="1.5" />
+                </svg>
+              </span>
+            )}
             {hasFilter && (
               <span title="キーワードフィルター設定中">
                 <svg
