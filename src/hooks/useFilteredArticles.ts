@@ -3,7 +3,7 @@ import type { Article, DateRange, Feed } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { matchesKeywordFilter } from "../lib/keyword-filter";
-import { articleMatchesQuery } from "../lib/article-utils";
+import { articleMatchesQuery, cycleValue } from "../lib/article-utils";
 
 const PAGE_SIZE = 30;
 
@@ -131,7 +131,7 @@ export function useFilteredArticles({
   const cycleDateRange = useCallback(() => {
     const cycle: DateRange[] = ["all", "today", "week", "month"];
     setDateRange((v) => {
-      const next = cycle[(cycle.indexOf(v) + 1) % cycle.length];
+      const next = cycleValue(cycle, v);
       storageSet(STORAGE_KEYS.DATE_RANGE, next);
       return next;
     });

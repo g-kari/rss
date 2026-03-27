@@ -3,6 +3,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import type { Article, Feed, FontSize, Layout, DateRange } from "../types";
 import type { SortOrder } from "./useFilteredArticles";
+import { cycleValue } from "../lib/article-utils";
 
 interface KeyboardNavOptions {
   filteredArticles: Article[];
@@ -46,10 +47,6 @@ const LAYOUT_LABELS: Record<Layout, string> = {
 };
 const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month"];
 
-/** サイクル配列の次の値を返す */
-function cycleValue<T>(cycle: T[], current: T): T {
-  return cycle[(cycle.indexOf(current) + 1) % cycle.length];
-}
 const DATE_RANGE_LABELS: Record<DateRange, string> = {
   all: "全期間",
   today: "今日",
