@@ -32,11 +32,14 @@ export function useArticleContent(
   const fetchAbortControllerRef = useRef<AbortController | null>(null);
 
   // 記事が変わったらフェッチ状態をリセット（進行中のフェッチも中断）
+  // fetchFullContent の finally ブロックは ref が null になっているため setFetching(false) を
+  // 呼ばない設計になっており、ここで明示的にリセットする必要がある。
   useEffect(() => {
     fetchAbortControllerRef.current?.abort();
     fetchAbortControllerRef.current = null;
     setFetchedContent(null);
     setFetchError("");
+    setFetching(false);
   }, [articleId]);
 
   // OGP 画像の動的解決
