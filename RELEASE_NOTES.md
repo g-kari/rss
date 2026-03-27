@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (169)
+
+### リファクタリング
+
+- **`cycleValue` を `article-utils` に移動して共有化** — `useKeyboardNav` にローカル定義されていた `cycleValue<T>` を `src/lib/article-utils.ts` に export し、`useFilteredArticles` の `cycleDateRange` でインライン展開していた同一ロジックを置き換えた
+
 ## 2026-03-28 (168)
 
 ### リファクタリング
