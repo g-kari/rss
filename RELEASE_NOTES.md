@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-27 (157)
+
+### リファクタリング
+
+- **`useMemo` イテレーション重複を削減** — `useReadingHistory` で `historyIds` / `historyOrder` を別々に map していた 2 つの `useMemo` を 1 つに統合。`App.tsx` の `bookmarkCount` / `readingListCount` / `historyCount` を個別 filter × 3 から 1 ループで計算する `useMemo` に統合
+
 ## 2026-03-27 (156)
 
 ### リファクタリング

@@ -189,20 +189,17 @@ export default function App() {
 
   const { historyIds, historyOrder, addToHistory } = useReadingHistory();
 
-  const bookmarkCount = useMemo(
-    () => articles.filter((a) => bookmarkIds.has(a.id)).length,
-    [articles, bookmarkIds],
-  );
-
-  const readingListCount = useMemo(
-    () => articles.filter((a) => readingListIds.has(a.id)).length,
-    [articles, readingListIds],
-  );
-
-  const historyCount = useMemo(
-    () => articles.filter((a) => historyIds.has(a.id)).length,
-    [articles, historyIds],
-  );
+  const { bookmarkCount, readingListCount, historyCount } = useMemo(() => {
+    let bm = 0,
+      rl = 0,
+      hist = 0;
+    for (const a of articles) {
+      if (bookmarkIds.has(a.id)) bm++;
+      if (readingListIds.has(a.id)) rl++;
+      if (historyIds.has(a.id)) hist++;
+    }
+    return { bookmarkCount: bm, readingListCount: rl, historyCount: hist };
+  }, [articles, bookmarkIds, readingListIds, historyIds]);
 
   const {
     filtered,
