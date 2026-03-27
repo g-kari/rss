@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (184)
+
+### リファクタリング
+
+- **`useReadState` の `toggle` 中間ヘルパーを削除** — 4つの `toggleX` からのみ呼ばれていた `toggle` `useCallback` を廃止し、各 `toggleX` が `toggleSetItem` + `scheduleSyncToServer` を直接呼ぶようフラット化。依存チェーンを1段削減
+
 ## 2026-03-28 (183)
 
 ### リファクタリング
