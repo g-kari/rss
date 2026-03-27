@@ -104,6 +104,15 @@ export function useReadState(
   const articlesRef = useRef(articles);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ref を最新の state / props に同期（useEffect 不要 — レンダー中の直接代入で十分）
+  stateRef.current = {
+    read: readIds,
+    bookmarks: bookmarkIds,
+    readingList: readingListIds,
+    likes: likeIds,
+  };
+  articlesRef.current = articles;
+
   // ログイン後にサーバーの既読・ブックマーク・後で読む状態をマージ
   useEffect(() => {
     if (!user) return;
@@ -115,20 +124,6 @@ export function useReadState(
       mergeServerSet(setLikeIds, STORAGE_KEYS.LIKE_IDS, state.likeIds ?? []);
     });
   }, [user]);
-
-  // ref を最新の state / props に同期
-  useEffect(() => {
-    stateRef.current = {
-      read: readIds,
-      bookmarks: bookmarkIds,
-      readingList: readingListIds,
-      likes: likeIds,
-    };
-  }, [readIds, bookmarkIds, readingListIds, likeIds]);
-
-  useEffect(() => {
-    articlesRef.current = articles;
-  }, [articles]);
 
   // ページを閉じる前・タブ非表示時にデバウンス待ちのデータを即時送信
   // - beforeunload: ページ閉じ・遷移時。fetch は中断されるため sendBeacon を使用
