@@ -57,6 +57,21 @@ export function useFeeds(
     return data;
   }, []);
 
+  // 新着記事を既存リストにマージする（既存記事は消さない）
+  const mergeArticles = useCallback((fresh: Article[]) => {
+    setArticles((prev) => {
+      if (prev.length === 0) return fresh;
+      const existingIds = new Set(prev.map((a) => a.id));
+      const brandNew = fresh.filter((a) => !existingIds.has(a.id));
+      if (brandNew.length === 0) return prev;
+      return [...brandNew, ...prev].sort((a, b) => {
+        const at = new Date(a.publishedAt ?? a.createdAt).getTime();
+        const bt = new Date(b.publishedAt ?? b.createdAt).getTime();
+        return bt - at;
+      });
+    });
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     setLoadingArticles(true);
@@ -74,22 +89,26 @@ export function useFeeds(
       .finally(() => setLoadingArticles(false));
   }, [user, onError, fetchFeedsData, fetchAndSetArticles]);
 
-  // 新着確認フェッチ: 重複実行を防ぎ、前回の最新記事 ID と比較して新着件数を更新する
+  // 新着確認フェッチ: 既存記事は消さずに新着のみ追加する（閲覧中の記事を守る）
   const pollNow = useCallback(async () => {
     const prevTopId = latestArticleIdRef.current;
     if (prevTopId === null) return; // 初回ロード前はスキップ
     if (isPollingRef.current) return; // 前回のフェッチが完了していない場合はスキップ
     isPollingRef.current = true;
     try {
-      const data = await fetchAndSetArticles();
-      const newIdx = data.findIndex((a) => a.id === prevTopId);
+      const res = await apiFetch("/api/articles");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const fresh = (await res.json()) as Article[];
+      mergeArticles(fresh);
+      const newIdx = fresh.findIndex((a) => a.id === prevTopId);
       if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
+      if (fresh.length > 0) latestArticleIdRef.current = fresh[0].id;
     } catch {
       // ポーリングエラーはサイレント失敗
     } finally {
       isPollingRef.current = false;
     }
-  }, [fetchAndSetArticles]);
+  }, [mergeArticles]);
 
   // 5分ごとに記事を再取得して新着件数を通知する（オフライン時はスキップ）
   useEffect(() => {
@@ -158,15 +177,20 @@ export function useFeeds(
     setRefreshing(true);
     try {
       await apiFetch("/api/feeds/refresh", { method: "POST" });
-      const [feedsData] = await Promise.all([fetchFeedsData(), fetchAndSetArticles()]);
+      const res = await apiFetch("/api/articles");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const fresh = (await res.json()) as Article[];
+      const feedsData = await fetchFeedsData();
       setFeeds(feedsData);
+      mergeArticles(fresh);
+      if (fresh.length > 0) latestArticleIdRef.current = fresh[0].id;
     } catch (err) {
       console.error("Refresh failed:", err);
       onError?.("更新に失敗しました");
     } finally {
       setRefreshing(false);
     }
-  }, [fetchFeedsData, fetchAndSetArticles, onError]);
+  }, [fetchFeedsData, mergeArticles, onError]);
 
   const retryFeed = useCallback(
     async (feedId: string): Promise<void> => {
@@ -175,13 +199,18 @@ export function useFeeds(
         if (!res.ok) return;
         const feed = (await res.json()) as Feed;
         setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
-        await fetchAndSetArticles();
+        const articlesRes = await apiFetch("/api/articles");
+        if (articlesRes.ok) {
+          const fresh = (await articlesRes.json()) as Article[];
+          mergeArticles(fresh);
+          if (fresh.length > 0) latestArticleIdRef.current = fresh[0].id;
+        }
       } catch (err) {
         console.error("retryFeed failed:", err);
         onError?.("フィードの再取得に失敗しました");
       }
     },
-    [fetchAndSetArticles, onError],
+    [mergeArticles, onError],
   );
 
   const dismissNewArticles = useCallback(() => {
