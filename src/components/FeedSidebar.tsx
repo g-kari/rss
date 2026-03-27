@@ -34,6 +34,7 @@ interface Props {
   onRetryFeed: (id: string) => Promise<void>;
   onTogglePinFeed: (id: string) => void;
   onActivateNsfw: () => void;
+  onDeactivateNsfw: () => void;
   onToggleNsfwFeed: (feed: Feed) => void;
   recommendations?: RecommendedFeed[];
   recommendationsLoading?: boolean;
@@ -76,6 +77,7 @@ export default function FeedSidebar({
   onTogglePinFeed,
   nsfwMode,
   onActivateNsfw,
+  onDeactivateNsfw,
   onToggleNsfwFeed,
   recommendations,
   recommendationsLoading,
@@ -91,6 +93,7 @@ export default function FeedSidebar({
   const [feedSearchOpen, setFeedSearchOpen] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const feedSearchRef = useRef<HTMLInputElement>(null);
+  const nsfwLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveUrl, setSaveUrl] = useState("");
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -174,8 +177,23 @@ export default function FeedSidebar({
       <div className="px-4 py-3.5 border-b border-border-default flex items-center justify-between">
         <button
           onClick={onActivateNsfw}
+          onPointerDown={() => {
+            if (!nsfwMode) return;
+            nsfwLongPressTimerRef.current = setTimeout(() => {
+              onDeactivateNsfw();
+            }, 600);
+          }}
+          onPointerUp={() => {
+            if (nsfwLongPressTimerRef.current) clearTimeout(nsfwLongPressTimerRef.current);
+          }}
+          onPointerLeave={() => {
+            if (nsfwLongPressTimerRef.current) clearTimeout(nsfwLongPressTimerRef.current);
+          }}
+          onContextMenu={(e) => {
+            if (nsfwMode) e.preventDefault();
+          }}
           className={`text-[10px] font-medium tracking-[0.25em] uppercase transition-colors duration-200 select-none cursor-default ${nsfwMode ? "text-rose-400" : "text-text-muted"}`}
-          title={nsfwMode ? "NSFWモード中" : ""}
+          title={nsfwMode ? "長押しでNSFWモード解除" : ""}
         >
           RSS
         </button>
