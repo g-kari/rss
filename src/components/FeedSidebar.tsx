@@ -53,6 +53,36 @@ interface Props {
   };
 }
 
+function SpecialViewButton({
+  id,
+  label,
+  count,
+  selectedFeedId,
+  onSelectFeed,
+}: {
+  id: string;
+  label: string;
+  count: number;
+  selectedFeedId: string | null;
+  onSelectFeed: (id: string) => void;
+}) {
+  return (
+    <button
+      onClick={() => onSelectFeed(id)}
+      className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
+        selectedFeedId === id
+          ? "text-text-strong bg-surface-subtle"
+          : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
+      }`}
+    >
+      <span className="text-[13px] tracking-[0.02em]">{label}</span>
+      {count > 0 && (
+        <span className="text-[11px] text-text-muted tabular-nums">{formatCount(count)}</span>
+      )}
+    </button>
+  );
+}
+
 export default function FeedSidebar({
   feeds,
   articles,
@@ -401,70 +431,34 @@ export default function FeedSidebar({
           </span>
         </div>
 
-        <button
-          onClick={() => onSelectFeed("__history__")}
-          className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
-            selectedFeedId === "__history__"
-              ? "text-text-strong bg-surface-subtle"
-              : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
-          }`}
-        >
-          <span className="text-[13px] tracking-[0.02em]">履歴</span>
-          {historyCount > 0 && (
-            <span className="text-[11px] text-text-muted tabular-nums">
-              {formatCount(historyCount)}
-            </span>
-          )}
-        </button>
-        <div className="group relative">
-          <button
-            onClick={() => onSelectFeed("__bookmarks__")}
-            className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
-              selectedFeedId === "__bookmarks__"
-                ? "text-text-strong bg-surface-subtle"
-                : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
-            }`}
-          >
-            <span className="text-[13px] tracking-[0.02em]">ブックマーク</span>
-            {bookmarkCount > 0 && (
-              <span className="text-[11px] text-text-muted tabular-nums">
-                {formatCount(bookmarkCount)}
-              </span>
-            )}
-          </button>
-        </div>
-        <div className="group relative">
-          <button
-            onClick={() => onSelectFeed("__reading_list__")}
-            className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
-              selectedFeedId === "__reading_list__"
-                ? "text-text-strong bg-surface-subtle"
-                : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
-            }`}
-          >
-            <span className="text-[13px] tracking-[0.02em]">後で読む</span>
-            {readingListCount > 0 && (
-              <span className="text-[11px] text-text-muted tabular-nums">
-                {formatCount(readingListCount)}
-              </span>
-            )}
-          </button>
-        </div>
-        <button
-          onClick={() => onSelectFeed("__likes__")}
-          className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
-            selectedFeedId === "__likes__"
-              ? "text-text-strong bg-surface-subtle"
-              : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
-          }`}
-        >
-          <span className="text-[13px] tracking-[0.02em]">いいね</span>
-          {likeCount > 0 && (
-            <span className="text-[11px] text-text-muted tabular-nums">
-              {formatCount(likeCount)}
-            </span>
-          )}
-        </button>
+        <SpecialViewButton
+          id="__history__"
+          label="履歴"
+          count={historyCount}
+          selectedFeedId={selectedFeedId}
+          onSelectFeed={onSelectFeed}
+        />
+        <SpecialViewButton
+          id="__bookmarks__"
+          label="ブックマーク"
+          count={bookmarkCount}
+          selectedFeedId={selectedFeedId}
+          onSelectFeed={onSelectFeed}
+        />
+        <SpecialViewButton
+          id="__reading_list__"
+          label="後で読む"
+          count={readingListCount}
+          selectedFeedId={selectedFeedId}
+          onSelectFeed={onSelectFeed}
+        />
+        <SpecialViewButton
+          id="__likes__"
+          label="いいね"
+          count={likeCount}
+          selectedFeedId={selectedFeedId}
+          onSelectFeed={onSelectFeed}
+        />
 
         {/* URL から記事を保存 */}
         <div className="px-4 py-1">
