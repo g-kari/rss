@@ -35,6 +35,20 @@ export function readingTime(html: string): number {
 }
 
 /**
+ * 記事を日付降順でソートするための比較関数。
+ * publishedAt 優先、null の場合は createdAt にフォールバックする。
+ */
+export function compareByDateDesc(
+  a: { publishedAt: string | null; createdAt: string },
+  b: { publishedAt: string | null; createdAt: string },
+): number {
+  return (
+    new Date(b.publishedAt ?? b.createdAt).getTime() -
+    new Date(a.publishedAt ?? a.createdAt).getTime()
+  );
+}
+
+/**
  * 記事が検索クエリにマッチするか判定する。
  * スペース区切りで複数ワード AND 検索。
  * title・summary のほか author・categories も対象とする。

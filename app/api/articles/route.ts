@@ -8,6 +8,7 @@ import {
   readUserSubscriptions,
 } from "@/lib/shared-feed";
 import { applyKeywordFilter, matchesKeywordFilter } from "@/lib/keyword-filter";
+import { compareByDateDesc } from "@/lib/article-utils";
 import type { Article, KeywordFilter } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -50,11 +51,7 @@ export async function GET(request: NextRequest) {
       return !filter || matchesKeywordFilter(a, filter);
     });
 
-    const all = [...savedArticles, ...filteredFeedArticles].sort((a, b) => {
-      const at = new Date(a.publishedAt ?? a.createdAt).getTime();
-      const bt = new Date(b.publishedAt ?? b.createdAt).getTime();
-      return bt - at;
-    });
+    const all = [...savedArticles, ...filteredFeedArticles].sort(compareByDateDesc);
     return NextResponse.json(all);
   });
 }
