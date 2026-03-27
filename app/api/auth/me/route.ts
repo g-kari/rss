@@ -49,38 +49,41 @@ export async function GET(request: Request) {
   if (refreshToken) {
     const refreshed = await refreshTokens(refreshToken);
     if (refreshed) {
+      // リフレッシュ成功 → verify 結果に関わらず新しいトークンを Cookie にセット
+      // （verify 失敗は JWKS 一時障害の可能性があるため Cookie は残す）
       const r = await verifyAndLoad(refreshed.access_token, authBaseUrl, env);
       if (r.kind === "restricted") return NextResponse.json({ user: null, betaRestricted: true });
-      if (r.kind === "ok") {
-        const res = NextResponse.json({ user: r.profile });
-        res.cookies.set("access_token", refreshed.access_token, { ...COOKIE_OPTS, maxAge: 900 });
-        res.cookies.set("refresh_token", refreshed.refresh_token, {
-          ...COOKIE_OPTS,
-          maxAge: 30 * 24 * 60 * 60,
-        });
-        // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
-        try {
-          const parts = refreshed.access_token.split(".");
-          if (parts.length >= 2) {
-            const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
-              exp?: number;
-            };
-            if (typeof payload.exp === "number") {
-              res.cookies.set("token_exp", String(payload.exp), {
-                maxAge: 900,
-                httpOnly: false,
-                secure: true,
-                sameSite: "lax",
-                path: "/",
-              });
-            }
+
+      const body = r.kind === "ok" ? { user: r.profile } : { user: null };
+      const res = NextResponse.json(body);
+      res.cookies.set("access_token", refreshed.access_token, { ...COOKIE_OPTS, maxAge: 900 });
+      res.cookies.set("refresh_token", refreshed.refresh_token, {
+        ...COOKIE_OPTS,
+        maxAge: 30 * 24 * 60 * 60,
+      });
+      // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
+      try {
+        const parts = refreshed.access_token.split(".");
+        if (parts.length >= 2) {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
+            exp?: number;
+          };
+          if (typeof payload.exp === "number") {
+            res.cookies.set("token_exp", String(payload.exp), {
+              maxAge: 900,
+              httpOnly: false,
+              secure: true,
+              sameSite: "lax",
+              path: "/",
+            });
           }
-        } catch {
-          // exp 取得失敗は無視
         }
-        return res;
+      } catch {
+        // exp 取得失敗は無視
       }
+      return res;
     }
+    // リフレッシュ失敗（refresh_token 無効）→ Cookie を削除してログアウト
     const res = NextResponse.json({ user: null });
     res.cookies.delete("access_token");
     res.cookies.delete("refresh_token");
