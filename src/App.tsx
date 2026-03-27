@@ -55,6 +55,7 @@ export default function App() {
     nsfwMode,
     showNSFWAnimation,
     activateNSFW,
+    deactivateNSFW,
     onNSFWAnimationComplete,
   } = useUIState(initialMobilePane);
 
@@ -634,6 +635,7 @@ export default function App() {
             onTogglePinFeed={togglePinFeed}
             nsfwMode={nsfwMode}
             onActivateNsfw={activateNSFW}
+            onDeactivateNsfw={deactivateNSFW}
             onToggleNsfwFeed={toggleNsfwFeed}
             recommendations={recommendations}
             recommendationsLoading={recommendationsLoading}

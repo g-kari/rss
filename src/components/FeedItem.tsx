@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 import type { Feed } from "../types";
 import FeedFilterModal from "./FeedFilterModal";
 import type { KeywordFilter } from "../types";
@@ -92,7 +92,6 @@ export default function FeedItem({
   const [retrying, setRetrying] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const startEdit = useCallback(
@@ -140,18 +139,6 @@ export default function FeedItem({
     },
     [onRetry, retrying],
   );
-
-  // ドロップダウン外タップで閉じる（dropdownRef の外側のみ対象）
-  useEffect(() => {
-    if (!menuOpen) return;
-    function onPointerDown(e: PointerEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [menuOpen]);
 
   const hasFilter =
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
@@ -387,28 +374,37 @@ export default function FeedItem({
 
       {/* モバイル用ドロップダウンメニュー */}
       {menuOpen && (
-        <div
-          ref={dropdownRef}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute right-2 top-full z-20 mt-0.5 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[120px]"
-        >
-          {visibleActions.map((action) => (
-            <button
-              key={action.key}
-              onClick={(e) => {
-                setMenuOpen(false);
-                action.onClick(e);
-              }}
-              disabled={action.disabled}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
-                action.variant === "danger" ? "text-rose-400" : "text-text-default"
-              }`}
-            >
-              {action.icon}
-              {action.label}
-            </button>
-          ))}
-        </div>
+        <>
+          {/* backdrop: タップ貫通防止 */}
+          <div
+            className="fixed inset-0 z-[19]"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setMenuOpen(false);
+            }}
+          />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute right-2 top-full z-20 mt-0.5 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[120px]"
+          >
+            {visibleActions.map((action) => (
+              <button
+                key={action.key}
+                onClick={(e) => {
+                  setMenuOpen(false);
+                  action.onClick(e);
+                }}
+                disabled={action.disabled}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
+                  action.variant === "danger" ? "text-rose-400" : "text-text-default"
+                }`}
+              >
+                {action.icon}
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
       {filterModalOpen && onFilterSave && (
         <FeedFilterModal
