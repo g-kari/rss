@@ -3,6 +3,7 @@ import type { Article, DateRange, Feed } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { matchesKeywordFilter } from "../lib/keyword-filter";
+import { articleMatchesQuery } from "../lib/article-utils";
 
 const PAGE_SIZE = 30;
 
@@ -177,13 +178,8 @@ export function useFilteredArticles({
       // ブックマークフィルター
       if (bookmarkOnly && !bookmarkIds.has(a.id) && !isActive(a.id)) return false;
 
-      // 検索クエリ（スペース区切りで複数ワード AND 検索）
-      if (q) {
-        const terms = q.split(/\s+/).filter(Boolean);
-        const titleL = a.title.toLowerCase();
-        const summaryL = a.summary.toLowerCase();
-        if (!terms.every((t) => titleL.includes(t) || summaryL.includes(t))) return false;
-      }
+      // 検索クエリ（title・summary・author・categories を AND 検索）
+      if (q && !articleMatchesQuery(a, q)) return false;
 
       // 日付範囲
       if (rangeStart && (!a.publishedAt || new Date(a.publishedAt) < rangeStart)) return false;

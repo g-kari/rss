@@ -35,6 +35,34 @@ export function readingTime(html: string): number {
 }
 
 /**
+ * 記事が検索クエリにマッチするか判定する。
+ * スペース区切りで複数ワード AND 検索。
+ * title・summary のほか author・categories も対象とする。
+ * クエリが空のときは常に true を返す。
+ */
+export function articleMatchesQuery(
+  article: {
+    title: string;
+    summary: string;
+    author?: string;
+    categories?: string[];
+  },
+  query: string,
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const terms = q.split(/\s+/).filter(Boolean);
+  const titleL = article.title.toLowerCase();
+  const summaryL = article.summary.toLowerCase();
+  const authorL = (article.author ?? "").toLowerCase();
+  const categoriesL = (article.categories ?? []).join(" ").toLowerCase();
+  return terms.every(
+    (t) =>
+      titleL.includes(t) || summaryL.includes(t) || authorL.includes(t) || categoriesL.includes(t),
+  );
+}
+
+/**
  * ISO 日時文字列を「〇分前」形式の相対時間に変換する。
  * - 未来日時（時計のズレ等）は「たった今」として扱う
  * - 1分未満は「たった今」
