@@ -134,19 +134,6 @@ export function useFilteredArticles({
     setPage((p) => p + 1);
   }, []);
 
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMore();
-      },
-      { rootMargin: "120px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loadMore]);
-
   const filtered = useMemo(() => {
     // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
     // gracePeriodId: 直前まで表示していた記事を5秒間保持（未読フィルター中でも前の記事に戻れるように）
@@ -213,6 +200,22 @@ export function useFilteredArticles({
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
+
+  // hasMore を依存配列に含めることで、記事が非同期でロードされて
+  // sentinel が初めてマウントされたタイミングでも observer をセットアップできる
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore();
+      },
+      { rootMargin: "120px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore, hasMore]);
 
   return {
     filtered,
