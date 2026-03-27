@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-27 (153)
+
+### リファクタリング
+
+- **`recommendation.ts` の `Promise.allSettled` 結果収集を `fulfilledValues` ヘルパーに集約** — `generateWebSearchFeeds`・`generatePopularFeeds`・`generateLinkDiscoveryFeeds` の3関数で重複していた「fulfilled かつ非 null の値を収集」パターンを `fulfilledValues<T>()` に抽出。`generatePopularFeeds` のコールバック内 mutation も return パターンに統一。合計 14 行削減
+
 ## 2026-03-27 (152)
 
 ### リファクタリング
