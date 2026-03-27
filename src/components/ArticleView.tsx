@@ -516,6 +516,16 @@ export default function ArticleView({
     showToast,
   );
 
+  const embedInfo = article?.link ? extractEmbedInfo(article.link) : null;
+
+  // 取得済みコンテンツ: フェッチ結果 > キャッシュ > RSS 本文
+  const rawContent = storedContent ?? article?.content ?? null;
+  const processedContent = rawContent
+    ? embedInfo
+      ? stripIframes(rawContent)
+      : processContent(rawContent, theme)
+    : null;
+
   // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する
   const injectSliderControls = useCallback(() => {
     const el = contentRef.current;
@@ -584,11 +594,10 @@ export default function ArticleView({
     });
   }, []);
 
-  // processedContent は storedContent と article?.id の変化に依存するため、
-  // それらを deps にすることで前方参照エラーを回避する
+  // processedContent が変わるたびに再注入する（テーマ切り替え・全文取得・記事切り替えなど）
   useEffect(() => {
     injectSliderControls();
-  }, [storedContent, article?.id, injectSliderControls]);
+  }, [processedContent, injectSliderControls]);
 
   // 記事が変わったら AI 状態をリセット。日本語以外の記事は自動翻訳する（全文取得は行わない）
   // 記事が変わったらスクロール位置と翻訳表示状態をリセット（AI 状態は useArticleAi が担当）
@@ -604,16 +613,6 @@ export default function ArticleView({
   useEffect(() => {
     if (aiResult?.mode === "translation") setShowTranslated(true);
   }, [aiResult]);
-
-  const embedInfo = article?.link ? extractEmbedInfo(article.link) : null;
-
-  // 取得済みコンテンツ: フェッチ結果 > キャッシュ > RSS 本文
-  const rawContent = storedContent ?? article?.content ?? null;
-  const processedContent = rawContent
-    ? embedInfo
-      ? stripIframes(rawContent)
-      : processContent(rawContent, theme)
-    : null;
 
   // 本文内スタンドアロンリンクに OGP プレビューカードを注入
   useContentLinkPreviews(contentRef, processedContent);
