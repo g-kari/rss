@@ -265,12 +265,10 @@ export async function getUserFeeds(bucket: R2Bucket, userId: string): Promise<Fe
   if (subs.length === 0) return [];
 
   const metas = await Promise.all(subs.map((s) => readFeedMeta(bucket, s.feedHash)));
-  const feeds: Feed[] = [];
-  for (let i = 0; i < subs.length; i++) {
+  return subs.flatMap((sub, i) => {
     const meta = metas[i];
-    if (meta) feeds.push(assembleClientFeed(meta, subs[i]));
-  }
-  return feeds;
+    return meta ? [assembleClientFeed(meta, sub)] : [];
+  });
 }
 
 /**
