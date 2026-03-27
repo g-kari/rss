@@ -84,6 +84,11 @@ export function loadJson<T>(key: string, fallback: T): T {
   }
 }
 
+/** 値を JSON シリアライズして localStorage に保存する */
+export function saveJson<T>(key: string, value: T): void {
+  storageSet(key, JSON.stringify(value));
+}
+
 // ── Set<string> ヘルパー ─────────────────────────────────────
 
 /** JSON 配列として保存された Set<string> を読み込む */
