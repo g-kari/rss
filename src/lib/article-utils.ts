@@ -96,6 +96,29 @@ export const DATE_RANGE_LABELS: Record<DateRange, string> = {
 };
 
 /**
+ * 日付範囲の開始日を返す。"all" の場合は null。
+ * - today: 今日の 00:00:00
+ * - week: 7 日前
+ * - month: 1 ヶ月前
+ */
+export function getDateRangeStart(range: DateRange): Date | null {
+  if (range === "all") return null;
+  const now = new Date();
+  if (range === "today") {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  if (range === "week") {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 7);
+    return d;
+  }
+  // month
+  const d = new Date(now);
+  d.setMonth(d.getMonth() - 1);
+  return d;
+}
+
+/**
  * ISO 日時文字列を「〇分前」形式の相対時間に変換する。
  * - 未来日時（時計のズレ等）は「たった今」として扱う
  * - 1分未満は「たった今」
