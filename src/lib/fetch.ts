@@ -17,12 +17,14 @@ function concatChunks(chunks: Uint8Array[], totalBytes: number): Uint8Array<Arra
 }
 
 /**
- * ReadableStream からバイト列を最大 maxBytes まで読み込む。
- * maxBytes を超えた場合は null を返す。
+ * ReadableStream からバイト列を読み込む共通実装。
+ * strict=true: maxBytes 超過時に null を返す（readBodyBytes）
+ * strict=false: maxBytes 到達時点で打ち切り、常に Uint8Array を返す（readBodyBytesPartial）
  */
-export async function readBodyBytes(
+async function readBodyBytesCore(
   body: ReadableStream<Uint8Array>,
   maxBytes: number,
+  strict: boolean,
 ): Promise<Uint8Array<ArrayBuffer> | null> {
   const reader = body.getReader();
   const chunks: Uint8Array[] = [];
@@ -32,13 +34,29 @@ export async function readBodyBytes(
       const { done, value } = await reader.read();
       if (done) break;
       totalBytes += value.byteLength;
-      if (totalBytes > maxBytes) return null;
-      chunks.push(value);
+      if (strict) {
+        if (totalBytes > maxBytes) return null;
+        chunks.push(value);
+      } else {
+        chunks.push(value);
+        if (totalBytes >= maxBytes) break;
+      }
     }
   } finally {
     reader.cancel().catch(() => {});
   }
   return concatChunks(chunks, totalBytes);
+}
+
+/**
+ * ReadableStream からバイト列を最大 maxBytes まで読み込む。
+ * maxBytes を超えた場合は null を返す。
+ */
+export async function readBodyBytes(
+  body: ReadableStream<Uint8Array>,
+  maxBytes: number,
+): Promise<Uint8Array<ArrayBuffer> | null> {
+  return readBodyBytesCore(body, maxBytes, true);
 }
 
 /**
@@ -50,21 +68,7 @@ export async function readBodyBytesPartial(
   body: ReadableStream<Uint8Array>,
   maxBytes: number,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      totalBytes += value.byteLength;
-      if (totalBytes >= maxBytes) break;
-    }
-  } finally {
-    reader.cancel().catch(() => {});
-  }
-  return concatChunks(chunks, totalBytes);
+  return readBodyBytesCore(body, maxBytes, false) as Promise<Uint8Array<ArrayBuffer>>;
 }
 
 /**
