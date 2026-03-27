@@ -45,6 +45,11 @@ const LAYOUT_LABELS: Record<Layout, string> = {
   magazine: "マガジン",
 };
 const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month"];
+
+/** サイクル配列の次の値を返す */
+function cycleValue<T>(cycle: T[], current: T): T {
+  return cycle[(cycle.indexOf(current) + 1) % cycle.length];
+}
 const DATE_RANGE_LABELS: Record<DateRange, string> = {
   all: "全期間",
   today: "今日",
@@ -104,48 +109,38 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
       const list = filteredArticles;
       const idx = selectedArticle ? list.findIndex((a) => a.id === selectedArticle.id) : -1;
 
+      /** 記事に移動して既読にマーク */
+      const navigateTo = (article: Article | undefined) => {
+        if (article) {
+          setSelectedArticle(article);
+          markRead(article.id);
+        }
+      };
+
       switch (e.key) {
         case "j":
-        case "ArrowDown": {
+        case "ArrowDown":
           e.preventDefault();
-          const next = list[idx + 1];
-          if (next) {
-            setSelectedArticle(next);
-            markRead(next.id);
-          }
+          navigateTo(list[idx + 1]);
           break;
-        }
         case "k":
-        case "ArrowUp": {
+        case "ArrowUp":
           e.preventDefault();
-          if (idx > 0) {
-            const prev = list[idx - 1];
-            setSelectedArticle(prev);
-            markRead(prev.id);
-          }
+          if (idx > 0) navigateTo(list[idx - 1]);
           break;
-        }
-        case "n": {
+        case "n":
           e.preventDefault();
-          const nextUnread = list.slice(idx + 1).find((a) => !readIds.has(a.id));
-          if (nextUnread) {
-            setSelectedArticle(nextUnread);
-            markRead(nextUnread.id);
-          }
+          navigateTo(list.slice(idx + 1).find((a) => !readIds.has(a.id)));
           break;
-        }
-        case "p": {
+        case "p":
           e.preventDefault();
-          const prevUnread = list
-            .slice(0, idx < 0 ? undefined : idx)
-            .reverse()
-            .find((a) => !readIds.has(a.id));
-          if (prevUnread) {
-            setSelectedArticle(prevUnread);
-            markRead(prevUnread.id);
-          }
+          navigateTo(
+            list
+              .slice(0, idx < 0 ? undefined : idx)
+              .reverse()
+              .find((a) => !readIds.has(a.id)),
+          );
           break;
-        }
         case "o":
           if (selectedArticle?.link)
             window.open(selectedArticle.link, "_blank", "noopener,noreferrer");
@@ -184,14 +179,13 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           }
           break;
         case "f": {
-          const next =
-            FONT_SIZE_CYCLE[(FONT_SIZE_CYCLE.indexOf(fontSize) + 1) % FONT_SIZE_CYCLE.length];
+          const next = cycleValue(FONT_SIZE_CYCLE, fontSize);
           onChangeFontSize(next);
           showToast(`文字サイズ: ${FONT_SIZE_LABELS[next]}`);
           break;
         }
         case "l": {
-          const next = LAYOUT_CYCLE[(LAYOUT_CYCLE.indexOf(layout) + 1) % LAYOUT_CYCLE.length];
+          const next = cycleValue(LAYOUT_CYCLE, layout);
           onChangeLayout(next);
           showToast(`レイアウト: ${LAYOUT_LABELS[next]}`);
           break;
