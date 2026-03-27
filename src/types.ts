@@ -78,6 +78,27 @@ export interface Article {
 
 export type Layout = "compact" | "list" | "card" | "magazine";
 export type FontSize = "small" | "medium" | "large";
+
+/** 記事に対するユーザーアクション種別 */
+export type EngagementAction =
+  | "fetch_full" // 全文取得
+  | "open_original" // 元記事に遷移
+  | "reading_list" // 後で読むに追加
+  | "bookmark" // ブックマーク
+  | "like"; // いいね
+
+/** エンゲージメントの1イベント */
+export interface EngagementEntry {
+  articleId: string;
+  feedHash: string; // 集計用
+  action: EngagementAction;
+  timestamp: string; // ISO 8601
+}
+
+/** R2 に保存するエンゲージメントログ — users/{userId}/engagement.json */
+export interface EngagementLog {
+  entries: EngagementEntry[]; // 最大 5,000 件、古いものから削除
+}
 export type DateRange = "all" | "today" | "week" | "month";
 export type AiMode = "summary" | "translation";
 

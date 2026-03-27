@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   READ_IDS: "rss-read",
   BOOKMARK_IDS: "rss-bookmarks",
   READING_LIST_IDS: "rss-reading-list",
+  LIKE_IDS: "rss-likes",
   PINNED_FEED_IDS: "rss-pinned",
   LAYOUT: "rss-layout",
   THEME: "rss-theme",

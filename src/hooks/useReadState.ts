@@ -4,8 +4,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Article, UserProfile } from "../types";
 import { STORAGE_KEYS, saveSet, loadSet, toggleSetItem } from "../lib/storage";
 
-/** 3つの既読状態セットをまとめた型 */
-type ReadStateSets = { read: Set<string>; bookmarks: Set<string>; readingList: Set<string> };
+/** 4つの既読状態セットをまとめた型 */
+type ReadStateSets = {
+  read: Set<string>;
+  bookmarks: Set<string>;
+  readingList: Set<string>;
+  likes: Set<string>;
+};
 
 /** サーバーから取得した配列を既存 Set にマージして localStorage を更新する */
 function mergeServerSet(
@@ -24,6 +29,7 @@ async function fetchReadState(): Promise<{
   readIds: string[];
   bookmarkIds: string[];
   readingListIds: string[];
+  likeIds: string[];
 } | null> {
   try {
     const res = await fetch("/api/read-state");
@@ -32,6 +38,7 @@ async function fetchReadState(): Promise<{
       readIds: string[];
       bookmarkIds: string[];
       readingListIds: string[];
+      likeIds: string[];
     }>;
   } catch {
     return null;
@@ -44,6 +51,7 @@ function serializeReadState(sets: ReadStateSets): string {
     readIds: [...sets.read],
     bookmarkIds: [...sets.bookmarks],
     readingListIds: [...sets.readingList],
+    likeIds: [...sets.likes],
   });
 }
 
@@ -63,11 +71,13 @@ interface ReadStateResult {
   readIds: Set<string>;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
+  likeIds: Set<string>;
   markRead: (articleId: string) => void;
   markAllRead: (feedId: string | null) => void;
   toggleRead: (articleId: string) => void;
   toggleBookmark: (articleId: string) => void;
   toggleReadingList: (articleId: string) => void;
+  toggleLike: (articleId: string) => void;
 }
 
 export function useReadState(
@@ -81,12 +91,14 @@ export function useReadState(
   const [readingListIds, setReadingListIds] = useState<Set<string>>(() =>
     loadSet(STORAGE_KEYS.READING_LIST_IDS),
   );
+  const [likeIds, setLikeIds] = useState<Set<string>>(() => loadSet(STORAGE_KEYS.LIKE_IDS));
 
-  // 3つのセットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
+  // 4つのセットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
   const stateRef = useRef<ReadStateSets>({
     read: readIds,
     bookmarks: bookmarkIds,
     readingList: readingListIds,
+    likes: likeIds,
   });
   const articlesRef = useRef(articles);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,13 +111,19 @@ export function useReadState(
       mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds);
       mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds);
       mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, state.readingListIds ?? []);
+      mergeServerSet(setLikeIds, STORAGE_KEYS.LIKE_IDS, state.likeIds ?? []);
     });
   }, [user]);
 
   // ref を最新の state / props に同期
   useEffect(() => {
-    stateRef.current = { read: readIds, bookmarks: bookmarkIds, readingList: readingListIds };
-  }, [readIds, bookmarkIds, readingListIds]);
+    stateRef.current = {
+      read: readIds,
+      bookmarks: bookmarkIds,
+      readingList: readingListIds,
+      likes: likeIds,
+    };
+  }, [readIds, bookmarkIds, readingListIds, likeIds]);
 
   useEffect(() => {
     articlesRef.current = articles;
@@ -208,14 +226,24 @@ export function useReadState(
     [scheduleSyncToServer],
   );
 
+  const toggleLike = useCallback(
+    (id: string) => {
+      toggleSetItem(setLikeIds, STORAGE_KEYS.LIKE_IDS, id);
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
+  );
+
   return {
     readIds,
     bookmarkIds,
     readingListIds,
+    likeIds,
     markRead,
     markAllRead,
     toggleRead,
     toggleBookmark,
     toggleReadingList,
+    toggleLike,
   };
 }

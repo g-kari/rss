@@ -6,11 +6,13 @@ interface ReadState {
   readIds: string[];
   bookmarkIds: string[];
   readingListIds: string[];
+  likeIds: string[];
 }
 
 const MAX_READ_IDS = 20_000;
 const MAX_BOOKMARK_IDS = 2_000;
 const MAX_READING_LIST_IDS = 2_000;
+const MAX_LIKE_IDS = 2_000;
 const MAX_ID_LENGTH = 128;
 
 function r2Key(userId: string) {
@@ -32,6 +34,7 @@ export async function GET() {
       readIds: [],
       bookmarkIds: [],
       readingListIds: [],
+      likeIds: [],
     });
     return NextResponse.json(state);
   });
@@ -46,12 +49,18 @@ export async function POST(req: NextRequest) {
     const readIds = extractIds(body.readIds, MAX_READ_IDS);
     const bookmarkIds = extractIds(body.bookmarkIds, MAX_BOOKMARK_IDS);
     const readingListIds = extractIds(body.readingListIds, MAX_READING_LIST_IDS);
+    const likeIds = extractIds(body.likeIds, MAX_LIKE_IDS);
 
-    if (!readIds || !bookmarkIds || !readingListIds) {
+    if (!readIds || !bookmarkIds || !readingListIds || !likeIds) {
       return NextResponse.json({ error: "Payload too large" }, { status: 413 });
     }
 
-    await r2Put(env.RSS_DATA, r2Key(session.userId), { readIds, bookmarkIds, readingListIds });
+    await r2Put(env.RSS_DATA, r2Key(session.userId), {
+      readIds,
+      bookmarkIds,
+      readingListIds,
+      likeIds,
+    });
     return NextResponse.json({ ok: true });
   });
 }

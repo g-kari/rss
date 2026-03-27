@@ -23,6 +23,13 @@ interface Props {
   onToggleBookmark: (id: string) => void;
   isInReadingList: boolean;
   onToggleReadingList: (id: string) => void;
+  isLiked: boolean;
+  onToggleLike: (id: string) => void;
+  onEngagement?: (
+    articleId: string,
+    feedHash: string,
+    action: "fetch_full" | "open_original",
+  ) => void;
   onMobileBack?: () => void;
   fontSize?: FontSize;
   onChangeFontSize?: (size: FontSize) => void;
@@ -293,6 +300,9 @@ export default function ArticleView({
   onToggleBookmark,
   isInReadingList,
   onToggleReadingList,
+  isLiked,
+  onToggleLike,
+  onEngagement,
   onMobileBack,
   fontSize = "medium",
   onChangeFontSize,
@@ -637,6 +647,7 @@ export default function ArticleView({
               href={article.link}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => onEngagement?.(article.id, article.feedHash, "open_original")}
               className="text-text-muted hover:text-text-default transition-colors duration-200 tracking-[0.04em]"
             >
               元記事 ↗
@@ -775,6 +786,28 @@ export default function ArticleView({
                   strokeLinejoin="round"
                   d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
                 />
+              </svg>
+            </button>
+            <button
+              onClick={() => onToggleLike(article.id)}
+              title={isLiked ? "いいね解除" : "いいね"}
+              className={`transition-colors duration-200 ${
+                isLiked
+                  ? "text-rose-400 hover:text-text-muted"
+                  : "text-text-faint hover:text-rose-400"
+              }`}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill={isLiked ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
             </button>
           </div>
@@ -929,7 +962,9 @@ export default function ArticleView({
           <div className="mt-6 pt-6 border-t border-border-subtle flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => fetchFullContent()}
+                onClick={() =>
+                  fetchFullContent(() => onEngagement?.(article.id, article.feedHash, "fetch_full"))
+                }
                 disabled={fetching}
                 className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200 disabled:opacity-50"
               >
@@ -949,6 +984,7 @@ export default function ArticleView({
                 href={article.link}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => onEngagement?.(article.id, article.feedHash, "open_original")}
                 className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200"
               >
                 <ExternalLinkIcon size={14} />

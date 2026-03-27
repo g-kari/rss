@@ -18,6 +18,7 @@ import { useReadingHistory } from "./hooks/useReadingHistory";
 import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
+import { useEngagement } from "./hooks/useEngagement";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -79,12 +80,16 @@ export default function App() {
     readIds,
     bookmarkIds,
     readingListIds,
+    likeIds,
     markRead,
     markAllRead,
     toggleRead,
     toggleBookmark,
     toggleReadingList,
+    toggleLike,
   } = useReadState(user, articles);
+
+  const { recordEngagement } = useEngagement(user);
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() =>
     searchParams.get("feed"),
   );
@@ -229,6 +234,33 @@ export default function App() {
       setMobilePane("view");
     },
     [markRead, addToHistory, setMobilePane],
+  );
+
+  const handleToggleBookmark = useCallback(
+    (id: string) => {
+      toggleBookmark(id);
+      const article = articles.find((a) => a.id === id);
+      if (article) recordEngagement(id, article.feedHash, "bookmark");
+    },
+    [toggleBookmark, articles, recordEngagement],
+  );
+
+  const handleToggleReadingList = useCallback(
+    (id: string) => {
+      toggleReadingList(id);
+      const article = articles.find((a) => a.id === id);
+      if (article) recordEngagement(id, article.feedHash, "reading_list");
+    },
+    [toggleReadingList, articles, recordEngagement],
+  );
+
+  const handleToggleLike = useCallback(
+    (id: string) => {
+      toggleLike(id);
+      const article = articles.find((a) => a.id === id);
+      if (article) recordEngagement(id, article.feedHash, "like");
+    },
+    [toggleLike, articles, recordEngagement],
   );
 
   useKeyboardNav({
@@ -612,9 +644,12 @@ export default function App() {
           <ArticleView
             article={selectedArticle}
             isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
-            onToggleBookmark={toggleBookmark}
+            onToggleBookmark={handleToggleBookmark}
             isInReadingList={selectedArticle ? readingListIds.has(selectedArticle.id) : false}
-            onToggleReadingList={toggleReadingList}
+            onToggleReadingList={handleToggleReadingList}
+            isLiked={selectedArticle ? likeIds.has(selectedArticle.id) : false}
+            onToggleLike={handleToggleLike}
+            onEngagement={recordEngagement}
             onMobileBack={() => setMobilePane("list")}
             fontSize={fontSize}
             onChangeFontSize={onChangeFontSize}
