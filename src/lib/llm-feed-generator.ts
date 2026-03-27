@@ -287,6 +287,7 @@ export function scrapeFeed(
       author: "",
       publishedAt: null,
       categories: [],
+      metadata: [],
     });
   }
 

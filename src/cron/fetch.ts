@@ -123,6 +123,7 @@ async function buildArticle(
     publishedAt: item.publishedAt,
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     categories: item.categories.length > 0 ? item.categories : existing?.categories,
+    metadata: item.metadata.length > 0 ? item.metadata : existing?.metadata,
   };
 }
 
