@@ -9,6 +9,7 @@ import { scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
 import { discoverFeedUrl } from "./feed-discovery";
 import { buildFeedUserMap, readFeedMeta, readLatestArticles } from "./shared-feed";
 import { fetchWithTimeout } from "./fetch";
+import { buildContentCacheKey } from "./fetch-article-content";
 
 // gemma-3-12b-it: 日本語・英語混在タイトルのトピック抽出に使用
 const MODEL = "@cf/google/gemma-3-12b-it" as Parameters<Ai["run"]>[0];
@@ -266,6 +267,125 @@ export async function generatePopularFeeds(
   return results;
 }
 
+// ── リンク発見（Link Discovery） ─────────────────────────────────
+
+const HIGH_SIGNAL_ACTIONS = new Set(["bookmark", "like", "fetch_full"]);
+
+/**
+ * ブックマーク・いいね・全文取得した記事の Cloudflare Cache キャッシュを読み、
+ * 記事本文内のリンクから RSS フィードを発見する。
+ * キャッシュミスの記事はスキップ（外部 fetch は行わない）。
+ */
+export async function generateLinkDiscoveryFeeds(
+  bucket: R2Bucket,
+  engagement: EngagementLog,
+  subscribedUrls: Set<string>,
+  origin: string,
+): Promise<RecommendedFeed[]> {
+  // 高シグナルのエントリを最新 20 件取得
+  const highSignal = engagement.entries.filter((e) => HIGH_SIGNAL_ACTIONS.has(e.action)).slice(-20);
+
+  if (highSignal.length === 0) return [];
+
+  // feedHash ごとにグループ化
+  const byFeed = new Map<string, string[]>();
+  for (const entry of highSignal) {
+    const ids = byFeed.get(entry.feedHash) ?? [];
+    ids.push(entry.articleId);
+    byFeed.set(entry.feedHash, ids);
+  }
+
+  // 記事 URL を解決
+  const articleLinks: Array<{ link: string; title: string }> = [];
+  for (const [feedHash, articleIds] of byFeed) {
+    try {
+      const articles = await readLatestArticles(bucket, feedHash);
+      const idSet = new Set(articleIds);
+      for (const a of articles) {
+        if (idSet.has(a.id) && a.link) {
+          articleLinks.push({ link: a.link, title: a.title });
+        }
+      }
+    } catch {
+      // フィード読み込み失敗はスキップ
+    }
+  }
+
+  if (articleLinks.length === 0) return [];
+
+  // Cache API から全文 HTML を取得してリンク抽出
+  const seenHostnames = new Set<string>();
+  const candidates: Array<{ url: string; articleTitle: string }> = [];
+
+  for (const { link, title } of articleLinks) {
+    try {
+      const cacheKey = await buildContentCacheKey(origin, link);
+      const cached = await caches.default.match(cacheKey);
+      if (!cached) continue;
+
+      const data = (await cached.json()) as { content: string };
+      const html = data.content;
+
+      // <a href="..."> を抽出
+      const articleHostname = new URL(link).hostname;
+      const hrefRe = /<a\b[^>]+href\s*=\s*["']([^"'#?][^"']*?)["'][^>]*>/gi;
+      let m: RegExpExecArray | null;
+      while ((m = hrefRe.exec(html)) !== null) {
+        const href = m[1];
+        if (!href.startsWith("http")) continue;
+        try {
+          const u = new URL(href);
+          if (u.hostname === articleHostname) continue;
+          if (subscribedUrls.has(href)) continue;
+          if (seenHostnames.has(u.hostname)) continue;
+          seenHostnames.add(u.hostname);
+          candidates.push({ url: href, articleTitle: title });
+          if (candidates.length >= 8) break;
+        } catch {
+          // URL パース失敗はスキップ
+        }
+      }
+      if (candidates.length >= 8) break;
+    } catch {
+      // キャッシュ読み込み失敗はスキップ
+    }
+  }
+
+  if (candidates.length === 0) return [];
+
+  // discoverFeedUrl() を並列実行
+  const results: RecommendedFeed[] = [];
+  const checks = candidates.map(async ({ url, articleTitle }) => {
+    try {
+      const feedUrl = await discoverFeedUrl(url);
+      if (!feedUrl) return null;
+      if (subscribedUrls.has(feedUrl)) return null;
+
+      const id = (await sha256Hex(`ld_${feedUrl}`)).slice(0, 12);
+      return {
+        id,
+        feedUrl,
+        title: new URL(url).hostname,
+        siteUrl: url,
+        reason: `「${articleTitle}」内のリンクから発見`,
+        source: "link_discovery" as const,
+        score: 0.85,
+      };
+    } catch {
+      return null;
+    }
+  });
+
+  const settled = await Promise.allSettled(checks);
+  for (const r of settled) {
+    if (r.status === "fulfilled" && r.value) {
+      results.push(r.value);
+    }
+  }
+
+  return results;
+}
+
 // ── メインのレコメンド生成関数 ──────────────────────────────────
 
 export async function generateRecommendations(params: {
@@ -273,8 +393,9 @@ export async function generateRecommendations(params: {
   bucket: R2Bucket;
   ai: Ai;
   subscriptions: UserSubscription[];
+  origin: string;
 }): Promise<RecommendationCache> {
-  const { userId, bucket, ai, subscriptions } = params;
+  const { userId, bucket, ai, subscriptions, origin } = params;
 
   // エンゲージメントログを取得
   const engagement = await r2Get<EngagementLog>(bucket, `users/${userId}/engagement.json`, {
@@ -288,19 +409,21 @@ export async function generateRecommendations(params: {
   // トピック抽出（Gemma AI）
   const topics = await extractUserTopics(bucket, subscriptions, engagement, ai);
 
-  // Web 検索と人気フィードを並列実行
-  const [webSettled, popularSettled] = await Promise.allSettled([
+  // Web 検索・人気フィード・リンク発見を並列実行
+  const [webSettled, popularSettled, linkSettled] = await Promise.allSettled([
     generateWebSearchFeeds(topics, subscribedUrls),
     generatePopularFeeds(bucket, subscribedFeedHashes),
+    generateLinkDiscoveryFeeds(bucket, engagement, subscribedUrls, origin),
   ]);
 
   const webResults = webSettled.status === "fulfilled" ? webSettled.value : [];
   const popularResults = popularSettled.status === "fulfilled" ? popularSettled.value : [];
+  const linkResults = linkSettled.status === "fulfilled" ? linkSettled.value : [];
 
-  // feedUrl で重複排除してマージ（Web 検索を優先）
+  // feedUrl で重複排除してマージ（Web 検索 → リンク発見 → 人気 の優先度）
   const seenFeedUrls = new Set<string>();
   const merged: RecommendedFeed[] = [];
-  for (const feed of [...webResults, ...popularResults]) {
+  for (const feed of [...webResults, ...linkResults, ...popularResults]) {
     if (seenFeedUrls.has(feed.feedUrl)) continue;
     seenFeedUrls.add(feed.feedUrl);
     merged.push(feed);

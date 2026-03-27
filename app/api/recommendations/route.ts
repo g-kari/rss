@@ -20,6 +20,7 @@ export async function GET() {
       bucket: env.RSS_DATA,
       ai: env.AI,
       subscriptions,
+      origin: process.env.APP_BASE_URL!,
     });
 
     return NextResponse.json(result);
