@@ -214,17 +214,19 @@ export default function App() {
 
   const articleMap = useMemo(() => new Map(articles.map((a) => [a.id, a])), [articles]);
 
-  const { bookmarkCount, readingListCount, historyCount } = useMemo(() => {
+  const { bookmarkCount, readingListCount, likeCount, historyCount } = useMemo(() => {
     let bm = 0,
       rl = 0,
+      lk = 0,
       hist = 0;
     for (const a of articles) {
       if (bookmarkIds.has(a.id)) bm++;
       if (readingListIds.has(a.id)) rl++;
+      if (likeIds.has(a.id)) lk++;
       if (historyIds.has(a.id)) hist++;
     }
-    return { bookmarkCount: bm, readingListCount: rl, historyCount: hist };
-  }, [articles, bookmarkIds, readingListIds, historyIds]);
+    return { bookmarkCount: bm, readingListCount: rl, likeCount: lk, historyCount: hist };
+  }, [articles, bookmarkIds, readingListIds, likeIds, historyIds]);
 
   const {
     filtered,
@@ -250,6 +252,7 @@ export default function App() {
     readIds,
     bookmarkIds,
     readingListIds,
+    likeIds,
     historyIds,
     historyOrder,
     selectedArticleId: selectedArticle?.id,
@@ -614,6 +617,7 @@ export default function App() {
             readIds={readIds}
             bookmarkCount={bookmarkCount}
             readingListCount={readingListCount}
+            likeCount={likeCount}
             historyCount={historyCount}
             selectedFeedId={selectedFeedId}
             user={user}
