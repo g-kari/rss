@@ -3,6 +3,7 @@ import { withSession } from "@/lib/server-auth";
 import { r2Get, savedArticlesKey } from "@/lib/r2";
 import {
   getUserLatestArticles,
+  MAX_PAGES,
   readArticlePage,
   readLatestArticles,
   readUserSubscriptions,
@@ -16,6 +17,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const feedHash = searchParams.get("feed");
     const page = parseInt(searchParams.get("page") ?? "1", 10);
+
+    if (feedHash && (!Number.isInteger(page) || page < 1 || page > MAX_PAGES)) {
+      return NextResponse.json({ error: "Invalid page" }, { status: 400 });
+    }
 
     // フィード指定: 購読チェックと記事取得を並列実行
     if (feedHash) {
