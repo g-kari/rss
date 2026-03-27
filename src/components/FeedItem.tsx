@@ -10,6 +10,41 @@ export function formatCount(n: number): string {
   return n > 99 ? "99+" : String(n);
 }
 
+function NsfwIcon({ size = 10 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <ellipse cx="5" cy="5" rx="4" ry="2.5" />
+      <circle cx="5" cy="5" r="1.5" />
+    </svg>
+  );
+}
+
+function FilterIcon({ size = 10 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M1 2h8M2.5 5h5M4 8h2" />
+    </svg>
+  );
+}
+
 export interface FeedItemProps {
   feed: Feed;
   count: number;
@@ -125,21 +160,7 @@ export default function FeedItem({
     {
       key: "nsfw",
       label: feed.nsfw ? "NSFW解除" : "NSFW設定",
-      icon: (
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <ellipse cx="5" cy="5" rx="4" ry="2.5" />
-          <circle cx="5" cy="5" r="1.5" />
-        </svg>
-      ),
+      icon: <NsfwIcon />,
       onClick: (e: React.MouseEvent) => {
         e.stopPropagation();
         onToggleNsfw?.();
@@ -152,20 +173,7 @@ export default function FeedItem({
     {
       key: "filter",
       label: hasFilter ? "フィルター設定中" : "キーワードフィルター",
-      icon: (
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M1 2h8M2.5 5h5M4 8h2" />
-        </svg>
-      ),
+      icon: <FilterIcon />,
       onClick: (e: React.MouseEvent) => {
         e.stopPropagation();
         setMenuOpen(false);
@@ -315,38 +323,13 @@ export default function FeedItem({
               {feed.title || feed.url}
             </span>
             {feed.nsfw && (
-              <span title="NSFWフィード">
-                <svg
-                  width="8"
-                  height="8"
-                  viewBox="0 0 10 10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="flex-shrink-0 text-rose-400"
-                >
-                  <ellipse cx="5" cy="5" rx="4" ry="2.5" />
-                  <circle cx="5" cy="5" r="1.5" />
-                </svg>
+              <span title="NSFWフィード" className="flex-shrink-0 text-rose-400">
+                <NsfwIcon size={8} />
               </span>
             )}
             {hasFilter && (
-              <span title="キーワードフィルター設定中">
-                <svg
-                  width="8"
-                  height="8"
-                  viewBox="0 0 10 10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="flex-shrink-0 text-text-muted"
-                >
-                  <path d="M1 2h8M2.5 5h5M4 8h2" />
-                </svg>
+              <span title="キーワードフィルター設定中" className="flex-shrink-0 text-text-muted">
+                <FilterIcon size={8} />
               </span>
             )}
           </span>
