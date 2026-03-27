@@ -391,18 +391,16 @@ export function fixExternalLinks(html: string, pageUrl = ""): string {
     }
 
     // rel 属性に noopener noreferrer を付与（既存値があれば追記）
-    const relMatch =
-      newAttrs.match(/\brel\s*=\s*"([^"]*)"/i) ?? newAttrs.match(/\brel\s*=\s*'([^']*)'/i);
+    // (["'])…\1 で開閉クォートが一致する場合のみマッチし、2 つめのキャプチャが属性値
+    const relMatch = newAttrs.match(/\brel\s*=\s*(["'])([^"']*)\1/i);
     if (!relMatch) {
       newAttrs += ' rel="noopener noreferrer"';
     } else {
-      const values = new Set(relMatch[1].split(/\s+/).filter(Boolean));
+      const values = new Set(relMatch[2].split(/\s+/).filter(Boolean));
       values.add("noopener");
       values.add("noreferrer");
       const newRel = [...values].join(" ");
-      newAttrs = newAttrs
-        .replace(/\brel\s*=\s*"[^"]*"/i, `rel="${newRel}"`)
-        .replace(/\brel\s*=\s*'[^']*'/i, `rel="${newRel}"`);
+      newAttrs = newAttrs.replace(/\brel\s*=\s*(?:"[^"]*"|'[^']*')/i, `rel="${newRel}"`);
     }
 
     return `<a${newAttrs}>`;

@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (174)
+
+### リファクタリング
+- **\`sanitizeHtml\` / \`fixExternalLinks\` の HTML 属性マッチを統合** — \`xlink:href\`・\`href|src|action|formaction\` の危険スキーム検出と \`fixExternalLinks\` の \`rel\` 属性処理で、ダブルクォート用とシングルクォート用に分かれていた正規表現ペアを \`(["'])…\\1\` 後方参照パターンで 1 つに統合。合計 5 行を削減。\`style\` 属性は値が \`url('...')\` のように逆クォートを含む可能性があるため従来通り個別パターンを維持（コメント追記）
+
 ## 2026-03-28 (173)
 
 ### リファクタリング

@@ -237,13 +237,12 @@ export function sanitizeHtml(html: string): string {
       .replace(/(?:src|href|action|formaction)\s*=\s*data:[^\s>]*/gi, "")
       // xlink:href の HTML エンティティ・先頭空白バイパスを除去
       // 汎用 href パターンより先に処理することで xlink: プレフィックスが残留しないようにする
-      .replace(/xlink:href\s*=\s*"([^"]*)"/gi, (m, val) => (hasDangerousScheme(val) ? "" : m))
-      .replace(/xlink:href\s*=\s*'([^']*)'/gi, (m, val) => (hasDangerousScheme(val) ? "" : m))
-      // HTML エンティティや先頭空白でエンコードされた危険スキームを除去（hasDangerousScheme で検出）
-      .replace(/(?:href|src|action|formaction)\s*=\s*"([^"]*)"/gi, (m, val) =>
+      // (["'])…\1 で開閉クォートが一致する場合のみマッチし、2 つめのキャプチャが属性値
+      .replace(/xlink:href\s*=\s*(["'])([^"']*)\1/gi, (m, _q, val) =>
         hasDangerousScheme(val) ? "" : m,
       )
-      .replace(/(?:href|src|action|formaction)\s*=\s*'([^']*)'/gi, (m, val) =>
+      // HTML エンティティや先頭空白でエンコードされた危険スキームを除去（hasDangerousScheme で検出）
+      .replace(/(?:href|src|action|formaction)\s*=\s*(["'])([^"']*)\1/gi, (m, _q, val) =>
         hasDangerousScheme(val) ? "" : m,
       )
       // srcdoc 属性を除去（iframe フォールバック経由の HTML インジェクション防止）
@@ -251,6 +250,7 @@ export function sanitizeHtml(html: string): string {
       // ping 属性を除去（リンククリック時の意図しないリクエスト防止）
       .replace(/\bping\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
       // inline style 属性をサニタイズ（CSS トラッキング・フィッシングオーバーレイ防止）
+      // style 値は url('...') のように内部に逆クォートを含みうるため、クォート種別ごとに個別パターン
       .replace(/\bstyle\s*=\s*"([^"]*)"/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
       .replace(/\bstyle\s*=\s*'([^']*)'/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
       .trim()
