@@ -211,6 +211,8 @@ export default function App() {
 
   const nsfwFeedIds = useMemo(() => new Set(feeds.filter((f) => f.nsfw).map((f) => f.id)), [feeds]);
 
+  const articleMap = useMemo(() => new Map(articles.map((a) => [a.id, a])), [articles]);
+
   const { bookmarkCount, readingListCount, historyCount } = useMemo(() => {
     let bm = 0,
       rl = 0,
@@ -284,28 +286,28 @@ export default function App() {
   const handleToggleBookmark = useCallback(
     (id: string) => {
       toggleBookmark(id);
-      const article = articles.find((a) => a.id === id);
+      const article = articleMap.get(id);
       if (article) recordEngagement(id, article.feedHash, "bookmark");
     },
-    [toggleBookmark, articles, recordEngagement],
+    [toggleBookmark, articleMap, recordEngagement],
   );
 
   const handleToggleReadingList = useCallback(
     (id: string) => {
       toggleReadingList(id);
-      const article = articles.find((a) => a.id === id);
+      const article = articleMap.get(id);
       if (article) recordEngagement(id, article.feedHash, "reading_list");
     },
-    [toggleReadingList, articles, recordEngagement],
+    [toggleReadingList, articleMap, recordEngagement],
   );
 
   const handleToggleLike = useCallback(
     (id: string) => {
       toggleLike(id);
-      const article = articles.find((a) => a.id === id);
+      const article = articleMap.get(id);
       if (article) recordEngagement(id, article.feedHash, "like");
     },
-    [toggleLike, articles, recordEngagement],
+    [toggleLike, articleMap, recordEngagement],
   );
 
   useKeyboardNav({
