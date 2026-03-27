@@ -3,7 +3,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import type { Article, Feed, FontSize, Layout, DateRange } from "../types";
 import type { SortOrder } from "./useFilteredArticles";
-import { cycleValue } from "../lib/article-utils";
+import { cycleValue, DATE_RANGE_LABELS } from "../lib/article-utils";
 
 interface KeyboardNavOptions {
   filteredArticles: Article[];
@@ -32,7 +32,7 @@ interface KeyboardNavOptions {
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
   dateRange: DateRange;
-  cycleDateRange: () => void;
+  cycleDateRange: () => DateRange;
   searchRef: RefObject<HTMLInputElement | null>;
 }
 
@@ -44,14 +44,6 @@ const LAYOUT_LABELS: Record<Layout, string> = {
   list: "リスト",
   card: "カード",
   magazine: "マガジン",
-};
-const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month"];
-
-const DATE_RANGE_LABELS: Record<DateRange, string> = {
-  all: "全期間",
-  today: "今日",
-  week: "今週",
-  month: "今月",
 };
 
 /**
@@ -99,7 +91,6 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         sortOrder,
         toggleSortOrder,
         cycleDateRange,
-        dateRange,
         searchRef,
       } = ref.current;
 
@@ -202,9 +193,8 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           break;
         case "d": {
           e.preventDefault();
-          cycleDateRange();
-          const nextIdx = (DATE_RANGE_CYCLE.indexOf(dateRange) + 1) % DATE_RANGE_CYCLE.length;
-          showToast(`日付フィルター: ${DATE_RANGE_LABELS[DATE_RANGE_CYCLE[nextIdx]]}`);
+          const next = cycleDateRange();
+          showToast(`日付フィルター: ${DATE_RANGE_LABELS[next]}`);
           break;
         }
         case "/":
