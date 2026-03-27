@@ -48,7 +48,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
       // 4xx はクライアント起因（アクセス不可・存在しない）なのでそのまま返す
       // 5xx はゲートウェイエラーとして 502 を返す
       const status = res.status >= 400 && res.status < 500 ? res.status : 502;
-      return NextResponse.json({ error: `${res.status} ${res.statusText}` }, { status });
+      return NextResponse.json({ error: `HTTP ${res.status}` }, { status });
     }
 
     const ct = res.headers.get("content-type") ?? "";
