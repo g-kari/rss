@@ -15,21 +15,18 @@ async function flushBuffer(): Promise<void> {
   const buffer = loadJson<BufferEntry[]>(BUFFER_KEY, []);
   if (buffer.length === 0) return;
 
-  // 送信成功したらバッファをクリア
-  try {
-    await Promise.all(
-      buffer.map((entry) =>
-        apiFetch("/api/engagement", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(entry),
-        }),
-      ),
-    );
-    saveJson(BUFFER_KEY, []);
-  } catch {
-    // ネットワークエラー時はバッファを保持したまま
-  }
+  // 成功したエントリのみバッファから除去（一部失敗しても成功分は重複送信しない）
+  const results = await Promise.allSettled(
+    buffer.map((entry) =>
+      apiFetch("/api/engagement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entry),
+      }),
+    ),
+  );
+  const remaining = buffer.filter((_, i) => results[i].status === "rejected");
+  saveJson(BUFFER_KEY, remaining);
 }
 
 export function useEngagement(user: UserProfile | null | undefined) {
