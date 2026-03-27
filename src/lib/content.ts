@@ -640,6 +640,17 @@ export function extractMainContent(
 
   const rc = extractWithReadability(html, pageUrl);
   if (rc && isContentSufficient(rc)) {
+    // Readability が元ページの画像を大量に削除した場合は regex フォールバックを優先する。
+    // 例: PR TIMES のように画像主体のプレスリリースでは Readability が本文画像をほぼ除去する。
+    // 条件: 元 HTML に 8 枚以上の img があり、Readability の結果が 20% 未満の場合に regex を試す。
+    const srcImgCount = (html.match(/<img\b/gi) ?? []).length;
+    const rcImgCount = (rc.match(/<img\b/gi) ?? []).length;
+    if (srcImgCount >= 8 && rcImgCount * 5 < srcImgCount) {
+      const regexContent = extractWithRegex(html, pageUrl);
+      if ((regexContent.match(/<img\b/gi) ?? []).length >= rcImgCount * 2) {
+        return { content: regexContent + buildGallery(), source: "regex" };
+      }
+    }
     return { content: postProcess(rc, pageUrl) + buildGallery(), source: "readability" };
   }
   const regexContent = extractWithRegex(html, pageUrl);
