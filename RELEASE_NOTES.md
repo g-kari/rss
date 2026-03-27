@@ -1,5 +1,12 @@
 # リリースノート
 
+## 2026-03-28 (178)
+
+### リファクタリング
+
+- **`compareByPublishedAtDesc` を `article-utils.ts` に抽出** — `cron/fetch.ts` のインラインソートを名前付き関数に置き換え。`compareByDateDesc` と重複していたロジックを `publishedAt` のみのオブジェクト向け比較関数として共通化
+- **`matchesKeywordFilter` のキーワード lowercase を呼び出し元に移動** — 関数内で記事ごとに `lowerExclude`/`lowerInclude` を再計算していた処理を、`feedFilterMap`（`useFilteredArticles`）と `filterMap`（`/api/articles`）の構築時に一度だけ実行するよう変更。`applyKeywordFilter` も同様に正規化後の filter を渡すよう修正
+
 ## 2026-03-28 (177)
 
 ### リファクタリング

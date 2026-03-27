@@ -45,6 +45,16 @@ export function compareByDateDesc(
   return bDate < aDate ? -1 : bDate > aDate ? 1 : 0;
 }
 
+/** publishedAt のみを持つオブジェクト（ParsedItem 等）の降順比較。null は末尾 */
+export function compareByPublishedAtDesc(
+  a: { publishedAt: string | null },
+  b: { publishedAt: string | null },
+): number {
+  const ap = a.publishedAt ?? "";
+  const bp = b.publishedAt ?? "";
+  return bp > ap ? 1 : bp < ap ? -1 : 0;
+}
+
 /**
  * 記事が検索クエリにマッチするか判定する。
  * スペース区切りで複数ワード AND 検索。
