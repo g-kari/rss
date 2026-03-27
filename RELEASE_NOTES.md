@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (173)
+
+### リファクタリング
+
+- **`readBodyBytes` / `readBodyBytesPartial` を `readBodyBytesCore` に統合** — `src/lib/fetch.ts` の 2 関数で重複していた ReadableStream 読み取りループ（reader 初期化・チャンク蓄積・finally ブロック）をプライベートな `readBodyBytesCore` に集約。公開 API のシグネチャは変更なし
+
 ## 2026-03-28 (172)
 
 ### リファクタリング
