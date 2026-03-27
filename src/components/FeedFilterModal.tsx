@@ -150,10 +150,14 @@ export default function FeedFilterModal({ feed, onClose, onSave }: Props) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={(e) => {
+        e.stopPropagation();
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-surface-elevated border border-border-default rounded-xl shadow-xl w-[400px] max-w-[calc(100vw-2rem)] p-5 flex flex-col gap-4">
+      <div
+        className="bg-surface-elevated border border-border-default rounded-xl shadow-xl w-[400px] max-w-[calc(100vw-2rem)] p-5 flex flex-col gap-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* ヘッダー */}
         <div className="flex items-center justify-between">
           <div>

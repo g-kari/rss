@@ -7,7 +7,7 @@ import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
-import type { Article } from "./types";
+import type { Article, KeywordFilter } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useReadState } from "./hooks/useReadState";
@@ -136,6 +136,20 @@ export default function App() {
     document.title = totalUnread > 0 ? `(${totalUnread}) RSS Reader` : "RSS Reader";
     updateFaviconBadge(totalUnread).catch(() => {});
   }, [totalUnread]);
+
+  const saveFilter = useCallback(
+    async (feedId: string, filter: KeywordFilter | null) => {
+      const res = await fetch(`/api/feeds/${feedId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filter }),
+      });
+      if (!res.ok) throw new Error("フィルターの保存に失敗しました");
+      const updated = (await res.json()) as import("./types").Feed;
+      updateFeed(updated);
+    },
+    [updateFeed],
+  );
 
   function onFeedDeleted(id: string) {
     removeFeed(id);
@@ -675,6 +689,8 @@ export default function App() {
             onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
             onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
             theme={theme}
+            feeds={feeds}
+            onSaveFilter={saveFilter}
           />
         </ErrorBoundary>
       </div>

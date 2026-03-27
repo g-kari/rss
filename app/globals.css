@@ -454,44 +454,62 @@ body {
   color: var(--color-text-default);
 }
 
-/* ── OGP リンクプレビューカード ──────────────────────────────── */
+/* ── OGP リンクプレビューカード（Twitter OGP スタイル） ─────── */
 .ogp-link-preview {
-  display: flex;
+  display: block;
   text-decoration: none !important;
   border: 1px solid var(--color-border-default);
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
-  margin: 1em 0;
+  margin: 1.25em 0;
   background: var(--color-surface-elevated);
   color: inherit;
-  transition: background 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
   cursor: pointer;
 }
 .ogp-link-preview:hover {
   background: var(--color-surface-subtle);
+  border-color: var(--color-border-subtle);
+}
+/* 画像なし: コンパクトな横並びレイアウト */
+.ogp-link-preview.ogp-link-preview-no-image {
+  display: flex;
+  align-items: center;
+}
+.ogp-link-preview.ogp-link-preview-no-image .ogp-link-preview-text {
+  padding: 14px 16px;
+}
+.ogp-link-preview-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.91 / 1;
+  object-fit: cover;
+  background-color: var(--color-surface-subtle);
 }
 .ogp-link-preview-text {
-  flex: 1;
-  padding: 12px 14px;
-  min-width: 0;
+  padding: 10px 14px 12px;
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
 }
 .ogp-link-preview-domain {
   font-size: 11px;
   color: var(--color-text-muted);
   letter-spacing: 0.03em;
+  margin-bottom: 1px;
 }
 .ogp-link-preview-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--color-text-strong);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 .ogp-link-preview-description {
   font-size: 12px;
@@ -501,13 +519,6 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.5;
-  margin-top: 1px;
-}
-.ogp-link-preview-image {
-  width: 110px;
-  flex-shrink: 0;
-  object-fit: cover;
-  background-color: var(--color-surface-subtle);
 }
 
 /* X (Twitter) ツイート埋め込みラッパー */

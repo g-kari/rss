@@ -38,6 +38,18 @@ function buildPreviewCard(url: string, ogp: OgpData): HTMLAnchorElement | null {
   card.rel = "noopener noreferrer";
   card.className = LINK_PREVIEW_CLASS;
 
+  // 画像を先頭に配置（Twitter OGP スタイル）
+  if (ogp.image) {
+    const img = document.createElement("img");
+    img.className = "ogp-link-preview-image";
+    img.src = `/api/image-proxy?url=${encodeURIComponent(ogp.image)}`;
+    img.alt = "";
+    img.loading = "lazy";
+    card.appendChild(img);
+  } else {
+    card.classList.add("ogp-link-preview-no-image");
+  }
+
   const textDiv = document.createElement("div");
   textDiv.className = "ogp-link-preview-text";
 
@@ -65,15 +77,6 @@ function buildPreviewCard(url: string, ogp: OgpData): HTMLAnchorElement | null {
   }
 
   card.appendChild(textDiv);
-
-  if (ogp.image) {
-    const img = document.createElement("img");
-    img.className = "ogp-link-preview-image";
-    img.src = `/api/image-proxy?url=${encodeURIComponent(ogp.image)}`;
-    img.alt = "";
-    img.loading = "lazy";
-    card.appendChild(img);
-  }
 
   return card;
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { Article, FontSize, AiMode } from "../types";
+import type { Article, Feed, FontSize, AiMode, KeywordFilter } from "../types";
 import type { Theme } from "../hooks/useUIState";
+import FeedFilterModal from "./FeedFilterModal";
 import { readingTime } from "../lib/article-utils";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { useArticleContent } from "../hooks/useArticleContent";
@@ -39,6 +40,8 @@ interface Props {
   onSelectPrev?: () => void;
   onSelectNext?: () => void;
   theme?: Theme;
+  feeds?: Feed[];
+  onSaveFilter?: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
 }
 
 const SHORT_CONTENT_THRESHOLD = 400;
@@ -280,6 +283,126 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
   );
 }
 
+// --- FilterMenu コンポーネント ---
+
+interface FilterMenuProps {
+  article: Article;
+  feed: Feed;
+  onSaveFilter: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
+  showToast?: (msg: string) => void;
+}
+
+function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps) {
+  const [open, setOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
+
+  const hasFilter =
+    feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
+
+  async function handleQuickExclude() {
+    setOpen(false);
+    const existingExclude = feed.filter?.exclude ?? [];
+    if (existingExclude.includes(article.title)) {
+      showToast?.("既に除外キーワードに登録されています");
+      return;
+    }
+    const newFilter: KeywordFilter = {
+      include: feed.filter?.include ?? [],
+      exclude: [...existingExclude, article.title],
+      matchCategories: feed.filter?.matchCategories,
+    };
+    try {
+      await onSaveFilter(feed.id, newFilter);
+      showToast?.("記事タイトルを除外キーワードに追加しました");
+    } catch {
+      showToast?.("フィルターの保存に失敗しました");
+    }
+  }
+
+  const itemCls =
+    "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left";
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title="フィルター設定"
+        className={`transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 4h18M7 8h10M11 12h2M9 16h6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-30 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]">
+          <button
+            onClick={() => {
+              setOpen(false);
+              setModalOpen(true);
+            }}
+            className={itemCls}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 4h18M7 8h10M11 12h2M9 16h6" />
+            </svg>
+            キーワードフィルター設定
+          </button>
+          <button onClick={() => void handleQuickExclude()} className={itemCls}>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+            この記事を除外
+          </button>
+        </div>
+      )}
+      {modalOpen && (
+        <FeedFilterModal
+          feed={feed}
+          onClose={() => setModalOpen(false)}
+          onSave={(filter) => onSaveFilter(feed.id, filter)}
+        />
+      )}
+    </div>
+  );
+}
+
 /** target から currentTarget まで祖先を遡り、横スクロール可能な要素があれば true を返す */
 function hasScrollableAncestor(
   target: EventTarget | null,
@@ -312,6 +435,8 @@ export default function ArticleView({
   onSelectPrev,
   onSelectNext,
   theme = "light",
+  feeds,
+  onSaveFilter,
 }: Props) {
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -740,6 +865,19 @@ export default function ArticleView({
             )}
 
             {article.link && showToast && <ShareMenu article={article} showToast={showToast} />}
+            {feeds &&
+              onSaveFilter &&
+              (() => {
+                const feed = feeds.find((f) => f.id === article.feedHash);
+                return feed ? (
+                  <FilterMenu
+                    article={article}
+                    feed={feed}
+                    onSaveFilter={onSaveFilter}
+                    showToast={showToast}
+                  />
+                ) : null;
+              })()}
 
             <button
               onClick={() => onToggleReadingList(article.id)}
