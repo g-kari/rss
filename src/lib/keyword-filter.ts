@@ -11,9 +11,11 @@ export function matchesKeywordFilter(article: Article, filter: KeywordFilter): b
     fields.push(...article.metadata.map((m) => m.value));
   }
   const text = fields.join(" ").toLowerCase();
+  const lowerExclude = exclude.map((kw) => kw.toLowerCase());
+  const lowerInclude = include.map((kw) => kw.toLowerCase());
 
-  const notExcluded = exclude.every((kw) => !text.includes(kw.toLowerCase()));
-  const hasIncluded = include.length === 0 || include.some((kw) => text.includes(kw.toLowerCase()));
+  const notExcluded = lowerExclude.every((kw) => !text.includes(kw));
+  const hasIncluded = lowerInclude.length === 0 || lowerInclude.some((kw) => text.includes(kw));
   return notExcluded && hasIncluded;
 }
 
