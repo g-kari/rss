@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (172)
+
+### リファクタリング
+- **\`basicAuthHeader\` をワンライナーに簡略化** — OAuth2 クライアント認証情報は ASCII のみのため、\`TextEncoder\` + \`String.fromCharCode\` + \`btoa\` の迂回路を \`btoa(\\\`\${clientId}:\${clientSecret}\\\`)\` の直接呼び出しに置き換えた
+
 ## 2026-03-28 (171)
 
 ### リファクタリング
