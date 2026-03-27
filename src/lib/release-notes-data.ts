@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (179)
+
+### セキュリティ
+- **Cookie を共有メタから購読情報へ移動** — \`requestCookie\`（年齢確認ゲート等の突破用 Cookie）が \`SharedFeedMeta\`（全購読者が参照可能な共有ストレージ）に保存されていた問題を修正。\`UserSubscription\`（ユーザー個別データ）へ移動することで、他ユーザーへの Cookie 漏洩リスクを排除。cron / 手動リフレッシュ時は購読データから Cookie を取得してフェッチに渡すよう変更
+
 ## 2026-03-28 (178)
 
 ### リファクタリング

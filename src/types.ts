@@ -36,8 +36,6 @@ export interface SharedFeedMeta {
   knownIds?: string[];
   /** LLM が推論した CSS セレクタ設定（RSS 未対応サイト用） */
   cssSelectors?: SelectorConfig;
-  /** フェッチ時に付与する Cookie ヘッダー値（年齢確認ゲート等の突破に使用） */
-  requestCookie?: string;
 }
 
 /** フィードごとのキーワードフィルター */
@@ -59,6 +57,8 @@ export interface UserSubscription {
   filter?: KeywordFilter;
   /** NSFW フラグ — true のとき NSFW モードでのみ記事を表示 */
   nsfw?: boolean;
+  /** フェッチ時に付与する Cookie ヘッダー値（年齢確認ゲート等の突破に使用） */
+  requestCookie?: string;
 }
 
 /** クライアント向けフィード型（SharedFeedMeta + UserSubscription を合成して返す） */

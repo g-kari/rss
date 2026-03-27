@@ -79,30 +79,25 @@ export async function POST(request: Request) {
     }
 
     // LLM 生成フィードの場合、セレクタとサイト情報をメタに保存
-    // Cookie が指定されている場合は上書き更新（共有メタに保存）
-    let metaUpdated = false;
     if (inferred && !meta.cssSelectors) {
       meta.cssSelectors = inferred.selectors;
       if (!meta.title) meta.title = inferred.siteTitle;
       if (!meta.siteUrl) meta.siteUrl = inferred.siteUrl;
-      metaUpdated = true;
+      await writeFeedMeta(env.RSS_DATA, meta);
     }
-    if (cookie && meta.requestCookie !== cookie) {
-      meta.requestCookie = cookie;
-      metaUpdated = true;
-    }
-    if (metaUpdated) await writeFeedMeta(env.RSS_DATA, meta);
 
+    // Cookie はユーザー個別の購読情報に保存する（共有メタには保存しない）
     const newSub: UserSubscription = {
       feedHash,
       url,
       subscribedAt: new Date().toISOString(),
+      ...(cookie ? { requestCookie: cookie } : {}),
     };
     subs.push(newSub);
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
 
-    // バックグラウンドで初回記事取得
-    ctx.waitUntil(registerAndFetchFeed(env, url).catch(console.error));
+    // バックグラウンドで初回記事取得（Cookie はユーザー個別で渡す）
+    ctx.waitUntil(registerAndFetchFeed(env, url, cookie).catch(console.error));
 
     return NextResponse.json(assembleClientFeed(meta, newSub), { status: 201 });
   });

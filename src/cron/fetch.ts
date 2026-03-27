@@ -189,10 +189,11 @@ function applyFeedError(meta: SharedFeedMeta, error: unknown): void {
 async function fetchAndScrapeWithSelectors(
   env: FetchEnv,
   meta: SharedFeedMeta,
+  requestCookie?: string,
 ): Promise<{ articles: Article[]; existingLatest: Article[] | null }> {
   const selectors = meta.cssSelectors!;
   const headers: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
-  if (meta.requestCookie) headers["Cookie"] = meta.requestCookie;
+  if (requestCookie) headers["Cookie"] = requestCookie;
   const res = await fetchViaBinding(env, meta.url, { headers });
   if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get("Retry-After")));
   if (!res.ok) throw new Error(`${res.status} ${meta.url}`);
@@ -213,15 +214,15 @@ async function fetchAndScrapeWithSelectors(
 async function fetchAndParseFeed(
   env: FetchEnv,
   meta: SharedFeedMeta,
-  options: { conditional?: boolean } = {},
+  options: { conditional?: boolean; requestCookie?: string } = {},
 ): Promise<{ articles: Article[]; existingLatest: Article[] | null }> {
   // LLM 生成フィード（CSS セレクタが設定されている場合）はスクレイピングで取得
   if (meta.cssSelectors) {
-    return fetchAndScrapeWithSelectors(env, meta);
+    return fetchAndScrapeWithSelectors(env, meta, options.requestCookie);
   }
 
   const reqHeaders: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
-  if (meta.requestCookie) reqHeaders["Cookie"] = meta.requestCookie;
+  if (options.requestCookie) reqHeaders["Cookie"] = options.requestCookie;
   if (options.conditional) {
     if (meta.etag) reqHeaders["If-None-Match"] = meta.etag;
     if (meta.lastModified) reqHeaders["If-Modified-Since"] = meta.lastModified;
@@ -265,6 +266,7 @@ export async function fetchAndUpdateSharedFeed(
   env: FetchEnv,
   feedHash: string,
   forceRetry = false,
+  requestCookie?: string,
 ): Promise<{ newArticles: Article[]; meta: SharedFeedMeta | null }> {
   const meta = await readFeedMeta(env.RSS_DATA, feedHash);
   if (!meta) {
@@ -290,6 +292,7 @@ export async function fetchAndUpdateSharedFeed(
   try {
     const { articles: fetched, existingLatest } = await fetchAndParseFeed(env, meta, {
       conditional: !forceRetry,
+      requestCookie,
     });
     newArticles = await mergeNewArticles(env.RSS_DATA, meta, fetched, existingLatest);
   } catch (e) {
@@ -345,14 +348,17 @@ async function sendPushForUsers(
  * 3. 新着記事があったフィードの購読ユーザーに Push 通知を送る
  */
 export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
-  // Push 通知用の逆引きマップを事前に構築
-  const feedUserMap = await buildFeedUserMap(env.RSS_DATA);
+  // Push 通知用の逆引きマップ + Cookie マップを事前に構築
+  const { feedUserMap, feedCookieMap } = await buildFeedUserMap(env.RSS_DATA);
 
   const feedHashes = await listAllFeedHashes(env.RSS_DATA);
   if (feedHashes.length === 0) return;
 
   const results = await allSettledWithConcurrency(
-    feedHashes.map((feedHash) => () => fetchAndUpdateSharedFeed(env, feedHash)),
+    feedHashes.map(
+      (feedHash) => () =>
+        fetchAndUpdateSharedFeed(env, feedHash, false, feedCookieMap.get(feedHash)),
+    ),
     FEED_FETCH_CONCURRENCY,
   );
 
@@ -376,7 +382,7 @@ export async function fetchArticles(env: FetchEnv, userId: string): Promise<void
   const subs = await readUserSubscriptions(env.RSS_DATA, userId);
   if (subs.length === 0) return;
   await allSettledWithConcurrency(
-    subs.map((s) => () => fetchAndUpdateSharedFeed(env, s.feedHash, true)),
+    subs.map((s) => () => fetchAndUpdateSharedFeed(env, s.feedHash, true, s.requestCookie)),
     FEED_FETCH_CONCURRENCY,
   );
 }
@@ -395,7 +401,7 @@ export async function fetchSingleFeed(
   const sub = subs.find((s) => s.feedHash === feedHash);
   if (!sub) return null;
 
-  const { meta } = await fetchAndUpdateSharedFeed(env, feedHash, true);
+  const { meta } = await fetchAndUpdateSharedFeed(env, feedHash, true, sub.requestCookie);
   if (!meta) return null;
 
   return assembleClientFeed(meta, sub);
@@ -405,11 +411,15 @@ export async function fetchSingleFeed(
  * 新規フィードを共有ストレージに登録してから初回取得する。
  * 既に meta.json が存在する場合はスキップ（別ユーザーが既に登録済み）。
  */
-export async function registerAndFetchFeed(env: FetchEnv, feedUrl: string): Promise<void> {
+export async function registerAndFetchFeed(
+  env: FetchEnv,
+  feedUrl: string,
+  requestCookie?: string,
+): Promise<void> {
   const feedHash = await computeFeedHash(feedUrl);
   const existing = await readFeedMeta(env.RSS_DATA, feedHash);
   if (!existing) {
     await createFeedMeta(env.RSS_DATA, feedHash, feedUrl);
   }
-  await fetchAndUpdateSharedFeed(env, feedHash, true);
+  await fetchAndUpdateSharedFeed(env, feedHash, true, requestCookie);
 }
