@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Feed, Article, UserProfile } from "../types";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { apiFetch } from "../lib/api-fetch";
+import { compareByDateDesc } from "../lib/article-utils";
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
@@ -66,11 +67,7 @@ export function useFeeds(
       const existingIds = new Set(prev.map((a) => a.id));
       const brandNew = fresh.filter((a) => !existingIds.has(a.id));
       if (brandNew.length === 0) return prev;
-      return [...brandNew, ...prev].sort((a, b) => {
-        const at = new Date(a.publishedAt ?? a.createdAt).getTime();
-        const bt = new Date(b.publishedAt ?? b.createdAt).getTime();
-        return bt - at;
-      });
+      return [...brandNew, ...prev].sort(compareByDateDesc);
     });
   }, []);
 

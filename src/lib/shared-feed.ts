@@ -10,6 +10,7 @@
 
 import type { SharedFeedMeta, UserSubscription, Feed, Article } from "../types";
 import { r2Get, r2Put, sha256Hex } from "./r2";
+import { compareByDateDesc } from "./article-utils";
 
 /** 1 ページあたりの記事数 */
 export const PAGE_SIZE = 100;
@@ -110,11 +111,7 @@ export async function readArticlePage(
 
 /** 日付降順ソート (publishedAt 優先、null は createdAt にフォールバック) */
 function sortByDate(articles: Article[]): Article[] {
-  return [...articles].sort((a, b) => {
-    const at = new Date(a.publishedAt ?? a.createdAt).getTime();
-    const bt = new Date(b.publishedAt ?? b.createdAt).getTime();
-    return bt - at;
-  });
+  return [...articles].sort(compareByDateDesc);
 }
 
 /**
