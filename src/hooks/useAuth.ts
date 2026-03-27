@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { UserProfile } from "../types";
 
 interface AuthState {
   user: UserProfile | null | undefined; // undefined = ローディング中
   betaRestricted: boolean;
+  sessionExpired: boolean; // ログイン済みだったセッションが期限切れになった
 }
 
 export function useAuth(): AuthState {
   const [user, setUser] = useState<UserProfile | null | undefined>(undefined);
   const [betaRestricted, setBetaRestricted] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const wasAuthenticatedRef = useRef(false);
 
   useEffect(() => {
     // URL パラメーターでベータ制限リダイレクトを検出
@@ -34,6 +37,14 @@ export function useAuth(): AuthState {
         };
         if (!mounted) return;
         if (br) setBetaRestricted(true);
+        // 以前は認証済みで、今回 null が返った場合はセッション期限切れ
+        if (wasAuthenticatedRef.current && !u) {
+          setSessionExpired(true);
+        }
+        if (u) {
+          wasAuthenticatedRef.current = true;
+          setSessionExpired(false);
+        }
         setUser(u ?? null);
       } catch {
         // ネットワークエラーは現在の認証状態を維持する（不要なログアウトを防ぐ）
@@ -62,5 +73,5 @@ export function useAuth(): AuthState {
     };
   }, []);
 
-  return { user, betaRestricted };
+  return { user, betaRestricted, sessionExpired };
 }

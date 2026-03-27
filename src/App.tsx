@@ -23,7 +23,7 @@ export default function App() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const { user, betaRestricted } = useAuth();
+  const { user, betaRestricted, sessionExpired } = useAuth();
   const isOnline = useOnlineStatus();
 
   const initialMobilePane = searchParams.get("article")
@@ -325,6 +325,26 @@ export default function App() {
   if (!user) {
     return (
       <div className="min-h-screen bg-surface-base font-sans antialiased flex flex-col">
+        {/* セッション期限切れバナー */}
+        {sessionExpired && (
+          <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-subtle border-b border-border-default text-[12px] text-text-muted tracking-[0.02em]">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 13 13"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="flex-shrink-0"
+            >
+              <circle cx="6.5" cy="6.5" r="5.5" />
+              <path d="M6.5 4v3M6.5 9v.5" />
+            </svg>
+            セッションが期限切れになりました。再度ログインしてください。
+          </div>
+        )}
         {/* ヘッダー */}
         <header className="px-8 py-4 flex items-center justify-between border-b border-border-subtle">
           <div className="flex items-center gap-2">
