@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (160)
+
+### リファクタリング
+- **FeedItem アイコン重複解消** — NSFW・フィルターアイコンの SVG が \`actions\` 配列と JSX バッジの両方で重複定義されていたため、\`NsfwIcon\` / \`FilterIcon\` コンポーネントに抽出して一元化
+
 ## 2026-03-27 (159)
 
 ### 新機能
