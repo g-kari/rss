@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (165)
+
+### セキュリティ
+- **OGP画像URLのSSRFバリデーション強化** — \`POST /api/articles/save\` で OGP 画像 URL の検証を正規表現から \`isValidFeedUrl()\` に切り替え。プライベート IP・ループバック・リンクローカルへのアクセスを防止
+- **アップストリーム情報漏洩を修正** — \`GET /api/content\` のエラーレスポンスからアップストリームサーバーの \`statusText\` を除去し、HTTP ステータスコードのみ返すよう変更
+
 ## 2026-03-27 (164)
 
 ### 新機能
