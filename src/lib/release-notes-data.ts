@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (182)
+
+### リファクタリング
+- **\`useReadState\` の ref 同期 \`useEffect\` を直接代入に変更** — \`stateRef\` / \`articlesRef\` を更新するだけの \`useEffect\` 2つを削除し、レンダー中の直接代入に置き換え。\`useFeeds.ts\` の \`loadedFeedPagesRef\` と同じパターンで副作用の遅延なく ref を最新状態に保てる
+
 ## 2026-03-28 (181)
 
 ### バグ修正
