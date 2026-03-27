@@ -268,6 +268,9 @@ export function scrapeFeed(
     } catch {
       continue;
     }
+    // javascript: / data: 等の危険スキームを排除（XSS 防止）
+    // xml-parser の safeUrl() と同じ基準で http(s) のみ許可する
+    if (!/^https?:\/\//i.test(link)) continue;
     if (seen.has(link)) continue;
     seen.add(link);
 
