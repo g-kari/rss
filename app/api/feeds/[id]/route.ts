@@ -38,7 +38,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // title の更新（存在する場合のみ）
     if ("title" in body) {
-      const title = typeof body?.title === "string" ? body.title.trim() : "";
+      if (typeof body?.title !== "string")
+        return NextResponse.json({ error: "title must be a string" }, { status: 400 });
+      const title = body.title.trim();
       if (!title) return NextResponse.json({ error: "title is required" }, { status: 400 });
       if (title.length > 200)
         return NextResponse.json({ error: "title too long" }, { status: 400 });

@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (158)
+
+### バグ修正
+- **\`safeUrl\` が HTML エンティティをデコードした URL を返すよう修正** — XSS バイパス検証後に元の \`url\`（エンティティ未解決）を返していたため、\`&amp;\` 等を含むリンクが二重エンコードされる問題を修正
+- **\`PATCH /api/feeds/:id\` のタイトル型チェックを改善** — \`title\` に文字列以外が渡された場合に「title must be a string」を返すよう修正
+- **cron の publishedAt ソートで \`localeCompare\` を比較演算子に置き換え** — ISO 8601 文字列のロケール依存を排除
+
 ## 2026-03-27 (157)
 
 ### リファクタリング
