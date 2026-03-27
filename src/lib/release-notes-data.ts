@@ -8,6 +8,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### バグ修正
 - **Qiita など CDN の長い OGP 画像 URL が取得できない問題を修正** — \`og:image\` の URL 長チェックに汎用 \`MAX_URL_LENGTH\`（2048文字）を使っていたため、imgix が生成する長い URL（Qiita の記事で ~2700文字）が弾かれていた。OGP 画像専用の上限 \`MAX_OGP_IMAGE_URL_LENGTH\`（8192文字）を追加して解消
+- **Qiita 記事内の画像が表示されない問題を修正** — 記事 HTML の \`src\` 属性に \`&amp;\` が含まれる場合（imgix CDN など）、そのまま \`encodeURIComponent\` すると image-proxy 経由で \`amp;auto\` 等のパラメータ名になり imgix の署名検証（\`s=\`）が失敗していた。\`rewriteImageUrls\` で URL 抽出後に \`unescapeHtml\` を適用して \`&\` に変換してから \`encodeURIComponent\` するよう修正
 
 ## 2026-03-27 (129)
 
