@@ -10,6 +10,9 @@ import { discoverFeedUrl } from "./feed-discovery";
 import { readFeedMeta, readLatestArticles } from "./shared-feed";
 import { fetchWithTimeout } from "./fetch";
 
+// gemma-3-12b-it: 日本語・英語混在タイトルのトピック抽出に使用
+const MODEL = "@cf/google/gemma-3-12b-it" as Parameters<Ai["run"]>[0];
+
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 時間
 const MAX_RECOMMENDATIONS = 20;
 
@@ -42,13 +45,17 @@ export async function writeCache(
   await r2Put(bucket, r2Key(userId), cache);
 }
 
-// ── トピック抽出（ルールベース）───────────────────────────────────
+// ── トピック抽出（Gemma AI）──────────────────────────────────────
 
-/** 記事タイトル・フィード名から頻出語をトピックとして抽出する */
+/**
+ * ユーザーのエンゲージメントデータからトピックキーワードを抽出する。
+ * Gemma 3 12B でフィード名・記事タイトルを解析し、日本語・英語混在に対応。
+ */
 export async function extractUserTopics(
   bucket: R2Bucket,
   subscriptions: UserSubscription[],
   engagement: EngagementLog,
+  ai: Ai,
 ): Promise<string[]> {
   // エンゲージメントスコアで上位フィードを取得
   const scores = scoreFeedEngagement(engagement.entries);
@@ -77,87 +84,33 @@ export async function extractUserTopics(
 
   if (feedTitles.length === 0) return [];
 
-  // フィード名をそのままトピックとして使いつつ、記事タイトルから頻出語を抽出
-  const freq = new Map<string, number>();
+  const prompt = `You are an assistant that analyzes RSS reader interests.
+Extract 5-10 topic keywords from the feed names and article titles below.
+Return a JSON array only. Example: ["TypeScript", "Rust", "クラウド"]
 
-  // フィード名は重みを高くして追加
-  for (const title of feedTitles) {
-    for (const token of tokenize(title)) {
-      freq.set(token, (freq.get(token) ?? 0) + 3);
+Feed names:
+${feedTitles.join("\n")}
+
+Article titles:
+${articleTitles.slice(0, 30).join("\n")}`;
+
+  try {
+    const response = (await ai.run(MODEL, {
+      messages: [{ role: "user", content: prompt }],
+    })) as { response?: string };
+    const text = response.response ?? "";
+    const match = text.match(/\[[\s\S]*?\]/);
+    if (match) {
+      const parsed = JSON.parse(match[0]) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((x): x is string => typeof x === "string").slice(0, 10);
+      }
     }
+  } catch {
+    // AI 失敗時は空配列（Brave Search は topics なしでも動作しない）
   }
 
-  // 記事タイトルから頻出語を集計
-  for (const title of articleTitles) {
-    for (const token of tokenize(title)) {
-      freq.set(token, (freq.get(token) ?? 0) + 1);
-    }
-  }
-
-  // 出現頻度降順で上位 10 語を返す
-  return [...freq.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([word]) => word);
-}
-
-/**
- * テキストをトークン（単語）に分割する。
- * - 英数字: 2文字以上の連続（大文字小文字統一）
- * - カタカナ: 2文字以上の連続
- * - ストップワードを除去
- */
-function tokenize(text: string): string[] {
-  const stopWords = new Set([
-    "the",
-    "a",
-    "an",
-    "and",
-    "or",
-    "of",
-    "in",
-    "on",
-    "at",
-    "to",
-    "for",
-    "is",
-    "are",
-    "was",
-    "were",
-    "be",
-    "been",
-    "with",
-    "from",
-    "by",
-    "as",
-    "that",
-    "this",
-    "it",
-    "its",
-    "how",
-    "what",
-    "why",
-    "when",
-    "new",
-    "via",
-  ]);
-
-  const tokens: string[] = [];
-
-  // 英数字・ハイフン連結語（2文字以上）
-  const ascii = text.match(/[A-Za-z][A-Za-z0-9\-.]{1,}/g) ?? [];
-  for (const w of ascii) {
-    const lower = w.toLowerCase().replace(/[-.]$/, "");
-    if (lower.length >= 2 && !stopWords.has(lower)) {
-      tokens.push(lower);
-    }
-  }
-
-  // カタカナ（2文字以上）
-  const kata = text.match(/[\u30A0-\u30FF]{2,}/g) ?? [];
-  tokens.push(...kata);
-
-  return tokens;
+  return [];
 }
 
 // ── Web 検索フィード提案 ─────────────────────────────────────────
@@ -266,9 +219,10 @@ export async function generateWebSearchFeeds(
 export async function generateRecommendations(params: {
   userId: string;
   bucket: R2Bucket;
+  ai: Ai;
   subscriptions: UserSubscription[];
 }): Promise<RecommendationCache> {
-  const { userId, bucket, subscriptions } = params;
+  const { userId, bucket, ai, subscriptions } = params;
 
   // エンゲージメントログを取得
   const engagement = await r2Get<EngagementLog>(bucket, `users/${userId}/engagement.json`, {
@@ -278,8 +232,8 @@ export async function generateRecommendations(params: {
   // 購読済み URL の Set を構築
   const subscribedUrls = new Set(subscriptions.map((s) => s.url));
 
-  // トピック抽出（ルールベース）
-  const topics = await extractUserTopics(bucket, subscriptions, engagement);
+  // トピック抽出（Gemma AI）
+  const topics = await extractUserTopics(bucket, subscriptions, engagement, ai);
 
   // Web 検索でフィードを発見
   const webResults = await generateWebSearchFeeds(topics, subscribedUrls);
