@@ -30,7 +30,7 @@ function deduplicatedRefresh(
 }
 
 /** JWT ペイロードの exp クレームを base64 デコードで取得する（署名検証なし） */
-function getJwtExp(token: string): number | null {
+export function getJwtExp(token: string): number | null {
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
