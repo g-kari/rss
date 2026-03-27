@@ -47,7 +47,7 @@ async function fetchPageMeta(url: string): Promise<{ title: string; ogImage: str
     const pageTitle = unescapeHtml((titleMatch?.[1] ?? "").trim());
     const ogTitle = extractOgMeta("title");
     const rawOgImage = extractOgMeta("image");
-    const ogImage = /^https?:\/\//i.test(rawOgImage) ? rawOgImage.slice(0, 2048) : "";
+    const ogImage = isValidFeedUrl(rawOgImage) ? rawOgImage : "";
 
     return {
       title: (ogTitle || pageTitle).slice(0, 500),
