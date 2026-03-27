@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (183)
+
+### リファクタリング
+- **\`fetch.ts\` の AbortController タイムアウトパターンを \`withTimeout\` に集約** — \`fetchWithTimeout\` と \`fetchFollowSafeRedirects\` で重複していた AbortController + clearTimeout ロジックを内部ヘルパー \`withTimeout<T>\` に抽出し重複を削除
+
 ## 2026-03-28 (182)
 
 ### リファクタリング

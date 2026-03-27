@@ -72,21 +72,32 @@ export async function readBodyBytesPartial(
 }
 
 /**
+ * タイムアウト付き AbortSignal で非同期処理を実行する内部ヘルパー。
+ * タイムアウト時は AbortError をスローする。
+ */
+async function withTimeout<T>(
+  timeoutMs: number,
+  fn: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fn(controller.signal);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
  * fetch にタイムアウトを付与するラッパー。
  * タイムアウト時は AbortError をスローする。
  */
-export async function fetchWithTimeout(
+export function fetchWithTimeout(
   url: string,
   init: RequestInit,
   timeoutMs: number,
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  return withTimeout(timeoutMs, (signal) => fetch(url, { ...init, signal }));
 }
 
 /**
@@ -95,21 +106,19 @@ export async function fetchWithTimeout(
  * オープンリダイレクト経由 SSRF を防ぐ。
  * タイムアウト時は AbortError をスローする。
  */
-export async function fetchFollowSafeRedirects(
+export function fetchFollowSafeRedirects(
   url: string,
   init: Omit<RequestInit, "redirect">,
   timeoutMs: number,
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  let currentUrl = url;
-  let redirectCount = 0;
+  return withTimeout(timeoutMs, async (signal) => {
+    let currentUrl = url;
+    let redirectCount = 0;
 
-  try {
     while (redirectCount < MAX_REDIRECTS) {
       const res = await fetch(currentUrl, {
         ...init,
-        signal: controller.signal,
+        signal,
         redirect: "manual",
       });
 
@@ -132,7 +141,5 @@ export async function fetchFollowSafeRedirects(
       return res;
     }
     throw new Error(`Too many redirects (>=${MAX_REDIRECTS})`);
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  });
 }
