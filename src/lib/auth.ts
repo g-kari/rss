@@ -91,9 +91,7 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
 }
 
 function basicAuthHeader(clientId: string, clientSecret: string): string {
-  const creds = new TextEncoder().encode(`${clientId}:${clientSecret}`);
-  const binary = Array.from(creds, (b) => String.fromCharCode(b)).join("");
-  return `Basic ${btoa(binary)}`;
+  return `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
 }
 
 export interface TokenData {
