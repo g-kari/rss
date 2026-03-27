@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (186)
+
+### リファクタリング
+
+- **\`content/route.ts\` の \`new URL(request.url)\` 二重生成を解消** — \`handleGet\` 内で同一 URL から 2 つの URL オブジェクトを作成していた冗長コードを 1 回の生成に統合
+- **\`image-proxy/route.ts\` の不要な変数エイリアスを削除** — \`detectImageMimeType\` の戻り値を受けた \`const imageContentType = detected\` エイリアスを廃止し、\`const mimeType\` として直接利用
+
 ## 2026-03-28 (185)
 
 ### バグ修正

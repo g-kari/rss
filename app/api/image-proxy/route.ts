@@ -141,9 +141,8 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
 
     // Content-Type ヘッダーは偽装できるため、常にマジックバイトで MIME タイプを検証する。
     // image/* と宣言されていても実際のバイト列が画像でなければ拒否する。
-    const detected = detectImageMimeType(merged);
-    if (!detected) return transparentGif();
-    const imageContentType = detected;
+    const mimeType = detectImageMimeType(merged);
+    if (!mimeType) return transparentGif();
 
     // Cloudflare Cache API に保存（fire-and-forget）
     ctx.waitUntil(
@@ -152,7 +151,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
           cacheKey,
           new Response(merged, {
             headers: {
-              "Content-Type": imageContentType,
+              "Content-Type": mimeType,
               "Cache-Control": `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
             },
           }),
@@ -162,7 +161,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
 
     return new Response(merged, {
       headers: {
-        "Content-Type": imageContentType,
+        "Content-Type": mimeType,
         "Cache-Control": `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
         "X-Cache": "MISS",
       },
