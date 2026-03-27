@@ -77,6 +77,14 @@ export function articleMatchesQuery(
 }
 
 /**
+ * サイクル配列の次の値を返す。
+ * 末尾の次は先頭に戻る（ループ）。
+ */
+export function cycleValue<T>(cycle: readonly T[], current: T): T {
+  return cycle[(cycle.indexOf(current) + 1) % cycle.length];
+}
+
+/**
  * ISO 日時文字列を「〇分前」形式の相対時間に変換する。
  * - 未来日時（時計のズレ等）は「たった今」として扱う
  * - 1分未満は「たった今」
