@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (180)
+
+### リファクタリング
+- **\`getJwtExp\` を export して重複削除** — \`server-auth.ts\` の JWT exp デコード関数を \`export\` し、\`me/route.ts\` で同じ base64 デコードロジックを手書きしていた箇所を削除
+
 ## 2026-03-28 (179)
 
 ### セキュリティ
