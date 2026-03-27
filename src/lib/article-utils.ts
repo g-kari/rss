@@ -36,10 +36,6 @@ export function readingTime(html: string): number {
   return Math.max(1, mins);
 }
 
-/**
- * 記事を日付降順でソートするための比較関数。
- * publishedAt 優先、null の場合は createdAt にフォールバックする。
- */
 export function compareByDateDesc(
   a: { publishedAt: string | null; createdAt: string },
   b: { publishedAt: string | null; createdAt: string },
