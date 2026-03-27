@@ -82,6 +82,7 @@ export default function App() {
     loading: pushLoading,
     error: pushError,
     toggle: togglePush,
+    sendTest: sendPushTest,
   } = usePushNotifications(user);
 
   const {
@@ -651,6 +652,7 @@ export default function App() {
               loading: pushLoading,
               error: pushError,
               onToggle: togglePush,
+              onSendTest: sendPushTest,
             }}
           />
         </ErrorBoundary>

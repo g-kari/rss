@@ -15,6 +15,8 @@ export interface PushNotificationState {
   error: string | null;
   /** 購読/解除をトグルする */
   toggle: () => Promise<void>;
+  /** テスト通知を送信する */
+  sendTest: () => Promise<string>;
 }
 
 export function usePushNotifications(user: UserProfile | null | undefined): PushNotificationState {
@@ -99,7 +101,21 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
     }
   }, [supported, loading]);
 
-  return { supported, subscribed, loading, error, toggle };
+  const sendTest = useCallback(async (): Promise<string> => {
+    try {
+      const res = await apiFetch("/api/push/test", { method: "POST" });
+      if (res.status === 503) return "VAPID キーが未設定です (wrangler secret を確認してください)";
+      if (res.status === 404) return "サブスクリプションが見つかりません (再度購読してください)";
+      if (!res.ok) return `送信失敗 (${res.status})`;
+      const data = (await res.json()) as { sent: number; expired: number; remaining: number };
+      if (data.expired > 0) return `送信完了 (期限切れ ${data.expired} 件を削除しました)`;
+      return `テスト通知を ${data.sent} 件送信しました`;
+    } catch {
+      return "ネットワークエラーが発生しました";
+    }
+  }, []);
+
+  return { supported, subscribed, loading, error, toggle, sendTest };
 }
 
 /** base64url 文字列を Uint8Array に変換する（PushManager.subscribe の applicationServerKey 用） */

@@ -48,6 +48,7 @@ interface Props {
     loading: boolean;
     error: string | null;
     onToggle: () => void;
+    onSendTest?: () => Promise<string>;
   };
 }
 
@@ -668,9 +669,19 @@ export default function FeedSidebar({
         {push?.supported && (
           <button
             onClick={push.onToggle}
+            onContextMenu={(e) => {
+              if (!push.subscribed || !push.onSendTest) return;
+              e.preventDefault();
+              void push.onSendTest().then((msg) => alert(msg));
+            }}
             disabled={push.loading}
             className={`transition-colors duration-200 flex-shrink-0 ${push.error ? "text-rose-400" : push.subscribed ? "text-accent-dot" : "text-text-faint hover:text-text-muted"} disabled:opacity-50`}
-            title={push.error ?? (push.subscribed ? "プッシュ通知をオフ" : "プッシュ通知をオン")}
+            title={
+              push.error ??
+              (push.subscribed
+                ? "プッシュ通知をオフ (右クリックでテスト送信)"
+                : "プッシュ通知をオン")
+            }
           >
             {push.subscribed ? (
               <svg
