@@ -14,6 +14,7 @@ interface FeedsState {
   newArticleCount: number;
   loadedFeedPages: Map<string, number>;
   onFeedAdded: (feed: Feed) => void;
+  prependArticle: (article: Article) => void;
   removeFeed: (id: string) => void;
   updateFeed: (feed: Feed) => void;
   replaceFeeds: (feeds: Feed[]) => void;
@@ -116,6 +117,14 @@ export function useFeeds(
     setFeeds((prev) => [...prev, feed]);
   }, []);
 
+  /** 単一記事をリスト先頭に追加する（URL 保存機能で使用） */
+  const prependArticle = useCallback((article: Article) => {
+    setArticles((prev) => {
+      if (prev.some((a) => a.id === article.id)) return prev;
+      return [article, ...prev];
+    });
+  }, []);
+
   // フィード削除: feeds と articles からエントリを除去する。
   // 選択状態のクリアは呼び出し元 (App) が担当する。
   const removeFeed = useCallback((id: string) => {
@@ -210,6 +219,7 @@ export function useFeeds(
     newArticleCount,
     loadedFeedPages,
     onFeedAdded,
+    prependArticle,
     removeFeed,
     updateFeed,
     replaceFeeds,

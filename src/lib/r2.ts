@@ -35,6 +35,11 @@ export function userPushKey(userId: string): string {
   return `users/${userId}/push.json`;
 }
 
+/** ユーザーの手動保存記事の R2 キーを返す */
+export function savedArticlesKey(userId: string): string {
+  return `users/${userId}/saved.json`;
+}
+
 /**
  * Cloudflare Cache API 用のキャッシュキーを生成する。
  * `/__cache/{type}/{sha256(normalizedUrl)}` 形式の合成 URL を Request としてラップする。

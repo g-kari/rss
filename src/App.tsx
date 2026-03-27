@@ -58,6 +58,7 @@ export default function App() {
     newArticleCount,
     loadedFeedPages,
     onFeedAdded,
+    prependArticle,
     removeFeed,
     updateFeed,
     replaceFeeds,
@@ -129,6 +130,34 @@ export default function App() {
       setSelectedArticle(null);
     }
   }
+
+  const onSaveArticleUrl = useCallback(
+    async (url: string, mode: "bookmark" | "reading_list") => {
+      try {
+        const res = await fetch("/api/articles/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
+        const data = (await res.json()) as Article & { error?: string };
+        if (!res.ok) {
+          showToast(data.error ?? "保存に失敗しました");
+          return;
+        }
+        prependArticle(data);
+        if (mode === "bookmark") {
+          toggleBookmark(data.id);
+          showToast("ブックマークに追加しました");
+        } else {
+          toggleReadingList(data.id);
+          showToast("後で読むに追加しました");
+        }
+      } catch {
+        showToast("保存に失敗しました");
+      }
+    },
+    [prependArticle, toggleBookmark, toggleReadingList, showToast],
+  );
 
   const { historyIds, historyOrder, addToHistory } = useReadingHistory();
 
@@ -498,6 +527,7 @@ export default function App() {
             onFeedsImported={replaceFeeds}
             onMarkAllRead={markAllRead}
             onToggleTheme={toggleTheme}
+            onSaveArticleUrl={onSaveArticleUrl}
             onRefresh={refreshFeeds}
             onRetryFeed={retryFeed}
             refreshing={refreshing}
