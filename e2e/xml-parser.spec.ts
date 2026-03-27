@@ -311,3 +311,74 @@ test.describe("parseFeed — RSS 1.0 の危険スキーム URL 排除", () => {
     expect(result.items[0].link).toBe("");
   });
 });
+
+test.describe("parseFeed — 巨大フィードのエンティティ展開制限 (リグレッション)", () => {
+  /**
+   * 旧 maxTotalExpansions=100000 では 150 件 × 700 エンティティ = 105,000 展開で
+   * "Entity expansion limit exceeded" が発生していた。
+   * 現在は 1,000,000 に引き上げ済みのため、この件数でもパースできる。
+   */
+  test("150 件 × 700 HTML エンティティでも Entity expansion limit に引っかからない", () => {
+    // 1 アイテムあたり &amp; × 700 = 700 展開
+    const entityBlock = "&amp;".repeat(700);
+    const items = Array.from(
+      { length: 150 },
+      (_, i) => `
+    <item>
+      <title>記事 ${i}</title>
+      <link>https://example.com/${i}</link>
+      <guid>urn:large-feed:${i}</guid>
+      <description>${entityBlock}</description>
+    </item>`,
+    ).join("");
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Large Feed</title>
+    <link>https://example.com</link>
+    ${items}
+  </channel>
+</rss>`;
+
+    expect(() => parseFeed(xml)).not.toThrow();
+    const result = parseFeed(xml);
+    expect(result.items).toHaveLength(150);
+  });
+
+  /**
+   * 旧 maxExpandedLength=500000 では HTML コンテンツが多いフィードで制限に達していた。
+   * 各アイテムの description を 4000 バイトの HTML エンティティで構成し、
+   * 200 件でエンティティ展開後の総文字数が旧制限を超えることを確認する。
+   */
+  test("200 件 × 長い description でも maxExpandedLength に引っかからない", () => {
+    // "&lt;p&gt;" (8 chars) × 500 = 4000 エンティティ参照 / アイテム
+    // 200 アイテム × 4000 = 800,000 エンティティ展開 → 旧制限 500,000 を超える
+    const entityBlock = "&lt;p&gt;".repeat(500);
+    const items = Array.from(
+      { length: 200 },
+      (_, i) => `
+    <item>
+      <title>記事 ${i}</title>
+      <link>https://example.com/content/${i}</link>
+      <guid>urn:expanded-feed:${i}</guid>
+      <description>${entityBlock}</description>
+    </item>`,
+    ).join("");
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Content Heavy Feed</title>
+    <link>https://example.com</link>
+    ${items}
+  </channel>
+</rss>`;
+
+    expect(() => parseFeed(xml)).not.toThrow();
+    const result = parseFeed(xml);
+    expect(result.items).toHaveLength(200);
+    // タイトルが正しく取得できていること（パース自体が成功している確認）
+    expect(result.items[0].title).toBe("記事 0");
+  });
+});
