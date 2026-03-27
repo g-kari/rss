@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (168)
+
+### リファクタリング
+
+- **`useKeyboardNav` に `cycleValue` / `navigateTo` ヘルパーを抽出** — `FONT_SIZE_CYCLE` / `LAYOUT_CYCLE` の「次の値を求める」インデックス計算を `cycleValue<T>` 関数に統一し、j/k/n/p キーで繰り返していた `setSelectedArticle + markRead` 呼び出しを `navigateTo` に集約
+
 ## 2026-03-27 (167)
 
 ### リファクタリング
