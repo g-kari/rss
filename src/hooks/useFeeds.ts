@@ -72,33 +72,32 @@ export function useFeeds(
       .finally(() => setLoadingArticles(false));
   }, [user, onError, fetchFeedsData, fetchAndSetArticles]);
 
+  // 新着確認フェッチ: 重複実行を防ぎ、前回の最新記事 ID と比較して新着件数を更新する
+  const pollNow = useCallback(async () => {
+    const prevTopId = latestArticleIdRef.current;
+    if (prevTopId === null) return; // 初回ロード前はスキップ
+    if (isPollingRef.current) return; // 前回のフェッチが完了していない場合はスキップ
+    isPollingRef.current = true;
+    try {
+      const data = await fetchAndSetArticles();
+      const newIdx = data.findIndex((a) => a.id === prevTopId);
+      if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
+    } catch {
+      // ポーリングエラーはサイレント失敗
+    } finally {
+      isPollingRef.current = false;
+    }
+  }, [fetchAndSetArticles]);
+
   // 5分ごとに記事を再取得して新着件数を通知する（オフライン時はスキップ）
   useEffect(() => {
     if (!user) return;
-
-    const poll = async () => {
-      const prevTopId = latestArticleIdRef.current;
-      if (prevTopId === null) return;
-      if (isPollingRef.current) return; // 前回のフェッチが完了していない場合はスキップ
-      isPollingRef.current = true;
-      try {
-        const data = await fetchAndSetArticles();
-        const newIdx = data.findIndex((a) => a.id === prevTopId);
-        if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
-      } catch {
-        // ポーリングエラーはサイレント失敗
-      } finally {
-        isPollingRef.current = false;
-      }
-    };
-
     const timer = setInterval(() => {
       if (!isOnline) return; // オフライン時はスキップ
-      void poll();
+      void pollNow();
     }, POLL_INTERVAL_MS);
-
     return () => clearInterval(timer);
-  }, [user, isOnline, fetchAndSetArticles]);
+  }, [user, isOnline, pollNow]);
 
   // オンライン復帰時に即座にポーリングを実行する
   useEffect(() => {
@@ -110,25 +109,8 @@ export function useFeeds(
     const wasOffline = !prevIsOnlineRef.current;
     prevIsOnlineRef.current = true;
     if (!wasOffline) return;
-
-    // オフライン → オンライン復帰時に記事を即座に更新
-    if (isPollingRef.current) return;
-    isPollingRef.current = true;
-    fetchAndSetArticles()
-      .then((data) => {
-        const prevTopId = latestArticleIdRef.current;
-        if (prevTopId) {
-          const newIdx = data.findIndex((a) => a.id === prevTopId);
-          if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
-        }
-      })
-      .catch(() => {
-        // 復帰時フェッチ失敗はサイレント
-      })
-      .finally(() => {
-        isPollingRef.current = false;
-      });
-  }, [user, isOnline, fetchAndSetArticles]);
+    void pollNow();
+  }, [user, isOnline, pollNow]);
 
   const onFeedAdded = useCallback((feed: Feed) => {
     setFeeds((prev) => [...prev, feed]);
