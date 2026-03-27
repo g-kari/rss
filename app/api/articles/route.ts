@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
+import { r2Get, savedArticlesKey } from "@/lib/r2";
 import {
   getUserLatestArticles,
   readArticlePage,
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
+import type { Article } from "@/types";
 
 export async function GET(request: NextRequest) {
   return withSession(async ({ session, env }) => {
@@ -29,8 +31,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(articles);
     }
 
-    // デフォルト: 全購読フィードの latest.json をマージして返す
-    const articles = await getUserLatestArticles(env.RSS_DATA, session.userId);
-    return NextResponse.json(articles);
+    // デフォルト: 全購読フィードの latest.json + 手動保存記事をマージして返す
+    const [feedArticles, savedArticles] = await Promise.all([
+      getUserLatestArticles(env.RSS_DATA, session.userId),
+      r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
+    ]);
+    const all = [...savedArticles, ...feedArticles].sort((a, b) => {
+      const at = new Date(a.publishedAt ?? a.createdAt).getTime();
+      const bt = new Date(b.publishedAt ?? b.createdAt).getTime();
+      return bt - at;
+    });
+    return NextResponse.json(all);
   });
 }

@@ -25,6 +25,7 @@ interface Props {
   onFeedsImported: (feeds: Feed[]) => void;
   onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
+  onSaveArticleUrl: (url: string, mode: "bookmark" | "reading_list") => Promise<void>;
   onRefresh: () => void;
   onRetryFeed: (id: string) => Promise<void>;
   onTogglePinFeed: (id: string) => void;
@@ -55,6 +56,7 @@ export default function FeedSidebar({
   onFeedsImported,
   onMarkAllRead,
   onToggleTheme,
+  onSaveArticleUrl,
   onRefresh,
   onRetryFeed,
   refreshing,
@@ -69,6 +71,9 @@ export default function FeedSidebar({
   const [feedSearchOpen, setFeedSearchOpen] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const feedSearchRef = useRef<HTMLInputElement>(null);
+  const [saveUrl, setSaveUrl] = useState("");
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const {
     adding,
@@ -89,6 +94,18 @@ export default function FeedSidebar({
       setNewUrl("");
       setInputOpen(false);
     });
+  }
+
+  async function handleSaveArticle(mode: "bookmark" | "reading_list") {
+    if (!saveUrl.trim()) return;
+    setSaving(true);
+    try {
+      await onSaveArticleUrl(saveUrl.trim(), mode);
+      setSaveUrl("");
+      setSaveOpen(false);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function logout() {
@@ -315,36 +332,107 @@ export default function FeedSidebar({
             </span>
           )}
         </button>
-        <button
-          onClick={() => onSelectFeed("__bookmarks__")}
-          className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
-            selectedFeedId === "__bookmarks__"
-              ? "text-text-strong bg-surface-subtle"
-              : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
-          }`}
-        >
-          <span className="text-[13px] tracking-[0.02em]">ブックマーク</span>
-          {bookmarkCount > 0 && (
-            <span className="text-[11px] text-text-muted tabular-nums">
-              {formatCount(bookmarkCount)}
-            </span>
+        <div className="group relative">
+          <button
+            onClick={() => onSelectFeed("__bookmarks__")}
+            className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
+              selectedFeedId === "__bookmarks__"
+                ? "text-text-strong bg-surface-subtle"
+                : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
+            }`}
+          >
+            <span className="text-[13px] tracking-[0.02em]">ブックマーク</span>
+            {bookmarkCount > 0 && (
+              <span className="text-[11px] text-text-muted tabular-nums">
+                {formatCount(bookmarkCount)}
+              </span>
+            )}
+          </button>
+        </div>
+        <div className="group relative">
+          <button
+            onClick={() => onSelectFeed("__reading_list__")}
+            className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
+              selectedFeedId === "__reading_list__"
+                ? "text-text-strong bg-surface-subtle"
+                : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
+            }`}
+          >
+            <span className="text-[13px] tracking-[0.02em]">後で読む</span>
+            {readingListCount > 0 && (
+              <span className="text-[11px] text-text-muted tabular-nums">
+                {formatCount(readingListCount)}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* URL から記事を保存 */}
+        <div className="px-4 py-1">
+          {!saveOpen ? (
+            <button
+              onClick={() => setSaveOpen(true)}
+              className="flex items-center gap-1.5 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
+              title="URL から記事を保存"
+            >
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <line x1="5" y1="1" x2="5" y2="9" />
+                <line x1="1" y1="5" x2="9" y2="5" />
+              </svg>
+              <span>URL を保存</span>
+            </button>
+          ) : (
+            <div className="animate-fade-up">
+              <input
+                type="url"
+                placeholder="https://..."
+                value={saveUrl}
+                onChange={(e) => setSaveUrl(e.target.value)}
+                disabled={saving}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setSaveOpen(false);
+                    setSaveUrl("");
+                  }
+                }}
+                className="w-full text-[12px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
+              />
+              <div className="flex gap-1 mt-1.5">
+                <button
+                  onClick={() => void handleSaveArticle("bookmark")}
+                  disabled={saving || !saveUrl.trim()}
+                  className="flex-1 text-[10px] tracking-[0.04em] py-1.5 bg-ink hover:bg-ink-hover text-ink-text rounded-md transition-all duration-200 disabled:opacity-40"
+                >
+                  BK
+                </button>
+                <button
+                  onClick={() => void handleSaveArticle("reading_list")}
+                  disabled={saving || !saveUrl.trim()}
+                  className="flex-1 text-[10px] tracking-[0.04em] py-1.5 bg-ink hover:bg-ink-hover text-ink-text rounded-md transition-all duration-200 disabled:opacity-40"
+                >
+                  後で
+                </button>
+                <button
+                  onClick={() => {
+                    setSaveOpen(false);
+                    setSaveUrl("");
+                  }}
+                  className="text-[10px] px-2 py-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-md transition-all duration-200"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
           )}
-        </button>
-        <button
-          onClick={() => onSelectFeed("__reading_list__")}
-          className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
-            selectedFeedId === "__reading_list__"
-              ? "text-text-strong bg-surface-subtle"
-              : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
-          }`}
-        >
-          <span className="text-[13px] tracking-[0.02em]">後で読む</span>
-          {readingListCount > 0 && (
-            <span className="text-[11px] text-text-muted tabular-nums">
-              {formatCount(readingListCount)}
-            </span>
-          )}
-        </button>
+        </div>
 
         {feeds.length > 0 && (
           <div className="mx-4 my-2">
