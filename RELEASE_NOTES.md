@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-27 (156)
+
+### リファクタリング
+
+- **日付降順ソート比較関数を `article-utils` に集約** — `shared-feed.ts`・`useFeeds.ts`・`api/articles/route.ts` の3箇所に重複していたインライン比較関数を `compareByDateDesc` として `src/lib/article-utils.ts` に抽出
+
 ## 2026-03-27 (155)
 
 ### バグ修正
