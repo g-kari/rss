@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-27 (155)
+
+### バグ修正
+
+- **テーマ切り替え後に画像スライダーコントロールが消える問題を修正** — `injectSliderControls` の useEffect deps が `storedContent` / `article?.id` のみで `processedContent` を見ていなかったため、テーマ切り替えなど DOM 再レンダリング後に prev/next ボタンとホイール操作が失われていた。`processedContent` を deps に加えて再注入を確実にした。あわせて `.rss-slider-slide img` の CSS に `!important` を追加し、`.article-content img { width: auto !important }` による幅上書きを解消
+
 ## 2026-03-27 (154)
 
 ### バグ修正
