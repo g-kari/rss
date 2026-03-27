@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (137)
+
+### バグ修正
+- **記事一覧の無限スクロールが動作しない問題を修正** — 記事が非同期でロードされる場合、初回レンダー時に \`articles=[]\` → \`hasMore=false\` → sentinel div が DOM に存在しないため \`IntersectionObserver\` が未セットアップのまま放置されていた。\`hasMore\` を \`useEffect\` の依存配列に追加し、sentinel が初めてマウントされたタイミングで observer を確実にセットアップするよう修正
+
 ## 2026-03-27 (136)
 
 ### 新機能
