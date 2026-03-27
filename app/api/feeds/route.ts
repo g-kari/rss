@@ -25,15 +25,25 @@ export async function GET() {
   });
 }
 
+/** Cookie ヘッダー値として安全な文字列か検証する（HTTP ヘッダーインジェクション防止） */
+function isValidCookieHeader(value: string): boolean {
+  return value.length <= 4096 && /^[\x20-\x7E]*$/.test(value) && !/[\r\n]/.test(value);
+}
+
 export async function POST(request: Request) {
   return withSession(async ({ session, env, ctx }) => {
-    const parsed = await parseJsonBody<{ url?: unknown }>(request);
+    const parsed = await parseJsonBody<{ url?: unknown; cookie?: unknown }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
     let url = typeof body?.url === "string" ? body.url.trim() : "";
     if (!url) return NextResponse.json({ error: "url is required" }, { status: 400 });
     if (!isValidFeedUrl(url))
       return NextResponse.json({ error: "Invalid URL: must be http or https" }, { status: 400 });
+
+    const cookie = typeof body?.cookie === "string" ? body.cookie.trim() : undefined;
+    if (cookie && !isValidCookieHeader(cookie)) {
+      return NextResponse.json({ error: "Invalid cookie value" }, { status: 400 });
+    }
 
     // 3 段階フォールバック: RSS 探索 → LLM CSS セレクタ推論
     const discovered = await discoverFeedUrl(url);
@@ -43,7 +53,7 @@ export async function POST(request: Request) {
       url = discovered;
     } else {
       // RSS が見つからない場合、LLM でページの CSS セレクタを推論
-      inferred = await inferFeedFromUrl(url, env.AI);
+      inferred = await inferFeedFromUrl(url, env.AI, cookie);
       if (!inferred) {
         return NextResponse.json({ error: "RSS フィードが見つかりませんでした" }, { status: 422 });
       }
@@ -69,12 +79,19 @@ export async function POST(request: Request) {
     }
 
     // LLM 生成フィードの場合、セレクタとサイト情報をメタに保存
+    // Cookie が指定されている場合は上書き更新（共有メタに保存）
+    let metaUpdated = false;
     if (inferred && !meta.cssSelectors) {
       meta.cssSelectors = inferred.selectors;
       if (!meta.title) meta.title = inferred.siteTitle;
       if (!meta.siteUrl) meta.siteUrl = inferred.siteUrl;
-      await writeFeedMeta(env.RSS_DATA, meta);
+      metaUpdated = true;
     }
+    if (cookie && meta.requestCookie !== cookie) {
+      meta.requestCookie = cookie;
+      metaUpdated = true;
+    }
+    if (metaUpdated) await writeFeedMeta(env.RSS_DATA, meta);
 
     const newSub: UserSubscription = {
       feedHash,
