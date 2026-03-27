@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
-import { r2Get, r2Put } from "@/lib/r2";
+import { r2Get, r2Put, userPushKey } from "@/lib/r2";
 import { isValidHttpsUrl } from "@/lib/url";
 import type { PushConfig, PushSubscriptionRecord } from "@/types";
 
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       keys: { p256dh: body.keys.p256dh, auth: body.keys.auth },
     };
 
-    const key = `users/${session.userId}/push.json`;
+    const key = userPushKey(session.userId);
     const config = await r2Get<PushConfig>(env.RSS_DATA, key, { subscriptions: [] });
 
     // endpoint で重複排除して追加

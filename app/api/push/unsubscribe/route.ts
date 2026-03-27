@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
-import { r2Get, r2Put } from "@/lib/r2";
+import { r2Get, r2Put, userPushKey } from "@/lib/r2";
 import type { PushConfig } from "@/types";
 
 /** Push サブスクリプションを R2 から削除する */
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "endpoint is required" }, { status: 400 });
     }
 
-    const key = `users/${session.userId}/push.json`;
+    const key = userPushKey(session.userId);
     const config = await r2Get<PushConfig>(env.RSS_DATA, key, { subscriptions: [] });
 
     config.subscriptions = config.subscriptions.filter((s) => s.endpoint !== body.endpoint);

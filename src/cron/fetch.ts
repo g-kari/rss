@@ -5,7 +5,7 @@ import { scrapeFeed } from "../lib/llm-feed-generator";
 import { isValidFeedUrl } from "../lib/url";
 import { fetchFollowSafeRedirects } from "../lib/fetch";
 import { sendPushToAll, type PushPayload } from "../lib/web-push";
-import { r2Get, r2Put } from "../lib/r2";
+import { r2Get, r2Put, userPushKey } from "../lib/r2";
 import {
   computeFeedHash,
   computeArticleId,
@@ -307,7 +307,7 @@ async function sendPushForUsers(
   const payload = buildPushPayload(newArticles, feedTitle);
   await allSettledWithConcurrency(
     userIds.map((userId) => async () => {
-      const pushKey = `users/${userId}/push.json`;
+      const pushKey = userPushKey(userId);
       const config = await r2Get<PushConfig>(env.RSS_DATA, pushKey, { subscriptions: [] });
       if (config.subscriptions.length === 0) return;
       const remaining = await sendPushToAll(config.subscriptions, payload);

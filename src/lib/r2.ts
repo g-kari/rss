@@ -30,6 +30,11 @@ export async function sha256Hex(text: string): Promise<string> {
     .join("");
 }
 
+/** ユーザーの Push 設定の R2 キーを返す */
+export function userPushKey(userId: string): string {
+  return `users/${userId}/push.json`;
+}
+
 /**
  * Cloudflare Cache API 用のキャッシュキーを生成する。
  * `/__cache/{type}/{sha256(normalizedUrl)}` 形式の合成 URL を Request としてラップする。
