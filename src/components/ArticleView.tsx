@@ -429,6 +429,22 @@ export default function ArticleView({
   // 本文内スタンドアロンリンクに OGP プレビューカードを注入
   useContentLinkPreviews(contentRef, processedContent);
 
+  // シンタックスハイライト（highlight.js）
+  useEffect(() => {
+    if (!contentRef.current || !processedContent) return;
+    const el = contentRef.current;
+    let cancelled = false;
+    import("highlight.js/lib/common").then(({ default: hljs }) => {
+      if (cancelled || !el.isConnected) return;
+      el.querySelectorAll<HTMLElement>("pre code:not(.hljs)").forEach((block) => {
+        hljs.highlightElement(block);
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [processedContent]);
+
   useEffect(() => {
     if (!contentRef.current || !processedContent) return;
     const el = contentRef.current;

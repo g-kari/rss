@@ -248,6 +248,98 @@ body {
   font-size: inherit;
 }
 
+/* ── Syntax highlighting (highlight.js) ──────────────────────────────────── */
+/* hljs ベーススタイル: 背景は pre から継承 */
+.article-content .hljs {
+  background: transparent;
+  color: #24292e;
+}
+
+/* ライトテーマ トークン (GitHub Light) */
+.article-content .hljs-comment,
+.article-content .hljs-punctuation {
+  color: #6e7781;
+}
+.article-content .hljs-keyword,
+.article-content .hljs-selector-tag,
+.article-content .hljs-tag {
+  color: #cf222e;
+}
+.article-content .hljs-string,
+.article-content .hljs-attr,
+.article-content .hljs-addition {
+  color: #0a3069;
+}
+.article-content .hljs-number,
+.article-content .hljs-literal,
+.article-content .hljs-link {
+  color: #0550ae;
+}
+.article-content .hljs-title,
+.article-content .hljs-title.function_,
+.article-content .hljs-title.class_ {
+  color: #8250df;
+}
+.article-content .hljs-type,
+.article-content .hljs-built_in,
+.article-content .hljs-class .hljs-title {
+  color: #0550ae;
+}
+.article-content .hljs-variable,
+.article-content .hljs-template-variable {
+  color: #953800;
+}
+.article-content .hljs-deletion {
+  color: #82071e;
+}
+.article-content .hljs-emphasis {
+  font-style: italic;
+}
+.article-content .hljs-strong {
+  font-weight: bold;
+}
+
+/* ダークテーマ トークン (GitHub Dark) */
+[data-theme="dark"] .article-content .hljs {
+  color: #e6edf3;
+}
+[data-theme="dark"] .article-content .hljs-comment,
+[data-theme="dark"] .article-content .hljs-punctuation {
+  color: #8b949e;
+}
+[data-theme="dark"] .article-content .hljs-keyword,
+[data-theme="dark"] .article-content .hljs-selector-tag,
+[data-theme="dark"] .article-content .hljs-tag {
+  color: #ff7b72;
+}
+[data-theme="dark"] .article-content .hljs-string,
+[data-theme="dark"] .article-content .hljs-attr,
+[data-theme="dark"] .article-content .hljs-addition {
+  color: #a5d6ff;
+}
+[data-theme="dark"] .article-content .hljs-number,
+[data-theme="dark"] .article-content .hljs-literal,
+[data-theme="dark"] .article-content .hljs-link {
+  color: #79c0ff;
+}
+[data-theme="dark"] .article-content .hljs-title,
+[data-theme="dark"] .article-content .hljs-title.function_,
+[data-theme="dark"] .article-content .hljs-title.class_ {
+  color: #d2a8ff;
+}
+[data-theme="dark"] .article-content .hljs-type,
+[data-theme="dark"] .article-content .hljs-built_in,
+[data-theme="dark"] .article-content .hljs-class .hljs-title {
+  color: #79c0ff;
+}
+[data-theme="dark"] .article-content .hljs-variable,
+[data-theme="dark"] .article-content .hljs-template-variable {
+  color: #ffa657;
+}
+[data-theme="dark"] .article-content .hljs-deletion {
+  color: #ffa198;
+}
+
 /* Qiita / Zenn: コードブロックのファイル名ラベル */
 .article-content .code-block-filename,
 .article-content [data-filename],
