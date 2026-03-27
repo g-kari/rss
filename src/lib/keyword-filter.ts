@@ -12,15 +12,9 @@ export function matchesKeywordFilter(article: Article, filter: KeywordFilter): b
   }
   const text = fields.join(" ").toLowerCase();
 
-  if (exclude.length > 0 && exclude.some((kw) => text.includes(kw.toLowerCase()))) {
-    return false;
-  }
-
-  if (include.length > 0 && !include.some((kw) => text.includes(kw.toLowerCase()))) {
-    return false;
-  }
-
-  return true;
+  const notExcluded = exclude.every((kw) => !text.includes(kw.toLowerCase()));
+  const hasIncluded = include.length === 0 || include.some((kw) => text.includes(kw.toLowerCase()));
+  return notExcluded && hasIncluded;
 }
 
 export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter): Article[] {
