@@ -91,13 +91,15 @@ const parser = new XMLParser({
   // デフォルト maxTotalExpansions=1000 では HTML エンティティ（&amp; 等）を多用する
   // フィード（例: 記事本文が長い技術ブログ）で "Entity expansion limit exceeded" が発生する。
   // XMLボム攻撃（Billion Laughs）は maxExpansionDepth=10 と maxEntityCount=100 で防ぐ。
-  // freee blog など 10000 超のフィードに対応するため 100000 に引き上げる。
+  // Cloudflare changelog など数千記事を含む巨大フィードでは 100000 でも超過するため
+  // 1000000 に引き上げる。カスタムエンティティ制限（maxEntityCount=100）は維持するため
+  // XXE リスクは変わらない。
   processEntities: {
     enabled: true,
-    maxTotalExpansions: 100000,
+    maxTotalExpansions: 1000000,
     maxEntitySize: 10000,
     maxExpansionDepth: 10,
-    maxExpandedLength: 500000,
+    maxExpandedLength: 5000000,
     maxEntityCount: 100,
   },
   htmlEntities: true,

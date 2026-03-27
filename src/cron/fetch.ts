@@ -3,7 +3,7 @@ import type { Article, SharedFeedMeta, PushConfig } from "../types";
 import { parseFeed, type ParsedItem } from "../lib/xml-parser";
 import { scrapeFeed } from "../lib/llm-feed-generator";
 import { isValidFeedUrl } from "../lib/url";
-import { fetchFollowSafeRedirects } from "../lib/fetch";
+import { fetchFollowSafeRedirects, readBodyBytesPartial } from "../lib/fetch";
 import { sendPushToAll, type PushPayload } from "../lib/web-push";
 import { r2Get, r2Put, userPushKey } from "../lib/r2";
 import {
@@ -25,6 +25,10 @@ type FetchEnv = Pick<CloudflareEnv, "RSS_DATA" | "FINDME_RSS">;
 const CONSECUTIVE_ERROR_SKIP_THRESHOLD = 5;
 const FEED_ERROR_RETRY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 時間
 const FETCH_TIMEOUT_MS = 15_000;
+/** フィード XML の最大サイズ（10MB）。超過分は切り捨ててパースする */
+const FEED_MAX_BYTES = 10 * 1024 * 1024;
+/** 1 フィードあたりの最大記事数。巨大フィードの初回取得で R2 操作が爆発しないよう制限 */
+const FEED_MAX_ITEMS = 500;
 
 /** cron 実行時のフィード並行取得数上限 */
 const FEED_FETCH_CONCURRENCY = 5;
@@ -226,8 +230,23 @@ async function fetchAndParseFeed(
   }
   if (!res.ok) throw new Error(`${res.status} ${meta.url}`);
 
-  const xml = await res.text();
+  const bodyBytes = res.body
+    ? await readBodyBytesPartial(res.body, FEED_MAX_BYTES)
+    : new Uint8Array();
+  const xml = new TextDecoder().decode(bodyBytes);
   const parsed = parseFeed(xml);
+  // 巨大フィードの初回取得で cascadeOverflow の R2 操作が爆発しないよう
+  // publishedAt 降順で最新 FEED_MAX_ITEMS 件に切り詰める
+  if (parsed.items.length > FEED_MAX_ITEMS) {
+    parsed.items = parsed.items
+      .sort((a, b) => {
+        if (!a.publishedAt && !b.publishedAt) return 0;
+        if (!a.publishedAt) return 1;
+        if (!b.publishedAt) return -1;
+        return b.publishedAt.localeCompare(a.publishedAt);
+      })
+      .slice(0, FEED_MAX_ITEMS);
+  }
 
   applyFeedSuccess(meta, parsed);
   const lastModified = res.headers.get("Last-Modified");
