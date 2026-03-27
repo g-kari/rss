@@ -139,7 +139,7 @@ export default function App() {
 
   const saveFilter = useCallback(
     async (feedId: string, filter: KeywordFilter | null) => {
-      const res = await fetch(`/api/feeds/${feedId}`, {
+      const res = await apiFetch(`/api/feeds/${feedId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filter }),

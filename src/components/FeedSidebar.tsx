@@ -6,6 +6,7 @@ import ReleaseNotesModal from "./ReleaseNotesModal";
 import FeedItem, { formatCount } from "./FeedItem";
 import RecommendationSection from "./RecommendationSection";
 import { useFeedOperations } from "../hooks/useFeedOperations";
+import { apiFetch } from "../lib/api-fetch";
 
 interface Props {
   feeds: Feed[];
@@ -102,7 +103,7 @@ export default function FeedSidebar({
   } = useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported });
 
   async function saveFilter(feedId: string, filter: KeywordFilter | null): Promise<void> {
-    const res = await fetch(`/api/feeds/${feedId}`, {
+    const res = await apiFetch(`/api/feeds/${feedId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ filter }),
