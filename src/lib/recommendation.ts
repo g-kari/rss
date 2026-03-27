@@ -38,8 +38,7 @@ export async function readCache(
   bucket: R2Bucket,
   userId: string,
 ): Promise<RecommendationCache | null> {
-  const cache = await r2Get<RecommendationCache | null>(bucket, r2Key(userId), null);
-  return cache;
+  return r2Get<RecommendationCache | null>(bucket, r2Key(userId), null);
 }
 
 /** キャッシュを保存する */
