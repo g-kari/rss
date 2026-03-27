@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt, refreshTokens } from "@/lib/auth";
 import { r2Get } from "@/lib/r2";
-import { isBetaAllowed, COOKIE_OPTS } from "@/lib/server-auth";
+import { isBetaAllowed, COOKIE_OPTS, getJwtExp } from "@/lib/server-auth";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
 
@@ -62,24 +62,15 @@ export async function GET(request: Request) {
         maxAge: 30 * 24 * 60 * 60,
       });
       // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
-      try {
-        const parts = refreshed.access_token.split(".");
-        if (parts.length >= 2) {
-          const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
-            exp?: number;
-          };
-          if (typeof payload.exp === "number") {
-            res.cookies.set("token_exp", String(payload.exp), {
-              maxAge: 900,
-              httpOnly: false,
-              secure: true,
-              sameSite: "lax",
-              path: "/",
-            });
-          }
-        }
-      } catch {
-        // exp 取得失敗は無視
+      const exp = getJwtExp(refreshed.access_token);
+      if (exp !== null) {
+        res.cookies.set("token_exp", String(exp), {
+          maxAge: 900,
+          httpOnly: false,
+          secure: true,
+          sameSite: "lax",
+          path: "/",
+        });
       }
       return res;
     }
