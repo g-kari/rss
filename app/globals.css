@@ -464,8 +464,8 @@ body {
   background-color: var(--color-surface-subtle);
 }
 .rss-slider-slide img {
-  width: 100%;
-  height: auto;
+  width: 100% !important; /* .article-content img { width: auto !important } を上書きする */
+  height: auto !important;
   display: block;
   object-fit: contain;
 }
