@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Feed, Article, UserProfile } from "../types";
+import { useOnlineStatus } from "./useOnlineStatus";
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
@@ -26,6 +27,7 @@ export function useFeeds(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,
 ): FeedsState {
+  const isOnline = useOnlineStatus();
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(false);
@@ -36,6 +38,7 @@ export function useFeeds(
   loadedFeedPagesRef.current = loadedFeedPages;
   const latestArticleIdRef = useRef<string | null>(null);
   const isPollingRef = useRef(false);
+  const prevIsOnlineRef = useRef(isOnline);
 
   const fetchFeedsData = useCallback(async () => {
     const r = await fetch("/api/feeds");
@@ -69,11 +72,11 @@ export function useFeeds(
       .finally(() => setLoadingArticles(false));
   }, [user, onError, fetchFeedsData, fetchAndSetArticles]);
 
-  // 5分ごとに記事を再取得して新着件数を通知する
+  // 5分ごとに記事を再取得して新着件数を通知する（オフライン時はスキップ）
   useEffect(() => {
     if (!user) return;
 
-    const timer = setInterval(async () => {
+    const poll = async () => {
       const prevTopId = latestArticleIdRef.current;
       if (prevTopId === null) return;
       if (isPollingRef.current) return; // 前回のフェッチが完了していない場合はスキップ
@@ -87,10 +90,45 @@ export function useFeeds(
       } finally {
         isPollingRef.current = false;
       }
+    };
+
+    const timer = setInterval(() => {
+      if (!isOnline) return; // オフライン時はスキップ
+      void poll();
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(timer);
-  }, [user, fetchAndSetArticles]);
+  }, [user, isOnline, fetchAndSetArticles]);
+
+  // オンライン復帰時に即座にポーリングを実行する
+  useEffect(() => {
+    if (!user) return;
+    if (!isOnline) {
+      prevIsOnlineRef.current = false;
+      return;
+    }
+    const wasOffline = !prevIsOnlineRef.current;
+    prevIsOnlineRef.current = true;
+    if (!wasOffline) return;
+
+    // オフライン → オンライン復帰時に記事を即座に更新
+    if (isPollingRef.current) return;
+    isPollingRef.current = true;
+    fetchAndSetArticles()
+      .then((data) => {
+        const prevTopId = latestArticleIdRef.current;
+        if (prevTopId) {
+          const newIdx = data.findIndex((a) => a.id === prevTopId);
+          if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
+        }
+      })
+      .catch(() => {
+        // 復帰時フェッチ失敗はサイレント
+      })
+      .finally(() => {
+        isPollingRef.current = false;
+      });
+  }, [user, isOnline, fetchAndSetArticles]);
 
   const onFeedAdded = useCallback((feed: Feed) => {
     setFeeds((prev) => [...prev, feed]);
