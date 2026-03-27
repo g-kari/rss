@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState, useMemo } from "react";
-import type { Feed, Article, UserProfile } from "../types";
+import type { Feed, Article, UserProfile, RecommendedFeed } from "../types";
 import ReleaseNotesModal from "./ReleaseNotesModal";
 import FeedItem, { formatCount } from "./FeedItem";
+import RecommendationSection from "./RecommendationSection";
 import { useFeedOperations } from "../hooks/useFeedOperations";
 
 interface Props {
@@ -29,6 +30,11 @@ interface Props {
   onRefresh: () => void;
   onRetryFeed: (id: string) => Promise<void>;
   onTogglePinFeed: (id: string) => void;
+  recommendations?: RecommendedFeed[];
+  recommendationsLoading?: boolean;
+  recommendationsRefreshing?: boolean;
+  onDismissRecommendation?: (id: string) => void;
+  onRefreshRecommendations?: () => void;
   install?: { canInstall: boolean; onInstall: () => void };
   push?: {
     supported: boolean;
@@ -62,6 +68,11 @@ export default function FeedSidebar({
   refreshing,
   pinnedFeedIds,
   onTogglePinFeed,
+  recommendations,
+  recommendationsLoading,
+  recommendationsRefreshing,
+  onDismissRecommendation,
+  onRefreshRecommendations,
   install,
   push,
 }: Props) {
@@ -433,6 +444,24 @@ export default function FeedSidebar({
             </div>
           )}
         </div>
+
+        {recommendations && onDismissRecommendation && onRefreshRecommendations && (
+          <RecommendationSection
+            recommendations={recommendations}
+            loading={recommendationsLoading ?? false}
+            refreshing={recommendationsRefreshing ?? false}
+            onDismiss={onDismissRecommendation}
+            onRefresh={onRefreshRecommendations}
+            onAddFeed={(url) =>
+              new Promise<void>((resolve) => {
+                addFeed(url, () => resolve());
+                // addFeed はエラー時に内部で error state を更新するのみ
+                // 短いタイムアウトで resolve して UI をブロックしない
+                setTimeout(resolve, 5000);
+              })
+            }
+          />
+        )}
 
         {feeds.length > 0 && (
           <div className="mx-4 my-2">

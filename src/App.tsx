@@ -19,6 +19,7 @@ import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
+import { useRecommendations } from "./hooks/useRecommendations";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -90,6 +91,13 @@ export default function App() {
   } = useReadState(user, articles);
 
   const { recordEngagement } = useEngagement(user);
+  const {
+    recommendations,
+    loading: recommendationsLoading,
+    dismiss: dismissRecommendation,
+    refresh: refreshRecommendations,
+    refreshing: recommendationsRefreshing,
+  } = useRecommendations(user);
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() =>
     searchParams.get("feed"),
   );
@@ -585,6 +593,11 @@ export default function App() {
             refreshing={refreshing}
             pinnedFeedIds={pinnedFeedIds}
             onTogglePinFeed={togglePinFeed}
+            recommendations={recommendations}
+            recommendationsLoading={recommendationsLoading}
+            recommendationsRefreshing={recommendationsRefreshing}
+            onDismissRecommendation={dismissRecommendation}
+            onRefreshRecommendations={refreshRecommendations}
             install={install}
             push={{
               supported: pushSupported,

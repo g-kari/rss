@@ -99,6 +99,28 @@ export interface EngagementEntry {
 export interface EngagementLog {
   entries: EngagementEntry[]; // 最大 5,000 件、古いものから削除
 }
+
+/** レコメンドのソース種別 */
+export type RecommendationSource = "ai_suggestion" | "popular" | "link_discovery";
+
+/** レコメンドされたフィード */
+export interface RecommendedFeed {
+  id: string;
+  feedUrl: string;
+  title: string;
+  siteUrl: string;
+  reason: string;
+  source: RecommendationSource;
+  score: number;
+}
+
+/** R2 キャッシュ構造 — users/{userId}/recommendations.json */
+export interface RecommendationCache {
+  recommendations: RecommendedFeed[];
+  generatedAt: string;
+  dismissedIds: string[];
+  topics: string[];
+}
 export type DateRange = "all" | "today" | "week" | "month";
 export type AiMode = "summary" | "translation";
 
