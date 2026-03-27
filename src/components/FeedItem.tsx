@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { Feed } from "../types";
 import FeedFilterModal from "./FeedFilterModal";
 import type { KeywordFilter } from "../types";
@@ -93,6 +94,18 @@ export default function FeedItem({
   const [menuOpen, setMenuOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [menuOpen]);
 
   const startEdit = useCallback(
     (e: React.MouseEvent) => {
@@ -269,6 +282,11 @@ export default function FeedItem({
 
   const visibleActions = actions.filter((a) => a.show !== false);
 
+  const menuBtnRect = menuButtonRef.current?.getBoundingClientRect();
+  const menuPortalStyle = menuBtnRect
+    ? { top: menuBtnRect.bottom + 2, right: window.innerWidth - menuBtnRect.right }
+    : { top: 0, right: 0 };
+
   return (
     <div
       onClick={
@@ -356,6 +374,7 @@ export default function FeedItem({
 
         {/* モバイル用 ⋮ ボタン (lg 以上では非表示) */}
         <button
+          ref={menuButtonRef}
           onClick={(e) => {
             e.stopPropagation();
             setMenuOpen((v) => !v);
@@ -372,40 +391,43 @@ export default function FeedItem({
         </button>
       </span>
 
-      {/* モバイル用ドロップダウンメニュー */}
-      {menuOpen && (
-        <>
-          {/* backdrop: タップ貫通防止 */}
-          <div
-            className="fixed inset-0 z-[19]"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              setMenuOpen(false);
-            }}
-          />
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="absolute right-2 top-full z-20 mt-0.5 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[120px]"
-          >
-            {visibleActions.map((action) => (
-              <button
-                key={action.key}
-                onClick={(e) => {
-                  setMenuOpen(false);
-                  action.onClick(e);
-                }}
-                disabled={action.disabled}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
-                  action.variant === "danger" ? "text-rose-400" : "text-text-default"
-                }`}
-              >
-                {action.icon}
-                {action.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      {/* モバイル用ドロップダウンメニュー (Portal で body 直下にレンダリング) */}
+      {menuOpen &&
+        createPortal(
+          <>
+            {/* backdrop: タップ貫通防止 */}
+            <div
+              className="fixed inset-0 z-[49]"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+              }}
+            />
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[120px]"
+              style={menuPortalStyle}
+            >
+              {visibleActions.map((action) => (
+                <button
+                  key={action.key}
+                  onClick={(e) => {
+                    setMenuOpen(false);
+                    action.onClick(e);
+                  }}
+                  disabled={action.disabled}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
+                    action.variant === "danger" ? "text-rose-400" : "text-text-default"
+                  }`}
+                >
+                  {action.icon}
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </>,
+          document.body,
+        )}
       {filterModalOpen && onFilterSave && (
         <FeedFilterModal
           feed={feed}
