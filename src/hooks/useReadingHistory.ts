@@ -35,11 +35,12 @@ export function useReadingHistory() {
     });
   }, []);
 
-  /** 履歴に含まれる articleId の Set（フィルタリング用） */
-  const historyIds = useMemo(() => new Set(history.map((e) => e.articleId)), [history]);
-
-  /** 最近閲覧した順の articleId 配列（ソート用） */
-  const historyOrder = useMemo(() => history.map((e) => e.articleId), [history]);
+  const { historyIds, historyOrder } = useMemo(() => {
+    /** 最近閲覧した順の articleId 配列（ソート用） */
+    const order = history.map((e) => e.articleId);
+    /** 履歴に含まれる articleId の Set（フィルタリング用） */
+    return { historyIds: new Set(order), historyOrder: order };
+  }, [history]);
 
   return { historyIds, historyOrder, addToHistory };
 }
