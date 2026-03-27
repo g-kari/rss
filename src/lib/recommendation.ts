@@ -10,12 +10,8 @@ import { discoverFeedUrl } from "./feed-discovery";
 import { readFeedMeta, readLatestArticles } from "./shared-feed";
 import { fetchWithTimeout } from "./fetch";
 
-// @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のため既知モデル型にキャスト
-const MODEL = "@cf/meta/llama-3.1-8b-instruct" as "@cf/meta/llama-3.1-8b-instruct-fp8";
-
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 時間
 const MAX_RECOMMENDATIONS = 20;
-const DISCOVER_TIMEOUT_MS = 10_000;
 
 function r2Key(userId: string) {
   return `users/${userId}/recommendations.json`;
@@ -46,23 +42,18 @@ export async function writeCache(
   await r2Put(bucket, r2Key(userId), cache);
 }
 
-// ── トピック抽出 ────────────────────────────────────────────────
+// ── トピック抽出（ルールベース）───────────────────────────────────
 
-/**
- * ユーザーのエンゲージメントデータからトピックキーワードを抽出する。
- * エンゲージメントスコア上位のフィードの記事タイトルを AI に渡す。
- */
+/** 記事タイトル・フィード名から頻出語をトピックとして抽出する */
 export async function extractUserTopics(
   bucket: R2Bucket,
   subscriptions: UserSubscription[],
   engagement: EngagementLog,
-  ai: Ai,
 ): Promise<string[]> {
   // エンゲージメントスコアで上位フィードを取得
   const scores = scoreFeedEngagement(engagement.entries);
   const topFeeds = topScoredFeeds(scores, 10);
 
-  // 上位フィードのメタデータと記事タイトルを収集
   const feedTitles: string[] = [];
   const articleTitles: string[] = [];
 
@@ -86,119 +77,87 @@ export async function extractUserTopics(
 
   if (feedTitles.length === 0) return [];
 
-  const prompt = `あなたはRSSリーダーのユーザーの興味を分析するアシスタントです。
-以下のRSSフィード名と記事タイトルから、ユーザーの興味トピックを5-10個のキーワードで抽出してください。
-JSON配列のみを返してください。例: ["TypeScript", "Rust", "クラウド"]
+  // フィード名をそのままトピックとして使いつつ、記事タイトルから頻出語を抽出
+  const freq = new Map<string, number>();
 
-フィード名:
-${feedTitles.join("\n")}
-
-記事タイトル:
-${articleTitles.slice(0, 30).join("\n")}`;
-
-  try {
-    const response = (await ai.run(MODEL, {
-      messages: [{ role: "user", content: prompt }],
-    })) as { response?: string };
-    const text = response.response ?? "";
-    // JSON 配列を抽出（前後にテキストが含まれる場合に対応）
-    const match = text.match(/\[[\s\S]*?\]/);
-    if (match) {
-      const parsed = JSON.parse(match[0]) as unknown;
-      if (Array.isArray(parsed)) {
-        return parsed.filter((x): x is string => typeof x === "string").slice(0, 10);
-      }
+  // フィード名は重みを高くして追加
+  for (const title of feedTitles) {
+    for (const token of tokenize(title)) {
+      freq.set(token, (freq.get(token) ?? 0) + 3);
     }
-  } catch {
-    // AI 失敗はフォールバックで対処
   }
 
-  return [];
+  // 記事タイトルから頻出語を集計
+  for (const title of articleTitles) {
+    for (const token of tokenize(title)) {
+      freq.set(token, (freq.get(token) ?? 0) + 1);
+    }
+  }
+
+  // 出現頻度降順で上位 10 語を返す
+  return [...freq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([word]) => word);
 }
 
-// ── AI フィード提案 ─────────────────────────────────────────────
-
 /**
- * AI にトピックに関連する RSS フィード URL を提案させ、
- * discoverFeedUrl() で実在確認する。
+ * テキストをトークン（単語）に分割する。
+ * - 英数字: 2文字以上の連続（大文字小文字統一）
+ * - カタカナ: 2文字以上の連続
+ * - ストップワードを除去
  */
-export async function generateAiSuggestions(
-  topics: string[],
-  subscribedUrls: Set<string>,
-  ai: Ai,
-): Promise<RecommendedFeed[]> {
-  if (topics.length === 0) return [];
+function tokenize(text: string): string[] {
+  const stopWords = new Set([
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "of",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "with",
+    "from",
+    "by",
+    "as",
+    "that",
+    "this",
+    "it",
+    "its",
+    "how",
+    "what",
+    "why",
+    "when",
+    "new",
+    "via",
+  ]);
 
-  const prompt = `あなたはRSSフィード推薦の専門家です。
-以下のトピックに関連する、RSSフィードを提供している技術ブログやニュースサイトのURLを10個提案してください。
-各URLはサイトのトップページURLを返してください（RSSフィードURLではなく）。
-JSON配列のみを返してください。
+  const tokens: string[] = [];
 
-フォーマット:
-[{"url": "https://example.com", "title": "サイト名", "reason": "提案理由"}]
-
-トピック: ${topics.join(", ")}
-
-以下のサイトは既に購読中なので除外してください:
-${[...subscribedUrls].slice(0, 20).join("\n")}`;
-
-  let candidates: Array<{ url: string; title: string; reason: string }> = [];
-  try {
-    const response = (await ai.run(MODEL, {
-      messages: [{ role: "user", content: prompt }],
-    })) as { response?: string };
-    const text = response.response ?? "";
-    const match = text.match(/\[[\s\S]*?\]/);
-    if (match) {
-      const parsed = JSON.parse(match[0]) as unknown;
-      if (Array.isArray(parsed)) {
-        candidates = parsed.filter(
-          (x): x is { url: string; title: string; reason: string } =>
-            typeof x === "object" &&
-            x !== null &&
-            typeof (x as Record<string, unknown>).url === "string" &&
-            typeof (x as Record<string, unknown>).title === "string",
-        );
-      }
-    }
-  } catch {
-    return [];
-  }
-
-  // 並行で discoverFeedUrl を実行（タイムアウト付き）
-  const results: RecommendedFeed[] = [];
-  const checks = candidates.slice(0, 10).map(async (candidate) => {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), DISCOVER_TIMEOUT_MS);
-      const feedUrl = await discoverFeedUrl(candidate.url);
-      clearTimeout(timer);
-      if (!feedUrl) return null;
-      if (subscribedUrls.has(feedUrl)) return null;
-
-      const id = await sha256Hex(`ai_${feedUrl}`);
-      return {
-        id: id.slice(0, 12),
-        feedUrl,
-        title: candidate.title || new URL(candidate.url).hostname,
-        siteUrl: candidate.url,
-        reason: candidate.reason || topics.slice(0, 3).join("・") + " に関連",
-        source: "ai_suggestion" as const,
-        score: 0.8,
-      };
-    } catch {
-      return null;
-    }
-  });
-
-  const settled = await Promise.allSettled(checks);
-  for (const r of settled) {
-    if (r.status === "fulfilled" && r.value) {
-      results.push(r.value);
+  // 英数字・ハイフン連結語（2文字以上）
+  const ascii = text.match(/[A-Za-z][A-Za-z0-9\-.]{1,}/g) ?? [];
+  for (const w of ascii) {
+    const lower = w.toLowerCase().replace(/[-.]$/, "");
+    if (lower.length >= 2 && !stopWords.has(lower)) {
+      tokens.push(lower);
     }
   }
 
-  return results;
+  // カタカナ（2文字以上）
+  const kata = text.match(/[\u30A0-\u30FF]{2,}/g) ?? [];
+  tokens.push(...kata);
+
+  return tokens;
 }
 
 // ── Web 検索フィード提案 ─────────────────────────────────────────
@@ -307,10 +266,9 @@ export async function generateWebSearchFeeds(
 export async function generateRecommendations(params: {
   userId: string;
   bucket: R2Bucket;
-  ai: Ai;
   subscriptions: UserSubscription[];
 }): Promise<RecommendationCache> {
-  const { userId, bucket, ai, subscriptions } = params;
+  const { userId, bucket, subscriptions } = params;
 
   // エンゲージメントログを取得
   const engagement = await r2Get<EngagementLog>(bucket, `users/${userId}/engagement.json`, {
@@ -320,31 +278,20 @@ export async function generateRecommendations(params: {
   // 購読済み URL の Set を構築
   const subscribedUrls = new Set(subscriptions.map((s) => s.url));
 
-  // トピック抽出
-  const topics = await extractUserTopics(bucket, subscriptions, engagement, ai);
+  // トピック抽出（ルールベース）
+  const topics = await extractUserTopics(bucket, subscriptions, engagement);
 
-  // AI 提案と Web 検索を並列実行
-  const [aiSettled, webSettled] = await Promise.allSettled([
-    generateAiSuggestions(topics, subscribedUrls, ai),
-    generateWebSearchFeeds(topics, subscribedUrls),
-  ]);
-  const aiResults = aiSettled.status === "fulfilled" ? aiSettled.value : [];
-  const webResults = webSettled.status === "fulfilled" ? webSettled.value : [];
+  // Web 検索でフィードを発見
+  const webResults = await generateWebSearchFeeds(topics, subscribedUrls);
 
   // 既存の dismiss 済みを除外してキャッシュ
   const existingCache = await readCache(bucket, userId);
   const dismissedIds = new Set(existingCache?.dismissedIds ?? []);
 
-  // feedUrl で重複排除（Web 検索結果を優先）してスコア降順にソート
-  const seen = new Set<string>();
-  const deduped: RecommendedFeed[] = [];
-  for (const r of [...webResults, ...aiResults]) {
-    if (!seen.has(r.feedUrl) && !dismissedIds.has(r.id)) {
-      seen.add(r.feedUrl);
-      deduped.push(r);
-    }
-  }
-  const recommendations = deduped.sort((a, b) => b.score - a.score).slice(0, MAX_RECOMMENDATIONS);
+  const recommendations = webResults
+    .filter((r) => !dismissedIds.has(r.id))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_RECOMMENDATIONS);
 
   const cache: RecommendationCache = {
     recommendations,

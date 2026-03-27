@@ -18,7 +18,6 @@ export async function GET() {
     const result = await generateRecommendations({
       userId: session.userId,
       bucket: env.RSS_DATA,
-      ai: env.AI,
       subscriptions,
     });
 
