@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (138)
+
+### 新機能
+- **コードブロックのシンタックスハイライト** — 記事本文内の \`<pre><code>\` ブロックに \`highlight.js\` によるシンタックスハイライトを適用。JavaScript・TypeScript・Python・Go・Rust・Shell・CSS・HTML・JSON など約 30 言語を自動検出。GitHub Light / GitHub Dark 準拠のトークン色でライト/ダークテーマに対応
+
 ## 2026-03-27 (137)
 
 ### バグ修正

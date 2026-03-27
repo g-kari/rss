@@ -17,6 +17,7 @@
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
     "fast-xml-parser": "^5.5.8",
+    "highlight.js": "^11.11.1",
     "katex": "^0.16.42",
     "linkedom": "^0.18.12",
     "marked": "^17.0.5",
