@@ -58,7 +58,9 @@ export function useFeeds(
   }, []);
 
   // 新着記事を既存リストにマージする（既存記事は消さない）
+  // 取得した記事の先頭 ID を latestArticleIdRef に反映する
   const mergeArticles = useCallback((fresh: Article[]) => {
+    if (fresh.length > 0) latestArticleIdRef.current = fresh[0].id;
     setArticles((prev) => {
       if (prev.length === 0) return fresh;
       const existingIds = new Set(prev.map((a) => a.id));
@@ -102,7 +104,6 @@ export function useFeeds(
       mergeArticles(fresh);
       const newIdx = fresh.findIndex((a) => a.id === prevTopId);
       if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
-      if (fresh.length > 0) latestArticleIdRef.current = fresh[0].id;
     } catch {
       // ポーリングエラーはサイレント失敗
     } finally {
@@ -183,7 +184,6 @@ export function useFeeds(
       const feedsData = await fetchFeedsData();
       setFeeds(feedsData);
       mergeArticles(fresh);
-      if (fresh.length > 0) latestArticleIdRef.current = fresh[0].id;
     } catch (err) {
       console.error("Refresh failed:", err);
       onError?.("更新に失敗しました");
@@ -201,9 +201,7 @@ export function useFeeds(
         setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
         const articlesRes = await apiFetch("/api/articles");
         if (articlesRes.ok) {
-          const fresh = (await articlesRes.json()) as Article[];
-          mergeArticles(fresh);
-          if (fresh.length > 0) latestArticleIdRef.current = fresh[0].id;
+          mergeArticles((await articlesRes.json()) as Article[]);
         }
       } catch (err) {
         console.error("retryFeed failed:", err);
