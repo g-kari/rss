@@ -7,6 +7,9 @@ export function matchesKeywordFilter(article: Article, filter: KeywordFilter): b
   if (matchCategories && article.categories) {
     fields.push(...article.categories);
   }
+  if (article.metadata) {
+    fields.push(...article.metadata.map((m) => m.value));
+  }
   const text = fields.join(" ").toLowerCase();
 
   if (exclude.length > 0 && exclude.some((kw) => text.includes(kw.toLowerCase()))) {

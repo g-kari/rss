@@ -87,6 +87,8 @@ export interface Article {
   publishedAt: string | null;
   createdAt: string;
   categories?: string[];
+  /** RSS フィード固有の追加フィールド値（dc:corp, business_form 等） */
+  metadata?: Array<{ key: string; value: string }>;
 }
 
 export type Layout = "compact" | "list" | "card" | "magazine";

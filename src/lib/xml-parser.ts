@@ -75,6 +75,8 @@ export interface ParsedItem {
   author: string;
   publishedAt: string | null;
   categories: string[];
+  /** 標準フィールド以外のカスタム XML タグ値（dc:corp, business_form 等） */
+  metadata: Array<{ key: string; value: string }>;
 }
 
 export interface ParsedFeed {
@@ -136,6 +138,59 @@ function str(val: unknown): string {
     return String((val as { "#text": unknown })["#text"]);
   return String(val);
 }
+
+/**
+ * RSS アイテムからカスタムフィールド値を抽出する。
+ * skipKeys に含まれる標準フィールドと属性キー（@_ 接頭辞）は除外する。
+ * HTML を含む長い値は 500 文字に切り詰める。
+ */
+function extractMetadata(
+  item: Record<string, unknown>,
+  skipKeys: Set<string>,
+): Array<{ key: string; value: string }> {
+  const entries: Array<{ key: string; value: string }> = [];
+  for (const [key, val] of Object.entries(item)) {
+    if (skipKeys.has(key) || key.startsWith("@_") || key === "#text") continue;
+    const value = str(val).trim().slice(0, 500);
+    if (value) entries.push({ key, value });
+  }
+  return entries;
+}
+
+const RSS2_SKIP_KEYS = new Set([
+  "title",
+  "link",
+  "description",
+  "content:encoded",
+  "dc:creator",
+  "dc:date",
+  "author",
+  "pubDate",
+  "guid",
+  "category",
+  "enclosure",
+  "media:thumbnail",
+  "media:content",
+  "media:group",
+]);
+
+const ATOM_SKIP_KEYS = new Set([
+  "title",
+  "link",
+  "id",
+  "content",
+  "summary",
+  "author",
+  "published",
+  "updated",
+  "category",
+  "enclosure",
+  "media:thumbnail",
+  "media:content",
+  "media:group",
+]);
+
+const RDF_SKIP_KEYS = new Set([...RSS2_SKIP_KEYS, "@_rdf:about"]);
 
 /** author フィールドから表示名を取得する（Atom の author.name / RSS の dc:creator 両対応） */
 function authorStr(author: FeedItem["author"]): string {
@@ -269,6 +324,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
       author,
       publishedAt: parseDate(item.date_published ?? item.date_modified ?? null),
       categories: item.tags ?? [],
+      metadata: [],
     };
   });
   return { title: data.title ?? "", siteUrl: data.home_page_url ?? "", items };
@@ -311,6 +367,7 @@ export function parseFeed(xml: string): ParsedFeed {
           categories: toArray(item.category)
             .map((c) => str(c))
             .filter(Boolean),
+          metadata: extractMetadata(item as unknown as Record<string, unknown>, RSS2_SKIP_KEYS),
         };
       }),
     };
@@ -347,6 +404,7 @@ export function parseFeed(xml: string): ParsedFeed {
                 : str(c),
             )
             .filter(Boolean),
+          metadata: extractMetadata(entry as unknown as Record<string, unknown>, ATOM_SKIP_KEYS),
         };
       }),
     };
@@ -376,6 +434,7 @@ export function parseFeed(xml: string): ParsedFeed {
           categories: toArray(item.category)
             .map((c) => str(c))
             .filter(Boolean),
+          metadata: extractMetadata(item as unknown as Record<string, unknown>, RDF_SKIP_KEYS),
         };
       }),
     };

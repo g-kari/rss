@@ -292,6 +292,30 @@ interface FilterMenuProps {
   showToast?: (msg: string) => void;
 }
 
+/** XML キーを日本語ラベルに変換する */
+function metaLabel(key: string): string {
+  const map: Record<string, string> = {
+    "dc:corp": "企業",
+    "dc:creator": "著者",
+    "dc:subject": "テーマ",
+    "dc:publisher": "出版社",
+    "dc:type": "種別",
+    "dc:rights": "権利",
+    business_form: "業種",
+    service: "サービス",
+    industry: "業界",
+    category: "カテゴリ",
+    tag: "タグ",
+    source: "情報源",
+    department: "部署",
+    genre: "ジャンル",
+    region: "地域",
+    prefecture: "都道府県",
+    country: "国",
+  };
+  return map[key] ?? key.replace(/^[a-z]+:/i, "");
+}
+
 function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps) {
   const [open, setOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -309,28 +333,55 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
   const hasFilter =
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
 
-  async function handleQuickExclude() {
+  async function handleExclude(value: string) {
     setOpen(false);
     const existingExclude = feed.filter?.exclude ?? [];
-    if (existingExclude.includes(article.title)) {
+    if (existingExclude.includes(value)) {
       showToast?.("既に除外キーワードに登録されています");
       return;
     }
     const newFilter: KeywordFilter = {
       include: feed.filter?.include ?? [],
-      exclude: [...existingExclude, article.title],
+      exclude: [...existingExclude, value],
       matchCategories: feed.filter?.matchCategories,
     };
     try {
       await onSaveFilter(feed.id, newFilter);
-      showToast?.("記事タイトルを除外キーワードに追加しました");
+      showToast?.(`「${value}」を除外キーワードに追加しました`);
     } catch {
       showToast?.("フィルターの保存に失敗しました");
     }
   }
 
+  // 除外候補を動的に生成する
+  const excludeOptions: { label: string; value: string }[] = [
+    { label: "この記事", value: article.title },
+    ...(article.author ? [{ label: `著者「${article.author}」`, value: article.author }] : []),
+    ...(article.categories ?? []).map((cat) => ({ label: `カテゴリ「${cat}」`, value: cat })),
+    ...(article.metadata ?? []).map((m) => ({
+      label: `${metaLabel(m.key)}「${m.value}」`,
+      value: m.value,
+    })),
+  ];
+
   const itemCls =
     "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left";
+
+  const XIcon = (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0"
+    >
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
 
   return (
     <div ref={menuRef} className="relative">
@@ -353,7 +404,7 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-30 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]">
+        <div className="absolute right-0 top-full mt-1 z-30 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[200px] max-h-[320px] overflow-y-auto">
           <button
             onClick={() => {
               setOpen(false);
@@ -362,34 +413,37 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
             className={itemCls}
           >
             <svg
-              width="12"
-              height="12"
+              width="10"
+              height="10"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="flex-shrink-0"
             >
               <path d="M3 4h18M7 8h10M11 12h2M9 16h6" />
             </svg>
             キーワードフィルター設定
           </button>
-          <button onClick={() => void handleQuickExclude()} className={itemCls}>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-            この記事を除外
-          </button>
+          {excludeOptions.length > 0 && (
+            <div className="border-t border-border-subtle">
+              <p className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+                除外する
+              </p>
+              {excludeOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => void handleExclude(opt.value)}
+                  className={itemCls}
+                >
+                  {XIcon}
+                  <span className="truncate">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {modalOpen && (
