@@ -198,28 +198,33 @@ export function useReadState(
     [scheduleSyncToServer],
   );
 
-  const toggle = useCallback(
-    (setState: (updater: (prev: Set<string>) => Set<string>) => void, key: string, id: string) => {
-      toggleSetItem(setState, key, id);
+  const toggleRead = useCallback(
+    (id: string) => {
+      toggleSetItem(setReadIds, STORAGE_KEYS.READ_IDS, id);
       scheduleSyncToServer();
     },
     [scheduleSyncToServer],
   );
-  const toggleRead = useCallback(
-    (id: string) => toggle(setReadIds, STORAGE_KEYS.READ_IDS, id),
-    [toggle],
-  );
   const toggleBookmark = useCallback(
-    (id: string) => toggle(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, id),
-    [toggle],
+    (id: string) => {
+      toggleSetItem(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, id);
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
   );
   const toggleReadingList = useCallback(
-    (id: string) => toggle(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, id),
-    [toggle],
+    (id: string) => {
+      toggleSetItem(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, id);
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
   );
   const toggleLike = useCallback(
-    (id: string) => toggle(setLikeIds, STORAGE_KEYS.LIKE_IDS, id),
-    [toggle],
+    (id: string) => {
+      toggleSetItem(setLikeIds, STORAGE_KEYS.LIKE_IDS, id);
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
   );
 
   return {
