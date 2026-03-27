@@ -4,6 +4,11 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-27 (130)
+
+### バグ修正
+- **Qiita など CDN の長い OGP 画像 URL が取得できない問題を修正** — \`og:image\` の URL 長チェックに汎用 \`MAX_URL_LENGTH\`（2048文字）を使っていたため、imgix が生成する長い URL（Qiita の記事で ~2700文字）が弾かれていた。OGP 画像専用の上限 \`MAX_OGP_IMAGE_URL_LENGTH\`（8192文字）を追加して解消
+
 ## 2026-03-27 (129)
 
 ### リファクタリング
