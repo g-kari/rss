@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-27 (132)
+
+### リファクタリング
+
+- **`saveJson` ヘルパーを追加し、散在する `storageSet(key, JSON.stringify(...))` パターンを統一** — `storage.ts` に `saveJson<T>(key, value)` を追加し、`useOgpCache`・`useSearchHistory`・`useReadingHistory` の 3 フックで使用していた手動の JSON.stringify パターンを置き換え
+
 ## 2026-03-27 (131)
 
 ### 新機能

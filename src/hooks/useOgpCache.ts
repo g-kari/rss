@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { Article } from "../types";
-import { STORAGE_KEYS, loadJson, storageSet } from "../lib/storage";
+import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 
 const MAX_OGP_CACHE_SIZE = 200;
 const FETCH_BATCH_SIZE = 5;
@@ -54,7 +54,7 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
                 keys.length > MAX_OGP_CACHE_SIZE
                   ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
                   : next;
-              storageSet(STORAGE_KEYS.OGP_CACHE, JSON.stringify(result));
+              saveJson(STORAGE_KEYS.OGP_CACHE, result);
               return result;
             });
           } else {

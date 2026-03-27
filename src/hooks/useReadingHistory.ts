@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { STORAGE_KEYS, loadJson, storageSet } from "../lib/storage";
+import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 
 interface HistoryEntry {
   articleId: string;
@@ -30,7 +30,7 @@ export function useReadingHistory() {
         0,
         MAX_HISTORY,
       );
-      storageSet(STORAGE_KEYS.HISTORY, JSON.stringify(next));
+      saveJson(STORAGE_KEYS.HISTORY, next);
       return next;
     });
   }, []);
