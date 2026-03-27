@@ -1,5 +1,12 @@
 # リリースノート
 
+## 2026-03-28 (176)
+
+### リファクタリング
+
+- **`compareByDateDesc` を文字列比較に簡略化** — `article-utils.ts` の日付降順ソート比較関数を `new Date().getTime()` による数値差分から ISO 8601 文字列の辞書順比較に統一（`ParsedItem` の同種変更と一致させる）
+- **`matchesKeywordFilter` の条件分岐を簡略化** — 早期 return が 2 つある形から `every` / `some` による単一の return 式に変更。`exclude.every(...)` は空配列で `true` を返すため `length > 0` ガードが不要になる
+
 ## 2026-03-28 (175)
 
 ### リファクタリング

@@ -44,10 +44,9 @@ export function compareByDateDesc(
   a: { publishedAt: string | null; createdAt: string },
   b: { publishedAt: string | null; createdAt: string },
 ): number {
-  return (
-    new Date(b.publishedAt ?? b.createdAt).getTime() -
-    new Date(a.publishedAt ?? a.createdAt).getTime()
-  );
+  const aDate = a.publishedAt ?? a.createdAt;
+  const bDate = b.publishedAt ?? b.createdAt;
+  return bDate < aDate ? -1 : bDate > aDate ? 1 : 0;
 }
 
 /**
