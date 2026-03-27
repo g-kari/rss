@@ -101,7 +101,7 @@ export interface EngagementLog {
 }
 
 /** レコメンドのソース種別 */
-export type RecommendationSource = "ai_suggestion" | "popular" | "link_discovery";
+export type RecommendationSource = "ai_suggestion" | "popular" | "link_discovery" | "web_search";
 
 /** レコメンドされたフィード */
 export interface RecommendedFeed {

@@ -8,6 +8,7 @@ import { r2Get, r2Put, sha256Hex } from "./r2";
 import { scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
 import { discoverFeedUrl } from "./feed-discovery";
 import { readFeedMeta, readLatestArticles } from "./shared-feed";
+import { fetchWithTimeout } from "./fetch";
 
 // @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のため既知モデル型にキャスト
 const MODEL = "@cf/meta/llama-3.1-8b-instruct" as "@cf/meta/llama-3.1-8b-instruct-fp8";
@@ -200,6 +201,107 @@ ${[...subscribedUrls].slice(0, 20).join("\n")}`;
   return results;
 }
 
+// ── Web 検索フィード提案 ─────────────────────────────────────────
+
+interface BraveWebResult {
+  url: string;
+  title: string;
+  description: string;
+}
+
+interface BraveSearchResponse {
+  web?: { results: BraveWebResult[] };
+}
+
+/**
+ * Brave Search API でトピックを検索し、
+ * 検索結果の URL から discoverFeedUrl() で RSS フィードを発見する。
+ * BRAVE_SEARCH_API_KEY が未設定の場合は即座に [] を返す。
+ */
+export async function generateWebSearchFeeds(
+  topics: string[],
+  subscribedUrls: Set<string>,
+): Promise<RecommendedFeed[]> {
+  const apiKey = process.env.BRAVE_SEARCH_API_KEY;
+  if (!apiKey) return [];
+  if (topics.length === 0) return [];
+
+  // トピック最大3つで検索クエリを構築
+  const queries = topics.slice(0, 3).map((t) => `${t} RSS blog feed`);
+
+  // Brave Search API を並列呼び出し
+  const searchResults = await Promise.allSettled(
+    queries.map(async (q) => {
+      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=5`;
+      const res = await fetchWithTimeout(
+        url,
+        {
+          headers: {
+            "X-Subscription-Token": apiKey,
+            Accept: "application/json",
+          },
+        },
+        5_000,
+      );
+      if (!res.ok) return [];
+      const data = (await res.json()) as BraveSearchResponse;
+      return data.web?.results ?? [];
+    }),
+  );
+
+  // 全クエリの結果をフラットに統合し、購読済みと重複ドメインを除外
+  const seen = new Set<string>();
+  const candidates: Array<{ url: string; title: string; topic: string }> = [];
+
+  for (let i = 0; i < searchResults.length; i++) {
+    const r = searchResults[i];
+    if (r.status !== "fulfilled") continue;
+    for (const item of r.value) {
+      try {
+        const hostname = new URL(item.url).hostname;
+        if (seen.has(hostname)) continue;
+        if (subscribedUrls.has(item.url)) continue;
+        seen.add(hostname);
+        candidates.push({ url: item.url, title: item.title, topic: topics[i] ?? topics[0] });
+      } catch {
+        // URL パース失敗はスキップ
+      }
+    }
+  }
+
+  // discoverFeedUrl() を並列実行
+  const results: RecommendedFeed[] = [];
+  const checks = candidates.slice(0, 10).map(async (candidate) => {
+    try {
+      const feedUrl = await discoverFeedUrl(candidate.url);
+      if (!feedUrl) return null;
+      if (subscribedUrls.has(feedUrl)) return null;
+
+      const id = (await sha256Hex(`ws_${feedUrl}`)).slice(0, 12);
+      return {
+        id,
+        feedUrl,
+        title: candidate.title || new URL(candidate.url).hostname,
+        siteUrl: candidate.url,
+        reason: `「${candidate.topic}」の検索結果から発見`,
+        source: "web_search" as const,
+        score: 0.9,
+      };
+    } catch {
+      return null;
+    }
+  });
+
+  const settled = await Promise.allSettled(checks);
+  for (const r of settled) {
+    if (r.status === "fulfilled" && r.value) {
+      results.push(r.value);
+    }
+  }
+
+  return results;
+}
+
 // ── メインのレコメンド生成関数 ──────────────────────────────────
 
 export async function generateRecommendations(params: {
@@ -221,16 +323,28 @@ export async function generateRecommendations(params: {
   // トピック抽出
   const topics = await extractUserTopics(bucket, subscriptions, engagement, ai);
 
-  // AI フィード提案（Phase 1 ではこれのみ）
-  const aiResults = await generateAiSuggestions(topics, subscribedUrls, ai);
+  // AI 提案と Web 検索を並列実行
+  const [aiSettled, webSettled] = await Promise.allSettled([
+    generateAiSuggestions(topics, subscribedUrls, ai),
+    generateWebSearchFeeds(topics, subscribedUrls),
+  ]);
+  const aiResults = aiSettled.status === "fulfilled" ? aiSettled.value : [];
+  const webResults = webSettled.status === "fulfilled" ? webSettled.value : [];
 
   // 既存の dismiss 済みを除外してキャッシュ
   const existingCache = await readCache(bucket, userId);
   const dismissedIds = new Set(existingCache?.dismissedIds ?? []);
-  const recommendations = aiResults
-    .filter((r) => !dismissedIds.has(r.id))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_RECOMMENDATIONS);
+
+  // feedUrl で重複排除（Web 検索結果を優先）してスコア降順にソート
+  const seen = new Set<string>();
+  const deduped: RecommendedFeed[] = [];
+  for (const r of [...webResults, ...aiResults]) {
+    if (!seen.has(r.feedUrl) && !dismissedIds.has(r.id)) {
+      seen.add(r.feedUrl);
+      deduped.push(r);
+    }
+  }
+  const recommendations = deduped.sort((a, b) => b.score - a.score).slice(0, MAX_RECOMMENDATIONS);
 
   const cache: RecommendationCache = {
     recommendations,

@@ -60,3 +60,6 @@ invocation_logs = true
 # Push 通知用 VAPID 鍵 (node scripts/generate-vapid-keys.mjs で生成):
 # npx wrangler secret put VAPID_PUBLIC_KEY
 # npx wrangler secret put VAPID_PRIVATE_KEY
+#
+# Brave Search API (レコメンドエンジン用、オプション):
+# npx wrangler secret put BRAVE_SEARCH_API_KEY
