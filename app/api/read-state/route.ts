@@ -19,13 +19,14 @@ function r2Key(userId: string) {
   return `users/${userId}/read-state.json`;
 }
 
-/** 配列バリデーション＋フィルタを一括処理する。上限超過時は null を返す。 */
+/** 配列バリデーション＋フィルタ＋重複排除を一括処理する。上限超過時は null を返す。 */
 function extractIds(raw: unknown, max: number): string[] | null {
   const arr = Array.isArray(raw) ? raw : [];
   if (arr.length > max) return null;
-  return arr.filter(
+  const filtered = arr.filter(
     (v): v is string => typeof v === "string" && v.length > 0 && v.length <= MAX_ID_LENGTH,
   );
+  return [...new Set(filtered)];
 }
 
 export async function GET() {
