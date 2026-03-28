@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { getUserFeeds } from "@/lib/shared-feed";
+import { escapeHtml } from "@/lib/html";
 import type { Feed } from "@/types";
-
-/** XML 属性値に使用できない文字をエスケープする */
-function escapeXmlAttr(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
 
 function buildOpml(feeds: Feed[]): string {
   const outlines = feeds
     .map((f) => {
-      const title = escapeXmlAttr(f.title);
-      const xmlUrl = escapeXmlAttr(f.url);
-      const htmlUrl = escapeXmlAttr(f.siteUrl);
+      const title = escapeHtml(f.title);
+      const xmlUrl = escapeHtml(f.url);
+      const htmlUrl = escapeHtml(f.siteUrl);
       return `    <outline text="${title}" title="${title}" type="rss" xmlUrl="${xmlUrl}" htmlUrl="${htmlUrl}"/>`;
     })
     .join("\n");

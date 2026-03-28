@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (225)
+
+### リファクタリング
+
+- **\`export/route.ts\` の \`escapeXmlAttr\` を \`escapeHtml\` に統合** — \`app/api/feeds/export/route.ts\` にあったローカル関数 \`escapeXmlAttr\` が \`src/lib/html.ts\` の \`escapeHtml\` と全く同じ実装だったため、重複を削除して既存エクスポートを再利用
+
 ## 2026-03-28 (224)
 
 ### リファクタリング
