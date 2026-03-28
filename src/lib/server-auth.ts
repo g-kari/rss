@@ -154,8 +154,13 @@ export async function withSession(
   const result = await requireSession();
   if ("error" in result) return result.error;
   const { env, ctx } = await getCloudflareContext({ async: true });
-  const response = await handler({ session: result.session, env, ctx });
-  return applyRefreshedTokens(response, result.session);
+  try {
+    const response = await handler({ session: result.session, env, ctx });
+    return applyRefreshedTokens(response, result.session);
+  } catch (err) {
+    console.error("[withSession] unhandled error:", err);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }
 
 /**
@@ -199,8 +204,13 @@ export async function withBinarySession(
   const result = await requireSession();
   if ("error" in result) return result.error;
   const { env, ctx } = await getCloudflareContext({ async: true });
-  const response = await handler({ session: result.session, env, ctx });
-  return applyRefreshedTokensToResponse(response, result.session);
+  try {
+    const response = await handler({ session: result.session, env, ctx });
+    return applyRefreshedTokensToResponse(response, result.session);
+  } catch (err) {
+    console.error("[withBinarySession] unhandled error:", err);
+    return new Response("Internal Server Error", { status: 500 });
+  }
 }
 
 /**

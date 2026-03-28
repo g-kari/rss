@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (191)
+
+### セキュリティ
+
+- **API ルートのエラーハンドリング強化** — \`withSession\` / \`withBinarySession\` にトップレベル try-catch を追加し、ハンドラ内の未補足例外が Workers の未ハンドル rejection として漏洩するのを防止。\`runAiJob\` の \`env.AI.run()\` 呼び出しも try-catch で保護し、Workers AI 障害時に 502 を返すよう修正。\`/api/recommendations\` の \`generateRecommendations\` 失敗時は期限切れキャッシュへのフォールバックを実装
+
 ## 2026-03-28 (190)
 
 ### バグ修正

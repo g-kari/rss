@@ -54,10 +54,16 @@ export async function runAiJob(
   const plain = toPlainText(content).slice(0, 6000);
 
   // AI 実行
-  const response = (await env.AI.run(MODEL, {
-    messages: buildMessages(plain),
-  })) as { response?: string };
-  const result = response.response ?? "";
+  let result: string;
+  try {
+    const response = (await env.AI.run(MODEL, {
+      messages: buildMessages(plain),
+    })) as { response?: string };
+    result = response.response ?? "";
+  } catch (err) {
+    console.error("[runAiJob] AI.run failed:", err);
+    return NextResponse.json({ error: "AI処理中にエラーが発生しました" }, { status: 502 });
+  }
 
   // キャッシュ保存はバックグラウンドで実行し、レスポンスをブロックしない
   if (result && articleId)

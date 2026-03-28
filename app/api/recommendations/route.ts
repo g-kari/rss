@@ -15,14 +15,25 @@ export async function GET() {
     const subscriptions = await readUserSubscriptions(env.RSS_DATA, session.userId);
 
     // レコメンド生成
-    const result = await generateRecommendations({
-      userId: session.userId,
-      bucket: env.RSS_DATA,
-      ai: env.AI,
-      subscriptions,
-      origin: process.env.APP_BASE_URL!,
-    });
-
-    return NextResponse.json(result);
+    try {
+      const result = await generateRecommendations({
+        userId: session.userId,
+        bucket: env.RSS_DATA,
+        ai: env.AI,
+        subscriptions,
+        origin: process.env.APP_BASE_URL!,
+      });
+      return NextResponse.json(result);
+    } catch (err) {
+      console.error("[recommendations] generateRecommendations failed:", err);
+      // 失敗時は期限切れキャッシュを返す（なければ空を返す）
+      if (cache) return NextResponse.json(cache);
+      return NextResponse.json({
+        recommendations: [],
+        generatedAt: null,
+        dismissedIds: [],
+        topics: [],
+      });
+    }
   });
 }
