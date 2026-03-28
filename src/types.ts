@@ -1,3 +1,10 @@
+/** /api/ogp レスポンス — OGP メタ情報 */
+export interface OgpData {
+  image: string;
+  title: string;
+  description: string;
+}
+
 /** LLM が推論した CSS セレクタ設定（RSS 未対応サイト用） */
 export interface SelectorConfig {
   /** 記事 <a> タグの CSS セレクタ */

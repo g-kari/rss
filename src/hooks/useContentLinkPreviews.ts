@@ -2,14 +2,9 @@
 
 import { useEffect, type RefObject } from "react";
 import { apiFetch } from "../lib/api-fetch";
+import type { OgpData } from "../types";
 
 export const LINK_PREVIEW_CLASS = "ogp-link-preview";
-
-interface OgpData {
-  image: string;
-  title: string;
-  description: string;
-}
 
 /**
  * anchor の親ブロック要素において、anchor が唯一の意味あるコンテンツかどうかを返す。

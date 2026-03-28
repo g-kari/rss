@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
+import type { OgpData } from "../types";
 
 interface ArticleContentState {
   /** フェッチ済み or キャッシュ済みのコンテンツ（なければ null） */
@@ -51,7 +52,7 @@ export function useArticleContent(
     if (!articleLink || articleOgImage) return;
     const controller = new AbortController();
     apiFetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
-      .then((r) => r.json() as Promise<{ image?: string }>)
+      .then((r) => r.json() as Promise<OgpData>)
       .then(({ image }) => {
         if (image) setResolvedOgImage(image);
       })
