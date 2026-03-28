@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (233)
+
+### ドキュメント整備
+
+- **\`filterAndSortArticles\` の単体テストを追加** — \`src/lib/article-filter.ts\` のフィルタリング・ソートロジック全体をカバーする \`e2e/article-filter.spec.ts\` を新規作成。フィード絞り込み（特殊フィード含む）・NSFW フィルター・キーワードフィルター・未読/ブックマークフィルター・検索クエリ・日付範囲・ソート順・activeIds（グレースピリオド）・複合フィルターの 39 ケースを網羅
+
 ## 2026-03-28 (232)
 
 ### バグ修正
