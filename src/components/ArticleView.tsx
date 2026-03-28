@@ -46,6 +46,21 @@ interface Props {
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
+/** ドロップダウンメニューの開閉状態と click-outside 処理をまとめたフック */
+function useMenuOpen() {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
+  return { open, setOpen, menuRef };
+}
+
 // --- 共通 SVG アイコン ---
 
 const SpinIcon = () => (
@@ -135,17 +150,7 @@ interface ShareMenuProps {
 }
 
 function ShareMenu({ article, showToast }: ShareMenuProps) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [open]);
+  const { open, setOpen, menuRef } = useMenuOpen();
 
   const itemCls =
     "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left";
@@ -317,18 +322,8 @@ function metaLabel(key: string): string {
 }
 
 function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps) {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, menuRef } = useMenuOpen();
   const [modalOpen, setModalOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [open]);
 
   const hasFilter =
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
