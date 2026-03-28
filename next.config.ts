@@ -52,7 +52,10 @@ const securityHeaders = [
       // 画像: 任意ドメイン（記事サムネイル）+ data URI
       "img-src * data: blob:",
       // iframe: YouTube・Spotify・Twitch・ニコニコ・X (Twitter) 等の埋め込み許可
-      "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://player.vimeo.com https://w.soundcloud.com https://player.twitch.tv https://clips.twitch.tv https://embed.nicovideo.jp https://embed.zenn.studio https://platform.twitter.com",
+      // youtube.com / youtube-nocookie.com（www なし）は sanitizeHtml の TRUSTED_IFRAME_RULES でも
+      // 許可されているため、CSP と整合させるために両方を追加する。
+      // www なし URL のままブラウザに渡った場合、frame-src にないと CSP でブロックされてしまう。
+      "frame-src https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://open.spotify.com https://player.vimeo.com https://w.soundcloud.com https://player.twitch.tv https://clips.twitch.tv https://embed.nicovideo.jp https://embed.zenn.studio https://platform.twitter.com",
       // メディア: 任意（ポッドキャスト）
       "media-src *",
       // API / WebSocket: self + Cloudflare Web Analytics のデータ送信先

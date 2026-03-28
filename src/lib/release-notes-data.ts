@@ -8,6 +8,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### セキュリティ
 
+- **CSP \`frame-src\` と \`sanitizeHtml\` の信頼済み iframe ドメインを同期** — \`TRUSTED_IFRAME_RULES\` では \`youtube.com\` / \`youtube-nocookie.com\`（www なし）を許可していたが、CSP の \`frame-src\` には \`www.\` 付きしか含まれていなかった。www なし URL のまま iframe が挿入されると sanitizer を通過しつつ CSP でブロックされる不整合を解消するため、\`youtube.com\` / \`youtube-nocookie.com\` を \`frame-src\` に追加
 - **\`fixExternalLinks\` でクォートなし \`rel\` 属性を正しく処理** — \`rel=nofollow\`（クォートなし）が含まれるリンクで \`rel\` 属性が2つ生成されブラウザが最初の値（\`noopener\` なし）を優先する問題を修正。\`window.opener\` アクセスによるタブナビゲーション攻撃のリスクを解消。クォートなし \`rel\` を検出・正規化して \`noopener noreferrer\` をマージするよう修正し、E2E テストを追加
 
 ### 改善
