@@ -26,7 +26,7 @@ interface FeedsState {
   prependArticle: (article: Article) => void;
   removeFeed: (id: string) => void;
   updateFeed: (feed: Feed) => void;
-  replaceFeeds: (feeds: Feed[]) => void;
+  replaceFeeds: (feeds: Feed[]) => Promise<void>;
   refreshFeeds: () => Promise<void>;
   retryFeed: (feedId: string) => Promise<void>;
   reinferFeed: (feedId: string) => Promise<void>;
