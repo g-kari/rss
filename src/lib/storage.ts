@@ -28,6 +28,7 @@ export const STORAGE_KEYS = {
   AI_CACHE_PREFIX: "rss-ai:",
   UNREAD_ONLY: "rss-unread-only",
   BOOKMARK_ONLY: "rss-bookmark-only",
+  READING_LIST_ONLY: "rss-reading-list-only",
   SORT_ORDER: "rss-sort-order",
   DATE_RANGE: "rss-date-range",
   OGP_CACHE: "rss-ogp-cache",

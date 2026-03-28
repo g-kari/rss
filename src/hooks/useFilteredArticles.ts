@@ -54,6 +54,9 @@ export function useFilteredArticles({
   const [bookmarkOnly, setBookmarkOnly] = useState(
     () => storageGet(STORAGE_KEYS.BOOKMARK_ONLY) === "1",
   );
+  const [readingListOnly, setReadingListOnly] = useState(
+    () => storageGet(STORAGE_KEYS.READING_LIST_ONLY) === "1",
+  );
   const [rawQuery, setRawQuery] = useState(""); // 入力値（即時更新）
   const query = useDebounce(rawQuery, 300); // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
@@ -105,6 +108,11 @@ export function useFilteredArticles({
     setPage(1);
   }, []);
 
+  const toggleReadingListOnly = useCallback(() => {
+    setReadingListOnly(boolToggleWithStorage(STORAGE_KEYS.READING_LIST_ONLY));
+    setPage(1);
+  }, []);
+
   const updateQuery = useCallback((q: string) => {
     setRawQuery(q);
     setPage(1);
@@ -153,6 +161,7 @@ export function useFilteredArticles({
         historyOrder,
         unreadOnly,
         bookmarkOnly,
+        readingListOnly,
         query,
         sortOrder,
         dateRange,
@@ -172,6 +181,7 @@ export function useFilteredArticles({
       historyOrder,
       unreadOnly,
       bookmarkOnly,
+      readingListOnly,
       query,
       sortOrder,
       dateRange,
@@ -208,6 +218,8 @@ export function useFilteredArticles({
     toggleUnreadOnly,
     bookmarkOnly,
     toggleBookmarkOnly,
+    readingListOnly,
+    toggleReadingListOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,

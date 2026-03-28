@@ -32,6 +32,8 @@ interface KeyboardNavOptions {
   toggleUnreadOnly: () => void;
   bookmarkOnly: boolean;
   toggleBookmarkOnly: () => void;
+  readingListOnly: boolean;
+  toggleReadingListOnly: () => void;
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
   dateRange: DateRange;
@@ -59,7 +61,8 @@ const LAYOUT_LABELS: Record<Layout, string> = {
  * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, o 元記事, v 全文取得, b ブックマーク,
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー,
  *               f フォントサイズ, l レイアウト, L いいね切替, R フィード更新,
- *               u 未読フィルター, B ブックマークフィルター, s ソート, d 日付フィルター,
+ *               u 未読フィルター, B ブックマークフィルター, T リーディングリストフィルター,
+ *               s ソート, d 日付フィルター,
  *               / 検索, ] 次フィード, [ 前フィード
  *               (v は ArticleView で処理)
  */
@@ -97,6 +100,8 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         toggleUnreadOnly,
         bookmarkOnly,
         toggleBookmarkOnly,
+        readingListOnly,
+        toggleReadingListOnly,
         sortOrder,
         toggleSortOrder,
         cycleDateRange,
@@ -216,6 +221,14 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         case "B":
           toggleBookmarkOnly();
           showToast(!bookmarkOnly ? "ブックマークフィルター: ON" : "ブックマークフィルター: OFF");
+          break;
+        case "T":
+          toggleReadingListOnly();
+          showToast(
+            !readingListOnly
+              ? "リーディングリストフィルター: ON"
+              : "リーディングリストフィルター: OFF",
+          );
           break;
         case "s":
           toggleSortOrder();
