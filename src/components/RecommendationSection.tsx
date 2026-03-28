@@ -65,7 +65,8 @@ export default function RecommendationSection({
       {/* 空状態 */}
       {!loading && recommendations.length === 0 && (
         <div className="px-4 py-2 text-[11px] text-text-faint leading-relaxed">
-          フィードを追加・購読すると、読んでいる内容に基づいたおすすめが表示されます。
+          記事をブックマーク・全文取得すると、関連フィードのURLがおすすめに表示されます。↑
+          の更新ボタンを押してみてください。
         </div>
       )}
 
