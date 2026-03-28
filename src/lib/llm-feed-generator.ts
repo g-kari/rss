@@ -32,8 +32,8 @@ interface LDDocument {
   querySelectorAll(selector: string): Iterable<LDElement>;
 }
 
-// ai-route-helper.ts と同じモデル（workers-types 未掲載のためキャスト）
-const MODEL = "@cf/meta/llama-3.1-8b-instruct" as "@cf/meta/llama-3.1-8b-instruct-fp8";
+// workers-types 未掲載のためキャスト。CSS セレクタ推論には精度の高いモデルを使用する
+const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast" as "@cf/meta/llama-3.1-8b-instruct-fp8";
 
 /** LLM に渡す圧縮リンク構造 */
 interface LinkNode {

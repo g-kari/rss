@@ -29,6 +29,7 @@ interface FeedsState {
   replaceFeeds: (feeds: Feed[]) => void;
   refreshFeeds: () => Promise<void>;
   retryFeed: (feedId: string) => Promise<void>;
+  reinferFeed: (feedId: string) => Promise<void>;
   dismissNewArticles: () => void;
   loadMoreFeedArticles: (feedId: string) => Promise<void>;
 }
@@ -213,6 +214,25 @@ export function useFeeds(
     [mergeArticles, onError],
   );
 
+  const reinferFeed = useCallback(
+    async (feedId: string): Promise<void> => {
+      try {
+        const res = await apiFetch(`/api/feeds/${feedId}/reinfer`, { method: "POST" });
+        if (!res.ok) return;
+        const feed = (await res.json()) as Feed;
+        setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
+        const articlesRes = await apiFetch("/api/articles");
+        if (articlesRes.ok) {
+          mergeArticles((await articlesRes.json()) as Article[]);
+        }
+      } catch (err) {
+        console.error("reinferFeed failed:", err);
+        onError?.("セレクタの再推論に失敗しました");
+      }
+    },
+    [mergeArticles, onError],
+  );
+
   const dismissNewArticles = useCallback(() => {
     setNewArticleCount(0);
   }, []);
@@ -254,6 +274,7 @@ export function useFeeds(
     replaceFeeds,
     refreshFeeds,
     retryFeed,
+    reinferFeed,
     dismissNewArticles,
     loadMoreFeedArticles,
   };

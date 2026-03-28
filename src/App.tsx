@@ -73,6 +73,7 @@ export default function App() {
     replaceFeeds,
     refreshFeeds,
     retryFeed,
+    reinferFeed,
     dismissNewArticles,
     loadMoreFeedArticles,
   } = useFeeds(user, showToast);
@@ -639,6 +640,7 @@ export default function App() {
             onSaveArticleUrl={onSaveArticleUrl}
             onRefresh={refreshFeeds}
             onRetryFeed={retryFeed}
+            onReinferFeed={reinferFeed}
             refreshing={refreshing}
             pinnedFeedIds={pinnedFeedIds}
             onTogglePinFeed={togglePinFeed}

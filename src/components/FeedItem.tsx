@@ -58,6 +58,7 @@ export interface FeedItemProps {
   onTogglePin: () => void;
   onRename: (title: string) => Promise<void>;
   onRetry: () => Promise<void>;
+  onReinfer?: () => Promise<void>;
   onFilterSave?: (filter: KeywordFilter | null) => Promise<void>;
   onToggleNsfw?: () => void;
 }
@@ -85,12 +86,14 @@ export default function FeedItem({
   onTogglePin,
   onRename,
   onRetry,
+  onReinfer,
   onFilterSave,
   onToggleNsfw,
 }: FeedItemProps) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [retrying, setRetrying] = useState(false);
+  const [reinfering, setReinfering] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -148,6 +151,17 @@ export default function FeedItem({
       setRetrying(false);
     }
   }, [onRetry, retrying]);
+
+  const handleReinfer = useCallback(async () => {
+    if (reinfering || !onReinfer) return;
+    setReinfering(true);
+    setMenuOpen(false);
+    try {
+      await onReinfer();
+    } finally {
+      setReinfering(false);
+    }
+  }, [onReinfer, reinfering]);
 
   const hasFilter =
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
@@ -237,6 +251,32 @@ export default function FeedItem({
         ? "text-rose-400 hover:text-rose-300"
         : "text-text-faint hover:text-text-default",
       variant: feed.fetchError ? ("danger" as const) : undefined,
+    },
+    {
+      key: "reinfer",
+      label: reinfering ? "推論中..." : "セレクタを再推論",
+      icon: (
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={reinfering ? "animate-spin" : ""}
+        >
+          <path d="M5 1a4 4 0 0 1 4 4" />
+          <path d="M9 5a4 4 0 0 1-4 4" />
+          <path d="M5 9a4 4 0 0 1-4-4" />
+          <path d="M1 5a4 4 0 0 1 4-4" />
+        </svg>
+      ),
+      onClick: () => void handleReinfer(),
+      disabled: reinfering,
+      show: feed.isScraping && !!onReinfer,
+      className: "text-text-faint hover:text-text-default",
     },
     {
       key: "delete",

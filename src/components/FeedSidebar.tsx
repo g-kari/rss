@@ -34,6 +34,7 @@ interface Props {
   onSaveArticleUrl: (url: string, mode: "bookmark" | "reading_list") => Promise<void>;
   onRefresh: () => void;
   onRetryFeed: (id: string) => Promise<void>;
+  onReinferFeed?: (id: string) => Promise<void>;
   onTogglePinFeed: (id: string) => void;
   onActivateNsfw: () => void;
   onDeactivateNsfw: () => void;
@@ -106,6 +107,7 @@ export default function FeedSidebar({
   onSaveArticleUrl,
   onRefresh,
   onRetryFeed,
+  onReinferFeed,
   refreshing,
   pinnedFeedIds,
   onTogglePinFeed,
@@ -569,6 +571,7 @@ export default function FeedSidebar({
               onTogglePin={() => onTogglePinFeed(feed.id)}
               onRename={(title) => renameFeed(feed.id, title)}
               onRetry={() => onRetryFeed(feed.id)}
+              onReinfer={onReinferFeed ? () => onReinferFeed(feed.id) : undefined}
               onFilterSave={(filter) => saveFilter(feed.id, filter)}
               onToggleNsfw={() => onToggleNsfwFeed(feed)}
             />
@@ -598,6 +601,7 @@ export default function FeedSidebar({
               onTogglePin={() => onTogglePinFeed(feed.id)}
               onRename={(title) => renameFeed(feed.id, title)}
               onRetry={() => onRetryFeed(feed.id)}
+              onReinfer={onReinferFeed ? () => onReinferFeed(feed.id) : undefined}
               onFilterSave={(filter) => saveFilter(feed.id, filter)}
               onToggleNsfw={() => onToggleNsfwFeed(feed)}
             />

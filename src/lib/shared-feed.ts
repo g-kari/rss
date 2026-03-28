@@ -253,6 +253,7 @@ export function assembleClientFeed(meta: SharedFeedMeta, sub: UserSubscription):
     pageCount: meta.pageCount,
     filter: sub.filter,
     nsfw: sub.nsfw ?? false,
+    isScraping: !!meta.cssSelectors,
   };
 }
 

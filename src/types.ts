@@ -78,6 +78,8 @@ export interface Feed {
   filter?: KeywordFilter;
   /** NSFW フラグ — true のとき NSFW モードでのみ記事を表示 */
   nsfw?: boolean;
+  /** LLM で CSS セレクタを推論したスクレイピングフィードか */
+  isScraping?: boolean;
 }
 
 export interface Article {
