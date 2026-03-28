@@ -400,6 +400,8 @@ export default function App() {
     dateRange,
     cycleDateRange,
     searchRef,
+    refreshFeeds,
+    retryFeed,
   });
 
   // ローディング

@@ -4,6 +4,7 @@ import { useEffect, useRef, type RefObject } from "react";
 import type { Article, Feed, FontSize, Layout, DateRange } from "../types";
 import type { SortOrder } from "./useFilteredArticles";
 import { cycleValue, DATE_RANGE_LABELS } from "../lib/article-utils";
+import { SPECIAL_FEED_IDS } from "../lib/storage";
 
 interface KeyboardNavOptions {
   filteredArticles: Article[];
@@ -36,6 +37,8 @@ interface KeyboardNavOptions {
   dateRange: DateRange;
   cycleDateRange: () => DateRange;
   searchRef: RefObject<HTMLInputElement | null>;
+  refreshFeeds: () => Promise<void>;
+  retryFeed: (feedId: string) => Promise<void>;
 }
 
 const FONT_SIZE_CYCLE: FontSize[] = ["small", "medium", "large"];
@@ -55,8 +58,8 @@ const LAYOUT_LABELS: Record<Layout, string> = {
  *
  * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, o 元記事, v 全文取得, b ブックマーク,
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー,
- *               f フォントサイズ, l レイアウト, L いいね切替, u 未読フィルター,
- *               B ブックマークフィルター, s ソート, d 日付フィルター,
+ *               f フォントサイズ, l レイアウト, L いいね切替, R フィード更新,
+ *               u 未読フィルター, B ブックマークフィルター, s ソート, d 日付フィルター,
  *               / 検索, ] 次フィード, [ 前フィード
  *               (v は ArticleView で処理)
  */
@@ -98,6 +101,8 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         toggleSortOrder,
         cycleDateRange,
         searchRef,
+        refreshFeeds,
+        retryFeed,
       } = ref.current;
 
       const list = filteredArticles;
@@ -190,6 +195,19 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
             showToast(likeIds.has(selectedArticle.id) ? "いいね解除" : "いいね");
           }
           break;
+        case "R": {
+          const isSpecial = Object.values(SPECIAL_FEED_IDS).includes(
+            selectedFeedId as (typeof SPECIAL_FEED_IDS)[keyof typeof SPECIAL_FEED_IDS],
+          );
+          if (selectedFeedId && !isSpecial) {
+            retryFeed(selectedFeedId).catch(() => {});
+            showToast("フィードを更新中...");
+          } else {
+            refreshFeeds().catch(() => {});
+            showToast("全フィードを更新中...");
+          }
+          break;
+        }
         case "u":
           e.preventDefault();
           toggleUnreadOnly();
