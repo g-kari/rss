@@ -172,10 +172,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
                 .share({ url: selectedArticle.link, title: selectedArticle.title })
                 .catch(() => {});
             } else {
-              navigator.clipboard
-                .writeText(selectedArticle.link)
-                .then(() => showToast("リンクをコピーしました"))
-                .catch(() => showToast("コピーに失敗しました"));
+              clipboardWrite(selectedArticle.link, "リンクをコピーしました", showToast);
             }
           }
           break;
@@ -185,11 +182,11 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
               /[[\]]/g,
               "\\$&",
             );
-            const mdLink = `[${mdTitle}](${selectedArticle.link})`;
-            navigator.clipboard
-              .writeText(mdLink)
-              .then(() => showToast("Markdownリンクをコピーしました"))
-              .catch(() => showToast("コピーに失敗しました"));
+            clipboardWrite(
+              `[${mdTitle}](${selectedArticle.link})`,
+              "Markdownリンクをコピーしました",
+              showToast,
+            );
           }
           break;
         case "f": {
@@ -226,19 +223,15 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         case "u":
           e.preventDefault();
           toggleUnreadOnly();
-          showToast(!unreadOnly ? "未読フィルター: ON" : "未読フィルター: OFF");
+          showToast(filterToastMsg(unreadOnly, "未読フィルター"));
           break;
         case "B":
           toggleBookmarkOnly();
-          showToast(!bookmarkOnly ? "ブックマークフィルター: ON" : "ブックマークフィルター: OFF");
+          showToast(filterToastMsg(bookmarkOnly, "ブックマークフィルター"));
           break;
         case "T":
           toggleReadingListOnly();
-          showToast(
-            !readingListOnly
-              ? "リーディングリストフィルター: ON"
-              : "リーディングリストフィルター: OFF",
-          );
+          showToast(filterToastMsg(readingListOnly, "リーディングリストフィルター"));
           break;
         case "s":
           toggleSortOrder();
@@ -282,4 +275,21 @@ function buildFeedOrder(feeds: Feed[], pinnedFeedIds: Set<string>): (Feed | null
     ...feeds.filter((f) => pinnedFeedIds.has(f.id)),
     ...feeds.filter((f) => !pinnedFeedIds.has(f.id)),
   ];
+}
+
+/** クリップボードにテキストを書き込み、結果をトーストで表示する */
+function clipboardWrite(text: string, successMsg: string, showToast: (msg: string) => void): void {
+  navigator.clipboard
+    .writeText(text)
+    .then(() => showToast(successMsg))
+    .catch(() => showToast("コピーに失敗しました"));
+}
+
+/**
+ * フィルタートグル後のトーストメッセージを生成する。
+ * current は現在の（トグル前の）状態。
+ * ON/OFF は次の（トグル後の）状態を示す。
+ */
+function filterToastMsg(current: boolean, label: string): string {
+  return `${label}: ${current ? "OFF" : "ON"}`;
 }
