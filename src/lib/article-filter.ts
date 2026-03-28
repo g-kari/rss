@@ -1,5 +1,5 @@
 import type { Article, DateRange, Feed } from "../types";
-import { matchesKeywordFilter, normalizeFilter } from "./keyword-filter";
+import { buildFilterMap, matchesKeywordFilter } from "./keyword-filter";
 import { articleMatchesQuery, getDateRangeStart } from "./article-utils";
 import { SPECIAL_FEED_IDS } from "./storage";
 
@@ -21,16 +21,6 @@ export interface ArticleFilterOptions {
   activeIds: Set<string>;
   nsfwMode: boolean;
   nsfwFeedIds: Set<string>;
-}
-
-function buildFeedFilterMap(feeds: Feed[]): Map<string, NonNullable<Feed["filter"]>> {
-  const map = new Map<string, NonNullable<Feed["filter"]>>();
-  for (const f of feeds) {
-    if (f.filter && (f.filter.include.length > 0 || f.filter.exclude.length > 0)) {
-      map.set(f.id, normalizeFilter(f.filter));
-    }
-  }
-  return map;
 }
 
 export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
@@ -56,7 +46,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
   const isActive = (id: string) => activeIds.has(id);
   const q = rawQuery.trim().toLowerCase();
   const rangeStart = getDateRangeStart(dateRange);
-  const feedFilterMap = buildFeedFilterMap(feeds);
+  const feedFilterMap = buildFilterMap(feeds, (f) => f.id);
 
   let list = articles.filter((a) => {
     // フィード絞り込み

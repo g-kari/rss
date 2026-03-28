@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (221)
+
+### リファクタリング
+
+- **`buildFilterMap` を `keyword-filter.ts` に共通化** — `article-filter.ts` のプライベート `buildFeedFilterMap` と `articles/route.ts` のインライン実装で重複していたキーワードフィルターマップ構築ロジックを、汎用ヘルパー `buildFilterMap<T>` として `keyword-filter.ts` に統合
+
 ## 2026-03-28 (220)
 
 ### セキュリティ
