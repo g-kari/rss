@@ -14,7 +14,9 @@ import {
 import { fetchArticles } from "@/cron/fetch";
 import type { UserSubscription } from "@/types";
 const MAX_OPML_ENTRIES = 5000;
-const MAX_OPML_DEPTH = 50;
+// 実際の OPML ファイルは 2〜3 レベルが一般的。50 は不必要に大きく
+// 悪意ある入力で過剰な再帰処理を引き起こす可能性があるため 10 に制限する。
+const MAX_OPML_DEPTH = 10;
 const MAX_TITLE_LENGTH = 500;
 const MAX_SITE_URL_LENGTH = 2048;
 
