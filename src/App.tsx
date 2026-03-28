@@ -288,6 +288,8 @@ export default function App() {
     toggleUnreadOnly,
     bookmarkOnly,
     toggleBookmarkOnly,
+    readingListOnly,
+    toggleReadingListOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,
@@ -395,6 +397,8 @@ export default function App() {
     toggleUnreadOnly,
     bookmarkOnly,
     toggleBookmarkOnly,
+    readingListOnly,
+    toggleReadingListOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,
@@ -769,6 +773,8 @@ export default function App() {
             toggleUnreadOnly={toggleUnreadOnly}
             bookmarkOnly={bookmarkOnly}
             toggleBookmarkOnly={toggleBookmarkOnly}
+            readingListOnly={readingListOnly}
+            toggleReadingListOnly={toggleReadingListOnly}
             sortOrder={sortOrder}
             toggleSortOrder={toggleSortOrder}
             dateRange={dateRange}

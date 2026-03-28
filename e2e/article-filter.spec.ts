@@ -43,6 +43,7 @@ const BASE_OPTS: ArticleFilterOptions = {
   historyOrder: [],
   unreadOnly: false,
   bookmarkOnly: false,
+  readingListOnly: false,
   query: "",
   sortOrder: "newest",
   dateRange: "all",

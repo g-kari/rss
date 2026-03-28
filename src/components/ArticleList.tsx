@@ -136,6 +136,8 @@ interface Props {
   toggleUnreadOnly: () => void;
   bookmarkOnly: boolean;
   toggleBookmarkOnly: () => void;
+  readingListOnly: boolean;
+  toggleReadingListOnly: () => void;
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
   dateRange: DateRange;
@@ -590,6 +592,8 @@ export default function ArticleList({
   toggleUnreadOnly,
   bookmarkOnly,
   toggleBookmarkOnly,
+  readingListOnly,
+  toggleReadingListOnly,
   sortOrder,
   toggleSortOrder,
   dateRange,
@@ -742,6 +746,17 @@ export default function ArticleList({
               }`}
             >
               ★
+            </button>
+            <button
+              onClick={toggleReadingListOnly}
+              title="リーディングリストフィルター切替 (T)"
+              className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
+                readingListOnly
+                  ? "border-ink bg-ink text-ink-text"
+                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
+              }`}
+            >
+              後で
             </button>
             <button
               onClick={cycleDateRange}
