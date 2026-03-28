@@ -11,16 +11,14 @@ interface HistoryEntry {
 /** 閲覧履歴の最大保持件数 */
 const MAX_HISTORY = 50;
 
-function loadHistory(): HistoryEntry[] {
-  return loadJson<HistoryEntry[]>(STORAGE_KEYS.HISTORY, []);
-}
-
 /**
  * 記事の閲覧履歴を管理するフック（localStorage のみ、最新 50 件）。
  * 記事を開くたびに先頭に追加し、同一記事は重複排除する。
  */
 export function useReadingHistory() {
-  const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
+  const [history, setHistory] = useState<HistoryEntry[]>(() =>
+    loadJson<HistoryEntry[]>(STORAGE_KEYS.HISTORY, []),
+  );
 
   const addToHistory = useCallback((articleId: string) => {
     setHistory((prev) => {

@@ -3,23 +3,17 @@ import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 
 const MAX_HISTORY = 10;
 
-function loadHistory(): string[] {
-  return loadJson<string[]>(STORAGE_KEYS.SEARCH_HISTORY, []);
-}
-
-function saveHistory(history: string[]): void {
-  saveJson(STORAGE_KEYS.SEARCH_HISTORY, history);
-}
-
 export function useSearchHistory() {
-  const [history, setHistory] = useState<string[]>(() => loadHistory());
+  const [history, setHistory] = useState<string[]>(() =>
+    loadJson<string[]>(STORAGE_KEYS.SEARCH_HISTORY, []),
+  );
 
   const addToHistory = useCallback((query: string) => {
     const q = query.trim();
     if (q.length < 2) return;
     setHistory((prev) => {
       const deduped = [q, ...prev.filter((h) => h !== q)].slice(0, MAX_HISTORY);
-      saveHistory(deduped);
+      saveJson(STORAGE_KEYS.SEARCH_HISTORY, deduped);
       return deduped;
     });
   }, []);
@@ -27,14 +21,14 @@ export function useSearchHistory() {
   const removeFromHistory = useCallback((query: string) => {
     setHistory((prev) => {
       const next = prev.filter((h) => h !== query);
-      saveHistory(next);
+      saveJson(STORAGE_KEYS.SEARCH_HISTORY, next);
       return next;
     });
   }, []);
 
   const clearHistory = useCallback(() => {
     setHistory([]);
-    saveHistory([]);
+    saveJson(STORAGE_KEYS.SEARCH_HISTORY, []);
   }, []);
 
   return { history, addToHistory, removeFromHistory, clearHistory };
