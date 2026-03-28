@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (209)
+
+### リファクタリング
+
+- **\`useFeeds\` の重複ロジックを統合** — \`retryFeed\` と \`reinferFeed\` の共通パターン（POST→フィード更新→記事再取得）を \`feedActionWithRefresh\` ヘルパーに抽出し、重複コードを削除
+
 ## 2026-03-28 (208)
 
 ### リファクタリング
