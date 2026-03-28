@@ -32,10 +32,16 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
-    // 既存のセレクタを消去してから再推論
+    // 既存のセレクタを失敗履歴に積み上げてから消去し、再推論時に除外指示として渡す
+    const previousSelector = meta.cssSelectors?.articleLink;
+    const failedSelectors = [
+      ...(meta.failedSelectors ?? []),
+      ...(previousSelector ? [previousSelector] : []),
+    ];
+    meta.failedSelectors = failedSelectors;
     delete meta.cssSelectors;
     const cookie = sub.requestCookie;
-    const inferred = await inferFeedFromUrl(meta.url, env.AI, cookie);
+    const inferred = await inferFeedFromUrl(meta.url, env.AI, cookie, failedSelectors);
     if (!inferred) {
       return NextResponse.json({ error: "セレクタの再推論に失敗しました" }, { status: 422 });
     }

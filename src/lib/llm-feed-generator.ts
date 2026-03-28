@@ -132,8 +132,14 @@ export async function inferSelectors(
   links: LinkNode[],
   siteUrl: string,
   ai: Ai,
+  excludeSelectors?: string[],
 ): Promise<SelectorConfig | null> {
   if (links.length < 3) return null;
+
+  const excludeInstruction =
+    excludeSelectors && excludeSelectors.length > 0
+      ? ` The following selectors were tried before and did not work correctly — do NOT use any of them: ${excludeSelectors.map((s) => `"${s}"`).join(", ")}.`
+      : "";
 
   const messages = [
     {
@@ -142,7 +148,7 @@ export async function inferSelectors(
         "You are a CSS selector expert. Given JSON link structures " +
         "(h=href, t=text, c=classes, p=ancestor chain as [tag,classes] pairs), " +
         "identify the CSS selector for article/post headline <a> links only " +
-        "(exclude navigation, footer, sidebar). " +
+        `(exclude navigation, footer, sidebar).${excludeInstruction} ` +
         'Respond with ONLY one JSON line: {"articleLink":"<selector>"}',
     },
     {
@@ -200,6 +206,7 @@ export async function inferFeedFromUrl(
   url: string,
   ai: Ai,
   cookie?: string,
+  excludeSelectors?: string[],
 ): Promise<{ selectors: SelectorConfig; siteTitle: string; siteUrl: string } | null> {
   try {
     const headers: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
@@ -212,7 +219,7 @@ export async function inferFeedFromUrl(
 
     const html = await res.text();
     const links = extractLinkStructure(html, url);
-    const selectors = await inferSelectors(links, url, ai);
+    const selectors = await inferSelectors(links, url, ai, excludeSelectors);
     if (!selectors) return null;
 
     const siteTitle = extractPageTitle(html) || new URL(url).hostname;

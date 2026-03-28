@@ -358,6 +358,27 @@ export default function FeedItem({
               </span>
             )}
           </span>
+          {isSelected && !feed.fetchError && (
+            <span className="text-[10px] text-text-faint truncate block leading-tight mt-0.5">
+              {feed.url}
+            </span>
+          )}
+          {isSelected && feed.cssSelector && (
+            <span
+              className="text-[10px] text-text-faint truncate block leading-tight"
+              title={`CSS セレクタ: ${feed.cssSelector}`}
+            >
+              selector: {feed.cssSelector}
+            </span>
+          )}
+          {isSelected && feed.failedSelectors && feed.failedSelectors.length > 0 && (
+            <span
+              className="text-[10px] text-text-faint truncate block leading-tight"
+              title={`失敗済み: ${feed.failedSelectors.join(", ")}`}
+            >
+              failed: {feed.failedSelectors.join(", ")}
+            </span>
+          )}
           {feed.fetchError && (
             <span className="text-[10px] text-rose-400 truncate block leading-tight mt-0.5">
               {(feed.consecutiveErrors ?? 0) >= 5 ? "更新停止 · " : ""}

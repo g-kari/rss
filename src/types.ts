@@ -36,6 +36,8 @@ export interface SharedFeedMeta {
   knownIds?: string[];
   /** LLM が推論した CSS セレクタ設定（RSS 未対応サイト用） */
   cssSelectors?: SelectorConfig;
+  /** 過去に試して失敗した articleLink セレクタの履歴（再推論時の除外用） */
+  failedSelectors?: string[];
 }
 
 /** フィードごとのキーワードフィルター */
@@ -80,6 +82,10 @@ export interface Feed {
   nsfw?: boolean;
   /** LLM で CSS セレクタを推論したスクレイピングフィードか */
   isScraping?: boolean;
+  /** 現在使用中の CSS セレクタ（isScraping のみ） */
+  cssSelector?: string;
+  /** 過去に失敗した CSS セレクタの履歴 */
+  failedSelectors?: string[];
 }
 
 export interface Article {
