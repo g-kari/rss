@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (226)
+
+### リファクタリング
+
+- **\`sampleN\` を標準的な前向き Fisher-Yates に整理** — \`src/lib/recommendation.ts\` の \`sampleN\` 関数が末尾から進む逆向き実装だったのを、先頭から進む標準的な実装に変更。動作は等価だが可読性が向上。あわせて \`generateWebSearchFeeds\` のインデックスベースループを \`entries()\` を使った慣用的な形に整理
+
 ## 2026-03-28 (225)
 
 ### リファクタリング
