@@ -268,6 +268,9 @@ export function sanitizeHtml(html: string): string {
       // style 値は url('...') のように内部に逆クォートを含みうるため、クォート種別ごとに個別パターン
       .replace(/\bstyle\s*=\s*"([^"]*)"/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
       .replace(/\bstyle\s*=\s*'([^']*)'/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
+      // クォートなし style 属性をサニタイズ（例: <div style=background:url(tracker)>）
+      // [^"'\s>] で開始 → すでにクォート処理済みの属性は再マッチしない
+      .replace(/\bstyle\s*=\s*([^"'\s>][^\s>]*)/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
       .trim()
   );
 }
