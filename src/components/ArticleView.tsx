@@ -570,6 +570,18 @@ export default function ArticleView({
 
   const { aiResult, aiLoading, aiError, doRunAi, resetAi } = useArticleAi(article?.id);
 
+  // 全文取得ショートカット (v)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "v" && article?.link && !storedContent && !fetching) {
+        void fetchFullContent();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [article?.link, storedContent, fetching, fetchFullContent]);
+
   const progressBarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const {

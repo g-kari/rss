@@ -51,10 +51,11 @@ const LAYOUT_LABELS: Record<Layout, string> = {
  * options は毎 render で変化するため ref に格納し、イベントリスナー自体は
  * マウント時に 1 回だけ登録する（依存配列なし）。
  *
- * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, o 元記事, b ブックマーク,
+ * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, o 元記事, v 全文取得, b ブックマーク,
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー,
  *               f フォントサイズ, l レイアウト, u 未読フィルター, B ブックマークフィルター,
  *               s ソート, d 日付フィルター, / 検索, ] 次フィード, [ 前フィード
+ *               (v は ArticleView で処理)
  */
 export function useKeyboardNav(options: KeyboardNavOptions): void {
   const ref = useRef(options);
