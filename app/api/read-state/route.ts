@@ -31,12 +31,14 @@ function extractIds(raw: unknown, max: number): string[] | null {
 
 export async function GET() {
   return withSession(async ({ session, env }) => {
-    const state = await r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), {
-      readIds: [],
-      bookmarkIds: [],
-      readingListIds: [],
-      likeIds: [],
-    });
+    // Partial で受け取り、欠落フィールドを [] で補完する（古いデータ形式との互換性）
+    const stored = await r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {});
+    const state: ReadState = {
+      readIds: stored.readIds ?? [],
+      bookmarkIds: stored.bookmarkIds ?? [],
+      readingListIds: stored.readingListIds ?? [],
+      likeIds: stored.likeIds ?? [],
+    };
     return NextResponse.json(state);
   });
 }
