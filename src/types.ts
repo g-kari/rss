@@ -138,7 +138,7 @@ export interface RecommendedFeed {
 /** R2 キャッシュ構造 — users/{userId}/recommendations.json */
 export interface RecommendationCache {
   recommendations: RecommendedFeed[];
-  generatedAt: string;
+  generatedAt: string | null;
   dismissedIds: string[];
   topics: string[];
 }

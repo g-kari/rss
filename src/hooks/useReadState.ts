@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Article, UserProfile } from "../types";
-import { STORAGE_KEYS, saveSet, loadSet, toggleSetItem } from "../lib/storage";
+import { STORAGE_KEYS, SPECIAL_FEED_IDS, saveSet, loadSet, toggleSetItem } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
 /** 4つの既読状態セットをまとめた型 */
@@ -180,11 +180,11 @@ export function useReadState(
         const arts = articlesRef.current;
         const { bookmarks, readingList, likes } = stateRef.current;
         let ids: string[];
-        if (feedId === "__bookmarks__") {
+        if (feedId === SPECIAL_FEED_IDS.BOOKMARKS) {
           ids = arts.filter((a) => bookmarks.has(a.id)).map((a) => a.id);
-        } else if (feedId === "__reading_list__") {
+        } else if (feedId === SPECIAL_FEED_IDS.READING_LIST) {
           ids = arts.filter((a) => readingList.has(a.id)).map((a) => a.id);
-        } else if (feedId === "__likes__") {
+        } else if (feedId === SPECIAL_FEED_IDS.LIKES) {
           ids = arts.filter((a) => likes.has(a.id)).map((a) => a.id);
         } else if (feedId) {
           ids = arts.filter((a) => a.feedHash === feedId).map((a) => a.id);

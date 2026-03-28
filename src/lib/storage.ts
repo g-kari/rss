@@ -7,6 +7,13 @@
 
 // ── キー定数 ──────────────────────────────────────────────────
 
+export const SPECIAL_FEED_IDS = {
+  BOOKMARKS: "__bookmarks__",
+  READING_LIST: "__reading_list__",
+  LIKES: "__likes__",
+  HISTORY: "__history__",
+} as const;
+
 export const STORAGE_KEYS = {
   READ_IDS: "rss-read",
   BOOKMARK_IDS: "rss-bookmarks",
