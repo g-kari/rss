@@ -9,6 +9,24 @@ export function normalizeFilter(filter: KeywordFilter): KeywordFilter {
   };
 }
 
+/**
+ * filter フィールドを持つオブジェクト配列からフィルターマップを構築する。
+ * getKey で各要素の ID を取得し、キーワードが空のフィルターは除外する。
+ */
+export function buildFilterMap<T extends { filter?: KeywordFilter }>(
+  items: T[],
+  getKey: (item: T) => string,
+): Map<string, KeywordFilter> {
+  const map = new Map<string, KeywordFilter>();
+  for (const item of items) {
+    const f = item.filter;
+    if (f && (f.include.length > 0 || f.exclude.length > 0)) {
+      map.set(getKey(item), normalizeFilter(f));
+    }
+  }
+  return map;
+}
+
 export function matchesKeywordFilter(article: Article, filter: KeywordFilter): boolean {
   const { include, exclude, matchCategories } = filter;
 
