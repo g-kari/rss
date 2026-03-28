@@ -142,6 +142,51 @@ const ChevronRightSmall = ({ width = 12, height = 12 }: { width?: number; height
   </svg>
 );
 
+// --- EmptyArticleView コンポーネント ---
+
+function EmptyArticleView({ onMobileBack }: { onMobileBack?: () => void }) {
+  return (
+    <main className="h-full relative overflow-y-auto flex items-center justify-center bg-surface-base">
+      {onMobileBack && (
+        <button
+          onClick={onMobileBack}
+          className="lg:hidden absolute top-3 left-3 p-1.5 text-text-muted hover:text-text-strong transition-colors"
+          aria-label="記事一覧に戻る"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M10 3L5 8l5 5" />
+          </svg>
+        </button>
+      )}
+      <div className="text-center animate-fade-in">
+        <svg
+          className="w-8 h-8 mx-auto mb-3 text-text-faint"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+          />
+        </svg>
+        <p className="text-[11px] tracking-[0.1em] text-text-faint">記事を選択</p>
+      </div>
+    </main>
+  );
+}
+
 // --- ShareMenu コンポーネント ---
 
 interface ShareMenuProps {
@@ -283,6 +328,151 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
             タイトル + URL をコピー
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+// --- ToggleIconButton コンポーネント ---
+
+interface ToggleIconButtonProps {
+  isActive: boolean;
+  onClick: () => void;
+  title: string;
+  activeClass: string;
+  inactiveClass: string;
+  children: React.ReactNode;
+}
+
+function ToggleIconButton({
+  isActive,
+  onClick,
+  title,
+  activeClass,
+  inactiveClass,
+  children,
+}: ToggleIconButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`transition-colors duration-200 ${isActive ? activeClass : inactiveClass}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// --- FetchFullContentArea コンポーネント ---
+
+interface FetchFullContentAreaProps {
+  articleId: string;
+  articleLink: string;
+  feedHash: string;
+  fetching: boolean;
+  fetchError: string;
+  onFetch: (onFetched?: () => void) => Promise<void>;
+  onEngagement?: (
+    articleId: string,
+    feedHash: string,
+    action: "fetch_full" | "open_original",
+  ) => void;
+}
+
+function FetchFullContentArea({
+  articleId,
+  articleLink,
+  feedHash,
+  fetching,
+  fetchError,
+  onFetch,
+  onEngagement,
+}: FetchFullContentAreaProps) {
+  return (
+    <div className="mt-6 pt-6 border-t border-border-subtle flex flex-col items-center gap-2">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onFetch(() => onEngagement?.(articleId, feedHash, "fetch_full"))}
+          disabled={fetching}
+          className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200 disabled:opacity-50"
+        >
+          {fetching ? (
+            <>
+              <SpinIcon />
+              取得中...
+            </>
+          ) : (
+            <>
+              <DownloadIcon />
+              全文を取得
+            </>
+          )}
+        </button>
+        <a
+          href={articleLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => onEngagement?.(articleId, feedHash, "open_original")}
+          className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200"
+        >
+          <ExternalLinkIcon size={14} />
+          元記事を開く
+        </a>
+      </div>
+      {fetchError && <p className="text-[11px] text-rose-400">{fetchError}</p>}
+    </div>
+  );
+}
+
+// --- ArticleNavigation コンポーネント ---
+
+interface ArticleNavigationProps {
+  prevArticle?: Article | null;
+  nextArticle?: Article | null;
+  onSelectPrev?: () => void;
+  onSelectNext?: () => void;
+}
+
+function ArticleNavigation({
+  prevArticle,
+  nextArticle,
+  onSelectPrev,
+  onSelectNext,
+}: ArticleNavigationProps) {
+  if (!prevArticle && !nextArticle) return null;
+  return (
+    <div className="mt-12 pt-6 border-t border-border-subtle flex items-stretch gap-3">
+      {prevArticle ? (
+        <button
+          onClick={onSelectPrev}
+          className="flex-1 text-left px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
+        >
+          <span className="flex items-center gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
+            <ChevronLeftSmall />
+            前の記事
+          </span>
+          <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
+            {prevArticle.title}
+          </span>
+        </button>
+      ) : (
+        <div className="flex-1" />
+      )}
+      {nextArticle ? (
+        <button
+          onClick={onSelectNext}
+          className="flex-1 text-right px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
+        >
+          <span className="flex items-center justify-end gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
+            次の記事
+            <ChevronRightSmall />
+          </span>
+          <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
+            {nextArticle.title}
+          </span>
+        </button>
+      ) : (
+        <div className="flex-1" />
       )}
     </div>
   );
@@ -732,46 +922,7 @@ export default function ArticleView({
   }, [processedContent]);
 
   if (!article) {
-    return (
-      <main className="h-full relative overflow-y-auto flex items-center justify-center bg-surface-base">
-        {onMobileBack && (
-          <button
-            onClick={onMobileBack}
-            className="lg:hidden absolute top-3 left-3 p-1.5 text-text-muted hover:text-text-strong transition-colors"
-            aria-label="記事一覧に戻る"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M10 3L5 8l5 5" />
-            </svg>
-          </button>
-        )}
-        <div className="text-center animate-fade-in">
-          <svg
-            className="w-8 h-8 mx-auto mb-3 text-text-faint"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-            />
-          </svg>
-          <p className="text-[11px] tracking-[0.1em] text-text-faint">記事を選択</p>
-        </div>
-      </main>
-    );
+    return <EmptyArticleView onMobileBack={onMobileBack} />;
   }
 
   const isShortContent = !article.content || article.content.length < SHORT_CONTENT_THRESHOLD;
@@ -935,14 +1086,12 @@ export default function ArticleView({
               />
             )}
 
-            <button
+            <ToggleIconButton
+              isActive={isInReadingList}
               onClick={() => onToggleReadingList(article.id)}
               title={isInReadingList ? "後で読むから削除" : "後で読む"}
-              className={`transition-colors duration-200 ${
-                isInReadingList
-                  ? "text-text-default hover:text-text-muted"
-                  : "text-text-faint hover:text-text-default"
-              }`}
+              activeClass="text-text-default hover:text-text-muted"
+              inactiveClass="text-text-faint hover:text-text-default"
             >
               <svg
                 width="14"
@@ -957,15 +1106,13 @@ export default function ArticleView({
                 <path d="M12 6v6l4 2" />
                 <circle cx="12" cy="12" r="9" />
               </svg>
-            </button>
-            <button
+            </ToggleIconButton>
+            <ToggleIconButton
+              isActive={isBookmarked}
               onClick={() => onToggleBookmark(article.id)}
               title={isBookmarked ? "ブックマーク解除 (b)" : "ブックマーク (b)"}
-              className={`transition-colors duration-200 ${
-                isBookmarked
-                  ? "text-bookmark hover:text-text-muted"
-                  : "text-text-faint hover:text-bookmark"
-              }`}
+              activeClass="text-bookmark hover:text-text-muted"
+              inactiveClass="text-text-faint hover:text-bookmark"
             >
               <svg
                 width="14"
@@ -981,15 +1128,13 @@ export default function ArticleView({
                   d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
                 />
               </svg>
-            </button>
-            <button
+            </ToggleIconButton>
+            <ToggleIconButton
+              isActive={isLiked}
               onClick={() => onToggleLike(article.id)}
               title={isLiked ? "いいね解除" : "いいね"}
-              className={`transition-colors duration-200 ${
-                isLiked
-                  ? "text-rose-400 hover:text-text-muted"
-                  : "text-text-faint hover:text-rose-400"
-              }`}
+              activeClass="text-rose-400 hover:text-text-muted"
+              inactiveClass="text-text-faint hover:text-rose-400"
             >
               <svg
                 width="14"
@@ -1003,7 +1148,7 @@ export default function ArticleView({
               >
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
-            </button>
+            </ToggleIconButton>
           </div>
         </div>
 
@@ -1121,79 +1266,24 @@ export default function ArticleView({
 
         {/* 全文取得ボタン */}
         {canFetch && (
-          <div className="mt-6 pt-6 border-t border-border-subtle flex flex-col items-center gap-2">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() =>
-                  fetchFullContent(() => onEngagement?.(article.id, article.feedHash, "fetch_full"))
-                }
-                disabled={fetching}
-                className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200 disabled:opacity-50"
-              >
-                {fetching ? (
-                  <>
-                    <SpinIcon />
-                    取得中...
-                  </>
-                ) : (
-                  <>
-                    <DownloadIcon />
-                    全文を取得
-                  </>
-                )}
-              </button>
-              <a
-                href={article.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => onEngagement?.(article.id, article.feedHash, "open_original")}
-                className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200"
-              >
-                <ExternalLinkIcon size={14} />
-                元記事を開く
-              </a>
-            </div>
-            {fetchError && <p className="text-[11px] text-rose-400">{fetchError}</p>}
-          </div>
+          <FetchFullContentArea
+            articleId={article.id}
+            articleLink={article.link!}
+            feedHash={article.feedHash}
+            fetching={fetching}
+            fetchError={fetchError}
+            onFetch={fetchFullContent}
+            onEngagement={onEngagement}
+          />
         )}
 
         {/* 前後記事ナビゲーション */}
-        {(prevArticle || nextArticle) && (
-          <div className="mt-12 pt-6 border-t border-border-subtle flex items-stretch gap-3">
-            {prevArticle ? (
-              <button
-                onClick={onSelectPrev}
-                className="flex-1 text-left px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
-              >
-                <span className="flex items-center gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
-                  <ChevronLeftSmall />
-                  前の記事
-                </span>
-                <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
-                  {prevArticle.title}
-                </span>
-              </button>
-            ) : (
-              <div className="flex-1" />
-            )}
-            {nextArticle ? (
-              <button
-                onClick={onSelectNext}
-                className="flex-1 text-right px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
-              >
-                <span className="flex items-center justify-end gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
-                  次の記事
-                  <ChevronRightSmall />
-                </span>
-                <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
-                  {nextArticle.title}
-                </span>
-              </button>
-            ) : (
-              <div className="flex-1" />
-            )}
-          </div>
-        )}
+        <ArticleNavigation
+          prevArticle={prevArticle}
+          nextArticle={nextArticle}
+          onSelectPrev={onSelectPrev}
+          onSelectNext={onSelectNext}
+        />
       </div>
     </main>
   );

@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (208)
+
+### リファクタリング
+
+- **\`ArticleView\` のコンポーネント分割** — 空状態 (\`EmptyArticleView\`)・全文取得エリア (\`FetchFullContentArea\`)・前後記事ナビ (\`ArticleNavigation\`)・トグルボタン (\`ToggleIconButton\`) を内部サブコンポーネントとして抽出し、メイン関数本体の見通しを改善
+
 ## 2026-03-28 (207)
 
 ### 新機能
