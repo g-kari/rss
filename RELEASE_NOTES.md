@@ -4,6 +4,7 @@
 
 ### リファクタリング
 
+- `useKeyboardNav` のクリップボード・フィルタートースト重複を整理 — `clipboardWrite()` でクリップボード書き込み+トーストを集約、`filterToastMsg()` でフィルタートグル後の ON/OFF メッセージ生成を統一
 - `useUIState` からモバイルペイン管理を `useMobilePane` へ、NSFW モード管理を `useNSFWMode` へ分離 — 4つの責務が混在していた213行のフックを単一責任の独立フックに分割し、各ロジックの独立テスト・再利用を可能にした
 - デッドコードを削除 — sticky AI モード廃止後に残留していた `STORAGE_KEYS.AI_MODE` (`"rss-ai-mode"`) と、実際には `CloudflareEnv` で管理されており参照されていなかった `types.ts` の `Env` インターフェースを除去
 
