@@ -47,6 +47,9 @@ export function useFeeds(
   const [loadedFeedPages, setLoadedFeedPages] = useState<Map<string, number>>(() => new Map());
   const loadedFeedPagesRef = useRef(loadedFeedPages);
   loadedFeedPagesRef.current = loadedFeedPages;
+  // コールバックを ref 化して useCallback/useEffect の依存配列から除外する
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
   const latestArticleIdRef = useRef<string | null>(null);
   const isPollingRef = useRef(false);
   const prevIsOnlineRef = useRef(isOnline);
@@ -76,15 +79,15 @@ export function useFeeds(
       .then(setFeeds)
       .catch((err) => {
         console.error(err);
-        onError?.("フィードの読み込みに失敗しました");
+        onErrorRef.current?.("フィードの読み込みに失敗しました");
       });
     fetchAndSetArticles()
       .catch((err) => {
         console.error(err);
-        onError?.("記事の読み込みに失敗しました");
+        onErrorRef.current?.("記事の読み込みに失敗しました");
       })
       .finally(() => setLoadingArticles(false));
-  }, [user, onError, fetchFeedsData, fetchAndSetArticles]);
+  }, [user, fetchFeedsData, fetchAndSetArticles]);
 
   // 新着確認フェッチ: 既存記事は消さずに新着のみ追加する（閲覧中の記事を守る）
   const pollNow = useCallback(async () => {
@@ -159,12 +162,12 @@ export function useFeeds(
         await fetchAndSetArticles();
       } catch (err) {
         console.error(err);
-        onError?.("記事の読み込みに失敗しました");
+        onErrorRef.current?.("記事の読み込みに失敗しました");
       } finally {
         setLoadingArticles(false);
       }
     },
-    [fetchAndSetArticles, onError],
+    [fetchAndSetArticles],
   );
 
   const refreshFeeds = useCallback(async () => {
@@ -179,11 +182,11 @@ export function useFeeds(
       mergeArticles(fresh);
     } catch (err) {
       console.error("Refresh failed:", err);
-      onError?.("更新に失敗しました");
+      onErrorRef.current?.("更新に失敗しました");
     } finally {
       setRefreshing(false);
     }
-  }, [fetchFeedsData, mergeArticles, onError]);
+  }, [fetchFeedsData, mergeArticles]);
 
   /** フィードエンドポイントに POST し、フィードと記事を更新する共通実装 */
   const feedActionWithRefresh = useCallback(
@@ -196,10 +199,10 @@ export function useFeeds(
         mergeArticles(await apiFetchJson<Article[]>("/api/articles"));
       } catch (err) {
         console.error(`[${endpoint}] feed action failed:`, err);
-        onError?.(errorMessage);
+        onErrorRef.current?.(errorMessage);
       }
     },
-    [mergeArticles, onError],
+    [mergeArticles],
   );
 
   const retryFeed = useCallback(
@@ -217,25 +220,22 @@ export function useFeeds(
   }, []);
 
   // フィードの過去ページを追加読み込みする
-  const loadMoreFeedArticles = useCallback(
-    async (feedId: string): Promise<void> => {
-      const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
-      try {
-        const data = await apiFetchJson<Article[]>(`/api/articles?feed=${feedId}&page=${nextPage}`);
-        if (data.length === 0) return;
-        setArticles((prev) => {
-          const newOnes = filterNewArticles(prev, data);
-          if (newOnes.length === 0) return prev;
-          return [...prev, ...newOnes].sort(compareByDateDesc);
-        });
-        setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
-      } catch (err) {
-        console.error("loadMoreFeedArticles failed:", err);
-        onError?.("過去の記事の読み込みに失敗しました");
-      }
-    },
-    [onError],
-  );
+  const loadMoreFeedArticles = useCallback(async (feedId: string): Promise<void> => {
+    const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
+    try {
+      const data = await apiFetchJson<Article[]>(`/api/articles?feed=${feedId}&page=${nextPage}`);
+      if (data.length === 0) return;
+      setArticles((prev) => {
+        const newOnes = filterNewArticles(prev, data);
+        if (newOnes.length === 0) return prev;
+        return [...prev, ...newOnes].sort(compareByDateDesc);
+      });
+      setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
+    } catch (err) {
+      console.error("loadMoreFeedArticles failed:", err);
+      onErrorRef.current?.("過去の記事の読み込みに失敗しました");
+    }
+  }, []);
 
   return {
     feeds,
