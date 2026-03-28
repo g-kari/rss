@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (218)
+
+### リファクタリング
+
+- **\`extractOgMeta\` を \`html.ts\` に共通化** — \`ogp/route.ts\` と \`articles/save/route.ts\` に重複していた同一実装を \`src/lib/html.ts\` にエクスポートし、両ファイルから共有するよう変更
+
 ## 2026-03-28 (217)
 
 ### リファクタリング
