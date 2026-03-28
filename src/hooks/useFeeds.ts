@@ -226,7 +226,7 @@ export function useFeeds(
         setArticles((prev) => {
           const newOnes = filterNewArticles(prev, data);
           if (newOnes.length === 0) return prev;
-          return [...prev, ...newOnes];
+          return [...prev, ...newOnes].sort(compareByDateDesc);
         });
         setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
       } catch (err) {
