@@ -47,14 +47,14 @@ export function useFeedOperations({
       });
       if (!res.ok) {
         const data = (await res.json()) as { error: string };
-        setError(data.error ?? "Failed to add feed");
+        setError(data.error ?? "フィードの追加に失敗しました");
         return;
       }
       const feed = (await res.json()) as Feed;
       onSuccess();
       onFeedAdded(feed);
     } catch {
-      setError("Network error");
+      setError("ネットワークエラーが発生しました");
     } finally {
       setAdding(false);
     }

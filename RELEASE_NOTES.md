@@ -16,6 +16,7 @@
 ### バグ修正
 
 - **履歴ビューで「全て既読」が機能しない問題を修正** — `markAllRead` が `SPECIAL_FEED_IDS.HISTORY` を処理するケースがなく、履歴ビューで `m` キーや既読ボタンを押しても何も起きなかった。`useReadState` に `historyIds` を渡し、HISTORY ケースを明示的に処理するよう修正
+- `useFeedOperations` のエラーメッセージを日本語に統一 — フィード追加失敗時の `"Failed to add feed"` / `"Network error"` が英語のままだったのを `"フィードの追加に失敗しました"` / `"ネットワークエラーが発生しました"` に修正
 
 ### リファクタリング
 
