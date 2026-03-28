@@ -128,8 +128,8 @@ export function useReadState(
     if (!user) return;
     fetchReadState().then((state) => {
       if (!state) return;
-      mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds);
-      mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds);
+      mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds ?? []);
+      mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds ?? []);
       mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, state.readingListIds ?? []);
       mergeServerSet(setLikeIds, STORAGE_KEYS.LIKE_IDS, state.likeIds ?? []);
     });

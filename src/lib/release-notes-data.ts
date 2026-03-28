@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (230)
+
+### リファクタリング
+
+- **\`/api/read-state\` GET の古いデータ形式対応を強化** — \`readingListIds\` / \`likeIds\` が存在しない旧フォーマットの R2 データをサーバー側で正規化し、常に 4 フィールドを返すよう修正。\`useReadState\` の \`mergeServerSet\` 呼び出しも全フィールドで \`?? []\` フォールバックを統一
+
 ## 2026-03-28 (229)
 
 ### リファクタリング
