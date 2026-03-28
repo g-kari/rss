@@ -11,6 +11,18 @@ import {
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 
+// 許可する画像 MIME タイプのホワイトリスト（detectImageMimeType と整合）。
+// SVG・XML・HTML など XSS リスクのある形式を一括排除するため、
+// ブラックリスト方式ではなくホワイトリスト方式を採用する。
+const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+  "image/avif",
+]);
+
 /**
  * 先頭バイトから画像フォーマットを検出する（マジックバイト検証）。
  * Content-Type が application/octet-stream の場合のフォールバックとして使用。
@@ -124,19 +136,11 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
     if (!res.ok) return transparentGif();
 
     const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim();
-    const isImageType = ct.startsWith("image/");
     const needsMagicCheck = ct === "application/octet-stream" || ct === "";
 
-    // image/* でも application/octet-stream でもない場合は拒否
-    if (!isImageType && !needsMagicCheck) {
-      return transparentGif();
-    }
-
-    // SVG は <script> タグや外部リソース参照を含められるため拒否する。
-    // ブラウザが SVG を直接開いた場合にスクリプトが実行される可能性があり、
-    // SVG をプロキシすることはセキュリティリスクとなる。
-    // image/svg+xml のほか image/svg・application/svg+xml などの非標準形式も拒否する。
-    if (ct.includes("svg")) {
+    // Content-Type ベースの検証：ALLOWED_IMAGE_CONTENT_TYPES に含まれない形式は拒否する。
+    // ホワイトリスト方式により、SVG など XSS リスクのある形式を一括排除する。
+    if (!needsMagicCheck && !ALLOWED_IMAGE_CONTENT_TYPES.has(ct)) {
       return transparentGif();
     }
 
