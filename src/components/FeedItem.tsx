@@ -511,7 +511,7 @@ export default function FeedItem({
               onPointerDown={() => setDetailOpen(false)}
             />
             <div
-              className="fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[480px] bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden"
+              className="fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[480px] bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* ヘッダー */}
