@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (203)
+
+### バグ修正
+
+- **JS 遅延ロード画像の解決** — \`loadImage('id', 'jpgUrl', ...)\` パターンのスクリプトを解析し、\`src\` が空の \`<img id="...">\` に URL を注入する \`resolveScriptLoadedImages()\` を追加。digitallover.moe 等の WordPress 非標準遅延ロードに対応
+- **OGP 取得の文字化けを修正** — \`/api/ogp\` が UTF-8 固定デコードしていた問題を修正。\`detectCharset()\` で \`Content-Type\` ヘッダーおよび HTML \`<meta charset>\` から文字エンコーディングを検出するように変更（Shift-JIS / EUC-JP ページのリンクカードで文字化けしていた問題の解消）
+
 ## 2026-03-28 (202)
 
 ### バグ修正
