@@ -160,10 +160,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
 
   const activateNSFW = useCallback(() => {
     const now = Date.now();
-    nsfwClickTimesRef.current = [...nsfwClickTimesRef.current, now].filter(
-      (t) => now - t < NSFW_CLICK_WINDOW,
-    );
-    if (nsfwClickTimesRef.current.length >= NSFW_CLICK_COUNT) {
+    const times = nsfwClickTimesRef.current;
+    times.push(now);
+    if (times.length > NSFW_CLICK_COUNT) times.shift();
+    if (times.length === NSFW_CLICK_COUNT && now - times[0] < NSFW_CLICK_WINDOW) {
       nsfwClickTimesRef.current = [];
       if (!nsfwMode) {
         setShowNSFWAnimation(true);
