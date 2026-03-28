@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (223)
+
+### リファクタリング
+
+- **`apiFetchJson<T>` ヘルパーを `api-fetch.ts` に追加** — `apiFetch` + `res.ok` チェック + `res.json()` の定型パターンを共通化。`useFeeds` / `useFeedOperations` の6箇所で適用しボイラープレートを削減
+
 ## 2026-03-28 (222)
 
 ### リファクタリング
