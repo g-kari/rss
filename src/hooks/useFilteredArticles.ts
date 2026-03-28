@@ -67,6 +67,10 @@ export function useFilteredArticles({
   });
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const dateRangeRef = useRef(dateRange);
+
+  // useEffect 不要 — レンダー中の直接代入で十分
+  dateRangeRef.current = dateRange;
 
   // 直前に選択していた記事を一定時間フィルター対象外にする（未読フィルター中でも前の記事に戻れるように）
   const [gracePeriodId, setGracePeriodId] = useState<string | null>(null);
@@ -116,14 +120,11 @@ export function useFilteredArticles({
   }, []);
 
   const cycleDateRange = useCallback((): DateRange => {
-    let nextValue = "all" as DateRange;
-    setDateRange((v) => {
-      nextValue = cycleValue(DATE_RANGE_CYCLE, v);
-      storageSet(STORAGE_KEYS.DATE_RANGE, nextValue);
-      return nextValue;
-    });
+    const next = cycleValue(DATE_RANGE_CYCLE, dateRangeRef.current);
+    storageSet(STORAGE_KEYS.DATE_RANGE, next);
+    setDateRange(next);
     setPage(1);
-    return nextValue;
+    return next;
   }, []);
 
   const loadMore = useCallback(() => {
