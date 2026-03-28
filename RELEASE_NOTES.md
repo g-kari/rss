@@ -2,6 +2,10 @@
 
 ## 2026-03-29
 
+### リファクタリング
+
+- **OGP メタデータ取得ロジックを `src/lib/ogp.ts` に共通化** — `app/api/ogp/route.ts` と `app/api/articles/save/route.ts` が個別に実装していた HTML フェッチ・部分読み取り・OGP 抽出処理を `fetchPageOgpMeta()` として一箇所に集約。あわせて `save/route.ts` が `new TextDecoder()` で UTF-8 固定デコードしていたバグを、`detectCharset()` を用いた正しい charset 検出に修正
+
 ### セキュリティ
 
 - **CSP `frame-src` と `sanitizeHtml` の信頼済み iframe ドメインを同期** — `TRUSTED_IFRAME_RULES` では `youtube.com` / `youtube-nocookie.com`（www なし）を許可していたが、CSP の `frame-src` には `www.` 付きしか含まれていなかった。www なし URL のまま iframe が挿入されると sanitizer を通過しつつ CSP でブロックされる不整合を解消するため、`youtube.com` / `youtube-nocookie.com` を `frame-src` に追加
