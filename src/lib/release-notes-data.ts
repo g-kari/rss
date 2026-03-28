@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (228)
+
+### リファクタリング
+
+- **\`OgpData\` 型を \`src/types.ts\` に集約** — \`useContentLinkPreviews\` / \`useOgpCache\` / \`useArticleContent\` の 3 ファイルで個別定義・匿名型として散在していた OGP レスポンス型を \`OgpData\` インターフェースとして一元化
+
 ## 2026-03-28 (227)
 
 ### リファクタリング
