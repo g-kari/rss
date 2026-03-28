@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
+import { isAbortError } from "../lib/fetch";
 
 interface ArticleContentState {
   /** フェッチ済み or キャッシュ済みのコンテンツ（なければ null） */
@@ -55,7 +56,7 @@ export function useArticleContent(
         if (image) setResolvedOgImage(image);
       })
       .catch((err: unknown) => {
-        if (err instanceof Error && err.name === "AbortError") return;
+        if (isAbortError(err)) return;
       });
     return () => controller.abort();
   }, [articleId, articleLink, articleOgImage]);
@@ -82,7 +83,7 @@ export function useArticleContent(
           setFetchError(data.error ?? "取得できませんでした");
         }
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") return;
+        if (isAbortError(err)) return;
         setFetchError("ネットワークエラー");
       } finally {
         if (fetchAbortControllerRef.current === controller) {

@@ -3,6 +3,11 @@ import { isValidFeedUrl } from "@/lib/url";
 /** 外部 HTTP フェッチのデフォルトタイムアウト（ミリ秒）*/
 export const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
+/** AbortController によるキャンセル・タイムアウト由来のエラーかを判定する */
+export function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === "AbortError";
+}
+
 const MAX_REDIRECTS = 5;
 
 /** チャンク配列を 1 つの Uint8Array に結合する */
