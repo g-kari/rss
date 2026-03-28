@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (242)
+
+### セキュリティ
+
+- **iframe pathPrefix 境界チェックを強化** — \`isTrustedIframeSrc\` で \`pathPrefix\` が末尾スラッシュなし (\`/embed\` 等) の場合、プレフィックス直後の文字が \`/\`・\`?\`・\`#\`・終端でなければ部分一致として拒否するよう修正。これにより \`clips.twitch.tv/embedmalicious\` のような URL のバイパスを防止
+
 ## 2026-03-29 (241)
 
 ### セキュリティ

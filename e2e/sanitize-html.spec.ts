@@ -179,6 +179,20 @@ test.describe("sanitizeHtml — 信頼済み <iframe> の保持", () => {
     expect(result).not.toContain("evil.com");
     expect(result).not.toContain("<iframe");
   });
+
+  test("pathPrefix の部分一致でバイパスできない（/embed → /embedmalicious）", () => {
+    // clips.twitch.tv の pathPrefix は "/embed"（末尾スラッシュなし）。
+    // startsWith のみの検査では "/embedmalicious" が誤許可されてしまう。
+    const result = sanitizeHtml('<iframe src="https://clips.twitch.tv/embedmalicious"></iframe>');
+    expect(result).not.toContain("<iframe");
+  });
+
+  test("clips.twitch.tv の正規パス（/embed/...）は保持される", () => {
+    const iframe = '<iframe src="https://clips.twitch.tv/embed/clip1"></iframe>';
+    const result = sanitizeHtml(iframe);
+    expect(result).toContain("clips.twitch.tv");
+    expect(result).toContain("<iframe");
+  });
 });
 
 test.describe("sanitizeHtml — 危険スキーム防止", () => {
