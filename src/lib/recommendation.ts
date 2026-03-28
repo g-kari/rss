@@ -62,9 +62,9 @@ export async function extractUserTopics(
   engagement: EngagementLog,
   ai: Ai,
 ): Promise<string[]> {
-  // エンゲージメントスコアで上位フィードを取得
+  // エンゲージメントスコアで上位フィードを取得（上位5件に絞り、偏りを抑える）
   const scores = scoreFeedEngagement(engagement.entries);
-  const topFeeds = topScoredFeeds(scores, 10);
+  const topFeeds = topScoredFeeds(scores, 5);
 
   const feedTitles: string[] = [];
   const articleTitles: string[] = [];
@@ -79,19 +79,23 @@ export async function extractUserTopics(
     }
   }
 
-  // フォールバック: エンゲージメントが少ない場合は購読フィード名を使う
-  if (feedTitles.length === 0) {
-    for (const sub of subscriptions.slice(0, 10)) {
-      const meta = await readFeedMeta(bucket, sub.feedHash);
-      if (meta?.title) feedTitles.push(meta.title);
-    }
+  // 多様性確保: エンゲージメント上位以外の購読フィードからもランダムにサンプリング
+  const topFeedSet = new Set(topFeeds);
+  const otherSubs = subscriptions.filter((s) => !topFeedSet.has(s.feedHash));
+  // Fisher–Yates シャッフルの簡易版でランダムに最大5件追加
+  const sampledSubs = [...otherSubs].sort(() => Math.random() - 0.5).slice(0, 5);
+  for (const sub of sampledSubs) {
+    const meta = await readFeedMeta(bucket, sub.feedHash);
+    if (meta?.title) feedTitles.push(meta.title);
   }
 
   if (feedTitles.length === 0) return [];
 
   const prompt = `You are an assistant that analyzes RSS reader interests.
-Extract 5-10 topic keywords from the feed names and article titles below.
-Return a JSON array only. Example: ["TypeScript", "Rust", "クラウド"]
+Extract 5-10 DIVERSE topic keywords from the feed names and article titles below.
+Important: ensure variety across different domains — avoid repeating similar themes.
+If multiple feeds share the same genre (e.g. anime), represent it with one keyword only.
+Return a JSON array only. Example: ["TypeScript", "Rust", "クラウド", "アニメ"]
 
 Feed names:
 ${feedTitles.join("\n")}

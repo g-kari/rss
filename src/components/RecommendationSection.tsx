@@ -82,7 +82,7 @@ export default function RecommendationSection({
             </div>
             <div className="text-[11px] text-text-faint truncate">{rec.reason}</div>
           </div>
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0">
+          <div className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0">
             <button
               onClick={async () => {
                 setAddingId(rec.id);
