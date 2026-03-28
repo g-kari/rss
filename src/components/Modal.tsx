@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
 interface Props {
   title: string;
+  subtitle?: string;
   onClose: () => void;
   children: React.ReactNode;
   width?: string;
@@ -11,10 +13,24 @@ interface Props {
 
 /**
  * 汎用モーダルコンポーネント。
- * オーバーレイ・ヘッダー・閉じるボタンを提供し、document.body に portal する。
+ * オーバーレイ・ヘッダー・閉じるボタン・Escape キーを提供し、document.body に portal する。
  * コンテンツ領域のスクロール・レイアウトは children 側で制御する。
  */
-export default function Modal({ title, onClose, children, width = "sm:w-[480px]" }: Props) {
+export default function Modal({
+  title,
+  subtitle,
+  onClose,
+  children,
+  width = "sm:w-[480px]",
+}: Props) {
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return createPortal(
     <>
       <div className="fixed inset-0 z-[49] bg-black/30" onPointerDown={onClose} />
@@ -23,7 +39,14 @@ export default function Modal({ title, onClose, children, width = "sm:w-[480px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
-          <span className="text-[13px] font-medium text-text-strong">{title}</span>
+          <div>
+            <span className="text-[13px] font-medium text-text-strong">{title}</span>
+            {subtitle && (
+              <p className="text-[11px] text-text-muted mt-0.5 truncate max-w-[280px]">
+                {subtitle}
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="text-text-faint hover:text-text-default transition-colors"

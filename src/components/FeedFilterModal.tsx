@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useRef, useCallback } from "react";
 import type { Feed, KeywordFilter } from "../types";
+import Modal from "./Modal";
 
 interface Props {
   feed: Feed;
@@ -108,15 +108,6 @@ export default function FeedFilterModal({ feed, onClose, onSave }: Props) {
   );
   const [saving, setSaving] = useState(false);
 
-  // Escape で閉じる
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
   async function handleSave() {
     setSaving(true);
     try {
@@ -147,45 +138,14 @@ export default function FeedFilterModal({ feed, onClose, onSave }: Props) {
   const hasFilter =
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => {
-        e.stopPropagation();
-        if (e.target === e.currentTarget) onClose();
-      }}
+  return (
+    <Modal
+      title="キーワードフィルター"
+      subtitle={feed.title || feed.url}
+      onClose={onClose}
+      width="sm:w-[400px]"
     >
-      <div
-        className="bg-surface-elevated border border-border-default rounded-xl shadow-xl w-[400px] max-w-[calc(100vw-2rem)] p-5 flex flex-col gap-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ヘッダー */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-[13px] font-medium text-text-strong">キーワードフィルター</h2>
-            <p className="text-[11px] text-text-muted mt-0.5 truncate max-w-[280px]">
-              {feed.title || feed.url}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 text-text-faint hover:text-text-default transition-colors rounded"
-            aria-label="閉じる"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <line x1="1" y1="1" x2="11" y2="11" />
-              <line x1="11" y1="1" x2="1" y2="11" />
-            </svg>
-          </button>
-        </div>
-
+      <div className="p-5 flex flex-col gap-4">
         {/* 含むキーワード */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-medium text-text-muted uppercase tracking-[0.1em]">
@@ -246,7 +206,6 @@ export default function FeedFilterModal({ feed, onClose, onSave }: Props) {
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }
