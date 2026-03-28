@@ -8,7 +8,7 @@ import {
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
-import { applyKeywordFilter, buildFilterMap, matchesKeywordFilter } from "@/lib/keyword-filter";
+import { applyKeywordFilter, applyKeywordFilterMap, buildFilterMap } from "@/lib/keyword-filter";
 import { compareByDateDesc } from "@/lib/article-utils";
 import type { Article } from "@/types";
 
@@ -48,10 +48,7 @@ export async function GET(request: NextRequest) {
 
     // フィードごとのキーワードフィルターを適用（キーワードは小文字化済み）
     const filterMap = buildFilterMap(subs, (s) => s.feedHash);
-    const filteredFeedArticles = feedArticles.filter((a) => {
-      const filter = filterMap.get(a.feedHash);
-      return !filter || matchesKeywordFilter(a, filter);
-    });
+    const filteredFeedArticles = applyKeywordFilterMap(feedArticles, filterMap);
 
     const all = [...savedArticles, ...filteredFeedArticles].sort(compareByDateDesc);
     return NextResponse.json(all);
