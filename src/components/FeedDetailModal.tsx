@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { Feed } from "../types";
 import Modal from "./Modal";
 
@@ -105,8 +106,13 @@ function DetailRow({
   mono?: boolean;
   error?: boolean;
 }) {
+  const [copied, setCopied] = useState(false);
+
   function handleCopy() {
-    void navigator.clipboard.writeText(value);
+    void navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
   }
   return (
     <div className="flex gap-2">
@@ -119,22 +125,37 @@ function DetailRow({
       {copyable && (
         <button
           onClick={handleCopy}
-          className="flex-shrink-0 text-text-faint hover:text-text-default transition-colors"
-          title="コピー"
+          className={`flex-shrink-0 transition-colors ${copied ? "text-text-default" : "text-text-faint hover:text-text-default"}`}
+          title={copied ? "コピーしました" : "コピー"}
         >
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="3" width="6" height="6" rx="1" />
-            <path d="M1 7V1h6" />
-          </svg>
+          {copied ? (
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M1.5 5l2.5 2.5L8.5 2" />
+            </svg>
+          ) : (
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="3" width="6" height="6" rx="1" />
+              <path d="M1 7V1h6" />
+            </svg>
+          )}
         </button>
       )}
     </div>
