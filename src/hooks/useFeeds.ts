@@ -195,10 +195,11 @@ export function useFeeds(
     }
   }, [fetchFeedsData, mergeArticles, onError]);
 
-  const retryFeed = useCallback(
-    async (feedId: string): Promise<void> => {
+  /** フィードエンドポイントに POST し、フィードと記事を更新する共通実装 */
+  const feedActionWithRefresh = useCallback(
+    async (feedId: string, endpoint: string, errorMessage: string): Promise<void> => {
       try {
-        const res = await apiFetch(`/api/feeds/${feedId}/refresh`, { method: "POST" });
+        const res = await apiFetch(`/api/feeds/${feedId}/${endpoint}`, { method: "POST" });
         if (!res.ok) return;
         const feed = (await res.json()) as Feed;
         setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
@@ -207,30 +208,21 @@ export function useFeeds(
           mergeArticles((await articlesRes.json()) as Article[]);
         }
       } catch (err) {
-        console.error("retryFeed failed:", err);
-        onError?.("フィードの再取得に失敗しました");
+        console.error(`[${endpoint}] feed action failed:`, err);
+        onError?.(errorMessage);
       }
     },
     [mergeArticles, onError],
   );
 
+  const retryFeed = useCallback(
+    (feedId: string) => feedActionWithRefresh(feedId, "refresh", "フィードの再取得に失敗しました"),
+    [feedActionWithRefresh],
+  );
+
   const reinferFeed = useCallback(
-    async (feedId: string): Promise<void> => {
-      try {
-        const res = await apiFetch(`/api/feeds/${feedId}/reinfer`, { method: "POST" });
-        if (!res.ok) return;
-        const feed = (await res.json()) as Feed;
-        setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
-        const articlesRes = await apiFetch("/api/articles");
-        if (articlesRes.ok) {
-          mergeArticles((await articlesRes.json()) as Article[]);
-        }
-      } catch (err) {
-        console.error("reinferFeed failed:", err);
-        onError?.("セレクタの再推論に失敗しました");
-      }
-    },
-    [mergeArticles, onError],
+    (feedId: string) => feedActionWithRefresh(feedId, "reinfer", "セレクタの再推論に失敗しました"),
+    [feedActionWithRefresh],
   );
 
   const dismissNewArticles = useCallback(() => {
