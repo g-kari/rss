@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (231)
+
+### リファクタリング
+
+- **\`useFeedOperations\` のインポート後フィード取得を \`apiFetchJson\` に統一** — \`handleImportFile\` 内で \`apiFetch\` + 手動 \`.json()\` + \`if (feedsRes.ok)\` チェックをしていた箇所を \`apiFetchJson<Feed[]>\` 1行に簡略化
+- **\`FeedsState.replaceFeeds\` の戻り値型を修正** — インターフェース定義が \`void\` なのに実装が \`async\` で \`Promise<void>\` を返す型不整合を \`Promise<void>\` に統一
+
 ## 2026-03-28 (230)
 
 ### リファクタリング

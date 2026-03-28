@@ -101,11 +101,8 @@ export function useFeedOperations({
       }
       const data = (await res.json()) as { added: number; skipped: number };
       if (data.added > 0) {
-        const feedsRes = await apiFetch("/api/feeds");
-        if (feedsRes.ok) {
-          const allFeeds = (await feedsRes.json()) as Feed[];
-          onFeedsImported(allFeeds);
-        }
+        const allFeeds = await apiFetchJson<Feed[]>("/api/feeds");
+        onFeedsImported(allFeeds);
       }
       showImportMessage(
         data.added > 0 ? `${data.added}件インポートしました` : "すべて登録済みです",
