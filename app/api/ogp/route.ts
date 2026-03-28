@@ -3,7 +3,7 @@ import { withSession } from "@/lib/server-auth";
 import { isValidFeedUrl } from "@/lib/url";
 import { buildCacheKey } from "@/lib/r2";
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "@/lib/fetch";
-import { unescapeHtml } from "@/lib/html";
+import { unescapeHtml, extractOgMeta } from "@/lib/html";
 import { decodeBytesToString, detectCharset } from "@/lib/content";
 
 const FETCH_TIMEOUT_MS = 5_000;
@@ -61,24 +61,13 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     const charset = detectCharset(contentType, merged);
     const html = decodeBytesToString(merged, charset);
 
-    const extractOgMeta = (property: string): string => {
-      const m =
-        html.match(
-          new RegExp(`<meta[^>]+property=["']og:${property}["'][^>]+content=["']([^"']+)["']`, "i"),
-        ) ??
-        html.match(
-          new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${property}["']`, "i"),
-        );
-      return unescapeHtml(m?.[1] ?? "");
-    };
-
     // og:image — data:/javascript: などの危険スキームと URL 長超過をブロック
     // OGP 画像 URL は imgix 等 CDN で長くなるため、汎用 MAX_URL_LENGTH より大きい専用上限を使用
-    const rawImage = extractOgMeta("image");
+    const rawImage = extractOgMeta(html, "image");
     const image =
       /^https?:\/\//i.test(rawImage) && rawImage.length <= MAX_OGP_IMAGE_URL_LENGTH ? rawImage : "";
-    const title = extractOgMeta("title").slice(0, 200);
-    const description = extractOgMeta("description").slice(0, 500);
+    const title = extractOgMeta(html, "title").slice(0, 200);
+    const description = extractOgMeta(html, "description").slice(0, 500);
 
     // Cloudflare Cache API に保存（fire-and-forget）
     // 全フィールドが空でも短い TTL で負キャッシュ — 繰り返しフェッチを防ぐ

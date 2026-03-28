@@ -3,7 +3,7 @@ import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { isValidFeedUrl } from "@/lib/url";
 import { r2Get, r2Put, sha256Hex, savedArticlesKey } from "@/lib/r2";
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "@/lib/fetch";
-import { unescapeHtml } from "@/lib/html";
+import { unescapeHtml, extractOgMeta } from "@/lib/html";
 import type { Article } from "@/types";
 
 const MAX_SAVED_ARTICLES = 500;
@@ -32,21 +32,10 @@ async function fetchPageMeta(url: string): Promise<{ title: string; ogImage: str
     const bytes = await readBodyBytesPartial(res.body, MAX_BYTES);
     const html = new TextDecoder().decode(bytes);
 
-    const extractOgMeta = (property: string): string => {
-      const m =
-        html.match(
-          new RegExp(`<meta[^>]+property=["']og:${property}["'][^>]+content=["']([^"']+)["']`, "i"),
-        ) ??
-        html.match(
-          new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${property}["']`, "i"),
-        );
-      return unescapeHtml(m?.[1] ?? "");
-    };
-
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const pageTitle = unescapeHtml((titleMatch?.[1] ?? "").trim());
-    const ogTitle = extractOgMeta("title");
-    const rawOgImage = extractOgMeta("image");
+    const ogTitle = extractOgMeta(html, "title");
+    const rawOgImage = extractOgMeta(html, "image");
     const ogImage = isValidFeedUrl(rawOgImage) ? rawOgImage : "";
 
     return {

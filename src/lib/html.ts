@@ -52,6 +52,21 @@ function hasDangerousScheme(val: string): boolean {
   return /^(?:javascript|vbscript|data):/i.test(decoded);
 }
 
+/**
+ * HTML 文字列から og:<property> メタタグの content 属性値を抽出する。
+ * property 属性と content 属性の順序が前後するケースを両パターンでマッチする。
+ */
+export function extractOgMeta(html: string, property: string): string {
+  const m =
+    html.match(
+      new RegExp(`<meta[^>]+property=["']og:${property}["'][^>]+content=["']([^"']+)["']`, "i"),
+    ) ??
+    html.match(
+      new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${property}["']`, "i"),
+    );
+  return unescapeHtml(m?.[1] ?? "");
+}
+
 /** HTML タグを除去してプレーンテキストに変換する（AI 入力用） */
 export function toPlainText(html: string): string {
   return html
