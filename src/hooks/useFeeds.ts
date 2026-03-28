@@ -8,6 +8,13 @@ import { compareByDateDesc } from "../lib/article-utils";
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
+/** incoming のうち existing に存在しない記事だけを返す */
+function filterNewArticles(existing: Article[], incoming: Article[]): Article[] {
+  if (existing.length === 0) return incoming;
+  const existingIds = new Set(existing.map((a) => a.id));
+  return incoming.filter((a) => !existingIds.has(a.id));
+}
+
 interface FeedsState {
   feeds: Feed[];
   articles: Article[];
@@ -58,14 +65,10 @@ export function useFeeds(
     return data;
   }, []);
 
-  // 新着記事を既存リストにマージする（既存記事は消さない）
-  // 取得した記事の先頭 ID を latestArticleIdRef に反映する
   const mergeArticles = useCallback((fresh: Article[]) => {
     if (fresh.length > 0) latestArticleIdRef.current = fresh[0].id;
     setArticles((prev) => {
-      if (prev.length === 0) return fresh;
-      const existingIds = new Set(prev.map((a) => a.id));
-      const brandNew = fresh.filter((a) => !existingIds.has(a.id));
+      const brandNew = filterNewArticles(prev, fresh);
       if (brandNew.length === 0) return prev;
       return [...brandNew, ...prev].sort(compareByDateDesc);
     });
@@ -224,8 +227,7 @@ export function useFeeds(
         const data = (await res.json()) as Article[];
         if (data.length === 0) return;
         setArticles((prev) => {
-          const existingIds = new Set(prev.map((a) => a.id));
-          const newOnes = data.filter((a) => !existingIds.has(a.id));
+          const newOnes = filterNewArticles(prev, data);
           if (newOnes.length === 0) return prev;
           return [...prev, ...newOnes];
         });

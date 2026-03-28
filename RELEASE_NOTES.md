@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (199)
+
+### リファクタリング
+
+- **`filterNewArticles` ヘルパーを抽出** — `mergeArticles` と `loadMoreFeedArticles` で重複していた「既存IDセットを作って新着だけ抽出」ロジックをモジュールレベルの `filterNewArticles` 関数に集約
+
 ## 2026-03-28 (198)
 
 ### リファクタリング
