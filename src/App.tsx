@@ -8,7 +8,7 @@ import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
-import type { Article, KeywordFilter } from "./types";
+import type { Article, Feed, KeywordFilter } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useReadState } from "./hooks/useReadState";
@@ -144,32 +144,34 @@ export default function App() {
     updateFaviconBadge(totalUnread).catch(() => {});
   }, [totalUnread]);
 
-  const toggleNsfwFeed = useCallback(
-    async (feed: import("./types").Feed) => {
-      const res = await apiFetch(`/api/feeds/${feed.id}`, {
+  const patchFeed = useCallback(
+    async (id: string, body: Record<string, unknown>): Promise<Feed | null> => {
+      const res = await apiFetch(`/api/feeds/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nsfw: !feed.nsfw }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) return;
-      const updated = (await res.json()) as import("./types").Feed;
-      updateFeed(updated);
+      if (!res.ok) return null;
+      return res.json() as Promise<Feed>;
     },
-    [updateFeed],
+    [],
+  );
+
+  const toggleNsfwFeed = useCallback(
+    async (feed: Feed) => {
+      const updated = await patchFeed(feed.id, { nsfw: !feed.nsfw });
+      if (updated) updateFeed(updated);
+    },
+    [patchFeed, updateFeed],
   );
 
   const saveFilter = useCallback(
     async (feedId: string, filter: KeywordFilter | null) => {
-      const res = await apiFetch(`/api/feeds/${feedId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filter }),
-      });
-      if (!res.ok) throw new Error("フィルターの保存に失敗しました");
-      const updated = (await res.json()) as import("./types").Feed;
+      const updated = await patchFeed(feedId, { filter });
+      if (!updated) throw new Error("フィルターの保存に失敗しました");
       updateFeed(updated);
     },
-    [updateFeed],
+    [patchFeed, updateFeed],
   );
 
   function onFeedDeleted(id: string) {
