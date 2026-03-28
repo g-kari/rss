@@ -13,6 +13,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 ### リファクタリング
 
 - \`useFeeds\` の \`onError\` コールバックを \`useRef\` で保持するよう変更 — \`useCallback\`/\`useEffect\` の依存配列から \`onError\` を除外し、コールバック参照変化による不要な再生成・エフェクト再実行を防ぐ
+- \`useUIState\` の NSFW 連打検出を固定長バッファ方式に変更 — クリックごとに配列スプレッド＋\`filter()\` で新配列を生成していた実装を、\`push/shift\` でインプレース更新する循環バッファ方式に改善
 
 ## 2026-03-29 (245)
 
