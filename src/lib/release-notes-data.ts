@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (194)
+
+### リファクタリング
+
+- **\`ArticleView\` のジェスチャーナビを \`useGestureNav\` hook に抽出** — スワイプ・ホイール・マウスドラッグの3つの ref と6つのハンドラーをコンポーネント外の \`useGestureNav\` hook にまとめ、JSX 内の読書時間・FilterMenu の IIFE を事前計算変数に置き換えてコンポーネント本体を簡素化
+
 ## 2026-03-28 (193)
 
 ### リファクタリング
