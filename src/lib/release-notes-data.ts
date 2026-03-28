@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (214)
+
+### セキュリティ
+
+- **\`/api/engagement\` に \`articleId\`/\`feedHash\` 長さ制限を追加** — 検証なしの文字列フィールドに \`MAX_ID_LENGTH = 128\` を設け、過大なペイロードによる R2 ストレージ肥大化を防止。\`/api/read-state\` の \`MAX_ID_LENGTH\` と統一したパターンを採用
+
 ## 2026-03-28 (213)
 
 ### リファクタリング
