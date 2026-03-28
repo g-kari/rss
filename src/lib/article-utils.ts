@@ -1,4 +1,4 @@
-import type { DateRange } from "../types";
+import type { DateRange, FontSize, Layout } from "../types";
 
 /** CJK 統合漢字・ひらがな・カタカナ・拡張A（読了速度判定用） */
 const CJK_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g;
@@ -90,6 +90,21 @@ export function articleMatchesQuery(
 export function cycleValue<T>(cycle: readonly T[], current: T): T {
   return cycle[(cycle.indexOf(current) + 1) % cycle.length];
 }
+
+export const FONT_SIZE_CYCLE: FontSize[] = ["small", "medium", "large"];
+export const FONT_SIZE_LABELS: Record<FontSize, string> = {
+  small: "小",
+  medium: "中",
+  large: "大",
+};
+
+export const LAYOUT_CYCLE: Layout[] = ["compact", "list", "card", "magazine"];
+export const LAYOUT_LABELS: Record<Layout, string> = {
+  compact: "コンパクト",
+  list: "リスト",
+  card: "カード",
+  magazine: "マガジン",
+};
 
 export const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month"];
 

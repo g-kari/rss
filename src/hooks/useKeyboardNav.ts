@@ -3,7 +3,14 @@
 import { useEffect, useRef, type RefObject } from "react";
 import type { Article, Feed, FontSize, Layout, DateRange } from "../types";
 import type { SortOrder } from "./useFilteredArticles";
-import { cycleValue, DATE_RANGE_LABELS } from "../lib/article-utils";
+import {
+  cycleValue,
+  DATE_RANGE_LABELS,
+  FONT_SIZE_CYCLE,
+  FONT_SIZE_LABELS,
+  LAYOUT_CYCLE,
+  LAYOUT_LABELS,
+} from "../lib/article-utils";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 
 interface KeyboardNavOptions {
@@ -42,16 +49,6 @@ interface KeyboardNavOptions {
   refreshFeeds: () => Promise<void>;
   retryFeed: (feedId: string) => Promise<void>;
 }
-
-const FONT_SIZE_CYCLE: FontSize[] = ["small", "medium", "large"];
-const FONT_SIZE_LABELS: Record<FontSize, string> = { small: "小", medium: "中", large: "大" };
-const LAYOUT_CYCLE: Layout[] = ["compact", "list", "card", "magazine"];
-const LAYOUT_LABELS: Record<Layout, string> = {
-  compact: "コンパクト",
-  list: "リスト",
-  card: "カード",
-  magazine: "マガジン",
-};
 
 /**
  * キーボードナビゲーション。
