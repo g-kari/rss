@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29
+
+### リファクタリング
+
+- \`useFeeds\` の \`onError\` コールバックを \`useRef\` で保持するよう変更 — \`useCallback\`/\`useEffect\` の依存配列から \`onError\` を除外し、コールバック参照変化による不要な再生成・エフェクト再実行を防ぐ
+
 ## 2026-03-29 (245)
 
 ### バグ修正
