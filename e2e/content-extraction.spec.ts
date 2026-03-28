@@ -504,6 +504,14 @@ test.describe("fixExternalLinks", () => {
     expect(result).toContain("noreferrer");
   });
 
+  test("クォートなし rel 属性（rel=nofollow）も正しく処理される", () => {
+    const result = fixExternalLinks('<a href="https://example.com" rel=nofollow>リンク</a>');
+    expect(result).toContain("noopener");
+    expect(result).toContain("noreferrer");
+    // rel 属性が 1 つだけであることを確認（2 つあるとブラウザが最初の値を優先し noopener が無効になる）
+    expect((result.match(/\brel\s*=/gi) ?? []).length).toBe(1);
+  });
+
   test("既に noopener noreferrer があれば重複追加しない", () => {
     const result = fixExternalLinks(
       '<a href="https://example.com" rel="noopener noreferrer">リンク</a>',
