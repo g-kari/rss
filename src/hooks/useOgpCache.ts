@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { Article } from "../types";
+import type { Article, OgpData } from "../types";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
@@ -43,7 +43,7 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
       apiFetch(`/api/ogp?url=${encodeURIComponent(a.link)}`)
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json() as Promise<{ image: string }>;
+          return r.json() as Promise<OgpData>;
         })
         .then(({ image }) => {
           if (image) {
