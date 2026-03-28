@@ -131,10 +131,18 @@ function isTrustedIframeSrc(src: string): boolean {
   const h = url.hostname;
   const p = url.pathname;
 
-  return TRUSTED_IFRAME_RULES.some(
-    ({ hosts, pathPrefix }) =>
-      hosts.includes(h) && (pathPrefix === undefined || p.startsWith(pathPrefix)),
-  );
+  return TRUSTED_IFRAME_RULES.some(({ hosts, pathPrefix }) => {
+    if (!hosts.includes(h)) return false;
+    if (pathPrefix === undefined) return true;
+    if (!p.startsWith(pathPrefix)) return false;
+    // pathPrefix が '/' で終わる場合（例: "/embed/"）は startsWith だけで十分。
+    // 終わらない場合（例: "/embed"）は次の文字が境界文字でなければ部分一致として拒否する。
+    // 例: pathPrefix="/embed" のとき "/embedmalicious" は next="m" で拒否され、
+    //     "/embed/clip1" は next="/" で許可、"/embed" 完全一致は next=undefined で許可。
+    if (pathPrefix.endsWith("/")) return true;
+    const next = p[pathPrefix.length];
+    return next === undefined || next === "/" || next === "?" || next === "#";
+  });
 }
 
 /**
