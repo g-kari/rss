@@ -184,7 +184,10 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           break;
         case "C":
           if (selectedArticle?.link) {
-            const mdTitle = (selectedArticle.title ?? "").replace(/[[\]]/g, "\\$&");
+            const mdTitle = (selectedArticle.title || selectedArticle.link).replace(
+              /[[\]]/g,
+              "\\$&",
+            );
             const mdLink = `[${mdTitle}](${selectedArticle.link})`;
             navigator.clipboard
               .writeText(mdLink)
