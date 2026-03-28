@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
+import Modal from "./Modal";
 import { apiFetch } from "../lib/api-fetch";
 
 interface Props {
@@ -114,59 +115,17 @@ export default function ReleaseNotesModal({ onClose }: Props) {
       .catch(() => setContent("読み込みに失敗しました"));
   }, []);
 
-  // Esc キーで閉じる
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/70 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="bg-surface-elevated border border-border-default rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.2)] w-[480px] max-w-[calc(100vw-2rem)] max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ヘッダー */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle flex-shrink-0">
-          <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-            リリースノート
-          </span>
-          <button
-            onClick={onClose}
-            className="text-text-faint hover:text-text-muted transition-colors"
-            aria-label="閉じる"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            >
-              <path d="M2 2l10 10M12 2L2 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* コンテンツ */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {content === null ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-1.5 h-1.5 rounded-full bg-surface-subtle animate-pulse" />
-            </div>
-          ) : (
-            parseMarkdown(content)
-          )}
-        </div>
+    <Modal title="リリースノート" onClose={onClose}>
+      <div className="overflow-y-auto max-h-[calc(80vh-52px)] px-5 py-4">
+        {content === null ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-1.5 h-1.5 rounded-full bg-surface-subtle animate-pulse" />
+          </div>
+        ) : (
+          parseMarkdown(content)
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

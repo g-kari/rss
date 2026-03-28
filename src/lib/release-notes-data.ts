@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (205)
+
+### リファクタリング
+
+- **\`KeyboardShortcutsModal\` / \`ReleaseNotesModal\` を \`Modal\` に統一** — 両コンポーネントで重複していた Escape キーハンドラー・オーバーレイ・閉じるボタンを削除し、汎用 \`Modal\` コンポーネントを使用するよう変更
+
 ## 2026-03-28 (204)
 
 ### リファクタリング
