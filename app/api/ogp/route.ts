@@ -4,7 +4,7 @@ import { isValidFeedUrl } from "@/lib/url";
 import { buildCacheKey } from "@/lib/r2";
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "@/lib/fetch";
 import { unescapeHtml } from "@/lib/html";
-import { detectCharset } from "@/lib/content";
+import { decodeBytesToString, detectCharset } from "@/lib/content";
 
 const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BYTES = 512 * 1024; // og:image は先頭 512KB 以内にある
@@ -59,12 +59,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     const merged = await readBodyBytesPartial(res.body, MAX_BYTES);
     const contentType = res.headers.get("content-type") ?? "";
     const charset = detectCharset(contentType, merged);
-    let html: string;
-    try {
-      html = new TextDecoder(charset).decode(merged);
-    } catch {
-      html = new TextDecoder("utf-8", { fatal: false }).decode(merged);
-    }
+    const html = decodeBytesToString(merged, charset);
 
     const extractOgMeta = (property: string): string => {
       const m =

@@ -494,6 +494,18 @@ export function detectCharset(contentType: string, bodyBytes: Uint8Array): strin
 }
 
 /**
+ * バイト列を指定チャーセットで文字列に変換する。
+ * チャーセットが TextDecoder 非対応の場合は UTF-8 でフォールバックする。
+ */
+export function decodeBytesToString(bytes: Uint8Array, charset: string): string {
+  try {
+    return new TextDecoder(charset).decode(bytes);
+  } catch {
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  }
+}
+
+/**
  * 抽出された HTML コンテンツが十分かどうかを判定する。
  * タグを除去したテキスト量が minChars 未満の場合は不十分と判断する。
  */
