@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
+import { STORAGE_KEYS, loadJson } from "../lib/storage";
 import type { OgpData } from "../types";
 
 interface ArticleContentState {
@@ -50,6 +51,12 @@ export function useArticleContent(
   useEffect(() => {
     setResolvedOgImage(null);
     if (!articleLink || articleOgImage) return;
+    // useOgpCache が localStorage に保存済みのキャッシュを先に確認する（重複フェッチ防止）
+    const ogpCache = loadJson<Record<string, string>>(STORAGE_KEYS.OGP_CACHE, {});
+    if (ogpCache[articleLink]) {
+      setResolvedOgImage(ogpCache[articleLink]);
+      return;
+    }
     const controller = new AbortController();
     apiFetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
       .then((r) => r.json() as Promise<OgpData>)
