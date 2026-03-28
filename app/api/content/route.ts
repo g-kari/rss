@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { isValidFeedUrl } from "@/lib/url";
-import { fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
+import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fetch";
 import {
   buildContentCacheKey,
   extractAndCacheContent,
@@ -76,8 +76,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
       { headers: { "X-Cache": "MISS", "X-Content-Source": contentSource } },
     );
   } catch (err) {
-    if (err instanceof Error && err.name === "AbortError")
-      return NextResponse.json({ error: "Request timeout" }, { status: 504 });
+    if (isAbortError(err)) return NextResponse.json({ error: "Request timeout" }, { status: 504 });
     console.error("[content] fetch error:", err);
     return NextResponse.json({ error: "Failed to fetch page" }, { status: 502 });
   }

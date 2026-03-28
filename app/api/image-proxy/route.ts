@@ -1,7 +1,12 @@
 import { withBinarySession } from "@/lib/server-auth";
 import { isValidFeedUrl } from "@/lib/url";
 import { buildCacheKey } from "@/lib/r2";
-import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
+import {
+  DEFAULT_FETCH_TIMEOUT_MS,
+  fetchFollowSafeRedirects,
+  isAbortError,
+  readBodyBytes,
+} from "@/lib/fetch";
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -167,7 +172,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
       },
     });
   } catch (err) {
-    if (err instanceof Error && err.name !== "AbortError") {
+    if (!isAbortError(err)) {
       console.error("[image-proxy] fetch error:", err);
     }
     return transparentGif();

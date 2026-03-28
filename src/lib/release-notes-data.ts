@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (213)
+
+### リファクタリング
+
+- **\`isAbortError()\` ヘルパーを追加し AbortError 判定を統合** — \`useArticleContent\`・\`useArticleAi\`・\`/api/content\`・\`/api/image-proxy\` の4箇所で重複していた \`err instanceof Error && err.name === "AbortError"\` チェックを \`src/lib/fetch.ts\` の \`isAbortError()\` に集約
+
 ## 2026-03-28 (212)
 
 ### リファクタリング

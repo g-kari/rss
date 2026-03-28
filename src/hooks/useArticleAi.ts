@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { aiLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
+import { isAbortError } from "../lib/fetch";
 
 interface ArticleAiState {
   aiResult: string | null;
@@ -68,7 +69,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
         setAiError("AI の処理に失敗しました");
       }
     } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
+      if (isAbortError(err)) return;
       setAiError("AI の処理に失敗しました");
     } finally {
       setAiLoading(false);
