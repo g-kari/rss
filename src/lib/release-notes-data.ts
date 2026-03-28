@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (211)
+
+### リファクタリング
+
+- **\`applyRefreshedTokens\` 系の重複クッキー設定ロジックを統合** — \`applyRefreshedTokens\` と \`applyRefreshedTokensToResponse\` で重複していた \`access_token\` / \`refresh_token\` / \`token_exp\` の cookie セット処理を \`setRefreshedTokenCookies()\` ヘルパーに抽出
+
 ## 2026-03-28 (210)
 
 ### セキュリティ
