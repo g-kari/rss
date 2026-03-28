@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (193)
+
+### リファクタリング
+
+- **\`App.tsx\` の Feed PATCH 操作を \`patchFeed\` ヘルパーに集約** — \`toggleNsfwFeed\` と \`saveFilter\` が同じ PATCH パターン（\`apiFetch\` → チェック → JSON パース → \`updateFeed\`）を重複実装していた問題を修正。\`patchFeed\` useCallback に共通化し、inline \`import("./types").Feed\` 型注釈も top-level import に統一
+
 ## 2026-03-28 (192)
 
 ### リファクタリング
