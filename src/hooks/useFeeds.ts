@@ -175,10 +175,12 @@ export function useFeeds(
     setRefreshing(true);
     try {
       await apiFetch("/api/feeds/refresh", { method: "POST" });
-      const res = await apiFetch("/api/articles");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const fresh = (await res.json()) as Article[];
-      const feedsData = await fetchFeedsData();
+      const [articlesRes, feedsData] = await Promise.all([
+        apiFetch("/api/articles"),
+        fetchFeedsData(),
+      ]);
+      if (!articlesRes.ok) throw new Error(`HTTP ${articlesRes.status}`);
+      const fresh = (await articlesRes.json()) as Article[];
       setFeeds(feedsData);
       mergeArticles(fresh);
     } catch (err) {
