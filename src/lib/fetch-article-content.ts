@@ -6,6 +6,7 @@
 import { buildCacheKey } from "@/lib/r2";
 import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
 import {
+  decodeBytesToString,
   detectCharset,
   extractMainContent,
   fetchMarkdownFromHtml,
@@ -36,13 +37,7 @@ export async function extractAndCacheContent(
   ctx: ExecutionContext,
 ): Promise<{ content: string; source: string }> {
   const charset = detectCharset(ct, bytes);
-  let html: string;
-  try {
-    html = new TextDecoder(charset).decode(bytes);
-  } catch {
-    // charset が TextDecoder 非対応の場合（RangeError）は UTF-8 でフォールバック
-    html = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-  }
+  const html = decodeBytesToString(bytes, charset);
 
   const { content: extracted, source } = extractMainContent(html, url);
   let content = extracted;

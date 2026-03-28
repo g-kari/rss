@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (212)
+
+### リファクタリング
+
+- **\`decodeBytesToString()\` ヘルパーを追加し TextDecoder 重複ロジックを統合** — \`fetch-article-content.ts\` と \`app/api/ogp/route.ts\` で重複していた TextDecoder チャーセットフォールバックパターンを \`src/lib/content.ts\` の \`decodeBytesToString()\` に集約
+
 ## 2026-03-28 (211)
 
 ### リファクタリング
