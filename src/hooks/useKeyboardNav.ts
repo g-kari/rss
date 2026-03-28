@@ -59,7 +59,7 @@ const LAYOUT_LABELS: Record<Layout, string> = {
  * マウント時に 1 回だけ登録する（依存配列なし）。
  *
  * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, o 元記事, v 全文取得, b ブックマーク,
- *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー,
+ *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー, C Markdownリンクコピー,
  *               f フォントサイズ, l レイアウト, L いいね切替, R フィード更新,
  *               u 未読フィルター, B ブックマークフィルター, T リーディングリストフィルター,
  *               s ソート, d 日付フィルター,
@@ -180,6 +180,16 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
                 .then(() => showToast("リンクをコピーしました"))
                 .catch(() => showToast("コピーに失敗しました"));
             }
+          }
+          break;
+        case "C":
+          if (selectedArticle?.link) {
+            const mdTitle = (selectedArticle.title ?? "").replace(/[[\]]/g, "\\$&");
+            const mdLink = `[${mdTitle}](${selectedArticle.link})`;
+            navigator.clipboard
+              .writeText(mdLink)
+              .then(() => showToast("Markdownリンクをコピーしました"))
+              .catch(() => showToast("コピーに失敗しました"));
           }
           break;
         case "f": {
