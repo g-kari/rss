@@ -104,28 +104,33 @@ export async function requireSession(): Promise<
   return { session };
 }
 
+/** リフレッシュ済みトークンを NextResponse の cookie にセットする共通処理 */
+function setRefreshedTokenCookies(
+  response: NextResponse,
+  tokens: { access_token: string; refresh_token: string },
+): void {
+  response.cookies.set("access_token", tokens.access_token, { ...COOKIE_OPTS, maxAge: 900 });
+  response.cookies.set("refresh_token", tokens.refresh_token, {
+    ...COOKIE_OPTS,
+    maxAge: 30 * 24 * 60 * 60,
+  });
+  // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
+  const exp = getJwtExp(tokens.access_token);
+  if (exp !== null) {
+    response.cookies.set("token_exp", String(exp), {
+      maxAge: 900,
+      httpOnly: false,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+    });
+  }
+}
+
 /** リフレッシュされたトークンがある場合に NextResponse に cookie をセットする */
 export function applyRefreshedTokens(response: NextResponse, session: AuthSession): NextResponse {
   if (session.refreshedTokens) {
-    response.cookies.set("access_token", session.refreshedTokens.access_token, {
-      ...COOKIE_OPTS,
-      maxAge: 900,
-    });
-    response.cookies.set("refresh_token", session.refreshedTokens.refresh_token, {
-      ...COOKIE_OPTS,
-      maxAge: 30 * 24 * 60 * 60,
-    });
-    // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
-    const exp = getJwtExp(session.refreshedTokens.access_token);
-    if (exp !== null) {
-      response.cookies.set("token_exp", String(exp), {
-        maxAge: 900,
-        httpOnly: false,
-        secure: true,
-        sameSite: "lax",
-        path: "/",
-      });
-    }
+    setRefreshedTokenCookies(response, session.refreshedTokens);
   }
   return response;
 }
@@ -226,24 +231,6 @@ export function applyRefreshedTokensToResponse(response: Response, session: Auth
     statusText: response.statusText,
     headers: response.headers,
   });
-  nextResponse.cookies.set("access_token", session.refreshedTokens.access_token, {
-    ...COOKIE_OPTS,
-    maxAge: 900,
-  });
-  nextResponse.cookies.set("refresh_token", session.refreshedTokens.refresh_token, {
-    ...COOKIE_OPTS,
-    maxAge: 30 * 24 * 60 * 60,
-  });
-  // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
-  const exp = getJwtExp(session.refreshedTokens.access_token);
-  if (exp !== null) {
-    nextResponse.cookies.set("token_exp", String(exp), {
-      maxAge: 900,
-      httpOnly: false,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-    });
-  }
+  setRefreshedTokenCookies(nextResponse, session.refreshedTokens);
   return nextResponse;
 }
