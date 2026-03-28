@@ -19,3 +19,10 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   }
   return res;
 }
+
+/** res.ok でなければ Error を throw し、ok なら JSON をパースして返す */
+export async function apiFetchJson<T>(input: string, init?: RequestInit): Promise<T> {
+  const res = await apiFetch(input, init);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
