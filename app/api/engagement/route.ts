@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
-import { r2Get, r2Put } from "@/lib/r2";
+import { r2Get, r2Put, engagementKey } from "@/lib/r2";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
 
 const MAX_ENTRIES = 5_000;
@@ -13,13 +13,11 @@ const VALID_ACTIONS: EngagementAction[] = [
   "like",
 ];
 
-function r2Key(userId: string) {
-  return `users/${userId}/engagement.json`;
-}
-
 export async function GET() {
   return withSession(async ({ session, env }) => {
-    const log = await r2Get<EngagementLog>(env.RSS_DATA, r2Key(session.userId), { entries: [] });
+    const log = await r2Get<EngagementLog>(env.RSS_DATA, engagementKey(session.userId), {
+      entries: [],
+    });
     return NextResponse.json(log);
   });
 }
@@ -47,7 +45,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const log = await r2Get<EngagementLog>(env.RSS_DATA, r2Key(session.userId), { entries: [] });
+    const log = await r2Get<EngagementLog>(env.RSS_DATA, engagementKey(session.userId), {
+      entries: [],
+    });
 
     const entry: EngagementEntry = {
       articleId,
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       entries.splice(0, entries.length - MAX_ENTRIES);
     }
 
-    await r2Put(env.RSS_DATA, r2Key(session.userId), { entries });
+    await r2Put(env.RSS_DATA, engagementKey(session.userId), { entries });
     return NextResponse.json({ ok: true });
   });
 }

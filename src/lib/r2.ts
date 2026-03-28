@@ -40,6 +40,16 @@ export function savedArticlesKey(userId: string): string {
   return `users/${userId}/saved.json`;
 }
 
+/** ユーザーの既読・ブックマーク状態の R2 キーを返す */
+export function readStateKey(userId: string): string {
+  return `users/${userId}/read-state.json`;
+}
+
+/** ユーザーのエンゲージメントログの R2 キーを返す */
+export function engagementKey(userId: string): string {
+  return `users/${userId}/engagement.json`;
+}
+
 /**
  * Cloudflare Cache API 用のキャッシュキーを生成する。
  * `/__cache/{type}/{sha256(normalizedUrl)}` 形式の合成 URL を Request としてラップする。

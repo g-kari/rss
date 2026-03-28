@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
-import { r2Get, r2Put } from "@/lib/r2";
+import { r2Get, r2Put, readStateKey } from "@/lib/r2";
 
 interface ReadState {
   readIds: string[];
@@ -15,23 +15,23 @@ const MAX_READING_LIST_IDS = 2_000;
 const MAX_LIKE_IDS = 2_000;
 const MAX_ID_LENGTH = 128;
 
-function r2Key(userId: string) {
-  return `users/${userId}/read-state.json`;
-}
-
 /** 配列バリデーション＋フィルタ＋重複排除を一括処理する。上限超過時は null を返す。 */
 function extractIds(raw: unknown, max: number): string[] | null {
   const arr = Array.isArray(raw) ? raw : [];
-  if (arr.length > max) return null;
-  const filtered = arr.filter(
-    (v): v is string => typeof v === "string" && v.length > 0 && v.length <= MAX_ID_LENGTH,
-  );
-  return [...new Set(filtered)];
+  const deduped = [
+    ...new Set(
+      arr.filter(
+        (v): v is string => typeof v === "string" && v.length > 0 && v.length <= MAX_ID_LENGTH,
+      ),
+    ),
+  ];
+  if (deduped.length > max) return null;
+  return deduped;
 }
 
 export async function GET() {
   return withSession(async ({ session, env }) => {
-    const state = await r2Get<ReadState>(env.RSS_DATA, r2Key(session.userId), {
+    const state = await r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), {
       readIds: [],
       bookmarkIds: [],
       readingListIds: [],
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Payload too large" }, { status: 413 });
     }
 
-    await r2Put(env.RSS_DATA, r2Key(session.userId), {
+    await r2Put(env.RSS_DATA, readStateKey(session.userId), {
       readIds,
       bookmarkIds,
       readingListIds,

@@ -8,13 +8,8 @@ interface HistoryEntry {
   viewedAt: string; // ISO 8601
 }
 
-/** 閲覧履歴の最大保持件数 */
 const MAX_HISTORY = 50;
 
-/**
- * 記事の閲覧履歴を管理するフック（localStorage のみ、最新 50 件）。
- * 記事を開くたびに先頭に追加し、同一記事は重複排除する。
- */
 export function useReadingHistory() {
   const [history, setHistory] = useState<HistoryEntry[]>(() =>
     loadJson<HistoryEntry[]>(STORAGE_KEYS.HISTORY, []),
@@ -22,7 +17,6 @@ export function useReadingHistory() {
 
   const addToHistory = useCallback((articleId: string) => {
     setHistory((prev) => {
-      // 同一記事の重複を除去してから先頭に追加
       const without = prev.filter((e) => e.articleId !== articleId);
       const next = [{ articleId, viewedAt: new Date().toISOString() }, ...without].slice(
         0,
@@ -34,10 +28,8 @@ export function useReadingHistory() {
   }, []);
 
   const { historyIds, historyOrder } = useMemo(() => {
-    /** 最近閲覧した順の articleId 配列（ソート用） */
-    const order = history.map((e) => e.articleId);
-    /** 履歴に含まれる articleId の Set（フィルタリング用） */
-    return { historyIds: new Set(order), historyOrder: order };
+    const historyIds = new Set(history.map((e) => e.articleId));
+    return { historyIds, historyOrder: [...historyIds] };
   }, [history]);
 
   return { historyIds, historyOrder, addToHistory };
