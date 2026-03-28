@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { Feed } from "../types";
-import { apiFetch } from "../lib/api-fetch";
+import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 
 interface Callbacks {
   onFeedAdded: (feed: Feed) => void;
@@ -72,13 +72,11 @@ export function useFeedOperations({
 
   async function renameFeed(id: string, title: string) {
     try {
-      const res = await apiFetch(`/api/feeds/${id}`, {
+      const updated = await apiFetchJson<Feed>(`/api/feeds/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
       });
-      if (!res.ok) throw new Error();
-      const updated = (await res.json()) as Feed;
       onFeedRenamed(updated);
     } catch {
       setError("フィードのタイトル変更に失敗しました");

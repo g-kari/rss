@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Feed, Article, UserProfile } from "../types";
 import { useOnlineStatus } from "./useOnlineStatus";
-import { apiFetch } from "../lib/api-fetch";
+import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 import { compareByDateDesc } from "../lib/article-utils";
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
@@ -51,16 +51,10 @@ export function useFeeds(
   const isPollingRef = useRef(false);
   const prevIsOnlineRef = useRef(isOnline);
 
-  const fetchFeedsData = useCallback(async () => {
-    const r = await apiFetch("/api/feeds");
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json() as Promise<Feed[]>;
-  }, []);
+  const fetchFeedsData = useCallback(() => apiFetchJson<Feed[]>("/api/feeds"), []);
 
   const fetchAndSetArticles = useCallback(async () => {
-    const res = await apiFetch("/api/articles");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as Article[];
+    const data = await apiFetchJson<Article[]>("/api/articles");
     setArticles(data);
     latestArticleIdRef.current = data[0]?.id ?? null;
     return data;
@@ -99,9 +93,7 @@ export function useFeeds(
     if (isPollingRef.current) return; // 前回のフェッチが完了していない場合はスキップ
     isPollingRef.current = true;
     try {
-      const res = await apiFetch("/api/articles");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const fresh = (await res.json()) as Article[];
+      const fresh = await apiFetchJson<Article[]>("/api/articles");
       mergeArticles(fresh);
       const newIdx = fresh.findIndex((a) => a.id === prevTopId);
       if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
@@ -179,12 +171,10 @@ export function useFeeds(
     setRefreshing(true);
     try {
       await apiFetch("/api/feeds/refresh", { method: "POST" });
-      const [articlesRes, feedsData] = await Promise.all([
-        apiFetch("/api/articles"),
+      const [fresh, feedsData] = await Promise.all([
+        apiFetchJson<Article[]>("/api/articles"),
         fetchFeedsData(),
       ]);
-      if (!articlesRes.ok) throw new Error(`HTTP ${articlesRes.status}`);
-      const fresh = (await articlesRes.json()) as Article[];
       setFeeds(feedsData);
       mergeArticles(fresh);
     } catch (err) {
