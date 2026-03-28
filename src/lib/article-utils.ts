@@ -24,16 +24,20 @@ export function isLikelyJapanese(text: string): boolean {
   return cjk / plain.length > 0.03;
 }
 
-/** 推定読了時間（分）。HTML タグを除去して文字数・語数から算出 */
+/**
+ * 推定読了時間（分）。HTML タグを除去して文字数・語数から算出。
+ * 日本語（CJK）と英語を個別に計算して合算することで、日英混在記事でも正確な推定を実現する。
+ * - 日本語黙読: 約500字/分
+ * - 英語黙読: 約200語/分
+ */
 export function readingTime(html: string): number {
   const text = stripHtml(html);
   if (!text) return 0;
-  const cjk = (text.match(CJK_PATTERN) ?? []).length;
-  const mins =
-    cjk / text.length > 0.3
-      ? Math.ceil(text.length / 400) // 日本語: 約400字/分
-      : Math.ceil(text.split(/\s+/).filter(Boolean).length / 200); // 英語: 約200語/分
-  return Math.max(1, mins);
+  const cjkChars = (text.match(CJK_PATTERN) ?? []).length;
+  // CJK 文字を空白に置換して英語の語数を算出（CJK が英語カウントに混入しないよう除去）
+  const enWords = text.replace(CJK_PATTERN, " ").split(/\s+/).filter(Boolean).length;
+  const mins = cjkChars / 500 + enWords / 200;
+  return Math.max(1, Math.ceil(mins));
 }
 
 export function compareByDateDesc(
