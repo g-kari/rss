@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
+import { apiFetch } from "../lib/api-fetch";
 
 export const LINK_PREVIEW_CLASS = "ogp-link-preview";
 
@@ -105,7 +106,7 @@ export function useContentLinkPreviews(
 
     for (const anchor of anchors) {
       const url = anchor.href;
-      fetch(`/api/ogp?url=${encodeURIComponent(url)}`, { signal: controller.signal })
+      apiFetch(`/api/ogp?url=${encodeURIComponent(url)}`, { signal: controller.signal })
         .then((r) => r.json() as Promise<OgpData>)
         .then((ogp) => {
           if (!el.isConnected || !anchor.isConnected) return;
