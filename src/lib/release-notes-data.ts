@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (197)
+
+### リファクタリング
+
+- **\`applyKeywordFilter\` の \`normalizeFilter\` 重複呼び出しを修正** — \`articles.filter\` ループ内で記事ごとに \`normalizeFilter\` を実行していた問題を解消し、ループ外で1回だけ実行するよう修正。あわせて \`useReadState.ts\`・\`article-filter.ts\` の関数名・型名から自明な WHAT コメントを削除
+
 ## 2026-03-28 (196)
 
 ### リファクタリング
