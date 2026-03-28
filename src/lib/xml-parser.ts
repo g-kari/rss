@@ -85,10 +85,10 @@ export interface ParsedFeed {
   items: ParsedItem[];
 }
 
-const parser = new XMLParser({
+const BASE_PARSER_OPTIONS = {
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
-  isArray: (name) => ["item", "entry", "link", "category"].includes(name),
+  isArray: (name: string) => ["item", "entry", "link", "category"].includes(name),
   // GHSA-jp2q-39xq-3w4g (entity 展開 DoS) は fast-xml-parser v4.2.4 以降で修正済み。
   // v5.x では processEntities オブジェクト形式で制限値を個別に設定できる。
   //
@@ -110,7 +110,41 @@ const parser = new XMLParser({
   // デフォルト 100 では深いネスト構造を持つ HTML コンテンツ埋め込みフィードで
   // "Maximum nested tags exceeded" が発生する（例: nlab.itmedia.co.jp）
   maxNestedTags: 500,
+};
+
+const parser = new XMLParser(BASE_PARSER_OPTIONS);
+
+/**
+ * 通常パースが失敗した際のフォールバックパーサー。
+ * content 系ノードを生テキストとして素通りさせることで、CDATA 内の ]]> や
+ * 不正エンティティが原因のパースエラーを回避する。
+ * 出力には <![CDATA[...]]> マーカーが残るため unwrapCdata() で展開する。
+ */
+const parserLenient = new XMLParser({
+  ...BASE_PARSER_OPTIONS,
+  stopNodes: ["*.description", "*.content:encoded", "*.content", "*.summary"],
 });
+
+/**
+ * XML パース前の前処理:
+ * 1. BOM (U+FEFF) を除去
+ * 2. XML 宣言 / ルート要素より前のゴミ（PHP エラー、余分な改行等）を除去
+ * 3. XML 1.0 で禁止されている制御文字を除去 (U+0000-U+0008, U+000B, U+000C, U+000E-U+001F)
+ */
+function preprocessXml(xml: string): string {
+  const noBom = xml.charCodeAt(0) === 0xfeff ? xml.slice(1) : xml;
+  const start = noBom.search(/<(\?xml\b|rss\b|feed\b|rdf:RDF\b)/i);
+  const trimmed = start > 0 ? noBom.slice(start) : noBom;
+  return trimmed.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+}
+
+/**
+ * stopNodes モードで返される生の CDATA マーカーを展開する。
+ * 通常パースでは fast-xml-parser が自動展開するため、両モードで安全に使える（ノーオペ）。
+ */
+function unwrapCdata(s: string): string {
+  return s.replace(/<!\[CDATA\[([\s\S]*?)]]>/g, "$1");
+}
 
 export function toArray<T>(val: T | T[] | undefined): T[] {
   if (!val) return [];
@@ -334,10 +368,12 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function parseFeed(xml: string): ParsedFeed {
+  const cleaned = preprocessXml(xml);
+
   // JSON Feed の検出: 先頭が `{` ならまず JSON としてパースを試みる
-  if (xml.trimStart().startsWith("{")) {
+  if (cleaned.trimStart().startsWith("{")) {
     try {
-      const data = JSON.parse(xml) as JsonFeedRoot;
+      const data = JSON.parse(cleaned) as JsonFeedRoot;
       if (typeof data?.version === "string" && data.version.includes("jsonfeed.org")) {
         return parseJsonFeed(data);
       }
@@ -346,7 +382,14 @@ export function parseFeed(xml: string): ParsedFeed {
     }
   }
 
-  const parsed = parser.parse(xml) as RawParsedXml;
+  // まず厳密パースを試み、失敗時は stopNodes による寛容パースにフォールバックする。
+  // 寛容パースは CDATA 内の ]]> や不正エンティティが原因のエラーを回避できる。
+  let parsed: RawParsedXml;
+  try {
+    parsed = parser.parse(cleaned) as RawParsedXml;
+  } catch {
+    parsed = parserLenient.parse(cleaned) as RawParsedXml;
+  }
 
   // RSS 2.0
   if (parsed?.rss?.channel) {
@@ -355,7 +398,7 @@ export function parseFeed(xml: string): ParsedFeed {
       title: stripHtml(str(ch.title)),
       siteUrl: str(ch.link),
       items: toArray(ch.item).map((item) => {
-        const raw = str(item["content:encoded"] ?? item.description ?? "");
+        const raw = unwrapCdata(str(item["content:encoded"] ?? item.description ?? ""));
         return {
           guid: str(item.guid ?? item.link),
           title: stripHtml(str(item.title)),
@@ -384,7 +427,7 @@ export function parseFeed(xml: string): ParsedFeed {
       items: toArray(feed.entry).map((entry) => {
         // Atom の link は isArray 設定により常に XmlAttr[] になる
         const entryLinks = toArray<XmlAttr>(entry.link as XmlAttr | XmlAttr[] | undefined);
-        const raw = str(entry.content ?? entry.summary ?? "");
+        const raw = unwrapCdata(str(entry.content ?? entry.summary ?? ""));
         return {
           guid: str(entry.id),
           title: stripHtml(str(entry.title)),
@@ -419,7 +462,7 @@ export function parseFeed(xml: string): ParsedFeed {
       title: stripHtml(str(rdf.channel?.title)),
       siteUrl: str(rdf.channel?.link),
       items: toArray(rdf.item).map((item) => {
-        const raw = str(item["content:encoded"] ?? item.description ?? "");
+        const raw = unwrapCdata(str(item["content:encoded"] ?? item.description ?? ""));
         // RSS 1.0 は guid がなく rdf:about 属性が識別子を兼ねる
         const guid = str(item.guid ?? item["@_rdf:about"] ?? item.link);
         return {
