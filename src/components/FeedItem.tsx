@@ -342,7 +342,7 @@ export default function FeedItem({
         <div className="flex-1 min-w-0">
           <span className="flex items-center gap-1 min-w-0">
             <span
-              className="text-[13px] tracking-[0.02em] truncate"
+              className="text-[13px] tracking-[0.02em] overflow-hidden whitespace-nowrap group-hover:text-ellipsis"
               title="ダブルクリックでタイトルを編集"
             >
               {feed.title || feed.url}

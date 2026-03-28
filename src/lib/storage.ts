@@ -34,6 +34,8 @@ export const STORAGE_KEYS = {
   SEARCH_HISTORY: "rss-search-history",
   HISTORY: "rss-history",
   NSFW_MODE: "rss-nsfw-mode",
+  SIDEBAR_WIDTH: "rss-sidebar-width",
+  LIST_WIDTH: "rss-list-width",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
