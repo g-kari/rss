@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Layout, FontSize } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet, loadSet, toggleSetItem } from "../lib/storage";
+import { FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article-utils";
 
 /** NSFW 活性化に必要な連打回数 */
 const NSFW_CLICK_COUNT = 5;
@@ -22,11 +23,9 @@ function loadStoredEnum<T extends string>(key: string, valid: readonly T[], fall
   return valid.includes(stored as T) ? (stored as T) : fallback;
 }
 
-const LAYOUTS = ["compact", "list", "card", "magazine"] as const;
-const FONT_SIZES = ["small", "medium", "large"] as const;
-
-const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUTS, "list" as Layout);
-const loadFontSize = () => loadStoredEnum(STORAGE_KEYS.FONT_SIZE, FONT_SIZES, "medium" as FontSize);
+const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUT_CYCLE, "list" as Layout);
+const loadFontSize = () =>
+  loadStoredEnum(STORAGE_KEYS.FONT_SIZE, FONT_SIZE_CYCLE, "medium" as FontSize);
 
 function loadTheme(): Theme {
   const stored = storageGet(STORAGE_KEYS.THEME);

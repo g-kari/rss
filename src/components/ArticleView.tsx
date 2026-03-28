@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { Article, Feed, FontSize, KeywordFilter } from "../types";
 import type { Theme } from "../hooks/useUIState";
 import FeedFilterModal from "./FeedFilterModal";
-import { readingTime } from "../lib/article-utils";
+import { readingTime, FONT_SIZE_CYCLE } from "../lib/article-utils";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { useArticleContent } from "../hooks/useArticleContent";
 import { useArticleAi } from "../hooks/useArticleAi";
@@ -16,8 +16,6 @@ const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   medium: "text-[16px] leading-[1.9]",
   large: "text-[19px] leading-[2.0]",
 };
-const FONT_SIZE_CYCLE: FontSize[] = ["small", "medium", "large"];
-
 interface Props {
   article: Article | null;
   isBookmarked: boolean;
