@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Article, UserProfile } from "../types";
 import { STORAGE_KEYS, SPECIAL_FEED_IDS, saveSet, loadSet, toggleSetItem } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
@@ -43,6 +43,17 @@ async function fetchReadState(): Promise<{
   } catch {
     return null;
   }
+}
+
+function makeToggle(
+  setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+  key: string,
+  schedule: () => void,
+): (id: string) => void {
+  return (id) => {
+    toggleSetItem(setter, key, id);
+    schedule();
+  };
 }
 
 /** ReadStateSets を /api/read-state に POST する JSON 文字列にシリアライズする */
@@ -199,32 +210,17 @@ export function useReadState(
     [scheduleSyncToServer],
   );
 
-  const toggleRead = useCallback(
-    (id: string) => {
-      toggleSetItem(setReadIds, STORAGE_KEYS.READ_IDS, id);
-      scheduleSyncToServer();
-    },
-    [scheduleSyncToServer],
-  );
-  const toggleBookmark = useCallback(
-    (id: string) => {
-      toggleSetItem(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, id);
-      scheduleSyncToServer();
-    },
-    [scheduleSyncToServer],
-  );
-  const toggleReadingList = useCallback(
-    (id: string) => {
-      toggleSetItem(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, id);
-      scheduleSyncToServer();
-    },
-    [scheduleSyncToServer],
-  );
-  const toggleLike = useCallback(
-    (id: string) => {
-      toggleSetItem(setLikeIds, STORAGE_KEYS.LIKE_IDS, id);
-      scheduleSyncToServer();
-    },
+  const { toggleRead, toggleBookmark, toggleReadingList, toggleLike } = useMemo(
+    () => ({
+      toggleRead: makeToggle(setReadIds, STORAGE_KEYS.READ_IDS, scheduleSyncToServer),
+      toggleBookmark: makeToggle(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, scheduleSyncToServer),
+      toggleReadingList: makeToggle(
+        setReadingListIds,
+        STORAGE_KEYS.READING_LIST_IDS,
+        scheduleSyncToServer,
+      ),
+      toggleLike: makeToggle(setLikeIds, STORAGE_KEYS.LIKE_IDS, scheduleSyncToServer),
+    }),
     [scheduleSyncToServer],
   );
 
