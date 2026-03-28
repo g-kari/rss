@@ -471,6 +471,84 @@ function hasScrollableAncestor(
   return false;
 }
 
+/** スワイプ・ホイール・マウスドラッグによる前後記事ナビゲーションのジェスチャー処理 */
+function useGestureNav({
+  onSelectPrev,
+  onSelectNext,
+}: {
+  onSelectPrev?: () => void;
+  onSelectNext?: () => void;
+}) {
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const mouseStartXRef = useRef<number | null>(null);
+  const wheelDeltaRef = useRef<{ x: number; timer: ReturnType<typeof setTimeout> | null }>({
+    x: 0,
+    timer: null,
+  });
+
+  function handleWheel(e: React.WheelEvent) {
+    if (hasScrollableAncestor(e.target, e.currentTarget)) return;
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * 0.5) return;
+    const state = wheelDeltaRef.current;
+    state.x += e.deltaX;
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = setTimeout(() => {
+      state.x = 0;
+    }, 400);
+    if (state.x > 150 && onSelectNext) {
+      state.x = 0;
+      onSelectNext();
+    } else if (state.x < -150 && onSelectPrev) {
+      state.x = 0;
+      onSelectPrev();
+    }
+  }
+
+  function handleNavMouseDown(e: React.MouseEvent) {
+    mouseStartXRef.current = e.clientX;
+  }
+
+  function handleNavMouseUp(e: React.MouseEvent) {
+    if (mouseStartXRef.current === null) return;
+    const dx = e.clientX - mouseStartXRef.current;
+    mouseStartXRef.current = null;
+    if (Math.abs(dx) < 60) return;
+    if (dx < 0 && onSelectNext) onSelectNext();
+    else if (dx > 0 && onSelectPrev) onSelectPrev();
+  }
+
+  function handleNavMouseLeave() {
+    mouseStartXRef.current = null;
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (hasScrollableAncestor(e.target, e.currentTarget)) return;
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (!touchStartRef.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    // 水平方向が縦スクロールより優位で、かつ閾値を超えた場合のみ遷移
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0 && onSelectNext) onSelectNext();
+    else if (dx > 0 && onSelectPrev) onSelectPrev();
+  }
+
+  return {
+    handleWheel,
+    handleNavMouseDown,
+    handleNavMouseUp,
+    handleNavMouseLeave,
+    handleTouchStart,
+    handleTouchEnd,
+  };
+}
+
 export default function ArticleView({
   article,
   isBookmarked,
@@ -501,13 +579,15 @@ export default function ArticleView({
   const [showTranslated, setShowTranslated] = useState(false);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const mouseStartXRef = useRef<number | null>(null);
-  const wheelDeltaRef = useRef<{ x: number; timer: ReturnType<typeof setTimeout> | null }>({
-    x: 0,
-    timer: null,
-  });
   const contentRef = useRef<HTMLDivElement>(null);
+  const {
+    handleWheel,
+    handleNavMouseDown,
+    handleNavMouseUp,
+    handleNavMouseLeave,
+    handleTouchStart,
+    handleTouchEnd,
+  } = useGestureNav({ onSelectPrev, onSelectNext });
 
   const { downloadAllImages, downloadingImages, imageDownloadProgress } = useImageDownload(
     article,
@@ -703,6 +783,9 @@ export default function ArticleView({
   const hasImages =
     !!(article.ogImage ?? resolvedOgImage) ||
     !!(processedContent && /<img\b/i.test(processedContent));
+  const readingMins = readingTime(processedContent ?? article.summary ?? "");
+  const filterFeed =
+    feeds && onSaveFilter ? feeds.find((f) => f.id === article.feedHash) : undefined;
 
   function handleScroll(e: React.UIEvent<HTMLElement>) {
     const el = e.currentTarget;
@@ -712,64 +795,6 @@ export default function ArticleView({
       progressBarRef.current.style.width = `${progress}%`;
       progressBarRef.current.style.display = progress > 0 ? "" : "none";
     }
-  }
-
-  function handleWheel(e: React.WheelEvent) {
-    // 横スクロール可能な子要素の上ではスキップ
-    if (hasScrollableAncestor(e.target, e.currentTarget)) return;
-    // 縦スクロールが優位な場合はスキップ
-    if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * 0.5) return;
-
-    const state = wheelDeltaRef.current;
-    state.x += e.deltaX;
-    if (state.timer) clearTimeout(state.timer);
-    state.timer = setTimeout(() => {
-      state.x = 0;
-    }, 400);
-
-    if (state.x > 150 && onSelectNext) {
-      state.x = 0;
-      onSelectNext();
-    } else if (state.x < -150 && onSelectPrev) {
-      state.x = 0;
-      onSelectPrev();
-    }
-  }
-
-  function handleNavMouseDown(e: React.MouseEvent) {
-    mouseStartXRef.current = e.clientX;
-  }
-
-  function handleNavMouseUp(e: React.MouseEvent) {
-    if (mouseStartXRef.current === null) return;
-    const dx = e.clientX - mouseStartXRef.current;
-    mouseStartXRef.current = null;
-    if (Math.abs(dx) < 60) return;
-    if (dx < 0 && onSelectNext) onSelectNext();
-    else if (dx > 0 && onSelectPrev) onSelectPrev();
-  }
-
-  function handleNavMouseLeave() {
-    mouseStartXRef.current = null;
-  }
-
-  function handleTouchStart(e: React.TouchEvent) {
-    // 横スクロール可能な要素（コードブロック・テーブル等）の上ではスワイプ検知しない
-    if (hasScrollableAncestor(e.target, e.currentTarget)) return;
-    const t = e.touches[0];
-    touchStartRef.current = { x: t.clientX, y: t.clientY };
-  }
-
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (!touchStartRef.current) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStartRef.current.x;
-    const dy = t.clientY - touchStartRef.current.y;
-    touchStartRef.current = null;
-    // 水平方向が縦スクロールより優位で、かつ閾値を超えた場合のみ遷移
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx < 0 && onSelectNext) onSelectNext();
-    else if (dx > 0 && onSelectPrev) onSelectPrev();
   }
 
   return (
@@ -831,13 +856,9 @@ export default function ArticleView({
               元記事 ↗
             </a>
           )}
-          {(() => {
-            const src = processedContent ?? article.summary;
-            const mins = src ? readingTime(src) : 0;
-            return mins > 1 ? (
-              <span className="tracking-[0.04em] text-text-faint">約{mins}分</span>
-            ) : null;
-          })()}
+          {readingMins > 1 && (
+            <span className="tracking-[0.04em] text-text-faint">約{readingMins}分</span>
+          )}
 
           {/* アクションボタン群（常にひとかたまりで右端に配置） */}
           <div className="ml-auto flex items-center gap-1.5">
@@ -918,19 +939,14 @@ export default function ArticleView({
             )}
 
             {article.link && showToast && <ShareMenu article={article} showToast={showToast} />}
-            {feeds &&
-              onSaveFilter &&
-              (() => {
-                const feed = feeds.find((f) => f.id === article.feedHash);
-                return feed ? (
-                  <FilterMenu
-                    article={article}
-                    feed={feed}
-                    onSaveFilter={onSaveFilter}
-                    showToast={showToast}
-                  />
-                ) : null;
-              })()}
+            {filterFeed && onSaveFilter && (
+              <FilterMenu
+                article={article}
+                feed={filterFeed}
+                onSaveFilter={onSaveFilter}
+                showToast={showToast}
+              />
+            )}
 
             <button
               onClick={() => onToggleReadingList(article.id)}
