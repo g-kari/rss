@@ -29,5 +29,6 @@ export function matchesKeywordFilter(article: Article, filter: KeywordFilter): b
 export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter): Article[] {
   if (!filter) return articles;
   if (filter.include.length === 0 && filter.exclude.length === 0) return articles;
-  return articles.filter((a) => matchesKeywordFilter(a, normalizeFilter(filter)));
+  const normalized = normalizeFilter(filter);
+  return articles.filter((a) => matchesKeywordFilter(a, normalized));
 }

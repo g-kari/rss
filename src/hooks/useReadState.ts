@@ -5,7 +5,6 @@ import type { Article, UserProfile } from "../types";
 import { STORAGE_KEYS, SPECIAL_FEED_IDS, saveSet, loadSet, toggleSetItem } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
-/** 4つの既読状態セットをまとめた型 */
 type ReadStateSets = {
   read: Set<string>;
   bookmarks: Set<string>;
@@ -104,7 +103,7 @@ export function useReadState(
   const articlesRef = useRef(articles);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ref を最新の state / props に同期（useEffect 不要 — レンダー中の直接代入で十分）
+  // useEffect 不要 — レンダー中の直接代入で十分
   stateRef.current = {
     read: readIds,
     bookmarks: bookmarkIds,
