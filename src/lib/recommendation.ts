@@ -22,12 +22,12 @@ function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
 /** Fisher-Yates シャッフルで配列から最大 n 件をランダムサンプリングする */
 function sampleN<T>(arr: T[], n: number): T[] {
   const result = arr.slice();
-  const end = Math.min(n, result.length);
-  for (let i = result.length - 1; i > result.length - 1 - end; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+  const count = Math.min(n, result.length);
+  for (let i = 0; i < count; i++) {
+    const j = i + Math.floor(Math.random() * (result.length - i));
     [result[i], result[j]] = [result[j], result[i]];
   }
-  return result.slice(result.length - end);
+  return result.slice(0, count);
 }
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 時間
@@ -195,8 +195,7 @@ export async function generateWebSearchFeeds(
   const seen = new Set<string>();
   const candidates: Array<{ url: string; title: string; topic: string }> = [];
 
-  for (let i = 0; i < searchResults.length; i++) {
-    const r = searchResults[i];
+  for (const [i, r] of searchResults.entries()) {
     if (r.status !== "fulfilled") continue;
     for (const item of r.value) {
       try {
