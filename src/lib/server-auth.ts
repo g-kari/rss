@@ -50,6 +50,15 @@ export function isBetaAllowed(sub: string): boolean {
   return list.split(",").some((s) => s.trim() === sub);
 }
 
+/** JWT ペイロードから AuthSession を構築する。ベータ制限に引っかかる場合は null を返す */
+function sessionFromPayload(
+  payload: { sub: string },
+  refreshedTokens?: { access_token: string; refresh_token: string },
+): AuthSession | null {
+  if (!isBetaAllowed(payload.sub)) return null;
+  return { userId: payload.sub, refreshedTokens };
+}
+
 export interface AuthSession {
   userId: string;
   refreshedTokens?: { access_token: string; refresh_token: string };
@@ -66,10 +75,7 @@ export async function getAuthSession(): Promise<AuthSession | null> {
 
   if (token) {
     const payload = await verifyJwt(token, authBaseUrl);
-    if (payload) {
-      if (!isBetaAllowed(payload.sub)) return null;
-      return { userId: payload.sub };
-    }
+    if (payload) return sessionFromPayload(payload);
   }
 
   // アクセストークン期限切れ → リフレッシュ試行
@@ -78,10 +84,7 @@ export async function getAuthSession(): Promise<AuthSession | null> {
     const refreshed = await deduplicatedRefresh(refreshToken);
     if (refreshed) {
       const payload = await verifyJwt(refreshed.access_token, authBaseUrl);
-      if (payload) {
-        if (!isBetaAllowed(payload.sub)) return null;
-        return { userId: payload.sub, refreshedTokens: refreshed };
-      }
+      if (payload) return sessionFromPayload(payload, refreshed);
     }
     // リフレッシュ失敗 → null を返す（Cookie 削除は me/route のみが担う）
     return null;
