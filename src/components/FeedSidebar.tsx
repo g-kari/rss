@@ -7,6 +7,7 @@ import FeedItem, { formatCount } from "./FeedItem";
 import RecommendationSection from "./RecommendationSection";
 import { useFeedOperations } from "../hooks/useFeedOperations";
 import { apiFetch } from "../lib/api-fetch";
+import { SPECIAL_FEED_IDS } from "../lib/storage";
 
 interface Props {
   feeds: Feed[];
@@ -432,28 +433,28 @@ export default function FeedSidebar({
         </div>
 
         <SpecialViewButton
-          id="__history__"
+          id={SPECIAL_FEED_IDS.HISTORY}
           label="履歴"
           count={historyCount}
           selectedFeedId={selectedFeedId}
           onSelectFeed={onSelectFeed}
         />
         <SpecialViewButton
-          id="__bookmarks__"
+          id={SPECIAL_FEED_IDS.BOOKMARKS}
           label="ブックマーク"
           count={bookmarkCount}
           selectedFeedId={selectedFeedId}
           onSelectFeed={onSelectFeed}
         />
         <SpecialViewButton
-          id="__reading_list__"
+          id={SPECIAL_FEED_IDS.READING_LIST}
           label="後で読む"
           count={readingListCount}
           selectedFeedId={selectedFeedId}
           onSelectFeed={onSelectFeed}
         />
         <SpecialViewButton
-          id="__likes__"
+          id={SPECIAL_FEED_IDS.LIKES}
           label="いいね"
           count={likeCount}
           selectedFeedId={selectedFeedId}

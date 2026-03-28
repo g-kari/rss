@@ -16,6 +16,7 @@ import type { SortOrder } from "../hooks/useFilteredArticles";
 import { readingTime, timeAgo } from "../lib/article-utils";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { useSearchHistory } from "../hooks/useSearchHistory";
+import { SPECIAL_FEED_IDS } from "../lib/storage";
 
 interface ArticleActionsProps {
   isRead: boolean;
@@ -604,7 +605,7 @@ export default function ArticleList({
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
 
   // 複数フィードを横断表示するとき（すべて・ブックマーク）はフィード名を表示する
-  const showFeedName = selectedFeedId === null || selectedFeedId === "__bookmarks__";
+  const showFeedName = selectedFeedId === null || selectedFeedId === SPECIAL_FEED_IDS.BOOKMARKS;
 
   const ogpCache = useOgpCache(visible);
 

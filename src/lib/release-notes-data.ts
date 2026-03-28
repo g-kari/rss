@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (192)
+
+### リファクタリング
+
+- **特殊フィードIDをマジックストリングから定数へ移行** — \`__bookmarks__\` / \`__reading_list__\` / \`__likes__\` / \`__history__\` を \`SPECIAL_FEED_IDS\` 定数 (\`src/lib/storage.ts\`) に集約。\`article-filter.ts\` / \`useReadState.ts\` / \`FeedSidebar.tsx\` / \`ArticleList.tsx\` の全参照箇所を定数に統一し、文字列変更時の追跡コストを排除
+- **\`RecommendationCache.generatedAt\` の型を \`string | null\` に修正** — エラーフォールバック時の \`null\` 代入と型定義の乖離を解消。\`EMPTY_RECOMMENDATIONS\` 定数を導入してフォールバックオブジェクトに型安全性を付与
+
 ## 2026-03-28 (191)
 
 ### セキュリティ

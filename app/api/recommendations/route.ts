@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { readUserSubscriptions } from "@/lib/shared-feed";
 import { readCache, isCacheValid, generateRecommendations } from "@/lib/recommendation";
+import type { RecommendationCache } from "@/types";
+
+const EMPTY_RECOMMENDATIONS: RecommendationCache = {
+  recommendations: [],
+  generatedAt: null,
+  dismissedIds: [],
+  topics: [],
+};
 
 export async function GET() {
   return withSession(async ({ session, env }) => {
@@ -28,12 +36,7 @@ export async function GET() {
       console.error("[recommendations] generateRecommendations failed:", err);
       // 失敗時は期限切れキャッシュを返す（なければ空を返す）
       if (cache) return NextResponse.json(cache);
-      return NextResponse.json({
-        recommendations: [],
-        generatedAt: null,
-        dismissedIds: [],
-        topics: [],
-      });
+      return NextResponse.json(EMPTY_RECOMMENDATIONS);
     }
   });
 }

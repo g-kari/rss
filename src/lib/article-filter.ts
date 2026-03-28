@@ -1,6 +1,7 @@
 import type { Article, DateRange, Feed } from "../types";
 import { matchesKeywordFilter } from "./keyword-filter";
 import { articleMatchesQuery, getDateRangeStart } from "./article-utils";
+import { SPECIAL_FEED_IDS } from "./storage";
 
 export interface ArticleFilterOptions {
   feedId: string | null;
@@ -65,13 +66,13 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
 
   let list = articles.filter((a) => {
     // フィード絞り込み
-    if (feedId === "__bookmarks__") {
+    if (feedId === SPECIAL_FEED_IDS.BOOKMARKS) {
       if (!bookmarkIds.has(a.id)) return false;
-    } else if (feedId === "__reading_list__") {
+    } else if (feedId === SPECIAL_FEED_IDS.READING_LIST) {
       if (!readingListIds.has(a.id)) return false;
-    } else if (feedId === "__likes__") {
+    } else if (feedId === SPECIAL_FEED_IDS.LIKES) {
       if (!likeIds.has(a.id)) return false;
-    } else if (feedId === "__history__") {
+    } else if (feedId === SPECIAL_FEED_IDS.HISTORY) {
       if (!historyIds.has(a.id)) return false;
     } else if (feedId && a.feedHash !== feedId) return false;
 
@@ -100,7 +101,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
   });
 
   // 履歴モードは viewedAt 降順（最近閲覧順）で固定
-  if (feedId === "__history__") {
+  if (feedId === SPECIAL_FEED_IDS.HISTORY) {
     const orderMap = new Map(historyOrder.map((id, i) => [id, i]));
     list = [...list].sort(
       (a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity),
