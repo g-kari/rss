@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (196)
+
+### リファクタリング
+
+- **\`useMenuOpen\` フックに click-outside ロジックを抽出** — \`ArticleView\` の \`ShareMenu\`・\`FilterMenu\` 両コンポーネントで重複していた「\`open\` 状態 + \`menuRef\` + click-outside \`useEffect\`」を \`useMenuOpen\` フックに共通化
+
 ## 2026-03-28 (195)
 
 ### リファクタリング
