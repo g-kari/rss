@@ -760,12 +760,22 @@ export default function ArticleView({
 
   const { aiResult, aiLoading, aiError, doRunAi, resetAi } = useArticleAi(article?.id);
 
-  // 全文取得ショートカット (v)
+  // 全文取得・スクロールショートカット (v / Space / Shift+Space)
+  const mainRef = useRef<HTMLElement>(null);
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "v" && article?.link && !storedContent && !fetching) {
         void fetchFullContent();
+      }
+      if (e.key === " ") {
+        const el = mainRef.current;
+        if (!el) return;
+        e.preventDefault();
+        el.scrollBy({
+          top: e.shiftKey ? -el.clientHeight * 0.8 : el.clientHeight * 0.8,
+          behavior: "smooth",
+        });
       }
     }
     document.addEventListener("keydown", handleKeyDown);
@@ -947,6 +957,7 @@ export default function ArticleView({
 
   return (
     <main
+      ref={mainRef}
       className="h-full overflow-y-auto bg-surface-elevated animate-fade-in relative"
       onScroll={handleScroll}
       onTouchStart={handleTouchStart}
