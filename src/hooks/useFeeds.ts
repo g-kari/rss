@@ -189,14 +189,11 @@ export function useFeeds(
   const feedActionWithRefresh = useCallback(
     async (feedId: string, endpoint: string, errorMessage: string): Promise<void> => {
       try {
-        const res = await apiFetch(`/api/feeds/${feedId}/${endpoint}`, { method: "POST" });
-        if (!res.ok) return;
-        const feed = (await res.json()) as Feed;
+        const feed = await apiFetchJson<Feed>(`/api/feeds/${feedId}/${endpoint}`, {
+          method: "POST",
+        });
         setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
-        const articlesRes = await apiFetch("/api/articles");
-        if (articlesRes.ok) {
-          mergeArticles((await articlesRes.json()) as Article[]);
-        }
+        mergeArticles(await apiFetchJson<Article[]>("/api/articles"));
       } catch (err) {
         console.error(`[${endpoint}] feed action failed:`, err);
         onError?.(errorMessage);
@@ -224,9 +221,7 @@ export function useFeeds(
     async (feedId: string): Promise<void> => {
       const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
       try {
-        const res = await apiFetch(`/api/articles?feed=${feedId}&page=${nextPage}`);
-        if (!res.ok) return;
-        const data = (await res.json()) as Article[];
+        const data = await apiFetchJson<Article[]>(`/api/articles?feed=${feedId}&page=${nextPage}`);
         if (data.length === 0) return;
         setArticles((prev) => {
           const newOnes = filterNewArticles(prev, data);
