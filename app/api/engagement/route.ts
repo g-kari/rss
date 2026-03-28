@@ -4,6 +4,7 @@ import { r2Get, r2Put } from "@/lib/r2";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
 
 const MAX_ENTRIES = 5_000;
+const MAX_ID_LENGTH = 128;
 const VALID_ACTIONS: EngagementAction[] = [
   "fetch_full",
   "open_original",
@@ -37,6 +38,10 @@ export async function POST(req: NextRequest) {
       typeof articleId !== "string" ||
       typeof feedHash !== "string" ||
       typeof action !== "string" ||
+      articleId.length === 0 ||
+      articleId.length > MAX_ID_LENGTH ||
+      feedHash.length === 0 ||
+      feedHash.length > MAX_ID_LENGTH ||
       !VALID_ACTIONS.includes(action as EngagementAction)
     ) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
