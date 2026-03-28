@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-03-29
 
+### バグ修正
+
+- **履歴ビューで「全て既読」が機能しない問題を修正** — \`markAllRead\` が \`SPECIAL_FEED_IDS.HISTORY\` を処理するケースがなく、履歴ビューで \`m\` キーや既読ボタンを押しても何も起きなかった。\`useReadState\` に \`historyIds\` を渡し、HISTORY ケースを明示的に処理するよう修正
+
 ### リファクタリング
 
 - \`useFeeds\` の \`onError\` コールバックを \`useRef\` で保持するよう変更 — \`useCallback\`/\`useEffect\` の依存配列から \`onError\` を除外し、コールバック参照変化による不要な再生成・エフェクト再実行を防ぐ

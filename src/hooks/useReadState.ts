@@ -94,6 +94,7 @@ interface ReadStateResult {
 export function useReadState(
   user: UserProfile | null | undefined,
   articles: Article[],
+  historyIds?: Set<string>,
 ): ReadStateResult {
   const [readIds, setReadIds] = useState<Set<string>>(() => loadSet(STORAGE_KEYS.READ_IDS));
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(() =>
@@ -111,6 +112,8 @@ export function useReadState(
     readingList: readingListIds,
     likes: likeIds,
   });
+  const historyIdsRef = useRef(historyIds);
+  historyIdsRef.current = historyIds;
   const articlesRef = useRef(articles);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -200,6 +203,9 @@ export function useReadState(
           ids = arts.filter((a) => readingList.has(a.id)).map((a) => a.id);
         } else if (feedId === SPECIAL_FEED_IDS.LIKES) {
           ids = arts.filter((a) => likes.has(a.id)).map((a) => a.id);
+        } else if (feedId === SPECIAL_FEED_IDS.HISTORY) {
+          const hIds = historyIdsRef.current;
+          ids = hIds ? arts.filter((a) => hIds.has(a.id)).map((a) => a.id) : [];
         } else if (feedId) {
           ids = arts.filter((a) => a.feedHash === feedId).map((a) => a.id);
         } else {
