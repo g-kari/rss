@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (204)
+
+### リファクタリング
+
+- **\`useArticleAi\` を簡略化** — \`AiMode\` は \`"summary"\` のみで \`mode\` パラメータが冗長だったため削除。\`doRunAi\` のシグネチャを \`(url, articleId?)\` に変更、\`aiResult\` 型を \`string | null\` に、\`aiLoading\` 型を \`boolean\` に単純化。LRU キャッシュキーも \`\${articleId}:summary\` → \`articleId\` に変更
+
 ## 2026-03-28 (203)
 
 ### バグ修正

@@ -876,21 +876,21 @@ export default function ArticleView({
               <div className="flex items-center gap-1 mr-1">
                 <button
                   onClick={() => {
-                    if (aiResult?.mode === "summary") {
+                    if (aiResult) {
                       resetAi();
                       return;
                     }
-                    if (article.link) doRunAi("summary", article.link, article.id);
+                    if (article.link) doRunAi(article.link, article.id);
                   }}
-                  disabled={!!aiLoading || fetching}
+                  disabled={aiLoading || fetching}
                   title="AI 要約"
                   className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
-                    aiResult?.mode === "summary"
+                    aiResult
                       ? "border-ink bg-ink text-ink-text"
                       : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
                   }`}
                 >
-                  {aiLoading === "summary" ? "…" : "要約"}
+                  {aiLoading ? "…" : "要約"}
                 </button>
               </div>
             )}
@@ -1055,10 +1055,10 @@ export default function ArticleView({
         )}
 
         {/* AI 要約パネル */}
-        {aiResult?.mode === "summary" && (
+        {aiResult && (
           <div className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up">
             <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint mb-2">AI 要約</p>
-            <p className="text-[14px] leading-[1.8] text-text-default">{aiResult.text}</p>
+            <p className="text-[14px] leading-[1.8] text-text-default">{aiResult}</p>
           </div>
         )}
         {aiError && <p className="mb-6 text-[11px] text-rose-400">{aiError}</p>}

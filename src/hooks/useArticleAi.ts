@@ -1,22 +1,21 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { AiMode } from "../types";
 import { aiLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 
 interface ArticleAiState {
-  aiResult: { mode: AiMode; text: string } | null;
-  aiLoading: AiMode | null;
+  aiResult: string | null;
+  aiLoading: boolean;
   aiError: string;
-  /** AI 実行（LRU キャッシュ優先、サーバー側コンテンツ取得） */
-  doRunAi: (mode: AiMode, url: string, articleId?: string) => Promise<void>;
+  /** AI 要約を実行する（LRU キャッシュ優先、サーバー側コンテンツ取得） */
+  doRunAi: (url: string, articleId?: string) => Promise<void>;
   resetAi: () => void;
 }
 
 export function useArticleAi(articleId: string | undefined): ArticleAiState {
-  const [aiResult, setAiResult] = useState<{ mode: AiMode; text: string } | null>(null);
-  const [aiLoading, setAiLoading] = useState<AiMode | null>(null);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
@@ -25,7 +24,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
     abortRef.current = null;
     setAiResult(null);
     setAiError("");
-    setAiLoading(null);
+    setAiLoading(false);
   }, []);
 
   // 記事が変わったら進行中のリクエストをキャンセルして AI 状態を自動リセットする
@@ -33,14 +32,14 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
     resetAi();
   }, [articleId, resetAi]);
 
-  const doRunAi = useCallback(async (mode: AiMode, url: string, currentArticleId?: string) => {
+  const doRunAi = useCallback(async (url: string, currentArticleId?: string) => {
     if (!url.trim()) return;
 
     // LRU キャッシュヒット時は API コールなし
     if (currentArticleId) {
-      const cached = aiLruCache.get(`${currentArticleId}:${mode}`);
+      const cached = aiLruCache.get(currentArticleId);
       if (cached) {
-        setAiResult({ mode, text: cached });
+        setAiResult(cached);
         return;
       }
     }
@@ -50,11 +49,10 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    setAiLoading(mode);
+    setAiLoading(true);
     setAiError("");
     try {
-      const endpoint = "/api/ai/summarize";
-      const res = await apiFetch(endpoint, {
+      const res = await apiFetch("/api/ai/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, articleId: currentArticleId }),
@@ -62,8 +60,8 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
       });
       const data = (await res.json()) as { result?: string; error?: string };
       if (data.result) {
-        if (currentArticleId) aiLruCache.set(`${currentArticleId}:${mode}`, data.result);
-        setAiResult({ mode, text: data.result });
+        if (currentArticleId) aiLruCache.set(currentArticleId, data.result);
+        setAiResult(data.result);
       } else if (data.error) {
         setAiError(data.error);
       } else {
@@ -73,7 +71,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
       if (err instanceof Error && err.name === "AbortError") return;
       setAiError("AI の処理に失敗しました");
     } finally {
-      setAiLoading(null);
+      setAiLoading(false);
     }
   }, []);
 
