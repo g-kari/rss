@@ -2,16 +2,12 @@ import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { isValidFeedUrl } from "@/lib/url";
 import { buildCacheKey } from "@/lib/r2";
-import { fetchFollowSafeRedirects, readBodyBytesPartial } from "@/lib/fetch";
-import { unescapeHtml, extractOgMeta } from "@/lib/html";
-import { decodeBytesToString, detectCharset } from "@/lib/content";
+import { unescapeHtml } from "@/lib/html";
+import { fetchPageOgpMeta } from "@/lib/ogp";
 
 const FETCH_TIMEOUT_MS = 5_000;
-const MAX_BYTES = 512 * 1024; // og:image は先頭 512KB 以内にある
 const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const OGP_NEGATIVE_CACHE_TTL_SEC = 24 * 60 * 60; // 1日（og:image なし・フェッチ失敗）
-// OGP 画像 URL は imgix 等のCDNで長くなる場合がある（Qiita例: ~2700文字）
-const MAX_OGP_IMAGE_URL_LENGTH = 8192;
 
 export async function GET(request: Request) {
   return withSession(({ ctx }) => handleGet(request, ctx));
@@ -39,49 +35,18 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     );
   }
 
-  try {
-    const res = await fetchFollowSafeRedirects(
-      url,
-      {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
-        },
-      },
-      FETCH_TIMEOUT_MS,
-    );
-    if (!res.ok) return NextResponse.json({ image: "" });
+  const { title, description, image } = await fetchPageOgpMeta(url, FETCH_TIMEOUT_MS);
 
-    // 先頭 MAX_BYTES だけ読んで og:image を探す
-    if (!res.body) return NextResponse.json({ image: "" });
-    const merged = await readBodyBytesPartial(res.body, MAX_BYTES);
-    const contentType = res.headers.get("content-type") ?? "";
-    const charset = detectCharset(contentType, merged);
-    const html = decodeBytesToString(merged, charset);
+  // Cloudflare Cache API に保存（fire-and-forget）
+  // 全フィールドが空でも短い TTL で負キャッシュ — 繰り返しフェッチを防ぐ
+  const hasContent = !!(image || title || description);
+  const ttl = hasContent ? OGP_CACHE_TTL_SEC : OGP_NEGATIVE_CACHE_TTL_SEC;
+  const cacheRes = new Response(JSON.stringify({ image, title, description }), {
+    headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${ttl}` },
+  });
+  ctx.waitUntil(
+    cfCache.put(cacheKey, cacheRes).catch((err) => console.error("[ogp] cache put error:", err)),
+  );
 
-    // og:image — data:/javascript: などの危険スキームと URL 長超過をブロック
-    // OGP 画像 URL は imgix 等 CDN で長くなるため、汎用 MAX_URL_LENGTH より大きい専用上限を使用
-    const rawImage = extractOgMeta(html, "image");
-    const image =
-      /^https?:\/\//i.test(rawImage) && rawImage.length <= MAX_OGP_IMAGE_URL_LENGTH ? rawImage : "";
-    const title = extractOgMeta(html, "title").slice(0, 200);
-    const description = extractOgMeta(html, "description").slice(0, 500);
-
-    // Cloudflare Cache API に保存（fire-and-forget）
-    // 全フィールドが空でも短い TTL で負キャッシュ — 繰り返しフェッチを防ぐ
-    const hasContent = !!(image || title || description);
-    const ttl = hasContent ? OGP_CACHE_TTL_SEC : OGP_NEGATIVE_CACHE_TTL_SEC;
-    const cacheRes = new Response(JSON.stringify({ image, title, description }), {
-      headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${ttl}` },
-    });
-    ctx.waitUntil(
-      cfCache.put(cacheKey, cacheRes).catch((err) => console.error("[ogp] cache put error:", err)),
-    );
-
-    return NextResponse.json({ image, title, description }, { headers: { "X-Cache": "MISS" } });
-  } catch {
-    return NextResponse.json({ image: "" });
-  }
+  return NextResponse.json({ image, title, description }, { headers: { "X-Cache": "MISS" } });
 }
