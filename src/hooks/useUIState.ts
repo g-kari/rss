@@ -4,14 +4,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Layout, FontSize } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet, loadSet, toggleSetItem } from "../lib/storage";
 import { FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article-utils";
+import { useMobilePane } from "./useMobilePane";
+import { useNSFWMode } from "./useNSFWMode";
 
-/** NSFW 活性化に必要な連打回数 */
-const NSFW_CLICK_COUNT = 5;
-/** 連打として認識する時間ウィンドウ (ms) */
-const NSFW_CLICK_WINDOW = 2000;
-
+export type { MobilePane } from "./useMobilePane";
+import type { MobilePane } from "./useMobilePane";
 export type Theme = "light" | "dark";
-export type MobilePane = "sidebar" | "list" | "view";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -67,13 +65,12 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [mobilePane, setMobilePane] = useState<MobilePane>(initialMobilePane);
-  const prevMobilePaneRef = useRef<MobilePane>(initialMobilePane);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
-  const [nsfwMode, setNsfwMode] = useState(() => storageGet(STORAGE_KEYS.NSFW_MODE) === "1");
-  const [showNSFWAnimation, setShowNSFWAnimation] = useState(false);
-  const nsfwClickTimesRef = useRef<number[]>([]);
+
+  const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
+  const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
+    useNSFWMode();
 
   useEffect(() => {
     return () => {
@@ -86,31 +83,6 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     document.documentElement.dataset.theme = theme;
     storageSet(STORAGE_KEYS.THEME, theme);
   }, [theme]);
-
-  // モバイルペイン前進時に history エントリを積む
-  useEffect(() => {
-    const prev = prevMobilePaneRef.current;
-    if (
-      (prev === "sidebar" && mobilePane === "list") ||
-      (prev === "list" && mobilePane === "view")
-    ) {
-      window.history.pushState({ mobilePane }, "");
-    }
-    prevMobilePaneRef.current = mobilePane;
-  }, [mobilePane]);
-
-  // popstate（戻るボタン）でアプリ内ペイン遷移を処理
-  useEffect(() => {
-    function onPopState() {
-      setMobilePane((current) => {
-        if (current === "view") return "list";
-        if (current === "list") return "sidebar";
-        return current;
-      });
-    }
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
 
   // PWA インストールプロンプトを捕捉（Chrome / Android）
   useEffect(() => {
@@ -155,30 +127,6 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(msg);
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
-  }, []);
-
-  const activateNSFW = useCallback(() => {
-    const now = Date.now();
-    const times = nsfwClickTimesRef.current;
-    times.push(now);
-    if (times.length > NSFW_CLICK_COUNT) times.shift();
-    if (times.length === NSFW_CLICK_COUNT && now - times[0] < NSFW_CLICK_WINDOW) {
-      nsfwClickTimesRef.current = [];
-      if (!nsfwMode) {
-        setShowNSFWAnimation(true);
-      }
-    }
-  }, [nsfwMode]);
-
-  const deactivateNSFW = useCallback(() => {
-    setNsfwMode(false);
-    storageSet(STORAGE_KEYS.NSFW_MODE, "0");
-  }, []);
-
-  const onNSFWAnimationComplete = useCallback(() => {
-    setShowNSFWAnimation(false);
-    setNsfwMode(true);
-    storageSet(STORAGE_KEYS.NSFW_MODE, "1");
   }, []);
 
   const installApp = useCallback(async () => {
