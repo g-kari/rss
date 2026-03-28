@@ -234,6 +234,15 @@ export function sanitizeHtml(html: string): string {
         const src = srcMatch?.[1] ?? "";
         return isTrustedIframeSrc(src) ? _m : "";
       })
+      // 閉じタグ・自己閉じのない <iframe> 開始タグを除去（未閉じ iframe のサニタイズ漏れ対策）
+      // <use> と同様に、上記 2 パターンでマッチしなかった残余の <iframe...> を処理する。
+      // RSS content:encoded では </iframe> が省略された形で記述されることがあり、
+      // 放置するとブラウザが暗黙的に閉じてレンダリングし、フィッシング iframe に悪用されうる。
+      .replace(/<iframe\b([^>]*)>/gi, (_m, attrs) => {
+        const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
+        const src = srcMatch?.[1] ?? "";
+        return isTrustedIframeSrc(src) ? _m : "";
+      })
       // 危険な <meta http-equiv> を除去。
       // - refresh: クライアントサイドリダイレクト防止
       // - set-cookie: レスポンスヘッダー偽装による cookie 注入防止
