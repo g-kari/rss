@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (219)
+
+### リファクタリング
+
+- **`base64urlToBytes` を `auth.ts` からエクスポートして `web-push.ts` で共有** — `auth.ts` の `base64urlToBytes` と `web-push.ts` の `base64urlDecode` に重複していた同一実装を統合し、`web-push.ts` 側の実装を削除
+
 ## 2026-03-28 (218)
 
 ### リファクタリング

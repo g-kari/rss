@@ -13,19 +13,11 @@
 
 import type { PushSubscriptionRecord } from "../types";
 import { DEFAULT_FETCH_TIMEOUT_MS } from "./fetch";
+import { base64urlToBytes } from "./auth";
 
 // -------------------------------------------------------------------------
 // ユーティリティ
 // -------------------------------------------------------------------------
-
-function base64urlDecode(s: string): Uint8Array<ArrayBuffer> {
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = b64 + "===".slice((b64.length + 3) % 4);
-  const binary = atob(padded);
-  const result = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) result[i] = binary.charCodeAt(i);
-  return result;
-}
 
 function base64urlEncode(buf: Uint8Array): string {
   let binary = "";
@@ -73,8 +65,8 @@ async function createVapidAuthHeader(
   const signingInput = `${header}.${payload}`;
 
   // P-256 秘密鍵をインポート（raw 32 バイト → JWK 経由）
-  const privRaw = base64urlDecode(privateKeyB64url);
-  const pubRaw = base64urlDecode(publicKeyB64url);
+  const privRaw = base64urlToBytes(privateKeyB64url);
+  const pubRaw = base64urlToBytes(publicKeyB64url);
   // JWK からインポート: x/y は公開鍵 (bytes 1-32, 33-64)、d は秘密鍵
   const x = base64urlEncode(pubRaw.slice(1, 33));
   const y = base64urlEncode(pubRaw.slice(33, 65));
@@ -139,7 +131,7 @@ async function encryptPayload(
   const serverPubRaw = new Uint8Array(serverPubSpki).slice(-65);
 
   // クライアント (受信者) の公開鍵をインポート
-  const clientPubRaw = base64urlDecode(subscription.keys.p256dh);
+  const clientPubRaw = base64urlToBytes(subscription.keys.p256dh);
   const clientPubKey = await crypto.subtle.importKey(
     "raw",
     clientPubRaw,
@@ -157,7 +149,7 @@ async function encryptPayload(
   const sharedSecret = new Uint8Array(ecdhBits);
 
   // auth シークレット (16 bytes)
-  const authSecret = base64urlDecode(subscription.keys.auth);
+  const authSecret = base64urlToBytes(subscription.keys.auth);
 
   // RFC 8291 Section 3.3: PRK の導出
   // PRK_key = HKDF(auth_secret, ecdh_secret, "WebPush: info\0" || dh_pub || as_pub, 32)
