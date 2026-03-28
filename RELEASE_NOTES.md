@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (235)
+
+### リファクタリング
+
+- `applyKeywordFilterMap` を `src/lib/keyword-filter.ts` に追加し、`app/api/articles/route.ts` のマップベースフィルタリングを一元化
+
 ## 2026-03-28 (234)
 
 ### 新機能

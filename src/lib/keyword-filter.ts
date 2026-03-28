@@ -50,3 +50,18 @@ export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter):
   const normalized = normalizeFilter(filter);
   return articles.filter((a) => matchesKeywordFilter(a, normalized));
 }
+
+/**
+ * feedHash → KeywordFilter のマップを使って記事リストをフィルタリングする。
+ * 各記事の feedHash に対応するフィルターが存在しない場合は通過させる。
+ */
+export function applyKeywordFilterMap(
+  articles: Article[],
+  filterMap: Map<string, KeywordFilter>,
+): Article[] {
+  if (filterMap.size === 0) return articles;
+  return articles.filter((a) => {
+    const filter = filterMap.get(a.feedHash);
+    return !filter || matchesKeywordFilter(a, filter);
+  });
+}
