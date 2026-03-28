@@ -23,8 +23,6 @@ export default function RecommendationSection({
   const [expanded, setExpanded] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
 
-  if (recommendations.length === 0 && !loading) return null;
-
   const visible = expanded ? recommendations : recommendations.slice(0, 5);
 
   return (
@@ -62,6 +60,13 @@ export default function RecommendationSection({
       {/* ローディング */}
       {loading && recommendations.length === 0 && (
         <div className="px-4 py-2 text-[11px] text-text-faint">読み込み中...</div>
+      )}
+
+      {/* 空状態 */}
+      {!loading && recommendations.length === 0 && (
+        <div className="px-4 py-2 text-[11px] text-text-faint leading-relaxed">
+          フィードを追加・購読すると、読んでいる内容に基づいたおすすめが表示されます。
+        </div>
       )}
 
       {/* 提案リスト */}

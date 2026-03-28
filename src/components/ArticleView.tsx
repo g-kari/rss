@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { Article, Feed, FontSize, AiMode, KeywordFilter } from "../types";
+import type { Article, Feed, FontSize, KeywordFilter } from "../types";
 import type { Theme } from "../hooks/useUIState";
 import FeedFilterModal from "./FeedFilterModal";
 import { readingTime } from "../lib/article-utils";
@@ -570,9 +570,6 @@ export default function ArticleView({
 
   const { aiResult, aiLoading, aiError, doRunAi, resetAi } = useArticleAi(article?.id);
 
-  // 翻訳結果を本文として表示するフラグ
-  const [showTranslated, setShowTranslated] = useState(false);
-
   const progressBarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const {
@@ -674,20 +671,13 @@ export default function ArticleView({
     injectSliderControls();
   }, [processedContent, injectSliderControls]);
 
-  // 記事が変わったら AI 状態をリセット。日本語以外の記事は自動翻訳する（全文取得は行わない）
-  // 記事が変わったらスクロール位置と翻訳表示状態をリセット（AI 状態は useArticleAi が担当）
+  // 記事が変わったらスクロール位置をリセット（AI 状態は useArticleAi が担当）
   useEffect(() => {
     if (progressBarRef.current) {
       progressBarRef.current.style.width = "0%";
       progressBarRef.current.style.display = "none";
     }
-    setShowTranslated(false);
   }, [article?.id]);
-
-  // 翻訳結果が届いたら本文を翻訳表示に切り替える
-  useEffect(() => {
-    if (aiResult?.mode === "translation") setShowTranslated(true);
-  }, [aiResult]);
 
   // 本文内スタンドアロンリンクに OGP プレビューカードを注入
   useContentLinkPreviews(contentRef, processedContent);
@@ -727,7 +717,7 @@ export default function ArticleView({
     return () => {
       cancelled = true;
     };
-  }, [processedContent, showTranslated]);
+  }, [processedContent]);
 
   if (!article) {
     return (
@@ -881,37 +871,27 @@ export default function ArticleView({
               </div>
             )}
 
-            {/* AI ボタン */}
+            {/* AI 要約ボタン */}
             {hasContent && (
               <div className="flex items-center gap-1 mr-1">
-                {(["summary", "translation"] as AiMode[]).map((mode) => {
-                  const isActive = aiResult?.mode === mode;
-                  return (
-                    <button
-                      key={mode}
-                      onClick={() => {
-                        if (isActive) {
-                          resetAi();
-                          if (mode === "translation") setShowTranslated(false);
-                          return;
-                        }
-                        // サーバー側でコンテンツを取得して AI 処理
-                        if (article.link) {
-                          doRunAi(mode, article.link, article.id);
-                        }
-                      }}
-                      disabled={!!aiLoading || fetching}
-                      title={mode === "summary" ? "AI 要約" : "日本語翻訳"}
-                      className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
-                        isActive
-                          ? "border-ink bg-ink text-ink-text"
-                          : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
-                      }`}
-                    >
-                      {aiLoading === mode ? "…" : mode === "summary" ? "要約" : "日本語"}
-                    </button>
-                  );
-                })}
+                <button
+                  onClick={() => {
+                    if (aiResult?.mode === "summary") {
+                      resetAi();
+                      return;
+                    }
+                    if (article.link) doRunAi("summary", article.link, article.id);
+                  }}
+                  disabled={!!aiLoading || fetching}
+                  title="AI 要約"
+                  className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
+                    aiResult?.mode === "summary"
+                      ? "border-ink bg-ink text-ink-text"
+                      : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
+                  }`}
+                >
+                  {aiLoading === "summary" ? "…" : "要約"}
+                </button>
               </div>
             )}
 
@@ -1074,7 +1054,7 @@ export default function ArticleView({
           </div>
         )}
 
-        {/* AI 要約パネル（翻訳は本文に統合するため非表示） */}
+        {/* AI 要約パネル */}
         {aiResult?.mode === "summary" && (
           <div className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up">
             <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint mb-2">AI 要約</p>
@@ -1096,40 +1076,8 @@ export default function ArticleView({
           />
         )}
 
-        {/* 翻訳/元文切り替えバー */}
-        {aiResult?.mode === "translation" && (
-          <div className="flex items-center gap-2 mb-4">
-            <button
-              onClick={() => setShowTranslated(true)}
-              className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 ${
-                showTranslated
-                  ? "border-ink bg-ink text-ink-text"
-                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
-              }`}
-            >
-              翻訳
-            </button>
-            <button
-              onClick={() => setShowTranslated(false)}
-              className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 ${
-                !showTranslated
-                  ? "border-ink bg-ink text-ink-text"
-                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
-              }`}
-            >
-              原文
-            </button>
-          </div>
-        )}
-
-        {/* 本文（翻訳表示中は翻訳テキストで置き換え） */}
-        {showTranslated && aiResult?.mode === "translation" ? (
-          <div className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}>
-            {aiResult.text
-              .split("\n")
-              .map((line, i) => (line.trim() ? <p key={i}>{line}</p> : null))}
-          </div>
-        ) : processedContent ? (
+        {/* 本文 */}
+        {processedContent ? (
           <div
             ref={contentRef}
             className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}

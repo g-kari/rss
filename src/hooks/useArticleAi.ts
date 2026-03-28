@@ -53,7 +53,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
     setAiLoading(mode);
     setAiError("");
     try {
-      const endpoint = mode === "summary" ? "/api/ai/summarize" : "/api/ai/translate";
+      const endpoint = "/api/ai/summarize";
       const res = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
