@@ -2,6 +2,10 @@
 
 ## 2026-03-29
 
+### リファクタリング
+
+- デッドコードを削除 — sticky AI モード廃止後に残留していた `STORAGE_KEYS.AI_MODE` (`"rss-ai-mode"`) と、実際には `CloudflareEnv` で管理されており参照されていなかった `types.ts` の `Env` インターフェースを除去
+
 ### バグ修正
 
 - **履歴ビューで「全て既読」が機能しない問題を修正** — `markAllRead` が `SPECIAL_FEED_IDS.HISTORY` を処理するケースがなく、履歴ビューで `m` キーや既読ボタンを押しても何も起きなかった。`useReadState` に `historyIds` を渡し、HISTORY ケースを明示的に処理するよう修正

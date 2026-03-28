@@ -182,14 +182,3 @@ export interface PushSubscriptionRecord {
 export interface PushConfig {
   subscriptions: PushSubscriptionRecord[];
 }
-
-export interface Env {
-  RSS_DATA: R2Bucket;
-  AI: Ai;
-  AUTH_BASE_URL: string;
-  APP_BASE_URL: string;
-  CLIENT_ID: string;
-  CLIENT_SECRET: string;
-  /** カンマ区切りの許可 sub リスト。空文字または未設定なら制限なし */
-  BETA_ALLOWED_SUBS?: string;
-}

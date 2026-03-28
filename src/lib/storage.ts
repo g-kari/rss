@@ -23,7 +23,6 @@ export const STORAGE_KEYS = {
   LAYOUT: "rss-layout",
   THEME: "rss-theme",
   FONT_SIZE: "rss-font-size",
-  AI_MODE: "rss-ai-mode",
   CONTENT_CACHE_PREFIX: "rss-content:",
   AI_CACHE_PREFIX: "rss-ai:",
   UNREAD_ONLY: "rss-unread-only",
