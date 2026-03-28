@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (229)
+
+### リファクタリング
+
+- **\`useArticleContent\` の OGP フェッチで localStorage キャッシュを先読み** — 記事一覧で \`useOgpCache\` がすでに取得済みの OGP 画像を、記事詳細ビューでも再フェッチしていた問題を解消。\`/api/ogp\` への不要なリクエストを削減
+
 ## 2026-03-28 (228)
 
 ### リファクタリング
