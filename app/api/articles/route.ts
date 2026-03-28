@@ -8,7 +8,7 @@ import {
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
-import { applyKeywordFilter, matchesKeywordFilter } from "@/lib/keyword-filter";
+import { applyKeywordFilter, matchesKeywordFilter, normalizeFilter } from "@/lib/keyword-filter";
 import { compareByDateDesc } from "@/lib/article-utils";
 import type { Article, KeywordFilter } from "@/types";
 
@@ -46,15 +46,11 @@ export async function GET(request: NextRequest) {
       r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
     ]);
 
-    // フィードごとのキーワードフィルターを適用
+    // フィードごとのキーワードフィルターを適用（キーワードは小文字化済み）
     const filterMap = new Map<string, KeywordFilter>();
     for (const sub of subs) {
-      if (sub.filter) {
-        filterMap.set(sub.feedHash, {
-          ...sub.filter,
-          include: sub.filter.include.map((kw) => kw.toLowerCase()),
-          exclude: sub.filter.exclude.map((kw) => kw.toLowerCase()),
-        });
+      if (sub.filter && (sub.filter.include.length > 0 || sub.filter.exclude.length > 0)) {
+        filterMap.set(sub.feedHash, normalizeFilter(sub.filter));
       }
     }
     const filteredFeedArticles = feedArticles.filter((a) => {

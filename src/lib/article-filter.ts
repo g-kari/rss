@@ -1,5 +1,5 @@
 import type { Article, DateRange, Feed } from "../types";
-import { matchesKeywordFilter } from "./keyword-filter";
+import { matchesKeywordFilter, normalizeFilter } from "./keyword-filter";
 import { articleMatchesQuery, getDateRangeStart } from "./article-utils";
 import { SPECIAL_FEED_IDS } from "./storage";
 
@@ -28,11 +28,7 @@ function buildFeedFilterMap(feeds: Feed[]): Map<string, NonNullable<Feed["filter
   const map = new Map<string, NonNullable<Feed["filter"]>>();
   for (const f of feeds) {
     if (f.filter && (f.filter.include.length > 0 || f.filter.exclude.length > 0)) {
-      map.set(f.id, {
-        ...f.filter,
-        include: f.filter.include.map((kw) => kw.toLowerCase()),
-        exclude: f.filter.exclude.map((kw) => kw.toLowerCase()),
-      });
+      map.set(f.id, normalizeFilter(f.filter));
     }
   }
   return map;

@@ -1,5 +1,14 @@
 import type { Article, KeywordFilter } from "../types";
 
+/** KeywordFilter のキーワードを小文字化して正規化する */
+export function normalizeFilter(filter: KeywordFilter): KeywordFilter {
+  return {
+    ...filter,
+    include: filter.include.map((kw) => kw.toLowerCase()),
+    exclude: filter.exclude.map((kw) => kw.toLowerCase()),
+  };
+}
+
 export function matchesKeywordFilter(article: Article, filter: KeywordFilter): boolean {
   const { include, exclude, matchCategories } = filter;
 
@@ -20,10 +29,5 @@ export function matchesKeywordFilter(article: Article, filter: KeywordFilter): b
 export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter): Article[] {
   if (!filter) return articles;
   if (filter.include.length === 0 && filter.exclude.length === 0) return articles;
-  const normalized = {
-    ...filter,
-    include: filter.include.map((kw) => kw.toLowerCase()),
-    exclude: filter.exclude.map((kw) => kw.toLowerCase()),
-  };
-  return articles.filter((a) => matchesKeywordFilter(a, normalized));
+  return articles.filter((a) => matchesKeywordFilter(a, normalizeFilter(filter)));
 }

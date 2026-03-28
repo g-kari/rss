@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (195)
+
+### リファクタリング
+
+- **\`normalizeFilter\` を \`keyword-filter.ts\` に抽出** — \`applyKeywordFilter\`・\`buildFeedFilterMap\`・\`articles/route.ts\` の3箇所でキーワードを小文字化するコードが重複していた問題を解消。\`normalizeFilter\` ヘルパーに共通化し、\`articles/route.ts\` の空フィルタースキップ漏れも修正
+
 ## 2026-03-28 (194)
 
 ### リファクタリング
