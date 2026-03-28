@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (222)
+
+### リファクタリング
+
+- **\`recommendation.ts\` の R2 読み込みを並列化・シャッフル修正** — \`extractUserTopics\` で直列実行していた \`readFeedMeta\` / \`readLatestArticles\` を \`Promise.all\` で並列化、\`generateLinkDiscoveryFeeds\` でも \`Promise.allSettled\` で並列化。また \`sort(() => Math.random() - 0.5)\` の偏りがある疑似シャッフルを適切な Fisher-Yates アルゴリズムに置換
+
 ## 2026-03-28 (221)
 
 ### リファクタリング
