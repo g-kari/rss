@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-28 (210)
+
+### セキュリティ
+
+- **`applyRefreshedTokensToResponse` のクッキー設定を安全化** — 手動文字列連結で `Set-Cookie` ヘッダーを構築していたコードを `NextResponse.cookies.set()` を用いた安全な実装に変更。クッキー値のシリアライズを Next.js に委ねることでインジェクションリスクを排除し、`applyRefreshedTokens`（`NextResponse` 用）と一貫したパターンに統一
+
 ## 2026-03-28 (209)
 
 ### リファクタリング

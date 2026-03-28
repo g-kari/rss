@@ -216,27 +216,34 @@ export async function withBinarySession(
 /**
  * バイナリレスポンス（Response）にもリフレッシュ済みトークン Cookie をセットする。
  * image-proxy など NextResponse を使わないエンドポイント用。
+ * NextResponse.cookies.set() を使うことでクッキー値の安全なシリアライズを保証する。
  */
 export function applyRefreshedTokensToResponse(response: Response, session: AuthSession): Response {
   if (!session.refreshedTokens) return response;
-  const cookiePath = `; Path=/; HttpOnly; Secure; SameSite=Lax`;
-  const headers = new Headers(response.headers);
-  headers.append(
-    "Set-Cookie",
-    `access_token=${session.refreshedTokens.access_token}; Max-Age=900${cookiePath}`,
-  );
-  headers.append(
-    "Set-Cookie",
-    `refresh_token=${session.refreshedTokens.refresh_token}; Max-Age=${30 * 24 * 60 * 60}${cookiePath}`,
-  );
+  // NextResponse（Response のサブクラス）に変換して cookies.set() で安全にセット
+  const nextResponse = new NextResponse(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+  nextResponse.cookies.set("access_token", session.refreshedTokens.access_token, {
+    ...COOKIE_OPTS,
+    maxAge: 900,
+  });
+  nextResponse.cookies.set("refresh_token", session.refreshedTokens.refresh_token, {
+    ...COOKIE_OPTS,
+    maxAge: 30 * 24 * 60 * 60,
+  });
   // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
   const exp = getJwtExp(session.refreshedTokens.access_token);
   if (exp !== null) {
-    headers.append("Set-Cookie", `token_exp=${exp}; Max-Age=900; Path=/; Secure; SameSite=Lax`);
+    nextResponse.cookies.set("token_exp", String(exp), {
+      maxAge: 900,
+      httpOnly: false,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+    });
   }
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+  return nextResponse;
 }
