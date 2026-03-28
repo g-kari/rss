@@ -59,12 +59,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             { status: 400 },
           );
         }
+        const MAX_KEYWORD_LENGTH = 100;
         const sanitize = (arr: unknown[]): string[] =>
           [
             ...new Set(
               arr
                 .filter((x): x is string => typeof x === "string")
-                .map((s) => s.trim())
+                .map((s) => s.trim().slice(0, MAX_KEYWORD_LENGTH))
                 .filter(Boolean),
             ),
           ].slice(0, 50);
