@@ -23,7 +23,6 @@ export interface ArticleFilterOptions {
   nsfwFeedIds: Set<string>;
 }
 
-/** フィードごとのキーワードフィルターマップを構築する（キーワードは小文字化済み） */
 function buildFeedFilterMap(feeds: Feed[]): Map<string, NonNullable<Feed["filter"]>> {
   const map = new Map<string, NonNullable<Feed["filter"]>>();
   for (const f of feeds) {
@@ -34,7 +33,6 @@ function buildFeedFilterMap(feeds: Feed[]): Map<string, NonNullable<Feed["filter
   return map;
 }
 
-/** 記事リストをフィルタリング・ソートして返す純粋関数 */
 export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
   const {
     feedId,
