@@ -19,6 +19,17 @@ function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
   return settled.flatMap((r) => (r.status === "fulfilled" && r.value ? [r.value] : []));
 }
 
+/** Fisher-Yates シャッフルで配列から最大 n 件をランダムサンプリングする */
+function sampleN<T>(arr: T[], n: number): T[] {
+  const result = arr.slice();
+  const end = Math.min(n, result.length);
+  for (let i = result.length - 1; i > result.length - 1 - end; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result.slice(result.length - end);
+}
+
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 時間
 const MAX_RECOMMENDATIONS = 20;
 
@@ -69,11 +80,18 @@ export async function extractUserTopics(
   const feedTitles: string[] = [];
   const articleTitles: string[] = [];
 
-  for (const feedHash of topFeeds) {
-    const meta = await readFeedMeta(bucket, feedHash);
+  // 上位フィードのメタ・記事を並列取得
+  const topFeedData = await Promise.all(
+    topFeeds.map(async (feedHash) => {
+      const [meta, articles] = await Promise.all([
+        readFeedMeta(bucket, feedHash),
+        readLatestArticles(bucket, feedHash),
+      ]);
+      return { meta, articles };
+    }),
+  );
+  for (const { meta, articles } of topFeedData) {
     if (meta?.title) feedTitles.push(meta.title);
-
-    const articles = await readLatestArticles(bucket, feedHash);
     for (const a of articles.slice(0, 5)) {
       articleTitles.push(a.title);
     }
@@ -82,10 +100,13 @@ export async function extractUserTopics(
   // 多様性確保: エンゲージメント上位以外の購読フィードからもランダムにサンプリング
   const topFeedSet = new Set(topFeeds);
   const otherSubs = subscriptions.filter((s) => !topFeedSet.has(s.feedHash));
-  // Fisher–Yates シャッフルの簡易版でランダムに最大5件追加
-  const sampledSubs = [...otherSubs].sort(() => Math.random() - 0.5).slice(0, 5);
-  for (const sub of sampledSubs) {
-    const meta = await readFeedMeta(bucket, sub.feedHash);
+  // Fisher-Yates シャッフルでランダムに最大5件追加
+  const sampledSubs = sampleN(otherSubs, 5);
+  // サンプリングフィードのメタを並列取得
+  const sampledMetas = await Promise.all(
+    sampledSubs.map((sub) => readFeedMeta(bucket, sub.feedHash)),
+  );
+  for (const meta of sampledMetas) {
     if (meta?.title) feedTitles.push(meta.title);
   }
 
@@ -292,19 +313,21 @@ export async function generateLinkDiscoveryFeeds(
     byFeed.set(entry.feedHash, ids);
   }
 
-  // 記事 URL を解決
+  // 記事 URL を解決（フィードごとに並列取得）
   const articleLinks: Array<{ link: string; title: string }> = [];
-  for (const [feedHash, articleIds] of byFeed) {
-    try {
+  const feedArticleResults = await Promise.allSettled(
+    [...byFeed.entries()].map(async ([feedHash, articleIds]) => {
       const articles = await readLatestArticles(bucket, feedHash);
-      const idSet = new Set(articleIds);
-      for (const a of articles) {
-        if (idSet.has(a.id) && a.link) {
-          articleLinks.push({ link: a.link, title: a.title });
-        }
+      return { articles, idSet: new Set(articleIds) };
+    }),
+  );
+  for (const result of feedArticleResults) {
+    if (result.status !== "fulfilled") continue;
+    const { articles, idSet } = result.value;
+    for (const a of articles) {
+      if (idSet.has(a.id) && a.link) {
+        articleLinks.push({ link: a.link, title: a.title });
       }
-    } catch {
-      // フィード読み込み失敗はスキップ
     }
   }
 
