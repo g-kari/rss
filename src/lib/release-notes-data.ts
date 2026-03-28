@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (239)
+
+### セキュリティ
+
+- **非クォート \`style\` 属性の未サニタイズを修正** — \`style=background:url(tracker)\` のようなクォートなし style 属性が \`sanitizeHtml\` をすり抜け、CSS ピクセルトラッキングに悪用されうる問題を修正。クォートなし style 値にも \`sanitizeStyleAttr\`（\`url()\` 除去・\`position:fixed/sticky\` 除去）を適用するようにした
+- **\`authError\` の HTML エスケープを追加** — 認証コールバック画面のエラーメッセージに \`escapeHtml\` を適用し、将来的なユーザー制御値が混入した場合の XSS を防止
+
 ## 2026-03-29 (238)
 
 ### 新機能

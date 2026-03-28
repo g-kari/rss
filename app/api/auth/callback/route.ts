@@ -3,16 +3,18 @@ import { cookies } from "next/headers";
 import { verifyJwt, exchangeCode } from "@/lib/auth";
 import { r2Put } from "@/lib/r2";
 import { isBetaAllowed, COOKIE_OPTS, getJwtExp } from "@/lib/server-auth";
+import { escapeHtml } from "@/lib/html";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
 
 /**
  * 認証エラーレスポンスを生成し、auth_state クッキーを削除する。
  * 失敗後も同じ state での再試行を防ぐため、全エラーパスで削除する。
+ * message は escapeHtml でサニタイズし、XSS を防ぐ。
  */
 function authError(message: string, status: number): Response {
   const cookieClear = `auth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
-  return new Response(`<p>${message}</p>`, {
+  return new Response(`<p>${escapeHtml(message)}</p>`, {
     status,
     headers: {
       "Content-Type": "text/html",
