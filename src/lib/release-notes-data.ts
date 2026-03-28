@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-28 (224)
+
+### リファクタリング
+
+- **\`useFeeds\` の \`apiFetch\` 手動チェックを \`apiFetchJson\` に統一** — \`feedActionWithRefresh\` と \`loadMoreFeedArticles\` で繰り返していた \`apiFetch → if (!res.ok) return → .json() キャスト\` パターンを \`apiFetchJson<T>\` に置き換え。非 ok レスポンス時にサイレント失敗していた箇所もエラートーストが表示されるよう改善
+
 ## 2026-03-28 (223)
 
 ### リファクタリング
