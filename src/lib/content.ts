@@ -616,6 +616,40 @@ export function stripPageChrome(html: string): string {
 }
 
 /**
+ * JavaScript の loadImage('elementId', 'jpgUrl', 'gifUrl') パターンで動的に設定される
+ * 画像 URL を静的に解決する。
+ * digitallover.moe 等が WordPress プラグインで埋め込む非標準遅延ロード画像に対応。
+ * preClean で <script> が除去される前に元 HTML から URL を抽出して img[src] に差し込む。
+ */
+export function resolveScriptLoadedImages(html: string): string {
+  const idToUrl = new Map<string, string>();
+  for (const scriptMatch of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
+    for (const callMatch of scriptMatch[1].matchAll(
+      /loadImage\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/gi,
+    )) {
+      const [, elementId, jpgUrl] = callMatch;
+      if (/^https?:\/\//i.test(jpgUrl)) idToUrl.set(elementId, jpgUrl);
+    }
+  }
+  if (idToUrl.size === 0) return html;
+
+  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
+    const idMatch = attrs.match(/\bid\s*=\s*["']([^"']+)["']/i);
+    if (!idMatch) return _match;
+    const url = idToUrl.get(idMatch[1]);
+    if (!url) return _match;
+    // 既に有効な src があれば変更しない
+    const srcMatch = attrs.match(/\bsrc\s*=\s*["']([^"']*)["']/i);
+    if (srcMatch && /^https?:\/\//i.test(srcMatch[1])) return _match;
+    // src を上書き or 先頭に追加
+    const newAttrs = /\bsrc\s*=/i.test(attrs)
+      ? attrs.replace(/\bsrc\s*=\s*["'][^"']*["']/i, `src="${url}"`)
+      : ` src="${url}"${attrs}`;
+    return `<img${newAttrs}>`;
+  });
+}
+
+/**
  * HTML からメインコンテンツを抽出する。
  * Readability.js 優先、失敗時は正規表現ベースにフォールバックする。
  * - readability: @mozilla/readability + linkedom で高精度抽出
@@ -625,31 +659,35 @@ export function extractMainContent(
   html: string,
   pageUrl: string,
 ): { content: string; source: "readability" | "regex" } {
+  // JS で動的に src を設定する loadImage('id', url, ...) パターンを静的解決する。
+  // preClean で <script> が除去される前に行う必要がある。
+  const preprocessed = resolveScriptLoadedImages(html);
+
   // thumb-list / capt-thumb-list ギャラリーを別途取得する。
   // Readability はリスト形式のギャラリーを本文外と判断して除外することがあるため、
   // 元 HTML から独立して抽出し本文末尾に付与する。
   // NOTE: postProcess 後に追加する — fixImageDimensions が buildImageSlider の
   //       width:100%;height:100% インラインスタイルを除去してしまい画像が見切れるため。
-  const galleryImgs = extractThumbListImgs(html, pageUrl);
+  const galleryImgs = extractThumbListImgs(preprocessed, pageUrl);
   const buildGallery = () =>
     galleryImgs.length > 0 ? rewriteImageUrls(buildImageSlider(galleryImgs)) : "";
 
-  const rc = extractWithReadability(html, pageUrl);
+  const rc = extractWithReadability(preprocessed, pageUrl);
   if (rc && isContentSufficient(rc)) {
     // Readability が元ページの画像を大量に削除した場合は regex フォールバックを優先する。
     // 例: PR TIMES のように画像主体のプレスリリースでは Readability が本文画像をほぼ除去する。
     // 条件: 元 HTML に 8 枚以上の img があり、Readability の結果が 20% 未満の場合に regex を試す。
-    const srcImgCount = (html.match(/<img\b/gi) ?? []).length;
+    const srcImgCount = (preprocessed.match(/<img\b/gi) ?? []).length;
     const rcImgCount = (rc.match(/<img\b/gi) ?? []).length;
     if (srcImgCount >= 8 && rcImgCount * 5 < srcImgCount) {
-      const regexContent = extractWithRegex(html, pageUrl);
+      const regexContent = extractWithRegex(preprocessed, pageUrl);
       if ((regexContent.match(/<img\b/gi) ?? []).length >= rcImgCount * 2) {
         return { content: regexContent + buildGallery(), source: "regex" };
       }
     }
     return { content: postProcess(rc, pageUrl) + buildGallery(), source: "readability" };
   }
-  const regexContent = extractWithRegex(html, pageUrl);
+  const regexContent = extractWithRegex(preprocessed, pageUrl);
   return { content: regexContent + buildGallery(), source: "regex" };
 }
 
