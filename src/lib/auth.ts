@@ -14,7 +14,7 @@ let jwksCache: JwkWithKid[] | null = null;
 let jwksCacheExpiry = 0;
 const JWKS_CACHE_TTL_MS = 15 * 60 * 1000; // 15分
 
-function base64urlToBytes(str: string): Uint8Array {
+export function base64urlToBytes(str: string): Uint8Array<ArrayBuffer> {
   const padded = str
     .replace(/-/g, "+")
     .replace(/_/g, "/")
