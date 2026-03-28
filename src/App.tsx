@@ -374,6 +374,7 @@ export default function App() {
     selectedArticle,
     readIds,
     readingListIds,
+    likeIds,
     setSelectedArticle,
     onSelectFeed: (id) => {
       setSelectedFeedId(id);
@@ -384,6 +385,7 @@ export default function App() {
     toggleBookmark,
     toggleRead,
     toggleReadingList,
+    toggleLike,
     showToast,
     fontSize,
     onChangeFontSize,

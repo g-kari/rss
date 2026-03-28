@@ -13,6 +13,7 @@ interface KeyboardNavOptions {
   selectedArticle: Article | null;
   readIds: Set<string>;
   readingListIds: Set<string>;
+  likeIds: Set<string>;
   setSelectedArticle: (article: Article) => void;
   onSelectFeed: (id: string | null) => void;
   markRead: (id: string) => void;
@@ -20,6 +21,7 @@ interface KeyboardNavOptions {
   toggleBookmark: (id: string) => void;
   toggleRead: (id: string) => void;
   toggleReadingList: (id: string) => void;
+  toggleLike: (id: string) => void;
   showToast: (msg: string) => void;
   fontSize: FontSize;
   onChangeFontSize: (size: FontSize) => void;
@@ -53,8 +55,9 @@ const LAYOUT_LABELS: Record<Layout, string> = {
  *
  * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, o 元記事, v 全文取得, b ブックマーク,
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー,
- *               f フォントサイズ, l レイアウト, u 未読フィルター, B ブックマークフィルター,
- *               s ソート, d 日付フィルター, / 検索, ] 次フィード, [ 前フィード
+ *               f フォントサイズ, l レイアウト, L いいね切替, u 未読フィルター,
+ *               B ブックマークフィルター, s ソート, d 日付フィルター,
+ *               / 検索, ] 次フィード, [ 前フィード
  *               (v は ArticleView で処理)
  */
 export function useKeyboardNav(options: KeyboardNavOptions): void {
@@ -73,6 +76,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         selectedArticle,
         readIds,
         readingListIds,
+        likeIds,
         setSelectedArticle,
         onSelectFeed,
         markRead,
@@ -80,6 +84,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         toggleBookmark,
         toggleRead,
         toggleReadingList,
+        toggleLike,
         showToast,
         fontSize,
         onChangeFontSize,
@@ -179,6 +184,12 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           showToast(`レイアウト: ${LAYOUT_LABELS[next]}`);
           break;
         }
+        case "L":
+          if (selectedArticle) {
+            toggleLike(selectedArticle.id);
+            showToast(likeIds.has(selectedArticle.id) ? "いいね解除" : "いいね");
+          }
+          break;
         case "u":
           e.preventDefault();
           toggleUnreadOnly();
