@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-30 (50)
+
+### バグ修正
+
+- **画像フォールバック判定の `rcImgCount === 0` エッジケースを修正** — `extractMainContent` で Readability が画像を全削除した場合（`rcImgCount = 0`）、`regexImgCount >= rcImgCount * 2` が `0 >= 0` で常に true となり、regex 結果にも画像がなくても誤って regex フォールバックを採用していた。`Math.max(1, rcImgCount * 2)` に変更し、regex 側に最低 1 枚以上の画像があることを条件にした (`src/lib/content.ts`)
+
 ## 2026-03-30 (49)
 
 ### セキュリティ
