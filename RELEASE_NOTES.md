@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-29 (39)
+
+### リファクタリング
+
+- **`urlBase64ToUint8Array` を `base64urlToBytes` に統合** — `usePushNotifications.ts` にあった重複実装を削除し、`auth.ts` の `base64urlToBytes` を import して再利用するよう変更
+
 ## 2026-03-29 (38)
 
 ### セキュリティ
