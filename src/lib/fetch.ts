@@ -125,6 +125,7 @@ export function fetchFollowSafeRedirects(
   return withTimeout(timeoutMs, async (signal) => {
     let currentUrl = url;
     let redirectCount = 0;
+    const visitedUrls = new Set<string>([url]);
 
     while (redirectCount < MAX_REDIRECTS) {
       const res = await fetch(currentUrl, {
@@ -144,6 +145,10 @@ export function fetchFollowSafeRedirects(
         if (!isValidFeedUrl(nextUrl)) {
           throw new Error(`Redirect to blocked URL: ${nextUrl}`);
         }
+        if (visitedUrls.has(nextUrl)) {
+          throw new Error(`Redirect loop detected: ${nextUrl}`);
+        }
+        visitedUrls.add(nextUrl);
         currentUrl = nextUrl;
         redirectCount++;
         continue;
