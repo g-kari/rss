@@ -17,7 +17,6 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  /** 推薦データを取得して state にセットする（ローディング状態管理なし） */
   const loadRecommendations = useCallback(async () => {
     const res = await apiFetch("/api/recommendations");
     if (!res.ok) return;

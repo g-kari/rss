@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (19)
+
+### リファクタリング
+
+- **OPML インポートの R2 呼び出しを並列化** — フィードごとに逐次実行していた \`getOrCreateFeedMeta\` を \`Promise.all\` で並列実行に変更。大量フィードのインポート時に O(N) 逐次 RTT が ~2 RTT に短縮される
+
 ## 2026-03-29 (18)
 
 ### リファクタリング
