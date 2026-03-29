@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Article, Feed, FontSize, KeywordFilter } from "../types";
 import type { Theme } from "../hooks/useUIState";
 import FeedFilterModal from "./FeedFilterModal";
@@ -808,6 +808,20 @@ export default function ArticleView({
       : processContent(rawContent, theme)
     : null;
 
+  // 記事本文の全画像 URL を抽出（重複除去）— 2枚以上あれば末尾ギャラリーに表示
+  const galleryImages = useMemo(() => {
+    if (!processedContent) return [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const m of processedContent.matchAll(/<img\b[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/gi)) {
+      const src = m[1];
+      if (!src || seen.has(src) || src.startsWith("data:") || src.endsWith(".svg")) continue;
+      seen.add(src);
+      result.push(src);
+    }
+    return result;
+  }, [processedContent]);
+
   // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する
   const injectSliderControls = useCallback(() => {
     const el = contentRef.current;
@@ -1272,6 +1286,31 @@ export default function ArticleView({
             )}
           </div>
         ) : null}
+
+        {/* 画像一覧（2枚以上あれば記事末尾に表示） */}
+        {galleryImages.length >= 2 && (
+          <section className="mt-8 pt-6 border-t border-border-subtle">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-text-muted mb-3">画像一覧</p>
+            <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+              {galleryImages.map((src, i) => (
+                <a
+                  key={i}
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0"
+                >
+                  <img
+                    src={src}
+                    alt=""
+                    className="h-24 w-auto max-w-[180px] object-cover rounded bg-surface-subtle"
+                    loading="lazy"
+                  />
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 全文取得ボタン */}
         {canFetch && (
