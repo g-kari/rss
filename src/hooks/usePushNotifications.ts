@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { UserProfile } from "../types";
 import { apiFetch } from "../lib/api-fetch";
+import { base64urlToBytes } from "../lib/auth";
 
 export interface PushNotificationState {
   /** ブラウザが Web Push をサポートしているか */
@@ -74,7 +75,7 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
         const { publicKey } = (await keyRes.json()) as { publicKey: string };
 
         // base64url → Uint8Array に変換
-        const appServerKey = urlBase64ToUint8Array(publicKey);
+        const appServerKey = base64urlToBytes(publicKey);
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: appServerKey,
@@ -116,14 +117,4 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
   }, []);
 
   return { supported, subscribed, loading, error, toggle, sendTest };
-}
-
-/** base64url 文字列を Uint8Array に変換する（PushManager.subscribe の applicationServerKey 用） */
-function urlBase64ToUint8Array(base64url: string): Uint8Array<ArrayBuffer> {
-  const padding = "=".repeat((4 - (base64url.length % 4)) % 4);
-  const base64 = (base64url + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(base64);
-  const result = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) result[i] = raw.charCodeAt(i);
-  return result;
 }
