@@ -29,7 +29,6 @@ export function useFeedOperations({
   const importMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // アンマウント時にタイマーをクリア
   useEffect(
     () => () => {
       if (importMessageTimerRef.current) clearTimeout(importMessageTimerRef.current);

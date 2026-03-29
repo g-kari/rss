@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { EngagementAction, UserProfile } from "../types";
 import { loadJson, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
@@ -31,6 +31,13 @@ async function flushBuffer(): Promise<void> {
 
 export function useEngagement(user: UserProfile | null | undefined) {
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+    },
+    [],
+  );
 
   const recordEngagement = useCallback(
     (articleId: string, feedHash: string, action: EngagementAction) => {
