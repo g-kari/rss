@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
+import { bestSrcFromSrcset } from "../lib/article-utils";
 
 interface ImageDownloadState {
   downloadingImages: boolean;
@@ -59,7 +60,12 @@ export function useImageDownload(
 
     if (contentRef.current) {
       for (const img of contentRef.current.querySelectorAll("img")) {
-        const src = img.getAttribute("src") ?? "";
+        // currentSrc: ブラウザが srcset/picture から選んだ実際の表示 URL（未ロードは空文字）
+        // data: プレースホルダーの場合は srcset 属性を解析してフォールバック
+        let src = img.currentSrc || img.getAttribute("src") || "";
+        if (!src || src.startsWith("data:")) {
+          src = bestSrcFromSrcset(img.getAttribute("srcset") ?? "");
+        }
         if (!src || seen.has(src)) continue;
         if (src.startsWith("/api/image-proxy?") || src.startsWith("http")) {
           seen.add(src);

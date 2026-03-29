@@ -108,6 +108,17 @@ export const LAYOUT_LABELS: Record<Layout, string> = {
 
 export const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month"];
 
+/**
+ * srcset 属性文字列の最後のエントリ（最高解像度）の URL を返す。
+ * 例: "/api/image-proxy?url=...jpg 1x, /api/image-proxy?url=...jpg@2x 2x" → 後者の URL
+ * srcset が空のときは空文字を返す。
+ */
+export function bestSrcFromSrcset(srcset: string): string {
+  if (!srcset) return "";
+  const last = srcset.split(",").at(-1)?.trim() ?? "";
+  return last.split(/\s+/)[0] ?? "";
+}
+
 export const DATE_RANGE_LABELS: Record<DateRange, string> = {
   all: "全期間",
   today: "今日",
