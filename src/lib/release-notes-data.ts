@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (51)
+
+### 新機能
+
+- **\`normalizeUrlForCache\` のトラッキングパラメータを拡充** — Yahoo! Japan Ads (\`yclid\`)、Twitter/X Ads (\`twclid\`)、Pinterest (\`epik\`)、LinkedIn (\`li_fat_id\`)、TikTok Ads (\`ttclid\`)、Drip (\`__s\`)、ConvertKit (\`ck_subscriber_id\`)、Klaviyo (\`_kx\`) を追加。これらのパラメータが URL に含まれていても同一コンテンツとして正しくキャッシュヒットするようになった (\`src/lib/url.ts\`)
+
 ## 2026-03-30 (50)
 
 ### バグ修正

@@ -186,6 +186,22 @@ const TRACKING_PARAMS = new Set([
   // その他 Analytics
   "_ga",
   "_gl",
+  // Yahoo! Japan Ads (yclid = Yahoo Click ID)
+  "yclid",
+  // Twitter / X Ads
+  "twclid",
+  // Pinterest
+  "epik",
+  // LinkedIn
+  "li_fat_id",
+  // TikTok Ads
+  "ttclid",
+  // Drip email
+  "__s",
+  // ConvertKit
+  "ck_subscriber_id",
+  // Klaviyo
+  "_kx",
 ]);
 
 export function normalizeUrlForCache(url: string): string {
