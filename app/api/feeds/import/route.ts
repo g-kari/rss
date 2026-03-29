@@ -11,7 +11,6 @@ import {
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
 import { fetchArticles } from "@/cron/fetch";
-import type { UserSubscription } from "@/types";
 const MAX_OPML_ENTRIES = 5000;
 // 実際の OPML ファイルは 2〜3 レベルが一般的。50 は不必要に大きく
 // 悪意ある入力で過剰な再帰処理を引き起こす可能性があるため 10 に制限する。
@@ -123,28 +122,37 @@ export async function POST(request: Request) {
     }
 
     const existingHashes = new Set(subs.map((s) => s.feedHash));
-    let addedCount = 0;
 
+    // Phase 1: フィルタ済みの候補エントリを収集（URL バリデーション + 重複除外）
+    type Candidate = { entry: { url: string; title: string; siteUrl: string }; feedHash: string };
+    const candidates: Candidate[] = [];
+    const batchHashes = new Set<string>();
     for (const entry of feedEntries) {
-      if (addedCount >= remainingSlots) break;
+      if (candidates.length >= remainingSlots) break;
       if (!isValidFeedUrl(entry.url)) continue;
-
       const feedHash = await computeFeedHash(entry.url);
-      if (existingHashes.has(feedHash)) continue;
+      if (existingHashes.has(feedHash) || batchHashes.has(feedHash)) continue;
+      batchHashes.add(feedHash);
+      candidates.push({ entry, feedHash });
+    }
 
-      // 共有 meta を取得（なければ新規作成）
-      await getOrCreateFeedMeta(env.RSS_DATA, feedHash, entry.url, entry.title, entry.siteUrl);
+    // Phase 2: 共有 meta を並列取得・作成（逐次 N RTT → 並列 ~2 RTT）
+    await Promise.all(
+      candidates.map(({ entry, feedHash }) =>
+        getOrCreateFeedMeta(env.RSS_DATA, feedHash, entry.url, entry.title, entry.siteUrl),
+      ),
+    );
 
-      const newSub: UserSubscription = {
+    // Phase 3: 購読レコードを追加
+    for (const { entry, feedHash } of candidates) {
+      subs.push({
         feedHash,
         url: entry.url,
         customTitle: entry.title !== entry.url ? entry.title : undefined,
         subscribedAt: new Date().toISOString(),
-      };
-      subs.push(newSub);
-      existingHashes.add(feedHash);
-      addedCount++;
+      });
     }
+    const addedCount = candidates.length;
 
     if (addedCount > 0) {
       await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
