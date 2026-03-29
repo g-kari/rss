@@ -4,7 +4,7 @@ import type {
   RecommendationCache,
   UserSubscription,
 } from "../types";
-import { r2Get, r2Put, sha256Hex } from "./r2";
+import { r2Get, r2Put, sha256Hex, engagementKey } from "./r2";
 import { scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
 import { discoverFeedUrl } from "./feed-discovery";
 import { buildFeedUserMap, readFeedMeta, readLatestArticles } from "./shared-feed";
@@ -407,9 +407,7 @@ export async function generateRecommendations(params: {
   const { userId, bucket, ai, subscriptions, origin } = params;
 
   // エンゲージメントログを取得
-  const engagement = await r2Get<EngagementLog>(bucket, `users/${userId}/engagement.json`, {
-    entries: [],
-  });
+  const engagement = await r2Get<EngagementLog>(bucket, engagementKey(userId), { entries: [] });
 
   // 購読済み URL / feedHash の Set を構築
   const subscribedUrls = new Set(subscriptions.map((s) => s.url));
