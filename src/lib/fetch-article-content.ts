@@ -34,15 +34,14 @@ export async function buildContentCacheKey(origin: string, url: string): Promise
 }
 
 /**
- * バイト列を HTML 文字列に変換し、メインコンテンツを抽出して Cloudflare Cache に保存する。
+ * バイト列を HTML 文字列に変換し、メインコンテンツを抽出する。
+ * キャッシュ保存は行わないため、呼び出し元で saveContentToCache() を呼ぶこと。
  * route.ts と fetchArticleContent() で共有するコアロジック。
  */
-export async function extractAndCacheContent(
+export async function extractContent(
   bytes: Uint8Array,
   ct: string,
   url: string,
-  cacheKey: Request,
-  ctx: ExecutionContext,
 ): Promise<{ content: string; source: string; html: string }> {
   const charset = detectCharset(ct, bytes);
   const html = decodeBytesToString(bytes, charset);
@@ -61,7 +60,18 @@ export async function extractAndCacheContent(
     }
   }
 
-  // Cloudflare Cache API に保存（fire-and-forget）
+  return { content, source: contentSource, html };
+}
+
+/**
+ * コンテンツを Cloudflare Cache API に保存する（fire-and-forget）。
+ * ページネーション含む最終コンテンツが確定してから呼ぶこと。
+ */
+export function saveContentToCache(
+  cacheKey: Request,
+  content: string,
+  ctx: ExecutionContext,
+): void {
   const cacheRes = new Response(JSON.stringify({ content }), {
     headers: {
       "Content-Type": "application/json",
@@ -73,8 +83,6 @@ export async function extractAndCacheContent(
       .put(cacheKey, cacheRes)
       .catch((err) => console.error("[content] cache put error:", err)),
   );
-
-  return { content, source: contentSource, html };
 }
 
 /** HTML をフェッチしてバイト列と Content-Type を返す。失敗・非HTML・body なしは null。 */
@@ -90,14 +98,12 @@ async function fetchHtmlBytes(url: string): Promise<{ bytes: Uint8Array; ct: str
 
 /**
  * ページ 1 のデコード済み HTML を受け取り、次ページが存在すれば順に取得して連結する。
- * 複数ページになった場合は cacheKey のキャッシュを統合コンテンツで上書きする。
+ * キャッシュ保存は行わないため、呼び出し元で saveContentToCache() を呼ぶこと。
  */
 export async function appendPaginatedPages(
   firstPageHtml: string,
   firstPageContent: string,
   firstPageUrl: string,
-  cacheKey: Request,
-  ctx: ExecutionContext,
 ): Promise<string> {
   const allContents: string[] = [firstPageContent];
   const visited = new Set<string>([firstPageUrl]);
@@ -121,20 +127,9 @@ export async function appendPaginatedPages(
 
   if (allContents.length === 1) return firstPageContent;
 
-  const combined = allContents.join(
+  return allContents.join(
     '\n<hr style="margin:2rem 0;border:none;border-top:1px solid var(--color-border-subtle)">\n',
   );
-
-  // キャッシュを統合コンテンツで上書き
-  const cacheRes = new Response(JSON.stringify({ content: combined }), {
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": `public, max-age=${CONTENT_CACHE_TTL_SEC}`,
-    },
-  });
-  ctx.waitUntil(caches.default.put(cacheKey, cacheRes).catch(() => {}));
-
-  return combined;
 }
 
 /**
@@ -162,15 +157,13 @@ export async function fetchArticleContent(
     if (!result) return null;
     const { bytes: merged, ct } = result;
 
-    const { content: page1Content, html } = await extractAndCacheContent(
-      merged,
-      ct,
-      url,
-      cacheKey,
-      ctx,
-    );
+    const { content: page1Content, html } = await extractContent(merged, ct, url);
+    const content = await appendPaginatedPages(html, page1Content, url);
 
-    return await appendPaginatedPages(html, page1Content, url, cacheKey, ctx);
+    // 最終コンテンツが確定してからキャッシュ保存（競合を防ぐため1回のみ）
+    saveContentToCache(cacheKey, content, ctx);
+
+    return content;
   } catch {
     return null;
   }

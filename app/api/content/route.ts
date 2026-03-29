@@ -5,7 +5,8 @@ import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fet
 import {
   appendPaginatedPages,
   buildContentCacheKey,
-  extractAndCacheContent,
+  extractContent,
+  saveContentToCache,
   FETCH_TIMEOUT_MS,
   MAX_CONTENT_BYTES,
 } from "@/lib/fetch-article-content";
@@ -68,9 +69,12 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
       content: page1Content,
       source: contentSource,
       html,
-    } = await extractAndCacheContent(merged, ct, url, cacheKey, ctx);
+    } = await extractContent(merged, ct, url);
 
-    const content = await appendPaginatedPages(html, page1Content, url, cacheKey, ctx);
+    const content = await appendPaginatedPages(html, page1Content, url);
+
+    // 最終コンテンツが確定してからキャッシュ保存（競合を防ぐため1回のみ）
+    saveContentToCache(cacheKey, content, ctx);
 
     return NextResponse.json(
       { content },
