@@ -26,10 +26,9 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   const cached = await cfCache.match(cacheKey);
   if (cached) {
     const data = (await cached.json()) as { image: string; title?: string; description?: string };
-    // 旧キャッシュに &amp; エンコードの URL が残っている場合に備えてデコードし直す
+    // &amp; エンコードされた旧キャッシュエントリに対応するため unescapeHtml でデコードする
     const decoded = unescapeHtml(data.image);
-    const raw = /^https?:\/\//i.test(decoded) ? decoded : data.image;
-    const image = isValidPublicUrl(raw) ? raw : "";
+    const image = isValidPublicUrl(decoded) ? decoded : "";
     return NextResponse.json(
       { image, title: data.title ?? "", description: data.description ?? "" },
       { headers: { "X-Cache": "HIT" } },
