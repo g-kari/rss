@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withSession, parseJsonBody, requireString } from "@/lib/server-auth";
 import { r2Get, r2Put, engagementKey } from "@/lib/r2";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
 
@@ -30,18 +30,10 @@ export async function POST(req: NextRequest) {
       action?: unknown;
     }>(req);
     if (!parsed.ok) return parsed.error;
-    const { articleId, feedHash, action } = parsed.data;
-
-    if (
-      typeof articleId !== "string" ||
-      typeof feedHash !== "string" ||
-      typeof action !== "string" ||
-      articleId.length === 0 ||
-      articleId.length > MAX_ID_LENGTH ||
-      feedHash.length === 0 ||
-      feedHash.length > MAX_ID_LENGTH ||
-      !VALID_ACTIONS.includes(action as EngagementAction)
-    ) {
+    const articleId = requireString(parsed.data.articleId, MAX_ID_LENGTH);
+    const feedHash = requireString(parsed.data.feedHash, MAX_ID_LENGTH);
+    const action = requireString(parsed.data.action, MAX_ID_LENGTH);
+    if (!articleId || !feedHash || !action || !VALID_ACTIONS.includes(action as EngagementAction)) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 

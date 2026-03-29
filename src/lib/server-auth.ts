@@ -180,6 +180,15 @@ export async function withSession(
  * if (!parsed.ok) return parsed.error;
  * const body = parsed.data;
  */
+/**
+ * unknown 値を string に変換する。
+ * 非 string・空文字・maxLength 超過のいずれかに該当する場合は null を返す。
+ */
+export function requireString(value: unknown, maxLength = 128): string | null {
+  if (typeof value !== "string" || value.length === 0 || value.length > maxLength) return null;
+  return value;
+}
+
 export async function parseJsonBody<T>(
   request: Request,
 ): Promise<{ ok: true; data: T } | { ok: false; error: NextResponse }> {

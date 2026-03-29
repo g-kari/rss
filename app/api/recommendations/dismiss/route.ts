@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withSession, parseJsonBody, requireString } from "@/lib/server-auth";
 import { readCache, writeCache } from "@/lib/recommendation";
 
 const MAX_DISMISS_ID_LENGTH = 128;
@@ -9,13 +9,10 @@ export async function POST(req: NextRequest) {
   return withSession(async ({ session, env }) => {
     const parsed = await parseJsonBody<{ id?: unknown }>(req);
     if (!parsed.ok) return parsed.error;
-    if (typeof parsed.data.id !== "string" || parsed.data.id.length === 0) {
+    const dismissId = requireString(parsed.data.id, MAX_DISMISS_ID_LENGTH);
+    if (!dismissId) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
-    if (parsed.data.id.length > MAX_DISMISS_ID_LENGTH) {
-      return NextResponse.json({ error: "id too long" }, { status: 400 });
-    }
-    const dismissId = parsed.data.id;
 
     const cache = await readCache(env.RSS_DATA, session.userId);
     if (!cache) {
