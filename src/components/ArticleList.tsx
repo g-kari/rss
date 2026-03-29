@@ -518,9 +518,7 @@ export default function ArticleList({
         <FeedFilterModal
           initialFilter={globalFilter}
           onClose={() => setGlobalFilterModalOpen(false)}
-          onSave={async (filter) => {
-            onSaveGlobalFilter(filter);
-          }}
+          onSave={onSaveGlobalFilter}
         />
       )}
     </section>

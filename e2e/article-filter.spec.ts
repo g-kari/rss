@@ -50,6 +50,7 @@ const BASE_OPTS: ArticleFilterOptions = {
   activeIds: new Set(),
   nsfwMode: false,
   nsfwFeedIds: new Set(),
+  globalFilter: null,
 };
 
 function run(articles: Article[], opts: Partial<ArticleFilterOptions> = {}): Article[] {

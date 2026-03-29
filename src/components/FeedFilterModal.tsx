@@ -11,7 +11,7 @@ interface Props {
   /** feed が null のとき使用する初期フィルター値 */
   initialFilter?: KeywordFilter | null;
   onClose: () => void;
-  onSave: (filter: KeywordFilter | null) => Promise<void>;
+  onSave: (filter: KeywordFilter | null) => void | Promise<void>;
 }
 
 function TagInput({
@@ -140,8 +140,7 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
     }
   }
 
-  const hasFilter =
-    activeFilter && (activeFilter.include.length > 0 || activeFilter.exclude.length > 0);
+  const hasFilter = include.length > 0 || exclude.length > 0;
   const modalTitle = title ?? "キーワードフィルター";
   const modalSubtitle = feed ? feed.title || feed.url : "すべてのフィード";
 
