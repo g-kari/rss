@@ -28,8 +28,8 @@ export function useReadingHistory() {
   }, []);
 
   const { historyIds, historyOrder } = useMemo(() => {
-    const historyIds = new Set(history.map((e) => e.articleId));
-    return { historyIds, historyOrder: [...historyIds] };
+    const historyOrder = history.map((e) => e.articleId);
+    return { historyIds: new Set(historyOrder), historyOrder };
   }, [history]);
 
   return { historyIds, historyOrder, addToHistory };
