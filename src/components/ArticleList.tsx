@@ -95,6 +95,13 @@ const LAYOUT_ICONS: Record<Layout, ReactElement> = {
 
 const LAYOUTS: Layout[] = ["compact", "list", "card", "magazine"];
 
+const LAYOUT_LABELS: Record<Layout, string> = {
+  compact: "コンパクト表示",
+  list: "リスト表示",
+  card: "カード表示",
+  magazine: "マガジン表示",
+};
+
 const DATE_RANGE_LABELS: Record<DateRange, string> = {
   all: "日付",
   today: "今日",
@@ -253,7 +260,9 @@ export default function ArticleList({
                       ? "text-text-strong bg-surface-subtle"
                       : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
                   }`}
-                  title={l}
+                  title={LAYOUT_LABELS[l]}
+                  aria-label={LAYOUT_LABELS[l]}
+                  aria-pressed={layout === l}
                 >
                   {LAYOUT_ICONS[l]}
                 </button>
