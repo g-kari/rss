@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (34)
+
+### 改善
+
+- **画像プロキシのエラー表示をエラー原因別に出し分け** — 取得失敗の理由に応じて異なる SVG プレースホルダーを返すよう変更。404 → "Not Found"（壊れた画像アイコン）、タイムアウト・接続失敗 → "Network Error"（Wifi 斜め線アイコン）、10MB 超 → "Too Large"（↕ 矢印アイコン）、その他 → "Unavailable"（警告トライアングル）(\`app/api/image-proxy/route.ts\`)
+
 ## 2026-03-29 (33)
 
 ### 改善
