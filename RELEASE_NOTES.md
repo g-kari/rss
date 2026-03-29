@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-29 (17)
+
+### リファクタリング
+
+- **`useRecommendations` のローディング状態の重複を修正** — `refresh()` が内部で `fetchRecommendations()` を呼ぶことで `loading` と `refreshing` が同時に `true` になる問題を解消。フェッチロジックを `loadRecommendations()` ヘルパーに切り出し、各呼び出し元が自身のローディング状態のみを管理するよう整理
+
 ## 2026-03-29 (16)
 
 ### 新機能
