@@ -481,6 +481,106 @@ test.describe("複合フィルター", () => {
 });
 
 // ==========================================================================
+// グローバルフィルター
+// ==========================================================================
+
+test.describe("グローバルフィルター — exclude", () => {
+  const article = makeArticle("g1", "feed1", { title: "スパム広告の記事" });
+  const kept = makeArticle("g2", "feed1", { title: "通常の記事" });
+
+  test("exclude キーワードにマッチする記事は除外される", () => {
+    const result = run([article, kept], {
+      globalFilter: { include: [], exclude: ["スパム"] },
+    });
+    expect(ids(result)).not.toContain("g1");
+    expect(ids(result)).toContain("g2");
+  });
+
+  test("exclude キーワードは大文字小文字を区別しない", () => {
+    const upperCase = makeArticle("gu1", "feed1", { title: "SPAM 記事" });
+    const result = run([upperCase, kept], {
+      globalFilter: { include: [], exclude: ["spam"] },
+    });
+    expect(ids(result)).not.toContain("gu1");
+    expect(ids(result)).toContain("g2");
+  });
+});
+
+test.describe("グローバルフィルター — include", () => {
+  const matched = makeArticle("gi1", "feed1", { title: "TypeScript の記事" });
+  const unmatched = makeArticle("gi2", "feed2", { title: "Python の記事" });
+
+  test("include キーワードにマッチしない記事は除外される", () => {
+    const result = run([matched, unmatched], {
+      globalFilter: { include: ["TypeScript"], exclude: [] },
+    });
+    expect(ids(result)).toContain("gi1");
+    expect(ids(result)).not.toContain("gi2");
+  });
+
+  test("include が空なら全記事を通過させる", () => {
+    const result = run([matched, unmatched], {
+      globalFilter: { include: [], exclude: [] },
+    });
+    expect(result).toHaveLength(2);
+  });
+});
+
+test.describe("グローバルフィルター — 複数フィードに横断適用", () => {
+  const feed1Article = makeArticle("cf1", "feed1", { title: "除外ワードを含む feed1 記事" });
+  const feed2Article = makeArticle("cf2", "feed2", { title: "除外ワードを含む feed2 記事" });
+  const normalArticle = makeArticle("cfn", "feed3", { title: "通常記事" });
+
+  test("グローバルフィルターはすべてのフィードに適用される", () => {
+    const result = run([feed1Article, feed2Article, normalArticle], {
+      globalFilter: { include: [], exclude: ["除外ワード"] },
+    });
+    expect(ids(result)).not.toContain("cf1");
+    expect(ids(result)).not.toContain("cf2");
+    expect(ids(result)).toContain("cfn");
+  });
+});
+
+test.describe("グローバルフィルター — activeIds はフィルターをスキップ", () => {
+  const article = makeArticle("ga1", "feed1", { title: "除外されるべき記事" });
+
+  test("activeIds に含まれる記事はグローバルフィルターをスキップする", () => {
+    const result = run([article], {
+      globalFilter: { include: [], exclude: ["除外されるべき"] },
+      activeIds: new Set(["ga1"]),
+    });
+    expect(ids(result)).toContain("ga1");
+  });
+});
+
+test.describe("グローバルフィルター + フィード別フィルターの組み合わせ", () => {
+  const feed: Feed = {
+    id: "feed1",
+    url: "https://example.com/feed",
+    title: "テストフィード",
+    siteUrl: "https://example.com",
+    lastFetchedAt: null,
+    fetchError: null,
+    filter: { include: ["TypeScript"], exclude: [] },
+  };
+  const tsSpam = makeArticle("ts1", "feed1", { title: "TypeScript スパム広告" });
+  const tsGood = makeArticle("ts2", "feed1", { title: "TypeScript の良記事" });
+  const python = makeArticle("py1", "feed1", { title: "Python の記事" });
+
+  test("フィード別フィルターとグローバルフィルターが AND 条件で適用される", () => {
+    const result = run([tsSpam, tsGood, python], {
+      feeds: [feed],
+      globalFilter: { include: [], exclude: ["スパム"] },
+    });
+    // feed.filter の include: ["TypeScript"] → python は除外
+    // globalFilter の exclude: ["スパム"] → tsSpam は除外
+    expect(ids(result)).toContain("ts2");
+    expect(ids(result)).not.toContain("ts1");
+    expect(ids(result)).not.toContain("py1");
+  });
+});
+
+// ==========================================================================
 // エッジケース
 // ==========================================================================
 
