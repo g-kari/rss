@@ -85,7 +85,7 @@ export function useFilteredArticles({
     if (prev && prev !== selectedArticleId) {
       setGracePeriodId(prev);
       if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
-      gracePeriodTimerRef.current = setTimeout(() => setGracePeriodId(null), 5000);
+      gracePeriodTimerRef.current = setTimeout(() => setGracePeriodId(null), 30000);
     }
   }, [selectedArticleId]);
   // アンマウント時のみタイマーをクリア（selectedArticleId 変更時にクリアすると grace period が無効化される）
