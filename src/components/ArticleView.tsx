@@ -910,12 +910,14 @@ export default function ArticleView({
     handleTouchEnd,
   } = useGestureNav({ onSelectPrev, onSelectNext });
 
-  const { downloadAllImages, downloadingImages, imageDownloadProgress } = useImageDownload(
-    article,
-    resolvedOgImage,
-    contentRef,
-    showToast,
-  );
+  const {
+    downloadAllImages,
+    downloadingImages,
+    imageDownloadProgress,
+    confirmingDownload,
+    confirmDownload,
+    cancelDownload,
+  } = useImageDownload(article, resolvedOgImage, contentRef, showToast);
 
   const embedInfo = article?.link ? extractEmbedInfo(article.link) : null;
 
@@ -1430,6 +1432,38 @@ export default function ArticleView({
           onSelectNext={onSelectNext}
         />
       </div>
+
+      {/* 再ダウンロード確認モーダル */}
+      {confirmingDownload && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={cancelDownload}
+        >
+          <div
+            className="bg-surface-elevated border border-border-default rounded-xl p-6 shadow-xl max-w-sm mx-4 w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-text-strong text-[14px] font-medium mb-2">再ダウンロード</p>
+            <p className="text-text-soft text-[13px] mb-5">
+              この記事の画像はすでに保存済みです。再度ダウンロードしますか？
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={cancelDownload}
+                className="px-4 py-1.5 rounded-lg text-[13px] text-text-muted hover:text-text-default transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => void confirmDownload()}
+                className="px-4 py-1.5 rounded-lg text-[13px] bg-ink hover:bg-ink-hover text-ink-text transition-colors"
+              >
+                ダウンロード
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

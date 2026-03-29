@@ -36,6 +36,7 @@ export const STORAGE_KEYS = {
   NSFW_MODE: "rss-nsfw-mode",
   SIDEBAR_WIDTH: "rss-sidebar-width",
   LIST_WIDTH: "rss-list-width",
+  DOWNLOADED_ARTICLE_IDS: "rss-downloaded-images",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

@@ -3,11 +3,15 @@
 import { useState, useCallback } from "react";
 import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
+import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
 
 interface ImageDownloadState {
   downloadingImages: boolean;
   imageDownloadProgress: { done: number; total: number } | null;
   downloadAllImages: () => Promise<void>;
+  confirmingDownload: boolean;
+  confirmDownload: () => Promise<void>;
+  cancelDownload: () => void;
 }
 
 function mimeToExt(mime: string): string {
@@ -31,9 +35,13 @@ export function useImageDownload(
     done: number;
     total: number;
   } | null>(null);
+  const [confirmingDownload, setConfirmingDownload] = useState(false);
+  const [downloadedIds, setDownloadedIds] = useState<Set<string>>(() =>
+    loadSet(STORAGE_KEYS.DOWNLOADED_ARTICLE_IDS),
+  );
 
-  const downloadAllImages = useCallback(async () => {
-    if (!article || downloadingImages) return;
+  const doDownload = useCallback(async () => {
+    if (!article) return;
 
     // 収集: OGP 画像 + 本文内の img タグ（重複排除）
     const seen = new Set<string>();
@@ -115,12 +123,45 @@ export function useImageDownload(
 
     setImageDownloadProgress(null);
     setDownloadingImages(false);
+
     if (succeeded > 0) {
       showToast?.(`${succeeded} 枚の画像をダウンロードしました`);
+      // 保存済み記事として記録
+      setDownloadedIds((prev) => {
+        const next = new Set(prev);
+        next.add(article.id);
+        saveSet(STORAGE_KEYS.DOWNLOADED_ARTICLE_IDS, next);
+        return next;
+      });
     } else {
       showToast?.("ダウンロードできる画像がありませんでした");
     }
-  }, [article, resolvedOgImage, downloadingImages, contentRef, showToast]);
+  }, [article, resolvedOgImage, contentRef, showToast]);
 
-  return { downloadingImages, imageDownloadProgress, downloadAllImages };
+  const downloadAllImages = useCallback(async () => {
+    if (!article || downloadingImages) return;
+    if (downloadedIds.has(article.id)) {
+      setConfirmingDownload(true);
+      return;
+    }
+    await doDownload();
+  }, [article, downloadingImages, downloadedIds, doDownload]);
+
+  const confirmDownload = useCallback(async () => {
+    setConfirmingDownload(false);
+    await doDownload();
+  }, [doDownload]);
+
+  const cancelDownload = useCallback(() => {
+    setConfirmingDownload(false);
+  }, []);
+
+  return {
+    downloadingImages,
+    imageDownloadProgress,
+    downloadAllImages,
+    confirmingDownload,
+    confirmDownload,
+    cancelDownload,
+  };
 }
