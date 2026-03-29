@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Feed } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 
@@ -28,6 +28,14 @@ export function useFeedOperations({
   const [importMessage, setImportMessage] = useState<ImportMessage | null>(null);
   const importMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // アンマウント時にタイマーをクリア
+  useEffect(
+    () => () => {
+      if (importMessageTimerRef.current) clearTimeout(importMessageTimerRef.current);
+    },
+    [],
+  );
 
   function showImportMessage(text: string, isError: boolean) {
     setImportMessage({ text, isError });

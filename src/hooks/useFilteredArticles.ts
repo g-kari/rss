@@ -87,10 +87,14 @@ export function useFilteredArticles({
       if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
       gracePeriodTimerRef.current = setTimeout(() => setGracePeriodId(null), 5000);
     }
-    return () => {
-      if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
-    };
   }, [selectedArticleId]);
+  // アンマウント時のみタイマーをクリア（selectedArticleId 変更時にクリアすると grace period が無効化される）
+  useEffect(
+    () => () => {
+      if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
+    },
+    [],
+  );
 
   // フィード切り替え時にページ・検索クエリをリセット
   useEffect(() => {
