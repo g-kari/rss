@@ -196,21 +196,19 @@ export function useReadState(
       setReadIds((prev) => {
         const arts = articlesRef.current;
         const { bookmarks, readingList, likes } = stateRef.current;
-        let ids: string[];
-        if (feedId === SPECIAL_FEED_IDS.BOOKMARKS) {
-          ids = arts.filter((a) => bookmarks.has(a.id)).map((a) => a.id);
-        } else if (feedId === SPECIAL_FEED_IDS.READING_LIST) {
-          ids = arts.filter((a) => readingList.has(a.id)).map((a) => a.id);
-        } else if (feedId === SPECIAL_FEED_IDS.LIKES) {
-          ids = arts.filter((a) => likes.has(a.id)).map((a) => a.id);
-        } else if (feedId === SPECIAL_FEED_IDS.HISTORY) {
-          const hIds = historyIdsRef.current;
-          ids = hIds ? arts.filter((a) => hIds.has(a.id)).map((a) => a.id) : [];
-        } else if (feedId) {
-          ids = arts.filter((a) => a.feedHash === feedId).map((a) => a.id);
-        } else {
-          ids = arts.map((a) => a.id);
-        }
+        const specialSets: Partial<Record<string, Set<string>>> = {
+          [SPECIAL_FEED_IDS.BOOKMARKS]: bookmarks,
+          [SPECIAL_FEED_IDS.READING_LIST]: readingList,
+          [SPECIAL_FEED_IDS.LIKES]: likes,
+          [SPECIAL_FEED_IDS.HISTORY]: historyIdsRef.current ?? new Set<string>(),
+        };
+        const specialSet = feedId ? (specialSets[feedId] ?? null) : null;
+        const ids =
+          specialSet !== null
+            ? arts.filter((a) => specialSet.has(a.id)).map((a) => a.id)
+            : feedId
+              ? arts.filter((a) => a.feedHash === feedId).map((a) => a.id)
+              : arts.map((a) => a.id);
         const next = new Set([...prev, ...ids]);
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
