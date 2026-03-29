@@ -930,12 +930,19 @@ export default function ArticleView({
     : null;
 
   // 記事本文の全画像 URL を抽出（重複除去）— 2枚以上あれば末尾ギャラリーに表示
+  // rss-image-slider 内の画像はスライダーで既表示のため除外する
   const galleryImages = useMemo(() => {
     if (!processedContent) return [];
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = processedContent;
     const seen = new Set<string>();
+    for (const img of tempDiv.querySelectorAll(".rss-image-slider img")) {
+      const src = img.getAttribute("src");
+      if (src) seen.add(src);
+    }
     const result: string[] = [];
-    for (const m of processedContent.matchAll(/<img\b[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/gi)) {
-      const src = m[1];
+    for (const img of tempDiv.querySelectorAll("img")) {
+      const src = img.getAttribute("src") ?? "";
       if (!src || seen.has(src) || src.startsWith("data:") || src.endsWith(".svg")) continue;
       seen.add(src);
       result.push(src);

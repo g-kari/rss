@@ -166,6 +166,9 @@ export default function App() {
   const pendingArticleIdRef = useRef<string | null>(searchParams.get("article"));
   // 既読タイマー: 記事を 60 秒表示した後に既読マーク
   const readTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // markRead の最新参照を ref で保持 — useEffect の依存から外してタイマーのリセットを防ぐ
+  const markReadRef = useRef(markRead);
+  markReadRef.current = markRead;
 
   // 選択状態を URL クエリパラメータに同期（リロード復元用）
   useEffect(() => {
@@ -189,12 +192,13 @@ export default function App() {
   }, [articles]);
 
   // 記事を 60 秒表示し続けた後に既読マーク
+  // markRead を依存配列から外し ref 経由で呼ぶことで、再レンダーによるタイマーのリセットを防ぐ
   useEffect(() => {
     if (readTimerRef.current) clearTimeout(readTimerRef.current);
     const id = selectedArticle?.id;
     if (!id) return;
     readTimerRef.current = setTimeout(() => {
-      markRead(id);
+      markReadRef.current(id);
     }, 60_000);
     return () => {
       if (readTimerRef.current) {
@@ -202,7 +206,7 @@ export default function App() {
         readTimerRef.current = null;
       }
     };
-  }, [selectedArticle?.id, markRead]);
+  }, [selectedArticle?.id]);
 
   const totalUnread = useMemo(
     () => articles.filter((a) => !readIds.has(a.id)).length,
