@@ -5,6 +5,11 @@
  * RSS フィードの content と外部ページ取得の両方で共有する。
  */
 
+/** HTML タグを除去してプレーンテキストを返す */
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").trim();
+}
+
 /** HTML 特殊文字をエスケープする（テキストを属性値・要素内容として安全に埋め込む） */
 export function escapeHtml(s: string): string {
   return s

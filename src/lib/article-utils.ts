@@ -1,15 +1,11 @@
 import type { DateRange, FontSize, Layout } from "../types";
+import { stripHtml } from "./html";
 
 /** CJK 統合漢字・ひらがな・カタカナ・拡張A（読了速度判定用） */
 const CJK_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g;
 
 /** 全角文字を含む広義の CJK（日本語判定用。全角英数記号 \uff00-\uffef を含む） */
 const CJK_WIDE_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uff00-\uffef]/g;
-
-/** HTML タグを除去してプレーンテキストを返す */
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, "").trim();
-}
 
 /**
  * テキストが日本語（CJK 文字を一定割合以上含む）かどうかを判定する。
