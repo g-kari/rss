@@ -119,6 +119,35 @@ export function bestSrcFromSrcset(srcset: string): string {
   return last.split(/\s+/)[0] ?? "";
 }
 
+/**
+ * コンテナ内の全 img 要素から画像 URL を重複なしで抽出する。
+ * ArticleView の画像一覧と useImageDownload の収集で共用。
+ *
+ * - live DOM では currentSrc（srcset 解決済み）を優先
+ * - data: プレースホルダーは srcset からフォールバック
+ * - data: URI / .svg / 非画像 URL は除外
+ */
+export function collectImageUrls(
+  container: Element,
+  seen?: Set<string>,
+): string[] {
+  const s = seen ?? new Set<string>();
+  const result: string[] = [];
+  for (const img of container.querySelectorAll("img")) {
+    let src =
+      (img as HTMLImageElement).currentSrc || img.getAttribute("src") || "";
+    if (!src || src.startsWith("data:")) {
+      src = bestSrcFromSrcset(img.getAttribute("srcset") ?? "");
+    }
+    if (!src || s.has(src) || src.startsWith("data:")) continue;
+    // image-proxy 経由 or 絶対 URL のみ対象
+    if (!src.startsWith("/api/image-proxy?") && !src.startsWith("http")) continue;
+    s.add(src);
+    result.push(src);
+  }
+  return result;
+}
+
 export const DATE_RANGE_LABELS: Record<DateRange, string> = {
   all: "全期間",
   today: "今日",

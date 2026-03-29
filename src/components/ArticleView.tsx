@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import type { Article, Feed, FontSize, KeywordFilter } from "../types";
 import type { Theme } from "../hooks/useUIState";
 import FeedFilterModal from "./FeedFilterModal";
-import { readingTime, FONT_SIZE_CYCLE, bestSrcFromSrcset } from "../lib/article-utils";
+import { readingTime, FONT_SIZE_CYCLE, collectImageUrls } from "../lib/article-utils";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { useArticleContent } from "../hooks/useArticleContent";
 import { useArticleAi } from "../hooks/useArticleAi";
@@ -963,28 +963,11 @@ export default function ArticleView({
     : null;
 
   // 記事本文の全画像 URL を抽出（重複除去）— 2枚以上あれば末尾ギャラリーに表示
-  // rss-image-slider 内の画像はスライダーで既表示のため除外する
   const galleryImages = useMemo(() => {
     if (!processedContent) return [];
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = processedContent;
-    const seen = new Set<string>();
-    for (const img of tempDiv.querySelectorAll(".rss-image-slider img")) {
-      const src = img.getAttribute("src");
-      if (src) seen.add(src);
-    }
-    const result: string[] = [];
-    for (const img of tempDiv.querySelectorAll("img")) {
-      // src が空または data: プレースホルダーの場合は srcset から最高解像度 URL を取得
-      let src = img.getAttribute("src") ?? "";
-      if (!src || src.startsWith("data:")) {
-        src = bestSrcFromSrcset(img.getAttribute("srcset") ?? "");
-      }
-      if (!src || seen.has(src) || src.startsWith("data:") || src.endsWith(".svg")) continue;
-      seen.add(src);
-      result.push(src);
-    }
-    return result;
+    return collectImageUrls(tempDiv);
   }, [processedContent]);
 
   // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する

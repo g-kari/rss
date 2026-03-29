@@ -680,12 +680,11 @@ export function extractMainContent(
 
   // thumb-list / capt-thumb-list ギャラリーを別途取得する。
   // Readability はリスト形式のギャラリーを本文外と判断して除外することがあるため、
-  // 元 HTML から独立して抽出し本文末尾に付与する。
-  // NOTE: postProcess 後に追加する — fixImageDimensions が buildImageSlider の
-  //       width:100%;height:100% インラインスタイルを除去してしまい画像が見切れるため。
+  // 元 HTML から独立して抽出し本文末尾に hidden div として付与する。
+  // クライアント側の画像一覧（ImageGallery）が DOM からこれらの画像を拾う。
   const galleryImgs = extractThumbListImgs(preprocessed, pageUrl);
   const buildGallery = () =>
-    galleryImgs.length > 0 ? rewriteImageUrls(buildImageSlider(galleryImgs)) : "";
+    galleryImgs.length > 0 ? rewriteImageUrls(`<div hidden>${galleryImgs.join("")}</div>`) : "";
 
   const rc = extractWithReadability(preprocessed, pageUrl);
   if (rc && isContentSufficient(rc)) {
