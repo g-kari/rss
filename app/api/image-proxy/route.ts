@@ -1,5 +1,5 @@
 import { withBinarySession } from "@/lib/server-auth";
-import { isValidFeedUrl } from "@/lib/url";
+import { isValidPublicUrl } from "@/lib/url";
 import { buildCacheKey } from "@/lib/r2";
 import {
   DEFAULT_FETCH_TIMEOUT_MS,
@@ -103,7 +103,8 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
   const url = reqUrl.searchParams.get("url");
   if (!url) return new Response(null, { status: 400 });
 
-  if (!isValidFeedUrl(url)) return new Response(null, { status: 400 });
+  // 画像 URL はサーバー取得コンテンツ由来のため長さ制限なし。SSRF 対策のみ行う。
+  if (!isValidPublicUrl(url)) return new Response(null, { status: 400 });
 
   const cacheKey = await buildCacheKey(reqUrl.origin, "image", url);
   const cfCache = caches.default;

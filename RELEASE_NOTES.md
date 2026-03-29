@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-29 (21)
+
+### バグ修正
+
+- **Qiita 等の長い OGP 画像 URL が表示されない問題を修正** — `isValidFeedUrl` の 2048 文字制限が imgix のコンポジット URL（mark64/blend64/txt64 パラメータ付き）を誤って弾いていた。`isValidPublicUrl`（SSRF チェックのみ、長さ制限なし）を追加し、`ogp.ts` と `image-proxy` で使用するよう変更
+
 ## 2026-03-29 (20)
 
 ### リファクタリング

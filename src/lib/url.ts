@@ -114,6 +114,20 @@ export function isValidFeedUrl(url: string): boolean {
 }
 
 /**
+ * サーバーが取得したページから得た URL（OGP 画像等）の検証。
+ * ユーザー入力ではないため URL 長のチェックは行わず、SSRF 対策のみを行う。
+ */
+export function isValidPublicUrl(url: string): boolean {
+  try {
+    const { protocol, hostname } = new URL(url);
+    const validProtocol = protocol === "https:" || protocol === "http:";
+    return validProtocol && !isPrivateHost(hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * HTTPS URL として有効かどうかを検証する。
  * プッシュ通知エンドポイント等、HTTPS のみ許可する場面で使用する。
  * HTTP は拒否し、プライベート IP レンジへのアクセスも拒否する（SSRF 対策）。
