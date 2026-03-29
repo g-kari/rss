@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (43)
+
+### リファクタリング
+
+- **\`sanitizeHtml\` の危険スキーム除去を4行→2行に統合** — \`href/src/action/formaction\` に対する \`javascript:/vbscript:\` パターンと \`data:\` パターンが同一構造だったため、スキーム部を \`(?:javascript|vbscript|data)\` に統合して重複を解消 (\`src/lib/html.ts\`)
+
 ## 2026-03-29 (42)
 
 ### バグ修正
