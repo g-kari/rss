@@ -55,7 +55,8 @@ interface KeyboardNavOptions {
  * options は毎 render で変化するため ref に格納し、イベントリスナー自体は
  * マウント時に 1 回だけ登録する（依存配列なし）。
  *
- * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, o 元記事, v 全文取得, b ブックマーク,
+ * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, g 先頭, G 末尾,
+ *               o 元記事, v 全文取得, b ブックマーク,
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー, C Markdownリンクコピー,
  *               f フォントサイズ, l レイアウト, L いいね切替, R フィード更新,
  *               u 未読フィルター, B ブックマークフィルター, T リーディングリストフィルター,
@@ -141,6 +142,14 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
               .reverse()
               .find((a) => !readIds.has(a.id)),
           );
+          break;
+        case "g":
+          e.preventDefault();
+          navigateTo(list[0]);
+          break;
+        case "G":
+          e.preventDefault();
+          navigateTo(list[list.length - 1]);
           break;
         case "o":
           if (selectedArticle?.link)
