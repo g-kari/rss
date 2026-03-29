@@ -60,16 +60,21 @@ function hasDangerousScheme(val: string): boolean {
 /**
  * HTML 文字列から og:<property> メタタグの content 属性値を抽出する。
  * property 属性と content 属性の順序が前後するケースを両パターンでマッチする。
+ *
+ * property は正規表現エスケープ済みの文字列として扱う。
+ * 将来的に動的な property 値が渡される場合に正規表現インジェクションを防ぐため。
  */
 export function extractOgMeta(html: string, property: string): string {
+  // 正規表現メタ文字をエスケープして ReDoS / インジェクションを防ぐ
+  const prop = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // content=(["'])([^<>]*?)\1 でクォート種別を揃えてマッチする。
   // [^"']+パターンだと content="It's great" → "It" で切れるため。
   const m =
     html.match(
-      new RegExp(`<meta[^>]+property=["']og:${property}["'][^>]+content=(["'])([^<>]*?)\\1`, "i"),
+      new RegExp(`<meta[^>]+property=["']og:${prop}["'][^>]+content=(["'])([^<>]*?)\\1`, "i"),
     ) ??
     html.match(
-      new RegExp(`<meta[^>]+content=(["'])([^<>]*?)\\1[^>]+property=["']og:${property}["']`, "i"),
+      new RegExp(`<meta[^>]+content=(["'])([^<>]*?)\\1[^>]+property=["']og:${prop}["']`, "i"),
     );
   return unescapeHtml(m?.[2] ?? "");
 }

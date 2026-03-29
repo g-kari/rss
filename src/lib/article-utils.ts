@@ -127,15 +127,11 @@ export function bestSrcFromSrcset(srcset: string): string {
  * - data: プレースホルダーは srcset からフォールバック
  * - data: URI / .svg / 非画像 URL は除外
  */
-export function collectImageUrls(
-  container: Element,
-  seen?: Set<string>,
-): string[] {
+export function collectImageUrls(container: Element, seen?: Set<string>): string[] {
   const s = seen ?? new Set<string>();
   const result: string[] = [];
   for (const img of container.querySelectorAll("img")) {
-    let src =
-      (img as HTMLImageElement).currentSrc || img.getAttribute("src") || "";
+    let src = (img as HTMLImageElement).currentSrc || img.getAttribute("src") || "";
     if (!src || src.startsWith("data:")) {
       src = bestSrcFromSrcset(img.getAttribute("srcset") ?? "");
     }
