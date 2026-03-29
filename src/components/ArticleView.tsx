@@ -509,6 +509,125 @@ function metaLabel(key: string): string {
   return map[key] ?? key.replace(/^[a-z]+:/i, "");
 }
 
+function ImageGallery({ images }: { images: string[] }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxIndex(null);
+      if (e.key === "ArrowLeft") setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i));
+      if (e.key === "ArrowRight")
+        setLightboxIndex((i) => (i !== null && i < images.length - 1 ? i + 1 : i));
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [lightboxIndex, images.length]);
+
+  return (
+    <>
+      <section className="mt-8 pt-6 border-t border-border-subtle">
+        <p className="text-[10px] tracking-[0.2em] uppercase text-text-muted mb-3">画像一覧</p>
+        <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+          {images.map((src, i) => (
+            <button
+              key={i}
+              onClick={() => setLightboxIndex(i)}
+              className="flex-shrink-0 cursor-zoom-in"
+            >
+              <img
+                src={src}
+                alt=""
+                className="h-24 w-auto max-w-[180px] object-cover rounded bg-surface-subtle"
+                loading="lazy"
+              />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {lightboxIndex !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setLightboxIndex(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/70 hover:text-white"
+            onClick={() => setLightboxIndex(null)}
+            aria-label="閉じる"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          {lightboxIndex > 0 && (
+            <button
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex(lightboxIndex - 1);
+              }}
+              aria-label="前の画像"
+            >
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15.75 19.5L8.25 12l7.5-7.5"
+                />
+              </svg>
+            </button>
+          )}
+          {lightboxIndex < images.length - 1 && (
+            <button
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex(lightboxIndex + 1);
+              }}
+              aria-label="次の画像"
+            >
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          )}
+          <img
+            src={images[lightboxIndex]}
+            alt=""
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-[12px] tabular-nums">
+            {lightboxIndex + 1} / {images.length}
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
 function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps) {
   const { open, setOpen, menuRef } = useMenuOpen();
   const [modalOpen, setModalOpen] = useState(false);
@@ -1288,29 +1407,7 @@ export default function ArticleView({
         ) : null}
 
         {/* 画像一覧（2枚以上あれば記事末尾に表示） */}
-        {galleryImages.length >= 2 && (
-          <section className="mt-8 pt-6 border-t border-border-subtle">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-text-muted mb-3">画像一覧</p>
-            <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
-              {galleryImages.map((src, i) => (
-                <a
-                  key={i}
-                  href={src}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-shrink-0"
-                >
-                  <img
-                    src={src}
-                    alt=""
-                    className="h-24 w-auto max-w-[180px] object-cover rounded bg-surface-subtle"
-                    loading="lazy"
-                  />
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
+        {galleryImages.length >= 2 && <ImageGallery images={galleryImages} />}
 
         {/* 全文取得ボタン */}
         {canFetch && (
