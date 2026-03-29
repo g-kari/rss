@@ -44,6 +44,10 @@ interface Props {
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
+/** ShareMenu / FilterMenu で共有するドロップダウン項目の共通スタイル */
+const MENU_ITEM_CLS =
+  "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left";
+
 /** ドロップダウンメニューの開閉状態と click-outside 処理をまとめたフック */
 function useMenuOpen() {
   const [open, setOpen] = useState(false);
@@ -195,9 +199,6 @@ interface ShareMenuProps {
 function ShareMenu({ article, showToast }: ShareMenuProps) {
   const { open, setOpen, menuRef } = useMenuOpen();
 
-  const itemCls =
-    "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left";
-
   return (
     <div ref={menuRef} className="relative">
       <button
@@ -227,7 +228,7 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 setOpen(false);
                 navigator.share({ url: article.link!, title: article.title }).catch(() => {});
               }}
-              className={itemCls}
+              className={MENU_ITEM_CLS}
             >
               <svg
                 width="12"
@@ -253,7 +254,7 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 "noopener,noreferrer",
               );
             }}
-            className={itemCls}
+            className={MENU_ITEM_CLS}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.727-8.833L1.254 2.25H8.08l4.261 5.638 5.903-5.638zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -273,7 +274,7 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                   showToast("コピーに失敗しました");
                 });
             }}
-            className={itemCls}
+            className={MENU_ITEM_CLS}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
@@ -289,7 +290,7 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 "noopener,noreferrer",
               );
             }}
-            className={itemCls}
+            className={MENU_ITEM_CLS}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19.365 9.863c.349 0 .63.285.63.63 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
@@ -308,7 +309,7 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                   showToast("コピーに失敗しました");
                 });
             }}
-            className={itemCls}
+            className={MENU_ITEM_CLS}
           >
             <svg
               width="12"
@@ -684,9 +685,6 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
     })),
   ];
 
-  const itemCls =
-    "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left";
-
   const XIcon = (
     <svg
       width="10"
@@ -730,7 +728,7 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
               setOpen(false);
               setModalOpen(true);
             }}
-            className={itemCls}
+            className={MENU_ITEM_CLS}
           >
             <svg
               width="10"
@@ -756,7 +754,7 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
                 <button
                   key={opt.value}
                   onClick={() => void handleExclude(opt.value)}
-                  className={itemCls}
+                  className={MENU_ITEM_CLS}
                 >
                   {XIcon}
                   <span className="truncate">{opt.label}</span>
