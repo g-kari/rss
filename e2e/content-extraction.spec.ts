@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   detectCharset,
+  detectNextPageUrl,
   fixLazyImages,
   fixImageDimensions,
   rewriteImageUrls,
@@ -745,5 +746,67 @@ test.describe("processContent — YouTube iframe レスポンシブラップ", (
   test("非 YouTube iframe は変更しない", () => {
     const html = '<iframe src="https://example.com/video"></iframe>';
     expect(processContent(html)).toBe(html);
+  });
+});
+
+test.describe("detectNextPageUrl — 次ページ URL 検出", () => {
+  const BASE = "https://example.com/article/page/1";
+
+  test("<link rel='next'> の href を返す", () => {
+    const html = `<link rel="next" href="https://example.com/article/page/2">`;
+    expect(detectNextPageUrl(html, BASE)).toBe("https://example.com/article/page/2");
+  });
+
+  test("<link href='...' rel='next'> 属性順序逆でも検出する", () => {
+    const html = `<link href="https://example.com/article/page/2" rel="next">`;
+    expect(detectNextPageUrl(html, BASE)).toBe("https://example.com/article/page/2");
+  });
+
+  test("<a rel='next'> の href を返す", () => {
+    const html = `<a rel="next" href="https://example.com/article/page/2">次へ</a>`;
+    expect(detectNextPageUrl(html, BASE)).toBe("https://example.com/article/page/2");
+  });
+
+  test("<a href='...' rel='next'> 属性順序逆でも検出する", () => {
+    const html = `<a href="https://example.com/article/page/2" rel="next">次へ</a>`;
+    expect(detectNextPageUrl(html, BASE)).toBe("https://example.com/article/page/2");
+  });
+
+  test("相対 URL を絶対 URL に解決する", () => {
+    const html = `<link rel="next" href="/article/page/2">`;
+    expect(detectNextPageUrl(html, BASE)).toBe("https://example.com/article/page/2");
+  });
+
+  test("別オリジンの URL は null を返す", () => {
+    const html = `<link rel="next" href="https://other.com/article/page/2">`;
+    expect(detectNextPageUrl(html, BASE)).toBeNull();
+  });
+
+  test("現在ページと同一の URL は null を返す", () => {
+    const html = `<link rel="next" href="${BASE}">`;
+    expect(detectNextPageUrl(html, BASE)).toBeNull();
+  });
+
+  test("javascript: href は null を返す", () => {
+    const html = `<a rel="next" href="javascript:void(0)">次へ</a>`;
+    expect(detectNextPageUrl(html, BASE)).toBeNull();
+  });
+
+  test("フラグメントのみの href は null を返す", () => {
+    const html = `<a rel="next" href="#section2">次へ</a>`;
+    expect(detectNextPageUrl(html, BASE)).toBeNull();
+  });
+
+  test("次ページ URL が存在しない場合は null を返す", () => {
+    const html = `<a href="https://example.com/article/page/2">次へ</a>`;
+    expect(detectNextPageUrl(html, BASE)).toBeNull();
+  });
+
+  test("<link rel='next'> が <a rel='next'> より優先される", () => {
+    const html = [
+      `<link rel="next" href="https://example.com/article/page/2">`,
+      `<a rel="next" href="https://example.com/article/page/3">次へ</a>`,
+    ].join("\n");
+    expect(detectNextPageUrl(html, BASE)).toBe("https://example.com/article/page/2");
   });
 });
