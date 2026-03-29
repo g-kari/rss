@@ -1,4 +1,4 @@
-import type { Article, DateRange, Feed } from "../types";
+import type { Article, DateRange, Feed, KeywordFilter } from "../types";
 import { buildFilterMap, matchesKeywordFilter } from "./keyword-filter";
 import { articleMatchesQuery, getDateRangeStart } from "./article-utils";
 import { SPECIAL_FEED_IDS } from "./storage";
@@ -22,6 +22,8 @@ export interface ArticleFilterOptions {
   activeIds: Set<string>;
   nsfwMode: boolean;
   nsfwFeedIds: Set<string>;
+  /** すべてのフィードに適用するグローバルキーワードフィルター */
+  globalFilter?: KeywordFilter | null;
 }
 
 export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
@@ -43,6 +45,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     activeIds,
     nsfwMode,
     nsfwFeedIds,
+    globalFilter,
   } = opts;
 
   const isActive = (id: string) => activeIds.has(id);
@@ -69,6 +72,8 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     if (!isActive(a.id)) {
       const kf = feedFilterMap.get(a.feedHash);
       if (kf && !matchesKeywordFilter(a, kf)) return false;
+      // グローバルフィルター（すべてのフィードに適用）
+      if (globalFilter && !matchesKeywordFilter(a, globalFilter)) return false;
     }
 
     // 未読フィルター（アクティブな記事は除外しない）

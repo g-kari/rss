@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import type { Article, DateRange, Feed } from "../types";
-import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
+import type { Article, DateRange, Feed, KeywordFilter } from "../types";
+import { STORAGE_KEYS, storageGet, storageSet, loadJson, saveJson } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { cycleValue, DATE_RANGE_CYCLE } from "../lib/article-utils";
 import { filterAndSortArticles } from "../lib/article-filter";
@@ -50,6 +50,15 @@ export function useFilteredArticles({
   nsfwMode = false,
   nsfwFeedIds = EMPTY_SET,
 }: Options) {
+  const [globalFilter, setGlobalFilterState] = useState<KeywordFilter | null>(() =>
+    loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
+  );
+
+  const setGlobalFilter = useCallback((filter: KeywordFilter | null) => {
+    saveJson(STORAGE_KEYS.GLOBAL_FILTER, filter);
+    setGlobalFilterState(filter);
+  }, []);
+
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
     () => storageGet(STORAGE_KEYS.BOOKMARK_ONLY) === "1",
@@ -172,6 +181,7 @@ export function useFilteredArticles({
         activeIds,
         nsfwMode,
         nsfwFeedIds,
+        globalFilter,
       }),
     [
       articles,
@@ -192,6 +202,7 @@ export function useFilteredArticles({
       activeIds,
       nsfwMode,
       nsfwFeedIds,
+      globalFilter,
     ],
   );
 
@@ -233,5 +244,7 @@ export function useFilteredArticles({
     updateQuery,
     searchRef,
     sentinelRef,
+    globalFilter,
+    setGlobalFilter,
   };
 }

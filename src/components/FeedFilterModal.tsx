@@ -5,7 +5,11 @@ import type { Feed, KeywordFilter } from "../types";
 import Modal from "./Modal";
 
 interface Props {
-  feed: Feed;
+  feed?: Feed | null;
+  /** feed が null のとき使用するタイトル */
+  title?: string;
+  /** feed が null のとき使用する初期フィルター値 */
+  initialFilter?: KeywordFilter | null;
   onClose: () => void;
   onSave: (filter: KeywordFilter | null) => Promise<void>;
 }
@@ -100,11 +104,12 @@ function TagInput({
   );
 }
 
-export default function FeedFilterModal({ feed, onClose, onSave }: Props) {
-  const [include, setInclude] = useState<string[]>(feed.filter?.include ?? []);
-  const [exclude, setExclude] = useState<string[]>(feed.filter?.exclude ?? []);
+export default function FeedFilterModal({ feed, title, initialFilter, onClose, onSave }: Props) {
+  const activeFilter = feed?.filter ?? initialFilter ?? null;
+  const [include, setInclude] = useState<string[]>(activeFilter?.include ?? []);
+  const [exclude, setExclude] = useState<string[]>(activeFilter?.exclude ?? []);
   const [matchCategories, setMatchCategories] = useState<boolean>(
-    feed.filter?.matchCategories ?? false,
+    activeFilter?.matchCategories ?? false,
   );
   const [saving, setSaving] = useState(false);
 
@@ -136,15 +141,12 @@ export default function FeedFilterModal({ feed, onClose, onSave }: Props) {
   }
 
   const hasFilter =
-    feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
+    activeFilter && (activeFilter.include.length > 0 || activeFilter.exclude.length > 0);
+  const modalTitle = title ?? "キーワードフィルター";
+  const modalSubtitle = feed ? feed.title || feed.url : "すべてのフィード";
 
   return (
-    <Modal
-      title="キーワードフィルター"
-      subtitle={feed.title || feed.url}
-      onClose={onClose}
-      width="sm:w-[400px]"
-    >
+    <Modal title={modalTitle} subtitle={modalSubtitle} onClose={onClose} width="sm:w-[400px]">
       <div className="p-5 flex flex-col gap-4">
         {/* 含むキーワード */}
         <div className="flex flex-col gap-1.5">

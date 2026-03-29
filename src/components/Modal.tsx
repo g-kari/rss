@@ -35,10 +35,10 @@ export default function Modal({
     <>
       <div className="fixed inset-0 z-[49] bg-black/30" onPointerDown={onClose} />
       <div
-        className={`fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 ${width} bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden`}
+        className={`fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 ${width} max-h-[90dvh] flex flex-col bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle flex-shrink-0">
           <div>
             <span className="text-[13px] font-medium text-text-strong">{title}</span>
             {subtitle && (
@@ -64,7 +64,7 @@ export default function Modal({
             </svg>
           </button>
         </div>
-        {children}
+        <div className="overflow-y-auto">{children}</div>
       </div>
     </>,
     document.body,

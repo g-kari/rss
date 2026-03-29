@@ -342,7 +342,7 @@ export default function FeedItem({
             }
       }
       onDoubleClick={editing ? undefined : startEdit}
-      className={`group relative flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 animate-fade-up ${
+      className={`group relative flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 ${
         isSelected
           ? "text-text-strong bg-surface-subtle"
           : "text-text-muted hover:text-text-strong hover:bg-surface-hover"

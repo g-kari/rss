@@ -9,8 +9,9 @@ import {
   type ReactElement,
   type RefObject,
 } from "react";
-import type { Article, Feed, Layout, DateRange } from "../types";
+import type { Article, Feed, KeywordFilter, Layout, DateRange } from "../types";
 import type { SortOrder } from "../hooks/useFilteredArticles";
+import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { useSearchHistory } from "../hooks/useSearchHistory";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
@@ -58,6 +59,8 @@ interface Props {
   sentinelRef: RefObject<HTMLDivElement | null>;
   feedHasMorePages?: boolean;
   onLoadMoreFeedArticles?: () => Promise<void>;
+  globalFilter?: KeywordFilter | null;
+  onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
 }
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
@@ -145,7 +148,10 @@ export default function ArticleList({
   sentinelRef,
   feedHasMorePages,
   onLoadMoreFeedArticles,
+  globalFilter,
+  onSaveGlobalFilter,
 }: Props) {
+  const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
 
   // 複数フィードを横断表示するとき（すべて・ブックマーク）はフィード名を表示する
@@ -344,6 +350,31 @@ export default function ArticleList({
                 </svg>
               )}
             </button>
+            {onSaveGlobalFilter && (
+              <button
+                onClick={() => setGlobalFilterModalOpen(true)}
+                title="すべてのフィードにキーワードフィルターを設定"
+                className={`w-6 h-6 flex items-center justify-center rounded-full transition-all duration-200 ${
+                  globalFilter &&
+                  (globalFilter.include.length > 0 || globalFilter.exclude.length > 0)
+                    ? "text-text-strong bg-surface-subtle"
+                    : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
+                }`}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1 2.5h10M3 6h6M5 9.5h2" />
+                </svg>
+              </button>
+            )}
             {onMarkAllRead && (
               <button
                 onClick={onMarkAllRead}
@@ -483,6 +514,15 @@ export default function ArticleList({
           <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
         )}
       </div>
+      {globalFilterModalOpen && onSaveGlobalFilter && (
+        <FeedFilterModal
+          initialFilter={globalFilter}
+          onClose={() => setGlobalFilterModalOpen(false)}
+          onSave={async (filter) => {
+            onSaveGlobalFilter(filter);
+          }}
+        />
+      )}
     </section>
   );
 }

@@ -37,6 +37,7 @@ export const STORAGE_KEYS = {
   SIDEBAR_WIDTH: "rss-sidebar-width",
   LIST_WIDTH: "rss-list-width",
   DOWNLOADED_ARTICLE_IDS: "rss-downloaded-images",
+  GLOBAL_FILTER: "rss-global-filter",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

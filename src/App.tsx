@@ -301,6 +301,8 @@ export default function App() {
     updateQuery,
     searchRef,
     sentinelRef,
+    globalFilter,
+    setGlobalFilter,
   } = useFilteredArticles({
     articles,
     feeds,
@@ -790,6 +792,8 @@ export default function App() {
             onLoadMoreFeedArticles={
               selectedFeedId ? () => loadMoreFeedArticles(selectedFeedId) : undefined
             }
+            globalFilter={globalFilter}
+            onSaveGlobalFilter={setGlobalFilter}
           />
         </ErrorBoundary>
       </div>
