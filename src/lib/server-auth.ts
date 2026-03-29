@@ -23,7 +23,10 @@ function deduplicatedRefresh(
   const inflight = inflightRefresh.get(refreshToken);
   if (inflight) return inflight;
   const p = refreshTokens(refreshToken).finally(() => {
-    inflightRefresh.delete(refreshToken);
+    // 自分の Promise だけ削除する。完了後に別の Promise が登録されていれば触らない。
+    if (inflightRefresh.get(refreshToken) === p) {
+      inflightRefresh.delete(refreshToken);
+    }
   });
   inflightRefresh.set(refreshToken, p);
   return p;
