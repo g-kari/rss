@@ -75,25 +75,69 @@ function detectImageMimeType(bytes: Uint8Array): string | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// エラープレースホルダー SVG
+// ---------------------------------------------------------------------------
+
+type ImageErrorReason = "not_found" | "network" | "too_large" | "unavailable";
+
 /**
- * 画像取得失敗時に返す SVG プレースホルダー。
- * 壊れた画像アイコンを表示し、404 であることを視覚的に示す。
+ * フレーム＋アイコン＋ラベルから SVG 文字列を組み立てる。
+ * アイコンは translate(60,34) 座標系（中心が原点）で記述する。
  */
-const BROKEN_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80">
+function buildErrorSvg(iconFragment: string, label: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80">
   <rect width="120" height="80" fill="#f5f5f4" rx="4"/>
   <rect x="1" y="1" width="118" height="78" fill="none" stroke="#e7e5e4" stroke-width="1" rx="3"/>
   <g transform="translate(60,34)" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <rect x="-14" y="-12" width="28" height="24" rx="2"/>
-    <polyline points="-14,4 -6,-4 0,2 7,-5 14,4"/>
-    <circle cx="5" cy="-5" r="3"/>
-    <line x1="-8" y1="-8" x2="-4" y2="-4" stroke="#d1cac6"/>
-    <line x1="-4" y1="-8" x2="-8" y2="-4" stroke="#d1cac6"/>
+    ${iconFragment}
   </g>
-  <text x="60" y="62" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#a8a29e">Image unavailable</text>
+  <text x="60" y="64" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#a8a29e">${label}</text>
 </svg>`;
+}
 
-function brokenImageSvg(): Response {
-  return new Response(BROKEN_IMAGE_SVG, {
+// 壊れた画像フレーム（山＋太陽、左上に×）
+const ICON_NOT_FOUND = `
+  <rect x="-14" y="-12" width="28" height="24" rx="2"/>
+  <polyline points="-14,4 -6,-4 0,2 7,-5 14,4"/>
+  <circle cx="5" cy="-5" r="3"/>
+  <line x1="-8" y1="-8" x2="-4" y2="-4" stroke="#d1cac6"/>
+  <line x1="-4" y1="-8" x2="-8" y2="-4" stroke="#d1cac6"/>
+`;
+
+// Wifi アーク3本＋斜め線でネットワーク断を表現
+const ICON_NETWORK = `
+  <path d="M-13,-4 Q0,-18 13,-4"/>
+  <path d="M-8,2 Q0,-10 8,2"/>
+  <circle cx="0" cy="8" r="2" fill="#a8a29e"/>
+  <line x1="-12" y1="-16" x2="12" y2="14"/>
+`;
+
+// ボックス＋上下に飛び出す矢印でサイズオーバーを表現
+const ICON_TOO_LARGE = `
+  <rect x="-11" y="-5" width="22" height="15" rx="2"/>
+  <polyline points="-5,-2 0,-8 5,-2"/>
+  <line x1="0" y1="-8" x2="0" y2="-1"/>
+  <polyline points="-5,12 0,18 5,12"/>
+  <line x1="0" y1="12" x2="0" y2="6"/>
+`;
+
+// 警告トライアングル＋!
+const ICON_UNAVAILABLE = `
+  <path d="M0,-13 L14,9 L-14,9 Z"/>
+  <line x1="0" y1="-6" x2="0" y2="2"/>
+  <circle cx="0" cy="6" r="1.5" fill="#a8a29e"/>
+`;
+
+const ERROR_SVGS: Record<ImageErrorReason, string> = {
+  not_found: buildErrorSvg(ICON_NOT_FOUND, "Not Found"),
+  network: buildErrorSvg(ICON_NETWORK, "Network Error"),
+  too_large: buildErrorSvg(ICON_TOO_LARGE, "Too Large"),
+  unavailable: buildErrorSvg(ICON_UNAVAILABLE, "Unavailable"),
+};
+
+function errorImageSvg(reason: ImageErrorReason): Response {
+  return new Response(ERROR_SVGS[reason], {
     headers: {
       "Content-Type": "image/svg+xml",
       "Cache-Control": "public, max-age=3600",
@@ -141,7 +185,9 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
       DEFAULT_FETCH_TIMEOUT_MS,
     );
 
-    if (!res.ok) return brokenImageSvg();
+    if (!res.ok) {
+      return errorImageSvg(res.status === 404 ? "not_found" : "unavailable");
+    }
 
     const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim();
     const needsMagicCheck = ct === "application/octet-stream" || ct === "";
@@ -149,17 +195,17 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
     // Content-Type ベースの検証：ALLOWED_IMAGE_CONTENT_TYPES に含まれない形式は拒否する。
     // ホワイトリスト方式により、SVG など XSS リスクのある形式を一括排除する。
     if (!needsMagicCheck && !ALLOWED_IMAGE_CONTENT_TYPES.has(ct)) {
-      return brokenImageSvg();
+      return errorImageSvg("unavailable");
     }
 
-    if (!res.body) return brokenImageSvg();
+    if (!res.body) return errorImageSvg("unavailable");
     const merged = await readBodyBytes(res.body, MAX_IMAGE_BYTES);
-    if (merged === null) return brokenImageSvg();
+    if (merged === null) return errorImageSvg("too_large");
 
     // Content-Type ヘッダーは偽装できるため、常にマジックバイトで MIME タイプを検証する。
     // image/* と宣言されていても実際のバイト列が画像でなければ拒否する。
     const mimeType = detectImageMimeType(merged);
-    if (!mimeType) return brokenImageSvg();
+    if (!mimeType) return errorImageSvg("unavailable");
 
     // Cloudflare Cache API に保存（fire-and-forget）
     ctx.waitUntil(
@@ -187,6 +233,6 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
     if (!isAbortError(err)) {
       console.error("[image-proxy] fetch error:", err);
     }
-    return brokenImageSvg();
+    return errorImageSvg("network");
   }
 }
