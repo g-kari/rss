@@ -893,13 +893,20 @@ export default function ArticleView({
 
   const { aiResult, aiLoading, aiError, doRunAi, resetAi } = useArticleAi(article?.id);
 
-  // 全文取得・スクロールショートカット (v / Space / Shift+Space)
+  // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)
   const mainRef = useRef<HTMLElement>(null);
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "v" && article?.link && !storedContent && !fetching) {
         void fetchFullContent();
+      }
+      if (e.key === "a" && article?.link) {
+        if (aiResult) {
+          resetAi();
+        } else if (!aiLoading && !fetching) {
+          void doRunAi(article.link, article.id);
+        }
       }
       if (e.key === " ") {
         const el = mainRef.current;
@@ -913,7 +920,17 @@ export default function ArticleView({
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [article?.link, storedContent, fetching, fetchFullContent]);
+  }, [
+    article?.link,
+    article?.id,
+    storedContent,
+    fetching,
+    fetchFullContent,
+    aiResult,
+    aiLoading,
+    doRunAi,
+    resetAi,
+  ]);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
