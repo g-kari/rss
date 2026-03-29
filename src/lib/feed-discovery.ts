@@ -29,7 +29,11 @@ const COMMON_FEED_PATHS = [
 
 function isFeedContentType(ct: string): boolean {
   return (
-    ct.includes("xml") || ct.includes("rss") || ct.includes("atom") || ct.includes("feed+json")
+    ct.includes("rss") ||
+    ct.includes("atom") ||
+    ct.includes("feed+json") ||
+    ct.includes("text/xml") ||
+    ct.includes("application/xml")
   );
 }
 

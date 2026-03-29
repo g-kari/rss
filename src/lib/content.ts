@@ -627,14 +627,12 @@ export function extractWithReadability(html: string, url: string): string | null
  * <head> / <nav> / <header> 等のページクローム要素を除去してコンテンツ部分のみ残す。
  */
 export function stripPageChrome(html: string): string {
-  return html
-    .replace(/<head\b[\s\S]*?<\/head>/gi, "")
-    .replace(/<nav\b[\s\S]*?<\/nav>/gi, "")
-    .replace(/<header\b[\s\S]*?<\/header>/gi, "")
-    .replace(/<footer\b[\s\S]*?<\/footer>/gi, "")
-    .replace(/<aside\b[\s\S]*?<\/aside>/gi, "")
-    .replace(/<form\b[\s\S]*?<\/form>/gi, "")
-    .replace(/<!--[\s\S]*?-->/g, "");
+  const BLOCK_TAGS = ["head", "nav", "header", "footer", "aside", "form"] as const;
+  let result = html;
+  for (const tag of BLOCK_TAGS) {
+    result = result.replace(new RegExp(`<${tag}\\b[\\s\\S]*?<\\/${tag}>`, "gi"), "");
+  }
+  return result.replace(/<!--[\s\S]*?-->/g, "");
 }
 
 /**
