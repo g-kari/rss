@@ -405,6 +405,54 @@ test.describe("normalizeUrlForCache — 広告・Analytics パラメータを除
     const url = "https://example.com/?_ga=2.123456.1234567890.1234567890";
     expect(normalizeUrlForCache(url)).toBe("https://example.com/");
   });
+
+  test("yclid（Yahoo! Japan Ads）を除去する", () => {
+    const url = "https://example.com/?yclid=YSS.1234567890.abcdef";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("twclid（Twitter/X Ads）を除去する", () => {
+    const url = "https://example.com/?twclid=2-abc123xyz";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("epik（Pinterest）を除去する", () => {
+    const url = "https://example.com/?epik=dj0yJiJ1IjoiYWJjMTIz";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("li_fat_id（LinkedIn Ads）を除去する", () => {
+    const url = "https://example.com/?li_fat_id=abc123-def456";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("ttclid（TikTok Ads）を除去する", () => {
+    const url = "https://example.com/?ttclid=7CpXxyz123ABC";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("__s（Drip email）を除去する", () => {
+    const url = "https://example.com/?__s=abcdefgh";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("ck_subscriber_id（ConvertKit）を除去する", () => {
+    const url = "https://example.com/?ck_subscriber_id=123456789";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("_kx（Klaviyo）を除去する", () => {
+    const url = "https://example.com/?_kx=abc123xyz";
+    expect(normalizeUrlForCache(url)).toBe("https://example.com/");
+  });
+
+  test("yclid と UTM を同時に除去する", () => {
+    const url = "https://example.com/article?utm_source=yahoo&yclid=YSS.123.abc&page=2";
+    const result = normalizeUrlForCache(url);
+    expect(result).not.toContain("yclid");
+    expect(result).not.toContain("utm_source");
+    expect(result).toContain("page=2");
+  });
 });
 
 test.describe("normalizeUrlForCache — 有効パラメータを保持・トラッキングのみ除去", () => {
