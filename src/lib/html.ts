@@ -57,14 +57,16 @@ function hasDangerousScheme(val: string): boolean {
  * property 属性と content 属性の順序が前後するケースを両パターンでマッチする。
  */
 export function extractOgMeta(html: string, property: string): string {
+  // content=(["'])([^<>]*?)\1 でクォート種別を揃えてマッチする。
+  // [^"']+パターンだと content="It's great" → "It" で切れるため。
   const m =
     html.match(
-      new RegExp(`<meta[^>]+property=["']og:${property}["'][^>]+content=["']([^"']+)["']`, "i"),
+      new RegExp(`<meta[^>]+property=["']og:${property}["'][^>]+content=(["'])([^<>]*?)\\1`, "i"),
     ) ??
     html.match(
-      new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${property}["']`, "i"),
+      new RegExp(`<meta[^>]+content=(["'])([^<>]*?)\\1[^>]+property=["']og:${property}["']`, "i"),
     );
-  return unescapeHtml(m?.[1] ?? "");
+  return unescapeHtml(m?.[2] ?? "");
 }
 
 /** HTML タグを除去してプレーンテキストに変換する（AI 入力用） */
