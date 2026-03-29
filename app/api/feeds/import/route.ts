@@ -5,8 +5,7 @@ import { isValidFeedUrl } from "@/lib/url";
 import { toArray } from "@/lib/xml-parser";
 import {
   computeFeedHash,
-  readFeedMeta,
-  createFeedMeta,
+  getOrCreateFeedMeta,
   readUserSubscriptions,
   writeUserSubscriptions,
   MAX_FEEDS_PER_USER,
@@ -133,11 +132,8 @@ export async function POST(request: Request) {
       const feedHash = await computeFeedHash(entry.url);
       if (existingHashes.has(feedHash)) continue;
 
-      // 共有 meta が無ければ作成
-      const existingMeta = await readFeedMeta(env.RSS_DATA, feedHash);
-      if (!existingMeta) {
-        await createFeedMeta(env.RSS_DATA, feedHash, entry.url, entry.title, entry.siteUrl);
-      }
+      // 共有 meta を取得（なければ新規作成）
+      await getOrCreateFeedMeta(env.RSS_DATA, feedHash, entry.url, entry.title, entry.siteUrl);
 
       const newSub: UserSubscription = {
         feedHash,
