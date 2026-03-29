@@ -71,6 +71,7 @@ function SpecialViewButton({
   return (
     <button
       onClick={() => onSelectFeed(id)}
+      aria-current={selectedFeedId === id ? "page" : undefined}
       className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
         selectedFeedId === id
           ? "text-text-strong bg-surface-subtle"
@@ -257,6 +258,7 @@ export default function FeedSidebar({
               : "text-text-faint hover:text-text-default hover:bg-surface-subtle"
           }`}
           title="フィードを検索"
+          aria-label="フィードを検索"
         >
           <svg
             width="11"
@@ -278,6 +280,7 @@ export default function FeedSidebar({
               : "text-text-faint hover:text-text-default hover:bg-surface-subtle"
           }`}
           title="フィードを追加"
+          aria-label="フィードを追加"
         >
           <svg
             width="11"
@@ -296,6 +299,7 @@ export default function FeedSidebar({
           disabled={refreshing}
           className="w-5 h-5 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all duration-200 disabled:opacity-40"
           title="フィードを更新"
+          aria-label={refreshing ? "フィードを更新中" : "フィードを更新"}
         >
           <svg
             width="11"
@@ -634,6 +638,7 @@ export default function FeedSidebar({
           disabled={importing}
           className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0 disabled:opacity-40"
           title="OPMLインポート"
+          aria-label="OPMLインポート"
         >
           <svg
             className="w-3.5 h-3.5"
@@ -654,6 +659,7 @@ export default function FeedSidebar({
           onClick={() => setShowReleaseNotes(true)}
           className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
           title="リリースノート"
+          aria-label="リリースノート"
         >
           <svg
             className="w-3.5 h-3.5"
@@ -674,6 +680,7 @@ export default function FeedSidebar({
           onClick={exportOpml}
           className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
           title="OPMLエクスポート"
+          aria-label="OPMLエクスポート"
         >
           <svg
             className="w-3.5 h-3.5"
@@ -694,6 +701,7 @@ export default function FeedSidebar({
             onClick={install.onInstall}
             className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
             title="アプリをインストール"
+            aria-label="アプリをインストール"
           >
             <svg
               className="w-3.5 h-3.5"
@@ -726,6 +734,10 @@ export default function FeedSidebar({
                 ? "プッシュ通知をオフ (右クリックでテスト送信)"
                 : "プッシュ通知をオン")
             }
+            aria-label={
+              push.error ?? (push.subscribed ? "プッシュ通知をオフ" : "プッシュ通知をオン")
+            }
+            aria-pressed={push.subscribed}
           >
             {push.subscribed ? (
               <svg
@@ -761,7 +773,8 @@ export default function FeedSidebar({
         <button
           onClick={onToggleTheme}
           className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
-          title={theme === "dark" ? "ライトモード" : "ダークモード"}
+          title={theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"}
+          aria-label={theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"}
         >
           {theme === "dark" ? (
             <svg
@@ -797,6 +810,7 @@ export default function FeedSidebar({
           onClick={logout}
           className="text-text-faint hover:text-text-soft transition-colors duration-200 flex-shrink-0"
           title="ログアウト"
+          aria-label="ログアウト"
         >
           <svg
             className="w-3.5 h-3.5"
