@@ -6,6 +6,7 @@
 
 - **未読フィルター中の grace period が早期キャンセルされる問題を修正** — `useFilteredArticles` で `selectedArticleId` が変わるたびに `useEffect` のクリーンアップが grace period タイマーをキャンセルしていた。A→B→C と記事を切り替えると A の猶予期間が C の選択時に失われる挙動を、アンマウント専用クリーンアップ `useEffect` を分離することで解消
 - **`useFeedOperations` の import メッセージタイマーがアンマウント時にリークする問題を修正** — OPML インポート後の3秒タイマーがコンポーネントのアンマウント時にクリアされていなかった。専用の `useEffect` クリーンアップを追加
+- **`useEngagement` の flush タイマーがアンマウント時にリークする問題を修正** — `sendBeacon` 失敗時の2秒フラッシュタイマーがアンマウント時にクリアされていなかった。専用の `useEffect` クリーンアップを追加
 
 ### リファクタリング
 
