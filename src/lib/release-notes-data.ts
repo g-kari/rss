@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (14)
+
+### リファクタリング
+
+- **ArticleView ドロップダウン項目スタイルを定数に統合** — \`ShareMenu\` と \`FilterMenu\` で重複定義されていたドロップダウン項目スタイル文字列を \`MENU_ITEM_CLS\` モジュール定数に統合
+
 ## 2026-03-29 (13)
 
 ### ドキュメント整備
