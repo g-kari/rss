@@ -149,7 +149,8 @@ export function getDateRangeStart(range: DateRange): Date | null {
  * - 1時間未満は「〇分前」
  * - 24時間未満は「〇時間前」
  * - 7日未満は「〇日前」
- * - それ以上は「M月D日」形式
+ * - 同一年: 「M月D日」形式
+ * - 異なる年: 「YYYY年M月D日」形式（年が明確になるよう年を付与）
  */
 export function timeAgo(iso: string | null): string {
   if (!iso) return "";
@@ -161,5 +162,11 @@ export function timeAgo(iso: string | null): string {
   if (hours < 24) return `${hours}時間前`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}日前`;
-  return new Date(iso).toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
+  const d = new Date(iso);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("ja-JP", {
+    ...(sameYear ? {} : { year: "numeric" }),
+    month: "short",
+    day: "numeric",
+  });
 }
