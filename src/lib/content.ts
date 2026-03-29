@@ -691,7 +691,10 @@ export function extractMainContent(
     const rcImgCount = (rc.match(/<img\b/gi) ?? []).length;
     if (srcImgCount >= 8 && rcImgCount * 5 < srcImgCount) {
       const regexContent = extractWithRegex(preprocessed, pageUrl);
-      if ((regexContent.match(/<img\b/gi) ?? []).length >= rcImgCount * 2) {
+      const regexImgCount = (regexContent.match(/<img\b/gi) ?? []).length;
+      // rcImgCount が 0 の場合 rcImgCount * 2 = 0 となり条件が常に true になるため
+      // Math.max(1, ...) で「regex に最低 1 枚以上の img がある」ことを保証する
+      if (regexImgCount >= Math.max(1, rcImgCount * 2)) {
         return { content: regexContent + buildGallery(), source: "regex" };
       }
     }
