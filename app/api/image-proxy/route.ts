@@ -76,19 +76,26 @@ function detectImageMimeType(bytes: Uint8Array): string | null {
 }
 
 /**
- * 1×1 透明 GIF — フェッチ失敗時のフォールバック。
- * broken image アイコンの代わりに空領域を表示するために返す。
+ * 画像取得失敗時に返す SVG プレースホルダー。
+ * 壊れた画像アイコンを表示し、404 であることを視覚的に示す。
  */
-const TRANSPARENT_GIF = new Uint8Array([
-  0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0xff, 0xff, 0xff,
-  0x00, 0x00, 0x00, 0x21, 0xf9, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00,
-  0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b,
-]);
+const BROKEN_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80">
+  <rect width="120" height="80" fill="#f5f5f4" rx="4"/>
+  <rect x="1" y="1" width="118" height="78" fill="none" stroke="#e7e5e4" stroke-width="1" rx="3"/>
+  <g transform="translate(60,34)" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="-14" y="-12" width="28" height="24" rx="2"/>
+    <polyline points="-14,4 -6,-4 0,2 7,-5 14,4"/>
+    <circle cx="5" cy="-5" r="3"/>
+    <line x1="-8" y1="-8" x2="-4" y2="-4" stroke="#d1cac6"/>
+    <line x1="-4" y1="-8" x2="-8" y2="-4" stroke="#d1cac6"/>
+  </g>
+  <text x="60" y="62" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#a8a29e">Image unavailable</text>
+</svg>`;
 
-function transparentGif(): Response {
-  return new Response(TRANSPARENT_GIF, {
+function brokenImageSvg(): Response {
+  return new Response(BROKEN_IMAGE_SVG, {
     headers: {
-      "Content-Type": "image/gif",
+      "Content-Type": "image/svg+xml",
       "Cache-Control": "public, max-age=3600",
     },
   });
@@ -134,7 +141,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
       DEFAULT_FETCH_TIMEOUT_MS,
     );
 
-    if (!res.ok) return transparentGif();
+    if (!res.ok) return brokenImageSvg();
 
     const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim();
     const needsMagicCheck = ct === "application/octet-stream" || ct === "";
@@ -142,17 +149,17 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
     // Content-Type ベースの検証：ALLOWED_IMAGE_CONTENT_TYPES に含まれない形式は拒否する。
     // ホワイトリスト方式により、SVG など XSS リスクのある形式を一括排除する。
     if (!needsMagicCheck && !ALLOWED_IMAGE_CONTENT_TYPES.has(ct)) {
-      return transparentGif();
+      return brokenImageSvg();
     }
 
-    if (!res.body) return transparentGif();
+    if (!res.body) return brokenImageSvg();
     const merged = await readBodyBytes(res.body, MAX_IMAGE_BYTES);
-    if (merged === null) return transparentGif();
+    if (merged === null) return brokenImageSvg();
 
     // Content-Type ヘッダーは偽装できるため、常にマジックバイトで MIME タイプを検証する。
     // image/* と宣言されていても実際のバイト列が画像でなければ拒否する。
     const mimeType = detectImageMimeType(merged);
-    if (!mimeType) return transparentGif();
+    if (!mimeType) return brokenImageSvg();
 
     // Cloudflare Cache API に保存（fire-and-forget）
     ctx.waitUntil(
@@ -180,6 +187,6 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
     if (!isAbortError(err)) {
       console.error("[image-proxy] fetch error:", err);
     }
-    return transparentGif();
+    return brokenImageSvg();
   }
 }
