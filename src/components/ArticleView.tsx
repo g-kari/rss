@@ -511,6 +511,7 @@ function metaLabel(key: string): string {
 
 function ImageGallery({ images }: { images: string[] }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const lightboxTouchRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (lightboxIndex === null) return;
@@ -523,6 +524,21 @@ function ImageGallery({ images }: { images: string[] }) {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [lightboxIndex, images.length]);
+
+  function handleLightboxTouchStart(e: React.TouchEvent) {
+    e.stopPropagation();
+    lightboxTouchRef.current = e.touches[0].clientX;
+  }
+
+  function handleLightboxTouchEnd(e: React.TouchEvent) {
+    e.stopPropagation();
+    if (lightboxTouchRef.current === null || lightboxIndex === null) return;
+    const dx = e.changedTouches[0].clientX - lightboxTouchRef.current;
+    lightboxTouchRef.current = null;
+    if (Math.abs(dx) < 50) return;
+    if (dx < 0 && lightboxIndex < images.length - 1) setLightboxIndex(lightboxIndex + 1);
+    else if (dx > 0 && lightboxIndex > 0) setLightboxIndex(lightboxIndex - 1);
+  }
 
   return (
     <>
@@ -550,6 +566,8 @@ function ImageGallery({ images }: { images: string[] }) {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
           onClick={() => setLightboxIndex(null)}
+          onTouchStart={handleLightboxTouchStart}
+          onTouchEnd={handleLightboxTouchEnd}
         >
           <button
             className="absolute top-4 right-4 text-white/70 hover:text-white"
