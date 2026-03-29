@@ -174,6 +174,17 @@ function isFragmentOnlyUse(attrs: string): boolean {
   return /^#[^#]*$/.test(decodedHref);
 }
 
+/** <use> タグを href 検査してフラグメント参照のみ保持する（sanitizeHtml 用コールバック） */
+function sanitizeUse(m: string, attrs: string): string {
+  return isFragmentOnlyUse(attrs) ? m : "";
+}
+
+/** <iframe> タグを src 検査して信頼済みドメインのみ保持する（sanitizeHtml 用コールバック） */
+function sanitizeIframe(m: string, attrs: string): string {
+  const src = attrs.match(/src\s*=\s*["']([^"']+)["']/i)?.[1] ?? "";
+  return isTrustedIframeSrc(src) ? m : "";
+}
+
 export function sanitizeHtml(html: string): string {
   return (
     html
@@ -225,31 +236,17 @@ export function sanitizeHtml(html: string): string {
       // 注意: </use> の後続削除は行わない。
       // ステップ1が <use>...</use> ペアを一括処理するため、外部参照の </use> は既に除去済み。
       // 孤立した </use> はブラウザが無視するため、セキュリティリスクはない。
-      .replace(/<use\b([^>]*)>([\s\S]*?)<\/use>/gi, (_m, attrs: string) =>
-        isFragmentOnlyUse(attrs) ? _m : "",
-      )
+      .replace(/<use\b([^>]*)>([\s\S]*?)<\/use>/gi, sanitizeUse)
       // 自己閉じタグ・未閉じ開始タグを処理（上記でマッチしなかった残余）
-      .replace(/<use\b([^>]*)>/gi, (_m, attrs: string) => (isFragmentOnlyUse(attrs) ? _m : ""))
+      .replace(/<use\b([^>]*)>/gi, sanitizeUse)
       // <iframe> は信頼済みドメイン以外を除去
-      .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (_m, attrs) => {
-        const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
-        const src = srcMatch?.[1] ?? "";
-        return isTrustedIframeSrc(src) ? _m : "";
-      })
-      .replace(/<iframe\b([^>]*)\/>/gi, (_m, attrs) => {
-        const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
-        const src = srcMatch?.[1] ?? "";
-        return isTrustedIframeSrc(src) ? _m : "";
-      })
+      .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, sanitizeIframe)
+      .replace(/<iframe\b([^>]*)\/>/gi, sanitizeIframe)
       // 閉じタグ・自己閉じのない <iframe> 開始タグを除去（未閉じ iframe のサニタイズ漏れ対策）
       // <use> と同様に、上記 2 パターンでマッチしなかった残余の <iframe...> を処理する。
       // RSS content:encoded では </iframe> が省略された形で記述されることがあり、
       // 放置するとブラウザが暗黙的に閉じてレンダリングし、フィッシング iframe に悪用されうる。
-      .replace(/<iframe\b([^>]*)>/gi, (_m, attrs) => {
-        const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
-        const src = srcMatch?.[1] ?? "";
-        return isTrustedIframeSrc(src) ? _m : "";
-      })
+      .replace(/<iframe\b([^>]*)>/gi, sanitizeIframe)
       // 危険な <meta http-equiv> を除去。
       // - refresh: クライアントサイドリダイレクト防止
       // - set-cookie: レスポンスヘッダー偽装による cookie 注入防止
