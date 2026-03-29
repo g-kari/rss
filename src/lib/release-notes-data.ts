@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (56)
+
+### リファクタリング
+
+- **\`useReadState\` の \`RemoteReadState\` 型エイリアス抽出** — \`fetchReadState\` の戻り値型と \`res.json()\` キャストで同一の4フィールド型が2回宣言されていたため、\`RemoteReadState\` 型エイリアスに抽出して重複を解消。型による保証から冗長な \`?? []\` フォールバックも削除 (\`src/hooks/useReadState.ts\`)
+
 ## 2026-03-30 (55)
 
 ### リファクタリング
