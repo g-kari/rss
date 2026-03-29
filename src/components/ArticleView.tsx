@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import type { Article, Feed, FontSize, KeywordFilter } from "../types";
 import type { Theme } from "../hooks/useUIState";
 import FeedFilterModal from "./FeedFilterModal";
-import { readingTime, FONT_SIZE_CYCLE } from "../lib/article-utils";
+import { readingTime, FONT_SIZE_CYCLE, bestSrcFromSrcset } from "../lib/article-utils";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { useArticleContent } from "../hooks/useArticleContent";
 import { useArticleAi } from "../hooks/useArticleAi";
@@ -975,7 +975,11 @@ export default function ArticleView({
     }
     const result: string[] = [];
     for (const img of tempDiv.querySelectorAll("img")) {
-      const src = img.getAttribute("src") ?? "";
+      // src が空または data: プレースホルダーの場合は srcset から最高解像度 URL を取得
+      let src = img.getAttribute("src") ?? "";
+      if (!src || src.startsWith("data:")) {
+        src = bestSrcFromSrcset(img.getAttribute("srcset") ?? "");
+      }
       if (!src || seen.has(src) || src.startsWith("data:") || src.endsWith(".svg")) continue;
       seen.add(src);
       result.push(src);
