@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (31)
+
+### バグ修正
+
+- **クライアント側 401 リトライの重複リフレッシュを修正** — 複数のAPIリクエストが同時に 401 を受け取った場合、それぞれが個別に \`/api/auth/me\` を呼び出していた。\`inflightAuthRecovery\` Promise で in-flight 中の回復リクエストを集約し、1回の呼び出しにまとめるよう修正 (\`src/lib/api-fetch.ts\`)
+
 ## 2026-03-29 (30)
 
 ### バグ修正
