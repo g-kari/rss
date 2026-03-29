@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-29 (30)
+
+### バグ修正
+
+- **`deduplicatedRefresh` のレースコンディションを修正** — `finally` ブロックで `inflightRefresh` Map のエントリを削除する際、自分の Promise かどうかを確認しない問題があった。完了後に別の Promise が登録された場合、その新しい Promise まで削除してしまい重複リフレッシュが発生する可能性があったため、`inflightRefresh.get(refreshToken) === p` のガード条件を追加
+
 ## 2026-03-29 (29)
 
 ### リファクタリング
