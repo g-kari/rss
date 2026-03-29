@@ -137,14 +137,17 @@ export async function POST(request: Request) {
     }
 
     // Phase 2: 共有 meta を並列取得・作成（逐次 N RTT → 並列 ~2 RTT）
-    await Promise.all(
+    // allSettled を使うことで一部フィードの meta 作成失敗があっても
+    // 他のフィードのインポートを継続できるようにする
+    const metaResults = await Promise.allSettled(
       candidates.map(({ entry, feedHash }) =>
         getOrCreateFeedMeta(env.RSS_DATA, feedHash, entry.url, entry.title, entry.siteUrl),
       ),
     );
+    const succeededCandidates = candidates.filter((_, i) => metaResults[i].status === "fulfilled");
 
     // Phase 3: 購読レコードを追加
-    for (const { entry, feedHash } of candidates) {
+    for (const { entry, feedHash } of succeededCandidates) {
       subs.push({
         feedHash,
         url: entry.url,
@@ -152,7 +155,7 @@ export async function POST(request: Request) {
         subscribedAt: new Date().toISOString(),
       });
     }
-    const addedCount = candidates.length;
+    const addedCount = succeededCandidates.length;
 
     if (addedCount > 0) {
       await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
