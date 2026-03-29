@@ -193,6 +193,15 @@ function sanitizeIframe(m: string, attrs: string): string {
 export function sanitizeHtml(html: string): string {
   return (
     html
+      // 不可視 Unicode 文字を除去。
+      // U+00AD (SOFT HYPHEN), U+200B–U+200D (ZERO WIDTH SPACE/NON-JOINER/JOINER),
+      // U+2060 (WORD JOINER), U+FEFF (ZERO WIDTH NO-BREAK SPACE / BOM) などは
+      // 表示上は見えないが、HTML 属性名の途中に挿入されると
+      // 正規表現ベースのイベントハンドラ除去（on\w+ パターン）を
+      // バイパスする攻撃ベクトルになりうる。
+      // 例: `on​error=` (U+200B 挿入) → on\w+ にマッチせず XSS が残存する恐れ。
+      // サニタイズの最初に除去することで後続の全パターンを保護する。
+      .replace(/[\u00AD\u200B-\u200D\u2060\uFEFF]/g, "")
       // 閉じタグを持つブロック要素を除去。
       // [\s\S]*? (非貪欲) を使用することで、tempered greedy token パターン
       // [^<]*(?:(?!<\/tag>)<[^<]*)* による ReDoS（カタストロフィックバックトラッキング）を防ぐ。

@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (49)
+
+### セキュリティ
+
+- **\`sanitizeHtml\` に不可視 Unicode 文字の除去を追加** — U+200B (ZERO WIDTH SPACE) などの不可視 Unicode 文字が HTML 属性名に挿入された場合（例: \`on​error=\`）、イベントハンドラ除去の正規表現をバイパスできる可能性があった。サニタイズ処理の先頭でこれらを除去することで後続のすべてのパターンを保護 (\`src/lib/html.ts\`)
+
 ## 2026-03-30 (48)
 
 ### セキュリティ
