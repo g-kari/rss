@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-29 (20)
+
+### リファクタリング
+
+- **`extractAndCacheContent` の `html` を戻り値に追加** — `fetchArticleContent` と `/api/content` の両方で `detectCharset` / `decodeBytesToString` を二重に呼び出していた冗長処理を排除。`content/route.ts` の不要なインポートも削除
+
 ## 2026-03-29 (19)
 
 ### リファクタリング
