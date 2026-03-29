@@ -39,12 +39,8 @@ export function fixImageDimensions(html: string, pageUrl = ""): string {
     let a = attrs
       .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "")
       .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "")
-      .replace(/\s+style\s*=\s*"([^"]*)"/gi, (_s, style: string) => {
-        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, "").trim();
-        return s2 ? ` style="${s2}"` : "";
-      })
-      .replace(/\s+style\s*=\s*'([^']*)'/gi, (_s, style: string) => {
-        const s2 = style.replace(/\b(?:width|height)\s*:[^;]+;?/gi, "").trim();
+      .replace(/\s+style\s*=\s*(?:"([^"]*)"|'([^']*)')/gi, (_s, dq: string, sq: string) => {
+        const s2 = (dq ?? sq).replace(/\b(?:width|height)\s*:[^;]+;?/gi, "").trim();
         return s2 ? ` style="${s2}"` : "";
       });
 
