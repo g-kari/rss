@@ -781,3 +781,39 @@ function extractWithRegex(html: string, pageUrl: string): string {
   const body = cleaned.match(/<body\b[^>]*>([\s\S]*)<\/body>/i);
   return postProcess(body?.[1] ?? cleaned, pageUrl);
 }
+
+/**
+ * HTML から次ページ URL を検出する。
+ * `<link rel="next">` および `<a rel="next">` の標準 HTML シグナルに対応。
+ * 同一オリジンへの URL のみ返す（外部サイトへの誤誘導を防ぐ）。
+ */
+export function detectNextPageUrl(html: string, currentUrl: string): string | null {
+  const base = tryParseBase(currentUrl);
+  if (!base) return null;
+
+  function resolve(href: string): string | null {
+    if (!href || href.startsWith("#") || href.startsWith("javascript:")) return null;
+    try {
+      const resolved = new URL(href, base!).href;
+      if (resolved === currentUrl) return null;
+      if (new URL(resolved).origin !== base!.origin) return null;
+      return resolved;
+    } catch {
+      return null;
+    }
+  }
+
+  // <link rel="next" href="..."> (最も信頼性が高い)
+  const linkRelNext =
+    html.match(/<link\b[^>]+\brel=["'][^"']*\bnext\b[^"']*["'][^>]+\bhref=["']([^"']+)["']/i) ??
+    html.match(/<link\b[^>]+\bhref=["']([^"']+)["'][^>]+\brel=["'][^"']*\bnext\b[^"']*["']/i);
+  if (linkRelNext?.[1]) return resolve(linkRelNext[1]);
+
+  // <a rel="next" href="...">
+  const aRelNext =
+    html.match(/<a\b[^>]+\brel=["'][^"']*\bnext\b[^"']*["'][^>]+\bhref=["']([^"']+)["']/i) ??
+    html.match(/<a\b[^>]+\bhref=["']([^"']+)["'][^>]+\brel=["'][^"']*\bnext\b[^"']*["']/i);
+  if (aRelNext?.[1]) return resolve(aRelNext[1]);
+
+  return null;
+}

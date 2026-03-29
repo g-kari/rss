@@ -8,6 +8,7 @@ import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } fro
 import {
   decodeBytesToString,
   detectCharset,
+  detectNextPageUrl,
   extractMainContent,
   fetchMarkdownFromHtml,
   isContentSufficient,
@@ -17,6 +18,13 @@ import {
 import { isValidFeedUrl } from "@/lib/url";
 
 export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
+const MAX_PAGINATION_PAGES = 10;
+const FETCH_OPTS = {
+  headers: {
+    "User-Agent": "Mozilla/5.0 (compatible; rss-reader/1.0)",
+    Accept: "text/html,application/xhtml+xml",
+  },
+};
 export { DEFAULT_FETCH_TIMEOUT_MS as FETCH_TIMEOUT_MS } from "@/lib/fetch";
 export const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 
@@ -70,6 +78,58 @@ export async function extractAndCacheContent(
 }
 
 /**
+ * ページ 1 のデコード済み HTML を受け取り、次ページが存在すれば順に取得して連結する。
+ * 複数ページになった場合は cacheKey のキャッシュを統合コンテンツで上書きする。
+ */
+export async function appendPaginatedPages(
+  firstPageHtml: string,
+  firstPageContent: string,
+  firstPageUrl: string,
+  cacheKey: Request,
+  ctx: ExecutionContext,
+): Promise<string> {
+  const allContents: string[] = [firstPageContent];
+  const visited = new Set<string>([firstPageUrl]);
+  let nextUrl = detectNextPageUrl(firstPageHtml, firstPageUrl);
+
+  while (nextUrl && !visited.has(nextUrl) && allContents.length < MAX_PAGINATION_PAGES) {
+    visited.add(nextUrl);
+    try {
+      const res = await fetchFollowSafeRedirects(nextUrl, FETCH_OPTS, DEFAULT_FETCH_TIMEOUT_MS);
+      if (!res.ok || !res.body) break;
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("html")) break;
+      const bytes = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
+      if (!bytes) break;
+      const charset = detectCharset(ct, bytes);
+      const html = decodeBytesToString(bytes, charset);
+      const { content } = extractMainContent(html, nextUrl);
+      allContents.push(content);
+      nextUrl = detectNextPageUrl(html, nextUrl);
+    } catch {
+      break;
+    }
+  }
+
+  if (allContents.length === 1) return firstPageContent;
+
+  const combined = allContents.join(
+    '\n<hr style="margin:2rem 0;border:none;border-top:1px solid var(--color-border-subtle)">\n',
+  );
+
+  // キャッシュを統合コンテンツで上書き
+  const cacheRes = new Response(JSON.stringify({ content: combined }), {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": `public, max-age=${CONTENT_CACHE_TTL_SEC}`,
+    },
+  });
+  ctx.waitUntil(caches.default.put(cacheKey, cacheRes).catch(() => {}));
+
+  return combined;
+}
+
+/**
  * URL から記事コンテンツを取得する。
  * Cloudflare Cache API を確認し、ヒットすればそのまま返す。
  * ミス時は外部フェッチ→抽出→キャッシュ保存を行う。
@@ -109,8 +169,11 @@ export async function fetchArticleContent(
     const merged = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
     if (merged === null) return null;
 
-    const { content } = await extractAndCacheContent(merged, ct, url, cacheKey, ctx);
-    return content;
+    const charset = detectCharset(ct, merged);
+    const html = decodeBytesToString(merged, charset);
+    const { content: page1Content } = await extractAndCacheContent(merged, ct, url, cacheKey, ctx);
+
+    return await appendPaginatedPages(html, page1Content, url, cacheKey, ctx);
   } catch {
     return null;
   }
