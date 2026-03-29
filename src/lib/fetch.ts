@@ -43,7 +43,13 @@ async function readBodyBytesCore(
         if (totalBytes > maxBytes) return null;
         chunks.push(value);
       } else {
-        chunks.push(value);
+        const over = totalBytes - maxBytes;
+        if (over > 0) {
+          chunks.push(value.slice(0, value.byteLength - over));
+          totalBytes -= over;
+        } else {
+          chunks.push(value);
+        }
         if (totalBytes >= maxBytes) break;
       }
     }
