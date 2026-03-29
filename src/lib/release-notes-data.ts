@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (55)
+
+### リファクタリング
+
+- **\`recommendation.ts\` の engagement キーを \`engagementKey()\` ヘルパーに統一** — \`generateRecommendations\` 内でハードコードされていた \`users/\${userId}/engagement.json\` を \`r2.ts\` の \`engagementKey()\` ヘルパーで置き換え、キー文字列の重複を排除 (\`src/lib/recommendation.ts\`)
+
 ## 2026-03-30 (54)
 
 ### リファクタリング
