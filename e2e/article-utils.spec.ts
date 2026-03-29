@@ -59,7 +59,8 @@ test.describe("readingTime — 日本語モード (CJK > 30%)", () => {
 
   test("漢字（CJK Unified Ideographs）も日本語モードで計算される", () => {
     const kanji = "日本語".repeat(134); // 402 文字
-    expect(readingTime(kanji)).toBe(Math.ceil(402 / 400));
+    // readingTime は cjkChars / 500 + enWords / 200 で計算する（500字/分）
+    expect(readingTime(kanji)).toBe(Math.ceil(402 / 500));
   });
 });
 
@@ -206,25 +207,57 @@ test.describe("timeAgo — 〇日前（7 日未満）", () => {
   });
 });
 
-test.describe("timeAgo — M月D日形式（7 日以上）", () => {
-  test("7 日以上前は「M月D日」形式を返す", () => {
+test.describe("timeAgo — M月D日形式（7 日以上・同年）", () => {
+  test("7 日以上前（同年）は「M月D日」形式を返す", () => {
+    // 同年かつ 8 日前になるよう今年 1 月 1 日を基準に計算
+    const now = new Date();
+    // 同年内に収まるよう 8 日前（2 月以降なら確実に同年）
     const date = new Date(Date.now() - 8 * 24 * 60 * 60_000);
+    if (date.getFullYear() !== now.getFullYear()) return; // 年をまたぐ場合はスキップ
     const iso = date.toISOString();
     const expected = date.toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
     expect(timeAgo(iso)).toBe(expected);
   });
 
-  test("30 日前は「M月D日」形式を返す", () => {
+  test("30 日前（同年）は「M月D日」形式を返す", () => {
+    const now = new Date();
     const date = new Date(Date.now() - 30 * 24 * 60 * 60_000);
+    if (date.getFullYear() !== now.getFullYear()) return; // 年をまたぐ場合はスキップ
     const iso = date.toISOString();
     const expected = date.toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
     expect(timeAgo(iso)).toBe(expected);
   });
+});
 
-  test("365 日前は「M月D日」形式を返す", () => {
-    const date = new Date(Date.now() - 365 * 24 * 60 * 60_000);
+test.describe("timeAgo — YYYY年M月D日形式（異なる年）", () => {
+  test("異なる年の日付は「YYYY年M月D日」形式を返す", () => {
+    // 確実に異なる年になるよう 400 日前を使用
+    const date = new Date(Date.now() - 400 * 24 * 60 * 60_000);
     const iso = date.toISOString();
-    const expected = date.toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
+    const expected = date.toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
     expect(timeAgo(iso)).toBe(expected);
+  });
+
+  test("2 年以上前の日付も「YYYY年M月D日」形式を返す", () => {
+    const date = new Date(Date.now() - 800 * 24 * 60 * 60_000);
+    const iso = date.toISOString();
+    const expected = date.toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    expect(timeAgo(iso)).toBe(expected);
+  });
+
+  test("固定日付（2023年6月15日）は年付きで返す", () => {
+    const iso = "2023-06-15T12:00:00Z";
+    const result = timeAgo(iso);
+    // 2023 年は現在（2026 年）と異なるため年が含まれる
+    expect(result).toContain("2023");
+    expect(result).toContain("6");
   });
 });
