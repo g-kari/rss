@@ -17,24 +17,21 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchRecommendations = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await apiFetch("/api/recommendations");
-      if (!res.ok) return;
-      const data = (await res.json()) as { recommendations: RecommendedFeed[] };
-      setRecommendations(data.recommendations ?? []);
-    } catch {
-      // 静かに失敗
-    } finally {
-      setLoading(false);
-    }
+  /** 推薦データを取得して state にセットする（ローディング状態管理なし） */
+  const loadRecommendations = useCallback(async () => {
+    const res = await apiFetch("/api/recommendations");
+    if (!res.ok) return;
+    const data = (await res.json()) as { recommendations: RecommendedFeed[] };
+    setRecommendations(data.recommendations ?? []);
   }, []);
 
   useEffect(() => {
     if (!user) return;
-    void fetchRecommendations();
-  }, [user, fetchRecommendations]);
+    setLoading(true);
+    loadRecommendations()
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user, loadRecommendations]);
 
   const dismiss = useCallback((id: string) => {
     setRecommendations((prev) => prev.filter((r) => r.id !== id));
@@ -49,13 +46,13 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
     try {
       setRefreshing(true);
       await apiFetch("/api/recommendations/refresh", { method: "POST" });
-      await fetchRecommendations();
+      await loadRecommendations();
     } catch {
       // 静かに失敗
     } finally {
       setRefreshing(false);
     }
-  }, [fetchRecommendations]);
+  }, [loadRecommendations]);
 
   return { recommendations, loading, dismiss, refresh, refreshing };
 }
