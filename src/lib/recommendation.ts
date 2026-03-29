@@ -347,9 +347,7 @@ export async function generateLinkDiscoveryFeeds(
 
       // <a href="..."> を抽出
       const articleHostname = new URL(link).hostname;
-      const hrefRe = /<a\b[^>]+href\s*=\s*["']([^"'#?][^"']*?)["'][^>]*>/gi;
-      let m: RegExpExecArray | null;
-      while ((m = hrefRe.exec(html)) !== null) {
+      for (const m of html.matchAll(/<a\b[^>]+href\s*=\s*["']([^"'#?][^"']*?)["'][^>]*>/gi)) {
         const href = m[1];
         if (!href.startsWith("http")) continue;
         try {
