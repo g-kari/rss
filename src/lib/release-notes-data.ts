@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (37)
+
+### リファクタリング
+
+- **\`isFeedContentType\` の精度向上** — \`ct.includes("xml")\` が \`image/svg+xml\` 等の非フィード XML を誤検知していた問題を修正。\`text/xml\` / \`application/xml\` を明示的に列挙する形に変更 (\`src/lib/feed-discovery.ts\`)
+- **\`stripPageChrome\` のループ化** — 6 つの \`.replace()\` チェーンを \`for...of\` ループに整理し、タグ名配列で管理する形に変更 (\`src/lib/content.ts\`)
+
 ## 2026-03-29 (36)
 
 ### リファクタリング
