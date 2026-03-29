@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (29)
+
+### リファクタリング
+
+- **OPMLインポート後の二重フェッチを解消** — \`POST /api/feeds/import\` のレスポンスに追加された \`feeds\` フィールドを含めることで、インポート完了後に \`GET /api/feeds\` を再度呼ぶ必要をなくした。クライアント側 \`useFeedOperations\` / \`useFeeds\` を合わせて修正
+
 ## 2026-03-29 (28)
 
 ### リファクタリング
