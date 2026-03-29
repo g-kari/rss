@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-30 (47)
+
+### リファクタリング
+
+- **`markAllRead` のフィード種別分岐をルックアップテーブルに統合** — BOOKMARKS / READING_LIST / LIKES / HISTORY の 4 分岐が同じフィルターパターンを繰り返していたため、`specialSets` オブジェクトにまとめて 3 方向の条件式に簡略化 (`src/hooks/useReadState.ts`)
+
 ## 2026-03-29 (46)
 
 ### リファクタリング
