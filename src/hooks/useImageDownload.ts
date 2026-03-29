@@ -14,14 +14,17 @@ interface ImageDownloadState {
   cancelDownload: () => void;
 }
 
+const MIME_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/avif": "avif",
+  "image/bmp": "bmp",
+  "image/svg+xml": "svg",
+};
+
 function mimeToExt(mime: string): string {
-  if (mime.includes("png")) return "png";
-  if (mime.includes("gif")) return "gif";
-  if (mime.includes("webp")) return "webp";
-  if (mime.includes("avif")) return "avif";
-  if (mime.includes("bmp")) return "bmp";
-  if (mime.includes("svg")) return "svg";
-  return "jpg";
+  return MIME_EXT[mime] ?? "jpg";
 }
 
 export function useImageDownload(
