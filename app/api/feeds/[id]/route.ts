@@ -29,7 +29,9 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
   return withSession(async ({ session, env }) => {
-    const parsed = await parseJsonBody<{ title?: unknown; filter?: unknown }>(request);
+    const parsed = await parseJsonBody<{ title?: unknown; filter?: unknown; nsfw?: unknown }>(
+      request,
+    );
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
 

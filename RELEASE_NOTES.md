@@ -1,5 +1,13 @@
 # リリースノート
 
+## 2026-03-29 (46)
+
+### リファクタリング
+
+- **ソート・逆順操作の不要なスプレッドを削除** — `filterAndSortArticles` の履歴ソートと oldest 逆順で `[...list]` スプレッドを削除。`filter()` の戻り値は既に新しい配列のため、インプレース操作で十分 (`src/lib/article-filter.ts`)
+- **`getUserLatestArticles` の中間変数を削減** — `all` / `sorted` の 2 変数を `sortByDate(pages.flat()).slice(0, 2000)` の 1 式に統合 (`src/lib/shared-feed.ts`)
+- **`parseJsonBody` の型アノテーションに `nsfw` を追加** — PATCH ハンドラーで処理している `nsfw` フィールドが型パラメータから欠落していたため補完 (`app/api/feeds/[id]/route.ts`)
+
 ## 2026-03-29 (45)
 
 ### セキュリティ
