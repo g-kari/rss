@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (38)
+
+### セキュリティ
+
+- **画像プロキシの Content-Type 大文字小文字正規化** — \`Content-Type\` ヘッダーを \`.toLowerCase()\` で正規化してから許可リストと照合するよう修正。\`Image/JPEG\` 等のケース違いがある場合に誤拒否していた問題を解消 (\`app/api/image-proxy/route.ts\`)
+
 ## 2026-03-29 (37)
 
 ### リファクタリング

@@ -189,7 +189,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
       return errorImageSvg(res.status === 404 ? "not_found" : "unavailable");
     }
 
-    const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim();
+    const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
     const needsMagicCheck = ct === "application/octet-stream" || ct === "";
 
     // Content-Type ベースの検証：ALLOWED_IMAGE_CONTENT_TYPES に含まれない形式は拒否する。
