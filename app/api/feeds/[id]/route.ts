@@ -6,6 +6,7 @@ import {
   readFeedMeta,
   assembleClientFeed,
 } from "@/lib/shared-feed";
+import { sanitizeKeywords } from "@/lib/keyword-filter";
 import type { KeywordFilter } from "@/types";
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -59,19 +60,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             { status: 400 },
           );
         }
-        const MAX_KEYWORD_LENGTH = 100;
-        const sanitize = (arr: unknown[]): string[] =>
-          [
-            ...new Set(
-              arr
-                .filter((x): x is string => typeof x === "string")
-                .map((s) => s.trim().slice(0, MAX_KEYWORD_LENGTH))
-                .filter(Boolean),
-            ),
-          ].slice(0, 50);
         const filter: KeywordFilter = {
-          include: sanitize(f.include as unknown[]),
-          exclude: sanitize(f.exclude as unknown[]),
+          include: sanitizeKeywords(f.include as unknown[]),
+          exclude: sanitizeKeywords(f.exclude as unknown[]),
         };
         if (typeof f.matchCategories === "boolean") {
           filter.matchCategories = f.matchCategories;
