@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (3)
+
+### リファクタリング
+
+- \`useNSFWMode\`: \`activateNSFW\` の \`useCallback\` 依存配列から \`nsfwMode\` を除去 — \`nsfwModeRef\` で最新値を参照することで、\`nsfwMode\` 変更時のコールバック再生成を防止
+- \`useReadingHistory\`: \`historyOrder\` の導出を簡略化 — \`history.map()\` から直接配列を生成し \`Set\` を構築することで中間 Set の展開を省略
+
 ## 2026-03-29 (2)
 
 ### アクセシビリティ

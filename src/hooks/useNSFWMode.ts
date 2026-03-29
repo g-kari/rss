@@ -12,6 +12,8 @@ export function useNSFWMode() {
   const [nsfwMode, setNsfwMode] = useState(() => storageGet(STORAGE_KEYS.NSFW_MODE) === "1");
   const [showNSFWAnimation, setShowNSFWAnimation] = useState(false);
   const clickTimesRef = useRef<number[]>([]);
+  const nsfwModeRef = useRef(nsfwMode);
+  nsfwModeRef.current = nsfwMode;
 
   const activateNSFW = useCallback(() => {
     const now = Date.now();
@@ -20,11 +22,11 @@ export function useNSFWMode() {
     if (times.length > NSFW_CLICK_COUNT) times.shift();
     if (times.length === NSFW_CLICK_COUNT && now - times[0] < NSFW_CLICK_WINDOW) {
       clickTimesRef.current = [];
-      if (!nsfwMode) {
+      if (!nsfwModeRef.current) {
         setShowNSFWAnimation(true);
       }
     }
-  }, [nsfwMode]);
+  }, []);
 
   const deactivateNSFW = useCallback(() => {
     setNsfwMode(false);
