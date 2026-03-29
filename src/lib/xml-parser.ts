@@ -1,5 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
-import { sanitizeHtml, unescapeHtml } from "./html";
+import { sanitizeHtml, unescapeHtml, stripHtml } from "./html";
 
 /** XML 属性を持つノード（fast-xml-parser の属性プレフィックス "@_" 付き） */
 interface XmlAttr {
@@ -149,10 +149,6 @@ function unwrapCdata(s: string): string {
 export function toArray<T>(val: T | T[] | undefined): T[] {
   if (!val) return [];
   return Array.isArray(val) ? val : [val];
-}
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
 }
 
 /**
