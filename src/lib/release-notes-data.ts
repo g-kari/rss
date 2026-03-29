@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (52)
+
+### リファクタリング
+
+- **\`resolveRelativeUrl\` ヘルパーを抽出** — \`fixImageDimensions\` 内で \`src\` 属性と \`srcset\` 属性の相対 URL 解決ロジックが重複していたため、共通ヘルパー関数 \`resolveRelativeUrl(url, base)\` に切り出した。動作は変わらず、コードの重複を解消 (\`src/lib/content.ts\`)
+
 ## 2026-03-30 (51)
 
 ### 新機能
