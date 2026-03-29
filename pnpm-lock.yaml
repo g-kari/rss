@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  yaml: '>=2.8.3'
+  brace-expansion: '>=5.0.5'
+  path-to-regexp: '>=8.4.0'
+
 importers:
 
   .:
@@ -71,7 +76,7 @@ importers:
         version: 5.9.3
       vite-plus:
         specifier: ^0.1.14
-        version: 0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.2))(yaml@2.8.2)
+        version: 0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3)
       wrangler:
         specifier: ^4.77.0
         version: 4.77.0(@cloudflare/workers-types@4.20260317.1)
@@ -1954,7 +1959,7 @@ packages:
       tsx: ^4.8.1
       typescript: ^5.0.0
       unplugin-unused: ^0.5.0
-      yaml: ^2.4.2
+      yaml: '>=2.8.3'
     peerDependenciesMeta:
       '@arethetypeswrong/core':
         optional: true
@@ -2116,9 +2121,6 @@ packages:
   aws4fetch@1.0.20:
     resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
 
-  balanced-match@1.0.2:
-    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
-
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
@@ -2141,11 +2143,8 @@ packages:
   bowser@2.14.1:
     resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
 
-  brace-expansion@2.0.2:
-    resolution: {integrity: sha512-Jt0vHyM+jmUBqojB7E1NIYadt0vI0Qxjxd2TErW94wDz+E2LAm5vKMXXwg6ZZBTHPuUlDgQHKXvjGBdfcF1ZDQ==}
-
-  brace-expansion@5.0.4:
-    resolution: {integrity: sha512-h+DEnpVvxmfVefa4jFbCf5HdH5YMDXRsmKflpf1pILZWRFlTbJpxeU55nJl4Smt5HQaGzg1o6RHFPJaOqnmBDg==}
+  brace-expansion@5.0.5:
+    resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
     engines: {node: 18 || 20 || >=22}
 
   buffer-from@1.1.2:
@@ -2845,11 +2844,8 @@ packages:
     resolution: {integrity: sha512-3O/iVVsJAPsOnpwWIeD+d6z/7PmqApyQePUtCndjatj/9I5LylHvt5qluFaBT3I5h3r1ejfR056c+FCv+NnNXg==}
     engines: {node: 18 || 20 || >=22}
 
-  path-to-regexp@6.3.0:
-    resolution: {integrity: sha512-Yhpw4T9C6hPpgPeA28us07OJeqZ5EzQTkbfwuhsUg0c237RomFoETJgmp2sa3F/41gfLE6G5cqcYwznmeEeOlQ==}
-
-  path-to-regexp@8.3.0:
-    resolution: {integrity: sha512-7jdwVIRtsP8MYpdXSwOS0YdD0Du+qOoF/AEPIt88PcCFrZCzx41oxku1jD88hZBwbNUIEfpqvuhjFaMAqMTWnA==}
+  path-to-regexp@8.4.0:
+    resolution: {integrity: sha512-PuseHIvAnz3bjrM2rGJtSgo1zjgxapTLZ7x2pjhzWwlp4SJQgK3f3iZIQwkpEnBaKz6seKBADpM4B4ySkuYypg==}
 
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
@@ -3137,7 +3133,7 @@ packages:
       sugarss: ^5.0.0
       terser: ^5.16.0
       tsx: ^4.8.1
-      yaml: ^2.4.2
+      yaml: '>=2.8.3'
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -3234,8 +3230,8 @@ packages:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
 
-  yaml@2.8.2:
-    resolution: {integrity: sha512-mplynKqc1C2hTVYxd0PU2xQAc22TI1vShAYGksCCfxbn/dFwnHTNi1bvYsBTkhdUNtGIf5xNOg938rrSSYvS9A==}
+  yaml@2.8.3:
+    resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
     engines: {node: '>= 14.6'}
     hasBin: true
 
@@ -4462,9 +4458,9 @@ snapshots:
       esbuild: 0.25.4
       express: 5.2.1
       next: 16.1.7(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      path-to-regexp: 6.3.0
+      path-to-regexp: 8.4.0
       urlpattern-polyfill: 10.1.0
-      yaml: 2.8.2
+      yaml: 2.8.3
     transitivePeerDependencies:
       - aws-crt
       - supports-color
@@ -5174,7 +5170,7 @@ snapshots:
       '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260326.1
       '@typescript/native-preview-win32-x64': 7.0.0-dev.20260326.1
 
-  '@voidzero-dev/vite-plus-core@0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(yaml@2.8.2)':
+  '@voidzero-dev/vite-plus-core@0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(yaml@2.8.3)':
     dependencies:
       '@oxc-project/runtime': 0.121.0
       '@oxc-project/types': 0.122.0
@@ -5187,7 +5183,7 @@ snapshots:
       jiti: 2.6.1
       terser: 5.16.9
       typescript: 5.9.3
-      yaml: 2.8.2
+      yaml: 2.8.3
 
   '@voidzero-dev/vite-plus-darwin-arm64@0.1.14':
     optional: true
@@ -5207,11 +5203,11 @@ snapshots:
   '@voidzero-dev/vite-plus-linux-x64-musl@0.1.14':
     optional: true
 
-  '@voidzero-dev/vite-plus-test@0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.2))(yaml@2.8.2)':
+  '@voidzero-dev/vite-plus-test@0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@types/chai': 5.2.3
-      '@voidzero-dev/vite-plus-core': 0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(yaml@2.8.2)
+      '@voidzero-dev/vite-plus-core': 0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(yaml@2.8.3)
       es-module-lexer: 1.7.0
       obug: 2.1.1
       pixelmatch: 7.1.0
@@ -5221,7 +5217,7 @@ snapshots:
       tinybench: 2.9.0
       tinyexec: 1.0.4
       tinyglobby: 0.2.15
-      vite: 8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.2)
+      vite: 8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3)
       ws: 8.20.0
     optionalDependencies:
       '@types/node': 25.5.0
@@ -5283,8 +5279,6 @@ snapshots:
 
   aws4fetch@1.0.20: {}
 
-  balanced-match@1.0.2: {}
-
   balanced-match@4.0.4: {}
 
   baseline-browser-mapping@2.10.9: {}
@@ -5309,11 +5303,7 @@ snapshots:
 
   bowser@2.14.1: {}
 
-  brace-expansion@2.0.2:
-    dependencies:
-      balanced-match: 1.0.2
-
-  brace-expansion@5.0.4:
+  brace-expansion@5.0.5:
     dependencies:
       balanced-match: 4.0.4
 
@@ -5902,11 +5892,11 @@ snapshots:
 
   minimatch@10.2.4:
     dependencies:
-      brace-expansion: 5.0.4
+      brace-expansion: 5.0.5
 
   minimatch@8.0.7:
     dependencies:
-      brace-expansion: 2.0.2
+      brace-expansion: 5.0.5
 
   minipass@4.2.8: {}
 
@@ -6059,9 +6049,7 @@ snapshots:
       lru-cache: 11.2.7
       minipass: 7.1.3
 
-  path-to-regexp@6.3.0: {}
-
-  path-to-regexp@8.3.0: {}
+  path-to-regexp@8.4.0: {}
 
   pathe@2.0.3: {}
 
@@ -6147,7 +6135,7 @@ snapshots:
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
-      path-to-regexp: 8.3.0
+      path-to-regexp: 8.4.0
     transitivePeerDependencies:
       - supports-color
 
@@ -6355,11 +6343,11 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite-plus@0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.2))(yaml@2.8.2):
+  vite-plus@0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3):
     dependencies:
       '@oxc-project/types': 0.122.0
-      '@voidzero-dev/vite-plus-core': 0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(yaml@2.8.2)
-      '@voidzero-dev/vite-plus-test': 0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.2))(yaml@2.8.2)
+      '@voidzero-dev/vite-plus-core': 0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(yaml@2.8.3)
+      '@voidzero-dev/vite-plus-test': 0.1.14(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(typescript@5.9.3)(vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3)
       cac: 7.0.0
       cross-spawn: 7.0.6
       oxfmt: 0.42.0
@@ -6403,7 +6391,7 @@ snapshots:
       - vite
       - yaml
 
-  vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.2):
+  vite@8.0.3(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3):
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
@@ -6416,7 +6404,7 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.6.1
       terser: 5.16.9
-      yaml: 2.8.2
+      yaml: 2.8.3
 
   web-streams-polyfill@4.0.0-beta.3: {}
 
@@ -6450,7 +6438,7 @@ snapshots:
       blake3-wasm: 2.1.5
       esbuild: 0.27.3
       miniflare: 4.20260317.2
-      path-to-regexp: 6.3.0
+      path-to-regexp: 8.4.0
       unenv: 2.0.0-rc.24
       workerd: 1.20260317.1
     optionalDependencies:
@@ -6474,7 +6462,7 @@ snapshots:
 
   y18n@5.0.8: {}
 
-  yaml@2.8.2: {}
+  yaml@2.8.3: {}
 
   yargs-parser@22.0.0: {}
 
