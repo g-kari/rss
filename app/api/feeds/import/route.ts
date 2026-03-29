@@ -6,6 +6,7 @@ import { toArray } from "@/lib/xml-parser";
 import {
   computeFeedHash,
   getOrCreateFeedMeta,
+  assembleClientFeed,
   readUserSubscriptions,
   writeUserSubscriptions,
   MAX_FEEDS_PER_USER,
@@ -144,24 +145,32 @@ export async function POST(request: Request) {
         getOrCreateFeedMeta(env.RSS_DATA, feedHash, entry.url, entry.title, entry.siteUrl),
       ),
     );
+    const succeededMetas = metaResults
+      .map((r) => (r.status === "fulfilled" ? r.value : null))
+      .filter((m) => m !== null);
     const succeededCandidates = candidates.filter((_, i) => metaResults[i].status === "fulfilled");
 
     // Phase 3: 購読レコードを追加
-    for (const { entry, feedHash } of succeededCandidates) {
-      subs.push({
-        feedHash,
-        url: entry.url,
-        customTitle: entry.title !== entry.url ? entry.title : undefined,
-        subscribedAt: new Date().toISOString(),
-      });
-    }
-    const addedCount = succeededCandidates.length;
+    const subscribedAt = new Date().toISOString();
+    const newSubs = succeededCandidates.map(({ entry, feedHash }) => ({
+      feedHash,
+      url: entry.url,
+      customTitle: entry.title !== entry.url ? entry.title : undefined,
+      subscribedAt,
+    }));
+    for (const sub of newSubs) subs.push(sub);
+    const addedCount = newSubs.length;
 
     if (addedCount > 0) {
       await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
       ctx.waitUntil(fetchArticles(env, session.userId).catch(console.error));
     }
 
-    return NextResponse.json({ added: addedCount, skipped: feedEntries.length - addedCount });
+    const feeds = succeededMetas.map((meta, i) => assembleClientFeed(meta, newSubs[i]));
+    return NextResponse.json({
+      added: addedCount,
+      skipped: feedEntries.length - addedCount,
+      feeds,
+    });
   });
 }
