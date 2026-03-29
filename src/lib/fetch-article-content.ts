@@ -77,6 +77,17 @@ export async function extractAndCacheContent(
   return { content, source: contentSource, html };
 }
 
+/** HTML をフェッチしてバイト列と Content-Type を返す。失敗・非HTML・body なしは null。 */
+async function fetchHtmlBytes(url: string): Promise<{ bytes: Uint8Array; ct: string } | null> {
+  const res = await fetchFollowSafeRedirects(url, FETCH_OPTS, DEFAULT_FETCH_TIMEOUT_MS);
+  if (!res.ok || !res.body) return null;
+  const ct = res.headers.get("content-type") ?? "";
+  if (!ct.includes("html")) return null;
+  const bytes = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
+  if (!bytes) return null;
+  return { bytes, ct };
+}
+
 /**
  * ページ 1 のデコード済み HTML を受け取り、次ページが存在すれば順に取得して連結する。
  * 複数ページになった場合は cacheKey のキャッシュを統合コンテンツで上書きする。
@@ -95,12 +106,9 @@ export async function appendPaginatedPages(
   while (nextUrl && !visited.has(nextUrl) && allContents.length < MAX_PAGINATION_PAGES) {
     visited.add(nextUrl);
     try {
-      const res = await fetchFollowSafeRedirects(nextUrl, FETCH_OPTS, DEFAULT_FETCH_TIMEOUT_MS);
-      if (!res.ok || !res.body) break;
-      const ct = res.headers.get("content-type") ?? "";
-      if (!ct.includes("html")) break;
-      const bytes = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
-      if (!bytes) break;
+      const result = await fetchHtmlBytes(nextUrl);
+      if (!result) break;
+      const { bytes, ct } = result;
       const charset = detectCharset(ct, bytes);
       const html = decodeBytesToString(bytes, charset);
       const { content } = extractMainContent(html, nextUrl);
@@ -150,24 +158,9 @@ export async function fetchArticleContent(
   }
 
   try {
-    const res = await fetchFollowSafeRedirects(
-      url,
-      {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; rss-reader/1.0)",
-          Accept: "text/html,application/xhtml+xml",
-        },
-      },
-      DEFAULT_FETCH_TIMEOUT_MS,
-    );
-
-    if (!res.ok) return null;
-    const ct = res.headers.get("content-type") ?? "";
-    if (!ct.includes("html")) return null;
-    if (!res.body) return null;
-
-    const merged = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
-    if (merged === null) return null;
+    const result = await fetchHtmlBytes(url);
+    if (!result) return null;
+    const { bytes: merged, ct } = result;
 
     const { content: page1Content, html } = await extractAndCacheContent(
       merged,

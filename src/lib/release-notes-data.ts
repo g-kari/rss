@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (25)
+
+### リファクタリング
+
+- **\`fetch-article-content.ts\` の HTML フェッチ検証ロジックを \`fetchHtmlBytes\` に集約** — \`fetchArticleContent\` と \`appendPaginatedPages\` で重複していた「フェッチ→ok/body 確認→Content-Type チェック→バイト読み込み」の 6〜7 行を \`fetchHtmlBytes\` ヘルパーに抽出。また \`fetchArticleContent\` 内のハードコードされたヘッダーオブジェクトを既存の \`FETCH_OPTS\` 定数に統一
+
 ## 2026-03-29 (24)
 
 ### バグ修正
