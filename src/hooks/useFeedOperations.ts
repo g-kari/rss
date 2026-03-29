@@ -106,10 +106,9 @@ export function useFeedOperations({
         showImportMessage(data.error ?? "インポートに失敗しました", true);
         return;
       }
-      const data = (await res.json()) as { added: number; skipped: number };
+      const data = (await res.json()) as { added: number; skipped: number; feeds: Feed[] };
       if (data.added > 0) {
-        const allFeeds = await apiFetchJson<Feed[]>("/api/feeds");
-        onFeedsImported(allFeeds);
+        onFeedsImported(data.feeds);
       }
       showImportMessage(
         data.added > 0 ? `${data.added}件インポートしました` : "すべて登録済みです",

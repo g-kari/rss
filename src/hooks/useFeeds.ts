@@ -155,7 +155,7 @@ export function useFeeds(
 
   const replaceFeeds = useCallback(
     async (newFeeds: Feed[]) => {
-      setFeeds(newFeeds);
+      setFeeds((prev) => [...prev, ...newFeeds]);
       // インポート後に記事を再取得する
       setLoadingArticles(true);
       try {
