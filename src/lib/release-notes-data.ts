@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (54)
+
+### リファクタリング
+
+- **OGP キャッシュ読み込みの不要な中間変数を削除** — \`isValidPublicUrl()\` が内部でプロトコルチェックを行うため、\`raw\` 変数による \`data.image\` へのフォールバックロジックが不要だった。HTML エンティティのデコードはプロトコルプレフィックスを変えないため、\`unescapeHtml()\` でデコード済みの URL を \`isValidPublicUrl\` に直接渡すよう簡略化 (\`app/api/ogp/route.ts\`)
+
 ## 2026-03-30 (53)
 
 ### バグ修正
