@@ -96,11 +96,9 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
   // 履歴モードは viewedAt 降順（最近閲覧順）で固定
   if (feedId === SPECIAL_FEED_IDS.HISTORY) {
     const orderMap = new Map(historyOrder.map((id, i) => [id, i]));
-    list = [...list].sort(
-      (a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity),
-    );
+    list.sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
   } else if (sortOrder === "oldest") {
-    list = [...list].reverse();
+    list.reverse();
   }
 
   return list;
