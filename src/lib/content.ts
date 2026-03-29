@@ -23,6 +23,19 @@ function tryParseBase(pageUrl: string): URL | null {
 }
 
 /**
+ * 相対 URL を base に対して絶対 URL に解決する。
+ * 既に絶対 URL (http/https) の場合・data: の場合・解決失敗の場合はそのまま返す。
+ */
+function resolveRelativeUrl(url: string, base: URL): string {
+  if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return url;
+  try {
+    return new URL(url, base).href;
+  } catch {
+    return url;
+  }
+}
+
+/**
  * img タグの後処理:
  * - 固定 width / height 属性を除去してレスポンシブ表示を保証
  * - 相対パスの src を pageUrl ベースで絶対 URL に変換（404 防止）
@@ -47,24 +60,12 @@ export function fixImageDimensions(html: string, pageUrl = ""): string {
     // 相対パスを絶対 URL に変換
     if (base) {
       a = a.replace(/\bsrc=["']([^"']+)["']/gi, (_sm, src: string) => {
-        if (/^https?:\/\//i.test(src) || src.startsWith("data:")) return _sm;
-        try {
-          return `src="${new URL(src, base).href}"`;
-        } catch {
-          return _sm;
-        }
+        const resolved = resolveRelativeUrl(src, base);
+        return resolved !== src ? `src="${resolved}"` : _sm;
       });
       // srcset 内の相対 URL も絶対 URL に変換
       a = a.replace(/\bsrcset=["']([^"']+)["']/gi, (_sm, srcset: string) => {
-        const resolved = transformSrcset(srcset, (url) => {
-          if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return url;
-          try {
-            return new URL(url, base!).href;
-          } catch {
-            return url;
-          }
-        });
-        return `srcset="${resolved}"`;
+        return `srcset="${transformSrcset(srcset, (url) => resolveRelativeUrl(url, base))}"`;
       });
     }
 
