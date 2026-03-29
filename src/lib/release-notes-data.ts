@@ -6,6 +6,11 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-03-29
 
+### バグ修正
+
+- **未読フィルター中の grace period が早期キャンセルされる問題を修正** — \`useFilteredArticles\` で \`selectedArticleId\` が変わるたびに \`useEffect\` のクリーンアップが grace period タイマーをキャンセルしていた。A→B→C と記事を切り替えると A の猶予期間が C の選択時に失われる挙動を、アンマウント専用クリーンアップ \`useEffect\` を分離することで解消
+- **\`useFeedOperations\` の import メッセージタイマーがアンマウント時にリークする問題を修正** — OPML インポート後の3秒タイマーがコンポーネントのアンマウント時にクリアされていなかった。専用の \`useEffect\` クリーンアップを追加
+
 ### リファクタリング
 
 - **OGP メタデータ取得ロジックを \`src/lib/ogp.ts\` に共通化** — \`app/api/ogp/route.ts\` と \`app/api/articles/save/route.ts\` が個別に実装していた HTML フェッチ・部分読み取り・OGP 抽出処理を \`fetchPageOgpMeta()\` として一箇所に集約。あわせて \`save/route.ts\` が \`new TextDecoder()\` で UTF-8 固定デコードしていたバグを、\`detectCharset()\` を用いた正しい charset 検出に修正
