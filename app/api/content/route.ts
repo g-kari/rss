@@ -9,7 +9,6 @@ import {
   FETCH_TIMEOUT_MS,
   MAX_CONTENT_BYTES,
 } from "@/lib/fetch-article-content";
-import { decodeBytesToString, detectCharset } from "@/lib/content";
 
 export async function GET(request: Request) {
   return withSession(({ ctx }) => handleGet(request, ctx));
@@ -65,15 +64,11 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     const merged = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
     if (merged === null) return NextResponse.json({ error: "Page too large" }, { status: 413 });
 
-    const charset = detectCharset(ct, merged);
-    const html = decodeBytesToString(merged, charset);
-    const { content: page1Content, source: contentSource } = await extractAndCacheContent(
-      merged,
-      ct,
-      url,
-      cacheKey,
-      ctx,
-    );
+    const {
+      content: page1Content,
+      source: contentSource,
+      html,
+    } = await extractAndCacheContent(merged, ct, url, cacheKey, ctx);
 
     const content = await appendPaginatedPages(html, page1Content, url, cacheKey, ctx);
 
