@@ -265,12 +265,12 @@ export function sanitizeHtml(html: string): string {
       // 汎用 href パターンより先に処理することで xlink: プレフィックスが残留しないようにする
       .replace(/xlink:href\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi, "")
       .replace(/xlink:href\s*=\s*(?:javascript|vbscript|data):[^\s>]*/gi, "")
-      // javascript: / vbscript: スキームを除去（クォートあり・なし両対応）
-      .replace(/(?:href|src|action|formaction)\s*=\s*["'](?:javascript|vbscript):[^"']*["']/gi, "")
-      .replace(/(?:href|src|action|formaction)\s*=\s*(?:javascript|vbscript):[^\s>]*/gi, "")
-      // data: URI を src/href/action/formaction から除去（HTML インジェクション防止）
-      .replace(/(?:src|href|action|formaction)\s*=\s*["']data:[^"']*["']/gi, "")
-      .replace(/(?:src|href|action|formaction)\s*=\s*data:[^\s>]*/gi, "")
+      // javascript: / vbscript: / data: スキームを href/src/action/formaction から除去（クォートあり・なし両対応）
+      .replace(
+        /(?:href|src|action|formaction)\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi,
+        "",
+      )
+      .replace(/(?:href|src|action|formaction)\s*=\s*(?:javascript|vbscript|data):[^\s>]*/gi, "")
       // xlink:href の HTML エンティティ・先頭空白バイパスを除去
       // 汎用 href パターンより先に処理することで xlink: プレフィックスが残留しないようにする
       // (["'])…\1 で開閉クォートが一致する場合のみマッチし、2 つめのキャプチャが属性値
