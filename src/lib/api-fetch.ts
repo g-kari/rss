@@ -6,16 +6,33 @@ import { getAuthReady } from "../hooks/useAuth";
  * 認証チェック完了を待ってから fetch を実行するラッパー。
  * タブ復帰直後に auth チェックが完了する前に API が呼ばれて 401 になるレースコンディションを防ぐ。
  * 401 が返ってきた場合は /api/auth/me でセッション回復を試み、成功すればリトライする。
+ *
+ * 複数のリクエストが同時に 401 を受け取った場合、/api/auth/me の呼び出しを1回に集約する。
  */
+
+let inflightAuthRecovery: Promise<boolean> | null = null;
+
+async function recoverAuth(): Promise<boolean> {
+  if (inflightAuthRecovery) return inflightAuthRecovery;
+  inflightAuthRecovery = (async () => {
+    try {
+      const meRes = await fetch("/api/auth/me");
+      if (!meRes.ok) return false;
+      const data = (await meRes.json()) as { user: unknown };
+      return data.user != null;
+    } finally {
+      inflightAuthRecovery = null;
+    }
+  })();
+  return inflightAuthRecovery;
+}
+
 export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   await getAuthReady();
   const res = await fetch(input, init);
   if (res.status === 401) {
-    const meRes = await fetch("/api/auth/me");
-    if (meRes.ok) {
-      const data = (await meRes.json()) as { user: unknown };
-      if (data.user) return fetch(input, init);
-    }
+    const recovered = await recoverAuth();
+    if (recovered) return fetch(input, init);
   }
   return res;
 }
