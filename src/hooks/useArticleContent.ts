@@ -27,7 +27,11 @@ export function useArticleContent(
     () => (articleId ? (contentLruCache.get(articleId) ?? null) : null),
     [articleId],
   );
-  const [fetchedContent, setFetchedContent] = useState<string | null>(null);
+  // { id, content } でタグ付けすることで、前の記事の fetchedContent が
+  // 記事切り替え直後の render に漏れ込むのを防ぐ（stale content リーク対策）
+  const [fetchedState, setFetchedState] = useState<{ id: string; content: string } | null>(null);
+  const fetchedContent =
+    fetchedState !== null && fetchedState.id === articleId ? fetchedState.content : null;
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
@@ -37,10 +41,10 @@ export function useArticleContent(
   // 記事が変わったらフェッチ状態をリセット（進行中のフェッチも中断）
   // fetchFullContent の finally ブロックは ref が null になっているため setFetching(false) を
   // 呼ばない設計になっており、ここで明示的にリセットする必要がある。
+  // fetchedContent は fetchedState.id との照合で自動的に null 扱いになるため個別リセット不要。
   useEffect(() => {
     fetchAbortControllerRef.current?.abort();
     fetchAbortControllerRef.current = null;
-    setFetchedContent(null);
     setFetchError("");
     setFetching(false);
   }, [articleId]);
@@ -85,7 +89,7 @@ export function useArticleContent(
         const data = (await res.json()) as { content?: string; error?: string };
         if (data.content) {
           if (articleId) contentLruCache.set(articleId, data.content);
-          setFetchedContent(data.content);
+          setFetchedState({ id: articleId ?? "", content: data.content });
           onFetched?.(data.content);
         } else {
           setFetchError(data.error ?? "取得できませんでした");
