@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (36)
+
+### リファクタリング
+
+- **\`generateLinkDiscoveryFeeds\` の \`exec()\` ループを \`matchAll()\` に変更** — \`let m; while ((m = hrefRe.exec(html)) !== null)\` パターンを \`for (const m of html.matchAll(...))\` に置き換え。\`hrefRe\` 変数宣言と \`let m\` 宣言が不要になり、コードが簡潔になった (\`src/lib/recommendation.ts\`)
+
 ## 2026-03-29 (35)
 
 ### リファクタリング
