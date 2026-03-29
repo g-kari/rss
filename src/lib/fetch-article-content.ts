@@ -43,7 +43,7 @@ export async function extractAndCacheContent(
   url: string,
   cacheKey: Request,
   ctx: ExecutionContext,
-): Promise<{ content: string; source: string }> {
+): Promise<{ content: string; source: string; html: string }> {
   const charset = detectCharset(ct, bytes);
   const html = decodeBytesToString(bytes, charset);
 
@@ -74,7 +74,7 @@ export async function extractAndCacheContent(
       .catch((err) => console.error("[content] cache put error:", err)),
   );
 
-  return { content, source: contentSource };
+  return { content, source: contentSource, html };
 }
 
 /**
@@ -169,9 +169,13 @@ export async function fetchArticleContent(
     const merged = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
     if (merged === null) return null;
 
-    const charset = detectCharset(ct, merged);
-    const html = decodeBytesToString(merged, charset);
-    const { content: page1Content } = await extractAndCacheContent(merged, ct, url, cacheKey, ctx);
+    const { content: page1Content, html } = await extractAndCacheContent(
+      merged,
+      ct,
+      url,
+      cacheKey,
+      ctx,
+    );
 
     return await appendPaginatedPages(html, page1Content, url, cacheKey, ctx);
   } catch {
