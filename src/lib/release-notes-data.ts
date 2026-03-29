@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (42)
+
+### バグ修正
+
+- **画像一覧・ダウンロードが \`srcset\` 画像を見逃す問題を修正** — \`src\` が空・\`data:\` プレースホルダーで \`srcset\` に本物の URL がある画像が末尾ギャラリーとダウンロード対象から漏れていた。\`bestSrcFromSrcset()\`（srcset の最後のエントリ = 最高解像度）を追加し、ダウンロード時は \`img.currentSrc\` を優先するよう変更 (\`src/components/ArticleView.tsx\`, \`src/hooks/useImageDownload.ts\`)
+
 ## 2026-03-29 (41)
 
 ### リファクタリング
