@@ -114,14 +114,33 @@ export function isValidFeedUrl(url: string): boolean {
 }
 
 /**
+ * 画像 URL のドメイン別最大長。
+ * imgix 等コンポジット URL を生成する CDN はパラメータが長くなるため制限を緩める。
+ * それ以外のドメインはデフォルト上限を適用する。
+ */
+const IMAGE_URL_MAX_LENGTH_DEFAULT = 8192;
+const IMAGE_DOMAIN_MAX_LENGTHS: { suffix: string; maxLength: number }[] = [
+  { suffix: ".imgix.net", maxLength: Infinity }, // imgix CDN（Qiita 等）
+];
+
+function imageUrlMaxLength(hostname: string): number {
+  for (const { suffix, maxLength } of IMAGE_DOMAIN_MAX_LENGTHS) {
+    if (hostname === suffix.slice(1) || hostname.endsWith(suffix)) return maxLength;
+  }
+  return IMAGE_URL_MAX_LENGTH_DEFAULT;
+}
+
+/**
  * サーバーが取得したページから得た URL（OGP 画像等）の検証。
- * ユーザー入力ではないため URL 長のチェックは行わず、SSRF 対策のみを行う。
+ * SSRF 対策を行いつつ、ドメインごとに URL 長の上限を変える。
+ * ユーザー入力の feed URL とは異なり、一律 2048 文字制限は適用しない。
  */
 export function isValidPublicUrl(url: string): boolean {
   try {
     const { protocol, hostname } = new URL(url);
     const validProtocol = protocol === "https:" || protocol === "http:";
-    return validProtocol && !isPrivateHost(hostname);
+    if (!validProtocol || isPrivateHost(hostname)) return false;
+    return url.length <= imageUrlMaxLength(hostname);
   } catch {
     return false;
   }
