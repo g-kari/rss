@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (22)
+
+### セキュリティ
+
+- **OGP 取得後の image URL に SSRF バリデーションを追加** — \`fetchPageOgpMeta\` が返す外部サイト由来の image URL を \`isValidPublicUrl\` で検証するよう修正。悪意あるサイトが内部ネットワーク URL を og:image に設定することでブラウザ経由のアクセスを誘導できる問題を解消。キャッシュヒット時も同様に検証済み値のみ返す。
+
 ## 2026-03-29 (21)
 
 ### バグ修正

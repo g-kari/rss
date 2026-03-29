@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
-import { isValidFeedUrl } from "@/lib/url";
+import { isValidFeedUrl, isValidPublicUrl } from "@/lib/url";
 import { buildCacheKey } from "@/lib/r2";
 import { unescapeHtml } from "@/lib/html";
 import { fetchPageOgpMeta } from "@/lib/ogp";
@@ -28,14 +28,16 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     const data = (await cached.json()) as { image: string; title?: string; description?: string };
     // 旧キャッシュに &amp; エンコードの URL が残っている場合に備えてデコードし直す
     const decoded = unescapeHtml(data.image);
-    const image = /^https?:\/\//i.test(decoded) ? decoded : data.image;
+    const raw = /^https?:\/\//i.test(decoded) ? decoded : data.image;
+    const image = isValidPublicUrl(raw) ? raw : "";
     return NextResponse.json(
       { image, title: data.title ?? "", description: data.description ?? "" },
       { headers: { "X-Cache": "HIT" } },
     );
   }
 
-  const { title, description, image } = await fetchPageOgpMeta(url, FETCH_TIMEOUT_MS);
+  const { title, description, image: rawImage } = await fetchPageOgpMeta(url, FETCH_TIMEOUT_MS);
+  const image = isValidPublicUrl(rawImage) ? rawImage : "";
 
   // Cloudflare Cache API に保存（fire-and-forget）
   // 全フィールドが空でも短い TTL で負キャッシュ — 繰り返しフェッチを防ぐ
