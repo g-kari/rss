@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (28)
+
+### リファクタリング
+
+- **\`sanitizeKeywords\` 関数を \`keyword-filter.ts\` に移動** — \`feeds/[id]/route.ts\` にインラインで定義されていたキーワードサニタイズ処理（文字列フィルタ・トリム・重複除去・件数上限）を \`sanitizeKeywords\` としてエクスポートし、定数 \`MAX_KEYWORD_LENGTH\` / \`MAX_KEYWORDS_PER_ARRAY\` も同ファイルに集約。ルートハンドラはその関数を呼び出すだけに簡素化
+
 ## 2026-03-29 (27)
 
 ### ドキュメント整備

@@ -1,5 +1,26 @@
 import type { Article, KeywordFilter } from "../types";
 
+const MAX_KEYWORD_LENGTH = 100;
+const MAX_KEYWORDS_PER_ARRAY = 50;
+
+/**
+ * ユーザー入力のキーワード配列をサニタイズする。
+ * - 文字列以外の要素を除去
+ * - トリム・最大文字数でスライス
+ * - 空文字・重複を除去
+ * - 最大件数でスライス
+ */
+export function sanitizeKeywords(arr: unknown[]): string[] {
+  return [
+    ...new Set(
+      arr
+        .filter((x): x is string => typeof x === "string")
+        .map((s) => s.trim().slice(0, MAX_KEYWORD_LENGTH))
+        .filter(Boolean),
+    ),
+  ].slice(0, MAX_KEYWORDS_PER_ARRAY);
+}
+
 /** KeywordFilter のキーワードを小文字化して正規化する */
 export function normalizeFilter(filter: KeywordFilter): KeywordFilter {
   return {
