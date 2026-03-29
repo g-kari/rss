@@ -93,6 +93,19 @@ export async function createFeedMeta(
   return meta;
 }
 
+/** 既存の SharedFeedMeta を返す。存在しない場合は新規作成して返す。 */
+export async function getOrCreateFeedMeta(
+  bucket: R2Bucket,
+  feedHash: string,
+  url: string,
+  title?: string,
+  siteUrl?: string,
+): Promise<SharedFeedMeta> {
+  const existing = await readFeedMeta(bucket, feedHash);
+  if (existing) return existing;
+  return createFeedMeta(bucket, feedHash, url, title, siteUrl);
+}
+
 // ── 記事ページ読み書き ───────────────────────────────────────────
 
 /** latest.json を読む */

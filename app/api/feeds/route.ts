@@ -5,8 +5,7 @@ import { discoverFeedUrl } from "@/lib/feed-discovery";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import {
   computeFeedHash,
-  readFeedMeta,
-  createFeedMeta,
+  getOrCreateFeedMeta,
   writeFeedMeta,
   readUserSubscriptions,
   writeUserSubscriptions,
@@ -72,11 +71,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 共有 meta を作成（他ユーザーがすでに登録している場合は既存を流用）
-    let meta = await readFeedMeta(env.RSS_DATA, feedHash);
-    if (!meta) {
-      meta = await createFeedMeta(env.RSS_DATA, feedHash, url);
-    }
+    // 共有 meta を取得（他ユーザーがすでに登録している場合は既存を流用、なければ新規作成）
+    let meta = await getOrCreateFeedMeta(env.RSS_DATA, feedHash, url);
 
     // LLM 生成フィードの場合、セレクタとサイト情報をメタに保存
     if (inferred && !meta.cssSelectors) {
