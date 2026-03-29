@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-29 (40)
+
+### リファクタリング
+
+- **\`fixExternalLinks\` の \`rel\` 属性処理を1分岐に統合** — quoted (\`rel="nofollow"\`) と unquoted (\`rel=nofollow\`) で別々だった2分岐を、\`(?:(["'])([^"'"]*)\\1|([^\\s"'>]+))\` の1正規表現で統一。変数1つ・\`if-else if\`ブロック1つを削除し5行削減 (\`src/lib/content.ts\`)
+
 ## 2026-03-29 (39)
 
 ### リファクタリング

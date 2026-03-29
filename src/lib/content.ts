@@ -391,24 +391,19 @@ export function fixExternalLinks(html: string, pageUrl = ""): string {
     }
 
     // rel 属性に noopener noreferrer を付与（既存値があれば追記）
-    // (["'])…\1 で開閉クォートが一致する場合のみマッチし、2 つめのキャプチャが属性値
-    // クォートなし（例: rel=nofollow）も別途検出して正規化する。
+    // (["'])…\1 で quoted、[^\s"'>]+ で unquoted の両形式を 1 つのパターンで捕捉する。
     // クォートなし rel を放置すると rel 属性が 2 つ生成され、ブラウザは最初の値（noopener なし）を優先するため
     // noopener noreferrer が無効になるセキュリティリスクがある。
-    const relMatch = newAttrs.match(/\brel\s*=\s*(["'])([^"']*)\1/i);
-    const relUnquotedMatch = !relMatch ? newAttrs.match(/\brel\s*=\s*([^\s"'>]+)/i) : null;
+    const relMatch = newAttrs.match(/\brel\s*=\s*(?:(["'])([^"']*)\1|([^\s"'>]+))/i);
     if (relMatch) {
-      const values = new Set(relMatch[2].split(/\s+/).filter(Boolean));
+      const existing = relMatch[2] ?? relMatch[3] ?? "";
+      const values = new Set(existing.split(/\s+/).filter(Boolean));
       values.add("noopener");
       values.add("noreferrer");
-      const newRel = [...values].join(" ");
-      newAttrs = newAttrs.replace(/\brel\s*=\s*(?:"[^"]*"|'[^']*')/i, `rel="${newRel}"`);
-    } else if (relUnquotedMatch) {
-      const values = new Set(relUnquotedMatch[1].split(/\s+/).filter(Boolean));
-      values.add("noopener");
-      values.add("noreferrer");
-      const newRel = [...values].join(" ");
-      newAttrs = newAttrs.replace(/\brel\s*=\s*[^\s"'>]+/i, `rel="${newRel}"`);
+      newAttrs = newAttrs.replace(
+        /\brel\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)/i,
+        `rel="${[...values].join(" ")}"`,
+      );
     } else {
       newAttrs += ' rel="noopener noreferrer"';
     }
