@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (62)
+
+### リファクタリング
+
+- **\`FETCH_OPTS\` を \`ARTICLE_FETCH_OPTS\` としてエクスポートし重複を除去** — \`fetch-article-content.ts\` のプライベート定数 \`FETCH_OPTS\` を \`ARTICLE_FETCH_OPTS\` に改名してエクスポート。\`content/route.ts\` でインラインに定義していた同一ヘッダーオブジェクト（User-Agent・Accept）を削除し、エクスポートされた定数を使用するよう変更 (\`src/lib/fetch-article-content.ts\`, \`app/api/content/route.ts\`)
+
 ## 2026-03-30 (61)
 
 ### リファクタリング
