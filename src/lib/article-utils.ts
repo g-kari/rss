@@ -1,4 +1,4 @@
-import type { DateRange, FontSize, Layout } from "../types";
+import type { DateRange, FontSize, Layout, SortOrder } from "../types";
 import { stripHtml } from "./html";
 
 /** CJK 統合漢字・ひらがな・カタカナ・拡張A（読了速度判定用） */
@@ -104,6 +104,12 @@ export const LAYOUT_LABELS: Record<Layout, string> = {
   list: "リスト",
   card: "カード",
   magazine: "マガジン",
+};
+
+export const SORT_ORDER_CYCLE: SortOrder[] = ["newest", "oldest"];
+export const SORT_ORDER_LABELS: Record<SortOrder, string> = {
+  newest: "新しい順",
+  oldest: "古い順",
 };
 
 export const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month"];

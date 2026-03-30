@@ -9,8 +9,7 @@ import {
   type ReactElement,
   type RefObject,
 } from "react";
-import type { Article, Feed, KeywordFilter, Layout, DateRange } from "../types";
-import type { SortOrder } from "../hooks/useFilteredArticles";
+import type { Article, Feed, KeywordFilter, Layout, DateRange, SortOrder } from "../types";
 import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { useSearchHistory } from "../hooks/useSearchHistory";
