@@ -8,11 +8,13 @@ import { compareByDateDesc } from "../lib/article-utils";
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
-/** incoming のうち existing に存在しない記事だけを返す */
-function filterNewArticles(existing: Article[], incoming: Article[]): Article[] {
-  if (existing.length === 0) return incoming;
+/** incoming の新規記事を existing にマージして日付降順でソートして返す */
+function mergeUniqueArticles(existing: Article[], incoming: Article[]): Article[] {
+  if (incoming.length === 0) return existing;
   const existingIds = new Set(existing.map((a) => a.id));
-  return incoming.filter((a) => !existingIds.has(a.id));
+  const brandNew = incoming.filter((a) => !existingIds.has(a.id));
+  if (brandNew.length === 0) return existing;
+  return [...existing, ...brandNew].sort(compareByDateDesc);
 }
 
 interface FeedsState {
@@ -54,8 +56,6 @@ export function useFeeds(
   const isPollingRef = useRef(false);
   const prevIsOnlineRef = useRef(isOnline);
 
-  const fetchFeedsData = useCallback(() => apiFetchJson<Feed[]>("/api/feeds"), []);
-
   const fetchAndSetArticles = useCallback(async () => {
     const data = await apiFetchJson<Article[]>("/api/articles");
     setArticles(data);
@@ -65,17 +65,13 @@ export function useFeeds(
 
   const mergeArticles = useCallback((fresh: Article[]) => {
     if (fresh.length > 0) latestArticleIdRef.current = fresh[0].id;
-    setArticles((prev) => {
-      const brandNew = filterNewArticles(prev, fresh);
-      if (brandNew.length === 0) return prev;
-      return [...brandNew, ...prev].sort(compareByDateDesc);
-    });
+    setArticles((prev) => mergeUniqueArticles(prev, fresh));
   }, []);
 
   useEffect(() => {
     if (!user) return;
     setLoadingArticles(true);
-    fetchFeedsData()
+    apiFetchJson<Feed[]>("/api/feeds")
       .then(setFeeds)
       .catch((err) => {
         console.error(err);
@@ -87,7 +83,7 @@ export function useFeeds(
         onErrorRef.current?.("記事の読み込みに失敗しました");
       })
       .finally(() => setLoadingArticles(false));
-  }, [user, fetchFeedsData, fetchAndSetArticles]);
+  }, [user, fetchAndSetArticles]);
 
   // 新着確認フェッチ: 既存記事は消さずに新着のみ追加する（閲覧中の記事を守る）
   const pollNow = useCallback(async () => {
@@ -176,7 +172,7 @@ export function useFeeds(
       await apiFetch("/api/feeds/refresh", { method: "POST" });
       const [fresh, feedsData] = await Promise.all([
         apiFetchJson<Article[]>("/api/articles"),
-        fetchFeedsData(),
+        apiFetchJson<Feed[]>("/api/feeds"),
       ]);
       setFeeds(feedsData);
       mergeArticles(fresh);
@@ -186,7 +182,7 @@ export function useFeeds(
     } finally {
       setRefreshing(false);
     }
-  }, [fetchFeedsData, mergeArticles]);
+  }, [mergeArticles]);
 
   /** フィードエンドポイントに POST し、フィードと記事を更新する共通実装 */
   const feedActionWithRefresh = useCallback(
@@ -225,11 +221,7 @@ export function useFeeds(
     try {
       const data = await apiFetchJson<Article[]>(`/api/articles?feed=${feedId}&page=${nextPage}`);
       if (data.length === 0) return;
-      setArticles((prev) => {
-        const newOnes = filterNewArticles(prev, data);
-        if (newOnes.length === 0) return prev;
-        return [...prev, ...newOnes].sort(compareByDateDesc);
-      });
+      setArticles((prev) => mergeUniqueArticles(prev, data));
       setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
     } catch (err) {
       console.error("loadMoreFeedArticles failed:", err);
