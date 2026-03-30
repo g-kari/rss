@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (59)
+
+### リファクタリング
+
+- **\`SortOrder\` を \`types.ts\` に移動し \`SORT_ORDER_CYCLE\`/\`SORT_ORDER_LABELS\` を追加** — \`SortOrder\` 型が \`useFilteredArticles.ts\` のみに定義されており \`Layout\`/\`FontSize\`/\`DateRange\` と不統一だったため \`types.ts\` に移動。\`article-utils.ts\` に \`SORT_ORDER_CYCLE\` と \`SORT_ORDER_LABELS\` を追加して他の列挙型と同じパターンに統一。\`toggleSortOrder\` 内の明示的三項演算子を \`cycleValue\` に、\`useKeyboardNav\` のインライン文字列を \`SORT_ORDER_LABELS\` に置き換え (\`src/types.ts\`, \`src/lib/article-utils.ts\`, \`src/hooks/useFilteredArticles.ts\`, \`src/hooks/useKeyboardNav.ts\`, \`src/components/ArticleList.tsx\`)
+
 ## 2026-03-30 (58)
 
 ### リファクタリング
