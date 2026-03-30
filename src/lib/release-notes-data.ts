@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (57)
+
+### リファクタリング
+
+- **\`recommendation.ts\` の \`discoverFeedUrl\` + ID生成重複を共通ヘルパーに抽出** — \`generateWebSearchFeeds\` と \`generateLinkDiscoveryFeeds\` で同一の \`discoverFeedUrl → sha256Hex → RecommendedFeed\` パターンが重複していたため、\`makeRecommendationId\` と \`discoverAndBuildFeed\` の2ヘルパーに統合 (\`src/lib/recommendation.ts\`)
+
 ## 2026-03-30 (56)
 
 ### リファクタリング
