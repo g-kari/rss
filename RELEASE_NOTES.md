@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-30 (60)
+
+### リファクタリング
+
+- **`ReadState` 型を `types.ts` に統一** — `app/api/read-state/route.ts` のローカル `interface ReadState` と `src/hooks/useReadState.ts` の `type RemoteReadState` が同一の4フィールド型を二重定義していたため、`types.ts` に `export interface ReadState` として統合。両ファイルはインポートするだけに変更 (`src/types.ts`, `app/api/read-state/route.ts`, `src/hooks/useReadState.ts`)
+
 ## 2026-03-30 (59)
 
 ### リファクタリング
