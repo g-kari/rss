@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (58)
+
+### リファクタリング
+
+- **\`useFeeds\` の \`filterNewArticles\` を \`mergeUniqueArticles\` に統合** — フィルターのみを担う \`filterNewArticles\` と呼び出し側の重複ソートロジックを、フィルター＋ソートを一括処理する \`mergeUniqueArticles\` に統合。\`mergeArticles\` と \`loadMoreFeedArticles\` の重複コードを各 1 行に削減。不要な \`fetchFeedsData\` ラッパーも除去 (\`src/hooks/useFeeds.ts\`)
+
 ## 2026-03-30 (57)
 
 ### リファクタリング
