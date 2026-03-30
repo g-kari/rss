@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-03-30 (63)
+
+### バグ修正
+
+- **\`path-to-regexp\` override を \`^6.3.0\` に修正して本番 500 エラーを解消** — \`pnpm.overrides\` で \`path-to-regexp: ">=8.4.0"\` を強制していたため、Next.js 16 が使う \`/:path*\` パターンが v8 の非互換変更（Named parameter required）でエラーになっていた問題を修正。\`path-to-regexp@6.3.0\` は ReDoS (CVE-2024-45296) がパッチ済みのため v8 への強制は不要 (\`package.json\`, \`pnpm-lock.yaml\`)
+
 ## 2026-03-30 (62)
 
 ### リファクタリング
