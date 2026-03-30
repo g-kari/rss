@@ -353,7 +353,7 @@ export default function ArticleList({
               <button
                 onClick={() => setGlobalFilterModalOpen(true)}
                 title="すべてのフィードにキーワードフィルターを設定"
-                className={`w-6 h-6 flex items-center justify-center rounded-full transition-all duration-200 ${
+                className={`flex items-center gap-1 px-2 h-6 rounded-full text-[11px] transition-all duration-200 ${
                   globalFilter &&
                   (globalFilter.include.length > 0 || globalFilter.exclude.length > 0)
                     ? "text-text-strong bg-surface-subtle"
@@ -372,6 +372,7 @@ export default function ArticleList({
                 >
                   <path d="M1 2.5h10M3 6h6M5 9.5h2" />
                 </svg>
+                <span>グローバル</span>
               </button>
             )}
             {onMarkAllRead && (
