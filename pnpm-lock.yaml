@@ -7,6 +7,7 @@ settings:
 overrides:
   yaml: '>=2.8.3'
   brace-expansion: '>=5.0.5'
+  minimatch: '>=10.0.0'
   path-to-regexp: '>=8.4.0'
 
 importers:
@@ -2698,10 +2699,6 @@ packages:
   minimatch@10.2.4:
     resolution: {integrity: sha512-oRjTw/97aTBN0RHbYCdtF1MQfvusSIBQM0IZEgzl6426+8jSC0nF1a/GmnVLpfB9yyr6g6FTqWqiZVbxrtaCIg==}
     engines: {node: 18 || 20 || >=22}
-
-  minimatch@8.0.7:
-    resolution: {integrity: sha512-V+1uQNdzybxa14e/p00HZnQNNcTjnRJjDxg2V8wtkjFctq4M7hXFws4oekyTP0Jebeq7QYtpFyOeBAjc88zvYg==}
-    engines: {node: '>=16 || 14 >=14.17'}
 
   minipass@4.2.8:
     resolution: {integrity: sha512-fNzuVyifolSLFL4NzpF+wEF4qrgqaaKX0haXPQEdQ7NKAN+WecoKMHV09YcuL/DHxrUsYQOK3MiuDf7Ip2OXfQ==}
@@ -5712,7 +5709,7 @@ snapshots:
   glob@9.3.5:
     dependencies:
       fs.realpath: 1.0.0
-      minimatch: 8.0.7
+      minimatch: 10.2.4
       minipass: 4.2.8
       path-scurry: 1.11.1
 
@@ -5891,10 +5888,6 @@ snapshots:
       - utf-8-validate
 
   minimatch@10.2.4:
-    dependencies:
-      brace-expansion: 5.0.5
-
-  minimatch@8.0.7:
     dependencies:
       brace-expansion: 5.0.5
 
