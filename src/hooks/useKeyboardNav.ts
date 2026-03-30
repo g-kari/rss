@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import type { Article, Feed, FontSize, Layout, DateRange } from "../types";
-import type { SortOrder } from "./useFilteredArticles";
+import type { Article, Feed, FontSize, Layout, DateRange, SortOrder } from "../types";
 import {
   cycleValue,
   DATE_RANGE_LABELS,
@@ -10,6 +9,8 @@ import {
   FONT_SIZE_LABELS,
   LAYOUT_CYCLE,
   LAYOUT_LABELS,
+  SORT_ORDER_CYCLE,
+  SORT_ORDER_LABELS,
 } from "../lib/article-utils";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 
@@ -242,10 +243,12 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           toggleReadingListOnly();
           showToast(filterToastMsg(readingListOnly, "リーディングリストフィルター"));
           break;
-        case "s":
+        case "s": {
           toggleSortOrder();
-          showToast(sortOrder === "newest" ? "ソート: 古い順" : "ソート: 新しい順");
+          const nextSort = cycleValue(SORT_ORDER_CYCLE, sortOrder);
+          showToast(`ソート: ${SORT_ORDER_LABELS[nextSort]}`);
           break;
+        }
         case "d": {
           e.preventDefault();
           const next = cycleDateRange();

@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import type { Article, DateRange, Feed, KeywordFilter } from "../types";
+import type { Article, DateRange, Feed, KeywordFilter, SortOrder } from "../types";
 import { STORAGE_KEYS, storageGet, storageSet, loadJson, saveJson } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
-import { cycleValue, DATE_RANGE_CYCLE } from "../lib/article-utils";
+import { cycleValue, DATE_RANGE_CYCLE, SORT_ORDER_CYCLE } from "../lib/article-utils";
 import { filterAndSortArticles } from "../lib/article-filter";
 
 const PAGE_SIZE = 30;
@@ -33,8 +33,6 @@ interface Options {
   nsfwMode?: boolean;
   nsfwFeedIds?: Set<string>;
 }
-
-export type SortOrder = "newest" | "oldest";
 
 export function useFilteredArticles({
   articles,
@@ -133,7 +131,7 @@ export function useFilteredArticles({
 
   const toggleSortOrder = useCallback(() => {
     setSortOrder((v) => {
-      const next = v === "newest" ? "oldest" : "newest";
+      const next = cycleValue(SORT_ORDER_CYCLE, v);
       storageSet(STORAGE_KEYS.SORT_ORDER, next);
       return next;
     });
