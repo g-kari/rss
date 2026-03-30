@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import type { Article, UserProfile } from "../types";
+import type { Article, UserProfile, ReadState } from "../types";
 import { STORAGE_KEYS, SPECIAL_FEED_IDS, saveSet, loadSet, toggleSetItem } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
@@ -25,18 +25,11 @@ function mergeServerSet(
   });
 }
 
-type RemoteReadState = {
-  readIds: string[];
-  bookmarkIds: string[];
-  readingListIds: string[];
-  likeIds: string[];
-};
-
-async function fetchReadState(): Promise<RemoteReadState | null> {
+async function fetchReadState(): Promise<ReadState | null> {
   try {
     const res = await apiFetch("/api/read-state");
     if (!res.ok) return null;
-    return res.json() as Promise<RemoteReadState>;
+    return res.json() as Promise<ReadState>;
   } catch {
     return null;
   }

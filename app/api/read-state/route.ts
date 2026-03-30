@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { r2Get, r2Put, readStateKey } from "@/lib/r2";
-
-interface ReadState {
-  readIds: string[];
-  bookmarkIds: string[];
-  readingListIds: string[];
-  likeIds: string[];
-}
+import type { ReadState } from "@/types";
 
 const MAX_READ_IDS = 20_000;
 const MAX_BOOKMARK_IDS = 2_000;

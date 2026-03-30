@@ -183,3 +183,11 @@ export interface PushSubscriptionRecord {
 export interface PushConfig {
   subscriptions: PushSubscriptionRecord[];
 }
+
+/** 既読・ブックマーク・後で読む・いいね状態 — /api/read-state の入出力型 */
+export interface ReadState {
+  readIds: string[];
+  bookmarkIds: string[];
+  readingListIds: string[];
+  likeIds: string[];
+}
