@@ -4,6 +4,7 @@ import { isValidFeedUrl } from "@/lib/url";
 import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fetch";
 import {
   appendPaginatedPages,
+  ARTICLE_FETCH_OPTS,
   buildContentCacheKey,
   extractContent,
   saveContentToCache,
@@ -35,16 +36,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   }
 
   try {
-    const res = await fetchFollowSafeRedirects(
-      url,
-      {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; rss-reader/1.0)",
-          Accept: "text/html,application/xhtml+xml",
-        },
-      },
-      FETCH_TIMEOUT_MS,
-    );
+    const res = await fetchFollowSafeRedirects(url, ARTICLE_FETCH_OPTS, FETCH_TIMEOUT_MS);
 
     if (!res.ok) {
       // 4xx はクライアント起因（アクセス不可・存在しない）なのでそのまま返す

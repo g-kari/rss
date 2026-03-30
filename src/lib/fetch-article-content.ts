@@ -19,7 +19,7 @@ import { isValidFeedUrl } from "@/lib/url";
 
 export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
 const MAX_PAGINATION_PAGES = 10;
-const FETCH_OPTS = {
+export const ARTICLE_FETCH_OPTS = {
   headers: {
     "User-Agent": "Mozilla/5.0 (compatible; rss-reader/1.0)",
     Accept: "text/html,application/xhtml+xml",
@@ -87,7 +87,7 @@ export function saveContentToCache(
 
 /** HTML をフェッチしてバイト列と Content-Type を返す。失敗・非HTML・body なしは null。 */
 async function fetchHtmlBytes(url: string): Promise<{ bytes: Uint8Array; ct: string } | null> {
-  const res = await fetchFollowSafeRedirects(url, FETCH_OPTS, DEFAULT_FETCH_TIMEOUT_MS);
+  const res = await fetchFollowSafeRedirects(url, ARTICLE_FETCH_OPTS, DEFAULT_FETCH_TIMEOUT_MS);
   if (!res.ok || !res.body) return null;
   const ct = res.headers.get("content-type") ?? "";
   if (!ct.includes("html")) return null;
