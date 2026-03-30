@@ -159,7 +159,6 @@ export interface RecommendationCache {
   topics: string[];
 }
 export type DateRange = "all" | "today" | "week" | "month";
-export type AiMode = "summary";
 
 export interface UserProfile {
   id: string; // 0g0 内部ユーザーID

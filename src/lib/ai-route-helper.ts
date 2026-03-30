@@ -4,7 +4,6 @@ import { getAiCacheById, setAiCacheById } from "@/lib/ai-cache";
 import { toPlainText } from "@/lib/html";
 import { fetchArticleContent } from "@/lib/fetch-article-content";
 import { isValidFeedUrl } from "@/lib/url";
-import type { AiMode } from "@/types";
 
 // @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のため、同じ
 // BaseAiTextGeneration 構造を持つ既知モデル型に合わせてキャストする
@@ -19,14 +18,12 @@ type AiMessage = { role: "system" | "user"; content: string };
  * @param request - リクエストオブジェクト
  * @param env - Cloudflare バインディング (RSS_DATA, AI)
  * @param ctx - ExecutionContext (waitUntil 用)
- * @param cacheType - R2 キャッシュのキー種別
  * @param buildMessages - テキストから AI メッセージ配列を構築する関数
  */
 export async function runAiJob(
   request: Request,
   env: { RSS_DATA: R2Bucket; AI: Ai },
   ctx: ExecutionContext,
-  cacheType: AiMode,
   buildMessages: (plain: string) => AiMessage[],
 ): Promise<NextResponse> {
   const parsed = await parseJsonBody<{ url?: unknown; articleId?: unknown }>(request);
@@ -41,7 +38,7 @@ export async function runAiJob(
 
   // キャッシュヒット（articleId ベース）
   if (articleId) {
-    const cached = await getAiCacheById(env.RSS_DATA, cacheType, articleId);
+    const cached = await getAiCacheById(env.RSS_DATA, articleId);
     if (cached) return NextResponse.json({ result: cached });
   }
 
@@ -66,8 +63,7 @@ export async function runAiJob(
   }
 
   // キャッシュ保存はバックグラウンドで実行し、レスポンスをブロックしない
-  if (result && articleId)
-    ctx.waitUntil(setAiCacheById(env.RSS_DATA, cacheType, articleId, result));
+  if (result && articleId) ctx.waitUntil(setAiCacheById(env.RSS_DATA, articleId, result));
 
   return NextResponse.json({ result });
 }

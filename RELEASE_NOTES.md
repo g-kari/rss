@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-03-30 (61)
+
+### リファクタリング
+
+- **`AiMode` 型を削除し `ai-cache` の `mode` パラメータを廃止** — `AiMode = "summary"` は単一メンバーのユニオン型で `mode` パラメータを渡す意味がなかったため、`types.ts` から型を削除。`ai-cache.ts` の `getAiCacheById`/`setAiCacheById` から `mode` パラメータを除去しキーを `ai-cache/summary/id-{articleId}` に直接ハードコード。`ai-route-helper.ts` の `runAiJob` から `cacheType: AiMode` パラメータを削除 (`src/types.ts`, `src/lib/ai-cache.ts`, `src/lib/ai-route-helper.ts`, `app/api/ai/summarize/route.ts`)
+
 ## 2026-03-30 (60)
 
 ### リファクタリング
