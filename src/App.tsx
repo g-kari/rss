@@ -821,6 +821,8 @@ export default function App() {
             theme={theme}
             feeds={feeds}
             onSaveFilter={saveFilter}
+            globalFilter={globalFilter}
+            onSaveGlobalFilter={setGlobalFilter}
           />
         </ErrorBoundary>
       </div>

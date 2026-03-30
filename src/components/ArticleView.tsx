@@ -40,6 +40,8 @@ interface Props {
   theme?: Theme;
   feeds?: Feed[];
   onSaveFilter?: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
+  globalFilter?: KeywordFilter | null;
+  onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
 }
 
 const SHORT_CONTENT_THRESHOLD = 400;
@@ -775,6 +777,154 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
   );
 }
 
+// --- GlobalFilterMenu コンポーネント ---
+
+interface GlobalFilterMenuProps {
+  article: Article;
+  globalFilter: KeywordFilter | null;
+  onSaveGlobalFilter: (filter: KeywordFilter | null) => void;
+  showToast?: (msg: string) => void;
+}
+
+function GlobalFilterMenu({
+  article,
+  globalFilter,
+  onSaveGlobalFilter,
+  showToast,
+}: GlobalFilterMenuProps) {
+  const { open, setOpen, menuRef } = useMenuOpen();
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const hasFilter =
+    globalFilter && (globalFilter.include.length > 0 || globalFilter.exclude.length > 0);
+
+  async function handleExclude(value: string) {
+    setOpen(false);
+    const existingExclude = globalFilter?.exclude ?? [];
+    if (existingExclude.includes(value)) {
+      showToast?.("既にグローバル除外キーワードに登録されています");
+      return;
+    }
+    const newFilter: KeywordFilter = {
+      include: globalFilter?.include ?? [],
+      exclude: [...existingExclude, value],
+      matchCategories: globalFilter?.matchCategories,
+    };
+    onSaveGlobalFilter(newFilter);
+    showToast?.(`「${value}」をグローバル除外キーワードに追加しました`);
+  }
+
+  const excludeOptions: { label: string; value: string }[] = [
+    { label: "この記事", value: article.title },
+    ...(article.author ? [{ label: `著者「${article.author}」`, value: article.author }] : []),
+    ...(article.categories ?? []).map((cat) => ({ label: `カテゴリ「${cat}」`, value: cat })),
+    ...(article.metadata ?? []).map((m) => ({
+      label: `${metaLabel(m.key)}「${m.value}」`,
+      value: m.value,
+    })),
+  ];
+
+  const XIcon = (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0"
+    >
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title="グローバルフィルター設定（全フィード共通）"
+        className={`transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 4h18M7 8h10M11 12h2" />
+          <circle cx="19" cy="19" r="3" />
+          <path d="M19 17v2l1 1" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-30 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[220px] max-h-[320px] overflow-y-auto">
+          <div className="px-3 pt-2 pb-1">
+            <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+              グローバルフィルター
+            </p>
+            <p className="text-[10px] text-text-faint mt-0.5">全フィードに適用</p>
+          </div>
+          <button
+            onClick={() => {
+              setOpen(false);
+              setModalOpen(true);
+            }}
+            className={MENU_ITEM_CLS}
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="flex-shrink-0"
+            >
+              <path d="M3 4h18M7 8h10M11 12h2" />
+            </svg>
+            フィルター設定を開く
+          </button>
+          {excludeOptions.length > 0 && (
+            <div className="border-t border-border-subtle">
+              <p className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+                全フィードから除外する
+              </p>
+              {excludeOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => void handleExclude(opt.value)}
+                  className={MENU_ITEM_CLS}
+                >
+                  {XIcon}
+                  <span className="truncate">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {modalOpen && (
+        <FeedFilterModal
+          title="グローバルフィルター"
+          initialFilter={globalFilter}
+          onClose={() => setModalOpen(false)}
+          onSave={(filter) => {
+            onSaveGlobalFilter(filter);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 /** target から currentTarget まで祖先を遡り、横スクロール可能な要素があれば true を返す */
 function hasScrollableAncestor(
   target: EventTarget | null,
@@ -887,6 +1037,8 @@ export default function ArticleView({
   theme = "light",
   feeds,
   onSaveFilter,
+  globalFilter,
+  onSaveGlobalFilter,
 }: Props) {
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -1253,6 +1405,14 @@ export default function ArticleView({
                 article={article}
                 feed={filterFeed}
                 onSaveFilter={onSaveFilter}
+                showToast={showToast}
+              />
+            )}
+            {onSaveGlobalFilter && (
+              <GlobalFilterMenu
+                article={article}
+                globalFilter={globalFilter ?? null}
+                onSaveGlobalFilter={onSaveGlobalFilter}
                 showToast={showToast}
               />
             )}
