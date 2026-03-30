@@ -19,6 +19,31 @@ function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
   return settled.flatMap((r) => (r.status === "fulfilled" && r.value ? [r.value] : []));
 }
 
+/** フィード URL とプレフィックスから短縮 ID を生成する */
+async function makeRecommendationId(prefix: string, feedUrl: string): Promise<string> {
+  return (await sha256Hex(`${prefix}_${feedUrl}`)).slice(0, 12);
+}
+
+/**
+ * サイト URL から RSS フィードを発見してレコメンドフィードを構築する共通ロジック。
+ * discoverFeedUrl・makeRecommendationId の重複を排除する。
+ */
+async function discoverAndBuildFeed(
+  siteUrl: string,
+  subscribedUrls: Set<string>,
+  idPrefix: string,
+  buildMeta: () => Omit<RecommendedFeed, "id" | "feedUrl">,
+): Promise<RecommendedFeed | null> {
+  try {
+    const feedUrl = await discoverFeedUrl(siteUrl);
+    if (!feedUrl || subscribedUrls.has(feedUrl)) return null;
+    const id = await makeRecommendationId(idPrefix, feedUrl);
+    return { id, feedUrl, ...buildMeta() };
+  } catch {
+    return null;
+  }
+}
+
 /** Fisher-Yates シャッフルで配列から最大 n 件をランダムサンプリングする */
 function sampleN<T>(arr: T[], n: number): T[] {
   const result = arr.slice();
@@ -211,26 +236,15 @@ export async function generateWebSearchFeeds(
   }
 
   // discoverFeedUrl() を並列実行
-  const checks = candidates.slice(0, 10).map(async (candidate) => {
-    try {
-      const feedUrl = await discoverFeedUrl(candidate.url);
-      if (!feedUrl) return null;
-      if (subscribedUrls.has(feedUrl)) return null;
-
-      const id = (await sha256Hex(`ws_${feedUrl}`)).slice(0, 12);
-      return {
-        id,
-        feedUrl,
-        title: candidate.title || new URL(candidate.url).hostname,
-        siteUrl: candidate.url,
-        reason: `「${candidate.topic}」の検索結果から発見`,
-        source: "web_search" as const,
-        score: 0.9,
-      };
-    } catch {
-      return null;
-    }
-  });
+  const checks = candidates.slice(0, 10).map((candidate) =>
+    discoverAndBuildFeed(candidate.url, subscribedUrls, "ws", () => ({
+      title: candidate.title || new URL(candidate.url).hostname,
+      siteUrl: candidate.url,
+      reason: `「${candidate.topic}」の検索結果から発見`,
+      source: "web_search" as const,
+      score: 0.9,
+    })),
+  );
 
   return fulfilledValues(await Promise.allSettled(checks));
 }
@@ -266,7 +280,7 @@ export async function generatePopularFeeds(
       // 購読者数を 0.5〜0.85 に正規化（Web 検索 0.9 より低く設定）
       const score = maxCount > 1 ? 0.5 + (subscriberCount / maxCount) * 0.35 : 0.5;
 
-      const id = (await sha256Hex(`pop_${meta.url}`)).slice(0, 12);
+      const id = await makeRecommendationId("pop", meta.url);
       return {
         id,
         feedUrl: meta.url,
@@ -371,26 +385,15 @@ export async function generateLinkDiscoveryFeeds(
   if (candidates.length === 0) return [];
 
   // discoverFeedUrl() を並列実行
-  const checks = candidates.map(async ({ url, articleTitle }) => {
-    try {
-      const feedUrl = await discoverFeedUrl(url);
-      if (!feedUrl) return null;
-      if (subscribedUrls.has(feedUrl)) return null;
-
-      const id = (await sha256Hex(`ld_${feedUrl}`)).slice(0, 12);
-      return {
-        id,
-        feedUrl,
-        title: new URL(url).hostname,
-        siteUrl: url,
-        reason: `「${articleTitle}」内のリンクから発見`,
-        source: "link_discovery" as const,
-        score: 0.85,
-      };
-    } catch {
-      return null;
-    }
-  });
+  const checks = candidates.map(({ url, articleTitle }) =>
+    discoverAndBuildFeed(url, subscribedUrls, "ld", () => ({
+      title: new URL(url).hostname,
+      siteUrl: url,
+      reason: `「${articleTitle}」内のリンクから発見`,
+      source: "link_discovery" as const,
+      score: 0.85,
+    })),
+  );
 
   return fulfilledValues(await Promise.allSettled(checks));
 }
