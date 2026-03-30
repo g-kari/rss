@@ -3,7 +3,7 @@ import { runAiJob } from "@/lib/ai-route-helper";
 
 export async function POST(request: Request) {
   return withSession(({ env, ctx }) =>
-    runAiJob(request, env, ctx, "summary", (plain) => [
+    runAiJob(request, env, ctx, (plain) => [
       {
         role: "system",
         content: "あなたは優秀なニュース編集者です。記事を簡潔に要約してください。",
