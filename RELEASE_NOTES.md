@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-01 (71)
+
+### リファクタリング
+
+- `App.tsx` のエンゲージメントトグルハンドラー3関数を `useMemo` + `makeHandler` ファクトリーに統合 — `handleToggleBookmark` / `handleToggleReadingList` / `handleToggleLike` が同一の「トグル → エンゲージメント記録」パターンを繰り返していた。
+
 ## 2026-04-01 (70)
 
 ### リファクタリング
