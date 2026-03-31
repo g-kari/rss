@@ -33,10 +33,6 @@ VAPID_SUBJECT = "mailto:admin@0g0.xyz"
 binding = "RSS_DATA"
 bucket_name = "rss-reader-data"
 
-[[r2_buckets]]
-binding = "NEXT_INC_CACHE_R2_BUCKET"
-bucket_name = "rss-reader-cache"
-
 [ai]
 binding = "AI"
 
