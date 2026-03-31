@@ -775,9 +775,52 @@ function extractWithRegex(html: string, pageUrl: string): string {
 }
 
 /**
+ * nextUrl が currentUrl の記事ページネーション的変種かどうかを判定する。
+ * シリーズ記事ナビ・CMS 一覧ページネーション等の誤検知を防ぐ。
+ *
+ * 判定ルール（いずれか一致で true）:
+ * 1. 同一パス + page/p/pg/pn クエリパラメータのみ変化
+ * 2. パス末尾が /page/N または /p/N 形式
+ */
+function isPaginatedVariant(currentUrl: string, nextUrl: string): boolean {
+  let cur: URL, next: URL;
+  try {
+    cur = new URL(currentUrl);
+    next = new URL(nextUrl);
+  } catch {
+    return false;
+  }
+
+  // 1. クエリパラメータのページ番号のみ変化: /article?page=1 → /article?page=2
+  if (cur.pathname === next.pathname) {
+    for (const key of ["page", "p", "pg", "pn"]) {
+      const nextVal = next.searchParams.get(key);
+      if (nextVal !== null && /^\d+$/.test(nextVal)) {
+        const curCopy = new URLSearchParams(cur.searchParams);
+        const nextCopy = new URLSearchParams(next.searchParams);
+        curCopy.delete(key);
+        nextCopy.delete(key);
+        if (curCopy.toString() === nextCopy.toString()) return true;
+      }
+    }
+  }
+
+  // 2. パス末尾に /page/N または /p/N が付く: /article/foo → /article/foo/page/2
+  const paginationSuffix = /\/(page|p)\/\d+\/?$/i;
+  if (paginationSuffix.test(next.pathname)) {
+    const nextBase = next.pathname.replace(paginationSuffix, "").replace(/\/$/, "") || "/";
+    const curBase = cur.pathname.replace(paginationSuffix, "").replace(/\/$/, "") || "/";
+    if (curBase === nextBase) return true;
+  }
+
+  return false;
+}
+
+/**
  * HTML から次ページ URL を検出する。
  * `<link rel="next">` および `<a rel="next">` の標準 HTML シグナルに対応。
  * 同一オリジンへの URL のみ返す（外部サイトへの誤誘導を防ぐ）。
+ * URL パターンが記事ページネーション的でない場合は除外（誤検知対策）。
  */
 export function detectNextPageUrl(html: string, currentUrl: string): string | null {
   const base = tryParseBase(currentUrl);
@@ -789,6 +832,7 @@ export function detectNextPageUrl(html: string, currentUrl: string): string | nu
       const resolved = new URL(href, base!).href;
       if (resolved === currentUrl) return null;
       if (new URL(resolved).origin !== base!.origin) return null;
+      if (!isPaginatedVariant(currentUrl, resolved)) return null;
       return resolved;
     } catch {
       return null;

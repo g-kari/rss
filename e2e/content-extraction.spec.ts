@@ -809,4 +809,37 @@ test.describe("detectNextPageUrl — 次ページ URL 検出", () => {
     ].join("\n");
     expect(detectNextPageUrl(html, BASE)).toBe("https://example.com/article/page/2");
   });
+
+  test("クエリパラメータ page= によるページネーションを検出する", () => {
+    const html = `<link rel="next" href="https://example.com/article?page=2">`;
+    expect(detectNextPageUrl(html, "https://example.com/article")).toBe(
+      "https://example.com/article?page=2",
+    );
+  });
+
+  test("クエリパラメータ page= の変化を検出する", () => {
+    const html = `<link rel="next" href="https://example.com/article?page=2">`;
+    expect(detectNextPageUrl(html, "https://example.com/article?page=1")).toBe(
+      "https://example.com/article?page=2",
+    );
+  });
+
+  // --- 誤検知ケース ---
+
+  test("シリーズ記事の次記事 URL は null を返す (パスが別記事)", () => {
+    // WordPress 等が <link rel="next"> でシリーズ次記事を指す場合
+    const html = `<link rel="next" href="https://example.com/posts/another-article">`;
+    expect(detectNextPageUrl(html, "https://example.com/posts/this-article")).toBeNull();
+  });
+
+  test("ブログ一覧ページネーション URL は null を返す (別パス)", () => {
+    // 記事ページが /blog/page/2 (一覧ページ) を指す場合
+    const html = `<link rel="next" href="https://example.com/blog/page/2">`;
+    expect(detectNextPageUrl(html, "https://example.com/posts/my-article")).toBeNull();
+  });
+
+  test("連番記事 ID の次記事 URL は null を返す (/post/123 → /post/124)", () => {
+    const html = `<link rel="next" href="https://example.com/post/124">`;
+    expect(detectNextPageUrl(html, "https://example.com/post/123")).toBeNull();
+  });
 });
