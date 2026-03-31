@@ -44,7 +44,6 @@ interface KeyboardNavOptions {
   toggleReadingListOnly: () => void;
   sortOrder: SortOrder;
   toggleSortOrder: () => void;
-  dateRange: DateRange;
   cycleDateRange: () => DateRange;
   searchRef: RefObject<HTMLInputElement | null>;
   refreshFeeds: () => Promise<void>;
