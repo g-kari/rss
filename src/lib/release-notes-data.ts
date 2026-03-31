@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (70)
+
+### リファクタリング
+
+- \`App.tsx\` の \`historyIdsForReadState\` 中間エイリアスを削除 — \`useReadingHistory()\` が返す \`historyIds\` を直接使えるため不要なリネームと再エイリアスだった。
+
 ## 2026-04-01 (69)
 
 ### リファクタリング
