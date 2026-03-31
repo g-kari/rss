@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (73)
+
+### リファクタリング
+
+- カラムリサイズロジックを \`useColumnResize\` フックに抽出 — \`App.tsx\` の \`sidebarWidth\` / \`listWidth\` 状態管理・ドラッグ処理・ストレージ保存を専用フックに分離。\`COLUMN_CONFIGS\` で設定を集約し、\`resetWidth()\` でダブルクリックリセットを一本化した。
+
 ## 2026-04-01 (72)
 
 ### リファクタリング
