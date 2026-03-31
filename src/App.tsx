@@ -8,7 +8,7 @@ import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
-import type { Article, Feed, KeywordFilter } from "./types";
+import type { Article, EngagementAction, Feed, KeywordFilter } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useReadState } from "./hooks/useReadState";
@@ -369,32 +369,20 @@ export default function App() {
     [markRead, addToHistory, setMobilePane],
   );
 
-  const handleToggleBookmark = useCallback(
-    (id: string) => {
-      toggleBookmark(id);
-      const article = articleMap.get(id);
-      if (article) recordEngagement(id, article.feedHash, "bookmark");
-    },
-    [toggleBookmark, articleMap, recordEngagement],
-  );
-
-  const handleToggleReadingList = useCallback(
-    (id: string) => {
-      toggleReadingList(id);
-      const article = articleMap.get(id);
-      if (article) recordEngagement(id, article.feedHash, "reading_list");
-    },
-    [toggleReadingList, articleMap, recordEngagement],
-  );
-
-  const handleToggleLike = useCallback(
-    (id: string) => {
-      toggleLike(id);
-      const article = articleMap.get(id);
-      if (article) recordEngagement(id, article.feedHash, "like");
-    },
-    [toggleLike, articleMap, recordEngagement],
-  );
+  const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useMemo(() => {
+    function makeHandler(toggle: (id: string) => void, type: EngagementAction) {
+      return (id: string) => {
+        toggle(id);
+        const article = articleMap.get(id);
+        if (article) recordEngagement(id, article.feedHash, type);
+      };
+    }
+    return {
+      handleToggleBookmark: makeHandler(toggleBookmark, "bookmark"),
+      handleToggleReadingList: makeHandler(toggleReadingList, "reading_list"),
+      handleToggleLike: makeHandler(toggleLike, "like"),
+    };
+  }, [toggleBookmark, toggleReadingList, toggleLike, articleMap, recordEngagement]);
 
   useKeyboardNav({
     filteredArticles: filtered,
