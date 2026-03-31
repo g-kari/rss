@@ -150,7 +150,7 @@ export default function App() {
     sendTest: sendPushTest,
   } = usePushNotifications(user);
 
-  const { historyIds: historyIdsForReadState, historyOrder, addToHistory } = useReadingHistory();
+  const { historyIds, historyOrder, addToHistory } = useReadingHistory();
 
   const {
     readIds,
@@ -165,7 +165,7 @@ export default function App() {
     toggleBookmark,
     toggleReadingList,
     toggleLike,
-  } = useReadState(user, articles, historyIdsForReadState);
+  } = useReadState(user, articles, historyIds);
 
   const { recordEngagement } = useEngagement(user);
   const {
@@ -278,8 +278,6 @@ export default function App() {
     },
     [prependArticle, toggleBookmark, toggleReadingList, showToast],
   );
-
-  const historyIds = historyIdsForReadState;
 
   const nsfwFeedIds = useMemo(() => new Set(feeds.filter((f) => f.nsfw).map((f) => f.id)), [feeds]);
 
