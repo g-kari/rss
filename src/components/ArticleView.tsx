@@ -206,11 +206,10 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
       <button
         onClick={() => setOpen((v) => !v)}
         title="共有 (c)"
-        className={`transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+        className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
-          width="14"
-          height="14"
+          className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -357,7 +356,7 @@ function ToggleIconButton({
     <button
       onClick={onClick}
       title={title}
-      className={`transition-colors duration-200 ${isActive ? activeClass : inactiveClass}`}
+      className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${isActive ? activeClass : inactiveClass}`}
     >
       {children}
     </button>
@@ -708,11 +707,10 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
       <button
         onClick={() => setOpen((v) => !v)}
         title="フィルター設定"
-        className={`transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+        className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
-          width="14"
-          height="14"
+          className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -845,11 +843,10 @@ function GlobalFilterMenu({
       <button
         onClick={() => setOpen((v) => !v)}
         title="グローバルフィルター設定（全フィード共通）"
-        className={`transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+        className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
-          width="14"
-          height="14"
+          className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -1332,7 +1329,7 @@ export default function ArticleView({
           )}
 
           {/* アクションボタン群（常にひとかたまりで右端に配置） */}
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-3 lg:gap-1.5">
             {/* フォントサイズ切り替え */}
             {onChangeFontSize && (
               <div className="flex items-center gap-0.5 mr-1">
@@ -1388,7 +1385,7 @@ export default function ArticleView({
                 }}
                 disabled={downloadingImages}
                 title="記事内の画像をすべてダウンロード"
-                className="text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50 flex items-center gap-1"
+                className="p-2 -m-2 lg:p-0 lg:m-0 text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50 flex items-center gap-1 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
               >
                 {downloadingImages && imageDownloadProgress ? (
                   <span className="text-[10px] tabular-nums tracking-tight">
