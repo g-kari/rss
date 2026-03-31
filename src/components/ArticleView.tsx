@@ -1029,7 +1029,9 @@ function useSelectionExclude(containerRef: React.RefObject<HTMLElement | null>) 
   const [popup, setPopup] = useState<SelectionPopupState | null>(null);
 
   useEffect(() => {
-    function handleSelectionChange() {
+    // selectionchange はドラッグ中に連続発火して再レンダリングが起き選択が崩れるため
+    // pointerup（選択確定後）でのみ評価する
+    function handlePointerUp() {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) {
         setPopup(null);
@@ -1049,8 +1051,8 @@ function useSelectionExclude(containerRef: React.RefObject<HTMLElement | null>) 
       setPopup({ x: rect.left + rect.width / 2, y: rect.top, text });
     }
 
-    document.addEventListener("selectionchange", handleSelectionChange);
-    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+    document.addEventListener("pointerup", handlePointerUp);
+    return () => document.removeEventListener("pointerup", handlePointerUp);
   }, [containerRef]);
 
   const clearPopup = useCallback(() => {
