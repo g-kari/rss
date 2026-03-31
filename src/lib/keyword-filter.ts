@@ -1,7 +1,7 @@
 import type { Article, KeywordFilter } from "../types";
 
 const MAX_KEYWORD_LENGTH = 100;
-const MAX_KEYWORDS_PER_ARRAY = 50;
+const MAX_KEYWORDS_PER_ARRAY = 99999;
 
 /**
  * ユーザー入力のキーワード配列をサニタイズする。
