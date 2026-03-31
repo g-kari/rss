@@ -1199,8 +1199,7 @@ export default function ArticleView({
 
   const progressBarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const { popup: selectionPopup, clearPopup: clearSelectionPopup } =
-    useSelectionExclude(contentRef);
+  const { popup: selectionPopup, clearPopup: clearSelectionPopup } = useSelectionExclude(mainRef);
   const {
     handleWheel,
     handleNavMouseDown,
