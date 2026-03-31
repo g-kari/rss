@@ -1014,6 +1014,120 @@ function useGestureNav({
   };
 }
 
+// --- SelectionExcludePopup コンポーネント ---
+
+const MAX_SELECTION_LENGTH = 100;
+
+interface SelectionPopupState {
+  x: number;
+  y: number;
+  text: string;
+}
+
+/** 記事本文エリア内のテキスト選択を検知してポップアップ表示用の状態を返す */
+function useSelectionExclude(containerRef: React.RefObject<HTMLElement | null>) {
+  const [popup, setPopup] = useState<SelectionPopupState | null>(null);
+
+  useEffect(() => {
+    function handleSelectionChange() {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+        setPopup(null);
+        return;
+      }
+      const text = sel.toString().trim();
+      if (!text || text.length > MAX_SELECTION_LENGTH) {
+        setPopup(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      if (!containerRef.current?.contains(range.commonAncestorContainer)) {
+        setPopup(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      setPopup({ x: rect.left + rect.width / 2, y: rect.top, text });
+    }
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, [containerRef]);
+
+  const clearPopup = useCallback(() => {
+    setPopup(null);
+    window.getSelection()?.removeAllRanges();
+  }, []);
+
+  return { popup, clearPopup };
+}
+
+interface SelectionExcludePopupProps {
+  popup: SelectionPopupState;
+  globalFilter: KeywordFilter | null;
+  onSaveGlobalFilter: (filter: KeywordFilter | null) => void;
+  showToast?: (msg: string) => void;
+  onClose: () => void;
+}
+
+function SelectionExcludePopup({
+  popup,
+  globalFilter,
+  onSaveGlobalFilter,
+  showToast,
+  onClose,
+}: SelectionExcludePopupProps) {
+  const displayText = popup.text.length > 24 ? `${popup.text.slice(0, 24)}…` : popup.text;
+
+  function doExclude(e: { preventDefault: () => void }) {
+    e.preventDefault(); // 選択を維持しつつボタン押下
+    const existing = globalFilter?.exclude ?? [];
+    if (existing.includes(popup.text)) {
+      showToast?.("既にグローバル除外キーワードに登録されています");
+    } else {
+      onSaveGlobalFilter({
+        include: globalFilter?.include ?? [],
+        exclude: [...existing, popup.text],
+        matchCategories: globalFilter?.matchCategories,
+      });
+      showToast?.(`「${displayText}」をグローバル除外に追加しました`);
+    }
+    onClose();
+  }
+
+  return (
+    <div className="fixed z-50 pointer-events-none" style={{ left: popup.x, top: popup.y }}>
+      <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 transform">
+        <div className="bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden">
+          <button
+            onMouseDown={doExclude}
+            onTouchEnd={doExclude}
+            className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors whitespace-nowrap"
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="flex-shrink-0 text-text-muted"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+            <span>「{displayText}」を除外</span>
+          </button>
+        </div>
+        {/* 吹き出し三角 */}
+        <div className="flex justify-center -mt-px">
+          <div className="w-2 h-2 bg-surface-elevated border-r border-b border-border-default rotate-45 -translate-y-1" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ArticleView({
   article,
   isBookmarked,
@@ -1083,6 +1197,8 @@ export default function ArticleView({
 
   const progressBarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const { popup: selectionPopup, clearPopup: clearSelectionPopup } =
+    useSelectionExclude(contentRef);
   const {
     handleWheel,
     handleNavMouseDown,
@@ -1647,6 +1763,15 @@ export default function ArticleView({
             </div>
           </div>
         </div>
+      )}
+      {selectionPopup && onSaveGlobalFilter && (
+        <SelectionExcludePopup
+          popup={selectionPopup}
+          globalFilter={globalFilter ?? null}
+          onSaveGlobalFilter={onSaveGlobalFilter}
+          showToast={showToast}
+          onClose={clearSelectionPopup}
+        />
       )}
     </main>
   );
