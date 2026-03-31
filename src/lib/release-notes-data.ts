@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (69)
+
+### リファクタリング
+
+- \`useKeyboardNav\` の未使用オプション \`dateRange\` を削除 — \`cycleDateRange()\` が次の値を直接返すため不要なプロパティだった。
+
 ## 2026-04-01 (68)
 
 ### バグ修正
