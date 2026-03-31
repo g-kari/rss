@@ -242,25 +242,27 @@ export function useFeeds(
       return loaded <= f.pageCount;
     });
     if (targets.length === 0) return;
-    try {
-      const results = await Promise.allSettled(
-        targets.map(async (f) => {
-          const nextPage = (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1;
-          const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
-          return { feedId: f.id, nextPage, data };
-        }),
-      );
-      let merged = false;
-      for (const r of results) {
-        if (r.status !== "fulfilled" || r.value.data.length === 0) continue;
-        const { feedId, nextPage, data } = r.value;
-        setArticles((prev) => mergeUniqueArticles(prev, data));
-        setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
-        merged = true;
+    // Promise.allSettled は reject しないため try/catch 不要
+    const results = await Promise.allSettled(
+      targets.map(async (f) => {
+        const nextPage = (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1;
+        const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
+        return { feedId: f.id, nextPage, data };
+      }),
+    );
+    let hasError = false;
+    for (const r of results) {
+      if (r.status === "rejected") {
+        hasError = true;
+        continue;
       }
-      if (!merged) onErrorRef.current?.("過去の記事の読み込みに失敗しました");
-    } catch (err) {
-      console.error("loadMoreAllFeedsArticles failed:", err);
+      if (r.value.data.length === 0) continue;
+      const { feedId, nextPage, data } = r.value;
+      setArticles((prev) => mergeUniqueArticles(prev, data));
+      setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
+    }
+    if (hasError) {
+      console.error("loadMoreAllFeedsArticles: some feeds failed");
       onErrorRef.current?.("過去の記事の読み込みに失敗しました");
     }
   }, []);
