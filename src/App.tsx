@@ -281,8 +281,6 @@ export default function App() {
 
   const nsfwFeedIds = useMemo(() => new Set(feeds.filter((f) => f.nsfw).map((f) => f.id)), [feeds]);
 
-  const articleMap = useMemo(() => new Map(articles.map((a) => [a.id, a])), [articles]);
-
   const { bookmarkCount, readingListCount, likeCount, historyCount } = useMemo(() => {
     let bm = 0,
       rl = 0,
@@ -373,7 +371,7 @@ export default function App() {
     function makeHandler(toggle: (id: string) => void, type: EngagementAction) {
       return (id: string) => {
         toggle(id);
-        const article = articleMap.get(id);
+        const article = articles.find((a) => a.id === id);
         if (article) recordEngagement(id, article.feedHash, type);
       };
     }
@@ -382,7 +380,7 @@ export default function App() {
       handleToggleReadingList: makeHandler(toggleReadingList, "reading_list"),
       handleToggleLike: makeHandler(toggleLike, "like"),
     };
-  }, [toggleBookmark, toggleReadingList, toggleLike, articleMap, recordEngagement]);
+  }, [toggleBookmark, toggleReadingList, toggleLike, articles, recordEngagement]);
 
   useKeyboardNav({
     filteredArticles: filtered,
