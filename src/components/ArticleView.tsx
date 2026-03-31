@@ -1029,9 +1029,9 @@ function useSelectionExclude(containerRef: React.RefObject<HTMLElement | null>) 
   const [popup, setPopup] = useState<SelectionPopupState | null>(null);
 
   useEffect(() => {
-    // selectionchange はドラッグ中に連続発火して再レンダリングが起き選択が崩れるため
-    // pointerup（選択確定後）でのみ評価する
-    function handlePointerUp() {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function checkSelection() {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) {
         setPopup(null);
@@ -1051,8 +1051,29 @@ function useSelectionExclude(containerRef: React.RefObject<HTMLElement | null>) 
       setPopup({ x: rect.left + rect.width / 2, y: rect.top, text });
     }
 
+    // PC: pointerup で即時評価（debounce をキャンセルして二重発火を防ぐ）
+    function handlePointerUp() {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
+      checkSelection();
+    }
+
+    // スマホ: 長押し選択ハンドル操作中は pointerup が発火しないため
+    // selectionchange をデバウンスして選択確定後に評価する
+    function handleSelectionChange() {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(checkSelection, 150);
+    }
+
     document.addEventListener("pointerup", handlePointerUp);
-    return () => document.removeEventListener("pointerup", handlePointerUp);
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => {
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("selectionchange", handleSelectionChange);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
   }, [containerRef]);
 
   const clearPopup = useCallback(() => {
