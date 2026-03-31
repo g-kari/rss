@@ -1,8 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import type { Article, UserProfile, ReadState } from "../types";
-import { STORAGE_KEYS, SPECIAL_FEED_IDS, saveSet, loadSet, toggleSetItem } from "../lib/storage";
+import type { Article, KeywordFilter, UserProfile, ReadState } from "../types";
+import {
+  STORAGE_KEYS,
+  SPECIAL_FEED_IDS,
+  saveSet,
+  loadSet,
+  toggleSetItem,
+  loadJson,
+  saveJson,
+} from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
 type ReadStateSets = {
@@ -46,22 +54,26 @@ function makeToggle(
   };
 }
 
-/** ReadStateSets を /api/read-state に POST する JSON 文字列にシリアライズする */
-function serializeReadState(sets: ReadStateSets): string {
+/** ReadStateSets + globalFilter を /api/read-state に POST する JSON 文字列にシリアライズする */
+function serializeReadState(sets: ReadStateSets, globalFilter: KeywordFilter | null): string {
   return JSON.stringify({
     readIds: [...sets.read],
     bookmarkIds: [...sets.bookmarks],
     readingListIds: [...sets.readingList],
     likeIds: [...sets.likes],
+    globalFilter,
   });
 }
 
-async function saveReadState(sets: ReadStateSets): Promise<void> {
+async function saveReadState(
+  sets: ReadStateSets,
+  globalFilter: KeywordFilter | null,
+): Promise<void> {
   try {
     await apiFetch("/api/read-state", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: serializeReadState(sets),
+      body: serializeReadState(sets, globalFilter),
     });
   } catch {
     // サーバー同期失敗は無視（localStorage は保存済み）
@@ -73,6 +85,8 @@ interface ReadStateResult {
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
   likeIds: Set<string>;
+  globalFilter: KeywordFilter | null;
+  setGlobalFilter: (filter: KeywordFilter | null) => void;
   markRead: (articleId: string) => void;
   markAllRead: (feedId: string | null) => void;
   toggleRead: (articleId: string) => void;
@@ -94,6 +108,11 @@ export function useReadState(
     loadSet(STORAGE_KEYS.READING_LIST_IDS),
   );
   const [likeIds, setLikeIds] = useState<Set<string>>(() => loadSet(STORAGE_KEYS.LIKE_IDS));
+  const [globalFilter, setGlobalFilterState] = useState<KeywordFilter | null>(() =>
+    loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
+  );
+  const globalFilterRef = useRef<KeywordFilter | null>(globalFilter);
+  globalFilterRef.current = globalFilter;
 
   // 4つのセットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
   const stateRef = useRef<ReadStateSets>({
@@ -116,7 +135,7 @@ export function useReadState(
   };
   articlesRef.current = articles;
 
-  // ログイン後にサーバーの既読・ブックマーク・後で読む状態をマージ
+  // ログイン後にサーバーの既読・ブックマーク・後で読む・グローバルフィルター状態をマージ
   useEffect(() => {
     if (!user) return;
     fetchReadState().then((state) => {
@@ -125,6 +144,12 @@ export function useReadState(
       mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds);
       mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, state.readingListIds);
       mergeServerSet(setLikeIds, STORAGE_KEYS.LIKE_IDS, state.likeIds);
+      // globalFilter はサーバー値を優先（クロスデバイス同期）
+      if ("globalFilter" in state) {
+        const serverFilter = state.globalFilter ?? null;
+        saveJson(STORAGE_KEYS.GLOBAL_FILTER, serverFilter);
+        setGlobalFilterState(serverFilter);
+      }
     });
   }, [user]);
 
@@ -142,13 +167,15 @@ export function useReadState(
       if (!flushIfPending()) return;
       navigator.sendBeacon(
         "/api/read-state",
-        new Blob([serializeReadState(stateRef.current)], { type: "application/json" }),
+        new Blob([serializeReadState(stateRef.current, globalFilterRef.current)], {
+          type: "application/json",
+        }),
       );
     }
     function onVisibilityChange() {
       if (document.visibilityState !== "hidden") return;
       if (!flushIfPending()) return;
-      saveReadState(stateRef.current);
+      saveReadState(stateRef.current, globalFilterRef.current);
     }
     window.addEventListener("beforeunload", onBeforeUnload);
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -165,7 +192,7 @@ export function useReadState(
   const scheduleSyncToServer = useCallback(() => {
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
-      saveReadState(stateRef.current);
+      saveReadState(stateRef.current, globalFilterRef.current);
     }, 2000);
   }, []);
 
@@ -222,11 +249,22 @@ export function useReadState(
     [scheduleSyncToServer],
   );
 
+  const setGlobalFilter = useCallback(
+    (filter: KeywordFilter | null) => {
+      saveJson(STORAGE_KEYS.GLOBAL_FILTER, filter);
+      setGlobalFilterState(filter);
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
+  );
+
   return {
     readIds,
     bookmarkIds,
     readingListIds,
     likeIds,
+    globalFilter,
+    setGlobalFilter,
     markRead,
     markAllRead,
     toggleRead,

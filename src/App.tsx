@@ -142,6 +142,8 @@ export default function App() {
     bookmarkIds,
     readingListIds,
     likeIds,
+    globalFilter,
+    setGlobalFilter,
     markRead,
     markAllRead,
     toggleRead,
@@ -301,8 +303,6 @@ export default function App() {
     updateQuery,
     searchRef,
     sentinelRef,
-    globalFilter,
-    setGlobalFilter,
   } = useFilteredArticles({
     articles,
     feeds,
@@ -316,6 +316,8 @@ export default function App() {
     selectedArticleId: selectedArticle?.id,
     nsfwMode,
     nsfwFeedIds,
+    globalFilter,
+    setGlobalFilter,
   });
 
   const currentIndex = useMemo(
