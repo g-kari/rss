@@ -50,6 +50,8 @@ export function useFeeds(
   const [loadedFeedPages, setLoadedFeedPages] = useState<Map<string, number>>(() => new Map());
   const loadedFeedPagesRef = useRef(loadedFeedPages);
   loadedFeedPagesRef.current = loadedFeedPages;
+  // 現在フェッチ中のフィード ID を追跡（二重フェッチ防止）
+  const loadingFeedIdsRef = useRef(new Set<string>());
   // コールバックを ref 化して useCallback/useEffect の依存配列から除外する
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
@@ -222,7 +224,9 @@ export function useFeeds(
 
   // フィードの過去ページを追加読み込みする
   const loadMoreFeedArticles = useCallback(async (feedId: string): Promise<void> => {
+    if (loadingFeedIdsRef.current.has(feedId)) return;
     const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
+    loadingFeedIdsRef.current.add(feedId);
     try {
       const data = await apiFetchJson<Article[]>(`/api/articles?feed=${feedId}&page=${nextPage}`);
       if (data.length === 0) return;
@@ -231,6 +235,8 @@ export function useFeeds(
     } catch (err) {
       console.error("loadMoreFeedArticles failed:", err);
       onErrorRef.current?.("過去の記事の読み込みに失敗しました");
+    } finally {
+      loadingFeedIdsRef.current.delete(feedId);
     }
   }, []);
 
@@ -238,16 +244,22 @@ export function useFeeds(
   const loadMoreAllFeedsArticles = useCallback(async (feeds: Feed[]): Promise<void> => {
     const targets = feeds.filter((f) => {
       if (!f.pageCount) return false;
+      if (loadingFeedIdsRef.current.has(f.id)) return false;
       const loaded = loadedFeedPagesRef.current.get(f.id) ?? 1;
       return loaded <= f.pageCount;
     });
     if (targets.length === 0) return;
+    for (const f of targets) loadingFeedIdsRef.current.add(f.id);
     // Promise.allSettled は reject しないため try/catch 不要
     const results = await Promise.allSettled(
       targets.map(async (f) => {
-        const nextPage = (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1;
-        const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
-        return { feedId: f.id, nextPage, data };
+        try {
+          const nextPage = (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1;
+          const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
+          return { feedId: f.id, nextPage, data };
+        } finally {
+          loadingFeedIdsRef.current.delete(f.id);
+        }
       }),
     );
     let hasError = false;
