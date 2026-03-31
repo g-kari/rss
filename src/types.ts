@@ -189,4 +189,5 @@ export interface ReadState {
   bookmarkIds: string[];
   readingListIds: string[];
   likeIds: string[];
+  globalFilter?: KeywordFilter | null;
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { Article, DateRange, Feed, KeywordFilter, SortOrder } from "../types";
-import { STORAGE_KEYS, storageGet, storageSet, loadJson, saveJson } from "../lib/storage";
+import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { cycleValue, DATE_RANGE_CYCLE, SORT_ORDER_CYCLE } from "../lib/article-utils";
 import { filterAndSortArticles } from "../lib/article-filter";
@@ -32,6 +32,8 @@ interface Options {
   selectedArticleId?: string | null;
   nsfwMode?: boolean;
   nsfwFeedIds?: Set<string>;
+  globalFilter: KeywordFilter | null;
+  setGlobalFilter: (filter: KeywordFilter | null) => void;
 }
 
 export function useFilteredArticles({
@@ -47,16 +49,9 @@ export function useFilteredArticles({
   selectedArticleId,
   nsfwMode = false,
   nsfwFeedIds = EMPTY_SET,
+  globalFilter,
+  setGlobalFilter,
 }: Options) {
-  const [globalFilter, setGlobalFilterState] = useState<KeywordFilter | null>(() =>
-    loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
-  );
-
-  const setGlobalFilter = useCallback((filter: KeywordFilter | null) => {
-    saveJson(STORAGE_KEYS.GLOBAL_FILTER, filter);
-    setGlobalFilterState(filter);
-  }, []);
-
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
     () => storageGet(STORAGE_KEYS.BOOKMARK_ONLY) === "1",
