@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-01 (74)
+
+### バグ修正
+
+- **「もっと読む」ボタンが消えない問題を修正** — `loadMoreFeedArticles` / `loadMoreAllFeedsArticles` で空ページが返ったとき `loadedFeedPages` を更新せずに早期リターンしていたため、`feedHasMorePages` が `true` のまま残りボタンが消えなくなっていた。空ページでもページ番号を更新するよう修正し、繰り返しリクエストも防止した (`src/hooks/useFeeds.ts`)。
+
 ## 2026-04-01 (73)
 
 ### リファクタリング

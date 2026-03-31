@@ -229,9 +229,10 @@ export function useFeeds(
     loadingFeedIdsRef.current.add(feedId);
     try {
       const data = await apiFetchJson<Article[]>(`/api/articles?feed=${feedId}&page=${nextPage}`);
+      // 空ページでもページ番号を更新して「もっと読む」ボタンが消えるようにする
+      setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
       if (data.length === 0) return;
       setArticles((prev) => mergeUniqueArticles(prev, data));
-      setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
     } catch (err) {
       console.error("loadMoreFeedArticles failed:", err);
       onErrorRef.current?.("過去の記事の読み込みに失敗しました");
@@ -268,10 +269,11 @@ export function useFeeds(
         hasError = true;
         continue;
       }
-      if (r.value.data.length === 0) continue;
       const { feedId, nextPage, data } = r.value;
-      setArticles((prev) => mergeUniqueArticles(prev, data));
+      // 空ページでもページ番号を更新して繰り返しリクエストを防ぐ
       setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
+      if (data.length === 0) continue;
+      setArticles((prev) => mergeUniqueArticles(prev, data));
     }
     if (hasError) {
       console.error("loadMoreAllFeedsArticles: some feeds failed");
