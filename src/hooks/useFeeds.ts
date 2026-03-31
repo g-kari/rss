@@ -34,6 +34,7 @@ interface FeedsState {
   reinferFeed: (feedId: string) => Promise<void>;
   dismissNewArticles: () => void;
   loadMoreFeedArticles: (feedId: string) => Promise<void>;
+  loadMoreAllFeedsArticles: (feeds: Feed[]) => Promise<void>;
 }
 
 export function useFeeds(
