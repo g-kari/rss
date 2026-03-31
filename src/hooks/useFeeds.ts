@@ -229,6 +229,37 @@ export function useFeeds(
     }
   }, []);
 
+  // 全フィード表示時: 未読み込みページが残っている全フィードの次ページを一括取得する
+  const loadMoreAllFeedsArticles = useCallback(async (feeds: Feed[]): Promise<void> => {
+    const targets = feeds.filter((f) => {
+      if (!f.pageCount) return false;
+      const loaded = loadedFeedPagesRef.current.get(f.id) ?? 1;
+      return loaded <= f.pageCount;
+    });
+    if (targets.length === 0) return;
+    try {
+      const results = await Promise.allSettled(
+        targets.map(async (f) => {
+          const nextPage = (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1;
+          const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
+          return { feedId: f.id, nextPage, data };
+        }),
+      );
+      let merged = false;
+      for (const r of results) {
+        if (r.status !== "fulfilled" || r.value.data.length === 0) continue;
+        const { feedId, nextPage, data } = r.value;
+        setArticles((prev) => mergeUniqueArticles(prev, data));
+        setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
+        merged = true;
+      }
+      if (!merged) onErrorRef.current?.("過去の記事の読み込みに失敗しました");
+    } catch (err) {
+      console.error("loadMoreAllFeedsArticles failed:", err);
+      onErrorRef.current?.("過去の記事の読み込みに失敗しました");
+    }
+  }, []);
+
   return {
     feeds,
     articles,
@@ -246,5 +277,6 @@ export function useFeeds(
     reinferFeed,
     dismissNewArticles,
     loadMoreFeedArticles,
+    loadMoreAllFeedsArticles,
   };
 }

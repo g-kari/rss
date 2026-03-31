@@ -139,6 +139,7 @@ export default function App() {
     reinferFeed,
     dismissNewArticles,
     loadMoreFeedArticles,
+    loadMoreAllFeedsArticles,
   } = useFeeds(user, showToast);
   const {
     supported: pushSupported,
@@ -339,13 +340,22 @@ export default function App() {
     [selectedArticle, filtered],
   );
 
-  // 特定フィードを表示中かつ、サーバー側に未取得ページが残っているか
+  // サーバー側に未取得ページが残っているか（全フィード表示・単一フィード表示の両方に対応）
   const feedHasMorePages = useMemo(() => {
-    if (!selectedFeedId || selectedFeedId.startsWith("__")) return false;
-    const feed = feeds.find((f) => f.id === selectedFeedId);
-    if (!feed?.pageCount) return false;
-    const loadedPage = loadedFeedPages.get(selectedFeedId) ?? 1;
-    return loadedPage <= feed.pageCount;
+    if (selectedFeedId?.startsWith("__")) return false;
+    if (selectedFeedId) {
+      // 単一フィード表示
+      const feed = feeds.find((f) => f.id === selectedFeedId);
+      if (!feed?.pageCount) return false;
+      const loadedPage = loadedFeedPages.get(selectedFeedId) ?? 1;
+      return loadedPage <= feed.pageCount;
+    }
+    // 全フィード表示: いずれかのフィードに未読み込みページがあれば true
+    return feeds.some((f) => {
+      if (!f.pageCount) return false;
+      const loadedPage = loadedFeedPages.get(f.id) ?? 1;
+      return loadedPage <= f.pageCount;
+    });
   }, [selectedFeedId, feeds, loadedFeedPages]);
   const prevArticle = currentIndex > 0 ? filtered[currentIndex - 1] : null;
   const nextArticle =
@@ -806,7 +816,9 @@ export default function App() {
             sentinelRef={sentinelRef}
             feedHasMorePages={feedHasMorePages}
             onLoadMoreFeedArticles={
-              selectedFeedId ? () => loadMoreFeedArticles(selectedFeedId) : undefined
+              selectedFeedId
+                ? () => loadMoreFeedArticles(selectedFeedId)
+                : () => loadMoreAllFeedsArticles(feeds)
             }
             globalFilter={globalFilter}
             onSaveGlobalFilter={setGlobalFilter}
