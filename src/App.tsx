@@ -19,10 +19,10 @@ import { useReadingHistory } from "./hooks/useReadingHistory";
 import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
 import { apiFetch } from "./lib/api-fetch";
-import { STORAGE_KEYS, storageGet, storageSet } from "./lib/storage";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
+import { useColumnResize } from "./hooks/useColumnResize";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -61,66 +61,7 @@ export default function App() {
   } = useUIState(initialMobilePane);
 
   // カラム幅（PC）
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    const n = parseInt(storageGet(STORAGE_KEYS.SIDEBAR_WIDTH) ?? "", 10);
-    return isNaN(n) ? 200 : Math.max(150, Math.min(400, n));
-  });
-  const [listWidth, setListWidth] = useState(() => {
-    const n = parseInt(storageGet(STORAGE_KEYS.LIST_WIDTH) ?? "", 10);
-    return isNaN(n) ? 360 : Math.max(200, Math.min(600, n));
-  });
-  const resizeDragRef = useRef<{
-    column: "sidebar" | "list";
-    startX: number;
-    startWidth: number;
-  } | null>(null);
-  const resizeListenersRef = useRef<{
-    onMouseMove: (ev: MouseEvent) => void;
-    onMouseUp: () => void;
-  } | null>(null);
-
-  function handleResizeStart(column: "sidebar" | "list", e: React.MouseEvent) {
-    e.preventDefault();
-
-    // mouseup が未発火のまま次のドラッグが始まった場合（ウィンドウ外離脱等）の二重登録を防ぐ
-    if (resizeListenersRef.current) {
-      document.removeEventListener("mousemove", resizeListenersRef.current.onMouseMove);
-      document.removeEventListener("mouseup", resizeListenersRef.current.onMouseUp);
-      resizeListenersRef.current = null;
-    }
-
-    resizeDragRef.current = {
-      column,
-      startX: e.clientX,
-      startWidth: column === "sidebar" ? sidebarWidth : listWidth,
-    };
-
-    function onMouseMove(ev: MouseEvent) {
-      if (!resizeDragRef.current) return;
-      const { column: col, startX, startWidth } = resizeDragRef.current;
-      const delta = ev.clientX - startX;
-      if (col === "sidebar") {
-        const w = Math.max(150, Math.min(400, startWidth + delta));
-        setSidebarWidth(w);
-        storageSet(STORAGE_KEYS.SIDEBAR_WIDTH, String(w));
-      } else {
-        const w = Math.max(200, Math.min(600, startWidth + delta));
-        setListWidth(w);
-        storageSet(STORAGE_KEYS.LIST_WIDTH, String(w));
-      }
-    }
-
-    function onMouseUp() {
-      resizeDragRef.current = null;
-      resizeListenersRef.current = null;
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-    }
-
-    resizeListenersRef.current = { onMouseMove, onMouseUp };
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
-  }
+  const { sidebarWidth, listWidth, handleResizeStart, resetWidth } = useColumnResize();
 
   const {
     feeds,
@@ -688,10 +629,7 @@ export default function App() {
         className="hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20 group"
         style={{ left: sidebarWidth - 2 }}
         onMouseDown={(e) => handleResizeStart("sidebar", e)}
-        onDoubleClick={() => {
-          setSidebarWidth(200);
-          storageSet(STORAGE_KEYS.SIDEBAR_WIDTH, "200");
-        }}
+        onDoubleClick={() => resetWidth("sidebar")}
       >
         <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
       </div>
@@ -699,10 +637,7 @@ export default function App() {
         className="hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20 group"
         style={{ left: sidebarWidth + listWidth - 2 }}
         onMouseDown={(e) => handleResizeStart("list", e)}
-        onDoubleClick={() => {
-          setListWidth(360);
-          storageSet(STORAGE_KEYS.LIST_WIDTH, "360");
-        }}
+        onDoubleClick={() => resetWidth("list")}
       >
         <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
       </div>

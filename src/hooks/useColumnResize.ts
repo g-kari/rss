@@ -1,0 +1,94 @@
+import { useState, useRef } from "react";
+import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
+
+interface ColumnConfig {
+  storageKey: string;
+  defaultWidth: number;
+  minWidth: number;
+  maxWidth: number;
+}
+
+const COLUMN_CONFIGS: Record<"sidebar" | "list", ColumnConfig> = {
+  sidebar: {
+    storageKey: STORAGE_KEYS.SIDEBAR_WIDTH,
+    defaultWidth: 200,
+    minWidth: 150,
+    maxWidth: 400,
+  },
+  list: {
+    storageKey: STORAGE_KEYS.LIST_WIDTH,
+    defaultWidth: 360,
+    minWidth: 200,
+    maxWidth: 600,
+  },
+};
+
+function loadWidth(config: ColumnConfig): number {
+  const n = parseInt(storageGet(config.storageKey) ?? "", 10);
+  return isNaN(n) ? config.defaultWidth : Math.max(config.minWidth, Math.min(config.maxWidth, n));
+}
+
+export function useColumnResize() {
+  const [sidebarWidth, setSidebarWidth] = useState(() => loadWidth(COLUMN_CONFIGS.sidebar));
+  const [listWidth, setListWidth] = useState(() => loadWidth(COLUMN_CONFIGS.list));
+
+  const dragRef = useRef<{
+    column: "sidebar" | "list";
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+  const listenersRef = useRef<{
+    onMouseMove: (ev: MouseEvent) => void;
+    onMouseUp: () => void;
+  } | null>(null);
+
+  function handleResizeStart(column: "sidebar" | "list", e: React.MouseEvent) {
+    e.preventDefault();
+
+    // mouseup が未発火のまま次のドラッグが始まった場合（ウィンドウ外離脱等）の二重登録を防ぐ
+    if (listenersRef.current) {
+      document.removeEventListener("mousemove", listenersRef.current.onMouseMove);
+      document.removeEventListener("mouseup", listenersRef.current.onMouseUp);
+      listenersRef.current = null;
+    }
+
+    const startWidth = column === "sidebar" ? sidebarWidth : listWidth;
+    dragRef.current = { column, startX: e.clientX, startWidth };
+
+    function onMouseMove(ev: MouseEvent) {
+      if (!dragRef.current) return;
+      const { column: col, startX, startWidth: sw } = dragRef.current;
+      const { minWidth, maxWidth, storageKey } = COLUMN_CONFIGS[col];
+      const w = Math.max(minWidth, Math.min(maxWidth, sw + ev.clientX - startX));
+      if (col === "sidebar") {
+        setSidebarWidth(w);
+      } else {
+        setListWidth(w);
+      }
+      storageSet(storageKey, String(w));
+    }
+
+    function onMouseUp() {
+      dragRef.current = null;
+      listenersRef.current = null;
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    }
+
+    listenersRef.current = { onMouseMove, onMouseUp };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }
+
+  function resetWidth(column: "sidebar" | "list") {
+    const { defaultWidth, storageKey } = COLUMN_CONFIGS[column];
+    if (column === "sidebar") {
+      setSidebarWidth(defaultWidth);
+    } else {
+      setListWidth(defaultWidth);
+    }
+    storageSet(storageKey, String(defaultWidth));
+  }
+
+  return { sidebarWidth, listWidth, handleResizeStart, resetWidth };
+}
