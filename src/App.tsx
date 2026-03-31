@@ -74,9 +74,21 @@ export default function App() {
     startX: number;
     startWidth: number;
   } | null>(null);
+  const resizeListenersRef = useRef<{
+    onMouseMove: (ev: MouseEvent) => void;
+    onMouseUp: () => void;
+  } | null>(null);
 
   function handleResizeStart(column: "sidebar" | "list", e: React.MouseEvent) {
     e.preventDefault();
+
+    // mouseup が未発火のまま次のドラッグが始まった場合（ウィンドウ外離脱等）の二重登録を防ぐ
+    if (resizeListenersRef.current) {
+      document.removeEventListener("mousemove", resizeListenersRef.current.onMouseMove);
+      document.removeEventListener("mouseup", resizeListenersRef.current.onMouseUp);
+      resizeListenersRef.current = null;
+    }
+
     resizeDragRef.current = {
       column,
       startX: e.clientX,
@@ -100,10 +112,12 @@ export default function App() {
 
     function onMouseUp() {
       resizeDragRef.current = null;
+      resizeListenersRef.current = null;
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     }
 
+    resizeListenersRef.current = { onMouseMove, onMouseUp };
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
   }
