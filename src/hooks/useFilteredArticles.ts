@@ -5,7 +5,7 @@ import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { cycleValue, DATE_RANGE_CYCLE, SORT_ORDER_CYCLE } from "../lib/article-utils";
 import { filterAndSortArticles } from "../lib/article-filter";
-import { buildFilterMap } from "../lib/keyword-filter";
+import { buildFilterMap, normalizeFilter } from "../lib/keyword-filter";
 
 const PAGE_SIZE = 30;
 const EMPTY_SET = new Set<string>();
@@ -169,6 +169,11 @@ export function useFilteredArticles({
 
   // feeds が変わったときだけ再構築（フィルター変更時や既読切り替えでは再利用される）
   const feedFilterMap = useMemo(() => buildFilterMap(feeds, (f) => f.id), [feeds]);
+  // globalFilter も feedFilterMap と同様に変更時だけ正規化（filterAndSortArticles の hot path から除外）
+  const normalizedGlobalFilter = useMemo(
+    () => (globalFilter ? normalizeFilter(globalFilter) : null),
+    [globalFilter],
+  );
 
   const filtered = useMemo(
     () =>
@@ -190,7 +195,7 @@ export function useFilteredArticles({
         activeIds,
         nsfwMode,
         nsfwFeedIds,
-        globalFilter,
+        globalFilter: normalizedGlobalFilter,
       }),
     [
       articles,
@@ -211,7 +216,7 @@ export function useFilteredArticles({
       activeIds,
       nsfwMode,
       nsfwFeedIds,
-      globalFilter,
+      normalizedGlobalFilter,
     ],
   );
 
