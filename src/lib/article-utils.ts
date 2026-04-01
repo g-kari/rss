@@ -126,8 +126,35 @@ export function bestSrcFromSrcset(srcset: string): string {
 }
 
 /**
+ * HTML 文字列から画像 URL を重複なしで抽出する。
+ * useMemo など DOM 操作が不要なコンテキスト向け。
+ *
+ * - src 属性を優先し、data: の場合は srcset からフォールバック
+ * - data: URI / 非 proxy・非絶対 URL は除外
+ */
+export function collectImageUrlsFromHtml(html: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  const imgRe = /<img\b([^>]*)>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = imgRe.exec(html)) !== null) {
+    const attrs = m[1];
+    let src = /\bsrc=["']([^"']+)["']/i.exec(attrs)?.[1] ?? "";
+    if (!src || src.startsWith("data:")) {
+      const srcset = /\bsrcset=["']([^"']+)["']/i.exec(attrs)?.[1] ?? "";
+      src = bestSrcFromSrcset(srcset);
+    }
+    if (!src || seen.has(src) || src.startsWith("data:")) continue;
+    if (!src.startsWith("/api/image-proxy?") && !src.startsWith("http")) continue;
+    seen.add(src);
+    result.push(src);
+  }
+  return result;
+}
+
+/**
  * コンテナ内の全 img 要素から画像 URL を重複なしで抽出する。
- * ArticleView の画像一覧と useImageDownload の収集で共用。
+ * live DOM（useImageDownload 等）向け。
  *
  * - live DOM では currentSrc（srcset 解決済み）を優先
  * - data: プレースホルダーは srcset からフォールバック

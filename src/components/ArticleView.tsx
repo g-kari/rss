@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import type { Article, Feed, FontSize, KeywordFilter } from "../types";
 import type { Theme } from "../hooks/useUIState";
 import FeedFilterModal from "./FeedFilterModal";
-import { readingTime, FONT_SIZE_CYCLE, collectImageUrls } from "../lib/article-utils";
+import { readingTime, FONT_SIZE_CYCLE, collectImageUrlsFromHtml } from "../lib/article-utils";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { useArticleContent } from "../hooks/useArticleContent";
 import { useArticleAi } from "../hooks/useArticleAi";
@@ -1250,12 +1250,10 @@ export default function ArticleView({
     : null;
 
   // 記事本文の全画像 URL を抽出（重複除去）— 2枚以上あれば末尾ギャラリーに表示
-  const galleryImages = useMemo(() => {
-    if (!processedContent) return [];
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = processedContent;
-    return collectImageUrls(tempDiv);
-  }, [processedContent]);
+  const galleryImages = useMemo(
+    () => (processedContent ? collectImageUrlsFromHtml(processedContent) : []),
+    [processedContent],
+  );
 
   // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する
   const injectSliderControls = useCallback(() => {
