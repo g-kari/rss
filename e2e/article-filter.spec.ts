@@ -515,7 +515,7 @@ test.describe("グローバルフィルター — include", () => {
 
   test("include キーワードにマッチしない記事は除外される", () => {
     const result = run([matched, unmatched], {
-      globalFilter: { include: ["TypeScript"], exclude: [] },
+      globalFilter: { include: ["typescript"], exclude: [] },
     });
     expect(ids(result)).toContain("gi1");
     expect(ids(result)).not.toContain("gi2");

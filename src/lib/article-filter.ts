@@ -1,5 +1,5 @@
 import type { Article, DateRange, KeywordFilter } from "../types";
-import { matchesKeywordFilter, normalizeFilter } from "./keyword-filter";
+import { matchesKeywordFilter } from "./keyword-filter";
 import { articleMatchesQuery, getDateRangeStart } from "./article-utils";
 import { SPECIAL_FEED_IDS } from "./storage";
 
@@ -51,7 +51,6 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
   const isActive = (id: string) => activeIds.has(id);
   const q = rawQuery.trim().toLowerCase();
   const rangeStart = getDateRangeStart(dateRange);
-  const normalizedGlobalFilter = globalFilter ? normalizeFilter(globalFilter) : null;
 
   let list = articles.filter((a) => {
     // フィード絞り込み
@@ -72,7 +71,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     if (!isActive(a.id)) {
       const kf = feedFilterMap.get(a.feedHash);
       if (kf && !matchesKeywordFilter(a, kf)) return false;
-      if (normalizedGlobalFilter && !matchesKeywordFilter(a, normalizedGlobalFilter)) return false;
+      if (globalFilter && !matchesKeywordFilter(a, globalFilter)) return false;
     }
 
     // 未読フィルター（アクティブな記事は除外しない）
