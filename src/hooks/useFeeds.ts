@@ -262,18 +262,23 @@ export function useFeeds(
         }
       }),
     );
-    const hasError = results.some((r) => r.status === "rejected");
-    for (const r of results) {
-      if (r.status === "rejected") continue;
-      const { feedId, nextPage, data } = r.value;
-      // 空ページでもページ番号を更新して繰り返しリクエストを防ぐ
-      setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
-      if (data.length > 0) setArticles((prev) => mergeUniqueArticles(prev, data));
-    }
-    if (hasError) {
+    type FeedPageResult = { feedId: string; nextPage: number; data: Article[] };
+    const succeeded = results.filter(
+      (r): r is PromiseFulfilledResult<FeedPageResult> => r.status === "fulfilled",
+    );
+    if (succeeded.length < results.length) {
       console.error("loadMoreAllFeedsArticles: some feeds failed");
       onErrorRef.current?.("過去の記事の読み込みに失敗しました");
     }
+    if (succeeded.length === 0) return;
+    // 空ページでもページ番号を更新して繰り返しリクエストを防ぐ（1回の setState に集約）
+    setLoadedFeedPages((prev) => {
+      const next = new Map(prev);
+      for (const { value } of succeeded) next.set(value.feedId, value.nextPage);
+      return next;
+    });
+    const newArticles = succeeded.flatMap(({ value }) => value.data);
+    if (newArticles.length > 0) setArticles((prev) => mergeUniqueArticles(prev, newArticles));
   }, []);
 
   return {
