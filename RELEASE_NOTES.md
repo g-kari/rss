@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-01 (81)
+
+### リファクタリング
+
+- **ギャラリー画像抽出を DOM 操作なし正規表現ベースに変更** — `ArticleView.tsx` の `useMemo` 内で `document.createElement` + `innerHTML` を使って画像 URL を抽出していた処理を、HTML 文字列から直接正規表現で抽出する `collectImageUrlsFromHtml` ヘルパー（`article-utils.ts`）に置き換えた。非 live DOM では `currentSrc` が常に空のため DOM 操作は不要だった。
+
 ## 2026-04-01 (80)
 
 ### バグ修正
