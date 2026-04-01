@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (88)
+
+### リファクタリング
+
+- **\`loadMoreAllFeedsArticles\` の setState を一括更新に集約** — ループ内で複数回呼んでいた \`setLoadedFeedPages\` と \`setArticles\` を成功結果をまとめてから各1回の呼び出しに変更。型ガード \`PromiseFulfilledResult<FeedPageResult>\` で \`succeeded\` を絞り込み、\`hasError\` フラグの二重走査も解消。
+
 ## 2026-04-01 (87)
 
 ### リファクタリング
