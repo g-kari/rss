@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { Article, DateRange, Feed, KeywordFilter, SortOrder } from "../types";
+import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { cycleValue, DATE_RANGE_CYCLE, SORT_ORDER_CYCLE } from "../lib/article-utils";
@@ -73,10 +74,7 @@ export function useFilteredArticles({
   });
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const dateRangeRef = useRef(dateRange);
-
-  // useEffect 不要 — レンダー中の直接代入で十分
-  dateRangeRef.current = dateRange;
+  const dateRangeRef = useSyncedRef(dateRange);
 
   // 直前に選択していた記事を一定時間フィルター対象外にする（未読フィルター中でも前の記事に戻れるように）
   const [gracePeriodId, setGracePeriodId] = useState<string | null>(null);

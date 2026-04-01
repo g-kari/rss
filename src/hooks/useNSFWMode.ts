@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
+import { useSyncedRef } from "./useSyncedRef";
 
 /** NSFW 活性化に必要な連打回数 */
 const NSFW_CLICK_COUNT = 5;
@@ -12,8 +13,7 @@ export function useNSFWMode() {
   const [nsfwMode, setNsfwMode] = useState(() => storageGet(STORAGE_KEYS.NSFW_MODE) === "1");
   const [showNSFWAnimation, setShowNSFWAnimation] = useState(false);
   const clickTimesRef = useRef<number[]>([]);
-  const nsfwModeRef = useRef(nsfwMode);
-  nsfwModeRef.current = nsfwMode;
+  const nsfwModeRef = useSyncedRef(nsfwMode);
 
   const activateNSFW = useCallback(() => {
     const now = Date.now();
