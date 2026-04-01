@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (86)
+
+### リファクタリング
+
+- **\`filterAndSortArticles\` から \`buildFilterMap\` を分離** — \`ArticleFilterOptions\` の \`feeds: Feed[]\` を \`feedFilterMap: Map<string, KeywordFilter>\` に変更。\`useFilteredArticles\` で独立した \`useMemo\` として事前計算するようにし、未読切り替えやソート順変更などで \`feeds\` が変わらない場合のフィルターマップ再構築を削減。
+
 ## 2026-04-01 (85)
 
 ### バグ修正
