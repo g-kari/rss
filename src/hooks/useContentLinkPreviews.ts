@@ -92,8 +92,9 @@ export function useContentLinkPreviews(
     // 既存のプレビューカードを削除（再レンダリング時の重複防止）
     el.querySelectorAll(`.${LINK_PREVIEW_CLASS}`).forEach((c) => c.remove());
 
+    const ownHostname = window.location.hostname;
     const anchors = [...el.querySelectorAll<HTMLAnchorElement>("a[href]")].filter(
-      (a) => /^https?:\/\//i.test(a.href) && isStandaloneLink(a),
+      (a) => /^https?:\/\//i.test(a.href) && a.hostname !== ownHostname && isStandaloneLink(a),
     );
     if (anchors.length === 0) return;
 
