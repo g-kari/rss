@@ -7,6 +7,7 @@ import {
   useCallback,
   useRef,
   type ReactElement,
+  type ReactNode,
   type RefObject,
 } from "react";
 import type { Article, Feed, KeywordFilter, Layout, DateRange, SortOrder } from "../types";
@@ -273,49 +274,31 @@ export default function ArticleList({
                 </button>
               ))}
             </div>
-            <button
-              onClick={toggleUnreadOnly}
-              className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
-                unreadOnly
-                  ? "border-ink bg-ink text-ink-text"
-                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
-              }`}
-            >
+            <FilterPillButton active={unreadOnly} onClick={toggleUnreadOnly}>
               未読
-            </button>
-            <button
+            </FilterPillButton>
+            <FilterPillButton
+              active={bookmarkOnly}
               onClick={toggleBookmarkOnly}
               title="ブックマークフィルター切替 (B)"
-              className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
-                bookmarkOnly
-                  ? "border-bookmark bg-bookmark text-ink-text"
-                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
-              }`}
+              activeClass="border-bookmark bg-bookmark text-ink-text"
             >
               ★
-            </button>
-            <button
+            </FilterPillButton>
+            <FilterPillButton
+              active={readingListOnly}
               onClick={toggleReadingListOnly}
               title="リーディングリストフィルター切替 (T)"
-              className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
-                readingListOnly
-                  ? "border-ink bg-ink text-ink-text"
-                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
-              }`}
             >
               後で
-            </button>
-            <button
+            </FilterPillButton>
+            <FilterPillButton
+              active={dateRange !== "all"}
               onClick={cycleDateRange}
               title="日付フィルター切り替え (d)"
-              className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
-                dateRange !== "all"
-                  ? "border-ink bg-ink text-ink-text"
-                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
-              }`}
             >
               {DATE_RANGE_LABELS[dateRange]}
-            </button>
+            </FilterPillButton>
             <button
               onClick={toggleSortOrder}
               title={sortOrder === "newest" ? "古い順に切り替え (s)" : "新しい順に切り替え (s)"}
@@ -522,6 +505,34 @@ export default function ArticleList({
         />
       )}
     </section>
+  );
+}
+
+function FilterPillButton({
+  active,
+  onClick,
+  title,
+  children,
+  activeClass = "border-ink bg-ink text-ink-text",
+}: {
+  active: boolean;
+  onClick: () => void;
+  title?: string;
+  children: ReactNode;
+  activeClass?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
+        active
+          ? activeClass
+          : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
