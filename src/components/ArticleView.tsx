@@ -487,6 +487,22 @@ interface FilterMenuProps {
   showToast?: (msg: string) => void;
 }
 
+const XIcon = (
+  <svg
+    width="10"
+    height="10"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="flex-shrink-0"
+  >
+    <path d="M18 6L6 18M6 6l12 12" />
+  </svg>
+);
+
 /** XML キーを日本語ラベルに変換する */
 function metaLabel(key: string): string {
   const map: Record<string, string> = {
@@ -509,6 +525,19 @@ function metaLabel(key: string): string {
     country: "国",
   };
   return map[key] ?? key.replace(/^[a-z]+:/i, "");
+}
+
+/** 除外キーワード候補を記事情報から生成する */
+function buildExcludeOptions(article: Article): { label: string; value: string }[] {
+  return [
+    { label: "この記事", value: article.title },
+    ...(article.author ? [{ label: `著者「${article.author}」`, value: article.author }] : []),
+    ...(article.categories ?? []).map((cat) => ({ label: `カテゴリ「${cat}」`, value: cat })),
+    ...(article.metadata ?? []).map((m) => ({
+      label: `${metaLabel(m.key)}「${m.value}」`,
+      value: m.value,
+    })),
+  ];
 }
 
 function ImageGallery({ images }: { images: string[] }) {
@@ -675,32 +704,7 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
     }
   }
 
-  // 除外候補を動的に生成する
-  const excludeOptions: { label: string; value: string }[] = [
-    { label: "この記事", value: article.title },
-    ...(article.author ? [{ label: `著者「${article.author}」`, value: article.author }] : []),
-    ...(article.categories ?? []).map((cat) => ({ label: `カテゴリ「${cat}」`, value: cat })),
-    ...(article.metadata ?? []).map((m) => ({
-      label: `${metaLabel(m.key)}「${m.value}」`,
-      value: m.value,
-    })),
-  ];
-
-  const XIcon = (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="flex-shrink-0"
-    >
-      <path d="M18 6L6 18M6 6l12 12" />
-    </svg>
-  );
+  const excludeOptions = buildExcludeOptions(article);
 
   return (
     <div ref={menuRef} className="relative">
@@ -812,31 +816,7 @@ function GlobalFilterMenu({
     showToast?.(`「${value}」をグローバル除外キーワードに追加しました`);
   }
 
-  const excludeOptions: { label: string; value: string }[] = [
-    { label: "この記事", value: article.title },
-    ...(article.author ? [{ label: `著者「${article.author}」`, value: article.author }] : []),
-    ...(article.categories ?? []).map((cat) => ({ label: `カテゴリ「${cat}」`, value: cat })),
-    ...(article.metadata ?? []).map((m) => ({
-      label: `${metaLabel(m.key)}「${m.value}」`,
-      value: m.value,
-    })),
-  ];
-
-  const XIcon = (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="flex-shrink-0"
-    >
-      <path d="M18 6L6 18M6 6l12 12" />
-    </svg>
-  );
+  const excludeOptions = buildExcludeOptions(article);
 
   return (
     <div ref={menuRef} className="relative">
