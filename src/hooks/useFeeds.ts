@@ -263,17 +263,13 @@ export function useFeeds(
         }
       }),
     );
-    let hasError = false;
+    const hasError = results.some((r) => r.status === "rejected");
     for (const r of results) {
-      if (r.status === "rejected") {
-        hasError = true;
-        continue;
-      }
+      if (r.status === "rejected") continue;
       const { feedId, nextPage, data } = r.value;
       // 空ページでもページ番号を更新して繰り返しリクエストを防ぐ
       setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
-      if (data.length === 0) continue;
-      setArticles((prev) => mergeUniqueArticles(prev, data));
+      if (data.length > 0) setArticles((prev) => mergeUniqueArticles(prev, data));
     }
     if (hasError) {
       console.error("loadMoreAllFeedsArticles: some feeds failed");

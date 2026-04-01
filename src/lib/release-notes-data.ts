@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (83)
+
+### リファクタリング
+
+- **画像 URL フィルタロジックの重複を除去** — \`article-utils.ts\` の \`collectImageUrlsFromHtml\` と \`collectImageUrls\` で同じ 2 条件 \`continue\` が重複していた。共通ヘルパー \`isCollectableUrl(src, seen)\` に抽出し、各関数を 1 行に簡素化。
+- **\`loadMoreAllFeedsArticles\` のミュータブル変数を宣言的パターンに変更** — \`useFeeds.ts\` で \`let hasError = false\` → \`const hasError = results.some(...)\` に変更し、ループ内の副作用代入を排除。
+
 ## 2026-04-01 (82)
 
 ### リファクタリング

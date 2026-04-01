@@ -125,6 +125,16 @@ export function bestSrcFromSrcset(srcset: string): string {
   return last.split(/\s+/)[0] ?? "";
 }
 
+/** data: URI・重複・非 http/proxy URL を除外して収集対象かどうかを判定する */
+function isCollectableUrl(src: string, seen: Set<string>): boolean {
+  return (
+    !!src &&
+    !seen.has(src) &&
+    !src.startsWith("data:") &&
+    (src.startsWith("/api/image-proxy?") || src.startsWith("http"))
+  );
+}
+
 /**
  * HTML 文字列から画像 URL を重複なしで抽出する。
  * useMemo など DOM 操作が不要なコンテキスト向け。
@@ -144,8 +154,7 @@ export function collectImageUrlsFromHtml(html: string): string[] {
       const srcset = /\bsrcset=["']([^"']+)["']/i.exec(attrs)?.[1] ?? "";
       src = bestSrcFromSrcset(srcset);
     }
-    if (!src || seen.has(src) || src.startsWith("data:")) continue;
-    if (!src.startsWith("/api/image-proxy?") && !src.startsWith("http")) continue;
+    if (!isCollectableUrl(src, seen)) continue;
     seen.add(src);
     result.push(src);
   }
@@ -168,9 +177,7 @@ export function collectImageUrls(container: Element, seen?: Set<string>): string
     if (!src || src.startsWith("data:")) {
       src = bestSrcFromSrcset(img.getAttribute("srcset") ?? "");
     }
-    if (!src || s.has(src) || src.startsWith("data:")) continue;
-    // image-proxy 経由 or 絶対 URL のみ対象
-    if (!src.startsWith("/api/image-proxy?") && !src.startsWith("http")) continue;
+    if (!isCollectableUrl(src, s)) continue;
     s.add(src);
     result.push(src);
   }
