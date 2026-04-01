@@ -383,8 +383,12 @@ export function parseFeed(xml: string): ParsedFeed {
   let parsed: RawParsedXml;
   try {
     parsed = parser.parse(cleaned) as RawParsedXml;
-  } catch {
-    parsed = parserLenient.parse(cleaned) as RawParsedXml;
+  } catch (strictErr) {
+    try {
+      parsed = parserLenient.parse(cleaned) as RawParsedXml;
+    } catch (lenientErr) {
+      throw new Error(`XML パースに失敗しました (strict: ${strictErr}, lenient: ${lenientErr})`);
+    }
   }
 
   // RSS 2.0
