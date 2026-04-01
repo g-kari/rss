@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (91)
+
+### リファクタリング
+
+- **`parseKeywordFilter` を `keyword-filter.ts` に集約** — `app/api/read-state/route.ts` の `extractGlobalFilter` と `app/api/feeds/[id]/route.ts` のインラインフィルターパースをを共通関数 `parseKeywordFilter` に統一。重複していたパースロジックを1箇所に集約し、両ルートのコードを削減。
+
 ## 2026-04-01 (90)
 
 ### リファクタリング

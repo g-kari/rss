@@ -6,8 +6,7 @@ import {
   readFeedMeta,
   assembleClientFeed,
 } from "@/lib/shared-feed";
-import { sanitizeKeywords } from "@/lib/keyword-filter";
-import type { KeywordFilter } from "@/types";
+import { parseKeywordFilter } from "@/lib/keyword-filter";
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
@@ -55,19 +54,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (body.filter === null) {
         delete sub.filter;
       } else {
-        const f = body.filter as Record<string, unknown>;
-        if (!Array.isArray(f?.include) || !Array.isArray(f?.exclude)) {
+        const filter = parseKeywordFilter(body.filter);
+        if (!filter) {
           return NextResponse.json(
             { error: "filter must have include and exclude arrays" },
             { status: 400 },
           );
-        }
-        const filter: KeywordFilter = {
-          include: sanitizeKeywords(f.include as unknown[]),
-          exclude: sanitizeKeywords(f.exclude as unknown[]),
-        };
-        if (typeof f.matchCategories === "boolean") {
-          filter.matchCategories = f.matchCategories;
         }
         sub.filter = filter;
       }

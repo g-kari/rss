@@ -76,6 +76,23 @@ export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter):
  * feedHash → KeywordFilter のマップを使って記事リストをフィルタリングする。
  * 各記事の feedHash に対応するフィルターが存在しない場合は通過させる。
  */
+/**
+ * 任意の入力値から KeywordFilter をパースする。
+ * null / undefined / 不正な形式の場合は null を返す。
+ * include / exclude が配列でない場合は空配列として扱う。
+ */
+export function parseKeywordFilter(raw: unknown): KeywordFilter | null {
+  if (raw == null) return null;
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  const obj = raw as Record<string, unknown>;
+  const filter: KeywordFilter = {
+    include: sanitizeKeywords(Array.isArray(obj.include) ? obj.include : []),
+    exclude: sanitizeKeywords(Array.isArray(obj.exclude) ? obj.exclude : []),
+  };
+  if (obj.matchCategories === true) filter.matchCategories = true;
+  return filter;
+}
+
 export function applyKeywordFilterMap(
   articles: Article[],
   filterMap: Map<string, KeywordFilter>,

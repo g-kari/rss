@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { r2Get, r2Put, readStateKey } from "@/lib/r2";
-import type { KeywordFilter, ReadState } from "@/types";
-import { sanitizeKeywords } from "@/lib/keyword-filter";
+import type { ReadState } from "@/types";
+import { parseKeywordFilter } from "@/lib/keyword-filter";
 
 const MAX_READ_IDS = 20_000;
 const MAX_BOOKMARK_IDS = 2_000;
 const MAX_READING_LIST_IDS = 2_000;
 const MAX_LIKE_IDS = 2_000;
 const MAX_ID_LENGTH = 128;
-
-function extractGlobalFilter(raw: unknown): KeywordFilter | null {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw !== "object" || Array.isArray(raw)) return null;
-  const obj = raw as Record<string, unknown>;
-  return {
-    include: sanitizeKeywords(Array.isArray(obj.include) ? obj.include : []),
-    exclude: sanitizeKeywords(Array.isArray(obj.exclude) ? obj.exclude : []),
-    ...(obj.matchCategories === true ? { matchCategories: true } : {}),
-  };
-}
 
 /** 配列バリデーション＋フィルタ＋重複排除を一括処理する。上限超過時は null を返す。 */
 function extractIds(raw: unknown, max: number): string[] | null {
@@ -65,7 +54,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Payload too large" }, { status: 413 });
     }
 
-    const globalFilter = extractGlobalFilter(body.globalFilter);
+    const globalFilter = parseKeywordFilter(body.globalFilter);
 
     await r2Put(env.RSS_DATA, readStateKey(session.userId), {
       readIds,
