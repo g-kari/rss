@@ -54,6 +54,11 @@ export function useFeeds(
   const loadingFeedIdsRef = useRef(new Set<string>());
   // コールバックを ref 化して useCallback/useEffect の依存配列から除外する
   const onErrorRef = useSyncedRef(onError);
+  /** エラーをコンソールに記録してユーザーに通知する */
+  const onErr = useCallback((err: unknown, msg: string) => {
+    console.error(err);
+    onErrorRef.current?.(msg);
+  }, []);
   const latestArticleIdRef = useRef<string | null>(null);
   const isPollingRef = useRef(false);
   const prevIsOnlineRef = useRef(isOnline);
@@ -79,17 +84,11 @@ export function useFeeds(
     setLoadingArticles(true);
     apiFetchJson<Feed[]>("/api/feeds")
       .then(setFeeds)
-      .catch((err) => {
-        console.error(err);
-        onErrorRef.current?.("フィードの読み込みに失敗しました");
-      });
+      .catch((err) => onErr(err, "フィードの読み込みに失敗しました"));
     fetchAndSetArticles()
-      .catch((err) => {
-        console.error(err);
-        onErrorRef.current?.("記事の読み込みに失敗しました");
-      })
+      .catch((err) => onErr(err, "記事の読み込みに失敗しました"))
       .finally(() => setLoadingArticles(false));
-  }, [userId, fetchAndSetArticles]);
+  }, [userId, fetchAndSetArticles, onErr]);
 
   // 新着確認フェッチ: 既存記事は消さずに新着のみ追加する（閲覧中の記事を守る）
   const pollNow = useCallback(async () => {
@@ -163,13 +162,12 @@ export function useFeeds(
       try {
         await fetchAndSetArticles();
       } catch (err) {
-        console.error(err);
-        onErrorRef.current?.("記事の読み込みに失敗しました");
+        onErr(err, "記事の読み込みに失敗しました");
       } finally {
         setLoadingArticles(false);
       }
     },
-    [fetchAndSetArticles],
+    [fetchAndSetArticles, onErr],
   );
 
   const refreshFeeds = useCallback(async () => {

@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-02 (99)
+
+### simplify
+
+- **\`useFeeds\` の catch ブロックを \`onErr\` ヘルパーに統合** — \`console.error(err)\` + \`onErrorRef.current?.(msg)\` という同一の2行パターンが \`useEffect\` と \`replaceFeeds\` 内の計3箇所に重複していた。\`onErr(err, msg)\` ヘルパーを \`useCallback\` で定義して各 catch を1行に短縮し、6行削減。
+
 ## 2026-04-02 (98)
 
 ### リファクタリング
