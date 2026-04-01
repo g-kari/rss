@@ -29,12 +29,22 @@ export function unescapeHtml(s: string): string {
       .replace(/&quot;/gi, '"')
       .replace(/&#(\d+);/gi, (_m, d) => {
         const code = Number(d);
-        // 制御文字（0–31, 127）は除去して空文字を返す（NUL/BEL等のインジェクション防止）
-        return code > 31 && code !== 127 ? String.fromCharCode(code) : "";
+        // 制御文字（0–31, 127）は除去（NUL/BEL等のインジェクション防止）
+        // サロゲートペア（0xD800–0xDFFF）は除去（ill-formed string 防止）
+        // Unicode 最大コードポイント超過（> 0x10FFFF）は除去（不正値防止）
+        // String.fromCharCode は 0x10000 以上で下位 16bit のみ使う（&#65536; → NUL 等）ため
+        // String.fromCodePoint に切り替える
+        if (code <= 31 || code === 127) return "";
+        if (code >= 0xd800 && code <= 0xdfff) return "";
+        if (code > 0x10ffff) return "";
+        return String.fromCodePoint(code);
       })
       .replace(/&#x([0-9a-f]+);/gi, (_m, h) => {
         const code = parseInt(h, 16);
-        return code > 31 && code !== 127 ? String.fromCharCode(code) : "";
+        if (code <= 31 || code === 127) return "";
+        if (code >= 0xd800 && code <= 0xdfff) return "";
+        if (code > 0x10ffff) return "";
+        return String.fromCodePoint(code);
       })
       // ゼロ幅文字・C1制御文字・BOM を除去（URL スキームバイパス防止）
       // 例: "&#x200b;javascript:" → ゼロ幅文字除去後も href バリデーションを確実に通す
