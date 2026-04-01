@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (96)
+
+### simplify
+
+- **`FeedFilterModal` の `handleSave`/`handleClear` を `doSave` に統合** — `setSaving(true/false)` + `onSave()` + `onClose()` という同一フローが `handleSave`・`handleClear` の2箇所に重複していた。共通の `doSave(filter)` ヘルパーに統合し、`hasFilter` の二重計算も解消。10行削減。
+
 ## 2026-04-02 (95)
 
 ### simplify
