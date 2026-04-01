@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt, exchangeCode } from "@/lib/auth";
 import { r2Put } from "@/lib/r2";
-import { isBetaAllowed, COOKIE_OPTS, getJwtExp } from "@/lib/server-auth";
+import { isBetaAllowed, setTokenCookies } from "@/lib/server-auth";
 import { escapeHtml } from "@/lib/html";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
@@ -69,20 +69,6 @@ export async function GET(request: Request) {
 
   const res = NextResponse.redirect(new URL("/", request.url));
   res.cookies.delete("auth_state");
-  res.cookies.set("access_token", tokens.access_token, { ...COOKIE_OPTS, maxAge: 900 });
-  res.cookies.set("refresh_token", tokens.refresh_token, {
-    ...COOKIE_OPTS,
-    maxAge: 30 * 24 * 60 * 60,
-  });
-  const exp = getJwtExp(tokens.access_token);
-  if (exp !== null) {
-    res.cookies.set("token_exp", String(exp), {
-      maxAge: 900,
-      httpOnly: false,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-    });
-  }
+  setTokenCookies(res, tokens);
   return res;
 }
