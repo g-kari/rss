@@ -113,27 +113,10 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
   );
   const [saving, setSaving] = useState(false);
 
-  async function handleSave() {
+  async function doSave(filter: KeywordFilter | null) {
     setSaving(true);
     try {
-      const hasFilter = include.length > 0 || exclude.length > 0;
-      if (!hasFilter) {
-        await onSave(null);
-      } else {
-        const filter: KeywordFilter = { include, exclude };
-        if (matchCategories) filter.matchCategories = true;
-        await onSave(filter);
-      }
-      onClose();
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleClear() {
-    setSaving(true);
-    try {
-      await onSave(null);
+      await onSave(filter);
       onClose();
     } finally {
       setSaving(false);
@@ -141,6 +124,14 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
   }
 
   const hasFilter = include.length > 0 || exclude.length > 0;
+
+  function handleSave() {
+    const filter: KeywordFilter | null = hasFilter
+      ? { include, exclude, ...(matchCategories ? { matchCategories: true } : {}) }
+      : null;
+    return doSave(filter);
+  }
+
   const modalTitle = title ?? "キーワードフィルター";
   const modalSubtitle = feed ? feed.title || feed.url : "すべてのフィード";
 
@@ -191,7 +182,7 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
           </button>
           {hasFilter && (
             <button
-              onClick={() => void handleClear()}
+              onClick={() => void doSave(null)}
               disabled={saving}
               className="px-4 py-2 text-[12px] text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200 disabled:opacity-40"
             >
