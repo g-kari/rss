@@ -110,8 +110,8 @@ export async function requireSession(): Promise<
   return { session };
 }
 
-/** リフレッシュ済みトークンを NextResponse の cookie にセットする共通処理 */
-function setRefreshedTokenCookies(
+/** アクセストークン・リフレッシュトークン・token_exp を NextResponse の cookie にセットする共通処理 */
+export function setTokenCookies(
   response: NextResponse,
   tokens: { access_token: string; refresh_token: string },
 ): void {
@@ -136,7 +136,7 @@ function setRefreshedTokenCookies(
 /** リフレッシュされたトークンがある場合に NextResponse に cookie をセットする */
 export function applyRefreshedTokens(response: NextResponse, session: AuthSession): NextResponse {
   if (session.refreshedTokens) {
-    setRefreshedTokenCookies(response, session.refreshedTokens);
+    setTokenCookies(response, session.refreshedTokens);
   }
   return response;
 }
@@ -246,6 +246,6 @@ export function applyRefreshedTokensToResponse(response: Response, session: Auth
     statusText: response.statusText,
     headers: response.headers,
   });
-  setRefreshedTokenCookies(nextResponse, session.refreshedTokens);
+  setTokenCookies(nextResponse, session.refreshedTokens);
   return nextResponse;
 }
