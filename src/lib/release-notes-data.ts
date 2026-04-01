@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-02 (95)
+
+### simplify
+
+- **\`FilterMenu\` / \`GlobalFilterMenu\` の重複コードを共通化** — \`XIcon\` SVG と \`excludeOptions\` 生成ロジックが両コンポーネントで完全に重複していた。\`XIcon\` をモジュールレベル定数に、除外候補生成を \`buildExcludeOptions(article)\` 関数に抽出し、各コンポーネントから呼び出すよう変更。20行削減。
+
 ## 2026-04-02 (94)
 
 ### simplify
