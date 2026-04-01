@@ -17,9 +17,8 @@ export async function POST() {
       );
     }
 
-    const config = await r2Get<PushConfig>(env.RSS_DATA, userPushKey(session.userId), {
-      subscriptions: [],
-    });
+    const pushKey = userPushKey(session.userId);
+    const config = await r2Get<PushConfig>(env.RSS_DATA, pushKey, { subscriptions: [] });
 
     if (config.subscriptions.length === 0) {
       return NextResponse.json({ error: "No subscriptions found for this user" }, { status: 404 });
@@ -39,7 +38,7 @@ export async function POST() {
     // 期限切れサブスクリプションを削除
     if (expired > 0) {
       config.subscriptions = remaining;
-      await r2Put(env.RSS_DATA, userPushKey(session.userId), config);
+      await r2Put(env.RSS_DATA, pushKey, config);
     }
 
     return NextResponse.json({ sent, expired, remaining: remaining.length });
