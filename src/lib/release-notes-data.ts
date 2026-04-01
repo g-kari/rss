@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (90)
+
+### リファクタリング
+
+- **\`useFilteredArticles\` の boolean フィルタートグルを \`makeBoolFilterToggle\` に集約** — \`toggleUnreadOnly\` / \`toggleBookmarkOnly\` / \`toggleReadingListOnly\` の3つの \`useCallback\` を \`makeBoolFilterToggle\` ヘルパー + 単一 \`useMemo\` に統一。\`useReadState\` の \`makeToggle\` パターンと一致させ、重複していた \`setPage(1)\` 呼び出しも \`resetPage\` に集約。
+
 ## 2026-04-01 (89)
 
 ### リファクタリング
