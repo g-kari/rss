@@ -31,6 +31,36 @@ function mimeToExt(mime: string): string {
   return MIME_EXT[mime] ?? "jpg";
 }
 
+type Fetched = { originalIndex: number; blob: Blob; ext: string };
+
+async function fetchOne(url: string, originalIndex: number): Promise<Fetched | null> {
+  try {
+    const res = await apiFetch(url);
+    if (!res.ok) return null;
+    const ct = res.headers.get("content-type") ?? "image/jpeg";
+    // 透明 GIF（フォールバック画像）はスキップ
+    if (ct === "image/gif") {
+      const buf = await res.clone().arrayBuffer();
+      if (buf.byteLength <= 64) return null; // 1×1 透明 GIF は 43 bytes
+    }
+    const ext = mimeToExt(ct.split(";")[0].trim());
+    const blob = await res.blob();
+    // 小さい画像（アイコン・トラッキングピクセル等）を除外
+    // createImageBitmap で実寸を確認し、短辺が 100px 未満はスキップ
+    try {
+      const bmp = await createImageBitmap(blob);
+      const { width, height } = bmp;
+      bmp.close();
+      if (width < 100 || height < 100) return null;
+    } catch {
+      // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
+    }
+    return { originalIndex, blob, ext };
+  } catch {
+    return null;
+  }
+}
+
 export function useImageDownload(
   article: Article | null,
   resolvedOgImage: string | null,
@@ -81,36 +111,6 @@ export function useImageDownload(
         .slice(0, 40) || "image";
 
     // フェッチ: FETCH_BATCH_SIZE 枚ずつ並列取得 → ダウンロードトリガーは逐次実行
-    type Fetched = { originalIndex: number; blob: Blob; ext: string };
-
-    async function fetchOne(url: string, originalIndex: number): Promise<Fetched | null> {
-      try {
-        const res = await apiFetch(url);
-        if (!res.ok) return null;
-        const ct = res.headers.get("content-type") ?? "image/jpeg";
-        // 透明 GIF（フォールバック画像）はスキップ
-        if (ct === "image/gif") {
-          const buf = await res.clone().arrayBuffer();
-          if (buf.byteLength <= 64) return null; // 1×1 透明 GIF は 43 bytes
-        }
-        const ext = mimeToExt(ct.split(";")[0].trim());
-        const blob = await res.blob();
-        // 小さい画像（アイコン・トラッキングピクセル等）を除外
-        // createImageBitmap で実寸を確認し、短辺が 100px 未満はスキップ
-        try {
-          const bmp = await createImageBitmap(blob);
-          const { width, height } = bmp;
-          bmp.close();
-          if (width < 100 || height < 100) return null;
-        } catch {
-          // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
-        }
-        return { originalIndex, blob, ext };
-      } catch {
-        return null;
-      }
-    }
-
     let succeeded = 0;
     let fetchedCount = 0;
     for (let batchStart = 0; batchStart < toDownload.length; batchStart += FETCH_BATCH_SIZE) {
