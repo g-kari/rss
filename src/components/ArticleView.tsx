@@ -704,7 +704,7 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
     }
   }
 
-  const excludeOptions = buildExcludeOptions(article);
+  const excludeOptions = useMemo(() => buildExcludeOptions(article), [article]);
 
   return (
     <div ref={menuRef} className="relative">
@@ -816,7 +816,7 @@ function GlobalFilterMenu({
     showToast?.(`「${value}」をグローバル除外キーワードに追加しました`);
   }
 
-  const excludeOptions = buildExcludeOptions(article);
+  const excludeOptions = useMemo(() => buildExcludeOptions(article), [article]);
 
   return (
     <div ref={menuRef} className="relative">

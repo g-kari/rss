@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (97)
+
+### simplify
+
+- **`buildExcludeOptions` を `useMemo` でメモ化** — `FilterMenu` / `GlobalFilterMenu` の両コンポーネントで `buildExcludeOptions(article)` を毎レンダー呼び出していた。`article` が変化しない限り結果は同一なので `useMemo` でキャッシュし、不要な配列生成を抑制。
+
 ## 2026-04-02 (96)
 
 ### simplify
