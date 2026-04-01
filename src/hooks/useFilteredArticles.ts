@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { Article, DateRange, Feed, KeywordFilter, SortOrder } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
@@ -18,6 +18,18 @@ function boolToggleWithStorage(key: string) {
     const next = !v;
     storageSet(key, next ? "1" : "0");
     return next;
+  };
+}
+
+/** boolean フィルタートグル + ページリセットを行うコールバックを生成する */
+function makeBoolFilterToggle(
+  setter: React.Dispatch<React.SetStateAction<boolean>>,
+  key: string,
+  resetPage: () => void,
+): () => void {
+  return () => {
+    setter(boolToggleWithStorage(key));
+    resetPage();
   };
 }
 
@@ -103,19 +115,21 @@ export function useFilteredArticles({
     setRawQuery("");
   }, [feedId]);
 
-  const toggleUnreadOnly = useCallback(() => {
-    setUnreadOnly(boolToggleWithStorage(STORAGE_KEYS.UNREAD_ONLY));
-    setPage(1);
-  }, []);
-
-  const toggleBookmarkOnly = useCallback(() => {
-    setBookmarkOnly(boolToggleWithStorage(STORAGE_KEYS.BOOKMARK_ONLY));
-    setPage(1);
-  }, []);
-
-  const toggleReadingListOnly = useCallback(() => {
-    setReadingListOnly(boolToggleWithStorage(STORAGE_KEYS.READING_LIST_ONLY));
-    setPage(1);
+  const { toggleUnreadOnly, toggleBookmarkOnly, toggleReadingListOnly } = useMemo(() => {
+    const resetPage = () => setPage(1);
+    return {
+      toggleUnreadOnly: makeBoolFilterToggle(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, resetPage),
+      toggleBookmarkOnly: makeBoolFilterToggle(
+        setBookmarkOnly,
+        STORAGE_KEYS.BOOKMARK_ONLY,
+        resetPage,
+      ),
+      toggleReadingListOnly: makeBoolFilterToggle(
+        setReadingListOnly,
+        STORAGE_KEYS.READING_LIST_ONLY,
+        resetPage,
+      ),
+    };
   }, []);
 
   const updateQuery = useCallback((q: string) => {
