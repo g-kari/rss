@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (80)
+
+### バグ修正
+
+- **自ドメインへのリンクにカードを表示しない** — \`useContentLinkPreviews.ts\` で \`window.location.hostname\` と \`anchor.hostname\` を比較し、自サイトへのリンクを OGP プレビューカードの対象外にした。
+
 ## 2026-04-01 (79)
 
 ### リファクタリング
