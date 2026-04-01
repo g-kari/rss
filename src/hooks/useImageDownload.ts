@@ -15,6 +15,9 @@ interface ImageDownloadState {
   cancelDownload: () => void;
 }
 
+const FETCH_BATCH_SIZE = 4;
+const DOWNLOAD_TRIGGER_DELAY_MS = 300;
+
 const MIME_EXT: Record<string, string> = {
   "image/png": "png",
   "image/gif": "gif",
@@ -77,18 +80,18 @@ export function useImageDownload(
         .replace(/\s+/g, "-")
         .slice(0, 40) || "image";
 
-    let succeeded = 0;
-    for (let i = 0; i < toDownload.length; i++) {
-      setImageDownloadProgress({ done: i, total: toDownload.length });
+    // フェッチ: FETCH_BATCH_SIZE 枚ずつ並列取得 → ダウンロードトリガーは逐次実行
+    type Fetched = { originalIndex: number; blob: Blob; ext: string };
+
+    async function fetchOne(url: string, originalIndex: number): Promise<Fetched | null> {
       try {
-        const res = await apiFetch(toDownload[i]);
-        if (!res.ok) continue;
+        const res = await apiFetch(url);
+        if (!res.ok) return null;
         const ct = res.headers.get("content-type") ?? "image/jpeg";
         // 透明 GIF（フォールバック画像）はスキップ
         if (ct === "image/gif") {
-          const clone = res.clone();
-          const buf = await clone.arrayBuffer();
-          if (buf.byteLength <= 64) continue; // 1×1 透明 GIF は 43 bytes
+          const buf = await res.clone().arrayBuffer();
+          if (buf.byteLength <= 64) return null; // 1×1 透明 GIF は 43 bytes
         }
         const ext = mimeToExt(ct.split(";")[0].trim());
         const blob = await res.blob();
@@ -98,23 +101,42 @@ export function useImageDownload(
           const bmp = await createImageBitmap(blob);
           const { width, height } = bmp;
           bmp.close();
-          if (width < 100 || height < 100) continue;
+          if (width < 100 || height < 100) return null;
         } catch {
           // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
         }
+        return { originalIndex, blob, ext };
+      } catch {
+        return null;
+      }
+    }
+
+    let succeeded = 0;
+    let fetchedCount = 0;
+    for (let batchStart = 0; batchStart < toDownload.length; batchStart += FETCH_BATCH_SIZE) {
+      const batch = toDownload.slice(batchStart, batchStart + FETCH_BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map((url, batchIdx) => fetchOne(url, batchStart + batchIdx)),
+      );
+
+      fetchedCount += batch.length;
+      setImageDownloadProgress({ done: fetchedCount, total: toDownload.length });
+
+      // ダウンロードトリガーはバッチ内でも逐次（ブラウザのブロック防止）
+      for (const result of results) {
+        if (!result) continue;
+        const { originalIndex, blob, ext } = result;
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = blobUrl;
-        a.download = `${safeTitle}-${i + 1}.${ext}`;
+        a.download = `${safeTitle}-${originalIndex + 1}.${ext}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         succeeded++;
         // ブラウザが連続ダウンロードをブロックしないよう小間隔を置く
-        await new Promise<void>((resolve) => setTimeout(resolve, 400));
+        await new Promise<void>((resolve) => setTimeout(resolve, DOWNLOAD_TRIGGER_DELAY_MS));
         URL.revokeObjectURL(blobUrl);
-      } catch {
-        // 1枚失敗しても残りを継続
       }
     }
 
