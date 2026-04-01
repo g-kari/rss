@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt, refreshTokens } from "@/lib/auth";
 import { r2Get } from "@/lib/r2";
-import { isBetaAllowed, COOKIE_OPTS, getJwtExp } from "@/lib/server-auth";
+import { isBetaAllowed, setTokenCookies } from "@/lib/server-auth";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
 
@@ -56,22 +56,7 @@ export async function GET(request: Request) {
 
       const body = r.kind === "ok" ? { user: r.profile } : { user: null };
       const res = NextResponse.json(body);
-      res.cookies.set("access_token", refreshed.access_token, { ...COOKIE_OPTS, maxAge: 900 });
-      res.cookies.set("refresh_token", refreshed.refresh_token, {
-        ...COOKIE_OPTS,
-        maxAge: 30 * 24 * 60 * 60,
-      });
-      // クライアントサイドからトークン有効期限を読めるよう non-HttpOnly で token_exp をセット
-      const exp = getJwtExp(refreshed.access_token);
-      if (exp !== null) {
-        res.cookies.set("token_exp", String(exp), {
-          maxAge: 900,
-          httpOnly: false,
-          secure: true,
-          sameSite: "lax",
-          path: "/",
-        });
-      }
+      setTokenCookies(res, refreshed);
       return res;
     }
     // リフレッシュ失敗（refresh_token 無効）→ Cookie を削除してログアウト
