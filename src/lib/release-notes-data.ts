@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (84)
+
+### セキュリティ
+
+- **Push 通知 unsubscribe エンドポイントの入力バリデーション強化** — \`POST /api/push/unsubscribe\` に \`isValidHttpsUrl()\` チェックを追加。subscribe エンドポイントと同様に不正な endpoint URL を 400 で拒否するよう統一。
+
 ## 2026-04-01 (83)
 
 ### リファクタリング

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { r2Get, r2Put, userPushKey } from "@/lib/r2";
+import { isValidHttpsUrl } from "@/lib/url";
 import type { PushConfig } from "@/types";
 
 /** Push サブスクリプションを R2 から削除する */
@@ -11,6 +12,9 @@ export async function POST(request: Request) {
     const body = parsed.data;
     if (!body?.endpoint) {
       return NextResponse.json({ error: "endpoint is required" }, { status: 400 });
+    }
+    if (!isValidHttpsUrl(body.endpoint)) {
+      return NextResponse.json({ error: "Invalid endpoint URL" }, { status: 400 });
     }
 
     const key = userPushKey(session.userId);
