@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { filterAndSortArticles, type ArticleFilterOptions } from "../src/lib/article-filter";
 import type { Article, Feed } from "../src/types";
+import { buildFilterMap } from "../src/lib/keyword-filter";
 import { SPECIAL_FEED_IDS } from "../src/lib/storage";
 
 /**
@@ -34,7 +35,7 @@ function makeArticle(id: string, feedHash: string, overrides: Partial<Article> =
 
 const BASE_OPTS: ArticleFilterOptions = {
   feedId: null,
-  feeds: [],
+  feedFilterMap: new Map(),
   readIds: new Set(),
   bookmarkIds: new Set(),
   readingListIds: new Set(),
@@ -196,7 +197,7 @@ test.describe("キーワードフィルター — exclude", () => {
   const kept = makeArticle("k1", "feed1", { title: "通常の記事" });
 
   test("exclude キーワードを含む記事は除外される", () => {
-    const result = run([excluded, kept], { feeds: [feed] });
+    const result = run([excluded, kept], { feedFilterMap: buildFilterMap([feed], (f) => f.id) });
     expect(ids(result)).not.toContain("ex1");
     expect(ids(result)).toContain("k1");
   });
@@ -216,14 +217,16 @@ test.describe("キーワードフィルター — include", () => {
   const unmatched = makeArticle("u1", "feed1", { title: "Python の記事" });
 
   test("include キーワードにマッチしない記事は除外される", () => {
-    const result = run([matched, unmatched], { feeds: [feed] });
+    const result = run([matched, unmatched], {
+      feedFilterMap: buildFilterMap([feed], (f) => f.id),
+    });
     expect(ids(result)).toContain("m1");
     expect(ids(result)).not.toContain("u1");
   });
 
   test("activeIds に含まれる記事はキーワードフィルターをスキップする", () => {
     const result = run([matched, unmatched], {
-      feeds: [feed],
+      feedFilterMap: buildFilterMap([feed], (f) => f.id),
       activeIds: new Set(["u1"]),
     });
     expect(ids(result)).toContain("u1");
@@ -569,7 +572,7 @@ test.describe("グローバルフィルター + フィード別フィルター�
 
   test("フィード別フィルターとグローバルフィルターが AND 条件で適用される", () => {
     const result = run([tsSpam, tsGood, python], {
-      feeds: [feed],
+      feedFilterMap: buildFilterMap([feed], (f) => f.id),
       globalFilter: { include: [], exclude: ["スパム"] },
     });
     // feed.filter の include: ["TypeScript"] → python は除外

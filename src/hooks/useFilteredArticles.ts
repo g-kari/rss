@@ -4,6 +4,7 @@ import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { cycleValue, DATE_RANGE_CYCLE, SORT_ORDER_CYCLE } from "../lib/article-utils";
 import { filterAndSortArticles } from "../lib/article-filter";
+import { buildFilterMap } from "../lib/keyword-filter";
 
 const PAGE_SIZE = 30;
 const EMPTY_SET = new Set<string>();
@@ -154,11 +155,14 @@ export function useFilteredArticles({
     return ids;
   }, [selectedArticleId, gracePeriodId]);
 
+  // feeds が変わったときだけ再構築（フィルター変更時や既読切り替えでは再利用される）
+  const feedFilterMap = useMemo(() => buildFilterMap(feeds, (f) => f.id), [feeds]);
+
   const filtered = useMemo(
     () =>
       filterAndSortArticles(articles, {
         feedId,
-        feeds,
+        feedFilterMap,
         readIds,
         bookmarkIds,
         readingListIds,
@@ -179,7 +183,7 @@ export function useFilteredArticles({
     [
       articles,
       feedId,
-      feeds,
+      feedFilterMap,
       readIds,
       bookmarkIds,
       readingListIds,

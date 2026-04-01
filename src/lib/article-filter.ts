@@ -1,11 +1,12 @@
-import type { Article, DateRange, Feed, KeywordFilter } from "../types";
-import { buildFilterMap, matchesKeywordFilter, normalizeFilter } from "./keyword-filter";
+import type { Article, DateRange, KeywordFilter } from "../types";
+import { matchesKeywordFilter, normalizeFilter } from "./keyword-filter";
 import { articleMatchesQuery, getDateRangeStart } from "./article-utils";
 import { SPECIAL_FEED_IDS } from "./storage";
 
 export interface ArticleFilterOptions {
   feedId: string | null;
-  feeds: Feed[];
+  /** feedHash → KeywordFilter のマップ（呼び出し側で buildFilterMap を使って事前計算すること） */
+  feedFilterMap: Map<string, KeywordFilter>;
   readIds: Set<string>;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
@@ -28,7 +29,7 @@ export interface ArticleFilterOptions {
 export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
   const {
     feedId,
-    feeds,
+    feedFilterMap,
     readIds,
     bookmarkIds,
     readingListIds,
@@ -50,7 +51,6 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
   const isActive = (id: string) => activeIds.has(id);
   const q = rawQuery.trim().toLowerCase();
   const rangeStart = getDateRangeStart(dateRange);
-  const feedFilterMap = buildFilterMap(feeds, (f) => f.id);
   const normalizedGlobalFilter = globalFilter ? normalizeFilter(globalFilter) : null;
 
   let list = articles.filter((a) => {
