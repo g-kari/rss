@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (93)
+
+### ドキュメント整備
+
+- **`keyword-filter.ts` の JSDoc コメントを正しい位置に移動** — 前回の `parseKeywordFilter` 追加リファクタリングで `applyKeywordFilterMap` の JSDoc が関数から離れて孤立していた問題を修正。各関数の直上に対応する JSDoc を配置するよう整理。
+
 ## 2026-04-02 (92)
 
 ### simplify

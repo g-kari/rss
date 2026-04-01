@@ -73,10 +73,6 @@ export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter):
 }
 
 /**
- * feedHash → KeywordFilter のマップを使って記事リストをフィルタリングする。
- * 各記事の feedHash に対応するフィルターが存在しない場合は通過させる。
- */
-/**
  * 任意の入力値から KeywordFilter をパースする。
  * null / undefined / 不正な形式の場合は null を返す。
  * include / exclude が配列でない場合は空配列として扱う。
@@ -93,6 +89,10 @@ export function parseKeywordFilter(raw: unknown): KeywordFilter | null {
   return filter;
 }
 
+/**
+ * feedHash → KeywordFilter のマップを使って記事リストをフィルタリングする。
+ * 各記事の feedHash に対応するフィルターが存在しない場合は通過させる。
+ */
 export function applyKeywordFilterMap(
   articles: Article[],
   filterMap: Map<string, KeywordFilter>,
