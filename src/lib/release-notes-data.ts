@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-02 (92)
+
+### simplify
+
+- **\`push/test\` と \`recommendations/refresh\` ルートを簡潔化** — \`push/test/route.ts\` で \`userPushKey(session.userId)\` の二重呼び出しを \`pushKey\` 変数に集約。\`recommendations/refresh/route.ts\` でアーリーリターン分岐を廃止し、\`if (cache)\` ガードのみに統一してコードを削減。
+
 ## 2026-04-02 (91)
 
 ### リファクタリング
