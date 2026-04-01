@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-02 (94)
+
+### simplify
+
+- **\`globalFilter\` の正規化を \`useMemo\` に移動** — \`filterAndSortArticles\` 内で記事・既読状態の変更のたびに \`normalizeFilter(globalFilter)\` が実行されていた問題を解消。\`useFilteredArticles\` の \`useMemo([globalFilter])\` で一度だけ正規化するよう変更し、\`feedFilterMap\` との設計を統一。
+
 ## 2026-04-02 (93)
 
 ### ドキュメント整備
