@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-01 (75)
+
+### リファクタリング
+
+- Cookie 設定コードを `setTokenCookies` ヘルパーに集約 — `callback/route.ts` と `server-auth.ts` で重複していたトークン Cookie 設定ロジック（`access_token` / `refresh_token` / `token_exp`）を `setTokenCookies` としてエクスポートし、`callback/route.ts` から再利用するよう変更。
+
 ## 2026-04-01 (74)
 
 ### バグ修正
