@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (82)
+
+### リファクタリング
+
+- **\`markRead\` の不要な Set コピーを削減** — \`useReadState.ts\` で既読済み記事を再クリックした際、\`new Set(prev)\` による無駄なコピーが発生していた問題を修正。\`prev.has(articleId)\` で早期リターンし、DOM 再レンダーと localStorage 書き込みをスキップするよう改善。
+- **\`isValidCookieHeader\` の冗長チェックを除去** — \`app/api/feeds/route.ts\` で \`!/[\\r\\n]/.test(value)\` を追加チェックしていたが、直前の \`^[\\x20-\\x7E]*$\` が制御文字（\`\\r\\n\` 含む）を既に除外するため冗長だった。コメントを追加してその意図を明確化。
+
 ## 2026-04-01 (81)
 
 ### リファクタリング

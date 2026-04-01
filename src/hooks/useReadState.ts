@@ -199,7 +199,9 @@ export function useReadState(
   const markRead = useCallback(
     (articleId: string) => {
       setReadIds((prev) => {
-        const next = new Set(prev).add(articleId);
+        if (prev.has(articleId)) return prev;
+        const next = new Set(prev);
+        next.add(articleId);
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });

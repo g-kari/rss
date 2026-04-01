@@ -26,7 +26,8 @@ export async function GET() {
 
 /** Cookie ヘッダー値として安全な文字列か検証する（HTTP ヘッダーインジェクション防止） */
 function isValidCookieHeader(value: string): boolean {
-  return value.length <= 4096 && /^[\x20-\x7E]*$/.test(value) && !/[\r\n]/.test(value);
+  // [\x20-\x7E] は印字可能 ASCII のみ許容し、制御文字（\r\n 含む）を自動的に除外する
+  return value.length <= 4096 && /^[\x20-\x7E]*$/.test(value);
 }
 
 export async function POST(request: Request) {
