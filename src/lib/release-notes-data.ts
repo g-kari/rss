@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-01 (89)
+
+### リファクタリング
+
+- **\`me/route.ts\` のクッキー設定を \`setTokenCookies\` に集約** — トークンリフレッシュ後に独自実装していたクッキーセットロジックを削除し、\`callback/route.ts\` と同様に \`setTokenCookies\` を使用するよう統一。重複ロジック17行を2行に削減。
+
 ## 2026-04-01 (88)
 
 ### リファクタリング
