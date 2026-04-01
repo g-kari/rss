@@ -156,7 +156,19 @@ self.addEventListener("push", (e) => {
 /** notificationclick イベント: 通知クリックでアプリを開く */
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
-  const url = e.notification.data?.url ?? "/";
+  const rawUrl = e.notification.data?.url ?? "/";
+
+  // VAPID 鍵漏洩時の悪意あるプッシュ通知によるオープンリダイレクト防止。
+  // 受信した url が同一オリジンであることを検証し、不正な URL はルートにフォールバックする。
+  let url = "/";
+  try {
+    const parsed = new URL(rawUrl, self.location.origin);
+    if (parsed.origin === self.location.origin) {
+      url = parsed.href;
+    }
+  } catch {
+    // パース失敗はデフォルト "/" を使用
+  }
 
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
