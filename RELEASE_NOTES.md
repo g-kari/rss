@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (98)
+
+### リファクタリング
+
+- **`ArticleList` のフィルターボタンを `FilterPillButton` に抽出** — 未読・ブックマーク・後で読む・日付の4つのフィルタートグルボタンが同一の className パターン（`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border ...`）を繰り返していた。`FilterPillButton` ヘルパーコンポーネントに統一し、`activeClass` prop でブックマーク固有の色変更にも対応。30行削減。
+
 ## 2026-04-02 (97)
 
 ### simplify
