@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-01 (87)
+
+### リファクタリング
+
+- **`useSyncedRef` フックを導入** — `useRef(x); ref.current = x;` のインラインパターンを `useSyncedRef(x)` に統一。stale closure 回避の意図を明示化し、`useFeeds` / `useNSFWMode` / `useReadState` / `useFilteredArticles` / `useOgpCache` の計8箇所に適用。
+
 ## 2026-04-01 (86)
 
 ### リファクタリング
