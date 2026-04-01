@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { Article, OgpData } from "../types";
+import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
@@ -21,8 +22,7 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
   // 画像なし・エラーだったURLをセッション内でキャッシュし無駄なリトライを防止する
   const noImageRef = useRef<Set<string>>(new Set());
   // setOgpCache 呼び出し後の再トリガーを避けるため ref で最新値を参照する
-  const ogpCacheRef = useRef(ogpCache);
-  ogpCacheRef.current = ogpCache;
+  const ogpCacheRef = useSyncedRef(ogpCache);
 
   useEffect(() => {
     const toFetch = visible

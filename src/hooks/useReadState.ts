@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Article, KeywordFilter, UserProfile, ReadState } from "../types";
+import { useSyncedRef } from "./useSyncedRef";
 import {
   STORAGE_KEYS,
   SPECIAL_FEED_IDS,
@@ -111,8 +112,7 @@ export function useReadState(
   const [globalFilter, setGlobalFilterState] = useState<KeywordFilter | null>(() =>
     loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
   );
-  const globalFilterRef = useRef<KeywordFilter | null>(globalFilter);
-  globalFilterRef.current = globalFilter;
+  const globalFilterRef = useSyncedRef<KeywordFilter | null>(globalFilter);
 
   // 4つのセットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
   const stateRef = useRef<ReadStateSets>({
@@ -121,9 +121,8 @@ export function useReadState(
     readingList: readingListIds,
     likes: likeIds,
   });
-  const historyIdsRef = useRef(historyIds);
-  historyIdsRef.current = historyIds;
-  const articlesRef = useRef(articles);
+  const historyIdsRef = useSyncedRef(historyIds);
+  const articlesRef = useSyncedRef(articles);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // useEffect 不要 — レンダー中の直接代入で十分
@@ -133,7 +132,6 @@ export function useReadState(
     readingList: readingListIds,
     likes: likeIds,
   };
-  articlesRef.current = articles;
 
   // ログイン後にサーバーの既読・ブックマーク・後で読む・グローバルフィルター状態をマージ
   useEffect(() => {

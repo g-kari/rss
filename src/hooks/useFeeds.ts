@@ -5,6 +5,7 @@ import type { Feed, Article, UserProfile } from "../types";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 import { compareByDateDesc } from "../lib/article-utils";
+import { useSyncedRef } from "./useSyncedRef";
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
@@ -48,13 +49,11 @@ export function useFeeds(
   const [refreshing, setRefreshing] = useState(false);
   const [newArticleCount, setNewArticleCount] = useState(0);
   const [loadedFeedPages, setLoadedFeedPages] = useState<Map<string, number>>(() => new Map());
-  const loadedFeedPagesRef = useRef(loadedFeedPages);
-  loadedFeedPagesRef.current = loadedFeedPages;
+  const loadedFeedPagesRef = useSyncedRef(loadedFeedPages);
   // 現在フェッチ中のフィード ID を追跡（二重フェッチ防止）
   const loadingFeedIdsRef = useRef(new Set<string>());
   // コールバックを ref 化して useCallback/useEffect の依存配列から除外する
-  const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
+  const onErrorRef = useSyncedRef(onError);
   const latestArticleIdRef = useRef<string | null>(null);
   const isPollingRef = useRef(false);
   const prevIsOnlineRef = useRef(isOnline);
