@@ -217,9 +217,9 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           }
           break;
         case "R": {
-          const isSpecial = Object.values(SPECIAL_FEED_IDS).includes(
-            selectedFeedId as (typeof SPECIAL_FEED_IDS)[keyof typeof SPECIAL_FEED_IDS],
-          );
+          const isSpecial =
+            selectedFeedId !== null &&
+            Object.values<string>(SPECIAL_FEED_IDS).includes(selectedFeedId);
           if (selectedFeedId && !isSpecial) {
             retryFeed(selectedFeedId).catch(() => {});
             showToast("フィードを更新中...");
