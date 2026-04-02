@@ -34,6 +34,7 @@ export async function GET() {
       readingListIds: stored.readingListIds ?? [],
       likeIds: stored.likeIds ?? [],
       globalFilter: stored.globalFilter ?? null,
+      readBeforeTimestamp: stored.readBeforeTimestamp ?? null,
     };
     return NextResponse.json(state);
   });
@@ -56,12 +57,20 @@ export async function POST(req: NextRequest) {
 
     const globalFilter = parseKeywordFilter(body.globalFilter);
 
+    // readBeforeTimestamp: ISO 8601 文字列のみ許可（それ以外は無視）
+    const rbt =
+      typeof body.readBeforeTimestamp === "string" &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(body.readBeforeTimestamp)
+        ? body.readBeforeTimestamp
+        : null;
+
     await r2Put(env.RSS_DATA, readStateKey(session.userId), {
       readIds,
       bookmarkIds,
       readingListIds,
       likeIds,
       globalFilter,
+      readBeforeTimestamp: rbt,
     });
     return NextResponse.json({ ok: true });
   });

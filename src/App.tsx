@@ -20,6 +20,7 @@ import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
 import { apiFetch } from "./lib/api-fetch";
 import { normalizeFilter, matchesKeywordFilter } from "./lib/keyword-filter";
+import { isArticleRead } from "./lib/article-filter";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
@@ -102,6 +103,7 @@ export default function App() {
     likeIds,
     globalFilter,
     setGlobalFilter,
+    readBeforeTimestamp,
     markRead,
     markBulkRead,
     markAllRead,
@@ -157,8 +159,8 @@ export default function App() {
   }, [articles, globalFilter, markBulkRead]);
 
   const totalUnread = useMemo(
-    () => articles.filter((a) => !readIds.has(a.id)).length,
-    [articles, readIds],
+    () => articles.filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp)).length,
+    [articles, readIds, readBeforeTimestamp],
   );
 
   useEffect(() => {
@@ -282,6 +284,7 @@ export default function App() {
     nsfwFeedIds,
     globalFilter,
     setGlobalFilter,
+    readBeforeTimestamp,
   });
 
   const currentIndex = useMemo(
@@ -342,6 +345,7 @@ export default function App() {
     selectedFeedId,
     selectedArticle,
     readIds,
+    readBeforeTimestamp,
     readingListIds,
     likeIds,
     setSelectedArticle,
@@ -661,6 +665,7 @@ export default function App() {
             feeds={feeds}
             articles={articles}
             readIds={readIds}
+            readBeforeTimestamp={readBeforeTimestamp}
             bookmarkCount={bookmarkCount}
             readingListCount={readingListCount}
             likeCount={likeCount}
@@ -715,6 +720,7 @@ export default function App() {
           <ArticleList
             feeds={feeds}
             readIds={readIds}
+            readBeforeTimestamp={readBeforeTimestamp}
             bookmarkIds={bookmarkIds}
             selectedArticleId={selectedArticle?.id ?? null}
             selectedFeedId={selectedFeedId}

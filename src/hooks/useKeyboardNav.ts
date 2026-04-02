@@ -13,6 +13,7 @@ import {
   SORT_ORDER_LABELS,
 } from "../lib/article-utils";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
+import { isArticleRead } from "../lib/article-filter";
 
 interface KeyboardNavOptions {
   filteredArticles: Article[];
@@ -21,6 +22,7 @@ interface KeyboardNavOptions {
   selectedFeedId: string | null;
   selectedArticle: Article | null;
   readIds: Set<string>;
+  readBeforeTimestamp: string | null;
   readingListIds: Set<string>;
   likeIds: Set<string>;
   setSelectedArticle: (article: Article) => void;
@@ -79,6 +81,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         selectedFeedId,
         selectedArticle,
         readIds,
+        readBeforeTimestamp,
         readingListIds,
         likeIds,
         setSelectedArticle,
@@ -132,7 +135,9 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           break;
         case "n":
           e.preventDefault();
-          navigateTo(list.slice(idx + 1).find((a) => !readIds.has(a.id)));
+          navigateTo(
+            list.slice(idx + 1).find((a) => !isArticleRead(a, readIds, readBeforeTimestamp)),
+          );
           break;
         case "p":
           e.preventDefault();
@@ -140,7 +145,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
             list
               .slice(0, idx < 0 ? undefined : idx)
               .reverse()
-              .find((a) => !readIds.has(a.id)),
+              .find((a) => !isArticleRead(a, readIds, readBeforeTimestamp)),
           );
           break;
         case "g":

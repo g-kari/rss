@@ -52,6 +52,7 @@ const BASE_OPTS: ArticleFilterOptions = {
   nsfwMode: false,
   nsfwFeedIds: new Set(),
   globalFilter: null,
+  readBeforeTimestamp: null,
 };
 
 function run(articles: Article[], opts: Partial<ArticleFilterOptions> = {}): Article[] {

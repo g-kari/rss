@@ -8,11 +8,13 @@ import RecommendationSection from "./RecommendationSection";
 import { useFeedOperations } from "../hooks/useFeedOperations";
 import { apiFetch } from "../lib/api-fetch";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
+import { isArticleRead } from "../lib/article-filter";
 
 interface Props {
   feeds: Feed[];
   articles: Article[];
   readIds: Set<string>;
+  readBeforeTimestamp?: string | null;
   bookmarkCount: number;
   readingListCount: number;
   likeCount: number;
@@ -90,6 +92,7 @@ export default function FeedSidebar({
   feeds,
   articles,
   readIds,
+  readBeforeTimestamp = null,
   bookmarkCount,
   readingListCount,
   likeCount,
@@ -223,13 +226,13 @@ export default function FeedSidebar({
     const byFeed = new Map<string, number>();
     let total = 0;
     for (const a of articles) {
-      if (!readIds.has(a.id)) {
+      if (!isArticleRead(a, readIds, readBeforeTimestamp)) {
         byFeed.set(a.feedHash, (byFeed.get(a.feedHash) ?? 0) + 1);
         total++;
       }
     }
     return { unreadByFeed: byFeed, totalUnread: total };
-  }, [articles, readIds]);
+  }, [articles, readIds, readBeforeTimestamp]);
 
   const { pinnedFeeds, unpinnedFeeds } = useMemo(() => {
     const q = feedSearch.trim().toLowerCase();

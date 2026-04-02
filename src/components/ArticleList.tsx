@@ -15,6 +15,7 @@ import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { useSearchHistory } from "../hooks/useSearchHistory";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
+import { isArticleRead } from "../lib/article-filter";
 import Spinner from "./Spinner";
 import {
   type ArticleItemProps,
@@ -28,6 +29,7 @@ import {
 interface Props {
   feeds: Feed[];
   readIds: Set<string>;
+  readBeforeTimestamp?: string | null;
   bookmarkIds: Set<string>;
   selectedArticleId: string | null;
   selectedFeedId: string | null;
@@ -118,6 +120,7 @@ const DATE_RANGE_LABELS: Record<DateRange, string> = {
 export default function ArticleList({
   feeds,
   readIds,
+  readBeforeTimestamp = null,
   bookmarkIds,
   selectedArticleId,
   selectedFeedId,
@@ -209,7 +212,7 @@ export default function ArticleList({
     return {
       article,
       index,
-      isRead: readIds.has(article.id),
+      isRead: isArticleRead(article, readIds, readBeforeTimestamp),
       isBookmarked: bookmarkIds.has(article.id),
       isSelected: selectedArticleId === article.id,
       feedName: feedMap.get(article.feedHash) ?? "",
