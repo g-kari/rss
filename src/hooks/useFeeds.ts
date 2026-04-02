@@ -54,6 +54,8 @@ export function useFeeds(
   const loadingFeedIdsRef = useRef(new Set<string>());
   // コールバックを ref 化して useCallback/useEffect の依存配列から除外する
   const onErrorRef = useSyncedRef(onError);
+  // isOnline を ref 化してポーリング effect の deps から除外し、タイマー再生成を防ぐ
+  const isOnlineRef = useSyncedRef(isOnline);
   /** エラーをコンソールに記録してユーザーに通知する */
   const onErr = useCallback((err: unknown, msg: string) => {
     console.error(err);
@@ -109,14 +111,15 @@ export function useFeeds(
   }, [mergeArticles]);
 
   // 5分ごとに記事を再取得して新着件数を通知する（オフライン時はスキップ）
+  // isOnline は ref 経由で参照するため deps から除外し、タイマー再生成を防ぐ
   useEffect(() => {
     if (!userId) return;
     const timer = setInterval(() => {
-      if (!isOnline) return; // オフライン時はスキップ
+      if (!isOnlineRef.current) return; // オフライン時はスキップ
       void pollNow();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [userId, isOnline, pollNow]);
+  }, [userId, pollNow]);
 
   // オンライン復帰時に即座にポーリングを実行する
   useEffect(() => {
