@@ -461,34 +461,21 @@ export default function FeedSidebar({
           </span>
         </div>
 
-        <SpecialViewButton
-          id={SPECIAL_FEED_IDS.HISTORY}
-          label="履歴"
-          count={historyCount}
-          selectedFeedId={selectedFeedId}
-          onSelectFeed={onSelectFeed}
-        />
-        <SpecialViewButton
-          id={SPECIAL_FEED_IDS.BOOKMARKS}
-          label="ブックマーク"
-          count={bookmarkCount}
-          selectedFeedId={selectedFeedId}
-          onSelectFeed={onSelectFeed}
-        />
-        <SpecialViewButton
-          id={SPECIAL_FEED_IDS.READING_LIST}
-          label="後で読む"
-          count={readingListCount}
-          selectedFeedId={selectedFeedId}
-          onSelectFeed={onSelectFeed}
-        />
-        <SpecialViewButton
-          id={SPECIAL_FEED_IDS.LIKES}
-          label="いいね"
-          count={likeCount}
-          selectedFeedId={selectedFeedId}
-          onSelectFeed={onSelectFeed}
-        />
+        {[
+          { id: SPECIAL_FEED_IDS.HISTORY, label: "履歴", count: historyCount },
+          { id: SPECIAL_FEED_IDS.BOOKMARKS, label: "ブックマーク", count: bookmarkCount },
+          { id: SPECIAL_FEED_IDS.READING_LIST, label: "後で読む", count: readingListCount },
+          { id: SPECIAL_FEED_IDS.LIKES, label: "いいね", count: likeCount },
+        ].map(({ id, label, count }) => (
+          <SpecialViewButton
+            key={id}
+            id={id}
+            label={label}
+            count={count}
+            selectedFeedId={selectedFeedId}
+            onSelectFeed={onSelectFeed}
+          />
+        ))}
 
         {/* URL から記事を保存 */}
         <div className="px-4 py-1">
