@@ -76,7 +76,7 @@ export default function App() {
     prependArticle,
     removeFeed,
     updateFeed,
-    replaceFeeds,
+    appendFeeds,
     refreshFeeds,
     retryFeed,
     reinferFeed,
@@ -703,7 +703,7 @@ export default function App() {
             onFeedDeleted={onFeedDeleted}
             onFeedRenamed={updateFeed}
             onFeedFilterSaved={updateFeed}
-            onFeedsImported={replaceFeeds}
+            onFeedsImported={appendFeeds}
             onMarkAllRead={markAllRead}
             onToggleTheme={toggleTheme}
             onSaveArticleUrl={onSaveArticleUrl}
