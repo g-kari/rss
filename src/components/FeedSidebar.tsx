@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, type ReactNode } from "react";
 import type { Feed, Article, UserProfile, RecommendedFeed, KeywordFilter } from "../types";
 import ReleaseNotesModal from "./ReleaseNotesModal";
 import FeedItem, { formatCount } from "./FeedItem";
@@ -599,90 +599,39 @@ export default function FeedSidebar({
           className="hidden"
           onChange={handleImportFile}
         />
-        <button
+        <FooterIconButton
           onClick={() => fileInputRef.current?.click()}
           disabled={importing}
-          className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0 disabled:opacity-40"
           title="OPMLインポート"
-          aria-label="OPMLインポート"
         >
-          <svg
-            className="w-3.5 h-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-            />
-          </svg>
-        </button>
-        {/* リリースノート */}
-        <button
-          onClick={() => setShowReleaseNotes(true)}
-          className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
-          title="リリースノート"
-          aria-label="リリースノート"
-        >
-          <svg
-            className="w-3.5 h-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-            />
-          </svg>
-        </button>
-        {/* OPMLエクスポート */}
-        <button
-          onClick={exportOpml}
-          className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
-          title="OPMLエクスポート"
-          aria-label="OPMLエクスポート"
-        >
-          <svg
-            className="w-3.5 h-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-            />
-          </svg>
-        </button>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+          />
+        </FooterIconButton>
+        <FooterIconButton onClick={() => setShowReleaseNotes(true)} title="リリースノート">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+          />
+        </FooterIconButton>
+        <FooterIconButton onClick={exportOpml} title="OPMLエクスポート">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+          />
+        </FooterIconButton>
         {install?.canInstall && (
-          <button
-            onClick={install.onInstall}
-            className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
-            title="アプリをインストール"
-            aria-label="アプリをインストール"
-          >
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5"
-              />
-            </svg>
-          </button>
+          <FooterIconButton onClick={install.onInstall} title="アプリをインストール">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5"
+            />
+          </FooterIconButton>
         )}
         {push?.supported && (
           <button
@@ -705,93 +654,58 @@ export default function FeedSidebar({
             }
             aria-pressed={push.subscribed}
           >
-            {push.subscribed ? (
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              {push.subscribed ? (
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
                 />
-              </svg>
-            ) : (
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
+              ) : (
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="M9.143 17.082a24.248 24.248 0 003.844.148m-3.844-.148a23.856 23.856 0 01-5.455-1.31 8.964 8.964 0 002.3-5.542m3.155 6.852a3 3 0 005.667 1.97m1.965-2.277L21 21m-4.225-4.225a23.81 23.81 0 003.536-1.003A8.967 8.967 0 0118 9.75V9A6 6 0 006.53 6.53m10.245 10.245L6.53 6.53M3 3l3.53 3.53"
                 />
-              </svg>
-            )}
+              )}
+            </svg>
           </button>
         )}
-        <button
+        <FooterIconButton
           onClick={onToggleTheme}
-          className="text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
           title={theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"}
-          aria-label={theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"}
         >
           {theme === "dark" ? (
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
-              />
-            </svg>
-          ) : (
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
-              />
-            </svg>
-          )}
-        </button>
-        <button
-          onClick={logout}
-          className="text-text-faint hover:text-text-soft transition-colors duration-200 flex-shrink-0"
-          title="ログアウト"
-          aria-label="ログアウト"
-        >
-          <svg
-            className="w-3.5 h-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
             />
-          </svg>
-        </button>
+          ) : (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
+            />
+          )}
+        </FooterIconButton>
+        <FooterIconButton
+          onClick={logout}
+          title="ログアウト"
+          className="text-text-faint hover:text-text-soft transition-colors duration-200 flex-shrink-0"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+          />
+        </FooterIconButton>
       </div>
       {importMessage && (
         <div
@@ -802,5 +716,39 @@ export default function FeedSidebar({
       )}
       {showReleaseNotes && <ReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
     </aside>
+  );
+}
+
+function FooterIconButton({
+  onClick,
+  title,
+  disabled,
+  className = "text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0",
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  disabled?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${className}${disabled ? " disabled:opacity-40" : ""}`}
+      title={title}
+      aria-label={title}
+    >
+      <svg
+        className="w-3.5 h-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        {children}
+      </svg>
+    </button>
   );
 }
