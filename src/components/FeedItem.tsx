@@ -93,8 +93,7 @@ export default function FeedItem({
 }: FeedItemProps) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
-  const [retrying, setRetrying] = useState(false);
-  const [reinfering, setReinfering] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<"retry" | "reinfer" | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -145,25 +144,25 @@ export default function FeedItem({
   );
 
   const handleRetry = useCallback(async () => {
-    if (retrying) return;
-    setRetrying(true);
+    if (loadingAction) return;
+    setLoadingAction("retry");
     try {
       await onRetry();
     } finally {
-      setRetrying(false);
+      setLoadingAction(null);
     }
-  }, [onRetry, retrying]);
+  }, [onRetry, loadingAction]);
 
   const handleReinfer = useCallback(async () => {
-    if (reinfering || !onReinfer) return;
-    setReinfering(true);
+    if (loadingAction || !onReinfer) return;
+    setLoadingAction("reinfer");
     setMenuOpen(false);
     try {
       await onReinfer();
     } finally {
-      setReinfering(false);
+      setLoadingAction(null);
     }
-  }, [onReinfer, reinfering]);
+  }, [onReinfer, loadingAction]);
 
   const hasFilter =
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
@@ -263,14 +262,14 @@ export default function FeedItem({
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={retrying ? "animate-spin" : ""}
+          className={loadingAction === "retry" ? "animate-spin" : ""}
         >
           <path d="M8.5 2A4 4 0 1 0 9 5.5" />
           <polyline points="7,0.5 8.5,2 7,3.5" />
         </svg>
       ),
       onClick: handleRetry,
-      disabled: retrying,
+      disabled: loadingAction === "retry",
       className: feed.fetchError
         ? "text-rose-400 hover:text-rose-300"
         : "text-text-faint hover:text-text-default",
@@ -278,7 +277,7 @@ export default function FeedItem({
     },
     {
       key: "reinfer",
-      label: reinfering ? "推論中..." : "セレクタを再推論",
+      label: loadingAction === "reinfer" ? "推論中..." : "セレクタを再推論",
       icon: (
         <svg
           width="10"
@@ -289,7 +288,7 @@ export default function FeedItem({
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={reinfering ? "animate-spin" : ""}
+          className={loadingAction === "reinfer" ? "animate-spin" : ""}
         >
           <path d="M5 1a4 4 0 0 1 4 4" />
           <path d="M9 5a4 4 0 0 1-4 4" />
@@ -298,7 +297,7 @@ export default function FeedItem({
         </svg>
       ),
       onClick: () => void handleReinfer(),
-      disabled: reinfering,
+      disabled: loadingAction === "reinfer",
       show: feed.isScraping && !!onReinfer,
       className: "text-text-faint hover:text-text-default",
     },

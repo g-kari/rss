@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-02 (105)
+
+### simplify
+
+- \`FeedItem\` の \`retrying\`/\`reinfering\` を \`loadingAction\` ユニオン型に統合 — retry と reinfer は同時に実行されないため、2 つの boolean ステートを \`"retry" | "reinfer" | null\` の単一ステートに集約。相互排他性を型で表現し、ステート変数・useCallback を各 1 つ削減
+
 ## 2026-04-02 (104)
 
 ### リファクタリング
