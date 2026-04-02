@@ -11,6 +11,7 @@ import { useArticleAi } from "../hooks/useArticleAi";
 import Spinner from "./Spinner";
 import { useImageDownload } from "../hooks/useImageDownload";
 import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
+import { useMenuOpen } from "../hooks/useMenuOpen";
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   small: "text-[14px] leading-[1.75]",
@@ -50,21 +51,6 @@ const SHORT_CONTENT_THRESHOLD = 400;
 /** ShareMenu / FilterMenu で共有するドロップダウン項目の共通スタイル */
 const MENU_ITEM_CLS =
   "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left";
-
-/** ドロップダウンメニューの開閉状態と click-outside 処理をまとめたフック */
-function useMenuOpen() {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    function onClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [open]);
-  return { open, setOpen, menuRef };
-}
 
 const DownloadIcon = () => (
   <svg
