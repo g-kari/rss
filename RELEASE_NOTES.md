@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (100)
+
+### simplify
+
+- **`useFeeds` の残る `onErr` 未使用箇所を統一** — `refreshFeeds`・`loadMoreFeedArticles`・`loadMoreAllFeedsArticles` の3関数が `console.error(…) + onErrorRef.current?.(…)` の2行パターンを直接記述していた。既存の `onErr(err, msg)` ヘルパーを使うよう統一し、各関数の依存配列にも `onErr` を追加。6行削減。
+
 ## 2026-04-02 (99)
 
 ### simplify

@@ -181,12 +181,11 @@ export function useFeeds(
       setFeeds(feedsData);
       mergeArticles(fresh);
     } catch (err) {
-      console.error("Refresh failed:", err);
-      onErrorRef.current?.("更新に失敗しました");
+      onErr(err, "更新に失敗しました");
     } finally {
       setRefreshing(false);
     }
-  }, [mergeArticles]);
+  }, [mergeArticles, onErr]);
 
   /** フィードエンドポイントに POST し、フィードと記事を更新する共通実装 */
   const feedActionWithRefresh = useCallback(
@@ -220,64 +219,70 @@ export function useFeeds(
   }, []);
 
   // フィードの過去ページを追加読み込みする
-  const loadMoreFeedArticles = useCallback(async (feedId: string): Promise<void> => {
-    if (loadingFeedIdsRef.current.has(feedId)) return;
-    const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
-    loadingFeedIdsRef.current.add(feedId);
-    try {
-      const data = await apiFetchJson<Article[]>(`/api/articles?feed=${feedId}&page=${nextPage}`);
-      // 空ページでもページ番号を更新して「もっと読む」ボタンが消えるようにする
-      setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
-      if (data.length === 0) return;
-      setArticles((prev) => mergeUniqueArticles(prev, data));
-    } catch (err) {
-      console.error("loadMoreFeedArticles failed:", err);
-      onErrorRef.current?.("過去の記事の読み込みに失敗しました");
-    } finally {
-      loadingFeedIdsRef.current.delete(feedId);
-    }
-  }, []);
+  const loadMoreFeedArticles = useCallback(
+    async (feedId: string): Promise<void> => {
+      if (loadingFeedIdsRef.current.has(feedId)) return;
+      const nextPage = (loadedFeedPagesRef.current.get(feedId) ?? 1) + 1;
+      loadingFeedIdsRef.current.add(feedId);
+      try {
+        const data = await apiFetchJson<Article[]>(`/api/articles?feed=${feedId}&page=${nextPage}`);
+        // 空ページでもページ番号を更新して「もっと読む」ボタンが消えるようにする
+        setLoadedFeedPages((prev) => new Map(prev).set(feedId, nextPage));
+        if (data.length === 0) return;
+        setArticles((prev) => mergeUniqueArticles(prev, data));
+      } catch (err) {
+        onErr(err, "過去の記事の読み込みに失敗しました");
+      } finally {
+        loadingFeedIdsRef.current.delete(feedId);
+      }
+    },
+    [onErr],
+  );
 
   // 全フィード表示時: 未読み込みページが残っている全フィードの次ページを一括取得する
-  const loadMoreAllFeedsArticles = useCallback(async (feeds: Feed[]): Promise<void> => {
-    const targets = feeds.filter((f) => {
-      if (!f.pageCount) return false;
-      if (loadingFeedIdsRef.current.has(f.id)) return false;
-      const loaded = loadedFeedPagesRef.current.get(f.id) ?? 1;
-      return loaded <= f.pageCount;
-    });
-    if (targets.length === 0) return;
-    for (const f of targets) loadingFeedIdsRef.current.add(f.id);
-    // Promise.allSettled は reject しないため try/catch 不要
-    const results = await Promise.allSettled(
-      targets.map(async (f) => {
-        try {
-          const nextPage = (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1;
-          const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
-          return { feedId: f.id, nextPage, data };
-        } finally {
-          loadingFeedIdsRef.current.delete(f.id);
-        }
-      }),
-    );
-    type FeedPageResult = { feedId: string; nextPage: number; data: Article[] };
-    const succeeded = results.filter(
-      (r): r is PromiseFulfilledResult<FeedPageResult> => r.status === "fulfilled",
-    );
-    if (succeeded.length < results.length) {
-      console.error("loadMoreAllFeedsArticles: some feeds failed");
-      onErrorRef.current?.("過去の記事の読み込みに失敗しました");
-    }
-    if (succeeded.length === 0) return;
-    // 空ページでもページ番号を更新して繰り返しリクエストを防ぐ（1回の setState に集約）
-    setLoadedFeedPages((prev) => {
-      const next = new Map(prev);
-      for (const { value } of succeeded) next.set(value.feedId, value.nextPage);
-      return next;
-    });
-    const newArticles = succeeded.flatMap(({ value }) => value.data);
-    if (newArticles.length > 0) setArticles((prev) => mergeUniqueArticles(prev, newArticles));
-  }, []);
+  const loadMoreAllFeedsArticles = useCallback(
+    async (feeds: Feed[]): Promise<void> => {
+      const targets = feeds.filter((f) => {
+        if (!f.pageCount) return false;
+        if (loadingFeedIdsRef.current.has(f.id)) return false;
+        const loaded = loadedFeedPagesRef.current.get(f.id) ?? 1;
+        return loaded <= f.pageCount;
+      });
+      if (targets.length === 0) return;
+      for (const f of targets) loadingFeedIdsRef.current.add(f.id);
+      // Promise.allSettled は reject しないため try/catch 不要
+      const results = await Promise.allSettled(
+        targets.map(async (f) => {
+          try {
+            const nextPage = (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1;
+            const data = await apiFetchJson<Article[]>(
+              `/api/articles?feed=${f.id}&page=${nextPage}`,
+            );
+            return { feedId: f.id, nextPage, data };
+          } finally {
+            loadingFeedIdsRef.current.delete(f.id);
+          }
+        }),
+      );
+      type FeedPageResult = { feedId: string; nextPage: number; data: Article[] };
+      const succeeded = results.filter(
+        (r): r is PromiseFulfilledResult<FeedPageResult> => r.status === "fulfilled",
+      );
+      if (succeeded.length < results.length) {
+        onErr("loadMoreAllFeedsArticles: some feeds failed", "過去の記事の読み込みに失敗しました");
+      }
+      if (succeeded.length === 0) return;
+      // 空ページでもページ番号を更新して繰り返しリクエストを防ぐ（1回の setState に集約）
+      setLoadedFeedPages((prev) => {
+        const next = new Map(prev);
+        for (const { value } of succeeded) next.set(value.feedId, value.nextPage);
+        return next;
+      });
+      const newArticles = succeeded.flatMap(({ value }) => value.data);
+      if (newArticles.length > 0) setArticles((prev) => mergeUniqueArticles(prev, newArticles));
+    },
+    [onErr],
+  );
 
   return {
     feeds,
