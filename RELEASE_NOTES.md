@@ -1,5 +1,13 @@
 # リリースノート
 
+## 2026-04-02 (109)
+
+### ドキュメント整備
+
+- `design-system.md` の CSS ファイル参照を `src/index.css` → `app/globals.css` に修正（ファイルが存在しないパスを参照していた）
+- `CLAUDE.md` / `architecture.md` に未記載のファイルを追記 — `ArticleItems.tsx`, `FeedDetailModal.tsx`, `Modal.tsx`, `useMobilePane.ts`, `useNSFWMode.ts`, `useSyncedRef.ts`, `useColumnResize.ts`, `article-filter.ts`, `ogp.ts`, `[id]/reinfer/route.ts`
+- 存在しない `app/api/ai/translate/route.ts` の参照を削除
+
 ## 2026-04-02 (108)
 
 ### simplify

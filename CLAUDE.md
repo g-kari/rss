@@ -44,6 +44,7 @@ app/
       route.ts               # GET (一覧) / POST (追加) /api/feeds
       [id]/route.ts          # DELETE /api/feeds/:id
       [id]/refresh/route.ts  # POST /api/feeds/:id/refresh — 単体フィード手動更新
+      [id]/reinfer/route.ts  # POST /api/feeds/:id/reinfer — LLM CSS セレクタ再推論
       refresh/route.ts       # POST /api/feeds/refresh — 全フィード手動更新
       import/route.ts        # POST /api/feeds/import — OPML インポート
       export/route.ts        # GET /api/feeds/export — OPML エクスポート
@@ -52,7 +53,6 @@ app/
       save/route.ts          # POST /api/articles/save — 記事保存
     ai/
       summarize/route.ts     # POST /api/ai/summarize (Workers AI)
-      translate/route.ts     # POST /api/ai/translate (Workers AI)
     content/route.ts         # GET /api/content?url=... (フルテキストプロキシ)
     engagement/route.ts      # GET / POST /api/engagement — エンゲージメント記録
     image-proxy/route.ts     # GET /api/image-proxy?url=... (外部画像プロキシ)
@@ -78,9 +78,12 @@ src/
   components/
     FeedSidebar.tsx          # サイドバー 200px (フィード管理 + ユーザー情報)
     FeedItem.tsx             # フィードアイテム（コンテキストメニュー付き）
+    FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
     ArticleList.tsx          # 記事一覧 360px
+    ArticleItems.tsx         # 記事一覧アイテム（レイアウト別 memo コンポーネント）
     ArticleView.tsx          # 記事本文 1fr
+    Modal.tsx                # 汎用モーダル基盤コンポーネント
     RecommendationSection.tsx # フィード推薦セクション
     KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
     ReleaseNotesModal.tsx    # リリースノートモーダル
@@ -106,6 +109,10 @@ src/
     usePushNotifications.ts  # Web Push サブスクリプション管理
     useSearchHistory.ts      # 検索履歴管理 (localStorage)
     useOnlineStatus.ts       # オンライン/オフライン状態
+    useMobilePane.ts         # モバイル向けペイン切り替え (sidebar/list/view)
+    useNSFWMode.ts           # NSFW モード（連打で活性化）
+    useSyncedRef.ts          # stale closure 回避用の最新値 ref ユーティリティ
+    useColumnResize.ts       # カラム幅リサイズ操作と localStorage 永続化
     useDebounce.ts           # デバウンスユーティリティ
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
@@ -123,9 +130,11 @@ src/
     api-fetch.ts             # 認証付きクライアントサイド fetch ラッパー
     embed-utils.ts           # iframe embed 処理
     engagement-score.ts      # エンゲージメントスコア計算ロジック
-    keyword-filter.ts        # キーワードフィルタリングマッチング
+    article-filter.ts        # 記事フィルタリングロジック (feedId / 日付 / キーワード / クエリ)
+    keyword-filter.ts        # キーワードフィルタリングマッチング（正規表現対応）
     llm-feed-generator.ts    # LLM で RSS のないサイトからフィード生成
     lru-cache.ts             # クライアントサイド LRU キャッシュ
+    ogp.ts                   # OGP メタデータ取得ロジック
     recommendation.ts        # フィード推薦ロジック
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     storage.ts               # localStorage キー定数・安全なラッパー
@@ -148,7 +157,6 @@ src/
 | 記事全文     | **Cloudflare Cache API**                 | 7日  | `app/api/content/route.ts`      |
 | OGP 画像 URL | **Cloudflare Cache API**                 | 30日 | `app/api/ogp/route.ts`          |
 | AI 要約      | **R2** (`ai-cache/summary/{sha256}`)     | 永続 | `app/api/ai/summarize/route.ts` |
-| AI 翻訳      | **R2** (`ai-cache/translation/{sha256}`) | 永続 | `app/api/ai/translate/route.ts` |
 
 **R2 は使わない** — 揮発性のキャッシュには Cloudflare Cache API (`caches.default`) を使う。R2 は永続データ（ユーザーデータ・AI 結果）専用。
 

@@ -4,7 +4,7 @@
 
 ## カラーシステム
 
-### セマンティックカラートークン (`src/index.css` の `@theme` + `[data-theme="dark"]`)
+### セマンティックカラートークン (`app/globals.css` の `@theme` + `[data-theme="dark"]`)
 
 コンポーネントでは **セマンティックトークン** を使う。石版色やzinc値を直接書かない。
 
@@ -36,7 +36,7 @@
 | エラーテキスト   | `text-rose-400`                                    |
 | ブックマーク済み | `text-bookmark` (= `text-[var(--color-bookmark)]`) |
 
-**禁止**: 16進数カラー (`#...`) をコンポーネントにハードコードしない。`src/index.css` 内の CSS 変数定義のみ例外。
+**禁止**: 16進数カラー (`#...`) をコンポーネントにハードコードしない。`app/globals.css` 内の CSS 変数定義のみ例外。
 
 ## テーマ切り替え
 
@@ -84,7 +84,7 @@
   <div className="flex-1 min-h-0 overflow-y-auto">
 ```
 
-### カスタムスクロールバー (`src/index.css`)
+### カスタムスクロールバー (`app/globals.css`)
 
 ```css
 ::-webkit-scrollbar {
