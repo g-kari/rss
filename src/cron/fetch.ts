@@ -29,7 +29,7 @@ const FETCH_TIMEOUT_MS = 15_000;
 /** フィード XML の最大サイズ（10MB）。超過分は切り捨ててパースする */
 const FEED_MAX_BYTES = 10 * 1024 * 1024;
 /** 1 フィードあたりの最大記事数。巨大フィードの初回取得で R2 操作が爆発しないよう制限 */
-const FEED_MAX_ITEMS = 500;
+const FEED_MAX_ITEMS = 1000;
 
 /** cron 実行時のフィード並行取得数上限 */
 const FEED_FETCH_CONCURRENCY = 5;
