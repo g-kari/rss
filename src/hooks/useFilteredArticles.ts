@@ -1,4 +1,12 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { Article, DateRange, Feed, KeywordFilter, SortOrder } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
@@ -12,23 +20,18 @@ const EMPTY_SET = new Set<string>();
 const EMPTY_STR_ARRAY: string[] = [];
 const EMPTY_FEED_ARRAY: Feed[] = [];
 
-/** boolean state をトグルして localStorage に保存するステート更新関数を返す */
-function boolToggleWithStorage(key: string) {
-  return (v: boolean): boolean => {
-    const next = !v;
-    storageSet(key, next ? "1" : "0");
-    return next;
-  };
-}
-
-/** boolean フィルタートグル + ページリセットを行うコールバックを生成する */
-function makeBoolFilterToggle(
-  setter: React.Dispatch<React.SetStateAction<boolean>>,
+/** boolean フィルタートグル + localStorage 保存 + ページリセットを行うコールバックを生成する */
+function makeFilterToggle(
+  setter: Dispatch<SetStateAction<boolean>>,
   key: string,
   resetPage: () => void,
 ): () => void {
   return () => {
-    setter(boolToggleWithStorage(key));
+    setter((v) => {
+      const next = !v;
+      storageSet(key, next ? "1" : "0");
+      return next;
+    });
     resetPage();
   };
 }
@@ -120,13 +123,9 @@ export function useFilteredArticles({
   const { toggleUnreadOnly, toggleBookmarkOnly, toggleReadingListOnly } = useMemo(() => {
     const resetPage = () => setPage(1);
     return {
-      toggleUnreadOnly: makeBoolFilterToggle(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, resetPage),
-      toggleBookmarkOnly: makeBoolFilterToggle(
-        setBookmarkOnly,
-        STORAGE_KEYS.BOOKMARK_ONLY,
-        resetPage,
-      ),
-      toggleReadingListOnly: makeBoolFilterToggle(
+      toggleUnreadOnly: makeFilterToggle(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, resetPage),
+      toggleBookmarkOnly: makeFilterToggle(setBookmarkOnly, STORAGE_KEYS.BOOKMARK_ONLY, resetPage),
+      toggleReadingListOnly: makeFilterToggle(
         setReadingListOnly,
         STORAGE_KEYS.READING_LIST_ONLY,
         resetPage,
