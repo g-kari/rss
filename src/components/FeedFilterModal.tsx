@@ -61,35 +61,39 @@ function TagInput({
       className="min-h-[38px] flex flex-wrap gap-1 p-1.5 bg-surface-base border border-border-default rounded-lg cursor-text"
       onClick={() => inputRef.current?.focus()}
     >
-      {tags.map((tag, i) => (
-        <span
-          key={i}
-          className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-subtle text-text-default text-[12px] rounded-md"
-        >
-          {tag}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeTag(i);
-            }}
-            className="text-text-faint hover:text-text-default transition-colors"
-            aria-label="削除"
+      {tags.map((tag, i) => {
+        const isRegex = tag.startsWith("/") && tag.endsWith("/") && tag.length > 2;
+        return (
+          <span
+            key={i}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[12px] rounded-md ${isRegex ? "bg-surface-subtle text-text-soft font-mono ring-1 ring-border-default" : "bg-surface-subtle text-text-default"}`}
+            title={isRegex ? "正規表現" : undefined}
           >
-            <svg
-              width="8"
-              height="8"
-              viewBox="0 0 8 8"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
+            {tag}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeTag(i);
+              }}
+              className="text-text-faint hover:text-text-default transition-colors"
+              aria-label="削除"
             >
-              <line x1="1" y1="1" x2="7" y2="7" />
-              <line x1="7" y1="1" x2="1" y2="7" />
-            </svg>
-          </button>
-        </span>
-      ))}
+              <svg
+                width="8"
+                height="8"
+                viewBox="0 0 8 8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <line x1="1" y1="1" x2="7" y2="7" />
+                <line x1="7" y1="1" x2="1" y2="7" />
+              </svg>
+            </button>
+          </span>
+        );
+      })}
       <input
         ref={inputRef}
         type="text"
@@ -159,6 +163,12 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
           </label>
           <TagInput tags={exclude} onChange={setExclude} placeholder="Enter または , で追加" />
         </div>
+
+        {/* 正規表現ヒント */}
+        <p className="text-[11px] text-text-faint leading-relaxed -mt-1">
+          <span className="font-mono text-text-muted">/pattern/</span> 形式で正規表現が使えます（例:{" "}
+          <span className="font-mono text-text-muted">/Apple|Google/</span>）
+        </p>
 
         {/* カテゴリも対象 */}
         <label className="flex items-center gap-2 cursor-pointer select-none">
