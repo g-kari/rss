@@ -286,6 +286,22 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
             onClick={() => {
               setOpen(false);
               window.open(
+                `https://bsky.app/intent/compose?text=${encodeURIComponent(`${article.title}\n${article.link!}`)}`,
+                "_blank",
+                "noopener,noreferrer",
+              );
+            }}
+            className={MENU_ITEM_CLS}
+          >
+            <svg width="12" height="12" viewBox="0 0 568 501" fill="currentColor">
+              <path d="M123.121 33.664C188.24 82.553 258.88 181.68 284 234.873c25.12-53.192 95.76-152.32 160.879-201.21C491.866-1.611 568-28.906 568 57.748c0 17.46-10.033 146.8-15.914 167.727-20.432 73.21-94.853 91.82-161.048 80.508C507.337 328.795 527.755 396.26 461.455 462.86c-123.063 120.605-176.695-30.26-190.138-68.847-2.857-8.18-4.195-12.011-4.317-8.773-.122-3.238-1.46.594-4.317 8.773-13.443 38.587-67.075 189.452-190.138 68.847-66.3-66.6-45.882-134.065 71.521-156.877-66.195 11.312-140.616-7.298-161.048-80.508C-15.77 204.548-25.803 75.208-25.803 57.748-25.803-28.906 50.134-1.611 123.121 33.664z" />
+            </svg>
+            Bluesky でシェア
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              window.open(
                 `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(article.link!)}`,
                 "_blank",
                 "noopener,noreferrer",

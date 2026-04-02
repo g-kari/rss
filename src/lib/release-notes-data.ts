@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-02 (110)
+
+### 新機能
+
+- **Bluesky 共有** — 共有メニューに「Bluesky でシェア」ボタンを追加。\`bsky.app/intent/compose\` を利用してタイトルと URL を含む投稿ダイアログを開く
+
 ## 2026-04-02 (109)
 
 ### ドキュメント整備
