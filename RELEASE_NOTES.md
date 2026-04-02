@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (107)
+
+### simplify
+
+- `FeedSidebar` の `SpecialViewButton` 4連呼をデータ配列の `map` に統合 — HISTORY・BOOKMARKS・READING_LIST・LIKES の4つが同一パターンで繰り返されていたため、`[{ id, label, count }]` 配列と `.map()` に置き換えて28行を15行に削減
+
 ## 2026-04-02 (106)
 
 ### simplify
