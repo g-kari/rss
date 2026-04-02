@@ -19,6 +19,7 @@ import { useReadingHistory } from "./hooks/useReadingHistory";
 import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
 import { apiFetch } from "./lib/api-fetch";
+import { normalizeFilter, matchesKeywordFilter } from "./lib/keyword-filter";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
@@ -102,6 +103,7 @@ export default function App() {
     globalFilter,
     setGlobalFilter,
     markRead,
+    markBulkRead,
     markAllRead,
     toggleRead,
     toggleBookmark,
@@ -144,6 +146,15 @@ export default function App() {
     // クリアしないとポーリング毎に古い ID を検索し続けてしまう
     pendingArticleIdRef.current = null;
   }, [articles]);
+
+  // globalFilter に引っかかった記事（フィルターで非表示になる記事）を自動的に既読にする。
+  // これにより未読カウントや未読フィルターに除外記事が混入するのを防ぐ。
+  useEffect(() => {
+    if (!globalFilter) return;
+    const normalized = normalizeFilter(globalFilter);
+    const ids = articles.filter((a) => !matchesKeywordFilter(a, normalized)).map((a) => a.id);
+    if (ids.length > 0) markBulkRead(ids);
+  }, [articles, globalFilter, markBulkRead]);
 
   const totalUnread = useMemo(
     () => articles.filter((a) => !readIds.has(a.id)).length,

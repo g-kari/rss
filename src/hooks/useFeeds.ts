@@ -69,6 +69,10 @@ export function useFeeds(
   const fetchAndSetArticles = useCallback(async () => {
     const data = await apiFetchJson<Article[]>("/api/articles");
     setArticles(data);
+    // 記事を全件置き換えるためページ読み込み状態もリセットする。
+    // リセットしないと古い loadedPage が残り、次回「過去記事を読み込み」で
+    // 誤ったページ番号（ページ飛ばし）が発生する。
+    setLoadedFeedPages(new Map());
     latestArticleIdRef.current = data[0]?.id ?? null;
     return data;
   }, []);
@@ -249,17 +253,19 @@ export function useFeeds(
       return loaded <= f.pageCount;
     });
     if (targets.length === 0) return;
+    // nextPage を同期的に確定する。非同期処理中に ref が変わっても正しいページを取得できる。
+    // また、個別の finally でロック解放すると setLoadedFeedPages より先に解放されてしまい、
+    // 同ページが二重フェッチされる race condition が発生するため、ロック解放は一括で行う。
+    const nextPages = new Map(
+      targets.map((f) => [f.id, (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1]),
+    );
     for (const f of targets) loadingFeedIdsRef.current.add(f.id);
     // Promise.allSettled は reject しないため try/catch 不要
     const results = await Promise.allSettled(
       targets.map(async (f) => {
-        try {
-          const nextPage = (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1;
-          const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
-          return { feedId: f.id, nextPage, data };
-        } finally {
-          loadingFeedIdsRef.current.delete(f.id);
-        }
+        const nextPage = nextPages.get(f.id)!;
+        const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
+        return { feedId: f.id, nextPage, data };
       }),
     );
     type FeedPageResult = { feedId: string; nextPage: number; data: Article[] };
@@ -272,13 +278,18 @@ export function useFeeds(
         "過去の記事の読み込みに失敗しました",
       );
     }
-    if (succeeded.length === 0) return;
     // 空ページでもページ番号を更新して繰り返しリクエストを防ぐ（1回の setState に集約）
-    setLoadedFeedPages((prev) => {
-      const next = new Map(prev);
-      for (const { value } of succeeded) next.set(value.feedId, value.nextPage);
-      return next;
-    });
+    if (succeeded.length > 0) {
+      setLoadedFeedPages((prev) => {
+        const next = new Map(prev);
+        for (const { value } of succeeded) next.set(value.feedId, value.nextPage);
+        return next;
+      });
+    }
+    // setLoadedFeedPages の後にロックを解放することで、ref 更新前に別のロードが
+    // 開始されて同ページを二重フェッチするのを防ぐ
+    for (const f of targets) loadingFeedIdsRef.current.delete(f.id);
+    if (succeeded.length === 0) return;
     const newArticles = succeeded.flatMap(({ value }) => value.data);
     if (newArticles.length > 0) setArticles((prev) => mergeUniqueArticles(prev, newArticles));
   }, []);
