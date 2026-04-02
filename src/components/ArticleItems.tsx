@@ -97,6 +97,7 @@ interface ArticleActionsProps {
   isRead: boolean;
   isBookmarked: boolean;
   size?: "sm" | "md";
+  className?: string;
   onToggleRead: () => void;
   onToggleBookmark: () => void;
 }
@@ -105,6 +106,7 @@ function ArticleActions({
   isRead,
   isBookmarked,
   size = "md",
+  className = "flex items-center gap-0.5",
   onToggleRead,
   onToggleBookmark,
 }: ArticleActionsProps) {
@@ -112,7 +114,7 @@ function ArticleActions({
   const icon = size === "sm" ? 10 : 12;
   const bicon = size === "sm" ? { w: 9, h: 11 } : { w: 11, h: 13 };
   return (
-    <>
+    <div className={className} onClick={(e) => e.stopPropagation()}>
       <button
         onClick={onToggleRead}
         title={isRead ? "未読にする" : "既読にする"}
@@ -159,7 +161,7 @@ function ArticleActions({
           <path d="M1 1h9v11l-4.5-3L1 12V1z" />
         </svg>
       </button>
-    </>
+    </div>
   );
 }
 
@@ -233,17 +235,13 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       <span className="text-[11px] text-text-faint flex-shrink-0 group-hover:hidden">
         {timeAgo(article.publishedAt)}
       </span>
-      <div
+      <ArticleActions
         className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <ArticleActions
-          isRead={isRead}
-          isBookmarked={isBookmarked}
-          onToggleRead={() => onToggleRead(article.id)}
-          onToggleBookmark={() => onToggleBookmark(article.id)}
-        />
-      </div>
+        isRead={isRead}
+        isBookmarked={isBookmarked}
+        onToggleRead={() => onToggleRead(article.id)}
+        onToggleBookmark={() => onToggleBookmark(article.id)}
+      />
     </div>
   );
 });
@@ -306,17 +304,13 @@ export const ListArticleItem = memo(function ListArticleItem({
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         {thumb && <ArticleThumbnail thumb={thumb} className="w-14 h-14 object-cover rounded" />}
-        <div
+        <ArticleActions
           className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ArticleActions
-            isRead={isRead}
-            isBookmarked={isBookmarked}
-            onToggleRead={() => onToggleRead(article.id)}
-            onToggleBookmark={() => onToggleBookmark(article.id)}
-          />
-        </div>
+          isRead={isRead}
+          isBookmarked={isBookmarked}
+          onToggleRead={() => onToggleRead(article.id)}
+          onToggleBookmark={() => onToggleBookmark(article.id)}
+        />
       </div>
     </div>
   );
@@ -384,23 +378,17 @@ export const CardArticleItem = memo(function CardArticleItem({
               className="text-[10px] text-text-faint flex-shrink-0"
             />
           </div>
-          <>
-            {!isRead && (
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:opacity-0 transition-opacity duration-150" />
-            )}
-            <div
-              className="absolute flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto right-2.5 bottom-2.5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ArticleActions
-                size="sm"
-                isRead={isRead}
-                isBookmarked={isBookmarked}
-                onToggleRead={() => onToggleRead(article.id)}
-                onToggleBookmark={() => onToggleBookmark(article.id)}
-              />
-            </div>
-          </>
+          {!isRead && (
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:opacity-0 transition-opacity duration-150" />
+          )}
+          <ArticleActions
+            size="sm"
+            className="absolute flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto right-2.5 bottom-2.5"
+            isRead={isRead}
+            isBookmarked={isBookmarked}
+            onToggleRead={() => onToggleRead(article.id)}
+            onToggleBookmark={() => onToggleBookmark(article.id)}
+          />
         </div>
       </div>
     </div>
@@ -465,17 +453,13 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
             {!isRead && (
               <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />
             )}
-            <div
+            <ArticleActions
               className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ArticleActions
-                isRead={isRead}
-                isBookmarked={isBookmarked}
-                onToggleRead={() => onToggleRead(article.id)}
-                onToggleBookmark={() => onToggleBookmark(article.id)}
-              />
-            </div>
+              isRead={isRead}
+              isBookmarked={isBookmarked}
+              onToggleRead={() => onToggleRead(article.id)}
+              onToggleBookmark={() => onToggleBookmark(article.id)}
+            />
           </div>
         </div>
       </div>
