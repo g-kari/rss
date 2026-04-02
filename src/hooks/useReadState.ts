@@ -89,6 +89,7 @@ interface ReadStateResult {
   globalFilter: KeywordFilter | null;
   setGlobalFilter: (filter: KeywordFilter | null) => void;
   markRead: (articleId: string) => void;
+  markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
   toggleRead: (articleId: string) => void;
   toggleBookmark: (articleId: string) => void;
@@ -208,6 +209,21 @@ export function useReadState(
     [scheduleSyncToServer],
   );
 
+  const markBulkRead = useCallback(
+    (articleIds: string[]) => {
+      setReadIds((prev) => {
+        const newIds = articleIds.filter((id) => !prev.has(id));
+        if (newIds.length === 0) return prev;
+        const next = new Set(prev);
+        for (const id of newIds) next.add(id);
+        saveSet(STORAGE_KEYS.READ_IDS, next);
+        return next;
+      });
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
+  );
+
   const markAllRead = useCallback(
     (feedId: string | null) => {
       setReadIds((prev) => {
@@ -266,6 +282,7 @@ export function useReadState(
     globalFilter,
     setGlobalFilter,
     markRead,
+    markBulkRead,
     markAllRead,
     toggleRead,
     toggleBookmark,
