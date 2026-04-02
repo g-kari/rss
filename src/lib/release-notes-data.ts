@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-03 (118)
+
+### リファクタリング
+
+- **\`useGracePeriod\` フックを抽出** — \`useFilteredArticles\` 内にインラインで記述されていた grace period ロジック（直前選択記事を 30 秒間フィルター対象外に保持する処理）を \`src/hooks/useGracePeriod.ts\` として独立したカスタムフックに分離。再利用性・可読性を向上
+
 ## 2026-04-03 (117)
 
 ### バグ修正

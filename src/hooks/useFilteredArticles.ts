@@ -11,6 +11,7 @@ import type { Article, DateRange, Feed, KeywordFilter, SortOrder } from "../type
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
+import { useGracePeriod } from "./useGracePeriod";
 import { cycleValue, DATE_RANGE_CYCLE, SORT_ORDER_CYCLE } from "../lib/article-utils";
 import { filterAndSortArticles } from "../lib/article-filter";
 import { buildFilterMap, normalizeFilter } from "../lib/keyword-filter";
@@ -94,25 +95,7 @@ export function useFilteredArticles({
   const dateRangeRef = useSyncedRef(dateRange);
 
   // 直前に選択していた記事を一定時間フィルター対象外にする（未読フィルター中でも前の記事に戻れるように）
-  const [gracePeriodId, setGracePeriodId] = useState<string | null>(null);
-  const gracePeriodTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevSelectedIdRef = useRef<string | null | undefined>(selectedArticleId);
-  useEffect(() => {
-    const prev = prevSelectedIdRef.current;
-    prevSelectedIdRef.current = selectedArticleId;
-    if (prev && prev !== selectedArticleId) {
-      setGracePeriodId(prev);
-      if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
-      gracePeriodTimerRef.current = setTimeout(() => setGracePeriodId(null), 30000);
-    }
-  }, [selectedArticleId]);
-  // アンマウント時のみタイマーをクリア（selectedArticleId 変更時にクリアすると grace period が無効化される）
-  useEffect(
-    () => () => {
-      if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
-    },
-    [],
-  );
+  const gracePeriodId = useGracePeriod(selectedArticleId);
 
   // フィード切り替え時にページ・検索クエリをリセット
   useEffect(() => {
