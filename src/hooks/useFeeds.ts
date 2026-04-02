@@ -29,7 +29,7 @@ interface FeedsState {
   prependArticle: (article: Article) => void;
   removeFeed: (id: string) => void;
   updateFeed: (feed: Feed) => void;
-  replaceFeeds: (feeds: Feed[]) => Promise<void>;
+  appendFeeds: (feeds: Feed[]) => Promise<void>;
   refreshFeeds: () => Promise<void>;
   retryFeed: (feedId: string) => Promise<void>;
   reinferFeed: (feedId: string) => Promise<void>;
@@ -162,7 +162,7 @@ export function useFeeds(
     setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
   }, []);
 
-  const replaceFeeds = useCallback(
+  const appendFeeds = useCallback(
     async (newFeeds: Feed[]) => {
       setFeeds((prev) => [...prev, ...newFeeds]);
       // インポート後に記事を再取得する
@@ -321,7 +321,7 @@ export function useFeeds(
     prependArticle,
     removeFeed,
     updateFeed,
-    replaceFeeds,
+    appendFeeds,
     refreshFeeds,
     retryFeed,
     reinferFeed,
