@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-03 (123)
+
+### リファクタリング
+
+- **バリデーションユーティリティを \`src/lib/validation.ts\` に集約** — \`MAX_ID_LENGTH = 128\` 定数が3ファイルに重複していた問題を解消。\`extractIds\` / \`parseSnoozedUntil\` をルートファイルから共通ライブラリに移動
+
 ## 2026-04-03 (122)
 
 ### 新機能

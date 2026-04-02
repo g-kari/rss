@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody, requireString } from "@/lib/server-auth";
 import { r2Get, r2Put, engagementKey } from "@/lib/r2";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
+import { MAX_ID_LENGTH } from "@/lib/validation";
 
 const MAX_ENTRIES = 5_000;
-const MAX_ID_LENGTH = 128;
 const VALID_ACTIONS: EngagementAction[] = [
   "fetch_full",
   "open_original",
