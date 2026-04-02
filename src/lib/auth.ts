@@ -1,3 +1,20 @@
+/**
+ * 0g0 ID (OAuth2 + ES256 JWT) による認証ライブラリ。
+ *
+ * ## フロー概要
+ * 1. `GET /api/auth/login` → ブラウザを 0g0 の認可エンドポイントにリダイレクト
+ * 2. `GET /api/auth/callback?code=...` → `exchangeCode()` で認可コードをトークンに交換
+ * 3. access_token (15分) / refresh_token (30日) を HttpOnly cookie にセット
+ * 4. 各 Route Handler では `verifyJwt()` で access_token を検証
+ * 5. access_token 期限切れ時は `refreshTokens()` で自動更新
+ * 6. `POST /api/auth/logout` → `revokeToken()` で refresh_token を失効
+ *
+ * ## JWKS キャッシュ戦略
+ * - JWKS は 15 分間メモリキャッシュ（`jwksCache`）
+ * - パース済み CryptoKey も `keyCache` にキャッシュ（JWKS 更新時にクリア）
+ * - Workers はリクエスト間でモジュールスコープを共有するため有効
+ */
+
 export interface JWTPayload {
   sub: string;
   exp: number;
@@ -14,6 +31,10 @@ let jwksCache: JwkWithKid[] | null = null;
 let jwksCacheExpiry = 0;
 const JWKS_CACHE_TTL_MS = 15 * 60 * 1000; // 15分
 
+/**
+ * Base64URL 文字列を `Uint8Array` に変換する。
+ * JWT の署名検証時に header/payload/signature を `crypto.subtle` に渡す際に使用。
+ */
 export function base64urlToBytes(str: string): Uint8Array<ArrayBuffer> {
   const padded = str
     .replace(/-/g, "+")
@@ -22,6 +43,11 @@ export function base64urlToBytes(str: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
 }
 
+/**
+ * 0g0 auth server の `/.well-known/jwks.json` から公開鍵セットを取得する。
+ * 取得結果は `JWKS_CACHE_TTL_MS`（15分）メモリキャッシュされる。
+ * キャッシュ期限切れ時は `keyCache` も同時にクリアし、鍵ローテーションに対応する。
+ */
 async function getJwks(authBaseUrl: string): Promise<JwkWithKid[]> {
   const now = Date.now();
   if (jwksCache && now < jwksCacheExpiry) return jwksCache;
@@ -37,6 +63,10 @@ async function getJwks(authBaseUrl: string): Promise<JwkWithKid[]> {
   return keys;
 }
 
+/**
+ * JWK オブジェクトを Web Crypto API の `CryptoKey` に変換する。
+ * 変換済みのキーは `keyCache` にキャッシュされ、同じ `kid` の再インポートを避ける。
+ */
 async function getSigningKey(jwk: JwkWithKid): Promise<CryptoKey> {
   const kid = jwk.kid ?? "default";
   if (keyCache.has(kid)) return keyCache.get(kid)!;
@@ -51,6 +81,14 @@ async function getSigningKey(jwk: JwkWithKid): Promise<CryptoKey> {
   return key;
 }
 
+/**
+ * ES256 JWT を検証し、ペイロードを返す。失敗時は `null` を返す。
+ *
+ * 検証ステップ:
+ * 1. ヘッダーの `alg` が `"ES256"` であることを確認
+ * 2. `exp` クレームが現在時刻より未来であることを確認
+ * 3. JWKS から `kid` に一致する公開鍵を取得し、署名を `crypto.subtle.verify` で検証
+ */
 export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWTPayload | null> {
   try {
     const parts = token.split(".");
@@ -90,6 +128,7 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
   }
 }
 
+/** HTTP Basic 認証ヘッダー文字列を生成する（0g0 API への認証に使用）。 */
 function basicAuthHeader(clientId: string, clientSecret: string): string {
   return `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
 }
@@ -106,6 +145,11 @@ export interface TokenData {
   };
 }
 
+/**
+ * OAuth2 認可コードをアクセストークン・リフレッシュトークンに交換する。
+ * `/api/auth/callback` Route Handler から呼び出される。
+ * 失敗時（非 2xx レスポンス）は `null` を返す。
+ */
 export async function exchangeCode(code: string, redirectTo: string): Promise<TokenData | null> {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const res = await fetch(`${authBaseUrl}/auth/exchange`, {
@@ -121,6 +165,11 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
   return data;
 }
 
+/**
+ * リフレッシュトークンを使って新しいアクセストークンとリフレッシュトークンを取得する。
+ * access_token (15分) 期限切れ時に `requireSession()` から自動的に呼び出される。
+ * 失敗時は `null` を返す（リフレッシュトークン自体が失効している場合など）。
+ */
 export async function refreshTokens(
   refreshToken: string,
 ): Promise<{ access_token: string; refresh_token: string } | null> {
@@ -138,6 +187,11 @@ export async function refreshTokens(
   return data;
 }
 
+/**
+ * リフレッシュトークンを 0g0 auth server で失効させる。
+ * `/api/auth/logout` Route Handler から呼び出される。
+ * エラー時は例外を投げず、サイレントに失敗する（cookie クリアを優先するため）。
+ */
 export async function revokeToken(refreshToken: string): Promise<void> {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   await fetch(`${authBaseUrl}/auth/logout`, {

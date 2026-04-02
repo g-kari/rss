@@ -95,6 +95,7 @@ src/
     NSFWEyeAnimation.tsx     # NSFW コンテンツ表示アニメーション
     ServiceWorkerRegistration.tsx # Service Worker 登録コンポーネント
     ErrorBoundary.tsx        # エラー境界
+    Spinner.tsx              # ローディングスピナー（ArticleView・ArticleList で共有）
   hooks/
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
@@ -102,7 +103,7 @@ src/
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useUIState.ts            # UI 状態管理（テーマ・レイアウト・モーダル等）
     useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
-    useReadState.ts          # 既読・ブックマーク・後で読む状態 (localStorage + R2 同期)
+    useReadState.ts          # 既読・ブックマーク・後で読む・スヌーズ状態 (localStorage + R2 同期)
     useReadingHistory.ts     # 閲覧履歴管理
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
     useArticleAi.ts          # /api/ai/* fetch
@@ -118,6 +119,8 @@ src/
     useNSFWMode.ts           # NSFW モード（連打で活性化）
     useSyncedRef.ts          # stale closure 回避用の最新値 ref ユーティリティ
     useColumnResize.ts       # カラム幅リサイズ操作と localStorage 永続化
+    useMenuOpen.ts           # ドロップダウンメニュー開閉・click-outside 処理
+    useGracePeriod.ts        # 直前選択記事を 30 秒間フィルター対象外にする猶予期間管理
     useDebounce.ts           # デバウンスユーティリティ
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
@@ -206,7 +209,7 @@ const CLIENT_ID = process.env.CLIENT_ID!;
 users/{userId}/profile.json     # UserProfile (ログイン時に保存)
 users/{userId}/feeds.json       # Feed[]
 users/{userId}/articles.json    # Article[] (max 500, publishedAt 降順)
-users/{userId}/read-state.json  # { readIds, bookmarkIds, readingListIds }
+users/{userId}/read-state.json  # { readIds, bookmarkIds, readingListIds, snoozedUntil }
 users/{userId}/push.json        # PushConfig (Web Push サブスクリプション)
 ai-cache/summary/{sha256}       # AI 要約キャッシュ (永続)
 ai-cache/translation/{sha256}   # AI 翻訳キャッシュ (永続)
