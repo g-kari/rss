@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-02 (101)
+
+### simplify
+
+- **\`useFeeds\` ポーリング effect の \`isOnline\` deps 除外** — \`setInterval\` コールバック内で \`isOnline\` を直接参照していたため、オンライン/オフライン切り替えのたびにタイマーが再生成されていた。\`useSyncedRef(isOnline)\` で ref 化し、コールバック内では \`isOnlineRef.current\` を参照するよう変更。タイマーは \`userId\` 変化時のみ再生成されるようになり、不要な再セットアップを解消。
+
 ## 2026-04-02 (100)
 
 ### simplify
