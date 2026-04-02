@@ -196,4 +196,6 @@ export interface ReadState {
   globalFilter?: KeywordFilter | null;
   /** この日時以前に公開された記事は全て既読扱い（ISO 8601）*/
   readBeforeTimestamp?: string | null;
+  /** スヌーズ中の記事 — articleId → スヌーズ解除予定時刻（ISO 8601） */
+  snoozedUntil?: Record<string, string> | null;
 }

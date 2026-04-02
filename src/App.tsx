@@ -104,6 +104,7 @@ export default function App() {
     globalFilter,
     setGlobalFilter,
     readBeforeTimestamp,
+    snoozedUntil,
     markRead,
     markBulkRead,
     markAllRead,
@@ -111,6 +112,7 @@ export default function App() {
     toggleBookmark,
     toggleReadingList,
     toggleLike,
+    snoozeArticle,
   } = useReadState(user, articles, historyIds);
 
   const { recordEngagement } = useEngagement(user);
@@ -296,6 +298,7 @@ export default function App() {
     globalFilter,
     setGlobalFilter,
     readBeforeTimestamp,
+    snoozedUntil,
   });
 
   const currentIndex = useMemo(
@@ -397,6 +400,7 @@ export default function App() {
     searchRef,
     refreshFeeds,
     retryFeed,
+    snoozeArticle,
   });
 
   // ローディング

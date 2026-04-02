@@ -53,6 +53,7 @@ interface Options {
   globalFilter: KeywordFilter | null;
   setGlobalFilter: (filter: KeywordFilter | null) => void;
   readBeforeTimestamp?: string | null;
+  snoozedUntil?: Record<string, string>;
 }
 
 export function useFilteredArticles({
@@ -71,6 +72,7 @@ export function useFilteredArticles({
   globalFilter,
   setGlobalFilter,
   readBeforeTimestamp = null,
+  snoozedUntil,
 }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
@@ -196,6 +198,7 @@ export function useFilteredArticles({
         nsfwFeedIds,
         globalFilter: normalizedGlobalFilter,
         readBeforeTimestamp,
+        snoozedUntil,
       }),
     [
       articles,
@@ -218,6 +221,7 @@ export function useFilteredArticles({
       nsfwFeedIds,
       normalizedGlobalFilter,
       readBeforeTimestamp,
+      snoozedUntil,
     ],
   );
 

@@ -22,6 +22,7 @@ type ReadStateSets = {
   readingList: Set<string>;
   likes: Set<string>;
   readBeforeTimestamp: string | null;
+  snoozedUntil: Record<string, string>;
 };
 
 /** サーバーから取得した配列を既存 Set にマージして localStorage を更新する */
@@ -58,8 +59,19 @@ function makeToggle(
   };
 }
 
+/** 期限切れスヌーズを除去して Record<string, string> を返す */
+function pruneExpiredSnoozes(snoozed: Record<string, string>): Record<string, string> {
+  const now = new Date().toISOString();
+  const result: Record<string, string> = {};
+  for (const [id, until] of Object.entries(snoozed)) {
+    if (until > now) result[id] = until;
+  }
+  return result;
+}
+
 /** ReadStateSets + globalFilter を /api/read-state に POST する JSON 文字列にシリアライズする */
 function serializeReadState(sets: ReadStateSets, globalFilter: KeywordFilter | null): string {
+  const pruned = pruneExpiredSnoozes(sets.snoozedUntil);
   return JSON.stringify({
     readIds: [...sets.read],
     bookmarkIds: [...sets.bookmarks],
@@ -67,6 +79,7 @@ function serializeReadState(sets: ReadStateSets, globalFilter: KeywordFilter | n
     likeIds: [...sets.likes],
     globalFilter,
     readBeforeTimestamp: sets.readBeforeTimestamp,
+    snoozedUntil: Object.keys(pruned).length > 0 ? pruned : null,
   });
 }
 
@@ -93,6 +106,7 @@ interface ReadStateResult {
   globalFilter: KeywordFilter | null;
   setGlobalFilter: (filter: KeywordFilter | null) => void;
   readBeforeTimestamp: string | null;
+  snoozedUntil: Record<string, string>;
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
@@ -100,6 +114,7 @@ interface ReadStateResult {
   toggleBookmark: (articleId: string) => void;
   toggleReadingList: (articleId: string) => void;
   toggleLike: (articleId: string) => void;
+  snoozeArticle: (articleId: string, durationMs: number) => void;
 }
 
 export function useReadState(
@@ -122,6 +137,9 @@ export function useReadState(
   const [readBeforeTimestamp, setReadBeforeTimestamp] = useState<string | null>(() =>
     storageGet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP),
   );
+  const [snoozedUntil, setSnoozedUntil] = useState<Record<string, string>>(() =>
+    pruneExpiredSnoozes(loadJson<Record<string, string>>(STORAGE_KEYS.SNOOZED_UNTIL, {})),
+  );
 
   // 4つのセットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
   const stateRef = useRef<ReadStateSets>({
@@ -130,6 +148,9 @@ export function useReadState(
     readingList: readingListIds,
     likes: likeIds,
     readBeforeTimestamp: storageGet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP),
+    snoozedUntil: pruneExpiredSnoozes(
+      loadJson<Record<string, string>>(STORAGE_KEYS.SNOOZED_UNTIL, {}),
+    ),
   });
   const historyIdsRef = useSyncedRef(historyIds);
   const articlesRef = useSyncedRef(articles);
@@ -142,6 +163,7 @@ export function useReadState(
     readingList: readingListIds,
     likes: likeIds,
     readBeforeTimestamp,
+    snoozedUntil,
   };
 
   // ログイン後にサーバーの既読・ブックマーク・後で読む・グローバルフィルター状態をマージ
@@ -166,6 +188,14 @@ export function useReadState(
           const next = !prev || server > prev ? server : prev;
           if (next !== prev) storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
           return next;
+        });
+      }
+      // snoozedUntil はサーバー値とローカル値をマージ（期限切れは除去）
+      if ("snoozedUntil" in state && state.snoozedUntil) {
+        setSnoozedUntil((prev) => {
+          const merged = pruneExpiredSnoozes({ ...state.snoozedUntil!, ...prev });
+          saveJson(STORAGE_KEYS.SNOOZED_UNTIL, merged);
+          return merged;
         });
       }
     });
@@ -303,6 +333,19 @@ export function useReadState(
     [scheduleSyncToServer],
   );
 
+  const snoozeArticle = useCallback(
+    (articleId: string, durationMs: number) => {
+      const until = new Date(Date.now() + durationMs).toISOString();
+      setSnoozedUntil((prev) => {
+        const next = pruneExpiredSnoozes({ ...prev, [articleId]: until });
+        saveJson(STORAGE_KEYS.SNOOZED_UNTIL, next);
+        return next;
+      });
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
+  );
+
   return {
     readIds,
     bookmarkIds,
@@ -311,6 +354,7 @@ export function useReadState(
     globalFilter,
     setGlobalFilter,
     readBeforeTimestamp,
+    snoozedUntil,
     markRead,
     markBulkRead,
     markAllRead,
@@ -318,5 +362,6 @@ export function useReadState(
     toggleBookmark,
     toggleReadingList,
     toggleLike,
+    snoozeArticle,
   };
 }

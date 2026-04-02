@@ -40,6 +40,8 @@ export interface ArticleFilterOptions {
   nsfwFeedIds: Set<string>;
   globalFilter: KeywordFilter | null;
   readBeforeTimestamp: string | null;
+  /** スヌーズ中の記事 — articleId → スヌーズ解除予定時刻（ISO 8601） */
+  snoozedUntil?: Record<string, string>;
 }
 
 export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
@@ -63,13 +65,20 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     nsfwFeedIds,
     globalFilter,
     readBeforeTimestamp,
+    snoozedUntil,
   } = opts;
 
   const isActive = (id: string) => activeIds.has(id);
   const q = rawQuery.trim().toLowerCase();
   const rangeStart = getDateRangeStart(dateRange);
+  const now = snoozedUntil && Object.keys(snoozedUntil).length > 0 ? new Date().toISOString() : "";
 
   let list = articles.filter((a) => {
+    // スヌーズ中の記事は非表示（アクティブな記事は除外しない）
+    if (snoozedUntil && !isActive(a.id)) {
+      const until = snoozedUntil[a.id];
+      if (until && until > now) return false;
+    }
     // フィード絞り込み
     if (feedId === SPECIAL_FEED_IDS.BOOKMARKS) {
       if (!bookmarkIds.has(a.id)) return false;
