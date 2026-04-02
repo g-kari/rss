@@ -69,8 +69,7 @@ export function useFeedOperations({
 
   async function deleteFeed(id: string) {
     try {
-      const res = await apiFetch(`/api/feeds/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      await apiFetchJson(`/api/feeds/${id}`, { method: "DELETE" });
       onFeedDeleted(id);
     } catch {
       setError("フィードの削除に失敗しました");
