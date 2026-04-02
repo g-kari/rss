@@ -13,7 +13,7 @@ import { r2Get, r2Put, sha256Hex } from "./r2";
 import { compareByDateDesc } from "./article-utils";
 
 /** 1 ページあたりの記事数 */
-export const PAGE_SIZE = 100;
+export const PAGE_SIZE = 500;
 
 /** 1 ユーザーあたりの最大フィード購読数 */
 export const MAX_FEEDS_PER_USER = 1000;
@@ -297,7 +297,7 @@ export async function getUserLatestArticles(bucket: R2Bucket, userId: string): P
   if (subs.length === 0) return [];
 
   const pages = await Promise.all(subs.map((s) => readLatestArticles(bucket, s.feedHash)));
-  return sortByDate(pages.flat()).slice(0, 2000);
+  return sortByDate(pages.flat()).slice(0, 5000);
 }
 
 /** R2 の prefix/ 直下にある ID（ディレクトリ名）を全件列挙する */
