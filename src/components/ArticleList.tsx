@@ -15,6 +15,7 @@ import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { useSearchHistory } from "../hooks/useSearchHistory";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
+import Spinner from "./Spinner";
 import {
   type ArticleItemProps,
   resolveThumbnail,
@@ -553,19 +554,7 @@ function LoadMoreButton({ onLoad }: { onLoad: () => Promise<void> }) {
         className="flex items-center gap-1.5 text-[11px] tracking-[0.06em] px-3 py-1.5 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200 disabled:opacity-50"
       >
         {loading ? (
-          <svg
-            className="w-3 h-3 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
+          <Spinner className="w-3 h-3" />
         ) : (
           <svg
             width="11"
