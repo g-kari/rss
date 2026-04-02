@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (102)
+
+### simplify
+
+- **`useFeeds` の `onErr` を `useCallback` から `useRef` に変換して deps から除外** — `onErr` は `onErrorRef`（ref）経由で最新コールバックを参照するため再生成不要なのに `useCallback(fn, [])` で定義されており、5つの依存配列に `onErr` が含まれていた。`useRef` に変更して `onErrRef.current(...)` パターンに統一することで、ref アクセスとして linter に認識され deps から完全に除外。
+
 ## 2026-04-02 (101)
 
 ### simplify
