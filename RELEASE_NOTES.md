@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (112)
+
+### リファクタリング
+
+- `ChevronLeftSmall` / `ChevronRightSmall` を `ChevronSmall` に統合 — path データだけ異なる 2 コンポーネントを `direction` prop 付きの 1 コンポーネントにまとめ 7 行削減
+
 ## 2026-04-02 (111)
 
 ### リファクタリング
