@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (106)
+
+### simplify
+
+- `FeedSidebar` の `pinnedFeeds`/`unpinnedFeeds` レンダリングを `renderFeed` ヘルパーに統合 — `isPinned` と `animationIndex` のみ異なる同一の `FeedItem` プロップス群が2箇所に重複していたため、内部ヘルパー関数 `renderFeed(feed, isPinned, globalIdx)` に抽出し約25行を削減
+
 ## 2026-04-02 (105)
 
 ### simplify

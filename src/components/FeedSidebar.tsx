@@ -196,6 +196,29 @@ export default function FeedSidebar({
     window.location.href = "/api/feeds/export";
   }
 
+  function renderFeed(feed: Feed, isPinned: boolean, globalIdx: number) {
+    const count = unreadByFeed.get(feed.id) ?? 0;
+    return (
+      <FeedItem
+        key={feed.id}
+        feed={feed}
+        count={count}
+        isSelected={selectedFeedId === feed.id}
+        isPinned={isPinned}
+        animationIndex={globalIdx}
+        onSelect={() => onSelectFeed(feed.id)}
+        onMarkAllRead={() => onMarkAllRead(feed.id)}
+        onDelete={() => deleteFeed(feed.id)}
+        onTogglePin={() => onTogglePinFeed(feed.id)}
+        onRename={(title) => renameFeed(feed.id, title)}
+        onRetry={() => onRetryFeed(feed.id)}
+        onReinfer={onReinferFeed ? () => onReinferFeed(feed.id) : undefined}
+        onFilterSave={(filter) => saveFilter(feed.id, filter)}
+        onToggleNsfw={() => onToggleNsfwFeed(feed)}
+      />
+    );
+  }
+
   const { unreadByFeed, totalUnread } = useMemo(() => {
     const byFeed = new Map<string, number>();
     let total = 0;
@@ -558,29 +581,7 @@ export default function FeedSidebar({
           </div>
         )}
 
-        {pinnedFeeds.map((feed, i) => {
-          const count = unreadByFeed.get(feed.id) ?? 0;
-          const isSelected = selectedFeedId === feed.id;
-          return (
-            <FeedItem
-              key={feed.id}
-              feed={feed}
-              count={count}
-              isSelected={isSelected}
-              isPinned={true}
-              animationIndex={i}
-              onSelect={() => onSelectFeed(feed.id)}
-              onMarkAllRead={() => onMarkAllRead(feed.id)}
-              onDelete={() => deleteFeed(feed.id)}
-              onTogglePin={() => onTogglePinFeed(feed.id)}
-              onRename={(title) => renameFeed(feed.id, title)}
-              onRetry={() => onRetryFeed(feed.id)}
-              onReinfer={onReinferFeed ? () => onReinferFeed(feed.id) : undefined}
-              onFilterSave={(filter) => saveFilter(feed.id, filter)}
-              onToggleNsfw={() => onToggleNsfwFeed(feed)}
-            />
-          );
-        })}
+        {pinnedFeeds.map((feed, i) => renderFeed(feed, true, i))}
 
         {pinnedFeeds.length > 0 && unpinnedFeeds.length > 0 && (
           <div className="mx-4 my-1.5">
@@ -588,29 +589,7 @@ export default function FeedSidebar({
           </div>
         )}
 
-        {unpinnedFeeds.map((feed, i) => {
-          const count = unreadByFeed.get(feed.id) ?? 0;
-          const isSelected = selectedFeedId === feed.id;
-          return (
-            <FeedItem
-              key={feed.id}
-              feed={feed}
-              count={count}
-              isSelected={isSelected}
-              isPinned={false}
-              animationIndex={pinnedFeeds.length + i}
-              onSelect={() => onSelectFeed(feed.id)}
-              onMarkAllRead={() => onMarkAllRead(feed.id)}
-              onDelete={() => deleteFeed(feed.id)}
-              onTogglePin={() => onTogglePinFeed(feed.id)}
-              onRename={(title) => renameFeed(feed.id, title)}
-              onRetry={() => onRetryFeed(feed.id)}
-              onReinfer={onReinferFeed ? () => onReinferFeed(feed.id) : undefined}
-              onFilterSave={(filter) => saveFilter(feed.id, filter)}
-              onToggleNsfw={() => onToggleNsfwFeed(feed)}
-            />
-          );
-        })}
+        {unpinnedFeeds.map((feed, i) => renderFeed(feed, false, pinnedFeeds.length + i))}
       </nav>
 
       {/* ユーザー情報 */}
