@@ -36,6 +36,7 @@ interface FeedsState {
   dismissNewArticles: () => void;
   loadMoreFeedArticles: (feedId: string) => Promise<void>;
   loadMoreAllFeedsArticles: (feeds: Feed[]) => Promise<void>;
+  skipRemainingPages: (feedId: string | null) => void;
 }
 
 export function useFeeds(
@@ -282,6 +283,22 @@ export function useFeeds(
     if (newArticles.length > 0) setArticles((prev) => mergeUniqueArticles(prev, newArticles));
   }, []);
 
+  // markAllRead 実行後に呼び出し、残りのサーバーページをスキップして
+  // LoadMoreButton が表示されないようにする（古い未読記事が再出現するのを防ぐ）
+  const skipRemainingPages = useCallback(
+    (feedId: string | null) => {
+      const targets = feedId ? feeds.filter((f) => f.id === feedId) : feeds;
+      setLoadedFeedPages((prev) => {
+        const next = new Map(prev);
+        for (const f of targets) {
+          if (f.pageCount) next.set(f.id, f.pageCount + 1);
+        }
+        return next;
+      });
+    },
+    [feeds],
+  );
+
   return {
     feeds,
     articles,
@@ -300,5 +317,6 @@ export function useFeeds(
     dismissNewArticles,
     loadMoreFeedArticles,
     loadMoreAllFeedsArticles,
+    skipRemainingPages,
   };
 }

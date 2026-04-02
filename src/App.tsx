@@ -81,6 +81,7 @@ export default function App() {
     dismissNewArticles,
     loadMoreFeedArticles,
     loadMoreAllFeedsArticles,
+    skipRemainingPages,
   } = useFeeds(user, showToast);
   const {
     supported: pushSupported,
@@ -713,7 +714,10 @@ export default function App() {
             onSelectArticle={selectArticle}
             onToggleRead={toggleRead}
             onToggleBookmark={toggleBookmark}
-            onMarkAllRead={() => markAllRead(selectedFeedId)}
+            onMarkAllRead={() => {
+              markAllRead(selectedFeedId);
+              skipRemainingPages(selectedFeedId);
+            }}
             filtered={filtered}
             visible={visible}
             hasMore={hasMore}
