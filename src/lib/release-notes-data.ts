@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-03 (113)
+
+### リファクタリング
+
+- \`Spinner\` コンポーネントを新設し、\`ArticleView\` のローカル \`SpinIcon\` と \`ArticleList\` のインライン SVG を統合
+
 ## 2026-04-02 (112)
 
 ### リファクタリング
