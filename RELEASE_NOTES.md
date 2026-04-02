@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-02 (104)
+
+### リファクタリング
+
+- `useKeyboardNav` の `isSpecialFeed` チェックを簡潔化 — `as (typeof SPECIAL_FEED_IDS)[keyof typeof SPECIAL_FEED_IDS]` という難解な型アサーションを `Object.values<string>()` + `!== null` に変更し、3行を2行に整理
+
 ## 2026-04-02 (103)
 
 ### 新機能
