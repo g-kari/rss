@@ -241,7 +241,13 @@ export default function FeedSidebar({
     const q = feedSearch.trim().toLowerCase();
     const matchFeed = (f: Feed) => !q || (f.title || f.url).toLowerCase().includes(q);
     const pinned = feeds.filter((f) => pinnedFeedIds.has(f.id) && matchFeed(f));
-    const unpinned = feeds.filter((f) => !pinnedFeedIds.has(f.id) && matchFeed(f));
+    const unpinned = feeds
+      .filter((f) => !pinnedFeedIds.has(f.id) && matchFeed(f))
+      .sort((a, b) => {
+        const aHigh = a.priority === "high" ? 0 : 1;
+        const bHigh = b.priority === "high" ? 0 : 1;
+        return aHigh - bHigh;
+      });
     return { pinnedFeeds: pinned, unpinnedFeeds: unpinned };
   }, [feeds, pinnedFeedIds, feedSearch]);
 
