@@ -269,6 +269,7 @@ export default function App() {
     updateQuery,
     searchRef,
     sentinelRef,
+    notifyArticlesAdded,
   } = useFilteredArticles({
     articles,
     feeds,
@@ -312,6 +313,16 @@ export default function App() {
   const prevArticle = currentIndex > 0 ? filtered[currentIndex - 1] : null;
   const nextArticle =
     currentIndex >= 0 && currentIndex < filtered.length - 1 ? filtered[currentIndex + 1] : null;
+
+  // サーバーから過去記事をロードし、ロード完了後にクライアントページを自動拡張する
+  const handleLoadMoreFeedArticles = useCallback(async () => {
+    if (selectedFeedId) {
+      await loadMoreFeedArticles(selectedFeedId);
+    } else {
+      await loadMoreAllFeedsArticles(feeds);
+    }
+    notifyArticlesAdded();
+  }, [selectedFeedId, loadMoreFeedArticles, loadMoreAllFeedsArticles, feeds, notifyArticlesAdded]);
 
   const selectArticle = useCallback(
     (article: Article) => {
@@ -754,11 +765,7 @@ export default function App() {
             searchRef={searchRef}
             sentinelRef={sentinelRef}
             feedHasMorePages={feedHasMorePages}
-            onLoadMoreFeedArticles={
-              selectedFeedId
-                ? () => loadMoreFeedArticles(selectedFeedId)
-                : () => loadMoreAllFeedsArticles(feeds)
-            }
+            onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
             globalFilter={globalFilter}
             onSaveGlobalFilter={setGlobalFilter}
           />
