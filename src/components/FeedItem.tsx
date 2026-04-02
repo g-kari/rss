@@ -30,6 +30,23 @@ function NsfwIcon({ size = 10 }: { size?: number }) {
   );
 }
 
+function StarIcon({ size = 10, filled = false }: { size?: number; filled?: boolean }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 1l1.2 2.4L9 3.8 7 5.7l.5 2.8L5 7.2 2.5 8.5 3 5.7 1 3.8l2.8-.4z" />
+    </svg>
+  );
+}
+
 function FilterIcon({ size = 10 }: { size?: number }) {
   return (
     <svg
@@ -62,6 +79,7 @@ export interface FeedItemProps {
   onReinfer?: () => Promise<void>;
   onFilterSave?: (filter: KeywordFilter | null) => Promise<void>;
   onToggleNsfw?: () => void;
+  onTogglePriority?: () => void;
 }
 
 interface Action {
@@ -90,6 +108,7 @@ export default function FeedItem({
   onReinfer,
   onFilterSave,
   onToggleNsfw,
+  onTogglePriority,
 }: FeedItemProps) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -189,6 +208,17 @@ export default function FeedItem({
       ),
       onClick: () => setDetailOpen(true),
       className: "text-text-faint hover:text-text-default",
+    },
+    {
+      key: "priority",
+      label: feed.priority === "high" ? "スター解除" : "スター付き",
+      icon: <StarIcon filled={feed.priority === "high"} />,
+      onClick: () => onTogglePriority?.(),
+      show: !!onTogglePriority,
+      className:
+        feed.priority === "high"
+          ? "text-amber-400 hover:text-amber-300"
+          : "text-text-faint hover:text-text-default",
     },
     {
       key: "nsfw",
@@ -370,6 +400,11 @@ export default function FeedItem({
             >
               {feed.title || feed.url}
             </span>
+            {feed.priority === "high" && (
+              <span title="スター付きフィード" className="flex-shrink-0 text-amber-400">
+                <StarIcon size={8} filled />
+              </span>
+            )}
             {feed.nsfw && (
               <span title="NSFWフィード" className="flex-shrink-0 text-rose-400">
                 <NsfwIcon size={8} />

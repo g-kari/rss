@@ -68,6 +68,8 @@ export interface UserSubscription {
   nsfw?: boolean;
   /** フェッチ時に付与する Cookie ヘッダー値（年齢確認ゲート等の突破に使用） */
   requestCookie?: string;
+  /** 優先度 — "high" のとき高優先度（スター付き）フィードとして扱う */
+  priority?: "high";
 }
 
 /** クライアント向けフィード型（SharedFeedMeta + UserSubscription を合成して返す） */
@@ -87,6 +89,8 @@ export interface Feed {
   filter?: KeywordFilter;
   /** NSFW フラグ — true のとき NSFW モードでのみ記事を表示 */
   nsfw?: boolean;
+  /** 優先度 — "high" のとき高優先度（スター付き）フィードとして扱う */
+  priority?: "high";
   /** LLM で CSS セレクタを推論したスクレイピングフィードか */
   isScraping?: boolean;
   /** 現在使用中の CSS セレクタ（isScraping のみ） */

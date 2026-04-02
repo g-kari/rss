@@ -28,9 +28,12 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
   return withSession(async ({ session, env }) => {
-    const parsed = await parseJsonBody<{ title?: unknown; filter?: unknown; nsfw?: unknown }>(
-      request,
-    );
+    const parsed = await parseJsonBody<{
+      title?: unknown;
+      filter?: unknown;
+      nsfw?: unknown;
+      priority?: unknown;
+    }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
 
@@ -70,6 +73,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (typeof body.nsfw !== "boolean")
         return NextResponse.json({ error: "nsfw must be a boolean" }, { status: 400 });
       sub.nsfw = body.nsfw;
+    }
+
+    // priority の更新（存在する場合のみ）
+    if ("priority" in body) {
+      if (body.priority !== "high" && body.priority !== null)
+        return NextResponse.json({ error: "priority must be 'high' or null" }, { status: 400 });
+      if (body.priority === null) {
+        delete sub.priority;
+      } else {
+        sub.priority = body.priority;
+      }
     }
 
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);

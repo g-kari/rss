@@ -41,6 +41,7 @@ interface Props {
   onActivateNsfw: () => void;
   onDeactivateNsfw: () => void;
   onToggleNsfwFeed: (feed: Feed) => void;
+  onTogglePriorityFeed: (feed: Feed) => void;
   recommendations?: RecommendedFeed[];
   recommendationsLoading?: boolean;
   recommendationsRefreshing?: boolean;
@@ -119,6 +120,7 @@ export default function FeedSidebar({
   onActivateNsfw,
   onDeactivateNsfw,
   onToggleNsfwFeed,
+  onTogglePriorityFeed,
   recommendations,
   recommendationsLoading,
   recommendationsRefreshing,
@@ -218,6 +220,7 @@ export default function FeedSidebar({
         onReinfer={onReinferFeed ? () => onReinferFeed(feed.id) : undefined}
         onFilterSave={(filter) => saveFilter(feed.id, filter)}
         onToggleNsfw={() => onToggleNsfwFeed(feed)}
+        onTogglePriority={() => onTogglePriorityFeed(feed)}
       />
     );
   }

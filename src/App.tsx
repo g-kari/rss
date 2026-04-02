@@ -189,6 +189,16 @@ export default function App() {
     [patchFeed, updateFeed],
   );
 
+  const togglePriorityFeed = useCallback(
+    async (feed: Feed) => {
+      const updated = await patchFeed(feed.id, {
+        priority: feed.priority === "high" ? null : "high",
+      });
+      if (updated) updateFeed(updated);
+    },
+    [patchFeed, updateFeed],
+  );
+
   const saveFilter = useCallback(
     async (feedId: string, filter: KeywordFilter | null) => {
       const updated = await patchFeed(feedId, { filter });
@@ -707,6 +717,7 @@ export default function App() {
             onActivateNsfw={activateNSFW}
             onDeactivateNsfw={deactivateNSFW}
             onToggleNsfwFeed={toggleNsfwFeed}
+            onTogglePriorityFeed={togglePriorityFeed}
             recommendations={recommendations}
             recommendationsLoading={recommendationsLoading}
             recommendationsRefreshing={recommendationsRefreshing}
