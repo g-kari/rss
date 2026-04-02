@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody, requireString } from "@/lib/server-auth";
 import { readCache, writeCache } from "@/lib/recommendation";
-
-const MAX_DISMISS_ID_LENGTH = 128;
+import { MAX_ID_LENGTH } from "@/lib/validation";
 const MAX_DISMISSED_IDS = 1000;
 
 export async function POST(req: NextRequest) {
   return withSession(async ({ session, env }) => {
     const parsed = await parseJsonBody<{ id?: unknown }>(req);
     if (!parsed.ok) return parsed.error;
-    const dismissId = requireString(parsed.data.id, MAX_DISMISS_ID_LENGTH);
+    const dismissId = requireString(parsed.data.id, MAX_ID_LENGTH);
     if (!dismissId) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
