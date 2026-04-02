@@ -3,6 +3,23 @@ import type { Article, KeywordFilter } from "../types";
 const MAX_KEYWORD_LENGTH = 100;
 const MAX_KEYWORDS_PER_ARRAY = 99999;
 
+/** `/pattern/` 形式の正規表現キーワードかどうかを判定する */
+function isRegexKeyword(kw: string): boolean {
+  return kw.startsWith("/") && kw.endsWith("/") && kw.length > 2;
+}
+
+/** キーワードが記事テキストにマッチするかを判定する。正規表現キーワードは大文字小文字を無視して評価する */
+function matchesText(kw: string, text: string): boolean {
+  if (isRegexKeyword(kw)) {
+    try {
+      return new RegExp(kw.slice(1, -1), "i").test(text);
+    } catch {
+      return false;
+    }
+  }
+  return text.includes(kw);
+}
+
 /**
  * ユーザー入力のキーワード配列をサニタイズする。
  * - 文字列以外の要素を除去
@@ -21,12 +38,12 @@ export function sanitizeKeywords(arr: unknown[]): string[] {
   ].slice(0, MAX_KEYWORDS_PER_ARRAY);
 }
 
-/** KeywordFilter のキーワードを小文字化して正規化する */
+/** KeywordFilter のキーワードを正規化する。正規表現キーワードはそのまま保持し、それ以外は小文字化する */
 export function normalizeFilter(filter: KeywordFilter): KeywordFilter {
   return {
     ...filter,
-    include: filter.include.map((kw) => kw.toLowerCase()),
-    exclude: filter.exclude.map((kw) => kw.toLowerCase()),
+    include: filter.include.map((kw) => (isRegexKeyword(kw) ? kw : kw.toLowerCase())),
+    exclude: filter.exclude.map((kw) => (isRegexKeyword(kw) ? kw : kw.toLowerCase())),
   };
 }
 
@@ -60,8 +77,8 @@ export function matchesKeywordFilter(article: Article, filter: KeywordFilter): b
   }
   const text = fields.join(" ").toLowerCase();
   return (
-    exclude.every((kw) => !text.includes(kw)) &&
-    (include.length === 0 || include.some((kw) => text.includes(kw)))
+    exclude.every((kw) => !matchesText(kw, text)) &&
+    (include.length === 0 || include.some((kw) => matchesText(kw, text)))
   );
 }
 
