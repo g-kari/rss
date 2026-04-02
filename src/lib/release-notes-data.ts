@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-02 (108)
+
+### simplify
+
+- \`FeedSidebar\` フッターのアイコンボタン群を \`FooterIconButton\` コンポーネントに統合 — インポート・リリースノート・エクスポート・インストール・テーマ切替・ログアウトの各ボタンが同一の \`<button>/<svg>/<path>\` 3層構造を繰り返していたため、\`FooterIconButton\` を抽出してボイラープレートを約120行削減
+
 ## 2026-04-02 (107)
 
 ### simplify
