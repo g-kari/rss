@@ -11,6 +11,8 @@ import {
   toggleSetItem,
   loadJson,
   saveJson,
+  storageGet,
+  storageSet,
 } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
@@ -19,6 +21,7 @@ type ReadStateSets = {
   bookmarks: Set<string>;
   readingList: Set<string>;
   likes: Set<string>;
+  readBeforeTimestamp: string | null;
 };
 
 /** サーバーから取得した配列を既存 Set にマージして localStorage を更新する */
@@ -63,6 +66,7 @@ function serializeReadState(sets: ReadStateSets, globalFilter: KeywordFilter | n
     readingListIds: [...sets.readingList],
     likeIds: [...sets.likes],
     globalFilter,
+    readBeforeTimestamp: sets.readBeforeTimestamp,
   });
 }
 
@@ -88,6 +92,7 @@ interface ReadStateResult {
   likeIds: Set<string>;
   globalFilter: KeywordFilter | null;
   setGlobalFilter: (filter: KeywordFilter | null) => void;
+  readBeforeTimestamp: string | null;
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
@@ -114,6 +119,9 @@ export function useReadState(
     loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
   );
   const globalFilterRef = useSyncedRef<KeywordFilter | null>(globalFilter);
+  const [readBeforeTimestamp, setReadBeforeTimestamp] = useState<string | null>(() =>
+    storageGet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP),
+  );
 
   // 4つのセットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
   const stateRef = useRef<ReadStateSets>({
@@ -121,6 +129,7 @@ export function useReadState(
     bookmarks: bookmarkIds,
     readingList: readingListIds,
     likes: likeIds,
+    readBeforeTimestamp: storageGet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP),
   });
   const historyIdsRef = useSyncedRef(historyIds);
   const articlesRef = useSyncedRef(articles);
@@ -132,6 +141,7 @@ export function useReadState(
     bookmarks: bookmarkIds,
     readingList: readingListIds,
     likes: likeIds,
+    readBeforeTimestamp,
   };
 
   // ログイン後にサーバーの既読・ブックマーク・後で読む・グローバルフィルター状態をマージ
@@ -148,6 +158,15 @@ export function useReadState(
         const serverFilter = state.globalFilter ?? null;
         saveJson(STORAGE_KEYS.GLOBAL_FILTER, serverFilter);
         setGlobalFilterState(serverFilter);
+      }
+      // readBeforeTimestamp はサーバー値と比較して新しい方を使う（クロスデバイス同期）
+      if ("readBeforeTimestamp" in state && state.readBeforeTimestamp) {
+        setReadBeforeTimestamp((prev) => {
+          const server = state.readBeforeTimestamp!;
+          const next = !prev || server > prev ? server : prev;
+          if (next !== prev) storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
+          return next;
+        });
       }
     });
   }, [user]);
@@ -246,6 +265,16 @@ export function useReadState(
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
+      // 全フィード「全既読」の場合は readBeforeTimestamp を現在時刻に設定する。
+      // これにより、まだロードされていないサーバー側の古い記事も既読扱いになる。
+      if (!feedId) {
+        const now = new Date().toISOString();
+        setReadBeforeTimestamp((prev) => {
+          const next = !prev || now > prev ? now : prev;
+          storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
+          return next;
+        });
+      }
       scheduleSyncToServer();
     },
     [scheduleSyncToServer],
@@ -281,6 +310,7 @@ export function useReadState(
     likeIds,
     globalFilter,
     setGlobalFilter,
+    readBeforeTimestamp,
     markRead,
     markBulkRead,
     markAllRead,

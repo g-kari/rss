@@ -190,4 +190,6 @@ export interface ReadState {
   readingListIds: string[];
   likeIds: string[];
   globalFilter?: KeywordFilter | null;
+  /** この日時以前に公開された記事は全て既読扱い（ISO 8601）*/
+  readBeforeTimestamp?: string | null;
 }

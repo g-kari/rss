@@ -152,11 +152,11 @@ src/
 
 ### キャッシュ層の使い分け
 
-| 対象         | キャッシュ層                             | TTL  | 実装場所                        |
-| ------------ | ---------------------------------------- | ---- | ------------------------------- |
-| 記事全文     | **Cloudflare Cache API**                 | 7日  | `app/api/content/route.ts`      |
-| OGP 画像 URL | **Cloudflare Cache API**                 | 30日 | `app/api/ogp/route.ts`          |
-| AI 要約      | **R2** (`ai-cache/summary/{sha256}`)     | 永続 | `app/api/ai/summarize/route.ts` |
+| 対象         | キャッシュ層                         | TTL  | 実装場所                        |
+| ------------ | ------------------------------------ | ---- | ------------------------------- |
+| 記事全文     | **Cloudflare Cache API**             | 7日  | `app/api/content/route.ts`      |
+| OGP 画像 URL | **Cloudflare Cache API**             | 30日 | `app/api/ogp/route.ts`          |
+| AI 要約      | **R2** (`ai-cache/summary/{sha256}`) | 永続 | `app/api/ai/summarize/route.ts` |
 
 **R2 は使わない** — 揮発性のキャッシュには Cloudflare Cache API (`caches.default`) を使う。R2 は永続データ（ユーザーデータ・AI 結果）専用。
 

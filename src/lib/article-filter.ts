@@ -3,6 +3,21 @@ import { matchesKeywordFilter } from "./keyword-filter";
 import { articleMatchesQuery, getDateRangeStart } from "./article-utils";
 import { SPECIAL_FEED_IDS } from "./storage";
 
+/**
+ * 記事が既読かどうかを判定する。
+ * readIds に含まれる場合、または readBeforeTimestamp 以前に公開された場合は既読扱い。
+ */
+export function isArticleRead(
+  article: Article,
+  readIds: Set<string>,
+  readBeforeTimestamp: string | null,
+): boolean {
+  if (readIds.has(article.id)) return true;
+  if (!readBeforeTimestamp) return false;
+  const ts = article.publishedAt ?? article.createdAt;
+  return ts <= readBeforeTimestamp;
+}
+
 export interface ArticleFilterOptions {
   feedId: string | null;
   /** feedHash → KeywordFilter のマップ（呼び出し側で buildFilterMap を使って事前計算すること） */
@@ -24,6 +39,7 @@ export interface ArticleFilterOptions {
   nsfwMode: boolean;
   nsfwFeedIds: Set<string>;
   globalFilter: KeywordFilter | null;
+  readBeforeTimestamp: string | null;
 }
 
 export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
@@ -46,6 +62,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     nsfwMode,
     nsfwFeedIds,
     globalFilter,
+    readBeforeTimestamp,
   } = opts;
 
   const isActive = (id: string) => activeIds.has(id);
@@ -75,7 +92,8 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     }
 
     // 未読フィルター（アクティブな記事は除外しない）
-    if (unreadOnly && readIds.has(a.id) && !isActive(a.id)) return false;
+    if (unreadOnly && isArticleRead(a, readIds, readBeforeTimestamp) && !isActive(a.id))
+      return false;
 
     // ブックマークフィルター（アクティブな記事は除外しない）
     if (bookmarkOnly && !bookmarkIds.has(a.id) && !isActive(a.id)) return false;
