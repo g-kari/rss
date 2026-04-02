@@ -116,7 +116,15 @@ const ExternalLinkIcon = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-const ChevronLeftSmall = ({ width = 12, height = 12 }: { width?: number; height?: number }) => (
+const ChevronSmall = ({
+  width = 12,
+  height = 12,
+  direction,
+}: {
+  width?: number;
+  height?: number;
+  direction: "left" | "right";
+}) => (
   <svg
     width={width}
     height={height}
@@ -127,22 +135,7 @@ const ChevronLeftSmall = ({ width = 12, height = 12 }: { width?: number; height?
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <path d="M8 2L4 6l4 4" />
-  </svg>
-);
-
-const ChevronRightSmall = ({ width = 12, height = 12 }: { width?: number; height?: number }) => (
-  <svg
-    width={width}
-    height={height}
-    viewBox="0 0 12 12"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M4 2l4 4-4 4" />
+    <path d={direction === "left" ? "M8 2L4 6l4 4" : "M4 2l4 4-4 4"} />
   </svg>
 );
 
@@ -464,7 +457,7 @@ function ArticleNavigation({
           className="flex-1 text-left px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
         >
           <span className="flex items-center gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
-            <ChevronLeftSmall />
+            <ChevronSmall direction="left" />
             前の記事
           </span>
           <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
@@ -481,7 +474,7 @@ function ArticleNavigation({
         >
           <span className="flex items-center justify-end gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
             次の記事
-            <ChevronRightSmall />
+            <ChevronSmall direction="right" />
           </span>
           <span className="text-[12px] leading-snug text-text-muted group-hover:text-text-strong transition-colors duration-200 line-clamp-2">
             {nextArticle.title}
@@ -1626,7 +1619,7 @@ export default function ArticleView({
           <div className="flex-1 overflow-hidden flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
             {prevArticle && onSelectPrev && (
               <>
-                <ChevronLeftSmall />
+                <ChevronSmall direction="left" />
                 <span className="text-[11px] text-text-faint truncate">{prevArticle.title}</span>
               </>
             )}
@@ -1636,7 +1629,7 @@ export default function ArticleView({
             {nextArticle && onSelectNext && (
               <>
                 <span className="text-[11px] text-text-faint truncate">{nextArticle.title}</span>
-                <ChevronRightSmall />
+                <ChevronSmall direction="right" />
               </>
             )}
           </div>
