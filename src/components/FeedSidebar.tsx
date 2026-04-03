@@ -41,6 +41,7 @@ interface Props {
   onDeactivateNsfw: () => void;
   onToggleNsfwFeed: (feed: Feed) => void;
   onTogglePriorityFeed: (feed: Feed) => void;
+  onSetCategoryFeed?: (feed: Feed, category: string | null) => Promise<void>;
   recommendations?: RecommendedFeed[];
   recommendationsLoading?: boolean;
   recommendationsRefreshing?: boolean;
@@ -120,6 +121,7 @@ export default function FeedSidebar({
   onDeactivateNsfw,
   onToggleNsfwFeed,
   onTogglePriorityFeed,
+  onSetCategoryFeed,
   recommendations,
   recommendationsLoading,
   recommendationsRefreshing,
@@ -209,6 +211,9 @@ export default function FeedSidebar({
         onFilterSave={(filter) => onSaveFilter(feed.id, filter)}
         onToggleNsfw={() => onToggleNsfwFeed(feed)}
         onTogglePriority={() => onTogglePriorityFeed(feed)}
+        onSetCategory={
+          onSetCategoryFeed ? (category) => onSetCategoryFeed(feed, category) : undefined
+        }
       />
     );
   }
@@ -225,7 +230,7 @@ export default function FeedSidebar({
     return { unreadByFeed: byFeed, totalUnread: total };
   }, [articles, readIds, readBeforeTimestamp]);
 
-  const { pinnedFeeds, unpinnedFeeds } = useMemo(() => {
+  const { pinnedFeeds, categoryGroups, uncategorizedFeeds } = useMemo(() => {
     const q = feedSearch.trim().toLowerCase();
     const matchFeed = (f: Feed) => !q || (f.title || f.url).toLowerCase().includes(q);
     const pinned = feeds.filter((f) => pinnedFeedIds.has(f.id) && matchFeed(f));
@@ -236,7 +241,21 @@ export default function FeedSidebar({
         const bHigh = b.priority === "high" ? 0 : 1;
         return aHigh - bHigh;
       });
-    return { pinnedFeeds: pinned, unpinnedFeeds: unpinned };
+
+    // カテゴリ別にグループ化
+    const catMap = new Map<string, Feed[]>();
+    const uncategorized: Feed[] = [];
+    for (const feed of unpinned) {
+      if (feed.category) {
+        const group = catMap.get(feed.category) ?? [];
+        group.push(feed);
+        catMap.set(feed.category, group);
+      } else {
+        uncategorized.push(feed);
+      }
+    }
+    const sorted = [...catMap.entries()].sort(([a], [b]) => a.localeCompare(b, "ja"));
+    return { pinnedFeeds: pinned, categoryGroups: sorted, uncategorizedFeeds: uncategorized };
   }, [feeds, pinnedFeedIds, feedSearch]);
 
   return (
@@ -570,13 +589,44 @@ export default function FeedSidebar({
 
         {pinnedFeeds.map((feed, i) => renderFeed(feed, true, i))}
 
-        {pinnedFeeds.length > 0 && unpinnedFeeds.length > 0 && (
+        {pinnedFeeds.length > 0 && (categoryGroups.length > 0 || uncategorizedFeeds.length > 0) && (
           <div className="mx-4 my-1.5">
             <div className="border-t border-border-subtle" />
           </div>
         )}
 
-        {unpinnedFeeds.map((feed, i) => renderFeed(feed, false, pinnedFeeds.length + i))}
+        {(() => {
+          let globalOffset = pinnedFeeds.length;
+          const elements: ReactNode[] = [];
+
+          for (const [cat, catFeeds] of categoryGroups) {
+            elements.push(
+              <div key={`cat-header-${cat}`} className="px-4 pt-2.5 pb-0.5">
+                <span className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted">
+                  {cat}
+                </span>
+              </div>,
+            );
+            catFeeds.forEach((feed, i) => {
+              elements.push(renderFeed(feed, false, globalOffset + i));
+            });
+            globalOffset += catFeeds.length;
+          }
+
+          if (categoryGroups.length > 0 && uncategorizedFeeds.length > 0) {
+            elements.push(
+              <div key="cat-separator" className="mx-4 my-1.5">
+                <div className="border-t border-border-subtle" />
+              </div>,
+            );
+          }
+
+          uncategorizedFeeds.forEach((feed, i) => {
+            elements.push(renderFeed(feed, false, globalOffset + i));
+          });
+
+          return elements;
+        })()}
       </nav>
 
       {/* ユーザー情報 */}
