@@ -1257,7 +1257,18 @@ export default function ArticleView({
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
 
-  const { aiResult, aiLoading, aiError, doRunAi, resetAi } = useArticleAi(article?.id);
+  const {
+    aiResult,
+    aiLoading,
+    aiError,
+    doRunAi,
+    resetAi,
+    translateResult,
+    translateLoading,
+    translateError,
+    doTranslate,
+    resetTranslate,
+  } = useArticleAi(article?.id);
 
   // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)
   const mainRef = useRef<HTMLElement>(null);
@@ -1272,6 +1283,13 @@ export default function ArticleView({
           resetAi();
         } else if (!aiLoading && !fetching) {
           void doRunAi(article.link, article.id);
+        }
+      }
+      if (e.key === "z" && article?.link) {
+        if (translateResult) {
+          resetTranslate();
+        } else if (!translateLoading && !fetching) {
+          void doTranslate(article.link, article.id);
         }
       }
       if (e.key === " ") {
@@ -1296,6 +1314,10 @@ export default function ArticleView({
     aiLoading,
     doRunAi,
     resetAi,
+    translateResult,
+    translateLoading,
+    doTranslate,
+    resetTranslate,
   ]);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
@@ -1573,7 +1595,7 @@ export default function ArticleView({
               </div>
             )}
 
-            {/* AI 要約ボタン */}
+            {/* AI 要約・翻訳ボタン */}
             {hasContent && (
               <div className="flex items-center gap-1 mr-1">
                 <button
@@ -1585,7 +1607,7 @@ export default function ArticleView({
                     if (article.link) doRunAi(article.link, article.id);
                   }}
                   disabled={aiLoading || fetching}
-                  title="AI 要約"
+                  title="AI 要約 (a)"
                   className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
                     aiResult
                       ? "border-ink bg-ink text-ink-text"
@@ -1593,6 +1615,24 @@ export default function ArticleView({
                   }`}
                 >
                   {aiLoading ? "…" : "要約"}
+                </button>
+                <button
+                  onClick={() => {
+                    if (translateResult) {
+                      resetTranslate();
+                      return;
+                    }
+                    if (article.link) doTranslate(article.link, article.id);
+                  }}
+                  disabled={translateLoading || fetching}
+                  title="AI 翻訳（日本語）(z)"
+                  className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
+                    translateResult
+                      ? "border-ink bg-ink text-ink-text"
+                      : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
+                  }`}
+                >
+                  {translateLoading ? "…" : "翻訳"}
                 </button>
               </div>
             )}
@@ -1774,6 +1814,17 @@ export default function ArticleView({
           </div>
         )}
         {aiError && <p className="mb-6 text-[11px] text-rose-400">{aiError}</p>}
+
+        {/* AI 翻訳パネル */}
+        {translateResult && (
+          <div className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up">
+            <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint mb-2">AI 翻訳</p>
+            <p className="text-[14px] leading-[1.8] text-text-default whitespace-pre-wrap">
+              {translateResult}
+            </p>
+          </div>
+        )}
+        {translateError && <p className="mb-6 text-[11px] text-rose-400">{translateError}</p>}
 
         {/* OGP 画像 (埋め込みなし) */}
         {!embedInfo && (article.ogImage ?? resolvedOgImage) && (

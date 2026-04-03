@@ -25,6 +25,7 @@ export const STORAGE_KEYS = {
   FONT_SIZE: "rss-font-size",
   CONTENT_CACHE_PREFIX: "rss-content:",
   AI_CACHE_PREFIX: "rss-ai:",
+  AI_TRANSLATE_CACHE_PREFIX: "rss-ai-translate:",
   UNREAD_ONLY: "rss-unread-only",
   BOOKMARK_ONLY: "rss-bookmark-only",
   READING_LIST_ONLY: "rss-reading-list-only",
