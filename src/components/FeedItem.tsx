@@ -356,13 +356,26 @@ export default function FeedItem({
   const visibleActions = actions.filter((a) => a.show !== false);
 
   const menuBtnRect = menuButtonRef.current?.getBoundingClientRect();
-  const menuPortalStyle = menuBtnRect
-    ? {
-        top: menuBtnRect.bottom + 2,
-        // 左端でメニューが画面外にはみ出さないよう right をクランプ
-        right: Math.min(window.innerWidth - menuBtnRect.right, window.innerWidth - 128),
-      }
-    : { top: 0, right: 0 };
+
+  const menuPortalStyle: React.CSSProperties = (() => {
+    if (!menuBtnRect) return { top: 0, right: 0 };
+
+    const MIN_MENU_WIDTH = 120;
+    // ボタン右端に揃えつつ、左端が viewport 外に出ないようクランプ
+    const rightPos = Math.min(
+      Math.max(0, window.innerWidth - menuBtnRect.right),
+      window.innerWidth - MIN_MENU_WIDTH,
+    );
+
+    // 各アイテム約34px で高さを推定し、下スペースが足りない場合は上に展開
+    const estimatedMenuHeight = visibleActions.length * 34;
+    const spaceBelow = window.innerHeight - menuBtnRect.bottom;
+
+    if (spaceBelow >= estimatedMenuHeight) {
+      return { top: menuBtnRect.bottom + 2, right: rightPos };
+    }
+    return { bottom: window.innerHeight - menuBtnRect.top + 2, right: rightPos };
+  })();
 
   return (
     <div
