@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-04
+
+### リファクタリング
+
+- \`loadStoredEnum\` を \`src/lib/storage.ts\` に集約 — \`useUIState.ts\` に private 定義されていたユーティリティを共有エクスポートに移動し、\`useFilteredArticles.ts\` の \`sortOrder\` / \`dateRange\` / \`readingTimeRange\` 初期化で重複していたインラインロジックを排除
+
 ## 2026-04-03 (138)
 
 ### 新機能
