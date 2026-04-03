@@ -339,6 +339,17 @@ export default function App() {
     notifyArticlesAdded();
   }, [selectedFeedId, loadMoreFeedArticles, loadMoreAllFeedsArticles, feeds, notifyArticlesAdded]);
 
+  // フィルター適用後に表示件数が不足している場合、サーバーから過去記事を自動取得する。
+  // 未読フィルター等でローカルの記事が枯渇しても、サーバー側に残ページがある限り自動継続する。
+  const autoLoadingRef = useRef(false);
+  useEffect(() => {
+    if (hasMore || !feedHasMorePages || autoLoadingRef.current) return;
+    autoLoadingRef.current = true;
+    handleLoadMoreFeedArticles().finally(() => {
+      autoLoadingRef.current = false;
+    });
+  }, [hasMore, feedHasMorePages, handleLoadMoreFeedArticles]);
+
   const selectArticle = useCallback(
     (article: Article) => {
       setSelectedArticle(article);
