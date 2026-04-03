@@ -1,6 +1,6 @@
 import { withBinarySession } from "@/lib/server-auth";
 import { isValidPublicUrl } from "@/lib/url";
-import { buildCacheKey } from "@/lib/r2";
+import { buildCacheKey, cachePutAsync } from "@/lib/r2";
 import {
   DEFAULT_FETCH_TIMEOUT_MS,
   fetchFollowSafeRedirects,
@@ -26,10 +26,9 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
   if (!isValidPublicUrl(url)) return new Response(null, { status: 400 });
 
   const cacheKey = await buildCacheKey(reqUrl.origin, "image", url);
-  const cfCache = caches.default;
 
   // Cloudflare Cache API で確認
-  const cached = await cfCache.match(cacheKey);
+  const cached = await caches.default.match(cacheKey);
   if (cached) {
     return new Response(cached.body, {
       headers: {
@@ -76,18 +75,16 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
     if (!mimeType) return errorImageSvg("unavailable");
 
     // Cloudflare Cache API に保存（fire-and-forget）
-    ctx.waitUntil(
-      cfCache
-        .put(
-          cacheKey,
-          new Response(merged, {
-            headers: {
-              "Content-Type": mimeType,
-              "Cache-Control": `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
-            },
-          }),
-        )
-        .catch((err) => console.error("[image-proxy] cache put error:", err)),
+    cachePutAsync(
+      cacheKey,
+      new Response(merged, {
+        headers: {
+          "Content-Type": mimeType,
+          "Cache-Control": `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
+        },
+      }),
+      ctx,
+      "image-proxy",
     );
 
     return new Response(merged, {

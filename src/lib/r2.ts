@@ -61,3 +61,25 @@ export function engagementKey(userId: string): string {
 export async function buildCacheKey(origin: string, type: string, url: string): Promise<Request> {
   return new Request(`${origin}/__cache/${type}/${await sha256Hex(normalizeUrlForCache(url))}`);
 }
+
+/**
+ * Cloudflare Cache API に fire-and-forget でレスポンスを保存する。
+ * エラーはログに出力するが呼び出し元には伝搬しない。
+ *
+ * @param cacheKey - buildCacheKey() で生成したキャッシュキー
+ * @param response - 保存するレスポンス（Content-Type / Cache-Control ヘッダー付き）
+ * @param ctx      - ExecutionContext（waitUntil に渡す）
+ * @param label    - ログ出力用のラベル（例: "image-proxy"）
+ */
+export function cachePutAsync(
+  cacheKey: Request,
+  response: Response,
+  ctx: ExecutionContext,
+  label: string,
+): void {
+  ctx.waitUntil(
+    caches.default
+      .put(cacheKey, response)
+      .catch((err) => console.error(`[${label}] cache put error:`, err)),
+  );
+}
