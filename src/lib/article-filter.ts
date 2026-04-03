@@ -1,6 +1,6 @@
-import type { Article, DateRange, KeywordFilter } from "../types";
+import type { Article, DateRange, KeywordFilter, ReadingTimeRange } from "../types";
 import { matchesKeywordFilter } from "./keyword-filter";
-import { articleMatchesQuery, getDateRangeStart } from "./article-utils";
+import { articleMatchesQuery, getDateRangeStart, readingTime } from "./article-utils";
 import { SPECIAL_FEED_IDS } from "./storage";
 
 /**
@@ -42,6 +42,8 @@ export interface ArticleFilterOptions {
   readBeforeTimestamp: string | null;
   /** スヌーズ中の記事 — articleId → スヌーズ解除予定時刻（ISO 8601） */
   snoozedUntil?: Record<string, string>;
+  /** 読了時間フィルター（"all" = フィルタなし） */
+  readingTimeRange?: ReadingTimeRange;
 }
 
 /**
@@ -88,6 +90,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     globalFilter,
     readBeforeTimestamp,
     snoozedUntil,
+    readingTimeRange = "all",
   } = opts;
 
   const isActive = (id: string) => activeIds.has(id);
@@ -137,6 +140,14 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
 
     // 日付範囲
     if (rangeStart && (!a.publishedAt || new Date(a.publishedAt) < rangeStart)) return false;
+
+    // 読了時間フィルター（アクティブな記事は除外しない）
+    if (readingTimeRange !== "all" && !isActive(a.id)) {
+      const mins = readingTime(a.content ?? a.summary);
+      if (readingTimeRange === "short" && mins > 5) return false;
+      if (readingTimeRange === "medium" && (mins <= 5 || mins > 15)) return false;
+      if (readingTimeRange === "long" && mins <= 15) return false;
+    }
 
     return true;
   });

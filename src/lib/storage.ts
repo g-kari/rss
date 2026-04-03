@@ -41,6 +41,7 @@ export const STORAGE_KEYS = {
   GLOBAL_FILTER: "rss-global-filter",
   READ_BEFORE_TIMESTAMP: "rss-read-before-ts",
   SNOOZED_UNTIL: "rss-snoozed",
+  READING_TIME_RANGE: "rss-reading-time-range",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

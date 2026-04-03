@@ -119,6 +119,7 @@ export interface Article {
 export type Layout = "compact" | "list" | "card" | "magazine";
 export type FontSize = "small" | "medium" | "large";
 export type SortOrder = "newest" | "oldest";
+export type ReadingTimeRange = "all" | "short" | "medium" | "long";
 
 /** 記事に対するユーザーアクション種別 */
 export type EngagementAction =
