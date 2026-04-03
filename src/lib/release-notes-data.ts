@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-03 (128)
+
+### リファクタリング
+
+- \`cachePutAsync()\` ヘルパーを \`src/lib/r2.ts\` に追加し、\`image-proxy\` / \`ogp\` / \`content\` の3箇所で重複していた Cloudflare Cache API の fire-and-forget 書き込みパターンを一元化
+
 ## 2026-04-03 (127)
 
 ### 新機能

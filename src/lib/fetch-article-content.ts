@@ -3,7 +3,7 @@
  * /api/content と同じ Cloudflare Cache キーを使うため、キャッシュを共有する。
  */
 
-import { buildCacheKey } from "@/lib/r2";
+import { buildCacheKey, cachePutAsync } from "@/lib/r2";
 import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
 import {
   decodeBytesToString,
@@ -78,11 +78,7 @@ export function saveContentToCache(
       "Cache-Control": `public, max-age=${CONTENT_CACHE_TTL_SEC}`,
     },
   });
-  ctx.waitUntil(
-    caches.default
-      .put(cacheKey, cacheRes)
-      .catch((err) => console.error("[content] cache put error:", err)),
-  );
+  cachePutAsync(cacheKey, cacheRes, ctx, "content");
 }
 
 /** HTML をフェッチしてバイト列と Content-Type を返す。失敗・非HTML・body なしは null。 */

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { isValidFeedUrl, isValidPublicUrl } from "@/lib/url";
-import { buildCacheKey } from "@/lib/r2";
+import { buildCacheKey, cachePutAsync } from "@/lib/r2";
 import { unescapeHtml } from "@/lib/html";
 import { fetchPageOgpMeta } from "@/lib/ogp";
 
@@ -20,10 +20,9 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   if (!isValidFeedUrl(url)) return NextResponse.json({ image: "" });
 
   const cacheKey = await buildCacheKey(reqUrl.origin, "ogp", url);
-  const cfCache = caches.default;
 
   // Cloudflare Cache API で確認
-  const cached = await cfCache.match(cacheKey);
+  const cached = await caches.default.match(cacheKey);
   if (cached) {
     const data = (await cached.json()) as { image: string; title?: string; description?: string };
     // &amp; エンコードされた旧キャッシュエントリに対応するため unescapeHtml でデコードする
@@ -42,11 +41,13 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   // 全フィールドが空でも短い TTL で負キャッシュ — 繰り返しフェッチを防ぐ
   const hasContent = !!(image || title || description);
   const ttl = hasContent ? OGP_CACHE_TTL_SEC : OGP_NEGATIVE_CACHE_TTL_SEC;
-  const cacheRes = new Response(JSON.stringify({ image, title, description }), {
-    headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${ttl}` },
-  });
-  ctx.waitUntil(
-    cfCache.put(cacheKey, cacheRes).catch((err) => console.error("[ogp] cache put error:", err)),
+  cachePutAsync(
+    cacheKey,
+    new Response(JSON.stringify({ image, title, description }), {
+      headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${ttl}` },
+    }),
+    ctx,
+    "ogp",
   );
 
   return NextResponse.json({ image, title, description }, { headers: { "X-Cache": "MISS" } });
