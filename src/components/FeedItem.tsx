@@ -357,7 +357,11 @@ export default function FeedItem({
 
   const menuBtnRect = menuButtonRef.current?.getBoundingClientRect();
   const menuPortalStyle = menuBtnRect
-    ? { top: menuBtnRect.bottom + 2, right: window.innerWidth - menuBtnRect.right }
+    ? {
+        top: menuBtnRect.bottom + 2,
+        // 左端でメニューが画面外にはみ出さないよう right をクランプ
+        right: Math.min(window.innerWidth - menuBtnRect.right, window.innerWidth - 128),
+      }
     : { top: 0, right: 0 };
 
   return (

@@ -6,11 +6,15 @@ export function useMenuOpen() {
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    function onClickOutside(e: MouseEvent) {
+    function onOutside(e: MouseEvent | TouchEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("touchstart", onOutside);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("touchstart", onOutside);
+    };
   }, [open]);
   return { open, setOpen, menuRef };
 }

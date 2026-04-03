@@ -477,7 +477,7 @@ export default function ArticleList({
 
         {/* card */}
         {layout === "card" && (
-          <div className="grid grid-cols-2 gap-2 p-2">
+          <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-2 p-2">
             {visible.map((a, i) => (
               <CardArticleItem key={a.id} {...resolveItemProps(a, i)} />
             ))}
