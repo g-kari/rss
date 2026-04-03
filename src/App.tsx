@@ -429,7 +429,6 @@ export default function App() {
     toggleBookmarkOnly,
     readingListOnly,
     toggleReadingListOnly,
-    sortOrder,
     toggleSortOrder,
     cycleDateRange,
     searchRef,

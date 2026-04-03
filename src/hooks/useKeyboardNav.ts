@@ -9,7 +9,6 @@ import {
   FONT_SIZE_LABELS,
   LAYOUT_CYCLE,
   LAYOUT_LABELS,
-  SORT_ORDER_CYCLE,
   SORT_ORDER_LABELS,
 } from "../lib/article-utils";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
@@ -44,8 +43,7 @@ interface KeyboardNavOptions {
   toggleBookmarkOnly: () => void;
   readingListOnly: boolean;
   toggleReadingListOnly: () => void;
-  sortOrder: SortOrder;
-  toggleSortOrder: () => void;
+  toggleSortOrder: () => SortOrder;
   cycleDateRange: () => DateRange;
   searchRef: RefObject<HTMLInputElement | null>;
   refreshFeeds: () => Promise<void>;
@@ -104,7 +102,6 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         toggleBookmarkOnly,
         readingListOnly,
         toggleReadingListOnly,
-        sortOrder,
         toggleSortOrder,
         cycleDateRange,
         searchRef,
@@ -257,8 +254,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           showToast(filterToastMsg(readingListOnly, "リーディングリストフィルター"));
           break;
         case "s": {
-          toggleSortOrder();
-          const nextSort = cycleValue(SORT_ORDER_CYCLE, sortOrder);
+          const nextSort = toggleSortOrder();
           showToast(`ソート: ${SORT_ORDER_LABELS[nextSort]}`);
           break;
         }

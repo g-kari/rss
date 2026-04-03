@@ -61,7 +61,7 @@ interface Props {
   readingListOnly: boolean;
   toggleReadingListOnly: () => void;
   sortOrder: SortOrder;
-  toggleSortOrder: () => void;
+  toggleSortOrder: () => SortOrder;
   dateRange: DateRange;
   cycleDateRange: () => DateRange;
   readingTimeRange: ReadingTimeRange;
