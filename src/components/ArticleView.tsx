@@ -1430,6 +1430,39 @@ export default function ArticleView({
     injectSliderControls();
   }, [processedContent, injectSliderControls]);
 
+  // X (Twitter) ツイート iframe を postMessage で動的リサイズ
+  // platform.twitter.com から {"method":"twttr.resize","params":{"height":N}} が届くたびに
+  // 対応する iframe の高さを更新する
+  useEffect(() => {
+    if (!processedContent) return;
+    function handleMessage(e: MessageEvent) {
+      if (e.origin !== "https://platform.twitter.com") return;
+      let data: unknown;
+      try {
+        data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+      } catch {
+        return;
+      }
+      if (!data || typeof data !== "object") return;
+      const d = data as Record<string, unknown>;
+      if (d.method !== "twttr.resize") return;
+      const params = d.params as Record<string, unknown> | undefined;
+      if (typeof params?.height !== "number") return;
+      const iframes = contentRef.current?.querySelectorAll<HTMLIFrameElement>(
+        ".tweet-embed-wrapper iframe",
+      );
+      if (!iframes) return;
+      for (const iframe of iframes) {
+        if (iframe.contentWindow === e.source) {
+          iframe.style.height = `${params.height}px`;
+          break;
+        }
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [processedContent]);
+
   // 記事が変わったらスクロール位置をリセット（AI 状態は useArticleAi が担当）
   useEffect(() => {
     if (progressBarRef.current) {
