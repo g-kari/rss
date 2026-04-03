@@ -4,6 +4,16 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-03 (132)
+
+### セキュリティ
+
+- \`app/api/auth/callback/route.ts\`: ベータ制限・ログイン成功後のリダイレクトで \`request.url\` をベースにしていたオープンリダイレクトのリスクを修正。\`APP_BASE_URL\` 環境変数を使うよう変更
+
+### バグ修正
+
+- \`useArticleAi\` (\`src/hooks/useArticleAi.ts\`): \`useEffect\` 依存配列から \`ai.reset\` / \`translate.reset\` を除去。\`reset\` は \`useCallback([], [])\` で安定参照のため \`articleId\` のみで十分
+
 ## 2026-04-03 (131)
 
 ### ドキュメント整備
