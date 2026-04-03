@@ -101,6 +101,22 @@ const LAYOUT_ICONS: Record<Layout, ReactElement> = {
 
 const LAYOUTS: Layout[] = ["compact", "list", "card", "magazine"];
 
+function getDateGroupLabel(publishedAt: string | null): string {
+  if (!publishedAt) return "日付不明";
+  const d = new Date(publishedAt);
+  if (isNaN(d.getTime())) return "日付不明";
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+  const weekStart = new Date(todayStart.getTime() - 7 * 86400000);
+  const monthStart = new Date(todayStart.getTime() - 30 * 86400000);
+  if (d >= todayStart) return "今日";
+  if (d >= yesterdayStart) return "昨日";
+  if (d >= weekStart) return "今週";
+  if (d >= monthStart) return "今月";
+  return "それ以前";
+}
+
 const LAYOUT_LABELS: Record<Layout, string> = {
   compact: "コンパクト表示",
   list: "リスト表示",
@@ -469,11 +485,49 @@ export default function ArticleList({
 
         {/* compact */}
         {layout === "compact" &&
-          visible.map((a, i) => <CompactArticleItem key={a.id} {...resolveItemProps(a, i)} />)}
+          (() => {
+            let lastLabel = "";
+            return visible.map((a, i) => {
+              const label = getDateGroupLabel(a.publishedAt);
+              const showHeader = label !== lastLabel;
+              lastLabel = label;
+              return (
+                <div key={a.id}>
+                  {showHeader && (
+                    <div className="px-4 pt-3 pb-1">
+                      <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                        {label}
+                      </span>
+                    </div>
+                  )}
+                  <CompactArticleItem {...resolveItemProps(a, i)} />
+                </div>
+              );
+            });
+          })()}
 
         {/* list */}
         {layout === "list" &&
-          visible.map((a, i) => <ListArticleItem key={a.id} {...resolveItemProps(a, i)} />)}
+          (() => {
+            let lastLabel = "";
+            return visible.map((a, i) => {
+              const label = getDateGroupLabel(a.publishedAt);
+              const showHeader = label !== lastLabel;
+              lastLabel = label;
+              return (
+                <div key={a.id}>
+                  {showHeader && (
+                    <div className="px-4 pt-3 pb-1">
+                      <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                        {label}
+                      </span>
+                    </div>
+                  )}
+                  <ListArticleItem {...resolveItemProps(a, i)} />
+                </div>
+              );
+            });
+          })()}
 
         {/* card */}
         {layout === "card" && (
