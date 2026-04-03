@@ -585,6 +585,148 @@ test.describe("グローバルフィルター + フィード別フィルター�
 });
 
 // ==========================================================================
+// readBeforeTimestamp フィルター
+// ==========================================================================
+
+test.describe("readBeforeTimestamp — 一括既読タイムスタンプ", () => {
+  const old = makeArticle("old1", "feed1", { publishedAt: "2024-01-01T00:00:00Z" });
+  const recent = makeArticle("rec1", "feed1", { publishedAt: "2024-06-01T00:00:00Z" });
+
+  test("readBeforeTimestamp 以前の記事は unreadOnly 時に除外される", () => {
+    const result = run([old, recent], {
+      unreadOnly: true,
+      readBeforeTimestamp: "2024-03-01T00:00:00Z",
+    });
+    expect(ids(result)).not.toContain("old1");
+    expect(ids(result)).toContain("rec1");
+  });
+
+  test("readBeforeTimestamp と同じ日時の記事も既読扱い", () => {
+    const result = run([old, recent], {
+      unreadOnly: true,
+      readBeforeTimestamp: "2024-01-01T00:00:00Z",
+    });
+    expect(ids(result)).not.toContain("old1");
+    expect(ids(result)).toContain("rec1");
+  });
+
+  test("readBeforeTimestamp が null のとき readIds 未登録記事は未読扱い", () => {
+    const result = run([old, recent], {
+      unreadOnly: true,
+      readBeforeTimestamp: null,
+    });
+    expect(result).toHaveLength(2);
+  });
+
+  test("readIds と readBeforeTimestamp は OR で適用される", () => {
+    const result = run([old, recent], {
+      unreadOnly: true,
+      readIds: new Set(["old1"]),
+      readBeforeTimestamp: "2024-07-01T00:00:00Z",
+    });
+    // old1 は readIds で既読、recent は readBeforeTimestamp で既読 → 全件除外
+    expect(result).toHaveLength(0);
+  });
+});
+
+// ==========================================================================
+// snoozedUntil フィルター
+// ==========================================================================
+
+test.describe("snoozedUntil — スヌーズ", () => {
+  const future = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1時間後
+  const past = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1時間前
+
+  test("未来のスヌーズ時刻の記事は非表示", () => {
+    const result = run([A1, A2], {
+      snoozedUntil: { a1: future },
+    });
+    expect(ids(result)).not.toContain("a1");
+    expect(ids(result)).toContain("a2");
+  });
+
+  test("過去のスヌーズ時刻（期限切れ）の記事は表示される", () => {
+    const result = run([A1, A2], {
+      snoozedUntil: { a1: past },
+    });
+    expect(ids(result)).toContain("a1");
+  });
+
+  test("スヌーズ中でも activeIds に含まれれば表示される", () => {
+    const result = run([A1, A2], {
+      snoozedUntil: { a1: future },
+      activeIds: new Set(["a1"]),
+    });
+    expect(ids(result)).toContain("a1");
+  });
+
+  test("snoozedUntil が空オブジェクトのとき全記事を表示", () => {
+    const result = run([A1, A2], {
+      snoozedUntil: {},
+    });
+    expect(result).toHaveLength(2);
+  });
+});
+
+// ==========================================================================
+// readingTimeRange フィルター
+// ==========================================================================
+
+test.describe("readingTimeRange — 読了時間フィルター", () => {
+  // readingTime(content ?? summary) の計算:
+  //   CJK 500文字/分、英語 200語/分、最低1分
+  //   short: ≤5分、medium: 5〜15分、long: >15分
+  //
+  // "あ" は U+3042（ひらがな）→ CJK_PATTERN にマッチ
+  //   100文字 → ceil(100/500) = 1分（short）
+  //  3000文字 → ceil(3000/500) = 6分（medium）
+  //  8000文字 → ceil(8000/500) = 16分（long）
+
+  const shortContent = "あ".repeat(100);
+  const mediumContent = "あ".repeat(3000);
+  const longContent = "あ".repeat(8000);
+
+  const shortArticle = makeArticle("rt_s", "feed1", { content: shortContent });
+  const mediumArticle = makeArticle("rt_m", "feed1", { content: mediumContent });
+  const longArticle = makeArticle("rt_l", "feed1", { content: longContent });
+
+  test("readingTimeRange=all のとき全記事を返す", () => {
+    const result = run([shortArticle, mediumArticle, longArticle], { readingTimeRange: "all" });
+    expect(result).toHaveLength(3);
+  });
+
+  test("readingTimeRange=short のとき5分以内の記事だけを返す", () => {
+    const result = run([shortArticle, mediumArticle, longArticle], { readingTimeRange: "short" });
+    expect(ids(result)).toContain("rt_s");
+    expect(ids(result)).not.toContain("rt_m");
+    expect(ids(result)).not.toContain("rt_l");
+  });
+
+  test("readingTimeRange=medium のとき5〜15分の記事だけを返す", () => {
+    const result = run([shortArticle, mediumArticle, longArticle], { readingTimeRange: "medium" });
+    expect(ids(result)).not.toContain("rt_s");
+    expect(ids(result)).toContain("rt_m");
+    expect(ids(result)).not.toContain("rt_l");
+  });
+
+  test("readingTimeRange=long のとき15分超の記事だけを返す", () => {
+    const result = run([shortArticle, mediumArticle, longArticle], { readingTimeRange: "long" });
+    expect(ids(result)).not.toContain("rt_s");
+    expect(ids(result)).not.toContain("rt_m");
+    expect(ids(result)).toContain("rt_l");
+  });
+
+  test("読了時間フィルター中でも activeIds に含まれれば表示される", () => {
+    const result = run([shortArticle, longArticle], {
+      readingTimeRange: "short",
+      activeIds: new Set(["rt_l"]),
+    });
+    expect(ids(result)).toContain("rt_s");
+    expect(ids(result)).toContain("rt_l");
+  });
+});
+
+// ==========================================================================
 // エッジケース
 // ==========================================================================
 
