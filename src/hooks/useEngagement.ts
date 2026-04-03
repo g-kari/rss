@@ -8,6 +8,7 @@ import { apiFetch } from "../lib/api-fetch";
 const BUFFER_KEY = "rss-engagement-buffer";
 const MAX_BUFFER = 100;
 
+/** sendBeacon 失敗時に localStorage にバッファリングする未送信エントリの型 */
 type BufferEntry = { articleId: string; feedHash: string; action: EngagementAction };
 
 /** バッファに積まれた未送信エントリを R2 に送信する */
@@ -29,6 +30,14 @@ async function flushBuffer(): Promise<void> {
   saveJson(BUFFER_KEY, remaining);
 }
 
+/**
+ * 記事エンゲージメント（閲覧・クリック等）を記録するフック。
+ * `navigator.sendBeacon` で /api/engagement に fire-and-forget 送信し、
+ * 失敗した場合は localStorage にバッファリングして2秒後に再送する。
+ *
+ * @param user - ログイン中のユーザー情報（`null`/`undefined` のときは記録しない）
+ * @returns recordEngagement - エンゲージメントを記録する関数
+ */
 export function useEngagement(user: UserProfile | null | undefined) {
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

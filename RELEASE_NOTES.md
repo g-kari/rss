@@ -1,5 +1,19 @@
 # リリースノート
 
+## 2026-04-03 (131)
+
+### ドキュメント整備
+
+- `apiFetch` / `apiFetchJson` (`src/lib/api-fetch.ts`) に JSDoc を追加（認証待機・401 リトライ動作を明記）
+- `isPrivateHost` / `isValidUrl` / `isValidFeedUrl` / `normalizeUrlForCache` (`src/lib/url.ts`) に JSDoc を追加（SSRF 対策・トラッキングパラメータ除去を明記）
+- `LruCache.get` / `LruCache.set` (`src/lib/lru-cache.ts`) に JSDoc を追加（LRU 更新・eviction・非同期フラッシュを明記）
+- `ACTION_WEIGHTS` (`src/lib/engagement-score.ts`)、`OgpMeta` 各フィールド (`src/lib/ogp.ts`) に JSDoc を追加
+- `useAuth` / `AuthState` (`src/hooks/useAuth.ts`) に JSDoc を追加（定期チェック・自動リフレッシュを明記）
+- `useFeeds` / `FeedsState` (`src/hooks/useFeeds.ts`) に JSDoc を追加（ポーリング間隔・オンライン復帰同期を明記）
+- `useArticleContent` / `ArticleContentState` (`src/hooks/useArticleContent.ts`) に JSDoc を追加（LRU キャッシュ・AbortController を明記）
+- `useEngagement` / `BufferEntry` (`src/hooks/useEngagement.ts`) に JSDoc を追加（fire-and-forget・localStorage バッファを明記）
+- `useMenuOpen` (`src/hooks/useMenuOpen.ts`) に JSDoc を追加（click-outside 処理・戻り値を明記）
+
 ## 2026-04-03 (130)
 
 ### リファクタリング

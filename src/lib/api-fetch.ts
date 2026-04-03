@@ -27,6 +27,14 @@ async function recoverAuth(): Promise<boolean> {
   return inflightAuthRecovery;
 }
 
+/**
+ * 認証付きで API エンドポイントにリクエストを送信する。
+ * 認証チェック完了を待ってから fetch を実行し、401 応答時はセッション回復を試みてリトライする。
+ *
+ * @param input - リクエスト先 URL
+ * @param init - fetch オプション（method, body, headers 等）
+ * @returns fetch の Response オブジェクト
+ */
 export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   await getAuthReady();
   const res = await fetch(input, init);
@@ -37,7 +45,15 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   return res;
 }
 
-/** res.ok でなければ Error を throw し、ok なら JSON をパースして返す */
+/**
+ * `apiFetch` を呼び出し、レスポンスが ok でなければ Error を throw し、
+ * ok であれば JSON をパースして指定した型で返す。
+ *
+ * @param input - リクエスト先 URL
+ * @param init - fetch オプション（method, body, headers 等）
+ * @returns パースされた JSON レスポンス
+ * @throws レスポンスの HTTP ステータスが 2xx 以外の場合
+ */
 export async function apiFetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   const res = await apiFetch(input, init);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

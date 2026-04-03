@@ -3,6 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import type { UserProfile } from "../types";
 
+/**
+ * `useAuth` フックの戻り値型。
+ * 認証状態・ベータ制限・セッション期限切れフラグを保持する。
+ */
 interface AuthState {
   user: UserProfile | null | undefined; // undefined = ローディング中
   betaRestricted: boolean;
@@ -22,12 +26,20 @@ function getTokenExpiry(): number | null {
 let authReadyResolve: (() => void) | null = null;
 let authReadyPromise: Promise<void> = Promise.resolve();
 
+/**
+ * authReady を pending 状態にリセットする。
+ * タブ復帰時や初回チェック前に呼び出し、他の API 呼び出しを認証完了まで待機させる。
+ */
 function resetAuthReady(): void {
   authReadyPromise = new Promise<void>((resolve) => {
     authReadyResolve = resolve;
   });
 }
 
+/**
+ * authReady を解決して待機中の API 呼び出しをアンブロックする。
+ * 認証チェック完了時・アンマウント時に呼ぶ。
+ */
 function resolveAuthReady(): void {
   authReadyResolve?.();
   authReadyResolve = null;
@@ -38,6 +50,15 @@ export function getAuthReady(): Promise<void> {
   return authReadyPromise;
 }
 
+/**
+ * 認証状態を管理するフック。
+ * /api/auth/me を定期的に呼び出してセッションを検証し、
+ * タブ復帰時・トークン期限前の自動リフレッシュも行う。
+ *
+ * @returns user - ログイン中のユーザー情報（`undefined` はローディング中、`null` は未ログイン）
+ * @returns betaRestricted - ベータ制限によりアクセスが拒否されているか
+ * @returns sessionExpired - 認証済みだったセッションが期限切れになったか
+ */
 export function useAuth(): AuthState {
   const [user, setUser] = useState<UserProfile | null | undefined>(undefined);
   const [betaRestricted, setBetaRestricted] = useState(false);

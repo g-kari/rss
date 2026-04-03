@@ -36,6 +36,13 @@ export class LruCache {
     }
   }
 
+  /**
+   * キャッシュからエントリを取得する。
+   * アクセスされたエントリを末尾に移動して「最近使用済み」として扱う（LRU 更新）。
+   *
+   * @param id - キャッシュキー
+   * @returns キャッシュされた値。存在しない場合は null
+   */
   get(id: string): string | null {
     this.hydrate();
     const value = this.map.get(id);
@@ -48,6 +55,14 @@ export class LruCache {
     return value;
   }
 
+  /**
+   * キャッシュにエントリを追加・更新する。
+   * キャッシュが maxSize に達している場合は最も古いエントリを削除してから挿入する。
+   * localStorage への書き込みはマイクロタスクで非同期にフラッシュする。
+   *
+   * @param id - キャッシュキー
+   * @param value - キャッシュする値
+   */
   set(id: string, value: string): void {
     this.hydrate();
     // 既存エントリを削除して末尾に再挿入 → Map の先頭が最古エントリ
