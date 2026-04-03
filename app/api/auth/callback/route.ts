@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
   // ベータアクセス制限チェック
   if (!isBetaAllowed(sub)) {
-    return NextResponse.redirect(new URL("/?beta=denied", request.url));
+    return NextResponse.redirect(new URL("/?beta=denied", appBaseUrl));
   }
 
   // プロフィールを R2 に保存
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
   };
   await r2Put(env.RSS_DATA, `users/${sub}/profile.json`, profile);
 
-  const res = NextResponse.redirect(new URL("/", request.url));
+  const res = NextResponse.redirect(new URL("/", appBaseUrl));
   res.cookies.delete("auth_state");
   setTokenCookies(res, tokens);
   return res;
