@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { UserProfile } from "../types";
+import { STORAGE_KEYS, storageGet, storageSet, storageRemove, loadJson } from "../lib/storage";
 
 /**
  * `useAuth` フックの戻り値型。
@@ -60,7 +61,11 @@ export function getAuthReady(): Promise<void> {
  * @returns sessionExpired - 認証済みだったセッションが期限切れになったか
  */
 export function useAuth(): AuthState {
-  const [user, setUser] = useState<UserProfile | null | undefined>(undefined);
+  const [user, setUser] = useState<UserProfile | null | undefined>(() => {
+    // オフライン時のために localStorage からキャッシュを復元する（初回ロード時のちらつき防止も兼ねる）
+    const raw = storageGet(STORAGE_KEYS.CACHED_USER);
+    return raw ? loadJson<UserProfile | null>(STORAGE_KEYS.CACHED_USER, null) : undefined;
+  });
   const [betaRestricted, setBetaRestricted] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
   const wasAuthenticatedRef = useRef(false);
@@ -110,6 +115,11 @@ export function useAuth(): AuthState {
         if (u) {
           wasAuthenticatedRef.current = true;
           setSessionExpired(false);
+          // オフライン時に使えるようユーザー情報を localStorage にキャッシュ
+          storageSet(STORAGE_KEYS.CACHED_USER, JSON.stringify(u));
+        } else {
+          // ログアウトまたはセッション失効時はキャッシュをクリア
+          storageRemove(STORAGE_KEYS.CACHED_USER);
         }
         setUser(u ?? null);
         scheduleNextRefresh();

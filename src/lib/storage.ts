@@ -42,6 +42,7 @@ export const STORAGE_KEYS = {
   READ_BEFORE_TIMESTAMP: "rss-read-before-ts",
   SNOOZED_UNTIL: "rss-snoozed",
   READING_TIME_RANGE: "rss-reading-time-range",
+  CACHED_USER: "rss-cached-user",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

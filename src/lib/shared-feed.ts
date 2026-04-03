@@ -296,8 +296,9 @@ export async function getUserLatestArticles(bucket: R2Bucket, userId: string): P
   const subs = await readUserSubscriptions(bucket, userId);
   if (subs.length === 0) return [];
 
+  const MAX_USER_ARTICLES = 10_000;
   const pages = await Promise.all(subs.map((s) => readLatestArticles(bucket, s.feedHash)));
-  return sortByDate(pages.flat()).slice(0, 5000);
+  return sortByDate(pages.flat()).slice(0, MAX_USER_ARTICLES);
 }
 
 /** R2 の prefix/ 直下にある ID（ディレクトリ名）を全件列挙する */

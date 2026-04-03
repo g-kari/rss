@@ -16,7 +16,15 @@ function mergeUniqueArticles(existing: Article[], incoming: Article[]): Article[
   const existingIds = new Set(existing.map((a) => a.id));
   const brandNew = incoming.filter((a) => !existingIds.has(a.id));
   if (brandNew.length === 0) return existing;
-  return [...existing, ...brandNew].sort(compareByDateDesc);
+  const merged = [...existing, ...brandNew].sort(compareByDateDesc);
+  // link ベースの第2パス重複排除（クロスフィードで同一記事がシンジケートされた場合の対策）
+  const linkSeen = new Set<string>();
+  return merged.filter((a) => {
+    if (!a.link) return true;
+    if (linkSeen.has(a.link)) return false;
+    linkSeen.add(a.link);
+    return true;
+  });
 }
 
 /**

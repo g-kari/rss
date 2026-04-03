@@ -4,7 +4,8 @@ const PAGE_CACHE = `${CACHE_VERSION}-page`;
 const API_CACHE = `${CACHE_VERSION}-api`;
 
 // stale-while-revalidate でキャッシュする API パス（前方一致）
-const API_CACHE_PATHS = ["/api/articles", "/api/feeds"];
+// /api/auth/me はオフライン時でも認証状態を維持するためにキャッシュする
+const API_CACHE_PATHS = ["/api/articles", "/api/feeds", "/api/auth/me"];
 
 // インストール: 即座に有効化
 self.addEventListener("install", () => {

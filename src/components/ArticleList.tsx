@@ -10,6 +10,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type {
   Article,
   Feed,
@@ -127,6 +128,11 @@ function getDateGroupLabel(publishedAt: string | null): string {
   return "それ以前";
 }
 
+/** compact / list レイアウト用のフラットアイテム型 */
+type FlatItem =
+  | { type: "header"; label: string; key: string }
+  | { type: "article"; article: Article; articleIndex: number; key: string };
+
 const LAYOUT_LABELS: Record<Layout, string> = {
   compact: "コンパクト表示",
   list: "リスト表示",
@@ -198,6 +204,57 @@ export default function ArticleList({
 
   const ogpCache = useOgpCache(visible);
 
+  // ── 仮想スクロール ──────────────────────────────────────────────
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // compact / list 用フラットアイテムリスト（日付ヘッダーを含む）
+  const flatItems = useMemo<FlatItem[]>(() => {
+    if (layout !== "compact" && layout !== "list") return [];
+    const items: FlatItem[] = [];
+    let lastLabel = "";
+    visible.forEach((a, i) => {
+      const label = getDateGroupLabel(a.publishedAt);
+      if (label !== lastLabel) {
+        items.push({ type: "header", label, key: `header-${label}-${i}` });
+        lastLabel = label;
+      }
+      items.push({ type: "article", article: a, articleIndex: i, key: a.id });
+    });
+    return items;
+  }, [visible, layout]);
+
+  // card 用行リスト（2列ずつ）
+  const cardRows = useMemo<Article[][]>(() => {
+    if (layout !== "card") return [];
+    const rows: Article[][] = [];
+    for (let i = 0; i < visible.length; i += 2) {
+      rows.push(visible.slice(i, Math.min(i + 2, visible.length)));
+    }
+    return rows;
+  }, [visible, layout]);
+
+  // compact / list 用バーチャライザー
+  const listVirtualizer = useVirtualizer({
+    count: flatItems.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: (i) => {
+      const item = flatItems[i];
+      if (!item || item.type === "header") return 36;
+      return layout === "compact" ? 44 : 84;
+    },
+    getItemKey: (i) => flatItems[i]?.key ?? i,
+    overscan: 5,
+  });
+
+  // card 用バーチャライザー
+  const cardVirtualizer = useVirtualizer({
+    count: cardRows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 224,
+    getItemKey: (i) => `card-row-${i}`,
+    overscan: 3,
+  });
+
   // 検索履歴
   const { history, addToHistory, removeFromHistory } = useSearchHistory();
   const [showHistory, setShowHistory] = useState(false);
@@ -235,12 +292,24 @@ export default function ArticleList({
   );
 
   useEffect(() => {
-    if (selectedArticleId) {
+    if (!selectedArticleId) return;
+    if (layout === "compact" || layout === "list") {
+      const idx = flatItems.findIndex(
+        (item) => item.type === "article" && item.key === selectedArticleId,
+      );
+      if (idx >= 0) listVirtualizer.scrollToIndex(idx, { align: "auto" });
+    } else if (layout === "card") {
+      const articleIdx = visible.findIndex((a) => a.id === selectedArticleId);
+      if (articleIdx >= 0)
+        cardVirtualizer.scrollToIndex(Math.floor(articleIdx / 2), { align: "auto" });
+    } else {
       document
         .getElementById(`article-${selectedArticleId}`)
         ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
-  }, [selectedArticleId]);
+    // listVirtualizer / cardVirtualizer は安定参照のため deps から除外
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedArticleId, layout, flatItems, visible]);
 
   /** 記事ごとの表示用状態を解決する（ハンドラは親の安定参照を直接渡す） */
   function resolveItemProps(article: Article, index: number): ArticleItemProps {
@@ -497,7 +566,7 @@ export default function ArticleList({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto">
         {loading && filtered.length === 0 && (
           <div className="flex items-center justify-center h-40">
             <p className="text-[12px] text-text-faint">読み込み中...</p>
@@ -509,62 +578,74 @@ export default function ArticleList({
           </div>
         )}
 
-        {/* compact */}
-        {layout === "compact" &&
-          (() => {
-            let lastLabel = "";
-            return visible.map((a, i) => {
-              const label = getDateGroupLabel(a.publishedAt);
-              const showHeader = label !== lastLabel;
-              lastLabel = label;
+        {/* compact / list — 仮想スクロール */}
+        {(layout === "compact" || layout === "list") && flatItems.length > 0 && (
+          <div style={{ height: listVirtualizer.getTotalSize(), position: "relative" }}>
+            {listVirtualizer.getVirtualItems().map((vItem) => {
+              const item = flatItems[vItem.index];
+              if (!item) return null;
               return (
-                <div key={a.id}>
-                  {showHeader && (
+                <div
+                  key={vItem.key}
+                  data-index={vItem.index}
+                  ref={listVirtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${vItem.start}px)`,
+                  }}
+                >
+                  {item.type === "header" ? (
                     <div className="px-4 pt-3 pb-1">
                       <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-                        {label}
+                        {item.label}
                       </span>
                     </div>
+                  ) : layout === "compact" ? (
+                    <CompactArticleItem {...resolveItemProps(item.article, item.articleIndex)} />
+                  ) : (
+                    <ListArticleItem {...resolveItemProps(item.article, item.articleIndex)} />
                   )}
-                  <CompactArticleItem {...resolveItemProps(a, i)} />
                 </div>
               );
-            });
-          })()}
-
-        {/* list */}
-        {layout === "list" &&
-          (() => {
-            let lastLabel = "";
-            return visible.map((a, i) => {
-              const label = getDateGroupLabel(a.publishedAt);
-              const showHeader = label !== lastLabel;
-              lastLabel = label;
-              return (
-                <div key={a.id}>
-                  {showHeader && (
-                    <div className="px-4 pt-3 pb-1">
-                      <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-                        {label}
-                      </span>
-                    </div>
-                  )}
-                  <ListArticleItem {...resolveItemProps(a, i)} />
-                </div>
-              );
-            });
-          })()}
-
-        {/* card */}
-        {layout === "card" && (
-          <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-2 p-2">
-            {visible.map((a, i) => (
-              <CardArticleItem key={a.id} {...resolveItemProps(a, i)} />
-            ))}
+            })}
           </div>
         )}
 
-        {/* magazine */}
+        {/* card — 仮想スクロール（2列ずつ行単位で仮想化） */}
+        {layout === "card" && cardRows.length > 0 && (
+          <div style={{ height: cardVirtualizer.getTotalSize() + 16, position: "relative" }}>
+            {cardVirtualizer.getVirtualItems().map((vItem) => {
+              const row = cardRows[vItem.index];
+              if (!row) return null;
+              return (
+                <div
+                  key={vItem.key}
+                  data-index={vItem.index}
+                  ref={cardVirtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${vItem.start}px)`,
+                    padding: "4px 8px",
+                  }}
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    {row.map((a, ri) => (
+                      <CardArticleItem key={a.id} {...resolveItemProps(a, vItem.index * 2 + ri)} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* magazine — 仮想スクロールなし（先頭フィーチャー記事 + コンパクトリスト） */}
         {layout === "magazine" && visible.length > 0 && (
           <>
             <div className="p-2">

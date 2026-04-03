@@ -179,6 +179,7 @@ export function useReadState(
   const historyIdsRef = useSyncedRef(historyIds);
   const articlesRef = useSyncedRef(articles);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDirtyRef = useRef(false);
 
   // useEffect 不要 — レンダー中の直接代入で十分
   stateRef.current = {
@@ -262,36 +263,43 @@ export function useReadState(
   }, []);
 
   const scheduleSyncToServer = useCallback(() => {
+    isDirtyRef.current = true;
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
+      if (!isDirtyRef.current) return;
+      isDirtyRef.current = false;
       saveReadState(stateRef.current, globalFilterRef.current);
-    }, 2000);
+    }, 5000);
   }, []);
 
   const markRead = useCallback(
     (articleId: string) => {
+      let changed = false;
       setReadIds((prev) => {
         if (prev.has(articleId)) return prev;
+        changed = true;
         const next = new Set(prev);
         next.add(articleId);
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
-      scheduleSyncToServer();
+      if (changed) scheduleSyncToServer();
     },
     [scheduleSyncToServer],
   );
 
   const markBulkRead = useCallback(
     (articleIds: string[]) => {
+      let changed = false;
       setReadIds((prev) => {
         const newIds = articleIds.filter((id) => !prev.has(id));
         if (newIds.length === 0) return prev;
+        changed = true;
         const next = new Set([...prev, ...newIds]);
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
-      scheduleSyncToServer();
+      if (changed) scheduleSyncToServer();
     },
     [scheduleSyncToServer],
   );

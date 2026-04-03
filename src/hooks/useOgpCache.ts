@@ -6,8 +6,8 @@ import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
-const MAX_OGP_CACHE_SIZE = 200;
-const FETCH_BATCH_SIZE = 5;
+const MAX_OGP_CACHE_SIZE = 2000;
+const FETCH_BATCH_SIZE = 10;
 
 /**
  * 表示中の記事に対して OGP 画像を遅延フェッチし、localStorage に永続化するキャッシュ。

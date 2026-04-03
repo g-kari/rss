@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
+    "@tanstack/react-virtual": "^3.13.23",
     "fast-xml-parser": "^5.5.8",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.42",
