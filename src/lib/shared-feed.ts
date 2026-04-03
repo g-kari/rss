@@ -267,6 +267,7 @@ export function assembleClientFeed(meta: SharedFeedMeta, sub: UserSubscription):
     filter: sub.filter,
     nsfw: sub.nsfw ?? false,
     priority: sub.priority,
+    category: sub.category,
     isScraping: !!meta.cssSelectors,
     cssSelector: meta.cssSelectors?.articleLink,
     failedSelectors: meta.failedSelectors,

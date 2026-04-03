@@ -80,6 +80,7 @@ export interface FeedItemProps {
   onFilterSave?: (filter: KeywordFilter | null) => Promise<void>;
   onToggleNsfw?: () => void;
   onTogglePriority?: () => void;
+  onSetCategory?: (category: string | null) => Promise<void>;
 }
 
 interface Action {
@@ -109,9 +110,13 @@ export default function FeedItem({
   onFilterSave,
   onToggleNsfw,
   onTogglePriority,
+  onSetCategory,
 }: FeedItemProps) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
+  const [categoryEditing, setCategoryEditing] = useState(false);
+  const [editCategory, setEditCategory] = useState("");
+  const categoryInputRef = useRef<HTMLInputElement>(null);
   const [loadingAction, setLoadingAction] = useState<"retry" | "reinfer" | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -183,6 +188,33 @@ export default function FeedItem({
     }
   }, [onReinfer, loadingAction]);
 
+  const startCategoryEdit = useCallback(() => {
+    setEditCategory(feed.category ?? "");
+    setCategoryEditing(true);
+    setTimeout(() => categoryInputRef.current?.select(), 0);
+  }, [feed.category]);
+
+  const commitCategoryEdit = useCallback(async () => {
+    setCategoryEditing(false);
+    const trimmed = editCategory.trim();
+    const newCategory = trimmed === "" ? null : trimmed;
+    if (newCategory === (feed.category ?? null)) return;
+    await onSetCategory?.(newCategory);
+  }, [editCategory, feed.category, onSetCategory]);
+
+  const handleCategoryKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void commitCategoryEdit();
+      }
+      if (e.key === "Escape") {
+        setCategoryEditing(false);
+      }
+    },
+    [commitCategoryEdit],
+  );
+
   const hasFilter =
     feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
 
@@ -237,6 +269,31 @@ export default function FeedItem({
       onClick: () => setFilterModalOpen(true),
       show: !!onFilterSave,
       className: hasFilter ? "text-text-default" : "text-text-faint hover:text-text-default",
+    },
+    {
+      key: "category",
+      label: feed.category ? `カテゴリ: ${feed.category}` : "カテゴリを設定",
+      icon: (
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M1 2.5h4l1 1.5-1 1.5H1z" />
+          <line x1="6" y1="4" x2="9" y2="4" />
+        </svg>
+      ),
+      onClick: () => {
+        setMenuOpen(false);
+        startCategoryEdit();
+      },
+      show: !!onSetCategory,
+      className: feed.category ? "text-text-default" : "text-text-faint hover:text-text-default",
     },
     {
       key: "pin",
@@ -380,14 +437,14 @@ export default function FeedItem({
   return (
     <div
       onClick={
-        editing
+        editing || categoryEditing
           ? undefined
           : () => {
               setMenuOpen(false);
               onSelect();
             }
       }
-      onDoubleClick={editing ? undefined : startEdit}
+      onDoubleClick={editing || categoryEditing ? undefined : startEdit}
       className={`group relative flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 ${
         isSelected
           ? "text-text-strong bg-surface-subtle"
@@ -407,6 +464,21 @@ export default function FeedItem({
           onKeyDown={handleKeyDown}
           onClick={(e) => e.stopPropagation()}
           className="flex-1 text-[13px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted min-w-0"
+        />
+      ) : categoryEditing ? (
+        <input
+          ref={categoryInputRef}
+          type="text"
+          value={editCategory}
+          placeholder="カテゴリ名（空で解除）"
+          onChange={(e) => setEditCategory(e.target.value)}
+          onBlur={() => {
+            void commitCategoryEdit();
+          }}
+          onKeyDown={handleCategoryKeyDown}
+          onClick={(e) => e.stopPropagation()}
+          maxLength={50}
+          className="flex-1 text-[12px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted min-w-0 placeholder-text-faint"
         />
       ) : (
         <div className="flex-1 min-w-0">

@@ -33,6 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       filter?: unknown;
       nsfw?: unknown;
       priority?: unknown;
+      category?: unknown;
     }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
@@ -83,6 +84,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         delete sub.priority;
       } else {
         sub.priority = body.priority;
+      }
+    }
+
+    // category の更新（存在する場合のみ）
+    if ("category" in body) {
+      if (body.category === null) {
+        delete sub.category;
+      } else {
+        if (typeof body.category !== "string")
+          return NextResponse.json({ error: "category must be a string or null" }, { status: 400 });
+        const category = body.category.trim();
+        if (category.length > 50)
+          return NextResponse.json({ error: "category too long" }, { status: 400 });
+        if (category === "") {
+          delete sub.category;
+        } else {
+          sub.category = category;
+        }
       }
     }
 

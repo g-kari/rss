@@ -70,6 +70,8 @@ export interface UserSubscription {
   requestCookie?: string;
   /** 優先度 — "high" のとき高優先度（スター付き）フィードとして扱う */
   priority?: "high";
+  /** カテゴリ — ユーザーが設定したグループ名 */
+  category?: string;
 }
 
 /** クライアント向けフィード型（SharedFeedMeta + UserSubscription を合成して返す） */
@@ -91,6 +93,8 @@ export interface Feed {
   nsfw?: boolean;
   /** 優先度 — "high" のとき高優先度（スター付き）フィードとして扱う */
   priority?: "high";
+  /** カテゴリ — ユーザーが設定したグループ名 */
+  category?: string;
   /** LLM で CSS セレクタを推論したスクレイピングフィードか */
   isScraping?: boolean;
   /** 現在使用中の CSS セレクタ（isScraping のみ） */

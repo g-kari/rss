@@ -201,6 +201,14 @@ export default function App() {
     [patchFeed, updateFeed],
   );
 
+  const setCategoryFeed = useCallback(
+    async (feed: Feed, category: string | null) => {
+      const updated = await patchFeed(feed.id, { category });
+      if (updated) updateFeed(updated);
+    },
+    [patchFeed, updateFeed],
+  );
+
   const saveFilter = useCallback(
     async (feedId: string, filter: KeywordFilter | null) => {
       const updated = await patchFeed(feedId, { filter });
@@ -756,6 +764,7 @@ export default function App() {
             onDeactivateNsfw={deactivateNSFW}
             onToggleNsfwFeed={toggleNsfwFeed}
             onTogglePriorityFeed={togglePriorityFeed}
+            onSetCategoryFeed={setCategoryFeed}
             recommendations={recommendations}
             recommendationsLoading={recommendationsLoading}
             recommendationsRefreshing={recommendationsRefreshing}
