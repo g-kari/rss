@@ -16,7 +16,22 @@ const inflightRefresh = new Map<
   Promise<{ access_token: string; refresh_token: string } | null>
 >();
 
-/** refreshTokens の重複呼び出しを deduplication する */
+/**
+ * refreshTokens の重複呼び出しを deduplication する。
+ *
+ * **問題**: Cloudflare Workers は同一アイソレート内で複数のリクエストを並行処理する場合がある。
+ * アクセストークンが期限切れになると、同時に届いた複数のリクエストがそれぞれ
+ * refreshTokens() を呼び出し、同じリフレッシュトークンで並行して交換リクエストが発生する。
+ * リフレッシュトークンは使い捨て（one-time-use）のため、2 回目以降の呼び出しは失敗し
+ * ユーザーが意図せずログアウト状態になってしまう。
+ *
+ * **解決策**: inflightRefresh Map で進行中の Promise を管理し、
+ * 同じ refreshToken への呼び出しは最初の Promise を返すことで 1 回だけ実行する。
+ *
+ * **制約**: `inflightRefresh` はモジュールレベルの Map のため、
+ * deduplication は同一アイソレート内に限定される。
+ * 異なるアイソレート間（別の Workers インスタンス）では独立して動作する。
+ */
 function deduplicatedRefresh(
   refreshToken: string,
 ): Promise<{ access_token: string; refresh_token: string } | null> {

@@ -38,24 +38,63 @@ function makeFilterToggle(
 }
 
 interface Options {
+  /** フィルタリング対象の全記事リスト */
   articles: Article[];
+  /** フィード一覧（各フィードのキーワードフィルター適用に使用） */
   feeds?: Feed[];
+  /** 表示対象のフィード ID。null の場合は全フィード */
   feedId: string | null;
+  /** 既読記事 ID のセット */
   readIds: Set<string>;
+  /** ブックマーク済み記事 ID のセット */
   bookmarkIds: Set<string>;
+  /** 後で読む記事 ID のセット */
   readingListIds: Set<string>;
+  /** いいね済み記事 ID のセット */
   likeIds?: Set<string>;
+  /** 閲覧履歴にある記事 ID のセット */
   historyIds?: Set<string>;
+  /** 閲覧履歴の表示順（記事 ID の配列） */
   historyOrder?: string[];
+  /** 現在選択中の記事 ID（フィルターから除外してリストに残すため） */
   selectedArticleId?: string | null;
+  /** NSFW コンテンツを表示するかどうか */
   nsfwMode?: boolean;
+  /** NSFW 指定されたフィードの ID セット */
   nsfwFeedIds?: Set<string>;
+  /** グローバルキーワードフィルター（全フィード共通） */
   globalFilter: KeywordFilter | null;
+  /** グローバルキーワードフィルターの更新コールバック */
   setGlobalFilter: (filter: KeywordFilter | null) => void;
+  /**
+   * この timestamp より前に既読になった記事を未読扱いにするカットオフ点。
+   * 「ここまで読んだ」機能で使用し、古い記事を再び未読フィルターに含める。
+   */
   readBeforeTimestamp?: string | null;
+  /** スヌーズ中の記事 ID → スヌーズ解除 ISO 日時文字列のマップ */
   snoozedUntil?: Record<string, string>;
 }
 
+/**
+ * 記事リストのフィルタリング・ソート・ページネーションを管理するフック。
+ *
+ * ## 主な責務
+ * - 未読のみ・ブックマーク・後で読む・検索クエリ・日付範囲・ソート順によるフィルタリング
+ * - フィード別キーワードフィルター (`feedFilterMap`) とグローバルキーワードフィルターの適用
+ * - IntersectionObserver による無限スクロール（`sentinelRef` を画面外端に置くことで発火）
+ * - サーバーから過去記事が追加された際の `page` 自動拡張（`notifyArticlesAdded` 経由）
+ * - 現在選択中の記事・直前に選択していた記事（猶予期間中）をフィルター対象外に保持
+ * - フィルター状態の localStorage 永続化
+ *
+ * ## ページネーション設計
+ * `filtered` が全マッチ記事、`visible` が `page * PAGE_SIZE` 件に切り取った表示用リスト。
+ * `sentinelRef` は記事リストの末尾に配置し、画面に入ったとき `loadMore()` を呼び出す。
+ *
+ * ## サーバーロード後の page 拡張
+ * `notifyArticlesAdded()` を呼ぶと `serverLoadCount` がインクリメントされ、
+ * 次の render で `filtered.length` を参照して `page` を必要な値まで拡張する。
+ * `filtered` を直接 deps に含めると通常のフィルター切り替えでも発火するため意図的に除外している。
+ */
 export function useFilteredArticles({
   articles,
   feeds = EMPTY_FEED_ARRAY,
