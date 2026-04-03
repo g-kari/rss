@@ -38,6 +38,7 @@ function mergeServerSet(
   });
 }
 
+/** /api/read-state から既読状態を取得する。失敗時は null を返す */
 async function fetchReadState(): Promise<ReadState | null> {
   try {
     const res = await apiFetch("/api/read-state");
@@ -48,6 +49,10 @@ async function fetchReadState(): Promise<ReadState | null> {
   }
 }
 
+/**
+ * Set 型の状態をトグルするコールバックを生成する。
+ * ID を localStorage の `key` に保存し、`schedule` で非同期サーバー同期をスケジュールする。
+ */
 function makeToggle(
   setter: React.Dispatch<React.SetStateAction<Set<string>>>,
   key: string,
@@ -83,6 +88,10 @@ function serializeReadState(sets: ReadStateSets, globalFilter: KeywordFilter | n
   });
 }
 
+/**
+ * 既読・ブックマーク・後で読む・いいね・グローバルフィルター状態をサーバーに保存する。
+ * 通信失敗は無視する（localStorage への保存は呼び出し側で完了済みのため）。
+ */
 async function saveReadState(
   sets: ReadStateSets,
   globalFilter: KeywordFilter | null,
@@ -117,6 +126,23 @@ interface ReadStateResult {
   snoozeArticle: (articleId: string, durationMs: number) => void;
 }
 
+/**
+ * ユーザーの既読・ブックマーク・後で読む・いいね状態を管理するフック。
+ *
+ * ## 状態管理
+ * - 初期値は localStorage から即時ロード（オフライン対応）
+ * - 状態変更は localStorage に即座に反映し、2 秒のデバウンス後にサーバーへ同期
+ * - ページ離脱時（`beforeunload`）は `sendBeacon` で確実に送信
+ * - タブ非表示から復帰時（`visibilitychange`）にも同期を試みる
+ *
+ * ## サーバー同期
+ * ログイン後に `/api/read-state` (GET) でサーバーデータをローカルにマージ（ローカル ∪ サーバー）。
+ * `globalFilter` と `readBeforeTimestamp` はサーバー値を優先（クロスデバイス同期）。
+ *
+ * @param user - 認証ユーザー（null / undefined でサーバー同期を行わない）
+ * @param articles - 現在表示中の記事リスト（`markAllRead` で参照）
+ * @param historyIds - 閲覧履歴 ID セット（`markAllRead` の HISTORY フィード判定に使用）
+ */
 export function useReadState(
   user: UserProfile | null | undefined,
   articles: Article[],

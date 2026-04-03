@@ -65,6 +65,19 @@ export function buildFilterMap<T extends { filter?: KeywordFilter }>(
   return map;
 }
 
+/**
+ * 記事がキーワードフィルターにマッチするかを判定する。
+ *
+ * マッチ対象フィールド: title・summary・metadata の value 値、
+ * `matchCategories` が true の場合は categories も含む。
+ *
+ * マッチ条件:
+ * - `exclude` に含まれるキーワードが **どれにもマッチしない**
+ * - `include` が空、または `include` のうち **いずれか 1 件以上**がマッチする
+ *
+ * @param article - 対象記事（`normalizeFilter` 適用済みフィルターと組み合わせること）
+ * @param filter - `normalizeFilter` で正規化済みの KeywordFilter
+ */
 export function matchesKeywordFilter(article: Article, filter: KeywordFilter): boolean {
   const { include, exclude, matchCategories } = filter;
 
@@ -82,6 +95,11 @@ export function matchesKeywordFilter(article: Article, filter: KeywordFilter): b
   );
 }
 
+/**
+ * 記事リストにキーワードフィルターを適用して返す。
+ * `filter` が未指定、または include/exclude が両方空の場合は元のリストをそのまま返す。
+ * 内部で `normalizeFilter` を呼び出すため、呼び出し側での正規化は不要。
+ */
 export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter): Article[] {
   if (!filter) return articles;
   if (filter.include.length === 0 && filter.exclude.length === 0) return articles;

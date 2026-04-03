@@ -4,6 +4,14 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-03 (129)
+
+### ドキュメント整備
+
+- \`matchesKeywordFilter\` / \`applyKeywordFilter\` (\`src/lib/keyword-filter.ts\`) に JSDoc を追加（マッチ条件・正規化前提・引数を明記）
+- \`filterAndSortArticles\` (\`src/lib/article-filter.ts\`) に JSDoc を追加（フィルター適用順・ソート仕様を明記）
+- \`fetchReadState\` / \`makeToggle\` / \`saveReadState\` / \`useReadState\` (\`src/hooks/useReadState.ts\`) に JSDoc を追加（状態管理・サーバー同期・localStorage 戦略を明記）
+
 ## 2026-04-03 (128)
 
 ### リファクタリング
