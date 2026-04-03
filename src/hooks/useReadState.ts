@@ -173,10 +173,8 @@ export function useReadState(
     bookmarks: bookmarkIds,
     readingList: readingListIds,
     likes: likeIds,
-    readBeforeTimestamp: storageGet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP),
-    snoozedUntil: pruneExpiredSnoozes(
-      loadJson<Record<string, string>>(STORAGE_KEYS.SNOOZED_UNTIL, {}),
-    ),
+    readBeforeTimestamp,
+    snoozedUntil,
   });
   const historyIdsRef = useSyncedRef(historyIds);
   const articlesRef = useSyncedRef(articles);
@@ -289,8 +287,7 @@ export function useReadState(
       setReadIds((prev) => {
         const newIds = articleIds.filter((id) => !prev.has(id));
         if (newIds.length === 0) return prev;
-        const next = new Set(prev);
-        for (const id of newIds) next.add(id);
+        const next = new Set([...prev, ...newIds]);
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
