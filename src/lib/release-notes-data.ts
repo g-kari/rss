@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-04 (リファクタ)
+
+### リファクタリング
+
+- **\`makeCycler\` ヘルパーを追加して cycler コールバックを統一** — \`toggleSortOrder\` / \`cycleDateRange\` / \`cycleReadingTimeRange\` の3つが同じパターン（cycleValue + storageSet + setter + resetPage）を個別の \`useCallback\` で実装していた重複を解消。\`makeFilterToggle\` と同様の \`makeCycler<T>\` ヘルパーを追加し \`useMemo\` でまとめて生成。合わせて \`toggleSortOrder\` の戻り値を \`void → SortOrder\` に変更し、\`useKeyboardNav\` 内の冗長な \`cycleValue(SORT_ORDER_CYCLE, sortOrder)\` 再計算を削除
+
 ## 2026-04-04 (issues対応)
 
 ### バグ修正
