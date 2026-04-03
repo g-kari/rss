@@ -2,10 +2,17 @@ import type { Article, KeywordFilter } from "../types";
 
 const MAX_KEYWORD_LENGTH = 100;
 const MAX_KEYWORDS_PER_ARRAY = 99999;
+/** ReDoS 対策: スラッシュを除いたパターン部分の最大文字数 */
+const MAX_REGEX_PATTERN_LENGTH = 50;
 
 /** `/pattern/` 形式の正規表現キーワードかどうかを判定する */
 function isRegexKeyword(kw: string): boolean {
-  return kw.startsWith("/") && kw.endsWith("/") && kw.length > 2;
+  return (
+    kw.startsWith("/") &&
+    kw.endsWith("/") &&
+    kw.length > 2 &&
+    kw.length - 2 <= MAX_REGEX_PATTERN_LENGTH
+  );
 }
 
 /** キーワードが記事テキストにマッチするかを判定する。正規表現キーワードは大文字小文字を無視して評価する */
