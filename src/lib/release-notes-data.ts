@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-03 (124)
+
+### リファクタリング
+
+- **\`image-proxy\` ユーティリティを専用モジュールに分離** — マジックバイト検出ロジックを \`src/lib/image-mime.ts\`、エラープレースホルダー SVG 生成を \`src/lib/image-error-placeholder.ts\` に抽出。\`route.ts\` を 238 行から 95 行に縮小
+
 ## 2026-04-03 (123)
 
 ### リファクタリング
