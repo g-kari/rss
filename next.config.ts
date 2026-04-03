@@ -49,8 +49,9 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
       // スタイル: self + インライン（Tailwind）
       "style-src 'self' 'unsafe-inline'",
-      // 画像: 任意ドメイン（記事サムネイル）+ data URI
-      "img-src * data: blob:",
+      // 画像: self のみ（記事本文・サムネイル・OGP 等は /api/image-proxy 経由でプロキシ済み）
+      // data: は sanitizeHtml が img src から除去、blob: は画像表示には未使用のため除外
+      "img-src 'self'",
       // iframe: YouTube・Spotify・Twitch・ニコニコ・X (Twitter) 等の埋め込み許可
       // youtube.com / youtube-nocookie.com（www なし）は sanitizeHtml の TRUSTED_IFRAME_RULES でも
       // 許可されているため、CSP と整合させるために両方を追加する。
