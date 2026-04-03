@@ -49,6 +49,23 @@ function makeFilterToggle(
   };
 }
 
+/** 列挙値を循環させて localStorage に保存し、ページをリセットするコールバックを生成する */
+function makeCycler<T extends string>(
+  cycle: readonly T[],
+  ref: { current: T },
+  storageKey: string,
+  setter: Dispatch<SetStateAction<T>>,
+  resetPage: () => void,
+): () => T {
+  return () => {
+    const next = cycleValue(cycle, ref.current);
+    storageSet(storageKey, next);
+    setter(next);
+    resetPage();
+    return next;
+  };
+}
+
 interface Options {
   /** フィルタリング対象の全記事リスト */
   articles: Article[];
@@ -146,6 +163,7 @@ export function useFilteredArticles({
   );
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const sortOrderRef = useSyncedRef(sortOrder);
   const dateRangeRef = useSyncedRef(dateRange);
   const readingTimeRangeRef = useSyncedRef(readingTimeRange);
 
@@ -176,29 +194,31 @@ export function useFilteredArticles({
     setPage(1);
   }, []);
 
-  const toggleSortOrder = useCallback(() => {
-    setSortOrder((v) => {
-      const next = cycleValue(SORT_ORDER_CYCLE, v);
-      storageSet(STORAGE_KEYS.SORT_ORDER, next);
-      return next;
-    });
-    setPage(1);
-  }, []);
-
-  const cycleDateRange = useCallback((): DateRange => {
-    const next = cycleValue(DATE_RANGE_CYCLE, dateRangeRef.current);
-    storageSet(STORAGE_KEYS.DATE_RANGE, next);
-    setDateRange(next);
-    setPage(1);
-    return next;
-  }, []);
-
-  const cycleReadingTimeRange = useCallback((): ReadingTimeRange => {
-    const next = cycleValue(READING_TIME_RANGE_CYCLE, readingTimeRangeRef.current);
-    storageSet(STORAGE_KEYS.READING_TIME_RANGE, next);
-    setReadingTimeRange(next);
-    setPage(1);
-    return next;
+  const { toggleSortOrder, cycleDateRange, cycleReadingTimeRange } = useMemo(() => {
+    const resetPage = () => setPage(1);
+    return {
+      toggleSortOrder: makeCycler(
+        SORT_ORDER_CYCLE,
+        sortOrderRef,
+        STORAGE_KEYS.SORT_ORDER,
+        setSortOrder,
+        resetPage,
+      ),
+      cycleDateRange: makeCycler(
+        DATE_RANGE_CYCLE,
+        dateRangeRef,
+        STORAGE_KEYS.DATE_RANGE,
+        setDateRange,
+        resetPage,
+      ),
+      cycleReadingTimeRange: makeCycler(
+        READING_TIME_RANGE_CYCLE,
+        readingTimeRangeRef,
+        STORAGE_KEYS.READING_TIME_RANGE,
+        setReadingTimeRange,
+        resetPage,
+      ),
+    };
   }, []);
 
   const loadMore = useCallback(() => {
