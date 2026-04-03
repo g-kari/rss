@@ -276,6 +276,8 @@ export default function App() {
     toggleSortOrder,
     dateRange,
     cycleDateRange,
+    readingTimeRange,
+    cycleReadingTimeRange,
     query,
     rawQuery,
     updateQuery,
@@ -774,6 +776,8 @@ export default function App() {
             toggleSortOrder={toggleSortOrder}
             dateRange={dateRange}
             cycleDateRange={cycleDateRange}
+            readingTimeRange={readingTimeRange}
+            cycleReadingTimeRange={cycleReadingTimeRange}
             query={query}
             rawQuery={rawQuery}
             updateQuery={updateQuery}

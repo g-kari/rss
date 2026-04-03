@@ -10,7 +10,15 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import type { Article, Feed, KeywordFilter, Layout, DateRange, SortOrder } from "../types";
+import type {
+  Article,
+  Feed,
+  KeywordFilter,
+  Layout,
+  DateRange,
+  ReadingTimeRange,
+  SortOrder,
+} from "../types";
 import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { useSearchHistory } from "../hooks/useSearchHistory";
@@ -55,6 +63,8 @@ interface Props {
   toggleSortOrder: () => void;
   dateRange: DateRange;
   cycleDateRange: () => DateRange;
+  readingTimeRange: ReadingTimeRange;
+  cycleReadingTimeRange: () => ReadingTimeRange;
   query: string;
   rawQuery: string;
   updateQuery: (q: string) => void;
@@ -131,6 +141,13 @@ const DATE_RANGE_LABELS: Record<DateRange, string> = {
   month: "今月",
 };
 
+const READING_TIME_LABELS: Record<ReadingTimeRange, string> = {
+  all: "時間",
+  short: "〜5分",
+  medium: "〜15分",
+  long: "15分〜",
+};
+
 // ── メインコンポーネント ───────────────────────────────────────────────
 
 export default function ArticleList({
@@ -161,6 +178,8 @@ export default function ArticleList({
   toggleSortOrder,
   dateRange,
   cycleDateRange,
+  readingTimeRange,
+  cycleReadingTimeRange,
   query,
   rawQuery,
   updateQuery,
@@ -318,6 +337,13 @@ export default function ArticleList({
               title="日付フィルター切り替え (d)"
             >
               {DATE_RANGE_LABELS[dateRange]}
+            </FilterPillButton>
+            <FilterPillButton
+              active={readingTimeRange !== "all"}
+              onClick={cycleReadingTimeRange}
+              title="読了時間フィルター切り替え"
+            >
+              {READING_TIME_LABELS[readingTimeRange]}
             </FilterPillButton>
             <button
               onClick={toggleSortOrder}

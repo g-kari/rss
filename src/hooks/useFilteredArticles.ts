@@ -7,12 +7,24 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import type { Article, DateRange, Feed, KeywordFilter, SortOrder } from "../types";
+import type {
+  Article,
+  DateRange,
+  Feed,
+  KeywordFilter,
+  ReadingTimeRange,
+  SortOrder,
+} from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { useGracePeriod } from "./useGracePeriod";
-import { cycleValue, DATE_RANGE_CYCLE, SORT_ORDER_CYCLE } from "../lib/article-utils";
+import {
+  cycleValue,
+  DATE_RANGE_CYCLE,
+  READING_TIME_RANGE_CYCLE,
+  SORT_ORDER_CYCLE,
+} from "../lib/article-utils";
 import { filterAndSortArticles } from "../lib/article-filter";
 import { buildFilterMap, normalizeFilter } from "../lib/keyword-filter";
 
@@ -131,9 +143,16 @@ export function useFilteredArticles({
     const v = storageGet(STORAGE_KEYS.DATE_RANGE);
     return DATE_RANGE_CYCLE.includes(v as DateRange) ? (v as DateRange) : "all";
   });
+  const [readingTimeRange, setReadingTimeRange] = useState<ReadingTimeRange>(() => {
+    const v = storageGet(STORAGE_KEYS.READING_TIME_RANGE);
+    return READING_TIME_RANGE_CYCLE.includes(v as ReadingTimeRange)
+      ? (v as ReadingTimeRange)
+      : "all";
+  });
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const dateRangeRef = useSyncedRef(dateRange);
+  const readingTimeRangeRef = useSyncedRef(readingTimeRange);
 
   // 直前に選択していた記事を一定時間フィルター対象外にする（未読フィルター中でも前の記事に戻れるように）
   const gracePeriodId = useGracePeriod(selectedArticleId);
@@ -175,6 +194,14 @@ export function useFilteredArticles({
     const next = cycleValue(DATE_RANGE_CYCLE, dateRangeRef.current);
     storageSet(STORAGE_KEYS.DATE_RANGE, next);
     setDateRange(next);
+    setPage(1);
+    return next;
+  }, []);
+
+  const cycleReadingTimeRange = useCallback((): ReadingTimeRange => {
+    const next = cycleValue(READING_TIME_RANGE_CYCLE, readingTimeRangeRef.current);
+    storageSet(STORAGE_KEYS.READING_TIME_RANGE, next);
+    setReadingTimeRange(next);
     setPage(1);
     return next;
   }, []);
@@ -238,6 +265,7 @@ export function useFilteredArticles({
         globalFilter: normalizedGlobalFilter,
         readBeforeTimestamp,
         snoozedUntil,
+        readingTimeRange,
       }),
     [
       articles,
@@ -261,6 +289,7 @@ export function useFilteredArticles({
       normalizedGlobalFilter,
       readBeforeTimestamp,
       snoozedUntil,
+      readingTimeRange,
     ],
   );
 
@@ -305,5 +334,7 @@ export function useFilteredArticles({
     globalFilter,
     setGlobalFilter,
     notifyArticlesAdded,
+    readingTimeRange,
+    cycleReadingTimeRange,
   };
 }

@@ -1,4 +1,4 @@
-import type { DateRange, FontSize, Layout, SortOrder } from "../types";
+import type { DateRange, FontSize, Layout, ReadingTimeRange, SortOrder } from "../types";
 import { stripHtml } from "./html";
 
 /** CJK 統合漢字・ひらがな・カタカナ・拡張A（読了速度判定用） */
@@ -183,6 +183,14 @@ export function collectImageUrls(container: Element, seen?: Set<string>): string
   }
   return result;
 }
+
+export const READING_TIME_RANGE_CYCLE: ReadingTimeRange[] = ["all", "short", "medium", "long"];
+export const READING_TIME_RANGE_LABELS: Record<ReadingTimeRange, string> = {
+  all: "時間",
+  short: "〜5分",
+  medium: "〜15分",
+  long: "15分〜",
+};
 
 export const DATE_RANGE_LABELS: Record<DateRange, string> = {
   all: "全期間",
