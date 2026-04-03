@@ -17,15 +17,11 @@ export interface ImportMessage {
 }
 
 /**
- * フィード CRUD 操作（追加・削除・リネーム・OPML インポート/エクスポート）をまとめた hook。
+ * フィード CRUD 操作（追加・削除・リネーム・OPML インポート）をまとめた hook。
  *
  * 各操作は `/api/feeds` 系エンドポイントを呼び出し、成功時にコールバックを実行する。
  * - `addFeed` / `deleteFeed` / `renameFeed`: 単体フィードの操作
- * - `handleFileImport`: OPML ファイルを読み込んで `/api/feeds/import` に POST
- * - `handleExport`: `/api/feeds/export` から OPML をダウンロード
- * - `refreshFeed`: 単体フィードの手動更新（`/api/feeds/:id/refresh`）
- * - `reinferFeed`: LLM による CSS セレクタ再推論（`/api/feeds/:id/reinfer`）
- * - `setPriority`: フィード優先度（スター）の更新
+ * - `handleImportFile`: OPML ファイルを読み込んで `/api/feeds/import` に POST
  *
  * OPML インポートの進捗・エラーは `importMessage` として返される。
  */

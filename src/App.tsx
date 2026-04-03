@@ -706,7 +706,7 @@ export default function App() {
             onFeedAdded={onFeedAdded}
             onFeedDeleted={onFeedDeleted}
             onFeedRenamed={updateFeed}
-            onFeedFilterSaved={updateFeed}
+            onSaveFilter={saveFilter}
             onFeedsImported={appendFeeds}
             onMarkAllRead={markAllRead}
             onToggleTheme={toggleTheme}

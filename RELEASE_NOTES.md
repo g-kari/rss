@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-03 (136)
+
+### リファクタリング
+
+- **`FeedSidebar` の重複 `saveFilter` を削除** — `FeedSidebar.tsx` が独自に `PATCH /api/feeds/:id` を呼び出していた `saveFilter` 関数を削除し、`App.tsx` の `saveFilter` を `onSaveFilter` プロップ経由で受け取るよう変更。`apiFetch` インポートも不要になり削除。`useFeedOperations` の JSDoc から存在しない関数の記述も修正
+
 ## 2026-04-03 (135)
 
 ### バグ修正

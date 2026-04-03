@@ -6,7 +6,6 @@ import ReleaseNotesModal from "./ReleaseNotesModal";
 import FeedItem, { formatCount } from "./FeedItem";
 import RecommendationSection from "./RecommendationSection";
 import { useFeedOperations } from "../hooks/useFeedOperations";
-import { apiFetch } from "../lib/api-fetch";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { isArticleRead } from "../lib/article-filter";
 
@@ -29,7 +28,7 @@ interface Props {
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
   onFeedRenamed: (feed: Feed) => void;
-  onFeedFilterSaved: (feed: Feed) => void;
+  onSaveFilter: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
   onFeedsImported: (feeds: Feed[]) => void;
   onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
@@ -105,7 +104,7 @@ export default function FeedSidebar({
   onFeedAdded,
   onFeedDeleted,
   onFeedRenamed,
-  onFeedFilterSaved,
+  onSaveFilter,
   onFeedsImported,
   onMarkAllRead,
   onToggleTheme,
@@ -154,17 +153,6 @@ export default function FeedSidebar({
     handleImportFile,
     clearError,
   } = useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported });
-
-  async function saveFilter(feedId: string, filter: KeywordFilter | null): Promise<void> {
-    const res = await apiFetch(`/api/feeds/${feedId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filter }),
-    });
-    if (!res.ok) throw new Error("フィルターの保存に失敗しました");
-    const updated = (await res.json()) as Feed;
-    onFeedFilterSaved(updated);
-  }
 
   function handleAddFeed(e: React.FormEvent) {
     e.preventDefault();
@@ -218,7 +206,7 @@ export default function FeedSidebar({
         onRename={(title) => renameFeed(feed.id, title)}
         onRetry={() => onRetryFeed(feed.id)}
         onReinfer={onReinferFeed ? () => onReinferFeed(feed.id) : undefined}
-        onFilterSave={(filter) => saveFilter(feed.id, filter)}
+        onFilterSave={(filter) => onSaveFilter(feed.id, filter)}
         onToggleNsfw={() => onToggleNsfwFeed(feed)}
         onTogglePriority={() => onTogglePriorityFeed(feed)}
       />
