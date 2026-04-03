@@ -19,12 +19,14 @@ type AiMessage = { role: "system" | "user"; content: string };
  * @param env - Cloudflare バインディング (RSS_DATA, AI)
  * @param ctx - ExecutionContext (waitUntil 用)
  * @param buildMessages - テキストから AI メッセージ配列を構築する関数
+ * @param cacheType - R2 キャッシュのサブディレクトリ名（デフォルト "summary"）
  */
 export async function runAiJob(
   request: Request,
   env: { RSS_DATA: R2Bucket; AI: Ai },
   ctx: ExecutionContext,
   buildMessages: (plain: string) => AiMessage[],
+  cacheType = "summary",
 ): Promise<NextResponse> {
   const parsed = await parseJsonBody<{ url?: unknown; articleId?: unknown }>(request);
   if (!parsed.ok) return parsed.error;
@@ -38,7 +40,7 @@ export async function runAiJob(
 
   // キャッシュヒット（articleId ベース）
   if (articleId) {
-    const cached = await getAiCacheById(env.RSS_DATA, articleId);
+    const cached = await getAiCacheById(env.RSS_DATA, articleId, cacheType);
     if (cached) return NextResponse.json({ result: cached });
   }
 
@@ -63,7 +65,8 @@ export async function runAiJob(
   }
 
   // キャッシュ保存はバックグラウンドで実行し、レスポンスをブロックしない
-  if (result && articleId) ctx.waitUntil(setAiCacheById(env.RSS_DATA, articleId, result));
+  if (result && articleId)
+    ctx.waitUntil(setAiCacheById(env.RSS_DATA, articleId, result, cacheType));
 
   return NextResponse.json({ result });
 }

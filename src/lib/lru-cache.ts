@@ -90,3 +90,6 @@ export const contentLruCache = new LruCache(STORAGE_KEYS.CONTENT_CACHE_PREFIX, 1
 
 /** AI 結果キャッシュ（最大 30 件） */
 export const aiLruCache = new LruCache(STORAGE_KEYS.AI_CACHE_PREFIX, 30);
+
+/** AI 翻訳キャッシュ（最大 30 件） */
+export const aiTranslateLruCache = new LruCache(STORAGE_KEYS.AI_TRANSLATE_CACHE_PREFIX, 30);
