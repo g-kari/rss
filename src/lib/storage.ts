@@ -118,6 +118,15 @@ export function saveSet(key: string, ids: Set<string>): void {
   storageSet(key, JSON.stringify([...ids]));
 }
 
+/**
+ * localStorage に保存された文字列を列挙型として読み込む。
+ * 保存値が valid に含まれない場合は fallback を返す。
+ */
+export function loadStoredEnum<T extends string>(key: string, valid: readonly T[], fallback: T): T {
+  const stored = storageGet(key);
+  return valid.includes(stored as T) ? (stored as T) : fallback;
+}
+
 /** Set<string> の要素をトグル（追加/削除）して localStorage に保存する */
 export function toggleSetItem(
   setState: (updater: (prev: Set<string>) => Set<string>) => void,

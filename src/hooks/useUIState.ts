@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Layout, FontSize } from "../types";
-import { STORAGE_KEYS, storageGet, storageSet, loadSet, toggleSetItem } from "../lib/storage";
+import {
+  STORAGE_KEYS,
+  storageGet,
+  storageSet,
+  loadSet,
+  loadStoredEnum,
+  toggleSetItem,
+} from "../lib/storage";
 import { FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article-utils";
 import { useMobilePane } from "./useMobilePane";
 import { useNSFWMode } from "./useNSFWMode";
@@ -14,11 +21,6 @@ export type Theme = "light" | "dark";
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
-
-function loadStoredEnum<T extends string>(key: string, valid: readonly T[], fallback: T): T {
-  const stored = storageGet(key);
-  return valid.includes(stored as T) ? (stored as T) : fallback;
 }
 
 const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUT_CYCLE, "list" as Layout);

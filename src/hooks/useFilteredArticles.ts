@@ -16,7 +16,7 @@ import type {
   SortOrder,
 } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
-import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
+import { STORAGE_KEYS, storageGet, storageSet, loadStoredEnum } from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { useGracePeriod } from "./useGracePeriod";
 import {
@@ -135,20 +135,15 @@ export function useFilteredArticles({
   const [rawQuery, setRawQuery] = useState(""); // 入力値（即時更新）
   const query = useDebounce(rawQuery, 300); // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
-    const v = storageGet(STORAGE_KEYS.SORT_ORDER);
-    return v === "oldest" ? "oldest" : "newest";
-  });
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const v = storageGet(STORAGE_KEYS.DATE_RANGE);
-    return DATE_RANGE_CYCLE.includes(v as DateRange) ? (v as DateRange) : "all";
-  });
-  const [readingTimeRange, setReadingTimeRange] = useState<ReadingTimeRange>(() => {
-    const v = storageGet(STORAGE_KEYS.READING_TIME_RANGE);
-    return READING_TIME_RANGE_CYCLE.includes(v as ReadingTimeRange)
-      ? (v as ReadingTimeRange)
-      : "all";
-  });
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() =>
+    loadStoredEnum(STORAGE_KEYS.SORT_ORDER, SORT_ORDER_CYCLE, "newest"),
+  );
+  const [dateRange, setDateRange] = useState<DateRange>(() =>
+    loadStoredEnum(STORAGE_KEYS.DATE_RANGE, DATE_RANGE_CYCLE, "all"),
+  );
+  const [readingTimeRange, setReadingTimeRange] = useState<ReadingTimeRange>(() =>
+    loadStoredEnum(STORAGE_KEYS.READING_TIME_RANGE, READING_TIME_RANGE_CYCLE, "all"),
+  );
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const dateRangeRef = useSyncedRef(dateRange);
