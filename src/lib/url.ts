@@ -75,6 +75,13 @@ function isIPv6LinkLocal(hostname: string): boolean {
   return (firstGroup & 0xffc0) === 0xfe80;
 }
 
+/**
+ * ホスト名またはIPアドレスがプライベート・ループバック・リンクローカル等の
+ * 内部ネットワークに属するか判定する（SSRF 対策）。
+ *
+ * @param hostname - URL.hostname から取得したホスト名（IPv6 は "[...]" 形式）
+ * @returns プライベートホストであれば true
+ */
 function isPrivateHost(hostname: string): boolean {
   if (PRIVATE_HOSTNAME_PATTERNS.some((p) => p.test(hostname))) return true;
   if (PRIVATE_IP_PATTERNS.some((p) => p.test(hostname))) return true;
@@ -97,7 +104,15 @@ function isPrivateHost(hostname: string): boolean {
 /** URL の最大許容長。DoS・ストレージ肥大化対策。 */
 export const MAX_URL_LENGTH = 2048;
 
-/** URL バリデーション共通ロジック。allowHttp=true なら http: も許可する。 */
+/**
+ * URL バリデーション共通ロジック。
+ * 最大長チェック・スキーム検証・プライベートホスト拒否を行う。
+ * `allowHttp=true` の場合は http: も許可し、false の場合は https: のみ許可する。
+ *
+ * @param url - 検証対象の URL 文字列
+ * @param allowHttp - http スキームを許可するか
+ * @returns 有効な URL であれば true
+ */
 function isValidUrl(url: string, allowHttp: boolean): boolean {
   if (url.length > MAX_URL_LENGTH) return false;
   try {
@@ -109,6 +124,13 @@ function isValidUrl(url: string, allowHttp: boolean): boolean {
   }
 }
 
+/**
+ * フィード URL として有効かどうかを検証する。
+ * http および https の両方を許可し、プライベートホストへのアクセスは拒否する（SSRF 対策）。
+ *
+ * @param url - 検証対象の URL 文字列
+ * @returns 有効なフィード URL であれば true
+ */
 export function isValidFeedUrl(url: string): boolean {
   return isValidUrl(url, true);
 }
@@ -123,6 +145,13 @@ const IMAGE_DOMAIN_MAX_LENGTHS: { suffix: string; maxLength: number }[] = [
   { suffix: ".imgix.net", maxLength: Infinity }, // imgix CDN（Qiita 等）
 ];
 
+/**
+ * ホスト名に応じた画像 URL の最大許容長を返す。
+ * imgix 等の CDN はパラメータが長くなるため、ドメインごとに上限を緩める設定を持つ。
+ *
+ * @param hostname - URL.hostname から取得したホスト名
+ * @returns 許容する URL の最大文字数
+ */
 function imageUrlMaxLength(hostname: string): number {
   for (const { suffix, maxLength } of IMAGE_DOMAIN_MAX_LENGTHS) {
     if (hostname === suffix.slice(1) || hostname.endsWith(suffix)) return maxLength;
@@ -204,6 +233,15 @@ const TRACKING_PARAMS = new Set([
   "_kx",
 ]);
 
+/**
+ * キャッシュキー生成用に URL を正規化する。
+ * UTM / 広告クリック等の純粋なトラッキングパラメータを除去し、
+ * 残りのパラメータをソートして一意なキャッシュキーを生成する。
+ * フラグメント（`#...`）はサーバー側に送信されないため除去する。
+ *
+ * @param url - 正規化対象の URL 文字列
+ * @returns 正規化後の URL 文字列。パース失敗時は元の文字列をそのまま返す
+ */
 export function normalizeUrlForCache(url: string): string {
   try {
     const parsed = new URL(url);

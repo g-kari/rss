@@ -1,6 +1,9 @@
 import type { EngagementAction, EngagementEntry } from "../types";
 
-/** アクション別の重み */
+/**
+ * エンゲージメントアクション別のスコア重み。
+ * ユーザーの意図の強さに基づいて設定されており、like が最も高く、reading_list が最も低い。
+ */
 const ACTION_WEIGHTS: Record<EngagementAction, number> = {
   like: 5.0,
   bookmark: 4.0,

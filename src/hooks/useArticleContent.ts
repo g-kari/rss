@@ -7,6 +7,10 @@ import { isAbortError } from "../lib/fetch";
 import { STORAGE_KEYS, loadJson } from "../lib/storage";
 import type { OgpData } from "../types";
 
+/**
+ * `useArticleContent` フックの戻り値型。
+ * 記事全文コンテンツのフェッチ状態・キャッシュ・OGP画像解決結果を保持する。
+ */
 interface ArticleContentState {
   /** フェッチ済み or キャッシュ済みのコンテンツ（なければ null） */
   storedContent: string | null;
@@ -18,6 +22,16 @@ interface ArticleContentState {
   resolvedOgImage: string | null;
 }
 
+/**
+ * 記事の全文コンテンツ取得とOGP画像解決を管理するフック。
+ * LRUキャッシュから先読みし、キャッシュミス時は /api/content にフェッチする。
+ * 記事切り替え時には進行中のフェッチを AbortController で中断してリークを防ぐ。
+ *
+ * @param articleId - 現在表示中の記事ID（キャッシュキー・ステートタグとして使用）
+ * @param articleLink - 記事の元URL（全文取得・OGP解決のターゲット）
+ * @param articleOgImage - RSSフィードに含まれるOGP画像URL（あれば動的解決をスキップ）
+ * @returns コンテンツ取得状態と全文フェッチ関数、OGP画像URL
+ */
 export function useArticleContent(
   articleId: string | undefined,
   articleLink: string | undefined,

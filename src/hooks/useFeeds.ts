@@ -7,6 +7,7 @@ import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 import { compareByDateDesc } from "../lib/article-utils";
 import { useSyncedRef } from "./useSyncedRef";
 
+/** 記事新着確認のポーリング間隔（5分） */
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
 /** incoming の新規記事を existing にマージして日付降順でソートして返す */
@@ -18,6 +19,10 @@ function mergeUniqueArticles(existing: Article[], incoming: Article[]): Article[
   return [...existing, ...brandNew].sort(compareByDateDesc);
 }
 
+/**
+ * `useFeeds` フックの戻り値型。
+ * フィード・記事データおよびCRUD操作・ページネーション関連の関数を保持する。
+ */
 interface FeedsState {
   feeds: Feed[];
   articles: Article[];
@@ -39,6 +44,15 @@ interface FeedsState {
   skipRemainingPages: (feedId: string | null) => void;
 }
 
+/**
+ * フィードと記事の取得・管理を行うフック。
+ * ログイン後に /api/feeds と /api/articles を取得し、5分ごとの新着ポーリング、
+ * オンライン復帰時の即時同期、フィードの追加・削除・更新・過去ページの追加読み込みを提供する。
+ *
+ * @param user - ログイン中のユーザー情報（`null`/`undefined` のときはデータ取得を行わない）
+ * @param onError - エラー発生時に呼び出すコールバック（ユーザー向けメッセージを渡す）
+ * @returns フィード・記事データと各種操作関数
+ */
 export function useFeeds(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,
