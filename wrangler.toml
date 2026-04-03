@@ -36,9 +36,6 @@ bucket_name = "rss-reader-data"
 [ai]
 binding = "AI"
 
-[build]
-command = "pnpm run build:cf"
-
 [triggers]
 crons = ["*/30 * * * *"]
 
