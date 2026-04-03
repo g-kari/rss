@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-03 (130)
+
+### リファクタリング
+
+- `useArticleAi` (`src/hooks/useArticleAi.ts`) の重複ロジックをプライベートフック `useAiOperation` に共通化。`doRunAi` / `doTranslate` で完全に同一だった LRU キャッシュ確認・AbortController 管理・API フェッチ・エラーハンドリングを一元化し、155行 → 113行に削減
+
 ## 2026-04-03 (129)
 
 ### ドキュメント整備
