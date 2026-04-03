@@ -77,12 +77,131 @@ export function fixImageDimensions(html: string, pageUrl = ""): string {
 }
 
 /**
+ * ネストを考慮してブロック要素を処理する汎用ヘルパー。
+ * 非貪欲マッチ `[\s\S]*?` はネストした同名要素の最初の閉じタグで終了してしまうため、
+ * このヘルパーは開閉タグのカウントで深度を追跡する。
+ *
+ * @param html 入力HTML文字列
+ * @param tags 対象タグ名の配列（小文字）
+ * @param filter null なら全要素を対象、関数なら開きタグ文字列が true の要素のみ処理
+ * @param replacer (開きタグ文字列, 内側HTML) → 置換文字列。空文字列を返すと除去
+ */
+function processNestedBlocks(
+  html: string,
+  tags: string[],
+  filter: ((openTag: string) => boolean) | null,
+  replacer: (openTag: string, inner: string) => string,
+): string {
+  const htmlLower = html.toLowerCase();
+  let result = "";
+  let i = 0;
+
+  while (i < html.length) {
+    // 最も早い候補タグを探す
+    let earliest = -1;
+    let earliestTag = "";
+    for (const tag of tags) {
+      const idx = htmlLower.indexOf(`<${tag}`, i);
+      if (idx !== -1 && (earliest === -1 || idx < earliest)) {
+        earliest = idx;
+        earliestTag = tag;
+      }
+    }
+    if (earliest === -1) {
+      result += html.slice(i);
+      break;
+    }
+
+    const tagEnd = htmlLower.indexOf(">", earliest);
+    if (tagEnd === -1) {
+      result += html.slice(i);
+      break;
+    }
+
+    const openTag = html.slice(earliest, tagEnd + 1);
+
+    if (!filter || filter(openTag)) {
+      // ネスト深度を追跡して対応する閉じタグを探す
+      const closeTag = `</${earliestTag}>`;
+      const openPrefix = `<${earliestTag}`;
+      let depth = 1;
+      let pos = tagEnd + 1;
+      let found = false;
+
+      while (pos < html.length) {
+        const nextOpen = htmlLower.indexOf(openPrefix, pos);
+        const nextClose = htmlLower.indexOf(closeTag, pos);
+
+        if (nextClose === -1) {
+          pos = html.length;
+          break;
+        }
+
+        if (nextOpen !== -1 && nextOpen < nextClose) {
+          depth++;
+          pos = nextOpen + openPrefix.length;
+        } else {
+          depth--;
+          if (depth === 0) {
+            result += html.slice(i, earliest);
+            result += replacer(openTag, html.slice(tagEnd + 1, nextClose));
+            i = nextClose + closeTag.length;
+            found = true;
+            break;
+          }
+          pos = nextClose + closeTag.length;
+        }
+      }
+
+      if (!found) {
+        result += html.slice(i, earliest);
+        i = pos;
+      }
+    } else {
+      result += html.slice(i, tagEnd + 1);
+      i = tagEnd + 1;
+    }
+  }
+
+  return result;
+}
+
+/** processNestedBlocks を使ってクラスパターンにマッチする div を除去する。 */
+function removeDivsByClass(html: string, classPattern: RegExp): string {
+  return processNestedBlocks(
+    html,
+    ["div"],
+    (openTag) => classPattern.test(openTag),
+    () => "",
+  );
+}
+
+/** processNestedBlocks を使ってクラスパターンにマッチするブロック要素を変換する。 */
+function replaceBlocksByClass(
+  html: string,
+  tags: string[],
+  classPattern: RegExp,
+  replacer: (inner: string) => string,
+): string {
+  return processNestedBlocks(
+    html,
+    tags,
+    (openTag) => classPattern.test(openTag),
+    (_openTag, inner) => replacer(inner),
+  );
+}
+
+/**
  * table タグをレスポンシブスクロール可能なラッパーで包む。
+ * ネストした table にも対応するため processNestedBlocks を使用する。
  */
 export function wrapTables(html: string): string {
-  return html.replace(
-    /(<table\b[^>]*>[\s\S]*?<\/table>)/gi,
-    '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.25em 0">$1</div>',
+  return processNestedBlocks(
+    html,
+    ["table"],
+    null,
+    (openTag, inner) =>
+      `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.25em 0">${openTag}${inner}</table></div>`,
   );
 }
 
@@ -158,24 +277,20 @@ function extractThumbListImgs(html: string, pageUrl: string): string[] {
  */
 export function removeNoise(html: string): string {
   // Qiita: header/footer ツールバー、サイドバー
-  html = html.replace(
-    /<div[^>]+class="[^"]*(?:LikesButton|StockButton|ShareButtons|SideBar|ArticleHeader|ArticleFooter|FollowButton)[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
-    "",
+  html = removeDivsByClass(
+    html,
+    /class="[^"]*(?:LikesButton|StockButton|ShareButtons|SideBar|ArticleHeader|ArticleFooter|FollowButton)[^"]*"/i,
   );
   // Zenn: チャプター選択、関連記事
-  html = html.replace(
-    /<div[^>]+class="[^"]*(?:ChapterList|RelatedArticles|TocItem)[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
-    "",
-  );
+  html = removeDivsByClass(html, /class="[^"]*(?:ChapterList|RelatedArticles|TocItem)[^"]*"/i);
   // 汎用: "related", "recommend", "share", "sns" を含む div
-  html = html.replace(
-    /<div[^>]+class="[^"]*(?:related|recommend|share|sns|toc-|side-)[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
-    "",
-  );
+  html = removeDivsByClass(html, /class="[^"]*(?:related|recommend|share|sns|toc-|side-)[^"]*"/i);
   // EC / Shopify: 商品画像ギャラリーを CSS scroll-snap スライダーに変換
-  html = html.replace(
-    /<(?:ul|div)[^>]+class="[^"]*(?:product__media|media-gallery|product-gallery|thumbnail[s]?(?:-list|-wrapper)?|image-gallery|photo-gallery|product-images)[^"]*"[^>]*>([\s\S]*?)<\/(?:ul|div)>/gi,
-    (_match, inner: string) => {
+  html = replaceBlocksByClass(
+    html,
+    ["ul", "div"],
+    /class="[^"]*(?:product__media|media-gallery|product-gallery|thumbnail[s]?(?:-list|-wrapper)?|image-gallery|photo-gallery|product-images)[^"]*"/i,
+    (inner) => {
       const imgs = [...inner.matchAll(/<img\b[^>]*>/gi)].map((m) => m[0]);
       return buildImageSlider(imgs);
     },
