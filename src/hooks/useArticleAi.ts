@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { aiLruCache, aiTranslateLruCache } from "../lib/lru-cache";
+import { type LruCache, aiLruCache, aiTranslateLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
 
@@ -20,135 +20,94 @@ interface ArticleAiState {
   resetTranslate: () => void;
 }
 
-export function useArticleAi(articleId: string | undefined): ArticleAiState {
-  const [aiResult, setAiResult] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState("");
+/** AI 操作（要約・翻訳など）の状態とロジックを管理するプライベートフック */
+function useAiOperation(endpoint: string, lruCache: LruCache, errorMessage: string) {
+  const [result, setResult] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
-  const [translateResult, setTranslateResult] = useState<string | null>(null);
-  const [translateLoading, setTranslateLoading] = useState(false);
-  const [translateError, setTranslateError] = useState("");
-  const translateAbortRef = useRef<AbortController | null>(null);
-
-  const resetAi = useCallback(() => {
+  const reset = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
-    setAiResult(null);
-    setAiError("");
-    setAiLoading(false);
+    setResult(null);
+    setError("");
+    setLoading(false);
   }, []);
 
-  const resetTranslate = useCallback(() => {
-    translateAbortRef.current?.abort();
-    translateAbortRef.current = null;
-    setTranslateResult(null);
-    setTranslateError("");
-    setTranslateLoading(false);
-  }, []);
+  const run = useCallback(
+    async (url: string, currentArticleId?: string) => {
+      if (!url.trim()) return;
+
+      // LRU キャッシュヒット時は API コールなし
+      if (currentArticleId) {
+        const cached = lruCache.get(currentArticleId);
+        if (cached) {
+          setResult(cached);
+          return;
+        }
+      }
+
+      // 既存のリクエストをキャンセルして新しいコントローラーを作成
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setLoading(true);
+      setError("");
+      try {
+        const res = await apiFetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, articleId: currentArticleId }),
+          signal: controller.signal,
+        });
+        const data = (await res.json()) as { result?: string; error?: string };
+        if (data.result) {
+          if (currentArticleId) lruCache.set(currentArticleId, data.result);
+          setResult(data.result);
+        } else if (data.error) {
+          setError(data.error);
+        } else {
+          setError(errorMessage);
+        }
+      } catch (err) {
+        if (isAbortError(err)) return;
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [endpoint, lruCache, errorMessage],
+  );
+
+  return { result, loading, error, run, reset };
+}
+
+export function useArticleAi(articleId: string | undefined): ArticleAiState {
+  const ai = useAiOperation("/api/ai/summarize", aiLruCache, "AI の処理に失敗しました");
+  const translate = useAiOperation(
+    "/api/ai/translate",
+    aiTranslateLruCache,
+    "翻訳の処理に失敗しました",
+  );
 
   // 記事が変わったら進行中のリクエストをキャンセルして AI 状態を自動リセットする
   useEffect(() => {
-    resetAi();
-    resetTranslate();
-  }, [articleId, resetAi, resetTranslate]);
-
-  const doRunAi = useCallback(async (url: string, currentArticleId?: string) => {
-    if (!url.trim()) return;
-
-    // LRU キャッシュヒット時は API コールなし
-    if (currentArticleId) {
-      const cached = aiLruCache.get(currentArticleId);
-      if (cached) {
-        setAiResult(cached);
-        return;
-      }
-    }
-
-    // 既存のリクエストをキャンセルして新しいコントローラーを作成
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setAiLoading(true);
-    setAiError("");
-    try {
-      const res = await apiFetch("/api/ai/summarize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, articleId: currentArticleId }),
-        signal: controller.signal,
-      });
-      const data = (await res.json()) as { result?: string; error?: string };
-      if (data.result) {
-        if (currentArticleId) aiLruCache.set(currentArticleId, data.result);
-        setAiResult(data.result);
-      } else if (data.error) {
-        setAiError(data.error);
-      } else {
-        setAiError("AI の処理に失敗しました");
-      }
-    } catch (err) {
-      if (isAbortError(err)) return;
-      setAiError("AI の処理に失敗しました");
-    } finally {
-      setAiLoading(false);
-    }
-  }, []);
-
-  const doTranslate = useCallback(async (url: string, currentArticleId?: string) => {
-    if (!url.trim()) return;
-
-    // LRU キャッシュヒット時は API コールなし
-    if (currentArticleId) {
-      const cached = aiTranslateLruCache.get(currentArticleId);
-      if (cached) {
-        setTranslateResult(cached);
-        return;
-      }
-    }
-
-    // 既存のリクエストをキャンセルして新しいコントローラーを作成
-    translateAbortRef.current?.abort();
-    const controller = new AbortController();
-    translateAbortRef.current = controller;
-
-    setTranslateLoading(true);
-    setTranslateError("");
-    try {
-      const res = await apiFetch("/api/ai/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, articleId: currentArticleId }),
-        signal: controller.signal,
-      });
-      const data = (await res.json()) as { result?: string; error?: string };
-      if (data.result) {
-        if (currentArticleId) aiTranslateLruCache.set(currentArticleId, data.result);
-        setTranslateResult(data.result);
-      } else if (data.error) {
-        setTranslateError(data.error);
-      } else {
-        setTranslateError("翻訳の処理に失敗しました");
-      }
-    } catch (err) {
-      if (isAbortError(err)) return;
-      setTranslateError("翻訳の処理に失敗しました");
-    } finally {
-      setTranslateLoading(false);
-    }
-  }, []);
+    ai.reset();
+    translate.reset();
+  }, [articleId, ai.reset, translate.reset]);
 
   return {
-    aiResult,
-    aiLoading,
-    aiError,
-    doRunAi,
-    resetAi,
-    translateResult,
-    translateLoading,
-    translateError,
-    doTranslate,
-    resetTranslate,
+    aiResult: ai.result,
+    aiLoading: ai.loading,
+    aiError: ai.error,
+    doRunAi: ai.run,
+    resetAi: ai.reset,
+    translateResult: translate.result,
+    translateLoading: translate.loading,
+    translateError: translate.error,
+    doTranslate: translate.run,
+    resetTranslate: translate.reset,
   };
 }
