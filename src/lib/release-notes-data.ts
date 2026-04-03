@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-03 (133)
+
+### バグ修正
+
+- \`removeNoise\` / \`wrapTables\` (\`src/lib/content.ts\`): 正規表現の非貪欲マッチがネストした同名要素で途中終了する問題を修正。\`processNestedBlocks\` ヘルパーで開閉タグのカウントによりネスト深度を正確に追跡するよう変更
+
 ## 2026-04-03 (132)
 
 ### セキュリティ
