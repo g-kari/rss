@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-03 (135)
+
+### バグ修正
+
+- **X (Twitter) 埋め込みの見切れ問題を修正** — iframe 高さを固定 550px から 300px の初期値に変更し、`platform.twitter.com` からの `postMessage (twttr.resize)` を受信して動的にリサイズするよう修正 (`ArticleView.tsx`, `src/lib/content.ts`)
+
 ## 2026-04-03 (134)
 
 ### 新機能

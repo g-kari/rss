@@ -549,7 +549,7 @@ export function transformXTweetEmbeds(html: string, theme: "light" | "dark" = "l
         `<div class="tweet-embed-wrapper">` +
         `<iframe` +
         ` src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&dnt=true&theme=${theme}"` +
-        ` style="width:100%;border:0;border-radius:12px;height:550px"` +
+        ` style="width:100%;border:0;border-radius:12px;height:300px"` +
         ` scrolling="no"` +
         ` loading="lazy"` +
         `></iframe>` +
