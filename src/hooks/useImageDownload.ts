@@ -5,6 +5,7 @@ import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
 import { collectImageUrls } from "../lib/article-utils";
+import { mimeToExt } from "../lib/image-mime";
 
 interface ImageDownloadState {
   downloadingImages: boolean;
@@ -17,19 +18,6 @@ interface ImageDownloadState {
 
 const FETCH_BATCH_SIZE = 4;
 const DOWNLOAD_TRIGGER_DELAY_MS = 300;
-
-const MIME_EXT: Record<string, string> = {
-  "image/png": "png",
-  "image/gif": "gif",
-  "image/webp": "webp",
-  "image/avif": "avif",
-  "image/bmp": "bmp",
-  "image/svg+xml": "svg",
-};
-
-function mimeToExt(mime: string): string {
-  return MIME_EXT[mime] ?? "jpg";
-}
 
 type Fetched = { originalIndex: number; blob: Blob; ext: string };
 

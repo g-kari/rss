@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-04 (リファクタリング1)
+
+### リファクタリング
+
+- \`image-mime.ts\` に \`mimeToExt()\` と \`MIME_TO_EXT\` マッピングを一元化し、\`useImageDownload.ts\` の重複定義を削除
+
 ## 2026-04-04 (新機能2)
 
 ### 新機能

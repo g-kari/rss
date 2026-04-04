@@ -5,15 +5,24 @@
  * マジックバイト検証で Content-Type ヘッダーの偽装にも対応する。
  */
 
+/** 許可する画像 MIME タイプ → ファイル拡張子のマッピング。 */
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/bmp": "bmp",
+  "image/avif": "avif",
+  "image/svg+xml": "svg",
+};
+
 /** 許可する画像 MIME タイプのホワイトリスト（detectImageMimeType と整合）。 */
-export const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "image/bmp",
-  "image/avif",
-]);
+export const ALLOWED_IMAGE_CONTENT_TYPES = new Set(Object.keys(MIME_TO_EXT));
+
+/** MIME タイプからファイル拡張子を返す。不明な場合は "jpg" を返す。 */
+export function mimeToExt(mime: string): string {
+  return MIME_TO_EXT[mime] ?? "jpg";
+}
 
 /**
  * 先頭バイトから画像フォーマットを検出する（マジックバイト検証）。
