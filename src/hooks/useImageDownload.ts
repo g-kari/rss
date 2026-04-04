@@ -21,6 +21,13 @@ const DOWNLOAD_TRIGGER_DELAY_MS = 300;
 
 type Fetched = { originalIndex: number; blob: Blob; ext: string };
 
+/**
+ * 1枚の画像URLをフェッチしてダウンロード候補を返す。
+ * 以下の条件を満たさない画像は null を返してスキップする:
+ * - フェッチ失敗 / 非 2xx
+ * - 透明 GIF（64 bytes 以下 — 1×1 トラッキングピクセル）
+ * - 短辺 100px 未満（アイコン・スペーサー等）
+ */
 async function fetchOne(url: string, originalIndex: number): Promise<Fetched | null> {
   try {
     const res = await apiFetch(url);
@@ -49,6 +56,19 @@ async function fetchOne(url: string, originalIndex: number): Promise<Fetched | n
   }
 }
 
+/**
+ * 記事本文の画像を一括ダウンロードするフック。
+ *
+ * - OGP 画像 + 本文中の `<img>` タグを収集して `FETCH_BATCH_SIZE` 枚ずつ並列取得
+ * - 取得済み記事（ダウンロード済みID）は再ダウンロード前に確認ダイアログを挟む
+ * - 進捗は `imageDownloadProgress`（done/total）でトラッキングできる
+ * - ダウンロード済み記事ID は localStorage に永続化する
+ *
+ * @param article - 対象記事
+ * @param resolvedOgImage - 解決済みOGP画像URL（article.ogImage より優先度低）
+ * @param contentRef - 記事本文コンテナへの ref（img タグ収集に使用）
+ * @param showToast - 完了・エラー時に呼ばれるトースト表示関数
+ */
 export function useImageDownload(
   article: Article | null,
   resolvedOgImage: string | null,
