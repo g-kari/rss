@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       },
       {
         role: "user",
-        content: `次の記事を日本語で3〜5文に要約してください。要約のみを返してください。\n\n${plain}`,
+        content: `次の記事を日本語で3〜5文に要約してください。要約のみを返してください。\n\n<article>\n${plain}\n</article>`,
       },
     ]),
   );
