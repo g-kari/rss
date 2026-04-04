@@ -3,6 +3,11 @@
 /** ID・文字列フィールドの最大バイト長 */
 export const MAX_ID_LENGTH = 128;
 
+/** ISO 8601 形式（YYYY-MM-DDTHH:mm:ss）かどうかを判定する型ガード */
+export function isValidIso8601(v: unknown): v is string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(v);
+}
+
 /**
  * 配列バリデーション＋フィルタ＋重複排除を一括処理する。
  * 上限超過時は null を返す。
@@ -36,8 +41,7 @@ export function parseSnoozedUntil(raw: unknown, maxSnoozed = 500): Record<string
       typeof k === "string" &&
       k.length > 0 &&
       k.length <= MAX_ID_LENGTH &&
-      typeof v === "string" &&
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(v) &&
+      isValidIso8601(v) &&
       v > now // 期限切れを除去
     ) {
       result[k] = v;

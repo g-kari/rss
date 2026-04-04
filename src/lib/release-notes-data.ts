@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-04 (リファクタリング2)
+
+### リファクタリング
+
+- **\`isValidIso8601\` を \`validation.ts\` に一元化** — \`parseSnoozedUntil\` と \`POST /api/read-state\` の両箇所で重複していた ISO 8601 正規表現チェックを型ガード関数として共通化し、重複を除去
+
 ## 2026-04-04 (セキュリティ3)
 
 ### セキュリティ

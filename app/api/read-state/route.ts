@@ -3,7 +3,7 @@ import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { r2Get, r2Put, readStateKey } from "@/lib/r2";
 import type { ReadState } from "@/types";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
-import { extractIds, parseSnoozedUntil } from "@/lib/validation";
+import { extractIds, isValidIso8601, parseSnoozedUntil } from "@/lib/validation";
 
 const MAX_READ_IDS = 20_000;
 const MAX_BOOKMARK_IDS = 2_000;
@@ -46,11 +46,7 @@ export async function POST(req: NextRequest) {
     const globalFilter = parseKeywordFilter(body.globalFilter);
 
     // readBeforeTimestamp: ISO 8601 文字列のみ許可（それ以外は無視）
-    const rbt =
-      typeof body.readBeforeTimestamp === "string" &&
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(body.readBeforeTimestamp)
-        ? body.readBeforeTimestamp
-        : null;
+    const rbt = isValidIso8601(body.readBeforeTimestamp) ? body.readBeforeTimestamp : null;
 
     const snoozedUntil = parseSnoozedUntil(body.snoozedUntil, MAX_SNOOZED);
 
