@@ -7,11 +7,14 @@ const MAX_REGEX_PATTERN_LENGTH = 50;
 
 /**
  * ReDoS（正規表現サービス拒否）を引き起こす壊滅的バックトラッキングパターンを検出する。
- * 典型的なパターン: ネストした量指定子 (a+)+ や (a|a)+ など。
+ * 典型的なパターン: ネストした量指定子 (a+)+ / (a{2,})+ など。
  */
 function hasCatastrophicBacktracking(pattern: string): boolean {
+  // {n,} / {n,m} を + に正規化してから検査することで、(a{2,})+ のような
+  // 上限なし繰り返しをネストした量指定子として検出できるようにする
+  const normalized = pattern.replace(/\{\d+,\d*\}/g, "+");
   // グループ内に量指定子があり、そのグループ自体にも量指定子がある構造を検出
-  return /\([^)]*[+*][^)]*\)[+*?]/.test(pattern) || /\([^)]*[+*][^)]*\)\{/.test(pattern);
+  return /\([^)]*[+*][^)]*\)[+*?]/.test(normalized) || /\([^)]*[+*][^)]*\)\{/.test(normalized);
 }
 
 /** `/pattern/` 形式の正規表現キーワードかどうかを判定する */
