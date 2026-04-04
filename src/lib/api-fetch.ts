@@ -1,6 +1,6 @@
 "use client";
 
-import { getAuthReady } from "../hooks/useAuth";
+import { getAuthReady, getTokenExpiry } from "../hooks/useAuth";
 
 /**
  * 認証チェック完了を待ってから fetch を実行するラッパー。
@@ -25,15 +25,6 @@ async function recoverAuth(): Promise<boolean> {
     }
   })();
   return inflightAuthRecovery;
-}
-
-/** token_exp cookie から有効期限 (UNIX 秒) を読み取る */
-function getTokenExpiry(): number | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)token_exp=(\d+)/);
-  if (!match) return null;
-  const val = parseInt(match[1], 10);
-  return isNaN(val) ? null : val;
 }
 
 /** アクセストークンの有効期限が切れている（またはあと 10 秒以内に切れる）か確認する */

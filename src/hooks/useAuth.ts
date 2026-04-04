@@ -15,7 +15,7 @@ interface AuthState {
 }
 
 /** token_exp cookie から有効期限 (UNIX 秒) を読み取る */
-function getTokenExpiry(): number | null {
+export function getTokenExpiry(): number | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(/(?:^|;\s*)token_exp=(\d+)/);
   if (!match) return null;

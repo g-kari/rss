@@ -4,6 +4,17 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-04 (リファクタリング)
+
+### リファクタリング
+
+- **\`getTokenExpiry\` 重複削除** — \`useAuth.ts\` と \`api-fetch.ts\` に同一実装が存在していたため、\`useAuth.ts\` からエクスポートして \`api-fetch.ts\` の重複を削除
+- **\`ArticleList\` ref パターン統一** — \`useRef\` + 手動同期 (\`ref.current = value\`) を既存の \`useSyncedRef\` フックに統一
+
+### バグ修正
+
+- **ArticleList: レイアウト変更時にスクロールされないバグを修正** — \`prevSelectedIdRef\` が \`id\` のみを追跡していたため、同じ記事を選択したままレイアウトを変更するとスクロールが発動しなかった。\`id\` と \`layout\` を合わせて追跡する \`prevScrollStateRef\` に変更
+
 ## 2026-04-04 (バグ修正3)
 
 ### バグ修正
