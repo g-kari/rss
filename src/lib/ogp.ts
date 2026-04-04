@@ -1,5 +1,5 @@
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "./fetch";
-import { unescapeHtml, extractOgMeta } from "./html";
+import { unescapeHtml, extractOgMeta, stripHtml } from "./html";
 import { decodeBytesToString, detectCharset } from "./content";
 import { isValidFeedUrl } from "./url";
 
@@ -52,9 +52,9 @@ export async function fetchPageOgpMeta(
     const ogTitle = extractOgMeta(html, "title");
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const pageTitle = unescapeHtml((titleMatch?.[1] ?? "").trim());
-    const title = (ogTitle || pageTitle).slice(0, 500);
+    const title = stripHtml(ogTitle || pageTitle).slice(0, 500);
 
-    const description = extractOgMeta(html, "description").slice(0, 500);
+    const description = stripHtml(extractOgMeta(html, "description")).slice(0, 500);
 
     const rawImage = extractOgMeta(html, "image");
     const image =

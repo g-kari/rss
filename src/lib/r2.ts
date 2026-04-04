@@ -50,6 +50,11 @@ export function engagementKey(userId: string): string {
   return `users/${userId}/engagement.json`;
 }
 
+/** フィード全体リフレッシュのクールダウン管理キーを返す */
+export function refreshCooldownKey(userId: string): string {
+  return `users/${userId}/last-full-refresh.json`;
+}
+
 /**
  * Cloudflare Cache API 用のキャッシュキーを生成する。
  * `/__cache/{type}/{sha256(normalizedUrl)}` 形式の合成 URL を Request としてラップする。
