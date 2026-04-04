@@ -18,6 +18,10 @@ export async function GET(request: NextRequest) {
     const feedHash = searchParams.get("feed");
     const page = parseInt(searchParams.get("page") ?? "1", 10);
 
+    if (feedHash && !/^[0-9a-f]{16}$/.test(feedHash)) {
+      return NextResponse.json({ error: "Invalid feed" }, { status: 400 });
+    }
+
     if (feedHash && (!Number.isInteger(page) || page < 1 || page > MAX_PAGES)) {
       return NextResponse.json({ error: "Invalid page" }, { status: 400 });
     }

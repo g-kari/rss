@@ -74,8 +74,8 @@ const securityHeaders = [
       // 許可されているため、CSP と整合させるために両方を追加する。
       // www なし URL のままブラウザに渡った場合、frame-src にないと CSP でブロックされてしまう。
       "frame-src https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://open.spotify.com https://player.vimeo.com https://w.soundcloud.com https://player.twitch.tv https://clips.twitch.tv https://embed.nicovideo.jp https://embed.zenn.studio https://platform.twitter.com",
-      // メディア: 任意（ポッドキャスト）
-      "media-src *",
+      // メディア: HTTPS のみ許可（ポッドキャスト等の外部 audio/video。http:// と data: を除外）
+      "media-src https:",
       // API / WebSocket: self + Cloudflare Web Analytics のデータ送信先
       "connect-src 'self' https://cloudflareinsights.com",
       // フォント: self
