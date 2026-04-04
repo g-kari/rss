@@ -23,6 +23,7 @@ import type {
 import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { useSearchHistory } from "../hooks/useSearchHistory";
+import { useSyncedRef } from "../hooks/useSyncedRef";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { isArticleRead } from "../lib/article-filter";
 import Spinner from "./Spinner";
@@ -291,18 +292,23 @@ export default function ArticleList({
     [updateQuery, addToHistory, searchRef],
   );
 
-  // selectedArticleId が実際に変化したときだけスクロールする。
+  // selectedArticleId または layout が実際に変化したときだけスクロールする。
   // visible / flatItems を deps に含めると readIds 変化のたびに再実行されて
   // スクロール位置が意図せずリセットされるため、ref 経由で最新値を参照する。
-  const prevSelectedIdRef = useRef<string | null>(null);
-  const flatItemsRef = useRef(flatItems);
-  flatItemsRef.current = flatItems;
-  const visibleRef = useRef(visible);
-  visibleRef.current = visible;
+  const prevScrollStateRef = useRef<{ id: string | null; layout: string | null }>({
+    id: null,
+    layout: null,
+  });
+  const flatItemsRef = useSyncedRef(flatItems);
+  const visibleRef = useSyncedRef(visible);
   useEffect(() => {
     if (!selectedArticleId) return;
-    if (selectedArticleId === prevSelectedIdRef.current) return;
-    prevSelectedIdRef.current = selectedArticleId;
+    if (
+      selectedArticleId === prevScrollStateRef.current.id &&
+      layout === prevScrollStateRef.current.layout
+    )
+      return;
+    prevScrollStateRef.current = { id: selectedArticleId, layout };
     if (layout === "compact" || layout === "list") {
       const idx = flatItemsRef.current.findIndex(
         (item) => item.type === "article" && item.key === selectedArticleId,
