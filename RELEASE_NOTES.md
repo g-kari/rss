@@ -2,6 +2,14 @@
 
 ## 2026-04-05
 
+### セキュリティ（追記）
+
+- **AI エンドポイント レートリミット** — `POST /api/ai/summarize` / `POST /api/ai/translate` のキャッシュミス時に per-user 5 秒クールダウンを追加。`articleId` キャッシュヒット時はスキップ
+- **単体フィードリフレッシュ レートリミット** — `POST /api/feeds/[id]/refresh` に per-feed 30 秒クールダウンを追加。全体リフレッシュの 2 分制限のバイパスを防止
+- **推薦リフレッシュ レートリミット** — `POST /api/recommendations/refresh` に 5 分クールダウンを追加。連続呼び出しによる Workers AI 課金の積み上げを防止
+- **ログアウト時に `token_exp` Cookie を削除** — `POST /api/auth/logout` で `access_token` / `refresh_token` に加え `token_exp` Cookie も削除するよう修正
+- **OPML インポートの制御文字除去** — `sanitizeTitle` で NUL バイト (`\u0000`) のみ除去していたのを全 C0 制御文字 (`\u0000-\u001F`) と DEL (`\u007F`) に拡張
+
 ### バグ修正
 
 - **リンクプレビュー OGP フェッチ数制限** — `useContentLinkPreviews` で1記事あたり最大10件のスタンドアロンリンクのみプレビューを取得するよう制限。多数のリンクがある記事でのリクエスト爆発を防止

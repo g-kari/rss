@@ -55,6 +55,21 @@ export function refreshCooldownKey(userId: string): string {
   return `users/${userId}/last-full-refresh.json`;
 }
 
+/** AI エンドポイントのクールダウン管理キーを返す */
+export function aiCooldownKey(userId: string): string {
+  return `users/${userId}/ai-cooldown.json`;
+}
+
+/** 単体フィードリフレッシュのクールダウン管理キーを返す */
+export function singleFeedRefreshCooldownKey(userId: string, feedHash: string): string {
+  return `users/${userId}/feed-refresh-${feedHash}.json`;
+}
+
+/** 推薦リフレッシュのクールダウン管理キーを返す */
+export function recommendationsCooldownKey(userId: string): string {
+  return `users/${userId}/recommendations-refresh.json`;
+}
+
 /**
  * Cloudflare Cache API 用のキャッシュキーを生成する。
  * `/__cache/{type}/{sha256(normalizedUrl)}` 形式の合成 URL を Request としてラップする。

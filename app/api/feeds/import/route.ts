@@ -20,7 +20,7 @@ const MAX_TITLE_LENGTH = 500;
 const MAX_SITE_URL_LENGTH = 2048;
 
 function sanitizeTitle(title: string): string {
-  return title.replace(/\u0000/g, "").slice(0, MAX_TITLE_LENGTH);
+  return title.replace(/[\u0000-\u001F\u007F]/g, "").slice(0, MAX_TITLE_LENGTH);
 }
 
 function sanitizeSiteUrl(url: string): string {
