@@ -1,5 +1,13 @@
 # リリースノート
 
+## 2026-04-04 (バグ修正3)
+
+### バグ修正
+
+- **リフレッシュトークン race condition を修正** — `/api/auth/me` が `refreshTokens()` を直接呼び出していたため、同一アイソレート内で `/api/auth/me` と他の Route Handler が同時に expired token を受け取ると独立してリフレッシュしてしまい one-time-use の refresh token が競合していた。`deduplicatedRefresh` を共有するよう変更し、同一アイソレート内では 1 回だけ実行される
+- **クライアント側 race 軽減** — `apiFetch` で `token_exp` cookie をチェックし、期限切れ時はリクエスト送信前にプロアクティブにリフレッシュするよう変更。複数リクエストが同時に expired token でサーバーを叩く確率を低減
+- **ログイン後 LP に戻る問題を修正** — `!user` 条件が `user === undefined`（認証チェック中）にも true になるため、ログイン直後に LP が表示されていた。`user === undefined` の場合はスピナーを表示し、LP は `user === null` の場合のみ表示するよう変更
+
 ## 2026-04-04 (バグ修正2)
 
 ### バグ修正

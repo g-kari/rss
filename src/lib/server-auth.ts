@@ -32,7 +32,7 @@ const inflightRefresh = new Map<
  * deduplication は同一アイソレート内に限定される。
  * 異なるアイソレート間（別の Workers インスタンス）では独立して動作する。
  */
-function deduplicatedRefresh(
+export function deduplicatedRefresh(
   refreshToken: string,
 ): Promise<{ access_token: string; refresh_token: string } | null> {
   const inflight = inflightRefresh.get(refreshToken);
