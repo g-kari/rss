@@ -8,7 +8,7 @@ const MAX_REGEX_PATTERN_LENGTH = 50;
 /**
  * ReDoS（正規表現サービス拒否）を引き起こす壊滅的バックトラッキングパターンを検出する。
  * 典型的なパターン:
- * - ネストした量指定子: (a+)+ / (a{2,})+
+ * - ネストした量指定子: (a+)+ / (a{2,})+ / ((ab)+)+
  * - 交互化を含むグループへの量指定子: (a|aa)+ / (foo|foobar)*
  * - 文字クラス内に ) を含む量指定子グループ: ([a-z)]+)+
  */
@@ -27,6 +27,16 @@ function hasCatastrophicBacktracking(pattern: string): boolean {
   // V8 でも (a|aa)+ のような重複オーバーラップする交互化は指数的バックトラッキングを引き起こす
   // 正規化後に残る { は固定繰り返し {n} のみで安全なため除外
   if (/\([^)]*\|[^)]*\)[+*]/.test(normalized)) return true;
+  // ネストされた量指定子グループを検出: ((ab)+)+ のように内部グループに量指定子があり外部にも
+  // 量指定子がある構造は上記チェックでは捕捉できない。
+  // 括弧を含まない最内グループを X+ に平坦化しながら各ステップで検査する。
+  // 例: ((ab)+)+ → 1回目フラット化で (X+)+ → チェックで検出
+  let flattened = normalized;
+  for (let i = 0; i < 5; i++) {
+    flattened = flattened.replace(/\([^()]*\)[+*?]/g, "X+");
+    if (/\([^)]*[+*][^)]*\)[+*?]/.test(flattened)) return true;
+    if (/\([^)]*\|[^)]*\)[+*]/.test(flattened)) return true;
+  }
   return false;
 }
 

@@ -138,7 +138,15 @@ export function fetchFollowSafeRedirects(
       // Location ヘッダーを持たないため、リダイレクト追跡の対象外としてそのまま返す。
       if (res.status === 304) return res;
 
-      if (res.status >= 300 && res.status < 400) {
+      // 安全なリダイレクトコードのみ追跡する。
+      // 300 (Multiple Choices) / 305 (Use Proxy, 廃止) / 306 (廃止) 等は除外。
+      if (
+        res.status === 301 ||
+        res.status === 302 ||
+        res.status === 303 ||
+        res.status === 307 ||
+        res.status === 308
+      ) {
         const location = res.headers.get("location");
         if (!location) throw new Error("Redirect without Location header");
         const nextUrl = new URL(location, currentUrl).href;
