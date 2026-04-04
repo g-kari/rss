@@ -201,6 +201,7 @@ export default function FeedSidebar({
         isSelected={selectedFeedId === feed.id}
         isPinned={isPinned}
         animationIndex={globalIdx}
+        lastPublishedAt={lastPublishedByFeed.get(feed.id)}
         onSelect={() => onSelectFeed(feed.id)}
         onMarkAllRead={() => onMarkAllRead(feed.id)}
         onDelete={() => deleteFeed(feed.id)}
@@ -218,16 +219,23 @@ export default function FeedSidebar({
     );
   }
 
-  const { unreadByFeed, totalUnread } = useMemo(() => {
+  const { unreadByFeed, totalUnread, lastPublishedByFeed } = useMemo(() => {
     const byFeed = new Map<string, number>();
+    const lastPublished = new Map<string, string>();
     let total = 0;
     for (const a of articles) {
       if (!isArticleRead(a, readIds, readBeforeTimestamp)) {
         byFeed.set(a.feedHash, (byFeed.get(a.feedHash) ?? 0) + 1);
         total++;
       }
+      if (a.publishedAt) {
+        const prev = lastPublished.get(a.feedHash);
+        if (!prev || a.publishedAt > prev) {
+          lastPublished.set(a.feedHash, a.publishedAt);
+        }
+      }
     }
-    return { unreadByFeed: byFeed, totalUnread: total };
+    return { unreadByFeed: byFeed, totalUnread: total, lastPublishedByFeed: lastPublished };
   }, [articles, readIds, readBeforeTimestamp]);
 
   const { pinnedFeeds, categoryGroups, uncategorizedFeeds } = useMemo(() => {

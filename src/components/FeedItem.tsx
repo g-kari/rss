@@ -70,6 +70,7 @@ export interface FeedItemProps {
   isSelected: boolean;
   isPinned: boolean;
   animationIndex: number;
+  lastPublishedAt?: string;
   onSelect: () => void;
   onMarkAllRead: () => void;
   onDelete: () => void;
@@ -94,12 +95,15 @@ interface Action {
   variant?: "danger";
 }
 
+const STALE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000; // 30日
+
 export default function FeedItem({
   feed,
   count,
   isSelected,
   isPinned,
   animationIndex,
+  lastPublishedAt,
   onSelect,
   onMarkAllRead,
   onDelete,
@@ -112,6 +116,10 @@ export default function FeedItem({
   onTogglePriority,
   onSetCategory,
 }: FeedItemProps) {
+  const isStale =
+    !feed.fetchError &&
+    lastPublishedAt !== undefined &&
+    Date.now() - new Date(lastPublishedAt).getTime() > STALE_THRESHOLD_MS;
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [categoryEditing, setCategoryEditing] = useState(false);
@@ -502,6 +510,23 @@ export default function FeedItem({
             {hasFilter && (
               <span title="キーワードフィルター設定中" className="flex-shrink-0 text-text-muted">
                 <FilterIcon size={8} />
+              </span>
+            )}
+            {isStale && (
+              <span title="30日以上新着なし" className="flex-shrink-0 text-text-faint">
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="5" cy="5" r="4" />
+                  <polyline points="5,2.5 5,5 6.5,6.5" />
+                </svg>
               </span>
             )}
           </span>
