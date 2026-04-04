@@ -2,8 +2,8 @@ import { withSession } from "@/lib/server-auth";
 import { runAiJob } from "@/lib/ai-route-helper";
 
 export async function POST(request: Request) {
-  return withSession(({ env, ctx }) =>
-    runAiJob(request, env, ctx, (plain) => [
+  return withSession(({ session, env, ctx }) =>
+    runAiJob(request, session, env, ctx, (plain) => [
       {
         role: "system",
         content: "あなたは優秀なニュース編集者です。記事を簡潔に要約してください。",

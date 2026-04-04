@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
-import { parseJsonBody } from "@/lib/server-auth";
+import { parseJsonBody, type AuthSession } from "@/lib/server-auth";
 import { getAiCacheById, setAiCacheById } from "@/lib/ai-cache";
 import { toPlainText } from "@/lib/html";
 import { fetchArticleContent } from "@/lib/fetch-article-content";
 import { isValidFeedUrl } from "@/lib/url";
+import { r2Get, r2Put, aiCooldownKey } from "@/lib/r2";
 
 // @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のため、同じ
 // BaseAiTextGeneration 構造を持つ既知モデル型に合わせてキャストする
 const MODEL = "@cf/meta/llama-3.1-8b-instruct" as "@cf/meta/llama-3.1-8b-instruct-fp8";
+
+// AI エンドポイントのレートリミット: キャッシュミス時のみ適用
+const AI_COOLDOWN_MS = 5 * 1000; // 5秒
 
 type AiMessage = { role: "system" | "user"; content: string };
 
@@ -23,6 +27,7 @@ type AiMessage = { role: "system" | "user"; content: string };
  */
 export async function runAiJob(
   request: Request,
+  session: AuthSession,
   env: { RSS_DATA: R2Bucket; AI: Ai },
   ctx: ExecutionContext,
   buildMessages: (plain: string) => AiMessage[],
@@ -38,11 +43,24 @@ export async function runAiJob(
   const url = body.url;
   const articleId = typeof body.articleId === "string" ? body.articleId : null;
 
-  // キャッシュヒット（articleId ベース）
+  // キャッシュヒット（articleId ベース）→ レートリミット不要
   if (articleId) {
     const cached = await getAiCacheById(env.RSS_DATA, articleId, cacheType);
     if (cached) return NextResponse.json({ result: cached });
   }
+
+  // キャッシュミス時のみレートリミットを確認
+  const cooldownKey = aiCooldownKey(session.userId);
+  const { ts } = await r2Get<{ ts: number }>(env.RSS_DATA, cooldownKey, { ts: 0 });
+  const elapsed = Date.now() - ts;
+  if (elapsed < AI_COOLDOWN_MS) {
+    const retryAfter = Math.ceil((AI_COOLDOWN_MS - elapsed) / 1000);
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
+  await r2Put(env.RSS_DATA, cooldownKey, { ts: Date.now() });
 
   // サーバー側でコンテンツを取得（/api/content と同じキャッシュを共有）
   const reqUrl = new URL(request.url);
