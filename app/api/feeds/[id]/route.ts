@@ -94,7 +94,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       } else {
         if (typeof body.category !== "string")
           return NextResponse.json({ error: "category must be a string or null" }, { status: 400 });
-        const category = body.category.trim();
+        // 制御文字を除去してからバリデーション
+        const category = body.category.trim().replace(/[\u0000-\u001F\u007F]/g, "");
         if (category.length > 50)
           return NextResponse.json({ error: "category too long" }, { status: 400 });
         if (category === "") {
@@ -105,10 +106,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
-    await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
-
+    // meta の存在確認を書き込み前に行う（書き込み後に404を返すと状態が乖離するため）
     const meta = await readFeedMeta(env.RSS_DATA, feedHash);
     if (!meta) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
+
+    await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
 
     return NextResponse.json(assembleClientFeed(meta, sub));
   });

@@ -254,7 +254,9 @@ export default function FeedSidebar({
         uncategorized.push(feed);
       }
     }
-    const sorted = [...catMap.entries()].sort(([a], [b]) => a.localeCompare(b, "ja"));
+    const sorted = [...catMap.entries()].sort(([a], [b]) =>
+      a.localeCompare(b, "ja", { sensitivity: "base" }),
+    );
     return { pinnedFeeds: pinned, categoryGroups: sorted, uncategorizedFeeds: uncategorized };
   }, [feeds, pinnedFeedIds, feedSearch]);
 
