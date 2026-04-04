@@ -5,6 +5,15 @@ const MAX_KEYWORDS_PER_ARRAY = 99999;
 /** ReDoS 対策: スラッシュを除いたパターン部分の最大文字数 */
 const MAX_REGEX_PATTERN_LENGTH = 50;
 
+/**
+ * ReDoS（正規表現サービス拒否）を引き起こす壊滅的バックトラッキングパターンを検出する。
+ * 典型的なパターン: ネストした量指定子 (a+)+ や (a|a)+ など。
+ */
+function hasCatastrophicBacktracking(pattern: string): boolean {
+  // グループ内に量指定子があり、そのグループ自体にも量指定子がある構造を検出
+  return /\([^)]*[+*][^)]*\)[+*?]/.test(pattern) || /\([^)]*[+*][^)]*\)\{/.test(pattern);
+}
+
 /** `/pattern/` 形式の正規表現キーワードかどうかを判定する */
 function isRegexKeyword(kw: string): boolean {
   return (
@@ -18,8 +27,10 @@ function isRegexKeyword(kw: string): boolean {
 /** キーワードが記事テキストにマッチするかを判定する。正規表現キーワードは大文字小文字を無視して評価する */
 function matchesText(kw: string, text: string): boolean {
   if (isRegexKeyword(kw)) {
+    const pattern = kw.slice(1, -1);
+    if (hasCatastrophicBacktracking(pattern)) return false;
     try {
-      return new RegExp(kw.slice(1, -1), "i").test(text);
+      return new RegExp(pattern, "i").test(text);
     } catch {
       return false;
     }

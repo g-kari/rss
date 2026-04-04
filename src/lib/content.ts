@@ -942,7 +942,9 @@ export function detectNextPageUrl(html: string, currentUrl: string): string | nu
   if (!base) return null;
 
   function resolve(href: string): string | null {
-    if (!href || href.startsWith("#") || href.startsWith("javascript:")) return null;
+    if (!href || href.startsWith("#")) return null;
+    const lowerHref = href.toLowerCase();
+    if (lowerHref.startsWith("javascript:") || lowerHref.startsWith("data:")) return null;
     try {
       const resolved = new URL(href, base!).href;
       if (resolved === currentUrl) return null;
