@@ -311,21 +311,26 @@ export function useFilteredArticles({
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
 
-  // hasMore を依存配列に含めることで、記事が非同期でロードされて
-  // sentinel が初めてマウントされたタイミングでも observer をセットアップできる
+  // loadMore / hasMore は ref 経由で参照することで、
+  // hasMore が変化するたびに observer が disconnect/reconnect される問題を回避する。
+  // sentinel が可視状態のまま再登録されると交差変化イベントが発火しないため、
+  // observer は sentinel のマウント時に一度だけ登録する。
+  const loadMoreRef = useSyncedRef(loadMore);
+  const hasMoreRef = useSyncedRef(hasMore);
   useEffect(() => {
-    if (!hasMore) return;
     const el = sentinelRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) loadMore();
+        if (entries[0].isIntersecting && hasMoreRef.current) loadMoreRef.current();
       },
       { rootMargin: "120px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [loadMore, hasMore]);
+    // sentinelRef は安定参照のため deps から除外。loadMoreRef / hasMoreRef は ref なので不要。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     filtered,
