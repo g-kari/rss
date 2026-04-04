@@ -1,5 +1,13 @@
 # リリースノート
 
+## 2026-04-04 (セキュリティ2)
+
+### セキュリティ
+
+- **AI プロンプトインジェクション対策** — `summarize` / `translate` API でユーザー提供コンテンツを `<article>` / `<text>` タグで明示的に区切り、システム指示との境界を明確化
+- **`Permissions-Policy` 強化** — `payment`, `usb`, `bluetooth`, `display-capture`, `accelerometer`, `gyroscope`, `magnetometer` を無効化し、使用しない強力な API の攻撃面を削減
+- **`X-Permitted-Cross-Domain-Policies: none` 追加** — Adobe Flash/PDF プラグインによるクロスドメインコンテンツ読み取りを禁止
+
 ## 2026-04-04 (セキュリティ)
 
 ### セキュリティ

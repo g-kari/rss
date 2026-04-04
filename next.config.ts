@@ -31,8 +31,25 @@ const securityHeaders = [
     value: "strict-origin-when-cross-origin",
   },
   {
+    // 不要な強力 API を明示的に無効化。RSS リーダーとして使用しない機能を列挙して攻撃面を削減する。
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    value: [
+      "camera=()",
+      "microphone=()",
+      "geolocation=()",
+      "payment=()",
+      "usb=()",
+      "bluetooth=()",
+      "display-capture=()",
+      "accelerometer=()",
+      "gyroscope=()",
+      "magnetometer=()",
+    ].join(", "),
+  },
+  {
+    // Adobe Flash / PDF プラグインが本サイトのコンテンツをクロスドメインで読み取るのを禁止する。
+    key: "X-Permitted-Cross-Domain-Policies",
+    value: "none",
   },
   {
     key: "Strict-Transport-Security",

@@ -15,7 +15,7 @@ export async function POST(request: Request) {
         },
         {
           role: "user",
-          content: `次のテキストを日本語に翻訳してください。翻訳結果のみを返してください。\n\n${plain}`,
+          content: `次のテキストを日本語に翻訳してください。翻訳結果のみを返してください。\n\n<text>\n${plain}\n</text>`,
         },
       ],
       "translation",
