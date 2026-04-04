@@ -184,7 +184,10 @@ export async function withSession(
     const response = await handler({ session: result.session, env, ctx });
     return applyRefreshedTokens(response, result.session);
   } catch (err) {
-    console.error("[withSession] unhandled error:", err);
+    // スタックトレースにシークレットが含まれるリスクを避けるため、メッセージのみをログに出力する
+    const name = err instanceof Error ? err.name : "UnknownError";
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[withSession] unhandled error:", name, message);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -243,7 +246,9 @@ export async function withBinarySession(
     const response = await handler({ session: result.session, env, ctx });
     return applyRefreshedTokensToResponse(response, result.session);
   } catch (err) {
-    console.error("[withBinarySession] unhandled error:", err);
+    const name = err instanceof Error ? err.name : "UnknownError";
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[withBinarySession] unhandled error:", name, message);
     return new Response("Internal Server Error", { status: 500 });
   }
 }
