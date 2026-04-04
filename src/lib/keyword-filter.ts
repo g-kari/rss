@@ -10,11 +10,16 @@ const MAX_REGEX_PATTERN_LENGTH = 50;
  * 典型的なパターン:
  * - ネストした量指定子: (a+)+ / (a{2,})+
  * - 交互化を含むグループへの量指定子: (a|aa)+ / (foo|foobar)*
+ * - 文字クラス内に ) を含む量指定子グループ: ([a-z)]+)+
  */
 function hasCatastrophicBacktracking(pattern: string): boolean {
+  // 文字クラス [abc] の中身を除去することで、) を含む文字クラスによる検出バイパスを防ぐ
+  // 例: ([a-z)]+)+ は文字クラス除去前は ) で検出が打ち切られるが、除去後は (X+)+ として正しく検出される
+  // エスケープシーケンス \) \( 等も X に置換して誤検知を防ぐ
+  const stripped = pattern.replace(/\[(?:[^\]\\]|\\.)*\]/g, "X").replace(/\\./g, "X");
   // {n,} / {n,m} を + に正規化してから検査することで、(a{2,})+ のような
   // 上限なし繰り返しをネストした量指定子として検出できるようにする
-  const normalized = pattern.replace(/\{\d+,\d*\}/g, "+");
+  const normalized = stripped.replace(/\{\d+,\d*\}/g, "+");
   // グループ内に量指定子があり、そのグループ自体にも量指定子がある構造を検出
   // ※ {n,} / {n,m} は正規化済みで + になっているため + と * のみ検査すれば十分
   if (/\([^)]*[+*][^)]*\)[+*?]/.test(normalized)) return true;
