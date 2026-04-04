@@ -47,6 +47,18 @@ function StarIcon({ size = 10, filled = false }: { size?: number; filled?: boole
   );
 }
 
+/** Enter/Escape キーに対応したインプット用キーハンドラーを生成する。 */
+function makeInputKeyHandler(onEnter: () => void | Promise<void>, onEscape: () => void) {
+  return (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void onEnter();
+    } else if (e.key === "Escape") {
+      onEscape();
+    }
+  };
+}
+
 function FilterIcon({ size = 10 }: { size?: number }) {
   return (
     <svg
@@ -162,18 +174,7 @@ export default function FeedItem({
     await onRename(trimmed);
   }, [editTitle, feed.title, feed.url, onRename]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        void commitEdit();
-      }
-      if (e.key === "Escape") {
-        setEditing(false);
-      }
-    },
-    [commitEdit],
-  );
+  const handleKeyDown = makeInputKeyHandler(commitEdit, () => setEditing(false));
 
   const handleRetry = useCallback(async () => {
     if (loadingAction) return;
@@ -210,17 +211,8 @@ export default function FeedItem({
     await onSetCategory?.(newCategory);
   }, [editCategory, feed.category, onSetCategory]);
 
-  const handleCategoryKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        void commitCategoryEdit();
-      }
-      if (e.key === "Escape") {
-        setCategoryEditing(false);
-      }
-    },
-    [commitCategoryEdit],
+  const handleCategoryKeyDown = makeInputKeyHandler(commitCategoryEdit, () =>
+    setCategoryEditing(false),
   );
 
   const hasFilter =
