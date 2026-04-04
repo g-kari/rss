@@ -23,11 +23,23 @@ const COLUMN_CONFIGS: Record<"sidebar" | "list", ColumnConfig> = {
   },
 };
 
+/**
+ * localStorage から保存済み幅を読み込む。
+ * 無効・範囲外の値は minWidth〜maxWidth にクランプして返す。
+ */
 function loadWidth(config: ColumnConfig): number {
   const n = parseInt(storageGet(config.storageKey) ?? "", 10);
   return isNaN(n) ? config.defaultWidth : Math.max(config.minWidth, Math.min(config.maxWidth, n));
 }
 
+/**
+ * サイドバー・記事リスト列のリサイズ操作と幅の永続化を管理するフック。
+ *
+ * - `handleResizeStart` をリサイズハンドルの `onMouseDown` に渡す
+ * - ドラッグ中は mousemove で幅をリアルタイム更新し、mouseup で終了
+ * - 幅の変化は即座に localStorage に保存（ページリロード後も復元される）
+ * - `resetWidth` でデフォルト幅に戻す
+ */
 export function useColumnResize() {
   const [sidebarWidth, setSidebarWidth] = useState(() => loadWidth(COLUMN_CONFIGS.sidebar));
   const [listWidth, setListWidth] = useState(() => loadWidth(COLUMN_CONFIGS.list));

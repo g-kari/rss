@@ -9,6 +9,19 @@ const NSFW_CLICK_COUNT = 5;
 /** 連打として認識する時間ウィンドウ (ms) */
 const NSFW_CLICK_WINDOW = 2000;
 
+/**
+ * NSFW モードの有効化・無効化を管理するフック。
+ *
+ * `activateNSFW` を `NSFW_CLICK_WINDOW` ms 以内に `NSFW_CLICK_COUNT` 回呼ぶと
+ * `showNSFWAnimation` が true になり、アニメーション完了後に NSFW モードが有効化される。
+ * モードは localStorage に永続化されるため、ページリロード後も状態を維持する。
+ *
+ * @returns nsfwMode - NSFW モードが有効かどうか
+ * @returns showNSFWAnimation - アクティベーションアニメーションを表示するか
+ * @returns activateNSFW - 連打カウンターをインクリメントする関数
+ * @returns deactivateNSFW - NSFW モードを無効化する関数
+ * @returns onNSFWAnimationComplete - アニメーション完了時のコールバック
+ */
 export function useNSFWMode() {
   const [nsfwMode, setNsfwMode] = useState(() => storageGet(STORAGE_KEYS.NSFW_MODE) === "1");
   const [showNSFWAnimation, setShowNSFWAnimation] = useState(false);
