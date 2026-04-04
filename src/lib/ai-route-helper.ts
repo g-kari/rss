@@ -4,7 +4,8 @@ import { getAiCacheById, setAiCacheById } from "@/lib/ai-cache";
 import { toPlainText } from "@/lib/html";
 import { fetchArticleContent } from "@/lib/fetch-article-content";
 import { isValidFeedUrl } from "@/lib/url";
-import { r2Get, r2Put, aiCooldownKey } from "@/lib/r2";
+import { aiCooldownKey } from "@/lib/r2";
+import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 
 // @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のため、同じ
 // BaseAiTextGeneration 構造を持つ既知モデル型に合わせてキャストする
@@ -43,24 +44,18 @@ export async function runAiJob(
   const url = body.url;
   const articleId = typeof body.articleId === "string" ? body.articleId : null;
 
-  // キャッシュヒット（articleId ベース）→ レートリミット不要
+  // キャッシュヒット時はレートリミット不要（AI を呼ばないため）
   if (articleId) {
     const cached = await getAiCacheById(env.RSS_DATA, articleId, cacheType);
     if (cached) return NextResponse.json({ result: cached });
   }
 
-  // キャッシュミス時のみレートリミットを確認
-  const cooldownKey = aiCooldownKey(session.userId);
-  const { ts } = await r2Get<{ ts: number }>(env.RSS_DATA, cooldownKey, { ts: 0 });
-  const elapsed = Date.now() - ts;
-  if (elapsed < AI_COOLDOWN_MS) {
-    const retryAfter = Math.ceil((AI_COOLDOWN_MS - elapsed) / 1000);
-    return NextResponse.json(
-      { error: "Too many requests", retryAfter },
-      { status: 429, headers: { "Retry-After": String(retryAfter) } },
-    );
-  }
-  await r2Put(env.RSS_DATA, cooldownKey, { ts: Date.now() });
+  const limited = await checkAndUpdateCooldown(
+    env.RSS_DATA,
+    aiCooldownKey(session.userId),
+    AI_COOLDOWN_MS,
+  );
+  if (limited) return limited;
 
   // サーバー側でコンテンツを取得（/api/content と同じキャッシュを共有）
   const reqUrl = new URL(request.url);
@@ -70,7 +65,6 @@ export async function runAiJob(
 
   const plain = toPlainText(content).slice(0, 6000);
 
-  // AI 実行
   let result: string;
   try {
     const response = (await env.AI.run(MODEL, {
@@ -82,7 +76,6 @@ export async function runAiJob(
     return NextResponse.json({ error: "AI処理中にエラーが発生しました" }, { status: 502 });
   }
 
-  // キャッシュ保存はバックグラウンドで実行し、レスポンスをブロックしない
   if (result && articleId)
     ctx.waitUntil(setAiCacheById(env.RSS_DATA, articleId, result, cacheType));
 

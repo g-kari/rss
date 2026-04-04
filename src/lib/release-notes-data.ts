@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-05
 
+### リファクタリング
+
+- **レートリミットヘルパー** — \`checkAndUpdateCooldown\` を \`src/lib/rate-limit.ts\` に抽出。4 つのエンドポイントに重複していたクールダウンロジックを 1 箇所に集約
+
 ### セキュリティ（追記）
 
 - **AI エンドポイント レートリミット** — \`POST /api/ai/summarize\` / \`POST /api/ai/translate\` のキャッシュミス時に per-user 5 秒クールダウンを追加。\`articleId\` キャッシュヒット時はスキップ
