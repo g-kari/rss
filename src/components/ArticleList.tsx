@@ -291,15 +291,25 @@ export default function ArticleList({
     [updateQuery, addToHistory, searchRef],
   );
 
+  // selectedArticleId が実際に変化したときだけスクロールする。
+  // visible / flatItems を deps に含めると readIds 変化のたびに再実行されて
+  // スクロール位置が意図せずリセットされるため、ref 経由で最新値を参照する。
+  const prevSelectedIdRef = useRef<string | null>(null);
+  const flatItemsRef = useRef(flatItems);
+  flatItemsRef.current = flatItems;
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
   useEffect(() => {
     if (!selectedArticleId) return;
+    if (selectedArticleId === prevSelectedIdRef.current) return;
+    prevSelectedIdRef.current = selectedArticleId;
     if (layout === "compact" || layout === "list") {
-      const idx = flatItems.findIndex(
+      const idx = flatItemsRef.current.findIndex(
         (item) => item.type === "article" && item.key === selectedArticleId,
       );
       if (idx >= 0) listVirtualizer.scrollToIndex(idx, { align: "auto" });
     } else if (layout === "card") {
-      const articleIdx = visible.findIndex((a) => a.id === selectedArticleId);
+      const articleIdx = visibleRef.current.findIndex((a) => a.id === selectedArticleId);
       if (articleIdx >= 0)
         cardVirtualizer.scrollToIndex(Math.floor(articleIdx / 2), { align: "auto" });
     } else {
@@ -309,7 +319,7 @@ export default function ArticleList({
     }
     // listVirtualizer / cardVirtualizer は安定参照のため deps から除外
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedArticleId, layout, flatItems, visible]);
+  }, [selectedArticleId, layout]);
 
   /** 記事ごとの表示用状態を解決する（ハンドラは親の安定参照を直接渡す） */
   function resolveItemProps(article: Article, index: number): ArticleItemProps {

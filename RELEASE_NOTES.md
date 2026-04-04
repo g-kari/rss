@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-04 (バグ修正2)
+
+### バグ修正
+
+- **スクロールロード時に元の位置に戻るバグを修正** — 記事選択によって `readIds` が更新されると `visible` 配列の参照が変わり、`ArticleList` の `useEffect` が誤発火して `scrollToIndex` でスクロール位置がリセットされていた問題を修正。また `hasMore` 変化のたびに `IntersectionObserver` が disconnect/reconnect され、sentinel が可視状態のまま再登録されると `loadMore` が呼ばれないケースも修正した
+
 ## 2026-04-04 (バグ修正)
 
 ### バグ修正
