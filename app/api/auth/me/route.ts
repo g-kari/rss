@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyJwt, refreshTokens } from "@/lib/auth";
+import { verifyJwt } from "@/lib/auth";
 import { r2Get } from "@/lib/r2";
-import { isBetaAllowed, setTokenCookies } from "@/lib/server-auth";
+import { isBetaAllowed, setTokenCookies, deduplicatedRefresh } from "@/lib/server-auth";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
 
@@ -40,9 +40,11 @@ export async function GET() {
   }
 
   // アクセストークン期限切れ → リフレッシュ試行
+  // deduplicatedRefresh を使うことで、同一アイソレート内で /api/auth/me と他の
+  // Route Handler が同時に refresh しようとしても 1 回だけ実行される。
   const refreshToken = cookieStore.get("refresh_token")?.value;
   if (refreshToken) {
-    const refreshed = await refreshTokens(refreshToken);
+    const refreshed = await deduplicatedRefresh(refreshToken);
     if (refreshed) {
       // リフレッシュ成功 → verify 結果に関わらず新しいトークンを Cookie にセット
       // （verify 失敗は JWKS 一時障害の可能性があるため Cookie は残す）

@@ -501,6 +501,16 @@ export default function App() {
     );
   }
 
+  // 認証チェック中（user === undefined）— ローディング画面
+  // !user はローディング中（undefined）にも true になるため、LP を表示しない
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen bg-surface-base font-sans antialiased flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-border-default border-t-text-muted animate-spin" />
+      </div>
+    );
+  }
+
   // 未ログイン — Landing Page
   if (!user) {
     return (
