@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-04 (テスト)
+
+### テスト
+
+- **article-filter テストカバレッジ拡充** — `readBeforeTimestamp`（一括既読タイムスタンプ）・`snoozedUntil`（スヌーズ）・`readingTimeRange`（読了時間フィルター）の3フィルターに対するテストが未実装だったため追加。合計18ケースを `e2e/article-filter.spec.ts` に追加し、境界値・`activeIds` バイパス・複合条件を網羅
+
 ## 2026-04-04 (新機能)
 
 ### 新機能
