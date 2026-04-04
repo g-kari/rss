@@ -90,6 +90,7 @@ src/
     NSFWEyeAnimation.tsx     # NSFW コンテンツ表示アニメーション
     ServiceWorkerRegistration.tsx # Service Worker 登録コンポーネント
     ErrorBoundary.tsx        # エラー境界
+    Spinner.tsx              # ローディングスピナー（ArticleView・ArticleList で共有）
   hooks/
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
@@ -97,7 +98,7 @@ src/
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useUIState.ts            # UI 状態管理（テーマ・レイアウト・モーダル等）
     useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
-    useReadState.ts          # 既読・ブックマーク・後で読む (localStorage + R2 同期)
+    useReadState.ts          # 既読・ブックマーク・後で読む・スヌーズ状態 (localStorage + R2 同期)
     useReadingHistory.ts     # 閲覧履歴管理
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
     useArticleAi.ts          # /api/ai/* fetch
@@ -113,6 +114,9 @@ src/
     useNSFWMode.ts           # NSFW モード（連打で活性化）
     useSyncedRef.ts          # stale closure 回避用の最新値 ref ユーティリティ
     useColumnResize.ts       # カラム幅リサイズ操作と localStorage 永続化
+    useMenuOpen.ts           # ドロップダウンメニュー開閉・click-outside 処理
+    usePortalMenu.ts         # ポータルベースのドロップダウンメニュー位置管理
+    useGracePeriod.ts        # 直前選択記事を 30 秒間フィルター対象外にする猶予期間管理
     useDebounce.ts           # デバウンスユーティリティ
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
@@ -139,6 +143,9 @@ src/
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     storage.ts               # localStorage キー定数・安全なラッパー
     url.ts                   # URL バリデーション
+    validation.ts            # 各種入力バリデーションユーティリティ
+    image-mime.ts            # 画像 MIME タイプ検証（ホワイトリスト方式・マジックバイト対応）
+    image-error-placeholder.ts # 画像エラー時の SVG プレースホルダー生成
     favicon.ts               # ファビコン未読バッジ
     web-push.ts              # Web Push 送信ヘルパー
     release-notes-data.ts    # RELEASE_NOTES_MARKDOWN 定数
@@ -321,7 +328,7 @@ sanitizeHtml           → XSS 対策（<script>/<style>/<link>/イベントハ�
 - **`sanitizeHtml` は必ずパイプラインの最後に実行** — 途中で実行すると後の処理が無効化される
 - **新しい後処理を追加する場合は `sanitizeHtml` の前に挿入する**
 - **`loading="lazy"` は `fixImageDimensions` で自動付与** — 個別に追加しない
-- **`onerror` ハンドラは付与しない** — `sanitizeHtml` でイベントハンドラが除去されるため不要。壊れた画像は `/api/image-proxy` が透明 GIF を返すことで対処する
+- **`onerror` ハンドラは付与しない** — `sanitizeHtml` でイベントハンドラが除去されるため不要。壊れた画像は `/api/image-proxy` が SVG プレースホルダーを返すことで対処する（`src/lib/image-error-placeholder.ts`）
 
 ### CSS（`app/globals.css`）
 
