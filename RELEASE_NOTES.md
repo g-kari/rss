@@ -2,6 +2,11 @@
 
 ## 2026-04-05
 
+### セキュリティ
+
+- **フィードリフレッシュ レートリミット** — `POST /api/feeds/refresh` に 2 分クールダウンを追加。連続呼び出し時は 429 + `Retry-After` ヘッダーを返す
+- **OGP テキストの HTML タグ除去** — `fetchPageOgpMeta` の title / description に `stripHtml` を適用し、HTML エンティティデコード後に残留するタグを排除
+
 ### リファクタリング
 
 - `feeds/[id]/route.ts` の PATCH ハンドラで `title` の型チェックと空文字チェックを 1 ステップに統合し、不要な optional chaining (`body?.title`) を除去。`priority` の if/else を 2 行に圧縮
