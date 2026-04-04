@@ -36,14 +36,22 @@ export function useFeedOperations({
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState<ImportMessage | null>(null);
   const importMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(
     () => () => {
       if (importMessageTimerRef.current) clearTimeout(importMessageTimerRef.current);
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     },
     [],
   );
+
+  function setErrorWithAutoClears(msg: string) {
+    setError(msg);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setError(""), 3000);
+  }
 
   function showImportMessage(text: string, isError: boolean) {
     setImportMessage({ text, isError });
@@ -81,7 +89,7 @@ export function useFeedOperations({
       await apiFetchJson(`/api/feeds/${id}`, { method: "DELETE" });
       onFeedDeleted(id);
     } catch {
-      setError("フィードの削除に失敗しました");
+      setErrorWithAutoClears("フィードの削除に失敗しました");
     }
   }
 
@@ -94,7 +102,7 @@ export function useFeedOperations({
       });
       onFeedRenamed(updated);
     } catch {
-      setError("フィードのタイトル変更に失敗しました");
+      setErrorWithAutoClears("フィードのタイトル変更に失敗しました");
     }
   }
 

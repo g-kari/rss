@@ -6,6 +6,9 @@ import type { OgpData } from "../types";
 
 export const LINK_PREVIEW_CLASS = "ogp-link-preview";
 
+/** 1記事あたりの同時OGPフェッチ上限（多数のリンクがある記事でのリクエスト爆発を防ぐ） */
+const MAX_LINK_PREVIEWS = 10;
+
 /**
  * anchor の親ブロック要素において、anchor が唯一の意味あるコンテンツかどうかを返す。
  * 例: <p><a href="...">...</a></p> → true
@@ -93,9 +96,11 @@ export function useContentLinkPreviews(
     el.querySelectorAll(`.${LINK_PREVIEW_CLASS}`).forEach((c) => c.remove());
 
     const ownHostname = window.location.hostname;
-    const anchors = [...el.querySelectorAll<HTMLAnchorElement>("a[href]")].filter(
-      (a) => /^https?:\/\//i.test(a.href) && a.hostname !== ownHostname && isStandaloneLink(a),
-    );
+    const anchors = [...el.querySelectorAll<HTMLAnchorElement>("a[href]")]
+      .filter(
+        (a) => /^https?:\/\//i.test(a.href) && a.hostname !== ownHostname && isStandaloneLink(a),
+      )
+      .slice(0, MAX_LINK_PREVIEWS);
     if (anchors.length === 0) return;
 
     const controller = new AbortController();
