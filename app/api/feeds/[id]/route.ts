@@ -44,10 +44,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // title の更新（存在する場合のみ）
     if ("title" in body) {
-      if (typeof body?.title !== "string")
-        return NextResponse.json({ error: "title must be a string" }, { status: 400 });
-      const title = body.title.trim();
-      if (!title) return NextResponse.json({ error: "title is required" }, { status: 400 });
+      const title = typeof body.title === "string" ? body.title.trim() : "";
+      if (!title)
+        return NextResponse.json({ error: "title must be a non-empty string" }, { status: 400 });
       if (title.length > 200)
         return NextResponse.json({ error: "title too long" }, { status: 400 });
       sub.customTitle = title;
@@ -80,11 +79,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if ("priority" in body) {
       if (body.priority !== "high" && body.priority !== null)
         return NextResponse.json({ error: "priority must be 'high' or null" }, { status: 400 });
-      if (body.priority === null) {
-        delete sub.priority;
-      } else {
-        sub.priority = body.priority;
-      }
+      if (body.priority === null) delete sub.priority;
+      else sub.priority = "high";
     }
 
     // category の更新（存在する場合のみ）

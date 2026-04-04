@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-05
+
+### リファクタリング
+
+- `feeds/[id]/route.ts` の PATCH ハンドラで `title` の型チェックと空文字チェックを 1 ステップに統合し、不要な optional chaining (`body?.title`) を除去。`priority` の if/else を 2 行に圧縮
+
 ## 2026-04-04
 
 ### リファクタリング
