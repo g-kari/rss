@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-04
+
+### リファクタリング
+
+- `FeedItem` のキーボードハンドラー (`handleKeyDown` / `handleCategoryKeyDown`) を `makeInputKeyHandler` ヘルパーで統一。Enter/Escape の重複ロジックを除去し、不要な `useCallback` も削除
+
 ## 2026-04-04 (リファクタリング1)
 
 ### リファクタリング
