@@ -142,6 +142,10 @@ export function fetchFollowSafeRedirects(
         const location = res.headers.get("location");
         if (!location) throw new Error("Redirect without Location header");
         const nextUrl = new URL(location, currentUrl).href;
+        // HTTPS → HTTP へのダウングレードリダイレクトを拒否
+        if (new URL(currentUrl).protocol === "https:" && new URL(nextUrl).protocol !== "https:") {
+          throw new Error(`HTTPS to HTTP downgrade redirect blocked: ${nextUrl}`);
+        }
         if (!isValidFeedUrl(nextUrl)) {
           throw new Error(`Redirect to blocked URL: ${nextUrl}`);
         }
