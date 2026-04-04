@@ -1,20 +1,28 @@
 import type { Article, KeywordFilter } from "../types";
 
 const MAX_KEYWORD_LENGTH = 100;
-const MAX_KEYWORDS_PER_ARRAY = 99999;
+const MAX_KEYWORDS_PER_ARRAY = 500;
 /** ReDoS 対策: スラッシュを除いたパターン部分の最大文字数 */
 const MAX_REGEX_PATTERN_LENGTH = 50;
 
 /**
  * ReDoS（正規表現サービス拒否）を引き起こす壊滅的バックトラッキングパターンを検出する。
- * 典型的なパターン: ネストした量指定子 (a+)+ / (a{2,})+ など。
+ * 典型的なパターン:
+ * - ネストした量指定子: (a+)+ / (a{2,})+
+ * - 交互化を含むグループへの量指定子: (a|aa)+ / (foo|foobar)*
  */
 function hasCatastrophicBacktracking(pattern: string): boolean {
   // {n,} / {n,m} を + に正規化してから検査することで、(a{2,})+ のような
   // 上限なし繰り返しをネストした量指定子として検出できるようにする
   const normalized = pattern.replace(/\{\d+,\d*\}/g, "+");
   // グループ内に量指定子があり、そのグループ自体にも量指定子がある構造を検出
-  return /\([^)]*[+*][^)]*\)[+*?]/.test(normalized) || /\([^)]*[+*][^)]*\)\{/.test(normalized);
+  // ※ {n,} / {n,m} は正規化済みで + になっているため + と * のみ検査すれば十分
+  if (/\([^)]*[+*][^)]*\)[+*?]/.test(normalized)) return true;
+  // 交互化 (a|b) を含むグループに量指定子がある構造を検出
+  // V8 でも (a|aa)+ のような重複オーバーラップする交互化は指数的バックトラッキングを引き起こす
+  // 正規化後に残る { は固定繰り返し {n} のみで安全なため除外
+  if (/\([^)]*\|[^)]*\)[+*]/.test(normalized)) return true;
+  return false;
 }
 
 /** `/pattern/` 形式の正規表現キーワードかどうかを判定する */

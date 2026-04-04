@@ -6,6 +6,11 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-05
 
+### セキュリティ（追記）
+
+- **ReDoS 検出強化** — \`keyword-filter.ts\` の \`hasCatastrophicBacktracking\` で交互化パターン \`(a|aa)+\` を新たに検出対象に追加。従来はネストした量指定子のみ検出していたが、V8 でも重複オーバーラップする交互化は指数的バックトラッキングを引き起こすため対処
+- **キーワード上限を適正化** — \`MAX_KEYWORDS_PER_ARRAY\` を 99999 → 500 に変更。ReDoS との組み合わせで Workers CPU バジェットを消費するリスクを低減
+
 ### リファクタリング
 
 - **レートリミットヘルパー** — \`checkAndUpdateCooldown\` を \`src/lib/rate-limit.ts\` に抽出。4 つのエンドポイントに重複していたクールダウンロジックを 1 箇所に集約
