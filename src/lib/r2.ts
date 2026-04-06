@@ -1,5 +1,9 @@
 import { normalizeUrlForCache } from "@/lib/url";
 
+/**
+ * R2 から JSON データを読み込む。キーが存在しない場合またはエラー時は fallback を返す。
+ * エラーはログに出力するが呼び出し元には伝搬しない（r2Put とは異なる）。
+ */
 export async function r2Get<T>(bucket: R2Bucket, key: string, fallback: T): Promise<T> {
   try {
     const obj = await bucket.get(key);
@@ -11,6 +15,10 @@ export async function r2Get<T>(bucket: R2Bucket, key: string, fallback: T): Prom
   }
 }
 
+/**
+ * R2 に JSON データを書き込む。Content-Type は application/json で固定。
+ * エラー時は再スローする（r2Get と異なりエラーを握り潰さない）。
+ */
 export async function r2Put(bucket: R2Bucket, key: string, data: unknown): Promise<void> {
   try {
     await bucket.put(key, JSON.stringify(data), {

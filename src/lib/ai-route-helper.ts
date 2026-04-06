@@ -20,10 +20,19 @@ type AiMessage = { role: "system" | "user"; content: string };
  * AI ルートハンドラの共通ロジック。
  * URL 検証・コンテンツ取得・キャッシュ確認・AI 実行・キャッシュ保存を担う。
  *
- * @param request - リクエストオブジェクト
+ * ## 処理フロー
+ * 1. リクエストボディから url / articleId を取得
+ * 2. articleId がある場合は R2 キャッシュを確認（ヒット時はレートリミットをスキップ）
+ * 3. レートリミット（ユーザーごとに 5 秒のクールダウン）
+ * 4. /api/content と共有する Cloudflare Cache から記事コンテンツを取得
+ * 5. Workers AI を呼び出して結果を取得
+ * 6. 結果を R2 キャッシュに保存（fire-and-forget）
+ *
+ * @param request - リクエストオブジェクト（ボディに url / articleId を含む）
+ * @param session - 認証済みセッション（レートリミットのキーに userId を使用）
  * @param env - Cloudflare バインディング (RSS_DATA, AI)
  * @param ctx - ExecutionContext (waitUntil 用)
- * @param buildMessages - テキストから AI メッセージ配列を構築する関数
+ * @param buildMessages - プレーンテキストから AI メッセージ配列を構築するコールバック
  * @param cacheType - R2 キャッシュのサブディレクトリ名（デフォルト "summary"）
  */
 export async function runAiJob(
