@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Layout, FontSize } from "../types";
+import type { FontFamily, Layout, FontSize } from "../types";
 import {
   STORAGE_KEYS,
   storageGet,
@@ -10,7 +10,7 @@ import {
   loadStoredEnum,
   toggleSetItem,
 } from "../lib/storage";
-import { FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article-utils";
+import { FONT_FAMILY_CYCLE, FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article-utils";
 import { useMobilePane } from "./useMobilePane";
 import { useNSFWMode } from "./useNSFWMode";
 
@@ -26,6 +26,8 @@ interface BeforeInstallPromptEvent extends Event {
 const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUT_CYCLE, "list" as Layout);
 const loadFontSize = () =>
   loadStoredEnum(STORAGE_KEYS.FONT_SIZE, FONT_SIZE_CYCLE, "medium" as FontSize);
+const loadFontFamily = () =>
+  loadStoredEnum(STORAGE_KEYS.FONT_FAMILY, FONT_FAMILY_CYCLE, "sans" as FontFamily);
 
 function loadTheme(): Theme {
   const stored = storageGet(STORAGE_KEYS.THEME);
@@ -42,6 +44,8 @@ export interface UIState {
   toggleTheme: () => void;
   fontSize: FontSize;
   onChangeFontSize: (size: FontSize) => void;
+  fontFamily: FontFamily;
+  onChangeFontFamily: (family: FontFamily) => void;
   layout: Layout;
   onChangeLayout: (l: Layout) => void;
   pinnedFeedIds: Set<string>;
@@ -63,6 +67,7 @@ export interface UIState {
 export function useUIState(initialMobilePane: MobilePane): UIState {
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [fontSize, setFontSize] = useState<FontSize>(loadFontSize);
+  const [fontFamily, setFontFamily] = useState<FontFamily>(loadFontFamily);
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
   const [toast, setToast] = useState<string | null>(null);
@@ -116,6 +121,11 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     storageSet(STORAGE_KEYS.FONT_SIZE, size);
   }, []);
 
+  const onChangeFontFamily = useCallback((family: FontFamily) => {
+    setFontFamily(family);
+    storageSet(STORAGE_KEYS.FONT_FAMILY, family);
+  }, []);
+
   const onChangeLayout = useCallback((l: Layout) => {
     setLayout(l);
     storageSet(STORAGE_KEYS.LAYOUT, l);
@@ -143,6 +153,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     toggleTheme,
     fontSize,
     onChangeFontSize,
+    fontFamily,
+    onChangeFontFamily,
     layout,
     onChangeLayout,
     pinnedFeedIds,

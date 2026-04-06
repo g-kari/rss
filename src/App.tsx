@@ -44,6 +44,8 @@ export default function App() {
     toggleTheme,
     fontSize,
     onChangeFontSize,
+    fontFamily,
+    onChangeFontFamily,
     layout,
     onChangeLayout,
     pinnedFeedIds,
@@ -429,6 +431,8 @@ export default function App() {
     showToast,
     fontSize,
     onChangeFontSize,
+    fontFamily,
+    onChangeFontFamily,
     layout,
     onChangeLayout,
     unreadOnly,
@@ -857,6 +861,8 @@ export default function App() {
             onMobileBack={() => setMobilePane("list")}
             fontSize={fontSize}
             onChangeFontSize={onChangeFontSize}
+            fontFamily={fontFamily}
+            onChangeFontFamily={onChangeFontFamily}
             showToast={showToast}
             prevArticle={prevArticle}
             nextArticle={nextArticle}

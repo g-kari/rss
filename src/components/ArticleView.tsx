@@ -2,10 +2,16 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import type { Article, Feed, FontSize, KeywordFilter } from "../types";
+import type { Article, Feed, FontFamily, FontSize, KeywordFilter } from "../types";
 import type { Theme } from "../hooks/useUIState";
 import FeedFilterModal from "./FeedFilterModal";
-import { readingTime, FONT_SIZE_CYCLE, collectImageUrlsFromHtml } from "../lib/article-utils";
+import {
+  readingTime,
+  FONT_SIZE_CYCLE,
+  FONT_FAMILY_CYCLE,
+  FONT_FAMILY_LABELS,
+  collectImageUrlsFromHtml,
+} from "../lib/article-utils";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { useArticleContent } from "../hooks/useArticleContent";
 import { useArticleAi } from "../hooks/useArticleAi";
@@ -19,6 +25,13 @@ const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   medium: "text-[16px] leading-[1.9]",
   large: "text-[19px] leading-[2.0]",
 };
+
+const FONT_FAMILY_CLASSES: Record<FontFamily, string> = {
+  sans: "font-sans",
+  serif: "font-serif",
+  mono: "font-mono",
+};
+
 interface Props {
   article: Article | null;
   isBookmarked: boolean;
@@ -35,6 +48,8 @@ interface Props {
   onMobileBack?: () => void;
   fontSize?: FontSize;
   onChangeFontSize?: (size: FontSize) => void;
+  fontFamily?: FontFamily;
+  onChangeFontFamily?: (family: FontFamily) => void;
   showToast?: (msg: string) => void;
   prevArticle?: Article | null;
   nextArticle?: Article | null;
@@ -1242,6 +1257,8 @@ export default function ArticleView({
   onMobileBack,
   fontSize = "medium",
   onChangeFontSize,
+  fontFamily = "sans",
+  onChangeFontFamily,
   showToast,
   prevArticle,
   nextArticle,
@@ -1628,6 +1645,33 @@ export default function ArticleView({
               </div>
             )}
 
+            {/* フォントファミリー切り替え */}
+            {onChangeFontFamily && (
+              <div className="flex items-center gap-0.5 mr-1">
+                {FONT_FAMILY_CYCLE.map((family) => (
+                  <button
+                    key={family}
+                    onClick={() => onChangeFontFamily(family)}
+                    title={FONT_FAMILY_LABELS[family]}
+                    className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
+                      fontFamily === family
+                        ? "text-text-strong"
+                        : "text-text-faint hover:text-text-muted"
+                    } ${
+                      family === "sans"
+                        ? "font-sans"
+                        : family === "serif"
+                          ? "font-serif"
+                          : "font-mono"
+                    }`}
+                    style={{ lineHeight: 1 }}
+                  >
+                    {family === "sans" ? "ゴ" : family === "serif" ? "明" : "等"}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* AI 要約・翻訳ボタン */}
             {hasContent && (
               <div className="flex items-center gap-1 mr-1">
@@ -1876,7 +1920,7 @@ export default function ArticleView({
         {processedContent ? (
           <div
             ref={contentRef}
-            className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}
+            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]}`}
             // dangerouslySetInnerHTML の中は React がテキストノードを管理しないため
             // Google 翻訳の <font> 注入と React 調停が衝突しない。
             // html 要素の translate="no" を上書きして翻訳を許可する。
@@ -1884,7 +1928,11 @@ export default function ArticleView({
             dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         ) : article.summary ? (
-          <p className={`article-content ${FONT_SIZE_CLASSES[fontSize]}`}>{article.summary}</p>
+          <p
+            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]}`}
+          >
+            {article.summary}
+          </p>
         ) : !embedInfo ? (
           <div className="text-center py-12">
             <p className="text-[12px] text-text-faint mb-4 tracking-[0.04em]">

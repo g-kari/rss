@@ -122,6 +122,7 @@ export interface Article {
 
 export type Layout = "compact" | "list" | "card" | "magazine";
 export type FontSize = "small" | "medium" | "large";
+export type FontFamily = "sans" | "serif" | "mono";
 export type SortOrder = "newest" | "oldest";
 export type ReadingTimeRange = "all" | "short" | "medium" | "long";
 

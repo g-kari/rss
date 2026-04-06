@@ -1,4 +1,11 @@
-import type { DateRange, FontSize, Layout, ReadingTimeRange, SortOrder } from "../types";
+import type {
+  DateRange,
+  FontFamily,
+  FontSize,
+  Layout,
+  ReadingTimeRange,
+  SortOrder,
+} from "../types";
 import { stripHtml } from "./html";
 
 /** CJK 統合漢字・ひらがな・カタカナ・拡張A（読了速度判定用） */
@@ -96,6 +103,13 @@ export const FONT_SIZE_LABELS: Record<FontSize, string> = {
   small: "小",
   medium: "中",
   large: "大",
+};
+
+export const FONT_FAMILY_CYCLE: FontFamily[] = ["sans", "serif", "mono"];
+export const FONT_FAMILY_LABELS: Record<FontFamily, string> = {
+  sans: "サンセリフ",
+  serif: "セリフ",
+  mono: "等幅",
 };
 
 export const LAYOUT_CYCLE: Layout[] = ["compact", "list", "card", "magazine"];

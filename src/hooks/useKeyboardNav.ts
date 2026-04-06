@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import type { Article, Feed, FontSize, Layout, DateRange, SortOrder } from "../types";
+import type { Article, Feed, FontFamily, FontSize, Layout, DateRange, SortOrder } from "../types";
 import {
   cycleValue,
   DATE_RANGE_LABELS,
+  FONT_FAMILY_CYCLE,
+  FONT_FAMILY_LABELS,
   FONT_SIZE_CYCLE,
   FONT_SIZE_LABELS,
   LAYOUT_CYCLE,
@@ -35,6 +37,8 @@ interface KeyboardNavOptions {
   showToast: (msg: string) => void;
   fontSize: FontSize;
   onChangeFontSize: (size: FontSize) => void;
+  fontFamily: FontFamily;
+  onChangeFontFamily: (family: FontFamily) => void;
   layout: Layout;
   onChangeLayout: (layout: Layout) => void;
   unreadOnly: boolean;
@@ -59,7 +63,7 @@ interface KeyboardNavOptions {
  * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, g 先頭, G 末尾,
  *               o 元記事, v 全文取得, b ブックマーク,
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー, C Markdownリンクコピー,
- *               z スヌーズ（1日）, f フォントサイズ, l レイアウト, L いいね切替, R フィード更新,
+ *               z スヌーズ（1日）, f フォントサイズ, F フォントファミリー, l レイアウト, L いいね切替, R フィード更新,
  *               u 未読フィルター, B ブックマークフィルター, T リーディングリストフィルター,
  *               s ソート, d 日付フィルター,
  *               / 検索, ] 次フィード, [ 前フィード
@@ -94,6 +98,8 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         showToast,
         fontSize,
         onChangeFontSize,
+        fontFamily,
+        onChangeFontFamily,
         layout,
         onChangeLayout,
         unreadOnly,
@@ -213,6 +219,12 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           const next = cycleValue(FONT_SIZE_CYCLE, fontSize);
           onChangeFontSize(next);
           showToast(`文字サイズ: ${FONT_SIZE_LABELS[next]}`);
+          break;
+        }
+        case "F": {
+          const next = cycleValue(FONT_FAMILY_CYCLE, fontFamily);
+          onChangeFontFamily(next);
+          showToast(`フォント: ${FONT_FAMILY_LABELS[next]}`);
           break;
         }
         case "l": {
