@@ -214,6 +214,14 @@ export default function App() {
     [patchFeed, updateFeed],
   );
 
+  const muteFeed = useCallback(
+    async (feed: Feed, mutedUntil: string | null) => {
+      const updated = await patchFeed(feed.id, { mutedUntil });
+      if (updated) updateFeed(updated);
+    },
+    [patchFeed, updateFeed],
+  );
+
   const saveFilter = useCallback(
     async (feedId: string, filter: KeywordFilter | null) => {
       const updated = await patchFeed(feedId, { filter });
@@ -260,6 +268,11 @@ export default function App() {
   );
 
   const nsfwFeedIds = useMemo(() => new Set(feeds.filter((f) => f.nsfw).map((f) => f.id)), [feeds]);
+
+  const mutedFeedIds = useMemo(() => {
+    const now = new Date().toISOString();
+    return new Set(feeds.filter((f) => f.mutedUntil && f.mutedUntil > now).map((f) => f.id));
+  }, [feeds]);
 
   const { bookmarkCount, readingListCount, likeCount, historyCount } = useMemo(() => {
     let bm = 0,
@@ -314,6 +327,7 @@ export default function App() {
     setGlobalFilter,
     readBeforeTimestamp,
     snoozedUntil,
+    mutedFeedIds,
   });
 
   const currentIndex = useMemo(
@@ -802,6 +816,7 @@ export default function App() {
             onToggleNsfwFeed={toggleNsfwFeed}
             onTogglePriorityFeed={togglePriorityFeed}
             onSetCategoryFeed={setCategoryFeed}
+            onMuteFeed={muteFeed}
             recommendations={recommendations}
             recommendationsLoading={recommendationsLoading}
             recommendationsRefreshing={recommendationsRefreshing}

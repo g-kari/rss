@@ -44,6 +44,8 @@ export interface ArticleFilterOptions {
   snoozedUntil?: Record<string, string>;
   /** 読了時間フィルター（"all" = フィルタなし） */
   readingTimeRange?: ReadingTimeRange;
+  /** ミュート中のフィード ID セット — 全フィード表示時のみ除外 */
+  mutedFeedIds?: Set<string>;
 }
 
 /**
@@ -91,6 +93,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     readBeforeTimestamp,
     snoozedUntil,
     readingTimeRange = "all",
+    mutedFeedIds,
   } = opts;
 
   const isActive = (id: string) => activeIds.has(id);
@@ -117,6 +120,9 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
 
     // NSFW フィード — NSFW モードでなければ非表示
     if (!nsfwMode && nsfwFeedIds.has(a.feedHash) && !isActive(a.id)) return false;
+
+    // ミュート中のフィード — 全フィード表示時のみ除外（特定フィード選択時は表示）
+    if (!feedId && mutedFeedIds?.has(a.feedHash) && !isActive(a.id)) return false;
 
     // キーワードフィルター（アクティブな記事はフィルタ対象外）
     if (!isActive(a.id)) {

@@ -72,6 +72,8 @@ export interface UserSubscription {
   priority?: "high";
   /** カテゴリ — ユーザーが設定したグループ名 */
   category?: string;
+  /** ミュート解除予定時刻（ISO 8601）— この時刻までフィードを全フィード表示から非表示にする */
+  mutedUntil?: string;
 }
 
 /** クライアント向けフィード型（SharedFeedMeta + UserSubscription を合成して返す） */
@@ -101,6 +103,8 @@ export interface Feed {
   cssSelector?: string;
   /** 過去に失敗した CSS セレクタの履歴 */
   failedSelectors?: string[];
+  /** ミュート解除予定時刻（ISO 8601）— この時刻まで全フィード表示から非表示 */
+  mutedUntil?: string;
 }
 
 export interface Article {

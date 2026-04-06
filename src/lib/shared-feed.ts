@@ -271,6 +271,7 @@ export function assembleClientFeed(meta: SharedFeedMeta, sub: UserSubscription):
     isScraping: !!meta.cssSelectors,
     cssSelector: meta.cssSelectors?.articleLink,
     failedSelectors: meta.failedSelectors,
+    mutedUntil: sub.mutedUntil,
   };
 }
 

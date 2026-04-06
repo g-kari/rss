@@ -102,6 +102,8 @@ interface Options {
   readBeforeTimestamp?: string | null;
   /** スヌーズ中の記事 ID → スヌーズ解除 ISO 日時文字列のマップ */
   snoozedUntil?: Record<string, string>;
+  /** ミュート中のフィード ID セット — 全フィード表示時に記事を除外 */
+  mutedFeedIds?: Set<string>;
 }
 
 /**
@@ -141,6 +143,7 @@ export function useFilteredArticles({
   setGlobalFilter,
   readBeforeTimestamp = null,
   snoozedUntil,
+  mutedFeedIds,
 }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
@@ -281,6 +284,7 @@ export function useFilteredArticles({
         readBeforeTimestamp,
         snoozedUntil,
         readingTimeRange,
+        mutedFeedIds,
       }),
     [
       articles,
@@ -305,6 +309,7 @@ export function useFilteredArticles({
       readBeforeTimestamp,
       snoozedUntil,
       readingTimeRange,
+      mutedFeedIds,
     ],
   );
 

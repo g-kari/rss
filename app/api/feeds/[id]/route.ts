@@ -34,6 +34,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       nsfw?: unknown;
       priority?: unknown;
       category?: unknown;
+      mutedUntil?: unknown;
     }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
@@ -99,6 +100,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         } else {
           sub.category = category;
         }
+      }
+    }
+
+    // mutedUntil の更新（存在する場合のみ）
+    if ("mutedUntil" in body) {
+      if (body.mutedUntil === null) {
+        delete sub.mutedUntil;
+      } else {
+        if (typeof body.mutedUntil !== "string")
+          return NextResponse.json(
+            { error: "mutedUntil must be an ISO string or null" },
+            { status: 400 },
+          );
+        sub.mutedUntil = body.mutedUntil;
       }
     }
 

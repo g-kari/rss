@@ -42,6 +42,7 @@ interface Props {
   onToggleNsfwFeed: (feed: Feed) => void;
   onTogglePriorityFeed: (feed: Feed) => void;
   onSetCategoryFeed?: (feed: Feed, category: string | null) => Promise<void>;
+  onMuteFeed?: (feed: Feed, mutedUntil: string | null) => Promise<void>;
   recommendations?: RecommendedFeed[];
   recommendationsLoading?: boolean;
   recommendationsRefreshing?: boolean;
@@ -123,6 +124,7 @@ export default function FeedSidebar({
   onToggleNsfwFeed,
   onTogglePriorityFeed,
   onSetCategoryFeed,
+  onMuteFeed,
   recommendations,
   recommendationsLoading,
   recommendationsRefreshing,
@@ -217,6 +219,7 @@ export default function FeedSidebar({
         onSetCategory={
           onSetCategoryFeed ? (category) => onSetCategoryFeed(feed, category) : undefined
         }
+        onMute={onMuteFeed ? (mutedUntil) => onMuteFeed(feed, mutedUntil) : undefined}
       />
     );
   }

@@ -94,6 +94,7 @@ export interface FeedItemProps {
   onToggleNsfw?: () => void;
   onTogglePriority?: () => void;
   onSetCategory?: (category: string | null) => Promise<void>;
+  onMute?: (mutedUntil: string | null) => Promise<void>;
 }
 
 interface Action {
@@ -108,6 +109,13 @@ interface Action {
 }
 
 const STALE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000; // 30日
+
+const MUTE_OPTIONS = [
+  { label: "1時間", durationMs: 60 * 60 * 1000 },
+  { label: "8時間", durationMs: 8 * 60 * 60 * 1000 },
+  { label: "1日", durationMs: 24 * 60 * 60 * 1000 },
+  { label: "1週間", durationMs: 7 * 24 * 60 * 60 * 1000 },
+] as const;
 
 export default function FeedItem({
   feed,
@@ -127,11 +135,13 @@ export default function FeedItem({
   onToggleNsfw,
   onTogglePriority,
   onSetCategory,
+  onMute,
 }: FeedItemProps) {
   const isStale =
     !feed.fetchError &&
     lastPublishedAt !== undefined &&
     Date.now() - new Date(lastPublishedAt).getTime() > STALE_THRESHOLD_MS;
+  const isMuted = !!(feed.mutedUntil && feed.mutedUntil > new Date().toISOString());
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [categoryEditing, setCategoryEditing] = useState(false);
@@ -139,6 +149,7 @@ export default function FeedItem({
   const categoryInputRef = useRef<HTMLInputElement>(null);
   const [loadingAction, setLoadingAction] = useState<"retry" | "reinfer" | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [muteOpen, setMuteOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -294,6 +305,49 @@ export default function FeedItem({
       },
       show: !!onSetCategory,
       className: feed.category ? "text-text-default" : "text-text-faint hover:text-text-default",
+    },
+    {
+      key: "mute",
+      label: isMuted ? "ミュート解除" : "ミュート",
+      icon: (
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {isMuted ? (
+            <>
+              <path d="M11 5L6 9H2v6h4l5 4V5z" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </>
+          ) : (
+            <>
+              <path d="M11 5L6 9H2v6h4l5 4V5z" />
+              <path d="M23 9l-6 6M17 9l6 6" opacity="0" />
+              <line x1="1" y1="1" x2="23" y2="23" opacity="0" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            </>
+          )}
+        </svg>
+      ),
+      onClick: () => {
+        if (isMuted) {
+          void onMute?.(null);
+        } else {
+          setMenuOpen(false);
+          setMuteOpen(true);
+        }
+      },
+      show: !!onMute,
+      className: isMuted
+        ? "text-amber-500 hover:text-amber-400"
+        : "text-text-faint hover:text-text-default",
     },
     {
       key: "pin",
@@ -504,6 +558,26 @@ export default function FeedItem({
                 <FilterIcon size={8} />
               </span>
             )}
+            {isMuted && (
+              <span title="ミュート中" className="flex-shrink-0 text-amber-500">
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                  <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+                  <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              </span>
+            )}
             {isStale && (
               <span title="30日以上新着なし" className="flex-shrink-0 text-text-faint">
                 <svg
@@ -645,6 +719,61 @@ export default function FeedItem({
         />
       )}
       {detailOpen && <FeedDetailModal feed={feed} onClose={() => setDetailOpen(false)} />}
+      {muteOpen &&
+        onMute &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[49]"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                setMuteOpen(false);
+              }}
+            />
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[160px]"
+              style={menuPortalStyle}
+            >
+              <div className="px-3 pt-2 pb-1">
+                <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+                  ミュート期間
+                </p>
+              </div>
+              <div className="border-t border-border-subtle">
+                {MUTE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.durationMs}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMuteOpen(false);
+                      const until = new Date(Date.now() + opt.durationMs).toISOString();
+                      void onMute(until);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
+                  >
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="flex-shrink-0"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 7v5l3 3" />
+                    </svg>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   );
 }
