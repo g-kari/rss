@@ -4,6 +4,19 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-06 (コードレビュー修正)
+
+### セキュリティ
+
+- **\`image-mime.ts\` から \`image/svg+xml\` を削除** — \`ALLOWED_IMAGE_CONTENT_TYPES\` に SVG が含まれており、将来的に \`detectImageMimeType\` に SVG 検出を追加した際に XSS 経路が生まれる可能性を排除
+- **\`image-proxy\` レスポンスに \`Cross-Origin-Resource-Policy: same-origin\` と \`X-Content-Type-Options: nosniff\` を追加** — キャッシュヒット・ミス両方のレスポンスに明示的にヘッダーを付与
+
+### バグ修正
+
+- **\`useReadState\`: 未ログイン時に \`sendBeacon\` / \`saveReadState\` が送信される問題を修正** — \`onBeforeUnload\` / \`onVisibilityChange\` に \`userRef\` チェックを追加
+- **\`useReadState\`: \`markRead\` / \`markBulkRead\` の stale closure バグを修正** — \`setState\` updater 内の \`changed\` フラグは updater が非同期実行されるため常に \`false\` のまま \`scheduleSyncToServer\` が呼ばれない問題を、\`scheduleSyncToServer()\` を無条件呼び出しに変更して修正
+- **\`useReadState\`: JSDoc のデバウンス時間コメントを 2 秒 → 5 秒に修正** — コードの実装値と一致していなかったコメントを修正
+
 ## 2026-04-06 (セキュリティ)
 
 ### セキュリティ

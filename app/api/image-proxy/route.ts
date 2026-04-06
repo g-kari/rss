@@ -35,6 +35,8 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
         "Content-Type": cached.headers.get("Content-Type") ?? "image/jpeg",
         "Cache-Control": `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
         "X-Cache": "HIT",
+        "Cross-Origin-Resource-Policy": "same-origin",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   }
@@ -92,6 +94,8 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
         "Content-Type": mimeType,
         "Cache-Control": `public, max-age=${IMAGE_CACHE_TTL_SEC}`,
         "X-Cache": "MISS",
+        "Cross-Origin-Resource-Policy": "same-origin",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (err) {

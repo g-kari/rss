@@ -5,7 +5,7 @@
  * マジックバイト検証で Content-Type ヘッダーの偽装にも対応する。
  */
 
-/** 許可する画像 MIME タイプ → ファイル拡張子のマッピング。 */
+/** 許可する画像 MIME タイプ → ファイル拡張子のマッピング。SVG は XSS リスクのため除外。 */
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -13,7 +13,6 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/webp": "webp",
   "image/bmp": "bmp",
   "image/avif": "avif",
-  "image/svg+xml": "svg",
 };
 
 /** 許可する画像 MIME タイプのホワイトリスト（detectImageMimeType と整合）。 */
