@@ -38,6 +38,7 @@ function loadTheme(): Theme {
 }
 
 const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
+const loadCollapsedCategories = () => loadSet(STORAGE_KEYS.COLLAPSED_CATEGORIES);
 
 export interface UIState {
   theme: Theme;
@@ -50,6 +51,8 @@ export interface UIState {
   onChangeLayout: (l: Layout) => void;
   pinnedFeedIds: Set<string>;
   togglePinFeed: (feedId: string) => void;
+  collapsedCategories: Set<string>;
+  toggleCollapseCategory: (category: string) => void;
   toast: string | null;
   showToast: (msg: string) => void;
   mobilePane: MobilePane;
@@ -70,6 +73,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [fontFamily, setFontFamily] = useState<FontFamily>(loadFontFamily);
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
+  const [collapsedCategories, setCollapsedCategories] =
+    useState<Set<string>>(loadCollapsedCategories);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -135,6 +140,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     toggleSetItem(setPinnedFeedIds, STORAGE_KEYS.PINNED_FEED_IDS, feedId);
   }, []);
 
+  const toggleCollapseCategory = useCallback((category: string) => {
+    toggleSetItem(setCollapsedCategories, STORAGE_KEYS.COLLAPSED_CATEGORIES, category);
+  }, []);
+
   const showToast = useCallback((msg: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(msg);
@@ -159,6 +168,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeLayout,
     pinnedFeedIds,
     togglePinFeed,
+    collapsedCategories,
+    toggleCollapseCategory,
     toast,
     showToast,
     mobilePane,
