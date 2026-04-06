@@ -23,6 +23,8 @@ interface Props {
   theme: "light" | "dark";
   refreshing: boolean;
   pinnedFeedIds: Set<string>;
+  collapsedCategories?: Set<string>;
+  onToggleCollapseCategory?: (category: string) => void;
   nsfwMode: boolean;
   onSelectFeed: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
@@ -117,6 +119,8 @@ export default function FeedSidebar({
   onReinferFeed,
   refreshing,
   pinnedFeedIds,
+  collapsedCategories = new Set(),
+  onToggleCollapseCategory,
   onTogglePinFeed,
   nsfwMode,
   onActivateNsfw,
@@ -615,16 +619,38 @@ export default function FeedSidebar({
           const elements: ReactNode[] = [];
 
           for (const [cat, catFeeds] of categoryGroups) {
+            const isCollapsed = collapsedCategories.has(cat);
             elements.push(
-              <div key={`cat-header-${cat}`} className="px-4 pt-2.5 pb-0.5">
-                <span className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted">
+              <button
+                key={`cat-header-${cat}`}
+                className="w-full px-4 pt-2.5 pb-0.5 flex items-center gap-1 group"
+                onClick={() => onToggleCollapseCategory?.(cat)}
+                title={isCollapsed ? "展開" : "折りたたむ"}
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  className={`flex-shrink-0 text-text-muted transition-transform duration-150 ${isCollapsed ? "-rotate-90" : ""}`}
+                  fill="currentColor"
+                >
+                  <path d="M5 7L1 3h8L5 7z" />
+                </svg>
+                <span className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted group-hover:text-text-default transition-colors">
                   {cat}
                 </span>
-              </div>,
+                {isCollapsed && (
+                  <span className="ml-auto text-[10px] text-text-faint tabular-nums">
+                    {catFeeds.length}
+                  </span>
+                )}
+              </button>,
             );
-            catFeeds.forEach((feed, i) => {
-              elements.push(renderFeed(feed, false, globalOffset + i));
-            });
+            if (!isCollapsed) {
+              catFeeds.forEach((feed, i) => {
+                elements.push(renderFeed(feed, false, globalOffset + i));
+              });
+            }
             globalOffset += catFeeds.length;
           }
 

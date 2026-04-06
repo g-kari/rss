@@ -52,6 +52,8 @@ export default function App() {
     onChangeLayout,
     pinnedFeedIds,
     togglePinFeed,
+    collapsedCategories,
+    toggleCollapseCategory,
     toast,
     showToast,
     mobilePane,
@@ -812,6 +814,8 @@ export default function App() {
             refreshing={refreshing}
             pinnedFeedIds={pinnedFeedIds}
             onTogglePinFeed={togglePinFeed}
+            collapsedCategories={collapsedCategories}
+            onToggleCollapseCategory={toggleCollapseCategory}
             nsfwMode={nsfwMode}
             onActivateNsfw={activateNSFW}
             onDeactivateNsfw={deactivateNSFW}
