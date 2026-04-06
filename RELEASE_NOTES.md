@@ -1,5 +1,14 @@
 # リリースノート
 
+## 2026-04-06 (セキュリティ)
+
+### セキュリティ
+
+- **`Cross-Origin-Resource-Policy: same-origin` ヘッダーを追加** — 全レスポンスにヘッダーを付与し、クロスオリジンの no-cors フェッチによるレスポンスボディ読み取りを防止（Spectre 対策）
+- **`sanitizeHtml` に `<meta name="referrer">` 除去を追加** — 記事内に挿入された referrer ポリシー上書きタグにより、リンククリック時にフル URL が外部サイトへ漏洩する問題を防止
+- **`sanitizeHtml` の http-equiv ブロックリストを拡充** — `x-ua-compatible` / `cache-control` / `pragma` / `expires` を追加し、IE 互換モード強制やキャッシュ操作を防止
+- **`sanitizeStyleAttr` に旧 CSS XSS ベクタの除去を追加** — `expression()` (IE)・`-moz-binding:` (Firefox XBL)・`behavior:` (IE HTC) を除去し、レガシーブラウザ環境でのフォールバック XSS を防止
+
 ## 2026-04-06 (リファクタリング)
 
 ### リファクタリング
