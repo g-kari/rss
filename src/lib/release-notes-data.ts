@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-06 (バグ修正)
+
+### バグ修正
+
+- **Markdown エクスポート: Firefox でダウンロードが動作しない問題を修正** — \`<a>\` 要素を DOM に追加してから \`.click()\` するよう変更し、Firefox でもダウンロードが開始されるように修正。また \`URL.revokeObjectURL()\` を \`setTimeout(1000)\` で遅延させ、Blob URL がダウンロード開始前に解放されないよう修正
+- **Markdown エクスポート: 記事タイトル・フィード名の Markdown インジェクションを修正** — タイトルに \`]\` \`)\` 等の Markdown メタ文字が含まれる場合にリンク構文が破損する問題を \`escapeMarkdown()\` ヘルパーで修正
+
 ## 2026-04-06 (新機能)
 
 ### 新機能
