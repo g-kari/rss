@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-06
+
+### セキュリティ
+
+- **CSS `image-set()` によるトラッキングバイパスを修正** — `sanitizeStyleAttr` が `url()` を除去していたが、`image-set("https://tracker.example/" 1x)` のような bare string 記法は除去されていなかった。`image-set()` および `-webkit-image-set()` を新たに除去対象に追加
+
 ## 2026-04-05
 
 ### セキュリティ（追記）

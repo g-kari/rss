@@ -106,12 +106,19 @@ export function toPlainText(html: string): string {
  *
  * - url() 参照を除去: 外部リソース読み込みおよび CSS ベーストラッキング（閲覧行動の漏洩）を防ぐ
  *   例: background-image:url(https://tracker.example/pixel.gif) でピクセルトラッキングが可能
+ * - image-set() / -webkit-image-set() を除去: bare string 記法 (url() なし) でも外部画像を読み込めるため
+ *   例: background-image:image-set("https://tracker.example/pixel.gif" 1x) は url() を使わず外部リソースを取得できる
  * - position: fixed / sticky を除去: UI 全体を覆うフィッシングオーバーレイを防ぐ
  */
 function sanitizeStyleAttr(style: string): string {
-  return style
-    .replace(/\burl\s*\([^)]*\)/gi, "")
-    .replace(/\bposition\s*:\s*(fixed|sticky)\b[^;]*(;|$)/gi, "");
+  return (
+    style
+      .replace(/\burl\s*\([^)]*\)/gi, "")
+      // -webkit- プレフィックス付きは \b が `-` 前に効かないため \b なしで除去
+      .replace(/-webkit-image-set\s*\([^)]*\)/gi, "")
+      .replace(/\bimage-set\s*\([^)]*\)/gi, "")
+      .replace(/\bposition\s*:\s*(fixed|sticky)\b[^;]*(;|$)/gi, "")
+  );
 }
 
 /**
