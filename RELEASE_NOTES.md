@@ -4,6 +4,7 @@
 
 ### リファクタリング
 
+- **`READING_TIME_LABELS` の重複を除去** — `ArticleList` にローカル定義されていた `READING_TIME_LABELS` を削除し、`article-utils` の `READING_TIME_RANGE_LABELS` を共用するよう変更
 - **`matchesReadingTimeRange` を抽出** — `filterAndSortArticles` のインライン読了時間判定ロジックを独立した純粋関数に抽出し、テスト容易性と可読性を向上
 - **`filterAndSortArticles` の JSDoc を修正** — フィルターステップの記載漏れ（ミュート中フィード除外・読了時間フィルター）を追記、全10ステップを正確に列挙
 

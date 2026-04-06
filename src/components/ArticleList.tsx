@@ -35,6 +35,7 @@ import {
   CardArticleItem,
   MagazineFeaturedArticleItem,
 } from "./ArticleItems";
+import { READING_TIME_RANGE_LABELS } from "../lib/article-utils";
 
 interface Props {
   feeds: Feed[];
@@ -146,13 +147,6 @@ const DATE_RANGE_LABELS: Record<DateRange, string> = {
   today: "今日",
   week: "今週",
   month: "今月",
-};
-
-const READING_TIME_LABELS: Record<ReadingTimeRange, string> = {
-  all: "時間",
-  short: "〜5分",
-  medium: "〜15分",
-  long: "15分〜",
 };
 
 // ── メインコンポーネント ───────────────────────────────────────────────
@@ -428,7 +422,7 @@ export default function ArticleList({
               onClick={cycleReadingTimeRange}
               title="読了時間フィルター切り替え"
             >
-              {READING_TIME_LABELS[readingTimeRange]}
+              {READING_TIME_RANGE_LABELS[readingTimeRange]}
             </FilterPillButton>
             <button
               onClick={toggleSortOrder}
