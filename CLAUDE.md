@@ -207,8 +207,8 @@ ai-cache/summary/{sha256}         # AI 要約キャッシュ (永続)
 ai-cache/translation/{sha256}     # AI 翻訳キャッシュ (永続)
 ```
 
-`userId` = 0g0 内部ユーザーID（`AuthSession.userId`）
-`sub` クレーム（`AuthSession.sub`）とは別物に注意 — R2 キーには `userId` を使う
+`userId` = JWT の `sub` クレームをそのまま使用（`server-auth.ts` で `userId: payload.sub` と設定）。
+Route Handler では `session.userId` でアクセスする — R2 キーは常に `users/${session.userId}/...` の形式。
 
 ## 認証フロー
 
