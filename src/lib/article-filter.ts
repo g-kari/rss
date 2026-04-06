@@ -70,6 +70,42 @@ export interface ArticleFilterOptions {
  * @param opts - フィルター・ソート・表示オプション
  * @returns フィルター・ソート済みの記事リスト
  */
+/**
+ * 記事リストにフィルタリングとソートを適用して返す。
+ *
+ * ## フィルター適用順
+ * 1. スヌーズ中の記事を除外（activeIds に含まれる場合は例外）
+ * 2. feedId による絞り込み（特殊フィード BOOKMARKS / READING_LIST / LIKES / HISTORY に対応）
+ * 3. NSFW フィードの非表示（nsfwMode が false の場合）
+ * 4. ミュート中のフィードを除外（全フィード表示時のみ）
+ * 5. フィード別キーワードフィルター（feedFilterMap）
+ * 6. グローバルキーワードフィルター（globalFilter）
+ * 7. 未読のみ・ブックマークのみ・リーディングリストのみフィルター
+ * 8. 検索クエリ（title / summary / author / categories の AND 検索）
+ * 9. 日付範囲
+ * 10. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
+ *
+ * ## ソート
+ * - HISTORY フィード: `historyOrder` の配列インデックス順（viewedAt 降順）
+ * - sortOrder === "oldest": リストを逆順にする（publishedAt 昇順）
+ * - それ以外: articles の元の順序（fetchArticles で publishedAt 降順保証済み）
+ *
+ * @param articles - 全記事リスト（publishedAt 降順を期待）
+ * @param opts - フィルター・ソート・表示オプション
+ * @returns フィルター・ソート済みの記事リスト
+ */
+/**
+ * 記事の読了時間が指定の範囲に収まるかを判定する。
+ * "all" の場合は常に true を返す（フィルタなし）。
+ */
+function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boolean {
+  if (range === "all") return true;
+  const mins = readingTime(article.content ?? article.summary);
+  if (range === "short") return mins <= 5;
+  if (range === "medium") return mins > 5 && mins <= 15;
+  return mins > 15; // "long"
+}
+
 export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
   const {
     feedId,
@@ -148,12 +184,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     if (rangeStart && (!a.publishedAt || new Date(a.publishedAt) < rangeStart)) return false;
 
     // 読了時間フィルター（アクティブな記事は除外しない）
-    if (readingTimeRange !== "all" && !isActive(a.id)) {
-      const mins = readingTime(a.content ?? a.summary);
-      if (readingTimeRange === "short" && mins > 5) return false;
-      if (readingTimeRange === "medium" && (mins <= 5 || mins > 15)) return false;
-      if (readingTimeRange === "long" && mins <= 15) return false;
-    }
+    if (!isActive(a.id) && !matchesReadingTimeRange(a, readingTimeRange)) return false;
 
     return true;
   });
