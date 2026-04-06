@@ -8,6 +8,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### セキュリティ
 
+- **閉じタグ末尾空白による \`sanitizeHtml\` バイパスを修正** — HTML5 仕様では \`</style >\` や \`</script\\n>\` のようにタグ名直後に空白を置いた終了タグも有効として扱われるが、サニタイザーの正規表現が \`<\\/tagname>\` のみにマッチしていたため、\`</style >\` 等でブロック除去をバイパスできた。\`<\\/tagname\\s*>\` に変更し、\`<script>\` / \`<style>\` / \`<noscript>\` / \`<template>\` / \`<object>\` / \`<textarea>\` / \`<select>\` / \`<foreignObject>\` / \`<animateMotion>\` / \`<use>\` / \`<iframe>\` の全閉じタグパターンを修正
 - **CSS \`image-set()\` によるトラッキングバイパスを修正** — \`sanitizeStyleAttr\` が \`url()\` を除去していたが、\`image-set("https://tracker.example/" 1x)\` のような bare string 記法は除去されていなかった。\`image-set()\` および \`-webkit-image-set()\` を新たに除去対象に追加
 
 ## 2026-04-05

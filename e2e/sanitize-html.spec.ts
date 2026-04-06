@@ -623,6 +623,104 @@ test.describe("sanitizeHtml — ReDoS 耐性", () => {
   });
 });
 
+test.describe("sanitizeHtml — 閉じタグ末尾空白バイパス防止", () => {
+  // HTML5 仕様では </tagname > のように終了タグ名の後に空白を置いても有効な閉じタグとして扱われる。
+  // サニタイザーが <\/tagname> のみマッチしていた場合、</tagname > でブロック除去をバイパスできる。
+  test("</script > (末尾空白あり) でも <script> ブロックが除去される", () => {
+    const result = sanitizeHtml("<p>前</p><script>alert(1)</script ><p>後</p>");
+    expect(result).not.toContain("<script");
+    expect(result).not.toContain("alert(1)");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+
+  test("</style > (末尾空白あり) でも <style> ブロックが除去される", () => {
+    const result = sanitizeHtml(
+      "<p>前</p><style>@import url(http://tracker.example/x.css);</style ><p>後</p>",
+    );
+    expect(result).not.toContain("<style");
+    expect(result).not.toContain("@import");
+    expect(result).not.toContain("tracker.example");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+
+  test("</noscript > (末尾空白あり) でも <noscript> ブロックが除去される", () => {
+    const result = sanitizeHtml(
+      '<p>前</p><noscript><img src="x" onerror="alert(1)"></noscript ><p>後</p>',
+    );
+    expect(result).not.toContain("<noscript");
+    expect(result).not.toContain("onerror");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+
+  test("</template > (末尾空白あり) でも <template> ブロックが除去される", () => {
+    const result = sanitizeHtml(
+      "<p>前</p><template><div>危険コンテンツ</div></template ><p>後</p>",
+    );
+    expect(result).not.toContain("<template");
+    expect(result).not.toContain("危険コンテンツ");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+
+  test("</object > (末尾空白あり) でも <object> ブロックが除去される", () => {
+    const result = sanitizeHtml(
+      '<p>前</p><object data="https://evil.example/x.swf"></object ><p>後</p>',
+    );
+    expect(result).not.toContain("<object");
+    expect(result).not.toContain("evil.example");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+
+  test("</textarea > (末尾空白あり) でも <textarea> ブロックが除去される", () => {
+    const result = sanitizeHtml("<p>前</p><textarea>フィッシング入力欄</textarea ><p>後</p>");
+    expect(result).not.toContain("<textarea");
+    expect(result).not.toContain("フィッシング入力欄");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+
+  test("</select > (末尾空白あり) でも <select> ブロックが除去される", () => {
+    const result = sanitizeHtml("<p>前</p><select><option>選択肢</option></select ><p>後</p>");
+    expect(result).not.toContain("<select");
+    expect(result).not.toContain("選択肢");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+
+  test("</foreignObject > (末尾空白あり) でも <foreignObject> が除去される", () => {
+    const result = sanitizeHtml("<svg><foreignObject><div>危険 HTML</div></foreignObject ></svg>");
+    expect(result).not.toContain("<foreignObject");
+    expect(result).not.toContain("危険 HTML");
+  });
+
+  test("</animateMotion > (末尾空白あり) でも <animateMotion> が除去される", () => {
+    const result = sanitizeHtml(
+      '<svg><circle><animateMotion path="M0,0 L10,10"></animateMotion ></circle></svg>',
+    );
+    expect(result).not.toContain("<animateMotion");
+  });
+
+  test("末尾タブ付き閉じタグ (</style\\t>) でも除去される", () => {
+    const result = sanitizeHtml("<p>前</p><style>body{color:red}</style\t><p>後</p>");
+    expect(result).not.toContain("<style");
+    expect(result).not.toContain("body{color:red}");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+
+  test("末尾改行付き閉じタグ (</script\\n>) でも除去される", () => {
+    const result = sanitizeHtml("<p>前</p><script>evil()</script\n><p>後</p>");
+    expect(result).not.toContain("<script");
+    expect(result).not.toContain("evil()");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+});
+
 test.describe("sanitizeHtml — 正常コンテンツの保持", () => {
   test("通常の段落・リンク・画像が保持される", () => {
     const html =
