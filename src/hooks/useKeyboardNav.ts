@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import type { Article, Feed, FontFamily, FontSize, Layout, DateRange, SortOrder } from "../types";
+import type {
+  Article,
+  Feed,
+  FontFamily,
+  FontSize,
+  Layout,
+  DateRange,
+  SortOrder,
+  ReadingTimeRange,
+} from "../types";
 import {
   cycleValue,
   DATE_RANGE_LABELS,
@@ -11,6 +20,7 @@ import {
   FONT_SIZE_LABELS,
   LAYOUT_CYCLE,
   LAYOUT_LABELS,
+  READING_TIME_RANGE_LABELS,
   SORT_ORDER_LABELS,
 } from "../lib/article-utils";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
@@ -49,6 +59,8 @@ interface KeyboardNavOptions {
   toggleReadingListOnly: () => void;
   toggleSortOrder: () => SortOrder;
   cycleDateRange: () => DateRange;
+  cycleReadingTimeRange: () => ReadingTimeRange;
+  readingTimeRange: ReadingTimeRange;
   searchRef: RefObject<HTMLInputElement | null>;
   refreshFeeds: () => Promise<void>;
   retryFeed: (feedId: string) => Promise<void>;
@@ -66,7 +78,7 @@ interface KeyboardNavOptions {
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー, C Markdownリンクコピー,
  *               z スヌーズ（期間選択）, f フォントサイズ, F フォントファミリー, l レイアウト, L いいね切替, R フィード更新,
  *               u 未読フィルター, B ブックマークフィルター, T リーディングリストフィルター,
- *               s ソート, d 日付フィルター,
+ *               s ソート, d 日付フィルター, w 読了時間フィルター,
  *               / 検索, ] 次フィード, [ 前フィード
  *               (v は ArticleView で処理)
  */
@@ -111,6 +123,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         toggleReadingListOnly,
         toggleSortOrder,
         cycleDateRange,
+        cycleReadingTimeRange,
         searchRef,
         refreshFeeds,
         retryFeed,
@@ -274,6 +287,12 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           e.preventDefault();
           const next = cycleDateRange();
           showToast(`日付フィルター: ${DATE_RANGE_LABELS[next]}`);
+          break;
+        }
+        case "w": {
+          e.preventDefault();
+          const next = cycleReadingTimeRange();
+          showToast(`読了時間: ${READING_TIME_RANGE_LABELS[next]}`);
           break;
         }
         case "/":

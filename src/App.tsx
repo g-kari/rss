@@ -460,6 +460,8 @@ export default function App() {
     toggleReadingListOnly,
     toggleSortOrder,
     cycleDateRange,
+    cycleReadingTimeRange,
+    readingTimeRange,
     searchRef,
     refreshFeeds,
     retryFeed,
