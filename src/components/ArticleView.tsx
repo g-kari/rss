@@ -1687,6 +1687,38 @@ export default function ArticleView({
             {readingMins > 1 && (
               <span className="tracking-[0.04em] text-text-faint">約{readingMins}分</span>
             )}
+            {article.categories &&
+              article.categories.length > 0 &&
+              article.categories.slice(0, 5).map((cat) =>
+                filterFeed && onSaveFilter ? (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      const existingExclude = filterFeed.filter?.exclude ?? [];
+                      if (existingExclude.includes(cat)) {
+                        showToast?.(`「${cat}」は既に除外フィルターに登録されています`);
+                        return;
+                      }
+                      void onSaveFilter(filterFeed.id, {
+                        include: filterFeed.filter?.include ?? [],
+                        exclude: [...existingExclude, cat],
+                        matchCategories: true,
+                      }).then(() => showToast?.(`「${cat}」を除外カテゴリに追加しました`));
+                    }}
+                    title={`「${cat}」をフィードの除外カテゴリに追加`}
+                    className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
+                  >
+                    {cat}
+                  </button>
+                ) : (
+                  <span
+                    key={cat}
+                    className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted"
+                  >
+                    {cat}
+                  </span>
+                ),
+              )}
           </div>
 
           {/* アクションボタン群: モバイルでは右寄せ flex-wrap、PCでは右端固定 */}
