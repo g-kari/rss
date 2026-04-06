@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-07 (リファクタリング)
+
+### リファクタリング
+
+- **\`matchesReadingTimeRange\` を抽出** — \`filterAndSortArticles\` のインライン読了時間判定ロジックを独立した純粋関数に抽出し、テスト容易性と可読性を向上
+- **\`filterAndSortArticles\` の JSDoc を修正** — フィルターステップの記載漏れ（ミュート中フィード除外・読了時間フィルター）を追記、全10ステップを正確に列挙
+
 ## 2026-04-07 (ドキュメント整備)
 
 ### ドキュメント整備
