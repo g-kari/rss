@@ -400,6 +400,20 @@ export async function generateLinkDiscoveryFeeds(
 
 // ── メインのレコメンド生成関数 ──────────────────────────────────
 
+/**
+ * ユーザー向けフィード推薦を生成してR2に保存する。
+ *
+ * ## 処理フロー
+ * 1. エンゲージメントログ取得 → Gemma AI でトピックキーワード抽出
+ * 2. 以下の3ソースを並列実行:
+ *    - **Web 検索** (`generateWebSearchFeeds`): Brave Search APIでトピック検索 → RSS発見
+ *    - **人気フィード** (`generatePopularFeeds`): 他ユーザーの購読数ランキング
+ *    - **リンク発見** (`generateLinkDiscoveryFeeds`): 既読記事内リンクからRSS発見
+ * 3. feedUrlで重複排除・優先度マージ（Web検索 > リンク発見 > 人気）
+ * 4. dismiss済みを除外 → スコア降順でmax20件 → R2にキャッシュ保存
+ *
+ * @returns 生成された RecommendationCache（R2保存済み）
+ */
 export async function generateRecommendations(params: {
   userId: string;
   bucket: R2Bucket;

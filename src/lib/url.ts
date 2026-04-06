@@ -184,13 +184,7 @@ export function isValidHttpsUrl(url: string): boolean {
   return isValidUrl(url, false);
 }
 
-/**
- * キャッシュキー生成用に URL を正規化する。
- * UTM / 広告クリック等の純粋なトラッキングパラメータを除去し、
- * 残りのパラメータをソートして一意なキャッシュキーが生成されるようにする。
- *
- * 同一コンテンツが utm_source 違いで別エントリにキャッシュされるのを防ぐ。
- */
+/** normalizeUrlForCache() で除去する純粋なトラッキング専用クエリパラメータ一覧。 */
 const TRACKING_PARAMS = new Set([
   // Google Analytics UTM
   "utm_source",

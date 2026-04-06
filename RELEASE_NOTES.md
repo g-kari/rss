@@ -2,6 +2,12 @@
 
 ## 2026-04-06
 
+### ドキュメント整備
+
+- **`server-auth.ts` の JSDoc 位置ズレを修正** — `parseJsonBody` の JSDoc が `requireString` の手前に誤配置され、`parseJsonBody` 自体に JSDoc が付いていなかった問題を修正。`requireString` と `parseJsonBody` の定義順を入れ替えて各関数に正しく JSDoc が対応するよう修正
+- **`recommendation.ts` の `generateRecommendations` に JSDoc を追加** — メインの推薦生成関数にフロー説明（トピック抽出 → 3ソース並列実行 → マージ・フィルタ → キャッシュ保存）を記述
+- **`url.ts` の `TRACKING_PARAMS` の JSDoc を修正** — `normalizeUrlForCache` 向けの説明が `TRACKING_PARAMS` 定数に誤って付いていたのを修正し、定数の実際の用途を簡潔に記述
+
 ### セキュリティ
 
 - **閉じタグ末尾空白による `sanitizeHtml` バイパスを修正** — HTML5 仕様では `</style >` や `</script\n>` のようにタグ名直後に空白を置いた終了タグも有効として扱われるが、サニタイザーの正規表現が `<\/tagname>` のみにマッチしていたため、`</style >` 等でブロック除去をバイパスできた。`<\/tagname\s*>` に変更し、`<script>` / `<style>` / `<noscript>` / `<template>` / `<object>` / `<textarea>` / `<select>` / `<foreignObject>` / `<animateMotion>` / `<use>` / `<iframe>` の全閉じタグパターンを修正
