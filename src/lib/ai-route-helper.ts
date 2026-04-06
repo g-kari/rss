@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseJsonBody, type AuthSession } from "@/lib/server-auth";
-import { getAiCacheById, setAiCacheById } from "@/lib/ai-cache";
+import { getAiCacheById, setAiCacheById, type AiCacheType } from "@/lib/ai-cache";
 import { toPlainText } from "@/lib/html";
 import { fetchArticleContent } from "@/lib/fetch-article-content";
 import { isValidFeedUrl } from "@/lib/url";
@@ -32,7 +32,7 @@ export async function runAiJob(
   env: { RSS_DATA: R2Bucket; AI: Ai },
   ctx: ExecutionContext,
   buildMessages: (plain: string) => AiMessage[],
-  cacheType = "summary",
+  cacheType: AiCacheType = "summary",
 ): Promise<NextResponse> {
   const parsed = await parseJsonBody<{ url?: unknown; articleId?: unknown }>(request);
   if (!parsed.ok) return parsed.error;

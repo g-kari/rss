@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-06 (リファクタリング)
+
+### リファクタリング
+
+- **\`useAutoReset\` フックを新設** — タイマー管理を伴う「値セット → N秒後にリセット」パターンを汎用フックに共通化。\`useFeedOperations\` 内で重複していた \`setErrorWithAutoClears\` / \`showImportMessage\` の手動タイマー管理を置き換え。
+- **\`AiCacheType\` 型を追加** — \`ai-cache.ts\` の \`type\` パラメーターを \`"summary" | "translation"\` のユニオン型に厳密化し、\`ai-route-helper.ts\` にも伝播させることで型安全性を向上。
+
 ## 2026-04-06 (バグ修正)
 
 ### バグ修正
