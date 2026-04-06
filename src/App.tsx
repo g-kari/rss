@@ -7,6 +7,7 @@ import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
+import SnoozeModal from "./components/SnoozeModal";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
 import type { Article, EngagementAction, Feed, KeywordFilter } from "./types";
 import { useAuth } from "./hooks/useAuth";
@@ -129,6 +130,7 @@ export default function App() {
     searchParams.get("feed"),
   );
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
   // URL から復元すべき記事 ID（記事ロード完了後に解決）
   const pendingArticleIdRef = useRef<string | null>(searchParams.get("article"));
 
@@ -447,6 +449,7 @@ export default function App() {
     refreshFeeds,
     retryFeed,
     snoozeArticle,
+    onShowSnoozeMenu: setSnoozeTargetId,
   });
 
   // ローディング
@@ -694,6 +697,25 @@ export default function App() {
         </div>
       )}
 
+      {/* スヌーズ期間選択 */}
+      {snoozeTargetId &&
+        (() => {
+          const article = articles.find((a) => a.id === snoozeTargetId);
+          const idx = filtered.findIndex((a) => a.id === snoozeTargetId);
+          return (
+            <SnoozeModal
+              articleTitle={article?.title ?? ""}
+              onSnooze={(durationMs) => {
+                snoozeArticle(snoozeTargetId, durationMs);
+                const hours = Math.round(durationMs / (60 * 60 * 1000));
+                showToast(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
+                const next = filtered[idx + 1];
+                if (next) setSelectedArticle(next);
+              }}
+              onClose={() => setSnoozeTargetId(null)}
+            />
+          );
+        })()}
       {/* キーボードショートカット ヘルプ */}
       {showHelp && <KeyboardShortcutsModal onClose={() => setShowHelp(false)} />}
       {/* NSFW 目が開くアニメーション */}

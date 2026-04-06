@@ -53,6 +53,7 @@ interface KeyboardNavOptions {
   refreshFeeds: () => Promise<void>;
   retryFeed: (feedId: string) => Promise<void>;
   snoozeArticle: (articleId: string, durationMs: number) => void;
+  onShowSnoozeMenu: (articleId: string) => void;
 }
 
 /**
@@ -63,7 +64,7 @@ interface KeyboardNavOptions {
  * ショートカット: j/↓ 次, k/↑ 前, n/p 次/前の未読, g 先頭, G 末尾,
  *               o 元記事, v 全文取得, b ブックマーク,
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー, C Markdownリンクコピー,
- *               z スヌーズ（1日）, f フォントサイズ, F フォントファミリー, l レイアウト, L いいね切替, R フィード更新,
+ *               z スヌーズ（期間選択）, f フォントサイズ, F フォントファミリー, l レイアウト, L いいね切替, R フィード更新,
  *               u 未読フィルター, B ブックマークフィルター, T リーディングリストフィルター,
  *               s ソート, d 日付フィルター,
  *               / 検索, ] 次フィード, [ 前フィード
@@ -114,6 +115,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         refreshFeeds,
         retryFeed,
         snoozeArticle,
+        onShowSnoozeMenu,
       } = ref.current;
 
       const list = filteredArticles;
@@ -183,9 +185,8 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           break;
         case "z":
           if (selectedArticle) {
-            snoozeArticle(selectedArticle.id, 24 * 60 * 60 * 1000); // 1日
-            showToast("1日スヌーズ");
-            navigateTo(list[idx + 1]);
+            e.preventDefault();
+            onShowSnoozeMenu(selectedArticle.id);
           }
           break;
         case "m":
