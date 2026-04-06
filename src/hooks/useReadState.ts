@@ -131,7 +131,7 @@ interface ReadStateResult {
  *
  * ## 状態管理
  * - 初期値は localStorage から即時ロード（オフライン対応）
- * - 状態変更は localStorage に即座に反映し、2 秒のデバウンス後にサーバーへ同期
+ * - 状態変更は localStorage に即座に反映し、5 秒のデバウンス後にサーバーへ同期
  * - ページ離脱時（`beforeunload`）は `sendBeacon` で確実に送信
  * - タブ非表示から復帰時（`visibilitychange`）にも同期を試みる
  *
@@ -160,6 +160,7 @@ export function useReadState(
     loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
   );
   const globalFilterRef = useSyncedRef<KeywordFilter | null>(globalFilter);
+  const userRef = useSyncedRef(user);
   const [readBeforeTimestamp, setReadBeforeTimestamp] = useState<string | null>(() =>
     storageGet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP),
   );
@@ -237,6 +238,7 @@ export function useReadState(
       return true;
     }
     function onBeforeUnload() {
+      if (!userRef.current) return;
       if (!flushIfPending()) return;
       navigator.sendBeacon(
         "/api/read-state",
@@ -247,6 +249,7 @@ export function useReadState(
     }
     function onVisibilityChange() {
       if (document.visibilityState !== "hidden") return;
+      if (!userRef.current) return;
       if (!flushIfPending()) return;
       saveReadState(stateRef.current, globalFilterRef.current);
     }
@@ -274,32 +277,28 @@ export function useReadState(
 
   const markRead = useCallback(
     (articleId: string) => {
-      let changed = false;
       setReadIds((prev) => {
         if (prev.has(articleId)) return prev;
-        changed = true;
         const next = new Set(prev);
         next.add(articleId);
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
-      if (changed) scheduleSyncToServer();
+      scheduleSyncToServer();
     },
     [scheduleSyncToServer],
   );
 
   const markBulkRead = useCallback(
     (articleIds: string[]) => {
-      let changed = false;
       setReadIds((prev) => {
         const newIds = articleIds.filter((id) => !prev.has(id));
         if (newIds.length === 0) return prev;
-        changed = true;
         const next = new Set([...prev, ...newIds]);
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
-      if (changed) scheduleSyncToServer();
+      scheduleSyncToServer();
     },
     [scheduleSyncToServer],
   );
