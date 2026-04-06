@@ -39,7 +39,7 @@ export function useNSFWMode() {
         setShowNSFWAnimation(true);
       }
     }
-  }, []);
+  }, [nsfwModeRef]);
 
   const deactivateNSFW = useCallback(() => {
     setNsfwMode(false);

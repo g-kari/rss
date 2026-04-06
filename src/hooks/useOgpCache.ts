@@ -71,7 +71,7 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
           fetchingRef.current.delete(a.link);
         });
     });
-  }, [visible]);
+  }, [visible, ogpCacheRef]);
 
   return ogpCache;
 }

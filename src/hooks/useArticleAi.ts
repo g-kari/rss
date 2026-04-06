@@ -96,7 +96,9 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
   useEffect(() => {
     ai.reset();
     translate.reset();
-  }, [articleId]); // reset 関数は useCallback([], []) で安定参照のため deps 不要
+    // ai と translate の reset は useCallback([], []) で安定参照のため deps 不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articleId]);
 
   return {
     aiResult: ai.result,

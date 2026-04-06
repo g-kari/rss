@@ -114,7 +114,6 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         searchRef,
         refreshFeeds,
         retryFeed,
-        snoozeArticle,
         onShowSnoozeMenu,
       } = ref.current;
 

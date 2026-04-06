@@ -263,7 +263,7 @@ export function useReadState(
         syncTimerRef.current = null;
       }
     };
-  }, []);
+  }, [globalFilterRef, userRef]);
 
   const scheduleSyncToServer = useCallback(() => {
     isDirtyRef.current = true;
@@ -273,7 +273,7 @@ export function useReadState(
       isDirtyRef.current = false;
       saveReadState(stateRef.current, globalFilterRef.current);
     }, 5000);
-  }, []);
+  }, [globalFilterRef]);
 
   const markRead = useCallback(
     (articleId: string) => {
@@ -337,7 +337,7 @@ export function useReadState(
       }
       scheduleSyncToServer();
     },
-    [scheduleSyncToServer],
+    [scheduleSyncToServer, historyIdsRef, articlesRef],
   );
 
   const { toggleRead, toggleBookmark, toggleReadingList, toggleLike } = useMemo(

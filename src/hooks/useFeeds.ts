@@ -146,7 +146,7 @@ export function useFeeds(
       void pollNow();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [userId, pollNow]);
+  }, [userId, pollNow, isOnlineRef]);
 
   // オンライン復帰時に即座にポーリングを実行する
   useEffect(() => {
@@ -231,7 +231,7 @@ export function useFeeds(
         onErrorRef.current?.(errorMessage);
       }
     },
-    [mergeArticles],
+    [mergeArticles, onErrorRef],
   );
 
   const retryFeed = useCallback(
@@ -264,6 +264,8 @@ export function useFeeds(
     } finally {
       loadingFeedIdsRef.current.delete(feedId);
     }
+    // loadedFeedPagesRef.current は ref 経由で最新値を参照するため deps から除外
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 全フィード表示時: 未読み込みページが残っている全フィードの次ページを一括取得する
@@ -314,6 +316,8 @@ export function useFeeds(
     if (succeeded.length === 0) return;
     const newArticles = succeeded.flatMap(({ value }) => value.data);
     if (newArticles.length > 0) setArticles((prev) => mergeUniqueArticles(prev, newArticles));
+    // loadedFeedPagesRef.current は ref 経由で最新値を参照するため deps から除外
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // markAllRead 実行後に呼び出し、残りのサーバーページをスキップして

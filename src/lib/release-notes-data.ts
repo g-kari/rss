@@ -4,6 +4,13 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-06 (リファクタリング)
+
+### リファクタリング
+
+- **\`exhaustive-deps\` 警告を全修正** — \`useNSFWMode\` / \`useReadState\` / \`useFilteredArticles\` / \`useFeeds\` / \`useOgpCache\` / \`useArticleAi\` の依存配列に \`useSyncedRef\` refs を追加し、lintの警告をゼロに解消
+- **\`useKeyboardNav\`: 未使用変数 \`snoozeArticle\` を削除** — destructuring から除去
+
 ## 2026-04-06
 
 ### 新機能

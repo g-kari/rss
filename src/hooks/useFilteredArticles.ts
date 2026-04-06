@@ -222,7 +222,7 @@ export function useFilteredArticles({
         resetPage,
       ),
     };
-  }, []);
+  }, [sortOrderRef, dateRangeRef, readingTimeRangeRef]);
 
   const loadMore = useCallback(() => {
     setPage((p) => p + 1);
