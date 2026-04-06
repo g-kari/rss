@@ -562,7 +562,13 @@ export function transformXTweetEmbeds(html: string, theme: "light" | "dark" = "l
 /**
  * 共通後処理パイプライン（画像処理・リンク修正・テーブルラップ・XSS サニタイズ）。
  * postProcess / postProcessMarkdownContent の両方で使用する。
- * sanitizeHtml は XSS 対策のため必ず最後に実行すること。
+ *
+ * 順序依存あり — 変更禁止:
+ *   1. fixImageDimensions: 相対パスを pageUrl ベースで絶対 URL 化 + loading="lazy" 付与
+ *   2. rewriteImageUrls:   絶対 URL 化済みの src を /api/image-proxy 経由に書き換え（1 の後が必須）
+ *   3. fixExternalLinks:   <a> href も同様に絶対 URL 化 + target="_blank" rel 付与
+ *   4. wrapTables:         <table> をレスポンシブラッパーで包む
+ *   5. sanitizeHtml:       XSS 除去（必ず最後。これ以降に処理を追加しても無効化される）
  */
 function applyCorePipeline(html: string, pageUrl = ""): string {
   let h = fixImageDimensions(html, pageUrl);
@@ -574,10 +580,17 @@ function applyCorePipeline(html: string, pageUrl = ""): string {
 
 /**
  * コンテンツ抽出後の後処理パイプライン。
- * 各ステップを適用順に並べる。sanitizeHtml は XSS 対策のため必ず最後に実行すること。
+ *
+ * 前処理ステップ（この関数内）:
+ *   1. removeNoise:              EC ギャラリー / Qiita・Zenn UI のノイズ除去（後段の正規表現をシンプル化）
+ *   2. transformZennLinkEmbeds:  embed.zenn.studio の iframe を外部リンクに変換（sanitize 前に変換しないと blockquote が除去される）
+ *   3. transformZennMermaidEmbeds: zenn.dev の mermaid iframe を <pre><code> に変換
+ *   4. fixLazyImages:            data-src → src 解決 / Shopify _NNNx → _800x 高解像度化
+ *
+ * 後処理は applyCorePipeline に委譲（fixImageDimensions → rewriteImageUrls → fixExternalLinks → wrapTables → sanitizeHtml）。
  *
  * X ツイート埋め込み（blockquote.twitter-tweet）はテーマ依存のため、
- * サーバー側ではなくクライアント側の processContent() で変換する。
+ * サーバー側ではなくクライアント側の processContent() (embed-utils.ts) で変換する。
  * blockquote は sanitizeHtml で除去されないため、キャッシュ後もクライアントで正しいテーマが適用される。
  */
 export function postProcess(content: string, pageUrl = ""): string {

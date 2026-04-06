@@ -115,9 +115,12 @@ export function buildFilterMap<T extends { filter?: KeywordFilter }>(
  * マッチ対象フィールド: title・summary・metadata の value 値、
  * `matchCategories` が true の場合は categories も含む。
  *
- * マッチ条件:
- * - `exclude` に含まれるキーワードが **どれにもマッチしない**
+ * マッチ条件（exclude が include より優先）:
+ * - `exclude` に含まれるキーワードが **どれにもマッチしない**（1 件でもマッチすれば除外）
  * - `include` が空、または `include` のうち **いずれか 1 件以上**がマッチする
+ *
+ * 例: include=["AI"], exclude=["生成AI"] のとき
+ *   "生成AIの未来" → include にマッチするが exclude でブロック → 除外
  *
  * @param article - 対象記事（`normalizeFilter` 適用済みフィルターと組み合わせること）
  * @param filter - `normalizeFilter` で正規化済みの KeywordFilter
