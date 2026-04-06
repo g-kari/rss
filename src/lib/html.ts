@@ -118,6 +118,15 @@ function sanitizeStyleAttr(style: string): string {
       .replace(/-webkit-image-set\s*\([^)]*\)/gi, "")
       .replace(/\bimage-set\s*\([^)]*\)/gi, "")
       .replace(/\bposition\s*:\s*(fixed|sticky)\b[^;]*(;|$)/gi, "")
+      // expression(): IE 独自の CSS 式評価。任意の JS 実行が可能なため除去。
+      // モダンブラウザでは無効だが、古い環境へのフォールバック XSS 防止として除去する。
+      // expression() の引数は括弧のネストを含みうるため、セミコロンまたは文字列末尾まで除去する。
+      .replace(/\bexpression\s*\([^;]*(;|$)/gi, "")
+      // -moz-binding: Firefox の XBL バインディング参照。外部 XUL/JS のロードに使われた（現在は廃止済み）。
+      // behavior: IE の HTC 動作ファイル参照。外部スクリプトロードに使われた。
+      // いずれも現代ブラウザでは動作しないが、念のため除去する。
+      .replace(/-moz-binding\s*:[^;]*(;|$)/gi, "")
+      .replace(/\bbehavior\s*:[^;]*(;|$)/gi, "")
   );
 }
 
@@ -287,10 +296,17 @@ export function sanitizeHtml(html: string): string {
       // - Content-Security-Policy: 上位 CSP の上書き防止
       // - X-Frame-Options / Permissions-Policy: セキュリティポリシー上書き防止
       // - Link: 外部リソース事前読み込みによるプライバシー侵害防止
+      // - X-UA-Compatible: IE 互換モード強制によるレンダリング挙動変更防止
+      // - cache-control / pragma / expires: キャッシュ操作防止
       .replace(
-        /<meta\b[^>]*http-equiv\s*=\s*["'](?:refresh|set-cookie|content-security-policy|x-frame-options|permissions-policy|link)["'][^>]*\/?>/gi,
+        /<meta\b[^>]*http-equiv\s*=\s*["'](?:refresh|set-cookie|content-security-policy|x-frame-options|permissions-policy|link|x-ua-compatible|cache-control|pragma|expires)["'][^>]*\/?>/gi,
         "",
       )
+      // <meta name="referrer"> を除去。
+      // ページ内の referrer ポリシーを "unsafe-url" 等で上書きされると、
+      // 記事リンクのクリック時にフル URL（認証トークン等）がリファラーとして漏洩する恐れがある。
+      // モダンブラウザは body 内の meta[name=referrer] も適用するため除去する。
+      .replace(/<meta\b[^>]*name\s*=\s*["']referrer["'][^>]*\/?>/gi, "")
       // インラインイベントハンドラを除去。
       // [\s/]+ : スペース・タブ・スラッシュ区切り（/ 区切りバイパス対策）
       // (?<=['"`]): 引用符・バックティック直後に on\w+ が来るケース（<img src="x"onerror=...> や <img src=`x`onerror=...>）のバイパス対策

@@ -52,6 +52,13 @@ const securityHeaders = [
     value: "none",
   },
   {
+    // クロスオリジンのリクエストによるリソース読み取りを禁止する（Spectre 対策）。
+    // same-origin: 同一オリジンのリクエストのみリソースへのアクセスを許可する。
+    // 攻撃者サイトから no-cors モードで /api/* をフェッチしても Response body を取得できない。
+    key: "Cross-Origin-Resource-Policy",
+    value: "same-origin",
+  },
+  {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
