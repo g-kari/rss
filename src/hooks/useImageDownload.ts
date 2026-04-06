@@ -12,6 +12,7 @@ interface ImageDownloadState {
   imageDownloadProgress: { done: number; total: number } | null;
   downloadAllImages: () => void;
   confirmingDownload: boolean;
+  isAlreadyDownloaded: boolean;
   confirmDownload: () => Promise<void>;
   cancelDownload: () => void;
 }
@@ -184,6 +185,7 @@ export function useImageDownload(
     imageDownloadProgress,
     downloadAllImages,
     confirmingDownload,
+    isAlreadyDownloaded: !!(article && downloadedIds.has(article.id)),
     confirmDownload,
     cancelDownload,
   };
