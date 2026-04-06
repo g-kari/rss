@@ -179,6 +179,47 @@ interface ShareMenuProps {
 
 function ShareMenu({ article, showToast }: ShareMenuProps) {
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
+  const [slackMode, setSlackMode] = useState(false);
+  const [slackChannel, setSlackChannel] = useState(() => {
+    try {
+      return localStorage.getItem("rss-slack-channel") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const slackInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (slackMode) slackInputRef.current?.focus();
+  }, [slackMode]);
+
+  useEffect(() => {
+    if (!open) setSlackMode(false);
+  }, [open]);
+
+  function handleSlackShare() {
+    const channel = slackChannel.trim().replace(/^#/, "");
+    const text = channel
+      ? `#${channel}\n${article.title}\n${article.link!}`
+      : `${article.title}\n${article.link!}`;
+    if (channel) {
+      try {
+        localStorage.setItem("rss-slack-channel", channel);
+      } catch {}
+    }
+    setOpen(false);
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        showToast(
+          channel
+            ? `#${channel} 用にコピーしました。Slack を開きます`
+            : "コピーしました。Slack を開きます",
+        );
+        window.open("slack://open", "_blank", "noopener,noreferrer");
+      })
+      .catch(() => showToast("コピーに失敗しました"));
+  }
 
   return (
     <>
@@ -248,26 +289,54 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 </svg>
                 X でシェア
               </button>
-              <button
-                onClick={() => {
-                  setOpen(false);
-                  navigator.clipboard
-                    .writeText(`${article.title}\n${article.link!}`)
-                    .then(() => {
-                      showToast("コピーしました。Slack を開きます");
-                      window.open("slack://open", "_blank", "noopener,noreferrer");
-                    })
-                    .catch(() => {
-                      showToast("コピーに失敗しました");
-                    });
-                }}
-                className={MENU_ITEM_CLS}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
-                </svg>
-                Slack 用にコピー
-              </button>
+              {slackMode ? (
+                <div className="border-t border-border-subtle px-2 py-2">
+                  <p className="text-[10px] text-text-muted mb-1.5 px-1">
+                    チャンネルを指定（省略可）
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[12px] text-text-muted select-none">#</span>
+                    <input
+                      ref={slackInputRef}
+                      type="text"
+                      value={slackChannel}
+                      onChange={(e) => setSlackChannel(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSlackShare();
+                        if (e.key === "Escape") setSlackMode(false);
+                      }}
+                      placeholder="general"
+                      className="flex-1 text-[12px] bg-surface-base border border-border-default rounded px-1.5 py-1 text-text-strong outline-none focus:border-text-muted min-w-0 placeholder-text-faint"
+                    />
+                    <button
+                      onClick={handleSlackShare}
+                      title="コピーして Slack を開く"
+                      className="flex-shrink-0 p-1 rounded text-text-muted hover:text-text-strong hover:bg-surface-subtle transition-colors"
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="22" y1="2" x2="11" y2="13" />
+                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setSlackMode(true)} className={MENU_ITEM_CLS}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+                  </svg>
+                  Slack で共有
+                </button>
+              )}
               <button
                 onClick={() => {
                   setOpen(false);
