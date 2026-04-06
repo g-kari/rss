@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { Feed } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
+import { useAutoReset } from "./useAutoReset";
 
 interface Callbacks {
   onFeedAdded: (feed: Feed) => void;
@@ -32,32 +33,10 @@ export function useFeedOperations({
   onFeedsImported,
 }: Callbacks) {
   const [adding, setAdding] = useState(false);
-  const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
-  const [importMessage, setImportMessage] = useState<ImportMessage | null>(null);
-  const importMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [error, setError] = useAutoReset("", 3000);
+  const [importMessage, showImportMessage] = useAutoReset<ImportMessage | null>(null, 3000);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(
-    () => () => {
-      if (importMessageTimerRef.current) clearTimeout(importMessageTimerRef.current);
-      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-    },
-    [],
-  );
-
-  function setErrorWithAutoClears(msg: string) {
-    setError(msg);
-    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-    errorTimerRef.current = setTimeout(() => setError(""), 3000);
-  }
-
-  function showImportMessage(text: string, isError: boolean) {
-    setImportMessage({ text, isError });
-    if (importMessageTimerRef.current) clearTimeout(importMessageTimerRef.current);
-    importMessageTimerRef.current = setTimeout(() => setImportMessage(null), 3000);
-  }
 
   async function addFeed(url: string, onSuccess: () => void, cookie?: string) {
     if (!url.trim()) return;
@@ -89,7 +68,7 @@ export function useFeedOperations({
       await apiFetchJson(`/api/feeds/${id}`, { method: "DELETE" });
       onFeedDeleted(id);
     } catch {
-      setErrorWithAutoClears("フィードの削除に失敗しました");
+      setError("フィードの削除に失敗しました");
     }
   }
 
@@ -102,7 +81,7 @@ export function useFeedOperations({
       });
       onFeedRenamed(updated);
     } catch {
-      setErrorWithAutoClears("フィードのタイトル変更に失敗しました");
+      setError("フィードのタイトル変更に失敗しました");
     }
   }
 
@@ -119,19 +98,19 @@ export function useFeedOperations({
       });
       if (!res.ok) {
         const data = (await res.json()) as { error: string };
-        showImportMessage(data.error ?? "インポートに失敗しました", true);
+        showImportMessage({ text: data.error ?? "インポートに失敗しました", isError: true });
         return;
       }
       const data = (await res.json()) as { added: number; skipped: number; feeds: Feed[] };
       if (data.added > 0) {
         onFeedsImported(data.feeds);
       }
-      showImportMessage(
-        data.added > 0 ? `${data.added}件インポートしました` : "すべて登録済みです",
-        false,
-      );
+      showImportMessage({
+        text: data.added > 0 ? `${data.added}件インポートしました` : "すべて登録済みです",
+        isError: false,
+      });
     } catch {
-      showImportMessage("インポートに失敗しました", true);
+      showImportMessage({ text: "インポートに失敗しました", isError: true });
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
