@@ -1,5 +1,10 @@
 import type { Article, Feed } from "@/types";
 
+/** Markdown のリンク構文を壊す文字をエスケープする */
+function escapeMarkdown(s: string): string {
+  return s.replace(/[[\]()\\`*_{}#|>]/g, "\\$&");
+}
+
 /**
  * ブックマーク / 読書リスト記事を Markdown ファイルとしてダウンロードする。
  *
@@ -37,10 +42,10 @@ export function exportArticlesToMarkdown(
 
   for (const [feedHash, feedArticles] of byFeed) {
     const feed = feedMap.get(feedHash);
-    lines.push(`## ${feed?.title ?? "不明なフィード"}`, "");
+    lines.push(`## ${escapeMarkdown(feed?.title ?? "不明なフィード")}`, "");
 
     for (const article of feedArticles) {
-      lines.push(`### [${article.title}](${article.link})`, "");
+      lines.push(`### [${escapeMarkdown(article.title)}](${article.link})`, "");
 
       const meta: string[] = [];
       if (article.publishedAt) {
@@ -69,6 +74,8 @@ export function exportArticlesToMarkdown(
   const a = document.createElement("a");
   a.href = url;
   a.download = `${label}_${today.replace(/\//g, "-")}.md`;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
