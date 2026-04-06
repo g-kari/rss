@@ -11,6 +11,11 @@ const MAX_REGEX_PATTERN_LENGTH = 50;
  * - ネストした量指定子: (a+)+ / (a{2,})+ / ((ab)+)+
  * - 交互化を含むグループへの量指定子: (a|aa)+ / (foo|foobar)*
  * - 文字クラス内に ) を含む量指定子グループ: ([a-z)]+)+
+ *
+ * 危険と判定した場合は `matchesText` がマッチを中止（false を返す）。
+ *
+ * @param pattern - スラッシュを除いた正規表現パターン文字列（`/pattern/` の内側）
+ * @returns 壊滅的バックトラッキングの恐れがあれば true
  */
 function hasCatastrophicBacktracking(pattern: string): boolean {
   // 文字クラス [abc] の中身を除去することで、) を含む文字クラスによる検出バイパスを防ぐ
@@ -50,7 +55,15 @@ function isRegexKeyword(kw: string): boolean {
   );
 }
 
-/** キーワードが記事テキストにマッチするかを判定する。正規表現キーワードは大文字小文字を無視して評価する */
+/**
+ * キーワードが記事テキストにマッチするかを判定する。
+ *
+ * - **正規表現キーワード** (`/pattern/` 形式): `i` フラグ付きで大文字小文字を無視して評価する。
+ *   ReDoS の恐れがあるパターンは false を返す。
+ * - **文字列キーワード**: `includes` で部分一致。大文字小文字の統一は呼び出し元の責務であり、
+ *   `normalizeFilter` で小文字化済みのキーワードと `matchesKeywordFilter` で小文字化済みの
+ *   `text` が渡されることを前提とする。
+ */
 function matchesText(kw: string, text: string): boolean {
   if (isRegexKeyword(kw)) {
     const pattern = kw.slice(1, -1);
