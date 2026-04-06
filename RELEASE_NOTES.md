@@ -13,6 +13,9 @@
 
 - **`r2Get` / `r2Put` に JSDoc 追加** — エラー時の挙動の違い（r2Get は fallback を返す / r2Put は再スロー）を明記
 - **`runAiJob` の JSDoc を拡充** — `@param session` の追記と処理フローの詳細説明を追加
+- **`compareByDateDesc` に JSDoc 追加** — `publishedAt → createdAt` フォールバックの仕様を明記
+- **`hasCatastrophicBacktracking` に `@param`/`@returns` 追加** — パラメータと返り値の説明を補完
+- **`matchesText` の JSDoc を拡充** — 文字列キーワードの大文字小文字統一が呼び出し元（`normalizeFilter`）の責務であることを明記
 
 ## 2026-04-07
 
