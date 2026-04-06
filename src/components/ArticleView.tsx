@@ -398,6 +398,36 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 </svg>
                 タイトル + URL をコピー
               </button>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  const mdTitle = (article.title || article.link!).replace(/[[\]]/g, "\\$&");
+                  navigator.clipboard
+                    .writeText(`[${mdTitle}](${article.link!})`)
+                    .then(() => {
+                      showToast("Markdown リンクをコピーしました (C)");
+                    })
+                    .catch(() => {
+                      showToast("コピーに失敗しました");
+                    });
+                }}
+                className={MENU_ITEM_CLS}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M7 15V9l2.5 3 2.5-3v6M16 15v-4.5M14 12.5h4" />
+                </svg>
+                Markdown リンクをコピー
+              </button>
             </div>
           </>,
           document.body,
