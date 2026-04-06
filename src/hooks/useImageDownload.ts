@@ -10,7 +10,7 @@ import { mimeToExt } from "../lib/image-mime";
 interface ImageDownloadState {
   downloadingImages: boolean;
   imageDownloadProgress: { done: number; total: number } | null;
-  downloadAllImages: () => Promise<void>;
+  downloadAllImages: () => void;
   confirmingDownload: boolean;
   confirmDownload: () => Promise<void>;
   cancelDownload: () => void;
@@ -165,14 +165,10 @@ export function useImageDownload(
     }
   }, [article, resolvedOgImage, contentRef, showToast]);
 
-  const downloadAllImages = useCallback(async () => {
+  const downloadAllImages = useCallback(() => {
     if (!article || downloadingImages) return;
-    if (downloadedIds.has(article.id)) {
-      setConfirmingDownload(true);
-      return;
-    }
-    await doDownload();
-  }, [article, downloadingImages, downloadedIds, doDownload]);
+    setConfirmingDownload(true);
+  }, [article, downloadingImages]);
 
   const confirmDownload = useCallback(async () => {
     setConfirmingDownload(false);

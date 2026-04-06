@@ -1976,7 +1976,7 @@ export default function ArticleView({
         />
       </div>
 
-      {/* 再ダウンロード確認モーダル */}
+      {/* ダウンロード確認モーダル */}
       {confirmingDownload && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -1986,9 +1986,9 @@ export default function ArticleView({
             className="bg-surface-elevated border border-border-default rounded-xl p-6 shadow-xl max-w-sm mx-4 w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-text-strong text-[14px] font-medium mb-2">再ダウンロード</p>
+            <p className="text-text-strong text-[14px] font-medium mb-2">画像をダウンロード</p>
             <p className="text-text-soft text-[13px] mb-5">
-              この記事の画像はすでに保存済みです。再度ダウンロードしますか？
+              記事内の画像をすべてダウンロードします。よろしいですか？
             </p>
             <div className="flex gap-2 justify-end">
               <button
