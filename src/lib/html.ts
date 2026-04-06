@@ -224,18 +224,21 @@ export function sanitizeHtml(html: string): string {
       // [^<]*(?:(?!<\/tag>)<[^<]*)* による ReDoS（カタストロフィックバックトラッキング）を防ぐ。
       // <tag> 未閉じの場合は次の </ まで除去するため、開始タグが残ることもあるが
       // セキュリティ上は許容範囲（後続のイベントハンドラ除去が補完する）。
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+      // 閉じタグの \s* は HTML5 仕様に基づく: </script > や </style\n> など
+      // タグ名直後に空白を置いた形式でもブラウザは有効な終了タグとして解釈するため、
+      // \s* を追加してサニタイザーのバイパスを防ぐ。
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, "")
       // <link> タグを除去（React 19 のリソースホイスティングによる無限ループ防止）
       .replace(/<link\b[^>]*\/?>/gi, "")
       // <base> タグを除去（相対 URL ハイジャック防止）
       .replace(/<base\b[^>]*\/?>/gi, "")
       // <noscript> を除去（JavaScript 無効環境でのレンダリング防止）
-      .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, "")
+      .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\s*>/gi, "")
       // <template> を除去（DOM ツリーに挿入可能な任意 HTML の封じ込め）
-      .replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, "")
+      .replace(/<template\b[^>]*>[\s\S]*?<\/template\s*>/gi, "")
       // <object>, <embed> を除去
-      .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, "")
+      .replace(/<object\b[^>]*>[\s\S]*?<\/object\s*>/gi, "")
       .replace(/<embed\b[^>]*\/?>/gi, "")
       // <form> 開始・終了タグを除去（フィッシング対策）
       // RSS 記事内のフォーム要素は外部サーバーへのデータ送信やクレデンシャル詐取に悪用できる。
@@ -244,17 +247,17 @@ export function sanitizeHtml(html: string): string {
       // <input> / <select> / <textarea> を除去（フィッシング入力欄防止）
       // 入力フィールドはパスワード詐取や偽 UI による social engineering に悪用できる。
       .replace(/<input\b[^>]*\/?>/gi, "")
-      .replace(/<textarea\b[^>]*>[\s\S]*?<\/textarea>/gi, "")
-      .replace(/<select\b[^>]*>[\s\S]*?<\/select>/gi, "")
+      .replace(/<textarea\b[^>]*>[\s\S]*?<\/textarea\s*>/gi, "")
+      .replace(/<select\b[^>]*>[\s\S]*?<\/select\s*>/gi, "")
       // SVG <foreignObject> を除去（任意の HTML を埋め込める危険な要素）
-      .replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject>/gi, "")
+      .replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject\s*>/gi, "")
       .replace(/<foreignObject\b[^>]*\/>/gi, "")
       // SVG アニメーション要素を除去（attributeName 経由のイベントハンドラ注入防止）
       // <animate attributeName="href" to="javascript:alert(1)"> 等で href/イベントハンドラを
       // 動的に書き換えられるため、animate / animateTransform / animateMotion / set を除去する
       .replace(/<animate\b[^>]*\/?>/gi, "")
       .replace(/<animateTransform\b[^>]*\/?>/gi, "")
-      .replace(/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion>/gi, "")
+      .replace(/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion\s*>/gi, "")
       .replace(/<animateMotion\b[^>]*\/?>/gi, "")
       .replace(/<set\b[^>]*\/?>/gi, "")
       // SVG <use> の外部参照を除去（クロスオリジン SVG 読み込みによるプライバシー侵害防止）
@@ -267,11 +270,11 @@ export function sanitizeHtml(html: string): string {
       // 注意: </use> の後続削除は行わない。
       // ステップ1が <use>...</use> ペアを一括処理するため、外部参照の </use> は既に除去済み。
       // 孤立した </use> はブラウザが無視するため、セキュリティリスクはない。
-      .replace(/<use\b([^>]*)>([\s\S]*?)<\/use>/gi, sanitizeUse)
+      .replace(/<use\b([^>]*)>([\s\S]*?)<\/use\s*>/gi, sanitizeUse)
       // 自己閉じタグ・未閉じ開始タグを処理（上記でマッチしなかった残余）
       .replace(/<use\b([^>]*)>/gi, sanitizeUse)
       // <iframe> は信頼済みドメイン以外を除去
-      .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, sanitizeIframe)
+      .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe\s*>/gi, sanitizeIframe)
       .replace(/<iframe\b([^>]*)\/>/gi, sanitizeIframe)
       // 閉じタグ・自己閉じのない <iframe> 開始タグを除去（未閉じ iframe のサニタイズ漏れ対策）
       // <use> と同様に、上記 2 パターンでマッチしなかった残余の <iframe...> を処理する。
