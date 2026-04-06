@@ -372,6 +372,33 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
               <button
                 onClick={() => {
                   setOpen(false);
+                  window.open(
+                    `https://b.hatena.ne.jp/add?mode=confirm&url=${encodeURIComponent(article.link!)}&title=${encodeURIComponent(article.title)}`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
+                }}
+                className={MENU_ITEM_CLS}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <rect x="1" y="1" width="22" height="22" rx="3" fill="currentColor" />
+                  <text
+                    x="12"
+                    y="17"
+                    textAnchor="middle"
+                    fontSize="13"
+                    fontWeight="bold"
+                    fill="var(--color-surface-base)"
+                    fontFamily="sans-serif"
+                  >
+                    B!
+                  </text>
+                </svg>
+                はてなブックマーク
+              </button>
+              <button
+                onClick={() => {
+                  setOpen(false);
                   navigator.clipboard
                     .writeText(`${article.title}\n${article.link!}`)
                     .then(() => {
