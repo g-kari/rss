@@ -43,6 +43,11 @@ export function readingTime(html: string): number {
   return Math.max(1, Math.ceil(mins));
 }
 
+/**
+ * publishedAt（なければ createdAt にフォールバック）で降順比較。
+ * Array.prototype.sort のコンパレータとして使用する。
+ * publishedAt が null のアイテムは createdAt を基準に並ぶ。
+ */
 export function compareByDateDesc(
   a: { publishedAt: string | null; createdAt: string },
   b: { publishedAt: string | null; createdAt: string },
