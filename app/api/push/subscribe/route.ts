@@ -2,19 +2,11 @@ import { NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { r2Get, r2Put, userPushKey } from "@/lib/r2";
 import { isValidHttpsUrl } from "@/lib/url";
+import { isValidBase64url } from "@/lib/validation";
 import type { PushConfig, PushSubscriptionRecord } from "@/types";
 
 /** Push サブスクリプションあたりの上限数 */
 const MAX_SUBSCRIPTIONS_PER_USER = 20;
-
-/** base64url 形式かつ指定バイト範囲に収まるかを検証する */
-function isValidBase64url(value: string, minBytes: number, maxBytes: number): boolean {
-  if (!/^[A-Za-z0-9_-]+=*$/.test(value)) return false;
-  // base64url の文字数からデコード後のバイト数を推定 (padding 除外)
-  const stripped = value.replace(/=+$/, "");
-  const decodedBytes = Math.floor((stripped.length * 3) / 4);
-  return decodedBytes >= minBytes && decodedBytes <= maxBytes;
-}
 
 /** Push サブスクリプションを R2 に保存する */
 export async function POST(request: Request) {

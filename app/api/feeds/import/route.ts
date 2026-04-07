@@ -12,6 +12,7 @@ import {
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
 import { fetchArticles } from "@/cron/fetch";
+import { stripControlChars } from "@/lib/validation";
 const MAX_OPML_ENTRIES = 5000;
 // 実際の OPML ファイルは 2〜3 レベルが一般的。50 は不必要に大きく
 // 悪意ある入力で過剰な再帰処理を引き起こす可能性があるため 10 に制限する。
@@ -20,7 +21,7 @@ const MAX_TITLE_LENGTH = 500;
 const MAX_SITE_URL_LENGTH = 2048;
 
 function sanitizeTitle(title: string): string {
-  return title.replace(/[\u0000-\u001F\u007F]/g, "").slice(0, MAX_TITLE_LENGTH);
+  return stripControlChars(title).slice(0, MAX_TITLE_LENGTH);
 }
 
 function sanitizeSiteUrl(url: string): string {
