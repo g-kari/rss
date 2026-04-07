@@ -188,7 +188,7 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
   useEffect(() => {
     if (slackConfigOpen) {
       setSlackChannelInput(storageGet(STORAGE_KEYS.SLACK_CHANNEL) ?? "");
-      slackConfigRef.current?.focus();
+      slackConfigRef.current?.focus({ preventScroll: true });
     }
   }, [slackConfigOpen]);
 
