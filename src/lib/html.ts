@@ -216,6 +216,42 @@ function sanitizeIframe(m: string, attrs: string): string {
   return isTrustedIframeSrc(src) ? m : "";
 }
 
+/**
+ * <a target="_blank"> に rel="noopener noreferrer" を強制付与する（sanitizeHtml 用コールバック）。
+ *
+ * target="_blank" のリンクは window.opener を通じてリンク元ページを操作できる。
+ * これを悪用したタブナッピング攻撃（opener がリンク元ページを別 URL に遷移させる）を防ぐ。
+ * モダンブラウザ（Chrome 88+、Firefox 79+）はデフォルトで noopener を付与するが、
+ * 古いブラウザや一部環境では依然として opener が有効なため明示的に付与する。
+ */
+function ensureAnchorNoopener(m: string, attrs: string): string {
+  // target="_blank" が含まれない場合はそのまま返す（クォートあり・なし両対応）
+  if (!/\btarget\s*=\s*(?:["']_blank["']|_blank(?=[\s>/]|$))/i.test(attrs)) return m;
+
+  // rel 属性がある場合: 既存値に noopener / noreferrer を追加
+  if (/\brel\s*=/i.test(attrs)) {
+    const newAttrs = attrs.replace(
+      /\brel\s*=\s*(?:(["'])([^"']*)\1|([^\s"'>]*))/i,
+      (
+        _relMatch: string,
+        _quote: string | undefined,
+        quoted: string | undefined,
+        unquoted: string | undefined,
+      ) => {
+        const existing = quoted ?? unquoted ?? "";
+        const values = new Set(existing.split(/\s+/).filter(Boolean));
+        values.add("noopener");
+        values.add("noreferrer");
+        return `rel="${[...values].join(" ")}"`;
+      },
+    );
+    return `<a${newAttrs}>`;
+  }
+
+  // rel 属性がない場合: 新規追加
+  return `<a${attrs} rel="noopener noreferrer">`;
+}
+
 export function sanitizeHtml(html: string): string {
   return (
     html
@@ -335,6 +371,10 @@ export function sanitizeHtml(html: string): string {
       .replace(/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
       // ping 属性を除去（リンククリック時の意図しないリクエスト防止）
       .replace(/\bping\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
+      // <a target="_blank"> に rel="noopener noreferrer" を強制付与（タブナッピング防止）
+      // RSS 記事内の外部リンクが window.opener を経由してリンク元ページを制御するリスクを防ぐ。
+      // fixExternalLinks が適用済みのコンテンツには既に rel が設定されているため重複追加は発生しない。
+      .replace(/<a\b([^>]*)>/gi, ensureAnchorNoopener)
       // inline style 属性をサニタイズ（CSS トラッキング・フィッシングオーバーレイ防止）
       // style 値は url('...') のように内部に逆クォートを含みうるため、クォート種別ごとに個別パターン
       .replace(/\bstyle\s*=\s*"([^"]*)"/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
