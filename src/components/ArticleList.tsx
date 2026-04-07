@@ -343,8 +343,8 @@ export default function ArticleList({
     <section className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-base">
       {/* ヘッダー */}
       <div className="flex flex-col border-b border-border-default bg-surface-elevated">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2 px-4 py-3 min-w-0">
+          <div className="flex items-center gap-1 shrink-0">
             {onMobileBack && (
               <button
                 onClick={onMobileBack}
@@ -372,7 +372,7 @@ export default function ArticleList({
               )}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto min-w-0">
             {/* レイアウト切替 */}
             <div className="flex items-center gap-0.5">
               {LAYOUTS.map((l) => (
