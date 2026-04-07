@@ -3,6 +3,9 @@
 /** ID・文字列フィールドの最大バイト長 */
 export const MAX_ID_LENGTH = 128;
 
+/** メモの最大文字数 */
+export const MAX_NOTE_LENGTH = 2000;
+
 /** 制御文字（U+0000–U+001F, U+007F）を除去する */
 export function stripControlChars(value: string): string {
   return value.replace(/[\u0000-\u001F\u007F]/g, "");
@@ -39,6 +42,31 @@ export function extractIds(raw: unknown, max: number): string[] | null {
   ];
   if (deduped.length > max) return null;
   return deduped;
+}
+
+/**
+ * notes のバリデーション。
+ * - 値が Record<string, string> であることを確認
+ * - key: articleId（MAX_ID_LENGTH 以内）、value: メモ本文（MAX_NOTE_LENGTH 以内）
+ * - MAX_NOTES 件を超える場合は全て破棄（DoS 対策）
+ */
+export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string> | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const result: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (
+      typeof k === "string" &&
+      k.length > 0 &&
+      k.length <= MAX_ID_LENGTH &&
+      typeof v === "string" &&
+      v.length > 0 &&
+      v.length <= MAX_NOTE_LENGTH
+    ) {
+      result[k] = v;
+    }
+  }
+  if (Object.keys(result).length > maxNotes) return null;
+  return Object.keys(result).length > 0 ? result : null;
 }
 
 /**
