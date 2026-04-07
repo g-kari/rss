@@ -444,6 +444,7 @@ export default function App() {
       setSelectedArticle(null);
     },
     markRead,
+    markBulkRead,
     markAllRead,
     toggleBookmark,
     toggleRead,

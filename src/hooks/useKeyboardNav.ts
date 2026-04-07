@@ -39,6 +39,7 @@ interface KeyboardNavOptions {
   setSelectedArticle: (article: Article) => void;
   onSelectFeed: (id: string | null) => void;
   markRead: (id: string) => void;
+  markBulkRead: (ids: string[]) => void;
   markAllRead: (feedId: string | null) => void;
   toggleBookmark: (id: string) => void;
   toggleRead: (id: string) => void;
@@ -105,6 +106,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         setSelectedArticle,
         onSelectFeed,
         markRead,
+        markBulkRead,
         markAllRead,
         toggleBookmark,
         toggleRead,
@@ -205,6 +207,15 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
             onShowSnoozeMenu(selectedArticle.id);
           }
           break;
+        case "e": {
+          // 現在選択中の記事（含む）より上にある記事を全既読にする
+          e.preventDefault();
+          if (idx < 0) break;
+          const above = list.slice(0, idx + 1).map((a) => a.id);
+          markBulkRead(above);
+          showToast(`${above.length}件を既読にしました`);
+          break;
+        }
         case "m":
           markAllRead(selectedFeedId);
           break;
