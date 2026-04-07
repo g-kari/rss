@@ -28,11 +28,11 @@ export function useLocalStorageHistory<T>(storageKey: string, maxSize: number, i
     [storageKey, maxSize],
   );
 
-  /** predicate が true のアイテムを削除する */
   const remove = useCallback(
     (predicate: (item: T) => boolean) => {
       setItems((prev) => {
         const next = prev.filter((i) => !predicate(i));
+        if (next.length === prev.length) return prev;
         saveJson(storageKey, next);
         return next;
       });
@@ -40,10 +40,12 @@ export function useLocalStorageHistory<T>(storageKey: string, maxSize: number, i
     [storageKey],
   );
 
-  /** 全件クリアする */
   const clear = useCallback(() => {
-    setItems([]);
-    saveJson(storageKey, []);
+    setItems((prev) => {
+      if (prev.length === 0) return prev;
+      saveJson(storageKey, []);
+      return [];
+    });
   }, [storageKey]);
 
   return { items, prepend, remove, clear };
