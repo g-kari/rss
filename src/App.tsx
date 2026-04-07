@@ -122,6 +122,9 @@ export default function App() {
     toggleReadingList,
     toggleLike,
     snoozeArticle,
+    notes,
+    setNote,
+    deleteNote,
   } = useReadState(user, articles, historyIds);
 
   const { recordEngagement } = useEngagement(user);
@@ -947,6 +950,9 @@ export default function App() {
             onSnooze={snoozeArticle}
             query={query}
             onSetQuery={updateQuery}
+            note={selectedArticle ? notes[selectedArticle.id] : undefined}
+            onSetNote={setNote}
+            onDeleteNote={deleteNote}
           />
         </ErrorBoundary>
       </div>

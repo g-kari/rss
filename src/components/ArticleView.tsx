@@ -71,6 +71,9 @@ interface Props {
   onSnooze?: (id: string, durationMs: number) => void;
   query?: string;
   onSetQuery?: (q: string) => void;
+  note?: string;
+  onSetNote?: (articleId: string, text: string) => void;
+  onDeleteNote?: (articleId: string) => void;
 }
 
 const SHORT_CONTENT_THRESHOLD = 400;
@@ -1334,6 +1337,9 @@ export default function ArticleView({
   onSnooze,
   query = "",
   onSetQuery,
+  note,
+  onSetNote,
+  onDeleteNote,
 }: Props) {
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -1357,6 +1363,16 @@ export default function ArticleView({
   useEffect(() => {
     setSummaryRating(null);
     setTranslateRating(null);
+  }, [article?.id]);
+
+  // メモ編集ステート（記事切り替え時にリセット）
+  const [noteText, setNoteText] = useState(note ?? "");
+  const [noteExpanded, setNoteExpanded] = useState(!!note);
+  useEffect(() => {
+    setNoteText(note ?? "");
+    setNoteExpanded(!!note);
+    // note は deps から除外 — 記事切り替え時のみリセットし、保存後の prop 更新では上書きしない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.id]);
 
   // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)
@@ -1408,6 +1424,18 @@ export default function ArticleView({
     doTranslate,
     resetTranslate,
   ]);
+
+  const handleNoteBlur = useCallback(() => {
+    if (!article || !onSetNote) return;
+    const trimmed = noteText.trim();
+    const current = note ?? "";
+    if (trimmed === current) return;
+    if (trimmed === "") {
+      onDeleteNote?.(article.id);
+    } else {
+      onSetNote(article.id, trimmed);
+    }
+  }, [article, note, noteText, onDeleteNote, onSetNote]);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -2009,6 +2037,35 @@ export default function ArticleView({
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
             </ToggleIconButton>
+            {onSetNote && (
+              <ToggleIconButton
+                isActive={!!note}
+                onClick={() => {
+                  if (noteExpanded && !note) {
+                    setNoteExpanded(false);
+                  } else {
+                    setNoteExpanded(true);
+                  }
+                }}
+                title={note ? "メモを編集" : "メモを追加"}
+                activeClass="text-amber-400 hover:text-text-muted"
+                inactiveClass="text-text-faint hover:text-amber-400"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </ToggleIconButton>
+            )}
           </div>
         </div>
 
@@ -2215,6 +2272,59 @@ export default function ArticleView({
             onFetch={fetchFullContent}
             onEngagement={onEngagement}
           />
+        )}
+
+        {/* メモパネル */}
+        {onSetNote && (noteExpanded || noteText) && (
+          <div className="mt-10 mb-2">
+            <div className="flex items-center gap-1.5 mb-2">
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-text-faint"
+              >
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">メモ</p>
+            </div>
+            <textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              onBlur={handleNoteBlur}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setNoteText(note ?? "");
+                  if (!note) setNoteExpanded(false);
+                  e.currentTarget.blur();
+                }
+              }}
+              placeholder="この記事についてのメモ..."
+              className="w-full min-h-[80px] resize-y bg-surface-subtle border border-border-subtle rounded-lg px-3 py-2 text-[13px] text-text-default placeholder:text-text-faint focus:outline-none focus:border-border-default transition-colors"
+              maxLength={2000}
+            />
+            <div className="flex items-center justify-between mt-1">
+              {noteText !== (note ?? "") ? (
+                <p className="text-[10px] text-text-faint">フォーカスを外すと自動保存</p>
+              ) : (
+                <span />
+              )}
+              {!noteText.trim() && noteExpanded && !note && (
+                <button
+                  onClick={() => setNoteExpanded(false)}
+                  className="text-[11px] text-text-faint hover:text-text-muted transition-colors"
+                >
+                  キャンセル
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
         {/* 前後記事ナビゲーション */}

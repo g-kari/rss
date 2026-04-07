@@ -211,4 +211,6 @@ export interface ReadState {
   readBeforeTimestamp?: string | null;
   /** スヌーズ中の記事 — articleId → スヌーズ解除予定時刻（ISO 8601） */
   snoozedUntil?: Record<string, string> | null;
+  /** 記事への個人メモ — articleId → メモ本文（最大 2000 文字） */
+  notes?: Record<string, string> | null;
 }

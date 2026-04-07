@@ -23,6 +23,7 @@ type ReadStateSets = {
   likes: Set<string>;
   readBeforeTimestamp: string | null;
   snoozedUntil: Record<string, string>;
+  notes: Record<string, string>;
 };
 
 /** サーバーから取得した配列を既存 Set にマージして localStorage を更新する */
@@ -85,6 +86,7 @@ function serializeReadState(sets: ReadStateSets, globalFilter: KeywordFilter | n
     globalFilter,
     readBeforeTimestamp: sets.readBeforeTimestamp,
     snoozedUntil: Object.keys(pruned).length > 0 ? pruned : null,
+    notes: Object.keys(sets.notes).length > 0 ? sets.notes : null,
   });
 }
 
@@ -116,6 +118,7 @@ interface ReadStateResult {
   setGlobalFilter: (filter: KeywordFilter | null) => void;
   readBeforeTimestamp: string | null;
   snoozedUntil: Record<string, string>;
+  notes: Record<string, string>;
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
@@ -124,6 +127,8 @@ interface ReadStateResult {
   toggleReadingList: (articleId: string) => void;
   toggleLike: (articleId: string) => void;
   snoozeArticle: (articleId: string, durationMs: number) => void;
+  setNote: (articleId: string, text: string) => void;
+  deleteNote: (articleId: string) => void;
 }
 
 /**
@@ -156,6 +161,9 @@ export function useReadState(
     loadSet(STORAGE_KEYS.READING_LIST_IDS),
   );
   const [likeIds, setLikeIds] = useState<Set<string>>(() => loadSet(STORAGE_KEYS.LIKE_IDS));
+  const [notes, setNotesState] = useState<Record<string, string>>(() =>
+    loadJson<Record<string, string>>(STORAGE_KEYS.NOTES, {}),
+  );
   const [globalFilter, setGlobalFilterState] = useState<KeywordFilter | null>(() =>
     loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
   );
@@ -168,7 +176,7 @@ export function useReadState(
     pruneExpiredSnoozes(loadJson<Record<string, string>>(STORAGE_KEYS.SNOOZED_UNTIL, {})),
   );
 
-  // 4つのセットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
+  // 各セットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
   const stateRef = useRef<ReadStateSets>({
     read: readIds,
     bookmarks: bookmarkIds,
@@ -176,6 +184,7 @@ export function useReadState(
     likes: likeIds,
     readBeforeTimestamp,
     snoozedUntil,
+    notes,
   });
   const historyIdsRef = useSyncedRef(historyIds);
   const articlesRef = useSyncedRef(articles);
@@ -190,6 +199,7 @@ export function useReadState(
     likes: likeIds,
     readBeforeTimestamp,
     snoozedUntil,
+    notes,
   };
 
   // ログイン後にサーバーの既読・ブックマーク・後で読む・グローバルフィルター状態をマージ
@@ -227,6 +237,12 @@ export function useReadState(
           saveJson(STORAGE_KEYS.SNOOZED_UNTIL, merged);
           return merged;
         });
+      }
+      // notes はサーバー値を優先（クロスデバイス同期）
+      if ("notes" in state) {
+        const serverNotes = state.notes ?? {};
+        saveJson(STORAGE_KEYS.NOTES, serverNotes);
+        setNotesState(serverNotes);
       }
     });
   }, [user]);
@@ -380,6 +396,34 @@ export function useReadState(
     [scheduleSyncToServer],
   );
 
+  const setNote = useCallback(
+    (articleId: string, text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      setNotesState((prev) => {
+        const next = { ...prev, [articleId]: trimmed };
+        saveJson(STORAGE_KEYS.NOTES, next);
+        return next;
+      });
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
+  );
+
+  const deleteNote = useCallback(
+    (articleId: string) => {
+      setNotesState((prev) => {
+        if (!(articleId in prev)) return prev;
+        const next = { ...prev };
+        delete next[articleId];
+        saveJson(STORAGE_KEYS.NOTES, next);
+        return next;
+      });
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
+  );
+
   return {
     readIds,
     bookmarkIds,
@@ -389,6 +433,7 @@ export function useReadState(
     setGlobalFilter,
     readBeforeTimestamp,
     snoozedUntil,
+    notes,
     markRead,
     markBulkRead,
     markAllRead,
@@ -397,5 +442,7 @@ export function useReadState(
     toggleReadingList,
     toggleLike,
     snoozeArticle,
+    setNote,
+    deleteNote,
   };
 }
