@@ -44,7 +44,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const sub = subs.find((s) => s.feedHash === feedHash);
     if (!sub) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
 
-    // title の更新（存在する場合のみ）
     if ("title" in body) {
       const title = typeof body.title === "string" ? body.title.trim() : "";
       if (!title)
@@ -54,30 +53,26 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       sub.customTitle = title;
     }
 
-    // filter の更新（存在する場合のみ）
     if ("filter" in body) {
       if (body.filter === null) {
         delete sub.filter;
       } else {
         const filter = parseKeywordFilter(body.filter);
-        if (!filter) {
+        if (!filter)
           return NextResponse.json(
             { error: "filter must have include and exclude arrays" },
             { status: 400 },
           );
-        }
         sub.filter = filter;
       }
     }
 
-    // nsfw の更新（存在する場合のみ）
     if ("nsfw" in body) {
       if (typeof body.nsfw !== "boolean")
         return NextResponse.json({ error: "nsfw must be a boolean" }, { status: 400 });
       sub.nsfw = body.nsfw;
     }
 
-    // priority の更新（存在する場合のみ）
     if ("priority" in body) {
       if (body.priority !== "high" && body.priority !== null)
         return NextResponse.json({ error: "priority must be 'high' or null" }, { status: 400 });
@@ -85,35 +80,30 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       else sub.priority = "high";
     }
 
-    // category の更新（存在する場合のみ）
     if ("category" in body) {
       if (body.category === null) {
         delete sub.category;
+      } else if (typeof body.category !== "string") {
+        return NextResponse.json({ error: "category must be a string or null" }, { status: 400 });
       } else {
-        if (typeof body.category !== "string")
-          return NextResponse.json({ error: "category must be a string or null" }, { status: 400 });
         // 制御文字を除去してからバリデーション
         const category = stripControlChars(body.category.trim());
         if (category.length > 50)
           return NextResponse.json({ error: "category too long" }, { status: 400 });
-        if (category === "") {
-          delete sub.category;
-        } else {
-          sub.category = category;
-        }
+        if (category) sub.category = category;
+        else delete sub.category;
       }
     }
 
-    // mutedUntil の更新（存在する場合のみ）
     if ("mutedUntil" in body) {
       if (body.mutedUntil === null) {
         delete sub.mutedUntil;
+      } else if (typeof body.mutedUntil !== "string") {
+        return NextResponse.json(
+          { error: "mutedUntil must be an ISO string or null" },
+          { status: 400 },
+        );
       } else {
-        if (typeof body.mutedUntil !== "string")
-          return NextResponse.json(
-            { error: "mutedUntil must be an ISO string or null" },
-            { status: 400 },
-          );
         sub.mutedUntil = body.mutedUntil;
       }
     }
