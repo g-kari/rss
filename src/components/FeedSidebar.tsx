@@ -228,14 +228,18 @@ export default function FeedSidebar({
     );
   }
 
-  const { unreadByFeed, totalUnread, lastPublishedByFeed } = useMemo(() => {
+  const { unreadByFeed, totalUnread, lastPublishedByFeed, readTodayCount } = useMemo(() => {
     const byFeed = new Map<string, number>();
     const lastPublished = new Map<string, string>();
+    const today = new Date().toISOString().slice(0, 10);
     let total = 0;
+    let todayRead = 0;
     for (const a of articles) {
       if (!isArticleRead(a, readIds, readBeforeTimestamp)) {
         byFeed.set(a.feedHash, (byFeed.get(a.feedHash) ?? 0) + 1);
         total++;
+      } else if (a.publishedAt?.slice(0, 10) === today) {
+        todayRead++;
       }
       if (a.publishedAt) {
         const prev = lastPublished.get(a.feedHash);
@@ -244,14 +248,13 @@ export default function FeedSidebar({
         }
       }
     }
-    return { unreadByFeed: byFeed, totalUnread: total, lastPublishedByFeed: lastPublished };
+    return {
+      unreadByFeed: byFeed,
+      totalUnread: total,
+      lastPublishedByFeed: lastPublished,
+      readTodayCount: todayRead,
+    };
   }, [articles, readIds, readBeforeTimestamp]);
-
-  const readTodayCount = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return articles.filter((a) => readIds.has(a.id) && a.publishedAt?.slice(0, 10) === today)
-      .length;
-  }, [articles, readIds]);
 
   const { pinnedFeeds, categoryGroups, uncategorizedFeeds } = useMemo(() => {
     const q = feedSearch.trim().toLowerCase();
@@ -523,18 +526,9 @@ export default function FeedSidebar({
 
         {/* 統計 */}
         <div className="px-4 py-2 flex items-center gap-4 border-t border-border-subtle mt-1">
-          <span className="text-[10px] text-text-faint leading-none">
-            <span className="text-text-muted tabular-nums">{readTodayCount}</span>
-            <span className="ml-0.5">今日</span>
-          </span>
-          <span className="text-[10px] text-text-faint leading-none">
-            <span className="text-text-muted tabular-nums">{totalUnread}</span>
-            <span className="ml-0.5">未読</span>
-          </span>
-          <span className="text-[10px] text-text-faint leading-none">
-            <span className="text-text-muted tabular-nums">{feeds.length}</span>
-            <span className="ml-0.5">フィード</span>
-          </span>
+          <StatItem value={readTodayCount} label="今日" />
+          <StatItem value={totalUnread} label="未読" />
+          <StatItem value={feeds.length} label="フィード" />
         </div>
 
         {/* URL から記事を保存 */}
@@ -889,5 +883,14 @@ function FooterIconButton({
         {children}
       </svg>
     </button>
+  );
+}
+
+function StatItem({ value, label }: { value: number; label: string }) {
+  return (
+    <span className="text-[10px] text-text-faint leading-none">
+      <span className="text-text-muted tabular-nums">{value}</span>
+      <span className="ml-0.5">{label}</span>
+    </span>
   );
 }

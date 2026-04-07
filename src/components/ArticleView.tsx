@@ -221,6 +221,19 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
       .catch(() => showToast("コピーに失敗しました"));
   }
 
+  function openShareWindow(url: string) {
+    setOpen(false);
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  function copyText(text: string, successMsg: string) {
+    setOpen(false);
+    navigator.clipboard
+      .writeText(text)
+      .then(() => showToast(successMsg))
+      .catch(() => showToast("コピーに失敗しました"));
+  }
+
   return (
     <>
       <button
@@ -274,14 +287,11 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 </button>
               )}
               <button
-                onClick={() => {
-                  setOpen(false);
-                  window.open(
+                onClick={() =>
+                  openShareWindow(
                     `https://x.com/intent/tweet?url=${encodeURIComponent(article.link!)}&text=${encodeURIComponent(article.title)}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                }}
+                  )
+                }
                 className={MENU_ITEM_CLS}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -338,14 +348,11 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 </button>
               )}
               <button
-                onClick={() => {
-                  setOpen(false);
-                  window.open(
+                onClick={() =>
+                  openShareWindow(
                     `https://bsky.app/intent/compose?text=${encodeURIComponent(`${article.title}\n${article.link!}`)}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                }}
+                  )
+                }
                 className={MENU_ITEM_CLS}
               >
                 <svg width="12" height="12" viewBox="0 0 568 501" fill="currentColor">
@@ -354,14 +361,11 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 Bluesky でシェア
               </button>
               <button
-                onClick={() => {
-                  setOpen(false);
-                  window.open(
+                onClick={() =>
+                  openShareWindow(
                     `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(article.link!)}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                }}
+                  )
+                }
                 className={MENU_ITEM_CLS}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -370,14 +374,11 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 LINE でシェア
               </button>
               <button
-                onClick={() => {
-                  setOpen(false);
-                  window.open(
+                onClick={() =>
+                  openShareWindow(
                     `https://b.hatena.ne.jp/add?mode=confirm&url=${encodeURIComponent(article.link!)}&title=${encodeURIComponent(article.title)}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                }}
+                  )
+                }
                 className={MENU_ITEM_CLS}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -397,17 +398,9 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 はてなブックマーク
               </button>
               <button
-                onClick={() => {
-                  setOpen(false);
-                  navigator.clipboard
-                    .writeText(`${article.title}\n${article.link!}`)
-                    .then(() => {
-                      showToast("タイトルと URL をコピーしました");
-                    })
-                    .catch(() => {
-                      showToast("コピーに失敗しました");
-                    });
-                }}
+                onClick={() =>
+                  copyText(`${article.title}\n${article.link!}`, "タイトルと URL をコピーしました")
+                }
                 className={MENU_ITEM_CLS}
               >
                 <svg
@@ -427,16 +420,8 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
               </button>
               <button
                 onClick={() => {
-                  setOpen(false);
                   const mdTitle = (article.title || article.link!).replace(/[[\]]/g, "\\$&");
-                  navigator.clipboard
-                    .writeText(`[${mdTitle}](${article.link!})`)
-                    .then(() => {
-                      showToast("Markdown リンクをコピーしました (C)");
-                    })
-                    .catch(() => {
-                      showToast("コピーに失敗しました");
-                    });
+                  copyText(`[${mdTitle}](${article.link!})`, "Markdown リンクをコピーしました (C)");
                 }}
                 className={MENU_ITEM_CLS}
               >
