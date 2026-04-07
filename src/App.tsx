@@ -7,6 +7,7 @@ import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
+import FeedQuickSwitchModal from "./components/FeedQuickSwitchModal";
 import SnoozeModal from "./components/SnoozeModal";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
 import type { Article, EngagementAction, Feed, KeywordFilter } from "./types";
@@ -61,6 +62,8 @@ export default function App() {
     install,
     showHelp,
     setShowHelp,
+    showFeedSwitcher,
+    setShowFeedSwitcher,
     nsfwMode,
     showNSFWAnimation,
     activateNSFW,
@@ -474,6 +477,7 @@ export default function App() {
     retryFeed,
     snoozeArticle,
     onShowSnoozeMenu: setSnoozeTargetId,
+    onShowFeedSwitcher: () => setShowFeedSwitcher(true),
   });
 
   // ローディング
@@ -742,6 +746,18 @@ export default function App() {
         })()}
       {/* キーボードショートカット ヘルプ */}
       {showHelp && <KeyboardShortcutsModal onClose={() => setShowHelp(false)} />}
+      {/* フィードクイックスイッチャー */}
+      {showFeedSwitcher && (
+        <FeedQuickSwitchModal
+          feeds={feeds}
+          articles={articles}
+          readIds={readIds}
+          readBeforeTimestamp={readBeforeTimestamp}
+          selectedFeedId={selectedFeedId}
+          onSelectFeed={setSelectedFeedId}
+          onClose={() => setShowFeedSwitcher(false)}
+        />
+      )}
       {/* NSFW 目が開くアニメーション */}
       {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
       {newArticleCount > 0 && (

@@ -60,6 +60,8 @@ export interface UIState {
   install: { canInstall: boolean; onInstall: () => Promise<void> };
   showHelp: boolean;
   setShowHelp: React.Dispatch<React.SetStateAction<boolean>>;
+  showFeedSwitcher: boolean;
+  setShowFeedSwitcher: React.Dispatch<React.SetStateAction<boolean>>;
   nsfwMode: boolean;
   showNSFWAnimation: boolean;
   activateNSFW: () => void;
@@ -79,6 +81,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
 
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
   const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
@@ -111,7 +114,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "?") setShowHelp((v) => !v);
-      if (e.key === "Escape") setShowHelp(false);
+      if (e.key === "Escape") {
+        setShowHelp(false);
+        setShowFeedSwitcher(false);
+      }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -177,6 +183,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     install: { canInstall: !!installPrompt, onInstall: installApp },
     showHelp,
     setShowHelp,
+    showFeedSwitcher,
+    setShowFeedSwitcher,
     nsfwMode,
     showNSFWAnimation,
     activateNSFW,
