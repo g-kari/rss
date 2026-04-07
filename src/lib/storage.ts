@@ -45,6 +45,7 @@ export const STORAGE_KEYS = {
   READING_TIME_RANGE: "rss-reading-time-range",
   CACHED_USER: "rss-cached-user",
   COLLAPSED_CATEGORIES: "rss-collapsed-cats",
+  SLACK_CHANNEL: "rss-slack-channel",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
