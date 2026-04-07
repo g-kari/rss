@@ -8,6 +8,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### リファクタリング
 
+- **制御文字除去・Base64url 検証を \`validation.ts\` に集約** — \`feeds/import\`・\`feeds/[id]\` に散在していたインライン正規表現を \`stripControlChars()\` に、\`push/subscribe\` のローカル関数 \`isValidBase64url()\` を \`src/lib/validation.ts\` に移動してインポートに統一。
+
 - **\`useLocalStorageHistory\` の \`remove\`/\`clear\` に early-return ガード追加** — 何も削除されなかった場合の不要な localStorage 書き込みと再レンダーを抑制。\`clear\` は \`setItems\` 内でガードし、空時の空振り書き込みも防止。
 
 ### 新機能
