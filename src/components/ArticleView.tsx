@@ -70,6 +70,7 @@ interface Props {
   onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
   onSnooze?: (id: string, durationMs: number) => void;
   query?: string;
+  onSetQuery?: (q: string) => void;
 }
 
 const SHORT_CONTENT_THRESHOLD = 400;
@@ -1332,6 +1333,7 @@ export default function ArticleView({
   onSaveGlobalFilter,
   onSnooze,
   query = "",
+  onSetQuery,
 }: Props) {
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -1781,6 +1783,15 @@ export default function ArticleView({
                       }).then(() => showToast?.(`「${cat}」を除外カテゴリに追加しました`));
                     }}
                     title={`「${cat}」をフィードの除外カテゴリに追加`}
+                    className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
+                  >
+                    {cat}
+                  </button>
+                ) : onSetQuery ? (
+                  <button
+                    key={cat}
+                    onClick={() => onSetQuery(cat)}
+                    title={`「${cat}」で記事を絞り込む`}
                     className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
                   >
                     {cat}
