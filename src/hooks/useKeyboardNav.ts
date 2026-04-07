@@ -295,6 +295,19 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           showToast(`読了時間: ${READING_TIME_RANGE_LABELS[next]}`);
           break;
         }
+        case "x": {
+          e.preventDefault();
+          const unread = list.filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp));
+          const pool = unread.length > 0 ? unread : list;
+          if (pool.length === 0) break;
+          // 現在選択中の記事を除いて選ぶ（1件のみなら除外しない）
+          const candidates =
+            pool.length > 1 ? pool.filter((a) => a.id !== selectedArticle?.id) : pool;
+          const random = candidates[Math.floor(Math.random() * candidates.length)];
+          navigateTo(random);
+          showToast(unread.length > 0 ? "ランダム未読記事" : "ランダム記事");
+          break;
+        }
         case "/":
           e.preventDefault();
           searchRef.current?.focus();
