@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import type { Article, Feed, FontFamily, FontSize, KeywordFilter } from "../types";
+import type {
+  Article,
+  EngagementAction,
+  Feed,
+  FontFamily,
+  FontSize,
+  KeywordFilter,
+} from "../types";
 import type { Theme } from "../hooks/useUIState";
 import FeedFilterModal from "./FeedFilterModal";
 import {
@@ -44,7 +51,8 @@ interface Props {
   onEngagement?: (
     articleId: string,
     feedHash: string,
-    action: "fetch_full" | "open_original",
+    action: EngagementAction,
+    value?: string,
   ) => void;
   onMobileBack?: () => void;
   fontSize?: FontSize;
@@ -515,7 +523,8 @@ interface FetchFullContentAreaProps {
   onEngagement?: (
     articleId: string,
     feedHash: string,
-    action: "fetch_full" | "open_original",
+    action: EngagementAction,
+    value?: string,
   ) => void;
 }
 
@@ -1428,6 +1437,14 @@ export default function ArticleView({
     resetTranslate,
   } = useArticleAi(article?.id);
 
+  // AI 評価ボタンの選択状態（記事切り替え時にリセット）
+  const [summaryRating, setSummaryRating] = useState<"good" | "neutral" | "bad" | null>(null);
+  const [translateRating, setTranslateRating] = useState<"good" | "neutral" | "bad" | null>(null);
+  useEffect(() => {
+    setSummaryRating(null);
+    setTranslateRating(null);
+  }, [article?.id]);
+
   // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)
   const mainRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -2134,7 +2151,38 @@ export default function ArticleView({
         {/* AI 要約パネル */}
         {aiResult && (
           <div className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up">
-            <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint mb-2">AI 要約</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">AI 要約</p>
+              <div className="flex items-center gap-1">
+                {(["good", "neutral", "bad"] as const).map((rating) => (
+                  <button
+                    key={rating}
+                    title={rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}
+                    onClick={() => {
+                      if (summaryRating === rating) return;
+                      setSummaryRating(rating);
+                      if (article) {
+                        onEngagement?.(
+                          article.id,
+                          article.feedHash,
+                          "ai_feedback",
+                          `${rating}:summary`,
+                        );
+                      }
+                    }}
+                    className={`text-[14px] leading-none transition-all duration-150 ${
+                      summaryRating === rating
+                        ? "opacity-100 scale-110"
+                        : summaryRating !== null
+                          ? "opacity-25"
+                          : "opacity-40 hover:opacity-100"
+                    }`}
+                  >
+                    {rating === "good" ? "👍" : rating === "neutral" ? "😐" : "👎"}
+                  </button>
+                ))}
+              </div>
+            </div>
             <p className="text-[14px] leading-[1.8] text-text-default">{aiResult}</p>
           </div>
         )}
@@ -2143,7 +2191,38 @@ export default function ArticleView({
         {/* AI 翻訳パネル */}
         {translateResult && (
           <div className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up">
-            <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint mb-2">AI 翻訳</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">AI 翻訳</p>
+              <div className="flex items-center gap-1">
+                {(["good", "neutral", "bad"] as const).map((rating) => (
+                  <button
+                    key={rating}
+                    title={rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}
+                    onClick={() => {
+                      if (translateRating === rating) return;
+                      setTranslateRating(rating);
+                      if (article) {
+                        onEngagement?.(
+                          article.id,
+                          article.feedHash,
+                          "ai_feedback",
+                          `${rating}:translate`,
+                        );
+                      }
+                    }}
+                    className={`text-[14px] leading-none transition-all duration-150 ${
+                      translateRating === rating
+                        ? "opacity-100 scale-110"
+                        : translateRating !== null
+                          ? "opacity-25"
+                          : "opacity-40 hover:opacity-100"
+                    }`}
+                  >
+                    {rating === "good" ? "👍" : rating === "neutral" ? "😐" : "👎"}
+                  </button>
+                ))}
+              </div>
+            </div>
             <p className="text-[14px] leading-[1.8] text-text-default whitespace-pre-wrap">
               {translateResult}
             </p>

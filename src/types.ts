@@ -136,7 +136,8 @@ export type EngagementAction =
   | "open_original" // 元記事に遷移
   | "reading_list" // 後で読むに追加
   | "bookmark" // ブックマーク
-  | "like"; // いいね
+  | "like" // いいね
+  | "ai_feedback"; // AI要約・翻訳の品質評価
 
 /** エンゲージメントの1イベント */
 export interface EngagementEntry {
@@ -144,6 +145,8 @@ export interface EngagementEntry {
   feedHash: string; // 集計用
   action: EngagementAction;
   timestamp: string; // ISO 8601
+  /** アクション固有のメタデータ（ai_feedback: "good" | "neutral" | "bad"、対象: "summary" | "translate"） */
+  value?: string;
 }
 
 /** R2 に保存するエンゲージメントログ — users/{userId}/engagement.json */

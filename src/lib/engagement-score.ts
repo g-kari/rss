@@ -10,6 +10,7 @@ const ACTION_WEIGHTS: Record<EngagementAction, number> = {
   fetch_full: 3.0,
   open_original: 2.5,
   reading_list: 2.0,
+  ai_feedback: 0, // レーティングイベントはスコア算出対象外
 };
 
 /**

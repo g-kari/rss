@@ -11,7 +11,10 @@ const VALID_ACTIONS: EngagementAction[] = [
   "reading_list",
   "bookmark",
   "like",
+  "ai_feedback",
 ];
+const VALID_AI_FEEDBACK_VALUES = ["good", "neutral", "bad"] as const;
+const VALID_AI_FEEDBACK_TARGETS = ["summary", "translate"] as const;
 
 export async function GET() {
   return withSession(async ({ session, env }) => {
@@ -28,6 +31,7 @@ export async function POST(req: NextRequest) {
       articleId?: unknown;
       feedHash?: unknown;
       action?: unknown;
+      value?: unknown;
     }>(req);
     if (!parsed.ok) return parsed.error;
     const articleId = requireString(parsed.data.articleId, MAX_ID_LENGTH);
@@ -35,6 +39,22 @@ export async function POST(req: NextRequest) {
     const action = requireString(parsed.data.action, MAX_ID_LENGTH);
     if (!articleId || !feedHash || !action || !VALID_ACTIONS.includes(action as EngagementAction)) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    // ai_feedback の場合は value フィールドが必須
+    let value: string | undefined;
+    if (action === "ai_feedback") {
+      const rawValue = requireString(parsed.data.value, 64);
+      if (!rawValue) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+      // "good:summary" / "bad:translate" などの形式で検証
+      const [rating, target] = rawValue.split(":");
+      if (
+        !VALID_AI_FEEDBACK_VALUES.includes(rating as (typeof VALID_AI_FEEDBACK_VALUES)[number]) ||
+        !VALID_AI_FEEDBACK_TARGETS.includes(target as (typeof VALID_AI_FEEDBACK_TARGETS)[number])
+      ) {
+        return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+      }
+      value = rawValue;
     }
 
     const log = await r2Get<EngagementLog>(env.RSS_DATA, engagementKey(session.userId), {
@@ -46,6 +66,7 @@ export async function POST(req: NextRequest) {
       feedHash,
       action: action as EngagementAction,
       timestamp: new Date().toISOString(),
+      ...(value !== undefined && { value }),
     };
 
     // 追記して上限超過分は古いものから削除
