@@ -180,6 +180,7 @@ interface ShareMenuProps {
 
 function ShareMenu({ article, showToast }: ShareMenuProps) {
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
+  const menuRef = useRef<HTMLDivElement>(null);
   const [slackConfigOpen, setSlackConfigOpen] = useState(false);
   const [slackChannelInput, setSlackChannelInput] = useState("");
   const slackConfigRef = useRef<HTMLInputElement>(null);
@@ -257,8 +258,14 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
       {open &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-[49]" onPointerDown={() => setOpen(false)} />
             <div
+              className="fixed inset-0 z-[49]"
+              onPointerDown={(e) => {
+                if (!menuRef.current?.contains(e.target as Node)) setOpen(false);
+              }}
+            />
+            <div
+              ref={menuRef}
               className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[140px]"
               style={{ top: pos.top, right: pos.right }}
             >
