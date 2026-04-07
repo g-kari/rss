@@ -6,6 +6,12 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-07
 
+### リファクタリング
+
+- \`article-filter.ts\` の重複 JSDoc を削除 — \`filterAndSortArticles\` に同一内容の JSDoc ブロックが2つ存在していたため古い方を除去。\`matchesReadingTimeRange\` の配置も JSDoc の直前に整理した
+
+## 2026-04-07
+
 ### セキュリティ
 
 - **\`sanitizeHtml\` に \`<a target="_blank">\` のタブナッピング対策を追加** — RSS 記事コンテンツ内の \`<a target="_blank">\` リンクが \`window.opener\` を通じてリンク元ページを操作できる問題（タブナッピング攻撃）に対処。\`sanitizeHtml\` に \`ensureAnchorNoopener\` を追加し、\`target="_blank"\` を含む \`<a>\` タグに \`rel="noopener noreferrer"\` を強制付与するようにした。既存値がある場合はマージする。モダンブラウザはデフォルトで \`noopener\` を付与するが、古いブラウザや一部環境への対策として明示的に付与する (\`src/lib/html.ts\`)
