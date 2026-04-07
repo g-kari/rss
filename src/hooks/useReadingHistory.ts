@@ -4,7 +4,6 @@ import { useCallback, useMemo } from "react";
 import { STORAGE_KEYS } from "../lib/storage";
 import { useLocalStorageHistory } from "./useLocalStorageHistory";
 
-/** 閲覧履歴の1エントリ */
 interface HistoryEntry {
   articleId: string;
   viewedAt: string; // ISO 8601
