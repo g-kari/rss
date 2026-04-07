@@ -57,6 +57,8 @@ interface KeyboardNavOptions {
   toggleBookmarkOnly: () => void;
   readingListOnly: boolean;
   toggleReadingListOnly: () => void;
+  likeOnly: boolean;
+  toggleLikeOnly: () => void;
   toggleSortOrder: () => SortOrder;
   cycleDateRange: () => DateRange;
   cycleReadingTimeRange: () => ReadingTimeRange;
@@ -77,7 +79,7 @@ interface KeyboardNavOptions {
  *               o 元記事, v 全文取得, b ブックマーク,
  *               t リーディングリスト切替, r 既読切替, m 全既読, c リンクコピー, C Markdownリンクコピー,
  *               z スヌーズ（期間選択）, f フォントサイズ, F フォントファミリー, l レイアウト, L いいね切替, R フィード更新,
- *               u 未読フィルター, B ブックマークフィルター, T リーディングリストフィルター,
+ *               u 未読フィルター, B ブックマークフィルター, T リーディングリストフィルター, I いいねフィルター,
  *               s ソート, d 日付フィルター, w 読了時間フィルター,
  *               / 検索, ] 次フィード, [ 前フィード
  *               (v は ArticleView で処理)
@@ -121,6 +123,8 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         toggleBookmarkOnly,
         readingListOnly,
         toggleReadingListOnly,
+        likeOnly,
+        toggleLikeOnly,
         toggleSortOrder,
         cycleDateRange,
         cycleReadingTimeRange,
@@ -277,6 +281,10 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         case "T":
           toggleReadingListOnly();
           showToast(filterToastMsg(readingListOnly, "リーディングリストフィルター"));
+          break;
+        case "I":
+          toggleLikeOnly();
+          showToast(filterToastMsg(likeOnly, "いいねフィルター"));
           break;
         case "s": {
           const nextSort = toggleSortOrder();

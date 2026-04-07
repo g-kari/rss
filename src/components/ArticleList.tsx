@@ -62,6 +62,8 @@ interface Props {
   toggleBookmarkOnly: () => void;
   readingListOnly: boolean;
   toggleReadingListOnly: () => void;
+  likeOnly: boolean;
+  toggleLikeOnly: () => void;
   sortOrder: SortOrder;
   toggleSortOrder: () => SortOrder;
   dateRange: DateRange;
@@ -175,6 +177,8 @@ export default function ArticleList({
   toggleBookmarkOnly,
   readingListOnly,
   toggleReadingListOnly,
+  likeOnly,
+  toggleLikeOnly,
   sortOrder,
   toggleSortOrder,
   dateRange,
@@ -409,6 +413,14 @@ export default function ArticleList({
               title="リーディングリストフィルター切替 (T)"
             >
               後で
+            </FilterPillButton>
+            <FilterPillButton
+              active={likeOnly}
+              onClick={toggleLikeOnly}
+              title="いいねフィルター切替 (I)"
+              activeClass="border-rose-400 bg-rose-400 text-ink-text"
+            >
+              ♥
             </FilterPillButton>
             <FilterPillButton
               active={dateRange !== "all"}

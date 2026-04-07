@@ -31,6 +31,7 @@ export interface ArticleFilterOptions {
   unreadOnly: boolean;
   bookmarkOnly: boolean;
   readingListOnly: boolean;
+  likeOnly: boolean;
   query: string;
   sortOrder: "newest" | "oldest";
   dateRange: DateRange;
@@ -119,6 +120,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     unreadOnly,
     bookmarkOnly,
     readingListOnly,
+    likeOnly,
     query: rawQuery,
     sortOrder,
     dateRange,
@@ -176,6 +178,9 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
 
     // リーディングリストフィルター（アクティブな記事は除外しない）
     if (readingListOnly && !readingListIds.has(a.id) && !isActive(a.id)) return false;
+
+    // いいねフィルター（アクティブな記事は除外しない）
+    if (likeOnly && !likeIds.has(a.id) && !isActive(a.id)) return false;
 
     // 検索クエリ（title・summary・author・categories を AND 検索）
     if (q && !articleMatchesQuery(a, q)) return false;
