@@ -21,6 +21,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 ### リファクタリング
 
 - \`article-filter.ts\` の重複 JSDoc を削除 — \`filterAndSortArticles\` に同一内容の JSDoc ブロックが2つ存在していたため古い方を除去。\`matchesReadingTimeRange\` の配置も JSDoc の直前に整理した
+- \`useLocalStorageHistory<T>\` 汎用フック追加 — \`useReadingHistory\` と \`useSearchHistory\` の共通パターン（localStorage 永続化・先頭追加・重複排除・上限制御）を汎用フックに抽出。両フックをリファクタしてコード重複を削減した
 
 ## 2026-04-07
 

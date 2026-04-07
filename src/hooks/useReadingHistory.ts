@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
-import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
+import { useCallback, useMemo } from "react";
+import { STORAGE_KEYS } from "../lib/storage";
+import { useLocalStorageHistory } from "./useLocalStorageHistory";
 
 /** 閲覧履歴の1エントリ */
 interface HistoryEntry {
@@ -21,21 +22,17 @@ const MAX_HISTORY = 50;
  * @returns addToHistory - 閲覧記録を追加する関数
  */
 export function useReadingHistory() {
-  const [history, setHistory] = useState<HistoryEntry[]>(() =>
-    loadJson<HistoryEntry[]>(STORAGE_KEYS.HISTORY, []),
+  const { items: history, prepend } = useLocalStorageHistory<HistoryEntry>(
+    STORAGE_KEYS.HISTORY,
+    MAX_HISTORY,
   );
 
-  const addToHistory = useCallback((articleId: string) => {
-    setHistory((prev) => {
-      const without = prev.filter((e) => e.articleId !== articleId);
-      const next = [{ articleId, viewedAt: new Date().toISOString() }, ...without].slice(
-        0,
-        MAX_HISTORY,
-      );
-      saveJson(STORAGE_KEYS.HISTORY, next);
-      return next;
-    });
-  }, []);
+  const addToHistory = useCallback(
+    (articleId: string) => {
+      prepend({ articleId, viewedAt: new Date().toISOString() }, (e) => e.articleId);
+    },
+    [prepend],
+  );
 
   const { historyIds, historyOrder } = useMemo(() => {
     const historyOrder = history.map((e) => e.articleId);
