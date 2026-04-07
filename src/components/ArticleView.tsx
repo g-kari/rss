@@ -26,7 +26,6 @@ import Spinner from "./Spinner";
 import { useImageDownload } from "../hooks/useImageDownload";
 import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
 import { usePortalMenu } from "../hooks/usePortalMenu";
-import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   small: "text-[14px] leading-[1.75]",
@@ -188,48 +187,19 @@ interface ShareMenuProps {
 }
 
 function ShareMenu({ article, showToast }: ShareMenuProps) {
-  const [slackConfigOpen, setSlackConfigOpen] = useState(false);
-  const slackLockRef = useRef(false);
-  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu(slackLockRef);
+  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
   const menuRef = useRef<HTMLDivElement>(null);
-  const [slackChannelInput, setSlackChannelInput] = useState("");
-  const slackConfigRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    slackLockRef.current = slackConfigOpen;
-    if (slackConfigOpen) {
-      setSlackChannelInput(storageGet(STORAGE_KEYS.SLACK_CHANNEL) ?? "");
-      slackConfigRef.current?.focus({ preventScroll: true });
-    }
-  }, [slackConfigOpen]);
-
-  useEffect(() => {
-    if (!open) setSlackConfigOpen(false);
-  }, [open]);
 
   function handleSlackShare() {
-    const channel = (storageGet(STORAGE_KEYS.SLACK_CHANNEL) ?? "").trim().replace(/^#/, "");
-    const text = channel
-      ? `#${channel}\n${article.title}\n${article.link!}`
-      : `${article.title}\n${article.link!}`;
+    const text = `${article.title}\n${article.link!}`;
     setOpen(false);
     navigator.clipboard
       .writeText(text)
       .then(() => {
-        showToast(
-          channel
-            ? `#${channel} 用にコピーしました。Slack を開きます`
-            : "コピーしました。Slack を開きます",
-        );
+        showToast("コピーしました。Slack を開きます");
         window.open("slack://open", "_blank", "noopener,noreferrer");
       })
       .catch(() => showToast("コピーに失敗しました"));
-  }
-
-  function saveSlackChannel() {
-    const ch = slackChannelInput.trim().replace(/^#/, "");
-    storageSet(STORAGE_KEYS.SLACK_CHANNEL, ch);
-    setSlackConfigOpen(false);
   }
 
   function openShareWindow(url: string) {
@@ -322,66 +292,6 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 </svg>
                 Slack で共有
               </button>
-              {slackConfigOpen ? (
-                <div className="border-t border-border-subtle px-2 py-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[12px] text-text-muted select-none">#</span>
-                    <input
-                      ref={slackConfigRef}
-                      type="text"
-                      value={slackChannelInput}
-                      onChange={(e) => setSlackChannelInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveSlackChannel();
-                        if (e.key === "Escape") setSlackConfigOpen(false);
-                      }}
-                      placeholder="general"
-                      className="flex-1 text-[12px] bg-surface-base border border-border-default rounded px-1.5 py-1 text-text-strong outline-none focus:border-text-muted min-w-0 placeholder-text-faint"
-                    />
-                    <button
-                      onClick={saveSlackChannel}
-                      title="保存"
-                      className="flex-shrink-0 p-1 rounded text-text-muted hover:text-text-strong hover:bg-surface-subtle transition-colors"
-                    >
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setSlackConfigOpen(true)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-text-faint hover:text-text-muted hover:bg-surface-hover transition-colors text-left"
-                >
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.8}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                  </svg>
-                  チャンネル:{" "}
-                  {storageGet(STORAGE_KEYS.SLACK_CHANNEL)
-                    ? `#${storageGet(STORAGE_KEYS.SLACK_CHANNEL)}`
-                    : "未設定"}
-                </button>
-              )}
               <button
                 onClick={() =>
                   openShareWindow(
