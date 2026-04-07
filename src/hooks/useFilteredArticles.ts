@@ -242,14 +242,6 @@ export function useFilteredArticles({
   const notifyArticlesAdded = useCallback(() => {
     setServerLoadCount((c) => c + 1);
   }, []);
-  useEffect(() => {
-    if (serverLoadCount === 0) return;
-    // filtered は React の render 後に最新値になるため、ここで正しい長さが得られる
-    setPage((prev) => Math.max(prev, Math.ceil(filtered.length / PAGE_SIZE) || 1));
-    // filtered を deps に含めると filter 切り替え時にも発火してしまうため意図的に除外する
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverLoadCount]);
-
   // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
   // gracePeriodId: 直前まで表示していた記事を5秒間保持（未読フィルター中でも前の記事に戻れるように）
   const activeIds = useMemo(() => {
@@ -321,6 +313,12 @@ export function useFilteredArticles({
       mutedFeedIds,
     ],
   );
+
+  const filteredRef = useSyncedRef(filtered);
+  useEffect(() => {
+    if (serverLoadCount === 0) return;
+    setPage((prev) => Math.max(prev, Math.ceil(filteredRef.current.length / PAGE_SIZE) || 1));
+  }, [serverLoadCount, filteredRef]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;

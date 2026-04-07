@@ -51,7 +51,10 @@ export async function runAiJob(
   }
 
   const url = body.url;
-  const articleId = typeof body.articleId === "string" ? body.articleId : null;
+  const articleId =
+    typeof body.articleId === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(body.articleId)
+      ? body.articleId
+      : null;
 
   // キャッシュヒット時はレートリミット不要（AI を呼ばないため）
   if (articleId) {
