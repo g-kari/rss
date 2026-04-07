@@ -69,6 +69,7 @@ interface KeyboardNavOptions {
   retryFeed: (feedId: string) => Promise<void>;
   snoozeArticle: (articleId: string, durationMs: number) => void;
   onShowSnoozeMenu: (articleId: string) => void;
+  onShowFeedSwitcher: () => void;
 }
 
 /**
@@ -134,6 +135,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         refreshFeeds,
         retryFeed,
         onShowSnoozeMenu,
+        onShowFeedSwitcher,
       } = ref.current;
 
       const list = filteredArticles;
@@ -327,6 +329,10 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           showToast(unread.length > 0 ? "ランダム未読記事" : "ランダム記事");
           break;
         }
+        case "q":
+          e.preventDefault();
+          onShowFeedSwitcher();
+          break;
         case "/":
           e.preventDefault();
           searchRef.current?.focus();
