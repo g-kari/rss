@@ -6,6 +6,8 @@ import type { EngagementEntry, EngagementLog } from "@/types";
 export interface ReadingStats {
   /** 直近 7 日の日別アクション数（fetch_full / open_original のみ） */
   dailyReadCounts: { date: string; count: number }[];
+  /** 過去 365 日のヒートマップ用日別アクション数（fetch_full / open_original のみ） */
+  yearlyHeatmap: { date: string; count: number }[];
   /** 最もよく操作したフィード TOP5 */
   topFeeds: { feedHash: string; score: number }[];
   /** 今週（月曜〜）の合計アクション数 */
@@ -48,6 +50,26 @@ export async function GET() {
       }
     }
     const dailyReadCounts = last7Days.map((date) => ({ date, count: dayCounts.get(date) ?? 0 }));
+
+    // 過去 365 日のヒートマップ用日別カウント
+    const last365Days: string[] = [];
+    for (let i = 364; i >= 0; i--) {
+      const d = new Date(now);
+      d.setUTCDate(d.getUTCDate() - i);
+      last365Days.push(toDateStr(d.toISOString()));
+    }
+    const heatmapCounts = new Map<string, number>(last365Days.map((d) => [d, 0]));
+    for (const e of entries) {
+      if (!READ_ACTIONS.includes(e.action)) continue;
+      const d = toDateStr(e.timestamp);
+      if (heatmapCounts.has(d)) {
+        heatmapCounts.set(d, (heatmapCounts.get(d) ?? 0) + 1);
+      }
+    }
+    const yearlyHeatmap = last365Days.map((date) => ({
+      date,
+      count: heatmapCounts.get(date) ?? 0,
+    }));
 
     // 今週（UTC 月曜）の合計
     const dayOfWeek = now.getUTCDay(); // 0=Sun
@@ -93,6 +115,7 @@ export async function GET() {
 
     const stats: ReadingStats = {
       dailyReadCounts,
+      yearlyHeatmap,
       topFeeds,
       weeklyTotal,
       allTimeTotal,
