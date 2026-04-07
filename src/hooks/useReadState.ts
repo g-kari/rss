@@ -216,10 +216,14 @@ export function useReadState(
           return next;
         });
       }
-      // snoozedUntil はサーバー値とローカル値をマージ（期限切れは除去）
+      // snoozedUntil はサーバー値とローカル値をマージ（同一キーは until が遅い方を採用、期限切れは除去）
       if ("snoozedUntil" in state && state.snoozedUntil) {
         setSnoozedUntil((prev) => {
-          const merged = pruneExpiredSnoozes({ ...state.snoozedUntil!, ...prev });
+          const result: Record<string, string> = { ...state.snoozedUntil! };
+          for (const [id, until] of Object.entries(prev)) {
+            if (!result[id] || until > result[id]) result[id] = until;
+          }
+          const merged = pruneExpiredSnoozes(result);
           saveJson(STORAGE_KEYS.SNOOZED_UNTIL, merged);
           return merged;
         });
