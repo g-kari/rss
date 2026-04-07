@@ -945,6 +945,7 @@ export default function App() {
             globalFilter={globalFilter}
             onSaveGlobalFilter={setGlobalFilter}
             onSnooze={snoozeArticle}
+            query={query}
           />
         </ErrorBoundary>
       </div>
