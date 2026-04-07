@@ -50,27 +50,17 @@ export interface ArticleFilterOptions {
 }
 
 /**
- * 記事リストにフィルタリングとソートを適用して返す。
- *
- * ## フィルター適用順
- * 1. スヌーズ中の記事を除外（activeIds に含まれる場合は例外）
- * 2. feedId による絞り込み（特殊フィード BOOKMARKS / READING_LIST / LIKES / HISTORY に対応）
- * 3. NSFW フィードの非表示（nsfwMode が false の場合）
- * 4. フィード別キーワードフィルター（feedFilterMap）
- * 5. グローバルキーワードフィルター（globalFilter）
- * 6. 未読のみ・ブックマークのみ・リーディングリストのみフィルター
- * 7. 検索クエリ（title / summary / author / categories の AND 検索）
- * 8. 日付範囲
- *
- * ## ソート
- * - HISTORY フィード: `historyOrder` の配列インデックス順（viewedAt 降順）
- * - sortOrder === "oldest": リストを逆順にする（publishedAt 昇順）
- * - それ以外: articles の元の順序（fetchArticles で publishedAt 降順保証済み）
- *
- * @param articles - 全記事リスト（publishedAt 降順を期待）
- * @param opts - フィルター・ソート・表示オプション
- * @returns フィルター・ソート済みの記事リスト
+ * 記事の読了時間が指定の範囲に収まるかを判定する。
+ * "all" の場合は常に true を返す（フィルタなし）。
  */
+function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boolean {
+  if (range === "all") return true;
+  const mins = readingTime(article.content ?? article.summary);
+  if (range === "short") return mins <= 5;
+  if (range === "medium") return mins > 5 && mins <= 15;
+  return mins > 15; // "long"
+}
+
 /**
  * 記事リストにフィルタリングとソートを適用して返す。
  *
@@ -95,18 +85,6 @@ export interface ArticleFilterOptions {
  * @param opts - フィルター・ソート・表示オプション
  * @returns フィルター・ソート済みの記事リスト
  */
-/**
- * 記事の読了時間が指定の範囲に収まるかを判定する。
- * "all" の場合は常に true を返す（フィルタなし）。
- */
-function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boolean {
-  if (range === "all") return true;
-  const mins = readingTime(article.content ?? article.summary);
-  if (range === "short") return mins <= 5;
-  if (range === "medium") return mins > 5 && mins <= 15;
-  return mins > 15; // "long"
-}
-
 export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
   const {
     feedId,
