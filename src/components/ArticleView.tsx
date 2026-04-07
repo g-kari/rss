@@ -679,6 +679,44 @@ function buildExcludeOptions(article: Article): { label: string; value: string }
   ];
 }
 
+/** FilterMenu / GlobalFilterMenu 共通の状態管理フック */
+function useFilterMenuState(article: Article, currentFilter: KeywordFilter | null | undefined) {
+  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
+  const [modalOpen, setModalOpen] = useState(false);
+  const hasFilter = !!(
+    currentFilter &&
+    (currentFilter.include.length > 0 || currentFilter.exclude.length > 0)
+  );
+  const excludeOptions = useMemo(() => buildExcludeOptions(article), [article]);
+  return { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions };
+}
+
+/** FilterMenu / GlobalFilterMenu 共通の除外オプション一覧 */
+function ExcludeOptionsSection({
+  label,
+  options,
+  onExclude,
+}: {
+  label: string;
+  options: { label: string; value: string }[];
+  onExclude: (value: string) => void;
+}) {
+  if (options.length === 0) return null;
+  return (
+    <div className="border-t border-border-subtle">
+      <p className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+        {label}
+      </p>
+      {options.map((opt) => (
+        <button key={opt.value} onClick={() => onExclude(opt.value)} className={MENU_ITEM_CLS}>
+          {XIcon}
+          <span className="truncate">{opt.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ImageGallery({ images }: { images: string[] }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const lightboxTouchRef = useRef<number | null>(null);
@@ -817,11 +855,8 @@ function ImageGallery({ images }: { images: string[] }) {
 }
 
 function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps) {
-  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const hasFilter =
-    feed.filter && (feed.filter.include.length > 0 || feed.filter.exclude.length > 0);
+  const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
+    useFilterMenuState(article, feed.filter);
 
   async function handleExclude(value: string) {
     setOpen(false);
@@ -842,8 +877,6 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
       showToast?.("フィルターの保存に失敗しました");
     }
   }
-
-  const excludeOptions = useMemo(() => buildExcludeOptions(article), [article]);
 
   return (
     <>
@@ -895,23 +928,11 @@ function FilterMenu({ article, feed, onSaveFilter, showToast }: FilterMenuProps)
                 </svg>
                 キーワードフィルター設定
               </button>
-              {excludeOptions.length > 0 && (
-                <div className="border-t border-border-subtle">
-                  <p className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-                    除外する
-                  </p>
-                  {excludeOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => void handleExclude(opt.value)}
-                      className={MENU_ITEM_CLS}
-                    >
-                      {XIcon}
-                      <span className="truncate">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <ExcludeOptionsSection
+                label="除外する"
+                options={excludeOptions}
+                onExclude={(v) => void handleExclude(v)}
+              />
             </div>
           </>,
           document.body,
@@ -942,13 +963,10 @@ function GlobalFilterMenu({
   onSaveGlobalFilter,
   showToast,
 }: GlobalFilterMenuProps) {
-  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
-  const [modalOpen, setModalOpen] = useState(false);
+  const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
+    useFilterMenuState(article, globalFilter);
 
-  const hasFilter =
-    globalFilter && (globalFilter.include.length > 0 || globalFilter.exclude.length > 0);
-
-  async function handleExclude(value: string) {
+  function handleExclude(value: string) {
     setOpen(false);
     const existingExclude = globalFilter?.exclude ?? [];
     if (existingExclude.includes(value)) {
@@ -963,8 +981,6 @@ function GlobalFilterMenu({
     onSaveGlobalFilter(newFilter);
     showToast?.(`「${value}」をグローバル除外キーワードに追加しました`);
   }
-
-  const excludeOptions = useMemo(() => buildExcludeOptions(article), [article]);
 
   return (
     <>
@@ -1024,23 +1040,11 @@ function GlobalFilterMenu({
                 </svg>
                 フィルター設定を開く
               </button>
-              {excludeOptions.length > 0 && (
-                <div className="border-t border-border-subtle">
-                  <p className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-                    全フィードから除外する
-                  </p>
-                  {excludeOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => void handleExclude(opt.value)}
-                      className={MENU_ITEM_CLS}
-                    >
-                      {XIcon}
-                      <span className="truncate">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <ExcludeOptionsSection
+                label="全フィードから除外する"
+                options={excludeOptions}
+                onExclude={handleExclude}
+              />
             </div>
           </>,
           document.body,
