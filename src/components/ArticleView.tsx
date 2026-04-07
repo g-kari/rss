@@ -188,13 +188,15 @@ interface ShareMenuProps {
 }
 
 function ShareMenu({ article, showToast }: ShareMenuProps) {
-  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
-  const menuRef = useRef<HTMLDivElement>(null);
   const [slackConfigOpen, setSlackConfigOpen] = useState(false);
+  const slackLockRef = useRef(false);
+  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu(slackLockRef);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [slackChannelInput, setSlackChannelInput] = useState("");
   const slackConfigRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    slackLockRef.current = slackConfigOpen;
     if (slackConfigOpen) {
       setSlackChannelInput(storageGet(STORAGE_KEYS.SLACK_CHANNEL) ?? "");
       slackConfigRef.current?.focus({ preventScroll: true });
