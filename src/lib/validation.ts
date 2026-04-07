@@ -48,12 +48,13 @@ export function extractIds(raw: unknown, max: number): string[] | null {
  * notes のバリデーション。
  * - 値が Record<string, string> であることを確認
  * - key: articleId（MAX_ID_LENGTH 以内）、value: メモ本文（MAX_NOTE_LENGTH 以内）
- * - MAX_NOTES 件を超える場合は全て破棄（DoS 対策）
+ * - MAX_NOTES 件を超える場合は先頭 maxNotes 件に切り詰め（DoS 対策）
  */
 export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string> | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const result: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (Object.keys(result).length >= maxNotes) break;
     if (
       typeof k === "string" &&
       k.length > 0 &&
@@ -65,7 +66,6 @@ export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string
       result[k] = v;
     }
   }
-  if (Object.keys(result).length > maxNotes) return null;
   return Object.keys(result).length > 0 ? result : null;
 }
 

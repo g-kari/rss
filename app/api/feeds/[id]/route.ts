@@ -7,7 +7,7 @@ import {
   assembleClientFeed,
 } from "@/lib/shared-feed";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
-import { stripControlChars } from "@/lib/validation";
+import { stripControlChars, isValidIso8601 } from "@/lib/validation";
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
@@ -101,6 +101,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       } else if (typeof body.mutedUntil !== "string") {
         return NextResponse.json(
           { error: "mutedUntil must be an ISO string or null" },
+          { status: 400 },
+        );
+      } else if (!isValidIso8601(body.mutedUntil)) {
+        return NextResponse.json(
+          { error: "mutedUntil must be an ISO 8601 string or null" },
           { status: 400 },
         );
       } else {

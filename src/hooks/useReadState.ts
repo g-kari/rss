@@ -15,6 +15,7 @@ import {
   storageSet,
 } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
+import { MAX_NOTE_LENGTH } from "../lib/validation";
 
 type ReadStateSets = {
   read: Set<string>;
@@ -238,11 +239,13 @@ export function useReadState(
           return merged;
         });
       }
-      // notes はサーバー値を優先（クロスデバイス同期）
+      // notes はローカル ∪ サーバーのマージ（同一キーはサーバー優先）
       if ("notes" in state) {
-        const serverNotes = state.notes ?? {};
-        saveJson(STORAGE_KEYS.NOTES, serverNotes);
-        setNotesState(serverNotes);
+        setNotesState((prev) => {
+          const merged = { ...prev, ...(state.notes ?? {}) };
+          saveJson(STORAGE_KEYS.NOTES, merged);
+          return merged;
+        });
       }
     });
   }, [user]);
@@ -400,6 +403,7 @@ export function useReadState(
     (articleId: string, text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+      if (trimmed.length > MAX_NOTE_LENGTH) return;
       setNotesState((prev) => {
         const next = { ...prev, [articleId]: trimmed };
         saveJson(STORAGE_KEYS.NOTES, next);
