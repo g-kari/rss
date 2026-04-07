@@ -3,6 +3,19 @@
 /** ID・文字列フィールドの最大バイト長 */
 export const MAX_ID_LENGTH = 128;
 
+/** 制御文字（U+0000–U+001F, U+007F）を除去する */
+export function stripControlChars(value: string): string {
+  return value.replace(/[\u0000-\u001F\u007F]/g, "");
+}
+
+/** base64url 形式かつ指定バイト範囲に収まるかを検証する */
+export function isValidBase64url(value: string, minBytes: number, maxBytes: number): boolean {
+  if (!/^[A-Za-z0-9_-]+=*$/.test(value)) return false;
+  const stripped = value.replace(/=+$/, "");
+  const decodedBytes = Math.floor((stripped.length * 3) / 4);
+  return decodedBytes >= minBytes && decodedBytes <= maxBytes;
+}
+
 /** ISO 8601 形式（YYYY-MM-DDTHH:mm:ss[.sss][Z|±HH:MM]）かどうかを判定する型ガード */
 export function isValidIso8601(v: unknown): v is string {
   return (

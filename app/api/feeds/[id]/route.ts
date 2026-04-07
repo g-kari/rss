@@ -7,6 +7,7 @@ import {
   assembleClientFeed,
 } from "@/lib/shared-feed";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
+import { stripControlChars } from "@/lib/validation";
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
@@ -92,7 +93,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         if (typeof body.category !== "string")
           return NextResponse.json({ error: "category must be a string or null" }, { status: 400 });
         // 制御文字を除去してからバリデーション
-        const category = body.category.trim().replace(/[\u0000-\u001F\u007F]/g, "");
+        const category = stripControlChars(body.category.trim());
         if (category.length > 50)
           return NextResponse.json({ error: "category too long" }, { status: 400 });
         if (category === "") {
