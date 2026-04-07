@@ -30,6 +30,7 @@ export const STORAGE_KEYS = {
   UNREAD_ONLY: "rss-unread-only",
   BOOKMARK_ONLY: "rss-bookmark-only",
   READING_LIST_ONLY: "rss-reading-list-only",
+  LIKE_ONLY: "rss-like-only",
   SORT_ORDER: "rss-sort-order",
   DATE_RANGE: "rss-date-range",
   OGP_CACHE: "rss-ogp-cache",

@@ -152,6 +152,7 @@ export function useFilteredArticles({
   const [readingListOnly, setReadingListOnly] = useState(
     () => storageGet(STORAGE_KEYS.READING_LIST_ONLY) === "1",
   );
+  const [likeOnly, setLikeOnly] = useState(() => storageGet(STORAGE_KEYS.LIKE_ONLY) === "1");
   const [rawQuery, setRawQuery] = useState(""); // 入力値（即時更新）
   const query = useDebounce(rawQuery, 300); // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
@@ -179,18 +180,24 @@ export function useFilteredArticles({
     setRawQuery("");
   }, [feedId]);
 
-  const { toggleUnreadOnly, toggleBookmarkOnly, toggleReadingListOnly } = useMemo(() => {
-    const resetPage = () => setPage(1);
-    return {
-      toggleUnreadOnly: makeFilterToggle(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, resetPage),
-      toggleBookmarkOnly: makeFilterToggle(setBookmarkOnly, STORAGE_KEYS.BOOKMARK_ONLY, resetPage),
-      toggleReadingListOnly: makeFilterToggle(
-        setReadingListOnly,
-        STORAGE_KEYS.READING_LIST_ONLY,
-        resetPage,
-      ),
-    };
-  }, []);
+  const { toggleUnreadOnly, toggleBookmarkOnly, toggleReadingListOnly, toggleLikeOnly } =
+    useMemo(() => {
+      const resetPage = () => setPage(1);
+      return {
+        toggleUnreadOnly: makeFilterToggle(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, resetPage),
+        toggleBookmarkOnly: makeFilterToggle(
+          setBookmarkOnly,
+          STORAGE_KEYS.BOOKMARK_ONLY,
+          resetPage,
+        ),
+        toggleReadingListOnly: makeFilterToggle(
+          setReadingListOnly,
+          STORAGE_KEYS.READING_LIST_ONLY,
+          resetPage,
+        ),
+        toggleLikeOnly: makeFilterToggle(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, resetPage),
+      };
+    }, []);
 
   const updateQuery = useCallback((q: string) => {
     setRawQuery(q);
@@ -274,6 +281,7 @@ export function useFilteredArticles({
         unreadOnly,
         bookmarkOnly,
         readingListOnly,
+        likeOnly,
         query,
         sortOrder,
         dateRange,
@@ -299,6 +307,7 @@ export function useFilteredArticles({
       unreadOnly,
       bookmarkOnly,
       readingListOnly,
+      likeOnly,
       query,
       sortOrder,
       dateRange,
@@ -347,6 +356,8 @@ export function useFilteredArticles({
     toggleBookmarkOnly,
     readingListOnly,
     toggleReadingListOnly,
+    likeOnly,
+    toggleLikeOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,

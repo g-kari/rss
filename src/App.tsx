@@ -300,6 +300,8 @@ export default function App() {
     toggleBookmarkOnly,
     readingListOnly,
     toggleReadingListOnly,
+    likeOnly,
+    toggleLikeOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,
@@ -460,6 +462,8 @@ export default function App() {
     toggleBookmarkOnly,
     readingListOnly,
     toggleReadingListOnly,
+    likeOnly,
+    toggleLikeOnly,
     toggleSortOrder,
     cycleDateRange,
     cycleReadingTimeRange,
@@ -875,6 +879,8 @@ export default function App() {
             toggleBookmarkOnly={toggleBookmarkOnly}
             readingListOnly={readingListOnly}
             toggleReadingListOnly={toggleReadingListOnly}
+            likeOnly={likeOnly}
+            toggleLikeOnly={toggleLikeOnly}
             sortOrder={sortOrder}
             toggleSortOrder={toggleSortOrder}
             dateRange={dateRange}
