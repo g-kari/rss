@@ -149,6 +149,28 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         }
       };
 
+      // フィルタートグルのlookup table（u/B/T/I キー）
+      const filterToggleMap: Record<
+        string,
+        { toggle: () => void; state: boolean; label: string; prevent?: true }
+      > = {
+        u: { toggle: toggleUnreadOnly, state: unreadOnly, label: "未読フィルター", prevent: true },
+        B: { toggle: toggleBookmarkOnly, state: bookmarkOnly, label: "ブックマークフィルター" },
+        T: {
+          toggle: toggleReadingListOnly,
+          state: readingListOnly,
+          label: "リーディングリストフィルター",
+        },
+        I: { toggle: toggleLikeOnly, state: likeOnly, label: "いいねフィルター" },
+      };
+      const filterToggle = filterToggleMap[e.key];
+      if (filterToggle) {
+        if (filterToggle.prevent) e.preventDefault();
+        filterToggle.toggle();
+        showToast(filterToastMsg(filterToggle.state, filterToggle.label));
+        return;
+      }
+
       switch (e.key) {
         case "j":
         case "ArrowDown":
@@ -282,23 +304,6 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
           }
           break;
         }
-        case "u":
-          e.preventDefault();
-          toggleUnreadOnly();
-          showToast(filterToastMsg(unreadOnly, "未読フィルター"));
-          break;
-        case "B":
-          toggleBookmarkOnly();
-          showToast(filterToastMsg(bookmarkOnly, "ブックマークフィルター"));
-          break;
-        case "T":
-          toggleReadingListOnly();
-          showToast(filterToastMsg(readingListOnly, "リーディングリストフィルター"));
-          break;
-        case "I":
-          toggleLikeOnly();
-          showToast(filterToastMsg(likeOnly, "いいねフィルター"));
-          break;
         case "s": {
           const nextSort = toggleSortOrder();
           showToast(`ソート: ${SORT_ORDER_LABELS[nextSort]}`);
