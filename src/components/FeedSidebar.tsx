@@ -247,6 +247,12 @@ export default function FeedSidebar({
     return { unreadByFeed: byFeed, totalUnread: total, lastPublishedByFeed: lastPublished };
   }, [articles, readIds, readBeforeTimestamp]);
 
+  const readTodayCount = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return articles.filter((a) => readIds.has(a.id) && a.publishedAt?.slice(0, 10) === today)
+      .length;
+  }, [articles, readIds]);
+
   const { pinnedFeeds, categoryGroups, uncategorizedFeeds } = useMemo(() => {
     const q = feedSearch.trim().toLowerCase();
     const matchFeed = (f: Feed) => !q || (f.title || f.url).toLowerCase().includes(q);
@@ -514,6 +520,22 @@ export default function FeedSidebar({
             onSelectFeed={onSelectFeed}
           />
         ))}
+
+        {/* 統計 */}
+        <div className="px-4 py-2 flex items-center gap-4 border-t border-border-subtle mt-1">
+          <span className="text-[10px] text-text-faint leading-none">
+            <span className="text-text-muted tabular-nums">{readTodayCount}</span>
+            <span className="ml-0.5">今日</span>
+          </span>
+          <span className="text-[10px] text-text-faint leading-none">
+            <span className="text-text-muted tabular-nums">{totalUnread}</span>
+            <span className="ml-0.5">未読</span>
+          </span>
+          <span className="text-[10px] text-text-faint leading-none">
+            <span className="text-text-muted tabular-nums">{feeds.length}</span>
+            <span className="ml-0.5">フィード</span>
+          </span>
+        </div>
 
         {/* URL から記事を保存 */}
         <div className="px-4 py-1">
