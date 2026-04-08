@@ -83,8 +83,8 @@ function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boo
  * 8. 著者フィルター（authorFilter が設定されている場合、その著者の記事のみ）
  * 9. カテゴリフィルター（categoryFilter が設定されている場合、そのカテゴリのフィードの記事のみ）
  * 10. 検索クエリ（title / summary / author / categories の AND 検索）
- * 10. 日付範囲
- * 11. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
+ * 11. 日付範囲
+ * 12. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
  */
 function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
   const {
@@ -170,8 +170,9 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
     // 著者フィルター（アクティブな記事は除外しない）
     if (authorFilter && a.author !== authorFilter && !isActive(a.id)) return false;
 
-    // カテゴリフィルター（アクティブな記事は除外しない）
+    // カテゴリフィルター — 全フィード表示時のみ適用（特定フィード選択時は表示）
     if (
+      !feedId &&
       categoryFilter &&
       feedCategoryMap &&
       feedCategoryMap.get(a.feedHash) !== categoryFilter &&
