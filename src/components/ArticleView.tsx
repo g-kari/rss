@@ -1987,7 +1987,10 @@ export default function ArticleView({
 
             <ToggleIconButton
               isActive={isInReadingList}
-              onClick={() => onToggleReadingList(article.id)}
+              onClick={() => {
+                onToggleReadingList(article.id);
+                showToast?.(isInReadingList ? "後で読むから削除" : "後で読むに追加");
+              }}
               title={isInReadingList ? "後で読むから削除" : "後で読む"}
               activeClass="text-text-default hover:text-text-muted"
               inactiveClass="text-text-faint hover:text-text-default"
