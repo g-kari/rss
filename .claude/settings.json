@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/gizen/dokodemo-claude/backend/repositories/rss && npm run check"
+          }
+        ]
+      }
+    ]
+  }
+}
