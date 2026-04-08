@@ -70,11 +70,31 @@ function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boo
 }
 
 /**
+ * 記事が指定の feedId（特殊フィード含む）に属するかを判定する。
+ * feedId が null の場合（全フィード表示）は常に true を返す。
+ */
+function matchesFeedId(
+  a: Article,
+  feedId: string | null,
+  bookmarkIds: Set<string>,
+  readingListIds: Set<string>,
+  likeIds: Set<string>,
+  historyIds: Set<string>,
+): boolean {
+  if (feedId === SPECIAL_FEED_IDS.BOOKMARKS) return bookmarkIds.has(a.id);
+  if (feedId === SPECIAL_FEED_IDS.READING_LIST) return readingListIds.has(a.id);
+  if (feedId === SPECIAL_FEED_IDS.LIKES) return likeIds.has(a.id);
+  if (feedId === SPECIAL_FEED_IDS.HISTORY) return historyIds.has(a.id);
+  if (feedId) return a.feedHash === feedId;
+  return true;
+}
+
+/**
  * フィルターオプションからフィルター述語を構築して返す。
  *
  * ## フィルター適用順
- * 1. スヌーズ中の記事を除外（activeIds に含まれる場合は例外）
- * 2. feedId による絞り込み（特殊フィード BOOKMARKS / READING_LIST / LIKES / HISTORY に対応）
+ * 1. feedId による絞り込み（特殊フィード BOOKMARKS / READING_LIST / LIKES / HISTORY に対応）
+ * 2. スヌーズ中の記事を除外（activeIds に含まれる場合は例外）
  * 3. NSFW フィードの非表示（nsfwMode が false の場合）
  * 4. ミュート中のフィードを除外（全フィード表示時のみ）
  * 5. フィード別キーワードフィルター（feedFilterMap）
@@ -82,9 +102,11 @@ function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boo
  * 7. 未読のみ・ブックマークのみ・リーディングリストのみ・メモありのみフィルター
  * 8. 著者フィルター（authorFilter が設定されている場合、その著者の記事のみ）
  * 9. カテゴリフィルター（categoryFilter が設定されている場合、そのカテゴリのフィードの記事のみ）
- * 10. 検索クエリ（title / summary / author / categories の AND 検索）
- * 11. 日付範囲
- * 12. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
+ * 10. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
+ * 11. 検索クエリ（title / summary / author / categories の AND 検索）
+ * 12. 日付範囲
+ *
+ * ※ 2〜10 は activeIds に含まれる記事には適用しない（ナビゲーション中の記事が消えないようにするため）
  */
 function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
   const {
@@ -116,25 +138,16 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
     feedCategoryMap,
   } = opts;
 
-  const isActive = (id: string) => activeIds.has(id);
   const q = rawQuery.trim().toLowerCase();
   const rangeStart = getDateRangeStart(dateRange);
   const now = snoozedUntil && Object.keys(snoozedUntil).length > 0 ? new Date().toISOString() : "";
 
   return (a: Article) => {
     // フィード絞り込み（アクティブな記事も対象）
-    if (feedId === SPECIAL_FEED_IDS.BOOKMARKS) {
-      if (!bookmarkIds.has(a.id)) return false;
-    } else if (feedId === SPECIAL_FEED_IDS.READING_LIST) {
-      if (!readingListIds.has(a.id)) return false;
-    } else if (feedId === SPECIAL_FEED_IDS.LIKES) {
-      if (!likeIds.has(a.id)) return false;
-    } else if (feedId === SPECIAL_FEED_IDS.HISTORY) {
-      if (!historyIds.has(a.id)) return false;
-    } else if (feedId && a.feedHash !== feedId) return false;
+    if (!matchesFeedId(a, feedId, bookmarkIds, readingListIds, likeIds, historyIds)) return false;
 
     // アクティブな記事はフィルター対象外（未読フィルター中でも前後ナビが消えないようにする）
-    if (!isActive(a.id)) {
+    if (!activeIds.has(a.id)) {
       // スヌーズ中の記事は非表示
       if (snoozedUntil) {
         const until = snoozedUntil[a.id];
@@ -156,12 +169,7 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
       if (noteOnly && !noteIds.has(a.id)) return false;
       if (authorFilter && a.author !== authorFilter) return false;
       // カテゴリフィルター — 全フィード表示時のみ適用（特定フィード選択時は表示）
-      if (
-        !feedId &&
-        categoryFilter &&
-        feedCategoryMap &&
-        feedCategoryMap.get(a.feedHash) !== categoryFilter
-      )
+      if (!feedId && categoryFilter && feedCategoryMap?.get(a.feedHash) !== categoryFilter)
         return false;
       if (!matchesReadingTimeRange(a, readingTimeRange)) return false;
     }
