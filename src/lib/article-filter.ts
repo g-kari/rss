@@ -64,7 +64,7 @@ function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boo
 }
 
 /**
- * 記事リストにフィルタリングとソートを適用して返す。
+ * フィルターオプションからフィルター述語を構築して返す。
  *
  * ## フィルター適用順
  * 1. スヌーズ中の記事を除外（activeIds に含まれる場合は例外）
@@ -77,17 +77,8 @@ function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boo
  * 8. 検索クエリ（title / summary / author / categories の AND 検索）
  * 9. 日付範囲
  * 10. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
- *
- * ## ソート
- * - HISTORY フィード: `historyOrder` の配列インデックス順（viewedAt 降順）
- * - sortOrder === "oldest": リストを逆順にする（publishedAt 昇順）
- * - それ以外: articles の元の順序（fetchArticles で publishedAt 降順保証済み）
- *
- * @param articles - 全記事リスト（publishedAt 降順を期待）
- * @param opts - フィルター・ソート・表示オプション
- * @returns フィルター・ソート済みの記事リスト
  */
-export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
+function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
   const {
     feedId,
     feedFilterMap,
@@ -96,7 +87,6 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     readingListIds,
     likeIds,
     historyIds,
-    historyOrder,
     unreadOnly,
     bookmarkOnly,
     readingListOnly,
@@ -104,7 +94,6 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     noteOnly,
     noteIds,
     query: rawQuery,
-    sortOrder,
     dateRange,
     activeIds,
     nsfwMode,
@@ -121,7 +110,7 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
   const rangeStart = getDateRangeStart(dateRange);
   const now = snoozedUntil && Object.keys(snoozedUntil).length > 0 ? new Date().toISOString() : "";
 
-  let list = articles.filter((a) => {
+  return (a: Article) => {
     // スヌーズ中の記事は非表示（アクティブな記事は除外しない）
     if (snoozedUntil && !isActive(a.id)) {
       const until = snoozedUntil[a.id];
@@ -177,13 +166,29 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     if (!isActive(a.id) && !matchesReadingTimeRange(a, readingTimeRange)) return false;
 
     return true;
-  });
+  };
+}
+
+/**
+ * 記事リストにフィルタリングとソートを適用して返す。
+ *
+ * ## ソート
+ * - HISTORY フィード: `historyOrder` の配列インデックス順（viewedAt 降順）
+ * - sortOrder === "oldest": リストを逆順にする（publishedAt 昇順）
+ * - それ以外: articles の元の順序（fetchArticles で publishedAt 降順保証済み）
+ *
+ * @param articles - 全記事リスト（publishedAt 降順を期待）
+ * @param opts - フィルター・ソート・表示オプション
+ * @returns フィルター・ソート済みの記事リスト
+ */
+export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
+  const list = articles.filter(buildArticlePredicate(opts));
 
   // 履歴モードは viewedAt 降順（最近閲覧順）で固定
-  if (feedId === SPECIAL_FEED_IDS.HISTORY) {
-    const orderMap = new Map(historyOrder.map((id, i) => [id, i]));
+  if (opts.feedId === SPECIAL_FEED_IDS.HISTORY) {
+    const orderMap = new Map(opts.historyOrder.map((id, i) => [id, i]));
     list.sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
-  } else if (sortOrder === "oldest") {
+  } else if (opts.sortOrder === "oldest") {
     list.reverse();
   }
 

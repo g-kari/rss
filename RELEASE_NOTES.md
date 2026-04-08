@@ -12,6 +12,8 @@
 
 ### リファクタリング
 
+- **`filterAndSortArticles` のフィルター述語を分離** — `buildArticlePredicate` 関数を抽出し、フィルター述語の構築とリストへの適用を分離。`filterAndSortArticles` 自体が短くなり、述語ロジックが単独でテスト可能になった。
+
 - **キーワードフィルターの正規表現を事前コンパイル** — `CompiledKeywordFilter` 型を導入し、`normalizeFilter` で正規表現キーワードを一度だけコンパイルするよう変更。従来は `matchesKeywordFilter` が記事ごとに `new RegExp` を生成していたが、フィルター設定変更時に一度だけコンパイルして使い回すようになり、フィルタリングの hot path から `hasCatastrophicBacktracking` チェックも排除した。`ArticleFilterOptions.feedFilterMap` / `globalFilter` の型を `CompiledKeywordFilter` に更新。
 
 - **`useEventListener` フック抽出** — `window` / `document` へのイベントリスナー登録・解除を抽象化する `useEventListener` フックを追加。`useReadState` の `beforeunload` / `visibilitychange` リスナーを置き換え、`useEffect` 内の手動 `addEventListener` / `removeEventListener` ペアと deps 配列管理を不要にした。
