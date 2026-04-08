@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-09
+
+### ドキュメント整備
+
+- **ディレクトリインデックス更新** — `CLAUDE.md` と `.claude/rules/architecture.md` に未記載だったファイルを追記。追加した hooks: `useAutoReset`, `useEventListener`, `useInboxProgress`, `useLocalStorageHistory`, `useReadingStats`。追加した lib: `export-markdown`, `rate-limit`。追加した API routes: `POST /api/ai/translate`, `GET /api/stats`。
+
 ## 2026-04-08
 
 ### 新機能
