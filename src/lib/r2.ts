@@ -78,6 +78,11 @@ export function recommendationsCooldownKey(userId: string): string {
   return `users/${userId}/recommendations-refresh.json`;
 }
 
+/** 推薦生成（GET）のクールダウン管理キーを返す。並行リクエストによる多重生成を防ぐ。 */
+export function recommendationsGenCooldownKey(userId: string): string {
+  return `users/${userId}/recommendations-gen.json`;
+}
+
 /**
  * Cloudflare Cache API 用のキャッシュキーを生成する。
  * `/__cache/{type}/{sha256(normalizedUrl)}` 形式の合成 URL を Request としてラップする。
