@@ -324,6 +324,8 @@ export default function App() {
     notifyArticlesAdded,
     authorFilter,
     setAuthorFilter,
+    categoryFilter,
+    setCategoryFilter,
   } = useFilteredArticles({
     articles,
     feeds,
@@ -927,6 +929,8 @@ export default function App() {
             notes={notes}
             authorFilter={authorFilter}
             onClearAuthorFilter={() => setAuthorFilter(null)}
+            categoryFilter={categoryFilter}
+            onSetCategoryFilter={setCategoryFilter}
           />
         </ErrorBoundary>
       </div>

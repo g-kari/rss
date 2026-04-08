@@ -84,6 +84,8 @@ interface Props {
   notes?: Record<string, string>;
   authorFilter?: string | null;
   onClearAuthorFilter?: () => void;
+  categoryFilter?: string | null;
+  onSetCategoryFilter?: (cat: string | null) => void;
 }
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
@@ -204,9 +206,19 @@ export default function ArticleList({
   notes,
   authorFilter,
   onClearAuthorFilter,
+  categoryFilter,
+  onSetCategoryFilter,
 }: Props) {
   const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
+
+  // フィードのカテゴリ一覧（重複除去・ソート済み）
+  const feedCategories = useMemo(
+    () => [...new Set(feeds.map((f) => f.category).filter(Boolean) as string[])].sort(),
+    [feeds],
+  );
 
   // 複数フィードを横断表示するとき（すべて・ブックマーク）はフィード名を表示する
   const showFeedName = selectedFeedId === null || selectedFeedId === SPECIAL_FEED_IDS.BOOKMARKS;
@@ -263,6 +275,18 @@ export default function ArticleList({
     getItemKey: (i) => `card-row-${i}`,
     overscan: 3,
   });
+
+  // カテゴリドロップダウン: コンテナ外クリックで閉じる
+  useEffect(() => {
+    if (!categoryDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!categoryDropdownRef.current?.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [categoryDropdownOpen]);
 
   // 検索履歴
   const { history, addToHistory, removeFromHistory } = useSearchHistory();
@@ -474,6 +498,71 @@ export default function ArticleList({
                   <path d="M1 1l6 6M7 1L1 7" />
                 </svg>
               </button>
+            )}
+            {/* カテゴリフィルター */}
+            {onSetCategoryFilter && feedCategories.length > 0 && (
+              <div className="relative" ref={categoryDropdownRef}>
+                {categoryFilter ? (
+                  <button
+                    onClick={() => onSetCategoryFilter(null)}
+                    title={`カテゴリ「${categoryFilter}」フィルターを解除`}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
+                  >
+                    <span className="truncate">{categoryFilter}</span>
+                    <svg
+                      width="8"
+                      height="8"
+                      viewBox="0 0 8 8"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    >
+                      <path d="M1 1l6 6M7 1L1 7" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setCategoryDropdownOpen((v) => !v)}
+                    title="カテゴリでフィルター"
+                    className={`flex items-center gap-1 px-2 h-6 rounded-full text-[11px] transition-all duration-200 ${
+                      categoryDropdownOpen
+                        ? "text-text-strong bg-surface-subtle"
+                        : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
+                    }`}
+                  >
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M1 3h10M3 6h6M5 9h2" />
+                    </svg>
+                    <span>フォルダ</span>
+                  </button>
+                )}
+                {categoryDropdownOpen && (
+                  <div className="absolute left-0 top-full mt-1 z-20 min-w-[120px] bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden">
+                    {feedCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => {
+                          onSetCategoryFilter(cat);
+                          setCategoryDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-1.5 text-[12px] text-text-default hover:bg-surface-hover transition-colors truncate"
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             <button
               onClick={toggleSortOrder}

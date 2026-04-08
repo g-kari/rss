@@ -51,6 +51,10 @@ export interface ArticleFilterOptions {
   mutedFeedIds?: Set<string>;
   /** 著者フィルター — 設定時はその著者の記事のみ表示（アクティブな記事は除外しない） */
   authorFilter?: string | null;
+  /** カテゴリフィルター — 設定時はそのカテゴリに属するフィードの記事のみ表示 */
+  categoryFilter?: string | null;
+  /** feedHash → カテゴリ名のマップ（categoryFilter と組み合わせて使用） */
+  feedCategoryMap?: Map<string, string>;
 }
 
 /**
@@ -77,7 +81,8 @@ function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boo
  * 6. グローバルキーワードフィルター（globalFilter）
  * 7. 未読のみ・ブックマークのみ・リーディングリストのみ・メモありのみフィルター
  * 8. 著者フィルター（authorFilter が設定されている場合、その著者の記事のみ）
- * 9. 検索クエリ（title / summary / author / categories の AND 検索）
+ * 9. カテゴリフィルター（categoryFilter が設定されている場合、そのカテゴリのフィードの記事のみ）
+ * 10. 検索クエリ（title / summary / author / categories の AND 検索）
  * 10. 日付範囲
  * 11. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
  */
@@ -107,6 +112,8 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
     readingTimeRange = "all",
     mutedFeedIds,
     authorFilter,
+    categoryFilter,
+    feedCategoryMap,
   } = opts;
 
   const isActive = (id: string) => activeIds.has(id);
@@ -162,6 +169,15 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
 
     // 著者フィルター（アクティブな記事は除外しない）
     if (authorFilter && a.author !== authorFilter && !isActive(a.id)) return false;
+
+    // カテゴリフィルター（アクティブな記事は除外しない）
+    if (
+      categoryFilter &&
+      feedCategoryMap &&
+      feedCategoryMap.get(a.feedHash) !== categoryFilter &&
+      !isActive(a.id)
+    )
+      return false;
 
     // 検索クエリ（title・summary・author・categories を AND 検索）
     if (q && !articleMatchesQuery(a, q)) return false;

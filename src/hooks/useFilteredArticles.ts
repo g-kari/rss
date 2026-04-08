@@ -158,6 +158,7 @@ export function useFilteredArticles({
   const [likeOnly, setLikeOnly] = useState(() => storageGet(STORAGE_KEYS.LIKE_ONLY) === "1");
   const [noteOnly, setNoteOnly] = useState(() => storageGet(STORAGE_KEYS.NOTE_ONLY) === "1");
   const [authorFilter, setAuthorFilter] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [rawQuery, setRawQuery] = useState(""); // 入力値（即時更新）
   const query = useDebounce(rawQuery, 300); // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
@@ -179,11 +180,12 @@ export function useFilteredArticles({
   // 直前に選択していた記事を一定時間フィルター対象外にする（未読フィルター中でも前の記事に戻れるように）
   const gracePeriodId = useGracePeriod(selectedArticleId);
 
-  // フィード切り替え時にページ・検索クエリ・著者フィルターをリセット
+  // フィード切り替え時にページ・検索クエリ・著者フィルター・カテゴリフィルターをリセット
   useEffect(() => {
     setPage(1);
     setRawQuery("");
     setAuthorFilter(null);
+    setCategoryFilter(null);
   }, [feedId]);
 
   const {
@@ -264,6 +266,12 @@ export function useFilteredArticles({
 
   // feeds が変わったときだけ再構築（フィルター変更時や既読切り替えでは再利用される）
   const feedFilterMap = useMemo(() => buildFilterMap(feeds, (f) => f.id), [feeds]);
+  // feedHash → カテゴリ名のマップ（カテゴリフィルターで使用）
+  const feedCategoryMap = useMemo(
+    () =>
+      new Map(feeds.filter((f) => f.category).map((f) => [f.id, f.category!] as [string, string])),
+    [feeds],
+  );
   // globalFilter も feedFilterMap と同様に変更時だけ正規化（filterAndSortArticles の hot path から除外）
   const normalizedGlobalFilter = useMemo(
     () => (globalFilter ? normalizeFilter(globalFilter) : null),
@@ -299,6 +307,8 @@ export function useFilteredArticles({
         readingTimeRange,
         mutedFeedIds,
         authorFilter,
+        categoryFilter,
+        feedCategoryMap,
       }),
     [
       articles,
@@ -328,6 +338,8 @@ export function useFilteredArticles({
       readingTimeRange,
       mutedFeedIds,
       authorFilter,
+      categoryFilter,
+      feedCategoryMap,
     ],
   );
 
@@ -391,5 +403,7 @@ export function useFilteredArticles({
     cycleReadingTimeRange,
     authorFilter,
     setAuthorFilter,
+    categoryFilter,
+    setCategoryFilter,
   };
 }
