@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Article, KeywordFilter, UserProfile, ReadState } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
+import { useEventListener } from "./useEventListener";
 import {
   STORAGE_KEYS,
   SPECIAL_FEED_IDS,
@@ -250,43 +251,46 @@ export function useReadState(
     });
   }, [user]);
 
+  // デバウンス待ちタイマーを即時実行して null にリセットする
+  function flushIfPending(): boolean {
+    if (syncTimerRef.current === null) return false;
+    clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = null;
+    return true;
+  }
+
   // ページを閉じる前・タブ非表示時にデバウンス待ちのデータを即時送信
   // - beforeunload: ページ閉じ・遷移時。fetch は中断されるため sendBeacon を使用
   // - visibilitychange: タブ切り替え時。fetch を使用（beforeunload が発火しないケースを補完）
-  useEffect(() => {
-    function flushIfPending(): boolean {
-      if (syncTimerRef.current === null) return false;
-      clearTimeout(syncTimerRef.current);
-      syncTimerRef.current = null;
-      return true;
-    }
-    function onBeforeUnload() {
-      if (!userRef.current) return;
-      if (!flushIfPending()) return;
-      navigator.sendBeacon(
-        "/api/read-state",
-        new Blob([serializeReadState(stateRef.current, globalFilterRef.current)], {
-          type: "application/json",
-        }),
-      );
-    }
-    function onVisibilityChange() {
+  useEventListener("beforeunload", () => {
+    if (!userRef.current) return;
+    if (!flushIfPending()) return;
+    navigator.sendBeacon(
+      "/api/read-state",
+      new Blob([serializeReadState(stateRef.current, globalFilterRef.current)], {
+        type: "application/json",
+      }),
+    );
+  });
+  useEventListener(
+    "visibilitychange",
+    () => {
       if (document.visibilityState !== "hidden") return;
       if (!userRef.current) return;
       if (!flushIfPending()) return;
       saveReadState(stateRef.current, globalFilterRef.current);
-    }
-    window.addEventListener("beforeunload", onBeforeUnload);
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    },
+    document,
+  );
+  // アンマウント時にデバウンス待ちのタイマーをクリア
+  useEffect(() => {
     return () => {
-      window.removeEventListener("beforeunload", onBeforeUnload);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (syncTimerRef.current) {
         clearTimeout(syncTimerRef.current);
         syncTimerRef.current = null;
       }
     };
-  }, [globalFilterRef, userRef]);
+  }, []);
 
   const scheduleSyncToServer = useCallback(() => {
     isDirtyRef.current = true;
