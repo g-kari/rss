@@ -308,6 +308,8 @@ export default function App() {
     toggleReadingListOnly,
     likeOnly,
     toggleLikeOnly,
+    noteOnly,
+    toggleNoteOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,
@@ -338,6 +340,7 @@ export default function App() {
     readBeforeTimestamp,
     snoozedUntil,
     mutedFeedIds,
+    notes,
   });
 
   const currentIndex = useMemo(
@@ -391,6 +394,7 @@ export default function App() {
     unreadOnly,
     bookmarkOnly,
     readingListOnly,
+    noteOnly,
     sortOrder,
     dateRange,
     readingTimeRange,
@@ -901,6 +905,8 @@ export default function App() {
             toggleReadingListOnly={toggleReadingListOnly}
             likeOnly={likeOnly}
             toggleLikeOnly={toggleLikeOnly}
+            noteOnly={noteOnly}
+            toggleNoteOnly={toggleNoteOnly}
             sortOrder={sortOrder}
             toggleSortOrder={toggleSortOrder}
             dateRange={dateRange}

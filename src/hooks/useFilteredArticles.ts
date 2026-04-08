@@ -104,6 +104,8 @@ interface Options {
   snoozedUntil?: Record<string, string>;
   /** ミュート中のフィード ID セット — 全フィード表示時に記事を除外 */
   mutedFeedIds?: Set<string>;
+  /** メモ記録（記事 ID → メモ内容） */
+  notes?: Record<string, string>;
 }
 
 /**
@@ -144,6 +146,7 @@ export function useFilteredArticles({
   readBeforeTimestamp = null,
   snoozedUntil,
   mutedFeedIds,
+  notes,
 }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
@@ -153,6 +156,7 @@ export function useFilteredArticles({
     () => storageGet(STORAGE_KEYS.READING_LIST_ONLY) === "1",
   );
   const [likeOnly, setLikeOnly] = useState(() => storageGet(STORAGE_KEYS.LIKE_ONLY) === "1");
+  const [noteOnly, setNoteOnly] = useState(() => storageGet(STORAGE_KEYS.NOTE_ONLY) === "1");
   const [rawQuery, setRawQuery] = useState(""); // 入力値（即時更新）
   const query = useDebounce(rawQuery, 300); // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
@@ -180,24 +184,26 @@ export function useFilteredArticles({
     setRawQuery("");
   }, [feedId]);
 
-  const { toggleUnreadOnly, toggleBookmarkOnly, toggleReadingListOnly, toggleLikeOnly } =
-    useMemo(() => {
-      const resetPage = () => setPage(1);
-      return {
-        toggleUnreadOnly: makeFilterToggle(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, resetPage),
-        toggleBookmarkOnly: makeFilterToggle(
-          setBookmarkOnly,
-          STORAGE_KEYS.BOOKMARK_ONLY,
-          resetPage,
-        ),
-        toggleReadingListOnly: makeFilterToggle(
-          setReadingListOnly,
-          STORAGE_KEYS.READING_LIST_ONLY,
-          resetPage,
-        ),
-        toggleLikeOnly: makeFilterToggle(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, resetPage),
-      };
-    }, []);
+  const {
+    toggleUnreadOnly,
+    toggleBookmarkOnly,
+    toggleReadingListOnly,
+    toggleLikeOnly,
+    toggleNoteOnly,
+  } = useMemo(() => {
+    const resetPage = () => setPage(1);
+    return {
+      toggleUnreadOnly: makeFilterToggle(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, resetPage),
+      toggleBookmarkOnly: makeFilterToggle(setBookmarkOnly, STORAGE_KEYS.BOOKMARK_ONLY, resetPage),
+      toggleReadingListOnly: makeFilterToggle(
+        setReadingListOnly,
+        STORAGE_KEYS.READING_LIST_ONLY,
+        resetPage,
+      ),
+      toggleLikeOnly: makeFilterToggle(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, resetPage),
+      toggleNoteOnly: makeFilterToggle(setNoteOnly, STORAGE_KEYS.NOTE_ONLY, resetPage),
+    };
+  }, []);
 
   const updateQuery = useCallback((q: string) => {
     setRawQuery(q);
@@ -251,6 +257,9 @@ export function useFilteredArticles({
     return ids;
   }, [selectedArticleId, gracePeriodId]);
 
+  // メモがある記事 ID のセット（noteOnly フィルターで使用）
+  const noteIds = useMemo(() => new Set(Object.keys(notes ?? {})), [notes]);
+
   // feeds が変わったときだけ再構築（フィルター変更時や既読切り替えでは再利用される）
   const feedFilterMap = useMemo(() => buildFilterMap(feeds, (f) => f.id), [feeds]);
   // globalFilter も feedFilterMap と同様に変更時だけ正規化（filterAndSortArticles の hot path から除外）
@@ -274,6 +283,8 @@ export function useFilteredArticles({
         bookmarkOnly,
         readingListOnly,
         likeOnly,
+        noteOnly,
+        noteIds,
         query,
         sortOrder,
         dateRange,
@@ -300,6 +311,8 @@ export function useFilteredArticles({
       bookmarkOnly,
       readingListOnly,
       likeOnly,
+      noteOnly,
+      noteIds,
       query,
       sortOrder,
       dateRange,
@@ -356,6 +369,8 @@ export function useFilteredArticles({
     toggleReadingListOnly,
     likeOnly,
     toggleLikeOnly,
+    noteOnly,
+    toggleNoteOnly,
     sortOrder,
     toggleSortOrder,
     dateRange,
