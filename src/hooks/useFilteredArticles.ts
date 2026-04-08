@@ -1,12 +1,4 @@
-import {
-  useState,
-  useMemo,
-  useEffect,
-  useRef,
-  useCallback,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type {
   Article,
   DateRange,
@@ -32,39 +24,6 @@ const PAGE_SIZE = 30;
 const EMPTY_SET = new Set<string>();
 const EMPTY_STR_ARRAY: string[] = [];
 const EMPTY_FEED_ARRAY: Feed[] = [];
-
-/** boolean フィルタートグル + localStorage 保存 + ページリセットを行うコールバックを生成する */
-function makeFilterToggle(
-  setter: Dispatch<SetStateAction<boolean>>,
-  key: string,
-  resetPage: () => void,
-): () => void {
-  return () => {
-    setter((v) => {
-      const next = !v;
-      storageSet(key, next ? "1" : "0");
-      return next;
-    });
-    resetPage();
-  };
-}
-
-/** 列挙値を循環させて localStorage に保存し、ページをリセットするコールバックを生成する */
-function makeCycler<T extends string>(
-  cycle: readonly T[],
-  ref: { current: T },
-  storageKey: string,
-  setter: Dispatch<SetStateAction<T>>,
-  resetPage: () => void,
-): () => T {
-  return () => {
-    const next = cycleValue(cycle, ref.current);
-    storageSet(storageKey, next);
-    setter(next);
-    resetPage();
-    return next;
-  };
-}
 
 interface Options {
   /** フィルタリング対象の全記事リスト */
@@ -188,25 +147,45 @@ export function useFilteredArticles({
     setCategoryFilter(null);
   }, [feedId]);
 
-  const {
-    toggleUnreadOnly,
-    toggleBookmarkOnly,
-    toggleReadingListOnly,
-    toggleLikeOnly,
-    toggleNoteOnly,
-  } = useMemo(() => {
-    const resetPage = () => setPage(1);
-    return {
-      toggleUnreadOnly: makeFilterToggle(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, resetPage),
-      toggleBookmarkOnly: makeFilterToggle(setBookmarkOnly, STORAGE_KEYS.BOOKMARK_ONLY, resetPage),
-      toggleReadingListOnly: makeFilterToggle(
-        setReadingListOnly,
-        STORAGE_KEYS.READING_LIST_ONLY,
-        resetPage,
-      ),
-      toggleLikeOnly: makeFilterToggle(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, resetPage),
-      toggleNoteOnly: makeFilterToggle(setNoteOnly, STORAGE_KEYS.NOTE_ONLY, resetPage),
-    };
+  const toggleUnreadOnly = useCallback(() => {
+    setUnreadOnly((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.UNREAD_ONLY, next ? "1" : "0");
+      return next;
+    });
+    setPage(1);
+  }, []);
+  const toggleBookmarkOnly = useCallback(() => {
+    setBookmarkOnly((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.BOOKMARK_ONLY, next ? "1" : "0");
+      return next;
+    });
+    setPage(1);
+  }, []);
+  const toggleReadingListOnly = useCallback(() => {
+    setReadingListOnly((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.READING_LIST_ONLY, next ? "1" : "0");
+      return next;
+    });
+    setPage(1);
+  }, []);
+  const toggleLikeOnly = useCallback(() => {
+    setLikeOnly((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.LIKE_ONLY, next ? "1" : "0");
+      return next;
+    });
+    setPage(1);
+  }, []);
+  const toggleNoteOnly = useCallback(() => {
+    setNoteOnly((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.NOTE_ONLY, next ? "1" : "0");
+      return next;
+    });
+    setPage(1);
   }, []);
 
   const updateQuery = useCallback((q: string) => {
@@ -214,32 +193,27 @@ export function useFilteredArticles({
     setPage(1);
   }, []);
 
-  const { toggleSortOrder, cycleDateRange, cycleReadingTimeRange } = useMemo(() => {
-    const resetPage = () => setPage(1);
-    return {
-      toggleSortOrder: makeCycler(
-        SORT_ORDER_CYCLE,
-        sortOrderRef,
-        STORAGE_KEYS.SORT_ORDER,
-        setSortOrder,
-        resetPage,
-      ),
-      cycleDateRange: makeCycler(
-        DATE_RANGE_CYCLE,
-        dateRangeRef,
-        STORAGE_KEYS.DATE_RANGE,
-        setDateRange,
-        resetPage,
-      ),
-      cycleReadingTimeRange: makeCycler(
-        READING_TIME_RANGE_CYCLE,
-        readingTimeRangeRef,
-        STORAGE_KEYS.READING_TIME_RANGE,
-        setReadingTimeRange,
-        resetPage,
-      ),
-    };
-  }, [sortOrderRef, dateRangeRef, readingTimeRangeRef]);
+  const toggleSortOrder = useCallback(() => {
+    const next = cycleValue(SORT_ORDER_CYCLE, sortOrderRef.current);
+    storageSet(STORAGE_KEYS.SORT_ORDER, next);
+    setSortOrder(next);
+    setPage(1);
+    return next;
+  }, [sortOrderRef]);
+  const cycleDateRange = useCallback(() => {
+    const next = cycleValue(DATE_RANGE_CYCLE, dateRangeRef.current);
+    storageSet(STORAGE_KEYS.DATE_RANGE, next);
+    setDateRange(next);
+    setPage(1);
+    return next;
+  }, [dateRangeRef]);
+  const cycleReadingTimeRange = useCallback(() => {
+    const next = cycleValue(READING_TIME_RANGE_CYCLE, readingTimeRangeRef.current);
+    storageSet(STORAGE_KEYS.READING_TIME_RANGE, next);
+    setReadingTimeRange(next);
+    setPage(1);
+    return next;
+  }, [readingTimeRangeRef]);
 
   const loadMore = useCallback(() => {
     setPage((p) => p + 1);
