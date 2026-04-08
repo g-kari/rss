@@ -8,6 +8,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### リファクタリング
 
+- **\`useEventListener\` フック抽出** — \`window\` / \`document\` へのイベントリスナー登録・解除を抽象化する \`useEventListener\` フックを追加。\`useReadState\` の \`beforeunload\` / \`visibilitychange\` リスナーを置き換え、\`useEffect\` 内の手動 \`addEventListener\` / \`removeEventListener\` ペアと deps 配列管理を不要にした。
+
 - **\`/api/stats\` の日付リスト生成を共通化** — \`last7Days\` / \`last365Days\` のコードを \`buildDayList(n)\` ヘルパーに統合。連続活動日数計算で両ブランチが同値だった無意味な三項演算子を削除。
 
 - **\`PATCH /api/feeds/:id\` ハンドラを簡略化** — \`category\` / \`mutedUntil\` フィールドのネストされた \`else { if (...) }\` を \`else if\` チェーンにフラット化。冗長なインラインコメントを削除。130 行 → 120 行。
