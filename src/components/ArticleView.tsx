@@ -1246,14 +1246,16 @@ function useSelectionExclude(containerRef: React.RefObject<HTMLElement | null>) 
 
 interface SelectionExcludePopupProps {
   popup: SelectionPopupState;
-  globalFilter: KeywordFilter | null;
-  onSaveGlobalFilter: (filter: KeywordFilter | null) => void;
+  article: { title: string; link: string };
+  globalFilter?: KeywordFilter | null;
+  onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
   showToast?: (msg: string) => void;
   onClose: () => void;
 }
 
 function SelectionExcludePopup({
   popup,
+  article,
   globalFilter,
   onSaveGlobalFilter,
   showToast,
@@ -1261,13 +1263,23 @@ function SelectionExcludePopup({
 }: SelectionExcludePopupProps) {
   const displayText = popup.text.length > 24 ? `${popup.text.slice(0, 24)}…` : popup.text;
 
+  function doCopyQuote(e: { preventDefault: () => void }) {
+    e.preventDefault();
+    const quote = `> ${popup.text.replace(/\n/g, "\n> ")}\n\n— [${article.title}](${article.link})`;
+    navigator.clipboard
+      .writeText(quote)
+      .then(() => showToast?.("引用をコピーしました"))
+      .catch(() => showToast?.("コピーに失敗しました"));
+    onClose();
+  }
+
   function doExclude(e: { preventDefault: () => void }) {
     e.preventDefault(); // 選択を維持しつつボタン押下
     const existing = globalFilter?.exclude ?? [];
     if (existing.includes(popup.text)) {
       showToast?.("既にグローバル除外キーワードに登録されています");
     } else {
-      onSaveGlobalFilter({
+      onSaveGlobalFilter?.({
         include: globalFilter?.include ?? [],
         exclude: [...existing, popup.text],
         matchCategories: globalFilter?.matchCategories,
@@ -1282,9 +1294,9 @@ function SelectionExcludePopup({
       <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 transform">
         <div className="bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden">
           <button
-            onMouseDown={doExclude}
-            onTouchEnd={doExclude}
-            className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors whitespace-nowrap"
+            onMouseDown={doCopyQuote}
+            onTouchEnd={doCopyQuote}
+            className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors whitespace-nowrap w-full"
           >
             <svg
               width="10"
@@ -1297,10 +1309,36 @@ function SelectionExcludePopup({
               strokeLinejoin="round"
               className="flex-shrink-0 text-text-muted"
             >
-              <path d="M18 6L6 18M6 6l12 12" />
+              <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
+              <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
             </svg>
-            <span>「{displayText}」を除外</span>
+            <span>引用をコピー</span>
           </button>
+          {onSaveGlobalFilter && (
+            <>
+              <div className="border-t border-border-subtle" />
+              <button
+                onMouseDown={doExclude}
+                onTouchEnd={doExclude}
+                className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors whitespace-nowrap w-full"
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="flex-shrink-0 text-text-muted"
+                >
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+                <span>「{displayText}」を除外</span>
+              </button>
+            </>
+          )}
         </div>
         {/* 吹き出し三角 */}
         <div className="flex justify-center -mt-px">
@@ -2385,11 +2423,12 @@ export default function ArticleView({
           </div>
         </div>
       )}
-      {selectionPopup && onSaveGlobalFilter && (
+      {selectionPopup && article.link && (
         <SelectionExcludePopup
           popup={selectionPopup}
+          article={{ title: article.title, link: article.link }}
           globalFilter={globalFilter ?? null}
-          onSaveGlobalFilter={onSaveGlobalFilter}
+          onSaveGlobalFilter={onSaveGlobalFilter ?? undefined}
           showToast={showToast}
           onClose={clearSelectionPopup}
         />
