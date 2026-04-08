@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useReadingStats } from "../hooks/useReadingStats";
@@ -184,7 +184,7 @@ export default function ReadingStatsModal({
     fetchStats();
   }, [fetchStats]);
 
-  const feedMap = new Map(feeds.map((f) => [f.id, f.title]));
+  const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title])), [feeds]);
 
   const maxDaily = stats ? Math.max(...stats.dailyReadCounts.map((d) => d.count), 1) : 1;
 
