@@ -322,6 +322,8 @@ export default function App() {
     searchRef,
     sentinelRef,
     notifyArticlesAdded,
+    authorFilter,
+    setAuthorFilter,
   } = useFilteredArticles({
     articles,
     feeds,
@@ -923,6 +925,8 @@ export default function App() {
             globalFilter={globalFilter}
             onSaveGlobalFilter={setGlobalFilter}
             notes={notes}
+            authorFilter={authorFilter}
+            onClearAuthorFilter={() => setAuthorFilter(null)}
           />
         </ErrorBoundary>
       </div>
@@ -960,6 +964,10 @@ export default function App() {
             note={selectedArticle ? notes[selectedArticle.id] : undefined}
             onSetNote={setNote}
             onDeleteNote={deleteNote}
+            onSetAuthorFilter={(author) => {
+              setAuthorFilter(author);
+              showToast(`「${author}」の記事に絞り込みました`);
+            }}
           />
         </ErrorBoundary>
       </div>
