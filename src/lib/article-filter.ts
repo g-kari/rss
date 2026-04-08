@@ -1,5 +1,5 @@
-import type { Article, DateRange, KeywordFilter, ReadingTimeRange } from "../types";
-import { matchesKeywordFilter } from "./keyword-filter";
+import type { Article, DateRange, ReadingTimeRange } from "../types";
+import { type CompiledKeywordFilter, matchesKeywordFilter } from "./keyword-filter";
 import { articleMatchesQuery, getDateRangeStart, readingTime } from "./article-utils";
 import { SPECIAL_FEED_IDS } from "./storage";
 
@@ -20,8 +20,8 @@ export function isArticleRead(
 
 export interface ArticleFilterOptions {
   feedId: string | null;
-  /** feedHash → KeywordFilter のマップ（呼び出し側で buildFilterMap を使って事前計算すること） */
-  feedFilterMap: Map<string, KeywordFilter>;
+  /** feedHash → CompiledKeywordFilter のマップ（呼び出し側で buildFilterMap を使って事前計算すること） */
+  feedFilterMap: Map<string, CompiledKeywordFilter>;
   readIds: Set<string>;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
@@ -39,7 +39,7 @@ export interface ArticleFilterOptions {
   activeIds: Set<string>;
   nsfwMode: boolean;
   nsfwFeedIds: Set<string>;
-  globalFilter: KeywordFilter | null;
+  globalFilter: CompiledKeywordFilter | null;
   readBeforeTimestamp: string | null;
   /** スヌーズ中の記事 — articleId → スヌーズ解除予定時刻（ISO 8601） */
   snoozedUntil?: Record<string, string>;

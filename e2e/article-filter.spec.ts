@@ -1,7 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { filterAndSortArticles, type ArticleFilterOptions } from "../src/lib/article-filter";
-import type { Article, Feed } from "../src/types";
-import { buildFilterMap } from "../src/lib/keyword-filter";
+import type { Article, Feed, KeywordFilter } from "../src/types";
+import {
+  buildFilterMap,
+  normalizeFilter,
+  type CompiledKeywordFilter,
+} from "../src/lib/keyword-filter";
 import { SPECIAL_FEED_IDS } from "../src/lib/storage";
 
 /**
@@ -56,8 +60,17 @@ const BASE_OPTS: ArticleFilterOptions = {
   readBeforeTimestamp: null,
 };
 
-function run(articles: Article[], opts: Partial<ArticleFilterOptions> = {}): Article[] {
-  return filterAndSortArticles(articles, { ...BASE_OPTS, ...opts });
+type RunOptions = Omit<Partial<ArticleFilterOptions>, "globalFilter"> & {
+  globalFilter?: KeywordFilter | CompiledKeywordFilter | null;
+};
+
+function run(articles: Article[], opts: RunOptions = {}): Article[] {
+  const { globalFilter, ...rest } = opts;
+  const compiled =
+    globalFilter == null || "includePatterns" in globalFilter
+      ? (globalFilter as CompiledKeywordFilter | null | undefined)
+      : normalizeFilter(globalFilter);
+  return filterAndSortArticles(articles, { ...BASE_OPTS, ...rest, globalFilter: compiled ?? null });
 }
 
 function ids(articles: Article[]): string[] {

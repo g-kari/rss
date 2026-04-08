@@ -6,13 +6,29 @@ const MAX_KEYWORDS_PER_ARRAY = 500;
 const MAX_REGEX_PATTERN_LENGTH = 50;
 
 /**
+ * `normalizeFilter` が返す実行時表現。
+ * 正規表現キーワード (`/pattern/` 形式) はコンパイル済み `RegExp` に変換され、
+ * フィルタリング時に記事ごとの再コンパイルを回避する。
+ * 不正なパターン / ReDoS リスクがある場合は対応する要素が `null` になり、マッチしない扱いになる。
+ */
+export interface CompiledKeywordFilter {
+  include: string[];
+  exclude: string[];
+  matchCategories?: boolean;
+  /** include の各エントリに対応するコンパイル済み RegExp（正規表現でない / 不正な場合は null） */
+  includePatterns: (RegExp | null)[];
+  /** exclude の各エントリに対応するコンパイル済み RegExp（正規表現でない / 不正な場合は null） */
+  excludePatterns: (RegExp | null)[];
+}
+
+/**
  * ReDoS（正規表現サービス拒否）を引き起こす壊滅的バックトラッキングパターンを検出する。
  * 典型的なパターン:
  * - ネストした量指定子: (a+)+ / (a{2,})+ / ((ab)+)+
  * - 交互化を含むグループへの量指定子: (a|aa)+ / (foo|foobar)*
  * - 文字クラス内に ) を含む量指定子グループ: ([a-z)]+)+
  *
- * 危険と判定した場合は `matchesText` がマッチを中止（false を返す）。
+ * 危険と判定した場合は `normalizeFilter` がその RegExp を null にする（マッチしない扱い）。
  *
  * @param pattern - スラッシュを除いた正規表現パターン文字列（`/pattern/` の内側）
  * @returns 壊滅的バックトラッキングの恐れがあれば true
@@ -56,24 +72,12 @@ function isRegexKeyword(kw: string): boolean {
 }
 
 /**
- * キーワードが記事テキストにマッチするかを判定する。
- *
- * - **正規表現キーワード** (`/pattern/` 形式): `i` フラグ付きで大文字小文字を無視して評価する。
- *   ReDoS の恐れがあるパターンは false を返す。
- * - **文字列キーワード**: `includes` で部分一致。大文字小文字の統一は呼び出し元の責務であり、
- *   `normalizeFilter` で小文字化済みのキーワードと `matchesKeywordFilter` で小文字化済みの
- *   `text` が渡されることを前提とする。
+ * `normalizeFilter` で事前コンパイルされた単一エントリでマッチ判定する。
+ * - 正規表現エントリ: コンパイル済み `pattern` を使用（null = 不正 / ReDoS リスク → 不マッチ扱い）
+ * - 文字列エントリ: `includes` で部分一致（`normalizeFilter` で小文字化済み）
  */
-function matchesText(kw: string, text: string): boolean {
-  if (isRegexKeyword(kw)) {
-    const pattern = kw.slice(1, -1);
-    if (hasCatastrophicBacktracking(pattern)) return false;
-    try {
-      return new RegExp(pattern, "i").test(text);
-    } catch {
-      return false;
-    }
-  }
+function matchesCompiledEntry(kw: string, pattern: RegExp | null, text: string): boolean {
+  if (isRegexKeyword(kw)) return pattern !== null && pattern.test(text);
   return text.includes(kw);
 }
 
@@ -95,24 +99,44 @@ export function sanitizeKeywords(arr: unknown[]): string[] {
   ].slice(0, MAX_KEYWORDS_PER_ARRAY);
 }
 
-/** KeywordFilter のキーワードを正規化する。正規表現キーワードはそのまま保持し、それ以外は小文字化する */
-export function normalizeFilter(filter: KeywordFilter): KeywordFilter {
+/**
+ * KeywordFilter のキーワードを正規化し、正規表現をコンパイルした `CompiledKeywordFilter` を返す。
+ * - 文字列キーワードは小文字化する
+ * - 正規表現キーワード (`/pattern/` 形式) はコンパイル済み `RegExp` に変換する
+ * - ReDoS リスクがあるパターンや不正な構文は `null` として保持し、マッチしない扱いにする
+ */
+export function normalizeFilter(filter: KeywordFilter): CompiledKeywordFilter {
+  const compileKeyword = (kw: string): [normalized: string, pattern: RegExp | null] => {
+    if (!isRegexKeyword(kw)) return [kw.toLowerCase(), null];
+    const pattern = kw.slice(1, -1);
+    if (hasCatastrophicBacktracking(pattern)) return [kw, null];
+    try {
+      return [kw, new RegExp(pattern, "i")];
+    } catch {
+      return [kw, null];
+    }
+  };
+  const includeCompiled = filter.include.map(compileKeyword);
+  const excludeCompiled = filter.exclude.map(compileKeyword);
   return {
     ...filter,
-    include: filter.include.map((kw) => (isRegexKeyword(kw) ? kw : kw.toLowerCase())),
-    exclude: filter.exclude.map((kw) => (isRegexKeyword(kw) ? kw : kw.toLowerCase())),
+    include: includeCompiled.map(([kw]) => kw),
+    exclude: excludeCompiled.map(([kw]) => kw),
+    includePatterns: includeCompiled.map(([, p]) => p),
+    excludePatterns: excludeCompiled.map(([, p]) => p),
   };
 }
 
 /**
  * filter フィールドを持つオブジェクト配列からフィルターマップを構築する。
  * getKey で各要素の ID を取得し、キーワードが空のフィルターは除外する。
+ * 返されるマップの値は `normalizeFilter` 適用済みの `CompiledKeywordFilter`。
  */
 export function buildFilterMap<T extends { filter?: KeywordFilter }>(
   items: T[],
   getKey: (item: T) => string,
-): Map<string, KeywordFilter> {
-  const map = new Map<string, KeywordFilter>();
+): Map<string, CompiledKeywordFilter> {
+  const map = new Map<string, CompiledKeywordFilter>();
   for (const item of items) {
     const f = item.filter;
     if (f && (f.include.length > 0 || f.exclude.length > 0)) {
@@ -135,11 +159,11 @@ export function buildFilterMap<T extends { filter?: KeywordFilter }>(
  * 例: include=["AI"], exclude=["生成AI"] のとき
  *   "生成AIの未来" → include にマッチするが exclude でブロック → 除外
  *
- * @param article - 対象記事（`normalizeFilter` 適用済みフィルターと組み合わせること）
- * @param filter - `normalizeFilter` で正規化済みの KeywordFilter
+ * @param article - 対象記事
+ * @param filter - `normalizeFilter` で正規化・コンパイル済みの CompiledKeywordFilter
  */
-export function matchesKeywordFilter(article: Article, filter: KeywordFilter): boolean {
-  const { include, exclude, matchCategories } = filter;
+export function matchesKeywordFilter(article: Article, filter: CompiledKeywordFilter): boolean {
+  const { include, exclude, includePatterns, excludePatterns, matchCategories } = filter;
 
   const fields = [article.title, article.summary];
   if (matchCategories && article.categories) {
@@ -150,8 +174,9 @@ export function matchesKeywordFilter(article: Article, filter: KeywordFilter): b
   }
   const text = fields.join(" ").toLowerCase();
   return (
-    exclude.every((kw) => !matchesText(kw, text)) &&
-    (include.length === 0 || include.some((kw) => matchesText(kw, text)))
+    exclude.every((kw, i) => !matchesCompiledEntry(kw, excludePatterns[i], text)) &&
+    (include.length === 0 ||
+      include.some((kw, i) => matchesCompiledEntry(kw, includePatterns[i], text)))
   );
 }
 
@@ -163,8 +188,8 @@ export function matchesKeywordFilter(article: Article, filter: KeywordFilter): b
 export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter): Article[] {
   if (!filter) return articles;
   if (filter.include.length === 0 && filter.exclude.length === 0) return articles;
-  const normalized = normalizeFilter(filter);
-  return articles.filter((a) => matchesKeywordFilter(a, normalized));
+  const compiled = normalizeFilter(filter);
+  return articles.filter((a) => matchesKeywordFilter(a, compiled));
 }
 
 /**
@@ -185,12 +210,12 @@ export function parseKeywordFilter(raw: unknown): KeywordFilter | null {
 }
 
 /**
- * feedHash → KeywordFilter のマップを使って記事リストをフィルタリングする。
+ * feedHash → CompiledKeywordFilter のマップを使って記事リストをフィルタリングする。
  * 各記事の feedHash に対応するフィルターが存在しない場合は通過させる。
  */
 export function applyKeywordFilterMap(
   articles: Article[],
-  filterMap: Map<string, KeywordFilter>,
+  filterMap: Map<string, CompiledKeywordFilter>,
 ): Article[] {
   if (filterMap.size === 0) return articles;
   return articles.filter((a) => {
