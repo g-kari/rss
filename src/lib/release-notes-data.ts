@@ -13,6 +13,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 ### リファクタリング
 
 - **\`buildArticlePredicate\` の \`!isActive\` チェックを単一ブロックに集約** — \`article-filter.ts\` のフィルター述語で \`&& !isActive(a.id)\` が各条件に重複していた問題を解消。アクティブ記事のガード処理を \`if (!isActive(a.id))\` ブロックにまとめ、コードの意図を明確化。動作は変わらない。
+- **\`matchesFeedId\` を分離** — \`buildArticlePredicate\` 内の特殊フィード分岐（\`if/else if\` チェーン）を \`matchesFeedId\` 関数に切り出し、述語本体のフィード絞り込みを 1 行に凝縮。カテゴリフィルターの冗長な null チェックも \`?.\` でスリム化。
 
 ### セキュリティ
 
