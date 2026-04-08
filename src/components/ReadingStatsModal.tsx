@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useReadingStats } from "../hooks/useReadingStats";
-import type { Feed } from "../types";
+import { useInboxProgress } from "../hooks/useInboxProgress";
+import type { Article, Feed } from "../types";
 
 interface Props {
   feeds: Feed[];
+  articles: Article[];
+  readIds: Set<string>;
+  readBeforeTimestamp?: string | null;
   onClose: () => void;
 }
 
@@ -166,8 +170,15 @@ function HeatmapCalendar({ data }: HeatmapCalendarProps) {
   );
 }
 
-export default function ReadingStatsModal({ feeds, onClose }: Props) {
+export default function ReadingStatsModal({
+  feeds,
+  articles,
+  readIds,
+  readBeforeTimestamp,
+  onClose,
+}: Props) {
   const { stats, loading, error, fetch: fetchStats } = useReadingStats();
+  const inboxStats = useInboxProgress(articles, feeds, readIds, readBeforeTimestamp ?? null);
 
   useEffect(() => {
     fetchStats();
@@ -253,6 +264,42 @@ export default function ReadingStatsModal({ feeds, onClose }: Props) {
                         <Bar value={score} max={maxScore} />
                         <span className="text-[11px] text-text-muted w-7 text-right tabular-nums flex-shrink-0">
                           {score}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* フィード別未読消化率 */}
+            {inboxStats.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                  フィード別 未読消化率
+                </span>
+                <div className="flex flex-col gap-1.5">
+                  {inboxStats.map(({ feedId, title, unread, readRatio }) => {
+                    const pct = Math.round(readRatio * 100);
+                    return (
+                      <div key={feedId} className="flex items-center gap-2">
+                        <span className="text-[12px] text-text-default truncate flex-1 min-w-0">
+                          {title}
+                        </span>
+                        <div className="flex-shrink-0 w-20">
+                          <div className="h-1.5 bg-surface-subtle rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-300"
+                              style={{
+                                width: `${pct}%`,
+                                backgroundColor:
+                                  unread === 0 ? "var(--color-accent-dot)" : "var(--color-ink)",
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-text-muted w-12 text-right tabular-nums flex-shrink-0">
+                          {unread > 0 ? `${unread}未読` : "✓ 0"}
                         </span>
                       </div>
                     );

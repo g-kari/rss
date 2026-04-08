@@ -857,7 +857,15 @@ export default function FeedSidebar({
         </div>
       )}
       {showReleaseNotes && <ReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
-      {showStats && <ReadingStatsModal feeds={feeds} onClose={() => setShowStats(false)} />}
+      {showStats && (
+        <ReadingStatsModal
+          feeds={feeds}
+          articles={articles}
+          readIds={readIds}
+          readBeforeTimestamp={readBeforeTimestamp}
+          onClose={() => setShowStats(false)}
+        />
+      )}
     </aside>
   );
 }

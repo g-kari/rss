@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-08
 
+### 新機能
+
+- **フィード別未読消化率** — 読書統計モーダルに「フィード別 未読消化率」セクションを追加。未読数が多いフィードから順に最大 10 件のプログレスバーを表示し、消化済みフィードは緑ドットでインジケート。
+
 ### リファクタリング
 
 - **\`useEventListener\` フック抽出** — \`window\` / \`document\` へのイベントリスナー登録・解除を抽象化する \`useEventListener\` フックを追加。\`useReadState\` の \`beforeunload\` / \`visibilitychange\` リスナーを置き換え、\`useEffect\` 内の手動 \`addEventListener\` / \`removeEventListener\` ペアと deps 配列管理を不要にした。
