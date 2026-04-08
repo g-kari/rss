@@ -50,6 +50,8 @@ const BASE_OPTS: ArticleFilterOptions = {
   bookmarkOnly: false,
   readingListOnly: false,
   likeOnly: false,
+  noteOnly: false,
+  noteIds: new Set(),
   query: "",
   sortOrder: "newest",
   dateRange: "all",
@@ -743,6 +745,34 @@ test.describe("readingTimeRange — 読了時間フィルター", () => {
 // ==========================================================================
 // エッジケース
 // ==========================================================================
+
+test.describe("noteOnly — メモありフィルター", () => {
+  test("noteOnly=true のときメモがある記事だけを返す", () => {
+    const result = run([A1, A2, A3], {
+      noteOnly: true,
+      noteIds: new Set([A1.id, A3.id]),
+    });
+    expect(result.map((a) => a.id)).toEqual([A1.id, A3.id]);
+  });
+
+  test("noteOnly=false のとき全記事を返す", () => {
+    const result = run([A1, A2, A3], {
+      noteOnly: false,
+      noteIds: new Set([A1.id]),
+    });
+    expect(result).toHaveLength(3);
+  });
+
+  test("noteOnly=true でも activeIds に含まれれば表示される", () => {
+    const result = run([A1, A2, A3], {
+      noteOnly: true,
+      noteIds: new Set([A1.id]),
+      activeIds: new Set([A2.id]),
+    });
+    expect(result.map((a) => a.id)).toContain(A2.id);
+    expect(result.map((a) => a.id)).not.toContain(A3.id);
+  });
+});
 
 test.describe("エッジケース", () => {
   test("articles が空なら空配列を返す", () => {

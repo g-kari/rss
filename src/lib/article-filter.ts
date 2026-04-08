@@ -32,6 +32,8 @@ export interface ArticleFilterOptions {
   bookmarkOnly: boolean;
   readingListOnly: boolean;
   likeOnly: boolean;
+  noteOnly: boolean;
+  noteIds: Set<string>;
   query: string;
   sortOrder: "newest" | "oldest";
   dateRange: DateRange;
@@ -71,7 +73,7 @@ function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boo
  * 4. ミュート中のフィードを除外（全フィード表示時のみ）
  * 5. フィード別キーワードフィルター（feedFilterMap）
  * 6. グローバルキーワードフィルター（globalFilter）
- * 7. 未読のみ・ブックマークのみ・リーディングリストのみフィルター
+ * 7. 未読のみ・ブックマークのみ・リーディングリストのみ・メモありのみフィルター
  * 8. 検索クエリ（title / summary / author / categories の AND 検索）
  * 9. 日付範囲
  * 10. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
@@ -99,6 +101,8 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     bookmarkOnly,
     readingListOnly,
     likeOnly,
+    noteOnly,
+    noteIds,
     query: rawQuery,
     sortOrder,
     dateRange,
@@ -159,6 +163,9 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
 
     // いいねフィルター（アクティブな記事は除外しない）
     if (likeOnly && !likeIds.has(a.id) && !isActive(a.id)) return false;
+
+    // メモありフィルター（アクティブな記事は除外しない）
+    if (noteOnly && !noteIds.has(a.id) && !isActive(a.id)) return false;
 
     // 検索クエリ（title・summary・author・categories を AND 検索）
     if (q && !articleMatchesQuery(a, q)) return false;

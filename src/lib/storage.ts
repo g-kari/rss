@@ -45,6 +45,7 @@ export const STORAGE_KEYS = {
   SNOOZED_UNTIL: "rss-snoozed",
   NOTES: "rss-notes",
   READING_TIME_RANGE: "rss-reading-time-range",
+  NOTE_ONLY: "rss-note-only",
   CACHED_USER: "rss-cached-user",
   COLLAPSED_CATEGORIES: "rss-collapsed-cats",
 } as const;
