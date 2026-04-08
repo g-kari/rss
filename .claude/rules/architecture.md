@@ -261,6 +261,72 @@ npx wrangler secret put CLIENT_ID
 npx wrangler secret put CLIENT_SECRET
 ```
 
+## コンテンツ抽出戦略 (`src/lib/content.ts`)
+
+`extractMainContent` は以下の 3 段階で本文を抽出する。
+
+```
+1. resolveScriptLoadedImages  — JS で動的セットされる画像 src を静的に解決（<script> 除去前に必須）
+2. extractThumbListImgs       — ギャラリー UL を別途取得して末尾に hidden div として付与
+3. extractWithReadability     — @mozilla/readability + linkedom で DOM パース → 本文抽出
+   ├─ 成功 + 画像損失チェック:
+   │    srcImgCount >= 8 かつ rcImgCount < srcImgCount * 20% の場合
+   │    → extractWithRegex にフォールバック（PR TIMES 等の画像主体ページ対策）
+   └─ 失敗 / 本文不十分: extractWithRegex へフォールバック
+4. extractWithRegex           — stripPageChrome → サイト固有セレクター → EC セレクター → 汎用セレクター
+5. postProcess                — ノイズ除去 → 画像処理 → リンク修正 → テーブルラップ → sanitizeHtml
+```
+
+### 画像損失チェックの閾値（20%）
+
+Readability は本文テキストの精度を優先するため、画像主体のページで多数の `<img>` を脱落させることがある。
+`srcImgCount >= 8 && rcImgCount * 5 < srcImgCount` の条件で regex フォールバックを試みる。
+regex 結果が Readability 結果の 2 倍以上の画像を含む場合のみ regex を採用する。
+
+### extractWithRegex のフォールバック順
+
+1. サイト固有セレクター（Qiita `itemprop="articleBody"`, Zenn `class="znc"` など）
+2. EC / 商品ページ（Schema.org `itemprop="description"`, Shopify 等）
+3. 汎用セレクター（`<article>`, `class="article"` 等）
+4. 最終フォールバック（`<main>` または `<body>`）
+
+### postProcess パイプライン（適用順）
+
+```
+removeNoise → transformZennLinkEmbeds → transformZennMermaidEmbeds
+→ fixLazyImages → fixImageDimensions(pageUrl) → rewriteImageUrls
+→ fixExternalLinks → wrapTables → sanitizeHtml
+```
+
+> **重要**: `sanitizeHtml` は必ずパイプライン最後に実行。途中で実行すると後続処理が XSS を再注入する可能性がある。
+
+---
+
+## キーワードフィルタリング設計 (`src/lib/keyword-filter.ts`)
+
+### CompiledKeywordFilter パターン
+
+フィルター設定変更時に一度だけ正規表現をコンパイルし、記事ごとの再コンパイルを回避する。
+
+```typescript
+// フィルター設定変更時（useFilteredArticles の useMemo 内）
+const filterMap = buildCompiledFilterMap(feeds, keywordFilters);
+
+// 記事ごとの判定（コンパイル済みを再利用）
+const match = matchesKeywordFilter(article, compiledFilter);
+```
+
+### ReDoS 対策 (`hasCatastrophicBacktracking`)
+
+ユーザー入力の正規表現を `/pattern/` 形式で受け付けるが、壊滅的バックトラッキングを検出した場合は
+`null`（マッチしない）扱いにしてサービス拒否を防ぐ。検出対象パターン:
+
+- ネストした量指定子: `(a+)+` / `(a{2,})+`
+- 量指定子付き交互化グループ: `(a|aa)+`
+- 文字クラスが混在するネストグループ: `([a-z)]+)+`
+
+---
+
 ## ビルド・デプロイ
 
 ```bash

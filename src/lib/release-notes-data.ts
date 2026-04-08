@@ -6,6 +6,16 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-09
 
+### ドキュメント整備
+
+- **コンテンツ抽出戦略** — \`architecture.md\` に \`extractMainContent\` の 3 段階フォールバック・画像損失チェック（20% 閾値）・\`postProcess\` パイプライン順序を記載
+- **キーワードフィルタリング設計** — \`architecture.md\` に \`CompiledKeywordFilter\` の設計意図と ReDoS 対策パターンを記載
+- **stale closure 回避パターン** — \`coding-conventions.md\` に \`useSyncedRef\` の使い方と主な使用箇所を記載
+- **読み取り状態マージ戦略** — \`coding-conventions.md\` にローカル優先マージ・スヌーズ期限の例外処理を記載
+- **hooks JSDoc** — \`usePushNotifications\` / \`useReadingStats\` / \`useRecommendations\` / \`useUIState\` にフック説明コメントを追加
+
+## 2026-04-09
+
 ### セキュリティ
 
 - **XSS修正: RSS本文の未サニタイズ経路を塞ぐ** — \`processContent()\` / \`stripIframes()\` にサニタイズを追加。フルテキスト取得できない場合に RSS フィード直値の \`article.content\` が \`dangerouslySetInnerHTML\` へ流れる経路で \`sanitizeHtml()\` が適用されていなかった問題を修正。悪意ある RSS フィードに埋め込まれた \`<script>\` やイベントハンドラが実行される恐れがあった。

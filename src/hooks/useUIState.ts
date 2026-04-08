@@ -69,6 +69,13 @@ export interface UIState {
   onNSFWAnimationComplete: () => void;
 }
 
+/**
+ * グローバル UI 状態管理フック。
+ *
+ * テーマ（light/dark）・レイアウト・フォント設定は `localStorage` に永続化する。
+ * テーマ初期値は `prefers-color-scheme` を参照し、`document.documentElement.dataset.theme` を切り替える。
+ * モーダル表示状態・PWA インストールプロンプト (`BeforeInstallPromptEvent`) も管理する。
+ */
 export function useUIState(initialMobilePane: MobilePane): UIState {
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [fontSize, setFontSize] = useState<FontSize>(loadFontSize);

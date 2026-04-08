@@ -20,6 +20,13 @@ export interface PushNotificationState {
   sendTest: () => Promise<string>;
 }
 
+/**
+ * Web Push 通知サブスクリプション管理フック。
+ *
+ * マウント時に service worker の準備完了を待ち、現在の購読状態を確認する。
+ * `toggle()` で購読/解除を行い、成功時は /api/push/subscribe or /api/push/unsubscribe に送信する。
+ * ブラウザが Push をサポートしない場合や `user` が未ログインの場合は `supported: false` を返す。
+ */
 export function usePushNotifications(user: UserProfile | null | undefined): PushNotificationState {
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
