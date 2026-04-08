@@ -34,19 +34,18 @@ export async function GET() {
     const now = new Date();
     const todayStr = toDateStr(now.toISOString());
 
-    // 直近 7 日・365 日の日付リストを事前生成
-    const last7Days: string[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setUTCDate(d.getUTCDate() - i);
-      last7Days.push(toDateStr(d.toISOString()));
+    // 直近 N 日の日付リストを事前生成（古い順）
+    function buildDayList(days: number): string[] {
+      const result: string[] = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setUTCDate(d.getUTCDate() - i);
+        result.push(toDateStr(d.toISOString()));
+      }
+      return result;
     }
-    const last365Days: string[] = [];
-    for (let i = 364; i >= 0; i--) {
-      const d = new Date(now);
-      d.setUTCDate(d.getUTCDate() - i);
-      last365Days.push(toDateStr(d.toISOString()));
-    }
+    const last7Days = buildDayList(7);
+    const last365Days = buildDayList(365);
 
     // 今週（UTC 月曜）の ISO 文字列（文字列比較で週判定）
     const dayOfWeek = now.getUTCDay(); // 0=Sun
@@ -91,7 +90,7 @@ export async function GET() {
 
     // 連続活動日数（UTC 日単位）
     let streak = 0;
-    const checkDate = activeDays.has(todayStr) ? new Date(now) : new Date(now);
+    const checkDate = new Date(now);
     if (!activeDays.has(todayStr)) checkDate.setUTCDate(checkDate.getUTCDate() - 1);
     while (activeDays.has(toDateStr(checkDate.toISOString()))) {
       streak++;
