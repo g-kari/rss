@@ -12,6 +12,14 @@ interface UseRecommendationsResult {
   refreshing: boolean;
 }
 
+/**
+ * フィード推薦取得フック。
+ *
+ * `/api/recommendations` から推薦フィード一覧を取得する。
+ * 推薦結果は R2 に 24 時間キャッシュされ、Workers AI でエンゲージメント履歴を分析して生成される。
+ * `user` が未ログインの場合はフェッチしない。
+ * `dismiss(id)` で特定の推薦を非表示にし、`refresh()` でキャッシュを破棄して再生成する。
+ */
 export function useRecommendations(user: UserProfile | null | undefined): UseRecommendationsResult {
   const [recommendations, setRecommendations] = useState<RecommendedFeed[]>([]);
   const [loading, setLoading] = useState(false);

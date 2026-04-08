@@ -156,6 +156,40 @@ const hash = await sha256Hex(url);
 **注意**: DB (D1) を使っていた時代の snake_case (`published_at`, `feed_id`) は完全に廃止済み。
 JSON データは全て camelCase。
 
+## stale closure 回避パターン (`useSyncedRef`)
+
+`useEffect` / `useCallback` のクロージャが古い値を参照する問題を `useSyncedRef` で回避する。
+レンダーごとに `ref.current` を自動更新するため、常に最新値を参照できる。
+
+```typescript
+// Before: useRef + 手動更新（ミスしやすい）
+const callbackRef = useRef(onUpdate);
+callbackRef.current = onUpdate;
+useEffect(() => {
+  socket.on("data", (v) => callbackRef.current(v));
+}, []);
+
+// After: useSyncedRef（レンダーごとに自動更新）
+const callbackRef = useSyncedRef(onUpdate);
+useEffect(() => {
+  socket.on("data", (v) => callbackRef.current(v));
+}, []);
+```
+
+主な使用箇所: `useReadState`, `useFilteredArticles`, `useKeyboardNav`
+
+## 読み取り状態のマージ戦略 (`useReadState`)
+
+R2 サーバーデータとローカル `localStorage` のマージは **ローカル優先 (local ∪ server)**。
+一度クライアントで既読にした記事はサーバーに未読状態が残っていても既読扱いになる。
+
+```typescript
+// ローカル ∪ サーバー（ローカル優先）
+const merged = new Set([...serverSet, ...localSet]);
+```
+
+例外: **スヌーズ期限はより遅い方を採用**（サーバーの期限が未来の場合を優先）。
+
 ## 禁止事項
 
 - D1 / KV / DO の追加 (シンプルさを保つ)
