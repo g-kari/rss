@@ -74,6 +74,7 @@ interface Props {
   note?: string;
   onSetNote?: (articleId: string, text: string) => void;
   onDeleteNote?: (articleId: string) => void;
+  onSetAuthorFilter?: (author: string) => void;
 }
 
 const SHORT_CONTENT_THRESHOLD = 400;
@@ -1340,6 +1341,7 @@ export default function ArticleView({
   note,
   onSetNote,
   onDeleteNote,
+  onSetAuthorFilter,
 }: Props) {
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -1775,9 +1777,18 @@ export default function ArticleView({
                 })}
               </time>
             )}
-            {article.author && (
-              <span className="tracking-[0.04em] text-text-muted">{article.author}</span>
-            )}
+            {article.author &&
+              (onSetAuthorFilter ? (
+                <button
+                  onClick={() => onSetAuthorFilter(article.author!)}
+                  title={`「${article.author}」の記事に絞り込む`}
+                  className="tracking-[0.04em] text-text-muted hover:text-text-default transition-colors duration-150 text-left"
+                >
+                  {article.author}
+                </button>
+              ) : (
+                <span className="tracking-[0.04em] text-text-muted">{article.author}</span>
+              ))}
             {article.link && !embedInfo && (
               <a
                 href={article.link}

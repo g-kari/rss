@@ -82,6 +82,8 @@ interface Props {
   globalFilter?: KeywordFilter | null;
   onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
   notes?: Record<string, string>;
+  authorFilter?: string | null;
+  onClearAuthorFilter?: () => void;
 }
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
@@ -200,6 +202,8 @@ export default function ArticleList({
   globalFilter,
   onSaveGlobalFilter,
   notes,
+  authorFilter,
+  onClearAuthorFilter,
 }: Props) {
   const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
@@ -451,6 +455,26 @@ export default function ArticleList({
             >
               {READING_TIME_RANGE_LABELS[readingTimeRange]}
             </FilterPillButton>
+            {authorFilter && onClearAuthorFilter && (
+              <button
+                onClick={onClearAuthorFilter}
+                title={`著者「${authorFilter}」フィルターを解除`}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
+              >
+                <span className="truncate">{authorFilter}</span>
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 8 8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                >
+                  <path d="M1 1l6 6M7 1L1 7" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={toggleSortOrder}
               title={sortOrder === "newest" ? "古い順に切り替え (s)" : "新しい順に切り替え (s)"}
