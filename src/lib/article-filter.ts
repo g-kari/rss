@@ -122,12 +122,7 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
   const now = snoozedUntil && Object.keys(snoozedUntil).length > 0 ? new Date().toISOString() : "";
 
   return (a: Article) => {
-    // スヌーズ中の記事は非表示（アクティブな記事は除外しない）
-    if (snoozedUntil && !isActive(a.id)) {
-      const until = snoozedUntil[a.id];
-      if (until && until > now) return false;
-    }
-    // フィード絞り込み
+    // フィード絞り込み（アクティブな記事も対象）
     if (feedId === SPECIAL_FEED_IDS.BOOKMARKS) {
       if (!bookmarkIds.has(a.id)) return false;
     } else if (feedId === SPECIAL_FEED_IDS.READING_LIST) {
@@ -138,56 +133,43 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
       if (!historyIds.has(a.id)) return false;
     } else if (feedId && a.feedHash !== feedId) return false;
 
-    // NSFW フィード — NSFW モードでなければ非表示
-    if (!nsfwMode && nsfwFeedIds.has(a.feedHash) && !isActive(a.id)) return false;
-
-    // ミュート中のフィード — 全フィード表示時のみ除外（特定フィード選択時は表示）
-    if (!feedId && mutedFeedIds?.has(a.feedHash) && !isActive(a.id)) return false;
-
-    // キーワードフィルター（アクティブな記事はフィルタ対象外）
+    // アクティブな記事はフィルター対象外（未読フィルター中でも前後ナビが消えないようにする）
     if (!isActive(a.id)) {
+      // スヌーズ中の記事は非表示
+      if (snoozedUntil) {
+        const until = snoozedUntil[a.id];
+        if (until && until > now) return false;
+      }
+      // NSFW フィード — NSFW モードでなければ非表示
+      if (!nsfwMode && nsfwFeedIds.has(a.feedHash)) return false;
+      // ミュート中のフィード — 全フィード表示時のみ除外（特定フィード選択時は表示）
+      if (!feedId && mutedFeedIds?.has(a.feedHash)) return false;
+      // キーワードフィルター
       const kf = feedFilterMap.get(a.feedHash);
       if (kf && !matchesKeywordFilter(a, kf)) return false;
       if (globalFilter && !matchesKeywordFilter(a, globalFilter)) return false;
+      // 各種絞り込みフィルター
+      if (unreadOnly && isArticleRead(a, readIds, readBeforeTimestamp)) return false;
+      if (bookmarkOnly && !bookmarkIds.has(a.id)) return false;
+      if (readingListOnly && !readingListIds.has(a.id)) return false;
+      if (likeOnly && !likeIds.has(a.id)) return false;
+      if (noteOnly && !noteIds.has(a.id)) return false;
+      if (authorFilter && a.author !== authorFilter) return false;
+      // カテゴリフィルター — 全フィード表示時のみ適用（特定フィード選択時は表示）
+      if (
+        !feedId &&
+        categoryFilter &&
+        feedCategoryMap &&
+        feedCategoryMap.get(a.feedHash) !== categoryFilter
+      )
+        return false;
+      if (!matchesReadingTimeRange(a, readingTimeRange)) return false;
     }
-
-    // 未読フィルター（アクティブな記事は除外しない）
-    if (unreadOnly && isArticleRead(a, readIds, readBeforeTimestamp) && !isActive(a.id))
-      return false;
-
-    // ブックマークフィルター（アクティブな記事は除外しない）
-    if (bookmarkOnly && !bookmarkIds.has(a.id) && !isActive(a.id)) return false;
-
-    // リーディングリストフィルター（アクティブな記事は除外しない）
-    if (readingListOnly && !readingListIds.has(a.id) && !isActive(a.id)) return false;
-
-    // いいねフィルター（アクティブな記事は除外しない）
-    if (likeOnly && !likeIds.has(a.id) && !isActive(a.id)) return false;
-
-    // メモありフィルター（アクティブな記事は除外しない）
-    if (noteOnly && !noteIds.has(a.id) && !isActive(a.id)) return false;
-
-    // 著者フィルター（アクティブな記事は除外しない）
-    if (authorFilter && a.author !== authorFilter && !isActive(a.id)) return false;
-
-    // カテゴリフィルター — 全フィード表示時のみ適用（特定フィード選択時は表示）
-    if (
-      !feedId &&
-      categoryFilter &&
-      feedCategoryMap &&
-      feedCategoryMap.get(a.feedHash) !== categoryFilter &&
-      !isActive(a.id)
-    )
-      return false;
 
     // 検索クエリ（title・summary・author・categories を AND 検索）
     if (q && !articleMatchesQuery(a, q)) return false;
-
     // 日付範囲
     if (rangeStart && (!a.publishedAt || new Date(a.publishedAt) < rangeStart)) return false;
-
-    // 読了時間フィルター（アクティブな記事は除外しない）
-    if (!isActive(a.id) && !matchesReadingTimeRange(a, readingTimeRange)) return false;
 
     return true;
   };

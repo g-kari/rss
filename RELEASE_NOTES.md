@@ -2,6 +2,10 @@
 
 ## 2026-04-09
 
+### リファクタリング
+
+- **`buildArticlePredicate` の `!isActive` チェックを単一ブロックに集約** — `article-filter.ts` のフィルター述語で `&& !isActive(a.id)` が各条件に重複していた問題を解消。アクティブ記事のガード処理を `if (!isActive(a.id))` ブロックにまとめ、コードの意図を明確化。動作は変わらない。
+
 ### セキュリティ
 
 - **`GET /api/recommendations` に生成クールダウンを追加** — キャッシュ失効時に並行リクエストが複数の AI / Brave Search API 呼び出しを多重実行できた問題を修正。`recommendationsGenCooldownKey` を新設し、30 秒のクールダウンを適用。クールダウン中は期限切れキャッシュまたは空レスポンスを返す。`POST /api/recommendations/refresh` の 5 分クールダウンとは独立した別キーで管理するため、リフレッシュフローは影響を受けない。
