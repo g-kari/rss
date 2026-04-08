@@ -53,6 +53,7 @@ app/
       save/route.ts          # POST /api/articles/save — 記事保存
     ai/
       summarize/route.ts     # POST /api/ai/summarize (Workers AI)
+      translate/route.ts     # POST /api/ai/translate (Workers AI)
     content/route.ts         # GET /api/content?url=... (フルテキストプロキシ)
     engagement/route.ts      # GET / POST /api/engagement — エンゲージメント記録
     image-proxy/route.ts     # GET /api/image-proxy?url=... (外部画像プロキシ)
@@ -63,6 +64,7 @@ app/
       dismiss/route.ts       # POST /api/recommendations/dismiss — 推薦を非表示
       refresh/route.ts       # POST /api/recommendations/refresh — 推薦を更新
     release-notes/route.ts   # GET /api/release-notes
+    stats/route.ts           # GET /api/stats — 読了統計 (日別・年間ヒートマップ・フィード別)
     push/
       vapid-key/route.ts     # GET /api/push/vapid-key
       status/route.ts        # GET /api/push/status
@@ -118,6 +120,11 @@ src/
     usePortalMenu.ts         # ポータルベースのドロップダウンメニュー位置管理
     useGracePeriod.ts        # 直前選択記事を 30 秒間フィルター対象外にする猶予期間管理
     useDebounce.ts           # デバウンスユーティリティ
+    useAutoReset.ts          # 値セット後に自動リセット (duration 経過後に初期値へ戻す)
+    useEventListener.ts      # DOM イベントリスナーライフサイクル管理 (window / document 対応)
+    useInboxProgress.ts      # フィード別未読消化率を計算 (unread 数・readRatio、最大 10 件)
+    useLocalStorageHistory.ts # localStorage 配列の永続化 (先頭追加・重複排除・上限制御)
+    useReadingStats.ts       # 読了統計取得 (/api/stats fetch → ReadingStats)
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()
@@ -149,6 +156,8 @@ src/
     favicon.ts               # ファビコン未読バッジ
     web-push.ts              # Web Push 送信ヘルパー
     release-notes-data.ts    # RELEASE_NOTES_MARKDOWN 定数
+    export-markdown.ts       # ブックマーク・読書リスト記事を Markdown ファイルとしてダウンロード
+    rate-limit.ts            # R2 ベースのクールダウンチェック・更新 (checkAndUpdateCooldown)
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env) — RSS 取得
 ```
