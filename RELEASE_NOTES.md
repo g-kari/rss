@@ -2,6 +2,10 @@
 
 ## 2026-04-09
 
+### セキュリティ
+
+- **XSS修正: RSS本文の未サニタイズ経路を塞ぐ** — `processContent()` / `stripIframes()` にサニタイズを追加。フルテキスト取得できない場合に RSS フィード直値の `article.content` が `dangerouslySetInnerHTML` へ流れる経路で `sanitizeHtml()` が適用されていなかった問題を修正。悪意ある RSS フィードに埋め込まれた `<script>` やイベントハンドラが実行される恐れがあった。
+
 ### ドキュメント整備
 
 - **ディレクトリインデックス更新** — `CLAUDE.md` と `.claude/rules/architecture.md` に未記載だったファイルを追記。追加した hooks: `useAutoReset`, `useEventListener`, `useInboxProgress`, `useLocalStorageHistory`, `useReadingStats`。追加した lib: `export-markdown`, `rate-limit`。追加した API routes: `POST /api/ai/translate`, `GET /api/stats`。

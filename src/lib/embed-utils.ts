@@ -1,4 +1,5 @@
 import { transformXTweetEmbeds } from "./content";
+import { sanitizeHtml } from "./html";
 
 /** 埋め込みメディアの情報 */
 export interface EmbedInfo {
@@ -91,7 +92,7 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
  * @param theme - X ツイート埋め込みのテーマ（'light' | 'dark'）
  */
 export function processContent(html: string, theme: "light" | "dark" = "light"): string {
-  html = transformXTweetEmbeds(html, theme);
+  html = sanitizeHtml(transformXTweetEmbeds(html, theme));
   return html.replace(
     /<iframe([^>]*src=["'][^"']*(?:youtube(?:-nocookie)?\.com\/embed)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
     (_match, attrs, inner) => {
@@ -119,5 +120,5 @@ export function processContent(html: string, theme: "light" | "dark" = "light"):
 
 /** 埋め込み表示する場合、コンテンツ内の iframe を除去（二重埋め込み防止） */
 export function stripIframes(html: string): string {
-  return html.replace(/<iframe[\s\S]*?<\/iframe>/gi, "");
+  return sanitizeHtml(html.replace(/<iframe[\s\S]*?<\/iframe>/gi, ""));
 }
