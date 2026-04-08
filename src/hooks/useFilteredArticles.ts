@@ -1,4 +1,12 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type {
   Article,
   DateRange,
@@ -24,6 +32,20 @@ const PAGE_SIZE = 30;
 const EMPTY_SET = new Set<string>();
 const EMPTY_STR_ARRAY: string[] = [];
 const EMPTY_FEED_ARRAY: Feed[] = [];
+
+/** bool フィルターを反転して localStorage に永続化し、ページを 1 にリセットする */
+function toggleBoolFilter(
+  setter: Dispatch<SetStateAction<boolean>>,
+  key: string,
+  setPage: Dispatch<SetStateAction<number>>,
+): void {
+  setter((v) => {
+    const next = !v;
+    storageSet(key, next ? "1" : "0");
+    return next;
+  });
+  setPage(1);
+}
 
 interface Options {
   /** フィルタリング対象の全記事リスト */
@@ -147,46 +169,26 @@ export function useFilteredArticles({
     setCategoryFilter(null);
   }, [feedId]);
 
-  const toggleUnreadOnly = useCallback(() => {
-    setUnreadOnly((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.UNREAD_ONLY, next ? "1" : "0");
-      return next;
-    });
-    setPage(1);
-  }, []);
-  const toggleBookmarkOnly = useCallback(() => {
-    setBookmarkOnly((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.BOOKMARK_ONLY, next ? "1" : "0");
-      return next;
-    });
-    setPage(1);
-  }, []);
-  const toggleReadingListOnly = useCallback(() => {
-    setReadingListOnly((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.READING_LIST_ONLY, next ? "1" : "0");
-      return next;
-    });
-    setPage(1);
-  }, []);
-  const toggleLikeOnly = useCallback(() => {
-    setLikeOnly((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.LIKE_ONLY, next ? "1" : "0");
-      return next;
-    });
-    setPage(1);
-  }, []);
-  const toggleNoteOnly = useCallback(() => {
-    setNoteOnly((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.NOTE_ONLY, next ? "1" : "0");
-      return next;
-    });
-    setPage(1);
-  }, []);
+  const toggleUnreadOnly = useCallback(
+    () => toggleBoolFilter(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, setPage),
+    [],
+  );
+  const toggleBookmarkOnly = useCallback(
+    () => toggleBoolFilter(setBookmarkOnly, STORAGE_KEYS.BOOKMARK_ONLY, setPage),
+    [],
+  );
+  const toggleReadingListOnly = useCallback(
+    () => toggleBoolFilter(setReadingListOnly, STORAGE_KEYS.READING_LIST_ONLY, setPage),
+    [],
+  );
+  const toggleLikeOnly = useCallback(
+    () => toggleBoolFilter(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, setPage),
+    [],
+  );
+  const toggleNoteOnly = useCallback(
+    () => toggleBoolFilter(setNoteOnly, STORAGE_KEYS.NOTE_ONLY, setPage),
+    [],
+  );
 
   const updateQuery = useCallback((q: string) => {
     setRawQuery(q);
