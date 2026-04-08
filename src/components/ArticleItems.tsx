@@ -12,6 +12,7 @@ export interface ArticleItemProps {
   isRead: boolean;
   isBookmarked: boolean;
   isSelected: boolean;
+  hasNote: boolean;
   feedName: string;
   thumb: string | undefined;
   showFeedName: boolean;
@@ -20,6 +21,28 @@ export interface ArticleItemProps {
   onSelectArticle: (a: Article) => void;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
+}
+
+// ── 共通 UI パーツ ────────────────────────────────────────────────────────
+
+function NoteIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-label="メモあり"
+    >
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
 }
 
 // ── ユーティリティ関数 ──────────────────────────────────────────────────
@@ -199,6 +222,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   isRead,
   isBookmarked,
   isSelected,
+  hasNote,
   feedName,
   showFeedName,
   query,
@@ -232,6 +256,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
           {feedName}
         </span>
       )}
+      {hasNote && <NoteIcon className="text-amber-400 flex-shrink-0 group-hover:hidden" />}
       <span className="text-[11px] text-text-faint flex-shrink-0 group-hover:hidden">
         {timeAgo(article.publishedAt)}
       </span>
@@ -254,6 +279,7 @@ export const ListArticleItem = memo(function ListArticleItem({
   isRead,
   isBookmarked,
   isSelected,
+  hasNote,
   feedName,
   thumb,
   showFeedName,
@@ -299,6 +325,7 @@ export const ListArticleItem = memo(function ListArticleItem({
             </span>
           )}
           <ReadingTimeBadge article={article} />
+          {hasNote && <NoteIcon className="text-amber-400 flex-shrink-0" />}
           {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
         </div>
       </div>
@@ -324,6 +351,7 @@ export const CardArticleItem = memo(function CardArticleItem({
   isRead,
   isBookmarked,
   isSelected,
+  hasNote,
   feedName,
   thumb,
   showFeedName,
@@ -378,9 +406,14 @@ export const CardArticleItem = memo(function CardArticleItem({
               className="text-[10px] text-text-faint flex-shrink-0"
             />
           </div>
-          {!isRead && (
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0 group-hover:opacity-0 transition-opacity duration-150" />
-          )}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {hasNote && (
+              <NoteIcon className="text-amber-400 group-hover:opacity-0 transition-opacity duration-150" />
+            )}
+            {!isRead && (
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />
+            )}
+          </div>
           <ArticleActions
             size="sm"
             className="absolute flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto right-2.5 bottom-2.5"
@@ -402,6 +435,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   isRead,
   isBookmarked,
   isSelected,
+  hasNote,
   feedName,
   thumb,
   showFeedName,
@@ -449,7 +483,10 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
             <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
             <ReadingTimeBadge article={article} />
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-1">
+            {hasNote && (
+              <NoteIcon className="text-amber-400 group-hover:opacity-0 transition-opacity duration-150" />
+            )}
             {!isRead && (
               <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />
             )}

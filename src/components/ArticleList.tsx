@@ -79,6 +79,7 @@ interface Props {
   onLoadMoreFeedArticles?: () => Promise<void>;
   globalFilter?: KeywordFilter | null;
   onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
+  notes?: Record<string, string>;
 }
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
@@ -194,6 +195,7 @@ export default function ArticleList({
   onLoadMoreFeedArticles,
   globalFilter,
   onSaveGlobalFilter,
+  notes,
 }: Props) {
   const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
@@ -333,6 +335,7 @@ export default function ArticleList({
       isRead: isArticleRead(article, readIds, readBeforeTimestamp),
       isBookmarked: bookmarkIds.has(article.id),
       isSelected: selectedArticleId === article.id,
+      hasNote: !!notes?.[article.id],
       feedName: feedMap.get(article.feedHash) ?? "",
       thumb: resolveThumbnail(article, ogpCache),
       showFeedName,

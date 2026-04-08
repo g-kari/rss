@@ -916,6 +916,7 @@ export default function App() {
             onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
             globalFilter={globalFilter}
             onSaveGlobalFilter={setGlobalFilter}
+            notes={notes}
           />
         </ErrorBoundary>
       </div>
