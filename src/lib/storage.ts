@@ -48,6 +48,7 @@ export const STORAGE_KEYS = {
   NOTE_ONLY: "rss-note-only",
   CACHED_USER: "rss-cached-user",
   COLLAPSED_CATEGORIES: "rss-collapsed-cats",
+  WEEKLY_GOAL: "rss-weekly-goal",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
