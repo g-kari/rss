@@ -4,11 +4,21 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 
 ## ツール
 
-このプロジェクトでは **Serena** (MCP サーバー) を優先的に使用する。
+このプロジェクトでは **Serena** (MCP サーバー) を**必ず優先的に使用する**。
 
-- シンボルレベルの検索・編集には `find_symbol` / `replace_symbol_body` を使う
-- ファイル全体の読み書きより、必要なシンボルだけを読んで効率よく作業する
-- `get_symbols_overview` でファイルの構造を把握してから詳細を読む
+| 操作 | 使うツール |
+| ---- | ---------- |
+| シンボルの検索 | `find_symbol` |
+| シンボルの編集 | `replace_symbol_body` |
+| ファイル構造の把握 | `get_symbols_overview` |
+| 参照関係の確認 | `find_referencing_symbols` |
+| ファイル全体の読み取り | `read_file`（Serena 経由） |
+| パターン検索 | `search_for_pattern` |
+
+**ルール**:
+- Read / Grep / Glob ツールよりも Serena のシンボルツールを優先する
+- ファイル全体を読む前に `get_symbols_overview` で構造を把握してから必要なシンボルだけ読む
+- 編集は `replace_symbol_body` / `insert_after_symbol` を使い、必要最小限の変更にとどめる
 
 ### URL が貼られた場合
 
