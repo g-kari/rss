@@ -169,24 +169,24 @@ export function useFilteredArticles({
     setCategoryFilter(null);
   }, [feedId]);
 
-  const toggleUnreadOnly = useCallback(
-    () => toggleBoolFilter(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, setPage),
-    [],
-  );
-  const toggleBookmarkOnly = useCallback(
-    () => toggleBoolFilter(setBookmarkOnly, STORAGE_KEYS.BOOKMARK_ONLY, setPage),
-    [],
-  );
-  const toggleReadingListOnly = useCallback(
-    () => toggleBoolFilter(setReadingListOnly, STORAGE_KEYS.READING_LIST_ONLY, setPage),
-    [],
-  );
-  const toggleLikeOnly = useCallback(
-    () => toggleBoolFilter(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, setPage),
-    [],
-  );
-  const toggleNoteOnly = useCallback(
-    () => toggleBoolFilter(setNoteOnly, STORAGE_KEYS.NOTE_ONLY, setPage),
+  // useState の set 関数は常に安定 — 5つのトグルを1つの useMemo にまとめる
+  const {
+    toggleUnreadOnly,
+    toggleBookmarkOnly,
+    toggleReadingListOnly,
+    toggleLikeOnly,
+    toggleNoteOnly,
+  } = useMemo(
+    () => ({
+      toggleUnreadOnly: () => toggleBoolFilter(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, setPage),
+      toggleBookmarkOnly: () =>
+        toggleBoolFilter(setBookmarkOnly, STORAGE_KEYS.BOOKMARK_ONLY, setPage),
+      toggleReadingListOnly: () =>
+        toggleBoolFilter(setReadingListOnly, STORAGE_KEYS.READING_LIST_ONLY, setPage),
+      toggleLikeOnly: () => toggleBoolFilter(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, setPage),
+      toggleNoteOnly: () => toggleBoolFilter(setNoteOnly, STORAGE_KEYS.NOTE_ONLY, setPage),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
