@@ -73,6 +73,11 @@ export function singleFeedRefreshCooldownKey(userId: string, feedHash: string): 
   return `users/${userId}/feed-refresh-${feedHash}.json`;
 }
 
+/** LLM CSS セレクタ再推論のクールダウン管理キーを返す */
+export function reinferCooldownKey(userId: string, feedHash: string): string {
+  return `users/${userId}/feed-reinfer-${feedHash}.json`;
+}
+
 /** 推薦リフレッシュのクールダウン管理キーを返す */
 export function recommendationsCooldownKey(userId: string): string {
   return `users/${userId}/recommendations-refresh.json`;

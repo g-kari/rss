@@ -8,6 +8,11 @@ import {
 } from "@/lib/shared-feed";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import { fetchSingleFeed } from "@/cron/fetch";
+import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+import { reinferCooldownKey } from "@/lib/r2";
+
+const REINFER_COOLDOWN_MS = 60 * 1000; // 60秒
+const MAX_FAILED_SELECTORS = 10;
 
 /**
  * POST /api/feeds/:id/reinfer
@@ -32,12 +37,21 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
+    // レートリミット: AI + 外部フェッチを伴う重い操作のため 60 秒クールダウン
+    const limited = await checkAndUpdateCooldown(
+      env.RSS_DATA,
+      reinferCooldownKey(session.userId, feedHash),
+      REINFER_COOLDOWN_MS,
+    );
+    if (limited) return limited;
+
     // 既存のセレクタを失敗履歴に積み上げてから消去し、再推論時に除外指示として渡す
+    // failedSelectors は最大 MAX_FAILED_SELECTORS 件に制限し R2 肥大化を防ぐ
     const previousSelector = meta.cssSelectors?.articleLink;
     const failedSelectors = [
       ...(meta.failedSelectors ?? []),
       ...(previousSelector ? [previousSelector] : []),
-    ];
+    ].slice(-MAX_FAILED_SELECTORS);
     meta.failedSelectors = failedSelectors;
     delete meta.cssSelectors;
     const cookie = sub.requestCookie;
