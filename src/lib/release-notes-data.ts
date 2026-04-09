@@ -6,6 +6,12 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-09
 
+### セキュリティ
+
+- **\`hasDangerousScheme\` の HTML5 名前付き文字参照バイパスを修正** — \`&colon;\`（\`:\` に展開）を使った \`javascript&colon;alert()\` や、\`&Tab;\` / \`&NewLine;\`（ブラウザが URL パース時に先頭から除去）を使ったスキーム偽装が \`hasDangerousScheme\` の検出をすり抜け XSS になりうる問題を修正。これらの名前付き文字参照を \`unescapeHtml\` 呼び出し後に補完デコードするよう対処。数値形式（\`&#9;\` 等）は既存の \`unescapeHtml\` で処理済みだったが名前付き形式が未処理だった。
+
+## 2026-04-09
+
 ### リファクタリング
 
 - \`src/lib/html.ts\` の \`unescapeHtml\` で重複していた数値文字参照のデコードロジック（\`&#NNN;\` と \`&#xHHH;\` の検証ブロック 4 行 × 2）を \`decodeCodePoint(code: number)\` ヘルパーに抽出。コード量を削減し、検証ロジックを一元管理。
