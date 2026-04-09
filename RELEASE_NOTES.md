@@ -2,6 +2,10 @@
 
 ## 2026-04-10
 
+### ドキュメント整備
+
+- **README.md を現状に合わせて全面更新** — パッケージマネージャを `npm` → `pnpm` に修正、R2 バケットの不要な `rss-reader-cache` 削除、VAPID・BRAVE_SEARCH_API_KEY 等の新規シークレット追加、API エンドポイント一覧を現行の全エンドポイント（read-state / recommendations / push / stats / engagement / ogp / image-proxy / OPML 等）に拡充、読み取り状態の説明を「localStorage のみ」→「R2 との二重管理」に修正。
+
 ### リファクタリング
 
 - `useSpeechSynthesis`: `supported` チェックをモジュール定数 `SPEECH_SUPPORTED` に移動し、毎レンダー再評価を排除。`speak` / `stop` の `useCallback` deps から除去され参照が安定化。
