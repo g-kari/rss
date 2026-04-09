@@ -2,6 +2,12 @@
 
 ## 2026-04-09
 
+### バグ修正
+
+- **`feeds/import` の型述語抜けを修正** — `SharedFeedMeta | null` の `filter` に型述語を追加し、TypeScript が `null` を見逃す可能性を排除。
+- **`useReadState` の `flushIfPending` で `isDirtyRef` をリセット** — `beforeunload` / `visibilitychange` でタイマーをキャンセルした後も `isDirtyRef.current` が `true` のまま残る問題を修正。次のデバウンスサイクルでの二重送信を防止。
+- **`useReadingStats` をグローバル `fetch` から `apiFetch` に置き換え** — 認証エラーハンドリングと `getAuthReady()` 待機を他フックと統一。
+
 ### 新機能
 
 - **記事スクロール位置の自動保存・復元** — 記事を読んでいる途中で別の記事に切り替えて戻ったとき、前回のスクロール位置を自動的に復元する。スクロール位置は `localStorage` にデバウンス（500ms）保存し、最大 200 件を保持する。また、記事切り替え時にスクロール位置が前の記事のままになっていたバグを修正。
