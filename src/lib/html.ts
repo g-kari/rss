@@ -371,6 +371,16 @@ export function sanitizeHtml(html: string): string {
       .replace(/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
       // ping 属性を除去（リンククリック時の意図しないリクエスト防止）
       .replace(/\bping\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
+      // HTML Popover API 属性を除去（JS 不要のトップレイヤー UI 注入防止）
+      // <any-element popover> + <button popovertarget="id"> の組み合わせで JS なしに
+      // ブラウザのトップレイヤーへ任意 HTML をオーバーレイ表示できる。
+      // RSS 記事がリーダー UI を覆うフィッシング画面を作れてしまうため除去する。
+      // popover はブール属性（値なし可）のため (?:=...)? で値あり・なし両対応する。
+      .replace(/\bpopover(?:target(?:action)?)?\s*(?:=\s*(?:"[^"]*"|'[^']*'|[^\s>]*))?/gi, "")
+      // <dialog> 開始・終了タグを除去（ドキュメントフロー内での position:absolute 配置防止）
+      // <dialog open> はブラウザ UA スタイルシートの position:absolute で記事外コンテンツを
+      // 覆う可能性がある。<form> と同様にタグ枠のみ除去してコンテンツは保持する。
+      .replace(/<\/?dialog\b[^>]*>/gi, "")
       // <a target="_blank"> に rel="noopener noreferrer" を強制付与（タブナッピング防止）
       // RSS 記事内の外部リンクが window.opener を経由してリンク元ページを制御するリスクを防ぐ。
       // fixExternalLinks が適用済みのコンテンツには既に rel が設定されているため重複追加は発生しない。

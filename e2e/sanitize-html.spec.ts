@@ -308,6 +308,39 @@ test.describe("sanitizeHtml — その他の攻撃ベクトル", () => {
     expect(result).toContain("テキスト");
   });
 
+  test("popover 属性が除去される（JS 不要のトップレイヤー UI 注入防止）", () => {
+    const result = sanitizeHtml(
+      '<div id="evil" popover="auto"><p>フィッシングコンテンツ</p></div>' +
+        '<button popovertarget="evil">もっと見る</button>',
+    );
+    expect(result).not.toContain("popover");
+    expect(result).not.toContain("popovertarget");
+    expect(result).toContain("フィッシングコンテンツ");
+    expect(result).toContain("<button");
+  });
+
+  test("popover ブール属性（値なし）が除去される", () => {
+    const result = sanitizeHtml('<div popover class="overlay">内容</div>');
+    expect(result).not.toContain("popover");
+    expect(result).toContain("内容");
+  });
+
+  test("popovertargetaction 属性が除去される", () => {
+    const result = sanitizeHtml(
+      '<button popovertarget="x" popovertargetaction="show">開く</button>',
+    );
+    expect(result).not.toContain("popovertarget");
+    expect(result).not.toContain("popovertargetaction");
+    expect(result).toContain("開く");
+  });
+
+  test("<dialog open> タグが除去される（コンテンツは保持）", () => {
+    const result = sanitizeHtml("<dialog open><p>偽のモーダル</p></dialog>");
+    expect(result).not.toContain("<dialog");
+    expect(result).not.toContain("</dialog>");
+    expect(result).toContain("偽のモーダル");
+  });
+
   test("SVG 内の <script> が除去される", () => {
     const result = sanitizeHtml("<svg><script>alert(1)</script></svg>");
     expect(result).not.toContain("<script>");
