@@ -11,6 +11,7 @@ import {
   writeUserSubscriptions,
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
+import type { SharedFeedMeta } from "@/types";
 import { fetchArticles } from "@/cron/fetch";
 import { stripControlChars } from "@/lib/validation";
 const MAX_OPML_ENTRIES = 5000;
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
     );
     const succeededMetas = metaResults
       .map((r) => (r.status === "fulfilled" ? r.value : null))
-      .filter((m) => m !== null);
+      .filter((m): m is SharedFeedMeta => m !== null);
     const succeededCandidates = candidates.filter((_, i) => metaResults[i].status === "fulfilled");
 
     // Phase 3: 購読レコードを追加
