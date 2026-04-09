@@ -2,6 +2,11 @@
 
 ## 2026-04-09
 
+### セキュリティ
+
+- **HTML Popover API 属性を `sanitizeHtml` で除去** — `<div popover="auto">` + `<button popovertarget="id">` の組み合わせで JavaScript を一切使わずにブラウザのトップレイヤーへ任意 HTML をオーバーレイ表示できる問題を修正。悪意ある RSS 記事がリーダー UI を覆うフィッシング画面を表示できた。`popover` / `popovertarget` / `popovertargetaction` 属性を除去するよう追加。ブール属性（値なし）も対応。
+- **`<dialog>` タグを `sanitizeHtml` で除去** — `<dialog open>` は UA スタイルシートの `position: absolute` で記事コンテンツ外を覆う可能性があるため、`<form>` と同様にタグ枠のみ除去してコンテンツを保持するよう修正 (`src/lib/html.ts`)
+
 ### バグ修正
 
 - **ページネーション記事の2ページ目以降に AI フォールバックを適用** — `appendPaginatedPages` で2ページ目以降のコンテンツ抽出が `extractMainContent` のみで、1ページ目と異なり Cloudflare AI toMarkdown フォールバックが発動しない問題を修正。コンテンツが不十分な場合は1ページ目と同様に AI フォールバックを試みるよう統一。
