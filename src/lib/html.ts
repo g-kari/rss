@@ -78,12 +78,7 @@ export function extractOgMeta(html: string, property: string): string {
 
 /** HTML タグを除去してプレーンテキストに変換する（AI 入力用） */
 export function toPlainText(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
+  return unescapeHtml(html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " "))
     .replace(/\s+/g, " ")
     .trim();
 }

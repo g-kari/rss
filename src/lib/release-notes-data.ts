@@ -9,6 +9,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 ### リファクタリング
 
 - \`src/lib/html.ts\` の \`unescapeHtml\` で重複していた数値文字参照のデコードロジック（\`&#NNN;\` と \`&#xHHH;\` の検証ブロック 4 行 × 2）を \`decodeCodePoint(code: number)\` ヘルパーに抽出。コード量を削減し、検証ロジックを一元管理。
+- \`toPlainText\` の \`&amp;\` / \`&lt;\` / \`&gt;\` デコードを \`unescapeHtml\` 呼び出しに統合。重複実装を排除し、AI 入力に渡すテキストで \`&quot;\` や数値文字参照も正しくデコードされるよう改善。
 
 ## 2026-04-09
 
