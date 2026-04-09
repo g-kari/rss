@@ -8,6 +8,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### セキュリティ
 
+- **\`/api/feeds/:id/reinfer\` にレートリミットを追加** — AI 呼び出し + 外部 URL フェッチを伴う重い操作にクールダウン（60 秒）を設けていなかった問題を修正。繰り返し呼び出しによる Workers AI コストの増大と外部サーバーへの過剰リクエストを防止。
+- **\`failedSelectors\` を最大 10 件に制限** — LLM CSS セレクタ再推論で失敗履歴が無制限に蓄積し、R2 ストレージ肥大化と AI プロンプトのトークン増加が起きていた問題を修正。
 - **HTML Popover API 属性を \`sanitizeHtml\` で除去** — \`<div popover="auto">\` + \`<button popovertarget="id">\` の組み合わせで JavaScript を一切使わずにブラウザのトップレイヤーへ任意 HTML をオーバーレイ表示できる問題を修正。悪意ある RSS 記事がリーダー UI を覆うフィッシング画面を表示できた。\`popover\` / \`popovertarget\` / \`popovertargetaction\` 属性を除去するよう追加。ブール属性（値なし）も対応。
 - **\`<dialog>\` タグを \`sanitizeHtml\` で除去** — \`<dialog open>\` は UA スタイルシートの \`position: absolute\` で記事コンテンツ外を覆う可能性があるため、\`<form>\` と同様にタグ枠のみ除去してコンテンツを保持するよう修正 (\`src/lib/html.ts\`)
 
