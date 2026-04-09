@@ -50,7 +50,16 @@ export function unescapeHtml(s: string): string {
  * 先頭のみ除去では検出できないため、文字列全体から除去して判定する。
  */
 function hasDangerousScheme(val: string): boolean {
-  const decoded = unescapeHtml(val).replace(/[\u0000-\u0020\u007F]/g, "");
+  const decoded = unescapeHtml(val)
+    // unescapeHtml は数値文字参照（&#9; &#xA; 等）を処理するが、
+    // HTML5 の名前付き文字参照は以下の危険なものだけ補完する:
+    //   &Tab;     → U+0009 (TAB)     ブラウザが URL パース時に先頭から除去
+    //   &NewLine; → U+000A (LF)      同上
+    //   &colon;   → U+003A (:)       "javascript&colon;alert()" で : をエンコードするバイパス
+    .replace(/&Tab;/g, "\t")
+    .replace(/&NewLine;/g, "\n")
+    .replace(/&colon;/g, ":")
+    .replace(/[\u0000-\u0020\u007F]/g, "");
   return /^(?:javascript|vbscript|data):/i.test(decoded);
 }
 
