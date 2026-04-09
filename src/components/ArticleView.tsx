@@ -28,6 +28,7 @@ import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
 import { usePortalMenu } from "../hooks/usePortalMenu";
 import { loadJson, saveJson, STORAGE_KEYS } from "../lib/storage";
 import { useSyncedRef } from "../hooks/useSyncedRef";
+import { useEventListener } from "../hooks/useEventListener";
 import { toPlainText } from "../lib/html";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 
@@ -1565,31 +1566,24 @@ export default function ArticleView({
   );
 
   // TTS キーボードショートカット (P): 読み上げ開始/停止
-  const ttsPlayingRef = useSyncedRef(ttsPlaying);
-  const ttsPausedRef = useSyncedRef(ttsPaused);
-  const processedContentRef = useSyncedRef(processedContent);
-  const articleRef = useSyncedRef(article);
-  useEffect(() => {
-    if (!ttsSupported) return;
-    function handleTtsKey(e: KeyboardEvent) {
+  useEventListener(
+    "keydown",
+    (e: KeyboardEvent) => {
+      if (!ttsSupported) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key !== "P") return;
-      const a = articleRef.current;
-      if (!a) return;
-      if (ttsPlayingRef.current || ttsPausedRef.current) {
+      if (!article) return;
+      if (ttsPlaying || ttsPaused) {
         ttsStop();
       } else {
-        const text = [a.title, toPlainText(processedContentRef.current ?? a.summary ?? "")]
+        const text = [article.title, toPlainText(processedContent ?? article.summary ?? "")]
           .filter(Boolean)
           .join("\n\n");
         if (text.trim()) speak(text);
       }
-    }
-    document.addEventListener("keydown", handleTtsKey);
-    return () => document.removeEventListener("keydown", handleTtsKey);
-    // refs は安定参照のため deps から除外
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ttsSupported, speak, ttsStop]);
+    },
+    document,
+  );
 
   // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する
   const injectSliderControls = useCallback(() => {
@@ -2103,9 +2097,7 @@ export default function ArticleView({
                     speak(text);
                   }
                 }}
-                title={
-                  ttsPlaying ? "読み上げを停止" : ttsPaused ? "読み上げを停止" : "読み上げ (P)"
-                }
+                title={ttsPlaying || ttsPaused ? "読み上げを停止" : "読み上げ (P)"}
                 className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${
                   ttsPlaying || ttsPaused
                     ? "text-ink hover:text-text-muted"

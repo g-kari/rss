@@ -30,12 +30,22 @@ function decodeCodePoint(code: number): string {
 
 export function unescapeHtml(s: string): string {
   return s
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#(\d+);/gi, (_m, d) => decodeCodePoint(Number(d)))
-    .replace(/&#x([0-9a-f]+);/gi, (_m, h) => decodeCodePoint(parseInt(h, 16)))
+    .replace(/&(?:amp|lt|gt|quot|#(\d+)|#x([0-9a-fA-F]+));/gi, (m, dec, hex) => {
+      if (dec !== undefined) return decodeCodePoint(Number(dec));
+      if (hex !== undefined) return decodeCodePoint(parseInt(hex, 16));
+      switch (m.toLowerCase()) {
+        case "&amp;":
+          return "&";
+        case "&lt;":
+          return "<";
+        case "&gt;":
+          return ">";
+        case "&quot;":
+          return '"';
+        default:
+          return m;
+      }
+    })
     .replace(/[\u0080-\u009F\u00AD\u200B-\u200D\u2028\u2029\uFEFF]/g, "");
 }
 

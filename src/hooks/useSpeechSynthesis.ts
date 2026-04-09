@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 
+// Web Speech API の有無は実行中に変わらないのでモジュール定数にする
+const SPEECH_SUPPORTED = typeof window !== "undefined" && "speechSynthesis" in window;
+
 /**
  * Web Speech API (SpeechSynthesis) を使った読み上げ管理フック。
  * - speak(text): テキストを読み上げ開始
@@ -8,23 +11,25 @@ import { useState, useCallback, useEffect, useRef } from "react";
  * - stop(): 停止・リセット
  */
 export function useSpeechSynthesis() {
-  const supported = typeof window !== "undefined" && "speechSynthesis" in window;
-
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const stop = useCallback(() => {
-    if (!supported) return;
-    window.speechSynthesis.cancel();
+  const resetState = useCallback(() => {
     utteranceRef.current = null;
     setIsPlaying(false);
     setIsPaused(false);
-  }, [supported]);
+  }, []);
+
+  const stop = useCallback(() => {
+    if (!SPEECH_SUPPORTED) return;
+    window.speechSynthesis.cancel();
+    resetState();
+  }, [resetState]);
 
   const speak = useCallback(
     (text: string) => {
-      if (!supported) return;
+      if (!SPEECH_SUPPORTED) return;
       window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
@@ -34,41 +39,32 @@ export function useSpeechSynthesis() {
         setIsPlaying(true);
         setIsPaused(false);
       };
-      utterance.onend = () => {
-        utteranceRef.current = null;
-        setIsPlaying(false);
-        setIsPaused(false);
-      };
-      utterance.onerror = () => {
-        utteranceRef.current = null;
-        setIsPlaying(false);
-        setIsPaused(false);
-      };
+      utterance.onend = resetState;
+      utterance.onerror = resetState;
       utterance.onpause = () => setIsPaused(true);
       utterance.onresume = () => setIsPaused(false);
 
       window.speechSynthesis.speak(utterance);
     },
-    [supported],
+    [resetState],
   );
 
   const pause = useCallback(() => {
-    if (!supported || !isPlaying) return;
+    if (!SPEECH_SUPPORTED || !isPlaying) return;
     window.speechSynthesis.pause();
-  }, [supported, isPlaying]);
+  }, [isPlaying]);
 
   const resume = useCallback(() => {
-    if (!supported || !isPaused) return;
+    if (!SPEECH_SUPPORTED || !isPaused) return;
     window.speechSynthesis.resume();
-  }, [supported, isPaused]);
+  }, [isPaused]);
 
   // アンマウント時にキャンセル
   useEffect(() => {
     return () => {
-      if (supported) window.speechSynthesis.cancel();
+      if (SPEECH_SUPPORTED) window.speechSynthesis.cancel();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { supported, isPlaying, isPaused, speak, pause, resume, stop };
+  return { supported: SPEECH_SUPPORTED, isPlaying, isPaused, speak, pause, resume, stop };
 }

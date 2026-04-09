@@ -4,6 +4,16 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-10
+
+### リファクタリング
+
+- \`useSpeechSynthesis\`: \`supported\` チェックをモジュール定数 \`SPEECH_SUPPORTED\` に移動し、毎レンダー再評価を排除。\`speak\` / \`stop\` の \`useCallback\` deps から除去され参照が安定化。
+- \`useSpeechSynthesis\`: 停止状態リセット（\`utteranceRef.current = null; setIsPlaying(false); setIsPaused(false)\`）の 3 重複を \`resetState\` ヘルパーに抽出。
+- \`ArticleView\`: TTS キーボードハンドラを手動 \`addEventListener\` から \`useEventListener\` フックに置き換え。不要になった \`useSyncedRef\` 4 呼び出しを削除。
+- \`ArticleView\`: TTS ボタンの \`title\` 属性の冗長条件（\`ttsPlaying ? "停止" : ttsPaused ? "停止" : ...\`）を \`(ttsPlaying || ttsPaused) ? "停止" : ...\` に簡略化。
+- \`unescapeHtml\`: \`&amp;\` / \`&lt;\` / \`&gt;\` / \`&quot;\` / \`&#NNN;\` / \`&#xHHH;\` の 5 パス連続 \`.replace()\` を 1 パスの正規表現に統合し、文字列走査を削減。
+
 ## 2026-04-09
 
 ### リファクタリング
