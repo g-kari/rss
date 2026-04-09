@@ -30,6 +30,7 @@
 - **キーワードフィルタリング設計** — `architecture.md` に `CompiledKeywordFilter` の設計意図と ReDoS 対策パターンを記載
 - **stale closure 回避パターン** — `coding-conventions.md` に `useSyncedRef` の使い方と主な使用箇所を記載
 - **読み取り状態マージ戦略** — `coding-conventions.md` にローカル優先マージ・スヌーズ期限の例外処理を記載
+- **ノートマージ戦略（サーバー優先）** — `coding-conventions.md` の「読み取り状態マージ戦略」に notes の例外規則を追記。既読・ブックマーク等はローカル優先だが、notes は同一キーではサーバー優先（`{ ...prev, ...serverNotes }`）。別デバイスで編集した最新版をサーバーから受け取るのが正しい挙動のため。
 - **hooks JSDoc** — `usePushNotifications` / `useReadingStats` / `useRecommendations` / `useUIState` にフック説明コメントを追加
 
 ## 2026-04-09
