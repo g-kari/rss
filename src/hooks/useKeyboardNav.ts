@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, type RefObject } from "react";
+import { useSyncedRef } from "./useSyncedRef";
 import type {
   Article,
   Feed,
@@ -87,8 +88,7 @@ interface KeyboardNavOptions {
  *               (v は ArticleView で処理)
  */
 export function useKeyboardNav(options: KeyboardNavOptions): void {
-  const ref = useRef(options);
-  ref.current = options;
+  const ref = useSyncedRef(options);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

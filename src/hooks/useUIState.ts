@@ -14,8 +14,8 @@ import { FONT_FAMILY_CYCLE, FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article
 import { useMobilePane } from "./useMobilePane";
 import { useNSFWMode } from "./useNSFWMode";
 
-export type { MobilePane } from "./useMobilePane";
 import type { MobilePane } from "./useMobilePane";
+export type { MobilePane };
 export type Theme = "light" | "dark";
 
 interface BeforeInstallPromptEvent extends Event {

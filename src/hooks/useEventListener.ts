@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useSyncedRef } from "./useSyncedRef";
 
 /**
  * イベントリスナーを登録・解除するフック。
@@ -28,13 +29,12 @@ export function useEventListener(
   handler: (ev: Event) => void,
   target?: Window | Document,
 ): void {
-  const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+  const handlerRef = useSyncedRef(handler);
 
   useEffect(() => {
     const t = target ?? window;
     const listener = (ev: Event) => handlerRef.current(ev);
     t.addEventListener(eventName, listener);
     return () => t.removeEventListener(eventName, listener);
-  }, [eventName, target]);
+  }, [eventName, target]); // eslint-disable-line react-hooks/exhaustive-deps -- handlerRef は useSyncedRef が返す安定した ref
 }
