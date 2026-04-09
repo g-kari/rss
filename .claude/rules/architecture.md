@@ -94,6 +94,9 @@ src/
     RecommendationSection.tsx # フィード推薦セクション
     KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
     ReleaseNotesModal.tsx    # リリースノートモーダル
+    SnoozeModal.tsx          # 記事スヌーズ設定モーダル（1時間後・明日の朝・来週など）
+    ReadingStatsModal.tsx    # 読了統計モーダル（日別グラフ・年間ヒートマップ・週間目標）
+    FeedQuickSwitchModal.tsx # フィードクイック切り替えモーダル（キーボードナビ対応）
     NSFWEyeAnimation.tsx     # NSFW コンテンツ表示アニメーション
     ServiceWorkerRegistration.tsx # Service Worker 登録コンポーネント
     ErrorBoundary.tsx        # エラー境界
@@ -109,6 +112,7 @@ src/
     useReadingHistory.ts     # 閲覧履歴管理
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
     useArticleAi.ts          # /api/ai/* fetch
+    useSpeechSynthesis.ts    # 記事読み上げ（Web Speech API: speak / pause / resume / stop）
     useContentLinkPreviews.ts # 記事本文内リンクのプレビュー取得
     useEngagement.ts         # エンゲージメント記録 (/api/engagement)
     useRecommendations.ts    # フィード推薦 (/api/recommendations) fetch
@@ -310,7 +314,7 @@ removeNoise → transformZennLinkEmbeds → transformZennMermaidEmbeds
 
 ```typescript
 // フィルター設定変更時（useFilteredArticles の useMemo 内）
-const filterMap = buildCompiledFilterMap(feeds, keywordFilters);
+const filterMap = buildFilterMap(feeds, keywordFilters);
 
 // 記事ごとの判定（コンパイル済みを再利用）
 const match = matchesKeywordFilter(article, compiledFilter);
