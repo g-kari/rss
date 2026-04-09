@@ -258,6 +258,7 @@ export function useReadState(
     if (syncTimerRef.current === null) return false;
     clearTimeout(syncTimerRef.current);
     syncTimerRef.current = null;
+    isDirtyRef.current = false;
     return true;
   }
 

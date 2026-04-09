@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { apiFetch } from "../lib/api-fetch";
 import type { ReadingStats } from "../../app/api/stats/route";
 
 interface UseReadingStatsResult {
@@ -24,7 +25,7 @@ export function useReadingStats(): UseReadingStatsResult {
   const fetchStats = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetch("/api/stats")
+    apiFetch("/api/stats")
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<ReadingStats>;
