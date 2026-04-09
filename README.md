@@ -1,30 +1,35 @@
 # RSS Reader
 
-Next.js 16 + Cloudflare Workers で動くセルフホスト RSS リーダー。`rss.0g0.xyz` でホスト中。
+Next.js 16 + Cloudflare Workers で動くパーソナル RSS リーダー。`rss.0g0.xyz` でホスト中。
 
 ## 技術スタック
 
-| レイヤー       | 技術                                                |
-| -------------- | --------------------------------------------------- |
-| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare      |
-| フロントエンド | React 19 + TypeScript + Tailwind CSS v4             |
-| API            | Next.js Route Handlers (`app/api/**`)               |
-| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                         |
-| データ         | Cloudflare R2 (`rss-reader-data`) — ユーザー別 JSON |
-| AI             | Workers AI (要約・翻訳)                             |
-| 自動更新       | Cloudflare Cron Trigger（30分ごと）                 |
-| デプロイ       | @opennextjs/cloudflare + wrangler                   |
+| レイヤー       | 技術                                                           |
+| -------------- | -------------------------------------------------------------- |
+| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare                 |
+| フロントエンド | React 19 + TypeScript + Tailwind CSS v4                        |
+| API            | Next.js Route Handlers (`app/api/**`)                          |
+| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                    |
+| データ         | Cloudflare R2 (`rss-reader-data`) — ユーザー別 JSON            |
+| AI             | Workers AI (要約・翻訳・フィード推薦)                          |
+| 自動更新       | Cloudflare Cron Trigger（30分ごと）                            |
+| デプロイ       | Cloudflare Workers CI/CD（master push で自動ビルド＆デプロイ） |
 
 ## セットアップ
 
-### 1. R2 バケット作成
+### 1. 依存パッケージインストール
+
+```bash
+pnpm install
+```
+
+### 2. R2 バケット作成
 
 ```bash
 npx wrangler r2 bucket create rss-reader-data
-npx wrangler r2 bucket create rss-reader-cache
 ```
 
-### 2. シークレット設定
+### 3. シークレット設定
 
 0g0 ID でアプリを登録して取得した `CLIENT_ID` / `CLIENT_SECRET` を設定:
 
@@ -33,40 +38,62 @@ npx wrangler secret put CLIENT_ID
 npx wrangler secret put CLIENT_SECRET
 ```
 
-### 3. 依存パッケージインストール
+Web Push 通知用 VAPID 鍵（`scripts/generate-vapid-keys.mjs` で生成）:
 
 ```bash
-npm install
+npx wrangler secret put VAPID_PUBLIC_KEY
+npx wrangler secret put VAPID_PRIVATE_KEY
 ```
 
-### 4. ローカル開発
+全文取得フォールバック用 Cloudflare API トークン（オプション）:
 
 ```bash
-# Next.js dev server (localhost:3000)
-npm run dev
-
-# Cloudflare Workers ローカルエミュレーション
-npx wrangler dev
+npx wrangler secret put CLOUDFLARE_API_TOKEN
 ```
 
-### 5. デプロイ
+Brave Search API キー（フィード推薦用、オプション）:
 
 ```bash
-npm run deploy
+npx wrangler secret put BRAVE_SEARCH_API_KEY
 ```
 
-## wrangler.toml 設定
+### 4. wrangler.toml 設定
 
 `wrangler.toml` の `[vars]` を環境に合わせて更新:
 
 ```toml
 [vars]
-AUTH_BASE_URL = "https://id.0g0.xyz"        # 0g0 ID エンドポイント
-APP_BASE_URL  = "https://your-domain.com"   # アプリのドメイン
-BETA_ALLOWED_SUBS = ""                      # ベータ制限: カンマ区切り sub リスト。空文字で制限なし
+AUTH_BASE_URL     = "https://id.0g0.xyz"        # 0g0 ID エンドポイント
+APP_BASE_URL      = "https://your-domain.com"   # アプリのドメイン
+VAPID_SUBJECT     = "mailto:admin@example.com"  # Web Push 送信元メール
+BETA_ALLOWED_SUBS = ""                          # ベータ制限: カンマ区切り sub リスト。空文字で制限なし
 ```
 
-## API
+### 5. ローカル開発
+
+```bash
+pnpm run dev      # Next.js dev server (localhost:3000)
+pnpm run preview  # Cloudflare Workers ローカルエミュレーション (wrangler dev)
+```
+
+## 開発コマンド
+
+```bash
+pnpm run dev          # Next.js dev server (localhost:3000)
+pnpm run build        # next build（動作確認・型チェック込み）
+pnpm run preview      # Workers ローカルエミュレーション (wrangler dev)
+pnpm run build:cf     # Cloudflare Workers 向けビルド（CI/CD が自動実行するため手動不要）
+pnpm run deploy       # ローカルから手動デプロイ（通常不要）
+pnpm run check        # Oxlint + Oxfmt + tsgo 型チェック
+pnpm run check:fix    # 自動修正付きチェック
+pnpm run typecheck    # tsc --noEmit（完全な型チェック）
+pnpm run test:e2e     # Playwright E2E テスト実行
+pnpm run test:e2e:ui  # Playwright UI モード（デバッグ用）
+```
+
+> **デプロイについて**: `master` ブランチへの push で Cloudflare Workers 側が自動ビルド＆デプロイを実行する。ローカルで `deploy` を手動実行する必要はない。
+
+## API エンドポイント一覧
 
 ### 認証
 
@@ -79,18 +106,33 @@ BETA_ALLOWED_SUBS = ""                      # ベータ制限: カンマ区切�
 
 ### フィード
 
-| メソッド | パス             | 説明                           |
-| -------- | ---------------- | ------------------------------ |
-| GET      | `/api/feeds`     | フィード一覧取得               |
-| POST     | `/api/feeds`     | フィード追加 `{ url: string }` |
-| DELETE   | `/api/feeds/:id` | フィード削除                   |
+| メソッド | パス                     | 説明                   |
+| -------- | ------------------------ | ---------------------- |
+| GET      | `/api/feeds`             | フィード一覧取得       |
+| POST     | `/api/feeds`             | フィード追加 `{ url }` |
+| DELETE   | `/api/feeds/:id`         | フィード削除           |
+| POST     | `/api/feeds/:id/refresh` | 単体フィード手動更新   |
+| POST     | `/api/feeds/:id/reinfer` | LLM CSS セレクタ再推論 |
+| POST     | `/api/feeds/refresh`     | 全フィード手動更新     |
+| POST     | `/api/feeds/import`      | OPML インポート        |
+| GET      | `/api/feeds/export`      | OPML エクスポート      |
 
 ### 記事
 
-| メソッド | パス                   | 説明                         |
-| -------- | ---------------------- | ---------------------------- |
-| GET      | `/api/articles`        | 記事一覧取得                 |
-| GET      | `/api/content?url=...` | 記事フルテキスト取得プロキシ |
+| メソッド | パス                       | 説明                         |
+| -------- | -------------------------- | ---------------------------- |
+| GET      | `/api/articles`            | 記事一覧取得                 |
+| POST     | `/api/articles/save`       | 記事保存                     |
+| GET      | `/api/content?url=...`     | 記事フルテキスト取得プロキシ |
+| GET      | `/api/ogp?url=...`         | OGP 画像 URL 取得            |
+| GET      | `/api/image-proxy?url=...` | 外部画像プロキシ             |
+
+### 既読・ブックマーク状態
+
+| メソッド | パス              | 説明                                           |
+| -------- | ----------------- | ---------------------------------------------- |
+| GET      | `/api/read-state` | 既読・ブックマーク・後で読む・スヌーズ状態取得 |
+| POST     | `/api/read-state` | 状態を R2 に保存（2秒デバウンス後）            |
 
 ### AI
 
@@ -99,33 +141,53 @@ BETA_ALLOWED_SUBS = ""                      # ベータ制限: カンマ区切�
 | POST     | `/api/ai/summarize` | 記事要約 (Workers AI) |
 | POST     | `/api/ai/translate` | 記事翻訳 (Workers AI) |
 
-### その他
+### フィード推薦
 
-| メソッド | パス          | 説明           |
-| -------- | ------------- | -------------- |
-| GET      | `/api/health` | ヘルスチェック |
+| メソッド | パス                           | 説明             |
+| -------- | ------------------------------ | ---------------- |
+| GET      | `/api/recommendations`         | 推薦フィード一覧 |
+| POST     | `/api/recommendations/dismiss` | 推薦を非表示     |
+| POST     | `/api/recommendations/refresh` | 推薦を再生成     |
+
+### Web Push 通知
+
+| メソッド | パス                    | 説明                       |
+| -------- | ----------------------- | -------------------------- |
+| GET      | `/api/push/vapid-key`   | VAPID 公開鍵取得           |
+| GET      | `/api/push/status`      | サブスクリプション状態確認 |
+| POST     | `/api/push/subscribe`   | Push 通知登録              |
+| POST     | `/api/push/unsubscribe` | Push 通知解除              |
+| POST     | `/api/push/test`        | テスト通知送信             |
+
+### 統計・その他
+
+| メソッド | パス                 | 説明                             |
+| -------- | -------------------- | -------------------------------- |
+| GET      | `/api/stats`         | 読了統計（日別・ヒートマップ等） |
+| GET      | `/api/engagement`    | エンゲージメント記録取得         |
+| POST     | `/api/engagement`    | エンゲージメント記録             |
+| GET      | `/api/release-notes` | リリースノート                   |
+| GET      | `/api/health`        | ヘルスチェック                   |
 
 ## データ構造 (R2)
 
 ```
-users/{sub}/profile.json    # UserProfile (ログイン時に保存)
-users/{sub}/feeds.json      # Feed[]
-users/{sub}/articles.json   # Article[] (max 500, publishedAt 降順)
+users/{userId}/profile.json     # UserProfile（ログイン時に保存）
+users/{userId}/feeds.json       # Feed[]
+users/{userId}/articles.json    # Article[]（max 500、publishedAt 降順）
+users/{userId}/read-state.json  # { readIds, bookmarkIds, readingListIds, snoozedUntil }
+users/{userId}/push.json        # PushConfig（Web Push サブスクリプション）
+ai-cache/summary/{sha256}       # AI 要約キャッシュ（永続）
+ai-cache/translation/{sha256}   # AI 翻訳キャッシュ（永続）
 ```
 
-`sub` = 0g0 ID のペアワイズ識別子 (JWT の `sub` クレーム)
+`userId` = JWT の `sub` クレームをそのまま使用。
 
-## 読み取り状態
+## 読み取り状態の管理
 
-サーバーサイドでは管理しない。`localStorage['rss-read']` にブラウザ側で保持。
+クライアント優先・サーバー同期の二重管理方式:
 
-## 開発コマンド
-
-```bash
-npm run dev         # Next.js dev server (localhost:3000)
-npm run build       # next build
-npm run preview     # wrangler dev (Workers ローカルエミュレーション)
-npm run build:cf    # @opennextjs/cloudflare build
-npm run deploy      # build:cf + wrangler deploy
-npm run typecheck   # TypeScript 型チェック
-```
+- `localStorage` に既読・ブックマーク・後で読む ID を保持（オフライン対応）
+- ログイン時に `/api/read-state` でサーバーデータとマージ（ローカル ∪ サーバー）
+- 状態変更から 2秒後にデバウンスして R2 に同期
+- ページ離脱時 (`beforeunload`) は `sendBeacon` で即時送信
