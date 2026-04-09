@@ -45,7 +45,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     );
     if (limited) return limited;
 
-    // 既存のセレクタを失敗履歴に積み上げてから消去し、再推論時に除外指示として渡す
+    // 既存のセレクタを失敗履歴に積み上げ、先に R2 に保存する
+    // 失敗時も failedSelectors が記録されるため、次回再推論で同じセレクタを除外できる
     // failedSelectors は最大 MAX_FAILED_SELECTORS 件に制限し R2 肥大化を防ぐ
     const previousSelector = meta.cssSelectors?.articleLink;
     const failedSelectors = [
@@ -53,6 +54,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       ...(previousSelector ? [previousSelector] : []),
     ].slice(-MAX_FAILED_SELECTORS);
     meta.failedSelectors = failedSelectors;
+    // cssSelectors はまだ消去しない状態で failedSelectors を先に R2 へ保存
+    // 推論失敗時も cssSelectors（旧値）は R2 に残るため既存フィードは引き続き動作する
+    await writeFeedMeta(env.RSS_DATA, meta);
+    // 推論呼び出し時はメモリ上でのみ cssSelectors を消去して LLM に再推論させる
     delete meta.cssSelectors;
     const cookie = sub.requestCookie;
     const inferred = await inferFeedFromUrl(meta.url, env.AI, cookie, failedSelectors);
