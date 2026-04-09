@@ -24,6 +24,16 @@ function toDateStr(ts: string): string {
   return ts.slice(0, 10); // "YYYY-MM-DD"
 }
 
+function buildDayList(now: Date, days: number): string[] {
+  const result: string[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() - i);
+    result.push(toDateStr(d.toISOString()));
+  }
+  return result;
+}
+
 export async function GET() {
   return withSession(async ({ session, env }) => {
     const log = await r2Get<EngagementLog>(env.RSS_DATA, engagementKey(session.userId), {
@@ -34,18 +44,8 @@ export async function GET() {
     const now = new Date();
     const todayStr = toDateStr(now.toISOString());
 
-    // 直近 N 日の日付リストを事前生成（古い順）
-    function buildDayList(days: number): string[] {
-      const result: string[] = [];
-      for (let i = days - 1; i >= 0; i--) {
-        const d = new Date(now);
-        d.setUTCDate(d.getUTCDate() - i);
-        result.push(toDateStr(d.toISOString()));
-      }
-      return result;
-    }
-    const last7Days = buildDayList(7);
-    const last365Days = buildDayList(365);
+    const last7Days = buildDayList(now, 7);
+    const last365Days = buildDayList(now, 365);
 
     // 今週（UTC 月曜）の ISO 文字列（文字列比較で週判定）
     const dayOfWeek = now.getUTCDay(); // 0=Sun

@@ -789,6 +789,10 @@ export function resolveScriptLoadedImages(html: string): string {
   });
 }
 
+function countImgs(html: string): number {
+  return (html.match(/<img\b/gi) ?? []).length;
+}
+
 /**
  * HTML からメインコンテンツを抽出する。
  * Readability.js 優先、失敗時は正規表現ベースにフォールバックする。
@@ -816,11 +820,11 @@ export function extractMainContent(
     // Readability が元ページの画像を大量に削除した場合は regex フォールバックを優先する。
     // 例: PR TIMES のように画像主体のプレスリリースでは Readability が本文画像をほぼ除去する。
     // 条件: 元 HTML に 8 枚以上の img があり、Readability の結果が 20% 未満の場合に regex を試す。
-    const srcImgCount = (preprocessed.match(/<img\b/gi) ?? []).length;
-    const rcImgCount = (rc.match(/<img\b/gi) ?? []).length;
+    const srcImgCount = countImgs(preprocessed);
+    const rcImgCount = countImgs(rc);
     if (srcImgCount >= 8 && rcImgCount * 5 < srcImgCount) {
       const regexContent = extractWithRegex(preprocessed, pageUrl);
-      const regexImgCount = (regexContent.match(/<img\b/gi) ?? []).length;
+      const regexImgCount = countImgs(regexContent);
       // rcImgCount が 0 の場合 rcImgCount * 2 = 0 となり条件が常に true になるため
       // Math.max(1, ...) で「regex に最低 1 枚以上の img がある」ことを保証する
       if (regexImgCount >= Math.max(1, rcImgCount * 2)) {

@@ -12,6 +12,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### リファクタリング
 
+- \`content.ts\`: \`extractMainContent\` 内で 3 回繰り返されていた \`(html.match(/<img\\b/gi) ?? []).length\` パターンを \`countImgs\` ヘルパーに抽出。
+- \`app/api/stats/route.ts\`: \`GET\` ハンドラ内クロージャに定義されていた \`buildDayList\` をモジュールレベルに移動し、\`now\` を引数として受け取るよう変更。
 - \`useSpeechSynthesis\`: \`supported\` チェックをモジュール定数 \`SPEECH_SUPPORTED\` に移動し、毎レンダー再評価を排除。\`speak\` / \`stop\` の \`useCallback\` deps から除去され参照が安定化。
 - \`useSpeechSynthesis\`: 停止状態リセット（\`utteranceRef.current = null; setIsPlaying(false); setIsPaused(false)\`）の 3 重複を \`resetState\` ヘルパーに抽出。
 - \`ArticleView\`: TTS キーボードハンドラを手動 \`addEventListener\` から \`useEventListener\` フックに置き換え。不要になった \`useSyncedRef\` 4 呼び出しを削除。
