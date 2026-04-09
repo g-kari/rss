@@ -241,6 +241,8 @@ export function useReadState(
         });
       }
       // notes はローカル ∪ サーバーのマージ（同一キーはサーバー優先）
+      // テキスト編集コンテンツのため、クロスデバイス同期で別デバイスに書いた最新版を
+      // サーバーから取得するのが正しい挙動。readIds 等の Set とは異なる戦略であることに注意。
       if ("notes" in state) {
         setNotesState((prev) => {
           const merged = { ...prev, ...(state.notes ?? {}) };
