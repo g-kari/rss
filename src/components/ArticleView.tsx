@@ -26,6 +26,26 @@ import Spinner from "./Spinner";
 import { useImageDownload } from "../hooks/useImageDownload";
 import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
 import { usePortalMenu } from "../hooks/usePortalMenu";
+import { loadJson, saveJson, STORAGE_KEYS } from "../lib/storage";
+import { useSyncedRef } from "../hooks/useSyncedRef";
+
+// ── スクロール位置の保存・復元 ─────────────────────────────────────────
+const MAX_SCROLL_ENTRIES = 200;
+
+function saveScrollPos(articleId: string, scrollTop: number): void {
+  const map = loadJson<Record<string, number>>(STORAGE_KEYS.SCROLL_POSITIONS, {});
+  map[articleId] = Math.round(scrollTop);
+  const keys = Object.keys(map);
+  if (keys.length > MAX_SCROLL_ENTRIES) {
+    delete map[keys[0]];
+  }
+  saveJson(STORAGE_KEYS.SCROLL_POSITIONS, map);
+}
+
+function loadScrollPos(articleId: string): number {
+  const map = loadJson<Record<string, number>>(STORAGE_KEYS.SCROLL_POSITIONS, {});
+  return map[articleId] ?? 0;
+}
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   small: "text-[14px] leading-[1.75]",
@@ -1415,8 +1435,20 @@ export default function ArticleView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.id]);
 
-  // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)
+  // スクロール位置の保存・復元
   const mainRef = useRef<HTMLElement>(null);
+  const scrollSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const articleIdRef = useSyncedRef(article?.id);
+
+  // 記事切り替え時にスクロール位置をリセットまたは復元
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const saved = article?.id ? loadScrollPos(article.id) : 0;
+    el.scrollTop = saved;
+  }, [article?.id]);
+
+  // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -1621,11 +1653,17 @@ export default function ArticleView({
     return () => window.removeEventListener("message", handleMessage);
   }, [processedContent]);
 
-  // 記事が変わったらスクロール位置をリセット（AI 状態は useArticleAi が担当）
+  // 記事が変わったらプログレスバーをリセット（AI 状態は useArticleAi が担当）
   useEffect(() => {
     if (progressBarRef.current) {
-      progressBarRef.current.style.width = "0%";
-      progressBarRef.current.style.display = "none";
+      const saved = article?.id ? loadScrollPos(article.id) : 0;
+      const el = mainRef.current;
+      const pct =
+        saved > 0 && el && el.scrollHeight > el.clientHeight
+          ? Math.round((saved / (el.scrollHeight - el.clientHeight)) * 100)
+          : 0;
+      progressBarRef.current.style.width = `${pct}%`;
+      progressBarRef.current.style.display = pct > 0 ? "" : "none";
     }
   }, [article?.id]);
 
@@ -1764,6 +1802,15 @@ export default function ArticleView({
     if (progressBarRef.current) {
       progressBarRef.current.style.width = `${progress}%`;
       progressBarRef.current.style.display = progress > 0 ? "" : "none";
+    }
+    // スクロール位置を debounce して保存
+    const scrollTop = el.scrollTop;
+    const id = articleIdRef.current;
+    if (id && scrollTop > 0) {
+      if (scrollSaveTimerRef.current) clearTimeout(scrollSaveTimerRef.current);
+      scrollSaveTimerRef.current = setTimeout(() => {
+        saveScrollPos(id, scrollTop);
+      }, 500);
     }
   }
 
