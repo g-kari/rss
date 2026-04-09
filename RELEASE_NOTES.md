@@ -4,6 +4,7 @@
 
 ### バグ修正
 
+- **ページネーション記事の2ページ目以降に AI フォールバックを適用** — `appendPaginatedPages` で2ページ目以降のコンテンツ抽出が `extractMainContent` のみで、1ページ目と異なり Cloudflare AI toMarkdown フォールバックが発動しない問題を修正。コンテンツが不十分な場合は1ページ目と同様に AI フォールバックを試みるよう統一。
 - **`feeds/import` の型述語抜けを修正** — `SharedFeedMeta | null` の `filter` に型述語を追加し、TypeScript が `null` を見逃す可能性を排除。
 - **`useReadState` の `flushIfPending` で `isDirtyRef` をリセット** — `beforeunload` / `visibilitychange` でタイマーをキャンセルした後も `isDirtyRef.current` が `true` のまま残る問題を修正。次のデバウンスサイクルでの二重送信を防止。
 - **`useReadingStats` をグローバル `fetch` から `apiFetch` に置き換え** — 認証エラーハンドリングと `getAuthReady()` 待機を他フックと統一。
