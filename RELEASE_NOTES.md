@@ -2,6 +2,10 @@
 
 ## 2026-04-09
 
+### リファクタリング
+
+- `hasDangerousScheme` の名前付き文字参照デコード（`&Tab;` / `&NewLine;` / `&colon;`）を個別 3 パスから 1 パスに統合し、文字列走査を削減。
+
 ### セキュリティ
 
 - **`hasDangerousScheme` の HTML5 名前付き文字参照バイパスを修正** — `&colon;`（`:` に展開）を使った `javascript&colon;alert()` や、`&Tab;` / `&NewLine;`（ブラウザが URL パース時に先頭から除去）を使ったスキーム偽装が `hasDangerousScheme` の検出をすり抜け XSS になりうる問題を修正。これらの名前付き文字参照を `unescapeHtml` 呼び出し後に補完デコードするよう対処。数値形式（`&#9;` 等）は既存の `unescapeHtml` で処理済みだったが名前付き形式が未処理だった。

@@ -56,9 +56,9 @@ function hasDangerousScheme(val: string): boolean {
     //   &Tab;     → U+0009 (TAB)     ブラウザが URL パース時に先頭から除去
     //   &NewLine; → U+000A (LF)      同上
     //   &colon;   → U+003A (:)       "javascript&colon;alert()" で : をエンコードするバイパス
-    .replace(/&Tab;/g, "\t")
-    .replace(/&NewLine;/g, "\n")
-    .replace(/&colon;/g, ":")
+    .replace(/&(Tab|NewLine|colon);/g, (_, e) =>
+      e === "Tab" ? "\t" : e === "NewLine" ? "\n" : ":",
+    )
     .replace(/[\u0000-\u0020\u007F]/g, "");
   return /^(?:javascript|vbscript|data):/i.test(decoded);
 }
