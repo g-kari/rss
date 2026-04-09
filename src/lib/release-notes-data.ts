@@ -15,6 +15,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### バグ修正
 
+- **reinfer 失敗時に \`failedSelectors\` が R2 に保存されない問題を修正** — \`inferFeedFromUrl\` が null を返した場合、\`writeFeedMeta\` が呼ばれないまま 422 を返していたため、失敗履歴の更新が破棄されていた。次回再推論時に同じセレクタを繰り返し試みる動作を防止するため、\`failedSelectors\` の保存を推論呼び出し前に移動。推論失敗時も旧 \`cssSelectors\` が R2 に残るため既存フィードは引き続き動作する。
 - **ページネーション記事の2ページ目以降に AI フォールバックを適用** — \`appendPaginatedPages\` で2ページ目以降のコンテンツ抽出が \`extractMainContent\` のみで、1ページ目と異なり Cloudflare AI toMarkdown フォールバックが発動しない問題を修正。コンテンツが不十分な場合は1ページ目と同様に AI フォールバックを試みるよう統一。
 - **\`feeds/import\` の型述語抜けを修正** — \`SharedFeedMeta | null\` の \`filter\` に型述語を追加し、TypeScript が \`null\` を見逃す可能性を排除。
 - **\`useReadState\` の \`flushIfPending\` で \`isDirtyRef\` をリセット** — \`beforeunload\` / \`visibilitychange\` でタイマーをキャンセルした後も \`isDirtyRef.current\` が \`true\` のまま残る問題を修正。次のデバウンスサイクルでの二重送信を防止。
