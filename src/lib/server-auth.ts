@@ -73,6 +73,9 @@ function sessionFromPayload(
   payload: { sub: string },
   refreshedTokens?: { access_token: string; refresh_token: string },
 ): AuthSession | null {
+  // sub は R2 キー（users/{sub}/...）に直接埋め込まれるため、
+  // パストラバーサル対策としてセーフな文字のみ許可する
+  if (!/^[A-Za-z0-9_\-@.]{1,128}$/.test(payload.sub)) return null;
   if (!isBetaAllowed(payload.sub)) return null;
   return { userId: payload.sub, refreshedTokens };
 }
