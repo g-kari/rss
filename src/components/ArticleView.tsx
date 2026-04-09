@@ -28,6 +28,8 @@ import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
 import { usePortalMenu } from "../hooks/usePortalMenu";
 import { loadJson, saveJson, STORAGE_KEYS } from "../lib/storage";
 import { useSyncedRef } from "../hooks/useSyncedRef";
+import { toPlainText } from "../lib/html";
+import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 
 // ── スクロール位置の保存・復元 ─────────────────────────────────────────
 const MAX_SCROLL_ENTRIES = 200;
@@ -1435,6 +1437,21 @@ export default function ArticleView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.id]);
 
+  // 読み上げ（TTS）
+  const {
+    supported: ttsSupported,
+    isPlaying: ttsPlaying,
+    isPaused: ttsPaused,
+    speak,
+    stop: ttsStop,
+  } = useSpeechSynthesis();
+  // 記事切り替え時に読み上げ停止
+  useEffect(() => {
+    ttsStop();
+    // ttsStop は安定参照なので deps から除外
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [article?.id]);
+
   // スクロール位置の保存・復元
   const mainRef = useRef<HTMLElement>(null);
   const scrollSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1546,6 +1563,33 @@ export default function ArticleView({
     () => (processedContent ? collectImageUrlsFromHtml(processedContent) : []),
     [processedContent],
   );
+
+  // TTS キーボードショートカット (P): 読み上げ開始/停止
+  const ttsPlayingRef = useSyncedRef(ttsPlaying);
+  const ttsPausedRef = useSyncedRef(ttsPaused);
+  const processedContentRef = useSyncedRef(processedContent);
+  const articleRef = useSyncedRef(article);
+  useEffect(() => {
+    if (!ttsSupported) return;
+    function handleTtsKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key !== "P") return;
+      const a = articleRef.current;
+      if (!a) return;
+      if (ttsPlayingRef.current || ttsPausedRef.current) {
+        ttsStop();
+      } else {
+        const text = [a.title, toPlainText(processedContentRef.current ?? a.summary ?? "")]
+          .filter(Boolean)
+          .join("\n\n");
+        if (text.trim()) speak(text);
+      }
+    }
+    document.addEventListener("keydown", handleTtsKey);
+    return () => document.removeEventListener("keydown", handleTtsKey);
+    // refs は安定参照のため deps から除外
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ttsSupported, speak, ttsStop]);
 
   // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する
   const injectSliderControls = useCallback(() => {
@@ -2041,6 +2085,72 @@ export default function ArticleView({
                   </span>
                 ) : null}
                 {downloadingImages ? <Spinner /> : <DownloadIcon />}
+              </button>
+            )}
+
+            {ttsSupported && hasContent && (
+              <button
+                onClick={() => {
+                  if (ttsPlaying || ttsPaused) {
+                    ttsStop();
+                  } else {
+                    const text = [
+                      article.title,
+                      toPlainText(processedContent ?? article.summary ?? ""),
+                    ]
+                      .filter(Boolean)
+                      .join("\n\n");
+                    speak(text);
+                  }
+                }}
+                title={
+                  ttsPlaying ? "読み上げを停止" : ttsPaused ? "読み上げを停止" : "読み上げ (P)"
+                }
+                className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${
+                  ttsPlaying || ttsPaused
+                    ? "text-ink hover:text-text-muted"
+                    : "text-text-faint hover:text-text-muted"
+                }`}
+              >
+                {ttsPlaying ? (
+                  /* 停止アイコン（■） */
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" stroke="none">
+                    <rect x="2" y="2" width="10" height="10" rx="2" />
+                  </svg>
+                ) : ttsPaused ? (
+                  /* 一時停止中アイコン（スピーカー + 波線） */
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M2 5H5L9 2V12L5 9H2V5Z" />
+                    <path
+                      d="M11 4.5C11 4.5 12.5 6 12.5 7C12.5 8 11 9.5 11 9.5"
+                      strokeDasharray="2 1.5"
+                    />
+                  </svg>
+                ) : (
+                  /* 通常スピーカーアイコン */
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M2 5H5L9 2V12L5 9H2V5Z" />
+                    <path d="M11 4.5C11 4.5 12.5 6 12.5 7C12.5 8 11 9.5 11 9.5" />
+                  </svg>
+                )}
               </button>
             )}
 
