@@ -6,6 +6,14 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-10
 
+### リファクタリング
+
+- **CSP \`frame-src\` を単一管理** — \`middleware.ts\` の frame-src 許可オリジンを \`html.ts\` の \`TRUSTED_IFRAME_RULES\` から導出するように変更。新しい埋め込みソース追加時の二重管理を解消。
+- **CSP 静的ディレクティブをモジュールレベルに移動** — nonce 以外の CSP ディレクティブをモジュール初期化時に一度だけ構築するよう変更（毎リクエストのアロケート・join を排除）。
+- **\`btoa(randomUUID())\` を \`randomUUID()\` に簡略化** — UUID 文字列は CSP nonce に使える印字可能 ASCII のため btoa エンコード不要。
+- **\`role\` フィールドの不要な \`as const\` 削除** — Cloudflare Workers AI インターフェースの \`role\` は \`string\` 型のため \`"system" as const\` / \`"user" as const\` は不要なキャスト。
+- **\`web-push.ts\` の冗長な 2 行を 1 行にマージ** — \`const body = encryptPayload(...); const encryptedBody = await body\` を \`const encryptedBody = await encryptPayload(...)\` に整理。
+
 ### セキュリティ
 
 - **CSP nonce 伝播修正** — \`middleware.ts\` で \`NextResponse.next({ request: { headers } })\` パターンを使いリクエストヘッダーにも CSP を付与。Next.js レンダラーがリクエストヘッダーから nonce を読むため、修正前は nonce が伝播せずインラインスクリプトがブロックされる恐れがあった。
