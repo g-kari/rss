@@ -1,5 +1,13 @@
 # リリースノート
 
+## 2026-04-11
+
+### リファクタリング
+
+- **`useGestureNav` のマジックナンバーを named constants に抽出** — `60` / `150` / `400` / `0.5` / `1.5` を `SWIPE_THRESHOLD_PX` / `WHEEL_THRESHOLD_PX` / `WHEEL_RESET_MS` / `WHEEL_X_Y_RATIO` / `TOUCH_X_Y_RATIO` に命名。`60` が mouse/touch の両方で使われていた重複を定数共有で解消。
+- **`useGestureNav` のタイマーリークを修正** — アンマウント時に `wheelDeltaRef` の pending タイマーが残ったままになる問題を `useEffect` cleanup で修正。
+- **`useGestureNav` の optional chaining 統一** — `if (cb) cb()` パターンを `cb?.()` に統一。what コメントを why（縦スクロール比率の根拠）に置き換え。
+
 ## 2026-04-10
 
 ### リファクタリング

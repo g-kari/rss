@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+
+const SWIPE_THRESHOLD_PX = 60; // ドラッグ・スワイプの最小距離
+const WHEEL_THRESHOLD_PX = 150; // ホイール累積距離の閾値
+const WHEEL_RESET_MS = 400; // ホイール累積のリセット待機時間
+const WHEEL_X_Y_RATIO = 0.5; // X/Y delta の水平優位フィルター比率
+const TOUCH_X_Y_RATIO = 1.5; // 縦スクロールとの衝突を避けるための X/Y 比率閾値
 
 /** target から currentTarget まで祖先を遡り、横スクロール可能な要素があれば true を返す */
 function hasScrollableAncestor(
@@ -34,21 +40,28 @@ export function useGestureNav({
     timer: null,
   });
 
+  useEffect(() => {
+    const wheelDelta = wheelDeltaRef.current;
+    return () => {
+      if (wheelDelta.timer) clearTimeout(wheelDelta.timer);
+    };
+  }, []);
+
   function handleWheel(e: React.WheelEvent) {
     if (hasScrollableAncestor(e.target, e.currentTarget)) return;
-    if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * 0.5) return;
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * WHEEL_X_Y_RATIO) return;
     const state = wheelDeltaRef.current;
     state.x += e.deltaX;
     if (state.timer) clearTimeout(state.timer);
     state.timer = setTimeout(() => {
       state.x = 0;
-    }, 400);
-    if (state.x > 150 && onSelectNext) {
+    }, WHEEL_RESET_MS);
+    if (state.x > WHEEL_THRESHOLD_PX) {
       state.x = 0;
-      onSelectNext();
-    } else if (state.x < -150 && onSelectPrev) {
+      onSelectNext?.();
+    } else if (state.x < -WHEEL_THRESHOLD_PX) {
       state.x = 0;
-      onSelectPrev();
+      onSelectPrev?.();
     }
   }
 
@@ -60,9 +73,9 @@ export function useGestureNav({
     if (mouseStartXRef.current === null) return;
     const dx = e.clientX - mouseStartXRef.current;
     mouseStartXRef.current = null;
-    if (Math.abs(dx) < 60) return;
-    if (dx < 0 && onSelectNext) onSelectNext();
-    else if (dx > 0 && onSelectPrev) onSelectPrev();
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
+    if (dx < 0) onSelectNext?.();
+    else if (dx > 0) onSelectPrev?.();
   }
 
   function handleNavMouseLeave() {
@@ -81,10 +94,10 @@ export function useGestureNav({
     const dx = t.clientX - touchStartRef.current.x;
     const dy = t.clientY - touchStartRef.current.y;
     touchStartRef.current = null;
-    // 水平方向が縦スクロールより優位で、かつ閾値を超えた場合のみ遷移
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx < 0 && onSelectNext) onSelectNext();
-    else if (dx > 0 && onSelectPrev) onSelectPrev();
+    // 縦スクロールとの衝突を避けるため X/Y 比率 TOUCH_X_Y_RATIO 以上の水平優位のみナビゲート
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy) * TOUCH_X_Y_RATIO) return;
+    if (dx < 0) onSelectNext?.();
+    else if (dx > 0) onSelectPrev?.();
   }
 
   return {
