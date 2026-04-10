@@ -47,6 +47,23 @@ function toggleBoolFilter(
   setPage(1);
 }
 
+/** 列挙値を循環させ localStorage に保存してページをリセットするコールバックを生成する */
+function makeCycler<T extends string>(
+  cycle: readonly T[],
+  ref: { readonly current: T },
+  storageKey: string,
+  setState: Dispatch<SetStateAction<T>>,
+  setPage: Dispatch<SetStateAction<number>>,
+): () => T {
+  return () => {
+    const next = cycleValue(cycle, ref.current);
+    storageSet(storageKey, next);
+    setState(next);
+    setPage(1);
+    return next;
+  };
+}
+
 interface Options {
   /** フィルタリング対象の全記事リスト */
   articles: Article[];
@@ -169,13 +186,17 @@ export function useFilteredArticles({
     setCategoryFilter(null);
   }, [feedId]);
 
-  // useState の set 関数は常に安定 — 5つのトグルを1つの useMemo にまとめる
+  // useState の set 関数・useSyncedRef の ref は常に安定 — deps [] で固定できるコールバックを統合
   const {
     toggleUnreadOnly,
     toggleBookmarkOnly,
     toggleReadingListOnly,
     toggleLikeOnly,
     toggleNoteOnly,
+    updateQuery,
+    toggleSortOrder,
+    cycleDateRange,
+    cycleReadingTimeRange,
   } = useMemo(
     () => ({
       toggleUnreadOnly: () => toggleBoolFilter(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, setPage),
@@ -185,37 +206,35 @@ export function useFilteredArticles({
         toggleBoolFilter(setReadingListOnly, STORAGE_KEYS.READING_LIST_ONLY, setPage),
       toggleLikeOnly: () => toggleBoolFilter(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, setPage),
       toggleNoteOnly: () => toggleBoolFilter(setNoteOnly, STORAGE_KEYS.NOTE_ONLY, setPage),
+      updateQuery: (q: string) => {
+        setRawQuery(q);
+        setPage(1);
+      },
+      toggleSortOrder: makeCycler(
+        SORT_ORDER_CYCLE,
+        sortOrderRef,
+        STORAGE_KEYS.SORT_ORDER,
+        setSortOrder,
+        setPage,
+      ),
+      cycleDateRange: makeCycler(
+        DATE_RANGE_CYCLE,
+        dateRangeRef,
+        STORAGE_KEYS.DATE_RANGE,
+        setDateRange,
+        setPage,
+      ),
+      cycleReadingTimeRange: makeCycler(
+        READING_TIME_RANGE_CYCLE,
+        readingTimeRangeRef,
+        STORAGE_KEYS.READING_TIME_RANGE,
+        setReadingTimeRange,
+        setPage,
+      ),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-
-  const updateQuery = useCallback((q: string) => {
-    setRawQuery(q);
-    setPage(1);
-  }, []);
-
-  const toggleSortOrder = useCallback(() => {
-    const next = cycleValue(SORT_ORDER_CYCLE, sortOrderRef.current);
-    storageSet(STORAGE_KEYS.SORT_ORDER, next);
-    setSortOrder(next);
-    setPage(1);
-    return next;
-  }, [sortOrderRef]);
-  const cycleDateRange = useCallback(() => {
-    const next = cycleValue(DATE_RANGE_CYCLE, dateRangeRef.current);
-    storageSet(STORAGE_KEYS.DATE_RANGE, next);
-    setDateRange(next);
-    setPage(1);
-    return next;
-  }, [dateRangeRef]);
-  const cycleReadingTimeRange = useCallback(() => {
-    const next = cycleValue(READING_TIME_RANGE_CYCLE, readingTimeRangeRef.current);
-    storageSet(STORAGE_KEYS.READING_TIME_RANGE, next);
-    setReadingTimeRange(next);
-    setPage(1);
-    return next;
-  }, [readingTimeRangeRef]);
 
   const loadMore = useCallback(() => {
     setPage((p) => p + 1);
