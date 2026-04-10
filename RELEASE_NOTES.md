@@ -1,5 +1,12 @@
 # リリースノート
 
+## 2026-04-11 (5)
+
+### リファクタリング
+
+- **`makeCycler` ヘルパー抽出** — `useFilteredArticles` の `toggleSortOrder` / `cycleDateRange` / `cycleReadingTimeRange` が持つ「循環→保存→ページリセット→返却」パターンを `makeCycler` モジュールレベルヘルパーに抽出し、`updateQuery` とともに既存の `useMemo` ブロックへ統合（`useCallback` を 4 つ削減）。
+- **`FeedPageResult` 型をモジュールレベルへ移動** — `useFeeds` の `loadMoreAllFeedsArticles` 内でインライン宣言されていた型を関数外に移動し、関数ボディをクリーンアップ。
+
 ## 2026-04-11 (4)
 
 ### リファクタリング
