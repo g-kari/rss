@@ -10,6 +10,9 @@ import { useSyncedRef } from "./useSyncedRef";
 /** 記事新着確認のポーリング間隔（5分） */
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
 
+/** `loadMoreAllFeedsArticles` での 1 フィード分の取得結果 */
+type FeedPageResult = { feedId: string; nextPage: number; data: Article[] };
+
 /** incoming の新規記事を existing にマージして日付降順でソートして返す */
 function mergeUniqueArticles(existing: Article[], incoming: Article[]): Article[] {
   if (incoming.length === 0) return existing;
@@ -292,7 +295,6 @@ export function useFeeds(
         return { feedId: f.id, nextPage, data };
       }),
     );
-    type FeedPageResult = { feedId: string; nextPage: number; data: Article[] };
     const succeeded = results.filter(
       (r): r is PromiseFulfilledResult<FeedPageResult> => r.status === "fulfilled",
     );
