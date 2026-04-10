@@ -4,6 +4,10 @@
 
 ### セキュリティ
 
+- **CSP nonce 伝播修正** — `middleware.ts` で `NextResponse.next({ request: { headers } })` パターンを使いリクエストヘッダーにも CSP を付与。Next.js レンダラーがリクエストヘッダーから nonce を読むため、修正前は nonce が伝播せずインラインスクリプトがブロックされる恐れがあった。
+- **`sanitizeForPrompt` に Unicode 制御文字を追加除去** — ASCII 制御文字 (`\x00-\x1F`) のみだったフィルターに Unicode 双方向制御文字 (U+200B–200D, U+2028–2029, U+202A–202E, U+FEFF) を追加。U+2028/2029 は一部 LLM トークナイザーで改行扱いされロールインジェクションに悪用できた。
+- **`reason` フィールドの外部入力に `sanitizeForPrompt` を適用** — `link_discovery` / `web_search` の推薦結果の `reason` フィールドに RSS 記事タイトル・AI 出力 topic をサニタイズせず埋め込んでいた。ストアード XSS の経路を遮断。
+
 - **CSP nonce 実装 — `'unsafe-inline'` を `script-src` から削除** — `middleware.ts` を新規追加し、リクエストごとにランダムな nonce を生成。Next.js がインライン script 要素に nonce 属性を自動付与するため、`'unsafe-inline'` なしで CSP が機能するようになった。これにより XSS 攻撃でインラインスクリプトを注入されてもブラウザが実行をブロックする。
 - **`extractUserTopics` のプロンプトインジェクション対策** — 外部 RSS フィードから取得したタイトル（フィード名・記事タイトル）を LLM プロンプトへ埋め込む前に `sanitizeForPrompt` で制御文字・改行を除去し 120 文字に切り詰め。また system/user メッセージを分離してインジェクション境界を明確化。悪意ある RSS フィードが `"Ignore previous instructions..."` のようなタイトルで AI の挙動を操作するリスクを緩和。
 
