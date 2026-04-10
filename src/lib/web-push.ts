@@ -229,8 +229,7 @@ export async function sendPush(
   const audience = new URL(subscription.endpoint).origin;
   const authHeader = await createVapidAuthHeader(audience, subject, publicKey, privateKey);
 
-  const body = encryptPayload(subscription, enc.encode(JSON.stringify(payload)));
-  const encryptedBody = await body;
+  const encryptedBody = await encryptPayload(subscription, enc.encode(JSON.stringify(payload)));
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_FETCH_TIMEOUT_MS);

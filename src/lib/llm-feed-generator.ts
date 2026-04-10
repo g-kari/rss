@@ -143,7 +143,7 @@ export async function inferSelectors(
 
   const messages = [
     {
-      role: "system" as const,
+      role: "system",
       content:
         "You are a CSS selector expert. Given JSON link structures " +
         "(h=href, t=text, c=classes, p=ancestor chain as [tag,classes] pairs), " +
@@ -152,7 +152,7 @@ export async function inferSelectors(
         'Respond with ONLY one JSON line: {"articleLink":"<selector>"}',
     },
     {
-      role: "user" as const,
+      role: "user",
       content: `Site: ${siteUrl}\nLinks: ${JSON.stringify(links)}`,
     },
   ];

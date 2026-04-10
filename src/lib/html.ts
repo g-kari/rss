@@ -140,7 +140,10 @@ function sanitizeStyleAttr(style: string): string {
  */
 
 /** ホスト名完全一致 ＋ パスプレフィックス一致で判定するルール。pathPrefix 省略時はホスト名のみで許可。 */
-const TRUSTED_IFRAME_RULES: ReadonlyArray<{ hosts: readonly string[]; pathPrefix?: string }> = [
+export const TRUSTED_IFRAME_RULES: ReadonlyArray<{
+  hosts: readonly string[];
+  pathPrefix?: string;
+}> = [
   { hosts: ["youtube.com", "www.youtube.com"], pathPrefix: "/embed/" },
   { hosts: ["youtube-nocookie.com", "www.youtube-nocookie.com"], pathPrefix: "/embed/" },
   { hosts: ["player.vimeo.com"] },

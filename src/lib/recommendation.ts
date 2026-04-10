@@ -26,7 +26,7 @@ function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
  */
 function sanitizeForPrompt(text: string, maxLength = 120): string {
   return text
-    .replace(/[\x00-\x1F\x7F\u200B-\u200D\u2028\u2029\u202A-\u202E\uFEFF]/g, " ") // ASCII + Unicode 制御文字を空白に置換
+    .replace(/[\x00-\x1F\x7F\u200B-\u200D\u2028\u2029\u202A-\u202E\uFEFF]/g, " ")
     .trim()
     .slice(0, maxLength);
 }
@@ -160,7 +160,7 @@ export async function extractUserTopics(
     const response = (await ai.run(MODEL, {
       messages: [
         {
-          role: "system" as const,
+          role: "system",
           content:
             "You are an assistant that analyzes RSS reader interests. " +
             "Extract 5-10 DIVERSE topic keywords from the feed names and article titles provided by the user. " +
@@ -169,7 +169,7 @@ export async function extractUserTopics(
             'Return a JSON array only. Example: ["TypeScript", "Rust", "クラウド", "アニメ"]',
         },
         {
-          role: "user" as const,
+          role: "user",
           content: `Feed names:\n${sanitizedFeedTitles}\n\nArticle titles:\n${sanitizedArticleTitles}`,
         },
       ],
