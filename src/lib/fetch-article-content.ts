@@ -110,19 +110,7 @@ export async function appendPaginatedPages(
     try {
       const result = await fetchHtmlBytes(nextUrl);
       if (!result) break;
-      const { bytes, ct } = result;
-      const charset = detectCharset(ct, bytes);
-      const html = decodeBytesToString(bytes, charset);
-      const { content: extracted } = extractMainContent(html, nextUrl);
-      let content = extracted;
-      // 1ページ目と同様に、抽出結果が貧弱な場合は AI フォールバック
-      if (!isContentSufficient(content)) {
-        const hostname = new URL(nextUrl).hostname;
-        const md = await fetchMarkdownFromHtml(html, hostname);
-        if (md) {
-          content = postProcessMarkdownContent(markdownToHtml(md), nextUrl);
-        }
-      }
+      const { content, html } = await extractContent(result.bytes, result.ct, nextUrl);
       allContents.push(content);
       nextUrl = detectNextPageUrl(html, nextUrl);
     } catch {
