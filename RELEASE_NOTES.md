@@ -2,6 +2,11 @@
 
 ## 2026-04-10
 
+### セキュリティ
+
+- **`sendPush` に SSRF 多層防御を追加** — Push 通知送信時、サブスクリプション登録時に `isValidHttpsUrl` で検証済みだが、R2 データが直接改ざんされた場合の SSRF 経路を防ぐため `sendPush` 関数内でも endpoint URL を再検証するよう追加。
+- **`inferSelectors` のプロンプトインジェクション対策** — `excludeSelectors` をプロンプトに埋め込む際、`"${s}"` のテンプレートリテラルでは CSS 属性セレクタ (`[attr="value"]`) に含まれる `"` でプロンプト構造が崩れる恐れがあった。`JSON.stringify(excludeSelectors)` に変更し、引用符を適切にエスケープして LLM への意図しないインジェクションを防止。
+
 ### ドキュメント整備
 
 - **R2 データ構造ドキュメントを共有フィード構造に更新** — `README.md` / `CLAUDE.md` / `.claude/rules/architecture.md` / `.claude/rules/coding-conventions.md` の R2 キー構造が旧構造（`users/{userId}/feeds.json`・`users/{userId}/articles.json`）のままだった箇所を現行の共有フィード構造（`feeds/{feedHash}/meta.json`・`feeds/{feedHash}/articles/latest.json`・`users/{userId}/subscriptions.json` 等）に全面更新。データフロー・クールダウンキー・ReadState フィールド（likeIds・notes）も追記。

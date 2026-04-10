@@ -138,7 +138,7 @@ export async function inferSelectors(
 
   const excludeInstruction =
     excludeSelectors && excludeSelectors.length > 0
-      ? ` The following selectors were tried before and did not work correctly — do NOT use any of them: ${excludeSelectors.map((s) => `"${s}"`).join(", ")}.`
+      ? ` The following selectors were tried before and did not work correctly — do NOT use any of them: ${JSON.stringify(excludeSelectors)}.`
       : "";
 
   const messages = [

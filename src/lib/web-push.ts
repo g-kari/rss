@@ -14,6 +14,7 @@
 import type { PushSubscriptionRecord } from "../types";
 import { DEFAULT_FETCH_TIMEOUT_MS } from "./fetch";
 import { base64urlToBytes } from "./auth";
+import { isValidHttpsUrl } from "./url";
 
 // -------------------------------------------------------------------------
 // ユーティリティ
@@ -220,6 +221,10 @@ export async function sendPush(
 
   // VAPID 未設定時はスキップ（ローカル開発環境等）
   if (!publicKey || !privateKey) return { ok: false, gone: false };
+
+  // サブスクリプション登録時に isValidHttpsUrl で検証済みだが、
+  // R2 データが直接書き換えられた場合の SSRF を多層防御として再検証する
+  if (!isValidHttpsUrl(subscription.endpoint)) return { ok: false, gone: false };
 
   const audience = new URL(subscription.endpoint).origin;
   const authHeader = await createVapidAuthHeader(audience, subject, publicKey, privateKey);
