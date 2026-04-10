@@ -11,6 +11,7 @@
 
 - **`customTitle` に制御文字除去を追加** — `PATCH /api/feeds/:id` の `title` フィールドが `category` と異なり `stripControlChars` を経由していなかった。一貫性を保ちストアード制御文字インジェクションを防ぐため修正。
 - **`sanitizeStyleAttr` に `position: absolute` を追加ブロック** — `fixed` / `sticky` は既にブロック済みだったが `absolute` は未対応だった。高 `z-index` と組み合わせると記事ペイン内で他の UI 要素を覆うフィッシング UI を作れるため除去対象に追加。
+- **`sanitizeStyleAttr` で `position: -webkit-sticky` を除去** — Safari で動作する `-webkit-sticky` がベンダープレフィックス形式のため既存の正規表現 `(fixed|sticky|absolute)` では捕捉されていなかった。`(?:-webkit-)?` を追加して補完。
 
 ### リファクタリング
 
