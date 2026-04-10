@@ -48,12 +48,18 @@ function buildCsp(nonce: string): string {
   ].join("; ");
 }
 
-export function middleware(_request: NextRequest): NextResponse {
+export function middleware(request: NextRequest): NextResponse {
   // crypto.randomUUID() は Workers / Edge Runtime 両方で利用可能
   const nonce = btoa(crypto.randomUUID());
   const csp = buildCsp(nonce);
 
-  const response = NextResponse.next();
+  // Next.js レンダラーは requestヘッダーの CSP から nonce を読む
+  // (ref: next/dist/server/app-render/get-script-nonce-from-header.js)
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("Content-Security-Policy", csp);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  // ブラウザへの CSP 送信用にレスポンスヘッダーにも付与
   response.headers.set("Content-Security-Policy", csp);
   return response;
 }
