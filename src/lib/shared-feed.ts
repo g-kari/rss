@@ -21,6 +21,12 @@ export const MAX_FEEDS_PER_USER = 1000;
 /** ページネーションの最大ページ数（1 フィードあたり最大 PAGE_SIZE × MAX_PAGES 件） */
 export const MAX_PAGES = 500;
 
+/** フィードの既知 ID 追跡リストの上限（重複チェック用、古いものから切り詰め） */
+export const KNOWN_IDS_MAX = 10_000;
+
+/** ユーザーに返す記事の最大件数 */
+export const MAX_USER_ARTICLES = 10_000;
+
 // ── キー計算 ──────────────────────────────────────────────────────
 
 /** フィード URL から feedHash を計算する (sha256 の先頭 16 文字) */
@@ -220,8 +226,7 @@ export async function mergeNewArticles(
     meta.pageCount = Math.max(meta.pageCount, maxPage - 1); // pageCount は p2以降の数
   }
 
-  // knownIds を更新（新規 ID を追加し、上限 10,000 件を超えた場合は古い順に切り詰め）
-  const KNOWN_IDS_MAX = 10_000;
+  // knownIds を更新（新規 ID を追加し、上限を超えた場合は古い順に切り詰め）
   const updatedKnownIds = [
     ...(meta.knownIds ?? latest.map((a) => a.id)),
     ...brandNew.map((a) => a.id),
@@ -298,7 +303,6 @@ export async function getUserLatestArticles(bucket: R2Bucket, userId: string): P
   const subs = await readUserSubscriptions(bucket, userId);
   if (subs.length === 0) return [];
 
-  const MAX_USER_ARTICLES = 10_000;
   const pages = await Promise.all(subs.map((s) => readLatestArticles(bucket, s.feedHash)));
   return sortByDate(pages.flat()).slice(0, MAX_USER_ARTICLES);
 }
