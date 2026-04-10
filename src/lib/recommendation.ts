@@ -26,7 +26,7 @@ function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
  */
 function sanitizeForPrompt(text: string, maxLength = 120): string {
   return text
-    .replace(/[\x00-\x1F\x7F]/g, " ") // 制御文字（改行・タブ含む）を空白に置換
+    .replace(/[\x00-\x1F\x7F\u200B-\u200D\u2028\u2029\u202A-\u202E\uFEFF]/g, " ") // ASCII + Unicode 制御文字を空白に置換
     .trim()
     .slice(0, maxLength);
 }
@@ -261,7 +261,7 @@ export async function generateWebSearchFeeds(
     discoverAndBuildFeed(candidate.url, subscribedUrls, "ws", () => ({
       title: candidate.title || new URL(candidate.url).hostname,
       siteUrl: candidate.url,
-      reason: `「${candidate.topic}」の検索結果から発見`,
+      reason: `「${sanitizeForPrompt(candidate.topic, 60)}」の検索結果から発見`,
       source: "web_search" as const,
       score: 0.9,
     })),
@@ -410,7 +410,7 @@ export async function generateLinkDiscoveryFeeds(
     discoverAndBuildFeed(url, subscribedUrls, "ld", () => ({
       title: new URL(url).hostname,
       siteUrl: url,
-      reason: `「${articleTitle}」内のリンクから発見`,
+      reason: `「${sanitizeForPrompt(articleTitle, 60)}」内のリンクから発見`,
       source: "link_discovery" as const,
       score: 0.85,
     })),
