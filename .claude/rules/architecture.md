@@ -176,18 +176,22 @@ src/
 ### フィード追加
 
 1. ユーザーが FeedSidebar に URL 入力
-2. `POST /api/feeds` → Route Handler が R2 の `users/{sub}/feeds.json` を更新
-3. Route Handler が即座に RSS を fetch して `users/{sub}/articles.json` も更新
-4. クライアントが再フェッチして表示を更新
+2. `POST /api/feeds` → RSS 探索 → 見つからない場合は LLM で CSS セレクタ推論
+3. `computeFeedHash(url)` で feedHash を計算
+4. `getOrCreateFeedMeta` で `feeds/{feedHash}/meta.json` を作成・取得（他ユーザー既登録の場合は既存を流用）
+5. `users/{userId}/subscriptions.json` に `UserSubscription` を追加
+6. バックグラウンド (`ctx.waitUntil`) で初回記事フェッチ → `feeds/{feedHash}/articles/latest.json` を更新
+7. クライアントが再フェッチして表示を更新
 
 ### 記事取得 (cron)
 
 1. Cloudflare Cron Trigger が 30 分毎に `scheduled` ハンドラーを起動
-2. `fetchAllUsers(env)` が R2 の `users/` プレフィックスを列挙
-3. 各ユーザーの `feeds.json` を読んで全フィードを fetch
+2. `buildFeedUserMap(env)` が全ユーザーの `subscriptions.json` を走査して `feedHash → userId[]` マップを構築
+3. 各 feedHash に対して RSS を 1 度だけ fetch（共有フィード）
 4. `fast-xml-parser` で RSS 2.0 / Atom をパース
-5. `guid` でdeduplication、max 500件、`publishedAt` 降順
-6. `users/{sub}/articles.json` を更新
+5. `mergeNewArticles` で `guid` ベースの dedup → `feeds/{feedHash}/articles/latest.json` を更新（500件超えは `p{N}.json` にカスケード）
+6. `feeds/{feedHash}/meta.json` の `lastFetchedAt` / `articleCount` を更新
+7. 購読中の各ユーザーに Web Push 通知を送信
 
 ### 読み取り状態
 
@@ -222,18 +226,50 @@ const CLIENT_ID = process.env.CLIENT_ID!;
 
 ## R2 データ構造
 
+### 共有フィードデータ（ユーザー間共有）
+
 ```
-users/{userId}/profile.json     # UserProfile (ログイン時に保存)
-users/{userId}/feeds.json       # Feed[]
-users/{userId}/articles.json    # Article[] (max 500, publishedAt 降順)
-users/{userId}/read-state.json  # { readIds, bookmarkIds, readingListIds, snoozedUntil }
-users/{userId}/push.json        # PushConfig (Web Push サブスクリプション)
-ai-cache/summary/{sha256}       # AI 要約キャッシュ (永続)
-ai-cache/translation/{sha256}   # AI 翻訳キャッシュ (永続)
+feeds/{feedHash}/meta.json               # SharedFeedMeta（フィードURL・タイトル・エラー状態・CSSセレクタ等）
+feeds/{feedHash}/articles/latest.json   # Article[]（最新 PAGE_SIZE=500 件、publishedAt 降順）
+feeds/{feedHash}/articles/p{N}.json     # Article[]（過去ページ、N=2〜）
+```
+
+`feedHash` = `sha256(feedUrl).slice(0, 16)`（`computeFeedHash` で計算）。
+フィード記事データはユーザー間で共有され、複数ユーザーが同じフィードを購読しても記事フェッチは 1 度だけ行われる。
+詳細は `src/lib/shared-feed.ts` の `mergeNewArticles` / `cascadeOverflow` を参照。
+
+### ユーザー別データ
+
+```
+users/{userId}/subscriptions.json       # UserSubscription[]（購読フィード一覧・フィルター設定等）
+users/{userId}/profile.json             # UserProfile（ログイン時に保存）
+users/{userId}/read-state.json          # ReadState（readIds・bookmarkIds・readingListIds・likeIds・snoozedUntil・notes・globalFilter・readBeforeTimestamp）
+users/{userId}/engagement.json          # EngagementLog（記事への行動履歴）
+users/{userId}/recommendations.json     # RecommendationCache（フィード推薦キャッシュ）
+users/{userId}/push.json                # PushConfig（Web Push サブスクリプション）
+users/{userId}/saved.json               # 手動保存記事（/api/articles/save）
 ```
 
 `userId` = JWT の `sub` クレームをそのまま使用（`server-auth.ts` で `userId: payload.sub` と設定）。
-Route Handler では `session.userId` でアクセスする — R2 キーは常に `users/${session.userId}/...` の形式。
+Route Handler では `session.userId` でアクセスする。
+
+### クールダウン管理（R2）
+
+```
+users/{userId}/last-full-refresh.json          # 全フィード一括リフレッシュのクールダウン
+users/{userId}/ai-cooldown.json                # AI エンドポイントのクールダウン
+users/{userId}/feed-refresh-{feedHash}.json    # 単体フィードリフレッシュのクールダウン
+users/{userId}/feed-reinfer-{feedHash}.json    # LLM CSS セレクタ再推論のクールダウン
+users/{userId}/recommendations-refresh.json    # 推薦リフレッシュのクールダウン
+users/{userId}/recommendations-gen.json        # 推薦生成（GET）の同時実行防止クールダウン
+```
+
+### AI キャッシュ（永続）
+
+```
+ai-cache/summary/{sha256}               # AI 要約キャッシュ（永続）
+ai-cache/translation/{sha256}           # AI 翻訳キャッシュ（永続）
+```
 
 ## 認証フロー
 

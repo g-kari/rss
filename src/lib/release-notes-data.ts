@@ -8,6 +8,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### ドキュメント整備
 
+- **R2 データ構造ドキュメントを共有フィード構造に更新** — \`README.md\` / \`CLAUDE.md\` / \`.claude/rules/architecture.md\` / \`.claude/rules/coding-conventions.md\` の R2 キー構造が旧構造（\`users/{userId}/feeds.json\`・\`users/{userId}/articles.json\`）のままだった箇所を現行の共有フィード構造（\`feeds/{feedHash}/meta.json\`・\`feeds/{feedHash}/articles/latest.json\`・\`users/{userId}/subscriptions.json\` 等）に全面更新。データフロー・クールダウンキー・ReadState フィールド（likeIds・notes）も追記。
 - **README.md を現状に合わせて全面更新** — パッケージマネージャを \`npm\` → \`pnpm\` に修正、R2 バケットの不要な \`rss-reader-cache\` 削除、VAPID・BRAVE_SEARCH_API_KEY 等の新規シークレット追加、API エンドポイント一覧を現行の全エンドポイント（read-state / recommendations / push / stats / engagement / ogp / image-proxy / OPML 等）に拡充、読み取り状態の説明を「localStorage のみ」→「R2 との二重管理」に修正。
 
 ### リファクタリング
