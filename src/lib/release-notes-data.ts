@@ -6,6 +6,11 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-10
 
+### セキュリティ
+
+- **\`customTitle\` に制御文字除去を追加** — \`PATCH /api/feeds/:id\` の \`title\` フィールドが \`category\` と異なり \`stripControlChars\` を経由していなかった。一貫性を保ちストアード制御文字インジェクションを防ぐため修正。
+- **\`sanitizeStyleAttr\` に \`position: absolute\` を追加ブロック** — \`fixed\` / \`sticky\` は既にブロック済みだったが \`absolute\` は未対応だった。高 \`z-index\` と組み合わせると記事ペイン内で他の UI 要素を覆うフィッシング UI を作れるため除去対象に追加。
+
 ### リファクタリング
 
 - **CSP \`frame-src\` を単一管理** — \`middleware.ts\` の frame-src 許可オリジンを \`html.ts\` の \`TRUSTED_IFRAME_RULES\` から導出するように変更。新しい埋め込みソース追加時の二重管理を解消。

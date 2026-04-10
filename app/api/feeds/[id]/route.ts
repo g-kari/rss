@@ -45,7 +45,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!sub) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
 
     if ("title" in body) {
-      const title = typeof body.title === "string" ? body.title.trim() : "";
+      const title = typeof body.title === "string" ? stripControlChars(body.title.trim()) : "";
       if (!title)
         return NextResponse.json({ error: "title must be a non-empty string" }, { status: 400 });
       if (title.length > 200)

@@ -109,7 +109,9 @@ export function toPlainText(html: string): string {
  *   例: background-image:url(https://tracker.example/pixel.gif) でピクセルトラッキングが可能
  * - image-set() / -webkit-image-set() を除去: bare string 記法 (url() なし) でも外部画像を読み込めるため
  *   例: background-image:image-set("https://tracker.example/pixel.gif" 1x) は url() を使わず外部リソースを取得できる
- * - position: fixed / sticky を除去: UI 全体を覆うフィッシングオーバーレイを防ぐ
+ * - position: fixed / sticky / absolute を除去: UI を覆うフィッシングオーバーレイを防ぐ
+ *   absolute は fixed/sticky ほど広域ではないが、high z-index と組み合わせると
+ *   記事ペイン内で他の UI 要素を覆うフィッシング UI を作れるため除去する。
  */
 function sanitizeStyleAttr(style: string): string {
   return (
@@ -118,7 +120,7 @@ function sanitizeStyleAttr(style: string): string {
       // -webkit- プレフィックス付きは \b が `-` 前に効かないため \b なしで除去
       .replace(/-webkit-image-set\s*\([^)]*\)/gi, "")
       .replace(/\bimage-set\s*\([^)]*\)/gi, "")
-      .replace(/\bposition\s*:\s*(fixed|sticky)\b[^;]*(;|$)/gi, "")
+      .replace(/\bposition\s*:\s*(fixed|sticky|absolute)\b[^;]*(;|$)/gi, "")
       // expression(): IE 独自の CSS 式評価。任意の JS 実行が可能なため除去。
       // モダンブラウザでは無効だが、古い環境へのフォールバック XSS 防止として除去する。
       // expression() の引数は括弧のネストを含みうるため、セミコロンまたは文字列末尾まで除去する。
