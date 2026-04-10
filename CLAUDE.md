@@ -34,7 +34,7 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 | フロントエンド | React 19 + TypeScript + Tailwind v4 (`'use client'`)             |
 | API            | Next.js Route Handlers (`app/api/**`)                            |
 | 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                      |
-| データ         | R2 (`rss-reader-data`) — ユーザー別 JSON                         |
+| データ         | R2 (`rss-reader-data`) — 共有フィードデータ + ユーザー別 JSON    |
 | AI             | Workers AI (要約・翻訳)                                          |
 | デプロイ       | Cloudflare Workers の CI/CD (master push → 自動ビルド＆デプロイ) |
 

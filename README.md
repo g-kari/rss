@@ -172,16 +172,27 @@ pnpm run test:e2e:ui  # Playwright UI モード（デバッグ用）
 ## データ構造 (R2)
 
 ```
-users/{userId}/profile.json     # UserProfile（ログイン時に保存）
-users/{userId}/feeds.json       # Feed[]
-users/{userId}/articles.json    # Article[]（max 500、publishedAt 降順）
-users/{userId}/read-state.json  # { readIds, bookmarkIds, readingListIds, snoozedUntil }
-users/{userId}/push.json        # PushConfig（Web Push サブスクリプション）
-ai-cache/summary/{sha256}       # AI 要約キャッシュ（永続）
-ai-cache/translation/{sha256}   # AI 翻訳キャッシュ（永続）
+# 共有フィードデータ（ユーザー間で共有）
+feeds/{feedHash}/meta.json               # SharedFeedMeta（フィードメタ情報）
+feeds/{feedHash}/articles/latest.json   # Article[]（最新 500 件）
+feeds/{feedHash}/articles/p{N}.json     # Article[]（古いページ、N >= 2）
+
+# ユーザー別データ
+users/{userId}/subscriptions.json       # UserSubscription[]（購読フィード一覧）
+users/{userId}/profile.json             # UserProfile（ログイン時に保存）
+users/{userId}/read-state.json          # ReadState（既読・ブックマーク・いいね・メモ等）
+users/{userId}/engagement.json          # EngagementLog（行動履歴）
+users/{userId}/recommendations.json     # RecommendationCache（フィード推薦キャッシュ）
+users/{userId}/push.json                # PushConfig（Web Push サブスクリプション）
+
+# AI キャッシュ（永続）
+ai-cache/summary/{sha256}               # AI 要約キャッシュ
+ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 ```
 
 `userId` = JWT の `sub` クレームをそのまま使用。
+`feedHash` = `sha256(feedUrl).slice(0, 16)`（URL からの決定論的な識別子）。
+記事データはユーザー別ではなくフィード単位で共有管理されるため、複数ユーザーが同じフィードを購読しても記事フェッチは 1 回だけ実行される。
 
 ## 読み取り状態の管理
 

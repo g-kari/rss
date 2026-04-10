@@ -30,12 +30,17 @@
 // app/api/example/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
-import { r2Get, r2Put } from "@/lib/r2";
+import { r2Get, r2Put, readStateKey } from "@/lib/r2";
 
-// GET: データ取得
+// GET: データ取得（既読状態などユーザー別データは r2Get を直接使う）
 export async function GET() {
   return withSession(async ({ session, env }) => {
-    const data = await r2Get<Feed[]>(env.RSS_DATA, `users/${session.userId}/feeds.json`, []);
+    const data = await r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), {
+      readIds: [],
+      bookmarkIds: [],
+      readingListIds: [],
+      likeIds: [],
+    });
     return NextResponse.json(data);
   });
 }
@@ -121,14 +126,22 @@ if (!isBetaAllowed(session.sub)) return NextResponse.redirect("/");
 
 ```typescript
 // 読み込み（fallback: キーが存在しない場合のデフォルト値）
-const data = await r2Get<Feed[]>(env.RSS_DATA, `users/${sub}/feeds.json`, []);
+const state = await r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), {
+  readIds: [],
+  bookmarkIds: [],
+  readingListIds: [],
+  likeIds: [],
+});
 
 // 書き込み
-await r2Put(env.RSS_DATA, `users/${sub}/feeds.json`, feeds);
+await r2Put(env.RSS_DATA, readStateKey(session.userId), state);
 
 // SHA-256 ハッシュ（キャッシュキー生成用）
 const hash = await sha256Hex(url);
 ```
+
+> **フィードデータへのアクセス**: フィード一覧・記事データは共有フィード構造で管理されるため、
+> `r2Get` を直接呼ばず `src/lib/shared-feed.ts` のヘルパー (`getUserFeeds`, `readUserSubscriptions` 等) を使うこと。
 
 ## RSS パーサー (`src/lib/xml-parser.ts`)
 
