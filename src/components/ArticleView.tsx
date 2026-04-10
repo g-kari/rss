@@ -1352,6 +1352,8 @@ export default function ArticleView({
     supported: ttsSupported,
     isPlaying: ttsPlaying,
     isPaused: ttsPaused,
+    rate: ttsRate,
+    cycleRate: ttsCycleRate,
     speak,
     stop: ttsStop,
   } = useSpeechSynthesis();
@@ -2052,6 +2054,20 @@ export default function ArticleView({
                     <path d="M11 4.5C11 4.5 12.5 6 12.5 7C12.5 8 11 9.5 11 9.5" />
                   </svg>
                 )}
+              </button>
+            )}
+
+            {ttsSupported && hasContent && (
+              <button
+                onClick={ttsCycleRate}
+                title={`読み上げ速度: ${ttsRate}x（クリックで変更）`}
+                className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 text-[10px] font-medium tabular-nums leading-none ${
+                  ttsPlaying || ttsPaused
+                    ? "text-ink hover:text-text-muted"
+                    : "text-text-faint hover:text-text-muted"
+                }`}
+              >
+                {ttsRate === 1 ? "1x" : `${ttsRate}x`}
               </button>
             )}
 
