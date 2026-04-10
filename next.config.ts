@@ -62,39 +62,8 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      // スクリプト: self + インラインは Next.js hydration に必要
-      // unsafe-eval は Next.js v13+ の本番ビルドでは不要。
-      // eval()/new Function() を明示的に禁止することで XSS リスクを低減する。
-      // static.cloudflareinsights.com: Cloudflare Web Analytics が自動注入する beacon スクリプト
-      "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
-      // スタイル: self + インライン（Tailwind）
-      "style-src 'self' 'unsafe-inline'",
-      // 画像: self のみ（記事本文・サムネイル・OGP 等は /api/image-proxy 経由でプロキシ済み）
-      // data: は sanitizeHtml が img src から除去、blob: は画像表示には未使用のため除外
-      "img-src 'self'",
-      // iframe: YouTube・Spotify・Twitch・ニコニコ・X (Twitter) 等の埋め込み許可
-      // youtube.com / youtube-nocookie.com（www なし）は sanitizeHtml の TRUSTED_IFRAME_RULES でも
-      // 許可されているため、CSP と整合させるために両方を追加する。
-      // www なし URL のままブラウザに渡った場合、frame-src にないと CSP でブロックされてしまう。
-      "frame-src https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://open.spotify.com https://player.vimeo.com https://w.soundcloud.com https://player.twitch.tv https://clips.twitch.tv https://embed.nicovideo.jp https://embed.zenn.studio https://platform.twitter.com",
-      // メディア: HTTPS のみ許可（ポッドキャスト等の外部 audio/video。http:// と data: を除外）
-      "media-src https:",
-      // API / WebSocket: self + Cloudflare Web Analytics のデータ送信先
-      "connect-src 'self' https://cloudflareinsights.com",
-      // フォント: self
-      "font-src 'self'",
-      // オブジェクト禁止
-      "object-src 'none'",
-      // ベース URI: self のみ
-      "base-uri 'self'",
-      // フォーム: self のみ
-      "form-action 'self'",
-    ].join("; "),
-  },
+  // Content-Security-Policy は middleware.ts でリクエストごとに nonce 付きで設定する。
+  // 'unsafe-inline' を nonce に置き換えて XSS 保護を強化するため、ここでは設定しない。
 ];
 
 const nextConfig: NextConfig = {

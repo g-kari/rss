@@ -4,6 +4,9 @@
 
 ### セキュリティ
 
+- **CSP nonce 実装 — `'unsafe-inline'` を `script-src` から削除** — `middleware.ts` を新規追加し、リクエストごとにランダムな nonce を生成。Next.js がインライン script 要素に nonce 属性を自動付与するため、`'unsafe-inline'` なしで CSP が機能するようになった。これにより XSS 攻撃でインラインスクリプトを注入されてもブラウザが実行をブロックする。
+- **`extractUserTopics` のプロンプトインジェクション対策** — 外部 RSS フィードから取得したタイトル（フィード名・記事タイトル）を LLM プロンプトへ埋め込む前に `sanitizeForPrompt` で制御文字・改行を除去し 120 文字に切り詰め。また system/user メッセージを分離してインジェクション境界を明確化。悪意ある RSS フィードが `"Ignore previous instructions..."` のようなタイトルで AI の挙動を操作するリスクを緩和。
+
 - **`sendPush` に SSRF 多層防御を追加** — Push 通知送信時、サブスクリプション登録時に `isValidHttpsUrl` で検証済みだが、R2 データが直接改ざんされた場合の SSRF 経路を防ぐため `sendPush` 関数内でも endpoint URL を再検証するよう追加。
 - **`inferSelectors` のプロンプトインジェクション対策** — `excludeSelectors` をプロンプトに埋め込む際、`"${s}"` のテンプレートリテラルでは CSS 属性セレクタ (`[attr="value"]`) に含まれる `"` でプロンプト構造が崩れる恐れがあった。`JSON.stringify(excludeSelectors)` に変更し、引用符を適切にエスケープして LLM への意図しないインジェクションを防止。
 

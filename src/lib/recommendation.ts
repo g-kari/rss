@@ -19,6 +19,18 @@ function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
   return settled.flatMap((r) => (r.status === "fulfilled" && r.value ? [r.value] : []));
 }
 
+/**
+ * 外部入力文字列をプロンプトに埋め込む前にサニタイズする。
+ * 改行・制御文字を除去し、最大長に切り詰める。
+ * 悪意ある RSS フィードによるプロンプトインジェクションを緩和する。
+ */
+function sanitizeForPrompt(text: string, maxLength = 120): string {
+  return text
+    .replace(/[\x00-\x1F\x7F]/g, " ") // 制御文字（改行・タブ含む）を空白に置換
+    .trim()
+    .slice(0, maxLength);
+}
+
 /** フィード URL とプレフィックスから短縮 ID を生成する */
 async function makeRecommendationId(prefix: string, feedUrl: string): Promise<string> {
   return (await sha256Hex(`${prefix}_${feedUrl}`)).slice(0, 12);
@@ -137,21 +149,30 @@ export async function extractUserTopics(
 
   if (feedTitles.length === 0) return [];
 
-  const prompt = `You are an assistant that analyzes RSS reader interests.
-Extract 5-10 DIVERSE topic keywords from the feed names and article titles below.
-Important: ensure variety across different domains — avoid repeating similar themes.
-If multiple feeds share the same genre (e.g. anime), represent it with one keyword only.
-Return a JSON array only. Example: ["TypeScript", "Rust", "クラウド", "アニメ"]
-
-Feed names:
-${feedTitles.join("\n")}
-
-Article titles:
-${articleTitles.slice(0, 30).join("\n")}`;
+  // プロンプトインジェクション対策: 外部 RSS から取得したタイトルをサニタイズしてから埋め込む
+  const sanitizedFeedTitles = feedTitles.map((t) => sanitizeForPrompt(t)).join("\n");
+  const sanitizedArticleTitles = articleTitles
+    .slice(0, 30)
+    .map((t) => sanitizeForPrompt(t))
+    .join("\n");
 
   try {
     const response = (await ai.run(MODEL, {
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        {
+          role: "system" as const,
+          content:
+            "You are an assistant that analyzes RSS reader interests. " +
+            "Extract 5-10 DIVERSE topic keywords from the feed names and article titles provided by the user. " +
+            "Ensure variety across different domains — avoid repeating similar themes. " +
+            "If multiple feeds share the same genre (e.g. anime), represent it with one keyword only. " +
+            'Return a JSON array only. Example: ["TypeScript", "Rust", "クラウド", "アニメ"]',
+        },
+        {
+          role: "user" as const,
+          content: `Feed names:\n${sanitizedFeedTitles}\n\nArticle titles:\n${sanitizedArticleTitles}`,
+        },
+      ],
     })) as { response?: string };
     const text = response.response ?? "";
     const match = text.match(/\[[\s\S]*?\]/);
