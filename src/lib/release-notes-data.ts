@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-11 (4)
+
+### リファクタリング
+
+- **\`useGestureNav\` のコメント整理と dispatch ロジック共通化** — 定数の WHAT コメントを削除（名前が自明）し \`TOUCH_X_Y_RATIO\` の WHY コメントを JSDoc に変換。mouse/touch で重複していた \`if (dx < 0) onSelectNext?.()\` パターンを \`dispatchSwipe\` ヘルパーに抽出。
+
 ## 2026-04-11 (3)
 
 ### リファクタリング

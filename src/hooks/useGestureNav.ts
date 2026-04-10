@@ -2,11 +2,12 @@
 
 import { useEffect, useRef } from "react";
 
-const SWIPE_THRESHOLD_PX = 60; // ドラッグ・スワイプの最小距離
-const WHEEL_THRESHOLD_PX = 150; // ホイール累積距離の閾値
-const WHEEL_RESET_MS = 400; // ホイール累積のリセット待機時間
-const WHEEL_X_Y_RATIO = 0.5; // X/Y delta の水平優位フィルター比率
-const TOUCH_X_Y_RATIO = 1.5; // 縦スクロールとの衝突を避けるための X/Y 比率閾値
+const SWIPE_THRESHOLD_PX = 60;
+const WHEEL_THRESHOLD_PX = 150;
+const WHEEL_RESET_MS = 400;
+const WHEEL_X_Y_RATIO = 0.5;
+/** 縦スクロールとの衝突を避けるための X/Y 比率閾値 */
+const TOUCH_X_Y_RATIO = 1.5;
 
 /** target から currentTarget まで祖先を遡り、横スクロール可能な要素があれば true を返す */
 function hasScrollableAncestor(
@@ -69,13 +70,17 @@ export function useGestureNav({
     mouseStartXRef.current = e.clientX;
   }
 
+  function dispatchSwipe(dx: number) {
+    if (dx < 0) onSelectNext?.();
+    else if (dx > 0) onSelectPrev?.();
+  }
+
   function handleNavMouseUp(e: React.MouseEvent) {
     if (mouseStartXRef.current === null) return;
     const dx = e.clientX - mouseStartXRef.current;
     mouseStartXRef.current = null;
     if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
-    if (dx < 0) onSelectNext?.();
-    else if (dx > 0) onSelectPrev?.();
+    dispatchSwipe(dx);
   }
 
   function handleNavMouseLeave() {
@@ -94,10 +99,8 @@ export function useGestureNav({
     const dx = t.clientX - touchStartRef.current.x;
     const dy = t.clientY - touchStartRef.current.y;
     touchStartRef.current = null;
-    // 縦スクロールとの衝突を避けるため X/Y 比率 TOUCH_X_Y_RATIO 以上の水平優位のみナビゲート
     if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy) * TOUCH_X_Y_RATIO) return;
-    if (dx < 0) onSelectNext?.();
-    else if (dx > 0) onSelectPrev?.();
+    dispatchSwipe(dx);
   }
 
   return {
