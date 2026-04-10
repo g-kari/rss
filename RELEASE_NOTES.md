@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-11 (3)
+
+### リファクタリング
+
+- **`shared-feed.ts` のインライン定数をモジュールレベルに移動** — `mergeNewArticles` 内の `KNOWN_IDS_MAX = 10_000` と `getUserLatestArticles` 内の `MAX_USER_ARTICLES = 10_000` をモジュールレベルの `export const` に抽出。JSDoc コメントを付与し意図を明示。
+
 ## 2026-04-11 (2)
 
 ### セキュリティ
