@@ -2,6 +2,11 @@
 
 ## 2026-04-10
 
+### リファクタリング
+
+- **`useGestureNav` を `src/hooks/useGestureNav.ts` に抽出** — `ArticleView.tsx` のインライン定義だったジェスチャーナビゲーションフック（スワイプ・ホイール・マウスドラッグ）を独立したファイルに分離。`ArticleView.tsx` を約90行削減。
+- **`appendPaginatedPages` の重複ロジックを削除** — ページネーション取得ループで `extractContent` を直接呼び出すよう変更。charset 検出・デコード・AI フォールバックの8行の重複コードを除去。
+
 ### セキュリティ
 
 - **`customTitle` に制御文字除去を追加** — `PATCH /api/feeds/:id` の `title` フィールドが `category` と異なり `stripControlChars` を経由していなかった。一貫性を保ちストアード制御文字インジェクションを防ぐため修正。
