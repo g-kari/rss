@@ -120,7 +120,10 @@ function sanitizeStyleAttr(style: string): string {
       // -webkit- プレフィックス付きは \b が `-` 前に効かないため \b なしで除去
       .replace(/-webkit-image-set\s*\([^)]*\)/gi, "")
       .replace(/\bimage-set\s*\([^)]*\)/gi, "")
-      .replace(/\bposition\s*:\s*(fixed|sticky|absolute)\b[^;]*(;|$)/gi, "")
+      // position: fixed/sticky/absolute を除去（フィッシングオーバーレイ防止）
+      // -webkit-sticky は Safari で動作する sticky の旧ベンダープレフィックス形式。
+      // (?:-webkit-)? で捕捉することで position: -webkit-sticky も除去する。
+      .replace(/\bposition\s*:\s*(?:-webkit-)?(fixed|sticky|absolute)\b[^;]*(;|$)/gi, "")
       // expression(): IE 独自の CSS 式評価。任意の JS 実行が可能なため除去。
       // モダンブラウザでは無効だが、古い環境へのフォールバック XSS 防止として除去する。
       // expression() の引数は括弧のネストを含みうるため、セミコロンまたは文字列末尾まで除去する。
