@@ -4,6 +4,8 @@
 
 ### リファクタリング
 
+- `useEventListener` に `capture?: boolean` オプションを追加（キャプチャフェーズ登録に対応）。
+- `usePortalMenu` / `useOnlineStatus` / `useMobilePane` / `useKeyboardNav` の生の `addEventListener` を `useEventListener` に統一。`useKeyboardNav` の `handleKeyDown` は `useEffect` 外に移動し `eslint-disable` コメントも不要に。
 - `useMenuOpen` の `useEffect` + 生の `document.addEventListener/removeEventListener` を `useEventListener` フックに置き換え。`open` のチェックをハンドラー内部に移動し、常時リッスン + 早期リターン方式に統一。
 - `useMenuOpen` の mousedown/touchstart ハンドラーを共通関数 `handleOutside` に抽出し重複を解消。
 - `ArticleList` のカテゴリドロップダウン click-outside 処理を生の `useEffect + document.addEventListener` から `useEventListener` フックに移行。
