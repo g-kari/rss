@@ -111,14 +111,15 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   }, [theme]);
 
   // PWA インストールプロンプトを捕捉（Chrome / Android）
-  useEffect(() => {
-    function onBeforeInstall(e: Event) {
+  // beforeinstallprompt は非標準イベントのため string オーバーロードを使用
+  useEventListener(
+    "beforeinstallprompt",
+    (e) => {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
-    }
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-  }, []);
+    },
+    window,
+  );
 
   // ? キーでヘルプトグル / \ キーでフォーカスモードトグル
   useEventListener(

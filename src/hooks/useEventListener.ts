@@ -24,6 +24,12 @@ export function useEventListener<K extends keyof DocumentEventMap>(
   handler: (ev: DocumentEventMap[K]) => void,
   target: Document,
 ): void;
+/** `WindowEventMap` / `DocumentEventMap` に含まれない非標準イベント用オーバーロード */
+export function useEventListener(
+  eventName: string,
+  handler: (ev: Event) => void,
+  target: Window | Document,
+): void;
 export function useEventListener(
   eventName: string,
   handler: (ev: Event) => void,
