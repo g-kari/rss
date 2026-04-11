@@ -706,6 +706,7 @@ export default function App() {
 
   return (
     <div
+      data-layout="root"
       className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
       style={{
         gridTemplateColumns: focusMode ? `0px 0px 1fr` : `${sidebarWidth}px ${listWidth}px 1fr`,
@@ -819,6 +820,7 @@ export default function App() {
         </>
       )}
       <div
+        data-pane="sidebar"
         className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "sidebar" ? "hidden lg:block" : ""}`}
       >
         <ErrorBoundary label="サイドバー">
@@ -884,6 +886,7 @@ export default function App() {
         </ErrorBoundary>
       </div>
       <div
+        data-pane="list"
         className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""}`}
       >
         <ErrorBoundary label="記事一覧">
@@ -942,6 +945,7 @@ export default function App() {
         </ErrorBoundary>
       </div>
       <div
+        data-pane="view"
         className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "view" ? "hidden lg:block" : ""}`}
       >
         <ErrorBoundary label="記事表示">
