@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * 値をセットしてから一定時間後に自動でリセットする hook。
@@ -13,6 +13,10 @@ import { useEffect, useRef, useState } from "react";
 export function useAutoReset<T>(resetValue: T, duration = 3000) {
   const [value, setValue] = useState<T>(resetValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetRef = useRef(resetValue);
+  const durationRef = useRef(duration);
+  resetRef.current = resetValue;
+  durationRef.current = duration;
 
   useEffect(
     () => () => {
@@ -21,11 +25,11 @@ export function useAutoReset<T>(resetValue: T, duration = 3000) {
     [],
   );
 
-  function set(newValue: T) {
+  const set = useCallback((newValue: T) => {
     setValue(newValue);
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setValue(resetValue), duration);
-  }
+    timerRef.current = setTimeout(() => setValue(resetRef.current), durationRef.current);
+  }, []);
 
   return [value, set] as const;
 }
