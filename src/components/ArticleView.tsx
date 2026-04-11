@@ -2067,7 +2067,7 @@ export default function ArticleView({
                     : "text-text-faint hover:text-text-muted"
                 }`}
               >
-                {ttsRate === 1 ? "1x" : `${ttsRate}x`}
+                {`${ttsRate}x`}
               </button>
             )}
 

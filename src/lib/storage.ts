@@ -50,6 +50,7 @@ export const STORAGE_KEYS = {
   COLLAPSED_CATEGORIES: "rss-collapsed-cats",
   WEEKLY_GOAL: "rss-weekly-goal",
   SCROLL_POSITIONS: "rss-scroll-positions",
+  TTS_RATE: "tts-rate",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
