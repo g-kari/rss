@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useEventListener } from "@/hooks/useEventListener";
 
 interface Props {
   title: string;
@@ -23,13 +23,9 @@ export default function Modal({
   children,
   width = "sm:w-[480px]",
 }: Props) {
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  useEventListener("keydown", (e) => {
+    if (e.key === "Escape") onClose();
+  });
 
   return createPortal(
     <>

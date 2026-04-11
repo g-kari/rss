@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { Feed } from "../types";
 import FeedFilterModal from "./FeedFilterModal";
 import FeedDetailModal from "./FeedDetailModal";
 import type { KeywordFilter } from "../types";
+import { useEventListener } from "@/hooks/useEventListener";
 
 /** 未読カウントを表示用文字列に変換する（100以上は "99+" と表示） */
 export function formatCount(n: number): string {
@@ -155,16 +156,8 @@ export default function FeedItem({
   const inputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = () => setMenuOpen(false);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [menuOpen]);
+  useEventListener("scroll", () => setMenuOpen(false), window, true);
+  useEventListener("resize", () => setMenuOpen(false));
 
   const startEdit = useCallback(
     (e: React.MouseEvent) => {
