@@ -11,6 +11,7 @@ import {
   type RefObject,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useEventListener } from "@/hooks/useEventListener";
 import type {
   Article,
   Feed,
@@ -276,17 +277,14 @@ export default function ArticleList({
     overscan: 3,
   });
 
-  // カテゴリドロップダウン: コンテナ外クリックで閉じる
-  useEffect(() => {
-    if (!categoryDropdownOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (!categoryDropdownRef.current?.contains(e.target as Node)) {
-        setCategoryDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [categoryDropdownOpen]);
+  useEventListener(
+    "mousedown",
+    (e) => {
+      if (!categoryDropdownOpen) return;
+      if (!categoryDropdownRef.current?.contains(e.target as Node)) setCategoryDropdownOpen(false);
+    },
+    document,
+  );
 
   // 検索履歴
   const { history, addToHistory, removeFromHistory } = useSearchHistory();

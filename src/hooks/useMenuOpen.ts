@@ -13,21 +13,11 @@ import { useEventListener } from "./useEventListener";
 export function useMenuOpen() {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  useEventListener(
-    "mousedown",
-    (e) => {
-      if (!open) return;
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
-    },
-    document,
-  );
-  useEventListener(
-    "touchstart",
-    (e) => {
-      if (!open) return;
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
-    },
-    document,
-  );
+  const handleOutside = (e: Event) => {
+    if (!open) return;
+    if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+  };
+  useEventListener("mousedown", handleOutside, document);
+  useEventListener("touchstart", handleOutside, document);
   return { open, setOpen, menuRef };
 }

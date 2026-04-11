@@ -5,6 +5,8 @@
 ### リファクタリング
 
 - `useMenuOpen` の `useEffect` + 生の `document.addEventListener/removeEventListener` を `useEventListener` フックに置き換え。`open` のチェックをハンドラー内部に移動し、常時リッスン + 早期リターン方式に統一。
+- `useMenuOpen` の mousedown/touchstart ハンドラーを共通関数 `handleOutside` に抽出し重複を解消。
+- `ArticleList` のカテゴリドロップダウン click-outside 処理を生の `useEffect + document.addEventListener` から `useEventListener` フックに移行。
 
 ## 2026-04-11 (18)
 
