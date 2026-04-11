@@ -57,8 +57,13 @@ export function useSpeechSynthesis() {
         setIsPlaying(true);
         setIsPaused(false);
       };
-      utterance.onend = resetState;
-      utterance.onerror = resetState;
+      // キャンセルされた旧 utterance の非同期コールバックが新 utterance の state を壊さないよう identity ガード
+      utterance.onend = () => {
+        if (utteranceRef.current === utterance) resetState();
+      };
+      utterance.onerror = () => {
+        if (utteranceRef.current === utterance) resetState();
+      };
       utterance.onpause = () => setIsPaused(true);
       utterance.onresume = () => setIsPaused(false);
 
