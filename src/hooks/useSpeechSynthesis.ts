@@ -85,7 +85,6 @@ export function useSpeechSynthesis() {
   const cycleRate = useCallback(() => {
     const next = cycleValue(TTS_RATES, rateRef.current);
     storageSet(STORAGE_KEYS.TTS_RATE, String(next));
-    // speak() は rateRef.current を読む — 再起動前に手動更新
     rateRef.current = next;
     setRate(next);
     const text = currentTextRef.current;
