@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-11 (8)
+
+### バグ修正
+
+- **\`useSpeechSynthesis\` の ghost callback race を修正** — \`speak()\` 内の \`utterance.onend\`/\`onerror\` に identity ガードを追加。レート変更時に旧 utterance がキャンセルされると非同期で \`onend\`/\`onerror\` が発火し、新 utterance の再生中に \`isPlaying=false\` へリセットされる競合を解消。
+
 ## 2026-04-11 (7)
 
 ### リファクタリング
