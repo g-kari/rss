@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-11 (16)
+
+### リファクタリング
+
+- \`useEventListener\` に非標準イベント用 \`string\` オーバーロードを追加し、\`useUIState\` の \`beforeinstallprompt\` ハンドラーを生の \`window.addEventListener\` から \`useEventListener\` に移行。\`keydown\` リスナーとの一貫性を確保。
+
 ## 2026-04-11 (15)
 
 ### セキュリティ
