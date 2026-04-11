@@ -1,18 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
+import { cycleValue } from "../lib/article-utils";
+import { useSyncedRef } from "./useSyncedRef";
 
 // Web Speech API の有無は実行中に変わらないのでモジュール定数にする
 const SPEECH_SUPPORTED = typeof window !== "undefined" && "speechSynthesis" in window;
 
-const STORAGE_KEY = "tts-rate";
 export const TTS_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0] as const;
 export type TtsRate = (typeof TTS_RATES)[number];
 
 function loadRate(): TtsRate {
-  try {
-    const v = parseFloat(localStorage.getItem(STORAGE_KEY) ?? "");
-    if ((TTS_RATES as readonly number[]).includes(v)) return v as TtsRate;
-  } catch {}
-  return 1.0;
+  const v = parseFloat(storageGet(STORAGE_KEYS.TTS_RATE) ?? "");
+  return (TTS_RATES as readonly number[]).includes(v) ? (v as TtsRate) : 1.0;
 }
 
 /**
@@ -28,11 +27,12 @@ export function useSpeechSynthesis() {
   const [isPaused, setIsPaused] = useState(false);
   const [rate, setRate] = useState<TtsRate>(loadRate);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const rateRef = useRef(rate);
-  rateRef.current = rate;
+  const rateRef = useSyncedRef(rate);
+  const currentTextRef = useRef<string>("");
 
   const resetState = useCallback(() => {
     utteranceRef.current = null;
+    currentTextRef.current = "";
     setIsPlaying(false);
     setIsPaused(false);
   }, []);
@@ -46,6 +46,7 @@ export function useSpeechSynthesis() {
   const speak = useCallback(
     (text: string) => {
       if (!SPEECH_SUPPORTED) return;
+      currentTextRef.current = text;
       window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
@@ -63,7 +64,7 @@ export function useSpeechSynthesis() {
 
       window.speechSynthesis.speak(utterance);
     },
-    [resetState],
+    [resetState, rateRef],
   );
 
   const pause = useCallback(() => {
@@ -77,15 +78,14 @@ export function useSpeechSynthesis() {
   }, [isPaused]);
 
   const cycleRate = useCallback(() => {
-    setRate((prev) => {
-      const idx = TTS_RATES.indexOf(prev);
-      const next = TTS_RATES[(idx + 1) % TTS_RATES.length];
-      try {
-        localStorage.setItem(STORAGE_KEY, String(next));
-      } catch {}
-      return next;
-    });
-  }, []);
+    const next = cycleValue(TTS_RATES, rateRef.current);
+    storageSet(STORAGE_KEYS.TTS_RATE, String(next));
+    // speak() は rateRef.current を読む — 再起動前に手動更新
+    rateRef.current = next;
+    setRate(next);
+    const text = currentTextRef.current;
+    if (text) speak(text);
+  }, [speak, rateRef]);
 
   // アンマウント時にキャンセル
   useEffect(() => {
