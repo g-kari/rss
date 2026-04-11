@@ -62,6 +62,8 @@ export interface UIState {
   setShowHelp: React.Dispatch<React.SetStateAction<boolean>>;
   showFeedSwitcher: boolean;
   setShowFeedSwitcher: React.Dispatch<React.SetStateAction<boolean>>;
+  focusMode: boolean;
+  toggleFocusMode: () => void;
   nsfwMode: boolean;
   showNSFWAnimation: boolean;
   activateNSFW: () => void;
@@ -89,6 +91,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
 
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
   const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
@@ -116,14 +119,16 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
   }, []);
 
-  // ? キーでヘルプトグル
+  // ? キーでヘルプトグル / \ キーでフォーカスモードトグル
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "?") setShowHelp((v) => !v);
+      if (e.key === "\\") setFocusMode((v) => !v);
       if (e.key === "Escape") {
         setShowHelp(false);
         setShowFeedSwitcher(false);
+        setFocusMode(false);
       }
     }
     document.addEventListener("keydown", handleKeyDown);
@@ -163,6 +168,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }, []);
 
+  const toggleFocusMode = useCallback(() => {
+    setFocusMode((v) => !v);
+  }, []);
+
   const installApp = useCallback(async () => {
     if (!installPrompt) return;
     await installPrompt.prompt();
@@ -192,6 +201,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     setShowHelp,
     showFeedSwitcher,
     setShowFeedSwitcher,
+    focusMode,
+    toggleFocusMode,
     nsfwMode,
     showNSFWAnimation,
     activateNSFW,

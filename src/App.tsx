@@ -64,6 +64,8 @@ export default function App() {
     setShowHelp,
     showFeedSwitcher,
     setShowFeedSwitcher,
+    focusMode,
+    toggleFocusMode,
     nsfwMode,
     showNSFWAnimation,
     activateNSFW,
@@ -706,8 +708,9 @@ export default function App() {
     <div
       className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
       style={{
-        gridTemplateColumns: `${sidebarWidth}px ${listWidth}px 1fr`,
+        gridTemplateColumns: focusMode ? `0px 0px 1fr` : `${sidebarWidth}px ${listWidth}px 1fr`,
         gridTemplateRows: "100%",
+        transition: "grid-template-columns 0.25s ease",
       }}
     >
       {/* オフラインバナー */}
@@ -794,23 +797,27 @@ export default function App() {
           </button>
         </div>
       )}
-      {/* カラムリサイズハンドル (PCのみ) */}
-      <div
-        className="hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20 group"
-        style={{ left: sidebarWidth - 2 }}
-        onMouseDown={(e) => handleResizeStart("sidebar", e)}
-        onDoubleClick={() => resetWidth("sidebar")}
-      >
-        <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
-      </div>
-      <div
-        className="hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20 group"
-        style={{ left: sidebarWidth + listWidth - 2 }}
-        onMouseDown={(e) => handleResizeStart("list", e)}
-        onDoubleClick={() => resetWidth("list")}
-      >
-        <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
-      </div>
+      {/* カラムリサイズハンドル (PCのみ、フォーカスモード時は非表示) */}
+      {!focusMode && (
+        <>
+          <div
+            className="hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20 group"
+            style={{ left: sidebarWidth - 2 }}
+            onMouseDown={(e) => handleResizeStart("sidebar", e)}
+            onDoubleClick={() => resetWidth("sidebar")}
+          >
+            <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+          </div>
+          <div
+            className="hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20 group"
+            style={{ left: sidebarWidth + listWidth - 2 }}
+            onMouseDown={(e) => handleResizeStart("list", e)}
+            onDoubleClick={() => resetWidth("list")}
+          >
+            <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+          </div>
+        </>
+      )}
       <div
         className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "sidebar" ? "hidden lg:block" : ""}`}
       >
@@ -972,6 +979,8 @@ export default function App() {
               setAuthorFilter(author);
               showToast(`「${author}」の記事に絞り込みました`);
             }}
+            focusMode={focusMode}
+            onToggleFocusMode={toggleFocusMode}
           />
         </ErrorBoundary>
       </div>

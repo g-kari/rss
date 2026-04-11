@@ -99,6 +99,8 @@ interface Props {
   onSetNote?: (articleId: string, text: string) => void;
   onDeleteNote?: (articleId: string) => void;
   onSetAuthorFilter?: (author: string) => void;
+  focusMode?: boolean;
+  onToggleFocusMode?: () => void;
 }
 
 const SHORT_CONTENT_THRESHOLD = 400;
@@ -1312,6 +1314,8 @@ export default function ArticleView({
   onSetNote,
   onDeleteNote,
   onSetAuthorFilter,
+  focusMode = false,
+  onToggleFocusMode,
 }: Props) {
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -2191,6 +2195,39 @@ export default function ArticleView({
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
               </ToggleIconButton>
+            )}
+            {onToggleFocusMode && (
+              <button
+                onClick={onToggleFocusMode}
+                title={focusMode ? "フォーカスモード終了 (\\)" : "フォーカスモード (\\)"}
+                className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+              >
+                <svg
+                  className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {focusMode ? (
+                    <>
+                      <path d="M9 9L3 3m0 0h6m-6 0v6" />
+                      <path d="M15 9l6-6m0 0h-6m6 0v6" />
+                      <path d="M9 15l-6 6m0 0h6m-6 0v-6" />
+                      <path d="M15 15l6 6m0 0h-6m6 0v-6" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M3 9V3m0 0h6M3 3l6 6" />
+                      <path d="M21 9V3m0 0h-6m6 0l-6 6" />
+                      <path d="M3 15v6m0 0h6m-6 0l6-6" />
+                      <path d="M21 15v6m0 0h-6m6 0l-6-6" />
+                    </>
+                  )}
+                </svg>
+              </button>
             )}
           </div>
         </div>

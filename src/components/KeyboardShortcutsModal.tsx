@@ -43,6 +43,7 @@ const SHORTCUTS: [string, string][] = [
   ["] / [", "次 / 前のフィード"],
   ["q", "フィードクイックスイッチャー"],
   ["?", "このヘルプを表示"],
+  ["\\", "フォーカスモード切替（記事のみ全画面）"],
 ];
 
 export default function KeyboardShortcutsModal({ onClose }: Props) {
