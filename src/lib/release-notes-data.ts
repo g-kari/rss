@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-11 (13)
+
+### セキュリティ
+
+- **ETag / Last-Modified サニタイズ** — 外部 RSS サーバーから返される \`ETag\` および \`Last-Modified\` ヘッダー値を保存前に CRLF 除去・長さ制限を適用。悪意ある RSS サーバーによるヘッダーインジェクション / フィード DoS リスクを解消。
+
 ## 2026-04-11 (12)
 
 ### 新機能

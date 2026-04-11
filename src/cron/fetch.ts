@@ -249,8 +249,10 @@ async function fetchAndParseFeed(
   applyFeedSuccess(meta, parsed);
   const lastModified = res.headers.get("Last-Modified");
   const etag = res.headers.get("ETag");
-  if (lastModified) meta.lastModified = lastModified;
-  if (etag) meta.etag = etag;
+  // CRLF を含む値は後続の fetch ヘッダーインジェクションや DoS の原因になるため除去する。
+  // RFC 7232 では ETag は最大数百文字程度が想定されるため 512 文字で切り詰める。
+  if (lastModified) meta.lastModified = lastModified.replace(/[\r\n]/g, "").slice(0, 128);
+  if (etag) meta.etag = etag.replace(/[\r\n]/g, "").slice(0, 512);
 
   return buildArticlesFromItems(env.RSS_DATA, meta, parsed.items);
 }
