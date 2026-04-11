@@ -489,9 +489,9 @@ test.describe("sanitizeHtml — inline style サニタイズ", () => {
     expect(result).toContain("本文</p>");
   });
 
-  test("position: relative は保持される（固定・絶対配置でないため）", () => {
+  test("position: relative も除去される（全 position 値を一律ブロック）", () => {
     const result = sanitizeHtml('<div style="position:relative;top:10px">内容</div>');
-    expect(result).toContain("position:relative");
+    expect(result).not.toContain("position");
     expect(result).toContain("内容</div>");
   });
 });

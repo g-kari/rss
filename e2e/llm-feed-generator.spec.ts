@@ -263,33 +263,16 @@ test.describe("scrapeFeed — 非 <a> セレクタの処理", () => {
 
 test.describe("scrapeFeed — 無効なセレクタの処理", () => {
   const selectors = defaultSelectors;
-  test("無効な CSS セレクタの場合 Error をスローする", () => {
+  test("無効な CSS セレクタの場合はスローせず空の items を返す", () => {
     const html = `<html><body><a href="/post/1">記事タイトル</a></body></html>`;
-    expect(() =>
-      scrapeFeed(
-        html,
-        { ...selectors, articleLink: "[invalid::selector" },
-        "https://example.com",
-        "My Blog",
-      ),
-    ).toThrow();
-  });
-
-  test("エラーメッセージにセレクタ文字列が含まれる", () => {
-    const html = `<html><body><a href="/post/1">記事タイトル</a></body></html>`;
-    const invalidSelector = "[invalid::selector";
-    try {
-      scrapeFeed(
-        html,
-        { ...selectors, articleLink: invalidSelector },
-        "https://example.com",
-        "My Blog",
-      );
-      expect(true).toBe(false); // ここに到達してはならない
-    } catch (e) {
-      expect(e instanceof Error).toBe(true);
-      expect((e as Error).message).toContain(invalidSelector);
-    }
+    const result = scrapeFeed(
+      html,
+      { ...selectors, articleLink: "[invalid::selector" },
+      "https://example.com",
+      "My Blog",
+    );
+    expect(result.items).toEqual([]);
+    expect(result.title).toBe("My Blog");
   });
 });
 

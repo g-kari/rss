@@ -6,3 +6,5 @@ dist
 .open-next
 tsconfig.tsbuildinfo
 package-lock.json
+test-results/
+playwright-report/
