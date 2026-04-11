@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useEventListener } from "./useEventListener";
 
 interface DropdownPos {
   top: number;
@@ -17,16 +18,9 @@ export function usePortalMenu() {
   const [pos, setPos] = useState<DropdownPos>({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [open]);
+  // スクロール・リサイズ時にメニューを閉じる（open が false の場合 setOpen(false) は React が最適化して no-op）
+  useEventListener("scroll", () => setOpen(false), window, true);
+  useEventListener("resize", () => setOpen(false));
 
   const toggle = useCallback(() => {
     if (btnRef.current) {

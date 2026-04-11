@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { type RefObject } from "react";
 import { useSyncedRef } from "./useSyncedRef";
+import { useEventListener } from "./useEventListener";
 import type {
   Article,
   Feed,
@@ -90,277 +91,271 @@ interface KeyboardNavOptions {
 export function useKeyboardNav(options: KeyboardNavOptions): void {
   const ref = useSyncedRef(options);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      const {
-        filteredArticles,
-        feeds,
-        pinnedFeedIds,
-        selectedFeedId,
-        selectedArticle,
-        readIds,
-        readBeforeTimestamp,
-        readingListIds,
-        likeIds,
-        setSelectedArticle,
-        onSelectFeed,
-        markRead,
-        markBulkRead,
-        markAllRead,
-        toggleBookmark,
-        toggleRead,
-        toggleReadingList,
-        toggleLike,
-        showToast,
-        fontSize,
-        onChangeFontSize,
-        fontFamily,
-        onChangeFontFamily,
-        layout,
-        onChangeLayout,
-        unreadOnly,
-        toggleUnreadOnly,
-        bookmarkOnly,
-        toggleBookmarkOnly,
-        readingListOnly,
-        toggleReadingListOnly,
-        likeOnly,
-        toggleLikeOnly,
-        toggleSortOrder,
-        cycleDateRange,
-        cycleReadingTimeRange,
-        searchRef,
-        refreshFeeds,
-        retryFeed,
-        onShowSnoozeMenu,
-        onShowFeedSwitcher,
-      } = ref.current;
+    const {
+      filteredArticles,
+      feeds,
+      pinnedFeedIds,
+      selectedFeedId,
+      selectedArticle,
+      readIds,
+      readBeforeTimestamp,
+      readingListIds,
+      likeIds,
+      setSelectedArticle,
+      onSelectFeed,
+      markRead,
+      markBulkRead,
+      markAllRead,
+      toggleBookmark,
+      toggleRead,
+      toggleReadingList,
+      toggleLike,
+      showToast,
+      fontSize,
+      onChangeFontSize,
+      fontFamily,
+      onChangeFontFamily,
+      layout,
+      onChangeLayout,
+      unreadOnly,
+      toggleUnreadOnly,
+      bookmarkOnly,
+      toggleBookmarkOnly,
+      readingListOnly,
+      toggleReadingListOnly,
+      likeOnly,
+      toggleLikeOnly,
+      toggleSortOrder,
+      cycleDateRange,
+      cycleReadingTimeRange,
+      searchRef,
+      refreshFeeds,
+      retryFeed,
+      onShowSnoozeMenu,
+      onShowFeedSwitcher,
+    } = ref.current;
 
-      const list = filteredArticles;
-      const idx = selectedArticle ? list.findIndex((a) => a.id === selectedArticle.id) : -1;
+    const list = filteredArticles;
+    const idx = selectedArticle ? list.findIndex((a) => a.id === selectedArticle.id) : -1;
 
-      /** 記事に移動して既読にマーク */
-      const navigateTo = (article: Article | undefined) => {
-        if (article) {
-          setSelectedArticle(article);
-          markRead(article.id);
-        }
-      };
-
-      // フィルタートグルのlookup table（u/B/T/I キー）
-      const filterToggleMap: Record<
-        string,
-        { toggle: () => void; state: boolean; label: string; prevent?: true }
-      > = {
-        u: { toggle: toggleUnreadOnly, state: unreadOnly, label: "未読フィルター", prevent: true },
-        B: { toggle: toggleBookmarkOnly, state: bookmarkOnly, label: "ブックマークフィルター" },
-        T: {
-          toggle: toggleReadingListOnly,
-          state: readingListOnly,
-          label: "リーディングリストフィルター",
-        },
-        I: { toggle: toggleLikeOnly, state: likeOnly, label: "いいねフィルター" },
-      };
-      const filterToggle = filterToggleMap[e.key];
-      if (filterToggle) {
-        if (filterToggle.prevent) e.preventDefault();
-        filterToggle.toggle();
-        showToast(filterToastMsg(filterToggle.state, filterToggle.label));
-        return;
+    /** 記事に移動して既読にマーク */
+    const navigateTo = (article: Article | undefined) => {
+      if (article) {
+        setSelectedArticle(article);
+        markRead(article.id);
       }
+    };
 
-      switch (e.key) {
-        case "j":
-        case "ArrowDown":
-          e.preventDefault();
-          navigateTo(list[idx + 1]);
-          break;
-        case "k":
-        case "ArrowUp":
-          e.preventDefault();
-          if (idx > 0) navigateTo(list[idx - 1]);
-          break;
-        case "n":
-          e.preventDefault();
-          navigateTo(
-            list.slice(idx + 1).find((a) => !isArticleRead(a, readIds, readBeforeTimestamp)),
-          );
-          break;
-        case "p":
-          e.preventDefault();
-          navigateTo(
-            list
-              .slice(0, idx < 0 ? undefined : idx)
-              .reverse()
-              .find((a) => !isArticleRead(a, readIds, readBeforeTimestamp)),
-          );
-          break;
-        case "g":
-          e.preventDefault();
-          navigateTo(list[0]);
-          break;
-        case "G":
-          e.preventDefault();
-          navigateTo(list[list.length - 1]);
-          break;
-        case "o":
-          if (selectedArticle?.link)
-            window.open(selectedArticle.link, "_blank", "noopener,noreferrer");
-          break;
-        case "b":
-          if (selectedArticle) toggleBookmark(selectedArticle.id);
-          break;
-        case "t":
-          if (selectedArticle) {
-            toggleReadingList(selectedArticle.id);
-            showToast(
-              readingListIds.has(selectedArticle.id)
-                ? "リーディングリストから削除"
-                : "リーディングリストに追加",
-            );
-          }
-          break;
-        case "r":
-          if (selectedArticle) toggleRead(selectedArticle.id);
-          break;
-        case "z":
-          if (selectedArticle) {
-            e.preventDefault();
-            onShowSnoozeMenu(selectedArticle.id);
-          }
-          break;
-        case "e": {
-          // 現在選択中の記事（含む）より上にある記事を全既読にする
-          e.preventDefault();
-          if (idx < 0) break;
-          const above = list.slice(0, idx + 1).map((a) => a.id);
-          markBulkRead(above);
-          showToast(`${above.length}件を既読にしました`);
-          break;
-        }
-        case "m":
-          markAllRead(selectedFeedId);
-          break;
-        case "c":
-          if (selectedArticle?.link) {
-            if (typeof navigator.share === "function") {
-              navigator
-                .share({ url: selectedArticle.link, title: selectedArticle.title })
-                .catch(() => {});
-            } else {
-              clipboardWrite(selectedArticle.link, "リンクをコピーしました", showToast);
-            }
-          }
-          break;
-        case "C":
-          if (selectedArticle?.link) {
-            const mdTitle = (selectedArticle.title || selectedArticle.link).replace(
-              /[[\]]/g,
-              "\\$&",
-            );
-            clipboardWrite(
-              `[${mdTitle}](${selectedArticle.link})`,
-              "Markdownリンクをコピーしました",
-              showToast,
-            );
-          }
-          break;
-        case "f": {
-          const next = cycleValue(FONT_SIZE_CYCLE, fontSize);
-          onChangeFontSize(next);
-          showToast(`文字サイズ: ${FONT_SIZE_LABELS[next]}`);
-          break;
-        }
-        case "F": {
-          const next = cycleValue(FONT_FAMILY_CYCLE, fontFamily);
-          onChangeFontFamily(next);
-          showToast(`フォント: ${FONT_FAMILY_LABELS[next]}`);
-          break;
-        }
-        case "l": {
-          const next = cycleValue(LAYOUT_CYCLE, layout);
-          onChangeLayout(next);
-          showToast(`レイアウト: ${LAYOUT_LABELS[next]}`);
-          break;
-        }
-        case "L":
-          if (selectedArticle) {
-            toggleLike(selectedArticle.id);
-            showToast(likeIds.has(selectedArticle.id) ? "いいね解除" : "いいね");
-          }
-          break;
-        case "R": {
-          const isSpecial =
-            selectedFeedId !== null &&
-            Object.values<string>(SPECIAL_FEED_IDS).includes(selectedFeedId);
-          if (selectedFeedId && !isSpecial) {
-            retryFeed(selectedFeedId).catch(() => {});
-            showToast("フィードを更新中...");
-          } else {
-            refreshFeeds().catch(() => {});
-            showToast("全フィードを更新中...");
-          }
-          break;
-        }
-        case "s": {
-          const nextSort = toggleSortOrder();
-          showToast(`ソート: ${SORT_ORDER_LABELS[nextSort]}`);
-          break;
-        }
-        case "d": {
-          e.preventDefault();
-          const next = cycleDateRange();
-          showToast(`日付フィルター: ${DATE_RANGE_LABELS[next]}`);
-          break;
-        }
-        case "w": {
-          e.preventDefault();
-          const next = cycleReadingTimeRange();
-          showToast(`読了時間: ${READING_TIME_RANGE_LABELS[next]}`);
-          break;
-        }
-        case "x": {
-          e.preventDefault();
-          const unread = list.filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp));
-          const pool = unread.length > 0 ? unread : list;
-          if (pool.length === 0) break;
-          // 現在選択中の記事を除いて選ぶ（1件のみなら除外しない）
-          const candidates =
-            pool.length > 1 ? pool.filter((a) => a.id !== selectedArticle?.id) : pool;
-          const random = candidates[Math.floor(Math.random() * candidates.length)];
-          navigateTo(random);
-          showToast(unread.length > 0 ? "ランダム未読記事" : "ランダム記事");
-          break;
-        }
-        case "q":
-          e.preventDefault();
-          onShowFeedSwitcher();
-          break;
-        case "/":
-          e.preventDefault();
-          searchRef.current?.focus();
-          break;
-        case "]":
-        case "[": {
-          e.preventDefault();
-          const ordered = buildFeedOrder(feeds, pinnedFeedIds);
-          const cur = ordered.findIndex((f) =>
-            f === null ? selectedFeedId === null : f.id === selectedFeedId,
-          );
-          const delta = e.key === "]" ? 1 : -1;
-          const target = ordered[(cur + delta + ordered.length) % ordered.length];
-          onSelectFeed(target?.id ?? null);
-          showToast(target ? target.title || target.url : "全記事");
-          break;
-        }
-      }
+    // フィルタートグルのlookup table（u/B/T/I キー）
+    const filterToggleMap: Record<
+      string,
+      { toggle: () => void; state: boolean; label: string; prevent?: true }
+    > = {
+      u: { toggle: toggleUnreadOnly, state: unreadOnly, label: "未読フィルター", prevent: true },
+      B: { toggle: toggleBookmarkOnly, state: bookmarkOnly, label: "ブックマークフィルター" },
+      T: {
+        toggle: toggleReadingListOnly,
+        state: readingListOnly,
+        label: "リーディングリストフィルター",
+      },
+      I: { toggle: toggleLikeOnly, state: likeOnly, label: "いいねフィルター" },
+    };
+    const filterToggle = filterToggleMap[e.key];
+    if (filterToggle) {
+      if (filterToggle.prevent) e.preventDefault();
+      filterToggle.toggle();
+      showToast(filterToastMsg(filterToggle.state, filterToggle.label));
+      return;
     }
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 意図的: ref 経由で最新値を参照
+    switch (e.key) {
+      case "j":
+      case "ArrowDown":
+        e.preventDefault();
+        navigateTo(list[idx + 1]);
+        break;
+      case "k":
+      case "ArrowUp":
+        e.preventDefault();
+        if (idx > 0) navigateTo(list[idx - 1]);
+        break;
+      case "n":
+        e.preventDefault();
+        navigateTo(
+          list.slice(idx + 1).find((a) => !isArticleRead(a, readIds, readBeforeTimestamp)),
+        );
+        break;
+      case "p":
+        e.preventDefault();
+        navigateTo(
+          list
+            .slice(0, idx < 0 ? undefined : idx)
+            .reverse()
+            .find((a) => !isArticleRead(a, readIds, readBeforeTimestamp)),
+        );
+        break;
+      case "g":
+        e.preventDefault();
+        navigateTo(list[0]);
+        break;
+      case "G":
+        e.preventDefault();
+        navigateTo(list[list.length - 1]);
+        break;
+      case "o":
+        if (selectedArticle?.link)
+          window.open(selectedArticle.link, "_blank", "noopener,noreferrer");
+        break;
+      case "b":
+        if (selectedArticle) toggleBookmark(selectedArticle.id);
+        break;
+      case "t":
+        if (selectedArticle) {
+          toggleReadingList(selectedArticle.id);
+          showToast(
+            readingListIds.has(selectedArticle.id)
+              ? "リーディングリストから削除"
+              : "リーディングリストに追加",
+          );
+        }
+        break;
+      case "r":
+        if (selectedArticle) toggleRead(selectedArticle.id);
+        break;
+      case "z":
+        if (selectedArticle) {
+          e.preventDefault();
+          onShowSnoozeMenu(selectedArticle.id);
+        }
+        break;
+      case "e": {
+        // 現在選択中の記事（含む）より上にある記事を全既読にする
+        e.preventDefault();
+        if (idx < 0) break;
+        const above = list.slice(0, idx + 1).map((a) => a.id);
+        markBulkRead(above);
+        showToast(`${above.length}件を既読にしました`);
+        break;
+      }
+      case "m":
+        markAllRead(selectedFeedId);
+        break;
+      case "c":
+        if (selectedArticle?.link) {
+          if (typeof navigator.share === "function") {
+            navigator
+              .share({ url: selectedArticle.link, title: selectedArticle.title })
+              .catch(() => {});
+          } else {
+            clipboardWrite(selectedArticle.link, "リンクをコピーしました", showToast);
+          }
+        }
+        break;
+      case "C":
+        if (selectedArticle?.link) {
+          const mdTitle = (selectedArticle.title || selectedArticle.link).replace(/[[\]]/g, "\\$&");
+          clipboardWrite(
+            `[${mdTitle}](${selectedArticle.link})`,
+            "Markdownリンクをコピーしました",
+            showToast,
+          );
+        }
+        break;
+      case "f": {
+        const next = cycleValue(FONT_SIZE_CYCLE, fontSize);
+        onChangeFontSize(next);
+        showToast(`文字サイズ: ${FONT_SIZE_LABELS[next]}`);
+        break;
+      }
+      case "F": {
+        const next = cycleValue(FONT_FAMILY_CYCLE, fontFamily);
+        onChangeFontFamily(next);
+        showToast(`フォント: ${FONT_FAMILY_LABELS[next]}`);
+        break;
+      }
+      case "l": {
+        const next = cycleValue(LAYOUT_CYCLE, layout);
+        onChangeLayout(next);
+        showToast(`レイアウト: ${LAYOUT_LABELS[next]}`);
+        break;
+      }
+      case "L":
+        if (selectedArticle) {
+          toggleLike(selectedArticle.id);
+          showToast(likeIds.has(selectedArticle.id) ? "いいね解除" : "いいね");
+        }
+        break;
+      case "R": {
+        const isSpecial =
+          selectedFeedId !== null &&
+          Object.values<string>(SPECIAL_FEED_IDS).includes(selectedFeedId);
+        if (selectedFeedId && !isSpecial) {
+          retryFeed(selectedFeedId).catch(() => {});
+          showToast("フィードを更新中...");
+        } else {
+          refreshFeeds().catch(() => {});
+          showToast("全フィードを更新中...");
+        }
+        break;
+      }
+      case "s": {
+        const nextSort = toggleSortOrder();
+        showToast(`ソート: ${SORT_ORDER_LABELS[nextSort]}`);
+        break;
+      }
+      case "d": {
+        e.preventDefault();
+        const next = cycleDateRange();
+        showToast(`日付フィルター: ${DATE_RANGE_LABELS[next]}`);
+        break;
+      }
+      case "w": {
+        e.preventDefault();
+        const next = cycleReadingTimeRange();
+        showToast(`読了時間: ${READING_TIME_RANGE_LABELS[next]}`);
+        break;
+      }
+      case "x": {
+        e.preventDefault();
+        const unread = list.filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp));
+        const pool = unread.length > 0 ? unread : list;
+        if (pool.length === 0) break;
+        // 現在選択中の記事を除いて選ぶ（1件のみなら除外しない）
+        const candidates =
+          pool.length > 1 ? pool.filter((a) => a.id !== selectedArticle?.id) : pool;
+        const random = candidates[Math.floor(Math.random() * candidates.length)];
+        navigateTo(random);
+        showToast(unread.length > 0 ? "ランダム未読記事" : "ランダム記事");
+        break;
+      }
+      case "q":
+        e.preventDefault();
+        onShowFeedSwitcher();
+        break;
+      case "/":
+        e.preventDefault();
+        searchRef.current?.focus();
+        break;
+      case "]":
+      case "[": {
+        e.preventDefault();
+        const ordered = buildFeedOrder(feeds, pinnedFeedIds);
+        const cur = ordered.findIndex((f) =>
+          f === null ? selectedFeedId === null : f.id === selectedFeedId,
+        );
+        const delta = e.key === "]" ? 1 : -1;
+        const target = ordered[(cur + delta + ordered.length) % ordered.length];
+        onSelectFeed(target?.id ?? null);
+        showToast(target ? target.title || target.url : "全記事");
+        break;
+      }
+    }
+  }
+
+  useEventListener("keydown", handleKeyDown, document);
 }
 
 /** ピン留め優先のフィード順序配列（先頭は null = 全記事）を生成 */

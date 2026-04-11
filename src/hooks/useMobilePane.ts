@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useEventListener } from "./useEventListener";
 
 /** モバイル向け3ペインのうちアクティブなペイン */
 export type MobilePane = "sidebar" | "list" | "view";
@@ -30,17 +31,13 @@ export function useMobilePane(initial: MobilePane) {
   }, [mobilePane]);
 
   // popstate（戻るボタン）でペイン遷移を処理
-  useEffect(() => {
-    function onPopState() {
-      setMobilePane((current) => {
-        if (current === "view") return "list";
-        if (current === "list") return "sidebar";
-        return current;
-      });
-    }
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
+  useEventListener("popstate", () => {
+    setMobilePane((current) => {
+      if (current === "view") return "list";
+      if (current === "list") return "sidebar";
+      return current;
+    });
+  });
 
   return { mobilePane, setMobilePane };
 }
