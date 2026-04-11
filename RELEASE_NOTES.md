@@ -2,8 +2,14 @@
 
 ## 2026-04-12
 
+### simplify
+
+- `FeedSidebar` のMarkdown/メモエクスポートボタンの SVG ボイラープレートを `FooterIconButton` に統一（-32行）。`FooterIconButton` に `onContextMenu` prop を追加。
+
 ### リファクタリング
 
+- `useAutoReset` の `set` 関数を `useCallback` で安定化。`resetValue` / `duration` を ref 経由で参照し deps を空にすることで、`showToast` 等の依存先がメモ化できない問題を解消。
+- `useMenuOpen` に `'use client'` ディレクティブを追加（他フックとの一貫性）。
 - `useUIState` の `toast` 手動タイマー管理（`useState` + `useRef` + `useEffect` + `setTimeout`）を `useAutoReset<string | null>(null, 2000)` に置き換え。
 - `useEventListener` に `capture?: boolean` オプションを追加（キャプチャフェーズ登録に対応）。
 - `usePortalMenu` / `useOnlineStatus` / `useMobilePane` / `useKeyboardNav` の生の `addEventListener` を `useEventListener` に統一。`useKeyboardNav` の `handleKeyDown` は `useEffect` 外に移動し `eslint-disable` コメントも不要に。

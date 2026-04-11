@@ -93,6 +93,18 @@ pnpm run test:e2e:ui  # Playwright UI モード（デバッグ用）
 
 > **デプロイについて**: `master` ブランチへの push で Cloudflare Workers 側が自動ビルド＆デプロイを実行する。ローカルで `deploy` を手動実行する必要はない。
 
+### Pre-commit フック
+
+`.pre-commit-config.yaml` で以下のフックがコミット時に自動実行される:
+
+1. **oxlint + oxfmt** — lint & フォーマット自動修正
+2. **tsc --noEmit** — 型チェック
+3. **playwright e2e** — E2E テスト
+
+```bash
+pre-commit install   # 初回セットアップ
+```
+
 ## API エンドポイント一覧
 
 ### 認証
