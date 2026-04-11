@@ -37,12 +37,17 @@ export function deduplicatedRefresh(
 ): Promise<{ access_token: string; refresh_token: string } | null> {
   const inflight = inflightRefresh.get(refreshToken);
   if (inflight) return inflight;
-  const p = refreshTokens(refreshToken).finally(() => {
-    // 自分の Promise だけ削除する。完了後に別の Promise が登録されていれば触らない。
-    if (inflightRefresh.get(refreshToken) === p) {
-      inflightRefresh.delete(refreshToken);
-    }
-  });
+  const p = refreshTokens(refreshToken)
+    // ネットワークエラー等で reject された場合は null に変換する。
+    // reject のまま伝搬すると getAuthSession が例外をスローし、
+    // withSession の catch に捕捉されて意図しない 500 になってしまうため。
+    .catch(() => null)
+    .finally(() => {
+      // 自分の Promise だけ削除する。完了後に別の Promise が登録されていれば触らない。
+      if (inflightRefresh.get(refreshToken) === p) {
+        inflightRefresh.delete(refreshToken);
+      }
+    });
   inflightRefresh.set(refreshToken, p);
   return p;
 }

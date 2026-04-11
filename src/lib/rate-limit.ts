@@ -2,27 +2,44 @@ import { NextResponse } from "next/server";
 import { r2Get, r2Put } from "@/lib/r2";
 
 /**
+ * 同一アイソレート内の並行 checkAndUpdateCooldown 呼び出しを管理する Set。
+ * inFlight に key が存在する間は後続リクエストを即時 429 で返すことで TOCTOU 競合を防ぐ。
+ * 異なるアイソレート間の競合はこの仕組みでは防げないが、低頻度操作では許容可能。
+ */
+const inFlight = new Set<string>();
+
+/**
  * R2 ベースのクールダウンを確認・更新する。
  * クールダウン中なら 429 NextResponse を返す。クールダウン外なら null を返し、タイムスタンプを更新する。
  *
- * NOTE: R2 は原子的な条件付き書き込みをサポートしないため、同一アイソレート内で
- * 複数リクエストが同時にクールダウンチェックを通過する TOCTOU 競合が発生しうる。
- * 手動更新のような低頻度かつ冪等な操作を前提として許容している既知の制限。
+ * 同一アイソレート内の TOCTOU 競合は inFlight Set でガードする。
  */
 export async function checkAndUpdateCooldown(
   bucket: R2Bucket,
   key: string,
   cooldownMs: number,
 ): Promise<NextResponse | null> {
-  const { ts } = await r2Get<{ ts: number }>(bucket, key, { ts: 0 });
-  const elapsed = Date.now() - ts;
-  if (elapsed < cooldownMs) {
-    const retryAfter = Math.ceil((cooldownMs - elapsed) / 1000);
+  if (inFlight.has(key)) {
+    const retryAfter = Math.ceil(cooldownMs / 1000);
     return NextResponse.json(
       { error: "Too many requests", retryAfter },
       { status: 429, headers: { "Retry-After": String(retryAfter) } },
     );
   }
-  await r2Put(bucket, key, { ts: Date.now() });
-  return null;
+  inFlight.add(key);
+  try {
+    const { ts } = await r2Get<{ ts: number }>(bucket, key, { ts: 0 });
+    const elapsed = Date.now() - ts;
+    if (elapsed < cooldownMs) {
+      const retryAfter = Math.ceil((cooldownMs - elapsed) / 1000);
+      return NextResponse.json(
+        { error: "Too many requests", retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
+    await r2Put(bucket, key, { ts: Date.now() });
+    return null;
+  } finally {
+    inFlight.delete(key);
+  }
 }
