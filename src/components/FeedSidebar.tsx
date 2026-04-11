@@ -642,6 +642,7 @@ export default function FeedSidebar({
 
           for (const [cat, catFeeds] of categoryGroups) {
             const isCollapsed = collapsedCategories.has(cat);
+            const catUnread = catFeeds.reduce((sum, f) => sum + (unreadByFeed.get(f.id) ?? 0), 0);
             elements.push(
               <button
                 key={`cat-header-${cat}`}
@@ -662,8 +663,10 @@ export default function FeedSidebar({
                   {cat}
                 </span>
                 {isCollapsed && (
-                  <span className="ml-auto text-[10px] text-text-faint tabular-nums">
-                    {catFeeds.length}
+                  <span
+                    className={`ml-auto text-[10px] tabular-nums ${catUnread > 0 ? "text-text-muted" : "text-text-faint"}`}
+                  >
+                    {catUnread > 0 ? formatCount(catUnread) : catFeeds.length}
                   </span>
                 )}
               </button>,
