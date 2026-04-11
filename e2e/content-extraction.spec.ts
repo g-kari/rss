@@ -743,9 +743,9 @@ test.describe("processContent — YouTube iframe レスポンシブラップ", (
     expect(processed).toContain("encrypted-media");
   });
 
-  test("非 YouTube iframe は変更しない", () => {
+  test("非 YouTube iframe は sanitizeHtml で除去される", () => {
     const html = '<iframe src="https://example.com/video"></iframe>';
-    expect(processContent(html)).toBe(html);
+    expect(processContent(html)).not.toContain("iframe");
   });
 });
 
