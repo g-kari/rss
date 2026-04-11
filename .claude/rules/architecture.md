@@ -106,7 +106,7 @@ src/
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
     useFeedOperations.ts     # フィード CRUD 操作
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
-    useUIState.ts            # UI 状態管理（テーマ・レイアウト・モーダル等）
+    useUIState.ts            # UI 状態管理（テーマ・レイアウト・フォーカスモード・モーダル等）
     useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
     useReadState.ts          # 既読・ブックマーク・後で読む・スヌーズ状態 (localStorage + R2 同期)
     useReadingHistory.ts     # 閲覧履歴管理
@@ -134,6 +134,7 @@ src/
     useInboxProgress.ts      # フィード別未読消化率を計算 (unread 数・readRatio、最大 10 件)
     useLocalStorageHistory.ts # localStorage 配列の永続化 (先頭追加・重複排除・上限制御)
     useReadingStats.ts       # 読了統計取得 (/api/stats fetch → ReadingStats)
+    useGestureNav.ts         # スワイプ・ホイール・ドラッグによる前後記事ナビゲーション（横スクロール子要素は除外）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()
