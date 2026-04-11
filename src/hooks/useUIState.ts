@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useEventListener } from "./useEventListener";
+import { useAutoReset } from "./useAutoReset";
 import type { FontFamily, Layout, FontSize } from "../types";
 import {
   STORAGE_KEYS,
@@ -106,8 +107,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
   const [collapsedCategories, setCollapsedCategories] =
     useState<Set<string>>(loadCollapsedCategories);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [toast, setToast] = useAutoReset<string | null>(null, 2000);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
@@ -116,12 +116,6 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
   const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
     useNSFWMode();
-
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    };
-  }, []);
 
   // テーマを DOM に同期
   useEffect(() => {
@@ -168,11 +162,12 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     toggleSetItem(setCollapsedCategories, STORAGE_KEYS.COLLAPSED_CATEGORIES, category);
   }, []);
 
-  const showToast = useCallback((msg: string) => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToast(msg);
-    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
-  }, []);
+  const showToast = useCallback(
+    (msg: string) => {
+      setToast(msg);
+    },
+    [setToast],
+  );
 
   const toggleFocusMode = useCallback(() => {
     setFocusMode((v) => !v);

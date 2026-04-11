@@ -8,6 +8,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### リファクタリング
 
+- \`useUIState\` の \`toast\` 手動タイマー管理（\`useState\` + \`useRef\` + \`useEffect\` + \`setTimeout\`）を \`useAutoReset<string | null>(null, 2000)\` に置き換え。
 - \`useEventListener\` に \`capture?: boolean\` オプションを追加（キャプチャフェーズ登録に対応）。
 - \`usePortalMenu\` / \`useOnlineStatus\` / \`useMobilePane\` / \`useKeyboardNav\` の生の \`addEventListener\` を \`useEventListener\` に統一。\`useKeyboardNav\` の \`handleKeyDown\` は \`useEffect\` 外に移動し \`eslint-disable\` コメントも不要に。
 - \`useMenuOpen\` の \`useEffect\` + 生の \`document.addEventListener/removeEventListener\` を \`useEventListener\` フックに置き換え。\`open\` のチェックをハンドラー内部に移動し、常時リッスン + 早期リターン方式に統一。
