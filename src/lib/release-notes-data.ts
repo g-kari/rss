@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-11 (7)
+
+### リファクタリング
+
+- **\`useSpeechSynthesis\` を既存ユーティリティで整理** — 生の \`localStorage\` アクセスを \`storageGet\`/\`storageSet\`+\`STORAGE_KEYS.TTS_RATE\` に統一。手動 \`useRef\`+sync を \`useSyncedRef\` に、手動インデックス計算を \`cycleValue\` に置き換え。再生中のレート変更を即時反映（\`currentTextRef\` でテキストを保持し \`cycleRate\` 時に \`speak\` を再起動）。\`ArticleView\` の冗長なテナリーを簡略化。
+
 ## 2026-04-11 (6)
 
 ### 新機能
