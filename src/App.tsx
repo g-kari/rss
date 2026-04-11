@@ -20,7 +20,7 @@ import { useFilteredArticles } from "./hooks/useFilteredArticles";
 import { useReadingHistory } from "./hooks/useReadingHistory";
 import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
-import { exportArticlesToMarkdown } from "./lib/export-markdown";
+import { exportArticlesToMarkdown, exportNotesToMarkdown } from "./lib/export-markdown";
 import { apiFetch } from "./lib/api-fetch";
 import { normalizeFilter, matchesKeywordFilter } from "./lib/keyword-filter";
 import { isArticleRead } from "./lib/article-filter";
@@ -873,6 +873,10 @@ export default function App() {
               const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
               exportArticlesToMarkdown(articles, ids, feeds, mode);
             }}
+            onExportNotes={() => {
+              exportNotesToMarkdown(articles, notes, feeds);
+            }}
+            noteCount={Object.keys(notes).length}
             install={install}
             push={{
               supported: pushSupported,
