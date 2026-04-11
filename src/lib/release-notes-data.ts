@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-11 (14)
+
+### リファクタリング
+
+- \`useUIState\` の keydown イベントリスナーを既存の \`useEventListener\` フックに統一。\`useEffect\` + 手動 \`addEventListener/removeEventListener\` のボイラープレートを削除。
+
 ## 2026-04-11 (13)
 
 ### セキュリティ

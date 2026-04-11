@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useEventListener } from "./useEventListener";
 import type { FontFamily, Layout, FontSize } from "../types";
 import {
   STORAGE_KEYS,
@@ -120,8 +121,9 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   }, []);
 
   // ? キーでヘルプトグル / \ キーでフォーカスモードトグル
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
+  useEventListener(
+    "keydown",
+    (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "?") setShowHelp((v) => !v);
       if (e.key === "\\") setFocusMode((v) => !v);
@@ -130,10 +132,9 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
         setShowFeedSwitcher(false);
         setFocusMode(false);
       }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    },
+    document,
+  );
 
   const toggleTheme = useCallback(() => {
     setTheme((t) => (t === "light" ? "dark" : "light"));
