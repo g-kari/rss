@@ -41,6 +41,19 @@ function loadTheme(): Theme {
 const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
 const loadCollapsedCategories = () => loadSet(STORAGE_KEYS.COLLAPSED_CATEGORIES);
 
+/** localStorage に永続化する enum 系設定の state と onChange セッターをまとめて返す。 */
+function useStoredSetting<T extends string>(load: () => T, key: string): [T, (v: T) => void] {
+  const [value, setValue] = useState<T>(load);
+  const onChange = useCallback(
+    (v: T) => {
+      setValue(v);
+      storageSet(key, v);
+    },
+    [key],
+  );
+  return [value, onChange];
+}
+
 export interface UIState {
   theme: Theme;
   toggleTheme: () => void;
@@ -81,9 +94,15 @@ export interface UIState {
  */
 export function useUIState(initialMobilePane: MobilePane): UIState {
   const [theme, setTheme] = useState<Theme>(loadTheme);
-  const [fontSize, setFontSize] = useState<FontSize>(loadFontSize);
-  const [fontFamily, setFontFamily] = useState<FontFamily>(loadFontFamily);
-  const [layout, setLayout] = useState<Layout>(loadLayout);
+  const [fontSize, onChangeFontSize] = useStoredSetting<FontSize>(
+    loadFontSize,
+    STORAGE_KEYS.FONT_SIZE,
+  );
+  const [fontFamily, onChangeFontFamily] = useStoredSetting<FontFamily>(
+    loadFontFamily,
+    STORAGE_KEYS.FONT_FAMILY,
+  );
+  const [layout, onChangeLayout] = useStoredSetting<Layout>(loadLayout, STORAGE_KEYS.LAYOUT);
   const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
   const [collapsedCategories, setCollapsedCategories] =
     useState<Set<string>>(loadCollapsedCategories);
@@ -139,21 +158,6 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
 
   const toggleTheme = useCallback(() => {
     setTheme((t) => (t === "light" ? "dark" : "light"));
-  }, []);
-
-  const onChangeFontSize = useCallback((size: FontSize) => {
-    setFontSize(size);
-    storageSet(STORAGE_KEYS.FONT_SIZE, size);
-  }, []);
-
-  const onChangeFontFamily = useCallback((family: FontFamily) => {
-    setFontFamily(family);
-    storageSet(STORAGE_KEYS.FONT_FAMILY, family);
-  }, []);
-
-  const onChangeLayout = useCallback((l: Layout) => {
-    setLayout(l);
-    storageSet(STORAGE_KEYS.LAYOUT, l);
   }, []);
 
   const togglePinFeed = useCallback((feedId: string) => {
