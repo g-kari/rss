@@ -4,7 +4,8 @@
 
 ### simplify
 
-- `FeedSidebar` のMarkdown/メモエクスポートボタンの SVG ボイラープレートを `FooterIconButton` に統一（-32行）。`FooterIconButton` に `onContextMenu` prop を追加。
+- `FeedSidebar` のMarkdown/メモエクスポートボタンの SVG ボイラープレートを `FooterIconButton` に統一（-32行）。`FooterIconButton` ��� `onContextMenu` prop を追���。
+- `ArticleView.tsx` 内の手動 `addEventListener` / `removeEventListener` を `useEventListener` に統一。`ImageGallery` のライトボックスキーボード操作、`ArticleView` 本体のショートカットキー (v/a/z/Space)、Twitter iframe リサイズの 3 箇所を移行。ショートカットキーの `useEffect` は依存配列 14 個を `useSyncedRef` で解消し、リスナー再登録を回避。
 
 ### リファクタリング
 

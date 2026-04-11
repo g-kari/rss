@@ -699,18 +699,16 @@ function ExcludeOptionsSection({
 function ImageGallery({ images }: { images: string[] }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const lightboxTouchRef = useRef<number | null>(null);
+  const lightboxRef = useSyncedRef({ lightboxIndex, imageCount: images.length });
 
-  useEffect(() => {
-    if (lightboxIndex === null) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightboxIndex(null);
-      if (e.key === "ArrowLeft") setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i));
-      if (e.key === "ArrowRight")
-        setLightboxIndex((i) => (i !== null && i < images.length - 1 ? i + 1 : i));
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [lightboxIndex, images.length]);
+  useEventListener("keydown", (e) => {
+    const { lightboxIndex: idx, imageCount } = lightboxRef.current;
+    if (idx === null) return;
+    if (e.key === "Escape") setLightboxIndex(null);
+    if (e.key === "ArrowLeft") setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i));
+    if (e.key === "ArrowRight")
+      setLightboxIndex((i) => (i !== null && i < imageCount - 1 ? i + 1 : i));
+  });
 
   function handleLightboxTouchStart(e: React.TouchEvent) {
     e.stopPropagation();
@@ -1408,41 +1406,10 @@ export default function ArticleView({
   }, [article?.id]);
 
   // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "v" && article?.link && !storedContent && !fetching) {
-        void fetchFullContent();
-      }
-      if (e.key === "a" && article?.link) {
-        if (aiResult) {
-          resetAi();
-        } else if (!aiLoading && !fetching) {
-          void doRunAi(article.link, article.id);
-        }
-      }
-      if (e.key === "z" && article?.link) {
-        if (translateResult) {
-          resetTranslate();
-        } else if (!translateLoading && !fetching) {
-          void doTranslate(article.link, article.id);
-        }
-      }
-      if (e.key === " ") {
-        const el = mainRef.current;
-        if (!el) return;
-        e.preventDefault();
-        el.scrollBy({
-          top: e.shiftKey ? -el.clientHeight * 0.8 : el.clientHeight * 0.8,
-          behavior: "smooth",
-        });
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [
-    article?.link,
-    article?.id,
+  // useSyncedRef で最新値を参照し、リスナーの再登録を回避する
+  const shortcutRef = useSyncedRef({
+    articleLink: article?.link,
+    articleId: article?.id,
     storedContent,
     fetching,
     fetchFullContent,
@@ -1454,7 +1421,41 @@ export default function ArticleView({
     translateLoading,
     doTranslate,
     resetTranslate,
-  ]);
+  });
+  useEventListener(
+    "keydown",
+    (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const s = shortcutRef.current;
+      if (e.key === "v" && s.articleLink && !s.storedContent && !s.fetching) {
+        void s.fetchFullContent();
+      }
+      if (e.key === "a" && s.articleLink) {
+        if (s.aiResult) {
+          s.resetAi();
+        } else if (!s.aiLoading && !s.fetching) {
+          void s.doRunAi(s.articleLink, s.articleId!);
+        }
+      }
+      if (e.key === "z" && s.articleLink) {
+        if (s.translateResult) {
+          s.resetTranslate();
+        } else if (!s.translateLoading && !s.fetching) {
+          void s.doTranslate(s.articleLink, s.articleId!);
+        }
+      }
+      if (e.key === " ") {
+        const el = mainRef.current;
+        if (!el) return;
+        e.preventDefault();
+        el.scrollBy({
+          top: e.shiftKey ? -el.clientHeight * 0.8 : el.clientHeight * 0.8,
+          behavior: "smooth",
+        });
+      }
+    },
+    document,
+  );
 
   const handleNoteBlur = useCallback(() => {
     if (!article || !onSetNote) return;
@@ -1602,35 +1603,30 @@ export default function ArticleView({
   // X (Twitter) ツイート iframe を postMessage で動的リサイズ
   // platform.twitter.com から {"method":"twttr.resize","params":{"height":N}} が届くたびに
   // 対応する iframe の高さを更新する
-  useEffect(() => {
-    if (!processedContent) return;
-    function handleMessage(e: MessageEvent) {
-      if (e.origin !== "https://platform.twitter.com") return;
-      let data: unknown;
-      try {
-        data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-      } catch {
-        return;
-      }
-      if (!data || typeof data !== "object") return;
-      const d = data as Record<string, unknown>;
-      if (d.method !== "twttr.resize") return;
-      const params = d.params as Record<string, unknown> | undefined;
-      if (typeof params?.height !== "number") return;
-      const iframes = contentRef.current?.querySelectorAll<HTMLIFrameElement>(
-        ".tweet-embed-wrapper iframe",
-      );
-      if (!iframes) return;
-      for (const iframe of iframes) {
-        if (iframe.contentWindow === e.source) {
-          iframe.style.height = `${params.height}px`;
-          break;
-        }
+  useEventListener("message", (e: MessageEvent) => {
+    if (e.origin !== "https://platform.twitter.com") return;
+    let data: unknown;
+    try {
+      data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+    } catch {
+      return;
+    }
+    if (!data || typeof data !== "object") return;
+    const d = data as Record<string, unknown>;
+    if (d.method !== "twttr.resize") return;
+    const params = d.params as Record<string, unknown> | undefined;
+    if (typeof params?.height !== "number") return;
+    const iframes = contentRef.current?.querySelectorAll<HTMLIFrameElement>(
+      ".tweet-embed-wrapper iframe",
+    );
+    if (!iframes) return;
+    for (const iframe of iframes) {
+      if (iframe.contentWindow === e.source) {
+        iframe.style.height = `${params.height}px`;
+        break;
       }
     }
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [processedContent]);
+  });
 
   // 記事が変わったらプログレスバーをリセット（AI 状態は useArticleAi が担当）
   useEffect(() => {
