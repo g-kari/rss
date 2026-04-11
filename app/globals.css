@@ -537,6 +537,45 @@ body {
   line-height: 1.5;
 }
 
+/* 印刷スタイル */
+@media print {
+  /* サイドバー・記事一覧・印刷非対象要素を非表示 */
+  [data-pane="sidebar"],
+  [data-pane="list"],
+  [data-print="hide"] {
+    display: none !important;
+  }
+
+  /* ルートレイアウトをブロックに変換 */
+  [data-layout="root"] {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  /* 記事ビューペインを全幅に */
+  [data-pane="view"],
+  [data-pane="view"] > * {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    width: 100% !important;
+  }
+
+  /* 記事コンテンツの背景・色をシステムデフォルトに */
+  .article-content {
+    color: black !important;
+  }
+
+  /* スクロールバーを非表示 */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* X (Twitter) ツイート埋め込みラッパー */
 .tweet-embed-wrapper {
   margin: 1.25em auto;

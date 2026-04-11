@@ -416,6 +416,29 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 </svg>
                 Markdown リンクをコピー
               </button>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  window.print();
+                }}
+                className={MENU_ITEM_CLS}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M6 9V2h12v7" />
+                  <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+                  <rect x="6" y="14" width="12" height="8" />
+                </svg>
+                印刷
+              </button>
             </div>
           </>,
           document.body,
@@ -533,7 +556,10 @@ function ArticleNavigation({
 }: ArticleNavigationProps) {
   if (!prevArticle && !nextArticle) return null;
   return (
-    <div className="mt-12 pt-6 border-t border-border-subtle flex items-stretch gap-3">
+    <div
+      data-print="hide"
+      className="mt-12 pt-6 border-t border-border-subtle flex items-stretch gap-3"
+    >
       {prevArticle ? (
         <button
           onClick={onSelectPrev}
@@ -1885,7 +1911,10 @@ export default function ArticleView({
           </div>
 
           {/* アクションボタン群: モバイルでは右寄せ flex-wrap、PCでは右端固定 */}
-          <div className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap lg:ml-auto">
+          <div
+            data-print="hide"
+            className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap lg:ml-auto"
+          >
             {/* フォントサイズ切り替え */}
             {onChangeFontSize && (
               <div className="flex items-center gap-0.5 mr-1">
