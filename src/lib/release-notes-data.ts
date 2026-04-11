@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-11 (18)
+
+### リファクタリング
+
+- \`useUIState\` の \`fontSize\` / \`fontFamily\` / \`layout\` で繰り返されていた \`useState + useCallback + storageSet\` パターンを \`useStoredSetting<T>\` ヘルパーに集約し、ボイラープレートを削減。
+
 ## 2026-04-11 (17)
 
 ### 新機能
