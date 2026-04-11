@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-12
+
+### リファクタリング
+
+- `useMenuOpen` の `useEffect` + 生の `document.addEventListener/removeEventListener` を `useEventListener` フックに置き換え。`open` のチェックをハンドラー内部に移動し、常時リッスン + 早期リターン方式に統一。
+
 ## 2026-04-11 (18)
 
 ### リファクタリング
