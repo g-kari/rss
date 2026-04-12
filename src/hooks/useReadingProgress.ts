@@ -2,10 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { computeProgress, clampProgress, buildAnchorSelector } from "../lib/reading-progress";
-import { storageGet, storageSet } from "../lib/storage";
-
-// ── localStorage キー ─────────────────────────────────────────
-const PREFIX = "rss-reading-progress:";
+import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 
 interface ProgressEntry {
   progress: number;
@@ -13,17 +10,14 @@ interface ProgressEntry {
 }
 
 function saveProgress(articleId: string, entry: ProgressEntry): void {
-  storageSet(`${PREFIX}${articleId}`, JSON.stringify(entry));
+  saveJson(`${STORAGE_KEYS.READING_PROGRESS_PREFIX}${articleId}`, entry);
 }
 
 export function loadProgress(articleId: string): ProgressEntry | null {
-  const raw = storageGet(`${PREFIX}${articleId}`);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as ProgressEntry;
-  } catch {
-    return null;
-  }
+  return loadJson<ProgressEntry | null>(
+    `${STORAGE_KEYS.READING_PROGRESS_PREFIX}${articleId}`,
+    null,
+  );
 }
 
 // ── フック ────────────────────────────────────────────────────
