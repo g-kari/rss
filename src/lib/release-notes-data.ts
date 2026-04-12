@@ -4,6 +4,23 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-12 (2)
+
+### 新機能
+
+- **Obsidian 連携** — ShareMenu に「Markdown 全文コピー」「Obsidian に保存」ボタンを追加。\`obsidian://new\` URI で Vault 名・frontmatter・本文を渡して直接ノート作成できる。Vault 名は localStorage に保存。
+- **HTML → Markdown 変換** (\`src/lib/html-to-markdown.ts\`) — h1-h6/a/img/ul/ol/strong/em/code/pre/blockquote/table を Markdown に変換。YAML frontmatter (title/url/feed/author/published) 付き。XSS (script/style) は除去。
+- **Obsidian URI ライブラリ** (\`src/lib/obsidian.ts\`) — \`sanitizeObsidianFilename\` でファイル名不正文字を除去・置換。\`buildObsidianUri\` で URI を生成。
+- **リーダー設定拡充** — ArticleView ツールバーに行間 (5段階: 1.5-2.3) / コンテンツ幅 (3段階: 640px/720px/全幅) / 両端揃えトグルを追加。設定は localStorage に永続化。
+- **SingleFile 連携 API** (\`POST /api/clip\`) — SingleFile ブラウザ拡張から HTML + URL を受信し、本文抽出後に Cloudflare Cache API に保存。\`/api/content\` と同じキャッシュキー形式で共有。
+- **TDD 基盤整備** — コーディング規約に TDD セクション追加。E2E テスト 82 件追加 (html-to-markdown/export-markdown/obsidian/reader-settings/reading-progress/clip)。
+
+### リファクタリング
+
+- \`src/lib/reader-settings.ts\` を新規追加 — FontSizeExtended (6段階) / LineHeight / ContentWidth の定数・CSS スタイル生成・cycle 関数を集約。
+- \`src/lib/reading-progress.ts\` を新規追加 — \`computeProgress\` / \`clampProgress\` / \`buildAnchorSelector\` の純粋関数。
+- \`src/hooks/useReadingProgress.ts\` を新規追加 — IntersectionObserver で本文直下要素を追跡し進捗を localStorage に保存。
+
 ## 2026-04-12
 
 ### simplify
