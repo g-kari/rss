@@ -819,7 +819,7 @@ export default function ArticleList({
           </>
         )}
 
-        {hasMore && <div ref={sentinelRef} className="h-10" aria-hidden />}
+        <div ref={sentinelRef} className="h-10" aria-hidden />
         {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
           <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
         )}
