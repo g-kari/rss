@@ -502,7 +502,9 @@ function ShareMenu({ article, showToast, feed, contentHtml }: ShareMenuProps) {
                           content: md,
                         });
                         setOpen(false);
-                        window.open(uri, "_blank", "noopener,noreferrer");
+                        const a = document.createElement("a");
+                        a.href = uri;
+                        a.click();
                         showToast("Obsidian を開いています…");
                       } catch {
                         showToast("Obsidian URI の生成に失敗しました");
