@@ -7,9 +7,9 @@ import {
   computeFeedHash,
   getOrCreateFeedMeta,
   writeFeedMeta,
+  readFeedMeta,
   readUserSubscriptions,
   writeUserSubscriptions,
-  getUserFeeds,
   assembleClientFeed,
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
@@ -17,9 +17,33 @@ import type { SelectorConfig } from "@/types";
 import { registerAndFetchFeed } from "@/cron/fetch";
 import type { UserSubscription } from "@/types";
 
+const LAST_ACCESSED_UPDATE_INTERVAL_MS = 60 * 60 * 1000; // 1 時間
+
 export async function GET() {
-  return withSession(async ({ session, env }) => {
-    const feeds = await getUserFeeds(env.RSS_DATA, session.userId);
+  return withSession(async ({ session, env, ctx }) => {
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+
+    // lastAccessedAt を 1 時間スロットル付きで更新（fire-and-forget）
+    const now = new Date().toISOString();
+    const needsUpdate = subs.some(
+      (s) =>
+        !s.lastAccessedAt ||
+        Date.now() - new Date(s.lastAccessedAt).getTime() > LAST_ACCESSED_UPDATE_INTERVAL_MS,
+    );
+    if (needsUpdate && subs.length > 0) {
+      const updatedSubs = subs.map((s) => ({ ...s, lastAccessedAt: now }));
+      ctx.waitUntil(
+        writeUserSubscriptions(env.RSS_DATA, session.userId, updatedSubs).catch(console.error),
+      );
+    }
+
+    // 購読の二重読みを避けるため getUserFeeds の代わりに直接 meta を並列取得
+    if (subs.length === 0) return NextResponse.json([]);
+    const metas = await Promise.all(subs.map((s) => readFeedMeta(env.RSS_DATA, s.feedHash)));
+    const feeds = subs.flatMap((sub, i) => {
+      const meta = metas[i];
+      return meta ? [assembleClientFeed(meta, sub)] : [];
+    });
     return NextResponse.json(feeds);
   });
 }
@@ -88,6 +112,7 @@ export async function POST(request: Request) {
       feedHash,
       url,
       subscribedAt: new Date().toISOString(),
+      lastAccessedAt: new Date().toISOString(),
       ...(cookie ? { requestCookie: cookie } : {}),
     };
     subs.push(newSub);

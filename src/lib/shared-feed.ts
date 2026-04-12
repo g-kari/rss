@@ -328,9 +328,15 @@ export async function listAllFeedHashes(bucket: R2Bucket): Promise<string[]> {
 export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
   feedUserMap: Map<string, string[]>;
   feedCookieMap: Map<string, string>;
+  /** feedHash → 購読者の最新 lastAccessedAt（非アクティブフィード判定用） */
+  feedLastAccessMap: Map<string, string>;
+  /** priority: "high" が設定されているフィードの Set（常にフェッチ対象） */
+  feedHasPriority: Set<string>;
 }> {
   const feedUserMap = new Map<string, string[]>();
   const feedCookieMap = new Map<string, string>();
+  const feedLastAccessMap = new Map<string, string>();
+  const feedHasPriority = new Set<string>();
   const userIds = await listPrefixedIds(bucket, "users/");
 
   const allSubs = await Promise.all(
@@ -345,7 +351,17 @@ export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
       if (s.requestCookie && !feedCookieMap.has(s.feedHash)) {
         feedCookieMap.set(s.feedHash, s.requestCookie);
       }
+      // lastAccessedAt は購読者の中で最も新しい値を採用する
+      if (s.lastAccessedAt) {
+        const current = feedLastAccessMap.get(s.feedHash);
+        if (!current || s.lastAccessedAt > current) {
+          feedLastAccessMap.set(s.feedHash, s.lastAccessedAt);
+        }
+      }
+      if (s.priority === "high") {
+        feedHasPriority.add(s.feedHash);
+      }
     }
   }
-  return { feedUserMap, feedCookieMap };
+  return { feedUserMap, feedCookieMap, feedLastAccessMap, feedHasPriority };
 }

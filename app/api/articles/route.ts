@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
-import { r2Get, savedArticlesKey } from "@/lib/r2";
+import { r2Get, savedArticlesKey, readStateKey } from "@/lib/r2";
 import {
   getUserLatestArticles,
   MAX_PAGES,
@@ -10,7 +10,15 @@ import {
 } from "@/lib/shared-feed";
 import { applyKeywordFilter, applyKeywordFilterMap, buildFilterMap } from "@/lib/keyword-filter";
 import { compareByDateDesc } from "@/lib/article-utils";
-import type { Article } from "@/types";
+import { buildProtectedIds, filterExpiredArticles } from "@/lib/article-ttl";
+import type { Article, ReadState } from "@/types";
+
+const DEFAULT_READ_STATE: ReadState = {
+  readIds: [],
+  bookmarkIds: [],
+  readingListIds: [],
+  likeIds: [],
+};
 
 export async function GET(request: NextRequest) {
   return withSession(async ({ session, env }) => {
@@ -32,29 +40,40 @@ export async function GET(request: NextRequest) {
         page >= 2
           ? readArticlePage(env.RSS_DATA, feedHash, page)
           : readLatestArticles(env.RSS_DATA, feedHash);
-      const [subs, articles] = await Promise.all([
+      const [subs, articles, readState] = await Promise.all([
         readUserSubscriptions(env.RSS_DATA, session.userId),
         fetchArticles,
+        r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), DEFAULT_READ_STATE),
       ]);
       const sub = subs.find((s) => s.feedHash === feedHash);
       if (!sub) {
         return NextResponse.json({ error: "Feed not found" }, { status: 404 });
       }
-      return NextResponse.json(applyKeywordFilter(articles, sub.filter));
+      const protectedIds = buildProtectedIds(readState);
+      const filtered = filterExpiredArticles(
+        applyKeywordFilter(articles, sub.filter),
+        protectedIds,
+      );
+      return NextResponse.json(filtered);
     }
 
     // デフォルト: 全購読フィードの latest.json + 手動保存記事をマージして返す
-    const [subs, feedArticles, savedArticles] = await Promise.all([
+    const [subs, feedArticles, savedArticles, readState] = await Promise.all([
       readUserSubscriptions(env.RSS_DATA, session.userId),
       getUserLatestArticles(env.RSS_DATA, session.userId),
       r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
+      r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), DEFAULT_READ_STATE),
     ]);
 
     // フィードごとのキーワードフィルターを適用（キーワードは小文字化済み）
     const filterMap = buildFilterMap(subs, (s) => s.feedHash);
     const filteredFeedArticles = applyKeywordFilterMap(feedArticles, filterMap);
 
-    const all = [...savedArticles, ...filteredFeedArticles].sort(compareByDateDesc);
+    // TTL フィルタ: 保護対象（bookmark/readingList/like/snooze/notes）以外の古い記事を除外
+    const protectedIds = buildProtectedIds(readState);
+    const ttlFilteredArticles = filterExpiredArticles(filteredFeedArticles, protectedIds);
+
+    const all = [...savedArticles, ...ttlFilteredArticles].sort(compareByDateDesc);
     return NextResponse.json(all);
   });
 }

@@ -74,6 +74,8 @@ export interface UserSubscription {
   category?: string;
   /** ミュート解除予定時刻（ISO 8601）— この時刻までフィードを全フィード表示から非表示にする */
   mutedUntil?: string;
+  /** 最終アクセス日時（ISO 8601）— GET /api/feeds 時に更新。cron 非アクティブ判定に使用 */
+  lastAccessedAt?: string;
 }
 
 /** クライアント向けフィード型（SharedFeedMeta + UserSubscription を合成して返す） */

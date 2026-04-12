@@ -20,6 +20,7 @@ import {
   readLatestArticles,
   assembleClientFeed,
 } from "../lib/shared-feed";
+import { INACTIVE_FEED_DAYS } from "../lib/article-ttl";
 
 type FetchEnv = Pick<CloudflareEnv, "RSS_DATA" | "FINDME_RSS">;
 
@@ -350,14 +351,42 @@ async function sendPushForUsers(
  * 3. 新着記事があったフィードの購読ユーザーに Push 通知を送る
  */
 export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
-  // Push 通知用の逆引きマップ + Cookie マップを事前に構築
-  const { feedUserMap, feedCookieMap } = await buildFeedUserMap(env.RSS_DATA);
+  // Push 通知用の逆引きマップ + Cookie マップ + アクティビティマップを事前に構築
+  const { feedUserMap, feedCookieMap, feedLastAccessMap, feedHasPriority } = await buildFeedUserMap(
+    env.RSS_DATA,
+  );
 
   const feedHashes = await listAllFeedHashes(env.RSS_DATA);
   if (feedHashes.length === 0) return;
 
+  // 非アクティブフィードをスキップ
+  const inactiveThresholdMs = INACTIVE_FEED_DAYS * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  let skipped = 0;
+  const activeFeedHashes = feedHashes.filter((feedHash) => {
+    // 購読者がいないフィード → スキップ
+    if (!feedUserMap.has(feedHash)) {
+      skipped++;
+      return false;
+    }
+    // 高優先度フィード → 常にフェッチ
+    if (feedHasPriority.has(feedHash)) return true;
+    // lastAccessedAt 未設定（既存ユーザー or 移行期間）→ 安全側でフェッチ
+    const lastAccess = feedLastAccessMap.get(feedHash);
+    if (!lastAccess) return true;
+    // 閾値以上アクセスがない → スキップ
+    if (now - new Date(lastAccess).getTime() > inactiveThresholdMs) {
+      skipped++;
+      return false;
+    }
+    return true;
+  });
+  console.log(
+    `cron: skipped ${skipped}/${feedHashes.length} inactive feeds, fetching ${activeFeedHashes.length}`,
+  );
+
   const results = await allSettledWithConcurrency(
-    feedHashes.map(
+    activeFeedHashes.map(
       (feedHash) => () =>
         fetchAndUpdateSharedFeed(env, feedHash, false, feedCookieMap.get(feedHash)),
     ),
@@ -365,11 +394,11 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
   );
 
   // Push 通知
-  for (let i = 0; i < feedHashes.length; i++) {
+  for (let i = 0; i < activeFeedHashes.length; i++) {
     const result = results[i];
     if (result.status !== "fulfilled" || result.value.newArticles.length === 0) continue;
     const { newArticles, meta } = result.value;
-    const feedHash = feedHashes[i];
+    const feedHash = activeFeedHashes[i];
     const userIds = feedUserMap.get(feedHash) ?? [];
     if (userIds.length === 0) continue;
     await sendPushForUsers(env, userIds, newArticles, meta?.title ?? "RSS");
