@@ -4,6 +4,20 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-12 (3)
+
+### 新機能
+
+- **記事 TTL フィルタ (30日)** — \`/api/articles\` 返却時に 30 日以上経過した記事を除外（物理削除なし）。ブックマーク・後で読む・いいね・スヌーズ・メモが付いた記事は保護。
+- **非アクティブフィードの cron スキップ (7日)** — 7 日以上アクセスのないフィードは 30 分 cron での自動フェッチをスキップし、コスト・帯域を削減。\`priority: "high"\` フィードは常にフェッチ継続。\`/api/feeds\` が \`lastAccessedAt\` を 1 時間スロットル付きで更新する。
+- \`src/lib/article-ttl.ts\` を新規追加 — \`isArticleExpired\` / \`shouldProtectArticle\` / \`filterExpiredArticles\` の純粋関数（14 テスト）。
+
+### バグ修正
+
+- **Obsidian URI を \`<a>\` タグクリックで開く** — \`window.open\` を使用していたため真っ黒タブが開く問題を修正。非表示の \`<a href="obsidian://...">\` 要素を生成してクリックする方式に変更。
+- **\`html-to-markdown.ts\`: \`NodeList.map\` ブラウザ非対応を修正** — \`domToNode\` 内で \`NodeList\` を \`Array.from()\` に変換してから \`map\` を呼ぶよう修正。Firefox / Safari で Markdown コピーが失敗する問題を解消。
+- **Markdown コピー・Obsidian 保存ボタンのエラーハンドリング追加** — \`navigator.clipboard\` が未定義の場合はエラートーストを表示。\`articleToMarkdown\` / \`buildObsidianUri\` を try-catch で保護。Obsidian ボタンクリック時に「Obsidian を開いています…」トーストを表示。
+
 ## 2026-04-12 (2)
 
 ### 新機能

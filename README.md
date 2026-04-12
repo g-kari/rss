@@ -233,7 +233,6 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 | highlight.js           | BSD-3-Clause |
 | katex                  | MIT          |
 | marked                 | MIT          |
-| turndown (追加予定)    | MIT          |
 
 ### デザイン参考
 
