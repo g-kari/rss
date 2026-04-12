@@ -26,9 +26,21 @@ import Spinner from "./Spinner";
 import { useImageDownload } from "../hooks/useImageDownload";
 import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
 import { usePortalMenu } from "../hooks/usePortalMenu";
-import { loadJson, saveJson, storageGet, STORAGE_KEYS } from "../lib/storage";
+import { loadJson, saveJson, storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import { articleToMarkdown } from "../lib/html-to-markdown";
 import { buildObsidianUri } from "../lib/obsidian";
+import {
+  type LineHeight,
+  type ContentWidth,
+  LINE_HEIGHT_CYCLE,
+  CONTENT_WIDTH_CYCLE,
+  LINE_HEIGHT_LABELS,
+  CONTENT_WIDTH_LABELS,
+  getLineHeightStyle,
+  getContentWidthStyle,
+  cycleLineHeight,
+  cycleContentWidth,
+} from "../lib/reader-settings";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useEventListener } from "../hooks/useEventListener";
 import { toPlainText } from "../lib/html";
@@ -1423,6 +1435,39 @@ export default function ArticleView({
     setTranslateRating(null);
   }, [article?.id]);
 
+  // リーダー表示設定（行間・コンテンツ幅・両端揃え）— localStorage で永続化
+  const [lineHeight, setLineHeight] = useState<LineHeight>(() => {
+    const stored = storageGet(STORAGE_KEYS.LINE_HEIGHT);
+    return LINE_HEIGHT_CYCLE.includes(stored as LineHeight) ? (stored as LineHeight) : "normal";
+  });
+  const [contentWidth, setContentWidth] = useState<ContentWidth>(() => {
+    const stored = storageGet(STORAGE_KEYS.CONTENT_WIDTH);
+    return CONTENT_WIDTH_CYCLE.includes(stored as ContentWidth)
+      ? (stored as ContentWidth)
+      : "medium";
+  });
+  const [textJustify, setTextJustify] = useState<boolean>(() => {
+    return storageGet(STORAGE_KEYS.TEXT_JUSTIFY) === "true";
+  });
+
+  function handleCycleLineHeight() {
+    const next = cycleLineHeight(lineHeight);
+    setLineHeight(next);
+    storageSet(STORAGE_KEYS.LINE_HEIGHT, next);
+  }
+
+  function handleCycleContentWidth() {
+    const next = cycleContentWidth(contentWidth);
+    setContentWidth(next);
+    storageSet(STORAGE_KEYS.CONTENT_WIDTH, next);
+  }
+
+  function handleToggleJustify() {
+    const next = !textJustify;
+    setTextJustify(next);
+    storageSet(STORAGE_KEYS.TEXT_JUSTIFY, String(next));
+  }
+
   // メモ編集ステート（記事切り替え時にリセット）
   const [noteText, setNoteText] = useState(note ?? "");
   const [noteExpanded, setNoteExpanded] = useState(!!note);
@@ -2020,6 +2065,38 @@ export default function ArticleView({
               </div>
             )}
 
+            {/* 行間切り替え */}
+            <button
+              onClick={handleCycleLineHeight}
+              title={`行間: ${LINE_HEIGHT_LABELS[lineHeight]}`}
+              className="px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 text-text-faint hover:text-text-muted"
+              style={{ lineHeight: 1 }}
+            >
+              {LINE_HEIGHT_LABELS[lineHeight]}
+            </button>
+
+            {/* コンテンツ幅切り替え */}
+            <button
+              onClick={handleCycleContentWidth}
+              title={`幅: ${CONTENT_WIDTH_LABELS[contentWidth]}`}
+              className="px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 text-text-faint hover:text-text-muted"
+              style={{ lineHeight: 1 }}
+            >
+              {CONTENT_WIDTH_LABELS[contentWidth]}
+            </button>
+
+            {/* 両端揃えトグル */}
+            <button
+              onClick={handleToggleJustify}
+              title={textJustify ? "両端揃え: ON" : "両端揃え: OFF"}
+              className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
+                textJustify ? "text-text-strong" : "text-text-faint hover:text-text-muted"
+              }`}
+              style={{ lineHeight: 1 }}
+            >
+              均等
+            </button>
+
             {/* AI 要約・翻訳ボタン */}
             {hasContent && (
               <div className="flex items-center gap-1 mr-1">
@@ -2480,7 +2557,11 @@ export default function ArticleView({
         {processedContent ? (
           <div
             ref={contentRef}
-            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]}`}
+            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
+            style={{
+              ...getLineHeightStyle(lineHeight),
+              ...getContentWidthStyle(contentWidth),
+            }}
             // dangerouslySetInnerHTML の中は React がテキストノードを管理しないため
             // Google 翻訳の <font> 注入と React 調停が衝突しない。
             // html 要素の translate="no" を上書きして翻訳を許可する。
@@ -2489,7 +2570,11 @@ export default function ArticleView({
           />
         ) : article.summary ? (
           <p
-            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]}`}
+            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
+            style={{
+              ...getLineHeightStyle(lineHeight),
+              ...getContentWidthStyle(contentWidth),
+            }}
           >
             {article.summary}
           </p>

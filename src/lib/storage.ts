@@ -52,6 +52,9 @@ export const STORAGE_KEYS = {
   SCROLL_POSITIONS: "rss-scroll-positions",
   TTS_RATE: "tts-rate",
   OBSIDIAN_VAULT: "rss-obsidian-vault",
+  LINE_HEIGHT: "rss-line-height",
+  CONTENT_WIDTH: "rss-content-width",
+  TEXT_JUSTIFY: "rss-text-justify",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
