@@ -20,13 +20,24 @@ type DOMNode = {
   getAttribute?: (name: string) => string | null;
 };
 
+/** ブラウザ DOM ノードを DOMNode に変換する（NodeList → 配列に正規化） */
+function domToNode(node: ChildNode | Element): DOMNode {
+  return {
+    nodeType: node.nodeType,
+    nodeName: node.nodeName,
+    textContent: node.textContent,
+    childNodes: Array.from(node.childNodes).map(domToNode),
+    getAttribute: (node as Element).getAttribute?.bind(node as Element),
+  };
+}
+
 /** HTML 文字列を DOM ノードに変換する */
 function parseHtml(html: string): DOMNode {
   // ブラウザ環境
   if (typeof document !== "undefined") {
     const div = document.createElement("div");
     div.innerHTML = html;
-    return div as unknown as DOMNode;
+    return domToNode(div);
   }
 
   // Node.js / テスト環境 (linkedom/worker)
