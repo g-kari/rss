@@ -293,6 +293,7 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ（永続）
 AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL  = "https://rss.0g0.xyz"
 BETA_ALLOWED_SUBS = "..."   # カンマ区切り sub リスト (空 = 制限なし)
+VAPID_SUBJECT = "mailto:admin@0g0.xyz"  # Web Push 送信元メール
 ```
 
 ### Cloudflare Workers シークレット
@@ -300,6 +301,10 @@ BETA_ALLOWED_SUBS = "..."   # カンマ区切り sub リスト (空 = 制限な�
 ```bash
 npx wrangler secret put CLIENT_ID
 npx wrangler secret put CLIENT_SECRET
+npx wrangler secret put VAPID_PUBLIC_KEY       # Web Push VAPID 公開鍵
+npx wrangler secret put VAPID_PRIVATE_KEY      # Web Push VAPID 秘密鍵
+npx wrangler secret put CLOUDFLARE_API_TOKEN   # 全文取得フォールバック用 (オプション)
+npx wrangler secret put BRAVE_SEARCH_API_KEY   # フィード推薦検索用 (オプション)
 ```
 
 ## コンテンツ抽出戦略 (`src/lib/content.ts`)
