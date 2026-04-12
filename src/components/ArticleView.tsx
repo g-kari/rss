@@ -459,8 +459,20 @@ function ShareMenu({ article, showToast, feed, contentHtml }: ShareMenuProps) {
                 <>
                   <button
                     onClick={() => {
-                      const md = articleToMarkdown(article, feed, contentHtml);
-                      copyText(md, "Markdown をコピーしました");
+                      try {
+                        const md = articleToMarkdown(article, feed, contentHtml);
+                        setOpen(false);
+                        if (!navigator.clipboard) {
+                          showToast("クリップボードが使えません");
+                          return;
+                        }
+                        navigator.clipboard
+                          .writeText(md)
+                          .then(() => showToast("Markdown をコピーしました"))
+                          .catch(() => showToast("コピーに失敗しました"));
+                      } catch {
+                        showToast("Markdown 生成に失敗しました");
+                      }
                     }}
                     className={MENU_ITEM_CLS}
                   >
@@ -481,15 +493,20 @@ function ShareMenu({ article, showToast, feed, contentHtml }: ShareMenuProps) {
                   </button>
                   <button
                     onClick={() => {
-                      const vault = storageGet(STORAGE_KEYS.OBSIDIAN_VAULT) ?? "";
-                      const md = articleToMarkdown(article, feed, contentHtml);
-                      const uri = buildObsidianUri({
-                        vault: vault || undefined,
-                        name: article.title,
-                        content: md,
-                      });
-                      setOpen(false);
-                      window.open(uri, "_blank", "noopener,noreferrer");
+                      try {
+                        const vault = storageGet(STORAGE_KEYS.OBSIDIAN_VAULT) ?? "";
+                        const md = articleToMarkdown(article, feed, contentHtml);
+                        const uri = buildObsidianUri({
+                          vault: vault || undefined,
+                          name: article.title,
+                          content: md,
+                        });
+                        setOpen(false);
+                        window.open(uri, "_blank", "noopener,noreferrer");
+                        showToast("Obsidian を開いています…");
+                      } catch {
+                        showToast("Obsidian URI の生成に失敗しました");
+                      }
                     }}
                     className={MENU_ITEM_CLS}
                   >
