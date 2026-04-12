@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-12 (4)
+
+### リファクタリング
+
+- **\`useReadingProgress\` の localStorage キーを一元管理** — ハードコードされていた \`"rss-reading-progress:"\` プレフィックスを \`STORAGE_KEYS.READING_PROGRESS_PREFIX\` に移動。手動 \`JSON.stringify\`/\`JSON.parse\` を \`saveJson\`/\`loadJson\` ヘルパーに置き換え。
+
 ## 2026-04-12 (3)
 
 ### 新機能
