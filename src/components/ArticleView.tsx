@@ -26,7 +26,9 @@ import Spinner from "./Spinner";
 import { useImageDownload } from "../hooks/useImageDownload";
 import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
 import { usePortalMenu } from "../hooks/usePortalMenu";
-import { loadJson, saveJson, STORAGE_KEYS } from "../lib/storage";
+import { loadJson, saveJson, storageGet, STORAGE_KEYS } from "../lib/storage";
+import { articleToMarkdown } from "../lib/html-to-markdown";
+import { buildObsidianUri } from "../lib/obsidian";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useEventListener } from "../hooks/useEventListener";
 import { toPlainText } from "../lib/html";
@@ -215,9 +217,11 @@ function EmptyArticleView({ onMobileBack }: { onMobileBack?: () => void }) {
 interface ShareMenuProps {
   article: Article;
   showToast: (msg: string) => void;
+  feed?: Feed;
+  contentHtml?: string;
 }
 
-function ShareMenu({ article, showToast }: ShareMenuProps) {
+function ShareMenu({ article, showToast, feed, contentHtml }: ShareMenuProps) {
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -439,6 +443,60 @@ function ShareMenu({ article, showToast }: ShareMenuProps) {
                 </svg>
                 印刷
               </button>
+              {feed && (
+                <>
+                  <button
+                    onClick={() => {
+                      const md = articleToMarkdown(article, feed, contentHtml);
+                      copyText(md, "Markdown をコピーしました");
+                    }}
+                    className={MENU_ITEM_CLS}
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <path d="M7 15V9l2.5 3 2.5-3v6M16 9v6M13 12h6" />
+                    </svg>
+                    Markdown 全文コピー
+                  </button>
+                  <button
+                    onClick={() => {
+                      const vault = storageGet(STORAGE_KEYS.OBSIDIAN_VAULT) ?? "";
+                      const md = articleToMarkdown(article, feed, contentHtml);
+                      const uri = buildObsidianUri({
+                        vault: vault || undefined,
+                        name: article.title,
+                        content: md,
+                      });
+                      setOpen(false);
+                      window.open(uri, "_blank", "noopener,noreferrer");
+                    }}
+                    className={MENU_ITEM_CLS}
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M12 2C8 2 5 5.5 5 9c0 2.5 1.2 4.7 3 6l1 5h6l1-5c1.8-1.3 3-3.5 3-6 0-3.5-3-7-7-7z" />
+                    </svg>
+                    Obsidian に保存
+                  </button>
+                </>
+              )}
             </div>
           </>,
           document.body,
@@ -2100,7 +2158,14 @@ export default function ArticleView({
               </button>
             )}
 
-            {article.link && showToast && <ShareMenu article={article} showToast={showToast} />}
+            {article.link && showToast && (
+              <ShareMenu
+                article={article}
+                showToast={showToast}
+                feed={feeds?.find((f) => f.id === article.feedHash)}
+                contentHtml={storedContent ?? undefined}
+              />
+            )}
             {filterFeed && onSaveFilter && (
               <FilterMenu
                 article={article}

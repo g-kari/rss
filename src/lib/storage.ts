@@ -51,6 +51,7 @@ export const STORAGE_KEYS = {
   WEEKLY_GOAL: "rss-weekly-goal",
   SCROLL_POSITIONS: "rss-scroll-positions",
   TTS_RATE: "tts-rate",
+  OBSIDIAN_VAULT: "rss-obsidian-vault",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
