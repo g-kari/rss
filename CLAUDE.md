@@ -2,6 +2,13 @@
 
 Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (SaaS)。`rss.0g0.xyz` でホスト中。
 
+## ライセンス
+
+- **このプロジェクト**: MIT License (Copyright 2024-2026 g-kari)
+- **デザイン参考**: [Readeck](https://codeberg.org/readeck/readeck) (AGPL v3.0) — コード流用なし。設計・UXのみ参考
+- **主要依存**: MIT / Apache-2.0 / BSD-3-Clause / ISC (詳細は README.md 参照)
+- **新規依存追加時**: `npm info <pkg> license` でライセンス確認し README.md のライセンス表に追記すること
+
 ## ツール
 
 このプロジェクトでは **Serena** (MCP サーバー) を**必ず優先的に使用する**。

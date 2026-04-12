@@ -214,3 +214,28 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 - ログイン時に `/api/read-state` でサーバーデータとマージ（ローカル ∪ サーバー）
 - 状態変更から 2秒後にデバウンスして R2 に同期
 - ページ離脱時 (`beforeunload`) は `sendBeacon` で即時送信
+
+## ライセンス
+
+このプロジェクトは [MIT License](./LICENSE) の下で公開されています。
+
+### 主要依存ライブラリのライセンス
+
+| パッケージ             | ライセンス   |
+| ---------------------- | ------------ |
+| Next.js                | MIT          |
+| React                  | MIT          |
+| Tailwind CSS           | MIT          |
+| @opennextjs/cloudflare | MIT          |
+| @mozilla/readability   | Apache-2.0   |
+| fast-xml-parser        | MIT          |
+| linkedom               | ISC          |
+| highlight.js           | BSD-3-Clause |
+| katex                  | MIT          |
+| marked                 | MIT          |
+| turndown (追加予定)    | MIT          |
+
+### デザイン参考
+
+記事詳細ビューの設計・UXは [Readeck](https://codeberg.org/readeck/readeck) (AGPL v3.0) を参考にしています。
+コードの直接流用はなく、設計・機能アイデアのみを参考にしています。

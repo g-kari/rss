@@ -206,6 +206,28 @@ const merged = new Set([...serverSet, ...localSet]);
 - **スヌーズ期限はより遅い方を採用**（サーバーの期限が未来の場合を優先）。
 - **ノート（notes）は同一キーではサーバー優先**（`{ ...prev, ...serverNotes }`）。ノートはテキスト編集コンテンツのため、クロスデバイス同期で別デバイスで書いた最新版をサーバーから上書きするのが正しい挙動。
 
+## テスト (TDD)
+
+- **テスト駆動開発**: 新機能・バグ修正は **Red → Green → Refactor** の順で実装する
+  1. テストを書く → `npx playwright test e2e/{name}.spec.ts` で **失敗 (Red)** を確認
+  2. 実装する → テストが **通る (Green)** ことを確認
+  3. リファクタ → テストが **Green のまま** なことを確認
+- テストファイルは `e2e/` に `*.spec.ts` として配置（Playwright テストランナー使用）
+- 純粋関数（パーサー・変換・バリデーション）はファイルを直接 import してユニットテスト
+- Cloudflare バインディングに依存するコードは E2E テスト（dev サーバー起動が必要）でカバー
+- テスト名は日本語可: `test('空のHTMLをMarkdown変換すると空文字を返す', ...)`
+- 共通ファクトリは `e2e/helpers/` に配置（例: `makeArticle()`, `makeFeed()`）
+
+```typescript
+// ユニットテストの例（Cloudflare バインディングなし）
+import { test, expect } from "@playwright/test";
+import { myPureFunction } from "../src/lib/my-module";
+
+test("正常ケース", () => {
+  expect(myPureFunction("input")).toBe("expected");
+});
+```
+
 ## 禁止事項
 
 - D1 / KV / DO の追加 (シンプルさを保つ)
