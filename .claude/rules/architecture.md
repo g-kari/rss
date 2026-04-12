@@ -17,6 +17,7 @@
             ├─ /api/image-proxy       — 外部画像プロキシ
             ├─ /api/ogp               — OGP 画像 URL 取得
             ├─ /api/push/*            — Web Push 通知サブスクリプション管理
+            ├─ /api/clip              — SingleFile 拡張からの HTML クリップ保存
             ├─ /api/release-notes     — リリースノート
             └─ /api/health            — ヘルスチェック
 
@@ -76,6 +77,7 @@ app/
       subscribe/route.ts     # POST /api/push/subscribe
       unsubscribe/route.ts   # POST /api/push/unsubscribe
       test/route.ts          # POST /api/push/test — Push 通知テスト送信
+    clip/route.ts            # POST /api/clip — SingleFile 拡張からの HTML 受け取り・本文抽出・キャッシュ保存
     health/route.ts          # GET /api/health
 
 src/
@@ -135,6 +137,7 @@ src/
     useLocalStorageHistory.ts # localStorage 配列の永続化 (先頭追加・重複排除・上限制御)
     useReadingStats.ts       # 読了統計取得 (/api/stats fetch → ReadingStats)
     useGestureNav.ts         # スワイプ・ホイール・ドラッグによる前後記事ナビゲーション（横スクロール子要素は除外）
+    useReadingProgress.ts    # 記事読書進捗トラッキング（IntersectionObserver + localStorage 永続化・復元）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()
@@ -168,6 +171,12 @@ src/
     release-notes-data.ts    # RELEASE_NOTES_MARKDOWN 定数 (Workers バンドル用)
     export-markdown.ts       # ブックマーク・読書リスト記事を Markdown ファイルとしてダウンロード
     rate-limit.ts            # R2 ベースのクールダウンチェック・更新 (checkAndUpdateCooldown)
+    obsidian.ts              # Obsidian URI スキーム連携（obsidian://new URI 生成・ファイル名サニタイズ）
+    html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
+    reading-progress.ts      # 読書進捗計算純粋関数（computeProgress / clampProgress / buildAnchorSelector）
+    reader-settings.ts       # リーダー表示設定（フォントサイズ 6段階・行間 5段階・コンテンツ幅 3段階）
+    article-ttl.ts           # 記事 TTL 管理（30日超過・非保護の期限切れ記事フィルタリング）
+    clip.ts                  # SingleFile POST リクエストバリデーション（validateClipRequest）
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
 ```

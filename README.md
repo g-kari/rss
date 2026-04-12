@@ -131,13 +131,14 @@ pre-commit install   # 初回セットアップ
 
 ### 記事
 
-| メソッド | パス                       | 説明                         |
-| -------- | -------------------------- | ---------------------------- |
-| GET      | `/api/articles`            | 記事一覧取得                 |
-| POST     | `/api/articles/save`       | 記事保存                     |
-| GET      | `/api/content?url=...`     | 記事フルテキスト取得プロキシ |
-| GET      | `/api/ogp?url=...`         | OGP 画像 URL 取得            |
-| GET      | `/api/image-proxy?url=...` | 外部画像プロキシ             |
+| メソッド | パス                       | 説明                                    |
+| -------- | -------------------------- | --------------------------------------- |
+| GET      | `/api/articles`            | 記事一覧取得                            |
+| POST     | `/api/articles/save`       | 記事保存                                |
+| GET      | `/api/content?url=...`     | 記事フルテキスト取得プロキシ            |
+| GET      | `/api/ogp?url=...`         | OGP 画像 URL 取得                       |
+| GET      | `/api/image-proxy?url=...` | 外部画像プロキシ                        |
+| POST     | `/api/clip`                | SingleFile 拡張からの HTML クリップ保存 |
 
 ### 既読・ブックマーク状態
 
