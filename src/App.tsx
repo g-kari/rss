@@ -312,6 +312,8 @@ export default function App() {
     toggleLikeOnly,
     noteOnly,
     toggleNoteOnly,
+    digestMode,
+    toggleDigestMode,
     sortOrder,
     toggleSortOrder,
     dateRange,
@@ -481,6 +483,8 @@ export default function App() {
     toggleReadingListOnly,
     likeOnly,
     toggleLikeOnly,
+    digestMode,
+    toggleDigestMode,
     toggleSortOrder,
     cycleDateRange,
     cycleReadingTimeRange,
@@ -925,6 +929,8 @@ export default function App() {
             toggleLikeOnly={toggleLikeOnly}
             noteOnly={noteOnly}
             toggleNoteOnly={toggleNoteOnly}
+            digestMode={digestMode}
+            toggleDigestMode={toggleDigestMode}
             sortOrder={sortOrder}
             toggleSortOrder={toggleSortOrder}
             dateRange={dateRange}

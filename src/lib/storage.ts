@@ -56,6 +56,7 @@ export const STORAGE_KEYS = {
   CONTENT_WIDTH: "rss-content-width",
   TEXT_JUSTIFY: "rss-text-justify",
   READING_PROGRESS_PREFIX: "rss-reading-progress:",
+  DIGEST_MODE: "rss-digest-mode",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

@@ -67,6 +67,8 @@ interface Props {
   toggleLikeOnly: () => void;
   noteOnly: boolean;
   toggleNoteOnly: () => void;
+  digestMode: boolean;
+  toggleDigestMode: () => void;
   sortOrder: SortOrder;
   toggleSortOrder: () => SortOrder;
   dateRange: DateRange;
@@ -189,6 +191,8 @@ export default function ArticleList({
   toggleLikeOnly,
   noteOnly,
   toggleNoteOnly,
+  digestMode,
+  toggleDigestMode,
   sortOrder,
   toggleSortOrder,
   dateRange,
@@ -463,6 +467,16 @@ export default function ArticleList({
             >
               ✎
             </FilterPillButton>
+            {!selectedFeedId && (
+              <FilterPillButton
+                active={digestMode}
+                onClick={toggleDigestMode}
+                title="ダイジェストモード切替 (D) — フィードごとに最新3件のみ表示"
+                activeClass="border-ink bg-ink text-ink-text"
+              >
+                digest
+              </FilterPillButton>
+            )}
             <FilterPillButton
               active={dateRange !== "all"}
               onClick={cycleDateRange}

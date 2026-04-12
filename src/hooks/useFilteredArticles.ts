@@ -155,6 +155,7 @@ export function useFilteredArticles({
   );
   const [likeOnly, setLikeOnly] = useState(() => storageGet(STORAGE_KEYS.LIKE_ONLY) === "1");
   const [noteOnly, setNoteOnly] = useState(() => storageGet(STORAGE_KEYS.NOTE_ONLY) === "1");
+  const [digestMode, setDigestMode] = useState(() => storageGet(STORAGE_KEYS.DIGEST_MODE) === "1");
   const [authorFilter, setAuthorFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [rawQuery, setRawQuery] = useState(""); // 入力値（即時更新）
@@ -193,6 +194,7 @@ export function useFilteredArticles({
     toggleReadingListOnly,
     toggleLikeOnly,
     toggleNoteOnly,
+    toggleDigestMode,
     updateQuery,
     toggleSortOrder,
     cycleDateRange,
@@ -206,6 +208,7 @@ export function useFilteredArticles({
         toggleBoolFilter(setReadingListOnly, STORAGE_KEYS.READING_LIST_ONLY, setPage),
       toggleLikeOnly: () => toggleBoolFilter(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, setPage),
       toggleNoteOnly: () => toggleBoolFilter(setNoteOnly, STORAGE_KEYS.NOTE_ONLY, setPage),
+      toggleDigestMode: () => toggleBoolFilter(setDigestMode, STORAGE_KEYS.DIGEST_MODE, setPage),
       updateQuery: (q: string) => {
         setRawQuery(q);
         setPage(1);
@@ -304,6 +307,7 @@ export function useFilteredArticles({
         authorFilter,
         categoryFilter,
         feedCategoryMap,
+        digestMode,
       }),
     [
       articles,
@@ -335,6 +339,7 @@ export function useFilteredArticles({
       authorFilter,
       categoryFilter,
       feedCategoryMap,
+      digestMode,
     ],
   );
 
@@ -382,6 +387,8 @@ export function useFilteredArticles({
     toggleLikeOnly,
     noteOnly,
     toggleNoteOnly,
+    digestMode,
+    toggleDigestMode,
     sortOrder,
     toggleSortOrder,
     dateRange,

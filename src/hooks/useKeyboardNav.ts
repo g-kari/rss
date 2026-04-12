@@ -62,6 +62,8 @@ interface KeyboardNavOptions {
   toggleReadingListOnly: () => void;
   likeOnly: boolean;
   toggleLikeOnly: () => void;
+  digestMode: boolean;
+  toggleDigestMode: () => void;
   toggleSortOrder: () => SortOrder;
   cycleDateRange: () => DateRange;
   cycleReadingTimeRange: () => ReadingTimeRange;
@@ -128,6 +130,8 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
       toggleReadingListOnly,
       likeOnly,
       toggleLikeOnly,
+      digestMode,
+      toggleDigestMode,
       toggleSortOrder,
       cycleDateRange,
       cycleReadingTimeRange,
@@ -149,7 +153,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
       }
     };
 
-    // フィルタートグルのlookup table（u/B/T/I キー）
+    // フィルタートグルのlookup table（u/B/T/I/D キー）
     const filterToggleMap: Record<
       string,
       { toggle: () => void; state: boolean; label: string; prevent?: true }
@@ -162,6 +166,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         label: "リーディングリストフィルター",
       },
       I: { toggle: toggleLikeOnly, state: likeOnly, label: "いいねフィルター" },
+      D: { toggle: toggleDigestMode, state: digestMode, label: "ダイジェストモード" },
     };
     const filterToggle = filterToggleMap[e.key];
     if (filterToggle) {
