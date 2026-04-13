@@ -216,6 +216,8 @@ export default function ArticleList({
 }: Props) {
   const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [confirmMarkAll, setConfirmMarkAll] = useState(false);
+  const confirmMarkAllTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
 
@@ -699,23 +701,45 @@ export default function ArticleList({
             )}
             {onMarkAllRead && (
               <button
-                onClick={onMarkAllRead}
-                title="全て既読にする (m)"
-                className="w-6 h-6 flex items-center justify-center rounded-full text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-200"
+                onClick={() => {
+                  if (confirmMarkAll) {
+                    if (confirmMarkAllTimerRef.current)
+                      clearTimeout(confirmMarkAllTimerRef.current);
+                    confirmMarkAllTimerRef.current = null;
+                    setConfirmMarkAll(false);
+                    onMarkAllRead();
+                  } else {
+                    setConfirmMarkAll(true);
+                    confirmMarkAllTimerRef.current = setTimeout(() => {
+                      setConfirmMarkAll(false);
+                      confirmMarkAllTimerRef.current = null;
+                    }, 3000);
+                  }
+                }}
+                title={confirmMarkAll ? "もう一度押すと全て既読にします" : "全て既読にする (m)"}
+                className={`flex items-center justify-center rounded-full transition-all duration-200 ${
+                  confirmMarkAll
+                    ? "px-2 h-6 text-[10px] font-medium text-rose-400 border border-rose-400 hover:bg-rose-400/10"
+                    : "w-6 h-6 text-text-faint hover:text-text-muted hover:bg-surface-subtle"
+                }`}
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="6" cy="6" r="4.5" />
-                  <path d="M3.5 6l1.8 1.8L8.5 4" />
-                </svg>
+                {confirmMarkAll ? (
+                  "全既読?"
+                ) : (
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="6" cy="6" r="4.5" />
+                    <path d="M3.5 6l1.8 1.8L8.5 4" />
+                  </svg>
+                )}
               </button>
             )}
           </div>
