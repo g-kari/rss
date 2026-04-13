@@ -433,8 +433,23 @@ export default function ArticleList({
                 </button>
               ))}
             </div>
-            <FilterPillButton active={unreadOnly} onClick={toggleUnreadOnly}>
-              未読
+            <FilterPillButton
+              active={unreadOnly}
+              onClick={toggleUnreadOnly}
+              title="未読フィルター切替 (u)"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              >
+                <path d="M1 6s2-3.5 5-3.5S11 6 11 6s-2 3.5-5 3.5S1 6 1 6z" />
+                <circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
             </FilterPillButton>
             <FilterPillButton
               active={bookmarkOnly}
@@ -447,9 +462,21 @@ export default function ArticleList({
             <FilterPillButton
               active={readingListOnly}
               onClick={toggleReadingListOnly}
-              title="リーディングリストフィルター切替 (T)"
+              title="後で読むフィルター切替 (T)"
             >
-              後で
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="6" cy="6" r="4.5" />
+                <path d="M6 3.5V6l1.5 1.5" />
+              </svg>
             </FilterPillButton>
             <FilterPillButton
               active={likeOnly}
@@ -474,22 +501,58 @@ export default function ArticleList({
                 title="ダイジェストモード切替 (D) — フィードごとに最新3件のみ表示"
                 activeClass="border-ink bg-ink text-ink-text"
               >
-                digest
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1.5 4.5l4.5-3 4.5 3-4.5 3-4.5-3z" />
+                  <path d="M1.5 7.5l4.5 3 4.5-3" />
+                </svg>
               </FilterPillButton>
             )}
             <FilterPillButton
               active={dateRange !== "all"}
               onClick={cycleDateRange}
-              title="日付フィルター切り替え (d)"
+              title={`日付フィルター: ${DATE_RANGE_LABELS[dateRange]} (d)`}
             >
-              {DATE_RANGE_LABELS[dateRange]}
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="1.5" y="2.5" width="9" height="8" rx="1" />
+                <path d="M1.5 5.5h9M4 1v3M8 1v3" />
+              </svg>
             </FilterPillButton>
             <FilterPillButton
               active={readingTimeRange !== "all"}
               onClick={cycleReadingTimeRange}
-              title="読了時間フィルター切り替え"
+              title={`読了時間フィルター: ${READING_TIME_RANGE_LABELS[readingTimeRange]}`}
             >
-              {READING_TIME_RANGE_LABELS[readingTimeRange]}
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="6" cy="7" r="4" />
+                <path d="M6 4V2M4.5 1.5h3M6 5.5V7l1.5 1" />
+              </svg>
             </FilterPillButton>
             {authorFilter && onClearAuthorFilter && (
               <button
@@ -632,7 +695,6 @@ export default function ArticleList({
                 >
                   <path d="M1 2.5h10M3 6h6M5 9.5h2" />
                 </svg>
-                <span>グローバル</span>
               </button>
             )}
             {onMarkAllRead && (
@@ -852,7 +914,7 @@ function FilterPillButton({
     <button
       onClick={onClick}
       title={title}
-      className={`text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
+      className={`flex items-center justify-center text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
         active
           ? activeClass
           : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"

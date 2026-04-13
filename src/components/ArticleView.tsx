@@ -1926,8 +1926,8 @@ export default function ArticleView({
         style={{ display: "none" }}
       />
       <div className="max-w-2xl mx-auto px-4 py-6 lg:px-10 lg:py-12">
-        {/* メタ行 + アクション行（モバイルでは縦並び、PCでは横並び） */}
-        <div className="mb-5 text-[11px] text-text-muted flex flex-col lg:flex-row lg:items-center gap-y-2">
+        {/* メタ行 + アクション行（常に2段構成） */}
+        <div className="mb-5 text-[11px] text-text-muted flex flex-col gap-y-2">
           {/* メタ情報: 戻るボタン + 日付/著者/リンク/読了時間 */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {onMobileBack && (
@@ -2028,10 +2028,10 @@ export default function ArticleView({
               )}
           </div>
 
-          {/* アクションボタン群: モバイルでは右寄せ flex-wrap、PCでは右端固定 */}
+          {/* アクションボタン群: 右寄せ flex-wrap */}
           <div
             data-print="hide"
-            className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap lg:ml-auto"
+            className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap"
           >
             {/* フォントサイズ切り替え */}
             {onChangeFontSize && (
