@@ -2287,72 +2287,93 @@ export default function ArticleView({
               />
             )}
 
-            <ToggleIconButton
-              isActive={isInReadingList}
-              onClick={() => {
-                onToggleReadingList(article.id);
-                showToast?.(isInReadingList ? "後で読むから削除" : "後で読むに追加");
-              }}
-              title={isInReadingList ? "後で読むから削除" : "後で読む"}
-              activeClass="text-text-default hover:text-text-muted"
-              inactiveClass="text-text-faint hover:text-text-default"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill={isInReadingList ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {/* 後で読む / ブックマーク / いいね — 排他スイッチ */}
+            <div className="flex items-center rounded-full border border-border-default overflow-hidden">
+              <button
+                onClick={() => {
+                  if (!isInReadingList) {
+                    if (isBookmarked) onToggleBookmark(article.id);
+                    if (isLiked) onToggleLike(article.id);
+                  }
+                  onToggleReadingList(article.id);
+                  showToast?.(isInReadingList ? "後で読むから削除" : "後で読むに追加");
+                }}
+                title={isInReadingList ? "後で読むから削除" : "後で読む (T)"}
+                className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
+                  isInReadingList
+                    ? "bg-ink text-ink-text"
+                    : "text-text-faint hover:text-text-default hover:bg-surface-hover"
+                }`}
               >
-                <path d="M12 6v6l4 2" />
-                <circle cx="12" cy="12" r="9" />
-              </svg>
-            </ToggleIconButton>
-            <ToggleIconButton
-              isActive={isBookmarked}
-              onClick={() => onToggleBookmark(article.id)}
-              title={isBookmarked ? "ブックマーク解除 (b)" : "ブックマーク (b)"}
-              activeClass="text-bookmark hover:text-text-muted"
-              inactiveClass="text-text-faint hover:text-bookmark"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill={isBookmarked ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
+                <svg
+                  viewBox="0 0 24 24"
+                  fill={isInReadingList ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth={1.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
-                />
-              </svg>
-            </ToggleIconButton>
-            <ToggleIconButton
-              isActive={isLiked}
-              onClick={() => onToggleLike(article.id)}
-              title={isLiked ? "いいね解除" : "いいね"}
-              activeClass="text-rose-400 hover:text-text-muted"
-              inactiveClass="text-text-faint hover:text-rose-400"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill={isLiked ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                >
+                  <path d="M12 6v6l4 2" />
+                  <circle cx="12" cy="12" r="9" />
+                </svg>
+              </button>
+              <div className="w-px self-stretch bg-border-default" />
+              <button
+                onClick={() => {
+                  if (!isBookmarked) {
+                    if (isInReadingList) onToggleReadingList(article.id);
+                    if (isLiked) onToggleLike(article.id);
+                  }
+                  onToggleBookmark(article.id);
+                }}
+                title={isBookmarked ? "ブックマーク解除 (b)" : "ブックマーク (b)"}
+                className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
+                  isBookmarked
+                    ? "bg-bookmark text-ink-text"
+                    : "text-text-faint hover:text-bookmark hover:bg-surface-hover"
+                }`}
               >
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
-            </ToggleIconButton>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill={isBookmarked ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
+                  />
+                </svg>
+              </button>
+              <div className="w-px self-stretch bg-border-default" />
+              <button
+                onClick={() => {
+                  if (!isLiked) {
+                    if (isInReadingList) onToggleReadingList(article.id);
+                    if (isBookmarked) onToggleBookmark(article.id);
+                  }
+                  onToggleLike(article.id);
+                }}
+                title={isLiked ? "いいね解除 (I)" : "いいね (I)"}
+                className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
+                  isLiked
+                    ? "bg-rose-400 text-white"
+                    : "text-text-faint hover:text-rose-400 hover:bg-surface-hover"
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill={isLiked ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+              </button>
+            </div>
             {onSetNote && (
               <ToggleIconButton
                 isActive={!!note}
