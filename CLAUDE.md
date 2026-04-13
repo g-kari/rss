@@ -45,88 +45,10 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 | AI             | Workers AI (要約・翻訳)                                          |
 | デプロイ       | Cloudflare Workers の CI/CD (master push → 自動ビルド＆デプロイ) |
 
-## キャッシュ方針（重要）
-
-**元サイト側のリソースは一度だけ取得する。** 外部 URL へのフェッチは必ずキャッシュし、次回以降はキャッシュから返す。
-
-### キャッシュ層の使い分け
-
-| 対象         | キャッシュ層                         | TTL  | 実装場所                        |
-| ------------ | ------------------------------------ | ---- | ------------------------------- |
-| 記事全文     | **Cloudflare Cache API**             | 7日  | `app/api/content/route.ts`      |
-| OGP 画像 URL | **Cloudflare Cache API**             | 30日 | `app/api/ogp/route.ts`          |
-| AI 要約      | **R2** (`ai-cache/summary/{sha256}`) | 永続 | `app/api/ai/summarize/route.ts` |
-
-**R2 は使わない** — 揮発性のキャッシュには Cloudflare Cache API (`caches.default`) を使う。R2 は永続データ（ユーザーデータ・AI 結果）専用。
-
-### Cloudflare Cache API パターン（記事全文・OGP 等）
-
-キャッシュキーは認証情報を含まない合成 URL。`/__cache/` プレフィックスで名前空間を分離する。
-
-```typescript
-const { ctx } = await getCloudflareContext({ async: true });
-const reqUrl = new URL(request.url);
-const cacheKey = new Request(`${reqUrl.origin}/__cache/content/${await sha256Hex(url)}`);
-const cfCache = caches.default;
-
-// ① キャッシュ確認
-const cached = await cfCache.match(cacheKey);
-if (cached) return NextResponse.json(await cached.json());
-
-// ② 外部フェッチ（キャッシュミス時のみ）
-const content = await fetchFromOrigin(url);
-
-// ③ キャッシュ保存（fire-and-forget）
-const cacheRes = new Response(JSON.stringify({ content }), {
-  headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${TTL_SEC}` },
-});
-ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
-```
-
-### 新しい外部フェッチを追加する場合
-
-外部 URL にリクエストする新しいエンドポイントは、必ずこのパターンで Cloudflare Cache API キャッシュを実装すること。R2 を使わないこと。
-
 ## デプロイ
 
 **本番デプロイは Cloudflare Workers の CI/CD が担う。**
 `master` ブランチに push すると Cloudflare Workers 側で自動的にビルド＆デプロイが実行される。
 GitHub Actions (`deploy.yml`) は存在しない。`npm run deploy` をローカルで手動実行する必要もない。
 
-## 開発コマンド
-
-```bash
-# 開発サーバー
-npm run dev          # Next.js dev server (localhost:3000)
-npm run preview      # Workers ローカルエミュレーション (wrangler dev)
-
-# ビルド
-npm run build        # next build（動作確認・型チェック込み）
-npm run build:cf     # Cloudflare Workers 向けビルド（CI/CD が自動実行するため手動不要）
-
-# 品質チェック（コミット前に必ず実行）
-npm run check        # vp check — Oxlint + Oxfmt + tsgo 型チェック
-npm run check:fix    # vp check --fix — 自動修正
-npm run typecheck    # tsc --noEmit — Next.js plugin 込みの完全な型チェック
-
-# E2E テスト
-npm run test:e2e     # Playwright 全テスト実行
-npm run test:e2e:ui  # Playwright UI モード（デバッグ用）
-```
-
-## @opennextjs/cloudflare 制約事項（必読）
-
-### `export const runtime = 'edge'` は使用禁止
-
-Route Handler に `export const runtime = 'edge'` を書いてはいけない。
-`@opennextjs/cloudflare` は Edge Runtime 非対応（公式ドキュメント Get Started Step 9 参照）。
-書いた場合、デプロイ後に `TypeError: Cannot read properties of undefined (reading 'default')` が発生する。
-
-新しい Route Handler を作成する際も絶対に書かないこと。
-
-### Next.js バージョンは `~16.2.3` 以降を使用
-
-`@opennextjs/cloudflare` 1.19.0 で Next.js 16.2.3+ サポートが追加された（`peerDependencies: next: >=16.2.3`）。
-`~16.1.7` 以下への固定制約は解消済み。現在は `~16.2.3` に固定している（CVE DoS 修正を含む最初の安定版）。
-
-バージョンを上げる場合は必ず本番デプロイ後にエラーログを確認すること。
+**禁止**: Route Handler に `export const runtime = 'edge'` を書かないこと（`@opennextjs/cloudflare` は Edge Runtime 非対応）。
