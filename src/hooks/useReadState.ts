@@ -205,8 +205,13 @@ export function useReadState(
   };
 
   // ログイン後にサーバーの既読・ブックマーク・後で読む・グローバルフィルター状態をマージ
+  // user?.sub を dependency にすることで、同一ユーザーの認証チェック毎にオブジェクト参照が
+  // 変わっても再マージが走らないようにする。
+  // （user を使うと useAuth の setUser 呼び出し毎に effect が再実行され、
+  //   5s デバウンス前にサーバー側の古いデータがローカルに復活するバグを防ぐ）
+  const userSub = user?.sub;
   useEffect(() => {
-    if (!user) return;
+    if (!userSub) return;
     fetchReadState().then((state) => {
       if (!state) return;
       mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds);
@@ -251,7 +256,7 @@ export function useReadState(
         });
       }
     });
-  }, [user]);
+  }, [userSub]);
 
   // デバウンス待ちタイマーを即時実行して null にリセットする
   function flushIfPending(): boolean {
