@@ -67,7 +67,8 @@ export async function GET(request: Request) {
   };
   await r2Put(env.RSS_DATA, `users/${sub}/profile.json`, profile);
 
-  const res = NextResponse.redirect(new URL("/", appBaseUrl));
+  // ?login=1 でクライアントにログイン直後であることを伝える（R2 整合性ラグ対策リトライ用）
+  const res = NextResponse.redirect(new URL("/?login=1", appBaseUrl));
   res.cookies.delete("auth_state");
   setTokenCookies(res, tokens);
   return res;

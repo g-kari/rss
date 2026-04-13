@@ -164,7 +164,12 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
       if (kf && !matchesKeywordFilter(a, kf)) return false;
       if (globalFilter && !matchesKeywordFilter(a, globalFilter)) return false;
       // 各種絞り込みフィルター
-      if (unreadOnly && isArticleRead(a, readIds, readBeforeTimestamp)) return false;
+      if (
+        unreadOnly &&
+        feedId !== SPECIAL_FEED_IDS.HISTORY &&
+        isArticleRead(a, readIds, readBeforeTimestamp)
+      )
+        return false;
       if (bookmarkOnly && !bookmarkIds.has(a.id)) return false;
       if (readingListOnly && !readingListIds.has(a.id)) return false;
       if (likeOnly && !likeIds.has(a.id)) return false;

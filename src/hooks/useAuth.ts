@@ -82,6 +82,7 @@ export function useAuth(): AuthState {
     let mounted = true;
     let inFlight = false;
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let loginRetryDone = false; // ?login=1 リトライは一度だけ
 
     /** token_exp を読み、2分前にリフレッシュをスケジュールする（最低30秒） */
     function scheduleNextRefresh(): void {
@@ -100,6 +101,9 @@ export function useAuth(): AuthState {
     async function checkAuth() {
       if (inFlight) return;
       inFlight = true;
+      // callback リダイレクト直後かどうかを判定（R2 整合性ラグ対策の一度だけリトライ用）
+      const isFirstPostLogin =
+        !loginRetryDone && new URLSearchParams(window.location.search).get("login") === "1";
       try {
         const r = await fetch("/api/auth/me");
         const { user: u, betaRestricted: br } = (await r.json()) as {
@@ -108,6 +112,16 @@ export function useAuth(): AuthState {
         };
         if (!mounted) return;
         if (br) setBetaRestricted(true);
+
+        // ログイン直後に user=null → R2 結果整合性ラグの可能性。一度だけリトライ（LP を表示しない）
+        if (isFirstPostLogin && !u) {
+          loginRetryDone = true;
+          setTimeout(() => {
+            if (mounted) void checkAuth();
+          }, 600);
+          return; // setUser は呼ばずスピナー状態を維持
+        }
+
         // 以前は認証済みで、今回 null が返った場合はセッション期限切れ
         if (wasAuthenticatedRef.current && !u) {
           setSessionExpired(true);
@@ -117,6 +131,12 @@ export function useAuth(): AuthState {
           setSessionExpired(false);
           // オフライン時に使えるようユーザー情報を localStorage にキャッシュ
           storageSet(STORAGE_KEYS.CACHED_USER, JSON.stringify(u));
+          // ログイン完了後に ?login=1 をクリア
+          if (new URLSearchParams(window.location.search).get("login") === "1") {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("login");
+            window.history.replaceState({}, "", url);
+          }
         } else {
           // ログアウトまたはセッション失効時はキャッシュをクリア
           storageRemove(STORAGE_KEYS.CACHED_USER);
@@ -124,8 +144,18 @@ export function useAuth(): AuthState {
         setUser(u ?? null);
         scheduleNextRefresh();
       } catch {
-        // ネットワークエラーは現在の認証状態を維持する（不要なログアウトを防ぐ）
-        if (mounted) setUser((prev) => (prev === undefined ? null : prev));
+        if (mounted) {
+          if (isFirstPostLogin) {
+            // ログイン直後のネットワークエラーはリトライ（LP に飛ばさない）
+            loginRetryDone = true;
+            setTimeout(() => {
+              if (mounted) void checkAuth();
+            }, 600);
+            return;
+          }
+          // ネットワークエラーは現在の認証状態を維持する（不要なログアウトを防ぐ）
+          setUser((prev) => (prev === undefined ? null : prev));
+        }
         scheduleNextRefresh();
       } finally {
         inFlight = false;

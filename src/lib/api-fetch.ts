@@ -48,11 +48,15 @@ function isTokenExpired(): boolean {
 export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   await getAuthReady();
   // トークンが期限切れなら先にリフレッシュする（401 を避けてサーバー側の race を減らす）
+  let didProactiveRefresh = false;
   if (isTokenExpired()) {
     await recoverAuth();
+    didProactiveRefresh = true;
   }
   const res = await fetch(input, init);
-  if (res.status === 401) {
+  // プロアクティブリフレッシュ済みの場合は 401 フォールバックをスキップ
+  // （inflightAuthRecovery がリセットされた後に recoverAuth を二重呼び出しするのを防ぐ）
+  if (res.status === 401 && !didProactiveRefresh) {
     const recovered = await recoverAuth();
     if (recovered) return fetch(input, init);
   }
