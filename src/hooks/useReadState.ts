@@ -179,6 +179,7 @@ export function useReadState(
   );
 
   // 各セットをまとめて保持する ref（デバウンス送信・クロージャ内で使用）
+  const lastServerSyncRef = useRef<number>(0);
   const stateRef = useRef<ReadStateSets>({
     read: readIds,
     bookmarks: bookmarkIds,
@@ -204,59 +205,64 @@ export function useReadState(
     notes,
   };
 
+  /**
+   * サーバーの ReadState をローカルにマージする。
+   * ログイン時・フォーカス復帰時の両方で呼ばれる共通処理。
+   * - readIds / bookmarkIds / readingListIds / likeIds: ローカル ∪ サーバー（ローカル優先）
+   * - globalFilter / readBeforeTimestamp: サーバー優先（クロスデバイス同期）
+   * - snoozedUntil: until が遅い方を採用してマージ
+   * - notes: サーバー優先（テキスト編集コンテンツ）
+   */
+  const applyServerState = useCallback((state: ReadState) => {
+    lastServerSyncRef.current = Date.now();
+    mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds);
+    mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds);
+    mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, state.readingListIds);
+    mergeServerSet(setLikeIds, STORAGE_KEYS.LIKE_IDS, state.likeIds);
+    if ("globalFilter" in state) {
+      const serverFilter = state.globalFilter ?? null;
+      saveJson(STORAGE_KEYS.GLOBAL_FILTER, serverFilter);
+      setGlobalFilterState(serverFilter);
+    }
+    if ("readBeforeTimestamp" in state && state.readBeforeTimestamp) {
+      setReadBeforeTimestamp((prev) => {
+        const server = state.readBeforeTimestamp!;
+        const next = !prev || server > prev ? server : prev;
+        if (next !== prev) storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
+        return next;
+      });
+    }
+    if ("snoozedUntil" in state && state.snoozedUntil) {
+      setSnoozedUntil((prev) => {
+        const result: Record<string, string> = { ...state.snoozedUntil! };
+        for (const [id, until] of Object.entries(prev)) {
+          if (!result[id] || until > result[id]) result[id] = until;
+        }
+        const merged = pruneExpiredSnoozes(result);
+        saveJson(STORAGE_KEYS.SNOOZED_UNTIL, merged);
+        return merged;
+      });
+    }
+    if ("notes" in state) {
+      setNotesState((prev) => {
+        const merged = { ...prev, ...(state.notes ?? {}) };
+        saveJson(STORAGE_KEYS.NOTES, merged);
+        return merged;
+      });
+    }
+  }, []);
+
   // ログイン後にサーバーの既読・ブックマーク・後で読む・グローバルフィルター状態をマージ
   // user?.sub を dependency にすることで、同一ユーザーの認証チェック毎にオブジェクト参照が
   // 変わっても再マージが走らないようにする。
-  // （user を使うと useAuth の setUser 呼び出し毎に effect が再実行され、
-  //   5s デバウンス前にサーバー側の古いデータがローカルに復活するバグを防ぐ）
   const userSub = user?.sub;
   useEffect(() => {
     if (!userSub) return;
     fetchReadState().then((state) => {
       if (!state) return;
-      mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds);
-      mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds);
-      mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, state.readingListIds);
-      mergeServerSet(setLikeIds, STORAGE_KEYS.LIKE_IDS, state.likeIds);
-      // globalFilter はサーバー値を優先（クロスデバイス同期）
-      if ("globalFilter" in state) {
-        const serverFilter = state.globalFilter ?? null;
-        saveJson(STORAGE_KEYS.GLOBAL_FILTER, serverFilter);
-        setGlobalFilterState(serverFilter);
-      }
-      // readBeforeTimestamp はサーバー値と比較して新しい方を使う（クロスデバイス同期）
-      if ("readBeforeTimestamp" in state && state.readBeforeTimestamp) {
-        setReadBeforeTimestamp((prev) => {
-          const server = state.readBeforeTimestamp!;
-          const next = !prev || server > prev ? server : prev;
-          if (next !== prev) storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
-          return next;
-        });
-      }
-      // snoozedUntil はサーバー値とローカル値をマージ（同一キーは until が遅い方を採用、期限切れは除去）
-      if ("snoozedUntil" in state && state.snoozedUntil) {
-        setSnoozedUntil((prev) => {
-          const result: Record<string, string> = { ...state.snoozedUntil! };
-          for (const [id, until] of Object.entries(prev)) {
-            if (!result[id] || until > result[id]) result[id] = until;
-          }
-          const merged = pruneExpiredSnoozes(result);
-          saveJson(STORAGE_KEYS.SNOOZED_UNTIL, merged);
-          return merged;
-        });
-      }
-      // notes はローカル ∪ サーバーのマージ（同一キーはサーバー優先）
-      // テキスト編集コンテンツのため、クロスデバイス同期で別デバイスに書いた最新版を
-      // サーバーから取得するのが正しい挙動。readIds 等の Set とは異なる戦略であることに注意。
-      if ("notes" in state) {
-        setNotesState((prev) => {
-          const merged = { ...prev, ...(state.notes ?? {}) };
-          saveJson(STORAGE_KEYS.NOTES, merged);
-          return merged;
-        });
-      }
+      applyServerState(state);
     });
-  }, [userSub]);
+  }, [userSub, applyServerState]);
 
   // デバウンス待ちタイマーを即時実行して null にリセットする
   function flushIfPending(): boolean {
@@ -267,9 +273,25 @@ export function useReadState(
     return true;
   }
 
+  // タブ復帰時に他デバイスの変更をサーバーから取り込む（60秒クールダウン）
+  // visibilitychange + visible はデスクトップ（タブ切り替え）・モバイル（アプリ復帰）両方で発火する。
+  useEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState !== "visible") return;
+      if (!userRef.current) return;
+      if (Date.now() - lastServerSyncRef.current < 60_000) return;
+      fetchReadState().then((state) => {
+        if (!state) return;
+        applyServerState(state);
+      });
+    },
+    document,
+  );
+
   // ページを閉じる前・タブ非表示時にデバウンス待ちのデータを即時送信
   // - beforeunload: ページ閉じ・遷移時。fetch は中断されるため sendBeacon を使用
-  // - visibilitychange: タブ切り替え時。fetch を使用（beforeunload が発火しないケースを補完）
+  // - visibilitychange hidden: タブ切り替え時。fetch を使用（beforeunload が発火しないケースを補完）
   useEventListener("beforeunload", () => {
     if (!userRef.current) return;
     if (!flushIfPending()) return;
