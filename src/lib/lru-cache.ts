@@ -89,14 +89,17 @@ export class LruCache {
   /** pending を一括で localStorage に書き込む */
   private flush(): void {
     this.flushPending = false;
-    for (const [key, value] of this.pending) {
-      if (value === null) {
-        storageRemove(this.prefix + key);
-      } else {
-        storageSet(this.prefix + key, value);
+    try {
+      for (const [key, value] of this.pending) {
+        if (value === null) {
+          storageRemove(this.prefix + key);
+        } else {
+          storageSet(this.prefix + key, value);
+        }
       }
+    } finally {
+      this.pending.clear();
     }
-    this.pending.clear();
   }
 }
 
