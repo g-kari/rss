@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-15 (3)
+
+### バグ修正
+
+- **LRU キャッシュ flush の堅牢性向上** — \`LruCache#flush()\` に \`try/finally\` を追加し、\`storageSet\` / \`storageRemove\` で例外が発生しても \`pending\` が必ずクリアされるように修正。従来は例外発生時に古いエントリが \`pending\` に残留し、次の \`flush\` で重複書き込みが起こる可能性があった。
+
 ## 2026-04-15 (2)
 
 ### リファクタリング
