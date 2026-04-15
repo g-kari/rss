@@ -3,6 +3,7 @@ import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { isValidFeedUrl } from "@/lib/url";
 import { discoverFeedUrl } from "@/lib/feed-discovery";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
+import { parseHTML } from "linkedom";
 import {
   computeFeedHash,
   getOrCreateFeedMeta,
@@ -56,7 +57,11 @@ function isValidCookieHeader(value: string): boolean {
 
 export async function POST(request: Request) {
   return withSession(async ({ session, env, ctx }) => {
-    const parsed = await parseJsonBody<{ url?: unknown; cookie?: unknown }>(request);
+    const parsed = await parseJsonBody<{
+      url?: unknown;
+      cookie?: unknown;
+      cssSelector?: unknown;
+    }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
     let url = typeof body?.url === "string" ? body.url.trim() : "";
@@ -69,17 +74,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid cookie value" }, { status: 400 });
     }
 
-    // 3 段階フォールバック: RSS 探索 → LLM CSS セレクタ推論
+    const manualCssSelector =
+      typeof body?.cssSelector === "string" ? body.cssSelector.trim() : undefined;
+    if (manualCssSelector !== undefined) {
+      if (manualCssSelector.length === 0 || manualCssSelector.length > 500) {
+        return NextResponse.json(
+          { error: "cssSelector は 1〜500 文字で指定してください" },
+          { status: 400 },
+        );
+      }
+      // CSS セレクタとして構文が有効か検証する
+      try {
+        const { document: testDoc } = parseHTML("<html></html>") as { document: Document };
+        testDoc.querySelectorAll(manualCssSelector);
+      } catch {
+        return NextResponse.json({ error: "無効な CSS セレクタです" }, { status: 400 });
+      }
+    }
+
+    // 3 段階フォールバック: RSS 探索 → 手動 CSS セレクタ → LLM CSS セレクタ推論
     const discovered = await discoverFeedUrl(url);
     let inferred: { selectors: SelectorConfig; siteTitle: string; siteUrl: string } | null = null;
 
     if (discovered) {
       url = discovered;
+    } else if (manualCssSelector) {
+      // ユーザー指定の CSS セレクタを使用
+      inferred = {
+        selectors: {
+          articleLink: manualCssSelector,
+          model: "manual",
+          generatedAt: new Date().toISOString(),
+        },
+        siteTitle: new URL(url).hostname,
+        siteUrl: url,
+      };
     } else {
       // RSS が見つからない場合、LLM でページの CSS セレクタを推論
       inferred = await inferFeedFromUrl(url, env.AI, cookie);
       if (!inferred) {
-        return NextResponse.json({ error: "RSS フィードが見つかりませんでした" }, { status: 422 });
+        return NextResponse.json(
+          {
+            error: "RSS フィードが見つかりませんでした",
+            hint: "このサイトには RSS がなく、自動認識にも失敗しました。CSS セレクタを手動で指定して再試行できます。",
+            canRetryWithSelector: true,
+          },
+          { status: 422 },
+        );
       }
     }
 

@@ -38,7 +38,12 @@ export function useFeedOperations({
   const [importMessage, showImportMessage] = useAutoReset<ImportMessage | null>(null, 3000);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function addFeed(url: string, onSuccess: () => void, cookie?: string) {
+  async function addFeed(
+    url: string,
+    onSuccess: () => void,
+    cookie?: string,
+    cssSelector?: string,
+  ): Promise<{ canRetryWithSelector?: boolean } | void> {
     if (!url.trim()) return;
     setAdding(true);
     setError("");
@@ -46,12 +51,16 @@ export function useFeedOperations({
       const res = await apiFetch("/api/feeds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim(), ...(cookie ? { cookie } : {}) }),
+        body: JSON.stringify({
+          url: url.trim(),
+          ...(cookie ? { cookie } : {}),
+          ...(cssSelector ? { cssSelector } : {}),
+        }),
       });
       if (!res.ok) {
-        const data = (await res.json()) as { error: string };
+        const data = (await res.json()) as { error: string; canRetryWithSelector?: boolean };
         setError(data.error ?? "フィードの追加に失敗しました");
-        return;
+        return { canRetryWithSelector: data.canRetryWithSelector };
       }
       const feed = (await res.json()) as Feed;
       onSuccess();

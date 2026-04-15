@@ -145,6 +145,8 @@ export default function FeedSidebar({
 }: Props) {
   const [newUrl, setNewUrl] = useState("");
   const [newCookie, setNewCookie] = useState("");
+  const [newCssSelector, setNewCssSelector] = useState("");
+  const [cssSelectorOpen, setCssSelectorOpen] = useState(false);
   const [cookieOpen, setCookieOpen] = useState(false);
   const [inputOpen, setInputOpen] = useState(false);
   const [feedSearch, setFeedSearch] = useState("");
@@ -170,18 +172,24 @@ export default function FeedSidebar({
     clearError,
   } = useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported });
 
-  function handleAddFeed(e: React.FormEvent) {
+  async function handleAddFeed(e: React.FormEvent) {
     e.preventDefault();
-    addFeed(
+    const result = await addFeed(
       newUrl,
       () => {
         setNewUrl("");
         setNewCookie("");
+        setNewCssSelector("");
         setCookieOpen(false);
+        setCssSelectorOpen(false);
         setInputOpen(false);
       },
       newCookie || undefined,
+      newCssSelector || undefined,
     );
+    if (result?.canRetryWithSelector) {
+      setCssSelectorOpen(true);
+    }
   }
 
   async function handleSaveArticle(mode: "bookmark" | "reading_list") {
@@ -423,6 +431,31 @@ export default function FeedSidebar({
                 className="mt-1 w-full text-[11px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
               />
             )}
+            {/* CSS セレクタ手動指定（RSS なし・LLM 推論失敗時のフォールバック） */}
+            <button
+              type="button"
+              onClick={() => setCssSelectorOpen((v) => !v)}
+              className="mt-1.5 text-[10px] text-text-faint hover:text-text-muted transition-colors duration-200"
+            >
+              {cssSelectorOpen
+                ? "▾ CSS セレクタを隠す"
+                : "▸ CSS セレクタを指定（RSS のないサイト用）"}
+            </button>
+            {cssSelectorOpen && (
+              <div className="mt-1 space-y-1">
+                <input
+                  type="text"
+                  placeholder="例: ul.news-list li a"
+                  value={newCssSelector}
+                  onChange={(e) => setNewCssSelector(e.target.value)}
+                  disabled={adding}
+                  className="w-full text-[11px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
+                />
+                <p className="text-[10px] text-text-faint">
+                  記事リンク（&lt;a&gt;タグ）を指すセレクタを入力してください
+                </p>
+              </div>
+            )}
             {error && <p className="text-[11px] text-rose-400 mt-1.5">{error}</p>}
             <div className="flex gap-1.5 mt-1.5">
               <button
@@ -437,7 +470,9 @@ export default function FeedSidebar({
                 onClick={() => {
                   setInputOpen(false);
                   setCookieOpen(false);
+                  setCssSelectorOpen(false);
                   setNewCookie("");
+                  setNewCssSelector("");
                   clearError();
                 }}
                 className="text-[11px] px-3 py-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200"
