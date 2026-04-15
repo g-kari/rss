@@ -198,47 +198,45 @@ export default function App() {
     [],
   );
 
-  const toggleNsfwFeed = useCallback(
-    async (feed: Feed) => {
-      const updated = await patchFeed(feed.id, { nsfw: !feed.nsfw });
+  const applyFeedPatch = useCallback(
+    async (id: string, patch: Record<string, unknown>): Promise<Feed | null> => {
+      const updated = await patchFeed(id, patch);
       if (updated) updateFeed(updated);
+      return updated;
     },
     [patchFeed, updateFeed],
   );
 
+  const toggleNsfwFeed = useCallback(
+    (feed: Feed) => applyFeedPatch(feed.id, { nsfw: !feed.nsfw }),
+    [applyFeedPatch],
+  );
+
   const togglePriorityFeed = useCallback(
-    async (feed: Feed) => {
-      const updated = await patchFeed(feed.id, {
-        priority: feed.priority === "high" ? null : "high",
-      });
-      if (updated) updateFeed(updated);
-    },
-    [patchFeed, updateFeed],
+    (feed: Feed) => applyFeedPatch(feed.id, { priority: feed.priority === "high" ? null : "high" }),
+    [applyFeedPatch],
   );
 
   const setCategoryFeed = useCallback(
     async (feed: Feed, category: string | null) => {
-      const updated = await patchFeed(feed.id, { category });
-      if (updated) updateFeed(updated);
+      await applyFeedPatch(feed.id, { category });
     },
-    [patchFeed, updateFeed],
+    [applyFeedPatch],
   );
 
   const muteFeed = useCallback(
     async (feed: Feed, mutedUntil: string | null) => {
-      const updated = await patchFeed(feed.id, { mutedUntil });
-      if (updated) updateFeed(updated);
+      await applyFeedPatch(feed.id, { mutedUntil });
     },
-    [patchFeed, updateFeed],
+    [applyFeedPatch],
   );
 
   const saveFilter = useCallback(
     async (feedId: string, filter: KeywordFilter | null) => {
-      const updated = await patchFeed(feedId, { filter });
+      const updated = await applyFeedPatch(feedId, { filter });
       if (!updated) throw new Error("フィルターの保存に失敗しました");
-      updateFeed(updated);
     },
-    [patchFeed, updateFeed],
+    [applyFeedPatch],
   );
 
   function onFeedDeleted(id: string) {
