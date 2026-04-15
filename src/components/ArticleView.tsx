@@ -26,7 +26,7 @@ import Spinner from "./Spinner";
 import { useImageDownload } from "../hooks/useImageDownload";
 import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
 import { usePortalMenu } from "../hooks/usePortalMenu";
-import { loadJson, saveJson, storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
+import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import { articleToMarkdown } from "../lib/html-to-markdown";
 import { buildObsidianUri } from "../lib/obsidian";
 import {
@@ -46,24 +46,7 @@ import { useEventListener } from "../hooks/useEventListener";
 import { toPlainText } from "../lib/html";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import { useGestureNav } from "../hooks/useGestureNav";
-
-// ── スクロール位置の保存・復元 ─────────────────────────────────────────
-const MAX_SCROLL_ENTRIES = 200;
-
-function saveScrollPos(articleId: string, scrollTop: number): void {
-  const map = loadJson<Record<string, number>>(STORAGE_KEYS.SCROLL_POSITIONS, {});
-  map[articleId] = Math.round(scrollTop);
-  const keys = Object.keys(map);
-  if (keys.length > MAX_SCROLL_ENTRIES) {
-    delete map[keys[0]];
-  }
-  saveJson(STORAGE_KEYS.SCROLL_POSITIONS, map);
-}
-
-function loadScrollPos(articleId: string): number {
-  const map = loadJson<Record<string, number>>(STORAGE_KEYS.SCROLL_POSITIONS, {});
-  return map[articleId] ?? 0;
-}
+import { useReadingProgress, loadProgress } from "../hooks/useReadingProgress";
 
 const FONT_SIZE_CLASSES: Record<FontSize, string> = {
   small: "text-[14px] leading-[1.75]",
@@ -1516,16 +1499,6 @@ export default function ArticleView({
 
   // スクロール位置の保存・復元
   const mainRef = useRef<HTMLElement>(null);
-  const scrollSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const articleIdRef = useSyncedRef(article?.id);
-
-  // 記事切り替え時にスクロール位置をリセットまたは復元
-  useEffect(() => {
-    const el = mainRef.current;
-    if (!el) return;
-    const saved = article?.id ? loadScrollPos(article.id) : 0;
-    el.scrollTop = saved;
-  }, [article?.id]);
 
   // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)
   // useSyncedRef で最新値を参照し、リスナーの再登録を回避する
@@ -1750,19 +1723,26 @@ export default function ArticleView({
     }
   });
 
-  // 記事が変わったらプログレスバーをリセット（AI 状態は useArticleAi が担当）
+  // 記事が変わったらプログレスバーを保存済み進捗で初期化（AI 状態は useArticleAi が担当）
   useEffect(() => {
     if (progressBarRef.current) {
-      const saved = article?.id ? loadScrollPos(article.id) : 0;
-      const el = mainRef.current;
-      const pct =
-        saved > 0 && el && el.scrollHeight > el.clientHeight
-          ? Math.round((saved / (el.scrollHeight - el.clientHeight)) * 100)
-          : 0;
+      const pct = article?.id ? (loadProgress(article.id)?.progress ?? 0) : 0;
       progressBarRef.current.style.width = `${pct}%`;
       progressBarRef.current.style.display = pct > 0 ? "" : "none";
     }
   }, [article?.id]);
+
+  // IntersectionObserver で読書進捗を追跡し、プログレスバーをリアルタイム更新
+  useReadingProgress({
+    articleId: article?.id,
+    contentRef,
+    onProgressChange: (pct) => {
+      if (progressBarRef.current) {
+        progressBarRef.current.style.width = `${pct}%`;
+        progressBarRef.current.style.display = pct > 0 ? "" : "none";
+      }
+    },
+  });
 
   // 本文内スタンドアロンリンクに OGP プレビューカードを注入
   useContentLinkPreviews(contentRef, processedContent);
@@ -1899,15 +1879,6 @@ export default function ArticleView({
     if (progressBarRef.current) {
       progressBarRef.current.style.width = `${progress}%`;
       progressBarRef.current.style.display = progress > 0 ? "" : "none";
-    }
-    // スクロール位置を debounce して保存
-    const scrollTop = el.scrollTop;
-    const id = articleIdRef.current;
-    if (id && scrollTop > 0) {
-      if (scrollSaveTimerRef.current) clearTimeout(scrollSaveTimerRef.current);
-      scrollSaveTimerRef.current = setTimeout(() => {
-        saveScrollPos(id, scrollTop);
-      }, 500);
     }
   }
 

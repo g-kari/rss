@@ -9,6 +9,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 ### 新機能
 
 - **クロスデバイス既読同期** — タブ・アプリに復帰したとき（\`visibilitychange\` visible）にサーバーから最新の既読状態を再取得し、他デバイスで既読にした記事をセッション内で即時反映。60 秒クールダウン付きで過剰なリクエストを防ぐ。
+- **IntersectionObserver ベースの読書進捗復元** — スクロールピクセル保存から要素アンカー（\`.article-content > :nth-child(N)\`）方式に移行。画像遅延ロードで高さが変わっても正しい位置に復元されるようになった。\`useReadingProgress\` フックを \`ArticleView\` に統合し、\`saveScrollPos\`/\`loadScrollPos\` を削除。
 
 ### バグ修正
 
