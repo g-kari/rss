@@ -8,6 +8,8 @@
 
 ### パフォーマンス改善
 
+- **タブ非表示時のポーリング間隔を延長** — `document.visibilitychange` イベントを検知し、タブ非表示時のポーリング間隔を 5分 → 15分に延長。Workers AI / R2 への不要なリクエストを削減。
+
 - **markBulkRead の不要なサーバー同期を防止** — `globalFilter` 適用時、ポーリングで `articles` が更新されるたびに `scheduleSyncToServer` が呼ばれていた問題を修正。`stateRef.current.read` で既読済み ID を事前チェックし、新規既読がゼロの場合は `setState` と `scheduleSyncToServer` をスキップするよう改善。R2 への無駄な書き込みが削減される。
 
 ## 2026-04-15 (3)
