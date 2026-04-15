@@ -7,8 +7,9 @@ import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 import { compareByDateDesc } from "../lib/article-utils";
 import { useSyncedRef } from "./useSyncedRef";
 
-/** 記事新着確認のポーリング間隔（5分） */
-const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5分
+/** 記事新着確認のポーリング間隔（アクティブ時: 5分 / 非アクティブ時: 15分） */
+const POLL_INTERVAL_MS = 5 * 60 * 1000; // アクティブ時: 5分
+const HIDDEN_POLL_INTERVAL_MS = 15 * 60 * 1000; // タブ非表示時: 15分
 
 /** `loadMoreAllFeedsArticles` での 1 フィード分の取得結果 */
 type FeedPageResult = { feedId: string; nextPage: number; data: Article[] };
@@ -142,15 +143,26 @@ export function useFeeds(
     }
   }, [mergeArticles]);
 
-  // 5分ごとに記事を再取得して新着件数を通知する（オフライン時はスキップ）
+  // タブがアクティブな間は5分、非アクティブ時は15分ごとに記事を再取得して新着件数を通知する
+  // visibilitychange のたびにタイマーを再生成して適切な間隔を適用する
   // isOnline は ref 経由で参照するため deps から除外し、タイマー再生成を防ぐ
   useEffect(() => {
     if (!userId) return;
-    const timer = setInterval(() => {
-      if (!isOnlineRef.current) return; // オフライン時はスキップ
-      void pollNow();
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    let timer: ReturnType<typeof setInterval>;
+    const startTimer = () => {
+      clearInterval(timer);
+      const interval = document.hidden ? HIDDEN_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
+      timer = setInterval(() => {
+        if (!isOnlineRef.current) return; // オフライン時はスキップ
+        void pollNow();
+      }, interval);
+    };
+    startTimer();
+    document.addEventListener("visibilitychange", startTimer);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", startTimer);
+    };
   }, [userId, pollNow, isOnlineRef]);
 
   // オンライン復帰時に即座にポーリングを実行する
