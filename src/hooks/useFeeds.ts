@@ -21,11 +21,13 @@ function mergeUniqueArticles(existing: Article[], incoming: Article[]): Article[
   if (brandNew.length === 0) return existing;
   const merged = [...existing, ...brandNew].sort(compareByDateDesc);
   // link ベースの第2パス重複排除（クロスフィードで同一記事がシンジケートされた場合の対策）
+  // link が null/undefined の場合は guid または id をキーとして使用する
   const linkSeen = new Set<string>();
   return merged.filter((a) => {
-    if (!a.link) return true;
-    if (linkSeen.has(a.link)) return false;
-    linkSeen.add(a.link);
+    const key = a.link || a.guid || a.id;
+    if (!key) return true;
+    if (linkSeen.has(key)) return false;
+    linkSeen.add(key);
     return true;
   });
 }

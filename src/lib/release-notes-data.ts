@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-16
 
+### バグ修正
+
+- **link が null/undefined の記事で重複排除が機能しない問題を修正** — \`mergeUniqueArticles\` の link ベース第2パス重複排除で、link 欠落記事が常に通過していた。\`a.link || a.guid || a.id\` のフォールバックキーを使うよう修正し、古い RSS フォーマット等でも正しく重複排除されるようになった。
+
 ### パフォーマンス改善
 
 - **markBulkRead の不要なサーバー同期を防止** — \`globalFilter\` 適用時、ポーリングで \`articles\` が更新されるたびに \`scheduleSyncToServer\` が呼ばれていた問題を修正。\`stateRef.current.read\` で既読済み ID を事前チェックし、新規既読がゼロの場合は \`setState\` と \`scheduleSyncToServer\` をスキップするよう改善。R2 への無駄な書き込みが削減される。
