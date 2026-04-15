@@ -55,15 +55,25 @@ async function fetchReadState(): Promise<ReadState | null> {
 /**
  * Set 型の状態をトグルするコールバックを生成する。
  * ID を localStorage の `key` に保存し、`schedule` で非同期サーバー同期をスケジュールする。
+ *
+ * `getCurrentSet` と `onRemove` を指定した場合、削除操作を検出して即時同期を行う。
+ * これにより、リロード前にサーバーへ削除が反映されず復活するバグを防ぐ。
  */
 function makeToggle(
   setter: React.Dispatch<React.SetStateAction<Set<string>>>,
   key: string,
   schedule: () => void,
+  getCurrentSet?: () => Set<string>,
+  onRemove?: () => void,
 ): (id: string) => void {
   return (id) => {
+    const isRemoval = getCurrentSet ? getCurrentSet().has(id) : false;
     toggleSetItem(setter, key, id);
-    schedule();
+    if (isRemoval && onRemove) {
+      onRemove();
+    } else {
+      schedule();
+    }
   };
 }
 
@@ -332,6 +342,25 @@ export function useReadState(
     }, 5000);
   }, [globalFilterRef]);
 
+  /**
+   * 削除操作用の即時サーバー同期。
+   * デバウンスなしで React のコミット後（setTimeout 0）に同期する。
+   * ブックマーク・後で読む・いいねの削除直後にリロードしても復活しないようにする。
+   */
+  const syncImmediately = useCallback(() => {
+    if (!userRef.current) return;
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+    isDirtyRef.current = false;
+    // setTimeout(0) で React のstate commit後に stateRef.current が更新された値を送信する
+    setTimeout(() => {
+      if (!userRef.current) return;
+      saveReadState(stateRef.current, globalFilterRef.current);
+    }, 0);
+  }, [globalFilterRef, userRef]);
+
   const markRead = useCallback(
     (articleId: string) => {
       setReadIds((prev) => {
@@ -400,15 +429,30 @@ export function useReadState(
   const { toggleRead, toggleBookmark, toggleReadingList, toggleLike } = useMemo(
     () => ({
       toggleRead: makeToggle(setReadIds, STORAGE_KEYS.READ_IDS, scheduleSyncToServer),
-      toggleBookmark: makeToggle(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, scheduleSyncToServer),
+      // 削除時は即時同期（リロード後に復活するバグ対策）
+      toggleBookmark: makeToggle(
+        setBookmarkIds,
+        STORAGE_KEYS.BOOKMARK_IDS,
+        scheduleSyncToServer,
+        () => stateRef.current.bookmarks,
+        syncImmediately,
+      ),
       toggleReadingList: makeToggle(
         setReadingListIds,
         STORAGE_KEYS.READING_LIST_IDS,
         scheduleSyncToServer,
+        () => stateRef.current.readingList,
+        syncImmediately,
       ),
-      toggleLike: makeToggle(setLikeIds, STORAGE_KEYS.LIKE_IDS, scheduleSyncToServer),
+      toggleLike: makeToggle(
+        setLikeIds,
+        STORAGE_KEYS.LIKE_IDS,
+        scheduleSyncToServer,
+        () => stateRef.current.likes,
+        syncImmediately,
+      ),
     }),
-    [scheduleSyncToServer],
+    [scheduleSyncToServer, syncImmediately],
   );
 
   const setGlobalFilter = useCallback(
