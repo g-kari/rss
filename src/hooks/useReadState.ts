@@ -377,9 +377,11 @@ export function useReadState(
 
   const markBulkRead = useCallback(
     (articleIds: string[]) => {
+      // stateRef.current.read は現在レンダーの readIds を同期的に反映するため、
+      // 既読済み ID を事前フィルタリングして不要な setState・scheduleSyncToServer を回避する
+      const newIds = articleIds.filter((id) => !stateRef.current.read.has(id));
+      if (newIds.length === 0) return;
       setReadIds((prev) => {
-        const newIds = articleIds.filter((id) => !prev.has(id));
-        if (newIds.length === 0) return prev;
         const next = new Set([...prev, ...newIds]);
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
