@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-16
+
+### パフォーマンス改善
+
+- **markBulkRead の不要なサーバー同期を防止** — `globalFilter` 適用時、ポーリングで `articles` が更新されるたびに `scheduleSyncToServer` が呼ばれていた問題を修正。`stateRef.current.read` で既読済み ID を事前チェックし、新規既読がゼロの場合は `setState` と `scheduleSyncToServer` をスキップするよう改善。R2 への無駄な書き込みが削減される。
+
 ## 2026-04-15 (3)
 
 ### バグ修正
