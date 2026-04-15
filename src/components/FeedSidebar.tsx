@@ -158,6 +158,7 @@ export default function FeedSidebar({
   const [saveUrl, setSaveUrl] = useState("");
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const {
     adding,
@@ -194,11 +195,14 @@ export default function FeedSidebar({
 
   async function handleSaveArticle(mode: "bookmark" | "reading_list") {
     if (!saveUrl.trim()) return;
+    setSaveError(null);
     setSaving(true);
     try {
       await onSaveArticleUrl(saveUrl.trim(), mode);
       setSaveUrl("");
       setSaveOpen(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "保存に失敗しました");
     } finally {
       setSaving(false);
     }
@@ -629,12 +633,14 @@ export default function FeedSidebar({
                   onClick={() => {
                     setSaveOpen(false);
                     setSaveUrl("");
+                    setSaveError(null);
                   }}
                   className="text-[10px] px-2 py-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-md transition-all duration-200"
                 >
                   ✕
                 </button>
               </div>
+              {saveError && <p className="mt-1 text-[10px] text-rose-400">{saveError}</p>}
             </div>
           )}
         </div>
