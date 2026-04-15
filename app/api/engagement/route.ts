@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody, requireString } from "@/lib/server-auth";
 import { r2Get, r2Put, engagementKey } from "@/lib/r2";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
-import { MAX_ID_LENGTH } from "@/lib/validation";
+import { MAX_ID_LENGTH, isValidFeedHash } from "@/lib/validation";
 
 const MAX_ENTRIES = 5_000;
 const VALID_ACTIONS: EngagementAction[] = [
@@ -37,7 +37,13 @@ export async function POST(req: NextRequest) {
     const articleId = requireString(parsed.data.articleId, MAX_ID_LENGTH);
     const feedHash = requireString(parsed.data.feedHash, MAX_ID_LENGTH);
     const action = requireString(parsed.data.action, MAX_ID_LENGTH);
-    if (!articleId || !feedHash || !action || !VALID_ACTIONS.includes(action as EngagementAction)) {
+    if (
+      !articleId ||
+      !feedHash ||
+      !isValidFeedHash(feedHash) ||
+      !action ||
+      !VALID_ACTIONS.includes(action as EngagementAction)
+    ) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 

@@ -11,6 +11,7 @@ import {
 import { applyKeywordFilter, applyKeywordFilterMap, buildFilterMap } from "@/lib/keyword-filter";
 import { compareByDateDesc } from "@/lib/article-utils";
 import { buildProtectedIds, filterExpiredArticles } from "@/lib/article-ttl";
+import { isValidFeedHash } from "@/lib/validation";
 import type { Article, ReadState } from "@/types";
 
 const DEFAULT_READ_STATE: ReadState = {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     const feedHash = searchParams.get("feed");
     const page = parseInt(searchParams.get("page") ?? "1", 10);
 
-    if (feedHash && !/^[0-9a-f]{16}$/.test(feedHash)) {
+    if (feedHash && !isValidFeedHash(feedHash)) {
       return NextResponse.json({ error: "Invalid feed" }, { status: 400 });
     }
 

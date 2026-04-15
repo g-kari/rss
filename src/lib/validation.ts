@@ -70,6 +70,14 @@ export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string
 }
 
 /**
+ * feedHash（16桁小文字16進数）として有効かどうかを判定する。
+ * computeFeedHash が SHA-256 の先頭 16 文字を返す仕様に対応。
+ */
+export function isValidFeedHash(value: string): boolean {
+  return /^[0-9a-f]{16}$/.test(value);
+}
+
+/**
  * snoozedUntil のバリデーション。
  * - 値が Record<string, string> であることを確認する
  * - 各エントリの key/value が文字列であることを確認する
