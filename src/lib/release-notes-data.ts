@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-16
 
+### 新機能
+
+- **キーボードショートカット定義を一元管理** — \`src/config/shortcuts.ts\` を新設。\`SHORTCUTS\` 配列と \`SHORTCUT_MAP\` を集約し、\`KeyboardShortcutsModal\` が自動生成されるよう変更。フィルターボタンの \`title\` 属性も config 経由で参照。
+
 ### リファクタリング
 
 - **\`ArticleList\` のプロップ数を 49 → 18 に削減** — \`useFilteredArticles\` の戻り値を \`FilterState\` 型としてエクスポートし、フィルター関連の26プロップを \`filter: FilterState\` 1つに集約。\`App.tsx\` 側の渡し元もシンプルになり、保守性が大幅に向上。
