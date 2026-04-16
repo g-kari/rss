@@ -2,6 +2,10 @@
 
 ## 2026-04-16
 
+### セキュリティ
+
+- **`sanitizeKeywords` でサーバー側 ReDoS 検証を追加** — `/api/read-state` POST で受け取ったキーワードフィルターにおいて、クライアント側でのみ行っていた `hasCatastrophicBacktracking` チェックを `sanitizeKeywords` にも追加。API を直接叩いた悪意あるユーザーが ReDoS パターンを R2 に保存できる問題を修正。
+
 ### バグ修正
 
 - **`useReadState` の `syncImmediately` に存在した race condition を修正** — 削除操作後のページリロード時、`syncImmediately` が予約した `setTimeout(0)` のIDを `syncTimerRef` に保持していなかったため、`beforeunload` / `visibilitychange hidden` の `flushIfPending` がタイマーを検出できず `sendBeacon` が発火しないケースがあった。`syncTimerRef.current` にIDを保存し、`isDirtyRef` を `true` に保つよう修正。
