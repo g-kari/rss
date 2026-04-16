@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-16
 
+### リファクタリング
+
+- **\`ArticleList\` のプロップ数を 49 → 18 に削減** — \`useFilteredArticles\` の戻り値を \`FilterState\` 型としてエクスポートし、フィルター関連の26プロップを \`filter: FilterState\` 1つに集約。\`App.tsx\` 側の渡し元もシンプルになり、保守性が大幅に向上。
+
 ### セキュリティ
 
 - **\`sanitizeKeywords\` でサーバー側 ReDoS 検証を追加** — \`/api/read-state\` POST で受け取ったキーワードフィルターにおいて、クライアント側でのみ行っていた \`hasCatastrophicBacktracking\` チェックを \`sanitizeKeywords\` にも追加。API を直接叩いた悪意あるユーザーが ReDoS パターンを R2 に保存できる問題を修正。
