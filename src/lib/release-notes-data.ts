@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-17
 
+### ドキュメント整備
+
+- **API エラーコード一覧表を整備 (issue #61)** — \`README.md\` に「API エラーレスポンス」章を新設し、共通エラー（\`UNAUTHORIZED\` / \`INVALID_JSON\` / \`RATE_LIMITED\` / \`INTERNAL_ERROR\`）と各エンドポイント固有のステータス・\`code\` 一覧を明文化。\`canRetryWithSelector\` や \`Retry-After\` 等の付随フィールドも記載し、クライアント実装やデバッグ時にソースコードを読まずに参照できるようにした。
+
 ### リファクタリング
 
 - **API エラーレスポンス形式を統一 (issue #60)** — \`src/lib/api-error.ts\` に \`ApiError\` 型と \`apiError()\` ヘルパーを新設。\`app/api/**\` 配下の全 Route Handler と \`server-auth.ts\` / \`rate-limit.ts\` / \`ai-route-helper.ts\` の \`NextResponse.json({ error: "..." }, { status: N })\` を \`apiError(message, status, { code, hint, retryable })\` に置き換え。\`code\`（機械可読エラーコード）を全エラーに付与し、クライアント側の型安全なエラーハンドリングを可能にした。
