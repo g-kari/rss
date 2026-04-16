@@ -8,19 +8,11 @@ import {
   useRef,
   type ReactElement,
   type ReactNode,
-  type RefObject,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEventListener } from "@/hooks/useEventListener";
-import type {
-  Article,
-  Feed,
-  KeywordFilter,
-  Layout,
-  DateRange,
-  ReadingTimeRange,
-  SortOrder,
-} from "../types";
+import type { Article, Feed, Layout, DateRange } from "../types";
+import type { FilterState } from "../hooks/useFilteredArticles";
 import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { useSearchHistory } from "../hooks/useSearchHistory";
@@ -53,42 +45,11 @@ interface Props {
   onToggleBookmark: (id: string) => void;
   onMarkAllRead?: () => void;
   onMobileBack?: () => void;
-  // useFilteredArticles からの状態（App.tsx で管理）
-  filtered: Article[];
-  visible: Article[];
-  hasMore: boolean;
-  unreadOnly: boolean;
-  toggleUnreadOnly: () => void;
-  bookmarkOnly: boolean;
-  toggleBookmarkOnly: () => void;
-  readingListOnly: boolean;
-  toggleReadingListOnly: () => void;
-  likeOnly: boolean;
-  toggleLikeOnly: () => void;
-  noteOnly: boolean;
-  toggleNoteOnly: () => void;
-  digestMode: boolean;
-  toggleDigestMode: () => void;
-  sortOrder: SortOrder;
-  toggleSortOrder: () => SortOrder;
-  dateRange: DateRange;
-  cycleDateRange: () => DateRange;
-  readingTimeRange: ReadingTimeRange;
-  cycleReadingTimeRange: () => ReadingTimeRange;
-  query: string;
-  rawQuery: string;
-  updateQuery: (q: string) => void;
-  searchRef: RefObject<HTMLInputElement | null>;
-  sentinelRef: RefObject<HTMLDivElement | null>;
   feedHasMorePages?: boolean;
   onLoadMoreFeedArticles?: () => Promise<void>;
-  globalFilter?: KeywordFilter | null;
-  onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
   notes?: Record<string, string>;
-  authorFilter?: string | null;
-  onClearAuthorFilter?: () => void;
-  categoryFilter?: string | null;
-  onSetCategoryFilter?: (cat: string | null) => void;
+  /** useFilteredArticles の戻り値をそのまま渡す */
+  filter: FilterState;
 }
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
@@ -178,42 +139,45 @@ export default function ArticleList({
   onToggleBookmark,
   onMarkAllRead,
   onMobileBack,
-  filtered,
-  visible,
-  hasMore,
-  unreadOnly,
-  toggleUnreadOnly,
-  bookmarkOnly,
-  toggleBookmarkOnly,
-  readingListOnly,
-  toggleReadingListOnly,
-  likeOnly,
-  toggleLikeOnly,
-  noteOnly,
-  toggleNoteOnly,
-  digestMode,
-  toggleDigestMode,
-  sortOrder,
-  toggleSortOrder,
-  dateRange,
-  cycleDateRange,
-  readingTimeRange,
-  cycleReadingTimeRange,
-  query,
-  rawQuery,
-  updateQuery,
-  searchRef,
-  sentinelRef,
   feedHasMorePages,
   onLoadMoreFeedArticles,
-  globalFilter,
-  onSaveGlobalFilter,
   notes,
-  authorFilter,
-  onClearAuthorFilter,
-  categoryFilter,
-  onSetCategoryFilter,
+  filter,
 }: Props) {
+  const {
+    filtered,
+    visible,
+    hasMore,
+    unreadOnly,
+    toggleUnreadOnly,
+    bookmarkOnly,
+    toggleBookmarkOnly,
+    readingListOnly,
+    toggleReadingListOnly,
+    likeOnly,
+    toggleLikeOnly,
+    noteOnly,
+    toggleNoteOnly,
+    digestMode,
+    toggleDigestMode,
+    sortOrder,
+    toggleSortOrder,
+    dateRange,
+    cycleDateRange,
+    readingTimeRange,
+    cycleReadingTimeRange,
+    query,
+    rawQuery,
+    updateQuery,
+    searchRef,
+    sentinelRef,
+    globalFilter,
+    setGlobalFilter,
+    authorFilter,
+    setAuthorFilter,
+    categoryFilter,
+    setCategoryFilter,
+  } = filter;
   const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [confirmMarkAll, setConfirmMarkAll] = useState(false);
@@ -555,9 +519,9 @@ export default function ArticleList({
                 <path d="M6 4V2M4.5 1.5h3M6 5.5V7l1.5 1" />
               </svg>
             </FilterPillButton>
-            {authorFilter && onClearAuthorFilter && (
+            {authorFilter && setAuthorFilter && (
               <button
-                onClick={onClearAuthorFilter}
+                onClick={() => setAuthorFilter(null)}
                 title={`著者「${authorFilter}」フィルターを解除`}
                 className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
               >
@@ -576,11 +540,11 @@ export default function ArticleList({
               </button>
             )}
             {/* カテゴリフィルター */}
-            {onSetCategoryFilter && feedCategories.length > 0 && (
+            {setCategoryFilter && feedCategories.length > 0 && (
               <div className="relative" ref={categoryDropdownRef}>
                 {categoryFilter ? (
                   <button
-                    onClick={() => onSetCategoryFilter(null)}
+                    onClick={() => setCategoryFilter(null)}
                     title={`カテゴリ「${categoryFilter}」フィルターを解除`}
                     className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
                   >
@@ -628,7 +592,7 @@ export default function ArticleList({
                       <button
                         key={cat}
                         onClick={() => {
-                          onSetCategoryFilter(cat);
+                          setCategoryFilter(cat);
                           setCategoryDropdownOpen(false);
                         }}
                         className="w-full text-left px-3 py-1.5 text-[12px] text-text-default hover:bg-surface-hover transition-colors truncate"
@@ -673,31 +637,28 @@ export default function ArticleList({
                 </svg>
               )}
             </button>
-            {onSaveGlobalFilter && (
-              <button
-                onClick={() => setGlobalFilterModalOpen(true)}
-                title="すべてのフィードにキーワードフィルターを設定"
-                className={`flex items-center gap-1 px-2 h-6 rounded-full text-[11px] transition-all duration-200 ${
-                  globalFilter &&
-                  (globalFilter.include.length > 0 || globalFilter.exclude.length > 0)
-                    ? "text-text-strong bg-surface-subtle"
-                    : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
-                }`}
+            <button
+              onClick={() => setGlobalFilterModalOpen(true)}
+              title="すべてのフィードにキーワードフィルターを設定"
+              className={`flex items-center gap-1 px-2 h-6 rounded-full text-[11px] transition-all duration-200 ${
+                globalFilter && (globalFilter.include.length > 0 || globalFilter.exclude.length > 0)
+                  ? "text-text-strong bg-surface-subtle"
+                  : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
+              }`}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M1 2.5h10M3 6h6M5 9.5h2" />
-                </svg>
-              </button>
-            )}
+                <path d="M1 2.5h10M3 6h6M5 9.5h2" />
+              </svg>
+            </button>
             {onMarkAllRead && (
               <button
                 onClick={() => {
@@ -909,11 +870,11 @@ export default function ArticleList({
           <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
         )}
       </div>
-      {globalFilterModalOpen && onSaveGlobalFilter && (
+      {globalFilterModalOpen && (
         <FeedFilterModal
           initialFilter={globalFilter}
           onClose={() => setGlobalFilterModalOpen(false)}
-          onSave={onSaveGlobalFilter}
+          onSave={setGlobalFilter}
         />
       )}
     </section>
