@@ -20,6 +20,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### セキュリティ
 
+- **XSS サニタイズ完全性の監査・テスト追加 (issue #51)** — \`processContent()\` と \`stripIframes()\` のすべての呼び出し経路を監査し、\`dangerouslySetInnerHTML\` が常にサニタイズ済みデータのみを受け取ることを確認。\`e2e/content-extraction.spec.ts\` に \`processContent\` / \`stripIframes\` の XSS 防止テストを 11 件追加。悪意ある RSS フィードに埋め込まれた \`<script>\`・イベントハンドラ・\`javascript:\`・\`data:\` URI が除去されることを回帰テストで保証。
+
 - **\`sanitizeKeywords\` でサーバー側 ReDoS 検証を追加** — \`/api/read-state\` POST で受け取ったキーワードフィルターにおいて、クライアント側でのみ行っていた \`hasCatastrophicBacktracking\` チェックを \`sanitizeKeywords\` にも追加。API を直接叩いた悪意あるユーザーが ReDoS パターンを R2 に保存できる問題を修正。
 
 ### バグ修正
