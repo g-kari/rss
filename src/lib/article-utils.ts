@@ -49,12 +49,16 @@ export function readingTime(html: string): number {
  * publishedAt が null のアイテムは createdAt を基準に並ぶ。
  */
 export function compareByDateDesc(
-  a: { publishedAt: string | null; createdAt: string },
-  b: { publishedAt: string | null; createdAt: string },
+  a: { publishedAt: string | null; createdAt: string; id?: string },
+  b: { publishedAt: string | null; createdAt: string; id?: string },
 ): number {
   const aDate = a.publishedAt ?? a.createdAt;
   const bDate = b.publishedAt ?? b.createdAt;
-  return bDate < aDate ? -1 : bDate > aDate ? 1 : 0;
+  if (bDate < aDate) return -1;
+  if (bDate > aDate) return 1;
+  // 同日付の場合は id で安定ソート（id は sha256 由来の決定論的な値）
+  if (a.id && b.id) return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  return 0;
 }
 
 /** publishedAt のみを持つオブジェクト（ParsedItem 等）の降順比較。null は末尾 */
