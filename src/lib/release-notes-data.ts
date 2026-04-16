@@ -12,6 +12,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### パフォーマンス改善
 
+- **\`buildFilterMap\` のフィルターコンパイルキャッシュ追加** — \`feeds\` 配列の参照が変わるたびに全フィードの正規表現が再生成されていた問題を改善。\`compiledCache\` パラメータを追加し、\`useFilteredArticles\` が \`useRef\` で保持したキャッシュを渡すことで、フィルター内容が変わっていないフィードの \`normalizeFilter\`（RegExp 再コンパイル）をスキップする。5分ポーリング等で \`feeds\` 参照が変わっても同一フィルターは再利用される。
+
 - **タブ非表示時のポーリング間隔を延長** — \`document.visibilitychange\` イベントを検知し、タブ非表示時のポーリング間隔を 5分 → 15分に延長。Workers AI / R2 への不要なリクエストを削減。
 
 - **markBulkRead の不要なサーバー同期を防止** — \`globalFilter\` 適用時、ポーリングで \`articles\` が更新されるたびに \`scheduleSyncToServer\` が呼ばれていた問題を修正。\`stateRef.current.read\` で既読済み ID を事前チェックし、新規既読がゼロの場合は \`setState\` と \`scheduleSyncToServer\` をスキップするよう改善。R2 への無駄な書き込みが削減される。
