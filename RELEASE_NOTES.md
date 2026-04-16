@@ -8,6 +8,8 @@
 
 ### リファクタリング
 
+- **ShareMenu の SNS シェアターゲットを設定配列化** — X・Bluesky・LINE・はてなブックマークの4ボタンを `SHARE_WINDOW_TARGETS` 配列に集約し、`.map()` でレンダリングするように変更。新しい SNS 追加時にコピペ不要になり、保守性が向上。
+
 - **`ArticleList` のプロップ数を 49 → 18 に削減** — `useFilteredArticles` の戻り値を `FilterState` 型としてエクスポートし、フィルター関連の26プロップを `filter: FilterState` 1つに集約。`App.tsx` 側の渡し元もシンプルになり、保守性が大幅に向上。
 
 ### セキュリティ
