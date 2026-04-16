@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import {
   readUserSubscriptions,
   readFeedMeta,
@@ -25,16 +26,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   return withSession(async ({ session, env }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     const sub = subs.find((s) => s.feedHash === feedHash);
-    if (!sub) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
+    if (!sub) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
 
     const meta = await readFeedMeta(env.RSS_DATA, feedHash);
-    if (!meta) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
+    if (!meta) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
 
     if (!meta.cssSelectors) {
-      return NextResponse.json(
-        { error: "このフィードは LLM スクレイピングではありません" },
-        { status: 400 },
-      );
+      return apiError("このフィードは LLM スクレイピングではありません", 400, {
+        code: "NOT_LLM_FEED",
+      });
     }
 
     // レートリミット: AI + 外部フェッチを伴う重い操作のため 60 秒クールダウン
@@ -62,7 +62,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const cookie = sub.requestCookie;
     const inferred = await inferFeedFromUrl(meta.url, env.AI, cookie, failedSelectors);
     if (!inferred) {
-      return NextResponse.json({ error: "セレクタの再推論に失敗しました" }, { status: 422 });
+      return apiError("セレクタの再推論に失敗しました", 422, { code: "REINFER_FAILED" });
     }
 
     meta.cssSelectors = inferred.selectors;

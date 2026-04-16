@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { XMLParser } from "fast-xml-parser";
 import { isValidFeedUrl } from "@/lib/url";
 import { toArray } from "@/lib/xml-parser";
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
   return withSession(async ({ session, env, ctx }) => {
     const text = await request.text();
     if (!text || text.length > 1_000_000) {
-      return NextResponse.json({ error: "Invalid or too large OPML file" }, { status: 400 });
+      return apiError("Invalid or too large OPML file", 400, { code: "INVALID_OPML" });
     }
 
     let feedEntries: Array<{ url: string; title: string; siteUrl: string }>;
@@ -102,26 +103,24 @@ export async function POST(request: Request) {
       if (!body) throw new Error("No OPML body found");
       feedEntries = toArray<OpmlOutline>(body.outline).flatMap(extractFeeds);
     } catch {
-      return NextResponse.json({ error: "Failed to parse OPML" }, { status: 400 });
+      return apiError("Failed to parse OPML", 400, { code: "INVALID_OPML" });
     }
 
     if (feedEntries.length === 0) {
-      return NextResponse.json({ error: "No feeds found in OPML" }, { status: 400 });
+      return apiError("No feeds found in OPML", 400, { code: "EMPTY_OPML" });
     }
     if (feedEntries.length > MAX_OPML_ENTRIES) {
-      return NextResponse.json(
-        { error: `OPML contains too many feeds (max ${MAX_OPML_ENTRIES} per import)` },
-        { status: 400 },
-      );
+      return apiError(`OPML contains too many feeds (max ${MAX_OPML_ENTRIES} per import)`, 400, {
+        code: "OPML_TOO_MANY_FEEDS",
+      });
     }
 
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     const remainingSlots = MAX_FEEDS_PER_USER - subs.length;
     if (remainingSlots <= 0) {
-      return NextResponse.json(
-        { error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` },
-        { status: 422 },
-      );
+      return apiError(`Feed limit reached (max ${MAX_FEEDS_PER_USER})`, 422, {
+        code: "FEED_LIMIT_REACHED",
+      });
     }
 
     const existingHashes = new Set(subs.map((s) => s.feedHash));

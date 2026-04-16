@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { isValidFeedUrl } from "@/lib/url";
 import { r2Get, r2Put, sha256Hex, savedArticlesKey } from "@/lib/r2";
 import { fetchPageOgpMeta } from "@/lib/ogp";
@@ -16,9 +17,9 @@ export async function POST(request: Request) {
     const body = parsed.data;
 
     const url = typeof body?.url === "string" ? body.url.trim() : "";
-    if (!url) return NextResponse.json({ error: "url is required" }, { status: 400 });
+    if (!url) return apiError("url is required", 400, { code: "INVALID_URL" });
     if (!isValidFeedUrl(url)) {
-      return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+      return apiError("Invalid URL", 400, { code: "INVALID_URL" });
     }
 
     // 決定論的 ID（同じ URL は常に同じ ID）
@@ -32,10 +33,9 @@ export async function POST(request: Request) {
     if (existing) return NextResponse.json(existing);
 
     if (saved.length >= MAX_SAVED_ARTICLES) {
-      return NextResponse.json(
-        { error: `保存記事の上限（${MAX_SAVED_ARTICLES}件）に達しました` },
-        { status: 422 },
-      );
+      return apiError(`保存記事の上限（${MAX_SAVED_ARTICLES}件）に達しました`, 422, {
+        code: "SAVED_LIMIT_REACHED",
+      });
     }
 
     const { title, image: ogImage } = await fetchPageOgpMeta(url, FETCH_TIMEOUT_MS);

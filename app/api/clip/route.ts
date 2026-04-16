@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { validateClipRequest } from "@/lib/clip";
 import { extractMainContent } from "@/lib/content";
 import { buildContentCacheKey, saveContentToCache } from "@/lib/fetch-article-content";
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     const validation = validateClipRequest(parsed.data);
     if (!validation.ok) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
+      return apiError(validation.error, 400, { code: "INVALID_CLIP_PAYLOAD" });
     }
 
     const { html, url } = validation;

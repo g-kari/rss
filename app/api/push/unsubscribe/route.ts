@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, userPushKey } from "@/lib/r2";
 import { isValidHttpsUrl } from "@/lib/url";
 import type { PushConfig } from "@/types";
@@ -11,10 +12,10 @@ export async function POST(request: Request) {
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
     if (!body?.endpoint) {
-      return NextResponse.json({ error: "endpoint is required" }, { status: 400 });
+      return apiError("endpoint is required", 400, { code: "INVALID_ENDPOINT" });
     }
     if (!isValidHttpsUrl(body.endpoint)) {
-      return NextResponse.json({ error: "Invalid endpoint URL" }, { status: 400 });
+      return apiError("Invalid endpoint URL", 400, { code: "INVALID_ENDPOINT" });
     }
 
     const key = userPushKey(session.userId);

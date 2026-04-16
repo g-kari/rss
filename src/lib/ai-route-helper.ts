@@ -6,6 +6,7 @@ import { fetchArticleContent } from "@/lib/fetch-article-content";
 import { isValidFeedUrl } from "@/lib/url";
 import { aiCooldownKey } from "@/lib/r2";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+import { apiError } from "@/lib/api-error";
 
 // @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のため、同じ
 // BaseAiTextGeneration 構造を持つ既知モデル型に合わせてキャストする
@@ -47,7 +48,7 @@ export async function runAiJob(
   if (!parsed.ok) return parsed.error;
   const body = parsed.data;
   if (typeof body?.url !== "string" || !isValidFeedUrl(body.url)) {
-    return NextResponse.json({ error: "url is required" }, { status: 400 });
+    return apiError("url is required", 400, { code: "INVALID_URL" });
   }
 
   const url = body.url;
@@ -73,7 +74,10 @@ export async function runAiJob(
   const reqUrl = new URL(request.url);
   const content = await fetchArticleContent(url, reqUrl.origin, ctx);
   if (!content)
-    return NextResponse.json({ error: "コンテンツを取得できませんでした" }, { status: 502 });
+    return apiError("コンテンツを取得できませんでした", 502, {
+      code: "CONTENT_FETCH_FAILED",
+      retryable: true,
+    });
 
   const plain = toPlainText(content).slice(0, 6000);
 
@@ -92,18 +96,25 @@ export async function runAiJob(
         typeof errObj.headers === "object" && errObj.headers !== null
           ? (errObj.headers as Record<string, string>)["retry-after"]
           : undefined;
-      return NextResponse.json(
-        { error: "rate_limited", ...(retryAfter ? { retryAfter } : {}) },
-        { status: 429 },
-      );
+      return apiError("rate_limited", 429, {
+        code: "RATE_LIMITED",
+        retryable: true,
+        ...(retryAfter ? { retryAfter } : {}),
+      });
     }
     if (status === 401) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      return apiError("unauthorized", 401, { code: "UNAUTHORIZED" });
     }
     if (status === 503) {
-      return NextResponse.json({ error: "service_unavailable" }, { status: 503 });
+      return apiError("service_unavailable", 503, {
+        code: "SERVICE_UNAVAILABLE",
+        retryable: true,
+      });
     }
-    return NextResponse.json({ error: "AI処理中にエラーが発生しました" }, { status: 502 });
+    return apiError("AI処理中にエラーが発生しました", 502, {
+      code: "AI_ERROR",
+      retryable: true,
+    });
   }
 
   if (result && articleId)

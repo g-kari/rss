@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, readStateKey } from "@/lib/r2";
 import type { ReadState } from "@/types";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
     const likeIds = extractIds(body.likeIds, MAX_LIKE_IDS);
 
     if (!readIds || !bookmarkIds || !readingListIds || !likeIds) {
-      return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+      return apiError("Payload too large", 413, { code: "PAYLOAD_TOO_LARGE" });
     }
 
     const globalFilter = parseKeywordFilter(body.globalFilter);

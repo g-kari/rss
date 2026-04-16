@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-17
+
+### リファクタリング
+
+- **API エラーレスポンス形式を統一 (issue #60)** — `src/lib/api-error.ts` に `ApiError` 型と `apiError()` ヘルパーを新設。`app/api/**` 配下の全 Route Handler と `server-auth.ts` / `rate-limit.ts` / `ai-route-helper.ts` の `NextResponse.json({ error: "..." }, { status: N })` を `apiError(message, status, { code, hint, retryable })` に置き換え。`code`（機械可読エラーコード）を全エラーに付与し、クライアント側の型安全なエラーハンドリングを可能にした。
+
 ## 2026-04-16
 
 ### リファクタリング

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { r2Get, savedArticlesKey, readStateKey } from "@/lib/r2";
 import {
   getUserLatestArticles,
@@ -28,11 +29,11 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") ?? "1", 10);
 
     if (feedHash && !isValidFeedHash(feedHash)) {
-      return NextResponse.json({ error: "Invalid feed" }, { status: 400 });
+      return apiError("Invalid feed", 400, { code: "INVALID_FEED" });
     }
 
     if (feedHash && (!Number.isInteger(page) || page < 1 || page > MAX_PAGES)) {
-      return NextResponse.json({ error: "Invalid page" }, { status: 400 });
+      return apiError("Invalid page", 400, { code: "INVALID_PAGE" });
     }
 
     // フィード指定: 購読チェックと記事取得を並列実行
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
       ]);
       const sub = subs.find((s) => s.feedHash === feedHash);
       if (!sub) {
-        return NextResponse.json({ error: "Feed not found" }, { status: 404 });
+        return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
       }
       const protectedIds = buildProtectedIds(readState);
       const filtered = filterExpiredArticles(

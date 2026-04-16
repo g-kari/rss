@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { isValidFeedUrl } from "@/lib/url";
 import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fetch";
 import {
@@ -19,10 +20,10 @@ export async function GET(request: Request) {
 async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextResponse> {
   const reqUrl = new URL(request.url);
   const url = reqUrl.searchParams.get("url");
-  if (!url) return NextResponse.json({ error: "url is required" }, { status: 400 });
+  if (!url) return apiError("url is required", 400, { code: "INVALID_URL" });
 
   if (!isValidFeedUrl(url)) {
-    return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+    return apiError("Invalid URL", 400, { code: "INVALID_URL" });
   }
 
   const cacheKey = await buildContentCacheKey(reqUrl.origin, url);
@@ -42,20 +43,23 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
       // 4xx はクライアント起因（アクセス不可・存在しない）なのでそのまま返す
       // 5xx はゲートウェイエラーとして 502 を返す
       const status = res.status >= 400 && res.status < 500 ? res.status : 502;
-      return NextResponse.json({ error: "Failed to load page" }, { status });
+      return apiError("Failed to load page", status, {
+        code: "FETCH_FAILED",
+        retryable: status >= 500,
+      });
     }
 
     const ct = res.headers.get("content-type") ?? "";
     if (!ct.includes("html"))
-      return NextResponse.json({ error: "Not an HTML page" }, { status: 415 });
+      return apiError("Not an HTML page", 415, { code: "UNSUPPORTED_CONTENT_TYPE" });
 
     const contentLength = res.headers.get("content-length");
     if (contentLength && parseInt(contentLength, 10) > MAX_CONTENT_BYTES)
-      return NextResponse.json({ error: "Page too large" }, { status: 413 });
+      return apiError("Page too large", 413, { code: "PAYLOAD_TOO_LARGE" });
 
-    if (!res.body) return NextResponse.json({ error: "No response body" }, { status: 502 });
+    if (!res.body) return apiError("No response body", 502, { code: "EMPTY_BODY" });
     const merged = await readBodyBytes(res.body, MAX_CONTENT_BYTES);
-    if (merged === null) return NextResponse.json({ error: "Page too large" }, { status: 413 });
+    if (merged === null) return apiError("Page too large", 413, { code: "PAYLOAD_TOO_LARGE" });
 
     const {
       content: page1Content,
@@ -73,8 +77,9 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
       { headers: { "X-Cache": "MISS", "X-Content-Source": contentSource } },
     );
   } catch (err) {
-    if (isAbortError(err)) return NextResponse.json({ error: "Request timeout" }, { status: 504 });
+    if (isAbortError(err))
+      return apiError("Request timeout", 504, { code: "TIMEOUT", retryable: true });
     console.error("[content] fetch error:", err);
-    return NextResponse.json({ error: "Failed to fetch page" }, { status: 502 });
+    return apiError("Failed to fetch page", 502, { code: "FETCH_FAILED", retryable: true });
   }
 }

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { verifyJwt, refreshTokens } from "./auth";
+import { apiError } from "./api-error";
 
 export const COOKIE_OPTS = {
   httpOnly: true,
@@ -128,7 +129,7 @@ export async function requireSession(): Promise<
 > {
   const session = await getAuthSession();
   if (!session) {
-    return { error: NextResponse.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 }) };
+    return { error: apiError("Unauthorized", 401, { code: "UNAUTHORIZED" }) };
   }
   return { session };
 }
@@ -196,7 +197,7 @@ export async function withSession(
     const name = err instanceof Error ? err.name : "UnknownError";
     const message = err instanceof Error ? err.message : String(err);
     console.error("[withSession] unhandled error:", name, message);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return apiError("Internal Server Error", 500, { code: "INTERNAL_ERROR" });
   }
 }
 
@@ -224,7 +225,7 @@ export async function parseJsonBody<T>(
   try {
     return { ok: true, data: (await request.json()) as T };
   } catch {
-    return { ok: false, error: NextResponse.json({ error: "Invalid JSON" }, { status: 400 }) };
+    return { ok: false, error: apiError("Invalid JSON", 400, { code: "INVALID_JSON" }) };
   }
 }
 
