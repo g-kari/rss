@@ -351,12 +351,14 @@ export function useReadState(
     if (!userRef.current) return;
     if (syncTimerRef.current) {
       clearTimeout(syncTimerRef.current);
-      syncTimerRef.current = null;
     }
-    isDirtyRef.current = false;
-    // setTimeout(0) で React のstate commit後に stateRef.current が更新された値を送信する
-    setTimeout(() => {
+    // isDirtyRef を true にして beforeunload 時の flushIfPending が sendBeacon を発火できるようにする
+    isDirtyRef.current = true;
+    // setTimeout(0) を syncTimerRef に保持することで、ページリロード前に flushIfPending が検出できる
+    syncTimerRef.current = setTimeout(() => {
+      syncTimerRef.current = null;
       if (!userRef.current) return;
+      isDirtyRef.current = false;
       saveReadState(stateRef.current, globalFilterRef.current);
     }, 0);
   }, [globalFilterRef, userRef]);
