@@ -8,6 +8,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### バグ修正
 
+- **\`useReadState\` の \`syncImmediately\` に存在した race condition を修正** — 削除操作後のページリロード時、\`syncImmediately\` が予約した \`setTimeout(0)\` のIDを \`syncTimerRef\` に保持していなかったため、\`beforeunload\` / \`visibilitychange hidden\` の \`flushIfPending\` がタイマーを検出できず \`sendBeacon\` が発火しないケースがあった。\`syncTimerRef.current\` にIDを保存し、\`isDirtyRef\` を \`true\` に保つよう修正。
+
 - **link が null/undefined の記事で重複排除が機能しない問題を修正** — \`mergeUniqueArticles\` の link ベース第2パス重複排除で、link 欠落記事が常に通過していた。\`a.link || a.guid || a.id\` のフォールバックキーを使うよう修正し、古い RSS フォーマット等でも正しく重複排除されるようになった。
 
 ### パフォーマンス改善
