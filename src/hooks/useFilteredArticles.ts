@@ -176,7 +176,9 @@ export function useFilteredArticles({
   const dateRangeRef = useSyncedRef(dateRange);
   const readingTimeRangeRef = useSyncedRef(readingTimeRange);
 
-  // 直前に選択していた記事を一定時間フィルター対象外にする（未読フィルター中でも前の記事に戻れるように）
+  // selectedArticleId が変化した直後、前の記事 ID を 30 秒間保持する（useGracePeriod 参照）。
+  // 未読フィルターがオンの状態で記事を読み終えると selectedArticleId が null になり、
+  // 既読になった記事はフィルターで除外されて前の記事に戻れなくなる問題を回避するために使用。
   const gracePeriodId = useGracePeriod(selectedArticleId);
 
   // フィード切り替え時にページ・検索クエリ・著者フィルター・カテゴリフィルターをリセット
@@ -250,8 +252,9 @@ export function useFilteredArticles({
   const notifyArticlesAdded = useCallback(() => {
     setServerLoadCount((c) => c + 1);
   }, []);
-  // 現在表示中の記事は既読でもリストに残す（前後ナビが消えないようにするため）
-  // gracePeriodId: 直前まで表示していた記事を5秒間保持（未読フィルター中でも前の記事に戻れるように）
+  // activeIds に含まれる記事はフィルター条件（未読のみ等）に関わらず常にリストに残す。
+  // - selectedArticleId: 現在開いている記事（前後ナビのキーが消えないようにするため）
+  // - gracePeriodId: 直前まで開いていた記事（30 秒間保持。前の記事に j/k で戻れるようにするため）
   const activeIds = useMemo(() => {
     const ids = new Set<string>();
     if (selectedArticleId) ids.add(selectedArticleId);
@@ -276,7 +279,9 @@ export function useFilteredArticles({
       new Map(feeds.filter((f) => f.category).map((f) => [f.id, f.category!] as [string, string])),
     [feeds],
   );
-  // globalFilter も feedFilterMap と同様に変更時だけ正規化（filterAndSortArticles の hot path から除外）
+  // globalFilter の正規化（キーワード文字列 → CompiledKeywordFilter への変換）を useMemo でキャッシュ。
+  // filterAndSortArticles は全記事をループする hot path のため、正規表現コンパイルをループ外に出すことで
+  // 記事ごとの不要な RegExp 生成を回避する。feedFilterMap と同じ戦略（変更時のみ再ビルド）。
   const normalizedGlobalFilter = useMemo(
     () => (globalFilter ? normalizeFilter(globalFilter) : null),
     [globalFilter],
@@ -349,6 +354,10 @@ export function useFilteredArticles({
     ],
   );
 
+  // filteredRef: サーバーロード後の page 拡張で filtered.length を読み取るために使用。
+  // filtered を deps に含めると、通常のフィルター切り替え（未読のみ ON/OFF など）でも
+  // このエフェクトが発火してしまう。serverLoadCount の変化時だけ発火させることで、
+  // LoadMoreButton 経由でサーバーからデータが追加された後にのみ page を拡張できる。
   const filteredRef = useSyncedRef(filtered);
   useEffect(() => {
     if (serverLoadCount === 0) return;
