@@ -6,6 +6,14 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-16
 
+### バグ修正
+
+- **\`compareByDateDesc\` の同日付ソートを安定化** — 同じ \`publishedAt\` を持つ記事のソート順が不定だった問題を修正。\`id\`（SHA-256 由来の決定論的ハッシュ）を 2 次ソートキーとして追加し、リフレッシュごとに記事リストの並び順が変わる挙動を解消。(\`src/lib/article-utils.ts\`)
+
+---
+
+## 2026-04-16 (XSS サニタイズ監査)
+
 ### 新機能
 
 - **キーボードショートカット定義を一元管理** — \`src/config/shortcuts.ts\` を新設。\`SHORTCUTS\` 配列と \`SHORTCUT_MAP\` を集約し、\`KeyboardShortcutsModal\` が自動生成されるよう変更。フィルターボタンの \`title\` 属性も config 経由で参照。
