@@ -26,7 +26,7 @@ import {
   SORT_ORDER_CYCLE,
 } from "../lib/article-utils";
 import { filterAndSortArticles } from "../lib/article-filter";
-import { buildFilterMap, normalizeFilter } from "../lib/keyword-filter";
+import { buildFilterMap, normalizeFilter, type CompiledKeywordFilter } from "../lib/keyword-filter";
 
 const PAGE_SIZE = 30;
 const EMPTY_SET = new Set<string>();
@@ -262,8 +262,14 @@ export function useFilteredArticles({
   // メモがある記事 ID のセット（noteOnly フィルターで使用）
   const noteIds = useMemo(() => new Set(Object.keys(notes ?? {})), [notes]);
 
+  // フィルターコンパイルキャッシュ: feeds 参照が変わっても中身が同じフィルターは再 RegExp 生成をスキップ
+  const filterCompileCacheRef = useRef<Map<string, CompiledKeywordFilter>>(new Map());
+
   // feeds が変わったときだけ再構築（フィルター変更時や既読切り替えでは再利用される）
-  const feedFilterMap = useMemo(() => buildFilterMap(feeds, (f) => f.id), [feeds]);
+  const feedFilterMap = useMemo(
+    () => buildFilterMap(feeds, (f) => f.id, filterCompileCacheRef.current),
+    [feeds],
+  );
   // feedHash → カテゴリ名のマップ（カテゴリフィルターで使用）
   const feedCategoryMap = useMemo(
     () =>

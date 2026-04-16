@@ -132,15 +132,38 @@ export function normalizeFilter(filter: KeywordFilter): CompiledKeywordFilter {
  * getKey で各要素の ID を取得し、キーワードが空のフィルターは除外する。
  * 返されるマップの値は `normalizeFilter` 適用済みの `CompiledKeywordFilter`。
  */
+/**
+ * filter フィールドを持つオブジェクト配列からフィルターマップを構築する。
+ * getKey で各要素の ID を取得し、キーワードが空のフィルターは除外する。
+ * 返されるマップの値は `normalizeFilter` 適用済みの `CompiledKeywordFilter`。
+ *
+ * @param compiledCache - オプション。フィルター JSON をキーとするコンパイル済みキャッシュ。
+ *   同一フィルターが再度登場した場合に `normalizeFilter`（RegExp 再生成）をスキップできる。
+ *   クライアントサイドでは `useRef` で保持した `Map` を渡すことで、
+ *   `feeds` 配列の参照が変わっても変更のないフィルターの再コンパイルを回避する。
+ *   Edge Runtime（Route Handler）では各リクエストが独立しているため渡す必要はない。
+ */
 export function buildFilterMap<T extends { filter?: KeywordFilter }>(
   items: T[],
   getKey: (item: T) => string,
+  compiledCache?: Map<string, CompiledKeywordFilter>,
 ): Map<string, CompiledKeywordFilter> {
   const map = new Map<string, CompiledKeywordFilter>();
   for (const item of items) {
     const f = item.filter;
     if (f && (f.include.length > 0 || f.exclude.length > 0)) {
-      map.set(getKey(item), normalizeFilter(f));
+      const key = getKey(item);
+      if (compiledCache) {
+        const cacheKey = JSON.stringify([f.include, f.exclude, f.matchCategories ?? false]);
+        let compiled = compiledCache.get(cacheKey);
+        if (!compiled) {
+          compiled = normalizeFilter(f);
+          compiledCache.set(cacheKey, compiled);
+        }
+        map.set(key, compiled);
+      } else {
+        map.set(key, normalizeFilter(f));
+      }
     }
   }
   return map;
