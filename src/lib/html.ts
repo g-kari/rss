@@ -264,150 +264,92 @@ function ensureAnchorNoopener(m: string, attrs: string): string {
   return `<a${attrs} rel="noopener noreferrer">`;
 }
 
+/** sanitizeHtml のコールバック置換関数の型 */
+type ReplaceFn = (substring: string, ...args: string[]) => string;
+
+/**
+ * sanitizeHtml 適用ルール（順序はセキュリティ上重要）
+ *
+ * 各エントリ: [正規表現, 置換値（'' = 除去 | コールバック = 条件付き変換）]
+ * - 不可視 Unicode 文字の除去が最初に来ることで後続の on\w+ パターンを保護する
+ * - xlink:href パターンは汎用 href より先に処理してプレフィックス残留を防ぐ
+ * - [\s\S]*? (非貪欲) を使用することで ReDoS を防ぐ
+ */
+const HTML_SANITIZE_RULES: Array<[RegExp, string | ReplaceFn]> = [
+  // 不可視 Unicode 文字（後続パターンのバイパス防止のため最初に除去）
+  [/[\u00AD\u200B-\u200D\u2060\uFEFF]/g, ""],
+  // コンテンツごと除去するブロック要素
+  [/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ""],
+  [/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, ""],
+  [/<link\b[^>]*\/?>/gi, ""], // React 19 リソースホイスティング防止
+  [/<base\b[^>]*\/?>/gi, ""], // 相対 URL ハイジャック防止
+  [/<noscript\b[^>]*>[\s\S]*?<\/noscript\s*>/gi, ""],
+  [/<template\b[^>]*>[\s\S]*?<\/template\s*>/gi, ""],
+  [/<object\b[^>]*>[\s\S]*?<\/object\s*>/gi, ""],
+  [/<embed\b[^>]*\/?>/gi, ""],
+  // フォーム/入力要素（タグのみ除去・内容保持）
+  [/<\/?form\b[^>]*>/gi, ""],
+  [/<input\b[^>]*\/?>/gi, ""],
+  [/<textarea\b[^>]*>[\s\S]*?<\/textarea\s*>/gi, ""],
+  [/<select\b[^>]*>[\s\S]*?<\/select\s*>/gi, ""],
+  // SVG 危険要素
+  [/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject\s*>/gi, ""],
+  [/<foreignObject\b[^>]*\/>/gi, ""],
+  [/<animate\b[^>]*\/?>/gi, ""],
+  [/<animateTransform\b[^>]*\/?>/gi, ""],
+  [/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion\s*>/gi, ""],
+  [/<animateMotion\b[^>]*\/>/gi, ""],
+  [/<set\b[^>]*\/?>/gi, ""],
+  // SVG <use>（外部参照のみ除去・#フラグメント参照は保持）
+  [/<use\b([^>]*)>([\s\S]*?)<\/use\s*>/gi, sanitizeUse as ReplaceFn],
+  [/<use\b([^>]*)>/gi, sanitizeUse as ReplaceFn],
+  // <iframe>（信頼済みドメイン以外を除去）
+  [/<iframe\b([^>]*)>([\s\S]*?)<\/iframe\s*>/gi, sanitizeIframe as ReplaceFn],
+  [/<iframe\b([^>]*)\/?>/gi, sanitizeIframe as ReplaceFn],
+  [/<iframe\b([^>]*)>/gi, sanitizeIframe as ReplaceFn],
+  // 危険な meta タグ
+  [
+    /<meta\b[^>]*http-equiv\s*=\s*["'](?:refresh|set-cookie|content-security-policy|x-frame-options|permissions-policy|link|x-ua-compatible|cache-control|pragma|expires)["'][^>]*\/?>/gi,
+    "",
+  ],
+  [/<meta\b[^>]*name\s*=\s*["']referrer["'][^>]*\/?>/gi, ""],
+  // インラインイベントハンドラ
+  [/(?:[\s/]+|(?<=['"`]))on\w+\s*=\s*(?:"[^"]*"|'[^']*'|`[^`]*`|(?!["'`])[^\s>]*)/gi, ""],
+  // xlink:href 危険スキーム（汎用 href より先に処理してプレフィックス残留を防ぐ）
+  [/xlink:href\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi, ""],
+  [/xlink:href\s*=\s*(?:javascript|vbscript|data):[^\s>]*/gi, ""],
+  // href/src/action/formaction 危険スキーム
+  [/(?:href|src|action|formaction)\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi, ""],
+  [/(?:href|src|action|formaction)\s*=\s*(?:javascript|vbscript|data):[^\s>]*/gi, ""],
+  // エンティティ/空白バイパスの危険スキーム（xlink:href が先）
+  [/xlink:href\s*=\s*(["'])([^"']*)\1/gi, (m, _q, val) => (hasDangerousScheme(val) ? "" : m)],
+  [
+    /(?:href|src|action|formaction)\s*=\s*(["'])([^"']*)\1/gi,
+    (m, _q, val) => (hasDangerousScheme(val) ? "" : m),
+  ],
+  // 危険な属性
+  [/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, ""],
+  [/\bping\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, ""],
+  [/\bpopover(?:target(?:action)?)?\s*(?:=\s*(?:"[^"]*"|'[^']*'|[^\s>]*))?/gi, ""],
+  // <dialog>（タグのみ除去・内容保持）
+  [/<\/?dialog\b[^>]*>/gi, ""],
+  // <a target="_blank"> にタブナッピング対策
+  [/<a\b([^>]*)>/gi, ensureAnchorNoopener as ReplaceFn],
+  // style 属性サニタイズ（クォートあり・なし）
+  [/\bstyle\s*=\s*"([^"]*)"/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`],
+  [/\bstyle\s*=\s*'([^']*)'/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`],
+  [/\bstyle\s*=\s*([^"'\s>][^\s>]*)/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`],
+];
+
+function applyRule(s: string, pattern: RegExp, replacement: string | ReplaceFn): string {
+  if (typeof replacement === "string") return s.replace(pattern, replacement);
+  return s.replace(pattern, replacement as (m: string) => string);
+}
+
 export function sanitizeHtml(html: string): string {
-  return (
-    html
-      // 不可視 Unicode 文字を除去。
-      // U+00AD (SOFT HYPHEN), U+200B–U+200D (ZERO WIDTH SPACE/NON-JOINER/JOINER),
-      // U+2060 (WORD JOINER), U+FEFF (ZERO WIDTH NO-BREAK SPACE / BOM) などは
-      // 表示上は見えないが、HTML 属性名の途中に挿入されると
-      // 正規表現ベースのイベントハンドラ除去（on\w+ パターン）を
-      // バイパスする攻撃ベクトルになりうる。
-      // 例: `on​error=` (U+200B 挿入) → on\w+ にマッチせず XSS が残存する恐れ。
-      // サニタイズの最初に除去することで後続の全パターンを保護する。
-      .replace(/[\u00AD\u200B-\u200D\u2060\uFEFF]/g, "")
-      // 閉じタグを持つブロック要素を除去。
-      // [\s\S]*? (非貪欲) を使用することで、tempered greedy token パターン
-      // [^<]*(?:(?!<\/tag>)<[^<]*)* による ReDoS（カタストロフィックバックトラッキング）を防ぐ。
-      // <tag> 未閉じの場合は次の </ まで除去するため、開始タグが残ることもあるが
-      // セキュリティ上は許容範囲（後続のイベントハンドラ除去が補完する）。
-      // 閉じタグの \s* は HTML5 仕様に基づく: </script > や </style\n> など
-      // タグ名直後に空白を置いた形式でもブラウザは有効な終了タグとして解釈するため、
-      // \s* を追加してサニタイザーのバイパスを防ぐ。
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, "")
-      // <link> タグを除去（React 19 のリソースホイスティングによる無限ループ防止）
-      .replace(/<link\b[^>]*\/?>/gi, "")
-      // <base> タグを除去（相対 URL ハイジャック防止）
-      .replace(/<base\b[^>]*\/?>/gi, "")
-      // <noscript> を除去（JavaScript 無効環境でのレンダリング防止）
-      .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\s*>/gi, "")
-      // <template> を除去（DOM ツリーに挿入可能な任意 HTML の封じ込め）
-      .replace(/<template\b[^>]*>[\s\S]*?<\/template\s*>/gi, "")
-      // <object>, <embed> を除去
-      .replace(/<object\b[^>]*>[\s\S]*?<\/object\s*>/gi, "")
-      .replace(/<embed\b[^>]*\/?>/gi, "")
-      // <form> 開始・終了タグを除去（フィッシング対策）
-      // RSS 記事内のフォーム要素は外部サーバーへのデータ送信やクレデンシャル詐取に悪用できる。
-      // 内部コンテンツ（テキスト・画像等）は保持し、タグ枠のみ除去する。
-      .replace(/<\/?form\b[^>]*>/gi, "")
-      // <input> / <select> / <textarea> を除去（フィッシング入力欄防止）
-      // 入力フィールドはパスワード詐取や偽 UI による social engineering に悪用できる。
-      .replace(/<input\b[^>]*\/?>/gi, "")
-      .replace(/<textarea\b[^>]*>[\s\S]*?<\/textarea\s*>/gi, "")
-      .replace(/<select\b[^>]*>[\s\S]*?<\/select\s*>/gi, "")
-      // SVG <foreignObject> を除去（任意の HTML を埋め込める危険な要素）
-      .replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject\s*>/gi, "")
-      .replace(/<foreignObject\b[^>]*\/>/gi, "")
-      // SVG アニメーション要素を除去（attributeName 経由のイベントハンドラ注入防止）
-      // <animate attributeName="href" to="javascript:alert(1)"> 等で href/イベントハンドラを
-      // 動的に書き換えられるため、animate / animateTransform / animateMotion / set を除去する
-      .replace(/<animate\b[^>]*\/?>/gi, "")
-      .replace(/<animateTransform\b[^>]*\/?>/gi, "")
-      .replace(/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion\s*>/gi, "")
-      .replace(/<animateMotion\b[^>]*\/?>/gi, "")
-      .replace(/<set\b[^>]*\/?>/gi, "")
-      // SVG <use> の外部参照を除去（クロスオリジン SVG 読み込みによるプライバシー侵害防止）
-      // href / xlink:href が # のみのフラグメント参照は同一ドキュメント内なので安全、それ以外を除去
-      //
-      // 処理順序:
-      //   1. <use ...>...</use> ペア: 外部参照ならフォールバックコンテンツごと除去、フラグメント参照は保持
-      //   2. 残余の <use ...> （自己閉じ・未閉じ開始タグ）: 同様に href を検査して除去/保持
-      //
-      // 注意: </use> の後続削除は行わない。
-      // ステップ1が <use>...</use> ペアを一括処理するため、外部参照の </use> は既に除去済み。
-      // 孤立した </use> はブラウザが無視するため、セキュリティリスクはない。
-      .replace(/<use\b([^>]*)>([\s\S]*?)<\/use\s*>/gi, sanitizeUse)
-      // 自己閉じタグ・未閉じ開始タグを処理（上記でマッチしなかった残余）
-      .replace(/<use\b([^>]*)>/gi, sanitizeUse)
-      // <iframe> は信頼済みドメイン以外を除去
-      .replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe\s*>/gi, sanitizeIframe)
-      .replace(/<iframe\b([^>]*)\/>/gi, sanitizeIframe)
-      // 閉じタグ・自己閉じのない <iframe> 開始タグを除去（未閉じ iframe のサニタイズ漏れ対策）
-      // <use> と同様に、上記 2 パターンでマッチしなかった残余の <iframe...> を処理する。
-      // RSS content:encoded では </iframe> が省略された形で記述されることがあり、
-      // 放置するとブラウザが暗黙的に閉じてレンダリングし、フィッシング iframe に悪用されうる。
-      .replace(/<iframe\b([^>]*)>/gi, sanitizeIframe)
-      // 危険な <meta http-equiv> を除去。
-      // - refresh: クライアントサイドリダイレクト防止
-      // - set-cookie: レスポンスヘッダー偽装による cookie 注入防止
-      // - Content-Security-Policy: 上位 CSP の上書き防止
-      // - X-Frame-Options / Permissions-Policy: セキュリティポリシー上書き防止
-      // - Link: 外部リソース事前読み込みによるプライバシー侵害防止
-      // - X-UA-Compatible: IE 互換モード強制によるレンダリング挙動変更防止
-      // - cache-control / pragma / expires: キャッシュ操作防止
-      .replace(
-        /<meta\b[^>]*http-equiv\s*=\s*["'](?:refresh|set-cookie|content-security-policy|x-frame-options|permissions-policy|link|x-ua-compatible|cache-control|pragma|expires)["'][^>]*\/?>/gi,
-        "",
-      )
-      // <meta name="referrer"> を除去。
-      // ページ内の referrer ポリシーを "unsafe-url" 等で上書きされると、
-      // 記事リンクのクリック時にフル URL（認証トークン等）がリファラーとして漏洩する恐れがある。
-      // モダンブラウザは body 内の meta[name=referrer] も適用するため除去する。
-      .replace(/<meta\b[^>]*name\s*=\s*["']referrer["'][^>]*\/?>/gi, "")
-      // インラインイベントハンドラを除去。
-      // [\s/]+ : スペース・タブ・スラッシュ区切り（/ 区切りバイパス対策）
-      // (?<=['"`]): 引用符・バックティック直後に on\w+ が来るケース（<img src="x"onerror=...> や <img src=`x`onerror=...>）のバイパス対策
-      // (?!["'`])[^\s>]* : 先頭が引用符でない非クォート値のみマッチ（引用符で始まる値が前の3分岐にマッチしなかった場合に catch-all が誤って先頭を消費しないようにする）
-      .replace(
-        /(?:[\s/]+|(?<=['"`]))on\w+\s*=\s*(?:"[^"]*"|'[^']*'|`[^`]*`|(?!["'`])[^\s>]*)/gi,
-        "",
-      )
-      // xlink:href（SVG）の javascript: / vbscript: / data: スキームを除去（完全な属性名を削除）
-      // 汎用 href パターンより先に処理することで xlink: プレフィックスが残留しないようにする
-      .replace(/xlink:href\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi, "")
-      .replace(/xlink:href\s*=\s*(?:javascript|vbscript|data):[^\s>]*/gi, "")
-      // javascript: / vbscript: / data: スキームを href/src/action/formaction から除去（クォートあり・なし両対応）
-      .replace(
-        /(?:href|src|action|formaction)\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi,
-        "",
-      )
-      .replace(/(?:href|src|action|formaction)\s*=\s*(?:javascript|vbscript|data):[^\s>]*/gi, "")
-      // xlink:href の HTML エンティティ・先頭空白バイパスを除去
-      // 汎用 href パターンより先に処理することで xlink: プレフィックスが残留しないようにする
-      // (["'])…\1 で開閉クォートが一致する場合のみマッチし、2 つめのキャプチャが属性値
-      .replace(/xlink:href\s*=\s*(["'])([^"']*)\1/gi, (m, _q, val) =>
-        hasDangerousScheme(val) ? "" : m,
-      )
-      // HTML エンティティや先頭空白でエンコードされた危険スキームを除去（hasDangerousScheme で検出）
-      .replace(/(?:href|src|action|formaction)\s*=\s*(["'])([^"']*)\1/gi, (m, _q, val) =>
-        hasDangerousScheme(val) ? "" : m,
-      )
-      // srcdoc 属性を除去（iframe フォールバック経由の HTML インジェクション防止）
-      .replace(/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
-      // ping 属性を除去（リンククリック時の意図しないリクエスト防止）
-      .replace(/\bping\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
-      // HTML Popover API 属性を除去（JS 不要のトップレイヤー UI 注入防止）
-      // <any-element popover> + <button popovertarget="id"> の組み合わせで JS なしに
-      // ブラウザのトップレイヤーへ任意 HTML をオーバーレイ表示できる。
-      // RSS 記事がリーダー UI を覆うフィッシング画面を作れてしまうため除去する。
-      // popover はブール属性（値なし可）のため (?:=...)? で値あり・なし両対応する。
-      .replace(/\bpopover(?:target(?:action)?)?\s*(?:=\s*(?:"[^"]*"|'[^']*'|[^\s>]*))?/gi, "")
-      // <dialog> 開始・終了タグを除去（ドキュメントフロー内での position:absolute 配置防止）
-      // <dialog open> はブラウザ UA スタイルシートの position:absolute で記事外コンテンツを
-      // 覆う可能性がある。<form> と同様にタグ枠のみ除去してコンテンツは保持する。
-      .replace(/<\/?dialog\b[^>]*>/gi, "")
-      // <a target="_blank"> に rel="noopener noreferrer" を強制付与（タブナッピング防止）
-      // RSS 記事内の外部リンクが window.opener を経由してリンク元ページを制御するリスクを防ぐ。
-      // fixExternalLinks が適用済みのコンテンツには既に rel が設定されているため重複追加は発生しない。
-      .replace(/<a\b([^>]*)>/gi, ensureAnchorNoopener)
-      // inline style 属性をサニタイズ（CSS トラッキング・フィッシングオーバーレイ防止）
-      // style 値は url('...') のように内部に逆クォートを含みうるため、クォート種別ごとに個別パターン
-      .replace(/\bstyle\s*=\s*"([^"]*)"/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
-      .replace(/\bstyle\s*=\s*'([^']*)'/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
-      // クォートなし style 属性をサニタイズ（例: <div style=background:url(tracker)>）
-      // [^"'\s>] で開始 → すでにクォート処理済みの属性は再マッチしない
-      .replace(/\bstyle\s*=\s*([^"'\s>][^\s>]*)/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`)
-      .trim()
-  );
+  let result = html;
+  for (const [pattern, replacement] of HTML_SANITIZE_RULES) {
+    result = applyRule(result, pattern, replacement);
+  }
+  return result.trim();
 }
