@@ -85,6 +85,24 @@ export async function runAiJob(
     result = response.response ?? "";
   } catch (err) {
     console.error("[runAiJob] AI.run failed:", err);
+    const errObj = typeof err === "object" && err !== null ? (err as Record<string, unknown>) : {};
+    const status = typeof errObj.status === "number" ? errObj.status : 0;
+    if (status === 429) {
+      const retryAfter =
+        typeof errObj.headers === "object" && errObj.headers !== null
+          ? (errObj.headers as Record<string, string>)["retry-after"]
+          : undefined;
+      return NextResponse.json(
+        { error: "rate_limited", ...(retryAfter ? { retryAfter } : {}) },
+        { status: 429 },
+      );
+    }
+    if (status === 401) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    if (status === 503) {
+      return NextResponse.json({ error: "service_unavailable" }, { status: 503 });
+    }
     return NextResponse.json({ error: "AI処理中にエラーが発生しました" }, { status: 502 });
   }
 
