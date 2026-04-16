@@ -94,7 +94,13 @@ export function sanitizeKeywords(arr: unknown[]): string[] {
       arr
         .filter((x): x is string => typeof x === "string")
         .map((s) => s.trim().slice(0, MAX_KEYWORD_LENGTH))
-        .filter(Boolean),
+        .filter(Boolean)
+        .filter((kw) => {
+          if (!isRegexKeyword(kw)) return true;
+          // サーバー側でも ReDoS パターンを除外する
+          const pattern = kw.slice(1, -1);
+          return !hasCatastrophicBacktracking(pattern);
+        }),
     ),
   ].slice(0, MAX_KEYWORDS_PER_ARRAY);
 }
