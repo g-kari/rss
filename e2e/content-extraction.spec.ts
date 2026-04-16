@@ -12,7 +12,7 @@ import {
   transformXTweetEmbeds,
 } from "../src/lib/content";
 import { sanitizeHtml } from "../src/lib/html";
-import { extractEmbedInfo, processContent } from "../src/lib/embed-utils";
+import { extractEmbedInfo, processContent, stripIframes } from "../src/lib/embed-utils";
 
 /**
  * extractMainContent / detectCharset のロジックを node スクリプトで検証する。
@@ -841,5 +841,99 @@ test.describe("detectNextPageUrl — 次ページ URL 検出", () => {
   test("連番記事 ID の次記事 URL は null を返す (/post/123 → /post/124)", () => {
     const html = `<link rel="next" href="https://example.com/post/124">`;
     expect(detectNextPageUrl(html, "https://example.com/post/123")).toBeNull();
+  });
+});
+
+test.describe("processContent — XSS サニタイズ（フォールバック経路含む）", () => {
+  // issue #51: RSS 本文フォールバック経路で sanitizeHtml が適用されているか確認
+  // processContent は sanitizeHtml(transformXTweetEmbeds(html, theme)) で先にサニタイズする
+
+  test("<script> タグが除去される", () => {
+    const html = "<p>記事本文</p><script>alert(document.cookie)</script>";
+    const result = processContent(html);
+    expect(result).not.toContain("<script");
+    expect(result).not.toContain("alert(document.cookie)");
+    expect(result).toContain("<p>記事本文</p>");
+  });
+
+  test("onerror イベントハンドラが除去される", () => {
+    const html = '<img src="x" onerror="alert(1)"><p>本文</p>';
+    const result = processContent(html);
+    expect(result).not.toContain("onerror");
+    expect(result).not.toContain("alert(1)");
+    expect(result).toContain("<p>本文</p>");
+  });
+
+  test("javascript: href が除去される", () => {
+    const html = '<a href="javascript:alert(1)">クリック</a>';
+    const result = processContent(html);
+    expect(result).not.toContain("javascript:");
+    expect(result).toContain("クリック");
+  });
+
+  test("data: URI の src が除去される", () => {
+    const html = '<img src="data:text/html,<script>alert(1)</script>">';
+    const result = processContent(html);
+    expect(result).not.toContain("data:");
+    expect(result).not.toContain("alert(1)");
+  });
+
+  test("信頼済みドメイン以外の <iframe> が除去される（RSS 本文に埋め込まれた場合）", () => {
+    const html = '<iframe src="https://evil.example/phishing"></iframe><p>本文</p>';
+    const result = processContent(html);
+    expect(result).not.toContain("evil.example");
+    expect(result).not.toContain("<iframe");
+    expect(result).toContain("<p>本文</p>");
+  });
+
+  test("YouTube iframe は processContent 後も保持される", () => {
+    const html = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>';
+    const result = processContent(html);
+    expect(result).toContain("youtube.com/embed");
+    expect(result).toContain("<iframe");
+  });
+
+  test("ダークテーマでも XSS が除去される", () => {
+    const html = '<p>本文</p><script>document.write("evil")</script>';
+    const result = processContent(html, "dark");
+    expect(result).not.toContain("<script");
+    expect(result).not.toContain("document.write");
+    expect(result).toContain("<p>本文</p>");
+  });
+});
+
+test.describe("stripIframes — XSS サニタイズ（埋め込みメディア経路）", () => {
+  // issue #51: embedInfo が存在する場合の stripIframes 経路でも sanitizeHtml が適用されているか確認
+
+  test("iframe が除去される", () => {
+    const html = '<iframe src="https://evil.example/"></iframe><p>本文</p>';
+    const result = stripIframes(html);
+    expect(result).not.toContain("<iframe");
+    expect(result).toContain("<p>本文</p>");
+  });
+
+  test("iframe 除去後も残った XSS が sanitizeHtml で除去される", () => {
+    // iframe 除去後に残る可能性のある悪意あるコンテンツも sanitizeHtml で除去
+    const html = "<p>本文</p><script>alert(1)</script>";
+    const result = stripIframes(html);
+    expect(result).not.toContain("<script");
+    expect(result).not.toContain("alert(1)");
+    expect(result).toContain("<p>本文</p>");
+  });
+
+  test("iframe に onerror を含む場合も全体が除去される", () => {
+    const html = '<iframe src="x" onerror="alert(1)"></iframe><p>本文</p>';
+    const result = stripIframes(html);
+    expect(result).not.toContain("<iframe");
+    expect(result).not.toContain("onerror");
+    expect(result).not.toContain("alert(1)");
+    expect(result).toContain("<p>本文</p>");
+  });
+
+  test("YouTube iframe も stripIframes で除去される（embedInfo 経路では iframe 不要）", () => {
+    const html = '<iframe src="https://www.youtube.com/embed/abc123"></iframe><p>本文</p>';
+    const result = stripIframes(html);
+    expect(result).not.toContain("<iframe");
+    expect(result).toContain("<p>本文</p>");
   });
 });
