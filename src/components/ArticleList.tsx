@@ -457,7 +457,7 @@ export default function ArticleList({
               active={bookmarkOnly}
               onClick={toggleBookmarkOnly}
               title="ブックマークフィルター切替 (B)"
-              activeClass="border-bookmark bg-bookmark text-ink-text"
+              variant="bookmark"
             >
               ★
             </FilterPillButton>
@@ -484,7 +484,7 @@ export default function ArticleList({
               active={likeOnly}
               onClick={toggleLikeOnly}
               title="いいねフィルター切替 (I)"
-              activeClass="border-rose-400 bg-rose-400 text-ink-text"
+              variant="like"
             >
               ♥
             </FilterPillButton>
@@ -492,7 +492,7 @@ export default function ArticleList({
               active={noteOnly}
               onClick={toggleNoteOnly}
               title="メモありフィルター切替"
-              activeClass="border-amber-400 bg-amber-400 text-ink-text"
+              variant="note"
             >
               ✎
             </FilterPillButton>
@@ -501,7 +501,6 @@ export default function ArticleList({
                 active={digestMode}
                 onClick={toggleDigestMode}
                 title="ダイジェストモード切替 (D) — フィードごとに最新3件のみ表示"
-                activeClass="border-ink bg-ink text-ink-text"
               >
                 <svg
                   width="12"
@@ -921,28 +920,35 @@ export default function ArticleList({
   );
 }
 
+const PILL_BASE_CLASS =
+  "flex items-center justify-center text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200";
+const PILL_INACTIVE_CLASS =
+  "border-border-default text-text-muted hover:border-text-muted hover:text-text-default";
+const PILL_ACTIVE_CLASSES = {
+  default: "border-ink bg-ink text-ink-text",
+  bookmark: "border-bookmark bg-bookmark text-ink-text",
+  like: "border-rose-400 bg-rose-400 text-ink-text",
+  note: "border-amber-400 bg-amber-400 text-ink-text",
+} as const;
+
 function FilterPillButton({
   active,
   onClick,
   title,
   children,
-  activeClass = "border-ink bg-ink text-ink-text",
+  variant = "default",
 }: {
   active: boolean;
   onClick: () => void;
   title?: string;
   children: ReactNode;
-  activeClass?: string;
+  variant?: keyof typeof PILL_ACTIVE_CLASSES;
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
-      className={`flex items-center justify-center text-[11px] tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 ${
-        active
-          ? activeClass
-          : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
-      }`}
+      className={`${PILL_BASE_CLASS} ${active ? PILL_ACTIVE_CLASSES[variant] : PILL_INACTIVE_CLASS}`}
     >
       {children}
     </button>
