@@ -110,82 +110,160 @@ function matchesFeedId(
  *
  * ※ 2〜10 は activeIds に含まれる記事には適用しない（ナビゲーション中の記事が消えないようにするため）
  */
-function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
+/** feedId フィルター述語（activeIds に関わらず常に適用） */
+function buildFeedPredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
+  const { feedId, bookmarkIds, readingListIds, likeIds, historyIds } = opts;
+  return (a) => matchesFeedId(a, feedId, bookmarkIds, readingListIds, likeIds, historyIds);
+}
+
+/** スヌーズ述語（activeIds 外の記事にのみ適用） */
+function buildSnoozePredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const { snoozedUntil } = opts;
+  if (!snoozedUntil || Object.keys(snoozedUntil).length === 0) return null;
+  const now = new Date().toISOString();
+  return (a) => {
+    const until = snoozedUntil[a.id];
+    return !(until && until > now);
+  };
+}
+
+/** NSFW 述語（activeIds 外の記事にのみ適用） */
+function buildNsfwPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const { nsfwMode, nsfwFeedIds } = opts;
+  if (nsfwMode) return null;
+  return (a) => !nsfwFeedIds.has(a.feedHash);
+}
+
+/** ミュート済みフィード述語（全フィード表示時のみ・activeIds 外の記事にのみ適用） */
+function buildMutedFeedPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const { feedId, mutedFeedIds } = opts;
+  if (feedId || !mutedFeedIds?.size) return null;
+  return (a) => !mutedFeedIds.has(a.feedHash);
+}
+
+/** キーワードフィルター述語（activeIds 外の記事にのみ適用） */
+function buildKeywordPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const { feedFilterMap, globalFilter } = opts;
+  if (!feedFilterMap.size && !globalFilter) return null;
+  return (a) => {
+    const kf = feedFilterMap.get(a.feedHash);
+    if (kf && !matchesKeywordFilter(a, kf)) return false;
+    if (globalFilter && !matchesKeywordFilter(a, globalFilter)) return false;
+    return true;
+  };
+}
+
+/** 既読/ブックマーク/リーディングリスト/いいね/メモ状態述語（activeIds 外の記事にのみ適用） */
+function buildStatePredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
   const {
     feedId,
-    feedFilterMap,
-    readIds,
-    bookmarkIds,
-    readingListIds,
-    likeIds,
-    historyIds,
     unreadOnly,
     bookmarkOnly,
     readingListOnly,
     likeOnly,
     noteOnly,
+    bookmarkIds,
+    readingListIds,
+    likeIds,
     noteIds,
-    query: rawQuery,
-    dateRange,
-    activeIds,
-    nsfwMode,
-    nsfwFeedIds,
-    globalFilter,
+    readIds,
     readBeforeTimestamp,
-    snoozedUntil,
-    readingTimeRange = "all",
-    mutedFeedIds,
-    authorFilter,
-    categoryFilter,
-    feedCategoryMap,
   } = opts;
+  if (!unreadOnly && !bookmarkOnly && !readingListOnly && !likeOnly && !noteOnly) return null;
+  return (a) => {
+    if (
+      unreadOnly &&
+      feedId !== SPECIAL_FEED_IDS.HISTORY &&
+      isArticleRead(a, readIds, readBeforeTimestamp)
+    )
+      return false;
+    if (bookmarkOnly && !bookmarkIds.has(a.id)) return false;
+    if (readingListOnly && !readingListIds.has(a.id)) return false;
+    if (likeOnly && !likeIds.has(a.id)) return false;
+    if (noteOnly && !noteIds.has(a.id)) return false;
+    return true;
+  };
+}
 
-  const q = rawQuery.trim().toLowerCase();
-  const rangeStart = getDateRangeStart(dateRange);
-  const now = snoozedUntil && Object.keys(snoozedUntil).length > 0 ? new Date().toISOString() : "";
+/** 著者フィルター述語（activeIds 外の記事にのみ適用） */
+function buildAuthorPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const { authorFilter } = opts;
+  if (!authorFilter) return null;
+  return (a) => a.author === authorFilter;
+}
+
+/** カテゴリフィルター述語（全フィード表示時のみ・activeIds 外の記事にのみ適用） */
+function buildCategoryPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const { feedId, categoryFilter, feedCategoryMap } = opts;
+  if (feedId || !categoryFilter) return null;
+  return (a) => feedCategoryMap?.get(a.feedHash) === categoryFilter;
+}
+
+/** 読了時間フィルター述語（activeIds 外の記事にのみ適用） */
+function buildReadingTimePredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const { readingTimeRange = "all" } = opts;
+  if (readingTimeRange === "all") return null;
+  return (a) => matchesReadingTimeRange(a, readingTimeRange);
+}
+
+/** 検索クエリ述語（activeIds に関わらず常に適用） */
+function buildQueryPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const q = opts.query.trim().toLowerCase();
+  if (!q) return null;
+  return (a) => articleMatchesQuery(a, q);
+}
+
+/** 日付範囲述語（activeIds に関わらず常に適用） */
+function buildDatePredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const rangeStart = getDateRangeStart(opts.dateRange);
+  if (!rangeStart) return null;
+  return (a) => !!(a.publishedAt && new Date(a.publishedAt) >= rangeStart);
+}
+
+/**
+ * フィルターオプションからフィルター述語を構築して返す。
+ *
+ * ## フィルター適用順
+ * 1. feedId による絞り込み（特殊フィード BOOKMARKS / READING_LIST / LIKES / HISTORY に対応）
+ * 2. スヌーズ中の記事を除外（activeIds に含まれる場合は例外）
+ * 3. NSFW フィードの非表示（nsfwMode が false の場合）
+ * 4. ミュート中のフィードを除外（全フィード表示時のみ）
+ * 5. フィード別キーワードフィルター（feedFilterMap）
+ * 6. グローバルキーワードフィルター（globalFilter）
+ * 7. 未読のみ・ブックマークのみ・リーディングリストのみ・メモありのみフィルター
+ * 8. 著者フィルター（authorFilter が設定されている場合、その著者の記事のみ）
+ * 9. カテゴリフィルター（categoryFilter が設定されている場合、そのカテゴリのフィードの記事のみ）
+ * 10. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
+ * 11. 検索クエリ（title / summary / author / categories の AND 検索）
+ * 12. 日付範囲
+ *
+ * ※ 2〜10 は activeIds に含まれる記事には適用しない（ナビゲーション中の記事が消えないようにするため）
+ */
+function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
+  const { activeIds } = opts;
+
+  // activeIds に関わらず常に適用される述語
+  const alwaysPredicates = [
+    buildFeedPredicate(opts),
+    buildQueryPredicate(opts),
+    buildDatePredicate(opts),
+  ].filter((p): p is (a: Article) => boolean => p !== null);
+
+  // activeIds 外の記事にのみ適用される述語
+  const conditionalPredicates = [
+    buildSnoozePredicate(opts),
+    buildNsfwPredicate(opts),
+    buildMutedFeedPredicate(opts),
+    buildKeywordPredicate(opts),
+    buildStatePredicate(opts),
+    buildAuthorPredicate(opts),
+    buildCategoryPredicate(opts),
+    buildReadingTimePredicate(opts),
+  ].filter((p): p is (a: Article) => boolean => p !== null);
 
   return (a: Article) => {
-    // フィード絞り込み（アクティブな記事も対象）
-    if (!matchesFeedId(a, feedId, bookmarkIds, readingListIds, likeIds, historyIds)) return false;
-
-    // アクティブな記事はフィルター対象外（未読フィルター中でも前後ナビが消えないようにする）
-    if (!activeIds.has(a.id)) {
-      // スヌーズ中の記事は非表示
-      if (snoozedUntil) {
-        const until = snoozedUntil[a.id];
-        if (until && until > now) return false;
-      }
-      // NSFW フィード — NSFW モードでなければ非表示
-      if (!nsfwMode && nsfwFeedIds.has(a.feedHash)) return false;
-      // ミュート中のフィード — 全フィード表示時のみ除外（特定フィード選択時は表示）
-      if (!feedId && mutedFeedIds?.has(a.feedHash)) return false;
-      // キーワードフィルター
-      const kf = feedFilterMap.get(a.feedHash);
-      if (kf && !matchesKeywordFilter(a, kf)) return false;
-      if (globalFilter && !matchesKeywordFilter(a, globalFilter)) return false;
-      // 各種絞り込みフィルター
-      if (
-        unreadOnly &&
-        feedId !== SPECIAL_FEED_IDS.HISTORY &&
-        isArticleRead(a, readIds, readBeforeTimestamp)
-      )
-        return false;
-      if (bookmarkOnly && !bookmarkIds.has(a.id)) return false;
-      if (readingListOnly && !readingListIds.has(a.id)) return false;
-      if (likeOnly && !likeIds.has(a.id)) return false;
-      if (noteOnly && !noteIds.has(a.id)) return false;
-      if (authorFilter && a.author !== authorFilter) return false;
-      // カテゴリフィルター — 全フィード表示時のみ適用（特定フィード選択時は表示）
-      if (!feedId && categoryFilter && feedCategoryMap?.get(a.feedHash) !== categoryFilter)
-        return false;
-      if (!matchesReadingTimeRange(a, readingTimeRange)) return false;
-    }
-
-    // 検索クエリ（title・summary・author・categories を AND 検索）
-    if (q && !articleMatchesQuery(a, q)) return false;
-    // 日付範囲
-    if (rangeStart && (!a.publishedAt || new Date(a.publishedAt) < rangeStart)) return false;
-
+    if (!alwaysPredicates.every((p) => p(a))) return false;
+    if (!activeIds.has(a.id) && !conditionalPredicates.every((p) => p(a))) return false;
     return true;
   };
 }
