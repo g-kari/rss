@@ -182,6 +182,120 @@ pre-commit install   # 初回セットアップ
 | GET      | `/api/release-notes` | リリースノート                   |
 | GET      | `/api/health`        | ヘルスチェック                   |
 
+## API エラーレスポンス
+
+すべてのエラーは `src/lib/api-error.ts` の `apiError()` ヘルパーによって以下の統一形式で返される。
+
+```json
+{
+  "error": "人間可読メッセージ",
+  "code": "MACHINE_READABLE_CODE",
+  "hint": "ユーザー向け補足（オプション）",
+  "retryable": true,
+  "retryAfter": 30
+}
+```
+
+| フィールド   | 型         | 説明                                                                |
+| ------------ | ---------- | ------------------------------------------------------------------- |
+| `error`      | `string`   | 人間可読のエラーメッセージ                                          |
+| `code`       | `string?`  | クライアントが分岐に使う機械可読コード（`SCREAMING_SNAKE_CASE`）    |
+| `hint`       | `string?`  | ユーザー向けの補足ヒント                                            |
+| `retryable`  | `boolean?` | リトライで成功する可能性がある場合 `true`                           |
+| `retryAfter` | `number?`  | リトライまでの秒数（429 時は `Retry-After` ヘッダーにも同値が入る） |
+
+### 全エンドポイント共通
+
+| ステータス | `code`           | 発生条件                                                 |
+| ---------- | ---------------- | -------------------------------------------------------- |
+| 400        | `INVALID_JSON`   | リクエストボディが JSON としてパース失敗                 |
+| 401        | `UNAUTHORIZED`   | セッション未認証またはトークン失効（`withSession` 経由） |
+| 429        | `RATE_LIMITED`   | クールダウン中（`Retry-After` ヘッダー付与）             |
+| 500        | `INTERNAL_ERROR` | 想定外サーバーエラー（`withSession` の例外ハンドラ）     |
+
+### エンドポイント別
+
+#### フィード
+
+| エンドポイント                | ステータス | `code`                | 説明                                                                    |
+| ----------------------------- | ---------- | --------------------- | ----------------------------------------------------------------------- |
+| `POST /api/feeds`             | 400        | `INVALID_URL`         | URL が空または http/https でない                                        |
+| `POST /api/feeds`             | 400        | `INVALID_COOKIE`      | cookie 値が不正                                                         |
+| `POST /api/feeds`             | 400        | `INVALID_SELECTOR`    | cssSelector が 1〜500 文字外、または構文不正                            |
+| `POST /api/feeds`             | 409        | `FEED_EXISTS`         | 同じ feedHash がすでに購読済み                                          |
+| `POST /api/feeds`             | 422        | `FEED_NOT_FOUND`      | RSS 探索・LLM 推論ともに失敗（`canRetryWithSelector: true` 付き）       |
+| `POST /api/feeds`             | 422        | `FEED_LIMIT_REACHED`  | 1 ユーザー当たりの上限超過                                              |
+| `PATCH /api/feeds/:id`        | 400        | `INVALID_TITLE` ほか  | title / filter / nsfw / priority / category / mutedUntil いずれかが不正 |
+| `PATCH/DELETE /api/feeds/:id` | 404        | `FEED_NOT_FOUND`      | 該当購読またはメタが存在しない                                          |
+| `POST /api/feeds/:id/refresh` | 404        | `FEED_NOT_FOUND`      | 購読が存在しない                                                        |
+| `POST /api/feeds/:id/reinfer` | 400        | `NOT_LLM_FEED`        | LLM スクレイピングではないフィードに対する再推論                        |
+| `POST /api/feeds/:id/reinfer` | 422        | `REINFER_FAILED`      | LLM が新しいセレクタを生成できなかった                                  |
+| `POST /api/feeds/import`      | 400        | `INVALID_OPML`        | OPML が空・1MB 超・パース失敗                                           |
+| `POST /api/feeds/import`      | 400        | `EMPTY_OPML`          | OPML から 1 件もフィードを抽出できなかった                              |
+| `POST /api/feeds/import`      | 400        | `OPML_TOO_MANY_FEEDS` | 1 回のインポートあたりの上限超過                                        |
+| `POST /api/feeds/import`      | 422        | `FEED_LIMIT_REACHED`  | ユーザーの購読上限に達している                                          |
+
+#### 記事
+
+| エンドポイント            | ステータス | `code`                          | 説明                                                              |
+| ------------------------- | ---------- | ------------------------------- | ----------------------------------------------------------------- |
+| `GET /api/articles`       | 400        | `INVALID_FEED` / `INVALID_PAGE` | feed/page クエリが不正                                            |
+| `GET /api/articles`       | 404        | `FEED_NOT_FOUND`                | 指定された feed が購読リストに存在しない                          |
+| `POST /api/articles/save` | 400        | `INVALID_URL`                   | url が空または http/https でない                                  |
+| `POST /api/articles/save` | 422        | `SAVED_LIMIT_REACHED`           | 保存記事の上限に達した                                            |
+| `GET /api/content`        | 400        | `INVALID_URL`                   | url クエリが空または http/https でない                            |
+| `GET /api/content`        | 4xx        | `FETCH_FAILED`                  | 取得先が 4xx を返した（元ステータスをそのまま返す）               |
+| `GET /api/content`        | 413        | `PAYLOAD_TOO_LARGE`             | 取得先のサイズが上限超過                                          |
+| `GET /api/content`        | 415        | `UNSUPPORTED_CONTENT_TYPE`      | HTML 以外（`text/html` を含まない `Content-Type`）                |
+| `GET /api/content`        | 502        | `EMPTY_BODY` / `FETCH_FAILED`   | レスポンスボディなし、またはネットワーク失敗（`retryable: true`） |
+| `GET /api/content`        | 504        | `TIMEOUT`                       | フェッチタイムアウト（`retryable: true`）                         |
+| `POST /api/clip`          | 400        | `INVALID_CLIP_PAYLOAD`          | SingleFile 拡張からのペイロードが不正                             |
+
+#### 既読・ブックマーク
+
+| エンドポイント         | ステータス | `code`              | 説明                     |
+| ---------------------- | ---------- | ------------------- | ------------------------ |
+| `POST /api/read-state` | 413        | `PAYLOAD_TOO_LARGE` | 同期ペイロードが上限超過 |
+
+#### AI
+
+| エンドポイント                       | ステータス | `code`                 | 説明                                                  |
+| ------------------------------------ | ---------- | ---------------------- | ----------------------------------------------------- |
+| `POST /api/ai/{summarize,translate}` | 400        | `INVALID_URL`          | url が空または http/https でない                      |
+| `POST /api/ai/{summarize,translate}` | 401        | `UNAUTHORIZED`         | Workers AI が 401 を返した                            |
+| `POST /api/ai/{summarize,translate}` | 429        | `RATE_LIMITED`         | ユーザークールダウン中、または Workers AI が 429 返却 |
+| `POST /api/ai/{summarize,translate}` | 502        | `CONTENT_FETCH_FAILED` | 元記事の取得失敗（`retryable: true`）                 |
+| `POST /api/ai/{summarize,translate}` | 502        | `AI_ERROR`             | Workers AI 呼び出しが想定外失敗（`retryable: true`）  |
+| `POST /api/ai/{summarize,translate}` | 503        | `SERVICE_UNAVAILABLE`  | Workers AI が 503 を返した（`retryable: true`）       |
+
+#### フィード推薦
+
+| エンドポイント                      | ステータス | `code`       | 説明                    |
+| ----------------------------------- | ---------- | ------------ | ----------------------- |
+| `POST /api/recommendations/dismiss` | 400        | `INVALID_ID` | id クエリが空または不正 |
+
+#### Web Push
+
+| エンドポイント               | ステータス | `code`                   | 説明                                               |
+| ---------------------------- | ---------- | ------------------------ | -------------------------------------------------- |
+| `POST /api/push/subscribe`   | 400        | `INVALID_SUBSCRIPTION`   | サブスクリプションオブジェクトが不正               |
+| `POST /api/push/subscribe`   | 400        | `INVALID_ENDPOINT`       | endpoint URL が不正                                |
+| `POST /api/push/subscribe`   | 400        | `INVALID_P256DH`         | p256dh 公開鍵が不正                                |
+| `POST /api/push/subscribe`   | 400        | `INVALID_AUTH_KEY`       | auth 認証鍵が不正                                  |
+| `POST /api/push/subscribe`   | 429        | `TOO_MANY_SUBSCRIPTIONS` | 1 ユーザー当たりの登録上限超過                     |
+| `POST /api/push/unsubscribe` | 400        | `INVALID_ENDPOINT`       | endpoint URL が空または不正                        |
+| `GET /api/push/vapid-key`    | 503        | `PUSH_NOT_CONFIGURED`    | サーバー側 VAPID 公開鍵が未設定                    |
+| `POST /api/push/test`        | 503        | `VAPID_NOT_CONFIGURED`   | サーバー側 VAPID 鍵が未設定（hint に設定コマンド） |
+| `POST /api/push/test`        | 404        | `NO_SUBSCRIPTIONS`       | このユーザーに登録済みサブスクリプションがない     |
+
+#### エンゲージメント
+
+| エンドポイント         | ステータス | `code`            | 説明                     |
+| ---------------------- | ---------- | ----------------- | ------------------------ |
+| `POST /api/engagement` | 400        | `INVALID_PAYLOAD` | payload の形式・値が不正 |
+
+> 新しいエラーコードを追加する場合は `src/lib/api-error.ts` の `apiError()` を経由し、上記表に追記すること。
+
 ## データ構造 (R2)
 
 ```
