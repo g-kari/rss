@@ -2,6 +2,10 @@
 
 ## 2026-04-16
 
+### リファクタリング
+
+- **`buildArticlePredicate()` を述語ビルダー関数に分割** — 12 条件が 1 関数に集中していた `buildArticlePredicate()` を `buildFeedPredicate` / `buildSnoozePredicate` / `buildNsfwPredicate` / `buildMutedFeedPredicate` / `buildKeywordPredicate` / `buildStatePredicate` / `buildAuthorPredicate` / `buildCategoryPredicate` / `buildReadingTimePredicate` / `buildQueryPredicate` / `buildDatePredicate` の 11 述語ビルダーに分割。`Array.every()` で合成し、不要な述語はビルド時に `null` を返してスキップ。(`src/lib/article-filter.ts`)
+
 ### バグ修正
 
 - **`compareByDateDesc` の同日付ソートを安定化** — 同じ `publishedAt` を持つ記事のソート順が不定だった問題を修正。`id`（SHA-256 由来の決定論的ハッシュ）を 2 次ソートキーとして追加し、リフレッシュごとに記事リストの並び順が変わる挙動を解消。(`src/lib/article-utils.ts`)
