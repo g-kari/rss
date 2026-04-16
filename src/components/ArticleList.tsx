@@ -13,6 +13,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEventListener } from "@/hooks/useEventListener";
 import type { Article, Feed, Layout, DateRange } from "../types";
 import type { FilterState } from "../hooks/useFilteredArticles";
+import { SHORTCUT_MAP } from "../config/shortcuts";
 import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { useSearchHistory } from "../hooks/useSearchHistory";
@@ -402,7 +403,7 @@ export default function ArticleList({
             <FilterPillButton
               active={unreadOnly}
               onClick={toggleUnreadOnly}
-              title="未読フィルター切替 (u)"
+              title={`${SHORTCUT_MAP["u"]} (u)`}
             >
               <svg
                 width="12"
@@ -420,7 +421,7 @@ export default function ArticleList({
             <FilterPillButton
               active={bookmarkOnly}
               onClick={toggleBookmarkOnly}
-              title="ブックマークフィルター切替 (B)"
+              title={`${SHORTCUT_MAP["B"]} (B)`}
               variant="bookmark"
             >
               ★
@@ -428,7 +429,7 @@ export default function ArticleList({
             <FilterPillButton
               active={readingListOnly}
               onClick={toggleReadingListOnly}
-              title="後で読むフィルター切替 (T)"
+              title={`${SHORTCUT_MAP["T"]} (T)`}
             >
               <svg
                 width="12"
@@ -447,7 +448,7 @@ export default function ArticleList({
             <FilterPillButton
               active={likeOnly}
               onClick={toggleLikeOnly}
-              title="いいねフィルター切替 (I)"
+              title={`${SHORTCUT_MAP["I"]} (I)`}
               variant="like"
             >
               ♥
@@ -464,7 +465,7 @@ export default function ArticleList({
               <FilterPillButton
                 active={digestMode}
                 onClick={toggleDigestMode}
-                title="ダイジェストモード切替 (D) — フィードごとに最新3件のみ表示"
+                title={`${SHORTCUT_MAP["D"]} (D)`}
               >
                 <svg
                   width="12"
@@ -484,7 +485,7 @@ export default function ArticleList({
             <FilterPillButton
               active={dateRange !== "all"}
               onClick={cycleDateRange}
-              title={`日付フィルター: ${DATE_RANGE_LABELS[dateRange]} (d)`}
+              title={`${SHORTCUT_MAP["d"]}: ${DATE_RANGE_LABELS[dateRange]} (d)`}
             >
               <svg
                 width="12"
@@ -676,7 +677,9 @@ export default function ArticleList({
                     }, 3000);
                   }
                 }}
-                title={confirmMarkAll ? "もう一度押すと全て既読にします" : "全て既読にする (m)"}
+                title={
+                  confirmMarkAll ? "もう一度押すと全て既読にします" : `${SHORTCUT_MAP["m"]} (m)`
+                }
                 className={`flex items-center justify-center rounded-full transition-all duration-200 ${
                   confirmMarkAll
                     ? "px-2 h-6 text-[10px] font-medium text-rose-400 border border-rose-400 hover:bg-rose-400/10"
