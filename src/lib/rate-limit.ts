@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { r2Get, r2Put } from "@/lib/r2";
+import { apiError } from "@/lib/api-error";
 
 /**
  * 同一アイソレート内の並行 checkAndUpdateCooldown 呼び出しを管理する Set。
@@ -21,10 +22,13 @@ export async function checkAndUpdateCooldown(
 ): Promise<NextResponse | null> {
   if (inFlight.has(key)) {
     const retryAfter = Math.ceil(cooldownMs / 1000);
-    return NextResponse.json(
-      { error: "Too many requests", retryAfter },
-      { status: 429, headers: { "Retry-After": String(retryAfter) } },
-    );
+    const res = apiError("Too many requests", 429, {
+      code: "RATE_LIMITED",
+      retryable: true,
+      retryAfter,
+    });
+    res.headers.set("Retry-After", String(retryAfter));
+    return res;
   }
   inFlight.add(key);
   try {
@@ -32,10 +36,13 @@ export async function checkAndUpdateCooldown(
     const elapsed = Date.now() - ts;
     if (elapsed < cooldownMs) {
       const retryAfter = Math.ceil((cooldownMs - elapsed) / 1000);
-      return NextResponse.json(
-        { error: "Too many requests", retryAfter },
-        { status: 429, headers: { "Retry-After": String(retryAfter) } },
-      );
+      const res = apiError("Too many requests", 429, {
+        code: "RATE_LIMITED",
+        retryable: true,
+        retryAfter,
+      });
+      res.headers.set("Retry-After", String(retryAfter));
+      return res;
     }
     await r2Put(bucket, key, { ts: Date.now() });
     return null;

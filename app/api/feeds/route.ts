@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { isValidFeedUrl } from "@/lib/url";
 import { discoverFeedUrl } from "@/lib/feed-discovery";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
@@ -65,30 +66,29 @@ export async function POST(request: Request) {
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
     let url = typeof body?.url === "string" ? body.url.trim() : "";
-    if (!url) return NextResponse.json({ error: "url is required" }, { status: 400 });
+    if (!url) return apiError("url is required", 400, { code: "INVALID_URL" });
     if (!isValidFeedUrl(url))
-      return NextResponse.json({ error: "Invalid URL: must be http or https" }, { status: 400 });
+      return apiError("Invalid URL: must be http or https", 400, { code: "INVALID_URL" });
 
     const cookie = typeof body?.cookie === "string" ? body.cookie.trim() : undefined;
     if (cookie && !isValidCookieHeader(cookie)) {
-      return NextResponse.json({ error: "Invalid cookie value" }, { status: 400 });
+      return apiError("Invalid cookie value", 400, { code: "INVALID_COOKIE" });
     }
 
     const manualCssSelector =
       typeof body?.cssSelector === "string" ? body.cssSelector.trim() : undefined;
     if (manualCssSelector !== undefined) {
       if (manualCssSelector.length === 0 || manualCssSelector.length > 500) {
-        return NextResponse.json(
-          { error: "cssSelector は 1〜500 文字で指定してください" },
-          { status: 400 },
-        );
+        return apiError("cssSelector は 1〜500 文字で指定してください", 400, {
+          code: "INVALID_SELECTOR",
+        });
       }
       // CSS セレクタとして構文が有効か検証する
       try {
         const { document: testDoc } = parseHTML("<html></html>") as { document: Document };
         testDoc.querySelectorAll(manualCssSelector);
       } catch {
-        return NextResponse.json({ error: "無効な CSS セレクタです" }, { status: 400 });
+        return apiError("無効な CSS セレクタです", 400, { code: "INVALID_SELECTOR" });
       }
     }
 
@@ -113,14 +113,11 @@ export async function POST(request: Request) {
       // RSS が見つからない場合、LLM でページの CSS セレクタを推論
       inferred = await inferFeedFromUrl(url, env.AI, cookie);
       if (!inferred) {
-        return NextResponse.json(
-          {
-            error: "RSS フィードが見つかりませんでした",
-            hint: "このサイトには RSS がなく、自動認識にも失敗しました。CSS セレクタを手動で指定して再試行できます。",
-            canRetryWithSelector: true,
-          },
-          { status: 422 },
-        );
+        return apiError("RSS フィードが見つかりませんでした", 422, {
+          code: "FEED_NOT_FOUND",
+          hint: "このサイトには RSS がなく、自動認識にも失敗しました。CSS セレクタを手動で指定して再試行できます。",
+          canRetryWithSelector: true,
+        });
       }
     }
 
@@ -128,13 +125,12 @@ export async function POST(request: Request) {
 
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     if (subs.some((s) => s.feedHash === feedHash)) {
-      return NextResponse.json({ error: "Feed already exists" }, { status: 409 });
+      return apiError("Feed already exists", 409, { code: "FEED_EXISTS" });
     }
     if (subs.length >= MAX_FEEDS_PER_USER) {
-      return NextResponse.json(
-        { error: `Feed limit reached (max ${MAX_FEEDS_PER_USER})` },
-        { status: 422 },
-      );
+      return apiError(`Feed limit reached (max ${MAX_FEEDS_PER_USER})`, 422, {
+        code: "FEED_LIMIT_REACHED",
+      });
     }
 
     // 共有 meta を取得（他ユーザーがすでに登録している場合は既存を流用、なければ新規作成）

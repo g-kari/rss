@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { fetchSingleFeed } from "@/cron/fetch";
 import { singleFeedRefreshCooldownKey } from "@/lib/r2";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
@@ -16,7 +17,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     );
     if (limited) return limited;
     const feed = await fetchSingleFeed(env, session.userId, feedHash);
-    if (!feed) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
+    if (!feed) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
     return NextResponse.json(feed);
   });
 }

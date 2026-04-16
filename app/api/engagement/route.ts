@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody, requireString } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, engagementKey } from "@/lib/r2";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
 import { MAX_ID_LENGTH, isValidFeedHash } from "@/lib/validation";
@@ -44,21 +45,21 @@ export async function POST(req: NextRequest) {
       !action ||
       !VALID_ACTIONS.includes(action as EngagementAction)
     ) {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+      return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
     }
 
     // ai_feedback の場合は value フィールドが必須
     let value: string | undefined;
     if (action === "ai_feedback") {
       const rawValue = requireString(parsed.data.value, 64);
-      if (!rawValue) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+      if (!rawValue) return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
       // "good:summary" / "bad:translate" などの形式で検証
       const [rating, target] = rawValue.split(":");
       if (
         !VALID_AI_FEEDBACK_VALUES.includes(rating as (typeof VALID_AI_FEEDBACK_VALUES)[number]) ||
         !VALID_AI_FEEDBACK_TARGETS.includes(target as (typeof VALID_AI_FEEDBACK_TARGETS)[number])
       ) {
-        return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+        return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
       }
       value = rawValue;
     }
