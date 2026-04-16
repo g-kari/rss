@@ -296,39 +296,7 @@ export default function App() {
     return { bookmarkCount: bm, readingListCount: rl, likeCount: lk, historyCount: hist };
   }, [articles, bookmarkIds, readingListIds, likeIds, historyIds]);
 
-  const {
-    filtered,
-    visible,
-    hasMore,
-    unreadOnly,
-    toggleUnreadOnly,
-    bookmarkOnly,
-    toggleBookmarkOnly,
-    readingListOnly,
-    toggleReadingListOnly,
-    likeOnly,
-    toggleLikeOnly,
-    noteOnly,
-    toggleNoteOnly,
-    digestMode,
-    toggleDigestMode,
-    sortOrder,
-    toggleSortOrder,
-    dateRange,
-    cycleDateRange,
-    readingTimeRange,
-    cycleReadingTimeRange,
-    query,
-    rawQuery,
-    updateQuery,
-    searchRef,
-    sentinelRef,
-    notifyArticlesAdded,
-    authorFilter,
-    setAuthorFilter,
-    categoryFilter,
-    setCategoryFilter,
-  } = useFilteredArticles({
+  const filterState = useFilteredArticles({
     articles,
     feeds,
     feedId: selectedFeedId,
@@ -348,6 +316,33 @@ export default function App() {
     mutedFeedIds,
     notes,
   });
+
+  const {
+    filtered,
+    hasMore,
+    unreadOnly,
+    toggleUnreadOnly,
+    bookmarkOnly,
+    toggleBookmarkOnly,
+    readingListOnly,
+    toggleReadingListOnly,
+    likeOnly,
+    toggleLikeOnly,
+    noteOnly,
+    digestMode,
+    toggleDigestMode,
+    sortOrder,
+    toggleSortOrder,
+    dateRange,
+    cycleDateRange,
+    readingTimeRange,
+    cycleReadingTimeRange,
+    query,
+    updateQuery,
+    searchRef,
+    notifyArticlesAdded,
+    setAuthorFilter,
+  } = filterState;
 
   const currentIndex = useMemo(
     () => (selectedArticle ? filtered.findIndex((a) => a.id === selectedArticle.id) : -1),
@@ -914,41 +909,10 @@ export default function App() {
               markAllRead(selectedFeedId);
               skipRemainingPages(selectedFeedId);
             }}
-            filtered={filtered}
-            visible={visible}
-            hasMore={hasMore}
-            unreadOnly={unreadOnly}
-            toggleUnreadOnly={toggleUnreadOnly}
-            bookmarkOnly={bookmarkOnly}
-            toggleBookmarkOnly={toggleBookmarkOnly}
-            readingListOnly={readingListOnly}
-            toggleReadingListOnly={toggleReadingListOnly}
-            likeOnly={likeOnly}
-            toggleLikeOnly={toggleLikeOnly}
-            noteOnly={noteOnly}
-            toggleNoteOnly={toggleNoteOnly}
-            digestMode={digestMode}
-            toggleDigestMode={toggleDigestMode}
-            sortOrder={sortOrder}
-            toggleSortOrder={toggleSortOrder}
-            dateRange={dateRange}
-            cycleDateRange={cycleDateRange}
-            readingTimeRange={readingTimeRange}
-            cycleReadingTimeRange={cycleReadingTimeRange}
-            query={query}
-            rawQuery={rawQuery}
-            updateQuery={updateQuery}
-            searchRef={searchRef}
-            sentinelRef={sentinelRef}
             feedHasMorePages={feedHasMorePages}
             onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
-            globalFilter={globalFilter}
-            onSaveGlobalFilter={setGlobalFilter}
             notes={notes}
-            authorFilter={authorFilter}
-            onClearAuthorFilter={() => setAuthorFilter(null)}
-            categoryFilter={categoryFilter}
-            onSetCategoryFilter={setCategoryFilter}
+            filter={filterState}
           />
         </ErrorBoundary>
       </div>

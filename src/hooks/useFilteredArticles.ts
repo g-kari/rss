@@ -424,3 +424,5 @@ export function useFilteredArticles({
     setCategoryFilter,
   };
 }
+
+export type FilterState = ReturnType<typeof useFilteredArticles>;
