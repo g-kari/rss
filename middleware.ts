@@ -13,8 +13,10 @@ const FRAME_SRC = [
 const STATIC_CSP_SUFFIX = [
   // Tailwind のインライン style は 'unsafe-inline' が必要
   "style-src 'self' 'unsafe-inline'",
-  // 外部画像は /api/image-proxy 経由
-  "img-src 'self'",
+  // 外部画像は /api/image-proxy 経由。
+  // data: は favicon.ts が canvas.toDataURL() で動的生成する未読バッジ用 data:image/png を許可するため必要。
+  // data: 画像は <img>/<link rel=icon> でスクリプト実行されないため、object-src 'none' と併せて XSS リスクは限定的。
+  "img-src 'self' data:",
   FRAME_SRC,
   // ポッドキャスト等のメディアは HTTPS のみ
   "media-src https:",
