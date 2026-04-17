@@ -2,6 +2,10 @@
 
 ## 2026-04-18
 
+### リファクタリング
+
+- **ArticleView コンポーネントの責務分離（Step 1: ファイル分割）** — 2851 行に肥大化していた `src/components/ArticleView.tsx` から、内部定義されていたサブコンポーネント・hook・定数を `src/components/article-view/` 配下に切り出した。抽出したもの: `EmptyArticleView` / `ShareMenu` (+ `SHARE_WINDOW_TARGETS`) / `ToggleIconButton` / `FetchFullContentArea` / `ArticleNavigation` / `FilterMenu` / `GlobalFilterMenu` / `ImageGallery` / `SnoozeMenu` (+ `SNOOZE_OPTIONS`) / `SelectionExcludePopup` (+ `useSelectionExclude`, `SelectionPopupState`, `MAX_SELECTION_LENGTH`)、共通ユーティリティは `constants.ts` (`MENU_ITEM_CLS`) / `icons.tsx` (`DownloadIcon`, `ExternalLinkIcon`, `ChevronSmall`, `XIcon`) / `filter-shared.tsx` (`buildExcludeOptions`, `useFilterMenuState`, `ExcludeOptionsSection`, `metaLabel`)。本体は 2851 → 1577 行（-45%）に縮小し、個別テストや段階的 Props 削減が可能な土台に整えた。挙動変更なし（Issue #65 Step 1）。
+
 ### ドキュメント整備
 
 - **キーボードショートカット一覧ドキュメントを追加** — `docs/keyboard-shortcuts.md` を新規作成し、全ショートカット（約 40 キー）をカテゴリ別（記事ナビゲーション／記事操作／フィルター・表示切替／検索・フィード操作／モーダル・グローバル）に一覧化。発動条件、モーダル内専用キー、実装箇所リファレンスを整理。`README.md` の技術スタック直後に導線セクションを追加。Single source of truth は既存の `src/config/shortcuts.ts` で、`KeyboardShortcutsModal` と本ドキュメントが同一定義を参照する方針を明記（Issue #69）。
