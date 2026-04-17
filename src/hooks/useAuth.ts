@@ -106,9 +106,16 @@ export function useAuth(): AuthState {
         !loginRetryDone && new URLSearchParams(window.location.search).get("login") === "1";
       try {
         const r = await fetch("/api/auth/me");
+        // 503 + { transient: true } は上流認可サーバーの一時的障害。
+        // ログアウト扱いにせず、既存の認証状態を維持して次回リフレッシュを待つ。
+        if (r.status === 503) {
+          if (mounted) scheduleNextRefresh();
+          return;
+        }
         const { user: u, betaRestricted: br } = (await r.json()) as {
           user: UserProfile | null;
           betaRestricted?: boolean;
+          transient?: boolean;
         };
         if (!mounted) return;
         if (br) setBetaRestricted(true);

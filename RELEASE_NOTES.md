@@ -2,6 +2,10 @@
 
 ## 2026-04-18
 
+### バグ修正
+
+- **上流認可サーバーの一時障害で意図せずログアウトされる問題を修正** — `refreshTokens()` が `!res.ok` を一律 `null` で返していたため、0g0 ID の 5xx 障害・ネットワーク断・タイムアウトでも `/api/auth/me` が refresh_token Cookie を削除してログアウト扱いになっていた。戻り値を判別可能 union `RefreshResult = ok | invalid | transient` に変更し、恒久失敗（4xx / invalid_grant）のみ Cookie 削除、一時失敗（5xx / ネットワークエラー / JSON パース失敗）は Cookie 保持で `503` を返すよう変更。`useAuth` の `checkAuth` も 503 を既存状態維持として扱い次回リフレッシュに委ねる。`deduplicatedRefresh` / `getAuthSession` も同 union に追従。ユニットテスト 12 件 (`e2e/refresh-tokens.spec.ts`) を追加。
+
 ### 新機能
 
 - **AI 翻訳に「原文 / 翻訳」タブ切り替えを追加** — 従来は翻訳結果が本文の上に独立パネルで追加表示されていたが、Google 翻訳のように本文エリア内のタブで原文と翻訳を切り替えて読めるように変更。翻訳実行後は自動で「翻訳」タブに切り替わり、「原文」タブをクリックすれば元の記事本文に戻る。翻訳タブ時のみフィードバックボタン（👍 / 😐 / 👎）を表示。記事を切り替えた際はタブが「原文」にリセットされる。`contentTab` state と `translateResult` への自動切替 `useEffect` で実装。

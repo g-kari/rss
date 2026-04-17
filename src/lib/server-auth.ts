@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { verifyJwt, refreshTokens } from "./auth";
+import { verifyJwt, refreshTokens, type RefreshResult } from "./auth";
 import { apiError } from "./api-error";
 
 export const COOKIE_OPTS = {
@@ -12,10 +12,7 @@ export const COOKIE_OPTS = {
 };
 
 /** リフレッシュリクエストの重複実行を防ぐ Map（refreshToken → Promise） */
-const inflightRefresh = new Map<
-  string,
-  Promise<{ access_token: string; refresh_token: string } | null>
->();
+const inflightRefresh = new Map<string, Promise<RefreshResult>>();
 
 /**
  * refreshTokens の重複呼び出しを deduplication する。
@@ -33,16 +30,12 @@ const inflightRefresh = new Map<
  * deduplication は同一アイソレート内に限定される。
  * 異なるアイソレート間（別の Workers インスタンス）では独立して動作する。
  */
-export function deduplicatedRefresh(
-  refreshToken: string,
-): Promise<{ access_token: string; refresh_token: string } | null> {
+export function deduplicatedRefresh(refreshToken: string): Promise<RefreshResult> {
   const inflight = inflightRefresh.get(refreshToken);
   if (inflight) return inflight;
   const p = refreshTokens(refreshToken)
-    // ネットワークエラー等で reject された場合は null に変換する。
-    // reject のまま伝搬すると getAuthSession が例外をスローし、
-    // withSession の catch に捕捉されて意図しない 500 になってしまうため。
-    .catch(() => null)
+    // 想定外の reject は transient として扱う。500 ではなく 503/ログアウト保留にフォールバックさせる。
+    .catch((): RefreshResult => ({ kind: "transient" }))
     .finally(() => {
       // 自分の Promise だけ削除する。完了後に別の Promise が登録されていれば触らない。
       if (inflightRefresh.get(refreshToken) === p) {
@@ -109,11 +102,12 @@ export async function getAuthSession(): Promise<AuthSession | null> {
   const refreshToken = cookieStore.get("refresh_token")?.value;
   if (refreshToken) {
     const refreshed = await deduplicatedRefresh(refreshToken);
-    if (refreshed) {
-      const payload = await verifyJwt(refreshed.access_token, authBaseUrl);
-      if (payload) return sessionFromPayload(payload, refreshed);
+    if (refreshed.kind === "ok") {
+      const payload = await verifyJwt(refreshed.tokens.access_token, authBaseUrl);
+      if (payload) return sessionFromPayload(payload, refreshed.tokens);
     }
-    // リフレッシュ失敗 → null を返す（Cookie 削除は me/route のみが担う）
+    // refreshed.kind === "invalid" (恒久失敗) or "transient" (一時失敗) のいずれも null を返す。
+    // Cookie 削除は me/route のみが担う（並行 refresh 競合で Cookie が消える問題を防ぐ）。
     return null;
   }
 
