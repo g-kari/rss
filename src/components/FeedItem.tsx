@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import type { Feed } from "../types";
+import type { Feed, FeedGroup } from "../types";
 import FeedFilterModal from "./FeedFilterModal";
 import FeedDetailModal from "./FeedDetailModal";
 import type { KeywordFilter } from "../types";
@@ -95,6 +95,8 @@ export interface FeedItemProps {
   onToggleNsfw?: () => void;
   onTogglePriority?: () => void;
   onSetCategory?: (category: string | null) => Promise<void>;
+  groups?: FeedGroup[];
+  onSetGroup?: (groupId: string | null) => Promise<void>;
   onMute?: (mutedUntil: string | null) => Promise<void>;
 }
 
@@ -136,6 +138,8 @@ export default function FeedItem({
   onToggleNsfw,
   onTogglePriority,
   onSetCategory,
+  groups,
+  onSetGroup,
   onMute,
 }: FeedItemProps) {
   const isStale =
@@ -151,6 +155,7 @@ export default function FeedItem({
   const [loadingAction, setLoadingAction] = useState<"retry" | "reinfer" | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [muteOpen, setMuteOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -298,6 +303,34 @@ export default function FeedItem({
       },
       show: !!onSetCategory,
       className: feed.category ? "text-text-default" : "text-text-faint hover:text-text-default",
+    },
+    {
+      key: "group",
+      label: (() => {
+        const current = groups?.find((g) => g.id === feed.groupId);
+        return current ? `グループ: ${current.name}` : "グループに移動";
+      })(),
+      icon: (
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="1" y="2" width="8" height="6" rx="1" />
+          <line x1="1" y1="4" x2="9" y2="4" />
+        </svg>
+      ),
+      onClick: () => {
+        setMenuOpen(false);
+        setGroupOpen(true);
+      },
+      show: !!onSetGroup,
+      className: feed.groupId ? "text-text-default" : "text-text-faint hover:text-text-default",
     },
     {
       key: "mute",
@@ -762,6 +795,81 @@ export default function FeedItem({
                     {opt.label}
                   </button>
                 ))}
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
+      {groupOpen &&
+        onSetGroup &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[49]"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                setGroupOpen(false);
+              }}
+            />
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px] max-h-[60vh] overflow-y-auto"
+              style={menuPortalStyle}
+            >
+              <div className="px-3 pt-2 pb-1">
+                <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+                  グループに移動
+                </p>
+              </div>
+              <div className="border-t border-border-subtle">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setGroupOpen(false);
+                    void onSetGroup(null);
+                  }}
+                  disabled={!feed.groupId}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left disabled:opacity-40"
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  >
+                    <line x1="1" y1="1" x2="9" y2="9" />
+                    <line x1="9" y1="1" x2="1" y2="9" />
+                  </svg>
+                  グループなし
+                </button>
+                {(groups ?? []).length === 0 ? (
+                  <div className="px-3 py-2 text-[11px] text-text-faint">
+                    サイドバーで先にグループを作成してください
+                  </div>
+                ) : (
+                  (groups ?? []).map((g) => {
+                    const isCurrent = feed.groupId === g.id;
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setGroupOpen(false);
+                          if (!isCurrent) void onSetGroup(g.id);
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left ${isCurrent ? "text-text-strong bg-surface-subtle" : "text-text-default"}`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${isCurrent ? "bg-accent-dot" : "bg-transparent border border-text-faint"}`}
+                        />
+                        <span className="truncate">{g.name}</span>
+                      </button>
+                    );
+                  })
+                )}
               </div>
             </div>
           </>,
