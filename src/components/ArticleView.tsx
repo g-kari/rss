@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type {
   Article,
   EngagementAction,
@@ -23,6 +23,12 @@ import { useArticleAi } from "../hooks/useArticleAi";
 import Spinner from "./Spinner";
 import { useImageDownload } from "../hooks/useImageDownload";
 import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
+import { useArticleNote } from "../hooks/useArticleNote";
+import { useArticleAiRatings } from "../hooks/useArticleAiRatings";
+import { useArticleHighlight } from "../hooks/useArticleHighlight";
+import { useSyntaxHighlight } from "../hooks/useSyntaxHighlight";
+import { useMathRender } from "../hooks/useMathRender";
+import { useSliderGallery } from "../hooks/useSliderGallery";
 import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import {
   type LineHeight,
@@ -159,21 +165,15 @@ export default function ArticleView({
     resetTranslate,
   } = useArticleAi(article?.id);
 
-  // AI 評価ボタンの選択状態（記事切り替え時にリセット）
-  const [summaryRating, setSummaryRating] = useState<"good" | "neutral" | "bad" | null>(null);
-  const [translateRating, setTranslateRating] = useState<"good" | "neutral" | "bad" | null>(null);
-  // 本文エリアのタブ選択状態（原文 / 翻訳）— 翻訳結果が出たら自動で "translate" に切り替わる
-  const [contentTab, setContentTab] = useState<"original" | "translate">("original");
-  useEffect(() => {
-    setSummaryRating(null);
-    setTranslateRating(null);
-    setContentTab("original");
-  }, [article?.id]);
-  // 翻訳が完了したら自動で翻訳タブに切り替える
-  useEffect(() => {
-    if (translateResult) setContentTab("translate");
-    else setContentTab("original");
-  }, [translateResult]);
+  // AI 評価ボタンの選択状態＋原文/翻訳タブ切替（記事切り替え時にリセット）
+  const {
+    summaryRating,
+    setSummaryRating,
+    translateRating,
+    setTranslateRating,
+    contentTab,
+    setContentTab,
+  } = useArticleAiRatings({ articleId: article?.id, translateResult });
 
   // リーダー表示設定（行間・コンテンツ幅・両端揃え）— localStorage で永続化
   const [lineHeight, setLineHeight] = useState<LineHeight>(() => {
@@ -209,14 +209,12 @@ export default function ArticleView({
   }
 
   // メモ編集ステート（記事切り替え時にリセット）
-  const [noteText, setNoteText] = useState(note ?? "");
-  const [noteExpanded, setNoteExpanded] = useState(!!note);
-  useEffect(() => {
-    setNoteText(note ?? "");
-    setNoteExpanded(!!note);
-    // note は deps から除外 — 記事切り替え時のみリセットし、保存後の prop 更新では上書きしない
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [article?.id]);
+  const { noteText, setNoteText, noteExpanded, setNoteExpanded, handleNoteBlur } = useArticleNote({
+    article,
+    note,
+    onSetNote,
+    onDeleteNote,
+  });
 
   // 読み上げ（TTS）
   const {
@@ -290,18 +288,6 @@ export default function ArticleView({
     document,
   );
 
-  const handleNoteBlur = useCallback(() => {
-    if (!article || !onSetNote) return;
-    const trimmed = noteText.trim();
-    const current = note ?? "";
-    if (trimmed === current) return;
-    if (trimmed === "") {
-      onDeleteNote?.(article.id);
-    } else {
-      onSetNote(article.id, trimmed);
-    }
-  }, [article, note, noteText, onDeleteNote, onSetNote]);
-
   const progressBarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { popup: selectionPopup, clearPopup: clearSelectionPopup } = useSelectionExclude(mainRef);
@@ -361,77 +347,7 @@ export default function ArticleView({
   );
 
   // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する
-  const injectSliderControls = useCallback(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    const sliders = el.querySelectorAll<HTMLElement>(".rss-image-slider");
-    sliders.forEach((slider) => {
-      if (slider.closest(".rss-slider-wrapper")) return; // 二重注入を防止
-
-      // スライダーを相対配置のラッパーで包む
-      const wrapper = document.createElement("div");
-      wrapper.className = "rss-slider-wrapper";
-      wrapper.style.cssText = "position:relative;margin-bottom:1.25em";
-      slider.style.marginBottom = "0";
-      slider.parentNode!.insertBefore(wrapper, slider);
-      wrapper.appendChild(slider);
-
-      function makeNavBtn(dir: "prev" | "next") {
-        const btn = document.createElement("button");
-        const side = dir === "prev" ? "left:8px" : "right:8px";
-        btn.setAttribute("aria-label", dir === "prev" ? "前の画像" : "次の画像");
-        btn.style.cssText =
-          `position:absolute;${side};top:50%;transform:translateY(-50%);` +
-          `width:32px;height:32px;border-radius:50%;` +
-          `background:rgba(0,0,0,0.45);color:white;border:none;cursor:pointer;` +
-          `display:flex;align-items:center;justify-content:center;` +
-          `opacity:0;transition:opacity 0.15s;z-index:1;padding:0;flex-shrink:0`;
-        const path = dir === "prev" ? "M9 2L4 7l5 5" : "M5 2l5 5-5 5";
-        btn.innerHTML =
-          `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="white" ` +
-          `stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
-          `<path d="${path}"/></svg>`;
-        btn.addEventListener("click", () =>
-          slider.scrollBy({
-            left: dir === "prev" ? -slider.clientWidth : slider.clientWidth,
-            behavior: "smooth",
-          }),
-        );
-        wrapper.appendChild(btn);
-        return btn;
-      }
-
-      const prevBtn = makeNavBtn("prev");
-      const nextBtn = makeNavBtn("next");
-      wrapper.addEventListener("mouseenter", () => {
-        prevBtn.style.opacity = "1";
-        nextBtn.style.opacity = "1";
-      });
-      wrapper.addEventListener("mouseleave", () => {
-        prevBtn.style.opacity = "0";
-        nextBtn.style.opacity = "0";
-      });
-
-      // マウスホイールの縦スクロールを横スクロールに変換（PC 操作性向上）
-      slider.addEventListener(
-        "wheel",
-        (e: WheelEvent) => {
-          if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-          e.preventDefault();
-          slider.scrollBy({
-            left: e.deltaY > 0 ? slider.clientWidth : -slider.clientWidth,
-            behavior: "smooth",
-          });
-        },
-        { passive: false },
-      );
-    });
-  }, []);
-
-  // processedContent が変わるたびに再注入する（テーマ切り替え・全文取得・記事切り替えなど）
-  useEffect(() => {
-    injectSliderControls();
-  }, [processedContent, injectSliderControls]);
+  useSliderGallery(contentRef, processedContent);
 
   // X (Twitter) ツイート iframe を postMessage で動的リサイズ
   // platform.twitter.com から {"method":"twttr.resize","params":{"height":N}} が届くたびに
@@ -501,116 +417,12 @@ export default function ArticleView({
   // 本文内スタンドアロンリンクに OGP プレビューカードを注入
   useContentLinkPreviews(contentRef, processedContent);
 
-  // シンタックスハイライト（highlight.js）
-  useEffect(() => {
-    if (!contentRef.current || !processedContent) return;
-    const el = contentRef.current;
-    let cancelled = false;
-    import("highlight.js/lib/common").then(({ default: hljs }) => {
-      if (cancelled || !el.isConnected) return;
-      el.querySelectorAll<HTMLElement>("pre code:not(.hljs)").forEach((block) => {
-        hljs.highlightElement(block);
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [processedContent]);
+  // シンタックスハイライト（highlight.js）と数式レンダリング（KaTeX）
+  useSyntaxHighlight(contentRef, processedContent);
+  useMathRender(contentRef, processedContent);
 
-  useEffect(() => {
-    if (!contentRef.current || !processedContent) return;
-    const el = contentRef.current;
-    let cancelled = false;
-    import("katex/contrib/auto-render").then(({ default: renderMathInElement }) => {
-      if (cancelled || !el.isConnected) return;
-      renderMathInElement(el, {
-        delimiters: [
-          { left: "$$", right: "$$", display: true },
-          { left: "$", right: "$", display: false },
-          { left: "\\[", right: "\\]", display: true },
-          { left: "\\(", right: "\\)", display: false },
-        ],
-        throwOnError: false,
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [processedContent]);
-
-  // 検索クエリのハイライト — query / processedContent が変わるたびに DOM に <mark> を注入し、
-  // 次回実行前に前回の marks を text node に戻してクリーンアップする
-  const highlightMarksRef = useRef<HTMLElement[]>([]);
-  useEffect(() => {
-    // 前回の marks をクリーンアップ
-    for (const mark of highlightMarksRef.current) {
-      const parent = mark.parentNode;
-      if (!parent) continue;
-      parent.replaceChild(document.createTextNode(mark.textContent ?? ""), mark);
-      parent.normalize();
-    }
-    highlightMarksRef.current = [];
-
-    const q = query.trim();
-    if (!contentRef.current || !q || !processedContent) return;
-
-    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`(${escaped})`, "gi");
-    const marks: HTMLElement[] = [];
-
-    const walker = document.createTreeWalker(contentRef.current, NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
-        const parent = (node as Text).parentElement;
-        if (!parent) return NodeFilter.FILTER_SKIP;
-        if (parent.closest("pre, code, script, style")) return NodeFilter.FILTER_SKIP;
-        return NodeFilter.FILTER_ACCEPT;
-      },
-    });
-
-    const textNodes: Text[] = [];
-    let node: Node | null;
-    while ((node = walker.nextNode())) {
-      textNodes.push(node as Text);
-    }
-
-    for (const textNode of textNodes) {
-      const text = textNode.textContent ?? "";
-      if (!regex.test(text)) {
-        regex.lastIndex = 0;
-        continue;
-      }
-      regex.lastIndex = 0;
-
-      const fragment = document.createDocumentFragment();
-      let lastIndex = 0;
-      let match: RegExpExecArray | null;
-
-      while ((match = regex.exec(text)) !== null) {
-        if (match.index > lastIndex) {
-          fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
-        }
-        const mark = document.createElement("mark");
-        mark.className = "search-highlight";
-        mark.textContent = match[0];
-        fragment.appendChild(mark);
-        marks.push(mark);
-        lastIndex = match.index + match[0].length;
-      }
-
-      if (lastIndex < text.length) {
-        fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
-      }
-
-      textNode.parentNode?.replaceChild(fragment, textNode);
-    }
-
-    highlightMarksRef.current = marks;
-
-    // 先頭のマッチ箇所へスクロール
-    if (marks.length > 0) {
-      marks[0].scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [query, processedContent]);
+  // 検索クエリのハイライト — query / processedContent が変わるたびに DOM に <mark> を注入
+  useArticleHighlight({ contentRef, query, processedContent });
 
   if (!article) {
     return <EmptyArticleView onMobileBack={onMobileBack} />;
