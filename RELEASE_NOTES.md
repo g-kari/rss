@@ -2,6 +2,10 @@
 
 ## 2026-04-17
 
+### セキュリティ
+
+- **`vite-plus` の path traversal 脆弱性対応 (issue #63, GHSA-33r3-4whc-44c2)** — `vite-plus` を `^0.1.14` → `^0.1.18` に更新。`<= 0.1.16` の `downloadPackageManager()` に `VP_HOME` 外へのファイル書き込みを許す path traversal (high severity) があり、Dependabot alert #28/#29 として通知されていた。dev 依存のため本番実行時には影響しないが、ビルド／`pre-commit` 実行時の悪用リスクを排除。
+
 ### バグ修正
 
 - **端末間の既読・ブックマーク・後で読む・いいね状態のズレを解消 (issue #62)** — `POST /api/read-state` を単純上書きから 3-way 差分マージに変更。クライアントは削除 ID を `removedIds` として送信し、サーバー側で `mergeReadStateUpdate()` が `(existing ∪ update) \ removedIds` を計算して保存する。POST レスポンスでマージ結果を返し、クライアントは即座に他端末の最新状態を取り込む。`toggleRead` も削除時の即時同期を有効化し、既読解除が他端末で復活するケースを防止。タブ復帰時の R2 再取得クールダウンは 60 秒→ 15 秒に短縮。新規純粋関数 `src/lib/read-state-merge.ts` と回帰テスト `e2e/read-state-merge.spec.ts`（10 ケース）を追加。
