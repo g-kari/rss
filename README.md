@@ -15,6 +15,11 @@ Next.js 16 + Cloudflare Workers で動くパーソナル RSS リーダー。`rss
 | 自動更新       | Cloudflare Cron Trigger（30分ごと）                            |
 | デプロイ       | Cloudflare Workers CI/CD（master push で自動ビルド＆デプロイ） |
 
+## キーボードショートカット
+
+主要な操作はすべてキーボードから実行できる。詳細は [docs/keyboard-shortcuts.md](docs/keyboard-shortcuts.md) を参照。
+アプリ内では `?` キーで一覧モーダルを表示できる。
+
 ## セットアップ
 
 ### 1. 依存パッケージインストール
