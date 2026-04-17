@@ -2,6 +2,10 @@
 
 ## 2026-04-18
 
+### 新機能
+
+- **フィードグループ化 Step 1 — データモデル & バックエンド API** — 複数フィードをユーザー定義のグループ（例: `My Tech Blogs` / `News`）にまとめるための基盤を導入。`src/types.ts` に `FeedGroup` 型（`id` / `name` / `order` / `collapsed?` / `createdAt`）を追加し、`UserSubscription` / `Feed` / `FeedPatchPayload` に `groupId?: string` を追加。R2 ストレージは `users/{userId}/feed-groups.json` を新設し、ヘルパー (`src/lib/feed-groups.ts`: `readFeedGroups` / `writeFeedGroups` / `feedGroupsKey` + 定数 `MAX_FEED_GROUPS_PER_USER=100` / `FEED_GROUP_NAME_MAX_LENGTH=50`) を追加。API エンドポイントは 4 本を新設 — `GET /api/feed-groups`（order 昇順で一覧）、`POST /api/feed-groups`（name 重複チェック・100件上限・`crypto.randomUUID` で ID 生成・201 返却）、`PATCH /api/feed-groups/:id`（name / order / collapsed を部分更新・重複チェック・order は整数のみ）、`DELETE /api/feed-groups/:id`（先にグループを削除してから所属購読の groupId をクリア → orphan 寄りの失敗モードに倒すことで復旧容易）。既存 `PATCH /api/feeds/:id` にも `groupId` 受付を追加（null でクリア、文字列なら実在グループ ID の存在チェック）。UI 統合は Step 2 で別途対応。E2E（`e2e/api-health.spec.ts`）に未認証時 401 ガードを追加（Issue #67 Step 1）。
+
 ### リファクタリング
 
 - **ArticleView コンポーネントの責務分離（Step 3: カスタム hook 分離）** — `src/components/ArticleView.tsx` 内に散在していた副作用ロジックを 6 つのカスタム hook に抽出し、本体を 1556 → 1368 行（-188 行）に縮小。追加した hook: `useArticleNote`（メモ編集ステート）/ `useArticleAiRatings`（AI 評価ボタン状態＋原文/翻訳タブ切替）/ `useArticleHighlight`（検索クエリ DOM ハイライトの注入・クリーンアップ）/ `useSyntaxHighlight`（highlight.js 遅延適用）/ `useMathRender`（KaTeX 遅延レンダリング）/ `useSliderGallery`（画像スライダーへの prev/next ボタン＋ホイール横スクロール注入）。各 hook は元実装と同じ deps ・依存関係を保ち、挙動変更なし（Issue #65 Step 3）。

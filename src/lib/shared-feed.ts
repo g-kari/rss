@@ -273,6 +273,7 @@ export function assembleClientFeed(meta: SharedFeedMeta, sub: UserSubscription):
     nsfw: sub.nsfw ?? false,
     priority: sub.priority,
     category: sub.category,
+    groupId: sub.groupId,
     isScraping: !!meta.cssSelectors,
     cssSelector: meta.cssSelectors?.articleLink,
     failedSelectors: meta.failedSelectors,
