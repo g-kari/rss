@@ -4,7 +4,13 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { type LruCache, aiLruCache, aiTranslateLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
-import { translateInBrowser } from "../lib/browser-translator";
+import { translateHtmlInBrowser } from "../lib/translate-html";
+
+/** 翻訳・要約結果は plain text または HTML のどちらも取り得るため区別する */
+export interface AiOperationResult {
+  text: string;
+  isHtml: boolean;
+}
 
 interface ArticleAiState {
   aiResult: string | null;
@@ -13,16 +19,42 @@ interface ArticleAiState {
   /** AI 要約を実行する（LRU キャッシュ優先、サーバー側コンテンツ取得） */
   doRunAi: (url: string, articleId?: string) => Promise<void>;
   resetAi: () => void;
-  translateResult: string | null;
+  translateResult: AiOperationResult | null;
   translateLoading: boolean;
   translateError: string;
   /**
    * AI 翻訳を実行する（LRU キャッシュ優先）。
-   * `plainText` を渡すと Chrome Translator API が使える環境ではブラウザ側で完結させ、
-   * そうでない環境では従来の Workers AI (`/api/ai/translate`) にフォールバックする。
+   * `html` を渡すと Chrome Translator API が使える環境で HTML 構造を保持したまま翻訳し、
+   * そうでない環境では従来の Workers AI (`/api/ai/translate`) の plain text 翻訳にフォールバックする。
    */
-  doTranslate: (url: string, articleId?: string, plainText?: string) => Promise<void>;
+  doTranslate: (url: string, articleId?: string, html?: string) => Promise<void>;
   resetTranslate: () => void;
+}
+
+/**
+ * LruCache は string 値固定のため、HTML フラグ付き翻訳結果を保存するには JSON シリアライズする。
+ * 既存キャッシュとの互換性のため、JSON パースに失敗したら「旧来の plain text」として扱う。
+ */
+function decodeCached(cached: string): AiOperationResult {
+  try {
+    const parsed = JSON.parse(cached) as unknown;
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      "text" in parsed &&
+      typeof (parsed as { text: unknown }).text === "string"
+    ) {
+      const obj = parsed as { text: string; isHtml?: unknown };
+      return { text: obj.text, isHtml: Boolean(obj.isHtml) };
+    }
+  } catch {
+    /* 旧形式 (plain text) としてそのまま返す */
+  }
+  return { text: cached, isHtml: false };
+}
+
+function encodeForCache(result: AiOperationResult): string {
+  return JSON.stringify(result);
 }
 
 /**
@@ -36,9 +68,9 @@ function useAiOperation(
   endpoint: string,
   lruCache: LruCache,
   errorMessage: string,
-  localProcessor?: (plainText: string) => Promise<string | null>,
+  localProcessor?: (input: string) => Promise<AiOperationResult | null>,
 ) {
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<AiOperationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
@@ -52,14 +84,14 @@ function useAiOperation(
   }, []);
 
   const run = useCallback(
-    async (url: string, currentArticleId?: string, plainText?: string) => {
+    async (url: string, currentArticleId?: string, localInput?: string) => {
       if (!url.trim()) return;
 
       // LRU キャッシュヒット時はネットワークコールなし
       if (currentArticleId) {
         const cached = lruCache.get(currentArticleId);
         if (cached) {
-          setResult(cached);
+          setResult(decodeCached(cached));
           return;
         }
       }
@@ -73,12 +105,12 @@ function useAiOperation(
       setError("");
 
       // クライアント側処理を試行（Chrome Translator API 等）
-      if (localProcessor && plainText) {
+      if (localProcessor && localInput) {
         try {
-          const local = await localProcessor(plainText);
+          const local = await localProcessor(localInput);
           if (controller.signal.aborted) return;
-          if (local !== null && local.length > 0) {
-            if (currentArticleId) lruCache.set(currentArticleId, local);
+          if (local !== null && local.text.length > 0) {
+            if (currentArticleId) lruCache.set(currentArticleId, encodeForCache(local));
             setResult(local);
             setLoading(false);
             return;
@@ -97,8 +129,9 @@ function useAiOperation(
         });
         const data = (await res.json()) as { result?: string; error?: string };
         if (data.result) {
-          if (currentArticleId) lruCache.set(currentArticleId, data.result);
-          setResult(data.result);
+          const entry: AiOperationResult = { text: data.result, isHtml: false };
+          if (currentArticleId) lruCache.set(currentArticleId, encodeForCache(entry));
+          setResult(entry);
         } else if (data.error) {
           setError(data.error);
         } else {
@@ -117,13 +150,20 @@ function useAiOperation(
   return { result, loading, error, run, reset };
 }
 
+/** HTML 翻訳結果を AiOperationResult でラップする */
+async function processTranslateHtml(html: string): Promise<AiOperationResult | null> {
+  const translated = await translateHtmlInBrowser(html);
+  if (translated === null) return null;
+  return { text: translated, isHtml: true };
+}
+
 export function useArticleAi(articleId: string | undefined): ArticleAiState {
   const ai = useAiOperation("/api/ai/summarize", aiLruCache, "AI の処理に失敗しました");
   const translate = useAiOperation(
     "/api/ai/translate",
     aiTranslateLruCache,
     "翻訳の処理に失敗しました",
-    translateInBrowser,
+    processTranslateHtml,
   );
 
   // 記事が変わったら進行中のリクエストをキャンセルして AI 状態を自動リセットする
@@ -135,7 +175,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
   }, [articleId]);
 
   return {
-    aiResult: ai.result,
+    aiResult: ai.result?.text ?? null,
     aiLoading: ai.loading,
     aiError: ai.error,
     doRunAi: ai.run,
