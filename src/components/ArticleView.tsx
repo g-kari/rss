@@ -98,6 +98,11 @@ interface Props {
   onSetAuthorFilter?: (author: string) => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
+  autoReadEnabled?: boolean;
+  autoReadThreshold?: number;
+  onToggleAutoRead?: () => void;
+  onCycleAutoReadThreshold?: () => void;
+  onAutoMarkRead?: (articleId: string) => void;
 }
 
 const SHORT_CONTENT_THRESHOLD = 400;
@@ -1417,6 +1422,11 @@ export default function ArticleView({
   onSetAuthorFilter,
   focusMode = false,
   onToggleFocusMode,
+  autoReadEnabled = false,
+  autoReadThreshold = 80,
+  onToggleAutoRead,
+  onCycleAutoReadThreshold,
+  onAutoMarkRead,
 }: Props) {
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -1737,6 +1747,12 @@ export default function ArticleView({
     }
   }, [article?.id]);
 
+  // 自動既読の最新設定を ref で参照（IntersectionObserver のコールバックが stale にならないように）
+  const autoReadEnabledRef = useSyncedRef(autoReadEnabled);
+  const autoReadThresholdRef = useSyncedRef(autoReadThreshold);
+  const onAutoMarkReadRef = useSyncedRef(onAutoMarkRead);
+  const articleIdRef = useSyncedRef(article?.id);
+
   // IntersectionObserver で読書進捗を追跡し、プログレスバーをリアルタイム更新
   useReadingProgress({
     articleId: article?.id,
@@ -1745,6 +1761,16 @@ export default function ArticleView({
       if (progressBarRef.current) {
         progressBarRef.current.style.width = `${pct}%`;
         progressBarRef.current.style.display = pct > 0 ? "" : "none";
+      }
+      // 自動既読: 閾値以上までスクロールしたら既読マーク（markRead は冪等）
+      const currentArticleId = articleIdRef.current;
+      if (
+        autoReadEnabledRef.current &&
+        pct >= autoReadThresholdRef.current &&
+        currentArticleId &&
+        onAutoMarkReadRef.current
+      ) {
+        onAutoMarkReadRef.current(currentArticleId);
       }
     },
   });
@@ -2091,6 +2117,43 @@ export default function ArticleView({
             >
               均等
             </button>
+
+            {/* 自動既読トグル */}
+            {onToggleAutoRead && (
+              <button
+                onClick={onToggleAutoRead}
+                title={
+                  autoReadEnabled
+                    ? `自動既読: ON (${autoReadThreshold}% でスクロール既読)`
+                    : "自動既読: OFF"
+                }
+                aria-label={
+                  autoReadEnabled
+                    ? `自動既読を OFF にする（現在 ${autoReadThreshold}% で既読マーク）`
+                    : "自動既読を ON にする"
+                }
+                aria-pressed={autoReadEnabled}
+                className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
+                  autoReadEnabled ? "text-text-strong" : "text-text-faint hover:text-text-muted"
+                }`}
+                style={{ lineHeight: 1 }}
+              >
+                自動既読
+              </button>
+            )}
+
+            {/* 自動既読の閾値サイクルボタン（ON のときのみ表示） */}
+            {onToggleAutoRead && autoReadEnabled && onCycleAutoReadThreshold && (
+              <button
+                onClick={onCycleAutoReadThreshold}
+                title={`自動既読の閾値: ${autoReadThreshold}% — クリックで次の閾値に切替`}
+                aria-label={`自動既読の閾値を切替（現在 ${autoReadThreshold}%）`}
+                className="px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 text-text-strong hover:bg-surface-subtle"
+                style={{ lineHeight: 1 }}
+              >
+                {autoReadThreshold}%
+              </button>
+            )}
 
             {/* AI 要約・翻訳ボタン */}
             {hasContent && (
