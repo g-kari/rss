@@ -362,7 +362,9 @@ export function useFilteredArticles({
   useEffect(() => {
     if (serverLoadCount === 0) return;
     setPage((prev) => Math.max(prev, Math.ceil(filteredRef.current.length / PAGE_SIZE) || 1));
-  }, [serverLoadCount, filteredRef]);
+    // filteredRef は useSyncedRef が返す安定した ref オブジェクトなので deps 不要。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverLoadCount]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;

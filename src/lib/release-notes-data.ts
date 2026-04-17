@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-17
 
+### コードレビュー
+
+- **\`useFilteredArticles\` の useEffect deps から \`filteredRef\` を除外 (issue #68)** — \`src/hooks/useFilteredArticles.ts:362-365\` の useEffect で \`useSyncedRef\` が返す安定 ref \`filteredRef\` が依存配列に含まれていた問題を修正。ref オブジェクト自体は不変で deps に含める意味がなく、将来 \`useSyncedRef\` の実装が変わった際に予期しない再発火を招くリスクがあった。\`eslint-disable-next-line react-hooks/exhaustive-deps\` を付け、deps は \`[serverLoadCount]\` のみに限定。他 hook (\`useReadState\` / \`useEventListener\` 等) の \`useSyncedRef\` 利用箇所も監査済みで、問題箇所は本件のみ。
+
 ### セキュリティ
 
 - **\`vite-plus\` の path traversal 脆弱性対応 (issue #63, GHSA-33r3-4whc-44c2)** — \`vite-plus\` を \`^0.1.14\` → \`^0.1.18\` に更新。\`<= 0.1.16\` の \`downloadPackageManager()\` に \`VP_HOME\` 外へのファイル書き込みを許す path traversal (high severity) があり、Dependabot alert #28/#29 として通知されていた。dev 依存のため本番実行時には影響しないが、ビルド／\`pre-commit\` 実行時の悪用リスクを排除。
