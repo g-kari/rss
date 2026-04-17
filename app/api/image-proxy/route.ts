@@ -9,6 +9,7 @@ import {
 } from "@/lib/fetch";
 import { ALLOWED_IMAGE_CONTENT_TYPES, detectImageMimeType } from "@/lib/image-mime";
 import { errorImageSvg } from "@/lib/image-error-placeholder";
+import { isContentTypeConsistent, isSameOriginImageRequest } from "@/lib/image-proxy-security";
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -19,6 +20,13 @@ export async function GET(request: Request) {
 
 async function handleGet(request: Request, ctx: ExecutionContext): Promise<Response> {
   const reqUrl = new URL(request.url);
+
+  // CSP (`img-src 'self'`) を実質的に保護するため、同一オリジンからの画像取得のみ受け付ける。
+  // Sec-Fetch-Site / Referer で判定し、不一致は 403 で拒否する（fail-closed）。
+  if (!isSameOriginImageRequest(request.headers, reqUrl.origin)) {
+    return new Response(null, { status: 403 });
+  }
+
   const url = reqUrl.searchParams.get("url");
   if (!url) return new Response(null, { status: 400 });
 
@@ -75,6 +83,10 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
     // image/* と宣言されていても実際のバイト列が画像でなければ拒否する。
     const mimeType = detectImageMimeType(merged);
     if (!mimeType) return errorImageSvg("unavailable");
+
+    // 宣言された Content-Type とマジックバイト由来の MIME が矛盾する場合はキャッシュ汚染を防ぐため拒否。
+    // 例: 攻撃者が `Content-Type: image/png` で JPEG を返してプロキシキャッシュを占拠する試みを遮断。
+    if (!isContentTypeConsistent(ct, mimeType)) return errorImageSvg("unavailable");
 
     // Cloudflare Cache API に保存（fire-and-forget）
     cachePutAsync(

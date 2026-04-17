@@ -2,6 +2,10 @@
 
 ## 2026-04-17
 
+### セキュリティ
+
+- **`/api/image-proxy` の同一オリジン検証と Content-Type 偽装検出を追加 (issue #64)** — `middleware.ts` で CSP を `img-src 'self'` に絞っている前提が image-proxy 側で担保できていなかった問題に対応。ハンドラ冒頭で `Sec-Fetch-Site` → `Referer` の優先順位で同一オリジン判定し、不一致は 403 で fail-closed。さらにマジックバイト由来の MIME と宣言 `Content-Type` が矛盾する場合は拒否し、`image/png` と偽装した別フォーマットによるキャッシュ汚染を遮断。純粋関数として `src/lib/image-proxy-security.ts` に切り出し、ユニットテスト 13 件 (`e2e/image-proxy-security.spec.ts`) を追加。
+
 ### バグ修正
 
 - **`POST /api/read-state` の 413 エラーを解消** — 既読 ID が 20,000 件を超えるヘビーユーザーで `Payload Too Large` が発生し、既読・ブックマーク・後で読む・いいね状態の同期が全く成功しない不具合を修正。`useReadState` がフルセットを毎回送るのをやめ、前回同期以降の「追加差分 (`pendingAddedRef`)」と「削除差分 (`pendingRemovedRef`)」のみを POST するように変更。サーバー側マージロジック (`mergeReadStateUpdate`) は既に `(existing ∪ update) \ removedIds` で動くため無変更。安全マージンとして `MAX_READ_IDS` を 20,000 → 100,000、他 ID 上限も 2,000 → 10,000 に引き上げ。`applyServerState` ではサーバーに無い local ID を `pendingAdded` に積み直すことでリロード後の未同期データを失わない。`globalFilter` は変更時のみ送信する `dirty` フラグ方式に変更し、他端末設定の意図しない上書きを防止。
