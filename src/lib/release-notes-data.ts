@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-17
 
+### セキュリティ
+
+- **プロンプトインジェクション対策を強化 (issue #55)** — \`src/lib/recommendation.ts\` の \`sanitizeForPrompt()\` に多層防御を追加。NFKC 正規化で全角文字によるバイパス（\`［／ＩＮＳＴ］\` 等）を防止し、LLM チャットテンプレートトークン（\`<|im_start|>\` / \`[INST]\` / \`<s>\` / \`<<SYS>>\` / \`[SYSTEM]\` 等）、プロンプト区切り記号の連続（\`---\` / \`###\` / バッククォートフェンス / \`"""\` 等）を中和する処理を追加。空白の正規化も強化し、不正な入力による LLM プロンプトの乗っ取りを防ぐ。34 ケースの回帰テスト (\`e2e/sanitize-for-prompt.spec.ts\`) を追加。
+
 ### ドキュメント整備
 
 - **API エラーコード一覧表を整備 (issue #61)** — \`README.md\` に「API エラーレスポンス」章を新設し、共通エラー（\`UNAUTHORIZED\` / \`INVALID_JSON\` / \`RATE_LIMITED\` / \`INTERNAL_ERROR\`）と各エンドポイント固有のステータス・\`code\` 一覧を明文化。\`canRetryWithSelector\` や \`Retry-After\` 等の付随フィールドも記載し、クライアント実装やデバッグ時にソースコードを読まずに参照できるようにした。

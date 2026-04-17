@@ -24,9 +24,39 @@ function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
  * 改行・制御文字を除去し、最大長に切り詰める。
  * 悪意ある RSS フィードによるプロンプトインジェクションを緩和する。
  */
-function sanitizeForPrompt(text: string, maxLength = 120): string {
+/**
+ * LLM プロンプトに埋め込む前に外部入力（RSS タイトル等）を無害化する。
+ *
+ * 多層防御アプローチ:
+ *   1. 制御文字・ゼロ幅・方向制御文字を除去
+ *   2. LLM チャットテンプレートトークン（<|im_start|>, [INST], <s> 等）を中和
+ *   3. プロンプト区切りとして悪用されがちな記号の連続（`---`, `###`, ``` など）を除去
+ *   4. 空白を正規化し、長さ上限で切り詰める
+ *
+ * 記事タイトルなど日本語・英数字の正当な文字は保持する。
+ */
+/**
+ * LLM プロンプトに埋め込む前に外部入力（RSS タイトル等）を無害化する。
+ *
+ * 多層防御アプローチ:
+ *   1. NFKC 正規化で全角・互換文字を半角化（`［／ＩＮＳＴ］` 等によるバイパスを防止）
+ *   2. 制御文字・ゼロ幅・方向制御文字を除去
+ *   3. LLM チャットテンプレートトークン（<|im_start|>, [INST], <s>, <<SYS>> 等）を中和
+ *   4. プロンプト区切りとして悪用されがちな記号の連続（`---`, `###`, ``` など）を除去
+ *   5. 空白を正規化し、長さ上限で切り詰める
+ *
+ * 記事タイトルなど日本語・英数字の正当な文字は保持する。
+ */
+export function sanitizeForPrompt(text: string, maxLength = 120): string {
   return text
+    .normalize("NFKC")
     .replace(/[\x00-\x1F\x7F\u200B-\u200D\u2028\u2029\u202A-\u202E\uFEFF]/g, " ")
+    .replace(/<\|[^>|]*\|>/g, " ")
+    .replace(/<<\/?SYS>>/gi, " ")
+    .replace(/\[\/?(?:INST|SYSTEM|USER|ASSISTANT)\]/gi, " ")
+    .replace(/<\/?s>/g, " ")
+    .replace(/[-=#*`"'~_]{3,}/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);
 }
