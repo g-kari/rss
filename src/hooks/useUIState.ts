@@ -42,6 +42,23 @@ function loadTheme(): Theme {
 const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
 const loadCollapsedCategories = () => loadSet(STORAGE_KEYS.COLLAPSED_CATEGORIES);
 
+/** 自動既読の閾値（%）— 70 / 80 / 90 をサイクル */
+export const AUTO_READ_THRESHOLD_CYCLE = [70, 80, 90] as const;
+export type AutoReadThreshold = (typeof AUTO_READ_THRESHOLD_CYCLE)[number];
+const DEFAULT_AUTO_READ_THRESHOLD: AutoReadThreshold = 80;
+
+function loadAutoReadEnabled(): boolean {
+  return storageGet(STORAGE_KEYS.AUTO_READ_ENABLED) === "1";
+}
+
+function loadAutoReadThreshold(): AutoReadThreshold {
+  const stored = storageGet(STORAGE_KEYS.AUTO_READ_THRESHOLD);
+  const num = stored == null ? NaN : Number(stored);
+  return AUTO_READ_THRESHOLD_CYCLE.includes(num as AutoReadThreshold)
+    ? (num as AutoReadThreshold)
+    : DEFAULT_AUTO_READ_THRESHOLD;
+}
+
 /** localStorage に永続化する enum 系設定の state と onChange セッターをまとめて返す。 */
 function useStoredSetting<T extends string>(load: () => T, key: string): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(load);
@@ -84,6 +101,10 @@ export interface UIState {
   activateNSFW: () => void;
   deactivateNSFW: () => void;
   onNSFWAnimationComplete: () => void;
+  autoReadEnabled: boolean;
+  toggleAutoRead: () => void;
+  autoReadThreshold: AutoReadThreshold;
+  cycleAutoReadThreshold: () => void;
 }
 
 /**
@@ -112,6 +133,9 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [autoReadEnabled, setAutoReadEnabled] = useState<boolean>(loadAutoReadEnabled);
+  const [autoReadThreshold, setAutoReadThreshold] =
+    useState<AutoReadThreshold>(loadAutoReadThreshold);
 
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
   const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
@@ -173,6 +197,23 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     setFocusMode((v) => !v);
   }, []);
 
+  const toggleAutoRead = useCallback(() => {
+    setAutoReadEnabled((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.AUTO_READ_ENABLED, next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
+  const cycleAutoReadThreshold = useCallback(() => {
+    setAutoReadThreshold((prev) => {
+      const idx = AUTO_READ_THRESHOLD_CYCLE.indexOf(prev);
+      const next = AUTO_READ_THRESHOLD_CYCLE[(idx + 1) % AUTO_READ_THRESHOLD_CYCLE.length];
+      storageSet(STORAGE_KEYS.AUTO_READ_THRESHOLD, String(next));
+      return next;
+    });
+  }, []);
+
   const installApp = useCallback(async () => {
     if (!installPrompt) return;
     await installPrompt.prompt();
@@ -209,5 +250,9 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     activateNSFW,
     deactivateNSFW,
     onNSFWAnimationComplete,
+    autoReadEnabled,
+    toggleAutoRead,
+    autoReadThreshold,
+    cycleAutoReadThreshold,
   };
 }

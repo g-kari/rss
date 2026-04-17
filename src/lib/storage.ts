@@ -57,6 +57,8 @@ export const STORAGE_KEYS = {
   TEXT_JUSTIFY: "rss-text-justify",
   READING_PROGRESS_PREFIX: "rss-reading-progress:",
   DIGEST_MODE: "rss-digest-mode",
+  AUTO_READ_ENABLED: "rss-auto-read-enabled",
+  AUTO_READ_THRESHOLD: "rss-auto-read-threshold",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

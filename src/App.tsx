@@ -71,6 +71,10 @@ export default function App() {
     activateNSFW,
     deactivateNSFW,
     onNSFWAnimationComplete,
+    autoReadEnabled,
+    toggleAutoRead,
+    autoReadThreshold,
+    cycleAutoReadThreshold,
   } = useUIState(initialMobilePane);
 
   // カラム幅（PC）
@@ -957,6 +961,11 @@ export default function App() {
             }}
             focusMode={focusMode}
             onToggleFocusMode={toggleFocusMode}
+            autoReadEnabled={autoReadEnabled}
+            autoReadThreshold={autoReadThreshold}
+            onToggleAutoRead={toggleAutoRead}
+            onCycleAutoReadThreshold={cycleAutoReadThreshold}
+            onAutoMarkRead={markRead}
           />
         </ErrorBoundary>
       </div>

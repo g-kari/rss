@@ -2,6 +2,10 @@
 
 ## 2026-04-17
 
+### 新機能
+
+- **スクロール進捗に基づく自動既読マーク機能 (issue #59)** — 記事を閾値（70% / 80% / 90%）までスクロールすると自動的に既読マークする機能を追加。`useReadingProgress` の `onProgressChange` コールバックをフックして実装し、`useReadState.markRead` は冪等のため追加コストなし。設定は `ArticleView` のリーダー設定行にトグル＋右クリックで閾値サイクルのボタンを新設（デフォルト OFF / 80%）。`STORAGE_KEYS.AUTO_READ_ENABLED` と `STORAGE_KEYS.AUTO_READ_THRESHOLD` で localStorage に永続化。
+
 ### セキュリティ
 
 - **プロンプトインジェクション対策を強化 (issue #55)** — `src/lib/recommendation.ts` の `sanitizeForPrompt()` に多層防御を追加。NFKC 正規化で全角文字によるバイパス（`［／ＩＮＳＴ］` 等）を防止し、LLM チャットテンプレートトークン（`<|im_start|>` / `[INST]` / `<s>` / `<<SYS>>` / `[SYSTEM]` 等）、プロンプト区切り記号の連続（`---` / `###` / バッククォートフェンス / `"""` 等）を中和する処理を追加。空白の正規化も強化し、不正な入力による LLM プロンプトの乗っ取りを防ぐ。34 ケースの回帰テスト (`e2e/sanitize-for-prompt.spec.ts`) を追加。
