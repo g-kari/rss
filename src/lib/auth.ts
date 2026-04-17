@@ -168,23 +168,51 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
 /**
  * リフレッシュトークンを使って新しいアクセストークンとリフレッシュトークンを取得する。
  * access_token (15分) 期限切れ時に `requireSession()` から自動的に呼び出される。
- * 失敗時は `null` を返す（リフレッシュトークン自体が失効している場合など）。
+ *
+ * 戻り値は判別可能 union:
+ *  - `ok`: 新しいトークン取得成功
+ *  - `invalid`: refresh_token が失効・無効（4xx）— 恒久的失敗でログアウト扱い
+ *  - `transient`: 上流認可サーバーの 5xx / ネットワークエラー / タイムアウト — 一時的失敗で Cookie は保持
+ *
+ * 以前は失敗を一律 `null` で返していたため、一時的な上流障害でもユーザーが
+ * 強制ログアウトされてしまう不具合があった。
  */
-export async function refreshTokens(
-  refreshToken: string,
-): Promise<{ access_token: string; refresh_token: string } | null> {
+export type RefreshResult =
+  | { kind: "ok"; tokens: { access_token: string; refresh_token: string } }
+  | { kind: "invalid" }
+  | { kind: "transient" };
+
+export async function refreshTokens(refreshToken: string): Promise<RefreshResult> {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
-  const res = await fetch(`${authBaseUrl}/auth/refresh`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
-    },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
-  if (!res.ok) return null;
-  const { data } = (await res.json()) as { data: { access_token: string; refresh_token: string } };
-  return data;
+  let res: Response;
+  try {
+    res = await fetch(`${authBaseUrl}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  } catch {
+    // ネットワークエラー・DNS・タイムアウト → 一時的失敗
+    return { kind: "transient" };
+  }
+  if (res.ok) {
+    try {
+      const { data } = (await res.json()) as {
+        data: { access_token: string; refresh_token: string };
+      };
+      return { kind: "ok", tokens: data };
+    } catch {
+      // レスポンスボディのパース失敗は上流バグ → 一時的失敗として扱う
+      return { kind: "transient" };
+    }
+  }
+  // 4xx: refresh_token 失効・無効 (invalid_grant, 401 Unauthorized など) → 恒久的失敗
+  if (res.status >= 400 && res.status < 500) return { kind: "invalid" };
+  // 5xx: 上流障害 → 一時的失敗
+  return { kind: "transient" };
 }
 
 /**

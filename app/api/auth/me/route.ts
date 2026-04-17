@@ -45,18 +45,24 @@ export async function GET() {
   const refreshToken = cookieStore.get("refresh_token")?.value;
   if (refreshToken) {
     const refreshed = await deduplicatedRefresh(refreshToken);
-    if (refreshed) {
+    if (refreshed.kind === "ok") {
       // リフレッシュ成功 → verify 結果に関わらず新しいトークンを Cookie にセット
       // （verify 失敗は JWKS 一時障害の可能性があるため Cookie は残す）
-      const r = await verifyAndLoad(refreshed.access_token, authBaseUrl, env);
+      const r = await verifyAndLoad(refreshed.tokens.access_token, authBaseUrl, env);
       if (r.kind === "restricted") return NextResponse.json({ user: null, betaRestricted: true });
 
       const body = r.kind === "ok" ? { user: r.profile } : { user: null };
       const res = NextResponse.json(body);
-      setTokenCookies(res, refreshed);
+      setTokenCookies(res, refreshed.tokens);
       return res;
     }
-    // リフレッシュ失敗（refresh_token 無効）→ Cookie を削除してログアウト
+    if (refreshed.kind === "transient") {
+      // 上流認可サーバーの 5xx / ネットワーク障害 / タイムアウト → Cookie を消さずに
+      // クライアントに一時的失敗を伝える。useAuth は transient=true を受けて
+      // 既存の認証状態を維持（誤ログアウトを防止）。
+      return NextResponse.json({ user: null, transient: true }, { status: 503 });
+    }
+    // リフレッシュ失敗（refresh_token 無効 / invalid_grant）→ Cookie を削除してログアウト
     const res = NextResponse.json({ user: null });
     res.cookies.delete("access_token");
     res.cookies.delete("refresh_token");
