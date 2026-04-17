@@ -216,3 +216,31 @@ export interface ReadState {
   /** 記事への個人メモ — articleId → メモ本文（最大 2000 文字） */
   notes?: Record<string, string> | null;
 }
+
+/** `/api/feeds/:id` PATCH 用のボディ型 — Feed のうちクライアントから更新可能なフィールドのみ */
+export interface FeedPatchPayload {
+  nsfw?: boolean;
+  priority?: "high" | null;
+  category?: string | null;
+  mutedUntil?: string | null;
+  filter?: KeywordFilter | null;
+}
+
+/** `/api/read-state` POST ボディ型 — 追加差分・削除差分・単値フィールドを一括送信 */
+export interface ReadStatePayload {
+  readIds: string[];
+  bookmarkIds: string[];
+  readingListIds: string[];
+  likeIds: string[];
+  readBeforeTimestamp: string | null;
+  snoozedUntil: Record<string, string> | null;
+  notes: Record<string, string> | null;
+  removedIds: {
+    readIds: string[];
+    bookmarkIds: string[];
+    readingListIds: string[];
+    likeIds: string[];
+  };
+  /** キーが存在する場合のみサーバー側で上書きする（他端末設定保護） */
+  globalFilter?: KeywordFilter | null;
+}

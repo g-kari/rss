@@ -10,7 +10,7 @@ import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 import FeedQuickSwitchModal from "./components/FeedQuickSwitchModal";
 import SnoozeModal from "./components/SnoozeModal";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
-import type { Article, EngagementAction, Feed, KeywordFilter } from "./types";
+import type { Article, EngagementAction, Feed, FeedPatchPayload, KeywordFilter } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useReadState } from "./hooks/useReadState";
@@ -202,7 +202,7 @@ export default function App() {
   }, [totalUnread]);
 
   const patchFeed = useCallback(
-    async (id: string, body: Record<string, unknown>): Promise<Feed | null> => {
+    async (id: string, body: FeedPatchPayload): Promise<Feed | null> => {
       const res = await apiFetch(`/api/feeds/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -215,7 +215,7 @@ export default function App() {
   );
 
   const applyFeedPatch = useCallback(
-    async (id: string, patch: Record<string, unknown>): Promise<Feed | null> => {
+    async (id: string, patch: FeedPatchPayload): Promise<Feed | null> => {
       const updated = await patchFeed(id, patch);
       if (updated) updateFeed(updated);
       return updated;

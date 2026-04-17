@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import type { Article, KeywordFilter, UserProfile, ReadState } from "../types";
+import type { Article, KeywordFilter, UserProfile, ReadState, ReadStatePayload } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
 import {
@@ -135,7 +135,7 @@ function serializeReadState(
   includeGlobalFilter: boolean,
 ): string {
   const pruned = pruneExpiredSnoozes(snoozedUntil);
-  const payload: Record<string, unknown> = {
+  const payload: ReadStatePayload = {
     readIds: [...added.read],
     bookmarkIds: [...added.bookmarks],
     readingListIds: [...added.readingList],
