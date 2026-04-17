@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-18
 
+### バグ修正
+
+- **CSP \`img-src 'self'\` によるファビコン未読バッジ読込失敗を修正** — \`middleware.ts\` の CSP を \`img-src 'self' data:\` に緩和。\`src/lib/favicon.ts\` の \`updateFaviconBadge()\` が \`canvas.toDataURL("image/png")\` で生成する \`data:image/png;base64,...\` を \`<link rel="icon">\` に設定していたが、\`img-src 'self'\` のみではブラウザが favicon link の data: URI を拒否し、コンソールに CSP violation が大量発生。連動して React の Suspense 境界で未読カウント更新が失敗して Minified React error #419 が発生していた。\`data:\` 画像は \`<img>\` / \`<link rel=icon>\` でスクリプトを実行できないため、\`object-src 'none'\` と合わせて XSS リスクは限定的と判断。
+
 ### simplify
 
 - **API リクエストボディの \`Record<string, unknown>\` を具体型へ置換 (issue #66)** — \`src/App.tsx\` の \`patchFeed\` / \`applyFeedPatch\` 引数を \`Record<string, unknown>\` から新設の \`FeedPatchPayload\` (src/types.ts) に置き換え。\`src/hooks/useReadState.ts\` の \`serializeReadState\` payload も新設 \`ReadStatePayload\` 型に変更。\`src/lib/xml-parser.ts\` の \`extractMetadata\` は \`FeedItem\` を直接受け取る形にし、\`item as unknown as Record<string, unknown>\` の三段キャストを 3 箇所削除。IDE 補完精度とリファクタ安全性が向上し、Feed PATCH 可能フィールド (nsfw / priority / category / mutedUntil / filter) とサーバー差分同期ペイロードが型レベルで可視化される。
