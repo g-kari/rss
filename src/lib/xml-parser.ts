@@ -175,11 +175,11 @@ function str(val: unknown): string {
  * HTML を含む長い値は 500 文字に切り詰める。
  */
 function extractMetadata(
-  item: Record<string, unknown>,
+  item: FeedItem,
   skipKeys: Set<string>,
 ): Array<{ key: string; value: string }> {
   const entries: Array<{ key: string; value: string }> = [];
-  for (const [key, val] of Object.entries(item)) {
+  for (const [key, val] of Object.entries(item) as [string, unknown][]) {
     if (skipKeys.has(key) || key.startsWith("@_") || key === "#text") continue;
     const value = str(val).trim().slice(0, 500);
     if (value) entries.push({ key, value });
@@ -411,7 +411,7 @@ export function parseFeed(xml: string): ParsedFeed {
           categories: toArray(item.category)
             .map((c) => str(c))
             .filter(Boolean),
-          metadata: extractMetadata(item as unknown as Record<string, unknown>, RSS2_SKIP_KEYS),
+          metadata: extractMetadata(item, RSS2_SKIP_KEYS),
         };
       }),
     };
@@ -448,7 +448,7 @@ export function parseFeed(xml: string): ParsedFeed {
                 : str(c),
             )
             .filter(Boolean),
-          metadata: extractMetadata(entry as unknown as Record<string, unknown>, ATOM_SKIP_KEYS),
+          metadata: extractMetadata(entry, ATOM_SKIP_KEYS),
         };
       }),
     };
@@ -478,7 +478,7 @@ export function parseFeed(xml: string): ParsedFeed {
           categories: toArray(item.category)
             .map((c) => str(c))
             .filter(Boolean),
-          metadata: extractMetadata(item as unknown as Record<string, unknown>, RDF_SKIP_KEYS),
+          metadata: extractMetadata(item, RDF_SKIP_KEYS),
         };
       }),
     };
