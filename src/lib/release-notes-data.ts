@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-18
 
+### ドキュメント整備
+
+- **キーボードショートカット一覧ドキュメントを追加** — \`docs/keyboard-shortcuts.md\` を新規作成し、全ショートカット（約 40 キー）をカテゴリ別（記事ナビゲーション／記事操作／フィルター・表示切替／検索・フィード操作／モーダル・グローバル）に一覧化。発動条件、モーダル内専用キー、実装箇所リファレンスを整理。\`README.md\` の技術スタック直後に導線セクションを追加。Single source of truth は既存の \`src/config/shortcuts.ts\` で、\`KeyboardShortcutsModal\` と本ドキュメントが同一定義を参照する方針を明記（Issue #69）。
+
 ### バグ修正
 
 - **上流認可サーバーの一時障害で意図せずログアウトされる問題を修正** — \`refreshTokens()\` が \`!res.ok\` を一律 \`null\` で返していたため、0g0 ID の 5xx 障害・ネットワーク断・タイムアウトでも \`/api/auth/me\` が refresh_token Cookie を削除してログアウト扱いになっていた。戻り値を判別可能 union \`RefreshResult = ok | invalid | transient\` に変更し、恒久失敗（4xx / invalid_grant）のみ Cookie 削除、一時失敗（5xx / ネットワークエラー / JSON パース失敗）は Cookie 保持で \`503\` を返すよう変更。\`useAuth\` の \`checkAuth\` も 503 を既存状態維持として扱い次回リフレッシュに委ねる。\`deduplicatedRefresh\` / \`getAuthSession\` も同 union に追従。ユニットテスト 12 件 (\`e2e/refresh-tokens.spec.ts\`) を追加。
