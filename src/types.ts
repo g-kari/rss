@@ -72,6 +72,8 @@ export interface UserSubscription {
   priority?: "high";
   /** カテゴリ — ユーザーが設定したグループ名 */
   category?: string;
+  /** フィードグループ ID — `users/{userId}/feed-groups.json` の `FeedGroup.id` を参照 */
+  groupId?: string;
   /** ミュート解除予定時刻（ISO 8601）— この時刻までフィードを全フィード表示から非表示にする */
   mutedUntil?: string;
   /** 最終アクセス日時（ISO 8601）— GET /api/feeds 時に更新。cron 非アクティブ判定に使用 */
@@ -99,6 +101,8 @@ export interface Feed {
   priority?: "high";
   /** カテゴリ — ユーザーが設定したグループ名 */
   category?: string;
+  /** フィードグループ ID — `users/{userId}/feed-groups.json` の `FeedGroup.id` を参照 */
+  groupId?: string;
   /** LLM で CSS セレクタを推論したスクレイピングフィードか */
   isScraping?: boolean;
   /** 現在使用中の CSS セレクタ（isScraping のみ） */
@@ -222,8 +226,22 @@ export interface FeedPatchPayload {
   nsfw?: boolean;
   priority?: "high" | null;
   category?: string | null;
+  groupId?: string | null;
   mutedUntil?: string | null;
   filter?: KeywordFilter | null;
+}
+
+export interface FeedGroup {
+  /** グループ ID（サーバー側で `crypto.randomUUID()` により生成） */
+  id: string;
+  /** 表示名 */
+  name: string;
+  /** 表示順（昇順） */
+  order: number;
+  /** 折りたたみ状態 */
+  collapsed?: boolean;
+  /** 作成日時（ISO 8601） */
+  createdAt: string;
 }
 
 /** `/api/read-state` POST ボディ型 — 追加差分・削除差分・単値フィールドを一括送信 */

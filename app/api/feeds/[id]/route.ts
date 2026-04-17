@@ -8,6 +8,7 @@ import {
   assembleClientFeed,
 } from "@/lib/shared-feed";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
+import { readFeedGroups } from "@/lib/feed-groups";
 import { stripControlChars, isValidIso8601 } from "@/lib/validation";
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -36,6 +37,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       nsfw?: unknown;
       priority?: unknown;
       category?: unknown;
+      groupId?: unknown;
       mutedUntil?: unknown;
     }>(request);
     if (!parsed.ok) return parsed.error;
@@ -91,6 +93,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           return apiError("category too long", 400, { code: "INVALID_CATEGORY" });
         if (category) sub.category = category;
         else delete sub.category;
+      }
+    }
+
+    if ("groupId" in body) {
+      if (body.groupId === null) {
+        delete sub.groupId;
+      } else if (typeof body.groupId !== "string") {
+        return apiError("groupId must be a string or null", 400, { code: "INVALID_GROUP_ID" });
+      } else {
+        const groups = await readFeedGroups(env.RSS_DATA, session.userId);
+        if (!groups.some((g) => g.id === body.groupId)) {
+          return apiError("Feed group not found", 404, { code: "FEED_GROUP_NOT_FOUND" });
+        }
+        sub.groupId = body.groupId;
       }
     }
 
