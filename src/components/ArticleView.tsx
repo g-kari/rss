@@ -43,7 +43,7 @@ import {
 } from "../lib/reader-settings";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useEventListener } from "../hooks/useEventListener";
-import { toPlainText } from "../lib/html";
+import { sanitizeHtml, toPlainText } from "../lib/html";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import { useGestureNav } from "../hooks/useGestureNav";
 import { useReadingProgress, loadProgress } from "../hooks/useReadingProgress";
@@ -1551,8 +1551,7 @@ export default function ArticleView({
         if (s.translateResult) {
           s.resetTranslate();
         } else if (!s.translateLoading && !s.fetching) {
-          const plain = s.storedContent ? toPlainText(s.storedContent) : undefined;
-          void s.doTranslate(s.articleLink, s.articleId!, plain);
+          void s.doTranslate(s.articleLink, s.articleId!, s.storedContent ?? undefined);
         }
       }
       if (e.key === " ") {
@@ -2184,8 +2183,7 @@ export default function ArticleView({
                       return;
                     }
                     if (article.link) {
-                      const plain = storedContent ? toPlainText(storedContent) : undefined;
-                      doTranslate(article.link, article.id, plain);
+                      doTranslate(article.link, article.id, storedContent ?? undefined);
                     }
                   }}
                   disabled={translateLoading || fetching}
@@ -2616,9 +2614,16 @@ export default function ArticleView({
                 ))}
               </div>
             </div>
-            <p className="text-[14px] leading-[1.8] text-text-default whitespace-pre-wrap">
-              {translateResult}
-            </p>
+            {translateResult.isHtml ? (
+              <div
+                className="article-content text-[14px] leading-[1.8] text-text-default"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(translateResult.text) }}
+              />
+            ) : (
+              <p className="text-[14px] leading-[1.8] text-text-default whitespace-pre-wrap">
+                {translateResult.text}
+              </p>
+            )}
           </div>
         )}
         {translateError && <p className="mb-6 text-[11px] text-rose-400">{translateError}</p>}

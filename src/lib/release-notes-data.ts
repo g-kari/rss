@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-18
 
+### 新機能
+
+- **AI 翻訳を HTML 構造保持方式に変更（Google 翻訳ライク）** — 従来の \`toPlainText\` でタグを剥がしてから翻訳する方式を廃止。\`src/lib/translate-html.ts\` を新設し、Chrome Translator API 対応ブラウザでは \`DOMParser\` で記事 HTML をパースしてテキストノード・\`alt\` / \`title\` / \`aria-label\` / \`placeholder\` 属性のみを個別に翻訳、\`<p>\` / \`<a>\` / \`<strong>\` / \`<img>\` 等のタグ構造・埋め込み・リンクをそのまま保持。\`<code>\` / \`<pre>\` / \`<script>\` / \`<style>\` / \`<kbd>\` / \`<samp>\` / \`<var>\` / \`<iframe>\` / \`<embed>\` / \`<object>\` / \`<noscript>\` / \`<textarea>\` はコード・実行系として翻訳対象から除外。個別ノードは \`Promise.allSettled\` で並列翻訳し、一部失敗しても他ノードに影響しない。\`useArticleAi\` の結果型を \`AiOperationResult {text, isHtml}\` に変更し、\`ArticleView\` では \`isHtml=true\` なら \`sanitizeHtml\` 後に \`article-content\` クラスで HTML レンダリング、\`false\`（Workers AI フォールバック）なら従来のプレーンテキスト表示。ユニットテスト 12 件 (\`e2e/translate-html.spec.ts\`) を追加。
+
 ### バグ修正
 
 - **CSP \`img-src 'self'\` によるファビコン未読バッジ読込失敗を修正** — \`middleware.ts\` の CSP を \`img-src 'self' data:\` に緩和。\`src/lib/favicon.ts\` の \`updateFaviconBadge()\` が \`canvas.toDataURL("image/png")\` で生成する \`data:image/png;base64,...\` を \`<link rel="icon">\` に設定していたが、\`img-src 'self'\` のみではブラウザが favicon link の data: URI を拒否し、コンソールに CSP violation が大量発生。連動して React の Suspense 境界で未読カウント更新が失敗して Minified React error #419 が発生していた。\`data:\` 画像は \`<img>\` / \`<link rel=icon>\` でスクリプトを実行できないため、\`object-src 'none'\` と合わせて XSS リスクは限定的と判断。
