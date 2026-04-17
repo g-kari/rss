@@ -12,6 +12,39 @@ import { getAuthReady, getTokenExpiry } from "../hooks/useAuth";
 
 let inflightAuthRecovery: Promise<boolean> | null = null;
 
+type ApiErrorListener = (info: { input: string; status?: number; message: string }) => void;
+const errorListeners = new Set<ApiErrorListener>();
+
+/** 通信エラー通知のグローバルリスナーを登録する。戻り値で解除可能。 */
+export function onApiError(listener: ApiErrorListener): () => void {
+  errorListeners.add(listener);
+  return () => {
+    errorListeners.delete(listener);
+  };
+}
+
+function describeStatus(status?: number): string {
+  if (status === 413) return "送信データが大きすぎます";
+  if (status === 401 || status === 403) return "認証エラー：再ログインしてください";
+  if (status === 429) return "リクエスト過多：少し待って再試行してください";
+  if (status === 504) return "タイムアウト：時間をおいて再試行してください";
+  if (status !== undefined && status >= 500) return "サーバーエラー（時間をおいて再試行）";
+  if (status !== undefined) return `HTTP ${status}`;
+  return "ネットワークエラー";
+}
+
+function notifyError(input: string, status?: number): void {
+  if (errorListeners.size === 0) return;
+  const message = describeStatus(status);
+  for (const listener of errorListeners) {
+    try {
+      listener({ input, status, message });
+    } catch {
+      // リスナー内の例外は他のリスナーに影響させない
+    }
+  }
+}
+
 async function recoverAuth(): Promise<boolean> {
   if (inflightAuthRecovery) return inflightAuthRecovery;
   inflightAuthRecovery = (async () => {
@@ -53,12 +86,30 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
     await recoverAuth();
     didProactiveRefresh = true;
   }
-  const res = await fetch(input, init);
+  let res: Response;
+  try {
+    res = await fetch(input, init);
+  } catch (err) {
+    notifyError(input, undefined);
+    throw err;
+  }
   // プロアクティブリフレッシュ済みの場合は 401 フォールバックをスキップ
   // （inflightAuthRecovery がリセットされた後に recoverAuth を二重呼び出しするのを防ぐ）
   if (res.status === 401 && !didProactiveRefresh) {
     const recovered = await recoverAuth();
-    if (recovered) return fetch(input, init);
+    if (recovered) {
+      try {
+        return await fetch(input, init);
+      } catch (err) {
+        notifyError(input, undefined);
+        throw err;
+      }
+    }
+  }
+  // 4xx/5xx はグローバルリスナーに通知してトースト等で表示する。
+  // 認証関連（401）と通常フロー 404 は通知対象外（読み込みリトライで大量通知になるのを防ぐ）。
+  if (!res.ok && res.status !== 401 && res.status !== 404) {
+    notifyError(input, res.status);
   }
   return res;
 }

@@ -6,6 +6,14 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-17
 
+### バグ修正
+
+- **\`POST /api/read-state\` の 413 エラーを解消** — 既読 ID が 20,000 件を超えるヘビーユーザーで \`Payload Too Large\` が発生し、既読・ブックマーク・後で読む・いいね状態の同期が全く成功しない不具合を修正。\`useReadState\` がフルセットを毎回送るのをやめ、前回同期以降の「追加差分 (\`pendingAddedRef\`)」と「削除差分 (\`pendingRemovedRef\`)」のみを POST するように変更。サーバー側マージロジック (\`mergeReadStateUpdate\`) は既に \`(existing ∪ update) \\ removedIds\` で動くため無変更。安全マージンとして \`MAX_READ_IDS\` を 20,000 → 100,000、他 ID 上限も 2,000 → 10,000 に引き上げ。\`applyServerState\` ではサーバーに無い local ID を \`pendingAdded\` に積み直すことでリロード後の未同期データを失わない。\`globalFilter\` は変更時のみ送信する \`dirty\` フラグ方式に変更し、他端末設定の意図しない上書きを防止。
+
+### 新機能
+
+- **通信エラー時のトースト通知** — これまで \`apiFetch\` の失敗が完全にサイレントだったため、ユーザーが同期失敗に気付けなかった問題に対応。\`src/lib/api-fetch.ts\` に \`onApiError\` リスナー機構を追加し、4xx/5xx/ネットワーク障害時にグローバル通知を発火。\`App.tsx\` が \`showToast\` を登録して人間可読なメッセージ（「送信データが大きすぎます」「サーバーエラー」「ネットワークエラー」等）を 2 秒トーストで表示。3 秒のレート制限で UI ノイズを抑制。認証リトライ（401）や通常フロー 404 は通知対象外。
+
 ### コードレビュー
 
 - **\`useFilteredArticles\` の useEffect deps から \`filteredRef\` を除外 (issue #68)** — \`src/hooks/useFilteredArticles.ts:362-365\` の useEffect で \`useSyncedRef\` が返す安定 ref \`filteredRef\` が依存配列に含まれていた問題を修正。ref オブジェクト自体は不変で deps に含める意味がなく、将来 \`useSyncedRef\` の実装が変わった際に予期しない再発火を招くリスクがあった。\`eslint-disable-next-line react-hooks/exhaustive-deps\` を付け、deps は \`[serverLoadCount]\` のみに限定。他 hook (\`useReadState\` / \`useEventListener\` 等) の \`useSyncedRef\` 利用箇所も監査済みで、問題箇所は本件のみ。

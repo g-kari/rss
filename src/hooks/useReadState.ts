@@ -28,11 +28,11 @@ type ReadStateSets = {
   notes: Record<string, string>;
 };
 
-type RemovedKind = "read" | "bookmarks" | "readingList" | "likes";
+type SetKind = "read" | "bookmarks" | "readingList" | "likes";
 
-type PendingRemoved = Record<RemovedKind, Set<string>>;
+type PendingSets = Record<SetKind, Set<string>>;
 
-function emptyPendingRemoved(): PendingRemoved {
+function emptyPendingSets(): PendingSets {
   return {
     read: new Set(),
     bookmarks: new Set(),
@@ -41,7 +41,7 @@ function emptyPendingRemoved(): PendingRemoved {
   };
 }
 
-function snapshotPendingRemoved(pending: PendingRemoved): PendingRemoved {
+function snapshotPendingSets(pending: PendingSets): PendingSets {
   return {
     read: new Set(pending.read),
     bookmarks: new Set(pending.bookmarks),
@@ -50,8 +50,8 @@ function snapshotPendingRemoved(pending: PendingRemoved): PendingRemoved {
   };
 }
 
-function mergePendingRemoved(target: PendingRemoved, source: PendingRemoved): void {
-  for (const kind of Object.keys(target) as RemovedKind[]) {
+function mergePendingSets(target: PendingSets, source: PendingSets): void {
+  for (const kind of Object.keys(target) as SetKind[]) {
     for (const id of source[kind]) target[kind].add(id);
   }
 }
@@ -84,22 +84,24 @@ async function fetchReadState(): Promise<ReadState | null> {
  * Set 型の状態をトグルするコールバックを生成する。
  * ID を localStorage の `key` に保存し、`schedule` で非同期サーバー同期をスケジュールする。
  *
- * `getCurrentSet` と `onRemove` を指定した場合、削除操作を検出して削除 ID を伝達する。
- * これにより、リロード前にサーバーへ削除が反映されず復活するバグを防ぐ。
+ * 追加・削除のいずれでも pendingAdded / pendingRemoved に差分を記録するため、
+ * サーバー側はフルセットではなく差分のみを受け取れる。
  */
 function makeToggle(
   setter: React.Dispatch<React.SetStateAction<Set<string>>>,
   key: string,
   schedule: () => void,
-  getCurrentSet?: () => Set<string>,
-  onRemove?: (id: string) => void,
+  getCurrentSet: () => Set<string>,
+  onAdd: (id: string) => void,
+  onRemove: (id: string) => void,
 ): (id: string) => void {
   return (id) => {
-    const isRemoval = getCurrentSet ? getCurrentSet().has(id) : false;
+    const isRemoval = getCurrentSet().has(id);
     toggleSetItem(setter, key, id);
-    if (isRemoval && onRemove) {
+    if (isRemoval) {
       onRemove(id);
     } else {
+      onAdd(id);
       schedule();
     }
   };
@@ -116,52 +118,68 @@ function pruneExpiredSnoozes(snoozed: Record<string, string>): Record<string, st
 }
 
 /**
- * ReadStateSets + globalFilter + 削除差分を /api/read-state に POST する JSON 文字列にシリアライズする。
+ * 追加差分 + 削除差分 + 単値フィールドを /api/read-state に POST する JSON 文字列にシリアライズする。
  * サーバー側は既存 ReadState に対して `(existing ∪ update) \ removedIds` でマージする。
+ *
+ * ID 系フィールド（readIds / bookmarkIds / readingListIds / likeIds）はフルセットではなく
+ * 「前回同期以降に追加された ID」のみを送る。これにより、readIds が数万件に達する
+ * ヘビーユーザーでも POST ペイロードが肥大化せず、413 を回避できる。
  */
 function serializeReadState(
-  sets: ReadStateSets,
+  added: PendingSets,
+  removed: PendingSets,
   globalFilter: KeywordFilter | null,
-  removed: PendingRemoved,
+  readBeforeTimestamp: string | null,
+  snoozedUntil: Record<string, string>,
+  notes: Record<string, string>,
+  includeGlobalFilter: boolean,
 ): string {
-  const pruned = pruneExpiredSnoozes(sets.snoozedUntil);
-  return JSON.stringify({
-    readIds: [...sets.read],
-    bookmarkIds: [...sets.bookmarks],
-    readingListIds: [...sets.readingList],
-    likeIds: [...sets.likes],
-    globalFilter,
-    readBeforeTimestamp: sets.readBeforeTimestamp,
+  const pruned = pruneExpiredSnoozes(snoozedUntil);
+  const payload: Record<string, unknown> = {
+    readIds: [...added.read],
+    bookmarkIds: [...added.bookmarks],
+    readingListIds: [...added.readingList],
+    likeIds: [...added.likes],
+    readBeforeTimestamp,
     snoozedUntil: Object.keys(pruned).length > 0 ? pruned : null,
-    notes: Object.keys(sets.notes).length > 0 ? sets.notes : null,
+    notes: Object.keys(notes).length > 0 ? notes : null,
     removedIds: {
       readIds: [...removed.read],
       bookmarkIds: [...removed.bookmarks],
       readingListIds: [...removed.readingList],
       likeIds: [...removed.likes],
     },
-  });
+  };
+  // globalFilter は「キーの有無」でサーバー側が上書きするか判定する。
+  // 変更時のみ送ることで、他端末で設定した値が空 POST で消されないようにする。
+  if (includeGlobalFilter) payload.globalFilter = globalFilter;
+  return JSON.stringify(payload);
+}
+
+interface SaveResult {
+  ok: boolean;
+  state?: ReadState;
+  /** ネットワーク障害等で status が取れない場合は undefined */
+  status?: number;
 }
 
 /**
  * 既読・ブックマーク・後で読む・いいね・グローバルフィルター状態をサーバーに保存する。
- * サーバー側で差分マージ後の最新 ReadState を返す。通信失敗時は null。
+ * サーバー側で差分マージ後の最新 ReadState を受け取る。
+ * 通信失敗・サーバーエラー時は ok: false と status（取得できた場合）を返す。
  */
-async function saveReadState(
-  sets: ReadStateSets,
-  globalFilter: KeywordFilter | null,
-  removed: PendingRemoved,
-): Promise<ReadState | null> {
+async function saveReadState(body: string): Promise<SaveResult> {
   try {
     const res = await apiFetch("/api/read-state", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: serializeReadState(sets, globalFilter, removed),
+      body,
     });
-    if (!res.ok) return null;
-    return res.json() as Promise<ReadState>;
+    if (!res.ok) return { ok: false, status: res.status };
+    const state = (await res.json()) as ReadState;
+    return { ok: true, state };
   } catch {
-    return null;
+    return { ok: false };
   }
 }
 
@@ -251,8 +269,13 @@ export function useReadState(
   const articlesRef = useSyncedRef(articles);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirtyRef = useRef(false);
+  // 追加操作で蓄積した ID（POST で readIds/bookmarkIds/... として送信し、サーバー側で既存に合流する）
+  const pendingAddedRef = useRef<PendingSets>(emptyPendingSets());
   // 削除操作で蓄積した ID（POST で removedIds として送信し、サーバー側で既存から除外する）
-  const pendingRemovedRef = useRef<PendingRemoved>(emptyPendingRemoved());
+  const pendingRemovedRef = useRef<PendingSets>(emptyPendingSets());
+  // globalFilter は「変更されたときのみ」サーバーへ送る。
+  // 毎回送ると、別端末で設定した値を空 POST で上書きしてしまう可能性がある。
+  const globalFilterDirtyRef = useRef(false);
 
   // useEffect 不要 — レンダー中の直接代入で十分
   stateRef.current = {
@@ -275,6 +298,27 @@ export function useReadState(
    */
   const applyServerState = useCallback((state: ReadState) => {
     lastServerSyncRef.current = Date.now();
+    // local にあってサーバーにない ID は pendingAdded に積み、次回 flush で送信する。
+    // これにより、リロード前に flush できなかった追加がサーバーへ確実に反映される。
+    const serverSets: Record<SetKind, Set<string>> = {
+      read: new Set(state.readIds),
+      bookmarks: new Set(state.bookmarkIds),
+      readingList: new Set(state.readingListIds),
+      likes: new Set(state.likeIds),
+    };
+    const localSets: Record<SetKind, Set<string>> = {
+      read: stateRef.current.read,
+      bookmarks: stateRef.current.bookmarks,
+      readingList: stateRef.current.readingList,
+      likes: stateRef.current.likes,
+    };
+    for (const kind of ["read", "bookmarks", "readingList", "likes"] as SetKind[]) {
+      for (const id of localSets[kind]) {
+        if (!serverSets[kind].has(id) && !pendingRemovedRef.current[kind].has(id)) {
+          pendingAddedRef.current[kind].add(id);
+        }
+      }
+    }
     mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds);
     mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds);
     mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, state.readingListIds);
@@ -356,16 +400,29 @@ export function useReadState(
     if (!userRef.current) return;
     if (!flushIfPending()) return;
     // sendBeacon はレスポンス未確認のため、キュー受理成否のみで pending の扱いを決める
-    const removed = snapshotPendingRemoved(pendingRemovedRef.current);
+    const added = snapshotPendingSets(pendingAddedRef.current);
+    const removed = snapshotPendingSets(pendingRemovedRef.current);
+    const wasGfDirty = globalFilterDirtyRef.current;
+    const body = serializeReadState(
+      added,
+      removed,
+      globalFilterRef.current,
+      stateRef.current.readBeforeTimestamp,
+      stateRef.current.snoozedUntil,
+      stateRef.current.notes,
+      wasGfDirty,
+    );
     const accepted = navigator.sendBeacon(
       "/api/read-state",
-      new Blob([serializeReadState(stateRef.current, globalFilterRef.current, removed)], {
-        type: "application/json",
-      }),
+      new Blob([body], { type: "application/json" }),
     );
     // キュー受理された場合のみ pending をクリア。拒否（false）なら beforeunload がキャンセル
     // された場合に備えて pending を保持する（実際に閉じればいずれ失われるが少なくとも救済余地を残す）
-    if (accepted) pendingRemovedRef.current = emptyPendingRemoved();
+    if (accepted) {
+      pendingAddedRef.current = emptyPendingSets();
+      pendingRemovedRef.current = emptyPendingSets();
+      globalFilterDirtyRef.current = false;
+    }
   });
   useEventListener(
     "visibilitychange",
@@ -373,11 +430,30 @@ export function useReadState(
       if (document.visibilityState !== "hidden") return;
       if (!userRef.current) return;
       if (!flushIfPending()) return;
-      const removed = snapshotPendingRemoved(pendingRemovedRef.current);
-      pendingRemovedRef.current = emptyPendingRemoved();
-      saveReadState(stateRef.current, globalFilterRef.current, removed).then((latest) => {
-        if (latest) applyServerState(latest);
-        else mergePendingRemoved(pendingRemovedRef.current, removed);
+      const added = snapshotPendingSets(pendingAddedRef.current);
+      const removed = snapshotPendingSets(pendingRemovedRef.current);
+      const wasGfDirty = globalFilterDirtyRef.current;
+      pendingAddedRef.current = emptyPendingSets();
+      pendingRemovedRef.current = emptyPendingSets();
+      globalFilterDirtyRef.current = false;
+      const body = serializeReadState(
+        added,
+        removed,
+        globalFilterRef.current,
+        stateRef.current.readBeforeTimestamp,
+        stateRef.current.snoozedUntil,
+        stateRef.current.notes,
+        wasGfDirty,
+      );
+      saveReadState(body).then((result) => {
+        if (result.ok && result.state) {
+          applyServerState(result.state);
+        } else {
+          // グローバル通知は apiFetch 内で発火済み。pending に復帰して次回リトライ。
+          mergePendingSets(pendingAddedRef.current, added);
+          mergePendingSets(pendingRemovedRef.current, removed);
+          if (wasGfDirty) globalFilterDirtyRef.current = true;
+        }
       });
     },
     document,
@@ -392,17 +468,32 @@ export function useReadState(
     };
   }, []);
 
-  /** 削除差分を snapshot して送信し、成功時はサーバー応答を反映、失敗時は pending に戻す */
+  /** 追加・削除差分を snapshot して送信し、成功時はサーバー応答を反映、失敗時は pending に戻す */
   const flushToServer = useCallback(async () => {
     if (!userRef.current) return;
-    const removed = snapshotPendingRemoved(pendingRemovedRef.current);
-    pendingRemovedRef.current = emptyPendingRemoved();
-    const latest = await saveReadState(stateRef.current, globalFilterRef.current, removed);
-    if (latest) {
-      applyServerState(latest);
+    const added = snapshotPendingSets(pendingAddedRef.current);
+    const removed = snapshotPendingSets(pendingRemovedRef.current);
+    const wasGfDirty = globalFilterDirtyRef.current;
+    pendingAddedRef.current = emptyPendingSets();
+    pendingRemovedRef.current = emptyPendingSets();
+    globalFilterDirtyRef.current = false;
+    const body = serializeReadState(
+      added,
+      removed,
+      globalFilterRef.current,
+      stateRef.current.readBeforeTimestamp,
+      stateRef.current.snoozedUntil,
+      stateRef.current.notes,
+      wasGfDirty,
+    );
+    const result = await saveReadState(body);
+    if (result.ok && result.state) {
+      applyServerState(result.state);
     } else {
-      // 次回デバウンスで再送できるよう pending に復帰
-      mergePendingRemoved(pendingRemovedRef.current, removed);
+      // グローバル通知は apiFetch 内で発火済み。次回デバウンスで再送できるよう pending に復帰。
+      mergePendingSets(pendingAddedRef.current, added);
+      mergePendingSets(pendingRemovedRef.current, removed);
+      if (wasGfDirty) globalFilterDirtyRef.current = true;
     }
   }, [applyServerState, globalFilterRef, userRef]);
 
@@ -447,6 +538,8 @@ export function useReadState(
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
+      pendingAddedRef.current.read.add(articleId);
+      pendingRemovedRef.current.read.delete(articleId);
       scheduleSyncToServer();
     },
     [scheduleSyncToServer],
@@ -463,6 +556,10 @@ export function useReadState(
         saveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
+      for (const id of newIds) {
+        pendingAddedRef.current.read.add(id);
+        pendingRemovedRef.current.read.delete(id);
+      }
       scheduleSyncToServer();
     },
     [scheduleSyncToServer],
@@ -488,6 +585,13 @@ export function useReadState(
               : arts.map((a) => a.id);
         const next = new Set([...prev, ...ids]);
         saveSet(STORAGE_KEYS.READ_IDS, next);
+        // 新たに追加された ID のみを pending に記録（既読済み ID は送信不要）
+        for (const id of ids) {
+          if (!prev.has(id)) {
+            pendingAddedRef.current.read.add(id);
+            pendingRemovedRef.current.read.delete(id);
+          }
+        }
         return next;
       });
       // 全フィード「全既読」の場合は readBeforeTimestamp を現在時刻に設定する。
@@ -506,11 +610,19 @@ export function useReadState(
   );
 
   const { toggleRead, toggleBookmark, toggleReadingList, toggleLike } = useMemo(() => {
+    // 追加 ID を pending に記録し、次回の flush で送信する
+    const recordAdd =
+      (kind: SetKind) =>
+      (id: string): void => {
+        pendingAddedRef.current[kind].add(id);
+        pendingRemovedRef.current[kind].delete(id);
+      };
     // 削除ID を pending に記録し、即時同期する
     const recordRemoval =
-      (kind: RemovedKind) =>
+      (kind: SetKind) =>
       (id: string): void => {
         pendingRemovedRef.current[kind].add(id);
+        pendingAddedRef.current[kind].delete(id);
         syncImmediately();
       };
     return {
@@ -520,6 +632,7 @@ export function useReadState(
         STORAGE_KEYS.READ_IDS,
         scheduleSyncToServer,
         () => stateRef.current.read,
+        recordAdd("read"),
         recordRemoval("read"),
       ),
       toggleBookmark: makeToggle(
@@ -527,6 +640,7 @@ export function useReadState(
         STORAGE_KEYS.BOOKMARK_IDS,
         scheduleSyncToServer,
         () => stateRef.current.bookmarks,
+        recordAdd("bookmarks"),
         recordRemoval("bookmarks"),
       ),
       toggleReadingList: makeToggle(
@@ -534,6 +648,7 @@ export function useReadState(
         STORAGE_KEYS.READING_LIST_IDS,
         scheduleSyncToServer,
         () => stateRef.current.readingList,
+        recordAdd("readingList"),
         recordRemoval("readingList"),
       ),
       toggleLike: makeToggle(
@@ -541,6 +656,7 @@ export function useReadState(
         STORAGE_KEYS.LIKE_IDS,
         scheduleSyncToServer,
         () => stateRef.current.likes,
+        recordAdd("likes"),
         recordRemoval("likes"),
       ),
     };
@@ -550,6 +666,7 @@ export function useReadState(
     (filter: KeywordFilter | null) => {
       saveJson(STORAGE_KEYS.GLOBAL_FILTER, filter);
       setGlobalFilterState(filter);
+      globalFilterDirtyRef.current = true;
       scheduleSyncToServer();
     },
     [scheduleSyncToServer],

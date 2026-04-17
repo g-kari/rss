@@ -21,7 +21,7 @@ import { useReadingHistory } from "./hooks/useReadingHistory";
 import { useUIState } from "./hooks/useUIState";
 import { updateFaviconBadge } from "./lib/favicon";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "./lib/export-markdown";
-import { apiFetch } from "./lib/api-fetch";
+import { apiFetch, onApiError } from "./lib/api-fetch";
 import { normalizeFilter, matchesKeywordFilter } from "./lib/keyword-filter";
 import { isArticleRead } from "./lib/article-filter";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
@@ -132,6 +132,18 @@ export default function App() {
     setNote,
     deleteNote,
   } = useReadState(user, articles, historyIds);
+
+  // 通信エラーをトーストで通知する。短時間に複数発生しても 1 回に集約（UI ノイズ抑止）。
+  useEffect(() => {
+    let lastShownAt = 0;
+    const unsubscribe = onApiError(({ message }) => {
+      const now = Date.now();
+      if (now - lastShownAt < 3000) return;
+      lastShownAt = now;
+      showToast(`通信エラー: ${message}`);
+    });
+    return unsubscribe;
+  }, [showToast]);
 
   const { recordEngagement } = useEngagement(user);
   const {

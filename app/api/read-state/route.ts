@@ -7,10 +7,13 @@ import { parseKeywordFilter } from "@/lib/keyword-filter";
 import { extractIds, isValidIso8601, parseSnoozedUntil, parseNotes } from "@/lib/validation";
 import { mergeReadStateUpdate, type ReadStateUpdate } from "@/lib/read-state-merge";
 
-const MAX_READ_IDS = 20_000;
-const MAX_BOOKMARK_IDS = 2_000;
-const MAX_READING_LIST_IDS = 2_000;
-const MAX_LIKE_IDS = 2_000;
+// POST は差分（追加 + removedIds）のみ送られる前提で上限を設定する。
+// readIds は記事を読むたびに永続累積するため、多端末ユーザーでも余裕を持たせる。
+// それでも 413 が発生した場合はクライアントが再送する（pending に復帰する）。
+const MAX_READ_IDS = 100_000;
+const MAX_BOOKMARK_IDS = 10_000;
+const MAX_READING_LIST_IDS = 10_000;
+const MAX_LIKE_IDS = 10_000;
 const MAX_SNOOZED = 500;
 const MAX_NOTES = 1_000;
 
