@@ -1551,7 +1551,8 @@ export default function ArticleView({
         if (s.translateResult) {
           s.resetTranslate();
         } else if (!s.translateLoading && !s.fetching) {
-          void s.doTranslate(s.articleLink, s.articleId!);
+          const plain = s.storedContent ? toPlainText(s.storedContent) : undefined;
+          void s.doTranslate(s.articleLink, s.articleId!, plain);
         }
       }
       if (e.key === " ") {
@@ -2182,7 +2183,10 @@ export default function ArticleView({
                       resetTranslate();
                       return;
                     }
-                    if (article.link) doTranslate(article.link, article.id);
+                    if (article.link) {
+                      const plain = storedContent ? toPlainText(storedContent) : undefined;
+                      doTranslate(article.link, article.id, plain);
+                    }
                   }}
                   disabled={translateLoading || fetching}
                   title="AI 翻訳（日本語）(z)"

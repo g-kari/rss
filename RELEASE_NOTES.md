@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-18
+
+### 新機能
+
+- **翻訳機能を Chrome Translator API / Workers AI のハイブリッドに変更** — Chrome 138+ が備える組み込み `Translator` / `LanguageDetector` API を優先利用し、対応環境ではブラウザ側でオフライン翻訳を完結させるよう変更。Workers AI コスト・レイテンシを削減し、ネットワーク不通でも翻訳可能に。Safari / Firefox / 古い Chrome や `availability !== "available"` の場合は従来通り `/api/ai/translate` にフォールバック。`src/lib/browser-translator.ts` に API ラッパーと言語検出を切り出し、`useArticleAi` の `doTranslate(url, articleId, plainText?)` に `plainText` を渡せるよう拡張。`ArticleView` の翻訳ボタン・`z` キーショートカットは `storedContent` から `toPlainText` で抽出したテキストを渡す。ユニットテスト 5 件 (`e2e/browser-translator.spec.ts`) を追加。
+
 ## 2026-04-17
 
 ### セキュリティ
