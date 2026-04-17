@@ -8,6 +8,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### リファクタリング
 
+- **ArticleView コンポーネントの責務分離（Step 2: Props の Context 集約）** — \`ArticleView\` が受け取っていた表示設定系 Props 11 個（\`fontSize\` / \`onChangeFontSize\` / \`fontFamily\` / \`onChangeFontFamily\` / \`theme\` / \`focusMode\` / \`onToggleFocusMode\` / \`autoReadEnabled\` / \`autoReadThreshold\` / \`onToggleAutoRead\` / \`onCycleAutoReadThreshold\`）を \`src/contexts/ReaderSettingsContext.tsx\` に集約。\`App.tsx\` で \`ReaderSettingsProvider\` を \`useMemo\` 値で供給し、\`ArticleView\` 内では \`useReaderSettings()\` で取得するよう変更。Props interface は 42 → 31 項目に縮小。\`App.tsx\` 側の \`<ArticleView ...>\` 呼び出しも 11 行削減。挙動変更なし（Issue #65 Step 2）。
 - **ArticleView コンポーネントの責務分離（Step 1: ファイル分割）** — 2851 行に肥大化していた \`src/components/ArticleView.tsx\` から、内部定義されていたサブコンポーネント・hook・定数を \`src/components/article-view/\` 配下に切り出した。抽出したもの: \`EmptyArticleView\` / \`ShareMenu\` (+ \`SHARE_WINDOW_TARGETS\`) / \`ToggleIconButton\` / \`FetchFullContentArea\` / \`ArticleNavigation\` / \`FilterMenu\` / \`GlobalFilterMenu\` / \`ImageGallery\` / \`SnoozeMenu\` (+ \`SNOOZE_OPTIONS\`) / \`SelectionExcludePopup\` (+ \`useSelectionExclude\`, \`SelectionPopupState\`, \`MAX_SELECTION_LENGTH\`)、共通ユーティリティは \`constants.ts\` (\`MENU_ITEM_CLS\`) / \`icons.tsx\` (\`DownloadIcon\`, \`ExternalLinkIcon\`, \`ChevronSmall\`, \`XIcon\`) / \`filter-shared.tsx\` (\`buildExcludeOptions\`, \`useFilterMenuState\`, \`ExcludeOptionsSection\`, \`metaLabel\`)。本体は 2851 → 1577 行（-45%）に縮小し、個別テストや段階的 Props 削減が可能な土台に整えた。挙動変更なし（Issue #65 Step 1）。
 
 ### ドキュメント整備
