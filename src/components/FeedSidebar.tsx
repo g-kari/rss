@@ -1,7 +1,14 @@
 "use client";
 
 import { useRef, useState, useMemo, type ReactNode } from "react";
-import type { Feed, Article, UserProfile, RecommendedFeed, KeywordFilter } from "../types";
+import type {
+  Feed,
+  Article,
+  UserProfile,
+  RecommendedFeed,
+  KeywordFilter,
+  FeedGroup,
+} from "../types";
 import ReleaseNotesModal from "./ReleaseNotesModal";
 import ReadingStatsModal from "./ReadingStatsModal";
 import FeedItem, { formatCount } from "./FeedItem";
@@ -45,6 +52,12 @@ interface Props {
   onToggleNsfwFeed: (feed: Feed) => void;
   onTogglePriorityFeed: (feed: Feed) => void;
   onSetCategoryFeed?: (feed: Feed, category: string | null) => Promise<void>;
+  feedGroups?: FeedGroup[];
+  onSetGroupFeed?: (feed: Feed, groupId: string | null) => Promise<void>;
+  onCreateFeedGroup?: (name: string) => Promise<FeedGroup | { error: string }>;
+  onRenameFeedGroup?: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
+  onDeleteFeedGroup?: (id: string) => Promise<boolean>;
+  onToggleCollapseFeedGroup?: (id: string, collapsed: boolean) => Promise<void>;
   onMuteFeed?: (feed: Feed, mutedUntil: string | null) => Promise<void>;
   recommendations?: RecommendedFeed[];
   recommendationsLoading?: boolean;
@@ -63,6 +76,262 @@ interface Props {
     onToggle: () => void;
     onSendTest?: () => Promise<string>;
   };
+}
+
+function FeedGroupsSection({
+  groups,
+  unreadByFeed,
+  renderFeed,
+  onCreate,
+  onRename,
+  onDelete,
+  onToggleCollapse,
+}: {
+  groups: { group: FeedGroup; feeds: Feed[] }[];
+  unreadByFeed: Map<string, number>;
+  renderFeed: (feed: Feed, startIdx: number) => ReactNode;
+  onCreate?: (name: string) => Promise<FeedGroup | { error: string }>;
+  onRename?: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
+  onDelete?: (id: string) => Promise<boolean>;
+  onToggleCollapse?: (id: string, collapsed: boolean) => Promise<void>;
+}) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const createInputRef = useRef<HTMLInputElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  async function commitCreate() {
+    const name = newName.trim();
+    if (!name || !onCreate) {
+      setCreating(false);
+      setNewName("");
+      setCreateError(null);
+      return;
+    }
+    const result = await onCreate(name);
+    if ("error" in result) {
+      setCreateError(result.error);
+      return;
+    }
+    setCreating(false);
+    setNewName("");
+    setCreateError(null);
+  }
+
+  async function commitRename(id: string) {
+    const name = editingName.trim();
+    if (!name || !onRename) {
+      setEditingId(null);
+      setEditError(null);
+      return;
+    }
+    const result = await onRename(id, name);
+    if ("error" in result) {
+      setEditError(result.error);
+      return;
+    }
+    setEditingId(null);
+    setEditError(null);
+  }
+
+  async function handleDelete(group: FeedGroup) {
+    if (!onDelete) return;
+    const msg = `グループ「${group.name}」を削除しますか？\n所属フィードはグループ解除されます。`;
+    if (!window.confirm(msg)) return;
+    await onDelete(group.id);
+  }
+
+  let offset = 0;
+  return (
+    <>
+      {/* セクションヘッダー + 作成ボタン */}
+      <div className="px-4 pt-2.5 pb-0.5 flex items-center gap-1 group">
+        <span className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted">
+          グループ
+        </span>
+        {onCreate && !creating && (
+          <button
+            onClick={() => {
+              setCreating(true);
+              setCreateError(null);
+              setTimeout(() => createInputRef.current?.focus(), 0);
+            }}
+            className="ml-auto w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
+            title="グループを作成"
+            aria-label="グループを作成"
+          >
+            <svg
+              width="9"
+              height="9"
+              viewBox="0 0 9 9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <line x1="4.5" y1="1" x2="4.5" y2="8" strokeLinecap="round" />
+              <line x1="1" y1="4.5" x2="8" y2="4.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {creating && (
+        <div className="px-4 py-1 flex flex-col gap-1">
+          <input
+            ref={createInputRef}
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void commitCreate();
+              else if (e.key === "Escape") {
+                setCreating(false);
+                setNewName("");
+                setCreateError(null);
+              }
+            }}
+            onBlur={() => {
+              if (!createError) void commitCreate();
+            }}
+            placeholder="グループ名"
+            maxLength={50}
+            className="w-full text-[12px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted placeholder-text-faint"
+          />
+          {createError && <span className="text-[10px] text-rose-400">{createError}</span>}
+        </div>
+      )}
+
+      {groups.map(({ group, feeds }) => {
+        const isCollapsed = !!group.collapsed;
+        const groupUnread = feeds.reduce((sum, f) => sum + (unreadByFeed.get(f.id) ?? 0), 0);
+        const startIdx = offset;
+        offset += feeds.length;
+        return (
+          <div key={`feed-group-${group.id}`}>
+            <div className="w-full px-4 pt-1.5 pb-0.5 flex items-center gap-1 group relative">
+              <button
+                onClick={() => void onToggleCollapse?.(group.id, !isCollapsed)}
+                className="flex items-center gap-1 flex-1 min-w-0"
+                title={isCollapsed ? "展開" : "折りたたむ"}
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  className={`flex-shrink-0 text-text-muted transition-transform duration-150 ${isCollapsed ? "-rotate-90" : ""}`}
+                  fill="currentColor"
+                >
+                  <path d="M5 7L1 3h8L5 7z" />
+                </svg>
+                {editingId === group.id ? (
+                  <input
+                    ref={editInputRef}
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") void commitRename(group.id);
+                      else if (e.key === "Escape") {
+                        setEditingId(null);
+                        setEditError(null);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!editError) void commitRename(group.id);
+                    }}
+                    maxLength={50}
+                    className="flex-1 text-[12px] bg-surface-base border border-border-default rounded px-1 py-0 text-text-strong outline-none focus:border-text-muted min-w-0"
+                  />
+                ) : (
+                  <span className="text-[11px] font-medium tracking-[0.05em] text-text-default truncate">
+                    {group.name}
+                  </span>
+                )}
+                {isCollapsed && editingId !== group.id && (
+                  <span
+                    className={`ml-auto text-[10px] tabular-nums ${groupUnread > 0 ? "text-text-muted" : "text-text-faint"}`}
+                  >
+                    {groupUnread > 0 ? formatCount(groupUnread) : feeds.length}
+                  </span>
+                )}
+              </button>
+              {editingId !== group.id && (
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {onRename && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingId(group.id);
+                        setEditingName(group.name);
+                        setEditError(null);
+                        setTimeout(() => editInputRef.current?.select(), 0);
+                      }}
+                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      title="名前変更"
+                      aria-label={`${group.name} の名前を変更`}
+                    >
+                      <svg
+                        width="9"
+                        height="9"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M7 1.5l1.5 1.5L3 8.5H1.5V7z" />
+                      </svg>
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleDelete(group);
+                      }}
+                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-rose-400 hover:bg-surface-subtle"
+                      title="グループを削除"
+                      aria-label={`${group.name} を削除`}
+                    >
+                      <svg
+                        width="9"
+                        height="9"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <line x1="1" y1="1" x2="9" y2="9" />
+                        <line x1="9" y1="1" x2="1" y2="9" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            {editError && editingId === group.id && (
+              <div className="px-4 pb-1 text-[10px] text-rose-400">{editError}</div>
+            )}
+            {!isCollapsed &&
+              feeds.length > 0 &&
+              feeds.map((feed, i) => <div key={feed.id}>{renderFeed(feed, startIdx + i)}</div>)}
+            {!isCollapsed && feeds.length === 0 && (
+              <div className="px-8 py-1 text-[10px] text-text-faint">
+                フィードメニューから「グループに移動」で追加できます
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 function SpecialViewButton({
@@ -131,6 +400,12 @@ export default function FeedSidebar({
   onToggleNsfwFeed,
   onTogglePriorityFeed,
   onSetCategoryFeed,
+  feedGroups,
+  onSetGroupFeed,
+  onCreateFeedGroup,
+  onRenameFeedGroup,
+  onDeleteFeedGroup,
+  onToggleCollapseFeedGroup,
   onMuteFeed,
   recommendations,
   recommendationsLoading,
@@ -241,6 +516,8 @@ export default function FeedSidebar({
         onSetCategory={
           onSetCategoryFeed ? (category) => onSetCategoryFeed(feed, category) : undefined
         }
+        groups={feedGroups}
+        onSetGroup={onSetGroupFeed ? (groupId) => onSetGroupFeed(feed, groupId) : undefined}
         onMute={onMuteFeed ? (mutedUntil) => onMuteFeed(feed, mutedUntil) : undefined}
       />
     );
@@ -274,7 +551,7 @@ export default function FeedSidebar({
     };
   }, [articles, readIds, readBeforeTimestamp]);
 
-  const { pinnedFeeds, categoryGroups, uncategorizedFeeds } = useMemo(() => {
+  const { pinnedFeeds, groupedFeeds, categoryGroups, uncategorizedFeeds } = useMemo(() => {
     const q = feedSearch.trim().toLowerCase();
     const matchFeed = (f: Feed) => !q || (f.title || f.url).toLowerCase().includes(q);
     const pinned = feeds.filter((f) => pinnedFeedIds.has(f.id) && matchFeed(f));
@@ -286,10 +563,29 @@ export default function FeedSidebar({
         return aHigh - bHigh;
       });
 
-    // カテゴリ別にグループ化
+    // ユーザーグループ（groupId）に所属するフィードを先に抜き出す。
+    // groupId はあるが該当 group がない（orphan）場合は category/未分類にフォールバックする。
+    const validGroupIds = new Set((feedGroups ?? []).map((g) => g.id));
+    const byGroup = new Map<string, Feed[]>();
+    const notGrouped: Feed[] = [];
+    for (const feed of unpinned) {
+      if (feed.groupId && validGroupIds.has(feed.groupId)) {
+        const arr = byGroup.get(feed.groupId) ?? [];
+        arr.push(feed);
+        byGroup.set(feed.groupId, arr);
+      } else {
+        notGrouped.push(feed);
+      }
+    }
+    const grouped = (feedGroups ?? [])
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .map((g) => ({ group: g, feeds: byGroup.get(g.id) ?? [] }));
+
+    // 残りをカテゴリ別にグループ化
     const catMap = new Map<string, Feed[]>();
     const uncategorized: Feed[] = [];
-    for (const feed of unpinned) {
+    for (const feed of notGrouped) {
       if (feed.category) {
         const group = catMap.get(feed.category) ?? [];
         group.push(feed);
@@ -301,8 +597,13 @@ export default function FeedSidebar({
     const sorted = [...catMap.entries()].sort(([a], [b]) =>
       a.localeCompare(b, "ja", { sensitivity: "base" }),
     );
-    return { pinnedFeeds: pinned, categoryGroups: sorted, uncategorizedFeeds: uncategorized };
-  }, [feeds, pinnedFeedIds, feedSearch]);
+    return {
+      pinnedFeeds: pinned,
+      groupedFeeds: grouped,
+      categoryGroups: sorted,
+      uncategorizedFeeds: uncategorized,
+    };
+  }, [feeds, pinnedFeedIds, feedSearch, feedGroups]);
 
   return (
     <aside className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
@@ -671,14 +972,38 @@ export default function FeedSidebar({
 
         {pinnedFeeds.map((feed, i) => renderFeed(feed, true, i))}
 
-        {pinnedFeeds.length > 0 && (categoryGroups.length > 0 || uncategorizedFeeds.length > 0) && (
-          <div className="mx-4 my-1.5">
-            <div className="border-t border-border-subtle" />
-          </div>
+        {pinnedFeeds.length > 0 &&
+          (groupedFeeds.length > 0 ||
+            categoryGroups.length > 0 ||
+            uncategorizedFeeds.length > 0) && (
+            <div className="mx-4 my-1.5">
+              <div className="border-t border-border-subtle" />
+            </div>
+          )}
+
+        {/* ユーザーグループ（feed-groups）セクション */}
+        {(groupedFeeds.length > 0 || onCreateFeedGroup) && (
+          <FeedGroupsSection
+            groups={groupedFeeds}
+            unreadByFeed={unreadByFeed}
+            renderFeed={(feed, startIdx) => renderFeed(feed, false, pinnedFeeds.length + startIdx)}
+            onCreate={onCreateFeedGroup}
+            onRename={onRenameFeedGroup}
+            onDelete={onDeleteFeedGroup}
+            onToggleCollapse={onToggleCollapseFeedGroup}
+          />
         )}
 
+        {groupedFeeds.length > 0 &&
+          (categoryGroups.length > 0 || uncategorizedFeeds.length > 0) && (
+            <div className="mx-4 my-1.5">
+              <div className="border-t border-border-subtle" />
+            </div>
+          )}
+
         {(() => {
-          let globalOffset = pinnedFeeds.length;
+          let globalOffset =
+            pinnedFeeds.length + groupedFeeds.reduce((sum, g) => sum + g.feeds.length, 0);
           const elements: ReactNode[] = [];
 
           for (const [cat, catFeeds] of categoryGroups) {

@@ -44,4 +44,16 @@ test.describe("API ヘルスチェック", () => {
     const res = await request.post("/api/feed-groups", { data: { name: "Tech" } });
     expect(res.status()).toBe(401);
   });
+
+  test("PATCH /api/feed-groups/:id が未認証時に 401 を返す", async ({ request }) => {
+    const res = await request.patch("/api/feed-groups/dummy-id", {
+      data: { name: "Renamed" },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test("DELETE /api/feed-groups/:id が未認証時に 401 を返す", async ({ request }) => {
+    const res = await request.delete("/api/feed-groups/dummy-id");
+    expect(res.status()).toBe(401);
+  });
 });

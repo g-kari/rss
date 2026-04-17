@@ -13,6 +13,7 @@ import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
 import type { Article, EngagementAction, Feed, FeedPatchPayload, KeywordFilter } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
+import { useFeedGroups } from "./hooks/useFeedGroups";
 import { useReadState } from "./hooks/useReadState";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import { useKeyboardNav } from "./hooks/useKeyboardNav";
@@ -130,6 +131,15 @@ export default function App() {
     loadMoreAllFeedsArticles,
     skipRemainingPages,
   } = useFeeds(user, showToast);
+
+  const {
+    groups: feedGroups,
+    createGroup,
+    renameGroup,
+    setCollapsed: setFeedGroupCollapsed,
+    deleteGroup,
+  } = useFeedGroups(user);
+
   const {
     supported: pushSupported,
     subscribed: pushSubscribed,
@@ -266,6 +276,13 @@ export default function App() {
   const setCategoryFeed = useCallback(
     async (feed: Feed, category: string | null) => {
       await applyFeedPatch(feed.id, { category });
+    },
+    [applyFeedPatch],
+  );
+
+  const setGroupFeed = useCallback(
+    async (feed: Feed, groupId: string | null) => {
+      await applyFeedPatch(feed.id, { groupId });
     },
     [applyFeedPatch],
   );
@@ -907,6 +924,12 @@ export default function App() {
               onToggleNsfwFeed={toggleNsfwFeed}
               onTogglePriorityFeed={togglePriorityFeed}
               onSetCategoryFeed={setCategoryFeed}
+              feedGroups={feedGroups}
+              onSetGroupFeed={setGroupFeed}
+              onCreateFeedGroup={createGroup}
+              onRenameFeedGroup={renameGroup}
+              onDeleteFeedGroup={deleteGroup}
+              onToggleCollapseFeedGroup={setFeedGroupCollapsed}
               onMuteFeed={muteFeed}
               recommendations={recommendations}
               recommendationsLoading={recommendationsLoading}
