@@ -9,7 +9,7 @@ import type {
   FontSize,
   KeywordFilter,
 } from "../types";
-import type { Theme } from "../hooks/useUIState";
+import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import {
   readingTime,
   FONT_SIZE_CYCLE,
@@ -81,16 +81,11 @@ interface Props {
     value?: string,
   ) => void;
   onMobileBack?: () => void;
-  fontSize?: FontSize;
-  onChangeFontSize?: (size: FontSize) => void;
-  fontFamily?: FontFamily;
-  onChangeFontFamily?: (family: FontFamily) => void;
   showToast?: (msg: string) => void;
   prevArticle?: Article | null;
   nextArticle?: Article | null;
   onSelectPrev?: () => void;
   onSelectNext?: () => void;
-  theme?: Theme;
   feeds?: Feed[];
   onSaveFilter?: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
   globalFilter?: KeywordFilter | null;
@@ -102,12 +97,6 @@ interface Props {
   onSetNote?: (articleId: string, text: string) => void;
   onDeleteNote?: (articleId: string) => void;
   onSetAuthorFilter?: (author: string) => void;
-  focusMode?: boolean;
-  onToggleFocusMode?: () => void;
-  autoReadEnabled?: boolean;
-  autoReadThreshold?: number;
-  onToggleAutoRead?: () => void;
-  onCycleAutoReadThreshold?: () => void;
   onAutoMarkRead?: (articleId: string) => void;
 }
 
@@ -123,16 +112,11 @@ export default function ArticleView({
   onToggleLike,
   onEngagement,
   onMobileBack,
-  fontSize = "medium",
-  onChangeFontSize,
-  fontFamily = "sans",
-  onChangeFontFamily,
   showToast,
   prevArticle,
   nextArticle,
   onSelectPrev,
   onSelectNext,
-  theme = "light",
   feeds,
   onSaveFilter,
   globalFilter,
@@ -144,14 +128,21 @@ export default function ArticleView({
   onSetNote,
   onDeleteNote,
   onSetAuthorFilter,
-  focusMode = false,
-  onToggleFocusMode,
-  autoReadEnabled = false,
-  autoReadThreshold = 80,
-  onToggleAutoRead,
-  onCycleAutoReadThreshold,
   onAutoMarkRead,
 }: Props) {
+  const {
+    fontSize,
+    onChangeFontSize,
+    fontFamily,
+    onChangeFontFamily,
+    theme,
+    focusMode,
+    toggleFocusMode: onToggleFocusMode,
+    autoReadEnabled,
+    toggleAutoRead: onToggleAutoRead,
+    autoReadThreshold,
+    cycleAutoReadThreshold: onCycleAutoReadThreshold,
+  } = useReaderSettings();
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
 
@@ -768,55 +759,49 @@ export default function ArticleView({
             className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap"
           >
             {/* フォントサイズ切り替え */}
-            {onChangeFontSize && (
-              <div className="flex items-center gap-0.5 mr-1">
-                {FONT_SIZE_CYCLE.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => onChangeFontSize(size)}
-                    title={size === "small" ? "小" : size === "medium" ? "中" : "大"}
-                    className={`px-1.5 py-0.5 rounded transition-colors duration-150 ${
-                      fontSize === size
-                        ? "text-text-strong"
-                        : "text-text-faint hover:text-text-muted"
-                    }`}
-                    style={{
-                      fontSize: size === "small" ? "10px" : size === "medium" ? "12px" : "14px",
-                      lineHeight: 1,
-                    }}
-                  >
-                    A
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="flex items-center gap-0.5 mr-1">
+              {FONT_SIZE_CYCLE.map((size) => (
+                <button
+                  key={size}
+                  onClick={() => onChangeFontSize(size)}
+                  title={size === "small" ? "小" : size === "medium" ? "中" : "大"}
+                  className={`px-1.5 py-0.5 rounded transition-colors duration-150 ${
+                    fontSize === size ? "text-text-strong" : "text-text-faint hover:text-text-muted"
+                  }`}
+                  style={{
+                    fontSize: size === "small" ? "10px" : size === "medium" ? "12px" : "14px",
+                    lineHeight: 1,
+                  }}
+                >
+                  A
+                </button>
+              ))}
+            </div>
 
             {/* フォントファミリー切り替え */}
-            {onChangeFontFamily && (
-              <div className="flex items-center gap-0.5 mr-1">
-                {FONT_FAMILY_CYCLE.map((family) => (
-                  <button
-                    key={family}
-                    onClick={() => onChangeFontFamily(family)}
-                    title={FONT_FAMILY_LABELS[family]}
-                    className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
-                      fontFamily === family
-                        ? "text-text-strong"
-                        : "text-text-faint hover:text-text-muted"
-                    } ${
-                      family === "sans"
-                        ? "font-sans"
-                        : family === "serif"
-                          ? "font-serif"
-                          : "font-mono"
-                    }`}
-                    style={{ lineHeight: 1 }}
-                  >
-                    {family === "sans" ? "ゴ" : family === "serif" ? "明" : "等"}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="flex items-center gap-0.5 mr-1">
+              {FONT_FAMILY_CYCLE.map((family) => (
+                <button
+                  key={family}
+                  onClick={() => onChangeFontFamily(family)}
+                  title={FONT_FAMILY_LABELS[family]}
+                  className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
+                    fontFamily === family
+                      ? "text-text-strong"
+                      : "text-text-faint hover:text-text-muted"
+                  } ${
+                    family === "sans"
+                      ? "font-sans"
+                      : family === "serif"
+                        ? "font-serif"
+                        : "font-mono"
+                  }`}
+                  style={{ lineHeight: 1 }}
+                >
+                  {family === "sans" ? "ゴ" : family === "serif" ? "明" : "等"}
+                </button>
+              ))}
+            </div>
 
             {/* 行間切り替え */}
             <button
@@ -851,31 +836,29 @@ export default function ArticleView({
             </button>
 
             {/* 自動既読トグル */}
-            {onToggleAutoRead && (
-              <button
-                onClick={onToggleAutoRead}
-                title={
-                  autoReadEnabled
-                    ? `自動既読: ON (${autoReadThreshold}% でスクロール既読)`
-                    : "自動既読: OFF"
-                }
-                aria-label={
-                  autoReadEnabled
-                    ? `自動既読を OFF にする（現在 ${autoReadThreshold}% で既読マーク）`
-                    : "自動既読を ON にする"
-                }
-                aria-pressed={autoReadEnabled}
-                className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
-                  autoReadEnabled ? "text-text-strong" : "text-text-faint hover:text-text-muted"
-                }`}
-                style={{ lineHeight: 1 }}
-              >
-                自動既読
-              </button>
-            )}
+            <button
+              onClick={onToggleAutoRead}
+              title={
+                autoReadEnabled
+                  ? `自動既読: ON (${autoReadThreshold}% でスクロール既読)`
+                  : "自動既読: OFF"
+              }
+              aria-label={
+                autoReadEnabled
+                  ? `自動既読を OFF にする（現在 ${autoReadThreshold}% で既読マーク）`
+                  : "自動既読を ON にする"
+              }
+              aria-pressed={autoReadEnabled}
+              className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
+                autoReadEnabled ? "text-text-strong" : "text-text-faint hover:text-text-muted"
+              }`}
+              style={{ lineHeight: 1 }}
+            >
+              自動既読
+            </button>
 
             {/* 自動既読の閾値サイクルボタン（ON のときのみ表示） */}
-            {onToggleAutoRead && autoReadEnabled && onCycleAutoReadThreshold && (
+            {autoReadEnabled && (
               <button
                 onClick={onCycleAutoReadThreshold}
                 title={`自動既読の閾値: ${autoReadThreshold}% — クリックで次の閾値に切替`}
@@ -1176,39 +1159,37 @@ export default function ArticleView({
                 </svg>
               </ToggleIconButton>
             )}
-            {onToggleFocusMode && (
-              <button
-                onClick={onToggleFocusMode}
-                title={focusMode ? "フォーカスモード終了 (\\)" : "フォーカスモード (\\)"}
-                className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+            <button
+              onClick={onToggleFocusMode}
+              title={focusMode ? "フォーカスモード終了 (\\)" : "フォーカスモード (\\)"}
+              className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+            >
+              <svg
+                className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <svg
-                  className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  {focusMode ? (
-                    <>
-                      <path d="M9 9L3 3m0 0h6m-6 0v6" />
-                      <path d="M15 9l6-6m0 0h-6m6 0v6" />
-                      <path d="M9 15l-6 6m0 0h6m-6 0v-6" />
-                      <path d="M15 15l6 6m0 0h-6m6 0v-6" />
-                    </>
-                  ) : (
-                    <>
-                      <path d="M3 9V3m0 0h6M3 3l6 6" />
-                      <path d="M21 9V3m0 0h-6m6 0l-6 6" />
-                      <path d="M3 15v6m0 0h6m-6 0l6-6" />
-                      <path d="M21 15v6m0 0h-6m6 0l-6-6" />
-                    </>
-                  )}
-                </svg>
-              </button>
-            )}
+                {focusMode ? (
+                  <>
+                    <path d="M9 9L3 3m0 0h6m-6 0v6" />
+                    <path d="M15 9l6-6m0 0h-6m6 0v6" />
+                    <path d="M9 15l-6 6m0 0h6m-6 0v-6" />
+                    <path d="M15 15l6 6m0 0h-6m6 0v-6" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M3 9V3m0 0h6M3 3l6 6" />
+                    <path d="M21 9V3m0 0h-6m6 0l-6 6" />
+                    <path d="M3 15v6m0 0h6m-6 0l6-6" />
+                    <path d="M21 15v6m0 0h-6m6 0l-6-6" />
+                  </>
+                )}
+              </svg>
+            </button>
           </div>
         </div>
 
