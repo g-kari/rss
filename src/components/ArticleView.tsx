@@ -1447,10 +1447,18 @@ export default function ArticleView({
   // AI 評価ボタンの選択状態（記事切り替え時にリセット）
   const [summaryRating, setSummaryRating] = useState<"good" | "neutral" | "bad" | null>(null);
   const [translateRating, setTranslateRating] = useState<"good" | "neutral" | "bad" | null>(null);
+  // 本文エリアのタブ選択状態（原文 / 翻訳）— 翻訳結果が出たら自動で "translate" に切り替わる
+  const [contentTab, setContentTab] = useState<"original" | "translate">("original");
   useEffect(() => {
     setSummaryRating(null);
     setTranslateRating(null);
+    setContentTab("original");
   }, [article?.id]);
+  // 翻訳が完了したら自動で翻訳タブに切り替える
+  useEffect(() => {
+    if (translateResult) setContentTab("translate");
+    else setContentTab("original");
+  }, [translateResult]);
 
   // リーダー表示設定（行間・コンテンツ幅・両端揃え）— localStorage で永続化
   const [lineHeight, setLineHeight] = useState<LineHeight>(() => {
@@ -2579,12 +2587,46 @@ export default function ArticleView({
         )}
         {aiError && <p className="mb-6 text-[11px] text-rose-400">{aiError}</p>}
 
-        {/* AI 翻訳パネル */}
-        {translateResult && (
-          <div className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">AI 翻訳</p>
-              <div className="flex items-center gap-1">
+        {translateError && <p className="mb-6 text-[11px] text-rose-400">{translateError}</p>}
+
+        {/* OGP 画像 (埋め込みなし) */}
+        {!embedInfo && (article.ogImage ?? resolvedOgImage) && (
+          <img
+            src={`/api/image-proxy?url=${encodeURIComponent((article.ogImage ?? resolvedOgImage)!)}`}
+            alt=""
+            className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
+            loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        )}
+
+        {/* 原文 / 翻訳タブ（翻訳結果がある場合のみ表示） */}
+        {translateResult && processedContent && (
+          <div className="mb-4 flex items-center gap-1 border-b border-border-default">
+            <button
+              onClick={() => setContentTab("original")}
+              className={`px-3 py-2 text-[11px] tracking-[0.08em] uppercase transition-colors duration-150 border-b-2 -mb-px ${
+                contentTab === "original"
+                  ? "border-ink text-text-strong"
+                  : "border-transparent text-text-muted hover:text-text-default"
+              }`}
+            >
+              原文
+            </button>
+            <button
+              onClick={() => setContentTab("translate")}
+              className={`px-3 py-2 text-[11px] tracking-[0.08em] uppercase transition-colors duration-150 border-b-2 -mb-px ${
+                contentTab === "translate"
+                  ? "border-ink text-text-strong"
+                  : "border-transparent text-text-muted hover:text-text-default"
+              }`}
+            >
+              翻訳
+            </button>
+            {contentTab === "translate" && (
+              <div className="ml-auto flex items-center gap-1 pb-1">
                 {(["good", "neutral", "bad"] as const).map((rating) => (
                   <button
                     key={rating}
@@ -2613,36 +2655,33 @@ export default function ArticleView({
                   </button>
                 ))}
               </div>
-            </div>
-            {translateResult.isHtml ? (
-              <div
-                className="article-content text-[14px] leading-[1.8] text-text-default"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(translateResult.text) }}
-              />
-            ) : (
-              <p className="text-[14px] leading-[1.8] text-text-default whitespace-pre-wrap">
-                {translateResult.text}
-              </p>
             )}
           </div>
         )}
-        {translateError && <p className="mb-6 text-[11px] text-rose-400">{translateError}</p>}
-
-        {/* OGP 画像 (埋め込みなし) */}
-        {!embedInfo && (article.ogImage ?? resolvedOgImage) && (
-          <img
-            src={`/api/image-proxy?url=${encodeURIComponent((article.ogImage ?? resolvedOgImage)!)}`}
-            alt=""
-            className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
-            loading="lazy"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
-        )}
 
         {/* 本文 */}
-        {processedContent ? (
+        {contentTab === "translate" && translateResult ? (
+          translateResult.isHtml ? (
+            <div
+              className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
+              style={{
+                ...getLineHeightStyle(lineHeight),
+                ...getContentWidthStyle(contentWidth),
+              }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(translateResult.text) }}
+            />
+          ) : (
+            <p
+              className={`article-content whitespace-pre-wrap ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
+              style={{
+                ...getLineHeightStyle(lineHeight),
+                ...getContentWidthStyle(contentWidth),
+              }}
+            >
+              {translateResult.text}
+            </p>
+          )
+        ) : processedContent ? (
           <div
             ref={contentRef}
             className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}

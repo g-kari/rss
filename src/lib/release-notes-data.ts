@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-18
 
+### 新機能
+
+- **AI 翻訳に「原文 / 翻訳」タブ切り替えを追加** — 従来は翻訳結果が本文の上に独立パネルで追加表示されていたが、Google 翻訳のように本文エリア内のタブで原文と翻訳を切り替えて読めるように変更。翻訳実行後は自動で「翻訳」タブに切り替わり、「原文」タブをクリックすれば元の記事本文に戻る。翻訳タブ時のみフィードバックボタン（👍 / 😐 / 👎）を表示。記事を切り替えた際はタブが「原文」にリセットされる。\`contentTab\` state と \`translateResult\` への自動切替 \`useEffect\` で実装。
+
 ### バグ修正
 
 - **cron フィード取得エラーログで Error オブジェクトが \`{}\` になる問題を修正** — \`src/cron/fetch.ts\` の \`applyFeedError\` が \`console.error("Feed fetch failed", { error })\` で \`Error\` をそのまま渡していたが、Cloudflare Workers のログは内部で \`JSON.stringify\` するため \`name\` / \`message\` / \`stack\` が non-enumerable で空オブジェクト化し、原因特定が完全に不能だった。\`src/lib/serialize-error.ts\` に \`serializeError()\` ヘルパーを新設し、\`Error\` インスタンスを \`{ name, message, stack, cause }\` に明示展開してログ出力するよう変更。\`cause\` は再帰的に展開し、非 Error 値は \`{ value }\` でラップ。循環参照オブジェクトは文字列化フォールバック。ユニットテスト 11 件 (\`e2e/serialize-error.spec.ts\`) を追加。
