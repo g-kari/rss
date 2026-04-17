@@ -2,6 +2,10 @@
 
 ## 2026-04-17
 
+### バグ修正
+
+- **端末間の既読・ブックマーク・後で読む・いいね状態のズレを解消 (issue #62)** — `POST /api/read-state` を単純上書きから 3-way 差分マージに変更。クライアントは削除 ID を `removedIds` として送信し、サーバー側で `mergeReadStateUpdate()` が `(existing ∪ update) \ removedIds` を計算して保存する。POST レスポンスでマージ結果を返し、クライアントは即座に他端末の最新状態を取り込む。`toggleRead` も削除時の即時同期を有効化し、既読解除が他端末で復活するケースを防止。タブ復帰時の R2 再取得クールダウンは 60 秒→ 15 秒に短縮。新規純粋関数 `src/lib/read-state-merge.ts` と回帰テスト `e2e/read-state-merge.spec.ts`（10 ケース）を追加。
+
 ### 新機能
 
 - **スクロール進捗に基づく自動既読マーク機能 (issue #59)** — 記事を閾値（70% / 80% / 90%）までスクロールすると自動的に既読マークする機能を追加。`useReadingProgress` の `onProgressChange` コールバックをフックして実装し、`useReadState.markRead` は冪等のため追加コストなし。設定は `ArticleView` のリーダー設定行にトグル＋右クリックで閾値サイクルのボタンを新設（デフォルト OFF / 80%）。`STORAGE_KEYS.AUTO_READ_ENABLED` と `STORAGE_KEYS.AUTO_READ_THRESHOLD` で localStorage に永続化。

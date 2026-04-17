@@ -5,6 +5,7 @@ import { r2Get, r2Put, readStateKey } from "@/lib/r2";
 import type { ReadState } from "@/types";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
 import { extractIds, isValidIso8601, parseSnoozedUntil, parseNotes } from "@/lib/validation";
+import { mergeReadStateUpdate, type ReadStateUpdate } from "@/lib/read-state-merge";
 
 const MAX_READ_IDS = 20_000;
 const MAX_BOOKMARK_IDS = 2_000;
@@ -33,7 +34,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   return withSession(async ({ session, env }) => {
-    const parsed = await parseJsonBody<Partial<ReadState>>(req);
+    const parsed = await parseJsonBody<ReadStateUpdate>(req);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
 
@@ -46,6 +47,16 @@ export async function POST(req: NextRequest) {
       return apiError("Payload too large", 413, { code: "PAYLOAD_TOO_LARGE" });
     }
 
+    const removedRaw = body.removedIds ?? {};
+    const removedReadIds = extractIds(removedRaw.readIds, MAX_READ_IDS);
+    const removedBookmarkIds = extractIds(removedRaw.bookmarkIds, MAX_BOOKMARK_IDS);
+    const removedReadingListIds = extractIds(removedRaw.readingListIds, MAX_READING_LIST_IDS);
+    const removedLikeIds = extractIds(removedRaw.likeIds, MAX_LIKE_IDS);
+
+    if (!removedReadIds || !removedBookmarkIds || !removedReadingListIds || !removedLikeIds) {
+      return apiError("Payload too large", 413, { code: "PAYLOAD_TOO_LARGE" });
+    }
+
     const globalFilter = parseKeywordFilter(body.globalFilter);
 
     // readBeforeTimestamp: ISO 8601 文字列のみ許可（それ以外は無視）
@@ -54,16 +65,40 @@ export async function POST(req: NextRequest) {
     const snoozedUntil = parseSnoozedUntil(body.snoozedUntil, MAX_SNOOZED);
     const notes = parseNotes(body.notes, MAX_NOTES);
 
-    await r2Put(env.RSS_DATA, readStateKey(session.userId), {
+    // 既存 ReadState を読み込んで差分マージする（他端末の変更を失わない）
+    const stored = await r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {});
+    const existing: ReadState = {
+      readIds: stored.readIds ?? [],
+      bookmarkIds: stored.bookmarkIds ?? [],
+      readingListIds: stored.readingListIds ?? [],
+      likeIds: stored.likeIds ?? [],
+      globalFilter: stored.globalFilter ?? null,
+      readBeforeTimestamp: stored.readBeforeTimestamp ?? null,
+      snoozedUntil: stored.snoozedUntil ?? null,
+      notes: stored.notes ?? null,
+    };
+
+    const update: ReadStateUpdate = {
       readIds,
       bookmarkIds,
       readingListIds,
       likeIds,
-      globalFilter,
+      removedIds: {
+        readIds: removedReadIds,
+        bookmarkIds: removedBookmarkIds,
+        readingListIds: removedReadingListIds,
+        likeIds: removedLikeIds,
+      },
       readBeforeTimestamp: rbt,
       snoozedUntil,
       notes,
-    });
-    return NextResponse.json({ ok: true });
+    };
+    if ("globalFilter" in body) update.globalFilter = globalFilter;
+
+    const merged = mergeReadStateUpdate(existing, update);
+
+    await r2Put(env.RSS_DATA, readStateKey(session.userId), merged);
+    // クライアントが POST 直後にサーバーの真実を反映できるよう、マージ結果を返す
+    return NextResponse.json(merged);
   });
 }
