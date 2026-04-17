@@ -2,6 +2,10 @@
 
 ## 2026-04-18
 
+### バグ修正
+
+- **cron フィード取得エラーログで Error オブジェクトが `{}` になる問題を修正** — `src/cron/fetch.ts` の `applyFeedError` が `console.error("Feed fetch failed", { error })` で `Error` をそのまま渡していたが、Cloudflare Workers のログは内部で `JSON.stringify` するため `name` / `message` / `stack` が non-enumerable で空オブジェクト化し、原因特定が完全に不能だった。`src/lib/serialize-error.ts` に `serializeError()` ヘルパーを新設し、`Error` インスタンスを `{ name, message, stack, cause }` に明示展開してログ出力するよう変更。`cause` は再帰的に展開し、非 Error 値は `{ value }` でラップ。循環参照オブジェクトは文字列化フォールバック。ユニットテスト 11 件 (`e2e/serialize-error.spec.ts`) を追加。
+
 ### 新機能
 
 - **AI 翻訳を HTML 構造保持方式に変更（Google 翻訳ライク）** — 従来の `toPlainText` でタグを剥がしてから翻訳する方式を廃止。`src/lib/translate-html.ts` を新設し、Chrome Translator API 対応ブラウザでは `DOMParser` で記事 HTML をパースしてテキストノード・`alt` / `title` / `aria-label` / `placeholder` 属性のみを個別に翻訳、`<p>` / `<a>` / `<strong>` / `<img>` 等のタグ構造・埋め込み・リンクをそのまま保持。`<code>` / `<pre>` / `<script>` / `<style>` / `<kbd>` / `<samp>` / `<var>` / `<iframe>` / `<embed>` / `<object>` / `<noscript>` / `<textarea>` はコード・実行系として翻訳対象から除外。個別ノードは `Promise.allSettled` で並列翻訳し、一部失敗しても他ノードに影響しない。`useArticleAi` の結果型を `AiOperationResult {text, isHtml}` に変更し、`ArticleView` では `isHtml=true` なら `sanitizeHtml` 後に `article-content` クラスで HTML レンダリング、`false`（Workers AI フォールバック）なら従来のプレーンテキスト表示。ユニットテスト 12 件 (`e2e/translate-html.spec.ts`) を追加。

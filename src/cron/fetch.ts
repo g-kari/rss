@@ -21,6 +21,7 @@ import {
   assembleClientFeed,
 } from "../lib/shared-feed";
 import { INACTIVE_FEED_DAYS } from "../lib/article-ttl";
+import { serializeError } from "../lib/serialize-error";
 
 type FetchEnv = Pick<CloudflareEnv, "RSS_DATA" | "FINDME_RSS">;
 
@@ -176,11 +177,14 @@ function applyFeedError(meta: SharedFeedMeta, error: unknown): void {
   );
   meta.fetchError = error instanceof Error ? error.message : String(error);
   meta.lastErrorAt = new Date().toISOString();
+  // Cloudflare Workers のログは Error オブジェクトを JSON.stringify する際に
+  // name / message / stack が non-enumerable のため `{}` になってしまう。
+  // 明示的にプレーンオブジェクトへ展開して原因特定可能な形でログする。
   console.error("Feed fetch failed", {
     feedHash: meta.feedHash,
     url: meta.url,
     consecutiveErrors: meta.consecutiveErrors,
-    error,
+    error: serializeError(error),
   });
 }
 
