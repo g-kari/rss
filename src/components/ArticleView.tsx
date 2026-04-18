@@ -318,11 +318,17 @@ export default function ArticleView({
 
   // 取得済みコンテンツ: フェッチ結果 > キャッシュ > RSS 本文
   const rawContent = storedContent ?? article?.content ?? null;
-  const processedContent = rawContent
-    ? embedInfo
-      ? stripIframes(rawContent)
-      : processContent(rawContent, theme)
-    : null;
+  // useMemo で参照安定化。毎レンダー processContent が走ると dangerouslySetInnerHTML が
+  // innerHTML を再代入し、highlight.js が付けた .hljs class ごと DOM が吹き飛ぶ（Issue #83）。
+  const processedContent = useMemo(
+    () =>
+      rawContent
+        ? embedInfo
+          ? stripIframes(rawContent)
+          : processContent(rawContent, theme)
+        : null,
+    [rawContent, embedInfo, theme],
+  );
 
   // 記事本文の全画像 URL を抽出（重複除去）— 2枚以上あれば末尾ギャラリーに表示
   const galleryImages = useMemo(
