@@ -1,20 +1,15 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import type {
-  Article,
-  EngagementAction,
-  Feed,
-  FontFamily,
-  FontSize,
-  KeywordFilter,
-} from "../types";
+import React, { useEffect, useMemo, useRef } from "react";
+import type { Article, EngagementAction, Feed, KeywordFilter } from "../types";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import {
   readingTime,
   FONT_SIZE_CYCLE,
   FONT_FAMILY_CYCLE,
   FONT_FAMILY_LABELS,
+  FONT_SIZE_CLASSES,
+  FONT_FAMILY_CLASSES,
   collectImageUrlsFromHtml,
 } from "../lib/article-utils";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
@@ -30,12 +25,7 @@ import { useArticleHighlight } from "../hooks/useArticleHighlight";
 import { useSyntaxHighlight } from "../hooks/useSyntaxHighlight";
 import { useMathRender } from "../hooks/useMathRender";
 import { useSliderGallery } from "../hooks/useSliderGallery";
-import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import {
-  type LineHeight,
-  type ContentWidth,
-  LINE_HEIGHT_CYCLE,
-  CONTENT_WIDTH_CYCLE,
   LINE_HEIGHT_LABELS,
   CONTENT_WIDTH_LABELS,
   getLineHeightStyle,
@@ -60,18 +50,6 @@ import GlobalFilterMenu from "./article-view/GlobalFilterMenu";
 import ImageGallery from "./article-view/ImageGallery";
 import SnoozeMenu from "./article-view/SnoozeMenu";
 import SelectionExcludePopup, { useSelectionExclude } from "./article-view/SelectionExcludePopup";
-
-const FONT_SIZE_CLASSES: Record<FontSize, string> = {
-  small: "text-[14px] leading-[1.75]",
-  medium: "text-[16px] leading-[1.9]",
-  large: "text-[19px] leading-[2.0]",
-};
-
-const FONT_FAMILY_CLASSES: Record<FontFamily, string> = {
-  sans: "font-sans",
-  serif: "font-serif",
-  mono: "font-mono",
-};
 
 interface Props {
   article: Article | null;
@@ -149,6 +127,12 @@ export default function ArticleView({
     toggleAutoRead: onToggleAutoRead,
     autoReadThreshold,
     cycleAutoReadThreshold: onCycleAutoReadThreshold,
+    lineHeight,
+    onChangeLineHeight,
+    contentWidth,
+    onChangeContentWidth,
+    textJustify,
+    onChangeTextJustify,
   } = useReaderSettings();
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -176,37 +160,18 @@ export default function ArticleView({
     setContentTab,
   } = useArticleAiRatings({ articleId: article?.id, translateResult });
 
-  // リーダー表示設定（行間・コンテンツ幅・両端揃え）— localStorage で永続化
-  const [lineHeight, setLineHeight] = useState<LineHeight>(() => {
-    const stored = storageGet(STORAGE_KEYS.LINE_HEIGHT);
-    return LINE_HEIGHT_CYCLE.includes(stored as LineHeight) ? (stored as LineHeight) : "normal";
-  });
-  const [contentWidth, setContentWidth] = useState<ContentWidth>(() => {
-    const stored = storageGet(STORAGE_KEYS.CONTENT_WIDTH);
-    return CONTENT_WIDTH_CYCLE.includes(stored as ContentWidth)
-      ? (stored as ContentWidth)
-      : "medium";
-  });
-  const [textJustify, setTextJustify] = useState<boolean>(() => {
-    return storageGet(STORAGE_KEYS.TEXT_JUSTIFY) === "true";
-  });
+  // リーダー表示設定（行間・コンテンツ幅・両端揃え）は ReaderSettingsContext から取得
 
   function handleCycleLineHeight() {
-    const next = cycleLineHeight(lineHeight);
-    setLineHeight(next);
-    storageSet(STORAGE_KEYS.LINE_HEIGHT, next);
+    onChangeLineHeight(cycleLineHeight(lineHeight));
   }
 
   function handleCycleContentWidth() {
-    const next = cycleContentWidth(contentWidth);
-    setContentWidth(next);
-    storageSet(STORAGE_KEYS.CONTENT_WIDTH, next);
+    onChangeContentWidth(cycleContentWidth(contentWidth));
   }
 
   function handleToggleJustify() {
-    const next = !textJustify;
-    setTextJustify(next);
-    storageSet(STORAGE_KEYS.TEXT_JUSTIFY, String(next));
+    onChangeTextJustify(!textJustify);
   }
 
   // メモ編集ステート（記事切り替え時にリセット）

@@ -114,11 +114,24 @@ export const FONT_SIZE_LABELS: Record<FontSize, string> = {
   large: "大",
 };
 
+/** 記事本文に適用する Tailwind クラス（ArticleView / UserSettingsModal で共有） */
+export const FONT_SIZE_CLASSES: Record<FontSize, string> = {
+  small: "text-[14px] leading-[1.75]",
+  medium: "text-[16px] leading-[1.9]",
+  large: "text-[19px] leading-[2.0]",
+};
+
 export const FONT_FAMILY_CYCLE: FontFamily[] = ["sans", "serif", "mono"];
 export const FONT_FAMILY_LABELS: Record<FontFamily, string> = {
   sans: "サンセリフ",
   serif: "セリフ",
   mono: "等幅",
+};
+
+export const FONT_FAMILY_CLASSES: Record<FontFamily, string> = {
+  sans: "font-sans",
+  serif: "font-serif",
+  mono: "font-mono",
 };
 
 export const LAYOUT_CYCLE: Layout[] = ["compact", "list", "card", "magazine"];

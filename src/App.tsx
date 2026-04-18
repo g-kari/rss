@@ -7,6 +7,7 @@ import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
+import UserSettingsModal from "./components/UserSettingsModal";
 import FeedQuickSwitchModal from "./components/FeedQuickSwitchModal";
 import SnoozeModal from "./components/SnoozeModal";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
@@ -78,6 +79,15 @@ export default function App() {
     toggleAutoRead,
     autoReadThreshold,
     cycleAutoReadThreshold,
+    onChangeAutoReadThreshold,
+    lineHeight,
+    onChangeLineHeight,
+    contentWidth,
+    onChangeContentWidth,
+    textJustify,
+    onChangeTextJustify,
+    showSettings,
+    setShowSettings,
   } = useUIState(initialMobilePane);
 
   // カラム幅（PC）
@@ -96,6 +106,13 @@ export default function App() {
       toggleAutoRead,
       autoReadThreshold,
       cycleAutoReadThreshold,
+      onChangeAutoReadThreshold,
+      lineHeight,
+      onChangeLineHeight,
+      contentWidth,
+      onChangeContentWidth,
+      textJustify,
+      onChangeTextJustify,
     }),
     [
       fontSize,
@@ -109,6 +126,13 @@ export default function App() {
       toggleAutoRead,
       autoReadThreshold,
       cycleAutoReadThreshold,
+      onChangeAutoReadThreshold,
+      lineHeight,
+      onChangeLineHeight,
+      contentWidth,
+      onChangeContentWidth,
+      textJustify,
+      onChangeTextJustify,
     ],
   );
 
@@ -862,6 +886,8 @@ export default function App() {
           })()}
         {/* キーボードショートカット ヘルプ */}
         {showHelp && <KeyboardShortcutsModal onClose={() => setShowHelp(false)} />}
+        {/* ユーザー設定 */}
+        {showSettings && <UserSettingsModal onClose={() => setShowSettings(false)} />}
         {/* フィードクイックスイッチャー */}
         {showFeedSwitcher && (
           <FeedQuickSwitchModal
@@ -959,6 +985,7 @@ export default function App() {
               onFeedsImported={appendFeeds}
               onMarkAllRead={markAllRead}
               onToggleTheme={toggleTheme}
+              onOpenSettings={() => setShowSettings(true)}
               onSaveArticleUrl={onSaveArticleUrl}
               onRefresh={refreshFeeds}
               onRetryFeed={retryFeed}

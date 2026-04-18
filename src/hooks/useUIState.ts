@@ -13,6 +13,12 @@ import {
   toggleSetItem,
 } from "../lib/storage";
 import { FONT_FAMILY_CYCLE, FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article-utils";
+import {
+  CONTENT_WIDTH_CYCLE,
+  LINE_HEIGHT_CYCLE,
+  type ContentWidth,
+  type LineHeight,
+} from "../lib/reader-settings";
 import { useMobilePane } from "./useMobilePane";
 import { useNSFWMode } from "./useNSFWMode";
 
@@ -57,6 +63,14 @@ function loadAutoReadThreshold(): AutoReadThreshold {
   return AUTO_READ_THRESHOLD_CYCLE.includes(num as AutoReadThreshold)
     ? (num as AutoReadThreshold)
     : DEFAULT_AUTO_READ_THRESHOLD;
+}
+
+const loadLineHeight = () =>
+  loadStoredEnum(STORAGE_KEYS.LINE_HEIGHT, LINE_HEIGHT_CYCLE, "normal" as LineHeight);
+const loadContentWidth = () =>
+  loadStoredEnum(STORAGE_KEYS.CONTENT_WIDTH, CONTENT_WIDTH_CYCLE, "medium" as ContentWidth);
+function loadTextJustify(): boolean {
+  return storageGet(STORAGE_KEYS.TEXT_JUSTIFY) === "true";
 }
 
 /** localStorage に永続化する enum 系設定の state と onChange セッターをまとめて返す。 */
@@ -105,6 +119,15 @@ export interface UIState {
   toggleAutoRead: () => void;
   autoReadThreshold: AutoReadThreshold;
   cycleAutoReadThreshold: () => void;
+  onChangeAutoReadThreshold: (v: AutoReadThreshold) => void;
+  lineHeight: LineHeight;
+  onChangeLineHeight: (lh: LineHeight) => void;
+  contentWidth: ContentWidth;
+  onChangeContentWidth: (w: ContentWidth) => void;
+  textJustify: boolean;
+  onChangeTextJustify: (v: boolean) => void;
+  showSettings: boolean;
+  setShowSettings: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 /**
@@ -136,6 +159,20 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [autoReadEnabled, setAutoReadEnabled] = useState<boolean>(loadAutoReadEnabled);
   const [autoReadThreshold, setAutoReadThreshold] =
     useState<AutoReadThreshold>(loadAutoReadThreshold);
+  const [lineHeight, onChangeLineHeight] = useStoredSetting<LineHeight>(
+    loadLineHeight,
+    STORAGE_KEYS.LINE_HEIGHT,
+  );
+  const [contentWidth, onChangeContentWidth] = useStoredSetting<ContentWidth>(
+    loadContentWidth,
+    STORAGE_KEYS.CONTENT_WIDTH,
+  );
+  const [textJustify, setTextJustifyState] = useState<boolean>(loadTextJustify);
+  const onChangeTextJustify = useCallback((v: boolean) => {
+    setTextJustifyState(v);
+    storageSet(STORAGE_KEYS.TEXT_JUSTIFY, String(v));
+  }, []);
+  const [showSettings, setShowSettings] = useState(false);
 
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
   const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
@@ -214,6 +251,11 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     });
   }, []);
 
+  const onChangeAutoReadThreshold = useCallback((next: AutoReadThreshold) => {
+    setAutoReadThreshold(next);
+    storageSet(STORAGE_KEYS.AUTO_READ_THRESHOLD, String(next));
+  }, []);
+
   const installApp = useCallback(async () => {
     if (!installPrompt) return;
     await installPrompt.prompt();
@@ -254,5 +296,14 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     toggleAutoRead,
     autoReadThreshold,
     cycleAutoReadThreshold,
+    onChangeAutoReadThreshold,
+    lineHeight,
+    onChangeLineHeight,
+    contentWidth,
+    onChangeContentWidth,
+    textJustify,
+    onChangeTextJustify,
+    showSettings,
+    setShowSettings,
   };
 }
