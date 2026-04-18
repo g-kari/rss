@@ -1,7 +1,7 @@
 /**
  * リーダー表示設定ユーティリティ
  *
- * フォントサイズ (6段階) / 行間 (5段階) / コンテンツ幅 (3段階) の
+ * フォントサイズ (6段階) / 行間 (5段階) / コンテンツ幅 (4段階) の
  * 定数・CSS スタイル生成・サイクル関数を提供する。
  */
 
@@ -77,19 +77,21 @@ export function cycleLineHeight(current: LineHeight): LineHeight {
 
 // ===== コンテンツ幅 =====
 
-export type ContentWidth = "narrow" | "medium" | "full";
+export type ContentWidth = "narrow" | "medium" | "wide" | "full";
 
-export const CONTENT_WIDTH_CYCLE: ContentWidth[] = ["narrow", "medium", "full"];
+export const CONTENT_WIDTH_CYCLE: ContentWidth[] = ["narrow", "medium", "wide", "full"];
 
 const CONTENT_WIDTH_VALUES: Record<ContentWidth, string> = {
   narrow: "640px",
   medium: "720px",
+  wide: "900px",
   full: "none",
 };
 
 export const CONTENT_WIDTH_LABELS: Record<ContentWidth, string> = {
   narrow: "640",
   medium: "720",
+  wide: "900",
   full: "全幅",
 };
 
