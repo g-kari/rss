@@ -18,6 +18,35 @@ const FETCH_HEADERS = {
   "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
 };
 
+/** x.com / twitter.com は OGP を返さないため、代替ホスト vxtwitter.com に差し替える */
+const TWITTER_LIKE_HOSTS = new Set([
+  "x.com",
+  "www.x.com",
+  "mobile.x.com",
+  "twitter.com",
+  "www.twitter.com",
+  "mobile.twitter.com",
+]);
+
+/**
+ * OGP 取得用に URL を正規化する。
+ * x.com / twitter.com 系ホストは bot 向け OGP を返さないため、
+ * OGP 互換プロキシである vxtwitter.com に差し替える。
+ * 他ホスト・不正入力は変更せずそのまま返す。
+ */
+export function normalizeOgpFetchUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (TWITTER_LIKE_HOSTS.has(u.hostname.toLowerCase())) {
+      u.hostname = "vxtwitter.com";
+      return u.toString();
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
 /**
  * ページから取得した OGP メタデータ。
  * フェッチ失敗時は全フィールドが空文字のフォールバック値を返す。
@@ -41,7 +70,8 @@ export async function fetchPageOgpMeta(
   timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS,
 ): Promise<OgpMeta> {
   try {
-    const res = await fetchFollowSafeRedirects(url, { headers: FETCH_HEADERS }, timeoutMs);
+    const fetchUrl = normalizeOgpFetchUrl(url);
+    const res = await fetchFollowSafeRedirects(fetchUrl, { headers: FETCH_HEADERS }, timeoutMs);
     if (!res.ok || !res.body) return { title: "", description: "", image: "" };
 
     const bytes = await readBodyBytesPartial(res.body, MAX_BYTES);
