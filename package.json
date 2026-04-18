@@ -24,8 +24,8 @@
     "katex": "^0.16.45",
     "linkedom": "^0.18.12",
     "marked": "^18.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260415.1",
