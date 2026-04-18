@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   detectCharset,
   detectNextPageUrl,
+  extractMainContent,
   fixLazyImages,
   fixImageDimensions,
   rewriteImageUrls,
@@ -292,6 +293,68 @@ test.describe("transformZennLinkEmbeds — Zenn card/tweet embed 変換", () => 
   test("embed を含まない通常テキストは変更されない", () => {
     const html = '<p>通常のテキスト</p><a href="https://example.com">リンク</a>';
     expect(transformZennLinkEmbeds(html)).toBe(html);
+  });
+});
+
+test.describe("extractMainContent — Zenn 埋め込み回帰 (Issue #88)", () => {
+  // 報告: zenn 記事内の埋め込みカード/ツイートが全て削除される。
+  // 原因: Readability が iframe 含む <span class="zenn-embedded"> を本文外と判定して削除。
+  // 対策: extractMainContent 側で Readability 実行前に <p><a> へ変換しておく。
+
+  const buildZennArticleHtml = (embedSpan: string) => `
+    <html>
+      <head><title>テスト記事</title></head>
+      <body>
+        <article>
+          <h1>CSS のアクセシビリティ Tips</h1>
+          <p>本記事では、CSS で実装できるアクセシビリティ向上の Tips をいくつか紹介します。
+          特に色やコントラスト、フォーカス制御に焦点を当てた具体例を交えて解説します。
+          こうした小さな積み重ねが、より多くのユーザーに優しい Web 体験を生み出します。</p>
+          ${embedSpan}
+          <p>以下も合わせてご参照ください。サンプルコードを通じて理解を深めることができます。
+          実装時にはブラウザの開発者ツールで実際の挙動を確認することをおすすめします。</p>
+        </article>
+      </body>
+    </html>
+  `;
+
+  test("Zenn card embed が Readability 経由でも本文に保持される", () => {
+    const cardSpan =
+      `<span class="embed-block zenn-embedded zenn-embedded-card">` +
+      `<iframe id="zenn-embedded__abc" src="https://embed.zenn.studio/card#zenn-embedded__abc"` +
+      ` data-content="https%3A%2F%2Fzenn.dev%2Fgemcook%2Farticles%2Fcss-tips" frameborder="0"></iframe>` +
+      `</span>`;
+    const html = buildZennArticleHtml(cardSpan);
+    const { content } = extractMainContent(html, "https://zenn.dev/gemcook/articles/css-tips3");
+    expect(content).toContain("zenn.dev/gemcook/articles/css-tips");
+    expect(content).not.toContain("embed.zenn.studio");
+  });
+
+  test("Zenn tweet embed が Readability 経由でも本文に保持される", () => {
+    const tweetSpan =
+      `<span class="embed-block zenn-embedded zenn-embedded-tweet">` +
+      `<iframe src="https://embed.zenn.studio/tweet#zenn-embedded__xxx"` +
+      ` data-content="https%3A%2F%2Fx.com%2Fexample%2Fstatus%2F1234567890"></iframe>` +
+      `</span>`;
+    const html = buildZennArticleHtml(tweetSpan);
+    const { content } = extractMainContent(html, "https://zenn.dev/example/articles/test");
+    expect(content).toContain("x.com/example/status/1234567890");
+    expect(content).not.toContain("embed.zenn.studio");
+  });
+
+  test("Zenn mermaid embed が Readability 経由でも本文に保持される", () => {
+    const mermaidSpan =
+      `<span class="embed-block zenn-embedded zenn-embedded-mermaid">` +
+      `<iframe src="https://embed.zenn.studio/mermaid#abc"` +
+      ` data-content="flowchart%20TD%0A%20%20A%5BStart%5D%20--%3E%20B%5BEnd%5D"></iframe>` +
+      `</span>`;
+    const html = buildZennArticleHtml(mermaidSpan);
+    const { content } = extractMainContent(html, "https://zenn.dev/example/articles/test");
+    // Readability は class 属性を剥がすため `language-mermaid` クラスは保証しない。
+    // 重要なのはソース本文が保持されること（埋め込みが消えなくなったこと）。
+    expect(content).toContain("flowchart TD");
+    expect(content).toContain("A[Start]");
+    expect(content).not.toContain("embed.zenn.studio");
   });
 });
 
