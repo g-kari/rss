@@ -85,8 +85,8 @@ test.describe("LINE_HEIGHT_CYCLE — 行間設定", () => {
 // ===== コンテンツ幅 =====
 
 test.describe("CONTENT_WIDTH_CYCLE — コンテンツ幅設定", () => {
-  test("3段階の幅定数を持つ", () => {
-    expect(CONTENT_WIDTH_CYCLE).toHaveLength(3);
+  test("4段階の幅定数を持つ", () => {
+    expect(CONTENT_WIDTH_CYCLE).toHaveLength(4);
   });
 
   test("getContentWidthStyle が maxWidth を返す", () => {

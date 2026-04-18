@@ -2,6 +2,10 @@
 
 ## 2026-04-18
 
+### 新機能
+
+- **コンテンツ幅に `wide` (900px) を追加** — 記事詳細の領域幅を広げても（フォーカスモード起動や 3 ペイン境界のリサイズ時）本文の `maxWidth` が `narrow:640px` / `medium:720px` / `full:none` の 3 段階しかなく、`medium` から `full` へ飛ぶと急激に全幅まで広がってしまい中間帯を選びづらい問題を解消（Issue #80）。`src/lib/reader-settings.ts` の `ContentWidth` に `wide` を追加し、サイクル順を `narrow → medium → wide → full → narrow` に拡張。ラベル表示（ArticleView の幅トグルボタン）も `900` に対応。`e2e/reader-settings.spec.ts` の `CONTENT_WIDTH_CYCLE` 長さアサートを 3 → 4 に更新。
+
 ### バグ修正
 
 - **Zenn 記事の埋め込み URL が消える問題を修正** — Zenn 本文中の `<span class="zenn-embedded zenn-embedded-card|tweet|mermaid">` が Readability に「本文外」と判定されて span ごと削除され、`postProcess` 内の `transformZennLinkEmbeds` / `transformZennMermaidEmbeds` が走る前に消えてしまう不具合を修正（Issue #88）。`src/lib/content.ts` の `extractMainContent` で `extractWithReadability` 実行前に Zenn 埋め込み変換を適用し、Readability 通過時には iframe を含まない `<p><a>` / `<pre><code>` 形式になっているため、本文判定ロジックが要素を保持するようになった。`postProcess` 側の同変換は冪等なため regex フォールバック経路の安全網として残している。`e2e/content-extraction.spec.ts` に Readability 経由でも card / tweet / mermaid 埋め込みが本文に保持されることを検証する 3 ケースを追加。
