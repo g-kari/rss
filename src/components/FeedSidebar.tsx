@@ -512,15 +512,17 @@ function SpecialViewButton({
     <button
       onClick={() => onSelectFeed(id)}
       aria-current={selectedFeedId === id ? "page" : undefined}
-      className={`w-full flex items-center justify-between px-4 py-1.5 text-left transition-all duration-200 ${
+      className={`w-full flex items-center justify-between gap-2 px-4 py-1.5 text-left transition-all duration-200 ${
         selectedFeedId === id
           ? "text-text-strong bg-surface-subtle"
           : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
       }`}
     >
-      <span className="text-[13px] tracking-[0.02em]">{label}</span>
+      <span className="text-[13px] tracking-[0.02em] truncate min-w-0">{label}</span>
       {count > 0 && (
-        <span className="text-[11px] text-text-muted tabular-nums">{formatCount(count)}</span>
+        <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
+          {formatCount(count)}
+        </span>
       )}
     </button>
   );
@@ -976,16 +978,16 @@ export default function FeedSidebar({
       )}
 
       {/* フィードリスト */}
-      <nav className="flex-1 min-h-0 overflow-y-auto py-2">
+      <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2">
         <div
           onClick={() => onSelectFeed(null)}
-          className={`group flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 ${
+          className={`group flex items-center justify-between gap-2 px-4 py-1.5 cursor-pointer transition-all duration-200 ${
             selectedFeedId === null
               ? "text-text-strong bg-surface-subtle"
               : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
           }`}
         >
-          <span className="text-[13px] tracking-[0.02em]">すべて</span>
+          <span className="text-[13px] tracking-[0.02em] truncate min-w-0">すべて</span>
           <span className="flex items-center gap-1 flex-shrink-0">
             {totalUnread > 0 && (
               <span className="text-[11px] text-text-muted tabular-nums">
