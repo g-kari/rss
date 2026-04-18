@@ -493,8 +493,8 @@ export function parseFeed(xml: string): ParsedFeed {
           content: sanitizeHtml(raw),
           ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
-          // RSS 1.0 は pubDate がなく dc:date （ISO 8601）を使う
-          publishedAt: parseDate(str(item.pubDate) || null) ?? parseDate(item["dc:date"] ?? null),
+          // RSS 1.0 は dc:date（ISO 8601）が主要。pubDate は一部サイト独自の拡張として存在しうるためフォールバックに使う
+          publishedAt: parseDate(str(item["dc:date"]) || str(item.pubDate) || null),
           categories: toArray(item.category)
             .map((c) => str(c))
             .filter(Boolean),

@@ -114,6 +114,50 @@ test.describe("parseFeed — 不正な日付の安全処理", () => {
     const result = parseFeed(xml);
     expect(result.items[0].publishedAt).toBe("2024-03-25T12:00:00.000Z");
   });
+
+  test("RSS 1.0 (RDF): pubDate と dc:date が両方あるとき dc:date を優先する", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Test RDF Feed</title>
+    <link>https://example.com</link>
+  </channel>
+  <item rdf:about="https://example.com/6">
+    <title>記事6</title>
+    <link>https://example.com/6</link>
+    <pubDate>Mon, 25 Mar 2024 00:00:00 GMT</pubDate>
+    <dc:date>2024-03-26T12:00:00+00:00</dc:date>
+    <description>テスト</description>
+  </item>
+</rdf:RDF>`;
+
+    const result = parseFeed(xml);
+    expect(result.items[0].publishedAt).toBe("2024-03-26T12:00:00.000Z");
+  });
+
+  test("RSS 1.0 (RDF): pubDate が無効でも dc:date が有効なら dc:date を採用する", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Test RDF Feed</title>
+    <link>https://example.com</link>
+  </channel>
+  <item rdf:about="https://example.com/7">
+    <title>記事7</title>
+    <link>https://example.com/7</link>
+    <pubDate>not-a-date</pubDate>
+    <dc:date>2024-03-27T09:30:00+00:00</dc:date>
+    <description>テスト</description>
+  </item>
+</rdf:RDF>`;
+
+    const result = parseFeed(xml);
+    expect(result.items[0].publishedAt).toBe("2024-03-27T09:30:00.000Z");
+  });
 });
 
 test.describe("parseFeed — 危険スキーム URL の排除", () => {
