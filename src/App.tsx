@@ -198,6 +198,11 @@ export default function App() {
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() =>
     searchParams.get("feed"),
   );
+  // ?feed と ?group は相互排他。片方を選ぶと他方はクリアする設計のため、
+  // 両方が URL に含まれていた場合は feed を優先して group を無視する。
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(() =>
+    searchParams.get("feed") ? null : searchParams.get("group"),
+  );
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
   // URL から復元すべき記事 ID（記事ロード完了後に解決）
@@ -207,10 +212,11 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedFeedId) params.set("feed", selectedFeedId);
+    if (selectedGroupId) params.set("group", selectedGroupId);
     if (selectedArticle) params.set("article", selectedArticle.id);
     const search = params.toString();
     router.replace(search ? `/?${search}` : "/");
-  }, [selectedFeedId, selectedArticle, router]);
+  }, [selectedFeedId, selectedGroupId, selectedArticle, router]);
 
   // 記事ロード完了後に URL の article パラメータを復元
   useEffect(() => {
@@ -312,6 +318,14 @@ export default function App() {
     }
   }
 
+  // 削除されたグループが選択中の場合は解除する
+  useEffect(() => {
+    if (!selectedGroupId) return;
+    if (!feedGroups.some((g) => g.id === selectedGroupId)) {
+      setSelectedGroupId(null);
+    }
+  }, [selectedGroupId, feedGroups]);
+
   const onSaveArticleUrl = useCallback(
     async (url: string, mode: "bookmark" | "reading_list") => {
       try {
@@ -341,6 +355,14 @@ export default function App() {
   );
 
   const nsfwFeedIds = useMemo(() => new Set(feeds.filter((f) => f.nsfw).map((f) => f.id)), [feeds]);
+
+  // 選択中グループに所属するフィード ID セット — useFilteredArticles / markBulkRead 等で共有
+  const groupFeedIds = useMemo(() => {
+    if (!selectedGroupId) return undefined;
+    const ids = new Set<string>();
+    for (const f of feeds) if (f.groupId === selectedGroupId) ids.add(f.id);
+    return ids;
+  }, [selectedGroupId, feeds]);
 
   const mutedFeedIds = useMemo(() => {
     const now = new Date().toISOString();
@@ -391,6 +413,8 @@ export default function App() {
     snoozedUntil,
     mutedFeedIds,
     notes,
+    groupFeedIds,
+    selectedGroupId,
   });
 
   const {
@@ -908,10 +932,18 @@ export default function App() {
               likeCount={likeCount}
               historyCount={historyCount}
               selectedFeedId={selectedFeedId}
+              selectedGroupId={selectedGroupId}
               user={user}
               theme={theme}
               onSelectFeed={(id) => {
                 setSelectedFeedId(id);
+                setSelectedGroupId(null);
+                setSelectedArticle(null);
+                setMobilePane("list");
+              }}
+              onSelectGroup={(id) => {
+                setSelectedGroupId(id);
+                setSelectedFeedId(null);
                 setSelectedArticle(null);
                 setMobilePane("list");
               }}
@@ -998,6 +1030,12 @@ export default function App() {
               onToggleRead={toggleRead}
               onToggleBookmark={toggleBookmark}
               onMarkAllRead={() => {
+                if (groupFeedIds && groupFeedIds.size > 0) {
+                  // グループ選択中はグループ内のフィードを対象に一括既読
+                  const ids = articles.filter((a) => groupFeedIds.has(a.feedHash)).map((a) => a.id);
+                  if (ids.length > 0) markBulkRead(ids);
+                  return;
+                }
                 markAllRead(selectedFeedId);
                 skipRemainingPages(selectedFeedId);
               }}

@@ -27,6 +27,7 @@ interface Props {
   likeCount: number;
   historyCount: number;
   selectedFeedId: string | null;
+  selectedGroupId?: string | null;
   user: UserProfile;
   theme: "light" | "dark";
   refreshing: boolean;
@@ -35,6 +36,7 @@ interface Props {
   onToggleCollapseCategory?: (category: string) => void;
   nsfwMode: boolean;
   onSelectFeed: (id: string | null) => void;
+  onSelectGroup?: (id: string | null) => void;
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
   onFeedRenamed: (feed: Feed) => void;
@@ -85,6 +87,8 @@ function FeedGroupsSection({
   groups,
   unreadByFeed,
   renderFeed,
+  selectedGroupId,
+  onSelect,
   onCreate,
   onRename,
   onDelete,
@@ -96,6 +100,8 @@ function FeedGroupsSection({
   groups: { group: FeedGroup; feeds: Feed[] }[];
   unreadByFeed: Map<string, number>;
   renderFeed: (feed: Feed, startIdx: number) => ReactNode;
+  selectedGroupId?: string | null;
+  onSelect?: (id: string | null) => void;
   onCreate?: (name: string) => Promise<FeedGroup | { error: string }>;
   onRename?: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
   onDelete?: (id: string) => Promise<boolean>;
@@ -217,6 +223,7 @@ function FeedGroupsSection({
       {groups.map(({ group, feeds }, groupIdx) => {
         const isCollapsed = !!group.collapsed;
         const isMuted = !!group.muted;
+        const isSelected = selectedGroupId === group.id;
         const groupUnread = feeds.reduce((sum, f) => sum + (unreadByFeed.get(f.id) ?? 0), 0);
         const startIdx = offset;
         offset += feeds.length;
@@ -224,58 +231,74 @@ function FeedGroupsSection({
         const canMoveDown = groupIdx < groups.length - 1;
         return (
           <div key={`feed-group-${group.id}`}>
-            <div className="w-full px-4 pt-1.5 pb-0.5 flex items-center gap-1 group relative">
+            <div
+              className={`w-full px-4 pt-1.5 pb-0.5 flex items-center gap-1 group relative transition-colors ${isSelected ? "bg-surface-subtle" : ""}`}
+            >
               <button
                 onClick={() => void onToggleCollapse?.(group.id, !isCollapsed)}
-                className="flex items-center gap-1 flex-1 min-w-0"
+                className="flex-shrink-0 w-4 h-4 flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-subtle"
                 title={isCollapsed ? "展開" : "折りたたむ"}
+                aria-label={isCollapsed ? `${group.name} を展開` : `${group.name} を折りたたむ`}
               >
                 <svg
                   width="10"
                   height="10"
                   viewBox="0 0 10 10"
-                  className={`flex-shrink-0 text-text-muted transition-transform duration-150 ${isCollapsed ? "-rotate-90" : ""}`}
+                  className={`transition-transform duration-150 ${isCollapsed ? "-rotate-90" : ""}`}
                   fill="currentColor"
                 >
                   <path d="M5 7L1 3h8L5 7z" />
                 </svg>
-                {editingId === group.id ? (
-                  <input
-                    ref={editInputRef}
-                    type="text"
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => {
-                      e.stopPropagation();
-                      if (e.key === "Enter") void commitRename(group.id);
-                      else if (e.key === "Escape") {
-                        setEditingId(null);
-                        setEditError(null);
-                      }
-                    }}
-                    onBlur={() => {
-                      if (!editError) void commitRename(group.id);
-                    }}
-                    maxLength={50}
-                    className="flex-1 text-[12px] bg-surface-base border border-border-default rounded px-1 py-0 text-text-strong outline-none focus:border-text-muted min-w-0"
-                  />
-                ) : (
+              </button>
+              {editingId === group.id ? (
+                <input
+                  ref={editInputRef}
+                  type="text"
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter") void commitRename(group.id);
+                    else if (e.key === "Escape") {
+                      setEditingId(null);
+                      setEditError(null);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!editError) void commitRename(group.id);
+                  }}
+                  maxLength={50}
+                  className="flex-1 text-[12px] bg-surface-base border border-border-default rounded px-1 py-0 text-text-strong outline-none focus:border-text-muted min-w-0"
+                />
+              ) : (
+                <button
+                  onClick={() => onSelect?.(isSelected ? null : group.id)}
+                  className="flex-1 min-w-0 flex items-center gap-1 text-left"
+                  title={isSelected ? "選択解除" : `${group.name} の記事のみ表示`}
+                  aria-pressed={isSelected}
+                >
                   <span
-                    className={`text-[11px] font-medium tracking-[0.05em] truncate ${isMuted ? "text-text-faint italic" : "text-text-default"}`}
+                    className={`text-[11px] font-medium tracking-[0.05em] truncate ${
+                      isSelected
+                        ? "text-text-strong"
+                        : isMuted
+                          ? "text-text-faint italic"
+                          : "text-text-default"
+                    }`}
                     title={isMuted ? "ミュート中: このグループの記事は非表示です" : undefined}
                   >
                     {group.name}
                   </span>
-                )}
-                {isCollapsed && editingId !== group.id && (
-                  <span
-                    className={`ml-auto text-[10px] tabular-nums ${groupUnread > 0 ? "text-text-muted" : "text-text-faint"}`}
-                  >
-                    {groupUnread > 0 ? formatCount(groupUnread) : feeds.length}
-                  </span>
-                )}
-              </button>
+                  {isCollapsed && (
+                    <span
+                      className={`ml-auto text-[10px] tabular-nums ${groupUnread > 0 ? "text-text-muted" : "text-text-faint"}`}
+                    >
+                      {groupUnread > 0 ? formatCount(groupUnread) : feeds.length}
+                    </span>
+                  )}
+                </button>
+              )}
               {editingId !== group.id && onToggleMute && isMuted && (
                 <button
                   onClick={(e) => {
@@ -513,9 +536,11 @@ export default function FeedSidebar({
   likeCount,
   historyCount,
   selectedFeedId,
+  selectedGroupId = null,
   user,
   theme,
   onSelectFeed,
+  onSelectGroup,
   onFeedAdded,
   onFeedDeleted,
   onFeedRenamed,
@@ -1128,6 +1153,8 @@ export default function FeedSidebar({
             groups={groupedFeeds}
             unreadByFeed={unreadByFeed}
             renderFeed={(feed, startIdx) => renderFeed(feed, false, pinnedFeeds.length + startIdx)}
+            selectedGroupId={selectedGroupId}
+            onSelect={onSelectGroup}
             onCreate={onCreateFeedGroup}
             onRename={onRenameFeedGroup}
             onDelete={onDeleteFeedGroup}

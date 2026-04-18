@@ -57,6 +57,8 @@ export interface ArticleFilterOptions {
   feedCategoryMap?: Map<string, string>;
   /** ダイジェストモード — 全フィード表示時にフィードごとの最大件数を制限する */
   digestMode?: boolean;
+  /** グループ選択時の対象フィード ID セット — 設定時は feedHash が含まれる記事のみ表示 */
+  groupFeedIds?: Set<string>;
 }
 
 /**
@@ -112,8 +114,13 @@ function matchesFeedId(
  */
 /** feedId フィルター述語（activeIds に関わらず常に適用） */
 function buildFeedPredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
-  const { feedId, bookmarkIds, readingListIds, likeIds, historyIds } = opts;
-  return (a) => matchesFeedId(a, feedId, bookmarkIds, readingListIds, likeIds, historyIds);
+  const { feedId, bookmarkIds, readingListIds, likeIds, historyIds, groupFeedIds } = opts;
+  const feedMatcher = (a: Article) =>
+    matchesFeedId(a, feedId, bookmarkIds, readingListIds, likeIds, historyIds);
+  if (!feedId && groupFeedIds && groupFeedIds.size > 0) {
+    return (a) => groupFeedIds.has(a.feedHash);
+  }
+  return feedMatcher;
 }
 
 /** スヌーズ述語（activeIds 外の記事にのみ適用） */
@@ -136,8 +143,9 @@ function buildNsfwPredicate(opts: ArticleFilterOptions): ((a: Article) => boolea
 
 /** ミュート済みフィード述語（全フィード表示時のみ・activeIds 外の記事にのみ適用） */
 function buildMutedFeedPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
-  const { feedId, mutedFeedIds } = opts;
-  if (feedId || !mutedFeedIds?.size) return null;
+  const { feedId, mutedFeedIds, groupFeedIds } = opts;
+  // feedId 選択時 or グループ選択時は明示的に選んでいるためミュートを適用しない
+  if (feedId || groupFeedIds?.size || !mutedFeedIds?.size) return null;
   return (a) => !mutedFeedIds.has(a.feedHash);
 }
 
@@ -293,7 +301,8 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
 
   // ソート後に適用するため、newest 順で先頭 3 件 = 最新 3 件になる。
   // アクティブな記事（現在選択中・猶予期間中）はカウントから除外して常に表示する。
-  if (opts.digestMode && !opts.feedId) {
+  // グループ選択中はユーザーが明示的にスコープを絞っているため digest は適用しない。
+  if (opts.digestMode && !opts.feedId && !opts.groupFeedIds?.size) {
     const feedCount = new Map<string, number>();
     return list.filter((a) => {
       if (opts.activeIds.has(a.id)) return true;

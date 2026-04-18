@@ -104,6 +104,10 @@ interface Options {
   mutedFeedIds?: Set<string>;
   /** メモ記録（記事 ID → メモ内容） */
   notes?: Record<string, string>;
+  /** グループ選択時の対象フィード ID セット — 設定時は feedHash がこれに含まれる記事のみ表示 */
+  groupFeedIds?: Set<string>;
+  /** グループ選択時の ID — リセット useEffect の deps で使用（groupFeedIds Set 参照の再生成に左右されないようにするため） */
+  selectedGroupId?: string | null;
 }
 
 /**
@@ -145,6 +149,8 @@ export function useFilteredArticles({
   snoozedUntil,
   mutedFeedIds,
   notes,
+  groupFeedIds,
+  selectedGroupId = null,
 }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
@@ -181,13 +187,15 @@ export function useFilteredArticles({
   // 既読になった記事はフィルターで除外されて前の記事に戻れなくなる問題を回避するために使用。
   const gracePeriodId = useGracePeriod(selectedArticleId);
 
-  // フィード切り替え時にページ・検索クエリ・著者フィルター・カテゴリフィルターをリセット
+  // フィード切り替え / グループ切り替え時にページ・検索クエリ・著者フィルター・カテゴリフィルターをリセット。
+  // groupFeedIds は親側で useMemo しているが feeds ポーリング時に Set 参照が変わり得るため、
+  // 安定した selectedGroupId（文字列 or null）を deps にする。
   useEffect(() => {
     setPage(1);
     setRawQuery("");
     setAuthorFilter(null);
     setCategoryFilter(null);
-  }, [feedId]);
+  }, [feedId, selectedGroupId]);
 
   // useState の set 関数・useSyncedRef の ref は常に安定 — deps [] で固定できるコールバックを統合
   const {
@@ -319,6 +327,7 @@ export function useFilteredArticles({
         categoryFilter,
         feedCategoryMap,
         digestMode,
+        groupFeedIds,
       }),
     [
       articles,
@@ -351,6 +360,7 @@ export function useFilteredArticles({
       categoryFilter,
       feedCategoryMap,
       digestMode,
+      groupFeedIds,
     ],
   );
 
