@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-18
 
+### バグ修正
+
+- **幅調整バーがポップアップ表示中も操作できる問題を修正** — 記事一覧 / フィード一覧 / 記事詳細の 3 ペイン境界にある幅調整バーが、モーダル・ドロップダウン表示中も pointer イベントを受けてドラッグできてしまい、オーバーレイより手前に見えてしまう不具合を修正（Issue #81）。\`src/lib/popup-lock.ts\` にグローバルなポップアップ表示数カウンタを追加し、\`src/hooks/usePopupLock.ts\`（\`usePopupLock(active?)\` / \`useHasOpenPopup()\`）を経由して登録・購読できるようにした。\`Modal\`（\`FeedDetailModal\` / \`FeedFilterModal\` / \`KeyboardShortcutsModal\` / \`ReadingStatsModal\` / \`ReleaseNotesModal\` / \`SnoozeModal\` が共通利用）、\`FeedQuickSwitchModal\`、\`usePortalMenu\`（\`FilterMenu\` / \`GlobalFilterMenu\` / \`ShareMenu\` / \`SnoozeMenu\` など）、および \`FeedItem\` のコンテキスト／ミュート／グループ移動メニューが表示中はロックを立てる。\`App.tsx\` のリサイズハンドルは \`useHasOpenPopup()\` を監視し、\`z-[5]\`（従来 \`z-20\`）へ引き下げたうえで表示中は \`pointer-events-none\` + \`opacity-0\` + \`aria-hidden\` を付与して操作不可にする。\`e2e/popup-lock.spec.ts\` にカウンタ増減・冪等性・通知購読の 6 ケースを追加。
+
 ### 新機能
 
 - **フィードグループ化 Step 6 — ドラッグ&ドロップでグループ移動** — \`FeedItem\` の最外 \`<div>\` に \`draggable\` + \`onDragStart\`（\`dataTransfer\` に \`application/x-rss-feed-id\` でフィードIDを格納）/ \`onDragEnd\` を実装。\`FeedSidebar\` 本体に \`draggedFeedId\` / \`dragOverGroupId\` ステートを持たせ、\`FeedGroupsSection\` のグループ行ラッパー \`<div>\` に \`onDragOver\`（\`preventDefault\` + \`dropEffect="move"\`）/ \`onDragLeave\`（\`relatedTarget\` の \`contains\` チェックで子要素へのバブルを無視）/ \`onDrop\`（\`feedId\` を取り出して既存 \`onSetGroupFeed(feed, group.id)\` にルーティング）を追加。ドロップ先は \`ring-2 ring-inset ring-text-muted\` でハイライト、ドラッグ中のフィード行は \`opacity-40\` で視覚化。同じグループに属するフィードのドロップは早期リターンで API 呼び出しをスキップ。新 API は追加せず既存 \`PATCH /api/feeds/:id\`（\`groupId\`）を流用。編集中（タイトル・カテゴリ）はドラッグを抑止。キーボード/タッチ操作は既存の \`FeedItem\` コンテキストメニュー「グループに移動」がフォールバックとして引き続き利用可能（Issue #67 Step 6）。

@@ -7,6 +7,7 @@ import FeedFilterModal from "./FeedFilterModal";
 import FeedDetailModal from "./FeedDetailModal";
 import type { KeywordFilter } from "../types";
 import { useEventListener } from "@/hooks/useEventListener";
+import { usePopupLock } from "@/hooks/usePopupLock";
 
 /** 未読カウントを表示用文字列に変換する（100以上は "99+" と表示） */
 export function formatCount(n: number): string {
@@ -166,6 +167,10 @@ export default function FeedItem({
   const [detailOpen, setDetailOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  // ドロップダウン系メニューが開いている間はポップアップロックを立てる
+  // （FilterModal / DetailModal は内部の Modal 基盤側でロック取得済み）
+  usePopupLock(menuOpen || muteOpen || groupOpen);
 
   useEventListener("scroll", () => setMenuOpen(false), window, true);
   useEventListener("resize", () => setMenuOpen(false));

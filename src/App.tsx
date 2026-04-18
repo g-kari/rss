@@ -20,6 +20,7 @@ import { useKeyboardNav } from "./hooks/useKeyboardNav";
 import { useFilteredArticles } from "./hooks/useFilteredArticles";
 import { useReadingHistory } from "./hooks/useReadingHistory";
 import { useUIState } from "./hooks/useUIState";
+import { useHasOpenPopup } from "./hooks/usePopupLock";
 import { updateFaviconBadge } from "./lib/favicon";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "./lib/export-markdown";
 import { apiFetch, onApiError } from "./lib/api-fetch";
@@ -205,6 +206,8 @@ export default function App() {
   );
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
+  // モーダル・ポップアップ表示中はリサイズバーを無効化する（Issue #81）
+  const hasOpenPopup = useHasOpenPopup();
   // URL から復元すべき記事 ID（記事ロード完了後に解決）
   const pendingArticleIdRef = useRef<string | null>(searchParams.get("article"));
 
@@ -896,22 +899,24 @@ export default function App() {
             </button>
           </div>
         )}
-        {/* カラムリサイズハンドル (PCのみ、フォーカスモード時は非表示) */}
+        {/* カラムリサイズハンドル (PCのみ、フォーカスモード / ポップアップ表示中は無効) */}
         {!focusMode && (
           <>
             <div
-              className="hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20 group"
+              className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
               style={{ left: sidebarWidth - 2 }}
               onMouseDown={(e) => handleResizeStart("sidebar", e)}
               onDoubleClick={() => resetWidth("sidebar")}
+              aria-hidden={hasOpenPopup}
             >
               <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
             </div>
             <div
-              className="hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20 group"
+              className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
               style={{ left: sidebarWidth + listWidth - 2 }}
               onMouseDown={(e) => handleResizeStart("list", e)}
               onDoubleClick={() => resetWidth("list")}
+              aria-hidden={hasOpenPopup}
             >
               <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
             </div>
