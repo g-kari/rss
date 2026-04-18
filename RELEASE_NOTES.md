@@ -4,6 +4,7 @@
 
 ### バグ修正
 
+- **`mergeNewArticles` が変更なしでも毎回 R2 PUT を発生させる問題を修正** — Issue #97。`src/lib/shared-feed.ts` の `mergeNewArticles` で、新規記事ゼロのブランチ（既存記事のメタ更新のみ想定）が既存記事に対して無条件に `changed = true` を立てており、フィールド値に差分がなくても 30 分毎の cron 実行ごとに R2 PUT が発生していた（全フィード分の無駄な書き込み課金）。純関数ヘルパ `isArticleMutated(ex, incoming)` を新設し、`createdAt` を除く全フィールド（配列は JSON.stringify で比較）に差分がある場合だけ `existingMap` を更新して `changed` を立てるように変更。`e2e/shared-feed-merge.spec.ts` に 11 ケース（title/summary/content 差分、createdAt 無視、categories 順序違い、metadata 差分、publishedAt null→値、ogImage/author 差分）を追加。
 - **ログインフローの `X-Internal-Secret` 対応と Cloudflare WAF ブロック検知を追加** — Issue #94。0g0-id の issue #156 改善案1（BFF 個別シークレット対応）で `serviceBindingMiddleware` が `INTERNAL_SERVICE_SECRET_USER` / `_ADMIN` / 共有 `INTERNAL_SERVICE_SECRET` による `X-Internal-Secret` 認証を受け付けるようになったのに合わせて、`src/lib/auth.ts` の `authApiHeaders()` に `INTERNAL_SERVICE_SECRET` 環境変数のサポートを追加（設定時のみ `X-Internal-Secret` ヘッダーを付与し、未設定なら従来通り Basic 認証のみで通す）。加えて Cloudflare WAF / Bot Fight Mode による 403 HTML challenge ページ (`Attention Required! | Cloudflare`) を検出する `isCloudflareBlock()` を新設し、`exchangeCode()` ではブロック時に運用者向けヒント付きログを出力、`refreshTokens()` では 403 + Cloudflare HTML を `invalid` ではなく `transient` 扱いに変更してユーザーを意図せずログアウトさせないようにした。`exchangeCode` / `refreshTokens` のレスポンスログに `cf-ray` ヘッダーも出力しトラブルシューティングを容易化。`e2e/auth-headers.spec.ts` に 10 ケース（`isCloudflareBlock` 判定 5 ケース、`X-Internal-Secret` 送出制御 2 ケース、exchange/refresh での Cloudflare 応答処理 3 ケース）を追加。
 
 ### ドキュメント整備
