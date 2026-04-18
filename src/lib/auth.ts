@@ -163,19 +163,21 @@ function basicAuthHeader(clientId: string, clientSecret: string): string {
 }
 
 /**
- * 0g0 auth server への BFF 呼び出し共通ヘッダーを生成する。
+ * 0g0 auth server への共通ヘッダーを生成する。
+ *
+ * 認証方式（0g0-id 側 `serviceBindingMiddleware` は OR 条件で通過）:
+ * - `Authorization: Basic <client_id:client_secret>` — 外部 OAuth クライアント認証（既定）
+ * - `X-Internal-Secret: <INTERNAL_SERVICE_SECRET>` — 環境変数設定時のみ付与（オプション）
  *
  * User-Agent を付けないと id.0g0.xyz の Cloudflare WAF / Bot Fight Mode が
  * Worker-to-Worker fetch を bot 扱いして 403 (Attention Required) を返すことがある。
- * 明示的に BFF 識別子を付けて通過させる。APP_BASE_URL を併記して
- * どの BFF からの呼び出しかをサーバー側で追跡可能にする。
+ * 明示的に BFF 識別子を付けて通過させる。
+ *
+ * @param extra 追加のヘッダー（`INTERNAL_SERVICE_SECRET` を強制適用する等の用途）
  */
 function authApiHeaders(): Record<string, string> {
   const clientId = process.env.CLIENT_ID!;
   const clientSecret = process.env.CLIENT_SECRET!;
-  // 0g0-id 側の serviceBindingMiddleware を User-Agent ベースで bypass する。
-  // INTERNAL_SERVICE_USER_AGENT が設定されていればそれを使い、未設定なら通常の BFF UA を使う。
-  // サービスバインディングを使わず public fetch のままで内部サービスとして通過させるための共有シークレット。
   const userAgent =
     process.env.INTERNAL_SERVICE_USER_AGENT || "rss-reader-bff/1.0 (+https://rss.0g0.xyz)";
   const headers: Record<string, string> = {
@@ -192,7 +194,39 @@ function authApiHeaders(): Record<string, string> {
       // 不正な URL は無視
     }
   }
+  // INTERNAL_SERVICE_SECRET が設定されていれば 0g0-id の service-binding-middleware を
+  // X-Internal-Secret 経由で通過させる（issue #156 の改善案1で導入された BFF 個別シークレット対応）。
+  // 未設定なら Basic 認証のみで通す（外部 OAuth クライアント扱い）。
+  const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
+  if (internalSecret) {
+    headers["X-Internal-Secret"] = internalSecret;
+  }
   return headers;
+}
+
+/**
+ * 0g0-id からの応答が Cloudflare WAF / Bot Fight Mode の challenge ページかを判定する。
+ *
+ * WAF ブロック時は HTTP 403 で HTML ボディ（"Attention Required! | Cloudflare"）が
+ * 返るため、以下を **AND** で検証して上流の正規エラーページ（footer に "Powered by Cloudflare"
+ * を含むだけ等）を誤判定しないようにする:
+ *
+ * - Content-Type が `text/html`
+ * - `cf-ray` ヘッダーが存在（Cloudflare エッジを必ず通過している証拠）
+ * - 本文が WAF challenge 特有の強いシグナル（`attention required` か `/cdn-cgi/challenge`）を含む
+ *
+ * 検出時はログで運用者に通知し、本来の上流エラー（認可コード失効など）と区別できるようにする。
+ */
+export function isCloudflareBlock(
+  contentType: string | null,
+  body: string,
+  cfRay: string | null,
+): boolean {
+  if (!cfRay) return false;
+  const ct = (contentType || "").toLowerCase();
+  if (!ct.includes("text/html")) return false;
+  const head = body.slice(0, 2000).toLowerCase();
+  return head.includes("attention required") || head.includes("/cdn-cgi/challenge");
 }
 
 export interface TokenData {
@@ -227,25 +261,39 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
     return null;
   }
   const endpoint = `${authBaseUrl}/auth/exchange`;
-  console.log("[auth/exchange] request start", { endpoint, redirectTo });
+  const hasInternalSecret = !!process.env.INTERNAL_SERVICE_SECRET;
+  console.log("[auth/exchange] request start", { endpoint, redirectTo, hasInternalSecret });
   try {
     const res = await fetch(endpoint, {
       method: "POST",
       headers: authApiHeaders(),
       body: JSON.stringify({ code, redirect_to: redirectTo }),
     });
+    const contentType = res.headers.get("content-type");
+    const cfRay = res.headers.get("cf-ray");
     console.log("[auth/exchange] response received", {
       status: res.status,
       ok: res.ok,
-      contentType: res.headers.get("content-type"),
+      contentType,
+      cfRay,
     });
     if (!res.ok) {
       const bodyText = await res.text().catch(() => "<read error>");
-      console.error("[auth/exchange] non-2xx response", {
-        status: res.status,
-        redirectTo,
-        body: bodyText.slice(0, 500),
-      });
+      if (isCloudflareBlock(contentType, bodyText, cfRay)) {
+        console.error("[auth/exchange] Cloudflare WAF/Bot Fight にブロックされた", {
+          status: res.status,
+          redirectTo,
+          cfRay,
+          hint: "id.0g0.xyz の WAF 設定または INTERNAL_SERVICE_SECRET の設定を確認してください",
+        });
+      } else {
+        console.error("[auth/exchange] non-2xx response", {
+          status: res.status,
+          redirectTo,
+          cfRay,
+          body: bodyText.slice(0, 500),
+        });
+      }
       return null;
     }
     const { data } = (await res.json()) as { data: TokenData };
@@ -294,6 +342,24 @@ export async function refreshTokens(refreshToken: string): Promise<RefreshResult
       return { kind: "ok", tokens: data };
     } catch {
       // レスポンスボディのパース失敗は上流バグ → 一時的失敗として扱う
+      return { kind: "transient" };
+    }
+  }
+  // Cloudflare WAF ブロック（403 HTML + cf-ray + challenge シグナル）は上流の refresh_token 失効ではなく
+  // ネットワーク側の一時的な遮断なので、Cookie を失効させずに transient として扱う。
+  // 判定は cf-ray 必須 + 強いシグナル(`attention required` / `/cdn-cgi/challenge`) の AND なので、
+  // 上流の正規 403 Forbidden（JSON レスポンス・認可失敗）は従来どおり invalid として扱う。
+  if (res.status === 403) {
+    const cfRay = res.headers.get("cf-ray");
+    const bodyText = await res
+      .clone()
+      .text()
+      .catch(() => "");
+    if (isCloudflareBlock(res.headers.get("content-type"), bodyText, cfRay)) {
+      console.error("[auth/refresh] Cloudflare WAF/Bot Fight にブロックされた", {
+        status: res.status,
+        cfRay,
+      });
       return { kind: "transient" };
     }
   }
