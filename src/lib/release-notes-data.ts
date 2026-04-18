@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-18
 
+### バグ修正
+
+- **ページングされた記事の 2 ページ目以降を取得できない問題を修正** — \`rel="next"\` を持たず \`<a href=".../2">2</a>\` のような数字テキストリンクだけでページングするサイト (denfaminicogamer 等) で、2 ページ目以降の本文が全文取得に含まれない不具合を修正（Issue #87）。\`src/lib/content.ts\` の \`isPaginatedVariant\` に判定ルール 3 を追加し、bare numeric suffix (\`/slug\` → \`/slug/2\`) パターンを検出するようにした。\`/post/123\` → \`/post/124\` のような連番記事 ID や \`/2025/01\` → \`/2025/02\` のような日付アーカイブとの誤検知を防ぐため、base 最終セグメントが「記事 slug らしい」(数字含む or ハイフン/アンダースコア含む or 8 文字以上 かつ 純数字でない) 場合のみ許容する \`lastPathSegmentLooksLikeSlug\` ヘルパーを追加。\`detectNextPageUrl\` には \`rel="next"\` 不在時のフォールバックを追加し、URL から現在ページ番号を推定（新規 \`detectCurrentPageNumber\`）したうえで、テキストが「currentPage + 1」と完全一致する \`<a>\` タグの href を \`isPaginatedVariant\` で検証して採用する。\`e2e/content-extraction.spec.ts\` の \`detectNextPageUrl\` describe に denfaminicogamer 相当 / ページ 2→3 / 連番 ID 誤検知なし / 別記事除外 / 本文中数字リンク除外 / 日付アーカイブ誤検知なし の 6 ケースを追加。
+
 ### 新機能
 
 - **コンテンツ幅に \`wide\` (900px) を追加** — 記事詳細の領域幅を広げても（フォーカスモード起動や 3 ペイン境界のリサイズ時）本文の \`maxWidth\` が \`narrow:640px\` / \`medium:720px\` / \`full:none\` の 3 段階しかなく、\`medium\` から \`full\` へ飛ぶと急激に全幅まで広がってしまい中間帯を選びづらい問題を解消（Issue #80）。\`src/lib/reader-settings.ts\` の \`ContentWidth\` に \`wide\` を追加し、サイクル順を \`narrow → medium → wide → full → narrow\` に拡張。ラベル表示（ArticleView の幅トグルボタン）も \`900\` に対応。\`e2e/reader-settings.spec.ts\` の \`CONTENT_WIDTH_CYCLE\` 長さアサートを 3 → 4 に更新。

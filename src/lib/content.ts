@@ -23,6 +23,39 @@ function tryParseBase(pageUrl: string): URL | null {
 }
 
 /**
+ * URL パスの末尾セグメントが「記事 slug らしい」かを判定する。
+ * 記事 slug は通常「数字を含む」「ハイフン/アンダースコアを含む」「8 文字以上」のいずれかを満たす。
+ * 連番記事 ID (/post/123) のようなカテゴリ + 連番パターンを除外するために使用する。
+ */
+function lastPathSegmentLooksLikeSlug(pathname: string): boolean {
+  const segment = pathname.split("/").filter(Boolean).pop() ?? "";
+  if (!segment) return false;
+  // 純数字セグメント (/2025, /01 等) は日付アーカイブや連番 ID の可能性が高いため除外
+  if (/^\d+$/.test(segment)) return false;
+  return /\d/.test(segment) || /[-_]/.test(segment) || segment.length >= 8;
+}
+
+/**
+ * URL から現在ページ番号を推定する。未検出なら 1 ページ目と見なす。
+ */
+function detectCurrentPageNumber(url: URL): number {
+  for (const key of ["page", "p", "pg", "pn"]) {
+    const v = url.searchParams.get(key);
+    if (v && /^\d+$/.test(v)) return parseInt(v, 10);
+  }
+  const prefixMatch = url.pathname.match(/\/(?:page|p)\/(\d+)\/?$/i);
+  if (prefixMatch) return parseInt(prefixMatch[1], 10);
+  const bareMatch = url.pathname.match(/\/(\d+)\/?$/);
+  if (bareMatch) {
+    const before = url.pathname.replace(/\/\d+\/?$/, "");
+    if (lastPathSegmentLooksLikeSlug(before)) {
+      return parseInt(bareMatch[1], 10);
+    }
+  }
+  return 1;
+}
+
+/**
  * 相対 URL を base に対して絶対 URL に解決する。
  * 既に絶対 URL (http/https) の場合・data: の場合・解決失敗の場合はそのまま返す。
  */
@@ -936,6 +969,7 @@ function extractWithRegex(html: string, pageUrl: string): string {
  * 判定ルール（いずれか一致で true）:
  * 1. 同一パス + page/p/pg/pn クエリパラメータのみ変化
  * 2. パス末尾が /page/N または /p/N 形式
+ * 3. パス末尾が /N (bare numeric) かつ base 最終セグメントが slug らしい
  */
 function isPaginatedVariant(currentUrl: string, nextUrl: string): boolean {
   let cur: URL, next: URL;
@@ -966,6 +1000,18 @@ function isPaginatedVariant(currentUrl: string, nextUrl: string): boolean {
     const nextBase = next.pathname.replace(paginationSuffix, "").replace(/\/$/, "") || "/";
     const curBase = cur.pathname.replace(paginationSuffix, "").replace(/\/$/, "") || "/";
     if (curBase === nextBase) return true;
+  }
+
+  // 3. パス末尾に /N のみ (bare numeric suffix) が付く: /interview/260417u → /interview/260417u/2
+  //    連番記事 ID (/post/123 → /post/124) との誤検知を防ぐため、
+  //    base の最終セグメントが「記事 slug らしい」ことを条件とする。
+  const bareNumericSuffix = /\/\d+\/?$/;
+  if (bareNumericSuffix.test(next.pathname)) {
+    const nextBase = next.pathname.replace(bareNumericSuffix, "") || "/";
+    const curBase = cur.pathname.replace(bareNumericSuffix, "") || "/";
+    if (curBase === nextBase && nextBase !== "/" && lastPathSegmentLooksLikeSlug(nextBase)) {
+      return true;
+    }
   }
 
   return false;
@@ -1007,6 +1053,21 @@ export function detectNextPageUrl(html: string, currentUrl: string): string | nu
     html.match(/<a\b[^>]+\brel=["'][^"']*\bnext\b[^"']*["'][^>]+\bhref=["']([^"']+)["']/i) ??
     html.match(/<a\b[^>]+\bhref=["']([^"']+)["'][^>]+\brel=["'][^"']*\bnext\b[^"']*["']/i);
   if (aRelNext?.[1]) return resolve(aRelNext[1]);
+
+  // フォールバック: rel="next" が無いページネーション (denfaminicogamer 等) 対応。
+  // 現在ページ番号を URL から推定し、テキストが「currentPage + 1」の数字リンクを探す。
+  // href が isPaginatedVariant を満たすもののみ採用し、誤検知を抑える。
+  const currentPage = detectCurrentPageNumber(base);
+  const expectedNext = `${currentPage + 1}`;
+  const anchorPattern = /<a\b([^>]*?)>([\s\S]*?)<\/a>/gi;
+  for (const m of html.matchAll(anchorPattern)) {
+    const text = m[2].replace(/<[^>]+>/g, "").trim();
+    if (text !== expectedNext) continue;
+    const hrefMatch = m[1].match(/\bhref=["']([^"']+)["']/i);
+    if (!hrefMatch) continue;
+    const resolved = resolve(hrefMatch[1]);
+    if (resolved) return resolved;
+  }
 
   return null;
 }
