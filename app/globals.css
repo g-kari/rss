@@ -151,11 +151,13 @@ body {
   color: var(--color-text-strong);
 }
 
-/* 画像: 固定幅を上書きしてコンテナに収める */
+/* 画像: コンテナ超過時のみ縮小、それ以外は HTML 属性 width/height を尊重。
+   aspect-ratio が保たれ layout shift / アスペクト比崩れを防ぐ (Issue #86)。
+   width: auto を削除し属性値を有効化。height: auto は !important を外して
+   属性があればそちらを優先、コンテナ超過時は max-width と共に比例縮小。 */
 .article-content img {
   max-width: 100% !important;
-  width: auto !important;
-  height: auto !important;
+  height: auto;
   border-radius: 4px;
   margin: 1.25em 0;
   display: block;

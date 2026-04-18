@@ -2,6 +2,10 @@
 
 ## 2026-04-19
 
+### バグ修正
+
+- **記事詳細の画像が中途半端なサイズ・アスペクト比崩れで表示される問題を修正** — Issue #86。`src/lib/content.ts` の `fixImageDimensions` が元 HTML の `width` / `height` 属性を無条件に削除しており、ブラウザが aspect-ratio を推論できずに画像読み込み中の layout shift やアスペクト比崩れ・中途半端な表示サイズが発生していた。width/height 両方が数値かつ両方 ≥ 16px (favicon 最小サイズ基準) の場合は属性を保持しブラウザに `aspect-ratio: attr(width) / attr(height)` 相当を自動適用させるよう変更（ダミー 1x1 プレースホルダや片方のみの属性は従来どおり削除）。style 内の固定 `width:` / `height:` は引き続き削除してコンテナからの溢れを防ぐ。併せて `app/globals.css` の `.article-content img` から `width: auto !important` を削除し `height: auto !important` を `height: auto` (非 important) に変更。これで HTML 属性の width/height が CSS で打ち消されず、ブラウザが aspect-ratio を推論できるようになる。コンテナ超過時は従来通り `max-width: 100% !important` で縮小し `height: auto` で高さも比例縮小する。`e2e/content-extraction.spec.ts` の `fixImageDimensions` describe に 4 ケース（意味のある属性保持・ダミー削除・片方のみ削除・style 内固定値削除）を追加。
+
 ### セキュリティ
 
 - **vite-plus path traversal 脆弱性を修正** — Dependabot alert #28 (severity: high, `vite-plus/binding` の `downloadPackageManager()` が `VP_HOME` 外にファイルを書き出せる path traversal 脆弱性) を解消。`package.json` は既に `^0.1.18` に更新済みだったが `package-lock.json` の解決バージョンが 0.1.14 のままだったため、`npm install` で lock ファイルを更新し `vite-plus` / `@voidzero-dev/vite-plus-core` など関連パッケージをすべて 0.1.18 に揃えた。

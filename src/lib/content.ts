@@ -118,13 +118,28 @@ export function fixImageDimensions(html: string, pageUrl = ""): string {
   const base = tryParseBase(pageUrl);
 
   return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-    let a = attrs
-      .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "")
-      .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "")
-      .replace(/\s+style\s*=\s*(?:"([^"]*)"|'([^']*)')/gi, (_s, dq: string, sq: string) => {
+    const wMatch = attrs.match(/\bwidth\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/i);
+    const hMatch = attrs.match(/\bheight\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/i);
+    const w = wMatch ? parseInt(wMatch[1] ?? wMatch[2] ?? wMatch[3] ?? "", 10) : NaN;
+    const h = hMatch ? parseInt(hMatch[1] ?? hMatch[2] ?? hMatch[3] ?? "", 10) : NaN;
+    // width/height 両方が意味のあるサイズの場合のみ属性を保持し、
+    // ブラウザに aspect-ratio を推論させて layout shift とアスペクト比崩れを防ぐ。
+    // 閾値 16px は favicon 最小サイズに合わせ、1x1 トラッキングピクセル等のダミーは削除する。
+    const keepDimensions = Number.isFinite(w) && Number.isFinite(h) && w >= 16 && h >= 16;
+
+    let a = attrs.replace(
+      /\s+style\s*=\s*(?:"([^"]*)"|'([^']*)')/gi,
+      (_s, dq: string, sq: string) => {
         const s2 = (dq ?? sq).replace(/\b(?:width|height)\s*:[^;]+;?/gi, "").trim();
         return s2 ? ` style="${s2}"` : "";
-      });
+      },
+    );
+
+    if (!keepDimensions) {
+      a = a
+        .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "")
+        .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "");
+    }
 
     // 相対パスを絶対 URL に変換
     if (base) {
