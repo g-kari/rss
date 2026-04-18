@@ -22,6 +22,7 @@ import { useArticleContent } from "../hooks/useArticleContent";
 import { useArticleAi } from "../hooks/useArticleAi";
 import Spinner from "./Spinner";
 import { useImageDownload } from "../hooks/useImageDownload";
+import { usePopupLock } from "../hooks/usePopupLock";
 import { useContentLinkPreviews } from "../hooks/useContentLinkPreviews";
 import { useArticleNote } from "../hooks/useArticleNote";
 import { useArticleAiRatings } from "../hooks/useArticleAiRatings";
@@ -309,6 +310,9 @@ export default function ArticleView({
     confirmDownload,
     cancelDownload,
   } = useImageDownload(article, resolvedOgImage, contentRef, showToast);
+
+  // ダウンロード確認モーダル表示中はリサイズバーを無効化する（Issue #81）
+  usePopupLock(confirmingDownload);
 
   const embedInfo = article?.link ? extractEmbedInfo(article.link) : null;
 
