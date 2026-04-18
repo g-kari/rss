@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-18
 
+### バグ修正
+
+- **認証コールバックのエラーメッセージが文字化けする問題を修正** — \`/api/auth/callback\` が state 不一致・トークン交換失敗・トークン検証失敗時に返す HTML の \`Content-Type\` に charset が付いていなかったため、ブラウザが Shift_JIS 等で解釈して「認証エラー: トークン交換失敗」が「隱崎ｨｼ繧ｨ繝ｩ繝ｼ: 繝医�繧ｯ繝ｳ莠､謠帛､ｱ謨�」のように文字化けする不具合を修正。\`Content-Type\` を \`text/html; charset=utf-8\` に変更し、レスポンス本文冒頭に \`<!doctype html><meta charset="utf-8">\` を追加。
+
 ### 新機能
 
 - **ユーザー設定モーダル** — サイドバーフッターにギアアイコンを追加し、フォントサイズ／フォント／行間／コンテンツ幅／両端揃え／自動既読（閾値 70-90%）を 1 画面で変更できるダイアログを追加（Issue #79）。変更はプレビュー領域にリアルタイム反映され \`localStorage\` に即時永続化される。\`src/components/UserSettingsModal.tsx\` を新規追加し、\`ReaderSettingsContext\` に \`lineHeight\` / \`contentWidth\` / \`textJustify\` / \`onChangeAutoReadThreshold\` を追加して ArticleView のローカル state を \`useUIState\` に集約。これに伴い記事詳細ヘッダー右側にあった表示設定の個別トグルボタン群（フォントサイズ A／フォントファミリー ゴ・明・等／行間／幅／均等／自動既読）を削除しツールバーをスッキリさせた — 設定変更はすべてユーザー設定モーダルに集約される。
