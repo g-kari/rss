@@ -79,11 +79,17 @@ export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] 
 
   for (const el of doc.querySelectorAll("a[href]")) {
     const href: string = el.getAttribute("href") ?? "";
+    // 危険スキームは小文字比較で網羅する。ブラウザはスキーム名を大文字小文字を問わず解釈するため、
+    // `JaVaScRiPt:` 等のバイパスを防ぐ。javascript / data / vbscript / mailto / file を遮断する。
+    const lowerHref = href.toLowerCase();
     if (
       !href ||
-      href.startsWith("#") ||
-      href.startsWith("javascript:") ||
-      href.startsWith("mailto:")
+      lowerHref.startsWith("#") ||
+      lowerHref.startsWith("javascript:") ||
+      lowerHref.startsWith("data:") ||
+      lowerHref.startsWith("vbscript:") ||
+      lowerHref.startsWith("mailto:") ||
+      lowerHref.startsWith("file:")
     )
       continue;
 

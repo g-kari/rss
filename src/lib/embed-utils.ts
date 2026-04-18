@@ -120,5 +120,15 @@ export function processContent(html: string, theme: "light" | "dark" = "light"):
 
 /** 埋め込み表示する場合、コンテンツ内の iframe を除去（二重埋め込み防止） */
 export function stripIframes(html: string): string {
-  return sanitizeHtml(html.replace(/<iframe[\s\S]*?<\/iframe>/gi, ""));
+  // 単純 replace は `<ifr<iframe></iframe>ame></iframe>` のようなネスト再出現バイパスを
+  // 許すため不動点まで反復する。最終的に sanitizeHtml が二重ガードになる。
+  let prev: string;
+  let curr = html;
+  let pass = 0;
+  do {
+    prev = curr;
+    curr = curr.replace(/<iframe\b[\s\S]*?<\/iframe\b[^>]*>/gi, "");
+    pass++;
+  } while (curr !== prev && pass < 8);
+  return sanitizeHtml(curr);
 }

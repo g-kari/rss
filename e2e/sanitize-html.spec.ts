@@ -752,6 +752,51 @@ test.describe("sanitizeHtml — 閉じタグ末尾空白バイパス防止", () 
     expect(result).toContain("<p>前</p>");
     expect(result).toContain("<p>後</p>");
   });
+
+  test("閉じタグに属性が付いていても <script> が除去される (</script foo>)", () => {
+    const result = sanitizeHtml("<p>前</p><script>alert(1)</script foo=bar><p>後</p>");
+    expect(result).not.toContain("<script");
+    expect(result).not.toContain("alert(1)");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+
+  test("閉じタグに空白+属性が混在していても <style> が除去される", () => {
+    const result = sanitizeHtml(
+      "<p>前</p><style>body{background:url(//evil.example/x)}</style\t\n bar><p>後</p>",
+    );
+    expect(result).not.toContain("<style");
+    expect(result).not.toContain("evil.example");
+    expect(result).toContain("<p>前</p>");
+    expect(result).toContain("<p>後</p>");
+  });
+});
+
+test.describe("sanitizeHtml — ネスト再出現バイパス防止 (multi-character sanitization)", () => {
+  // 単純な replace では「除去後に残った文字列が再度危険なタグを形成する」バイパスが成立する。
+  // 例: <scr<script></script>ipt>payload</script> → 内側除去で <script>payload</script> が再生成される。
+  // サニタイザーはこのような再出現パターンに対して不動点まで繰り返し適用する必要がある。
+  test("<scr<script></script>ipt> のネスト再出現で <script> が残らない", () => {
+    const result = sanitizeHtml("<p>前</p><scr<script></script>ipt>alert(1)</script><p>後</p>");
+    expect(result).not.toContain("<script");
+    expect(result).not.toContain("alert(1)");
+  });
+
+  test("<sty<style></style>le> のネスト再出現で <style> が残らない", () => {
+    const result = sanitizeHtml(
+      "<p>前</p><sty<style></style>le>body{background:url(//evil)}</style><p>後</p>",
+    );
+    expect(result).not.toContain("<style");
+    expect(result).not.toContain("evil");
+  });
+
+  test("<ifr<iframe></iframe>ame> のネスト再出現で信頼されない <iframe> が残らない", () => {
+    const result = sanitizeHtml(
+      '<p>前</p><ifr<iframe></iframe>ame src="https://evil.example"></iframe><p>後</p>',
+    );
+    expect(result).not.toContain("<iframe");
+    expect(result).not.toContain("evil.example");
+  });
 });
 
 test.describe("sanitizeHtml — 正常コンテンツの保持", () => {
