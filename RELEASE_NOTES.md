@@ -4,7 +4,7 @@
 
 ### 新機能
 
-- **ユーザー設定モーダル** — サイドバーフッターにギアアイコンを追加し、フォントサイズ／フォント／行間／コンテンツ幅／両端揃え／自動既読（閾値 70-90%）を 1 画面で変更できるダイアログを追加（Issue #79）。変更はプレビュー領域にリアルタイム反映され `localStorage` に即時永続化される。`src/components/UserSettingsModal.tsx` を新規追加し、`ReaderSettingsContext` に `lineHeight` / `contentWidth` / `textJustify` / `onChangeAutoReadThreshold` を追加して ArticleView のローカル state を `useUIState` に集約。ArticleView 既存の個別トグルボタン（`h` / `w` / `j`）は互換維持のためそのまま残している。
+- **ユーザー設定モーダル** — サイドバーフッターにギアアイコンを追加し、フォントサイズ／フォント／行間／コンテンツ幅／両端揃え／自動既読（閾値 70-90%）を 1 画面で変更できるダイアログを追加（Issue #79）。変更はプレビュー領域にリアルタイム反映され `localStorage` に即時永続化される。`src/components/UserSettingsModal.tsx` を新規追加し、`ReaderSettingsContext` に `lineHeight` / `contentWidth` / `textJustify` / `onChangeAutoReadThreshold` を追加して ArticleView のローカル state を `useUIState` に集約。これに伴い記事詳細ヘッダー右側にあった表示設定の個別トグルボタン群（フォントサイズ A／フォントファミリー ゴ・明・等／行間／幅／均等／自動既読）を削除しツールバーをスッキリさせた — 設定変更はすべてユーザー設定モーダルに集約される。
 
 ### バグ修正
 

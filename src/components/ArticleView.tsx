@@ -5,9 +5,6 @@ import type { Article, EngagementAction, Feed, KeywordFilter } from "../types";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import {
   readingTime,
-  FONT_SIZE_CYCLE,
-  FONT_FAMILY_CYCLE,
-  FONT_FAMILY_LABELS,
   FONT_SIZE_CLASSES,
   FONT_FAMILY_CLASSES,
   collectImageUrlsFromHtml,
@@ -25,14 +22,7 @@ import { useArticleHighlight } from "../hooks/useArticleHighlight";
 import { useSyntaxHighlight } from "../hooks/useSyntaxHighlight";
 import { useMathRender } from "../hooks/useMathRender";
 import { useSliderGallery } from "../hooks/useSliderGallery";
-import {
-  LINE_HEIGHT_LABELS,
-  CONTENT_WIDTH_LABELS,
-  getLineHeightStyle,
-  getContentWidthStyle,
-  cycleLineHeight,
-  cycleContentWidth,
-} from "../lib/reader-settings";
+import { getLineHeightStyle, getContentWidthStyle } from "../lib/reader-settings";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useEventListener } from "../hooks/useEventListener";
 import { sanitizeHtml, toPlainText } from "../lib/html";
@@ -117,22 +107,15 @@ export default function ArticleView({
 }: Props) {
   const {
     fontSize,
-    onChangeFontSize,
     fontFamily,
-    onChangeFontFamily,
     theme,
     focusMode,
     toggleFocusMode: onToggleFocusMode,
     autoReadEnabled,
-    toggleAutoRead: onToggleAutoRead,
     autoReadThreshold,
-    cycleAutoReadThreshold: onCycleAutoReadThreshold,
     lineHeight,
-    onChangeLineHeight,
     contentWidth,
-    onChangeContentWidth,
     textJustify,
-    onChangeTextJustify,
   } = useReaderSettings();
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -160,19 +143,8 @@ export default function ArticleView({
     setContentTab,
   } = useArticleAiRatings({ articleId: article?.id, translateResult });
 
-  // リーダー表示設定（行間・コンテンツ幅・両端揃え）は ReaderSettingsContext から取得
-
-  function handleCycleLineHeight() {
-    onChangeLineHeight(cycleLineHeight(lineHeight));
-  }
-
-  function handleCycleContentWidth() {
-    onChangeContentWidth(cycleContentWidth(contentWidth));
-  }
-
-  function handleToggleJustify() {
-    onChangeTextJustify(!textJustify);
-  }
+  // リーダー表示設定（フォント・行間・コンテンツ幅・両端揃え）は ReaderSettingsContext から取得し、
+  // 変更はサイドバーフッターのユーザー設定モーダルから行う（Issue #79）
 
   // メモ編集ステート（記事切り替え時にリセット）
   const { noteText, setNoteText, noteExpanded, setNoteExpanded, handleNoteBlur } = useArticleNote({
@@ -545,118 +517,6 @@ export default function ArticleView({
             data-print="hide"
             className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap"
           >
-            {/* フォントサイズ切り替え */}
-            <div className="flex items-center gap-0.5 mr-1">
-              {FONT_SIZE_CYCLE.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => onChangeFontSize(size)}
-                  title={size === "small" ? "小" : size === "medium" ? "中" : "大"}
-                  className={`px-1.5 py-0.5 rounded transition-colors duration-150 ${
-                    fontSize === size ? "text-text-strong" : "text-text-faint hover:text-text-muted"
-                  }`}
-                  style={{
-                    fontSize: size === "small" ? "10px" : size === "medium" ? "12px" : "14px",
-                    lineHeight: 1,
-                  }}
-                >
-                  A
-                </button>
-              ))}
-            </div>
-
-            {/* フォントファミリー切り替え */}
-            <div className="flex items-center gap-0.5 mr-1">
-              {FONT_FAMILY_CYCLE.map((family) => (
-                <button
-                  key={family}
-                  onClick={() => onChangeFontFamily(family)}
-                  title={FONT_FAMILY_LABELS[family]}
-                  className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
-                    fontFamily === family
-                      ? "text-text-strong"
-                      : "text-text-faint hover:text-text-muted"
-                  } ${
-                    family === "sans"
-                      ? "font-sans"
-                      : family === "serif"
-                        ? "font-serif"
-                        : "font-mono"
-                  }`}
-                  style={{ lineHeight: 1 }}
-                >
-                  {family === "sans" ? "ゴ" : family === "serif" ? "明" : "等"}
-                </button>
-              ))}
-            </div>
-
-            {/* 行間切り替え */}
-            <button
-              onClick={handleCycleLineHeight}
-              title={`行間: ${LINE_HEIGHT_LABELS[lineHeight]}`}
-              className="px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 text-text-faint hover:text-text-muted"
-              style={{ lineHeight: 1 }}
-            >
-              {LINE_HEIGHT_LABELS[lineHeight]}
-            </button>
-
-            {/* コンテンツ幅切り替え */}
-            <button
-              onClick={handleCycleContentWidth}
-              title={`幅: ${CONTENT_WIDTH_LABELS[contentWidth]}`}
-              className="px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 text-text-faint hover:text-text-muted"
-              style={{ lineHeight: 1 }}
-            >
-              {CONTENT_WIDTH_LABELS[contentWidth]}
-            </button>
-
-            {/* 両端揃えトグル */}
-            <button
-              onClick={handleToggleJustify}
-              title={textJustify ? "両端揃え: ON" : "両端揃え: OFF"}
-              className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
-                textJustify ? "text-text-strong" : "text-text-faint hover:text-text-muted"
-              }`}
-              style={{ lineHeight: 1 }}
-            >
-              均等
-            </button>
-
-            {/* 自動既読トグル */}
-            <button
-              onClick={onToggleAutoRead}
-              title={
-                autoReadEnabled
-                  ? `自動既読: ON (${autoReadThreshold}% でスクロール既読)`
-                  : "自動既読: OFF"
-              }
-              aria-label={
-                autoReadEnabled
-                  ? `自動既読を OFF にする（現在 ${autoReadThreshold}% で既読マーク）`
-                  : "自動既読を ON にする"
-              }
-              aria-pressed={autoReadEnabled}
-              className={`px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 ${
-                autoReadEnabled ? "text-text-strong" : "text-text-faint hover:text-text-muted"
-              }`}
-              style={{ lineHeight: 1 }}
-            >
-              自動既読
-            </button>
-
-            {/* 自動既読の閾値サイクルボタン（ON のときのみ表示） */}
-            {autoReadEnabled && (
-              <button
-                onClick={onCycleAutoReadThreshold}
-                title={`自動既読の閾値: ${autoReadThreshold}% — クリックで次の閾値に切替`}
-                aria-label={`自動既読の閾値を切替（現在 ${autoReadThreshold}%）`}
-                className="px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150 text-text-strong hover:bg-surface-subtle"
-                style={{ lineHeight: 1 }}
-              >
-                {autoReadThreshold}%
-              </button>
-            )}
-
             {/* AI 要約・翻訳ボタン */}
             {hasContent && (
               <div className="flex items-center gap-1 mr-1">
