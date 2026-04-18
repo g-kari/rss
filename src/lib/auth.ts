@@ -133,6 +133,34 @@ function basicAuthHeader(clientId: string, clientSecret: string): string {
   return `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
 }
 
+/**
+ * 0g0 auth server への BFF 呼び出し共通ヘッダーを生成する。
+ *
+ * User-Agent を付けないと id.0g0.xyz の Cloudflare WAF / Bot Fight Mode が
+ * Worker-to-Worker fetch を bot 扱いして 403 (Attention Required) を返すことがある。
+ * 明示的に BFF 識別子を付けて通過させる。APP_BASE_URL を併記して
+ * どの BFF からの呼び出しかをサーバー側で追跡可能にする。
+ */
+function authApiHeaders(): Record<string, string> {
+  const clientId = process.env.CLIENT_ID!;
+  const clientSecret = process.env.CLIENT_SECRET!;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: basicAuthHeader(clientId, clientSecret),
+    "User-Agent": "rss-reader-bff/1.0 (+https://rss.0g0.xyz)",
+  };
+  // APP_BASE_URL がテスト等で未設定の場合は X-BFF-Origin をスキップする
+  const appBaseUrl = process.env.APP_BASE_URL;
+  if (appBaseUrl) {
+    try {
+      headers["X-BFF-Origin"] = new URL(appBaseUrl).origin;
+    } catch {
+      // 不正な URL は無視
+    }
+  }
+  return headers;
+}
+
 export interface TokenData {
   access_token: string;
   refresh_token: string;
@@ -169,10 +197,7 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
   try {
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: basicAuthHeader(clientId, clientSecret),
-      },
+      headers: authApiHeaders(),
       body: JSON.stringify({ code, redirect_to: redirectTo }),
     });
     console.log("[auth/exchange] response received", {
@@ -220,10 +245,7 @@ export async function refreshTokens(refreshToken: string): Promise<RefreshResult
   try {
     res = await fetch(`${authBaseUrl}/auth/refresh`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
-      },
+      headers: authApiHeaders(),
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
   } catch {
@@ -256,10 +278,7 @@ export async function revokeToken(refreshToken: string): Promise<void> {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   await fetch(`${authBaseUrl}/auth/logout`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
-    },
+    headers: authApiHeaders(),
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
 }
