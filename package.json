@@ -23,7 +23,7 @@
     "highlight.js": "^11.11.1",
     "katex": "^0.16.45",
     "linkedom": "^0.18.12",
-    "marked": "^17.0.5",
+    "marked": "^18.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
