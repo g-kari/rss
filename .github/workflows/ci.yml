@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [master]
 
+# GITHUB_TOKEN 権限を最小化（CodeQL actions/missing-workflow-permissions 対応）。
+# lint・型チェックはリポジトリ内容の読み取りのみで完結する。
+permissions:
+  contents: read
+
 jobs:
   check:
     name: lint・fmt・型チェック

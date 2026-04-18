@@ -261,7 +261,12 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
         break;
       case "C":
         if (selectedArticle?.link) {
-          const mdTitle = (selectedArticle.title || selectedArticle.link).replace(/[[\]]/g, "\\$&");
+          // Markdown リンクのラベル内で `\` と `[`/`]` は Markdown エスケープを成立させるため、
+          // `\` を先にエスケープしてから角括弧をエスケープする必要がある。
+          const mdTitle = (selectedArticle.title || selectedArticle.link).replace(
+            /[\\[\]]/g,
+            "\\$&",
+          );
           clipboardWrite(
             `[${mdTitle}](${selectedArticle.link})`,
             "Markdownリンクをコピーしました",

@@ -76,15 +76,24 @@ export function collectTranslatableNodes(
  * linkedom に依存せず正規表現でタグ除去するだけの簡易実装。
  */
 export function extractSampleText(html: string, maxLen: number): string {
-  const plain = html
-    .replace(
-      /<(?:script|style|pre|code|kbd|samp)[\s\S]*?<\/(?:script|style|pre|code|kbd|samp)>/gi,
-      " ",
-    )
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return plain.slice(0, maxLen);
+  // ブロック除去・タグ除去は不動点反復で行う。閉じタグは HTML5 仕様どおり
+  // `</script attr>` も受容するため `\b[^>]*>` でマッチさせる。
+  const BLOCK_TAGS =
+    /<(?:script|style|pre|code|kbd|samp)\b[\s\S]*?<\/(?:script|style|pre|code|kbd|samp)\b[^>]*>/gi;
+  const GENERIC_TAGS = /<[^>]+>/g;
+  const MAX_PASSES = 8;
+  let curr = html;
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    const prev = curr;
+    curr = curr.replace(BLOCK_TAGS, " ");
+    if (curr === prev) break;
+  }
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    const prev = curr;
+    curr = curr.replace(GENERIC_TAGS, " ");
+    if (curr === prev) break;
+  }
+  return curr.replace(/\s+/g, " ").trim().slice(0, maxLen);
 }
 
 interface TranslatorLike {

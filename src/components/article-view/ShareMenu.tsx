@@ -198,7 +198,9 @@ export default function ShareMenu({ article, showToast, feed, contentHtml }: Pro
               </button>
               <button
                 onClick={() => {
-                  const mdTitle = (article.title || article.link!).replace(/[[\]]/g, "\\$&");
+                  // `\` を先にエスケープしてから `[`/`]` をエスケープする。
+                  // これにより `\[` のような入力が二重エスケープされず、Markdown ラベルの整合性が保たれる。
+                  const mdTitle = (article.title || article.link!).replace(/[\\[\]]/g, "\\$&");
                   copyText(`[${mdTitle}](${article.link!})`, "Markdown リンクをコピーしました (C)");
                 }}
                 className={MENU_ITEM_CLS}

@@ -5,9 +5,23 @@
  * RSS フィードの content と外部ページ取得の両方で共有する。
  */
 
+// タグ除去は除去後に残った文字列が再度タグ記号を形成するバイパスを防ぐため
+// 不動点反復で行う。無限ループ防止に反復上限を設ける。
+const TAG_STRIP_MAX_PASSES = 8;
+
+function stripTagsIter(html: string, repl: string): string {
+  let curr = html;
+  for (let pass = 0; pass < TAG_STRIP_MAX_PASSES; pass++) {
+    const prev = curr;
+    curr = curr.replace(/<[^>]*>/g, repl);
+    if (curr === prev) break;
+  }
+  return curr;
+}
+
 /** HTML タグを除去してプレーンテキストを返す */
 export function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
+  return stripTagsIter(html, "").trim();
 }
 
 /** HTML 特殊文字をエスケープする（テキストを属性値・要素内容として安全に埋め込む） */
@@ -97,7 +111,7 @@ export function extractOgMeta(html: string, property: string): string {
 
 /** HTML タグを除去してプレーンテキストに変換する（AI 入力用） */
 export function toPlainText(html: string): string {
-  return unescapeHtml(html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " "))
+  return unescapeHtml(stripTagsIter(html, " ").replace(/&nbsp;/gi, " "))
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -275,36 +289,39 @@ type ReplaceFn = (substring: string, ...args: string[]) => string;
  * - xlink:href パターンは汎用 href より先に処理してプレフィックス残留を防ぐ
  * - [\s\S]*? (非貪欲) を使用することで ReDoS を防ぐ
  */
+// HTML5 では終了タグ `</tagname attr>` の `>` までの属性/空白を無視して解釈するため、
+// 終了タグの末尾は `\s*>` ではなく `\b[^>]*>` でマッチする必要がある。
+// 例: `</script foo>` / `</script\t\n bar>` も有効な閉じタグとして扱われる。
 const HTML_SANITIZE_RULES: Array<[RegExp, string | ReplaceFn]> = [
   // 不可視 Unicode 文字（後続パターンのバイパス防止のため最初に除去）
   [/[\u00AD\u200B-\u200D\u2060\uFEFF]/g, ""],
   // コンテンツごと除去するブロック要素
-  [/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ""],
-  [/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, ""],
+  [/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, ""],
+  [/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, ""],
   [/<link\b[^>]*\/?>/gi, ""], // React 19 リソースホイスティング防止
   [/<base\b[^>]*\/?>/gi, ""], // 相対 URL ハイジャック防止
-  [/<noscript\b[^>]*>[\s\S]*?<\/noscript\s*>/gi, ""],
-  [/<template\b[^>]*>[\s\S]*?<\/template\s*>/gi, ""],
-  [/<object\b[^>]*>[\s\S]*?<\/object\s*>/gi, ""],
+  [/<noscript\b[^>]*>[\s\S]*?<\/noscript\b[^>]*>/gi, ""],
+  [/<template\b[^>]*>[\s\S]*?<\/template\b[^>]*>/gi, ""],
+  [/<object\b[^>]*>[\s\S]*?<\/object\b[^>]*>/gi, ""],
   [/<embed\b[^>]*\/?>/gi, ""],
   // フォーム/入力要素（タグのみ除去・内容保持）
   [/<\/?form\b[^>]*>/gi, ""],
   [/<input\b[^>]*\/?>/gi, ""],
-  [/<textarea\b[^>]*>[\s\S]*?<\/textarea\s*>/gi, ""],
-  [/<select\b[^>]*>[\s\S]*?<\/select\s*>/gi, ""],
+  [/<textarea\b[^>]*>[\s\S]*?<\/textarea\b[^>]*>/gi, ""],
+  [/<select\b[^>]*>[\s\S]*?<\/select\b[^>]*>/gi, ""],
   // SVG 危険要素
-  [/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject\s*>/gi, ""],
+  [/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject\b[^>]*>/gi, ""],
   [/<foreignObject\b[^>]*\/>/gi, ""],
   [/<animate\b[^>]*\/?>/gi, ""],
   [/<animateTransform\b[^>]*\/?>/gi, ""],
-  [/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion\s*>/gi, ""],
+  [/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion\b[^>]*>/gi, ""],
   [/<animateMotion\b[^>]*\/>/gi, ""],
   [/<set\b[^>]*\/?>/gi, ""],
   // SVG <use>（外部参照のみ除去・#フラグメント参照は保持）
-  [/<use\b([^>]*)>([\s\S]*?)<\/use\s*>/gi, sanitizeUse as ReplaceFn],
+  [/<use\b([^>]*)>([\s\S]*?)<\/use\b[^>]*>/gi, sanitizeUse as ReplaceFn],
   [/<use\b([^>]*)>/gi, sanitizeUse as ReplaceFn],
   // <iframe>（信頼済みドメイン以外を除去）
-  [/<iframe\b([^>]*)>([\s\S]*?)<\/iframe\s*>/gi, sanitizeIframe as ReplaceFn],
+  [/<iframe\b([^>]*)>([\s\S]*?)<\/iframe\b[^>]*>/gi, sanitizeIframe as ReplaceFn],
   [/<iframe\b([^>]*)\/?>/gi, sanitizeIframe as ReplaceFn],
   [/<iframe\b([^>]*)>/gi, sanitizeIframe as ReplaceFn],
   // 危険な meta タグ
@@ -346,10 +363,20 @@ function applyRule(s: string, pattern: RegExp, replacement: string | ReplaceFn):
   return s.replace(pattern, replacement as (m: string) => string);
 }
 
+// 多文字列の除去を 1 回だけ適用すると、除去後に隣接文字が再結合して
+// 同じ危険パターンを再構成するバイパス（例: `<scr<script></script>ipt>`）が成立する。
+// ルール全体を不動点（これ以上変化しない状態）まで繰り返し適用して多段バイパスを潰す。
+// 無限ループ保護として最大反復回数を設ける。
+const SANITIZE_MAX_PASSES = 8;
+
 export function sanitizeHtml(html: string): string {
   let result = html;
-  for (const [pattern, replacement] of HTML_SANITIZE_RULES) {
-    result = applyRule(result, pattern, replacement);
+  for (let pass = 0; pass < SANITIZE_MAX_PASSES; pass++) {
+    const prev = result;
+    for (const [pattern, replacement] of HTML_SANITIZE_RULES) {
+      result = applyRule(result, pattern, replacement);
+    }
+    if (result === prev) break;
   }
   return result.trim();
 }

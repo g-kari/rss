@@ -331,6 +331,23 @@ interface JsonFeedRoot {
   items?: JsonFeedItem[];
 }
 
+/**
+ * JSON Feed の `version` 文字列が仕様通りの `https://jsonfeed.org/version/...` かを判定する。
+ *
+ * 単純な `includes("jsonfeed.org")` では
+ * `https://evil.example/?x=jsonfeed.org` のように任意 URL にホスト名を混入させて
+ * なりすまされるため、URL としてパースし hostname を完全一致で検証する。
+ */
+function isJsonFeedVersion(version: string): boolean {
+  try {
+    const url = new URL(version);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+    return url.hostname === "jsonfeed.org" || url.hostname === "www.jsonfeed.org";
+  } catch {
+    return false;
+  }
+}
+
 function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
   const feedAuthors = data.authors ?? (data.author ? [data.author] : []);
   const items: ParsedItem[] = (data.items ?? []).map((item) => {
@@ -370,7 +387,10 @@ export function parseFeed(xml: string): ParsedFeed {
   if (cleaned.trimStart().startsWith("{")) {
     try {
       const data = JSON.parse(cleaned) as JsonFeedRoot;
-      if (typeof data?.version === "string" && data.version.includes("jsonfeed.org")) {
+      // JSON Feed 仕様書どおり version は `https://jsonfeed.org/version/...` 形式。
+      // `includes("jsonfeed.org")` だと任意 URL にホスト名を含ませてなりすまし可能なため
+      // ホスト名を URL としてパースして完全一致で判定する。
+      if (typeof data?.version === "string" && isJsonFeedVersion(data.version)) {
         return parseJsonFeed(data);
       }
     } catch {

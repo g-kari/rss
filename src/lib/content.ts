@@ -12,6 +12,26 @@ import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom/worker";
 import { sanitizeHtml, escapeHtml, unescapeHtml } from "./html";
 
+/**
+ * `pattern` が入力に対して変化を及ぼさなくなるまで `str.replace` を繰り返し適用する。
+ *
+ * 単純な `str.replace(/<script...>/, '')` は除去後に隣接文字列が再結合し、
+ * 再び危険パターンを形成するバイパス（`<scr<script></script>ipt>` 等）を許してしまう。
+ * 本ヘルパーは不動点反復で多段バイパスを潰しつつ、無限ループ保護として反復上限を設ける。
+ */
+function replaceUntilStable(str: string, pattern: RegExp, replacement = ""): string {
+  const MAX_PASSES = 8;
+  let prev: string;
+  let curr = str;
+  let pass = 0;
+  do {
+    prev = curr;
+    curr = curr.replace(pattern, replacement);
+    pass++;
+  } while (curr !== prev && pass < MAX_PASSES);
+  return curr;
+}
+
 /** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */
 function tryParseBase(pageUrl: string): URL | null {
   if (!pageUrl) return null;
@@ -57,10 +77,26 @@ function detectCurrentPageNumber(url: URL): number {
 
 /**
  * 相対 URL を base に対して絶対 URL に解決する。
- * 既に絶対 URL (http/https) の場合・data: の場合・解決失敗の場合はそのまま返す。
+ * 既に絶対 URL (http/https) の場合・危険スキーム (data: / javascript: / vbscript: / mailto: / file:)
+ * の場合・解決失敗の場合はそのまま返す。
+ *
+ * 危険スキームを `new URL()` に通すと
+ * `new URL("vbscript:alert(1)", base)` が `vbscript:alert(1)` を正規 URL として返してしまい、
+ * `<img src=...>` 属性に埋め込まれた場合に最終サニタイズに依存する構図になる。
+ * 本関数では危険スキームの URL を原文のまま返し、後段の sanitizeHtml が除去できるようにする。
  */
 function resolveRelativeUrl(url: string, base: URL): string {
-  if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return url;
+  if (/^https?:\/\//i.test(url)) return url;
+  const lower = url.toLowerCase();
+  if (
+    lower.startsWith("data:") ||
+    lower.startsWith("javascript:") ||
+    lower.startsWith("vbscript:") ||
+    lower.startsWith("mailto:") ||
+    lower.startsWith("file:")
+  ) {
+    return url;
+  }
   try {
     return new URL(url, base).href;
   } catch {
@@ -349,7 +385,8 @@ export function removeNoise(html: string): string {
     for (const [, liContent] of liItems) {
       const imgMatch = liContent.match(/<img\b[^>]*>/i);
       if (!imgMatch) return `${openTag}${inner}</ul>`;
-      if (liContent.replace(/<[^>]+>/g, "").trim().length > 5) return `${openTag}${inner}</ul>`;
+      if (replaceUntilStable(liContent, /<[^>]+>/g).trim().length > 5)
+        return `${openTag}${inner}</ul>`;
       imgs.push(imgMatch[0]);
     }
     return imgs.length >= 3 ? buildImageSlider(imgs) : `${openTag}${inner}</ul>`;
@@ -701,8 +738,9 @@ export function decodeBytesToString(bytes: Uint8Array, charset: string): string 
  * タグを除去したテキスト量が minChars 未満の場合は不十分と判断する。
  */
 export function isContentSufficient(html: string, minChars = 200): boolean {
-  const text = html
-    .replace(/<[^>]+>/g, "")
+  // タグ除去は不動点反復で行い、`<<script>>` のようなバイパス入力でも
+  // テキスト量評価にタグ文字列が紛れ込まないようにする。
+  const text = replaceUntilStable(html, /<[^>]+>/g)
     .replace(/\s+/g, " ")
     .trim();
   return text.length >= minChars;
@@ -766,19 +804,22 @@ export function postProcessMarkdownContent(html: string, pageUrl = ""): string {
  */
 export function preClean(html: string): string {
   let h = html;
-  h = h.replace(/<picture\b[^>]*>([\s\S]*?)<\/picture>/gi, (_m, inner: string) => {
+  h = h.replace(/<picture\b[^>]*>([\s\S]*?)<\/picture\b[^>]*>/gi, (_m, inner: string) => {
     const img = inner.match(/<img\b[^>]*>/i);
     return img ? img[0] : "";
   });
-  h = h.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (_m, inner: string) =>
+  h = h.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript\b[^>]*>/gi, (_m, inner: string) =>
     /<img\b/i.test(inner) ? inner : "",
   );
-  h = h.replace(
+  // 属性除去・<style>/<script> 除去は「除去後に残った文字列が再度同一パターンを形成する」
+  // バイパスを防ぐため、不動点反復で適用する。閉じタグは HTML5 仕様どおり
+  // `</tagname attr>` も受容するため `\b[^>]*>` でマッチさせる。
+  h = replaceUntilStable(
+    h,
     /\s+(?:data-(?!content\b|src\b)[a-z][a-z0-9-]*|aria-[a-z-]+|on[a-z]+)=["'][^"']*["']/gi,
-    "",
   );
-  h = h.replace(/<style\b[\s\S]*?<\/style>/gi, "");
-  h = h.replace(/<script\b[\s\S]*?<\/script>/gi, "");
+  h = replaceUntilStable(h, /<style\b[\s\S]*?<\/style\b[^>]*>/gi);
+  h = replaceUntilStable(h, /<script\b[\s\S]*?<\/script\b[^>]*>/gi);
   return h;
 }
 
@@ -811,9 +852,15 @@ export function stripPageChrome(html: string): string {
   const BLOCK_TAGS = ["head", "nav", "header", "footer", "aside", "form"] as const;
   let result = html;
   for (const tag of BLOCK_TAGS) {
-    result = result.replace(new RegExp(`<${tag}\\b[\\s\\S]*?<\\/${tag}>`, "gi"), "");
+    // 閉じタグは HTML5 仕様どおり `</tag attr>` も受容する。
+    // さらに不動点反復でネスト再出現バイパス (`<na<nav></nav>v>`) を潰す。
+    result = replaceUntilStable(
+      result,
+      new RegExp(`<${tag}\\b[\\s\\S]*?<\\/${tag}\\b[^>]*>`, "gi"),
+    );
   }
-  return result.replace(/<!--[\s\S]*?-->/g, "");
+  // HTML コメントも同様に不動点反復で除去（`<!--<!-- -->-->` バイパス対策）。
+  return replaceUntilStable(result, /<!--[\s\S]*?-->/g);
 }
 
 /**
@@ -824,7 +871,7 @@ export function stripPageChrome(html: string): string {
  */
 export function resolveScriptLoadedImages(html: string): string {
   const idToUrl = new Map<string, string>();
-  for (const scriptMatch of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
+  for (const scriptMatch of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi)) {
     for (const callMatch of scriptMatch[1].matchAll(
       /loadImage\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/gi,
     )) {
@@ -1041,7 +1088,14 @@ export function detectNextPageUrl(html: string, currentUrl: string): string | nu
   function resolve(href: string): string | null {
     if (!href || href.startsWith("#")) return null;
     const lowerHref = href.toLowerCase();
-    if (lowerHref.startsWith("javascript:") || lowerHref.startsWith("data:")) return null;
+    // javascript: / data: に加えて vbscript: も拒否する。旧 IE 系の vbscript: を経由した
+    // XSS は現代ブラウザでは動作しないが、既知の危険スキーム網羅の観点から明示的に遮断する。
+    if (
+      lowerHref.startsWith("javascript:") ||
+      lowerHref.startsWith("data:") ||
+      lowerHref.startsWith("vbscript:")
+    )
+      return null;
     try {
       const resolved = new URL(href, base!).href;
       if (resolved === currentUrl) return null;
