@@ -60,9 +60,10 @@ export async function GET(request: NextRequest) {
     }
 
     // デフォルト: 全購読フィードの latest.json + 手動保存記事をマージして返す
-    const [subs, feedArticles, savedArticles, readState] = await Promise.all([
-      readUserSubscriptions(env.RSS_DATA, session.userId),
-      getUserLatestArticles(env.RSS_DATA, session.userId),
+    // subscriptions.json は一度だけ読み、getUserLatestArticles に渡して再利用する
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    const [feedArticles, savedArticles, readState] = await Promise.all([
+      getUserLatestArticles(env.RSS_DATA, session.userId, subs),
       r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
       r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), DEFAULT_READ_STATE),
     ]);
