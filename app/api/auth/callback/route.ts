@@ -57,12 +57,19 @@ export async function GET(request: Request) {
   });
   const tokens = await exchangeCode(code, callbackUrl);
   if (!tokens) {
+    console.error("[auth/callback] exchangeCode returned null");
     return authError("認証エラー: トークン交換失敗", 401);
   }
+  console.log("[auth/callback] exchangeCode success", {
+    hasAccessToken: !!tokens.access_token,
+    hasRefreshToken: !!tokens.refresh_token,
+    hasUser: !!tokens.user,
+  });
 
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const payload = await verifyJwt(tokens.access_token, authBaseUrl);
   if (!payload) {
+    console.error("[auth/callback] verifyJwt returned null");
     return authError("認証エラー: トークン検証失敗", 401);
   }
   const sub = payload.sub;

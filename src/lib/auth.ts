@@ -55,7 +55,14 @@ async function getJwks(authBaseUrl: string): Promise<JwkWithKid[]> {
   // キャッシュ期限切れ時はキーキャッシュも破棄（ローテーション対応）
   keyCache.clear();
 
-  const res = await fetch(`${authBaseUrl}/.well-known/jwks.json`);
+  // 0g0-id 側の serviceBindingMiddleware / WAF を User-Agent ベースで bypass する。
+  // /.well-known/jwks.json もフロントで保護されるケースに備え、
+  // INTERNAL_SERVICE_USER_AGENT があれば同じ UA を付与する。
+  const userAgent =
+    process.env.INTERNAL_SERVICE_USER_AGENT || "rss-reader-bff/1.0 (+https://rss.0g0.xyz)";
+  const res = await fetch(`${authBaseUrl}/.well-known/jwks.json`, {
+    headers: { "User-Agent": userAgent },
+  });
   if (!res.ok) throw new Error(`JWKS fetch failed: ${res.status}`);
   const { keys } = (await res.json()) as { keys: JwkWithKid[] };
   jwksCache = keys;
@@ -92,24 +99,42 @@ async function getSigningKey(jwk: JwkWithKid): Promise<CryptoKey> {
 export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWTPayload | null> {
   try {
     const parts = token.split(".");
-    if (parts.length !== 3) return null;
+    if (parts.length !== 3) {
+      console.error("[auth/verify] invalid JWT shape", { parts: parts.length });
+      return null;
+    }
     const [headerB64, payloadB64, sigB64] = parts;
 
     const header = JSON.parse(new TextDecoder().decode(base64urlToBytes(headerB64))) as {
       alg: string;
       kid?: string;
     };
-    if (header.alg !== "ES256") return null;
+    if (header.alg !== "ES256") {
+      console.error("[auth/verify] unsupported alg", { alg: header.alg });
+      return null;
+    }
 
     const payload = JSON.parse(
       new TextDecoder().decode(base64urlToBytes(payloadB64)),
     ) as JWTPayload;
 
-    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
+    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
+      console.error("[auth/verify] token expired or no exp", {
+        exp: payload.exp,
+        now: Math.floor(Date.now() / 1000),
+      });
+      return null;
+    }
 
     const jwks = await getJwks(authBaseUrl);
     const jwk = header.kid ? jwks.find((k) => k.kid === header.kid) : jwks[0];
-    if (!jwk) return null;
+    if (!jwk) {
+      console.error("[auth/verify] matching JWK not found", {
+        kid: header.kid,
+        jwksKids: jwks.map((k) => k.kid),
+      });
+      return null;
+    }
 
     const cryptoKey = await getSigningKey(jwk);
     const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
@@ -122,8 +147,12 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
       data,
     );
 
+    if (!valid) {
+      console.error("[auth/verify] signature invalid", { kid: header.kid });
+    }
     return valid ? payload : null;
-  } catch {
+  } catch (err) {
+    console.error("[auth/verify] threw", { err: String(err) });
     return null;
   }
 }
@@ -144,10 +173,15 @@ function basicAuthHeader(clientId: string, clientSecret: string): string {
 function authApiHeaders(): Record<string, string> {
   const clientId = process.env.CLIENT_ID!;
   const clientSecret = process.env.CLIENT_SECRET!;
+  // 0g0-id 側の serviceBindingMiddleware を User-Agent ベースで bypass する。
+  // INTERNAL_SERVICE_USER_AGENT が設定されていればそれを使い、未設定なら通常の BFF UA を使う。
+  // サービスバインディングを使わず public fetch のままで内部サービスとして通過させるための共有シークレット。
+  const userAgent =
+    process.env.INTERNAL_SERVICE_USER_AGENT || "rss-reader-bff/1.0 (+https://rss.0g0.xyz)";
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Authorization: basicAuthHeader(clientId, clientSecret),
-    "User-Agent": "rss-reader-bff/1.0 (+https://rss.0g0.xyz)",
+    "User-Agent": userAgent,
   };
   // APP_BASE_URL がテスト等で未設定の場合は X-BFF-Origin をスキップする
   const appBaseUrl = process.env.APP_BASE_URL;
