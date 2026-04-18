@@ -8,6 +8,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### バグ修正
 
+- **x.com / twitter.com の OGP を vxtwitter.com 経由で取得** — Twitter / X は bot 向けに OGP メタタグを返さないため、記事に該当 URL を含めても OGP プレビューが空になる不具合を修正（Issue #89）。\`src/lib/ogp.ts\` に \`normalizeOgpFetchUrl(url)\` を追加し、\`x.com\` / \`www.x.com\` / \`mobile.x.com\` / \`twitter.com\` / \`www.twitter.com\` / \`mobile.twitter.com\` を OGP 互換プロキシ \`vxtwitter.com\` に差し替えてから fetch する（hostname 完全一致で判定するため \`x.com.evil.example\` のような偽装ホストは対象外）。\`fetchPageOgpMeta\` 経由の呼び出し（\`/api/ogp\` / \`/api/articles/save\`）すべてに適用。置換対象・不正入力・他ホスト素通りを検証する 12 ケースを \`e2e/ogp-url-normalize.spec.ts\` に追加。
+
 - **コードハイライトが一瞬で外れる問題を修正** — \`<pre><code>\` に highlight.js で付与された \`.hljs\` class が、React の \`dangerouslySetInnerHTML\` 再代入や他の副作用 hook（\`useContentLinkPreviews\` 等）による DOM 書き換えで剥がれ、色付けが一瞬で消えてしまう不具合を修正（Issue #83）。\`src/components/ArticleView.tsx\` の \`processedContent\` を \`useMemo\` でメモ化し、\`rawContent / embedInfo / theme\` が変わらない限り同一文字列を返すようにして不要な innerHTML 再代入を抑止。さらに \`src/hooks/useSyntaxHighlight.ts\` に \`MutationObserver\` を追加し、コンテナ subtree 変更時は \`pre code:not(.hljs)\` を自動で再ハイライトするようにした。\`hljs.highlightElement\` 自身の mutation によるループを避けるため、適用時は observer を \`disconnect → applyMissing → observe\` でサンドイッチし、大量の DOM 変更時は \`queueMicrotask\` でバッチ化する。
 
 - **幅調整バーのポップアップ対応漏れを追補** — Issue #81 の初版修正で拾えていなかった未ポートアル系のインラインモーダル（\`ArticleView\` の画像ダウンロード確認モーダル / \`ImageGallery\` の全画面ライトボックス / \`SelectionExcludePopup\`）にも \`usePopupLock\` を追加。さらに \`e2e/modal-popup-lock-coverage.spec.ts\` に静的検査テストを追加し、\`fixed inset-0 z-5*\` のフルスクリーンオーバーレイを持つコンポーネントは \`usePopupLock\` / \`usePortalMenu\` のいずれかを呼ぶことを CI で強制することで、今後のモーダル追加時の漏れを防ぐ（Issue #81 再発防止）。
