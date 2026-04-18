@@ -11,13 +11,15 @@ import type { UserProfile } from "@/types";
  * 認証エラーレスポンスを生成し、auth_state クッキーを削除する。
  * 失敗後も同じ state での再試行を防ぐため、全エラーパスで削除する。
  * message は escapeHtml でサニタイズし、XSS を防ぐ。
+ * Content-Type に charset=utf-8 を明示して日本語が文字化けしないようにする。
  */
 function authError(message: string, status: number): Response {
   const cookieClear = `auth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
-  return new Response(`<p>${escapeHtml(message)}</p>`, {
+  const body = `<!doctype html><meta charset="utf-8"><p>${escapeHtml(message)}</p>`;
+  return new Response(body, {
     status,
     headers: {
-      "Content-Type": "text/html",
+      "Content-Type": "text/html; charset=utf-8",
       "Set-Cookie": cookieClear,
     },
   });
