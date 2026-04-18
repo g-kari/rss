@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-18
 
+### リファクタリング
+
+- **\`0g0-id\` サービスバインディングを追加** — \`id.0g0.xyz\` は同じ Cloudflare アカウント内の Worker (\`0g0-id\`) で動いているため、\`wrangler.toml\` に \`binding = "OG0_ID"\` のサービスバインディングを追加。\`src/cloudflare-env.d.ts\` の \`CloudflareEnv\` にも \`OG0_ID: Fetcher\` を追加。今後 \`auth.ts\` の \`exchangeCode\` / \`refreshTokens\` / \`revokeToken\` / \`getJwks\` を public fetch から \`env.OG0_ID.fetch()\` に切り替えれば Cloudflare WAF / Bot Fight Mode を完全に経由しなくなり、現行の User-Agent ヘッダーによる迂回が不要になる。今回はバインディング追加のみ（コード移行は別 issue）。
+
 ### バグ修正
 
 - **Color Me Shop (shop-pro.jp) 商品ページで画像一覧が生成されない問題を修正** — 商品画像が \`<form>\` 配下の \`<div class="p-product-img__main-item">\` に格納されており、Readability が \`<form>\` 内を本文外と判定してギャラリーが完全に除去される不具合を修正（Issue #82）。\`src/lib/content.ts\` の \`extractThumbListImgs\` に Color Me Shop の BEM クラス (\`p-product-img__main-item\`) パターンを追加し、Readability の結果末尾に hidden div として商品画像を付与するようにした。クライアント側の画像一覧（ImageGallery）が DOM からこれらの画像を拾える。\`e2e/content-extraction.spec.ts\` に shop-pro.jp 相当の HTML で画像 3 枚が hidden div に追加されることを検証する 2 ケースを追加。
