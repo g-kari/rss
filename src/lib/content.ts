@@ -1126,7 +1126,9 @@ export function detectNextPageUrl(html: string, currentUrl: string): string | nu
   const expectedNext = `${currentPage + 1}`;
   const anchorPattern = /<a\b([^>]*?)>([\s\S]*?)<\/a>/gi;
   for (const m of html.matchAll(anchorPattern)) {
-    const text = m[2].replace(/<[^>]+>/g, "").trim();
+    // 不動点反復で除去しないと `<<a>a>` のようなバイパス入力で
+    // タグ片が再結合し、CodeQL の incomplete-multi-character-sanitization に引っかかる。
+    const text = replaceUntilStable(m[2], /<[^>]+>/g).trim();
     if (text !== expectedNext) continue;
     const hrefMatch = m[1].match(/\bhref=["']([^"']+)["']/i);
     if (!hrefMatch) continue;
