@@ -17,10 +17,6 @@ service = "rss-reader"
 binding = "FINDME_RSS"
 service = "findme-rss"
 
-[[services]]
-binding = "OG0_ID"
-service = "0g0-id"
-
 [images]
 binding = "IMAGES"
 
