@@ -16,6 +16,7 @@ import RecommendationSection from "./RecommendationSection";
 import { useFeedOperations } from "../hooks/useFeedOperations";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { isArticleRead } from "../lib/article-filter";
+import { resolveFeedGroupDrop } from "../lib/feed-group-drop";
 
 interface Props {
   feeds: Feed[];
@@ -119,7 +120,7 @@ function FeedGroupsSection({
   dragOverGroupId?: string | null;
   onGroupDragOver?: (groupId: string) => void;
   onGroupDragLeave?: (groupId: string) => void;
-  onGroupDrop?: (feedId: string, groupId: string) => void;
+  onGroupDrop?: (feedId: string, groupId: string | null) => void;
 }) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -649,16 +650,23 @@ export default function FeedSidebar({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [draggedFeedId, setDraggedFeedId] = useState<string | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [dragOverUngrouped, setDragOverUngrouped] = useState(false);
 
   const handleDropFeedOnGroup = useCallback(
-    (feedId: string, groupId: string) => {
+    (feedId: string, groupId: string | null) => {
       if (!onSetGroupFeed) return;
-      const feed = feeds.find((f) => f.id === feedId);
-      if (!feed || (feed.groupId ?? null) === groupId) return;
-      void onSetGroupFeed(feed, groupId);
+      const resolved = resolveFeedGroupDrop(feedId, groupId, feeds);
+      if (!resolved) return;
+      void onSetGroupFeed(resolved.feed, resolved.targetGroupId);
     },
     [feeds, onSetGroupFeed],
   );
+
+  const draggedFeedInGroup = useMemo(() => {
+    if (!draggedFeedId) return false;
+    const feed = feeds.find((f) => f.id === draggedFeedId);
+    return !!feed?.groupId;
+  }, [draggedFeedId, feeds]);
 
   const {
     adding,
@@ -1252,6 +1260,35 @@ export default function FeedSidebar({
               <div className="border-t border-border-subtle" />
             </div>
           )}
+
+        {draggedFeedInGroup && onSetGroupFeed && (
+          <div
+            data-testid="ungrouped-drop-zone"
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              if (!dragOverUngrouped) setDragOverUngrouped(true);
+            }}
+            onDragLeave={(e) => {
+              const related = e.relatedTarget;
+              if (related instanceof Node && e.currentTarget.contains(related)) return;
+              setDragOverUngrouped(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const feedId = e.dataTransfer.getData("application/x-rss-feed-id") || draggedFeedId;
+              if (feedId) handleDropFeedOnGroup(feedId, null);
+              setDragOverUngrouped(false);
+            }}
+            className={`mx-4 my-2 px-3 py-2 rounded border border-dashed text-[11px] text-center transition-colors ${
+              dragOverUngrouped
+                ? "border-text-muted bg-surface-subtle text-text-strong"
+                : "border-border-default text-text-muted"
+            }`}
+          >
+            グループから外す
+          </div>
+        )}
 
         {(() => {
           let globalOffset =

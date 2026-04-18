@@ -2,6 +2,10 @@
 
 ## 2026-04-19
 
+### 新機能
+
+- **フィードのドラッグ&ドロップでグループから外す操作を追加** — Issue #67 の残タスク「ドラッグ&ドロップでグループ移動」を完了。既存のグループへのドラッグ&ドロップ（追加／別グループへ移動）に加えて、グループ所属フィードをドラッグしたときだけ「グループから外す」ドロップゾーンが破線枠で現れるようにした。`src/lib/feed-group-drop.ts` を新規作成して `resolveFeedGroupDrop(feedId, targetGroupId, feeds)` 純関数を切り出し、feed 不在／同一グループ／同一 ungrouped の場合に no-op 判定を行う。`FeedSidebar` の `handleDropFeedOnGroup` を `groupId: string | null` 対応に変更し、`FeedGroupsSection` の `onGroupDrop` prop 型も `string | null` に拡張。`e2e/feed-group-drop.spec.ts` に 6 ケース（feed 不在 / 同一グループ / ungrouped→ungrouped / グループ間移動 / グループ→ungrouped / ungrouped→グループ）を追加。
+
 ### バグ修正
 
 - **記事詳細の画像が中途半端なサイズ・アスペクト比崩れで表示される問題を修正** — Issue #86。`src/lib/content.ts` の `fixImageDimensions` が元 HTML の `width` / `height` 属性を無条件に削除しており、ブラウザが aspect-ratio を推論できずに画像読み込み中の layout shift やアスペクト比崩れ・中途半端な表示サイズが発生していた。width/height 両方が数値かつ両方 ≥ 16px (favicon 最小サイズ基準) の場合は属性を保持しブラウザに `aspect-ratio: attr(width) / attr(height)` 相当を自動適用させるよう変更（ダミー 1x1 プレースホルダや片方のみの属性は従来どおり削除）。style 内の固定 `width:` / `height:` は引き続き削除してコンテナからの溢れを防ぐ。併せて `app/globals.css` の `.article-content img` から `width: auto !important` を削除し `height: auto !important` を `height: auto` (非 important) に変更。これで HTML 属性の width/height が CSS で打ち消されず、ブラウザが aspect-ratio を推論できるようになる。コンテナ超過時は従来通り `max-width: 100% !important` で縮小し `height: auto` で高さも比例縮小する。`e2e/content-extraction.spec.ts` の `fixImageDimensions` describe に 4 ケース（意味のある属性保持・ダミー削除・片方のみ削除・style 内固定値削除）を追加。
