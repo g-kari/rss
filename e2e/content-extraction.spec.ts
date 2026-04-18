@@ -128,12 +128,45 @@ test.describe("fixLazyImages — 遅延ロード・Shopify サムネイル解決
 });
 
 test.describe("fixImageDimensions — 画像後処理", () => {
-  test("固定 width/height 属性を除去する", () => {
+  test("意味のある width/height 属性は保持して aspect-ratio 推論を有効にする", () => {
+    // 元 HTML に width="640" height="480" があるとブラウザが aspect-ratio を推論でき、
+    // 画像読み込み中の layout shift・アスペクト比崩れを防げる (Issue #86)。
     const html = '<img src="https://example.com/img.jpg" width="640" height="480" alt="test">';
+    const result = fixImageDimensions(html);
+    expect(result).toContain('width="640"');
+    expect(result).toContain('height="480"');
+    expect(result).toContain("src=");
+  });
+
+  test("ダミーサイズ (1x1 プレースホルダ) の width/height は削除する", () => {
+    const html = '<img src="https://example.com/img.jpg" width="1" height="1">';
     const result = fixImageDimensions(html);
     expect(result).not.toContain("width=");
     expect(result).not.toContain("height=");
-    expect(result).toContain("src=");
+  });
+
+  test("favicon サイズ (16x16) の width/height は保持する", () => {
+    const html = '<img src="https://example.com/favicon.png" width="16" height="16">';
+    const result = fixImageDimensions(html);
+    expect(result).toContain('width="16"');
+    expect(result).toContain('height="16"');
+  });
+
+  test("片方のみの width 属性は削除する (aspect-ratio 推論に使えないため)", () => {
+    const html = '<img src="https://example.com/img.jpg" width="640">';
+    const result = fixImageDimensions(html);
+    expect(result).not.toContain("width=");
+  });
+
+  test("style 内の固定 width/height は常に削除する (意味のある属性は保持したまま)", () => {
+    const html =
+      '<img src="https://example.com/img.jpg" width="800" height="600" style="width:200px; height:150px; border:1px solid red">';
+    const result = fixImageDimensions(html);
+    expect(result).toContain('width="800"');
+    expect(result).toContain('height="600"');
+    expect(result).not.toMatch(/style="[^"]*\bwidth\s*:/i);
+    expect(result).not.toMatch(/style="[^"]*\bheight\s*:/i);
+    expect(result).toMatch(/style="[^"]*border\s*:/i);
   });
 
   test("相対パスを絶対 URL に変換する", () => {
