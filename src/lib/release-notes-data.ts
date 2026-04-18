@@ -8,6 +8,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### バグ修正
 
+- **ログイン時のトークン交換失敗を修正（Cloudflare WAF bot 検知によるブロック）** — \`id.0g0.xyz\` の Cloudflare WAF / Bot Fight Mode が Worker-to-Worker fetch を bot 扱いして 403 (Attention Required) を返し、\`/auth/exchange\` が成功しない不具合を修正。\`src/lib/auth.ts\` に \`authApiHeaders()\` ヘルパを追加し、\`exchangeCode\` / \`refreshTokens\` / \`revokeToken\` すべての fetch に \`User-Agent: rss-reader-bff/1.0 (+https://rss.0g0.xyz)\` と \`X-BFF-Origin: https://rss.0g0.xyz\` を付与して BFF として正しく識別されるようにした。以前は \`Content-Type\` と \`Authorization: Basic\` のみで無名の fetch に見えていた。
+
 - **認証エラー時の診断情報を改善** — \`exchangeCode\` / \`/api/auth/callback\` で認証失敗時に \`console.error\` で詳細（HTTP ステータス・レスポンス本文先頭 500 byte・redirect_to）を出力。\`CLIENT_ID\` / \`CLIENT_SECRET\` が未設定の場合は専用メッセージでログする。エラー画面もトップページへの戻りリンクを含む構造化 HTML に変更。Cloudflare Workers 側の原因切り分け（secrets 未設定 / redirect_uri 不一致 / code 再利用 / 上流 5xx）を容易にする。
 
 - **認証コールバックのエラーメッセージが文字化けする問題を修正** — \`/api/auth/callback\` が state 不一致・トークン交換失敗・トークン検証失敗時に返す HTML の \`Content-Type\` に charset が付いていなかったため、ブラウザが Shift_JIS 等で解釈して「認証エラー: トークン交換失敗」が「隱崎ｨｼ繧ｨ繝ｩ繝ｼ: 繝医�繧ｯ繝ｳ莠､謠帛､ｱ謨�」のように文字化けする不具合を修正。\`Content-Type\` を \`text/html; charset=utf-8\` に変更し、レスポンス本文冒頭に \`<!doctype html><meta charset="utf-8">\` を追加。
