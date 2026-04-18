@@ -58,6 +58,7 @@ interface Props {
   onRenameFeedGroup?: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
   onDeleteFeedGroup?: (id: string) => Promise<boolean>;
   onToggleCollapseFeedGroup?: (id: string, collapsed: boolean) => Promise<void>;
+  onToggleMuteFeedGroup?: (id: string, muted: boolean) => Promise<void>;
   onReorderFeedGroup?: (id: string, direction: "up" | "down") => Promise<void>;
   onMarkAllReadInGroup?: (feedIds: string[]) => void;
   onMuteFeed?: (feed: Feed, mutedUntil: string | null) => Promise<void>;
@@ -88,6 +89,7 @@ function FeedGroupsSection({
   onRename,
   onDelete,
   onToggleCollapse,
+  onToggleMute,
   onReorder,
   onMarkAllRead,
 }: {
@@ -98,6 +100,7 @@ function FeedGroupsSection({
   onRename?: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
   onDelete?: (id: string) => Promise<boolean>;
   onToggleCollapse?: (id: string, collapsed: boolean) => Promise<void>;
+  onToggleMute?: (id: string, muted: boolean) => Promise<void>;
   onReorder?: (id: string, direction: "up" | "down") => Promise<void>;
   onMarkAllRead?: (feedIds: string[]) => void;
 }) {
@@ -213,6 +216,7 @@ function FeedGroupsSection({
 
       {groups.map(({ group, feeds }, groupIdx) => {
         const isCollapsed = !!group.collapsed;
+        const isMuted = !!group.muted;
         const groupUnread = feeds.reduce((sum, f) => sum + (unreadByFeed.get(f.id) ?? 0), 0);
         const startIdx = offset;
         offset += feeds.length;
@@ -257,7 +261,10 @@ function FeedGroupsSection({
                     className="flex-1 text-[12px] bg-surface-base border border-border-default rounded px-1 py-0 text-text-strong outline-none focus:border-text-muted min-w-0"
                   />
                 ) : (
-                  <span className="text-[11px] font-medium tracking-[0.05em] text-text-default truncate">
+                  <span
+                    className={`text-[11px] font-medium tracking-[0.05em] truncate ${isMuted ? "text-text-faint italic" : "text-text-default"}`}
+                    title={isMuted ? "ミュート中: このグループの記事は非表示です" : undefined}
+                  >
                     {group.name}
                   </span>
                 )}
@@ -269,6 +276,32 @@ function FeedGroupsSection({
                   </span>
                 )}
               </button>
+              {editingId !== group.id && onToggleMute && isMuted && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void onToggleMute(group.id, false);
+                  }}
+                  className="w-4 h-4 flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-subtle"
+                  title="ミュートを解除"
+                  aria-label={`${group.name} のミュートを解除`}
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M1.5 4.5v3h2L6.5 10V2L3.5 4.5z" />
+                    <line x1="8" y1="4" x2="11" y2="8" />
+                    <line x1="11" y1="4" x2="8" y2="8" />
+                  </svg>
+                </button>
+              )}
               {editingId !== group.id && (
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                   {onMarkAllRead && groupUnread > 0 && (
@@ -367,6 +400,31 @@ function FeedGroupsSection({
                         strokeLinejoin="round"
                       >
                         <path d="M7 1.5l1.5 1.5L3 8.5H1.5V7z" />
+                      </svg>
+                    </button>
+                  )}
+                  {onToggleMute && !isMuted && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void onToggleMute(group.id, true);
+                      }}
+                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      title="グループをミュート（一覧から非表示）"
+                      aria-label={`${group.name} をミュート`}
+                    >
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M1.5 4.5v3h2L6.5 10V2L3.5 4.5z" />
+                        <path d="M9 3.5a3 3 0 010 5" />
                       </svg>
                     </button>
                   )}
@@ -486,6 +544,7 @@ export default function FeedSidebar({
   onRenameFeedGroup,
   onDeleteFeedGroup,
   onToggleCollapseFeedGroup,
+  onToggleMuteFeedGroup,
   onReorderFeedGroup,
   onMarkAllReadInGroup,
   onMuteFeed,
@@ -1073,6 +1132,7 @@ export default function FeedSidebar({
             onRename={onRenameFeedGroup}
             onDelete={onDeleteFeedGroup}
             onToggleCollapse={onToggleCollapseFeedGroup}
+            onToggleMute={onToggleMuteFeedGroup}
             onReorder={onReorderFeedGroup}
             onMarkAllRead={
               onMarkAllReadInGroup

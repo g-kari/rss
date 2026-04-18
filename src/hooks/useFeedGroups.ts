@@ -12,6 +12,8 @@ export interface FeedGroupsState {
   createGroup: (name: string) => Promise<FeedGroup | { error: string }>;
   renameGroup: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
   setCollapsed: (id: string, collapsed: boolean) => Promise<void>;
+  /** グループのミュート状態を切り替える。ミュート中はグループ内のフィード記事が一覧から除外される */
+  setMuted: (id: string, muted: boolean) => Promise<void>;
   deleteGroup: (id: string) => Promise<boolean>;
   /**
    * 表示順を 1 つ上/下へ移動する。隣接グループと order を入れ替える。
@@ -113,6 +115,22 @@ export function useFeedGroups(user: UserProfile | null | undefined): FeedGroupsS
     }
   }, []);
 
+  const setMuted = useCallback(async (id: string, muted: boolean): Promise<void> => {
+    // 楽観的更新
+    setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, muted } : g)));
+    try {
+      await apiFetchJson<FeedGroup>(`/api/feed-groups/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ muted }),
+      });
+    } catch (err) {
+      console.error(err);
+      // ロールバック
+      setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, muted: !muted } : g)));
+    }
+  }, []);
+
   const deleteGroup = useCallback(async (id: string): Promise<boolean> => {
     const res = await apiFetch(`/api/feed-groups/${id}`, { method: "DELETE" });
     if (!res.ok) return false;
@@ -189,6 +207,7 @@ export function useFeedGroups(user: UserProfile | null | undefined): FeedGroupsS
     createGroup,
     renameGroup,
     setCollapsed,
+    setMuted,
     deleteGroup,
     reorderGroup,
   };

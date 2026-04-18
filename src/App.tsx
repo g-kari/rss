@@ -137,6 +137,7 @@ export default function App() {
     createGroup,
     renameGroup,
     setCollapsed: setFeedGroupCollapsed,
+    setMuted: setFeedGroupMuted,
     deleteGroup,
     reorderGroup,
   } = useFeedGroups(user);
@@ -343,8 +344,19 @@ export default function App() {
 
   const mutedFeedIds = useMemo(() => {
     const now = new Date().toISOString();
-    return new Set(feeds.filter((f) => f.mutedUntil && f.mutedUntil > now).map((f) => f.id));
-  }, [feeds]);
+    const ids = new Set<string>();
+    for (const f of feeds) {
+      if (f.mutedUntil && f.mutedUntil > now) ids.add(f.id);
+    }
+    // グループミュート: muted グループに所属するフィードを追加で除外
+    const mutedGroupIds = new Set(feedGroups.filter((g) => g.muted).map((g) => g.id));
+    if (mutedGroupIds.size > 0) {
+      for (const f of feeds) {
+        if (f.groupId && mutedGroupIds.has(f.groupId)) ids.add(f.id);
+      }
+    }
+    return ids;
+  }, [feeds, feedGroups]);
 
   const { bookmarkCount, readingListCount, likeCount, historyCount } = useMemo(() => {
     let bm = 0,
@@ -931,6 +943,7 @@ export default function App() {
               onRenameFeedGroup={renameGroup}
               onDeleteFeedGroup={deleteGroup}
               onToggleCollapseFeedGroup={setFeedGroupCollapsed}
+              onToggleMuteFeedGroup={setFeedGroupMuted}
               onReorderFeedGroup={reorderGroup}
               onMarkAllReadInGroup={(feedIds) => {
                 // グループ内フィードの記事 ID を 1 パスで集約して markBulkRead に渡す

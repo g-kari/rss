@@ -12,6 +12,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       name?: unknown;
       order?: unknown;
       collapsed?: unknown;
+      muted?: unknown;
     }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
@@ -47,6 +48,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         return apiError("collapsed must be a boolean", 400, { code: "INVALID_COLLAPSED" });
       }
       group.collapsed = body.collapsed;
+    }
+
+    if ("muted" in body) {
+      if (typeof body.muted !== "boolean") {
+        return apiError("muted must be a boolean", 400, { code: "INVALID_MUTED" });
+      }
+      group.muted = body.muted;
     }
 
     await writeFeedGroups(env.RSS_DATA, session.userId, groups);
