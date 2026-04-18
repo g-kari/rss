@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-19
 
+### バグ修正
+
+- **ログインフローの \`X-Internal-Secret\` 対応と Cloudflare WAF ブロック検知を追加** — Issue #94。0g0-id の issue #156 改善案1（BFF 個別シークレット対応）で \`serviceBindingMiddleware\` が \`INTERNAL_SERVICE_SECRET_USER\` / \`_ADMIN\` / 共有 \`INTERNAL_SERVICE_SECRET\` による \`X-Internal-Secret\` 認証を受け付けるようになったのに合わせて、\`src/lib/auth.ts\` の \`authApiHeaders()\` に \`INTERNAL_SERVICE_SECRET\` 環境変数のサポートを追加（設定時のみ \`X-Internal-Secret\` ヘッダーを付与し、未設定なら従来通り Basic 認証のみで通す）。加えて Cloudflare WAF / Bot Fight Mode による 403 HTML challenge ページ (\`Attention Required! | Cloudflare\`) を検出する \`isCloudflareBlock()\` を新設し、\`exchangeCode()\` ではブロック時に運用者向けヒント付きログを出力、\`refreshTokens()\` では 403 + Cloudflare HTML を \`invalid\` ではなく \`transient\` 扱いに変更してユーザーを意図せずログアウトさせないようにした。\`exchangeCode\` / \`refreshTokens\` のレスポンスログに \`cf-ray\` ヘッダーも出力しトラブルシューティングを容易化。\`e2e/auth-headers.spec.ts\` に 10 ケース（\`isCloudflareBlock\` 判定 5 ケース、\`X-Internal-Secret\` 送出制御 2 ケース、exchange/refresh での Cloudflare 応答処理 3 ケース）を追加。
+
 ### ドキュメント整備
 
 - **DBSC 導入調査レポートを追加** — Issue #77 の調査タスクとして \`docs/research/dbsc-investigation.md\` を新規作成。Chrome 146 (2026-04-09) で Windows 向け DBSC が本格有効化された最新状況、W3C Editor's Draft (2026-04-17) の仕様サマリー、現状の認証実装 (\`src/lib/server-auth.ts\` の \`setTokenCookies()\` / \`COOKIE_OPTS\` — HttpOnly+Secure+SameSite=Lax, access_token 900 秒 / refresh_token 30 日) との整合性、DBSC 適用時に必要な改修箇所（認証サーバー \`id.0g0.xyz\` 側が主実装、本リポジトリは passthrough のみ）、Firefox/Safari/Chrome macOS・Linux 未対応のカバレッジ不足を整理。結論として「現時点では待ちが妥当」とし、Chrome macOS/Linux が stable 到達するタイミング (推定 2026 年後半〜2027 年) での再評価を推奨。
