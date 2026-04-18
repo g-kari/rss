@@ -12,10 +12,11 @@ import type { UserProfile } from "@/types";
  * 失敗後も同じ state での再試行を防ぐため、全エラーパスで削除する。
  * message は escapeHtml でサニタイズし、XSS を防ぐ。
  * Content-Type に charset=utf-8 を明示して日本語が文字化けしないようにする。
+ * トップページへの再ログインリンクを併記してユーザーの復帰を容易にする。
  */
 function authError(message: string, status: number): Response {
   const cookieClear = `auth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
-  const body = `<!doctype html><meta charset="utf-8"><p>${escapeHtml(message)}</p>`;
+  const body = `<!doctype html><meta charset="utf-8"><title>認証エラー</title><body style="font-family:system-ui,sans-serif;padding:2rem;max-width:480px;margin:auto"><h1 style="font-size:1.1rem">${escapeHtml(message)}</h1><p style="color:#666;font-size:.9rem">時間をおいて再度お試しください。</p><p><a href="/">トップページに戻る</a></p></body>`;
   return new Response(body, {
     status,
     headers: {
