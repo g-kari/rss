@@ -8,3 +8,5 @@ tsconfig.tsbuildinfo
 package-lock.json
 test-results/
 playwright-report/
+.playwright-mcp/
+demo-*.png

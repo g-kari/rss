@@ -4,6 +4,14 @@
 
 ### 新機能
 
+- **認証不要のデモページ `/demo` を追加** — 0g0 ID ログイン必須だったためデザイン／動作確認に毎回ログインが必要だった問題を解消。`/demo` にアクセスすると fetch インターセプターが `/api/*` をすべてモックレスポンス（固定のユーザー・フィード・記事・グループ・読み取り状態）に差し替えた状態で本物の `App` コンポーネントを描画する。デモ用に追加した実装ファイルは `app/demo/page.tsx` / `app/demo/DemoApp.tsx` / `app/demo/mock.ts` のみ — アプリ本体には一切の条件分岐を入れていないため、デモモードが本番描画ロジックに影響しない。`window.fetch` の置き換えは HMR / ページ再読み込みに耐えるよう `globalThis.__demoFetchOriginal` に native fetch を一度だけ保存、インターセプター内で `window.location.pathname.startsWith("/demo")` を毎回確認し、クライアントサイドナビゲーションで他パスに出た瞬間からは本物の API レスポンスを通す設計。`.playwright-mcp/` / `demo-*.png` を `.gitignore` に追加。
+
+### バグ修正
+
+- **サイドバーのヘッダー要素見切れを修正** — PC 表示時に「ブックマーク」「後で読む」「いいね」等の特殊ビュー行がラベル長 / スクロールバー出現時に見切れて機能として使えなくなる問題を修正。`SpecialViewButton` のラベル span に `truncate min-w-0`、カウント span に `flex-shrink-0` を付与し、`justify-between` と組み合わせても確実にカウントが末尾に残るようにした（`gap-2` も追加）。「すべて」行も同様の構成に揃え、ラベル側を優先して縮める挙動に統一。`nav` コンテナに `overflow-x-hidden` を追加し、子要素の意図せぬ横オーバーフローを抑止。
+
+### 新機能
+
 - **フィードグループ化 Step 5 — グループ選択 & 未読フィルタ統合** — サイドバーのグループ名をクリックすると、そのグループに所属するフィードの記事のみが記事一覧に表示される。既存の `u`（未読のみ）キーショートカットと組み合わせることで「現在選択中のグループの未読だけ」を表示できるようになる。`src/lib/article-filter.ts` の `ArticleFilterOptions` に `groupFeedIds?: Set<string>` を追加し、`buildFeedPredicate` を拡張（feedId が未指定でグループが選択されていれば `feedHash ∈ groupFeedIds` のみ残す）、`buildMutedFeedPredicate` はグループ選択時も適用をスキップ（ミュート済みグループを明示的に選択した場合は記事を表示する）。`src/hooks/useFilteredArticles.ts` は `groupFeedIds` を受け取り `filterAndSortArticles` に渡す — グループ切り替え時はページ・検索クエリ・著者／カテゴリフィルターをリセット。`App.tsx` は `selectedGroupId` state を追加（URL クエリ `?group=<id>` に同期）し、選択中グループの `groupFeedIds` を `useMemo` で事前計算。`onSelectFeed` / `onSelectGroup` は相互排他（片方を選ぶと他方はクリア）、記事リストの「すべて既読」はグループ選択中は `markBulkRead(groupIds)` にルーティング。`FeedSidebar` のグループ行は折りたたみ用チェブロンとグループ名ボタンを分離し、グループ名クリックで選択／再クリックで解除、`aria-pressed` 反映。削除済みグループが選択中の場合は自動で解除する（Issue #67 Step 5）。
 - **フィードグループ化 Step 4 — グループ単位ミュート機能** — グループを「ミュート」することで、そのグループに所属するフィードの記事を「すべての記事」ビューから除外できるように拡張。`src/types.ts` の `FeedGroup` に `muted?: boolean` を追加し、`PATCH /api/feed-groups/:id` に `muted` バリデーションブロックを追加（既存の `collapsed` と同じ boolean チェックパターン）。クライアントは `useFeedGroups` に `setMuted(id, muted)` を追加 — `setCollapsed` と同一の楽観的更新＋失敗時ロールバックパターンで実装。`App.tsx` の `mutedFeedIds` useMemo を拡張し、既存の `f.mutedUntil` ベースのフィード単位ミュートに加えて `muted` グループに所属するフィードの ID も同 `Set` に追加（deps に `feedGroups` を追加して stale closure を防止）。`FeedSidebar` のグループ行アクションには hover 時に現れる「ミュート」ボタン（音量付きスピーカーアイコン）と、ミュート中は常時表示される「ミュート解除」ボタン（斜線付きスピーカーアイコン）を追加。ミュート中はグループ名を `text-faint italic` で視覚的に識別できるようにした。記事フィルタリング側のロジック変更は不要 — 既存 `buildMutedFeedPredicate` が `mutedFeedIds` をそのまま解釈するため、`feedId === null`（すべての記事ビュー）でのみ自動的にミュート対象が除外される挙動となる（個別フィード選択時は従来どおり表示される）。新 API は追加せず既存 `PATCH /api/feed-groups/:id` を流用（Issue #67 Step 4）。
 
