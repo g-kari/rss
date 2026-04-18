@@ -3,6 +3,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { FontFamily, FontSize } from "../types";
 import type { Theme, AutoReadThreshold } from "../hooks/useUIState";
+import type { LineHeight, ContentWidth } from "../lib/reader-settings";
 
 export interface ReaderSettings {
   fontSize: FontSize;
@@ -16,6 +17,13 @@ export interface ReaderSettings {
   toggleAutoRead: () => void;
   autoReadThreshold: AutoReadThreshold;
   cycleAutoReadThreshold: () => void;
+  onChangeAutoReadThreshold: (v: AutoReadThreshold) => void;
+  lineHeight: LineHeight;
+  onChangeLineHeight: (lh: LineHeight) => void;
+  contentWidth: ContentWidth;
+  onChangeContentWidth: (w: ContentWidth) => void;
+  textJustify: boolean;
+  onChangeTextJustify: (v: boolean) => void;
 }
 
 const ReaderSettingsContext = createContext<ReaderSettings | null>(null);
