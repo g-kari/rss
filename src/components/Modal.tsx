@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useEventListener } from "@/hooks/useEventListener";
+import { usePopupLock } from "@/hooks/usePopupLock";
 
 interface Props {
   title: string;
@@ -23,6 +24,7 @@ export default function Modal({
   children,
   width = "sm:w-[480px]",
 }: Props) {
+  usePopupLock();
   useEventListener("keydown", (e) => {
     if (e.key === "Escape") onClose();
   });

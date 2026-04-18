@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { Feed, Article } from "../types";
 import { isArticleRead } from "../lib/article-filter";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
+import { usePopupLock } from "../hooks/usePopupLock";
 
 interface Props {
   feeds: Feed[];
@@ -36,6 +37,8 @@ export default function FeedQuickSwitchModal({
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+
+  usePopupLock();
 
   useEffect(() => {
     inputRef.current?.focus();

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { useEventListener } from "./useEventListener";
+import { usePopupLock } from "./usePopupLock";
 
 interface DropdownPos {
   top: number;
@@ -17,6 +18,8 @@ export function usePortalMenu() {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<DropdownPos>({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
+
+  usePopupLock(open);
 
   // スクロール・リサイズ時にメニューを閉じる（open が false の場合 setOpen(false) は React が最適化して no-op）
   useEventListener("scroll", () => setOpen(false), window, true);
