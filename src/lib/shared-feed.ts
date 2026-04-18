@@ -321,11 +321,15 @@ export async function getUserFeeds(bucket: R2Bucket, userId: string): Promise<Fe
  * ユーザーの全購読フィードの latest.json を並行取得してマージ・ソートした記事一覧を返す。
  * 各フィードから最新 PAGE_SIZE 件ずつ取得する。
  */
-export async function getUserLatestArticles(bucket: R2Bucket, userId: string): Promise<Article[]> {
-  const subs = await readUserSubscriptions(bucket, userId);
-  if (subs.length === 0) return [];
+export async function getUserLatestArticles(
+  bucket: R2Bucket,
+  userId: string,
+  subs?: UserSubscription[],
+): Promise<Article[]> {
+  const resolvedSubs = subs ?? (await readUserSubscriptions(bucket, userId));
+  if (resolvedSubs.length === 0) return [];
 
-  const pages = await Promise.all(subs.map((s) => readLatestArticles(bucket, s.feedHash)));
+  const pages = await Promise.all(resolvedSubs.map((s) => readLatestArticles(bucket, s.feedHash)));
   return sortByDate(pages.flat()).slice(0, MAX_USER_ARTICLES);
 }
 
