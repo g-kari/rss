@@ -1,5 +1,6 @@
 version: 2
 updates:
+  # npm 依存関係
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -10,9 +11,61 @@ updates:
     cooldown:
       default-days: 3
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: "依存関係更新"
+      include: "scope"
+    groups:
+      # 型システム・TypeScript 周辺
+      typescript:
+        patterns:
+          - "typescript"
+          - "@typescript/*"
+          - "@types/*"
+      # Cloudflare Workers エコシステム
+      cloudflare:
+        patterns:
+          - "@cloudflare/*"
+          - "@opennextjs/*"
+          - "wrangler"
+          - "miniflare"
+      # Next.js / React
+      nextjs:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+      # Tailwind / PostCSS
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "postcss"
+      # テスト
+      testing:
+        patterns:
+          - "@playwright/*"
+          - "playwright"
+          - "vitest"
+          - "@vitest/*"
+      # ビルドツール
+      build:
+        patterns:
+          - "vite"
+          - "vite-plus"
+          - "esbuild"
+      # コンテンツ処理（パーサー・サニタイザー・変換）
+      content-libs:
+        patterns:
+          - "fast-xml-parser"
+          - "marked"
+          - "katex"
+          - "highlight.js"
+          - "linkedom"
+          - "@mozilla/readability"
     labels:
       - "dependencies"
 
+  # GitHub Actions の依存関係
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -22,6 +75,13 @@ updates:
       timezone: "Asia/Tokyo"
     cooldown:
       default-days: 3
+    commit-message:
+      prefix: "依存関係更新"
+      include: "scope"
+    groups:
+      actions:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "github-actions"

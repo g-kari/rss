@@ -4,6 +4,8 @@
 
 ### 新機能
 
+- **依存関係更新の自動化** — Dependabot 設定 (`.github/dependabot.yml`) にエコシステム別のグルーピング（typescript / cloudflare / nextjs / tailwind / testing / build / content-libs）と日本語コミットプレフィックスを追加し、毎週月曜 09:00 JST に集約された PR が起票されるようにした。CI ワークフロー (`.github/workflows/ci.yml`) で master push と PR 時に `pnpm install --frozen-lockfile` → `pnpm run check` → `pnpm run typecheck` を実行。Dependabot auto-merge ワークフロー (`.github/workflows/dependabot-auto-merge.yml`) は patch / minor を CI 通過後に自動 squash マージし、major はコメントのみで人手レビューを必須にする。GitHub Actions 自体も同 Dependabot 設定で更新対象に含める。
+
 - **認証不要のデモページ `/demo` を追加** — 0g0 ID ログイン必須だったためデザイン／動作確認に毎回ログインが必要だった問題を解消。`/demo` にアクセスすると fetch インターセプターが `/api/*` をすべてモックレスポンス（固定のユーザー・フィード・記事・グループ・読み取り状態）に差し替えた状態で本物の `App` コンポーネントを描画する。デモ用に追加した実装ファイルは `app/demo/page.tsx` / `app/demo/DemoApp.tsx` / `app/demo/mock.ts` のみ — アプリ本体には一切の条件分岐を入れていないため、デモモードが本番描画ロジックに影響しない。`window.fetch` の置き換えは HMR / ページ再読み込みに耐えるよう `globalThis.__demoFetchOriginal` に native fetch を一度だけ保存、インターセプター内で `window.location.pathname.startsWith("/demo")` を毎回確認し、クライアントサイドナビゲーションで他パスに出た瞬間からは本物の API レスポンスを通す設計。`.playwright-mcp/` / `demo-*.png` を `.gitignore` に追加。
 
 ### バグ修正

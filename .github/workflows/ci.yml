@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  check:
+    name: lint・fmt・型チェック
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v6
+
+      - name: pnpm セットアップ
+        uses: pnpm/action-setup@v4
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: 依存パッケージインストール
+        run: pnpm install --frozen-lockfile
+
+      - name: check（lint + fmt + typecheck）
+        run: pnpm run check
+
+      - name: 型チェック（tsc）
+        run: pnpm run typecheck
