@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-19
 
+### ドキュメント整備
+
+- **DBSC 導入調査レポートを追加** — Issue #77 の調査タスクとして \`docs/research/dbsc-investigation.md\` を新規作成。Chrome 146 (2026-04-09) で Windows 向け DBSC が本格有効化された最新状況、W3C Editor's Draft (2026-04-17) の仕様サマリー、現状の認証実装 (\`src/lib/server-auth.ts\` の \`setTokenCookies()\` / \`COOKIE_OPTS\` — HttpOnly+Secure+SameSite=Lax, access_token 900 秒 / refresh_token 30 日) との整合性、DBSC 適用時に必要な改修箇所（認証サーバー \`id.0g0.xyz\` 側が主実装、本リポジトリは passthrough のみ）、Firefox/Safari/Chrome macOS・Linux 未対応のカバレッジ不足を整理。結論として「現時点では待ちが妥当」とし、Chrome macOS/Linux が stable 到達するタイミング (推定 2026 年後半〜2027 年) での再評価を推奨。
+
 ### 新機能
 
 - **フィードのドラッグ&ドロップでグループから外す操作を追加** — Issue #67 の残タスク「ドラッグ&ドロップでグループ移動」を完了。既存のグループへのドラッグ&ドロップ（追加／別グループへ移動）に加えて、グループ所属フィードをドラッグしたときだけ「グループから外す」ドロップゾーンが破線枠で現れるようにした。\`src/lib/feed-group-drop.ts\` を新規作成して \`resolveFeedGroupDrop(feedId, targetGroupId, feeds)\` 純関数を切り出し、feed 不在／同一グループ／同一 ungrouped の場合に no-op 判定を行う。\`FeedSidebar\` の \`handleDropFeedOnGroup\` を \`groupId: string | null\` 対応に変更し、\`FeedGroupsSection\` の \`onGroupDrop\` prop 型も \`string | null\` に拡張。\`e2e/feed-group-drop.spec.ts\` に 6 ケース（feed 不在 / 同一グループ / ungrouped→ungrouped / グループ間移動 / グループ→ungrouped / ungrouped→グループ）を追加。
