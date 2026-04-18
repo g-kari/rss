@@ -17,10 +17,6 @@ service = "rss-reader"
 binding = "FINDME_RSS"
 service = "findme-rss"
 
-[[services]]
-binding = "OG0_ID"
-service = "0g0-id"
-
 [images]
 binding = "IMAGES"
 
@@ -60,7 +56,3 @@ invocation_logs = true
 #
 # Brave Search API (レコメンドエンジン用、オプション):
 # npx wrangler secret put BRAVE_SEARCH_API_KEY
-#
-# 0g0-id サービスバインディング (OG0_ID) の serviceBindingMiddleware が要求する内部秘密。
-# 0g0-id worker 側の INTERNAL_SERVICE_SECRET と同じ値を設定すること:
-# npx wrangler secret put INTERNAL_SERVICE_SECRET

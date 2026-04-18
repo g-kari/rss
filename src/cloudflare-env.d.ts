@@ -18,6 +18,4 @@ interface CloudflareEnv {
   IMAGES: ImagesBinding;
   /** findme-rss サービスバインディング (内部通信で Bot 検出を回避) */
   FINDME_RSS: Fetcher;
-  /** 0g0-id (id.0g0.xyz) サービスバインディング (Worker-to-Worker で WAF/Bot 検出を回避) */
-  OG0_ID: Fetcher;
 }
