@@ -21,7 +21,7 @@
     "@tanstack/react-virtual": "^3.13.23",
     "fast-xml-parser": "^5.5.8",
     "highlight.js": "^11.11.1",
-    "katex": "^0.16.42",
+    "katex": "^0.16.45",
     "linkedom": "^0.18.12",
     "marked": "^17.0.5",
     "react": "^19.0.0",
