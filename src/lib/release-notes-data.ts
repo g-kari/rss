@@ -8,6 +8,8 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### バグ修正
 
+- **Color Me Shop (shop-pro.jp) 商品ページで画像一覧が生成されない問題を修正** — 商品画像が \`<form>\` 配下の \`<div class="p-product-img__main-item">\` に格納されており、Readability が \`<form>\` 内を本文外と判定してギャラリーが完全に除去される不具合を修正（Issue #82）。\`src/lib/content.ts\` の \`extractThumbListImgs\` に Color Me Shop の BEM クラス (\`p-product-img__main-item\`) パターンを追加し、Readability の結果末尾に hidden div として商品画像を付与するようにした。クライアント側の画像一覧（ImageGallery）が DOM からこれらの画像を拾える。\`e2e/content-extraction.spec.ts\` に shop-pro.jp 相当の HTML で画像 3 枚が hidden div に追加されることを検証する 2 ケースを追加。
+
 - **ログイン時のトークン交換失敗を修正（Cloudflare WAF bot 検知によるブロック）** — \`id.0g0.xyz\` の Cloudflare WAF / Bot Fight Mode が Worker-to-Worker fetch を bot 扱いして 403 (Attention Required) を返し、\`/auth/exchange\` が成功しない不具合を修正。\`src/lib/auth.ts\` に \`authApiHeaders()\` ヘルパを追加し、\`exchangeCode\` / \`refreshTokens\` / \`revokeToken\` すべての fetch に \`User-Agent: rss-reader-bff/1.0 (+https://rss.0g0.xyz)\` と \`X-BFF-Origin: https://rss.0g0.xyz\` を付与して BFF として正しく識別されるようにした。以前は \`Content-Type\` と \`Authorization: Basic\` のみで無名の fetch に見えていた。
 
 - **認証エラー時の診断情報を改善** — \`exchangeCode\` / \`/api/auth/callback\` で認証失敗時に \`console.error\` で詳細（HTTP ステータス・レスポンス本文先頭 500 byte・redirect_to）を出力。\`CLIENT_ID\` / \`CLIENT_SECRET\` が未設定の場合は専用メッセージでログする。エラー画面もトップページへの戻りリンクを含む構造化 HTML に変更。Cloudflare Workers 側の原因切り分け（secrets 未設定 / redirect_uri 不一致 / code 再利用 / 上流 5xx）を容易にする。

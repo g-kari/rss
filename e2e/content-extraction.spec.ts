@@ -358,6 +358,61 @@ test.describe("extractMainContent — Zenn 埋め込み回帰 (Issue #88)", () =
   });
 });
 
+test.describe("extractMainContent — Color Me Shop ギャラリー (Issue #82)", () => {
+  // 報告: shop-pro.jp の商品ページで画像一覧が生成されない。
+  // 原因: 商品画像が <form> 内の <div class="p-product-img__main-item"> に格納されており、
+  //       Readability が <form> 配下を本文外と判定して全て除去する。
+  // 対策: extractThumbListImgs に Color Me Shop の BEM クラスパターンを追加し、
+  //       Readability 結果に hidden div としてギャラリーを付与する。
+
+  const buildShopProHtml = () => `
+    <html>
+      <head><title>商品ページ</title></head>
+      <body>
+        <div class="p-product">
+          <form name="product_form" method="post" action="/cart">
+            <div class="p-product-img">
+              <div class="p-product-img__main js-images-slider">
+                <div class="p-product-img__main-item">
+                  <img src="https://img21.shop-pro.jp/PA01498/757/product/191498462.jpg?cmsp_timestamp=20260417185350" alt="" />
+                </div>
+                <div class="p-product-img__main-item">
+                  <img src="https://img21.shop-pro.jp/PA01498/757/product/191498462_o1.jpg?cmsp_timestamp=20260417185350" alt="" />
+                </div>
+                <div class="p-product-img__main-item">
+                  <img src="https://img21.shop-pro.jp/PA01498/757/product/191498462_o2.jpg?cmsp_timestamp=20260417185350" alt="" />
+                </div>
+              </div>
+            </div>
+            <div class="p-product-detail">
+              <h1>商品タイトル</h1>
+              <p>こちらは商品の説明文です。十分な長さの説明文を書いておくことで Readability が本文として認識します。
+              更に詳細な仕様や注意事項についてもこちらに記載されることが想定されます。
+              この説明文を Readability が本文として抽出し、商品画像が外側にあると除外される構造を再現します。</p>
+            </div>
+          </form>
+        </div>
+      </body>
+    </html>
+  `;
+
+  test("p-product-img__main-item 内の <img> がすべて hidden div に追加される", () => {
+    const html = buildShopProHtml();
+    const { content } = extractMainContent(html, "https://mitubado.shop-pro.jp/?pid=191498462");
+
+    // 全 3 枚の画像 URL が後工程で /api/image-proxy 経由に書き換えられる。
+    expect(content).toContain(encodeURIComponent("191498462.jpg"));
+    expect(content).toContain(encodeURIComponent("191498462_o1.jpg"));
+    expect(content).toContain(encodeURIComponent("191498462_o2.jpg"));
+  });
+
+  test("ギャラリーは <div hidden> として本文末尾に付与される", () => {
+    const html = buildShopProHtml();
+    const { content } = extractMainContent(html, "https://mitubado.shop-pro.jp/?pid=191498462");
+    expect(content).toContain("<div hidden>");
+  });
+});
+
 test.describe("rewriteImageUrls — 画像プロキシ書き換え", () => {
   test("https:// の src を /api/image-proxy 経由に書き換える", () => {
     const html = '<img src="https://example.com/photo.jpg" alt="写真">';

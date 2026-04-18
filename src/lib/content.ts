@@ -301,6 +301,17 @@ function extractThumbListImgs(html: string, pageUrl: string): string[] {
     }
   }
 
+  // Color Me Shop (shop-pro.jp) 商品ギャラリー: <div class="p-product-img__main-item"><img src="..."></div>
+  // 商品ページは Readability が <form> 内のギャラリーを除外するため URL を直接抽出する。
+  const productItemPattern =
+    /<div[^>]+class="[^"]*\bp-product-img__main-item\b[^"]*"[^>]*>\s*<img[^>]+src="([^"]+)"[^>]*>\s*<\/div>/gi;
+  for (const itemMatch of html.matchAll(productItemPattern)) {
+    const src = itemMatch[1];
+    if (seen.has(src)) continue;
+    seen.add(src);
+    imgs.push(`<img src="${src}" loading="lazy">`);
+  }
+
   return imgs;
 }
 
