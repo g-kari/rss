@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useSyncedRef } from "../../hooks/useSyncedRef";
 import { useEventListener } from "../../hooks/useEventListener";
+import { usePopupLock } from "../../hooks/usePopupLock";
 
 interface Props {
   images: string[];
@@ -10,6 +11,9 @@ export default function ImageGallery({ images }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const lightboxTouchRef = useRef<number | null>(null);
   const lightboxRef = useSyncedRef({ lightboxIndex, imageCount: images.length });
+
+  // ライトボックス表示中はリサイズバーを無効化する（Issue #81）
+  usePopupLock(lightboxIndex !== null);
 
   useEventListener("keydown", (e) => {
     const { lightboxIndex: idx, imageCount } = lightboxRef.current;

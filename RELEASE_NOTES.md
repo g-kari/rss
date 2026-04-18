@@ -4,6 +4,8 @@
 
 ### バグ修正
 
+- **幅調整バーのポップアップ対応漏れを追補** — Issue #81 の初版修正で拾えていなかった未ポートアル系のインラインモーダル（`ArticleView` の画像ダウンロード確認モーダル / `ImageGallery` の全画面ライトボックス / `SelectionExcludePopup`）にも `usePopupLock` を追加。さらに `e2e/modal-popup-lock-coverage.spec.ts` に静的検査テストを追加し、`fixed inset-0 z-5*` のフルスクリーンオーバーレイを持つコンポーネントは `usePopupLock` / `usePortalMenu` のいずれかを呼ぶことを CI で強制することで、今後のモーダル追加時の漏れを防ぐ（Issue #81 再発防止）。
+
 - **幅調整バーがポップアップ表示中も操作できる問題を修正** — 記事一覧 / フィード一覧 / 記事詳細の 3 ペイン境界にある幅調整バーが、モーダル・ドロップダウン表示中も pointer イベントを受けてドラッグできてしまい、オーバーレイより手前に見えてしまう不具合を修正（Issue #81）。`src/lib/popup-lock.ts` にグローバルなポップアップ表示数カウンタを追加し、`src/hooks/usePopupLock.ts`（`usePopupLock(active?)` / `useHasOpenPopup()`）を経由して登録・購読できるようにした。`Modal`（`FeedDetailModal` / `FeedFilterModal` / `KeyboardShortcutsModal` / `ReadingStatsModal` / `ReleaseNotesModal` / `SnoozeModal` が共通利用）、`FeedQuickSwitchModal`、`usePortalMenu`（`FilterMenu` / `GlobalFilterMenu` / `ShareMenu` / `SnoozeMenu` など）、および `FeedItem` のコンテキスト／ミュート／グループ移動メニューが表示中はロックを立てる。`App.tsx` のリサイズハンドルは `useHasOpenPopup()` を監視し、`z-[5]`（従来 `z-20`）へ引き下げたうえで表示中は `pointer-events-none` + `opacity-0` + `aria-hidden` を付与して操作不可にする。`e2e/popup-lock.spec.ts` にカウンタ増減・冪等性・通知購読の 6 ケースを追加。
 
 ### 新機能

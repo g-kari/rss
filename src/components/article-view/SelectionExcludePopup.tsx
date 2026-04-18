@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import type { KeywordFilter } from "../../types";
+import { usePopupLock } from "../../hooks/usePopupLock";
 
 const MAX_SELECTION_LENGTH = 100;
 
@@ -86,6 +87,7 @@ export default function SelectionExcludePopup({
   showToast,
   onClose,
 }: Props) {
+  usePopupLock();
   const displayText = popup.text.length > 24 ? `${popup.text.slice(0, 24)}…` : popup.text;
 
   function doCopyQuote(e: { preventDefault: () => void }) {
