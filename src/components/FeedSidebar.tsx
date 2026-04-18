@@ -58,6 +58,8 @@ interface Props {
   onRenameFeedGroup?: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
   onDeleteFeedGroup?: (id: string) => Promise<boolean>;
   onToggleCollapseFeedGroup?: (id: string, collapsed: boolean) => Promise<void>;
+  onReorderFeedGroup?: (id: string, direction: "up" | "down") => Promise<void>;
+  onMarkAllReadInGroup?: (feedIds: string[]) => void;
   onMuteFeed?: (feed: Feed, mutedUntil: string | null) => Promise<void>;
   recommendations?: RecommendedFeed[];
   recommendationsLoading?: boolean;
@@ -86,6 +88,8 @@ function FeedGroupsSection({
   onRename,
   onDelete,
   onToggleCollapse,
+  onReorder,
+  onMarkAllRead,
 }: {
   groups: { group: FeedGroup; feeds: Feed[] }[];
   unreadByFeed: Map<string, number>;
@@ -94,6 +98,8 @@ function FeedGroupsSection({
   onRename?: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
   onDelete?: (id: string) => Promise<boolean>;
   onToggleCollapse?: (id: string, collapsed: boolean) => Promise<void>;
+  onReorder?: (id: string, direction: "up" | "down") => Promise<void>;
+  onMarkAllRead?: (feedIds: string[]) => void;
 }) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -205,11 +211,13 @@ function FeedGroupsSection({
         </div>
       )}
 
-      {groups.map(({ group, feeds }) => {
+      {groups.map(({ group, feeds }, groupIdx) => {
         const isCollapsed = !!group.collapsed;
         const groupUnread = feeds.reduce((sum, f) => sum + (unreadByFeed.get(f.id) ?? 0), 0);
         const startIdx = offset;
         offset += feeds.length;
+        const canMoveUp = groupIdx > 0;
+        const canMoveDown = groupIdx < groups.length - 1;
         return (
           <div key={`feed-group-${group.id}`}>
             <div className="w-full px-4 pt-1.5 pb-0.5 flex items-center gap-1 group relative">
@@ -262,7 +270,79 @@ function FeedGroupsSection({
                 )}
               </button>
               {editingId !== group.id && (
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                  {onMarkAllRead && groupUnread > 0 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMarkAllRead(feeds.map((f) => f.id));
+                      }}
+                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      title="グループ内の記事を既読にする"
+                      aria-label={`${group.name} の記事を全て既読にする`}
+                    >
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M1 5.5L4 8l5-6" />
+                      </svg>
+                    </button>
+                  )}
+                  {onReorder && canMoveUp && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void onReorder(group.id, "up");
+                      }}
+                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      title="上へ移動"
+                      aria-label={`${group.name} を上へ移動`}
+                    >
+                      <svg
+                        width="9"
+                        height="9"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M2 6l3-3 3 3" />
+                      </svg>
+                    </button>
+                  )}
+                  {onReorder && canMoveDown && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void onReorder(group.id, "down");
+                      }}
+                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      title="下へ移動"
+                      aria-label={`${group.name} を下へ移動`}
+                    >
+                      <svg
+                        width="9"
+                        height="9"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M2 4l3 3 3-3" />
+                      </svg>
+                    </button>
+                  )}
                   {onRename && (
                     <button
                       onClick={(e) => {
@@ -406,6 +486,8 @@ export default function FeedSidebar({
   onRenameFeedGroup,
   onDeleteFeedGroup,
   onToggleCollapseFeedGroup,
+  onReorderFeedGroup,
+  onMarkAllReadInGroup,
   onMuteFeed,
   recommendations,
   recommendationsLoading,
@@ -991,6 +1073,15 @@ export default function FeedSidebar({
             onRename={onRenameFeedGroup}
             onDelete={onDeleteFeedGroup}
             onToggleCollapse={onToggleCollapseFeedGroup}
+            onReorder={onReorderFeedGroup}
+            onMarkAllRead={
+              onMarkAllReadInGroup
+                ? (feedIds) => {
+                    if (feedIds.length === 0) return;
+                    onMarkAllReadInGroup(feedIds);
+                  }
+                : undefined
+            }
           />
         )}
 

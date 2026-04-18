@@ -13,6 +13,11 @@ export interface FeedGroupsState {
   renameGroup: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
   setCollapsed: (id: string, collapsed: boolean) => Promise<void>;
   deleteGroup: (id: string) => Promise<boolean>;
+  /**
+   * 表示順を 1 つ上/下へ移動する。隣接グループと order を入れ替える。
+   * 先頭での "up" や末尾での "down" は no-op。
+   */
+  reorderGroup: (id: string, direction: "up" | "down") => Promise<void>;
 }
 
 function sortByOrder(groups: FeedGroup[]): FeedGroup[] {
@@ -115,5 +120,76 @@ export function useFeedGroups(user: UserProfile | null | undefined): FeedGroupsS
     return true;
   }, []);
 
-  return { groups, loading, createGroup, renameGroup, setCollapsed, deleteGroup };
+  const reorderGroup = useCallback(async (id: string, direction: "up" | "down"): Promise<void> => {
+    // スナップショットを state updater 外で決定（楽観的更新はその後に別途 setGroups で適用）
+    let self: FeedGroup | undefined;
+    let neighbor: FeedGroup | undefined;
+    setGroups((prev) => {
+      const sorted = sortByOrder(prev);
+      const idx = sorted.findIndex((g) => g.id === id);
+      if (idx === -1) return prev;
+      const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (neighborIdx < 0 || neighborIdx >= sorted.length) return prev;
+      self = sorted[idx];
+      neighbor = sorted[neighborIdx];
+      if (!self || !neighbor) return prev;
+      const selfId = self.id;
+      const neighborId = neighbor.id;
+      const selfOrder = self.order;
+      const neighborOrder = neighbor.order;
+      return sortByOrder(
+        prev.map((g) => {
+          if (g.id === selfId) return { ...g, order: neighborOrder };
+          if (g.id === neighborId) return { ...g, order: selfOrder };
+          return g;
+        }),
+      );
+    });
+    if (!self || !neighbor) return;
+    const selfSnapshot = self;
+    const neighborSnapshot = neighbor;
+    try {
+      // 2 本 PATCH を順次送信。失敗時にどちらかのみ更新済みの状態になりうるため、
+      // 失敗時はサーバーから再 fetch してローカル state を真実源に戻す。
+      await apiFetchJson<FeedGroup>(`/api/feed-groups/${selfSnapshot.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: neighborSnapshot.order }),
+      });
+      await apiFetchJson<FeedGroup>(`/api/feed-groups/${neighborSnapshot.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: selfSnapshot.order }),
+      });
+    } catch (err) {
+      console.error(err);
+      // サーバーから再 fetch して真の状態を反映（片側のみ成功したケースにも対応）
+      try {
+        const data = await apiFetchJson<FeedGroup[]>("/api/feed-groups");
+        setGroups(sortByOrder(data));
+      } catch (fetchErr) {
+        console.error(fetchErr);
+        // 再 fetch も失敗した場合は楽観的更新をロールバック
+        setGroups((prev) =>
+          sortByOrder(
+            prev.map((g) => {
+              if (g.id === selfSnapshot.id) return { ...g, order: selfSnapshot.order };
+              if (g.id === neighborSnapshot.id) return { ...g, order: neighborSnapshot.order };
+              return g;
+            }),
+          ),
+        );
+      }
+    }
+  }, []);
+
+  return {
+    groups,
+    loading,
+    createGroup,
+    renameGroup,
+    setCollapsed,
+    deleteGroup,
+    reorderGroup,
+  };
 }

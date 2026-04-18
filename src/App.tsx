@@ -138,6 +138,7 @@ export default function App() {
     renameGroup,
     setCollapsed: setFeedGroupCollapsed,
     deleteGroup,
+    reorderGroup,
   } = useFeedGroups(user);
 
   const {
@@ -930,6 +931,14 @@ export default function App() {
               onRenameFeedGroup={renameGroup}
               onDeleteFeedGroup={deleteGroup}
               onToggleCollapseFeedGroup={setFeedGroupCollapsed}
+              onReorderFeedGroup={reorderGroup}
+              onMarkAllReadInGroup={(feedIds) => {
+                // グループ内フィードの記事 ID を 1 パスで集約して markBulkRead に渡す
+                // （feedIds ループで markAllRead を呼ぶと articlesRef を N 回スキャンするのを回避）
+                const feedSet = new Set(feedIds);
+                const ids = articles.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
+                if (ids.length > 0) markBulkRead(ids);
+              }}
               onMuteFeed={muteFeed}
               recommendations={recommendations}
               recommendationsLoading={recommendationsLoading}
