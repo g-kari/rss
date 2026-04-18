@@ -4,6 +4,8 @@
 
 ### セキュリティ
 
+- **code-scanning alert 残存 1 件を修正** — `src/lib/content.ts` の `detectNextPageUrl` 内 `<a>` タグ内テキスト抽出（`m[2].replace(/<[^>]+>/g, "").trim()`）が CodeQL の `js/incomplete-multi-character-sanitization` (severity: high) に残存していた不具合を修正（Issue #78 追従）。既存ヘルパ `replaceUntilStable` を用いて不動点反復に置き換え、`<<a>a>` のような再結合バイパス入力でもタグ片が正しく除去されるようにした。この `text` は数字リテラルとの `===` 比較にしか使われず直接の XSS 経路ではないが、ファイル内の他のタグ除去処理と同じパターンに揃えた。
+
 - **code-scanning alerts を一括修正** — GitHub Advanced Security の CodeQL スキャンで検出された 19 件の警告を修正（Issue #78）。`js/incomplete-multi-character-sanitization` / `js/bad-tag-filter` / `js/incomplete-url-scheme-check` / `js/incomplete-sanitization` / `js/incomplete-url-substring-sanitization` / `actions/missing-workflow-permissions` を網羅的に対応した。`src/lib/html.ts` の `sanitizeHtml` を不動点反復（最大 8 パス）に変更し `<scr<script></script>ipt>` のようなネスト再出現バイパスを潰した。すべての閉じタグ正規表現を `<\/tag\s*>` から `<\/tag\b[^>]*>` に変更し HTML5 仕様どおり `</script foo>` や `</script\t\n bar>` のような属性付き閉じタグも受容するようにした。`src/lib/content.ts` に `replaceUntilStable` ヘルパを追加して `preClean` / `stripPageChrome` / `isContentSufficient` / 画像スライダー判定を不動点反復化し、`resolveScriptLoadedImages` の script end tag 正規表現も修正した。`resolveRelativeUrl` および `detectNextPageUrl` / `llm-feed-generator.ts` の URL スキームチェックに `vbscript:` / `mailto:` / `file:` / `data:` を追加した。`xml-parser.ts` の JSON Feed バージョン検出を `version.includes("jsonfeed.org")` から URL パース + hostname 完全一致に変更し `https://evil.example/?x=jsonfeed.org` 形式のなりすましを遮断した。`useKeyboardNav.ts` / `ShareMenu.tsx` の Markdown ラベルエスケープを `[[\]]` から `[\\[\]]` に変更し、バックスラッシュのエスケープ漏れによる二重エスケープ崩れを修正した。`.github/workflows/ci.yml` に `permissions: contents: read` を追加し GITHUB_TOKEN 権限を最小化した。`e2e/sanitize-html.spec.ts` に閉じタグ属性バイパスとネスト再出現バイパスの回帰テストを 5 ケース追加した。
 
 ### バグ修正
