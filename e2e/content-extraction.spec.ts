@@ -905,6 +905,48 @@ test.describe("detectNextPageUrl — 次ページ URL 検出", () => {
     const html = `<link rel="next" href="https://example.com/post/124">`;
     expect(detectNextPageUrl(html, "https://example.com/post/123")).toBeNull();
   });
+
+  // --- Issue #87: bare numeric suffix ページネーション (denfaminicogamer 等) ---
+
+  test("bare numeric suffix: /slug → /slug/2 のテキスト '2' リンクを検出する", () => {
+    // rel="next" を持たないが <a>2</a> だけのページネーション
+    const html = `<nav><a href="https://news.denfaminicogamer.jp/interview/260417u">1</a><a href="https://news.denfaminicogamer.jp/interview/260417u/2">2</a></nav>`;
+    expect(detectNextPageUrl(html, "https://news.denfaminicogamer.jp/interview/260417u")).toBe(
+      "https://news.denfaminicogamer.jp/interview/260417u/2",
+    );
+  });
+
+  test("bare numeric suffix: /slug/2 → /slug/3 のテキスト '3' リンクを検出する", () => {
+    const html = `<nav><a href="https://example.com/interview/abc-123">1</a><a href="https://example.com/interview/abc-123/2">2</a><a href="https://example.com/interview/abc-123/3">3</a></nav>`;
+    expect(detectNextPageUrl(html, "https://example.com/interview/abc-123/2")).toBe(
+      "https://example.com/interview/abc-123/3",
+    );
+  });
+
+  test("bare numeric suffix: 連番記事 ID はテキスト '124' があっても null (slug 判定)", () => {
+    // /post の末尾セグメント "post" は slug らしくないため誤検知されない
+    const html = `<a href="https://example.com/post/124">124</a>`;
+    expect(detectNextPageUrl(html, "https://example.com/post/123")).toBeNull();
+  });
+
+  test("bare numeric suffix: 別記事へのリンクは除外する", () => {
+    const html = `<a href="https://news.denfaminicogamer.jp/other-article/2">2</a>`;
+    expect(
+      detectNextPageUrl(html, "https://news.denfaminicogamer.jp/interview/260417u"),
+    ).toBeNull();
+  });
+
+  test("bare numeric suffix: 記事本文中の数字リンクは除外する (paginated variant でない)", () => {
+    // 本文中に <a href="外部URL">2</a> のようなリンクがあっても拾わない
+    const html = `<p><a href="https://example.com/chapter-2">2</a> 章を参照</p>`;
+    expect(detectNextPageUrl(html, "https://example.com/interview/260417u")).toBeNull();
+  });
+
+  test("bare numeric suffix: 日付アーカイブ (/2025/01 → /2025/02) は誤検知しない", () => {
+    // base 最終セグメント /2025 は純数字のため slug と見なさない
+    const html = `<a href="https://example.com/2025/02">02</a>`;
+    expect(detectNextPageUrl(html, "https://example.com/2025/01")).toBeNull();
+  });
 });
 
 test.describe("processContent — XSS サニタイズ（フォールバック経路含む）", () => {
