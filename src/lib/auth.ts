@@ -15,6 +15,8 @@
  * - Workers はリクエスト間でモジュールスコープを共有するため有効
  */
 
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
 export interface JWTPayload {
   sub: string;
   exp: number;
@@ -149,6 +151,13 @@ function authApiHeaders(): Record<string, string> {
     Authorization: basicAuthHeader(clientId, clientSecret),
     "User-Agent": "rss-reader-bff/1.0 (+https://rss.0g0.xyz)",
   };
+  // 0g0-id の serviceBindingMiddleware は X-Internal-Secret を要求する。
+  // OG0_ID サービスバインディング経由で送ると WAF/Bot Fight Mode を完全に迂回でき、
+  // 同時にこのヘッダーで「内部サービス呼び出し」として認可される。
+  const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
+  if (internalSecret) {
+    headers["X-Internal-Secret"] = internalSecret;
+  }
   // APP_BASE_URL がテスト等で未設定の場合は X-BFF-Origin をスキップする
   const appBaseUrl = process.env.APP_BASE_URL;
   if (appBaseUrl) {
@@ -159,6 +168,24 @@ function authApiHeaders(): Record<string, string> {
     }
   }
   return headers;
+}
+
+/**
+ * 0g0-id への BFF 呼び出し用 fetch を取得する。
+ * Cloudflare 環境ではサービスバインディング `OG0_ID` を優先し、Worker-to-Worker
+ * 直結で WAF / Bot Fight Mode を完全に経由しない経路を使う。
+ * バインディング未設定（ローカル開発・テスト等）の場合は public fetch にフォールバック。
+ */
+async function authFetch(path: string, init: RequestInit): Promise<Response> {
+  const authBaseUrl = process.env.AUTH_BASE_URL!;
+  const url = `${authBaseUrl}${path}`;
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    if (env.OG0_ID) return env.OG0_ID.fetch(url, init);
+  } catch {
+    // getCloudflareContext が呼べない環境（テスト等）は public fetch にフォールバック
+  }
+  return fetch(url, init);
 }
 
 export interface TokenData {
@@ -195,7 +222,7 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
   const endpoint = `${authBaseUrl}/auth/exchange`;
   console.log("[auth/exchange] request start", { endpoint, redirectTo });
   try {
-    const res = await fetch(endpoint, {
+    const res = await authFetch("/auth/exchange", {
       method: "POST",
       headers: authApiHeaders(),
       body: JSON.stringify({ code, redirect_to: redirectTo }),
@@ -240,10 +267,9 @@ export type RefreshResult =
   | { kind: "transient" };
 
 export async function refreshTokens(refreshToken: string): Promise<RefreshResult> {
-  const authBaseUrl = process.env.AUTH_BASE_URL!;
   let res: Response;
   try {
-    res = await fetch(`${authBaseUrl}/auth/refresh`, {
+    res = await authFetch("/auth/refresh", {
       method: "POST",
       headers: authApiHeaders(),
       body: JSON.stringify({ refresh_token: refreshToken }),
@@ -275,8 +301,7 @@ export async function refreshTokens(refreshToken: string): Promise<RefreshResult
  * エラー時は例外を投げず、サイレントに失敗する（cookie クリアを優先するため）。
  */
 export async function revokeToken(refreshToken: string): Promise<void> {
-  const authBaseUrl = process.env.AUTH_BASE_URL!;
-  await fetch(`${authBaseUrl}/auth/logout`, {
+  await authFetch("/auth/logout", {
     method: "POST",
     headers: authApiHeaders(),
     body: JSON.stringify({ refresh_token: refreshToken }),

@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-18
 
+### バグ修正
+
+- **ログイン不可を修正（\`0g0-id\` の \`serviceBindingMiddleware\` 必須化に対応）** — \`id.0g0.xyz\` (0g0-id worker) が \`/auth/exchange\` / \`/auth/refresh\` / \`/auth/logout\` へのアクセスを \`serviceBindingMiddleware\` で保護するようになり、public fetch + Basic 認証では \`403 FORBIDDEN: Internal service access required\` が返ってログインできなくなった不具合を修正。\`src/lib/auth.ts\` に \`authFetch()\` ヘルパーを追加し、Cloudflare 環境では \`env.OG0_ID.fetch()\` (サービスバインディング) を優先、ローカル開発では public \`fetch()\` にフォールバック。\`authApiHeaders()\` には \`process.env.INTERNAL_SERVICE_SECRET\` がある場合に \`X-Internal-Secret\` ヘッダーを付与するよう追加。\`exchangeCode\` / \`refreshTokens\` / \`revokeToken\` の 3 関数を移行（JWKS は public エンドポイントのため変更なし）。デプロイ後 \`npx wrangler secret put INTERNAL_SERVICE_SECRET\` で 0g0-id 側と同じ秘密値を設定する必要がある。
+
 ### リファクタリング
 
 - **\`0g0-id\` サービスバインディングを追加** — \`id.0g0.xyz\` は同じ Cloudflare アカウント内の Worker (\`0g0-id\`) で動いているため、\`wrangler.toml\` に \`binding = "OG0_ID"\` のサービスバインディングを追加。\`src/cloudflare-env.d.ts\` の \`CloudflareEnv\` にも \`OG0_ID: Fetcher\` を追加。今後 \`auth.ts\` の \`exchangeCode\` / \`refreshTokens\` / \`revokeToken\` / \`getJwks\` を public fetch から \`env.OG0_ID.fetch()\` に切り替えれば Cloudflare WAF / Bot Fight Mode を完全に経由しなくなり、現行の User-Agent ヘッダーによる迂回が不要になる。今回はバインディング追加のみ（コード移行は別 issue）。
