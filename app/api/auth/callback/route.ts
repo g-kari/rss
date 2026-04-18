@@ -34,6 +34,13 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
   const savedState = cookieStore.get("auth_state")?.value;
 
+  console.log("[auth/callback] received", {
+    hasCode: !!code,
+    hasState: !!state,
+    hasSavedState: !!savedState,
+    stateMatch: state === savedState,
+  });
+
   // state は HttpOnly cookie で管理されており攻撃者は値を読めないため、
   // タイミング攻撃は非現実的。通常の文字列比較で十分。
   if (!code || !state || !savedState || state !== savedState) {
@@ -42,6 +49,12 @@ export async function GET(request: Request) {
 
   const appBaseUrl = process.env.APP_BASE_URL!;
   const callbackUrl = `${appBaseUrl}/api/auth/callback`;
+  console.log("[auth/callback] calling exchangeCode", {
+    authBaseUrl: process.env.AUTH_BASE_URL,
+    callbackUrl,
+    hasClientId: !!process.env.CLIENT_ID,
+    hasClientSecret: !!process.env.CLIENT_SECRET,
+  });
   const tokens = await exchangeCode(code, callbackUrl);
   if (!tokens) {
     return authError("認証エラー: トークン交換失敗", 401);
