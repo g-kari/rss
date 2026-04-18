@@ -240,6 +240,8 @@ export interface FeedGroup {
   order: number;
   /** 折りたたみ状態 */
   collapsed?: boolean;
+  /** グループミュート状態。true のとき、グループ内のフィード記事は「すべての記事」ビューで非表示になる */
+  muted?: boolean;
   /** 作成日時（ISO 8601） */
   createdAt: string;
 }
