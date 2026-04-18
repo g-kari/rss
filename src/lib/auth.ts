@@ -148,21 +148,46 @@ export interface TokenData {
 /**
  * OAuth2 認可コードをアクセストークン・リフレッシュトークンに交換する。
  * `/api/auth/callback` Route Handler から呼び出される。
- * 失敗時（非 2xx レスポンス）は `null` を返す。
+ * 失敗時（非 2xx レスポンス）は `null` を返し、診断情報を console.error に出力する。
+ *
+ * ## よくある失敗原因
+ * - `CLIENT_ID` / `CLIENT_SECRET` の Workers secret が未設定 or 不一致
+ * - `APP_BASE_URL/api/auth/callback` が id.0g0.xyz 側の登録 redirect_uri と不一致
+ * - 認可コードの期限切れ or 再利用（ブラウザバック等）
+ * - id.0g0.xyz の一時的な 5xx / ネットワーク障害
  */
 export async function exchangeCode(code: string, redirectTo: string): Promise<TokenData | null> {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
-  const res = await fetch(`${authBaseUrl}/auth/exchange`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: basicAuthHeader(process.env.CLIENT_ID!, process.env.CLIENT_SECRET!),
-    },
-    body: JSON.stringify({ code, redirect_to: redirectTo }),
-  });
-  if (!res.ok) return null;
-  const { data } = (await res.json()) as { data: TokenData };
-  return data;
+  const clientId = process.env.CLIENT_ID;
+  const clientSecret = process.env.CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    console.error("[auth/exchange] CLIENT_ID / CLIENT_SECRET が未設定です");
+    return null;
+  }
+  try {
+    const res = await fetch(`${authBaseUrl}/auth/exchange`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: basicAuthHeader(clientId, clientSecret),
+      },
+      body: JSON.stringify({ code, redirect_to: redirectTo }),
+    });
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => "<read error>");
+      console.error("[auth/exchange] non-2xx response", {
+        status: res.status,
+        redirectTo,
+        body: bodyText.slice(0, 500),
+      });
+      return null;
+    }
+    const { data } = (await res.json()) as { data: TokenData };
+    return data;
+  } catch (err) {
+    console.error("[auth/exchange] fetch threw", { redirectTo, err: String(err) });
+    return null;
+  }
 }
 
 /**
