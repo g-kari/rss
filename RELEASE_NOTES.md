@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-19
+
+### セキュリティ
+
+- **vite-plus path traversal 脆弱性を修正** — Dependabot alert #28 (severity: high, `vite-plus/binding` の `downloadPackageManager()` が `VP_HOME` 外にファイルを書き出せる path traversal 脆弱性) を解消。`package.json` は既に `^0.1.18` に更新済みだったが `package-lock.json` の解決バージョンが 0.1.14 のままだったため、`npm install` で lock ファイルを更新し `vite-plus` / `@voidzero-dev/vite-plus-core` など関連パッケージをすべて 0.1.18 に揃えた。
+
 ## 2026-04-18
 
 ### セキュリティ
