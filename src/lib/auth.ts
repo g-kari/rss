@@ -164,14 +164,21 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
     console.error("[auth/exchange] CLIENT_ID / CLIENT_SECRET が未設定です");
     return null;
   }
+  const endpoint = `${authBaseUrl}/auth/exchange`;
+  console.log("[auth/exchange] request start", { endpoint, redirectTo });
   try {
-    const res = await fetch(`${authBaseUrl}/auth/exchange`, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: basicAuthHeader(clientId, clientSecret),
       },
       body: JSON.stringify({ code, redirect_to: redirectTo }),
+    });
+    console.log("[auth/exchange] response received", {
+      status: res.status,
+      ok: res.ok,
+      contentType: res.headers.get("content-type"),
     });
     if (!res.ok) {
       const bodyText = await res.text().catch(() => "<read error>");
