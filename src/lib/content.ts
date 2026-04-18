@@ -599,7 +599,9 @@ function applyCorePipeline(html: string, pageUrl = ""): string {
  * 前処理ステップ（この関数内）:
  *   1. removeNoise:              EC ギャラリー / Qiita・Zenn UI のノイズ除去（後段の正規表現をシンプル化）
  *   2. transformZennLinkEmbeds:  embed.zenn.studio の iframe を外部リンクに変換（sanitize 前に変換しないと blockquote が除去される）
- *   3. transformZennMermaidEmbeds: zenn.dev の mermaid iframe を <pre><code> に変換
+ *                                通常は extractMainContent 側で Readability 実行前に変換済みのため no-op となる。
+ *                                regex フォールバック経路や Markdown 経路の安全網として保持する（冪等）。
+ *   3. transformZennMermaidEmbeds: zenn.dev の mermaid iframe を <pre><code> に変換（同上、冪等な安全網）
  *   4. fixLazyImages:            data-src → src 解決 / Shopify _NNNx → _800x 高解像度化
  *
  * 後処理は applyCorePipeline に委譲（fixImageDimensions → rewriteImageUrls → fixExternalLinks → wrapTables → sanitizeHtml）。
@@ -820,7 +822,13 @@ export function extractMainContent(
 ): { content: string; source: "readability" | "regex" } {
   // JS で動的に src を設定する loadImage('id', url, ...) パターンを静的解決する。
   // preClean で <script> が除去される前に行う必要がある。
-  const preprocessed = resolveScriptLoadedImages(html);
+  let preprocessed = resolveScriptLoadedImages(html);
+
+  // Zenn embed (card / tweet / mermaid) は iframe を <p><a> や <pre><code> に変換しておく。
+  // Readability は iframe を本文外と判定して span ごと削除することがあるため、
+  // postProcess より前 — Readability 実行前 — に変換しないと埋め込み URL が消失する (Issue #88)。
+  preprocessed = transformZennLinkEmbeds(preprocessed);
+  preprocessed = transformZennMermaidEmbeds(preprocessed, pageUrl);
 
   // thumb-list / capt-thumb-list ギャラリーを別途取得する。
   // Readability はリスト形式のギャラリーを本文外と判断して除外することがあるため、
