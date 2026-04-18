@@ -172,6 +172,27 @@ async function cascadeOverflow(
 }
 
 /**
+ * 既存記事 `ex` に対して取得済み記事 `incoming` をマージすると内容が変わるかを判定する。
+ * `createdAt` は mergeNewArticles 内で ex の値が保持されるため比較対象外。
+ *
+ * Issue #97: 実変更がない場合に R2 PUT を発行しないために使う。
+ */
+export function isArticleMutated(ex: Article, incoming: Article): boolean {
+  const keys = Object.keys(incoming) as (keyof Article)[];
+  for (const key of keys) {
+    if (key === "createdAt") continue;
+    const av = incoming[key];
+    const ev = ex[key];
+    if (Array.isArray(av) || Array.isArray(ev)) {
+      if (JSON.stringify(av ?? null) !== JSON.stringify(ev ?? null)) return true;
+    } else if (av !== ev) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * 新着記事を共有フィードストレージにマージして書き込む。
  * meta の articleCount / pageCount を更新する（呼び出し元が writeFeedMeta する）。
  * 戻り値: 真に新規だった Article の配列。
@@ -201,7 +222,7 @@ export async function mergeNewArticles(
     let changed = false;
     for (const a of fetchedArticles) {
       const ex = existingMap.get(a.id);
-      if (ex) {
+      if (ex && isArticleMutated(ex, a)) {
         // createdAt は保持して他フィールドを上書き
         existingMap.set(a.id, { ...ex, ...a, createdAt: ex.createdAt });
         changed = true;
