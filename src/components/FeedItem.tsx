@@ -98,6 +98,9 @@ export interface FeedItemProps {
   groups?: FeedGroup[];
   onSetGroup?: (groupId: string | null) => Promise<void>;
   onMute?: (mutedUntil: string | null) => Promise<void>;
+  onDragStartFeed?: (feedId: string) => void;
+  onDragEndFeed?: () => void;
+  isDragging?: boolean;
 }
 
 interface Action {
@@ -141,6 +144,9 @@ export default function FeedItem({
   groups,
   onSetGroup,
   onMute,
+  onDragStartFeed,
+  onDragEndFeed,
+  isDragging,
 }: FeedItemProps) {
   const isStale =
     !feed.fetchError &&
@@ -514,6 +520,7 @@ export default function FeedItem({
     return { bottom: window.innerHeight - menuBtnRect.top + 2, right: rightPos };
   })();
 
+  const canDrag = !editing && !categoryEditing && !!onDragStartFeed;
   return (
     <div
       onClick={
@@ -525,11 +532,23 @@ export default function FeedItem({
             }
       }
       onDoubleClick={editing || categoryEditing ? undefined : startEdit}
+      draggable={canDrag}
+      onDragStart={
+        canDrag
+          ? (e) => {
+              e.stopPropagation();
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("application/x-rss-feed-id", feed.id);
+              onDragStartFeed?.(feed.id);
+            }
+          : undefined
+      }
+      onDragEnd={canDrag ? () => onDragEndFeed?.() : undefined}
       className={`group relative flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 ${
         isSelected
           ? "text-text-strong bg-surface-subtle"
           : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
-      }`}
+      } ${isDragging ? "opacity-40" : ""}`}
       style={{ animationDelay: `${animationIndex * 40}ms` }}
     >
       {editing ? (

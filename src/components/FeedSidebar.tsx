@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useMemo, type ReactNode } from "react";
+import { useRef, useState, useMemo, useCallback, type ReactNode } from "react";
 import type {
   Feed,
   Article,
@@ -96,6 +96,11 @@ function FeedGroupsSection({
   onToggleMute,
   onReorder,
   onMarkAllRead,
+  draggedFeedId,
+  dragOverGroupId,
+  onGroupDragOver,
+  onGroupDragLeave,
+  onGroupDrop,
 }: {
   groups: { group: FeedGroup; feeds: Feed[] }[];
   unreadByFeed: Map<string, number>;
@@ -109,6 +114,11 @@ function FeedGroupsSection({
   onToggleMute?: (id: string, muted: boolean) => Promise<void>;
   onReorder?: (id: string, direction: "up" | "down") => Promise<void>;
   onMarkAllRead?: (feedIds: string[]) => void;
+  draggedFeedId?: string | null;
+  dragOverGroupId?: string | null;
+  onGroupDragOver?: (groupId: string) => void;
+  onGroupDragLeave?: (groupId: string) => void;
+  onGroupDrop?: (feedId: string, groupId: string) => void;
 }) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -229,8 +239,41 @@ function FeedGroupsSection({
         offset += feeds.length;
         const canMoveUp = groupIdx > 0;
         const canMoveDown = groupIdx < groups.length - 1;
+        const isDragOver = dragOverGroupId === group.id;
+        const canAcceptDrop = !!draggedFeedId;
         return (
-          <div key={`feed-group-${group.id}`}>
+          <div
+            key={`feed-group-${group.id}`}
+            onDragOver={
+              canAcceptDrop
+                ? (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (!isDragOver) onGroupDragOver?.(group.id);
+                  }
+                : undefined
+            }
+            onDragLeave={
+              canAcceptDrop
+                ? (e) => {
+                    const related = e.relatedTarget;
+                    if (related instanceof Node && e.currentTarget.contains(related)) return;
+                    onGroupDragLeave?.(group.id);
+                  }
+                : undefined
+            }
+            onDrop={
+              canAcceptDrop
+                ? (e) => {
+                    e.preventDefault();
+                    const feedId =
+                      e.dataTransfer.getData("application/x-rss-feed-id") || draggedFeedId;
+                    if (feedId) onGroupDrop?.(feedId, group.id);
+                  }
+                : undefined
+            }
+            className={isDragOver ? "ring-2 ring-inset ring-text-muted rounded-sm" : undefined}
+          >
             <div
               className={`w-full px-4 pt-1.5 pb-0.5 flex items-center gap-1 group relative transition-colors ${isSelected ? "bg-surface-subtle" : ""}`}
             >
@@ -602,6 +645,18 @@ export default function FeedSidebar({
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [draggedFeedId, setDraggedFeedId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+
+  const handleDropFeedOnGroup = useCallback(
+    (feedId: string, groupId: string) => {
+      if (!onSetGroupFeed) return;
+      const feed = feeds.find((f) => f.id === feedId);
+      if (!feed || (feed.groupId ?? null) === groupId) return;
+      void onSetGroupFeed(feed, groupId);
+    },
+    [feeds, onSetGroupFeed],
+  );
 
   const {
     adding,
@@ -687,6 +742,16 @@ export default function FeedSidebar({
         groups={feedGroups}
         onSetGroup={onSetGroupFeed ? (groupId) => onSetGroupFeed(feed, groupId) : undefined}
         onMute={onMuteFeed ? (mutedUntil) => onMuteFeed(feed, mutedUntil) : undefined}
+        onDragStartFeed={onSetGroupFeed ? (id) => setDraggedFeedId(id) : undefined}
+        onDragEndFeed={
+          onSetGroupFeed
+            ? () => {
+                setDraggedFeedId(null);
+                setDragOverGroupId(null);
+              }
+            : undefined
+        }
+        isDragging={draggedFeedId === feed.id}
       />
     );
   }
@@ -1171,6 +1236,11 @@ export default function FeedSidebar({
                   }
                 : undefined
             }
+            draggedFeedId={draggedFeedId}
+            dragOverGroupId={dragOverGroupId}
+            onGroupDragOver={(id) => setDragOverGroupId(id)}
+            onGroupDragLeave={(id) => setDragOverGroupId((prev) => (prev === id ? null : prev))}
+            onGroupDrop={handleDropFeedOnGroup}
           />
         )}
 
