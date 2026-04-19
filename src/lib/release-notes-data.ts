@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-20
 
+### バグ修正
+
+- **srcset 内の URL path に \`,\` を含む画像が壊れる問題を修正** — Issue #111。\`src/lib/content.ts\` の \`transformSrcset\` が単純に \`.split(",")\` で候補を分割していたため、Cloudinary の \`c_limit,f_auto,...\` のように変換パラメータ部で生の \`,\` を path に含む URL が途中で切れ、\`/api/image-proxy?url=...\` に不正な値が渡って画像が取得できなくなる可能性があった。WHATWG HTML srcset 仕様 (https://html.spec.whatwg.org/#parse-a-srcset-attribute) に寄せたパースに変更し、URL は whitespace を境界とし、URL 末尾の \`,\` のみを候補区切りとして扱うよう修正。これにより Cloudinary / imgix など path 内にカンマや encoded 文字 (\`%2C\` / \`%3F\`) を含む URL でも src / srcset が壊れずに丸ごと proxy へ渡されるようになる。\`e2e/content-extraction.spec.ts\` に回帰テスト 2 件（encoded delimiter 保持 / srcset 内 URL path \`,\` 保護）を追加。
+
 ### 新機能
 
 - **RSS 取得時の Cache-Control 対応で配信元サーバーへのアクセスを最適化** — Issue #116。\`src/lib/fetch.ts\` に \`parseCacheControl\` / \`computeNextFetchEarliestAt\` を追加し、\`src/types.ts\` の \`SharedFeedMeta\` に \`cacheControl\`（直近レスポンスの生ヘッダー）と \`nextFetchEarliestAt\`（次回フェッチ可能時刻 ISO 8601）を追加。\`src/cron/fetch.ts\` の \`fetchAndParseFeed\` が 200 / 304 いずれの応答でも Cache-Control を保存し、\`fetchAndUpdateSharedFeed\` の cron 経路では \`nextFetchEarliestAt > now\` のときフェッチをスキップする。\`s-maxage\` が \`max-age\` より優先され、\`no-cache\` / \`must-revalidate\` / \`no-store\` 時は従来どおり毎回サーバー検証する（スキップしない）。クランプ範囲は下限 1800 秒（cron 間隔に一致）〜上限 21600 秒（6 時間）で、過度に短い / 長い指示を緩和する。手動 refresh (\`forceRetry=true\`) はスキップ対象外。\`e2e/cache-control.spec.ts\` に 17 ケース（max-age / s-maxage / no-store / no-cache / must-revalidate / 壊れ値 / クランプ境界）を追加。
