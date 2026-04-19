@@ -8,6 +8,7 @@
        └─ Next.js App Router (app/)
             ├─ /api/auth/*        — 認証フロー (0g0 ID OAuth2)
             ├─ /api/feeds/*           — フィード CRUD + refresh (R2)
+            ├─ /api/feed-groups/*     — フィードグループ CRUD (R2)
             ├─ /api/articles          — 記事一覧・保存 (R2)
             ├─ /api/ai/*              — Workers AI (要約・翻訳)
             ├─ /api/content           — フルテキスト取得プロキシ
@@ -26,7 +27,7 @@ Cloudflare Workers (@opennextjs/cloudflare)
   └─ .open-next/assets/     → 静的アセット (Cloudflare Assets)
 
 Cloudflare Bindings
-  ├─ RSS_DATA (R2)  — users/{userId}/* (feeds / articles / read-state / push 等)
+  ├─ RSS_DATA (R2)  — users/{userId}/* (subscriptions / feed-groups / read-state / push 等) + feeds/{feedHash}/* (共有フィード)
   └─ AI             — Workers AI モデル
 
 Cron Trigger (wrangler.toml: */30 * * * *)
@@ -54,6 +55,9 @@ app/
       refresh/route.ts       # POST /api/feeds/refresh — 全フィード手動更新
       import/route.ts        # POST /api/feeds/import — OPML インポート
       export/route.ts        # GET /api/feeds/export — OPML エクスポート
+    feed-groups/
+      route.ts               # GET (一覧) / POST (作成) /api/feed-groups
+      [id]/route.ts          # PATCH (更新) / DELETE /api/feed-groups/:id
     articles/
       route.ts               # GET /api/articles
       save/route.ts          # POST /api/articles/save — 記事保存
@@ -107,6 +111,7 @@ src/
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
     useFeedOperations.ts     # フィード CRUD 操作
+    useFeedGroups.ts         # /api/feed-groups CRUD + 楽観的更新（create / rename / collapse / mute / reorder / delete）
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useUIState.ts            # UI 状態管理（テーマ・レイアウト・フォーカスモード・モーダル等）
     useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
@@ -162,6 +167,7 @@ src/
     ogp.ts                   # OGP メタデータ取得ロジック
     recommendation.ts        # フィード推薦ロジック
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
+    feed-groups.ts           # フィードグループ R2 読み書き（readFeedGroups / writeFeedGroups）
     storage.ts               # localStorage キー定数・安全なラッパー
     url.ts                   # URL バリデーションヘルパー
     validation.ts            # 各種入力バリデーションユーティリティ
@@ -203,6 +209,14 @@ src/
 5. `mergeNewArticles` で `guid` ベースの dedup → `feeds/{feedHash}/articles/latest.json` を更新（500件超えは `p{N}.json` にカスケード）
 6. `feeds/{feedHash}/meta.json` の `lastFetchedAt` / `articleCount` を更新
 7. 購読中の各ユーザーに Web Push 通知を送信
+
+### フィードグループ操作
+
+- `useFeedGroups(user)` がユーザーログイン時に `GET /api/feed-groups` で初期ロード → `order` 昇順で state に展開
+- **作成** (`createGroup`): `POST /api/feed-groups` → `users/{userId}/feed-groups.json` に追記 → 新規グループを state に追加
+- **更新** (`renameGroup` / `setCollapsed` / `setMuted` / `reorderGroup`): **楽観的更新** で state を先に反映 → `PATCH /api/feed-groups/:id` → 失敗時はロールバックまたは `/api/feed-groups` から再 fetch
+- **削除** (`deleteGroup`): `DELETE /api/feed-groups/:id` → サーバー側でグループを除去した後、`users/{userId}/subscriptions.json` 内の該当 `groupId` 参照を自動クリア。R2 はトランザクション非対応のため後半の購読更新が失敗すると orphan な `groupId` が残り得るが、クライアントは未知の `groupId` を無害に無視する設計
+- 制約: グループ上限 100 件 / 名前 50 文字 / ユーザー内で名前重複不可
 
 ### 読み取り状態
 
@@ -253,6 +267,7 @@ feeds/{feedHash}/articles/p{N}.json     # Article[]（過去ページ、N=2〜�
 
 ```
 users/{userId}/subscriptions.json       # UserSubscription[]（購読フィード一覧・フィルター設定等）
+users/{userId}/feed-groups.json         # FeedGroup[]（グループ定義: id / name / order / collapsed / muted / createdAt）
 users/{userId}/profile.json             # UserProfile（ログイン時に保存）
 users/{userId}/read-state.json          # ReadState（readIds・bookmarkIds・readingListIds・likeIds・snoozedUntil・notes・globalFilter・readBeforeTimestamp）
 users/{userId}/engagement.json          # EngagementLog（記事への行動履歴）
