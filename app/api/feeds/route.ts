@@ -3,7 +3,7 @@ import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { isValidFeedUrl } from "@/lib/url";
 import { discoverFeedUrl } from "@/lib/feed-discovery";
-import { resolveRSSHubUrl, getRSSHubInstance } from "@/lib/rsshub";
+import { resolveRSSHubUrl, getRSSHubInstance, getRSSHubAccessKey } from "@/lib/rsshub";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import { parseHTML } from "linkedom";
 import {
@@ -63,6 +63,7 @@ export async function POST(request: Request) {
       url?: unknown;
       cookie?: unknown;
       cssSelector?: unknown;
+      useRsshub?: unknown;
     }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
@@ -73,9 +74,14 @@ export async function POST(request: Request) {
 
     // RSSHub 対応サイトの URL は RSSHub エンドポイントに変換してから探索に進む。
     // これにより RSS を提供していない Twitter / YouTube / GitHub 等も購読可能になる。
-    const rsshubMatch = resolveRSSHubUrl(url, getRSSHubInstance());
-    if (rsshubMatch && isValidFeedUrl(rsshubMatch.rsshubUrl)) {
-      url = rsshubMatch.rsshubUrl;
+    // UI 側のチェックボックスでオプトアウト可能（body.useRsshub === false で無効化）。
+    // 未指定 (undefined) はデフォルト ON 扱い、既存クライアントとの後方互換性を保つ。
+    const useRsshub = body?.useRsshub !== false;
+    if (useRsshub) {
+      const rsshubMatch = resolveRSSHubUrl(url, getRSSHubInstance(), getRSSHubAccessKey());
+      if (rsshubMatch && isValidFeedUrl(rsshubMatch.rsshubUrl)) {
+        url = rsshubMatch.rsshubUrl;
+      }
     }
 
     const cookie = typeof body?.cookie === "string" ? body.cookie.trim() : undefined;

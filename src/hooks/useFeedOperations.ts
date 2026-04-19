@@ -43,6 +43,7 @@ export function useFeedOperations({
     onSuccess: () => void,
     cookie?: string,
     cssSelector?: string,
+    useRsshub?: boolean,
   ): Promise<{ canRetryWithSelector?: boolean } | void> {
     if (!url.trim()) return;
     setAdding(true);
@@ -55,6 +56,8 @@ export function useFeedOperations({
           url: url.trim(),
           ...(cookie ? { cookie } : {}),
           ...(cssSelector ? { cssSelector } : {}),
+          // useRsshub === false のときだけ明示送信（未指定はサーバー側デフォルト ON）
+          ...(useRsshub === false ? { useRsshub: false } : {}),
         }),
       });
       if (!res.ok) {

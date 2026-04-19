@@ -192,10 +192,13 @@ export interface RSSHubMatch {
 /**
  * URL が RSSHub 対応サービスであれば、対応する RSSHub URL を返す。
  * 未対応の URL なら null を返す (呼び出し元は元 URL をそのまま扱えばよい)。
+ *
+ * @param accessKey セルフホスト RSSHub の ACCESS_KEY（指定時は `?key=...` を付与）
  */
 export function resolveRSSHubUrl(
   url: string,
   instanceUrl: string = DEFAULT_RSSHUB_INSTANCE,
+  accessKey?: string,
 ): RSSHubMatch | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
@@ -207,8 +210,9 @@ export function resolveRSSHubUrl(
     const path = route.build(match);
     if (path === null) continue; // 予約語などで弾かれた場合は次のルートへ
     const base = instanceUrl.replace(/\/+$/, "");
+    const query = accessKey?.trim() ? `?key=${encodeURIComponent(accessKey.trim())}` : "";
     return {
-      rsshubUrl: `${base}${path}`,
+      rsshubUrl: `${base}${path}${query}`,
       service: route.service,
     };
   }
@@ -232,4 +236,16 @@ export function getRSSHubInstance(): string {
   } catch {
     return DEFAULT_RSSHUB_INSTANCE;
   }
+}
+
+/**
+ * セルフホスト RSSHub の ACCESS_KEY を返す。
+ * 未設定の場合は undefined（= 認証なしインスタンス扱い）。
+ *
+ * `RSSHUB_ACCESS_KEY` シークレットに設定すると、生成 URL の末尾に `?key=...` が
+ * 付与されるため、認証必須のセルフホスト RSSHub でも購読できるようになる。
+ */
+export function getRSSHubAccessKey(): string | undefined {
+  const key = process.env.RSSHUB_ACCESS_KEY?.trim();
+  return key ? key : undefined;
 }

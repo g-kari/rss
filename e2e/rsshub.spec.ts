@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { resolveRSSHubUrl, getRSSHubInstance, DEFAULT_RSSHUB_INSTANCE } from "../src/lib/rsshub";
+import {
+  resolveRSSHubUrl,
+  getRSSHubInstance,
+  getRSSHubAccessKey,
+  DEFAULT_RSSHUB_INSTANCE,
+} from "../src/lib/rsshub";
 
 /**
  * RSSHub URL 変換ロジックのユニットテスト。
@@ -134,6 +139,73 @@ test.describe("resolveRSSHubUrl — カスタムインスタンス", () => {
       "https://my-rsshub.example.com/",
     );
     expect(result?.rsshubUrl).toBe("https://my-rsshub.example.com/twitter/user/elonmusk");
+  });
+});
+
+test.describe("resolveRSSHubUrl — ACCESS_KEY 付与", () => {
+  test("access key 指定時は ?key=... を付与する", () => {
+    const result = resolveRSSHubUrl(
+      "https://twitter.com/elonmusk",
+      "https://my-rsshub.example.com",
+      "secret-key-123",
+    );
+    expect(result?.rsshubUrl).toBe(
+      "https://my-rsshub.example.com/twitter/user/elonmusk?key=secret-key-123",
+    );
+  });
+
+  test("access key が空文字 / 空白のみなら付与しない", () => {
+    expect(
+      resolveRSSHubUrl("https://twitter.com/elonmusk", DEFAULT_RSSHUB_INSTANCE, "")?.rsshubUrl,
+    ).toBe("https://rsshub.app/twitter/user/elonmusk");
+    expect(
+      resolveRSSHubUrl("https://twitter.com/elonmusk", DEFAULT_RSSHUB_INSTANCE, "   ")?.rsshubUrl,
+    ).toBe("https://rsshub.app/twitter/user/elonmusk");
+  });
+
+  test("access key の特殊文字は URL エンコードされる", () => {
+    const result = resolveRSSHubUrl(
+      "https://twitter.com/elonmusk",
+      DEFAULT_RSSHUB_INSTANCE,
+      "key with space & symbol=1",
+    );
+    expect(result?.rsshubUrl).toBe(
+      "https://rsshub.app/twitter/user/elonmusk?key=key%20with%20space%20%26%20symbol%3D1",
+    );
+  });
+});
+
+test.describe("getRSSHubAccessKey", () => {
+  test("環境変数未設定時は undefined を返す", () => {
+    const prev = process.env.RSSHUB_ACCESS_KEY;
+    delete process.env.RSSHUB_ACCESS_KEY;
+    try {
+      expect(getRSSHubAccessKey()).toBeUndefined();
+    } finally {
+      if (prev !== undefined) process.env.RSSHUB_ACCESS_KEY = prev;
+    }
+  });
+
+  test("空文字は undefined 扱い", () => {
+    const prev = process.env.RSSHUB_ACCESS_KEY;
+    process.env.RSSHUB_ACCESS_KEY = "  ";
+    try {
+      expect(getRSSHubAccessKey()).toBeUndefined();
+    } finally {
+      if (prev !== undefined) process.env.RSSHUB_ACCESS_KEY = prev;
+      else delete process.env.RSSHUB_ACCESS_KEY;
+    }
+  });
+
+  test("設定されていればトリム済み文字列を返す", () => {
+    const prev = process.env.RSSHUB_ACCESS_KEY;
+    process.env.RSSHUB_ACCESS_KEY = "  my-secret-key  ";
+    try {
+      expect(getRSSHubAccessKey()).toBe("my-secret-key");
+    } finally {
+      if (prev !== undefined) process.env.RSSHUB_ACCESS_KEY = prev;
+      else delete process.env.RSSHUB_ACCESS_KEY;
+    }
   });
 });
 
