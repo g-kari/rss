@@ -17,7 +17,7 @@ import { buildContentCacheKey, saveContentToCache } from "@/lib/fetch-article-co
  *   - URL field: url
  */
 export async function POST(req: NextRequest) {
-  return withSession(async ({ ctx }) => {
+  return withSession(req, async ({ ctx }) => {
     const parsed = await parseJsonBody<{ html?: unknown; url?: unknown }>(req);
     if (!parsed.ok) return parsed.error;
 

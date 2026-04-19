@@ -15,5 +15,8 @@ export default defineConfig({
     url: "http://localhost:3000",
     reuseExistingServer: true,
     timeout: 60_000,
+    // CSRF (`assertSameOrigin`) が localhost:3000 からのリクエストを許可できるよう、
+    // テスト環境では APP_BASE_URL を localhost:3000 に上書きする
+    env: { APP_BASE_URL: "http://localhost:3000" },
   },
 });

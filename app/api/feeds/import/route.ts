@@ -90,7 +90,7 @@ function extractFeeds(
 }
 
 export async function POST(request: Request) {
-  return withSession(async ({ session, env, ctx }) => {
+  return withSession(request, async ({ session, env, ctx }) => {
     const text = await request.text();
     if (!text || text.length > 1_000_000) {
       return apiError("Invalid or too large OPML file", 400, { code: "INVALID_OPML" });

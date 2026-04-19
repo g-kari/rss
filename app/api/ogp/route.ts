@@ -10,7 +10,7 @@ const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const OGP_NEGATIVE_CACHE_TTL_SEC = 24 * 60 * 60; // 1日（og:image なし・フェッチ失敗）
 
 export async function GET(request: Request) {
-  return withSession(({ ctx }) => handleGet(request, ctx));
+  return withSession(request, ({ ctx }) => handleGet(request, ctx));
 }
 
 async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextResponse> {

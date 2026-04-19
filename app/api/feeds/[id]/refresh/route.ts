@@ -7,9 +7,9 @@ import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 
 const SINGLE_FEED_COOLDOWN_MS = 30 * 1000; // 30秒
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  return withSession(async ({ session, env }) => {
+  return withSession(req, async ({ session, env }) => {
     const limited = await checkAndUpdateCooldown(
       env.RSS_DATA,
       singleFeedRefreshCooldownKey(session.userId, feedHash),

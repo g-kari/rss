@@ -34,8 +34,8 @@ function buildDayList(now: Date, days: number): string[] {
   return result;
 }
 
-export async function GET() {
-  return withSession(async ({ session, env }) => {
+export async function GET(request: Request) {
+  return withSession(request, async ({ session, env }) => {
     const log = await r2Get<EngagementLog>(env.RSS_DATA, engagementKey(session.userId), {
       entries: [],
     });

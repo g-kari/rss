@@ -21,8 +21,8 @@ import type { UserSubscription } from "@/types";
 
 const LAST_ACCESSED_UPDATE_INTERVAL_MS = 60 * 60 * 1000; // 1 時間
 
-export async function GET() {
-  return withSession(async ({ session, env, ctx }) => {
+export async function GET(request: Request) {
+  return withSession(request, async ({ session, env, ctx }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
 
     // lastAccessedAt を 1 時間スロットル付きで更新（fire-and-forget）
@@ -57,7 +57,7 @@ function isValidCookieHeader(value: string): boolean {
 }
 
 export async function POST(request: Request) {
-  return withSession(async ({ session, env, ctx }) => {
+  return withSession(request, async ({ session, env, ctx }) => {
     const parsed = await parseJsonBody<{
       url?: unknown;
       cookie?: unknown;

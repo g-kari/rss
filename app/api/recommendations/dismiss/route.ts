@@ -6,7 +6,7 @@ import { MAX_ID_LENGTH } from "@/lib/validation";
 const MAX_DISMISSED_IDS = 1000;
 
 export async function POST(req: NextRequest) {
-  return withSession(async ({ session, env }) => {
+  return withSession(req, async ({ session, env }) => {
     const parsed = await parseJsonBody<{ id?: unknown }>(req);
     if (!parsed.ok) return parsed.error;
     const dismissId = requireString(parsed.data.id, MAX_ID_LENGTH);

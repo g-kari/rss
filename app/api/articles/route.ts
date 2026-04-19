@@ -23,7 +23,7 @@ const DEFAULT_READ_STATE: ReadState = {
 };
 
 export async function GET(request: NextRequest) {
-  return withSession(async ({ session, env }) => {
+  return withSession(request, async ({ session, env }) => {
     const { searchParams } = new URL(request.url);
     const feedHash = searchParams.get("feed");
     const page = parseInt(searchParams.get("page") ?? "1", 10);

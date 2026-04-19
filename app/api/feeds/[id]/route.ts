@@ -11,9 +11,9 @@ import { parseKeywordFilter } from "@/lib/keyword-filter";
 import { readFeedGroups } from "@/lib/feed-groups";
 import { stripControlChars, isValidIso8601 } from "@/lib/validation";
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  return withSession(async ({ session, env }) => {
+  return withSession(request, async ({ session, env }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     if (!subs.some((s) => s.feedHash === feedHash)) {
       return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
@@ -30,7 +30,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  return withSession(async ({ session, env }) => {
+  return withSession(request, async ({ session, env }) => {
     const parsed = await parseJsonBody<{
       title?: unknown;
       filter?: unknown;

@@ -15,7 +15,7 @@ const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 
 export async function GET(request: Request) {
-  return withBinarySession(({ ctx }) => handleGet(request, ctx));
+  return withBinarySession(request, ({ ctx }) => handleGet(request, ctx));
 }
 
 async function handleGet(request: Request, ctx: ExecutionContext): Promise<Response> {
