@@ -34,47 +34,97 @@ pnpm install
 npx wrangler r2 bucket create rss-reader-data
 ```
 
-### 3. シークレット設定
+### 3. 0g0 ID OAuth2 アプリ登録
 
-0g0 ID でアプリを登録して取得した `CLIENT_ID` / `CLIENT_SECRET` を設定:
+[https://id.0g0.xyz](https://id.0g0.xyz) にログインし、OAuth2 アプリを登録する。登録時の必須項目:
+
+| 項目         | 値                                          |
+| ------------ | ------------------------------------------- |
+| アプリ名     | 任意（例: `RSS Reader`）                    |
+| Callback URL | `https://your-domain.com/api/auth/callback` |
+| 許可スコープ | `openid profile email`                      |
+
+> **Callback URL** は必ず `APP_BASE_URL + /api/auth/callback` の形で登録する。ローカル開発用には別途 `http://localhost:3000/api/auth/callback` を追加する。
+
+登録完了後、発行される `CLIENT_ID` / `CLIENT_SECRET` を次節で設定する。
+
+### 4. VAPID 鍵の生成（Web Push 用）
+
+Web Push 通知の VAPID 鍵ペアを生成する。**Node.js 18.17 以上** が必要:
+
+```bash
+node scripts/generate-vapid-keys.mjs
+```
+
+出力例:
+
+```
+=== VAPID 鍵ペア ===
+
+VAPID_PUBLIC_KEY (65 bytes uncompressed P-256):
+BN1q...（base64url、88 文字程度）
+
+VAPID_PRIVATE_KEY (32 bytes P-256 scalar):
+xY7k...（base64url、43 文字程度）
+```
+
+この 2 つの値を次節でシークレットとして登録する。
+
+### 5. Cloudflare API トークンの生成（オプション）
+
+全文取得フォールバック (`toMarkdown` API) を使う場合のみ必要。使わなければスキップ可。
+
+1. [Cloudflare ダッシュボード → My Profile → API Tokens](https://dash.cloudflare.com/profile/api-tokens) を開く
+2. 「Create Token」→「Create Custom Token」を選択
+3. 権限 (Permissions) に次を追加:
+   - `Account` / `Workers AI` / `Read`
+4. アカウントリソースを該当アカウントに限定して作成
+5. 同じダッシュボード右サイドバーの「Account ID」を控える
+
+> `toMarkdown` 用の `CLOUDFLARE_ACCOUNT_ID` は `wrangler.toml` の `[vars]` に平文で持つか、`npx wrangler secret put CLOUDFLARE_ACCOUNT_ID` で設定する。
+
+### 6. シークレット設定
+
+0g0 ID で登録した `CLIENT_ID` / `CLIENT_SECRET` を設定:
 
 ```bash
 npx wrangler secret put CLIENT_ID
 npx wrangler secret put CLIENT_SECRET
 ```
 
-Web Push 通知用 VAPID 鍵（`scripts/generate-vapid-keys.mjs` で生成）:
+手順 4 で生成した VAPID 鍵:
 
 ```bash
 npx wrangler secret put VAPID_PUBLIC_KEY
 npx wrangler secret put VAPID_PRIVATE_KEY
 ```
 
-全文取得フォールバック用 Cloudflare API トークン（オプション）:
+手順 5 の Cloudflare API トークン（`toMarkdown` フォールバック用、オプション）:
 
 ```bash
 npx wrangler secret put CLOUDFLARE_API_TOKEN
+npx wrangler secret put CLOUDFLARE_ACCOUNT_ID   # wrangler.toml [vars] に記載しない場合
 ```
 
-Brave Search API キー（フィード推薦用、オプション）:
+Brave Search API キー（フィード推薦で外部検索を使う場合のみ、オプション）:
 
 ```bash
 npx wrangler secret put BRAVE_SEARCH_API_KEY
 ```
 
-### 4. wrangler.toml 設定
+### 7. wrangler.toml 設定
 
 `wrangler.toml` の `[vars]` を環境に合わせて更新:
 
 ```toml
 [vars]
 AUTH_BASE_URL     = "https://id.0g0.xyz"        # 0g0 ID エンドポイント
-APP_BASE_URL      = "https://your-domain.com"   # アプリのドメイン
+APP_BASE_URL      = "https://your-domain.com"   # アプリのドメイン（Callback URL のプレフィックス）
 VAPID_SUBJECT     = "mailto:admin@example.com"  # Web Push 送信元メール
 BETA_ALLOWED_SUBS = ""                          # ベータ制限: カンマ区切り sub リスト。空文字で制限なし
 ```
 
-### 5. ローカル開発
+### 8. ローカル開発
 
 ```bash
 pnpm run dev      # Next.js dev server (localhost:3000)

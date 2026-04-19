@@ -6,6 +6,14 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-19
 
+### ドキュメント整備
+
+- **セットアップ手順の詳細化** — Issue #105。\`README.md\` のセットアップ節に以下を追記した:
+  - **0g0 ID OAuth2 アプリ登録**: 登録先 URL (\`https://id.0g0.xyz\`)・Callback URL (\`{APP_BASE_URL}/api/auth/callback\`)・許可スコープ (\`openid profile email\`) を表形式で明記。
+  - **VAPID 鍵生成**: \`node scripts/generate-vapid-keys.mjs\` の具体的実行コマンドと出力例、Node.js 18.17 以上の要件を記載。
+  - **Cloudflare API トークン**: ダッシュボード URL (\`https://dash.cloudflare.com/profile/api-tokens\`)・必要権限 (Account / Workers AI / Read)・Account ID 取得場所を記載。\`CLOUDFLARE_ACCOUNT_ID\` を \`wrangler.toml\` または secret で設定する旨を追加。
+  - セットアップ手順全体を 5 ステップから 8 ステップに再構成。
+
 ### バグ修正
 
 - **RSS 1.0 (RDF) フィードで \`dc:date\` が \`pubDate\` より優先されない問題を修正** — Issue #99。\`src/lib/xml-parser.ts\` の RSS 1.0 \`publishedAt\` 解析が \`parseDate(str(item.pubDate) || null) ?? parseDate(item["dc:date"] ?? null)\` の順序になっており、pubDate に truthy な非日付文字列（\`"not-a-date"\` 等）が入っている場合に dc:date が無視される、あるいは fast-xml-parser が dc:date を \`{ "#text": ... }\` オブジェクト形式で返したときに \`str()\` を通さず parseDate に渡すことで NaN 扱いになり \`publishedAt: null\` になる可能性があった。RSS 1.0 では \`dc:date\`（ISO 8601）が主要な日付フィールドであるため \`parseDate(str(item["dc:date"]) || str(item.pubDate) || null)\` に変更し、dc:date を優先・pubDate をフォールバックとする順序に揃えた。\`e2e/xml-parser.spec.ts\` に 2 ケース追加（pubDate と dc:date が両方ある場合の dc:date 優先 / pubDate が無効でも dc:date が有効なら採用）。
