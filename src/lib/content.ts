@@ -1097,10 +1097,12 @@ function isPaginatedVariant(currentUrl: string, nextUrl: string): boolean {
   // 3. パス末尾に /N のみ (bare numeric suffix) が付く: /interview/260417u → /interview/260417u/2
   //    連番記事 ID (/post/123 → /post/124) との誤検知を防ぐため、
   //    base の最終セグメントが「記事 slug らしい」ことを条件とする。
+  //    cur / next の trailing slash は正規化して比較する (WordPress pretty permalink
+  //    のような /.../ → /.../2/ パターンで base が不一致になるのを防ぐ)。
   const bareNumericSuffix = /\/\d+\/?$/;
   if (bareNumericSuffix.test(next.pathname)) {
-    const nextBase = next.pathname.replace(bareNumericSuffix, "") || "/";
-    const curBase = cur.pathname.replace(bareNumericSuffix, "") || "/";
+    const nextBase = next.pathname.replace(bareNumericSuffix, "").replace(/\/$/, "") || "/";
+    const curBase = cur.pathname.replace(bareNumericSuffix, "").replace(/\/$/, "") || "/";
     if (curBase === nextBase && nextBase !== "/" && lastPathSegmentLooksLikeSlug(nextBase)) {
       return true;
     }

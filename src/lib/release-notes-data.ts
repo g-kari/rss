@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-20
 
+### バグ修正
+
+- **記事全文のページネーション連結が trailing slash 付き URL で効いていなかった問題を修正** — \`src/lib/content.ts\` の \`isPaginatedVariant\` パス 3（bare numeric suffix）で \`curBase\` / \`nextBase\` を比較する際、WordPress pretty permalink（\`/slug/\` → \`/slug/2/\`）の場合に cur 側の pathname 末尾の \`/\` が剥がれず、next 側（\`/2/\` 除去後はスラッシュなし）と不一致になっていた。両側とも \`/\\/$/\` で trailing slash を正規化してから比較するよう修正。これにより \`<div class="page-links">Pages: ...</div>\` 形式（wp_link_pages 出力）の記事でも \`appendPaginatedPages\` が次ページを検出・連結できるようになる。\`e2e/content-extraction.spec.ts\` に回帰テスト 2 件追加（WordPress pretty permalink の \`/slug/\` → \`/slug/2/\` 検出 / \`/slug/2/\` → \`/slug/3/\` 検出）。
+
 ### セキュリティ
 
 - **RSSHub ACCESS_KEY のクライアント漏洩を修正** — 前コミットの実装では \`resolveRSSHubUrl\` が変換後 URL に \`?key=...\` を直接含めていたため、その URL が \`users/{userId}/subscriptions.json\` / \`feeds/{feedHash}/meta.json\` に保存され、さらに \`assembleClientFeed\` 経由で \`Feed.url\` としてクライアントにも返っていた。これは \`RSSHUB_ACCESS_KEY\` シークレットがフロントから参照可能になる重大なリーク。\`src/lib/rsshub.ts\` から key 引数を削除し、代わりに \`appendAccessKeyIfRsshub(url, instance?, accessKey?)\` を新設して fetch 層 (\`src/cron/fetch.ts\` の \`fetchAndParseFeed\` / \`fetchAndScrapeWithSelectors\`) でのみ動的に付与する設計に変更。保存される URL には key が一切含まれないため、R2 / クライアントへの漏洩が防止される。\`appendAccessKeyIfRsshub\` はインスタンス host が一致する URL にのみ付与し、既に \`key=\` を持つ URL には二重付与しない・不正な URL はそのまま返す等の安全弁を備える。\`e2e/rsshub.spec.ts\` を 33 → 38 ケースに拡張（インスタンス外不付与 / 二重付与防止 / 既存クエリ保持 / URL エンコード / 不正 URL 保護）。

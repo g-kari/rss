@@ -1047,6 +1047,23 @@ test.describe("detectNextPageUrl — 次ページ URL 検出", () => {
     expect(detectNextPageUrl(html, "https://example.com/post/123")).toBeNull();
   });
 
+  test("bare numeric suffix: trailing slash 付き base URL (WordPress wp_link_pages) を検出する", () => {
+    // WordPress サイトは pretty permalink で pathname 末尾に / が付く。
+    // pagination リンクは /.../2/ のように /N/ が追加される。
+    // さらに <a> の中身は <span class="page-number">2</span> と入れ子になっている。
+    const html = `<div class="page-links">Pages: <span class="post-page-numbers current" aria-current="page"><span class="page-number">1</span></span> <a href="https://example.com/2026/04/11/sample-post-slug/2/" class="post-page-numbers"><span class="page-number">2</span></a> <a href="https://example.com/2026/04/11/sample-post-slug/3/" class="post-page-numbers"><span class="page-number">3</span></a></div>`;
+    expect(detectNextPageUrl(html, "https://example.com/2026/04/11/sample-post-slug/")).toBe(
+      "https://example.com/2026/04/11/sample-post-slug/2/",
+    );
+  });
+
+  test("bare numeric suffix: trailing slash 付き /2/ → /3/ へも検出する", () => {
+    const html = `<a href="https://example.com/2026/04/11/sample-post-slug/3/"><span class="page-number">3</span></a>`;
+    expect(detectNextPageUrl(html, "https://example.com/2026/04/11/sample-post-slug/2/")).toBe(
+      "https://example.com/2026/04/11/sample-post-slug/3/",
+    );
+  });
+
   test("bare numeric suffix: 別記事へのリンクは除外する", () => {
     const html = `<a href="https://news.denfaminicogamer.jp/other-article/2">2</a>`;
     expect(
