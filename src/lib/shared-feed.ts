@@ -299,6 +299,7 @@ export function assembleClientFeed(meta: SharedFeedMeta, sub: UserSubscription):
     cssSelector: meta.cssSelectors?.articleLink,
     failedSelectors: meta.failedSelectors,
     mutedUntil: sub.mutedUntil,
+    view: sub.view,
   };
 }
 

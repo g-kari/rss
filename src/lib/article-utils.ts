@@ -134,12 +134,13 @@ export const FONT_FAMILY_CLASSES: Record<FontFamily, string> = {
   mono: "font-mono",
 };
 
-export const LAYOUT_CYCLE: Layout[] = ["compact", "list", "card", "magazine"];
+export const LAYOUT_CYCLE: Layout[] = ["compact", "list", "card", "magazine", "gallery"];
 export const LAYOUT_LABELS: Record<Layout, string> = {
   compact: "コンパクト",
   list: "リスト",
   card: "カード",
   magazine: "マガジン",
+  gallery: "ギャラリー",
 };
 
 export const SORT_ORDER_CYCLE: SortOrder[] = ["newest", "oldest"];

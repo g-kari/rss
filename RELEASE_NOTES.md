@@ -2,6 +2,10 @@
 
 ## 2026-04-20
 
+### 新機能
+
+- **フィードビュータブ + Pinterest 風ギャラリーレイアウト** — Issue #114。サイドバー上部に「記事 / 画像 / 動画 / SNS」の 4 タブを追加し、各フィードを任意のカテゴリに分類できるようにした。タブ切替で対応する view のフィードのみが表示される（未分類フィードは「記事」タブ所属扱い）。併せて `gallery` レイアウトを新設（CSS columns による masonry、サムネイル優先）。`UserSubscription.view` / `Feed.view` / `FeedPatchPayload.view` を追加し、`PATCH /api/feeds/:id` で `view: "articles" | "pictures" | "videos" | "social" | null` を受け付ける。`FeedItem` のコンテキストメニューに「表示カテゴリ」サブメニューを追加。localStorage キー `rss-active-feed-view` にタブ選択状態を永続化。UX は [Folo](https://github.com/RSSNext/Folo)（AGPL-3.0）を参考にしたがコードは流用せず MIT のままとした。
+
 ### バグ修正
 
 - **記事本文取得前に翻訳できない問題を修正** — Issue #119。`src/components/ArticleView.tsx` の翻訳ボタン・`z` キーハンドラーは `doTranslate(link, id, storedContent ?? undefined)` を呼んでいたため、本文未取得 (`storedContent` なし) の状態で翻訳を実行すると、`useAiOperation.run` 内で `localInput` が `undefined` となり Chrome Translator API によるクライアント翻訳（HTML 構造保持）が発動せず、サーバー側の `runAiJob` は RSS フィード由来の短い本文のみを翻訳対象にしてしまっていた。翻訳処理を `handleTranslate` useCallback に共通化し、`storedContent` が無い場合は先に `fetchFullContent(onFetched)` で全文を取得し、取得結果を `onFetched` コールバック経由で `doTranslate` に直接渡すよう変更。これによりキーボードショートカット・ボタンクリックのどちらからでも、本文未取得時は自動的にフェッチ → 翻訳の順で処理され、HTML 構造を保持したまま全文翻訳が得られる。

@@ -28,6 +28,7 @@ import {
   ListArticleItem,
   CardArticleItem,
   MagazineFeaturedArticleItem,
+  GalleryArticleItem,
 } from "./ArticleItems";
 import { READING_TIME_RANGE_LABELS } from "../lib/article-utils";
 
@@ -82,9 +83,18 @@ const LAYOUT_ICONS: Record<Layout, ReactElement> = {
       <rect x="7.5" y="9" width="5.5" height="4" rx="0.75" />
     </svg>
   ),
+  gallery: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
+      <rect x="0" y="0" width="5.5" height="5" rx="1" />
+      <rect x="7.5" y="0" width="5.5" height="3" rx="1" />
+      <rect x="7.5" y="4.5" width="5.5" height="4" rx="1" />
+      <rect x="0" y="6.5" width="5.5" height="6.5" rx="1" />
+      <rect x="7.5" y="10" width="5.5" height="3" rx="1" />
+    </svg>
+  ),
 };
 
-const LAYOUTS: Layout[] = ["compact", "list", "card", "magazine"];
+const LAYOUTS: Layout[] = ["compact", "list", "card", "magazine", "gallery"];
 
 function getDateGroupLabel(publishedAt: string | null): string {
   if (!publishedAt) return "日付不明";
@@ -112,6 +122,7 @@ const LAYOUT_LABELS: Record<Layout, string> = {
   list: "リスト表示",
   card: "カード表示",
   magazine: "マガジン表示",
+  gallery: "ギャラリー表示",
 };
 
 const DATE_RANGE_LABELS: Record<DateRange, string> = {
@@ -863,6 +874,15 @@ export default function ArticleList({
               <CompactArticleItem key={a.id} {...resolveItemProps(a, i + 1)} />
             ))}
           </>
+        )}
+
+        {/* gallery — CSS columns による masonry（仮想スクロールなし） */}
+        {layout === "gallery" && visible.length > 0 && (
+          <div className="p-2 columns-2 sm:columns-2 md:columns-3 lg:columns-3 xl:columns-4 gap-3">
+            {visible.map((a, i) => (
+              <GalleryArticleItem key={a.id} {...resolveItemProps(a, i)} />
+            ))}
+          </div>
         )}
 
         <div ref={sentinelRef} className="h-10" aria-hidden />

@@ -11,7 +11,14 @@ import UserSettingsModal from "./components/UserSettingsModal";
 import FeedQuickSwitchModal from "./components/FeedQuickSwitchModal";
 import SnoozeModal from "./components/SnoozeModal";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
-import type { Article, EngagementAction, Feed, FeedPatchPayload, KeywordFilter } from "./types";
+import type {
+  Article,
+  EngagementAction,
+  Feed,
+  FeedPatchPayload,
+  FeedView,
+  KeywordFilter,
+} from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useFeedGroups } from "./hooks/useFeedGroups";
@@ -89,6 +96,8 @@ export default function App() {
     onChangeTextJustify,
     showSettings,
     setShowSettings,
+    activeFeedView,
+    onChangeActiveFeedView,
   } = useUIState(initialMobilePane);
 
   // カラム幅（PC）
@@ -326,6 +335,13 @@ export default function App() {
   const muteFeed = useCallback(
     async (feed: Feed, mutedUntil: string | null) => {
       await applyFeedPatch(feed.id, { mutedUntil });
+    },
+    [applyFeedPatch],
+  );
+
+  const setFeedView = useCallback(
+    async (feed: Feed, view: FeedView | null) => {
+      await applyFeedPatch(feed.id, { view });
     },
     [applyFeedPatch],
   );
@@ -1018,6 +1034,9 @@ export default function App() {
                   if (ids.length > 0) markBulkRead(ids);
                 }}
                 onMuteFeed={muteFeed}
+                onSetFeedView={setFeedView}
+                activeFeedView={activeFeedView}
+                onChangeActiveFeedView={onChangeActiveFeedView}
                 recommendations={recommendations}
                 recommendationsLoading={recommendationsLoading}
                 recommendationsRefreshing={recommendationsRefreshing}

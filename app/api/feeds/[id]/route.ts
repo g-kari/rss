@@ -39,6 +39,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       category?: unknown;
       groupId?: unknown;
       mutedUntil?: unknown;
+      view?: unknown;
     }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
@@ -123,6 +124,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         });
       } else {
         sub.mutedUntil = body.mutedUntil;
+      }
+    }
+
+    if ("view" in body) {
+      if (body.view === null) {
+        delete sub.view;
+      } else if (
+        body.view !== "articles" &&
+        body.view !== "pictures" &&
+        body.view !== "videos" &&
+        body.view !== "social"
+      ) {
+        return apiError("view must be 'articles' | 'pictures' | 'videos' | 'social' | null", 400, {
+          code: "INVALID_VIEW",
+        });
+      } else {
+        sub.view = body.view;
       }
     }
 

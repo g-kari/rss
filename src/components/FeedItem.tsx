@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import type { Feed, FeedGroup } from "../types";
+import type { Feed, FeedGroup, FeedView } from "../types";
 import FeedFilterModal from "./FeedFilterModal";
 import FeedDetailModal from "./FeedDetailModal";
 import type { KeywordFilter } from "../types";
@@ -99,6 +99,7 @@ export interface FeedItemProps {
   groups?: FeedGroup[];
   onSetGroup?: (groupId: string | null) => Promise<void>;
   onMute?: (mutedUntil: string | null) => Promise<void>;
+  onSetView?: (view: FeedView | null) => Promise<void>;
   onDragStartFeed?: (feedId: string) => void;
   onDragEndFeed?: () => void;
   isDragging?: boolean;
@@ -145,6 +146,7 @@ export default function FeedItem({
   groups,
   onSetGroup,
   onMute,
+  onSetView,
   onDragStartFeed,
   onDragEndFeed,
   isDragging,
@@ -163,6 +165,7 @@ export default function FeedItem({
   const [menuOpen, setMenuOpen] = useState(false);
   const [muteOpen, setMuteOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   // 右クリック由来のときはカーソル座標、⋮ ボタン由来のときは null。
@@ -173,7 +176,7 @@ export default function FeedItem({
 
   // ドロップダウン系メニューが開いている間はポップアップロックを立てる
   // （FilterModal / DetailModal は内部の Modal 基盤側でロック取得済み）
-  usePopupLock(menuOpen || muteOpen || groupOpen);
+  usePopupLock(menuOpen || muteOpen || groupOpen || viewOpen);
 
   useEventListener("scroll", () => setMenuOpen(false), window, true);
   useEventListener("resize", () => setMenuOpen(false));
@@ -345,6 +348,40 @@ export default function FeedItem({
       },
       show: !!onSetGroup,
       className: feed.groupId ? "text-text-default" : "text-text-faint hover:text-text-default",
+    },
+    {
+      key: "view",
+      label: (() => {
+        const labelMap: Record<FeedView, string> = {
+          articles: "記事",
+          pictures: "画像",
+          videos: "動画",
+          social: "SNS",
+        };
+        const v = feed.view ?? "articles";
+        return `表示: ${labelMap[v]}`;
+      })(),
+      icon: (
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="1" y="1.5" width="8" height="7" rx="1" />
+          <line x1="1" y1="4" x2="9" y2="4" />
+        </svg>
+      ),
+      onClick: () => {
+        setMenuOpen(false);
+        setViewOpen(true);
+      },
+      show: !!onSetView,
+      className: feed.view ? "text-text-default" : "text-text-faint hover:text-text-default",
     },
     {
       key: "mute",
@@ -825,6 +862,59 @@ export default function FeedItem({
                     {opt.label}
                   </button>
                 ))}
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
+      {viewOpen &&
+        onSetView &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[49]"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                setViewOpen(false);
+              }}
+            />
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
+              style={menuPortalStyle}
+            >
+              <div className="px-3 pt-2 pb-1">
+                <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+                  表示カテゴリ
+                </p>
+              </div>
+              <div className="border-t border-border-subtle">
+                {(
+                  [
+                    { id: "articles" as const, label: "記事" },
+                    { id: "pictures" as const, label: "画像" },
+                    { id: "videos" as const, label: "動画" },
+                    { id: "social" as const, label: "SNS" },
+                  ] as const
+                ).map((opt) => {
+                  const current = (feed.view ?? "articles") === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setViewOpen(false);
+                        if (!current) void onSetView(opt.id);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left ${current ? "text-text-strong bg-surface-subtle" : "text-text-default"}`}
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full flex-shrink-0 ${current ? "bg-accent-dot" : "bg-transparent border border-text-faint"}`}
+                      />
+                      <span className="truncate">{opt.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </>,
