@@ -2,6 +2,10 @@
 
 ## 2026-04-20
 
+### 新機能
+
+- **RSSHub 連携による主要サービスの自動 RSS 化** — Issue #109。RSS を提供していない Twitter / X、YouTube チャンネル・ユーザー・`@handle`、GitHub ユーザー / リリース / issue、Instagram、Reddit サブレディット、Bilibili、Zhihu、Pixiv、Weibo、Telegram チャネルの URL を Feed 追加時に自動で [RSSHub](https://docs.rsshub.app/) の対応エンドポイントに変換するようにした。`src/lib/rsshub.ts` に純粋関数 `resolveRSSHubUrl(url, instance?)` / `getRSSHubInstance()` を追加し、`app/api/feeds/route.ts` の POST ハンドラーで URL バリデーション直後に変換を試みる。変換後の URL は再度 `isValidFeedUrl()` で検証してから既存の 3 段階フォールバック探索（RSS link → 手動 CSS セレクタ → LLM 推論）に進む。GitHub の第 1 階層予約語（`marketplace` / `topics` / `features` / `pricing` / `enterprise` / `orgs` 等 34 語）はユーザー名として誤マッチしないようブラックリストで弾く。RSSHub インスタンス URL は `RSSHUB_INSTANCE_URL` 環境変数で上書き可能（未設定時は `https://rsshub.app`）。`e2e/rsshub.spec.ts` に 27 ケース（主要サービス変換 / 予約語ブラックリスト / 大文字小文字 / クエリパラメータ / サブパス / カスタムインスタンス）を追加。
+
 ### バグ修正
 
 - **RSS フィード記事サムネイルの優先順位を修正** — Issue #117。`src/lib/xml-parser.ts` の `extractImage` が `media:thumbnail` を第 1 優先・`media:content` を第 2 優先としていたため、低解像度サムネイルが採用され本来の高解像度画像が使われない事象が起きていた。MRSS 仕様の意図（サムネは `media:content` の小型版を表す要素）および Issue #117 の要求に従い、優先順位を **`media:content`（`medium="image"` または `type="image/*"`）→ `media:thumbnail` → `itunes:image`（新規追加、Podcast 対応）→ `enclosure` → `content/description` 内 `<img>`** に変更。これにより XML から取得できる画像の取りこぼしも減り、`useOgpCache` による `/api/ogp` へのフォールバック問い合わせが更に減少する。`e2e/xml-parser.spec.ts` に 4 ケース（media:content 優先 / media:thumbnail フォールバック / itunes:image 採用 / media:content の medium 未指定時のフォールバック）を追加。
