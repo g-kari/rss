@@ -3,6 +3,7 @@ import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { isValidFeedUrl } from "@/lib/url";
 import { discoverFeedUrl } from "@/lib/feed-discovery";
+import { resolveRSSHubUrl, getRSSHubInstance } from "@/lib/rsshub";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import { parseHTML } from "linkedom";
 import {
@@ -69,6 +70,13 @@ export async function POST(request: Request) {
     if (!url) return apiError("url is required", 400, { code: "INVALID_URL" });
     if (!isValidFeedUrl(url))
       return apiError("Invalid URL: must be http or https", 400, { code: "INVALID_URL" });
+
+    // RSSHub 対応サイトの URL は RSSHub エンドポイントに変換してから探索に進む。
+    // これにより RSS を提供していない Twitter / YouTube / GitHub 等も購読可能になる。
+    const rsshubMatch = resolveRSSHubUrl(url, getRSSHubInstance());
+    if (rsshubMatch && isValidFeedUrl(rsshubMatch.rsshubUrl)) {
+      url = rsshubMatch.rsshubUrl;
+    }
 
     const cookie = typeof body?.cookie === "string" ? body.cookie.trim() : undefined;
     if (cookie && !isValidCookieHeader(cookie)) {
