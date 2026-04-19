@@ -12,6 +12,8 @@ import type {
 import ReleaseNotesModal from "./ReleaseNotesModal";
 import ReadingStatsModal from "./ReadingStatsModal";
 import FeedItem, { formatCount } from "./FeedItem";
+import FeedAddModal from "./FeedAddModal";
+import SaveUrlModal from "./SaveUrlModal";
 import RecommendationSection from "./RecommendationSection";
 import { useFeedOperations } from "../hooks/useFeedOperations";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
@@ -948,88 +950,32 @@ export default function FeedSidebar({
         </button>
       </div>
 
-      {/* 追加フォーム */}
+      {/* フィード追加モーダル (Issue #115) */}
       {inputOpen && (
-        <div className="px-3 py-2.5 border-b border-border-subtle bg-surface-base animate-fade-up">
-          <form onSubmit={handleAddFeed}>
-            <input
-              type="url"
-              placeholder="https://..."
-              value={newUrl}
-              onChange={(e) => setNewUrl(e.target.value)}
-              disabled={adding}
-              autoFocus
-              className="w-full text-[12px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
-            />
-            {/* Cookie オプション（年齢確認ゲート等の突破用） */}
-            <button
-              type="button"
-              onClick={() => setCookieOpen((v) => !v)}
-              className="mt-1.5 text-[10px] text-text-faint hover:text-text-muted transition-colors duration-200"
-            >
-              {cookieOpen ? "▾ Cookie を隠す" : "▸ Cookie を設定（任意）"}
-            </button>
-            {cookieOpen && (
-              <input
-                type="text"
-                placeholder="例: age_check_done=1"
-                value={newCookie}
-                onChange={(e) => setNewCookie(e.target.value)}
-                disabled={adding}
-                className="mt-1 w-full text-[11px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
-              />
-            )}
-            {/* CSS セレクタ手動指定（RSS なし・LLM 推論失敗時のフォールバック） */}
-            <button
-              type="button"
-              onClick={() => setCssSelectorOpen((v) => !v)}
-              className="mt-1.5 text-[10px] text-text-faint hover:text-text-muted transition-colors duration-200"
-            >
-              {cssSelectorOpen
-                ? "▾ CSS セレクタを隠す"
-                : "▸ CSS セレクタを指定（RSS のないサイト用）"}
-            </button>
-            {cssSelectorOpen && (
-              <div className="mt-1 space-y-1">
-                <input
-                  type="text"
-                  placeholder="例: ul.news-list li a"
-                  value={newCssSelector}
-                  onChange={(e) => setNewCssSelector(e.target.value)}
-                  disabled={adding}
-                  className="w-full text-[11px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
-                />
-                <p className="text-[10px] text-text-faint">
-                  記事リンク（&lt;a&gt;タグ）を指すセレクタを入力してください
-                </p>
-              </div>
-            )}
-            {error && <p className="text-[11px] text-rose-400 mt-1.5">{error}</p>}
-            <div className="flex gap-1.5 mt-1.5">
-              <button
-                type="submit"
-                disabled={adding}
-                className="flex-1 text-[11px] tracking-[0.06em] py-1.5 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
-              >
-                {adding ? "追加中..." : "追加"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setInputOpen(false);
-                  setCookieOpen(false);
-                  setCssSelectorOpen(false);
-                  setNewCookie("");
-                  setNewCssSelector("");
-                  clearError();
-                }}
-                className="text-[11px] px-3 py-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200"
-              >
-                ✕
-              </button>
-            </div>
-          </form>
-        </div>
+        <FeedAddModal
+          url={newUrl}
+          onUrlChange={setNewUrl}
+          cookie={newCookie}
+          onCookieChange={setNewCookie}
+          cssSelector={newCssSelector}
+          onCssSelectorChange={setNewCssSelector}
+          cookieOpen={cookieOpen}
+          onCookieOpenChange={setCookieOpen}
+          cssSelectorOpen={cssSelectorOpen}
+          onCssSelectorOpenChange={setCssSelectorOpen}
+          adding={adding}
+          error={error ?? null}
+          onSubmit={handleAddFeed}
+          onClose={() => {
+            setInputOpen(false);
+            setCookieOpen(false);
+            setCssSelectorOpen(false);
+            setNewUrl("");
+            setNewCookie("");
+            setNewCssSelector("");
+            clearError();
+          }}
+        />
       )}
 
       {/* フィード検索 */}
@@ -1120,74 +1066,42 @@ export default function FeedSidebar({
           <StatItem value={feeds.length} label="フィード" />
         </div>
 
-        {/* URL から記事を保存 */}
+        {/* URL から記事を保存 (Issue #115: モーダル化) */}
         <div className="px-4 py-1">
-          {!saveOpen ? (
-            <button
-              onClick={() => setSaveOpen(true)}
-              className="flex items-center gap-1.5 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
-              title="URL から記事を保存"
+          <button
+            onClick={() => setSaveOpen(true)}
+            className="flex items-center gap-1.5 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
+            title="URL から記事を保存"
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
             >
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 10 10"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              >
-                <line x1="5" y1="1" x2="5" y2="9" />
-                <line x1="1" y1="5" x2="9" y2="5" />
-              </svg>
-              <span>URL を保存</span>
-            </button>
-          ) : (
-            <div className="animate-fade-up">
-              <input
-                type="url"
-                placeholder="https://..."
-                value={saveUrl}
-                onChange={(e) => setSaveUrl(e.target.value)}
-                disabled={saving}
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    setSaveOpen(false);
-                    setSaveUrl("");
-                  }
-                }}
-                className="w-full text-[12px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
-              />
-              <div className="flex gap-1 mt-1.5">
-                <button
-                  onClick={() => void handleSaveArticle("bookmark")}
-                  disabled={saving || !saveUrl.trim()}
-                  className="flex-1 text-[10px] tracking-[0.04em] py-1.5 bg-ink hover:bg-ink-hover text-ink-text rounded-md transition-all duration-200 disabled:opacity-40"
-                >
-                  BK
-                </button>
-                <button
-                  onClick={() => void handleSaveArticle("reading_list")}
-                  disabled={saving || !saveUrl.trim()}
-                  className="flex-1 text-[10px] tracking-[0.04em] py-1.5 bg-ink hover:bg-ink-hover text-ink-text rounded-md transition-all duration-200 disabled:opacity-40"
-                >
-                  後で
-                </button>
-                <button
-                  onClick={() => {
-                    setSaveOpen(false);
-                    setSaveUrl("");
-                    setSaveError(null);
-                  }}
-                  className="text-[10px] px-2 py-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-md transition-all duration-200"
-                >
-                  ✕
-                </button>
-              </div>
-              {saveError && <p className="mt-1 text-[10px] text-rose-400">{saveError}</p>}
-            </div>
-          )}
+              <line x1="5" y1="1" x2="5" y2="9" />
+              <line x1="1" y1="5" x2="9" y2="5" />
+            </svg>
+            <span>URL を保存</span>
+          </button>
         </div>
+
+        {saveOpen && (
+          <SaveUrlModal
+            url={saveUrl}
+            onUrlChange={setSaveUrl}
+            saving={saving}
+            error={saveError}
+            onSave={(mode) => void handleSaveArticle(mode)}
+            onClose={() => {
+              setSaveOpen(false);
+              setSaveUrl("");
+              setSaveError(null);
+            }}
+          />
+        )}
 
         {recommendations && onDismissRecommendation && onRefreshRecommendations && (
           <RecommendationSection
