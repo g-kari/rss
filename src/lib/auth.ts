@@ -19,6 +19,8 @@ export interface JWTPayload {
   sub: string;
   exp: number;
   iat: number;
+  iss?: string;
+  aud?: string | string[];
   [key: string]: unknown;
 }
 
@@ -94,7 +96,9 @@ async function getSigningKey(jwk: JwkWithKid): Promise<CryptoKey> {
  * 検証ステップ:
  * 1. ヘッダーの `alg` が `"ES256"` であることを確認
  * 2. `exp` クレームが現在時刻より未来であることを確認
- * 3. JWKS から `kid` に一致する公開鍵を取得し、署名を `crypto.subtle.verify` で検証
+ * 3. `iss` クレームが `authBaseUrl` と一致することを確認（クロスイシュアー再利用防止）
+ * 4. `aud` クレームが `CLIENT_ID` を含むことを確認（クロスオーディエンス再利用防止）
+ * 5. JWKS から `kid` に一致する公開鍵を取得し、署名を `crypto.subtle.verify` で検証
  */
 export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWTPayload | null> {
   try {
@@ -122,6 +126,32 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
       console.error("[auth/verify] token expired or no exp", {
         exp: payload.exp,
         now: Math.floor(Date.now() / 1000),
+      });
+      return null;
+    }
+
+    // iss (issuer) クレーム検証 — authBaseUrl と厳密一致
+    if (payload.iss !== authBaseUrl) {
+      console.error("[auth/verify] iss claim mismatch", {
+        expected: authBaseUrl,
+        actual: payload.iss,
+      });
+      return null;
+    }
+
+    // aud (audience) クレーム検証 — CLIENT_ID を含むこと
+    const expectedAud = process.env.CLIENT_ID;
+    if (!expectedAud) {
+      console.error("[auth/verify] CLIENT_ID 未設定のため aud を検証できません");
+      return null;
+    }
+    const audOk = Array.isArray(payload.aud)
+      ? payload.aud.includes(expectedAud)
+      : payload.aud === expectedAud;
+    if (!audOk) {
+      console.error("[auth/verify] aud claim mismatch", {
+        expected: expectedAud,
+        actual: payload.aud,
       });
       return null;
     }

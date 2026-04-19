@@ -27,6 +27,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### セキュリティ
 
+- **JWT 検証に \`aud\` / \`iss\` クレームチェックを追加** — Issue #100。\`src/lib/auth.ts\` の \`verifyJwt\` が従来は署名と \`exp\` のみ検証しており、\`aud\` (audience) / \`iss\` (issuer) クレームを確認していなかったため、同じ 0g0 ID の別オーディエンス／別イシュアー向けトークンを取得した攻撃者が \`rss.0g0.xyz\` で再利用できる可能性があった。ペイロード検証ステップに \`payload.iss === authBaseUrl\` の厳密一致チェックと、\`payload.aud\` が \`process.env.CLIENT_ID\` を含むこと（文字列/配列両対応）のチェックを追加。JWKS 取得より前に実行することで、不正トークンは早期に弾かれネットワークコストも削減できる。\`JWTPayload\` インターフェースに \`iss?: string\` / \`aud?: string | string[]\` を追加。\`e2e/jwt-aud-iss.spec.ts\` に 7 ケース（iss 欠落 / iss 不一致 / aud 欠落 / aud 不一致 文字列 / aud 配列に含まれない / CLIENT_ID 未設定 / exp 期限切れ回帰 / シェイプ不正）を追加。
 - **vite-plus path traversal 脆弱性を修正** — Dependabot alert #28 (severity: high, \`vite-plus/binding\` の \`downloadPackageManager()\` が \`VP_HOME\` 外にファイルを書き出せる path traversal 脆弱性) を解消。\`package.json\` は既に \`^0.1.18\` に更新済みだったが \`package-lock.json\` の解決バージョンが 0.1.14 のままだったため、\`npm install\` で lock ファイルを更新し \`vite-plus\` / \`@voidzero-dev/vite-plus-core\` など関連パッケージをすべて 0.1.18 に揃えた。
 
 ## 2026-04-18
