@@ -3,12 +3,8 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import type { Article, EngagementAction, Feed, KeywordFilter } from "../types";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
-import {
-  readingTime,
-  FONT_SIZE_CLASSES,
-  FONT_FAMILY_CLASSES,
-  collectImageUrlsFromHtml,
-} from "../lib/article-utils";
+import { readingTime, FONT_SIZE_CLASSES, FONT_FAMILY_CLASSES } from "../lib/article-utils";
+import { collectImageUrlsFromHtml } from "../lib/image-extractor";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { useArticleContent } from "../hooks/useArticleContent";
 import { useArticleAi } from "../hooks/useArticleAi";

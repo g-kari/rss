@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
-import { collectImageUrls } from "../lib/article-utils";
+import { collectImageUrls } from "../lib/image-extractor";
 import { mimeToExt } from "../lib/image-mime";
 
 interface ImageDownloadState {
