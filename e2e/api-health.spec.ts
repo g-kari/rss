@@ -41,19 +41,46 @@ test.describe("API ヘルスチェック", () => {
   });
 
   test("POST /api/feed-groups が未認証時に 401 を返す", async ({ request }) => {
-    const res = await request.post("/api/feed-groups", { data: { name: "Tech" } });
+    const res = await request.post("/api/feed-groups", {
+      headers: { Origin: "http://localhost:3000" },
+      data: { name: "Tech" },
+    });
     expect(res.status()).toBe(401);
   });
 
   test("PATCH /api/feed-groups/:id が未認証時に 401 を返す", async ({ request }) => {
     const res = await request.patch("/api/feed-groups/dummy-id", {
+      headers: { Origin: "http://localhost:3000" },
       data: { name: "Renamed" },
     });
     expect(res.status()).toBe(401);
   });
 
   test("DELETE /api/feed-groups/:id が未認証時に 401 を返す", async ({ request }) => {
-    const res = await request.delete("/api/feed-groups/dummy-id");
+    const res = await request.delete("/api/feed-groups/dummy-id", {
+      headers: { Origin: "http://localhost:3000" },
+    });
     expect(res.status()).toBe(401);
+  });
+
+  test("POST /api/feed-groups が別オリジンからは 403 を返す（CSRF 対策）", async ({ request }) => {
+    const res = await request.post("/api/feed-groups", {
+      headers: { Origin: "https://evil.example" },
+      data: { name: "Tech" },
+    });
+    expect(res.status()).toBe(403);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("CSRF_ORIGIN_MISMATCH");
+  });
+
+  test("POST /api/feed-groups が Origin/Referer なしでは 403 を返す（CSRF 対策）", async ({
+    request,
+  }) => {
+    // playwright の APIRequestContext は Origin を自動付与しないため、ヘッダー無しのケースを検証
+    const res = await request.fetch("/api/feed-groups", {
+      method: "POST",
+      data: { name: "Tech" },
+    });
+    expect(res.status()).toBe(403);
   });
 });

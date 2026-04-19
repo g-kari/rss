@@ -6,8 +6,8 @@ import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 
 const REFRESH_COOLDOWN_MS = 2 * 60 * 1000; // 2分
 
-export async function POST() {
-  return withSession(async ({ session, env }) => {
+export async function POST(request: Request) {
+  return withSession(request, async ({ session, env }) => {
     const limited = await checkAndUpdateCooldown(
       env.RSS_DATA,
       refreshCooldownKey(session.userId),

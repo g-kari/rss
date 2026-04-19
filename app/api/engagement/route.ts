@@ -17,8 +17,8 @@ const VALID_ACTIONS: EngagementAction[] = [
 const VALID_AI_FEEDBACK_VALUES = ["good", "neutral", "bad"] as const;
 const VALID_AI_FEEDBACK_TARGETS = ["summary", "translate"] as const;
 
-export async function GET() {
-  return withSession(async ({ session, env }) => {
+export async function GET(request: Request) {
+  return withSession(request, async ({ session, env }) => {
     const log = await r2Get<EngagementLog>(env.RSS_DATA, engagementKey(session.userId), {
       entries: [],
     });
@@ -27,7 +27,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  return withSession(async ({ session, env }) => {
+  return withSession(req, async ({ session, env }) => {
     const parsed = await parseJsonBody<{
       articleId?: unknown;
       feedHash?: unknown;

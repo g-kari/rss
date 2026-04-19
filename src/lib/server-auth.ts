@@ -3,6 +3,23 @@ import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { verifyJwt, refreshTokens, type RefreshResult } from "./auth";
 import { apiError } from "./api-error";
+import { isCsrfViolation } from "./csrf";
+
+// CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
+export { isCsrfViolation } from "./csrf";
+
+/**
+ * CSRF 違反の場合に 403 NextResponse を、合格時は null を返すラッパー。
+ * Route Handler 内の `withSession` / `withBinarySession` で使う。
+ */
+export function assertSameOrigin(
+  req: Request,
+  appBaseUrl: string | undefined,
+): NextResponse | null {
+  return isCsrfViolation(req, appBaseUrl)
+    ? apiError("Forbidden", 403, { code: "CSRF_ORIGIN_MISMATCH" })
+    : null;
+}
 
 export const COOKIE_OPTS = {
   httpOnly: true,
@@ -174,12 +191,15 @@ export function applyRefreshedTokens(response: NextResponse, session: AuthSessio
  * }
  */
 export async function withSession(
+  req: Request,
   handler: (params: {
     session: AuthSession;
     env: CloudflareEnv;
     ctx: ExecutionContext;
   }) => Promise<NextResponse>,
 ): Promise<NextResponse> {
+  const csrf = assertSameOrigin(req, process.env.APP_BASE_URL);
+  if (csrf) return csrf;
   const result = await requireSession();
   if ("error" in result) return result.error;
   const { env, ctx } = await getCloudflareContext({ async: true });
@@ -236,12 +256,15 @@ export async function parseJsonBody<T>(
  * }
  */
 export async function withBinarySession(
+  req: Request,
   handler: (params: {
     session: AuthSession;
     env: CloudflareEnv;
     ctx: ExecutionContext;
   }) => Promise<Response>,
 ): Promise<Response> {
+  const csrf = assertSameOrigin(req, process.env.APP_BASE_URL);
+  if (csrf) return csrf;
   const result = await requireSession();
   if ("error" in result) return result.error;
   const { env, ctx } = await getCloudflareContext({ async: true });

@@ -2,7 +2,7 @@ import { withSession } from "@/lib/server-auth";
 import { runAiJob } from "@/lib/ai-route-helper";
 
 export async function POST(request: Request) {
-  return withSession(({ session, env, ctx }) =>
+  return withSession(request, ({ session, env, ctx }) =>
     runAiJob(request, session, env, ctx, (plain) => [
       {
         role: "system",

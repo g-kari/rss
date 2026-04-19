@@ -11,7 +11,7 @@ const FETCH_TIMEOUT_MS = 8_000;
 
 /** POST /api/articles/save — URL から記事を保存する */
 export async function POST(request: Request) {
-  return withSession(async ({ session, env }) => {
+  return withSession(request, async ({ session, env }) => {
     const parsed = await parseJsonBody<{ url?: unknown }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;

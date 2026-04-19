@@ -16,8 +16,8 @@ const EMPTY_RECOMMENDATIONS: RecommendationCache = {
   topics: [],
 };
 
-export async function GET() {
-  return withSession(async ({ session, env }) => {
+export async function GET(request: Request) {
+  return withSession(request, async ({ session, env }) => {
     // キャッシュが有効ならそのまま返す（レートリミット不要）
     const cache = await readCache(env.RSS_DATA, session.userId);
     if (cache && isCacheValid(cache)) {

@@ -7,7 +7,7 @@ import type { PushConfig } from "@/types";
 
 /** Push サブスクリプションを R2 から削除する */
 export async function POST(request: Request) {
-  return withSession(async ({ session, env }) => {
+  return withSession(request, async ({ session, env }) => {
     const parsed = await parseJsonBody<{ endpoint?: string }>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;

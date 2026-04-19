@@ -21,9 +21,9 @@ const MAX_FAILED_SELECTORS = 10;
  * 既存のセレクタを消去し、inferFeedFromUrl で新たに推論してから記事を再取得する。
  * LLM 生成フィード（isScraping === true）のみ対象。
  */
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  return withSession(async ({ session, env }) => {
+  return withSession(req, async ({ session, env }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     const sub = subs.find((s) => s.feedHash === feedHash);
     if (!sub) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });

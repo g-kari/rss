@@ -17,8 +17,8 @@ function buildOpml(feeds: Feed[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<opml version="2.0">\n  <head>\n    <title>RSS Reader Feeds</title>\n  </head>\n  <body>\n${outlines}\n  </body>\n</opml>`;
 }
 
-export async function GET() {
-  return withSession(async ({ session, env }) => {
+export async function GET(request: Request) {
+  return withSession(request, async ({ session, env }) => {
     const feeds = await getUserFeeds(env.RSS_DATA, session.userId);
     const opml = buildOpml(feeds);
 

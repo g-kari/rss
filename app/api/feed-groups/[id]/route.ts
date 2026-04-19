@@ -7,7 +7,7 @@ import { stripControlChars } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return withSession(async ({ session, env }) => {
+  return withSession(request, async ({ session, env }) => {
     const parsed = await parseJsonBody<{
       name?: unknown;
       order?: unknown;
@@ -62,9 +62,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   });
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return withSession(async ({ session, env }) => {
+  return withSession(request, async ({ session, env }) => {
     const groups = await readFeedGroups(env.RSS_DATA, session.userId);
     if (!groups.some((g) => g.id === id)) {
       return apiError("Feed group not found", 404, { code: "FEED_GROUP_NOT_FOUND" });

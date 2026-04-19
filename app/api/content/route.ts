@@ -14,7 +14,7 @@ import {
 } from "@/lib/fetch-article-content";
 
 export async function GET(request: Request) {
-  return withSession(({ ctx }) => handleGet(request, ctx));
+  return withSession(request, ({ ctx }) => handleGet(request, ctx));
 }
 
 async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextResponse> {

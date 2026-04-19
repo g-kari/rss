@@ -17,8 +17,8 @@ const MAX_LIKE_IDS = 10_000;
 const MAX_SNOOZED = 500;
 const MAX_NOTES = 1_000;
 
-export async function GET() {
-  return withSession(async ({ session, env }) => {
+export async function GET(request: Request) {
+  return withSession(request, async ({ session, env }) => {
     // Partial で受け取り、欠落フィールドを [] で補完する（古いデータ形式との互換性）
     const stored = await r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {});
     const state: ReadState = {
@@ -36,7 +36,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  return withSession(async ({ session, env }) => {
+  return withSession(req, async ({ session, env }) => {
     const parsed = await parseJsonBody<ReadStateUpdate>(req);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;

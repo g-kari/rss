@@ -6,8 +6,8 @@ import { sendPushToAll } from "@/lib/web-push";
 import type { PushConfig } from "@/types";
 
 /** テスト Push 通知を送信する（デバッグ用） */
-export async function POST() {
-  return withSession(async ({ session, env }) => {
+export async function POST(request: Request) {
+  return withSession(request, async ({ session, env }) => {
     const vapidPublic = process.env.VAPID_PUBLIC_KEY;
     const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
 

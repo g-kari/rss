@@ -10,8 +10,8 @@ import {
 import { stripControlChars } from "@/lib/validation";
 import type { FeedGroup } from "@/types";
 
-export async function GET() {
-  return withSession(async ({ session, env }) => {
+export async function GET(request: NextRequest) {
+  return withSession(request, async ({ session, env }) => {
     const groups = await readFeedGroups(env.RSS_DATA, session.userId);
     groups.sort((a, b) => a.order - b.order);
     return NextResponse.json(groups);
@@ -19,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  return withSession(async ({ session, env }) => {
+  return withSession(request, async ({ session, env }) => {
     const parsed = await parseJsonBody<{ name?: unknown }>(request);
     if (!parsed.ok) return parsed.error;
 

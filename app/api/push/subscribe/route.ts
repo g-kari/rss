@@ -11,7 +11,7 @@ const MAX_SUBSCRIPTIONS_PER_USER = 20;
 
 /** Push サブスクリプションを R2 に保存する */
 export async function POST(request: Request) {
-  return withSession(async ({ session, env }) => {
+  return withSession(request, async ({ session, env }) => {
     const parsed = await parseJsonBody<Partial<PushSubscriptionRecord>>(request);
     if (!parsed.ok) return parsed.error;
     const body = parsed.data;
