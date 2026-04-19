@@ -3,7 +3,12 @@
  * /api/content と同じ Cloudflare Cache キーを使うため、キャッシュを共有する。
  */
 
-import { buildCacheKey, cachePutAsync } from "@/lib/r2";
+import {
+  buildCacheKey,
+  buildJsonCacheResponse,
+  cachePutAsync,
+  matchCfCache,
+} from "@/lib/cache-helper";
 import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
 import {
   decodeBytesToString,
@@ -72,13 +77,12 @@ export function saveContentToCache(
   content: string,
   ctx: ExecutionContext,
 ): void {
-  const cacheRes = new Response(JSON.stringify({ content }), {
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": `public, max-age=${CONTENT_CACHE_TTL_SEC}`,
-    },
-  });
-  cachePutAsync(cacheKey, cacheRes, ctx, "content");
+  cachePutAsync(
+    cacheKey,
+    buildJsonCacheResponse({ content }, CONTENT_CACHE_TTL_SEC),
+    ctx,
+    "content",
+  );
 }
 
 /** HTML をフェッチしてバイト列と Content-Type を返す。失敗・非HTML・body なしは null。 */
@@ -139,7 +143,7 @@ export async function fetchArticleContent(
   if (!isValidFeedUrl(url)) return null;
 
   const cacheKey = await buildContentCacheKey(origin, url);
-  const cached = await caches.default.match(cacheKey);
+  const cached = await matchCfCache(cacheKey);
   if (cached) {
     const data = (await cached.json()) as { content: string };
     return data.content;

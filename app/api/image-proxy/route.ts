@@ -1,6 +1,6 @@
 import { withBinarySession } from "@/lib/server-auth";
 import { isValidPublicUrl } from "@/lib/url";
-import { buildCacheKey, cachePutAsync } from "@/lib/r2";
+import { buildCacheKey, cachePutAsync, matchCfCache } from "@/lib/cache-helper";
 import {
   DEFAULT_FETCH_TIMEOUT_MS,
   fetchFollowSafeRedirects,
@@ -36,7 +36,7 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
   const cacheKey = await buildCacheKey(reqUrl.origin, "image", url);
 
   // Cloudflare Cache API で確認
-  const cached = await caches.default.match(cacheKey);
+  const cached = await matchCfCache(cacheKey);
   if (cached) {
     return new Response(cached.body, {
       headers: {
