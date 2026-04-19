@@ -4,6 +4,12 @@
  */
 export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
+## 2026-04-20
+
+### 新機能
+
+- **RSS 取得時の Cache-Control 対応で配信元サーバーへのアクセスを最適化** — Issue #116。\`src/lib/fetch.ts\` に \`parseCacheControl\` / \`computeNextFetchEarliestAt\` を追加し、\`src/types.ts\` の \`SharedFeedMeta\` に \`cacheControl\`（直近レスポンスの生ヘッダー）と \`nextFetchEarliestAt\`（次回フェッチ可能時刻 ISO 8601）を追加。\`src/cron/fetch.ts\` の \`fetchAndParseFeed\` が 200 / 304 いずれの応答でも Cache-Control を保存し、\`fetchAndUpdateSharedFeed\` の cron 経路では \`nextFetchEarliestAt > now\` のときフェッチをスキップする。\`s-maxage\` が \`max-age\` より優先され、\`no-cache\` / \`must-revalidate\` / \`no-store\` 時は従来どおり毎回サーバー検証する（スキップしない）。クランプ範囲は下限 1800 秒（cron 間隔に一致）〜上限 21600 秒（6 時間）で、過度に短い / 長い指示を緩和する。手動 refresh (\`forceRetry=true\`) はスキップ対象外。\`e2e/cache-control.spec.ts\` に 17 ケース（max-age / s-maxage / no-store / no-cache / must-revalidate / 壊れ値 / クランプ境界）を追加。
+
 ## 2026-04-19
 
 ### バグ修正

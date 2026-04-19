@@ -4,7 +4,11 @@ import { parseFeed, type ParsedItem } from "../lib/xml-parser";
 import { compareByPublishedAtDesc } from "../lib/article-utils";
 import { scrapeFeed } from "../lib/llm-feed-generator";
 import { isValidFeedUrl } from "../lib/url";
-import { fetchFollowSafeRedirects, readBodyBytesPartial } from "../lib/fetch";
+import {
+  fetchFollowSafeRedirects,
+  readBodyBytesPartial,
+  computeNextFetchEarliestAt,
+} from "../lib/fetch";
 import { sendPushToAll, type PushPayload } from "../lib/web-push";
 import { r2Get, r2Put, userPushKey } from "../lib/r2";
 import {
@@ -236,6 +240,7 @@ async function fetchAndParseFeed(
   if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get("Retry-After")));
   if (res.status === 304) {
     resetFeedSuccessState(meta);
+    applyCacheControl(meta, res.headers.get("Cache-Control"));
     return { articles: [], existingLatest: null };
   }
   if (!res.ok) throw new Error(`${res.status} ${meta.url}`);
@@ -258,8 +263,21 @@ async function fetchAndParseFeed(
   // RFC 7232 では ETag は最大数百文字程度が想定されるため 512 文字で切り詰める。
   if (lastModified) meta.lastModified = lastModified.replace(/[\r\n]/g, "").slice(0, 128);
   if (etag) meta.etag = etag.replace(/[\r\n]/g, "").slice(0, 512);
+  applyCacheControl(meta, res.headers.get("Cache-Control"));
 
   return buildArticlesFromItems(env.RSS_DATA, meta, parsed.items);
+}
+
+/**
+ * レスポンス Cache-Control を meta.cacheControl / meta.nextFetchEarliestAt に反映する。
+ * ヘッダーが欠落・不正・no-store のときは nextFetchEarliestAt を null にリセット。
+ */
+function applyCacheControl(meta: SharedFeedMeta, headerValue: string | null): void {
+  // CRLF 除去と長さ制限（後続のデバッグ表示や再送に備える）
+  const sanitized = headerValue ? headerValue.replace(/[\r\n]/g, "").slice(0, 256) : null;
+  meta.cacheControl = sanitized;
+  const nextMs = computeNextFetchEarliestAt(sanitized, Date.now());
+  meta.nextFetchEarliestAt = nextMs === null ? null : new Date(nextMs).toISOString();
 }
 
 // ── 共有フィード更新（cron / refresh 共用）────────────────────────
@@ -290,6 +308,11 @@ export async function fetchAndUpdateSharedFeed(
       if (Date.now() - lastErrorMs < FEED_ERROR_RETRY_INTERVAL_MS) {
         return { newArticles: [], meta };
       }
+    }
+    // Cache-Control: max-age で示されたキャッシュ寿命内なら cron 取得をスキップし
+    // 配信元サーバーへの不要なアクセスを抑制する（手動 refresh は forceRetry=true で通す）
+    if (meta.nextFetchEarliestAt && new Date(meta.nextFetchEarliestAt).getTime() > Date.now()) {
+      return { newArticles: [], meta };
     }
   }
 
