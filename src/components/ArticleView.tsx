@@ -405,7 +405,10 @@ export default function ArticleView({
         className="sticky top-0 left-0 h-[2px] bg-ink z-10 transition-[width] duration-75 ease-linear"
         style={{ display: "none" }}
       />
-      <div className="max-w-2xl mx-auto px-4 py-6 lg:px-10 lg:py-12">
+      <div
+        className="mx-auto px-4 py-6 lg:px-10 lg:py-12 transition-[max-width] duration-200"
+        style={getContentWidthStyle(contentWidth)}
+      >
         {/* メタ行 + アクション行（常に2段構成） */}
         <div className="mb-5 text-[11px] text-text-muted flex flex-col gap-y-2">
           {/* メタ情報: 戻るボタン + 日付/著者/リンク/読了時間 */}
@@ -1012,19 +1015,13 @@ export default function ArticleView({
           translateResult.isHtml ? (
             <div
               className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
-              style={{
-                ...getLineHeightStyle(lineHeight),
-                ...getContentWidthStyle(contentWidth),
-              }}
+              style={getLineHeightStyle(lineHeight)}
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(translateResult.text) }}
             />
           ) : (
             <p
               className={`article-content whitespace-pre-wrap ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
-              style={{
-                ...getLineHeightStyle(lineHeight),
-                ...getContentWidthStyle(contentWidth),
-              }}
+              style={getLineHeightStyle(lineHeight)}
             >
               {translateResult.text}
             </p>
@@ -1033,10 +1030,7 @@ export default function ArticleView({
           <div
             ref={contentRef}
             className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
-            style={{
-              ...getLineHeightStyle(lineHeight),
-              ...getContentWidthStyle(contentWidth),
-            }}
+            style={getLineHeightStyle(lineHeight)}
             // dangerouslySetInnerHTML の中は React がテキストノードを管理しないため
             // Google 翻訳の <font> 注入と React 調停が衝突しない。
             // html 要素の translate="no" を上書きして翻訳を許可する。
@@ -1046,10 +1040,7 @@ export default function ArticleView({
         ) : article.summary ? (
           <p
             className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
-            style={{
-              ...getLineHeightStyle(lineHeight),
-              ...getContentWidthStyle(contentWidth),
-            }}
+            style={getLineHeightStyle(lineHeight)}
           >
             {article.summary}
           </p>

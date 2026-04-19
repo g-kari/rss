@@ -2,6 +2,10 @@
 
 ## 2026-04-19
 
+### バグ修正
+
+- **記事詳細のコンテンツ幅がペイン幅に連動しない問題を修正** — Issue #80。`src/components/ArticleView.tsx` の外側ラッパーが `max-w-2xl` (672px) にハードコードされていたため、カラムリサイズやフォーカスモードで記事詳細ペインを広げても本文・タイトル・メタ情報が 672px 以上に拡大できず、ユーザー設定の `contentWidth`（narrow/medium/wide/full）も事実上 narrow 以外は効果を発揮しなかった。ラッパーのクラスから `max-w-2xl` を外し、`getContentWidthStyle(contentWidth)` を `style` で適用（`transition-[max-width]` も追加してスムーズに変化）することで、`full` を選択するとペイン幅いっぱいに、`wide` (900px) / `medium` (720px) を選択するとそれぞれ指定幅まで本文を拡大できるようにした。併せて `.article-content` 各出力（translate HTML / translate plain / 本文 / summary）内に重複していた `getContentWidthStyle` 呼び出しを削除し、幅制御を外側ラッパー 1 箇所に一元化した。
+
 ### 新機能
 
 - **フィード追加・URL 保存をモーダルダイアログ化** — Issue #115。`src/components/FeedSidebar.tsx` のサイドバー上でインライン展開されていたフィード追加フォーム（URL / Cookie / CSS セレクタ）と URL 記事保存フォーム（ブックマーク / 後で読む）を、汎用 `Modal` コンポーネント (`src/components/Modal.tsx`) を使ったポップアップダイアログに移行。新設した `src/components/FeedAddModal.tsx` / `src/components/SaveUrlModal.tsx` にフォーム JSX を切り出し、Esc キー / オーバーレイクリックで閉じる挙動を Modal 側に一元化。`handleAddFeed` の `canRetryWithSelector` フロー（API 失敗時に CSS セレクタ欄を自動展開）はモーダル表示のまま維持し、既存の state（`newUrl` / `newCookie` / `newCssSelector` / `saveUrl` / `saveError` 等）は親で保持する形で `addFeed` / `handleSaveArticle` の呼び出しロジックは一切変更せず、視覚的なレイアウトのみ差し替えた。
