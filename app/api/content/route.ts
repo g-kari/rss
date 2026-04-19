@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
+import { matchCfCache } from "@/lib/cache-helper";
 import { isValidFeedUrl } from "@/lib/url";
 import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fetch";
 import {
@@ -27,10 +28,9 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   }
 
   const cacheKey = await buildContentCacheKey(reqUrl.origin, url);
-  const cfCache = caches.default;
 
   // Cloudflare Cache API で確認
-  const cached = await cfCache.match(cacheKey);
+  const cached = await matchCfCache(cacheKey);
   if (cached) {
     const data = (await cached.json()) as { content: string };
     return NextResponse.json(data, { headers: { "X-Cache": "HIT" } });

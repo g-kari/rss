@@ -20,25 +20,34 @@ paths: "app/api/**"
 ## Cloudflare Cache API パターン
 
 キャッシュキーは認証情報を含まない合成 URL。`/__cache/` プレフィックスで名前空間を分離する。
+共通処理は `src/lib/cache-helper.ts` のヘルパーに集約済み：
+
+- `buildCacheKey(origin, type, url)` — 合成キャッシュキー生成
+- `matchCfCache(cacheKey)` — HIT 時 Response / MISS 時 null
+- `buildJsonCacheResponse(payload, ttlSec)` — JSON キャッシュエントリ構築
+- `cachePutAsync(cacheKey, response, ctx, label)` — fire-and-forget で保存
 
 ```typescript
+import {
+  buildCacheKey,
+  buildJsonCacheResponse,
+  cachePutAsync,
+  matchCfCache,
+} from "@/lib/cache-helper";
+
 const { ctx } = await getCloudflareContext({ async: true });
 const reqUrl = new URL(request.url);
-const cacheKey = new Request(`${reqUrl.origin}/__cache/content/${await sha256Hex(url)}`);
-const cfCache = caches.default;
+const cacheKey = await buildCacheKey(reqUrl.origin, "content", url);
 
 // ① キャッシュ確認
-const cached = await cfCache.match(cacheKey);
+const cached = await matchCfCache(cacheKey);
 if (cached) return NextResponse.json(await cached.json());
 
 // ② 外部フェッチ（キャッシュミス時のみ）
 const content = await fetchFromOrigin(url);
 
 // ③ キャッシュ保存（fire-and-forget）
-const cacheRes = new Response(JSON.stringify({ content }), {
-  headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${TTL_SEC}` },
-});
-ctx.waitUntil(cfCache.put(cacheKey, cacheRes));
+cachePutAsync(cacheKey, buildJsonCacheResponse({ content }, TTL_SEC), ctx, "content");
 ```
 
-新しい外部フェッチを追加する場合は必ずこのパターンで実装すること。R2 を使わないこと。
+新しい外部フェッチを追加する場合は必ずこのヘルパー経由で実装すること。R2 を使わないこと。
