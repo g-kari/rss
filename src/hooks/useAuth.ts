@@ -83,6 +83,8 @@ export function useAuth(): AuthState {
     let inFlight = false;
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     let loginRetryDone = false; // ?login=1 リトライは一度だけ
+    let sessionRecoveryAttempts = 0; // 「認証済みだったが user=null」の猶予リトライ回数
+    const SESSION_RECOVERY_MAX_ATTEMPTS = 2; // 最大 2 回（800ms → 2400ms）
 
     /** token_exp を読み、2分前にリフレッシュをスケジュールする（最低30秒） */
     function scheduleNextRefresh(): void {
@@ -129,12 +131,29 @@ export function useAuth(): AuthState {
           return; // setUser は呼ばずスピナー状態を維持
         }
 
+        // 認証済みだったが null が返った → サーバー側 refresh の transient 失敗や R2 一時障害の
+        // 可能性。即座にログイン画面へ落とさず、指数バックオフで猶予リトライする
+        // （既存の user / undefined 状態のまま setUser は呼ばない）。
+        if (
+          wasAuthenticatedRef.current &&
+          !u &&
+          sessionRecoveryAttempts < SESSION_RECOVERY_MAX_ATTEMPTS
+        ) {
+          sessionRecoveryAttempts += 1;
+          const delay = 800 * sessionRecoveryAttempts; // 800ms, 1600ms
+          setTimeout(() => {
+            if (mounted) void checkAuth();
+          }, delay);
+          return;
+        }
+
         // 以前は認証済みで、今回 null が返った場合はセッション期限切れ
         if (wasAuthenticatedRef.current && !u) {
           setSessionExpired(true);
         }
         if (u) {
           wasAuthenticatedRef.current = true;
+          sessionRecoveryAttempts = 0; // 成功時はカウンタをリセット
           setSessionExpired(false);
           // オフライン時に使えるようユーザー情報を localStorage にキャッシュ
           storageSet(STORAGE_KEYS.CACHED_USER, JSON.stringify(u));

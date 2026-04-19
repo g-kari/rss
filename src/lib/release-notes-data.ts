@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-19
 
+### バグ修正
+
+- **access_token 期限切れ時に一瞬ログイン画面へ戻る問題を修正** — 追加依頼。\`src/hooks/useAuth.ts\` の \`checkAuth\` で「以前認証済み」かつ \`/api/auth/me\` が \`user: null\` を返した場合、即座に \`setUser(null)\` せず 800ms / 1600ms の指数バックオフで最大 2 回までリトライしてから判定するよう変更。サーバー側 refresh の transient 失敗や JWKS 一時障害・R2 読み取り遅延で偶発的に null が返っても、ユーザーがログイン画面にフラッシュ遷移しなくなる（リロードで復帰できていた挙動を自動化）。\`sessionRecoveryAttempts\` カウンタは成功時にリセット。既存の \`?login=1\` 直後リトライ (600ms 単発) とは別の経路。
+
 ### ドキュメント整備
 
 - **セットアップ手順の詳細化** — Issue #105。\`README.md\` のセットアップ節に以下を追記した:
