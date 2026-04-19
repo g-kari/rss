@@ -8,6 +8,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### バグ修正
 
+- **定期的にログアウトされる問題を修正** — Issue #113。0g0-id (\`/auth/refresh\`) は並列リフレッシュ競合（30 秒以内の rotation 済みトークン再提示）時に HTTP 401 + \`{ error: { code: "TOKEN_ROTATED", message: "..." } }\` を返す仕様だが、\`src/lib/auth.ts\` の \`refreshTokens\` がすべての 4xx を \`invalid\` として扱っていたため Cookie が削除されログアウト扱いになっていた。複数タブ・タブ復帰時の同時リフレッシュで日常的に発生するため「定期ログアウト」として体感される。レスポンスボディの \`error.code\` を読み取って \`TOKEN_ROTATED\` のみ \`transient\` にして Cookie を保持するよう修正（\`TOKEN_REUSE\` は従来どおり \`invalid\`）。\`e2e/refresh-tokens.spec.ts\` に 4 ケース追加（TOKEN_ROTATED → transient / TOKEN_REUSE / INVALID_TOKEN / TOKEN_EXPIRED → invalid）。
 - **srcset 内の URL path に \`,\` を含む画像が壊れる問題を修正** — Issue #111。\`src/lib/content.ts\` の \`transformSrcset\` が単純に \`.split(",")\` で候補を分割していたため、Cloudinary の \`c_limit,f_auto,...\` のように変換パラメータ部で生の \`,\` を path に含む URL が途中で切れ、\`/api/image-proxy?url=...\` に不正な値が渡って画像が取得できなくなる可能性があった。WHATWG HTML srcset 仕様 (https://html.spec.whatwg.org/#parse-a-srcset-attribute) に寄せたパースに変更し、URL は whitespace を境界とし、URL 末尾の \`,\` のみを候補区切りとして扱うよう修正。これにより Cloudinary / imgix など path 内にカンマや encoded 文字 (\`%2C\` / \`%3F\`) を含む URL でも src / srcset が壊れずに丸ごと proxy へ渡されるようになる。\`e2e/content-extraction.spec.ts\` に回帰テスト 2 件（encoded delimiter 保持 / srcset 内 URL path \`,\` 保護）を追加。
 
 ### 新機能

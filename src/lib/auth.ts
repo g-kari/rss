@@ -352,6 +352,19 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
  * 以前は失敗を一律 `null` で返していたため、一時的な上流障害でもユーザーが
  * 強制ログアウトされてしまう不具合があった。
  */
+/**
+ * 0g0-id の REST エラーレスポンス (`{ error: { code, message } }`) からコードを抽出する。
+ * JSON パース失敗・想定外の構造は `null` を返す。レスポンスは clone して読むため呼び出し後も利用可能。
+ */
+async function readErrorCode(res: Response): Promise<string | null> {
+  try {
+    const body = (await res.clone().json()) as { error?: { code?: unknown } };
+    return typeof body?.error?.code === "string" ? body.error.code : null;
+  } catch {
+    return null;
+  }
+}
+
 export type RefreshResult =
   | { kind: "ok"; tokens: { access_token: string; refresh_token: string } }
   | { kind: "invalid" }
@@ -396,6 +409,18 @@ export async function refreshTokens(refreshToken: string): Promise<RefreshResult
         status: res.status,
         cfRay,
       });
+      return { kind: "transient" };
+    }
+  }
+  // issue #113: 0g0-id 側は並列リフレッシュ競合（30秒以内の rotation 済みトークン再提示）を
+  // HTTP 401 + `{ error: { code: "TOKEN_ROTATED" } }` で返す。このとき新トークンは既に発行済みなので
+  // Cookie を消すと正しいセッションまで無効化してしまう。`transient` にして次回リクエストに委ねる。
+  if (res.status === 401) {
+    const errorCode = await readErrorCode(res);
+    if (errorCode === "TOKEN_ROTATED") {
+      console.warn(
+        "[auth/refresh] TOKEN_ROTATED (並列リフレッシュ競合) → transient で Cookie 保持",
+      );
       return { kind: "transient" };
     }
   }
