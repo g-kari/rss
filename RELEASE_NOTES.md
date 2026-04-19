@@ -2,6 +2,10 @@
 
 ## 2026-04-19
 
+### 新機能
+
+- **60×60 などの小さい画像を画像一覧・一括ダウンロード対象から除外** — Issue #112。`src/lib/image-extractor.ts` に `MIN_IMAGE_SIZE_PX = 100` を定数追加し、`collectImageUrlsFromHtml` では img タグの `width` / `height` 属性（または `style` の `px` 指定）、`collectImageUrls`（DOM 版）では `naturalWidth` / `naturalHeight` を優先し未解決時は属性にフォールバックする形で、**両辺とも閾値未満**の画像（サイトロゴ / SNS シェアアイコン / スペーサー等）を抽出段階で除外するよう変更。片方しかサイズ情報がない（縦長・横長画像の可能性）ケースや `%` 指定・属性未指定ケースは誤判定を避けて従来通り収集対象に残す。既存の `useImageDownload.fetchOne` の `createImageBitmap` による 100px 未満除外は二重防護として維持。`e2e/image-extractor.spec.ts` に 16 ケース（srcset フォールバック / data URI 除外 / サイズ閾値境界 / 片辺のみ・style・% 指定・混在）を追加。
+
 ### バグ修正
 
 - **access_token 期限切れ時に一瞬ログイン画面へ戻る問題を修正** — 追加依頼。`src/hooks/useAuth.ts` の `checkAuth` で「以前認証済み」かつ `/api/auth/me` が `user: null` を返した場合、即座に `setUser(null)` せず 800ms / 1600ms の指数バックオフで最大 2 回までリトライしてから判定するよう変更。サーバー側 refresh の transient 失敗や JWKS 一時障害・R2 読み取り遅延で偶発的に null が返っても、ユーザーがログイン画面にフラッシュ遷移しなくなる（リロードで復帰できていた挙動を自動化）。`sessionRecoveryAttempts` カウンタは成功時にリセット。既存の `?login=1` 直後リトライ (600ms 単発) とは別の経路。
