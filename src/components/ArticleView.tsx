@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Article, EngagementAction, Feed } from "../types";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
@@ -171,6 +171,37 @@ export default function ArticleView({
   // スクロール位置の保存・復元
   const mainRef = useRef<HTMLElement>(null);
 
+  // 翻訳ハンドラー: 本文未取得時は先に全文を取得してから翻訳する（Issue #119）
+  // storedContent が無いまま doTranslate を呼ぶと、サーバー側で短い RSS 本文しか翻訳できず
+  // HTML 構造保持のクライアント翻訳（Chrome Translator API）も発動しない。
+  // 先に fetchFullContent を呼び、取得結果を onFetched 経由で doTranslate に渡す。
+  const handleTranslate = useCallback(() => {
+    if (!article?.link) return;
+    if (translateResult) {
+      resetTranslate();
+      return;
+    }
+    if (translateLoading || fetching) return;
+    const link = article.link;
+    const id = article.id;
+    if (storedContent) {
+      doTranslate(link, id, storedContent);
+      return;
+    }
+    void fetchFullContent((content) => {
+      doTranslate(link, id, content);
+    });
+  }, [
+    article,
+    translateResult,
+    translateLoading,
+    fetching,
+    storedContent,
+    resetTranslate,
+    doTranslate,
+    fetchFullContent,
+  ]);
+
   // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)
   // useSyncedRef で最新値を参照し、リスナーの再登録を回避する
   const shortcutRef = useSyncedRef({
@@ -183,10 +214,7 @@ export default function ArticleView({
     aiLoading,
     doRunAi,
     resetAi,
-    translateResult,
-    translateLoading,
-    doTranslate,
-    resetTranslate,
+    handleTranslate,
   });
   useEventListener(
     "keydown",
@@ -204,11 +232,7 @@ export default function ArticleView({
         }
       }
       if (e.key === "z" && s.articleLink) {
-        if (s.translateResult) {
-          s.resetTranslate();
-        } else if (!s.translateLoading && !s.fetching) {
-          void s.doTranslate(s.articleLink, s.articleId!, s.storedContent ?? undefined);
-        }
+        s.handleTranslate();
       }
       if (e.key === " ") {
         const el = mainRef.current;
@@ -535,15 +559,7 @@ export default function ArticleView({
                   {aiLoading ? "…" : "要約"}
                 </button>
                 <button
-                  onClick={() => {
-                    if (translateResult) {
-                      resetTranslate();
-                      return;
-                    }
-                    if (article.link) {
-                      doTranslate(article.link, article.id, storedContent ?? undefined);
-                    }
-                  }}
+                  onClick={handleTranslate}
                   disabled={translateLoading || fetching}
                   title="AI 翻訳（日本語）(z)"
                   className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
