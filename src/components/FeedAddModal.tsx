@@ -13,6 +13,8 @@ interface Props {
   onCookieOpenChange: (v: boolean) => void;
   cssSelectorOpen: boolean;
   onCssSelectorOpenChange: (v: boolean) => void;
+  useRsshub: boolean;
+  onUseRsshubChange: (v: boolean) => void;
   adding: boolean;
   error: string | null;
   onSubmit: (e: React.FormEvent) => void;
@@ -34,6 +36,8 @@ export default function FeedAddModal({
   onCookieOpenChange,
   cssSelectorOpen,
   onCssSelectorOpenChange,
+  useRsshub,
+  onUseRsshubChange,
   adding,
   error,
   onSubmit,
@@ -97,6 +101,18 @@ export default function FeedAddModal({
               </p>
             </div>
           )}
+
+          {/* RSSHub 連携 (Twitter / YouTube / GitHub など RSS のないサイトを自動変換) */}
+          <label className="mt-3 flex items-center gap-2 text-[11px] text-text-muted hover:text-text-default cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={useRsshub}
+              onChange={(e) => onUseRsshubChange(e.target.checked)}
+              disabled={adding}
+              className="w-3.5 h-3.5 accent-ink cursor-pointer"
+            />
+            <span>RSSHub で自動変換（Twitter / YouTube / GitHub 等）</span>
+          </label>
 
           {error && <p className="text-[12px] text-rose-400 mt-2">{error}</p>}
 

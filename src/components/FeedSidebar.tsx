@@ -630,6 +630,7 @@ export default function FeedSidebar({
   const [newUrl, setNewUrl] = useState("");
   const [newCookie, setNewCookie] = useState("");
   const [newCssSelector, setNewCssSelector] = useState("");
+  const [newUseRsshub, setNewUseRsshub] = useState(true);
   const [cssSelectorOpen, setCssSelectorOpen] = useState(false);
   const [cookieOpen, setCookieOpen] = useState(false);
   const [inputOpen, setInputOpen] = useState(false);
@@ -684,12 +685,14 @@ export default function FeedSidebar({
         setNewUrl("");
         setNewCookie("");
         setNewCssSelector("");
+        setNewUseRsshub(true);
         setCookieOpen(false);
         setCssSelectorOpen(false);
         setInputOpen(false);
       },
       newCookie || undefined,
       newCssSelector || undefined,
+      newUseRsshub,
     );
     if (result?.canRetryWithSelector) {
       setCssSelectorOpen(true);
@@ -956,6 +959,8 @@ export default function FeedSidebar({
           onCookieOpenChange={setCookieOpen}
           cssSelectorOpen={cssSelectorOpen}
           onCssSelectorOpenChange={setCssSelectorOpen}
+          useRsshub={newUseRsshub}
+          onUseRsshubChange={setNewUseRsshub}
           adding={adding}
           error={error ?? null}
           onSubmit={handleAddFeed}
@@ -966,6 +971,7 @@ export default function FeedSidebar({
             setNewUrl("");
             setNewCookie("");
             setNewCssSelector("");
+            setNewUseRsshub(true);
             clearError();
           }}
         />
