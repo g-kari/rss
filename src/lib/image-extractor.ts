@@ -4,7 +4,13 @@
  * - `bestSrcFromSrcset`: srcset 文字列から最高解像度エントリの URL を取り出す。
  * - `collectImageUrlsFromHtml`: HTML 文字列から正規表現ベースで画像 URL を抽出する（useMemo 等 DOM 不要な場面向け）。
  * - `collectImageUrls`: live DOM の Element から画像 URL を抽出する（useImageDownload 等 DOM 参照向け）。
+ *
+ * いずれも HTML 属性 / 実寸 (naturalWidth 等) から「両辺とも `MIN_IMAGE_SIZE_PX` 未満」と判定できる
+ * アイコン・スペーサーを除外する（例: 60x60 のサイトロゴ / SNSシェアアイコン等）。
  */
+
+/** 画像一覧・DL対象の最小サイズ（短辺・長辺いずれかが到達していれば対象） */
+export const MIN_IMAGE_SIZE_PX = 100;
 
 /**
  * srcset 属性文字列の最後のエントリ（最高解像度）の URL を返す。
@@ -27,12 +33,46 @@ function isCollectableUrl(src: string, seen: Set<string>): boolean {
   );
 }
 
+/** "60" / "60px" など数値のみ受け付け、"100%" や "auto" は null を返す */
+function parseSizeAttr(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const m = /^(\d+(?:\.\d+)?)\s*(?:px)?$/i.exec(value.trim());
+  return m ? Number(m[1]) : null;
+}
+
+/** style 文字列から `width: 60px` / `height: 60px` の数値を取り出す。px 以外は null */
+function parseSizeFromStyle(
+  style: string | null | undefined,
+  prop: "width" | "height",
+): number | null {
+  if (!style) return null;
+  const re = new RegExp(`\\b${prop}\\s*:\\s*(\\d+(?:\\.\\d+)?)\\s*px`, "i");
+  const m = re.exec(style);
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * HTML 属性（width / height / style）から「明示的に両辺とも閾値未満」と判定できる場合のみ true。
+ * 片方しか明示されていない場合や属性がない場合は false（= 小さい画像と断定できない = 収集対象）。
+ */
+function isTooSmallByAttrs(
+  widthAttr: string | null | undefined,
+  heightAttr: string | null | undefined,
+  styleAttr: string | null | undefined,
+): boolean {
+  const w = parseSizeAttr(widthAttr) ?? parseSizeFromStyle(styleAttr, "width");
+  const h = parseSizeAttr(heightAttr) ?? parseSizeFromStyle(styleAttr, "height");
+  if (w === null || h === null) return false;
+  return w < MIN_IMAGE_SIZE_PX && h < MIN_IMAGE_SIZE_PX;
+}
+
 /**
  * HTML 文字列から画像 URL を重複なしで抽出する。
  * useMemo など DOM 操作が不要なコンテキスト向け。
  *
  * - src 属性を優先し、data: の場合は srcset からフォールバック
  * - data: URI / 非 proxy・非絶対 URL は除外
+ * - width/height 属性（または style）から両辺とも `MIN_IMAGE_SIZE_PX` 未満と判定できる画像は除外
  */
 export function collectImageUrlsFromHtml(html: string): string[] {
   const seen = new Set<string>();
@@ -47,6 +87,10 @@ export function collectImageUrlsFromHtml(html: string): string[] {
       src = bestSrcFromSrcset(srcset);
     }
     if (!isCollectableUrl(src, seen)) continue;
+    const widthAttr = /\bwidth=["']([^"']+)["']/i.exec(attrs)?.[1];
+    const heightAttr = /\bheight=["']([^"']+)["']/i.exec(attrs)?.[1];
+    const styleAttr = /\bstyle=["']([^"']+)["']/i.exec(attrs)?.[1];
+    if (isTooSmallByAttrs(widthAttr, heightAttr, styleAttr)) continue;
     seen.add(src);
     result.push(src);
   }
@@ -60,16 +104,32 @@ export function collectImageUrlsFromHtml(html: string): string[] {
  * - live DOM では currentSrc（srcset 解決済み）を優先
  * - data: プレースホルダーは srcset からフォールバック
  * - data: URI / 非 proxy・非絶対 URL は除外
+ * - naturalWidth/Height が取れる場合は両辺とも `MIN_IMAGE_SIZE_PX` 未満を除外
+ * - 実寸が未解決（0）なら HTML 属性 / style から同条件で除外
  */
 export function collectImageUrls(container: Element, seen?: Set<string>): string[] {
   const s = seen ?? new Set<string>();
   const result: string[] = [];
   for (const img of container.querySelectorAll("img")) {
-    let src = (img as HTMLImageElement).currentSrc || img.getAttribute("src") || "";
+    const el = img as HTMLImageElement;
+    let src = el.currentSrc || el.getAttribute("src") || "";
     if (!src || src.startsWith("data:")) {
-      src = bestSrcFromSrcset(img.getAttribute("srcset") ?? "");
+      src = bestSrcFromSrcset(el.getAttribute("srcset") ?? "");
     }
     if (!isCollectableUrl(src, s)) continue;
+    const nw = el.naturalWidth;
+    const nh = el.naturalHeight;
+    if (nw > 0 && nh > 0) {
+      if (nw < MIN_IMAGE_SIZE_PX && nh < MIN_IMAGE_SIZE_PX) continue;
+    } else if (
+      isTooSmallByAttrs(
+        el.getAttribute("width"),
+        el.getAttribute("height"),
+        el.getAttribute("style"),
+      )
+    ) {
+      continue;
+    }
     s.add(src);
     result.push(src);
   }
