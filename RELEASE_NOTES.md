@@ -4,6 +4,7 @@
 
 ### 新機能
 
+- **フィード一覧の各種メニューを右クリック（コンテキストメニュー）に移行** — Issue #110。`src/components/FeedItem.tsx` のサイドバー上にホバー時だけ現れていた多数のアイコンボタン群（詳細・スター・NSFW・フィルター・カテゴリ・グループ・ミュート・ピン・既読化・更新・再推論・削除）を常時表示の ⋮ ボタンひとつに集約し、さらにフィード項目全体に `onContextMenu` ハンドラを追加してマウス右クリックでカーソル位置にメニューをポップアップさせるようにした。`menuPortalStyle` 計算を「⋮ボタンの `getBoundingClientRect` ベース」から、右クリック由来のときはマウス座標 (`e.clientX` / `e.clientY`)、⋮ボタン由来のときは従来のボタン基準、という二系統に拡張し、どちらの場合も画面端ではみ出さないようクランプしている。編集中 (`editing` / `categoryEditing`) はコンテキストメニューを無効化してテキスト入力側のネイティブメニューを残す。ドラッグ&ドロップ (`draggable` / `onDragStart`) との競合を避けるため `onContextMenu` では `e.preventDefault()` + `e.stopPropagation()` のみで drag API に干渉しない設計。
 - **60×60 などの小さい画像を画像一覧・一括ダウンロード対象から除外** — Issue #112。`src/lib/image-extractor.ts` に `MIN_IMAGE_SIZE_PX = 100` を定数追加し、`collectImageUrlsFromHtml` では img タグの `width` / `height` 属性（または `style` の `px` 指定）、`collectImageUrls`（DOM 版）では `naturalWidth` / `naturalHeight` を優先し未解決時は属性にフォールバックする形で、**両辺とも閾値未満**の画像（サイトロゴ / SNS シェアアイコン / スペーサー等）を抽出段階で除外するよう変更。片方しかサイズ情報がない（縦長・横長画像の可能性）ケースや `%` 指定・属性未指定ケースは誤判定を避けて従来通り収集対象に残す。既存の `useImageDownload.fetchOne` の `createImageBitmap` による 100px 未満除外は二重防護として維持。`e2e/image-extractor.spec.ts` に 16 ケース（srcset フォールバック / data URI 除外 / サイズ閾値境界 / 片辺のみ・style・% 指定・混在）を追加。
 
 ### バグ修正

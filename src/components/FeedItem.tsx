@@ -165,6 +165,9 @@ export default function FeedItem({
   const [groupOpen, setGroupOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  // 右クリック由来のときはカーソル座標、⋮ ボタン由来のときは null。
+  // null のときは menuButtonRef ベースで位置を決める。
+  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -506,19 +509,29 @@ export default function FeedItem({
   const menuBtnRect = menuButtonRef.current?.getBoundingClientRect();
 
   const menuPortalStyle: React.CSSProperties = (() => {
-    if (!menuBtnRect) return { top: 0, right: 0 };
+    const MIN_MENU_WIDTH = 180;
+    const estimatedMenuHeight = visibleActions.length * 34;
 
-    const MIN_MENU_WIDTH = 120;
-    // ボタン右端に揃えつつ、左端が viewport 外に出ないようクランプ
+    // 右クリック由来: マウス座標に展開（画面端ではみ出さないようクランプ）
+    if (menuAnchor) {
+      const left = Math.min(menuAnchor.x, window.innerWidth - MIN_MENU_WIDTH - 4);
+      const spaceBelow = window.innerHeight - menuAnchor.y;
+      if (spaceBelow >= estimatedMenuHeight) {
+        return { top: menuAnchor.y, left: Math.max(4, left) };
+      }
+      return {
+        bottom: window.innerHeight - menuAnchor.y,
+        left: Math.max(4, left),
+      };
+    }
+
+    // ⋮ ボタン由来: ボタン右端に揃える（従来挙動）
+    if (!menuBtnRect) return { top: 0, right: 0 };
     const rightPos = Math.min(
       Math.max(0, window.innerWidth - menuBtnRect.right),
       window.innerWidth - MIN_MENU_WIDTH,
     );
-
-    // 各アイテム約34px で高さを推定し、下スペースが足りない場合は上に展開
-    const estimatedMenuHeight = visibleActions.length * 34;
     const spaceBelow = window.innerHeight - menuBtnRect.bottom;
-
     if (spaceBelow >= estimatedMenuHeight) {
       return { top: menuBtnRect.bottom + 2, right: rightPos };
     }
@@ -549,6 +562,18 @@ export default function FeedItem({
           : undefined
       }
       onDragEnd={canDrag ? () => onDragEndFeed?.() : undefined}
+      onContextMenu={
+        editing || categoryEditing
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setMuteOpen(false);
+              setGroupOpen(false);
+              setMenuAnchor({ x: e.clientX, y: e.clientY });
+              setMenuOpen(true);
+            }
+      }
       className={`group relative flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 ${
         isSelected
           ? "text-text-strong bg-surface-subtle"
@@ -684,35 +709,16 @@ export default function FeedItem({
           </span>
         )}
 
-        {/* デスクトップ: ホバーで表示 */}
-        <span
-          className={`opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 flex items-center gap-0.5 ${menuOpen ? "!opacity-0 !pointer-events-none" : ""}`}
-        >
-          {visibleActions.map((action) => (
-            <button
-              key={action.key}
-              onClick={(e) => {
-                e.stopPropagation();
-                action.onClick();
-              }}
-              disabled={action.disabled}
-              title={action.label}
-              className={`p-0.5 transition-colors duration-150 disabled:opacity-40 ${action.className ?? ""}`}
-            >
-              {action.icon}
-            </button>
-          ))}
-        </span>
-
-        {/* モバイル用 ⋮ ボタン (lg 以上では非表示) */}
+        {/* ⋮ ボタン: ホバーで表示（右クリックでも開ける） */}
         <button
           ref={menuButtonRef}
           onClick={(e) => {
             e.stopPropagation();
+            setMenuAnchor(null);
             setMenuOpen((v) => !v);
           }}
-          className="lg:hidden p-1 -mr-1 text-text-faint transition-colors duration-150"
-          title="操作メニュー"
+          className={`p-1 -mr-1 text-text-faint hover:text-text-default transition-opacity duration-150 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 ${menuOpen ? "!opacity-100" : ""}`}
+          title="操作メニュー（右クリックでも開けます）"
           aria-label="操作メニューを開く"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
