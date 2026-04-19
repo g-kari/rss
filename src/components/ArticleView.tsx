@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef } from "react";
-import type { Article, EngagementAction, Feed, KeywordFilter } from "../types";
+import type { Article, EngagementAction, Feed } from "../types";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
+import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { readingTime, FONT_SIZE_CLASSES, FONT_FAMILY_CLASSES } from "../lib/article-utils";
 import { collectImageUrlsFromHtml } from "../lib/image-extractor";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
@@ -58,16 +59,10 @@ interface Props {
   onSelectPrev?: () => void;
   onSelectNext?: () => void;
   feeds?: Feed[];
-  onSaveFilter?: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
-  globalFilter?: KeywordFilter | null;
-  onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
   onSnooze?: (id: string, durationMs: number) => void;
-  query?: string;
-  onSetQuery?: (q: string) => void;
   note?: string;
   onSetNote?: (articleId: string, text: string) => void;
   onDeleteNote?: (articleId: string) => void;
-  onSetAuthorFilter?: (author: string) => void;
   onAutoMarkRead?: (articleId: string) => void;
 }
 
@@ -89,16 +84,10 @@ export default function ArticleView({
   onSelectPrev,
   onSelectNext,
   feeds,
-  onSaveFilter,
-  globalFilter,
-  onSaveGlobalFilter,
   onSnooze,
-  query = "",
-  onSetQuery,
   note,
   onSetNote,
   onDeleteNote,
-  onSetAuthorFilter,
   onAutoMarkRead,
 }: Props) {
   const {
@@ -113,6 +102,18 @@ export default function ArticleView({
     contentWidth,
     textJustify,
   } = useReaderSettings();
+  const {
+    onSaveFilter,
+    globalFilter,
+    setGlobalFilter: onSaveGlobalFilter,
+    query,
+    updateQuery: onSetQuery,
+    setAuthorFilter,
+  } = useArticleFilter();
+  const onSetAuthorFilter = (author: string) => {
+    setAuthorFilter(author);
+    showToast?.(`「${author}」の記事に絞り込みました`);
+  };
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
 
@@ -378,8 +379,7 @@ export default function ArticleView({
     !!(article.ogImage ?? resolvedOgImage) ||
     !!(processedContent && /<img\b/i.test(processedContent));
   const readingMins = readingTime(processedContent ?? article.summary ?? "");
-  const filterFeed =
-    feeds && onSaveFilter ? feeds.find((f) => f.id === article.feedHash) : undefined;
+  const filterFeed = feeds ? feeds.find((f) => f.id === article.feedHash) : undefined;
 
   function handleScroll(e: React.UIEvent<HTMLElement>) {
     const el = e.currentTarget;
@@ -442,18 +442,15 @@ export default function ArticleView({
                 })}
               </time>
             )}
-            {article.author &&
-              (onSetAuthorFilter ? (
-                <button
-                  onClick={() => onSetAuthorFilter(article.author!)}
-                  title={`「${article.author}」の記事に絞り込む`}
-                  className="tracking-[0.04em] text-text-muted hover:text-text-default transition-colors duration-150 text-left"
-                >
-                  {article.author}
-                </button>
-              ) : (
-                <span className="tracking-[0.04em] text-text-muted">{article.author}</span>
-              ))}
+            {article.author && (
+              <button
+                onClick={() => onSetAuthorFilter(article.author!)}
+                title={`「${article.author}」の記事に絞り込む`}
+                className="tracking-[0.04em] text-text-muted hover:text-text-default transition-colors duration-150 text-left"
+              >
+                {article.author}
+              </button>
+            )}
             {article.link && !embedInfo && (
               <a
                 href={article.link}

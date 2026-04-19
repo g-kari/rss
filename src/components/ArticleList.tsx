@@ -12,7 +12,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEventListener } from "@/hooks/useEventListener";
 import type { Article, Feed, Layout, DateRange } from "../types";
-import type { FilterState } from "../hooks/useFilteredArticles";
+import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { SHORTCUT_MAP } from "../config/shortcuts";
 import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
@@ -49,8 +49,6 @@ interface Props {
   feedHasMorePages?: boolean;
   onLoadMoreFeedArticles?: () => Promise<void>;
   notes?: Record<string, string>;
-  /** useFilteredArticles の戻り値をそのまま渡す */
-  filter: FilterState;
 }
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
@@ -143,7 +141,6 @@ export default function ArticleList({
   feedHasMorePages,
   onLoadMoreFeedArticles,
   notes,
-  filter,
 }: Props) {
   const {
     filtered,
@@ -178,7 +175,7 @@ export default function ArticleList({
     setAuthorFilter,
     categoryFilter,
     setCategoryFilter,
-  } = filter;
+  } = useArticleFilter();
   const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [confirmMarkAll, setConfirmMarkAll] = useState(false);

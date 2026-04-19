@@ -32,6 +32,7 @@ import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
 import { useColumnResize } from "./hooks/useColumnResize";
 import { ReaderSettingsProvider, type ReaderSettings } from "./contexts/ReaderSettingsContext";
+import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFilterContext";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -465,10 +466,8 @@ export default function App() {
     readingTimeRange,
     cycleReadingTimeRange,
     query,
-    updateQuery,
     searchRef,
     notifyArticlesAdded,
-    setAuthorFilter,
   } = filterState;
 
   const currentIndex = useMemo(
@@ -828,295 +827,290 @@ export default function App() {
     );
   }
 
+  const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
+
   return (
     <ReaderSettingsProvider value={readerSettings}>
-      <div
-        data-layout="root"
-        className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
-        style={{
-          gridTemplateColumns: focusMode ? `0px 0px 1fr` : `${sidebarWidth}px ${listWidth}px 1fr`,
-          gridTemplateRows: "100%",
-          transition: "grid-template-columns 0.25s ease",
-        }}
-      >
-        {/* オフラインバナー */}
-        {!isOnline && (
-          <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 py-1.5 bg-surface-subtle border-b border-border-default text-[11px] tracking-[0.04em] text-text-muted">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M1 1l10 10M8.5 3.5A4 4 0 0 0 2.5 7M10 5.5A6 6 0 0 0 5 2M4 8a2 2 0 0 1 4 0" />
-            </svg>
-            オフライン — キャッシュされたデータを表示中
-          </div>
-        )}
-
-        {/* トースト通知 */}
-        {toast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] tracking-[0.04em] px-4 py-2 bg-ink text-ink-text rounded-full shadow-lg animate-fade-up pointer-events-none">
-            {toast}
-          </div>
-        )}
-
-        {/* スヌーズ期間選択 */}
-        {snoozeTargetId &&
-          (() => {
-            const article = articles.find((a) => a.id === snoozeTargetId);
-            const idx = filtered.findIndex((a) => a.id === snoozeTargetId);
-            return (
-              <SnoozeModal
-                articleTitle={article?.title ?? ""}
-                onSnooze={(durationMs) => {
-                  snoozeArticle(snoozeTargetId, durationMs);
-                  const hours = Math.round(durationMs / (60 * 60 * 1000));
-                  showToast(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
-                  const next = filtered[idx + 1];
-                  if (next) setSelectedArticle(next);
-                }}
-                onClose={() => setSnoozeTargetId(null)}
-              />
-            );
-          })()}
-        {/* キーボードショートカット ヘルプ */}
-        {showHelp && <KeyboardShortcutsModal onClose={() => setShowHelp(false)} />}
-        {/* ユーザー設定 */}
-        {showSettings && <UserSettingsModal onClose={() => setShowSettings(false)} />}
-        {/* フィードクイックスイッチャー */}
-        {showFeedSwitcher && (
-          <FeedQuickSwitchModal
-            feeds={feeds}
-            articles={articles}
-            readIds={readIds}
-            readBeforeTimestamp={readBeforeTimestamp}
-            selectedFeedId={selectedFeedId}
-            onSelectFeed={setSelectedFeedId}
-            onClose={() => setShowFeedSwitcher(false)}
-          />
-        )}
-        {/* NSFW 目が開くアニメーション */}
-        {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
-        {newArticleCount > 0 && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-ink text-ink-text text-[12px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] animate-fade-up">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
-            新着記事 {newArticleCount} 件
-            <button
-              onClick={dismissNewArticles}
-              className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
-              aria-label="通知を閉じる"
-            >
+      <ArticleFilterProvider value={articleFilter}>
+        <div
+          data-layout="root"
+          className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
+          style={{
+            gridTemplateColumns: focusMode ? `0px 0px 1fr` : `${sidebarWidth}px ${listWidth}px 1fr`,
+            gridTemplateRows: "100%",
+            transition: "grid-template-columns 0.25s ease",
+          }}
+        >
+          {/* オフラインバナー */}
+          {!isOnline && (
+            <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 py-1.5 bg-surface-subtle border-b border-border-default text-[11px] tracking-[0.04em] text-text-muted">
               <svg
                 width="12"
                 height="12"
                 viewBox="0 0 12 12"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.8"
+                strokeWidth="1.5"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <path d="M2 2l8 8M10 2l-8 8" />
+                <path d="M1 1l10 10M8.5 3.5A4 4 0 0 0 2.5 7M10 5.5A6 6 0 0 0 5 2M4 8a2 2 0 0 1 4 0" />
               </svg>
-            </button>
-          </div>
-        )}
-        {/* カラムリサイズハンドル (PCのみ、フォーカスモード / ポップアップ表示中は無効) */}
-        {!focusMode && (
-          <>
-            <div
-              className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
-              style={{ left: sidebarWidth - 2 }}
-              onMouseDown={(e) => handleResizeStart("sidebar", e)}
-              onDoubleClick={() => resetWidth("sidebar")}
-              aria-hidden={hasOpenPopup}
-            >
-              <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+              オフライン — キャッシュされたデータを表示中
             </div>
-            <div
-              className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
-              style={{ left: sidebarWidth + listWidth - 2 }}
-              onMouseDown={(e) => handleResizeStart("list", e)}
-              onDoubleClick={() => resetWidth("list")}
-              aria-hidden={hasOpenPopup}
-            >
-              <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+          )}
+
+          {/* トースト通知 */}
+          {toast && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] tracking-[0.04em] px-4 py-2 bg-ink text-ink-text rounded-full shadow-lg animate-fade-up pointer-events-none">
+              {toast}
             </div>
-          </>
-        )}
-        <div
-          data-pane="sidebar"
-          className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "sidebar" ? "hidden lg:block" : ""}`}
-        >
-          <ErrorBoundary label="サイドバー">
-            <FeedSidebar
+          )}
+
+          {/* スヌーズ期間選択 */}
+          {snoozeTargetId &&
+            (() => {
+              const article = articles.find((a) => a.id === snoozeTargetId);
+              const idx = filtered.findIndex((a) => a.id === snoozeTargetId);
+              return (
+                <SnoozeModal
+                  articleTitle={article?.title ?? ""}
+                  onSnooze={(durationMs) => {
+                    snoozeArticle(snoozeTargetId, durationMs);
+                    const hours = Math.round(durationMs / (60 * 60 * 1000));
+                    showToast(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
+                    const next = filtered[idx + 1];
+                    if (next) setSelectedArticle(next);
+                  }}
+                  onClose={() => setSnoozeTargetId(null)}
+                />
+              );
+            })()}
+          {/* キーボードショートカット ヘルプ */}
+          {showHelp && <KeyboardShortcutsModal onClose={() => setShowHelp(false)} />}
+          {/* ユーザー設定 */}
+          {showSettings && <UserSettingsModal onClose={() => setShowSettings(false)} />}
+          {/* フィードクイックスイッチャー */}
+          {showFeedSwitcher && (
+            <FeedQuickSwitchModal
               feeds={feeds}
               articles={articles}
               readIds={readIds}
               readBeforeTimestamp={readBeforeTimestamp}
-              bookmarkCount={bookmarkCount}
-              readingListCount={readingListCount}
-              likeCount={likeCount}
-              historyCount={historyCount}
               selectedFeedId={selectedFeedId}
-              selectedGroupId={selectedGroupId}
-              user={user}
-              theme={theme}
-              onSelectFeed={(id) => {
-                setSelectedFeedId(id);
-                setSelectedGroupId(null);
-                setSelectedArticle(null);
-                setMobilePane("list");
-              }}
-              onSelectGroup={(id) => {
-                setSelectedGroupId(id);
-                setSelectedFeedId(null);
-                setSelectedArticle(null);
-                setMobilePane("list");
-              }}
-              onFeedAdded={onFeedAdded}
-              onFeedDeleted={onFeedDeleted}
-              onFeedRenamed={updateFeed}
-              onSaveFilter={saveFilter}
-              onFeedsImported={appendFeeds}
-              onMarkAllRead={markAllRead}
-              onToggleTheme={toggleTheme}
-              onOpenSettings={() => setShowSettings(true)}
-              onSaveArticleUrl={onSaveArticleUrl}
-              onRefresh={refreshFeeds}
-              onRetryFeed={retryFeed}
-              onReinferFeed={reinferFeed}
-              refreshing={refreshing}
-              pinnedFeedIds={pinnedFeedIds}
-              onTogglePinFeed={togglePinFeed}
-              collapsedCategories={collapsedCategories}
-              onToggleCollapseCategory={toggleCollapseCategory}
-              nsfwMode={nsfwMode}
-              onActivateNsfw={activateNSFW}
-              onDeactivateNsfw={deactivateNSFW}
-              onToggleNsfwFeed={toggleNsfwFeed}
-              onTogglePriorityFeed={togglePriorityFeed}
-              onSetCategoryFeed={setCategoryFeed}
-              feedGroups={feedGroups}
-              onSetGroupFeed={setGroupFeed}
-              onCreateFeedGroup={createGroup}
-              onRenameFeedGroup={renameGroup}
-              onDeleteFeedGroup={deleteGroup}
-              onToggleCollapseFeedGroup={setFeedGroupCollapsed}
-              onToggleMuteFeedGroup={setFeedGroupMuted}
-              onReorderFeedGroup={reorderGroup}
-              onMarkAllReadInGroup={(feedIds) => {
-                // グループ内フィードの記事 ID を 1 パスで集約して markBulkRead に渡す
-                // （feedIds ループで markAllRead を呼ぶと articlesRef を N 回スキャンするのを回避）
-                const feedSet = new Set(feedIds);
-                const ids = articles.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
-                if (ids.length > 0) markBulkRead(ids);
-              }}
-              onMuteFeed={muteFeed}
-              recommendations={recommendations}
-              recommendationsLoading={recommendationsLoading}
-              recommendationsRefreshing={recommendationsRefreshing}
-              onDismissRecommendation={dismissRecommendation}
-              onRefreshRecommendations={refreshRecommendations}
-              onExportMarkdown={(mode) => {
-                const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
-                exportArticlesToMarkdown(articles, ids, feeds, mode);
-              }}
-              onExportNotes={() => {
-                exportNotesToMarkdown(articles, notes, feeds);
-              }}
-              noteCount={Object.keys(notes).length}
-              install={install}
-              push={{
-                supported: pushSupported,
-                subscribed: pushSubscribed,
-                loading: pushLoading,
-                error: pushError,
-                onToggle: togglePush,
-                onSendTest: sendPushTest,
-              }}
+              onSelectFeed={setSelectedFeedId}
+              onClose={() => setShowFeedSwitcher(false)}
             />
-          </ErrorBoundary>
-        </div>
-        <div
-          data-pane="list"
-          className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""}`}
-        >
-          <ErrorBoundary label="記事一覧">
-            <ArticleList
-              feeds={feeds}
-              readIds={readIds}
-              readBeforeTimestamp={readBeforeTimestamp}
-              bookmarkIds={bookmarkIds}
-              selectedArticleId={selectedArticle?.id ?? null}
-              selectedFeedId={selectedFeedId}
-              layout={layout}
-              loading={loadingArticles}
-              onChangeLayout={onChangeLayout}
-              onMobileBack={() => setMobilePane("sidebar")}
-              onSelectArticle={selectArticle}
-              onToggleRead={toggleRead}
-              onToggleBookmark={toggleBookmark}
-              onMarkAllRead={() => {
-                if (groupFeedIds && groupFeedIds.size > 0) {
-                  // グループ選択中はグループ内のフィードを対象に一括既読
-                  const ids = articles.filter((a) => groupFeedIds.has(a.feedHash)).map((a) => a.id);
+          )}
+          {/* NSFW 目が開くアニメーション */}
+          {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
+          {newArticleCount > 0 && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-ink text-ink-text text-[12px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] animate-fade-up">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
+              新着記事 {newArticleCount} 件
+              <button
+                onClick={dismissNewArticles}
+                className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+                aria-label="通知を閉じる"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                >
+                  <path d="M2 2l8 8M10 2l-8 8" />
+                </svg>
+              </button>
+            </div>
+          )}
+          {/* カラムリサイズハンドル (PCのみ、フォーカスモード / ポップアップ表示中は無効) */}
+          {!focusMode && (
+            <>
+              <div
+                className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
+                style={{ left: sidebarWidth - 2 }}
+                onMouseDown={(e) => handleResizeStart("sidebar", e)}
+                onDoubleClick={() => resetWidth("sidebar")}
+                aria-hidden={hasOpenPopup}
+              >
+                <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+              </div>
+              <div
+                className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
+                style={{ left: sidebarWidth + listWidth - 2 }}
+                onMouseDown={(e) => handleResizeStart("list", e)}
+                onDoubleClick={() => resetWidth("list")}
+                aria-hidden={hasOpenPopup}
+              >
+                <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+              </div>
+            </>
+          )}
+          <div
+            data-pane="sidebar"
+            className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "sidebar" ? "hidden lg:block" : ""}`}
+          >
+            <ErrorBoundary label="サイドバー">
+              <FeedSidebar
+                feeds={feeds}
+                articles={articles}
+                readIds={readIds}
+                readBeforeTimestamp={readBeforeTimestamp}
+                bookmarkCount={bookmarkCount}
+                readingListCount={readingListCount}
+                likeCount={likeCount}
+                historyCount={historyCount}
+                selectedFeedId={selectedFeedId}
+                selectedGroupId={selectedGroupId}
+                user={user}
+                theme={theme}
+                onSelectFeed={(id) => {
+                  setSelectedFeedId(id);
+                  setSelectedGroupId(null);
+                  setSelectedArticle(null);
+                  setMobilePane("list");
+                }}
+                onSelectGroup={(id) => {
+                  setSelectedGroupId(id);
+                  setSelectedFeedId(null);
+                  setSelectedArticle(null);
+                  setMobilePane("list");
+                }}
+                onFeedAdded={onFeedAdded}
+                onFeedDeleted={onFeedDeleted}
+                onFeedRenamed={updateFeed}
+                onFeedsImported={appendFeeds}
+                onMarkAllRead={markAllRead}
+                onToggleTheme={toggleTheme}
+                onOpenSettings={() => setShowSettings(true)}
+                onSaveArticleUrl={onSaveArticleUrl}
+                onRefresh={refreshFeeds}
+                onRetryFeed={retryFeed}
+                onReinferFeed={reinferFeed}
+                refreshing={refreshing}
+                pinnedFeedIds={pinnedFeedIds}
+                onTogglePinFeed={togglePinFeed}
+                collapsedCategories={collapsedCategories}
+                onToggleCollapseCategory={toggleCollapseCategory}
+                nsfwMode={nsfwMode}
+                onActivateNsfw={activateNSFW}
+                onDeactivateNsfw={deactivateNSFW}
+                onToggleNsfwFeed={toggleNsfwFeed}
+                onTogglePriorityFeed={togglePriorityFeed}
+                onSetCategoryFeed={setCategoryFeed}
+                feedGroups={feedGroups}
+                onSetGroupFeed={setGroupFeed}
+                onCreateFeedGroup={createGroup}
+                onRenameFeedGroup={renameGroup}
+                onDeleteFeedGroup={deleteGroup}
+                onToggleCollapseFeedGroup={setFeedGroupCollapsed}
+                onToggleMuteFeedGroup={setFeedGroupMuted}
+                onReorderFeedGroup={reorderGroup}
+                onMarkAllReadInGroup={(feedIds) => {
+                  // グループ内フィードの記事 ID を 1 パスで集約して markBulkRead に渡す
+                  // （feedIds ループで markAllRead を呼ぶと articlesRef を N 回スキャンするのを回避）
+                  const feedSet = new Set(feedIds);
+                  const ids = articles.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
                   if (ids.length > 0) markBulkRead(ids);
-                  return;
-                }
-                markAllRead(selectedFeedId);
-                skipRemainingPages(selectedFeedId);
-              }}
-              feedHasMorePages={feedHasMorePages}
-              onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
-              notes={notes}
-              filter={filterState}
-            />
-          </ErrorBoundary>
+                }}
+                onMuteFeed={muteFeed}
+                recommendations={recommendations}
+                recommendationsLoading={recommendationsLoading}
+                recommendationsRefreshing={recommendationsRefreshing}
+                onDismissRecommendation={dismissRecommendation}
+                onRefreshRecommendations={refreshRecommendations}
+                onExportMarkdown={(mode) => {
+                  const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
+                  exportArticlesToMarkdown(articles, ids, feeds, mode);
+                }}
+                onExportNotes={() => {
+                  exportNotesToMarkdown(articles, notes, feeds);
+                }}
+                noteCount={Object.keys(notes).length}
+                install={install}
+                push={{
+                  supported: pushSupported,
+                  subscribed: pushSubscribed,
+                  loading: pushLoading,
+                  error: pushError,
+                  onToggle: togglePush,
+                  onSendTest: sendPushTest,
+                }}
+              />
+            </ErrorBoundary>
+          </div>
+          <div
+            data-pane="list"
+            className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""}`}
+          >
+            <ErrorBoundary label="記事一覧">
+              <ArticleList
+                feeds={feeds}
+                readIds={readIds}
+                readBeforeTimestamp={readBeforeTimestamp}
+                bookmarkIds={bookmarkIds}
+                selectedArticleId={selectedArticle?.id ?? null}
+                selectedFeedId={selectedFeedId}
+                layout={layout}
+                loading={loadingArticles}
+                onChangeLayout={onChangeLayout}
+                onMobileBack={() => setMobilePane("sidebar")}
+                onSelectArticle={selectArticle}
+                onToggleRead={toggleRead}
+                onToggleBookmark={toggleBookmark}
+                onMarkAllRead={() => {
+                  if (groupFeedIds && groupFeedIds.size > 0) {
+                    // グループ選択中はグループ内のフィードを対象に一括既読
+                    const ids = articles
+                      .filter((a) => groupFeedIds.has(a.feedHash))
+                      .map((a) => a.id);
+                    if (ids.length > 0) markBulkRead(ids);
+                    return;
+                  }
+                  markAllRead(selectedFeedId);
+                  skipRemainingPages(selectedFeedId);
+                }}
+                feedHasMorePages={feedHasMorePages}
+                onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
+                notes={notes}
+              />
+            </ErrorBoundary>
+          </div>
+          <div
+            data-pane="view"
+            className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "view" ? "hidden lg:block" : ""}`}
+          >
+            <ErrorBoundary label="記事表示">
+              <ArticleView
+                article={selectedArticle}
+                isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
+                onToggleBookmark={handleToggleBookmark}
+                isInReadingList={selectedArticle ? readingListIds.has(selectedArticle.id) : false}
+                onToggleReadingList={handleToggleReadingList}
+                isLiked={selectedArticle ? likeIds.has(selectedArticle.id) : false}
+                onToggleLike={handleToggleLike}
+                onEngagement={recordEngagement}
+                onMobileBack={() => setMobilePane("list")}
+                showToast={showToast}
+                prevArticle={prevArticle}
+                nextArticle={nextArticle}
+                onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
+                onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
+                feeds={feeds}
+                onSnooze={snoozeArticle}
+                note={selectedArticle ? notes[selectedArticle.id] : undefined}
+                onSetNote={setNote}
+                onDeleteNote={deleteNote}
+                onAutoMarkRead={markRead}
+              />
+            </ErrorBoundary>
+          </div>
         </div>
-        <div
-          data-pane="view"
-          className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "view" ? "hidden lg:block" : ""}`}
-        >
-          <ErrorBoundary label="記事表示">
-            <ArticleView
-              article={selectedArticle}
-              isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
-              onToggleBookmark={handleToggleBookmark}
-              isInReadingList={selectedArticle ? readingListIds.has(selectedArticle.id) : false}
-              onToggleReadingList={handleToggleReadingList}
-              isLiked={selectedArticle ? likeIds.has(selectedArticle.id) : false}
-              onToggleLike={handleToggleLike}
-              onEngagement={recordEngagement}
-              onMobileBack={() => setMobilePane("list")}
-              showToast={showToast}
-              prevArticle={prevArticle}
-              nextArticle={nextArticle}
-              onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
-              onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
-              feeds={feeds}
-              onSaveFilter={saveFilter}
-              globalFilter={globalFilter}
-              onSaveGlobalFilter={setGlobalFilter}
-              onSnooze={snoozeArticle}
-              query={query}
-              onSetQuery={updateQuery}
-              note={selectedArticle ? notes[selectedArticle.id] : undefined}
-              onSetNote={setNote}
-              onDeleteNote={deleteNote}
-              onSetAuthorFilter={(author) => {
-                setAuthorFilter(author);
-                showToast(`「${author}」の記事に絞り込みました`);
-              }}
-              onAutoMarkRead={markRead}
-            />
-          </ErrorBoundary>
-        </div>
-      </div>
+      </ArticleFilterProvider>
     </ReaderSettingsProvider>
   );
 }
