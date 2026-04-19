@@ -33,18 +33,37 @@ export async function GET(request: Request) {
 
   const cookieStore = await cookies();
   const savedState = cookieStore.get("auth_state")?.value;
+  const cookieNames = cookieStore.getAll().map((c) => c.name);
 
+  // state 不一致の原因特定用に十分な情報を出す。
+  // state 値自体は CSRF トークンなので完全値を出さず、プレフィックス 8 文字と長さのみ記録する。
   console.log("[auth/callback] received", {
     hasCode: !!code,
+    codeLen: code?.length,
     hasState: !!state,
+    stateLen: state?.length,
+    statePrefix: state?.slice(0, 8),
     hasSavedState: !!savedState,
+    savedStatePrefix: savedState?.slice(0, 8),
     stateMatch: state === savedState,
+    existingCookies: cookieNames,
+    userAgent: request.headers.get("user-agent")?.slice(0, 80),
+    referer: request.headers.get("referer"),
+    host: request.headers.get("host"),
+    origin: request.headers.get("origin"),
   });
 
-  // state は HttpOnly cookie で管理されており攻撃者は値を読めないため、
-  // タイミング攻撃は非現実的。通常の文字列比較で十分。
+  // state 不一致の具体的な理由をログに残す（どのケースで失敗したかすぐに判別できるようにする）
   if (!code || !state || !savedState || state !== savedState) {
-    return authError("認証エラー: state 不一致", 400);
+    const reason = !code
+      ? "code_missing"
+      : !state
+        ? "state_missing_in_query"
+        : !savedState
+          ? "auth_state_cookie_missing"
+          : "state_mismatch";
+    console.error("[auth/callback] state check failed", { reason });
+    return authError(`認証エラー: state 不一致 (${reason})`, 400);
   }
 
   const appBaseUrl = process.env.APP_BASE_URL!;
