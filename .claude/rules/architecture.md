@@ -146,6 +146,7 @@ src/
     content.ts               # コンテンツ抽出・後処理パイプライン (Readability + postProcess)
     html.ts                  # sanitizeHtml() / escapeHtml() / toPlainText()
     article-utils.ts         # readingTime() / timeAgo() / isLikelyJapanese()
+    image-extractor.ts       # bestSrcFromSrcset() / collectImageUrlsFromHtml() / collectImageUrls()
     fetch.ts                 # RSS/HTML フェッチヘルパー (タイムアウト・リトライ)
     fetch-article-content.ts # /api/content 内のコンテンツ取得ロジック
     feed-discovery.ts        # フィード URL 自動検出

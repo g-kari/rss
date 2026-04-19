@@ -26,6 +26,10 @@
 - **JWT 検証に `aud` / `iss` クレームチェックを追加** — Issue #100。`src/lib/auth.ts` の `verifyJwt` が従来は署名と `exp` のみ検証しており、`aud` (audience) / `iss` (issuer) クレームを確認していなかったため、同じ 0g0 ID の別オーディエンス／別イシュアー向けトークンを取得した攻撃者が `rss.0g0.xyz` で再利用できる可能性があった。ペイロード検証ステップに `payload.iss === authBaseUrl` の厳密一致チェックと、`payload.aud` が `process.env.CLIENT_ID` を含むこと（文字列/配列両対応）のチェックを追加。JWKS 取得より前に実行することで、不正トークンは早期に弾かれネットワークコストも削減できる。`JWTPayload` インターフェースに `iss?: string` / `aud?: string | string[]` を追加。`e2e/jwt-aud-iss.spec.ts` に 7 ケース（iss 欠落 / iss 不一致 / aud 欠落 / aud 不一致 文字列 / aud 配列に含まれない / CLIENT_ID 未設定 / exp 期限切れ回帰 / シェイプ不正）を追加。
 - **vite-plus path traversal 脆弱性を修正** — Dependabot alert #28 (severity: high, `vite-plus/binding` の `downloadPackageManager()` が `VP_HOME` 外にファイルを書き出せる path traversal 脆弱性) を解消。`package.json` は既に `^0.1.18` に更新済みだったが `package-lock.json` の解決バージョンが 0.1.14 のままだったため、`npm install` で lock ファイルを更新し `vite-plus` / `@voidzero-dev/vite-plus-core` など関連パッケージをすべて 0.1.18 に揃えた。
 
+### リファクタリング
+
+- **画像抽出ロジックを専用モジュール `src/lib/image-extractor.ts` へ集約** — Issue #108。`src/lib/article-utils.ts` 内の `bestSrcFromSrcset` / `isCollectableUrl` / `collectImageUrlsFromHtml` / `collectImageUrls` は記事画像抽出に特化した責務で、主要呼び出し元は `src/components/ArticleView.tsx` と `src/hooks/useImageDownload.ts` の 2 箇所に限られていた。`article-utils.ts` の責務を日本語判定・読了時間・日付比較・UI サイクル定数などの記事メタ系に絞るため、画像抽出系 4 関数を新モジュール `src/lib/image-extractor.ts` に移設し、`article-utils.ts` からは export を削除。呼び出し元 2 ファイルは `import { collectImageUrls(FromHtml) } from "../lib/image-extractor"` に差し替え。動作ロジックは変更なし（純粋リファクタ）。
+
 ## 2026-04-18
 
 ### セキュリティ
