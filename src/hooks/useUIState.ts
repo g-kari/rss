@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useEventListener } from "./useEventListener";
 import { useAutoReset } from "./useAutoReset";
-import type { FontFamily, Layout, FontSize } from "../types";
+import type { FontFamily, Layout, FontSize, FeedView } from "../types";
 import {
   STORAGE_KEYS,
   storageGet,
@@ -32,6 +32,9 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUT_CYCLE, "list" as Layout);
+const FEED_VIEW_CYCLE: readonly FeedView[] = ["articles", "pictures", "videos", "social"] as const;
+const loadActiveFeedView = () =>
+  loadStoredEnum(STORAGE_KEYS.ACTIVE_FEED_VIEW, FEED_VIEW_CYCLE, "articles" as FeedView);
 const loadFontSize = () =>
   loadStoredEnum(STORAGE_KEYS.FONT_SIZE, FONT_SIZE_CYCLE, "medium" as FontSize);
 const loadFontFamily = () =>
@@ -128,6 +131,8 @@ export interface UIState {
   onChangeTextJustify: (v: boolean) => void;
   showSettings: boolean;
   setShowSettings: React.Dispatch<React.SetStateAction<boolean>>;
+  activeFeedView: FeedView;
+  onChangeActiveFeedView: (v: FeedView) => void;
 }
 
 /**
@@ -173,6 +178,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     storageSet(STORAGE_KEYS.TEXT_JUSTIFY, String(v));
   }, []);
   const [showSettings, setShowSettings] = useState(false);
+  const [activeFeedView, onChangeActiveFeedView] = useStoredSetting<FeedView>(
+    loadActiveFeedView,
+    STORAGE_KEYS.ACTIVE_FEED_VIEW,
+  );
 
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
   const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
@@ -305,5 +314,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeTextJustify,
     showSettings,
     setShowSettings,
+    activeFeedView,
+    onChangeActiveFeedView,
   };
 }

@@ -503,3 +503,73 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
     </div>
   );
 });
+
+// ── gallery (Pinterest 風 masonry) ───────────────────────────────────────
+
+export const GalleryArticleItem = memo(function GalleryArticleItem({
+  article,
+  isRead,
+  isBookmarked,
+  isSelected,
+  hasNote,
+  feedName,
+  thumb,
+  showFeedName,
+  query,
+  onSelectArticle,
+  onToggleRead,
+  onToggleBookmark,
+}: Omit<ArticleItemProps, "index">) {
+  return (
+    <div
+      id={`article-${article.id}`}
+      onClick={() => onSelectArticle(article)}
+      className={`group relative mb-3 break-inside-avoid cursor-pointer rounded-lg overflow-hidden transition-all duration-200 animate-fade-up border ${
+        isSelected
+          ? "border-text-strong bg-surface-elevated"
+          : "border-border-default hover:border-text-muted bg-surface-elevated"
+      }`}
+    >
+      {thumb ? (
+        <ArticleThumbnail thumb={thumb} className="w-full h-auto object-cover bg-surface-subtle" />
+      ) : (
+        <div className="w-full aspect-square bg-surface-subtle flex items-center justify-center">
+          <span className="text-[10px] text-text-faint tracking-[0.1em] uppercase">No image</span>
+        </div>
+      )}
+      <div className="p-2.5">
+        {showFeedName && feedName && (
+          <span className="text-[10px] text-text-faint tracking-[0.06em] uppercase block truncate">
+            {feedName}
+          </span>
+        )}
+        <h3
+          className={`text-[12px] leading-snug line-clamp-3 mt-0.5 ${
+            isRead ? "text-text-muted" : "text-text-strong"
+          }`}
+        >
+          {highlightText(article.title || "(タイトルなし)", query)}
+        </h3>
+        <div className="mt-1.5 flex items-center justify-between">
+          <span className="text-[10px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+          <div className="flex items-center gap-1">
+            {hasNote && (
+              <NoteIcon className="text-amber-400 group-hover:opacity-0 transition-opacity duration-150" />
+            )}
+            {!isRead && (
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />
+            )}
+            <ArticleActions
+              size="sm"
+              className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto"
+              isRead={isRead}
+              isBookmarked={isBookmarked}
+              onToggleRead={() => onToggleRead(article.id)}
+              onToggleBookmark={() => onToggleBookmark(article.id)}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});

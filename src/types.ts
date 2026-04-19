@@ -82,7 +82,12 @@ export interface UserSubscription {
   mutedUntil?: string;
   /** 最終アクセス日時（ISO 8601）— GET /api/feeds 時に更新。cron 非アクティブ判定に使用 */
   lastAccessedAt?: string;
+  /** 表示ビュー — サイドバー上部タブでのフィルタに使用 */
+  view?: FeedView;
 }
+
+/** フィード表示ビュー — サイドバータブの分類に使用 */
+export type FeedView = "articles" | "pictures" | "videos" | "social";
 
 /** クライアント向けフィード型（SharedFeedMeta + UserSubscription を合成して返す） */
 export interface Feed {
@@ -115,6 +120,8 @@ export interface Feed {
   failedSelectors?: string[];
   /** ミュート解除予定時刻（ISO 8601）— この時刻まで全フィード表示から非表示 */
   mutedUntil?: string;
+  /** 表示ビュー — サイドバー上部タブでのフィルタに使用 */
+  view?: FeedView;
 }
 
 export interface Article {
@@ -134,7 +141,7 @@ export interface Article {
   metadata?: Array<{ key: string; value: string }>;
 }
 
-export type Layout = "compact" | "list" | "card" | "magazine";
+export type Layout = "compact" | "list" | "card" | "magazine" | "gallery";
 export type FontSize = "small" | "medium" | "large";
 export type FontFamily = "sans" | "serif" | "mono";
 export type SortOrder = "newest" | "oldest";
@@ -233,6 +240,7 @@ export interface FeedPatchPayload {
   groupId?: string | null;
   mutedUntil?: string | null;
   filter?: KeywordFilter | null;
+  view?: FeedView | null;
 }
 
 export interface FeedGroup {
