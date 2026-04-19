@@ -73,6 +73,36 @@ test.describe("refreshTokens — 恒久失敗 (invalid)", () => {
     expect(result.kind).toBe("invalid");
   });
 
+  test("401 TOKEN_REUSE → kind=invalid (本物のリプレイ攻撃)", async () => {
+    const mock: FetchFn = async () =>
+      new Response(
+        JSON.stringify({ error: { code: "TOKEN_REUSE", message: "Token reuse detected" } }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    const result = await withMockFetch(mock, () => refreshTokens("rt"), ENV);
+    expect(result.kind).toBe("invalid");
+  });
+
+  test("401 INVALID_TOKEN → kind=invalid", async () => {
+    const mock: FetchFn = async () =>
+      new Response(
+        JSON.stringify({ error: { code: "INVALID_TOKEN", message: "Token not found" } }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    const result = await withMockFetch(mock, () => refreshTokens("rt"), ENV);
+    expect(result.kind).toBe("invalid");
+  });
+
+  test("401 TOKEN_EXPIRED → kind=invalid", async () => {
+    const mock: FetchFn = async () =>
+      new Response(
+        JSON.stringify({ error: { code: "TOKEN_EXPIRED", message: "Refresh token expired" } }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    const result = await withMockFetch(mock, () => refreshTokens("rt"), ENV);
+    expect(result.kind).toBe("invalid");
+  });
+
   test("403 Forbidden → kind=invalid", async () => {
     const mock: FetchFn = async () => new Response("nope", { status: 403 });
     const result = await withMockFetch(mock, () => refreshTokens("rt"), ENV);
@@ -134,6 +164,32 @@ test.describe("refreshTokens — 回帰テスト", () => {
     // 旧実装: null → /api/auth/me が Cookie 削除してログアウト扱い
     // 新実装: transient → Cookie 保持で次回リフレッシュ再試行
     expect(result.kind).not.toBe("invalid");
+    expect(result.kind).toBe("transient");
+  });
+});
+
+/**
+ * issue #113: 定期ログアウトの原因。
+ * 0g0-id 側の `/auth/refresh` は並列リフレッシュ競合（30 秒以内の rotation 済みトークン再提示）時に
+ * HTTP 401 + `{ error: { code: "TOKEN_ROTATED", message: "..." } }` を返す（refresh-token-rotation.ts 参照）。
+ *
+ * このとき新しい refresh_token が既に発行済みのため、Cookie を削除してしまうと
+ * 正しく発行されたセッションまで無効化されてしまう。複数タブ・タブ復帰時の
+ * 同時リフレッシュで必ず起きるため「定期ログアウト」として体感される。
+ *
+ * 修正: TOKEN_ROTATED のみ transient 扱いで Cookie を保持し、次回のリクエストで
+ *       既にセットされた新 Cookie を使える状態を維持する。
+ */
+test.describe("refreshTokens — issue #113 (TOKEN_ROTATED)", () => {
+  test("401 TOKEN_ROTATED → kind=transient (並列リフレッシュ競合で Cookie を維持)", async () => {
+    const mock: FetchFn = async () =>
+      new Response(
+        JSON.stringify({
+          error: { code: "TOKEN_ROTATED", message: "Token already rotated, retry with new token" },
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    const result = await withMockFetch(mock, () => refreshTokens("rt"), ENV);
     expect(result.kind).toBe("transient");
   });
 });
