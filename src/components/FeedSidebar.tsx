@@ -1,14 +1,8 @@
 "use client";
 
 import { useRef, useState, useMemo, useCallback, type ReactNode } from "react";
-import type {
-  Feed,
-  Article,
-  UserProfile,
-  RecommendedFeed,
-  KeywordFilter,
-  FeedGroup,
-} from "../types";
+import type { Feed, Article, UserProfile, RecommendedFeed, FeedGroup } from "../types";
+import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import ReleaseNotesModal from "./ReleaseNotesModal";
 import ReadingStatsModal from "./ReadingStatsModal";
 import FeedItem, { formatCount } from "./FeedItem";
@@ -43,7 +37,6 @@ interface Props {
   onFeedAdded: (feed: Feed) => void;
   onFeedDeleted: (id: string) => void;
   onFeedRenamed: (feed: Feed) => void;
-  onSaveFilter: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
   onFeedsImported: (feeds: Feed[]) => void;
   onMarkAllRead: (feedId: string | null) => void;
   onToggleTheme: () => void;
@@ -593,7 +586,6 @@ export default function FeedSidebar({
   onFeedAdded,
   onFeedDeleted,
   onFeedRenamed,
-  onSaveFilter,
   onFeedsImported,
   onMarkAllRead,
   onToggleTheme,
@@ -634,6 +626,7 @@ export default function FeedSidebar({
   install,
   push,
 }: Props) {
+  const { onSaveFilter } = useArticleFilter();
   const [newUrl, setNewUrl] = useState("");
   const [newCookie, setNewCookie] = useState("");
   const [newCssSelector, setNewCssSelector] = useState("");

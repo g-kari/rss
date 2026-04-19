@@ -2,6 +2,10 @@
 
 ## 2026-04-20
 
+### リファクタリング
+
+- **`ArticleFilterContext` を新設し ArticleList / ArticleView / FeedSidebar への prop drilling を削減** — Issue #96。`src/contexts/ArticleFilterContext.tsx` を新規追加し、既存の `ReaderSettingsContext` と同じ雛形で `useFilteredArticles` の戻り値 (`FilterState`) + `onSaveFilter` を `ArticleFilter` としてひとまとめに提供するようにした。`src/App.tsx` の `<ArticleFilterProvider value={{ ...filterState, onSaveFilter: saveFilter }}>` で 3 ペイン全体を囲み、`ArticleList` の `filter` prop、`ArticleView` の `globalFilter` / `onSaveGlobalFilter` / `query` / `onSetQuery` / `onSetAuthorFilter` / `onSaveFilter` prop、`FeedSidebar` の `onSaveFilter` prop を削除して `useArticleFilter()` 呼び出しに置き換え。`ArticleView` は `setAuthorFilter` + `showToast` の副作用ラッパーをコンポーネント内ローカル関数として内蔵。dead code になった `onSetAuthorFilter ?` 三項演算子も整理した。挙動変更なし、`e2e/article-filter.spec.ts` (62 ケース) を含む既存テストは全てパス。
+
 ### バグ修正
 
 - **定期的にログアウトされる問題を修正** — Issue #113。0g0-id (`/auth/refresh`) は並列リフレッシュ競合（30 秒以内の rotation 済みトークン再提示）時に HTTP 401 + `{ error: { code: "TOKEN_ROTATED", message: "..." } }` を返す仕様だが、`src/lib/auth.ts` の `refreshTokens` がすべての 4xx を `invalid` として扱っていたため Cookie が削除されログアウト扱いになっていた。複数タブ・タブ復帰時の同時リフレッシュで日常的に発生するため「定期ログアウト」として体感される。レスポンスボディの `error.code` を読み取って `TOKEN_ROTATED` のみ `transient` にして Cookie を保持するよう修正（`TOKEN_REUSE` は従来どおり `invalid`）。`e2e/refresh-tokens.spec.ts` に 4 ケース追加（TOKEN_ROTATED → transient / TOKEN_REUSE / INVALID_TOKEN / TOKEN_EXPIRED → invalid）。
