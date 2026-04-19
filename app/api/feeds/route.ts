@@ -3,7 +3,7 @@ import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { isValidFeedUrl } from "@/lib/url";
 import { discoverFeedUrl } from "@/lib/feed-discovery";
-import { resolveRSSHubUrl, getRSSHubInstance, getRSSHubAccessKey } from "@/lib/rsshub";
+import { resolveRSSHubUrl, getRSSHubInstance } from "@/lib/rsshub";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import { parseHTML } from "linkedom";
 import {
@@ -78,7 +78,9 @@ export async function POST(request: Request) {
     // 未指定 (undefined) はデフォルト ON 扱い、既存クライアントとの後方互換性を保つ。
     const useRsshub = body?.useRsshub !== false;
     if (useRsshub) {
-      const rsshubMatch = resolveRSSHubUrl(url, getRSSHubInstance(), getRSSHubAccessKey());
+      // ACCESS_KEY はここでは付与しない。保存 URL に key を含めると R2 / クライアントに
+      // 漏洩するため、fetch 層 (cron/fetch.ts) で appendAccessKeyIfRsshub により動的付与する。
+      const rsshubMatch = resolveRSSHubUrl(url, getRSSHubInstance());
       if (rsshubMatch && isValidFeedUrl(rsshubMatch.rsshubUrl)) {
         url = rsshubMatch.rsshubUrl;
       }

@@ -26,6 +26,7 @@ import {
 } from "../lib/shared-feed";
 import { INACTIVE_FEED_DAYS } from "../lib/article-ttl";
 import { serializeError } from "../lib/serialize-error";
+import { appendAccessKeyIfRsshub, getRSSHubInstance, getRSSHubAccessKey } from "../lib/rsshub";
 
 type FetchEnv = Pick<CloudflareEnv, "RSS_DATA" | "FINDME_RSS">;
 
@@ -203,7 +204,8 @@ async function fetchAndScrapeWithSelectors(
   const selectors = meta.cssSelectors!;
   const headers: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
   if (requestCookie) headers["Cookie"] = requestCookie;
-  const res = await fetchViaBinding(env, meta.url, { headers });
+  const fetchUrl = appendAccessKeyIfRsshub(meta.url, getRSSHubInstance(), getRSSHubAccessKey());
+  const res = await fetchViaBinding(env, fetchUrl, { headers });
   if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get("Retry-After")));
   if (!res.ok) throw new Error(`${res.status} ${meta.url}`);
 
@@ -236,7 +238,9 @@ async function fetchAndParseFeed(
     if (meta.etag) reqHeaders["If-None-Match"] = meta.etag;
     if (meta.lastModified) reqHeaders["If-Modified-Since"] = meta.lastModified;
   }
-  const res = await fetchViaBinding(env, meta.url, { headers: reqHeaders });
+  // RSSHub インスタンスへのリクエストなら ACCESS_KEY を動的付与（保存 URL には含めない）
+  const fetchUrl = appendAccessKeyIfRsshub(meta.url, getRSSHubInstance(), getRSSHubAccessKey());
+  const res = await fetchViaBinding(env, fetchUrl, { headers: reqHeaders });
   if (res.status === 429) throw new RateLimitError(parseRetryAfter(res.headers.get("Retry-After")));
   if (res.status === 304) {
     resetFeedSuccessState(meta);
