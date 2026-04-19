@@ -4,6 +4,8 @@
 
 ### バグ修正
 
+- **image-proxy の許容サイズを 10MB → 30MB に拡大** — Issue #118。高画質 JPEG / PNG（一眼カメラ由来の 10MB 超画像や高解像度 PNG）が `/api/image-proxy` で `too_large` プレースホルダーに差し替えられてしまう問題に対応。`app/api/image-proxy/route.ts` の `MAX_IMAGE_BYTES` を `10 * 1024 * 1024` から `30 * 1024 * 1024` に引き上げた。Cloudflare Workers のリクエストあたりメモリ制限（128MB）に十分余裕を持たせた値で、`readBodyBytes` がストリームを一括でバッファに載せる実装もそのまま問題なく動作する。併せて `content-length` ヘッダーが `MAX_IMAGE_BYTES` を超える場合はストリームを読まずに `too_large` を即返す事前チェックも追加した（悪意あるサーバーが上限ちょうどのサイズを並列配信してメモリを圧迫する試みを防ぐ）。マジックバイト検証・Cloudflare Cache API による 30 日キャッシュはそのまま維持される。
+
 - **記事全文のページネーション連結が trailing slash 付き URL で効いていなかった問題を修正** — `src/lib/content.ts` の `isPaginatedVariant` パス 3（bare numeric suffix）で `curBase` / `nextBase` を比較する際、WordPress pretty permalink（`/slug/` → `/slug/2/`）の場合に cur 側の pathname 末尾の `/` が剥がれず、next 側（`/2/` 除去後はスラッシュなし）と不一致になっていた。両側とも `/\/$/` で trailing slash を正規化してから比較するよう修正。これにより `<div class="page-links">Pages: ...</div>` 形式（wp_link_pages 出力）の記事でも `appendPaginatedPages` が次ページを検出・連結できるようになる。`e2e/content-extraction.spec.ts` に回帰テスト 2 件追加（WordPress pretty permalink の `/slug/` → `/slug/2/` 検出 / `/slug/2/` → `/slug/3/` 検出）。
 
 ### セキュリティ

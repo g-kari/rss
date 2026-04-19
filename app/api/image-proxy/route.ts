@@ -12,7 +12,7 @@ import { errorImageSvg } from "@/lib/image-error-placeholder";
 import { isContentTypeConsistent, isSameOriginImageRequest } from "@/lib/image-proxy-security";
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_IMAGE_BYTES = 30 * 1024 * 1024; // 30MB — 高画質 JPEG/PNG を許容。Workers のリクエストメモリ 128MB 制限内
 
 export async function GET(request: Request) {
   return withBinarySession(request, ({ ctx }) => handleGet(request, ctx));
@@ -73,6 +73,13 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
     // ホワイトリスト方式により、SVG など XSS リスクのある形式を一括排除する。
     if (!needsMagicCheck && !ALLOWED_IMAGE_CONTENT_TYPES.has(ct)) {
       return errorImageSvg("unavailable");
+    }
+
+    // Content-Length が MAX を超える場合は読まずに即拒否。悪意あるサーバーが 30MB ちょうどを配信して
+    // メモリを圧迫する攻撃（並列リクエストで Workers の 128MB 制限に到達させる試み）を防ぐ。
+    const contentLength = res.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > MAX_IMAGE_BYTES) {
+      return errorImageSvg("too_large");
     }
 
     if (!res.body) return errorImageSvg("unavailable");
