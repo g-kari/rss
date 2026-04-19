@@ -193,12 +193,16 @@ export interface RSSHubMatch {
  * URL が RSSHub 対応サービスであれば、対応する RSSHub URL を返す。
  * 未対応の URL なら null を返す (呼び出し元は元 URL をそのまま扱えばよい)。
  *
- * @param accessKey セルフホスト RSSHub の ACCESS_KEY（指定時は `?key=...` を付与）
+ * ACCESS_KEY は**この関数では付与しない**。認証が必要なセルフホスト RSSHub を
+ * 使っている場合は、保存する URL から key を排除し、fetch の直前に
+ * `appendAccessKeyIfRsshub()` で動的に付与すること。
+ * これにより:
+ *  - R2 (`users/{userId}/subscriptions.json` / `feeds/{feedHash}/meta.json`) に key が保存されない
+ *  - `assembleClientFeed` 経由でクライアント (`Feed.url`) に key が漏れない
  */
 export function resolveRSSHubUrl(
   url: string,
   instanceUrl: string = DEFAULT_RSSHUB_INSTANCE,
-  accessKey?: string,
 ): RSSHubMatch | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
@@ -210,14 +214,49 @@ export function resolveRSSHubUrl(
     const path = route.build(match);
     if (path === null) continue; // 予約語などで弾かれた場合は次のルートへ
     const base = instanceUrl.replace(/\/+$/, "");
-    const query = accessKey?.trim() ? `?key=${encodeURIComponent(accessKey.trim())}` : "";
     return {
-      rsshubUrl: `${base}${path}${query}`,
+      rsshubUrl: `${base}${path}`,
       service: route.service,
     };
   }
 
   return null;
+}
+
+/**
+ * URL が設定済み RSSHub インスタンスの配下なら `?key=...` を付与して返す。
+ * それ以外の URL はそのまま返す。
+ *
+ * fetch 層でのみ呼ぶこと。**保存する URL には適用しない**。
+ * 既に `key=` クエリパラメータを含む URL は二重付与を避けるためスキップする。
+ */
+export function appendAccessKeyIfRsshub(
+  url: string,
+  instanceUrl: string = DEFAULT_RSSHUB_INSTANCE,
+  accessKey?: string,
+): string {
+  const key = accessKey?.trim();
+  if (!key) return url;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+
+  let instanceHost: string;
+  try {
+    instanceHost = new URL(instanceUrl).host;
+  } catch {
+    return url;
+  }
+
+  if (parsed.host !== instanceHost) return url;
+  if (parsed.searchParams.has("key")) return url;
+
+  parsed.searchParams.set("key", key);
+  return parsed.toString();
 }
 
 /**

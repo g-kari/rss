@@ -6,6 +6,10 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ## 2026-04-20
 
+### セキュリティ
+
+- **RSSHub ACCESS_KEY のクライアント漏洩を修正** — 前コミットの実装では \`resolveRSSHubUrl\` が変換後 URL に \`?key=...\` を直接含めていたため、その URL が \`users/{userId}/subscriptions.json\` / \`feeds/{feedHash}/meta.json\` に保存され、さらに \`assembleClientFeed\` 経由で \`Feed.url\` としてクライアントにも返っていた。これは \`RSSHUB_ACCESS_KEY\` シークレットがフロントから参照可能になる重大なリーク。\`src/lib/rsshub.ts\` から key 引数を削除し、代わりに \`appendAccessKeyIfRsshub(url, instance?, accessKey?)\` を新設して fetch 層 (\`src/cron/fetch.ts\` の \`fetchAndParseFeed\` / \`fetchAndScrapeWithSelectors\`) でのみ動的に付与する設計に変更。保存される URL には key が一切含まれないため、R2 / クライアントへの漏洩が防止される。\`appendAccessKeyIfRsshub\` はインスタンス host が一致する URL にのみ付与し、既に \`key=\` を持つ URL には二重付与しない・不正な URL はそのまま返す等の安全弁を備える。\`e2e/rsshub.spec.ts\` を 33 → 38 ケースに拡張（インスタンス外不付与 / 二重付与防止 / 既存クエリ保持 / URL エンコード / 不正 URL 保護）。
+
 ### 新機能
 
 - **RSSHub 連携のオプトアウト機能とセルフホスト ACCESS_KEY サポート** — Issue #109 の追補。RSSHub 変換が強制的に行われていたため、\`FeedAddModal\` に「RSSHub で自動変換（Twitter / YouTube / GitHub 等）」チェックボックスを追加（デフォルト ON）してユーザー側でオプトアウトできるようにした。さらに、セルフホスト RSSHub インスタンスで \`ACCESS_KEY\` による認証を使っているケースに対応するため、\`RSSHUB_ACCESS_KEY\` シークレットを設定すると変換後の URL 末尾に \`?key=...\`（URL エンコード済み）を自動付与する機能を追加。\`src/lib/rsshub.ts\` に \`getRSSHubAccessKey()\` を新設、\`resolveRSSHubUrl(url, instance?, accessKey?)\` の第 3 引数として access key を受け取れるよう拡張。API 側は \`body.useRsshub !== false\` のときだけ変換処理を実行する（未指定はデフォルト ON、後方互換）。\`useFeedOperations.addFeed\` のシグネチャに \`useRsshub?: boolean\` を追加。\`e2e/rsshub.spec.ts\` を 33 ケースに拡張（ACCESS_KEY 付与・空文字扱い・URL エンコード・\`getRSSHubAccessKey\` の環境変数読み取り）。

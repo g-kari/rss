@@ -3,6 +3,7 @@ import {
   resolveRSSHubUrl,
   getRSSHubInstance,
   getRSSHubAccessKey,
+  appendAccessKeyIfRsshub,
   DEFAULT_RSSHUB_INSTANCE,
 } from "../src/lib/rsshub";
 
@@ -142,35 +143,73 @@ test.describe("resolveRSSHubUrl — カスタムインスタンス", () => {
   });
 });
 
-test.describe("resolveRSSHubUrl — ACCESS_KEY 付与", () => {
-  test("access key 指定時は ?key=... を付与する", () => {
+test.describe("resolveRSSHubUrl — 保存 URL には key を含めない（リーク防止）", () => {
+  test("変換後 URL にクエリが含まれない", () => {
     const result = resolveRSSHubUrl(
       "https://twitter.com/elonmusk",
       "https://my-rsshub.example.com",
+    );
+    expect(result?.rsshubUrl).toBe("https://my-rsshub.example.com/twitter/user/elonmusk");
+    expect(result?.rsshubUrl.includes("?key=")).toBe(false);
+  });
+});
+
+test.describe("appendAccessKeyIfRsshub — fetch 時の動的付与", () => {
+  test("インスタンス配下 URL に ?key=... を付与する", () => {
+    const result = appendAccessKeyIfRsshub(
+      "https://my-rsshub.example.com/twitter/user/elonmusk",
+      "https://my-rsshub.example.com",
       "secret-key-123",
     );
-    expect(result?.rsshubUrl).toBe(
-      "https://my-rsshub.example.com/twitter/user/elonmusk?key=secret-key-123",
+    expect(result).toBe("https://my-rsshub.example.com/twitter/user/elonmusk?key=secret-key-123");
+  });
+
+  test("インスタンス外の URL には付与しない", () => {
+    const result = appendAccessKeyIfRsshub(
+      "https://example.com/feed.xml",
+      "https://my-rsshub.example.com",
+      "secret-key-123",
     );
+    expect(result).toBe("https://example.com/feed.xml");
   });
 
-  test("access key が空文字 / 空白のみなら付与しない", () => {
-    expect(
-      resolveRSSHubUrl("https://twitter.com/elonmusk", DEFAULT_RSSHUB_INSTANCE, "")?.rsshubUrl,
-    ).toBe("https://rsshub.app/twitter/user/elonmusk");
-    expect(
-      resolveRSSHubUrl("https://twitter.com/elonmusk", DEFAULT_RSSHUB_INSTANCE, "   ")?.rsshubUrl,
-    ).toBe("https://rsshub.app/twitter/user/elonmusk");
+  test("access key が空なら URL そのまま返す", () => {
+    const url = "https://my-rsshub.example.com/twitter/user/elonmusk";
+    expect(appendAccessKeyIfRsshub(url, "https://my-rsshub.example.com", "")).toBe(url);
+    expect(appendAccessKeyIfRsshub(url, "https://my-rsshub.example.com", undefined)).toBe(url);
+    expect(appendAccessKeyIfRsshub(url, "https://my-rsshub.example.com", "   ")).toBe(url);
   });
 
-  test("access key の特殊文字は URL エンコードされる", () => {
-    const result = resolveRSSHubUrl(
-      "https://twitter.com/elonmusk",
-      DEFAULT_RSSHUB_INSTANCE,
+  test("既に key= クエリを含む URL には二重付与しない", () => {
+    const url = "https://my-rsshub.example.com/twitter/user/elonmusk?key=preexisting";
+    expect(appendAccessKeyIfRsshub(url, "https://my-rsshub.example.com", "new-key")).toBe(url);
+  });
+
+  test("特殊文字の access key は URL エンコードされる", () => {
+    const result = appendAccessKeyIfRsshub(
+      "https://my-rsshub.example.com/twitter/user/elonmusk",
+      "https://my-rsshub.example.com",
       "key with space & symbol=1",
     );
-    expect(result?.rsshubUrl).toBe(
-      "https://rsshub.app/twitter/user/elonmusk?key=key%20with%20space%20%26%20symbol%3D1",
+    // URL クラスのエンコーディング: スペース → + or %20、& → %26、= → %3D
+    expect(result).toContain("key=");
+    expect(result.includes("key with space")).toBe(false);
+    expect(result.includes("&symbol=1")).toBe(false);
+  });
+
+  test("既存クエリパラメータを保持したまま key を追加する", () => {
+    const result = appendAccessKeyIfRsshub(
+      "https://my-rsshub.example.com/twitter/user/elonmusk?limit=10",
+      "https://my-rsshub.example.com",
+      "secret",
+    );
+    expect(result).toContain("limit=10");
+    expect(result).toContain("key=secret");
+  });
+
+  test("不正な URL はそのまま返す", () => {
+    expect(appendAccessKeyIfRsshub("not-a-url", "https://my-rsshub.example.com", "secret")).toBe(
+      "not-a-url",
     );
   });
 });
