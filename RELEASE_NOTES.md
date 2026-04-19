@@ -11,6 +11,7 @@
 
 ### ドキュメント整備
 
+- **feed-groups API エンドポイントを README / architecture.md に追記** — Issue #104。実装済みの `app/api/feed-groups/` ルートがドキュメント化されていなかったため、`README.md` に「フィードグループ」セクション（`GET/POST /api/feed-groups` と `PATCH/DELETE /api/feed-groups/:id` の仕様表、レスポンス型 `FeedGroup`、POST 時の order 自動採番、グループ上限 100 件 / 名前 50 文字 / ユーザー内重複不可の制約、DELETE 時の orphan 許容設計）と API エラーレスポンス一覧にフィードグループのエラーコード表（`INVALID_NAME` / `DUPLICATE_NAME` / `FEED_GROUP_LIMIT_EXCEEDED` / `FEED_GROUP_NOT_FOUND` / `INVALID_ORDER` / `INVALID_COLLAPSED` / `INVALID_MUTED`）を追加。`.claude/rules/architecture.md` には全体像の API マップに `/api/feed-groups/*` を追記し、ディレクトリ構造に `app/api/feed-groups/` と `src/lib/feed-groups.ts` を記載、hooks 一覧に `useFeedGroups.ts` を追加、「フィードグループ操作」のデータフローサブセクションを新設、R2 データ構造に `users/{userId}/feed-groups.json` を追記した。
 - **DBSC 導入調査レポートを追加** — Issue #77 の調査タスクとして `docs/research/dbsc-investigation.md` を新規作成。Chrome 146 (2026-04-09) で Windows 向け DBSC が本格有効化された最新状況、W3C Editor's Draft (2026-04-17) の仕様サマリー、現状の認証実装 (`src/lib/server-auth.ts` の `setTokenCookies()` / `COOKIE_OPTS` — HttpOnly+Secure+SameSite=Lax, access_token 900 秒 / refresh_token 30 日) との整合性、DBSC 適用時に必要な改修箇所（認証サーバー `id.0g0.xyz` 側が主実装、本リポジトリは passthrough のみ）、Firefox/Safari/Chrome macOS・Linux 未対応のカバレッジ不足を整理。結論として「現時点では待ちが妥当」とし、Chrome macOS/Linux が stable 到達するタイミング (推定 2026 年後半〜2027 年) での再評価を推奨。
 
 ### 新機能

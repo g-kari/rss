@@ -134,6 +134,21 @@ pre-commit install   # 初回セットアップ
 | POST     | `/api/feeds/import`      | OPML インポート        |
 | GET      | `/api/feeds/export`      | OPML エクスポート      |
 
+### フィードグループ
+
+| メソッド | パス                   | 説明                                                             |
+| -------- | ---------------------- | ---------------------------------------------------------------- |
+| GET      | `/api/feed-groups`     | グループ一覧取得（`order` 昇順ソート）                           |
+| POST     | `/api/feed-groups`     | グループ新規作成 `{ name }` → 201 Created で `FeedGroup` を返す  |
+| PATCH    | `/api/feed-groups/:id` | グループ更新 `{ name?, order?, collapsed?, muted? }`（部分更新） |
+| DELETE   | `/api/feed-groups/:id` | グループ削除（所属購読の `groupId` は自動クリアを試みる）        |
+
+- レスポンス型は `FeedGroup = { id, name, order, collapsed?, muted?, createdAt }`
+- POST 時の `order` は既存グループの最大値 + 1 で自動採番される
+- グループ上限は 100 件 (`MAX_FEED_GROUPS_PER_USER`)、名前は最大 50 文字 (`FEED_GROUP_NAME_MAX_LENGTH`) でユーザー内重複不可
+- 保存先: `users/{userId}/feed-groups.json`（JSON 配列）
+- DELETE は R2 のトランザクション非対応のため、グループ除去後に購読側の `groupId` クリアを行う。後半が失敗すると orphan な `groupId` が購読側に残るが、クライアントは未知の `groupId` を無視するため実害はない
+
 ### 記事
 
 | メソッド | パス                       | 説明                                    |
@@ -239,6 +254,20 @@ pre-commit install   # 初回セットアップ
 | `POST /api/feeds/import`      | 400        | `EMPTY_OPML`          | OPML から 1 件もフィードを抽出できなかった                              |
 | `POST /api/feeds/import`      | 400        | `OPML_TOO_MANY_FEEDS` | 1 回のインポートあたりの上限超過                                        |
 | `POST /api/feeds/import`      | 422        | `FEED_LIMIT_REACHED`  | ユーザーの購読上限に達している                                          |
+
+#### フィードグループ
+
+| エンドポイント                      | ステータス | `code`                      | 説明                               |
+| ----------------------------------- | ---------- | --------------------------- | ---------------------------------- |
+| `POST /api/feed-groups`             | 400        | `INVALID_NAME`              | name が空・文字列でない・50 文字超 |
+| `POST /api/feed-groups`             | 409        | `DUPLICATE_NAME`            | 同名グループがすでに存在           |
+| `POST /api/feed-groups`             | 409        | `FEED_GROUP_LIMIT_EXCEEDED` | グループ数上限（100）に到達        |
+| `PATCH /api/feed-groups/:id`        | 400        | `INVALID_NAME`              | name が空・文字列でない・50 文字超 |
+| `PATCH /api/feed-groups/:id`        | 400        | `INVALID_ORDER`             | order が整数でない                 |
+| `PATCH /api/feed-groups/:id`        | 400        | `INVALID_COLLAPSED`         | collapsed が boolean でない        |
+| `PATCH /api/feed-groups/:id`        | 400        | `INVALID_MUTED`             | muted が boolean でない            |
+| `PATCH /api/feed-groups/:id`        | 409        | `DUPLICATE_NAME`            | 別グループが同名                   |
+| `PATCH/DELETE /api/feed-groups/:id` | 404        | `FEED_GROUP_NOT_FOUND`      | 該当グループが存在しない           |
 
 #### 記事
 
