@@ -8,6 +8,7 @@
 
 ### ドキュメント整備
 
+- **R2 バックアップ / ディザスタリカバリ手順を追加** — Issue #106。`docs/backup-recovery.md` を新規作成。`rclone` / `aws s3` CLI / `wrangler` CLI を使った R2 バケット全体および選択的バックアップ手法、ユーザー別・フィード別の復旧手順、推奨頻度 (users: 日次 30 日保持 / feeds: 週次 8 週間 / ai-cache: 月次 2 ヶ月 / 全体スナップショット: 月次 12 ヶ月)、DR リハーサル手順、監視観点を記載。実コード (`src/lib/r2.ts` / `src/lib/shared-feed.ts` / `src/lib/feed-groups.ts` / `src/lib/recommendation.ts` / `src/lib/server-auth.ts`) に基づきユーザー別・共有フィード・AI キャッシュの全 R2 キー（クールダウン系含む）を優先度付き表で整理し、`read-state` 復元時のクライアントキャッシュマージ戦略 (ローカル ∪ サーバー、スヌーズは遅い方、ノートはサーバー優先) および cron 停止推奨の運用注意点も補足。`README.md` のデータ構造 (R2) 節から新ドキュメントへリンクを追加した。
 - **セットアップ手順の詳細化** — Issue #105。`README.md` のセットアップ節に以下を追記した:
   - **0g0 ID OAuth2 アプリ登録**: 登録先 URL (`https://id.0g0.xyz`)・Callback URL (`{APP_BASE_URL}/api/auth/callback`)・許可スコープ (`openid profile email`) を表形式で明記。
   - **VAPID 鍵生成**: `node scripts/generate-vapid-keys.mjs` の具体的実行コマンドと出力例、Node.js 18.17 以上の要件を記載。
