@@ -37,6 +37,7 @@ interface FeedItem {
     "media:thumbnail"?: XmlAttr | XmlAttr[];
     "media:content"?: XmlAttr | XmlAttr[];
   };
+  "itunes:image"?: { "@_href"?: string } | { "@_href"?: string }[];
   category?: XmlTextNode | XmlTextNode[];
 }
 
@@ -254,12 +255,7 @@ function firstAttrUrl(val: XmlAttr | XmlAttr[] | undefined): string {
 
 /** RSS item / Atom entry から最初の画像 URL を取得 */
 function extractImage(item: FeedItem): string {
-  // 1. media:thumbnail (直下 or media:group 内)
-  const thumb = item["media:thumbnail"] ?? item["media:group"]?.["media:thumbnail"];
-  const thumbUrl = firstAttrUrl(thumb);
-  if (thumbUrl) return thumbUrl;
-
-  // 2. media:content (画像タイプ、直下 or media:group 内)
+  // 1. media:content (画像タイプ、直下 or media:group 内) — Issue #117: media:thumbnail より優先
   const mcRaw = item["media:content"] ?? item["media:group"]?.["media:content"];
   const mcArr = Array.isArray(mcRaw) ? mcRaw : mcRaw ? [mcRaw] : [];
   for (const m of mcArr) {
@@ -271,7 +267,18 @@ function extractImage(item: FeedItem): string {
     }
   }
 
-  // 3. enclosure (type=image/* または URL が画像拡張子・不正 type の場合も許容)
+  // 2. media:thumbnail (直下 or media:group 内)
+  const thumb = item["media:thumbnail"] ?? item["media:group"]?.["media:thumbnail"];
+  const thumbUrl = firstAttrUrl(thumb);
+  if (thumbUrl) return thumbUrl;
+
+  // 3. itunes:image (Podcast など): href 属性
+  const itunesRaw = item["itunes:image"];
+  const itunes = Array.isArray(itunesRaw) ? itunesRaw[0] : itunesRaw;
+  const itunesHref = itunes?.["@_href"] ? String(itunes["@_href"]) : "";
+  if (itunesHref) return itunesHref;
+
+  // 4. enclosure (type=image/* または URL が画像拡張子・不正 type の場合も許容)
   const enc = item.enclosure;
   if (enc?.["@_url"]) {
     const encType = String(enc["@_type"] ?? "");
@@ -287,7 +294,7 @@ function extractImage(item: FeedItem): string {
     }
   }
 
-  // 4. content/description 中の最初の <img>
+  // 5. content/description 中の最初の <img>
   const html = str(
     item["content:encoded"] ?? item.description ?? item.content ?? item.summary ?? "",
   );

@@ -426,3 +426,80 @@ test.describe("parseFeed — 巨大フィードのエンティティ展開制限
     expect(result.items[0].title).toBe("記事 0");
   });
 });
+
+test.describe("parseFeed — サムネイル画像の優先順位 (Issue #117)", () => {
+  test("media:content は media:thumbnail より優先される", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:media="http://search.yahoo.com/mrss/" version="2.0">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Article</title>
+      <link>https://example.com/a1</link>
+      <guid>a1</guid>
+      <media:thumbnail url="https://example.com/thumb.jpg"/>
+      <media:content url="https://example.com/content.jpg" medium="image"/>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe("https://example.com/content.jpg");
+  });
+
+  test("media:content がなければ media:thumbnail が使われる", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:media="http://search.yahoo.com/mrss/" version="2.0">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Article</title>
+      <link>https://example.com/a1</link>
+      <guid>a1</guid>
+      <media:thumbnail url="https://example.com/thumb.jpg"/>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe("https://example.com/thumb.jpg");
+  });
+
+  test("itunes:image の href が enclosure より優先される", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+  <channel>
+    <title>Podcast</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Episode</title>
+      <link>https://example.com/ep1</link>
+      <guid>ep1</guid>
+      <itunes:image href="https://example.com/itunes.jpg"/>
+      <enclosure url="https://example.com/audio.mp3" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe("https://example.com/itunes.jpg");
+  });
+
+  test("media:content に medium/type 指定がない場合は採用されず、次の候補にフォールバック", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:media="http://search.yahoo.com/mrss/" version="2.0">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Article</title>
+      <link>https://example.com/a1</link>
+      <guid>a1</guid>
+      <media:content url="https://example.com/unknown.bin"/>
+      <media:thumbnail url="https://example.com/thumb.jpg"/>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe("https://example.com/thumb.jpg");
+  });
+});

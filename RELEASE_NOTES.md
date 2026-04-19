@@ -2,6 +2,10 @@
 
 ## 2026-04-20
 
+### バグ修正
+
+- **RSS フィード記事サムネイルの優先順位を修正** — Issue #117。`src/lib/xml-parser.ts` の `extractImage` が `media:thumbnail` を第 1 優先・`media:content` を第 2 優先としていたため、低解像度サムネイルが採用され本来の高解像度画像が使われない事象が起きていた。MRSS 仕様の意図（サムネは `media:content` の小型版を表す要素）および Issue #117 の要求に従い、優先順位を **`media:content`（`medium="image"` または `type="image/*"`）→ `media:thumbnail` → `itunes:image`（新規追加、Podcast 対応）→ `enclosure` → `content/description` 内 `<img>`** に変更。これにより XML から取得できる画像の取りこぼしも減り、`useOgpCache` による `/api/ogp` へのフォールバック問い合わせが更に減少する。`e2e/xml-parser.spec.ts` に 4 ケース（media:content 優先 / media:thumbnail フォールバック / itunes:image 採用 / media:content の medium 未指定時のフォールバック）を追加。
+
 ### リファクタリング
 
 - **`ArticleFilterContext` を新設し ArticleList / ArticleView / FeedSidebar への prop drilling を削減** — Issue #96。`src/contexts/ArticleFilterContext.tsx` を新規追加し、既存の `ReaderSettingsContext` と同じ雛形で `useFilteredArticles` の戻り値 (`FilterState`) + `onSaveFilter` を `ArticleFilter` としてひとまとめに提供するようにした。`src/App.tsx` の `<ArticleFilterProvider value={{ ...filterState, onSaveFilter: saveFilter }}>` で 3 ペイン全体を囲み、`ArticleList` の `filter` prop、`ArticleView` の `globalFilter` / `onSaveGlobalFilter` / `query` / `onSetQuery` / `onSetAuthorFilter` / `onSaveFilter` prop、`FeedSidebar` の `onSaveFilter` prop を削除して `useArticleFilter()` 呼び出しに置き換え。`ArticleView` は `setAuthorFilter` + `showToast` の副作用ラッパーをコンポーネント内ローカル関数として内蔵。dead code になった `onSetAuthorFilter ?` 三項演算子も整理した。挙動変更なし、`e2e/article-filter.spec.ts` (62 ケース) を含む既存テストは全てパス。
