@@ -495,6 +495,36 @@ test.describe("rewriteImageUrls — 画像プロキシ書き換え", () => {
     const proxyMatches = result.match(/\/api\/image-proxy\?url=/g);
     expect(proxyMatches).toHaveLength(2);
   });
+
+  // issue #111: Cloudinary / imgix のように URL 内に encoded 区切り文字
+  // (`%2C` = `,` / `%3F` = `?`) を含む形式でも src が壊されず丸ごと保持されること
+  test("encoded delimiter (%2C / %3F) を含む src をそのまま proxy URL に渡す", () => {
+    const src =
+      "https://res.cloudinary.com/zenn/image/fetch/s--vROFFf0H--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_1200/https://storage.googleapis.com/zenn-user-upload/deployed-images/ec22ab26a251daa56c50e608.png%3Fsha%3D164ce70563d1f6c510c273bafaaf5aeea8aa1edd";
+    const html = `<img src="${src}">`;
+    const result = rewriteImageUrls(html);
+    expect(result).toContain(`url=${encodeURIComponent(src)}`);
+    // サーバー側の decodeURIComponent で元 URL に戻せること
+    const m = result.match(/url=([^"'\s]+)/);
+    expect(m).not.toBeNull();
+    expect(decodeURIComponent(m![1])).toBe(src);
+  });
+
+  // issue #111: Cloudinary の変換パラメータは path 内に生の `,` で埋め込まれることがある。
+  // srcset は `,` を候補区切りに使うため、URL 内の `,` で壊れないこと。
+  test("srcset 内の URL path に `,` が含まれていても候補が壊れない", () => {
+    const url1 =
+      "https://res.cloudinary.com/demo/image/fetch/c_limit,f_auto,q_auto,w_800/https://storage.googleapis.com/a.png";
+    const url2 =
+      "https://res.cloudinary.com/demo/image/fetch/c_limit,f_auto,q_auto,w_1600/https://storage.googleapis.com/a.png";
+    const html = `<img srcset="${url1} 1x, ${url2} 2x">`;
+    const result = rewriteImageUrls(html);
+    // 各 URL 全体が proxy URL として保持されていること（途中で切れない）
+    expect(result).toContain(`url=${encodeURIComponent(url1)}`);
+    expect(result).toContain(`url=${encodeURIComponent(url2)}`);
+    expect(result).toContain(" 1x");
+    expect(result).toContain(" 2x");
+  });
 });
 
 test.describe("wrapTables — テーブルのレスポンシブラップ", () => {
