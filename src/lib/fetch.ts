@@ -171,3 +171,84 @@ export function fetchFollowSafeRedirects(
     throw new Error(`Too many redirects (>=${MAX_REDIRECTS})`);
   });
 }
+
+/** Cache-Control 由来の次回フェッチ間隔の下限（秒）— cron 間隔（30 分）以下の値は効果がないためここに合わせる */
+export const CACHE_CONTROL_MIN_SECONDS = 1800;
+/** Cache-Control 由来の次回フェッチ間隔の上限（秒）— 極端に長い max-age でも 6 時間で区切る */
+export const CACHE_CONTROL_MAX_SECONDS = 21600;
+
+/** parseCacheControl の結果 */
+export interface CacheControlDirectives {
+  /** no-store が指定されている（キャッシュ禁止 → 常に再取得） */
+  noStore: boolean;
+  /** no-cache または must-revalidate が指定されている（再検証必須） */
+  mustRevalidate: boolean;
+  /** s-maxage または max-age の秒数（なければ null） */
+  maxAgeSeconds: number | null;
+}
+
+/**
+ * HTTP Cache-Control ヘッダー値をパースする純粋関数。
+ * s-maxage が設定されていれば優先する（共有キャッシュ指示を尊重）。
+ * 壊れた値（負数・非数値）は無視する。
+ */
+export function parseCacheControl(headerValue: string | null | undefined): CacheControlDirectives {
+  const result: CacheControlDirectives = {
+    noStore: false,
+    mustRevalidate: false,
+    maxAgeSeconds: null,
+  };
+  if (!headerValue) return result;
+
+  let maxAge: number | null = null;
+  let sMaxage: number | null = null;
+
+  for (const rawToken of headerValue.split(",")) {
+    const token = rawToken.trim().toLowerCase();
+    if (!token) continue;
+    if (token === "no-store") {
+      result.noStore = true;
+      continue;
+    }
+    if (token === "no-cache" || token === "must-revalidate" || token === "proxy-revalidate") {
+      result.mustRevalidate = true;
+      continue;
+    }
+    const eq = token.indexOf("=");
+    if (eq === -1) continue;
+    const name = token.slice(0, eq).trim();
+    const rawValue = token
+      .slice(eq + 1)
+      .trim()
+      .replace(/^"|"$/g, "");
+    const num = Number.parseInt(rawValue, 10);
+    if (!Number.isFinite(num) || num < 0) continue;
+    if (name === "max-age") maxAge = num;
+    else if (name === "s-maxage") sMaxage = num;
+  }
+
+  result.maxAgeSeconds = sMaxage ?? maxAge;
+  return result;
+}
+
+/**
+ * Cache-Control ヘッダーと現在時刻から「次回フェッチ可能時刻（unix ms）」を算出する。
+ * - no-store / no-cache / must-revalidate のとき: null（毎回サーバーへ問い合わせが必要なためスキップ不可）
+ * - max-age / s-maxage が有効値のとき: now + clamp(N, MIN, MAX) * 1000
+ * - max-age が欠落のとき: null（通常どおり条件付き GET に任せる）
+ */
+export function computeNextFetchEarliestAt(
+  headerValue: string | null | undefined,
+  nowMs: number,
+): number | null {
+  const directives = parseCacheControl(headerValue);
+  // no-store / no-cache / must-revalidate はサーバー検証必須指示。
+  // スキップすると ETag/Last-Modified の 304 検証すら送れず、サーバー側の意図に反する。
+  if (directives.noStore || directives.mustRevalidate) return null;
+  if (directives.maxAgeSeconds === null) return null;
+  const clamped = Math.min(
+    Math.max(directives.maxAgeSeconds, CACHE_CONTROL_MIN_SECONDS),
+    CACHE_CONTROL_MAX_SECONDS,
+  );
+  return nowMs + clamped * 1000;
+}

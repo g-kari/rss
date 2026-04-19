@@ -35,6 +35,10 @@ export interface SharedFeedMeta {
   lastModified?: string | null;
   /** 条件付きリクエスト用 ETag */
   etag?: string | null;
+  /** 直近レスポンスの Cache-Control ヘッダー生値（デバッグ・観測用） */
+  cacheControl?: string | null;
+  /** Cache-Control max-age から算出した次回フェッチ可能時刻（ISO 8601）。cron 時のスキップ判定に使用 */
+  nextFetchEarliestAt?: string | null;
   /** 記事の総件数（近似値） */
   articleCount: number;
   /** latest.json 以外のページファイル数 (p2, p3, ...) */
