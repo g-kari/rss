@@ -25,10 +25,11 @@ export function useSyntaxHighlight(
     // 届くため、observer を一時停止して適用し、再 observe する（ネストした pre>code を
     // 含む記事での再入連鎖を防ぐ）。
     function applyMissing() {
-      if (!hljs) return;
+      const h = hljs;
+      if (!h) return;
       observer.disconnect();
       el.querySelectorAll<HTMLElement>("pre code:not(.hljs)").forEach((block) => {
-        hljs!.highlightElement(block);
+        h.highlightElement(block);
       });
       observer.observe(el, { childList: true, subtree: true });
     }
