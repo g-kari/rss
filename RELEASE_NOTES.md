@@ -4,6 +4,8 @@
 
 ### 新機能
 
+- **ギャラリービューの列数指定機能** — Issue #144。ユーザー設定モーダルに「ギャラリー列数」セグメントを追加（自動 / 2〜8列）。「自動」は従来通り columnWidth=220px ベースで masonic が自動計算、列数指定時はコンテナ幅から columnWidth を逆算して正確に N 列表示。記事一覧フォーカスモード（listFocusMode）時は指定列数に合わせた maxWidth を設定し余白を抑制。設定は localStorage (`rss-gallery-columns`) に永続化。
+
 - **キーボードショートカット一覧ボタン + 記事一覧フォーカスモード切替ボタンを追加** — Issue #148。`?` キーでしか開けなかった `KeyboardShortcutsModal` の UI 導線と、`Shift+\`（= `|`）以外に有効化手段がなかった `listFocusMode`（記事一覧フォーカス）の UI 導線を同時に整備。`FeedSidebar` のフッター（ユーザー設定・テーマ切替ボタンの隣）に `onOpenHelp` で開くヘルプ系 `FooterIconButton`（`?` 付き丸アイコン）を追加し、`App.tsx` から `setShowHelp(true)` を配線。`ArticleList` ツールバーのレイアウト切替ボタン群の直後に `listFocusMode` トグルボタン（`ArticleView` の `focusMode` トグルと対称な 4 隅矢印アイコン、`aria-pressed` 付き）を配置し、`onToggleListFocusMode` prop 経由で `useUIState` の `toggleListFocusMode` を呼ぶ。`LAYOUTS.map` と同じ w-6/h-6 サイズで統一し、既存のピルボタン群と視覚的に馴染ませた。これで `|` / `\` キーバインドを知らないユーザーもヘルプから全ショートカットを参照でき、`listFocusMode` を明示的に ON / OFF できる。
 
 ## 2026-04-20

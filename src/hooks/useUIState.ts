@@ -16,8 +16,10 @@ import { FONT_FAMILY_CYCLE, FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article
 import {
   CONTENT_WIDTH_CYCLE,
   LINE_HEIGHT_CYCLE,
+  GALLERY_COLUMNS_CYCLE,
   type ContentWidth,
   type LineHeight,
+  type GalleryColumns,
 } from "../lib/reader-settings";
 import { useMobilePane } from "./useMobilePane";
 import { useNSFWMode } from "./useNSFWMode";
@@ -75,6 +77,8 @@ const loadContentWidth = () =>
 function loadTextJustify(): boolean {
   return storageGet(STORAGE_KEYS.TEXT_JUSTIFY) === "true";
 }
+const loadGalleryColumns = () =>
+  loadStoredEnum(STORAGE_KEYS.GALLERY_COLUMNS, GALLERY_COLUMNS_CYCLE, "auto" as GalleryColumns);
 
 /** localStorage に永続化する enum 系設定の state と onChange セッターをまとめて返す。 */
 function useStoredSetting<T extends string>(load: () => T, key: string): [T, (v: T) => void] {
@@ -139,6 +143,8 @@ export interface UIState {
   setShowSettings: React.Dispatch<React.SetStateAction<boolean>>;
   activeFeedView: FeedView;
   onChangeActiveFeedView: (v: FeedView) => void;
+  galleryColumns: GalleryColumns;
+  onChangeGalleryColumns: (v: GalleryColumns) => void;
 }
 
 /**
@@ -188,6 +194,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [activeFeedView, onChangeActiveFeedView] = useStoredSetting<FeedView>(
     loadActiveFeedView,
     STORAGE_KEYS.ACTIVE_FEED_VIEW,
+  );
+  const [galleryColumns, onChangeGalleryColumns] = useStoredSetting<GalleryColumns>(
+    loadGalleryColumns,
+    STORAGE_KEYS.GALLERY_COLUMNS,
   );
 
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
@@ -348,5 +358,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     setShowSettings,
     activeFeedView,
     onChangeActiveFeedView,
+    galleryColumns,
+    onChangeGalleryColumns,
   };
 }

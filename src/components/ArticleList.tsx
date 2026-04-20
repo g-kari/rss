@@ -19,6 +19,7 @@ import { useDelayedGalleryItems } from "@/hooks/useDelayedGalleryItems";
 import { useEventListener } from "@/hooks/useEventListener";
 import type { Article, Feed, FeedView, Layout, DateRange } from "../types";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
+import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { SHORTCUT_MAP } from "../config/shortcuts";
 import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
@@ -258,6 +259,7 @@ export default function ArticleList({
     categoryFilter,
     setCategoryFilter,
   } = useArticleFilter();
+  const { galleryColumns } = useReaderSettings();
   const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [confirmMarkAll, setConfirmMarkAll] = useState(false);
@@ -1103,7 +1105,16 @@ export default function ArticleList({
 
         {/* gallery — masonic による仮想スクロール対応 Pinterest 型 masonry */}
         {layout === "gallery" && galleryDisplayItems.length > 0 && (
-          <div className="p-2">
+          <div
+            className="p-2 mx-auto"
+            style={
+              galleryColumns !== "auto" && listFocusMode
+                ? {
+                    maxWidth: Number(galleryColumns) * 220 + (Number(galleryColumns) - 1) * 12 + 16,
+                  }
+                : undefined
+            }
+          >
             <GalleryItemCtx.Provider
               value={{
                 resolveItemProps,
@@ -1117,6 +1128,7 @@ export default function ArticleList({
                 columnWidth={220}
                 columnGutter={12}
                 overscanBy={6}
+                columns={galleryColumns === "auto" ? null : Number(galleryColumns)}
                 itemKey={galleryItemKey}
                 render={GalleryCardRenderer}
               />

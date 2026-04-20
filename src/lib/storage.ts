@@ -63,6 +63,7 @@ export const STORAGE_KEYS = {
   AUTO_READ_THRESHOLD: "rss-auto-read-threshold",
   ACTIVE_FEED_VIEW: "rss-active-feed-view",
   SAVED_SEARCHES: "rss-saved-searches",
+  GALLERY_COLUMNS: "rss-gallery-columns",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

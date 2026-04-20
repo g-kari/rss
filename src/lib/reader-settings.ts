@@ -105,3 +105,20 @@ export function cycleContentWidth(current: ContentWidth): ContentWidth {
   const idx = CONTENT_WIDTH_CYCLE.indexOf(current);
   return CONTENT_WIDTH_CYCLE[(idx + 1) % CONTENT_WIDTH_CYCLE.length];
 }
+
+// ===== ギャラリー列数 =====
+
+export type GalleryColumns = "auto" | "2" | "3" | "4" | "5" | "6" | "7" | "8";
+
+export const GALLERY_COLUMNS_CYCLE: GalleryColumns[] = ["auto", "2", "3", "4", "5", "6", "7", "8"];
+
+export const GALLERY_COLUMNS_LABELS: Record<GalleryColumns, string> = {
+  auto: "自動",
+  "2": "2",
+  "3": "3",
+  "4": "4",
+  "5": "5",
+  "6": "6",
+  "7": "7",
+  "8": "8",
+};
