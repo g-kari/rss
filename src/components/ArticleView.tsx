@@ -870,7 +870,7 @@ export default function ArticleView({
             <button
               onClick={onToggleFocusMode}
               title={focusMode ? "フォーカスモード終了 (\\)" : "フォーカスモード (\\)"}
-              className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+              className={`hidden lg:block p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
             >
               <svg
                 className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"

@@ -976,11 +976,11 @@ export default function App() {
               </button>
             </div>
           )}
-          {/* フォーカスモード解除ボタン（focusMode / listFocusMode どちらかが ON のときのみ表示） */}
+          {/* フォーカスモード解除ボタン（PC のみ表示。モバイルは単一ペイン表示のため不要） */}
           {(focusMode || listFocusMode) && (
             <button
               onClick={exitFocusMode}
-              className="fixed top-3 right-3 z-50 flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
+              className="fixed top-3 right-3 z-50 hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
               aria-label="フォーカスモード解除"
               title="フォーカスモード解除 (Esc)"
             >
