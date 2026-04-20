@@ -169,9 +169,10 @@ test.describe("fixImageDimensions — 画像後処理", () => {
     const result = fixImageDimensions(html);
     expect(result).toContain('width="800"');
     expect(result).toContain('height="600"');
-    expect(result).not.toMatch(/style="[^"]*\bwidth\s*:/i);
+    expect(result).not.toMatch(/style="[^"]*(?<!max-)width\s*:/i);
     expect(result).not.toMatch(/style="[^"]*\bheight\s*:/i);
     expect(result).toMatch(/style="[^"]*border\s*:/i);
+    expect(result).toMatch(/style="[^"]*max-width:\s*800px/i);
   });
 
   test("相対パスを絶対 URL に変換する", () => {

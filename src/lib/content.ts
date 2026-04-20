@@ -135,7 +135,20 @@ export function fixImageDimensions(html: string, pageUrl = ""): string {
       },
     );
 
-    if (!keepDimensions) {
+    if (keepDimensions) {
+      // 元画像サイズ以上に引き伸ばさないよう max-width を inline style に追加。
+      // CSS width: 100% と組み合わせてコンテナ幅いっぱい or 元幅の小さい方に収まる (Issue #163)。
+      const styleMatch = a.match(/\s+style\s*=\s*"([^"]*)"/i);
+      if (styleMatch) {
+        const existing = styleMatch[1];
+        a = a.replace(
+          styleMatch[0],
+          ` style="${existing}${existing ? "; " : ""}max-width: ${w}px"`,
+        );
+      } else {
+        a += ` style="max-width: ${w}px"`;
+      }
+    } else {
       a = a
         .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "")
         .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "");

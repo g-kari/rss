@@ -151,12 +151,11 @@ body {
   color: var(--color-text-strong);
 }
 
-/* 画像: コンテナ超過時のみ縮小、それ以外は HTML 属性 width/height を尊重。
-   aspect-ratio が保たれ layout shift / アスペクト比崩れを防ぐ (Issue #86)。
-   width: auto を削除し属性値を有効化。height: auto は !important を外して
-   属性があればそちらを優先、コンテナ超過時は max-width と共に比例縮小。 */
+/* 画像: コンテナ幅いっぱいに広げつつ、元画像サイズ以上には引き伸ばさない。
+   aspect-ratio は HTML 属性 width/height から自動推論され layout shift を防ぐ (Issue #86)。
+   width: 100% でコンテナ幅に追従。inline max-width で元画像以上の拡大を防止 (Issue #163)。 */
 .article-content img {
-  max-width: 100% !important;
+  width: 100%;
   height: auto;
   border-radius: 4px;
   margin: 1.25em 0;
@@ -466,7 +465,7 @@ body {
   background-color: var(--color-surface-subtle);
 }
 .rss-slider-slide img {
-  width: 100% !important; /* .article-content img { width: auto !important } を上書きする */
+  width: 100% !important;
   height: auto !important;
   display: block;
   object-fit: contain;
