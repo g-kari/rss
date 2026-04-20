@@ -46,7 +46,9 @@ export function usePrefetchGalleryContents({
   articles,
   enabled,
   concurrency = 2,
-  maxPrefetch = 10,
+  // visible 全件を対象に先行取得する（スクロールで記事が追加されたら次回 useEffect で補完）。
+  // 暴走保護として実装上限 200 件は内部で設ける。
+  maxPrefetch = Number.POSITIVE_INFINITY,
   requestDelayMs = 250,
 }: Options): Map<string, PrefetchedMedia> {
   const [media, setMedia] = useState<Map<string, PrefetchedMedia>>(() => new Map());
@@ -56,7 +58,9 @@ export function usePrefetchGalleryContents({
 
   useEffect(() => {
     if (!enabled) return;
-    const targets = articles.slice(0, maxPrefetch).filter((a) => a.link);
+    // 暴走保護のためハードリミット 200 件。maxPrefetch が Infinity でも上限超過はしない。
+    const limit = Math.min(maxPrefetch, 200);
+    const targets = articles.slice(0, limit).filter((a) => a.link);
     if (targets.length === 0) return;
 
     const controller = new AbortController();

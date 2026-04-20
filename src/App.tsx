@@ -1043,6 +1043,11 @@ export default function App() {
                   setSelectedFeedId(null);
                   setSelectedGroupId(null);
                   setSelectedArticle(null);
+                  // 画像/動画カテゴリはギャラリーレイアウトに自動切替 — 全画像/動画の展開表示を期待する仕様
+                  // ユーザーが後で手動で別レイアウトを選んだ場合は尊重する（次にカテゴリ切替するまで）
+                  if (view === "pictures" || view === "videos") {
+                    onChangeLayout("gallery");
+                  }
                 }}
                 recommendations={recommendations}
                 recommendationsLoading={recommendationsLoading}
