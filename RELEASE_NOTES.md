@@ -4,6 +4,8 @@
 
 ### 激アツ新機能っ
 
+- **翻訳プロバイダー表示** — Issue #136。翻訳タブ選択時に「Chrome 翻訳」または「Workers AI」のバッジを表示し、どのエンジンで翻訳されたかをユーザーが確認できるように。`AiOperationResult` に `provider` フィールドを追加し、LRU キャッシュにも永続化。
+
 - **OGP / Twitter Card 対応** — Issue #146。`layout.tsx` に Open Graph (`og:title` / `og:image` / `og:description` / `og:site_name`) と Twitter Card (`summary_large_image`) メタタグを追加。`og.svg` から PNG を生成して `public/og.png` として配置。Twitter・Slack・Discord 等でリンク共有時にリッチプレビューが表示されるように。E2E テストも追加。
 
 ### コードめかし込み
