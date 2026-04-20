@@ -230,6 +230,8 @@ export interface ReadState {
   snoozedUntil?: Record<string, string> | null;
   /** 記事への個人メモ — articleId → メモ本文（最大 2000 文字） */
   notes?: Record<string, string> | null;
+  /** 記事へのカスタムタグ — articleId → タグ名の配列 */
+  tagIds?: Record<string, string[]> | null;
 }
 
 /** `/api/feeds/:id` PATCH 用のボディ型 — Feed のうちクライアントから更新可能なフィールドのみ */
@@ -267,11 +269,13 @@ export interface ReadStatePayload {
   readBeforeTimestamp: string | null;
   snoozedUntil: Record<string, string> | null;
   notes: Record<string, string> | null;
+  tagIds: Record<string, string[]> | null;
   removedIds: {
     readIds: string[];
     bookmarkIds: string[];
     readingListIds: string[];
     likeIds: string[];
+    tagIds: string[];
   };
   /** キーが存在する場合のみサーバー側で上書きする（他端末設定保護） */
   globalFilter?: KeywordFilter | null;

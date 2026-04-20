@@ -842,3 +842,51 @@ test.describe("viewFeedIds フィルター — FeedView カテゴリ横断", () 
     expect(ids(result)).toEqual(["pic1", "vid1", "art1"]);
   });
 });
+
+// ==========================================================================
+// タグフィルター
+// ==========================================================================
+
+test.describe("selectedTag / taggedOnly フィルター", () => {
+  const TA = makeArticle("ta", "feed1");
+  const TB = makeArticle("tb", "feed1");
+  const TC = makeArticle("tc", "feed1");
+
+  const articleTags = {
+    ta: ["work", "urgent"],
+    tb: ["hobby"],
+    // tc はタグなし
+  };
+
+  test("selectedTag 指定時はそのタグが付いた記事のみ返す", () => {
+    const result = run([TA, TB, TC], { selectedTag: "work", articleTags });
+    expect(ids(result)).toEqual(["ta"]);
+  });
+
+  test("selectedTag 指定時にタグ付与なし記事は除外される", () => {
+    const result = run([TA, TB, TC], { selectedTag: "hobby", articleTags });
+    expect(ids(result)).toEqual(["tb"]);
+  });
+
+  test("存在しないタグを指定した場合は 0 件", () => {
+    const result = run([TA, TB, TC], { selectedTag: "nonexistent", articleTags });
+    expect(result).toHaveLength(0);
+  });
+
+  test("taggedOnly=true はタグが 1 つ以上付いた記事のみ返す", () => {
+    const result = run([TA, TB, TC], { taggedOnly: true, articleTags });
+    expect(ids(result)).toEqual(expect.arrayContaining(["ta", "tb"]));
+    expect(result).toHaveLength(2);
+  });
+
+  test("selectedTag なし・taggedOnly なしはタグ関連のフィルターが効かない", () => {
+    const result = run([TA, TB, TC], { articleTags });
+    expect(ids(result)).toEqual(expect.arrayContaining(["ta", "tb", "tc"]));
+    expect(result).toHaveLength(3);
+  });
+
+  test("articleTags が未指定でも selectedTag 指定時は安全に 0 件返す", () => {
+    const result = run([TA, TB, TC], { selectedTag: "work" });
+    expect(result).toHaveLength(0);
+  });
+});

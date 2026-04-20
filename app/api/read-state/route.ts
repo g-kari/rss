@@ -4,7 +4,13 @@ import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, readStateKey } from "@/lib/r2";
 import type { ReadState } from "@/types";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
-import { extractIds, isValidIso8601, parseSnoozedUntil, parseNotes } from "@/lib/validation";
+import {
+  extractIds,
+  isValidIso8601,
+  parseSnoozedUntil,
+  parseNotes,
+  parseTagIds,
+} from "@/lib/validation";
 import { mergeReadStateUpdate, type ReadStateUpdate } from "@/lib/read-state-merge";
 
 // POST は差分（追加 + removedIds）のみ送られる前提で上限を設定する。
@@ -16,6 +22,8 @@ const MAX_READING_LIST_IDS = 10_000;
 const MAX_LIKE_IDS = 10_000;
 const MAX_SNOOZED = 500;
 const MAX_NOTES = 1_000;
+const MAX_TAGGED_ARTICLES = 2_000;
+const MAX_REMOVED_TAG_KEYS = 2_000;
 
 export async function GET(request: Request) {
   return withSession(request, async ({ session, env }) => {
@@ -30,6 +38,7 @@ export async function GET(request: Request) {
       readBeforeTimestamp: stored.readBeforeTimestamp ?? null,
       snoozedUntil: stored.snoozedUntil ?? null,
       notes: stored.notes ?? null,
+      tagIds: stored.tagIds ?? null,
     };
     return NextResponse.json(state);
   });
@@ -55,8 +64,15 @@ export async function POST(req: NextRequest) {
     const removedBookmarkIds = extractIds(removedRaw.bookmarkIds, MAX_BOOKMARK_IDS);
     const removedReadingListIds = extractIds(removedRaw.readingListIds, MAX_READING_LIST_IDS);
     const removedLikeIds = extractIds(removedRaw.likeIds, MAX_LIKE_IDS);
+    const removedTagKeys = extractIds(removedRaw.tagIds, MAX_REMOVED_TAG_KEYS);
 
-    if (!removedReadIds || !removedBookmarkIds || !removedReadingListIds || !removedLikeIds) {
+    if (
+      !removedReadIds ||
+      !removedBookmarkIds ||
+      !removedReadingListIds ||
+      !removedLikeIds ||
+      !removedTagKeys
+    ) {
       return apiError("Payload too large", 413, { code: "PAYLOAD_TOO_LARGE" });
     }
 
@@ -67,6 +83,7 @@ export async function POST(req: NextRequest) {
 
     const snoozedUntil = parseSnoozedUntil(body.snoozedUntil, MAX_SNOOZED);
     const notes = parseNotes(body.notes, MAX_NOTES);
+    const tagIds = parseTagIds(body.tagIds, MAX_TAGGED_ARTICLES);
 
     // 既存 ReadState を読み込んで差分マージする（他端末の変更を失わない）
     const stored = await r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {});
@@ -79,6 +96,7 @@ export async function POST(req: NextRequest) {
       readBeforeTimestamp: stored.readBeforeTimestamp ?? null,
       snoozedUntil: stored.snoozedUntil ?? null,
       notes: stored.notes ?? null,
+      tagIds: stored.tagIds ?? null,
     };
 
     const update: ReadStateUpdate = {
@@ -91,10 +109,12 @@ export async function POST(req: NextRequest) {
         bookmarkIds: removedBookmarkIds,
         readingListIds: removedReadingListIds,
         likeIds: removedLikeIds,
+        tagIds: removedTagKeys,
       },
       readBeforeTimestamp: rbt,
       snoozedUntil,
       notes,
+      tagIds,
     };
     if ("globalFilter" in body) update.globalFilter = globalFilter;
 

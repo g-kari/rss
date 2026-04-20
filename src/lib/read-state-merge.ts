@@ -6,6 +6,8 @@ export interface ReadStateRemovedIds {
   bookmarkIds?: string[];
   readingListIds?: string[];
   likeIds?: string[];
+  /** tagIds マップから完全に削除する articleId 配列 */
+  tagIds?: string[];
 }
 
 /** POST /api/read-state の入力型（追加分 + 削除差分） */
@@ -45,6 +47,41 @@ function mergeNotes(
   return Object.keys(merged).length > 0 ? merged : null;
 }
 
+/** マージ結果に保持する記事タグのハードリミット（R2 レコード肥大化防止） */
+const MAX_TAGGED_ARTICLES_STORED = 5_000;
+
+/**
+ * tagIds のマージ。
+ * - incoming のキーは incoming を採用（クライアント最終状態で上書き）
+ * - removedKeys に含まれるキーは結果から除去
+ * - それ以外のキーは existing を保持
+ * - 合計件数が MAX_TAGGED_ARTICLES_STORED を超える場合は古いキーから切り詰める
+ *   （Record のキー挿入順を利用して、既存の頭から落とす）
+ * 各記事のタグは「そのクライアントでのタグ全体」を想定し、キーごと完全置換する方針。
+ */
+function mergeTags(
+  existing: Record<string, string[]> | null | undefined,
+  incoming: Record<string, string[]> | null | undefined,
+  removedKeys: readonly string[] | undefined,
+): Record<string, string[]> | null {
+  const removedSet = new Set(removedKeys ?? []);
+  const merged: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(existing ?? {})) {
+    if (removedSet.has(k)) continue;
+    merged[k] = v;
+  }
+  for (const [k, v] of Object.entries(incoming ?? {})) {
+    if (removedSet.has(k)) continue;
+    merged[k] = v;
+  }
+  const keys = Object.keys(merged);
+  if (keys.length > MAX_TAGGED_ARTICLES_STORED) {
+    const toDrop = keys.length - MAX_TAGGED_ARTICLES_STORED;
+    for (let i = 0; i < toDrop; i++) delete merged[keys[i]!];
+  }
+  return Object.keys(merged).length > 0 ? merged : null;
+}
+
 function chooseLater(a: string | null | undefined, b: string | null | undefined): string | null {
   if (!a) return b ?? null;
   if (!b) return a ?? null;
@@ -81,6 +118,7 @@ export function mergeReadStateUpdate(existing: ReadState, update: ReadStateUpdat
 
   const snoozedUntil = mergeSnoozed(existing.snoozedUntil, update.snoozedUntil);
   const notes = mergeNotes(existing.notes, update.notes);
+  const tagIds = mergeTags(existing.tagIds, update.tagIds, removed.tagIds);
 
   return {
     readIds,
@@ -91,5 +129,6 @@ export function mergeReadStateUpdate(existing: ReadState, update: ReadStateUpdat
     readBeforeTimestamp,
     snoozedUntil,
     notes,
+    tagIds,
   };
 }

@@ -147,6 +147,7 @@ test("空の update はすべて既存値を保持する", () => {
     readBeforeTimestamp: "2026-01-01T00:00:00Z",
     snoozedUntil: { k: "2026-12-01T00:00:00Z" },
     notes: { n: "note" },
+    tagIds: null,
   };
   const result = mergeReadStateUpdate(existing, {});
   expect(result).toEqual(existing);
@@ -172,4 +173,54 @@ test("シナリオ: 端末Aが既読解除 → removedIds で伝播して端末B
   };
   const result = mergeReadStateUpdate(serverState, updateFromA);
   expect(result.readIds).toEqual(["x"]);
+});
+
+// ── tagIds マージ仕様テスト ────────────────────────────────
+
+test("tagIds は incoming のキーが既存を上書きする", () => {
+  const existing: ReadState = {
+    ...emptyState(),
+    tagIds: { a: ["x", "y"], b: ["z"] },
+  };
+  const result = mergeReadStateUpdate(existing, {
+    tagIds: { a: ["new"] },
+  });
+  expect(result.tagIds).toEqual({ a: ["new"], b: ["z"] });
+});
+
+test("removedIds.tagIds に含まれる articleId は tagIds から除去される", () => {
+  const existing: ReadState = {
+    ...emptyState(),
+    tagIds: { a: ["x"], b: ["y"] },
+  };
+  const result = mergeReadStateUpdate(existing, {
+    removedIds: { tagIds: ["a"] },
+  });
+  expect(result.tagIds).toEqual({ b: ["y"] });
+});
+
+test("tagIds の incoming と removedIds.tagIds が両方空なら既存をそのまま返す", () => {
+  const existing: ReadState = {
+    ...emptyState(),
+    tagIds: { a: ["x"] },
+  };
+  const result = mergeReadStateUpdate(existing, {});
+  expect(result.tagIds).toEqual({ a: ["x"] });
+});
+
+test("tagIds が既存も incoming も空なら null を返す", () => {
+  const result = mergeReadStateUpdate(emptyState(), {});
+  expect(result.tagIds).toBeNull();
+});
+
+test("removedIds.tagIds は incoming.tagIds にも適用される（優先）", () => {
+  const existing: ReadState = {
+    ...emptyState(),
+    tagIds: { a: ["old"] },
+  };
+  const result = mergeReadStateUpdate(existing, {
+    tagIds: { a: ["new"] },
+    removedIds: { tagIds: ["a"] },
+  });
+  expect(result.tagIds).toBeNull();
 });

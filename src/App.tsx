@@ -208,6 +208,11 @@ export default function App() {
     notes,
     setNote,
     deleteNote,
+    tagIds: articleTagIds,
+    addTag,
+    removeTag,
+    setArticleTags,
+    clearArticleTags,
   } = useReadState(user, articles, historyIds);
 
   // 通信エラーをトーストで通知する。短時間に複数発生しても 1 回に集約（UI ノイズ抑止）。
@@ -238,6 +243,10 @@ export default function App() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(() =>
     searchParams.get("feed") ? null : searchParams.get("group"),
   );
+  // ?tag は ?feed / ?group と相互排他。feed / group が設定されていれば tag は無視する。
+  const [selectedTag, setSelectedTag] = useState<string | null>(() =>
+    searchParams.get("feed") || searchParams.get("group") ? null : searchParams.get("tag"),
+  );
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
   // モーダル・ポップアップ表示中はリサイズバーを無効化する（Issue #81）
@@ -250,10 +259,11 @@ export default function App() {
     const params = new URLSearchParams();
     if (selectedFeedId) params.set("feed", selectedFeedId);
     if (selectedGroupId) params.set("group", selectedGroupId);
+    if (selectedTag && !selectedFeedId && !selectedGroupId) params.set("tag", selectedTag);
     if (selectedArticle) params.set("article", selectedArticle.id);
     const search = params.toString();
     router.replace(search ? `/?${search}` : "/");
-  }, [selectedFeedId, selectedGroupId, selectedArticle, router]);
+  }, [selectedFeedId, selectedGroupId, selectedTag, selectedArticle, router]);
 
   // 記事ロード完了後に URL の article パラメータを復元
   useEffect(() => {
@@ -460,6 +470,8 @@ export default function App() {
     groupFeedIds,
     selectedGroupId,
     activeFeedView,
+    articleTags: articleTagIds,
+    selectedTag,
   });
 
   const {
@@ -988,15 +1000,26 @@ export default function App() {
                 onSelectFeed={(id) => {
                   setSelectedFeedId(id);
                   setSelectedGroupId(null);
+                  setSelectedTag(null);
                   setSelectedArticle(null);
                   setMobilePane("list");
                 }}
                 onSelectGroup={(id) => {
                   setSelectedGroupId(id);
                   setSelectedFeedId(null);
+                  setSelectedTag(null);
                   setSelectedArticle(null);
                   setMobilePane("list");
                 }}
+                selectedTag={selectedTag}
+                onSelectTag={(tag) => {
+                  setSelectedTag(tag);
+                  setSelectedFeedId(null);
+                  setSelectedGroupId(null);
+                  setSelectedArticle(null);
+                  setMobilePane("list");
+                }}
+                articleTagIds={articleTagIds}
                 onFeedAdded={onFeedAdded}
                 onFeedDeleted={onFeedDeleted}
                 onFeedRenamed={updateFeed}
@@ -1138,6 +1161,12 @@ export default function App() {
                 onSetNote={setNote}
                 onDeleteNote={deleteNote}
                 onAutoMarkRead={markRead}
+                tags={selectedArticle ? (articleTagIds[selectedArticle.id] ?? []) : []}
+                allTags={articleTagIds}
+                onAddTag={addTag}
+                onRemoveTag={removeTag}
+                onSetArticleTags={setArticleTags}
+                onClearArticleTags={clearArticleTags}
               />
             </ErrorBoundary>
           </div>

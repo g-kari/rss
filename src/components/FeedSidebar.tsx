@@ -72,6 +72,12 @@ interface Props {
   onExportMarkdown?: (mode: "bookmark" | "reading_list") => void;
   onExportNotes?: () => void;
   noteCount?: number;
+  /** 選択中のユーザータグ（そのタグが付いた記事のみ表示） */
+  selectedTag?: string | null;
+  /** タグ選択コールバック */
+  onSelectTag?: (tag: string | null) => void;
+  /** articleId → タグ配列マップ — タグ別記事数の集計に使用 */
+  articleTagIds?: Record<string, string[]>;
   install?: { canInstall: boolean; onInstall: () => void };
   push?: {
     supported: boolean;
@@ -741,6 +747,9 @@ export default function FeedSidebar({
   onExportMarkdown,
   onExportNotes,
   noteCount,
+  selectedTag = null,
+  onSelectTag,
+  articleTagIds,
   install,
   push,
 }: Props) {
@@ -882,6 +891,23 @@ export default function FeedSidebar({
       />
     );
   }
+
+  // タグ別記事数の集計: タグ名 → 件数
+  // articleTagIds が undefined の場合は空 Map を返す
+  const tagCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!articleTagIds) return map;
+    for (const tags of Object.values(articleTagIds)) {
+      for (const t of tags) map.set(t, (map.get(t) ?? 0) + 1);
+    }
+    return map;
+  }, [articleTagIds]);
+  // タグ一覧（記事数降順、同数時はタグ名昇順）
+  const sortedTags = useMemo(() => {
+    const arr = [...tagCounts.entries()];
+    arr.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    return arr;
+  }, [tagCounts]);
 
   const { unreadByFeed, totalUnread, lastPublishedByFeed, readTodayCount } = useMemo(() => {
     const byFeed = new Map<string, number>();
@@ -1182,6 +1208,37 @@ export default function FeedSidebar({
             onSelectFeed={onSelectFeed}
           />
         ))}
+
+        {sortedTags.length > 0 && onSelectTag && (
+          <div className="mt-1 pt-2 border-t border-border-subtle">
+            <div className="px-4 pb-1 flex items-center">
+              <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                Tags
+              </span>
+            </div>
+            {sortedTags.map(([tag, count]) => {
+              const isSelected = selectedTag === tag;
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => onSelectTag(isSelected ? null : tag)}
+                  className={`w-full px-4 py-1.5 flex items-center justify-between gap-2 text-left transition-colors ${
+                    isSelected
+                      ? "bg-surface-subtle text-text-strong"
+                      : "hover:bg-surface-hover text-text-muted hover:text-text-strong"
+                  }`}
+                  title={tag}
+                >
+                  <span className="text-[13px] truncate">#{tag}</span>
+                  <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
+                    {count > 99 ? "99+" : count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* 統計 */}
         <div className="px-4 py-2 flex items-center gap-4 border-t border-border-subtle mt-1">
