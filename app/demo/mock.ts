@@ -169,7 +169,14 @@ function handle(url: URL, init: RequestInit | undefined): Response | null {
   if (path === "/api/stats") return json({ daily: [], yearly: [], byFeed: [] });
   if (path === "/api/push/status") return json({ subscribed: false });
   if (path === "/api/push/vapid-key") return json({ key: null });
-  if (path === "/api/release-notes") return json({ markdown: "# Demo" });
+  if (path === "/api/release-notes")
+    return json({
+      content: "## 2026-01-01\n\n### 新機能\n\n- **デモ機能**",
+      total: 1,
+      offset: 0,
+      limit: 10,
+      hasMore: false,
+    });
   if (path === "/api/health") return json({ ok: true });
 
   // 書き込み系はすべて成功扱い
