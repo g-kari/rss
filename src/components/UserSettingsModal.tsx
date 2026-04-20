@@ -1,7 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
+import {
+  diagnoseTranslatorAvailability,
+  type TranslatorUnavailableReason,
+} from "../lib/browser-translator";
 import {
   FONT_SIZE_CYCLE,
   FONT_SIZE_LABELS,
@@ -69,6 +74,15 @@ export default function UserSettingsModal({ onClose }: Props) {
     galleryColumns,
     onChangeGalleryColumns,
   } = useReaderSettings();
+
+  const [translatorDiag, setTranslatorDiag] = useState<{
+    available: boolean;
+    reason: TranslatorUnavailableReason;
+  } | null>(null);
+
+  useEffect(() => {
+    diagnoseTranslatorAvailability().then(setTranslatorDiag);
+  }, []);
 
   return (
     <Modal
@@ -197,6 +211,29 @@ export default function UserSettingsModal({ onClose }: Props) {
             />
           </button>
         </SettingRow>
+
+        {translatorDiag && (
+          <div className="flex flex-col gap-1 pl-28">
+            <span className="text-[11px] text-text-muted">
+              利用プロバイダ:{" "}
+              {translatorDiag.available ? (
+                <span className="text-text-default">Chrome 翻訳 &#x2713;</span>
+              ) : (
+                <span className="text-text-default">Workers AI (フォールバック)</span>
+              )}
+            </span>
+            {!translatorDiag.available && translatorDiag.reason && (
+              <span className="text-[10px] text-text-faint">
+                {translatorDiag.reason === "not-chromium" &&
+                  "Chrome/Edge 以外のブラウザでは Chrome 翻訳を利用できません"}
+                {translatorDiag.reason === "flag-disabled" &&
+                  "chrome://flags/#translation-api を Enabled にすると Chrome 翻訳が利用できます"}
+                {translatorDiag.reason === "not-available" &&
+                  "言語パックが利用できません。Chrome の設定から言語を追加してください"}
+              </span>
+            )}
+          </div>
+        )}
 
         <p className="text-[11px] text-text-muted">
           変更は即座にプレビューに反映され、自動的に保存されますわ。
