@@ -211,6 +211,7 @@ src/
     translate-html.ts        # HTML DOM 内の翻訳対象テキスト抽出・翻訳適用
     popup-lock.ts            # 同時に開けるブラウザポップアップ数を制限するクライアントサイドロック
     serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
+    retry-after.ts           # HTTP Retry-After ヘッダー（delta-seconds / HTTP-date）をミリ秒に変換（クライアント・cron で共有）
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
 ```
