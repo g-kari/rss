@@ -157,6 +157,7 @@ src/
     useSyntaxHighlight.ts    # 記事本文 <pre><code> のシンタックスハイライト適用
     useMathRender.ts         # 記事本文の数式（KaTeX）レンダリング
     usePopupLock.ts          # ブラウザポップアップの多重表示防止ロック（lib/popup-lock 連携）
+    useDelayedGalleryItems.ts # 削除された items を 300ms 保持してフェードアウト遷移を可能にする（masonic 中間削除アニメーション用）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()

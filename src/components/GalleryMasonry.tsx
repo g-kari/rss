@@ -6,9 +6,15 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type CSSProperties,
   type RefObject,
 } from "react";
 import { useMasonry, usePositioner, useResizeObserver } from "masonic";
+
+// 各セル wrapper に当てる CSS transition — 参照安定化のため module scope に定義
+const ITEM_TRANSITION_STYLE: CSSProperties = {
+  transition: "top 0.3s ease, left 0.3s ease",
+};
 
 interface GalleryMasonryProps<T> {
   items: T[];
@@ -111,6 +117,8 @@ export default function GalleryMasonry<T>({
     overscanBy,
     render,
     itemKey,
+    // positioner 再生成で top/left が動いた際に CSS transition でスルスル遷移させる（値が同じなら発動しない）
+    itemStyle: ITEM_TRANSITION_STYLE,
   });
 
   return (

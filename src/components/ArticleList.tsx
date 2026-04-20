@@ -15,6 +15,7 @@ import {
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import GalleryMasonry from "./GalleryMasonry";
+import { useDelayedGalleryItems } from "@/hooks/useDelayedGalleryItems";
 import { useEventListener } from "@/hooks/useEventListener";
 import type { Article, Feed, FeedView, Layout, DateRange } from "../types";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
@@ -153,9 +154,22 @@ const DATE_RANGE_LABELS: Record<DateRange, string> = {
 interface GalleryItemContextValue {
   resolveItemProps: (article: Article, index: number) => ArticleItemProps;
   galleryImagesForItem: (articleId: string) => string[] | undefined;
+  /** 既読などで消えゆくアイテムの id 集合 — 該当要素は opacity 遷移で消す */
+  deletingIds: Set<string>;
 }
 
 const GalleryItemCtx = createContext<GalleryItemContextValue | null>(null);
+
+// 削除中 wrapper の style — 参照安定化のため module scope に固定
+const GALLERY_CARD_WRAPPER_STYLE_VISIBLE = {
+  transition: "opacity 0.25s ease",
+  opacity: 1,
+};
+const GALLERY_CARD_WRAPPER_STYLE_DELETING = {
+  transition: "opacity 0.25s ease",
+  opacity: 0,
+  pointerEvents: "none" as const,
+};
 
 const GalleryCardRenderer = memo(function GalleryCardRenderer({
   data,
@@ -167,15 +181,21 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
 }) {
   const ctx = useContext(GalleryItemCtx);
   if (!ctx) return null;
+  const isDeleting = ctx.deletingIds.has(data.id);
   return (
-    <GalleryArticleItem
-      {...ctx.resolveItemProps(data, index)}
-      prefetchedImages={ctx.galleryImagesForItem(data.id)}
-    />
+    <div
+      style={isDeleting ? GALLERY_CARD_WRAPPER_STYLE_DELETING : GALLERY_CARD_WRAPPER_STYLE_VISIBLE}
+    >
+      <GalleryArticleItem
+        {...ctx.resolveItemProps(data, index)}
+        prefetchedImages={ctx.galleryImagesForItem(data.id)}
+      />
+    </div>
   );
 });
 
 const galleryItemKey = (a: Article) => a.id;
+const getArticleId = (a: Article) => a.id;
 
 // ── メインコンポーネント ───────────────────────────────────────────────
 
@@ -276,6 +296,10 @@ export default function ArticleList({
     },
     [prefetchedMedia, activeFeedView],
   );
+
+  // 既読などで visible から抜けた記事を 300ms 間フェードアウトさせる（masonic の再配置を滑らかに）
+  const { displayItems: galleryDisplayItems, deletingIds: galleryDeletingIds } =
+    useDelayedGalleryItems(visible, getArticleId, 300);
 
   // ── 仮想スクロール ──────────────────────────────────────────────
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1033,11 +1057,17 @@ export default function ArticleList({
         )}
 
         {/* gallery — masonic による仮想スクロール対応 Pinterest 型 masonry */}
-        {layout === "gallery" && visible.length > 0 && (
+        {layout === "gallery" && galleryDisplayItems.length > 0 && (
           <div className="p-2">
-            <GalleryItemCtx.Provider value={{ resolveItemProps, galleryImagesForItem }}>
+            <GalleryItemCtx.Provider
+              value={{
+                resolveItemProps,
+                galleryImagesForItem,
+                deletingIds: galleryDeletingIds,
+              }}
+            >
               <GalleryMasonry
-                items={visible}
+                items={galleryDisplayItems}
                 scrollElement={scrollEl}
                 columnWidth={220}
                 columnGutter={12}
