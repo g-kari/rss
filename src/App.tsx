@@ -78,6 +78,8 @@ export default function App() {
     setShowFeedSwitcher,
     focusMode,
     toggleFocusMode,
+    listFocusMode,
+    setListFocusMode,
     nsfwMode,
     showNSFWAnimation,
     activateNSFW,
@@ -865,7 +867,11 @@ export default function App() {
           data-layout="root"
           className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
           style={{
-            gridTemplateColumns: focusMode ? `0px 0px 1fr` : `${sidebarWidth}px ${listWidth}px 1fr`,
+            gridTemplateColumns: focusMode
+              ? `0px 0px 1fr`
+              : listFocusMode
+                ? `0px 1fr 0px`
+                : `${sidebarWidth}px ${listWidth}px 1fr`,
             gridTemplateRows: "100%",
             transition: "grid-template-columns 0.25s ease",
           }}
@@ -956,8 +962,8 @@ export default function App() {
               </button>
             </div>
           )}
-          {/* カラムリサイズハンドル (PCのみ、フォーカスモード / ポップアップ表示中は無効) */}
-          {!focusMode && (
+          {/* カラムリサイズハンドル (PCのみ、フォーカスモード / 記事一覧フォーカス / ポップアップ表示中は無効) */}
+          {!focusMode && !listFocusMode && (
             <>
               <div
                 className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
@@ -1070,6 +1076,9 @@ export default function App() {
                   // ユーザーが後で手動で別レイアウトを選んだ場合は尊重する（次にカテゴリ切替するまで）
                   if (view === "pictures" || view === "videos") {
                     onChangeLayout("gallery");
+                    setListFocusMode(true);
+                  } else {
+                    setListFocusMode(false);
                   }
                 }}
                 recommendations={recommendations}

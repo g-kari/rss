@@ -113,6 +113,10 @@ export interface UIState {
   setShowFeedSwitcher: React.Dispatch<React.SetStateAction<boolean>>;
   focusMode: boolean;
   toggleFocusMode: () => void;
+  /** 記事一覧フォーカスモード — サイドバーと記事ビューを折り畳み記事一覧を最大化する */
+  listFocusMode: boolean;
+  toggleListFocusMode: () => void;
+  setListFocusMode: React.Dispatch<React.SetStateAction<boolean>>;
   nsfwMode: boolean;
   showNSFWAnimation: boolean;
   activateNSFW: () => void;
@@ -161,6 +165,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [listFocusMode, setListFocusMode] = useState(false);
   const [autoReadEnabled, setAutoReadEnabled] = useState<boolean>(loadAutoReadEnabled);
   const [autoReadThreshold, setAutoReadThreshold] =
     useState<AutoReadThreshold>(loadAutoReadThreshold);
@@ -210,11 +215,21 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "?") setShowHelp((v) => !v);
-      if (e.key === "\\") setFocusMode((v) => !v);
+      if (e.key === "\\") {
+        // Shift+\\ (= `|`) で記事一覧フォーカス、\\ 単体で記事詳細フォーカス
+        if (e.shiftKey) {
+          setListFocusMode((v) => !v);
+          setFocusMode(false);
+        } else {
+          setFocusMode((v) => !v);
+          setListFocusMode(false);
+        }
+      }
       if (e.key === "Escape") {
         setShowHelp(false);
         setShowFeedSwitcher(false);
         setFocusMode(false);
+        setListFocusMode(false);
       }
     },
     document,
@@ -241,6 +256,12 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
 
   const toggleFocusMode = useCallback(() => {
     setFocusMode((v) => !v);
+    setListFocusMode(false);
+  }, []);
+
+  const toggleListFocusMode = useCallback(() => {
+    setListFocusMode((v) => !v);
+    setFocusMode(false);
   }, []);
 
   const toggleAutoRead = useCallback(() => {
@@ -296,6 +317,9 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     setShowFeedSwitcher,
     focusMode,
     toggleFocusMode,
+    listFocusMode,
+    toggleListFocusMode,
+    setListFocusMode,
     nsfwMode,
     showNSFWAnimation,
     activateNSFW,
