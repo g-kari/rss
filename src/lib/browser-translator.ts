@@ -51,7 +51,7 @@ export async function detectSourceLanguage(text: string): Promise<string> {
   if (typeof window !== "undefined" && window.LanguageDetector) {
     try {
       const availability = await window.LanguageDetector.availability();
-      if (availability === "available") {
+      if (shouldUseBrowserTranslation(availability)) {
         const detector = await window.LanguageDetector.create();
         const results = await detector.detect(sample);
         const top = results[0];
@@ -65,12 +65,13 @@ export async function detectSourceLanguage(text: string): Promise<string> {
 }
 
 /**
- * 判定された availability に基づいて即時翻訳可能かを返す。
+ * 判定された availability に基づいてブラウザ翻訳を使用できるかを返す。
  * - `available`: 即時翻訳可能
- * - それ以外（`downloadable` / `downloading` / `unavailable`）: サーバー AI にフォールバック推奨
+ * - `downloadable`: モデル未DLだが `Translator.create()` が自動DLするため利用可
+ * - `downloading` / `unavailable`: サーバー AI にフォールバック推奨
  */
 export function shouldUseBrowserTranslation(availability: Availability): boolean {
-  return availability === "available";
+  return availability === "available" || availability === "downloadable";
 }
 
 /**
@@ -78,7 +79,7 @@ export function shouldUseBrowserTranslation(availability: Availability): boolean
  *
  * @returns 翻訳結果。以下のケースでは `null` を返し、呼び出し側はサーバー AI にフォールバックする:
  *   - API 非対応環境
- *   - 言語ペアが `"available"` でない（モデル未ダウンロード等）
+ *   - 言語ペアが `"downloading"` / `"unavailable"`
  *   - 原文言語がターゲット言語と同じ（翻訳不要）
  *   - 例外発生時
  */

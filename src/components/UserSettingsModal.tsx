@@ -64,6 +64,8 @@ export default function UserSettingsModal({ onClose }: Props) {
     toggleAutoRead,
     autoReadThreshold,
     onChangeAutoReadThreshold,
+    autoTranslate,
+    toggleAutoTranslate,
     galleryColumns,
     onChangeGalleryColumns,
   } = useReaderSettings();
@@ -175,6 +177,25 @@ export default function UserSettingsModal({ onClose }: Props) {
               />
             )}
           </div>
+        </SettingRow>
+
+        <SettingRow label="自動翻訳">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoTranslate}
+            aria-label={autoTranslate ? "自動翻訳を OFF にする" : "自動翻訳を ON にする"}
+            onClick={toggleAutoTranslate}
+            className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+              autoTranslate ? "bg-ink" : "bg-border-default"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                autoTranslate ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
         </SettingRow>
 
         <p className="text-[11px] text-text-muted">
