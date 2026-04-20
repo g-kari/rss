@@ -13,10 +13,13 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import GalleryMasonry from "./GalleryMasonry";
 import { useDelayedGalleryItems } from "@/hooks/useDelayedGalleryItems";
 import { useEventListener } from "@/hooks/useEventListener";
+import { usePopupLock } from "@/hooks/usePopupLock";
+import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import type { Article, Feed, FeedView, Layout, DateRange } from "../types";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
@@ -155,11 +158,20 @@ const DATE_RANGE_LABELS: Record<DateRange, string> = {
 // ArticleList の再 render ごとに新規関数を渡すと全カードが再マウントされる（チカチカ発生）。
 // module scope で memo 化された Component を保持し、動的な closure は Context 経由で供給する。
 
+interface GalleryContextMenuTarget {
+  article: Article;
+  thumb: string | null;
+  images: string[] | undefined;
+  x: number;
+  y: number;
+}
+
 interface GalleryItemContextValue {
   resolveItemProps: (article: Article, index: number) => ArticleItemProps;
   galleryImagesForItem: (articleId: string) => string[] | undefined;
   /** 既読などで消えゆくアイテムの id 集合 — 該当要素は opacity 遷移で消す */
   deletingIds: Set<string>;
+  onGalleryContextMenu: (e: React.MouseEvent, article: Article, index: number) => void;
 }
 
 const GalleryItemCtx = createContext<GalleryItemContextValue | null>(null);
@@ -189,6 +201,7 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
   return (
     <div
       style={isDeleting ? GALLERY_CARD_WRAPPER_STYLE_DELETING : GALLERY_CARD_WRAPPER_STYLE_VISIBLE}
+      onContextMenu={(e) => ctx.onGalleryContextMenu(e, data, index)}
     >
       <GalleryArticleItem
         {...ctx.resolveItemProps(data, index)}
@@ -307,6 +320,49 @@ export default function ArticleList({
   // 既読などで visible から抜けた記事を 300ms 間フェードアウトさせる（masonic の再配置を滑らかに）
   const { displayItems: galleryDisplayItems, deletingIds: galleryDeletingIds } =
     useDelayedGalleryItems(visible, getArticleId, 300);
+
+  // ── ギャラリーコンテキストメニュー ───────────────────────────────
+  const [galleryCtxMenu, setGalleryCtxMenu] = useState<GalleryContextMenuTarget | null>(null);
+  usePopupLock(!!galleryCtxMenu);
+  useEventListener("scroll", () => setGalleryCtxMenu(null), window, true);
+  useEventListener("resize", () => setGalleryCtxMenu(null));
+
+  const handleGalleryContextMenu = useCallback(
+    (e: React.MouseEvent, article: Article, _index: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const images = galleryImagesForItem(article.id);
+      const thumb = resolveThumbnail(article, ogpCache) ?? null;
+      setGalleryCtxMenu({
+        article,
+        thumb,
+        images,
+        x: e.clientX,
+        y: e.clientY,
+      });
+    },
+    [galleryImagesForItem, ogpCache],
+  );
+
+  const downloadImage = useCallback((url: string, filename?: string) => {
+    const proxyUrl = buildImageProxyUrl(url);
+    const a = document.createElement("a");
+    a.href = proxyUrl;
+    a.download = filename || url.split("/").pop()?.split("?")[0] || "image";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, []);
+
+  const downloadAllImages = useCallback(
+    (images: string[]) => {
+      images.forEach((url, i) => {
+        setTimeout(() => downloadImage(url, `image-${i + 1}`), i * 200);
+      });
+    },
+    [downloadImage],
+  );
 
   // ── 仮想スクロール ──────────────────────────────────────────────
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1111,6 +1167,7 @@ export default function ArticleList({
                 resolveItemProps,
                 galleryImagesForItem,
                 deletingIds: galleryDeletingIds,
+                onGalleryContextMenu: handleGalleryContextMenu,
               }}
             >
               <GalleryMasonry
@@ -1141,6 +1198,127 @@ export default function ArticleList({
           onSave={setGlobalFilter}
         />
       )}
+      {galleryCtxMenu &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[49]" onPointerDown={() => setGalleryCtxMenu(null)} />
+            <div
+              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[160px]"
+              style={(() => {
+                const MIN_W = 160;
+                const EST_H = 170;
+                const left = Math.min(galleryCtxMenu.x, window.innerWidth - MIN_W - 4);
+                const spaceBelow = window.innerHeight - galleryCtxMenu.y;
+                if (spaceBelow >= EST_H) {
+                  return { top: galleryCtxMenu.y, left: Math.max(4, left) };
+                }
+                return { bottom: window.innerHeight - galleryCtxMenu.y, left: Math.max(4, left) };
+              })()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {galleryCtxMenu.thumb && (
+                <button
+                  onClick={() => {
+                    downloadImage(galleryCtxMenu.thumb!);
+                    setGalleryCtxMenu(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6 1v8M3 6l3 3 3-3" />
+                    <path d="M1 10h10" />
+                  </svg>
+                  画像を保存
+                </button>
+              )}
+              {galleryCtxMenu.images && galleryCtxMenu.images.length > 1 && (
+                <button
+                  onClick={() => {
+                    downloadAllImages(galleryCtxMenu.images!);
+                    setGalleryCtxMenu(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6 1v8M3 6l3 3 3-3" />
+                    <path d="M1 10h10" />
+                    <rect
+                      x="9"
+                      y="0"
+                      width="3"
+                      height="3"
+                      rx="1"
+                      fill="currentColor"
+                      stroke="none"
+                    />
+                  </svg>
+                  画像を一括保存 ({galleryCtxMenu.images.length}枚)
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  onToggleRead(galleryCtxMenu.article.id);
+                  setGalleryCtxMenu(null);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M2 6l3 3 5-5" />
+                </svg>
+                {readIds.has(galleryCtxMenu.article.id) ? "未読にする" : "既読にする"}
+              </button>
+              <button
+                onClick={() => {
+                  onToggleBookmark(galleryCtxMenu.article.id);
+                  setGalleryCtxMenu(null);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill={bookmarkIds.has(galleryCtxMenu.article.id) ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M2.5 1.5h7v9L6 8l-3.5 2.5z" />
+                </svg>
+                {bookmarkIds.has(galleryCtxMenu.article.id) ? "ブックマーク解除" : "ブックマーク"}
+              </button>
+            </div>
+          </>,
+          document.body,
+        )}
     </section>
   );
 }
