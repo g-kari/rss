@@ -506,6 +506,11 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
 
 // ── gallery (Pinterest 風 masonry) ───────────────────────────────────────
 
+interface GalleryItemExtraProps {
+  /** 本文から先行取得した全画像 URL（設定時は thumb の代わりに全枚数を縦スタック表示） */
+  prefetchedImages?: string[];
+}
+
 export const GalleryArticleItem = memo(function GalleryArticleItem({
   article,
   isRead,
@@ -519,7 +524,9 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
-}: Omit<ArticleItemProps, "index">) {
+  prefetchedImages,
+}: Omit<ArticleItemProps, "index"> & GalleryItemExtraProps) {
+  const hasMultipleImages = !!prefetchedImages && prefetchedImages.length > 0;
   return (
     <div
       id={`article-${article.id}`}
@@ -530,7 +537,17 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
           : "border-border-default hover:border-text-muted bg-surface-elevated"
       }`}
     >
-      {thumb ? (
+      {hasMultipleImages ? (
+        <div className="flex flex-col">
+          {prefetchedImages.map((src, i) => (
+            <ArticleThumbnail
+              key={`${src}-${i}`}
+              thumb={src}
+              className="w-full h-auto object-cover bg-surface-subtle"
+            />
+          ))}
+        </div>
+      ) : thumb ? (
         <ArticleThumbnail thumb={thumb} className="w-full h-auto object-cover bg-surface-subtle" />
       ) : (
         <div className="w-full aspect-square bg-surface-subtle flex items-center justify-center">

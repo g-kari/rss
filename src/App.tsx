@@ -1103,6 +1103,7 @@ export default function App() {
                 feedHasMorePages={feedHasMorePages}
                 onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
                 notes={notes}
+                activeFeedView={activeFeedView}
               />
             </ErrorBoundary>
           </div>

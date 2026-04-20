@@ -13,7 +13,12 @@ import {
   transformXTweetEmbeds,
 } from "../src/lib/content";
 import { sanitizeHtml } from "../src/lib/html";
-import { extractEmbedInfo, processContent, stripIframes } from "../src/lib/embed-utils";
+import {
+  collectIframeUrlsFromHtml,
+  extractEmbedInfo,
+  processContent,
+  stripIframes,
+} from "../src/lib/embed-utils";
 
 /**
  * extractMainContent / detectCharset のロジックを node スクリプトで検証する。
@@ -1245,5 +1250,42 @@ test.describe("stripIframes — XSS サニタイズ（埋め込みメディア�
     const result = stripIframes(html);
     expect(result).not.toContain("<iframe");
     expect(result).toContain("<p>本文</p>");
+  });
+});
+
+test.describe("collectIframeUrlsFromHtml — ギャラリー動画プリフェッチ用", () => {
+  test("本文から信頼済みサービスの iframe src を全て抽出する", () => {
+    const html = `
+      <p>最初の動画</p>
+      <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
+      <p>途中テキスト</p>
+      <iframe src="https://vimeo.com/12345"></iframe>
+    `;
+    const result = collectIframeUrlsFromHtml(html);
+    expect(result).toEqual([
+      "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      "https://vimeo.com/12345",
+    ]);
+  });
+
+  test("重複した iframe src は 1 件に集約される", () => {
+    const html =
+      '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>' +
+      '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>';
+    const result = collectIframeUrlsFromHtml(html);
+    expect(result).toHaveLength(1);
+  });
+
+  test("extractEmbedInfo に合致しない iframe（広告等）は除外される", () => {
+    const html = `
+      <iframe src="https://ads.example.com/banner"></iframe>
+      <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
+    `;
+    const result = collectIframeUrlsFromHtml(html);
+    expect(result).toEqual(["https://www.youtube.com/embed/dQw4w9WgXcQ"]);
+  });
+
+  test("iframe が存在しない HTML は空配列を返す", () => {
+    expect(collectIframeUrlsFromHtml("<p>テキストのみ</p>")).toEqual([]);
   });
 });
