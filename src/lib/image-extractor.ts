@@ -52,6 +52,25 @@ function parseSizeFromStyle(
 }
 
 /**
+ * WordPress等のURLサフィックスからサムネイル画像を検出する。
+ * `-30x30.jpg`, `-150x150.png`, `-100x100_crop.webp` 等のパターンにマッチし、
+ * 両辺とも MIN_IMAGE_SIZE_PX 未満なら true。
+ * image-proxy URL の場合は内部の url パラメータをデコードして判定する。
+ */
+const WP_THUMB_RE = /-(\d+)x(\d+)(?:_\w+)?\.(jpe?g|png|gif|webp|avif|svg)(?:\?.*)?$/i;
+
+export function isTooSmallByUrl(src: string): boolean {
+  const url = src.startsWith("/api/image-proxy?")
+    ? decodeURIComponent(src.replace(/^\/api\/image-proxy\?url=/, ""))
+    : src;
+  const m = WP_THUMB_RE.exec(url);
+  if (!m) return false;
+  const w = Number(m[1]);
+  const h = Number(m[2]);
+  return w < MIN_IMAGE_SIZE_PX && h < MIN_IMAGE_SIZE_PX;
+}
+
+/**
  * HTML 属性（width / height / style）から「明示的に両辺とも閾値未満」と判定できる場合のみ true。
  * 片方しか明示されていない場合や属性がない場合は false（= 小さい画像と断定できない = 収集対象）。
  */
@@ -87,6 +106,7 @@ export function collectImageUrlsFromHtml(html: string): string[] {
       src = bestSrcFromSrcset(srcset);
     }
     if (!isCollectableUrl(src, seen)) continue;
+    if (isTooSmallByUrl(src)) continue;
     const widthAttr = /\bwidth=["']([^"']+)["']/i.exec(attrs)?.[1];
     const heightAttr = /\bheight=["']([^"']+)["']/i.exec(attrs)?.[1];
     const styleAttr = /\bstyle=["']([^"']+)["']/i.exec(attrs)?.[1];
@@ -117,6 +137,7 @@ export function collectImageUrls(container: Element, seen?: Set<string>): string
       src = bestSrcFromSrcset(el.getAttribute("srcset") ?? "");
     }
     if (!isCollectableUrl(src, s)) continue;
+    if (isTooSmallByUrl(src)) continue;
     const nw = el.naturalWidth;
     const nh = el.naturalHeight;
     if (nw > 0 && nh > 0) {

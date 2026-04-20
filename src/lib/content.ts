@@ -722,6 +722,26 @@ function applyCorePipeline(html: string, pageUrl = ""): string {
 }
 
 /**
+ * WordPress等のサムネイル画像（-30x30.jpg 等）を本文から除去する。
+ * フルサイズ版が同一記事内に存在する場合、またはサイズが MIN_IMAGE_SIZE_PX 未満の場合に除去。
+ */
+export function removeSmallThumbnailImages(html: string): string {
+  const MIN_SIZE = 100;
+  const thumbRe = /-(\d+)x(\d+)(?:_\w+)?\.(jpe?g|png|gif|webp|avif|svg)/i;
+  return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
+    const srcMatch = /\bsrc=["']([^"']+)["']/i.exec(attrs);
+    if (!srcMatch) return full;
+    const src = srcMatch[1];
+    const m = thumbRe.exec(src);
+    if (!m) return full;
+    const w = Number(m[1]);
+    const h = Number(m[2]);
+    if (w < MIN_SIZE && h < MIN_SIZE) return "";
+    return full;
+  });
+}
+
+/**
  * コンテンツ抽出後の後処理パイプライン。
  *
  * 前処理ステップ（この関数内）:
@@ -731,6 +751,7 @@ function applyCorePipeline(html: string, pageUrl = ""): string {
  *                                regex フォールバック経路や Markdown 経路の安全網として保持する（冪等）。
  *   3. transformZennMermaidEmbeds: zenn.dev の mermaid iframe を <pre><code> に変換（同上、冪等な安全網）
  *   4. fixLazyImages:            data-src → src 解決 / Shopify _NNNx → _800x 高解像度化
+ *   5. removeSmallThumbnailImages: WordPress サムネイル (-NxN) の除去
  *
  * 後処理は applyCorePipeline に委譲（fixImageDimensions → rewriteImageUrls → fixExternalLinks → wrapTables → sanitizeHtml）。
  *
@@ -743,6 +764,7 @@ export function postProcess(content: string, pageUrl = ""): string {
   h = transformZennLinkEmbeds(h);
   h = transformZennMermaidEmbeds(h, pageUrl);
   h = fixLazyImages(h);
+  h = removeSmallThumbnailImages(h);
   return applyCorePipeline(h, pageUrl);
 }
 

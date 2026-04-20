@@ -11,8 +11,10 @@ import {
   transformZennLinkEmbeds,
   fixExternalLinks,
   transformXTweetEmbeds,
+  removeSmallThumbnailImages,
 } from "../src/lib/content";
 import { sanitizeHtml } from "../src/lib/html";
+import { isTooSmallByUrl, collectImageUrlsFromHtml } from "../src/lib/image-extractor";
 import {
   collectIframeUrlsFromHtml,
   extractEmbedInfo,
@@ -1288,5 +1290,63 @@ test.describe("collectIframeUrlsFromHtml — ギャラリー動画プリフェ�
 
   test("iframe が存在しない HTML は空配列を返す", () => {
     expect(collectIframeUrlsFromHtml("<p>テキストのみ</p>")).toEqual([]);
+  });
+});
+
+test.describe("removeSmallThumbnailImages — WordPress サムネイル除去", () => {
+  test("-30x30.jpg のサムネイルが除去される", () => {
+    const html = '<p><img src="https://example.com/photo-30x30.jpg"></p>';
+    expect(removeSmallThumbnailImages(html)).toBe("<p></p>");
+  });
+
+  test("-300x300.jpg は除去されない（MIN_SIZE 以上）", () => {
+    const html = '<img src="https://example.com/photo-300x300.jpg">';
+    expect(removeSmallThumbnailImages(html)).toBe(html);
+  });
+
+  test("サフィックスなしのフルサイズ画像は除去されない", () => {
+    const html = '<img src="https://example.com/photo.jpg">';
+    expect(removeSmallThumbnailImages(html)).toBe(html);
+  });
+
+  test("-99x99 は除去、-100x100 は保持", () => {
+    const h1 = '<img src="https://example.com/a-99x99.jpg">';
+    const h2 = '<img src="https://example.com/a-100x100.jpg">';
+    expect(removeSmallThumbnailImages(h1)).toBe("");
+    expect(removeSmallThumbnailImages(h2)).toBe(h2);
+  });
+});
+
+test.describe("isTooSmallByUrl — URL サフィックスによるサイズ判定", () => {
+  test("WordPress -30x30 サフィックスを検出する", () => {
+    expect(isTooSmallByUrl("https://example.com/img-30x30.jpg")).toBe(true);
+  });
+
+  test("/api/image-proxy 経由の URL もデコードして判定する", () => {
+    const proxied = `/api/image-proxy?url=${encodeURIComponent("https://example.com/img-50x50.png")}`;
+    expect(isTooSmallByUrl(proxied)).toBe(true);
+  });
+
+  test("100x100 以上は false を返す", () => {
+    expect(isTooSmallByUrl("https://example.com/img-100x100.jpg")).toBe(false);
+    expect(isTooSmallByUrl("https://example.com/img-300x300.jpg")).toBe(false);
+  });
+
+  test("サフィックスなしの URL は false を返す", () => {
+    expect(isTooSmallByUrl("https://example.com/photo.jpg")).toBe(false);
+  });
+});
+
+test.describe("collectImageUrlsFromHtml — WordPress サムネイル除外", () => {
+  test("-30x30 サムネイルがギャラリーから除外される", () => {
+    const html = `
+      <img src="https://example.com/photo.jpg">
+      <img src="https://example.com/photo-30x30.jpg">
+      <img src="https://example.com/other-300x300.jpg">
+    `;
+    const urls = collectImageUrlsFromHtml(html);
+    expect(urls).toContain("https://example.com/photo.jpg");
+    expect(urls).not.toContain("https://example.com/photo-30x30.jpg");
+    expect(urls).toContain("https://example.com/other-300x300.jpg");
   });
 });
