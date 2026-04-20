@@ -9,6 +9,8 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ### バグ修正っ
 
+- **ギャラリービュー列数フォーカスモード修正** — Issue #144。列数固定時にフォーカスモードで余白が出る問題を解消（maxWidth 制約を削除）。自動モード時のフォーカスモードは最大6列に制限。
+
 - **スマホ Chrome でブラウザ翻訳が使われない問題を修正** — Issue #138。\`shouldUseBrowserTranslation\` が \`availability === "available"\` のみを許可していたため、モバイル Chrome で翻訳モデル未ダウンロード時（\`"downloadable"\`）にブラウザ翻訳が発動せず Workers AI フォールバックになっていた。\`"downloadable"\` も許可し、\`Translator.create()\` のモデル自動ダウンロードを活用するよう修正。\`detectSourceLanguage\` の \`LanguageDetector\` availability チェックも同様に統一。
 
 ### 激アツ新機能っ
