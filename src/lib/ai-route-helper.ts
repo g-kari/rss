@@ -4,16 +4,16 @@ import { getAiCacheById, setAiCacheById, type AiCacheType } from "@/lib/ai-cache
 import { toPlainText } from "@/lib/html";
 import { fetchArticleContent } from "@/lib/fetch-article-content";
 import { isValidFeedUrl } from "@/lib/url";
-import { aiCooldownKey } from "@/lib/r2";
-import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+import { aiRateLimitKey } from "@/lib/r2";
+import { checkSlidingWindow } from "@/lib/rate-limit";
 import { apiError } from "@/lib/api-error";
 
 // @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のため、同じ
 // BaseAiTextGeneration 構造を持つ既知モデル型に合わせてキャストする
 const MODEL = "@cf/meta/llama-3.1-8b-instruct" as "@cf/meta/llama-3.1-8b-instruct-fp8";
 
-// AI エンドポイントのレートリミット: キャッシュミス時のみ適用
-const AI_COOLDOWN_MS = 5 * 1000; // 5秒
+const AI_WINDOW_MS = 60 * 1000;
+const AI_MAX_CALLS = 10;
 
 type AiMessage = { role: "system" | "user"; content: string };
 
@@ -23,8 +23,8 @@ type AiMessage = { role: "system" | "user"; content: string };
  *
  * ## 処理フロー
  * 1. リクエストボディから url / articleId を取得
- * 2. articleId がある場合は R2 キャッシュを確認（ヒット時はレートリミットをスキップ）
- * 3. レートリミット（ユーザーごとに 5 秒のクールダウン）
+ * 2. articleId がある場合は R2 キャッシュを確認（ヒット時は AI 呼び出しをスキップ）
+ * 3. スライディングウィンドウ レートリミット（60 秒間に最大 10 回、AI 実行分のみカウント）
  * 4. /api/content と共有する Cloudflare Cache から記事コンテンツを取得
  * 5. Workers AI を呼び出して結果を取得
  * 6. 結果を R2 キャッシュに保存（fire-and-forget）
@@ -57,16 +57,16 @@ export async function runAiJob(
       ? body.articleId
       : null;
 
-  // キャッシュヒット時はレートリミット不要（AI を呼ばないため）
   if (articleId) {
     const cached = await getAiCacheById(env.RSS_DATA, articleId, cacheType);
     if (cached) return NextResponse.json({ result: cached });
   }
 
-  const limited = await checkAndUpdateCooldown(
+  const limited = await checkSlidingWindow(
     env.RSS_DATA,
-    aiCooldownKey(session.userId),
-    AI_COOLDOWN_MS,
+    aiRateLimitKey(session.userId),
+    AI_WINDOW_MS,
+    AI_MAX_CALLS,
   );
   if (limited) return limited;
 

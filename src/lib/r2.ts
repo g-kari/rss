@@ -61,8 +61,8 @@ export function refreshCooldownKey(userId: string): string {
   return `users/${userId}/last-full-refresh.json`;
 }
 
-/** AI エンドポイントのクールダウン管理キーを返す */
-export function aiCooldownKey(userId: string): string {
+/** AI エンドポイントのレートリミット管理キーを返す */
+export function aiRateLimitKey(userId: string): string {
   return `users/${userId}/ai-cooldown.json`;
 }
 

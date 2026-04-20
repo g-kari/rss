@@ -50,3 +50,49 @@ export async function checkAndUpdateCooldown(
     inFlight.delete(key);
   }
 }
+
+/**
+ * R2 ベースのスライディングウィンドウ レートリミット。
+ * windowMs 内の呼び出し回数が maxCalls を超えると 429 を返す。
+ * 単純なクールダウンと異なり、バーストを許容しつつ持続的な乱用を防ぐ。
+ */
+export async function checkSlidingWindow(
+  bucket: R2Bucket,
+  key: string,
+  windowMs: number,
+  maxCalls: number,
+): Promise<NextResponse | null> {
+  if (inFlight.has(key)) {
+    const retryAfter = Math.ceil(windowMs / 1000);
+    const res = apiError("Too many requests", 429, {
+      code: "RATE_LIMITED",
+      retryable: true,
+      retryAfter,
+    });
+    res.headers.set("Retry-After", String(retryAfter));
+    return res;
+  }
+  inFlight.add(key);
+  try {
+    const now = Date.now();
+    const data = await r2Get<{ calls?: number[] }>(bucket, key, { calls: [] });
+    const calls = Array.isArray(data.calls) ? data.calls : [];
+    const recent = calls.filter((t) => now - t < windowMs);
+    if (recent.length >= maxCalls) {
+      const oldest = Math.min(...recent);
+      const retryAfter = Math.ceil((windowMs - (now - oldest)) / 1000);
+      const res = apiError("Too many requests", 429, {
+        code: "RATE_LIMITED",
+        retryable: true,
+        retryAfter,
+      });
+      res.headers.set("Retry-After", String(retryAfter));
+      return res;
+    }
+    recent.push(now);
+    await r2Put(bucket, key, { calls: recent });
+    return null;
+  } finally {
+    inFlight.delete(key);
+  }
+}

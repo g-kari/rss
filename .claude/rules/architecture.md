@@ -312,7 +312,7 @@ Route Handler では `session.userId` でアクセスする。
 
 ```
 users/{userId}/last-full-refresh.json          # 全フィード一括リフレッシュのクールダウン
-users/{userId}/ai-cooldown.json                # AI エンドポイントのクールダウン
+users/{userId}/ai-cooldown.json                # AI エンドポイントのスライディングウィンドウ レートリミット ({ calls: number[] })
 users/{userId}/feed-refresh-{feedHash}.json    # 単体フィードリフレッシュのクールダウン
 users/{userId}/feed-reinfer-{feedHash}.json    # LLM CSS セレクタ再推論のクールダウン
 users/{userId}/recommendations-refresh.json    # 推薦リフレッシュのクールダウン
