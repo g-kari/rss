@@ -1041,6 +1041,13 @@ export default function App() {
                   setSelectedTag(null);
                   setSelectedArticle(null);
                   setMobilePane("list");
+                  const feed = feeds.find((f) => f.id === id);
+                  if (feed?.view === "pictures" || feed?.view === "videos") {
+                    onChangeLayout("gallery");
+                    setListFocusMode(true);
+                  } else {
+                    setListFocusMode(false);
+                  }
                 }}
                 onSelectGroup={(id) => {
                   setSelectedGroupId(id);
