@@ -20,10 +20,12 @@ interface Options {
   articles: Article[];
   /** プリフェッチ実行の有効化フラグ（pictures/videos カテゴリ選択時のみ true 想定） */
   enabled: boolean;
-  /** 同時 fetch 上限 — サーバー負荷を抑えるため既定 3 並列 */
+  /** 同時 fetch 上限 — リモートサイトのレート制限を避けるため既定 2 並列 */
   concurrency?: number;
   /** 先頭から何件まで先行取得するか — 画面に最初に表示される枚数分を目安に */
   maxPrefetch?: number;
+  /** 各 fetch 完了後のディレイ (ms) — バースト抑制のため既定 250ms */
+  requestDelayMs?: number;
 }
 
 /**
@@ -33,6 +35,8 @@ interface Options {
  * - 取得した HTML を `collectImageUrlsFromHtml` / `collectIframeUrlsFromHtml` に通して
  *   画像配列・動画埋込み配列を抽出し、state の Map として公開する
  * - 並列数を `concurrency` で制御、`articles` 配列の先頭 `maxPrefetch` 件のみ対象
+ * - 各 fetch 完了後に `requestDelayMs` 待機して連続リクエストのバーストを抑制
+ * - 1 件でも 429 レスポンスを受信したら以降の全フェッチを abort して連鎖的な 429 を防止
  * - unmount 時と `articles` 変更時に進行中フェッチを AbortController で中断
  *
  * この hook はサムネイル表示の拡張用であり、ArticleView の全文取得（`useArticleContent`）とは
@@ -41,8 +45,9 @@ interface Options {
 export function usePrefetchGalleryContents({
   articles,
   enabled,
-  concurrency = 3,
-  maxPrefetch = 20,
+  concurrency = 2,
+  maxPrefetch = 10,
+  requestDelayMs = 250,
 }: Options): Map<string, PrefetchedMedia> {
   const [media, setMedia] = useState<Map<string, PrefetchedMedia>>(() => new Map());
   // enabled=false のとき state を空にすると、切り替え時のチラつきが出るため保持する
@@ -56,6 +61,8 @@ export function usePrefetchGalleryContents({
 
     const controller = new AbortController();
     let cancelled = false;
+    // 429 を受信したら以降の fetch を全停止するフラグ
+    let rateLimited = false;
 
     // すでに state にある記事はスキップ
     const pending = targets.filter((a) => !mediaRef.current.has(a.id));
@@ -82,12 +89,28 @@ export function usePrefetchGalleryContents({
       });
     }
 
+    function sleep(ms: number): Promise<void> {
+      return new Promise((resolve) => {
+        const id = setTimeout(resolve, ms);
+        controller.signal.addEventListener("abort", () => {
+          clearTimeout(id);
+          resolve();
+        });
+      });
+    }
+
     async function fetchOne(article: Article) {
-      if (!article.link) return;
+      if (!article.link || rateLimited || cancelled) return;
       try {
         const res = await apiFetch(`/api/content?url=${encodeURIComponent(article.link)}`, {
           signal: controller.signal,
         });
+        if (res.status === 429) {
+          // レート制限を検出したらそのドメイン・アップストリームをこれ以上叩かない
+          rateLimited = true;
+          controller.abort();
+          return;
+        }
         if (!res.ok) return;
         const data = (await res.json()) as { content?: string };
         if (!data.content || cancelled) return;
@@ -108,13 +131,15 @@ export function usePrefetchGalleryContents({
       }
     }
 
-    // 並列数を concurrency に制限して逐次取得
+    // 並列数を concurrency に制限して逐次取得（各 fetch 後に requestDelayMs 待機）
     let idx = 0;
     async function worker() {
-      while (!cancelled) {
+      while (!cancelled && !rateLimited) {
         const current = idx++;
         if (current >= toFetch.length) return;
         await fetchOne(toFetch[current]);
+        if (rateLimited || cancelled) return;
+        if (requestDelayMs > 0) await sleep(requestDelayMs);
       }
     }
 
@@ -127,7 +152,7 @@ export function usePrefetchGalleryContents({
       cancelled = true;
       controller.abort();
     };
-  }, [articles, enabled, concurrency, maxPrefetch]);
+  }, [articles, enabled, concurrency, maxPrefetch, requestDelayMs]);
 
   return media;
 }
