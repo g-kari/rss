@@ -13,6 +13,7 @@ import { useFeedOperations } from "../hooks/useFeedOperations";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { isArticleRead } from "../lib/article-filter";
 import { resolveFeedGroupDrop } from "../lib/feed-group-drop";
+import { buildImageProxyUrl } from "../lib/image-proxy-url";
 
 interface Props {
   feeds: Feed[];
@@ -1449,7 +1450,7 @@ export default function FeedSidebar({
       <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-2">
         {user.picture ? (
           <img
-            src={`/api/image-proxy?url=${encodeURIComponent(user.picture)}`}
+            src={buildImageProxyUrl(user.picture)}
             alt=""
             className="w-5 h-5 rounded-full flex-shrink-0"
           />

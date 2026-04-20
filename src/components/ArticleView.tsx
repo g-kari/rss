@@ -6,6 +6,7 @@ import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { readingTime, FONT_SIZE_CLASSES, FONT_FAMILY_CLASSES } from "../lib/article-utils";
 import { collectImageUrlsFromHtml } from "../lib/image-extractor";
+import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { useArticleContent } from "../hooks/useArticleContent";
 import { useArticleAi } from "../hooks/useArticleAi";
@@ -980,7 +981,7 @@ export default function ArticleView({
         {/* OGP 画像 (埋め込みなし) */}
         {!embedInfo && (article.ogImage ?? resolvedOgImage) && (
           <img
-            src={`/api/image-proxy?url=${encodeURIComponent((article.ogImage ?? resolvedOgImage)!)}`}
+            src={buildImageProxyUrl((article.ogImage ?? resolvedOgImage)!)}
             alt=""
             className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
             loading="lazy"

@@ -3,6 +3,7 @@
 import { memo, type ReactNode } from "react";
 import type { Article } from "../types";
 import { readingTime, timeAgo } from "../lib/article-utils";
+import { buildImageProxyUrl } from "../lib/image-proxy-url";
 
 // ── 共通 Props ──────────────────────────────────────────────────────────
 
@@ -203,7 +204,7 @@ function ReadingTimeBadge({
 function ArticleThumbnail({ thumb, className }: { thumb: string; className: string }) {
   return (
     <img
-      src={`/api/image-proxy?url=${encodeURIComponent(thumb)}`}
+      src={buildImageProxyUrl(thumb)}
       alt=""
       className={className}
       loading="lazy"
