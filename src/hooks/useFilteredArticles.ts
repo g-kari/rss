@@ -287,6 +287,11 @@ export function useFilteredArticles({
       new Map(feeds.filter((f) => f.category).map((f) => [f.id, f.category!] as [string, string])),
     [feeds],
   );
+  // feedHash → タイトルのマップ（高度クエリ feed: 検索で使用）
+  const feedTitleByHash = useMemo(
+    () => new Map(feeds.map((f) => [f.id, f.title] as [string, string])),
+    [feeds],
+  );
   // globalFilter の正規化（キーワード文字列 → CompiledKeywordFilter への変換）を useMemo でキャッシュ。
   // filterAndSortArticles は全記事をループする hot path のため、正規表現コンパイルをループ外に出すことで
   // 記事ごとの不要な RegExp 生成を回避する。feedFilterMap と同じ戦略（変更時のみ再ビルド）。
@@ -328,6 +333,7 @@ export function useFilteredArticles({
         feedCategoryMap,
         digestMode,
         groupFeedIds,
+        feedTitleByHash,
       }),
     [
       articles,
@@ -361,6 +367,7 @@ export function useFilteredArticles({
       feedCategoryMap,
       digestMode,
       groupFeedIds,
+      feedTitleByHash,
     ],
   );
 

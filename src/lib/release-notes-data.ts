@@ -8,6 +8,7 @@ export const RELEASE_NOTES_MARKDOWN = `# リリースノート
 
 ### 新機能
 
+- **全フィード横断のフルテキスト検索と高度フィルタリング** — Issue #102。検索ボックスに高度クエリ構文を追加：フィールド指定 (\`title:foo\` / \`author:bar\` / \`feed:baz\` / \`category:qux\` / \`content:hello\`)、フレーズ検索 (\`"hello world"\`)、否定 (\`-foo\`)、暗黙 AND・明示 OR (\`foo OR bar\`)、大文字小文字無視。構文を含まない単純クエリは従来通り title / summary / author / categories / content を横断する既存互換挙動。\`src/lib/full-text-search.ts\` に純粋関数 (\`parseSearchQuery\` / \`matchesAdvancedQuery\`) として実装し、\`src/lib/article-filter.ts\` の \`buildQueryPredicate\` から呼び出す。\`SearchContext.feedTitleByHash\` を \`useFilteredArticles\` 側で構築し \`feed:\` クエリを解決可能に。検索条件の保存機能 (\`useFullTextSearch\` フック) を新設、\`localStorage\` (\`rss-saved-searches\`) に最大 20 件まで保存し検索ドロップダウンの「保存済み」セクションから即時呼び出せる。検索バー右側に「保存」ボタンを追加 (2 文字以上の入力時のみ表示)。\`e2e/full-text-search.spec.ts\` に 42 ケース追加 (parseSearchQuery / matchesAdvancedQuery のフィールド・OR/AND/NOT・フレーズ・エッジケース・未閉鎖クォート fallback・OR の大小無視)。
 - **フィードビュータブ + Pinterest 風ギャラリーレイアウト** — Issue #114。サイドバー上部に「記事 / 画像 / 動画 / SNS」の 4 タブを追加し、各フィードを任意のカテゴリに分類できるようにした。タブ切替で対応する view のフィードのみが表示される（未分類フィードは「記事」タブ所属扱い）。併せて \`gallery\` レイアウトを新設（CSS columns による masonry、サムネイル優先）。\`UserSubscription.view\` / \`Feed.view\` / \`FeedPatchPayload.view\` を追加し、\`PATCH /api/feeds/:id\` で \`view: "articles" | "pictures" | "videos" | "social" | null\` を受け付ける。\`FeedItem\` のコンテキストメニューに「表示カテゴリ」サブメニューを追加。localStorage キー \`rss-active-feed-view\` にタブ選択状態を永続化。UX は [Folo](https://github.com/RSSNext/Folo)（AGPL-3.0）を参考にしたがコードは流用せず MIT のままとした。
 
 ### バグ修正

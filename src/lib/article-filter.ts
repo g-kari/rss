@@ -1,7 +1,11 @@
 import type { Article, DateRange, ReadingTimeRange } from "../types";
 import { type CompiledKeywordFilter, matchesKeywordFilter } from "./keyword-filter";
-import { articleMatchesQuery, getDateRangeStart, readingTime } from "./article-utils";
+import { getDateRangeStart, readingTime } from "./article-utils";
+import { matchesAdvancedQuery, type SearchContext } from "./full-text-search";
 import { SPECIAL_FEED_IDS } from "./storage";
+
+/** 空の feedTitleByHash — feed: クエリ未対応時のデフォルト */
+const EMPTY_FEED_TITLE_MAP: ReadonlyMap<string, string> = new Map();
 
 /**
  * 記事が既読かどうかを判定する。
@@ -59,6 +63,8 @@ export interface ArticleFilterOptions {
   digestMode?: boolean;
   /** グループ選択時の対象フィード ID セット — 設定時は feedHash が含まれる記事のみ表示 */
   groupFeedIds?: Set<string>;
+  /** feedHash → フィード表示名のマップ — `feed:` クエリで使用（未指定時は feed: クエリは常にミス） */
+  feedTitleByHash?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -216,9 +222,10 @@ function buildReadingTimePredicate(opts: ArticleFilterOptions): ((a: Article) =>
 
 /** 検索クエリ述語（activeIds に関わらず常に適用） */
 function buildQueryPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
-  const q = opts.query.trim().toLowerCase();
+  const q = opts.query.trim();
   if (!q) return null;
-  return (a) => articleMatchesQuery(a, q);
+  const ctx: SearchContext = { feedTitleByHash: opts.feedTitleByHash ?? EMPTY_FEED_TITLE_MAP };
+  return (a) => matchesAdvancedQuery(a, q, ctx);
 }
 
 /** 日付範囲述語（activeIds に関わらず常に適用） */
