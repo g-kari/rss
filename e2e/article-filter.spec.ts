@@ -785,3 +785,60 @@ test.describe("エッジケース", () => {
     expect(result).toHaveLength(3);
   });
 });
+
+// ==========================================================================
+// viewFeedIds フィルター — FeedView カテゴリタブ横断表示
+// ==========================================================================
+
+test.describe("viewFeedIds フィルター — FeedView カテゴリ横断", () => {
+  const picArticle = makeArticle("pic1", "feedPic");
+  const vidArticle = makeArticle("vid1", "feedVid");
+  const artArticle = makeArticle("art1", "feedArt");
+  const pool = [picArticle, vidArticle, artArticle];
+
+  test("feedId=null で viewFeedIds が指定されていれば、そのフィード群の記事だけ残す", () => {
+    const result = run(pool, {
+      feedId: null,
+      viewFeedIds: new Set(["feedPic"]),
+    });
+    expect(ids(result)).toEqual(["pic1"]);
+  });
+
+  test("viewFeedIds に複数フィードが含まれる場合、その全てを横断表示する", () => {
+    const result = run(pool, {
+      feedId: null,
+      viewFeedIds: new Set(["feedPic", "feedVid"]),
+    });
+    expect(ids(result).sort()).toEqual(["pic1", "vid1"]);
+  });
+
+  test("feedId が指定されている場合は viewFeedIds を無視する（個別フィードを優先）", () => {
+    const result = run(pool, {
+      feedId: "feedArt",
+      viewFeedIds: new Set(["feedPic"]),
+    });
+    expect(ids(result)).toEqual(["art1"]);
+  });
+
+  test("groupFeedIds が設定されていれば viewFeedIds より優先される（グループが明示選択）", () => {
+    const result = run(pool, {
+      feedId: null,
+      groupFeedIds: new Set(["feedArt"]),
+      viewFeedIds: new Set(["feedPic"]),
+    });
+    expect(ids(result)).toEqual(["art1"]);
+  });
+
+  test("viewFeedIds が空 Set の場合は記事なし（該当フィードなしの表現）", () => {
+    const result = run(pool, {
+      feedId: null,
+      viewFeedIds: new Set(),
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  test("viewFeedIds が未指定（undefined）の場合は全記事を返す（既存挙動維持）", () => {
+    const result = run(pool, { feedId: null });
+    expect(ids(result)).toEqual(["pic1", "vid1", "art1"]);
+  });
+});

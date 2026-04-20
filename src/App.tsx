@@ -459,6 +459,7 @@ export default function App() {
     notes,
     groupFeedIds,
     selectedGroupId,
+    activeFeedView,
   });
 
   const {
@@ -1036,7 +1037,13 @@ export default function App() {
                 onMuteFeed={muteFeed}
                 onSetFeedView={setFeedView}
                 activeFeedView={activeFeedView}
-                onChangeActiveFeedView={onChangeActiveFeedView}
+                onChangeActiveFeedView={(view) => {
+                  // カテゴリ横断表示のため、タブ切替時はフィード・グループ選択を解除する
+                  onChangeActiveFeedView(view);
+                  setSelectedFeedId(null);
+                  setSelectedGroupId(null);
+                  setSelectedArticle(null);
+                }}
                 recommendations={recommendations}
                 recommendationsLoading={recommendationsLoading}
                 recommendationsRefreshing={recommendationsRefreshing}

@@ -65,6 +65,11 @@ export interface ArticleFilterOptions {
   groupFeedIds?: Set<string>;
   /** feedHash → フィード表示名のマップ — `feed:` クエリで使用（未指定時は feed: クエリは常にミス） */
   feedTitleByHash?: ReadonlyMap<string, string>;
+  /**
+   * FeedView カテゴリタブに属するフィード ID セット（feedId/groupFeedIds 未選択時のみ適用）。
+   * 設定時（空 Set を含む）はそのカテゴリに属するフィードの記事のみ表示。undefined なら従来通り全フィード。
+   */
+  viewFeedIds?: Set<string>;
 }
 
 /**
@@ -120,11 +125,19 @@ function matchesFeedId(
  */
 /** feedId フィルター述語（activeIds に関わらず常に適用） */
 function buildFeedPredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
-  const { feedId, bookmarkIds, readingListIds, likeIds, historyIds, groupFeedIds } = opts;
+  const { feedId, bookmarkIds, readingListIds, likeIds, historyIds, groupFeedIds, viewFeedIds } =
+    opts;
   const feedMatcher = (a: Article) =>
     matchesFeedId(a, feedId, bookmarkIds, readingListIds, likeIds, historyIds);
-  if (!feedId && groupFeedIds && groupFeedIds.size > 0) {
-    return (a) => groupFeedIds.has(a.feedHash);
+  if (!feedId) {
+    if (groupFeedIds && groupFeedIds.size > 0) {
+      return (a) => groupFeedIds.has(a.feedHash);
+    }
+    // viewFeedIds が設定されていれば（空 Set 含む）カテゴリ横断表示モード。
+    // 空 Set のときは該当フィードなしを明示するため全除外する。
+    if (viewFeedIds) {
+      return (a) => viewFeedIds.has(a.feedHash);
+    }
   }
   return feedMatcher;
 }
