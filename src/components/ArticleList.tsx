@@ -3,6 +3,7 @@
 import {
   useMemo,
   useEffect,
+  useLayoutEffect,
   useState,
   useCallback,
   useRef,
@@ -10,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import GalleryMasonry from "./GalleryMasonry";
 import { useEventListener } from "@/hooks/useEventListener";
 import type { Article, Feed, FeedView, Layout, DateRange } from "../types";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
@@ -242,6 +244,11 @@ export default function ArticleList({
 
   // ── 仮想スクロール ──────────────────────────────────────────────
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // gallery masonry に scroll 監視対象を state として渡すための参照
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    setScrollEl(scrollContainerRef.current);
+  }, []);
 
   // compact / list 用フラットアイテムリスト（日付ヘッダーを含む）
   const flatItems = useMemo<FlatItem[]>(() => {
@@ -990,16 +997,23 @@ export default function ArticleList({
           </>
         )}
 
-        {/* gallery — CSS Grid による行優先レイアウト（左→右、上→下）*/}
+        {/* gallery — masonic による仮想スクロール対応 Pinterest 型 masonry */}
         {layout === "gallery" && visible.length > 0 && (
-          <div className="p-2 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 auto-rows-max">
-            {visible.map((a, i) => (
-              <GalleryArticleItem
-                key={a.id}
-                {...resolveItemProps(a, i)}
-                prefetchedImages={galleryImagesForItem(a.id)}
-              />
-            ))}
+          <div className="p-2">
+            <GalleryMasonry
+              items={visible}
+              scrollElement={scrollEl}
+              columnWidth={220}
+              columnGutter={12}
+              overscanBy={6}
+              itemKey={(a) => a.id}
+              render={({ data, index }) => (
+                <GalleryArticleItem
+                  {...resolveItemProps(data, index)}
+                  prefetchedImages={galleryImagesForItem(data.id)}
+                />
+              )}
+            />
           </div>
         )}
 
