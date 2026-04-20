@@ -11,6 +11,7 @@ import type {
   Article,
   DateRange,
   Feed,
+  FeedView,
   KeywordFilter,
   ReadingTimeRange,
   SortOrder,
@@ -108,6 +109,12 @@ interface Options {
   groupFeedIds?: Set<string>;
   /** グループ選択時の ID — リセット useEffect の deps で使用（groupFeedIds Set 参照の再生成に左右されないようにするため） */
   selectedGroupId?: string | null;
+  /**
+   * 選択中の FeedView タブ（"articles" | "pictures" | "videos" | "social"）。
+   * feedId / selectedGroupId がいずれも未選択のときに、そのカテゴリのフィード記事のみを横断表示する。
+   * "articles" は未分類フィード (Feed.view 未設定) も含む。
+   */
+  activeFeedView?: FeedView;
 }
 
 /**
@@ -151,6 +158,7 @@ export function useFilteredArticles({
   notes,
   groupFeedIds,
   selectedGroupId = null,
+  activeFeedView,
 }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
@@ -292,6 +300,21 @@ export function useFilteredArticles({
     () => new Map(feeds.map((f) => [f.id, f.title] as [string, string])),
     [feeds],
   );
+  // FeedView タブに属するフィード ID セット。feedId / groupFeedIds 未選択時のみ filterAndSortArticles に渡す。
+  // activeFeedView が undefined の場合は undefined を維持し、従来挙動（全フィード表示）を保つ。
+  // "articles" タブは未分類フィード (f.view 未設定) も含める（FeedSidebar の matchView と同じ仕様）。
+  const viewFeedIds = useMemo(() => {
+    if (!activeFeedView) return undefined;
+    const ids = new Set<string>();
+    for (const f of feeds) {
+      const matched =
+        activeFeedView === "articles"
+          ? !f.view || f.view === "articles"
+          : f.view === activeFeedView;
+      if (matched) ids.add(f.id);
+    }
+    return ids;
+  }, [feeds, activeFeedView]);
   // globalFilter の正規化（キーワード文字列 → CompiledKeywordFilter への変換）を useMemo でキャッシュ。
   // filterAndSortArticles は全記事をループする hot path のため、正規表現コンパイルをループ外に出すことで
   // 記事ごとの不要な RegExp 生成を回避する。feedFilterMap と同じ戦略（変更時のみ再ビルド）。
@@ -334,6 +357,7 @@ export function useFilteredArticles({
         digestMode,
         groupFeedIds,
         feedTitleByHash,
+        viewFeedIds,
       }),
     [
       articles,
@@ -368,6 +392,7 @@ export function useFilteredArticles({
       digestMode,
       groupFeedIds,
       feedTitleByHash,
+      viewFeedIds,
     ],
   );
 
