@@ -139,27 +139,31 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
       return null;
     }
 
-    // aud (audience) クレーム検証 — CLIENT_ID または AUTH_BASE_URL (issuer URL) を含むこと
-    //
-    // 本来 aud は RFC 7519 に従い client_id と一致させるべきだが、
-    // id.0g0.xyz は現状 `aud: https://id.0g0.xyz` (issuer URL と同じ値) を発行する実装。
-    // 将来 id.0g0.xyz が client_id をセットするように修正された際も壊れないよう、
-    // どちらかが一致すれば合格とする。
-    // TODO: id.0g0.xyz 側で aud=client_id への変更が完了したら authBaseUrl 許容を削除する。
+    // aud (audience) 検証
+    // id.0g0.xyz が aud=CLIENT_ID を発行するよう移行完了したら authBaseUrl 許容を削除する。
+    // 移行状況は下記の deprecation ログで追跡可能。ログが出なくなれば移行完了。
+    // See: https://github.com/g-kari/dokodemo-claude/issues/161
     const expectedAud = process.env.CLIENT_ID;
     if (!expectedAud) {
       console.error("[auth/verify] CLIENT_ID 未設定のため aud を検証できません");
       return null;
     }
-    const acceptedAuds = [expectedAud, authBaseUrl];
     const audClaim = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-    const audOk = audClaim.some((a) => typeof a === "string" && acceptedAuds.includes(a));
-    if (!audOk) {
-      console.error("[auth/verify] aud claim mismatch", {
-        expected: acceptedAuds,
-        actual: payload.aud,
-      });
-      return null;
+    const matchesClientId = audClaim.some((a) => typeof a === "string" && a === expectedAud);
+    if (!matchesClientId) {
+      const matchesIssuer = audClaim.some((a) => typeof a === "string" && a === authBaseUrl);
+      if (matchesIssuer) {
+        console.warn("[auth/verify] aud=authBaseUrl で合格 (deprecated)", {
+          aud: payload.aud,
+          hint: "id.0g0.xyz が aud=CLIENT_ID を発行するよう移行されればこのログは消える",
+        });
+      } else {
+        console.error("[auth/verify] aud claim mismatch", {
+          expected: [expectedAud, authBaseUrl],
+          actual: payload.aud,
+        });
+        return null;
+      }
     }
 
     const jwks = await getJwks(authBaseUrl);
