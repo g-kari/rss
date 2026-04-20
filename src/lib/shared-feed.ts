@@ -133,6 +133,16 @@ function sortByDate(articles: Article[]): Article[] {
   return [...articles].sort(compareByDateDesc);
 }
 
+/** id ベースで重複を除去する（先に出現した方を優先） */
+function deduplicateById(articles: Article[]): Article[] {
+  const seen = new Set<string>();
+  return articles.filter((a) => {
+    if (seen.has(a.id)) return false;
+    seen.add(a.id);
+    return true;
+  });
+}
+
 /**
  * overflow を pageNum ページに先頭挿入し、溢れたぶんを次ページへカスケードする。
  * overflow は pageNum ページの既存コンテンツより「新しい」記事（すでにソート済み）。
@@ -160,8 +170,8 @@ export async function cascadeOverflow(
     const key = pageKey(feedHash, currentPage);
     const existing = await r2Get<Article[]>(bucket, key, []);
 
-    // overflow (新しい) + existing (古い) を結合してソート
-    const merged = sortByDate([...currentOverflow, ...existing]);
+    // overflow (新しい) + existing (古い) を結合して重複排除・ソート
+    const merged = sortByDate(deduplicateById([...currentOverflow, ...existing]));
 
     if (merged.length <= pageSize) {
       await r2Put(bucket, key, merged);
@@ -181,7 +191,7 @@ export async function cascadeOverflow(
   if (currentOverflow.length > 0) {
     const lastKey = pageKey(feedHash, maxPages);
     const existing = await r2Get<Article[]>(bucket, lastKey, []);
-    const merged = sortByDate([...currentOverflow, ...existing]);
+    const merged = sortByDate(deduplicateById([...currentOverflow, ...existing]));
     await r2Put(bucket, lastKey, merged);
     lastWrittenPage = maxPages;
     console.warn(
@@ -270,12 +280,15 @@ export async function mergeNewArticles(
     meta.pageCount = Math.max(meta.pageCount, maxPage - 1); // pageCount は p2以降の数
   }
 
-  // knownIds を更新（新規 ID を追加し、上限を超えた場合は古い順に切り詰め）
-  const updatedKnownIds = [
-    ...(meta.knownIds ?? latest.map((a) => a.id)),
-    ...brandNew.map((a) => a.id),
-  ];
-  meta.knownIds = updatedKnownIds.slice(-KNOWN_IDS_MAX);
+  // knownIds を更新
+  // latest ページの ID を末尾に配置して切り詰め時に必ず残るようにする
+  const prevKnown = meta.knownIds ?? latest.map((a) => a.id);
+  const newIds = brandNew.map((a) => a.id);
+  const latestIds = new Set(merged.slice(0, PAGE_SIZE).map((a) => a.id));
+  const historical = prevKnown.filter((id) => !latestIds.has(id));
+  const updatedKnownIds = [...historical, ...newIds, ...latestIds];
+  const uniqueKnown = [...new Set(updatedKnownIds)];
+  meta.knownIds = uniqueKnown.slice(-KNOWN_IDS_MAX);
 
   meta.articleCount = (meta.articleCount ?? 0) + brandNew.length;
   return brandNew;

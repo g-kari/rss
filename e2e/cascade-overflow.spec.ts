@@ -180,3 +180,70 @@ test("Issue #131: 末尾ページに追記された結果 pageSize を超過し�
     console.warn = originalWarn;
   }
 });
+
+test("Issue #158: overflow と既存ページで重複する記事が排除される", async () => {
+  const { bucket, store } = makeR2Mock();
+  // p2 に既存記事あり
+  store.set(
+    "feeds/feed1/articles/p2.json",
+    JSON.stringify([
+      makeArticle("dup1", "2025-12-31T00:00:00Z"),
+      makeArticle("old1", "2025-12-30T00:00:00Z"),
+    ]),
+  );
+
+  // overflow に dup1 と同じ id の記事が含まれる
+  const overflow = [
+    makeArticle("new1", "2026-01-02T00:00:00Z"),
+    makeArticle("dup1", "2026-01-01T00:00:00Z"),
+  ];
+
+  const lastPage = await cascadeOverflow(bucket, "feed1", overflow, 2, {
+    maxPages: 5,
+    pageSize: 5,
+  });
+
+  expect(lastPage).toBe(2);
+  const p2 = JSON.parse(store.get("feeds/feed1/articles/p2.json")!) as Article[];
+  // dup1 は重複排除されて 1件のみ（overflow 側が優先）
+  expect(p2).toHaveLength(3);
+  const ids = p2.map((a) => a.id);
+  expect(ids.filter((id) => id === "dup1")).toHaveLength(1);
+});
+
+test("Issue #158: maxPages 超過時の末尾追記でも重複が排除される", async () => {
+  const { bucket, store } = makeR2Mock();
+  const maxPages = 2;
+  const pageSize = 2;
+
+  // p2 に dup1 が既に存在
+  store.set(
+    "feeds/feed1/articles/p2.json",
+    JSON.stringify([
+      makeArticle("dup1", "2025-12-31T00:00:00Z"),
+      makeArticle("old1", "2025-12-30T00:00:00Z"),
+    ]),
+  );
+
+  // overflow に dup1 が重複して含まれる
+  const overflow = [
+    makeArticle("new1", "2026-01-03T00:00:00Z"),
+    makeArticle("new2", "2026-01-02T00:00:00Z"),
+    makeArticle("dup1", "2026-01-01T00:00:00Z"),
+  ];
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+
+  try {
+    await cascadeOverflow(bucket, "feed1", overflow, 2, { maxPages, pageSize });
+    const allStored = [...store.values()]
+      .flatMap((v) => JSON.parse(v) as Article[])
+      .map((a) => a.id);
+    // dup1 は 1件のみ: new1, new2, dup1, old1 = 4件
+    expect(allStored).toHaveLength(4);
+    expect(allStored.filter((id) => id === "dup1")).toHaveLength(1);
+  } finally {
+    console.warn = originalWarn;
+  }
+});
