@@ -1,0 +1,234 @@
+import { test, expect } from "@playwright/test";
+import {
+  parseSearchQuery,
+  matchesAdvancedQuery,
+  type SearchContext,
+} from "../src/lib/full-text-search";
+
+const BASE = {
+  id: "a1",
+  feedHash: "feed-hash-1",
+  title: "TypeScript で始める関数型プログラミング",
+  summary: "モナドとファンクターの使い方を解説します。",
+  content: "<p>圏論の入り口となる Functor / Monad について本文で詳しく扱います。</p>",
+  author: "山田 太郎",
+  categories: ["TypeScript", "関数型", "プログラミング"],
+  link: "https://example.com/a1",
+  publishedAt: "2026-04-01T00:00:00.000Z",
+  createdAt: "2026-04-01T00:00:00.000Z",
+  guid: "g1",
+};
+
+const CTX: SearchContext = {
+  feedTitleByHash: new Map([
+    ["feed-hash-1", "Zenn Trend"],
+    ["feed-hash-2", "DevelopersIO"],
+  ]),
+};
+
+test.describe("parseSearchQuery — 基本", () => {
+  test("空クエリは null", () => {
+    expect(parseSearchQuery("")).toBeNull();
+    expect(parseSearchQuery("   ")).toBeNull();
+  });
+
+  test("単一語は TERM", () => {
+    const ast = parseSearchQuery("TypeScript");
+    expect(ast?.kind).toBe("TERM");
+  });
+
+  test("空白区切りは AND", () => {
+    const ast = parseSearchQuery("foo bar");
+    expect(ast?.kind).toBe("AND");
+  });
+
+  test("OR キーワードで OR ノード", () => {
+    const ast = parseSearchQuery("foo OR bar");
+    expect(ast?.kind).toBe("OR");
+  });
+
+  test("フィールド指定 title:foo は TERM with field", () => {
+    const ast = parseSearchQuery("title:foo");
+    expect(ast).toEqual({ kind: "TERM", field: "title", value: "foo" });
+  });
+
+  test("否定 -foo は NOT", () => {
+    const ast = parseSearchQuery("-foo");
+    expect(ast?.kind).toBe("NOT");
+  });
+
+  test('フレーズ "hello world" は単一 TERM', () => {
+    const ast = parseSearchQuery('"hello world"');
+    expect(ast).toEqual({ kind: "TERM", value: "hello world" });
+  });
+
+  test("複合: title:foo OR author:bar", () => {
+    const ast = parseSearchQuery("title:foo OR author:bar");
+    expect(ast?.kind).toBe("OR");
+  });
+});
+
+test.describe("matchesAdvancedQuery — 既存互換 (構文無し)", () => {
+  test("空クエリは true", () => {
+    expect(matchesAdvancedQuery(BASE, "", CTX)).toBe(true);
+  });
+
+  test("タイトル単語にマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "TypeScript", CTX)).toBe(true);
+  });
+
+  test("サマリーにマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "モナド", CTX)).toBe(true);
+  });
+
+  test("本文 (content) もマッチ対象", () => {
+    expect(matchesAdvancedQuery(BASE, "圏論", CTX)).toBe(true);
+  });
+
+  test("content 内の HTML タグはマッチしない", () => {
+    expect(matchesAdvancedQuery(BASE, "<p>", CTX)).toBe(false);
+  });
+
+  test("author にマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "山田", CTX)).toBe(true);
+  });
+
+  test("category にマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "関数型", CTX)).toBe(true);
+  });
+
+  test("マッチしない単語は false", () => {
+    expect(matchesAdvancedQuery(BASE, "Rust", CTX)).toBe(false);
+  });
+
+  test("AND: 全語マッチで true", () => {
+    expect(matchesAdvancedQuery(BASE, "TypeScript モナド", CTX)).toBe(true);
+  });
+
+  test("AND: 1 語ミスマッチで false", () => {
+    expect(matchesAdvancedQuery(BASE, "TypeScript Rust", CTX)).toBe(false);
+  });
+
+  test("大文字小文字を無視", () => {
+    expect(matchesAdvancedQuery(BASE, "typescript", CTX)).toBe(true);
+  });
+});
+
+test.describe("matchesAdvancedQuery — フィールド指定", () => {
+  test("title:TypeScript はタイトルにのみマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "title:TypeScript", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "title:モナド", CTX)).toBe(false);
+  });
+
+  test("author:山田 は著者にのみマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "author:山田", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "author:TypeScript", CTX)).toBe(false);
+  });
+
+  test("category:関数型 はカテゴリにのみマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "category:関数型", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "category:山田", CTX)).toBe(false);
+  });
+
+  test("feed:Zenn はフィード名にマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "feed:Zenn", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "feed:DevelopersIO", CTX)).toBe(false);
+  });
+
+  test("content:圏論 は本文にのみマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "content:圏論", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "content:TypeScript", CTX)).toBe(false);
+  });
+
+  test("不明なフィールドは普通の語として扱う", () => {
+    // 'foo:bar' のような不明な接頭辞は、既存検索で 'foo:bar' という文字列を探す
+    expect(matchesAdvancedQuery(BASE, "foo:bar", CTX)).toBe(false);
+  });
+});
+
+test.describe("matchesAdvancedQuery — OR / AND / NOT", () => {
+  test("OR: どちらか一方マッチで true", () => {
+    expect(matchesAdvancedQuery(BASE, "Rust OR TypeScript", CTX)).toBe(true);
+  });
+
+  test("OR: 両方ミスで false", () => {
+    expect(matchesAdvancedQuery(BASE, "Rust OR Java", CTX)).toBe(false);
+  });
+
+  test("否定: -Rust は true (Rust は含まない)", () => {
+    expect(matchesAdvancedQuery(BASE, "-Rust", CTX)).toBe(true);
+  });
+
+  test("否定: -TypeScript は false", () => {
+    expect(matchesAdvancedQuery(BASE, "-TypeScript", CTX)).toBe(false);
+  });
+
+  test("AND + NOT 組合せ: TypeScript -Rust", () => {
+    expect(matchesAdvancedQuery(BASE, "TypeScript -Rust", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "TypeScript -モナド", CTX)).toBe(false);
+  });
+
+  test("OR は AND より優先度が低い: A B OR C は (A AND B) OR C", () => {
+    // TypeScript モナド OR Rust → (TypeScript AND モナド) OR Rust → true
+    expect(matchesAdvancedQuery(BASE, "TypeScript モナド OR Rust", CTX)).toBe(true);
+    // Rust モナド OR TypeScript → (Rust AND モナド) OR TypeScript → true
+    expect(matchesAdvancedQuery(BASE, "Rust モナド OR TypeScript", CTX)).toBe(true);
+    // Rust モナド OR Java → false
+    expect(matchesAdvancedQuery(BASE, "Rust モナド OR Java", CTX)).toBe(false);
+  });
+});
+
+test.describe("matchesAdvancedQuery — フレーズ検索", () => {
+  test('"山田 太郎" はフルネームでマッチ', () => {
+    expect(matchesAdvancedQuery(BASE, '"山田 太郎"', CTX)).toBe(true);
+  });
+
+  test('"太郎 山田" は順序が違うのでマッチしない', () => {
+    expect(matchesAdvancedQuery(BASE, '"太郎 山田"', CTX)).toBe(false);
+  });
+
+  test("フィールド指定 + フレーズ", () => {
+    expect(matchesAdvancedQuery(BASE, 'title:"始める関数型"', CTX)).toBe(true);
+  });
+});
+
+test.describe("matchesAdvancedQuery — エッジケース", () => {
+  test("author 未定義でもクラッシュしない", () => {
+    const a = { ...BASE, author: undefined };
+    expect(matchesAdvancedQuery(a, "author:山田", CTX)).toBe(false);
+  });
+
+  test("content 未定義でもクラッシュしない", () => {
+    const a = { ...BASE, content: undefined };
+    expect(matchesAdvancedQuery(a, "content:圏論", CTX)).toBe(false);
+  });
+
+  test("categories 未定義でもクラッシュしない", () => {
+    const a = { ...BASE, categories: undefined };
+    expect(matchesAdvancedQuery(a, "category:関数型", CTX)).toBe(false);
+  });
+
+  test("不明な feedHash でも feed: クエリでクラッシュしない", () => {
+    const a = { ...BASE, feedHash: "unknown" };
+    expect(matchesAdvancedQuery(a, "feed:Zenn", CTX)).toBe(false);
+  });
+
+  test("未閉鎖クォートは閉じたものとして扱う", () => {
+    expect(matchesAdvancedQuery(BASE, '"TypeScript', CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, 'title:"TypeScript', CTX)).toBe(true);
+  });
+
+  test("OR の大小を無視する", () => {
+    expect(matchesAdvancedQuery(BASE, "Rust or TypeScript", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "Rust Or TypeScript", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "Rust oR TypeScript", CTX)).toBe(true);
+  });
+
+  test("ダッシュ - 単独はトークンとして無視", () => {
+    expect(parseSearchQuery("-")).toBeNull();
+  });
+
+  test("title: 単体（値なし）はトークンとして無視", () => {
+    expect(parseSearchQuery("title:")).toBeNull();
+  });
+});
