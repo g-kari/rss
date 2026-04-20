@@ -107,6 +107,10 @@ src/
     ServiceWorkerRegistration.tsx # Service Worker 登録コンポーネント
     ErrorBoundary.tsx        # エラー境界
     Spinner.tsx              # ローディングスピナー（ArticleView・ArticleList で共有）
+    UserSettingsModal.tsx    # ユーザー設定モーダル（フォントサイズ・行間・コンテンツ幅・自動既読閾値・テーマ）
+    SaveUrlModal.tsx         # 任意 URL を手動保存するモーダル（POST /api/articles/save 連携）
+    FeedAddModal.tsx         # フィード追加ダイアログ（RSS 自動検出・LLM CSS セレクタ推論・Cookie 指定対応）
+    article-view/            # ArticleView 補助コンポーネント群（ナビゲーション・フィルタメニュー・ギャラリー・共有・スヌーズ・タグエディタ等）
   hooks/
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
@@ -143,6 +147,15 @@ src/
     useReadingStats.ts       # 読了統計取得 (/api/stats fetch → ReadingStats)
     useGestureNav.ts         # スワイプ・ホイール・ドラッグによる前後記事ナビゲーション（横スクロール子要素は除外）
     useReadingProgress.ts    # 記事読書進捗トラッキング（IntersectionObserver + localStorage 永続化・復元）
+    useArticleHighlight.ts   # 記事本文テキストのハイライト管理（アノテーション保存・復元）
+    useArticleNote.ts        # 記事ごとの個人メモ編集・自動保存（ReadState.notes と同期、最大 2000 文字）
+    useArticleAiRatings.ts   # AI 要約・翻訳結果へのユーザー評価フィードバック管理
+    useFullTextSearch.ts     # 記事全文検索（クエリパース・フィールド絞り込み・正規表現対応）
+    usePrefetchGalleryContents.ts # ギャラリー表示時の本文・画像事前フェッチ
+    useSliderGallery.ts      # スライダー型ギャラリー UI 状態管理（ページング・キーボードナビ）
+    useSyntaxHighlight.ts    # 記事本文 <pre><code> のシンタックスハイライト適用
+    useMathRender.ts         # 記事本文の数式（KaTeX）レンダリング
+    usePopupLock.ts          # ブラウザポップアップの多重表示防止ロック（lib/popup-lock 連携）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()
@@ -184,6 +197,19 @@ src/
     reader-settings.ts       # リーダー表示設定（フォントサイズ 6段階・行間 5段階・コンテンツ幅 3段階）
     article-ttl.ts           # 記事 TTL 管理（30日超過・非保護の期限切れ記事フィルタリング）
     clip.ts                  # SingleFile POST リクエストバリデーション（validateClipRequest）
+    api-error.ts             # API エラー整形ヘルパー（ApiError 型 / apiError() 関数）
+    cache-helper.ts          # Cloudflare Cache API 共通ヘルパー（buildCacheKey / cachePutAsync）
+    csrf.ts                  # CSRF トークン発行・検証 + Origin ヘッダー検証（POST/PUT/DELETE 対応）
+    rsshub.ts                # RSSHub インスタンス連携（自動 URL マッピング・アクセスキー付与・ルート解決）
+    full-text-search.ts      # 記事全文検索クエリパーサー（フィールド検索・トークン化・正規表現対応）
+    read-state-merge.ts      # 読み取り状態マージ純粋関数（local ∪ server / snoozed は遅い方優先 / notes はサーバー優先）
+    feed-group-drop.ts       # フィードグループへのドラッグ&ドロップ時の競合解決ロジック
+    image-proxy-url.ts       # 画像プロキシ URL ビルダー / プロキシ済み判定
+    image-proxy-security.ts  # 画像プロキシリクエストの MIME / Content-Type / オリジン検証
+    browser-translator.ts    # ブラウザネイティブ翻訳 API（Translator）の利用可否判定・言語検出
+    translate-html.ts        # HTML DOM 内の翻訳対象テキスト抽出・翻訳適用
+    popup-lock.ts            # 同時に開けるブラウザポップアップ数を制限するクライアントサイドロック
+    serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
 ```
@@ -254,7 +280,7 @@ const CLIENT_ID = process.env.CLIENT_ID!;
 ### 共有フィードデータ（ユーザー間共有）
 
 ```
-feeds/{feedHash}/meta.json               # SharedFeedMeta（フィードURL・タイトル・エラー状態・CSSセレクタ等）
+feeds/{feedHash}/meta.json               # SharedFeedMeta（フィードURL・タイトル・エラー状態・CSSセレクタ・条件付きリクエスト用 lastModified/etag/cacheControl/nextFetchEarliestAt 等）
 feeds/{feedHash}/articles/latest.json   # Article[]（最新 PAGE_SIZE=500 件、publishedAt 降順）
 feeds/{feedHash}/articles/p{N}.json     # Article[]（過去ページ、N=2〜）
 ```
@@ -266,10 +292,10 @@ feeds/{feedHash}/articles/p{N}.json     # Article[]（過去ページ、N=2〜�
 ### ユーザー別データ
 
 ```
-users/{userId}/subscriptions.json       # UserSubscription[]（購読フィード一覧・フィルター設定等）
+users/{userId}/subscriptions.json       # UserSubscription[]（購読フィード一覧・フィルター・view・requestCookie・lastAccessedAt 等）
 users/{userId}/feed-groups.json         # FeedGroup[]（グループ定義: id / name / order / collapsed / muted / createdAt）
 users/{userId}/profile.json             # UserProfile（ログイン時に保存）
-users/{userId}/read-state.json          # ReadState（readIds・bookmarkIds・readingListIds・likeIds・snoozedUntil・notes・globalFilter・readBeforeTimestamp）
+users/{userId}/read-state.json          # ReadState（readIds・bookmarkIds・readingListIds・likeIds・snoozedUntil・notes・tagIds・globalFilter・readBeforeTimestamp）
 users/{userId}/engagement.json          # EngagementLog（記事への行動履歴）
 users/{userId}/recommendations.json     # RecommendationCache（フィード推薦キャッシュ）
 users/{userId}/push.json                # PushConfig（Web Push サブスクリプション）
