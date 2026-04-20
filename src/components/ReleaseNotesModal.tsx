@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import Modal from "./Modal";
 import { apiFetch } from "../lib/api-fetch";
 
@@ -8,7 +8,14 @@ interface Props {
   onClose: () => void;
 }
 
-/** Markdown の簡易パーサー。見出し・箇条書き・太字に対応 */
+interface ReleaseNotesResponse {
+  content: string;
+  total: number;
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+}
+
 function parseMarkdown(md: string): ReactNode[] {
   const lines = md.split("\n");
   const nodes: ReactNode[] = [];
@@ -43,7 +50,6 @@ function parseMarkdown(md: string): ReactNode[] {
         </h3>,
       );
     } else if (line.startsWith("- ")) {
-      // 箇条書きをまとめて ul に
       const items: ReactNode[] = [];
       while (i < lines.length && lines[i].startsWith("- ")) {
         items.push(
@@ -60,7 +66,7 @@ function parseMarkdown(md: string): ReactNode[] {
       );
       continue;
     } else if (line.trim() === "") {
-      // 空行は無視
+      // skip
     } else {
       nodes.push(
         <p key={key++} className="text-[12px] text-text-soft leading-relaxed">
@@ -73,7 +79,6 @@ function parseMarkdown(md: string): ReactNode[] {
   return nodes;
 }
 
-/** インライン装飾（太字 `**text**`、コード `` `code` ``）を変換 */
 function renderInline(text: string): ReactNode {
   const parts: ReactNode[] = [];
   const pattern = /\*\*([^*]+)\*\*|`([^`]+)`/g;
@@ -106,24 +111,58 @@ function renderInline(text: string): ReactNode {
 }
 
 export default function ReleaseNotesModal({ onClose }: Props) {
-  const [content, setContent] = useState<string | null>(null);
+  const [sections, setSections] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [error, setError] = useState(false);
+
+  const fetchNotes = useCallback((currentOffset: number, append: boolean) => {
+    const setter = append ? setLoadingMore : setLoading;
+    setter(true);
+    apiFetch(`/api/release-notes?offset=${currentOffset}&limit=10`)
+      .then((r) => r.json() as Promise<ReleaseNotesResponse>)
+      .then((data) => {
+        setSections((prev) => (append ? prev + "\n\n" + data.content : data.content));
+        setHasMore(data.hasMore);
+        setOffset(currentOffset + data.limit);
+      })
+      .catch(() => setError(true))
+      .finally(() => setter(false));
+  }, []);
 
   useEffect(() => {
-    apiFetch("/api/release-notes")
-      .then((r) => r.json() as Promise<{ content: string }>)
-      .then(({ content: md }) => setContent(md))
-      .catch(() => setContent("読み込みに失敗しました"));
-  }, []);
+    fetchNotes(0, false);
+  }, [fetchNotes]);
+
+  const handleLoadMore = () => {
+    fetchNotes(offset, true);
+  };
 
   return (
     <Modal title="リリースノート" onClose={onClose}>
       <div className="overflow-y-auto max-h-[calc(80vh-52px)] px-5 py-4">
-        {content === null ? (
+        {loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="w-1.5 h-1.5 rounded-full bg-surface-subtle animate-pulse" />
           </div>
+        ) : error ? (
+          <p className="text-[12px] text-text-muted">読み込みに失敗しました</p>
         ) : (
-          parseMarkdown(content)
+          <>
+            {parseMarkdown(sections)}
+            {hasMore && (
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="mt-4 mb-2 w-full py-2 text-[12px] text-text-muted hover:text-text-default border border-border-subtle rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-50"
+              >
+                {loadingMore ? "読み込み中..." : "もっと見る"}
+              </button>
+            )}
+          </>
         )}
       </div>
     </Modal>
