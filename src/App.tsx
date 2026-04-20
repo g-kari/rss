@@ -79,6 +79,7 @@ export default function App() {
     focusMode,
     toggleFocusMode,
     listFocusMode,
+    toggleListFocusMode,
     setListFocusMode,
     exitFocusMode,
     nsfwMode,
@@ -1058,6 +1059,7 @@ export default function App() {
                 onMarkAllRead={markAllRead}
                 onToggleTheme={toggleTheme}
                 onOpenSettings={() => setShowSettings(true)}
+                onOpenHelp={() => setShowHelp(true)}
                 onSaveArticleUrl={onSaveArticleUrl}
                 onRefresh={refreshFeeds}
                 onRetryFeed={retryFeed}
@@ -1166,6 +1168,8 @@ export default function App() {
                 onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
                 notes={notes}
                 activeFeedView={activeFeedView}
+                listFocusMode={listFocusMode}
+                onToggleListFocusMode={toggleListFocusMode}
               />
             </ErrorBoundary>
           </div>

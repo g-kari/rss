@@ -1,5 +1,11 @@
 # リリースノート
 
+## 2026-04-21
+
+### 新機能
+
+- **キーボードショートカット一覧ボタン + 記事一覧フォーカスモード切替ボタンを追加** — Issue #148。`?` キーでしか開けなかった `KeyboardShortcutsModal` の UI 導線と、`Shift+\`（= `|`）以外に有効化手段がなかった `listFocusMode`（記事一覧フォーカス）の UI 導線を同時に整備。`FeedSidebar` のフッター（ユーザー設定・テーマ切替ボタンの隣）に `onOpenHelp` で開くヘルプ系 `FooterIconButton`（`?` 付き丸アイコン）を追加し、`App.tsx` から `setShowHelp(true)` を配線。`ArticleList` ツールバーのレイアウト切替ボタン群の直後に `listFocusMode` トグルボタン（`ArticleView` の `focusMode` トグルと対称な 4 隅矢印アイコン、`aria-pressed` 付き）を配置し、`onToggleListFocusMode` prop 経由で `useUIState` の `toggleListFocusMode` を呼ぶ。`LAYOUTS.map` と同じ w-6/h-6 サイズで統一し、既存のピルボタン群と視覚的に馴染ませた。これで `|` / `\` キーバインドを知らないユーザーもヘルプから全ショートカットを参照でき、`listFocusMode` を明示的に ON / OFF できる。
+
 ## 2026-04-20
 
 ### 新機能
