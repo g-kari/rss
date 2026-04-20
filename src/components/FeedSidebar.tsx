@@ -946,9 +946,12 @@ export default function FeedSidebar({
     // アクティブな view でフィルタ（未設定フィードは articles タブに属する扱い）
     const matchView = (f: Feed) =>
       activeFeedView === "articles" ? !f.view || f.view === "articles" : f.view === activeFeedView;
-    const pinned = feeds.filter((f) => pinnedFeedIds.has(f.id) && matchView(f) && matchFeed(f));
+    const matchNsfw = (f: Feed) => nsfwMode || !f.nsfw;
+    const pinned = feeds.filter(
+      (f) => pinnedFeedIds.has(f.id) && matchView(f) && matchFeed(f) && matchNsfw(f),
+    );
     const unpinned = feeds
-      .filter((f) => !pinnedFeedIds.has(f.id) && matchView(f) && matchFeed(f))
+      .filter((f) => !pinnedFeedIds.has(f.id) && matchView(f) && matchFeed(f) && matchNsfw(f))
       .sort((a, b) => {
         const aHigh = a.priority === "high" ? 0 : 1;
         const bHigh = b.priority === "high" ? 0 : 1;
@@ -995,7 +998,7 @@ export default function FeedSidebar({
       categoryGroups: sorted,
       uncategorizedFeeds: uncategorized,
     };
-  }, [feeds, pinnedFeedIds, feedSearch, feedGroups, activeFeedView]);
+  }, [feeds, pinnedFeedIds, feedSearch, feedGroups, activeFeedView, nsfwMode]);
 
   return (
     <aside className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
