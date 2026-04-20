@@ -70,6 +70,10 @@ function loadAutoReadThreshold(): AutoReadThreshold {
     : DEFAULT_AUTO_READ_THRESHOLD;
 }
 
+function loadAutoTranslate(): boolean {
+  return storageGet(STORAGE_KEYS.AUTO_TRANSLATE) === "1";
+}
+
 const loadLineHeight = () =>
   loadStoredEnum(STORAGE_KEYS.LINE_HEIGHT, LINE_HEIGHT_CYCLE, "normal" as LineHeight);
 const loadContentWidth = () =>
@@ -133,6 +137,8 @@ export interface UIState {
   autoReadThreshold: AutoReadThreshold;
   cycleAutoReadThreshold: () => void;
   onChangeAutoReadThreshold: (v: AutoReadThreshold) => void;
+  autoTranslate: boolean;
+  toggleAutoTranslate: () => void;
   lineHeight: LineHeight;
   onChangeLineHeight: (lh: LineHeight) => void;
   contentWidth: ContentWidth;
@@ -177,6 +183,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [autoReadEnabled, setAutoReadEnabled] = useState<boolean>(loadAutoReadEnabled);
   const [autoReadThreshold, setAutoReadThreshold] =
     useState<AutoReadThreshold>(loadAutoReadThreshold);
+  const [autoTranslate, setAutoTranslate] = useState<boolean>(loadAutoTranslate);
   const [lineHeight, onChangeLineHeight] = useStoredSetting<LineHeight>(
     loadLineHeight,
     STORAGE_KEYS.LINE_HEIGHT,
@@ -289,6 +296,14 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     });
   }, []);
 
+  const toggleAutoTranslate = useCallback(() => {
+    setAutoTranslate((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.AUTO_TRANSLATE, next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
   const cycleAutoReadThreshold = useCallback(() => {
     setAutoReadThreshold((prev) => {
       const idx = AUTO_READ_THRESHOLD_CYCLE.indexOf(prev);
@@ -348,6 +363,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     autoReadThreshold,
     cycleAutoReadThreshold,
     onChangeAutoReadThreshold,
+    autoTranslate,
+    toggleAutoTranslate,
     lineHeight,
     onChangeLineHeight,
     contentWidth,

@@ -148,7 +148,7 @@ export async function translateAndApply(
  * @returns 翻訳後の HTML 文字列。以下の場合は null を返し呼び出し側でフォールバックする:
  *   - Translator API 非対応環境
  *   - 原文言語がターゲット言語と同じ
- *   - `availability !== "available"`（モデル未ダウンロード等）
+ *   - `availability` が `"downloading"` / `"unavailable"`
  *   - 例外発生時
  */
 export async function translateHtmlInBrowser(

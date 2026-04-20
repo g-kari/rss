@@ -4,7 +4,12 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Article, EngagementAction, Feed } from "../types";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
-import { readingTime, FONT_SIZE_CLASSES, FONT_FAMILY_CLASSES } from "../lib/article-utils";
+import {
+  readingTime,
+  FONT_SIZE_CLASSES,
+  FONT_FAMILY_CLASSES,
+  isLikelyJapanese,
+} from "../lib/article-utils";
 import { collectImageUrlsFromHtml } from "../lib/image-extractor";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
@@ -115,6 +120,7 @@ export default function ArticleView({
     toggleFocusMode: onToggleFocusMode,
     autoReadEnabled,
     autoReadThreshold,
+    autoTranslate,
     lineHeight,
     contentWidth,
     textJustify,
@@ -217,6 +223,24 @@ export default function ArticleView({
     resetTranslate,
     doTranslate,
     fetchFullContent,
+  ]);
+
+  // 自動翻訳: 非日本語記事を選択時に自動で翻訳を実行 (Issue #133)
+  const autoTranslateTriggered = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!autoTranslate || !article?.id || !storedContent || translateResult || translateLoading)
+      return;
+    if (autoTranslateTriggered.current === article.id) return;
+    if (isLikelyJapanese(toPlainText(storedContent).slice(0, 200))) return;
+    autoTranslateTriggered.current = article.id;
+    handleTranslate();
+  }, [
+    autoTranslate,
+    article?.id,
+    storedContent,
+    translateResult,
+    translateLoading,
+    handleTranslate,
   ]);
 
   // 全文取得・AI 要約・スクロールショートカット (v / a / Space / Shift+Space)

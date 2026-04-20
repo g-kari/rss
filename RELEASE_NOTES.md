@@ -4,6 +4,14 @@
 
 ### 激アツ新機能っ
 
+- **自動翻訳機能** — Issue #133。ユーザー設定に「自動翻訳」トグルを追加。有効化すると、非日本語記事を選択した際に自動で翻訳を実行する。Chrome Translator API が利用可能な場合はブラウザ側で完結し、非対応環境では Workers AI にフォールバック。`isLikelyJapanese` で原文言語を簡易判定し、日本語記事はスキップ。
+
+### バグ修正っ
+
+- **スマホ Chrome でブラウザ翻訳が使われない問題を修正** — Issue #138。`shouldUseBrowserTranslation` が `availability === "available"` のみを許可していたため、モバイル Chrome で翻訳モデル未ダウンロード時（`"downloadable"`）にブラウザ翻訳が発動せず Workers AI フォールバックになっていた。`"downloadable"` も許可し、`Translator.create()` のモデル自動ダウンロードを活用するよう修正。`detectSourceLanguage` の `LanguageDetector` availability チェックも同様に統一。
+
+### 激アツ新機能っ
+
 - **翻訳プロバイダー表示** — Issue #136。翻訳タブ選択時に「Chrome 翻訳」または「Workers AI」のバッジを表示し、どのエンジンで翻訳されたかをユーザーが確認できるように。`AiOperationResult` に `provider` フィールドを追加し、LRU キャッシュにも永続化。
 
 - **OGP / Twitter Card 対応** — Issue #146。`layout.tsx` に Open Graph (`og:title` / `og:image` / `og:description` / `og:site_name`) と Twitter Card (`summary_large_image`) メタタグを追加。`og.svg` から PNG を生成して `public/og.png` として配置。Twitter・Slack・Discord 等でリンク共有時にリッチプレビューが表示されるように。E2E テストも追加。

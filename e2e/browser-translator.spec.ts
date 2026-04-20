@@ -18,12 +18,12 @@ test.describe("isTranslatorApiSupported — Node 環境", () => {
 });
 
 test.describe("shouldUseBrowserTranslation — availability 判定", () => {
-  test("available のみ即時翻訳可", () => {
+  test("available は翻訳可", () => {
     expect(shouldUseBrowserTranslation("available")).toBe(true);
   });
 
-  test("downloadable はフォールバック対象", () => {
-    expect(shouldUseBrowserTranslation("downloadable")).toBe(false);
+  test("downloadable は翻訳可（create() が自動DL）", () => {
+    expect(shouldUseBrowserTranslation("downloadable")).toBe(true);
   });
 
   test("downloading 中はフォールバック対象", () => {
