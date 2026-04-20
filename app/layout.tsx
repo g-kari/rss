@@ -20,6 +20,29 @@ export const metadata: Metadata = {
   title: "RSS Reader",
   description: "シンプルな RSS リーダー — AI 要約・翻訳対応",
   manifest: "/manifest.json",
+  metadataBase: new URL("https://rss.0g0.xyz"),
+  openGraph: {
+    title: "RSS Reader",
+    description: "シンプルな RSS リーダー — AI 要約・翻訳対応",
+    url: "https://rss.0g0.xyz",
+    siteName: "RSS Reader",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "RSS Reader — Simple. Fast. Minimal.",
+      },
+    ],
+    locale: "ja_JP",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RSS Reader",
+    description: "シンプルな RSS リーダー — AI 要約・翻訳対応",
+    images: ["/og.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

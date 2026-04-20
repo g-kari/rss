@@ -2,6 +2,10 @@
 
 ## 2026-04-21
 
+### 激アツ新機能っ
+
+- **OGP / Twitter Card 対応** — Issue #146。`layout.tsx` に Open Graph (`og:title` / `og:image` / `og:description` / `og:site_name`) と Twitter Card (`summary_large_image`) メタタグを追加。`og.svg` から PNG を生成して `public/og.png` として配置。Twitter・Slack・Discord 等でリンク共有時にリッチプレビューが表示されるように。E2E テストも追加。
+
 ### コードめかし込み
 
 - **リリースノートのページネーション対応** — Issue #151。リリースノートが 3600 行に肥大化しバンドルサイズ・API レスポンスに影響していた問題を解消。`release-notes-data.ts` を直近 2 週間分にトリム（3400 行→ 745 行）、API に `limit` / `offset` パラメータを追加しセクション単位でページネーション、モーダルに「もっと見る」ボタンを追加して段階的読み込みに対応。古いエントリは git history に保持。

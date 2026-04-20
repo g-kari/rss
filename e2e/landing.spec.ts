@@ -25,4 +25,16 @@ test.describe("ランディングページ", () => {
     await expect(page.getByText("レイアウト", { exact: true })).toBeVisible();
     await expect(page.getByText("AI 機能", { exact: true })).toBeVisible();
   });
+
+  test("OGP メタタグが正しく設定されている", async ({ page }) => {
+    await page.goto("/");
+    const ogTitle = page.locator('meta[property="og:title"]');
+    await expect(ogTitle).toHaveAttribute("content", "RSS Reader");
+    const ogImage = page.locator('meta[property="og:image"]');
+    await expect(ogImage).toHaveAttribute("content", /\/og\.png/);
+    const twitterCard = page.locator('meta[name="twitter:card"]');
+    await expect(twitterCard).toHaveAttribute("content", "summary_large_image");
+    const twitterImage = page.locator('meta[name="twitter:image"]');
+    await expect(twitterImage).toHaveAttribute("content", /\/og\.png/);
+  });
 });
