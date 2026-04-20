@@ -141,7 +141,7 @@ export default function ReleaseNotesModal({ onClose }: Props) {
   };
 
   return (
-    <Modal title="リリースノート" onClose={onClose}>
+    <Modal title="リリースノートだよっ" onClose={onClose}>
       <div className="overflow-y-auto max-h-[calc(80vh-52px)] px-5 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -159,7 +159,7 @@ export default function ReleaseNotesModal({ onClose }: Props) {
                 disabled={loadingMore}
                 className="mt-4 mb-2 w-full py-2 text-[12px] text-text-muted hover:text-text-default border border-border-subtle rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-50"
               >
-                {loadingMore ? "読み込み中..." : "もっと見る"}
+                {loadingMore ? "読み込み中..." : "もっと見るっ"}
               </button>
             )}
           </>
