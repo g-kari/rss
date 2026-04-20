@@ -1,12 +1,12 @@
-# リリースノート
+# リリースノート 〜ギャルが読み上げるよ〜
 
 ## 2026-04-21
 
-### リファクタリング
+### コードめかし込み
 
 - **リリースノートのページネーション対応** — Issue #151。リリースノートが 3600 行に肥大化しバンドルサイズ・API レスポンスに影響していた問題を解消。`release-notes-data.ts` を直近 2 週間分にトリム（3400 行→ 745 行）、API に `limit` / `offset` パラメータを追加しセクション単位でページネーション、モーダルに「もっと見る」ボタンを追加して段階的読み込みに対応。古いエントリは git history に保持。
 
-### 新機能
+### 激アツ新機能っ
 
 - **ギャラリービューの列数指定機能** — Issue #144。ユーザー設定モーダルに「ギャラリー列数」セグメントを追加（自動 / 2〜8列）。「自動」は従来通り columnWidth=220px ベースで masonic が自動計算、列数指定時はコンテナ幅から columnWidth を逆算して正確に N 列表示。記事一覧フォーカスモード（listFocusMode）時は指定列数に合わせた maxWidth を設定し余白を抑制。設定は localStorage (`rss-gallery-columns`) に永続化。
 
@@ -14,7 +14,7 @@
 
 ## 2026-04-20
 
-### 新機能
+### 激アツ新機能っ
 
 - **記事へのユーザータグ付与とタグ別ビュー** — Issue #103。記事に任意の複数タグを付与し、サイドバーのタグセクションから任意タグの付いた記事だけを横断表示できるようにした。データは既存 `ReadState.tagIds?: Record<string, string[]>` に相乗り（新規 R2 キーなし）、`users/{userId}/read-state.json` に保存される。`src/lib/validation.ts` に `parseTagIds` / `MAX_TAG_NAME_LENGTH=50` / `MAX_TAGS_PER_ARTICLE=20` を追加し、制御文字除去・重複排除・DoS 対策 (`MAX_TAGGED_ARTICLES` サーバー上限 2,000 件 / マージ層ハードリミット 5,000 件) を実装。`src/lib/read-state-merge.ts` の `mergeTags` は「incoming はキー単位で既存を上書き、`removedIds.tagIds` に入ってるキーは除去」という純粋キー置換方式で他端末とのマージを処理する。クライアント側 (`src/hooks/useReadState.ts`) には `addTag / removeTag / setArticleTags / clearArticleTags` を新設、`pendingTagChangedRef` / `pendingTagRemovedRef` で差分のみ POST する既存パターンを踏襲。`applyServerState` はローカル未同期キーを保護しつつ削除予定キーを除外する安全マージに。フィルター側 (`src/lib/article-filter.ts`) は `selectedTag / articleTags / taggedOnly` を受け付ける `buildTagPredicate` を追加し、UI では `src/components/FeedSidebar.tsx` の特殊ビュー直後に記事数付きタグ一覧を、`src/components/article-view/TagEditor.tsx` で記事ビュー内タグバッジの追加・削除 UI を実装。`App.tsx` に `selectedTag` 状態と `?tag=` URL 同期を追加（`?feed` / `?group` と相互排他）。`e2e/read-state-merge.spec.ts` に 5 ケース、`e2e/article-filter.spec.ts` に 6 ケース、`e2e/tag-validation.spec.ts` に 12 ケース新規テストを追加。
 
@@ -27,11 +27,11 @@
 - **全フィード横断のフルテキスト検索と高度フィルタリング** — Issue #102。検索ボックスに高度クエリ構文を追加：フィールド指定 (`title:foo` / `author:bar` / `feed:baz` / `category:qux` / `content:hello`)、フレーズ検索 (`"hello world"`)、否定 (`-foo`)、暗黙 AND・明示 OR (`foo OR bar`)、大文字小文字無視。構文を含まない単純クエリは従来通り title / summary / author / categories / content を横断する既存互換挙動。`src/lib/full-text-search.ts` に純粋関数 (`parseSearchQuery` / `matchesAdvancedQuery`) として実装し、`src/lib/article-filter.ts` の `buildQueryPredicate` から呼び出す。`SearchContext.feedTitleByHash` を `useFilteredArticles` 側で構築し `feed:` クエリを解決可能に。検索条件の保存機能 (`useFullTextSearch` フック) を新設、`localStorage` (`rss-saved-searches`) に最大 20 件まで保存し検索ドロップダウンの「保存済み」セクションから即時呼び出せる。検索バー右側に「保存」ボタンを追加 (2 文字以上の入力時のみ表示)。`e2e/full-text-search.spec.ts` に 42 ケース追加 (parseSearchQuery / matchesAdvancedQuery のフィールド・OR/AND/NOT・フレーズ・エッジケース・未閉鎖クォート fallback・OR の大小無視)。
 - **フィードビュータブ + Pinterest 風ギャラリーレイアウト** — Issue #114。サイドバー上部に「記事 / 画像 / 動画 / SNS」の 4 タブを追加し、各フィードを任意のカテゴリに分類できるようにした。タブ切替で対応する view のフィードのみが表示される（未分類フィードは「記事」タブ所属扱い）。併せて `gallery` レイアウトを新設（CSS columns による masonry、サムネイル優先）。`UserSubscription.view` / `Feed.view` / `FeedPatchPayload.view` を追加し、`PATCH /api/feeds/:id` で `view: "articles" | "pictures" | "videos" | "social" | null` を受け付ける。`FeedItem` のコンテキストメニューに「表示カテゴリ」サブメニューを追加。localStorage キー `rss-active-feed-view` にタブ選択状態を永続化。UX は [Folo](https://github.com/RSSNext/Folo)（AGPL-3.0）を参考にしたがコードは流用せず MIT のままとした。
 
-### 新機能
+### 激アツ新機能っ
 
 - **記事一覧フォーカスモードの新設 + 画像/動画カテゴリで自動有効化** — Issue #141。既存の `focusMode`（サイドバーと記事一覧を畳んで記事詳細を最大化）とは別に、**サイドバーと記事ビューを畳んで記事一覧を最大化**する `listFocusMode` を新設した。`useUIState.ts` に state / `toggleListFocusMode` / `setListFocusMode` を追加し、Escape キー押下で両フォーカスモードともに OFF、`\` キー単体で従来の `focusMode`、`Shift+\` (= `|`) で `listFocusMode` をトグル、相互排他で一方を有効にすると他方は OFF になる。`App.tsx` の `gridTemplateColumns` を `focusMode ? "0px 0px 1fr" : listFocusMode ? "0px 1fr 0px" : "${sidebarWidth}px ${listWidth}px 1fr"` に拡張（`focusMode` 優先）、カラムリサイズハンドルは両フォーカス時に非表示。さらに `onChangeActiveFeedView` ラッパーで `view === "pictures" || "videos"` のときに `setListFocusMode(true)` を呼び（`gallery` 自動切替とセット）、それ以外のカテゴリでは `setListFocusMode(false)` に戻す。これで masonic による Pinterest 型 masonry ギャラリーが記事ペイン全幅で表示され、画像/動画カテゴリの閲覧体験が大きく向上した。
 
-### バグ修正（パフォーマンス / UX）
+### バグ絶対キルした（パフォ / UX）
 
 - **フォーカスモード解除ボタンを追加（戻り方の可視化）** — Issue #143。画像/動画カテゴリ切替で `listFocusMode` が自動 ON になるがサイドバー・記事ビュー列が幅 0 に潰れるため、`\` / `|` / `Esc` のキー操作を知らないユーザーには戻り方が不明だった。`useUIState.ts` に `exitFocusMode`（`setFocusMode(false) + setListFocusMode(false)` を同時呼び出す純粋ヘルパー）を新設し、`App.tsx` で `focusMode || listFocusMode` 時のみ表示される `fixed top-3 right-3 z-50` のピル型ボタン（展開アイコン + 「フォーカス解除」ラベル）から呼び出す。`bg-ink` / `rounded-full` の既存主アクション系スタイルで統一し、`aria-label="フォーカスモード解除"` と `title` にショートカット `(Esc)` を明示してアクセシビリティを確保。`exitFocusMode` は記事詳細フォーカス・記事一覧フォーカスどちらからでも同一挙動で抜けられるため、挙動の対称性が保たれる。
 
@@ -39,15 +39,15 @@
 
 - **画像/動画カテゴリの事前取得で 429 を抑制 + Retry-After をサーバー経由で伝達 + ギャラリーのちらつきを解消** — Issue #142。3 点まとめて対応：(1) `usePrefetchGalleryContents` の `requestDelayMs` デフォルトを 250ms → 750ms に引き上げバースト抑制を強化。(2) `app/api/content/route.ts` で上流 429 受信時に `Retry-After` ヘッダー（と JSON body の `retryAfter`）をクライアントに pass-through、クライアント側は `res.headers.get("Retry-After")` を `src/lib/retry-after.ts` の新規 `parseRetryAfter` (delta-seconds / HTTP-date 両対応・`maxMs=10 分` でクランプ) でミリ秒化し `rateLimitUntilRef` に期限を保存、次回 effect 起動時にも期限内なら即終了してクールダウンを維持する。cron/fetch の既存 `parseRetryAfter` も同ライブラリを共有利用にリファクタ。(3) `ArticleList.tsx` の gallery 分岐が `render` prop にインライン関数を渡しており masonic が毎回 render identity 変化で全セルを unmount/remount → カード全体がちらついていた問題を修正。`GalleryCardRenderer` を `memo` で module scope に固定、`resolveItemProps` / `galleryImagesForItem` は `GalleryItemCtx` Context で供給。`itemKey` も module scope 関数に切り出して identity を安定化。これで prefetch state 更新が発生しても masonic セルの再マウントは起きず、対象セルのみ reconcile される。
 
-### バグ修正（UX リグレッション）
+### バグ絶対キルした（UXリグレッション）
 
 - **ギャラリービューを masonic で仮想スクロール対応 Pinterest 型 masonry にリニューアル** — Issue #139。#126 で CSS columns (masonry) → CSS Grid 行優先 (`grid-cols-* auto-rows-max`) に変更したが、カード高がバラバラなため各行の最大高に揃えられて大きな空白が発生し視覚的に「キモい」状態になっていた。さらに元の CSS columns は「左列→下→次列」配置で infinite scroll で新記事が左列下部に挿入される #126 の問題も抱えており、両立が難しかった。`masonic` (MIT, ~8KB gz) を導入し、`usePositioner` / `useResizeObserver` / `useMasonry` の低レベル API で `src/components/GalleryMasonry.tsx` を新設。親スクロールコンテナ (`scrollContainerRef` の `overflow-y-auto` 領域) に適合させるため `useParentScroller` (rAF スロットリング付き scrollTop 監視) と `useContainerMetrics` (ResizeObserver で width / height / offsetTop 追従) のカスタム hook を内包。`ArticleList.tsx` の gallery 分岐を `<GalleryMasonry items={visible} scrollElement={scrollEl} columnWidth={220} columnGutter={12} overscanBy={6} render={...} />` に置換し、`scrollEl` は `useLayoutEffect` で `scrollContainerRef.current` を state に反映して子に渡す。`usePositioner` の deps は `[items.length]` として、append-only の無限スクロール時に既存アイテムの位置を保つ。
 
-### ドキュメント整備
+### メモっといた
 
 - **architecture.md に新規 hooks / lib / components / R2 プロパティを追記** — Issue #128。`.claude/rules/architecture.md` の「ディレクトリ構造」セクションが直近の実装差分に追従できていなかったため、エージェントチーム（Explore × 3 並列）で差分を抽出して以下を反映。components に `UserSettingsModal.tsx` / `SaveUrlModal.tsx` / `FeedAddModal.tsx` / `article-view/` サブディレクトリを追記。hooks に `useArticleHighlight` / `useArticleNote` / `useArticleAiRatings` / `useFullTextSearch` / `usePrefetchGalleryContents` / `useSliderGallery` / `useSyntaxHighlight` / `useMathRender` / `usePopupLock` を追記。lib に `api-error` / `cache-helper` / `csrf` / `rsshub` / `full-text-search` / `read-state-merge` / `feed-group-drop` / `image-proxy-url` / `image-proxy-security` / `browser-translator` / `translate-html` / `popup-lock` / `serialize-error` を追記。R2 データ構造セクションの `UserSubscription` 行に `view` / `requestCookie` / `lastAccessedAt` を、`ReadState` 行に `tagIds` を、`SharedFeedMeta` 行に `lastModified` / `etag` / `cacheControl` / `nextFetchEarliestAt` を追加。さらに `.claude/rules/release-notes.md` に「新規 endpoint / hooks / lib / components / R2 プロパティ追加時は architecture.md も同期必須」というルールを明文化した。
 
-### バグ修正
+### バグ絶対キルした
 
 - **cascadeOverflow の MAX_PAGES 超過時データ喪失を修正** — Issue #131。`src/lib/shared-feed.ts` の `cascadeOverflow` は `currentPage > MAX_PAGES (=500)` でループを抜けるが、`currentOverflow` に残った記事が書き込まれずに silent drop されていた（PAGE_SIZE × MAX_PAGES = 250,000 件を超える極めて稀なエッジケース）。あわせてループ内の `break` 経路で `currentOverflow` がクリアされない既存バグも発見（末尾ページ追記ロジックが誤発火する）。修正: (1) break 前に `currentOverflow = []` で明示クリア、(2) ループ脱出後に残 overflow があれば末尾ページ (p{maxPages}) に追記して PAGE_SIZE 超過を許容（データ喪失より整合性を優先）、(3) `console.warn` で破棄件数・feedHash・page size を出力して運用監視可能に。テスト容易化のため `cascadeOverflow` を export し `options?: { maxPages?: number; pageSize?: number }` を追加（本番は既存定数をデフォルト使用）。`e2e/cascade-overflow.spec.ts` に 4 ケース追加（通常カスケード / 次ページ送り / maxPages 超過時の追記 / pageSize 超過許容）。R2Bucket の最小モック (`makeR2Mock`) をテスト内に実装。
 
@@ -66,49 +66,49 @@
 
 - **記事全文のページネーション連結が trailing slash 付き URL で効いていなかった問題を修正** — `src/lib/content.ts` の `isPaginatedVariant` パス 3（bare numeric suffix）で `curBase` / `nextBase` を比較する際、WordPress pretty permalink（`/slug/` → `/slug/2/`）の場合に cur 側の pathname 末尾の `/` が剥がれず、next 側（`/2/` 除去後はスラッシュなし）と不一致になっていた。両側とも `/\/$/` で trailing slash を正規化してから比較するよう修正。これにより `<div class="page-links">Pages: ...</div>` 形式（wp_link_pages 出力）の記事でも `appendPaginatedPages` が次ページを検出・連結できるようになる。`e2e/content-extraction.spec.ts` に回帰テスト 2 件追加（WordPress pretty permalink の `/slug/` → `/slug/2/` 検出 / `/slug/2/` → `/slug/3/` 検出）。
 
-### セキュリティ
+### ガード固めたっ
 
 - **RSSHub ACCESS_KEY のクライアント漏洩を修正** — 前コミットの実装では `resolveRSSHubUrl` が変換後 URL に `?key=...` を直接含めていたため、その URL が `users/{userId}/subscriptions.json` / `feeds/{feedHash}/meta.json` に保存され、さらに `assembleClientFeed` 経由で `Feed.url` としてクライアントにも返っていた。これは `RSSHUB_ACCESS_KEY` シークレットがフロントから参照可能になる重大なリーク。`src/lib/rsshub.ts` から key 引数を削除し、代わりに `appendAccessKeyIfRsshub(url, instance?, accessKey?)` を新設して fetch 層 (`src/cron/fetch.ts` の `fetchAndParseFeed` / `fetchAndScrapeWithSelectors`) でのみ動的に付与する設計に変更。保存される URL には key が一切含まれないため、R2 / クライアントへの漏洩が防止される。`appendAccessKeyIfRsshub` はインスタンス host が一致する URL にのみ付与し、既に `key=` を持つ URL には二重付与しない・不正な URL はそのまま返す等の安全弁を備える。`e2e/rsshub.spec.ts` を 33 → 38 ケースに拡張（インスタンス外不付与 / 二重付与防止 / 既存クエリ保持 / URL エンコード / 不正 URL 保護）。
 
-### 新機能
+### 激アツ新機能っ
 
 - **RSSHub 連携のオプトアウト機能とセルフホスト ACCESS_KEY サポート** — Issue #109 の追補。RSSHub 変換が強制的に行われていたため、`FeedAddModal` に「RSSHub で自動変換（Twitter / YouTube / GitHub 等）」チェックボックスを追加（デフォルト ON）してユーザー側でオプトアウトできるようにした。さらに、セルフホスト RSSHub インスタンスで `ACCESS_KEY` による認証を使っているケースに対応するため、`RSSHUB_ACCESS_KEY` シークレットを設定すると変換後の URL 末尾に `?key=...`（URL エンコード済み）を自動付与する機能を追加。`src/lib/rsshub.ts` に `getRSSHubAccessKey()` を新設、`resolveRSSHubUrl(url, instance?, accessKey?)` の第 3 引数として access key を受け取れるよう拡張。API 側は `body.useRsshub !== false` のときだけ変換処理を実行する（未指定はデフォルト ON、後方互換）。`useFeedOperations.addFeed` のシグネチャに `useRsshub?: boolean` を追加。`e2e/rsshub.spec.ts` を 33 ケースに拡張（ACCESS_KEY 付与・空文字扱い・URL エンコード・`getRSSHubAccessKey` の環境変数読み取り）。
 - **RSSHub 連携による主要サービスの自動 RSS 化** — Issue #109。RSS を提供していない Twitter / X、YouTube チャンネル・ユーザー・`@handle`、GitHub ユーザー / リリース / issue、Instagram、Reddit サブレディット、Bilibili、Zhihu、Pixiv、Weibo、Telegram チャネルの URL を Feed 追加時に自動で [RSSHub](https://docs.rsshub.app/) の対応エンドポイントに変換するようにした。`src/lib/rsshub.ts` に純粋関数 `resolveRSSHubUrl(url, instance?)` / `getRSSHubInstance()` を追加し、`app/api/feeds/route.ts` の POST ハンドラーで URL バリデーション直後に変換を試みる。変換後の URL は再度 `isValidFeedUrl()` で検証してから既存の 3 段階フォールバック探索（RSS link → 手動 CSS セレクタ → LLM 推論）に進む。GitHub の第 1 階層予約語（`marketplace` / `topics` / `features` / `pricing` / `enterprise` / `orgs` 等 34 語）はユーザー名として誤マッチしないようブラックリストで弾く。RSSHub インスタンス URL は `RSSHUB_INSTANCE_URL` 環境変数で上書き可能（未設定時は `https://rsshub.app`）。`e2e/rsshub.spec.ts` に 27 ケース（主要サービス変換 / 予約語ブラックリスト / 大文字小文字 / クエリパラメータ / サブパス / カスタムインスタンス）を追加。
 
-### バグ修正
+### バグ絶対キルした
 
 - **RSS フィード記事サムネイルの優先順位を修正** — Issue #117。`src/lib/xml-parser.ts` の `extractImage` が `media:thumbnail` を第 1 優先・`media:content` を第 2 優先としていたため、低解像度サムネイルが採用され本来の高解像度画像が使われない事象が起きていた。MRSS 仕様の意図（サムネは `media:content` の小型版を表す要素）および Issue #117 の要求に従い、優先順位を **`media:content`（`medium="image"` または `type="image/*"`）→ `media:thumbnail` → `itunes:image`（新規追加、Podcast 対応）→ `enclosure` → `content/description` 内 `<img>`** に変更。これにより XML から取得できる画像の取りこぼしも減り、`useOgpCache` による `/api/ogp` へのフォールバック問い合わせが更に減少する。`e2e/xml-parser.spec.ts` に 4 ケース（media:content 優先 / media:thumbnail フォールバック / itunes:image 採用 / media:content の medium 未指定時のフォールバック）を追加。
 
-### リファクタリング
+### コードめかし込み
 
 - **`ArticleFilterContext` を新設し ArticleList / ArticleView / FeedSidebar への prop drilling を削減** — Issue #96。`src/contexts/ArticleFilterContext.tsx` を新規追加し、既存の `ReaderSettingsContext` と同じ雛形で `useFilteredArticles` の戻り値 (`FilterState`) + `onSaveFilter` を `ArticleFilter` としてひとまとめに提供するようにした。`src/App.tsx` の `<ArticleFilterProvider value={{ ...filterState, onSaveFilter: saveFilter }}>` で 3 ペイン全体を囲み、`ArticleList` の `filter` prop、`ArticleView` の `globalFilter` / `onSaveGlobalFilter` / `query` / `onSetQuery` / `onSetAuthorFilter` / `onSaveFilter` prop、`FeedSidebar` の `onSaveFilter` prop を削除して `useArticleFilter()` 呼び出しに置き換え。`ArticleView` は `setAuthorFilter` + `showToast` の副作用ラッパーをコンポーネント内ローカル関数として内蔵。dead code になった `onSetAuthorFilter ?` 三項演算子も整理した。挙動変更なし、`e2e/article-filter.spec.ts` (62 ケース) を含む既存テストは全てパス。
 
-### バグ修正
+### バグ絶対キルした
 
 - **定期的にログアウトされる問題を修正** — Issue #113。0g0-id (`/auth/refresh`) は並列リフレッシュ競合（30 秒以内の rotation 済みトークン再提示）時に HTTP 401 + `{ error: { code: "TOKEN_ROTATED", message: "..." } }` を返す仕様だが、`src/lib/auth.ts` の `refreshTokens` がすべての 4xx を `invalid` として扱っていたため Cookie が削除されログアウト扱いになっていた。複数タブ・タブ復帰時の同時リフレッシュで日常的に発生するため「定期ログアウト」として体感される。レスポンスボディの `error.code` を読み取って `TOKEN_ROTATED` のみ `transient` にして Cookie を保持するよう修正（`TOKEN_REUSE` は従来どおり `invalid`）。`e2e/refresh-tokens.spec.ts` に 4 ケース追加（TOKEN_ROTATED → transient / TOKEN_REUSE / INVALID_TOKEN / TOKEN_EXPIRED → invalid）。
 - **srcset 内の URL path に `,` を含む画像が壊れる問題を修正** — Issue #111。`src/lib/content.ts` の `transformSrcset` が単純に `.split(",")` で候補を分割していたため、Cloudinary の `c_limit,f_auto,...` のように変換パラメータ部で生の `,` を path に含む URL が途中で切れ、`/api/image-proxy?url=...` に不正な値が渡って画像が取得できなくなる可能性があった。WHATWG HTML srcset 仕様 (https://html.spec.whatwg.org/#parse-a-srcset-attribute) に寄せたパースに変更し、URL は whitespace を境界とし、URL 末尾の `,` のみを候補区切りとして扱うよう修正。これにより Cloudinary / imgix など path 内にカンマや encoded 文字 (`%2C` / `%3F`) を含む URL でも src / srcset が壊れずに丸ごと proxy へ渡されるようになる。`e2e/content-extraction.spec.ts` に回帰テスト 2 件（encoded delimiter 保持 / srcset 内 URL path `,` 保護）を追加。
 
-### 新機能
+### 激アツ新機能っ
 
 - **RSS 取得時の Cache-Control 対応で配信元サーバーへのアクセスを最適化** — Issue #116。`src/lib/fetch.ts` に `parseCacheControl` / `computeNextFetchEarliestAt` を追加し、`src/types.ts` の `SharedFeedMeta` に `cacheControl`（直近レスポンスの生ヘッダー）と `nextFetchEarliestAt`（次回フェッチ可能時刻 ISO 8601）を追加。`src/cron/fetch.ts` の `fetchAndParseFeed` が 200 / 304 いずれの応答でも Cache-Control を保存し、`fetchAndUpdateSharedFeed` の cron 経路では `nextFetchEarliestAt > now` のときフェッチをスキップする。`s-maxage` が `max-age` より優先され、`no-cache` / `must-revalidate` / `no-store` 時は従来どおり毎回サーバー検証する（スキップしない）。クランプ範囲は下限 1800 秒（cron 間隔に一致）〜上限 21600 秒（6 時間）で、過度に短い / 長い指示を緩和する。手動 refresh (`forceRetry=true`) はスキップ対象外。`e2e/cache-control.spec.ts` に 17 ケース（max-age / s-maxage / no-store / no-cache / must-revalidate / 壊れ値 / クランプ境界）を追加。
 
 ## 2026-04-19
 
-### バグ修正
+### バグ絶対キルした
 
 - **記事詳細のコンテンツ幅がペイン幅に連動しない問題を修正** — Issue #80。`src/components/ArticleView.tsx` の外側ラッパーが `max-w-2xl` (672px) にハードコードされていたため、カラムリサイズやフォーカスモードで記事詳細ペインを広げても本文・タイトル・メタ情報が 672px 以上に拡大できず、ユーザー設定の `contentWidth`（narrow/medium/wide/full）も事実上 narrow 以外は効果を発揮しなかった。ラッパーのクラスから `max-w-2xl` を外し、`getContentWidthStyle(contentWidth)` を `style` で適用（`transition-[max-width]` も追加してスムーズに変化）することで、`full` を選択するとペイン幅いっぱいに、`wide` (900px) / `medium` (720px) を選択するとそれぞれ指定幅まで本文を拡大できるようにした。併せて `.article-content` 各出力（translate HTML / translate plain / 本文 / summary）内に重複していた `getContentWidthStyle` 呼び出しを削除し、幅制御を外側ラッパー 1 箇所に一元化した。
 
-### 新機能
+### 激アツ新機能っ
 
 - **フィード追加・URL 保存をモーダルダイアログ化** — Issue #115。`src/components/FeedSidebar.tsx` のサイドバー上でインライン展開されていたフィード追加フォーム（URL / Cookie / CSS セレクタ）と URL 記事保存フォーム（ブックマーク / 後で読む）を、汎用 `Modal` コンポーネント (`src/components/Modal.tsx`) を使ったポップアップダイアログに移行。新設した `src/components/FeedAddModal.tsx` / `src/components/SaveUrlModal.tsx` にフォーム JSX を切り出し、Esc キー / オーバーレイクリックで閉じる挙動を Modal 側に一元化。`handleAddFeed` の `canRetryWithSelector` フロー（API 失敗時に CSS セレクタ欄を自動展開）はモーダル表示のまま維持し、既存の state（`newUrl` / `newCookie` / `newCssSelector` / `saveUrl` / `saveError` 等）は親で保持する形で `addFeed` / `handleSaveArticle` の呼び出しロジックは一切変更せず、視覚的なレイアウトのみ差し替えた。
 - **フィード一覧の各種メニューを右クリック（コンテキストメニュー）に移行** — Issue #110。`src/components/FeedItem.tsx` のサイドバー上にホバー時だけ現れていた多数のアイコンボタン群（詳細・スター・NSFW・フィルター・カテゴリ・グループ・ミュート・ピン・既読化・更新・再推論・削除）を常時表示の ⋮ ボタンひとつに集約し、さらにフィード項目全体に `onContextMenu` ハンドラを追加してマウス右クリックでカーソル位置にメニューをポップアップさせるようにした。`menuPortalStyle` 計算を「⋮ボタンの `getBoundingClientRect` ベース」から、右クリック由来のときはマウス座標 (`e.clientX` / `e.clientY`)、⋮ボタン由来のときは従来のボタン基準、という二系統に拡張し、どちらの場合も画面端ではみ出さないようクランプしている。編集中 (`editing` / `categoryEditing`) はコンテキストメニューを無効化してテキスト入力側のネイティブメニューを残す。ドラッグ&ドロップ (`draggable` / `onDragStart`) との競合を避けるため `onContextMenu` では `e.preventDefault()` + `e.stopPropagation()` のみで drag API に干渉しない設計。
 - **60×60 などの小さい画像を画像一覧・一括ダウンロード対象から除外** — Issue #112。`src/lib/image-extractor.ts` に `MIN_IMAGE_SIZE_PX = 100` を定数追加し、`collectImageUrlsFromHtml` では img タグの `width` / `height` 属性（または `style` の `px` 指定）、`collectImageUrls`（DOM 版）では `naturalWidth` / `naturalHeight` を優先し未解決時は属性にフォールバックする形で、**両辺とも閾値未満**の画像（サイトロゴ / SNS シェアアイコン / スペーサー等）を抽出段階で除外するよう変更。片方しかサイズ情報がない（縦長・横長画像の可能性）ケースや `%` 指定・属性未指定ケースは誤判定を避けて従来通り収集対象に残す。既存の `useImageDownload.fetchOne` の `createImageBitmap` による 100px 未満除外は二重防護として維持。`e2e/image-extractor.spec.ts` に 16 ケース（srcset フォールバック / data URI 除外 / サイズ閾値境界 / 片辺のみ・style・% 指定・混在）を追加。
 
-### バグ修正
+### バグ絶対キルした
 
 - **access_token 期限切れ時に一瞬ログイン画面へ戻る問題を修正** — 追加依頼。`src/hooks/useAuth.ts` の `checkAuth` で「以前認証済み」かつ `/api/auth/me` が `user: null` を返した場合、即座に `setUser(null)` せず 800ms / 1600ms の指数バックオフで最大 2 回までリトライしてから判定するよう変更。サーバー側 refresh の transient 失敗や JWKS 一時障害・R2 読み取り遅延で偶発的に null が返っても、ユーザーがログイン画面にフラッシュ遷移しなくなる（リロードで復帰できていた挙動を自動化）。`sessionRecoveryAttempts` カウンタは成功時にリセット。既存の `?login=1` 直後リトライ (600ms 単発) とは別の経路。
 
-### ドキュメント整備
+### メモっといた
 
 - **R2 バックアップ / ディザスタリカバリ手順を追加** — Issue #106。`docs/backup-recovery.md` を新規作成。`rclone` / `aws s3` CLI / `wrangler` CLI を使った R2 バケット全体および選択的バックアップ手法、ユーザー別・フィード別の復旧手順、推奨頻度 (users: 日次 30 日保持 / feeds: 週次 8 週間 / ai-cache: 月次 2 ヶ月 / 全体スナップショット: 月次 12 ヶ月)、DR リハーサル手順、監視観点を記載。実コード (`src/lib/r2.ts` / `src/lib/shared-feed.ts` / `src/lib/feed-groups.ts` / `src/lib/recommendation.ts` / `src/lib/server-auth.ts`) に基づきユーザー別・共有フィード・AI キャッシュの全 R2 キー（クールダウン系含む）を優先度付き表で整理し、`read-state` 復元時のクライアントキャッシュマージ戦略 (ローカル ∪ サーバー、スヌーズは遅い方、ノートはサーバー優先) および cron 停止推奨の運用注意点も補足。`README.md` のデータ構造 (R2) 節から新ドキュメントへリンクを追加した。
 - **セットアップ手順の詳細化** — Issue #105。`README.md` のセットアップ節に以下を追記した:
@@ -117,46 +117,46 @@
   - **Cloudflare API トークン**: ダッシュボード URL (`https://dash.cloudflare.com/profile/api-tokens`)・必要権限 (Account / Workers AI / Read)・Account ID 取得場所を記載。`CLOUDFLARE_ACCOUNT_ID` を `wrangler.toml` または secret で設定する旨を追加。
   - セットアップ手順全体を 5 ステップから 8 ステップに再構成。
 
-### バグ修正
+### バグ絶対キルした
 
 - **RSS 1.0 (RDF) フィードで `dc:date` が `pubDate` より優先されない問題を修正** — Issue #99。`src/lib/xml-parser.ts` の RSS 1.0 `publishedAt` 解析が `parseDate(str(item.pubDate) || null) ?? parseDate(item["dc:date"] ?? null)` の順序になっており、pubDate に truthy な非日付文字列（`"not-a-date"` 等）が入っている場合に dc:date が無視される、あるいは fast-xml-parser が dc:date を `{ "#text": ... }` オブジェクト形式で返したときに `str()` を通さず parseDate に渡すことで NaN 扱いになり `publishedAt: null` になる可能性があった。RSS 1.0 では `dc:date`（ISO 8601）が主要な日付フィールドであるため `parseDate(str(item["dc:date"]) || str(item.pubDate) || null)` に変更し、dc:date を優先・pubDate をフォールバックとする順序に揃えた。`e2e/xml-parser.spec.ts` に 2 ケース追加（pubDate と dc:date が両方ある場合の dc:date 優先 / pubDate が無効でも dc:date が有効なら採用）。
 - **`GET /api/articles` で `readUserSubscriptions` が二重呼び出しされる問題を修正** — Issue #98。`app/api/articles/route.ts` の default 分岐で `Promise.all` を使って `readUserSubscriptions` と `getUserLatestArticles` を並列化していたが、`getUserLatestArticles` が内部で再度 `readUserSubscriptions` を呼んでいたため `subscriptions.json` が R2 から 1 リクエストあたり 2 回読まれていた。`src/lib/shared-feed.ts` の `getUserLatestArticles` にオプショナルな `subs?: UserSubscription[]` 引数を追加し、呼び出し元が取得済みの subs を渡せるように変更。route.ts 側は subs を先に 1 度だけ `await` し、`getUserLatestArticles(env.RSS_DATA, session.userId, subs)` として渡すよう調整した（`savedArticles` / `readState` の 2 本は引き続き並列）。R2 読み取りが 1 リクエストあたり 1 回に減少し、レイテンシ増加は subscriptions.json が小さいため無視できる範囲。
 - **`mergeNewArticles` が変更なしでも毎回 R2 PUT を発生させる問題を修正** — Issue #97。`src/lib/shared-feed.ts` の `mergeNewArticles` で、新規記事ゼロのブランチ（既存記事のメタ更新のみ想定）が既存記事に対して無条件に `changed = true` を立てており、フィールド値に差分がなくても 30 分毎の cron 実行ごとに R2 PUT が発生していた（全フィード分の無駄な書き込み課金）。純関数ヘルパ `isArticleMutated(ex, incoming)` を新設し、`createdAt` を除く全フィールド（配列は JSON.stringify で比較）に差分がある場合だけ `existingMap` を更新して `changed` を立てるように変更。`e2e/shared-feed-merge.spec.ts` に 11 ケース（title/summary/content 差分、createdAt 無視、categories 順序違い、metadata 差分、publishedAt null→値、ogImage/author 差分）を追加。
 - **ログインフローの `X-Internal-Secret` 対応と Cloudflare WAF ブロック検知を追加** — Issue #94。0g0-id の issue #156 改善案1（BFF 個別シークレット対応）で `serviceBindingMiddleware` が `INTERNAL_SERVICE_SECRET_USER` / `_ADMIN` / 共有 `INTERNAL_SERVICE_SECRET` による `X-Internal-Secret` 認証を受け付けるようになったのに合わせて、`src/lib/auth.ts` の `authApiHeaders()` に `INTERNAL_SERVICE_SECRET` 環境変数のサポートを追加（設定時のみ `X-Internal-Secret` ヘッダーを付与し、未設定なら従来通り Basic 認証のみで通す）。加えて Cloudflare WAF / Bot Fight Mode による 403 HTML challenge ページ (`Attention Required! | Cloudflare`) を検出する `isCloudflareBlock()` を新設し、`exchangeCode()` ではブロック時に運用者向けヒント付きログを出力、`refreshTokens()` では 403 + Cloudflare HTML を `invalid` ではなく `transient` 扱いに変更してユーザーを意図せずログアウトさせないようにした。`exchangeCode` / `refreshTokens` のレスポンスログに `cf-ray` ヘッダーも出力しトラブルシューティングを容易化。`e2e/auth-headers.spec.ts` に 10 ケース（`isCloudflareBlock` 判定 5 ケース、`X-Internal-Secret` 送出制御 2 ケース、exchange/refresh での Cloudflare 応答処理 3 ケース）を追加。
 
-### ドキュメント整備
+### メモっといた
 
 - **feed-groups API エンドポイントを README / architecture.md に追記** — Issue #104。実装済みの `app/api/feed-groups/` ルートがドキュメント化されていなかったため、`README.md` に「フィードグループ」セクション（`GET/POST /api/feed-groups` と `PATCH/DELETE /api/feed-groups/:id` の仕様表、レスポンス型 `FeedGroup`、POST 時の order 自動採番、グループ上限 100 件 / 名前 50 文字 / ユーザー内重複不可の制約、DELETE 時の orphan 許容設計）と API エラーレスポンス一覧にフィードグループのエラーコード表（`INVALID_NAME` / `DUPLICATE_NAME` / `FEED_GROUP_LIMIT_EXCEEDED` / `FEED_GROUP_NOT_FOUND` / `INVALID_ORDER` / `INVALID_COLLAPSED` / `INVALID_MUTED`）を追加。`.claude/rules/architecture.md` には全体像の API マップに `/api/feed-groups/*` を追記し、ディレクトリ構造に `app/api/feed-groups/` と `src/lib/feed-groups.ts` を記載、hooks 一覧に `useFeedGroups.ts` を追加、「フィードグループ操作」のデータフローサブセクションを新設、R2 データ構造に `users/{userId}/feed-groups.json` を追記した。
 - **DBSC 導入調査レポートを追加** — Issue #77 の調査タスクとして `docs/research/dbsc-investigation.md` を新規作成。Chrome 146 (2026-04-09) で Windows 向け DBSC が本格有効化された最新状況、W3C Editor's Draft (2026-04-17) の仕様サマリー、現状の認証実装 (`src/lib/server-auth.ts` の `setTokenCookies()` / `COOKIE_OPTS` — HttpOnly+Secure+SameSite=Lax, access_token 900 秒 / refresh_token 30 日) との整合性、DBSC 適用時に必要な改修箇所（認証サーバー `id.0g0.xyz` 側が主実装、本リポジトリは passthrough のみ）、Firefox/Safari/Chrome macOS・Linux 未対応のカバレッジ不足を整理。結論として「現時点では待ちが妥当」とし、Chrome macOS/Linux が stable 到達するタイミング (推定 2026 年後半〜2027 年) での再評価を推奨。
 
-### 新機能
+### 激アツ新機能っ
 
 - **フィードのドラッグ&ドロップでグループから外す操作を追加** — Issue #67 の残タスク「ドラッグ&ドロップでグループ移動」を完了。既存のグループへのドラッグ&ドロップ（追加／別グループへ移動）に加えて、グループ所属フィードをドラッグしたときだけ「グループから外す」ドロップゾーンが破線枠で現れるようにした。`src/lib/feed-group-drop.ts` を新規作成して `resolveFeedGroupDrop(feedId, targetGroupId, feeds)` 純関数を切り出し、feed 不在／同一グループ／同一 ungrouped の場合に no-op 判定を行う。`FeedSidebar` の `handleDropFeedOnGroup` を `groupId: string | null` 対応に変更し、`FeedGroupsSection` の `onGroupDrop` prop 型も `string | null` に拡張。`e2e/feed-group-drop.spec.ts` に 6 ケース（feed 不在 / 同一グループ / ungrouped→ungrouped / グループ間移動 / グループ→ungrouped / ungrouped→グループ）を追加。
 
-### バグ修正
+### バグ絶対キルした
 
 - **記事詳細の画像が中途半端なサイズ・アスペクト比崩れで表示される問題を修正** — Issue #86。`src/lib/content.ts` の `fixImageDimensions` が元 HTML の `width` / `height` 属性を無条件に削除しており、ブラウザが aspect-ratio を推論できずに画像読み込み中の layout shift やアスペクト比崩れ・中途半端な表示サイズが発生していた。width/height 両方が数値かつ両方 ≥ 16px (favicon 最小サイズ基準) の場合は属性を保持しブラウザに `aspect-ratio: attr(width) / attr(height)` 相当を自動適用させるよう変更（ダミー 1x1 プレースホルダや片方のみの属性は従来どおり削除）。style 内の固定 `width:` / `height:` は引き続き削除してコンテナからの溢れを防ぐ。併せて `app/globals.css` の `.article-content img` から `width: auto !important` を削除し `height: auto !important` を `height: auto` (非 important) に変更。これで HTML 属性の width/height が CSS で打ち消されず、ブラウザが aspect-ratio を推論できるようになる。コンテナ超過時は従来通り `max-width: 100% !important` で縮小し `height: auto` で高さも比例縮小する。`e2e/content-extraction.spec.ts` の `fixImageDimensions` describe に 4 ケース（意味のある属性保持・ダミー削除・片方のみ削除・style 内固定値削除）を追加。
 
-### セキュリティ
+### ガード固めたっ
 
 - **CSRF 対策として Origin/Referer 検証を `withSession` に追加** — Issue #101。0g0 ID の HttpOnly JWT cookie は `SameSite=Lax` で保護されていたが、Lax は top-level navigation で cookie を送出するため `<form method=POST>` による CSRF を完全には防げなかった。`src/lib/csrf.ts` に純粋関数 `isCsrfViolation(req, appBaseUrl)` を新設し、`src/lib/server-auth.ts` の `withSession` / `withBinarySession` が POST/PUT/PATCH/DELETE リクエスト時に Origin または Referer の origin が `APP_BASE_URL` と一致することを検証するよう変更。不一致時は `403 { code: "CSRF_ORIGIN_MISMATCH" }` で拒否する。設計上の決定: (1) Origin ヘッダーがある場合は Origin のみで判定し Referer にフォールバックしない（`Origin: null` + 正規 Referer による bypass を防ぐ）、(2) `APP_BASE_URL` 未設定時は fail-closed で違反扱い（本番での silently disable を防ぐ）、(3) GET/HEAD/OPTIONS は safe method として検証対象外。`withSession` のシグネチャが `(req, handler)` に変更されたため、全 31 個の Route Handler (`app/api/**/route.ts`) の呼び出し箇所を更新し Request オブジェクトを第一引数で渡すよう修正。`e2e/csrf-origin.spec.ts` に 49 ケース（安全/更新系メソッド別の一致/不一致/欠落/null origin/bypass 試行・fail-closed 検証・scheme/port/subdomain 境界条件）を追加。`e2e/api-health.spec.ts` にも別オリジンからの POST が 403 で弾かれる統合テストを追加。テスト時の localhost:3000 向け APP_BASE_URL 上書きは `playwright.config.ts` の `webServer.env` で設定。
 - **JWT 検証に `aud` / `iss` クレームチェックを追加** — Issue #100。`src/lib/auth.ts` の `verifyJwt` が従来は署名と `exp` のみ検証しており、`aud` (audience) / `iss` (issuer) クレームを確認していなかったため、同じ 0g0 ID の別オーディエンス／別イシュアー向けトークンを取得した攻撃者が `rss.0g0.xyz` で再利用できる可能性があった。ペイロード検証ステップに `payload.iss === authBaseUrl` の厳密一致チェックと、`payload.aud` が `process.env.CLIENT_ID` を含むこと（文字列/配列両対応）のチェックを追加。JWKS 取得より前に実行することで、不正トークンは早期に弾かれネットワークコストも削減できる。`JWTPayload` インターフェースに `iss?: string` / `aud?: string | string[]` を追加。`e2e/jwt-aud-iss.spec.ts` に 7 ケース（iss 欠落 / iss 不一致 / aud 欠落 / aud 不一致 文字列 / aud 配列に含まれない / CLIENT_ID 未設定 / exp 期限切れ回帰 / シェイプ不正）を追加。
 - **vite-plus path traversal 脆弱性を修正** — Dependabot alert #28 (severity: high, `vite-plus/binding` の `downloadPackageManager()` が `VP_HOME` 外にファイルを書き出せる path traversal 脆弱性) を解消。`package.json` は既に `^0.1.18` に更新済みだったが `package-lock.json` の解決バージョンが 0.1.14 のままだったため、`npm install` で lock ファイルを更新し `vite-plus` / `@voidzero-dev/vite-plus-core` など関連パッケージをすべて 0.1.18 に揃えた。
 
-### リファクタリング
+### コードめかし込み
 
 - **Cloudflare Cache API の重複パターンを `src/lib/cache-helper.ts` に集約** — Issue #95。`app/api/content/route.ts` / `app/api/image-proxy/route.ts` / `app/api/ogp/route.ts` の 3 ルートで手書きされていた `caches.default.match(cacheKey)` と `new Response(JSON.stringify(...), { headers: ... })` のパターンを共通ヘルパーに統一した。新規モジュール `src/lib/cache-helper.ts` に `buildCacheKey` / `cachePutAsync`（旧 `src/lib/r2.ts` から移設）/ `matchCfCache`（HIT → Response / MISS → null に正規化）/ `buildJsonCacheResponse`（Content-Type + Cache-Control を付与した JSON キャッシュエントリ Response 構築）を配置。`r2.ts` は R2 永続ストア専用に責務を絞り、Cache API 関連 export を削除した（`.claude/rules/caching.md` の方針どおり）。`src/lib/fetch-article-content.ts` と 3 ルートの import を `@/lib/r2` から `@/lib/cache-helper` に差し替え、`saveContentToCache` / ogp route の Response 構築も `buildJsonCacheResponse` 経由に置換。`e2e/cache-helper.spec.ts` に 6 ケース（`buildCacheKey` の `/__cache/{type}/{hash}` 形式 / type ごとの名前空間分離 / 決定論、`buildJsonCacheResponse` のヘッダー設定 / JSON シリアライズ / 可変 TTL）を追加。`.claude/rules/caching.md` のサンプルコードも新ヘルパー利用版に更新した。
 - **画像抽出ロジックを専用モジュール `src/lib/image-extractor.ts` へ集約** — Issue #108。`src/lib/article-utils.ts` 内の `bestSrcFromSrcset` / `isCollectableUrl` / `collectImageUrlsFromHtml` / `collectImageUrls` は記事画像抽出に特化した責務で、主要呼び出し元は `src/components/ArticleView.tsx` と `src/hooks/useImageDownload.ts` の 2 箇所に限られていた。`article-utils.ts` の責務を日本語判定・読了時間・日付比較・UI サイクル定数などの記事メタ系に絞るため、画像抽出系 4 関数を新モジュール `src/lib/image-extractor.ts` に移設し、`article-utils.ts` からは export を削除。呼び出し元 2 ファイルは `import { collectImageUrls(FromHtml) } from "../lib/image-extractor"` に差し替え。動作ロジックは変更なし（純粋リファクタ）。
 
 ## 2026-04-18
 
-### セキュリティ
+### ガード固めたっ
 
 - **code-scanning alert 残存 1 件を修正** — `src/lib/content.ts` の `detectNextPageUrl` 内 `<a>` タグ内テキスト抽出（`m[2].replace(/<[^>]+>/g, "").trim()`）が CodeQL の `js/incomplete-multi-character-sanitization` (severity: high) に残存していた不具合を修正（Issue #78 追従）。既存ヘルパ `replaceUntilStable` を用いて不動点反復に置き換え、`<<a>a>` のような再結合バイパス入力でもタグ片が正しく除去されるようにした。この `text` は数字リテラルとの `===` 比較にしか使われず直接の XSS 経路ではないが、ファイル内の他のタグ除去処理と同じパターンに揃えた。
 
 - **code-scanning alerts を一括修正** — GitHub Advanced Security の CodeQL スキャンで検出された 19 件の警告を修正（Issue #78）。`js/incomplete-multi-character-sanitization` / `js/bad-tag-filter` / `js/incomplete-url-scheme-check` / `js/incomplete-sanitization` / `js/incomplete-url-substring-sanitization` / `actions/missing-workflow-permissions` を網羅的に対応した。`src/lib/html.ts` の `sanitizeHtml` を不動点反復（最大 8 パス）に変更し `<scr<script></script>ipt>` のようなネスト再出現バイパスを潰した。すべての閉じタグ正規表現を `<\/tag\s*>` から `<\/tag\b[^>]*>` に変更し HTML5 仕様どおり `</script foo>` や `</script\t\n bar>` のような属性付き閉じタグも受容するようにした。`src/lib/content.ts` に `replaceUntilStable` ヘルパを追加して `preClean` / `stripPageChrome` / `isContentSufficient` / 画像スライダー判定を不動点反復化し、`resolveScriptLoadedImages` の script end tag 正規表現も修正した。`resolveRelativeUrl` および `detectNextPageUrl` / `llm-feed-generator.ts` の URL スキームチェックに `vbscript:` / `mailto:` / `file:` / `data:` を追加した。`xml-parser.ts` の JSON Feed バージョン検出を `version.includes("jsonfeed.org")` から URL パース + hostname 完全一致に変更し `https://evil.example/?x=jsonfeed.org` 形式のなりすましを遮断した。`useKeyboardNav.ts` / `ShareMenu.tsx` の Markdown ラベルエスケープを `[[\]]` から `[\\[\]]` に変更し、バックスラッシュのエスケープ漏れによる二重エスケープ崩れを修正した。`.github/workflows/ci.yml` に `permissions: contents: read` を追加し GITHUB_TOKEN 権限を最小化した。`e2e/sanitize-html.spec.ts` に閉じタグ属性バイパスとネスト再出現バイパスの回帰テストを 5 ケース追加した。
 
-### バグ修正
+### バグ絶対キルした
 
 - **Color Me Shop (shop-pro.jp) 商品ページで画像一覧が生成されない問題を修正** — 商品画像が `<form>` 配下の `<div class="p-product-img__main-item">` に格納されており、Readability が `<form>` 内を本文外と判定してギャラリーが完全に除去される不具合を修正（Issue #82）。`src/lib/content.ts` の `extractThumbListImgs` に Color Me Shop の BEM クラス (`p-product-img__main-item`) パターンを追加し、Readability の結果末尾に hidden div として商品画像を付与するようにした。クライアント側の画像一覧（ImageGallery）が DOM からこれらの画像を拾える。`e2e/content-extraction.spec.ts` に shop-pro.jp 相当の HTML で画像 3 枚が hidden div に追加されることを検証する 2 ケースを追加。
 
@@ -166,19 +166,19 @@
 
 - **認証コールバックのエラーメッセージが文字化けする問題を修正** — `/api/auth/callback` が state 不一致・トークン交換失敗・トークン検証失敗時に返す HTML の `Content-Type` に charset が付いていなかったため、ブラウザが Shift_JIS 等で解釈して「認証エラー: トークン交換失敗」が「隱崎ｨｼ繧ｨ繝ｩ繝ｼ: 繝医�繧ｯ繝ｳ莠､謠帛､ｱ謨�」のように文字化けする不具合を修正。`Content-Type` を `text/html; charset=utf-8` に変更し、レスポンス本文冒頭に `<!doctype html><meta charset="utf-8">` を追加。
 
-### 新機能
+### 激アツ新機能っ
 
 - **ユーザー設定モーダル** — サイドバーフッターにギアアイコンを追加し、フォントサイズ／フォント／行間／コンテンツ幅／両端揃え／自動既読（閾値 70-90%）を 1 画面で変更できるダイアログを追加（Issue #79）。変更はプレビュー領域にリアルタイム反映され `localStorage` に即時永続化される。`src/components/UserSettingsModal.tsx` を新規追加し、`ReaderSettingsContext` に `lineHeight` / `contentWidth` / `textJustify` / `onChangeAutoReadThreshold` を追加して ArticleView のローカル state を `useUIState` に集約。これに伴い記事詳細ヘッダー右側にあった表示設定の個別トグルボタン群（フォントサイズ A／フォントファミリー ゴ・明・等／行間／幅／均等／自動既読）を削除しツールバーをスッキリさせた — 設定変更はすべてユーザー設定モーダルに集約される。
 
-### バグ修正
+### バグ絶対キルした
 
 - **ページングされた記事の 2 ページ目以降を取得できない問題を修正** — `rel="next"` を持たず `<a href=".../2">2</a>` のような数字テキストリンクだけでページングするサイト (denfaminicogamer 等) で、2 ページ目以降の本文が全文取得に含まれない不具合を修正（Issue #87）。`src/lib/content.ts` の `isPaginatedVariant` に判定ルール 3 を追加し、bare numeric suffix (`/slug` → `/slug/2`) パターンを検出するようにした。`/post/123` → `/post/124` のような連番記事 ID や `/2025/01` → `/2025/02` のような日付アーカイブとの誤検知を防ぐため、base 最終セグメントが「記事 slug らしい」(数字含む or ハイフン/アンダースコア含む or 8 文字以上 かつ 純数字でない) 場合のみ許容する `lastPathSegmentLooksLikeSlug` ヘルパーを追加。`detectNextPageUrl` には `rel="next"` 不在時のフォールバックを追加し、URL から現在ページ番号を推定（新規 `detectCurrentPageNumber`）したうえで、テキストが「currentPage + 1」と完全一致する `<a>` タグの href を `isPaginatedVariant` で検証して採用する。`e2e/content-extraction.spec.ts` の `detectNextPageUrl` describe に denfaminicogamer 相当 / ページ 2→3 / 連番 ID 誤検知なし / 別記事除外 / 本文中数字リンク除外 / 日付アーカイブ誤検知なし の 6 ケースを追加。
 
-### 新機能
+### 激アツ新機能っ
 
 - **コンテンツ幅に `wide` (900px) を追加** — 記事詳細の領域幅を広げても（フォーカスモード起動や 3 ペイン境界のリサイズ時）本文の `maxWidth` が `narrow:640px` / `medium:720px` / `full:none` の 3 段階しかなく、`medium` から `full` へ飛ぶと急激に全幅まで広がってしまい中間帯を選びづらい問題を解消（Issue #80）。`src/lib/reader-settings.ts` の `ContentWidth` に `wide` を追加し、サイクル順を `narrow → medium → wide → full → narrow` に拡張。ラベル表示（ArticleView の幅トグルボタン）も `900` に対応。`e2e/reader-settings.spec.ts` の `CONTENT_WIDTH_CYCLE` 長さアサートを 3 → 4 に更新。
 
-### バグ修正
+### バグ絶対キルした
 
 - **Zenn 記事の埋め込み URL が消える問題を修正** — Zenn 本文中の `<span class="zenn-embedded zenn-embedded-card|tweet|mermaid">` が Readability に「本文外」と判定されて span ごと削除され、`postProcess` 内の `transformZennLinkEmbeds` / `transformZennMermaidEmbeds` が走る前に消えてしまう不具合を修正（Issue #88）。`src/lib/content.ts` の `extractMainContent` で `extractWithReadability` 実行前に Zenn 埋め込み変換を適用し、Readability 通過時には iframe を含まない `<p><a>` / `<pre><code>` 形式になっているため、本文判定ロジックが要素を保持するようになった。`postProcess` 側の同変換は冪等なため regex フォールバック経路の安全網として残している。`e2e/content-extraction.spec.ts` に Readability 経由でも card / tweet / mermaid 埋め込みが本文に保持されることを検証する 3 ケースを追加。
 
@@ -190,7 +190,7 @@
 
 - **幅調整バーがポップアップ表示中も操作できる問題を修正** — 記事一覧 / フィード一覧 / 記事詳細の 3 ペイン境界にある幅調整バーが、モーダル・ドロップダウン表示中も pointer イベントを受けてドラッグできてしまい、オーバーレイより手前に見えてしまう不具合を修正（Issue #81）。`src/lib/popup-lock.ts` にグローバルなポップアップ表示数カウンタを追加し、`src/hooks/usePopupLock.ts`（`usePopupLock(active?)` / `useHasOpenPopup()`）を経由して登録・購読できるようにした。`Modal`（`FeedDetailModal` / `FeedFilterModal` / `KeyboardShortcutsModal` / `ReadingStatsModal` / `ReleaseNotesModal` / `SnoozeModal` が共通利用）、`FeedQuickSwitchModal`、`usePortalMenu`（`FilterMenu` / `GlobalFilterMenu` / `ShareMenu` / `SnoozeMenu` など）、および `FeedItem` のコンテキスト／ミュート／グループ移動メニューが表示中はロックを立てる。`App.tsx` のリサイズハンドルは `useHasOpenPopup()` を監視し、`z-[5]`（従来 `z-20`）へ引き下げたうえで表示中は `pointer-events-none` + `opacity-0` + `aria-hidden` を付与して操作不可にする。`e2e/popup-lock.spec.ts` にカウンタ増減・冪等性・通知購読の 6 ケースを追加。
 
-### 新機能
+### 激アツ新機能っ
 
 - **フィードグループ化 Step 6 — ドラッグ&ドロップでグループ移動** — `FeedItem` の最外 `<div>` に `draggable` + `onDragStart`（`dataTransfer` に `application/x-rss-feed-id` でフィードIDを格納）/ `onDragEnd` を実装。`FeedSidebar` 本体に `draggedFeedId` / `dragOverGroupId` ステートを持たせ、`FeedGroupsSection` のグループ行ラッパー `<div>` に `onDragOver`（`preventDefault` + `dropEffect="move"`）/ `onDragLeave`（`relatedTarget` の `contains` チェックで子要素へのバブルを無視）/ `onDrop`（`feedId` を取り出して既存 `onSetGroupFeed(feed, group.id)` にルーティング）を追加。ドロップ先は `ring-2 ring-inset ring-text-muted` でハイライト、ドラッグ中のフィード行は `opacity-40` で視覚化。同じグループに属するフィードのドロップは早期リターンで API 呼び出しをスキップ。新 API は追加せず既存 `PATCH /api/feeds/:id`（`groupId`）を流用。編集中（タイトル・カテゴリ）はドラッグを抑止。キーボード/タッチ操作は既存の `FeedItem` コンテキストメニュー「グループに移動」がフォールバックとして引き続き利用可能（Issue #67 Step 6）。
 
@@ -198,11 +198,11 @@
 
 - **認証不要のデモページ `/demo` を追加** — 0g0 ID ログイン必須だったためデザイン／動作確認に毎回ログインが必要だった問題を解消。`/demo` にアクセスすると fetch インターセプターが `/api/*` をすべてモックレスポンス（固定のユーザー・フィード・記事・グループ・読み取り状態）に差し替えた状態で本物の `App` コンポーネントを描画する。デモ用に追加した実装ファイルは `app/demo/page.tsx` / `app/demo/DemoApp.tsx` / `app/demo/mock.ts` のみ — アプリ本体には一切の条件分岐を入れていないため、デモモードが本番描画ロジックに影響しない。`window.fetch` の置き換えは HMR / ページ再読み込みに耐えるよう `globalThis.__demoFetchOriginal` に native fetch を一度だけ保存、インターセプター内で `window.location.pathname.startsWith("/demo")` を毎回確認し、クライアントサイドナビゲーションで他パスに出た瞬間からは本物の API レスポンスを通す設計。`.playwright-mcp/` / `demo-*.png` を `.gitignore` に追加。
 
-### バグ修正
+### バグ絶対キルした
 
 - **サイドバーのヘッダー要素見切れを修正** — PC 表示時に「ブックマーク」「後で読む」「いいね」等の特殊ビュー行がラベル長 / スクロールバー出現時に見切れて機能として使えなくなる問題を修正。`SpecialViewButton` のラベル span に `truncate min-w-0`、カウント span に `flex-shrink-0` を付与し、`justify-between` と組み合わせても確実にカウントが末尾に残るようにした（`gap-2` も追加）。「すべて」行も同様の構成に揃え、ラベル側を優先して縮める挙動に統一。`nav` コンテナに `overflow-x-hidden` を追加し、子要素の意図せぬ横オーバーフローを抑止。
 
-### 新機能
+### 激アツ新機能っ
 
 - **フィードグループ化 Step 5 — グループ選択 & 未読フィルタ統合** — サイドバーのグループ名をクリックすると、そのグループに所属するフィードの記事のみが記事一覧に表示される。既存の `u`（未読のみ）キーショートカットと組み合わせることで「現在選択中のグループの未読だけ」を表示できるようになる。`src/lib/article-filter.ts` の `ArticleFilterOptions` に `groupFeedIds?: Set<string>` を追加し、`buildFeedPredicate` を拡張（feedId が未指定でグループが選択されていれば `feedHash ∈ groupFeedIds` のみ残す）、`buildMutedFeedPredicate` はグループ選択時も適用をスキップ（ミュート済みグループを明示的に選択した場合は記事を表示する）。`src/hooks/useFilteredArticles.ts` は `groupFeedIds` を受け取り `filterAndSortArticles` に渡す — グループ切り替え時はページ・検索クエリ・著者／カテゴリフィルターをリセット。`App.tsx` は `selectedGroupId` state を追加（URL クエリ `?group=<id>` に同期）し、選択中グループの `groupFeedIds` を `useMemo` で事前計算。`onSelectFeed` / `onSelectGroup` は相互排他（片方を選ぶと他方はクリア）、記事リストの「すべて既読」はグループ選択中は `markBulkRead(groupIds)` にルーティング。`FeedSidebar` のグループ行は折りたたみ用チェブロンとグループ名ボタンを分離し、グループ名クリックで選択／再クリックで解除、`aria-pressed` 反映。削除済みグループが選択中の場合は自動で解除する（Issue #67 Step 5）。
 - **フィードグループ化 Step 4 — グループ単位ミュート機能** — グループを「ミュート」することで、そのグループに所属するフィードの記事を「すべての記事」ビューから除外できるように拡張。`src/types.ts` の `FeedGroup` に `muted?: boolean` を追加し、`PATCH /api/feed-groups/:id` に `muted` バリデーションブロックを追加（既存の `collapsed` と同じ boolean チェックパターン）。クライアントは `useFeedGroups` に `setMuted(id, muted)` を追加 — `setCollapsed` と同一の楽観的更新＋失敗時ロールバックパターンで実装。`App.tsx` の `mutedFeedIds` useMemo を拡張し、既存の `f.mutedUntil` ベースのフィード単位ミュートに加えて `muted` グループに所属するフィードの ID も同 `Set` に追加（deps に `feedGroups` を追加して stale closure を防止）。`FeedSidebar` のグループ行アクションには hover 時に現れる「ミュート」ボタン（音量付きスピーカーアイコン）と、ミュート中は常時表示される「ミュート解除」ボタン（斜線付きスピーカーアイコン）を追加。ミュート中はグループ名を `text-faint italic` で視覚的に識別できるようにした。記事フィルタリング側のロジック変更は不要 — 既存 `buildMutedFeedPredicate` が `mutedFeedIds` をそのまま解釈するため、`feedId === null`（すべての記事ビュー）でのみ自動的にミュート対象が除外される挙動となる（個別フィード選択時は従来どおり表示される）。新 API は追加せず既存 `PATCH /api/feed-groups/:id` を流用（Issue #67 Step 4）。
@@ -212,33 +212,33 @@
 - **フィードグループ化 Step 2 — サイドバー UI 統合** — Step 1 で導入したバックエンド API に対応するクライアント側の UI を実装。`src/hooks/useFeedGroups.ts` を新設しログイン後に `GET /api/feed-groups` を取得、`POST / PATCH / DELETE` を薄くラップして作成・名前変更・折りたたみ保存（楽観的更新＋失敗時ロールバック）・削除を提供。`FeedSidebar` にユーザーグループ専用セクションを追加 — セクションヘッダーに「+」ボタンで新規作成、各グループ行は折りたたみトグル（サーバー側 `collapsed` に永続化）・ホバー時に現れる名前変更／削除アイコンを持ち、折りたたみ時は未読数 or フィード数を右端に表示。フィード側は `FeedItem` のコンテキストメニューに「グループに移動」項目を追加し、ポータル表示のサブメニューで既存グループ一覧＋「グループなし」から選択可能（現在所属にはドット表示）。`groupId` が有効なグループを指すフィードはグループセクションに並び、それ以外は従来のカテゴリ／未分類レイアウトに流れる（orphan `groupId` は無害に無視）。E2E（`e2e/api-health.spec.ts`）に `PATCH / DELETE /api/feed-groups/:id` の未認証 401 ガードを追加（Issue #67 Step 2）。
 - **フィードグループ化 Step 1 — データモデル & バックエンド API** — 複数フィードをユーザー定義のグループ（例: `My Tech Blogs` / `News`）にまとめるための基盤を導入。`src/types.ts` に `FeedGroup` 型（`id` / `name` / `order` / `collapsed?` / `createdAt`）を追加し、`UserSubscription` / `Feed` / `FeedPatchPayload` に `groupId?: string` を追加。R2 ストレージは `users/{userId}/feed-groups.json` を新設し、ヘルパー (`src/lib/feed-groups.ts`: `readFeedGroups` / `writeFeedGroups` / `feedGroupsKey` + 定数 `MAX_FEED_GROUPS_PER_USER=100` / `FEED_GROUP_NAME_MAX_LENGTH=50`) を追加。API エンドポイントは 4 本を新設 — `GET /api/feed-groups`（order 昇順で一覧）、`POST /api/feed-groups`（name 重複チェック・100件上限・`crypto.randomUUID` で ID 生成・201 返却）、`PATCH /api/feed-groups/:id`（name / order / collapsed を部分更新・重複チェック・order は整数のみ）、`DELETE /api/feed-groups/:id`（先にグループを削除してから所属購読の groupId をクリア → orphan 寄りの失敗モードに倒すことで復旧容易）。既存 `PATCH /api/feeds/:id` にも `groupId` 受付を追加（null でクリア、文字列なら実在グループ ID の存在チェック）。UI 統合は Step 2 で別途対応。E2E（`e2e/api-health.spec.ts`）に未認証時 401 ガードを追加（Issue #67 Step 1）。
 
-### リファクタリング
+### コードめかし込み
 
 - **ArticleView コンポーネントの責務分離（Step 3: カスタム hook 分離）** — `src/components/ArticleView.tsx` 内に散在していた副作用ロジックを 6 つのカスタム hook に抽出し、本体を 1556 → 1368 行（-188 行）に縮小。追加した hook: `useArticleNote`（メモ編集ステート）/ `useArticleAiRatings`（AI 評価ボタン状態＋原文/翻訳タブ切替）/ `useArticleHighlight`（検索クエリ DOM ハイライトの注入・クリーンアップ）/ `useSyntaxHighlight`（highlight.js 遅延適用）/ `useMathRender`（KaTeX 遅延レンダリング）/ `useSliderGallery`（画像スライダーへの prev/next ボタン＋ホイール横スクロール注入）。各 hook は元実装と同じ deps ・依存関係を保ち、挙動変更なし（Issue #65 Step 3）。
 - **ArticleView コンポーネントの責務分離（Step 2: Props の Context 集約）** — `ArticleView` が受け取っていた表示設定系 Props 11 個（`fontSize` / `onChangeFontSize` / `fontFamily` / `onChangeFontFamily` / `theme` / `focusMode` / `onToggleFocusMode` / `autoReadEnabled` / `autoReadThreshold` / `onToggleAutoRead` / `onCycleAutoReadThreshold`）を `src/contexts/ReaderSettingsContext.tsx` に集約。`App.tsx` で `ReaderSettingsProvider` を `useMemo` 値で供給し、`ArticleView` 内では `useReaderSettings()` で取得するよう変更。Props interface は 42 → 31 項目に縮小。`App.tsx` 側の `<ArticleView ...>` 呼び出しも 11 行削減。挙動変更なし（Issue #65 Step 2）。
 - **ArticleView コンポーネントの責務分離（Step 1: ファイル分割）** — 2851 行に肥大化していた `src/components/ArticleView.tsx` から、内部定義されていたサブコンポーネント・hook・定数を `src/components/article-view/` 配下に切り出した。抽出したもの: `EmptyArticleView` / `ShareMenu` (+ `SHARE_WINDOW_TARGETS`) / `ToggleIconButton` / `FetchFullContentArea` / `ArticleNavigation` / `FilterMenu` / `GlobalFilterMenu` / `ImageGallery` / `SnoozeMenu` (+ `SNOOZE_OPTIONS`) / `SelectionExcludePopup` (+ `useSelectionExclude`, `SelectionPopupState`, `MAX_SELECTION_LENGTH`)、共通ユーティリティは `constants.ts` (`MENU_ITEM_CLS`) / `icons.tsx` (`DownloadIcon`, `ExternalLinkIcon`, `ChevronSmall`, `XIcon`) / `filter-shared.tsx` (`buildExcludeOptions`, `useFilterMenuState`, `ExcludeOptionsSection`, `metaLabel`)。本体は 2851 → 1577 行（-45%）に縮小し、個別テストや段階的 Props 削減が可能な土台に整えた。挙動変更なし（Issue #65 Step 1）。
 
-### ドキュメント整備
+### メモっといた
 
 - **キーボードショートカット一覧ドキュメントを追加** — `docs/keyboard-shortcuts.md` を新規作成し、全ショートカット（約 40 キー）をカテゴリ別（記事ナビゲーション／記事操作／フィルター・表示切替／検索・フィード操作／モーダル・グローバル）に一覧化。発動条件、モーダル内専用キー、実装箇所リファレンスを整理。`README.md` の技術スタック直後に導線セクションを追加。Single source of truth は既存の `src/config/shortcuts.ts` で、`KeyboardShortcutsModal` と本ドキュメントが同一定義を参照する方針を明記（Issue #69）。
 
-### バグ修正
+### バグ絶対キルした
 
 - **上流認可サーバーの一時障害で意図せずログアウトされる問題を修正** — `refreshTokens()` が `!res.ok` を一律 `null` で返していたため、0g0 ID の 5xx 障害・ネットワーク断・タイムアウトでも `/api/auth/me` が refresh_token Cookie を削除してログアウト扱いになっていた。戻り値を判別可能 union `RefreshResult = ok | invalid | transient` に変更し、恒久失敗（4xx / invalid_grant）のみ Cookie 削除、一時失敗（5xx / ネットワークエラー / JSON パース失敗）は Cookie 保持で `503` を返すよう変更。`useAuth` の `checkAuth` も 503 を既存状態維持として扱い次回リフレッシュに委ねる。`deduplicatedRefresh` / `getAuthSession` も同 union に追従。ユニットテスト 12 件 (`e2e/refresh-tokens.spec.ts`) を追加。
 
-### 新機能
+### 激アツ新機能っ
 
 - **AI 翻訳に「原文 / 翻訳」タブ切り替えを追加** — 従来は翻訳結果が本文の上に独立パネルで追加表示されていたが、Google 翻訳のように本文エリア内のタブで原文と翻訳を切り替えて読めるように変更。翻訳実行後は自動で「翻訳」タブに切り替わり、「原文」タブをクリックすれば元の記事本文に戻る。翻訳タブ時のみフィードバックボタン（👍 / 😐 / 👎）を表示。記事を切り替えた際はタブが「原文」にリセットされる。`contentTab` state と `translateResult` への自動切替 `useEffect` で実装。
 
-### バグ修正
+### バグ絶対キルした
 
 - **cron フィード取得エラーログで Error オブジェクトが `{}` になる問題を修正** — `src/cron/fetch.ts` の `applyFeedError` が `console.error("Feed fetch failed", { error })` で `Error` をそのまま渡していたが、Cloudflare Workers のログは内部で `JSON.stringify` するため `name` / `message` / `stack` が non-enumerable で空オブジェクト化し、原因特定が完全に不能だった。`src/lib/serialize-error.ts` に `serializeError()` ヘルパーを新設し、`Error` インスタンスを `{ name, message, stack, cause }` に明示展開してログ出力するよう変更。`cause` は再帰的に展開し、非 Error 値は `{ value }` でラップ。循環参照オブジェクトは文字列化フォールバック。ユニットテスト 11 件 (`e2e/serialize-error.spec.ts`) を追加。
 
-### 新機能
+### 激アツ新機能っ
 
 - **AI 翻訳を HTML 構造保持方式に変更（Google 翻訳ライク）** — 従来の `toPlainText` でタグを剥がしてから翻訳する方式を廃止。`src/lib/translate-html.ts` を新設し、Chrome Translator API 対応ブラウザでは `DOMParser` で記事 HTML をパースしてテキストノード・`alt` / `title` / `aria-label` / `placeholder` 属性のみを個別に翻訳、`<p>` / `<a>` / `<strong>` / `<img>` 等のタグ構造・埋め込み・リンクをそのまま保持。`<code>` / `<pre>` / `<script>` / `<style>` / `<kbd>` / `<samp>` / `<var>` / `<iframe>` / `<embed>` / `<object>` / `<noscript>` / `<textarea>` はコード・実行系として翻訳対象から除外。個別ノードは `Promise.allSettled` で並列翻訳し、一部失敗しても他ノードに影響しない。`useArticleAi` の結果型を `AiOperationResult {text, isHtml}` に変更し、`ArticleView` では `isHtml=true` なら `sanitizeHtml` 後に `article-content` クラスで HTML レンダリング、`false`（Workers AI フォールバック）なら従来のプレーンテキスト表示。ユニットテスト 12 件 (`e2e/translate-html.spec.ts`) を追加。
 
-### バグ修正
+### バグ絶対キルした
 
 - **CSP `img-src 'self'` によるファビコン未読バッジ読込失敗を修正** — `middleware.ts` の CSP を `img-src 'self' data:` に緩和。`src/lib/favicon.ts` の `updateFaviconBadge()` が `canvas.toDataURL("image/png")` で生成する `data:image/png;base64,...` を `<link rel="icon">` に設定していたが、`img-src 'self'` のみではブラウザが favicon link の data: URI を拒否し、コンソールに CSP violation が大量発生。連動して React の Suspense 境界で未読カウント更新が失敗して Minified React error #419 が発生していた。`data:` 画像は `<img>` / `<link rel=icon>` でスクリプトを実行できないため、`object-src 'none'` と合わせて XSS リスクは限定的と判断。
 
@@ -246,21 +246,21 @@
 
 - **API リクエストボディの `Record<string, unknown>` を具体型へ置換 (issue #66)** — `src/App.tsx` の `patchFeed` / `applyFeedPatch` 引数を `Record<string, unknown>` から新設の `FeedPatchPayload` (src/types.ts) に置き換え。`src/hooks/useReadState.ts` の `serializeReadState` payload も新設 `ReadStatePayload` 型に変更。`src/lib/xml-parser.ts` の `extractMetadata` は `FeedItem` を直接受け取る形にし、`item as unknown as Record<string, unknown>` の三段キャストを 3 箇所削除。IDE 補完精度とリファクタ安全性が向上し、Feed PATCH 可能フィールド (nsfw / priority / category / mutedUntil / filter) とサーバー差分同期ペイロードが型レベルで可視化される。
 
-### 新機能
+### 激アツ新機能っ
 
 - **翻訳機能を Chrome Translator API / Workers AI のハイブリッドに変更** — Chrome 138+ が備える組み込み `Translator` / `LanguageDetector` API を優先利用し、対応環境ではブラウザ側でオフライン翻訳を完結させるよう変更。Workers AI コスト・レイテンシを削減し、ネットワーク不通でも翻訳可能に。Safari / Firefox / 古い Chrome や `availability !== "available"` の場合は従来通り `/api/ai/translate` にフォールバック。`src/lib/browser-translator.ts` に API ラッパーと言語検出を切り出し、`useArticleAi` の `doTranslate(url, articleId, plainText?)` に `plainText` を渡せるよう拡張。`ArticleView` の翻訳ボタン・`z` キーショートカットは `storedContent` から `toPlainText` で抽出したテキストを渡す。ユニットテスト 5 件 (`e2e/browser-translator.spec.ts`) を追加。
 
 ## 2026-04-17
 
-### セキュリティ
+### ガード固めたっ
 
 - **`/api/image-proxy` の同一オリジン検証と Content-Type 偽装検出を追加 (issue #64)** — `middleware.ts` で CSP を `img-src 'self'` に絞っている前提が image-proxy 側で担保できていなかった問題に対応。ハンドラ冒頭で `Sec-Fetch-Site` → `Referer` の優先順位で同一オリジン判定し、不一致は 403 で fail-closed。さらにマジックバイト由来の MIME と宣言 `Content-Type` が矛盾する場合は拒否し、`image/png` と偽装した別フォーマットによるキャッシュ汚染を遮断。純粋関数として `src/lib/image-proxy-security.ts` に切り出し、ユニットテスト 13 件 (`e2e/image-proxy-security.spec.ts`) を追加。
 
-### バグ修正
+### バグ絶対キルした
 
 - **`POST /api/read-state` の 413 エラーを解消** — 既読 ID が 20,000 件を超えるヘビーユーザーで `Payload Too Large` が発生し、既読・ブックマーク・後で読む・いいね状態の同期が全く成功しない不具合を修正。`useReadState` がフルセットを毎回送るのをやめ、前回同期以降の「追加差分 (`pendingAddedRef`)」と「削除差分 (`pendingRemovedRef`)」のみを POST するように変更。サーバー側マージロジック (`mergeReadStateUpdate`) は既に `(existing ∪ update) \ removedIds` で動くため無変更。安全マージンとして `MAX_READ_IDS` を 20,000 → 100,000、他 ID 上限も 2,000 → 10,000 に引き上げ。`applyServerState` ではサーバーに無い local ID を `pendingAdded` に積み直すことでリロード後の未同期データを失わない。`globalFilter` は変更時のみ送信する `dirty` フラグ方式に変更し、他端末設定の意図しない上書きを防止。
 
-### 新機能
+### 激アツ新機能っ
 
 - **通信エラー時のトースト通知** — これまで `apiFetch` の失敗が完全にサイレントだったため、ユーザーが同期失敗に気付けなかった問題に対応。`src/lib/api-fetch.ts` に `onApiError` リスナー機構を追加し、4xx/5xx/ネットワーク障害時にグローバル通知を発火。`App.tsx` が `showToast` を登録して人間可読なメッセージ（「送信データが大きすぎます」「サーバーエラー」「ネットワークエラー」等）を 2 秒トーストで表示。3 秒のレート制限で UI ノイズを抑制。認証リトライ（401）や通常フロー 404 は通知対象外。
 
@@ -268,37 +268,37 @@
 
 - **`useFilteredArticles` の useEffect deps から `filteredRef` を除外 (issue #68)** — `src/hooks/useFilteredArticles.ts:362-365` の useEffect で `useSyncedRef` が返す安定 ref `filteredRef` が依存配列に含まれていた問題を修正。ref オブジェクト自体は不変で deps に含める意味がなく、将来 `useSyncedRef` の実装が変わった際に予期しない再発火を招くリスクがあった。`eslint-disable-next-line react-hooks/exhaustive-deps` を付け、deps は `[serverLoadCount]` のみに限定。他 hook (`useReadState` / `useEventListener` 等) の `useSyncedRef` 利用箇所も監査済みで、問題箇所は本件のみ。
 
-### セキュリティ
+### ガード固めたっ
 
 - **`vite-plus` の path traversal 脆弱性対応 (issue #63, GHSA-33r3-4whc-44c2)** — `vite-plus` を `^0.1.14` → `^0.1.18` に更新。`<= 0.1.16` の `downloadPackageManager()` に `VP_HOME` 外へのファイル書き込みを許す path traversal (high severity) があり、Dependabot alert #28/#29 として通知されていた。dev 依存のため本番実行時には影響しないが、ビルド／`pre-commit` 実行時の悪用リスクを排除。
 
-### バグ修正
+### バグ絶対キルした
 
 - **端末間の既読・ブックマーク・後で読む・いいね状態のズレを解消 (issue #62)** — `POST /api/read-state` を単純上書きから 3-way 差分マージに変更。クライアントは削除 ID を `removedIds` として送信し、サーバー側で `mergeReadStateUpdate()` が `(existing ∪ update) \ removedIds` を計算して保存する。POST レスポンスでマージ結果を返し、クライアントは即座に他端末の最新状態を取り込む。`toggleRead` も削除時の即時同期を有効化し、既読解除が他端末で復活するケースを防止。タブ復帰時の R2 再取得クールダウンは 60 秒→ 15 秒に短縮。新規純粋関数 `src/lib/read-state-merge.ts` と回帰テスト `e2e/read-state-merge.spec.ts`（10 ケース）を追加。
 
-### 新機能
+### 激アツ新機能っ
 
 - **スクロール進捗に基づく自動既読マーク機能 (issue #59)** — 記事を閾値（70% / 80% / 90%）までスクロールすると自動的に既読マークする機能を追加。`useReadingProgress` の `onProgressChange` コールバックをフックして実装し、`useReadState.markRead` は冪等のため追加コストなし。設定は `ArticleView` のリーダー設定行にトグル＋右クリックで閾値サイクルのボタンを新設（デフォルト OFF / 80%）。`STORAGE_KEYS.AUTO_READ_ENABLED` と `STORAGE_KEYS.AUTO_READ_THRESHOLD` で localStorage に永続化。
 
-### セキュリティ
+### ガード固めたっ
 
 - **プロンプトインジェクション対策を強化 (issue #55)** — `src/lib/recommendation.ts` の `sanitizeForPrompt()` に多層防御を追加。NFKC 正規化で全角文字によるバイパス（`［／ＩＮＳＴ］` 等）を防止し、LLM チャットテンプレートトークン（`<|im_start|>` / `[INST]` / `<s>` / `<<SYS>>` / `[SYSTEM]` 等）、プロンプト区切り記号の連続（`---` / `###` / バッククォートフェンス / `"""` 等）を中和する処理を追加。空白の正規化も強化し、不正な入力による LLM プロンプトの乗っ取りを防ぐ。34 ケースの回帰テスト (`e2e/sanitize-for-prompt.spec.ts`) を追加。
 
-### ドキュメント整備
+### メモっといた
 
 - **API エラーコード一覧表を整備 (issue #61)** — `README.md` に「API エラーレスポンス」章を新設し、共通エラー（`UNAUTHORIZED` / `INVALID_JSON` / `RATE_LIMITED` / `INTERNAL_ERROR`）と各エンドポイント固有のステータス・`code` 一覧を明文化。`canRetryWithSelector` や `Retry-After` 等の付随フィールドも記載し、クライアント実装やデバッグ時にソースコードを読まずに参照できるようにした。
 
-### リファクタリング
+### コードめかし込み
 
 - **API エラーレスポンス形式を統一 (issue #60)** — `src/lib/api-error.ts` に `ApiError` 型と `apiError()` ヘルパーを新設。`app/api/**` 配下の全 Route Handler と `server-auth.ts` / `rate-limit.ts` / `ai-route-helper.ts` の `NextResponse.json({ error: "..." }, { status: N })` を `apiError(message, status, { code, hint, retryable })` に置き換え。`code`（機械可読エラーコード）を全エラーに付与し、クライアント側の型安全なエラーハンドリングを可能にした。
 
 ## 2026-04-16
 
-### リファクタリング
+### コードめかし込み
 
 - **`buildArticlePredicate()` を述語ビルダー関数に分割** — 12 条件が 1 関数に集中していた `buildArticlePredicate()` を `buildFeedPredicate` / `buildSnoozePredicate` / `buildNsfwPredicate` / `buildMutedFeedPredicate` / `buildKeywordPredicate` / `buildStatePredicate` / `buildAuthorPredicate` / `buildCategoryPredicate` / `buildReadingTimePredicate` / `buildQueryPredicate` / `buildDatePredicate` の 11 述語ビルダーに分割。`Array.every()` で合成し、不要な述語はビルド時に `null` を返してスキップ。(`src/lib/article-filter.ts`)
 
-### バグ修正
+### バグ絶対キルした
 
 - **`compareByDateDesc` の同日付ソートを安定化** — 同じ `publishedAt` を持つ記事のソート順が不定だった問題を修正。`id`（SHA-256 由来の決定論的ハッシュ）を 2 次ソートキーとして追加し、リフレッシュごとに記事リストの並び順が変わる挙動を解消。(`src/lib/article-utils.ts`)
 
@@ -306,11 +306,11 @@
 
 ## 2026-04-16 (XSS サニタイズ監査)
 
-### 新機能
+### 激アツ新機能っ
 
 - **キーボードショートカット定義を一元管理** — `src/config/shortcuts.ts` を新設。`SHORTCUTS` 配列と `SHORTCUT_MAP` を集約し、`KeyboardShortcutsModal` が自動生成されるよう変更。フィルターボタンの `title` 属性も config 経由で参照。
 
-### リファクタリング
+### コードめかし込み
 
 - **`sanitizeHtml` の replace チェーンを `HTML_SANITIZE_RULES` 配列ループに統合** — 147行のメソッドチェーンを `Array<[RegExp, string | ReplaceFn]>` 定数 + 7行のループに置き換え。パターン追加が1行で済み、保守性が向上。
 
@@ -318,13 +318,13 @@
 
 - **`ArticleList` のプロップ数を 49 → 18 に削減** — `useFilteredArticles` の戻り値を `FilterState` 型としてエクスポートし、フィルター関連の26プロップを `filter: FilterState` 1つに集約。`App.tsx` 側の渡し元もシンプルになり、保守性が大幅に向上。
 
-### セキュリティ
+### ガード固めたっ
 
 - **XSS サニタイズ完全性の監査・テスト追加 (issue #51)** — `processContent()` と `stripIframes()` のすべての呼び出し経路を監査し、`dangerouslySetInnerHTML` が常にサニタイズ済みデータのみを受け取ることを確認。`e2e/content-extraction.spec.ts` に `processContent` / `stripIframes` の XSS 防止テストを 11 件追加。悪意ある RSS フィードに埋め込まれた `<script>`・イベントハンドラ・`javascript:`・`data:` URI が除去されることを回帰テストで保証。
 
 - **`sanitizeKeywords` でサーバー側 ReDoS 検証を追加** — `/api/read-state` POST で受け取ったキーワードフィルターにおいて、クライアント側でのみ行っていた `hasCatastrophicBacktracking` チェックを `sanitizeKeywords` にも追加。API を直接叩いた悪意あるユーザーが ReDoS パターンを R2 に保存できる問題を修正。
 
-### バグ修正
+### バグ絶対キルした
 
 - **AI API エラーハンドリングを強化** — `runAiJob()` の catch ブロックで Workers AI のステータスコード別レスポンスを返すよう修正。429（rate_limited + retryAfter）・401（unauthorized）・503（service_unavailable）を個別ハンドリング。
 
@@ -342,24 +342,24 @@
 
 ## 2026-04-15 (3)
 
-### バグ修正
+### バグ絶対キルした
 
 - **LRU キャッシュ flush の堅牢性向上** — `LruCache#flush()` に `try/finally` を追加し、`storageSet` / `storageRemove` で例外が発生しても `pending` が必ずクリアされるように修正。従来は例外発生時に古いエントリが `pending` に残留し、次の `flush` で重複書き込みが起こる可能性があった。
 
 ## 2026-04-15 (2)
 
-### リファクタリング
+### コードめかし込み
 
 - `isValidFeedHash` を `src/lib/validation.ts` に共通化 — `articles` ルートのインライン正規表現を関数に置き換え、`engagement` ルートにも同バリデーションを適用（従来は長さチェックのみで形式未検証だった）
 
 ## 2026-04-15
 
-### 新機能
+### 激アツ新機能っ
 
 - **クロスデバイス既読同期** — タブ・アプリに復帰したとき（`visibilitychange` visible）にサーバーから最新の既読状態を再取得し、他デバイスで既読にした記事をセッション内で即時反映。60 秒クールダウン付きで過剰なリクエストを防ぐ。
 - **IntersectionObserver ベースの読書進捗復元** — スクロールピクセル保存から要素アンカー（`.article-content > :nth-child(N)`）方式に移行。画像遅延ロードで高さが変わっても正しい位置に復元されるようになった。`useReadingProgress` フックを `ArticleView` に統合し、`saveScrollPos`/`loadScrollPos` を削除。
 
-### バグ修正
+### バグ絶対キルした
 
 - **shop-pro.jp 商品画像スライダー** — クラス属性なしの `<ul>` で 3 枚以上の画像のみ（テキスト 5 文字以下）で構成されるリストを CSS scroll-snap スライダーに自動変換。商品詳細ページでサムネイルが横スクロールで閲覧できるようになった。
 
@@ -370,36 +370,36 @@
 - **全既読ボタンに 2 段階確認** — 1 クリック目で「全既読?」と赤表示し、3 秒以内の再クリックで実行。タイムアウト後は自動リセット。誤操作による全既読を防止。
 - **記事詳細ヘッダーを常時 2 段構成に変更** — `lg:flex-row` を廃止し、タグが多くてもヘッダーが崩れない縦積みレイアウトに統一。フィルターバーのボタン（未読 / 後で読む / digest / 日付 / 読了時間 / グローバルフィルター）をテキストからアイコン表示に変更してスペースを節約。
 
-### バグ修正
+### バグ絶対キルした
 
 - **後で読む削除後に復活するバグ** — `useReadState` の `useEffect` dependency を `user` から `user?.sub` に変更。`useAuth` がトークンリフレッシュのたびに新しいオブジェクトを生成するため、5 秒デバウンス前にサーバーの古いデータが再マージされていた問題を解消。
 
 ## 2026-04-13
 
-### 新機能
+### 激アツ新機能っ
 
 - **ダイジェストモード** — 全フィード表示時にフィードごとの表示件数を最新 3 件に制限するモード。購読フィードが多い場合でも情報過多にならず、各フィードの最新状況を一覧できる。ツールバーの `digest` ボタンまたは `D` キーで切替。`localStorage` に永続化され、フィード個別選択時は自動的に無効化される。
 - **後で読む / ブックマーク / いいね を排他スイッチに変更** — 3 つのトグルを pill 型セグメントコントロールに統合。いずれか 1 つのみアクティブになり、アクティブなボタンを再押しで解除できる。後で読む: `bg-ink`・ブックマーク: `bg-bookmark`・いいね: `bg-rose-400` で色分け表示。
 
-### バグ修正
+### バグ絶対キルした
 
 - **トークンリフレッシュ重複・ログイン後 LP 表示の問題を修正** — callback リダイレクト先を `/?login=1` に変更してログイン直後を識別。`useAuth` の `checkAuth` でログイン直後かつ `user=null` の場合は 600ms 後にリトライ（スピナー維持）。ランディングページが一瞬表示される問題を解消。認証成功後に `?login=1` クエリを `history.replaceState` でクリア。
 
 ## 2026-04-12 (4)
 
-### リファクタリング
+### コードめかし込み
 
 - **`useReadingProgress` の localStorage キーを一元管理** — ハードコードされていた `"rss-reading-progress:"` プレフィックスを `STORAGE_KEYS.READING_PROGRESS_PREFIX` に移動。手動 `JSON.stringify`/`JSON.parse` を `saveJson`/`loadJson` ヘルパーに置き換え。
 
 ## 2026-04-12 (3)
 
-### 新機能
+### 激アツ新機能っ
 
 - **記事 TTL フィルタ (30日)** — `/api/articles` 返却時に 30 日以上経過した記事を除外（物理削除なし）。ブックマーク・後で読む・いいね・スヌーズ・メモが付いた記事は保護。
 - **非アクティブフィードの cron スキップ (7日)** — 7 日以上アクセスのないフィードは 30 分 cron での自動フェッチをスキップし、コスト・帯域を削減。`priority: "high"` フィードは常にフェッチ継続。`/api/feeds` が `lastAccessedAt` を 1 時間スロットル付きで更新する。
 - `src/lib/article-ttl.ts` を新規追加 — `isArticleExpired` / `shouldProtectArticle` / `filterExpiredArticles` の純粋関数（14 テスト）。
 
-### バグ修正
+### バグ絶対キルした
 
 - **Obsidian URI を `<a>` タグクリックで開く** — `window.open` を使用していたため真っ黒タブが開く問題を修正。非表示の `<a href="obsidian://...">` 要素を生成してクリックする方式に変更。
 - **`html-to-markdown.ts`: `NodeList.map` ブラウザ非対応を修正** — `domToNode` 内で `NodeList` を `Array.from()` に変換してから `map` を呼ぶよう修正。Firefox / Safari で Markdown コピーが失敗する問題を解消。
@@ -407,7 +407,7 @@
 
 ## 2026-04-12 (2)
 
-### 新機能
+### 激アツ新機能っ
 
 - **Obsidian 連携** — ShareMenu に「Markdown 全文コピー」「Obsidian に保存」ボタンを追加。`obsidian://new` URI で Vault 名・frontmatter・本文を渡して直接ノート作成できる。Vault 名は localStorage に保存。
 - **HTML → Markdown 変換** (`src/lib/html-to-markdown.ts`) — h1-h6/a/img/ul/ol/strong/em/code/pre/blockquote/table を Markdown に変換。YAML frontmatter (title/url/feed/author/published) 付き。XSS (script/style) は除去。
@@ -416,7 +416,7 @@
 - **SingleFile 連携 API** (`POST /api/clip`) — SingleFile ブラウザ拡張から HTML + URL を受信し、本文抽出後に Cloudflare Cache API に保存。`/api/content` と同じキャッシュキー形式で共有。
 - **TDD 基盤整備** — コーディング規約に TDD セクション追加。E2E テスト 82 件追加 (html-to-markdown/export-markdown/obsidian/reader-settings/reading-progress/clip)。
 
-### リファクタリング
+### コードめかし込み
 
 - `src/lib/reader-settings.ts` を新規追加 — FontSizeExtended (6段階) / LineHeight / ContentWidth の定数・CSS スタイル生成・cycle 関数を集約。
 - `src/lib/reading-progress.ts` を新規追加 — `computeProgress` / `clampProgress` / `buildAnchorSelector` の純粋関数。
@@ -429,7 +429,7 @@
 - `FeedSidebar` のMarkdown/メモエクスポートボタンの SVG ボイラープレートを `FooterIconButton` に統一（-32行）。`FooterIconButton` ��� `onContextMenu` prop を追���。
 - `ArticleView.tsx` 内の手動 `addEventListener` / `removeEventListener` を `useEventListener` に統一。`ImageGallery` のライトボックスキーボード操作、`ArticleView` 本体のショートカットキー (v/a/z/Space)、Twitter iframe リサイズの 3 箇所を移行。ショートカットキーの `useEffect` は依存配列 14 個を `useSyncedRef` で解消し、リスナー再登録を回避。
 
-### リファクタリング
+### コードめかし込み
 
 - `useAutoReset` の `set` 関数を `useCallback` で安定化。`resetValue` / `duration` を ref 経由で参照し deps を空にすることで、`showToast` 等の依存先がメモ化できない問題を解消。
 - `useMenuOpen` に `'use client'` ディレクティブを追加（他フックとの一貫性）。
@@ -442,116 +442,116 @@
 
 ## 2026-04-11 (18)
 
-### リファクタリング
+### コードめかし込み
 
 - `useUIState` の `fontSize` / `fontFamily` / `layout` で繰り返されていた `useState + useCallback + storageSet` パターンを `useStoredSetting<T>` ヘルパーに集約し、ボイラープレートを削減。
 
 ## 2026-04-11 (17)
 
-### 新機能
+### 激アツ新機能っ
 
 - **カテゴリ折りたたみ時の未読数表示** — サイドバーでカテゴリを折りたたんだとき、フィード数ではなくカテゴリ内の未読記事合計数を表示するよう変更。未読がある場合は `text-text-muted` で強調表示し、すべて既読の場合はフィード数を `text-text-faint` で表示。折りたたんだまま未読の有無を把握しやすくなった。
 
 ## 2026-04-11 (16)
 
-### リファクタリング
+### コードめかし込み
 
 - `useEventListener` に非標準イベント用 `string` オーバーロードを追加し、`useUIState` の `beforeinstallprompt` ハンドラーを生の `window.addEventListener` から `useEventListener` に移行。`keydown` リスナーとの一貫性を確保。
 
 ## 2026-04-11 (15)
 
-### セキュリティ
+### ガード固めたっ
 
 - **CSS変数フォールバック経由の position バイパスを修正** — `sanitizeStyleAttr` の `position` フィルターを `fixed|sticky|absolute` の明示値のみ除去する方式から `position:` プロパティ全体を除去する方式に変更。`position: var(--x, fixed)` のように CSS カスタムプロパティのフォールバック値に危険な位置指定を仕込むことで、フィッシングオーバーレイを作成できるバイパスを防ぐ。
 
 ## 2026-04-11 (14)
 
-### リファクタリング
+### コードめかし込み
 
 - `useUIState` の keydown イベントリスナーを既存の `useEventListener` フックに統一。`useEffect` + 手動 `addEventListener/removeEventListener` のボイラープレートを削除。
 
 ## 2026-04-11 (13)
 
-### セキュリティ
+### ガード固めたっ
 
 - **ETag / Last-Modified サニタイズ** — 外部 RSS サーバーから返される `ETag` および `Last-Modified` ヘッダー値を保存前に CRLF 除去・長さ制限を適用。悪意ある RSS サーバーによるヘッダーインジェクション / フィード DoS リスクを解消。
 
 ## 2026-04-11 (12)
 
-### 新機能
+### 激アツ新機能っ
 
 - **メモのMarkdownエクスポート** — メモを書いた記事がある場合、サイドバーフッターに鉛筆アイコンが表示される。クリックするとメモ本文・記事タイトル・公開日をまとめた Markdown ファイルをダウンロードできる。Obsidian・Notion などのノートアプリへのエクスポートに活用できる。
 
 ## 2026-04-11 (11)
 
-### 新機能
+### 激アツ新機能っ
 
 - **記事の印刷** — 共有メニューに「印刷」ボタンを追加。`Ctrl+P` またはメニューから記事のみをクリーンに印刷できる。サイドバー・記事一覧・アクションボタン・前後ナビゲーションは印刷時に自動で非表示になり、記事本文だけが出力される。
 
 ## 2026-04-11 (10)
 
-### 新機能
+### 激アツ新機能っ
 
 - **フォーカスモード** — `\` キーまたは記事ヘッダーのアイコンで記事ビューを全画面表示。サイドバーと記事一覧が 0.25 秒のアニメーションで非表示になり、記事本文だけに集中できる読書モード。`Esc` または再度 `\` で解除。
 
 ## 2026-04-11 (9)
 
-### バグ修正
+### バグ絶対キルした
 
 - **`rate-limit.ts` TOCTOU 競合を修正** — `inFlight` Set で同一アイソレート内の並行リクエストをガードし、複数リクエストがクールダウンチェックを同時に通過する問題を解消。
 - **`server-auth.ts` `refreshTokens` の reject を 401 に統一** — ネットワークエラー等で `refreshTokens` が reject した場合に `.catch(() => null)` で null に変換し、意図しない 500 ではなく 401 として処理するよう修正。
 
-### セキュリティ
+### ガード固めたっ
 
 - **`html.ts` XSS サニタイザーのバックティック処理を強化** — インラインイベントハンドラ除去の正規表現に `(?!["'\`])` 否定先読みを追加し、非クォート値のキャッチオール分岐が引用符で始まる値に誤マッチしないよう修正。
 
 ## 2026-04-11 (8)
 
-### バグ修正
+### バグ絶対キルした
 
 - **`useSpeechSynthesis` の ghost callback race を修正** — `speak()` 内の `utterance.onend`/`onerror` に identity ガードを追加。レート変更時に旧 utterance がキャンセルされると非同期で `onend`/`onerror` が発火し、新 utterance の再生中に `isPlaying=false` へリセットされる競合を解消。
 
 ## 2026-04-11 (7)
 
-### リファクタリング
+### コードめかし込み
 
 - **`useSpeechSynthesis` を既存ユーティリティで整理** — 生の `localStorage` アクセスを `storageGet`/`storageSet`+`STORAGE_KEYS.TTS_RATE` に統一。手動 `useRef`+sync を `useSyncedRef` に、手動インデックス計算を `cycleValue` に置き換え。再生中のレート変更を即時反映（`currentTextRef` でテキストを保持し `cycleRate` 時に `speak` を再起動）。`ArticleView` の冗長なテナリーを簡略化。
 
 ## 2026-04-11 (6)
 
-### 新機能
+### 激アツ新機能っ
 
 - **読み上げ速度調整** — 記事ビューの TTS ボタン横に速度切り替えボタン（0.5x / 0.75x / 1x / 1.25x / 1.5x / 2x）を追加。クリックで循環切り替え。設定は localStorage に永続化される。
 
 ## 2026-04-11 (5)
 
-### リファクタリング
+### コードめかし込み
 
 - **`makeCycler` ヘルパー抽出** — `useFilteredArticles` の `toggleSortOrder` / `cycleDateRange` / `cycleReadingTimeRange` が持つ「循環→保存→ページリセット→返却」パターンを `makeCycler` モジュールレベルヘルパーに抽出し、`updateQuery` とともに既存の `useMemo` ブロックへ統合（`useCallback` を 4 つ削減）。
 - **`FeedPageResult` 型をモジュールレベルへ移動** — `useFeeds` の `loadMoreAllFeedsArticles` 内でインライン宣言されていた型を関数外に移動し、関数ボディをクリーンアップ。
 
 ## 2026-04-11 (4)
 
-### リファクタリング
+### コードめかし込み
 
 - **`useGestureNav` のコメント整理と dispatch ロジック共通化** — 定数の WHAT コメントを削除（名前が自明）し `TOUCH_X_Y_RATIO` の WHY コメントを JSDoc に変換。mouse/touch で重複していた `if (dx < 0) onSelectNext?.()` パターンを `dispatchSwipe` ヘルパーに抽出。
 
 ## 2026-04-11 (3)
 
-### リファクタリング
+### コードめかし込み
 
 - **`shared-feed.ts` のインライン定数をモジュールレベルに移動** — `mergeNewArticles` 内の `KNOWN_IDS_MAX = 10_000` と `getUserLatestArticles` 内の `MAX_USER_ARTICLES = 10_000` をモジュールレベルの `export const` に抽出。JSDoc コメントを付与し意図を明示。
 
 ## 2026-04-11 (2)
 
-### セキュリティ
+### ガード固めたっ
 
 - **Next.js を 16.1.7 → 16.2.3 にアップデート** — DoS 脆弱性 (GHSA-q4gf-8mx6-v5v3) を修正。`@opennextjs/cloudflare` 1.19.0 で 16.2.3+ サポートが追加されたため固定制約を解除してアップデート。
 - **`@opennextjs/cloudflare` を 1.17.1 → 1.19.0 にアップデート** — Next.js 16.2.x 互換性対応を取り込み。
 
 ## 2026-04-11
 
-### リファクタリング
+### コードめかし込み
 
 - **`useGestureNav` のマジックナンバーを named constants に抽出** — `60` / `150` / `400` / `0.5` / `1.5` を `SWIPE_THRESHOLD_PX` / `WHEEL_THRESHOLD_PX` / `WHEEL_RESET_MS` / `WHEEL_X_Y_RATIO` / `TOUCH_X_Y_RATIO` に命名。`60` が mouse/touch の両方で使われていた重複を定数共有で解消。
 - **`useGestureNav` のタイマーリークを修正** — アンマウント時に `wheelDeltaRef` の pending タイマーが残ったままになる問題を `useEffect` cleanup で修正。
@@ -559,18 +559,18 @@
 
 ## 2026-04-10
 
-### リファクタリング
+### コードめかし込み
 
 - **`useGestureNav` を `src/hooks/useGestureNav.ts` に抽出** — `ArticleView.tsx` のインライン定義だったジェスチャーナビゲーションフック（スワイプ・ホイール・マウスドラッグ）を独立したファイルに分離。`ArticleView.tsx` を約90行削減。
 - **`appendPaginatedPages` の重複ロジックを削除** — ページネーション取得ループで `extractContent` を直接呼び出すよう変更。charset 検出・デコード・AI フォールバックの8行の重複コードを除去。
 
-### セキュリティ
+### ガード固めたっ
 
 - **`customTitle` に制御文字除去を追加** — `PATCH /api/feeds/:id` の `title` フィールドが `category` と異なり `stripControlChars` を経由していなかった。一貫性を保ちストアード制御文字インジェクションを防ぐため修正。
 - **`sanitizeStyleAttr` に `position: absolute` を追加ブロック** — `fixed` / `sticky` は既にブロック済みだったが `absolute` は未対応だった。高 `z-index` と組み合わせると記事ペイン内で他の UI 要素を覆うフィッシング UI を作れるため除去対象に追加。
 - **`sanitizeStyleAttr` で `position: -webkit-sticky` を除去** — Safari で動作する `-webkit-sticky` がベンダープレフィックス形式のため既存の正規表現 `(fixed|sticky|absolute)` では捕捉されていなかった。`(?:-webkit-)?` を追加して補完。
 
-### リファクタリング
+### コードめかし込み
 
 - **CSP `frame-src` を単一管理** — `middleware.ts` の frame-src 許可オリジンを `html.ts` の `TRUSTED_IFRAME_RULES` から導出するように変更。新しい埋め込みソース追加時の二重管理を解消。
 - **CSP 静的ディレクティブをモジュールレベルに移動** — nonce 以外の CSP ディレクティブをモジュール初期化時に一度だけ構築するよう変更（毎リクエストのアロケート・join を排除）。
@@ -578,7 +578,7 @@
 - **`role` フィールドの不要な `as const` 削除** — Cloudflare Workers AI インターフェースの `role` は `string` 型のため `"system" as const` / `"user" as const` は不要なキャスト。
 - **`web-push.ts` の冗長な 2 行を 1 行にマージ** — `const body = encryptPayload(...); const encryptedBody = await body` を `const encryptedBody = await encryptPayload(...)` に整理。
 
-### セキュリティ
+### ガード固めたっ
 
 - **CSP nonce 伝播修正** — `middleware.ts` で `NextResponse.next({ request: { headers } })` パターンを使いリクエストヘッダーにも CSP を付与。Next.js レンダラーがリクエストヘッダーから nonce を読むため、修正前は nonce が伝播せずインラインスクリプトがブロックされる恐れがあった。
 - **`sanitizeForPrompt` に Unicode 制御文字を追加除去** — ASCII 制御文字 (`\x00-\x1F`) のみだったフィルターに Unicode 双方向制御文字 (U+200B–200D, U+2028–2029, U+202A–202E, U+FEFF) を追加。U+2028/2029 は一部 LLM トークナイザーで改行扱いされロールインジェクションに悪用できた。
@@ -590,12 +590,12 @@
 - **`sendPush` に SSRF 多層防御を追加** — Push 通知送信時、サブスクリプション登録時に `isValidHttpsUrl` で検証済みだが、R2 データが直接改ざんされた場合の SSRF 経路を防ぐため `sendPush` 関数内でも endpoint URL を再検証するよう追加。
 - **`inferSelectors` のプロンプトインジェクション対策** — `excludeSelectors` をプロンプトに埋め込む際、`"${s}"` のテンプレートリテラルでは CSS 属性セレクタ (`[attr="value"]`) に含まれる `"` でプロンプト構造が崩れる恐れがあった。`JSON.stringify(excludeSelectors)` に変更し、引用符を適切にエスケープして LLM への意図しないインジェクションを防止。
 
-### ドキュメント整備
+### メモっといた
 
 - **R2 データ構造ドキュメントを共有フィード構造に更新** — `README.md` / `CLAUDE.md` / `.claude/rules/architecture.md` / `.claude/rules/coding-conventions.md` の R2 キー構造が旧構造（`users/{userId}/feeds.json`・`users/{userId}/articles.json`）のままだった箇所を現行の共有フィード構造（`feeds/{feedHash}/meta.json`・`feeds/{feedHash}/articles/latest.json`・`users/{userId}/subscriptions.json` 等）に全面更新。データフロー・クールダウンキー・ReadState フィールド（likeIds・notes）も追記。
 - **README.md を現状に合わせて全面更新** — パッケージマネージャを `npm` → `pnpm` に修正、R2 バケットの不要な `rss-reader-cache` 削除、VAPID・BRAVE_SEARCH_API_KEY 等の新規シークレット追加、API エンドポイント一覧を現行の全エンドポイント（read-state / recommendations / push / stats / engagement / ogp / image-proxy / OPML 等）に拡充、読み取り状態の説明を「localStorage のみ」→「R2 との二重管理」に修正。
 
-### リファクタリング
+### コードめかし込み
 
 - `content.ts`: `extractMainContent` 内で 3 回繰り返されていた `(html.match(/<img\b/gi) ?? []).length` パターンを `countImgs` ヘルパーに抽出。
 - `app/api/stats/route.ts`: `GET` ハンドラ内クロージャに定義されていた `buildDayList` をモジュールレベルに移動し、`now` を引数として受け取るよう変更。
@@ -607,44 +607,44 @@
 
 ## 2026-04-09
 
-### リファクタリング
+### コードめかし込み
 
 - `hasDangerousScheme` の名前付き文字参照デコード（`&Tab;` / `&NewLine;` / `&colon;`）を個別 3 パスから 1 パスに統合し、文字列走査を削減。
 
-### セキュリティ
+### ガード固めたっ
 
 - **`hasDangerousScheme` の HTML5 名前付き文字参照バイパスを修正** — `&colon;`（`:` に展開）を使った `javascript&colon;alert()` や、`&Tab;` / `&NewLine;`（ブラウザが URL パース時に先頭から除去）を使ったスキーム偽装が `hasDangerousScheme` の検出をすり抜け XSS になりうる問題を修正。これらの名前付き文字参照を `unescapeHtml` 呼び出し後に補完デコードするよう対処。数値形式（`&#9;` 等）は既存の `unescapeHtml` で処理済みだったが名前付き形式が未処理だった。
 
 ## 2026-04-09
 
-### リファクタリング
+### コードめかし込み
 
 - `src/lib/html.ts` の `unescapeHtml` で重複していた数値文字参照のデコードロジック（`&#NNN;` と `&#xHHH;` の検証ブロック 4 行 × 2）を `decodeCodePoint(code: number)` ヘルパーに抽出。コード量を削減し、検証ロジックを一元管理。
 - `toPlainText` の `&amp;` / `&lt;` / `&gt;` デコードを `unescapeHtml` 呼び出しに統合。重複実装を排除し、AI 入力に渡すテキストで `&quot;` や数値文字参照も正しくデコードされるよう改善。
 
 ## 2026-04-09
 
-### セキュリティ
+### ガード固めたっ
 
 - **コンテンツプロキシのエラーレスポンスを汎用化** — `/api/content` がリモートサーバーの HTTP ステータスコード（403・404 等）をエラーボディにそのまま含めて返していた問題を修正。`"Failed to load page"` に統一し、外部サーバーのリソース存在有無がクライアントに漏洩するのを防止。
 - **JWT `sub` クレームのフォーマット検証を追加** — `sub` は R2 キー（`users/{sub}/...`）に直接埋め込まれるため、英数字・ハイフン・アンダースコア・`@`・`.` のみ許可するホワイトリスト検証を `sessionFromPayload` に追加。パストラバーサル（`/` や `..` を含む不正な sub）によるデータ隔離の破壊を防止。
 
 ## 2026-04-09
 
-### 新機能
+### 激アツ新機能っ
 
 - **記事の読み上げ機能（TTS）** — Web Speech API を使って記事を音声で読み上げられるようになりました。記事ビューのツールバーにスピーカーアイコンボタンを追加。クリックで読み上げ開始、再クリックで停止。キーボードショートカット `P`（大文字）でも操作できます。記事を切り替えると自動的に停止します。ブラウザが Web Speech API に対応していない場合はボタンは表示されません。
 
 ## 2026-04-09
 
-### セキュリティ
+### ガード固めたっ
 
 - **`/api/feeds/:id/reinfer` にレートリミットを追加** — AI 呼び出し + 外部 URL フェッチを伴う重い操作にクールダウン（60 秒）を設けていなかった問題を修正。繰り返し呼び出しによる Workers AI コストの増大と外部サーバーへの過剰リクエストを防止。
 - **`failedSelectors` を最大 10 件に制限** — LLM CSS セレクタ再推論で失敗履歴が無制限に蓄積し、R2 ストレージ肥大化と AI プロンプトのトークン増加が起きていた問題を修正。
 - **HTML Popover API 属性を `sanitizeHtml` で除去** — `<div popover="auto">` + `<button popovertarget="id">` の組み合わせで JavaScript を一切使わずにブラウザのトップレイヤーへ任意 HTML をオーバーレイ表示できる問題を修正。悪意ある RSS 記事がリーダー UI を覆うフィッシング画面を表示できた。`popover` / `popovertarget` / `popovertargetaction` 属性を除去するよう追加。ブール属性（値なし）も対応。
 - **`<dialog>` タグを `sanitizeHtml` で除去** — `<dialog open>` は UA スタイルシートの `position: absolute` で記事コンテンツ外を覆う可能性があるため、`<form>` と同様にタグ枠のみ除去してコンテンツを保持するよう修正 (`src/lib/html.ts`)
 
-### バグ修正
+### バグ絶対キルした
 
 - **reinfer 失敗時に `failedSelectors` が R2 に保存されない問題を修正** — `inferFeedFromUrl` が null を返した場合、`writeFeedMeta` が呼ばれないまま 422 を返していたため、失敗履歴の更新が破棄されていた。次回再推論時に同じセレクタを繰り返し試みる動作を防止するため、`failedSelectors` の保存を推論呼び出し前に移動。推論失敗時も旧 `cssSelectors` が R2 に残るため既存フィードは引き続き動作する。
 - **ページネーション記事の2ページ目以降に AI フォールバックを適用** — `appendPaginatedPages` で2ページ目以降のコンテンツ抽出が `extractMainContent` のみで、1ページ目と異なり Cloudflare AI toMarkdown フォールバックが発動しない問題を修正。コンテンツが不十分な場合は1ページ目と同様に AI フォールバックを試みるよう統一。
@@ -652,29 +652,29 @@
 - **`useReadState` の `flushIfPending` で `isDirtyRef` をリセット** — `beforeunload` / `visibilitychange` でタイマーをキャンセルした後も `isDirtyRef.current` が `true` のまま残る問題を修正。次のデバウンスサイクルでの二重送信を防止。
 - **`useReadingStats` をグローバル `fetch` から `apiFetch` に置き換え** — 認証エラーハンドリングと `getAuthReady()` 待機を他フックと統一。
 
-### 新機能
+### 激アツ新機能っ
 
 - **記事スクロール位置の自動保存・復元** — 記事を読んでいる途中で別の記事に切り替えて戻ったとき、前回のスクロール位置を自動的に復元する。スクロール位置は `localStorage` にデバウンス（500ms）保存し、最大 200 件を保持する。また、記事切り替え時にスクロール位置が前の記事のままになっていたバグを修正。
 
 - **テキスト選択で引用コピー** — 記事本文でテキストを選択するとポップアップが表示され、「引用をコピー」ボタンで `> 選択テキスト\n\n— [記事タイトル](URL)` 形式の Markdown 引用をクリップボードにコピーできる。グローバルフィルターが設定済みの場合は除外キーワード追加ボタンも併せて表示する。
 - **週間読書目標・進捗トラッキング** — 読書統計モーダルに「週間目標」セクションを追加。デフォルト 20 件の目標に対する今週の進捗をプログレスバーで表示し、目標数値をクリックしてインライン編集できる。達成時はチェックマークとアクセントカラーで視覚フィードバック。設定は `localStorage` に永続化。
 
-### リファクタリング
+### コードめかし込み
 
 - **`useFilteredArticles` のトグル・サイクラーコールバックを `useCallback` に統一** — `makeFilterToggle` / `makeCycler` のモジュールレベルヘルパー関数と、それらを呼び出す `useMemo` ブロックを廃止。各コールバックを直接 `useCallback` で定義するよう変更し、`Dispatch<SetStateAction<T>>` の型インポートも削除。動作は変わらない。
 - **`buildArticlePredicate` の `!isActive` チェックを単一ブロックに集約** — `article-filter.ts` のフィルター述語で `&& !isActive(a.id)` が各条件に重複していた問題を解消。アクティブ記事のガード処理を `if (!isActive(a.id))` ブロックにまとめ、コードの意図を明確化。動作は変わらない。
 - **`matchesFeedId` を分離** — `buildArticlePredicate` 内の特殊フィード分岐（`if/else if` チェーン）を `matchesFeedId` 関数に切り出し、述語本体のフィード絞り込みを 1 行に凝縮。カテゴリフィルターの冗長な null チェックも `?.` でスリム化。
 
-### セキュリティ
+### ガード固めたっ
 
 - **`GET /api/recommendations` に生成クールダウンを追加** — キャッシュ失効時に並行リクエストが複数の AI / Brave Search API 呼び出しを多重実行できた問題を修正。`recommendationsGenCooldownKey` を新設し、30 秒のクールダウンを適用。クールダウン中は期限切れキャッシュまたは空レスポンスを返す。`POST /api/recommendations/refresh` の 5 分クールダウンとは独立した別キーで管理するため、リフレッシュフローは影響を受けない。
 
-### バグ修正
+### バグ絶対キルした
 
 - **カテゴリフィルターが特定フィード選択時に全記事を消す問題を修正** — 特定フィードを選択中にカテゴリフィルターが有効だと、選択フィードのカテゴリとフィルターが一致しない場合に記事が全件非表示になるバグを修正。ミュートフィルターと同様に全フィード表示時のみ適用するよう変更。
 - **後で読むボタンにトースト通知を追加** — `ArticleView` の「後で読む」ボタンクリック時にトースト通知が表示されず、アクションが反映されているか分かりにくかった問題を修正。キーボード `t` と同様のフィードバック（「後で読むに追加」/「後で読むから削除」）を表示するようにした。
 
-### ドキュメント整備
+### メモっといた
 
 - **コンテンツ抽出戦略** — `architecture.md` に `extractMainContent` の 3 段階フォールバック・画像損失チェック（20% 閾値）・`postProcess` パイプライン順序を記載
 - **キーワードフィルタリング設計** — `architecture.md` に `CompiledKeywordFilter` の設計意図と ReDoS 対策パターンを記載
@@ -685,17 +685,17 @@
 
 ## 2026-04-09
 
-### セキュリティ
+### ガード固めたっ
 
 - **XSS修正: RSS本文の未サニタイズ経路を塞ぐ** — `processContent()` / `stripIframes()` にサニタイズを追加。フルテキスト取得できない場合に RSS フィード直値の `article.content` が `dangerouslySetInnerHTML` へ流れる経路で `sanitizeHtml()` が適用されていなかった問題を修正。悪意ある RSS フィードに埋め込まれた `<script>` やイベントハンドラが実行される恐れがあった。
 
-### ドキュメント整備
+### メモっといた
 
 - **ディレクトリインデックス更新** — `CLAUDE.md` と `.claude/rules/architecture.md` に未記載だったファイルを追記。追加した hooks: `useAutoReset`, `useEventListener`, `useInboxProgress`, `useLocalStorageHistory`, `useReadingStats`。追加した lib: `export-markdown`, `rate-limit`。追加した API routes: `POST /api/ai/translate`, `GET /api/stats`。
 
 ## 2026-04-08
 
-### 新機能
+### 激アツ新機能っ
 
 - **カテゴリフィルター** — 記事一覧のフィルターバーに「フォルダ」ドロップダウンを追加。フィードにカテゴリが設定されている場合、カテゴリ名の一覧から選択してそのカテゴリ配下のフィードの記事だけを表示できる。アクティブなカテゴリはチップ形式で表示され、クリックで解除。フィード切り替え時は自動リセット。
 
@@ -707,7 +707,7 @@
 
 - **フィード別未読消化率** — 読書統計モーダルに「フィード別 未読消化率」セクションを追加。未読数が多いフィードから順に最大 10 件のプログレスバーを表示し、消化済みフィードは緑ドットでインジケート。
 
-### リファクタリング
+### コードめかし込み
 
 - **`filterAndSortArticles` のフィルター述語を分離** — `buildArticlePredicate` 関数を抽出し、フィルター述語の構築とリストへの適用を分離。`filterAndSortArticles` 自体が短くなり、述語ロジックが単独でテスト可能になった。
 
@@ -719,19 +719,19 @@
 
 - **`PATCH /api/feeds/:id` ハンドラを簡略化** — `category` / `mutedUntil` フィールドのネストされた `else { if (...) }` を `else if` チェーンにフラット化。冗長なインラインコメントを削除。130 行 → 120 行。
 
-### 新機能
+### 激アツ新機能っ
 
 - **記事への個人メモ** — 記事ビューの鉛筆アイコンからメモを追加・編集できるようになりました。メモはフォーカスを外すと自動保存され、`localStorage` と R2 にクロスデバイス同期されます。最大 2000 文字、最大 1000 件まで保存可能。`Escape` キーで編集をキャンセルできます。
 
-### バグ修正
+### バグ絶対キルした
 
 - **`snoozedUntil` のクロスデバイスマージバグを修正** — `useReadState` のサーバー同期処理で、スヌーズ期限のマージが `{ ...server, ...local }` の形式だったため、ローカルの古い値がサーバー側の新しい値を上書きしていた問題を修正。同一キーではより遅い期限を採用するようにした。
 
-### リファクタリング
+### コードめかし込み
 
 - **`/api/stats` の複数パス処理を 1 パスに統合** — エントリ集計ループが 6 回に分かれていたところを単一ループで完結するよう書き直し。文字列比較で週判定を行い Date オブジェクト生成も削減。
 
-### 新機能
+### 激アツ新機能っ
 
 - **読書アクティビティ ヒートマップ** — 読書統計モーダルに過去 1 年分（365 日）のカレンダーヒートマップを追加。GitHub の草グラフ風にアクティビティの濃淡を表示。セルにホバーすると日付と件数のツールチップが表示されます。API も `yearlyHeatmap` フィールドを返すよう拡張しました。
 
@@ -739,10 +739,10 @@
 
 - **カテゴリタグクリックで記事絞り込み** — 記事本文ビューのカテゴリバッジをクリックすると、そのカテゴリ名が記事一覧の検索クエリにセットされ、同カテゴリの記事を素早く絞り込めるようになりました。フィード固有のキーワードフィルター設定画面では従来通り「除外カテゴリ追加」として動作します。
 
-### セキュリティ
+### ガード固めたっ
 
 - **AI キャッシュの `articleId` に文字種バリデーション追加** — `ai-route-helper.ts` で `articleId` を英数字・ハイフン・アンダースコア（1〜128文字）のみ許可するよう検証を追加。不正な値は `null` として扱い、R2 キーへのパストラバーサルを防止。
 
-### バグ修正
+### バグ絶対キルした
 
 - **`useFilteredArticles` の stale closure を修正** — `serverLoadCount` 変化時に `filtered.length` を参照する `useEffect` が古い値を参照する可能性があった問題を修正。`useSyncedRef(filtered)` に切り替えて `eslint-disable` コメントを除去。
