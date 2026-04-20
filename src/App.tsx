@@ -102,6 +102,8 @@ export default function App() {
     setShowSettings,
     activeFeedView,
     onChangeActiveFeedView,
+    galleryColumns,
+    onChangeGalleryColumns,
   } = useUIState(initialMobilePane);
 
   // カラム幅（PC）
@@ -127,6 +129,8 @@ export default function App() {
       onChangeContentWidth,
       textJustify,
       onChangeTextJustify,
+      galleryColumns,
+      onChangeGalleryColumns,
     }),
     [
       fontSize,
@@ -147,6 +151,8 @@ export default function App() {
       onChangeContentWidth,
       textJustify,
       onChangeTextJustify,
+      galleryColumns,
+      onChangeGalleryColumns,
     ],
   );
 

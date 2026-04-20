@@ -17,6 +17,8 @@ import {
   LINE_HEIGHT_LABELS,
   CONTENT_WIDTH_CYCLE,
   CONTENT_WIDTH_LABELS,
+  GALLERY_COLUMNS_CYCLE,
+  GALLERY_COLUMNS_LABELS,
   getLineHeightStyle,
 } from "../lib/reader-settings";
 import { AUTO_READ_THRESHOLD_CYCLE } from "../hooks/useUIState";
@@ -62,6 +64,8 @@ export default function UserSettingsModal({ onClose }: Props) {
     toggleAutoRead,
     autoReadThreshold,
     onChangeAutoReadThreshold,
+    galleryColumns,
+    onChangeGalleryColumns,
   } = useReaderSettings();
 
   return (
@@ -112,6 +116,17 @@ export default function UserSettingsModal({ onClose }: Props) {
             options={CONTENT_WIDTH_CYCLE.map((v) => ({ value: v, label: CONTENT_WIDTH_LABELS[v] }))}
             value={contentWidth}
             onChange={onChangeContentWidth}
+          />
+        </SettingRow>
+
+        <SettingRow label="ギャラリー列数">
+          <SegmentGroup
+            options={GALLERY_COLUMNS_CYCLE.map((v) => ({
+              value: v,
+              label: GALLERY_COLUMNS_LABELS[v],
+            }))}
+            value={galleryColumns}
+            onChange={onChangeGalleryColumns}
           />
         </SettingRow>
 

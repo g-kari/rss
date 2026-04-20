@@ -24,6 +24,7 @@ interface GalleryMasonryProps<T> {
   columnWidth?: number;
   columnGutter?: number;
   overscanBy?: number;
+  columns?: number | null;
 }
 
 function useParentScroller(el: HTMLElement | null, fps = 12) {
@@ -98,13 +99,21 @@ export default function GalleryMasonry<T>({
   columnWidth = 220,
   columnGutter = 12,
   overscanBy = 6,
+  columns = null,
 }: GalleryMasonryProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { width, height, offsetTop } = useContainerMetrics(containerRef, scrollElement);
   const { scrollTop, isScrolling } = useParentScroller(scrollElement);
 
+  const effectiveColumnWidth =
+    columns && width > 0
+      ? Math.floor((width - (columns - 1) * columnGutter) / columns)
+      : columnWidth;
+
   // items.length を deps にすることで、append-only の追加で全再配置を避ける
-  const positioner = usePositioner({ width, columnWidth, columnGutter }, [items.length]);
+  const positioner = usePositioner({ width, columnWidth: effectiveColumnWidth, columnGutter }, [
+    items.length,
+  ]);
   const resizeObserver = useResizeObserver(positioner);
 
   const content = useMasonry({
