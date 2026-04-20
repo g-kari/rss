@@ -79,12 +79,13 @@ export async function runAiJob(
       retryable: true,
     });
 
-  const plain = toPlainText(content).slice(0, 6000);
+  const plain = toPlainText(content).slice(0, 8000);
 
   let result: string;
   try {
     const response = (await env.AI.run(MODEL, {
       messages: buildMessages(plain),
+      max_tokens: 2048,
     })) as { response?: string };
     result = response.response ?? "";
   } catch (err) {
