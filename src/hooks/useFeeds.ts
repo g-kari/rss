@@ -304,7 +304,7 @@ export function useFeeds(
     // Promise.allSettled は reject しないため try/catch 不要
     const results = await Promise.allSettled(
       targets.map(async (f) => {
-        const nextPage = nextPages.get(f.id)!;
+        const nextPage = nextPages.get(f.id) ?? 2;
         const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
         return { feedId: f.id, nextPage, data };
       }),

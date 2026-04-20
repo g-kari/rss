@@ -278,16 +278,17 @@ export function useReadState(
       setGlobalFilterState(serverFilter);
     }
     if ("readBeforeTimestamp" in state && state.readBeforeTimestamp) {
+      const rbt = state.readBeforeTimestamp;
       setReadBeforeTimestamp((prev) => {
-        const server = state.readBeforeTimestamp!;
-        const next = !prev || server > prev ? server : prev;
+        const next = !prev || rbt > prev ? rbt : prev;
         if (next !== prev) storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
         return next;
       });
     }
     if ("snoozedUntil" in state && state.snoozedUntil) {
+      const snoozed = state.snoozedUntil;
       setSnoozedUntil((prev) => {
-        const result: Record<string, string> = { ...state.snoozedUntil! };
+        const result: Record<string, string> = { ...snoozed };
         for (const [id, until] of Object.entries(prev)) {
           if (!result[id] || until > result[id]) result[id] = until;
         }

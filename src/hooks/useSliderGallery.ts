@@ -23,7 +23,7 @@ export function useSliderGallery(
       wrapper.className = "rss-slider-wrapper";
       wrapper.style.cssText = "position:relative;margin-bottom:1.25em";
       slider.style.marginBottom = "0";
-      slider.parentNode!.insertBefore(wrapper, slider);
+      slider.parentNode?.insertBefore(wrapper, slider);
       wrapper.appendChild(slider);
 
       function makeNavBtn(dir: "prev" | "next") {
