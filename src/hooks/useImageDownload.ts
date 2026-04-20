@@ -6,6 +6,7 @@ import { apiFetch } from "../lib/api-fetch";
 import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
 import { collectImageUrls } from "../lib/image-extractor";
 import { mimeToExt } from "../lib/image-mime";
+import { buildImageProxyUrl } from "../lib/image-proxy-url";
 
 interface ImageDownloadState {
   downloadingImages: boolean;
@@ -95,7 +96,7 @@ export function useImageDownload(
 
     const ogImgSrc = article.ogImage ?? resolvedOgImage;
     if (ogImgSrc) {
-      const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(ogImgSrc)}`;
+      const proxyUrl = buildImageProxyUrl(ogImgSrc);
       seen.add(proxyUrl);
       toDownload.push(proxyUrl);
     }

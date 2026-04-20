@@ -3,6 +3,7 @@
 import { useEffect, type RefObject } from "react";
 import { apiFetch } from "../lib/api-fetch";
 import type { OgpData } from "../types";
+import { buildImageProxyUrl } from "../lib/image-proxy-url";
 
 export const LINK_PREVIEW_CLASS = "ogp-link-preview";
 
@@ -41,7 +42,7 @@ function buildPreviewCard(url: string, ogp: OgpData): HTMLAnchorElement | null {
   if (ogp.image) {
     const img = document.createElement("img");
     img.className = "ogp-link-preview-image";
-    img.src = `/api/image-proxy?url=${encodeURIComponent(ogp.image)}`;
+    img.src = buildImageProxyUrl(ogp.image);
     img.alt = "";
     img.loading = "lazy";
     card.appendChild(img);
