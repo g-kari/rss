@@ -6,6 +6,12 @@ export const MAX_ID_LENGTH = 128;
 /** メモの最大文字数 */
 export const MAX_NOTE_LENGTH = 2000;
 
+/** タグ名の最大文字数 */
+export const MAX_TAG_NAME_LENGTH = 50;
+
+/** 1 記事あたりのタグ数上限 */
+export const MAX_TAGS_PER_ARTICLE = 20;
+
 /** 制御文字（U+0000–U+001F, U+007F）を除去する */
 export function stripControlChars(value: string): string {
   return value.replace(/[\u0000-\u001F\u007F]/g, "");
@@ -65,6 +71,37 @@ export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string
     ) {
       result[k] = v;
     }
+  }
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+/**
+ * tagIds のバリデーション。
+ * - 値が Record<string, string[]> であることを確認
+ * - key: articleId（MAX_ID_LENGTH 以内）
+ * - value: タグ名の配列（各タグは MAX_TAG_NAME_LENGTH 以内、記事ごとに MAX_TAGS_PER_ARTICLE 件まで）
+ * - タグ名は制御文字を除去し trim してから重複排除
+ * - maxArticles 件を超える場合は先頭から切り詰め（DoS 対策）
+ */
+export function parseTagIds(raw: unknown, maxArticles = 1000): Record<string, string[]> | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const result: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (Object.keys(result).length >= maxArticles) break;
+    if (typeof k !== "string" || k.length === 0 || k.length > MAX_ID_LENGTH) continue;
+    if (!Array.isArray(v)) continue;
+    const tags: string[] = [];
+    const seen = new Set<string>();
+    for (const t of v) {
+      if (tags.length >= MAX_TAGS_PER_ARTICLE) break;
+      if (typeof t !== "string") continue;
+      const normalized = stripControlChars(t).trim();
+      if (normalized.length === 0 || normalized.length > MAX_TAG_NAME_LENGTH) continue;
+      if (seen.has(normalized)) continue;
+      seen.add(normalized);
+      tags.push(normalized);
+    }
+    if (tags.length > 0) result[k] = tags;
   }
   return Object.keys(result).length > 0 ? result : null;
 }

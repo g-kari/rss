@@ -70,6 +70,12 @@ export interface ArticleFilterOptions {
    * 設定時（空 Set を含む）はそのカテゴリに属するフィードの記事のみ表示。undefined なら従来通り全フィード。
    */
   viewFeedIds?: Set<string>;
+  /** 選択中のユーザータグ（そのタグが付いた記事のみ表示。null = フィルタなし） */
+  selectedTag?: string | null;
+  /** articleId → タグ配列マップ（selectedTag の判定に使用） */
+  articleTags?: Record<string, string[]>;
+  /** タグ付き記事のみ表示（タグ名は問わない） */
+  taggedOnly?: boolean;
 }
 
 /**
@@ -212,6 +218,19 @@ function buildStatePredicate(opts: ArticleFilterOptions): ((a: Article) => boole
   };
 }
 
+/** 選択中タグ / タグ有無によるフィルター */
+function buildTagPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const { selectedTag, articleTags, taggedOnly } = opts;
+  if (!selectedTag && !taggedOnly) return null;
+  const tags = articleTags ?? {};
+  return (a) => {
+    const arr = tags[a.id];
+    if (!arr || arr.length === 0) return false;
+    if (selectedTag && !arr.includes(selectedTag)) return false;
+    return true;
+  };
+}
+
 /** 著者フィルター述語（activeIds 外の記事にのみ適用） */
 function buildAuthorPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
   const { authorFilter } = opts;
@@ -284,6 +303,7 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
     buildMutedFeedPredicate(opts),
     buildKeywordPredicate(opts),
     buildStatePredicate(opts),
+    buildTagPredicate(opts),
     buildAuthorPredicate(opts),
     buildCategoryPredicate(opts),
     buildReadingTimePredicate(opts),

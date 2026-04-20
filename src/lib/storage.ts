@@ -44,6 +44,8 @@ export const STORAGE_KEYS = {
   READ_BEFORE_TIMESTAMP: "rss-read-before-ts",
   SNOOZED_UNTIL: "rss-snoozed",
   NOTES: "rss-notes",
+  TAGS: "rss-tags",
+  TAG_ONLY: "rss-tag-only",
   READING_TIME_RANGE: "rss-reading-time-range",
   NOTE_ONLY: "rss-note-only",
   CACHED_USER: "rss-cached-user",

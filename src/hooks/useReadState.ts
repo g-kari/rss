@@ -16,7 +16,12 @@ import {
   storageSet,
 } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
-import { MAX_NOTE_LENGTH } from "../lib/validation";
+import {
+  MAX_NOTE_LENGTH,
+  MAX_TAG_NAME_LENGTH,
+  MAX_TAGS_PER_ARTICLE,
+  stripControlChars,
+} from "../lib/validation";
 
 type ReadStateSets = {
   read: Set<string>;
@@ -26,7 +31,29 @@ type ReadStateSets = {
   readBeforeTimestamp: string | null;
   snoozedUntil: Record<string, string>;
   notes: Record<string, string>;
+  tagIds: Record<string, string[]>;
 };
+
+/** タグ名を正規化: 制御文字除去 + trim + 長さ制限 */
+function normalizeTagName(raw: string): string | null {
+  const trimmed = stripControlChars(raw).trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_TAG_NAME_LENGTH) return null;
+  return trimmed;
+}
+
+/** 記事ごとのタグ配列を正規化: 重複排除 + 件数上限 */
+function normalizeTagArray(tags: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const t of tags) {
+    if (result.length >= MAX_TAGS_PER_ARTICLE) break;
+    const n = normalizeTagName(t);
+    if (!n || seen.has(n)) continue;
+    seen.add(n);
+    result.push(n);
+  }
+  return result;
+}
 
 type SetKind = "read" | "bookmarks" | "readingList" | "likes";
 
@@ -132,9 +159,19 @@ function serializeReadState(
   readBeforeTimestamp: string | null,
   snoozedUntil: Record<string, string>,
   notes: Record<string, string>,
+  tagChanges: {
+    changedKeys: Set<string>;
+    removedKeys: Set<string>;
+    currentTags: Record<string, string[]>;
+  },
   includeGlobalFilter: boolean,
 ): string {
   const pruned = pruneExpiredSnoozes(snoozedUntil);
+  const changedTags: Record<string, string[]> = {};
+  for (const key of tagChanges.changedKeys) {
+    const v = tagChanges.currentTags[key];
+    if (v && v.length > 0) changedTags[key] = v;
+  }
   const payload: ReadStatePayload = {
     readIds: [...added.read],
     bookmarkIds: [...added.bookmarks],
@@ -143,11 +180,13 @@ function serializeReadState(
     readBeforeTimestamp,
     snoozedUntil: Object.keys(pruned).length > 0 ? pruned : null,
     notes: Object.keys(notes).length > 0 ? notes : null,
+    tagIds: Object.keys(changedTags).length > 0 ? changedTags : null,
     removedIds: {
       readIds: [...removed.read],
       bookmarkIds: [...removed.bookmarks],
       readingListIds: [...removed.readingList],
       likeIds: [...removed.likes],
+      tagIds: [...tagChanges.removedKeys],
     },
   };
   // globalFilter は「キーの有無」でサーバー側が上書きするか判定する。
@@ -193,6 +232,7 @@ interface ReadStateResult {
   readBeforeTimestamp: string | null;
   snoozedUntil: Record<string, string>;
   notes: Record<string, string>;
+  tagIds: Record<string, string[]>;
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
@@ -203,6 +243,10 @@ interface ReadStateResult {
   snoozeArticle: (articleId: string, durationMs: number) => void;
   setNote: (articleId: string, text: string) => void;
   deleteNote: (articleId: string) => void;
+  addTag: (articleId: string, tag: string) => void;
+  removeTag: (articleId: string, tag: string) => void;
+  setArticleTags: (articleId: string, tags: readonly string[]) => void;
+  clearArticleTags: (articleId: string) => void;
 }
 
 /**
@@ -242,6 +286,9 @@ export function useReadState(
   const [notes, setNotesState] = useState<Record<string, string>>(() =>
     loadJson<Record<string, string>>(STORAGE_KEYS.NOTES, {}),
   );
+  const [tagIdsState, setTagIdsState] = useState<Record<string, string[]>>(() =>
+    loadJson<Record<string, string[]>>(STORAGE_KEYS.TAGS, {}),
+  );
   const [globalFilter, setGlobalFilterState] = useState<KeywordFilter | null>(() =>
     loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
   );
@@ -264,6 +311,7 @@ export function useReadState(
     readBeforeTimestamp,
     snoozedUntil,
     notes,
+    tagIds: tagIdsState,
   });
   const historyIdsRef = useSyncedRef(historyIds);
   const articlesRef = useSyncedRef(articles);
@@ -276,6 +324,10 @@ export function useReadState(
   // globalFilter は「変更されたときのみ」サーバーへ送る。
   // 毎回送ると、別端末で設定した値を空 POST で上書きしてしまう可能性がある。
   const globalFilterDirtyRef = useRef(false);
+  // タグが変更された articleId（POST で tagIds に現在値を含めて送信）
+  const pendingTagChangedRef = useRef<Set<string>>(new Set());
+  // タグが完全に消去された articleId（POST の removedIds.tagIds で送信）
+  const pendingTagRemovedRef = useRef<Set<string>>(new Set());
 
   // useEffect 不要 — レンダー中の直接代入で十分
   stateRef.current = {
@@ -286,6 +338,7 @@ export function useReadState(
     readBeforeTimestamp,
     snoozedUntil,
     notes,
+    tagIds: tagIdsState,
   };
 
   /**
@@ -354,6 +407,33 @@ export function useReadState(
         return merged;
       });
     }
+    if ("tagIds" in state) {
+      // タグはキー単位で処理:
+      // - pendingTagRemovedRef: 削除予定なのでサーバー値・ローカル値の両方を無視してスキップ
+      //   （result に残すと「削除されない状態」に戻ってしまい、次回 flush 後も削除結果が反映されない）
+      // - pendingTagChangedRef: ローカルに未同期の変更あり → サーバーで上書きせずローカル値を保持
+      // - それ以外のサーバー側キー: サーバー優先で上書き
+      // - ローカルだけに存在するキー: pendingTagChangedRef に追加して次回 flush で送る
+      const serverTags = state.tagIds ?? {};
+      setTagIdsState((prev) => {
+        const result: Record<string, string[]> = {};
+        for (const [k, v] of Object.entries(serverTags)) {
+          if (pendingTagRemovedRef.current.has(k)) continue;
+          if (pendingTagChangedRef.current.has(k)) continue;
+          result[k] = v;
+        }
+        for (const [k, v] of Object.entries(prev)) {
+          if (pendingTagRemovedRef.current.has(k)) continue;
+          if (k in result) continue;
+          result[k] = v;
+          if (!(k in serverTags)) {
+            pendingTagChangedRef.current.add(k);
+          }
+        }
+        saveJson(STORAGE_KEYS.TAGS, result);
+        return result;
+      });
+    }
   }, []);
 
   // ログイン後にサーバーの既読・ブックマーク・後で読む・グローバルフィルター状態をマージ
@@ -402,6 +482,8 @@ export function useReadState(
     // sendBeacon はレスポンス未確認のため、キュー受理成否のみで pending の扱いを決める
     const added = snapshotPendingSets(pendingAddedRef.current);
     const removed = snapshotPendingSets(pendingRemovedRef.current);
+    const tagChanged = new Set(pendingTagChangedRef.current);
+    const tagRemoved = new Set(pendingTagRemovedRef.current);
     const wasGfDirty = globalFilterDirtyRef.current;
     const body = serializeReadState(
       added,
@@ -410,6 +492,11 @@ export function useReadState(
       stateRef.current.readBeforeTimestamp,
       stateRef.current.snoozedUntil,
       stateRef.current.notes,
+      {
+        changedKeys: tagChanged,
+        removedKeys: tagRemoved,
+        currentTags: stateRef.current.tagIds,
+      },
       wasGfDirty,
     );
     const accepted = navigator.sendBeacon(
@@ -421,6 +508,8 @@ export function useReadState(
     if (accepted) {
       pendingAddedRef.current = emptyPendingSets();
       pendingRemovedRef.current = emptyPendingSets();
+      pendingTagChangedRef.current = new Set();
+      pendingTagRemovedRef.current = new Set();
       globalFilterDirtyRef.current = false;
     }
   });
@@ -432,9 +521,13 @@ export function useReadState(
       if (!flushIfPending()) return;
       const added = snapshotPendingSets(pendingAddedRef.current);
       const removed = snapshotPendingSets(pendingRemovedRef.current);
+      const tagChanged = new Set(pendingTagChangedRef.current);
+      const tagRemoved = new Set(pendingTagRemovedRef.current);
       const wasGfDirty = globalFilterDirtyRef.current;
       pendingAddedRef.current = emptyPendingSets();
       pendingRemovedRef.current = emptyPendingSets();
+      pendingTagChangedRef.current = new Set();
+      pendingTagRemovedRef.current = new Set();
       globalFilterDirtyRef.current = false;
       const body = serializeReadState(
         added,
@@ -443,6 +536,11 @@ export function useReadState(
         stateRef.current.readBeforeTimestamp,
         stateRef.current.snoozedUntil,
         stateRef.current.notes,
+        {
+          changedKeys: tagChanged,
+          removedKeys: tagRemoved,
+          currentTags: stateRef.current.tagIds,
+        },
         wasGfDirty,
       );
       saveReadState(body).then((result) => {
@@ -452,6 +550,8 @@ export function useReadState(
           // グローバル通知は apiFetch 内で発火済み。pending に復帰して次回リトライ。
           mergePendingSets(pendingAddedRef.current, added);
           mergePendingSets(pendingRemovedRef.current, removed);
+          for (const k of tagChanged) pendingTagChangedRef.current.add(k);
+          for (const k of tagRemoved) pendingTagRemovedRef.current.add(k);
           if (wasGfDirty) globalFilterDirtyRef.current = true;
         }
       });
@@ -473,9 +573,13 @@ export function useReadState(
     if (!userRef.current) return;
     const added = snapshotPendingSets(pendingAddedRef.current);
     const removed = snapshotPendingSets(pendingRemovedRef.current);
+    const tagChanged = new Set(pendingTagChangedRef.current);
+    const tagRemoved = new Set(pendingTagRemovedRef.current);
     const wasGfDirty = globalFilterDirtyRef.current;
     pendingAddedRef.current = emptyPendingSets();
     pendingRemovedRef.current = emptyPendingSets();
+    pendingTagChangedRef.current = new Set();
+    pendingTagRemovedRef.current = new Set();
     globalFilterDirtyRef.current = false;
     const body = serializeReadState(
       added,
@@ -484,6 +588,11 @@ export function useReadState(
       stateRef.current.readBeforeTimestamp,
       stateRef.current.snoozedUntil,
       stateRef.current.notes,
+      {
+        changedKeys: tagChanged,
+        removedKeys: tagRemoved,
+        currentTags: stateRef.current.tagIds,
+      },
       wasGfDirty,
     );
     const result = await saveReadState(body);
@@ -493,6 +602,8 @@ export function useReadState(
       // グローバル通知は apiFetch 内で発火済み。次回デバウンスで再送できるよう pending に復帰。
       mergePendingSets(pendingAddedRef.current, added);
       mergePendingSets(pendingRemovedRef.current, removed);
+      for (const k of tagChanged) pendingTagChangedRef.current.add(k);
+      for (const k of tagRemoved) pendingTagRemovedRef.current.add(k);
       if (wasGfDirty) globalFilterDirtyRef.current = true;
     }
   }, [applyServerState, globalFilterRef, userRef]);
@@ -714,6 +825,72 @@ export function useReadState(
     [scheduleSyncToServer],
   );
 
+  /** 記事のタグを完全に置き換える。空配列を渡すとキー自体を削除する */
+  const setArticleTags = useCallback(
+    (articleId: string, tags: readonly string[]) => {
+      if (articleId.length === 0) return;
+      const normalized = normalizeTagArray(tags);
+      // stateRef から「変更前」の値を読んで差分判定と pending 更新を setState の外で完結させる。
+      // setState コールバック内で ref を変更すると StrictMode の二重呼び出しで重複が発生するため避ける。
+      const before = stateRef.current.tagIds[articleId] ?? [];
+      const same =
+        before.length === normalized.length && before.every((v, i) => v === normalized[i]);
+      if (same) return;
+      if (normalized.length === 0) {
+        pendingTagRemovedRef.current.add(articleId);
+        pendingTagChangedRef.current.delete(articleId);
+      } else {
+        pendingTagChangedRef.current.add(articleId);
+        pendingTagRemovedRef.current.delete(articleId);
+      }
+      setTagIdsState((prev) => {
+        const next: Record<string, string[]> = { ...prev };
+        if (normalized.length === 0) {
+          if (!(articleId in prev)) return prev;
+          delete next[articleId];
+        } else {
+          next[articleId] = normalized;
+        }
+        saveJson(STORAGE_KEYS.TAGS, next);
+        return next;
+      });
+      scheduleSyncToServer();
+    },
+    [scheduleSyncToServer],
+  );
+
+  const addTag = useCallback(
+    (articleId: string, tag: string) => {
+      const n = normalizeTagName(tag);
+      if (!n) return;
+      const current = stateRef.current.tagIds[articleId] ?? [];
+      if (current.includes(n)) return;
+      setArticleTags(articleId, [...current, n]);
+    },
+    [setArticleTags],
+  );
+
+  const removeTag = useCallback(
+    (articleId: string, tag: string) => {
+      const n = normalizeTagName(tag);
+      if (!n) return;
+      const current = stateRef.current.tagIds[articleId] ?? [];
+      if (!current.includes(n)) return;
+      setArticleTags(
+        articleId,
+        current.filter((t) => t !== n),
+      );
+    },
+    [setArticleTags],
+  );
+
+  const clearArticleTags = useCallback(
+    (articleId: string) => {
+      setArticleTags(articleId, []);
+    },
+    [setArticleTags],
+  );
+
   return {
     readIds,
     bookmarkIds,
@@ -734,5 +911,10 @@ export function useReadState(
     snoozeArticle,
     setNote,
     deleteNote,
+    tagIds: tagIdsState,
+    addTag,
+    removeTag,
+    setArticleTags,
+    clearArticleTags,
   };
 }

@@ -115,6 +115,10 @@ interface Options {
    * "articles" は未分類フィード (Feed.view 未設定) も含む。
    */
   activeFeedView?: FeedView;
+  /** ユーザータグマップ（articleId → タグ名配列） */
+  articleTags?: Record<string, string[]>;
+  /** 選択中のユーザータグ — 設定時はそのタグが付いた記事のみ表示 */
+  selectedTag?: string | null;
 }
 
 /**
@@ -159,6 +163,8 @@ export function useFilteredArticles({
   groupFeedIds,
   selectedGroupId = null,
   activeFeedView,
+  articleTags,
+  selectedTag = null,
 }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
@@ -358,6 +364,8 @@ export function useFilteredArticles({
         groupFeedIds,
         feedTitleByHash,
         viewFeedIds,
+        selectedTag,
+        articleTags,
       }),
     [
       articles,
@@ -393,6 +401,8 @@ export function useFilteredArticles({
       groupFeedIds,
       feedTitleByHash,
       viewFeedIds,
+      selectedTag,
+      articleTags,
     ],
   );
 

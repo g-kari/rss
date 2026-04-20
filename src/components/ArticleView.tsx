@@ -37,6 +37,7 @@ import GlobalFilterMenu from "./article-view/GlobalFilterMenu";
 import ImageGallery from "./article-view/ImageGallery";
 import SnoozeMenu from "./article-view/SnoozeMenu";
 import SelectionExcludePopup, { useSelectionExclude } from "./article-view/SelectionExcludePopup";
+import TagEditor from "./article-view/TagEditor";
 
 interface Props {
   article: Article | null;
@@ -64,6 +65,18 @@ interface Props {
   onSetNote?: (articleId: string, text: string) => void;
   onDeleteNote?: (articleId: string) => void;
   onAutoMarkRead?: (articleId: string) => void;
+  /** 現在記事に付与されているユーザータグ配列 */
+  tags?: readonly string[];
+  /** 全記事のタグマップ — 入力候補用（全タグ一覧を作る） */
+  allTags?: Record<string, string[]>;
+  /** タグ追加 */
+  onAddTag?: (articleId: string, tag: string) => void;
+  /** タグ削除 */
+  onRemoveTag?: (articleId: string, tag: string) => void;
+  /** タグ完全置換 */
+  onSetArticleTags?: (articleId: string, tags: readonly string[]) => void;
+  /** タグ全消去 */
+  onClearArticleTags?: (articleId: string) => void;
 }
 
 const SHORT_CONTENT_THRESHOLD = 400;
@@ -89,6 +102,9 @@ export default function ArticleView({
   onSetNote,
   onDeleteNote,
   onAutoMarkRead,
+  tags,
+  onAddTag,
+  onRemoveTag,
 }: Props) {
   const {
     fontSize,
@@ -530,6 +546,14 @@ export default function ArticleView({
                   </span>
                 ),
               )}
+            {onAddTag && onRemoveTag && article && (
+              <TagEditor
+                articleId={article.id}
+                tags={tags ?? []}
+                onAddTag={onAddTag}
+                onRemoveTag={onRemoveTag}
+              />
+            )}
           </div>
 
           {/* アクションボタン群: 右寄せ flex-wrap */}
