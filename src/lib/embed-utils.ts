@@ -132,3 +132,40 @@ export function stripIframes(html: string): string {
   } while (curr !== prev && pass < 8);
   return sanitizeHtml(curr);
 }
+
+/**
+ * 埋込み動画 iframe src から静的なサムネイル画像 URL を返す。取得不可なら null。
+ *
+ * 現状は YouTube のみ対応（`i.ytimg.com/vi/{videoId}/mqdefault.jpg` で静止画取得可能）。
+ * Vimeo / ニコニコはサムネイル取得に API コールが必要なので省略する。
+ * 動画カテゴリのギャラリーサムネ拡張で、iframe 埋込みを画像として代替表示するために使う。
+ */
+export function extractEmbedThumbnailUrl(iframeSrc: string): string | null {
+  const yt = iframeSrc.match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+  );
+  if (yt) return `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg`;
+  return null;
+}
+
+/**
+ * HTML 文字列から `<iframe>` の src URL を重複なく抽出する。
+ *
+ * ギャラリービューの動画カテゴリプリフェッチで、本文から埋込み動画 URL を集めるために使用する。
+ * `extractEmbedInfo` を通過する（= YouTube / Vimeo / ニコニコ 等の信頼済みサービス）URL のみ返す。
+ * これにより広告 iframe や信頼できない埋込みが混入しない。
+ */
+export function collectIframeUrlsFromHtml(html: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  const re = /<iframe\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const src = m[1];
+    if (seen.has(src)) continue;
+    if (!extractEmbedInfo(src)) continue;
+    seen.add(src);
+    result.push(src);
+  }
+  return result;
+}

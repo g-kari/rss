@@ -11,11 +11,13 @@ import {
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEventListener } from "@/hooks/useEventListener";
-import type { Article, Feed, Layout, DateRange } from "../types";
+import type { Article, Feed, FeedView, Layout, DateRange } from "../types";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { SHORTCUT_MAP } from "../config/shortcuts";
 import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
+import { usePrefetchGalleryContents } from "../hooks/usePrefetchGalleryContents";
+import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
 import { useSearchHistory } from "../hooks/useSearchHistory";
 import { useFullTextSearch } from "../hooks/useFullTextSearch";
 import { useSyncedRef } from "../hooks/useSyncedRef";
@@ -51,6 +53,11 @@ interface Props {
   feedHasMorePages?: boolean;
   onLoadMoreFeedArticles?: () => Promise<void>;
   notes?: Record<string, string>;
+  /**
+   * 選択中の FeedView カテゴリ。pictures の場合、ギャラリーレイアウトの表示記事本文を
+   * 先行取得して本文内の全画像をカードに展開する（usePrefetchGalleryContents）。
+   */
+  activeFeedView?: FeedView;
 }
 
 const LAYOUT_ICONS: Record<Layout, ReactElement> = {
@@ -153,6 +160,7 @@ export default function ArticleList({
   feedHasMorePages,
   onLoadMoreFeedArticles,
   notes,
+  activeFeedView,
 }: Props) {
   const {
     filtered,
@@ -205,6 +213,32 @@ export default function ArticleList({
   const showFeedName = selectedFeedId === null || selectedFeedId === SPECIAL_FEED_IDS.BOOKMARKS;
 
   const ogpCache = useOgpCache(visible);
+
+  // ギャラリー画像プリフェッチ — pictures / videos カテゴリ選択中のみ本文を先行取得。
+  // pictures: 本文内の全画像を抽出して複数枚ギャラリー表示
+  // videos: 本文内の動画埋込みを YouTube サムネ画像として表示（+ 本文内の画像も含む）
+  const galleryPrefetchEnabled =
+    layout === "gallery" && (activeFeedView === "pictures" || activeFeedView === "videos");
+  const prefetchedMedia = usePrefetchGalleryContents({
+    articles: visible,
+    enabled: galleryPrefetchEnabled,
+  });
+  // 動画カテゴリでは iframe URL をサムネイル画像 URL に変換して画像リストにマージ。
+  // 呼び出し側の GalleryArticleItem には共通の prefetchedImages として渡す。
+  const galleryImagesForItem = useCallback(
+    (articleId: string): string[] | undefined => {
+      const media = prefetchedMedia.get(articleId);
+      if (!media) return undefined;
+      if (activeFeedView === "videos") {
+        const thumbs = media.embeds
+          .map((src) => extractEmbedThumbnailUrl(src))
+          .filter((u): u is string => u !== null);
+        return [...thumbs, ...media.images];
+      }
+      return media.images;
+    },
+    [prefetchedMedia, activeFeedView],
+  );
 
   // ── 仮想スクロール ──────────────────────────────────────────────
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -960,7 +994,11 @@ export default function ArticleList({
         {layout === "gallery" && visible.length > 0 && (
           <div className="p-2 columns-2 sm:columns-2 md:columns-3 lg:columns-3 xl:columns-4 gap-3">
             {visible.map((a, i) => (
-              <GalleryArticleItem key={a.id} {...resolveItemProps(a, i)} />
+              <GalleryArticleItem
+                key={a.id}
+                {...resolveItemProps(a, i)}
+                prefetchedImages={galleryImagesForItem(a.id)}
+              />
             ))}
           </div>
         )}
