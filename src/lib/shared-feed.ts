@@ -137,35 +137,58 @@ function sortByDate(articles: Article[]): Article[] {
  * overflow を pageNum ページに先頭挿入し、溢れたぶんを次ページへカスケードする。
  * overflow は pageNum ページの既存コンテンツより「新しい」記事（すでにソート済み）。
  * 戻り値: 実際に書き込んだ最大ページ番号。
+ *
+ * Issue #131: MAX_PAGES を超過した場合、残った overflow を末尾ページ (p{MAX_PAGES}) に
+ * 追記してデータ喪失を防ぐ。PAGE_SIZE を超過した状態で保存されるが、silent drop よりも
+ * 整合性を優先する。警告ログで運用監視できるようにする。
  */
-async function cascadeOverflow(
+export async function cascadeOverflow(
   bucket: R2Bucket,
   feedHash: string,
   overflow: Article[],
   pageNum: number,
+  options?: { maxPages?: number; pageSize?: number },
 ): Promise<number> {
+  const maxPages = options?.maxPages ?? MAX_PAGES;
+  const pageSize = options?.pageSize ?? PAGE_SIZE;
+
   let currentOverflow = overflow;
   let currentPage = pageNum;
   let lastWrittenPage = pageNum - 1;
 
-  while (currentOverflow.length > 0 && currentPage <= MAX_PAGES) {
+  while (currentOverflow.length > 0 && currentPage <= maxPages) {
     const key = pageKey(feedHash, currentPage);
     const existing = await r2Get<Article[]>(bucket, key, []);
 
     // overflow (新しい) + existing (古い) を結合してソート
     const merged = sortByDate([...currentOverflow, ...existing]);
 
-    if (merged.length <= PAGE_SIZE) {
+    if (merged.length <= pageSize) {
       await r2Put(bucket, key, merged);
       lastWrittenPage = currentPage;
+      currentOverflow = [];
       break;
     }
 
-    const page = merged.slice(0, PAGE_SIZE);
-    currentOverflow = merged.slice(PAGE_SIZE);
+    const page = merged.slice(0, pageSize);
+    currentOverflow = merged.slice(pageSize);
     await r2Put(bucket, key, page);
     lastWrittenPage = currentPage;
     currentPage += 1;
+  }
+
+  // maxPages を超過した overflow は末尾ページに追記してデータ喪失を防ぐ
+  if (currentOverflow.length > 0) {
+    const lastKey = pageKey(feedHash, maxPages);
+    const existing = await r2Get<Article[]>(bucket, lastKey, []);
+    const merged = sortByDate([...currentOverflow, ...existing]);
+    await r2Put(bucket, lastKey, merged);
+    lastWrittenPage = maxPages;
+    console.warn(
+      `[shared-feed] feedHash=${feedHash} exceeded MAX_PAGES=${maxPages}. ` +
+        `Appended ${currentOverflow.length} articles to p${maxPages} ` +
+        `(page now holds ${merged.length} items, exceeds PAGE_SIZE=${pageSize}).`,
+    );
   }
 
   return lastWrittenPage;
