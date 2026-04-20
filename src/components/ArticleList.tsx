@@ -990,9 +990,9 @@ export default function ArticleList({
           </>
         )}
 
-        {/* gallery — CSS columns による masonry（仮想スクロールなし） */}
+        {/* gallery — CSS Grid による行優先レイアウト（左→右、上→下）*/}
         {layout === "gallery" && visible.length > 0 && (
-          <div className="p-2 columns-2 sm:columns-2 md:columns-3 lg:columns-3 xl:columns-4 gap-3">
+          <div className="p-2 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 auto-rows-max">
             {visible.map((a, i) => (
               <GalleryArticleItem
                 key={a.id}

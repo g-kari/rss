@@ -532,7 +532,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
-      className={`group relative mb-3 break-inside-avoid cursor-pointer rounded-lg overflow-hidden transition-all duration-200 animate-fade-up border ${
+      className={`group relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 animate-fade-up border ${
         isSelected
           ? "border-text-strong bg-surface-elevated"
           : "border-border-default hover:border-text-muted bg-surface-elevated"
