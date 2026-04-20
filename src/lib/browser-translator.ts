@@ -74,6 +74,34 @@ export function shouldUseBrowserTranslation(availability: Availability): boolean
   return availability === "available" || availability === "downloadable";
 }
 
+export type TranslatorUnavailableReason = "not-chromium" | "flag-disabled" | "not-available" | null;
+
+/**
+ * Chrome Translator API の利用可否を診断し、利用不可の場合はその理由を返す。
+ * UserSettingsModal でプロバイダ情報を表示するために使う。
+ */
+export async function diagnoseTranslatorAvailability(): Promise<{
+  available: boolean;
+  reason: TranslatorUnavailableReason;
+}> {
+  if (typeof window === "undefined") return { available: false, reason: "not-chromium" };
+  if (typeof window.Translator === "undefined") {
+    const isChromiumBased = /Chrome\//.test(navigator.userAgent);
+    if (isChromiumBased) return { available: false, reason: "flag-disabled" };
+    return { available: false, reason: "not-chromium" };
+  }
+  try {
+    const availability = await window.Translator.availability({
+      sourceLanguage: "en",
+      targetLanguage: "ja",
+    });
+    if (shouldUseBrowserTranslation(availability)) return { available: true, reason: null };
+    return { available: false, reason: "not-available" };
+  } catch {
+    return { available: false, reason: "not-available" };
+  }
+}
+
 /**
  * Chrome Translator API で翻訳を実行する。
  *
