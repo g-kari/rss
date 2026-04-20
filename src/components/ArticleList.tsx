@@ -1105,16 +1105,7 @@ export default function ArticleList({
 
         {/* gallery — masonic による仮想スクロール対応 Pinterest 型 masonry */}
         {layout === "gallery" && galleryDisplayItems.length > 0 && (
-          <div
-            className="p-2 mx-auto"
-            style={
-              galleryColumns !== "auto" && listFocusMode
-                ? {
-                    maxWidth: Number(galleryColumns) * 220 + (Number(galleryColumns) - 1) * 12 + 16,
-                  }
-                : undefined
-            }
-          >
+          <div className="p-2 mx-auto">
             <GalleryItemCtx.Provider
               value={{
                 resolveItemProps,
@@ -1128,7 +1119,9 @@ export default function ArticleList({
                 columnWidth={220}
                 columnGutter={12}
                 overscanBy={6}
-                columns={galleryColumns === "auto" ? null : Number(galleryColumns)}
+                columns={
+                  galleryColumns === "auto" ? (listFocusMode ? 6 : null) : Number(galleryColumns)
+                }
                 itemKey={galleryItemKey}
                 render={GalleryCardRenderer}
               />
