@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 
 interface ColumnConfig {
@@ -91,6 +91,20 @@ export function useColumnResize() {
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
   }
+
+  // ウィンドウフォーカス喪失時にドラッグを強制終了（mouseup 未発火対策）
+  useEffect(() => {
+    function handleBlur() {
+      if (listenersRef.current) {
+        document.removeEventListener("mousemove", listenersRef.current.onMouseMove);
+        document.removeEventListener("mouseup", listenersRef.current.onMouseUp);
+        listenersRef.current = null;
+        dragRef.current = null;
+      }
+    }
+    window.addEventListener("blur", handleBlur);
+    return () => window.removeEventListener("blur", handleBlur);
+  }, []);
 
   function resetWidth(column: "sidebar" | "list") {
     const { defaultWidth, storageKey } = COLUMN_CONFIGS[column];
