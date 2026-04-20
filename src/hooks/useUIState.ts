@@ -117,6 +117,8 @@ export interface UIState {
   listFocusMode: boolean;
   toggleListFocusMode: () => void;
   setListFocusMode: React.Dispatch<React.SetStateAction<boolean>>;
+  /** 両フォーカスモードを同時に OFF にする（終了ボタン用） */
+  exitFocusMode: () => void;
   nsfwMode: boolean;
   showNSFWAnimation: boolean;
   activateNSFW: () => void;
@@ -264,6 +266,11 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     setFocusMode(false);
   }, []);
 
+  const exitFocusMode = useCallback(() => {
+    setFocusMode(false);
+    setListFocusMode(false);
+  }, []);
+
   const toggleAutoRead = useCallback(() => {
     setAutoReadEnabled((v) => {
       const next = !v;
@@ -320,6 +327,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     listFocusMode,
     toggleListFocusMode,
     setListFocusMode,
+    exitFocusMode,
     nsfwMode,
     showNSFWAnimation,
     activateNSFW,

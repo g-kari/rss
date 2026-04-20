@@ -80,6 +80,7 @@ export default function App() {
     toggleFocusMode,
     listFocusMode,
     setListFocusMode,
+    exitFocusMode,
     nsfwMode,
     showNSFWAnimation,
     activateNSFW,
@@ -939,7 +940,7 @@ export default function App() {
           )}
           {/* NSFW 目が開くアニメーション */}
           {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
-          {newArticleCount > 0 && (
+          {newArticleCount > 0 && !focusMode && !listFocusMode && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-ink text-ink-text text-[12px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] animate-fade-up">
               <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
               新着記事 {newArticleCount} 件
@@ -961,6 +962,30 @@ export default function App() {
                 </svg>
               </button>
             </div>
+          )}
+          {/* フォーカスモード解除ボタン（focusMode / listFocusMode どちらかが ON のときのみ表示） */}
+          {(focusMode || listFocusMode) && (
+            <button
+              onClick={exitFocusMode}
+              className="fixed top-3 right-3 z-50 flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
+              aria-label="フォーカスモード解除"
+              title="フォーカスモード解除 (Esc)"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4.5 1.5H1.5v3M7.5 1.5h3v3M1.5 7.5v3h3M10.5 7.5v3h-3" />
+              </svg>
+              フォーカス解除
+            </button>
           )}
           {/* カラムリサイズハンドル (PCのみ、フォーカスモード / 記事一覧フォーカス / ポップアップ表示中は無効) */}
           {!focusMode && !listFocusMode && (
