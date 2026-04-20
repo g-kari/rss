@@ -1014,6 +1014,11 @@ export default function ArticleView({
             >
               翻訳
             </button>
+            {contentTab === "translate" && translateResult?.provider && (
+              <span className="text-[10px] text-text-muted px-1.5 py-0.5 rounded bg-surface-subtle">
+                {translateResult.provider === "browser" ? "Chrome 翻訳" : "Workers AI"}
+              </span>
+            )}
             {contentTab === "translate" && (
               <div className="ml-auto flex items-center gap-1 pb-1">
                 {(["good", "neutral", "bad"] as const).map((rating) => (

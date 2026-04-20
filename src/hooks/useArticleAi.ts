@@ -6,10 +6,15 @@ import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
 import { translateHtmlInBrowser } from "../lib/translate-html";
 
+/** 翻訳プロバイダー識別子 */
+export type TranslationProvider = "browser" | "workers-ai";
+
 /** 翻訳・要約結果は plain text または HTML のどちらも取り得るため区別する */
 export interface AiOperationResult {
   text: string;
   isHtml: boolean;
+  /** 翻訳時のプロバイダー（要約では未設定） */
+  provider?: TranslationProvider;
 }
 
 interface ArticleAiState {
@@ -44,8 +49,10 @@ function decodeCached(cached: string): AiOperationResult {
       "text" in parsed &&
       typeof (parsed as { text: unknown }).text === "string"
     ) {
-      const obj = parsed as { text: string; isHtml?: unknown };
-      return { text: obj.text, isHtml: Boolean(obj.isHtml) };
+      const obj = parsed as { text: string; isHtml?: unknown; provider?: unknown };
+      const provider =
+        obj.provider === "browser" || obj.provider === "workers-ai" ? obj.provider : undefined;
+      return { text: obj.text, isHtml: Boolean(obj.isHtml), provider };
     }
   } catch {
     /* 旧形式 (plain text) としてそのまま返す */
@@ -129,7 +136,11 @@ function useAiOperation(
         });
         const data = (await res.json()) as { result?: string; error?: string };
         if (data.result) {
-          const entry: AiOperationResult = { text: data.result, isHtml: false };
+          const entry: AiOperationResult = {
+            text: data.result,
+            isHtml: false,
+            provider: "workers-ai",
+          };
           if (currentArticleId) lruCache.set(currentArticleId, encodeForCache(entry));
           setResult(entry);
         } else if (data.error) {
@@ -154,7 +165,7 @@ function useAiOperation(
 async function processTranslateHtml(html: string): Promise<AiOperationResult | null> {
   const translated = await translateHtmlInBrowser(html);
   if (translated === null) return null;
-  return { text: translated, isHtml: true };
+  return { text: translated, isHtml: true, provider: "browser" };
 }
 
 export function useArticleAi(articleId: string | undefined): ArticleAiState {
