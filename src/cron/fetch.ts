@@ -10,6 +10,7 @@ import {
   computeNextFetchEarliestAt,
 } from "../lib/fetch";
 import { sendPushToAll, type PushPayload } from "../lib/web-push";
+import { parseRetryAfter as parseRetryAfterRaw } from "../lib/retry-after";
 import { r2Get, r2Put, userPushKey } from "../lib/r2";
 import {
   computeFeedHash,
@@ -56,18 +57,12 @@ export class RateLimitError extends Error {
 const DEFAULT_RATE_LIMIT_MS = 60 * 60 * 1000;
 const MAX_RATE_LIMIT_MS = 24 * 60 * 60 * 1000;
 
+/** cron 用 Retry-After パーサー（デフォルト 1 時間待機） */
 export function parseRetryAfter(header: string | null): number {
-  if (!header) return DEFAULT_RATE_LIMIT_MS;
-  const seconds = parseInt(header, 10);
-  if (!isNaN(seconds) && seconds >= 0) {
-    return Math.min(seconds * 1000, MAX_RATE_LIMIT_MS);
-  }
-  const date = new Date(header);
-  if (!isNaN(date.getTime())) {
-    const ms = date.getTime() - Date.now();
-    if (ms > 0) return Math.min(ms, MAX_RATE_LIMIT_MS);
-  }
-  return DEFAULT_RATE_LIMIT_MS;
+  return parseRetryAfterRaw(header, {
+    fallbackMs: DEFAULT_RATE_LIMIT_MS,
+    maxMs: MAX_RATE_LIMIT_MS,
+  });
 }
 
 // ── 並行制限 ─────────────────────────────────────────────────────

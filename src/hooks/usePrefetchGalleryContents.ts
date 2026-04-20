@@ -7,6 +7,7 @@ import { contentLruCache } from "../lib/lru-cache";
 import { isAbortError } from "../lib/fetch";
 import { collectImageUrlsFromHtml } from "../lib/image-extractor";
 import { collectIframeUrlsFromHtml } from "../lib/embed-utils";
+import { parseRetryAfter } from "../lib/retry-after";
 
 export interface PrefetchedMedia {
   /** 本文から抽出した画像 URL（重複排除済み） */
@@ -24,7 +25,7 @@ interface Options {
   concurrency?: number;
   /** 先頭から何件まで先行取得するか — 画面に最初に表示される枚数分を目安に */
   maxPrefetch?: number;
-  /** 各 fetch 完了後のディレイ (ms) — バースト抑制のため既定 250ms */
+  /** 各 fetch 完了後のディレイ (ms) — バースト抑制のため既定 750ms */
   requestDelayMs?: number;
 }
 
@@ -49,15 +50,19 @@ export function usePrefetchGalleryContents({
   // visible 全件を対象に先行取得する（スクロールで記事が追加されたら次回 useEffect で補完）。
   // 暴走保護として実装上限 200 件は内部で設ける。
   maxPrefetch = Number.POSITIVE_INFINITY,
-  requestDelayMs = 250,
+  requestDelayMs = 750,
 }: Options): Map<string, PrefetchedMedia> {
   const [media, setMedia] = useState<Map<string, PrefetchedMedia>>(() => new Map());
   // enabled=false のとき state を空にすると、切り替え時のチラつきが出るため保持する
   const mediaRef = useRef(media);
   mediaRef.current = media;
+  // 429 受信時に Retry-After で指定された時刻まではプリフェッチを完全停止する
+  const rateLimitUntilRef = useRef<number>(0);
 
   useEffect(() => {
     if (!enabled) return;
+    // サーバー / 上流から Retry-After でクールダウンを指示されている間は一切フェッチしない
+    if (Date.now() < rateLimitUntilRef.current) return;
     // 暴走保護のためハードリミット 200 件。maxPrefetch が Infinity でも上限超過はしない。
     const limit = Math.min(maxPrefetch, 200);
     const targets = articles.slice(0, limit).filter((a) => a.link);
@@ -111,6 +116,14 @@ export function usePrefetchGalleryContents({
         });
         if (res.status === 429) {
           // レート制限を検出したらそのドメイン・アップストリームをこれ以上叩かない
+          // サーバー (api/content) が上流の Retry-After を pass-through しているので、
+          // その値を読んでクールダウン期限を記録し、次回 effect 起動時にも復帰を遅らせる
+          const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"), {
+            fallbackMs: 60_000,
+            // UX 上、プリフェッチの自主停止は最大 10 分に制限
+            maxMs: 10 * 60_000,
+          });
+          rateLimitUntilRef.current = Date.now() + retryAfterMs;
           rateLimited = true;
           controller.abort();
           return;

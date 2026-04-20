@@ -40,6 +40,23 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
     const res = await fetchFollowSafeRedirects(url, ARTICLE_FETCH_OPTS, FETCH_TIMEOUT_MS);
 
     if (!res.ok) {
+      // 上流が 429 を返したら Retry-After をクライアントに pass-through してクールダウン判断を委ねる
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get("Retry-After");
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (retryAfterHeader) headers["Retry-After"] = retryAfterHeader;
+        return NextResponse.json(
+          {
+            error: "Upstream rate limited",
+            code: "RATE_LIMITED",
+            retryable: true,
+            retryAfter: retryAfterHeader,
+          },
+          { status: 429, headers },
+        );
+      }
       // 4xx はクライアント起因（アクセス不可・存在しない）なのでそのまま返す
       // 5xx はゲートウェイエラーとして 502 を返す
       const status = res.status >= 400 && res.status < 500 ? res.status : 502;

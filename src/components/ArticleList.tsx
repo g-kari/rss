@@ -7,6 +7,9 @@ import {
   useState,
   useCallback,
   useRef,
+  createContext,
+  useContext,
+  memo,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -141,6 +144,38 @@ const DATE_RANGE_LABELS: Record<DateRange, string> = {
   week: "今週",
   month: "今月",
 };
+
+// ── ギャラリーレンダラー（チカチカ対策: render の identity を安定化） ─────
+// masonic は render prop の identity 変化で各セルを unmount/remount するため、
+// ArticleList の再 render ごとに新規関数を渡すと全カードが再マウントされる（チカチカ発生）。
+// module scope で memo 化された Component を保持し、動的な closure は Context 経由で供給する。
+
+interface GalleryItemContextValue {
+  resolveItemProps: (article: Article, index: number) => ArticleItemProps;
+  galleryImagesForItem: (articleId: string) => string[] | undefined;
+}
+
+const GalleryItemCtx = createContext<GalleryItemContextValue | null>(null);
+
+const GalleryCardRenderer = memo(function GalleryCardRenderer({
+  data,
+  index,
+}: {
+  data: Article;
+  index: number;
+  width: number;
+}) {
+  const ctx = useContext(GalleryItemCtx);
+  if (!ctx) return null;
+  return (
+    <GalleryArticleItem
+      {...ctx.resolveItemProps(data, index)}
+      prefetchedImages={ctx.galleryImagesForItem(data.id)}
+    />
+  );
+});
+
+const galleryItemKey = (a: Article) => a.id;
 
 // ── メインコンポーネント ───────────────────────────────────────────────
 
@@ -1000,20 +1035,17 @@ export default function ArticleList({
         {/* gallery — masonic による仮想スクロール対応 Pinterest 型 masonry */}
         {layout === "gallery" && visible.length > 0 && (
           <div className="p-2">
-            <GalleryMasonry
-              items={visible}
-              scrollElement={scrollEl}
-              columnWidth={220}
-              columnGutter={12}
-              overscanBy={6}
-              itemKey={(a) => a.id}
-              render={({ data, index }) => (
-                <GalleryArticleItem
-                  {...resolveItemProps(data, index)}
-                  prefetchedImages={galleryImagesForItem(data.id)}
-                />
-              )}
-            />
+            <GalleryItemCtx.Provider value={{ resolveItemProps, galleryImagesForItem }}>
+              <GalleryMasonry
+                items={visible}
+                scrollElement={scrollEl}
+                columnWidth={220}
+                columnGutter={12}
+                overscanBy={6}
+                itemKey={galleryItemKey}
+                render={GalleryCardRenderer}
+              />
+            </GalleryItemCtx.Provider>
           </div>
         )}
 
