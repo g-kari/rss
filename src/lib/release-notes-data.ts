@@ -3,6 +3,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ## 2026-04-21
 
+### リファクタリング
+
+- **リリースノートのページネーション対応** — Issue #151。リリースノートが 3600 行に肥大化しバンドルサイズ・API レスポンスに影響していた問題を解消。\`release-notes-data.ts\` を直近 2 週間分にトリム（3400 行→ 745 行）、API に \`limit\` / \`offset\` パラメータを追加しセクション単位でページネーション、モーダルに「もっと見る」ボタンを追加して段階的読み込みに対応。古いエントリは git history に保持。
+
 ### 新機能
 
 - **ギャラリービューの列数指定機能** — Issue #144。ユーザー設定モーダルに「ギャラリー列数」セグメントを追加（自動 / 2〜8列）。「自動」は従来通り columnWidth=220px ベースで masonic が自動計算、列数指定時はコンテナ幅から columnWidth を逆算して正確に N 列表示。記事一覧フォーカスモード（listFocusMode）時は指定列数に合わせた maxWidth を設定し余白を抑制。設定は localStorage (\`rss-gallery-columns\`) に永続化。
@@ -743,5 +747,4 @@ export const RELEASE_NOTES_MARKDOWN = `
 ### バグ修正
 
 - **\`useFilteredArticles\` の stale closure を修正** — \`serverLoadCount\` 変化時に \`filtered.length\` を参照する \`useEffect\` が古い値を参照する可能性があった問題を修正。\`useSyncedRef(filtered)\` に切り替えて \`eslint-disable\` コメントを除去。
-
 `;
