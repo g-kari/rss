@@ -830,6 +830,59 @@ export function postProcessMarkdownContent(html: string, pageUrl = ""): string {
 }
 
 /**
+ * Readability 退避用プレースホルダークラス名。
+ * Readability の classesToPreserve オプションで保持され、placeholder <p> タグを識別するのに使う。
+ */
+const EMBED_PLACEHOLDER_CLASS = "rss-reader-preserved-embed";
+
+/**
+ * iframe / video / audio タグを Readability 実行前に `<p>` プレースホルダーに退避する。
+ *
+ * Readability は独自の VIDEO_REGEXP (youtube/vimeo/dailymotion/twitch の一部等) に合致しない
+ * iframe を本文外と判定して削除する。signing.jp の embed.nicovideo.jp や Spotify /
+ * SoundCloud 埋込みは VIDEO_REGEXP に含まれず削除されてしまう。
+ *
+ * 対策として、信頼済み埋込みタグを文字列として退避し、Readability にはダミーの <p> を渡す。
+ * 復元時に元のタグに戻す。<p> を使うのは Readability が本文候補として扱って残しやすいため。
+ */
+function preserveTrustedEmbeds(html: string): { html: string; embeds: string[] } {
+  const embeds: string[] = [];
+  const placeholder = (match: string): string => {
+    const idx = embeds.push(match) - 1;
+    // インデックスをテキスト内容に埋め込む（preClean の data-* 除去対策）。
+    // ダミーテキストは Readability が本文候補として保持しやすいよう十分な長さを持たせる。
+    return `<p class="${EMBED_PLACEHOLDER_CLASS}">RSSREADER_EMBED_PLACEHOLDER_${idx}_END preserved embed placeholder. preserved embed placeholder.</p>`;
+  };
+  let result = html;
+  result = result.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe\s*>/gi, placeholder);
+  result = result.replace(/<iframe\b[^>]*\/?>/gi, placeholder);
+  result = result.replace(/<video\b[^>]*>[\s\S]*?<\/video\s*>/gi, placeholder);
+  result = result.replace(/<video\b[^>]*\/?>/gi, placeholder);
+  result = result.replace(/<audio\b[^>]*>[\s\S]*?<\/audio\s*>/gi, placeholder);
+  result = result.replace(/<audio\b[^>]*\/?>/gi, placeholder);
+  return { html: result, embeds };
+}
+
+/**
+ * preserveTrustedEmbeds で埋めたプレースホルダー <p> を元の iframe/video/audio に復元する。
+ *
+ * Readability 出力はタグ名が大文字化される (`<P>`) ことがあるため case-insensitive で照合する。
+ * インデックスはテキスト内容の `RSSREADER_EMBED_PLACEHOLDER_N_END` から抽出する。
+ * インデックスが範囲外なら空文字に置換（fail-safe）。
+ */
+function restoreTrustedEmbeds(html: string, embeds: string[]): string {
+  return html.replace(
+    /<p\b[^>]*class=["'][^"']*rss-reader-preserved-embed[^"']*["'][^>]*>([\s\S]*?)<\/p\s*>/gi,
+    (_match, inner: string) => {
+      const idxMatch = inner.match(/RSSREADER_EMBED_PLACEHOLDER_(\d+)_END/);
+      if (!idxMatch) return "";
+      const idx = Number(idxMatch[1]);
+      return embeds[idx] ?? "";
+    },
+  );
+}
+
+/**
  * Readability 実行前の前処理。DOM パース精度を上げるためノイズを除去する。
  * - <picture> を単純化して <img> のみ残す
  * - <noscript> 内の画像を救出（遅延ロード対策）
@@ -863,7 +916,11 @@ export function preClean(html: string): string {
  */
 export function extractWithReadability(html: string, url: string): string | null {
   try {
-    const { document } = parseHTML(preClean(html));
+    // Readability は独自の VIDEO_REGEXP に合致しない iframe（embed.nicovideo.jp 等）を
+    // 本文外と判定して削除する。信頼済み iframe / video / audio をプレースホルダーに
+    // 退避し、Readability 実行後に復元する。Issue #120 の回帰対策。
+    const { html: preserved, embeds } = preserveTrustedEmbeds(html);
+    const { document } = parseHTML(preClean(preserved));
     try {
       const base = document.createElement("base");
       (base as unknown as { href: string }).href = url;
@@ -872,8 +929,11 @@ export function extractWithReadability(html: string, url: string): string | null
       /* ignore */
     }
 
-    const article = new Readability(document as unknown as Document).parse();
-    return article?.content ?? null;
+    const article = new Readability(document as unknown as Document, {
+      classesToPreserve: [EMBED_PLACEHOLDER_CLASS],
+    }).parse();
+    const content = article?.content ?? null;
+    return content ? restoreTrustedEmbeds(content, embeds) : null;
   } catch {
     return null;
   }

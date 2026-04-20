@@ -391,6 +391,76 @@ test.describe("extractMainContent — Zenn 埋め込み回帰 (Issue #88)", () =
   });
 });
 
+test.describe("extractMainContent — 動画埋込み保持 (Issue #120)", () => {
+  // 報告: 記事本文取得時に iframe や <video> などの動画埋込みが Readability に削除される。
+  // 対策: extractWithReadability 実行前に iframe/video/audio をプレースホルダー化し、後で復元する。
+
+  const buildVideoArticleHtml = (embed: string) => `
+    <html>
+      <head><title>動画埋込みテスト</title></head>
+      <body>
+        <article>
+          <h1>動画埋込みを含む記事</h1>
+          <p>これは動画埋込みを含む記事の本文です。以下の埋込みが本文から削除されないことを確認します。
+          動画コンテンツは記事の重要な要素であり、コンテンツ抽出パイプラインでも保持されるべきです。
+          本記事では Readability が動画タグを除去する挙動に対する回帰テストを定義します。</p>
+          ${embed}
+          <p>埋込みが正常に復元されれば、記事本文として扱えます。読者は埋込み経由でメディアを再生できます。
+          この仕様により動画フィード（YouTube / ニコニコ等）の UX が保たれます。</p>
+        </article>
+      </body>
+    </html>
+  `;
+
+  test("YouTube iframe (/embed/) が Readability 経由でも本文に保持される", () => {
+    const embed = `<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0"></iframe>`;
+    const html = buildVideoArticleHtml(embed);
+    const { content } = extractMainContent(html, "https://example.com/video-article");
+    expect(content).toContain("youtube.com/embed/dQw4w9WgXcQ");
+    expect(content).toContain("<iframe");
+  });
+
+  test("ニコニコ iframe (embed.nicovideo.jp) が Readability 経由でも本文に保持される", () => {
+    const embed = `<iframe src="https://embed.nicovideo.jp/watch/sm9"></iframe>`;
+    const html = buildVideoArticleHtml(embed);
+    const { content } = extractMainContent(html, "https://example.com/nico-article");
+    expect(content).toContain("embed.nicovideo.jp/watch/sm9");
+    expect(content).toContain("<iframe");
+  });
+
+  test("<video> タグが Readability 経由でも本文に保持される", () => {
+    const embed = `<video src="https://example.com/movie.mp4" controls></video>`;
+    const html = buildVideoArticleHtml(embed);
+    const { content } = extractMainContent(html, "https://example.com/video-article");
+    expect(content).toContain("<video");
+    expect(content).toContain("movie.mp4");
+  });
+
+  test("<video><source> で複数ソースを持つ動画が保持される", () => {
+    const embed = `<video controls><source src="https://example.com/movie.webm" type="video/webm"><source src="https://example.com/movie.mp4" type="video/mp4"></video>`;
+    const html = buildVideoArticleHtml(embed);
+    const { content } = extractMainContent(html, "https://example.com/video-article");
+    expect(content).toContain("<video");
+    expect(content).toContain("movie.webm");
+    expect(content).toContain("movie.mp4");
+  });
+
+  test("<audio> タグが Readability 経由でも本文に保持される", () => {
+    const embed = `<audio src="https://example.com/podcast.mp3" controls></audio>`;
+    const html = buildVideoArticleHtml(embed);
+    const { content } = extractMainContent(html, "https://example.com/audio-article");
+    expect(content).toContain("<audio");
+    expect(content).toContain("podcast.mp3");
+  });
+
+  test("信頼できないドメインの iframe はセキュリティ上除去される", () => {
+    const embed = `<iframe src="https://evil.example.com/malicious"></iframe>`;
+    const html = buildVideoArticleHtml(embed);
+    const { content } = extractMainContent(html, "https://example.com/article");
+    expect(content).not.toContain("evil.example.com");
+  });
+});
+
 test.describe("extractMainContent — Color Me Shop ギャラリー (Issue #82)", () => {
   // 報告: shop-pro.jp の商品ページで画像一覧が生成されない。
   // 原因: 商品画像が <form> 内の <div class="p-product-img__main-item"> に格納されており、
