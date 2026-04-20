@@ -4,8 +4,11 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
-import { STORAGE_KEYS, loadJson } from "../lib/storage";
+import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import type { OgpData } from "../types";
+
+/** OGP キャッシュの最大エントリ数（useOgpCache.ts の MAX_OGP_CACHE_SIZE と合わせる） */
+const OGP_CACHE_MAX_ENTRIES = 2000;
 
 /**
  * `useArticleContent` フックの戻り値型。
@@ -77,9 +80,25 @@ export function useArticleContent(
     }
     const controller = new AbortController();
     apiFetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
-      .then((r) => r.json() as Promise<OgpData>)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<OgpData>;
+      })
       .then(({ image }) => {
-        if (image) setResolvedOgImage(image);
+        if (!image) return;
+        setResolvedOgImage(image);
+        // useOgpCache と同じ localStorage に保存して、直接開いた記事でも
+        // 次回以降 /api/ogp を再フェッチしないようにする。
+        // 上限超過時は古いキーから切り詰める（useOgpCache と同じ挙動）。
+        const current = loadJson<Record<string, string>>(STORAGE_KEYS.OGP_CACHE, {});
+        const next = { ...current, [articleLink]: image };
+        const keys = Object.keys(next);
+        saveJson(
+          STORAGE_KEYS.OGP_CACHE,
+          keys.length > OGP_CACHE_MAX_ENTRIES
+            ? Object.fromEntries(keys.slice(-OGP_CACHE_MAX_ENTRIES).map((k) => [k, next[k]]))
+            : next,
+        );
       })
       .catch((err: unknown) => {
         if (isAbortError(err)) return;
