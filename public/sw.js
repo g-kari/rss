@@ -1,7 +1,9 @@
-const CACHE_VERSION = "rss-v3";
+const CACHE_VERSION = "rss-v4";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGE_CACHE = `${CACHE_VERSION}-page`;
 const API_CACHE = `${CACHE_VERSION}-api`;
+
+const API_CACHE_TTL_MS = 5 * 60 * 1000; // 5分
 
 // stale-while-revalidate でキャッシュする API パス（前方一致）
 // /api/auth/me はオフライン時でも認証状態を維持するためにキャッシュする
@@ -24,12 +26,30 @@ self.addEventListener("activate", (e) => {
   self.clients.claim();
 });
 
+/** キャッシュされたレスポンスが TTL 内かを判定 */
+function isCacheFresh(response) {
+  const cached = response.headers.get("sw-cached-at");
+  if (!cached) return false;
+  return Date.now() - Number(cached) < API_CACHE_TTL_MS;
+}
+
+/** レスポンスに sw-cached-at タイムスタンプを付与してキャッシュ用に複製 */
+function stampResponse(response) {
+  const headers = new Headers(response.headers);
+  headers.set("sw-cached-at", String(Date.now()));
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
 
   const { pathname } = new URL(e.request.url);
 
-  // 記事・フィード API: stale-while-revalidate
+  // 記事・フィード API: stale-while-revalidate with TTL
   if (API_CACHE_PATHS.some((p) => pathname.startsWith(p))) {
     e.respondWith(
       (async () => {
@@ -38,20 +58,23 @@ self.addEventListener("fetch", (e) => {
 
         const networkPromise = fetch(e.request)
           .then((res) => {
-            if (res.ok) cache.put(e.request, res.clone());
+            if (res.ok) cache.put(e.request, stampResponse(res.clone()));
             return res;
           })
           .catch(() => null);
 
-        if (cached) {
-          // キャッシュを即座に返しつつ、バックグラウンドでネットワーク更新
+        if (cached && isCacheFresh(cached)) {
+          // TTL 内: キャッシュを即座に返しつつ、バックグラウンドでネットワーク更新
           e.waitUntil(networkPromise);
           return cached;
         }
 
-        // キャッシュなし: ネットワークを待つ
+        // TTL 切れまたはキャッシュなし: ネットワーク優先
         const res = await networkPromise;
         if (res) return res;
+
+        // ネットワーク失敗時は古いキャッシュをフォールバックとして使用
+        if (cached) return cached;
 
         // 完全オフライン + キャッシュなし: 空レスポンスを返す
         return new Response(JSON.stringify([]), {
@@ -127,6 +150,30 @@ self.addEventListener("fetch", (e) => {
 });
 
 // -------------------------------------------------------------------------
+// メッセージング: クライアントからのキャッシュ無効化指示
+// -------------------------------------------------------------------------
+
+self.addEventListener("message", (e) => {
+  if (e.data?.type === "INVALIDATE_API_CACHE") {
+    e.waitUntil(
+      caches.open(API_CACHE).then((cache) => {
+        const paths = e.data.paths;
+        if (!paths || !Array.isArray(paths)) {
+          return cache.keys().then((reqs) => Promise.all(reqs.map((r) => cache.delete(r))));
+        }
+        return cache.keys().then((reqs) => {
+          const toDelete = reqs.filter((r) => {
+            const { pathname } = new URL(r.url);
+            return paths.some((p) => pathname.startsWith(p));
+          });
+          return Promise.all(toDelete.map((r) => cache.delete(r)));
+        });
+      }),
+    );
+  }
+});
+
+// -------------------------------------------------------------------------
 // Web Push 通知
 // -------------------------------------------------------------------------
 
@@ -146,7 +193,6 @@ self.addEventListener("push", (e) => {
       body: data.body,
       icon: "/icon-192.png",
       badge: "/icon-192.png",
-      // 同じタグで上書きすることで通知が積み重なることを防ぐ
       tag: "rss-new-articles",
       renotify: true,
       data: { url: data.url },
@@ -160,7 +206,6 @@ self.addEventListener("notificationclick", (e) => {
   const rawUrl = e.notification.data?.url ?? "/";
 
   // VAPID 鍵漏洩時の悪意あるプッシュ通知によるオープンリダイレクト防止。
-  // 受信した url が同一オリジンであることを検証し、不正な URL はルートにフォールバックする。
   let url = "/";
   try {
     const parsed = new URL(rawUrl, self.location.origin);
@@ -173,7 +218,6 @@ self.addEventListener("notificationclick", (e) => {
 
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      // 既存タブがあればフォーカス
       for (const client of windowClients) {
         try {
           if (new URL(client.url).origin === self.location.origin) {
@@ -183,7 +227,6 @@ self.addEventListener("notificationclick", (e) => {
           // URL パース失敗は無視
         }
       }
-      // なければ新規タブで開く
       return self.clients.openWindow(url);
     }),
   );

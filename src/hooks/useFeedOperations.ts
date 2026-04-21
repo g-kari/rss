@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { Feed } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
+import { invalidateSwCache } from "../lib/sw-cache";
 import { useAutoReset } from "./useAutoReset";
 
 interface Callbacks {
@@ -66,6 +67,7 @@ export function useFeedOperations({
         return { canRetryWithSelector: data.canRetryWithSelector };
       }
       const feed = (await res.json()) as Feed;
+      invalidateSwCache(["/api/feeds", "/api/articles"]);
       onSuccess();
       onFeedAdded(feed);
     } catch {
@@ -78,6 +80,7 @@ export function useFeedOperations({
   async function deleteFeed(id: string) {
     try {
       await apiFetchJson(`/api/feeds/${id}`, { method: "DELETE" });
+      invalidateSwCache(["/api/feeds", "/api/articles"]);
       onFeedDeleted(id);
     } catch {
       setError("フィードの削除に失敗しました");
@@ -115,6 +118,7 @@ export function useFeedOperations({
       }
       const data = (await res.json()) as { added: number; skipped: number; feeds: Feed[] };
       if (data.added > 0) {
+        invalidateSwCache(["/api/feeds", "/api/articles"]);
         onFeedsImported(data.feeds);
       }
       showImportMessage({

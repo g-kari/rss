@@ -9,7 +9,7 @@
     "build": "next build",
     "preview": "wrangler dev",
     "build:cf": "npx @opennextjs/cloudflare build && node scripts/add-scheduled-handler.mjs",
-    "deploy": "npm run build:cf && wrangler deploy",
+    "deploy": "node scripts/stamp-sw-version.mjs && npm run build:cf && wrangler deploy",
     "typecheck": "tsc --noEmit",
     "check": "vp check",
     "check:fix": "vp check --fix",
