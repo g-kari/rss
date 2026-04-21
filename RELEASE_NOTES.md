@@ -1,5 +1,11 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-04-22
+
+### リファクタリングっ
+
+- **FeedSidebar を feed-sidebar/ ディレクトリに分割** — Issue #170。1767 行の巨大コンポーネントを `FeedGroupsSection` / `FeedViewTabs` / `SpecialViewButton` / `FooterIconButton` + `StatItem` の 5 ファイルに切り出したよ〜！メインの `index.tsx` は 1125 行に削減されてメンテしやすくなっちゃう🧹✨
+
 ## 2026-04-21
 
 ### コードレビューっ
