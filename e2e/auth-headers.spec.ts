@@ -85,7 +85,7 @@ test.describe("isCloudflareBlock — Cloudflare WAF challenge 判定", () => {
 });
 
 test.describe("exchangeCode — 認証ヘッダー", () => {
-  test("INTERNAL_SERVICE_SECRET 未設定 → X-Internal-Secret は送られない", async () => {
+  test("INTERNAL_SERVICE_SECRET_RSS 未設定 → X-Internal-Secret は送られない", async () => {
     const capturedHeaders: Record<string, string> = {};
     const mock: FetchFn = async (_url, init) => {
       const headers = new Headers(init?.headers);
@@ -106,14 +106,14 @@ test.describe("exchangeCode — 認証ヘッダー", () => {
     const result = await withMockFetch(
       mock,
       () => exchangeCode("code", "https://rss.example.test/api/auth/callback"),
-      { ...BASE_ENV, INTERNAL_SERVICE_SECRET: undefined },
+      { ...BASE_ENV, INTERNAL_SERVICE_SECRET_RSS: undefined },
     );
     expect(result).not.toBeNull();
     expect(capturedHeaders["x-internal-secret"]).toBeUndefined();
     expect(capturedHeaders["authorization"]).toMatch(/^Basic /);
   });
 
-  test("INTERNAL_SERVICE_SECRET 設定あり → X-Internal-Secret が送られる", async () => {
+  test("INTERNAL_SERVICE_SECRET_RSS 設定あり → X-Internal-Secret が送られる", async () => {
     const capturedHeaders: Record<string, string> = {};
     const mock: FetchFn = async (_url, init) => {
       const headers = new Headers(init?.headers);
@@ -134,7 +134,7 @@ test.describe("exchangeCode — 認証ヘッダー", () => {
     const result = await withMockFetch(
       mock,
       () => exchangeCode("code", "https://rss.example.test/api/auth/callback"),
-      { ...BASE_ENV, INTERNAL_SERVICE_SECRET: "my-shared-secret" },
+      { ...BASE_ENV, INTERNAL_SERVICE_SECRET_RSS: "my-shared-secret" },
     );
     expect(result).not.toBeNull();
     expect(capturedHeaders["x-internal-secret"]).toBe("my-shared-secret");
@@ -151,12 +151,12 @@ test.describe("exchangeCode — 認証ヘッダー", () => {
     const result = await withMockFetch(
       mock,
       () => exchangeCode("code", "https://rss.example.test/api/auth/callback"),
-      { ...BASE_ENV, INTERNAL_SERVICE_SECRET: undefined },
+      { ...BASE_ENV, INTERNAL_SERVICE_SECRET_RSS: undefined },
     );
     expect(result).toBeNull();
   });
 
-  test("INTERNAL_SERVICE_SECRET 設定済みでも Cloudflare でブロックされたら null 返却", async () => {
+  test("INTERNAL_SERVICE_SECRET_RSS 設定済みでも Cloudflare でブロックされたら null 返却", async () => {
     const mock: FetchFn = async () =>
       new Response(
         `<!DOCTYPE html><html><head><title>Attention Required! | Cloudflare</title></head></html>`,
@@ -165,7 +165,7 @@ test.describe("exchangeCode — 認証ヘッダー", () => {
     const result = await withMockFetch(
       mock,
       () => exchangeCode("code", "https://rss.example.test/api/auth/callback"),
-      { ...BASE_ENV, INTERNAL_SERVICE_SECRET: "configured-but-still-blocked" },
+      { ...BASE_ENV, INTERNAL_SERVICE_SECRET_RSS: "configured-but-still-blocked" },
     );
     expect(result).toBeNull();
   });
