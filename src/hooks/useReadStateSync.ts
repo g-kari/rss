@@ -15,13 +15,15 @@ import {
   serializeReadState,
 } from "../lib/read-state-storage";
 import { apiFetch } from "../lib/api-fetch";
+import { isReadState } from "../lib/type-guards";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
 async function fetchReadState(): Promise<ReadState | null> {
   try {
     const res = await apiFetch("/api/read-state");
     if (!res.ok) return null;
-    return res.json() as Promise<ReadState>;
+    const data: unknown = await res.json();
+    return isReadState(data) ? data : null;
   } catch {
     return null;
   }
@@ -41,8 +43,9 @@ async function saveReadState(body: string): Promise<SaveResult> {
       body,
     });
     if (!res.ok) return { ok: false, status: res.status };
-    const state = (await res.json()) as ReadState;
-    return { ok: true, state };
+    const data: unknown = await res.json();
+    if (!isReadState(data)) return { ok: false };
+    return { ok: true, state: data };
   } catch {
     return { ok: false };
   }

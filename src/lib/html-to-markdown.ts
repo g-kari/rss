@@ -42,6 +42,7 @@ function parseHtml(html: string): DOMNode {
 
   // Node.js / テスト環境 (linkedom/worker)
   const { document: doc } = parseHTML(`<html><body><div id="__root__">${html}</div></body></html>`);
+  // linkedom の Document 型は DOMNode[] を持つ body を型定義で公開しないため、unknown 経由でキャスト
   const body = (doc as unknown as { body: DOMNode }).body;
   // __root__ div を探す
   for (const child of body.childNodes) {

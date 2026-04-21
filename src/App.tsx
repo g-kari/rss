@@ -33,6 +33,7 @@ import { useHasOpenPopup } from "./hooks/usePopupLock";
 import { updateFaviconBadge } from "./lib/favicon";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "./lib/export-markdown";
 import { apiFetch, onApiError } from "./lib/api-fetch";
+import { isFeed, isArticle } from "./lib/type-guards";
 import { normalizeFilter, matchesKeywordFilter } from "./lib/keyword-filter";
 import { isArticleRead } from "./lib/article-filter";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
@@ -332,7 +333,8 @@ export default function App() {
         body: JSON.stringify(body),
       });
       if (!res.ok) return null;
-      return res.json() as Promise<Feed>;
+      const data: unknown = await res.json();
+      return isFeed(data) ? data : null;
     },
     [],
   );
@@ -416,17 +418,21 @@ export default function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url }),
         });
-        const data = (await res.json()) as Article & { error?: string };
+        const raw = (await res.json()) as { error?: string };
         if (!res.ok) {
-          showToast(data.error ?? "保存に失敗しました");
+          showToast(raw.error ?? "保存に失敗しました");
           return;
         }
-        prependArticle(data);
+        if (!isArticle(raw)) {
+          showToast("保存に失敗しました");
+          return;
+        }
+        prependArticle(raw);
         if (mode === "bookmark") {
-          toggleBookmark(data.id);
+          toggleBookmark(raw.id);
           showToast("ブックマークに追加しました");
         } else {
-          toggleReadingList(data.id);
+          toggleReadingList(raw.id);
           showToast("後で読むに追加しました");
         }
       } catch {
