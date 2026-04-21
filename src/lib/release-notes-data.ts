@@ -3,6 +3,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ## 2026-04-22
 
+### セキュリティ対策っ
+
+- **\`hasDangerousScheme()\` の NBSP バイパス対策** — Issue #178。\`&#160;javascript:\` や \`&nbsp;javascript:\` みたいな NO-BREAK SPACE（U+00A0）を使った XSS バイパス手法を検出できなかったやつを修正したよ〜！\`&nbsp;\` / \`&NonBreakingSpace;\` 名前付き文字参照のデコードと U+00A0 の除去を追加して、よりしっかりガードできるようになったの🔒✨
+
 ### リファクタリングっ
 
 - **FeedSidebar を feed-sidebar/ ディレクトリに分割** — Issue #170。1767 行の巨大コンポーネントを \`FeedGroupsSection\` / \`FeedViewTabs\` / \`SpecialViewButton\` / \`FooterIconButton\` + \`StatItem\` の 5 ファイルに切り出したよ〜！メインの \`index.tsx\` は 1125 行に削減されてメンテしやすくなっちゃう🧹✨
