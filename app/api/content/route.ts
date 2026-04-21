@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withSession } from "@/lib/server-auth";
+import { withSession, type AuthSession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { matchCfCache } from "@/lib/cache-helper";
 import { isValidFeedUrl } from "@/lib/url";
@@ -13,12 +13,21 @@ import {
   FETCH_TIMEOUT_MS,
   MAX_CONTENT_BYTES,
 } from "@/lib/fetch-article-content";
+import { checkSlidingWindow } from "@/lib/rate-limit";
+import { contentFetchRateLimitKey } from "@/lib/r2";
+const CONTENT_WINDOW_MS = 60 * 1000;
+const CONTENT_MAX_CALLS = 30;
 
 export async function GET(request: Request) {
-  return withSession(request, ({ ctx }) => handleGet(request, ctx));
+  return withSession(request, ({ session, env, ctx }) => handleGet(request, session, env, ctx));
 }
 
-async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextResponse> {
+async function handleGet(
+  request: Request,
+  session: AuthSession,
+  env: { RSS_DATA: R2Bucket },
+  ctx: ExecutionContext,
+): Promise<NextResponse> {
   const reqUrl = new URL(request.url);
   const url = reqUrl.searchParams.get("url");
   if (!url) return apiError("url is required", 400, { code: "INVALID_URL" });
@@ -29,12 +38,21 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
 
   const cacheKey = await buildContentCacheKey(reqUrl.origin, url);
 
-  // Cloudflare Cache API で確認
+  // Cloudflare Cache API で確認（キャッシュヒット時はレートリミットを消費しない）
   const cached = await matchCfCache(cacheKey);
   if (cached) {
     const data = (await cached.json()) as { content: string };
     return NextResponse.json(data, { headers: { "X-Cache": "HIT" } });
   }
+
+  // キャッシュミス時のみレートリミットを確認（外部フェッチを保護）
+  const limited = await checkSlidingWindow(
+    env.RSS_DATA,
+    contentFetchRateLimitKey(session.userId),
+    CONTENT_WINDOW_MS,
+    CONTENT_MAX_CALLS,
+  );
+  if (limited) return limited;
 
   try {
     const res = await fetchFollowSafeRedirects(url, ARTICLE_FETCH_OPTS, FETCH_TIMEOUT_MS);

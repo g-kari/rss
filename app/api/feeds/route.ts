@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
+import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+import { feedAddCooldownKey } from "@/lib/r2";
 import { isValidFeedUrl } from "@/lib/url";
 import { discoverFeedUrl } from "@/lib/feed-discovery";
 import { resolveRSSHubUrl, getRSSHubInstance } from "@/lib/rsshub";
@@ -66,6 +68,14 @@ export async function POST(request: Request) {
       useRsshub?: unknown;
     }>(request);
     if (!parsed.ok) return parsed.error;
+
+    const limited = await checkAndUpdateCooldown(
+      env.RSS_DATA,
+      feedAddCooldownKey(session.userId),
+      30 * 1000,
+    );
+    if (limited) return limited;
+
     const body = parsed.data;
     let url = typeof body?.url === "string" ? body.url.trim() : "";
     if (!url) return apiError("url is required", 400, { code: "INVALID_URL" });
