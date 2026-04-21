@@ -10,7 +10,7 @@
  */
 
 /** 画像一覧・DL対象の最小サイズ（短辺・長辺いずれかが到達していれば対象） */
-export const MIN_IMAGE_SIZE_PX = 100;
+export const MIN_IMAGE_SIZE_PX = 160;
 
 /**
  * srcset 属性文字列の最後のエントリ（最高解像度）の URL を返す。
