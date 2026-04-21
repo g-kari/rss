@@ -260,6 +260,14 @@ export interface FeedGroup {
   createdAt: string;
 }
 
+export interface Collection {
+  id: string;
+  name: string;
+  articleIds: string[];
+  createdAt: string;
+  order: number;
+}
+
 /** `/api/read-state` POST ボディ型 — 追加差分・削除差分・単値フィールドを一括送信 */
 export interface ReadStatePayload {
   readIds: string[];
