@@ -85,3 +85,13 @@ export function recommendationsCooldownKey(userId: string): string {
 export function recommendationsGenCooldownKey(userId: string): string {
   return `users/${userId}/recommendations-gen.json`;
 }
+
+/** フィード追加のクールダウン管理キーを返す */
+export function feedAddCooldownKey(userId: string): string {
+  return `users/${userId}/feed-add-cooldown.json`;
+}
+
+/** 記事全文取得のスライディングウィンドウ レートリミット管理キーを返す */
+export function contentFetchRateLimitKey(userId: string): string {
+  return `users/${userId}/content-fetch-rate-limit.json`;
+}
