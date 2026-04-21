@@ -80,10 +80,15 @@ function hasDangerousScheme(val: string): boolean {
     //   &Tab;     → U+0009 (TAB)     ブラウザが URL パース時に先頭から除去
     //   &NewLine; → U+000A (LF)      同上
     //   &colon;   → U+003A (:)       "javascript&colon;alert()" で : をエンコードするバイパス
-    .replace(/&(Tab|NewLine|colon);/g, (_, e) =>
-      e === "Tab" ? "\t" : e === "NewLine" ? "\n" : ":",
-    )
-    .replace(/[\u0000-\u0020\u007F]/g, "");
+    //   &nbsp; / &NonBreakingSpace; → U+00A0 (&#160;) 以下の除去対象
+    .replace(/&(Tab|NewLine|colon|nbsp|NonBreakingSpace);/gi, (_, e) => {
+      const el = e.toLowerCase();
+      if (el === "colon") return ":";
+      return el === "tab" ? "\t" : el === "newline" ? "\n" : " ";
+    })
+    // U+0000-U+0020: ASCII 制御文字・空白, U+007F: DEL
+    // U+00A0: NO-BREAK SPACE（&#160; / &nbsp; のデコード後残留対策）
+    .replace(/[\u0000-\u0020\u007F\u00A0]/g, "");
   return /^(?:javascript|vbscript|data):/i.test(decoded);
 }
 
