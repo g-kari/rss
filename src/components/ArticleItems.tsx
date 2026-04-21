@@ -1,9 +1,10 @@
 "use client";
 
-import { memo, type ReactNode } from "react";
+import { memo, useContext, type ReactNode } from "react";
 import type { Article } from "../types";
 import { readingTime, timeAgo } from "../lib/article-utils";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
+import { SelectedArticleCtx } from "../contexts/SelectedArticleContext";
 
 // ── 共通 Props ──────────────────────────────────────────────────────────
 
@@ -12,7 +13,8 @@ export interface ArticleItemProps {
   index: number;
   isRead: boolean;
   isBookmarked: boolean;
-  isSelected: boolean;
+  /** 削除アニメーション中（既読フィルタなどで visible から抜けた直後の猶予期間） */
+  isDeleting?: boolean;
   hasNote: boolean;
   feedName: string;
   thumb: string | undefined;
@@ -222,7 +224,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   index,
   isRead,
   isBookmarked,
-  isSelected,
+  isDeleting,
   hasNote,
   feedName,
   showFeedName,
@@ -231,11 +233,15 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   onToggleRead,
   onToggleBookmark,
 }: ArticleItemProps) {
+  const selectedId = useContext(SelectedArticleCtx);
+  const isSelected = selectedId === article.id;
   return (
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
+        isDeleting ? "opacity-0 pointer-events-none" : ""
+      } ${
         isSelected
           ? "bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]"
           : "hover:bg-surface-hover"
@@ -279,7 +285,7 @@ export const ListArticleItem = memo(function ListArticleItem({
   index,
   isRead,
   isBookmarked,
-  isSelected,
+  isDeleting,
   hasNote,
   feedName,
   thumb,
@@ -289,11 +295,15 @@ export const ListArticleItem = memo(function ListArticleItem({
   onToggleRead,
   onToggleBookmark,
 }: ArticleItemProps) {
+  const selectedId = useContext(SelectedArticleCtx);
+  const isSelected = selectedId === article.id;
   return (
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       className={`group flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
+        isDeleting ? "opacity-0 pointer-events-none" : ""
+      } ${
         isSelected
           ? "bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]"
           : "hover:bg-surface-hover"
@@ -351,7 +361,7 @@ export const CardArticleItem = memo(function CardArticleItem({
   index,
   isRead,
   isBookmarked,
-  isSelected,
+  isDeleting,
   hasNote,
   feedName,
   thumb,
@@ -361,11 +371,15 @@ export const CardArticleItem = memo(function CardArticleItem({
   onToggleRead,
   onToggleBookmark,
 }: ArticleItemProps) {
+  const selectedId = useContext(SelectedArticleCtx);
+  const isSelected = selectedId === article.id;
   return (
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 animate-fade-up overflow-hidden ${
+        isDeleting ? "opacity-0 pointer-events-none" : ""
+      } ${
         isSelected
           ? "border-text-strong bg-surface-elevated"
           : "border-border-default hover:border-text-muted bg-surface-elevated"
@@ -435,7 +449,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   article,
   isRead,
   isBookmarked,
-  isSelected,
+  isDeleting,
   hasNote,
   feedName,
   thumb,
@@ -445,11 +459,15 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   onToggleRead,
   onToggleBookmark,
 }: Omit<ArticleItemProps, "index">) {
+  const selectedId = useContext(SelectedArticleCtx);
+  const isSelected = selectedId === article.id;
   return (
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 animate-fade-up ${
+        isDeleting ? "opacity-0 pointer-events-none" : ""
+      } ${
         isSelected
           ? "border-text-strong bg-surface-elevated"
           : "border-border-default hover:border-text-muted bg-surface-elevated"
@@ -516,7 +534,6 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   article,
   isRead,
   isBookmarked,
-  isSelected,
   hasNote,
   feedName,
   thumb,
@@ -526,7 +543,9 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   onToggleRead,
   onToggleBookmark,
   prefetchedImages,
-}: Omit<ArticleItemProps, "index"> & GalleryItemExtraProps) {
+}: Omit<ArticleItemProps, "index" | "isDeleting"> & GalleryItemExtraProps) {
+  const selectedId = useContext(SelectedArticleCtx);
+  const isSelected = selectedId === article.id;
   const hasMultipleImages = !!prefetchedImages && prefetchedImages.length > 0;
   return (
     <div

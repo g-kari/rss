@@ -23,6 +23,7 @@ import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import type { Article, Feed, FeedView, Layout, DateRange } from "../types";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
+import { SelectedArticleCtx } from "../contexts/SelectedArticleContext";
 import { SHORTCUT_MAP } from "../config/shortcuts";
 import FeedFilterModal from "./FeedFilterModal";
 import { useOgpCache } from "../hooks/useOgpCache";
@@ -372,12 +373,16 @@ export default function ArticleList({
     setScrollEl(scrollContainerRef.current);
   }, []);
 
+  // compact / list / card / magazine — visible から抜けた記事を 250ms フェードアウト
+  const { displayItems: nonGalleryDisplayItems, deletingIds: nonGalleryDeletingIds } =
+    useDelayedGalleryItems(visible, getArticleId, 250);
+
   // compact / list 用フラットアイテムリスト（日付ヘッダーを含む）
   const flatItems = useMemo<FlatItem[]>(() => {
     if (layout !== "compact" && layout !== "list") return [];
     const items: FlatItem[] = [];
     let lastLabel = "";
-    visible.forEach((a, i) => {
+    nonGalleryDisplayItems.forEach((a, i) => {
       const label = getDateGroupLabel(a.publishedAt);
       if (label !== lastLabel) {
         items.push({ type: "header", label, key: `header-${label}-${i}` });
@@ -386,17 +391,17 @@ export default function ArticleList({
       items.push({ type: "article", article: a, articleIndex: i, key: a.id });
     });
     return items;
-  }, [visible, layout]);
+  }, [nonGalleryDisplayItems, layout]);
 
   // card 用行リスト（2列ずつ）
   const cardRows = useMemo<Article[][]>(() => {
     if (layout !== "card") return [];
     const rows: Article[][] = [];
-    for (let i = 0; i < visible.length; i += 2) {
-      rows.push(visible.slice(i, Math.min(i + 2, visible.length)));
+    for (let i = 0; i < nonGalleryDisplayItems.length; i += 2) {
+      rows.push(nonGalleryDisplayItems.slice(i, Math.min(i + 2, nonGalleryDisplayItems.length)));
     }
     return rows;
-  }, [visible, layout]);
+  }, [nonGalleryDisplayItems, layout]);
 
   // compact / list 用バーチャライザー
   const listVirtualizer = useVirtualizer({
@@ -503,14 +508,18 @@ export default function ArticleList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedArticleId, layout]);
 
-  /** 記事ごとの表示用状態を解決する（ハンドラは親の安定参照を直接渡す） */
-  function resolveItemProps(article: Article, index: number): ArticleItemProps {
-    return {
+  /** 記事ごとの表示用状態を解決する（ハンドラは親の安定参照を直接渡す）
+   * isSelected は SelectedArticleCtx 経由で各アイテムが自己参照するため含めない。
+   * これにより selectedArticleId が変わっても全アイテムが re-render されず、
+   * 前後 2 件（旧選択・新選択）のみが更新される。
+   */
+  const resolveItemProps = useCallback(
+    (article: Article, index: number, isDeleting?: boolean): ArticleItemProps => ({
       article,
       index,
       isRead: isArticleRead(article, readIds, readBeforeTimestamp),
       isBookmarked: bookmarkIds.has(article.id),
-      isSelected: selectedArticleId === article.id,
+      isDeleting,
       hasNote: !!notes?.[article.id],
       feedName: feedMap.get(article.feedHash) ?? "",
       thumb: resolveThumbnail(article, ogpCache),
@@ -519,8 +528,21 @@ export default function ArticleList({
       onSelectArticle,
       onToggleRead,
       onToggleBookmark,
-    };
-  }
+    }),
+    [
+      readIds,
+      readBeforeTimestamp,
+      bookmarkIds,
+      notes,
+      feedMap,
+      ogpCache,
+      showFeedName,
+      query,
+      onSelectArticle,
+      onToggleRead,
+      onToggleBookmark,
+    ],
+  );
 
   return (
     <section className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-base">
@@ -1068,129 +1090,159 @@ export default function ArticleList({
         </div>
       </div>
 
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto">
-        {loading && filtered.length === 0 && (
-          <div className="flex items-center justify-center h-40">
-            <p className="text-[12px] text-text-faint">読み込み中...</p>
-          </div>
-        )}
-        {!loading && filtered.length === 0 && (
-          <div className="flex items-center justify-center h-40">
-            <p className="text-[12px] text-text-faint">記事がありません</p>
-          </div>
-        )}
-
-        {/* compact / list — 仮想スクロール */}
-        {(layout === "compact" || layout === "list") && flatItems.length > 0 && (
-          <div style={{ height: listVirtualizer.getTotalSize(), position: "relative" }}>
-            {listVirtualizer.getVirtualItems().map((vItem) => {
-              const item = flatItems[vItem.index];
-              if (!item) return null;
-              return (
-                <div
-                  key={vItem.key}
-                  data-index={vItem.index}
-                  ref={listVirtualizer.measureElement}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateY(${vItem.start}px)`,
-                  }}
-                >
-                  {item.type === "header" ? (
-                    <div className="px-4 pt-3 pb-1">
-                      <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-                        {item.label}
-                      </span>
-                    </div>
-                  ) : layout === "compact" ? (
-                    <CompactArticleItem {...resolveItemProps(item.article, item.articleIndex)} />
-                  ) : (
-                    <ListArticleItem {...resolveItemProps(item.article, item.articleIndex)} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* card — 仮想スクロール（2列ずつ行単位で仮想化） */}
-        {layout === "card" && cardRows.length > 0 && (
-          <div style={{ height: cardVirtualizer.getTotalSize() + 16, position: "relative" }}>
-            {cardVirtualizer.getVirtualItems().map((vItem) => {
-              const row = cardRows[vItem.index];
-              if (!row) return null;
-              return (
-                <div
-                  key={vItem.key}
-                  data-index={vItem.index}
-                  ref={cardVirtualizer.measureElement}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateY(${vItem.start}px)`,
-                    padding: "4px 8px",
-                  }}
-                >
-                  <div className="grid grid-cols-2 gap-2">
-                    {row.map((a, ri) => (
-                      <CardArticleItem key={a.id} {...resolveItemProps(a, vItem.index * 2 + ri)} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* magazine — 仮想スクロールなし（先頭フィーチャー記事 + コンパクトリスト） */}
-        {layout === "magazine" && visible.length > 0 && (
-          <>
-            <div className="p-2">
-              <MagazineFeaturedArticleItem {...resolveItemProps(visible[0], 0)} />
+      <SelectedArticleCtx.Provider value={selectedArticleId ?? null}>
+        <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto">
+          {loading && filtered.length === 0 && (
+            <div className="flex items-center justify-center h-40">
+              <p className="text-[12px] text-text-faint">読み込み中...</p>
             </div>
-            {visible.slice(1).map((a, i) => (
-              <CompactArticleItem key={a.id} {...resolveItemProps(a, i + 1)} />
-            ))}
-          </>
-        )}
+          )}
+          {!loading && filtered.length === 0 && (
+            <div className="flex items-center justify-center h-40">
+              <p className="text-[12px] text-text-faint">記事がありません</p>
+            </div>
+          )}
 
-        {/* gallery — masonic による仮想スクロール対応 Pinterest 型 masonry */}
-        {layout === "gallery" && galleryDisplayItems.length > 0 && (
-          <div className="p-2 mx-auto">
-            <GalleryItemCtx.Provider
-              value={{
-                resolveItemProps,
-                galleryImagesForItem,
-                deletingIds: galleryDeletingIds,
-                onGalleryContextMenu: handleGalleryContextMenu,
-              }}
-            >
-              <GalleryMasonry
-                items={galleryDisplayItems}
-                scrollElement={scrollEl}
-                columnWidth={220}
-                columnGutter={12}
-                overscanBy={6}
-                columns={
-                  galleryColumns === "auto" ? (listFocusMode ? 6 : null) : Number(galleryColumns)
-                }
-                itemKey={galleryItemKey}
-                render={GalleryCardRenderer}
-              />
-            </GalleryItemCtx.Provider>
-          </div>
-        )}
+          {/* compact / list — 仮想スクロール */}
+          {(layout === "compact" || layout === "list") && flatItems.length > 0 && (
+            <div style={{ height: listVirtualizer.getTotalSize(), position: "relative" }}>
+              {listVirtualizer.getVirtualItems().map((vItem) => {
+                const item = flatItems[vItem.index];
+                if (!item) return null;
+                return (
+                  <div
+                    key={vItem.key}
+                    data-index={vItem.index}
+                    ref={listVirtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${vItem.start}px)`,
+                    }}
+                  >
+                    {item.type === "header" ? (
+                      <div className="px-4 pt-3 pb-1">
+                        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                          {item.label}
+                        </span>
+                      </div>
+                    ) : layout === "compact" ? (
+                      <CompactArticleItem
+                        {...resolveItemProps(
+                          item.article,
+                          item.articleIndex,
+                          nonGalleryDeletingIds.has(item.article.id),
+                        )}
+                      />
+                    ) : (
+                      <ListArticleItem
+                        {...resolveItemProps(
+                          item.article,
+                          item.articleIndex,
+                          nonGalleryDeletingIds.has(item.article.id),
+                        )}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-        <div ref={sentinelRef} className="h-10" aria-hidden />
-        {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
-          <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
-        )}
-      </div>
+          {/* card — 仮想スクロール（2列ずつ行単位で仮想化） */}
+          {layout === "card" && cardRows.length > 0 && (
+            <div style={{ height: cardVirtualizer.getTotalSize() + 16, position: "relative" }}>
+              {cardVirtualizer.getVirtualItems().map((vItem) => {
+                const row = cardRows[vItem.index];
+                if (!row) return null;
+                return (
+                  <div
+                    key={vItem.key}
+                    data-index={vItem.index}
+                    ref={cardVirtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${vItem.start}px)`,
+                      padding: "4px 8px",
+                    }}
+                  >
+                    <div className="grid grid-cols-2 gap-2">
+                      {row.map((a, ri) => (
+                        <CardArticleItem
+                          key={a.id}
+                          {...resolveItemProps(
+                            a,
+                            vItem.index * 2 + ri,
+                            nonGalleryDeletingIds.has(a.id),
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* magazine — 仮想スクロールなし（先頭フィーチャー記事 + コンパクトリスト） */}
+          {layout === "magazine" && nonGalleryDisplayItems.length > 0 && (
+            <>
+              <div className="p-2">
+                <MagazineFeaturedArticleItem
+                  {...resolveItemProps(
+                    nonGalleryDisplayItems[0],
+                    0,
+                    nonGalleryDeletingIds.has(nonGalleryDisplayItems[0].id),
+                  )}
+                />
+              </div>
+              {nonGalleryDisplayItems.slice(1).map((a, i) => (
+                <CompactArticleItem
+                  key={a.id}
+                  {...resolveItemProps(a, i + 1, nonGalleryDeletingIds.has(a.id))}
+                />
+              ))}
+            </>
+          )}
+
+          {/* gallery — masonic による仮想スクロール対応 Pinterest 型 masonry */}
+          {layout === "gallery" && galleryDisplayItems.length > 0 && (
+            <div className="p-2 mx-auto">
+              <GalleryItemCtx.Provider
+                value={{
+                  resolveItemProps,
+                  galleryImagesForItem,
+                  deletingIds: galleryDeletingIds,
+                  onGalleryContextMenu: handleGalleryContextMenu,
+                }}
+              >
+                <GalleryMasonry
+                  items={galleryDisplayItems}
+                  scrollElement={scrollEl}
+                  columnWidth={220}
+                  columnGutter={12}
+                  overscanBy={6}
+                  columns={
+                    galleryColumns === "auto" ? (listFocusMode ? 6 : null) : Number(galleryColumns)
+                  }
+                  itemKey={galleryItemKey}
+                  render={GalleryCardRenderer}
+                />
+              </GalleryItemCtx.Provider>
+            </div>
+          )}
+
+          <div ref={sentinelRef} className="h-10" aria-hidden />
+          {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
+            <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
+          )}
+        </div>
+      </SelectedArticleCtx.Provider>
       {globalFilterModalOpen && (
         <FeedFilterModal
           initialFilter={globalFilter}
