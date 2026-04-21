@@ -2,6 +2,10 @@
 
 ## 2026-04-21
 
+### パフォーマンス改善っ
+
+- **KaTeX CSS を動的ロードに変更** — Issue #169。数式がない記事でも毎回読み込まれてた KaTeX のスタイルシート（~28KB）を、数式レンダリング時にだけ遅延ロードするようにしたよ〜！初回表示がちょっと軽くなっちゃう🚀✨
+
 ### バグ修正っ
 
 - **ログイン認証を Basic 認証に統一** — 0g0-id が共有 `INTERNAL_SERVICE_SECRET` を完全撤去（Phase 9）したので、RSS 側も `X-Internal-Secret` / `X-BFF-Origin` ヘッダーを削除して Basic 認証（`CLIENT_ID`/`CLIENT_SECRET`）のみで接続するようにしたよ〜🔑✨
