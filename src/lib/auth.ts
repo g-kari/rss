@@ -207,13 +207,13 @@ function basicAuthHeader(clientId: string, clientSecret: string): string {
  *
  * 認証方式（0g0-id 側 `serviceBindingMiddleware` は OR 条件で通過）:
  * - `Authorization: Basic <client_id:client_secret>` — 外部 OAuth クライアント認証（既定）
- * - `X-Internal-Secret: <INTERNAL_SERVICE_SECRET>` — 環境変数設定時のみ付与（オプション）
+ * - `X-Internal-Secret: <INTERNAL_SERVICE_SECRET_RSS>` — 環境変数設定時のみ付与（オプション）
  *
  * User-Agent を付けないと id.0g0.xyz の Cloudflare WAF / Bot Fight Mode が
  * Worker-to-Worker fetch を bot 扱いして 403 (Attention Required) を返すことがある。
  * 明示的に BFF 識別子を付けて通過させる。
  *
- * @param extra 追加のヘッダー（`INTERNAL_SERVICE_SECRET` を強制適用する等の用途）
+ * @param extra 追加のヘッダー（`INTERNAL_SERVICE_SECRET_RSS` を強制適用する等の用途）
  */
 function authApiHeaders(): Record<string, string> {
   const clientId = process.env.CLIENT_ID!;
@@ -234,10 +234,10 @@ function authApiHeaders(): Record<string, string> {
       // 不正な URL は無視
     }
   }
-  // INTERNAL_SERVICE_SECRET が設定されていれば 0g0-id の service-binding-middleware を
-  // X-Internal-Secret 経由で通過させる（issue #156 の改善案1で導入された BFF 個別シークレット対応）。
+  // INTERNAL_SERVICE_SECRET_RSS が設定されていれば 0g0-id の service-binding-middleware を
+  // X-Internal-Secret 経由で通過させる（BFF 個別シークレット対応）。
   // 未設定なら Basic 認証のみで通す（外部 OAuth クライアント扱い）。
-  const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
+  const internalSecret = process.env.INTERNAL_SERVICE_SECRET_RSS;
   if (internalSecret) {
     headers["X-Internal-Secret"] = internalSecret;
   }
@@ -301,7 +301,7 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
     return null;
   }
   const endpoint = `${authBaseUrl}/auth/exchange`;
-  const hasInternalSecret = !!process.env.INTERNAL_SERVICE_SECRET;
+  const hasInternalSecret = !!process.env.INTERNAL_SERVICE_SECRET_RSS;
   console.log("[auth/exchange] request start", { endpoint, redirectTo, hasInternalSecret });
   try {
     const res = await fetch(endpoint, {
@@ -324,7 +324,7 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
           status: res.status,
           redirectTo,
           cfRay,
-          hint: "id.0g0.xyz の WAF 設定または INTERNAL_SERVICE_SECRET の設定を確認してください",
+          hint: "id.0g0.xyz の WAF 設定または INTERNAL_SERVICE_SECRET_RSS の設定を確認してください",
         });
       } else {
         console.error("[auth/exchange] non-2xx response", {
