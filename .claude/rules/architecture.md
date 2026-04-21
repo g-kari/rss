@@ -361,13 +361,21 @@ VAPID_SUBJECT = "mailto:admin@0g0.xyz"  # Web Push 送信元メール
 ### Cloudflare Workers シークレット
 
 ```bash
-npx wrangler secret put CLIENT_ID
-npx wrangler secret put CLIENT_SECRET
+npx wrangler secret put CLIENT_ID              # 0g0-id services テーブルに登録された BFF クライアント ID
+npx wrangler secret put CLIENT_SECRET          # 対応するクライアントシークレット
 npx wrangler secret put VAPID_PUBLIC_KEY       # Web Push VAPID 公開鍵
 npx wrangler secret put VAPID_PRIVATE_KEY      # Web Push VAPID 秘密鍵
 npx wrangler secret put CLOUDFLARE_API_TOKEN   # 全文取得フォールバック用 (オプション)
 npx wrangler secret put BRAVE_SEARCH_API_KEY   # フィード推薦検索用 (オプション)
 ```
+
+> **認証方式**: 0g0-id API との通信は `Authorization: Basic <CLIENT_ID:CLIENT_SECRET>` のみ。
+> `X-Internal-Secret` / `X-BFF-Origin` ヘッダーは廃止済み（Phase 9 以降）。
+> `CLIENT_ID` は 0g0-id の services テーブルへの事前登録が必須。
+>
+> **オプション環境変数 (wrangler.toml vars)**:
+> `INTERNAL_SERVICE_USER_AGENT` — 0g0-id への fetch に使う User-Agent 文字列（未設定時は `rss-reader/1.0 (+https://rss.0g0.xyz)`）。
+> Cloudflare WAF / Bot Fight Mode で Worker-to-Worker fetch が bot 判定されるのを防ぐために設定する。
 
 ## コンテンツ抽出戦略 (`src/lib/content.ts`)
 
