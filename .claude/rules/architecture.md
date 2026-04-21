@@ -9,6 +9,7 @@
             ├─ /api/auth/*        — 認証フロー (0g0 ID OAuth2)
             ├─ /api/feeds/*           — フィード CRUD + refresh (R2)
             ├─ /api/feed-groups/*     — フィードグループ CRUD (R2)
+            ├─ /api/collections/*    — コレクション CRUD (R2)
             ├─ /api/articles          — 記事一覧・保存 (R2)
             ├─ /api/ai/*              — Workers AI (要約・翻訳)
             ├─ /api/content           — フルテキスト取得プロキシ
@@ -58,6 +59,9 @@ app/
     feed-groups/
       route.ts               # GET (一覧) / POST (作成) /api/feed-groups
       [id]/route.ts          # PATCH (更新) / DELETE /api/feed-groups/:id
+    collections/
+      route.ts               # GET (一覧) / POST (作成) /api/collections
+      [id]/route.ts          # PATCH (更新・記事追加削除) / DELETE /api/collections/:id
     articles/
       route.ts               # GET /api/articles
       save/route.ts          # POST /api/articles/save — 記事保存
@@ -103,6 +107,7 @@ src/
     SnoozeModal.tsx          # 記事スヌーズ設定モーダル（1時間後・明日の朝・来週など）
     ReadingStatsModal.tsx    # 読了統計モーダル（日別グラフ・年間ヒートマップ・週間目標）
     FeedQuickSwitchModal.tsx # フィードクイック切り替えモーダル（キーボードナビ対応）
+    CollectionModal.tsx      # コレクション作成・名前変更モーダル
     NSFWEyeAnimation.tsx     # NSFW コンテンツ表示アニメーション
     ServiceWorkerRegistration.tsx # Service Worker 登録コンポーネント
     ErrorBoundary.tsx        # エラー境界
@@ -117,6 +122,7 @@ src/
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
     useFeedOperations.ts     # フィード CRUD 操作
     useFeedGroups.ts         # /api/feed-groups CRUD + 楽観的更新（create / rename / collapse / mute / reorder / delete）
+    useCollections.ts        # /api/collections CRUD + 楽観的更新（create / rename / delete / addArticle / removeArticle）
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useUIState.ts            # UI 状態管理（テーマ・レイアウト・フォーカスモード・モーダル等）
     useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
@@ -183,6 +189,7 @@ src/
     recommendation.ts        # フィード推薦ロジック
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     feed-groups.ts           # フィードグループ R2 読み書き（readFeedGroups / writeFeedGroups）
+    collections.ts           # コレクション R2 読み書き（readCollections / writeCollections）
     storage.ts               # localStorage キー定数・安全なラッパー
     url.ts                   # URL バリデーションヘルパー
     validation.ts            # 各種入力バリデーションユーティリティ
@@ -297,6 +304,7 @@ feeds/{feedHash}/articles/p{N}.json     # Article[]（過去ページ、N=2〜�
 ```
 users/{userId}/subscriptions.json       # UserSubscription[]（購読フィード一覧・フィルター・view・requestCookie・lastAccessedAt 等）
 users/{userId}/feed-groups.json         # FeedGroup[]（グループ定義: id / name / order / collapsed / muted / createdAt）
+users/{userId}/collections.json         # Collection[]（コレクション定義: id / name / articleIds / createdAt / order）
 users/{userId}/profile.json             # UserProfile（ログイン時に保存）
 users/{userId}/read-state.json          # ReadState（readIds・bookmarkIds・readingListIds・likeIds・snoozedUntil・notes・tagIds・globalFilter・readBeforeTimestamp）
 users/{userId}/engagement.json          # EngagementLog（記事への行動履歴）

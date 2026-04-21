@@ -1,7 +1,15 @@
 "use client";
 
 import { useRef, useState, useMemo, useCallback, type ReactNode } from "react";
-import type { Feed, Article, UserProfile, RecommendedFeed, FeedGroup, FeedView } from "../types";
+import type {
+  Feed,
+  Article,
+  UserProfile,
+  RecommendedFeed,
+  FeedGroup,
+  FeedView,
+  Collection,
+} from "../types";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import ReleaseNotesModal from "./ReleaseNotesModal";
 import ReadingStatsModal from "./ReadingStatsModal";
@@ -80,6 +88,12 @@ interface Props {
   onSelectTag?: (tag: string | null) => void;
   /** articleId → タグ配列マップ — タグ別記事数の集計に使用 */
   articleTagIds?: Record<string, string[]>;
+  collections?: Collection[];
+  selectedCollectionId?: string | null;
+  onSelectCollection?: (id: string | null) => void;
+  onCreateCollection?: (name: string) => Promise<Collection | { error: string }>;
+  onRenameCollection?: (id: string, name: string) => Promise<Collection | { error: string }>;
+  onDeleteCollection?: (id: string) => Promise<boolean>;
   install?: { canInstall: boolean; onInstall: () => void };
   push?: {
     supported: boolean;
@@ -753,6 +767,12 @@ export default function FeedSidebar({
   selectedTag = null,
   onSelectTag,
   articleTagIds,
+  collections,
+  selectedCollectionId = null,
+  onSelectCollection,
+  onCreateCollection,
+  onRenameCollection: _onRenameCollection,
+  onDeleteCollection: _onDeleteCollection,
   install,
   push,
 }: Props) {
@@ -1239,6 +1259,56 @@ export default function FeedSidebar({
                   <span className="text-[13px] truncate">#{tag}</span>
                   <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
                     {count > 99 ? "99+" : count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {collections && collections.length > 0 && onSelectCollection && (
+          <div className="mt-1 pt-2 border-t border-border-subtle">
+            <div className="px-4 pb-1 flex items-center">
+              <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                Collections
+              </span>
+              {onCreateCollection && (
+                <button
+                  onClick={() => onCreateCollection("")}
+                  className="ml-auto w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
+                  title="コレクションを作成"
+                >
+                  <svg
+                    width="9"
+                    height="9"
+                    viewBox="0 0 9 9"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <line x1="4.5" y1="1" x2="4.5" y2="8" strokeLinecap="round" />
+                    <line x1="1" y1="4.5" x2="8" y2="4.5" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {collections.map((c) => {
+              const isSelected = selectedCollectionId === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => onSelectCollection(isSelected ? null : c.id)}
+                  className={`w-full px-4 py-1.5 flex items-center justify-between gap-2 text-left transition-colors ${
+                    isSelected
+                      ? "bg-surface-subtle text-text-strong"
+                      : "hover:bg-surface-hover text-text-muted hover:text-text-strong"
+                  }`}
+                  title={c.name}
+                >
+                  <span className="text-[13px] truncate">{c.name}</span>
+                  <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
+                    {c.articleIds.length > 99 ? "99+" : c.articleIds.length}
                   </span>
                 </button>
               );

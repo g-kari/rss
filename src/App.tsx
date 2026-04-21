@@ -22,6 +22,7 @@ import type {
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useFeedGroups } from "./hooks/useFeedGroups";
+import { useCollections } from "./hooks/useCollections";
 import { useReadState } from "./hooks/useReadState";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import { useKeyboardNav } from "./hooks/useKeyboardNav";
@@ -192,6 +193,17 @@ export default function App() {
     deleteGroup,
     reorderGroup,
   } = useFeedGroups(user);
+
+  const {
+    collections,
+    createCollection,
+    renameCollection,
+    deleteCollection,
+    addArticleToCollection,
+    removeArticleFromCollection,
+  } = useCollections(user);
+
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
   const {
     supported: pushSupported,
@@ -488,6 +500,9 @@ export default function App() {
     activeFeedView,
     articleTags: articleTagIds,
     selectedTag,
+    collectionArticleIds: selectedCollectionId
+      ? new Set(collections.find((c) => c.id === selectedCollectionId)?.articleIds ?? [])
+      : undefined,
   });
 
   const {
@@ -1140,6 +1155,12 @@ export default function App() {
                   exportNotesToMarkdown(articles, notes, feeds);
                 }}
                 noteCount={Object.keys(notes).length}
+                collections={collections}
+                selectedCollectionId={selectedCollectionId}
+                onSelectCollection={setSelectedCollectionId}
+                onCreateCollection={createCollection}
+                onRenameCollection={renameCollection}
+                onDeleteCollection={deleteCollection}
                 install={install}
                 push={{
                   supported: pushSupported,
@@ -1224,6 +1245,10 @@ export default function App() {
                 onRemoveTag={removeTag}
                 onSetArticleTags={setArticleTags}
                 onClearArticleTags={clearArticleTags}
+                collections={collections}
+                onAddToCollection={addArticleToCollection}
+                onRemoveFromCollection={removeArticleFromCollection}
+                onCreateCollection={createCollection}
               />
             </ErrorBoundary>
           </div>

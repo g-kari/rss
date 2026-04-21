@@ -76,6 +76,8 @@ export interface ArticleFilterOptions {
   articleTags?: Record<string, string[]>;
   /** タグ付き記事のみ表示（タグ名は問わない） */
   taggedOnly?: boolean;
+  /** コレクション選択時の対象記事 ID セット — 設定時はそのコレクション内の記事のみ表示 */
+  collectionArticleIds?: Set<string>;
 }
 
 /**
@@ -231,6 +233,12 @@ function buildTagPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean
   };
 }
 
+function buildCollectionPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+  const { collectionArticleIds } = opts;
+  if (!collectionArticleIds) return null;
+  return (a) => collectionArticleIds.has(a.id);
+}
+
 /** 著者フィルター述語（activeIds 外の記事にのみ適用） */
 function buildAuthorPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
   const { authorFilter } = opts;
@@ -294,6 +302,7 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
     buildFeedPredicate(opts),
     buildQueryPredicate(opts),
     buildDatePredicate(opts),
+    buildCollectionPredicate(opts),
   ].filter((p): p is (a: Article) => boolean => p !== null);
 
   // activeIds 外の記事にのみ適用される述語
