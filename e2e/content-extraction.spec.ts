@@ -1327,8 +1327,9 @@ test.describe("isTooSmallByUrl — URL サフィックスによるサイズ判�
     expect(isTooSmallByUrl(proxied)).toBe(true);
   });
 
-  test("100x100 以上は false を返す", () => {
-    expect(isTooSmallByUrl("https://example.com/img-100x100.jpg")).toBe(false);
+  test("160x160 以上は false を返す", () => {
+    expect(isTooSmallByUrl("https://example.com/img-100x100.jpg")).toBe(true);
+    expect(isTooSmallByUrl("https://example.com/img-160x160.jpg")).toBe(false);
     expect(isTooSmallByUrl("https://example.com/img-300x300.jpg")).toBe(false);
   });
 
