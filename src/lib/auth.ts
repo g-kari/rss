@@ -57,11 +57,8 @@ async function getJwks(authBaseUrl: string): Promise<JwkWithKid[]> {
   // キャッシュ期限切れ時はキーキャッシュも破棄（ローテーション対応）
   keyCache.clear();
 
-  // 0g0-id 側の serviceBindingMiddleware / WAF を User-Agent ベースで bypass する。
-  // /.well-known/jwks.json もフロントで保護されるケースに備え、
-  // INTERNAL_SERVICE_USER_AGENT があれば同じ UA を付与する。
   const userAgent =
-    process.env.INTERNAL_SERVICE_USER_AGENT || "rss-reader-bff/1.0 (+https://rss.0g0.xyz)";
+    process.env.INTERNAL_SERVICE_USER_AGENT || "rss-reader/1.0 (+https://rss.0g0.xyz)";
   const res = await fetch(`${authBaseUrl}/.well-known/jwks.json`, {
     headers: { "User-Agent": userAgent },
   });
@@ -205,43 +202,22 @@ function basicAuthHeader(clientId: string, clientSecret: string): string {
 /**
  * 0g0 auth server への共通ヘッダーを生成する。
  *
- * 認証方式（0g0-id 側 `serviceBindingMiddleware` は OR 条件で通過）:
- * - `Authorization: Basic <client_id:client_secret>` — 外部 OAuth クライアント認証（既定）
- * - `X-Internal-Secret: <INTERNAL_SERVICE_SECRET_RSS>` — 環境変数設定時のみ付与（オプション）
+ * 認証方式: `Authorization: Basic <client_id:client_secret>` のみ。
+ * 0g0-id の services テーブルに CLIENT_ID が登録されている必要がある。
  *
  * User-Agent を付けないと id.0g0.xyz の Cloudflare WAF / Bot Fight Mode が
  * Worker-to-Worker fetch を bot 扱いして 403 (Attention Required) を返すことがある。
- * 明示的に BFF 識別子を付けて通過させる。
- *
- * @param extra 追加のヘッダー（`INTERNAL_SERVICE_SECRET_RSS` を強制適用する等の用途）
  */
 function authApiHeaders(): Record<string, string> {
   const clientId = process.env.CLIENT_ID!;
   const clientSecret = process.env.CLIENT_SECRET!;
   const userAgent =
-    process.env.INTERNAL_SERVICE_USER_AGENT || "rss-reader-bff/1.0 (+https://rss.0g0.xyz)";
-  const headers: Record<string, string> = {
+    process.env.INTERNAL_SERVICE_USER_AGENT || "rss-reader/1.0 (+https://rss.0g0.xyz)";
+  return {
     "Content-Type": "application/json",
     Authorization: basicAuthHeader(clientId, clientSecret),
     "User-Agent": userAgent,
   };
-  // APP_BASE_URL がテスト等で未設定の場合は X-BFF-Origin をスキップする
-  const appBaseUrl = process.env.APP_BASE_URL;
-  if (appBaseUrl) {
-    try {
-      headers["X-BFF-Origin"] = new URL(appBaseUrl).origin;
-    } catch {
-      // 不正な URL は無視
-    }
-  }
-  // INTERNAL_SERVICE_SECRET_RSS が設定されていれば 0g0-id の service-binding-middleware を
-  // X-Internal-Secret 経由で通過させる（BFF 個別シークレット対応）。
-  // 未設定なら Basic 認証のみで通す（外部 OAuth クライアント扱い）。
-  const internalSecret = process.env.INTERNAL_SERVICE_SECRET_RSS;
-  if (internalSecret) {
-    headers["X-Internal-Secret"] = internalSecret;
-  }
-  return headers;
 }
 
 /**
@@ -301,8 +277,7 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
     return null;
   }
   const endpoint = `${authBaseUrl}/auth/exchange`;
-  const hasInternalSecret = !!process.env.INTERNAL_SERVICE_SECRET_RSS;
-  console.log("[auth/exchange] request start", { endpoint, redirectTo, hasInternalSecret });
+  console.log("[auth/exchange] request start", { endpoint, redirectTo });
   try {
     const res = await fetch(endpoint, {
       method: "POST",
@@ -324,7 +299,7 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
           status: res.status,
           redirectTo,
           cfRay,
-          hint: "id.0g0.xyz の WAF 設定または INTERNAL_SERVICE_SECRET_RSS の設定を確認してください",
+          hint: "id.0g0.xyz の WAF 設定または CLIENT_ID/CLIENT_SECRET の登録を確認してください",
         });
       } else {
         console.error("[auth/exchange] non-2xx response", {

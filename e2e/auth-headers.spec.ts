@@ -2,10 +2,8 @@ import { test, expect } from "@playwright/test";
 import { exchangeCode, isCloudflareBlock, refreshTokens } from "../src/lib/auth";
 
 /**
- * issue #94: 0g0-id 側の改善案1（BFF 個別シークレット対応）に合わせて、
- * rss-reader 側のログイン呼び出しも X-Internal-Secret ヘッダーを送れるようにする。
- * また、Cloudflare WAF ブロック（"Attention Required! | Cloudflare"）の検出と
- * refresh 経路での transient 扱いを検証する。
+ * 認証ヘッダーと Cloudflare WAF ブロック検出のテスト。
+ * Basic 認証（CLIENT_ID:CLIENT_SECRET）のみで 0g0-id に接続する。
  *
  * `withMockFetch` が `process.env` / `globalThis.fetch` をテスト実行中に差し替えるため、
  * Playwright の並列実行下でレースしないよう、このファイルは serial で流す。
@@ -84,8 +82,8 @@ test.describe("isCloudflareBlock — Cloudflare WAF challenge 判定", () => {
   });
 });
 
-test.describe("exchangeCode — 認証ヘッダー", () => {
-  test("INTERNAL_SERVICE_SECRET_RSS 未設定 → X-Internal-Secret は送られない", async () => {
+test.describe("exchangeCode — Basic認証のみで接続", () => {
+  test("Basic Auth ヘッダーが送られ、X-Internal-Secret / X-BFF-Origin は送られない", async () => {
     const capturedHeaders: Record<string, string> = {};
     const mock: FetchFn = async (_url, init) => {
       const headers = new Headers(init?.headers);
@@ -106,40 +104,12 @@ test.describe("exchangeCode — 認証ヘッダー", () => {
     const result = await withMockFetch(
       mock,
       () => exchangeCode("code", "https://rss.example.test/api/auth/callback"),
-      { ...BASE_ENV, INTERNAL_SERVICE_SECRET_RSS: undefined },
+      BASE_ENV,
     );
     expect(result).not.toBeNull();
+    expect(capturedHeaders["authorization"]).toMatch(/^Basic /);
     expect(capturedHeaders["x-internal-secret"]).toBeUndefined();
-    expect(capturedHeaders["authorization"]).toMatch(/^Basic /);
-  });
-
-  test("INTERNAL_SERVICE_SECRET_RSS 設定あり → X-Internal-Secret が送られる", async () => {
-    const capturedHeaders: Record<string, string> = {};
-    const mock: FetchFn = async (_url, init) => {
-      const headers = new Headers(init?.headers);
-      headers.forEach((v, k) => {
-        capturedHeaders[k.toLowerCase()] = v;
-      });
-      return new Response(
-        JSON.stringify({
-          data: {
-            access_token: "A",
-            refresh_token: "R",
-            user: { id: "u", email: "e@e", name: "n", picture: null, role: "user" },
-          },
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      );
-    };
-    const result = await withMockFetch(
-      mock,
-      () => exchangeCode("code", "https://rss.example.test/api/auth/callback"),
-      { ...BASE_ENV, INTERNAL_SERVICE_SECRET_RSS: "my-shared-secret" },
-    );
-    expect(result).not.toBeNull();
-    expect(capturedHeaders["x-internal-secret"]).toBe("my-shared-secret");
-    // Basic Auth は引き続き併送（0g0-id の middleware は OR 条件）
-    expect(capturedHeaders["authorization"]).toMatch(/^Basic /);
+    expect(capturedHeaders["x-bff-origin"]).toBeUndefined();
   });
 
   test("Cloudflare WAF HTML レスポンス → null 返却（非致命）", async () => {
@@ -151,21 +121,7 @@ test.describe("exchangeCode — 認証ヘッダー", () => {
     const result = await withMockFetch(
       mock,
       () => exchangeCode("code", "https://rss.example.test/api/auth/callback"),
-      { ...BASE_ENV, INTERNAL_SERVICE_SECRET_RSS: undefined },
-    );
-    expect(result).toBeNull();
-  });
-
-  test("INTERNAL_SERVICE_SECRET_RSS 設定済みでも Cloudflare でブロックされたら null 返却", async () => {
-    const mock: FetchFn = async () =>
-      new Response(
-        `<!DOCTYPE html><html><head><title>Attention Required! | Cloudflare</title></head></html>`,
-        { status: 403, headers: { "Content-Type": "text/html", "cf-ray": "zzz-NRT" } },
-      );
-    const result = await withMockFetch(
-      mock,
-      () => exchangeCode("code", "https://rss.example.test/api/auth/callback"),
-      { ...BASE_ENV, INTERNAL_SERVICE_SECRET_RSS: "configured-but-still-blocked" },
+      BASE_ENV,
     );
     expect(result).toBeNull();
   });

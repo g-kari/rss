@@ -3,7 +3,11 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ## 2026-04-21
 
-### 激アツ新機能っ
+### バグ修正っ
+
+- **ログイン認証を Basic 認証に統一** — 0g0-id が共有 \`INTERNAL_SERVICE_SECRET\` を完全撤去（Phase 9）したので、RSS 側も \`X-Internal-Secret\` / \`X-BFF-Origin\` ヘッダーを削除して Basic 認証（\`CLIENT_ID\`/\`CLIENT_SECRET\`）のみで接続するようにしたよ〜🔑✨
+
+### 激ア���新機能っ
 
 - **記事コレクション** — Issue #130。テーマ別に記事をまとめられるコレクション機能を追加したよ〜！「読書記録」「調査メモ」みたいに自分だけの記事セットを作れちゃう✨ サイドバーからコレクション切り替え＆ArticleView から記事をワンタップ追加できるよっ📂🎀
 

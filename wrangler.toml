@@ -57,5 +57,5 @@ invocation_logs = true
 # Brave Search API (レコメンドエンジン用、オプション):
 # npx wrangler secret put BRAVE_SEARCH_API_KEY
 #
-# BFF 個別シークレット (0g0-id の INTERNAL_SERVICE_SECRET_USER と同値を設定):
-# npx wrangler secret put INTERNAL_SERVICE_SECRET_RSS
+# ※ INTERNAL_SERVICE_SECRET_RSS は廃止。Basic 認証 (CLIENT_ID/CLIENT_SECRET) のみ使用。
+# 0g0-id の services テーブルに CLIENT_ID を登録しておくこと。
