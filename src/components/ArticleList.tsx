@@ -10,7 +10,6 @@ import {
   createContext,
   useContext,
   memo,
-  type ReactElement,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -35,6 +34,7 @@ import { useSyncedRef } from "../hooks/useSyncedRef";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { isArticleRead } from "../lib/article-filter";
 import Spinner from "./Spinner";
+import LayoutIcon from "./LayoutIcon";
 import {
   type ArticleItemProps,
   resolveThumbnail,
@@ -73,48 +73,6 @@ interface Props {
   listFocusMode: boolean;
   onToggleListFocusMode: () => void;
 }
-
-const LAYOUT_ICONS: Record<Layout, ReactElement> = {
-  compact: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
-      <rect x="0" y="1" width="13" height="1.5" rx="0.75" />
-      <rect x="0" y="5" width="13" height="1.5" rx="0.75" />
-      <rect x="0" y="9" width="13" height="1.5" rx="0.75" />
-    </svg>
-  ),
-  list: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
-      <rect x="0" y="0.5" width="13" height="2" rx="0.75" />
-      <rect x="0" y="4" width="9" height="1" rx="0.5" />
-      <rect x="0" y="7" width="13" height="2" rx="0.75" />
-      <rect x="0" y="10.5" width="9" height="1" rx="0.5" />
-    </svg>
-  ),
-  card: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
-      <rect x="0" y="0" width="5.5" height="5.5" rx="1" />
-      <rect x="7.5" y="0" width="5.5" height="5.5" rx="1" />
-      <rect x="0" y="7.5" width="5.5" height="5.5" rx="1" />
-      <rect x="7.5" y="7.5" width="5.5" height="5.5" rx="1" />
-    </svg>
-  ),
-  magazine: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
-      <rect x="0" y="0" width="13" height="7" rx="1" />
-      <rect x="0" y="9" width="5.5" height="4" rx="0.75" />
-      <rect x="7.5" y="9" width="5.5" height="4" rx="0.75" />
-    </svg>
-  ),
-  gallery: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
-      <rect x="0" y="0" width="5.5" height="5" rx="1" />
-      <rect x="7.5" y="0" width="5.5" height="3" rx="1" />
-      <rect x="7.5" y="4.5" width="5.5" height="4" rx="1" />
-      <rect x="0" y="6.5" width="5.5" height="6.5" rx="1" />
-      <rect x="7.5" y="10" width="5.5" height="3" rx="1" />
-    </svg>
-  ),
-};
 
 const LAYOUTS: Layout[] = ["compact", "list", "card", "magazine", "gallery"];
 
@@ -593,7 +551,7 @@ export default function ArticleList({
                   aria-label={LAYOUT_LABELS[l]}
                   aria-pressed={layout === l}
                 >
-                  {LAYOUT_ICONS[l]}
+                  <LayoutIcon layout={l} />
                 </button>
               ))}
             </div>

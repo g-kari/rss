@@ -3,6 +3,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ## 2026-04-22
 
+### リファクタリングっ
+
+- **\`LayoutIcon\` コンポーネントを分離** — Issue #184。\`ArticleList.tsx\` にインライン定義されてた 5 種類のレイアウトアイコン SVG を \`src/components/LayoutIcon.tsx\` として切り出したよ〜！40 行超の visual noise がスッキリして、再利用もできるようになったの🧹✨
+
 ### セキュリティ対策っ
 
 - **\`hasDangerousScheme()\` の NBSP バイパス対策** — Issue #178。\`&#160;javascript:\` や \`&nbsp;javascript:\` みたいな NO-BREAK SPACE（U+00A0）を使った XSS バイパス手法を検出できなかったやつを修正したよ〜！\`&nbsp;\` / \`&NonBreakingSpace;\` 名前付き文字参照のデコードと U+00A0 の除去を追加して、よりしっかりガードできるようになったの🔒✨
