@@ -171,6 +171,9 @@ src/
     r2.ts                    # r2Get() / r2Put() / sha256Hex()
     xml-parser.ts            # fast-xml-parser ラッパー (RSS 2.0 + Atom)
     content.ts               # コンテンツ抽出・後処理パイプライン (Readability + postProcess)
+    html-post-processor.ts   # HTML後処理パイプライン（ノイズ除去・画像処理・リンク修正・テーブルラップ・sanitize）
+    readability-extractor.ts # Readabilityラッパー（iframe退避・preClean・本文抽出）
+    regex-extractor.ts       # 正規表現ベース抽出（stripPageChrome・サイト固有セレクター）
     html.ts                  # sanitizeHtml() / escapeHtml() / toPlainText()
     article-utils.ts         # readingTime() / timeAgo() / isLikelyJapanese()
     image-extractor.ts       # bestSrcFromSrcset() / collectImageUrlsFromHtml() / collectImageUrls()

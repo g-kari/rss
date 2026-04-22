@@ -1,4 +1,4 @@
-import { transformXTweetEmbeds } from "./content";
+import { transformXTweetEmbeds } from "./html-post-processor";
 import { sanitizeHtml } from "./html";
 
 /** 埋め込みメディアの情報 */

@@ -1,8 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { detectCharset, detectNextPageUrl, extractMainContent } from "../src/lib/content";
 import {
-  detectCharset,
-  detectNextPageUrl,
-  extractMainContent,
   fixLazyImages,
   fixImageDimensions,
   rewriteImageUrls,
@@ -12,7 +10,7 @@ import {
   fixExternalLinks,
   transformXTweetEmbeds,
   removeSmallThumbnailImages,
-} from "../src/lib/content";
+} from "../src/lib/html-post-processor";
 import { sanitizeHtml } from "../src/lib/html";
 import { isTooSmallByUrl, collectImageUrlsFromHtml } from "../src/lib/image-extractor";
 import {
