@@ -48,12 +48,13 @@ test("cascadeOverflow: 既存の空きに収まる場合は1ページ書き込�
     makeArticle("a2", "2026-01-02T00:00:00Z"),
   ];
 
-  const lastPage = await cascadeOverflow(bucket, "feed1", overflow, 2, {
+  const result = await cascadeOverflow(bucket, "feed1", overflow, 2, {
     maxPages: 5,
     pageSize: 3,
   });
 
-  expect(lastPage).toBe(2);
+  expect(result.lastWrittenPage).toBe(2);
+  expect(result.oversized).toBe(false);
   expect(store.size).toBe(1);
   const p2 = JSON.parse(store.get("feeds/feed1/articles/p2.json")!) as Article[];
   expect(p2).toHaveLength(2);
@@ -77,12 +78,13 @@ test("cascadeOverflow: ページ溢れ時に次ページへカスケードする
     makeArticle("new3", "2026-01-01T00:00:00Z"),
   ];
 
-  const lastPage = await cascadeOverflow(bucket, "feed1", overflow, 2, {
+  const result = await cascadeOverflow(bucket, "feed1", overflow, 2, {
     maxPages: 5,
     pageSize: 3,
   });
 
-  expect(lastPage).toBe(3);
+  expect(result.lastWrittenPage).toBe(3);
+  expect(result.oversized).toBe(false);
   const p2 = JSON.parse(store.get("feeds/feed1/articles/p2.json")!) as Article[];
   const p3 = JSON.parse(store.get("feeds/feed1/articles/p3.json")!) as Article[];
   expect(p2).toHaveLength(3);
@@ -125,12 +127,13 @@ test("Issue #131: maxPages 超過時に overflow を silent drop せず末尾ペ
   console.warn = (msg: string) => warnings.push(msg);
 
   try {
-    const lastPage = await cascadeOverflow(bucket, "feed1", overflow, 2, {
+    const result = await cascadeOverflow(bucket, "feed1", overflow, 2, {
       maxPages,
       pageSize,
     });
 
-    expect(lastPage).toBe(maxPages);
+    expect(result.lastWrittenPage).toBe(maxPages);
+    expect(result.oversized).toBe(true);
     // 全記事の合計: overflow 3件 + p2(2件) + p3(2件) = 7件
     const allStored = [...store.values()]
       .flatMap((v) => JSON.parse(v) as Article[])
@@ -198,12 +201,13 @@ test("Issue #158: overflow と既存ページで重複する記事が排除さ�
     makeArticle("dup1", "2026-01-01T00:00:00Z"),
   ];
 
-  const lastPage = await cascadeOverflow(bucket, "feed1", overflow, 2, {
+  const result = await cascadeOverflow(bucket, "feed1", overflow, 2, {
     maxPages: 5,
     pageSize: 5,
   });
 
-  expect(lastPage).toBe(2);
+  expect(result.lastWrittenPage).toBe(2);
+  expect(result.oversized).toBe(false);
   const p2 = JSON.parse(store.get("feeds/feed1/articles/p2.json")!) as Article[];
   // dup1 は重複排除されて 1件のみ（overflow 側が優先）
   expect(p2).toHaveLength(3);

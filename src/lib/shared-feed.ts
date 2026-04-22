@@ -158,7 +158,7 @@ export async function cascadeOverflow(
   overflow: Article[],
   pageNum: number,
   options?: { maxPages?: number; pageSize?: number },
-): Promise<number> {
+): Promise<{ lastWrittenPage: number; oversized: boolean }> {
   const maxPages = options?.maxPages ?? MAX_PAGES;
   const pageSize = options?.pageSize ?? PAGE_SIZE;
 
@@ -199,9 +199,10 @@ export async function cascadeOverflow(
         `Appended ${currentOverflow.length} articles to p${maxPages} ` +
         `(page now holds ${merged.length} items, exceeds PAGE_SIZE=${pageSize}).`,
     );
+    return { lastWrittenPage, oversized: true };
   }
 
-  return lastWrittenPage;
+  return { lastWrittenPage, oversized: false };
 }
 
 /**
@@ -276,8 +277,14 @@ export async function mergeNewArticles(
     const newLatest = merged.slice(0, PAGE_SIZE);
     const overflow = merged.slice(PAGE_SIZE);
     await r2Put(bucket, latestKey(meta.feedHash), newLatest);
-    const maxPage = await cascadeOverflow(bucket, meta.feedHash, overflow, 2);
+    const { lastWrittenPage: maxPage, oversized } = await cascadeOverflow(
+      bucket,
+      meta.feedHash,
+      overflow,
+      2,
+    );
     meta.pageCount = Math.max(meta.pageCount, maxPage - 1); // pageCount は p2以降の数
+    if (oversized) meta.oversizeAlert = true;
   }
 
   // knownIds を更新
