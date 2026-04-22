@@ -3,6 +3,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ## 2026-04-22
 
+### リファクタリングっ
+
+- **\`content.ts\` を4ファイルに分割** — Issue #181。1272行の巨大ファイルを \`html-post-processor.ts\`・\`readability-extractor.ts\`・\`regex-extractor.ts\`・\`content.ts\`（オーケストレーション専用）に分割したよ〜！循環依存ゼロで責務がスッキリ分離されてメンテしやすくなったの🧹✨
+
 ### バグ修正っ
 
 - \`cascadeOverflow()\` が MAX_PAGES を超過したとき \`SharedFeedMeta.oversizeAlert\` フラグを立てるようにしたよ〜。\`console.warn\` だけじゃ気づけなかった問題を修正！💡
