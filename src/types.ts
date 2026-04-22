@@ -49,6 +49,8 @@ export interface SharedFeedMeta {
   cssSelectors?: SelectorConfig;
   /** 過去に試して失敗した articleLink セレクタの履歴（再推論時の除外用） */
   failedSelectors?: string[];
+  /** MAX_PAGES を超えた overflow を末尾ページに追記した際に true になる監視フラグ */
+  oversizeAlert?: boolean;
 }
 
 /** フィードごとのキーワードフィルター */

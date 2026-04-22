@@ -2,6 +2,10 @@
 
 ## 2026-04-22
 
+### バグ修正っ
+
+- `cascadeOverflow()` が MAX_PAGES を超過したとき `SharedFeedMeta.oversizeAlert` フラグを立てるようにしたよ〜。`console.warn` だけじゃ気づけなかった問題を修正！💡
+
 ### リファクタリングっ
 
 - **`LayoutIcon` コンポーネントを分離** — Issue #184。`ArticleList.tsx` にインライン定義されてた 5 種類のレイアウトアイコン SVG を `src/components/LayoutIcon.tsx` として切り出したよ〜！40 行超の visual noise がスッキリして、再利用もできるようになったの🧹✨
