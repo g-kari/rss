@@ -9,6 +9,8 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ### セキュリティ対策っ
 
+- **Cookie ヘッダー検証の強化** — Issue #179。\`isValidCookieHeader()\` の最大長を 4096 → 2000 文字に削減して、RFC 6265 準拠の name=value ペア形式チェックも追加したよ〜！value 内の \`;\` や \`,\` を拒否することで Cookie jar poisoning リスクを低減したの🔒✨
+
 - **\`hasDangerousScheme()\` の NBSP バイパス対策** — Issue #178。\`&#160;javascript:\` や \`&nbsp;javascript:\` みたいな NO-BREAK SPACE（U+00A0）を使った XSS バイパス手法を検出できなかったやつを修正したよ〜！\`&nbsp;\` / \`&NonBreakingSpace;\` 名前付き文字参照のデコードと U+00A0 の除去を追加して、よりしっかりガードできるようになったの🔒✨
 
 ### リファクタリングっ
