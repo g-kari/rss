@@ -560,6 +560,15 @@ export default function ArticleView({
       progressBarRef.current.style.width = `${progress}%`;
       progressBarRef.current.style.display = progress > 0 ? "" : "none";
     }
+    const currentArticleId = articleIdRef.current;
+    if (
+      autoReadEnabledRef.current &&
+      progress >= autoReadThresholdRef.current &&
+      currentArticleId &&
+      onAutoMarkReadRef.current
+    ) {
+      onAutoMarkReadRef.current(currentArticleId);
+    }
   }
 
   return (
