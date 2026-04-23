@@ -118,7 +118,7 @@ export function isValidFeedHash(value: string): boolean {
  * snoozedUntil のバリデーション。
  * - 値が Record<string, string> であることを確認する
  * - 各エントリの key/value が文字列であることを確認する
- * - MAX_SNOOZED 件を超える場合は全て破棄（DoS 対策）
+ * - MAX_SNOOZED 件を超える場合は先頭 maxSnoozed 件に切り詰め（DoS 対策）
  * - 期限切れのエントリを除去する
  */
 export function parseSnoozedUntil(raw: unknown, maxSnoozed = 500): Record<string, string> | null {
@@ -126,6 +126,7 @@ export function parseSnoozedUntil(raw: unknown, maxSnoozed = 500): Record<string
   const now = new Date().toISOString();
   const result: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw)) {
+    if (Object.keys(result).length >= maxSnoozed) break;
     if (
       typeof k === "string" &&
       k.length > 0 &&
@@ -136,7 +137,5 @@ export function parseSnoozedUntil(raw: unknown, maxSnoozed = 500): Record<string
       result[k] = v;
     }
   }
-  // 件数上限: 超過した場合は全て破棄（DoS 対策）
-  if (Object.keys(result).length > maxSnoozed) return null;
   return Object.keys(result).length > 0 ? result : null;
 }
