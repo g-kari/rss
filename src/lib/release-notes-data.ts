@@ -3,6 +3,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ## 2026-04-23
 
+### パフォーマンス改善っ
+
+- **記事一覧のちらつき・重さを改善** — Issue #193。フィルター切り替えや既読更新のたびに起きてた余分な再レンダリングを4箇所修正したよ〜！\`collectionArticleIds\` を \`useMemo\` 化してレンダーごとの \`new Set\` 生成をなくしたし、\`handleToggleBookmark\` 等を \`useSyncedRef\` に切り替えてポーリング更新のたびにハンドラが再生成される問題も解消っ。サーバー同期後に既読 ID に変化がなければ状態更新をスキップする早期リターンも追加。フィルター切り替え時に「記事がありません」が一瞬ちらつく問題も \`wasJustCleared\` フラグで防止したよ〜✨⚡
+
 ### セキュリティ対策っ
 
 - **refresh_token をサーバーサイドセッションに移行** — Issue #189。refresh_token をブラウザの Cookie に直接持たせるのをやめて、R2 の \`sessions/{sessionId}.json\` にサーバー側だけで保管するようにしたよ〜！ブラウザには不透明な \`session_id\` だけを渡す設計に変更。Cookie が万が一漏れても refresh_token そのものは手に入らないし、サーバー側でセッションを即時削除することで強制ログアウトも可能になったっ🔒✨
