@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, parseJsonBody } from "@/lib/server-auth";
-import { generateDbscChallenge, verifyDbscResponse } from "@/lib/dbsc";
+import { generateDbscChallenge, verifyDbscResponse, type DbscSession } from "@/lib/dbsc";
+import { r2Get, r2Put } from "@/lib/r2";
 
 /**
  * POST /api/auth/dbsc/challenge
@@ -53,60 +54,65 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // TODO: R2 から登録済み公開鍵を取得する
-      // 実装例:
-      // import { r2Get } from "@/lib/r2";
-      // import type { DbscSession } from "@/lib/dbsc";
-      // const dbscSession = await r2Get<DbscSession | null>(
-      //   env.RSS_DATA,
-      //   `users/${session.userId}/dbsc-session.json`,
-      //   null
-      // );
-      // if (!dbscSession) {
-      //   return NextResponse.json({ error: 'DBSC session not found' }, { status: 404 });
-      // }
+      // R2 から保存済みチャレンジを取得して検証
+      const challengeKey = `users/${session.userId}/dbsc-challenge-${sessionId}.json`;
+      const storedChallenge = await r2Get<{ challenge: string; expiresAt: number } | null>(
+        env.RSS_DATA,
+        challengeKey,
+        null,
+      );
 
-      // TODO: チャレンジをサーバー側の一時ストレージ（R2 短期キー等）と照合して
-      //       リプレイ攻撃を防ぐ。照合後は即座にチャレンジを削除する。
-
-      // TODO: verifyDbscResponse() で実際の署名検証を行う（現在はスタブで false を返す）
-      // const publicKey = dbscSession.publicKey;
-      const publicKey = ""; // TODO: R2 から取得した公開鍵に差し替える
-      const verified = await verifyDbscResponse(challenge, response, publicKey);
-
-      if (verified) {
-        // TODO: 検証成功時に R2 の DbscSession.lastVerifiedAt を更新する
-        // await r2Put(env.RSS_DATA, `users/${session.userId}/dbsc-session.json`, {
-        //   ...dbscSession,
-        //   lastVerifiedAt: Date.now(),
-        // });
+      if (!storedChallenge) {
+        return NextResponse.json({ error: "Challenge not found or expired" }, { status: 401 });
       }
 
-      // env と session は将来の実装で使用するため参照を保持（lint の未使用変数警告を抑制）
-      void env;
-      void session;
+      // 期限切れチェック
+      if (storedChallenge.expiresAt < Date.now()) {
+        env.RSS_DATA.delete(challengeKey).catch(() => {});
+        return NextResponse.json({ error: "Challenge expired" }, { status: 401 });
+      }
 
-      // TODO: verified が true の場合は新しいアクセストークンを発行してレスポンスに含める
-      // DBSC の目的はトークンリフレッシュをデバイス認証済みにすることなので、
-      // 検証成功後に refresh フローを呼び出してアクセストークンを更新する。
-      return NextResponse.json({ ok: true, verified: false });
+      // リプレイ攻撃防止：チャレンジを即座に削除
+      await env.RSS_DATA.delete(challengeKey);
+
+      // チャレンジ値の照合
+      if (storedChallenge.challenge !== challenge) {
+        return NextResponse.json({ error: "Challenge mismatch" }, { status: 401 });
+      }
+
+      // R2 から登録済み公開鍵を取得
+      const dbscSession = await r2Get<DbscSession | null>(
+        env.RSS_DATA,
+        `users/${session.userId}/dbsc-session.json`,
+        null,
+      );
+      if (!dbscSession) {
+        return NextResponse.json({ error: "DBSC session not found" }, { status: 404 });
+      }
+
+      // 署名検証
+      const verified = await verifyDbscResponse(challenge, response, dbscSession.publicKey);
+      if (!verified) {
+        return NextResponse.json({ error: "Signature verification failed" }, { status: 401 });
+      }
+
+      // 検証成功: lastVerifiedAt を更新
+      await r2Put(env.RSS_DATA, `users/${session.userId}/dbsc-session.json`, {
+        ...dbscSession,
+        lastVerifiedAt: Date.now(),
+      });
+
+      return NextResponse.json({ ok: true, verified: true });
     }
 
     // Step 1: チャレンジ発行フロー（response なし）
     const generatedChallenge = generateDbscChallenge();
 
-    // TODO: 生成したチャレンジを R2 または短期 KV に保存してリプレイ攻撃を防ぐ
-    // チャレンジの有効期限は短く設定すること（推奨: 5分）。
-    // 保存先例: `users/{userId}/dbsc-challenge-{sessionId}.json`
-    // 実装例:
-    // await r2Put(env.RSS_DATA, `users/${session.userId}/dbsc-challenge-${sessionId}.json`, {
-    //   challenge: generatedChallenge,
-    //   expiresAt: Date.now() + 5 * 60 * 1000,
-    // });
-
-    // env と session は将来の実装で使用するため参照を保持（lint の未使用変数警告を抑制）
-    void env;
-    void session;
+    // 生成したチャレンジを R2 に保存（有効期限: 5分）
+    await r2Put(env.RSS_DATA, `users/${session.userId}/dbsc-challenge-${sessionId}.json`, {
+      challenge: generatedChallenge,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
 
     return NextResponse.json({ challenge: generatedChallenge });
   });

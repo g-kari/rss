@@ -68,6 +68,44 @@ export function generateDbscChallenge(): string {
   return crypto.randomUUID();
 }
 
+function base64urlToBytes(b64url: string): Uint8Array<ArrayBuffer> {
+  const base64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const buf = new ArrayBuffer(binary.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < binary.length; i++) {
+    view[i] = binary.charCodeAt(i);
+  }
+  return view;
+}
+
+export async function importDbscPublicKey(publicKey: string): Promise<CryptoKey> {
+  const trimmed = publicKey.trim();
+  if (trimmed.startsWith("{")) {
+    // JWK 形式
+    return crypto.subtle.importKey(
+      "jwk",
+      JSON.parse(trimmed) as JsonWebKey,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["verify"],
+    );
+  }
+  if (trimmed.includes("-----BEGIN PUBLIC KEY-----")) {
+    // PEM/SPKI 形式
+    const b64 = trimmed
+      .replace(/-----BEGIN PUBLIC KEY-----/, "")
+      .replace(/-----END PUBLIC KEY-----/, "")
+      .replace(/\s+/g, "");
+    const der = base64urlToBytes(b64.replace(/\+/g, "-").replace(/\//g, "_"));
+    return crypto.subtle.importKey("spki", der, { name: "ECDSA", namedCurve: "P-256" }, false, [
+      "verify",
+    ]);
+  }
+  throw new Error("Unsupported public key format");
+}
+
 /**
  * ブラウザからの DBSC チャレンジレスポンス（署名）を検証する。
  *
@@ -77,41 +115,38 @@ export function generateDbscChallenge(): string {
  * @returns 署名が有効なら true、無効なら false
  */
 export async function verifyDbscResponse(
-  _challenge: string,
-  _response: string,
-  _publicKey: string,
+  challenge: string,
+  response: string,
+  publicKey: string,
 ): Promise<boolean> {
-  // TODO: Web Crypto API を使って P-256 ECDSA 署名を検証する実装が必要。
-  //
-  // 実装手順:
-  // 1. publicKey を JWK または PEM から SubtleCrypto.importKey() でインポートする
-  //    const key = await crypto.subtle.importKey(
-  //      'jwk', // または 'spki' (PEM の場合は base64 デコードが必要)
-  //      parsedPublicKey,
-  //      { name: 'ECDSA', namedCurve: 'P-256' },
-  //      false,
-  //      ['verify']
-  //    );
-  //
-  // 2. challenge を TextEncoder でバイト列に変換する
-  //    const data = new TextEncoder().encode(challenge);
-  //
-  // 3. response（Sec-Session-Response）を署名バイト列にデコードする
-  //    DBSC 仕様では JWS Compact Serialization 形式が想定されている
-  //    const sigBytes = base64urlDecode(response.split('.')[2]);
-  //
-  // 4. SubtleCrypto.verify() で検証する
-  //    const isValid = await crypto.subtle.verify(
-  //      { name: 'ECDSA', hash: 'SHA-256' },
-  //      key,
-  //      sigBytes,
-  //      data
-  //    );
-  //    return isValid;
-  //
-  // 参考: https://wicg.github.io/dbsc/#the-sec-session-response-header
-  // 参考: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/verify
-  return false;
+  try {
+    // JWS compact: header.payload.signature
+    const parts = response.split(".");
+    if (parts.length !== 3) return false;
+    const [headerB64, payloadB64, sigB64] = parts;
+
+    // payload に challenge が含まれていることを確認
+    const payloadBytes = base64urlToBytes(payloadB64);
+    const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as Record<string, unknown>;
+    if (payload["challenge"] !== challenge) return false;
+
+    // 公開鍵をインポート
+    const cryptoKey = await importDbscPublicKey(publicKey);
+
+    // JWS の署名対象は ASCII(`header.payload`)
+    const signedData = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+
+    // 署名を検証
+    const sigBytes = base64urlToBytes(sigB64);
+    return await crypto.subtle.verify(
+      { name: "ECDSA", hash: { name: "SHA-256" } },
+      cryptoKey,
+      sigBytes,
+      signedData,
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**

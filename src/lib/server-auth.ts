@@ -114,6 +114,22 @@ export async function deleteServerSession(r2: R2Bucket, sessionId: string): Prom
   await r2.delete(key).catch(() => {});
 }
 
+/**
+ * サーバーサイドセッションに DBSC セッション ID を紐付ける。
+ * セッションが存在しない場合は false を返す。
+ */
+export async function bindDbscToServerSession(
+  r2: R2Bucket,
+  sessionId: string,
+  dbscSessionId: string,
+): Promise<boolean> {
+  if (!SESSION_ID_RE.test(sessionId)) return false;
+  const serverSession = await getServerSession(r2, sessionId);
+  if (!serverSession) return false;
+  await r2.put(`sessions/${sessionId}.json`, JSON.stringify({ ...serverSession, dbscSessionId }));
+  return true;
+}
+
 /** リフレッシュリクエストの重複実行を防ぐ Map（refreshToken → Promise） */
 const inflightRefresh = new Map<string, Promise<RefreshResult>>();
 
