@@ -48,6 +48,9 @@ app/
       callback/route.ts      # GET /api/auth/callback — コード交換・cookie セット
       me/route.ts            # GET /api/auth/me — セッション確認・自動リフレッシュ
       logout/route.ts        # POST /api/auth/logout — トークン失効・cookie クリア
+      dbsc/
+        register/route.ts  # POST /api/auth/dbsc/register — DBSC 公開鍵登録スタブ (TODO: TPM 鍵バインド実装)
+        challenge/route.ts # POST /api/auth/dbsc/challenge — DBSC チャレンジ発行・検証スタブ
     feeds/
       route.ts               # GET (一覧) / POST (追加) /api/feeds
       [id]/route.ts          # DELETE /api/feeds/:id
@@ -222,6 +225,7 @@ src/
     browser-translator.ts    # ブラウザネイティブ翻訳 API（Translator）の利用可否判定・言語検出
     translate-html.ts        # HTML DOM 内の翻訳対象テキスト抽出・翻訳適用
     popup-lock.ts            # 同時に開けるブラウザポップアップ数を制限するクライアントサイドロック
+    dbsc.ts                  # Device Bound Session Credentials (DBSC) ユーティリティ — 機能検出・チャレンジ生成・ヘッダービルダー (スケルトン)
     serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
     retry-after.ts           # HTTP Retry-After ヘッダー（delta-seconds / HTTP-date）をミリ秒に変換（クライアント・cron で共有）
   cron/

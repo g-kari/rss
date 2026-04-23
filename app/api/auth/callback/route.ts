@@ -122,5 +122,22 @@ export async function GET(request: Request) {
   res.cookies.delete("auth_state");
   setAccessTokenCookies(res, tokens.access_token);
   setSessionCookie(res, sessionId);
+
+  // TODO: DBSC 登録トリガー
+  // DBSC（Device Bound Session Credentials）に対応したブラウザには、
+  // このレスポンスに `Sec-Session-Registration` ヘッダーを付与して
+  // TPM での鍵ペア生成を開始させる。
+  // ブラウザはヘッダーを受け取ると /api/auth/dbsc/register に公開鍵を POST する。
+  //
+  // 実装例:
+  // import { buildSecSessionRegistrationHeader, generateDbscChallenge } from "@/lib/dbsc";
+  // const challenge = generateDbscChallenge();
+  // res.headers.set(
+  //   'Sec-Session-Registration',
+  //   buildSecSessionRegistrationHeader(challenge, appBaseUrl)
+  // );
+  //
+  // @see https://wicg.github.io/dbsc/
+
   return res;
 }

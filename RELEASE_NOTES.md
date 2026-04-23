@@ -1,5 +1,11 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-04-23 (2)
+
+### セキュリティ対策っ
+
+- **DBSC (Device Bound Session Credentials) スケルトン実装** — Issue #186。セッションをデバイスの TPM (Trusted Platform Module) にバインドしてセッションハイジャック対策を強化するための土台を追加したよ〜！`src/lib/dbsc.ts` に機能検出・チャレンジ生成・ヘッダービルダーを、`/api/auth/dbsc/register` と `/api/auth/dbsc/challenge` に Route Handler スタブを実装。Chrome DBSC API が実験的段階のため、P-256 ECDSA 署名検証と R2 公開鍵保存は TODO として詳細な実装手順をコメントに記載したっ。ブラウザが対応し次第、フルに動かせる設計になってるよっ🔒🗝️
+
 ## 2026-04-23
 
 ### 改善っ
