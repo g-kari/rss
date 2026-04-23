@@ -1,6 +1,12 @@
 export const RELEASE_NOTES_MARKDOWN = `
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-04-23 (3)
+
+### セキュリティ対策っ
+
+- **DBSC (Device Bound Session Credentials) 本実装** — Issue #186。スケルトンから本格実装に完成させたよ〜！\`verifyDbscResponse\` で JWS compact serialization の P-256 ECDSA 署名検証を Web Crypto API で実装、\`importDbscPublicKey\` で JWK／PEM 両形式の公開鍵インポートに対応。register エンドポイントは公開鍵フォーマット検証＋R2 保存＋サーバーセッションへのバインドを実装、challenge エンドポイントはリプレイ攻撃防止付きのチャレンジ検証フローを実装したっ🔒🗝️
+
 ## 2026-04-23 (2)
 
 ### セキュリティ対策っ
