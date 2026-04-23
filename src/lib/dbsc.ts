@@ -6,7 +6,7 @@
  * セッション更新時には秘密鍵の所持を証明する必要がある。
  *
  * 主なHTTPヘッダー:
- * - `Sec-Session-Registration`: サーバー → ブラウザ。新しい鍵ペアの登録を指示
+ * - `Secure-Session-Registration`: サーバー → ブラウザ。新しい鍵ペアの登録を指示
  * - `Sec-Session-Challenge`:    サーバー → ブラウザ。鍵所持証明用チャレンジ
  * - `Sec-Session-Id`:           ブラウザ → サーバー。セッション識別子
  * - `Sec-Session-Response`:     ブラウザ → サーバー。チャレンジへの署名済みレスポンス
@@ -150,7 +150,7 @@ export async function verifyDbscResponse(
 }
 
 /**
- * `Sec-Session-Registration` ヘッダーの値を構築する。
+ * `Secure-Session-Registration` ヘッダーの値を構築する。
  *
  * このヘッダーをログインレスポンスに付与すると、対応ブラウザが TPM で鍵ペアを生成し、
  * `authorizationEndpoint` に公開鍵を POST して登録を完了する。
@@ -161,13 +161,13 @@ export async function verifyDbscResponse(
  * @returns JSON 文字列形式のヘッダー値
  *
  * @example
- * const headerValue = buildSecSessionRegistrationHeader(
+ * const headerValue = buildSecureSessionRegistrationHeader(
  *   generateDbscChallenge(),
  *   process.env.APP_BASE_URL!
  * );
- * response.headers.set('Sec-Session-Registration', headerValue);
+ * response.headers.set('Secure-Session-Registration', headerValue);
  */
-export function buildSecSessionRegistrationHeader(
+export function buildSecureSessionRegistrationHeader(
   challenge: string,
   appBaseUrl: string,
   authorizationPath = "/api/auth/dbsc/register",

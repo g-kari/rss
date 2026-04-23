@@ -9,7 +9,7 @@ import {
   createServerSession,
 } from "@/lib/server-auth";
 import { escapeHtml } from "@/lib/html";
-import { buildSecSessionRegistrationHeader, generateDbscChallenge } from "@/lib/dbsc";
+import { buildSecureSessionRegistrationHeader, generateDbscChallenge } from "@/lib/dbsc";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
 
@@ -124,12 +124,12 @@ export async function GET(request: Request) {
   setAccessTokenCookies(res, tokens.access_token);
   setSessionCookie(res, sessionId);
 
-  // DBSC 登録トリガー: 対応ブラウザに Sec-Session-Registration を送って TPM 鍵ペア生成を開始させる
+  // DBSC 登録トリガー: 対応ブラウザに Secure-Session-Registration を送って TPM 鍵ペア生成を開始させる
   // ブラウザはヘッダーを受け取ると /api/auth/dbsc/register に公開鍵を POST する
   // @see https://wicg.github.io/dbsc/
   res.headers.set(
-    "Sec-Session-Registration",
-    buildSecSessionRegistrationHeader(generateDbscChallenge(), appBaseUrl),
+    "Secure-Session-Registration",
+    buildSecureSessionRegistrationHeader(generateDbscChallenge(), appBaseUrl),
   );
 
   return res;

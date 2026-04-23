@@ -14,7 +14,7 @@ import { importDbscPublicKey, type DbscSession } from "@/lib/dbsc";
  *
  * DBSC（Device Bound Session Credentials）の公開鍵登録エンドポイント。
  *
- * ブラウザが `Sec-Session-Registration` ヘッダーを受け取ると、TPM で P-256 鍵ペアを生成し、
+ * ブラウザが `Secure-Session-Registration` ヘッダーを受け取ると、TPM で P-256 鍵ペアを生成し、
  * このエンドポイントに公開鍵を POST して登録を完了する。
  *
  * リクエストボディ:
