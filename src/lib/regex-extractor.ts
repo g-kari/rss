@@ -1,4 +1,4 @@
-import { buildImageSlider, postProcess, replaceUntilStable } from "./html-post-processor";
+import { postProcess, replaceUntilStable } from "./html-post-processor";
 
 /**
  * pageUrl が zenn.dev ドメインかどうかを URL パースで厳密に検証する。
@@ -75,7 +75,8 @@ export function extractWithRegex(html: string, pageUrl: string): string {
     const mainImgs = [...cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)].map(
       (m) => m[0],
     );
-    return postProcess(buildImageSlider(mainImgs) + shopifyDesc[2], pageUrl);
+    const hiddenImgs = mainImgs.length > 0 ? `<div hidden>${mainImgs.join("")}</div>` : "";
+    return postProcess(hiddenImgs + shopifyDesc[2], pageUrl);
   }
 
   // --- 汎用セレクター ---

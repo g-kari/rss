@@ -200,17 +200,17 @@ export function removeNoise(html: string): string {
   html = removeDivsByClass(html, /class="[^"]*(?:ChapterList|RelatedArticles|TocItem)[^"]*"/i);
   // 汎用: "related", "recommend", "share", "sns" を含む div
   html = removeDivsByClass(html, /class="[^"]*(?:related|recommend|share|sns|toc-|side-)[^"]*"/i);
-  // EC / Shopify: 商品画像ギャラリーを CSS scroll-snap スライダーに変換（クラス名あり）
+  // EC / Shopify: ギャラリー要素を非表示 div に畳む（末尾 ImageGallery に収集させる）
   html = replaceBlocksByClass(
     html,
     ["ul", "div"],
     /class="[^"]*(?:product__media|media-gallery|product-gallery|thumbnail[s]?(?:-list|-wrapper)?|image-gallery|photo-gallery|product-images)[^"]*"/i,
     (inner) => {
       const imgs = [...inner.matchAll(/<img\b[^>]*>/gi)].map((m) => m[0]);
-      return buildImageSlider(imgs);
+      return imgs.length > 0 ? `<div hidden>${imgs.join("")}</div>` : "";
     },
   );
-  // 汎用: 画像のみで構成される <ul>（3件以上）をスライダーに変換
+  // 汎用: 画像のみで構成される <ul>（3件以上）を非表示 div に畳む（末尾 ImageGallery に収集させる）
   // shop-pro.jp 等クラス属性なしのギャラリーに対応。
   // 各 <li> が <img> 1枚のみ（テキスト5文字以下）の場合のみ変換する。
   html = processNestedBlocks(html, ["ul"], null, (openTag, inner) => {
@@ -224,7 +224,7 @@ export function removeNoise(html: string): string {
         return `${openTag}${inner}</ul>`;
       imgs.push(imgMatch[0]);
     }
-    return imgs.length >= 3 ? buildImageSlider(imgs) : `${openTag}${inner}</ul>`;
+    return imgs.length >= 3 ? `<div hidden>${imgs.join("")}</div>` : `${openTag}${inner}</ul>`;
   });
   return html;
 }

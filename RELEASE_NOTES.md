@@ -1,5 +1,11 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-04-23
+
+### バグ修正っ
+
+- **記事詳細で画像一覧が二重表示される問題を修正** — Issue #190。`removeNoise()` が EC ギャラリー（`image-gallery` / `product-gallery` 等のクラス）や画像のみの `<ul>` をインラインスライダー（`rss-image-slider`）に変換してたのが、末尾の `ImageGallery` コンポーネントとかぶって同じ画像が2回出てた問題を直したよ〜！スライダー変換をやめて `<div hidden>` でラップするように変更。`collectImageUrlsFromHtml` は hidden div の中の `<img>` も正規表現でスキャンするから、末尾ギャラリーには引き続き表示されるよっ。Shopify 製品ページの `product-featured-media` 画像も同様に修正🖼️✨
+
 ## 2026-04-22
 
 ### リファクタリングっ
