@@ -40,6 +40,7 @@ import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
 import { useColumnResize } from "./hooks/useColumnResize";
+import { useSyncedRef } from "./hooks/useSyncedRef";
 import { ReaderSettingsProvider, type ReaderSettings } from "./contexts/ReaderSettingsContext";
 import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFilterContext";
 
@@ -482,6 +483,14 @@ export default function App() {
     return { bookmarkCount: bm, readingListCount: rl, likeCount: lk, historyCount: hist };
   }, [articles, bookmarkIds, readingListIds, likeIds, historyIds]);
 
+  const collectionArticleIds = useMemo(
+    () =>
+      selectedCollectionId
+        ? new Set(collections.find((c) => c.id === selectedCollectionId)?.articleIds ?? [])
+        : undefined,
+    [selectedCollectionId, collections],
+  );
+
   const filterState = useFilteredArticles({
     articles,
     feeds,
@@ -506,9 +515,7 @@ export default function App() {
     activeFeedView,
     articleTags: articleTagIds,
     selectedTag,
-    collectionArticleIds: selectedCollectionId
-      ? new Set(collections.find((c) => c.id === selectedCollectionId)?.articleIds ?? [])
-      : undefined,
+    collectionArticleIds: collectionArticleIds,
   });
 
   const {
@@ -616,11 +623,12 @@ export default function App() {
     [markRead, addToHistory, setMobilePane],
   );
 
+  const articlesRef = useSyncedRef(articles);
   const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useMemo(() => {
     function makeHandler(toggle: (id: string) => void, type: EngagementAction) {
       return (id: string) => {
         toggle(id);
-        const article = articles.find((a) => a.id === id);
+        const article = articlesRef.current.find((a) => a.id === id);
         if (article) recordEngagement(id, article.feedHash, type);
       };
     }
@@ -629,7 +637,7 @@ export default function App() {
       handleToggleReadingList: makeHandler(toggleReadingList, "reading_list"),
       handleToggleLike: makeHandler(toggleLike, "like"),
     };
-  }, [toggleBookmark, toggleReadingList, toggleLike, articles, recordEngagement]);
+  }, [articlesRef, toggleBookmark, toggleReadingList, toggleLike, recordEngagement]);
 
   useKeyboardNav({
     filteredArticles: filtered,

@@ -396,6 +396,12 @@ export default function ArticleList({
     overscan: 3,
   });
 
+  // フィルター切り替え時に「記事がありません」が一瞬ちらつくのを防ぐ。
+  // filtered が非空→空に変化した最初のレンダーでは空状態を表示しない。
+  const prevFilteredLengthRef = useRef(filtered.length);
+  const wasJustCleared = prevFilteredLengthRef.current > 0 && filtered.length === 0;
+  prevFilteredLengthRef.current = filtered.length;
+
   useEventListener(
     "mousedown",
     (e) => {
@@ -1068,7 +1074,7 @@ export default function ArticleList({
               <p className="text-[12px] text-text-faint">読み込み中...</p>
             </div>
           )}
-          {!loading && filtered.length === 0 && (
+          {!loading && filtered.length === 0 && !wasJustCleared && (
             <div className="flex items-center justify-center h-40">
               <p className="text-[12px] text-text-faint">記事がありません</p>
             </div>

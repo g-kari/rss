@@ -57,7 +57,9 @@ function mergeServerSet(
   serverValues: string[],
 ): void {
   setState((prev) => {
-    const merged = new Set([...prev, ...serverValues]);
+    const newValues = serverValues.filter((v) => !prev.has(v));
+    if (newValues.length === 0) return prev;
+    const merged = new Set([...prev, ...newValues]);
     saveSet(storageKey, merged);
     return merged;
   });
