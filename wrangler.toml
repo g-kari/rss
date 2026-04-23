@@ -39,7 +39,7 @@ bucket_name = "rss-reader-data"
 # 出力例: { id: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "5119630203bf4cd584a98877ec2aa0e4"
 
 [ai]
 binding = "AI"
