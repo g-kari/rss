@@ -11,6 +11,8 @@ interface CacheStorage {
 
 interface CloudflareEnv {
   RSS_DATA: R2Bucket;
+  /** レートリミット用 KV namespace */
+  RATE_LIMIT: KVNamespace;
   NEXT_INC_CACHE_R2_BUCKET: R2Bucket;
   AI: Ai;
   ASSETS: Fetcher;

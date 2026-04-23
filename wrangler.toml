@@ -33,6 +33,14 @@ VAPID_SUBJECT = "mailto:admin@0g0.xyz"
 binding = "RSS_DATA"
 bucket_name = "rss-reader-data"
 
+# レートリミット用 KV namespace
+# ⚠️ デプロイ前に以下を実行して id を取得・設定すること:
+#   npx wrangler kv namespace create RATE_LIMIT
+# 出力例: { id: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
 [ai]
 binding = "AI"
 

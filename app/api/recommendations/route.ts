@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
     // キャッシュが無効な場合、並行リクエストによる多重 AI 呼び出しを防ぐ
     const limited = await checkAndUpdateCooldown(
-      env.RSS_DATA,
+      env.RATE_LIMIT,
       recommendationsGenCooldownKey(session.userId),
       RECOMMENDATIONS_GEN_COOLDOWN_MS,
     );

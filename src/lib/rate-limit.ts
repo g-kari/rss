@@ -1,22 +1,22 @@
 import { NextResponse } from "next/server";
-import { r2Get, r2Put } from "@/lib/r2";
 import { apiError } from "@/lib/api-error";
 
 /**
- * 同一アイソレート内の並行 checkAndUpdateCooldown 呼び出しを管理する Set。
+ * 同一アイソレート内の並行リクエストを管理する Set。
  * inFlight に key が存在する間は後続リクエストを即時 429 で返すことで TOCTOU 競合を防ぐ。
  * 異なるアイソレート間の競合はこの仕組みでは防げないが、低頻度操作では許容可能。
  */
 const inFlight = new Set<string>();
 
 /**
- * R2 ベースのクールダウンを確認・更新する。
+ * KV ベースのクールダウンを確認・更新する。
  * クールダウン中なら 429 NextResponse を返す。クールダウン外なら null を返し、タイムスタンプを更新する。
+ * KV の expirationTtl を利用してクールダウン期間後にエントリを自動削除する。
  *
  * 同一アイソレート内の TOCTOU 競合は inFlight Set でガードする。
  */
 export async function checkAndUpdateCooldown(
-  bucket: R2Bucket,
+  kv: KVNamespace,
   key: string,
   cooldownMs: number,
 ): Promise<NextResponse | null> {
@@ -32,19 +32,25 @@ export async function checkAndUpdateCooldown(
   }
   inFlight.add(key);
   try {
-    const { ts } = await r2Get<{ ts: number }>(bucket, key, { ts: 0 });
-    const elapsed = Date.now() - ts;
-    if (elapsed < cooldownMs) {
-      const retryAfter = Math.ceil((cooldownMs - elapsed) / 1000);
-      const res = apiError("Too many requests", 429, {
-        code: "RATE_LIMITED",
-        retryable: true,
-        retryAfter,
-      });
-      res.headers.set("Retry-After", String(retryAfter));
-      return res;
+    const val = await kv.get(key);
+    if (val !== null) {
+      const ts = Number(val);
+      const elapsed = Date.now() - ts;
+      if (elapsed < cooldownMs) {
+        const retryAfter = Math.ceil((cooldownMs - elapsed) / 1000);
+        const res = apiError("Too many requests", 429, {
+          code: "RATE_LIMITED",
+          retryable: true,
+          retryAfter,
+        });
+        res.headers.set("Retry-After", String(retryAfter));
+        return res;
+      }
     }
-    await r2Put(bucket, key, { ts: Date.now() });
+    // KV expirationTtl の最小値は 60 秒のため clamp する
+    await kv.put(key, String(Date.now()), {
+      expirationTtl: Math.max(60, Math.ceil(cooldownMs / 1000)),
+    });
     return null;
   } finally {
     inFlight.delete(key);
@@ -52,12 +58,13 @@ export async function checkAndUpdateCooldown(
 }
 
 /**
- * R2 ベースのスライディングウィンドウ レートリミット。
+ * KV ベースのスライディングウィンドウ レートリミット。
  * windowMs 内の呼び出し回数が maxCalls を超えると 429 を返す。
  * 単純なクールダウンと異なり、バーストを許容しつつ持続的な乱用を防ぐ。
+ * KV の expirationTtl でウィンドウ期間後にエントリを自動削除する。
  */
 export async function checkSlidingWindow(
-  bucket: R2Bucket,
+  kv: KVNamespace,
   key: string,
   windowMs: number,
   maxCalls: number,
@@ -75,8 +82,8 @@ export async function checkSlidingWindow(
   inFlight.add(key);
   try {
     const now = Date.now();
-    const data = await r2Get<{ calls?: number[] }>(bucket, key, { calls: [] });
-    const calls = Array.isArray(data.calls) ? data.calls : [];
+    const raw = await kv.get(key);
+    const calls: number[] = raw ? (JSON.parse(raw) as number[]) : [];
     const recent = calls.filter((t) => now - t < windowMs);
     if (recent.length >= maxCalls) {
       const oldest = Math.min(...recent);
@@ -90,7 +97,10 @@ export async function checkSlidingWindow(
       return res;
     }
     recent.push(now);
-    await r2Put(bucket, key, { calls: recent });
+    // KV expirationTtl の最小値は 60 秒のため clamp する
+    await kv.put(key, JSON.stringify(recent), {
+      expirationTtl: Math.max(60, Math.ceil(windowMs / 1000)),
+    });
     return null;
   } finally {
     inFlight.delete(key);

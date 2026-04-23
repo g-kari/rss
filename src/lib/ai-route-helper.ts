@@ -39,7 +39,7 @@ type AiMessage = { role: "system" | "user"; content: string };
 export async function runAiJob(
   request: Request,
   session: AuthSession,
-  env: { RSS_DATA: R2Bucket; AI: Ai },
+  env: { RSS_DATA: R2Bucket; AI: Ai; RATE_LIMIT: KVNamespace },
   ctx: ExecutionContext,
   buildMessages: (plain: string) => AiMessage[],
   cacheType: AiCacheType = "summary",
@@ -63,7 +63,7 @@ export async function runAiJob(
   }
 
   const limited = await checkSlidingWindow(
-    env.RSS_DATA,
+    env.RATE_LIMIT,
     aiRateLimitKey(session.userId),
     AI_WINDOW_MS,
     AI_MAX_CALLS,

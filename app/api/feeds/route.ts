@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     if (!parsed.ok) return parsed.error;
 
     const limited = await checkAndUpdateCooldown(
-      env.RSS_DATA,
+      env.RATE_LIMIT,
       feedAddCooldownKey(session.userId),
       30 * 1000,
     );

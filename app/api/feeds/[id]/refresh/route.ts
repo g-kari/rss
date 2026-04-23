@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id: feedHash } = await params;
   return withSession(req, async ({ session, env }) => {
     const limited = await checkAndUpdateCooldown(
-      env.RSS_DATA,
+      env.RATE_LIMIT,
       singleFeedRefreshCooldownKey(session.userId, feedHash),
       SINGLE_FEED_COOLDOWN_MS,
     );

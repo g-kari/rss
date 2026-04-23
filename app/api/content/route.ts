@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 async function handleGet(
   request: Request,
   session: AuthSession,
-  env: { RSS_DATA: R2Bucket },
+  env: { RSS_DATA: R2Bucket; RATE_LIMIT: KVNamespace },
   ctx: ExecutionContext,
 ): Promise<NextResponse> {
   const reqUrl = new URL(request.url);
@@ -47,7 +47,7 @@ async function handleGet(
 
   // キャッシュミス時のみレートリミットを確認（外部フェッチを保護）
   const limited = await checkSlidingWindow(
-    env.RSS_DATA,
+    env.RATE_LIMIT,
     contentFetchRateLimitKey(session.userId),
     CONTENT_WINDOW_MS,
     CONTENT_MAX_CALLS,

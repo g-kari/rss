@@ -3,6 +3,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ## 2026-04-23
 
+### リファクタリングっ
+
+- **RateLimit ストレージを R2 → Workers KV に移行** — Issue #191。クールダウン・スライディングウィンドウのレートリミットデータを R2 オブジェクトストレージから Workers KV に移行したよ〜！KV は小さいキー・バリューの高速読み書きに最適で、\`expirationTtl\` でクールダウン期間後に自動削除されるから R2 の期限切れオブジェクトが残ることもなくなったっ。\`wrangler.toml\` に \`[[kv_namespaces]] binding = "RATE_LIMIT"\` を追加、デプロイ前に \`npx wrangler kv namespace create RATE_LIMIT\` でnamespace ID を取得・設定する必要があるよ💨✨
+
 ### バグ修正っ
 
 - **スクロール経由の自動既読が機能しない問題を修正** — Issue #182。翻訳表示やサマリー表示など \`contentRef\` が attach されないケースで IntersectionObserver が記事要素を観察できず、設定した閾値（70%・80%・90%）まで読んでも自動既読にならなかったの。\`handleScroll\` にも同じ閾値チェックを追加して、スクロール位置ベースでもちゃんと自動既読できるようになったよ〜！📖✨

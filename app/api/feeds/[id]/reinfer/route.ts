@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // レートリミット: AI + 外部フェッチを伴う重い操作のため 60 秒クールダウン
     const limited = await checkAndUpdateCooldown(
-      env.RSS_DATA,
+      env.RATE_LIMIT,
       reinferCooldownKey(session.userId, feedHash),
       REINFER_COOLDOWN_MS,
     );

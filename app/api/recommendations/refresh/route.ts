@@ -9,7 +9,7 @@ const RECOMMENDATIONS_COOLDOWN_MS = 5 * 60 * 1000; // 5分
 export async function POST(request: Request) {
   return withSession(request, async ({ session, env }) => {
     const limited = await checkAndUpdateCooldown(
-      env.RSS_DATA,
+      env.RATE_LIMIT,
       recommendationsCooldownKey(session.userId),
       RECOMMENDATIONS_COOLDOWN_MS,
     );
