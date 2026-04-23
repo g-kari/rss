@@ -29,6 +29,11 @@ export function validateClipRequest(req: ClipRequest): ValidateResult {
     return { ok: false, error: "html は空でない文字列が必要です" };
   }
 
+  const MAX_HTML_BYTES = 5 * 1024 * 1024; // 5MB
+  if (html.length > MAX_HTML_BYTES || new TextEncoder().encode(html).length > MAX_HTML_BYTES) {
+    return { ok: false, error: "HTML が大きすぎます（上限 5MB）" };
+  }
+
   if (typeof url !== "string" || url.trim() === "") {
     return { ok: false, error: "url は空でない文字列が必要です" };
   }

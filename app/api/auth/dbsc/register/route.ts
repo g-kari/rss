@@ -6,7 +6,7 @@ import {
   bindDbscToServerSession,
   SESSION_COOKIE,
 } from "@/lib/server-auth";
-import { r2Put } from "@/lib/r2";
+import { r2Get, r2Put } from "@/lib/r2";
 import { importDbscPublicKey, type DbscSession } from "@/lib/dbsc";
 
 /**
@@ -30,10 +30,11 @@ export async function POST(req: NextRequest) {
       publicKey?: unknown;
       sessionId?: unknown;
       attestation?: unknown;
+      challenge?: unknown;
     }>(req);
     if (!parsed.ok) return parsed.error;
 
-    const { publicKey, sessionId, attestation } = parsed.data;
+    const { publicKey, sessionId, attestation, challenge } = parsed.data;
 
     if (typeof publicKey !== "string" || publicKey.length === 0) {
       return NextResponse.json({ error: "publicKey is required" }, { status: 400 });
@@ -41,8 +42,36 @@ export async function POST(req: NextRequest) {
     if (typeof sessionId !== "string" || sessionId.length === 0) {
       return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
     }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+      return NextResponse.json({ error: "invalid sessionId" }, { status: 400 });
+    }
     if (attestation !== undefined && typeof attestation !== "string") {
       return NextResponse.json({ error: "attestation must be a string" }, { status: 400 });
+    }
+    if (typeof challenge !== "string" || challenge.length === 0) {
+      return NextResponse.json({ error: "challenge is required" }, { status: 400 });
+    }
+
+    // 登録フローで発行したチャレンジを R2 から取得して照合
+    const pendingKey = `users/${session.userId}/dbsc-pending-challenge.json`;
+    const pendingChallenge = await r2Get<{ challenge: string; expiresAt: number } | null>(
+      env.RSS_DATA,
+      pendingKey,
+      null,
+    );
+
+    if (!pendingChallenge) {
+      return NextResponse.json({ error: "Challenge not found or expired" }, { status: 401 });
+    }
+    if (pendingChallenge.expiresAt < Date.now()) {
+      env.RSS_DATA.delete(pendingKey).catch(() => {});
+      return NextResponse.json({ error: "Challenge expired" }, { status: 401 });
+    }
+    // チャレンジを削除（一回限り使用）— 照合前に削除してリプレイ攻撃を防ぐ
+    await env.RSS_DATA.delete(pendingKey);
+
+    if (pendingChallenge.challenge !== challenge) {
+      return NextResponse.json({ error: "Challenge mismatch" }, { status: 401 });
     }
 
     // P-256 ECDSA 公開鍵フォーマット検証

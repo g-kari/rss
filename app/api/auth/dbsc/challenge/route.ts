@@ -41,6 +41,9 @@ export async function POST(req: NextRequest) {
     if (typeof sessionId !== "string" || sessionId.length === 0) {
       return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
     }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+      return NextResponse.json({ error: "invalid sessionId" }, { status: 400 });
+    }
 
     // Step 2: response が存在する場合は署名検証フロー
     if (response !== undefined) {

@@ -127,9 +127,14 @@ export async function GET(request: Request) {
   // DBSC 登録トリガー: 対応ブラウザに Secure-Session-Registration を送って TPM 鍵ペア生成を開始させる
   // ブラウザはヘッダーを受け取ると /api/auth/dbsc/register に公開鍵を POST する
   // @see https://wicg.github.io/dbsc/
+  const dbscChallenge = generateDbscChallenge();
+  await r2Put(env.RSS_DATA, `users/${sub}/dbsc-pending-challenge.json`, {
+    challenge: dbscChallenge,
+    expiresAt: Date.now() + 5 * 60 * 1000,
+  });
   res.headers.set(
     "Secure-Session-Registration",
-    buildSecureSessionRegistrationHeader(generateDbscChallenge(), appBaseUrl),
+    buildSecureSessionRegistrationHeader(dbscChallenge, appBaseUrl),
   );
 
   return res;

@@ -63,8 +63,6 @@ export function isDbscSupported(): boolean {
  * @returns UUID v4 形式のチャレンジ文字列
  */
 export function generateDbscChallenge(): string {
-  // TODO: 本実装では生成したチャレンジを R2 または KV に短期間（例: 5分）保存し、
-  // verifyDbscResponse での検証後に削除してリプレイ攻撃を防ぐこと。
   return crypto.randomUUID();
 }
 
