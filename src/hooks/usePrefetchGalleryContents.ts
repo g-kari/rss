@@ -59,19 +59,34 @@ export function usePrefetchGalleryContents({
   // 429 受信時に Retry-After で指定された時刻まではプリフェッチを完全停止する
   const rateLimitUntilRef = useRef<number>(0);
 
+  // articles は毎レンダーで新参照（visible.slice(...)）になる。
+  // useEffect の依存配列に直接入れると setMedia → 再レンダー → 新参照 → effect 再実行
+  // → 進行中 fetch が abort → 同一記事を再取得、という 429 の原因になる。
+  // 代わりに記事 ID の文字列キーを依存にすることで、内容が変わらない限り effect を再実行しない。
+  const articlesRef = useRef(articles);
+  articlesRef.current = articles;
+  const limit = Math.min(isFinite(maxPrefetch) ? maxPrefetch : 200, 200);
+  const articlesKey = articles
+    .slice(0, limit)
+    .filter((a) => Boolean(a.link))
+    .map((a) => a.id)
+    .join("\0");
+
   useEffect(() => {
     if (!enabled) return;
     // サーバー / 上流から Retry-After でクールダウンを指示されている間は一切フェッチしない
     if (Date.now() < rateLimitUntilRef.current) return;
-    // 暴走保護のためハードリミット 200 件。maxPrefetch が Infinity でも上限超過はしない。
-    const limit = Math.min(maxPrefetch, 200);
-    const targets = articles.slice(0, limit).filter((a) => a.link);
+    // articlesRef.current を使うことで、依存配列を安定させつつ最新の記事情報を参照する
+    const lim = Math.min(isFinite(maxPrefetch) ? maxPrefetch : 200, 200);
+    const targets = articlesRef.current.slice(0, lim).filter((a) => a.link);
     if (targets.length === 0) return;
 
     const controller = new AbortController();
     let cancelled = false;
     // 429 を受信したら以降の fetch を全停止するフラグ
     let rateLimited = false;
+    // 同一 article.id への同時並行 fetch を防ぐ in-flight 管理
+    const inflight = new Set<string>();
 
     // すでに state にある記事はスキップ
     const pending = targets.filter((a) => !mediaRef.current.has(a.id));
@@ -110,6 +125,9 @@ export function usePrefetchGalleryContents({
 
     async function fetchOne(article: Article) {
       if (!article.link || rateLimited || cancelled) return;
+      // in-flight dedup: 同一記事の同時並行 fetch を防止
+      if (inflight.has(article.id)) return;
+      inflight.add(article.id);
       try {
         const res = await apiFetch(`/api/content?url=${encodeURIComponent(article.link)}`, {
           signal: controller.signal,
@@ -145,6 +163,8 @@ export function usePrefetchGalleryContents({
         if (!isAbortError(err)) {
           // ネットワークエラーはサイレント — サムネイル拡張は best-effort
         }
+      } finally {
+        inflight.delete(article.id);
       }
     }
 
@@ -169,7 +189,11 @@ export function usePrefetchGalleryContents({
       cancelled = true;
       controller.abort();
     };
-  }, [articles, enabled, concurrency, maxPrefetch, requestDelayMs]);
+    // articles の代わりに articlesKey（記事 ID の結合文字列）を依存にする。
+    // これにより、記事内容が変わらない限り setMedia による再レンダーで effect が再実行されず、
+    // 進行中の fetch が意図せず中断・重複することを防ぐ。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articlesKey, enabled, concurrency, maxPrefetch, requestDelayMs]);
 
   return media;
 }
