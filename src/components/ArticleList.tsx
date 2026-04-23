@@ -303,6 +303,16 @@ export default function ArticleList({
     [galleryImagesForItem, ogpCache],
   );
 
+  const buildSafeTitle = useCallback((title: string | null | undefined) => {
+    return (
+      (title ?? "image")
+        .replace(/[^\w\s぀-鿿゠-ヿ一-鿿-]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .slice(0, 40) || "image"
+    );
+  }, []);
+
   const downloadImage = useCallback((url: string, filename?: string) => {
     const proxyUrl = buildImageProxyUrl(url);
     const a = document.createElement("a");
@@ -315,12 +325,15 @@ export default function ArticleList({
   }, []);
 
   const downloadAllImages = useCallback(
-    (images: string[]) => {
+    (images: string[], article: Article) => {
+      const safeTitle = buildSafeTitle(article.title);
       images.forEach((url, i) => {
-        setTimeout(() => downloadImage(url, `image-${i + 1}`), i * 200);
+        const ext = url.split(".").pop()?.split("?")[0] ?? "";
+        const filename = ext ? `${safeTitle}-${i + 1}.${ext}` : `${safeTitle}-${i + 1}`;
+        setTimeout(() => downloadImage(url, filename), i * 200);
       });
     },
-    [downloadImage],
+    [buildSafeTitle, downloadImage],
   );
 
   // ── 仮想スクロール ──────────────────────────────────────────────
@@ -1229,7 +1242,11 @@ export default function ArticleList({
               {galleryCtxMenu.thumb && (
                 <button
                   onClick={() => {
-                    downloadImage(galleryCtxMenu.thumb!);
+                    const url = galleryCtxMenu.thumb!;
+                    const safeTitle = buildSafeTitle(galleryCtxMenu.article.title);
+                    const ext = url.split(".").pop()?.split("?")[0] ?? "";
+                    const filename = ext ? `${safeTitle}-1.${ext}` : `${safeTitle}-1`;
+                    downloadImage(url, filename);
                     setGalleryCtxMenu(null);
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
@@ -1253,7 +1270,7 @@ export default function ArticleList({
               {galleryCtxMenu.images && galleryCtxMenu.images.length > 1 && (
                 <button
                   onClick={() => {
-                    downloadAllImages(galleryCtxMenu.images!);
+                    downloadAllImages(galleryCtxMenu.images!, galleryCtxMenu.article);
                     setGalleryCtxMenu(null);
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
