@@ -16,7 +16,7 @@ import {
 import { checkSlidingWindow } from "@/lib/rate-limit";
 import { contentFetchRateLimitKey } from "@/lib/r2";
 const CONTENT_WINDOW_MS = 60 * 1000;
-const CONTENT_MAX_CALLS = 30;
+const CONTENT_MAX_CALLS = 120;
 
 export async function GET(request: Request) {
   return withSession(request, ({ session, env, ctx }) => handleGet(request, session, env, ctx));
