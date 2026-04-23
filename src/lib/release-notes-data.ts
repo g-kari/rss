@@ -3,6 +3,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ## 2026-04-23
 
+### セキュリティ対策っ
+
+- **refresh_token をサーバーサイドセッションに移行** — Issue #189。refresh_token をブラウザの Cookie に直接持たせるのをやめて、R2 の \`sessions/{sessionId}.json\` にサーバー側だけで保管するようにしたよ〜！ブラウザには不透明な \`session_id\` だけを渡す設計に変更。Cookie が万が一漏れても refresh_token そのものは手に入らないし、サーバー側でセッションを即時削除することで強制ログアウトも可能になったっ🔒✨
+
 ### リファクタリングっ
 
 - **RateLimit ストレージを R2 → Workers KV に移行** — Issue #191。クールダウン・スライディングウィンドウのレートリミットデータを R2 オブジェクトストレージから Workers KV に移行したよ〜！KV は小さいキー・バリューの高速読み書きに最適で、\`expirationTtl\` でクールダウン期間後に自動削除されるから R2 の期限切れオブジェクトが残ることもなくなったっ。\`wrangler.toml\` に \`[[kv_namespaces]] binding = "RATE_LIMIT"\` を追加、デプロイ前に \`npx wrangler kv namespace create RATE_LIMIT\` でnamespace ID を取得・設定する必要があるよ💨✨

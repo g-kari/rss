@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt, exchangeCode } from "@/lib/auth";
 import { r2Put } from "@/lib/r2";
-import { isBetaAllowed, setTokenCookies } from "@/lib/server-auth";
+import {
+  isBetaAllowed,
+  setAccessTokenCookies,
+  setSessionCookie,
+  createServerSession,
+} from "@/lib/server-auth";
 import { escapeHtml } from "@/lib/html";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
@@ -109,9 +114,13 @@ export async function GET(request: Request) {
   };
   await r2Put(env.RSS_DATA, `users/${sub}/profile.json`, profile);
 
+  // refresh_token をサーバーサイドセッションとして R2 に保存し、ブラウザには session_id のみを渡す
+  const sessionId = await createServerSession(env.RSS_DATA, sub, tokens.refresh_token);
+
   // ?login=1 でクライアントにログイン直後であることを伝える（R2 整合性ラグ対策リトライ用）
   const res = NextResponse.redirect(new URL("/?login=1", appBaseUrl));
   res.cookies.delete("auth_state");
-  setTokenCookies(res, tokens);
+  setAccessTokenCookies(res, tokens.access_token);
+  setSessionCookie(res, sessionId);
   return res;
 }

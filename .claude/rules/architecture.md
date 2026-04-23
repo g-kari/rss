@@ -303,6 +303,15 @@ feeds/{feedHash}/articles/p{N}.json     # Article[]（過去ページ、N=2〜�
 フィード記事データはユーザー間で共有され、複数ユーザーが同じフィードを購読しても記事フェッチは 1 度だけ行われる。
 詳細は `src/lib/shared-feed.ts` の `mergeNewArticles` / `cascadeOverflow` を参照。
 
+### サーバーサイドセッション（認証）
+
+```
+sessions/{sessionId}.json              # ServerSessionData（userId・refreshToken・expiresAt）— ブラウザは session_id Cookie のみ保持
+```
+
+`sessionId` = `crypto.randomUUID()`。refresh_token はブラウザに渡さずサーバー側のみで管理（#189）。
+期限切れセッション（expiresAt 超過）は次回アクセス時に自動削除される。
+
 ### ユーザー別データ
 
 ```
@@ -346,7 +355,9 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ（永続）
          → Google 認証
          → GET /api/auth/callback?code=...&state=...
          → POST id.0g0.xyz/auth/exchange (Basic 認証)
-         → access_token (15分) + refresh_token (30日) を HttpOnly cookie にセット
+         → access_token (15分) を HttpOnly cookie にセット
+         → refresh_token を R2 sessions/{sessionId}.json に保存
+         → session_id (30日) を HttpOnly cookie にセット（refresh_token はブラウザに渡さない）
          → /
 ```
 
