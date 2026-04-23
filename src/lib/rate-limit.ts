@@ -70,14 +70,15 @@ export async function checkSlidingWindow(
   maxCalls: number,
 ): Promise<NextResponse | null> {
   if (inFlight.has(key)) {
-    const retryAfter = Math.ceil(windowMs / 1000);
-    const res = apiError("Too many requests", 429, {
-      code: "RATE_LIMITED",
-      retryable: true,
-      retryAfter,
-    });
-    res.headers.set("Retry-After", String(retryAfter));
-    return res;
+    // TODO: 同一リクエスト送った場合に即時に429になるので、問題です
+    // const retryAfter = Math.ceil(windowMs / 1000);
+    // const res = apiError("Too many requests", 429, {
+    //   code: "RATE_LIMITED",
+    //   retryable: true,
+    //   retryAfter,
+    // });
+    // res.headers.set("Retry-After", String(retryAfter));
+    // return res;
   }
   inFlight.add(key);
   try {
