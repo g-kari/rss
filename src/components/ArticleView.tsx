@@ -189,6 +189,39 @@ function CollectionDropdown({
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
+function renderSummary(text: string) {
+  const lines = text.split("\n");
+  return lines
+    .map((line, i) => {
+      if (line.startsWith("## ")) {
+        return (
+          <p
+            key={i}
+            className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-faint mt-3 mb-1.5 first:mt-0"
+          >
+            {line.slice(3)}
+          </p>
+        );
+      }
+      if (/^[・\-•]\s/.test(line)) {
+        const content = line.replace(/^[・\-•]\s*/, "");
+        return (
+          <div key={i} className="flex gap-2 text-[13px] leading-[1.7] text-text-default">
+            <span className="text-text-muted shrink-0 mt-[1px]">·</span>
+            <span>{content}</span>
+          </div>
+        );
+      }
+      if (line.trim() === "") return null;
+      return (
+        <p key={i} className="text-[13px] leading-[1.8] text-text-soft">
+          {line}
+        </p>
+      );
+    })
+    .filter((el): el is React.JSX.Element => el !== null);
+}
+
 export default function ArticleView({
   article,
   isBookmarked,
@@ -1119,7 +1152,7 @@ export default function ArticleView({
                 ))}
               </div>
             </div>
-            <p className="text-[14px] leading-[1.8] text-text-default">{aiResult}</p>
+            <div className="space-y-0.5">{renderSummary(aiResult)}</div>
           </div>
         )}
         {aiError && <p className="mb-6 text-[11px] text-rose-400">{aiError}</p>}
