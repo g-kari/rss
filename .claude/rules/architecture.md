@@ -110,6 +110,7 @@ src/
     SnoozeModal.tsx          # 記事スヌーズ設定モーダル（1時間後・明日の朝・来週など）
     ReadingStatsModal.tsx    # 読了統計モーダル（日別グラフ・年間ヒートマップ・週間目標）
     FeedQuickSwitchModal.tsx # フィードクイック切り替えモーダル（キーボードナビ対応）
+    CollectionDropdown.tsx   # コレクション追加/削除ドロップダウン（CollectionModal 連携）
     CollectionModal.tsx      # コレクション作成・名前変更モーダル
     NSFWEyeAnimation.tsx     # NSFW コンテンツ表示アニメーション
     ServiceWorkerRegistration.tsx # Service Worker 登録コンポーネント
