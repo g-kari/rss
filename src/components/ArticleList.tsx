@@ -74,6 +74,7 @@ interface Props {
   /** 記事一覧フォーカスモード（サイドバーと記事ビューを畳む） */
   listFocusMode: boolean;
   onToggleListFocusMode: () => void;
+  onGalleryAutoRead?: (id: string) => void;
 }
 
 const LAYOUTS: Layout[] = ["compact", "list", "card", "magazine", "gallery"];
@@ -199,6 +200,7 @@ export default function ArticleList({
   activeFeedView,
   listFocusMode,
   onToggleListFocusMode,
+  onGalleryAutoRead,
 }: Props) {
   const {
     filtered,
@@ -348,11 +350,19 @@ export default function ArticleList({
   }, []);
 
   const feedView = activeFeedView ?? "articles";
+  const onGalleryAutoReadRef = useSyncedRef(onGalleryAutoRead);
+  const handleGalleryAutoRead = useCallback(
+    (id: string) => {
+      onMarkRead(id);
+      onGalleryAutoReadRef.current?.(id);
+    },
+    [onMarkRead, onGalleryAutoReadRef],
+  );
   useGalleryAutoRead({
     scrollElement: layout === "gallery" ? scrollEl : null,
     enabled: autoReadEnabled && feedView !== "articles",
     readIds,
-    onMarkRead,
+    onMarkRead: handleGalleryAutoRead,
   });
 
   // compact / list / card / magazine — visible から抜けた記事を 250ms フェードアウト

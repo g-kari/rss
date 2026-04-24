@@ -491,6 +491,19 @@ export default function App() {
     [selectedCollectionId, collections],
   );
 
+  const [galleryAutoReadIds, setGalleryAutoReadIds] = useState<Set<string>>(() => new Set());
+  const handleGalleryAutoRead = useCallback((id: string) => {
+    setGalleryAutoReadIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    setGalleryAutoReadIds(new Set());
+  }, [selectedFeedId, selectedGroupId, activeFeedView]);
+
   const filterState = useFilteredArticles({
     articles,
     feeds,
@@ -516,6 +529,7 @@ export default function App() {
     articleTags: articleTagIds,
     selectedTag,
     collectionArticleIds: collectionArticleIds,
+    galleryAutoReadIds,
   });
 
   const {
@@ -1229,6 +1243,7 @@ export default function App() {
                 activeFeedView={activeFeedView}
                 listFocusMode={listFocusMode}
                 onToggleListFocusMode={toggleListFocusMode}
+                onGalleryAutoRead={handleGalleryAutoRead}
               />
             </ErrorBoundary>
           </div>

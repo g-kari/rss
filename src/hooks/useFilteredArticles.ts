@@ -121,6 +121,8 @@ interface Options {
   selectedTag?: string | null;
   /** コレクション選択時の対象記事 ID セット — 設定時はその記事のみ表示 */
   collectionArticleIds?: Set<string>;
+  /** ギャラリー自動既読で既読にした記事 ID セット — unreadOnly フィルターから除外してカード消失を防止 */
+  galleryAutoReadIds?: Set<string>;
 }
 
 /**
@@ -168,6 +170,7 @@ export function useFilteredArticles({
   articleTags,
   selectedTag = null,
   collectionArticleIds,
+  galleryAutoReadIds,
 }: Options) {
   const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
   const [bookmarkOnly, setBookmarkOnly] = useState(
@@ -284,8 +287,11 @@ export function useFilteredArticles({
     const ids = new Set<string>();
     if (selectedArticleId) ids.add(selectedArticleId);
     if (gracePeriodId) ids.add(gracePeriodId);
+    if (galleryAutoReadIds) {
+      for (const id of galleryAutoReadIds) ids.add(id);
+    }
     return ids;
-  }, [selectedArticleId, gracePeriodId]);
+  }, [selectedArticleId, gracePeriodId, galleryAutoReadIds]);
 
   // メモがある記事 ID のセット（noteOnly フィルターで使用）
   const noteIds = useMemo(() => new Set(Object.keys(notes ?? {})), [notes]);
