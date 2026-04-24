@@ -1,6 +1,12 @@
 export const RELEASE_NOTES_MARKDOWN = `
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-04-24 (3)
+
+### リファクタリングっ
+
+- **CollectionDropdown を独立コンポーネントに分離** — Issue #204。\`ArticleView.tsx\` 内にベタ書きされてた \`CollectionDropdown\` を \`src/components/CollectionDropdown.tsx\` に抽出したよ〜！しかも \`window.prompt\` / \`window.alert\` を廃止して、ちゃんとした \`CollectionModal\` 連携に変更しちゃった✨他のコンポーネントからも再利用できるようになったっ🎀
+
 ## 2026-04-24 (2)
 
 ### リファクタリングっ
