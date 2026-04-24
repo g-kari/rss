@@ -1,6 +1,12 @@
 export const RELEASE_NOTES_MARKDOWN = `
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-04-24 (8)
+
+### パフォーマンス改善っ
+
+- **R2 の N+1 読み取りを並行度制限で最適化** — Issue #201。フィード100件購読してると \`Promise.all\` で100並列 R2 GET しちゃってたの、\`pMap\` で同時10件ずつに制限したよ〜！\`getUserLatestArticles\`・\`getUserFeeds\`・\`buildFeedUserMap\`・OPML インポート・推薦リンク探索の5箇所をまとめて修正っ🚀⚡
+
 ## 2026-04-24 (7)
 
 ### 激アツ新機能っ

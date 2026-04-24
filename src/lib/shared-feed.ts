@@ -27,6 +27,27 @@ export const KNOWN_IDS_MAX = 10_000;
 /** ユーザーに返す記事の最大件数 */
 export const MAX_USER_ARTICLES = 10_000;
 
+/** R2 同時読み取りの並行度上限 */
+export const R2_CONCURRENCY = 10;
+
+/** 並行度制限付き map — 最大 concurrency 件ずつ fn を実行する */
+export async function pMap<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency: number = R2_CONCURRENCY,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  return results;
+}
+
 // ── キー計算 ──────────────────────────────────────────────────────
 
 /** フィード URL から feedHash を計算する (sha256 の先頭 16 文字) */
@@ -354,7 +375,7 @@ export async function getUserFeeds(bucket: R2Bucket, userId: string): Promise<Fe
   const subs = await readUserSubscriptions(bucket, userId);
   if (subs.length === 0) return [];
 
-  const metas = await Promise.all(subs.map((s) => readFeedMeta(bucket, s.feedHash)));
+  const metas = await pMap(subs, (s) => readFeedMeta(bucket, s.feedHash), R2_CONCURRENCY);
   return subs.flatMap((sub, i) => {
     const meta = metas[i];
     return meta ? [assembleClientFeed(meta, sub)] : [];
@@ -373,7 +394,11 @@ export async function getUserLatestArticles(
   const resolvedSubs = subs ?? (await readUserSubscriptions(bucket, userId));
   if (resolvedSubs.length === 0) return [];
 
-  const pages = await Promise.all(resolvedSubs.map((s) => readLatestArticles(bucket, s.feedHash)));
+  const pages = await pMap(
+    resolvedSubs,
+    (s) => readLatestArticles(bucket, s.feedHash),
+    R2_CONCURRENCY,
+  );
   return sortByDate(pages.flat()).slice(0, MAX_USER_ARTICLES);
 }
 
@@ -409,8 +434,10 @@ export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
   const feedHasPriority = new Set<string>();
   const userIds = await listPrefixedIds(bucket, "users/");
 
-  const allSubs = await Promise.all(
-    userIds.map(async (uid) => ({ uid, subs: await readUserSubscriptions(bucket, uid) })),
+  const allSubs = await pMap(
+    userIds,
+    async (uid) => ({ uid, subs: await readUserSubscriptions(bucket, uid) }),
+    R2_CONCURRENCY,
   );
   for (const { uid, subs } of allSubs) {
     for (const s of subs) {

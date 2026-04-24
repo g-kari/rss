@@ -7,7 +7,7 @@ import type {
 import { r2Get, r2Put, sha256Hex, engagementKey } from "./r2";
 import { scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
 import { discoverFeedUrl } from "./feed-discovery";
-import { buildFeedUserMap, readFeedMeta, readLatestArticles } from "./shared-feed";
+import { buildFeedUserMap, readFeedMeta, readLatestArticles, pMap } from "./shared-feed";
 import { fetchWithTimeout } from "./fetch";
 import { buildContentCacheKey } from "./fetch-article-content";
 
@@ -361,17 +361,20 @@ export async function generateLinkDiscoveryFeeds(
     byFeed.set(entry.feedHash, ids);
   }
 
-  // 記事 URL を解決（フィードごとに並列取得）
+  // 記事 URL を解決（フィードごとに並行度制限付きで取得）
   const articleLinks: Array<{ link: string; title: string }> = [];
-  const feedArticleResults = await Promise.allSettled(
-    [...byFeed.entries()].map(async ([feedHash, articleIds]) => {
+  const feedEntries = [...byFeed.entries()];
+  const feedArticleResults = await pMap(feedEntries, async ([feedHash, articleIds]) => {
+    try {
       const articles = await readLatestArticles(bucket, feedHash);
       return { articles, idSet: new Set(articleIds) };
-    }),
-  );
+    } catch {
+      return null;
+    }
+  });
   for (const result of feedArticleResults) {
-    if (result.status !== "fulfilled") continue;
-    const { articles, idSet } = result.value;
+    if (!result) continue;
+    const { articles, idSet } = result;
     for (const a of articles) {
       if (idSet.has(a.id) && a.link) {
         articleLinks.push({ link: a.link, title: a.title });
