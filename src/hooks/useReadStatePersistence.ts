@@ -90,6 +90,8 @@ export interface ReadStatePersistenceResult {
   globalFilterDirtyRef: React.MutableRefObject<boolean>;
 }
 
+const CLIENT_MAX_READ_IDS = 50_000;
+
 export function useReadStatePersistence(
   articles: Article[],
   historyIds: Set<string> | undefined,
@@ -98,7 +100,14 @@ export function useReadStatePersistence(
 ): ReadStatePersistenceResult {
   const scheduleSyncRef = useSyncedRef(scheduleSyncToServer);
   const syncImmediatelyRef = useSyncedRef(syncImmediately);
-  const [readIds, setReadIds] = useState<Set<string>>(() => loadSet(STORAGE_KEYS.READ_IDS));
+  const [readIds, setReadIds] = useState<Set<string>>(() => {
+    const raw = loadSet(STORAGE_KEYS.READ_IDS);
+    if (raw.size <= CLIENT_MAX_READ_IDS) return raw;
+    // 古いエントリを切り捨て（配列末尾＝新しい順に保持）
+    const trimmed = new Set([...raw].slice(-CLIENT_MAX_READ_IDS));
+    saveSet(STORAGE_KEYS.READ_IDS, trimmed);
+    return trimmed;
+  });
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(() =>
     loadSet(STORAGE_KEYS.BOOKMARK_IDS),
   );

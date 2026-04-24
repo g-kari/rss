@@ -99,7 +99,11 @@ function chooseLater(a: string | null | undefined, b: string | null | undefined)
  * - snoozedUntil: キー単位で until が遅い方を採用
  * - notes: キー単位で update 優先マージ（存在しないキーは既存を保持）
  */
-export function mergeReadStateUpdate(existing: ReadState, update: ReadStateUpdate): ReadState {
+export function mergeReadStateUpdate(
+  existing: ReadState,
+  update: ReadStateUpdate,
+  maxReadIds?: number,
+): ReadState {
   const removed = update.removedIds ?? {};
   const readIds = mergeIdList(existing.readIds, update.readIds, removed.readIds);
   const bookmarkIds = mergeIdList(existing.bookmarkIds, update.bookmarkIds, removed.bookmarkIds);
@@ -121,7 +125,7 @@ export function mergeReadStateUpdate(existing: ReadState, update: ReadStateUpdat
   const tagIds = mergeTags(existing.tagIds, update.tagIds, removed.tagIds);
 
   return {
-    readIds,
+    readIds: maxReadIds && readIds.length > maxReadIds ? readIds.slice(-maxReadIds) : readIds,
     bookmarkIds,
     readingListIds,
     likeIds,

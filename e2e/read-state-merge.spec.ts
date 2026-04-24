@@ -224,3 +224,42 @@ test("removedIds.tagIds は incoming.tagIds にも適用される（優先）", 
   });
   expect(result.tagIds).toBeNull();
 });
+
+// ── maxReadIds trim テスト ────────────────────────────────
+
+test("maxReadIds 指定時に readIds が上限を超えたら末尾（最新）を残して trim する", () => {
+  const existing: ReadState = {
+    ...emptyState(),
+    readIds: Array.from({ length: 80 }, (_, i) => `old-${i}`),
+  };
+  const result = mergeReadStateUpdate(
+    existing,
+    {
+      readIds: Array.from({ length: 40 }, (_, i) => `new-${i}`),
+    },
+    100,
+  );
+  expect(result.readIds.length).toBe(100);
+  expect(result.readIds).not.toContain("old-0");
+  expect(result.readIds).toContain("old-79");
+  expect(result.readIds).toContain("new-39");
+});
+
+test("maxReadIds 未満の場合は trim しない", () => {
+  const existing: ReadState = {
+    ...emptyState(),
+    readIds: ["a", "b", "c"],
+  };
+  const result = mergeReadStateUpdate(existing, { readIds: ["d"] }, 100);
+  expect(result.readIds.length).toBe(4);
+  expect(new Set(result.readIds)).toEqual(new Set(["a", "b", "c", "d"]));
+});
+
+test("maxReadIds を指定しない場合は trim しない（後方互換）", () => {
+  const existing: ReadState = {
+    ...emptyState(),
+    readIds: Array.from({ length: 200 }, (_, i) => `id-${i}`),
+  };
+  const result = mergeReadStateUpdate(existing, {});
+  expect(result.readIds.length).toBe(200);
+});

@@ -298,7 +298,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     }, 0);
   }, [flushToServer, userRef]);
 
-  // ログイン後にサーバーの状態をマージ
+  // ログイン後にサーバーの状態をマージ + オーバーフローリカバリ
   const userSub = user?.sub;
   useEffect(() => {
     if (!userSub) return;
@@ -306,6 +306,15 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
       if (!state) return;
       applyServerState(state);
     });
+    const overflow = localStorage.getItem(STORAGE_KEYS.BEACON_OVERFLOW);
+    if (overflow) {
+      saveReadState(overflow).then((result) => {
+        if (result.ok) {
+          localStorage.removeItem(STORAGE_KEYS.BEACON_OVERFLOW);
+          if (result.state) applyServerState(result.state);
+        }
+      });
+    }
   }, [userSub, applyServerState]);
 
   function flushIfPending(): boolean {
@@ -341,16 +350,21 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     const tagRemoved = new Set(pendingTagRemovedRef.current);
     const wasGfDirty = globalFilterDirtyRef.current;
     const body = buildBody(added, removed, tagChanged, tagRemoved, wasGfDirty);
-    const accepted = navigator.sendBeacon(
-      "/api/read-state",
-      new Blob([body], { type: "application/json" }),
-    );
+    const MAX_BEACON_BYTES = 60_000;
+    const blob = new Blob([body], { type: "application/json" });
+    const accepted = blob.size <= MAX_BEACON_BYTES && navigator.sendBeacon("/api/read-state", blob);
     if (accepted) {
       pendingAddedRef.current = emptyPendingSets();
       pendingRemovedRef.current = emptyPendingSets();
       pendingTagChangedRef.current = new Set();
       pendingTagRemovedRef.current = new Set();
       globalFilterDirtyRef.current = false;
+    } else {
+      try {
+        localStorage.setItem(STORAGE_KEYS.BEACON_OVERFLOW, body);
+      } catch {
+        /* quota exceeded — データロスト */
+      }
     }
   });
 

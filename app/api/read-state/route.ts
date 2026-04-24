@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     };
     if ("globalFilter" in body) update.globalFilter = globalFilter;
 
-    const merged = mergeReadStateUpdate(existing, update);
+    const merged = mergeReadStateUpdate(existing, update, MAX_READ_IDS);
 
     await r2Put(env.RSS_DATA, readStateKey(session.userId), merged);
     // クライアントが POST 直後にサーバーの真実を反映できるよう、マージ結果を返す

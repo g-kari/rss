@@ -1,6 +1,12 @@
 export const RELEASE_NOTES_MARKDOWN = `
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-04-24 (6)
+
+### パフォーマンス改善っ
+
+- **readIds 肥大化 & sendBeacon ペイロード上限超過を修正** — Issue #200。readIds が 10 万件超になるとサーバーの R2 データが肥大化しちゃう問題と、\`sendBeacon\` の 64KB 上限を超えてデータロストしちゃう問題をまとめて解決！サーバー側は \`mergeReadStateUpdate\` で readIds を 10 万件にトリム、クライアント側は sendBeacon 前に 60KB サイズチェックして超過時は localStorage にフォールバック保存、次回ログイン時に自動リカバリするようにしたよ〜✨ localStorage の readIds も 5 万件で自動トリムするっ🚀💾
+
 ## 2026-04-24 (5)
 
 ### バグ修正っ
