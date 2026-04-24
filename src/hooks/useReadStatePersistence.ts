@@ -7,6 +7,7 @@ import {
   STORAGE_KEYS,
   SPECIAL_FEED_IDS,
   saveSet,
+  deferSaveSet,
   loadSet,
   toggleSetItem,
   loadJson,
@@ -43,7 +44,7 @@ function makeToggle(
 ): (id: string) => void {
   return (id) => {
     const isRemoval = getCurrentSet().has(id);
-    toggleSetItem(setter, key, id);
+    toggleSetItem(setter, key, id, true);
     if (isRemoval) {
       onRemove(id);
     } else {
@@ -166,7 +167,7 @@ export function useReadStatePersistence(
         if (prev.has(articleId)) return prev;
         const next = new Set(prev);
         next.add(articleId);
-        saveSet(STORAGE_KEYS.READ_IDS, next);
+        deferSaveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
       pendingAddedRef.current.read.add(articleId);
@@ -182,7 +183,7 @@ export function useReadStatePersistence(
       if (newIds.length === 0) return;
       setReadIds((prev) => {
         const next = new Set([...prev, ...newIds]);
-        saveSet(STORAGE_KEYS.READ_IDS, next);
+        deferSaveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
       for (const id of newIds) {
@@ -213,7 +214,7 @@ export function useReadStatePersistence(
               ? arts.filter((a) => a.feedHash === feedId).map((a) => a.id)
               : arts.map((a) => a.id);
         const next = new Set([...prev, ...ids]);
-        saveSet(STORAGE_KEYS.READ_IDS, next);
+        deferSaveSet(STORAGE_KEYS.READ_IDS, next);
         for (const id of ids) {
           if (!prev.has(id)) {
             pendingAddedRef.current.read.add(id);

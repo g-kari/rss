@@ -142,6 +142,33 @@ export function saveSet(key: string, ids: Set<string>): void {
   storageSet(key, JSON.stringify([...ids]));
 }
 
+// ── Deferred Save（バッチ化された非同期 localStorage 書き込み）────
+const pendingSaves = new Map<string, Set<string>>();
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+
+function runPendingSaves(): void {
+  saveTimer = undefined;
+  for (const [key, ids] of pendingSaves) saveSet(key, ids);
+  pendingSaves.clear();
+}
+
+/** saveSet を setTimeout(0) に遅延し、同一ティック内の複数書き込みを 1 回に合成する */
+export function deferSaveSet(key: string, ids: Set<string>): void {
+  pendingSaves.set(key, ids);
+  if (saveTimer == null) saveTimer = setTimeout(runPendingSaves, 0);
+}
+
+/** 未フラッシュの deferred save を即時実行する（beforeunload 用） */
+export function flushDeferredSaves(): void {
+  if (saveTimer != null) {
+    clearTimeout(saveTimer);
+    saveTimer = undefined;
+  }
+  if (pendingSaves.size === 0) return;
+  for (const [key, ids] of pendingSaves) saveSet(key, ids);
+  pendingSaves.clear();
+}
+
 /**
  * localStorage に保存された文字列を列挙型として読み込む。
  * 保存値が valid に含まれない場合は fallback を返す。
@@ -156,6 +183,7 @@ export function toggleSetItem(
   setState: (updater: (prev: Set<string>) => Set<string>) => void,
   storageKey: string,
   id: string,
+  defer = false,
 ): void {
   setState((prev) => {
     const next = new Set(prev);
@@ -164,7 +192,8 @@ export function toggleSetItem(
     } else {
       next.add(id);
     }
-    saveSet(storageKey, next);
+    if (defer) deferSaveSet(storageKey, next);
+    else saveSet(storageKey, next);
     return next;
   });
 }

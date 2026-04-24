@@ -20,10 +20,28 @@ function mergeIdList(
   incoming: readonly string[] | undefined,
   removed: readonly string[] | undefined,
 ): string[] {
-  const removedSet = new Set(removed ?? []);
+  const ex = existing ?? [];
+  const inc = incoming ?? [];
+  const rem = removed ?? [];
+
+  if (!rem.length && !inc.length) return [...ex];
+
+  if (!rem.length) {
+    const seen = new Set(ex);
+    const result = [...ex];
+    for (const id of inc) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        result.push(id);
+      }
+    }
+    return result;
+  }
+
+  const removedSet = new Set(rem);
   const result = new Set<string>();
-  for (const id of existing ?? []) if (!removedSet.has(id)) result.add(id);
-  for (const id of incoming ?? []) if (!removedSet.has(id)) result.add(id);
+  for (const id of ex) if (!removedSet.has(id)) result.add(id);
+  for (const id of inc) if (!removedSet.has(id)) result.add(id);
   return [...result];
 }
 
