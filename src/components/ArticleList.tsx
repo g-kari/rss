@@ -1393,14 +1393,48 @@ function FilterPillButton({
 
 function LoadMoreButton({ onLoad }: { onLoad: () => Promise<void> }) {
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef(false);
+  const onLoadRef = useRef(onLoad);
+  onLoadRef.current = onLoad;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let cancelled = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingRef.current) {
+          loadingRef.current = true;
+          setLoading(true);
+          onLoadRef.current().finally(() => {
+            if (!cancelled) {
+              loadingRef.current = false;
+              setLoading(false);
+            }
+          });
+        }
+      },
+      { rootMargin: "600px" },
+    );
+    observer.observe(el);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, []);
+
   return (
-    <div className="flex justify-center py-4">
+    <div ref={containerRef} className="flex justify-center py-4">
       <button
         onClick={async () => {
+          if (loadingRef.current) return;
+          loadingRef.current = true;
           setLoading(true);
           try {
             await onLoad();
           } finally {
+            loadingRef.current = false;
             setLoading(false);
           }
         }}

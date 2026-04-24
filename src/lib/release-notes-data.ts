@@ -3,6 +3,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ## 2026-04-24
 
+### パフォーマンス改善っ
+
+- **スクロール先読みをリストの中間段階でトリガーするように改善** — Issue #214。記事一覧で一番下までスクロールしないと次のページが読み込まれなかった問題を修正したよ〜！\`rootMargin: "120px"\` → \`"600px"\` に変更して、スクロール途中（リストの約半分くらい）で次のページを先読みするようにしたっ。\`PAGE_SIZE\` も 30 件から 50 件に拡大して、ロード頻度を減らしたよ〜！さらに「過去の記事を読み込む」ボタンも IntersectionObserver で自動トリガーするようになって、クリックしなくてもサーバー側の追加記事が自動的に読み込まれるようになったっ✨🚀
+
 ### バグ修正っ
 
 - **RSS コンテンツの相対パス画像（avif 等）が 404 になる問題を修正** — Issue #215。フィードの \`content:encoded\` に含まれる相対パス \`<img src="/images/photo.avif">\` が rss.0g0.xyz のパスとして解釈されて 404 になってたのを直したよ〜！\`xml-parser.ts\` の RSS 2.0 / Atom / RDF / JSON Feed すべてのパーサーで \`sanitizeHtml\` のかわりに \`applyCorePipeline(raw, link)\` を呼ぶようにして、記事の URL を baseUrl として相対パスを絶対 URL に解決してからプロキシ経由に書き換えるようになったっ。\`image-mime.ts\` も Sequence AVIF (\`avis\` brand) を \`image/avif\` として認識できるように修正したよっ！💡🖼️
