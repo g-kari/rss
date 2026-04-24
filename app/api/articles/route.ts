@@ -52,10 +52,11 @@ export async function GET(request: NextRequest) {
         return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
       }
       const protectedIds = buildProtectedIds(readState);
-      const filtered = filterExpiredArticles(
-        applyKeywordFilter(articles, sub.filter),
-        protectedIds,
-      );
+      const keywordFiltered = applyKeywordFilter(articles, sub.filter);
+      const filtered =
+        readState.ttlDays === 0
+          ? keywordFiltered
+          : filterExpiredArticles(keywordFiltered, protectedIds, readState.ttlDays ?? undefined);
       return NextResponse.json(filtered);
     }
 
@@ -74,7 +75,10 @@ export async function GET(request: NextRequest) {
 
     // TTL フィルタ: 保護対象（bookmark/readingList/like/snooze/notes）以外の古い記事を除外
     const protectedIds = buildProtectedIds(readState);
-    const ttlFilteredArticles = filterExpiredArticles(filteredFeedArticles, protectedIds);
+    const ttlFilteredArticles =
+      readState.ttlDays === 0
+        ? filteredFeedArticles
+        : filterExpiredArticles(filteredFeedArticles, protectedIds, readState.ttlDays ?? undefined);
 
     const all = [...savedArticles, ...ttlFilteredArticles].sort(compareByDateDesc);
     return NextResponse.json(all);

@@ -85,6 +85,7 @@ test("serializeReadState は正しい JSON ペイロードを生成する", () =
         currentTags: { art3: ["tag1"] },
       },
       false,
+      null,
     ),
   );
   expect(result.readIds).toEqual(["r1"]);
@@ -114,6 +115,7 @@ test("serializeReadState は includeGlobalFilter=true で globalFilter を含め
       {},
       { changedKeys: new Set(), removedKeys: new Set(), currentTags: {} },
       true,
+      null,
     ),
   );
   expect(result.globalFilter).toEqual(filter);
@@ -132,9 +134,44 @@ test("serializeReadState は空ノート・空タグ・空スヌーズで null �
       {},
       { changedKeys: new Set(), removedKeys: new Set(), currentTags: {} },
       false,
+      null,
     ),
   );
   expect(result.snoozedUntil).toBeNull();
   expect(result.notes).toBeNull();
   expect(result.tagIds).toBeNull();
+});
+
+test("serializeReadState は ttlDays を含める", () => {
+  const result = JSON.parse(
+    serializeReadState(
+      emptyPendingSets(),
+      emptyPendingSets(),
+      null,
+      null,
+      {},
+      {},
+      { changedKeys: new Set(), removedKeys: new Set(), currentTags: {} },
+      false,
+      90,
+    ),
+  );
+  expect(result.ttlDays).toBe(90);
+});
+
+test("serializeReadState は ttlDays: 0（無制限）を正しく含める", () => {
+  const result = JSON.parse(
+    serializeReadState(
+      emptyPendingSets(),
+      emptyPendingSets(),
+      null,
+      null,
+      {},
+      {},
+      { changedKeys: new Set(), removedKeys: new Set(), currentTags: {} },
+      false,
+      0,
+    ),
+  );
+  expect(result.ttlDays).toBe(0);
 });

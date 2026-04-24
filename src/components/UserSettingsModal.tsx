@@ -27,6 +27,7 @@ import {
   getLineHeightStyle,
 } from "../lib/reader-settings";
 import { AUTO_READ_THRESHOLD_CYCLE } from "../hooks/useUIState";
+import { ARTICLE_TTL_DAYS } from "../lib/article-ttl";
 import type { FontFamily, FontSize } from "../types";
 
 interface Props {
@@ -42,6 +43,15 @@ const CONTENT_WIDTH_PREVIEW_PCT: Record<ContentWidth, number> = {
   wide: 85,
   full: 100,
 };
+
+const TTL_OPTIONS: { value: number; label: string }[] = [
+  { value: 7, label: "7日" },
+  { value: 14, label: "14日" },
+  { value: 30, label: "30日" },
+  { value: 60, label: "60日" },
+  { value: 90, label: "90日" },
+  { value: 0, label: "無制限" },
+];
 
 const PREVIEW_TEXT =
   "吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。" +
@@ -73,6 +83,8 @@ export default function UserSettingsModal({ onClose }: Props) {
     toggleAutoTranslate,
     galleryColumns,
     onChangeGalleryColumns,
+    ttlDays,
+    onChangeTtlDays,
   } = useReaderSettings();
 
   const [translatorDiag, setTranslatorDiag] = useState<{
@@ -144,6 +156,29 @@ export default function UserSettingsModal({ onClose }: Props) {
             value={galleryColumns}
             onChange={onChangeGalleryColumns}
           />
+        </SettingRow>
+
+        <SettingRow label="記事保持期間">
+          <div className="flex gap-1">
+            {TTL_OPTIONS.map((opt) => {
+              const current = ttlDays ?? 30;
+              const isSelected = opt.value === current;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => onChangeTtlDays(opt.value === ARTICLE_TTL_DAYS ? null : opt.value)}
+                  className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${
+                    isSelected
+                      ? "bg-ink text-ink-text"
+                      : "text-text-muted hover:text-text-default hover:bg-surface-hover"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </SettingRow>
 
         <SettingRow label="両端揃え">

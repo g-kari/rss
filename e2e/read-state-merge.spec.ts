@@ -20,6 +20,7 @@ function emptyState(): ReadState {
     readBeforeTimestamp: null,
     snoozedUntil: null,
     notes: null,
+    ttlDays: null,
   };
 }
 
@@ -148,6 +149,7 @@ test("空の update はすべて既存値を保持する", () => {
     snoozedUntil: { k: "2026-12-01T00:00:00Z" },
     notes: { n: "note" },
     tagIds: null,
+    ttlDays: null,
   };
   const result = mergeReadStateUpdate(existing, {});
   expect(result).toEqual(existing);
@@ -262,4 +264,30 @@ test("maxReadIds を指定しない場合は trim しない（後方互換）", 
   };
   const result = mergeReadStateUpdate(existing, {});
   expect(result.readIds.length).toBe(200);
+});
+
+// ── ttlDays マージ ──────────────────────────────────────────
+
+test("ttlDays: update にキーが含まれていれば上書きする", () => {
+  const existing: ReadState = { ...emptyState(), ttlDays: 30 };
+  const result = mergeReadStateUpdate(existing, { ttlDays: 90 });
+  expect(result.ttlDays).toBe(90);
+});
+
+test("ttlDays: update にキーがなければ既存値を保持する", () => {
+  const existing: ReadState = { ...emptyState(), ttlDays: 60 };
+  const result = mergeReadStateUpdate(existing, {});
+  expect(result.ttlDays).toBe(60);
+});
+
+test("ttlDays: 0（無制限）で上書きできる", () => {
+  const existing: ReadState = { ...emptyState(), ttlDays: 30 };
+  const result = mergeReadStateUpdate(existing, { ttlDays: 0 });
+  expect(result.ttlDays).toBe(0);
+});
+
+test("ttlDays: null で上書きするとデフォルトに戻る", () => {
+  const existing: ReadState = { ...emptyState(), ttlDays: 90 };
+  const result = mergeReadStateUpdate(existing, { ttlDays: null });
+  expect(result.ttlDays).toBeNull();
 });

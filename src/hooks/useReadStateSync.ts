@@ -85,6 +85,7 @@ export interface ReadStateSyncDeps {
   setReadingListIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   setLikeIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   setGlobalFilterState: React.Dispatch<React.SetStateAction<KeywordFilter | null>>;
+  setTtlDaysState: React.Dispatch<React.SetStateAction<number | null>>;
   setReadBeforeTimestamp: React.Dispatch<React.SetStateAction<string | null>>;
   setSnoozedUntil: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setNotesState: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -111,6 +112,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     setReadingListIds,
     setLikeIds,
     setGlobalFilterState,
+    setTtlDaysState,
     setReadBeforeTimestamp,
     setSnoozedUntil,
     setNotesState,
@@ -152,6 +154,11 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
         const serverFilter = state.globalFilter ?? null;
         saveJson(STORAGE_KEYS.GLOBAL_FILTER, serverFilter);
         setGlobalFilterState(serverFilter);
+      }
+      if ("ttlDays" in state) {
+        const ttl = state.ttlDays ?? null;
+        storageSet(STORAGE_KEYS.TTL_DAYS, ttl === null ? "" : String(ttl));
+        setTtlDaysState(ttl);
       }
       if ("readBeforeTimestamp" in state && state.readBeforeTimestamp) {
         const rbt = state.readBeforeTimestamp;
@@ -213,6 +220,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
       setReadingListIds,
       setLikeIds,
       setGlobalFilterState,
+      setTtlDaysState,
       setReadBeforeTimestamp,
       setSnoozedUntil,
       setNotesState,
@@ -241,6 +249,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
           currentTags: stateRef.current.tagIds,
         },
         wasGfDirty,
+        stateRef.current.ttlDays,
       ),
     [globalFilterRef, stateRef],
   );

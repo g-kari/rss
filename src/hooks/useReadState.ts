@@ -13,6 +13,8 @@ export interface ReadStateResult {
   likeIds: Set<string>;
   globalFilter: KeywordFilter | null;
   setGlobalFilter: (filter: KeywordFilter | null) => void;
+  ttlDays: number | null;
+  setTtlDays: (days: number | null) => void;
   readBeforeTimestamp: string | null;
   snoozedUntil: Record<string, string>;
   notes: Record<string, string>;
@@ -76,6 +78,7 @@ export function useReadState(
     setReadingListIds: persistence.setReadingListIds,
     setLikeIds: persistence.setLikeIds,
     setGlobalFilterState: persistence.setGlobalFilterState,
+    setTtlDaysState: persistence.setTtlDaysState,
     setReadBeforeTimestamp: persistence.setReadBeforeTimestamp,
     setSnoozedUntil: persistence.setSnoozedUntil,
     setNotesState: persistence.setNotesState,
@@ -93,6 +96,8 @@ export function useReadState(
     likeIds: persistence.likeIds,
     globalFilter: persistence.globalFilter,
     setGlobalFilter: persistence.setGlobalFilter,
+    ttlDays: persistence.ttlDays,
+    setTtlDays: persistence.setTtlDays,
     readBeforeTimestamp: persistence.readBeforeTimestamp,
     snoozedUntil: persistence.snoozedUntil,
     notes: persistence.notes,
