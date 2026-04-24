@@ -4,7 +4,13 @@ import { useEffect, useCallback, useRef } from "react";
 import type { KeywordFilter, ReadState, UserProfile } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
-import { STORAGE_KEYS, saveSet, saveJson, storageSet } from "../lib/storage";
+import {
+  STORAGE_KEYS,
+  deferSaveSet,
+  saveJson,
+  storageSet,
+  flushDeferredSaves,
+} from "../lib/storage";
 import {
   type SetKind,
   type PendingSets,
@@ -60,7 +66,7 @@ function mergeServerSet(
     const newValues = serverValues.filter((v) => !prev.has(v));
     if (newValues.length === 0) return prev;
     const merged = new Set([...prev, ...newValues]);
-    saveSet(storageKey, merged);
+    deferSaveSet(storageKey, merged);
     return merged;
   });
 }
@@ -342,6 +348,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
 
   // beforeunload: sendBeacon で確実に送信
   useEventListener("beforeunload", () => {
+    flushDeferredSaves();
     if (!userRef.current) return;
     if (!flushIfPending()) return;
     const added = snapshotPendingSets(pendingAddedRef.current);
