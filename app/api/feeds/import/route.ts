@@ -10,6 +10,7 @@ import {
   assembleClientFeed,
   readUserSubscriptions,
   writeUserSubscriptions,
+  pMap,
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
 import type { SharedFeedMeta } from "@/types";
@@ -138,18 +139,23 @@ export async function POST(request: Request) {
       candidates.push({ entry, feedHash });
     }
 
-    // Phase 2: 共有 meta を並列取得・作成（逐次 N RTT → 並列 ~2 RTT）
-    // allSettled を使うことで一部フィードの meta 作成失敗があっても
-    // 他のフィードのインポートを継続できるようにする
-    const metaResults = await Promise.allSettled(
-      candidates.map(({ entry, feedHash }) =>
-        getOrCreateFeedMeta(env.RSS_DATA, feedHash, entry.url, entry.title, entry.siteUrl),
-      ),
-    );
-    const succeededMetas = metaResults
-      .map((r) => (r.status === "fulfilled" ? r.value : null))
-      .filter((m): m is SharedFeedMeta => m !== null);
-    const succeededCandidates = candidates.filter((_, i) => metaResults[i].status === "fulfilled");
+    // Phase 2: 共有 meta を並行度制限付きで取得・作成
+    // 失敗したフィードは null にして他のインポートを継続する
+    const metaResults = await pMap(candidates, async ({ entry, feedHash }) => {
+      try {
+        return await getOrCreateFeedMeta(
+          env.RSS_DATA,
+          feedHash,
+          entry.url,
+          entry.title,
+          entry.siteUrl,
+        );
+      } catch {
+        return null;
+      }
+    });
+    const succeededMetas = metaResults.filter((m): m is SharedFeedMeta => m !== null);
+    const succeededCandidates = candidates.filter((_, i) => metaResults[i] !== null);
 
     // Phase 3: 購読レコードを追加
     const subscribedAt = new Date().toISOString();
