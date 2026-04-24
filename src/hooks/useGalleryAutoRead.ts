@@ -54,9 +54,12 @@ export function useGalleryAutoRead({
           if (entry.isIntersecting) {
             seenRef.current.add(articleId);
           } else if (seenRef.current.has(articleId)) {
+            if (!entry.rootBounds) continue;
             seenRef.current.delete(articleId);
-            if (!readIdsRef.current.has(articleId)) {
-              onMarkReadRef.current(articleId);
+            if (entry.boundingClientRect.bottom < entry.rootBounds.top) {
+              if (!readIdsRef.current.has(articleId)) {
+                onMarkReadRef.current(articleId);
+              }
             }
           }
         }
