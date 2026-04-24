@@ -36,62 +36,23 @@ export async function sha256Hex(text: string): Promise<string> {
     .join("");
 }
 
-/** ユーザーの Push 設定の R2 キーを返す */
-export function userPushKey(userId: string): string {
-  return `users/${userId}/push.json`;
-}
+/** ユーザーデータの R2 キーを生成する汎用ヘルパー */
+const userKey = (userId: string, name: string): string => `users/${userId}/${name}`;
 
-/** ユーザーの手動保存記事の R2 キーを返す */
-export function savedArticlesKey(userId: string): string {
-  return `users/${userId}/saved.json`;
-}
-
-/** ユーザーの既読・ブックマーク状態の R2 キーを返す */
-export function readStateKey(userId: string): string {
-  return `users/${userId}/read-state.json`;
-}
-
-/** ユーザーのエンゲージメントログの R2 キーを返す */
-export function engagementKey(userId: string): string {
-  return `users/${userId}/engagement.json`;
-}
-
-/** フィード全体リフレッシュのクールダウン管理キーを返す */
-export function refreshCooldownKey(userId: string): string {
-  return `users/${userId}/last-full-refresh.json`;
-}
-
-/** AI エンドポイントのレートリミット管理キーを返す */
-export function aiRateLimitKey(userId: string): string {
-  return `users/${userId}/ai-cooldown.json`;
-}
-
-/** 単体フィードリフレッシュのクールダウン管理キーを返す */
-export function singleFeedRefreshCooldownKey(userId: string, feedHash: string): string {
-  return `users/${userId}/feed-refresh-${feedHash}.json`;
-}
-
-/** LLM CSS セレクタ再推論のクールダウン管理キーを返す */
-export function reinferCooldownKey(userId: string, feedHash: string): string {
-  return `users/${userId}/feed-reinfer-${feedHash}.json`;
-}
-
-/** 推薦リフレッシュのクールダウン管理キーを返す */
-export function recommendationsCooldownKey(userId: string): string {
-  return `users/${userId}/recommendations-refresh.json`;
-}
-
-/** 推薦生成（GET）のクールダウン管理キーを返す。並行リクエストによる多重生成を防ぐ。 */
-export function recommendationsGenCooldownKey(userId: string): string {
-  return `users/${userId}/recommendations-gen.json`;
-}
-
-/** フィード追加のクールダウン管理キーを返す */
-export function feedAddCooldownKey(userId: string): string {
-  return `users/${userId}/feed-add-cooldown.json`;
-}
-
-/** 記事全文取得のスライディングウィンドウ レートリミット管理キーを返す */
-export function contentFetchRateLimitKey(userId: string): string {
-  return `users/${userId}/content-fetch-rate-limit.json`;
-}
+export const userPushKey = (userId: string) => userKey(userId, "push.json");
+export const savedArticlesKey = (userId: string) => userKey(userId, "saved.json");
+export const readStateKey = (userId: string) => userKey(userId, "read-state.json");
+export const engagementKey = (userId: string) => userKey(userId, "engagement.json");
+export const refreshCooldownKey = (userId: string) => userKey(userId, "last-full-refresh.json");
+export const aiRateLimitKey = (userId: string) => userKey(userId, "ai-cooldown.json");
+export const singleFeedRefreshCooldownKey = (userId: string, feedHash: string) =>
+  userKey(userId, `feed-refresh-${feedHash}.json`);
+export const reinferCooldownKey = (userId: string, feedHash: string) =>
+  userKey(userId, `feed-reinfer-${feedHash}.json`);
+export const recommendationsCooldownKey = (userId: string) =>
+  userKey(userId, "recommendations-refresh.json");
+export const recommendationsGenCooldownKey = (userId: string) =>
+  userKey(userId, "recommendations-gen.json");
+export const feedAddCooldownKey = (userId: string) => userKey(userId, "feed-add-cooldown.json");
+export const contentFetchRateLimitKey = (userId: string) =>
+  userKey(userId, "content-fetch-rate-limit.json");
