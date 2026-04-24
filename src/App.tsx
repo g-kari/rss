@@ -1207,10 +1207,14 @@ export default function App() {
                 onToggleRead={toggleRead}
                 onToggleBookmark={toggleBookmark}
                 onMarkAllRead={() => {
-                  if (groupFeedIds && groupFeedIds.size > 0) {
-                    // グループ選択中はグループ内のフィードを対象に一括既読
-                    const ids = articles
-                      .filter((a) => groupFeedIds.has(a.feedHash))
+                  const hasSubFilter =
+                    (groupFeedIds && groupFeedIds.size > 0) ||
+                    selectedCollectionId ||
+                    selectedTag ||
+                    activeFeedView;
+                  if (hasSubFilter) {
+                    const ids = filtered
+                      .filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp))
                       .map((a) => a.id);
                     if (ids.length > 0) markBulkRead(ids);
                     return;
