@@ -347,9 +347,10 @@ export default function ArticleList({
     setScrollEl(scrollContainerRef.current);
   }, []);
 
+  const feedView = activeFeedView ?? "articles";
   useGalleryAutoRead({
     scrollElement: layout === "gallery" ? scrollEl : null,
-    enabled: autoReadEnabled,
+    enabled: autoReadEnabled && feedView !== "articles",
     readIds,
     onMarkRead,
   });
