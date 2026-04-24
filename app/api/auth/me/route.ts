@@ -39,7 +39,13 @@ async function verifyAndLoad(
 export async function GET() {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const cookieStore = await cookies();
-  const { env } = await getCloudflareContext({ async: true });
+
+  let env: CloudflareEnv;
+  try {
+    ({ env } = await getCloudflareContext({ async: true }));
+  } catch {
+    return NextResponse.json({ user: null });
+  }
 
   const token = cookieStore.get("access_token")?.value;
   if (token) {
