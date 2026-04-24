@@ -30,5 +30,5 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "dist", ".wrangler", ".open-next"]
+  "exclude": ["node_modules", "dist", ".wrangler", ".open-next", ".next/dev"]
 }
