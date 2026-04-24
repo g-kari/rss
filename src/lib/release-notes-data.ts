@@ -1,6 +1,16 @@
 export const RELEASE_NOTES_MARKDOWN = `
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-04-24 (2)
+
+### リファクタリングっ
+
+- **\`normalizeReadState\` ヘルパー関数を抽出して共通化** — Issue #199。\`app/api/read-state/route.ts\` の GET・POST ハンドラーに9フィールド×2箇所で重複してた \`ReadState\` デフォルト補完ロジックを \`normalizeReadState(stored: Partial<ReadState>): ReadState\` ヘルパーとして \`src/lib/read-state-merge.ts\` に抽出したよ〜！DRY 原則に従って将来的なフィールド追加時の修正漏れリスクもゼロになったっ✨🧹
+
+### ドキュメント整備っ
+
+- **\`architecture.md\` に useReadState サブフックを追記** — Issue #207。\`src/hooks/useReadState.ts\` が \`useReadStatePersistence\` / \`useReadStateSync\` / \`useReadStateTags\` の3つのサブフックに分割されてたのに \`.claude/rules/architecture.md\` には反映されてなかったから追記したよ〜！各サブフックの責務も明記したっ📝
+
 ## 2026-04-24
 
 ### パフォーマンス改善っ

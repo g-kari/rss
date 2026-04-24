@@ -132,3 +132,18 @@ export function mergeReadStateUpdate(existing: ReadState, update: ReadStateUpdat
     tagIds,
   };
 }
+
+/** Partial<ReadState> にデフォルト値を補完して完全な ReadState を返す（古いデータ形式との互換性）*/
+export function normalizeReadState(stored: Partial<ReadState>): ReadState {
+  return {
+    readIds: stored.readIds ?? [],
+    bookmarkIds: stored.bookmarkIds ?? [],
+    readingListIds: stored.readingListIds ?? [],
+    likeIds: stored.likeIds ?? [],
+    globalFilter: stored.globalFilter ?? null,
+    readBeforeTimestamp: stored.readBeforeTimestamp ?? null,
+    snoozedUntil: stored.snoozedUntil ?? null,
+    notes: stored.notes ?? null,
+    tagIds: stored.tagIds ?? null,
+  };
+}

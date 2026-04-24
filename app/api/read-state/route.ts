@@ -11,7 +11,11 @@ import {
   parseNotes,
   parseTagIds,
 } from "@/lib/validation";
-import { mergeReadStateUpdate, type ReadStateUpdate } from "@/lib/read-state-merge";
+import {
+  mergeReadStateUpdate,
+  normalizeReadState,
+  type ReadStateUpdate,
+} from "@/lib/read-state-merge";
 
 // POST は差分（追加 + removedIds）のみ送られる前提で上限を設定する。
 // readIds は記事を読むたびに永続累積するため、多端末ユーザーでも余裕を持たせる。
@@ -29,18 +33,7 @@ export async function GET(request: Request) {
   return withSession(request, async ({ session, env }) => {
     // Partial で受け取り、欠落フィールドを [] で補完する（古いデータ形式との互換性）
     const stored = await r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {});
-    const state: ReadState = {
-      readIds: stored.readIds ?? [],
-      bookmarkIds: stored.bookmarkIds ?? [],
-      readingListIds: stored.readingListIds ?? [],
-      likeIds: stored.likeIds ?? [],
-      globalFilter: stored.globalFilter ?? null,
-      readBeforeTimestamp: stored.readBeforeTimestamp ?? null,
-      snoozedUntil: stored.snoozedUntil ?? null,
-      notes: stored.notes ?? null,
-      tagIds: stored.tagIds ?? null,
-    };
-    return NextResponse.json(state);
+    return NextResponse.json(normalizeReadState(stored));
   });
 }
 
@@ -87,17 +80,7 @@ export async function POST(req: NextRequest) {
 
     // 既存 ReadState を読み込んで差分マージする（他端末の変更を失わない）
     const stored = await r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {});
-    const existing: ReadState = {
-      readIds: stored.readIds ?? [],
-      bookmarkIds: stored.bookmarkIds ?? [],
-      readingListIds: stored.readingListIds ?? [],
-      likeIds: stored.likeIds ?? [],
-      globalFilter: stored.globalFilter ?? null,
-      readBeforeTimestamp: stored.readBeforeTimestamp ?? null,
-      snoozedUntil: stored.snoozedUntil ?? null,
-      notes: stored.notes ?? null,
-      tagIds: stored.tagIds ?? null,
-    };
+    const existing = normalizeReadState(stored);
 
     const update: ReadStateUpdate = {
       readIds,

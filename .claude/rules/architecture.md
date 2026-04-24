@@ -130,7 +130,10 @@ src/
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useUIState.ts            # UI 状態管理（テーマ・レイアウト・フォーカスモード・モーダル等）
     useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
-    useReadState.ts          # 既読・ブックマーク・後で読む・スヌーズ状態 (localStorage + R2 同期)
+    useReadState.ts              # 既読・ブックマーク・後で読む・スヌーズ状態 (localStorage + R2 同期)
+    useReadStatePersistence.ts   # localStorage 永続化（readIds・bookmarkIds 等の保存・復元）
+    useReadStateSync.ts          # サーバー R2 との同期（デバウンス・sendBeacon）
+    useReadStateTags.ts          # タグ管理（tagIds の追加・削除）
     useReadingHistory.ts     # 閲覧履歴管理
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
     useArticleAi.ts          # /api/ai/* fetch
