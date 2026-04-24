@@ -29,7 +29,7 @@ import {
 import { filterAndSortArticles } from "../lib/article-filter";
 import { buildFilterMap, normalizeFilter, type CompiledKeywordFilter } from "../lib/keyword-filter";
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 50;
 const EMPTY_SET = new Set<string>();
 const EMPTY_STR_ARRAY: string[] = [];
 const EMPTY_FEED_ARRAY: Feed[] = [];
@@ -439,7 +439,7 @@ export function useFilteredArticles({
       (entries) => {
         if (entries[0].isIntersecting && hasMoreRef.current) loadMoreRef.current();
       },
-      { rootMargin: "120px" },
+      { rootMargin: "600px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
