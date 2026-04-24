@@ -10,6 +10,10 @@
 
 - **RSS コンテンツの相対パス画像（avif 等）が 404 になる問題を修正** — Issue #215。フィードの `content:encoded` に含まれる相対パス `<img src="/images/photo.avif">` が rss.0g0.xyz のパスとして解釈されて 404 になってたのを直したよ〜！`xml-parser.ts` の RSS 2.0 / Atom / RDF / JSON Feed すべてのパーサーで `sanitizeHtml` のかわりに `applyCorePipeline(raw, link)` を呼ぶようにして、記事の URL を baseUrl として相対パスを絶対 URL に解決してからプロキシ経由に書き換えるようになったっ。`image-mime.ts` も Sequence AVIF (`avis` brand) を `image/avif` として認識できるように修正したよっ！💡🖼️
 
+### リファクタリングっ
+
+- **`articleMatchesQuery` を廃止して `matchesAdvancedQuery` に統合** — Issue #210。`src/lib/article-utils.ts` の `articleMatchesQuery`（スペース区切り AND 検索のみ対応）は本番コードで既に使われておらず、`src/lib/article-filter.ts` が `matchesAdvancedQuery`（フィールド指定・OR・否定・フレーズ検索まで対応）に移行済みだったからデッドコードを削除したよ〜！テストも `matchesAdvancedQuery` を直接テストするよう書き直して、将来的な乖離リスクをゼロにしたっ✨🧹
+
 ### セキュリティ対策っ
 
 - **DBSC sessionId に UUID 形式検証を追加** — Issue #196。`challenge` と `register` の両エンドポイントで、クライアント送信の `sessionId` に `../` や `%2f` を含む値を渡しても R2 キーが不正なパスにならないよう UUID フォーマット検証を追加したよ〜！`/^[0-9a-f]{8}-...-[0-9a-f]{12}$/i` にマッチしない場合は 400 を返すようになったっ🔒

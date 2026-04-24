@@ -72,34 +72,6 @@ export function compareByPublishedAtDesc(
 }
 
 /**
- * 記事が検索クエリにマッチするか判定する。
- * スペース区切りで複数ワード AND 検索。
- * title・summary のほか author・categories も対象とする。
- * クエリが空のときは常に true を返す。
- */
-export function articleMatchesQuery(
-  article: {
-    title: string;
-    summary: string;
-    author?: string;
-    categories?: string[];
-  },
-  query: string,
-): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  const terms = q.split(/\s+/).filter(Boolean);
-  const titleL = article.title.toLowerCase();
-  const summaryL = article.summary.toLowerCase();
-  const authorL = (article.author ?? "").toLowerCase();
-  const categoriesL = (article.categories ?? []).join(" ").toLowerCase();
-  return terms.every(
-    (t) =>
-      titleL.includes(t) || summaryL.includes(t) || authorL.includes(t) || categoriesL.includes(t),
-  );
-}
-
-/**
  * サイクル配列の次の値を返す。
  * 末尾の次は先頭に戻る（ループ）。
  */
