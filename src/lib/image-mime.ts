@@ -69,7 +69,7 @@ export function detectImageMimeType(bytes: Uint8Array): string | null {
     bytes[7] === 0x70
   ) {
     const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
-    if (brand === "avif") return "image/avif";
+    if (brand === "avif" || brand === "avis") return "image/avif"; // avis = Sequence AVIF
     if (brand === "heic" || brand === "heix") return null; // HEIC はブラウザ未対応のため拒否
   }
 
