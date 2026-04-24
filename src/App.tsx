@@ -1206,6 +1206,7 @@ export default function App() {
                 onSelectArticle={selectArticle}
                 onToggleRead={toggleRead}
                 onToggleBookmark={toggleBookmark}
+                onMarkRead={markRead}
                 onMarkAllRead={() => {
                   const hasSubFilter =
                     (groupFeedIds && groupFeedIds.size > 0) ||

@@ -31,6 +31,7 @@ import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
 import { useSearchHistory } from "../hooks/useSearchHistory";
 import { useFullTextSearch } from "../hooks/useFullTextSearch";
 import { useSyncedRef } from "../hooks/useSyncedRef";
+import { useGalleryAutoRead } from "../hooks/useGalleryAutoRead";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { isArticleRead } from "../lib/article-filter";
 import Spinner from "./Spinner";
@@ -59,6 +60,7 @@ interface Props {
   onSelectArticle: (article: Article) => void;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
+  onMarkRead: (id: string) => void;
   onMarkAllRead?: () => void;
   onMobileBack?: () => void;
   feedHasMorePages?: boolean;
@@ -188,6 +190,7 @@ export default function ArticleList({
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
+  onMarkRead,
   onMarkAllRead,
   onMobileBack,
   feedHasMorePages,
@@ -231,7 +234,7 @@ export default function ArticleList({
     categoryFilter,
     setCategoryFilter,
   } = useArticleFilter();
-  const { galleryColumns } = useReaderSettings();
+  const { galleryColumns, autoReadEnabled } = useReaderSettings();
   const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [confirmMarkAll, setConfirmMarkAll] = useState(false);
@@ -343,6 +346,13 @@ export default function ArticleList({
   useLayoutEffect(() => {
     setScrollEl(scrollContainerRef.current);
   }, []);
+
+  useGalleryAutoRead({
+    scrollElement: layout === "gallery" ? scrollEl : null,
+    enabled: autoReadEnabled,
+    readIds,
+    onMarkRead,
+  });
 
   // compact / list / card / magazine — visible から抜けた記事を 250ms フェードアウト
   const { displayItems: nonGalleryDisplayItems, deletingIds: nonGalleryDeletingIds } =
