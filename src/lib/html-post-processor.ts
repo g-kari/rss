@@ -618,7 +618,7 @@ export function transformXTweetEmbeds(html: string, theme: "light" | "dark" = "l
  *   4. wrapTables:         <table> をレスポンシブラッパーで包む
  *   5. sanitizeHtml:       XSS 除去（必ず最後。これ以降に処理を追加しても無効化される）
  */
-function applyCorePipeline(html: string, pageUrl = ""): string {
+export function applyCorePipeline(html: string, pageUrl = ""): string {
   let h = fixImageDimensions(html, pageUrl);
   h = rewriteImageUrls(h);
   h = fixExternalLinks(h, pageUrl);

@@ -1,5 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
-import { sanitizeHtml, unescapeHtml, stripHtml } from "./html";
+import { unescapeHtml, stripHtml } from "./html";
+import { applyCorePipeline } from "./html-post-processor";
 
 /** XML 属性を持つノード（fast-xml-parser の属性プレフィックス "@_" 付き） */
 interface XmlAttr {
@@ -360,7 +361,8 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
   const items: ParsedItem[] = (data.items ?? []).map((item) => {
     const raw = item.content_html ?? item.content_text ?? item.summary ?? "";
     const isHtml = !!item.content_html;
-    const content = isHtml ? sanitizeHtml(raw) : raw;
+    const link = safeUrl(item.url ?? item.external_url ?? "");
+    const content = isHtml ? applyCorePipeline(raw, link) : raw;
     const summary = item.summary
       ? stripHtml(item.summary).slice(0, 200)
       : (isHtml ? stripHtml(raw) : raw).slice(0, 200);
@@ -372,7 +374,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
     return {
       guid: item.id ?? item.url ?? "",
       title: item.title ?? "",
-      link: safeUrl(item.url ?? item.external_url ?? ""),
+      link,
       summary,
       content,
       ogImage: safeUrl(item.image ?? item.banner_image ?? ""),
@@ -426,12 +428,13 @@ export function parseFeed(xml: string): ParsedFeed {
       siteUrl: str(ch.link),
       items: toArray(ch.item).map((item) => {
         const raw = unwrapCdata(str(item["content:encoded"] ?? item.description ?? ""));
+        const link = safeUrl(str(item.link));
         return {
           guid: str(item.guid ?? item.link),
           title: stripHtml(str(item.title)),
-          link: safeUrl(str(item.link)),
+          link,
           summary: stripHtml(raw).slice(0, 200),
-          content: sanitizeHtml(raw),
+          content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
           publishedAt: parseDate(str(item.pubDate) || null),
@@ -455,16 +458,17 @@ export function parseFeed(xml: string): ParsedFeed {
         // Atom の link は isArray 設定により常に XmlAttr[] になる
         const entryLinks = toArray<XmlAttr>(entry.link as XmlAttr | XmlAttr[] | undefined);
         const raw = unwrapCdata(str(entry.content ?? entry.summary ?? ""));
+        const link = safeUrl(
+          entryLinks.find((l) => l["@_rel"] !== "self")?.["@_href"] ??
+            entryLinks[0]?.["@_href"] ??
+            "",
+        );
         return {
           guid: str(entry.id),
           title: stripHtml(str(entry.title)),
-          link: safeUrl(
-            entryLinks.find((l) => l["@_rel"] !== "self")?.["@_href"] ??
-              entryLinks[0]?.["@_href"] ??
-              "",
-          ),
+          link,
           summary: stripHtml(raw).slice(0, 200),
-          content: sanitizeHtml(raw),
+          content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(entry)),
           author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
           publishedAt: parseDate(entry.published ?? entry.updated),
@@ -492,12 +496,13 @@ export function parseFeed(xml: string): ParsedFeed {
         const raw = unwrapCdata(str(item["content:encoded"] ?? item.description ?? ""));
         // RSS 1.0 は guid がなく rdf:about 属性が識別子を兼ねる
         const guid = str(item.guid ?? item["@_rdf:about"] ?? item.link);
+        const link = safeUrl(str(item.link) || str(item["@_rdf:about"]));
         return {
           guid,
           title: stripHtml(str(item.title)),
-          link: safeUrl(str(item.link) || str(item["@_rdf:about"])),
+          link,
           summary: stripHtml(raw).slice(0, 200),
-          content: sanitizeHtml(raw),
+          content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
           // RSS 1.0 は dc:date（ISO 8601）が主要。pubDate は一部サイト独自の拡張として存在しうるためフォールバックに使う
