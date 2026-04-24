@@ -66,6 +66,7 @@ export const STORAGE_KEYS = {
   SAVED_SEARCHES: "rss-saved-searches",
   GALLERY_COLUMNS: "rss-gallery-columns",
   BEACON_OVERFLOW: "rss-beacon-overflow",
+  TTL_DAYS: "rss-ttl-days",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

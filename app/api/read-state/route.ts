@@ -82,6 +82,13 @@ export async function POST(req: NextRequest) {
     const stored = await r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {});
     const existing = normalizeReadState(stored);
 
+    // ttlDays: 0（無制限）または 1〜365 の整数、null（デフォルト復帰）のみ許可
+    const rawTtl = body.ttlDays;
+    const validTtlDays: number | null =
+      typeof rawTtl === "number" && Number.isInteger(rawTtl) && rawTtl >= 0 && rawTtl <= 365
+        ? rawTtl
+        : null;
+
     const update: ReadStateUpdate = {
       readIds,
       bookmarkIds,
@@ -100,6 +107,7 @@ export async function POST(req: NextRequest) {
       tagIds,
     };
     if ("globalFilter" in body) update.globalFilter = globalFilter;
+    if ("ttlDays" in body) update.ttlDays = validTtlDays;
 
     const merged = mergeReadStateUpdate(existing, update, MAX_READ_IDS);
 

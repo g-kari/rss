@@ -28,6 +28,8 @@ export interface ReaderSettings {
   onChangeTextJustify: (v: boolean) => void;
   galleryColumns: GalleryColumns;
   onChangeGalleryColumns: (v: GalleryColumns) => void;
+  ttlDays: number | null;
+  onChangeTtlDays: (days: number | null) => void;
 }
 
 const ReaderSettingsContext = createContext<ReaderSettings | null>(null);

@@ -328,7 +328,7 @@ users/{userId}/subscriptions.json       # UserSubscription[]（購読フィー�
 users/{userId}/feed-groups.json         # FeedGroup[]（グループ定義: id / name / order / collapsed / muted / createdAt）
 users/{userId}/collections.json         # Collection[]（コレクション定義: id / name / articleIds / createdAt / order）
 users/{userId}/profile.json             # UserProfile（ログイン時に保存）
-users/{userId}/read-state.json          # ReadState（readIds・bookmarkIds・readingListIds・likeIds・snoozedUntil・notes・tagIds・globalFilter・readBeforeTimestamp）
+users/{userId}/read-state.json          # ReadState（readIds・bookmarkIds・readingListIds・likeIds・snoozedUntil・notes・tagIds・globalFilter・readBeforeTimestamp・ttlDays）
 users/{userId}/engagement.json          # EngagementLog（記事への行動履歴）
 users/{userId}/recommendations.json     # RecommendationCache（フィード推薦キャッシュ）
 users/{userId}/push.json                # PushConfig（Web Push サブスクリプション）

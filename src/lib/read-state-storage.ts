@@ -71,6 +71,7 @@ export function serializeReadState(
   notes: Record<string, string>,
   tagChanges: TagChanges,
   includeGlobalFilter: boolean,
+  ttlDays: number | null,
 ): string {
   const pruned = pruneExpiredSnoozes(snoozedUntil);
   const changedTags: Record<string, string[]> = {};
@@ -96,5 +97,7 @@ export function serializeReadState(
     },
   };
   if (includeGlobalFilter) payload.globalFilter = globalFilter;
+  // ttlDays は全端末で同じ値を共有する想定のため常に送信する
+  payload.ttlDays = ttlDays;
   return JSON.stringify(payload);
 }

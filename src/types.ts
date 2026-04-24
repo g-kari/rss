@@ -234,6 +234,8 @@ export interface ReadState {
   notes?: Record<string, string> | null;
   /** 記事へのカスタムタグ — articleId → タグ名の配列 */
   tagIds?: Record<string, string[]> | null;
+  /** 記事保持期間（日数）— null/undefined はデフォルト 30 日 */
+  ttlDays?: number | null;
 }
 
 /** `/api/feeds/:id` PATCH 用のボディ型 — Feed のうちクライアントから更新可能なフィールドのみ */
@@ -289,4 +291,6 @@ export interface ReadStatePayload {
   };
   /** キーが存在する場合のみサーバー側で上書きする（他端末設定保護） */
   globalFilter?: KeywordFilter | null;
+  /** キーが存在する場合のみサーバー側で上書きする（他端末設定保護） */
+  ttlDays?: number | null;
 }

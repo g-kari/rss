@@ -136,6 +136,10 @@ export function mergeReadStateUpdate(
   const globalFilter: KeywordFilter | null =
     "globalFilter" in update ? (update.globalFilter ?? null) : (existing.globalFilter ?? null);
 
+  // ttlDays は update にキーが含まれていれば上書き（明示的 null は「デフォルト TTL に戻す」を意味する）
+  const ttlDays: number | null =
+    "ttlDays" in update ? (update.ttlDays ?? null) : (existing.ttlDays ?? null);
+
   const readBeforeTimestamp = chooseLater(existing.readBeforeTimestamp, update.readBeforeTimestamp);
 
   const snoozedUntil = mergeSnoozed(existing.snoozedUntil, update.snoozedUntil);
@@ -152,6 +156,7 @@ export function mergeReadStateUpdate(
     snoozedUntil,
     notes,
     tagIds,
+    ttlDays,
   };
 }
 
@@ -167,5 +172,6 @@ export function normalizeReadState(stored: Partial<ReadState>): ReadState {
     snoozedUntil: stored.snoozedUntil ?? null,
     notes: stored.notes ?? null,
     tagIds: stored.tagIds ?? null,
+    ttlDays: stored.ttlDays ?? null,
   };
 }

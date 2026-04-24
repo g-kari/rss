@@ -32,6 +32,7 @@ export type ReadStateSets = {
   snoozedUntil: Record<string, string>;
   notes: Record<string, string>;
   tagIds: Record<string, string[]>;
+  ttlDays: number | null;
 };
 
 function makeToggle(
@@ -74,6 +75,9 @@ export interface ReadStatePersistenceResult {
   tagIds: Record<string, string[]>;
   setTagIdsState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
   setGlobalFilterState: React.Dispatch<React.SetStateAction<KeywordFilter | null>>;
+  ttlDays: number | null;
+  setTtlDays: (days: number | null) => void;
+  setTtlDaysState: React.Dispatch<React.SetStateAction<number | null>>;
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
@@ -126,6 +130,12 @@ export function useReadStatePersistence(
     loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
   );
   const globalFilterRef = useSyncedRef<KeywordFilter | null>(globalFilter);
+  const [ttlDays, setTtlDaysState] = useState<number | null>(() => {
+    const stored = storageGet(STORAGE_KEYS.TTL_DAYS);
+    if (stored === null || stored === "") return null;
+    const n = Number(stored);
+    return Number.isFinite(n) ? n : null;
+  });
   const [readBeforeTimestamp, setReadBeforeTimestamp] = useState<string | null>(() =>
     storageGet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP),
   );
@@ -149,6 +159,7 @@ export function useReadStatePersistence(
     snoozedUntil,
     notes,
     tagIds,
+    ttlDays,
   });
   stateRef.current = {
     read: readIds,
@@ -159,6 +170,7 @@ export function useReadStatePersistence(
     snoozedUntil,
     notes,
     tagIds,
+    ttlDays,
   };
 
   const markRead = useCallback(
@@ -296,6 +308,15 @@ export function useReadStatePersistence(
     [scheduleSyncRef],
   );
 
+  const setTtlDays = useCallback(
+    (days: number | null) => {
+      storageSet(STORAGE_KEYS.TTL_DAYS, days === null ? "" : String(days));
+      setTtlDaysState(days);
+      scheduleSyncRef.current();
+    },
+    [scheduleSyncRef],
+  );
+
   const snoozeArticle = useCallback(
     (articleId: string, durationMs: number) => {
       const until = new Date(Date.now() + durationMs).toISOString();
@@ -349,6 +370,9 @@ export function useReadStatePersistence(
     setLikeIds,
     globalFilter,
     setGlobalFilter,
+    ttlDays,
+    setTtlDays,
+    setTtlDaysState,
     readBeforeTimestamp,
     setReadBeforeTimestamp,
     snoozedUntil,
