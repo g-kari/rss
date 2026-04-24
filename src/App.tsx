@@ -502,7 +502,7 @@ export default function App() {
   }, []);
   useEffect(() => {
     setGalleryAutoReadIds(new Set());
-  }, [selectedFeedId, selectedGroupId, activeFeedView]);
+  }, [selectedFeedId, selectedGroupId, activeFeedView, layout]);
 
   const filterState = useFilteredArticles({
     articles,
