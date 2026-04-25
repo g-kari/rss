@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import {
   readFeedGroups,
@@ -19,11 +19,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return withSession(request, async ({ session, env }) => {
-    const parsed = await parseJsonBody<{ name?: unknown }>(request);
-    if (!parsed.ok) return parsed.error;
-
-    const rawName = parsed.data.name;
+  return withJsonBody<{ name?: unknown }>(request, async ({ body, session, env }) => {
+    const rawName = body.name;
     if (typeof rawName !== "string") {
       return apiError("name must be a string", 400, { code: "INVALID_NAME" });
     }

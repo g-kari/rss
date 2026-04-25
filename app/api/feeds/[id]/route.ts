@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import {
   readUserSubscriptions,
@@ -30,20 +30,16 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  return withSession(request, async ({ session, env }) => {
-    const parsed = await parseJsonBody<{
-      title?: unknown;
-      filter?: unknown;
-      nsfw?: unknown;
-      priority?: unknown;
-      category?: unknown;
-      groupId?: unknown;
-      mutedUntil?: unknown;
-      view?: unknown;
-    }>(request);
-    if (!parsed.ok) return parsed.error;
-    const body = parsed.data;
-
+  return withJsonBody<{
+    title?: unknown;
+    filter?: unknown;
+    nsfw?: unknown;
+    priority?: unknown;
+    category?: unknown;
+    groupId?: unknown;
+    mutedUntil?: unknown;
+    view?: unknown;
+  }>(request, async ({ body, session, env }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     const sub = subs.find((s) => s.feedHash === feedHash);
     if (!sub) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });

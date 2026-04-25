@@ -1,11 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  withSession,
-  parseJsonBody,
-  bindDbscToServerSession,
-  SESSION_COOKIE,
-} from "@/lib/server-auth";
+import { withJsonBody, bindDbscToServerSession, SESSION_COOKIE } from "@/lib/server-auth";
 import { r2Get, r2Put } from "@/lib/r2";
 import { importDbscPublicKey, type DbscSession } from "@/lib/dbsc";
 
@@ -25,16 +20,13 @@ import { importDbscPublicKey, type DbscSession } from "@/lib/dbsc";
  * @see https://wicg.github.io/dbsc/
  */
 export async function POST(req: NextRequest) {
-  return withSession(req, async ({ session, env }) => {
-    const parsed = await parseJsonBody<{
-      publicKey?: unknown;
-      sessionId?: unknown;
-      attestation?: unknown;
-      challenge?: unknown;
-    }>(req);
-    if (!parsed.ok) return parsed.error;
-
-    const { publicKey, sessionId, attestation, challenge } = parsed.data;
+  return withJsonBody<{
+    publicKey?: unknown;
+    sessionId?: unknown;
+    attestation?: unknown;
+    challenge?: unknown;
+  }>(req, async ({ body, session, env }) => {
+    const { publicKey, sessionId, attestation, challenge } = body;
 
     if (typeof publicKey !== "string" || publicKey.length === 0) {
       return NextResponse.json({ error: "publicKey is required" }, { status: 400 });

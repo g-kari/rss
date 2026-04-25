@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withJsonBody } from "@/lib/server-auth";
 import { generateDbscChallenge, verifyDbscResponse, type DbscSession } from "@/lib/dbsc";
 import { r2Get, r2Put } from "@/lib/r2";
 
@@ -28,15 +28,12 @@ import { r2Get, r2Put } from "@/lib/r2";
  * @see https://wicg.github.io/dbsc/
  */
 export async function POST(req: NextRequest) {
-  return withSession(req, async ({ session, env }) => {
-    const parsed = await parseJsonBody<{
-      sessionId?: unknown;
-      response?: unknown;
-      challenge?: unknown;
-    }>(req);
-    if (!parsed.ok) return parsed.error;
-
-    const { sessionId, response, challenge } = parsed.data;
+  return withJsonBody<{
+    sessionId?: unknown;
+    response?: unknown;
+    challenge?: unknown;
+  }>(req, async ({ body, session, env }) => {
+    const { sessionId, response, challenge } = body;
 
     if (typeof sessionId !== "string" || sessionId.length === 0) {
       return NextResponse.json({ error: "sessionId is required" }, { status: 400 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, readStateKey } from "@/lib/r2";
 import type { ReadState } from "@/types";
@@ -38,11 +38,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(req: NextRequest) {
-  return withSession(req, async ({ session, env }) => {
-    const parsed = await parseJsonBody<ReadStateUpdate>(req);
-    if (!parsed.ok) return parsed.error;
-    const body = parsed.data;
-
+  return withJsonBody<ReadStateUpdate>(req, async ({ body, session, env }) => {
     const readIds = extractIds(body.readIds, MAX_READ_IDS);
     const bookmarkIds = extractIds(body.bookmarkIds, MAX_BOOKMARK_IDS);
     const readingListIds = extractIds(body.readingListIds, MAX_READING_LIST_IDS);

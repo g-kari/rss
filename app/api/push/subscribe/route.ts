@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, userPushKey } from "@/lib/r2";
 import { isValidHttpsUrl } from "@/lib/url";
@@ -11,11 +11,7 @@ const MAX_SUBSCRIPTIONS_PER_USER = 20;
 
 /** Push サブスクリプションを R2 に保存する */
 export async function POST(request: Request) {
-  return withSession(request, async ({ session, env }) => {
-    const parsed = await parseJsonBody<Partial<PushSubscriptionRecord>>(request);
-    if (!parsed.ok) return parsed.error;
-    const body = parsed.data;
-
+  return withJsonBody<Partial<PushSubscriptionRecord>>(request, async ({ body, session, env }) => {
     if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) {
       return apiError("Invalid subscription", 400, { code: "INVALID_SUBSCRIPTION" });
     }

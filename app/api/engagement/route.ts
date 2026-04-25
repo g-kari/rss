@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody, requireString } from "@/lib/server-auth";
+import { withSession, withJsonBody, requireString } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, engagementKey } from "@/lib/r2";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
@@ -27,17 +27,15 @@ export async function GET(request: Request) {
 }
 
 export async function POST(req: NextRequest) {
-  return withSession(req, async ({ session, env }) => {
-    const parsed = await parseJsonBody<{
-      articleId?: unknown;
-      feedHash?: unknown;
-      action?: unknown;
-      value?: unknown;
-    }>(req);
-    if (!parsed.ok) return parsed.error;
-    const articleId = requireString(parsed.data.articleId, MAX_ID_LENGTH);
-    const feedHash = requireString(parsed.data.feedHash, MAX_ID_LENGTH);
-    const action = requireString(parsed.data.action, MAX_ID_LENGTH);
+  return withJsonBody<{
+    articleId?: unknown;
+    feedHash?: unknown;
+    action?: unknown;
+    value?: unknown;
+  }>(req, async ({ body, session, env }) => {
+    const articleId = requireString(body.articleId, MAX_ID_LENGTH);
+    const feedHash = requireString(body.feedHash, MAX_ID_LENGTH);
+    const action = requireString(body.action, MAX_ID_LENGTH);
     if (
       !articleId ||
       !feedHash ||
@@ -51,7 +49,7 @@ export async function POST(req: NextRequest) {
     // ai_feedback の場合は value フィールドが必須
     let value: string | undefined;
     if (action === "ai_feedback") {
-      const rawValue = requireString(parsed.data.value, 64);
+      const rawValue = requireString(body.value, 64);
       if (!rawValue) return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
       // "good:summary" / "bad:translate" などの形式で検証
       const [rating, target] = rawValue.split(":");

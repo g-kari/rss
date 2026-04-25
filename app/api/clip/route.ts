@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { validateClipRequest } from "@/lib/clip";
 import { extractMainContent } from "@/lib/content";
@@ -17,11 +17,8 @@ import { buildContentCacheKey, saveContentToCache } from "@/lib/fetch-article-co
  *   - URL field: url
  */
 export async function POST(req: NextRequest) {
-  return withSession(req, async ({ ctx }) => {
-    const parsed = await parseJsonBody<{ html?: unknown; url?: unknown }>(req);
-    if (!parsed.ok) return parsed.error;
-
-    const validation = validateClipRequest(parsed.data);
+  return withJsonBody<{ html?: unknown; url?: unknown }>(req, async ({ body, ctx }) => {
+    const validation = validateClipRequest(body);
     if (!validation.ok) {
       return apiError(validation.error, 400, { code: "INVALID_CLIP_PAYLOAD" });
     }

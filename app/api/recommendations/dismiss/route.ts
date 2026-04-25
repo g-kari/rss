@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody, requireString } from "@/lib/server-auth";
+import { withJsonBody, requireString } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readCache, writeCache } from "@/lib/recommendation";
 import { MAX_ID_LENGTH } from "@/lib/validation";
 const MAX_DISMISSED_IDS = 1000;
 
 export async function POST(req: NextRequest) {
-  return withSession(req, async ({ session, env }) => {
-    const parsed = await parseJsonBody<{ id?: unknown }>(req);
-    if (!parsed.ok) return parsed.error;
-    const dismissId = requireString(parsed.data.id, MAX_ID_LENGTH);
+  return withJsonBody<{ id?: unknown }>(req, async ({ body, session, env }) => {
+    const dismissId = requireString(body.id, MAX_ID_LENGTH);
     if (!dismissId) {
       return apiError("id is required", 400, { code: "INVALID_ID" });
     }

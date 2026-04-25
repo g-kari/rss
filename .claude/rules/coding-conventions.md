@@ -29,12 +29,12 @@
 ```typescript
 // app/api/example/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody } from "@/lib/server-auth";
 import { r2Get, r2Put, readStateKey } from "@/lib/r2";
 
 // GET: データ取得（既読状態などユーザー別データは r2Get を直接使う）
-export async function GET() {
-  return withSession(async ({ session, env }) => {
+export async function GET(request: Request) {
+  return withSession(request, async ({ session, env }) => {
     const data = await r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), {
       readIds: [],
       bookmarkIds: [],
@@ -45,12 +45,10 @@ export async function GET() {
   });
 }
 
-// POST: JSON ボディありの更新
+// POST: JSON ボディありの更新（withJsonBody = withSession + parseJsonBody）
 export async function POST(req: NextRequest) {
-  return withSession(async ({ session, env }) => {
-    const parsed = await parseJsonBody<{ url?: unknown }>(req);
-    if (!parsed.ok) return parsed.error;
-    const { url } = parsed.data;
+  return withJsonBody<{ url?: unknown }>(req, async ({ body, session, env }) => {
+    const { url } = body;
     // ...
     return NextResponse.json({ ok: true });
   });
@@ -58,6 +56,7 @@ export async function POST(req: NextRequest) {
 ```
 
 - `withSession` が `requireSession()` + `getCloudflareContext()` + `applyRefreshedTokens()` を内包する
+- `withJsonBody<T>` が `withSession` + `parseJsonBody<T>` を合成し、`body: T` をハンドラに渡す
 - `session.userId` = 0g0 ユーザーID（R2 キーに使用）、`session.sub` = JWT sub（JWT 検証用）
 - 成功: `NextResponse.json(data)`
 - エラー: `NextResponse.json({ error: msg }, { status: N })`
