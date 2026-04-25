@@ -19,6 +19,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 - **既読・ブックマーク等の操作が爆速に** — Issue #223。readIds が 5 万件に育つと markRead のたびに JSON.stringify がメインスレッド占拠して約 1 秒フリーズしちゃってたの〜💦 localStorage 書き込みを \`deferSaveSet\` で非同期バッチ化して、同じティック内の書き込みは 1 回にまとめるようにしたよっ！React state は即時更新のままだから体感ゼロ遅延✨⚡ サーバー側の \`mergeIdList\` もファストパス追加で高速化っ🚀
 
+### リファクタリングっ
+
+- **useUIState.ts を5つのサブフックに分割** — Issue #227。381行・15+ useState のモンスターフックだった \`useUIState.ts\` をスッキリ分割しちゃったよ〜！\`useThemePreference\`（テーマ管理）・\`useLayoutSettings\`（レイアウト・フォント設定）・\`useAutoReadSettings\`（自動既読・自動翻訳）・\`useAccessibilitySettings\`（行間・テキスト均等割り）・\`useStoredSetting\`（localStorage永続化ユーティリティ）の5つに分けて見通しバツグンっ✨🔧
+
 ## 2026-04-24 (8)
 
 ### パフォーマンス改善っ
