@@ -17,7 +17,13 @@ import type {
   SortOrder,
 } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
-import { STORAGE_KEYS, storageGet, storageSet, loadStoredEnum } from "../lib/storage";
+import {
+  STORAGE_KEYS,
+  SPECIAL_FEED_IDS,
+  storageGet,
+  storageSet,
+  loadStoredEnum,
+} from "../lib/storage";
 import { useDebounce } from "./useDebounce";
 import { useGracePeriod } from "./useGracePeriod";
 import {
@@ -26,7 +32,7 @@ import {
   READING_TIME_RANGE_CYCLE,
   SORT_ORDER_CYCLE,
 } from "../lib/article-utils";
-import { filterAndSortArticles } from "../lib/article-filter";
+import { filterByStructure, applyStateFilterAndSort } from "../lib/article-filter";
 import { buildFilterMap, normalizeFilter, type CompiledKeywordFilter } from "../lib/keyword-filter";
 
 const PAGE_SIZE = 50;
@@ -331,89 +337,143 @@ export function useFilteredArticles({
     return ids;
   }, [feeds, activeFeedView]);
   // globalFilter の正規化（キーワード文字列 → CompiledKeywordFilter への変換）を useMemo でキャッシュ。
-  // filterAndSortArticles は全記事をループする hot path のため、正規表現コンパイルをループ外に出すことで
-  // 記事ごとの不要な RegExp 生成を回避する。feedFilterMap と同じ戦略（変更時のみ再ビルド）。
   const normalizedGlobalFilter = useMemo(
     () => (globalFilter ? normalizeFilter(globalFilter) : null),
     [globalFilter],
   );
 
-  const filtered = useMemo(
+  // --- 条件付き依存: 対応するフィルタートグルが OFF のとき、状態 Set の変更で再計算しない ---
+  // 特殊フィード (BOOKMARKS 等) 表示時は対応する Set が構造的依存になるため含める。
+  const isBookmarksFeed = feedId === SPECIAL_FEED_IDS.BOOKMARKS;
+  const isReadingListFeed = feedId === SPECIAL_FEED_IDS.READING_LIST;
+  const isLikesFeed = feedId === SPECIAL_FEED_IDS.LIKES;
+  const isHistoryFeed = feedId === SPECIAL_FEED_IDS.HISTORY;
+
+  const bookmarkIdsForStructure = isBookmarksFeed ? bookmarkIds : EMPTY_SET;
+  const readingListIdsForStructure = isReadingListFeed ? readingListIds : EMPTY_SET;
+  const likeIdsForStructure = isLikesFeed ? likeIds : EMPTY_SET;
+  const historyIdsForStructure = isHistoryFeed ? historyIds : EMPTY_SET;
+  const articleTagsForDeps = selectedTag ? articleTags : undefined;
+
+  const readIdsForState = unreadOnly ? readIds : EMPTY_SET;
+  const bookmarkIdsForState = bookmarkOnly ? bookmarkIds : EMPTY_SET;
+  const readingListIdsForState = readingListOnly ? readingListIds : EMPTY_SET;
+  const likeIdsForState = likeOnly ? likeIds : EMPTY_SET;
+  const noteIdsForState = noteOnly ? noteIds : EMPTY_SET;
+  const readBeforeForState = unreadOnly ? readBeforeTimestamp : null;
+  const historyOrderForState = isHistoryFeed ? historyOrder : EMPTY_STR_ARRAY;
+
+  // --- Stage 1: 構造フィルター（フィード・検索・日付・NSFW・ミュート・キーワード等） ---
+  // 記事ソースやコンテンツに基づくフィルタリング。状態 Set (readIds 等) には依存しない。
+  const structuralFiltered = useMemo(
     () =>
-      filterAndSortArticles(articles, {
+      filterByStructure(articles, {
         feedId,
         feedFilterMap,
-        readIds,
-        bookmarkIds,
-        readingListIds,
-        likeIds,
-        historyIds,
-        historyOrder,
-        unreadOnly,
-        bookmarkOnly,
-        readingListOnly,
-        likeOnly,
-        noteOnly,
-        noteIds,
+        readIds: EMPTY_SET,
+        bookmarkIds: bookmarkIdsForStructure,
+        readingListIds: readingListIdsForStructure,
+        likeIds: likeIdsForStructure,
+        historyIds: historyIdsForStructure,
+        historyOrder: EMPTY_STR_ARRAY,
+        unreadOnly: false,
+        bookmarkOnly: false,
+        readingListOnly: false,
+        likeOnly: false,
+        noteOnly: false,
+        noteIds: EMPTY_SET,
         query,
-        sortOrder,
+        sortOrder: "newest",
         dateRange,
         activeIds,
         nsfwMode,
         nsfwFeedIds,
         globalFilter: normalizedGlobalFilter,
-        readBeforeTimestamp,
+        readBeforeTimestamp: null,
         snoozedUntil,
         readingTimeRange,
         mutedFeedIds,
         authorFilter,
         categoryFilter,
         feedCategoryMap,
-        digestMode,
         groupFeedIds,
         feedTitleByHash,
         viewFeedIds,
         selectedTag,
-        articleTags,
+        articleTags: articleTagsForDeps,
         collectionArticleIds,
       }),
     [
       articles,
       feedId,
       feedFilterMap,
-      readIds,
-      bookmarkIds,
-      readingListIds,
-      likeIds,
-      historyIds,
-      historyOrder,
-      unreadOnly,
-      bookmarkOnly,
-      readingListOnly,
-      likeOnly,
-      noteOnly,
-      noteIds,
+      bookmarkIdsForStructure,
+      readingListIdsForStructure,
+      likeIdsForStructure,
+      historyIdsForStructure,
       query,
-      sortOrder,
       dateRange,
       activeIds,
       nsfwMode,
       nsfwFeedIds,
       normalizedGlobalFilter,
-      readBeforeTimestamp,
       snoozedUntil,
       readingTimeRange,
       mutedFeedIds,
       authorFilter,
       categoryFilter,
       feedCategoryMap,
-      digestMode,
       groupFeedIds,
       feedTitleByHash,
       viewFeedIds,
       selectedTag,
-      articleTags,
+      articleTagsForDeps,
       collectionArticleIds,
+    ],
+  );
+
+  // --- Stage 2: 状態フィルター + ソート + ダイジェスト ---
+  // readIds・bookmarkIds 等の状態 Set と sortOrder に依存。Stage 1 で既に絞り込まれたリストに対して実行。
+  const filtered = useMemo(
+    () =>
+      applyStateFilterAndSort(structuralFiltered, {
+        feedId,
+        readIds: readIdsForState,
+        bookmarkIds: bookmarkIdsForState,
+        readingListIds: readingListIdsForState,
+        likeIds: likeIdsForState,
+        unreadOnly,
+        bookmarkOnly,
+        readingListOnly,
+        likeOnly,
+        noteOnly,
+        noteIds: noteIdsForState,
+        sortOrder,
+        activeIds,
+        readBeforeTimestamp: readBeforeForState,
+        historyOrder: historyOrderForState,
+        digestMode,
+        groupFeedIds,
+      }),
+    [
+      structuralFiltered,
+      feedId,
+      readIdsForState,
+      bookmarkIdsForState,
+      readingListIdsForState,
+      likeIdsForState,
+      unreadOnly,
+      bookmarkOnly,
+      readingListOnly,
+      likeOnly,
+      noteOnly,
+      noteIdsForState,
+      sortOrder,
+      activeIds,
+      readBeforeForState,
+      historyOrderForState,
+      digestMode,
+      groupFeedIds,
     ],
   );
 
