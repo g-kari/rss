@@ -707,6 +707,63 @@ export default function FeedItem({
                 </svg>
               </span>
             )}
+            {feed.fetchError && (feed.consecutiveErrors ?? 0) >= 3 && (
+              <span
+                title={`取得エラー (${feed.consecutiveErrors}回連続)`}
+                className="flex-shrink-0 text-rose-400"
+              >
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 1L9 9H1L5 1z" />
+                  <line x1="5" y1="4" x2="5" y2="6" />
+                  <circle cx="5" cy="7.5" r="0.5" fill="currentColor" stroke="none" />
+                </svg>
+              </span>
+            )}
+            {feed.rateLimitedUntil && new Date(feed.rateLimitedUntil) > new Date() && (
+              <span title="レートリミット中" className="flex-shrink-0 text-amber-500">
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="5" cy="5" r="4" />
+                  <path d="M5 3v2.5l1.5 1" />
+                  <line x1="2" y1="2" x2="8" y2="8" />
+                </svg>
+              </span>
+            )}
+            {feed.oversizeAlert && (
+              <span title="レスポンスサイズ超過" className="flex-shrink-0 text-amber-500">
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="5" cy="5" r="4" />
+                  <line x1="5" y1="3" x2="5" y2="5.5" />
+                  <circle cx="5" cy="7" r="0.5" fill="currentColor" stroke="none" />
+                </svg>
+              </span>
+            )}
           </span>
           {isSelected && !feed.fetchError && (
             <span className="text-[10px] text-text-faint truncate block leading-tight mt-0.5">
