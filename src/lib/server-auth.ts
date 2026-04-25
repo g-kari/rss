@@ -366,6 +366,22 @@ export async function parseJsonBody<T>(
   }
 }
 
+export async function withJsonBody<T>(
+  req: Request,
+  handler: (params: {
+    body: T;
+    session: AuthSession;
+    env: CloudflareEnv;
+    ctx: ExecutionContext;
+  }) => Promise<NextResponse>,
+): Promise<NextResponse> {
+  return withSession(req, async (params) => {
+    const parsed = await parseJsonBody<T>(req);
+    if (!parsed.ok) return parsed.error;
+    return handler({ ...params, body: parsed.data });
+  });
+}
+
 /**
  * バイナリレスポンス（Response）を返す Route Handler 用の withSession 相当ラッパー。
  * image-proxy など NextResponse を使わないエンドポイントで使用する。

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { feedAddCooldownKey } from "@/lib/r2";
@@ -76,15 +76,12 @@ function isValidCookieHeader(value: string): boolean {
 }
 
 export async function POST(request: Request) {
-  return withSession(request, async ({ session, env, ctx }) => {
-    const parsed = await parseJsonBody<{
-      url?: unknown;
-      cookie?: unknown;
-      cssSelector?: unknown;
-      useRsshub?: unknown;
-    }>(request);
-    if (!parsed.ok) return parsed.error;
-
+  return withJsonBody<{
+    url?: unknown;
+    cookie?: unknown;
+    cssSelector?: unknown;
+    useRsshub?: unknown;
+  }>(request, async ({ body, session, env, ctx }) => {
     const limited = await checkAndUpdateCooldown(
       env.RATE_LIMIT,
       feedAddCooldownKey(session.userId),
@@ -92,7 +89,6 @@ export async function POST(request: Request) {
     );
     if (limited) return limited;
 
-    const body = parsed.data;
     let url = typeof body?.url === "string" ? body.url.trim() : "";
     if (!url) return apiError("url is required", 400, { code: "INVALID_URL" });
     if (!isValidFeedUrl(url))

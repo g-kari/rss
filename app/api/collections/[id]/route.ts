@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readCollections, writeCollections, COLLECTION_NAME_MAX_LENGTH } from "@/lib/collections";
 import { stripControlChars } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return withSession(request, async ({ session, env }) => {
-    const parsed = await parseJsonBody<{
-      name?: unknown;
-      order?: unknown;
-      addArticleIds?: unknown;
-      removeArticleIds?: unknown;
-    }>(request);
-    if (!parsed.ok) return parsed.error;
-    const body = parsed.data;
-
+  return withJsonBody<{
+    name?: unknown;
+    order?: unknown;
+    addArticleIds?: unknown;
+    removeArticleIds?: unknown;
+  }>(request, async ({ body, session, env }) => {
     const collections = await readCollections(env.RSS_DATA, session.userId);
     const collection = collections.find((c) => c.id === id);
     if (!collection) return apiError("Collection not found", 404, { code: "COLLECTION_NOT_FOUND" });

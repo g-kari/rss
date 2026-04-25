@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, userPushKey } from "@/lib/r2";
 import { isValidHttpsUrl } from "@/lib/url";
@@ -7,10 +7,7 @@ import type { PushConfig } from "@/types";
 
 /** Push サブスクリプションを R2 から削除する */
 export async function POST(request: Request) {
-  return withSession(request, async ({ session, env }) => {
-    const parsed = await parseJsonBody<{ endpoint?: string }>(request);
-    if (!parsed.ok) return parsed.error;
-    const body = parsed.data;
+  return withJsonBody<{ endpoint?: string }>(request, async ({ body, session, env }) => {
     if (!body?.endpoint) {
       return apiError("endpoint is required", 400, { code: "INVALID_ENDPOINT" });
     }

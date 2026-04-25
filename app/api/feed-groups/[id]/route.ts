@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, parseJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readFeedGroups, writeFeedGroups, FEED_GROUP_NAME_MAX_LENGTH } from "@/lib/feed-groups";
 import { readUserSubscriptions, writeUserSubscriptions } from "@/lib/shared-feed";
@@ -7,16 +7,12 @@ import { stripControlChars } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return withSession(request, async ({ session, env }) => {
-    const parsed = await parseJsonBody<{
-      name?: unknown;
-      order?: unknown;
-      collapsed?: unknown;
-      muted?: unknown;
-    }>(request);
-    if (!parsed.ok) return parsed.error;
-    const body = parsed.data;
-
+  return withJsonBody<{
+    name?: unknown;
+    order?: unknown;
+    collapsed?: unknown;
+    muted?: unknown;
+  }>(request, async ({ body, session, env }) => {
     const groups = await readFeedGroups(env.RSS_DATA, session.userId);
     const group = groups.find((g) => g.id === id);
     if (!group) return apiError("Feed group not found", 404, { code: "FEED_GROUP_NOT_FOUND" });
