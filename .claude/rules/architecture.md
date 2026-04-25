@@ -123,13 +123,15 @@ src/
     FeedAddModal.tsx         # フィード追加ダイアログ（RSS 自動検出・LLM CSS セレクタ推論・Cookie 指定対応）
     article-view/            # ArticleView 補助コンポーネント群（ナビゲーション・フィルタメニュー・ギャラリー・共有・スヌーズ・タグエディタ等）
   hooks/
+    useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
     useFeedOperations.ts     # フィード CRUD 操作
     useFeedGroups.ts         # /api/feed-groups CRUD + 楽観的更新（create / rename / collapse / mute / reorder / delete）
     useCollections.ts        # /api/collections CRUD + 楽観的更新（create / rename / delete / addArticle / removeArticle）
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
-    useUIState.ts            # UI 状態管理（テーマ・レイアウト・フォーカスモード・モーダル等）
+    useThemePreference.ts    # テーマ（light/dark）+ DOM 同期（useUIState から分割）
+    useUIState.ts            # UI 状態管理（サブフックを合成: useThemePreference / useLayoutSettings / useAutoReadSettings / useAccessibilitySettings）
     useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
     useReadState.ts              # 既読・ブックマーク・後で読む・スヌーズ状態 (localStorage + R2 同期)
     useReadStatePersistence.ts   # localStorage 永続化（readIds・bookmarkIds 等の保存・復元）
@@ -149,15 +151,18 @@ src/
     useOnlineStatus.ts       # オンライン/オフライン状態
     useMobilePane.ts         # モバイル向けペイン切り替え (sidebar/list/view)
     useNSFWMode.ts           # NSFW モード（連打で活性化）
+    useStoredSetting.ts      # localStorage 永続化 enum 設定の共通ユーティリティ
     useSyncedRef.ts          # stale closure 回避用の最新値 ref ユーティリティ
     useColumnResize.ts       # カラム幅リサイズ操作と localStorage 永続化
     useMenuOpen.ts           # ドロップダウンメニュー開閉・click-outside 処理
     usePortalMenu.ts         # ポータルベースのドロップダウンメニュー位置管理
     useGracePeriod.ts        # 直前選択記事を 30 秒間フィルター対象外にする猶予期間管理
     useDebounce.ts           # デバウンスユーティリティ
+    useAutoReadSettings.ts   # 自動既読閾値・自動翻訳設定（useUIState から分割）
     useAutoReset.ts          # 値セット後に自動リセット (duration 経過後に初期値へ戻す)
     useEventListener.ts      # DOM イベントリスナーライフサイクル管理 (window / document 対応)
     useInboxProgress.ts      # フィード別未読消化率を計算 (unread 数・readRatio、最大 10 件)
+    useLayoutSettings.ts     # レイアウト・フォントサイズ・フォントファミリー・フィードビュー・ギャラリーカラム・コンテンツ幅設定（useUIState から分割）
     useLocalStorageHistory.ts # localStorage 配列の永続化 (先頭追加・重複排除・上限制御)
     useReadingStats.ts       # 読了統計取得 (/api/stats fetch → ReadingStats)
     useGalleryAutoRead.ts    # ギャラリーレイアウトでスクロール通過した記事を自動既読にする（IntersectionObserver + MutationObserver）

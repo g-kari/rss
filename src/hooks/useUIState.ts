@@ -1,101 +1,34 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useEventListener } from "./useEventListener";
 import { useAutoReset } from "./useAutoReset";
+import { STORAGE_KEYS, loadSet, toggleSetItem } from "../lib/storage";
 import type { FontFamily, Layout, FontSize, FeedView } from "../types";
-import {
-  STORAGE_KEYS,
-  storageGet,
-  storageSet,
-  loadSet,
-  loadStoredEnum,
-  toggleSetItem,
-} from "../lib/storage";
-import { FONT_FAMILY_CYCLE, FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article-utils";
-import {
-  CONTENT_WIDTH_CYCLE,
-  LINE_HEIGHT_CYCLE,
-  GALLERY_COLUMNS_CYCLE,
-  type ContentWidth,
-  type LineHeight,
-  type GalleryColumns,
-} from "../lib/reader-settings";
+import type { ContentWidth, LineHeight, GalleryColumns } from "../lib/reader-settings";
 import { useMobilePane } from "./useMobilePane";
 import { useNSFWMode } from "./useNSFWMode";
+import { useThemePreference } from "./useThemePreference";
+import { useLayoutSettings } from "./useLayoutSettings";
+import { useAutoReadSettings } from "./useAutoReadSettings";
+import { useAccessibilitySettings } from "./useAccessibilitySettings";
 
 import type { MobilePane } from "./useMobilePane";
+// UIState interface で使うためのローカル import（re-export だけではローカルスコープに入らない）
+import type { Theme } from "./useThemePreference";
+import type { AutoReadThreshold } from "./useAutoReadSettings";
 export type { MobilePane };
-export type Theme = "light" | "dark";
+export type { Theme } from "./useThemePreference";
+export type { AutoReadThreshold } from "./useAutoReadSettings";
+export { AUTO_READ_THRESHOLD_CYCLE } from "./useAutoReadSettings";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUT_CYCLE, "list" as Layout);
-const FEED_VIEW_CYCLE: readonly FeedView[] = ["articles", "pictures", "videos", "social"] as const;
-const loadActiveFeedView = () =>
-  loadStoredEnum(STORAGE_KEYS.ACTIVE_FEED_VIEW, FEED_VIEW_CYCLE, "articles" as FeedView);
-const loadFontSize = () =>
-  loadStoredEnum(STORAGE_KEYS.FONT_SIZE, FONT_SIZE_CYCLE, "medium" as FontSize);
-const loadFontFamily = () =>
-  loadStoredEnum(STORAGE_KEYS.FONT_FAMILY, FONT_FAMILY_CYCLE, "sans" as FontFamily);
-
-function loadTheme(): Theme {
-  const stored = storageGet(STORAGE_KEYS.THEME);
-  if (stored === "light" || stored === "dark") return stored;
-  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
 const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
 const loadCollapsedCategories = () => loadSet(STORAGE_KEYS.COLLAPSED_CATEGORIES);
-
-/** 自動既読の閾値（%）— 70 / 80 / 90 をサイクル */
-export const AUTO_READ_THRESHOLD_CYCLE = [70, 80, 90] as const;
-export type AutoReadThreshold = (typeof AUTO_READ_THRESHOLD_CYCLE)[number];
-const DEFAULT_AUTO_READ_THRESHOLD: AutoReadThreshold = 80;
-
-function loadAutoReadEnabled(): boolean {
-  return storageGet(STORAGE_KEYS.AUTO_READ_ENABLED) === "1";
-}
-
-function loadAutoReadThreshold(): AutoReadThreshold {
-  const stored = storageGet(STORAGE_KEYS.AUTO_READ_THRESHOLD);
-  const num = stored == null ? NaN : Number(stored);
-  return AUTO_READ_THRESHOLD_CYCLE.includes(num as AutoReadThreshold)
-    ? (num as AutoReadThreshold)
-    : DEFAULT_AUTO_READ_THRESHOLD;
-}
-
-function loadAutoTranslate(): boolean {
-  return storageGet(STORAGE_KEYS.AUTO_TRANSLATE) === "1";
-}
-
-const loadLineHeight = () =>
-  loadStoredEnum(STORAGE_KEYS.LINE_HEIGHT, LINE_HEIGHT_CYCLE, "normal" as LineHeight);
-const loadContentWidth = () =>
-  loadStoredEnum(STORAGE_KEYS.CONTENT_WIDTH, CONTENT_WIDTH_CYCLE, "medium" as ContentWidth);
-function loadTextJustify(): boolean {
-  return storageGet(STORAGE_KEYS.TEXT_JUSTIFY) === "true";
-}
-const loadGalleryColumns = () =>
-  loadStoredEnum(STORAGE_KEYS.GALLERY_COLUMNS, GALLERY_COLUMNS_CYCLE, "auto" as GalleryColumns);
-
-/** localStorage に永続化する enum 系設定の state と onChange セッターをまとめて返す。 */
-function useStoredSetting<T extends string>(load: () => T, key: string): [T, (v: T) => void] {
-  const [value, setValue] = useState<T>(load);
-  const onChange = useCallback(
-    (v: T) => {
-      setValue(v);
-      storageSet(key, v);
-    },
-    [key],
-  );
-  return [value, onChange];
-}
 
 export interface UIState {
   theme: Theme;
@@ -153,24 +86,34 @@ export interface UIState {
   onChangeGalleryColumns: (v: GalleryColumns) => void;
 }
 
-/**
- * グローバル UI 状態管理フック。
- *
- * テーマ（light/dark）・レイアウト・フォント設定は `localStorage` に永続化する。
- * テーマ初期値は `prefers-color-scheme` を参照し、`document.documentElement.dataset.theme` を切り替える。
- * モーダル表示状態・PWA インストールプロンプト (`BeforeInstallPromptEvent`) も管理する。
- */
 export function useUIState(initialMobilePane: MobilePane): UIState {
-  const [theme, setTheme] = useState<Theme>(loadTheme);
-  const [fontSize, onChangeFontSize] = useStoredSetting<FontSize>(
-    loadFontSize,
-    STORAGE_KEYS.FONT_SIZE,
-  );
-  const [fontFamily, onChangeFontFamily] = useStoredSetting<FontFamily>(
-    loadFontFamily,
-    STORAGE_KEYS.FONT_FAMILY,
-  );
-  const [layout, onChangeLayout] = useStoredSetting<Layout>(loadLayout, STORAGE_KEYS.LAYOUT);
+  const { theme, toggleTheme } = useThemePreference();
+  const {
+    layout,
+    onChangeLayout,
+    fontSize,
+    onChangeFontSize,
+    fontFamily,
+    onChangeFontFamily,
+    activeFeedView,
+    onChangeActiveFeedView,
+    galleryColumns,
+    onChangeGalleryColumns,
+    contentWidth,
+    onChangeContentWidth,
+  } = useLayoutSettings();
+  const {
+    autoReadEnabled,
+    toggleAutoRead,
+    autoReadThreshold,
+    cycleAutoReadThreshold,
+    onChangeAutoReadThreshold,
+    autoTranslate,
+    toggleAutoTranslate,
+  } = useAutoReadSettings();
+  const { lineHeight, onChangeLineHeight, textJustify, onChangeTextJustify } =
+    useAccessibilitySettings();
+
   const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
   const [collapsedCategories, setCollapsedCategories] =
     useState<Set<string>>(loadCollapsedCategories);
@@ -180,45 +123,12 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [listFocusMode, setListFocusMode] = useState(false);
-  const [autoReadEnabled, setAutoReadEnabled] = useState<boolean>(loadAutoReadEnabled);
-  const [autoReadThreshold, setAutoReadThreshold] =
-    useState<AutoReadThreshold>(loadAutoReadThreshold);
-  const [autoTranslate, setAutoTranslate] = useState<boolean>(loadAutoTranslate);
-  const [lineHeight, onChangeLineHeight] = useStoredSetting<LineHeight>(
-    loadLineHeight,
-    STORAGE_KEYS.LINE_HEIGHT,
-  );
-  const [contentWidth, onChangeContentWidth] = useStoredSetting<ContentWidth>(
-    loadContentWidth,
-    STORAGE_KEYS.CONTENT_WIDTH,
-  );
-  const [textJustify, setTextJustifyState] = useState<boolean>(loadTextJustify);
-  const onChangeTextJustify = useCallback((v: boolean) => {
-    setTextJustifyState(v);
-    storageSet(STORAGE_KEYS.TEXT_JUSTIFY, String(v));
-  }, []);
   const [showSettings, setShowSettings] = useState(false);
-  const [activeFeedView, onChangeActiveFeedView] = useStoredSetting<FeedView>(
-    loadActiveFeedView,
-    STORAGE_KEYS.ACTIVE_FEED_VIEW,
-  );
-  const [galleryColumns, onChangeGalleryColumns] = useStoredSetting<GalleryColumns>(
-    loadGalleryColumns,
-    STORAGE_KEYS.GALLERY_COLUMNS,
-  );
 
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
   const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
     useNSFWMode();
 
-  // テーマを DOM に同期
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    storageSet(STORAGE_KEYS.THEME, theme);
-  }, [theme]);
-
-  // PWA インストールプロンプトを捕捉（Chrome / Android）
-  // beforeinstallprompt は非標準イベントのため string オーバーロードを使用
   useEventListener(
     "beforeinstallprompt",
     (e) => {
@@ -228,14 +138,12 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     window,
   );
 
-  // ? キーでヘルプトグル / \ キーでフォーカスモードトグル
   useEventListener(
     "keydown",
     (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "?") setShowHelp((v) => !v);
       if (e.key === "\\") {
-        // Shift+\\ (= `|`) で記事一覧フォーカス、\\ 単体で記事詳細フォーカス
         if (e.shiftKey) {
           setListFocusMode((v) => !v);
           setFocusMode(false);
@@ -253,10 +161,6 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     },
     document,
   );
-
-  const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === "light" ? "dark" : "light"));
-  }, []);
 
   const togglePinFeed = useCallback((feedId: string) => {
     toggleSetItem(setPinnedFeedIds, STORAGE_KEYS.PINNED_FEED_IDS, feedId);
@@ -286,36 +190,6 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const exitFocusMode = useCallback(() => {
     setFocusMode(false);
     setListFocusMode(false);
-  }, []);
-
-  const toggleAutoRead = useCallback(() => {
-    setAutoReadEnabled((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.AUTO_READ_ENABLED, next ? "1" : "0");
-      return next;
-    });
-  }, []);
-
-  const toggleAutoTranslate = useCallback(() => {
-    setAutoTranslate((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.AUTO_TRANSLATE, next ? "1" : "0");
-      return next;
-    });
-  }, []);
-
-  const cycleAutoReadThreshold = useCallback(() => {
-    setAutoReadThreshold((prev) => {
-      const idx = AUTO_READ_THRESHOLD_CYCLE.indexOf(prev);
-      const next = AUTO_READ_THRESHOLD_CYCLE[(idx + 1) % AUTO_READ_THRESHOLD_CYCLE.length];
-      storageSet(STORAGE_KEYS.AUTO_READ_THRESHOLD, String(next));
-      return next;
-    });
-  }, []);
-
-  const onChangeAutoReadThreshold = useCallback((next: AutoReadThreshold) => {
-    setAutoReadThreshold(next);
-    storageSet(STORAGE_KEYS.AUTO_READ_THRESHOLD, String(next));
   }, []);
 
   const installApp = useCallback(async () => {
