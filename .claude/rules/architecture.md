@@ -211,7 +211,8 @@ src/
     web-push.ts              # Web Push 送信ヘルパー
     release-notes-data.ts    # RELEASE_NOTES_MARKDOWN 定数 (Workers バンドル用)
     export-markdown.ts       # ブックマーク・読書リスト記事を Markdown ファイルとしてダウンロード
-    rate-limit.ts            # R2 ベースのクールダウンチェック・更新 (checkAndUpdateCooldown)
+    rate-limit.ts            # KV ベースのクールダウン・スライディングウィンドウ レートリミット (checkAndUpdateCooldown / checkSlidingWindow)
+    serialize-async.ts       # 同一キー非同期操作の直列化ユーティリティ (serialized)
     obsidian.ts              # Obsidian URI スキーム連携（obsidian://new URI 生成・ファイル名サニタイズ）
     html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
     reading-progress.ts      # 読書進捗計算純粋関数（computeProgress / clampProgress / buildAnchorSelector）
