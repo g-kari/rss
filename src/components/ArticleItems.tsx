@@ -15,6 +15,8 @@ export interface ArticleItemProps {
   isBookmarked: boolean;
   /** 削除アニメーション中（既読フィルタなどで visible から抜けた直後の猶予期間） */
   isDeleting?: boolean;
+  /** 新規追加アニメーション対象 */
+  isNew?: boolean;
   hasNote: boolean;
   feedName: string;
   thumb: string | undefined;
@@ -225,6 +227,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   isRead,
   isBookmarked,
   isDeleting,
+  isNew,
   hasNote,
   feedName,
   showFeedName,
@@ -239,14 +242,14 @@ export const CompactArticleItem = memo(function CompactArticleItem({
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
-      className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
-        isDeleting ? "opacity-0 pointer-events-none" : ""
+      className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 ${
+        isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${
         isSelected
           ? "bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]"
           : "hover:bg-surface-hover"
       }`}
-      style={{ animationDelay: `${Math.min(index, 20) * 15}ms` }}
+      style={isNew ? { animationDelay: `${Math.min(index, 20) * 15}ms` } : undefined}
     >
       <span
         className={`w-1 h-1 rounded-full flex-shrink-0 ${!isRead ? "bg-accent-dot" : "bg-transparent"}`}
@@ -286,6 +289,7 @@ export const ListArticleItem = memo(function ListArticleItem({
   isRead,
   isBookmarked,
   isDeleting,
+  isNew,
   hasNote,
   feedName,
   thumb,
@@ -301,14 +305,14 @@ export const ListArticleItem = memo(function ListArticleItem({
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
-      className={`group flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 animate-fade-up ${
-        isDeleting ? "opacity-0 pointer-events-none" : ""
+      className={`group flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 ${
+        isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${
         isSelected
           ? "bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]"
           : "hover:bg-surface-hover"
       }`}
-      style={{ animationDelay: `${Math.min(index, 20) * 25}ms` }}
+      style={isNew ? { animationDelay: `${Math.min(index, 20) * 25}ms` } : undefined}
     >
       <div className="flex-1 min-w-0">
         {showFeedName && feedName && (
@@ -362,6 +366,7 @@ export const CardArticleItem = memo(function CardArticleItem({
   isRead,
   isBookmarked,
   isDeleting,
+  isNew,
   hasNote,
   feedName,
   thumb,
@@ -377,14 +382,14 @@ export const CardArticleItem = memo(function CardArticleItem({
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
-      className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 animate-fade-up overflow-hidden ${
-        isDeleting ? "opacity-0 pointer-events-none" : ""
+      className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 overflow-hidden ${
+        isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${
         isSelected
           ? "border-text-strong bg-surface-elevated"
           : "border-border-default hover:border-text-muted bg-surface-elevated"
       }`}
-      style={{ animationDelay: `${Math.min(index, 20) * 25}ms` }}
+      style={isNew ? { animationDelay: `${Math.min(index, 20) * 25}ms` } : undefined}
     >
       {thumb && (
         <ArticleThumbnail
@@ -450,6 +455,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   isRead,
   isBookmarked,
   isDeleting,
+  isNew,
   hasNote,
   feedName,
   thumb,
@@ -465,8 +471,8 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
-      className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 animate-fade-up ${
-        isDeleting ? "opacity-0 pointer-events-none" : ""
+      className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 ${
+        isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${
         isSelected
           ? "border-text-strong bg-surface-elevated"
@@ -534,6 +540,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   article,
   isRead,
   isBookmarked,
+  isNew,
   hasNote,
   feedName,
   thumb,
@@ -551,7 +558,9 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
     <div
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
-      className={`group relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 animate-fade-up border ${
+      className={`group relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
+        isNew ? "animate-fade-up" : ""
+      } border ${
         isSelected
           ? "border-text-strong bg-surface-elevated"
           : "border-border-default hover:border-text-muted bg-surface-elevated"

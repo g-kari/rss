@@ -7,6 +7,8 @@ interface Result<T> {
   displayItems: T[];
   /** フェードアウト中のアイテム ID 集合 — Renderer 側で opacity 遷移に使う */
   deletingIds: Set<string>;
+  /** 今回新規追加されたアイテム ID 集合 — 追加アニメーション用 */
+  newIds: Set<string>;
 }
 
 /**
@@ -24,6 +26,8 @@ interface Result<T> {
  * 注意: `items` と `getId` の identity が変わるたびに判定を走らせるため、
  *   呼び出し側は `visible` を `useMemo` で安定化し、`getId` は `useCallback` or module scope 関数にすること。
  */
+const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
+
 export function useDelayedGalleryItems<T>(
   items: T[],
   getId: (item: T) => string,
@@ -31,36 +35,52 @@ export function useDelayedGalleryItems<T>(
 ): Result<T> {
   const [displayItems, setDisplayItems] = useState<T[]>(items);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
+  const [newIds, setNewIds] = useState<Set<string>>(() => new Set());
   const prevItemsRef = useRef<T[]>(items);
+  const newTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     const prev = prevItemsRef.current;
     prevItemsRef.current = items;
 
     const currentIds = new Set(items.map(getId));
+    const prevIds = new Set(prev.map(getId));
+
     const removedItems = prev.filter((a) => !currentIds.has(getId(a)));
+    const addedItems = items.filter((a) => !prevIds.has(getId(a)));
+
+    // 新規追加追跡（リスト完全置換時はスキップ）
+    clearTimeout(newTimerRef.current);
+    const isFullReplacement = prevIds.size > 0 && [...currentIds].every((id) => !prevIds.has(id));
+    if (addedItems.length > 0 && !isFullReplacement) {
+      setNewIds(new Set(addedItems.map(getId)));
+      newTimerRef.current = setTimeout(() => setNewIds(EMPTY_SET), delayMs + 200);
+    } else {
+      setNewIds(EMPTY_SET);
+    }
 
     if (removedItems.length === 0) {
       setDisplayItems(items);
-      setDeletingIds(new Set());
-      return;
+      setDeletingIds(EMPTY_SET);
+      return () => clearTimeout(newTimerRef.current);
     }
 
     // 削除あり: prev の順序を保ったまま、items にしかない新規追加を末尾に足して merged を構築
-    const prevIds = new Set(prev.map(getId));
-    const addedItems = items.filter((a) => !prevIds.has(getId(a)));
     const merged = [...prev, ...addedItems];
 
     setDisplayItems(merged);
     setDeletingIds(new Set(removedItems.map(getId)));
 
-    const timer = setTimeout(() => {
+    const deleteTimer = setTimeout(() => {
       setDisplayItems(items);
-      setDeletingIds(new Set());
+      setDeletingIds(EMPTY_SET);
     }, delayMs);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(deleteTimer);
+      clearTimeout(newTimerRef.current);
+    };
   }, [items, getId, delayMs]);
 
-  return { displayItems, deletingIds };
+  return { displayItems, deletingIds, newIds };
 }

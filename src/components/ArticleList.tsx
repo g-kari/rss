@@ -129,10 +129,17 @@ interface GalleryContextMenuTarget {
 }
 
 interface GalleryItemContextValue {
-  resolveItemProps: (article: Article, index: number) => ArticleItemProps;
+  resolveItemProps: (
+    article: Article,
+    index: number,
+    isDeleting?: boolean,
+    isNew?: boolean,
+  ) => ArticleItemProps;
   galleryImagesForItem: (articleId: string) => string[] | undefined;
   /** 既読などで消えゆくアイテムの id 集合 — 該当要素は opacity 遷移で消す */
   deletingIds: Set<string>;
+  /** 新規追加アイテムの id 集合 — 追加アニメーション用 */
+  newIds: Set<string>;
   onGalleryContextMenu: (e: React.MouseEvent, article: Article, index: number) => void;
 }
 
@@ -160,13 +167,14 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
   const ctx = useContext(GalleryItemCtx);
   if (!ctx) return null;
   const isDeleting = ctx.deletingIds.has(data.id);
+  const isNew = ctx.newIds.has(data.id);
   return (
     <div
       style={isDeleting ? GALLERY_CARD_WRAPPER_STYLE_DELETING : GALLERY_CARD_WRAPPER_STYLE_VISIBLE}
       onContextMenu={(e) => ctx.onGalleryContextMenu(e, data, index)}
     >
       <GalleryArticleItem
-        {...ctx.resolveItemProps(data, index)}
+        {...ctx.resolveItemProps(data, index, isDeleting, isNew)}
         prefetchedImages={ctx.galleryImagesForItem(data.id)}
       />
     </div>
@@ -282,8 +290,11 @@ export default function ArticleList({
   );
 
   // 既読などで visible から抜けた記事を 300ms 間フェードアウトさせる（masonic の再配置を滑らかに）
-  const { displayItems: galleryDisplayItems, deletingIds: galleryDeletingIds } =
-    useDelayedGalleryItems(visible, getArticleId, 300);
+  const {
+    displayItems: galleryDisplayItems,
+    deletingIds: galleryDeletingIds,
+    newIds: galleryNewIds,
+  } = useDelayedGalleryItems(visible, getArticleId, 300);
 
   // ── ギャラリーコンテキストメニュー ───────────────────────────────
   const [galleryCtxMenu, setGalleryCtxMenu] = useState<GalleryContextMenuTarget | null>(null);
@@ -366,8 +377,11 @@ export default function ArticleList({
   });
 
   // compact / list / card / magazine — visible から抜けた記事を 250ms フェードアウト
-  const { displayItems: nonGalleryDisplayItems, deletingIds: nonGalleryDeletingIds } =
-    useDelayedGalleryItems(visible, getArticleId, 250);
+  const {
+    displayItems: nonGalleryDisplayItems,
+    deletingIds: nonGalleryDeletingIds,
+    newIds: nonGalleryNewIds,
+  } = useDelayedGalleryItems(visible, getArticleId, 250);
 
   // compact / list 用フラットアイテムリスト（日付ヘッダーを含む）
   const flatItems = useMemo<FlatItem[]>(() => {
@@ -512,12 +526,13 @@ export default function ArticleList({
    * 前後 2 件（旧選択・新選択）のみが更新される。
    */
   const resolveItemProps = useCallback(
-    (article: Article, index: number, isDeleting?: boolean): ArticleItemProps => ({
+    (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => ({
       article,
       index,
       isRead: isArticleRead(article, readIds, readBeforeTimestamp),
       isBookmarked: bookmarkIds.has(article.id),
       isDeleting,
+      isNew,
       hasNote: !!notes?.[article.id],
       feedName: feedMap.get(article.feedHash) ?? "",
       thumb: resolveThumbnail(article, ogpCache),
@@ -539,6 +554,23 @@ export default function ArticleList({
       onSelectArticle,
       onToggleRead,
       onToggleBookmark,
+    ],
+  );
+
+  const galleryCtxValue = useMemo<GalleryItemContextValue>(
+    () => ({
+      resolveItemProps,
+      galleryImagesForItem,
+      deletingIds: galleryDeletingIds,
+      newIds: galleryNewIds,
+      onGalleryContextMenu: handleGalleryContextMenu,
+    }),
+    [
+      resolveItemProps,
+      galleryImagesForItem,
+      galleryDeletingIds,
+      galleryNewIds,
+      handleGalleryContextMenu,
     ],
   );
 
@@ -1118,6 +1150,10 @@ export default function ArticleList({
                       left: 0,
                       width: "100%",
                       transform: `translateY(${vItem.start}px)`,
+                      transition:
+                        nonGalleryDeletingIds.size > 0 || nonGalleryNewIds.size > 0
+                          ? "transform 0.2s ease"
+                          : undefined,
                     }}
                   >
                     {item.type === "header" ? (
@@ -1132,6 +1168,7 @@ export default function ArticleList({
                           item.article,
                           item.articleIndex,
                           nonGalleryDeletingIds.has(item.article.id),
+                          nonGalleryNewIds.has(item.article.id),
                         )}
                       />
                     ) : (
@@ -1140,6 +1177,7 @@ export default function ArticleList({
                           item.article,
                           item.articleIndex,
                           nonGalleryDeletingIds.has(item.article.id),
+                          nonGalleryNewIds.has(item.article.id),
                         )}
                       />
                     )}
@@ -1166,6 +1204,10 @@ export default function ArticleList({
                       left: 0,
                       width: "100%",
                       transform: `translateY(${vItem.start}px)`,
+                      transition:
+                        nonGalleryDeletingIds.size > 0 || nonGalleryNewIds.size > 0
+                          ? "transform 0.2s ease"
+                          : undefined,
                       padding: "4px 8px",
                     }}
                   >
@@ -1177,6 +1219,7 @@ export default function ArticleList({
                             a,
                             vItem.index * 2 + ri,
                             nonGalleryDeletingIds.has(a.id),
+                            nonGalleryNewIds.has(a.id),
                           )}
                         />
                       ))}
@@ -1196,13 +1239,19 @@ export default function ArticleList({
                     nonGalleryDisplayItems[0],
                     0,
                     nonGalleryDeletingIds.has(nonGalleryDisplayItems[0].id),
+                    nonGalleryNewIds.has(nonGalleryDisplayItems[0].id),
                   )}
                 />
               </div>
               {nonGalleryDisplayItems.slice(1).map((a, i) => (
                 <CompactArticleItem
                   key={a.id}
-                  {...resolveItemProps(a, i + 1, nonGalleryDeletingIds.has(a.id))}
+                  {...resolveItemProps(
+                    a,
+                    i + 1,
+                    nonGalleryDeletingIds.has(a.id),
+                    nonGalleryNewIds.has(a.id),
+                  )}
                 />
               ))}
             </>
@@ -1211,14 +1260,7 @@ export default function ArticleList({
           {/* gallery — masonic による仮想スクロール対応 Pinterest 型 masonry */}
           {layout === "gallery" && galleryDisplayItems.length > 0 && (
             <div className="p-2 mx-auto">
-              <GalleryItemCtx.Provider
-                value={{
-                  resolveItemProps,
-                  galleryImagesForItem,
-                  deletingIds: galleryDeletingIds,
-                  onGalleryContextMenu: handleGalleryContextMenu,
-                }}
-              >
+              <GalleryItemCtx.Provider value={galleryCtxValue}>
                 <GalleryMasonry
                   items={galleryDisplayItems}
                   scrollElement={scrollEl}
