@@ -124,6 +124,8 @@ export interface Feed {
   mutedUntil?: string;
   /** 表示ビュー — サイドバー上部タブでのフィルタに使用 */
   view?: FeedView;
+  /** MAX_PAGES を超えたページ溢れ警告 */
+  oversizeAlert?: boolean;
 }
 
 export interface Article {

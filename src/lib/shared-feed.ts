@@ -364,6 +364,7 @@ export function assembleClientFeed(meta: SharedFeedMeta, sub: UserSubscription):
     failedSelectors: meta.failedSelectors,
     mutedUntil: sub.mutedUntil,
     view: sub.view,
+    oversizeAlert: meta.oversizeAlert ?? false,
   };
 }
 

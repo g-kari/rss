@@ -10,6 +10,7 @@ interface Props {
 }
 
 export default function FeedDetailModal({ feed, onClose }: Props) {
+  const health = getHealthStatus(feed);
   return (
     <Modal title="フィード詳細" onClose={onClose}>
       <div className="overflow-y-auto max-h-[70vh] p-4 space-y-4 text-[12px]">
@@ -21,30 +22,58 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
         </DetailSection>
 
         <DetailSection title="ステータス">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`w-2 h-2 rounded-full ${health.color}`} />
+            <span
+              className={`text-[12px] font-medium ${health.color === "bg-emerald-400" ? "text-text-default" : health.color === "bg-amber-400" ? "text-amber-400" : "text-rose-400"}`}
+            >
+              {health.label}
+            </span>
+          </div>
+
           <DetailRow
             label="最終取得"
             value={
-              feed.lastFetchedAt ? new Date(feed.lastFetchedAt).toLocaleString("ja-JP") : "未取得"
+              feed.lastFetchedAt
+                ? `${formatRelativeTime(feed.lastFetchedAt)}（${new Date(feed.lastFetchedAt).toLocaleString("ja-JP")}）`
+                : "未取得"
             }
           />
           {feed.pageCount !== undefined && (
             <DetailRow label="ページ数" value={String(feed.pageCount + 1)} />
           )}
           {feed.consecutiveErrors !== undefined && feed.consecutiveErrors > 0 && (
-            <DetailRow label="連続エラー" value={`${feed.consecutiveErrors} 回`} error />
+            <DetailRow
+              label="連続エラー"
+              value={`${feed.consecutiveErrors} 回${feed.consecutiveErrors >= 5 ? "（更新停止中）" : ""}`}
+              error
+            />
           )}
           {feed.fetchError && <DetailRow label="エラー内容" value={feed.fetchError} error />}
           {feed.lastErrorAt && (
             <DetailRow
-              label="最終エラー日時"
-              value={new Date(feed.lastErrorAt).toLocaleString("ja-JP")}
+              label="最終エラー"
+              value={`${formatRelativeTime(feed.lastErrorAt)}（${new Date(feed.lastErrorAt).toLocaleString("ja-JP")}）`}
               error
             />
           )}
           {feed.rateLimitedUntil && (
             <DetailRow
-              label="レート制限解除"
-              value={new Date(feed.rateLimitedUntil).toLocaleString("ja-JP")}
+              label="レート制限"
+              value={(() => {
+                const until = new Date(feed.rateLimitedUntil);
+                if (until > new Date()) {
+                  return `制限中 — ${until.toLocaleString("ja-JP")} に解除予定`;
+                }
+                return `解除済み（${until.toLocaleString("ja-JP")}）`;
+              })()}
+              error={new Date(feed.rateLimitedUntil) > new Date()}
+            />
+          )}
+          {feed.oversizeAlert && (
+            <DetailRow
+              label="容量警告"
+              value="ページ数上限を超過 — 古い記事が失われる可能性あり"
               error
             />
           )}
@@ -160,4 +189,26 @@ function DetailRow({
       )}
     </div>
   );
+}
+
+function getHealthStatus(feed: Feed): { color: string; label: string } {
+  if ((feed.consecutiveErrors ?? 0) >= 5) return { color: "bg-rose-400", label: "更新停止" };
+  if (
+    feed.fetchError ||
+    (feed.rateLimitedUntil && new Date(feed.rateLimitedUntil) > new Date()) ||
+    feed.oversizeAlert
+  )
+    return { color: "bg-amber-400", label: "注意" };
+  return { color: "bg-emerald-400", label: "正常" };
+}
+
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "たった今";
+  if (mins < 60) return `${mins}分前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}時間前`;
+  const days = Math.floor(hours / 24);
+  return `${days}日前`;
 }
