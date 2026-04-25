@@ -112,25 +112,6 @@ function matchesFeedId(
   return true;
 }
 
-/**
- * フィルターオプションからフィルター述語を構築して返す。
- *
- * ## フィルター適用順
- * 1. feedId による絞り込み（特殊フィード BOOKMARKS / READING_LIST / LIKES / HISTORY に対応）
- * 2. スヌーズ中の記事を除外（activeIds に含まれる場合は例外）
- * 3. NSFW フィードの非表示（nsfwMode が false の場合）
- * 4. ミュート中のフィードを除外（全フィード表示時のみ）
- * 5. フィード別キーワードフィルター（feedFilterMap）
- * 6. グローバルキーワードフィルター（globalFilter）
- * 7. 未読のみ・ブックマークのみ・リーディングリストのみ・メモありのみフィルター
- * 8. 著者フィルター（authorFilter が設定されている場合、その著者の記事のみ）
- * 9. カテゴリフィルター（categoryFilter が設定されている場合、そのカテゴリのフィードの記事のみ）
- * 10. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
- * 11. 検索クエリ（title / summary / author / categories の AND 検索）
- * 12. 日付範囲
- *
- * ※ 2〜10 は activeIds に含まれる記事には適用しない（ナビゲーション中の記事が消えないようにするため）
- */
 /** feedId フィルター述語（activeIds に関わらず常に適用） */
 function buildFeedPredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
   const { feedId, bookmarkIds, readingListIds, likeIds, historyIds, groupFeedIds, viewFeedIds } =
@@ -189,7 +170,7 @@ function buildKeywordPredicate(opts: ArticleFilterOptions): ((a: Article) => boo
 }
 
 /** 既読/ブックマーク/リーディングリスト/いいね/メモ状態述語（activeIds 外の記事にのみ適用） */
-function buildStatePredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+function buildStatePredicate(opts: StateFilterOptions): ((a: Article) => boolean) | null {
   const {
     feedId,
     unreadOnly,
@@ -276,56 +257,6 @@ function buildDatePredicate(opts: ArticleFilterOptions): ((a: Article) => boolea
 }
 
 /**
- * フィルターオプションからフィルター述語を構築して返す。
- *
- * ## フィルター適用順
- * 1. feedId による絞り込み（特殊フィード BOOKMARKS / READING_LIST / LIKES / HISTORY に対応）
- * 2. スヌーズ中の記事を除外（activeIds に含まれる場合は例外）
- * 3. NSFW フィードの非表示（nsfwMode が false の場合）
- * 4. ミュート中のフィードを除外（全フィード表示時のみ）
- * 5. フィード別キーワードフィルター（feedFilterMap）
- * 6. グローバルキーワードフィルター（globalFilter）
- * 7. 未読のみ・ブックマークのみ・リーディングリストのみ・メモありのみフィルター
- * 8. 著者フィルター（authorFilter が設定されている場合、その著者の記事のみ）
- * 9. カテゴリフィルター（categoryFilter が設定されている場合、そのカテゴリのフィードの記事のみ）
- * 10. 読了時間フィルター（short: 5分以内 / medium: 5〜15分 / long: 15分超）
- * 11. 検索クエリ（title / summary / author / categories の AND 検索）
- * 12. 日付範囲
- *
- * ※ 2〜10 は activeIds に含まれる記事には適用しない（ナビゲーション中の記事が消えないようにするため）
- */
-function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => boolean {
-  const { activeIds } = opts;
-
-  // activeIds に関わらず常に適用される述語
-  const alwaysPredicates = [
-    buildFeedPredicate(opts),
-    buildQueryPredicate(opts),
-    buildDatePredicate(opts),
-    buildCollectionPredicate(opts),
-  ].filter((p): p is (a: Article) => boolean => p !== null);
-
-  // activeIds 外の記事にのみ適用される述語
-  const conditionalPredicates = [
-    buildSnoozePredicate(opts),
-    buildNsfwPredicate(opts),
-    buildMutedFeedPredicate(opts),
-    buildKeywordPredicate(opts),
-    buildStatePredicate(opts),
-    buildTagPredicate(opts),
-    buildAuthorPredicate(opts),
-    buildCategoryPredicate(opts),
-    buildReadingTimePredicate(opts),
-  ].filter((p): p is (a: Article) => boolean => p !== null);
-
-  return (a: Article) => {
-    if (!alwaysPredicates.every((p) => p(a))) return false;
-    if (!activeIds.has(a.id) && !conditionalPredicates.every((p) => p(a))) return false;
-    return true;
-  };
-}
-
-/**
  * 記事リストにフィルタリングとソートを適用して返す。
  *
  * ## ソート
@@ -337,10 +268,71 @@ function buildArticlePredicate(opts: ArticleFilterOptions): (a: Article) => bool
  * @param opts - フィルター・ソート・表示オプション
  * @returns フィルター・ソート済みの記事リスト
  */
-export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
-  const list = articles.filter(buildArticlePredicate(opts));
 
-  // 履歴モードは viewedAt 降順（最近閲覧順）で固定
+export interface StateFilterOptions {
+  feedId: string | null;
+  readIds: Set<string>;
+  bookmarkIds: Set<string>;
+  readingListIds: Set<string>;
+  likeIds: Set<string>;
+  unreadOnly: boolean;
+  bookmarkOnly: boolean;
+  readingListOnly: boolean;
+  likeOnly: boolean;
+  noteOnly: boolean;
+  noteIds: Set<string>;
+  sortOrder: "newest" | "oldest";
+  activeIds: Set<string>;
+  readBeforeTimestamp: string | null;
+  historyOrder: string[];
+  digestMode?: boolean;
+  groupFeedIds?: Set<string>;
+}
+
+export function filterByStructure(articles: Article[], opts: ArticleFilterOptions): Article[] {
+  const { activeIds } = opts;
+
+  const alwaysPredicates = [
+    buildFeedPredicate(opts),
+    buildQueryPredicate(opts),
+    buildDatePredicate(opts),
+    buildCollectionPredicate(opts),
+  ].filter((p): p is (a: Article) => boolean => p !== null);
+
+  const conditionalPredicates = [
+    buildSnoozePredicate(opts),
+    buildNsfwPredicate(opts),
+    buildMutedFeedPredicate(opts),
+    buildKeywordPredicate(opts),
+    buildTagPredicate(opts),
+    buildAuthorPredicate(opts),
+    buildCategoryPredicate(opts),
+    buildReadingTimePredicate(opts),
+  ].filter((p): p is (a: Article) => boolean => p !== null);
+
+  return articles.filter((a) => {
+    if (!alwaysPredicates.every((p) => p(a))) return false;
+    if (!activeIds.has(a.id) && !conditionalPredicates.every((p) => p(a))) return false;
+    return true;
+  });
+}
+
+export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOptions): Article[] {
+  const { activeIds } = opts;
+  const statePredicate = buildStatePredicate(opts);
+
+  const needsSort = opts.feedId === SPECIAL_FEED_IDS.HISTORY || opts.sortOrder === "oldest";
+  const needsDigest = !!(opts.digestMode && !opts.feedId && !opts.groupFeedIds?.size);
+
+  let list: Article[];
+  if (statePredicate) {
+    list = articles.filter((a) => activeIds.has(a.id) || statePredicate(a));
+  } else if (needsSort || needsDigest) {
+    list = articles.slice();
+  } else {
+    return articles;
+  }
+
   if (opts.feedId === SPECIAL_FEED_IDS.HISTORY) {
     const orderMap = new Map(opts.historyOrder.map((id, i) => [id, i]));
     list.sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
@@ -348,13 +340,10 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
     list.reverse();
   }
 
-  // ソート後に適用するため、newest 順で先頭 3 件 = 最新 3 件になる。
-  // アクティブな記事（現在選択中・猶予期間中）はカウントから除外して常に表示する。
-  // グループ選択中はユーザーが明示的にスコープを絞っているため digest は適用しない。
-  if (opts.digestMode && !opts.feedId && !opts.groupFeedIds?.size) {
+  if (needsDigest) {
     const feedCount = new Map<string, number>();
     return list.filter((a) => {
-      if (opts.activeIds.has(a.id)) return true;
+      if (activeIds.has(a.id)) return true;
       const count = feedCount.get(a.feedHash) ?? 0;
       if (count >= 3) return false;
       feedCount.set(a.feedHash, count + 1);
@@ -363,4 +352,8 @@ export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOp
   }
 
   return list;
+}
+
+export function filterAndSortArticles(articles: Article[], opts: ArticleFilterOptions): Article[] {
+  return applyStateFilterAndSort(filterByStructure(articles, opts), opts);
 }
