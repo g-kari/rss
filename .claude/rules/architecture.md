@@ -169,7 +169,8 @@ src/
     useLocalStorageHistory.ts # localStorage 配列の永続化 (先頭追加・重複排除・上限制御)
     useReadingStats.ts       # 読了統計取得 (/api/stats fetch → ReadingStats)
     useGalleryAutoRead.ts    # ギャラリーレイアウトでスクロール通過した記事を自動既読にする（IntersectionObserver + MutationObserver）
-    useGestureNav.ts         # スワイプ・ホイール・ドラッグによる前後��事ナビゲ��ション（横スクロー���子要素は除外）
+    useGallerySwipeNav.ts    # モバイルギャラリーの横スワイプでカード間スクロールナビゲーション
+    useGestureNav.ts         # スワイプ・ホイール・ドラッグによる前後記事ナビゲーション（横スクロール子要素は除外）
     useReadingProgress.ts    # 記事読書進捗トラッキング（IntersectionObserver + localStorage 永続化・復元）
     useArticleHighlight.ts   # 記事本文テキストのハイライト管理（アノテーション保存・復元）
     useArticleNote.ts        # 記事ごとの個人メモ編集・自動保存（ReadState.notes と同期、最大 2000 文字）

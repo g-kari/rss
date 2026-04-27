@@ -25,6 +25,7 @@ import { usePrefetchGalleryContents } from "../hooks/usePrefetchGalleryContents"
 import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useGalleryAutoRead } from "../hooks/useGalleryAutoRead";
+import { useGallerySwipeNav } from "../hooks/useGallerySwipeNav";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { isArticleRead } from "../lib/article-filter";
 import {
@@ -240,6 +241,7 @@ export default function ArticleList({
     readIds,
     onMarkRead: handleGalleryAutoRead,
   });
+  useGallerySwipeNav(scrollEl, layout === "gallery");
 
   const {
     displayItems: nonGalleryDisplayItems,
@@ -393,11 +395,7 @@ export default function ArticleList({
       />
 
       <SelectedArticleCtx.Provider value={selectedArticleId ?? null}>
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 min-h-0 overflow-y-auto"
-          data-gallery-snap={layout === "gallery" ? "" : undefined}
-        >
+        <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto">
           {loading && filtered.length === 0 && (
             <div className="flex items-center justify-center h-40">
               <p className="text-[12px] text-text-faint">読み込み中...</p>

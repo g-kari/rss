@@ -602,11 +602,3 @@ body {
   width: 100%;
   border-radius: 12px;
 }
-
-/* ギャラリービュー: モバイルでスクロールスナップ有効化 */
-@media (max-width: 1023px) {
-  [data-gallery-snap] {
-    scroll-snap-type: y proximity;
-    scroll-padding-top: 8px;
-  }
-}
