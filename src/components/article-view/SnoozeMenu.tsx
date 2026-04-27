@@ -33,6 +33,7 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext, showToas
         ref={btnRef}
         onClick={toggle}
         title="スヌーズ（後で再表示）"
+        aria-label="スヌーズ"
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg

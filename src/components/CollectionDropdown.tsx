@@ -39,6 +39,7 @@ export default function CollectionDropdown({
       <button
         onClick={() => setOpen(!open)}
         title="コレクションに追加"
+        aria-label="コレクションに追加"
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${
           inCount > 0 ? "text-indigo-400" : "text-text-faint hover:text-text-muted"
         }`}

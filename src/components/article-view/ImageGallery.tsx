@@ -48,6 +48,7 @@ export default function ImageGallery({ images }: Props) {
             <button
               key={i}
               onClick={() => setLightboxIndex(i)}
+              aria-label={`画像 ${i + 1} を拡大`}
               className="flex-shrink-0 cursor-zoom-in"
             >
               <img

@@ -650,6 +650,7 @@ export default function ArticleView({
                   }}
                   disabled={aiLoading || fetching}
                   title="AI 要約 (a)"
+                  aria-label="AI 要約"
                   className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
                     aiResult
                       ? "border-ink bg-ink text-ink-text"
@@ -662,6 +663,7 @@ export default function ArticleView({
                   onClick={handleTranslate}
                   disabled={translateLoading || fetching}
                   title="AI 翻訳（日本語）(z)"
+                  aria-label="AI 翻訳"
                   className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
                     translateResult
                       ? "border-ink bg-ink text-ink-text"
@@ -680,6 +682,7 @@ export default function ArticleView({
                 }}
                 disabled={downloadingImages}
                 title="記事内の画像をすべてダウンロード"
+                aria-label="画像をダウンロード"
                 className="p-2 -m-2 lg:p-0 lg:m-0 text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50 flex items-center gap-1 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
               >
                 {downloadingImages && imageDownloadProgress ? (
@@ -707,6 +710,7 @@ export default function ArticleView({
                   }
                 }}
                 title={ttsPlaying || ttsPaused ? "読み上げを停止" : "読み上げ (P)"}
+                aria-label={ttsPlaying || ttsPaused ? "読み上げを停止" : "読み上げ"}
                 className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${
                   ttsPlaying || ttsPaused
                     ? "text-ink hover:text-text-muted"
@@ -759,6 +763,7 @@ export default function ArticleView({
               <button
                 onClick={ttsCycleRate}
                 title={`読み上げ速度: ${ttsRate}x（クリックで変更）`}
+                aria-label={`読み上げ速度 ${ttsRate}倍`}
                 className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 text-[10px] font-medium tabular-nums leading-none ${
                   ttsPlaying || ttsPaused
                     ? "text-ink hover:text-text-muted"
@@ -814,6 +819,7 @@ export default function ArticleView({
                   showToast?.(isInReadingList ? "後で読むから削除" : "後で読むに追加");
                 }}
                 title={isInReadingList ? "後で読むから削除" : "後で読む (T)"}
+                aria-label={isInReadingList ? "後で読むから削除" : "後で読む"}
                 className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
                   isInReadingList
                     ? "bg-ink text-ink-text"
@@ -842,6 +848,7 @@ export default function ArticleView({
                   onToggleBookmark(article.id);
                 }}
                 title={isBookmarked ? "ブックマーク解除 (b)" : "ブックマーク (b)"}
+                aria-label={isBookmarked ? "ブックマーク解除" : "ブックマーク"}
                 className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
                   isBookmarked
                     ? "bg-bookmark text-ink-text"
@@ -871,6 +878,7 @@ export default function ArticleView({
                   onToggleLike(article.id);
                 }}
                 title={isLiked ? "いいね解除 (I)" : "いいね (I)"}
+                aria-label={isLiked ? "いいね解除" : "いいね"}
                 className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
                   isLiked
                     ? "bg-rose-400 text-white"
@@ -930,6 +938,7 @@ export default function ArticleView({
             <button
               onClick={onToggleFocusMode}
               title={focusMode ? "フォーカスモード終了 (\\)" : "フォーカスモード (\\)"}
+              aria-label={focusMode ? "フォーカスモード終了" : "フォーカスモード"}
               className={`hidden lg:block p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
             >
               <svg
@@ -1030,6 +1039,7 @@ export default function ArticleView({
                   <button
                     key={rating}
                     title={rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}
+                    aria-label={`要約の評価: ${rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}`}
                     onClick={() => {
                       if (summaryRating === rating) return;
                       setSummaryRating(rating);
@@ -1109,6 +1119,7 @@ export default function ArticleView({
                   <button
                     key={rating}
                     title={rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}
+                    aria-label={`翻訳の評価: ${rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}`}
                     onClick={() => {
                       if (translateRating === rating) return;
                       setTranslateRating(rating);

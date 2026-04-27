@@ -42,6 +42,7 @@ export default function FilterMenu({ article, feed, onSaveFilter, showToast }: P
         ref={btnRef}
         onClick={toggle}
         title="フィルター設定"
+        aria-label="フィルター設定"
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg

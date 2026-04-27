@@ -376,7 +376,10 @@ export default function ArticleList({
   );
 
   return (
-    <section className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-base">
+    <section
+      aria-label="記事一覧"
+      className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-base"
+    >
       <ArticleListHeader
         layout={layout}
         onChangeLayout={onChangeLayout}
