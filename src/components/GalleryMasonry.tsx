@@ -14,6 +14,8 @@ import { useMasonry, usePositioner, useResizeObserver } from "masonic";
 // 各セル wrapper に当てる CSS transition — 参照安定化のため module scope に定義
 const ITEM_TRANSITION_STYLE: CSSProperties = {
   transition: "top 0.3s ease, left 0.3s ease",
+  scrollSnapAlign: "start",
+  scrollSnapStop: "normal",
 };
 
 interface GalleryMasonryProps<T> {
