@@ -194,6 +194,7 @@ export default function App() {
     removeTag,
     setArticleTags,
     clearArticleTags,
+    hasPendingChanges,
   } = useReadState(user, articles, historyIds);
 
   const readerSettings = useMemo<ReaderSettings>(
@@ -955,6 +956,7 @@ export default function App() {
                 <path d="M1 1l10 10M8.5 3.5A4 4 0 0 0 2.5 7M10 5.5A6 6 0 0 0 5 2M4 8a2 2 0 0 1 4 0" />
               </svg>
               オフライン — キャッシュされたデータを表示中
+              {hasPendingChanges && <span className="ml-1 text-text-faint">（同期待ち）</span>}
             </div>
           )}
 
@@ -1133,6 +1135,7 @@ export default function App() {
                 onRetryFeed={retryFeed}
                 onReinferFeed={reinferFeed}
                 refreshing={refreshing}
+                isOnline={isOnline}
                 pinnedFeedIds={pinnedFeedIds}
                 onTogglePinFeed={togglePinFeed}
                 collapsedCategories={collapsedCategories}

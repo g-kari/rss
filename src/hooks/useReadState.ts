@@ -33,6 +33,7 @@ export interface ReadStateResult {
   removeTag: (articleId: string, tag: string) => void;
   setArticleTags: (articleId: string, tags: readonly string[]) => void;
   clearArticleTags: (articleId: string) => void;
+  hasPendingChanges: boolean;
 }
 
 /**
@@ -116,5 +117,6 @@ export function useReadState(
     removeTag: tags.removeTag,
     setArticleTags: tags.setArticleTags,
     clearArticleTags: tags.clearArticleTags,
+    hasPendingChanges: sync.hasPendingChanges,
   };
 }

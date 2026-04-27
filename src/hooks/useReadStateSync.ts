@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import type { KeywordFilter, ReadState, UserProfile } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
@@ -95,6 +95,7 @@ export interface ReadStateSyncDeps {
 export interface ReadStateSyncResult {
   scheduleSyncToServer: () => void;
   syncImmediately: () => void;
+  hasPendingChanges: boolean;
 }
 
 export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
@@ -123,6 +124,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
   const lastServerSyncRef = useRef<number>(0);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirtyRef = useRef(false);
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
 
   const applyServerState = useCallback(
     (state: ReadState) => {
@@ -269,6 +271,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     const body = buildBody(added, removed, tagChanged, tagRemoved, wasGfDirty);
     const result = await saveReadState(body);
     if (result.ok && result.state) {
+      setHasPendingChanges(false);
       applyServerState(result.state);
     } else {
       mergePendingSets(pendingAddedRef.current, added);
@@ -276,6 +279,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
       for (const k of tagChanged) pendingTagChangedRef.current.add(k);
       for (const k of tagRemoved) pendingTagRemovedRef.current.add(k);
       if (wasGfDirty) globalFilterDirtyRef.current = true;
+      setHasPendingChanges(true);
     }
   }, [
     applyServerState,
@@ -290,6 +294,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
 
   const scheduleSyncToServer = useCallback(() => {
     isDirtyRef.current = true;
+    setHasPendingChanges(true);
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
       if (!isDirtyRef.current) return;
@@ -354,6 +359,13 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     },
     document,
   );
+
+  // オンライン復帰時に未送信の変更を即座にフラッシュ
+  useEventListener("online", () => {
+    if (isDirtyRef.current || syncTimerRef.current !== null) {
+      void flushToServer();
+    }
+  });
 
   // beforeunload: sendBeacon で確実に送信
   useEventListener("beforeunload", () => {
@@ -427,5 +439,5 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     };
   }, []);
 
-  return { scheduleSyncToServer, syncImmediately };
+  return { scheduleSyncToServer, syncImmediately, hasPendingChanges };
 }

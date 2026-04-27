@@ -41,6 +41,7 @@ interface Props {
   user: UserProfile;
   theme: "light" | "dark";
   refreshing: boolean;
+  isOnline: boolean;
   pinnedFeedIds: Set<string>;
   collapsedCategories?: Set<string>;
   onToggleCollapseCategory?: (category: string) => void;
@@ -137,6 +138,7 @@ export default function FeedSidebar({
   onRetryFeed,
   onReinferFeed,
   refreshing,
+  isOnline,
   pinnedFeedIds,
   collapsedCategories = new Set(),
   onToggleCollapseCategory,
@@ -482,13 +484,14 @@ export default function FeedSidebar({
         </button>
         <button
           onClick={() => setInputOpen((v) => !v)}
-          className={`w-5 h-5 flex items-center justify-center rounded transition-all duration-200 ${
+          disabled={!isOnline}
+          className={`w-5 h-5 flex items-center justify-center rounded transition-all duration-200 disabled:opacity-40 ${
             inputOpen
               ? "text-text-default bg-surface-subtle"
               : "text-text-faint hover:text-text-default hover:bg-surface-subtle"
           }`}
-          title="フィードを追加"
-          aria-label="フィードを追加"
+          title={!isOnline ? "オフラインです" : "フィードを追加"}
+          aria-label={!isOnline ? "オフライン" : "フィードを追加"}
         >
           <svg
             width="11"
@@ -504,10 +507,10 @@ export default function FeedSidebar({
         </button>
         <button
           onClick={onRefresh}
-          disabled={refreshing}
+          disabled={refreshing || !isOnline}
           className="w-5 h-5 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all duration-200 disabled:opacity-40"
-          title="フィードを更新"
-          aria-label={refreshing ? "フィードを更新中" : "フィードを更新"}
+          title={!isOnline ? "オフラインです" : "フィードを更新"}
+          aria-label={!isOnline ? "オフライン" : refreshing ? "フィードを更新中" : "フィードを更新"}
         >
           <svg
             width="11"
