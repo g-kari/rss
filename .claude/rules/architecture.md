@@ -100,8 +100,11 @@ src/
     FeedItem.tsx             # フィードアイテム（コンテキストメニュー付き）
     FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
-    ArticleList.tsx          # 記事一覧 (4レイアウト対応)
+    ArticleList.tsx          # 記事一覧 (5レイアウト対応・仮想スクロール)
+    ArticleListHeader.tsx    # 記事一覧ヘッダー（レイアウト切替・フィルターピル・検索バー）
     ArticleItems.tsx         # 記事一覧アイテム（レイアウト別 memo コンポーネント）
+    GalleryContextMenu.tsx   # ギャラリーレイアウト右クリックメニュー（画像保存・既読切替）
+    LoadMoreButton.tsx       # 追加読み込みボタン（IntersectionObserver 自動トリガー）
     ArticleView.tsx          # 記事本文
     Modal.tsx                # 汎用モーダル基盤コンポーネント
     RecommendationSection.tsx # フィード推薦セクション
