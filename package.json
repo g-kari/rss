@@ -29,8 +29,8 @@
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260418.1",
-    "@opennextjs/cloudflare": "^1.19.1",
+    "@cloudflare/workers-types": "^4.20260423.1",
+    "@opennextjs/cloudflare": "^1.19.4",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/react": "^19.0.0",
@@ -43,7 +43,7 @@
     "typescript": "^6.0.3",
     "vite": "^8.0.5",
     "vite-plus": "^0.1.18",
-    "wrangler": "^4.83.0"
+    "wrangler": "^4.84.1"
   },
   "packageManager": "pnpm@10.29.3",
   "pnpm": {
