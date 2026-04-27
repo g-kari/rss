@@ -41,8 +41,8 @@
     "postcss": "^8.5.11",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
-    "vite": "^8.0.5",
-    "vite-plus": "^0.1.18",
+    "vite": "^8.0.10",
+    "vite-plus": "^0.1.19",
     "wrangler": "^4.84.1"
   },
   "packageManager": "pnpm@10.29.3",
