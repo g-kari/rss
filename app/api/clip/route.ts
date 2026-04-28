@@ -3,7 +3,11 @@ import { withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { validateClipRequest } from "@/lib/clip";
 import { extractMainContent } from "@/lib/content";
-import { buildContentCacheKey, saveContentToCache } from "@/lib/fetch-article-content";
+import { buildClipCacheKey, saveContentToCache } from "@/lib/fetch-article-content";
+import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+import { clipCooldownKey } from "@/lib/r2";
+
+const CLIP_COOLDOWN_MS = 60 * 1000; // 1分
 
 /**
  * POST /api/clip
@@ -17,22 +21,31 @@ import { buildContentCacheKey, saveContentToCache } from "@/lib/fetch-article-co
  *   - URL field: url
  */
 export async function POST(req: NextRequest) {
-  return withJsonBody<{ html?: unknown; url?: unknown }>(req, async ({ body, ctx }) => {
-    const validation = validateClipRequest(body);
-    if (!validation.ok) {
-      return apiError(validation.error, 400, { code: "INVALID_CLIP_PAYLOAD" });
-    }
+  return withJsonBody<{ html?: unknown; url?: unknown }>(
+    req,
+    async ({ body, session, env, ctx }) => {
+      const limited = await checkAndUpdateCooldown(
+        env.RATE_LIMIT,
+        clipCooldownKey(session.userId),
+        CLIP_COOLDOWN_MS,
+      );
+      if (limited) return limited;
 
-    const { html, url } = validation;
+      const validation = validateClipRequest(body);
+      if (!validation.ok) {
+        return apiError(validation.error, 400, { code: "INVALID_CLIP_PAYLOAD" });
+      }
 
-    // 本文抽出
-    const { content } = extractMainContent(html, url);
+      const { html, url } = validation;
 
-    // Cloudflare Cache API に保存（/api/content と同じキー形式）
-    const reqUrl = new URL(req.url);
-    const cacheKey = await buildContentCacheKey(reqUrl.origin, url);
-    saveContentToCache(cacheKey, content, ctx);
+      const { content } = extractMainContent(html, url);
 
-    return NextResponse.json({ ok: true, url });
-  });
+      // ユーザースコープのキャッシュに保存（共有キャッシュへの書き込みを防ぐ）
+      const reqUrl = new URL(req.url);
+      const cacheKey = await buildClipCacheKey(reqUrl.origin, session.userId, url);
+      saveContentToCache(cacheKey, content, ctx);
+
+      return NextResponse.json({ ok: true, url });
+    },
+  );
 }
