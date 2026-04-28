@@ -339,26 +339,36 @@ export async function fetchAndUpdateSharedFeed(
 
 // ── Push 通知 ─────────────────────────────────────────────────────
 
-function buildPushPayload(newArticles: Article[], feedTitle: string): PushPayload {
-  const count = newArticles.length;
-  const singleFeed = new Set(newArticles.map((a) => a.feedHash)).size === 1;
-  const title = singleFeed ? feedTitle : "RSS Reader";
-  const body = count === 1 ? newArticles[0].title || "新着記事" : `${count} 件の新着記事`;
-  return { title, body, url: "/" };
+export interface FeedNewArticles {
+  articles: Article[];
+  feedTitle: string;
 }
 
-async function sendPushForUsers(
+export function buildBatchedPushPayload(feedEntries: FeedNewArticles[]): PushPayload {
+  const totalCount = feedEntries.reduce((sum, e) => sum + e.articles.length, 0);
+  if (feedEntries.length === 1) {
+    const { articles, feedTitle } = feedEntries[0];
+    const body =
+      articles.length === 1 ? articles[0].title || "新着記事" : `${articles.length} 件の新着記事`;
+    return { title: feedTitle, body, url: "/" };
+  }
+  return {
+    title: "RSS Reader",
+    body: `${totalCount} 件の新着記事（${feedEntries.length} フィード）`,
+    url: "/",
+  };
+}
+
+async function sendPushBatched(
   env: FetchEnv,
-  userIds: string[],
-  newArticles: Article[],
-  feedTitle: string,
+  userFeedMap: Map<string, FeedNewArticles[]>,
 ): Promise<void> {
-  const payload = buildPushPayload(newArticles, feedTitle);
   await allSettledWithConcurrency(
-    userIds.map((userId) => async () => {
+    [...userFeedMap.entries()].map(([userId, feedEntries]) => async () => {
       const pushKey = userPushKey(userId);
       const config = await r2Get<PushConfig>(env.RSS_DATA, pushKey, { subscriptions: [] });
       if (config.subscriptions.length === 0) return;
+      const payload = buildBatchedPushPayload(feedEntries);
       const remaining = await sendPushToAll(config.subscriptions, payload);
       if (remaining.length !== config.subscriptions.length) {
         config.subscriptions = remaining;
@@ -418,15 +428,25 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
     FEED_FETCH_CONCURRENCY,
   );
 
-  // Push 通知
+  // Push 通知: userId → FeedNewArticles[] のマップを構築して一括送信
+  const userFeedMap = new Map<string, FeedNewArticles[]>();
   for (let i = 0; i < activeFeedHashes.length; i++) {
     const result = results[i];
     if (result.status !== "fulfilled" || result.value.newArticles.length === 0) continue;
     const { newArticles, meta } = result.value;
     const feedHash = activeFeedHashes[i];
     const userIds = feedUserMap.get(feedHash) ?? [];
-    if (userIds.length === 0) continue;
-    await sendPushForUsers(env, userIds, newArticles, meta?.title ?? "RSS");
+    for (const userId of userIds) {
+      let entries = userFeedMap.get(userId);
+      if (!entries) {
+        entries = [];
+        userFeedMap.set(userId, entries);
+      }
+      entries.push({ articles: newArticles, feedTitle: meta?.title ?? "RSS" });
+    }
+  }
+  if (userFeedMap.size > 0) {
+    await sendPushBatched(env, userFeedMap);
   }
 }
 
