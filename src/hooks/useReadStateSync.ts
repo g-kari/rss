@@ -362,9 +362,10 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
 
   // オンライン復帰時に未送信の変更を即座にフラッシュ
   useEventListener("online", () => {
-    if (isDirtyRef.current || syncTimerRef.current !== null) {
-      void flushToServer();
-    }
+    if (!isDirtyRef.current && syncTimerRef.current === null) return;
+    flushIfPending();
+    isDirtyRef.current = false;
+    void flushToServer();
   });
 
   // beforeunload: sendBeacon で確実に送信
