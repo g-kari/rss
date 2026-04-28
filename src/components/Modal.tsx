@@ -2,7 +2,6 @@
 
 import { useId, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useEventListener } from "@/hooks/useEventListener";
 import { usePopupLock } from "@/hooks/usePopupLock";
 
 interface Props {
@@ -27,37 +26,41 @@ export default function Modal({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   usePopupLock();
-  useEventListener("keydown", (e) => {
-    if (e.key === "Escape") onClose();
-  });
 
   useEffect(() => {
     dialogRef.current?.focus();
   }, []);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab") return;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-    if (focusable.length === 0) {
-      e.preventDefault();
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (e.shiftKey) {
-      if (document.activeElement === first || document.activeElement === dialog) {
-        e.preventDefault();
-        last.focus();
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
       }
-    } else {
-      if (document.activeElement === last) {
+      if (e.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (focusable.length === 0) {
         e.preventDefault();
-        first.focus();
+        return;
       }
-    }
-  }, []);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first || document.activeElement === dialog) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last || document.activeElement === dialog) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    },
+    [onClose],
+  );
 
   return createPortal(
     <>
