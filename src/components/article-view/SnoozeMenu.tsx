@@ -2,6 +2,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { usePortalMenu } from "../../hooks/usePortalMenu";
 import { MENU_ITEM_CLS } from "./constants";
+import { useToast } from "@/contexts/ToastContext";
 
 const SNOOZE_OPTIONS = [
   { label: "1時間後", durationMs: 60 * 60 * 1000 },
@@ -14,16 +15,16 @@ interface Props {
   articleId: string;
   onSnooze: (id: string, durationMs: number) => void;
   onSelectNext?: () => void;
-  showToast?: (msg: string) => void;
 }
 
-export default function SnoozeMenu({ articleId, onSnooze, onSelectNext, showToast }: Props) {
+export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props) {
+  const { showToast } = useToast();
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
 
   function handleSnooze(durationMs: number, label: string) {
     setOpen(false);
     onSnooze(articleId, durationMs);
-    showToast?.(`${label}までスヌーズ`);
+    showToast(`${label}までスヌーズ`);
     onSelectNext?.();
   }
 

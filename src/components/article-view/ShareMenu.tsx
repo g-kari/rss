@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { createPortal } from "react-dom";
 import type { Article, Feed } from "../../types";
 import { usePortalMenu } from "../../hooks/usePortalMenu";
+import { useToast } from "@/contexts/ToastContext";
 import { storageGet, STORAGE_KEYS } from "../../lib/storage";
 import { articleToMarkdown } from "../../lib/html-to-markdown";
 import { buildObsidianUri } from "../../lib/obsidian";
@@ -9,7 +10,6 @@ import { MENU_ITEM_CLS } from "./constants";
 
 interface Props {
   article: Article;
-  showToast: (msg: string) => void;
   feed?: Feed;
   contentHtml?: string;
 }
@@ -72,7 +72,8 @@ const SHARE_WINDOW_TARGETS: Array<{
   },
 ];
 
-export default function ShareMenu({ article, showToast, feed, contentHtml }: Props) {
+export default function ShareMenu({ article, feed, contentHtml }: Props) {
+  const { showToast } = useToast();
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
   const menuRef = useRef<HTMLDivElement>(null);
 

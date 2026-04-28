@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import type { Article } from "../types";
+import { useToast } from "@/contexts/ToastContext";
 import { apiFetch } from "../lib/api-fetch";
 import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
 import { collectImageUrls } from "../lib/image-extractor";
@@ -69,14 +70,13 @@ async function fetchOne(url: string, originalIndex: number): Promise<Fetched | n
  * @param article - 対象記事
  * @param resolvedOgImage - 解決済みOGP画像URL（article.ogImage より優先度低）
  * @param contentRef - 記事本文コンテナへの ref（img タグ収集に使用）
- * @param showToast - 完了・エラー時に呼ばれるトースト表示関数
  */
 export function useImageDownload(
   article: Article | null,
   resolvedOgImage: string | null,
   contentRef: React.RefObject<HTMLDivElement | null>,
-  showToast?: (msg: string) => void,
 ): ImageDownloadState {
+  const { showToast } = useToast();
   const [downloadingImages, setDownloadingImages] = useState(false);
   const [imageDownloadProgress, setImageDownloadProgress] = useState<{
     done: number;
@@ -106,7 +106,7 @@ export function useImageDownload(
     }
 
     if (toDownload.length === 0) {
-      showToast?.("画像が見つかりませんでした");
+      showToast("画像が見つかりませんでした");
       return;
     }
 
@@ -154,7 +154,7 @@ export function useImageDownload(
     setDownloadingImages(false);
 
     if (succeeded > 0) {
-      showToast?.(`${succeeded} 枚の画像をダウンロードしました`);
+      showToast(`${succeeded} 枚の画像をダウンロードしました`);
       // 保存済み記事として記録
       setDownloadedIds((prev) => {
         const next = new Set(prev);
@@ -163,7 +163,7 @@ export function useImageDownload(
         return next;
       });
     } else {
-      showToast?.("ダウンロードできる画像がありませんでした");
+      showToast("ダウンロードできる画像がありませんでした");
     }
   }, [article, resolvedOgImage, contentRef, showToast]);
 

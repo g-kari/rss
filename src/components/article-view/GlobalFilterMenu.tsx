@@ -1,6 +1,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import type { Article, KeywordFilter } from "../../types";
+import { useToast } from "@/contexts/ToastContext";
 import FeedFilterModal from "../FeedFilterModal";
 import { MENU_ITEM_CLS } from "./constants";
 import { ExcludeOptionsSection, useFilterMenuState } from "./filter-shared";
@@ -9,15 +10,10 @@ interface Props {
   article: Article;
   globalFilter: KeywordFilter | null;
   onSaveGlobalFilter: (filter: KeywordFilter | null) => void;
-  showToast?: (msg: string) => void;
 }
 
-export default function GlobalFilterMenu({
-  article,
-  globalFilter,
-  onSaveGlobalFilter,
-  showToast,
-}: Props) {
+export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFilter }: Props) {
+  const { showToast } = useToast();
   const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
     useFilterMenuState(article, globalFilter);
 
@@ -25,7 +21,7 @@ export default function GlobalFilterMenu({
     setOpen(false);
     const existingExclude = globalFilter?.exclude ?? [];
     if (existingExclude.includes(value)) {
-      showToast?.("既にグローバル除外キーワードに登録されています");
+      showToast("既にグローバル除外キーワードに登録されています");
       return;
     }
     const newFilter: KeywordFilter = {
@@ -34,7 +30,7 @@ export default function GlobalFilterMenu({
       matchCategories: globalFilter?.matchCategories,
     };
     onSaveGlobalFilter(newFilter);
-    showToast?.(`「${value}」をグローバル除外キーワードに追加しました`);
+    showToast(`「${value}」をグローバル除外キーワードに追加しました`);
   }
 
   return (

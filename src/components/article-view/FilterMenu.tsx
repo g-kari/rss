@@ -1,6 +1,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import type { Article, Feed, KeywordFilter } from "../../types";
+import { useToast } from "@/contexts/ToastContext";
 import FeedFilterModal from "../FeedFilterModal";
 import { MENU_ITEM_CLS } from "./constants";
 import { ExcludeOptionsSection, useFilterMenuState } from "./filter-shared";
@@ -9,10 +10,10 @@ interface Props {
   article: Article;
   feed: Feed;
   onSaveFilter: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
-  showToast?: (msg: string) => void;
 }
 
-export default function FilterMenu({ article, feed, onSaveFilter, showToast }: Props) {
+export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
+  const { showToast } = useToast();
   const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
     useFilterMenuState(article, feed.filter);
 
@@ -20,7 +21,7 @@ export default function FilterMenu({ article, feed, onSaveFilter, showToast }: P
     setOpen(false);
     const existingExclude = feed.filter?.exclude ?? [];
     if (existingExclude.includes(value)) {
-      showToast?.("既に除外キーワードに登録されています");
+      showToast("既に除外キーワードに登録されています");
       return;
     }
     const newFilter: KeywordFilter = {
@@ -30,9 +31,9 @@ export default function FilterMenu({ article, feed, onSaveFilter, showToast }: P
     };
     try {
       await onSaveFilter(feed.id, newFilter);
-      showToast?.(`「${value}」を除外キーワードに追加しました`);
+      showToast(`「${value}」を除外キーワードに追加しました`);
     } catch {
-      showToast?.("フィルターの保存に失敗しました");
+      showToast("フィルターの保存に失敗しました");
     }
   }
 
