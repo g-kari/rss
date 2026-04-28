@@ -10,6 +10,7 @@ import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import { parseHTML } from "linkedom";
 import {
   computeFeedHash,
+  computePrivateFeedHash,
   getOrCreateFeedMeta,
   writeFeedMeta,
   readFeedMeta,
@@ -159,7 +160,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const feedHash = await computeFeedHash(url);
+    const feedHash = cookie
+      ? await computePrivateFeedHash(url, session.userId)
+      : await computeFeedHash(url);
 
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     if (subs.some((s) => s.feedHash === feedHash)) {
@@ -194,7 +197,11 @@ export async function POST(request: Request) {
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
 
     // バックグラウンドで初回記事取得（Cookie はユーザー個別で渡す）
-    ctx.waitUntil(registerAndFetchFeed(env, url, cookie).catch(console.error));
+    ctx.waitUntil(
+      registerAndFetchFeed(env, url, cookie, cookie ? session.userId : undefined).catch(
+        console.error,
+      ),
+    );
 
     return NextResponse.json(assembleClientFeed(meta, newSub), { status: 201 });
   });

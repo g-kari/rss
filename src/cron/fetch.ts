@@ -14,6 +14,7 @@ import { parseRetryAfter as parseRetryAfterRaw } from "../lib/retry-after";
 import { r2Get, r2Put, userPushKey } from "../lib/r2";
 import {
   computeFeedHash,
+  computePrivateFeedHash,
   computeArticleId,
   readFeedMeta,
   writeFeedMeta,
@@ -377,10 +378,8 @@ async function sendPushForUsers(
  * 3. 新着記事があったフィードの購読ユーザーに Push 通知を送る
  */
 export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
-  // Push 通知用の逆引きマップ + Cookie マップ + アクティビティマップを事前に構築
-  const { feedUserMap, feedCookieMap, feedLastAccessMap, feedHasPriority } = await buildFeedUserMap(
-    env.RSS_DATA,
-  );
+  const { feedUserMap, feedLastAccessMap, feedHasPriority, privateFeedCookies } =
+    await buildFeedUserMap(env.RSS_DATA);
 
   const feedHashes = await listAllFeedHashes(env.RSS_DATA);
   if (feedHashes.length === 0) return;
@@ -414,7 +413,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
   const results = await allSettledWithConcurrency(
     activeFeedHashes.map(
       (feedHash) => () =>
-        fetchAndUpdateSharedFeed(env, feedHash, false, feedCookieMap.get(feedHash)),
+        fetchAndUpdateSharedFeed(env, feedHash, false, privateFeedCookies.get(feedHash)),
     ),
     FEED_FETCH_CONCURRENCY,
   );
@@ -472,8 +471,12 @@ export async function registerAndFetchFeed(
   env: FetchEnv,
   feedUrl: string,
   requestCookie?: string,
+  userId?: string,
 ): Promise<void> {
-  const feedHash = await computeFeedHash(feedUrl);
+  const feedHash =
+    requestCookie && userId
+      ? await computePrivateFeedHash(feedUrl, userId)
+      : await computeFeedHash(feedUrl);
   const existing = await readFeedMeta(env.RSS_DATA, feedHash);
   if (!existing) {
     await createFeedMeta(env.RSS_DATA, feedHash, feedUrl);
