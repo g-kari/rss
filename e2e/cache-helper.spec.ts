@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { buildCacheKey, buildJsonCacheResponse } from "../src/lib/cache-helper";
+import { buildClipCacheKey, buildContentCacheKey } from "../src/lib/fetch-article-content";
 
 /**
  * cache-helper の単体テスト。
@@ -31,6 +32,38 @@ test.describe("buildCacheKey", () => {
     const a = await buildCacheKey("https://rss.0g0.xyz", "content", "https://example.com/");
     const b = await buildCacheKey("https://rss.0g0.xyz", "content", "https://example.com/");
     expect(a.url).toBe(b.url);
+  });
+});
+
+test.describe("buildClipCacheKey — ユーザースコープ clip キャッシュ", () => {
+  test("clip キャッシュキーは共有コンテンツキャッシュと異なる", async () => {
+    const url = "https://example.com/article";
+    const origin = "https://rss.0g0.xyz";
+    const contentKey = await buildContentCacheKey(origin, url);
+    const clipKey = await buildClipCacheKey(origin, "user-1", url);
+    expect(clipKey.url).not.toBe(contentKey.url);
+  });
+
+  test("異なるユーザーは異なる clip キャッシュキーを生成する", async () => {
+    const url = "https://example.com/article";
+    const origin = "https://rss.0g0.xyz";
+    const a = await buildClipCacheKey(origin, "user-1", url);
+    const b = await buildClipCacheKey(origin, "user-2", url);
+    expect(a.url).not.toBe(b.url);
+  });
+
+  test("同じユーザー・URL は同じキーを生成する", async () => {
+    const url = "https://example.com/article";
+    const origin = "https://rss.0g0.xyz";
+    const a = await buildClipCacheKey(origin, "user-1", url);
+    const b = await buildClipCacheKey(origin, "user-1", url);
+    expect(a.url).toBe(b.url);
+  });
+
+  test("clip キャッシュキーの pathname に clip/{userId} を含む", async () => {
+    const req = await buildClipCacheKey("https://rss.0g0.xyz", "u123", "https://example.com/");
+    const u = new URL(req.url);
+    expect(u.pathname.startsWith("/__cache/clip/u123/")).toBe(true);
   });
 });
 

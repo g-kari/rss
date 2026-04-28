@@ -7,6 +7,7 @@ import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fet
 import {
   appendPaginatedPages,
   ARTICLE_FETCH_OPTS,
+  buildClipCacheKey,
   buildContentCacheKey,
   extractContent,
   saveContentToCache,
@@ -38,7 +39,15 @@ async function handleGet(
 
   const cacheKey = await buildContentCacheKey(reqUrl.origin, url);
 
-  // Cloudflare Cache API で確認（キャッシュヒット時はレートリミットを消費しない）
+  // ユーザーの clip キャッシュを優先確認
+  const clipKey = await buildClipCacheKey(reqUrl.origin, session.userId, url);
+  const clipped = await matchCfCache(clipKey);
+  if (clipped) {
+    const data = (await clipped.json()) as { content: string };
+    return NextResponse.json(data, { headers: { "X-Cache": "HIT", "X-Cache-Source": "clip" } });
+  }
+
+  // 共有コンテンツキャッシュを確認
   const cached = await matchCfCache(cacheKey);
   if (cached) {
     const data = (await cached.json()) as { content: string };

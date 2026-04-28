@@ -38,6 +38,15 @@ export async function buildContentCacheKey(origin: string, url: string): Promise
   return buildCacheKey(origin, "content", url);
 }
 
+/** clip 経由のユーザースコープ Cache キー。保存したユーザー自身のみが /api/content で参照可能。 */
+export async function buildClipCacheKey(
+  origin: string,
+  userId: string,
+  url: string,
+): Promise<Request> {
+  return buildCacheKey(origin, `clip/${userId}`, url);
+}
+
 /**
  * バイト列を HTML 文字列に変換し、メインコンテンツを抽出する。
  * キャッシュ保存は行わないため、呼び出し元で saveContentToCache() を呼ぶこと。
