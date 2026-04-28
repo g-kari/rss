@@ -206,6 +206,7 @@ src/
     llm-feed-generator.ts    # LLM で RSS のないサイトからフィード生成
     lru-cache.ts             # クライアントサイド LRU キャッシュ
     ogp.ts                   # OGP メタデータ取得ロジック
+    opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
     recommendation.ts        # フィード推薦ロジック
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     feed-groups.ts           # フィードグループ R2 読み書き（readFeedGroups / writeFeedGroups）

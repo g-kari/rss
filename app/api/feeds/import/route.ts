@@ -13,38 +13,12 @@ import {
   pMap,
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
-import type { SharedFeedMeta } from "@/types";
+import type { SharedFeedMeta, FeedGroup } from "@/types";
 import { fetchArticles } from "@/cron/fetch";
-import { stripControlChars } from "@/lib/validation";
+import { readFeedGroups, writeFeedGroups, MAX_FEED_GROUPS_PER_USER } from "@/lib/feed-groups";
+import { extractFeeds, type FeedEntry, type OpmlOutline } from "@/lib/opml";
+
 const MAX_OPML_ENTRIES = 5000;
-// 実際の OPML ファイルは 2〜3 レベルが一般的。50 は不必要に大きく
-// 悪意ある入力で過剰な再帰処理を引き起こす可能性があるため 10 に制限する。
-const MAX_OPML_DEPTH = 10;
-const MAX_TITLE_LENGTH = 500;
-const MAX_SITE_URL_LENGTH = 2048;
-
-function sanitizeTitle(title: string): string {
-  return stripControlChars(title).slice(0, MAX_TITLE_LENGTH);
-}
-
-function sanitizeSiteUrl(url: string): string {
-  if (!url || url.length > MAX_SITE_URL_LENGTH) return "";
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
-    return url;
-  } catch {
-    return "";
-  }
-}
-
-interface OpmlOutline {
-  "@_xmlUrl"?: string;
-  "@_text"?: string;
-  "@_title"?: string;
-  "@_htmlUrl"?: string;
-  outline?: OpmlOutline | OpmlOutline[];
-}
 
 interface RawParsedOpml {
   opml?: {
@@ -71,25 +45,6 @@ const parser = new XMLParser({
   },
 });
 
-function extractFeeds(
-  outline: OpmlOutline,
-  depth = 0,
-): Array<{ url: string; title: string; siteUrl: string }> {
-  if (depth > MAX_OPML_DEPTH) return [];
-  const results: Array<{ url: string; title: string; siteUrl: string }> = [];
-  if (outline["@_xmlUrl"]) {
-    results.push({
-      url: outline["@_xmlUrl"],
-      title: sanitizeTitle(outline["@_title"] ?? outline["@_text"] ?? outline["@_xmlUrl"]),
-      siteUrl: sanitizeSiteUrl(outline["@_htmlUrl"] ?? ""),
-    });
-  }
-  for (const child of toArray(outline.outline)) {
-    results.push(...extractFeeds(child, depth + 1));
-  }
-  return results;
-}
-
 export async function POST(request: Request) {
   return withSession(request, async ({ session, env, ctx }) => {
     const text = await request.text();
@@ -97,12 +52,12 @@ export async function POST(request: Request) {
       return apiError("Invalid or too large OPML file", 400, { code: "INVALID_OPML" });
     }
 
-    let feedEntries: Array<{ url: string; title: string; siteUrl: string }>;
+    let feedEntries: FeedEntry[];
     try {
       const parsed = parser.parse(text) as RawParsedOpml;
       const body = parsed?.opml?.body;
       if (!body) throw new Error("No OPML body found");
-      feedEntries = toArray<OpmlOutline>(body.outline).flatMap(extractFeeds);
+      feedEntries = toArray<OpmlOutline>(body.outline).flatMap((o) => extractFeeds(o));
     } catch {
       return apiError("Failed to parse OPML", 400, { code: "INVALID_OPML" });
     }
@@ -126,8 +81,7 @@ export async function POST(request: Request) {
 
     const existingHashes = new Set(subs.map((s) => s.feedHash));
 
-    // Phase 1: フィルタ済みの候補エントリを収集（URL バリデーション + 重複除外）
-    type Candidate = { entry: { url: string; title: string; siteUrl: string }; feedHash: string };
+    type Candidate = { entry: FeedEntry; feedHash: string };
     const candidates: Candidate[] = [];
     const batchHashes = new Set<string>();
     for (const entry of feedEntries) {
@@ -139,8 +93,6 @@ export async function POST(request: Request) {
       candidates.push({ entry, feedHash });
     }
 
-    // Phase 2: 共有 meta を並行度制限付きで取得・作成
-    // 失敗したフィードは null にして他のインポートを継続する
     const metaResults = await pMap(candidates, async ({ entry, feedHash }) => {
       try {
         return await getOrCreateFeedMeta(
@@ -157,13 +109,49 @@ export async function POST(request: Request) {
     const succeededMetas = metaResults.filter((m): m is SharedFeedMeta => m !== null);
     const succeededCandidates = candidates.filter((_, i) => metaResults[i] !== null);
 
-    // Phase 3: 購読レコードを追加
+    const folderNames = [
+      ...new Set(succeededCandidates.map((c) => c.entry.folder).filter((f): f is string => !!f)),
+    ];
+    const folderToGroupId = new Map<string, string>();
+
+    if (folderNames.length > 0) {
+      const existingGroups = await readFeedGroups(env.RSS_DATA, session.userId);
+      const existingNameSet = new Set(existingGroups.map((g) => g.name));
+      let maxOrder = existingGroups.reduce((max, g) => Math.max(max, g.order), 0);
+      const newGroups: FeedGroup[] = [];
+
+      for (const name of folderNames) {
+        const existing = existingGroups.find((g) => g.name === name);
+        if (existing) {
+          folderToGroupId.set(name, existing.id);
+        } else if (
+          !existingNameSet.has(name) &&
+          existingGroups.length + newGroups.length < MAX_FEED_GROUPS_PER_USER
+        ) {
+          const group: FeedGroup = {
+            id: crypto.randomUUID(),
+            name,
+            order: ++maxOrder,
+            createdAt: new Date().toISOString(),
+          };
+          newGroups.push(group);
+          existingNameSet.add(name);
+          folderToGroupId.set(name, group.id);
+        }
+      }
+
+      if (newGroups.length > 0) {
+        await writeFeedGroups(env.RSS_DATA, session.userId, [...existingGroups, ...newGroups]);
+      }
+    }
+
     const subscribedAt = new Date().toISOString();
     const newSubs = succeededCandidates.map(({ entry, feedHash }) => ({
       feedHash,
       url: entry.url,
       customTitle: entry.title !== entry.url ? entry.title : undefined,
       subscribedAt,
+      groupId: entry.folder ? folderToGroupId.get(entry.folder) : undefined,
     }));
     for (const sub of newSubs) subs.push(sub);
     const addedCount = newSubs.length;
