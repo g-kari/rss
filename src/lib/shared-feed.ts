@@ -55,6 +55,12 @@ export async function computeFeedHash(feedUrl: string): Promise<string> {
   return (await sha256Hex(feedUrl)).slice(0, 16);
 }
 
+/** requestCookie 付きフィード用のユーザー固有 feedHash を計算する。
+ *  共有フィードと衝突しないようにセパレータを含む。 */
+export async function computePrivateFeedHash(feedUrl: string, userId: string): Promise<string> {
+  return (await sha256Hex(`${feedUrl}:private:${userId}`)).slice(0, 16);
+}
+
 /** feedUrl + guid から決定論的な記事 ID を計算する */
 export async function computeArticleId(feedUrl: string, guid: string): Promise<string> {
   return (await sha256Hex(`${feedUrl}|${guid}`)).slice(0, 16);
@@ -420,19 +426,21 @@ export async function listAllFeedHashes(bucket: R2Bucket): Promise<string[]> {
   return listPrefixedIds(bucket, "feeds/");
 }
 
-/** 全ユーザーの subscriptions.json から feedHash → userId[] および feedHash → requestCookie のマップを構築する */
+/** 全ユーザーの subscriptions.json から feedHash → userId[] のマップを構築する。
+ *  requestCookie 付き購読は privateFeedCookies に分離し、共有フィードに Cookie を流出させない。 */
 export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
   feedUserMap: Map<string, string[]>;
-  feedCookieMap: Map<string, string>;
   /** feedHash → 購読者の最新 lastAccessedAt（非アクティブフィード判定用） */
   feedLastAccessMap: Map<string, string>;
   /** priority: "high" が設定されているフィードの Set（常にフェッチ対象） */
   feedHasPriority: Set<string>;
+  /** feedHash → requestCookie（private フィード専用。購読者は所有者 1 人のみ） */
+  privateFeedCookies: Map<string, string>;
 }> {
   const feedUserMap = new Map<string, string[]>();
-  const feedCookieMap = new Map<string, string>();
   const feedLastAccessMap = new Map<string, string>();
   const feedHasPriority = new Set<string>();
+  const privateFeedCookies = new Map<string, string>();
   const userIds = await listPrefixedIds(bucket, "users/");
 
   const allSubs = await pMap(
@@ -445,11 +453,9 @@ export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
       const users = feedUserMap.get(s.feedHash) ?? [];
       users.push(uid);
       feedUserMap.set(s.feedHash, users);
-      // 最初に見つかった requestCookie を採用する（購読者間で共有 Cookie として使用）
-      if (s.requestCookie && !feedCookieMap.has(s.feedHash)) {
-        feedCookieMap.set(s.feedHash, s.requestCookie);
+      if (s.requestCookie) {
+        privateFeedCookies.set(s.feedHash, s.requestCookie);
       }
-      // lastAccessedAt は購読者の中で最も新しい値を採用する
       if (s.lastAccessedAt) {
         const current = feedLastAccessMap.get(s.feedHash);
         if (!current || s.lastAccessedAt > current) {
@@ -461,5 +467,12 @@ export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
       }
     }
   }
-  return { feedUserMap, feedCookieMap, feedLastAccessMap, feedHasPriority };
+  // 複数ユーザーが購読する feedHash では Cookie を使わない（共有ストレージへの漏洩防止）
+  for (const [feedHash] of privateFeedCookies) {
+    const users = feedUserMap.get(feedHash);
+    if (users && users.length > 1) {
+      privateFeedCookies.delete(feedHash);
+    }
+  }
+  return { feedUserMap, feedLastAccessMap, feedHasPriority, privateFeedCookies };
 }
