@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import type { KeywordFilter } from "../../types";
 import { usePopupLock } from "../../hooks/usePopupLock";
+import { useToast } from "@/contexts/ToastContext";
 
 const MAX_SELECTION_LENGTH = 100;
 
@@ -75,7 +76,6 @@ interface Props {
   article: { title: string; link: string };
   globalFilter?: KeywordFilter | null;
   onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
-  showToast?: (msg: string) => void;
   onClose: () => void;
 }
 
@@ -84,10 +84,10 @@ export default function SelectionExcludePopup({
   article,
   globalFilter,
   onSaveGlobalFilter,
-  showToast,
   onClose,
 }: Props) {
   usePopupLock();
+  const { showToast } = useToast();
   const displayText = popup.text.length > 24 ? `${popup.text.slice(0, 24)}…` : popup.text;
 
   function doCopyQuote(e: { preventDefault: () => void }) {
@@ -95,8 +95,8 @@ export default function SelectionExcludePopup({
     const quote = `> ${popup.text.replace(/\n/g, "\n> ")}\n\n— [${article.title}](${article.link})`;
     navigator.clipboard
       .writeText(quote)
-      .then(() => showToast?.("引用をコピーしました"))
-      .catch(() => showToast?.("コピーに失敗しました"));
+      .then(() => showToast("引用をコピーしました"))
+      .catch(() => showToast("コピーに失敗しました"));
     onClose();
   }
 
@@ -104,14 +104,14 @@ export default function SelectionExcludePopup({
     e.preventDefault(); // 選択を維持しつつボタン押下
     const existing = globalFilter?.exclude ?? [];
     if (existing.includes(popup.text)) {
-      showToast?.("既にグローバル除外キーワードに登録されています");
+      showToast("既にグローバル除外キーワードに登録されています");
     } else {
       onSaveGlobalFilter?.({
         include: globalFilter?.include ?? [],
         exclude: [...existing, popup.text],
         matchCategories: globalFilter?.matchCategories,
       });
-      showToast?.(`「${displayText}」をグローバル除外に追加しました`);
+      showToast(`「${displayText}」をグローバル除外に追加しました`);
     }
     onClose();
   }

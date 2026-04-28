@@ -43,6 +43,9 @@ import { useColumnResize } from "./hooks/useColumnResize";
 import { useSyncedRef } from "./hooks/useSyncedRef";
 import { ReaderSettingsProvider, type ReaderSettings } from "./contexts/ReaderSettingsContext";
 import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFilterContext";
+import { ToastProvider } from "./contexts/ToastContext";
+import LandingPage from "./components/LandingPage";
+import BetaRestrictedPage from "./components/BetaRestrictedPage";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -720,298 +723,124 @@ export default function App() {
     );
   }
 
-  // ベータ制限
-  if (betaRestricted) {
-    return (
-      <div className="min-h-screen bg-surface-base font-sans antialiased flex flex-col items-center justify-center px-8 text-center">
-        <svg
-          width="40"
-          height="40"
-          viewBox="0 0 40 40"
-          fill="none"
-          className="mb-6 text-text-faint"
-        >
-          <rect
-            width="40"
-            height="40"
-            rx="10"
-            fill="currentColor"
-            fillOpacity="0.08"
-            stroke="currentColor"
-            strokeOpacity="0.2"
-            strokeWidth="1"
-          />
-          <path
-            d="M20 12v9M20 27v2"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-        </svg>
-        <p className="text-[11px] tracking-[0.3em] uppercase text-text-faint mb-4">Beta Access</p>
-        <h1 className="text-[28px] font-light text-text-strong tracking-[-0.01em] mb-3">
-          現在クローズドベータ中です
-        </h1>
-        <p className="text-[14px] text-text-muted leading-relaxed max-w-xs mb-8">
-          このサービスは招待制のベータ版です。
-          <br />
-          アクセス権限をお持ちでない場合はご連絡ください。
-        </p>
-        <a
-          href="/api/auth/login"
-          className="text-[12px] tracking-[0.06em] px-5 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200"
-        >
-          別のアカウントでログイン
-        </a>
-      </div>
-    );
-  }
+  if (betaRestricted) return <BetaRestrictedPage />;
 
-  // 認証チェック中（user === undefined）— ローディング画面
-  // !user はローディング中（undefined）にも true になるため、LP を表示しない
-  if (user === undefined) {
-    return (
-      <div className="min-h-screen bg-surface-base font-sans antialiased flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full border-2 border-border-default border-t-text-muted animate-spin" />
-      </div>
-    );
-  }
-
-  // 未ログイン — Landing Page
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-surface-base font-sans antialiased flex flex-col">
-        {/* セッション期限切れバナー */}
-        {sessionExpired && (
-          <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-subtle border-b border-border-default text-[12px] text-text-muted tracking-[0.02em]">
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 13 13"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="flex-shrink-0"
-            >
-              <circle cx="6.5" cy="6.5" r="5.5" />
-              <path d="M6.5 4v3M6.5 9v.5" />
-            </svg>
-            セッションが期限切れになりました。再度ログインしてください。
-          </div>
-        )}
-        {/* ヘッダー */}
-        <header className="px-8 py-4 flex items-center justify-between border-b border-border-subtle">
-          <div className="flex items-center gap-2">
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 22 22"
-              fill="none"
-              className="text-text-strong"
-            >
-              <rect
-                width="22"
-                height="22"
-                rx="5"
-                fill="currentColor"
-                fillOpacity="0.08"
-                stroke="currentColor"
-                strokeOpacity="0.2"
-                strokeWidth="0.8"
-              />
-              <circle cx="6" cy="16" r="2.5" fill="currentColor" />
-              <path
-                d="M6 10.5 A5.5 5.5 0 0 1 11.5 16"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-                strokeLinecap="round"
-              />
-              <path
-                d="M6 5.5 A10.5 10.5 0 0 1 16.5 16"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="text-[13px] font-medium tracking-[0.04em] text-text-strong">
-              RSS Reader
-            </span>
-          </div>
-          <a
-            href="/api/auth/login"
-            className="text-[12px] tracking-[0.06em] px-4 py-1.5 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200"
-          >
-            ログイン
-          </a>
-        </header>
-
-        {/* ヒーロー */}
-        <main className="flex-1 flex flex-col items-center justify-center px-8 py-20 text-center">
-          <p className="text-[11px] tracking-[0.3em] uppercase text-text-faint mb-8 animate-fade-up">
-            rss.0g0.xyz
-          </p>
-          <h1
-            className="text-[52px] sm:text-[64px] font-light text-text-strong tracking-[-0.02em] leading-[1.1] mb-5 animate-fade-up"
-            style={{ animationDelay: "60ms" }}
-          >
-            シンプルな
-            <br />
-            RSS リーダー
-          </h1>
-          <p
-            className="text-[16px] text-text-muted leading-relaxed mb-10 max-w-sm animate-fade-up"
-            style={{ animationDelay: "120ms" }}
-          >
-            AI 要約・翻訳、4 種のレイアウト、
-            <br />
-            ダーク / ライトテーマ対応
-          </p>
-          <a
-            href="/api/auth/login"
-            className="animate-fade-up inline-flex items-center gap-2 px-8 py-3 bg-ink hover:bg-ink-hover text-ink-text text-[13px] tracking-[0.06em] rounded-full transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
-            style={{ animationDelay: "180ms" }}
-          >
-            0g0 ID でログイン
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 7h10M8 3l4 4-4 4" />
-            </svg>
-          </a>
-        </main>
-
-        {/* 機能カード */}
-        <section
-          className="px-8 pb-16 w-full max-w-2xl mx-auto animate-fade-up"
-          style={{ animationDelay: "240ms" }}
-        >
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { icon: "◐", title: "テーマ", desc: "ダーク / ライト" },
-              { icon: "⊞", title: "レイアウト", desc: "4 種類" },
-              { icon: "✦", title: "AI 機能", desc: "要約・翻訳" },
-            ].map((f) => (
-              <div
-                key={f.title}
-                className="px-4 py-4 rounded-xl border border-border-default bg-surface-elevated text-center"
-              >
-                <div className="text-[20px] mb-2 text-text-muted">{f.icon}</div>
-                <div className="text-[13px] font-medium text-text-strong mb-0.5">{f.title}</div>
-                <div className="text-[11px] text-text-faint">{f.desc}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* フッター */}
-        <footer className="px-8 py-4 text-center text-[11px] text-text-faint border-t border-border-subtle">
-          rss.0g0.xyz — Powered by Cloudflare Workers
-        </footer>
-      </div>
-    );
-  }
+  if (!user) return <LandingPage sessionExpired={sessionExpired} />;
 
   const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
+  const toastValue = useMemo(() => ({ toast, showToast }), [toast, showToast]);
 
   return (
-    <ReaderSettingsProvider value={readerSettings}>
-      <ArticleFilterProvider value={articleFilter}>
-        <div
-          data-layout="root"
-          className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
-          style={{
-            gridTemplateColumns: focusMode
-              ? `0px 0px 1fr`
-              : listFocusMode
-                ? `0px 1fr 0px`
-                : `${sidebarWidth}px ${listWidth}px 1fr`,
-            gridTemplateRows: "100%",
-            transition: "grid-template-columns 0.25s ease",
-          }}
-        >
-          {/* オフラインバナー */}
-          {!isOnline && (
-            <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 py-1.5 bg-surface-subtle border-b border-border-default text-[11px] tracking-[0.04em] text-text-muted">
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M1 1l10 10M8.5 3.5A4 4 0 0 0 2.5 7M10 5.5A6 6 0 0 0 5 2M4 8a2 2 0 0 1 4 0" />
-              </svg>
-              オフライン — キャッシュされたデータを表示中
-              {hasPendingChanges && <span className="ml-1 text-text-faint">（同期待ち）</span>}
-            </div>
-          )}
+    <ToastProvider value={toastValue}>
+      <ReaderSettingsProvider value={readerSettings}>
+        <ArticleFilterProvider value={articleFilter}>
+          <div
+            data-layout="root"
+            className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
+            style={{
+              gridTemplateColumns: focusMode
+                ? `0px 0px 1fr`
+                : listFocusMode
+                  ? `0px 1fr 0px`
+                  : `${sidebarWidth}px ${listWidth}px 1fr`,
+              gridTemplateRows: "100%",
+              transition: "grid-template-columns 0.25s ease",
+            }}
+          >
+            {/* オフラインバナー */}
+            {!isOnline && (
+              <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 py-1.5 bg-surface-subtle border-b border-border-default text-[11px] tracking-[0.04em] text-text-muted">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1 1l10 10M8.5 3.5A4 4 0 0 0 2.5 7M10 5.5A6 6 0 0 0 5 2M4 8a2 2 0 0 1 4 0" />
+                </svg>
+                オフライン — キャッシュされたデータを表示中
+                {hasPendingChanges && <span className="ml-1 text-text-faint">（同期待ち）</span>}
+              </div>
+            )}
 
-          {/* トースト通知 */}
-          {toast && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] tracking-[0.04em] px-4 py-2 bg-ink text-ink-text rounded-full shadow-lg animate-fade-up pointer-events-none">
-              {toast}
-            </div>
-          )}
+            {/* トースト通知 */}
+            {toast && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] tracking-[0.04em] px-4 py-2 bg-ink text-ink-text rounded-full shadow-lg animate-fade-up pointer-events-none">
+                {toast}
+              </div>
+            )}
 
-          {/* スヌーズ期間選択 */}
-          {snoozeTargetId &&
-            (() => {
-              const article = articles.find((a) => a.id === snoozeTargetId);
-              const idx = filtered.findIndex((a) => a.id === snoozeTargetId);
-              return (
-                <SnoozeModal
-                  articleTitle={article?.title ?? ""}
-                  onSnooze={(durationMs) => {
-                    snoozeArticle(snoozeTargetId, durationMs);
-                    const hours = Math.round(durationMs / (60 * 60 * 1000));
-                    showToast(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
-                    const next = filtered[idx + 1];
-                    if (next) setSelectedArticle(next);
-                  }}
-                  onClose={() => setSnoozeTargetId(null)}
-                />
-              );
-            })()}
-          {/* キーボードショートカット ヘルプ */}
-          {showHelp && <KeyboardShortcutsModal onClose={() => setShowHelp(false)} />}
-          {/* ユーザー設定 */}
-          {showSettings && <UserSettingsModal onClose={() => setShowSettings(false)} />}
-          {/* フィードクイックスイッチャー */}
-          {showFeedSwitcher && (
-            <FeedQuickSwitchModal
-              feeds={feeds}
-              articles={articles}
-              readIds={readIds}
-              readBeforeTimestamp={readBeforeTimestamp}
-              selectedFeedId={selectedFeedId}
-              onSelectFeed={setSelectedFeedId}
-              onClose={() => setShowFeedSwitcher(false)}
-            />
-          )}
-          {/* NSFW 目が開くアニメーション */}
-          {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
-          {newArticleCount > 0 && !focusMode && !listFocusMode && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-ink text-ink-text text-[12px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] animate-fade-up">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
-              新着記事 {newArticleCount} 件
+            {/* スヌーズ期間選択 */}
+            {snoozeTargetId &&
+              (() => {
+                const article = articles.find((a) => a.id === snoozeTargetId);
+                const idx = filtered.findIndex((a) => a.id === snoozeTargetId);
+                return (
+                  <SnoozeModal
+                    articleTitle={article?.title ?? ""}
+                    onSnooze={(durationMs) => {
+                      snoozeArticle(snoozeTargetId, durationMs);
+                      const hours = Math.round(durationMs / (60 * 60 * 1000));
+                      showToast(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
+                      const next = filtered[idx + 1];
+                      if (next) setSelectedArticle(next);
+                    }}
+                    onClose={() => setSnoozeTargetId(null)}
+                  />
+                );
+              })()}
+            {/* キーボードショートカット ヘルプ */}
+            {showHelp && <KeyboardShortcutsModal onClose={() => setShowHelp(false)} />}
+            {/* ユーザー設定 */}
+            {showSettings && <UserSettingsModal onClose={() => setShowSettings(false)} />}
+            {/* フィードクイックスイッチャー */}
+            {showFeedSwitcher && (
+              <FeedQuickSwitchModal
+                feeds={feeds}
+                articles={articles}
+                readIds={readIds}
+                readBeforeTimestamp={readBeforeTimestamp}
+                selectedFeedId={selectedFeedId}
+                onSelectFeed={setSelectedFeedId}
+                onClose={() => setShowFeedSwitcher(false)}
+              />
+            )}
+            {/* NSFW 目が開くアニメーション */}
+            {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
+            {newArticleCount > 0 && !focusMode && !listFocusMode && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-ink text-ink-text text-[12px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] animate-fade-up">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
+                新着記事 {newArticleCount} 件
+                <button
+                  onClick={dismissNewArticles}
+                  className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+                  aria-label="通知を閉じる"
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  >
+                    <path d="M2 2l8 8M10 2l-8 8" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            {/* フォーカスモード解除ボタン（PC のみ表示。モバイルは単一ペイン表示のため不要） */}
+            {(focusMode || listFocusMode) && (
               <button
-                onClick={dismissNewArticles}
-                className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
-                aria-label="通知を閉じる"
+                onClick={exitFocusMode}
+                className="fixed top-3 right-3 z-50 hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
+                aria-label="フォーカスモード解除"
+                title="フォーカスモード解除 (Esc)"
               >
                 <svg
                   width="12"
@@ -1019,284 +848,262 @@ export default function App() {
                   viewBox="0 0 12 12"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.8"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
                 >
-                  <path d="M2 2l8 8M10 2l-8 8" />
+                  <path d="M4.5 1.5H1.5v3M7.5 1.5h3v3M1.5 7.5v3h3M10.5 7.5v3h-3" />
                 </svg>
+                フォーカス解除
               </button>
-            </div>
-          )}
-          {/* フォーカスモード解除ボタン（PC のみ表示。モバイルは単一ペイン表示のため不要） */}
-          {(focusMode || listFocusMode) && (
-            <button
-              onClick={exitFocusMode}
-              className="fixed top-3 right-3 z-50 hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
-              aria-label="フォーカスモード解除"
-              title="フォーカスモード解除 (Esc)"
+            )}
+            {/* カラムリサイズハンドル (PCのみ、フォーカスモード / 記事一覧フォーカス / ポップアップ表示中は無効) */}
+            {!focusMode && !listFocusMode && (
+              <>
+                <div
+                  className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
+                  style={{ left: sidebarWidth - 2 }}
+                  onMouseDown={(e) => handleResizeStart("sidebar", e)}
+                  onDoubleClick={() => resetWidth("sidebar")}
+                  aria-hidden={hasOpenPopup}
+                >
+                  <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+                </div>
+                <div
+                  className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
+                  style={{ left: sidebarWidth + listWidth - 2 }}
+                  onMouseDown={(e) => handleResizeStart("list", e)}
+                  onDoubleClick={() => resetWidth("list")}
+                  aria-hidden={hasOpenPopup}
+                >
+                  <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+                </div>
+              </>
+            )}
+            <div
+              data-pane="sidebar"
+              className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "sidebar" ? "hidden lg:block" : ""}`}
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M4.5 1.5H1.5v3M7.5 1.5h3v3M1.5 7.5v3h3M10.5 7.5v3h-3" />
-              </svg>
-              フォーカス解除
-            </button>
-          )}
-          {/* カラムリサイズハンドル (PCのみ、フォーカスモード / 記事一覧フォーカス / ポップアップ表示中は無効) */}
-          {!focusMode && !listFocusMode && (
-            <>
-              <div
-                className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
-                style={{ left: sidebarWidth - 2 }}
-                onMouseDown={(e) => handleResizeStart("sidebar", e)}
-                onDoubleClick={() => resetWidth("sidebar")}
-                aria-hidden={hasOpenPopup}
-              >
-                <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
-              </div>
-              <div
-                className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
-                style={{ left: sidebarWidth + listWidth - 2 }}
-                onMouseDown={(e) => handleResizeStart("list", e)}
-                onDoubleClick={() => resetWidth("list")}
-                aria-hidden={hasOpenPopup}
-              >
-                <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
-              </div>
-            </>
-          )}
-          <div
-            data-pane="sidebar"
-            className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "sidebar" ? "hidden lg:block" : ""}`}
-          >
-            <ErrorBoundary label="サイドバー">
-              <FeedSidebar
-                feeds={feeds}
-                articles={articles}
-                readIds={readIds}
-                readBeforeTimestamp={readBeforeTimestamp}
-                bookmarkCount={bookmarkCount}
-                readingListCount={readingListCount}
-                likeCount={likeCount}
-                historyCount={historyCount}
-                selectedFeedId={selectedFeedId}
-                selectedGroupId={selectedGroupId}
-                user={user}
-                theme={theme}
-                onSelectFeed={(id) => {
-                  setSelectedFeedId(id);
-                  setSelectedGroupId(null);
-                  setSelectedTag(null);
-                  setSelectedArticle(null);
-                  setMobilePane("list");
-                  const feed = feeds.find((f) => f.id === id);
-                  if (feed?.view === "pictures" || feed?.view === "videos") {
-                    onChangeLayout("gallery");
-                    setListFocusMode(true);
-                  } else {
-                    setListFocusMode(false);
-                  }
-                }}
-                onSelectGroup={(id) => {
-                  setSelectedGroupId(id);
-                  setSelectedFeedId(null);
-                  setSelectedTag(null);
-                  setSelectedArticle(null);
-                  setMobilePane("list");
-                }}
-                selectedTag={selectedTag}
-                onSelectTag={(tag) => {
-                  setSelectedTag(tag);
-                  setSelectedFeedId(null);
-                  setSelectedGroupId(null);
-                  setSelectedArticle(null);
-                  setMobilePane("list");
-                }}
-                articleTagIds={articleTagIds}
-                onFeedAdded={onFeedAdded}
-                onFeedDeleted={onFeedDeleted}
-                onFeedRenamed={updateFeed}
-                onFeedsImported={appendFeeds}
-                onMarkAllRead={markAllRead}
-                onToggleTheme={toggleTheme}
-                onOpenSettings={() => setShowSettings(true)}
-                onOpenHelp={() => setShowHelp(true)}
-                onSaveArticleUrl={onSaveArticleUrl}
-                onRefresh={refreshFeeds}
-                onRetryFeed={retryFeed}
-                onReinferFeed={reinferFeed}
-                refreshing={refreshing}
-                isOnline={isOnline}
-                pinnedFeedIds={pinnedFeedIds}
-                onTogglePinFeed={togglePinFeed}
-                collapsedCategories={collapsedCategories}
-                onToggleCollapseCategory={toggleCollapseCategory}
-                nsfwMode={nsfwMode}
-                onActivateNsfw={activateNSFW}
-                onDeactivateNsfw={deactivateNSFW}
-                onToggleNsfwFeed={toggleNsfwFeed}
-                onTogglePriorityFeed={togglePriorityFeed}
-                onSetCategoryFeed={setCategoryFeed}
-                feedGroups={feedGroups}
-                onSetGroupFeed={setGroupFeed}
-                onCreateFeedGroup={createGroup}
-                onRenameFeedGroup={renameGroup}
-                onDeleteFeedGroup={deleteGroup}
-                onToggleCollapseFeedGroup={setFeedGroupCollapsed}
-                onToggleMuteFeedGroup={setFeedGroupMuted}
-                onReorderFeedGroup={reorderGroup}
-                onMarkAllReadInGroup={(feedIds) => {
-                  // グループ内フィードの記事 ID を 1 パスで集約して markBulkRead に渡す
-                  // （feedIds ループで markAllRead を呼ぶと articlesRef を N 回スキャンするのを回避）
-                  const feedSet = new Set(feedIds);
-                  const ids = articles.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
-                  if (ids.length > 0) markBulkRead(ids);
-                }}
-                onMuteFeed={muteFeed}
-                onSetFeedView={setFeedView}
-                activeFeedView={activeFeedView}
-                onChangeActiveFeedView={(view) => {
-                  // カテゴリ横断表示のため、タブ切替時はフィード・グループ選択を解除する
-                  onChangeActiveFeedView(view);
-                  setSelectedFeedId(null);
-                  setSelectedGroupId(null);
-                  setSelectedArticle(null);
-                  // 画像/動画カテゴリはギャラリーレイアウトに自動切替 — 全画像/動画の展開表示を期待する仕様
-                  // ユーザーが後で手動で別レイアウトを選んだ場合は尊重する（次にカテゴリ切替するまで）
-                  if (view === "pictures" || view === "videos") {
-                    onChangeLayout("gallery");
-                    setListFocusMode(true);
-                  } else {
-                    setListFocusMode(false);
-                  }
-                }}
-                recommendations={recommendations}
-                recommendationsLoading={recommendationsLoading}
-                recommendationsRefreshing={recommendationsRefreshing}
-                onDismissRecommendation={dismissRecommendation}
-                onRefreshRecommendations={refreshRecommendations}
-                onExportMarkdown={(mode) => {
-                  const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
-                  exportArticlesToMarkdown(articles, ids, feeds, mode);
-                }}
-                onExportNotes={() => {
-                  exportNotesToMarkdown(articles, notes, feeds);
-                }}
-                noteCount={Object.keys(notes).length}
-                collections={collections}
-                selectedCollectionId={selectedCollectionId}
-                onSelectCollection={setSelectedCollectionId}
-                onCreateCollection={createCollection}
-                onRenameCollection={renameCollection}
-                onDeleteCollection={deleteCollection}
-                install={install}
-                push={{
-                  supported: pushSupported,
-                  subscribed: pushSubscribed,
-                  loading: pushLoading,
-                  error: pushError,
-                  onToggle: togglePush,
-                  onSendTest: sendPushTest,
-                }}
-              />
-            </ErrorBoundary>
-          </div>
-          <div
-            data-pane="list"
-            className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""}`}
-          >
-            <ErrorBoundary label="記事一覧">
-              <ArticleList
-                feeds={feeds}
-                readIds={readIds}
-                readBeforeTimestamp={readBeforeTimestamp}
-                bookmarkIds={bookmarkIds}
-                selectedArticleId={selectedArticle?.id ?? null}
-                selectedFeedId={selectedFeedId}
-                layout={layout}
-                loading={loadingArticles}
-                onChangeLayout={onChangeLayout}
-                onMobileBack={() => setMobilePane("sidebar")}
-                onSelectArticle={selectArticle}
-                onToggleRead={toggleRead}
-                onToggleBookmark={toggleBookmark}
-                onMarkRead={markRead}
-                onMarkAllRead={() => {
-                  const hasSubFilter =
-                    (groupFeedIds && groupFeedIds.size > 0) ||
-                    selectedCollectionId ||
-                    selectedTag ||
-                    activeFeedView;
-                  if (hasSubFilter) {
-                    const ids = filtered
-                      .filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp))
-                      .map((a) => a.id);
+              <ErrorBoundary label="サイドバー">
+                <FeedSidebar
+                  feeds={feeds}
+                  articles={articles}
+                  readIds={readIds}
+                  readBeforeTimestamp={readBeforeTimestamp}
+                  bookmarkCount={bookmarkCount}
+                  readingListCount={readingListCount}
+                  likeCount={likeCount}
+                  historyCount={historyCount}
+                  selectedFeedId={selectedFeedId}
+                  selectedGroupId={selectedGroupId}
+                  user={user}
+                  theme={theme}
+                  onSelectFeed={(id) => {
+                    setSelectedFeedId(id);
+                    setSelectedGroupId(null);
+                    setSelectedTag(null);
+                    setSelectedArticle(null);
+                    setMobilePane("list");
+                    const feed = feeds.find((f) => f.id === id);
+                    if (feed?.view === "pictures" || feed?.view === "videos") {
+                      onChangeLayout("gallery");
+                      setListFocusMode(true);
+                    } else {
+                      setListFocusMode(false);
+                    }
+                  }}
+                  onSelectGroup={(id) => {
+                    setSelectedGroupId(id);
+                    setSelectedFeedId(null);
+                    setSelectedTag(null);
+                    setSelectedArticle(null);
+                    setMobilePane("list");
+                  }}
+                  selectedTag={selectedTag}
+                  onSelectTag={(tag) => {
+                    setSelectedTag(tag);
+                    setSelectedFeedId(null);
+                    setSelectedGroupId(null);
+                    setSelectedArticle(null);
+                    setMobilePane("list");
+                  }}
+                  articleTagIds={articleTagIds}
+                  onFeedAdded={onFeedAdded}
+                  onFeedDeleted={onFeedDeleted}
+                  onFeedRenamed={updateFeed}
+                  onFeedsImported={appendFeeds}
+                  onMarkAllRead={markAllRead}
+                  onToggleTheme={toggleTheme}
+                  onOpenSettings={() => setShowSettings(true)}
+                  onOpenHelp={() => setShowHelp(true)}
+                  onSaveArticleUrl={onSaveArticleUrl}
+                  onRefresh={refreshFeeds}
+                  onRetryFeed={retryFeed}
+                  onReinferFeed={reinferFeed}
+                  refreshing={refreshing}
+                  isOnline={isOnline}
+                  pinnedFeedIds={pinnedFeedIds}
+                  onTogglePinFeed={togglePinFeed}
+                  collapsedCategories={collapsedCategories}
+                  onToggleCollapseCategory={toggleCollapseCategory}
+                  nsfwMode={nsfwMode}
+                  onActivateNsfw={activateNSFW}
+                  onDeactivateNsfw={deactivateNSFW}
+                  onToggleNsfwFeed={toggleNsfwFeed}
+                  onTogglePriorityFeed={togglePriorityFeed}
+                  onSetCategoryFeed={setCategoryFeed}
+                  feedGroups={feedGroups}
+                  onSetGroupFeed={setGroupFeed}
+                  onCreateFeedGroup={createGroup}
+                  onRenameFeedGroup={renameGroup}
+                  onDeleteFeedGroup={deleteGroup}
+                  onToggleCollapseFeedGroup={setFeedGroupCollapsed}
+                  onToggleMuteFeedGroup={setFeedGroupMuted}
+                  onReorderFeedGroup={reorderGroup}
+                  onMarkAllReadInGroup={(feedIds) => {
+                    // グループ内フィードの記事 ID を 1 パスで集約して markBulkRead に渡す
+                    // （feedIds ループで markAllRead を呼ぶと articlesRef を N 回スキャンするのを回避）
+                    const feedSet = new Set(feedIds);
+                    const ids = articles.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
                     if (ids.length > 0) markBulkRead(ids);
-                    return;
-                  }
-                  markAllRead(selectedFeedId);
-                  skipRemainingPages(selectedFeedId);
-                }}
-                feedHasMorePages={feedHasMorePages}
-                onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
-                notes={notes}
-                activeFeedView={activeFeedView}
-                listFocusMode={listFocusMode}
-                onToggleListFocusMode={toggleListFocusMode}
-                onGalleryAutoRead={handleGalleryAutoRead}
-              />
-            </ErrorBoundary>
+                  }}
+                  onMuteFeed={muteFeed}
+                  onSetFeedView={setFeedView}
+                  activeFeedView={activeFeedView}
+                  onChangeActiveFeedView={(view) => {
+                    // カテゴリ横断表示のため、タブ切替時はフィード・グループ選択を解除する
+                    onChangeActiveFeedView(view);
+                    setSelectedFeedId(null);
+                    setSelectedGroupId(null);
+                    setSelectedArticle(null);
+                    // 画像/動画カテゴリはギャラリーレイアウトに自動切替 — 全画像/動画の展開表示を期待する仕様
+                    // ユーザーが後で手動で別レイアウトを選んだ場合は尊重する（次にカテゴリ切替するまで）
+                    if (view === "pictures" || view === "videos") {
+                      onChangeLayout("gallery");
+                      setListFocusMode(true);
+                    } else {
+                      setListFocusMode(false);
+                    }
+                  }}
+                  recommendations={recommendations}
+                  recommendationsLoading={recommendationsLoading}
+                  recommendationsRefreshing={recommendationsRefreshing}
+                  onDismissRecommendation={dismissRecommendation}
+                  onRefreshRecommendations={refreshRecommendations}
+                  onExportMarkdown={(mode) => {
+                    const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
+                    exportArticlesToMarkdown(articles, ids, feeds, mode);
+                  }}
+                  onExportNotes={() => {
+                    exportNotesToMarkdown(articles, notes, feeds);
+                  }}
+                  noteCount={Object.keys(notes).length}
+                  collections={collections}
+                  selectedCollectionId={selectedCollectionId}
+                  onSelectCollection={setSelectedCollectionId}
+                  onCreateCollection={createCollection}
+                  onRenameCollection={renameCollection}
+                  onDeleteCollection={deleteCollection}
+                  install={install}
+                  push={{
+                    supported: pushSupported,
+                    subscribed: pushSubscribed,
+                    loading: pushLoading,
+                    error: pushError,
+                    onToggle: togglePush,
+                    onSendTest: sendPushTest,
+                  }}
+                />
+              </ErrorBoundary>
+            </div>
+            <div
+              data-pane="list"
+              className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""}`}
+            >
+              <ErrorBoundary label="記事一覧">
+                <ArticleList
+                  feeds={feeds}
+                  readIds={readIds}
+                  readBeforeTimestamp={readBeforeTimestamp}
+                  bookmarkIds={bookmarkIds}
+                  selectedArticleId={selectedArticle?.id ?? null}
+                  selectedFeedId={selectedFeedId}
+                  layout={layout}
+                  loading={loadingArticles}
+                  onChangeLayout={onChangeLayout}
+                  onMobileBack={() => setMobilePane("sidebar")}
+                  onSelectArticle={selectArticle}
+                  onToggleRead={toggleRead}
+                  onToggleBookmark={toggleBookmark}
+                  onMarkRead={markRead}
+                  onMarkAllRead={() => {
+                    const hasSubFilter =
+                      (groupFeedIds && groupFeedIds.size > 0) ||
+                      selectedCollectionId ||
+                      selectedTag ||
+                      activeFeedView;
+                    if (hasSubFilter) {
+                      const ids = filtered
+                        .filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp))
+                        .map((a) => a.id);
+                      if (ids.length > 0) markBulkRead(ids);
+                      return;
+                    }
+                    markAllRead(selectedFeedId);
+                    skipRemainingPages(selectedFeedId);
+                  }}
+                  feedHasMorePages={feedHasMorePages}
+                  onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
+                  notes={notes}
+                  activeFeedView={activeFeedView}
+                  listFocusMode={listFocusMode}
+                  onToggleListFocusMode={toggleListFocusMode}
+                  onGalleryAutoRead={handleGalleryAutoRead}
+                />
+              </ErrorBoundary>
+            </div>
+            <div
+              data-pane="view"
+              className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "view" ? "hidden lg:block" : ""}`}
+            >
+              <ErrorBoundary label="記事表示">
+                <ArticleView
+                  article={selectedArticle}
+                  isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
+                  onToggleBookmark={handleToggleBookmark}
+                  isInReadingList={selectedArticle ? readingListIds.has(selectedArticle.id) : false}
+                  onToggleReadingList={handleToggleReadingList}
+                  isLiked={selectedArticle ? likeIds.has(selectedArticle.id) : false}
+                  onToggleLike={handleToggleLike}
+                  onEngagement={recordEngagement}
+                  onMobileBack={() => setMobilePane("list")}
+                  prevArticle={prevArticle}
+                  nextArticle={nextArticle}
+                  onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
+                  onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
+                  feeds={feeds}
+                  onSnooze={snoozeArticle}
+                  note={selectedArticle ? notes[selectedArticle.id] : undefined}
+                  onSetNote={setNote}
+                  onDeleteNote={deleteNote}
+                  onAutoMarkRead={markRead}
+                  tags={selectedArticle ? (articleTagIds[selectedArticle.id] ?? []) : []}
+                  allTags={articleTagIds}
+                  onAddTag={addTag}
+                  onRemoveTag={removeTag}
+                  onSetArticleTags={setArticleTags}
+                  onClearArticleTags={clearArticleTags}
+                  collections={collections}
+                  onAddToCollection={addArticleToCollection}
+                  onRemoveFromCollection={removeArticleFromCollection}
+                  onCreateCollection={createCollection}
+                />
+              </ErrorBoundary>
+            </div>
           </div>
-          <div
-            data-pane="view"
-            className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "view" ? "hidden lg:block" : ""}`}
-          >
-            <ErrorBoundary label="記事表示">
-              <ArticleView
-                article={selectedArticle}
-                isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
-                onToggleBookmark={handleToggleBookmark}
-                isInReadingList={selectedArticle ? readingListIds.has(selectedArticle.id) : false}
-                onToggleReadingList={handleToggleReadingList}
-                isLiked={selectedArticle ? likeIds.has(selectedArticle.id) : false}
-                onToggleLike={handleToggleLike}
-                onEngagement={recordEngagement}
-                onMobileBack={() => setMobilePane("list")}
-                showToast={showToast}
-                prevArticle={prevArticle}
-                nextArticle={nextArticle}
-                onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
-                onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
-                feeds={feeds}
-                onSnooze={snoozeArticle}
-                note={selectedArticle ? notes[selectedArticle.id] : undefined}
-                onSetNote={setNote}
-                onDeleteNote={deleteNote}
-                onAutoMarkRead={markRead}
-                tags={selectedArticle ? (articleTagIds[selectedArticle.id] ?? []) : []}
-                allTags={articleTagIds}
-                onAddTag={addTag}
-                onRemoveTag={removeTag}
-                onSetArticleTags={setArticleTags}
-                onClearArticleTags={clearArticleTags}
-                collections={collections}
-                onAddToCollection={addArticleToCollection}
-                onRemoveFromCollection={removeArticleFromCollection}
-                onCreateCollection={createCollection}
-              />
-            </ErrorBoundary>
-          </div>
-        </div>
-      </ArticleFilterProvider>
-    </ReaderSettingsProvider>
+        </ArticleFilterProvider>
+      </ReaderSettingsProvider>
+    </ToastProvider>
   );
 }

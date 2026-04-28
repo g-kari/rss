@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../types";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
+import { useToast } from "../contexts/ToastContext";
 import {
   readingTime,
   FONT_SIZE_CLASSES,
@@ -61,7 +62,6 @@ interface Props {
     value?: string,
   ) => void;
   onMobileBack?: () => void;
-  showToast?: (msg: string) => void;
   prevArticle?: Article | null;
   nextArticle?: Article | null;
   onSelectPrev?: () => void;
@@ -135,7 +135,6 @@ export default function ArticleView({
   onToggleLike,
   onEngagement,
   onMobileBack,
-  showToast,
   prevArticle,
   nextArticle,
   onSelectPrev,
@@ -154,6 +153,7 @@ export default function ArticleView({
   onRemoveFromCollection,
   onCreateCollection,
 }: Props) {
+  const { showToast } = useToast();
   const {
     fontSize,
     fontFamily,
@@ -177,7 +177,7 @@ export default function ArticleView({
   } = useArticleFilter();
   const onSetAuthorFilter = (author: string) => {
     setAuthorFilter(author);
-    showToast?.(`「${author}」の記事に絞り込みました`);
+    showToast(`「${author}」の記事に絞り込みました`);
   };
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
@@ -350,7 +350,7 @@ export default function ArticleView({
     isAlreadyDownloaded,
     confirmDownload,
     cancelDownload,
-  } = useImageDownload(article, resolvedOgImage, contentRef, showToast);
+  } = useImageDownload(article, resolvedOgImage, contentRef);
 
   // ダウンロード確認モーダル表示中はリサイズバーを無効化する（Issue #81）
   usePopupLock(confirmingDownload);
@@ -590,14 +590,14 @@ export default function ArticleView({
                     onClick={() => {
                       const existingExclude = filterFeed.filter?.exclude ?? [];
                       if (existingExclude.includes(cat)) {
-                        showToast?.(`「${cat}」は既に除外フィルターに登録されています`);
+                        showToast(`「${cat}」は既に除外フィルターに登録されています`);
                         return;
                       }
                       void onSaveFilter(filterFeed.id, {
                         include: filterFeed.filter?.include ?? [],
                         exclude: [...existingExclude, cat],
                         matchCategories: true,
-                      }).then(() => showToast?.(`「${cat}」を除外カテゴリに追加しました`));
+                      }).then(() => showToast(`「${cat}」を除外カテゴリに追加しました`));
                     }}
                     title={`「${cat}」をフィードの除外カテゴリに追加`}
                     className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
@@ -774,37 +774,25 @@ export default function ArticleView({
               </button>
             )}
 
-            {article.link && showToast && (
+            {article.link && (
               <ShareMenu
                 article={article}
-                showToast={showToast}
                 feed={feeds?.find((f) => f.id === article.feedHash)}
                 contentHtml={storedContent ?? undefined}
               />
             )}
             {filterFeed && onSaveFilter && (
-              <FilterMenu
-                article={article}
-                feed={filterFeed}
-                onSaveFilter={onSaveFilter}
-                showToast={showToast}
-              />
+              <FilterMenu article={article} feed={filterFeed} onSaveFilter={onSaveFilter} />
             )}
             {onSaveGlobalFilter && (
               <GlobalFilterMenu
                 article={article}
                 globalFilter={globalFilter ?? null}
                 onSaveGlobalFilter={onSaveGlobalFilter}
-                showToast={showToast}
               />
             )}
             {onSnooze && (
-              <SnoozeMenu
-                articleId={article.id}
-                onSnooze={onSnooze}
-                onSelectNext={onSelectNext}
-                showToast={showToast}
-              />
+              <SnoozeMenu articleId={article.id} onSnooze={onSnooze} onSelectNext={onSelectNext} />
             )}
 
             {/* 後で読む / ブックマーク / いいね — 排他スイッチ */}
@@ -816,7 +804,7 @@ export default function ArticleView({
                     if (isLiked) onToggleLike(article.id);
                   }
                   onToggleReadingList(article.id);
-                  showToast?.(isInReadingList ? "後で読むから削除" : "後で読むに追加");
+                  showToast(isInReadingList ? "後で読むから削除" : "後で読むに追加");
                 }}
                 title={isInReadingList ? "後で読むから削除" : "後で読む (T)"}
                 aria-label={isInReadingList ? "後で読むから削除" : "後で読む"}
@@ -1319,7 +1307,6 @@ export default function ArticleView({
           article={{ title: article.title, link: article.link }}
           globalFilter={globalFilter ?? null}
           onSaveGlobalFilter={onSaveGlobalFilter ?? undefined}
-          showToast={showToast}
           onClose={clearSelectionPopup}
         />
       )}
