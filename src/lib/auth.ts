@@ -136,31 +136,19 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
       return null;
     }
 
-    // aud (audience) 検証
-    // id.0g0.xyz が aud=CLIENT_ID を発行するよう移行完了したら authBaseUrl 許容を削除する。
-    // 移行状況は下記の deprecation ログで追跡可能。ログが出なくなれば移行完了。
-    // See: https://github.com/g-kari/dokodemo-claude/issues/161
+    // aud (audience) 検証 — CLIENT_ID と厳密一致のみ許可
     const expectedAud = process.env.CLIENT_ID;
     if (!expectedAud) {
       console.error("[auth/verify] CLIENT_ID 未設定のため aud を検証できません");
       return null;
     }
     const audClaim = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-    const matchesClientId = audClaim.some((a) => typeof a === "string" && a === expectedAud);
-    if (!matchesClientId) {
-      const matchesIssuer = audClaim.some((a) => typeof a === "string" && a === authBaseUrl);
-      if (matchesIssuer) {
-        console.warn("[auth/verify] aud=authBaseUrl で合格 (deprecated)", {
-          aud: payload.aud,
-          hint: "id.0g0.xyz が aud=CLIENT_ID を発行するよう移行されればこのログは消える",
-        });
-      } else {
-        console.error("[auth/verify] aud claim mismatch", {
-          expected: [expectedAud, authBaseUrl],
-          actual: payload.aud,
-        });
-        return null;
-      }
+    if (!audClaim.some((a) => typeof a === "string" && a === expectedAud)) {
+      console.error("[auth/verify] aud claim mismatch", {
+        expected: expectedAud,
+        actual: payload.aud,
+      });
+      return null;
     }
 
     const jwks = await getJwks(authBaseUrl);

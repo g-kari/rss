@@ -101,20 +101,15 @@ test.describe("verifyJwt — aud クレーム検証", () => {
     expect(result).toBeNull();
   });
 
-  // id.0g0.xyz 側の暫定実装対応: aud = issuer URL (AUTH_BASE_URL) の場合も許容する
-  test("aud が AUTH_BASE_URL (issuer URL) → 署名検証まで進む（id.0g0.xyz 暫定対応）", async () => {
-    // aud チェックは通るが、後段の JWKS/署名検証で失敗するため null が返るのは正常。
-    // このテストは aud チェックで弾かれないことを確認する（=「CLIENT_ID 未設定」等とはログが異なる）
+  test("aud が AUTH_BASE_URL (issuer URL) → null（フォールバック廃止済み）", async () => {
     const token = makeJwt(defaultPayload({ aud: AUTH_BASE_URL }));
     const result = await withEnv({ CLIENT_ID }, () => verifyJwt(token, AUTH_BASE_URL));
-    // 署名検証に失敗するため最終的には null だが、aud エラーでは落ちない
     expect(result).toBeNull();
   });
 
-  test("aud 配列に AUTH_BASE_URL を含む → aud チェック通過", async () => {
+  test("aud 配列に AUTH_BASE_URL のみ含む（CLIENT_ID なし） → null", async () => {
     const token = makeJwt(defaultPayload({ aud: ["other-a", AUTH_BASE_URL] }));
     const result = await withEnv({ CLIENT_ID }, () => verifyJwt(token, AUTH_BASE_URL));
-    // 同上: aud チェックは通過するが署名検証で null
     expect(result).toBeNull();
   });
 });
