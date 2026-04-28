@@ -69,6 +69,15 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
       allow: "autoplay; fullscreen",
     };
 
+  // SpeakerDeck (player URL)
+  const sd = url.match(/speakerdeck\.com\/player\/([a-f0-9]+)/);
+  if (sd)
+    return {
+      embedUrl: `https://speakerdeck.com/player/${sd[1]}`,
+      type: "video",
+      allow: "autoplay; fullscreen; web-share",
+    };
+
   // Spotify
   const spotify = url.match(
     /open\.spotify\.com\/(track|album|playlist|episode|artist)\/([A-Za-z0-9]+)/,
@@ -86,21 +95,22 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
   return null;
 }
 
-/** RSS コンテンツ内の iframe をレスポンシブラッパーで包む（YouTube origin のみ）。
+/** RSS コンテンツ内の iframe をレスポンシブラッパーで包む（YouTube / SpeakerDeck）。
  * また X (Twitter) の tweet blockquote をインライン iframe 埋め込みに変換する。
  *
  * @param theme - X ツイート埋め込みのテーマ（'light' | 'dark'）
  */
 export function processContent(html: string, theme: "light" | "dark" = "light"): string {
-  html = sanitizeHtml(transformXTweetEmbeds(html, theme));
-  return html.replace(
+  let result = sanitizeHtml(transformXTweetEmbeds(html, theme));
+
+  // YouTube iframe → レスポンシブラッパー
+  result = result.replace(
     /<iframe([^>]*src=["'][^"']*(?:youtube(?:-nocookie)?\.com\/embed)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
     (_match, attrs, inner) => {
       const vidMatch = attrs.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
       const fallback = vidMatch
         ? `<a href="https://www.youtube.com/watch?v=${vidMatch[1]}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">YouTube で見る ↗</a>`
         : "";
-      // YouTube は HTTP Referer の提供を必須とするため origin パラメータを付与する
       const patchedAttrs = attrs.replace(
         /(src\s*=\s*["'])(https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/[^"']*)(")/i,
         (_m: string, pre: string, url: string, quote: string) => {
@@ -116,6 +126,22 @@ export function processContent(html: string, theme: "light" | "dark" = "light"):
       );
     },
   );
+
+  // SpeakerDeck iframe → レスポンシブラッパー
+  result = result.replace(
+    /<iframe([^>]*src=["']https?:\/\/speakerdeck\.com\/player\/([a-f0-9]+)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
+    (_match, attrs: string, playerId: string, inner: string) => {
+      const fallback = `<a href="https://speakerdeck.com/player/${playerId}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">Speaker Deck で見る ↗</a>`;
+      return (
+        `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
+        `<iframe${attrs} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
+        `</div>` +
+        fallback
+      );
+    },
+  );
+
+  return result;
 }
 
 /** 埋め込み表示する場合、コンテンツ内の iframe を除去（二重埋め込み防止） */

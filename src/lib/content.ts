@@ -14,6 +14,7 @@ import {
   rewriteImageUrls,
   transformZennLinkEmbeds,
   transformZennMermaidEmbeds,
+  transformSpeakerDeckScriptEmbeds,
   postProcess,
   buildImageSlider,
 } from "./html-post-processor";
@@ -37,6 +38,7 @@ export {
   transformXTweetEmbeds,
   removeSmallThumbnailImages,
   postProcessMarkdownContent,
+  transformSpeakerDeckScriptEmbeds,
 } from "./html-post-processor";
 export { extractWithReadability, preClean } from "./readability-extractor";
 export { extractWithRegex, stripPageChrome } from "./regex-extractor";
@@ -319,6 +321,10 @@ export function extractMainContent(
   // JS で動的に src を設定する loadImage('id', url, ...) パターンを静的解決する。
   // preClean で <script> が除去される前に行う必要がある。
   let preprocessed = resolveScriptLoadedImages(html);
+
+  // SpeakerDeck の <script class="speakerdeck-embed"> を <iframe> に変換する。
+  // preClean で <script> が除去される前に行う必要がある。
+  preprocessed = transformSpeakerDeckScriptEmbeds(preprocessed);
 
   // Zenn embed (card / tweet / mermaid) は iframe を <p><a> や <pre><code> に変換しておく。
   // Readability は iframe を本文外と判定して span ごと削除することがあるため、

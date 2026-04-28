@@ -608,6 +608,38 @@ export function transformXTweetEmbeds(html: string, theme: "light" | "dark" = "l
 }
 
 /**
+ * SpeakerDeck の `<script class="speakerdeck-embed" data-id="...">` タグを
+ * `<iframe>` に変換する。
+ *
+ * ブログ記事は SpeakerDeck の JS embed コードをそのまま貼り付けていることが多いが、
+ * RSS リーダーは `<script>` を除去するためスライドが表示されなくなる。
+ * preClean で `<script>` が除去される前にこの関数を呼び出し、
+ * data-id からプレイヤー iframe を生成して差し替える。
+ */
+export function transformSpeakerDeckScriptEmbeds(html: string): string {
+  return html.replace(
+    /<script\b[^>]*\bclass=["'][^"']*\bspeakerdeck-embed\b[^"']*["'][^>]*(?:\/>|>[\s\S]*?<\/script\s*>)/gi,
+    (match) => {
+      const idMatch = match.match(/\bdata-id=["']([a-f0-9]+)["']/i);
+      if (!idMatch) return match;
+      const dataId = idMatch[1];
+
+      const ratioMatch = match.match(/\bdata-ratio=["']([0-9.]+)["']/i);
+      const ratio = ratioMatch ? parseFloat(ratioMatch[1]) : 0;
+      const aspectRatio = ratio > 0 ? `${Math.round(ratio * 315)}/${315}` : "560/315";
+
+      return (
+        `<iframe class="speakerdeck-iframe"` +
+        ` src="https://speakerdeck.com/player/${dataId}"` +
+        ` allowfullscreen="true"` +
+        ` style="border:0;width:100%;aspect-ratio:${aspectRatio}"` +
+        ` loading="lazy"></iframe>`
+      );
+    },
+  );
+}
+
+/**
  * 共通後処理パイプライン（画像処理・リンク修正・テーブルラップ・XSS サニタイズ）。
  * postProcess / postProcessMarkdownContent の両方で使用する。
  *

@@ -181,6 +181,7 @@ export const TRUSTED_IFRAME_RULES: ReadonlyArray<{
   { hosts: ["embed.nicovideo.jp"] },
   { hosts: ["embed.zenn.studio"] },
   { hosts: ["platform.twitter.com"], pathPrefix: "/embed/" },
+  { hosts: ["speakerdeck.com"], pathPrefix: "/player/" },
 ];
 
 function isTrustedIframeSrc(src: string): boolean {
