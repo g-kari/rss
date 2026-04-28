@@ -157,7 +157,6 @@ src/
     useStoredSetting.ts      # localStorage 永続化 enum 設定の共通ユーティリティ
     useSyncedRef.ts          # stale closure 回避用の最新値 ref ユーティリティ
     useColumnResize.ts       # カラム幅リサイズ操作と localStorage 永続化
-    useMenuOpen.ts           # ドロップダウンメニュー開閉・click-outside 処理
     usePortalMenu.ts         # ポータルベースのドロップダウンメニュー位置管理
     useGracePeriod.ts        # 直前選択記事を 30 秒間フィルター対象外にする猶予期間管理
     useDebounce.ts           # デバウンスユーティリティ

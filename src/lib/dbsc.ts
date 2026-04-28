@@ -15,18 +15,6 @@
  */
 
 /**
- * DBSC 鍵登録情報（ブラウザからのリクエストボディ）
- */
-export interface DbscRegistration {
-  /** ブラウザが TPM で生成した P-256 ECDSA 公開鍵（PEM または JWK JSON 文字列） */
-  publicKey: string;
-  /** TPM アテステーション（オプション。対応デバイスのみ提供される） */
-  attestation?: string;
-  /** ブラウザが管理する DBSC セッション識別子 */
-  sessionId: string;
-}
-
-/**
  * サーバーサイドに保存する DBSC セッション情報（R2 保存用）
  */
 export interface DbscSession {
@@ -36,22 +24,6 @@ export interface DbscSession {
   registeredAt: number;
   /** 最後にチャレンジ検証を通過した日時（Unix ミリ秒）。未検証の場合は undefined */
   lastVerifiedAt?: number;
-}
-
-/**
- * ブラウザが DBSC をサポートしているかをクライアントサイドで判定する。
- *
- * `navigator.deviceBoundSession` が存在するかで判断する（Chrome 128+ で実装予定）。
- * サーバーサイドコード（Route Handler）では呼ばないこと。
- *
- * @returns DBSC 対応ブラウザなら true
- */
-export function isDbscSupported(): boolean {
-  // TODO: ブラウザの実装状況に応じてフラグ名が変わる可能性がある。
-  // 現時点では Chrome の origin trial で 'deviceBoundSession' が使われているが、
-  // 仕様確定後に正式な API 名に更新すること。
-  // @see https://chromestatus.com/feature/5173968765018112
-  return typeof navigator !== "undefined" && "deviceBoundSession" in navigator;
 }
 
 /**
