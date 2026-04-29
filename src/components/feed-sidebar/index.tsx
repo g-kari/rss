@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useMemo, useCallback, type ReactNode } from "react";
+import { lazy, Suspense, useRef, useState, useMemo, useCallback, type ReactNode } from "react";
 import type {
   Feed,
   Article,
@@ -11,7 +11,6 @@ import type {
   Collection,
 } from "../../types";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
-import ReleaseNotesModal from "../ReleaseNotesModal";
 import ReadingStatsModal from "../ReadingStatsModal";
 import FeedItem, { formatCount } from "../FeedItem";
 import FeedAddModal from "../FeedAddModal";
@@ -26,6 +25,8 @@ import FeedGroupsSection from "./FeedGroupsSection";
 import FeedViewTabs from "./FeedViewTabs";
 import SpecialViewButton from "./SpecialViewButton";
 import FooterIconButton, { StatItem } from "./FooterIconButton";
+
+const ReleaseNotesModal = lazy(() => import("../ReleaseNotesModal"));
 
 interface Props {
   feeds: Feed[];
@@ -1113,7 +1114,11 @@ export default function FeedSidebar({
           {importMessage.text}
         </div>
       )}
-      {showReleaseNotes && <ReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
+      {showReleaseNotes && (
+        <Suspense fallback={null}>
+          <ReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />
+        </Suspense>
+      )}
       {showStats && (
         <ReadingStatsModal
           feeds={feeds}

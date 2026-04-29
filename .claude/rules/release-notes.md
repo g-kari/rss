@@ -18,14 +18,13 @@
 新規 API エンドポイント（`app/api/**/route.ts`）・hooks（`src/hooks/*.ts`）・lib（`src/lib/*.ts`）・components（`src/components/**/*.tsx`）を追加した際は、**同じ PR 内で** `.claude/rules/architecture.md` のディレクトリ構造セクションにも 1 行の責務記述を追記すること。
 型定義（`src/types.ts`）で R2 に保存されるインターフェース（`ReadState` / `UserSubscription` / `SharedFeedMeta` / `FeedGroup` 等）にプロパティを追加した場合も、`## R2 データ構造` セクションの該当行を更新する。
 
-## 更新対象ファイル（2 ファイル同時更新）
+## 更新対象ファイル
 
-| ファイル                        | 用途                                            |
-| ------------------------------- | ----------------------------------------------- |
-| `RELEASE_NOTES.md`              | リポジトリ直下のマークダウン（人間向け）        |
-| `src/lib/release-notes-data.ts` | Workers バンドル用定数 `RELEASE_NOTES_MARKDOWN` |
+| ファイル           | 用途                                                                                      |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| `RELEASE_NOTES.md` | リポジトリ直下のマークダウン（単一ソース）。prebuild スクリプトが自動で TS 定数に変換する |
 
-> Workers 環境では `fs` が使えないため、両ファイルを常に同期すること。
+> `src/lib/release-notes-data.ts` は `scripts/sync-release-notes.mjs` により自動生成される（`.gitignore` 対象）。手動編集不要。
 
 ## フォーマット
 

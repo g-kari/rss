@@ -5,7 +5,9 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/sync-release-notes.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/sync-release-notes.mjs",
     "build": "next build",
     "preview": "wrangler dev",
     "build:cf": "npx @opennextjs/cloudflare build && node scripts/add-scheduled-handler.mjs",
