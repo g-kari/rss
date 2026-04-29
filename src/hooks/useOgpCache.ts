@@ -11,7 +11,8 @@ const FETCH_BATCH_SIZE = 10;
 
 /**
  * 表示中の記事に対して OGP 画像を遅延フェッチし、localStorage に永続化するキャッシュ。
- * ogImage がない記事の link を /api/ogp に問い合わせ、取得した image URL を返す。
+ * 全記事の link を /api/ogp に問い合わせ、取得した image URL を返す。
+ * OGP 画像はフィード由来の画像より優先して表示される。
  */
 export function useOgpCache(visible: Article[]): Record<string, string> {
   const [ogpCache, setOgpCache] = useState<Record<string, string>>(() =>
@@ -28,7 +29,6 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
     const toFetch = visible
       .filter(
         (a) =>
-          !a.ogImage &&
           a.link &&
           !ogpCacheRef.current[a.link] &&
           !fetchingRef.current.has(a.link) &&

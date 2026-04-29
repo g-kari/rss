@@ -52,13 +52,14 @@ function NoteIcon({ className }: { className?: string }) {
 
 // ── ユーティリティ関数 ──────────────────────────────────────────────────
 
-/** ogImage がない場合、キャッシュ → YouTube URL の順でサムネイルを解決 */
+/** OGP キャッシュ → フィード画像 → YouTube URL の順でサムネイルを解決 */
 export function resolveThumbnail(
   article: Article,
   ogpCache: Record<string, string>,
 ): string | undefined {
-  if (article.ogImage) return article.ogImage;
+  // OGP 画像を優先（実際のページメタデータから取得した画像）
   if (article.link && ogpCache[article.link]) return ogpCache[article.link];
+  if (article.ogImage) return article.ogImage;
   const yt = article.link?.match(
     /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
   );
