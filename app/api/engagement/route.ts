@@ -3,9 +3,7 @@ import { withSession, withJsonBody, requireString } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, engagementKey } from "@/lib/r2";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
-import { MAX_ID_LENGTH, isValidFeedHash } from "@/lib/validation";
-
-const MAX_ENTRIES = 5_000;
+import { MAX_ID_LENGTH, MAX_ENGAGEMENT_ENTRIES, isValidFeedHash } from "@/lib/validation";
 const VALID_ACTIONS: EngagementAction[] = [
   "fetch_full",
   "open_original",
@@ -76,8 +74,8 @@ export async function POST(req: NextRequest) {
 
     // 追記して上限超過分は古いものから削除
     const entries = [...log.entries, entry];
-    if (entries.length > MAX_ENTRIES) {
-      entries.splice(0, entries.length - MAX_ENTRIES);
+    if (entries.length > MAX_ENGAGEMENT_ENTRIES) {
+      entries.splice(0, entries.length - MAX_ENGAGEMENT_ENTRIES);
     }
 
     await r2Put(env.RSS_DATA, engagementKey(session.userId), { entries });

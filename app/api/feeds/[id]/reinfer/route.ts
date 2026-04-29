@@ -11,9 +11,9 @@ import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import { fetchSingleFeed } from "@/cron/fetch";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { reinferCooldownKey } from "@/lib/r2";
+import { MAX_FAILED_SELECTORS } from "@/lib/validation";
 
 const REINFER_COOLDOWN_MS = 60 * 1000; // 60秒
-const MAX_FAILED_SELECTORS = 10;
 
 /**
  * POST /api/feeds/:id/reinfer

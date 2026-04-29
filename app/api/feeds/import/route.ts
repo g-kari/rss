@@ -17,8 +17,7 @@ import type { SharedFeedMeta, FeedGroup } from "@/types";
 import { fetchArticles } from "@/cron/fetch";
 import { readFeedGroups, writeFeedGroups, MAX_FEED_GROUPS_PER_USER } from "@/lib/feed-groups";
 import { extractFeeds, type FeedEntry, type OpmlOutline } from "@/lib/opml";
-
-const MAX_OPML_ENTRIES = 5000;
+import { MAX_OPML_ENTRIES } from "@/lib/validation";
 
 interface RawParsedOpml {
   opml?: {

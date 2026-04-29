@@ -10,24 +10,20 @@ import {
   parseSnoozedUntil,
   parseNotes,
   parseTagIds,
+  MAX_READ_IDS,
+  MAX_BOOKMARK_IDS,
+  MAX_READING_LIST_IDS,
+  MAX_LIKE_IDS,
+  MAX_SNOOZED,
+  MAX_NOTES,
+  MAX_TAGGED_ARTICLES,
+  MAX_REMOVED_TAG_KEYS,
 } from "@/lib/validation";
 import {
   mergeReadStateUpdate,
   normalizeReadState,
   type ReadStateUpdate,
 } from "@/lib/read-state-merge";
-
-// POST は差分（追加 + removedIds）のみ送られる前提で上限を設定する。
-// readIds は記事を読むたびに永続累積するため、多端末ユーザーでも余裕を持たせる。
-// それでも 413 が発生した場合はクライアントが再送する（pending に復帰する）。
-const MAX_READ_IDS = 100_000;
-const MAX_BOOKMARK_IDS = 10_000;
-const MAX_READING_LIST_IDS = 10_000;
-const MAX_LIKE_IDS = 10_000;
-const MAX_SNOOZED = 500;
-const MAX_NOTES = 1_000;
-const MAX_TAGGED_ARTICLES = 2_000;
-const MAX_REMOVED_TAG_KEYS = 2_000;
 
 export async function GET(request: Request) {
   return withSession(request, async ({ session, env }) => {

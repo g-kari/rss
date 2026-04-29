@@ -10,9 +10,9 @@ import {
 import { ALLOWED_IMAGE_CONTENT_TYPES, detectImageMimeType } from "@/lib/image-mime";
 import { errorImageSvg } from "@/lib/image-error-placeholder";
 import { isContentTypeConsistent, isSameOriginImageRequest } from "@/lib/image-proxy-security";
+import { MAX_IMAGE_BYTES } from "@/lib/validation";
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
-const MAX_IMAGE_BYTES = 30 * 1024 * 1024; // 30MB — 高画質 JPEG/PNG を許容。Workers のリクエストメモリ 128MB 制限内
 
 export async function GET(request: Request) {
   return withBinarySession(request, ({ ctx }) => handleGet(request, ctx));

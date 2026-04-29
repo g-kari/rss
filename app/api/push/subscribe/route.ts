@@ -3,11 +3,8 @@ import { withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, userPushKey } from "@/lib/r2";
 import { isValidHttpsUrl } from "@/lib/url";
-import { isValidBase64url } from "@/lib/validation";
+import { isValidBase64url, MAX_SUBSCRIPTIONS_PER_USER } from "@/lib/validation";
 import type { PushConfig, PushSubscriptionRecord } from "@/types";
-
-/** Push サブスクリプションあたりの上限数 */
-const MAX_SUBSCRIPTIONS_PER_USER = 20;
 
 /** Push サブスクリプションを R2 に保存する */
 export async function POST(request: Request) {

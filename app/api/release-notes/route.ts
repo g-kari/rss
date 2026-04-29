@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { RELEASE_NOTES_MARKDOWN } from "@/lib/release-notes-data";
+import { MAX_RELEASE_NOTES_LIMIT } from "@/lib/validation";
 
 const DEFAULT_LIMIT = 10;
-const MAX_LIMIT = 50;
 
 function splitSections(markdown: string): string[] {
   const lines = markdown.split("\n");
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
     const limit = Math.min(
-      MAX_LIMIT,
+      MAX_RELEASE_NOTES_LIMIT,
       Math.max(1, Number(url.searchParams.get("limit")) || DEFAULT_LIMIT),
     );
 

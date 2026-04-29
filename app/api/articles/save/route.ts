@@ -5,8 +5,7 @@ import { isValidFeedUrl } from "@/lib/url";
 import { r2Get, r2Put, sha256Hex, savedArticlesKey } from "@/lib/r2";
 import { fetchPageOgpMeta } from "@/lib/ogp";
 import type { Article } from "@/types";
-
-const MAX_SAVED_ARTICLES = 500;
+import { MAX_SAVED_ARTICLES } from "@/lib/validation";
 const FETCH_TIMEOUT_MS = 8_000;
 
 /** POST /api/articles/save — URL から記事を保存する */

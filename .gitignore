@@ -11,3 +11,11 @@ playwright-report/
 .playwright-mcp/
 demo-*.png
 src/lib/release-notes-data.ts
+.agents/
+.claude/skills/
+.claude/worktrees/
+.serena/
+a.out
+skills-lock.json
+src/markdown.d.ts
+e2e/_test-import*.spec.ts

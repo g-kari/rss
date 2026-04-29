@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withJsonBody, requireString } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readCache, writeCache } from "@/lib/recommendation";
-import { MAX_ID_LENGTH } from "@/lib/validation";
-const MAX_DISMISSED_IDS = 1000;
+import { MAX_ID_LENGTH, MAX_DISMISSED_IDS } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
   return withJsonBody<{ id?: unknown }>(req, async ({ body, session, env }) => {
