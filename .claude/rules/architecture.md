@@ -222,7 +222,6 @@ src/
     image-error-placeholder.ts # 画像エラー時の SVG プレースホルダー生成
     favicon.ts               # ファビコン未読バッジ
     web-push.ts              # Web Push 送信ヘルパー
-    release-notes-data.ts    # RELEASE_NOTES_MARKDOWN 定数 (Workers バンドル用)
     export-markdown.ts       # ブックマーク・読書リスト記事を Markdown ファイルとしてダウンロード
     rate-limit.ts            # KV ベースのクールダウン・スライディングウィンドウ レートリミット (checkAndUpdateCooldown / checkSlidingWindow)
     serialize-async.ts       # 同一キー非同期操作の直列化ユーティリティ (serialized)
