@@ -38,7 +38,7 @@
     "@typescript/native-preview": "^7.0.0-dev.20260423.1",
     "esbuild": "^0.28.0",
     "next": "~16.2.4",
-    "postcss": "^8.5.11",
+    "postcss": "^8.5.12",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
@@ -57,7 +57,9 @@
       "brace-expansion": ">=5.0.5",
       "minimatch": ">=10.0.0",
       "path-to-regexp": "^6.3.0",
-      "vite": ">=8.0.5"
+      "vite": ">=8.0.5",
+      "postcss": ">=8.5.12",
+      "fast-xml-parser": ">=5.7.0"
     }
   }
 }
