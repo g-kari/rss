@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch, apiFetchJson } from "@/lib/api-fetch";
-import { useToast } from "@/contexts/ToastContext";
 import type { Collection, UserProfile } from "@/types";
 
 export interface CollectionsState {
@@ -19,8 +18,10 @@ function sortByOrder(list: Collection[]): Collection[] {
   return [...list].sort((a, b) => a.order - b.order);
 }
 
-export function useCollections(user: UserProfile | null | undefined): CollectionsState {
-  const { showToast } = useToast();
+export function useCollections(
+  user: UserProfile | null | undefined,
+  onError?: (msg: string) => void,
+): CollectionsState {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -114,7 +115,7 @@ export function useCollections(user: UserProfile | null | undefined): Collection
         });
       } catch (err) {
         console.error(err);
-        showToast("コレクションへの追加に失敗しました");
+        onError?.("コレクションへの追加に失敗しました");
         setCollections((prev) =>
           prev.map((c) =>
             c.id === collectionId
@@ -124,7 +125,7 @@ export function useCollections(user: UserProfile | null | undefined): Collection
         );
       }
     },
-    [showToast],
+    [onError],
   );
 
   const removeArticleFromCollection = useCallback(
@@ -144,7 +145,7 @@ export function useCollections(user: UserProfile | null | undefined): Collection
         });
       } catch (err) {
         console.error(err);
-        showToast("コレクションからの削除に失敗しました");
+        onError?.("コレクションからの削除に失敗しました");
         setCollections((prev) =>
           prev.map((c) =>
             c.id === collectionId ? { ...c, articleIds: [...c.articleIds, articleId] } : c,
@@ -152,7 +153,7 @@ export function useCollections(user: UserProfile | null | undefined): Collection
         );
       }
     },
-    [showToast],
+    [onError],
   );
 
   return {

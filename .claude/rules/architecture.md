@@ -28,8 +28,12 @@ Cloudflare Workers (@opennextjs/cloudflare)
   └─ .open-next/assets/     → 静的アセット (Cloudflare Assets)
 
 Cloudflare Bindings
-  ├─ RSS_DATA (R2)  — users/{userId}/* (subscriptions / feed-groups / read-state / push 等) + feeds/{feedHash}/* (共有フィード)
-  └─ AI             — Workers AI モデル
+  ├─ RSS_DATA (R2)      — users/{userId}/* + feeds/{feedHash}/* (共有フィード)
+  ├─ RATE_LIMIT (KV)    — レートリミット・クールダウン管理
+  ├─ AI                 — Workers AI モデル
+  ├─ IMAGES             — Cloudflare Images
+  ├─ FINDME_RSS (Service) — findme-rss サービスバインディング
+  └─ ASSETS (Assets)    — 静的アセット
 
 Cron Trigger (wrangler.toml: */30 * * * *)
   └─ src/cron/fetch.ts → fetchAllUsers(env) — R2 から全ユーザーの RSS を取得・更新
@@ -94,9 +98,9 @@ app/
 src/
   App.tsx                    # 3ペインレイアウト + 認証状態管理 ('use client')
   types.ts                   # Feed / Article / UserProfile / AuthSession 型
-  cloudflare-env.d.ts        # CloudflareEnv 拡張 (RSS_DATA, AI)
+  cloudflare-env.d.ts        # CloudflareEnv 拡張 (RSS_DATA, RATE_LIMIT, AI, IMAGES, FINDME_RSS 等)
   components/
-    FeedSidebar.tsx          # サイドバー (フィード管理・ユーザー情報)
+    feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton）
     FeedItem.tsx             # フィードアイテム（コンテキストメニュー付き）
     FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
@@ -243,6 +247,9 @@ src/
     dbsc.ts                  # Device Bound Session Credentials (DBSC) ユーティリティ — 機能検出・チャレンジ生成・ヘッダービルダー (スケルトン)
     serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
     retry-after.ts           # HTTP Retry-After ヘッダー（delta-seconds / HTTP-date）をミリ秒に変換（クライアント・cron で共有）
+    read-state-storage.ts    # ReadState の localStorage 永続化ユーティリティ
+    sw-cache.ts              # Service Worker キャッシュ管理
+    type-guards.ts           # TypeScript 型ガード関数
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
 ```
@@ -348,15 +355,18 @@ users/{userId}/saved.json               # 手動保存記事（/api/articles/sav
 `userId` = JWT の `sub` クレームをそのまま使用（`server-auth.ts` で `userId: payload.sub` と設定）。
 Route Handler では `session.userId` でアクセスする。
 
-### クールダウン管理（R2）
+### クールダウン管理（KV）
+
+`RATE_LIMIT` KV namespace にキーとして格納される。
 
 ```
-users/{userId}/last-full-refresh.json          # 全フィード一括リフレッシュのクールダウン
-users/{userId}/ai-cooldown.json                # AI エンドポイントのスライディングウィンドウ レートリミット ({ calls: number[] })
-users/{userId}/feed-refresh-{feedHash}.json    # 単体フィードリフレッシュのクールダウン
-users/{userId}/feed-reinfer-{feedHash}.json    # LLM CSS セレクタ再推論のクールダウン
-users/{userId}/recommendations-refresh.json    # 推薦リフレッシュのクールダウン
-users/{userId}/recommendations-gen.json        # 推薦生成（GET）の同時実行防止クールダウン
+{userId}:last-full-refresh              # 全フィード一括リフレッシュのクールダウン
+{userId}:ai-cooldown                    # AI エンドポイントのスライディングウィンドウ レートリミット
+{userId}:feed-refresh-{feedHash}        # 単体フィードリフレッシュのクールダウン
+{userId}:feed-reinfer-{feedHash}        # LLM CSS セレクタ再推論のクールダウン
+{userId}:recommendations-refresh        # 推薦リフレッシュのクールダウン
+{userId}:recommendations-gen            # 推薦生成（GET）の同時実行防止クールダウン
+{userId}:feed-add                       # フィード追加のクールダウン
 ```
 
 ### AI キャッシュ（永続）

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FeedGroup, UserProfile } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
-import { useToast } from "../contexts/ToastContext";
 
 /** `useFeedGroups` の戻り値型 */
 export interface FeedGroupsState {
@@ -34,8 +33,10 @@ function sortByOrder(groups: FeedGroup[]): FeedGroup[] {
  *
  * @param user - ログイン中のユーザー（`null`/`undefined` のときは fetch しない）
  */
-export function useFeedGroups(user: UserProfile | null | undefined): FeedGroupsState {
-  const { showToast } = useToast();
+export function useFeedGroups(
+  user: UserProfile | null | undefined,
+  onError?: (msg: string) => void,
+): FeedGroupsState {
   const [groups, setGroups] = useState<FeedGroup[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -113,11 +114,11 @@ export function useFeedGroups(user: UserProfile | null | undefined): FeedGroupsS
         });
       } catch (err) {
         console.error(err);
-        showToast("グループの折りたたみ変更に失敗しました");
+        onError?.("グループの折りたたみ変更に失敗しました");
         setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, collapsed: !collapsed } : g)));
       }
     },
-    [showToast],
+    [onError],
   );
 
   const setMuted = useCallback(
@@ -132,11 +133,11 @@ export function useFeedGroups(user: UserProfile | null | undefined): FeedGroupsS
         });
       } catch (err) {
         console.error(err);
-        showToast("グループのミュート変更に失敗しました");
+        onError?.("グループのミュート変更に失敗しました");
         setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, muted: !muted } : g)));
       }
     },
-    [showToast],
+    [onError],
   );
 
   const deleteGroup = useCallback(async (id: string): Promise<boolean> => {
@@ -190,7 +191,7 @@ export function useFeedGroups(user: UserProfile | null | undefined): FeedGroupsS
         });
       } catch (err) {
         console.error(err);
-        showToast("グループの並び替えに失敗しました");
+        onError?.("グループの並び替えに失敗しました");
         try {
           const data = await apiFetchJson<FeedGroup[]>("/api/feed-groups");
           setGroups(sortByOrder(data));
@@ -208,7 +209,7 @@ export function useFeedGroups(user: UserProfile | null | undefined): FeedGroupsS
         }
       }
     },
-    [showToast],
+    [onError],
   );
 
   return {

@@ -4,16 +4,16 @@ Next.js 16 + Cloudflare Workers で動くパーソナル RSS リーダー。`rss
 
 ## 技術スタック
 
-| レイヤー       | 技術                                                           |
-| -------------- | -------------------------------------------------------------- |
-| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare                 |
-| フロントエンド | React 19 + TypeScript + Tailwind CSS v4                        |
-| API            | Next.js Route Handlers (`app/api/**`)                          |
-| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                    |
-| データ         | Cloudflare R2 (`rss-reader-data`) — ユーザー別 JSON            |
-| AI             | Workers AI (要約・翻訳・フィード推薦)                          |
-| 自動更新       | Cloudflare Cron Trigger（30分ごと）                            |
-| デプロイ       | Cloudflare Workers CI/CD（master push で自動ビルド＆デプロイ） |
+| レイヤー       | 技術                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare                                           |
+| フロントエンド | React 19 + TypeScript + Tailwind CSS v4                                                  |
+| API            | Next.js Route Handlers (`app/api/**`)                                                    |
+| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                                              |
+| データ         | Cloudflare R2 (`rss-reader-data`) + KV (`RATE_LIMIT`) — ユーザー別 JSON + レートリミット |
+| AI             | Workers AI (要約・翻訳・フィード推薦)                                                    |
+| 自動更新       | Cloudflare Cron Trigger（30分ごと）                                                      |
+| デプロイ       | Cloudflare Workers CI/CD（master push で自動ビルド＆デプロイ）                           |
 
 ## キーボードショートカット
 
@@ -164,12 +164,14 @@ pre-commit install   # 初回セットアップ
 
 ### 認証
 
-| メソッド | パス                 | 説明                             |
-| -------- | -------------------- | -------------------------------- |
-| GET      | `/api/auth/login`    | OAuth2 認証開始                  |
-| GET      | `/api/auth/callback` | OAuth2 コールバック              |
-| GET      | `/api/auth/me`       | セッション確認・自動リフレッシュ |
-| POST     | `/api/auth/logout`   | ログアウト（cookie クリア）      |
+| メソッド | パス                       | 説明                                |
+| -------- | -------------------------- | ----------------------------------- |
+| GET      | `/api/auth/login`          | OAuth2 認証開始                     |
+| GET      | `/api/auth/callback`       | OAuth2 コールバック                 |
+| GET      | `/api/auth/me`             | セッション確認・自動リフレッシュ    |
+| POST     | `/api/auth/logout`         | ログアウト（cookie クリア）         |
+| POST     | `/api/auth/dbsc/register`  | DBSC 公開鍵登録（スタブ）           |
+| POST     | `/api/auth/dbsc/challenge` | DBSC チャレンジ発行・検証（スタブ） |
 
 ### フィード
 
@@ -178,6 +180,7 @@ pre-commit install   # 初回セットアップ
 | GET      | `/api/feeds`             | フィード一覧取得       |
 | POST     | `/api/feeds`             | フィード追加 `{ url }` |
 | DELETE   | `/api/feeds/:id`         | フィード削除           |
+| PATCH    | `/api/feeds/:id`         | フィード設定更新       |
 | POST     | `/api/feeds/:id/refresh` | 単体フィード手動更新   |
 | POST     | `/api/feeds/:id/reinfer` | LLM CSS セレクタ再推論 |
 | POST     | `/api/feeds/refresh`     | 全フィード手動更新     |
@@ -198,6 +201,15 @@ pre-commit install   # 初回セットアップ
 - グループ上限は 100 件 (`MAX_FEED_GROUPS_PER_USER`)、名前は最大 50 文字 (`FEED_GROUP_NAME_MAX_LENGTH`) でユーザー内重複不可
 - 保存先: `users/{userId}/feed-groups.json`（JSON 配列）
 - DELETE は R2 のトランザクション非対応のため、グループ除去後に購読側の `groupId` クリアを行う。後半が失敗すると orphan な `groupId` が購読側に残るが、クライアントは未知の `groupId` を無視するため実害はない
+
+### コレクション
+
+| メソッド | パス                   | 説明                                                                  |
+| -------- | ---------------------- | --------------------------------------------------------------------- |
+| GET      | `/api/collections`     | コレクション一覧取得                                                  |
+| POST     | `/api/collections`     | コレクション作成 `{ name }` → 201 Created                             |
+| PATCH    | `/api/collections/:id` | コレクション更新 `{ name?, order?, addArticleId?, removeArticleId? }` |
+| DELETE   | `/api/collections/:id` | コレクション削除                                                      |
 
 ### 記事
 
@@ -395,6 +407,12 @@ users/{userId}/read-state.json          # ReadState（既読・ブックマー�
 users/{userId}/engagement.json          # EngagementLog（行動履歴）
 users/{userId}/recommendations.json     # RecommendationCache（フィード推薦キャッシュ）
 users/{userId}/push.json                # PushConfig（Web Push サブスクリプション）
+users/{userId}/feed-groups.json         # FeedGroup[]（フィードグループ定義）
+users/{userId}/collections.json         # Collection[]（コレクション定義）
+users/{userId}/saved.json               # 手動保存記事（/api/articles/save）
+
+# サーバーサイドセッション
+sessions/{sessionId}.json              # ServerSessionData（refreshToken 管理）
 
 # AI キャッシュ（永続）
 ai-cache/summary/{sha256}               # AI 要約キャッシュ

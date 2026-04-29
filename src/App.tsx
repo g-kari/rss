@@ -146,7 +146,7 @@ export default function App() {
     setMuted: setFeedGroupMuted,
     deleteGroup,
     reorderGroup,
-  } = useFeedGroups(user);
+  } = useFeedGroups(user, showToast);
 
   const {
     collections,
@@ -155,7 +155,7 @@ export default function App() {
     deleteCollection,
     addArticleToCollection,
     removeArticleFromCollection,
-  } = useCollections(user);
+  } = useCollections(user, showToast);
 
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
