@@ -1,7 +1,9 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type DragEvent, type ReactNode, useCallback, useState } from "react";
 import type { FeedView } from "../../types";
+
+const DRAG_DATA_TYPE = "application/x-rss-feed-id";
 
 export const FEED_VIEW_TABS: { id: FeedView; label: string; icon: ReactNode }[] = [
   {
@@ -81,10 +83,42 @@ export const FEED_VIEW_TABS: { id: FeedView; label: string; icon: ReactNode }[] 
 export default function FeedViewTabs({
   activeView,
   onChangeView,
+  onDropFeedOnView,
 }: {
   activeView: FeedView;
   onChangeView: (view: FeedView) => void;
+  onDropFeedOnView?: (feedId: string, view: FeedView) => void;
 }) {
+  const [dragOverTab, setDragOverTab] = useState<FeedView | null>(null);
+
+  const handleDragOver = useCallback((e: DragEvent) => {
+    if (!e.dataTransfer.types.includes(DRAG_DATA_TYPE)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const handleDragEnter = useCallback((e: DragEvent, view: FeedView) => {
+    if (!e.dataTransfer.types.includes(DRAG_DATA_TYPE)) return;
+    e.preventDefault();
+    setDragOverTab(view);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent) => {
+    const related = e.relatedTarget as Node | null;
+    if (related && (e.currentTarget as Node).contains(related)) return;
+    setDragOverTab(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent, view: FeedView) => {
+      e.preventDefault();
+      setDragOverTab(null);
+      const feedId = e.dataTransfer.getData(DRAG_DATA_TYPE);
+      if (feedId && onDropFeedOnView) onDropFeedOnView(feedId, view);
+    },
+    [onDropFeedOnView],
+  );
+
   return (
     <div
       role="tablist"
@@ -93,16 +127,23 @@ export default function FeedViewTabs({
     >
       {FEED_VIEW_TABS.map((t) => {
         const isActive = activeView === t.id;
+        const isDragOver = dragOverTab === t.id;
         return (
           <button
             key={t.id}
             role="tab"
             aria-selected={isActive}
             onClick={() => onChangeView(t.id)}
+            onDragOver={handleDragOver}
+            onDragEnter={(e) => handleDragEnter(e, t.id)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, t.id)}
             className={`flex-1 flex items-center justify-center gap-1 px-1 py-1 rounded transition-all duration-200 ${
-              isActive
-                ? "text-text-strong bg-surface-subtle"
-                : "text-text-faint hover:text-text-default hover:bg-surface-hover"
+              isDragOver
+                ? "ring-2 ring-inset ring-text-muted bg-surface-subtle text-text-strong"
+                : isActive
+                  ? "text-text-strong bg-surface-subtle"
+                  : "text-text-faint hover:text-text-default hover:bg-surface-hover"
             }`}
             title={t.label}
           >
