@@ -139,7 +139,10 @@ src/
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useThemePreference.ts    # テーマ（light/dark）+ DOM 同期（useUIState から分割）
     useUIState.ts            # UI 状態管理（サブフックを合成: useThemePreference / useLayoutSettings / useAutoReadSettings / useAccessibilitySettings）
-    useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション
+    useArticleFilters.ts     # フィルター状態管理（bool/enum/検索/著者/カテゴリ）
+    useArticleSorting.ts     # ソート順管理（SortOrder サイクリング）
+    useArticlePagination.ts  # ページネーション（IntersectionObserver・visible/hasMore）
+    useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション（上記3フックを合成）
     useReadState.ts              # 既読・ブックマーク・後で読む・スヌーズ状態 (localStorage + R2 同期)
     useReadStatePersistence.ts   # localStorage 永続化（readIds・bookmarkIds 等の保存・復元）
     useReadStateSync.ts          # サーバー R2 との同期（デバウンス・sendBeacon）
