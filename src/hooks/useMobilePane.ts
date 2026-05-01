@@ -30,8 +30,9 @@ export function useMobilePane(initial: MobilePane) {
     prevRef.current = mobilePane;
   }, [mobilePane]);
 
-  // popstate（戻るボタン）でペイン遷移を処理
-  useEventListener("popstate", () => {
+  // popstate（戻るボタン）でペイン遷移を処理（フォーカスモード復帰はスキップ）
+  useEventListener("popstate", (e: PopStateEvent) => {
+    if (e.state?.focus) return;
     setMobilePane((current) => {
       if (current === "view") return "list";
       if (current === "list") return "sidebar";
