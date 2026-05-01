@@ -28,7 +28,12 @@ export default function Modal({
   usePopupLock();
 
   useEffect(() => {
-    dialogRef.current?.focus();
+    const el = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+    if (el) {
+      el.focus();
+    } else {
+      dialogRef.current?.focus();
+    }
   }, []);
 
   const handleKeyDown = useCallback(

@@ -7,7 +7,7 @@ interface Props {
 export default function Spinner({ className = "w-3.5 h-3.5" }: Props) {
   return (
     <svg
-      className={`animate-spin ${className}`}
+      className={`animate-spin motion-reduce:animate-none ${className}`}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"

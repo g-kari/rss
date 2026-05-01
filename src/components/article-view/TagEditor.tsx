@@ -53,6 +53,7 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
           type="text"
           value={draft}
           maxLength={MAX_TAG_NAME_LENGTH}
+          aria-label="新しいタグ名を入力"
           placeholder="タグ名"
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {

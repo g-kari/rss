@@ -570,7 +570,11 @@ export default function ArticleListHeader({
           </div>
         </div>
         <div className="relative px-3 pb-2.5" ref={searchContainerRef} onBlur={handleSearchBlur}>
+          <label htmlFor="article-search" className="sr-only">
+            検索
+          </label>
           <input
+            id="article-search"
             ref={searchRef}
             type="search"
             placeholder="検索... (/ でフォーカス、title:foo OR -bar 等)"
