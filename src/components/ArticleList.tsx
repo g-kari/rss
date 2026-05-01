@@ -40,6 +40,7 @@ import {
 import ArticleListHeader from "./ArticleListHeader";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
 import LoadMoreButton from "./LoadMoreButton";
+import Spinner from "./Spinner";
 
 interface Props {
   feeds: Feed[];
@@ -396,14 +397,56 @@ export default function ArticleList({
 
       <SelectedArticleCtx.Provider value={selectedArticleId ?? null}>
         <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto">
+          {/* ローディング状態 */}
           {loading && filtered.length === 0 && (
-            <div className="flex items-center justify-center h-40">
+            <div className="flex flex-col items-center justify-center h-40 gap-2">
+              <Spinner className="w-5 h-5 text-text-faint" />
               <p className="text-[12px] text-text-faint">読み込み中...</p>
             </div>
           )}
-          {!loading && filtered.length === 0 && !wasJustCleared && (
-            <div className="flex items-center justify-center h-40">
-              <p className="text-[12px] text-text-faint">記事がありません</p>
+          {/* フィード未登録時の空状態 */}
+          {!loading && filtered.length === 0 && !wasJustCleared && feeds.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-40 gap-2 animate-fade-in">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-8 h-8 text-text-faint"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"
+                />
+              </svg>
+              <p className="text-[12px] text-text-faint">フィードを追加して記事を読みましょう</p>
+            </div>
+          )}
+          {/* フィード登録済みだが記事が見つからない場合 */}
+          {!loading && filtered.length === 0 && !wasJustCleared && feeds.length > 0 && (
+            <div className="flex flex-col items-center justify-center h-40 gap-1 animate-fade-in">
+              {query ? (
+                <>
+                  <svg
+                    className="w-6 h-6 text-text-faint mb-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                    />
+                  </svg>
+                  <p className="text-[12px] text-text-faint">検索結果が見つかりませんでした</p>
+                </>
+              ) : (
+                <p className="text-[12px] text-text-faint">記事がありません</p>
+              )}
             </div>
           )}
 

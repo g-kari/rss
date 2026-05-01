@@ -120,6 +120,7 @@ export default function App() {
   const {
     feeds,
     articles,
+    loadingFeeds,
     loadingArticles,
     refreshing,
     newArticleCount,
@@ -942,6 +943,7 @@ export default function App() {
                   onRetryFeed={retryFeed}
                   onReinferFeed={reinferFeed}
                   refreshing={refreshing}
+                  loadingFeeds={loadingFeeds}
                   isOnline={isOnline}
                   pinnedFeedIds={pinnedFeedIds}
                   onTogglePinFeed={togglePinFeed}
