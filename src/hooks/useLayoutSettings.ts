@@ -6,8 +6,12 @@ import { FONT_FAMILY_CYCLE, FONT_SIZE_CYCLE, LAYOUT_CYCLE } from "../lib/article
 import {
   CONTENT_WIDTH_CYCLE,
   GALLERY_COLUMNS_CYCLE,
+  GALLERY_CARD_SIZE_CYCLE,
+  GALLERY_MIN_IMAGE_FILTER_CYCLE,
   type ContentWidth,
   type GalleryColumns,
+  type GalleryCardSize,
+  type GalleryMinImageFilter,
 } from "../lib/reader-settings";
 import { useStoredSetting } from "./useStoredSetting";
 
@@ -21,6 +25,18 @@ const loadFontFamily = () =>
   loadStoredEnum(STORAGE_KEYS.FONT_FAMILY, FONT_FAMILY_CYCLE, "sans" as FontFamily);
 const loadGalleryColumns = () =>
   loadStoredEnum(STORAGE_KEYS.GALLERY_COLUMNS, GALLERY_COLUMNS_CYCLE, "auto" as GalleryColumns);
+const loadGalleryCardSize = () =>
+  loadStoredEnum(
+    STORAGE_KEYS.GALLERY_CARD_SIZE,
+    GALLERY_CARD_SIZE_CYCLE,
+    "medium" as GalleryCardSize,
+  );
+const loadGalleryMinImageFilter = () =>
+  loadStoredEnum(
+    STORAGE_KEYS.GALLERY_MIN_IMAGE_FILTER,
+    GALLERY_MIN_IMAGE_FILTER_CYCLE,
+    "off" as GalleryMinImageFilter,
+  );
 const loadContentWidth = () =>
   loadStoredEnum(STORAGE_KEYS.CONTENT_WIDTH, CONTENT_WIDTH_CYCLE, "medium" as ContentWidth);
 
@@ -42,6 +58,15 @@ export function useLayoutSettings() {
     loadGalleryColumns,
     STORAGE_KEYS.GALLERY_COLUMNS,
   );
+  const [galleryCardSize, onChangeGalleryCardSize] = useStoredSetting<GalleryCardSize>(
+    loadGalleryCardSize,
+    STORAGE_KEYS.GALLERY_CARD_SIZE,
+  );
+  const [galleryMinImageFilter, onChangeGalleryMinImageFilter] =
+    useStoredSetting<GalleryMinImageFilter>(
+      loadGalleryMinImageFilter,
+      STORAGE_KEYS.GALLERY_MIN_IMAGE_FILTER,
+    );
   const [contentWidth, onChangeContentWidth] = useStoredSetting<ContentWidth>(
     loadContentWidth,
     STORAGE_KEYS.CONTENT_WIDTH,
@@ -58,6 +83,10 @@ export function useLayoutSettings() {
     onChangeActiveFeedView,
     galleryColumns,
     onChangeGalleryColumns,
+    galleryCardSize,
+    onChangeGalleryCardSize,
+    galleryMinImageFilter,
+    onChangeGalleryMinImageFilter,
     contentWidth,
     onChangeContentWidth,
   } as const;

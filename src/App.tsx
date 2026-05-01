@@ -112,6 +112,10 @@ export default function App() {
     onChangeActiveFeedView,
     galleryColumns,
     onChangeGalleryColumns,
+    galleryCardSize,
+    onChangeGalleryCardSize,
+    galleryMinImageFilter,
+    onChangeGalleryMinImageFilter,
   } = useUIState(initialMobilePane);
 
   // カラム幅（PC）
@@ -225,6 +229,10 @@ export default function App() {
       onChangeTextJustify,
       galleryColumns,
       onChangeGalleryColumns,
+      galleryCardSize,
+      onChangeGalleryCardSize,
+      galleryMinImageFilter,
+      onChangeGalleryMinImageFilter,
       ttlDays,
       onChangeTtlDays: setTtlDays,
     }),
@@ -251,6 +259,10 @@ export default function App() {
       onChangeTextJustify,
       galleryColumns,
       onChangeGalleryColumns,
+      galleryCardSize,
+      onChangeGalleryCardSize,
+      galleryMinImageFilter,
+      onChangeGalleryMinImageFilter,
       ttlDays,
       setTtlDays,
     ],

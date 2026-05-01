@@ -5,7 +5,13 @@ import { useEventListener } from "./useEventListener";
 import { useAutoReset } from "./useAutoReset";
 import { STORAGE_KEYS, loadSet, toggleSetItem } from "../lib/storage";
 import type { FontFamily, Layout, FontSize, FeedView } from "../types";
-import type { ContentWidth, LineHeight, GalleryColumns } from "../lib/reader-settings";
+import type {
+  ContentWidth,
+  LineHeight,
+  GalleryColumns,
+  GalleryCardSize,
+  GalleryMinImageFilter,
+} from "../lib/reader-settings";
 import { useMobilePane } from "./useMobilePane";
 import { useNSFWMode } from "./useNSFWMode";
 import { useThemePreference } from "./useThemePreference";
@@ -84,6 +90,10 @@ export interface UIState {
   onChangeActiveFeedView: (v: FeedView) => void;
   galleryColumns: GalleryColumns;
   onChangeGalleryColumns: (v: GalleryColumns) => void;
+  galleryCardSize: GalleryCardSize;
+  onChangeGalleryCardSize: (v: GalleryCardSize) => void;
+  galleryMinImageFilter: GalleryMinImageFilter;
+  onChangeGalleryMinImageFilter: (v: GalleryMinImageFilter) => void;
 }
 
 export function useUIState(initialMobilePane: MobilePane): UIState {
@@ -99,6 +109,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeActiveFeedView,
     galleryColumns,
     onChangeGalleryColumns,
+    galleryCardSize,
+    onChangeGalleryCardSize,
+    galleryMinImageFilter,
+    onChangeGalleryMinImageFilter,
     contentWidth,
     onChangeContentWidth,
   } = useLayoutSettings();
@@ -251,5 +265,9 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeActiveFeedView,
     galleryColumns,
     onChangeGalleryColumns,
+    galleryCardSize,
+    onChangeGalleryCardSize,
+    galleryMinImageFilter,
+    onChangeGalleryMinImageFilter,
   };
 }
