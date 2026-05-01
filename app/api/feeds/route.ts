@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     const limited = await checkAndUpdateCooldown(
       env.RATE_LIMIT,
       feedAddCooldownKey(session.userId),
-      30 * 1000,
+      30 * 100,
     );
     if (limited) return limited;
 
