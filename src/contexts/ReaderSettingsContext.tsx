@@ -37,6 +37,8 @@ export interface ReaderSettings {
   onChangeGalleryCardSize: (v: GalleryCardSize) => void;
   galleryMinImagePx: number;
   onChangeGalleryMinImagePx: (v: number) => void;
+  deduplicateByLink: boolean;
+  toggleDeduplicateByLink: () => void;
   ttlDays: number | null;
   onChangeTtlDays: (days: number | null) => void;
 }

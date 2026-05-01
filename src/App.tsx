@@ -100,6 +100,8 @@ export default function App() {
     onChangeAutoReadThreshold,
     autoTranslate,
     toggleAutoTranslate,
+    deduplicateByLink,
+    toggleDeduplicateByLink,
     lineHeight,
     onChangeLineHeight,
     contentWidth,
@@ -233,6 +235,8 @@ export default function App() {
       onChangeGalleryCardSize,
       galleryMinImagePx,
       onChangeGalleryMinImagePx,
+      deduplicateByLink,
+      toggleDeduplicateByLink,
       ttlDays,
       onChangeTtlDays: setTtlDays,
     }),
@@ -263,6 +267,8 @@ export default function App() {
       onChangeGalleryCardSize,
       galleryMinImagePx,
       onChangeGalleryMinImagePx,
+      deduplicateByLink,
+      toggleDeduplicateByLink,
       ttlDays,
       setTtlDays,
     ],
@@ -553,6 +559,7 @@ export default function App() {
     selectedTag,
     collectionArticleIds: collectionArticleIds,
     galleryAutoReadIds,
+    deduplicateByLink,
   });
 
   const {
@@ -578,6 +585,7 @@ export default function App() {
     query,
     searchRef,
     notifyArticlesAdded,
+    duplicateInfo,
   } = filterState;
 
   const currentIndex = useMemo(
@@ -1077,6 +1085,7 @@ export default function App() {
                   listFocusMode={listFocusMode}
                   onToggleListFocusMode={toggleListFocusMode}
                   onGalleryAutoRead={handleGalleryAutoRead}
+                  duplicateInfo={duplicateInfo}
                 />
               </ErrorBoundary>
             </div>

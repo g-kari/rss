@@ -38,6 +38,7 @@ interface Options {
   selectedTag?: string | null;
   collectionArticleIds?: Set<string>;
   galleryAutoReadIds?: Set<string>;
+  deduplicateByLink?: boolean;
 }
 
 export function useFilteredArticles({
@@ -66,6 +67,7 @@ export function useFilteredArticles({
   selectedTag = null,
   collectionArticleIds,
   galleryAutoReadIds,
+  deduplicateByLink = true,
 }: Options) {
   const [page, setPage] = useState(1);
   const resetPage = useCallback(() => setPage(1), []);
@@ -262,14 +264,72 @@ export function useFilteredArticles({
     ],
   );
 
+  // ── クロスフィード重複検出 ──────────────────────────────────
+  const { deduplicated, duplicateInfo } = useMemo(() => {
+    if (!deduplicateByLink || !filtered.length) {
+      return { deduplicated: filtered, duplicateInfo: new Map<string, string[]>() };
+    }
+    // link → 同一リンクを持つ記事グループ
+    const linkGroups = new Map<string, Article[]>();
+    for (const a of filtered) {
+      if (!a.link) continue;
+      const group = linkGroups.get(a.link);
+      if (group) group.push(a);
+      else linkGroups.set(a.link, [a]);
+    }
+    // 重複がなければ早期リターン
+    let hasDupes = false;
+    for (const group of linkGroups.values()) {
+      if (group.length > 1) {
+        hasDupes = true;
+        break;
+      }
+    }
+    if (!hasDupes) {
+      return { deduplicated: filtered, duplicateInfo: new Map<string, string[]>() };
+    }
+    // 代表記事のID → 他フィード名一覧
+    const info = new Map<string, string[]>();
+    const keepIds = new Set<string>();
+    for (const group of linkGroups.values()) {
+      if (group.length <= 1) {
+        keepIds.add(group[0].id);
+        continue;
+      }
+      // publishedAt が最新の記事を代表にする
+      let best = group[0];
+      for (let i = 1; i < group.length; i++) {
+        const curr = group[i];
+        const bestTime = best.publishedAt ?? best.createdAt;
+        const currTime = curr.publishedAt ?? curr.createdAt;
+        if (currTime > bestTime) best = curr;
+      }
+      keepIds.add(best.id);
+      // 代表以外のフィード名を収集
+      const otherFeedNames: string[] = [];
+      for (const a of group) {
+        if (a.id !== best.id) {
+          const name = feedTitleByHash.get(a.feedHash);
+          if (name) otherFeedNames.push(name);
+        }
+      }
+      if (otherFeedNames.length > 0) {
+        info.set(best.id, otherFeedNames);
+      }
+    }
+    // link が空の記事はそのまま残す
+    const result = filtered.filter((a) => !a.link || keepIds.has(a.id));
+    return { deduplicated: result, duplicateInfo: info };
+  }, [filtered, deduplicateByLink, feedTitleByHash]);
+
   const { visible, hasMore, sentinelRef, notifyArticlesAdded } = useArticlePagination(
-    filtered,
+    deduplicated,
     page,
     setPage,
   );
 
   return {
-    filtered,
+    filtered: deduplicated,
     visible,
     hasMore,
     unreadOnly,
@@ -302,6 +362,7 @@ export function useFilteredArticles({
     setAuthorFilter: filters.setAuthorFilter,
     categoryFilter,
     setCategoryFilter: filters.setCategoryFilter,
+    duplicateInfo,
   };
 }
 
