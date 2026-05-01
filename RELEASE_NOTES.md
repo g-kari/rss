@@ -2,6 +2,10 @@
 
 ## 2026-05-01
 
+### 激アツ新機能っ
+
+- **ギャラリービュー リロードボタン** — Issue #271。pictures/videos カテゴリのギャラリーで、コンテンツ取得に失敗（403とか）しちゃった記事に「再取得」ボタンが出るようになったよ〜✨ ボタン押すだけで個別にリトライしてくれるから、一時的なエラーでも諦めなくて大丈夫っ🔄💡
+
 ### リファクタリングっ
 
 - **ArticleView.tsx コンポーネント分割** — Issue #255。1315行あった巨大な `ArticleView.tsx` を `ArticleHeader`・`ArticleContentBody`・`ArticleAiPanel`・`ArticleNotePanel`・`ImageDownloadModal` の5つのサブコンポーネントに分割したよ〜！親コンポーネントは536行まで59%もスリムになっちゃった✨ コンテンツ系フック（シンタックスハイライト・数式レンダリング・リンクプレビューとか）は `ArticleContentBody` に移動して関心の分離もバッチリ🎀 Context の直接参照で prop drilling も減らしたよっ🔧
