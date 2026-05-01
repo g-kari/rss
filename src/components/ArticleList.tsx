@@ -41,6 +41,7 @@ import ArticleListHeader from "./ArticleListHeader";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
 import LoadMoreButton from "./LoadMoreButton";
 import Spinner from "./Spinner";
+import { getGalleryCardWidth, getGalleryMinImagePx } from "../lib/reader-settings";
 
 interface Props {
   feeds: Feed[];
@@ -97,6 +98,7 @@ interface GalleryItemContextValue {
     isNew?: boolean,
   ) => ArticleItemProps;
   galleryImagesForItem: (articleId: string) => string[] | undefined;
+  galleryMinImagePx: number;
   deletingIds: Set<string>;
   newIds: Set<string>;
   galleryFailedIds: Set<string>;
@@ -136,6 +138,7 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
       <GalleryArticleItem
         {...ctx.resolveItemProps(data, index, isDeleting, isNew)}
         prefetchedImages={ctx.galleryImagesForItem(data.id)}
+        galleryMinImagePx={ctx.galleryMinImagePx}
         isFetchFailed={ctx.galleryFailedIds.has(data.id)}
         onRetry={() => ctx.galleryRetryArticle(data.id)}
       />
@@ -173,7 +176,8 @@ export default function ArticleList({
   onGalleryAutoRead,
 }: Props) {
   const { filtered, visible, hasMore, query, sentinelRef } = useArticleFilter();
-  const { galleryColumns, autoReadEnabled } = useReaderSettings();
+  const { galleryColumns, galleryCardSize, galleryMinImageFilter, autoReadEnabled } =
+    useReaderSettings();
 
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
   const showFeedName = selectedFeedId === null || selectedFeedId === SPECIAL_FEED_IDS.BOOKMARKS;
@@ -369,10 +373,12 @@ export default function ArticleList({
     ],
   );
 
+  const galleryMinImagePx = getGalleryMinImagePx(galleryMinImageFilter);
   const galleryCtxValue = useMemo<GalleryItemContextValue>(
     () => ({
       resolveItemProps,
       galleryImagesForItem,
+      galleryMinImagePx,
       deletingIds: galleryDeletingIds,
       newIds: galleryNewIds,
       galleryFailedIds,
@@ -382,6 +388,7 @@ export default function ArticleList({
     [
       resolveItemProps,
       galleryImagesForItem,
+      galleryMinImagePx,
       galleryDeletingIds,
       galleryNewIds,
       galleryFailedIds,
@@ -593,7 +600,7 @@ export default function ArticleList({
                 <GalleryMasonry
                   items={galleryDisplayItems}
                   scrollElement={scrollEl}
-                  columnWidth={220}
+                  columnWidth={getGalleryCardWidth(galleryCardSize)}
                   columnGutter={12}
                   overscanBy={6}
                   columns={

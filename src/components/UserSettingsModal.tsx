@@ -24,6 +24,10 @@ import {
   CONTENT_WIDTH_LABELS,
   GALLERY_COLUMNS_CYCLE,
   GALLERY_COLUMNS_LABELS,
+  GALLERY_CARD_SIZE_CYCLE,
+  GALLERY_CARD_SIZE_LABELS,
+  GALLERY_MIN_IMAGE_FILTER_CYCLE,
+  GALLERY_MIN_IMAGE_FILTER_LABELS,
   getLineHeightStyle,
 } from "../lib/reader-settings";
 import { AUTO_READ_THRESHOLD_CYCLE } from "../hooks/useUIState";
@@ -83,6 +87,10 @@ export default function UserSettingsModal({ onClose }: Props) {
     toggleAutoTranslate,
     galleryColumns,
     onChangeGalleryColumns,
+    galleryCardSize,
+    onChangeGalleryCardSize,
+    galleryMinImageFilter,
+    onChangeGalleryMinImageFilter,
     ttlDays,
     onChangeTtlDays,
   } = useReaderSettings();
@@ -155,6 +163,28 @@ export default function UserSettingsModal({ onClose }: Props) {
             }))}
             value={galleryColumns}
             onChange={onChangeGalleryColumns}
+          />
+        </SettingRow>
+
+        <SettingRow label="カードサイズ">
+          <SegmentGroup
+            options={GALLERY_CARD_SIZE_CYCLE.map((v) => ({
+              value: v,
+              label: GALLERY_CARD_SIZE_LABELS[v],
+            }))}
+            value={galleryCardSize}
+            onChange={onChangeGalleryCardSize}
+          />
+        </SettingRow>
+
+        <SettingRow label="最小画像サイズ">
+          <SegmentGroup
+            options={GALLERY_MIN_IMAGE_FILTER_CYCLE.map((v) => ({
+              value: v,
+              label: GALLERY_MIN_IMAGE_FILTER_LABELS[v],
+            }))}
+            value={galleryMinImageFilter}
+            onChange={onChangeGalleryMinImageFilter}
           />
         </SettingRow>
 

@@ -3,7 +3,13 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { FontFamily, FontSize } from "../types";
 import type { Theme, AutoReadThreshold } from "../hooks/useUIState";
-import type { LineHeight, ContentWidth, GalleryColumns } from "../lib/reader-settings";
+import type {
+  LineHeight,
+  ContentWidth,
+  GalleryColumns,
+  GalleryCardSize,
+  GalleryMinImageFilter,
+} from "../lib/reader-settings";
 
 export interface ReaderSettings {
   fontSize: FontSize;
@@ -28,6 +34,10 @@ export interface ReaderSettings {
   onChangeTextJustify: (v: boolean) => void;
   galleryColumns: GalleryColumns;
   onChangeGalleryColumns: (v: GalleryColumns) => void;
+  galleryCardSize: GalleryCardSize;
+  onChangeGalleryCardSize: (v: GalleryCardSize) => void;
+  galleryMinImageFilter: GalleryMinImageFilter;
+  onChangeGalleryMinImageFilter: (v: GalleryMinImageFilter) => void;
   ttlDays: number | null;
   onChangeTtlDays: (days: number | null) => void;
 }

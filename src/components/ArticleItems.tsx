@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useContext, type ReactNode } from "react";
+import { memo, useCallback, useContext, useState, type ReactNode } from "react";
 import type { Article } from "../types";
 import { readingTime, timeAgo } from "../lib/article-utils";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
@@ -532,9 +532,43 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
 
 // ── gallery (Pinterest 風 masonry) ───────────────────────────────────────
 
+const FilterableGalleryImage = memo(function FilterableGalleryImage({
+  src,
+  minPx,
+}: {
+  src: string;
+  minPx: number;
+}) {
+  const [hidden, setHidden] = useState(false);
+  const handleLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      if (minPx > 0 && img.naturalWidth < minPx && img.naturalHeight < minPx) {
+        setHidden(true);
+      }
+    },
+    [minPx],
+  );
+  if (hidden) return null;
+  return (
+    <img
+      src={buildImageProxyUrl(src)}
+      alt=""
+      className="w-full h-auto object-cover bg-surface-subtle"
+      loading="lazy"
+      onLoad={handleLoad}
+      onError={(e) => {
+        (e.target as HTMLImageElement).style.display = "none";
+      }}
+    />
+  );
+});
+
 interface GalleryItemExtraProps {
   /** 本文から先行取得した全画像 URL（設定時は thumb の代わりに全枚数を縦スタック表示） */
   prefetchedImages?: string[];
+  /** 最小画像サイズ (px)。この値未満の naturalWidth/Height を持つ画像を非表示にする */
+  galleryMinImagePx?: number;
   /** コンテンツ取得に失敗したかどうか */
   isFetchFailed?: boolean;
   /** 失敗した記事のリトライハンドラー */
@@ -555,6 +589,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   onToggleRead,
   onToggleBookmark,
   prefetchedImages,
+  galleryMinImagePx = 0,
   isFetchFailed,
   onRetry,
 }: Omit<ArticleItemProps, "index" | "isDeleting"> & GalleryItemExtraProps) {
@@ -575,13 +610,17 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
     >
       {hasMultipleImages ? (
         <div className="flex flex-col">
-          {prefetchedImages.map((src, i) => (
-            <ArticleThumbnail
-              key={`${src}-${i}`}
-              thumb={src}
-              className="w-full h-auto object-cover bg-surface-subtle"
-            />
-          ))}
+          {galleryMinImagePx > 0
+            ? prefetchedImages.map((src, i) => (
+                <FilterableGalleryImage key={`${src}-${i}`} src={src} minPx={galleryMinImagePx} />
+              ))
+            : prefetchedImages.map((src, i) => (
+                <ArticleThumbnail
+                  key={`${src}-${i}`}
+                  thumb={src}
+                  className="w-full h-auto object-cover bg-surface-subtle"
+                />
+              ))}
         </div>
       ) : isFetchFailed ? (
         <div className="w-full aspect-square bg-surface-subtle flex flex-col items-center justify-center gap-2">
