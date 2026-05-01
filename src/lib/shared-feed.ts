@@ -193,15 +193,20 @@ export async function cascadeOverflow(
   let currentPage = pageNum;
   let lastWrittenPage = pageNum - 1;
 
+  // 先読み: 最初のページを取得
+  let prefetched: Article[] | null =
+    currentOverflow.length > 0 && currentPage <= maxPages
+      ? await r2Get<Article[]>(bucket, pageKey(feedHash, currentPage), [])
+      : null;
+
   while (currentOverflow.length > 0 && currentPage <= maxPages) {
-    const key = pageKey(feedHash, currentPage);
-    const existing = await r2Get<Article[]>(bucket, key, []);
+    const existing = prefetched ?? [];
 
     // overflow (新しい) + existing (古い) を結合して重複排除・ソート
     const merged = sortByDate(deduplicateById([...currentOverflow, ...existing]));
 
     if (merged.length <= pageSize) {
-      await r2Put(bucket, key, merged);
+      await r2Put(bucket, pageKey(feedHash, currentPage), merged);
       lastWrittenPage = currentPage;
       currentOverflow = [];
       break;
@@ -209,9 +214,22 @@ export async function cascadeOverflow(
 
     const page = merged.slice(0, pageSize);
     currentOverflow = merged.slice(pageSize);
-    await r2Put(bucket, key, page);
+    const nextPage = currentPage + 1;
+
+    // PUT(N) と GET(N+1) を並列実行して R2 レイテンシを削減
+    if (currentOverflow.length > 0 && nextPage <= maxPages) {
+      const [, nextExisting] = await Promise.all([
+        r2Put(bucket, pageKey(feedHash, currentPage), page),
+        r2Get<Article[]>(bucket, pageKey(feedHash, nextPage), []),
+      ]);
+      prefetched = nextExisting;
+    } else {
+      await r2Put(bucket, pageKey(feedHash, currentPage), page);
+      prefetched = null;
+    }
+
     lastWrittenPage = currentPage;
-    currentPage += 1;
+    currentPage = nextPage;
   }
 
   // maxPages を超過した overflow は末尾ページに追記してデータ喪失を防ぐ

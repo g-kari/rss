@@ -215,6 +215,118 @@ test("Issue #158: overflow と既存ページで重複する記事が排除さ�
   expect(ids.filter((id) => id === "dup1")).toHaveLength(1);
 });
 
+test("#254: PUT(N) と GET(N+1) が並列実行される", async () => {
+  const store = new Map<string, string>();
+  let concurrentOps = 0;
+  let maxConcurrentOps = 0;
+
+  const bucket = {
+    get: async (key: string) => {
+      concurrentOps++;
+      maxConcurrentOps = Math.max(maxConcurrentOps, concurrentOps);
+      await new Promise((r) => setTimeout(r, 10));
+      concurrentOps--;
+      const body = store.get(key);
+      if (body === undefined) return null;
+      return { json: async <T>() => JSON.parse(body) as T };
+    },
+    put: async (key: string, value: string) => {
+      concurrentOps++;
+      maxConcurrentOps = Math.max(maxConcurrentOps, concurrentOps);
+      await new Promise((r) => setTimeout(r, 10));
+      concurrentOps--;
+      store.set(key, value);
+      return undefined;
+    },
+  } as unknown as R2Bucket;
+
+  store.set(
+    "feeds/feed1/articles/p2.json",
+    JSON.stringify([
+      makeArticle("old1", "2025-12-31T00:00:00Z"),
+      makeArticle("old2", "2025-12-30T00:00:00Z"),
+    ]),
+  );
+
+  const overflow = [
+    makeArticle("new1", "2026-01-03T00:00:00Z"),
+    makeArticle("new2", "2026-01-02T00:00:00Z"),
+    makeArticle("new3", "2026-01-01T00:00:00Z"),
+  ];
+
+  const result = await cascadeOverflow(bucket, "feed1", overflow, 2, {
+    maxPages: 5,
+    pageSize: 3,
+  });
+
+  expect(result.oversized).toBe(false);
+  // PUT(2) と GET(3) が Promise.all で並列実行される
+  expect(maxConcurrentOps).toBe(2);
+
+  // データの整合性も確認
+  const p2 = JSON.parse(store.get("feeds/feed1/articles/p2.json")!) as Article[];
+  const p3 = JSON.parse(store.get("feeds/feed1/articles/p3.json")!) as Article[];
+  expect(p2).toHaveLength(3);
+  expect(p3).toHaveLength(2);
+});
+
+test("#254: maxPages 境界では並列化をスキップして逐次実行する", async () => {
+  const store = new Map<string, string>();
+  let concurrentOps = 0;
+  let maxConcurrentOps = 0;
+
+  const bucket = {
+    get: async (key: string) => {
+      concurrentOps++;
+      maxConcurrentOps = Math.max(maxConcurrentOps, concurrentOps);
+      await new Promise((r) => setTimeout(r, 10));
+      concurrentOps--;
+      const body = store.get(key);
+      if (body === undefined) return null;
+      return { json: async <T>() => JSON.parse(body) as T };
+    },
+    put: async (key: string, value: string) => {
+      concurrentOps++;
+      maxConcurrentOps = Math.max(maxConcurrentOps, concurrentOps);
+      await new Promise((r) => setTimeout(r, 10));
+      concurrentOps--;
+      store.set(key, value);
+      return undefined;
+    },
+  } as unknown as R2Bucket;
+
+  // maxPages=2 で p2 が最終ページ → nextPage(3) > maxPages なので並列化しない
+  store.set(
+    "feeds/feed1/articles/p2.json",
+    JSON.stringify([
+      makeArticle("old1", "2025-12-31T00:00:00Z"),
+      makeArticle("old2", "2025-12-30T00:00:00Z"),
+    ]),
+  );
+
+  const overflow = [
+    makeArticle("new1", "2026-01-03T00:00:00Z"),
+    makeArticle("new2", "2026-01-02T00:00:00Z"),
+    makeArticle("new3", "2026-01-01T00:00:00Z"),
+  ];
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+
+  try {
+    const result = await cascadeOverflow(bucket, "feed1", overflow, 2, {
+      maxPages: 2,
+      pageSize: 2,
+    });
+
+    expect(result.oversized).toBe(true);
+    // maxPages 境界では PUT と GET が逐次実行されるため同時実行数は 1
+    expect(maxConcurrentOps).toBe(1);
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
 test("Issue #158: maxPages 超過時の末尾追記でも重複が排除される", async () => {
   const { bucket, store } = makeR2Mock();
   const maxPages = 2;
