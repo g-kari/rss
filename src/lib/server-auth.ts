@@ -1,12 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { verifyJwt, refreshTokens, type RefreshResult } from "./auth";
+import { verifyJwt, refreshTokens, getJwtExp, type RefreshResult } from "./auth";
 import { apiError } from "./api-error";
 import { isCsrfViolation } from "./csrf";
 
 // CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
 export { isCsrfViolation } from "./csrf";
+export { getJwtExp } from "./auth";
 
 /**
  * CSRF 違反の場合に 403 NextResponse を、合格時は null を返すラッパー。
@@ -163,20 +164,6 @@ export function deduplicatedRefresh(refreshToken: string): Promise<RefreshResult
     });
   inflightRefresh.set(refreshToken, p);
   return p;
-}
-
-/** JWT ペイロードの exp クレームを base64 デコードで取得する（署名検証なし） */
-export function getJwtExp(token: string): number | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
-      exp?: number;
-    };
-    return typeof payload.exp === "number" ? payload.exp : null;
-  } catch {
-    return null;
-  }
 }
 
 /** BETA_ALLOWED_SUBS が設定されている場合、sub がリストに含まれるか確認 */

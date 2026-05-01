@@ -419,3 +419,17 @@ export async function revokeToken(refreshToken: string): Promise<void> {
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
 }
+
+/** JWT ペイロードの exp クレームを base64 デコードで取得する（署名検証なし） */
+export function getJwtExp(token: string): number | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
+      exp?: number;
+    };
+    return typeof payload.exp === "number" ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
