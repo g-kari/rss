@@ -1,5 +1,11 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-05-01
+
+### 激アツ新機能っ
+
+- **SlideShare スライド埋め込み対応** — Issue #263。記事本文中の SlideShare リンクが自動で iframe 埋め込みに変換されるようになったよ〜！`slideshare.net/slideshow/{slug}/{id}` 形式の URL を検出して、レスポンシブな 16:9 の埋め込みプレイヤーで表示しちゃう📊✨ フォールバックリンクも付くから安心だよっ🎀 ※ SpeakerDeck の `<script>` 埋め込みは既存の `transformSpeakerDeckScriptEmbeds` で対応済み！リンク URL からは player ID が取れないのでリンク→iframe 変換は対象外だよ〜🎤
+
 ## 2026-04-29
 
 ### パフォーマンス改善っ

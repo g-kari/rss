@@ -15,6 +15,7 @@ import {
   transformZennLinkEmbeds,
   transformZennMermaidEmbeds,
   transformSpeakerDeckScriptEmbeds,
+  transformSlideShareEmbedLinks,
   postProcess,
   buildImageSlider,
 } from "./html-post-processor";
@@ -325,6 +326,11 @@ export function extractMainContent(
   // SpeakerDeck の <script class="speakerdeck-embed"> を <iframe> に変換する。
   // preClean で <script> が除去される前に行う必要がある。
   preprocessed = transformSpeakerDeckScriptEmbeds(preprocessed);
+
+  // SlideShare のリンクを iframe 埋め込みに変換する。
+  // Readability が <a> タグを本文外と判定して除去することがあるため、
+  // Readability 実行前に変換しておく。
+  preprocessed = transformSlideShareEmbedLinks(preprocessed);
 
   // Zenn embed (card / tweet / mermaid) は iframe を <p><a> や <pre><code> に変換しておく。
   // Readability は iframe を本文外と判定して span ごと削除することがあるため、

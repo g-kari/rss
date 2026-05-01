@@ -182,6 +182,7 @@ export const TRUSTED_IFRAME_RULES: ReadonlyArray<{
   { hosts: ["embed.zenn.studio"] },
   { hosts: ["platform.twitter.com"], pathPrefix: "/embed/" },
   { hosts: ["speakerdeck.com"], pathPrefix: "/player/" },
+  { hosts: ["www.slideshare.net", "slideshare.net"], pathPrefix: "/slideshow/embed_code/" },
 ];
 
 function isTrustedIframeSrc(src: string): boolean {

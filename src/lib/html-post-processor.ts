@@ -640,6 +640,38 @@ export function transformSpeakerDeckScriptEmbeds(html: string): string {
 }
 
 /**
+ * 記事本文中の SlideShare へのリンクを iframe 埋め込みに変換する。
+ *
+ * ブログ記事はスライドサービスへの URL をそのまま `<a>` で貼っていることが多い。
+ * Readability 通過後もリンクのまま残るため、この関数で iframe に差し替える。
+ *
+ * 対象パターン:
+ * - `<a href="https://www.slideshare.net/slideshow/{slug}/{id}">...</a>`
+ *
+ * SpeakerDeck は `<script class="speakerdeck-embed">` → iframe 変換が
+ * `transformSpeakerDeckScriptEmbeds` で対応済み。リンク URL からは
+ * player ID を取得できないため、リンク→iframe 変換は行わない。
+ */
+export function transformSlideShareEmbedLinks(html: string): string {
+  return html.replace(
+    /<a\b[^>]*\bhref\s*=\s*["'](https?:\/\/(?:www\.)?slideshare\.net\/slideshow\/[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
+    (match, url: string) => {
+      const ss = url.match(/slideshare\.net\/slideshow\/[^/"']+\/(\d+)/);
+      if (!ss) return match;
+      const slideId = ss[1];
+      return (
+        `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
+        `<iframe src="https://www.slideshare.net/slideshow/embed_code/${slideId}"` +
+        ` style="position:absolute;top:0;left:0;width:100%;height:100%;border:0"` +
+        ` loading="lazy" allowfullscreen></iframe>` +
+        `</div>` +
+        `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">SlideShare で見る ↗</a>`
+      );
+    },
+  );
+}
+
+/**
  * 共通後処理パイプライン（画像処理・リンク修正・テーブルラップ・XSS サニタイズ）。
  * postProcess / postProcessMarkdownContent の両方で使用する。
  *
