@@ -322,7 +322,7 @@ const CLIENT_ID = process.env.CLIENT_ID!;
 ### 共有フィードデータ（ユーザー間共有）
 
 ```
-feeds/{feedHash}/meta.json               # SharedFeedMeta（フィードURL・タイトル・エラー状態・CSSセレクタ・条件付きリクエスト用 lastModified/etag/cacheControl/nextFetchEarliestAt 等）
+feeds/{feedHash}/meta.json               # SharedFeedMeta（feedHash・url・title・siteUrl・lastFetchedAt・fetchError・consecutiveErrors・lastErrorAt・rateLimitedUntil・lastModified・etag・cacheControl・nextFetchEarliestAt・articleCount・pageCount・knownIds・cssSelectors・failedSelectors・oversizeAlert）
 feeds/{feedHash}/articles/latest.json   # Article[]（最新 PAGE_SIZE=500 件、publishedAt 降順）
 feeds/{feedHash}/articles/p{N}.json     # Article[]（過去ページ、N=2〜）
 ```
@@ -343,14 +343,14 @@ sessions/{sessionId}.json              # ServerSessionData（userId・refreshTok
 ### ユーザー別データ
 
 ```
-users/{userId}/subscriptions.json       # UserSubscription[]（購読フィード一覧・フィルター・view・requestCookie・lastAccessedAt 等）
+users/{userId}/subscriptions.json       # UserSubscription[]（feedHash・url・customTitle・subscribedAt・filter・nsfw・requestCookie・priority・category・groupId・mutedUntil・lastAccessedAt・view）
 users/{userId}/feed-groups.json         # FeedGroup[]（グループ定義: id / name / order / collapsed / muted / createdAt）
 users/{userId}/collections.json         # Collection[]（コレクション定義: id / name / articleIds / createdAt / order）
-users/{userId}/profile.json             # UserProfile（ログイン時に保存）
+users/{userId}/profile.json             # UserProfile（id・sub・email・name・picture）
 users/{userId}/read-state.json          # ReadState（readIds・bookmarkIds・readingListIds・likeIds・snoozedUntil・notes・tagIds・globalFilter・readBeforeTimestamp・ttlDays）
-users/{userId}/engagement.json          # EngagementLog（記事への行動履歴）
-users/{userId}/recommendations.json     # RecommendationCache（フィード推薦キャッシュ）
-users/{userId}/push.json                # PushConfig（Web Push サブスクリプション）
+users/{userId}/engagement.json          # EngagementLog（entries: EngagementEntry[]、最大 5,000 件）
+users/{userId}/recommendations.json     # RecommendationCache（recommendations・generatedAt・dismissedIds・topics）
+users/{userId}/push.json                # PushConfig（subscriptions: PushSubscriptionRecord[]）
 users/{userId}/saved.json               # 手動保存記事（/api/articles/save）
 ```
 
