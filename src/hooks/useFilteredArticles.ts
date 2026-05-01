@@ -1,156 +1,45 @@
-import {
-  useState,
-  useMemo,
-  useEffect,
-  useRef,
-  useCallback,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
-import type {
-  Article,
-  DateRange,
-  Feed,
-  FeedView,
-  KeywordFilter,
-  ReadingTimeRange,
-  SortOrder,
-} from "../types";
-import { useSyncedRef } from "./useSyncedRef";
-import {
-  STORAGE_KEYS,
-  SPECIAL_FEED_IDS,
-  storageGet,
-  storageSet,
-  loadStoredEnum,
-} from "../lib/storage";
-import { useDebounce } from "./useDebounce";
+import { useState, useMemo, useRef, useCallback } from "react";
+import type { Article, Feed, FeedView, KeywordFilter } from "../types";
+import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { useGracePeriod } from "./useGracePeriod";
-import {
-  cycleValue,
-  DATE_RANGE_CYCLE,
-  READING_TIME_RANGE_CYCLE,
-  SORT_ORDER_CYCLE,
-} from "../lib/article-utils";
 import { filterByStructure, applyStateFilterAndSort } from "../lib/article-filter";
 import { buildFilterMap, normalizeFilter, type CompiledKeywordFilter } from "../lib/keyword-filter";
+import { useArticleFilters } from "./useArticleFilters";
+import { useArticleSorting } from "./useArticleSorting";
+import { useArticlePagination } from "./useArticlePagination";
 
-const PAGE_SIZE = 50;
 const EMPTY_SET = new Set<string>();
 const EMPTY_STR_ARRAY: string[] = [];
 const EMPTY_FEED_ARRAY: Feed[] = [];
 
-/** bool フィルターを反転して localStorage に永続化し、ページを 1 にリセットする */
-function toggleBoolFilter(
-  setter: Dispatch<SetStateAction<boolean>>,
-  key: string,
-  setPage: Dispatch<SetStateAction<number>>,
-): void {
-  setter((v) => {
-    const next = !v;
-    storageSet(key, next ? "1" : "0");
-    return next;
-  });
-  setPage(1);
-}
-
-/** 列挙値を循環させ localStorage に保存してページをリセットするコールバックを生成する */
-function makeCycler<T extends string>(
-  cycle: readonly T[],
-  ref: { readonly current: T },
-  storageKey: string,
-  setState: Dispatch<SetStateAction<T>>,
-  setPage: Dispatch<SetStateAction<number>>,
-): () => T {
-  return () => {
-    const next = cycleValue(cycle, ref.current);
-    storageSet(storageKey, next);
-    setState(next);
-    setPage(1);
-    return next;
-  };
-}
-
 interface Options {
-  /** フィルタリング対象の全記事リスト */
   articles: Article[];
-  /** フィード一覧（各フィードのキーワードフィルター適用に使用） */
   feeds?: Feed[];
-  /** 表示対象のフィード ID。null の場合は全フィード */
   feedId: string | null;
-  /** 既読記事 ID のセット */
   readIds: Set<string>;
-  /** ブックマーク済み記事 ID のセット */
   bookmarkIds: Set<string>;
-  /** 後で読む記事 ID のセット */
   readingListIds: Set<string>;
-  /** いいね済み記事 ID のセット */
   likeIds?: Set<string>;
-  /** 閲覧履歴にある記事 ID のセット */
   historyIds?: Set<string>;
-  /** 閲覧履歴の表示順（記事 ID の配列） */
   historyOrder?: string[];
-  /** 現在選択中の記事 ID（フィルターから除外してリストに残すため） */
   selectedArticleId?: string | null;
-  /** NSFW コンテンツを表示するかどうか */
   nsfwMode?: boolean;
-  /** NSFW 指定されたフィードの ID セット */
   nsfwFeedIds?: Set<string>;
-  /** グローバルキーワードフィルター（全フィード共通） */
   globalFilter: KeywordFilter | null;
-  /** グローバルキーワードフィルターの更新コールバック */
   setGlobalFilter: (filter: KeywordFilter | null) => void;
-  /**
-   * この timestamp より前に既読になった記事を未読扱いにするカットオフ点。
-   * 「ここまで読んだ」機能で使用し、古い記事を再び未読フィルターに含める。
-   */
   readBeforeTimestamp?: string | null;
-  /** スヌーズ中の記事 ID → スヌーズ解除 ISO 日時文字列のマップ */
   snoozedUntil?: Record<string, string>;
-  /** ミュート中のフィード ID セット — 全フィード表示時に記事を除外 */
   mutedFeedIds?: Set<string>;
-  /** メモ記録（記事 ID → メモ内容） */
   notes?: Record<string, string>;
-  /** グループ選択時の対象フィード ID セット — 設定時は feedHash がこれに含まれる記事のみ表示 */
   groupFeedIds?: Set<string>;
-  /** グループ選択時の ID — リセット useEffect の deps で使用（groupFeedIds Set 参照の再生成に左右されないようにするため） */
   selectedGroupId?: string | null;
-  /**
-   * 選択中の FeedView タブ（"articles" | "pictures" | "videos" | "social"）。
-   * feedId / selectedGroupId がいずれも未選択のときに、そのカテゴリのフィード記事のみを横断表示する。
-   * "articles" は未分類フィード (Feed.view 未設定) も含む。
-   */
   activeFeedView?: FeedView;
-  /** ユーザータグマップ（articleId → タグ名配列） */
   articleTags?: Record<string, string[]>;
-  /** 選択中のユーザータグ — 設定時はそのタグが付いた記事のみ表示 */
   selectedTag?: string | null;
-  /** コレクション選択時の対象記事 ID セット — 設定時はその記事のみ表示 */
   collectionArticleIds?: Set<string>;
-  /** ギャラリー自動既読で既読にした記事 ID セット — unreadOnly フィルターから除外してカード消失を防止 */
   galleryAutoReadIds?: Set<string>;
 }
 
-/**
- * 記事リストのフィルタリング・ソート・ページネーションを管理するフック。
- *
- * ## 主な責務
- * - 未読のみ・ブックマーク・後で読む・検索クエリ・日付範囲・ソート順によるフィルタリング
- * - フィード別キーワードフィルター (`feedFilterMap`) とグローバルキーワードフィルターの適用
- * - IntersectionObserver による無限スクロール（`sentinelRef` を画面外端に置くことで発火）
- * - サーバーから過去記事が追加された際の `page` 自動拡張（`notifyArticlesAdded` 経由）
- * - 現在選択中の記事・直前に選択していた記事（猶予期間中）をフィルター対象外に保持
- * - フィルター状態の localStorage 永続化
- *
- * ## ページネーション設計
- * `filtered` が全マッチ記事、`visible` が `page * PAGE_SIZE` 件に切り取った表示用リスト。
- * `sentinelRef` は記事リストの末尾に配置し、画面に入ったとき `loadMore()` を呼び出す。
- *
- * ## サーバーロード後の page 拡張
- * `notifyArticlesAdded()` を呼ぶと `serverLoadCount` がインクリメントされ、
- * 次の render で `filtered.length` を参照して `page` を必要な値まで拡張する。
- * `filtered` を直接 deps に含めると通常のフィルター切り替えでも発火するため意図的に除外している。
- */
 export function useFilteredArticles({
   articles,
   feeds = EMPTY_FEED_ARRAY,
@@ -178,117 +67,28 @@ export function useFilteredArticles({
   collectionArticleIds,
   galleryAutoReadIds,
 }: Options) {
-  const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
-  const [bookmarkOnly, setBookmarkOnly] = useState(
-    () => storageGet(STORAGE_KEYS.BOOKMARK_ONLY) === "1",
-  );
-  const [readingListOnly, setReadingListOnly] = useState(
-    () => storageGet(STORAGE_KEYS.READING_LIST_ONLY) === "1",
-  );
-  const [likeOnly, setLikeOnly] = useState(() => storageGet(STORAGE_KEYS.LIKE_ONLY) === "1");
-  const [noteOnly, setNoteOnly] = useState(() => storageGet(STORAGE_KEYS.NOTE_ONLY) === "1");
-  const [digestMode, setDigestMode] = useState(() => storageGet(STORAGE_KEYS.DIGEST_MODE) === "1");
-  const [authorFilter, setAuthorFilter] = useState<string | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [rawQuery, setRawQuery] = useState(""); // 入力値（即時更新）
-  const query = useDebounce(rawQuery, 300); // デバウンス済みクエリ（フィルター・ハイライト用）
   const [page, setPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState<SortOrder>(() =>
-    loadStoredEnum(STORAGE_KEYS.SORT_ORDER, SORT_ORDER_CYCLE, "newest"),
-  );
-  const [dateRange, setDateRange] = useState<DateRange>(() =>
-    loadStoredEnum(STORAGE_KEYS.DATE_RANGE, DATE_RANGE_CYCLE, "all"),
-  );
-  const [readingTimeRange, setReadingTimeRange] = useState<ReadingTimeRange>(() =>
-    loadStoredEnum(STORAGE_KEYS.READING_TIME_RANGE, READING_TIME_RANGE_CYCLE, "all"),
-  );
-  const searchRef = useRef<HTMLInputElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const sortOrderRef = useSyncedRef(sortOrder);
-  const dateRangeRef = useSyncedRef(dateRange);
-  const readingTimeRangeRef = useSyncedRef(readingTimeRange);
+  const resetPage = useCallback(() => setPage(1), []);
 
-  // selectedArticleId が変化した直後、前の記事 ID を 30 秒間保持する（useGracePeriod 参照）。
-  // 未読フィルターがオンの状態で記事を読み終えると selectedArticleId が null になり、
-  // 既読になった記事はフィルターで除外されて前の記事に戻れなくなる問題を回避するために使用。
+  const filters = useArticleFilters({ feedId, selectedGroupId, resetPage });
+  const { sortOrder, toggleSortOrder } = useArticleSorting(resetPage);
+
+  const {
+    unreadOnly,
+    bookmarkOnly,
+    readingListOnly,
+    likeOnly,
+    noteOnly,
+    digestMode,
+    dateRange,
+    readingTimeRange,
+    query,
+    authorFilter,
+    categoryFilter,
+  } = filters;
+
   const gracePeriodId = useGracePeriod(selectedArticleId);
 
-  // フィード切り替え / グループ切り替え時にページ・検索クエリ・著者フィルター・カテゴリフィルターをリセット。
-  // groupFeedIds は親側で useMemo しているが feeds ポーリング時に Set 参照が変わり得るため、
-  // 安定した selectedGroupId（文字列 or null）を deps にする。
-  useEffect(() => {
-    setPage(1);
-    setRawQuery("");
-    setAuthorFilter(null);
-    setCategoryFilter(null);
-  }, [feedId, selectedGroupId]);
-
-  // useState の set 関数・useSyncedRef の ref は常に安定 — deps [] で固定できるコールバックを統合
-  const {
-    toggleUnreadOnly,
-    toggleBookmarkOnly,
-    toggleReadingListOnly,
-    toggleLikeOnly,
-    toggleNoteOnly,
-    toggleDigestMode,
-    updateQuery,
-    toggleSortOrder,
-    cycleDateRange,
-    cycleReadingTimeRange,
-  } = useMemo(
-    () => ({
-      toggleUnreadOnly: () => toggleBoolFilter(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, setPage),
-      toggleBookmarkOnly: () =>
-        toggleBoolFilter(setBookmarkOnly, STORAGE_KEYS.BOOKMARK_ONLY, setPage),
-      toggleReadingListOnly: () =>
-        toggleBoolFilter(setReadingListOnly, STORAGE_KEYS.READING_LIST_ONLY, setPage),
-      toggleLikeOnly: () => toggleBoolFilter(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, setPage),
-      toggleNoteOnly: () => toggleBoolFilter(setNoteOnly, STORAGE_KEYS.NOTE_ONLY, setPage),
-      toggleDigestMode: () => toggleBoolFilter(setDigestMode, STORAGE_KEYS.DIGEST_MODE, setPage),
-      updateQuery: (q: string) => {
-        setRawQuery(q);
-        setPage(1);
-      },
-      toggleSortOrder: makeCycler(
-        SORT_ORDER_CYCLE,
-        sortOrderRef,
-        STORAGE_KEYS.SORT_ORDER,
-        setSortOrder,
-        setPage,
-      ),
-      cycleDateRange: makeCycler(
-        DATE_RANGE_CYCLE,
-        dateRangeRef,
-        STORAGE_KEYS.DATE_RANGE,
-        setDateRange,
-        setPage,
-      ),
-      cycleReadingTimeRange: makeCycler(
-        READING_TIME_RANGE_CYCLE,
-        readingTimeRangeRef,
-        STORAGE_KEYS.READING_TIME_RANGE,
-        setReadingTimeRange,
-        setPage,
-      ),
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
-  const loadMore = useCallback(() => {
-    setPage((p) => p + 1);
-  }, []);
-
-  // サーバーから過去記事が追加された後、filtered の全記事が visible になるよう page を拡張する。
-  // LoadMoreButton 経由のサーバーロード完了後に呼び出すことで、
-  // IntersectionObserver が発火しなかった場合でも新着記事が確実に表示される。
-  const [serverLoadCount, setServerLoadCount] = useState(0);
-  const notifyArticlesAdded = useCallback(() => {
-    setServerLoadCount((c) => c + 1);
-  }, []);
-  // activeIds に含まれる記事はフィルター条件（未読のみ等）に関わらず常にリストに残す。
-  // - selectedArticleId: 現在開いている記事（前後ナビのキーが消えないようにするため）
-  // - gracePeriodId: 直前まで開いていた記事（30 秒間保持。前の記事に j/k で戻れるようにするため）
   const activeIds = useMemo(() => {
     const ids = new Set<string>();
     if (selectedArticleId) ids.add(selectedArticleId);
@@ -299,31 +99,23 @@ export function useFilteredArticles({
     return ids;
   }, [selectedArticleId, gracePeriodId, galleryAutoReadIds]);
 
-  // メモがある記事 ID のセット（noteOnly フィルターで使用）
   const noteIds = useMemo(() => new Set(Object.keys(notes ?? {})), [notes]);
 
-  // フィルターコンパイルキャッシュ: feeds 参照が変わっても中身が同じフィルターは再 RegExp 生成をスキップ
   const filterCompileCacheRef = useRef<Map<string, CompiledKeywordFilter>>(new Map());
 
-  // feeds が変わったときだけ再構築（フィルター変更時や既読切り替えでは再利用される）
   const feedFilterMap = useMemo(
     () => buildFilterMap(feeds, (f) => f.id, filterCompileCacheRef.current),
     [feeds],
   );
-  // feedHash → カテゴリ名のマップ（カテゴリフィルターで使用）
   const feedCategoryMap = useMemo(
     () =>
       new Map(feeds.filter((f) => f.category).map((f) => [f.id, f.category!] as [string, string])),
     [feeds],
   );
-  // feedHash → タイトルのマップ（高度クエリ feed: 検索で使用）
   const feedTitleByHash = useMemo(
     () => new Map(feeds.map((f) => [f.id, f.title] as [string, string])),
     [feeds],
   );
-  // FeedView タブに属するフィード ID セット。feedId / groupFeedIds 未選択時のみ filterAndSortArticles に渡す。
-  // activeFeedView が undefined の場合は undefined を維持し、従来挙動（全フィード表示）を保つ。
-  // "articles" タブは未分類フィード (f.view 未設定) も含める（FeedSidebar の matchView と同じ仕様）。
   const viewFeedIds = useMemo(() => {
     if (!activeFeedView) return undefined;
     const ids = new Set<string>();
@@ -336,14 +128,11 @@ export function useFilteredArticles({
     }
     return ids;
   }, [feeds, activeFeedView]);
-  // globalFilter の正規化（キーワード文字列 → CompiledKeywordFilter への変換）を useMemo でキャッシュ。
   const normalizedGlobalFilter = useMemo(
     () => (globalFilter ? normalizeFilter(globalFilter) : null),
     [globalFilter],
   );
 
-  // --- 条件付き依存: 対応するフィルタートグルが OFF のとき、状態 Set の変更で再計算しない ---
-  // 特殊フィード (BOOKMARKS 等) 表示時は対応する Set が構造的依存になるため含める。
   const isBookmarksFeed = feedId === SPECIAL_FEED_IDS.BOOKMARKS;
   const isReadingListFeed = feedId === SPECIAL_FEED_IDS.READING_LIST;
   const isLikesFeed = feedId === SPECIAL_FEED_IDS.LIKES;
@@ -363,8 +152,6 @@ export function useFilteredArticles({
   const readBeforeForState = unreadOnly ? readBeforeTimestamp : null;
   const historyOrderForState = isHistoryFeed ? historyOrder : EMPTY_STR_ARRAY;
 
-  // --- Stage 1: 構造フィルター（フィード・検索・日付・NSFW・ミュート・キーワード等） ---
-  // 記事ソースやコンテンツに基づくフィルタリング。状態 Set (readIds 等) には依存しない。
   const structuralFiltered = useMemo(
     () =>
       filterByStructure(articles, {
@@ -432,8 +219,6 @@ export function useFilteredArticles({
     ],
   );
 
-  // --- Stage 2: 状態フィルター + ソート + ダイジェスト ---
-  // readIds・bookmarkIds 等の状態 Set と sortOrder に依存。Stage 1 で既に絞り込まれたリストに対して実行。
   const filtered = useMemo(
     () =>
       applyStateFilterAndSort(structuralFiltered, {
@@ -477,76 +262,46 @@ export function useFilteredArticles({
     ],
   );
 
-  // filteredRef: サーバーロード後の page 拡張で filtered.length を読み取るために使用。
-  // filtered を deps に含めると、通常のフィルター切り替え（未読のみ ON/OFF など）でも
-  // このエフェクトが発火してしまう。serverLoadCount の変化時だけ発火させることで、
-  // LoadMoreButton 経由でサーバーからデータが追加された後にのみ page を拡張できる。
-  const filteredRef = useSyncedRef(filtered);
-  useEffect(() => {
-    if (serverLoadCount === 0) return;
-    setPage((prev) => Math.max(prev, Math.ceil(filteredRef.current.length / PAGE_SIZE) || 1));
-    // filteredRef は useSyncedRef が返す安定した ref オブジェクトなので deps 不要。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverLoadCount]);
-
-  const visible = filtered.slice(0, page * PAGE_SIZE);
-  const hasMore = visible.length < filtered.length;
-
-  // loadMore / hasMore は ref 経由で参照することで、
-  // hasMore が変化するたびに observer が disconnect/reconnect される問題を回避する。
-  // sentinel が可視状態のまま再登録されると交差変化イベントが発火しないため、
-  // observer は sentinel のマウント時に一度だけ登録する。
-  const loadMoreRef = useSyncedRef(loadMore);
-  const hasMoreRef = useSyncedRef(hasMore);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMoreRef.current) loadMoreRef.current();
-      },
-      { rootMargin: "600px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-    // sentinelRef は安定参照のため deps から除外。loadMoreRef / hasMoreRef は ref なので不要。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { visible, hasMore, sentinelRef, notifyArticlesAdded } = useArticlePagination(
+    filtered,
+    page,
+    setPage,
+  );
 
   return {
     filtered,
     visible,
     hasMore,
     unreadOnly,
-    toggleUnreadOnly,
+    toggleUnreadOnly: filters.toggleUnreadOnly,
     bookmarkOnly,
-    toggleBookmarkOnly,
+    toggleBookmarkOnly: filters.toggleBookmarkOnly,
     readingListOnly,
-    toggleReadingListOnly,
+    toggleReadingListOnly: filters.toggleReadingListOnly,
     likeOnly,
-    toggleLikeOnly,
+    toggleLikeOnly: filters.toggleLikeOnly,
     noteOnly,
-    toggleNoteOnly,
+    toggleNoteOnly: filters.toggleNoteOnly,
     digestMode,
-    toggleDigestMode,
+    toggleDigestMode: filters.toggleDigestMode,
     sortOrder,
     toggleSortOrder,
     dateRange,
-    cycleDateRange,
-    query, // デバウンス済み（フィルター・ハイライト用）
-    rawQuery, // 即時値（検索 input の value 用）
-    updateQuery,
-    searchRef,
+    cycleDateRange: filters.cycleDateRange,
+    query: filters.query,
+    rawQuery: filters.rawQuery,
+    updateQuery: filters.updateQuery,
+    searchRef: filters.searchRef,
     sentinelRef,
     globalFilter,
     setGlobalFilter,
     notifyArticlesAdded,
     readingTimeRange,
-    cycleReadingTimeRange,
+    cycleReadingTimeRange: filters.cycleReadingTimeRange,
     authorFilter,
-    setAuthorFilter,
+    setAuthorFilter: filters.setAuthorFilter,
     categoryFilter,
-    setCategoryFilter,
+    setCategoryFilter: filters.setCategoryFilter,
   };
 }
 
