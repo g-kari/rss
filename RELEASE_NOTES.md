@@ -2,6 +2,10 @@
 
 ## 2026-05-01
 
+### リファクタリングっ
+
+- **ArticleView.tsx コンポーネント分割** — Issue #255。1315行あった巨大な `ArticleView.tsx` を `ArticleHeader`・`ArticleContentBody`・`ArticleAiPanel`・`ArticleNotePanel`・`ImageDownloadModal` の5つのサブコンポーネントに分割したよ〜！親コンポーネントは536行まで59%もスリムになっちゃった✨ コンテンツ系フック（シンタックスハイライト・数式レンダリング・リンクプレビューとか）は `ArticleContentBody` に移動して関心の分離もバッチリ🎀 Context の直接参照で prop drilling も減らしたよっ🔧
+
 ### ドキュメント整備っ
 
 - **architecture.md R2 データ構造セクション同期** — Issue #260。`SharedFeedMeta` に `consecutiveErrors` / `lastErrorAt` / `rateLimitedUntil` / `articleCount` / `pageCount` / `knownIds` / `failedSelectors` / `oversizeAlert` を追記したよ〜！`UserSubscription` も `feedHash` / `customTitle` / `nsfw` / `priority` / `category` / `groupId` / `mutedUntil` とか全プロパティ網羅しちゃった📝✨ `UserProfile` / `RecommendationCache` / `PushConfig` / `EngagementLog` も最新の型定義に合わせて更新！もう「等」で誤魔化さないよっ🎀

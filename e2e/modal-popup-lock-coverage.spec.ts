@@ -20,6 +20,8 @@ const ALLOWED_WITHOUT_LOCK = new Set([
   // NSFW アニメはフルスクリーン遷移エフェクト。表示中はどのみち全画面を覆うため
   // リサイズバーとの競合が発生しない。
   "components/NSFWEyeAnimation.tsx",
+  // ImageDownloadModal は presentational。親 ArticleView.tsx で usePopupLock(confirmingDownload) 済み。
+  "components/article-view/ImageDownloadModal.tsx",
   // 記事一覧のレイアウト基盤で popup ではないが fixed overlay になっている等の
   // 実質 popup でないケースは必要に応じてここに追加する。
 ]);
