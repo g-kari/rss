@@ -19,7 +19,7 @@ import RecommendationSection from "../RecommendationSection";
 import { useFeedOperations } from "../../hooks/useFeedOperations";
 import { SPECIAL_FEED_IDS } from "../../lib/storage";
 import { isArticleRead } from "../../lib/article-filter";
-import { resolveFeedGroupDrop } from "../../lib/feed-group-drop";
+import { resolveFeedGroupDrop, resolveFeedViewDrop } from "../../lib/feed-group-drop";
 import { buildImageProxyUrl } from "../../lib/image-proxy-url";
 import FeedGroupsSection from "./FeedGroupsSection";
 import FeedViewTabs from "./FeedViewTabs";
@@ -206,6 +206,16 @@ export default function FeedSidebar({
   const [draggedFeedId, setDraggedFeedId] = useState<string | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const [dragOverUngrouped, setDragOverUngrouped] = useState(false);
+
+  const handleDropFeedOnView = useCallback(
+    (feedId: string, view: FeedView) => {
+      if (!onSetFeedView) return;
+      const resolved = resolveFeedViewDrop(feedId, view, feeds);
+      if (!resolved) return;
+      void onSetFeedView(resolved.feed, resolved.targetView);
+    },
+    [feeds, onSetFeedView],
+  );
 
   const handleDropFeedOnGroup = useCallback(
     (feedId: string, groupId: string | null) => {
@@ -562,7 +572,11 @@ export default function FeedSidebar({
       )}
 
       {/* フィードビュータブ */}
-      <FeedViewTabs activeView={activeFeedView} onChangeView={onChangeActiveFeedView} />
+      <FeedViewTabs
+        activeView={activeFeedView}
+        onChangeView={onChangeActiveFeedView}
+        onDropFeedOnView={handleDropFeedOnView}
+      />
 
       {/* フィード検索 */}
       {feedSearchOpen && (
