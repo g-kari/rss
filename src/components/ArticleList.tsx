@@ -99,6 +99,8 @@ interface GalleryItemContextValue {
   galleryImagesForItem: (articleId: string) => string[] | undefined;
   deletingIds: Set<string>;
   newIds: Set<string>;
+  galleryFailedIds: Set<string>;
+  galleryRetryArticle: (id: string) => void;
   onGalleryContextMenu: (e: React.MouseEvent, article: Article, index: number) => void;
 }
 
@@ -134,6 +136,8 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
       <GalleryArticleItem
         {...ctx.resolveItemProps(data, index, isDeleting, isNew)}
         prefetchedImages={ctx.galleryImagesForItem(data.id)}
+        isFetchFailed={ctx.galleryFailedIds.has(data.id)}
+        onRetry={() => ctx.galleryRetryArticle(data.id)}
       />
     </div>
   );
@@ -178,7 +182,11 @@ export default function ArticleList({
 
   const galleryPrefetchEnabled =
     layout === "gallery" && (activeFeedView === "pictures" || activeFeedView === "videos");
-  const prefetchedMedia = usePrefetchGalleryContents({
+  const {
+    media: prefetchedMedia,
+    failedIds: galleryFailedIds,
+    retryArticle: galleryRetryArticle,
+  } = usePrefetchGalleryContents({
     articles: visible,
     enabled: galleryPrefetchEnabled,
   });
@@ -367,6 +375,8 @@ export default function ArticleList({
       galleryImagesForItem,
       deletingIds: galleryDeletingIds,
       newIds: galleryNewIds,
+      galleryFailedIds,
+      galleryRetryArticle,
       onGalleryContextMenu: handleGalleryContextMenu,
     }),
     [
@@ -374,6 +384,8 @@ export default function ArticleList({
       galleryImagesForItem,
       galleryDeletingIds,
       galleryNewIds,
+      galleryFailedIds,
+      galleryRetryArticle,
       handleGalleryContextMenu,
     ],
   );

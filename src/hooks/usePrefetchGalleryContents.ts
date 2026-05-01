@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { contentLruCache } from "../lib/lru-cache";
@@ -14,6 +14,14 @@ export interface PrefetchedMedia {
   images: string[];
   /** 本文から抽出した信頼済み iframe の src（YouTube / Vimeo / ニコニコ 等） */
   embeds: string[];
+}
+
+export interface PrefetchGalleryResult {
+  media: Map<string, PrefetchedMedia>;
+  /** fetch 失敗した記事 ID のセット（429 以外の非 200 レスポンス） */
+  failedIds: Set<string>;
+  /** 失敗した記事を個別にリトライする */
+  retryArticle: (articleId: string) => void;
 }
 
 interface Options {
@@ -39,9 +47,10 @@ interface Options {
  * - 各 fetch 完了後に `requestDelayMs` 待機して連続リクエストのバーストを抑制
  * - 1 件でも 429 レスポンスを受信したら以降の全フェッチを abort して連鎖的な 429 を防止
  * - unmount 時と `articles` 変更時に進行中フェッチを AbortController で中断
+ * - fetch 失敗（429 以外の非 200）した記事 ID を `failedIds` で追跡し、`retryArticle` で個別リトライ可能
  *
  * この hook はサムネイル表示の拡張用であり、ArticleView の全文取得（`useArticleContent`）とは
- * 別目的。失敗時はサイレント（state に結果が載らない）。
+ * 別目的。
  */
 export function usePrefetchGalleryContents({
   articles,
@@ -51,20 +60,22 @@ export function usePrefetchGalleryContents({
   // 暴走保護として実装上限 200 件は内部で設ける。
   maxPrefetch = Number.POSITIVE_INFINITY,
   requestDelayMs = 750,
-}: Options): Map<string, PrefetchedMedia> {
+}: Options): PrefetchGalleryResult {
   const [media, setMedia] = useState<Map<string, PrefetchedMedia>>(() => new Map());
+  const [failedIds, setFailedIds] = useState<Set<string>>(() => new Set());
   // enabled=false のとき state を空にすると、切り替え時のチラつきが出るため保持する
   const mediaRef = useRef(media);
   mediaRef.current = media;
   // 429 受信時に Retry-After で指定された時刻まではプリフェッチを完全停止する
   const rateLimitUntilRef = useRef<number>(0);
+  // retryArticle から最新の articles を参照するための ref
+  const articlesRef = useRef(articles);
+  articlesRef.current = articles;
 
   // articles は毎レンダーで新参照（visible.slice(...)）になる。
   // useEffect の依存配列に直接入れると setMedia → 再レンダー → 新参照 → effect 再実行
   // → 進行中 fetch が abort → 同一記事を再取得、という 429 の原因になる。
   // 代わりに記事 ID の文字列キーを依存にすることで、内容が変わらない限り effect を再実行しない。
-  const articlesRef = useRef(articles);
-  articlesRef.current = articles;
   const limit = Math.min(isFinite(maxPrefetch) ? maxPrefetch : 200, 200);
   const articlesKey = articles
     .slice(0, limit)
@@ -146,7 +157,15 @@ export function usePrefetchGalleryContents({
           controller.abort();
           return;
         }
-        if (!res.ok) return;
+        if (!res.ok) {
+          // 429 以外の非 200 レスポンスは失敗として記録
+          setFailedIds((prev) => {
+            const next = new Set(prev);
+            next.add(article.id);
+            return next;
+          });
+          return;
+        }
         const data = (await res.json()) as { content?: string };
         if (!data.content || cancelled) return;
         contentLruCache.set(article.id, data.content);
@@ -195,5 +214,63 @@ export function usePrefetchGalleryContents({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articlesKey, enabled, concurrency, maxPrefetch, requestDelayMs]);
 
-  return media;
+  /** 失敗した記事を個別にリトライする */
+  const retryArticle = useCallback((articleId: string) => {
+    const article = articlesRef.current.find((a) => a.id === articleId);
+    if (!article?.link) return;
+
+    // failedIds から除去
+    setFailedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(articleId);
+      return next;
+    });
+
+    // 個別に再フェッチ
+    (async () => {
+      try {
+        const res = await apiFetch(`/api/content?url=${encodeURIComponent(article.link!)}`);
+        if (res.status === 429) {
+          // リトライでも 429 を受信した場合はクールダウンを設定
+          const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"), {
+            fallbackMs: 60_000,
+            maxMs: 10 * 60_000,
+          });
+          rateLimitUntilRef.current = Date.now() + retryAfterMs;
+          // 429 は failedIds に追加しない（レート制限は一時的なもの）
+          return;
+        }
+        if (!res.ok) {
+          // 再度失敗 → failedIds に戻す
+          setFailedIds((prev) => {
+            const next = new Set(prev);
+            next.add(articleId);
+            return next;
+          });
+          return;
+        }
+        const data = (await res.json()) as { content?: string };
+        if (!data.content) return;
+        contentLruCache.set(articleId, data.content);
+        const entry: PrefetchedMedia = {
+          images: collectImageUrlsFromHtml(data.content),
+          embeds: collectIframeUrlsFromHtml(data.content),
+        };
+        setMedia((prev) => {
+          const next = new Map(prev);
+          next.set(articleId, entry);
+          return next;
+        });
+      } catch {
+        // ネットワークエラー → failedIds に戻す
+        setFailedIds((prev) => {
+          const next = new Set(prev);
+          next.add(articleId);
+          return next;
+        });
+      }
+    })();
+  }, []);
+
+  return { media, failedIds, retryArticle };
 }
