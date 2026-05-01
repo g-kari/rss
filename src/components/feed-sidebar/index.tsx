@@ -42,6 +42,7 @@ interface Props {
   user: UserProfile;
   theme: "light" | "dark";
   refreshing: boolean;
+  loadingFeeds?: boolean;
   isOnline: boolean;
   pinnedFeedIds: Set<string>;
   collapsedCategories?: Set<string>;
@@ -139,6 +140,7 @@ export default function FeedSidebar({
   onRetryFeed,
   onReinferFeed,
   refreshing,
+  loadingFeeds = false,
   isOnline,
   pinnedFeedIds,
   collapsedCategories = new Set(),
@@ -784,6 +786,20 @@ export default function FeedSidebar({
               })
             }
           />
+        )}
+
+        {loadingFeeds && feeds.length === 0 && (
+          <div className="px-2 py-1 space-y-1">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded">
+                <div className="w-4 h-4 rounded bg-surface-subtle animate-pulse" />
+                <div
+                  className="h-3 rounded bg-surface-subtle animate-pulse"
+                  style={{ width: `${60 + ((i * 17) % 30)}%` }}
+                />
+              </div>
+            ))}
+          </div>
         )}
 
         {feeds.length > 0 && (

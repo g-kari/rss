@@ -40,6 +40,7 @@ function mergeUniqueArticles(existing: Article[], incoming: Article[]): Article[
 interface FeedsState {
   feeds: Feed[];
   articles: Article[];
+  loadingFeeds: boolean;
   loadingArticles: boolean;
   refreshing: boolean;
   newArticleCount: number;
@@ -74,6 +75,7 @@ export function useFeeds(
   const isOnline = useOnlineStatus();
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
+  const [loadingFeeds, setLoadingFeeds] = useState(false);
   const [loadingArticles, setLoadingArticles] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [newArticleCount, setNewArticleCount] = useState(0);
@@ -116,10 +118,12 @@ export function useFeeds(
   const userId = user?.id ?? null;
   useEffect(() => {
     if (!userId) return;
+    setLoadingFeeds(true);
     setLoadingArticles(true);
     apiFetchJson<Feed[]>("/api/feeds")
       .then(setFeeds)
-      .catch((err) => onErrRef.current(err, "フィードの読み込みに失敗しました"));
+      .catch((err) => onErrRef.current(err, "フィードの読み込みに失敗しました"))
+      .finally(() => setLoadingFeeds(false));
     fetchAndSetArticles()
       .catch((err) => onErrRef.current(err, "記事の読み込みに失敗しました"))
       .finally(() => setLoadingArticles(false));
@@ -355,6 +359,7 @@ export function useFeeds(
   return {
     feeds,
     articles,
+    loadingFeeds,
     loadingArticles,
     refreshing,
     newArticleCount,
