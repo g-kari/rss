@@ -128,7 +128,7 @@ src/
     UserSettingsModal.tsx    # ユーザー設定モーダル（フォントサイズ・行間・コンテンツ幅・自動既読閾値・テーマ）
     SaveUrlModal.tsx         # 任意 URL を手動保存するモーダル（POST /api/articles/save 連携）
     FeedAddModal.tsx         # フィード追加ダイアログ（RSS 自動検出・LLM CSS セレクタ推論・Cookie 指定対応）
-    article-view/            # ArticleView 補助コンポーネント群（ヘッダー・本文・AI パネル・メモ・モーダル・ナビゲーション・フィルタメニュー・ギャラリー・共有・スヌーズ・タグエディタ等）
+    article-view/            # ArticleView 補助コンポーネント群（ヘッダー・本文・AI パネル・メモ・モーダル・ナビゲーション・インラインナビ・フィルタメニュー・ギャラリー・共有・スヌーズ・タグエディタ等）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
@@ -181,6 +181,7 @@ src/
     useArticleHighlight.ts   # 記事本文テキストのハイライト管理（アノテーション保存・復元）
     useArticleNote.ts        # 記事ごとの個人メモ編集・自動保存（ReadState.notes と同期、最大 2000 文字）
     useArticleAiRatings.ts   # AI 要約・翻訳結果へのユーザー評価フィードバック管理
+    useArticleViewState.ts   # ArticleView のフック・状態管理を集約（コンテンツ・AI・TTS・ノート・ジェスチャー・読書進捗）
     useFullTextSearch.ts     # 記事全文検索（クエリパース・フィールド絞り込み・正規表現対応）
     usePrefetchGalleryContents.ts # ギャラリー表示時の本文・画像事前フェッチ
     useSliderGallery.ts      # スライダー型ギャラリー UI 状態管理（ページング・キーボードナビ）
