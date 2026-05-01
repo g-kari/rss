@@ -66,6 +66,7 @@ interface Props {
   listFocusMode: boolean;
   onToggleListFocusMode: () => void;
   onGalleryAutoRead?: (id: string) => void;
+  duplicateInfo?: Map<string, string[]>;
 }
 
 function getDateGroupLabel(publishedAt: string | null): string {
@@ -174,6 +175,7 @@ export default function ArticleList({
   listFocusMode,
   onToggleListFocusMode,
   onGalleryAutoRead,
+  duplicateInfo,
 }: Props) {
   const { filtered, visible, hasMore, query, sentinelRef } = useArticleFilter();
   const { galleryColumns, galleryCardSize, galleryMinImagePx, autoReadEnabled } =
@@ -354,6 +356,7 @@ export default function ArticleList({
       thumb: resolveThumbnail(article, ogpCache),
       showFeedName,
       query,
+      duplicateFeedNames: duplicateInfo?.get(article.id),
       onSelectArticle,
       onToggleRead,
       onToggleBookmark,
@@ -367,6 +370,7 @@ export default function ArticleList({
       ogpCache,
       showFeedName,
       query,
+      duplicateInfo,
       onSelectArticle,
       onToggleRead,
       onToggleBookmark,

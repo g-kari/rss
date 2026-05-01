@@ -69,6 +69,7 @@ export const STORAGE_KEYS = {
   GALLERY_MIN_IMAGE_FILTER: "rss-gallery-min-image-filter",
   BEACON_OVERFLOW: "rss-beacon-overflow",
   TTL_DAYS: "rss-ttl-days",
+  DEDUP_BY_LINK: "rss-dedup-by-link",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

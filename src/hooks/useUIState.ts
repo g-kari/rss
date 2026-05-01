@@ -78,6 +78,8 @@ export interface UIState {
   onChangeAutoReadThreshold: (v: AutoReadThreshold) => void;
   autoTranslate: boolean;
   toggleAutoTranslate: () => void;
+  deduplicateByLink: boolean;
+  toggleDeduplicateByLink: () => void;
   lineHeight: LineHeight;
   onChangeLineHeight: (lh: LineHeight) => void;
   contentWidth: ContentWidth;
@@ -124,6 +126,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeAutoReadThreshold,
     autoTranslate,
     toggleAutoTranslate,
+    deduplicateByLink,
+    toggleDeduplicateByLink,
   } = useAutoReadSettings();
   const { lineHeight, onChangeLineHeight, textJustify, onChangeTextJustify } =
     useAccessibilitySettings();
@@ -302,6 +306,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeAutoReadThreshold,
     autoTranslate,
     toggleAutoTranslate,
+    deduplicateByLink,
+    toggleDeduplicateByLink,
     lineHeight,
     onChangeLineHeight,
     contentWidth,

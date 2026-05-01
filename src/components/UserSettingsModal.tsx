@@ -92,6 +92,8 @@ export default function UserSettingsModal({ onClose }: Props) {
     onChangeGalleryCardSize,
     galleryMinImagePx,
     onChangeGalleryMinImagePx,
+    deduplicateByLink,
+    toggleDeduplicateByLink,
     ttlDays,
     onChangeTtlDays,
   } = useReaderSettings();
@@ -306,6 +308,34 @@ export default function UserSettingsModal({ onClose }: Props) {
             )}
           </div>
         )}
+
+        <SettingRow label="重複記事の非表示">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={deduplicateByLink}
+            aria-label={
+              deduplicateByLink
+                ? "クロスフィード重複排除を OFF にする"
+                : "クロスフィード重複排除を ON にする"
+            }
+            onClick={toggleDeduplicateByLink}
+            className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+              deduplicateByLink ? "bg-ink" : "bg-border-default"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                deduplicateByLink ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </SettingRow>
+        <div className="flex flex-col gap-1 pl-28">
+          <span className="text-[11px] text-text-muted">
+            同一 URL の記事が複数フィードにある場合、最新の 1 件のみ表示します。
+          </span>
+        </div>
 
         <p className="text-[11px] text-text-muted">
           変更は即座にプレビューに反映され、自動的に保存されますわ。

@@ -22,6 +22,8 @@ export interface ArticleItemProps {
   thumb: string | undefined;
   showFeedName: boolean;
   query: string;
+  /** 同一リンクの重複記事があるフィード名一覧（重複検出時のみ） */
+  duplicateFeedNames?: string[];
   // 親の安定参照をそのまま渡す（子側でクロージャを生成してメモ比較を壊さない）
   onSelectArticle: (a: Article) => void;
   onToggleRead: (id: string) => void;
@@ -206,6 +208,32 @@ function ReadingTimeBadge({
   return mins > 1 ? <span className={className}>約{mins}分</span> : null;
 }
 
+function DuplicateBadge({ feedNames }: { feedNames: string[] }) {
+  if (!feedNames.length) return null;
+  const label = `+${feedNames.length} フィード`;
+  const tooltip = feedNames.join(", ");
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 text-[10px] text-text-muted bg-surface-subtle rounded px-1 py-px flex-shrink-0"
+      title={tooltip}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 16 16"
+        fill="currentColor"
+        className="w-3 h-3"
+      >
+        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 2h5.5a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 12.5 12H7a1.5 1.5 0 0 1-1.5-1.5v-7Z" />
+        <path
+          d="M3.5 5.5A1.5 1.5 0 0 0 2 7v5.5A1.5 1.5 0 0 0 3.5 14H9a1.5 1.5 0 0 0 1.5-1.5V7A1.5 1.5 0 0 0 9 5.5H3.5Z"
+          opacity=".5"
+        />
+      </svg>
+      {label}
+    </span>
+  );
+}
+
 function ArticleThumbnail({ thumb, className }: { thumb: string; className: string }) {
   return (
     <img
@@ -233,6 +261,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   feedName,
   showFeedName,
   query,
+  duplicateFeedNames,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -262,6 +291,9 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       >
         {highlightText(article.title || "(タイトルなし)", query)}
       </span>
+      {duplicateFeedNames && duplicateFeedNames.length > 0 && (
+        <DuplicateBadge feedNames={duplicateFeedNames} />
+      )}
       {showFeedName && feedName && (
         <span className="text-[11px] text-text-faint truncate max-w-[80px] flex-shrink-0 group-hover:hidden">
           {feedName}
@@ -296,6 +328,7 @@ export const ListArticleItem = memo(function ListArticleItem({
   thumb,
   showFeedName,
   query,
+  duplicateFeedNames,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -341,6 +374,9 @@ export const ListArticleItem = memo(function ListArticleItem({
             </span>
           )}
           <ReadingTimeBadge article={article} />
+          {duplicateFeedNames && duplicateFeedNames.length > 0 && (
+            <DuplicateBadge feedNames={duplicateFeedNames} />
+          )}
           {hasNote && <NoteIcon className="text-amber-400 flex-shrink-0" />}
           {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />}
         </div>
@@ -373,6 +409,7 @@ export const CardArticleItem = memo(function CardArticleItem({
   thumb,
   showFeedName,
   query,
+  duplicateFeedNames,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -426,6 +463,9 @@ export const CardArticleItem = memo(function CardArticleItem({
               article={article}
               className="text-[10px] text-text-faint flex-shrink-0"
             />
+            {duplicateFeedNames && duplicateFeedNames.length > 0 && (
+              <DuplicateBadge feedNames={duplicateFeedNames} />
+            )}
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {hasNote && (
@@ -462,6 +502,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   thumb,
   showFeedName,
   query,
+  duplicateFeedNames,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -508,6 +549,9 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
             <ReadingTimeBadge article={article} />
+            {duplicateFeedNames && duplicateFeedNames.length > 0 && (
+              <DuplicateBadge feedNames={duplicateFeedNames} />
+            )}
           </div>
           <div className="flex items-center gap-1">
             {hasNote && (
@@ -585,6 +629,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   thumb,
   showFeedName,
   query,
+  duplicateFeedNames,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -685,8 +730,15 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
           {highlightText(article.title || "(タイトルなし)", query)}
         </h3>
         <div className="mt-1.5 flex items-center justify-between">
-          <span className="text-[10px] text-text-faint">{timeAgo(article.publishedAt)}</span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="text-[10px] text-text-faint flex-shrink-0">
+              {timeAgo(article.publishedAt)}
+            </span>
+            {duplicateFeedNames && duplicateFeedNames.length > 0 && (
+              <DuplicateBadge feedNames={duplicateFeedNames} />
+            )}
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
             {hasNote && (
               <NoteIcon className="text-amber-400 group-hover:opacity-0 transition-opacity duration-150" />
             )}

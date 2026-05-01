@@ -23,11 +23,18 @@ function loadAutoTranslate(): boolean {
   return storageGet(STORAGE_KEYS.AUTO_TRANSLATE) === "1";
 }
 
+function loadDeduplicateByLink(): boolean {
+  const stored = storageGet(STORAGE_KEYS.DEDUP_BY_LINK);
+  // デフォルト: true（未設定時は重複排除ON）
+  return stored !== "0";
+}
+
 export function useAutoReadSettings() {
   const [autoReadEnabled, setAutoReadEnabled] = useState<boolean>(loadAutoReadEnabled);
   const [autoReadThreshold, setAutoReadThreshold] =
     useState<AutoReadThreshold>(loadAutoReadThreshold);
   const [autoTranslate, setAutoTranslate] = useState<boolean>(loadAutoTranslate);
+  const [deduplicateByLink, setDeduplicateByLink] = useState<boolean>(loadDeduplicateByLink);
 
   const toggleAutoRead = useCallback(() => {
     setAutoReadEnabled((v) => {
@@ -59,6 +66,14 @@ export function useAutoReadSettings() {
     storageSet(STORAGE_KEYS.AUTO_READ_THRESHOLD, String(next));
   }, []);
 
+  const toggleDeduplicateByLink = useCallback(() => {
+    setDeduplicateByLink((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.DEDUP_BY_LINK, next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
   return {
     autoReadEnabled,
     toggleAutoRead,
@@ -67,5 +82,7 @@ export function useAutoReadSettings() {
     onChangeAutoReadThreshold,
     autoTranslate,
     toggleAutoTranslate,
+    deduplicateByLink,
+    toggleDeduplicateByLink,
   } as const;
 }
