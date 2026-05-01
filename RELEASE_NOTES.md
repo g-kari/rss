@@ -2,6 +2,10 @@
 
 ## 2026-05-01
 
+### ドキュメント整備っ
+
+- **architecture.md R2 データ構造セクション同期** — Issue #260。`SharedFeedMeta` に `consecutiveErrors` / `lastErrorAt` / `rateLimitedUntil` / `articleCount` / `pageCount` / `knownIds` / `failedSelectors` / `oversizeAlert` を追記したよ〜！`UserSubscription` も `feedHash` / `customTitle` / `nsfw` / `priority` / `category` / `groupId` / `mutedUntil` とか全プロパティ網羅しちゃった📝✨ `UserProfile` / `RecommendationCache` / `PushConfig` / `EngagementLog` も最新の型定義に合わせて更新！もう「等」で誤魔化さないよっ🎀
+
 ### パフォーマンス改善っ
 
 - **cascadeOverflow の R2 並列アクセス最適化** — Issue #254。フィード記事のページ分割処理で R2 の PUT(N) と GET(N+1) を `Promise.all` で並列実行するようにしたよ〜！N ページ分の処理で逐次 2N 回だった R2 操作が N+1 回に減って、cron ジョブや手動更新がサクサクになっちゃう⚡🚀
