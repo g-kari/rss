@@ -535,6 +535,10 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
 interface GalleryItemExtraProps {
   /** 本文から先行取得した全画像 URL（設定時は thumb の代わりに全枚数を縦スタック表示） */
   prefetchedImages?: string[];
+  /** コンテンツ取得に失敗したかどうか */
+  isFetchFailed?: boolean;
+  /** 失敗した記事のリトライハンドラー */
+  onRetry?: () => void;
 }
 
 export const GalleryArticleItem = memo(function GalleryArticleItem({
@@ -551,6 +555,8 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   onToggleRead,
   onToggleBookmark,
   prefetchedImages,
+  isFetchFailed,
+  onRetry,
 }: Omit<ArticleItemProps, "index" | "isDeleting"> & GalleryItemExtraProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
@@ -576,6 +582,48 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
               className="w-full h-auto object-cover bg-surface-subtle"
             />
           ))}
+        </div>
+      ) : isFetchFailed ? (
+        <div className="w-full aspect-square bg-surface-subtle flex flex-col items-center justify-center gap-2">
+          <svg
+            className="w-5 h-5 text-text-muted"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z"
+            />
+          </svg>
+          <span className="text-[10px] text-text-muted">取得失敗</span>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRetry();
+              }}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-surface-hover hover:bg-ink hover:text-ink-text text-[10px] text-text-default transition-colors duration-150"
+            >
+              <svg
+                className="w-3 h-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+              再取得
+            </button>
+          )}
         </div>
       ) : thumb ? (
         <ArticleThumbnail thumb={thumb} className="w-full h-auto object-cover bg-surface-subtle" />
