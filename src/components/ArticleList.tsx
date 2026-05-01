@@ -41,7 +41,7 @@ import ArticleListHeader from "./ArticleListHeader";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
 import LoadMoreButton from "./LoadMoreButton";
 import Spinner from "./Spinner";
-import { getGalleryCardWidth, getGalleryMinImagePx } from "../lib/reader-settings";
+import { getGalleryCardWidth } from "../lib/reader-settings";
 
 interface Props {
   feeds: Feed[];
@@ -176,7 +176,7 @@ export default function ArticleList({
   onGalleryAutoRead,
 }: Props) {
   const { filtered, visible, hasMore, query, sentinelRef } = useArticleFilter();
-  const { galleryColumns, galleryCardSize, galleryMinImageFilter, autoReadEnabled } =
+  const { galleryColumns, galleryCardSize, galleryMinImagePx, autoReadEnabled } =
     useReaderSettings();
 
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
@@ -373,7 +373,6 @@ export default function ArticleList({
     ],
   );
 
-  const galleryMinImagePx = getGalleryMinImagePx(galleryMinImageFilter);
   const galleryCtxValue = useMemo<GalleryItemContextValue>(
     () => ({
       resolveItemProps,

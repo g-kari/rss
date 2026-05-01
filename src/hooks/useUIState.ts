@@ -10,7 +10,6 @@ import type {
   LineHeight,
   GalleryColumns,
   GalleryCardSize,
-  GalleryMinImageFilter,
 } from "../lib/reader-settings";
 import { useMobilePane } from "./useMobilePane";
 import { useNSFWMode } from "./useNSFWMode";
@@ -92,8 +91,8 @@ export interface UIState {
   onChangeGalleryColumns: (v: GalleryColumns) => void;
   galleryCardSize: GalleryCardSize;
   onChangeGalleryCardSize: (v: GalleryCardSize) => void;
-  galleryMinImageFilter: GalleryMinImageFilter;
-  onChangeGalleryMinImageFilter: (v: GalleryMinImageFilter) => void;
+  galleryMinImagePx: number;
+  onChangeGalleryMinImagePx: (v: number) => void;
 }
 
 export function useUIState(initialMobilePane: MobilePane): UIState {
@@ -111,8 +110,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeGalleryColumns,
     galleryCardSize,
     onChangeGalleryCardSize,
-    galleryMinImageFilter,
-    onChangeGalleryMinImageFilter,
+    galleryMinImagePx,
+    onChangeGalleryMinImagePx,
     contentWidth,
     onChangeContentWidth,
   } = useLayoutSettings();
@@ -267,7 +266,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeGalleryColumns,
     galleryCardSize,
     onChangeGalleryCardSize,
-    galleryMinImageFilter,
-    onChangeGalleryMinImageFilter,
+    galleryMinImagePx,
+    onChangeGalleryMinImagePx,
   };
 }

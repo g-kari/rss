@@ -7,13 +7,16 @@ import {
   CONTENT_WIDTH_CYCLE,
   GALLERY_COLUMNS_CYCLE,
   GALLERY_CARD_SIZE_CYCLE,
-  GALLERY_MIN_IMAGE_FILTER_CYCLE,
+  GALLERY_MIN_IMAGE_PX_DEFAULT,
+  GALLERY_MIN_IMAGE_PX_MAX,
+  GALLERY_MIN_IMAGE_PX_MIN,
   type ContentWidth,
   type GalleryColumns,
   type GalleryCardSize,
-  type GalleryMinImageFilter,
 } from "../lib/reader-settings";
 import { useStoredSetting } from "./useStoredSetting";
+import { useState, useCallback } from "react";
+import { storageGet, storageSet } from "../lib/storage";
 
 const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUT_CYCLE, "list" as Layout);
 const FEED_VIEW_CYCLE: readonly FeedView[] = ["articles", "pictures", "videos", "social"] as const;
@@ -31,12 +34,13 @@ const loadGalleryCardSize = () =>
     GALLERY_CARD_SIZE_CYCLE,
     "medium" as GalleryCardSize,
   );
-const loadGalleryMinImageFilter = () =>
-  loadStoredEnum(
-    STORAGE_KEYS.GALLERY_MIN_IMAGE_FILTER,
-    GALLERY_MIN_IMAGE_FILTER_CYCLE,
-    "off" as GalleryMinImageFilter,
-  );
+const loadGalleryMinImagePx = (): number => {
+  const raw = storageGet(STORAGE_KEYS.GALLERY_MIN_IMAGE_FILTER);
+  if (raw === null) return GALLERY_MIN_IMAGE_PX_DEFAULT;
+  const n = Number(raw);
+  if (isNaN(n)) return GALLERY_MIN_IMAGE_PX_DEFAULT;
+  return Math.max(GALLERY_MIN_IMAGE_PX_MIN, Math.min(GALLERY_MIN_IMAGE_PX_MAX, n));
+};
 const loadContentWidth = () =>
   loadStoredEnum(STORAGE_KEYS.CONTENT_WIDTH, CONTENT_WIDTH_CYCLE, "medium" as ContentWidth);
 
@@ -62,11 +66,12 @@ export function useLayoutSettings() {
     loadGalleryCardSize,
     STORAGE_KEYS.GALLERY_CARD_SIZE,
   );
-  const [galleryMinImageFilter, onChangeGalleryMinImageFilter] =
-    useStoredSetting<GalleryMinImageFilter>(
-      loadGalleryMinImageFilter,
-      STORAGE_KEYS.GALLERY_MIN_IMAGE_FILTER,
-    );
+  const [galleryMinImagePx, setGalleryMinImagePx] = useState(loadGalleryMinImagePx);
+  const onChangeGalleryMinImagePx = useCallback((v: number) => {
+    const clamped = Math.max(GALLERY_MIN_IMAGE_PX_MIN, Math.min(GALLERY_MIN_IMAGE_PX_MAX, v));
+    setGalleryMinImagePx(clamped);
+    storageSet(STORAGE_KEYS.GALLERY_MIN_IMAGE_FILTER, String(clamped));
+  }, []);
   const [contentWidth, onChangeContentWidth] = useStoredSetting<ContentWidth>(
     loadContentWidth,
     STORAGE_KEYS.CONTENT_WIDTH,
@@ -85,8 +90,8 @@ export function useLayoutSettings() {
     onChangeGalleryColumns,
     galleryCardSize,
     onChangeGalleryCardSize,
-    galleryMinImageFilter,
-    onChangeGalleryMinImageFilter,
+    galleryMinImagePx,
+    onChangeGalleryMinImagePx,
     contentWidth,
     onChangeContentWidth,
   } as const;

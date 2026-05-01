@@ -8,7 +8,6 @@ import type {
   ContentWidth,
   GalleryColumns,
   GalleryCardSize,
-  GalleryMinImageFilter,
 } from "../lib/reader-settings";
 
 export interface ReaderSettings {
@@ -36,8 +35,8 @@ export interface ReaderSettings {
   onChangeGalleryColumns: (v: GalleryColumns) => void;
   galleryCardSize: GalleryCardSize;
   onChangeGalleryCardSize: (v: GalleryCardSize) => void;
-  galleryMinImageFilter: GalleryMinImageFilter;
-  onChangeGalleryMinImageFilter: (v: GalleryMinImageFilter) => void;
+  galleryMinImagePx: number;
+  onChangeGalleryMinImagePx: (v: number) => void;
   ttlDays: number | null;
   onChangeTtlDays: (days: number | null) => void;
 }

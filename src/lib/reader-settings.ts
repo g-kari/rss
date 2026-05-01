@@ -102,29 +102,7 @@ export function getGalleryCardWidth(size: GalleryCardSize): number {
 
 // ===== ギャラリー最小画像サイズフィルター =====
 
-export type GalleryMinImageFilter = "off" | "small" | "medium" | "large";
-
-export const GALLERY_MIN_IMAGE_FILTER_CYCLE: GalleryMinImageFilter[] = [
-  "off",
-  "small",
-  "medium",
-  "large",
-];
-
-const GALLERY_MIN_IMAGE_FILTER_VALUES: Record<GalleryMinImageFilter, number> = {
-  off: 0,
-  small: 50,
-  medium: 100,
-  large: 200,
-};
-
-export const GALLERY_MIN_IMAGE_FILTER_LABELS: Record<GalleryMinImageFilter, string> = {
-  off: "なし",
-  small: "50px",
-  medium: "100px",
-  large: "200px",
-};
-
-export function getGalleryMinImagePx(filter: GalleryMinImageFilter): number {
-  return GALLERY_MIN_IMAGE_FILTER_VALUES[filter];
-}
+export const GALLERY_MIN_IMAGE_PX_MIN = 0;
+export const GALLERY_MIN_IMAGE_PX_MAX = 500;
+export const GALLERY_MIN_IMAGE_PX_STEP = 10;
+export const GALLERY_MIN_IMAGE_PX_DEFAULT = 0;

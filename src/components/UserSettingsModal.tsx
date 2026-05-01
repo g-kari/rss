@@ -26,8 +26,9 @@ import {
   GALLERY_COLUMNS_LABELS,
   GALLERY_CARD_SIZE_CYCLE,
   GALLERY_CARD_SIZE_LABELS,
-  GALLERY_MIN_IMAGE_FILTER_CYCLE,
-  GALLERY_MIN_IMAGE_FILTER_LABELS,
+  GALLERY_MIN_IMAGE_PX_MIN,
+  GALLERY_MIN_IMAGE_PX_MAX,
+  GALLERY_MIN_IMAGE_PX_STEP,
   getLineHeightStyle,
 } from "../lib/reader-settings";
 import { AUTO_READ_THRESHOLD_CYCLE } from "../hooks/useUIState";
@@ -89,8 +90,8 @@ export default function UserSettingsModal({ onClose }: Props) {
     onChangeGalleryColumns,
     galleryCardSize,
     onChangeGalleryCardSize,
-    galleryMinImageFilter,
-    onChangeGalleryMinImageFilter,
+    galleryMinImagePx,
+    onChangeGalleryMinImagePx,
     ttlDays,
     onChangeTtlDays,
   } = useReaderSettings();
@@ -178,14 +179,20 @@ export default function UserSettingsModal({ onClose }: Props) {
         </SettingRow>
 
         <SettingRow label="最小画像サイズ">
-          <SegmentGroup
-            options={GALLERY_MIN_IMAGE_FILTER_CYCLE.map((v) => ({
-              value: v,
-              label: GALLERY_MIN_IMAGE_FILTER_LABELS[v],
-            }))}
-            value={galleryMinImageFilter}
-            onChange={onChangeGalleryMinImageFilter}
-          />
+          <div className="flex items-center gap-2 w-full">
+            <input
+              type="range"
+              min={GALLERY_MIN_IMAGE_PX_MIN}
+              max={GALLERY_MIN_IMAGE_PX_MAX}
+              step={GALLERY_MIN_IMAGE_PX_STEP}
+              value={galleryMinImagePx}
+              onChange={(e) => onChangeGalleryMinImagePx(Number(e.target.value))}
+              className="flex-1 accent-ink h-1 cursor-pointer"
+            />
+            <span className="text-[11px] text-text-muted tabular-nums w-10 text-right">
+              {galleryMinImagePx === 0 ? "なし" : `${galleryMinImagePx}px`}
+            </span>
+          </div>
         </SettingRow>
 
         <SettingRow label="記事保持期間">
