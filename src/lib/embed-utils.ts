@@ -78,6 +78,15 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
       allow: "autoplay; fullscreen; web-share",
     };
 
+  // SlideShare (embed_code URL)
+  const ss = url.match(/slideshare\.net\/slideshow\/embed_code\/(\d+)/);
+  if (ss)
+    return {
+      embedUrl: `https://www.slideshare.net/slideshow/embed_code/${ss[1]}`,
+      type: "video",
+      allow: "autoplay; fullscreen; web-share",
+    };
+
   // Spotify
   const spotify = url.match(
     /open\.spotify\.com\/(track|album|playlist|episode|artist)\/([A-Za-z0-9]+)/,
@@ -132,6 +141,20 @@ export function processContent(html: string, theme: "light" | "dark" = "light"):
     /<iframe([^>]*src=["']https?:\/\/speakerdeck\.com\/player\/([a-f0-9]+)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
     (_match, attrs: string, playerId: string, inner: string) => {
       const fallback = `<a href="https://speakerdeck.com/player/${playerId}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">Speaker Deck で見る ↗</a>`;
+      return (
+        `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
+        `<iframe${attrs} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
+        `</div>` +
+        fallback
+      );
+    },
+  );
+
+  // SlideShare iframe → レスポンシブラッパー
+  result = result.replace(
+    /<iframe([^>]*src=["']https?:\/\/(?:www\.)?slideshare\.net\/slideshow\/embed_code\/(\d+)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
+    (_match, attrs: string, slideId: string, inner: string) => {
+      const fallback = `<a href="https://www.slideshare.net/slideshow/embed_code/${slideId}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">SlideShare で見る ↗</a>`;
       return (
         `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
         `<iframe${attrs} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
