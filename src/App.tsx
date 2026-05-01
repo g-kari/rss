@@ -638,14 +638,17 @@ export default function App() {
     });
   }, [hasMore, feedHasMorePages, handleLoadMoreFeedArticles, loadingArticles]);
 
+  const listFocusModeRef = useSyncedRef(listFocusMode);
+
   const selectArticle = useCallback(
     (article: Article) => {
+      if (listFocusModeRef.current) toggleFocusMode();
       setSelectedArticle(article);
       markRead(article.id);
       addToHistory(article.id);
       setMobilePane("view");
     },
-    [markRead, addToHistory, setMobilePane],
+    [listFocusModeRef, toggleFocusMode, markRead, addToHistory, setMobilePane],
   );
 
   const articlesRef = useSyncedRef(articles);
