@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useEventListener } from "./useEventListener";
 import { useAutoReset } from "./useAutoReset";
+import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, loadSet, toggleSetItem } from "../lib/storage";
 import type { FontFamily, Layout, FontSize, FeedView } from "../types";
 import type {
@@ -142,6 +143,37 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
     useNSFWMode();
 
+  const focusModeRef = useSyncedRef(focusMode);
+  const listFocusModeRef = useSyncedRef(listFocusMode);
+  const focusHistoryRef = useRef(false);
+
+  const pushFocusHistory = useCallback(() => {
+    if (!focusHistoryRef.current) {
+      focusHistoryRef.current = true;
+      window.history.pushState({ focus: true }, "");
+    }
+  }, []);
+
+  const exitFocusViaHistory = useCallback(() => {
+    if (focusHistoryRef.current) {
+      focusHistoryRef.current = false;
+      window.history.back();
+    } else {
+      setFocusMode(false);
+      setListFocusMode(false);
+    }
+  }, []);
+
+  useEventListener("popstate", () => {
+    if (focusHistoryRef.current) {
+      focusHistoryRef.current = false;
+    }
+    if (focusModeRef.current || listFocusModeRef.current) {
+      setFocusMode(false);
+      setListFocusMode(false);
+    }
+  });
+
   useEventListener(
     "beforeinstallprompt",
     (e) => {
@@ -158,18 +190,27 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
       if (e.key === "?") setShowHelp((v) => !v);
       if (e.key === "\\") {
         if (e.shiftKey) {
-          setListFocusMode((v) => !v);
-          setFocusMode(false);
+          if (listFocusModeRef.current) {
+            exitFocusViaHistory();
+          } else {
+            pushFocusHistory();
+            setListFocusMode(true);
+            setFocusMode(false);
+          }
         } else {
-          setFocusMode((v) => !v);
-          setListFocusMode(false);
+          if (focusModeRef.current) {
+            exitFocusViaHistory();
+          } else {
+            pushFocusHistory();
+            setFocusMode(true);
+            setListFocusMode(false);
+          }
         }
       }
       if (e.key === "Escape") {
         setShowHelp(false);
         setShowFeedSwitcher(false);
-        setFocusMode(false);
-        setListFocusMode(false);
+        exitFocusViaHistory();
       }
     },
     document,
@@ -191,19 +232,28 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   );
 
   const toggleFocusMode = useCallback(() => {
-    setFocusMode((v) => !v);
-    setListFocusMode(false);
-  }, []);
+    if (focusModeRef.current) {
+      exitFocusViaHistory();
+    } else {
+      pushFocusHistory();
+      setFocusMode(true);
+      setListFocusMode(false);
+    }
+  }, [focusModeRef, exitFocusViaHistory, pushFocusHistory]);
 
   const toggleListFocusMode = useCallback(() => {
-    setListFocusMode((v) => !v);
-    setFocusMode(false);
-  }, []);
+    if (listFocusModeRef.current) {
+      exitFocusViaHistory();
+    } else {
+      pushFocusHistory();
+      setListFocusMode(true);
+      setFocusMode(false);
+    }
+  }, [listFocusModeRef, exitFocusViaHistory, pushFocusHistory]);
 
   const exitFocusMode = useCallback(() => {
-    setFocusMode(false);
-    setListFocusMode(false);
-  }, []);
+    exitFocusViaHistory();
+  }, [exitFocusViaHistory]);
 
   const installApp = useCallback(async () => {
     if (!installPrompt) return;
