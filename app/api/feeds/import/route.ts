@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
+import { purgeFeedsCache } from "@/lib/cache-helper";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { opmlImportCooldownKey } from "@/lib/r2";
 import { XMLParser } from "fast-xml-parser";
@@ -168,6 +169,8 @@ export async function POST(request: Request) {
 
     if (addedCount > 0) {
       await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
+      const origin = new URL(request.url).origin;
+      await purgeFeedsCache(origin, session.userId, ctx);
       ctx.waitUntil(fetchArticles(env, session.userId).catch(console.error));
     }
 
