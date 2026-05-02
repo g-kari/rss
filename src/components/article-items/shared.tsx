@@ -165,9 +165,61 @@ export interface GalleryItemExtraProps {
   galleryMinImagePx?: number;
   /** コンテンツ取得に失敗したかどうか */
   isFetchFailed?: boolean;
-  /** 失敗した記事のリトライハンドラー */
+  /** 画像展開中（フェッチ中）かどうか */
+  isExpanding?: boolean;
+  /** 失敗した記事のリトライ / 未取得記事の手動展開ハンドラー */
   onRetry?: () => void;
 }
+
+/** 画像展開ボタン（ギャラリーカード内に表示） */
+export const GalleryExpandButton = memo(function GalleryExpandButton({
+  isExpanding,
+  onClick,
+  className = "",
+}: {
+  isExpanding: boolean;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      disabled={isExpanding}
+      className={`flex items-center gap-1 px-2 py-1 rounded bg-surface-hover hover:bg-ink hover:text-ink-text text-[10px] text-text-default transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+    >
+      {isExpanding ? (
+        <svg
+          className="w-3 h-3 animate-spin"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 12a8 8 0 0 1 8-8" />
+        </svg>
+      ) : (
+        <svg
+          className="w-3 h-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+          />
+        </svg>
+      )}
+      {isExpanding ? "取得中..." : "画像を展開"}
+    </button>
+  );
+});
 
 export const FilterableGalleryImage = memo(function FilterableGalleryImage({
   src,

@@ -9,6 +9,7 @@ import {
   ArticleThumbnail,
   DuplicateBadge,
   FilterableGalleryImage,
+  GalleryExpandButton,
   type ArticleItemProps,
   type GalleryItemExtraProps,
 } from "./shared";
@@ -30,6 +31,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   prefetchedImages,
   galleryMinImagePx = 0,
   isFetchFailed,
+  isExpanding,
   onRetry,
 }: Omit<ArticleItemProps, "index" | "isDeleting"> & GalleryItemExtraProps) {
   const selectedId = useContext(SelectedArticleCtx);
@@ -61,40 +63,6 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
                 />
               ))}
         </div>
-      ) : isFetchFailed && thumb ? (
-        <div className="relative">
-          <ArticleThumbnail
-            thumb={thumb}
-            className="w-full h-auto object-cover bg-surface-subtle"
-          />
-          <div className="absolute bottom-2 right-2 flex items-center gap-1">
-            {onRetry && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRetry();
-                }}
-                className="flex items-center gap-1 px-2 py-1 rounded-full bg-surface-base/80 backdrop-blur-sm hover:bg-ink hover:text-ink-text text-[10px] text-text-muted transition-colors duration-150"
-              >
-                <svg
-                  className="w-3 h-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                  />
-                </svg>
-                再取得
-              </button>
-            )}
-          </div>
-        </div>
       ) : isFetchFailed ? (
         <div className="w-full aspect-square bg-surface-subtle flex flex-col items-center justify-center gap-2">
           <svg
@@ -111,37 +79,37 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
             />
           </svg>
           <span className="text-[10px] text-text-muted">取得失敗</span>
-          {onRetry && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRetry();
-              }}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-surface-hover hover:bg-ink hover:text-ink-text text-[10px] text-text-default transition-colors duration-150"
-            >
-              <svg
-                className="w-3 h-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                />
-              </svg>
-              再取得
-            </button>
-          )}
+          {onRetry && <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />}
         </div>
       ) : thumb ? (
-        <ArticleThumbnail thumb={thumb} className="w-full h-auto object-cover bg-surface-subtle" />
+        <div className="relative">
+          <ArticleThumbnail
+            thumb={thumb}
+            className="w-full h-auto object-cover bg-surface-subtle"
+          />
+          {onRetry && !prefetchedImages && (
+            <div className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />
+            </div>
+          )}
+        </div>
       ) : (
-        <div className="w-full aspect-square bg-surface-subtle flex items-center justify-center">
+        <div className="w-full aspect-square bg-surface-subtle flex flex-col items-center justify-center gap-2">
+          <svg
+            className="w-6 h-6 text-text-faint"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+            />
+          </svg>
           <span className="text-[10px] text-text-faint tracking-[0.1em] uppercase">No image</span>
+          {onRetry && <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />}
         </div>
       )}
       <div className="p-2.5">

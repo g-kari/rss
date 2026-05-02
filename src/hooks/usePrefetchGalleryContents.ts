@@ -20,7 +20,9 @@ export interface PrefetchGalleryResult {
   media: Map<string, PrefetchedMedia>;
   /** fetch 失敗した記事 ID のセット（429 以外の非 200 レスポンス） */
   failedIds: Set<string>;
-  /** 失敗した記事を個別にリトライする */
+  /** 現在展開中（フェッチ中）の記事 ID のセット */
+  expandingIds: Set<string>;
+  /** 記事の画像を手動で展開（再取得）する */
   retryArticle: (articleId: string) => void;
 }
 
@@ -61,6 +63,7 @@ export function usePrefetchGalleryContents({
 }: Options): PrefetchGalleryResult {
   const [media, setMedia] = useState<Map<string, PrefetchedMedia>>(() => new Map());
   const [failedIds, setFailedIds] = useState<Set<string>>(() => new Set());
+  const [expandingIds, setExpandingIds] = useState<Set<string>>(() => new Set());
   // enabled=false のとき state を空にすると、切り替え時のチラつきが出るため保持する
   const mediaRef = useRef(media);
   mediaRef.current = media;
@@ -209,7 +212,7 @@ export function usePrefetchGalleryContents({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- articles の代わりに articlesKey を依存にし、setMedia 再レンダーによる effect 再実行・fetch 中断を防ぐ
   }, [articlesKey, enabled, concurrency, maxPrefetch, requestDelayMs]);
 
-  /** 失敗した記事を個別にリトライする */
+  /** 失敗した記事を個別にリトライ、または未取得の記事を手動で画像展開する */
   const retryArticle = useCallback((articleId: string) => {
     const article = articlesRef.current.find((a) => a.id === articleId);
     if (!article?.link) return;
@@ -218,6 +221,13 @@ export function usePrefetchGalleryContents({
     setFailedIds((prev) => {
       const next = new Set(prev);
       next.delete(articleId);
+      return next;
+    });
+
+    // expandingIds に追加（ローディング表示用）
+    setExpandingIds((prev) => {
+      const next = new Set(prev);
+      next.add(articleId);
       return next;
     });
 
@@ -263,9 +273,16 @@ export function usePrefetchGalleryContents({
           next.add(articleId);
           return next;
         });
+      } finally {
+        // expandingIds から除去
+        setExpandingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(articleId);
+          return next;
+        });
       }
     })();
   }, []);
 
-  return { media, failedIds, retryArticle };
+  return { media, failedIds, expandingIds, retryArticle };
 }

@@ -103,6 +103,7 @@ interface GalleryItemContextValue {
   deletingIds: Set<string>;
   newIds: Set<string>;
   galleryFailedIds: Set<string>;
+  galleryExpandingIds: Set<string>;
   galleryRetryArticle: (id: string) => void;
   onGalleryContextMenu: (e: React.MouseEvent, article: Article, index: number) => void;
 }
@@ -141,6 +142,7 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
         prefetchedImages={ctx.galleryImagesForItem(data.id)}
         galleryMinImagePx={ctx.galleryMinImagePx}
         isFetchFailed={ctx.galleryFailedIds.has(data.id)}
+        isExpanding={ctx.galleryExpandingIds.has(data.id)}
         onRetry={() => ctx.galleryRetryArticle(data.id)}
       />
     </div>
@@ -202,6 +204,7 @@ export default function ArticleList({
   const {
     media: prefetchedMedia,
     failedIds: galleryFailedIds,
+    expandingIds: galleryExpandingIds,
     retryArticle: galleryRetryArticle,
   } = usePrefetchGalleryContents({
     articles: visible,
@@ -402,6 +405,7 @@ export default function ArticleList({
       deletingIds: galleryDeletingIds,
       newIds: galleryNewIds,
       galleryFailedIds,
+      galleryExpandingIds,
       galleryRetryArticle,
       onGalleryContextMenu: handleGalleryContextMenu,
     }),
@@ -412,6 +416,7 @@ export default function ArticleList({
       galleryDeletingIds,
       galleryNewIds,
       galleryFailedIds,
+      galleryExpandingIds,
       galleryRetryArticle,
       handleGalleryContextMenu,
     ],
