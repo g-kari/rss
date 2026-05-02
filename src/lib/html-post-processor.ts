@@ -1,4 +1,5 @@
 import { sanitizeHtml, escapeHtml, unescapeHtml } from "./html";
+import { isZennDevUrl } from "./url";
 
 /**
  * `pattern` が入力に対して変化を及ぼさなくなるまで `str.replace` を繰り返し適用する。
@@ -271,20 +272,6 @@ export function transformZennLinkEmbeds(content: string): string {
       return `<p><a href="${escaped}" target="_blank" rel="noopener noreferrer">${escaped}</a></p>`;
     },
   );
-}
-
-/**
- * pageUrl が zenn.dev ドメインかどうかを URL パースで厳密に検証する。
- * includes() による部分文字列マッチは "zenn.dev.evil.com" でバイパスできるため、
- * hostname を正確に検証する。
- */
-function isZennDevUrl(pageUrl: string): boolean {
-  try {
-    const h = new URL(pageUrl).hostname;
-    return h === "zenn.dev" || h.endsWith(".zenn.dev");
-  } catch {
-    return false;
-  }
 }
 
 /**

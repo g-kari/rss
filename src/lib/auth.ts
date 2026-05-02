@@ -425,7 +425,7 @@ export function getJwtExp(token: string): number | null {
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
+    const payload = JSON.parse(new TextDecoder().decode(base64urlToBytes(parts[1]))) as {
       exp?: number;
     };
     return typeof payload.exp === "number" ? payload.exp : null;

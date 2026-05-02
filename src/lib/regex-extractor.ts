@@ -1,18 +1,5 @@
 import { postProcess, replaceUntilStable } from "./html-post-processor";
-
-/**
- * pageUrl が zenn.dev ドメインかどうかを URL パースで厳密に検証する。
- * includes() による部分文字列マッチは "zenn.dev.evil.com" でバイパスできるため、
- * hostname を正確に検証する。
- */
-function isZennDevUrl(pageUrl: string): boolean {
-  try {
-    const h = new URL(pageUrl).hostname;
-    return h === "zenn.dev" || h.endsWith(".zenn.dev");
-  } catch {
-    return false;
-  }
-}
+import { isZennDevUrl } from "./url";
 
 /**
  * <head> / <nav> / <header> 等のページクローム要素を除去してコンテンツ部分のみ残す。
