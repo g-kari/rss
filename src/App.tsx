@@ -86,7 +86,6 @@ export default function App() {
     toggleFocusMode,
     listFocusMode,
     toggleListFocusMode,
-    setListFocusMode,
     exitFocusMode,
     nsfwMode,
     showNSFWAnimation,
@@ -948,9 +947,6 @@ export default function App() {
                     const feed = feeds.find((f) => f.id === id);
                     if (feed?.view === "pictures" || feed?.view === "videos") {
                       onChangeLayout("gallery");
-                      setListFocusMode(true);
-                    } else {
-                      setListFocusMode(false);
                     }
                   }}
                   onSelectGroup={(id) => {
@@ -1022,9 +1018,6 @@ export default function App() {
                     // ユーザーが後で手動で別レイアウトを選んだ場合は尊重する（次にカテゴリ切替するまで）
                     if (view === "pictures" || view === "videos") {
                       onChangeLayout("gallery");
-                      setListFocusMode(true);
-                    } else {
-                      setListFocusMode(false);
                     }
                   }}
                   recommendations={recommendations}
