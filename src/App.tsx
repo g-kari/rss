@@ -776,11 +776,9 @@ export default function App() {
             data-layout="root"
             className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
             style={{
-              gridTemplateColumns: focusMode
-                ? `0px 0px 1fr`
-                : listFocusMode
-                  ? `0px 1fr 0px`
-                  : `${sidebarWidth}px ${listWidth}px 1fr`,
+              gridTemplateColumns: listFocusMode
+                ? `0px 1fr 0px`
+                : `${sidebarWidth}px ${listWidth}px 1fr`,
               gridTemplateRows: "100%",
               transition: "grid-template-columns 0.25s ease",
             }}
@@ -887,8 +885,8 @@ export default function App() {
                 </button>
               </div>
             )}
-            {/* フォーカスモード解除ボタン（PC のみ表示。モバイルは単一ペイン表示のため不要） */}
-            {(focusMode || listFocusMode) && (
+            {/* 記事一覧フォーカスモード解除ボタン（PC のみ表示。モバイルは単一ペイン表示のため不要） */}
+            {listFocusMode && (
               <button
                 onClick={exitFocusMode}
                 className="fixed top-3 right-3 z-50 hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
@@ -911,8 +909,74 @@ export default function App() {
                 フォーカス解除
               </button>
             )}
-            {/* カラムリサイズハンドル (PCのみ、フォーカスモード / 記事一覧フォーカス / ポップアップ表示中は無効) */}
-            {!focusMode && !listFocusMode && (
+            {/* フォーカスモード全画面オーバーレイ */}
+            {focusMode && (
+              <div
+                className="fixed inset-0 z-50 bg-surface-base animate-slide-up overflow-hidden flex flex-col"
+                role="dialog"
+                aria-modal="true"
+                aria-label="フォーカスモード"
+              >
+                <button
+                  onClick={exitFocusMode}
+                  className="absolute top-4 right-4 z-10 p-2 text-text-faint hover:text-text-muted transition-colors duration-200"
+                  aria-label="フォーカスモード終了"
+                  title="フォーカスモード終了 (Esc)"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 4l12 12M16 4l-12 12" />
+                  </svg>
+                </button>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <ErrorBoundary label="フォーカスモード">
+                    <ArticleView
+                      article={selectedArticle}
+                      isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
+                      onToggleBookmark={handleToggleBookmark}
+                      isInReadingList={
+                        selectedArticle ? readingListIds.has(selectedArticle.id) : false
+                      }
+                      onToggleReadingList={handleToggleReadingList}
+                      isLiked={selectedArticle ? likeIds.has(selectedArticle.id) : false}
+                      onToggleLike={handleToggleLike}
+                      onEngagement={recordEngagement}
+                      onMobileBack={() => setMobilePane("list")}
+                      prevArticle={prevArticle}
+                      nextArticle={nextArticle}
+                      onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
+                      onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
+                      feeds={feeds}
+                      onSnooze={snoozeArticle}
+                      note={selectedArticle ? notes[selectedArticle.id] : undefined}
+                      onSetNote={setNote}
+                      onDeleteNote={deleteNote}
+                      onAutoMarkRead={markRead}
+                      tags={selectedArticle ? (articleTagIds[selectedArticle.id] ?? []) : []}
+                      allTags={articleTagIds}
+                      onAddTag={addTag}
+                      onRemoveTag={removeTag}
+                      onSetArticleTags={setArticleTags}
+                      onClearArticleTags={clearArticleTags}
+                      collections={collections}
+                      onAddToCollection={addArticleToCollection}
+                      onRemoveFromCollection={removeArticleFromCollection}
+                      onCreateCollection={createCollection}
+                    />
+                  </ErrorBoundary>
+                </div>
+              </div>
+            )}
+            {/* カラムリサイズハンドル (PCのみ、記事一覧フォーカス / ポップアップ表示中は無効) */}
+            {!listFocusMode && (
               <>
                 <div
                   className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}

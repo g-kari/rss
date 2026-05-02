@@ -114,6 +114,19 @@ body {
   animation: fadeIn 0.4s ease-out both;
 }
 
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* 記事本文 HTML レンダリング */
 .article-content {
   font-family: var(--font-sans);
