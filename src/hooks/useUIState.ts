@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useEventListener } from "./useEventListener";
-import { useAutoReset } from "./useAutoReset";
+
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, loadSet, toggleSetItem } from "../lib/storage";
 import type { FontFamily, Layout, FontSize, FeedView } from "../types";
@@ -49,8 +49,6 @@ export interface UIState {
   togglePinFeed: (feedId: string) => void;
   collapsedCategories: Set<string>;
   toggleCollapseCategory: (category: string) => void;
-  toast: string | null;
-  showToast: (msg: string) => void;
   mobilePane: MobilePane;
   setMobilePane: React.Dispatch<React.SetStateAction<MobilePane>>;
   install: { canInstall: boolean; onInstall: () => Promise<void> };
@@ -143,7 +141,6 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
   const [collapsedCategories, setCollapsedCategories] =
     useState<Set<string>>(loadCollapsedCategories);
-  const [toast, setToast] = useAutoReset<string | null>(null, 2000);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
@@ -236,13 +233,6 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     toggleSetItem(setCollapsedCategories, STORAGE_KEYS.COLLAPSED_CATEGORIES, category);
   }, []);
 
-  const showToast = useCallback(
-    (msg: string) => {
-      setToast(msg);
-    },
-    [setToast],
-  );
-
   const toggleFocusMode = useCallback(() => {
     if (focusModeRef.current) {
       exitFocusViaHistory();
@@ -287,8 +277,6 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     togglePinFeed,
     collapsedCategories,
     toggleCollapseCategory,
-    toast,
-    showToast,
     mobilePane,
     setMobilePane,
     install: { canInstall: !!installPrompt, onInstall: installApp },

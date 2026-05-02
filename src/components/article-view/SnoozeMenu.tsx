@@ -19,7 +19,7 @@ interface Props {
 }
 
 export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props) {
-  const { showToast } = useToast();
+  const toast = useToast();
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
@@ -27,7 +27,7 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props)
     setOpen(false);
     btnRef.current?.focus();
     onSnooze(articleId, durationMs);
-    showToast(`${label}までスヌーズ`);
+    toast.info(`${label}までスヌーズ`);
     onSelectNext?.();
   }
 

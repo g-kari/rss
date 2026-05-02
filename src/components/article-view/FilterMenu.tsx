@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
-  const { showToast } = useToast();
+  const toast = useToast();
   const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
     useFilterMenuState(article, feed.filter);
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
@@ -24,7 +24,7 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
     btnRef.current?.focus();
     const existingExclude = feed.filter?.exclude ?? [];
     if (existingExclude.includes(value)) {
-      showToast("既に除外キーワードに登録されています");
+      toast.info("既に除外キーワードに登録されています");
       return;
     }
     const newFilter: KeywordFilter = {
@@ -34,9 +34,9 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
     };
     try {
       await onSaveFilter(feed.id, newFilter);
-      showToast(`「${value}」を除外キーワードに追加しました`);
+      toast.success(`「${value}」を除外キーワードに追加しました`);
     } catch {
-      showToast("フィルターの保存に失敗しました");
+      toast.error("フィルターの保存に失敗しました");
     }
   }
 

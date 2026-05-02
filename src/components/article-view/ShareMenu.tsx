@@ -73,7 +73,7 @@ const SHARE_WINDOW_TARGETS: Array<{
 ];
 
 export default function ShareMenu({ article, feed, contentHtml }: Props) {
-  const { showToast } = useToast();
+  const toast = useToast();
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -83,10 +83,10 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
     navigator.clipboard
       .writeText(text)
       .then(() => {
-        showToast("コピーしました。Slack を開きます");
+        toast.success("コピーしました。Slack を開きます");
         window.open("slack://open", "_blank", "noopener,noreferrer");
       })
-      .catch(() => showToast("コピーに失敗しました"));
+      .catch(() => toast.error("コピーに失敗しました"));
   }
 
   function handleDiscordShare() {
@@ -95,10 +95,10 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
     navigator.clipboard
       .writeText(text)
       .then(() => {
-        showToast("コピーしました。Discord を開きます");
+        toast.success("コピーしました。Discord を開きます");
         window.open("discord://", "_blank", "noopener,noreferrer");
       })
-      .catch(() => showToast("コピーに失敗しました"));
+      .catch(() => toast.error("コピーに失敗しました"));
   }
 
   function openShareWindow(url: string) {
@@ -110,8 +110,8 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
     setOpen(false);
     navigator.clipboard
       .writeText(text)
-      .then(() => showToast(successMsg))
-      .catch(() => showToast("コピーに失敗しました"));
+      .then(() => toast.success(successMsg))
+      .catch(() => toast.error("コピーに失敗しました"));
   }
 
   return (
@@ -271,15 +271,15 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                         const md = articleToMarkdown(article, feed, contentHtml);
                         setOpen(false);
                         if (!navigator.clipboard) {
-                          showToast("クリップボードが使えません");
+                          toast.error("クリップボードが使えません");
                           return;
                         }
                         navigator.clipboard
                           .writeText(md)
-                          .then(() => showToast("Markdown をコピーしました"))
-                          .catch(() => showToast("コピーに失敗しました"));
+                          .then(() => toast.success("Markdown をコピーしました"))
+                          .catch(() => toast.error("コピーに失敗しました"));
                       } catch {
-                        showToast("Markdown 生成に失敗しました");
+                        toast.error("Markdown 生成に失敗しました");
                       }
                     }}
                     className={MENU_ITEM_CLS}
@@ -313,9 +313,9 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                         const a = document.createElement("a");
                         a.href = uri;
                         a.click();
-                        showToast("Obsidian を開いています…");
+                        toast.info("Obsidian を開いています…");
                       } catch {
-                        showToast("Obsidian URI の生成に失敗しました");
+                        toast.error("Obsidian URI の生成に失敗しました");
                       }
                     }}
                     className={MENU_ITEM_CLS}

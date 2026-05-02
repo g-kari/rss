@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFilter }: Props) {
-  const { showToast } = useToast();
+  const toast = useToast();
   const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
     useFilterMenuState(article, globalFilter);
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
@@ -24,7 +24,7 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
     btnRef.current?.focus();
     const existingExclude = globalFilter?.exclude ?? [];
     if (existingExclude.includes(value)) {
-      showToast("既にグローバル除外キーワードに登録されています");
+      toast.info("既にグローバル除外キーワードに登録されています");
       return;
     }
     const newFilter: KeywordFilter = {
@@ -33,7 +33,7 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
       matchCategories: globalFilter?.matchCategories,
     };
     onSaveGlobalFilter(newFilter);
-    showToast(`「${value}」をグローバル除外キーワードに追加しました`);
+    toast.success(`「${value}」をグローバル除外キーワードに追加しました`);
   }
 
   return (

@@ -1,0 +1,75 @@
+"use client";
+
+import { createPortal } from "react-dom";
+import { useToast } from "@/contexts/ToastContext";
+import type { ToastItem } from "@/hooks/useToast";
+
+const borderColor: Record<ToastItem["type"], string> = {
+  success: "border-l-emerald-500",
+  error: "border-l-rose-500",
+  info: "border-l-text-muted",
+};
+
+const iconPath: Record<ToastItem["type"], string> = {
+  success: "M5 13l4 4L19 7",
+  error: "M6 18L18 6M6 6l12 12",
+  info: "M13 16h-1v-4h-1m1-4h.01",
+};
+
+export default function ToastContainer() {
+  const { toasts, dismiss } = useToast();
+
+  if (toasts.length === 0) return null;
+
+  return createPortal(
+    <div
+      aria-live="polite"
+      className="fixed bottom-4 right-4 z-50 flex flex-col-reverse gap-2 pointer-events-none"
+    >
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          role="status"
+          className={`pointer-events-auto flex items-start gap-2.5 border-l-4 ${borderColor[toast.type]} bg-surface-elevated rounded-lg shadow-lg px-3.5 py-2.5 min-w-[240px] max-w-[360px] animate-fade-up`}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="mt-px flex-shrink-0 text-text-muted"
+          >
+            <path d={iconPath[toast.type]} />
+          </svg>
+          <span className="flex-1 text-[13px] text-text-default leading-snug break-words">
+            {toast.message}
+          </span>
+          <button
+            type="button"
+            onClick={() => dismiss(toast.id)}
+            className="flex-shrink-0 mt-px text-text-faint hover:text-text-muted transition-colors"
+            aria-label="閉じる"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      ))}
+    </div>,
+    document.body,
+  );
+}

@@ -87,7 +87,7 @@ export default function SelectionExcludePopup({
   onClose,
 }: Props) {
   usePopupLock();
-  const { showToast } = useToast();
+  const toast = useToast();
   const displayText = popup.text.length > 24 ? `${popup.text.slice(0, 24)}…` : popup.text;
 
   function doCopyQuote(e: { preventDefault: () => void }) {
@@ -95,8 +95,8 @@ export default function SelectionExcludePopup({
     const quote = `> ${popup.text.replace(/\n/g, "\n> ")}\n\n— [${article.title}](${article.link})`;
     navigator.clipboard
       .writeText(quote)
-      .then(() => showToast("引用をコピーしました"))
-      .catch(() => showToast("コピーに失敗しました"));
+      .then(() => toast.success("引用をコピーしました"))
+      .catch(() => toast.error("コピーに失敗しました"));
     onClose();
   }
 
@@ -104,14 +104,14 @@ export default function SelectionExcludePopup({
     e.preventDefault(); // 選択を維持しつつボタン押下
     const existing = globalFilter?.exclude ?? [];
     if (existing.includes(popup.text)) {
-      showToast("既にグローバル除外キーワードに登録されています");
+      toast.info("既にグローバル除外キーワードに登録されています");
     } else {
       onSaveGlobalFilter?.({
         include: globalFilter?.include ?? [],
         exclude: [...existing, popup.text],
         matchCategories: globalFilter?.matchCategories,
       });
-      showToast(`「${displayText}」をグローバル除外に追加しました`);
+      toast.success(`「${displayText}」をグローバル除外に追加しました`);
     }
     onClose();
   }

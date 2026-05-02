@@ -44,6 +44,8 @@ import { useSyncedRef } from "./hooks/useSyncedRef";
 import { ReaderSettingsProvider, type ReaderSettings } from "./contexts/ReaderSettingsContext";
 import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { ToastProvider } from "./contexts/ToastContext";
+import ToastContainer from "./components/ToastContainer";
+import { useToastState } from "./hooks/useToast";
 import LandingPage from "./components/LandingPage";
 import BetaRestrictedPage from "./components/BetaRestrictedPage";
 
@@ -73,8 +75,6 @@ export default function App() {
     togglePinFeed,
     collapsedCategories,
     toggleCollapseCategory,
-    toast,
-    showToast,
     mobilePane,
     setMobilePane,
     install,
@@ -123,6 +123,8 @@ export default function App() {
     onChangeImageDlFolderNsfw,
   } = useUIState(initialMobilePane);
 
+  const toast = useToastState();
+
   // カラム幅（PC）
   const { sidebarWidth, listWidth, handleResizeStart, resetWidth } = useColumnResize();
 
@@ -146,7 +148,7 @@ export default function App() {
     loadMoreFeedArticles,
     loadMoreAllFeedsArticles,
     skipRemainingPages,
-  } = useFeeds(user, showToast);
+  } = useFeeds(user, toast.error);
 
   const {
     groups: feedGroups,
@@ -156,7 +158,7 @@ export default function App() {
     setMuted: setFeedGroupMuted,
     deleteGroup,
     reorderGroup,
-  } = useFeedGroups(user, showToast);
+  } = useFeedGroups(user, toast.error);
 
   const {
     collections,
@@ -165,7 +167,7 @@ export default function App() {
     deleteCollection,
     addArticleToCollection,
     removeArticleFromCollection,
-  } = useCollections(user, showToast);
+  } = useCollections(user, toast.error);
 
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
@@ -292,10 +294,10 @@ export default function App() {
       const now = Date.now();
       if (now - lastShownAt < 3000) return;
       lastShownAt = now;
-      showToast(`通信エラー: ${message}`);
+      toast.error(`通信エラー: ${message}`);
     });
     return unsubscribe;
-  }, [showToast]);
+  }, [toast]);
 
   const { recordEngagement } = useEngagement(user);
   const {
@@ -463,26 +465,26 @@ export default function App() {
         });
         const raw = (await res.json()) as { error?: string };
         if (!res.ok) {
-          showToast(raw.error ?? "保存に失敗しました");
+          toast.error(raw.error ?? "保存に失敗しました");
           return;
         }
         if (!isArticle(raw)) {
-          showToast("保存に失敗しました");
+          toast.error("保存に失敗しました");
           return;
         }
         prependArticle(raw);
         if (mode === "bookmark") {
           toggleBookmark(raw.id);
-          showToast("ブックマークに追加しました");
+          toast.success("ブックマークに追加しました");
         } else {
           toggleReadingList(raw.id);
-          showToast("後で読むに追加しました");
+          toast.success("後で読むに追加しました");
         }
       } catch {
-        showToast("保存に失敗しました");
+        toast.error("保存に失敗しました");
       }
     },
-    [prependArticle, toggleBookmark, toggleReadingList, showToast],
+    [prependArticle, toggleBookmark, toggleReadingList, toast],
   );
 
   const nsfwFeedIds = useMemo(() => new Set(feeds.filter((f) => f.nsfw).map((f) => f.id)), [feeds]);
@@ -722,7 +724,7 @@ export default function App() {
     toggleRead,
     toggleReadingList,
     toggleLike,
-    showToast,
+    showToast: toast.info,
     fontSize,
     onChangeFontSize,
     fontFamily,
@@ -766,10 +768,9 @@ export default function App() {
   if (!user) return <LandingPage sessionExpired={sessionExpired} />;
 
   const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
-  const toastValue = useMemo(() => ({ toast, showToast }), [toast, showToast]);
 
   return (
-    <ToastProvider value={toastValue}>
+    <ToastProvider value={toast}>
       <ReaderSettingsProvider value={readerSettings}>
         <ArticleFilterProvider value={articleFilter}>
           <div
@@ -814,16 +815,7 @@ export default function App() {
               </div>
             )}
 
-            {/* トースト通知 */}
-            {toast && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] tracking-[0.04em] px-4 py-2 bg-ink text-ink-text rounded-full shadow-lg animate-fade-up pointer-events-none"
-              >
-                {toast}
-              </div>
-            )}
+            <ToastContainer />
 
             {/* スヌーズ期間選択 */}
             {snoozeTargetId &&
@@ -836,7 +828,7 @@ export default function App() {
                     onSnooze={(durationMs) => {
                       snoozeArticle(snoozeTargetId, durationMs);
                       const hours = Math.round(durationMs / (60 * 60 * 1000));
-                      showToast(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
+                      toast.info(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
                       const next = filtered[idx + 1];
                       if (next) setSelectedArticle(next);
                     }}
