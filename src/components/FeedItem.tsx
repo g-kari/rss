@@ -8,46 +8,10 @@ import FeedDetailModal from "./FeedDetailModal";
 import type { KeywordFilter } from "../types";
 import { useEventListener } from "@/hooks/useEventListener";
 import { usePopupLock } from "@/hooks/usePopupLock";
+import { formatCount } from "@/lib/article-utils";
+import { NsfwIcon, StarIcon, FilterIcon } from "./article-view/icons";
 
-/** 未読カウントを表示用文字列に変換する（100以上は "99+" と表示） */
-export function formatCount(n: number): string {
-  return n > 99 ? "99+" : String(n);
-}
-
-function NsfwIcon({ size = 10 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 10 10"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <ellipse cx="5" cy="5" rx="4" ry="2.5" />
-      <circle cx="5" cy="5" r="1.5" />
-    </svg>
-  );
-}
-
-function StarIcon({ size = 10, filled = false }: { size?: number; filled?: boolean }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 10 10"
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 1l1.2 2.4L9 3.8 7 5.7l.5 2.8L5 7.2 2.5 8.5 3 5.7 1 3.8l2.8-.4z" />
-    </svg>
-  );
-}
+export { formatCount };
 
 /** Enter/Escape キーに対応したインプット用キーハンドラーを生成する。 */
 function makeInputKeyHandler(onEnter: () => void | Promise<void>, onEscape: () => void) {
@@ -59,23 +23,6 @@ function makeInputKeyHandler(onEnter: () => void | Promise<void>, onEscape: () =
       onEscape();
     }
   };
-}
-
-function FilterIcon({ size = 10 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 10 10"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M1 2h8M2.5 5h5M4 8h2" />
-    </svg>
-  );
 }
 
 export interface FeedItemProps {

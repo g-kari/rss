@@ -88,7 +88,6 @@ export function useArticleHighlight({
     if (marks.length > 0) {
       marks[0].scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    // contentRef は安定参照のため deps から除外（元実装と揃える）
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- contentRef は useSyncedRef の安定参照のため deps 不要
   }, [query, processedContent]);
 }

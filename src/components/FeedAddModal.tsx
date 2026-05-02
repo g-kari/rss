@@ -49,11 +49,14 @@ export default function FeedAddModal({
         <form onSubmit={onSubmit}>
           <input
             type="url"
+            inputMode="url"
             placeholder="https://..."
             value={url}
             onChange={(e) => onUrlChange(e.target.value)}
             disabled={adding}
             autoFocus
+            aria-required
+            aria-invalid={error ? true : undefined}
             className="w-full text-[13px] bg-surface-base border border-border-default rounded-lg px-3 py-2 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
           />
 

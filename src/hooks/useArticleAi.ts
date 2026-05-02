@@ -181,8 +181,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
   useEffect(() => {
     ai.reset();
     translate.reset();
-    // ai と translate の reset は useCallback([], []) で安定参照のため deps 不要
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ai.reset / translate.reset は deps=[] の useCallback で安定参照のため deps 不要
   }, [articleId]);
 
   return {

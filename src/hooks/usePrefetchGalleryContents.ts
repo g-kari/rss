@@ -31,7 +31,7 @@ interface Options {
   enabled: boolean;
   /** 同時 fetch 上限 — リモートサイトのレート制限を避けるため既定 2 並列 */
   concurrency?: number;
-  /** 先頭から何件まで先行取得するか — 画面に最初に表示される枚数分を目安に */
+  /** 先頭から何件まで先行取得するか — ビューポートに収まる枚数 + α を目安に（既定 20） */
   maxPrefetch?: number;
   /** 各 fetch 完了後のディレイ (ms) — バースト抑制のため既定 750ms */
   requestDelayMs?: number;
@@ -56,9 +56,7 @@ export function usePrefetchGalleryContents({
   articles,
   enabled,
   concurrency = 2,
-  // visible 全件を対象に先行取得する（スクロールで記事が追加されたら次回 useEffect で補完）。
-  // 暴走保護として実装上限 200 件は内部で設ける。
-  maxPrefetch = Number.POSITIVE_INFINITY,
+  maxPrefetch = 20,
   requestDelayMs = 750,
 }: Options): PrefetchGalleryResult {
   const [media, setMedia] = useState<Map<string, PrefetchedMedia>>(() => new Map());
@@ -208,10 +206,7 @@ export function usePrefetchGalleryContents({
       cancelled = true;
       controller.abort();
     };
-    // articles の代わりに articlesKey（記事 ID の結合文字列）を依存にする。
-    // これにより、記事内容が変わらない限り setMedia による再レンダーで effect が再実行されず、
-    // 進行中の fetch が意図せず中断・重複することを防ぐ。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- articles の代わりに articlesKey を依存にし、setMedia 再レンダーによる effect 再実行・fetch 中断を防ぐ
   }, [articlesKey, enabled, concurrency, maxPrefetch, requestDelayMs]);
 
   /** 失敗した記事を個別にリトライする */

@@ -577,6 +577,7 @@ export default function ArticleListHeader({
             id="article-search"
             ref={searchRef}
             type="search"
+            inputMode="search"
             placeholder="検索... (/ でフォーカス、title:foo OR -bar 等)"
             value={rawQuery}
             onChange={(e) => updateQuery(e.target.value)}

@@ -59,7 +59,9 @@ export async function GET(request: Request) {
 function isValidCookieHeader(value: string): boolean {
   // 長さ上限を 2000 文字に制限（HTTP ヘッダー全体 8KB 制限に対して余裕を確保）
   if (value.length > 2000) return false;
-  // [\x20-\x7E] は印字可能 ASCII のみ許容し、制御文字（\r\n 含む）を除外する
+  // CRLF インジェクション対策: \r \n を明示的に拒否（ヘッダー分割攻撃の防止）
+  if (/[\r\n]/.test(value)) return false;
+  // [\x20-\x7E] は印字可能 ASCII のみ許容し、制御文字を除外する
   if (!/^[\x20-\x7E]*$/.test(value)) return false;
   // RFC 6265 準拠: name=value ペアの形式検証（複数は "; " で区切る）
   const pairs = value.split(/;\s*/);

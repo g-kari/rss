@@ -1,4 +1,6 @@
+import React, { type ReactNode } from "react";
 import type {
+  Article,
   DateRange,
   FontFamily,
   FontSize,
@@ -188,4 +190,79 @@ export function timeAgo(iso: string | null): string {
     month: "short",
     day: "numeric",
   });
+}
+
+/** 未読カウントを表示用文字列に変換する（100以上は "99+" と表示） */
+export function formatCount(n: number): string {
+  return n > 99 ? "99+" : String(n);
+}
+
+/** OGP キャッシュ → フィード画像 → YouTube URL の順でサムネイルを解決 */
+export function resolveThumbnail(
+  article: Article,
+  ogpCache: Record<string, string>,
+): string | undefined {
+  // OGP 画像を優先（実際のページメタデータから取得した画像）
+  if (article.link && ogpCache[article.link]) return ogpCache[article.link];
+  if (article.ogImage) return article.ogImage;
+  const yt = article.link?.match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+  );
+  if (yt) return `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg`;
+  return undefined;
+}
+
+/** 検索クエリに一致する箇所をハイライト表示（複数ワード対応） */
+export function highlightText(text: string, query: string): ReactNode {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return text;
+
+  // 全ワードの出現位置を収集
+  const lowerText = text.toLowerCase();
+  const matches: { start: number; end: number }[] = [];
+  for (const term of terms) {
+    let idx = lowerText.indexOf(term);
+    while (idx !== -1) {
+      matches.push({ start: idx, end: idx + term.length });
+      idx = lowerText.indexOf(term, idx + 1);
+    }
+  }
+  if (matches.length === 0) return text;
+
+  // 開始位置でソートし、重複区間をマージ
+  matches.sort((a, b) => a.start - b.start);
+  const merged: { start: number; end: number }[] = [];
+  for (const m of matches) {
+    const last = merged[merged.length - 1];
+    if (last && m.start <= last.end) {
+      last.end = Math.max(last.end, m.end);
+    } else {
+      merged.push({ ...m });
+    }
+  }
+
+  const parts: ReactNode[] = [];
+  let pos = 0;
+  let key = 0;
+  for (const { start, end } of merged) {
+    if (start > pos) parts.push(text.slice(pos, start));
+    parts.push(
+      React.createElement(
+        "mark",
+        {
+          key: key++,
+          style: {
+            background: "var(--color-highlight)",
+            color: "inherit",
+            borderRadius: "2px",
+            paddingInline: "1px",
+          },
+        },
+        text.slice(start, end),
+      ),
+    );
+    pos = end;
+  }
+  if (pos < text.length) parts.push(text.slice(pos));
+  return React.createElement(React.Fragment, null, ...parts);
 }

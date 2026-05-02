@@ -12,6 +12,8 @@ export default function Spinner({ className = "w-3.5 h-3.5" }: Props) {
       viewBox="0 0 24 24"
       stroke="currentColor"
       strokeWidth={1.5}
+      role="status"
+      aria-label="読み込み中"
     >
       <path
         strokeLinecap="round"

@@ -56,6 +56,7 @@ export default function LoadMoreButton({ onLoad }: Props) {
           }
         }}
         disabled={loading}
+        aria-busy={loading}
         className="flex items-center gap-1.5 text-[11px] tracking-[0.06em] px-3 py-1.5 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200 disabled:opacity-50"
       >
         {loading ? (

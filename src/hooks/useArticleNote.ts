@@ -35,8 +35,7 @@ export function useArticleNote({
   useEffect(() => {
     setNoteText(note ?? "");
     setNoteExpanded(!!note);
-    // note は deps から除外 — 記事切り替え時のみリセットし、保存後の prop 更新では上書きしない
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- note を deps から除外: 記事切り替え時のみリセットし、保存後の prop 更新では上書きしない
   }, [article?.id]);
 
   const handleNoteBlur = useCallback(() => {

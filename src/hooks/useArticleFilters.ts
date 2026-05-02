@@ -80,7 +80,7 @@ export function useArticleFilters({
     setRawQuery("");
     setAuthorFilter(null);
     setCategoryFilter(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resetPageRef は useSyncedRef の安定参照。フィード/グループ切替時のみリセット
   }, [feedId, selectedGroupId]);
 
   const {
@@ -122,7 +122,7 @@ export function useArticleFilters({
         rp,
       ),
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 全 setter・ref は安定参照。マウント時に一度だけ生成するメモ化オブジェクト
   }, []);
 
   return {

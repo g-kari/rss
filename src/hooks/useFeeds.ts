@@ -140,12 +140,13 @@ export function useFeeds(
       mergeArticles(fresh);
       const newIdx = fresh.findIndex((a) => a.id === prevTopId);
       if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
-    } catch {
-      // ポーリングエラーはサイレント失敗
+    } catch (err) {
+      console.error("[polling] 新着記事の取得に失敗:", err);
+      onErrorRef.current?.("新着記事の取得に失敗しました");
     } finally {
       isPollingRef.current = false;
     }
-  }, [mergeArticles]);
+  }, [mergeArticles, onErrorRef]);
 
   // タブがアクティブな間は5分、非アクティブ時は15分ごとに記事を再取得して新着件数を通知する
   // visibilitychange のたびにタイマーを再生成して適切な間隔を適用する
@@ -285,8 +286,7 @@ export function useFeeds(
     } finally {
       loadingFeedIdsRef.current.delete(feedId);
     }
-    // loadedFeedPagesRef.current は ref 経由で最新値を参照するため deps から除外
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadedFeedPagesRef・loadingFeedIdsRef・onErrRef は ref 経由で最新値を参照するため deps 不要
   }, []);
 
   // 全フィード表示時: 未読み込みページが残っている全フィードの次ページを一括取得する
@@ -336,8 +336,7 @@ export function useFeeds(
     if (succeeded.length === 0) return;
     const newArticles = succeeded.flatMap(({ value }) => value.data);
     if (newArticles.length > 0) setArticles((prev) => mergeUniqueArticles(prev, newArticles));
-    // loadedFeedPagesRef.current は ref 経由で最新値を参照するため deps から除外
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadedFeedPagesRef・loadingFeedIdsRef・onErrRef は ref 経由で最新値を参照するため deps 不要
   }, []);
 
   // markAllRead 実行後に呼び出し、残りのサーバーページをスキップして

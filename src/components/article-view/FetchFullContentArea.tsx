@@ -33,6 +33,7 @@ export default function FetchFullContentArea({
         <button
           onClick={() => onFetch(() => onEngagement?.(articleId, feedHash, "fetch_full"))}
           disabled={fetching}
+          aria-busy={fetching}
           className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] px-4 py-2 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200 disabled:opacity-50"
         >
           {fetching ? (
@@ -58,7 +59,18 @@ export default function FetchFullContentArea({
           元記事を開く
         </a>
       </div>
-      {fetchError && <p className="text-[11px] text-rose-400">{fetchError}</p>}
+      {fetchError && (
+        <div className="flex items-center gap-2">
+          <p className="text-[11px] text-rose-400">{fetchError}</p>
+          <button
+            onClick={() => onFetch(() => onEngagement?.(articleId, feedHash, "fetch_full"))}
+            disabled={fetching}
+            className="text-[11px] text-text-muted hover:text-text-strong underline underline-offset-2 transition-colors duration-200 disabled:opacity-50"
+          >
+            再試行
+          </button>
+        </div>
+      )}
     </div>
   );
 }

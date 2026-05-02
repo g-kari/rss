@@ -177,7 +177,18 @@ export default function ArticleList({
   onGalleryAutoRead,
   duplicateInfo,
 }: Props) {
-  const { filtered, visible, hasMore, query, sentinelRef } = useArticleFilter();
+  const {
+    filtered,
+    visible,
+    hasMore,
+    query,
+    sentinelRef,
+    unreadOnly,
+    bookmarkOnly,
+    readingListOnly,
+    likeOnly,
+    noteOnly,
+  } = useArticleFilter();
   const { galleryColumns, galleryCardSize, galleryMinImagePx, autoReadEnabled } =
     useReaderSettings();
 
@@ -196,11 +207,13 @@ export default function ArticleList({
     articles: visible,
     enabled: galleryPrefetchEnabled,
   });
+  const prefetchedMediaRef = useSyncedRef(prefetchedMedia);
+  const activeFeedViewRef = useSyncedRef(activeFeedView);
   const galleryImagesForItem = useCallback(
     (articleId: string): string[] | undefined => {
-      const media = prefetchedMedia.get(articleId);
+      const media = prefetchedMediaRef.current.get(articleId);
       if (!media) return undefined;
-      if (activeFeedView === "videos") {
+      if (activeFeedViewRef.current === "videos") {
         const thumbs = media.embeds
           .map((src) => extractEmbedThumbnailUrl(src))
           .filter((u): u is string => u !== null);
@@ -208,7 +221,8 @@ export default function ArticleList({
       }
       return media.images;
     },
-    [prefetchedMedia, activeFeedView],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- prefetchMedia・readState は ref 経由で最新値を参照するため deps 不要
+    [],
   );
 
   const {
@@ -223,15 +237,17 @@ export default function ArticleList({
   useEventListener("scroll", () => setGalleryCtxMenu(null), window, true);
   useEventListener("resize", () => setGalleryCtxMenu(null));
 
+  const ogpCacheRef = useSyncedRef(ogpCache);
   const handleGalleryContextMenu = useCallback(
     (e: React.MouseEvent, article: Article, _index: number) => {
       e.preventDefault();
       e.stopPropagation();
       const images = galleryImagesForItem(article.id);
-      const thumb = resolveThumbnail(article, ogpCache) ?? null;
+      const thumb = resolveThumbnail(article, ogpCacheRef.current) ?? null;
       setGalleryCtxMenu({ article, thumb, images, x: e.clientX, y: e.clientY });
     },
-    [galleryImagesForItem, ogpCache],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ogpCacheRef は useSyncedRef の安定参照のため deps 不要
+    [galleryImagesForItem],
   );
 
   // ── 仮想スクロール ──────────────────────────────────────────────
@@ -340,7 +356,7 @@ export default function ArticleList({
         .getElementById(`article-${selectedArticleId}`)
         ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・flatItemsRef・visibleRef は安定参照。記事選択・レイアウト変更時のみスクロール
   }, [selectedArticleId, layout]);
 
   const resolveItemProps = useCallback(
@@ -466,6 +482,46 @@ export default function ArticleList({
                   </svg>
                   <p className="text-[12px] text-text-faint">検索結果が見つかりませんでした</p>
                 </>
+              ) : unreadOnly ? (
+                <>
+                  <svg
+                    className="w-6 h-6 text-text-faint mb-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p className="text-[12px] text-text-faint">すべて既読です</p>
+                </>
+              ) : bookmarkOnly ? (
+                <>
+                  <svg
+                    className="w-6 h-6 text-text-faint mb-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
+                    />
+                  </svg>
+                  <p className="text-[12px] text-text-faint">ブックマークはありません</p>
+                </>
+              ) : readingListOnly ? (
+                <p className="text-[12px] text-text-faint">後で読むリストは空です</p>
+              ) : likeOnly ? (
+                <p className="text-[12px] text-text-faint">いいねした記事はありません</p>
+              ) : noteOnly ? (
+                <p className="text-[12px] text-text-faint">メモ付きの記事はありません</p>
               ) : (
                 <p className="text-[12px] text-text-faint">記事がありません</p>
               )}

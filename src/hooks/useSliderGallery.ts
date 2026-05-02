@@ -76,7 +76,6 @@ export function useSliderGallery(
         { passive: false },
       );
     });
-    // contentRef は安定参照のため deps から除外（元実装と揃える）
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- contentRef は useSyncedRef の安定参照のため deps 不要
   }, [processedContent]);
 }

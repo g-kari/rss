@@ -1,10 +1,13 @@
 "use client";
 
-import { memo, useCallback, useContext, useState, type ReactNode } from "react";
+import { memo, useCallback, useContext, useState } from "react";
 import type { Article } from "../types";
-import { readingTime, timeAgo } from "../lib/article-utils";
+import { readingTime, timeAgo, resolveThumbnail, highlightText } from "../lib/article-utils";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { SelectedArticleCtx } from "../contexts/SelectedArticleContext";
+import { NoteIcon } from "./article-view/icons";
+
+export { resolveThumbnail, highlightText };
 
 // ── 共通 Props ──────────────────────────────────────────────────────────
 
@@ -30,98 +33,6 @@ export interface ArticleItemProps {
   onToggleBookmark: (id: string) => void;
 }
 
-// ── 共通 UI パーツ ────────────────────────────────────────────────────────
-
-function NoteIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-label="メモあり"
-    >
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  );
-}
-
-// ── ユーティリティ関数 ──────────────────────────────────────────────────
-
-/** OGP キャッシュ → フィード画像 → YouTube URL の順でサムネイルを解決 */
-export function resolveThumbnail(
-  article: Article,
-  ogpCache: Record<string, string>,
-): string | undefined {
-  // OGP 画像を優先（実際のページメタデータから取得した画像）
-  if (article.link && ogpCache[article.link]) return ogpCache[article.link];
-  if (article.ogImage) return article.ogImage;
-  const yt = article.link?.match(
-    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-  );
-  if (yt) return `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg`;
-  return undefined;
-}
-
-/** 検索クエリに一致する箇所をハイライト表示（複数ワード対応） */
-export function highlightText(text: string, query: string): ReactNode {
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return text;
-
-  // 全ワードの出現位置を収集
-  const lowerText = text.toLowerCase();
-  const matches: { start: number; end: number }[] = [];
-  for (const term of terms) {
-    let idx = lowerText.indexOf(term);
-    while (idx !== -1) {
-      matches.push({ start: idx, end: idx + term.length });
-      idx = lowerText.indexOf(term, idx + 1);
-    }
-  }
-  if (matches.length === 0) return text;
-
-  // 開始位置でソートし、重複区間をマージ
-  matches.sort((a, b) => a.start - b.start);
-  const merged: { start: number; end: number }[] = [];
-  for (const m of matches) {
-    const last = merged[merged.length - 1];
-    if (last && m.start <= last.end) {
-      last.end = Math.max(last.end, m.end);
-    } else {
-      merged.push({ ...m });
-    }
-  }
-
-  const parts: ReactNode[] = [];
-  let pos = 0;
-  let key = 0;
-  for (const { start, end } of merged) {
-    if (start > pos) parts.push(text.slice(pos, start));
-    parts.push(
-      <mark
-        key={key++}
-        style={{
-          background: "var(--color-highlight)",
-          color: "inherit",
-          borderRadius: "2px",
-          paddingInline: "1px",
-        }}
-      >
-        {text.slice(start, end)}
-      </mark>,
-    );
-    pos = end;
-  }
-  if (pos < text.length) parts.push(text.slice(pos));
-  return <>{parts}</>;
-}
-
 // ── サブコンポーネント ──────────────────────────────────────────────────
 
 interface ArticleActionsProps {
@@ -141,7 +52,10 @@ function ArticleActions({
   onToggleRead,
   onToggleBookmark,
 }: ArticleActionsProps) {
-  const btn = size === "sm" ? "w-5 h-5" : "w-6 h-6";
+  const btn =
+    size === "sm"
+      ? "w-5 h-5 md:w-5 md:h-5 max-md:min-w-[44px] max-md:min-h-[44px]"
+      : "w-6 h-6 md:w-6 md:h-6 max-md:min-w-[44px] max-md:min-h-[44px]";
   const icon = size === "sm" ? 10 : 12;
   const bicon = size === "sm" ? { w: 9, h: 11 } : { w: 11, h: 13 };
   return (

@@ -793,7 +793,11 @@ export default function App() {
 
             {/* トースト通知 */}
             {toast && (
-              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] tracking-[0.04em] px-4 py-2 bg-ink text-ink-text rounded-full shadow-lg animate-fade-up pointer-events-none">
+              <div
+                role="status"
+                aria-live="polite"
+                className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] tracking-[0.04em] px-4 py-2 bg-ink text-ink-text rounded-full shadow-lg animate-fade-up pointer-events-none"
+              >
                 {toast}
               </div>
             )}

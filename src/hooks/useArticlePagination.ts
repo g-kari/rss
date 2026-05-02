@@ -29,7 +29,7 @@ export function useArticlePagination(
   useEffect(() => {
     if (serverLoadCount === 0) return;
     setPage((prev) => Math.max(prev, Math.ceil(filteredRef.current.length / PAGE_SIZE) || 1));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filteredRef は useSyncedRef の安定参照のため deps 不要
   }, [serverLoadCount, setPage]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
@@ -49,7 +49,7 @@ export function useArticlePagination(
     );
     observer.observe(el);
     return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMoreRef・hasMoreRef は useSyncedRef の安定参照、マウント時に一度だけ設定
   }, []);
 
   return { visible, hasMore, sentinelRef, notifyArticlesAdded } as const;

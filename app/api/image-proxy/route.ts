@@ -14,6 +14,9 @@ import { MAX_IMAGE_BYTES } from "@/lib/validation";
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 
+// Content-Length 不明時のストリーミング上限（並列リクエストによるメモリ圧迫を緩和）
+const MAX_IMAGE_BYTES_NO_CL = 5 * 1024 * 1024; // 5MB
+
 export async function GET(request: Request) {
   return withBinarySession(request, ({ ctx }) => handleGet(request, ctx));
 }
@@ -75,15 +78,19 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<Respo
       return errorImageSvg("unavailable");
     }
 
-    // Content-Length が MAX を超える場合は読まずに即拒否。悪意あるサーバーが 30MB ちょうどを配信して
-    // メモリを圧迫する攻撃（並列リクエストで Workers の 128MB 制限に到達させる試み）を防ぐ。
+    // Content-Length による事前検証: ボディを読む前にサイズ超過を検出して即拒否する。
     const contentLength = res.headers.get("content-length");
-    if (contentLength && parseInt(contentLength, 10) > MAX_IMAGE_BYTES) {
+    const clBytes = contentLength ? parseInt(contentLength, 10) : NaN;
+    if (contentLength && clBytes > MAX_IMAGE_BYTES) {
       return errorImageSvg("too_large");
     }
 
+    // Content-Length が無い場合は上限を 5MB に制限し、並列リクエストによるメモリ圧迫を緩和する。
+    const effectiveMax =
+      contentLength && clBytes <= MAX_IMAGE_BYTES ? MAX_IMAGE_BYTES : MAX_IMAGE_BYTES_NO_CL;
+
     if (!res.body) return errorImageSvg("unavailable");
-    const merged = await readBodyBytes(res.body, MAX_IMAGE_BYTES);
+    const merged = await readBodyBytes(res.body, effectiveMax);
     if (merged === null) return errorImageSvg("too_large");
 
     // Content-Type ヘッダーは偽装できるため、常にマジックバイトで MIME タイプを検証する。

@@ -19,7 +19,7 @@ export function useArticleSorting(resetPage: () => void) {
       resetPageRef.current();
       return next;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sortOrderRef・resetPageRef は useSyncedRef の安定参照のため deps 不要
     [],
   );
 
