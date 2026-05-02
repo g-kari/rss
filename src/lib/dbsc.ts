@@ -14,6 +14,8 @@
  * @see https://wicg.github.io/dbsc/
  */
 
+import { base64urlToBytes } from "./auth";
+
 /**
  * サーバーサイドに保存する DBSC セッション情報（R2 保存用）
  */
@@ -36,18 +38,6 @@ export interface DbscSession {
  */
 export function generateDbscChallenge(): string {
   return crypto.randomUUID();
-}
-
-function base64urlToBytes(b64url: string): Uint8Array<ArrayBuffer> {
-  const base64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
-  const binary = atob(padded);
-  const buf = new ArrayBuffer(binary.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < binary.length; i++) {
-    view[i] = binary.charCodeAt(i);
-  }
-  return view;
 }
 
 export async function importDbscPublicKey(publicKey: string): Promise<CryptoKey> {
