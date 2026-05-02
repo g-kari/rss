@@ -66,7 +66,7 @@ export const MAX_RELEASE_NOTES_LIMIT = 50;
 // ---------------------------------------------------------------------------
 // コンテンツ取得レートリミット
 // ---------------------------------------------------------------------------
-export const CONTENT_MAX_CALLS = 1200;
+export const CONTENT_MAX_CALLS = 120;
 
 /** 制御文字（U+0000–U+001F, U+007F）を除去する */
 export function stripControlChars(value: string): string {
