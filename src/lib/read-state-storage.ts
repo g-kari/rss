@@ -28,6 +28,45 @@ export function mergePendingSets(target: PendingSets, source: PendingSets): void
   }
 }
 
+/** ペンディング状態のスナップショットを取得し、元をリセットする */
+export interface PendingRefs {
+  pendingAddedRef: { current: PendingSets };
+  pendingRemovedRef: { current: PendingSets };
+  pendingTagChangedRef: { current: Set<string> };
+  pendingTagRemovedRef: { current: Set<string> };
+  globalFilterDirtyRef: { current: boolean };
+}
+
+export interface PendingSnapshot {
+  added: PendingSets;
+  removed: PendingSets;
+  tagChanged: Set<string>;
+  tagRemoved: Set<string>;
+  wasGfDirty: boolean;
+}
+
+export function extractAndResetPending(refs: PendingRefs): PendingSnapshot {
+  const added = snapshotPendingSets(refs.pendingAddedRef.current);
+  const removed = snapshotPendingSets(refs.pendingRemovedRef.current);
+  const tagChanged = new Set(refs.pendingTagChangedRef.current);
+  const tagRemoved = new Set(refs.pendingTagRemovedRef.current);
+  const wasGfDirty = refs.globalFilterDirtyRef.current;
+  refs.pendingAddedRef.current = emptyPendingSets();
+  refs.pendingRemovedRef.current = emptyPendingSets();
+  refs.pendingTagChangedRef.current = new Set();
+  refs.pendingTagRemovedRef.current = new Set();
+  refs.globalFilterDirtyRef.current = false;
+  return { added, removed, tagChanged, tagRemoved, wasGfDirty };
+}
+
+export function restorePending(refs: PendingRefs, snapshot: PendingSnapshot): void {
+  mergePendingSets(refs.pendingAddedRef.current, snapshot.added);
+  mergePendingSets(refs.pendingRemovedRef.current, snapshot.removed);
+  for (const k of snapshot.tagChanged) refs.pendingTagChangedRef.current.add(k);
+  for (const k of snapshot.tagRemoved) refs.pendingTagRemovedRef.current.add(k);
+  if (snapshot.wasGfDirty) refs.globalFilterDirtyRef.current = true;
+}
+
 export function pruneExpiredSnoozes(snoozed: Record<string, string>): Record<string, string> {
   const now = new Date().toISOString();
   const result: Record<string, string> = {};

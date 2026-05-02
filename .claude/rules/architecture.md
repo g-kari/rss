@@ -144,8 +144,12 @@ src/
     useArticlePagination.ts  # ページネーション（IntersectionObserver・visible/hasMore）
     useFilteredArticles.ts   # 記事フィルタリング・ソート・ページネーション（上記3フックを合成）
     useReadState.ts              # 既読・ブックマーク・後で読む・スヌーズ状態 (localStorage + R2 同期)
-    useReadStatePersistence.ts   # localStorage 永続化（readIds・bookmarkIds 等の保存・復元）
-    useReadStateSync.ts          # サーバー R2 との同期（デバウンス・sendBeacon）
+    useReadStatePersistence.ts   # localStorage 永続化（readIds・bookmarkIds 等の保存・復元）— サブフックを合成
+    useReadStateActions.ts       # 既読・一括既読・全既読・スヌーズ・ノート・グローバルフィルター・TTL 操作
+    useReadStateToggles.ts       # toggleRead / toggleBookmark / toggleReadingList / toggleLike 生成
+    useReadStateSync.ts          # サーバー R2 との同期オーケストレーター（サブフックを合成）
+    useReadStateSyncApply.ts     # サーバー応答のローカルステートへのマージ（applyServerState）
+    useReadStateSyncFlush.ts     # サーバーへのフラッシュ・ライフサイクルイベント（beforeunload・visibilitychange・online）
     useReadStateTags.ts          # タグ管理（tagIds の追加・削除）
     useReadingHistory.ts     # 閲覧履歴管理
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
@@ -181,7 +185,11 @@ src/
     useArticleHighlight.ts   # 記事本文テキストのハイライト管理（アノテーション保存・復元）
     useArticleNote.ts        # 記事ごとの個人メモ編集・自動保存（ReadState.notes と同期、最大 2000 文字）
     useArticleAiRatings.ts   # AI 要約・翻訳結果へのユーザー評価フィードバック管理
-    useArticleViewState.ts   # ArticleView のフック・状態管理を集約（コンテンツ・AI・TTS・ノート・ジェスチャー・読書進捗）
+    useArticleViewState.ts   # ArticleView のフック・状態管理を集約（サブフックを合成）
+    useArticleViewContent.ts # 記事コンテンツ処理（processedContent・galleryImages・embedInfo・派生状態）
+    useArticleViewTts.ts     # 記事 TTS（読み上げライフサイクル・Shift+P ショートカット・トグル）
+    useArticleViewShortcuts.ts # 記事ビューキーボードショートカット（v/a/z/space）+ 自動翻訳トリガー
+    useArticleViewProgress.ts  # 読書進捗バー・自動既読・スクロールハンドラー
     useFullTextSearch.ts     # 記事全文検索（クエリパース・フィールド絞り込み・正規表現対応）
     usePrefetchGalleryContents.ts # ギャラリー表示時の本文・画像事前フェッチ
     useSliderGallery.ts      # スライダー型ギャラリー UI 状態管理（ページング・キーボードナビ）
@@ -250,7 +258,8 @@ src/
     dbsc.ts                  # Device Bound Session Credentials (DBSC) ユーティリティ — 機能検出・チャレンジ生成・ヘッダービルダー (スケルトン)
     serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
     retry-after.ts           # HTTP Retry-After ヘッダー（delta-seconds / HTTP-date）をミリ秒に変換（クライアント・cron で共有）
-    read-state-storage.ts    # ReadState の localStorage 永続化ユーティリティ
+    read-state-storage.ts    # ReadState の localStorage 永続化ユーティリティ + ペンディング状態スナップショット
+    read-state-sync-api.ts   # ReadState のサーバー通信（fetchReadState・saveReadState）
     sw-cache.ts              # Service Worker キャッシュ管理
     type-guards.ts           # TypeScript 型ガード関数
   cron/
