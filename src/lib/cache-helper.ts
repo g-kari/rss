@@ -44,6 +44,18 @@ export function cachePutAsync(
 }
 
 /**
+ * ユーザーのフィード一覧キャッシュを無効化する（フィード追加・削除・更新・インポート時に使用）。
+ */
+export async function purgeFeedsCache(
+  origin: string,
+  userId: string,
+  ctx: ExecutionContext,
+): Promise<void> {
+  const cacheKey = await buildCacheKey(origin, "feeds", `user:${userId}`);
+  ctx.waitUntil(caches.default.delete(cacheKey).catch(() => {}));
+}
+
+/**
  * JSON ペイロード用のキャッシュ保存 Response を構築する。
  * `Content-Type: application/json` と `Cache-Control: public, max-age={ttl}` を付与する。
  */

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
+import {
+  buildCacheKey,
+  buildJsonCacheResponse,
+  cachePutAsync,
+  matchCfCache,
+  purgeFeedsCache,
+} from "@/lib/cache-helper";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { feedAddCooldownKey } from "@/lib/r2";
 import { isValidFeedUrl } from "@/lib/url";
@@ -25,9 +32,19 @@ import { registerAndFetchFeed } from "@/cron/fetch";
 import type { UserSubscription } from "@/types";
 
 const LAST_ACCESSED_UPDATE_INTERVAL_MS = 60 * 60 * 1000; // 1 時間
+const FEEDS_CACHE_TTL_SEC = 30;
 
 export async function GET(request: Request) {
   return withSession(request, async ({ session, env, ctx }) => {
+    const origin = new URL(request.url).origin;
+    const cacheKey = await buildCacheKey(origin, "feeds", `user:${session.userId}`);
+    const cached = await matchCfCache(cacheKey);
+    if (cached) {
+      return new NextResponse(cached.body, {
+        headers: { "Content-Type": "application/json", "X-Cache": "HIT" },
+      });
+    }
+
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
 
     // lastAccessedAt を 1 時間スロットル付きで更新（fire-and-forget）
@@ -51,7 +68,9 @@ export async function GET(request: Request) {
       const meta = metas[i];
       return meta ? [assembleClientFeed(meta, sub)] : [];
     });
-    return NextResponse.json(feeds);
+
+    cachePutAsync(cacheKey, buildJsonCacheResponse(feeds, FEEDS_CACHE_TTL_SEC), ctx, "feeds-list");
+    return NextResponse.json(feeds, { headers: { "X-Cache": "MISS" } });
   });
 }
 
@@ -197,6 +216,9 @@ export async function POST(request: Request) {
     };
     subs.push(newSub);
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
+
+    const origin = new URL(request.url).origin;
+    await purgeFeedsCache(origin, session.userId, ctx);
 
     // バックグラウンドで初回記事取得（Cookie はユーザー個別で渡す）
     ctx.waitUntil(

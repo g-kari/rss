@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
+import { purgeFeedsCache } from "@/lib/cache-helper";
 import {
   readUserSubscriptions,
   writeUserSubscriptions,
@@ -13,7 +14,7 @@ import { stripControlChars, isValidIso8601 } from "@/lib/validation";
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  return withSession(request, async ({ session, env }) => {
+  return withSession(request, async ({ session, env, ctx }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     if (!subs.some((s) => s.feedHash === feedHash)) {
       return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
@@ -24,6 +25,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       session.userId,
       subs.filter((s) => s.feedHash !== feedHash),
     );
+    const origin = new URL(request.url).origin;
+    await purgeFeedsCache(origin, session.userId, ctx);
     return NextResponse.json({ ok: true });
   });
 }
@@ -39,7 +42,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     groupId?: unknown;
     mutedUntil?: unknown;
     view?: unknown;
-  }>(request, async ({ body, session, env }) => {
+  }>(request, async ({ body, session, env, ctx }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     const sub = subs.find((s) => s.feedHash === feedHash);
     if (!sub) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
@@ -145,6 +148,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!meta) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
 
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
+
+    const origin = new URL(request.url).origin;
+    await purgeFeedsCache(origin, session.userId, ctx);
 
     return NextResponse.json(assembleClientFeed(meta, sub));
   });
