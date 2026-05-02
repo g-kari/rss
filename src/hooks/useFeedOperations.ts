@@ -78,6 +78,7 @@ export function useFeedOperations({
   }
 
   async function deleteFeed(id: string) {
+    if (!window.confirm("このフィードを削除しますか？")) return;
     try {
       await apiFetchJson(`/api/feeds/${id}`, { method: "DELETE" });
       invalidateSwCache(["/api/feeds", "/api/articles"]);
