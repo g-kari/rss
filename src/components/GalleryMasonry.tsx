@@ -3,6 +3,7 @@
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentType,
@@ -110,9 +111,16 @@ export default function GalleryMasonry<T>({
       ? Math.floor((width - (columns - 1) * columnGutter) / columns)
       : columnWidth;
 
-  // items.length を deps にすることで、append-only の追加で全再配置を避ける
+  // items の identity (id リスト) が変わったら positioner を再生成する。
+  // items.length だけだと中間削除+追加で length が同じ場合に古い位置キャッシュが残り空白が生じる。
+  // itemKey を使って各アイテムの identity を追跡し、内容が変わった時だけ再配置する。
+  const itemsIdentity = useMemo(() => {
+    if (!itemKey) return items.length;
+    return items.map((item, i) => itemKey(item, i)).join("\t");
+  }, [items, itemKey]);
+
   const positioner = usePositioner({ width, columnWidth: effectiveColumnWidth, columnGutter }, [
-    items.length,
+    itemsIdentity,
   ]);
   const resizeObserver = useResizeObserver(positioner);
 
