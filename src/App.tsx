@@ -118,6 +118,10 @@ export default function App() {
     onChangeGalleryCardSize,
     galleryMinImagePx,
     onChangeGalleryMinImagePx,
+    imageDlFolder,
+    onChangeImageDlFolder,
+    imageDlFolderNsfw,
+    onChangeImageDlFolderNsfw,
   } = useUIState(initialMobilePane);
 
   // カラム幅（PC）
@@ -239,6 +243,10 @@ export default function App() {
       toggleDeduplicateByLink,
       ttlDays,
       onChangeTtlDays: setTtlDays,
+      imageDlFolder,
+      onChangeImageDlFolder,
+      imageDlFolderNsfw,
+      onChangeImageDlFolderNsfw,
     }),
     [
       fontSize,
@@ -271,6 +279,10 @@ export default function App() {
       toggleDeduplicateByLink,
       ttlDays,
       setTtlDays,
+      imageDlFolder,
+      onChangeImageDlFolder,
+      imageDlFolderNsfw,
+      onChangeImageDlFolderNsfw,
     ],
   );
 

@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
+import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 
 export interface GalleryContextMenuTarget {
   article: Article;
@@ -11,6 +12,7 @@ export interface GalleryContextMenuTarget {
   images: string[] | undefined;
   x: number;
   y: number;
+  isNsfw?: boolean;
 }
 
 interface GalleryContextMenuProps {
@@ -22,6 +24,11 @@ interface GalleryContextMenuProps {
   onClose: () => void;
 }
 
+function applyFolderPrefix(folder: string, filename: string): string {
+  const trimmed = folder.trim().replace(/\/+$/, "");
+  return trimmed ? `${trimmed}/${filename}` : filename;
+}
+
 export default function GalleryContextMenu({
   target,
   readIds,
@@ -30,8 +37,11 @@ export default function GalleryContextMenu({
   onToggleBookmark,
   onClose,
 }: GalleryContextMenuProps) {
+  const { imageDlFolder, imageDlFolderNsfw } = useReaderSettings();
   const isRead = readIds.has(target.article.id);
   const isBookmarked = bookmarkIds.has(target.article.id);
+
+  const dlFolder = target.isNsfw && imageDlFolderNsfw ? imageDlFolderNsfw : imageDlFolder;
 
   const buildSafeTitle = useCallback((title: string | null | undefined) => {
     return (
@@ -43,24 +53,30 @@ export default function GalleryContextMenu({
     );
   }, []);
 
-  const downloadImage = useCallback((url: string, filename?: string) => {
-    const proxyUrl = buildImageProxyUrl(url);
-    const a = document.createElement("a");
-    a.href = proxyUrl;
-    a.download = filename || url.split("/").pop()?.split("?")[0] || "image";
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, []);
+  const downloadImage = useCallback(
+    (url: string, filename?: string) => {
+      const proxyUrl = buildImageProxyUrl(url);
+      const a = document.createElement("a");
+      a.href = proxyUrl;
+      a.download = applyFolderPrefix(
+        dlFolder,
+        filename || url.split("/").pop()?.split("?")[0] || "image",
+      );
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    },
+    [dlFolder],
+  );
 
   const downloadAllImages = useCallback(
     (images: string[], article: Article) => {
       const safeTitle = buildSafeTitle(article.title);
       images.forEach((url, i) => {
         const ext = url.split(".").pop()?.split("?")[0] ?? "";
-        const filename = ext ? `${safeTitle}-${i + 1}.${ext}` : `${safeTitle}-${i + 1}`;
-        setTimeout(() => downloadImage(url, filename), i * 200);
+        const rawFilename = ext ? `${safeTitle}-${i + 1}.${ext}` : `${safeTitle}-${i + 1}`;
+        setTimeout(() => downloadImage(url, rawFilename), i * 200);
       });
     },
     [buildSafeTitle, downloadImage],

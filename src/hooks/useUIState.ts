@@ -96,6 +96,10 @@ export interface UIState {
   onChangeGalleryCardSize: (v: GalleryCardSize) => void;
   galleryMinImagePx: number;
   onChangeGalleryMinImagePx: (v: number) => void;
+  imageDlFolder: string;
+  onChangeImageDlFolder: (v: string) => void;
+  imageDlFolderNsfw: string;
+  onChangeImageDlFolderNsfw: (v: string) => void;
 }
 
 export function useUIState(initialMobilePane: MobilePane): UIState {
@@ -117,6 +121,10 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeGalleryMinImagePx,
     contentWidth,
     onChangeContentWidth,
+    imageDlFolder,
+    onChangeImageDlFolder,
+    imageDlFolderNsfw,
+    onChangeImageDlFolderNsfw,
   } = useLayoutSettings();
   const {
     autoReadEnabled,
@@ -324,5 +332,9 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeGalleryCardSize,
     galleryMinImagePx,
     onChangeGalleryMinImagePx,
+    imageDlFolder,
+    onChangeImageDlFolder,
+    imageDlFolderNsfw,
+    onChangeImageDlFolderNsfw,
   };
 }

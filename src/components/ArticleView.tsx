@@ -150,6 +150,7 @@ export default function ArticleView({
     onAutoMarkRead,
     onSelectPrev,
     onSelectNext,
+    isNsfw: !!(article && feeds?.find((f) => f.id === article.feedHash)?.nsfw),
   });
 
   if (!article) {

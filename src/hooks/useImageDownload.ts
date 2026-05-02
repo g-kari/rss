@@ -59,6 +59,11 @@ async function fetchOne(url: string, originalIndex: number): Promise<Fetched | n
   }
 }
 
+function applyFolderPrefix(folder: string, filename: string): string {
+  const trimmed = folder.trim().replace(/\/+$/, "");
+  return trimmed ? `${trimmed}/${filename}` : filename;
+}
+
 /**
  * 記事本文の画像を一括ダウンロードするフック。
  *
@@ -66,15 +71,12 @@ async function fetchOne(url: string, originalIndex: number): Promise<Fetched | n
  * - 取得済み記事（ダウンロード済みID）は再ダウンロード前に確認ダイアログを挟む
  * - 進捗は `imageDownloadProgress`（done/total）でトラッキングできる
  * - ダウンロード済み記事ID は localStorage に永続化する
- *
- * @param article - 対象記事
- * @param resolvedOgImage - 解決済みOGP画像URL（article.ogImage より優先度低）
- * @param contentRef - 記事本文コンテナへの ref（img タグ収集に使用）
  */
 export function useImageDownload(
   article: Article | null,
   resolvedOgImage: string | null,
   contentRef: React.RefObject<HTMLDivElement | null>,
+  options?: { isNsfw?: boolean; dlFolder?: string; dlFolderNsfw?: string },
 ): ImageDownloadState {
   const { showToast } = useToast();
   const [downloadingImages, setDownloadingImages] = useState(false);
@@ -120,6 +122,9 @@ export function useImageDownload(
         .replace(/\s+/g, "-")
         .slice(0, 40) || "image";
 
+    const folder =
+      options?.isNsfw && options.dlFolderNsfw ? options.dlFolderNsfw : (options?.dlFolder ?? "");
+
     // フェッチ: FETCH_BATCH_SIZE 枚ずつ並列取得 → ダウンロードトリガーは逐次実行
     let succeeded = 0;
     let fetchedCount = 0;
@@ -139,7 +144,7 @@ export function useImageDownload(
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = blobUrl;
-        a.download = `${safeTitle}-${originalIndex + 1}.${ext}`;
+        a.download = applyFolderPrefix(folder, `${safeTitle}-${originalIndex + 1}.${ext}`);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -165,7 +170,15 @@ export function useImageDownload(
     } else {
       showToast("ダウンロードできる画像がありませんでした");
     }
-  }, [article, resolvedOgImage, contentRef, showToast]);
+  }, [
+    article,
+    resolvedOgImage,
+    contentRef,
+    showToast,
+    options?.isNsfw,
+    options?.dlFolder,
+    options?.dlFolderNsfw,
+  ]);
 
   const downloadAllImages = useCallback(() => {
     if (!article || downloadingImages) return;

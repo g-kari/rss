@@ -1,0 +1,81 @@
+"use client";
+
+import type { ReactNode } from "react";
+import type { Feed } from "../../types";
+import { formatCount } from "../FeedItem";
+
+interface Props {
+  categoryGroups: [string, Feed[]][];
+  uncategorizedFeeds: Feed[];
+  collapsedCategories: Set<string>;
+  unreadByFeed: Map<string, number>;
+  globalOffset: number;
+  onToggleCollapseCategory?: (category: string) => void;
+  renderFeed: (feed: Feed, isPinned: boolean, globalIdx: number) => ReactNode;
+}
+
+export default function CategorySection({
+  categoryGroups,
+  uncategorizedFeeds,
+  collapsedCategories,
+  unreadByFeed,
+  globalOffset,
+  onToggleCollapseCategory,
+  renderFeed,
+}: Props) {
+  let offset = globalOffset;
+  const elements: ReactNode[] = [];
+
+  for (const [cat, catFeeds] of categoryGroups) {
+    const isCollapsed = collapsedCategories.has(cat);
+    const catUnread = catFeeds.reduce((sum, f) => sum + (unreadByFeed.get(f.id) ?? 0), 0);
+    elements.push(
+      <button
+        key={`cat-header-${cat}`}
+        className="w-full px-4 pt-2.5 pb-0.5 flex items-center gap-1 group"
+        onClick={() => onToggleCollapseCategory?.(cat)}
+        title={isCollapsed ? "展開" : "折りたたむ"}
+      >
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          className={`flex-shrink-0 text-text-muted transition-transform duration-150 ${isCollapsed ? "-rotate-90" : ""}`}
+          fill="currentColor"
+        >
+          <path d="M5 7L1 3h8L5 7z" />
+        </svg>
+        <span className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted group-hover:text-text-default transition-colors">
+          {cat}
+        </span>
+        {isCollapsed && (
+          <span
+            className={`ml-auto text-[10px] tabular-nums ${catUnread > 0 ? "text-text-muted" : "text-text-faint"}`}
+          >
+            {catUnread > 0 ? formatCount(catUnread) : catFeeds.length}
+          </span>
+        )}
+      </button>,
+    );
+    if (!isCollapsed) {
+      catFeeds.forEach((feed, i) => {
+        elements.push(renderFeed(feed, false, offset + i));
+      });
+    }
+    offset += catFeeds.length;
+  }
+
+  if (categoryGroups.length > 0 && uncategorizedFeeds.length > 0) {
+    elements.push(
+      <div key="cat-separator" className="mx-4 my-1.5">
+        <div className="border-t border-border-subtle" />
+      </div>,
+    );
+  }
+
+  uncategorizedFeeds.forEach((feed, i) => {
+    elements.push(renderFeed(feed, false, offset + i));
+  });
+
+  return <>{elements}</>;
+}

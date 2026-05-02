@@ -34,6 +34,7 @@ interface UseArticleViewStateParams {
   onSetNote?: (articleId: string, text: string) => void;
   onDeleteNote?: (articleId: string) => void;
   onAutoMarkRead?: (articleId: string) => void;
+  isNsfw?: boolean;
 }
 
 export function useArticleViewState({
@@ -44,9 +45,17 @@ export function useArticleViewState({
   onAutoMarkRead,
   onSelectPrev,
   onSelectNext,
+  isNsfw,
 }: UseArticleViewStateParams) {
-  const { theme, autoReadEnabled, autoReadThreshold, autoTranslate, contentWidth } =
-    useReaderSettings();
+  const {
+    theme,
+    autoReadEnabled,
+    autoReadThreshold,
+    autoTranslate,
+    contentWidth,
+    imageDlFolder,
+    imageDlFolderNsfw,
+  } = useReaderSettings();
   const { globalFilter, setGlobalFilter: onSaveGlobalFilter } = useArticleFilter();
 
   const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
@@ -204,7 +213,11 @@ export function useArticleViewState({
     isAlreadyDownloaded,
     confirmDownload,
     cancelDownload,
-  } = useImageDownload(article, resolvedOgImage, contentRef);
+  } = useImageDownload(article, resolvedOgImage, contentRef, {
+    isNsfw,
+    dlFolder: imageDlFolder,
+    dlFolderNsfw: imageDlFolderNsfw,
+  });
 
   usePopupLock(confirmingDownload);
 

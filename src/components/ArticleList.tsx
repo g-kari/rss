@@ -244,10 +244,11 @@ export default function ArticleList({
       e.stopPropagation();
       const images = galleryImagesForItem(article.id);
       const thumb = resolveThumbnail(article, ogpCacheRef.current) ?? null;
-      setGalleryCtxMenu({ article, thumb, images, x: e.clientX, y: e.clientY });
+      const isNsfw = !!feeds.find((f) => f.id === article.feedHash)?.nsfw;
+      setGalleryCtxMenu({ article, thumb, images, x: e.clientX, y: e.clientY, isNsfw });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ogpCacheRef は useSyncedRef の安定参照のため deps 不要
-    [galleryImagesForItem],
+    [galleryImagesForItem, feeds],
   );
 
   // ── 仮想スクロール ──────────────────────────────────────────────

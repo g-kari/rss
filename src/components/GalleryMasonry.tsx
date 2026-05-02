@@ -111,9 +111,6 @@ export default function GalleryMasonry<T>({
       ? Math.floor((width - (columns - 1) * columnGutter) / columns)
       : columnWidth;
 
-  // items の identity (id リスト) が変わったら positioner を再生成する。
-  // items.length だけだと中間削除+追加で length が同じ場合に古い位置キャッシュが残り空白が生じる。
-  // itemKey を使って各アイテムの identity を追跡し、内容が変わった時だけ再配置する。
   const itemsIdentity = useMemo(() => {
     if (!itemKey) return items.length;
     return items.map((item, i) => itemKey(item, i)).join("\t");

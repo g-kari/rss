@@ -96,6 +96,10 @@ export default function UserSettingsModal({ onClose }: Props) {
     toggleDeduplicateByLink,
     ttlDays,
     onChangeTtlDays,
+    imageDlFolder,
+    onChangeImageDlFolder,
+    imageDlFolderNsfw,
+    onChangeImageDlFolderNsfw,
   } = useReaderSettings();
 
   const [translatorDiag, setTranslatorDiag] = useState<{
@@ -334,6 +338,31 @@ export default function UserSettingsModal({ onClose }: Props) {
         <div className="flex flex-col gap-1 pl-28">
           <span className="text-[11px] text-text-muted">
             同一 URL の記事が複数フィードにある場合、最新の 1 件のみ表示します。
+          </span>
+        </div>
+
+        <SettingRow label="画像DL先">
+          <input
+            type="text"
+            placeholder="フォルダ名（空欄: デフォルト）"
+            value={imageDlFolder}
+            onChange={(e) => onChangeImageDlFolder(e.target.value)}
+            className="w-full max-w-[200px] px-2 py-1 text-[11px] rounded-md border border-border-default bg-surface-elevated text-text-default placeholder:text-text-faint focus:outline-none focus:border-ink transition-colors"
+          />
+        </SettingRow>
+
+        <SettingRow label="画像DL先(NSFW)">
+          <input
+            type="text"
+            placeholder="フォルダ名（空欄: 通常と同じ）"
+            value={imageDlFolderNsfw}
+            onChange={(e) => onChangeImageDlFolderNsfw(e.target.value)}
+            className="w-full max-w-[200px] px-2 py-1 text-[11px] rounded-md border border-border-default bg-surface-elevated text-text-default placeholder:text-text-faint focus:outline-none focus:border-ink transition-colors"
+          />
+        </SettingRow>
+        <div className="flex flex-col gap-1 pl-28">
+          <span className="text-[11px] text-text-muted">
+            画像ダウンロード時のファイル名にフォルダプレフィックスを付与します。
           </span>
         </div>
 

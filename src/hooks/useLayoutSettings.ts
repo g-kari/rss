@@ -43,6 +43,8 @@ const loadGalleryMinImagePx = (): number => {
 };
 const loadContentWidth = () =>
   loadStoredEnum(STORAGE_KEYS.CONTENT_WIDTH, CONTENT_WIDTH_CYCLE, "medium" as ContentWidth);
+const loadImageDlFolder = (): string => storageGet(STORAGE_KEYS.IMAGE_DL_FOLDER) ?? "";
+const loadImageDlFolderNsfw = (): string => storageGet(STORAGE_KEYS.IMAGE_DL_FOLDER_NSFW) ?? "";
 
 export function useLayoutSettings() {
   const [layout, onChangeLayout] = useStoredSetting<Layout>(loadLayout, STORAGE_KEYS.LAYOUT);
@@ -76,6 +78,16 @@ export function useLayoutSettings() {
     loadContentWidth,
     STORAGE_KEYS.CONTENT_WIDTH,
   );
+  const [imageDlFolder, setImageDlFolder] = useState(loadImageDlFolder);
+  const onChangeImageDlFolder = useCallback((v: string) => {
+    setImageDlFolder(v);
+    storageSet(STORAGE_KEYS.IMAGE_DL_FOLDER, v);
+  }, []);
+  const [imageDlFolderNsfw, setImageDlFolderNsfw] = useState(loadImageDlFolderNsfw);
+  const onChangeImageDlFolderNsfw = useCallback((v: string) => {
+    setImageDlFolderNsfw(v);
+    storageSet(STORAGE_KEYS.IMAGE_DL_FOLDER_NSFW, v);
+  }, []);
 
   return {
     layout,
@@ -94,5 +106,9 @@ export function useLayoutSettings() {
     onChangeGalleryMinImagePx,
     contentWidth,
     onChangeContentWidth,
+    imageDlFolder,
+    onChangeImageDlFolder,
+    imageDlFolderNsfw,
+    onChangeImageDlFolderNsfw,
   } as const;
 }

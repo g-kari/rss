@@ -70,6 +70,8 @@ export const STORAGE_KEYS = {
   BEACON_OVERFLOW: "rss-beacon-overflow",
   TTL_DAYS: "rss-ttl-days",
   DEDUP_BY_LINK: "rss-dedup-by-link",
+  IMAGE_DL_FOLDER: "rss-image-dl-folder",
+  IMAGE_DL_FOLDER_NSFW: "rss-image-dl-folder-nsfw",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

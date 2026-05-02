@@ -41,6 +41,10 @@ export interface ReaderSettings {
   toggleDeduplicateByLink: () => void;
   ttlDays: number | null;
   onChangeTtlDays: (days: number | null) => void;
+  imageDlFolder: string;
+  onChangeImageDlFolder: (v: string) => void;
+  imageDlFolderNsfw: string;
+  onChangeImageDlFolderNsfw: (v: string) => void;
 }
 
 const ReaderSettingsContext = createContext<ReaderSettings | null>(null);
