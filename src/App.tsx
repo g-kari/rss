@@ -319,6 +319,8 @@ export default function App() {
   );
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
+  // キーボードナビで記事切り替え時のスクリーンリーダー通知用
+  const [articleAnnouncement, setArticleAnnouncement] = useState("");
   // モーダル・ポップアップ表示中はリサイズバーを無効化する（Issue #81）
   const hasOpenPopup = useHasOpenPopup();
   // URL から復元すべき記事 ID（記事ロード完了後に解決）
@@ -747,6 +749,7 @@ export default function App() {
     snoozeArticle,
     onShowSnoozeMenu: setSnoozeTargetId,
     onShowFeedSwitcher: () => setShowFeedSwitcher(true),
+    onArticleAnnounce: setArticleAnnouncement,
   });
 
   // ローディング
@@ -782,6 +785,17 @@ export default function App() {
               transition: "grid-template-columns 0.25s ease",
             }}
           >
+            {/* skip-to-content: Tab キーでフォーカス時のみ表示。サイドバーをスキップして記事一覧へ */}
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-3 focus:py-1.5 focus:rounded-md focus:bg-surface-elevated focus:text-text-strong focus:text-[13px] focus:shadow-lg focus:border focus:border-border-default focus:outline-none"
+            >
+              記事一覧へスキップ
+            </a>
+            {/* スクリーンリーダー向け: キーボードナビで記事切り替え時にタイトルをアナウンス */}
+            <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+              {articleAnnouncement}
+            </div>
             {/* オフラインバナー */}
             {!isOnline && (
               <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 py-1.5 bg-surface-subtle border-b border-border-default text-[11px] tracking-[0.04em] text-text-muted">
@@ -1052,8 +1066,10 @@ export default function App() {
               </ErrorBoundary>
             </div>
             <div
+              id="main-content"
+              tabIndex={-1}
               data-pane="list"
-              className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""}`}
+              className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""} focus:outline-none`}
             >
               <ErrorBoundary label="記事一覧">
                 <ArticleList
