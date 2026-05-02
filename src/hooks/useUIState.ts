@@ -177,13 +177,11 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   }, []);
 
   useEventListener("popstate", () => {
-    if (focusHistoryRef.current) {
-      focusHistoryRef.current = false;
-    }
-    if (focusModeRef.current || listFocusModeRef.current) {
-      setFocusMode(false);
-      setListFocusMode(false);
-    }
+    if (!focusHistoryRef.current) return;
+    if (window.history.state?.focus) return;
+    focusHistoryRef.current = false;
+    setFocusMode(false);
+    setListFocusMode(false);
   });
 
   useEventListener(
