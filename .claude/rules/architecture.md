@@ -203,7 +203,10 @@ src/
     r2.ts                    # r2Get() / r2Put() / sha256Hex()
     xml-parser.ts            # fast-xml-parser ラッパー (RSS 2.0 + Atom)
     content.ts               # コンテンツ抽出・後処理パイプライン (Readability + postProcess)
-    html-post-processor.ts   # HTML後処理パイプライン（ノイズ除去・画像処理・リンク修正・テーブルラップ・sanitize）
+    html-post-processor.ts   # HTML後処理パイプライン本体（postProcess・applyCorePipeline・fixExternalLinks・wrapTables）+ サブモジュール re-export
+    html-noise-removal.ts    # HTMLノイズ除去（removeNoise・processNestedBlocks・removeDivsByClass・replaceBlocksByClass・replaceUntilStable）
+    html-image-processors.ts # HTML画像処理（fixLazyImages・fixImageDimensions・rewriteImageUrls・removeSmallThumbnailImages・buildImageSlider・tryParseBase）
+    html-embed-transforms.ts # HTML埋め込み変換（Zenn・X Tweet・SpeakerDeck・SlideShare の iframe/リンク変換）
     readability-extractor.ts # Readabilityラッパー（iframe退避・preClean・本文抽出）
     regex-extractor.ts       # 正規表現ベース抽出（stripPageChrome・サイト固有セレクター）
     html.ts                  # sanitizeHtml() / escapeHtml() / toPlainText()

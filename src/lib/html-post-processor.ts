@@ -1,150 +1,49 @@
-import { sanitizeHtml, escapeHtml, unescapeHtml } from "./html";
-import { isZennDevUrl } from "./url";
-
 /**
- * `pattern` が入力に対して変化を及ぼさなくなるまで `str.replace` を繰り返し適用する。
+ * HTML 後処理パイプライン
  *
- * 単純な `str.replace(/<script...>/, '')` は除去後に隣接文字列が再結合し、
- * 再び危険パターンを形成するバイパス（`<scr<script></script>ipt>` 等）を許してしまう。
- * 本ヘルパーは不動点反復で多段バイパスを潰しつつ、無限ループ保護として反復上限を設ける。
- */
-export function replaceUntilStable(str: string, pattern: RegExp, replacement = ""): string {
-  const MAX_PASSES = 8;
-  let prev: string;
-  let curr = str;
-  let pass = 0;
-  do {
-    prev = curr;
-    curr = curr.replace(pattern, replacement);
-    pass++;
-  } while (curr !== prev && pass < MAX_PASSES);
-  return curr;
-}
-
-/** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */
-export function tryParseBase(pageUrl: string): URL | null {
-  if (!pageUrl) return null;
-  try {
-    return new URL(pageUrl);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * ネストを考慮してブロック要素を処理する汎用ヘルパー。
- * 非貪欲マッチ `[\s\S]*?` はネストした同名要素の最初の閉じタグで終了してしまうため、
- * このヘルパーは開閉タグのカウントで深度を追跡する。
+ * コンテンツ抽出後の後処理パイプライン本体。
+ * 個別の処理は関心事ごとに分割された以下のモジュールに委譲する:
+ * - html-noise-removal.ts  — ノイズ除去（removeNoise 等）
+ * - html-image-processors.ts — 画像処理（fixLazyImages / fixImageDimensions 等）
+ * - html-embed-transforms.ts — 埋め込み変換（Zenn / X / SpeakerDeck 等）
  *
- * @param html 入力HTML文字列
- * @param tags 対象タグ名の配列（小文字）
- * @param filter null なら全要素を対象、関数なら開きタグ文字列が true の要素のみ処理
- * @param replacer (開きタグ文字列, 内側HTML) → 置換文字列。空文字列を返すと除去
+ * 既存の import パスを壊さないよう、全 export をこのファイルから re-export する。
  */
-function processNestedBlocks(
-  html: string,
-  tags: string[],
-  filter: ((openTag: string) => boolean) | null,
-  replacer: (openTag: string, inner: string) => string,
-): string {
-  const htmlLower = html.toLowerCase();
-  let result = "";
-  let i = 0;
+import { sanitizeHtml } from "./html";
+import { processNestedBlocks } from "./html-noise-removal";
+import { tryParseBase, fixImageDimensions, rewriteImageUrls } from "./html-image-processors";
+import { transformZennLinkEmbeds, transformZennMermaidEmbeds } from "./html-embed-transforms";
+import { removeNoise } from "./html-noise-removal";
+import { fixLazyImages, removeSmallThumbnailImages } from "./html-image-processors";
 
-  while (i < html.length) {
-    // 最も早い候補タグを探す
-    let earliest = -1;
-    let earliestTag = "";
-    for (const tag of tags) {
-      const idx = htmlLower.indexOf(`<${tag}`, i);
-      if (idx !== -1 && (earliest === -1 || idx < earliest)) {
-        earliest = idx;
-        earliestTag = tag;
-      }
-    }
-    if (earliest === -1) {
-      result += html.slice(i);
-      break;
-    }
+// ── re-export: html-noise-removal.ts ────────────────────────────
+export {
+  replaceUntilStable,
+  processNestedBlocks,
+  removeDivsByClass,
+  replaceBlocksByClass,
+  removeNoise,
+} from "./html-noise-removal";
 
-    const tagEnd = htmlLower.indexOf(">", earliest);
-    if (tagEnd === -1) {
-      result += html.slice(i);
-      break;
-    }
+// ── re-export: html-image-processors.ts ─────────────────────────
+export {
+  tryParseBase,
+  fixLazyImages,
+  fixImageDimensions,
+  rewriteImageUrls,
+  removeSmallThumbnailImages,
+  buildImageSlider,
+} from "./html-image-processors";
 
-    const openTag = html.slice(earliest, tagEnd + 1);
-
-    if (!filter || filter(openTag)) {
-      // ネスト深度を追跡して対応する閉じタグを探す
-      const closeTag = `</${earliestTag}>`;
-      const openPrefix = `<${earliestTag}`;
-      let depth = 1;
-      let pos = tagEnd + 1;
-      let found = false;
-
-      while (pos < html.length) {
-        const nextOpen = htmlLower.indexOf(openPrefix, pos);
-        const nextClose = htmlLower.indexOf(closeTag, pos);
-
-        if (nextClose === -1) {
-          pos = html.length;
-          break;
-        }
-
-        if (nextOpen !== -1 && nextOpen < nextClose) {
-          depth++;
-          pos = nextOpen + openPrefix.length;
-        } else {
-          depth--;
-          if (depth === 0) {
-            result += html.slice(i, earliest);
-            result += replacer(openTag, html.slice(tagEnd + 1, nextClose));
-            i = nextClose + closeTag.length;
-            found = true;
-            break;
-          }
-          pos = nextClose + closeTag.length;
-        }
-      }
-
-      if (!found) {
-        result += html.slice(i, earliest);
-        i = pos;
-      }
-    } else {
-      result += html.slice(i, tagEnd + 1);
-      i = tagEnd + 1;
-    }
-  }
-
-  return result;
-}
-
-/** processNestedBlocks を使ってクラスパターンにマッチする div を除去する。 */
-function removeDivsByClass(html: string, classPattern: RegExp): string {
-  return processNestedBlocks(
-    html,
-    ["div"],
-    (openTag) => classPattern.test(openTag),
-    () => "",
-  );
-}
-
-/** processNestedBlocks を使ってクラスパターンにマッチするブロック要素を変換する。 */
-function replaceBlocksByClass(
-  html: string,
-  tags: string[],
-  classPattern: RegExp,
-  replacer: (inner: string) => string,
-): string {
-  return processNestedBlocks(
-    html,
-    tags,
-    (openTag) => classPattern.test(openTag),
-    (_openTag, inner) => replacer(inner),
-  );
-}
+// ── re-export: html-embed-transforms.ts ─────────────────────────
+export {
+  extractZennEmbedContent,
+  transformZennLinkEmbeds,
+  transformZennMermaidEmbeds,
+  transformXTweetEmbeds,
+  transformSpeakerDeckScriptEmbeds,
+  transformSlideShareEmbedLinks,
+} from "./html-embed-transforms";
 
 /**
  * table タグをレスポンシブスクロール可能なラッパーで包む。
@@ -158,344 +57,6 @@ export function wrapTables(html: string): string {
     (openTag, inner) =>
       `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.25em 0">${openTag}${inner}</table></div>`,
   );
-}
-
-/**
- * img タグ配列から CSS scroll-snap スライダー HTML を生成する。
- * removeNoise の EC ギャラリー変換と shopifyDesc の商品画像ギャラリーで共用。
- */
-export function buildImageSlider(imgs: string[]): string {
-  if (imgs.length === 0) return "";
-  const slides = imgs
-    .map(
-      (img) =>
-        // scroll-snap-stop:always — 高速スワイプ時に複数枚飛ばしを防止
-        // class="rss-slider-slide" — CSS でサイズ管理（fixImageDimensions に除去されないよう inline style を使わない）
-        `<div class="rss-slider-slide" style="flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always">` +
-        img +
-        `</div>`,
-    )
-    .join("");
-  return (
-    // class="rss-image-slider" — ArticleView で PC 用ナビゲーションボタンを注入するために使用
-    // overscroll-behavior-x:contain — 横スクロールが親要素に伝播するのを防止
-    // -webkit-overflow-scrolling:touch を削除 — CSS scroll-snap との競合を防止
-    `<div class="rss-image-slider" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0;` +
-    `margin:0 0 1.25em;border-radius:8px;overscroll-behavior-x:contain;scrollbar-width:none">` +
-    slides +
-    `</div>`
-  );
-}
-
-/**
- * サイト固有のノイズ要素を除去する。
- * Qiita / Zenn に見られる「いいね」「シェア」「関連記事」等のUIを取り除く。
- */
-export function removeNoise(html: string): string {
-  // Qiita: header/footer ツールバー、サイドバー
-  html = removeDivsByClass(
-    html,
-    /class="[^"]*(?:LikesButton|StockButton|ShareButtons|SideBar|ArticleHeader|ArticleFooter|FollowButton)[^"]*"/i,
-  );
-  // Zenn: チャプター選択、関連記事
-  html = removeDivsByClass(html, /class="[^"]*(?:ChapterList|RelatedArticles|TocItem)[^"]*"/i);
-  // 汎用: "related", "recommend", "share", "sns" を含む div
-  html = removeDivsByClass(html, /class="[^"]*(?:related|recommend|share|sns|toc-|side-)[^"]*"/i);
-  // EC / Shopify: ギャラリー要素を非表示 div に畳む（末尾 ImageGallery に収集させる）
-  html = replaceBlocksByClass(
-    html,
-    ["ul", "div"],
-    /class="[^"]*(?:product__media|media-gallery|product-gallery|thumbnail[s]?(?:-list|-wrapper)?|image-gallery|photo-gallery|product-images)[^"]*"/i,
-    (inner) => {
-      const imgs = [...inner.matchAll(/<img\b[^>]*>/gi)].map((m) => m[0]);
-      return imgs.length > 0 ? `<div hidden>${imgs.join("")}</div>` : "";
-    },
-  );
-  // 汎用: 画像のみで構成される <ul>（3件以上）を非表示 div に畳む（末尾 ImageGallery に収集させる）
-  // shop-pro.jp 等クラス属性なしのギャラリーに対応。
-  // 各 <li> が <img> 1枚のみ（テキスト5文字以下）の場合のみ変換する。
-  html = processNestedBlocks(html, ["ul"], null, (openTag, inner) => {
-    const liItems = [...inner.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)];
-    if (liItems.length < 3) return `${openTag}${inner}</ul>`;
-    const imgs: string[] = [];
-    for (const [, liContent] of liItems) {
-      const imgMatch = liContent.match(/<img\b[^>]*>/i);
-      if (!imgMatch) return `${openTag}${inner}</ul>`;
-      if (replaceUntilStable(liContent, /<[^>]+>/g).trim().length > 5)
-        return `${openTag}${inner}</ul>`;
-      imgs.push(imgMatch[0]);
-    }
-    return imgs.length >= 3 ? `<div hidden>${imgs.join("")}</div>` : `${openTag}${inner}</ul>`;
-  });
-  return html;
-}
-
-/**
- * Zenn embed の <span> から data-content 属性を URL デコードして取り出す共通ヘルパー。
- * デコード失敗時または属性が存在しない場合は null を返す。
- */
-function extractZennEmbedContent(spanMatch: string): string | null {
-  const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
-  if (!dcMatch) return null;
-  try {
-    return decodeURIComponent(dcMatch[1]);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * embed.zenn.studio の card / tweet iframe を外部リンクに変換する。
- *
- * Zenn CMS が生成する embed は以下のいずれかの形式:
- * <span class="embed-block zenn-embedded zenn-embedded-card">
- * <span class="embed-block zenn-embedded zenn-embedded-tweet">
- *   <iframe src="https://embed.zenn.studio/{type}#zenn-embedded__xxx"
- *     data-content="https%3A%2F%2F..."
- *     ...></iframe>
- * </span>
- *
- * embed.zenn.studio の iframe は親ページの Zenn JS（postMessage）がないと
- * "Loading..." のまま表示されるため、data-content から元 URL を取り出してリンクに変換する。
- * zenn.dev / 非 zenn.dev を問わず全ドメインで適用する。
- */
-export function transformZennLinkEmbeds(content: string): string {
-  return content.replace(
-    /<span\b[^>]*\bzenn-embedded-(?:card|tweet)\b[^>]*>[\s\S]*?<\/span>/gi,
-    (spanMatch) => {
-      const url = extractZennEmbedContent(spanMatch);
-      if (url === null) return spanMatch;
-      // javascript: / data: 等の危険スキームをブロック（XSS 防止）
-      if (!/^https?:\/\//i.test(url)) return spanMatch;
-      // URL に " < > & が含まれる場合にHTML属性から脱出されないようHTMLエスケープ
-      const escaped = escapeHtml(url);
-      return `<p><a href="${escaped}" target="_blank" rel="noopener noreferrer">${escaped}</a></p>`;
-    },
-  );
-}
-
-/**
- * Zenn の mermaid embed iframe を mermaid ソースのコードブロックに変換する。
- * embed.zenn.studio/mermaid は親ページの Zenn スクリプト（postMessage）がないと
- * "Loading..." のまま表示されるため、data-content から直接ソースを取り出す。
- * zenn.dev のみ適用。他ドメイン（classmethod 等）では変換しない。
- */
-export function transformZennMermaidEmbeds(content: string, pageUrl = ""): string {
-  if (!isZennDevUrl(pageUrl)) return content;
-  return content.replace(
-    /<span\b[^>]*\bzenn-embedded-mermaid\b[^>]*>[\s\S]*?<\/span>/gi,
-    (spanMatch) => {
-      const source = extractZennEmbedContent(spanMatch);
-      if (source === null) return spanMatch;
-      const escaped = escapeHtml(source);
-      return (
-        `<pre style="background:var(--color-surface-subtle,#f3f3f1);` +
-        `border:1px solid var(--color-border-default,#e7e5e4);` +
-        `border-radius:6px;padding:1em;overflow-x:auto;white-space:pre">` +
-        `<code class="language-mermaid">${escaped}</code></pre>`
-      );
-    },
-  );
-}
-
-/**
- * JS 遅延ロード画像と Shopify サムネイルを高解像度に解決する。
- * - data-src が有効 URL（{width} プレースホルダー含む）→ 800px 幅に解決して src を上書き
- * - src の Shopify サイズサフィックス（_300x300 等）→ _800x に置換
- */
-export function fixLazyImages(html: string): string {
-  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-    let fixed = attrs;
-
-    const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
-    if (dataSrcMatch) {
-      const resolved = dataSrcMatch[1].replace(/\{width\}/g, "800");
-      if (/\bsrc=["'][^"']*["']/i.test(fixed)) {
-        fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
-      } else {
-        // src 属性なしの遅延ロード画像: src を先頭に追加
-        fixed = ` src="${resolved}"` + fixed;
-      }
-    }
-
-    // data-srcset を srcset に昇格（遅延ロード対応）
-    const dataSrcsetMatch = fixed.match(/\bdata-srcset=["']([^"']+)["']/i);
-    if (dataSrcsetMatch) {
-      if (/\bsrcset=["'][^"']*["']/i.test(fixed)) {
-        fixed = fixed.replace(/\bsrcset=["'][^"']*["']/i, `srcset="${dataSrcsetMatch[1]}"`);
-      } else {
-        fixed += ` srcset="${dataSrcsetMatch[1]}"`;
-      }
-    }
-
-    // Shopify: _NNNx / _NNNxNNN / _NNNx@Nx サフィックスを _800x に置換
-    fixed = fixed.replace(
-      /(src=["'][^"']*?)_\d+x\d*(?:@\d+x)?\.(jpg|jpeg|png|webp|gif)(["'])/gi,
-      "$1_800x.$2$3",
-    );
-
-    return `<img${fixed}>`;
-  });
-}
-
-/**
- * srcset 属性内の各 URL に変換関数を適用するヘルパー。
- * 形式: "url1 descriptor1, url2 descriptor2, ..."
- * URL が http(s) でない場合（data: など）は変換をスキップする。
- */
-function transformSrcset(srcset: string, rewriteUrl: (url: string) => string): string {
-  // HTML srcset 仕様 (https://html.spec.whatwg.org/#parse-a-srcset-attribute) に寄せたパース。
-  // URL は whitespace までを境界とし、URL 末尾の `,` のみ候補区切りとして扱う。
-  // これにより Cloudinary のように path 内に生の `,` を含む URL (c_limit,f_auto,... 等) でも壊れない。
-  const isWs = (c: string) => c === " " || c === "\t" || c === "\n" || c === "\r" || c === "\f";
-  const parts: string[] = [];
-  let i = 0;
-  const s = srcset;
-  while (i < s.length) {
-    while (i < s.length && (isWs(s[i]) || s[i] === ",")) i++;
-    if (i >= s.length) break;
-    const urlStart = i;
-    while (i < s.length && !isWs(s[i])) i++;
-    let url = s.slice(urlStart, i);
-    let descriptor = "";
-    // URL 末尾に付く `,` は候補区切り。複数付いていても取り除く。
-    let trailingComma = false;
-    while (url.endsWith(",")) {
-      url = url.slice(0, -1);
-      trailingComma = true;
-    }
-    if (!trailingComma) {
-      while (i < s.length && isWs(s[i])) i++;
-      const dStart = i;
-      while (i < s.length && s[i] !== ",") i++;
-      descriptor = s.slice(dStart, i).trim();
-      if (i < s.length && s[i] === ",") i++;
-    }
-    if (!url) continue;
-    const out = rewriteUrl(url);
-    parts.push(descriptor ? `${out} ${descriptor}` : out);
-  }
-  return parts.join(", ");
-}
-
-/**
- * 相対 URL を base に対して絶対 URL に解決する。
- * 既に絶対 URL (http/https) の場合・危険スキーム (data: / javascript: / vbscript: / mailto: / file:)
- * の場合・解決失敗の場合はそのまま返す。
- *
- * 危険スキームを `new URL()` に通すと
- * `new URL("vbscript:alert(1)", base)` が `vbscript:alert(1)` を正規 URL として返してしまい、
- * `<img src=...>` 属性に埋め込まれた場合に最終サニタイズに依存する構図になる。
- * 本関数では危険スキームの URL を原文のまま返し、後段の sanitizeHtml が除去できるようにする。
- */
-function resolveRelativeUrl(url: string, base: URL): string {
-  if (/^https?:\/\//i.test(url)) return url;
-  const lower = url.toLowerCase();
-  if (
-    lower.startsWith("data:") ||
-    lower.startsWith("javascript:") ||
-    lower.startsWith("vbscript:") ||
-    lower.startsWith("mailto:") ||
-    lower.startsWith("file:")
-  ) {
-    return url;
-  }
-  try {
-    return new URL(url, base).href;
-  } catch {
-    return url;
-  }
-}
-
-/**
- * img タグの後処理:
- * - 固定 width / height 属性を除去してレスポンシブ表示を保証
- * - 相対パスの src を pageUrl ベースで絶対 URL に変換（404 防止）
- * - loading="lazy" を自動挿入（ブラウザネイティブ遅延ロード）
- *
- * 注意: onerror ハンドラは sanitizeHtml で除去されるため付与しない。
- * 画像は /api/image-proxy 経由で配信され、失敗時は透明 GIF が返るため
- * broken image アイコンは発生しない。
- */
-export function fixImageDimensions(html: string, pageUrl = ""): string {
-  const base = tryParseBase(pageUrl);
-
-  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-    const wMatch = attrs.match(/\bwidth\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/i);
-    const hMatch = attrs.match(/\bheight\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/i);
-    const w = wMatch ? parseInt(wMatch[1] ?? wMatch[2] ?? wMatch[3] ?? "", 10) : NaN;
-    const h = hMatch ? parseInt(hMatch[1] ?? hMatch[2] ?? hMatch[3] ?? "", 10) : NaN;
-    // width/height 両方が意味のあるサイズの場合のみ属性を保持し、
-    // ブラウザに aspect-ratio を推論させて layout shift とアスペクト比崩れを防ぐ。
-    // 閾値 16px は favicon 最小サイズに合わせ、1x1 トラッキングピクセル等のダミーは削除する。
-    const keepDimensions = Number.isFinite(w) && Number.isFinite(h) && w >= 16 && h >= 16;
-
-    let a = attrs.replace(
-      /\s+style\s*=\s*(?:"([^"]*)"|'([^']*)')/gi,
-      (_s, dq: string, sq: string) => {
-        const s2 = (dq ?? sq).replace(/\b(?:width|height)\s*:[^;]+;?/gi, "").trim();
-        return s2 ? ` style="${s2}"` : "";
-      },
-    );
-
-    if (keepDimensions) {
-      // 元画像サイズ以上に引き伸ばさないよう max-width を inline style に追加。
-      // CSS width: 100% と組み合わせてコンテナ幅いっぱい or 元幅の小さい方に収まる (Issue #163)。
-      const styleMatch = a.match(/\s+style\s*=\s*"([^"]*)"/i);
-      if (styleMatch) {
-        const existing = styleMatch[1];
-        a = a.replace(
-          styleMatch[0],
-          ` style="${existing}${existing ? "; " : ""}max-width: ${w}px"`,
-        );
-      } else {
-        a += ` style="max-width: ${w}px"`;
-      }
-    } else {
-      a = a
-        .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "")
-        .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, "");
-    }
-
-    // 相対パスを絶対 URL に変換
-    if (base) {
-      a = a.replace(/\bsrc=["']([^"']+)["']/gi, (_sm, src: string) => {
-        const resolved = resolveRelativeUrl(src, base);
-        return resolved !== src ? `src="${resolved}"` : _sm;
-      });
-      // srcset 内の相対 URL も絶対 URL に変換
-      a = a.replace(/\bsrcset=["']([^"']+)["']/gi, (_sm, srcset: string) => {
-        return `srcset="${transformSrcset(srcset, (url) => resolveRelativeUrl(url, base))}"`;
-      });
-    }
-
-    // loading="lazy" を追加（既存の loading 属性がなければ）
-    if (!/\bloading\s*=/i.test(a)) a += ' loading="lazy"';
-
-    return `<img${a}>`;
-  });
-}
-
-/**
- * 記事本文内の外部画像 URL を /api/image-proxy 経由に書き換える。
- * fixImageDimensions で相対パスが絶対 URL に解決された後に適用する。
- * src と srcset の両方を対象とする。
- */
-export function rewriteImageUrls(html: string): string {
-  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-    let rewritten = attrs.replace(
-      /\bsrc=["'](https?:\/\/[^"']+)["']/gi,
-      (_sm, src: string) => `src="/api/image-proxy?url=${encodeURIComponent(unescapeHtml(src))}"`,
-    );
-    rewritten = rewritten.replace(/\bsrcset=["']([^"']+)["']/gi, (_sm, srcset: string) => {
-      const proxied = transformSrcset(srcset, (url) => {
-        if (!/^https?:\/\//i.test(url)) return url;
-        return `/api/image-proxy?url=${encodeURIComponent(unescapeHtml(url))}`;
-      });
-      return `srcset="${proxied}"`;
-    });
-    return `<img${rewritten}>`;
-  });
 }
 
 /**
@@ -560,105 +121,6 @@ export function fixExternalLinks(html: string, pageUrl = ""): string {
 }
 
 /**
- * `<blockquote class="twitter-tweet">` を X (Twitter) 埋め込み iframe に変換する。
- *
- * 多くのブログ・メディアサイトは Twitter のスクリプトと一緒に
- * <blockquote class="twitter-tweet"> を使ってツイートを埋め込む。
- * RSS リーダーは <script> を除去するため tweet が未展開のまま残ってしまう。
- * このため blockquote 末尾のパーマリンク URL からツイート ID を取り出し、
- * platform.twitter.com の iframe 埋め込みに置き換える。
- *
- * @param theme - ライト/ダークテーマ（'light' | 'dark'、省略時は 'light'）
- */
-export function transformXTweetEmbeds(html: string, theme: "light" | "dark" = "light"): string {
-  return html.replace(
-    /<blockquote\b[^>]*\bclass\s*=\s*["'][^"']*\btwitter-tweet\b[^"']*["'][^>]*>([\s\S]*?)<\/blockquote>/gi,
-    (_match, inner: string) => {
-      // blockquote 内の最後のリンクがツイートのパーマリンク
-      const links = [...inner.matchAll(/<a\b[^>]+href\s*=\s*["']([^"']+)["'][^>]*>/gi)];
-      const tweetUrl = links.at(-1)?.[1] ?? "";
-      const idMatch = tweetUrl.match(/(?:twitter|x)\.com\/[^/?#]+\/status\/(\d+)/);
-      if (!idMatch) return _match; // パターン不一致なら元のブロッククォートを保持
-      const tweetId = idMatch[1];
-      return (
-        `<div class="tweet-embed-wrapper">` +
-        `<iframe` +
-        ` src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&dnt=true&theme=${theme}"` +
-        ` style="width:100%;border:0;border-radius:12px;height:300px"` +
-        ` scrolling="no"` +
-        ` loading="lazy"` +
-        `></iframe>` +
-        `</div>`
-      );
-    },
-  );
-}
-
-/**
- * SpeakerDeck の `<script class="speakerdeck-embed" data-id="...">` タグを
- * `<iframe>` に変換する。
- *
- * ブログ記事は SpeakerDeck の JS embed コードをそのまま貼り付けていることが多いが、
- * RSS リーダーは `<script>` を除去するためスライドが表示されなくなる。
- * preClean で `<script>` が除去される前にこの関数を呼び出し、
- * data-id からプレイヤー iframe を生成して差し替える。
- */
-export function transformSpeakerDeckScriptEmbeds(html: string): string {
-  return html.replace(
-    /<script\b[^>]*\bclass=["'][^"']*\bspeakerdeck-embed\b[^"']*["'][^>]*(?:\/>|>[\s\S]*?<\/script\s*>)/gi,
-    (match) => {
-      const idMatch = match.match(/\bdata-id=["']([a-f0-9]+)["']/i);
-      if (!idMatch) return match;
-      const dataId = idMatch[1];
-
-      const ratioMatch = match.match(/\bdata-ratio=["']([0-9.]+)["']/i);
-      const ratio = ratioMatch ? parseFloat(ratioMatch[1]) : 0;
-      const aspectRatio = ratio > 0 ? `${Math.round(ratio * 315)}/${315}` : "560/315";
-
-      return (
-        `<iframe class="speakerdeck-iframe"` +
-        ` src="https://speakerdeck.com/player/${dataId}"` +
-        ` allowfullscreen="true"` +
-        ` style="border:0;width:100%;aspect-ratio:${aspectRatio}"` +
-        ` loading="lazy"></iframe>`
-      );
-    },
-  );
-}
-
-/**
- * 記事本文中の SlideShare へのリンクを iframe 埋め込みに変換する。
- *
- * ブログ記事はスライドサービスへの URL をそのまま `<a>` で貼っていることが多い。
- * Readability 通過後もリンクのまま残るため、この関数で iframe に差し替える。
- *
- * 対象パターン:
- * - `<a href="https://www.slideshare.net/slideshow/{slug}/{id}">...</a>`
- *
- * SpeakerDeck は `<script class="speakerdeck-embed">` → iframe 変換が
- * `transformSpeakerDeckScriptEmbeds` で対応済み。リンク URL からは
- * player ID を取得できないため、リンク→iframe 変換は行わない。
- */
-export function transformSlideShareEmbedLinks(html: string): string {
-  return html.replace(
-    /<a\b[^>]*\bhref\s*=\s*["'](https?:\/\/(?:www\.)?slideshare\.net\/slideshow\/[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
-    (match, url: string) => {
-      const ss = url.match(/slideshare\.net\/slideshow\/[^/"']+\/(\d+)/);
-      if (!ss) return match;
-      const slideId = ss[1];
-      return (
-        `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
-        `<iframe src="https://www.slideshare.net/slideshow/embed_code/${slideId}"` +
-        ` style="position:absolute;top:0;left:0;width:100%;height:100%;border:0"` +
-        ` loading="lazy" allowfullscreen></iframe>` +
-        `</div>` +
-        `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">SlideShare で見る ↗</a>`
-      );
-    },
-  );
-}
-
-/**
  * 共通後処理パイプライン（画像処理・リンク修正・テーブルラップ・XSS サニタイズ）。
  * postProcess / postProcessMarkdownContent の両方で使用する。
  *
@@ -675,26 +137,6 @@ export function applyCorePipeline(html: string, pageUrl = ""): string {
   h = fixExternalLinks(h, pageUrl);
   h = wrapTables(h);
   return sanitizeHtml(h);
-}
-
-/**
- * WordPress等のサムネイル画像（-30x30.jpg 等）を本文から除去する。
- * フルサイズ版が同一記事内に存在する場合、またはサイズが MIN_IMAGE_SIZE_PX 未満の場合に除去。
- */
-export function removeSmallThumbnailImages(html: string): string {
-  const MIN_SIZE = 100;
-  const thumbRe = /-(\d+)x(\d+)(?:_\w+)?\.(jpe?g|png|gif|webp|avif|svg)/i;
-  return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
-    const srcMatch = /\bsrc=["']([^"']+)["']/i.exec(attrs);
-    if (!srcMatch) return full;
-    const src = srcMatch[1];
-    const m = thumbRe.exec(src);
-    if (!m) return full;
-    const w = Number(m[1]);
-    const h = Number(m[2]);
-    if (w < MIN_SIZE && h < MIN_SIZE) return "";
-    return full;
-  });
 }
 
 /**
