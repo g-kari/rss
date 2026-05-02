@@ -79,7 +79,12 @@ export async function runAiJob(
       retryable: true,
     });
 
-  const plain = toPlainText(content).slice(0, 8000);
+  // プロンプトインジェクション対策:
+  // 1. toPlainText で HTML タグを除去
+  // 2. < > をエスケープしてデリミタ破壊を防止
+  // 3. <article> デリミタで囲んでユーザーコンテンツ境界を明示
+  const sanitized = toPlainText(content).slice(0, 8000).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const plain = `<article>\n${sanitized}\n</article>`;
 
   let result: string;
   try {

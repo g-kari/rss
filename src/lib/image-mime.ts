@@ -11,7 +11,6 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/png": "png",
   "image/gif": "gif",
   "image/webp": "webp",
-  "image/bmp": "bmp",
   "image/avif": "avif",
 };
 

@@ -299,31 +299,21 @@ type ReplaceFn = (substring: string, ...args: string[]) => string;
 // HTML5 では終了タグ `</tagname attr>` の `>` までの属性/空白を無視して解釈するため、
 // 終了タグの末尾は `\s*>` ではなく `\b[^>]*>` でマッチする必要がある。
 // 例: `</script foo>` / `</script\t\n bar>` も有効な閉じタグとして扱われる。
-const HTML_SANITIZE_RULES: Array<[RegExp, string | ReplaceFn]> = [
+const HTML_SANITIZE_RULES: ReadonlyArray<[RegExp, string | ReplaceFn]> = [
   // 不可視 Unicode 文字（後続パターンのバイパス防止のため最初に除去）
-  [/[\u00AD\u200B-\u200D\u2060\uFEFF]/g, ""],
-  // コンテンツごと除去するブロック要素
-  [/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, ""],
-  [/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, ""],
-  [/<link\b[^>]*\/?>/gi, ""], // React 19 リソースホイスティング防止
-  [/<base\b[^>]*\/?>/gi, ""], // 相対 URL ハイジャック防止
-  [/<noscript\b[^>]*>[\s\S]*?<\/noscript\b[^>]*>/gi, ""],
-  [/<template\b[^>]*>[\s\S]*?<\/template\b[^>]*>/gi, ""],
-  [/<object\b[^>]*>[\s\S]*?<\/object\b[^>]*>/gi, ""],
-  [/<embed\b[^>]*\/?>/gi, ""],
-  // フォーム/入力要素（タグのみ除去・内容保持）
-  [/<\/?form\b[^>]*>/gi, ""],
-  [/<input\b[^>]*\/?>/gi, ""],
-  [/<textarea\b[^>]*>[\s\S]*?<\/textarea\b[^>]*>/gi, ""],
-  [/<select\b[^>]*>[\s\S]*?<\/select\b[^>]*>/gi, ""],
-  // SVG 危険要素
-  [/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject\b[^>]*>/gi, ""],
-  [/<foreignObject\b[^>]*\/>/gi, ""],
-  [/<animate\b[^>]*\/?>/gi, ""],
-  [/<animateTransform\b[^>]*\/?>/gi, ""],
-  [/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion\b[^>]*>/gi, ""],
-  [/<animateMotion\b[^>]*\/>/gi, ""],
-  [/<set\b[^>]*\/?>/gi, ""],
+  [/[­​-‍⁠﻿]/g, ""],
+  // コンテンツごと除去するブロック要素（統合: script / style / noscript / template / object / textarea / select / foreignObject / animateMotion）
+  [
+    /<(?:script|style|noscript|template|object|textarea|select|foreignObject|animateMotion)\b[^>]*>[\s\S]*?<\/(?:script|style|noscript|template|object|textarea|select|foreignObject|animateMotion)\b[^>]*>/gi,
+    "",
+  ],
+  // 自己閉じ/空要素の除去（統合: link / base / embed / input / foreignObject / animate / animateTransform / animateMotion / set）
+  [
+    /<(?:link|base|embed|input|foreignObject|animateTransform|animateMotion|animate|set)\b[^>]*\/?>/gi,
+    "",
+  ],
+  // タグのみ除去・内容保持（統合: form / dialog）
+  [/<\/?(?:form|dialog)\b[^>]*>/gi, ""],
   // SVG <use>（外部参照のみ除去・#フラグメント参照は保持）
   [/<use\b([^>]*)>([\s\S]*?)<\/use\b[^>]*>/gi, sanitizeUse as ReplaceFn],
   [/<use\b([^>]*)>/gi, sanitizeUse as ReplaceFn],
@@ -340,29 +330,32 @@ const HTML_SANITIZE_RULES: Array<[RegExp, string | ReplaceFn]> = [
   // インラインイベントハンドラ
   [/(?:[\s/]+|(?<=['"`]))on\w+\s*=\s*(?:"[^"]*"|'[^']*'|`[^`]*`|(?!["'`])[^\s>]*)/gi, ""],
   // xlink:href 危険スキーム（汎用 href より先に処理してプレフィックス残留を防ぐ）
-  [/xlink:href\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi, ""],
-  [/xlink:href\s*=\s*(?:javascript|vbscript|data):[^\s>]*/gi, ""],
-  // href/src/action/formaction 危険スキーム
-  [/(?:href|src|action|formaction)\s*=\s*["'](?:javascript|vbscript|data):[^"']*["']/gi, ""],
-  [/(?:href|src|action|formaction)\s*=\s*(?:javascript|vbscript|data):[^\s>]*/gi, ""],
+  [
+    /xlink:href\s*=\s*(?:["'](?:javascript|vbscript|data):[^"']*["']|(?:javascript|vbscript|data):[^\s>]*)/gi,
+    "",
+  ],
+  // href/src/action/formaction 危険スキーム（クォートあり・なし統合）
+  [
+    /(?:href|src|action|formaction)\s*=\s*(?:["'](?:javascript|vbscript|data):[^"']*["']|(?:javascript|vbscript|data):[^\s>]*)/gi,
+    "",
+  ],
   // エンティティ/空白バイパスの危険スキーム（xlink:href が先）
   [/xlink:href\s*=\s*(["'])([^"']*)\1/gi, (m, _q, val) => (hasDangerousScheme(val) ? "" : m)],
   [
     /(?:href|src|action|formaction)\s*=\s*(["'])([^"']*)\1/gi,
     (m, _q, val) => (hasDangerousScheme(val) ? "" : m),
   ],
-  // 危険な属性
-  [/\bsrcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, ""],
-  [/\bping\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, ""],
+  // 危険な属性（統合: srcdoc / ping）
+  [/\b(?:srcdoc|ping)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, ""],
   [/\bpopover(?:target(?:action)?)?\s*(?:=\s*(?:"[^"]*"|'[^']*'|[^\s>]*))?/gi, ""],
-  // <dialog>（タグのみ除去・内容保持）
-  [/<\/?dialog\b[^>]*>/gi, ""],
   // <a target="_blank"> にタブナッピング対策
   [/<a\b([^>]*)>/gi, ensureAnchorNoopener as ReplaceFn],
-  // style 属性サニタイズ（クォートあり・なし）
-  [/\bstyle\s*=\s*"([^"]*)"/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`],
-  [/\bstyle\s*=\s*'([^']*)'/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`],
-  [/\bstyle\s*=\s*([^"'\s>][^\s>]*)/gi, (_m, s) => `style="${sanitizeStyleAttr(s)}"`],
+  // style 属性サニタイズ（クォートあり・なし統合: ダブル / シングル / なし）
+  [
+    /\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)'|([^"'\s>][^\s>]*))/gi,
+    (_m: string, dq: string | undefined, sq: string | undefined, nq: string | undefined) =>
+      `style="${sanitizeStyleAttr((dq ?? sq ?? nq)!)}"`,
+  ],
 ];
 
 function applyRule(s: string, pattern: RegExp, replacement: string | ReplaceFn): string {
