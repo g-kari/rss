@@ -73,7 +73,12 @@ export function ExcludeOptionsSection({
         {label}
       </p>
       {options.map((opt) => (
-        <button key={opt.value} onClick={() => onExclude(opt.value)} className={MENU_ITEM_CLS}>
+        <button
+          key={opt.value}
+          role="menuitem"
+          onClick={() => onExclude(opt.value)}
+          className={MENU_ITEM_CLS}
+        >
           {XIcon}
           <span className="truncate">{opt.label}</span>
         </button>

@@ -59,6 +59,8 @@ export function ArticleActions({
       <button
         onClick={onToggleRead}
         title={isRead ? "未読にする" : "既読にする"}
+        aria-label={isRead ? "未読にする" : "既読にする"}
+        aria-pressed={isRead}
         className={`${btn} flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150`}
       >
         {isRead ? (
@@ -83,6 +85,8 @@ export function ArticleActions({
       <button
         onClick={onToggleBookmark}
         title={isBookmarked ? "ブックマーク解除" : "ブックマーク"}
+        aria-label={isBookmarked ? "ブックマーク解除" : "ブックマーク"}
+        aria-pressed={isBookmarked}
         className={`${btn} flex items-center justify-center rounded transition-all duration-150 ${
           isBookmarked
             ? "text-bookmark"

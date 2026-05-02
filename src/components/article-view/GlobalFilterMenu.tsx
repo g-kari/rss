@@ -2,6 +2,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import type { Article, KeywordFilter } from "../../types";
 import { useToast } from "@/contexts/ToastContext";
+import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import FeedFilterModal from "../FeedFilterModal";
 import { MENU_ITEM_CLS } from "./constants";
 import { ExcludeOptionsSection, useFilterMenuState } from "./filter-shared";
@@ -16,9 +17,11 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
   const { showToast } = useToast();
   const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
     useFilterMenuState(article, globalFilter);
+  const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   function handleExclude(value: string) {
     setOpen(false);
+    btnRef.current?.focus();
     const existingExclude = globalFilter?.exclude ?? [];
     if (existingExclude.includes(value)) {
       showToast("既にグローバル除外キーワードに登録されています");
@@ -40,6 +43,8 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
         onClick={toggle}
         title="グローバルフィルター設定（全フィード共通）"
         aria-label="グローバルフィルター設定"
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
@@ -59,8 +64,18 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
       {open &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-[49]" onPointerDown={() => setOpen(false)} />
             <div
+              className="fixed inset-0 z-[49]"
+              onPointerDown={() => {
+                setOpen(false);
+                btnRef.current?.focus();
+              }}
+            />
+            <div
+              ref={menuRef}
+              role="menu"
+              aria-label="グローバルフィルター設定"
+              onKeyDown={handleKeyDown}
               className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[220px] max-h-[320px] overflow-y-auto"
               style={{ top: pos.top, right: pos.right }}
             >
@@ -71,6 +86,7 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
                 <p className="text-[10px] text-text-faint mt-0.5">全フィードに適用</p>
               </div>
               <button
+                role="menuitem"
                 onClick={() => {
                   setOpen(false);
                   setModalOpen(true);

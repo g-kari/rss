@@ -1,6 +1,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { usePortalMenu } from "../../hooks/usePortalMenu";
+import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { MENU_ITEM_CLS } from "./constants";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -20,9 +21,11 @@ interface Props {
 export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props) {
   const { showToast } = useToast();
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
+  const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   function handleSnooze(durationMs: number, label: string) {
     setOpen(false);
+    btnRef.current?.focus();
     onSnooze(articleId, durationMs);
     showToast(`${label}までスヌーズ`);
     onSelectNext?.();
@@ -35,6 +38,8 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props)
         onClick={toggle}
         title="スヌーズ（後で再表示）"
         aria-label="スヌーズ"
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
@@ -52,8 +57,18 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props)
       {open &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-[49]" onPointerDown={() => setOpen(false)} />
             <div
+              className="fixed inset-0 z-[49]"
+              onPointerDown={() => {
+                setOpen(false);
+                btnRef.current?.focus();
+              }}
+            />
+            <div
+              ref={menuRef}
+              role="menu"
+              aria-label="スヌーズ"
+              onKeyDown={handleKeyDown}
               className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
               style={{ top: pos.top, right: pos.right }}
             >
@@ -66,6 +81,7 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props)
                 {SNOOZE_OPTIONS.map((opt) => (
                   <button
                     key={opt.durationMs}
+                    role="menuitem"
                     onClick={() => handleSnooze(opt.durationMs, opt.label)}
                     className={MENU_ITEM_CLS}
                   >

@@ -2,6 +2,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import type { Article, Feed, KeywordFilter } from "../../types";
 import { useToast } from "@/contexts/ToastContext";
+import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import FeedFilterModal from "../FeedFilterModal";
 import { MENU_ITEM_CLS } from "./constants";
 import { ExcludeOptionsSection, useFilterMenuState } from "./filter-shared";
@@ -16,9 +17,11 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
   const { showToast } = useToast();
   const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
     useFilterMenuState(article, feed.filter);
+  const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   async function handleExclude(value: string) {
     setOpen(false);
+    btnRef.current?.focus();
     const existingExclude = feed.filter?.exclude ?? [];
     if (existingExclude.includes(value)) {
       showToast("既に除外キーワードに登録されています");
@@ -44,6 +47,8 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
         onClick={toggle}
         title="フィルター設定"
         aria-label="フィルター設定"
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
@@ -61,12 +66,23 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
       {open &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-[49]" onPointerDown={() => setOpen(false)} />
             <div
+              className="fixed inset-0 z-[49]"
+              onPointerDown={() => {
+                setOpen(false);
+                btnRef.current?.focus();
+              }}
+            />
+            <div
+              ref={menuRef}
+              role="menu"
+              aria-label="フィルター設定"
+              onKeyDown={handleKeyDown}
               className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[200px] max-h-[320px] overflow-y-auto"
               style={{ top: pos.top, right: pos.right }}
             >
               <button
+                role="menuitem"
                 onClick={() => {
                   setOpen(false);
                   setModalOpen(true);
