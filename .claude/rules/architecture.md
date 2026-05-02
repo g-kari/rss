@@ -379,6 +379,7 @@ Route Handler では `session.userId` でアクセスする。
 {userId}:recommendations-refresh        # 推薦リフレッシュのクールダウン
 {userId}:recommendations-gen            # 推薦生成（GET）の同時実行防止クールダウン
 {userId}:feed-add                       # フィード追加のクールダウン
+{userId}:opml-import                    # OPML インポートのクールダウン
 ```
 
 ### AI キャッシュ（永続）

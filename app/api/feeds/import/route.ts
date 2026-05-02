@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
+import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+import { opmlImportCooldownKey } from "@/lib/r2";
 import { XMLParser } from "fast-xml-parser";
 import { isValidFeedUrl } from "@/lib/url";
 import { toArray } from "@/lib/xml-parser";
@@ -44,8 +46,17 @@ const parser = new XMLParser({
   },
 });
 
+const OPML_IMPORT_COOLDOWN_MS = 60 * 1000; // 60秒
+
 export async function POST(request: Request) {
   return withSession(request, async ({ session, env, ctx }) => {
+    const limited = await checkAndUpdateCooldown(
+      env.RATE_LIMIT,
+      opmlImportCooldownKey(session.userId),
+      OPML_IMPORT_COOLDOWN_MS,
+    );
+    if (limited) return limited;
+
     const text = await request.text();
     if (!text || text.length > 1_000_000) {
       return apiError("Invalid or too large OPML file", 400, { code: "INVALID_OPML" });
