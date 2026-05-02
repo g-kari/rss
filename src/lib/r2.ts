@@ -56,5 +56,6 @@ export const recommendationsGenCooldownKey = (userId: string) =>
 export const feedAddCooldownKey = (userId: string) => userKey(userId, "feed-add-cooldown.json");
 export const contentFetchRateLimitKey = (userId: string) =>
   userKey(userId, "content-fetch-rate-limit.json");
+export const imageProxyRateLimitKey = (userId: string) => `${userId}:image-proxy`;
 export const clipCooldownKey = (userId: string) => userKey(userId, "clip-cooldown.json");
 export const opmlImportCooldownKey = (userId: string) => userKey(userId, "opml-import.json");
