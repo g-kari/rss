@@ -11,12 +11,20 @@ const MAX_BYTES = 512 * 1024;
 const MAX_OGP_IMAGE_URL_LENGTH = 8192;
 
 /** OGP フェッチ時に送信するリクエストヘッダー */
-const FETCH_HEADERS = {
+const FETCH_HEADERS: Record<string, string> = {
   "User-Agent":
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
 };
+
+/**
+ * vxtwitter.com / fxtwitter.com 等の OGP プロキシはボット UA にのみ
+ * OGP meta タグを返し、通常ブラウザ UA にはリダイレクトを返す。
+ * そのためプロキシホストには Twitterbot UA で fetch する。
+ */
+const BOT_UA_HOSTS = new Set(["vxtwitter.com", "fxtwitter.com", "fixupx.com"]);
+const BOT_USER_AGENT = "Twitterbot/1.0";
 
 /** x.com / twitter.com は OGP を返さないため、代替ホスト vxtwitter.com に差し替える */
 const TWITTER_LIKE_HOSTS = new Set([
@@ -27,6 +35,22 @@ const TWITTER_LIKE_HOSTS = new Set([
   "www.twitter.com",
   "mobile.twitter.com",
 ]);
+
+/**
+ * fetch 先ホストに応じたリクエストヘッダーを返す。
+ * OGP プロキシホスト（vxtwitter.com 等）にはボット UA を使用する。
+ */
+export function buildFetchHeaders(fetchUrl: string): Record<string, string> {
+  try {
+    const host = new URL(fetchUrl).hostname.toLowerCase();
+    if (BOT_UA_HOSTS.has(host)) {
+      return { ...FETCH_HEADERS, "User-Agent": BOT_USER_AGENT };
+    }
+  } catch {
+    // 不正 URL はデフォルトヘッダーで続行
+  }
+  return FETCH_HEADERS;
+}
 
 /**
  * OGP 取得用に URL を正規化する。
@@ -71,7 +95,8 @@ export async function fetchPageOgpMeta(
 ): Promise<OgpMeta> {
   try {
     const fetchUrl = normalizeOgpFetchUrl(url);
-    const res = await fetchFollowSafeRedirects(fetchUrl, { headers: FETCH_HEADERS }, timeoutMs);
+    const headers = buildFetchHeaders(fetchUrl);
+    const res = await fetchFollowSafeRedirects(fetchUrl, { headers }, timeoutMs);
     if (!res.ok || !res.body) return { title: "", description: "", image: "" };
 
     const bytes = await readBodyBytesPartial(res.body, MAX_BYTES);
