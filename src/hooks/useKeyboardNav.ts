@@ -61,6 +61,7 @@ interface KeyboardNavOptions {
   snoozeArticle: (articleId: string, durationMs: number) => void;
   onShowSnoozeMenu: (articleId: string) => void;
   onShowFeedSwitcher: () => void;
+  onArticleAnnounce?: (title: string) => void;
 }
 
 function buildContext(opts: KeyboardNavOptions): ShortcutContext {
@@ -90,6 +91,7 @@ function buildContext(opts: KeyboardNavOptions): ShortcutContext {
       if (article) {
         opts.setSelectedArticle(article);
         opts.markRead(article.id);
+        opts.onArticleAnnounce?.(article.title);
       }
     },
     onSelectFeed: opts.onSelectFeed,
