@@ -78,7 +78,7 @@ export function useImageDownload(
   contentRef: React.RefObject<HTMLDivElement | null>,
   options?: { isNsfw?: boolean; dlFolder?: string; dlFolderNsfw?: string },
 ): ImageDownloadState {
-  const { showToast } = useToast();
+  const toast = useToast();
   const [downloadingImages, setDownloadingImages] = useState(false);
   const [imageDownloadProgress, setImageDownloadProgress] = useState<{
     done: number;
@@ -108,7 +108,7 @@ export function useImageDownload(
     }
 
     if (toDownload.length === 0) {
-      showToast("画像が見つかりませんでした");
+      toast.info("画像が見つかりませんでした");
       return;
     }
 
@@ -159,7 +159,7 @@ export function useImageDownload(
     setDownloadingImages(false);
 
     if (succeeded > 0) {
-      showToast(`${succeeded} 枚の画像をダウンロードしました`);
+      toast.success(`${succeeded} 枚の画像をダウンロードしました`);
       // 保存済み記事として記録
       setDownloadedIds((prev) => {
         const next = new Set(prev);
@@ -168,13 +168,13 @@ export function useImageDownload(
         return next;
       });
     } else {
-      showToast("ダウンロードできる画像がありませんでした");
+      toast.info("ダウンロードできる画像がありませんでした");
     }
   }, [
     article,
     resolvedOgImage,
     contentRef,
-    showToast,
+    toast,
     options?.isNsfw,
     options?.dlFolder,
     options?.dlFolderNsfw,

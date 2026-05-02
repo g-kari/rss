@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { RecommendedFeed } from "../types";
+import { useToast } from "@/contexts/ToastContext";
 
 interface Props {
   recommendations: RecommendedFeed[];
@@ -20,6 +21,7 @@ export default function RecommendationSection({
   onRefresh,
   onAddFeed,
 }: Props) {
+  const toast = useToast();
   const [expanded, setExpanded] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
 
@@ -90,7 +92,7 @@ export default function RecommendationSection({
                   await onAddFeed(rec.feedUrl);
                   onDismiss(rec.id);
                 } catch {
-                  // 静かに失敗
+                  toast.error("フィードの追加に失敗しました");
                 } finally {
                   setAddingId(null);
                 }

@@ -137,7 +137,7 @@ export default function ArticleHeader({
   onRemoveFromCollection,
   onCreateCollection,
 }: Props) {
-  const { showToast } = useToast();
+  const toast = useToast();
   const { focusMode, toggleFocusMode: onToggleFocusMode } = useReaderSettings();
   const {
     onSaveFilter,
@@ -149,7 +149,7 @@ export default function ArticleHeader({
 
   const onSetAuthorFilter = (author: string) => {
     setAuthorFilter(author);
-    showToast(`「${author}」の記事に絞り込みました`);
+    toast.info(`「${author}」の記事に絞り込みました`);
   };
 
   const filterFeed = feeds ? feeds.find((f) => f.id === article.feedHash) : undefined;
@@ -219,14 +219,14 @@ export default function ArticleHeader({
                 onClick={() => {
                   const existingExclude = filterFeed.filter?.exclude ?? [];
                   if (existingExclude.includes(cat)) {
-                    showToast(`「${cat}」は既に除外フィルターに登録されています`);
+                    toast.info(`「${cat}」は既に除外フィルターに登録されています`);
                     return;
                   }
                   void onSaveFilter(filterFeed.id, {
                     include: filterFeed.filter?.include ?? [],
                     exclude: [...existingExclude, cat],
                     matchCategories: true,
-                  }).then(() => showToast(`「${cat}」を除外カテゴリに追加しました`));
+                  }).then(() => toast.success(`「${cat}」を除外カテゴリに追加しました`));
                 }}
                 title={`「${cat}」をフィードの除外カテゴリに追加`}
                 className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
@@ -421,7 +421,7 @@ export default function ArticleHeader({
                 if (isLiked) onToggleLike(article.id);
               }
               onToggleReadingList(article.id);
-              showToast(isInReadingList ? "後で読むから削除" : "後で読むに追加");
+              toast.info(isInReadingList ? "後で読むから削除" : "後で読むに追加");
             }}
             title={isInReadingList ? "後で読むから削除" : "後で読む (T)"}
             aria-label={isInReadingList ? "後で読むから削除" : "後で読む"}
