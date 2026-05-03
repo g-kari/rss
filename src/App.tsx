@@ -2,14 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import FeedSidebar from "./components/feed-sidebar";
 import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
-import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
-import UserSettingsModal from "./components/UserSettingsModal";
-import FeedQuickSwitchModal from "./components/FeedQuickSwitchModal";
-import SnoozeModal from "./components/SnoozeModal";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
 import type {
   Article,
@@ -47,8 +44,19 @@ import { ToastProvider } from "./contexts/ToastContext";
 import ToastContainer from "./components/ToastContainer";
 import { useToastState } from "./hooks/useToast";
 import LandingPage from "./components/LandingPage";
-import SessionExpiredModal from "./components/SessionExpiredModal";
 import BetaRestrictedPage from "./components/BetaRestrictedPage";
+
+const KeyboardShortcutsModal = dynamic(() => import("./components/KeyboardShortcutsModal"), {
+  ssr: false,
+});
+const UserSettingsModal = dynamic(() => import("./components/UserSettingsModal"), { ssr: false });
+const FeedQuickSwitchModal = dynamic(() => import("./components/FeedQuickSwitchModal"), {
+  ssr: false,
+});
+const SnoozeModal = dynamic(() => import("./components/SnoozeModal"), { ssr: false });
+const SessionExpiredModal = dynamic(() => import("./components/SessionExpiredModal"), {
+  ssr: false,
+});
 import SkeletonSidebar from "./components/SkeletonSidebar";
 import SkeletonArticleList from "./components/SkeletonArticleList";
 

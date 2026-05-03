@@ -1,9 +1,11 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import type { FeedView } from "../../types";
-import FeedFilterModal from "../FeedFilterModal";
-import FeedDetailModal from "../FeedDetailModal";
+
+const FeedFilterModal = dynamic(() => import("../FeedFilterModal"), { ssr: false });
+const FeedDetailModal = dynamic(() => import("../FeedDetailModal"), { ssr: false });
 import { useEventListener } from "@/hooks/useEventListener";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { formatCount } from "@/lib/article-utils";

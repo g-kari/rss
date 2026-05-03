@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import type { Collection } from "../types";
-import CollectionModal from "./CollectionModal";
+
+const CollectionModal = dynamic(() => import("./CollectionModal"), { ssr: false });
 
 interface Props {
   articleId: string;

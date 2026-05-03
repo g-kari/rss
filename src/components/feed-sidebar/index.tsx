@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useRef, useState, useMemo, useCallback, memo } from "react";
+import { useRef, useState, useMemo, useCallback, memo } from "react";
 import type {
   Feed,
   Article,
@@ -10,11 +10,10 @@ import type {
   FeedView,
   Collection,
 } from "../../types";
+import dynamic from "next/dynamic";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
-import ReadingStatsModal from "../ReadingStatsModal";
 import FeedItem, { formatCount } from "../FeedItem";
 import FeedAddModal from "../FeedAddModal";
-import SaveUrlModal from "../SaveUrlModal";
 import RecommendationSection from "../RecommendationSection";
 import { useFeedOperations } from "../../hooks/useFeedOperations";
 import { SPECIAL_FEED_IDS } from "../../lib/storage";
@@ -28,7 +27,9 @@ import SidebarHeader from "./SidebarHeader";
 import SidebarFooter from "./SidebarFooter";
 import CategorySection from "./CategorySection";
 
-const ReleaseNotesModal = lazy(() => import("../ReleaseNotesModal"));
+const ReadingStatsModal = dynamic(() => import("../ReadingStatsModal"), { ssr: false });
+const SaveUrlModal = dynamic(() => import("../SaveUrlModal"), { ssr: false });
+const ReleaseNotesModal = dynamic(() => import("../ReleaseNotesModal"), { ssr: false });
 
 interface Props {
   feeds: Feed[];
@@ -874,11 +875,7 @@ function FeedSidebar({
           {importMessage.text}
         </div>
       )}
-      {showReleaseNotes && (
-        <Suspense fallback={null}>
-          <ReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />
-        </Suspense>
-      )}
+      {showReleaseNotes && <ReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
       {showStats && (
         <ReadingStatsModal
           feeds={feeds}

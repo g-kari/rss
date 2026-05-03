@@ -1,9 +1,11 @@
 import React from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import type { Article, Feed, KeywordFilter } from "../../types";
 import { useToast } from "@/contexts/ToastContext";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
-import FeedFilterModal from "../FeedFilterModal";
+
+const FeedFilterModal = dynamic(() => import("../FeedFilterModal"), { ssr: false });
 import { MENU_ITEM_CLS } from "./constants";
 import { ExcludeOptionsSection, useFilterMenuState } from "./filter-shared";
 

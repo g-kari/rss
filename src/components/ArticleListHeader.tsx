@@ -8,8 +8,10 @@ import { useSearchHistory } from "../hooks/useSearchHistory";
 import { useFullTextSearch } from "../hooks/useFullTextSearch";
 import { useEventListener } from "../hooks/useEventListener";
 import { READING_TIME_RANGE_LABELS } from "../lib/article-utils";
+import dynamic from "next/dynamic";
 import LayoutIcon from "./LayoutIcon";
-import FeedFilterModal from "./FeedFilterModal";
+
+const FeedFilterModal = dynamic(() => import("./FeedFilterModal"), { ssr: false });
 
 interface ArticleListHeaderProps {
   layout: Layout;
