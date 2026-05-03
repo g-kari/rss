@@ -6,6 +6,22 @@ import { STORAGE_KEYS, deferSaveSet, saveJson, storageSet } from "../lib/storage
 import { type SetKind, type PendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
+export interface SetStateDispatchers {
+  read: React.Dispatch<React.SetStateAction<Set<string>>>;
+  bookmarks: React.Dispatch<React.SetStateAction<Set<string>>>;
+  readingList: React.Dispatch<React.SetStateAction<Set<string>>>;
+  likes: React.Dispatch<React.SetStateAction<Set<string>>>;
+}
+
+export interface OtherStateDispatchers {
+  setGlobalFilterState: React.Dispatch<React.SetStateAction<KeywordFilter | null>>;
+  setTtlDaysState: React.Dispatch<React.SetStateAction<number | null>>;
+  setReadBeforeTimestamp: React.Dispatch<React.SetStateAction<string | null>>;
+  setSnoozedUntil: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setNotesState: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setTagIdsState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
+}
+
 function mergeServerSet(
   setState: (updater: (prev: Set<string>) => Set<string>) => void,
   storageKey: string,
@@ -26,16 +42,8 @@ export interface ApplyServerStateDeps {
   pendingRemovedRef: React.MutableRefObject<PendingSets>;
   pendingTagChangedRef: React.MutableRefObject<Set<string>>;
   pendingTagRemovedRef: React.MutableRefObject<Set<string>>;
-  setReadIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setBookmarkIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setReadingListIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setLikeIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setGlobalFilterState: React.Dispatch<React.SetStateAction<KeywordFilter | null>>;
-  setTtlDaysState: React.Dispatch<React.SetStateAction<number | null>>;
-  setReadBeforeTimestamp: React.Dispatch<React.SetStateAction<string | null>>;
-  setSnoozedUntil: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setNotesState: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setTagIdsState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
+  dispatchers: SetStateDispatchers;
+  otherDispatchers: OtherStateDispatchers;
 }
 
 export function useApplyServerState(deps: ApplyServerStateDeps) {
@@ -45,17 +53,23 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
-    setReadIds,
-    setBookmarkIds,
-    setReadingListIds,
-    setLikeIds,
+    dispatchers,
+    otherDispatchers,
+  } = deps;
+  const {
+    read: setReadIds,
+    bookmarks: setBookmarkIds,
+    readingList: setReadingListIds,
+    likes: setLikeIds,
+  } = dispatchers;
+  const {
     setGlobalFilterState,
     setTtlDaysState,
     setReadBeforeTimestamp,
     setSnoozedUntil,
     setNotesState,
     setTagIdsState,
-  } = deps;
+  } = otherDispatchers;
 
   const lastServerSyncRef = useRef<number>(0);
 

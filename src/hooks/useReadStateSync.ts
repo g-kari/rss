@@ -4,6 +4,7 @@ import type { KeywordFilter } from "../types";
 import type { PendingSets } from "../lib/read-state-storage";
 import type { ReadStateSets } from "./useReadStatePersistence";
 import type { UserProfile } from "../types";
+import type { SetStateDispatchers, OtherStateDispatchers } from "./useReadStateSyncApply";
 import { useApplyServerState } from "./useReadStateSyncApply";
 import { useReadStateSyncFlush } from "./useReadStateSyncFlush";
 
@@ -16,16 +17,8 @@ export interface ReadStateSyncDeps {
   globalFilterDirtyRef: React.MutableRefObject<boolean>;
   pendingTagChangedRef: React.MutableRefObject<Set<string>>;
   pendingTagRemovedRef: React.MutableRefObject<Set<string>>;
-  setReadIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setBookmarkIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setReadingListIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setLikeIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setGlobalFilterState: React.Dispatch<React.SetStateAction<KeywordFilter | null>>;
-  setTtlDaysState: React.Dispatch<React.SetStateAction<number | null>>;
-  setReadBeforeTimestamp: React.Dispatch<React.SetStateAction<string | null>>;
-  setSnoozedUntil: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setNotesState: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setTagIdsState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
+  dispatchers: SetStateDispatchers;
+  otherDispatchers: OtherStateDispatchers;
 }
 
 export interface ReadStateSyncResult {
@@ -44,16 +37,8 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     globalFilterDirtyRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
-    setReadIds,
-    setBookmarkIds,
-    setReadingListIds,
-    setLikeIds,
-    setGlobalFilterState,
-    setTtlDaysState,
-    setReadBeforeTimestamp,
-    setSnoozedUntil,
-    setNotesState,
-    setTagIdsState,
+    dispatchers,
+    otherDispatchers,
   } = deps;
 
   const { applyServerState, lastServerSyncRef } = useApplyServerState({
@@ -62,16 +47,8 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
-    setReadIds,
-    setBookmarkIds,
-    setReadingListIds,
-    setLikeIds,
-    setGlobalFilterState,
-    setTtlDaysState,
-    setReadBeforeTimestamp,
-    setSnoozedUntil,
-    setNotesState,
-    setTagIdsState,
+    dispatchers,
+    otherDispatchers,
   });
 
   return useReadStateSyncFlush({
