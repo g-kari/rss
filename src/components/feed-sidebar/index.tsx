@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useRef, useState, useMemo, useCallback } from "react";
+import { lazy, Suspense, useRef, useState, useMemo, useCallback, memo } from "react";
 import type {
   Feed,
   Article,
@@ -114,7 +114,7 @@ interface Props {
   };
 }
 
-export default function FeedSidebar({
+function FeedSidebar({
   feeds,
   articles,
   readIds,
@@ -887,3 +887,5 @@ export default function FeedSidebar({
     </aside>
   );
 }
+
+export default memo(FeedSidebar);

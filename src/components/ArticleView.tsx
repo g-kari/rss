@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../types";
 import { getContentWidthStyle } from "../lib/reader-settings";
 import { useArticleViewState } from "../hooks/useArticleViewState";
@@ -50,7 +51,7 @@ interface Props {
   onCreateCollection?: (name: string) => Promise<Collection | { error: string }>;
 }
 
-export default function ArticleView({
+function ArticleView({
   article,
   isBookmarked,
   onToggleBookmark,
@@ -304,3 +305,5 @@ export default function ArticleView({
     </main>
   );
 }
+
+export default memo(ArticleView);

@@ -154,7 +154,7 @@ const getArticleId = (a: Article) => a.id;
 
 // ── メインコンポーネント ───────────────────────────────────────────────
 
-export default function ArticleList({
+function ArticleList({
   feeds,
   readIds,
   readBeforeTimestamp = null,
@@ -697,3 +697,5 @@ export default function ArticleList({
     </section>
   );
 }
+
+export default memo(ArticleList);
