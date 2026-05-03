@@ -25,6 +25,7 @@ import {
   writeUserSubscriptions,
   assembleClientFeed,
   pMap,
+  R2_CONCURRENCY,
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
 import type { SelectorConfig } from "@/types";
@@ -68,7 +69,7 @@ export async function GET(request: Request) {
 
     // 購読の二重読みを避けるため getUserFeeds の代わりに直接 meta を並列取得
     if (subs.length === 0) return NextResponse.json([]);
-    const metas = await pMap(subs, (s) => readFeedMeta(env.RSS_DATA, s.feedHash));
+    const metas = await pMap(subs, (s) => readFeedMeta(env.RSS_DATA, s.feedHash), R2_CONCURRENCY);
     const feeds = subs.flatMap((sub, i) => {
       const meta = metas[i];
       return meta ? [assembleClientFeed(meta, sub)] : [];

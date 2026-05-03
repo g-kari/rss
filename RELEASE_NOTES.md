@@ -1,5 +1,11 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-05-04
+
+### リファクタリングっ
+
+- **並行制限ユーティリティ統一** — Issue #332。`src/cron/fetch.ts` の `allSettledWithConcurrency` と `src/lib/shared-feed.ts` の `pMap` がほぼ同じコードだったから、`src/lib/concurrency.ts` に `pMap`（Promise.all セマンティクス）と `pMapSettled`（Promise.allSettled セマンティクス）として統一したよ〜🔧✨
+
 ## 2026-05-03
 
 ### 激アツ新機能っ
