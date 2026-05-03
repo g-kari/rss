@@ -1,6 +1,7 @@
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom/worker";
 import { replaceUntilStable } from "./html-post-processor";
+import type { LDDocument } from "./linkedom-types";
 
 /**
  * Readability 退避用プレースホルダークラス名。
@@ -93,10 +94,10 @@ export function extractWithReadability(html: string, url: string): string | null
     // 本文外と判定して削除する。信頼済み iframe / video / audio をプレースホルダーに
     // 退避し、Readability 実行後に復元する。Issue #120 の回帰対策。
     const { html: preserved, embeds } = preserveTrustedEmbeds(html);
-    const { document } = parseHTML(preClean(preserved));
+    const { document } = parseHTML(preClean(preserved)) as { document: LDDocument };
     try {
       const base = document.createElement("base");
-      (base as unknown as { href: string }).href = url;
+      base.href = url;
       document.head.appendChild(base);
     } catch {
       /* ignore */

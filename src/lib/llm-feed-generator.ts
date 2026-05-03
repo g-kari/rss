@@ -13,27 +13,10 @@ import { isValidFeedUrl } from "./url";
 import { fetchFollowSafeRedirects } from "./fetch";
 import type { SelectorConfig } from "../types";
 import type { ParsedFeed, ParsedItem } from "./xml-parser";
-
-/**
- * linkedom の DOM 操作に使用する最小インターフェース。
- * linkedom の型定義は DOM 標準と完全には互換していないため、
- * 必要なプロパティ・メソッドのみを定義して `any` を排除する。
- */
-interface LDElement {
-  getAttribute(name: string): string | null;
-  textContent: string | null;
-  className: string;
-  tagName: string;
-  parentElement: LDElement | null;
-  querySelector(selector: string): LDElement | null;
-}
-
-interface LDDocument {
-  querySelectorAll(selector: string): Iterable<LDElement>;
-}
+import type { LDDocument, LDElement } from "./linkedom-types";
 
 // workers-types 未掲載のためキャスト。CSS セレクタ推論には精度の高いモデルを使用する
-const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast" as "@cf/meta/llama-3.1-8b-instruct-fp8";
+const MODEL: AiModelId = "@cf/meta/llama-3.3-70b-instruct-fp8-fast" as AiModelId;
 
 /** LLM に渡す圧縮リンク構造 */
 interface LinkNode {

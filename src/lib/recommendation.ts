@@ -12,7 +12,7 @@ import { fetchWithTimeout } from "./fetch";
 import { buildContentCacheKey } from "./fetch-article-content";
 
 // gemma-3-12b-it: 日本語・英語混在タイトルのトピック抽出に使用
-const MODEL = "@cf/google/gemma-3-12b-it" as Parameters<Ai["run"]>[0];
+const MODEL: AiModelId = "@cf/google/gemma-3-12b-it" as AiModelId;
 
 /** Promise.allSettled の結果から fulfilled かつ非 null の値だけを収集する */
 function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
