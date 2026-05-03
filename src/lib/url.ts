@@ -104,6 +104,11 @@ export function isPrivateHost(hostname: string): boolean {
 /** URL の最大許容長。DoS・ストレージ肥大化対策。 */
 export const MAX_URL_LENGTH = 2048;
 
+/** URL オブジェクトの protocol が http: または https: かを返す */
+function isValidHttpProtocol(protocol: string, allowHttp: boolean): boolean {
+  return protocol === "https:" || (allowHttp && protocol === "http:");
+}
+
 /**
  * URL バリデーション共通ロジック。
  * 最大長チェック・スキーム検証・プライベートホスト拒否を行う。
@@ -117,8 +122,7 @@ function isValidUrl(url: string, allowHttp: boolean): boolean {
   if (url.length > MAX_URL_LENGTH) return false;
   try {
     const { protocol, hostname } = new URL(url);
-    const validProtocol = protocol === "https:" || (allowHttp && protocol === "http:");
-    return validProtocol && !isPrivateHost(hostname);
+    return isValidHttpProtocol(protocol, allowHttp) && !isPrivateHost(hostname);
   } catch {
     return false;
   }
@@ -167,8 +171,7 @@ function imageUrlMaxLength(hostname: string): number {
 export function isValidPublicUrl(url: string): boolean {
   try {
     const { protocol, hostname } = new URL(url);
-    const validProtocol = protocol === "https:" || protocol === "http:";
-    if (!validProtocol || isPrivateHost(hostname)) return false;
+    if (!isValidHttpProtocol(protocol, true) || isPrivateHost(hostname)) return false;
     return url.length <= imageUrlMaxLength(hostname);
   } catch {
     return false;

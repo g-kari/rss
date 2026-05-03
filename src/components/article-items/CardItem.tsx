@@ -40,7 +40,7 @@ export const CardArticleItem = memo(function CardArticleItem({
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       onKeyDown={handleArticleKeyDown(article, onSelectArticle)}
-      className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 overflow-hidden ${
+      className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${
         isSelected
@@ -89,10 +89,10 @@ export const CardArticleItem = memo(function CardArticleItem({
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {hasNote && (
-              <NoteIcon className="text-amber-400 group-hover:opacity-0 transition-opacity duration-150" />
+              <NoteIcon className="text-amber-400 [@media(hover:hover)]:group-hover:opacity-0 transition-opacity duration-150" />
             )}
             {!isRead && (
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot [@media(hover:hover)]:group-hover:opacity-0 transition-opacity duration-150" />
             )}
           </div>
           <ArticleActions

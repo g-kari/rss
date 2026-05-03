@@ -8,6 +8,8 @@ import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
 import { collectImageUrls } from "../lib/image-extractor";
 import { mimeToExt } from "../lib/image-mime";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
+import { downloadBlob } from "../lib/download";
+import { IMAGE_MIN_DIMENSION } from "../lib/image-constants";
 
 interface ImageDownloadState {
   downloadingImages: boolean;
@@ -29,7 +31,7 @@ type Fetched = { originalIndex: number; blob: Blob; ext: string };
  * 以下の条件を満たさない画像は null を返してスキップする:
  * - フェッチ失敗 / 非 2xx
  * - 透明 GIF（64 bytes 以下 — 1×1 トラッキングピクセル）
- * - 短辺 100px 未満（アイコン・スペーサー等）
+ * - 短辺 IMAGE_MIN_DIMENSION 未満（アイコン・スペーサー等）
  */
 async function fetchOne(url: string, originalIndex: number): Promise<Fetched | null> {
   try {
@@ -44,12 +46,12 @@ async function fetchOne(url: string, originalIndex: number): Promise<Fetched | n
     const ext = mimeToExt(ct.split(";")[0].trim());
     const blob = await res.blob();
     // 小さい画像（アイコン・トラッキングピクセル等）を除外
-    // createImageBitmap で実寸を確認し、短辺が 100px 未満はスキップ
+    // createImageBitmap で実寸を確認し、短辺が IMAGE_MIN_DIMENSION 未満はスキップ
     try {
       const bmp = await createImageBitmap(blob);
       const { width, height } = bmp;
       bmp.close();
-      if (width < 100 || height < 100) return null;
+      if (width < IMAGE_MIN_DIMENSION || height < IMAGE_MIN_DIMENSION) return null;
     } catch {
       // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
     }
@@ -141,17 +143,11 @@ export function useImageDownload(
       for (const result of results) {
         if (!result) continue;
         const { originalIndex, blob, ext } = result;
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = applyFolderPrefix(folder, `${safeTitle}-${originalIndex + 1}.${ext}`);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const filename = applyFolderPrefix(folder, `${safeTitle}-${originalIndex + 1}.${ext}`);
+        downloadBlob(blob, filename);
         succeeded++;
         // ブラウザが連続ダウンロードをブロックしないよう小間隔を置く
         await new Promise<void>((resolve) => setTimeout(resolve, DOWNLOAD_TRIGGER_DELAY_MS));
-        URL.revokeObjectURL(blobUrl);
       }
     }
 

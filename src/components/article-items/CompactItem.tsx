@@ -37,7 +37,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       onKeyDown={handleArticleKeyDown(article, onSelectArticle)}
-      className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 ${
+      className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${
         isSelected

@@ -1,17 +1,5 @@
 import type { Article, Feed } from "@/types";
-
-const REVOKE_DELAY_MS = 1000;
-
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
-}
+import { downloadBlob } from "@/lib/download";
 
 /** Markdown のリンク構文を壊す文字をエスケープする */
 function escapeMarkdown(s: string): string {

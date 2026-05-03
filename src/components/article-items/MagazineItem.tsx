@@ -39,7 +39,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       onKeyDown={handleArticleKeyDown(article, onSelectArticle)}
-      className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 ${
+      className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${
         isSelected
@@ -81,10 +81,10 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
           </div>
           <div className="flex items-center gap-1">
             {hasNote && (
-              <NoteIcon className="text-amber-400 group-hover:opacity-0 transition-opacity duration-150" />
+              <NoteIcon className="text-amber-400 [@media(hover:hover)]:group-hover:opacity-0 transition-opacity duration-150" />
             )}
             {!isRead && (
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot group-hover:opacity-0 transition-opacity duration-150" />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot [@media(hover:hover)]:group-hover:opacity-0 transition-opacity duration-150" />
             )}
             <ArticleActions
               className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto"

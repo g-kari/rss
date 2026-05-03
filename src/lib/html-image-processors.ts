@@ -5,6 +5,7 @@
  * html-post-processor.ts から分割。
  */
 import { unescapeHtml } from "./html";
+import { IMAGE_MIN_DIMENSION } from "./image-constants";
 
 /** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */
 export function tryParseBase(pageUrl: string): URL | null {
@@ -221,7 +222,6 @@ export function rewriteImageUrls(html: string): string {
  * フルサイズ版が同一記事内に存在する場合、またはサイズが MIN_IMAGE_SIZE_PX 未満の場合に除去。
  */
 export function removeSmallThumbnailImages(html: string): string {
-  const MIN_SIZE = 100;
   const thumbRe = /-(\d+)x(\d+)(?:_\w+)?\.(jpe?g|png|gif|webp|avif|svg)/i;
   return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
     const srcMatch = /\bsrc=["']([^"']+)["']/i.exec(attrs);
@@ -231,7 +231,7 @@ export function removeSmallThumbnailImages(html: string): string {
     if (!m) return full;
     const w = Number(m[1]);
     const h = Number(m[2]);
-    if (w < MIN_SIZE && h < MIN_SIZE) return "";
+    if (w < IMAGE_MIN_DIMENSION && h < IMAGE_MIN_DIMENSION) return "";
     return full;
   });
 }
