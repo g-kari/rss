@@ -55,6 +55,7 @@ export default function App() {
 
   const { user, betaRestricted, sessionExpired } = useAuth();
   const isOnline = useOnlineStatus();
+  const prevOnlineRef = useRef(isOnline);
 
   const initialMobilePane = searchParams.get("article")
     ? "view"
@@ -125,6 +126,13 @@ export default function App() {
   } = useUIState(initialMobilePane);
 
   const toast = useToastState();
+
+  useEffect(() => {
+    if (isOnline && !prevOnlineRef.current) {
+      toast.success("接続が復帰しました");
+    }
+    prevOnlineRef.current = isOnline;
+  }, [isOnline, toast]);
 
   // カラム幅（PC）
   const { sidebarWidth, listWidth, handleResizeStart, resetWidth } = useColumnResize();
@@ -198,7 +206,7 @@ export default function App() {
     snoozedUntil,
     markRead,
     markBulkRead,
-    markAllRead,
+    markAllRead: _markAllRead,
     markAllReadWithUndo,
     toggleRead,
     toggleBookmark,
@@ -903,7 +911,7 @@ export default function App() {
                 新着記事 {newArticleCount} 件
                 <button
                   onClick={dismissNewArticles}
-                  className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+                  className="ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center -my-2 -mr-2 opacity-60 hover:opacity-100 transition-opacity"
                   aria-label="通知を閉じる"
                 >
                   <svg
