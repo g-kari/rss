@@ -8,7 +8,7 @@
        └─ Next.js App Router (app/)
             ├─ /api/auth/*        — 認証フロー (0g0 ID OAuth2)
             ├─ /api/feeds/*           — フィード CRUD + refresh (R2)
-            ├─ /api/feed-groups/*     — フィードグループ CRUD (R2)
+            ├─ /api/feed-groups/*     — フィードグループ CRUD + 並べ替え (R2)
             ├─ /api/collections/*    — コレクション CRUD (R2)
             ├─ /api/articles          — 記事一覧・保存 (R2)
             ├─ /api/ai/*              — Workers AI (要約・翻訳)
@@ -68,6 +68,7 @@ app/
     feed-groups/
       route.ts               # GET (一覧) / POST (作成) /api/feed-groups
       [id]/route.ts          # PATCH (更新) / DELETE /api/feed-groups/:id
+      reorder/route.ts       # POST /api/feed-groups/reorder — 並べ替え（全グループ ID の順序を一括更新）
     collections/
       route.ts               # GET (一覧) / POST (作成) /api/collections
       [id]/route.ts          # PATCH (更新・記事追加削除) / DELETE /api/collections/:id
