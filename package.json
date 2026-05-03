@@ -31,13 +31,13 @@
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260502.1",
+    "@cloudflare/workers-types": "^4.20260503.1",
     "@opennextjs/cloudflare": "^1.19.5",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.4",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260502.1",
+    "@typescript/native-preview": "7.0.0-dev.20260502.1",
     "esbuild": "^0.28.0",
     "next": "~16.2.4",
     "postcss": "^8.5.13",
