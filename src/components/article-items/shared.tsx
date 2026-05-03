@@ -76,7 +76,7 @@ export const ArticleActions = memo(function ArticleActions({
         title={isRead ? "未読にする" : "既読にする"}
         aria-label={isRead ? "未読にする" : "既読にする"}
         aria-pressed={isRead}
-        className={`${btn} flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150`}
+        className={`${btn} flex items-center justify-center rounded text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ink`}
       >
         {isRead ? (
           <svg
@@ -102,7 +102,7 @@ export const ArticleActions = memo(function ArticleActions({
         title={isBookmarked ? "ブックマーク解除" : "ブックマーク"}
         aria-label={isBookmarked ? "ブックマーク解除" : "ブックマーク"}
         aria-pressed={isBookmarked}
-        className={`${btn} flex items-center justify-center rounded transition-all duration-150 ${
+        className={`${btn} flex items-center justify-center rounded transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
           isBookmarked
             ? "text-bookmark"
             : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
