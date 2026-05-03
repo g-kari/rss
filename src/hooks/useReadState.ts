@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import type { Article, KeywordFilter, UserProfile } from "../types";
+import type { ToastApi } from "./useToast";
 import { useReadStatePersistence } from "./useReadStatePersistence";
 import { useReadStateSync } from "./useReadStateSync";
 import { useReadStateTags } from "./useReadStateTags";
@@ -22,6 +23,7 @@ export interface ReadStateResult {
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
+  markAllReadWithUndo: (feedId: string | null, toast: ToastApi) => void;
   toggleRead: (articleId: string) => void;
   toggleBookmark: (articleId: string) => void;
   toggleReadingList: (articleId: string) => void;
@@ -106,6 +108,7 @@ export function useReadState(
     markRead: persistence.markRead,
     markBulkRead: persistence.markBulkRead,
     markAllRead: persistence.markAllRead,
+    markAllReadWithUndo: persistence.markAllReadWithUndo,
     toggleRead: persistence.toggleRead,
     toggleBookmark: persistence.toggleBookmark,
     toggleReadingList: persistence.toggleReadingList,

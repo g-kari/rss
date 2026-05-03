@@ -8,12 +8,14 @@ const borderColor: Record<ToastItem["type"], string> = {
   success: "border-l-emerald-500",
   error: "border-l-rose-500",
   info: "border-l-text-muted",
+  undo: "border-l-amber-500",
 };
 
 const iconPath: Record<ToastItem["type"], string> = {
   success: "M5 13l4 4L19 7",
   error: "M6 18L18 6M6 6l12 12",
   info: "M13 16h-1v-4h-1m1-4h.01",
+  undo: "M3 10h10a5 5 0 0 1 0 10H9M3 10l4-4M3 10l4 4",
 };
 
 export default function ToastContainer() {
@@ -30,43 +32,62 @@ export default function ToastContainer() {
         <div
           key={toast.id}
           role="status"
-          className={`pointer-events-auto flex items-start gap-2.5 border-l-4 ${borderColor[toast.type]} bg-surface-elevated rounded-lg shadow-lg px-3.5 py-2.5 min-w-[240px] max-w-[360px] animate-fade-up`}
+          className={`pointer-events-auto flex flex-col border-l-4 ${borderColor[toast.type]} bg-surface-elevated rounded-lg shadow-lg min-w-[240px] max-w-[360px] animate-fade-up overflow-hidden`}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="mt-px flex-shrink-0 text-text-muted"
-          >
-            <path d={iconPath[toast.type]} />
-          </svg>
-          <span className="flex-1 text-[13px] text-text-default leading-snug break-words">
-            {toast.message}
-          </span>
-          <button
-            type="button"
-            onClick={() => dismiss(toast.id)}
-            className="flex-shrink-0 mt-px text-text-faint hover:text-text-muted transition-colors"
-            aria-label="閉じる"
-          >
+          <div className="flex items-start gap-2.5 px-3.5 py-2.5">
             <svg
-              width="14"
-              height="14"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth={2}
+              strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="mt-px flex-shrink-0 text-text-muted"
             >
-              <path d="M18 6L6 18M6 6l12 12" />
+              <path d={iconPath[toast.type]} />
             </svg>
-          </button>
+            <span className="flex-1 text-[13px] text-text-default leading-snug break-words">
+              {toast.message}
+            </span>
+            {toast.type === "undo" && toast.onUndo && (
+              <button
+                type="button"
+                onClick={() => {
+                  toast.onUndo!();
+                  dismiss(toast.id);
+                }}
+                className="flex-shrink-0 text-[13px] font-medium text-text-strong hover:text-ink-hover transition-colors"
+              >
+                元に戻す
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => dismiss(toast.id)}
+              className="flex-shrink-0 mt-px text-text-faint hover:text-text-muted transition-colors"
+              aria-label="閉じる"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {toast.type === "undo" && (
+            <div className="h-0.5 w-full bg-border-subtle">
+              <div className="h-full bg-amber-500 animate-undo-progress" />
+            </div>
+          )}
         </div>
       ))}
     </div>,

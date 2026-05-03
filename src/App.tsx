@@ -196,6 +196,7 @@ export default function App() {
     markRead,
     markBulkRead,
     markAllRead,
+    markAllReadWithUndo,
     toggleRead,
     toggleBookmark,
     toggleReadingList,
@@ -719,7 +720,7 @@ export default function App() {
     },
     markRead,
     markBulkRead,
-    markAllRead,
+    markAllRead: (feedId: string | null) => markAllReadWithUndo(feedId, toast),
     toggleBookmark,
     toggleRead,
     toggleReadingList,
@@ -1039,7 +1040,7 @@ export default function App() {
                   onFeedDeleted={onFeedDeleted}
                   onFeedRenamed={updateFeed}
                   onFeedsImported={appendFeeds}
-                  onMarkAllRead={markAllRead}
+                  onMarkAllRead={(feedId) => markAllReadWithUndo(feedId, toast)}
                   onToggleTheme={toggleTheme}
                   onOpenSettings={() => setShowSettings(true)}
                   onOpenHelp={() => setShowHelp(true)}
@@ -1156,7 +1157,7 @@ export default function App() {
                       if (ids.length > 0) markBulkRead(ids);
                       return;
                     }
-                    markAllRead(selectedFeedId);
+                    markAllReadWithUndo(selectedFeedId, toast);
                     skipRemainingPages(selectedFeedId);
                   }}
                   feedHasMorePages={feedHasMorePages}

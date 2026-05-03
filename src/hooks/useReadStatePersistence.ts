@@ -46,6 +46,7 @@ export interface ReadStatePersistenceResult {
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
+  markAllReadWithUndo: (feedId: string | null, toast: import("./useToast").ToastApi) => void;
   toggleRead: (articleId: string) => void;
   toggleBookmark: (articleId: string) => void;
   toggleReadingList: (articleId: string) => void;
@@ -155,6 +156,7 @@ export function useReadStatePersistence(
     markRead,
     markBulkRead,
     markAllRead,
+    markAllReadWithUndo,
     snoozeArticle,
     setNote,
     deleteNote,
@@ -202,6 +204,7 @@ export function useReadStatePersistence(
     markRead,
     markBulkRead,
     markAllRead,
+    markAllReadWithUndo,
     toggleRead,
     toggleBookmark,
     toggleReadingList,

@@ -127,6 +127,19 @@ body {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes undoProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-undo-progress {
+  animation: undoProgress 5s linear both;
+}
+
 /* 記事本文 HTML レンダリング */
 .article-content {
   font-family: var(--font-sans);

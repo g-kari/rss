@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import type { Article, KeywordFilter } from "../types";
+import type { ToastApi } from "./useToast";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, SPECIAL_FEED_IDS, deferSaveSet, saveJson, storageSet } from "../lib/storage";
 import { MAX_NOTE_LENGTH } from "../lib/validation";
@@ -38,6 +39,7 @@ export interface ReadStateActionResult {
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
+  markAllReadWithUndo: (feedId: string | null, toast: ToastApi) => void;
   snoozeArticle: (articleId: string, durationMs: number) => void;
   setNote: (articleId: string, text: string) => void;
   deleteNote: (articleId: string) => void;
@@ -149,6 +151,38 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
     ],
   );
 
+  const markAllReadWithUndo = useCallback(
+    (feedId: string | null, toast: ToastApi) => {
+      const prevReadIds = new Set(stateRef.current.read);
+      const prevReadBeforeTimestamp = stateRef.current.readBeforeTimestamp;
+      const prevPendingAdded = new Set(pendingAddedRef.current.read);
+      const prevPendingRemoved = new Set(pendingRemovedRef.current.read);
+
+      markAllRead(feedId);
+
+      toast.undo("全て既読にしました", () => {
+        setReadIds(prevReadIds);
+        deferSaveSet(STORAGE_KEYS.READ_IDS, prevReadIds);
+        if (!feedId) {
+          setReadBeforeTimestamp(prevReadBeforeTimestamp);
+          storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, prevReadBeforeTimestamp ?? "");
+        }
+        pendingAddedRef.current.read = prevPendingAdded;
+        pendingRemovedRef.current.read = prevPendingRemoved;
+        scheduleSyncRef.current();
+      });
+    },
+    [
+      stateRef,
+      markAllRead,
+      setReadIds,
+      setReadBeforeTimestamp,
+      pendingAddedRef,
+      pendingRemovedRef,
+      scheduleSyncRef,
+    ],
+  );
+
   const snoozeArticle = useCallback(
     (articleId: string, durationMs: number) => {
       const until = new Date(Date.now() + durationMs).toISOString();
@@ -214,6 +248,7 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
     markRead,
     markBulkRead,
     markAllRead,
+    markAllReadWithUndo,
     snoozeArticle,
     setNote,
     deleteNote,

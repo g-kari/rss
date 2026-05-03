@@ -3,7 +3,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 export interface ToastItem {
   id: string;
   message: string;
-  type: "success" | "error" | "info";
+  type: "success" | "error" | "info" | "undo";
+  onUndo?: () => void;
 }
 
 export interface ToastApi {
@@ -11,12 +12,14 @@ export interface ToastApi {
   success: (message: string) => void;
   error: (message: string) => void;
   info: (message: string) => void;
+  undo: (message: string, onUndo: () => void) => void;
   dismiss: (id: string) => void;
 }
 
 const MAX_TOASTS = 3;
 const DEFAULT_DURATION = 5000;
 const ERROR_DURATION = 8000;
+const UNDO_DURATION = 5000;
 
 let nextId = 0;
 
@@ -40,12 +43,13 @@ export function useToastState(): ToastApi {
     }
   }, []);
 
-  const show = useCallback((message: string, type: ToastItem["type"]) => {
+  const show = useCallback((message: string, type: ToastItem["type"], onUndo?: () => void) => {
     const id = `toast-${++nextId}`;
-    const duration = type === "error" ? ERROR_DURATION : DEFAULT_DURATION;
+    const duration =
+      type === "error" ? ERROR_DURATION : type === "undo" ? UNDO_DURATION : DEFAULT_DURATION;
 
     setToasts((prev) => {
-      const next = [...prev, { id, message, type }];
+      const next = [...prev, { id, message, type, onUndo }];
       if (next.length > MAX_TOASTS) {
         const removed = next[0];
         const timer = timersRef.current.get(removed.id);
@@ -70,6 +74,10 @@ export function useToastState(): ToastApi {
   const success = useCallback((message: string) => show(message, "success"), [show]);
   const error = useCallback((message: string) => show(message, "error"), [show]);
   const info = useCallback((message: string) => show(message, "info"), [show]);
+  const undo = useCallback(
+    (message: string, onUndoCb: () => void) => show(message, "undo", onUndoCb),
+    [show],
+  );
 
-  return { toasts, success, error, info, dismiss };
+  return { toasts, success, error, info, undo, dismiss };
 }
