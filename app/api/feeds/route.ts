@@ -57,7 +57,12 @@ export async function GET(request: Request) {
     if (needsUpdate && subs.length > 0) {
       const updatedSubs = subs.map((s) => ({ ...s, lastAccessedAt: now }));
       ctx.waitUntil(
-        writeUserSubscriptions(env.RSS_DATA, session.userId, updatedSubs).catch(console.error),
+        writeUserSubscriptions(env.RSS_DATA, session.userId, updatedSubs).catch((e: unknown) =>
+          console.error(
+            "[feeds] writeUserSubscriptions failed:",
+            e instanceof Error ? e.message : String(e),
+          ),
+        ),
       );
     }
 
@@ -223,7 +228,11 @@ export async function POST(request: Request) {
     // バックグラウンドで初回記事取得（Cookie はユーザー個別で渡す）
     ctx.waitUntil(
       registerAndFetchFeed(env, url, cookie, cookie ? session.userId : undefined).catch(
-        console.error,
+        (e: unknown) =>
+          console.error(
+            "[feeds] registerAndFetchFeed failed:",
+            e instanceof Error ? e.message : String(e),
+          ),
       ),
     );
 

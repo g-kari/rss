@@ -171,7 +171,14 @@ export async function POST(request: Request) {
       await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
       const origin = new URL(request.url).origin;
       await purgeFeedsCache(origin, session.userId, ctx);
-      ctx.waitUntil(fetchArticles(env, session.userId).catch(console.error));
+      ctx.waitUntil(
+        fetchArticles(env, session.userId).catch((e: unknown) =>
+          console.error(
+            "[feeds/import] fetchArticles failed:",
+            e instanceof Error ? e.message : String(e),
+          ),
+        ),
+      );
     }
 
     const feeds = succeededMetas.map((meta, i) => assembleClientFeed(meta, newSubs[i]));

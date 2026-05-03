@@ -123,7 +123,7 @@ async function handleGet(
   } catch (err) {
     if (isAbortError(err))
       return apiError("Request timeout", 504, { code: "TIMEOUT", retryable: true });
-    console.error("[content] fetch error:", err);
+    console.error("[content] fetch error:", err instanceof Error ? err.message : String(err));
     return apiError("Failed to fetch page", 502, { code: "FETCH_FAILED", retryable: true });
   }
 }
