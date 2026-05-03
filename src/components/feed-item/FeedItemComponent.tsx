@@ -440,7 +440,11 @@ export default function FeedItem({
           <line x1="9" y1="1" x2="1" y2="9" />
         </svg>
       ),
-      onClick: () => onDelete(),
+      onClick: () => {
+        if (window.confirm(`「${feed.title}」を削除しますか？`)) {
+          onDelete();
+        }
+      },
       className: "text-text-faint hover:text-rose-400",
       variant: "danger" as const,
     },
@@ -716,7 +720,7 @@ export default function FeedItem({
             setMenuAnchor(null);
             setMenuOpen((v) => !v);
           }}
-          className={`p-1 -mr-1 text-text-faint hover:text-text-default transition-opacity duration-150 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 ${menuOpen ? "!opacity-100" : ""}`}
+          className={`p-1 -mr-1 max-md:min-w-[44px] max-md:min-h-[44px] max-md:flex max-md:items-center max-md:justify-center text-text-faint hover:text-text-default transition-opacity duration-150 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 ${menuOpen ? "!opacity-100" : ""}`}
           title="操作メニュー（右クリックでも開けます）"
           aria-label="操作メニューを開く"
         >

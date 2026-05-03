@@ -1,5 +1,18 @@
 import type { Article, Feed } from "@/types";
 
+const REVOKE_DELAY_MS = 1000;
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
+}
+
 /** Markdown のリンク構文を壊す文字をエスケープする */
 function escapeMarkdown(s: string): string {
   return s.replace(/[[\]()\\`*_{}#|>]/g, "\\$&");
@@ -80,14 +93,7 @@ export function exportArticlesToMarkdown(
 
   const content = lines.join("\n");
   const blob = new Blob([content], { type: "text/markdown; charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${label}_${today.replace(/\//g, "-")}.md`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadBlob(blob, `${label}_${today.replace(/\//g, "-")}.md`);
 }
 
 /**
@@ -150,12 +156,5 @@ export function exportNotesToMarkdown(
 
   const content = lines.join("\n");
   const blob = new Blob([content], { type: "text/markdown; charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `メモ_${today.replace(/\//g, "-")}.md`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadBlob(blob, `メモ_${today.replace(/\//g, "-")}.md`);
 }

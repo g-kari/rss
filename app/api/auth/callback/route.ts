@@ -73,6 +73,20 @@ export async function GET(request: Request) {
   }
 
   const appBaseUrl = process.env.APP_BASE_URL!;
+
+  // オープンリダイレクト防止: リダイレクト先が有効な HTTPS URL であることを検証
+  let parsedAppBase: URL;
+  try {
+    parsedAppBase = new URL(appBaseUrl);
+  } catch {
+    console.error("[auth/callback] invalid APP_BASE_URL:", appBaseUrl);
+    return authError("サーバー設定エラー", 500);
+  }
+  if (parsedAppBase.protocol !== "https:" && parsedAppBase.hostname !== "localhost") {
+    console.error("[auth/callback] APP_BASE_URL must be HTTPS:", appBaseUrl);
+    return authError("サーバー設定エラー", 500);
+  }
+
   const callbackUrl = `${appBaseUrl}/api/auth/callback`;
   console.log("[auth/callback] calling exchangeCode", {
     authBaseUrl: process.env.AUTH_BASE_URL,
