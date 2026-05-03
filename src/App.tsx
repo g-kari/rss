@@ -331,14 +331,22 @@ export default function App() {
   const pendingArticleIdRef = useRef<string | null>(searchParams.get("article"));
 
   // 選択状態を URL クエリパラメータに同期（リロード復元用）
+  // j/k 高速ナビ時の大量 replace を抑止するため 300ms デバウンスする
+  const urlSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (selectedFeedId) params.set("feed", selectedFeedId);
-    if (selectedGroupId) params.set("group", selectedGroupId);
-    if (selectedTag && !selectedFeedId && !selectedGroupId) params.set("tag", selectedTag);
-    if (selectedArticle) params.set("article", selectedArticle.id);
-    const search = params.toString();
-    router.replace(search ? `/?${search}` : "/");
+    if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
+    urlSyncTimerRef.current = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (selectedFeedId) params.set("feed", selectedFeedId);
+      if (selectedGroupId) params.set("group", selectedGroupId);
+      if (selectedTag && !selectedFeedId && !selectedGroupId) params.set("tag", selectedTag);
+      if (selectedArticle) params.set("article", selectedArticle.id);
+      const search = params.toString();
+      router.replace(search ? `/?${search}` : "/");
+    }, 300);
+    return () => {
+      if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
+    };
   }, [selectedFeedId, selectedGroupId, selectedTag, selectedArticle, router]);
 
   // 記事ロード完了後に URL の article パラメータを復元
@@ -355,12 +363,29 @@ export default function App() {
 
   // globalFilter に引っかかった記事（フィルターで非表示になる記事）を自動的に既読にする。
   // これにより未読カウントや未読フィルターに除外記事が混入するのを防ぐ。
+  // 差分チェック: 前回チェック済み記事IDを保持し、新規追加分のみフィルタリングする。
+  const checkedArticleIdsRef = useRef<Set<string>>(new Set());
+  const prevGlobalFilterRef = useRef(globalFilter);
+  const readIdsRef = useSyncedRef(readIds);
   useEffect(() => {
     if (!globalFilter) return;
+    if (prevGlobalFilterRef.current !== globalFilter) {
+      checkedArticleIdsRef.current = new Set();
+      prevGlobalFilterRef.current = globalFilter;
+    }
     const normalized = normalizeFilter(globalFilter);
-    const ids = articles.filter((a) => !matchesKeywordFilter(a, normalized)).map((a) => a.id);
-    if (ids.length > 0) markBulkRead(ids);
-  }, [articles, globalFilter, markBulkRead]);
+    const checked = checkedArticleIdsRef.current;
+    const currentReadIds = readIdsRef.current;
+    const newIds: string[] = [];
+    for (const a of articles) {
+      if (checked.has(a.id) || currentReadIds.has(a.id)) continue;
+      if (!matchesKeywordFilter(a, normalized)) newIds.push(a.id);
+    }
+    if (newIds.length > 0) markBulkRead(newIds);
+    const nextChecked = new Set<string>();
+    for (const a of articles) nextChecked.add(a.id);
+    checkedArticleIdsRef.current = nextChecked;
+  }, [articles, globalFilter, markBulkRead, readIdsRef]);
 
   const totalUnread = useMemo(
     () => articles.filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp)).length,
