@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Collection } from "../types";
+import { useToast } from "@/contexts/ToastContext";
 
 const CollectionModal = dynamic(() => import("./CollectionModal"), { ssr: false });
 
@@ -24,6 +25,7 @@ export default function CollectionDropdown({
   const [open, setOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const toast = useToast();
 
   useEffect(() => {
     if (!open) return;
@@ -75,8 +77,8 @@ export default function CollectionDropdown({
                     try {
                       if (isIn) await onRemove(c.id, articleId);
                       else await onAdd(c.id, articleId);
-                    } catch (err) {
-                      console.error("コレクション操作に失敗:", err);
+                    } catch {
+                      toast.error("コレクションの更新に失敗しました");
                     }
                   }}
                   className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-surface-hover transition-colors"
