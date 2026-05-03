@@ -55,7 +55,11 @@ export default function SaveUrlModal({ url, onUrlChange, saving, error, onSave, 
           </button>
         </div>
 
-        {error && <p className="mt-2 text-[12px] text-rose-400">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-2 text-[12px] text-rose-400">
+            {error}
+          </p>
+        )}
       </div>
     </Modal>
   );

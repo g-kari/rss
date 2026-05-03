@@ -5,6 +5,21 @@ import type { Article } from "../../types";
 import { readingTime } from "../../lib/article-utils";
 import { buildImageProxyUrl } from "../../lib/image-proxy-url";
 
+// ── 共通キーボードハンドラ ──────────────────────────────────────────────
+
+/** Enter / Space で記事を選択する共通 onKeyDown ハンドラを生成する */
+export function handleArticleKeyDown(
+  article: Article,
+  onSelectArticle: (a: Article) => void,
+): (e: React.KeyboardEvent) => void {
+  return (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelectArticle(article);
+    }
+  };
+}
+
 // ── 共通 Props ──────────────────────────────────────────────────────────
 
 export interface ArticleItemProps {
@@ -149,15 +164,34 @@ export function DuplicateBadge({ feedNames }: { feedNames: string[] }) {
 }
 
 export function ArticleThumbnail({ thumb, className }: { thumb: string; className: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div
+        className={`${className} flex items-center justify-center bg-surface-subtle`}
+        aria-hidden
+      >
+        <svg
+          className="w-6 h-6 text-text-faint"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+        </svg>
+      </div>
+    );
+  }
   return (
     <img
       src={buildImageProxyUrl(thumb)}
       alt=""
       className={className}
       loading="lazy"
-      onError={(e) => {
-        (e.target as HTMLImageElement).style.display = "none";
-      }}
+      onError={() => setFailed(true)}
     />
   );
 }

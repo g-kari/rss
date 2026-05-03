@@ -4,7 +4,12 @@ import { memo, useContext } from "react";
 import { timeAgo, highlightText } from "../../lib/article-utils";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
 import { NoteIcon } from "../article-view/icons";
-import { ArticleActions, DuplicateBadge, type ArticleItemProps } from "./shared";
+import {
+  ArticleActions,
+  DuplicateBadge,
+  handleArticleKeyDown,
+  type ArticleItemProps,
+} from "./shared";
 
 export const CompactArticleItem = memo(function CompactArticleItem({
   article,
@@ -31,6 +36,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
+      onKeyDown={handleArticleKeyDown(article, onSelectArticle)}
       className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${

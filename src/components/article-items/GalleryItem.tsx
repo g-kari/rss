@@ -10,6 +10,7 @@ import {
   DuplicateBadge,
   FilterableGalleryImage,
   GalleryExpandButton,
+  handleArticleKeyDown,
   type ArticleItemProps,
   type GalleryItemExtraProps,
 } from "./shared";
@@ -44,6 +45,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
       tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
+      onKeyDown={handleArticleKeyDown(article, onSelectArticle)}
       className={`group relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
         isNew ? "animate-fade-up" : ""
       } border ${

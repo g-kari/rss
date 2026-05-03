@@ -147,7 +147,11 @@ export default function FeedGroupsSection({
             maxLength={50}
             className="w-full text-[12px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted placeholder-text-faint"
           />
-          {createError && <span className="text-[10px] text-rose-400">{createError}</span>}
+          {createError && (
+            <span role="alert" className="text-[10px] text-rose-400">
+              {createError}
+            </span>
+          )}
         </div>
       )}
 
@@ -442,7 +446,9 @@ export default function FeedGroupsSection({
               )}
             </div>
             {editError && editingId === group.id && (
-              <div className="px-4 pb-1 text-[10px] text-rose-400">{editError}</div>
+              <div role="alert" className="px-4 pb-1 text-[10px] text-rose-400">
+                {editError}
+              </div>
             )}
             {!isCollapsed &&
               feeds.length > 0 &&

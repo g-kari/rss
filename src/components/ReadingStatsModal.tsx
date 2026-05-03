@@ -285,7 +285,11 @@ export default function ReadingStatsModal({
             <Spinner />
           </div>
         )}
-        {error && <p className="text-[13px] text-rose-400">{error}</p>}
+        {error && (
+          <p role="alert" className="text-[13px] text-rose-400">
+            {error}
+          </p>
+        )}
         {stats && !loading && (
           <>
             {/* サマリーカード */}

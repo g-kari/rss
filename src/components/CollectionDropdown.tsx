@@ -70,8 +70,12 @@ export default function CollectionDropdown({
                 <button
                   key={c.id}
                   onClick={async () => {
-                    if (isIn) await onRemove(c.id, articleId);
-                    else await onAdd(c.id, articleId);
+                    try {
+                      if (isIn) await onRemove(c.id, articleId);
+                      else await onAdd(c.id, articleId);
+                    } catch (err) {
+                      console.error("コレクション操作に失敗:", err);
+                    }
                   }}
                   className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-surface-hover transition-colors"
                 >

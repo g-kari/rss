@@ -9,6 +9,7 @@ import {
   ArticleThumbnail,
   DuplicateBadge,
   ReadingTimeBadge,
+  handleArticleKeyDown,
   type ArticleItemProps,
 } from "./shared";
 
@@ -38,6 +39,7 @@ export const CardArticleItem = memo(function CardArticleItem({
       tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
+      onKeyDown={handleArticleKeyDown(article, onSelectArticle)}
       className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 overflow-hidden ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${

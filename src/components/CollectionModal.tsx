@@ -44,7 +44,11 @@ export default function CollectionModal({ mode, initialName = "", onSubmit, onCl
             aria-invalid={error ? true : undefined}
             className="w-full px-3 py-2 text-[13px] bg-surface-base border border-border-default rounded-lg text-text-strong placeholder:text-text-faint focus:outline-none focus:ring-1 focus:ring-text-muted"
           />
-          {error && <p className="mt-1 text-[11px] text-rose-400">{error}</p>}
+          {error && (
+            <p role="alert" className="mt-1 text-[11px] text-rose-400">
+              {error}
+            </p>
+          )}
         </div>
         <div className="flex justify-end gap-2">
           <button

@@ -117,7 +117,11 @@ export default function FeedAddModal({
             <span>RSSHub で自動変換（Twitter / YouTube / GitHub 等）</span>
           </label>
 
-          {error && <p className="text-[12px] text-rose-400 mt-2">{error}</p>}
+          {error && (
+            <p role="alert" className="text-[12px] text-rose-400 mt-2">
+              {error}
+            </p>
+          )}
 
           <div className="flex gap-2 mt-3">
             <button
