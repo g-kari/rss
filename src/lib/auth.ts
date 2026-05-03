@@ -336,7 +336,8 @@ async function readErrorCode(res: Response): Promise<string | null> {
   try {
     const body = (await res.clone().json()) as { error?: { code?: unknown } };
     return typeof body?.error?.code === "string" ? body.error.code : null;
-  } catch {
+  } catch (err) {
+    console.warn("[auth/readErrorCode] failed to parse error response:", err);
     return null;
   }
 }
@@ -355,8 +356,9 @@ export async function refreshTokens(refreshToken: string): Promise<RefreshResult
       headers: authApiHeaders(),
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
-  } catch {
+  } catch (err) {
     // ネットワークエラー・DNS・タイムアウト → 一時的失敗
+    console.warn("[auth/refresh] network error:", err);
     return { kind: "transient" };
   }
   if (res.ok) {
@@ -365,8 +367,9 @@ export async function refreshTokens(refreshToken: string): Promise<RefreshResult
         data: { access_token: string; refresh_token: string };
       };
       return { kind: "ok", tokens: data };
-    } catch {
+    } catch (err) {
       // レスポンスボディのパース失敗は上流バグ → 一時的失敗として扱う
+      console.warn("[auth/refresh] response parse failed:", err);
       return { kind: "transient" };
     }
   }
@@ -429,7 +432,8 @@ export function getJwtExp(token: string): number | null {
       exp?: number;
     };
     return typeof payload.exp === "number" ? payload.exp : null;
-  } catch {
+  } catch (err) {
+    console.warn("[auth/getJwtExp] failed to parse JWT:", err);
     return null;
   }
 }

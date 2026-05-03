@@ -18,8 +18,8 @@ import {
   fetchMarkdownFromHtml,
   isContentSufficient,
   markdownToHtml,
-  postProcessMarkdownContent,
 } from "@/lib/content";
+import { postProcessMarkdownContent } from "@/lib/html-post-processor";
 import { isValidFeedUrl } from "@/lib/url";
 
 export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;

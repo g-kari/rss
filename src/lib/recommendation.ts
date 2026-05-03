@@ -65,7 +65,8 @@ async function discoverAndBuildFeed(
     if (!feedUrl || subscribedUrls.has(feedUrl)) return null;
     const id = await makeRecommendationId(idPrefix, feedUrl);
     return { id, feedUrl, ...buildMeta() };
-  } catch {
+  } catch (err) {
+    console.warn("[recommendation] discoverAndBuildFeed failed:", siteUrl, err);
     return null;
   }
 }
@@ -196,8 +197,9 @@ export async function extractUserTopics(
         return parsed.filter((x): x is string => typeof x === "string").slice(0, 10);
       }
     }
-  } catch {
+  } catch (err) {
     // AI 失敗時は空配列（Brave Search は topics なしでも動作しない）
+    console.warn("[recommendation] extractUserTopics AI failed:", err);
   }
 
   return [];
@@ -325,7 +327,8 @@ export async function generatePopularFeeds(
         source: "popular" as const,
         score,
       };
-    } catch {
+    } catch (err) {
+      console.warn("[recommendation] generatePopularFeeds entry failed:", feedHash, err);
       return null;
     }
   });
@@ -368,7 +371,8 @@ export async function generateLinkDiscoveryFeeds(
     try {
       const articles = await readLatestArticles(bucket, feedHash);
       return { articles, idSet: new Set(articleIds) };
-    } catch {
+    } catch (err) {
+      console.warn("[recommendation] linkDiscovery article fetch failed:", feedHash, err);
       return null;
     }
   });
@@ -415,8 +419,9 @@ export async function generateLinkDiscoveryFeeds(
         }
       }
       if (candidates.length >= 8) break;
-    } catch {
+    } catch (err) {
       // キャッシュ読み込み失敗はスキップ
+      console.warn("[recommendation] linkDiscovery cache read failed:", link, err);
     }
   }
 
