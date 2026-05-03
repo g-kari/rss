@@ -1,0 +1,96 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import type { Article, FeedGroup } from "../types";
+
+export interface FeedSelectionState {
+  selectedFeedId: string | null;
+  setSelectedFeedId: (id: string | null) => void;
+  selectedGroupId: string | null;
+  setSelectedGroupId: (id: string | null) => void;
+  selectedTag: string | null;
+  setSelectedTag: (tag: string | null) => void;
+  selectedArticle: Article | null;
+  setSelectedArticle: (article: Article | null) => void;
+  selectedCollectionId: string | null;
+  setSelectedCollectionId: (id: string | null) => void;
+  snoozeTargetId: string | null;
+  setSnoozeTargetId: (id: string | null) => void;
+  articleAnnouncement: string;
+  setArticleAnnouncement: (msg: string) => void;
+}
+
+export function useFeedSelection(articles: Article[], feedGroups: FeedGroup[]): FeedSelectionState {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() =>
+    searchParams.get("feed"),
+  );
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(() =>
+    searchParams.get("feed") ? null : searchParams.get("group"),
+  );
+  const [selectedTag, setSelectedTag] = useState<string | null>(() =>
+    searchParams.get("feed") || searchParams.get("group") ? null : searchParams.get("tag"),
+  );
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
+  const [articleAnnouncement, setArticleAnnouncement] = useState("");
+
+  const pendingArticleIdRef = useRef<string | null>(searchParams.get("article"));
+
+  // 選択状態を URL クエリパラメータに同期（300ms デバウンス）
+  const urlSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
+    urlSyncTimerRef.current = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (selectedFeedId) params.set("feed", selectedFeedId);
+      if (selectedGroupId) params.set("group", selectedGroupId);
+      if (selectedTag && !selectedFeedId && !selectedGroupId) params.set("tag", selectedTag);
+      if (selectedArticle) params.set("article", selectedArticle.id);
+      const search = params.toString();
+      router.replace(search ? `/?${search}` : "/");
+    }, 300);
+    return () => {
+      if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
+    };
+  }, [selectedFeedId, selectedGroupId, selectedTag, selectedArticle, router]);
+
+  // 記事ロード完了後に URL の article パラメータを復元
+  useEffect(() => {
+    if (!pendingArticleIdRef.current || articles.length === 0) return;
+    const article = articles.find((a) => a.id === pendingArticleIdRef.current);
+    if (article) {
+      setSelectedArticle(article);
+    }
+    pendingArticleIdRef.current = null;
+  }, [articles]);
+
+  // 削除されたグループが選択中の場合は解除する
+  useEffect(() => {
+    if (!selectedGroupId) return;
+    if (!feedGroups.some((g) => g.id === selectedGroupId)) {
+      setSelectedGroupId(null);
+    }
+  }, [selectedGroupId, feedGroups]);
+
+  return {
+    selectedFeedId,
+    setSelectedFeedId,
+    selectedGroupId,
+    setSelectedGroupId,
+    selectedTag,
+    setSelectedTag,
+    selectedArticle,
+    setSelectedArticle,
+    selectedCollectionId,
+    setSelectedCollectionId,
+    snoozeTargetId,
+    setSnoozeTargetId,
+    articleAnnouncement,
+    setArticleAnnouncement,
+  };
+}

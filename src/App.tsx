@@ -1,21 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import FeedSidebar from "./components/feed-sidebar";
 import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
-import type {
-  Article,
-  EngagementAction,
-  Feed,
-  FeedPatchPayload,
-  FeedView,
-  KeywordFilter,
-} from "./types";
+import type { Article, EngagementAction } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useFeedGroups } from "./hooks/useFeedGroups";
@@ -30,9 +23,11 @@ import { useHasOpenPopup } from "./hooks/usePopupLock";
 import { updateFaviconBadge } from "./lib/favicon";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "./lib/export-markdown";
 import { apiFetch, onApiError } from "./lib/api-fetch";
-import { isFeed, isArticle } from "./lib/type-guards";
+import { isArticle } from "./lib/type-guards";
 import { normalizeFilter, matchesKeywordFilter } from "./lib/keyword-filter";
 import { isArticleRead } from "./lib/article-filter";
+import { useFeedSelection } from "./hooks/useFeedSelection";
+import { useFeedPatch } from "./hooks/useFeedPatch";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
@@ -62,8 +57,6 @@ import SkeletonArticleList from "./components/SkeletonArticleList";
 
 export default function App() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-
   const { user, betaRestricted, sessionExpired } = useAuth();
   const isOnline = useOnlineStatus();
   const prevOnlineRef = useRef(isOnline);
@@ -190,8 +183,6 @@ export default function App() {
     addArticleToCollection,
     removeArticleFromCollection,
   } = useCollections(user, toast.error);
-
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
   const {
     supported: pushSupported,
@@ -330,57 +321,25 @@ export default function App() {
     refresh: refreshRecommendations,
     refreshing: recommendationsRefreshing,
   } = useRecommendations(user);
-  const [selectedFeedId, setSelectedFeedId] = useState<string | null>(() =>
-    searchParams.get("feed"),
-  );
-  // ?feed と ?group は相互排他。片方を選ぶと他方はクリアする設計のため、
-  // 両方が URL に含まれていた場合は feed を優先して group を無視する。
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(() =>
-    searchParams.get("feed") ? null : searchParams.get("group"),
-  );
-  // ?tag は ?feed / ?group と相互排他。feed / group が設定されていれば tag は無視する。
-  const [selectedTag, setSelectedTag] = useState<string | null>(() =>
-    searchParams.get("feed") || searchParams.get("group") ? null : searchParams.get("tag"),
-  );
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
-  const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
-  // キーボードナビで記事切り替え時のスクリーンリーダー通知用
-  const [articleAnnouncement, setArticleAnnouncement] = useState("");
-  // モーダル・ポップアップ表示中はリサイズバーを無効化する（Issue #81）
+
+  const {
+    selectedFeedId,
+    setSelectedFeedId,
+    selectedGroupId,
+    setSelectedGroupId,
+    selectedTag,
+    setSelectedTag,
+    selectedArticle,
+    setSelectedArticle,
+    selectedCollectionId,
+    setSelectedCollectionId,
+    snoozeTargetId,
+    setSnoozeTargetId,
+    articleAnnouncement,
+    setArticleAnnouncement,
+  } = useFeedSelection(articles, feedGroups);
+
   const hasOpenPopup = useHasOpenPopup();
-  // URL から復元すべき記事 ID（記事ロード完了後に解決）
-  const pendingArticleIdRef = useRef<string | null>(searchParams.get("article"));
-
-  // 選択状態を URL クエリパラメータに同期（リロード復元用）
-  // j/k 高速ナビ時の大量 replace を抑止するため 300ms デバウンスする
-  const urlSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
-    urlSyncTimerRef.current = setTimeout(() => {
-      const params = new URLSearchParams();
-      if (selectedFeedId) params.set("feed", selectedFeedId);
-      if (selectedGroupId) params.set("group", selectedGroupId);
-      if (selectedTag && !selectedFeedId && !selectedGroupId) params.set("tag", selectedTag);
-      if (selectedArticle) params.set("article", selectedArticle.id);
-      const search = params.toString();
-      router.replace(search ? `/?${search}` : "/");
-    }, 300);
-    return () => {
-      if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
-    };
-  }, [selectedFeedId, selectedGroupId, selectedTag, selectedArticle, router]);
-
-  // 記事ロード完了後に URL の article パラメータを復元
-  useEffect(() => {
-    if (!pendingArticleIdRef.current || articles.length === 0) return;
-    const article = articles.find((a) => a.id === pendingArticleIdRef.current);
-    if (article) {
-      setSelectedArticle(article);
-    }
-    // 記事が見つかった場合も見つからなかった場合も、ロード済みならクリアする
-    // クリアしないとポーリング毎に古い ID を検索し続けてしまう
-    pendingArticleIdRef.current = null;
-  }, [articles]);
 
   // globalFilter に引っかかった記事（フィルターで非表示になる記事）を自動的に既読にする。
   // これにより未読カウントや未読フィルターに除外記事が混入するのを防ぐ。
@@ -418,74 +377,15 @@ export default function App() {
     updateFaviconBadge(totalUnread).catch(() => {});
   }, [totalUnread]);
 
-  const patchFeed = useCallback(
-    async (id: string, body: FeedPatchPayload): Promise<Feed | null> => {
-      const res = await apiFetch(`/api/feeds/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) return null;
-      const data: unknown = await res.json();
-      return isFeed(data) ? data : null;
-    },
-    [],
-  );
-
-  const applyFeedPatch = useCallback(
-    async (id: string, patch: FeedPatchPayload): Promise<Feed | null> => {
-      const updated = await patchFeed(id, patch);
-      if (updated) updateFeed(updated);
-      return updated;
-    },
-    [patchFeed, updateFeed],
-  );
-
-  const toggleNsfwFeed = useCallback(
-    (feed: Feed) => applyFeedPatch(feed.id, { nsfw: !feed.nsfw }),
-    [applyFeedPatch],
-  );
-
-  const togglePriorityFeed = useCallback(
-    (feed: Feed) => applyFeedPatch(feed.id, { priority: feed.priority === "high" ? null : "high" }),
-    [applyFeedPatch],
-  );
-
-  const setCategoryFeed = useCallback(
-    async (feed: Feed, category: string | null) => {
-      await applyFeedPatch(feed.id, { category });
-    },
-    [applyFeedPatch],
-  );
-
-  const setGroupFeed = useCallback(
-    async (feed: Feed, groupId: string | null) => {
-      await applyFeedPatch(feed.id, { groupId });
-    },
-    [applyFeedPatch],
-  );
-
-  const muteFeed = useCallback(
-    async (feed: Feed, mutedUntil: string | null) => {
-      await applyFeedPatch(feed.id, { mutedUntil });
-    },
-    [applyFeedPatch],
-  );
-
-  const setFeedView = useCallback(
-    async (feed: Feed, view: FeedView | null) => {
-      await applyFeedPatch(feed.id, { view });
-    },
-    [applyFeedPatch],
-  );
-
-  const saveFilter = useCallback(
-    async (feedId: string, filter: KeywordFilter | null) => {
-      const updated = await applyFeedPatch(feedId, { filter });
-      if (!updated) throw new Error("フィルターの保存に失敗しました");
-    },
-    [applyFeedPatch],
-  );
+  const {
+    toggleNsfwFeed,
+    togglePriorityFeed,
+    setCategoryFeed,
+    setGroupFeed,
+    muteFeed,
+    setFeedView,
+    saveFilter,
+  } = useFeedPatch(updateFeed);
 
   function onFeedDeleted(id: string) {
     removeFeed(id);
@@ -494,14 +394,6 @@ export default function App() {
       setSelectedArticle(null);
     }
   }
-
-  // 削除されたグループが選択中の場合は解除する
-  useEffect(() => {
-    if (!selectedGroupId) return;
-    if (!feedGroups.some((g) => g.id === selectedGroupId)) {
-      setSelectedGroupId(null);
-    }
-  }, [selectedGroupId, feedGroups]);
 
   const onSaveArticleUrl = useCallback(
     async (url: string, mode: "bookmark" | "reading_list") => {
@@ -735,7 +627,7 @@ export default function App() {
       addToHistory(article.id);
       setMobilePane("view");
     },
-    [listFocusModeRef, toggleFocusMode, markRead, addToHistory, setMobilePane],
+    [listFocusModeRef, toggleFocusMode, setSelectedArticle, markRead, addToHistory, setMobilePane],
   );
 
   // フォーカスモード終了時にリストフォーカスモードを復元する
@@ -815,6 +707,69 @@ export default function App() {
     onShowFeedSwitcher: () => setShowFeedSwitcher(true),
     onArticleAnnounce: setArticleAnnouncement,
   });
+
+  const articleViewProps = useMemo(
+    () => ({
+      article: selectedArticle,
+      isBookmarked: selectedArticle ? bookmarkIds.has(selectedArticle.id) : false,
+      onToggleBookmark: handleToggleBookmark,
+      isInReadingList: selectedArticle ? readingListIds.has(selectedArticle.id) : false,
+      onToggleReadingList: handleToggleReadingList,
+      isLiked: selectedArticle ? likeIds.has(selectedArticle.id) : false,
+      onToggleLike: handleToggleLike,
+      onEngagement: recordEngagement,
+      onMobileBack: () => setMobilePane("list"),
+      prevArticle,
+      nextArticle,
+      onSelectPrev: prevArticle ? () => selectArticle(prevArticle) : undefined,
+      onSelectNext: nextArticle ? () => selectArticle(nextArticle) : undefined,
+      feeds,
+      onSnooze: snoozeArticle,
+      note: selectedArticle ? notes[selectedArticle.id] : undefined,
+      onSetNote: setNote,
+      onDeleteNote: deleteNote,
+      onAutoMarkRead: markRead,
+      tags: selectedArticle ? (articleTagIds[selectedArticle.id] ?? []) : [],
+      allTags: articleTagIds,
+      onAddTag: addTag,
+      onRemoveTag: removeTag,
+      onSetArticleTags: setArticleTags,
+      onClearArticleTags: clearArticleTags,
+      collections,
+      onAddToCollection: addArticleToCollection,
+      onRemoveFromCollection: removeArticleFromCollection,
+      onCreateCollection: createCollection,
+    }),
+    [
+      selectedArticle,
+      bookmarkIds,
+      handleToggleBookmark,
+      readingListIds,
+      handleToggleReadingList,
+      likeIds,
+      handleToggleLike,
+      recordEngagement,
+      setMobilePane,
+      prevArticle,
+      nextArticle,
+      selectArticle,
+      feeds,
+      snoozeArticle,
+      notes,
+      setNote,
+      deleteNote,
+      markRead,
+      articleTagIds,
+      addTag,
+      removeTag,
+      setArticleTags,
+      clearArticleTags,
+      collections,
+      addArticleToCollection,
+      removeArticleFromCollection,
+      createCollection,
+    ],
+  );
 
   // ローディング
   if (user === undefined) {
@@ -995,39 +950,7 @@ export default function App() {
                 </button>
                 <div className="flex-1 min-h-0 overflow-hidden">
                   <ErrorBoundary label="フォーカスモード">
-                    <ArticleView
-                      article={selectedArticle}
-                      isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
-                      onToggleBookmark={handleToggleBookmark}
-                      isInReadingList={
-                        selectedArticle ? readingListIds.has(selectedArticle.id) : false
-                      }
-                      onToggleReadingList={handleToggleReadingList}
-                      isLiked={selectedArticle ? likeIds.has(selectedArticle.id) : false}
-                      onToggleLike={handleToggleLike}
-                      onEngagement={recordEngagement}
-                      onMobileBack={() => setMobilePane("list")}
-                      prevArticle={prevArticle}
-                      nextArticle={nextArticle}
-                      onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
-                      onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
-                      feeds={feeds}
-                      onSnooze={snoozeArticle}
-                      note={selectedArticle ? notes[selectedArticle.id] : undefined}
-                      onSetNote={setNote}
-                      onDeleteNote={deleteNote}
-                      onAutoMarkRead={markRead}
-                      tags={selectedArticle ? (articleTagIds[selectedArticle.id] ?? []) : []}
-                      allTags={articleTagIds}
-                      onAddTag={addTag}
-                      onRemoveTag={removeTag}
-                      onSetArticleTags={setArticleTags}
-                      onClearArticleTags={clearArticleTags}
-                      collections={collections}
-                      onAddToCollection={addArticleToCollection}
-                      onRemoveFromCollection={removeArticleFromCollection}
-                      onCreateCollection={createCollection}
-                    />
+                    <ArticleView {...articleViewProps} />
                   </ErrorBoundary>
                 </div>
               </div>
@@ -1250,37 +1173,7 @@ export default function App() {
               className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "view" ? "hidden lg:block" : ""}`}
             >
               <ErrorBoundary label="記事表示">
-                <ArticleView
-                  article={selectedArticle}
-                  isBookmarked={selectedArticle ? bookmarkIds.has(selectedArticle.id) : false}
-                  onToggleBookmark={handleToggleBookmark}
-                  isInReadingList={selectedArticle ? readingListIds.has(selectedArticle.id) : false}
-                  onToggleReadingList={handleToggleReadingList}
-                  isLiked={selectedArticle ? likeIds.has(selectedArticle.id) : false}
-                  onToggleLike={handleToggleLike}
-                  onEngagement={recordEngagement}
-                  onMobileBack={() => setMobilePane("list")}
-                  prevArticle={prevArticle}
-                  nextArticle={nextArticle}
-                  onSelectPrev={prevArticle ? () => selectArticle(prevArticle) : undefined}
-                  onSelectNext={nextArticle ? () => selectArticle(nextArticle) : undefined}
-                  feeds={feeds}
-                  onSnooze={snoozeArticle}
-                  note={selectedArticle ? notes[selectedArticle.id] : undefined}
-                  onSetNote={setNote}
-                  onDeleteNote={deleteNote}
-                  onAutoMarkRead={markRead}
-                  tags={selectedArticle ? (articleTagIds[selectedArticle.id] ?? []) : []}
-                  allTags={articleTagIds}
-                  onAddTag={addTag}
-                  onRemoveTag={removeTag}
-                  onSetArticleTags={setArticleTags}
-                  onClearArticleTags={clearArticleTags}
-                  collections={collections}
-                  onAddToCollection={addArticleToCollection}
-                  onRemoveFromCollection={removeArticleFromCollection}
-                  onCreateCollection={createCollection}
-                />
+                <ArticleView {...articleViewProps} />
               </ErrorBoundary>
             </main>
           </div>
