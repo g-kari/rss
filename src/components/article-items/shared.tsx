@@ -55,7 +55,7 @@ export interface ArticleActionsProps {
   onToggleBookmark: () => void;
 }
 
-export function ArticleActions({
+export const ArticleActions = memo(function ArticleActions({
   isRead,
   isBookmarked,
   size = "md",
@@ -123,7 +123,7 @@ export function ArticleActions({
       </button>
     </div>
   );
-}
+});
 
 export function ReadingTimeBadge({
   article,
