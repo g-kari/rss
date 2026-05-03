@@ -86,6 +86,7 @@ export default function App() {
     toggleFocusMode,
     listFocusMode,
     toggleListFocusMode,
+    setListFocusMode,
     exitFocusMode,
     nsfwMode,
     showNSFWAnimation,
@@ -675,10 +676,14 @@ export default function App() {
   }, [hasMore, feedHasMorePages, handleLoadMoreFeedArticles, loadingArticles]);
 
   const listFocusModeRef = useSyncedRef(listFocusMode);
+  const wasInListFocusModeRef = useRef(false);
 
   const selectArticle = useCallback(
     (article: Article) => {
-      if (listFocusModeRef.current) toggleFocusMode();
+      if (listFocusModeRef.current) {
+        wasInListFocusModeRef.current = true;
+        toggleFocusMode();
+      }
       setSelectedArticle(article);
       markRead(article.id);
       addToHistory(article.id);
@@ -686,6 +691,16 @@ export default function App() {
     },
     [listFocusModeRef, toggleFocusMode, markRead, addToHistory, setMobilePane],
   );
+
+  // フォーカスモード終了時にリストフォーカスモードを復元する
+  const prevFocusModeRef = useRef(focusMode);
+  useEffect(() => {
+    if (prevFocusModeRef.current && !focusMode && wasInListFocusModeRef.current) {
+      wasInListFocusModeRef.current = false;
+      setListFocusMode(true);
+    }
+    prevFocusModeRef.current = focusMode;
+  }, [focusMode, setListFocusMode]);
 
   const articlesRef = useSyncedRef(articles);
   const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useMemo(() => {
