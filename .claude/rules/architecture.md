@@ -28,12 +28,14 @@ Cloudflare Workers (@opennextjs/cloudflare)
   └─ .open-next/assets/     → 静的アセット (Cloudflare Assets)
 
 Cloudflare Bindings
-  ├─ RSS_DATA (R2)      — users/{userId}/* + feeds/{feedHash}/* (共有フィード)
-  ├─ RATE_LIMIT (KV)    — レートリミット・クールダウン管理
-  ├─ AI                 — Workers AI モデル
-  ├─ IMAGES             — Cloudflare Images
-  ├─ FINDME_RSS (Service) — findme-rss サービスバインディング
-  └─ ASSETS (Assets)    — 静的アセット
+  ├─ RSS_DATA (R2)              — users/{userId}/* + feeds/{feedHash}/* (共有フィード)
+  ├─ NEXT_INC_CACHE_R2_BUCKET (R2) — Next.js Incremental Cache (opennextjs 管理)
+  ├─ RATE_LIMIT (KV)            — レートリミット・クールダウン管理
+  ├─ AI                         — Workers AI モデル
+  ├─ IMAGES                     — Cloudflare Images
+  ├─ WORKER_SELF_REFERENCE (Service) — 自身の Worker へのサービスバインディング
+  ├─ FINDME_RSS (Service)       — findme-rss サービスバインディング
+  └─ ASSETS (Assets)            — 静的アセット
 
 Cron Trigger (wrangler.toml: */30 * * * *)
   └─ src/cron/fetch.ts → fetchAllUsers(env) — R2 から全ユーザーの RSS を取得・更新
@@ -99,8 +101,15 @@ src/
   App.tsx                    # 3ペインレイアウト + 認証状態管理 ('use client')
   types.ts                   # Feed / Article / UserProfile / AuthSession 型
   cloudflare-env.d.ts        # CloudflareEnv 拡張 (RSS_DATA, RATE_LIMIT, AI, IMAGES, FINDME_RSS 等)
+  contexts/
+    ArticleFilterContext.tsx  # 記事フィルター状態の React Context（FilterState + onSaveFilter）
+    ReaderSettingsContext.tsx # リーダー表示設定の React Context（フォントサイズ・行間・テーマ等）
+    SelectedArticleContext.ts # 選択中の記事 ID を提供する Context（ArticleItem の不要な re-render 回避）
+    ToastContext.tsx          # トースト通知 API の React Context（useToast のグローバル提供）
   components/
-    feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton）
+    feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection）
+    feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / types.ts）
+    article-items/           # レイアウト別記事アイテム（index.tsx / shared.tsx / CompactItem / ListItem / CardItem / MagazineItem / GalleryItem）
     FeedItem.tsx             # フィードアイテム（コンテキストメニュー付き）
     FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
@@ -129,6 +138,8 @@ src/
     UserSettingsModal.tsx    # ユーザー設定モーダル（フォントサイズ・行間・コンテンツ幅・自動既読閾値・テーマ）
     SaveUrlModal.tsx         # 任意 URL を手動保存するモーダル（POST /api/articles/save 連携）
     FeedAddModal.tsx         # フィード追加ダイアログ（RSS 自動検出・LLM CSS セレクタ推論・Cookie 指定対応）
+    BetaRestrictedPage.tsx   # ベータ制限ページ（未許可ユーザー向け表示）
+    LandingPage.tsx          # 未ログイン時のランディングページ
     article-view/            # ArticleView 補助コンポーネント群（ヘッダー・本文・AI パネル・メモ・モーダル・ナビゲーション・インラインナビ・フィルタメニュー・ギャラリー・共有・スヌーズ・タグエディタ等）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
@@ -369,6 +380,9 @@ users/{userId}/engagement.json          # EngagementLog（entries: EngagementEnt
 users/{userId}/recommendations.json     # RecommendationCache（recommendations・generatedAt・dismissedIds・topics）
 users/{userId}/push.json                # PushConfig（subscriptions: PushSubscriptionRecord[]）
 users/{userId}/saved.json               # 手動保存記事（/api/articles/save）
+users/{userId}/dbsc-session.json        # DbscSession（DBSC 登録済み公開鍵・検証日時）
+users/{userId}/dbsc-challenge-{sessionId}.json  # DBSC チャレンジ（challenge・expiresAt、検証後削除）
+users/{userId}/dbsc-pending-challenge.json      # DBSC 登録用ペンディングチャレンジ（登録完了後削除）
 ```
 
 `userId` = JWT の `sub` クレームをそのまま使用（`server-auth.ts` で `userId: payload.sub` と設定）。

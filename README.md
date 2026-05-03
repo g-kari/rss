@@ -441,13 +441,15 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 `package.json` の `pnpm.overrides` は脆弱性対応のためにサブ依存のバージョンを強制固定している。
 各エントリの根拠と、削除可能になる条件は以下の通り:
 
-| パッケージ        | 強制バージョン | 対応 CVE / 理由                                                                  |
-| ----------------- | -------------- | -------------------------------------------------------------------------------- |
-| `path-to-regexp`  | `^6.3.0`       | **CVE-2024-45296** — ReDoS 脆弱性。6.2.x 以下で壊滅的バックトラッキングが発生。  |
-| `yaml`            | `>=2.8.3`      | **CVE-2025-27789** — Prototype Pollution / DoS。2.8.2 以下で発生、2.8.3 で修正。 |
-| `brace-expansion` | `>=5.0.5`      | ReDoS 脆弱性対策。特定パターンの展開で壊滅的バックトラッキングが発生する。       |
-| `minimatch`       | `>=10.0.0`     | `brace-expansion` 依存の ReDoS 脆弱性に連鎖するため、対応版に固定。              |
-| `vite`            | `>=8.0.5`      | パストラバーサル / SSRF 系脆弱性対策（詳細は vite の該当リリースノートを参照）。 |
+| パッケージ        | 強制バージョン | 対応 CVE / 理由                                                                                              |
+| ----------------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `path-to-regexp`  | `^6.3.0`       | **CVE-2024-45296** — ReDoS 脆弱性。6.2.x 以下で壊滅的バックトラッキングが発生。                              |
+| `yaml`            | `>=2.8.3`      | **CVE-2025-27789** — Prototype Pollution / DoS。2.8.2 以下で発生、2.8.3 で修正。                             |
+| `brace-expansion` | `>=5.0.5`      | ReDoS 脆弱性対策。特定パターンの展開で壊滅的バックトラッキングが発生する。                                   |
+| `minimatch`       | `>=10.0.0`     | `brace-expansion` 依存の ReDoS 脆弱性に連鎖するため、対応版に固定。                                          |
+| `vite`            | `>=8.0.5`      | パストラバーサル / SSRF 系脆弱性対策（詳細は vite の該当リリースノートを参照）。                             |
+| `postcss`         | `>=8.5.13`     | [CVE-2025-6245](https://github.com/advisories/GHSA-86g3-cmjm-g2xj) ほか — コードインジェクション脆弱性対策。 |
+| `fast-xml-parser` | `>=5.7.0`      | Prototype Pollution / Entity Expansion DoS 対策。5.7.0 で修正。                                              |
 
 > **削除タイミング**: 直接依存（Next.js / vite 等）が対応版に更新されたら該当 `override` を削除できる。
 > 削除前に `pnpm why <pkg>` でバージョンが引き上げ済みであることを確認すること。
@@ -458,19 +460,20 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 
 ### 主要依存ライブラリのライセンス
 
-| パッケージ             | ライセンス   |
-| ---------------------- | ------------ |
-| Next.js                | MIT          |
-| React                  | MIT          |
-| Tailwind CSS           | MIT          |
-| @opennextjs/cloudflare | MIT          |
-| @mozilla/readability   | Apache-2.0   |
-| fast-xml-parser        | MIT          |
-| linkedom               | ISC          |
-| highlight.js           | BSD-3-Clause |
-| katex                  | MIT          |
-| marked                 | MIT          |
-| masonic                | MIT          |
+| パッケージ              | ライセンス   |
+| ----------------------- | ------------ |
+| Next.js                 | MIT          |
+| React                   | MIT          |
+| Tailwind CSS            | MIT          |
+| @opennextjs/cloudflare  | MIT          |
+| @mozilla/readability    | Apache-2.0   |
+| fast-xml-parser         | MIT          |
+| linkedom                | ISC          |
+| highlight.js            | BSD-3-Clause |
+| katex                   | MIT          |
+| marked                  | MIT          |
+| masonic                 | MIT          |
+| @tanstack/react-virtual | MIT          |
 
 ### デザイン参考
 

@@ -106,6 +106,33 @@ const filtered = useMemo(() => {
 }, [articles, feedId, readIds, unreadOnly]);
 ```
 
+## React Context パターン (`src/contexts/`)
+
+コンポーネントツリーの深い階層に props を渡す（prop drilling）代わりに、React Context を使用する。
+Context ファイルは `src/contexts/` に配置し、`createContext` + Provider + `useXxx` カスタムフックをセットで提供する。
+
+```typescript
+// src/contexts/ToastContext.tsx
+const ToastContext = createContext<ToastApi | null>(null);
+
+export function ToastProvider({ value, children }: ProviderProps) {
+  return <ToastContext value={value}>{children}</ToastContext>;
+}
+
+export function useToast(): ToastApi {
+  const ctx = useContext(ToastContext);
+  if (!ctx) throw new Error("useToast must be used within ToastProvider");
+  return ctx;
+}
+```
+
+主な使用箇所:
+
+- `SelectedArticleContext` — 選択記事 ID（ArticleItem の不要な re-render 回避）
+- `ArticleFilterContext` — 記事フィルター状態の共有
+- `ReaderSettingsContext` — リーダー表示設定（フォントサイズ・行間・テーマ等）
+- `ToastContext` — トースト通知 API のグローバル提供
+
 ## 認証ヘルパー (`src/lib/server-auth.ts`)
 
 ```typescript
