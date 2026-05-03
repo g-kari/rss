@@ -10,15 +10,16 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  errorCount: number;
 }
 
 export default class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorCount: 0 };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
@@ -28,6 +29,7 @@ export default class ErrorBoundary extends Component<Props, State> {
       error,
       info.componentStack,
     );
+    this.setState((prev) => ({ errorCount: prev.errorCount + 1 }));
   }
 
   reset() {
@@ -36,6 +38,8 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const shouldReload = this.state.errorCount >= 2;
+
       return (
         <div className="flex flex-col items-center justify-center h-full bg-surface-elevated text-center px-6 gap-3">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="text-text-faint">
@@ -63,10 +67,10 @@ export default class ErrorBoundary extends Component<Props, State> {
             予期しないエラーが発生しました
           </p>
           <button
-            onClick={() => this.reset()}
+            onClick={() => (shouldReload ? window.location.reload() : this.reset())}
             className="mt-1 text-[12px] tracking-[0.04em] px-4 py-1.5 border border-border-default rounded-full text-text-muted hover:text-text-strong hover:border-text-muted transition-all duration-200"
           >
-            再試行
+            {shouldReload ? "ページを再読み込み" : "再試行"}
           </button>
         </div>
       );

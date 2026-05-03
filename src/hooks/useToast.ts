@@ -19,7 +19,7 @@ export interface ToastApi {
 const MAX_TOASTS = 3;
 const DEFAULT_DURATION = 5000;
 const ERROR_DURATION = 8000;
-const UNDO_DURATION = 5000;
+const UNDO_DURATION = 10000;
 
 let nextId = 0;
 

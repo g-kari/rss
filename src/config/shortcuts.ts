@@ -278,6 +278,15 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     displayKey: "m",
     description: "全既読にする",
     handler: (ctx) => {
+      const unreadCount = ctx.list.filter(
+        (a) => !isArticleRead(a, ctx.readIds, ctx.readBeforeTimestamp),
+      ).length;
+      if (
+        unreadCount >= 50 &&
+        !window.confirm(`${unreadCount}件の未読記事を全て既読にしますか？`)
+      ) {
+        return;
+      }
       ctx.markAllRead(ctx.selectedFeedId);
     },
   },
