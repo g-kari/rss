@@ -250,9 +250,11 @@ src/
     feed-groups.ts           # フィードグループ R2 読み書き（readFeedGroups / writeFeedGroups）
     collections.ts           # コレクション R2 読み書き（readCollections / writeCollections）
     concurrency.ts           # 並行度制限付き非同期マッピング（pMap / pMapSettled）
+    download.ts              # Blob ダウンロードヘルパー（createObjectURL → <a> クリック → revoke）
     storage.ts               # localStorage キー定数・安全なラッパー
     url.ts                   # URL バリデーションヘルパー
     validation.ts            # 各種入力バリデーションユーティリティ
+    image-constants.ts       # 画像処理の共有定数（IMAGE_MIN_DIMENSION）
     image-mime.ts            # 画像 MIME タイプ検証（ホワイトリスト方式・マジックバイト対応）
     image-error-placeholder.ts # 画像エラー時の SVG プレースホルダー生成
     favicon.ts               # ファビコン未読バッジ

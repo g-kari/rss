@@ -174,9 +174,12 @@ export function useFeeds(
     }
   }, [mergeArticles, onErrorRef]);
 
+  // pollNow は ref 経由で参照し、ポーリング effect の deps から除外してタイマー再生成を防ぐ
+  const pollNowRef = useSyncedRef(pollNow);
+
   // タブがアクティブな間は5分、非アクティブ時は15分ごとに記事を再取得して新着件数を通知する
   // visibilitychange のたびにタイマーを再生成して適切な間隔を適用する
-  // isOnline は ref 経由で参照するため deps から除外し、タイマー再生成を防ぐ
+  // isOnline / pollNow は ref 経由で参照するため deps から除外し、タイマー再生成を防ぐ
   useEffect(() => {
     if (!userId) return;
     let timer: ReturnType<typeof setInterval>;
@@ -185,7 +188,7 @@ export function useFeeds(
       const interval = document.hidden ? HIDDEN_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
       timer = setInterval(() => {
         if (!isOnlineRef.current) return; // オフライン時はスキップ
-        void pollNow();
+        void pollNowRef.current();
       }, interval);
     };
     startTimer();
@@ -194,7 +197,7 @@ export function useFeeds(
       clearInterval(timer);
       document.removeEventListener("visibilitychange", startTimer);
     };
-  }, [userId, pollNow, isOnlineRef]);
+  }, [userId, isOnlineRef, pollNowRef]);
 
   // オンライン復帰時に即座にポーリングを実行する
   useEffect(() => {
@@ -206,8 +209,8 @@ export function useFeeds(
     const wasOffline = !prevIsOnlineRef.current;
     prevIsOnlineRef.current = true;
     if (!wasOffline) return;
-    void pollNow();
-  }, [userId, isOnline, pollNow]);
+    void pollNowRef.current();
+  }, [userId, isOnline, pollNowRef]);
 
   const onFeedAdded = useCallback((feed: Feed) => {
     setFeeds((prev) => [...prev, feed]);
