@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import type { Article, KeywordFilter, UserProfile } from "../types";
 import type { ToastApi } from "./useToast";
+import type { SetStateDispatchers, OtherStateDispatchers } from "./useReadStateSyncApply";
 import { useReadStatePersistence } from "./useReadStatePersistence";
 import { useReadStateSync } from "./useReadStateSync";
 import { useReadStateTags } from "./useReadStateTags";
@@ -67,6 +68,22 @@ export function useReadState(
     scheduleSyncToServer: () => scheduleSyncRef.current(),
   });
 
+  const dispatchers: SetStateDispatchers = {
+    read: persistence.setReadIds,
+    bookmarks: persistence.setBookmarkIds,
+    readingList: persistence.setReadingListIds,
+    likes: persistence.setLikeIds,
+  };
+
+  const otherDispatchers: OtherStateDispatchers = {
+    setGlobalFilterState: persistence.setGlobalFilterState,
+    setTtlDaysState: persistence.setTtlDaysState,
+    setReadBeforeTimestamp: persistence.setReadBeforeTimestamp,
+    setSnoozedUntil: persistence.setSnoozedUntil,
+    setNotesState: persistence.setNotesState,
+    setTagIdsState: persistence.setTagIdsState,
+  };
+
   const sync = useReadStateSync({
     user,
     stateRef: persistence.stateRef,
@@ -76,16 +93,8 @@ export function useReadState(
     globalFilterDirtyRef: persistence.globalFilterDirtyRef,
     pendingTagChangedRef: tags.pendingTagChangedRef,
     pendingTagRemovedRef: tags.pendingTagRemovedRef,
-    setReadIds: persistence.setReadIds,
-    setBookmarkIds: persistence.setBookmarkIds,
-    setReadingListIds: persistence.setReadingListIds,
-    setLikeIds: persistence.setLikeIds,
-    setGlobalFilterState: persistence.setGlobalFilterState,
-    setTtlDaysState: persistence.setTtlDaysState,
-    setReadBeforeTimestamp: persistence.setReadBeforeTimestamp,
-    setSnoozedUntil: persistence.setSnoozedUntil,
-    setNotesState: persistence.setNotesState,
-    setTagIdsState: persistence.setTagIdsState,
+    dispatchers,
+    otherDispatchers,
   });
 
   // 安定参照を更新

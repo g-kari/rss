@@ -29,12 +29,18 @@ export interface FlushResult {
   hasPendingChanges: boolean;
 }
 
-function buildBody(
-  snapshot: PendingSnapshot,
+interface FlushPayload {
+  snapshot: PendingSnapshot;
+  body: string;
+}
+
+function prepareFlush(
+  pendingRefs: PendingRefs,
   globalFilterRef: React.RefObject<KeywordFilter | null>,
   stateRef: React.MutableRefObject<ReadStateSets>,
-): string {
-  return serializeReadState(
+): FlushPayload {
+  const snapshot = extractAndResetPending(pendingRefs);
+  const body = serializeReadState(
     snapshot.added,
     snapshot.removed,
     globalFilterRef.current,
@@ -49,6 +55,7 @@ function buildBody(
     snapshot.wasGfDirty,
     stateRef.current.ttlDays,
   );
+  return { snapshot, body };
 }
 
 export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
@@ -80,8 +87,7 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
 
   const flushToServer = useCallback(async () => {
     if (!userRef.current) return;
-    const snapshot = extractAndResetPending(pendingRefs);
-    const body = buildBody(snapshot, globalFilterRef, stateRef);
+    const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
     const result = await saveReadState(body);
     if (result.ok && result.state) {
       setHasPendingChanges(false);
@@ -174,13 +180,12 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
     flushDeferredSaves();
     if (!userRef.current) return;
     if (!flushIfPending()) return;
-    const snapshot = extractAndResetPending(pendingRefs);
-    const body = buildBody(snapshot, globalFilterRef, stateRef);
+    const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
     const MAX_BEACON_BYTES = 60_000;
     const blob = new Blob([body], { type: "application/json" });
     const accepted = blob.size <= MAX_BEACON_BYTES && navigator.sendBeacon("/api/read-state", blob);
     if (accepted) {
-      // extractAndResetPending で既にリセット済み
+      // prepareFlush 内の extractAndResetPending で既にリセット済み
     } else {
       restorePending(pendingRefs, snapshot);
       try {
@@ -198,8 +203,7 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
       if (document.visibilityState !== "hidden") return;
       if (!userRef.current) return;
       if (!flushIfPending()) return;
-      const snapshot = extractAndResetPending(pendingRefs);
-      const body = buildBody(snapshot, globalFilterRef, stateRef);
+      const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
       saveReadState(body).then((result) => {
         if (result.ok && result.state) {
           applyServerState(result.state);
