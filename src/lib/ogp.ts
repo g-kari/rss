@@ -1,14 +1,12 @@
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "./fetch";
 import { unescapeHtml, extractOgMeta, stripHtml } from "./html";
 import { decodeBytesToString, detectCharset } from "./content";
-import { isValidFeedUrl } from "./url";
+import { isValidPublicUrl } from "./url";
 
 /** OGP フェッチのデフォルトタイムアウト（ミリ秒） */
 const DEFAULT_FETCH_TIMEOUT_MS = 5_000;
 /** OGP タグは先頭 512KB 以内にあると想定し、部分取得の上限バイト数として使用する */
 const MAX_BYTES = 512 * 1024;
-/** imgix 等 CDN で URL が長くなる場合を考慮した OGP 画像 URL の最大許容長 */
-const MAX_OGP_IMAGE_URL_LENGTH = 8192;
 
 /** OGP フェッチ時に送信するリクエストヘッダー */
 const FETCH_HEADERS: Record<string, string> = {
@@ -112,12 +110,7 @@ export async function fetchPageOgpMeta(
     const description = stripHtml(extractOgMeta(html, "description")).slice(0, 500);
 
     const rawImage = extractOgMeta(html, "image");
-    const image =
-      /^https?:\/\//i.test(rawImage) &&
-      rawImage.length <= MAX_OGP_IMAGE_URL_LENGTH &&
-      isValidFeedUrl(rawImage)
-        ? rawImage
-        : "";
+    const image = isValidPublicUrl(rawImage) ? rawImage : "";
 
     return { title, description, image };
   } catch {
