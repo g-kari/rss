@@ -1120,7 +1120,7 @@ export default function App() {
               className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""} focus:outline-none`}
             >
               {loadingFeeds && feeds.length === 0 ? (
-                <SkeletonArticleList />
+                <SkeletonArticleList layout={layout} />
               ) : (
                 <ErrorBoundary label="記事一覧">
                   <ArticleList
