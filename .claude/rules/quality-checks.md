@@ -30,8 +30,8 @@ console.log('段落2が含まれるか:', result?.[1].includes('段落2'));
 ## 品質チェックは常に実行
 
 ```bash
-npm run check        # Oxlint + Oxfmt + tsgo（高速）
-npm run typecheck    # tsc — Next.js plugin 込みの完全な型チェック
+pnpm run check        # Oxlint + Oxfmt + tsgo（高速）
+pnpm run typecheck    # tsc — Next.js plugin 込みの完全な型チェック
 ```
 
 ## E2E テスト
@@ -39,9 +39,9 @@ npm run typecheck    # tsc — Next.js plugin 込みの完全な型チェック
 バグ修正・新機能追加後は Playwright E2E テストも実行する。
 
 ```bash
-npm run test:e2e                        # 全テスト実行
+pnpm run test:e2e                        # 全テスト実行
 npx playwright test e2e/xxx.spec.ts     # 特定ファイルのみ
-npm run test:e2e:ui                     # UI モードでデバッグ
+ppnpm run test:e2e:ui                     # UI モードでデバッグ
 ```
 
 | ファイル                         | 対象                                       |
