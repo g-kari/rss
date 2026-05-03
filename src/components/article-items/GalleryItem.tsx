@@ -93,7 +93,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
             className="w-full h-auto object-cover bg-surface-subtle"
           />
           {onRetry && !prefetchedImages && (
-            <div className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="absolute bottom-1.5 right-1.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150">
               <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />
             </div>
           )}
@@ -148,7 +148,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
             )}
             <ArticleActions
               size="sm"
-              className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto"
+              className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto"
               isRead={isRead}
               isBookmarked={isBookmarked}
               onToggleRead={() => onToggleRead(article.id)}

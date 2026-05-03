@@ -97,7 +97,7 @@ export const CardArticleItem = memo(function CardArticleItem({
           </div>
           <ArticleActions
             size="sm"
-            className="absolute flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto right-2.5 bottom-2.5"
+            className="absolute flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto right-2.5 bottom-2.5"
             isRead={isRead}
             isBookmarked={isBookmarked}
             onToggleRead={() => onToggleRead(article.id)}
