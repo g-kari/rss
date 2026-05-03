@@ -8,7 +8,7 @@ import {
   matchCfCache,
 } from "@/lib/cache-helper";
 import { unescapeHtml } from "@/lib/html";
-import { fetchPageOgpMeta } from "@/lib/ogp";
+import { fetchPageOgpMeta, isTwitterLikeUrl, fetchTwitterFallbackImage } from "@/lib/ogp";
 
 const FETCH_TIMEOUT_MS = 5_000;
 const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
@@ -40,7 +40,13 @@ async function handleGet(request: Request, ctx: ExecutionContext): Promise<NextR
   }
 
   const { title, description, image: rawImage } = await fetchPageOgpMeta(url, FETCH_TIMEOUT_MS);
-  const image = isValidPublicUrl(rawImage) ? rawImage : "";
+  let image = isValidPublicUrl(rawImage) ? rawImage : "";
+
+  // X/Twitter 投稿で OGP 画像がない場合、投稿内リンク先の OGP 画像をフォールバック取得
+  if (!image && isTwitterLikeUrl(url)) {
+    const fallbackImage = await fetchTwitterFallbackImage(url);
+    if (fallbackImage) image = fallbackImage;
+  }
 
   // Cloudflare Cache API に保存（fire-and-forget）
   // 全フィールドが空でも短い TTL で負キャッシュ — 繰り返しフェッチを防ぐ

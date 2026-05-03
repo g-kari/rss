@@ -1,7 +1,7 @@
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "./fetch";
 import { unescapeHtml, extractOgMeta, stripHtml } from "./html";
 import { decodeBytesToString, detectCharset } from "./content";
-import { isValidFeedUrl } from "./url";
+import { isValidFeedUrl, isValidPublicUrl } from "./url";
 
 /** OGP フェッチのデフォルトタイムアウト（ミリ秒） */
 const DEFAULT_FETCH_TIMEOUT_MS = 5_000;
@@ -122,5 +122,126 @@ export async function fetchPageOgpMeta(
     return { title, description, image };
   } catch {
     return { title: "", description: "", image: "" };
+  }
+}
+
+/**
+ * URL が X/Twitter 系ホストかどうかを判定する。
+ * vxtwitter.com / fxtwitter.com 等のプロキシホストも含む。
+ */
+export function isTwitterLikeUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return TWITTER_LIKE_HOSTS.has(host) || BOT_UA_HOSTS.has(host);
+  } catch {
+    return false;
+  }
+}
+
+/** フォールバック URL 抽出時にスキップするホスト群（自己参照的なリンク） */
+const SKIP_HOSTS_FOR_FALLBACK = new Set([
+  "x.com",
+  "www.x.com",
+  "mobile.x.com",
+  "twitter.com",
+  "www.twitter.com",
+  "mobile.twitter.com",
+  "t.co",
+  "pic.twitter.com",
+  "vxtwitter.com",
+  "fxtwitter.com",
+  "fixupx.com",
+]);
+
+/** 画像ファイル拡張子（OGP ではなく直接画像のためスキップ） */
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|avif|svg|bmp|ico)(\?|$)/i;
+
+/**
+ * HTML から外部リンク URL を抽出する。
+ * ツイート本文に含まれる共有 URL をフォールバック OGP 取得用に返す。
+ * 自己参照（twitter.com / x.com / t.co 等）や画像 URL はスキップする。
+ */
+export function extractExternalUrls(html: string): string[] {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  const hrefRegex = /href\s*=\s*["']([^"']+)["']/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = hrefRegex.exec(html)) !== null) {
+    const href = unescapeHtml(match[1].trim());
+    if (!href || !/^https?:\/\//i.test(href)) continue;
+    if (!isValidFeedUrl(href)) continue;
+
+    try {
+      const host = new URL(href).hostname.toLowerCase();
+      if (SKIP_HOSTS_FOR_FALLBACK.has(host)) continue;
+    } catch {
+      continue;
+    }
+
+    if (IMAGE_EXTENSIONS.test(href)) continue;
+
+    const normalized = href.split("#")[0];
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    urls.push(href);
+  }
+
+  return urls;
+}
+
+/** フォールバック時にツイートページの HTML を取得する最大バイト数 */
+const FALLBACK_MAX_BYTES = 256 * 1024;
+/** フォールバック時に試行する URL の最大数 */
+const MAX_FALLBACK_ATTEMPTS = 3;
+/** フォールバック全体のタイムアウト（ミリ秒） */
+const FALLBACK_TOTAL_TIMEOUT_MS = 3_000;
+
+/**
+ * X/Twitter 投稿に OGP 画像がない場合に、投稿内のリンク先から OGP 画像を取得する。
+ * vxtwitter.com のページ HTML からリンクを抽出し、各リンク先の OGP 画像を試行する。
+ *
+ * @param originalUrl - 元の X/Twitter URL
+ * @param timeoutMs - 個別フェッチのタイムアウト
+ * @returns 見つかった OGP 画像 URL。なければ空文字
+ */
+export async function fetchTwitterFallbackImage(
+  originalUrl: string,
+  timeoutMs: number = FALLBACK_TOTAL_TIMEOUT_MS,
+): Promise<string> {
+  try {
+    // vxtwitter のページ HTML を取得してリンクを抽出
+    const fetchUrl = normalizeOgpFetchUrl(originalUrl);
+    const headers = buildFetchHeaders(fetchUrl);
+    const res = await fetchFollowSafeRedirects(fetchUrl, { headers }, timeoutMs);
+    if (!res.ok || !res.body) return "";
+
+    const bytes = await readBodyBytesPartial(res.body, FALLBACK_MAX_BYTES);
+    const contentType = res.headers.get("content-type") ?? "";
+    const charset = detectCharset(contentType, bytes);
+    const html = decodeBytesToString(bytes, charset);
+
+    const urls = extractExternalUrls(html);
+    if (urls.length === 0) return "";
+
+    // 各リンク先の OGP を試行（最大 MAX_FALLBACK_ATTEMPTS 個、全体タイムアウト付き）
+    const perUrlTimeout = Math.min(timeoutMs, FALLBACK_TOTAL_TIMEOUT_MS);
+    for (const candidateUrl of urls.slice(0, MAX_FALLBACK_ATTEMPTS)) {
+      // 再帰防止: Twitter 系 URL はスキップ
+      if (isTwitterLikeUrl(candidateUrl)) continue;
+
+      try {
+        const meta = await fetchPageOgpMeta(candidateUrl, perUrlTimeout);
+        if (meta.image && isValidPublicUrl(meta.image)) {
+          return meta.image;
+        }
+      } catch {
+        // 個別の失敗は無視して次を試行
+      }
+    }
+
+    return "";
+  } catch {
+    return "";
   }
 }
