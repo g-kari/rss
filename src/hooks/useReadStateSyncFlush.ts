@@ -152,17 +152,28 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
     return true;
   }
 
-  // タブ復帰時に他デバイスの変更をサーバーから取り込む
+  // visibilitychange: タブ復帰時はサーバーからマージ、非表示時は未送信データをフラッシュ
   useEventListener(
     "visibilitychange",
     () => {
-      if (document.visibilityState !== "visible") return;
       if (!userRef.current) return;
-      if (Date.now() - lastServerSyncRef.current < 15_000) return;
-      fetchReadState().then((state) => {
-        if (!state) return;
-        applyServerState(state);
-      });
+      if (document.visibilityState === "visible") {
+        if (Date.now() - lastServerSyncRef.current < 15_000) return;
+        fetchReadState().then((state) => {
+          if (!state) return;
+          applyServerState(state);
+        });
+      } else {
+        if (!flushIfPending()) return;
+        const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
+        saveReadState(body).then((result) => {
+          if (result.ok && result.state) {
+            applyServerState(result.state);
+          } else {
+            restorePending(pendingRefs, snapshot);
+          }
+        });
+      }
     },
     document,
   );
@@ -195,25 +206,6 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
       }
     }
   });
-
-  // visibilitychange hidden: タブ切り替え時
-  useEventListener(
-    "visibilitychange",
-    () => {
-      if (document.visibilityState !== "hidden") return;
-      if (!userRef.current) return;
-      if (!flushIfPending()) return;
-      const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
-      saveReadState(body).then((result) => {
-        if (result.ok && result.state) {
-          applyServerState(result.state);
-        } else {
-          restorePending(pendingRefs, snapshot);
-        }
-      });
-    },
-    document,
-  );
 
   // アンマウント時にタイマーをクリア
   useEffect(() => {

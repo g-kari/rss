@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import type { Article, Feed, FeedView, KeywordFilter } from "../types";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { useGracePeriod } from "./useGracePeriod";
@@ -101,6 +101,12 @@ export function useFilteredArticles({
     return ids;
   }, [selectedArticleId, gracePeriodId, galleryAutoReadIds]);
 
+  // structuralFiltered では activeIds の変動（特に galleryAutoReadIds）で再計算を避けるため ref を使用
+  const activeIdsRef = useRef(activeIds);
+  useEffect(() => {
+    activeIdsRef.current = activeIds;
+  }, [activeIds]);
+
   const noteIds = useMemo(() => new Set(Object.keys(notes ?? {})), [notes]);
 
   const filterCompileCacheRef = useRef<Map<string, CompiledKeywordFilter>>(new Map());
@@ -174,7 +180,7 @@ export function useFilteredArticles({
         query,
         sortOrder: "newest",
         dateRange,
-        activeIds,
+        activeIds: activeIdsRef.current,
         nsfwMode,
         nsfwFeedIds,
         globalFilter: normalizedGlobalFilter,
@@ -192,6 +198,7 @@ export function useFilteredArticles({
         articleTags: articleTagsForDeps,
         collectionArticleIds,
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避
     [
       articles,
       feedId,
@@ -202,7 +209,6 @@ export function useFilteredArticles({
       historyIdsForStructure,
       query,
       dateRange,
-      activeIds,
       nsfwMode,
       nsfwFeedIds,
       normalizedGlobalFilter,
