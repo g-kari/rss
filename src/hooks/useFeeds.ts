@@ -45,6 +45,8 @@ interface FeedsState {
   refreshing: boolean;
   newArticleCount: number;
   loadedFeedPages: Map<string, number>;
+  fetchError: boolean;
+  retryInitialLoad: () => void;
   onFeedAdded: (feed: Feed) => void;
   prependArticle: (article: Article) => void;
   removeFeed: (id: string) => void;
@@ -79,6 +81,7 @@ export function useFeeds(
   const [loadingArticles, setLoadingArticles] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [newArticleCount, setNewArticleCount] = useState(0);
+  const [fetchError, setFetchError] = useState(false);
   const [loadedFeedPages, setLoadedFeedPages] = useState<Map<string, number>>(() => new Map());
   const loadedFeedPagesRef = useSyncedRef(loadedFeedPages);
   // 現在フェッチ中のフィード ID を追跡（二重フェッチ防止）
@@ -116,18 +119,41 @@ export function useFeeds(
   // useAuth の checkAuth() はトークンリフレッシュのたびに setUser(新オブジェクト) を呼ぶため、
   // user を依存配列に含めると fetchAndSetArticles が再実行されて過去記事が上書きされてしまう。
   const userId = user?.id ?? null;
-  useEffect(() => {
-    if (!userId) return;
+  const doInitialLoad = useCallback(() => {
+    setFetchError(false);
     setLoadingFeeds(true);
     setLoadingArticles(true);
+    let feedsFailed = false;
+    let articlesFailed = false;
     apiFetchJson<Feed[]>("/api/feeds")
       .then(setFeeds)
-      .catch((err) => onErrRef.current(err, "フィードの読み込みに失敗しました"))
-      .finally(() => setLoadingFeeds(false));
+      .catch((err) => {
+        feedsFailed = true;
+        onErrRef.current(err, "フィードの読み込みに失敗しました");
+      })
+      .finally(() => {
+        setLoadingFeeds(false);
+        if (feedsFailed) setFetchError(true);
+      });
     fetchAndSetArticles()
-      .catch((err) => onErrRef.current(err, "記事の読み込みに失敗しました"))
-      .finally(() => setLoadingArticles(false));
-  }, [userId, fetchAndSetArticles]);
+      .catch((err) => {
+        articlesFailed = true;
+        onErrRef.current(err, "記事の読み込みに失敗しました");
+      })
+      .finally(() => {
+        setLoadingArticles(false);
+        if (articlesFailed) setFetchError(true);
+      });
+  }, [fetchAndSetArticles]);
+
+  useEffect(() => {
+    if (!userId) return;
+    doInitialLoad();
+  }, [userId, doInitialLoad]);
+
+  const retryInitialLoad = useCallback(() => {
+    doInitialLoad();
+  }, [doInitialLoad]);
 
   // 新着確認フェッチ: 既存記事は消さずに新着のみ追加する（閲覧中の記事を守る）
   const pollNow = useCallback(async () => {
@@ -363,6 +389,8 @@ export function useFeeds(
     refreshing,
     newArticleCount,
     loadedFeedPages,
+    fetchError,
+    retryInitialLoad,
     onFeedAdded,
     prependArticle,
     removeFeed,

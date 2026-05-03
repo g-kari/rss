@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FeedGroup, UserProfile } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
+import { useSyncedRef } from "./useSyncedRef";
 
 /** `useFeedGroups` の戻り値型 */
 export interface FeedGroupsState {
@@ -39,6 +40,7 @@ export function useFeedGroups(
 ): FeedGroupsState {
   const [groups, setGroups] = useState<FeedGroup[]>([]);
   const [loading, setLoading] = useState(false);
+  const onErrorRef = useSyncedRef(onError);
 
   useEffect(() => {
     if (!user) {
@@ -53,6 +55,7 @@ export function useFeedGroups(
       })
       .catch((err) => {
         console.error(err);
+        onErrorRef.current?.("フィードグループの読み込みに失敗しました");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -60,6 +63,7 @@ export function useFeedGroups(
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onErrorRef は ref 経由で最新値を参照するため deps 不要
   }, [user]);
 
   const createGroup = useCallback(async (name: string): Promise<FeedGroup | { error: string }> => {
@@ -140,12 +144,18 @@ export function useFeedGroups(
     [onError],
   );
 
-  const deleteGroup = useCallback(async (id: string): Promise<boolean> => {
-    const res = await apiFetch(`/api/feed-groups/${id}`, { method: "DELETE" });
-    if (!res.ok) return false;
-    setGroups((prev) => prev.filter((g) => g.id !== id));
-    return true;
-  }, []);
+  const deleteGroup = useCallback(
+    async (id: string): Promise<boolean> => {
+      const res = await apiFetch(`/api/feed-groups/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        onError?.("グループの削除に失敗しました");
+        return false;
+      }
+      setGroups((prev) => prev.filter((g) => g.id !== id));
+      return true;
+    },
+    [onError],
+  );
 
   const reorderGroup = useCallback(
     async (id: string, direction: "up" | "down"): Promise<void> => {
