@@ -82,7 +82,7 @@ function isIPv6LinkLocal(hostname: string): boolean {
  * @param hostname - URL.hostname から取得したホスト名（IPv6 は "[...]" 形式）
  * @returns プライベートホストであれば true
  */
-function isPrivateHost(hostname: string): boolean {
+export function isPrivateHost(hostname: string): boolean {
   if (PRIVATE_HOSTNAME_PATTERNS.some((p) => p.test(hostname))) return true;
   if (PRIVATE_IP_PATTERNS.some((p) => p.test(hostname))) return true;
   // IPv6 ループバック・ユニークローカル・リンクローカル・未指定・各種 IPv4 変換
@@ -142,7 +142,7 @@ export function isValidFeedUrl(url: string): boolean {
  */
 const IMAGE_URL_MAX_LENGTH_DEFAULT = 8192;
 const IMAGE_DOMAIN_MAX_LENGTHS: { suffix: string; maxLength: number }[] = [
-  { suffix: ".imgix.net", maxLength: Infinity }, // imgix CDN（Qiita 等）
+  { suffix: ".imgix.net", maxLength: 32768 }, // imgix CDN（Qiita 等）
 ];
 
 /**

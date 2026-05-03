@@ -5,6 +5,8 @@
  * バリデーション純粋関数。
  */
 
+import { isPrivateHost } from "./url";
+
 // ===== リクエスト検証 =====
 
 interface ClipRequest {
@@ -40,6 +42,16 @@ export function validateClipRequest(req: ClipRequest): ValidateResult {
 
   if (!/^https?:\/\//i.test(url)) {
     return { ok: false, error: "url は http:// または https:// で始まる必要があります" };
+  }
+
+  // SSRF 保護: プライベート IP / localhost を排除
+  try {
+    const { hostname } = new URL(url);
+    if (isPrivateHost(hostname)) {
+      return { ok: false, error: "プライベートネットワークの URL は許可されていません" };
+    }
+  } catch {
+    return { ok: false, error: "url が不正な形式です" };
   }
 
   return { ok: true, html, url };

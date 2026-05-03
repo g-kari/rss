@@ -12,6 +12,7 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/gif": "gif",
   "image/webp": "webp",
   "image/avif": "avif",
+  "image/bmp": "bmp",
 };
 
 /** 許可する画像 MIME タイプのホワイトリスト（detectImageMimeType と整合）。 */
