@@ -236,6 +236,7 @@ src/
     engagement-score.ts      # エンゲージメントスコア計算ロジック
     article-filter.ts        # 記事フィルタリングロジック (feedId / 日付 / キーワード / クエリ)
     keyword-filter.ts        # キーワードフィルタリングマッチング（正規表現対応）
+    linkedom-types.ts        # linkedom DOM 操作用の共有型定義（LDElement / LDDocument）
     llm-feed-generator.ts    # LLM で RSS のないサイトからフィード生成
     lru-cache.ts             # クライアントサイド LRU キャッシュ
     ogp.ts                   # OGP メタデータ取得ロジック

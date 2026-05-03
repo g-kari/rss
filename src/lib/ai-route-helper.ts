@@ -8,9 +8,8 @@ import { aiRateLimitKey } from "@/lib/r2";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 import { apiError } from "@/lib/api-error";
 
-// @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のため、同じ
-// BaseAiTextGeneration 構造を持つ既知モデル型に合わせてキャストする
-const MODEL = "@cf/meta/llama-3.1-8b-instruct" as "@cf/meta/llama-3.1-8b-instruct-fp8";
+// @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のためキャスト
+const MODEL: AiModelId = "@cf/meta/llama-3.1-8b-instruct" as AiModelId;
 
 const AI_WINDOW_MS = 60 * 1000;
 const AI_MAX_CALLS = 10;
