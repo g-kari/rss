@@ -59,3 +59,4 @@ export const contentFetchRateLimitKey = (userId: string) =>
 export const imageProxyRateLimitKey = (userId: string) => `${userId}:image-proxy`;
 export const clipCooldownKey = (userId: string) => userKey(userId, "clip-cooldown.json");
 export const opmlImportCooldownKey = (userId: string) => userKey(userId, "opml-import.json");
+export const pushSubscribeCooldownKey = (userId: string) => `${userId}:push-subscribe`;

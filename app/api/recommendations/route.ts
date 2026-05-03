@@ -50,7 +50,10 @@ export async function GET(request: Request) {
       });
       return NextResponse.json(result);
     } catch (err) {
-      console.error("[recommendations] generateRecommendations failed:", err);
+      console.error(
+        "[recommendations] generateRecommendations failed:",
+        err instanceof Error ? err.message : String(err),
+      );
       // 失敗時は期限切れキャッシュを返す（なければ空を返す）
       if (cache) return NextResponse.json(cache);
       return NextResponse.json(EMPTY_RECOMMENDATIONS);
