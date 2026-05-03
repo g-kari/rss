@@ -48,6 +48,8 @@ import ToastContainer from "./components/ToastContainer";
 import { useToastState } from "./hooks/useToast";
 import LandingPage from "./components/LandingPage";
 import BetaRestrictedPage from "./components/BetaRestrictedPage";
+import SkeletonSidebar from "./components/SkeletonSidebar";
+import SkeletonArticleList from "./components/SkeletonArticleList";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -1045,132 +1047,136 @@ export default function App() {
               data-pane="sidebar"
               className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "sidebar" ? "hidden lg:block" : ""}`}
             >
-              <ErrorBoundary label="サイドバー">
-                <FeedSidebar
-                  feeds={feeds}
-                  articles={articles}
-                  readIds={readIds}
-                  readBeforeTimestamp={readBeforeTimestamp}
-                  bookmarkCount={bookmarkCount}
-                  readingListCount={readingListCount}
-                  likeCount={likeCount}
-                  historyCount={historyCount}
-                  selectedFeedId={selectedFeedId}
-                  selectedGroupId={selectedGroupId}
-                  user={user}
-                  theme={theme}
-                  onSelectFeed={(id) => {
-                    setSelectedFeedId(id);
-                    setSelectedGroupId(null);
-                    setSelectedTag(null);
-                    setSelectedArticle(null);
-                    setMobilePane("list");
-                    const feed = feeds.find((f) => f.id === id);
-                    if (feed?.view === "pictures" || feed?.view === "videos") {
-                      onChangeLayout("gallery");
-                    }
-                  }}
-                  onSelectGroup={(id) => {
-                    setSelectedGroupId(id);
-                    setSelectedFeedId(null);
-                    setSelectedTag(null);
-                    setSelectedArticle(null);
-                    setMobilePane("list");
-                  }}
-                  selectedTag={selectedTag}
-                  onSelectTag={(tag) => {
-                    setSelectedTag(tag);
-                    setSelectedFeedId(null);
-                    setSelectedGroupId(null);
-                    setSelectedArticle(null);
-                    setMobilePane("list");
-                  }}
-                  articleTagIds={articleTagIds}
-                  onFeedAdded={onFeedAdded}
-                  onFeedDeleted={onFeedDeleted}
-                  onFeedRenamed={updateFeed}
-                  onFeedsImported={appendFeeds}
-                  onMarkAllRead={(feedId) => markAllReadWithUndo(feedId, toast)}
-                  onToggleTheme={toggleTheme}
-                  onOpenSettings={() => setShowSettings(true)}
-                  onOpenHelp={() => setShowHelp(true)}
-                  onSaveArticleUrl={onSaveArticleUrl}
-                  onRefresh={refreshFeeds}
-                  onRetryFeed={retryFeed}
-                  onReinferFeed={reinferFeed}
-                  refreshing={refreshing}
-                  loadingFeeds={loadingFeeds}
-                  isOnline={isOnline}
-                  pinnedFeedIds={pinnedFeedIds}
-                  onTogglePinFeed={togglePinFeed}
-                  collapsedCategories={collapsedCategories}
-                  onToggleCollapseCategory={toggleCollapseCategory}
-                  nsfwMode={nsfwMode}
-                  onActivateNsfw={activateNSFW}
-                  onDeactivateNsfw={deactivateNSFW}
-                  onToggleNsfwFeed={toggleNsfwFeed}
-                  onTogglePriorityFeed={togglePriorityFeed}
-                  onSetCategoryFeed={setCategoryFeed}
-                  feedGroups={feedGroups}
-                  onSetGroupFeed={setGroupFeed}
-                  onCreateFeedGroup={createGroup}
-                  onRenameFeedGroup={renameGroup}
-                  onDeleteFeedGroup={deleteGroup}
-                  onToggleCollapseFeedGroup={setFeedGroupCollapsed}
-                  onToggleMuteFeedGroup={setFeedGroupMuted}
-                  onReorderFeedGroup={reorderGroup}
-                  onMarkAllReadInGroup={(feedIds) => {
-                    // グループ内フィードの記事 ID を 1 パスで集約して markBulkRead に渡す
-                    // （feedIds ループで markAllRead を呼ぶと articlesRef を N 回スキャンするのを回避）
-                    const feedSet = new Set(feedIds);
-                    const ids = articles.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
-                    if (ids.length > 0) markBulkRead(ids);
-                  }}
-                  onMuteFeed={muteFeed}
-                  onSetFeedView={setFeedView}
-                  activeFeedView={activeFeedView}
-                  onChangeActiveFeedView={(view) => {
-                    // カテゴリ横断表示のため、タブ切替時はフィード・グループ選択を解除する
-                    onChangeActiveFeedView(view);
-                    setSelectedFeedId(null);
-                    setSelectedGroupId(null);
-                    setSelectedArticle(null);
-                    // 画像/動画カテゴリはギャラリーレイアウトに自動切替 — 全画像/動画の展開表示を期待する仕様
-                    // ユーザーが後で手動で別レイアウトを選んだ場合は尊重する（次にカテゴリ切替するまで）
-                    if (view === "pictures" || view === "videos") {
-                      onChangeLayout("gallery");
-                    }
-                  }}
-                  recommendations={recommendations}
-                  recommendationsLoading={recommendationsLoading}
-                  recommendationsRefreshing={recommendationsRefreshing}
-                  onDismissRecommendation={dismissRecommendation}
-                  onRefreshRecommendations={refreshRecommendations}
-                  onExportMarkdown={(mode) => {
-                    const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
-                    exportArticlesToMarkdown(articles, ids, feeds, mode);
-                  }}
-                  onExportNotes={() => {
-                    exportNotesToMarkdown(articles, notes, feeds);
-                  }}
-                  noteCount={Object.keys(notes).length}
-                  collections={collections}
-                  selectedCollectionId={selectedCollectionId}
-                  onSelectCollection={setSelectedCollectionId}
-                  onCreateCollection={createCollection}
-                  onRenameCollection={renameCollection}
-                  onDeleteCollection={deleteCollection}
-                  install={install}
-                  push={{
-                    supported: pushSupported,
-                    subscribed: pushSubscribed,
-                    loading: pushLoading,
-                    error: pushError,
-                    onToggle: togglePush,
-                    onSendTest: sendPushTest,
-                  }}
-                />
-              </ErrorBoundary>
+              {loadingFeeds && feeds.length === 0 ? (
+                <SkeletonSidebar />
+              ) : (
+                <ErrorBoundary label="サイドバー">
+                  <FeedSidebar
+                    feeds={feeds}
+                    articles={articles}
+                    readIds={readIds}
+                    readBeforeTimestamp={readBeforeTimestamp}
+                    bookmarkCount={bookmarkCount}
+                    readingListCount={readingListCount}
+                    likeCount={likeCount}
+                    historyCount={historyCount}
+                    selectedFeedId={selectedFeedId}
+                    selectedGroupId={selectedGroupId}
+                    user={user}
+                    theme={theme}
+                    onSelectFeed={(id) => {
+                      setSelectedFeedId(id);
+                      setSelectedGroupId(null);
+                      setSelectedTag(null);
+                      setSelectedArticle(null);
+                      setMobilePane("list");
+                      const feed = feeds.find((f) => f.id === id);
+                      if (feed?.view === "pictures" || feed?.view === "videos") {
+                        onChangeLayout("gallery");
+                      }
+                    }}
+                    onSelectGroup={(id) => {
+                      setSelectedGroupId(id);
+                      setSelectedFeedId(null);
+                      setSelectedTag(null);
+                      setSelectedArticle(null);
+                      setMobilePane("list");
+                    }}
+                    selectedTag={selectedTag}
+                    onSelectTag={(tag) => {
+                      setSelectedTag(tag);
+                      setSelectedFeedId(null);
+                      setSelectedGroupId(null);
+                      setSelectedArticle(null);
+                      setMobilePane("list");
+                    }}
+                    articleTagIds={articleTagIds}
+                    onFeedAdded={onFeedAdded}
+                    onFeedDeleted={onFeedDeleted}
+                    onFeedRenamed={updateFeed}
+                    onFeedsImported={appendFeeds}
+                    onMarkAllRead={(feedId) => markAllReadWithUndo(feedId, toast)}
+                    onToggleTheme={toggleTheme}
+                    onOpenSettings={() => setShowSettings(true)}
+                    onOpenHelp={() => setShowHelp(true)}
+                    onSaveArticleUrl={onSaveArticleUrl}
+                    onRefresh={refreshFeeds}
+                    onRetryFeed={retryFeed}
+                    onReinferFeed={reinferFeed}
+                    refreshing={refreshing}
+                    loadingFeeds={loadingFeeds}
+                    isOnline={isOnline}
+                    pinnedFeedIds={pinnedFeedIds}
+                    onTogglePinFeed={togglePinFeed}
+                    collapsedCategories={collapsedCategories}
+                    onToggleCollapseCategory={toggleCollapseCategory}
+                    nsfwMode={nsfwMode}
+                    onActivateNsfw={activateNSFW}
+                    onDeactivateNsfw={deactivateNSFW}
+                    onToggleNsfwFeed={toggleNsfwFeed}
+                    onTogglePriorityFeed={togglePriorityFeed}
+                    onSetCategoryFeed={setCategoryFeed}
+                    feedGroups={feedGroups}
+                    onSetGroupFeed={setGroupFeed}
+                    onCreateFeedGroup={createGroup}
+                    onRenameFeedGroup={renameGroup}
+                    onDeleteFeedGroup={deleteGroup}
+                    onToggleCollapseFeedGroup={setFeedGroupCollapsed}
+                    onToggleMuteFeedGroup={setFeedGroupMuted}
+                    onReorderFeedGroup={reorderGroup}
+                    onMarkAllReadInGroup={(feedIds) => {
+                      // グループ内フィードの記事 ID を 1 パスで集約して markBulkRead に渡す
+                      // （feedIds ループで markAllRead を呼ぶと articlesRef を N 回スキャンするのを回避）
+                      const feedSet = new Set(feedIds);
+                      const ids = articles.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
+                      if (ids.length > 0) markBulkRead(ids);
+                    }}
+                    onMuteFeed={muteFeed}
+                    onSetFeedView={setFeedView}
+                    activeFeedView={activeFeedView}
+                    onChangeActiveFeedView={(view) => {
+                      // カテゴリ横断表示のため、タブ切替時はフィード・グループ選択を解除する
+                      onChangeActiveFeedView(view);
+                      setSelectedFeedId(null);
+                      setSelectedGroupId(null);
+                      setSelectedArticle(null);
+                      // 画像/動画カテゴリはギャラリーレイアウトに自動切替 — 全画像/動画の展開表示を期待する仕様
+                      // ユーザーが後で手動で別レイアウトを選んだ場合は尊重する（次にカテゴリ切替するまで）
+                      if (view === "pictures" || view === "videos") {
+                        onChangeLayout("gallery");
+                      }
+                    }}
+                    recommendations={recommendations}
+                    recommendationsLoading={recommendationsLoading}
+                    recommendationsRefreshing={recommendationsRefreshing}
+                    onDismissRecommendation={dismissRecommendation}
+                    onRefreshRecommendations={refreshRecommendations}
+                    onExportMarkdown={(mode) => {
+                      const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
+                      exportArticlesToMarkdown(articles, ids, feeds, mode);
+                    }}
+                    onExportNotes={() => {
+                      exportNotesToMarkdown(articles, notes, feeds);
+                    }}
+                    noteCount={Object.keys(notes).length}
+                    collections={collections}
+                    selectedCollectionId={selectedCollectionId}
+                    onSelectCollection={setSelectedCollectionId}
+                    onCreateCollection={createCollection}
+                    onRenameCollection={renameCollection}
+                    onDeleteCollection={deleteCollection}
+                    install={install}
+                    push={{
+                      supported: pushSupported,
+                      subscribed: pushSubscribed,
+                      loading: pushLoading,
+                      error: pushError,
+                      onToggle: togglePush,
+                      onSendTest: sendPushTest,
+                    }}
+                  />
+                </ErrorBoundary>
+              )}
             </div>
             <div
               id="main-content"
@@ -1178,50 +1184,54 @@ export default function App() {
               data-pane="list"
               className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""} focus:outline-none`}
             >
-              <ErrorBoundary label="記事一覧">
-                <ArticleList
-                  feeds={feeds}
-                  readIds={readIds}
-                  readBeforeTimestamp={readBeforeTimestamp}
-                  bookmarkIds={bookmarkIds}
-                  selectedArticleId={selectedArticle?.id ?? null}
-                  selectedFeedId={selectedFeedId}
-                  layout={layout}
-                  loading={loadingArticles}
-                  fetchError={fetchError}
-                  onRetry={retryInitialLoad}
-                  onChangeLayout={onChangeLayout}
-                  onMobileBack={() => setMobilePane("sidebar")}
-                  onSelectArticle={selectArticle}
-                  onToggleRead={toggleRead}
-                  onToggleBookmark={toggleBookmark}
-                  onMarkRead={markRead}
-                  onMarkAllRead={() => {
-                    const hasSubFilter =
-                      (groupFeedIds && groupFeedIds.size > 0) ||
-                      selectedCollectionId ||
-                      selectedTag ||
-                      activeFeedView;
-                    if (hasSubFilter) {
-                      const ids = filtered
-                        .filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp))
-                        .map((a) => a.id);
-                      if (ids.length > 0) markBulkRead(ids);
-                      return;
-                    }
-                    markAllReadWithUndo(selectedFeedId, toast);
-                    skipRemainingPages(selectedFeedId);
-                  }}
-                  feedHasMorePages={feedHasMorePages}
-                  onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
-                  notes={notes}
-                  activeFeedView={activeFeedView}
-                  listFocusMode={listFocusMode}
-                  onToggleListFocusMode={toggleListFocusMode}
-                  onGalleryAutoRead={handleGalleryAutoRead}
-                  duplicateInfo={duplicateInfo}
-                />
-              </ErrorBoundary>
+              {loadingFeeds && feeds.length === 0 ? (
+                <SkeletonArticleList />
+              ) : (
+                <ErrorBoundary label="記事一覧">
+                  <ArticleList
+                    feeds={feeds}
+                    readIds={readIds}
+                    readBeforeTimestamp={readBeforeTimestamp}
+                    bookmarkIds={bookmarkIds}
+                    selectedArticleId={selectedArticle?.id ?? null}
+                    selectedFeedId={selectedFeedId}
+                    layout={layout}
+                    loading={loadingArticles}
+                    fetchError={fetchError}
+                    onRetry={retryInitialLoad}
+                    onChangeLayout={onChangeLayout}
+                    onMobileBack={() => setMobilePane("sidebar")}
+                    onSelectArticle={selectArticle}
+                    onToggleRead={toggleRead}
+                    onToggleBookmark={toggleBookmark}
+                    onMarkRead={markRead}
+                    onMarkAllRead={() => {
+                      const hasSubFilter =
+                        (groupFeedIds && groupFeedIds.size > 0) ||
+                        selectedCollectionId ||
+                        selectedTag ||
+                        activeFeedView;
+                      if (hasSubFilter) {
+                        const ids = filtered
+                          .filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp))
+                          .map((a) => a.id);
+                        if (ids.length > 0) markBulkRead(ids);
+                        return;
+                      }
+                      markAllReadWithUndo(selectedFeedId, toast);
+                      skipRemainingPages(selectedFeedId);
+                    }}
+                    feedHasMorePages={feedHasMorePages}
+                    onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
+                    notes={notes}
+                    activeFeedView={activeFeedView}
+                    listFocusMode={listFocusMode}
+                    onToggleListFocusMode={toggleListFocusMode}
+                    onGalleryAutoRead={handleGalleryAutoRead}
+                    duplicateInfo={duplicateInfo}
+                  />
+                </ErrorBoundary>
+              )}
             </div>
             <main
               data-pane="view"

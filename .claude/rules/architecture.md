@@ -133,6 +133,8 @@ src/
     ServiceWorkerRegistration.tsx # Service Worker 登録コンポーネント
     ErrorBoundary.tsx        # エラー境界
     Spinner.tsx              # ローディングスピナー（ArticleView・ArticleList で共有）
+    SkeletonSidebar.tsx      # サイドバーのスケルトンスクリーン（初回ロード時 CLS 防止）
+    SkeletonArticleList.tsx  # 記事一覧のスケルトンスクリーン（初回ロード時 CLS 防止）
     LayoutIcon.tsx           # レイアウト切り替えボタン用アイコン（compact / list / card / magazine / gallery）
     GalleryMasonry.tsx       # masonic ベースの Pinterest 型 masonry + 親スクロールコンテナ対応の仮想スクロール
     UserSettingsModal.tsx    # ユーザー設定モーダル（フォントサイズ・行間・コンテンツ幅・自動既読閾値・テーマ）
