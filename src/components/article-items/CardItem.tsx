@@ -33,6 +33,9 @@ export const CardArticleItem = memo(function CardArticleItem({
   const isSelected = selectedId === article.id;
   return (
     <div
+      role="option"
+      aria-selected={isSelected}
+      tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 overflow-hidden ${

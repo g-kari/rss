@@ -629,6 +629,12 @@ body {
   border-radius: 12px;
 }
 
+/* アクセシビリティ: フォーカスインジケーター */
+:focus-visible {
+  outline: 2px solid var(--color-text-strong);
+  outline-offset: 2px;
+}
+
 /* アクセシビリティ: モーション軽減設定 */
 @media (prefers-reduced-motion: reduce) {
   *,

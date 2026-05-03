@@ -39,6 +39,9 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   const hasMultipleImages = !!prefetchedImages && prefetchedImages.length > 0;
   return (
     <div
+      role="option"
+      aria-selected={isSelected}
+      tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       className={`group relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${

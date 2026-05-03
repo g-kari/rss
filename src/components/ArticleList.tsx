@@ -440,7 +440,12 @@ export default function ArticleList({
       />
 
       <SelectedArticleCtx.Provider value={selectedArticleId ?? null}>
-        <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto">
+        <div
+          ref={scrollContainerRef}
+          role="listbox"
+          aria-label="記事"
+          className="flex-1 min-h-0 overflow-y-auto"
+        >
           {/* ローディング状態 */}
           {loading && filtered.length === 0 && (
             <div className="flex flex-col items-center justify-center h-40 gap-2">

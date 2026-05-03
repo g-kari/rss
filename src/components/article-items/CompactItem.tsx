@@ -26,6 +26,9 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   const isSelected = selectedId === article.id;
   return (
     <div
+      role="option"
+      aria-selected={isSelected}
+      tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 ${
