@@ -149,6 +149,8 @@ export default function App() {
     loadMoreFeedArticles,
     loadMoreAllFeedsArticles,
     skipRemainingPages,
+    fetchError,
+    retryInitialLoad,
   } = useFeeds(user, toast.error);
 
   const {
@@ -1178,6 +1180,8 @@ export default function App() {
                   selectedFeedId={selectedFeedId}
                   layout={layout}
                   loading={loadingArticles}
+                  fetchError={fetchError}
+                  onRetry={retryInitialLoad}
                   onChangeLayout={onChangeLayout}
                   onMobileBack={() => setMobilePane("sidebar")}
                   onSelectArticle={selectArticle}

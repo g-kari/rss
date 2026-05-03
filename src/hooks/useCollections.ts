@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch, apiFetchJson } from "@/lib/api-fetch";
 import type { Collection, UserProfile } from "@/types";
+import { useSyncedRef } from "./useSyncedRef";
 
 export interface CollectionsState {
   collections: Collection[];
@@ -24,6 +25,7 @@ export function useCollections(
 ): CollectionsState {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
+  const onErrorRef = useSyncedRef(onError);
 
   useEffect(() => {
     if (!user) {
@@ -38,6 +40,7 @@ export function useCollections(
       })
       .catch((err) => {
         console.error(err);
+        onErrorRef.current?.("コレクションの読み込みに失敗しました");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -45,6 +48,7 @@ export function useCollections(
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onErrorRef は ref 経由で最新値を参照するため deps 不要
   }, [user]);
 
   const createCollection = useCallback(
@@ -91,12 +95,18 @@ export function useCollections(
     [],
   );
 
-  const deleteCollection = useCallback(async (id: string): Promise<boolean> => {
-    const res = await apiFetch(`/api/collections/${id}`, { method: "DELETE" });
-    if (!res.ok) return false;
-    setCollections((prev) => prev.filter((c) => c.id !== id));
-    return true;
-  }, []);
+  const deleteCollection = useCallback(
+    async (id: string): Promise<boolean> => {
+      const res = await apiFetch(`/api/collections/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        onError?.("コレクションの削除に失敗しました");
+        return false;
+      }
+      setCollections((prev) => prev.filter((c) => c.id !== id));
+      return true;
+    },
+    [onError],
+  );
 
   const addArticleToCollection = useCallback(
     async (collectionId: string, articleId: string): Promise<void> => {
