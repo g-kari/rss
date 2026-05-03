@@ -8,6 +8,10 @@ import {
   type TranslatorUnavailableReason,
 } from "../lib/browser-translator";
 import {
+  diagnoseSummarizerAvailability,
+  type SummarizerUnavailableReason,
+} from "../lib/browser-summarizer";
+import {
   FONT_SIZE_CYCLE,
   FONT_SIZE_LABELS,
   FONT_FAMILY_CYCLE,
@@ -106,9 +110,14 @@ export default function UserSettingsModal({ onClose }: Props) {
     available: boolean;
     reason: TranslatorUnavailableReason;
   } | null>(null);
+  const [summarizerDiag, setSummarizerDiag] = useState<{
+    available: boolean;
+    reason: SummarizerUnavailableReason;
+  } | null>(null);
 
   useEffect(() => {
     diagnoseTranslatorAvailability().then(setTranslatorDiag);
+    diagnoseSummarizerAvailability().then(setSummarizerDiag);
   }, []);
 
   return (
@@ -290,25 +299,51 @@ export default function UserSettingsModal({ onClose }: Props) {
           </button>
         </SettingRow>
 
-        {translatorDiag && (
-          <div className="flex flex-col gap-1 pl-28">
-            <span className="text-[11px] text-text-muted">
-              利用プロバイダ:{" "}
-              {translatorDiag.available ? (
-                <span className="text-text-default">Chrome 翻訳 &#x2713;</span>
-              ) : (
-                <span className="text-text-default">Workers AI (フォールバック)</span>
-              )}
-            </span>
-            {!translatorDiag.available && translatorDiag.reason && (
-              <span className="text-[10px] text-text-faint">
-                {translatorDiag.reason === "not-chromium" &&
-                  "Chrome/Edge 以外のブラウザでは Chrome 翻訳を利用できません"}
-                {translatorDiag.reason === "flag-disabled" &&
-                  "chrome://flags/#translation-api を Enabled にすると Chrome 翻訳が利用できます"}
-                {translatorDiag.reason === "not-available" &&
-                  "言語パックが利用できません。Chrome の設定から言語を追加してください"}
-              </span>
+        {(translatorDiag || summarizerDiag) && (
+          <div className="flex flex-col gap-1.5 pl-28">
+            {translatorDiag && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] text-text-muted">
+                  翻訳プロバイダ:{" "}
+                  {translatorDiag.available ? (
+                    <span className="text-text-default">Chrome 翻訳 &#x2713;</span>
+                  ) : (
+                    <span className="text-text-default">Workers AI (フォールバック)</span>
+                  )}
+                </span>
+                {!translatorDiag.available && translatorDiag.reason && (
+                  <span className="text-[10px] text-text-faint">
+                    {translatorDiag.reason === "not-chromium" &&
+                      "Chrome/Edge 以外のブラウザでは Chrome 翻訳を利用できません"}
+                    {translatorDiag.reason === "flag-disabled" &&
+                      "chrome://flags/#translation-api を Enabled にすると Chrome 翻訳が利用できます"}
+                    {translatorDiag.reason === "not-available" &&
+                      "言語パックが利用できません。Chrome の設定から言語を追加してください"}
+                  </span>
+                )}
+              </div>
+            )}
+            {summarizerDiag && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] text-text-muted">
+                  要約プロバイダ:{" "}
+                  {summarizerDiag.available ? (
+                    <span className="text-text-default">Chrome 要約 &#x2713;</span>
+                  ) : (
+                    <span className="text-text-default">Workers AI (フォールバック)</span>
+                  )}
+                </span>
+                {!summarizerDiag.available && summarizerDiag.reason && (
+                  <span className="text-[10px] text-text-faint">
+                    {summarizerDiag.reason === "not-chromium" &&
+                      "Chrome/Edge 以外のブラウザでは Chrome 要約を利用できません"}
+                    {summarizerDiag.reason === "flag-disabled" &&
+                      "chrome://flags/#summarization-api-for-gemini-nano を Enabled にすると Chrome 要約が利用できます"}
+                    {summarizerDiag.reason === "not-available" &&
+                      "要約モデルが利用できません。Chrome の設定を確認してください"}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         )}

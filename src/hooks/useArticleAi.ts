@@ -5,8 +5,10 @@ import { type LruCache, aiLruCache, aiTranslateLruCache } from "../lib/lru-cache
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
 import { translateHtmlInBrowser } from "../lib/translate-html";
+import { summarizeInBrowser } from "../lib/browser-summarizer";
+import { toPlainText } from "../lib/html";
 
-/** 翻訳プロバイダー識別子 */
+/** AI プロバイダー識別子（要約・翻訳共通） */
 export type TranslationProvider = "browser" | "workers-ai";
 
 /** 翻訳・要約結果は plain text または HTML のどちらも取り得るため区別する */
@@ -21,8 +23,8 @@ interface ArticleAiState {
   aiResult: string | null;
   aiLoading: boolean;
   aiError: string;
-  /** AI 要約を実行する（LRU キャッシュ優先、サーバー側コンテンツ取得） */
-  doRunAi: (url: string, articleId?: string) => Promise<void>;
+  /** AI 要約を実行する（LRU キャッシュ優先）。html を渡すとブラウザ Summarizer API を試行する。 */
+  doRunAi: (url: string, articleId?: string, html?: string) => Promise<void>;
   resetAi: () => void;
   translateResult: AiOperationResult | null;
   translateLoading: boolean;
@@ -161,6 +163,14 @@ function useAiOperation(
   return { result, loading, error, run, reset };
 }
 
+async function processSummarizeLocal(html: string): Promise<AiOperationResult | null> {
+  const plain = toPlainText(html);
+  if (!plain.trim()) return null;
+  const result = await summarizeInBrowser(plain);
+  if (result === null) return null;
+  return { text: result, isHtml: false, provider: "browser" };
+}
+
 /** HTML 翻訳結果を AiOperationResult でラップする */
 async function processTranslateHtml(html: string): Promise<AiOperationResult | null> {
   const translated = await translateHtmlInBrowser(html);
@@ -169,7 +179,12 @@ async function processTranslateHtml(html: string): Promise<AiOperationResult | n
 }
 
 export function useArticleAi(articleId: string | undefined): ArticleAiState {
-  const ai = useAiOperation("/api/ai/summarize", aiLruCache, "AI の処理に失敗しました");
+  const ai = useAiOperation(
+    "/api/ai/summarize",
+    aiLruCache,
+    "AI の処理に失敗しました",
+    processSummarizeLocal,
+  );
   const translate = useAiOperation(
     "/api/ai/translate",
     aiTranslateLruCache,

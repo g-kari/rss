@@ -259,6 +259,7 @@ src/
     image-proxy-url.ts       # 画像プロキシ URL ビルダー / プロキシ済み判定
     image-proxy-security.ts  # 画像プロキシリクエストの MIME / Content-Type / オリジン検証
     browser-translator.ts    # ブラウザネイティブ翻訳 API（Translator）の利用可否判定・言語検出
+    browser-summarizer.ts    # ブラウザネイティブ要約 API（Summarizer）の利用可否判定・要約実行
     translate-html.ts        # HTML DOM 内の翻訳対象テキスト抽出・翻訳適用
     popup-lock.ts            # 同時に開けるブラウザポップアップ数を制限するクライアントサイドロック
     dbsc.ts                  # Device Bound Session Credentials (DBSC) ユーティリティ — 機能検出・チャレンジ生成・ヘッダービルダー (スケルトン)

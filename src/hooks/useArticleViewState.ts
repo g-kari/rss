@@ -87,6 +87,19 @@ export function useArticleViewState({
   const mainRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const handleRunAi = useCallback(
+    (link: string, id: string) => {
+      if (storedContent) {
+        void doRunAi(link, id, storedContent);
+        return;
+      }
+      void fetchFullContent((content) => {
+        void doRunAi(link, id, content);
+      });
+    },
+    [storedContent, doRunAi, fetchFullContent],
+  );
+
   const handleTranslate = useCallback(() => {
     if (!article?.link) return;
     if (translateResult) {
@@ -137,7 +150,7 @@ export function useArticleViewState({
     fetchFullContent,
     aiResult,
     aiLoading,
-    doRunAi,
+    doRunAi: handleRunAi,
     resetAi,
     handleTranslate,
     mainRef,
@@ -197,7 +210,7 @@ export function useArticleViewState({
     aiResult,
     aiLoading,
     aiError,
-    doRunAi,
+    doRunAi: handleRunAi,
     resetAi,
     translateResult,
     translateLoading,
