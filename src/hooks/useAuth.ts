@@ -148,8 +148,12 @@ export function useAuth(): AuthState {
         }
 
         // 以前は認証済みで、今回 null が返った場合はセッション期限切れ
+        // → user を null にせずキャッシュされたユーザー情報を維持する
+        //   （現在の UI を保持したままモーダルで再ログインを促す）
         if (wasAuthenticatedRef.current && !u) {
           setSessionExpired(true);
+          scheduleNextRefresh();
+          return;
         }
         if (u) {
           wasAuthenticatedRef.current = true;
@@ -164,7 +168,7 @@ export function useAuth(): AuthState {
             window.history.replaceState({}, "", url);
           }
         } else {
-          // ログアウトまたはセッション失効時はキャッシュをクリア
+          // 初回訪問の未ログイン状態 — キャッシュをクリア
           storageRemove(STORAGE_KEYS.CACHED_USER);
         }
         setUser(u ?? null);

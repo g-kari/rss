@@ -130,6 +130,7 @@ src/
     CollectionDropdown.tsx   # コレクション追加/削除ドロップダウン（CollectionModal 連携）
     CollectionModal.tsx      # コレクション作成・名前変更モーダル
     NSFWEyeAnimation.tsx     # NSFW コンテンツ表示アニメーション
+    SessionExpiredModal.tsx  # セッション期限切れ時の再ログインモーダルオーバーレイ
     ServiceWorkerRegistration.tsx # Service Worker 登録コンポーネント
     ErrorBoundary.tsx        # エラー境界
     Spinner.tsx              # ローディングスピナー（ArticleView・ArticleList で共有）

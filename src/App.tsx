@@ -47,6 +47,7 @@ import { ToastProvider } from "./contexts/ToastContext";
 import ToastContainer from "./components/ToastContainer";
 import { useToastState } from "./hooks/useToast";
 import LandingPage from "./components/LandingPage";
+import SessionExpiredModal from "./components/SessionExpiredModal";
 import BetaRestrictedPage from "./components/BetaRestrictedPage";
 
 export default function App() {
@@ -816,7 +817,7 @@ export default function App() {
 
   if (betaRestricted) return <BetaRestrictedPage />;
 
-  if (!user) return <LandingPage sessionExpired={sessionExpired} />;
+  if (!user) return <LandingPage />;
 
   const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
 
@@ -867,6 +868,9 @@ export default function App() {
             )}
 
             <ToastContainer />
+
+            {/* セッション期限切れモーダル */}
+            {sessionExpired && <SessionExpiredModal />}
 
             {/* スヌーズ期間選択 */}
             {snoozeTargetId &&
