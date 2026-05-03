@@ -1030,7 +1030,21 @@ export default function App() {
                     onFeedDeleted={onFeedDeleted}
                     onFeedRenamed={updateFeed}
                     onFeedsImported={appendFeeds}
-                    onMarkAllRead={(feedId) => markAllReadWithUndo(feedId, toast)}
+                    onMarkAllRead={(feedId) => {
+                      const count = feedId
+                        ? articles.filter(
+                            (a) =>
+                              a.feedHash === feedId &&
+                              !isArticleRead(a, readIds, readBeforeTimestamp),
+                          ).length
+                        : totalUnread;
+                      if (
+                        count >= 50 &&
+                        !window.confirm(`${count}件の未読記事を全て既読にしますか？`)
+                      )
+                        return;
+                      markAllReadWithUndo(feedId, toast);
+                    }}
                     onToggleTheme={toggleTheme}
                     onOpenSettings={() => setShowSettings(true)}
                     onOpenHelp={() => setShowHelp(true)}
@@ -1150,9 +1164,27 @@ export default function App() {
                         const ids = filtered
                           .filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp))
                           .map((a) => a.id);
-                        if (ids.length > 0) markBulkRead(ids);
+                        if (ids.length === 0) return;
+                        if (
+                          ids.length >= 50 &&
+                          !window.confirm(`${ids.length}件の未読記事を全て既読にしますか？`)
+                        )
+                          return;
+                        markBulkRead(ids);
                         return;
                       }
+                      const unreadCount = selectedFeedId
+                        ? articles.filter(
+                            (a) =>
+                              a.feedHash === selectedFeedId &&
+                              !isArticleRead(a, readIds, readBeforeTimestamp),
+                          ).length
+                        : totalUnread;
+                      if (
+                        unreadCount >= 50 &&
+                        !window.confirm(`${unreadCount}件の未読記事を全て既読にしますか？`)
+                      )
+                        return;
                       markAllReadWithUndo(selectedFeedId, toast);
                       skipRemainingPages(selectedFeedId);
                     }}
