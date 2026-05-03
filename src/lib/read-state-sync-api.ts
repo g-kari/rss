@@ -14,7 +14,8 @@ export async function fetchReadState(): Promise<ReadState | null> {
     if (!res.ok) return null;
     const data: unknown = await res.json();
     return isReadState(data) ? data : null;
-  } catch {
+  } catch (err) {
+    console.warn("ReadState sync failed:", err);
     return null;
   }
 }
@@ -30,7 +31,8 @@ export async function saveReadState(body: string): Promise<SaveResult> {
     const data: unknown = await res.json();
     if (!isReadState(data)) return { ok: false };
     return { ok: true, state: data };
-  } catch {
+  } catch (err) {
+    console.warn("ReadState sync failed:", err);
     return { ok: false };
   }
 }

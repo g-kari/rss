@@ -17,32 +17,9 @@ import {
   transformSpeakerDeckScriptEmbeds,
   transformSlideShareEmbedLinks,
   postProcess,
-  buildImageSlider,
 } from "./html-post-processor";
-import { extractWithReadability, preClean } from "./readability-extractor";
-import { extractWithRegex, stripPageChrome } from "./regex-extractor";
-
-// Re-export for backward compatibility
-export {
-  replaceUntilStable,
-  tryParseBase,
-  rewriteImageUrls,
-  transformZennLinkEmbeds,
-  transformZennMermaidEmbeds,
-  postProcess,
-  buildImageSlider,
-  fixImageDimensions,
-  wrapTables,
-  removeNoise,
-  fixLazyImages,
-  fixExternalLinks,
-  transformXTweetEmbeds,
-  removeSmallThumbnailImages,
-  postProcessMarkdownContent,
-  transformSpeakerDeckScriptEmbeds,
-} from "./html-post-processor";
-export { extractWithReadability, preClean } from "./readability-extractor";
-export { extractWithRegex, stripPageChrome } from "./regex-extractor";
+import { extractWithReadability } from "./readability-extractor";
+import { extractWithRegex } from "./regex-extractor";
 
 /**
  * inside-games.jp 等の thumb-list / capt-thumb-list ギャラリー UL を検出し、
