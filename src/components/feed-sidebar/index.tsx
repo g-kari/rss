@@ -441,7 +441,11 @@ function FeedSidebar({
   }, [feeds, pinnedFeedIds, feedSearch, feedGroups, activeFeedView, nsfwMode]);
 
   return (
-    <aside className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated">
+    <aside
+      role="navigation"
+      aria-label="フィード一覧"
+      className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated"
+    >
       {/* ヘッダー */}
       <SidebarHeader
         nsfwMode={nsfwMode}

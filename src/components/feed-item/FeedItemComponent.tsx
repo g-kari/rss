@@ -479,6 +479,8 @@ export default function FeedItem({
   const canDrag = !editing && !categoryEditing && !!onDragStartFeed;
   return (
     <div
+      role="option"
+      aria-selected={isSelected}
       onClick={
         editing || categoryEditing
           ? undefined

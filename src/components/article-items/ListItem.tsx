@@ -33,6 +33,9 @@ export const ListArticleItem = memo(function ListArticleItem({
   const isSelected = selectedId === article.id;
   return (
     <div
+      role="option"
+      aria-selected={isSelected}
+      tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       className={`group flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 ${

@@ -1211,7 +1211,7 @@ export default function App() {
                 />
               </ErrorBoundary>
             </div>
-            <div
+            <main
               data-pane="view"
               className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "view" ? "hidden lg:block" : ""}`}
             >
@@ -1248,7 +1248,7 @@ export default function App() {
                   onCreateCollection={createCollection}
                 />
               </ErrorBoundary>
-            </div>
+            </main>
           </div>
         </ArticleFilterProvider>
       </ReaderSettingsProvider>

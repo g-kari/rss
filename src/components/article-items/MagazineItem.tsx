@@ -32,6 +32,9 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   const isSelected = selectedId === article.id;
   return (
     <div
+      role="option"
+      aria-selected={isSelected}
+      tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 ${
