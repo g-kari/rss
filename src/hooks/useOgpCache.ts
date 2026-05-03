@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { Article, OgpData } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
@@ -8,39 +8,44 @@ import { apiFetch } from "../lib/api-fetch";
 
 const MAX_OGP_CACHE_SIZE = 2000;
 const FETCH_BATCH_SIZE = 10;
+const SAVE_DEBOUNCE_MS = 2000;
 
-/**
- * 表示中の記事に対して OGP 画像を遅延フェッチし、localStorage に永続化するキャッシュ。
- * 全記事の link を /api/ogp に問い合わせ、取得した image URL を返す。
- * OGP 画像はフィード由来の画像より優先して表示される。
- */
 export function useOgpCache(visible: Article[]): Record<string, string> {
   const [ogpCache, setOgpCache] = useState<Record<string, string>>(() =>
     loadJson<Record<string, string>>(STORAGE_KEYS.OGP_CACHE, {}),
   );
 
   const fetchingRef = useRef<Set<string>>(new Set());
-  // 画像なし・エラーだったURLをセッション内でキャッシュし無駄なリトライを防止する
   const noImageRef = useRef<Set<string>>(new Set());
-  // setOgpCache 呼び出し後の再トリガーを避けるため ref で最新値を参照する
   const ogpCacheRef = useSyncedRef(ogpCache);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // visible の link 一覧を安定した文字列キーに変換し、参照変化を抑止
+  const visibleLinks = useMemo(() => visible.map((a) => a.link).filter(Boolean), [visible]);
+  const linksKey = useMemo(() => visibleLinks.join("\n"), [visibleLinks]);
 
   useEffect(() => {
-    const toFetch = visible
+    const toFetch = visibleLinks
       .filter(
-        (a) =>
-          a.link &&
-          !ogpCacheRef.current[a.link] &&
-          !fetchingRef.current.has(a.link) &&
-          !noImageRef.current.has(a.link),
+        (link) =>
+          !ogpCacheRef.current[link] &&
+          !fetchingRef.current.has(link) &&
+          !noImageRef.current.has(link),
       )
       .slice(0, FETCH_BATCH_SIZE);
 
     if (toFetch.length === 0) return;
 
-    toFetch.forEach((a) => {
-      fetchingRef.current.add(a.link);
-      apiFetch(`/api/ogp?url=${encodeURIComponent(a.link)}`)
+    const scheduleSave = (data: Record<string, string>) => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        saveJson(STORAGE_KEYS.OGP_CACHE, data);
+      }, SAVE_DEBOUNCE_MS);
+    };
+
+    toFetch.forEach((link) => {
+      fetchingRef.current.add(link);
+      apiFetch(`/api/ogp?url=${encodeURIComponent(link)}`)
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json() as Promise<OgpData>;
@@ -48,30 +53,34 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
         .then(({ image }) => {
           if (image) {
             setOgpCache((prev) => {
-              const next = { ...prev, [a.link]: image };
-              // キャッシュが肥大化しないよう最大 200 件に制限
+              const next = { ...prev, [link]: image };
               const keys = Object.keys(next);
               const result =
                 keys.length > MAX_OGP_CACHE_SIZE
                   ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
                   : next;
-              saveJson(STORAGE_KEYS.OGP_CACHE, result);
+              scheduleSave(result);
               return result;
             });
           } else {
-            // OGP 画像なし: セッション内で再フェッチしないようマーク
-            noImageRef.current.add(a.link);
+            noImageRef.current.add(link);
           }
         })
         .catch(() => {
-          // フェッチエラー: セッション内で再フェッチしないようマーク
-          noImageRef.current.add(a.link);
+          noImageRef.current.add(link);
         })
         .finally(() => {
-          fetchingRef.current.delete(a.link);
+          fetchingRef.current.delete(link);
         });
     });
-  }, [visible, ogpCacheRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linksKey]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   return ogpCache;
 }
