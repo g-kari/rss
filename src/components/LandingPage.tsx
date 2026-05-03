@@ -1,31 +1,8 @@
 "use client";
 
-interface Props {
-  sessionExpired: boolean;
-}
-
-export default function LandingPage({ sessionExpired }: Props) {
+export default function LandingPage() {
   return (
     <div className="min-h-screen bg-surface-base font-sans antialiased flex flex-col">
-      {sessionExpired && (
-        <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-subtle border-b border-border-default text-[12px] text-text-muted tracking-[0.02em]">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 13 13"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="flex-shrink-0"
-          >
-            <circle cx="6.5" cy="6.5" r="5.5" />
-            <path d="M6.5 4v3M6.5 9v.5" />
-          </svg>
-          セッションが期限切れになりました。再度ログインしてください。
-        </div>
-      )}
       <header className="px-8 py-4 flex items-center justify-between border-b border-border-subtle">
         <div className="flex items-center gap-2">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none" className="text-text-strong">
