@@ -19,13 +19,27 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
   const noImageRef = useRef<Set<string>>(new Set());
   const ogpCacheRef = useSyncedRef(ogpCache);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seenLinksRef = useRef<Set<string>>(new Set());
 
-  // visible の link 一覧を安定した文字列キーに変換し、参照変化を抑止
-  const visibleLinks = useMemo(() => visible.map((a) => a.link).filter(Boolean), [visible]);
-  const linksKey = useMemo(() => visibleLinks.join("\n"), [visibleLinks]);
+  const linksKey = useMemo(
+    () =>
+      visible
+        .map((a) => a.link)
+        .filter(Boolean)
+        .join("\n"),
+    [visible],
+  );
 
   useEffect(() => {
-    const toFetch = visibleLinks
+    if (!linksKey) return;
+
+    const allLinks = linksKey.split("\n");
+    const newLinks = allLinks.filter((link) => !seenLinksRef.current.has(link));
+    if (newLinks.length === 0) return;
+
+    for (const link of newLinks) seenLinksRef.current.add(link);
+
+    const toFetch = newLinks
       .filter(
         (link) =>
           !ogpCacheRef.current[link] &&
