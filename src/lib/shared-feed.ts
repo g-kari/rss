@@ -11,6 +11,9 @@
 import type { SharedFeedMeta, UserSubscription, Feed, Article } from "../types";
 import { r2Get, r2Put, sha256Hex } from "./r2";
 import { compareByDateDesc } from "./article-utils";
+import { pMap } from "./concurrency";
+
+export { pMap };
 
 /** 1 ページあたりの記事数 */
 export const PAGE_SIZE = 500;
@@ -29,24 +32,6 @@ export const MAX_USER_ARTICLES = 10_000;
 
 /** R2 同時読み取りの並行度上限 */
 export const R2_CONCURRENCY = 10;
-
-/** 並行度制限付き map — 最大 concurrency 件ずつ fn を実行する */
-export async function pMap<T, R>(
-  items: T[],
-  fn: (item: T) => Promise<R>,
-  concurrency: number = R2_CONCURRENCY,
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await fn(items[i]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-  return results;
-}
 
 // ── キー計算 ──────────────────────────────────────────────────────
 

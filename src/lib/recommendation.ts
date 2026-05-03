@@ -7,7 +7,13 @@ import type {
 import { r2Get, r2Put, sha256Hex, engagementKey } from "./r2";
 import { scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
 import { discoverFeedUrl } from "./feed-discovery";
-import { buildFeedUserMap, readFeedMeta, readLatestArticles, pMap } from "./shared-feed";
+import {
+  buildFeedUserMap,
+  readFeedMeta,
+  readLatestArticles,
+  pMap,
+  R2_CONCURRENCY,
+} from "./shared-feed";
 import { fetchWithTimeout } from "./fetch";
 import { buildContentCacheKey } from "./fetch-article-content";
 
@@ -367,15 +373,19 @@ export async function generateLinkDiscoveryFeeds(
   // 記事 URL を解決（フィードごとに並行度制限付きで取得）
   const articleLinks: Array<{ link: string; title: string }> = [];
   const feedEntries = [...byFeed.entries()];
-  const feedArticleResults = await pMap(feedEntries, async ([feedHash, articleIds]) => {
-    try {
-      const articles = await readLatestArticles(bucket, feedHash);
-      return { articles, idSet: new Set(articleIds) };
-    } catch (err) {
-      console.warn("[recommendation] linkDiscovery article fetch failed:", feedHash, err);
-      return null;
-    }
-  });
+  const feedArticleResults = await pMap(
+    feedEntries,
+    async ([feedHash, articleIds]) => {
+      try {
+        const articles = await readLatestArticles(bucket, feedHash);
+        return { articles, idSet: new Set(articleIds) };
+      } catch (err) {
+        console.warn("[recommendation] linkDiscovery article fetch failed:", feedHash, err);
+        return null;
+      }
+    },
+    R2_CONCURRENCY,
+  );
   for (const result of feedArticleResults) {
     if (!result) continue;
     const { articles, idSet } = result;

@@ -249,6 +249,7 @@ src/
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     feed-groups.ts           # フィードグループ R2 読み書き（readFeedGroups / writeFeedGroups）
     collections.ts           # コレクション R2 読み書き（readCollections / writeCollections）
+    concurrency.ts           # 並行度制限付き非同期マッピング（pMap / pMapSettled）
     storage.ts               # localStorage キー定数・安全なラッパー
     url.ts                   # URL バリデーションヘルパー
     validation.ts            # 各種入力バリデーションユーティリティ

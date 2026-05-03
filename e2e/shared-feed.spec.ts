@@ -199,21 +199,25 @@ test.describe("computePrivateFeedHash", () => {
 
 test.describe("pMap", () => {
   test("全要素に fn を適用して結果配列を返す", async () => {
-    const result = await pMap([1, 2, 3], async (x) => x * 2);
+    const result = await pMap([1, 2, 3], async (x) => x * 2, 10);
     expect(result).toEqual([2, 4, 6]);
   });
 
   test("空配列を渡すと空配列を返す", async () => {
-    const result = await pMap([], async (x: number) => x * 2);
+    const result = await pMap([], async (x: number) => x * 2, 10);
     expect(result).toEqual([]);
   });
 
   test("結果の順序は入力と一致する", async () => {
     // 遅い処理が先に来ても順序が保持されること
-    const result = await pMap([30, 10, 20], async (ms) => {
-      await new Promise((r) => setTimeout(r, ms));
-      return ms;
-    });
+    const result = await pMap(
+      [30, 10, 20],
+      async (ms) => {
+        await new Promise((r) => setTimeout(r, ms));
+        return ms;
+      },
+      10,
+    );
     expect(result).toEqual([30, 10, 20]);
   });
 
@@ -270,10 +274,14 @@ test.describe("pMap", () => {
 
   test("fn がエラーを投げた場合は reject される", async () => {
     await expect(
-      pMap([1, 2, 3], async (x) => {
-        if (x === 2) throw new Error("fail");
-        return x;
-      }),
+      pMap(
+        [1, 2, 3],
+        async (x) => {
+          if (x === 2) throw new Error("fail");
+          return x;
+        },
+        10,
+      ),
     ).rejects.toThrow("fail");
   });
 });

@@ -26,6 +26,7 @@ import {
   readLatestArticles,
   assembleClientFeed,
 } from "../lib/shared-feed";
+import { pMapSettled } from "../lib/concurrency";
 import { INACTIVE_FEED_DAYS } from "../lib/article-ttl";
 import { serializeError } from "../lib/serialize-error";
 import { appendAccessKeyIfRsshub, getRSSHubInstance, getRSSHubAccessKey } from "../lib/rsshub";
@@ -64,28 +65,6 @@ export function parseRetryAfter(header: string | null): number {
     fallbackMs: DEFAULT_RATE_LIMIT_MS,
     maxMs: MAX_RATE_LIMIT_MS,
   });
-}
-
-// ── 並行制限 ─────────────────────────────────────────────────────
-
-async function allSettledWithConcurrency<T>(
-  tasks: (() => Promise<T>)[],
-  limit: number,
-): Promise<PromiseSettledResult<T>[]> {
-  const results: PromiseSettledResult<T>[] = Array.from({ length: tasks.length });
-  let next = 0;
-  async function worker(): Promise<void> {
-    while (next < tasks.length) {
-      const i = next++;
-      try {
-        results[i] = { status: "fulfilled", value: await tasks[i]() };
-      } catch (reason) {
-        results[i] = { status: "rejected", reason };
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
-  return results;
 }
 
 // ── サービスバインディング ────────────────────────────────────────
@@ -363,8 +342,9 @@ async function sendPushBatched(
   env: FetchEnv,
   userFeedMap: Map<string, FeedNewArticles[]>,
 ): Promise<void> {
-  await allSettledWithConcurrency(
-    [...userFeedMap.entries()].map(([userId, feedEntries]) => async () => {
+  await pMapSettled(
+    [...userFeedMap.entries()],
+    async ([userId, feedEntries]) => {
       const pushKey = userPushKey(userId);
       const config = await r2Get<PushConfig>(env.RSS_DATA, pushKey, { subscriptions: [] });
       if (config.subscriptions.length === 0) return;
@@ -374,7 +354,7 @@ async function sendPushBatched(
         config.subscriptions = remaining;
         await r2Put(env.RSS_DATA, pushKey, config);
       }
-    }),
+    },
     USER_FETCH_CONCURRENCY,
   );
 }
@@ -420,11 +400,9 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
     `cron: skipped ${skipped}/${feedHashes.length} inactive feeds, fetching ${activeFeedHashes.length}`,
   );
 
-  const results = await allSettledWithConcurrency(
-    activeFeedHashes.map(
-      (feedHash) => () =>
-        fetchAndUpdateSharedFeed(env, feedHash, false, privateFeedCookies.get(feedHash)),
-    ),
+  const results = await pMapSettled(
+    activeFeedHashes,
+    (feedHash) => fetchAndUpdateSharedFeed(env, feedHash, false, privateFeedCookies.get(feedHash)),
     FEED_FETCH_CONCURRENCY,
   );
 
@@ -457,8 +435,9 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
 export async function fetchArticles(env: FetchEnv, userId: string): Promise<void> {
   const subs = await readUserSubscriptions(env.RSS_DATA, userId);
   if (subs.length === 0) return;
-  await allSettledWithConcurrency(
-    subs.map((s) => () => fetchAndUpdateSharedFeed(env, s.feedHash, true, s.requestCookie)),
+  await pMapSettled(
+    subs,
+    (s) => fetchAndUpdateSharedFeed(env, s.feedHash, true, s.requestCookie),
     FEED_FETCH_CONCURRENCY,
   );
 }

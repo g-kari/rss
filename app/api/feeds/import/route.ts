@@ -14,6 +14,7 @@ import {
   readUserSubscriptions,
   writeUserSubscriptions,
   pMap,
+  R2_CONCURRENCY,
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
 import type { SharedFeedMeta, FeedGroup } from "@/types";
@@ -104,19 +105,23 @@ export async function POST(request: Request) {
       candidates.push({ entry, feedHash });
     }
 
-    const metaResults = await pMap(candidates, async ({ entry, feedHash }) => {
-      try {
-        return await getOrCreateFeedMeta(
-          env.RSS_DATA,
-          feedHash,
-          entry.url,
-          entry.title,
-          entry.siteUrl,
-        );
-      } catch {
-        return null;
-      }
-    });
+    const metaResults = await pMap(
+      candidates,
+      async ({ entry, feedHash }) => {
+        try {
+          return await getOrCreateFeedMeta(
+            env.RSS_DATA,
+            feedHash,
+            entry.url,
+            entry.title,
+            entry.siteUrl,
+          );
+        } catch {
+          return null;
+        }
+      },
+      R2_CONCURRENCY,
+    );
     const succeededMetas = metaResults.filter((m): m is SharedFeedMeta => m !== null);
     const succeededCandidates = candidates.filter((_, i) => metaResults[i] !== null);
 
