@@ -64,7 +64,9 @@ export default class ErrorBoundary extends Component<Props, State> {
             {this.props.label ?? "Error"}
           </p>
           <p className="text-[13px] text-text-muted leading-relaxed max-w-[200px]">
-            予期しないエラーが発生しました
+            {shouldReload
+              ? "問題が繰り返し発生しています。ページを再読み込みしてください。"
+              : "予期しないエラーが発生しました"}
           </p>
           <button
             onClick={() => (shouldReload ? window.location.reload() : this.reset())}
