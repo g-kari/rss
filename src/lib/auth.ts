@@ -274,7 +274,6 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
     return null;
   }
   const endpoint = `${authBaseUrl}/auth/exchange`;
-  console.log("[auth/exchange] request start", { endpoint, redirectTo });
   try {
     const res = await fetch(endpoint, {
       method: "POST",
@@ -283,12 +282,6 @@ export async function exchangeCode(code: string, redirectTo: string): Promise<To
     });
     const contentType = res.headers.get("content-type");
     const cfRay = res.headers.get("cf-ray");
-    console.log("[auth/exchange] response received", {
-      status: res.status,
-      ok: res.ok,
-      contentType,
-      cfRay,
-    });
     if (!res.ok) {
       const bodyText = await res.text().catch(() => "<read error>");
       if (isCloudflareBlock(contentType, bodyText, cfRay)) {
