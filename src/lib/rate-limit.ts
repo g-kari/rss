@@ -39,7 +39,14 @@ export async function checkSlidingWindow(
   return serialized(key, async () => {
     const now = Date.now();
     const raw = await kv.get(key);
-    const calls: number[] = raw ? (JSON.parse(raw) as number[]) : [];
+    let calls: number[] = [];
+    if (raw) {
+      try {
+        calls = JSON.parse(raw) as number[];
+      } catch {
+        /* corrupted KV data — reset */
+      }
+    }
     const recent = calls.filter((t) => now - t < windowMs);
     if (recent.length >= maxCalls) {
       const oldest = Math.min(...recent);

@@ -46,7 +46,7 @@ export default function GalleryContextMenu({
   const buildSafeTitle = useCallback((title: string | null | undefined) => {
     return (
       (title ?? "image")
-        .replace(/[^\w\s぀-鿿゠-ヿ一-鿿-]/g, "")
+        .replace(/[^\w\s぀-ゟ゠-ヿ一-鿿-]/g, "")
         .trim()
         .replace(/\s+/g, "-")
         .slice(0, 40) || "image"
