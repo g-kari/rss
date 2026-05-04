@@ -17,20 +17,27 @@ type FeedPageResult = { feedId: string; nextPage: number; data: Article[] };
 /** incoming の新規記事を existing にマージして日付降順でソートして返す */
 function mergeUniqueArticles(existing: Article[], incoming: Article[]): Article[] {
   if (incoming.length === 0) return existing;
-  const existingIds = new Set(existing.map((a) => a.id));
-  const brandNew = incoming.filter((a) => !existingIds.has(a.id));
+
+  // id + link キーを1パスで構築（中間配列・第2パスフィルタを排除）
+  const knownKeys = new Set<string>();
+  for (const a of existing) {
+    knownKeys.add(a.id);
+    const linkKey = a.link || a.guid || a.id;
+    if (linkKey && linkKey !== a.id) knownKeys.add(linkKey);
+  }
+
+  const brandNew: Article[] = [];
+  for (const a of incoming) {
+    if (knownKeys.has(a.id)) continue;
+    const linkKey = a.link || a.guid || a.id;
+    if (linkKey && knownKeys.has(linkKey)) continue;
+    knownKeys.add(a.id);
+    if (linkKey && linkKey !== a.id) knownKeys.add(linkKey);
+    brandNew.push(a);
+  }
+
   if (brandNew.length === 0) return existing;
-  const merged = [...existing, ...brandNew].sort(compareByDateDesc);
-  // link ベースの第2パス重複排除（クロスフィードで同一記事がシンジケートされた場合の対策）
-  // link が null/undefined の場合は guid または id をキーとして使用する
-  const linkSeen = new Set<string>();
-  return merged.filter((a) => {
-    const key = a.link || a.guid || a.id;
-    if (!key) return true;
-    if (linkSeen.has(key)) return false;
-    linkSeen.add(key);
-    return true;
-  });
+  return [...existing, ...brandNew].sort(compareByDateDesc);
 }
 
 /**
