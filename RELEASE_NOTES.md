@@ -28,6 +28,7 @@
 
 ### リファクタリングっ
 
+- **feed-sidebar フィルタリングロジックの分離** — Issue #333。サイドバーのタグ集計・未読カウント・フィードグループ化・カテゴリ分類を `useSidebarFeeds` フックに抽出したよ〜🧹 feed-sidebar が 895行→810行にダイエット成功っ✨
 - **Blob ダウンロードパターンの重複排除** — Issue #337。3箇所に散らばってたダウンロード処理を `downloadBlob()` ヘルパーにまとめたよ〜🔧
 - **URL プロトコル検証の共通化** — Issue #337。`url.ts` に散らばってた HTTP/HTTPS チェックを `isValidHttpProtocol()` に統合しちゃった〜🧹
 - **画像最小サイズ定数の��有化** — Issue #337。`IMAGE_MIN_DIMENSION` として共有定数にまとめたよ〜📐
