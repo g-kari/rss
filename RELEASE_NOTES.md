@@ -14,6 +14,7 @@
 - **GalleryContextMenu 正規表現修正** — CodeQL #22。Unicode範囲が重複してた問題を修正！ひらがな・カタカナ・漢字の範囲を正しく分離したよ〜🔒
 - **rate-limit JSON.parse 堅牢化** — KVデータが壊れてたときに例外が出ないよう try-catch 追加〜💡
 - **認証デバッグログ除去** — 本番環境に不要な `console.log` を除去したよ〜🧹
+- **入力バリデーション・型安全性の改善** — Issue #340。`linkedom` の `parseHTML` 戻り値と AI セレクタ JSON のランタイム検証を `isParsedHtmlResult` で追加！想定外形状の値で property access するのを防いじゃう🔒 さらに `fetch-article-content.ts` に `clampContentBytes` を追加して、ページネーション結合後とキャッシュ復元後の出力を 5MB に強制クランプ✨
 
 ### パフォーマンス改善っ
 
@@ -32,6 +33,8 @@
 
 ### リファクタリングっ
 
+- **エラーフォーマットの統一** — Issue #342。`e instanceof Error ? e.message : String(e)` パターンが7箇所に散らばってたから `formatError()` ヘルパーにまとめたよ〜🧹 `src/lib/api-error.ts` に共通化して可読性アップ✨
+- **cascadeOverflow の関数分割** — Issue #342。69行あった `cascadeOverflow` を `flushPageAndPrefetchNext`（PUT+GET 並列）と `appendOverflowToFinalPage`（末尾追記）に分割！責務が明確になって読みやすくなったよ〜🔧
 - **feed-sidebar フィルタリングロジックの分離** — Issue #333。サイドバーのタグ集計・未読カウント・フィードグループ化・カテゴリ分類を `useSidebarFeeds` フックに抽出したよ〜🧹 feed-sidebar が 895行→810行にダイエット成功っ✨
 - **Blob ダウンロードパターンの重複排除** — Issue #337。3箇所に散らばってたダウンロード処理を `downloadBlob()` ヘルパーにまとめたよ〜🔧
 - **URL プロトコル検証の共通化** — Issue #337。`url.ts` に散らばってた HTTP/HTTPS チェックを `isValidHttpProtocol()` に統合しちゃった〜🧹
