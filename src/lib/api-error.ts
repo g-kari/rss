@@ -27,3 +27,6 @@ export function apiError(
   const body: ApiError = { error: message, ...opts };
   return NextResponse.json(body, { status });
 }
+
+// formatError は next/server に依存しないユニットテスト互換性のため serialize-error.ts に置く
+export { formatError } from "./serialize-error";
