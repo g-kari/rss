@@ -197,7 +197,6 @@ function FeedSidebar({
   const [cookieOpen, setCookieOpen] = useState(false);
   const [inputOpen, setInputOpen] = useState(false);
   const [feedSearch, setFeedSearch] = useState("");
-  const [feedSearchOpen, setFeedSearchOpen] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const feedSearchRef = useRef<HTMLInputElement>(null);
@@ -368,21 +367,11 @@ function FeedSidebar({
       {/* ヘッダー */}
       <SidebarHeader
         nsfwMode={nsfwMode}
-        feedSearchOpen={feedSearchOpen}
         inputOpen={inputOpen}
         refreshing={refreshing}
         isOnline={isOnline}
         onActivateNsfw={onActivateNsfw}
         onDeactivateNsfw={onDeactivateNsfw}
-        onToggleSearch={() => {
-          const next = !feedSearchOpen;
-          setFeedSearchOpen(next);
-          if (next) {
-            setTimeout(() => feedSearchRef.current?.focus(), 0);
-          } else {
-            setFeedSearch("");
-          }
-        }}
         onToggleInput={() => setInputOpen((v) => !v)}
         onRefresh={onRefresh}
       />
@@ -425,23 +414,61 @@ function FeedSidebar({
         onDropFeedOnView={handleDropFeedOnView}
       />
 
-      {/* フィード検索 */}
-      {feedSearchOpen && (
-        <div className="px-3 py-2 border-b border-border-subtle animate-fade-up">
-          <input
-            ref={feedSearchRef}
-            type="text"
-            placeholder="フィードを検索..."
-            value={feedSearch}
-            onChange={(e) => setFeedSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setFeedSearch("");
-                setFeedSearchOpen(false);
-              }
-            }}
-            className="w-full text-[12px] bg-surface-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
-          />
+      {/* フィード検索（インライン常時表示） */}
+      {feeds.length > 0 && (
+        <div className="px-3 py-2 border-b border-border-subtle">
+          <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-subtle rounded-md border border-border-subtle focus-within:border-border-default transition-colors duration-200">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 11 11"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="text-text-faint flex-shrink-0"
+            >
+              <circle cx="4.5" cy="4.5" r="3" />
+              <line x1="7" y1="7" x2="10" y2="10" strokeLinecap="round" />
+            </svg>
+            <input
+              ref={feedSearchRef}
+              type="text"
+              placeholder="フィードを検索..."
+              value={feedSearch}
+              onChange={(e) => setFeedSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setFeedSearch("");
+                  feedSearchRef.current?.blur();
+                }
+              }}
+              className="flex-1 bg-transparent text-[12px] text-text-default placeholder:text-text-faint outline-none min-w-0"
+            />
+            {feedSearch && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedSearch("");
+                  feedSearchRef.current?.focus();
+                }}
+                className="flex-shrink-0 text-text-faint hover:text-text-muted transition-colors duration-150"
+                aria-label="検索をクリア"
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                >
+                  <line x1="2" y1="2" x2="8" y2="8" />
+                  <line x1="8" y1="2" x2="2" y2="8" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       )}
 

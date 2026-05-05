@@ -4,26 +4,22 @@ import { useRef } from "react";
 
 interface Props {
   nsfwMode: boolean;
-  feedSearchOpen: boolean;
   inputOpen: boolean;
   refreshing: boolean;
   isOnline: boolean;
   onActivateNsfw: () => void;
   onDeactivateNsfw: () => void;
-  onToggleSearch: () => void;
   onToggleInput: () => void;
   onRefresh: () => void;
 }
 
 export default function SidebarHeader({
   nsfwMode,
-  feedSearchOpen,
   inputOpen,
   refreshing,
   isOnline,
   onActivateNsfw,
   onDeactivateNsfw,
-  onToggleSearch,
   onToggleInput,
   onRefresh,
 }: Props) {
@@ -52,28 +48,6 @@ export default function SidebarHeader({
         title={nsfwMode ? "長押しでNSFWモード解除" : ""}
       >
         RSS
-      </button>
-      <button
-        onClick={onToggleSearch}
-        className={`w-5 h-5 flex items-center justify-center rounded transition-all duration-200 ${
-          feedSearchOpen
-            ? "text-text-default bg-surface-subtle"
-            : "text-text-faint hover:text-text-default hover:bg-surface-subtle"
-        }`}
-        title="フィードを検索"
-        aria-label="フィードを検索"
-      >
-        <svg
-          width="11"
-          height="11"
-          viewBox="0 0 11 11"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        >
-          <circle cx="4.5" cy="4.5" r="3" />
-          <line x1="7" y1="7" x2="10" y2="10" strokeLinecap="round" />
-        </svg>
       </button>
       <button
         onClick={onToggleInput}
