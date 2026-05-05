@@ -30,9 +30,15 @@ function hasScrollableAncestor(
 export function useGestureNav({
   onSelectPrev,
   onSelectNext,
+  currentMobilePane,
+  onGoBack,
 }: {
   onSelectPrev?: () => void;
   onSelectNext?: () => void;
+  /** モバイルの現在のペイン。"view" のときに右スワイプで onGoBack を優先する */
+  currentMobilePane?: "sidebar" | "list" | "view";
+  /** モバイル view ペインで右スワイプしたときに呼ばれるペイン戻り処理 */
+  onGoBack?: () => void;
 }) {
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const mouseStartXRef = useRef<number | null>(null);
@@ -71,6 +77,11 @@ export function useGestureNav({
   }
 
   function dispatchSwipe(dx: number) {
+    // モバイル view ペインで右スワイプ → ペイン遷移（list へ戻る）を優先
+    if (dx > 0 && currentMobilePane === "view" && onGoBack) {
+      onGoBack();
+      return;
+    }
     if (dx < 0) onSelectNext?.();
     else if (dx > 0) onSelectPrev?.();
   }

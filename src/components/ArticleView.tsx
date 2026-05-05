@@ -49,6 +49,10 @@ interface Props {
   onAddToCollection?: (collectionId: string, articleId: string) => Promise<void>;
   onRemoveFromCollection?: (collectionId: string, articleId: string) => Promise<void>;
   onCreateCollection?: (name: string) => Promise<Collection | { error: string }>;
+  /** モバイルの現在のペイン（ジェスチャー衝突回避用） */
+  currentMobilePane?: "sidebar" | "list" | "view";
+  /** モバイル view ペインで右スワイプしたときのペイン戻り処理 */
+  onGoBack?: () => void;
 }
 
 function ArticleView({
@@ -78,6 +82,8 @@ function ArticleView({
   onAddToCollection,
   onRemoveFromCollection,
   onCreateCollection,
+  currentMobilePane,
+  onGoBack,
 }: Props) {
   const {
     contentWidth,
@@ -152,6 +158,8 @@ function ArticleView({
     onSelectPrev,
     onSelectNext,
     isNsfw: !!(article && feeds?.find((f) => f.id === article.feedHash)?.nsfw),
+    currentMobilePane,
+    onGoBack,
   });
 
   if (!article) {
