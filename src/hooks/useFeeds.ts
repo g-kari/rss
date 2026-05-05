@@ -105,8 +105,11 @@ export function useFeeds(
   const latestArticleIdRef = useRef<string | null>(null);
   const isPollingRef = useRef(false);
   const prevIsOnlineRef = useRef(isOnline);
+  // 最後にポーリングを完了した時刻（ミリ秒）。since パラメータとして使用する
+  const lastPollTimeRef = useRef<number | null>(null);
 
   const fetchAndSetArticles = useCallback(async () => {
+    const fetchedAt = Date.now();
     const data = await apiFetchJson<Article[]>("/api/articles");
     setArticles(data);
     // 記事を全件置き換えるためページ読み込み状態もリセットする。
@@ -114,6 +117,8 @@ export function useFeeds(
     // 誤ったページ番号（ページ飛ばし）が発生する。
     setLoadedFeedPages(new Map());
     latestArticleIdRef.current = data[0]?.id ?? null;
+    // 初回フェッチ完了時刻を記録して、次回ポーリングの since 基準時刻にする
+    lastPollTimeRef.current = fetchedAt;
     return data;
   }, []);
 
@@ -163,16 +168,29 @@ export function useFeeds(
   }, [doInitialLoad]);
 
   // 新着確認フェッチ: 既存記事は消さずに新着のみ追加する（閲覧中の記事を守る）
+  // since パラメータを付与して差分のみ取得し、ネットワーク帯域とパースコストを削減する
   const pollNow = useCallback(async () => {
     const prevTopId = latestArticleIdRef.current;
     if (prevTopId === null) return; // 初回ロード前はスキップ
     if (isPollingRef.current) return; // 前回のフェッチが完了していない場合はスキップ
     isPollingRef.current = true;
+    const pollStartTime = Date.now();
     try {
-      const fresh = await apiFetchJson<Article[]>("/api/articles");
+      // since が確定している場合は差分取得、未確定なら全件取得
+      const since = lastPollTimeRef.current;
+      const url = since !== null ? `/api/articles?since=${since}` : "/api/articles";
+      const fresh = await apiFetchJson<Article[]>(url);
       mergeArticles(fresh);
-      const newIdx = fresh.findIndex((a) => a.id === prevTopId);
-      if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
+      // since 付き差分取得の場合、返却される記事はすべて新着なので length で判断
+      // since なし（フォールバック）の場合は従来の prevTopId で判断
+      if (since !== null) {
+        if (fresh.length > 0) setNewArticleCount((prev) => prev + fresh.length);
+      } else {
+        const newIdx = fresh.findIndex((a) => a.id === prevTopId);
+        if (newIdx > 0) setNewArticleCount((prev) => prev + newIdx);
+      }
+      // ポーリング成功時に次回の since 基準を更新する
+      lastPollTimeRef.current = pollStartTime;
     } catch (err) {
       console.error("[polling] 新着記事の取得に失敗:", err);
       onErrorRef.current?.("新着記事の取得に失敗しました");
