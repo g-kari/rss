@@ -247,12 +247,13 @@ export function useFilteredArticles({
         noteOnly,
         noteIds: noteIdsForState,
         sortOrder,
-        activeIds,
+        activeIds: activeIdsRef.current,
         readBeforeTimestamp: readBeforeForState,
         historyOrder: historyOrderForState,
         digestMode,
         groupFeedIds,
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避
     [
       structuralFiltered,
       feedId,
@@ -267,7 +268,6 @@ export function useFilteredArticles({
       noteOnly,
       noteIdsForState,
       sortOrder,
-      activeIds,
       readBeforeForState,
       historyOrderForState,
       digestMode,
