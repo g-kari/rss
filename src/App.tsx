@@ -27,6 +27,7 @@ import { isArticle } from "./lib/type-guards";
 import { normalizeFilter, matchesKeywordFilter } from "./lib/keyword-filter";
 import { isArticleRead } from "./lib/article-filter";
 import { useFeedSelection } from "./hooks/useFeedSelection";
+import { useModalState } from "./hooks/useModalState";
 import { useFeedPatch } from "./hooks/useFeedPatch";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
@@ -333,11 +334,10 @@ export default function App() {
     setSelectedArticle,
     selectedCollectionId,
     setSelectedCollectionId,
-    snoozeTargetId,
-    setSnoozeTargetId,
-    articleAnnouncement,
-    setArticleAnnouncement,
   } = useFeedSelection(articles, feedGroups);
+
+  const { snoozeTargetId, setSnoozeTargetId, articleAnnouncement, setArticleAnnouncement } =
+    useModalState();
 
   const hasOpenPopup = useHasOpenPopup();
 
