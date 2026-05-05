@@ -1,4 +1,5 @@
 import { withBinarySession, type AuthSession } from "@/lib/server-auth";
+import { formatError } from "@/lib/api-error";
 import { isValidPublicUrl } from "@/lib/url";
 import { buildCacheKey, cachePutAsync, matchCfCache } from "@/lib/cache-helper";
 import {
@@ -145,7 +146,7 @@ async function handleGet(
     });
   } catch (err) {
     if (!isAbortError(err)) {
-      console.error("[image-proxy] fetch error:", err instanceof Error ? err.message : String(err));
+      console.error("[image-proxy] fetch error:", formatError(err));
     }
     return errorImageSvg("network");
   }

@@ -156,6 +156,54 @@ function deduplicateById(articles: Article[]): Article[] {
 }
 
 /**
+ * カスケード中の 1 ページ分の書き込みと次ページの先読みを並列実行する。
+ * 続きの overflow が残っていて次ページが maxPages 内なら PUT(N) と GET(N+1) を
+ * Promise.all で並列実行し、R2 のラウンドトリップを 1 回節約する。
+ */
+async function flushPageAndPrefetchNext(
+  bucket: R2Bucket,
+  feedHash: string,
+  pageNum: number,
+  page: Article[],
+  hasMoreOverflow: boolean,
+  nextPage: number,
+  maxPages: number,
+): Promise<Article[] | null> {
+  if (hasMoreOverflow && nextPage <= maxPages) {
+    const [, nextExisting] = await Promise.all([
+      r2Put(bucket, pageKey(feedHash, pageNum), page),
+      r2Get<Article[]>(bucket, pageKey(feedHash, nextPage), []),
+    ]);
+    return nextExisting;
+  }
+  await r2Put(bucket, pageKey(feedHash, pageNum), page);
+  return null;
+}
+
+/**
+ * Issue #131: maxPages を超過して残った overflow を末尾ページに追記する。
+ * silent drop よりも整合性を優先するため、PAGE_SIZE 超過状態で保存される。
+ * 警告ログを出して運用監視できるようにする。
+ */
+async function appendOverflowToFinalPage(
+  bucket: R2Bucket,
+  feedHash: string,
+  overflow: Article[],
+  maxPages: number,
+  pageSize: number,
+): Promise<void> {
+  const lastKey = pageKey(feedHash, maxPages);
+  const existing = await r2Get<Article[]>(bucket, lastKey, []);
+  const merged = sortByDate(deduplicateById([...overflow, ...existing]));
+  await r2Put(bucket, lastKey, merged);
+  console.warn(
+    `[shared-feed] feedHash=${feedHash} exceeded MAX_PAGES=${maxPages}. ` +
+      `Appended ${overflow.length} articles to p${maxPages} ` +
+      `(page now holds ${merged.length} items, exceeds PAGE_SIZE=${pageSize}).`,
+  );
+}
+
+/**
  * overflow を pageNum ページに先頭挿入し、溢れたぶんを次ページへカスケードする。
  * overflow は pageNum ページの既存コンテンツより「新しい」記事（すでにソート済み）。
  * 戻り値: 実際に書き込んだ最大ページ番号。
@@ -201,35 +249,23 @@ export async function cascadeOverflow(
     currentOverflow = merged.slice(pageSize);
     const nextPage = currentPage + 1;
 
-    // PUT(N) と GET(N+1) を並列実行して R2 レイテンシを削減
-    if (currentOverflow.length > 0 && nextPage <= maxPages) {
-      const [, nextExisting] = await Promise.all([
-        r2Put(bucket, pageKey(feedHash, currentPage), page),
-        r2Get<Article[]>(bucket, pageKey(feedHash, nextPage), []),
-      ]);
-      prefetched = nextExisting;
-    } else {
-      await r2Put(bucket, pageKey(feedHash, currentPage), page);
-      prefetched = null;
-    }
+    prefetched = await flushPageAndPrefetchNext(
+      bucket,
+      feedHash,
+      currentPage,
+      page,
+      currentOverflow.length > 0,
+      nextPage,
+      maxPages,
+    );
 
     lastWrittenPage = currentPage;
     currentPage = nextPage;
   }
 
-  // maxPages を超過した overflow は末尾ページに追記してデータ喪失を防ぐ
   if (currentOverflow.length > 0) {
-    const lastKey = pageKey(feedHash, maxPages);
-    const existing = await r2Get<Article[]>(bucket, lastKey, []);
-    const merged = sortByDate(deduplicateById([...currentOverflow, ...existing]));
-    await r2Put(bucket, lastKey, merged);
-    lastWrittenPage = maxPages;
-    console.warn(
-      `[shared-feed] feedHash=${feedHash} exceeded MAX_PAGES=${maxPages}. ` +
-        `Appended ${currentOverflow.length} articles to p${maxPages} ` +
-        `(page now holds ${merged.length} items, exceeds PAGE_SIZE=${pageSize}).`,
-    );
-    return { lastWrittenPage, oversized: true };
+    await appendOverflowToFinalPage(bucket, feedHash, currentOverflow, maxPages, pageSize);
+    return { lastWrittenPage: maxPages, oversized: true };
   }
 
   return { lastWrittenPage, oversized: false };

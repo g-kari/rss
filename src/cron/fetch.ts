@@ -12,6 +12,7 @@ import {
 import { sendPushToAll, type PushPayload } from "../lib/web-push";
 import { parseRetryAfter as parseRetryAfterRaw } from "../lib/retry-after";
 import { r2Get, r2Put, userPushKey } from "../lib/r2";
+import { formatError } from "../lib/serialize-error";
 import {
   computeFeedHash,
   computePrivateFeedHash,
@@ -155,7 +156,7 @@ function applyFeedError(meta: SharedFeedMeta, error: unknown): void {
     (meta.consecutiveErrors ?? 0) + 1,
     CONSECUTIVE_ERROR_SKIP_THRESHOLD,
   );
-  meta.fetchError = error instanceof Error ? error.message : String(error);
+  meta.fetchError = formatError(error);
   meta.lastErrorAt = new Date().toISOString();
   // Cloudflare Workers のログは Error オブジェクトを JSON.stringify する際に
   // name / message / stack が non-enumerable のため `{}` になってしまう。

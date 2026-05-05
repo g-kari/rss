@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { verifyJwt, refreshTokens, getJwtExp, type RefreshResult } from "./auth";
-import { apiError } from "./api-error";
+import { apiError, formatError } from "./api-error";
 import { isCsrfViolation } from "./csrf";
 
 // CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
@@ -319,8 +319,7 @@ export async function withSession(
   } catch (err) {
     // スタックトレースにシークレットが含まれるリスクを避けるため、メッセージのみをログに出力する
     const name = err instanceof Error ? err.name : "UnknownError";
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[withSession] unhandled error:", name, message);
+    console.error("[withSession] unhandled error:", name, formatError(err));
     return apiError("Internal Server Error", 500, { code: "INTERNAL_ERROR" });
   }
 }
@@ -399,8 +398,7 @@ export async function withBinarySession(
     return applyRefreshedTokensToResponse(response, result.session);
   } catch (err) {
     const name = err instanceof Error ? err.name : "UnknownError";
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[withBinarySession] unhandled error:", name, message);
+    console.error("[withBinarySession] unhandled error:", name, formatError(err));
     return new Response("Internal Server Error", { status: 500 });
   }
 }

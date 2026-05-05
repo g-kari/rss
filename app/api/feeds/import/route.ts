@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
-import { apiError } from "@/lib/api-error";
+import { apiError, formatError } from "@/lib/api-error";
 import { purgeFeedsCache } from "@/lib/cache-helper";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { opmlImportCooldownKey } from "@/lib/r2";
@@ -178,10 +178,7 @@ export async function POST(request: Request) {
       await purgeFeedsCache(origin, session.userId, ctx);
       ctx.waitUntil(
         fetchArticles(env, session.userId).catch((e: unknown) =>
-          console.error(
-            "[feeds/import] fetchArticles failed:",
-            e instanceof Error ? e.message : String(e),
-          ),
+          console.error("[feeds/import] fetchArticles failed:", formatError(e)),
         ),
       );
     }

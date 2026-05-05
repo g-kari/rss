@@ -32,6 +32,22 @@ export const ARTICLE_FETCH_OPTS = {
 };
 export { DEFAULT_FETCH_TIMEOUT_MS as FETCH_TIMEOUT_MS } from "@/lib/fetch";
 export const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
+/** ページネーション結合後・キャッシュ復元後の最終出力に課す上限（UTF-8 バイト）。R2 1 オブジェクト上限とメモリ消費を抑える */
+export const MAX_RETURNED_CONTENT_BYTES = 5 * 1024 * 1024;
+
+/**
+ * UTF-8 のバイト長で content を切り詰める。多バイト文字の途中で切れた場合は
+ * TextDecoder の置換動作に任せて不正シーケンスを安全に処理する。
+ */
+export function clampContentBytes(
+  content: string,
+  maxBytes: number = MAX_RETURNED_CONTENT_BYTES,
+): string {
+  const encoded = new TextEncoder().encode(content);
+  if (encoded.byteLength <= maxBytes) return content;
+  const truncated = encoded.subarray(0, maxBytes);
+  return new TextDecoder("utf-8", { fatal: false }).decode(truncated);
+}
 
 /** /api/content と共有する Cloudflare Cache キーを生成する。 */
 export async function buildContentCacheKey(origin: string, url: string): Promise<Request> {
@@ -154,8 +170,9 @@ export async function fetchArticleContent(
   const cacheKey = await buildContentCacheKey(origin, url);
   const cached = await matchCfCache(cacheKey);
   if (cached) {
-    const data = (await cached.json()) as { content: string };
-    return data.content;
+    const data = (await cached.json()) as { content?: unknown };
+    if (typeof data.content !== "string") return null;
+    return clampContentBytes(data.content);
   }
 
   try {
@@ -164,7 +181,8 @@ export async function fetchArticleContent(
     const { bytes: merged, ct } = result;
 
     const { content: page1Content, html } = await extractContent(merged, ct, url);
-    const content = await appendPaginatedPages(html, page1Content, url);
+    const merged2 = await appendPaginatedPages(html, page1Content, url);
+    const content = clampContentBytes(merged2);
 
     // 最終コンテンツが確定してからキャッシュ保存（競合を防ぐため1回のみ）
     saveContentToCache(cacheKey, content, ctx);

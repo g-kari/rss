@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
+import { formatError } from "@/lib/api-error";
 import { readUserSubscriptions } from "@/lib/shared-feed";
 import { readCache, isCacheValid, generateRecommendations } from "@/lib/recommendation";
 import { recommendationsGenCooldownKey } from "@/lib/r2";
@@ -50,10 +51,7 @@ export async function GET(request: Request) {
       });
       return NextResponse.json(result);
     } catch (err) {
-      console.error(
-        "[recommendations] generateRecommendations failed:",
-        err instanceof Error ? err.message : String(err),
-      );
+      console.error("[recommendations] generateRecommendations failed:", formatError(err));
       // 失敗時は期限切れキャッシュを返す（なければ空を返す）
       if (cache) return NextResponse.json(cache);
       return NextResponse.json(EMPTY_RECOMMENDATIONS);

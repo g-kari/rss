@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession, type AuthSession } from "@/lib/server-auth";
-import { apiError } from "@/lib/api-error";
+import { apiError, formatError } from "@/lib/api-error";
 import { matchCfCache } from "@/lib/cache-helper";
 import { isValidFeedUrl } from "@/lib/url";
 import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fetch";
@@ -123,7 +123,7 @@ async function handleGet(
   } catch (err) {
     if (isAbortError(err))
       return apiError("Request timeout", 504, { code: "TIMEOUT", retryable: true });
-    console.error("[content] fetch error:", err instanceof Error ? err.message : String(err));
+    console.error("[content] fetch error:", formatError(err));
     return apiError("Failed to fetch page", 502, { code: "FETCH_FAILED", retryable: true });
   }
 }
