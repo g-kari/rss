@@ -8,7 +8,7 @@ import { apiFetch } from "../lib/api-fetch";
 
 const MAX_OGP_CACHE_SIZE = 2000;
 const FETCH_BATCH_SIZE = 10;
-const SAVE_DEBOUNCE_MS = 2000;
+const SAVE_DEBOUNCE_MS = 500;
 
 export function useOgpCache(visible: Article[]): Record<string, string> {
   const [ogpCache, setOgpCache] = useState<Record<string, string>>(() =>
