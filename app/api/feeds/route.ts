@@ -27,6 +27,7 @@ import {
   pMap,
   R2_CONCURRENCY,
   MAX_FEEDS_PER_USER,
+  FEED_USER_MAP_CACHE_KEY,
 } from "@/lib/shared-feed";
 import type { SelectorConfig } from "@/types";
 import { registerAndFetchFeed } from "@/cron/fetch";
@@ -219,6 +220,8 @@ export async function POST(request: Request) {
     };
     subs.push(newSub);
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
+    // フィード追加時に feedUserMap KV キャッシュを無効化
+    await env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY);
 
     const origin = new URL(request.url).origin;
     await purgeFeedsCache(origin, session.userId, ctx);
