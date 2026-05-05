@@ -6,6 +6,7 @@ import {
   getUserLatestArticles,
   MAX_PAGES,
   readArticlePage,
+  readFeedMeta,
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
@@ -27,6 +28,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const feedHash = searchParams.get("feed");
     const page = parseInt(searchParams.get("page") ?? "1", 10);
+    const sinceParam = searchParams.get("since");
+    // since はミリ秒 Unix タイムスタンプとして受け取る
+    const sinceMs = sinceParam !== null ? parseInt(sinceParam, 10) : null;
 
     if (feedHash && !isValidFeedHash(feedHash)) {
       return apiError("Invalid feed", 400, { code: "INVALID_FEED" });
@@ -63,8 +67,24 @@ export async function GET(request: NextRequest) {
     // デフォルト: 全購読フィードの latest.json + 手動保存記事をマージして返す
     // subscriptions.json は一度だけ読み、getUserLatestArticles に渡して再利用する
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+
+    // since が指定された場合: lastFetchedAt が since より新しいフィードだけ読む（R2 GET 削減）
+    const activeSubs =
+      sinceMs !== null
+        ? await (async () => {
+            const metas = await Promise.all(
+              subs.map((s) => readFeedMeta(env.RSS_DATA, s.feedHash)),
+            );
+            return subs.filter((_, i) => {
+              const meta = metas[i];
+              if (!meta?.lastFetchedAt) return false;
+              return new Date(meta.lastFetchedAt).getTime() > sinceMs;
+            });
+          })()
+        : subs;
+
     const [feedArticles, savedArticles, readState] = await Promise.all([
-      getUserLatestArticles(env.RSS_DATA, session.userId, subs),
+      getUserLatestArticles(env.RSS_DATA, session.userId, activeSubs),
       r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
       r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), DEFAULT_READ_STATE),
     ]);
@@ -80,7 +100,25 @@ export async function GET(request: NextRequest) {
         ? filteredFeedArticles
         : filterExpiredArticles(filteredFeedArticles, protectedIds, readState.ttlDays ?? undefined);
 
-    const all = [...savedArticles, ...ttlFilteredArticles].sort(compareByDateDesc);
+    // since が指定された場合はさらに publishedAt でフィルタして差分のみ返す
+    const finalFeedArticles =
+      sinceMs !== null
+        ? ttlFilteredArticles.filter((a) => {
+            if (!a.publishedAt) return false;
+            return new Date(a.publishedAt).getTime() > sinceMs;
+          })
+        : ttlFilteredArticles;
+
+    // since 指定時は手動保存記事もフィルタリングする
+    const finalSavedArticles =
+      sinceMs !== null
+        ? savedArticles.filter((a) => {
+            const ts = a.publishedAt ?? a.createdAt;
+            return new Date(ts).getTime() > sinceMs;
+          })
+        : savedArticles;
+
+    const all = [...finalSavedArticles, ...finalFeedArticles].sort(compareByDateDesc);
     return NextResponse.json(all);
   });
 }

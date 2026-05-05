@@ -2,6 +2,10 @@
 
 ## 2026-05-06
 
+### パフォーマンス改善っ
+
+- **ポーリング差分取得で爆速化** — Issue #317。5分ごとのポーリングで全フィードの記事をまるごと返してたのを、`?since={timestamp}` で差分のみ取得するように変えたよ〜⚡ フィードの `lastFetchedAt` と比較して変化のあるフィードだけ R2 から読むから R2 GET 回数もガクッと減って、返す JSON も新着分だけでネットワーク帯域もパースコストもスリムになっちゃう✨ クライアント側は `lastPollTimeRef` で最後のポーリング時刻を管理して、初回フェッチは全件・2回目以降は差分をマージするよ〜🚀
+
 ### リファクタリングっ
 
 - **`ArticleListHeader` をサブコンポーネントに分割** — Issue #333。733 行の巨大コンポーネントを `article-list-header/` ディレクトリに分割したよ〜🔧 `LayoutSwitcher`・`FilterPills`・`FilterPillButton`・`CategoryFilter`・`SortButton`・`MarkAllReadButton`・`SearchBar` に切り出して、メインの `ArticleListHeader.tsx` は 3 行の再エクスポートになってスッキリ✨
