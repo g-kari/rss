@@ -1,5 +1,11 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-05-08
+
+### リファクタリングっ
+
+- **`useFeedDragDrop` フック抽出** — `FeedSidebar` に inline で書かれてた D&D 関連の state・ハンドラーを `src/hooks/useFeedDragDrop.ts` に分離したよ〜🔧 `draggedFeedId` / `dragOverGroupId` / `dragOverUngrouped` の 3 state と `handleDropFeedOnView` / `handleDropFeedOnGroup` / `draggedFeedInGroup` をまとめてフックにしたから、コンポーネントがすっきりしてテストもしやすくなったよっ✨
+
 ## 2026-05-07
 
 ### 激アツ新機能っ

@@ -152,6 +152,7 @@ src/
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
     useFeedOperations.ts     # フィード CRUD 操作
     useFeedGroups.ts         # /api/feed-groups CRUD + 楽観的更新（create / rename / collapse / mute / reorder / delete）
+    useFeedDragDrop.ts       # フィードの D&D 状態管理（draggedFeedId・dragOverGroupId・dragOverUngrouped）+ drop ハンドラー（onView / onGroup）
     useCollections.ts        # /api/collections CRUD + 楽観的更新（create / rename / delete / addArticle / removeArticle）
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useThemePreference.ts    # テーマ（light/dark）+ DOM 同期（useUIState から分割）

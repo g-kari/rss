@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useMemo, useCallback, memo } from "react";
+import { useRef, useState, memo } from "react";
 import type {
   Feed,
   Article,
@@ -17,8 +17,8 @@ import FeedAddModal from "../FeedAddModal";
 import RecommendationSection from "../RecommendationSection";
 import { useFeedOperations } from "../../hooks/useFeedOperations";
 import { useSidebarFeeds } from "../../hooks/useSidebarFeeds";
+import { useFeedDragDrop } from "../../hooks/useFeedDragDrop";
 import { SPECIAL_FEED_IDS } from "../../lib/storage";
-import { resolveFeedGroupDrop, resolveFeedViewDrop } from "../../lib/feed-group-drop";
 import FeedGroupsSection from "./FeedGroupsSection";
 import FeedViewTabs from "./FeedViewTabs";
 import SpecialViewButton from "./SpecialViewButton";
@@ -204,35 +204,17 @@ function FeedSidebar({
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [draggedFeedId, setDraggedFeedId] = useState<string | null>(null);
-  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
-  const [dragOverUngrouped, setDragOverUngrouped] = useState(false);
-
-  const handleDropFeedOnView = useCallback(
-    (feedId: string, view: FeedView) => {
-      if (!onSetFeedView) return;
-      const resolved = resolveFeedViewDrop(feedId, view, feeds);
-      if (!resolved) return;
-      void onSetFeedView(resolved.feed, resolved.targetView);
-    },
-    [feeds, onSetFeedView],
-  );
-
-  const handleDropFeedOnGroup = useCallback(
-    (feedId: string, groupId: string | null) => {
-      if (!onSetGroupFeed) return;
-      const resolved = resolveFeedGroupDrop(feedId, groupId, feeds);
-      if (!resolved) return;
-      void onSetGroupFeed(resolved.feed, resolved.targetGroupId);
-    },
-    [feeds, onSetGroupFeed],
-  );
-
-  const draggedFeedInGroup = useMemo(() => {
-    if (!draggedFeedId) return false;
-    const feed = feeds.find((f) => f.id === draggedFeedId);
-    return !!feed?.groupId;
-  }, [draggedFeedId, feeds]);
+  const {
+    draggedFeedId,
+    setDraggedFeedId,
+    dragOverGroupId,
+    setDragOverGroupId,
+    dragOverUngrouped,
+    setDragOverUngrouped,
+    handleDropFeedOnView,
+    handleDropFeedOnGroup,
+    draggedFeedInGroup,
+  } = useFeedDragDrop({ feeds, onSetFeedView, onSetGroupFeed });
 
   const {
     adding,
