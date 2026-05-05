@@ -28,6 +28,7 @@ import { normalizeFilter, matchesKeywordFilter } from "./lib/keyword-filter";
 import { isArticleRead } from "./lib/article-filter";
 import { useFeedSelection } from "./hooks/useFeedSelection";
 import { useModalState } from "./hooks/useModalState";
+import { useFeedFilters } from "./hooks/useFeedFilters";
 import { useFeedPatch } from "./hooks/useFeedPatch";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
@@ -427,31 +428,11 @@ export default function App() {
     [prependArticle, toggleBookmark, toggleReadingList, toast],
   );
 
-  const nsfwFeedIds = useMemo(() => new Set(feeds.filter((f) => f.nsfw).map((f) => f.id)), [feeds]);
-
-  // 選択中グループに所属するフィード ID セット — useFilteredArticles / markBulkRead 等で共有
-  const groupFeedIds = useMemo(() => {
-    if (!selectedGroupId) return undefined;
-    const ids = new Set<string>();
-    for (const f of feeds) if (f.groupId === selectedGroupId) ids.add(f.id);
-    return ids;
-  }, [selectedGroupId, feeds]);
-
-  const mutedFeedIds = useMemo(() => {
-    const now = new Date().toISOString();
-    const ids = new Set<string>();
-    for (const f of feeds) {
-      if (f.mutedUntil && f.mutedUntil > now) ids.add(f.id);
-    }
-    // グループミュート: muted グループに所属するフィードを追加で除外
-    const mutedGroupIds = new Set(feedGroups.filter((g) => g.muted).map((g) => g.id));
-    if (mutedGroupIds.size > 0) {
-      for (const f of feeds) {
-        if (f.groupId && mutedGroupIds.has(f.groupId)) ids.add(f.id);
-      }
-    }
-    return ids;
-  }, [feeds, feedGroups]);
+  const { nsfwFeedIds, groupFeedIds, mutedFeedIds } = useFeedFilters(
+    feeds,
+    feedGroups,
+    selectedGroupId,
+  );
 
   const { bookmarkCount, readingListCount, likeCount, historyCount } = useMemo(() => {
     let bm = 0,

@@ -150,6 +150,7 @@ src/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
     useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
+    useFeedFilters.ts        # nsfwFeedIds / groupFeedIds / mutedFeedIds の useMemo を集約（App.tsx から分割）
     useFeedOperations.ts     # フィード CRUD 操作
     useFeedGroups.ts         # /api/feed-groups CRUD + 楽観的更新（create / rename / collapse / mute / reorder / delete）
     useCollections.ts        # /api/collections CRUD + 楽観的更新（create / rename / delete / addArticle / removeArticle）
