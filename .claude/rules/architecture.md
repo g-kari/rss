@@ -115,7 +115,8 @@ src/
     FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
     ArticleList.tsx          # 記事一覧 (5レイアウト対応・仮想スクロール)
-    ArticleListHeader.tsx    # 記事一覧ヘッダー（レイアウト切替・フィルターピル・検索バー）
+    ArticleListHeader.tsx    # 記事一覧ヘッダー（後方互換再エクスポート → article-list-header/）
+    article-list-header/     # 記事一覧ヘッダーサブコンポーネント群（index.tsx オーケストレーター / LayoutSwitcher / FilterPills / FilterPillButton / CategoryFilter / SortButton / MarkAllReadButton / SearchBar / types.ts / constants.ts）
     ArticleItems.tsx         # 記事一覧アイテム（レイアウト別 memo コンポーネント）
     GalleryContextMenu.tsx   # ギャラリーレイアウト右クリックメニュー（画像保存・既読切替）
     LoadMoreButton.tsx       # 追加読み込みボタン（IntersectionObserver 自動トリガー）

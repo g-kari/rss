@@ -2,6 +2,10 @@
 
 ## 2026-05-06
 
+### リファクタリングっ
+
+- **`ArticleListHeader` をサブコンポーネントに分割** — Issue #333。733 行の巨大コンポーネントを `article-list-header/` ディレクトリに分割したよ〜🔧 `LayoutSwitcher`・`FilterPills`・`FilterPillButton`・`CategoryFilter`・`SortButton`・`MarkAllReadButton`・`SearchBar` に切り出して、メインの `ArticleListHeader.tsx` は 3 行の再エクスポートになってスッキリ✨
+
 ### バグ修正っ
 
 - **ギャラリービューで記事が入れ替わる問題を修正** — Issue #344。ダイジェストモード中にギャラリーでスクロールして自動既読が発生すると記事リストがバタバタ入れ替わっちゃってた問題を修正したよ〜💡 `activeIds` の変化で `filtered` が不要に再計算されてたのを `activeIdsRef` を使うことで抑制しちゃった✨
