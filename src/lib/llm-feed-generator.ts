@@ -14,6 +14,7 @@ import { fetchFollowSafeRedirects } from "./fetch";
 import type { SelectorConfig } from "../types";
 import type { ParsedFeed, ParsedItem } from "./xml-parser";
 import type { LDDocument, LDElement } from "./linkedom-types";
+import { isParsedHtmlResult } from "./linkedom-types";
 
 // workers-types 未掲載のためキャスト。CSS セレクタ推論には精度の高いモデルを使用する
 const MODEL: AiModelId = "@cf/meta/llama-3.3-70b-instruct-fp8-fast" as AiModelId;
@@ -44,7 +45,9 @@ const FETCH_TIMEOUT_MS = 8_000;
 export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] {
   let doc: LDDocument;
   try {
-    ({ document: doc } = parseHTML(html) as { document: LDDocument });
+    const parsed: unknown = parseHTML(html);
+    if (!isParsedHtmlResult(parsed)) return [];
+    doc = parsed.document;
   } catch {
     return [];
   }
@@ -154,14 +157,25 @@ export async function inferSelectors(
     // JSON ブロックを抽出（```json ... ``` にも対応）
     const match = raw.match(/\{[^}]*"articleLink"\s*:\s*"[^"]+?"[^}]*\}/);
     if (!match) return null;
-    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(match[0]);
+    } catch {
+      return null;
+    }
+    // AI レスポンスは信頼できないため、object であることをランタイム検証する
+    if (parsedJson === null || typeof parsedJson !== "object" || Array.isArray(parsedJson)) {
+      return null;
+    }
+    const parsed = parsedJson as Record<string, unknown>;
     if (typeof parsed.articleLink !== "string" || !parsed.articleLink) return null;
 
     // セレクタが構文的に有効かどうかを検証する（linkedom の querySelectorAll で試す）
     // 無効なセレクタが R2 に永続化されてクロンジョブが繰り返し失敗するのを防ぐ
-    const { document: testDoc } = parseHTML("<html></html>") as { document: LDDocument };
+    const testParsed: unknown = parseHTML("<html></html>");
+    if (!isParsedHtmlResult(testParsed)) return null;
     try {
-      testDoc.querySelectorAll(parsed.articleLink);
+      testParsed.document.querySelectorAll(parsed.articleLink);
     } catch {
       return null;
     }
@@ -232,7 +246,9 @@ export function scrapeFeed(
 ): ParsedFeed {
   let doc: LDDocument;
   try {
-    ({ document: doc } = parseHTML(html) as { document: LDDocument });
+    const parsed: unknown = parseHTML(html);
+    if (!isParsedHtmlResult(parsed)) return { title: siteTitle, siteUrl, items: [] };
+    doc = parsed.document;
   } catch {
     return { title: siteTitle, siteUrl, items: [] };
   }

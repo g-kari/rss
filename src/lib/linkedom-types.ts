@@ -20,3 +20,15 @@ export interface LDDocument {
   createElement(tag: string): LDElement;
   head: LDElement;
 }
+
+/**
+ * `parseHTML(...)` の戻り値が期待する `{ document: LDDocument }` 形状を満たすかを検証する。
+ * linkedom の API バージョン違いやエラー時に未定義値が混入してもキャストせずに弾けるようにする。
+ */
+export function isParsedHtmlResult(v: unknown): v is { document: LDDocument } {
+  if (v === null || typeof v !== "object") return false;
+  const doc = (v as { document?: unknown }).document;
+  if (doc === null || typeof doc !== "object") return false;
+  const d = doc as Record<string, unknown>;
+  return typeof d.querySelectorAll === "function" && typeof d.createElement === "function";
+}
