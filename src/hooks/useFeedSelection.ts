@@ -15,10 +15,6 @@ export interface FeedSelectionState {
   setSelectedArticle: (article: Article | null) => void;
   selectedCollectionId: string | null;
   setSelectedCollectionId: (id: string | null) => void;
-  snoozeTargetId: string | null;
-  setSnoozeTargetId: (id: string | null) => void;
-  articleAnnouncement: string;
-  setArticleAnnouncement: (msg: string) => void;
 }
 
 export function useFeedSelection(articles: Article[], feedGroups: FeedGroup[]): FeedSelectionState {
@@ -36,8 +32,6 @@ export function useFeedSelection(articles: Article[], feedGroups: FeedGroup[]): 
   );
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
-  const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
-  const [articleAnnouncement, setArticleAnnouncement] = useState("");
 
   const pendingArticleIdRef = useRef<string | null>(searchParams.get("article"));
 
@@ -88,9 +82,5 @@ export function useFeedSelection(articles: Article[], feedGroups: FeedGroup[]): 
     setSelectedArticle,
     selectedCollectionId,
     setSelectedCollectionId,
-    snoozeTargetId,
-    setSnoozeTargetId,
-    articleAnnouncement,
-    setArticleAnnouncement,
   };
 }
