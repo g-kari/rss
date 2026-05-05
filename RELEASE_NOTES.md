@@ -32,6 +32,7 @@
 
 - **`useModalState` フック新設** — Issue #333。`snoozeTargetId` と `articleAnnouncement` を `useFeedSelection` から切り出して専用フックに分離したよ〜🔧 モーダル制御の責務が明確になってスッキリ✨
 - **`useFeedSelection` をフィード選択専用に絞り込み** — Issue #333。URL パラメータ連動のフィード・グループ・タグ・記事・コレクション選択に責務を集中させたよ〜🔧
+- **`useFeedFilters` フックを新規作成** — Issue #333。`App.tsx` に inline で書いてた `nsfwFeedIds` / `groupFeedIds` / `mutedFeedIds` の useMemo 3 本を `src/hooks/useFeedFilters.ts` に切り出したよ〜🔧 機能変更なしの純粋リファクタリングで `App.tsx` がスリムになっちゃった✨
 
 ### パフォーマンス改善っ
 
