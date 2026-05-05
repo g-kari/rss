@@ -11,6 +11,10 @@ export default {
     env: CloudflareEnv,
     _ctx: ExecutionContext,
   ): Promise<void> {
-    await fetchAllFeeds({ RSS_DATA: env.RSS_DATA, FINDME_RSS: env.FINDME_RSS });
+    await fetchAllFeeds({
+      RSS_DATA: env.RSS_DATA,
+      FINDME_RSS: env.FINDME_RSS,
+      RATE_LIMIT: env.RATE_LIMIT,
+    });
   },
 } satisfies ExportedHandler<CloudflareEnv>;

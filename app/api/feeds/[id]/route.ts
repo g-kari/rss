@@ -7,6 +7,7 @@ import {
   writeUserSubscriptions,
   readFeedMeta,
   assembleClientFeed,
+  FEED_USER_MAP_CACHE_KEY,
 } from "@/lib/shared-feed";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
 import { readFeedGroups } from "@/lib/feed-groups";
@@ -25,6 +26,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       session.userId,
       subs.filter((s) => s.feedHash !== feedHash),
     );
+    // フィード削除時に feedUserMap KV キャッシュを無効化
+    await env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY);
     const origin = new URL(request.url).origin;
     await purgeFeedsCache(origin, session.userId, ctx);
     return NextResponse.json({ ok: true });

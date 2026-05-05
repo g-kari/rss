@@ -23,7 +23,7 @@ import {
   mergeNewArticles,
   readUserSubscriptions,
   listAllFeedHashes,
-  buildFeedUserMap,
+  buildFeedUserMapCached,
   readLatestArticles,
   assembleClientFeed,
 } from "../lib/shared-feed";
@@ -32,7 +32,7 @@ import { INACTIVE_FEED_DAYS } from "../lib/article-ttl";
 import { serializeError } from "../lib/serialize-error";
 import { appendAccessKeyIfRsshub, getRSSHubInstance, getRSSHubAccessKey } from "../lib/rsshub";
 
-type FetchEnv = Pick<CloudflareEnv, "RSS_DATA" | "FINDME_RSS">;
+type FetchEnv = Pick<CloudflareEnv, "RSS_DATA" | "FINDME_RSS" | "RATE_LIMIT">;
 
 const CONSECUTIVE_ERROR_SKIP_THRESHOLD = 5;
 const FEED_ERROR_RETRY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 時間
@@ -370,7 +370,7 @@ async function sendPushBatched(
  */
 export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
   const { feedUserMap, feedLastAccessMap, feedHasPriority, privateFeedCookies } =
-    await buildFeedUserMap(env.RSS_DATA);
+    await buildFeedUserMapCached(env.RSS_DATA, env.RATE_LIMIT);
 
   const feedHashes = await listAllFeedHashes(env.RSS_DATA);
   if (feedHashes.length === 0) return;

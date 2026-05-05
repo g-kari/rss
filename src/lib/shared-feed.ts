@@ -515,3 +515,76 @@ export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
   }
   return { feedUserMap, feedLastAccessMap, feedHasPriority, privateFeedCookies };
 }
+
+/** feedUserMap の KV キャッシュキー（TTL: 60分） */
+export const FEED_USER_MAP_CACHE_KEY = "feedUserMap:v1";
+const FEED_USER_MAP_TTL_SEC = 3600;
+
+/**
+ * buildFeedUserMap のキャッシュ付きラッパー。
+ * RATE_LIMIT KV に feedUserMap を JSON でキャッシュし、60分間は R2 読み取りをスキップする。
+ * feedLastAccessMap / feedHasPriority / privateFeedCookies はキャッシュ不要なので
+ * キャッシュヒット時も引き続き R2 から取得する。
+ */
+export async function buildFeedUserMapCached(
+  bucket: R2Bucket,
+  kv: KVNamespace,
+): Promise<{
+  feedUserMap: Map<string, string[]>;
+  feedLastAccessMap: Map<string, string>;
+  feedHasPriority: Set<string>;
+  privateFeedCookies: Map<string, string>;
+}> {
+  // KV キャッシュを確認
+  const cached = await kv.get<Record<string, string[]>>(FEED_USER_MAP_CACHE_KEY, "json");
+  if (cached) {
+    // feedUserMap だけキャッシュから復元。その他は R2 から再計算する。
+    const feedUserMap = new Map<string, string[]>(Object.entries(cached));
+    const feedLastAccessMap = new Map<string, string>();
+    const feedHasPriority = new Set<string>();
+    const privateFeedCookies = new Map<string, string>();
+
+    const userIds = await listPrefixedIds(bucket, "users/");
+    const allSubs = await pMap(
+      userIds,
+      (uid) => readUserSubscriptions(bucket, uid),
+      R2_CONCURRENCY,
+    );
+    for (const subs of allSubs) {
+      for (const s of subs) {
+        if (s.requestCookie) {
+          privateFeedCookies.set(s.feedHash, s.requestCookie);
+        }
+        if (s.lastAccessedAt) {
+          const current = feedLastAccessMap.get(s.feedHash);
+          if (!current || s.lastAccessedAt > current) {
+            feedLastAccessMap.set(s.feedHash, s.lastAccessedAt);
+          }
+        }
+        if (s.priority === "high") {
+          feedHasPriority.add(s.feedHash);
+        }
+      }
+    }
+    // 複数ユーザーが購読する feedHash では Cookie を使わない
+    for (const [feedHash] of privateFeedCookies) {
+      const users = feedUserMap.get(feedHash);
+      if (users && users.length > 1) {
+        privateFeedCookies.delete(feedHash);
+      }
+    }
+    console.log(`cron: buildFeedUserMapCached: KV cache hit (${feedUserMap.size} feeds)`);
+    return { feedUserMap, feedLastAccessMap, feedHasPriority, privateFeedCookies };
+  }
+
+  // キャッシュミス: R2 から全量取得
+  const result = await buildFeedUserMap(bucket);
+  // feedUserMap を KV にキャッシュ（Map は JSON 非対応なので Object に変換）
+  await kv.put(FEED_USER_MAP_CACHE_KEY, JSON.stringify(Object.fromEntries(result.feedUserMap)), {
+    expirationTtl: FEED_USER_MAP_TTL_SEC,
+  });
+  console.log(
+    `cron: buildFeedUserMapCached: KV cache miss, cached ${result.feedUserMap.size} feeds`,
+  );
+  return result;
+}
