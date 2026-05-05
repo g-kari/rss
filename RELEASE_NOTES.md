@@ -2,6 +2,10 @@
 
 ## 2026-05-06
 
+### バグ修正っ
+
+- **iOS Safari スワイプバック衝突を修正** — Issue #325。モバイルで記事を見てるとき（`view` ペイン）に右スワイプするとペイン遷移（`view → list`）とジェスチャーナビ（前の記事へ）が同時に発火しちゃってたのを修正したよ〜💡 `useGestureNav` に `currentMobilePane` と `onGoBack` オプションを追加して、`view` ペインでの右スワイプはペイン遷移を最優先にしちゃった✨ `App.tsx` → `ArticleView` → `useArticleViewState` → `useGestureNav` の経路でちゃんと `mobilePane` が渡るようになったよ〜🎀
+
 ### リファクタリングっ
 
 - **`ArticleListHeader` をサブコンポーネントに分割** — Issue #333。733 行の巨大コンポーネントを `article-list-header/` ディレクトリに分割したよ〜🔧 `LayoutSwitcher`・`FilterPills`・`FilterPillButton`・`CategoryFilter`・`SortButton`・`MarkAllReadButton`・`SearchBar` に切り出して、メインの `ArticleListHeader.tsx` は 3 行の再エクスポートになってスッキリ✨

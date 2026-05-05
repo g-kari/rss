@@ -29,6 +29,10 @@ interface UseArticleViewStateParams {
   onDeleteNote?: (articleId: string) => void;
   onAutoMarkRead?: (articleId: string) => void;
   isNsfw?: boolean;
+  /** モバイルの現在のペイン（ジェスチャー衝突回避用） */
+  currentMobilePane?: "sidebar" | "list" | "view";
+  /** モバイル view ペインで右スワイプしたときのペイン戻り処理 */
+  onGoBack?: () => void;
 }
 
 export function useArticleViewState({
@@ -40,6 +44,8 @@ export function useArticleViewState({
   onSelectPrev,
   onSelectNext,
   isNsfw,
+  currentMobilePane,
+  onGoBack,
 }: UseArticleViewStateParams) {
   const {
     theme,
@@ -179,7 +185,7 @@ export function useArticleViewState({
     handleNavMouseLeave,
     handleTouchStart,
     handleTouchEnd,
-  } = useGestureNav({ onSelectPrev, onSelectNext });
+  } = useGestureNav({ onSelectPrev, onSelectNext, currentMobilePane, onGoBack });
 
   // --- Image download ---
   const {
