@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import type { Article } from "../../types";
 import { readingTime } from "../../lib/article-utils";
 import { buildImageProxyUrl } from "../../lib/image-proxy-url";
@@ -132,8 +132,10 @@ export function ReadingTimeBadge({
   article: Article;
   className?: string;
 }) {
-  const src = article.content ?? article.summary;
-  const mins = src ? readingTime(src) : 0;
+  const mins = useMemo(() => {
+    const src = article.content ?? article.summary;
+    return src ? readingTime(src) : 0;
+  }, [article.content, article.summary]);
   return mins > 1 ? <span className={className}>約{mins}分</span> : null;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useContext } from "react";
+import { memo, useCallback, useContext } from "react";
 import { timeAgo, highlightText } from "../../lib/article-utils";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
 import { NoteIcon } from "../article-view/icons";
@@ -9,7 +9,6 @@ import {
   ArticleThumbnail,
   DuplicateBadge,
   ReadingTimeBadge,
-  handleArticleKeyDown,
   type ArticleItemProps,
 } from "./shared";
 
@@ -31,6 +30,15 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
 }: Omit<ArticleItemProps, "index">) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onSelectArticle(article);
+      }
+    },
+    [article, onSelectArticle],
+  );
   return (
     <div
       role="option"
@@ -38,7 +46,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
       tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
-      onKeyDown={handleArticleKeyDown(article, onSelectArticle)}
+      onKeyDown={handleKeyDown}
       className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${
