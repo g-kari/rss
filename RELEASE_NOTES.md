@@ -2,6 +2,10 @@
 
 ## 2026-05-06 (latest)
 
+### UX改善っ
+
+- **Chrome AI 診断メッセージを改善したよ〜** — Issue #393。Chrome バージョンが古い（131 未満）場合に「アップデートしてください」と案内するようにしたよっ💡 フラグ有効化後に Chrome の**再起動が必要**なことも明示して、Chrome 138 以上ではフラグ不要な旨も表示されるようになったよ〜✨
+
 ### リファクタリングっ
 
 - **App.tsx から3つの専用フックを分離したよ〜** — Issue #371。`useGlobalFilterAutoRead`・`useAutoLoadMoreArticles`・`useEngagementToggles` を `src/hooks/` に切り出して App.tsx を約100行スリム化したよっ🔧

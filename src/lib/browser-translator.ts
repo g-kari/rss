@@ -36,6 +36,12 @@ declare global {
   }
 }
 
+function getChromeVersion(): number | null {
+  if (typeof navigator === "undefined") return null;
+  const match = /Chrome\/(\d+)/.exec(navigator.userAgent);
+  return match ? parseInt(match[1], 10) : null;
+}
+
 /** Translator API が window 上に実装されているかをチェックする。 */
 export function isTranslatorApiSupported(): boolean {
   return typeof window !== "undefined" && typeof window.Translator !== "undefined";
@@ -74,7 +80,12 @@ export function shouldUseBrowserTranslation(availability: Availability): boolean
   return availability === "available" || availability === "downloadable";
 }
 
-export type TranslatorUnavailableReason = "not-chromium" | "flag-disabled" | "not-available" | null;
+export type TranslatorUnavailableReason =
+  | "not-chromium"
+  | "chrome-too-old"
+  | "flag-disabled"
+  | "not-available"
+  | null;
 
 /**
  * Chrome Translator API の利用可否を診断し、利用不可の場合はその理由を返す。
@@ -87,8 +98,12 @@ export async function diagnoseTranslatorAvailability(): Promise<{
   if (typeof window === "undefined") return { available: false, reason: "not-chromium" };
   if (typeof window.Translator === "undefined") {
     const isChromiumBased = /Chrome\//.test(navigator.userAgent);
-    if (isChromiumBased) return { available: false, reason: "flag-disabled" };
-    return { available: false, reason: "not-chromium" };
+    if (!isChromiumBased) return { available: false, reason: "not-chromium" };
+    const chromeVersion = getChromeVersion();
+    if (chromeVersion !== null && chromeVersion < 131) {
+      return { available: false, reason: "chrome-too-old" };
+    }
+    return { available: false, reason: "flag-disabled" };
   }
   try {
     const availability = await window.Translator.availability({
