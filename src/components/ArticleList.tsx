@@ -332,6 +332,19 @@ function ArticleList({
     overscan: 3,
   });
 
+  const scrollPositionsRef = useRef<Map<string, number>>(new Map());
+  const prevFeedIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const key = prevFeedIdRef.current ?? "all";
+    const el = scrollContainerRef.current;
+    if (el) scrollPositionsRef.current.set(key, el.scrollTop);
+    prevFeedIdRef.current = selectedFeedId;
+    const newKey = selectedFeedId ?? "all";
+    const saved = scrollPositionsRef.current.get(newKey) ?? 0;
+    if (el) el.scrollTop = saved;
+  }, [selectedFeedId]);
+
   const prevFilteredLengthRef = useRef(filtered.length);
   const wasJustCleared = prevFilteredLengthRef.current > 0 && filtered.length === 0;
   prevFilteredLengthRef.current = filtered.length;
