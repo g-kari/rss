@@ -30,6 +30,7 @@ import CategorySection from "./CategorySection";
 const ReadingStatsModal = dynamic(() => import("../ReadingStatsModal"), { ssr: false });
 const SaveUrlModal = dynamic(() => import("../SaveUrlModal"), { ssr: false });
 const ReleaseNotesModal = dynamic(() => import("../ReleaseNotesModal"), { ssr: false });
+const FeedHealthModal = dynamic(() => import("../FeedHealthModal"), { ssr: false });
 
 interface Props {
   feeds: Feed[];
@@ -199,6 +200,7 @@ function FeedSidebar({
   const [feedSearch, setFeedSearch] = useState("");
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showFeedHealth, setShowFeedHealth] = useState(false);
   const feedSearchRef = useRef<HTMLInputElement>(null);
   const [saveUrl, setSaveUrl] = useState("");
   const [saveOpen, setSaveOpen] = useState(false);
@@ -776,6 +778,7 @@ function FeedSidebar({
         onImport={() => fileInputRef.current?.click()}
         onShowReleaseNotes={() => setShowReleaseNotes(true)}
         onShowStats={() => setShowStats(true)}
+        onShowFeedHealth={() => setShowFeedHealth(true)}
         onExportOpml={exportOpml}
         onExportMarkdown={onExportMarkdown}
         onExportNotes={onExportNotes}
@@ -803,6 +806,7 @@ function FeedSidebar({
         </div>
       )}
       {showReleaseNotes && <ReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
+      {showFeedHealth && <FeedHealthModal feeds={feeds} onClose={() => setShowFeedHealth(false)} />}
       {showStats && (
         <ReadingStatsModal
           feeds={feeds}

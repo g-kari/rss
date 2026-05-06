@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Modal from "./Modal";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
+import { useToast } from "@/contexts/ToastContext";
 import {
   diagnoseTranslatorAvailability,
   type TranslatorUnavailableReason,
@@ -11,6 +12,7 @@ import {
   diagnoseSummarizerAvailability,
   type SummarizerUnavailableReason,
 } from "../lib/browser-summarizer";
+import { downloadBlob } from "../lib/download";
 import {
   FONT_SIZE_CYCLE,
   FONT_SIZE_LABELS,
@@ -105,6 +107,52 @@ export default function UserSettingsModal({ onClose }: Props) {
     imageDlFolderNsfw,
     onChangeImageDlFolderNsfw,
   } = useReaderSettings();
+
+  const toast = useToast();
+  const importRef = useRef<HTMLInputElement>(null);
+  const [opmlLoading, setOpmlLoading] = useState(false);
+
+  const handleExport = async () => {
+    if (opmlLoading) return;
+    setOpmlLoading(true);
+    try {
+      const res = await fetch("/api/feeds/export");
+      if (!res.ok) throw new Error("export failed");
+      const blob = await res.blob();
+      downloadBlob(blob, "feeds.opml");
+      toast.success("エクスポート完了");
+    } catch {
+      toast.error("エクスポートに失敗しました");
+    } finally {
+      setOpmlLoading(false);
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // reset so the same file can be selected again
+    e.target.value = "";
+    setOpmlLoading(true);
+    try {
+      const text = await file.text();
+      const res = await fetch("/api/feeds/import", {
+        method: "POST",
+        headers: { "Content-Type": "text/xml" },
+        body: text,
+      });
+      const data = (await res.json()) as { added?: number; skipped?: number; error?: string };
+      if (!res.ok) {
+        toast.error(data.error ?? "インポートに失敗しました");
+      } else {
+        toast.success(`${data.added ?? 0}件追加、${data.skipped ?? 0}件スキップ`);
+      }
+    } catch {
+      toast.error("インポートに失敗しました");
+    } finally {
+      setOpmlLoading(false);
+    }
+  };
 
   const [translatorDiag, setTranslatorDiag] = useState<{
     available: boolean;
@@ -399,6 +447,70 @@ export default function UserSettingsModal({ onClose }: Props) {
           <span className="text-[11px] text-text-muted">
             画像ダウンロード時のファイル名にフォルダプレフィックスを付与します。
           </span>
+        </div>
+
+        <div className="border-t border-border-subtle pt-4 flex flex-col gap-2">
+          <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+            フィードのインポート / エクスポート
+          </span>
+          <div className="flex gap-2">
+            {/* OPML エクスポート */}
+            <button
+              type="button"
+              disabled={opmlLoading}
+              onClick={handleExport}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              OPMLエクスポート
+            </button>
+
+            {/* OPML インポート */}
+            <input
+              ref={importRef}
+              type="file"
+              accept=".opml,.xml"
+              className="hidden"
+              onChange={handleImport}
+            />
+            <button
+              type="button"
+              disabled={opmlLoading}
+              onClick={() => importRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              OPMLインポート
+            </button>
+          </div>
         </div>
 
         <p className="text-[11px] text-text-muted">
