@@ -14,6 +14,8 @@
 
 - **ReadingTimeBadge の readingTime() を useMemo でキャッシュしたよ〜** — Issue #377。レンダリングのたびに HTML パースが走ってたの、useMemo で content/summary が変わった時だけ再計算するようにしたよっ⚡ メモリも時間も節約できてハッピー〜✨
 - **記事アイテムのキーボードハンドラーを useCallback でメモ化したよ〜** — Issue #382。CompactItem・ListItem・CardItem・MagazineItem・GalleryItem の handleKeyDown を useCallback に置き換えたよっ🔧 memo コンポーネントの Props 比較が毎回 false になってた問題が解消されて、不要な再レンダリングがなくなったよ〜💡
+- **スヌーズ判定で `new Date()` を毎回呼ぶのをやめたよ〜** — Issue #388。`buildSnoozePredicate` が記事フィルタリングのたびに `new Date().toISOString()` を呼んでたのを、`filterByStructure` で一度だけ計算して引数で渡すように修正したよっ💡 `for...in` 早期終了で空判定コストも削減したよ〜✨
+- **/api/articles に Cache-Control ヘッダーを追加したよ〜** — Issue #380。ユーザー固有データなので `private, max-age=30, stale-while-revalidate=60` に設定したよっ🎀 ブラウザキャッシュが効いてネットワークリクエストが減るよ〜✨
 
 ### バグ修正っ
 
