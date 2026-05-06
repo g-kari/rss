@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { r2Get, engagementKey } from "@/lib/r2";
 import type { EngagementEntry, EngagementLog } from "@/types";
+import { toDateStr, buildDayList } from "@/lib/stats-helpers";
 
 export interface ReadingStats {
   /** 直近 7 日の日別アクション数（fetch_full / open_original のみ） */
@@ -19,20 +20,6 @@ export interface ReadingStats {
 }
 
 const READ_ACTIONS: EngagementEntry["action"][] = ["fetch_full", "open_original"];
-
-function toDateStr(ts: string): string {
-  return ts.slice(0, 10); // "YYYY-MM-DD"
-}
-
-function buildDayList(now: Date, days: number): string[] {
-  const result: string[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() - i);
-    result.push(toDateStr(d.toISOString()));
-  }
-  return result;
-}
 
 export async function GET(request: Request) {
   return withSession(request, async ({ session, env }) => {

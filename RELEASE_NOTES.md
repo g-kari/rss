@@ -2,6 +2,10 @@
 
 ## 2026-05-06 (latest)
 
+### テスト強化っ（追加）
+
+- **テストカバレッジマップを作成して不足テストを追加したよ〜** — Issue #381。`architecture.md` に全 60 E2E テストファイルの対応表を追記したよっ📝 `stats-helpers.ts` に純粋関数を抽出して `e2e/stats.spec.ts`（10 ケース）と `e2e/recommendation.spec.ts`（13 ケース）を新規追加したよ〜✨ 未対応の重要機能（DBSC・ストリーク計算・推薦生成）も一覧化したよっ💡
+
 ### ドキュメント整備っ
 
 - **API エンドポイント仕様書を追加したよ〜** — Issue #387。`.claude/rules/api-spec.md` に高優先度エンドポイント（`POST /api/feeds`・`GET/POST /api/read-state`・`POST /api/ai/summarize`・`POST /api/ai/translate`・`GET /api/articles`・`POST /api/feeds/import`）のリクエスト/レスポンス/エラーコードを詳細に記載したよっ📝 各 Route Handler にも JSDoc コメントを追加して IDE から仕様を確認できるようになったよ〜✨
