@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
-import { AI_MODELS, DEFAULT_AI_MODEL, type WorkersAiModelId } from "../lib/ai-route-helper";
+import { AI_MODELS, DEFAULT_AI_MODEL, type WorkersAiModelId } from "../lib/ai-models";
 
 export const AUTO_READ_THRESHOLD_CYCLE = [70, 80, 90] as const;
 export type AutoReadThreshold = (typeof AUTO_READ_THRESHOLD_CYCLE)[number];

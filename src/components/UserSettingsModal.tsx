@@ -39,7 +39,7 @@ import {
 } from "../lib/reader-settings";
 import { AUTO_READ_THRESHOLD_CYCLE } from "../hooks/useUIState";
 import { ARTICLE_TTL_DAYS } from "../lib/article-ttl";
-import { AI_MODELS } from "../lib/ai-route-helper";
+import { AI_MODELS } from "../lib/ai-models";
 import type { FontFamily, FontSize } from "../types";
 
 interface Props {

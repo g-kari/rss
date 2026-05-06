@@ -7,7 +7,7 @@ import { isAbortError } from "../lib/fetch";
 import { translateHtmlInBrowser } from "../lib/translate-html";
 import { summarizeInBrowser } from "../lib/browser-summarizer";
 import { toPlainText } from "../lib/html";
-import { DEFAULT_AI_MODEL } from "../lib/ai-route-helper";
+import { DEFAULT_AI_MODEL } from "../lib/ai-models";
 import { STORAGE_KEYS, storageGet } from "../lib/storage";
 
 /** AI プロバイダー識別子（要約・翻訳共通） */

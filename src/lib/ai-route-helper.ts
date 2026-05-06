@@ -8,15 +8,7 @@ import { aiRateLimitKey } from "@/lib/r2";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 import { apiError } from "@/lib/api-error";
 
-export const AI_MODELS = [
-  { id: "@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B（バランス）" },
-  { id: "@cf/meta/llama-3.2-3b-instruct", label: "Llama 3.2 3B（高速）" },
-  { id: "@cf/meta/llama-3.1-70b-instruct", label: "Llama 3.1 70B（高精度）" },
-] as const;
-
-export type WorkersAiModelId = (typeof AI_MODELS)[number]["id"];
-
-export const DEFAULT_AI_MODEL: WorkersAiModelId = "@cf/meta/llama-3.1-8b-instruct";
+import { AI_MODELS, type WorkersAiModelId, DEFAULT_AI_MODEL } from "./ai-models";
 
 const VALID_MODEL_IDS = AI_MODELS.map((m) => m.id) as WorkersAiModelId[];
 
