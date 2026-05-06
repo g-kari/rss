@@ -39,7 +39,7 @@ export function useCollections(
         if (!cancelled) setCollections(sortByOrder(data));
       })
       .catch((err) => {
-        console.error(err);
+        if (process.env.NODE_ENV !== "production") console.error(err);
         onErrorRef.current?.("コレクションの読み込みに失敗しました");
       })
       .finally(() => {
@@ -124,7 +124,7 @@ export function useCollections(
           body: JSON.stringify({ addArticleIds: [articleId] }),
         });
       } catch (err) {
-        console.error(err);
+        if (process.env.NODE_ENV !== "production") console.error(err);
         onError?.("コレクションへの追加に失敗しました");
         setCollections((prev) =>
           prev.map((c) =>
@@ -154,7 +154,7 @@ export function useCollections(
           body: JSON.stringify({ removeArticleIds: [articleId] }),
         });
       } catch (err) {
-        console.error(err);
+        if (process.env.NODE_ENV !== "production") console.error(err);
         onError?.("コレクションからの削除に失敗しました");
         setCollections((prev) =>
           prev.map((c) =>

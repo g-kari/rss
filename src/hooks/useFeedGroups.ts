@@ -54,7 +54,7 @@ export function useFeedGroups(
         if (!cancelled) setGroups(sortByOrder(data));
       })
       .catch((err) => {
-        console.error(err);
+        if (process.env.NODE_ENV !== "production") console.error(err);
         onErrorRef.current?.("フィードグループの読み込みに失敗しました");
       })
       .finally(() => {

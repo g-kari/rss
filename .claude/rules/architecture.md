@@ -154,10 +154,13 @@ src/
     useFeedOperations.ts     # フィード CRUD 操作
     useFeedGroups.ts         # /api/feed-groups CRUD + 楽観的更新（create / rename / collapse / mute / reorder / delete）
     useFeedDragDrop.ts       # フィードの D&D 状態管理（draggedFeedId・dragOverGroupId・dragOverUngrouped）+ drop ハンドラー（onView / onGroup）
+    useFeedPatch.ts          # フィード属性の PATCH 操作（nsfw・priority・category・groupId・mutedUntil・filter・view）を集約
+    useFeedSelection.ts      # フィード・グループ・タグ・記事・コレクション選択状態管理 + URL クエリパラメータ同期
     useCollections.ts        # /api/collections CRUD + 楽観的更新（create / rename / delete / addArticle / removeArticle）
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useThemePreference.ts    # テーマ（light/dark）+ DOM 同期（useUIState から分割）
     useUIState.ts            # UI 状態管理（サブフックを合成: useThemePreference / useLayoutSettings / useAutoReadSettings / useAccessibilitySettings）
+    useModalState.ts         # App レベルのモーダル状態集約（snoozeTargetId・articleAnnouncement）
     useArticleFilters.ts     # フィルター状態管理（bool/enum/検索/著者/カテゴリ）
     useArticleSorting.ts     # ソート順管理（SortOrder サイクリング）
     useArticlePagination.ts  # ページネーション（IntersectionObserver・visible/hasMore）
