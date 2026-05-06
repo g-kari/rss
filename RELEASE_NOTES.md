@@ -2,14 +2,9 @@
 
 ## 2026-05-06 (latest)
 
-### セキュリティ対策っ
-
-- **`inflightRefresh` Map に 30秒 TTL とサイズ上限(100件)を追加したよ〜** — Issue #386。Workers が長時間稼働した時に古いエントリが滞留しちゃう可能性があったのを修正したよっ🔒 `cleanupInflight()` で30秒超のエントリを自動削除 & 100件超えたら全クリアするようにして、リフレッシュトークンのメモリ滞留リスクを削減したよ〜✨
-- **/api/ogp と /api/engagement にレートリミットを追加したよ〜** — Issue #383。OGP 取得はキャッシュ MISS 時のみ 2 秒クールダウンで外部フェッチの連打を防止したよっ🔒 エンゲージメント記録 (POST) は 1 秒クールダウンで書き込み操作の連打を防止したよ〜✨ キャッシュ HIT 時はレートリミットなしで高速レスポンスは維持してるよっ🎀
-- **`sanitizeStyleAttr` の `url()` 正規表現をクォート対応パターンに改善したよ〜** — Issue #390。`[^)]*` だとクォートされた URL 内に `)` が含まれる場合（例: `url('image\)file.png')`）に早期終了しちゃって CSS インジェクションバイパスのリスクがあったよっ💡 quoted/unquoted を分けて処理するパターン（`'[^']*'|"[^"]*"|[^)'"]*`）に変更して、CSS インジェクションバイパスリスクを低減したよ〜🔒
-
 ### リファクタリングっ
 
+- **App.tsx から3つの専用フックを分離したよ〜** — Issue #371。`useGlobalFilterAutoRead`・`useAutoLoadMoreArticles`・`useEngagementToggles` を `src/hooks/` に切り出して App.tsx を約100行スリム化したよっ🔧
 - **`applyCooldown` ヘルパーを `server-auth.ts` に追加して Route Handler 10ファイルのクールダウン重複コードをまとめたよ〜** — Issue #372。`feeds`, `feeds/[id]/refresh`, `feeds/[id]/reinfer`, `feeds/import`, `feeds/refresh`, `recommendations`, `recommendations/refresh`, `push/subscribe`, `push/unsubscribe`, `clip` の各 Route Handler から `checkAndUpdateCooldown` の直接 import を削除して、`server-auth` 経由の `applyCooldown` に統一したよっ🔧 import 元が一本化されてスッキリ〜✨
 - **名前バリデーションを parseName ヘルパーに共通化したよ〜** — Issue #370。`feed-groups` と `collections` の 4 つの Route Handler に散らばってた同一バリデーションロジック（文字列型チェック・制御文字除去・空文字チェック・最大長チェック）を `src/lib/validation.ts` の `parseName()` に集約したよっ🔧 重複コードがスッキリしてメンテしやすくなったよ〜✨
 
@@ -18,6 +13,12 @@
 - **ReadingTimeBadge の readingTime() を useMemo でキャッシュしたよ〜** — Issue #377。レンダリングのたびに HTML パースが走ってたの、useMemo で content/summary が変わった時だけ再計算するようにしたよっ⚡ メモリも時間も節約できてハッピー〜✨
 - **記事アイテムのキーボードハンドラーを useCallback でメモ化したよ〜** — Issue #382。CompactItem・ListItem・CardItem・MagazineItem・GalleryItem の handleKeyDown を useCallback に置き換えたよっ🔧 memo コンポーネントの Props 比較が毎回 false になってた問題が解消されて、不要な再レンダリングがなくなったよ〜💡
 - **スヌーズ判定で `new Date()` を毎回呼ぶのをやめたよ〜** — Issue #388。`buildSnoozePredicate` が記事フィルタリングのたびに `new Date().toISOString()` を呼んでたのを、`filterByStructure` で一度だけ計算して引数で渡すように修正したよっ💡 `for...in` 早期終了で空判定コストも削減したよ〜✨
+
+### セキュリティ対策っ
+
+- **`inflightRefresh` Map に 30秒 TTL とサイズ上限(100件)を追加したよ〜** — Issue #386。Workers が長時間稼働した時に古いエントリが滞留しちゃう可能性があったのを修正したよっ🔒 `cleanupInflight()` で30秒超のエントリを自動削除 & 100件超えたら全クリアするようにして、リフレッシュトークンのメモリ滞留リスクを削減したよ〜✨
+- **/api/ogp と /api/engagement にレートリミットを追加したよ〜** — Issue #383。OGP 取得はキャッシュ MISS 時のみ 2 秒クールダウンで外部フェッチの連打を防止したよっ🔒 エンゲージメント記録 (POST) は 1 秒クールダウンで書き込み操作の連打を防止したよ〜✨ キャッシュ HIT 時はレートリミットなしで高速レスポンスは維持してるよっ🎀
+- **`sanitizeStyleAttr` の `url()` 正規表現をクォート対応パターンに改善したよ〜** — Issue #390。`[^)]*` だとクォートされた URL 内に `)` が含まれる場合（例: `url('image\)file.png')`）に早期終了しちゃって CSS インジェクションバイパスのリスクがあったよっ💡 quoted/unquoted を分けて処理するパターン（`'[^']*'|"[^"]*"|[^)'"]*`）に変更して、CSS インジェクションバイパスリスクを低減したよ〜🔒
 - **/api/articles に Cache-Control ヘッダーを追加したよ〜** — Issue #380。ユーザー固有データなので `private, max-age=30, stale-while-revalidate=60` に設定したよっ🎀 ブラウザキャッシュが効いてネットワークリクエストが減るよ〜✨
 
 ### バグ修正っ

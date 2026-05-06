@@ -230,6 +230,9 @@ src/
     useMenuKeyboard.ts       # ポータルメニューのキーボードナビゲーション（Arrow Up/Down・ESC・フォーカストラップ）
     useDelayedGalleryItems.ts # 削除された items を 300ms 保持してフェードアウト遷移を可能にする（masonic 中間削除アニメーション用）
     useToast.ts              # トースト通知状態管理（success/error/info 3種別・最大3件スタック・自動消去）
+    useGlobalFilterAutoRead.ts # globalFilter に引っかかった記事を自動既読にする（フィルター除外記事の未読カウント混入防止）
+    useAutoLoadMoreArticles.ts # フィルター後の表示不足時にサーバーから過去記事を自動取得する（最大3回・無限ロード防止）
+    useEngagementToggles.ts  # ブックマーク・後で読む・いいねのトグルハンドラー生成（トグルとエンゲージメント記録を統合）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()

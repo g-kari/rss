@@ -8,7 +8,7 @@ import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
-import type { Article, EngagementAction } from "./types";
+import type { Article } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useFeedGroups } from "./hooks/useFeedGroups";
@@ -24,8 +24,10 @@ import { updateFaviconBadge } from "./lib/favicon";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "./lib/export-markdown";
 import { apiFetch, onApiError } from "./lib/api-fetch";
 import { isArticle } from "./lib/type-guards";
-import { normalizeFilter, matchesKeywordFilter } from "./lib/keyword-filter";
 import { isArticleRead } from "./lib/article-filter";
+import { useGlobalFilterAutoRead } from "./hooks/useGlobalFilterAutoRead";
+import { useAutoLoadMoreArticles } from "./hooks/useAutoLoadMoreArticles";
+import { useEngagementToggles } from "./hooks/useEngagementToggles";
 import { useFeedSelection } from "./hooks/useFeedSelection";
 import { useModalState } from "./hooks/useModalState";
 import { useFeedFilters } from "./hooks/useFeedFilters";
@@ -333,31 +335,7 @@ export default function App() {
 
   const hasOpenPopup = useHasOpenPopup();
 
-  // globalFilter に引っかかった記事（フィルターで非表示になる記事）を自動的に既読にする。
-  // これにより未読カウントや未読フィルターに除外記事が混入するのを防ぐ。
-  // 差分チェック: 前回チェック済み記事IDを保持し、新規追加分のみフィルタリングする。
-  const checkedArticleIdsRef = useRef<Set<string>>(new Set());
-  const prevGlobalFilterRef = useRef(globalFilter);
-  const readIdsRef = useSyncedRef(readIds);
-  useEffect(() => {
-    if (!globalFilter) return;
-    if (prevGlobalFilterRef.current !== globalFilter) {
-      checkedArticleIdsRef.current = new Set();
-      prevGlobalFilterRef.current = globalFilter;
-    }
-    const normalized = normalizeFilter(globalFilter);
-    const checked = checkedArticleIdsRef.current;
-    const currentReadIds = readIdsRef.current;
-    const newIds: string[] = [];
-    for (const a of articles) {
-      if (checked.has(a.id) || currentReadIds.has(a.id)) continue;
-      if (!matchesKeywordFilter(a, normalized)) newIds.push(a.id);
-    }
-    if (newIds.length > 0) markBulkRead(newIds);
-    const nextChecked = new Set<string>();
-    for (const a of articles) nextChecked.add(a.id);
-    checkedArticleIdsRef.current = nextChecked;
-  }, [articles, globalFilter, markBulkRead, readIdsRef]);
+  useGlobalFilterAutoRead(articles, globalFilter, readIds, markBulkRead);
 
   const totalUnread = useMemo(
     () => articles.filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp)).length,
@@ -551,17 +529,7 @@ export default function App() {
     notifyArticlesAdded();
   }, [selectedFeedId, loadMoreFeedArticles, loadMoreAllFeedsArticles, feeds, notifyArticlesAdded]);
 
-  // フィルター適用後に表示件数が不足している場合、サーバーから過去記事を自動取得する。
-  // 未読フィルター等でローカルの記事が枯渇しても、サーバー側に残ページがある限り自動継続する。
-  // 初回ロード中・連続3回超えの場合はスキップ（無限ロード防止）。
-  const MAX_AUTO_LOAD = 3;
-  const autoLoadingRef = useRef(false);
-  const autoLoadCountRef = useRef(0);
-
-  // フィード切り替え・フィルター変更時にカウントをリセット
-  useEffect(() => {
-    autoLoadCountRef.current = 0;
-  }, [
+  useAutoLoadMoreArticles(hasMore, feedHasMorePages, loadingArticles, handleLoadMoreFeedArticles, [
     selectedFeedId,
     unreadOnly,
     bookmarkOnly,
@@ -573,17 +541,6 @@ export default function App() {
     query,
     globalFilter,
   ]);
-
-  useEffect(() => {
-    if (hasMore || !feedHasMorePages || autoLoadingRef.current) return;
-    if (loadingArticles) return;
-    if (autoLoadCountRef.current >= MAX_AUTO_LOAD) return;
-    autoLoadingRef.current = true;
-    autoLoadCountRef.current += 1;
-    handleLoadMoreFeedArticles().finally(() => {
-      autoLoadingRef.current = false;
-    });
-  }, [hasMore, feedHasMorePages, handleLoadMoreFeedArticles, loadingArticles]);
 
   const listFocusModeRef = useSyncedRef(listFocusMode);
   const wasInListFocusModeRef = useRef(false);
@@ -612,21 +569,13 @@ export default function App() {
     prevFocusModeRef.current = focusMode;
   }, [focusMode, setListFocusMode]);
 
-  const articlesRef = useSyncedRef(articles);
-  const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useMemo(() => {
-    function makeHandler(toggle: (id: string) => void, type: EngagementAction) {
-      return (id: string) => {
-        toggle(id);
-        const article = articlesRef.current.find((a) => a.id === id);
-        if (article) recordEngagement(id, article.feedHash, type);
-      };
-    }
-    return {
-      handleToggleBookmark: makeHandler(toggleBookmark, "bookmark"),
-      handleToggleReadingList: makeHandler(toggleReadingList, "reading_list"),
-      handleToggleLike: makeHandler(toggleLike, "like"),
-    };
-  }, [articlesRef, toggleBookmark, toggleReadingList, toggleLike, recordEngagement]);
+  const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useEngagementToggles(
+    articles,
+    toggleBookmark,
+    toggleReadingList,
+    toggleLike,
+    recordEngagement,
+  );
 
   useKeyboardNav({
     filteredArticles: filtered,
