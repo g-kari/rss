@@ -127,6 +127,15 @@ export function useFilteredArticles({
     () => new Map(feeds.map((f) => [f.id, f.title] as [string, string])),
     [feeds],
   );
+  const digestLimitMap = useMemo(
+    () =>
+      new Map(
+        feeds
+          .filter((f) => f.digestLimit !== undefined)
+          .map((f) => [f.id, f.digestLimit!] as [string, number]),
+      ),
+    [feeds],
+  );
   const viewFeedIds = useMemo(() => {
     if (!activeFeedView) return undefined;
     const ids = new Set<string>();
@@ -250,6 +259,7 @@ export function useFilteredArticles({
         historyOrder: historyOrderForState,
         digestMode,
         groupFeedIds,
+        digestLimitMap: digestLimitMap.size > 0 ? digestLimitMap : undefined,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避。selectedArticleId/gracePeriodId は選択記事が unreadOnly 等で除外されないよう明示的に deps に含める
     [
@@ -272,6 +282,7 @@ export function useFilteredArticles({
       historyOrderForState,
       digestMode,
       groupFeedIds,
+      digestLimitMap,
     ],
   );
 

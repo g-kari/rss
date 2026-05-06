@@ -45,6 +45,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     groupId?: unknown;
     mutedUntil?: unknown;
     view?: unknown;
+    digestLimit?: unknown;
   }>(request, async ({ body, session, env, ctx }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     const sub = subs.find((s) => s.feedHash === feedHash);
@@ -90,7 +91,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       } else if (typeof body.category !== "string") {
         return apiError("category must be a string or null", 400, { code: "INVALID_CATEGORY" });
       } else {
-        // 制御文字を除去してからバリデーション
         const category = stripControlChars(body.category.trim());
         if (category.length > 50)
           return apiError("category too long", 400, { code: "INVALID_CATEGORY" });
@@ -143,6 +143,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         });
       } else {
         sub.view = body.view;
+      }
+    }
+
+    if ("digestLimit" in body) {
+      if (body.digestLimit === null) {
+        delete sub.digestLimit;
+      } else if (
+        typeof body.digestLimit !== "number" ||
+        !Number.isInteger(body.digestLimit) ||
+        body.digestLimit < 0 ||
+        body.digestLimit > 100
+      ) {
+        return apiError("digestLimit must be an integer between 0 and 100, or null", 400, {
+          code: "INVALID_DIGEST_LIMIT",
+        });
+      } else {
+        sub.digestLimit = body.digestLimit;
       }
     }
 

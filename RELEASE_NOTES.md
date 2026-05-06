@@ -6,6 +6,10 @@
 
 - **フィード別ダイジェスト件数をカスタマイズできるようになったよ〜** — Issue #384。ダイジェストモード（`D` キー）は全フィード一律 3 件に制限してたけど、フィードごとにコンテキストメニューから「1件」「3件」「5件」「10件」「全件」を選べるようになったよっ✨ `UserSubscription.digestLimit` に保存されて `PATCH /api/feeds/:id` で更新されるよ〜🎀 `digestLimit: 0` を設定すると全件表示（フィルタなし）になって、`undefined` のままならデフォルトの 3 件が使われるよっ💡 E2E テスト 6 ケース（`e2e/article-filter-digest.spec.ts`）も追加したよ〜🚀
 
+- **Push 通知のフィード別フィルタリング設定を追加したよ〜** — Issue #373。フィード詳細モーダルにトグルスイッチを追加して、特定フィードの通知だけ個別に OFF にできるようになったよっ✨ `PushConfig.disabledFeeds` に feedHash → false のマップを保存して、cron の `sendPushBatched` で通知送信前にフィルタリングするよ〜🔔 `GET /api/push/config` と `PUT /api/push/config` の新エンドポイントで設定を取得・保存できるよ〜🎀
+
+- **Push 通知のサイレント時間帯設定を追加したよ〜** — Issue #389。ユーザー設定モーダルに開始・終了時刻とタイムゾーン選択を追加したよっ🎀 `PushConfig.silentStart` / `silentEnd` / `timezone` を R2 に保存して、cron 実行時にサイレント時間帯内なら通知をスキップするよ〜🌙 日またぎのサイレント時間帯（例: 22:00〜7:00）にも対応してるよっ💡 E2E テスト 17 ケース（`e2e/push-config.spec.ts`）も追加したよ〜✨
+
 ### セキュリティ対策っ
 
 - **DBSC RFC 8941 対応 + トークンリフレッシュフローへの組み込みだよ〜** — Issue #346 / #376。`getAuthSession` が DBSC バインディング済みセッションを検出したときに `Sec-Session-Challenge` ヘッダー付き 401 を返すようにしたよっ🔒 `api-fetch.ts` もこのヘッダーを検出してページリロードで再試行するようになったよ〜✨ 非 DBSC セッションの認証フローは一切変更なしで既存ユーザーへの影響ゼロだよっ💡 E2E テスト 14 ケース（`generateDbscChallenge` / `buildSecureSessionRegistrationHeader` / `importDbscPublicKey` / `verifyDbscResponse`）も追加したよ〜🎀

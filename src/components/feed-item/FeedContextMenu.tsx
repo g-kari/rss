@@ -179,6 +179,75 @@ export function ViewMenuPortal({ feed, menuPortalStyle, onClose, onSetView }: Vi
   );
 }
 
+const DIGEST_OPTIONS = [
+  { label: "デフォルト (3件)", value: null },
+  { label: "1件", value: 1 },
+  { label: "3件", value: 3 },
+  { label: "5件", value: 5 },
+  { label: "10件", value: 10 },
+  { label: "全件", value: 0 },
+] as const;
+
+interface DigestMenuProps {
+  feed: Feed;
+  menuPortalStyle: React.CSSProperties;
+  onClose: () => void;
+  onSetDigestLimit: (limit: number | null) => Promise<void>;
+}
+
+export function DigestMenuPortal({
+  feed,
+  menuPortalStyle,
+  onClose,
+  onSetDigestLimit,
+}: DigestMenuProps) {
+  return createPortal(
+    <>
+      <div
+        className="fixed inset-0 z-[49]"
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+      />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
+        style={menuPortalStyle}
+      >
+        <div className="px-3 pt-2 pb-1">
+          <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+            ダイジェスト件数
+          </p>
+        </div>
+        <div className="border-t border-border-subtle">
+          {DIGEST_OPTIONS.map((opt) => {
+            const current =
+              opt.value === null ? feed.digestLimit === undefined : feed.digestLimit === opt.value;
+            return (
+              <button
+                key={String(opt.value)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                  if (!current) void onSetDigestLimit(opt.value);
+                }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left ${current ? "text-text-strong bg-surface-subtle" : "text-text-default"}`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full flex-shrink-0 ${current ? "bg-accent-dot" : "bg-transparent border border-text-faint"}`}
+                />
+                <span className="truncate">{opt.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>,
+    document.body,
+  );
+}
+
 interface GroupMenuProps {
   feed: Feed;
   groups: FeedGroup[];

@@ -171,6 +171,63 @@ export default function UserSettingsModal({ onClose }: Props) {
     diagnoseSummarizerAvailability().then(setSummarizerDiag);
   }, []);
 
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [silentStart, setSilentStart] = useState("");
+  const [silentEnd, setSilentEnd] = useState("");
+  const [timezone, setTimezone] = useState("");
+  const [pushConfigLoading, setPushConfigLoading] = useState(false);
+  const timezones =
+    typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    setPushEnabled(true);
+    fetch("/api/push/config")
+      .then((r) =>
+        r.ok
+          ? (r.json() as Promise<{
+              silentStart: string | null;
+              silentEnd: string | null;
+              timezone: string | null;
+            }>)
+          : null,
+      )
+      .then((data) => {
+        if (!data) return;
+        setSilentStart(data.silentStart ?? "");
+        setSilentEnd(data.silentEnd ?? "");
+        setTimezone(data.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "");
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveSilentHours = async () => {
+    if (pushConfigLoading) return;
+    setPushConfigLoading(true);
+    try {
+      const body: Record<string, string | null> = {
+        silentStart: silentStart || null,
+        silentEnd: silentEnd || null,
+        timezone: timezone || null,
+      };
+      const res = await fetch("/api/push/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        toast.success("サイレント時間帯を保存しました");
+      } else {
+        toast.error("保存に失敗しました");
+      }
+    } catch {
+      toast.error("保存に失敗しました");
+    } finally {
+      setPushConfigLoading(false);
+    }
+  };
+
   return (
     <Modal
       title="ユーザー設定"
@@ -477,6 +534,61 @@ export default function UserSettingsModal({ onClose }: Props) {
             画像ダウンロード時のファイル名にフォルダプレフィックスを付与します。
           </span>
         </div>
+
+        {pushEnabled && (
+          <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
+            <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+              Push 通知サイレント時間帯
+            </span>
+            <SettingRow label="開始時刻">
+              <input
+                type="time"
+                value={silentStart}
+                onChange={(e) => setSilentStart(e.target.value)}
+                className="px-2 py-1 text-[13px] rounded-md border border-border-default bg-surface-elevated text-text-default focus:outline-none focus:border-ink transition-colors"
+              />
+            </SettingRow>
+            <SettingRow label="終了時刻">
+              <input
+                type="time"
+                value={silentEnd}
+                onChange={(e) => setSilentEnd(e.target.value)}
+                className="px-2 py-1 text-[13px] rounded-md border border-border-default bg-surface-elevated text-text-default focus:outline-none focus:border-ink transition-colors"
+              />
+            </SettingRow>
+            {timezones.length > 0 && (
+              <SettingRow label="タイムゾーン">
+                <select
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
+                >
+                  <option value="">未設定</option>
+                  {timezones.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+              </SettingRow>
+            )}
+            <div className="pl-28">
+              <button
+                type="button"
+                disabled={pushConfigLoading}
+                onClick={handleSaveSilentHours}
+                className="px-3 py-1.5 text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50"
+              >
+                保存
+              </button>
+            </div>
+            <div className="flex flex-col gap-1 pl-28">
+              <span className="text-[11px] text-text-muted">
+                設定した時間帯は Push 通知を送信しません。開始・終了どちらかが空の場合は無効です。
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="border-t border-border-subtle pt-4 flex flex-col gap-2">
           <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">

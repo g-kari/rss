@@ -361,6 +361,7 @@ export default function App() {
     muteFeed,
     setFeedView,
     saveFilter,
+    setDigestLimit,
   } = useFeedPatch(updateFeed);
 
   function onFeedDeleted(id: string) {
@@ -1013,6 +1014,7 @@ export default function App() {
                       },
                       onMuteFeed: muteFeed,
                       onSetFeedView: setFeedView,
+                      onSetDigestLimit: setDigestLimit,
                       onChangeActiveFeedView: (view) => {
                         onChangeActiveFeedView(view);
                         setSelectedFeedId(null);

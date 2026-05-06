@@ -22,6 +22,7 @@ export interface FeedItemProps {
   onSetGroup?: (groupId: string | null) => Promise<void>;
   onMute?: (mutedUntil: string | null) => Promise<void>;
   onSetView?: (view: FeedView | null) => Promise<void>;
+  onSetDigestLimit?: (limit: number | null) => Promise<void>;
   onDragStartFeed?: (feedId: string) => void;
   onDragEndFeed?: () => void;
   isDragging?: boolean;

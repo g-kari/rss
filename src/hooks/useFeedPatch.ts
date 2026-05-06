@@ -14,6 +14,7 @@ export interface FeedPatchActions {
   muteFeed: (feed: Feed, mutedUntil: string | null) => Promise<void>;
   setFeedView: (feed: Feed, view: FeedView | null) => Promise<void>;
   saveFilter: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
+  setDigestLimit: (feed: Feed, limit: number | null) => Promise<void>;
 }
 
 export function useFeedPatch(updateFeed: (feed: Feed) => void): FeedPatchActions {
@@ -86,6 +87,13 @@ export function useFeedPatch(updateFeed: (feed: Feed) => void): FeedPatchActions
     [applyFeedPatch],
   );
 
+  const setDigestLimit = useCallback(
+    async (feed: Feed, limit: number | null) => {
+      await applyFeedPatch(feed.id, { digestLimit: limit });
+    },
+    [applyFeedPatch],
+  );
+
   return {
     patchFeed,
     toggleNsfwFeed,
@@ -95,5 +103,6 @@ export function useFeedPatch(updateFeed: (feed: Feed) => void): FeedPatchActions
     muteFeed,
     setFeedView,
     saveFilter,
+    setDigestLimit,
   };
 }

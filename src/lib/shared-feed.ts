@@ -423,6 +423,7 @@ export function assembleClientFeed(meta: SharedFeedMeta, sub: UserSubscription):
     mutedUntil: sub.mutedUntil,
     view: sub.view,
     oversizeAlert: meta.oversizeAlert ?? false,
+    digestLimit: sub.digestLimit,
   };
 }
 

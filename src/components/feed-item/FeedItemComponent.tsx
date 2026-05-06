@@ -16,6 +16,7 @@ import {
   MuteMenuPortal,
   ViewMenuPortal,
   GroupMenuPortal,
+  DigestMenuPortal,
 } from "./FeedContextMenu";
 import FeedTitleContent from "./FeedTitleContent";
 
@@ -57,6 +58,7 @@ export default function FeedItem({
   onSetGroup,
   onMute,
   onSetView,
+  onSetDigestLimit,
   onDragStartFeed,
   onDragEndFeed,
   isDragging,
@@ -76,13 +78,14 @@ export default function FeedItem({
   const [muteOpen, setMuteOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
+  const [digestOpen, setDigestOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  usePopupLock(menuOpen || muteOpen || groupOpen || viewOpen);
+  usePopupLock(menuOpen || muteOpen || groupOpen || viewOpen || digestOpen);
 
   useEventListener("scroll", () => setMenuOpen(false), window, true);
   useEventListener("resize", () => setMenuOpen(false));
@@ -288,6 +291,39 @@ export default function FeedItem({
       },
       show: !!onSetView,
       className: feed.view ? "text-text-default" : "text-text-faint hover:text-text-default",
+    },
+    {
+      key: "digest",
+      label: (() => {
+        if (feed.digestLimit === undefined) return "ダイジェスト: デフォルト";
+        if (feed.digestLimit === 0) return "ダイジェスト: 全件";
+        return `ダイジェスト: ${feed.digestLimit}件`;
+      })(),
+      icon: (
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="1" y1="2.5" x2="9" y2="2.5" />
+          <line x1="1" y1="5" x2="7" y2="5" />
+          <line x1="1" y1="7.5" x2="5" y2="7.5" />
+        </svg>
+      ),
+      onClick: () => {
+        setMenuOpen(false);
+        setDigestOpen(true);
+      },
+      show: !!onSetDigestLimit,
+      className:
+        feed.digestLimit !== undefined
+          ? "text-text-default"
+          : "text-text-faint hover:text-text-default",
     },
     {
       key: "mute",
@@ -622,6 +658,14 @@ export default function FeedItem({
           menuPortalStyle={menuPortalStyle}
           onClose={() => setViewOpen(false)}
           onSetView={onSetView}
+        />
+      )}
+      {digestOpen && onSetDigestLimit && (
+        <DigestMenuPortal
+          feed={feed}
+          menuPortalStyle={menuPortalStyle}
+          onClose={() => setDigestOpen(false)}
+          onSetDigestLimit={onSetDigestLimit}
         />
       )}
       {groupOpen && onSetGroup && (

@@ -36,6 +36,7 @@ export interface FeedSidebarActions {
   onMarkAllReadInGroup?: (feedIds: string[]) => void;
   onMuteFeed?: (feed: Feed, mutedUntil: string | null) => Promise<void>;
   onSetFeedView?: (feed: Feed, view: FeedView | null) => Promise<void>;
+  onSetDigestLimit?: (feed: Feed, limit: number | null) => Promise<void>;
   onChangeActiveFeedView: (view: FeedView) => void;
   onDismissRecommendation?: (id: string) => void;
   onRefreshRecommendations?: () => void;

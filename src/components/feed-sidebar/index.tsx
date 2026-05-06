@@ -141,6 +141,7 @@ function FeedSidebar({
     onMarkAllReadInGroup,
     onMuteFeed,
     onSetFeedView,
+    onSetDigestLimit,
     onChangeActiveFeedView,
     onDismissRecommendation,
     onRefreshRecommendations,
@@ -264,6 +265,7 @@ function FeedSidebar({
         onSetGroup={onSetGroupFeed ? (groupId) => onSetGroupFeed(feed, groupId) : undefined}
         onMute={onMuteFeed ? (mutedUntil) => onMuteFeed(feed, mutedUntil) : undefined}
         onSetView={onSetFeedView ? (view) => onSetFeedView(feed, view) : undefined}
+        onSetDigestLimit={onSetDigestLimit ? (limit) => onSetDigestLimit(feed, limit) : undefined}
         onDragStartFeed={onSetGroupFeed ? (id) => setDraggedFeedId(id) : undefined}
         onDragEndFeed={
           onSetGroupFeed

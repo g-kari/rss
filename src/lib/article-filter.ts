@@ -61,6 +61,8 @@ export interface ArticleFilterOptions {
   feedCategoryMap?: Map<string, string>;
   /** ダイジェストモード — 全フィード表示時にフィードごとの最大件数を制限する */
   digestMode?: boolean;
+  /** feedHash → ダイジェスト表示件数のマップ（0 = 全件, undefined = デフォルト 3） */
+  digestLimitMap?: Map<string, number>;
   /** グループ選択時の対象フィード ID セット — 設定時は feedHash が含まれる記事のみ表示 */
   groupFeedIds?: Set<string>;
   /** feedHash → フィード表示名のマップ — `feed:` クエリで使用（未指定時は feed: クエリは常にミス） */
@@ -295,6 +297,8 @@ export interface StateFilterOptions {
   historyOrder: string[];
   digestMode?: boolean;
   groupFeedIds?: Set<string>;
+  /** feedHash → ダイジェスト表示件数のマップ（0 = 全件, undefined = デフォルト 3） */
+  digestLimitMap?: Map<string, number>;
 }
 
 export function filterByStructure(articles: Article[], opts: ArticleFilterOptions): Article[] {
@@ -353,8 +357,10 @@ export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOp
     const feedCount = new Map<string, number>();
     return list.filter((a) => {
       if (activeIds.has(a.id)) return true;
+      const limit = opts.digestLimitMap?.get(a.feedHash);
+      const effectiveLimit = limit === undefined ? 3 : limit === 0 ? Infinity : limit;
       const count = feedCount.get(a.feedHash) ?? 0;
-      if (count >= 3) return false;
+      if (count >= effectiveLimit) return false;
       feedCount.set(a.feedHash, count + 1);
       return true;
     });

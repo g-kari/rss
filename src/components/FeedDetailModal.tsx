@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Feed } from "../types";
 import Modal from "./Modal";
 
@@ -11,6 +11,38 @@ interface Props {
 
 export default function FeedDetailModal({ feed, onClose }: Props) {
   const health = getHealthStatus(feed);
+
+  const [pushDisabled, setPushDisabled] = useState<boolean | null>(null);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/push/config")
+      .then((r) =>
+        r.ok ? (r.json() as Promise<{ disabledFeeds: Record<string, boolean> }>) : null,
+      )
+      .then((data) => {
+        if (data) setPushDisabled(data.disabledFeeds[feed.id] === true);
+      })
+      .catch(() => {});
+  }, [feed.id]);
+
+  const handlePushToggle = async () => {
+    if (pushLoading || pushDisabled === null) return;
+    setPushLoading(true);
+    const next = !pushDisabled;
+    try {
+      const res = await fetch("/api/push/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disabledFeeds: { [feed.id]: next } }),
+      });
+      if (res.ok) setPushDisabled(next);
+    } catch {
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
   return (
     <Modal title="フィード詳細" onClose={onClose}>
       <div className="overflow-y-auto max-h-[70vh] p-4 space-y-4 text-[12px]">
@@ -104,6 +136,32 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
               label="カテゴリも対象"
               value={feed.filter.matchCategories ? "はい" : "いいえ"}
             />
+          </DetailSection>
+        )}
+
+        {pushDisabled !== null && (
+          <DetailSection title="Push 通知">
+            <div className="flex items-center gap-3">
+              <span className="text-text-muted w-[100px]">このフィード</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!pushDisabled}
+                aria-label={pushDisabled ? "Push 通知を有効にする" : "Push 通知を無効にする"}
+                disabled={pushLoading}
+                onClick={handlePushToggle}
+                className={`relative h-5 w-9 rounded-full transition-colors duration-150 disabled:opacity-50 ${
+                  !pushDisabled ? "bg-ink" : "bg-border-default"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                    !pushDisabled ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+              <span className="text-text-muted">{pushDisabled ? "無効" : "有効"}</span>
+            </div>
           </DetailSection>
         )}
       </div>

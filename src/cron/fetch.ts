@@ -31,6 +31,7 @@ import { pMapSettled } from "../lib/concurrency";
 import { INACTIVE_FEED_DAYS } from "../lib/article-ttl";
 import { serializeError } from "../lib/serialize-error";
 import { appendAccessKeyIfRsshub, getRSSHubInstance, getRSSHubAccessKey } from "../lib/rsshub";
+import { isInSilentHours } from "../lib/push-silent-hours";
 
 type FetchEnv = Pick<CloudflareEnv, "RSS_DATA" | "FINDME_RSS" | "RATE_LIMIT">;
 
@@ -322,6 +323,7 @@ export async function fetchAndUpdateSharedFeed(
 export interface FeedNewArticles {
   articles: Article[];
   feedTitle: string;
+  feedHash: string;
 }
 
 export function buildBatchedPushPayload(feedEntries: FeedNewArticles[]): PushPayload {
@@ -349,7 +351,15 @@ async function sendPushBatched(
       const pushKey = userPushKey(userId);
       const config = await r2Get<PushConfig>(env.RSS_DATA, pushKey, { subscriptions: [] });
       if (config.subscriptions.length === 0) return;
-      const payload = buildBatchedPushPayload(feedEntries);
+
+      if (isInSilentHours(config)) return;
+
+      const enabledEntries = config.disabledFeeds
+        ? feedEntries.filter((e) => !config.disabledFeeds![e.feedHash])
+        : feedEntries;
+      if (enabledEntries.length === 0) return;
+
+      const payload = buildBatchedPushPayload(enabledEntries);
       const remaining = await sendPushToAll(config.subscriptions, payload);
       if (remaining.length !== config.subscriptions.length) {
         config.subscriptions = remaining;
@@ -421,7 +431,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
         entries = [];
         userFeedMap.set(userId, entries);
       }
-      entries.push({ articles: newArticles, feedTitle: meta?.title ?? "RSS" });
+      entries.push({ articles: newArticles, feedTitle: meta?.title ?? "RSS", feedHash });
     }
   }
   if (userFeedMap.size > 0) {

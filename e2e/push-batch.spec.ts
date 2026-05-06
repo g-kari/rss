@@ -21,7 +21,11 @@ function makeArticle(overrides: Partial<Article> = {}): Article {
 test.describe("buildBatchedPushPayload", () => {
   test("単一フィード・単一記事の場合はフィード名と記事タイトルを表示", () => {
     const entries: FeedNewArticles[] = [
-      { articles: [makeArticle({ title: "新機能リリース" })], feedTitle: "Tech Blog" },
+      {
+        articles: [makeArticle({ title: "新機能リリース" })],
+        feedTitle: "Tech Blog",
+        feedHash: "feed1",
+      },
     ];
     const payload = buildBatchedPushPayload(entries);
     expect(payload.title).toBe("Tech Blog");
@@ -34,6 +38,7 @@ test.describe("buildBatchedPushPayload", () => {
       {
         articles: [makeArticle(), makeArticle({ id: "a2" }), makeArticle({ id: "a3" })],
         feedTitle: "Dev Blog",
+        feedHash: "feed2",
       },
     ];
     const payload = buildBatchedPushPayload(entries);
@@ -43,8 +48,12 @@ test.describe("buildBatchedPushPayload", () => {
 
   test("複数フィードの場合はフィード数を含めたサマリーを表示", () => {
     const entries: FeedNewArticles[] = [
-      { articles: [makeArticle(), makeArticle({ id: "a2" })], feedTitle: "Blog A" },
-      { articles: [makeArticle({ id: "a3" })], feedTitle: "Blog B" },
+      {
+        articles: [makeArticle(), makeArticle({ id: "a2" })],
+        feedTitle: "Blog A",
+        feedHash: "feedA",
+      },
+      { articles: [makeArticle({ id: "a3" })], feedTitle: "Blog B", feedHash: "feedB" },
     ];
     const payload = buildBatchedPushPayload(entries);
     expect(payload.title).toBe("RSS Reader");
@@ -53,7 +62,7 @@ test.describe("buildBatchedPushPayload", () => {
 
   test("単一フィード・タイトル空の記事は「新着記事」フォールバック", () => {
     const entries: FeedNewArticles[] = [
-      { articles: [makeArticle({ title: "" })], feedTitle: "Empty Title Feed" },
+      { articles: [makeArticle({ title: "" })], feedTitle: "Empty Title Feed", feedHash: "feedE" },
     ];
     const payload = buildBatchedPushPayload(entries);
     expect(payload.body).toBe("新着記事");
