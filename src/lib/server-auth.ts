@@ -5,6 +5,7 @@ import { verifyJwt, refreshTokens, getJwtExp, type RefreshResult } from "./auth"
 import { apiError, formatError } from "./api-error";
 import { isCsrfViolation } from "./csrf";
 import { checkAndUpdateCooldown } from "./rate-limit";
+import { generateDbscChallenge } from "./dbsc";
 
 // CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
 export { isCsrfViolation } from "./csrf";
@@ -222,7 +223,7 @@ export interface AuthSession {
  * Cookie からユーザー ID を取得する。
  * null の場合は認証失敗。refreshedTokens がある場合はレスポンスに cookie をセットすること。
  */
-export async function getAuthSession(): Promise<AuthSession | null> {
+export async function getAuthSession(): Promise<AuthSession | null | { dbscChallenge: string }> {
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
@@ -239,6 +240,16 @@ export async function getAuthSession(): Promise<AuthSession | null> {
   const { env } = await getCloudflareContext({ async: true });
   const sessionData = await getServerSession(env.RSS_DATA, sessionId);
   if (!sessionData) return null;
+
+  // DBSC バインディング済みセッション: チャレンジを発行して鍵所持証明を要求する
+  if (sessionData.dbscSessionId) {
+    const challenge = generateDbscChallenge();
+    await env.RSS_DATA.put(
+      `users/${sessionData.userId}/dbsc-challenge-${sessionData.dbscSessionId}.json`,
+      JSON.stringify({ challenge, expiresAt: Date.now() + 5 * 60 * 1000 }),
+    );
+    return { dbscChallenge: challenge };
+  }
 
   const refreshed = await deduplicatedRefresh(sessionData.refreshToken);
   if (refreshed.kind === "ok") {
@@ -272,6 +283,11 @@ export async function requireSession(): Promise<
   const session = await getAuthSession();
   if (!session) {
     return { error: apiError("Unauthorized", 401, { code: "UNAUTHORIZED" }) };
+  }
+  if ("dbscChallenge" in session) {
+    const res = apiError("Session challenge required", 401, { code: "DBSC_CHALLENGE_REQUIRED" });
+    res.headers.set("Sec-Session-Challenge", `challenge="${session.dbscChallenge}"`);
+    return { error: res };
   }
   return { session };
 }

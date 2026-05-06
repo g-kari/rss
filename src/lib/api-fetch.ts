@@ -96,6 +96,12 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   // プロアクティブリフレッシュ済みの場合は 401 フォールバックをスキップ
   // （inflightAuthRecovery がリセットされた後に recoverAuth を二重呼び出しするのを防ぐ）
   if (res.status === 401 && !didProactiveRefresh) {
+    // DBSC チャレンジが要求された場合はブラウザが自動的に署名フローを処理するため
+    // ページリロードで再試行する（ブラウザが Sec-Session-Response を自動付与する）
+    if (res.headers.get("Sec-Session-Challenge")) {
+      window.location.reload();
+      return res;
+    }
     const recovered = await recoverAuth();
     if (recovered) {
       try {

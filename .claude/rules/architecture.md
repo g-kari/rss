@@ -397,7 +397,7 @@ sessions/{sessionId}.json              # ServerSessionData（userId・refreshTok
 ### ユーザー別データ
 
 ```
-users/{userId}/subscriptions.json       # UserSubscription[]（feedHash・url・customTitle・subscribedAt・filter・nsfw・requestCookie・priority・category・groupId・mutedUntil・lastAccessedAt・view）
+users/{userId}/subscriptions.json       # UserSubscription[]（feedHash・url・customTitle・subscribedAt・filter・nsfw・requestCookie・priority・category・groupId・mutedUntil・lastAccessedAt・view・digestLimit）
 users/{userId}/feed-groups.json         # FeedGroup[]（グループ定義: id / name / order / collapsed / muted / createdAt）
 users/{userId}/collections.json         # Collection[]（コレクション定義: id / name / articleIds / createdAt / order）
 users/{userId}/profile.json             # UserProfile（id・sub・email・name・picture）
@@ -571,6 +571,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `content-extraction.spec.ts`          | `src/lib/content.ts` — 本文抽出 (Readability + regex)               |
 | `cron-rate-limit.spec.ts`             | `src/lib/rate-limit.ts` — スライディングウィンドウ制限              |
 | `csrf-origin.spec.ts`                 | `src/lib/csrf.ts` — CSRF トークン・Origin 検証                      |
+| `dbsc.spec.ts`                        | `src/lib/dbsc.ts` — チャレンジ生成・ヘッダー構築・署名検証          |
 | `engagement-score.spec.ts`            | `src/lib/engagement-score.ts` — エンゲージメントスコア計算          |
 | `export-markdown.spec.ts`             | `src/lib/export-markdown.ts` — Markdown エクスポート                |
 | `feed-discovery.spec.ts`              | `src/lib/feed-discovery.ts` — RSS 自動探索                          |
@@ -619,11 +620,11 @@ const match = matchesKeywordFilter(article, compiledFilter);
 
 ### カバレッジ未対応の重要機能
 
-| 機能                      | 対象ファイル                                             | 理由                               |
-| ------------------------- | -------------------------------------------------------- | ---------------------------------- |
-| DBSC 登録・チャレンジ検証 | `src/lib/dbsc.ts`                                        | 機能スケルトン段階（TPM 実装待ち） |
-| 読了統計ストリーク計算    | `app/api/stats/route.ts` の GET ハンドラ                 | R2 依存のため統合テスト要          |
-| フィード推薦生成          | `src/lib/recommendation.ts` の `generateRecommendations` | AI + R2 + 外部検索 API 依存        |
+| 機能                      | 対象ファイル                                             | 理由                                     |
+| ------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| DBSC 登録・チャレンジ検証 | `src/lib/dbsc.ts` / `app/api/auth/dbsc/*/route.ts`       | 実装済み（TPM 署名はブラウザが自動処理） |
+| 読了統計ストリーク計算    | `app/api/stats/route.ts` の GET ハンドラ                 | R2 依存のため統合テスト要                |
+| フィード推薦生成          | `src/lib/recommendation.ts` の `generateRecommendations` | AI + R2 + 外部検索 API 依存              |
 
 ## ビルド・デプロイ
 

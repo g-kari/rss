@@ -2,6 +2,14 @@
 
 ## 2026-05-06 (latest)
 
+### 激アツ新機能っ
+
+- **フィード別ダイジェスト件数をカスタマイズできるようになったよ〜** — Issue #384。ダイジェストモード（`D` キー）は全フィード一律 3 件に制限してたけど、フィードごとにコンテキストメニューから「1件」「3件」「5件」「10件」「全件」を選べるようになったよっ✨ `UserSubscription.digestLimit` に保存されて `PATCH /api/feeds/:id` で更新されるよ〜🎀 `digestLimit: 0` を設定すると全件表示（フィルタなし）になって、`undefined` のままならデフォルトの 3 件が使われるよっ💡 E2E テスト 6 ケース（`e2e/article-filter-digest.spec.ts`）も追加したよ〜🚀
+
+### セキュリティ対策っ
+
+- **DBSC RFC 8941 対応 + トークンリフレッシュフローへの組み込みだよ〜** — Issue #346 / #376。`getAuthSession` が DBSC バインディング済みセッションを検出したときに `Sec-Session-Challenge` ヘッダー付き 401 を返すようにしたよっ🔒 `api-fetch.ts` もこのヘッダーを検出してページリロードで再試行するようになったよ〜✨ 非 DBSC セッションの認証フローは一切変更なしで既存ユーザーへの影響ゼロだよっ💡 E2E テスト 14 ケース（`generateDbscChallenge` / `buildSecureSessionRegistrationHeader` / `importDbscPublicKey` / `verifyDbscResponse`）も追加したよ〜🎀
+
 ### テスト強化っ（追加）
 
 - **テストカバレッジマップを作成して不足テストを追加したよ〜** — Issue #381。`architecture.md` に全 60 E2E テストファイルの対応表を追記したよっ📝 `stats-helpers.ts` に純粋関数を抽出して `e2e/stats.spec.ts`（10 ケース）と `e2e/recommendation.spec.ts`（13 ケース）を新規追加したよ〜✨ 未対応の重要機能（DBSC・ストリーク計算・推薦生成）も一覧化したよっ💡

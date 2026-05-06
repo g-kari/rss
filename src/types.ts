@@ -86,6 +86,8 @@ export interface UserSubscription {
   lastAccessedAt?: string;
   /** 表示ビュー — サイドバー上部タブでのフィルタに使用 */
   view?: FeedView;
+  /** ダイジェストモード時の表示件数 (0 = 全件, undefined = デフォルト 3) */
+  digestLimit?: number;
 }
 
 /** フィード表示ビュー — サイドバータブの分類に使用 */
@@ -126,6 +128,8 @@ export interface Feed {
   view?: FeedView;
   /** MAX_PAGES を超えたページ溢れ警告 */
   oversizeAlert?: boolean;
+  /** ダイジェストモード時の表示件数 (0 = 全件, undefined = デフォルト 3) */
+  digestLimit?: number;
 }
 
 export interface Article {
@@ -219,6 +223,14 @@ export interface PushSubscriptionRecord {
 /** R2 に保存するユーザーの Push 通知設定 */
 export interface PushConfig {
   subscriptions: PushSubscriptionRecord[];
+  /** feedHash → false (通知無効) のマップ。未設定 = 通知 ON */
+  disabledFeeds?: Record<string, boolean>;
+  /** サイレント時間帯 開始時刻 (HH:MM, ローカルタイム) */
+  silentStart?: string;
+  /** サイレント時間帯 終了時刻 (HH:MM, ローカルタイム) */
+  silentEnd?: string;
+  /** タイムゾーン (IANA tz, e.g. "Asia/Tokyo") */
+  timezone?: string;
 }
 
 /** 既読・ブックマーク・後で読む・いいね状態 — /api/read-state の入出力型 */
@@ -249,6 +261,7 @@ export interface FeedPatchPayload {
   mutedUntil?: string | null;
   filter?: KeywordFilter | null;
   view?: FeedView | null;
+  digestLimit?: number | null;
 }
 
 export interface FeedGroup {
