@@ -204,6 +204,29 @@ export function isValidFeedHash(value: string): boolean {
   return /^[0-9a-f]{16}$/.test(value);
 }
 
+/** Cookie ヘッダー値として安全な文字列か検証する（HTTP ヘッダーインジェクション・Cookie jar poison 防止） */
+export function isValidCookieHeader(value: string): boolean {
+  // 長さ上限を 2000 文字に制限（HTTP ヘッダー全体 8KB 制限に対して余裕を確保）
+  if (value.length > 2000) return false;
+  // CRLF インジェクション対策: \r \n を明示的に拒否（ヘッダー分割攻撃の防止）
+  if (/[\r\n]/.test(value)) return false;
+  // [\x20-\x7E] は印字可能 ASCII のみ許容し、制御文字を除外する
+  if (!/^[\x20-\x7E]*$/.test(value)) return false;
+  // RFC 6265 準拠: name=value ペアの形式検証（複数は "; " で区切る）
+  const pairs = value.split(/;\s*/);
+  for (const pair of pairs) {
+    const eqIdx = pair.indexOf("=");
+    if (eqIdx <= 0) return false; // name が空または "=" がない
+    const name = pair.slice(0, eqIdx).trim();
+    const val = pair.slice(eqIdx + 1);
+    // name: RFC 2616 token 文字のみ（空白・制御文字・区切り文字を禁止）
+    if (!/^[\w\-!#$%&'*+.^`|~]+$/.test(name)) return false;
+    // value: セミコロン・カンマを禁止して Cookie jar poisoning を防止
+    if (/[;,]/.test(val)) return false;
+  }
+  return true;
+}
+
 /**
  * snoozedUntil のバリデーション。
  * - 値が Record<string, string> であることを確認する
