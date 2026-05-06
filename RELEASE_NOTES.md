@@ -4,6 +4,12 @@
 
 ### バグ修正っ
 
+- **記事を選択しても一覧から消えなくなったよ〜** — Issue #368。`unreadOnly` フィルターが ON の状態で既読記事を選択すると、しばらく一覧から消えちゃってた問題を修正したよっ💡 `filtered` useMemo の依存配列に `selectedArticleId` と `gracePeriodId` を追加して、記事選択時に即座に再計算されるようにしたよ〜✨ galleryAutoRead による頻繁な再計算は引き続き ref で回避してるから、パフォーマンスも安心だよっ🎀
+
+## 2026-05-06
+
+### バグ修正っ
+
 - **記事詳細のスクロール位置を記事ごとに独立させたよ〜** — Issue #365。記事Aを途中まで読んでから記事Bに切り替えると、Aのスクロール位置のまま開いちゃってた問題を修正したよっ💡 `useArticleViewState` で記事IDが変わった瞬間に `scrollTop = 0` でリセットするようにしたよ〜✨ `useReadingProgress` のアンカー復元（100ms後）とタイミング競合しないから安心してね🎀
 - **ギャラリービューの自動既読記事がフィルター前に消えちゃう問題を修正！** — Issue #363。`useFilteredArticles` の `activeIdsRef` 更新が `useEffect` 内だったため stale closure になってたよ〜😅 レンダー時に直接 `ref.current = activeIds` を代入（useSyncedRef パターン）に変更して修正したよっ✨
 - **ギャラリービューで記事選択時にスクロール位置が勝手に変わる問題を修正！** — Issue #364。`magazine`/`gallery` レイアウトで `scrollIntoView` がすでに可視の要素に対しても呼ばれてたよ〜💡 表示領域外の場合のみ `scrollIntoView` するように変更したよっ🎀

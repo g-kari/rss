@@ -251,10 +251,12 @@ export function useFilteredArticles({
         digestMode,
         groupFeedIds,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避。selectedArticleId/gracePeriodId は選択記事が unreadOnly 等で除外されないよう明示的に deps に含める
     [
       structuralFiltered,
       feedId,
+      selectedArticleId,
+      gracePeriodId,
       readIdsForState,
       bookmarkIdsForState,
       readingListIdsForState,
