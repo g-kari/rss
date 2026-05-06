@@ -6,6 +6,10 @@
 
 - **キーボードショートカット仕様を Single Source of Truth に集約** — Issue #360。`src/config/shortcuts.ts` に `ShortcutGroup` 型と `group` フィールドを追加して、全ショートカットをカテゴリ分類したよ〜📋 `KEYBOARD_SHORTCUTS` 定数をエクスポートしたから、`useKeyboardNav`（実装）と `KeyboardShortcutsModal`（UI表示）の乖離が起きにくくなったよっ✨ 新しいショートカット追加したら `SHORTCUT_DEFS` を 1 箇所更新するだけで OK だよ〜🎀
 
+### セキュリティ対策っ
+
+- **pnpm-lock.yaml の glob deprecated 警告を解消** — Issue #361。`@node-minify/core` が transitive 依存として持ってた古い `glob v9`（deprecated）を `pnpm.overrides` で `>=10` に上書きして、`glob 12.0.0` に統一したよ〜🔒 lockfile もアップデート済みだよっ✨
+
 ### リファクタリングっ
 
 - **useArticleFilters の boolean フィルタートグルをジェネリック化** — Issue #357。6 つの個別 `useState` を `boolFilters` 1 つにまとめて、`BOOL_FILTER_STORAGE` マップと `toggle()` ファクトリで生成するようにしたよ〜🔧 外部 API は変わらないし型安全もバッチリ！新しいフィルターを追加するときはマップに 1 行追加するだけで済むようになったよっ✨
