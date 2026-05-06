@@ -3,10 +3,10 @@ import { withSession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, savedArticlesKey, readStateKey } from "@/lib/r2";
 import {
+  getFeedsMeta,
   getUserLatestArticles,
   MAX_PAGES,
   readArticlePage,
-  readFeedMeta,
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
@@ -69,11 +69,13 @@ export async function GET(request: NextRequest) {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
 
     // since が指定された場合: lastFetchedAt が since より新しいフィードだけ読む（R2 GET 削減）
+    // getFeedsMeta で並行度制限付き一括取得して N+1 R2 リクエストを回避する
     const activeSubs =
       sinceMs !== null
         ? await (async () => {
-            const metas = await Promise.all(
-              subs.map((s) => readFeedMeta(env.RSS_DATA, s.feedHash)),
+            const metas = await getFeedsMeta(
+              env.RSS_DATA,
+              subs.map((s) => s.feedHash),
             );
             return subs.filter((_, i) => {
               const meta = metas[i];

@@ -88,6 +88,19 @@ export async function writeFeedMeta(bucket: R2Bucket, meta: SharedFeedMeta): Pro
   await r2Put(bucket, metaKey(meta.feedHash), meta);
 }
 
+/**
+ * 複数フィードの meta.json を並行度制限付きで一括取得する。
+ * 単発の readFeedMeta を N 回呼ぶ代わりにこれを使うことで R2 GET の N+1 問題を解消する。
+ * 戻り値の配列順は feedHashes と同じ（存在しないフィードは null）。
+ */
+export async function getFeedsMeta(
+  bucket: R2Bucket,
+  feedHashes: string[],
+): Promise<(SharedFeedMeta | null)[]> {
+  if (feedHashes.length === 0) return [];
+  return pMap(feedHashes, (hash) => readFeedMeta(bucket, hash), R2_CONCURRENCY);
+}
+
 /** 空の SharedFeedMeta を作成して書き込む */
 export async function createFeedMeta(
   bucket: R2Bucket,
