@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
         readState.ttlDays === 0
           ? keywordFiltered
           : filterExpiredArticles(keywordFiltered, protectedIds, readState.ttlDays ?? undefined);
-      return NextResponse.json(filtered);
+      return NextResponse.json(filtered, {
+        headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
+      });
     }
 
     // デフォルト: 全購読フィードの latest.json + 手動保存記事をマージして返す
@@ -121,6 +123,8 @@ export async function GET(request: NextRequest) {
         : savedArticles;
 
     const all = [...finalSavedArticles, ...finalFeedArticles].sort(compareByDateDesc);
-    return NextResponse.json(all);
+    return NextResponse.json(all, {
+      headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
+    });
   });
 }

@@ -132,10 +132,18 @@ function buildFeedPredicate(opts: ArticleFilterOptions): (a: Article) => boolean
 }
 
 /** スヌーズ述語（activeIds 外の記事にのみ適用） */
-function buildSnoozePredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
+function buildSnoozePredicate(
+  opts: ArticleFilterOptions,
+  now: string,
+): ((a: Article) => boolean) | null {
   const { snoozedUntil } = opts;
-  if (!snoozedUntil || Object.keys(snoozedUntil).length === 0) return null;
-  const now = new Date().toISOString();
+  if (!snoozedUntil) return null;
+  let hasAny = false;
+  for (const _k in snoozedUntil) {
+    hasAny = true;
+    break;
+  }
+  if (!hasAny) return null;
   return (a) => {
     const until = snoozedUntil[a.id];
     return !(until && until > now);
@@ -299,8 +307,9 @@ export function filterByStructure(articles: Article[], opts: ArticleFilterOption
     buildCollectionPredicate(opts),
   ].filter((p): p is (a: Article) => boolean => p !== null);
 
+  const now = new Date().toISOString();
   const conditionalPredicates = [
-    buildSnoozePredicate(opts),
+    buildSnoozePredicate(opts, now),
     buildNsfwPredicate(opts),
     buildMutedFeedPredicate(opts),
     buildKeywordPredicate(opts),

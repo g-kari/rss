@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withJsonBody<{ name?: unknown }>(request, async ({ body, session, env }) => {
     const nameResult = parseName(body.name, COLLECTION_NAME_MAX_LENGTH);
-    if (!nameResult.ok) return nameResult.error;
+    if (!nameResult.ok)
+      return apiError(nameResult.message, nameResult.status, { code: nameResult.code });
     const { name } = nameResult;
 
     const collections = await readCollections(env.RSS_DATA, session.userId);

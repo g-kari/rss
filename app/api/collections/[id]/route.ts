@@ -18,7 +18,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if ("name" in body) {
       const nameResult = parseName(body.name, COLLECTION_NAME_MAX_LENGTH);
-      if (!nameResult.ok) return nameResult.error;
+      if (!nameResult.ok)
+        return apiError(nameResult.message, nameResult.status, { code: nameResult.code });
       const { name } = nameResult;
       if (collections.some((c) => c.id !== id && c.name === name)) {
         return apiError("name already exists", 409, { code: "DUPLICATE_NAME" });
