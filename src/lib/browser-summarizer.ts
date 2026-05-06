@@ -30,6 +30,12 @@ declare global {
   var Summarizer: BrowserSummarizerConstructor | undefined;
 }
 
+function getChromeVersion(): number | null {
+  if (typeof navigator === "undefined") return null;
+  const match = /Chrome\/(\d+)/.exec(navigator.userAgent);
+  return match ? parseInt(match[1], 10) : null;
+}
+
 export function isSummarizerApiSupported(): boolean {
   return typeof self !== "undefined" && "Summarizer" in self;
 }
@@ -38,7 +44,12 @@ function shouldUseBrowserSummarizer(availability: Availability): boolean {
   return availability === "available" || availability === "downloadable";
 }
 
-export type SummarizerUnavailableReason = "not-chromium" | "flag-disabled" | "not-available" | null;
+export type SummarizerUnavailableReason =
+  | "not-chromium"
+  | "chrome-too-old"
+  | "flag-disabled"
+  | "not-available"
+  | null;
 
 export async function diagnoseSummarizerAvailability(): Promise<{
   available: boolean;
@@ -47,8 +58,12 @@ export async function diagnoseSummarizerAvailability(): Promise<{
   if (typeof self === "undefined" || !("Summarizer" in self)) {
     const isChromiumBased =
       typeof navigator !== "undefined" && /Chrome\//.test(navigator.userAgent);
-    if (isChromiumBased) return { available: false, reason: "flag-disabled" };
-    return { available: false, reason: "not-chromium" };
+    if (!isChromiumBased) return { available: false, reason: "not-chromium" };
+    const chromeVersion = getChromeVersion();
+    if (chromeVersion !== null && chromeVersion < 131) {
+      return { available: false, reason: "chrome-too-old" };
+    }
+    return { available: false, reason: "flag-disabled" };
   }
   try {
     const availability = await globalThis.Summarizer!.availability({

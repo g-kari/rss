@@ -363,8 +363,10 @@ export default function UserSettingsModal({ onClose }: Props) {
                   <span className="text-[10px] text-text-faint">
                     {translatorDiag.reason === "not-chromium" &&
                       "Chrome/Edge 以外のブラウザでは Chrome 翻訳を利用できません"}
+                    {translatorDiag.reason === "chrome-too-old" &&
+                      "Chrome Translator API は Chrome 131 以上が必要です。Chrome をアップデートしてください"}
                     {translatorDiag.reason === "flag-disabled" &&
-                      "chrome://flags/#translation-api を Enabled にすると Chrome 翻訳が利用できます"}
+                      "chrome://flags/#translation-api を Enabled にして Chrome を再起動してください（Chrome 138 以上では不要）"}
                     {translatorDiag.reason === "not-available" &&
                       "言語パックが利用できません。Chrome の設定から言語を追加してください"}
                   </span>
@@ -385,8 +387,10 @@ export default function UserSettingsModal({ onClose }: Props) {
                   <span className="text-[10px] text-text-faint">
                     {summarizerDiag.reason === "not-chromium" &&
                       "Chrome/Edge 以外のブラウザでは Chrome 要約を利用できません"}
+                    {summarizerDiag.reason === "chrome-too-old" &&
+                      "Chrome Summarizer API は Chrome 131 以上が必要です。Chrome をアップデートしてください"}
                     {summarizerDiag.reason === "flag-disabled" &&
-                      "chrome://flags/#summarization-api-for-gemini-nano を Enabled にすると Chrome 要約が利用できます"}
+                      "chrome://flags/#summarization-api-for-gemini-nano を Enabled にして Chrome を再起動してください"}
                     {summarizerDiag.reason === "not-available" &&
                       "要約モデルが利用できません。Chrome の設定を確認してください"}
                   </span>
