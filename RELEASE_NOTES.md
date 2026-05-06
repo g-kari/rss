@@ -2,6 +2,12 @@
 
 ## 2026-05-06 (latest)
 
+### バグ修正っ
+
+- **記事詳細のスクロール位置を記事ごとに独立させたよ〜** — Issue #365。記事Aを途中まで読んでから記事Bに切り替えると、Aのスクロール位置のまま開いちゃってた問題を修正したよっ💡 `useArticleViewState` で記事IDが変わった瞬間に `scrollTop = 0` でリセットするようにしたよ〜✨ `useReadingProgress` のアンカー復元（100ms後）とタイミング競合しないから安心してね🎀
+
+## 2026-05-06
+
 ### リファクタリングっ
 
 - **FeedSidebar の Props Drilling を FeedSidebarContext で解消** — Issue #359。40 本以上あった `on***` コールバックを `FeedSidebarContext` に移して、`FeedSidebar` の Props は表示データだけにスッキリしたよ〜🔧 `src/contexts/FeedSidebarContext.tsx` に `FeedSidebarActions` 型 + `FeedSidebarProvider` + `useFeedSidebarContext()` をセットで追加したよっ✨ `App.tsx` では `<FeedSidebarProvider value={...}>` でラップするだけで OK！子コンポーネントが深くなっても Context から直接取れるようになったよ〜🎀
