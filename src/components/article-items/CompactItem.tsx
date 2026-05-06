@@ -1,15 +1,10 @@
 "use client";
 
-import { memo, useContext } from "react";
+import { memo, useCallback, useContext } from "react";
 import { timeAgo, highlightText } from "../../lib/article-utils";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
 import { NoteIcon } from "../article-view/icons";
-import {
-  ArticleActions,
-  DuplicateBadge,
-  handleArticleKeyDown,
-  type ArticleItemProps,
-} from "./shared";
+import { ArticleActions, DuplicateBadge, type ArticleItemProps } from "./shared";
 
 export const CompactArticleItem = memo(function CompactArticleItem({
   article,
@@ -29,6 +24,15 @@ export const CompactArticleItem = memo(function CompactArticleItem({
 }: ArticleItemProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onSelectArticle(article);
+      }
+    },
+    [article, onSelectArticle],
+  );
   return (
     <div
       role="option"
@@ -36,7 +40,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       tabIndex={0}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
-      onKeyDown={handleArticleKeyDown(article, onSelectArticle)}
+      onKeyDown={handleKeyDown}
       className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${
