@@ -148,7 +148,7 @@ export async function GET(request: Request) {
   });
   res.headers.set(
     "Secure-Session-Registration",
-    buildSecureSessionRegistrationHeader(dbscChallenge, appBaseUrl),
+    buildSecureSessionRegistrationHeader(dbscChallenge),
   );
 
   return res;

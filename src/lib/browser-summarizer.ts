@@ -25,14 +25,13 @@ interface BrowserSummarizerConstructor {
   }): Promise<BrowserSummarizer>;
 }
 
+// Chrome の公式検出パターン `'Summarizer' in self` に合わせ globalThis への宣言とする
 declare global {
-  interface Window {
-    Summarizer?: BrowserSummarizerConstructor;
-  }
+  var Summarizer: BrowserSummarizerConstructor | undefined;
 }
 
 export function isSummarizerApiSupported(): boolean {
-  return typeof window !== "undefined" && typeof window.Summarizer !== "undefined";
+  return typeof self !== "undefined" && "Summarizer" in self;
 }
 
 function shouldUseBrowserSummarizer(availability: Availability): boolean {
@@ -45,14 +44,14 @@ export async function diagnoseSummarizerAvailability(): Promise<{
   available: boolean;
   reason: SummarizerUnavailableReason;
 }> {
-  if (typeof window === "undefined") return { available: false, reason: "not-chromium" };
-  if (typeof window.Summarizer === "undefined") {
-    const isChromiumBased = /Chrome\//.test(navigator.userAgent);
+  if (typeof self === "undefined" || !("Summarizer" in self)) {
+    const isChromiumBased =
+      typeof navigator !== "undefined" && /Chrome\//.test(navigator.userAgent);
     if (isChromiumBased) return { available: false, reason: "flag-disabled" };
     return { available: false, reason: "not-chromium" };
   }
   try {
-    const availability = await window.Summarizer.availability({
+    const availability = await globalThis.Summarizer!.availability({
       type: "tl;dr",
       length: "medium",
     });
@@ -64,16 +63,16 @@ export async function diagnoseSummarizerAvailability(): Promise<{
 }
 
 export async function summarizeInBrowser(text: string): Promise<string | null> {
-  if (!isSummarizerApiSupported() || !window.Summarizer) return null;
+  if (!isSummarizerApiSupported() || !globalThis.Summarizer) return null;
 
   try {
-    const availability = await window.Summarizer.availability({
+    const availability = await globalThis.Summarizer.availability({
       type: "tl;dr",
       length: "medium",
     });
     if (!shouldUseBrowserSummarizer(availability)) return null;
 
-    const summarizer = await window.Summarizer.create({
+    const summarizer = await globalThis.Summarizer.create({
       type: "tl;dr",
       length: "medium",
       sharedContext: "RSS feed article summary",

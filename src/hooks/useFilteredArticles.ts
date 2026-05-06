@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import type { Article, Feed, FeedView, KeywordFilter } from "../types";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { useGracePeriod } from "./useGracePeriod";
@@ -103,9 +103,7 @@ export function useFilteredArticles({
 
   // structuralFiltered では activeIds の変動（特に galleryAutoReadIds）で再計算を避けるため ref を使用
   const activeIdsRef = useRef(activeIds);
-  useEffect(() => {
-    activeIdsRef.current = activeIds;
-  }, [activeIds]);
+  activeIdsRef.current = activeIds;
 
   // notes のキー集合のみで Set を再生成する（値の変更では再計算しない）
   const noteKeysJson = useMemo(() => JSON.stringify(Object.keys(notes ?? {}).sort()), [notes]);

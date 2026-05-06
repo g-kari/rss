@@ -373,9 +373,14 @@ function ArticleList({
       if (articleIdx >= 0)
         cardVirtualizer.scrollToIndex(Math.floor(articleIdx / 2), { align: "auto" });
     } else {
-      document
-        .getElementById(`article-${selectedArticleId}`)
-        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      const el = document.getElementById(`article-${selectedArticleId}`);
+      const container = scrollContainerRef.current;
+      if (el && container) {
+        const elRect = el.getBoundingClientRect();
+        const cRect = container.getBoundingClientRect();
+        const isVisible = elRect.bottom > cRect.top && elRect.top < cRect.bottom;
+        if (!isVisible) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・flatItemsRef・visibleRef は安定参照。記事選択・レイアウト変更時のみスクロール
   }, [selectedArticleId, layout]);

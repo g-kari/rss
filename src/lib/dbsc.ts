@@ -110,34 +110,18 @@ export async function verifyDbscResponse(
 }
 
 /**
- * `Secure-Session-Registration` ヘッダーの値を構築する。
+ * `Secure-Session-Registration` ヘッダーの値を RFC 8941 Structured Field Values 形式で構築する。
  *
  * このヘッダーをログインレスポンスに付与すると、対応ブラウザが TPM で鍵ペアを生成し、
- * `authorizationEndpoint` に公開鍵を POST して登録を完了する。
+ * `path` エンドポイントに公開鍵を POST して登録を完了する。
  *
- * @param challenge            - 登録リクエストを認証するためのチャレンジ（generateDbscChallenge() で生成）
- * @param appBaseUrl           - アプリのベース URL（例: "https://rss.0g0.xyz"）
- * @param authorizationPath    - 登録エンドポイントのパス（デフォルト: "/api/auth/dbsc/register"）
- * @returns JSON 文字列形式のヘッダー値
- *
- * @example
- * const headerValue = buildSecureSessionRegistrationHeader(
- *   generateDbscChallenge(),
- *   process.env.APP_BASE_URL!
- * );
- * response.headers.set('Secure-Session-Registration', headerValue);
+ * 出力形式: `(ES256);path="...";challenge="..."`
+ * @see https://www.w3.org/TR/dbsc/#the-secure-session-registration-header
  */
 export function buildSecureSessionRegistrationHeader(
   challenge: string,
-  appBaseUrl: string,
-  authorizationPath = "/api/auth/dbsc/register",
+  path = "/api/auth/dbsc/register",
 ): string {
-  // TODO: DBSC 仕様では Structured Field Values (RFC 8941) 形式が要求される可能性がある。
-  // 現時点では JSON 形式のスケルトンとして実装。仕様確定後にフォーマットを調整すること。
-  // @see https://wicg.github.io/dbsc/#the-sec-session-registration-response-header
-  const authorizationEndpoint = `${appBaseUrl}${authorizationPath}`;
-  return JSON.stringify({
-    challenge,
-    authorization: authorizationEndpoint,
-  });
+  const esc = (v: string) => v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return `(ES256);path="${esc(path)}";challenge="${esc(challenge)}"`;
 }

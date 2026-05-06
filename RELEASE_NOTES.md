@@ -5,6 +5,14 @@
 ### バグ修正っ
 
 - **記事詳細のスクロール位置を記事ごとに独立させたよ〜** — Issue #365。記事Aを途中まで読んでから記事Bに切り替えると、Aのスクロール位置のまま開いちゃってた問題を修正したよっ💡 `useArticleViewState` で記事IDが変わった瞬間に `scrollTop = 0` でリセットするようにしたよ〜✨ `useReadingProgress` のアンカー復元（100ms後）とタイミング競合しないから安心してね🎀
+- **ギャラリービューの自動既読記事がフィルター前に消えちゃう問題を修正！** — Issue #363。`useFilteredArticles` の `activeIdsRef` 更新が `useEffect` 内だったため stale closure になってたよ〜😅 レンダー時に直接 `ref.current = activeIds` を代入（useSyncedRef パターン）に変更して修正したよっ✨
+- **ギャラリービューで記事選択時にスクロール位置が勝手に変わる問題を修正！** — Issue #364。`magazine`/`gallery` レイアウトで `scrollIntoView` がすでに可視の要素に対しても呼ばれてたよ〜💡 表示領域外の場合のみ `scrollIntoView` するように変更したよっ🎀
+- **ギャラリービューで画像展開後に「続きを読む」が発火しない問題を修正！** — Issue #367。`LoadMoreButton` の `IntersectionObserver` が画像遅延ロードによるコンテナ高さ変化を検知できてなかったよ〜🔧 `ResizeObserver` でコンテナリサイズを監視して IntersectionObserver を再評価するようにしたよっ✨
+- **Summarizer API の検出ロジックを Chrome 公式の方法に修正！** — Issue #366。`typeof window.Summarizer !== "undefined"` から Chrome 公式推奨の `'Summarizer' in self` に変更したよ〜💡 `globalThis.Summarizer` に変更して Service Worker 環境でも正しく動くよっ✨
+
+### セキュリティ対策っ
+
+- **DBSC ヘッダーを RFC 8941 Structured Field Values 形式に修正したよ〜** — Issue #346 (部分対応)。`buildSecureSessionRegistrationHeader` が JSON 文字列を返してたのを W3C DBSC 仕様準拠の `(ES256);path="...";challenge="..."` 形式に変更したよっ🔒 TPM 鍵バインディング・セッション管理の設計判断が必要な部分は Issue に追記したよ〜📝
 
 ## 2026-05-06
 

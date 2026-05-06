@@ -35,9 +35,19 @@ export default function LoadMoreButton({ onLoad }: Props) {
       { rootMargin: "600px" },
     );
     observer.observe(el);
+
+    // 画像の遅延ロードによるコンテナ高さ変化を検知して IntersectionObserver を再評価する
+    const ro = new ResizeObserver(() => {
+      if (loadingRef.current) return;
+      observer.unobserve(el);
+      observer.observe(el);
+    });
+    ro.observe(el.parentElement ?? el);
+
     return () => {
       cancelled = true;
       observer.disconnect();
+      ro.disconnect();
     };
   }, []);
 
