@@ -2,6 +2,10 @@
 
 ## 2026-05-06 (latest)
 
+### 激アツ新機能っ
+
+- **モバイルペイン切り替えにスライドアニメーション追加** — Issue #362。サイドバー → 記事一覧 → 記事詳細のペイン切り替えがヌルっとスライドアニメーションするようになったよ〜✨ `cubic-bezier(0.4, 0, 0.2, 1)` でなめらか 250ms！戻る方向と進む方向で左右逆にスライドするから直感的でおしゃれ〜🎀 `prefers-reduced-motion` 対応済みでアクセシビリティもバッチリ！デスクトップ（lg以上）には影響なしだよっ💡
+
 ### ドキュメント整備っ
 
 - **キーボードショートカット仕様を Single Source of Truth に集約** — Issue #360。`src/config/shortcuts.ts` に `ShortcutGroup` 型と `group` フィールドを追加して、全ショートカットをカテゴリ分類したよ〜📋 `KEYBOARD_SHORTCUTS` 定数をエクスポートしたから、`useKeyboardNav`（実装）と `KeyboardShortcutsModal`（UI表示）の乖離が起きにくくなったよっ✨ 新しいショートカット追加したら `SHORTCUT_DEFS` を 1 箇所更新するだけで OK だよ〜🎀

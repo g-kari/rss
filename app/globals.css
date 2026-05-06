@@ -579,6 +579,28 @@ body {
   line-height: 1.5;
 }
 
+/* モバイルペインスライドアニメーション */
+.mobile-pane {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+/* 画面外に出たペインはインタラクション不可にする */
+.mobile-pane[aria-hidden="true"] {
+  pointer-events: none;
+}
+
+/* デスクトップではアニメーションを無効化（lg = 1024px） */
+@media (min-width: 1024px) {
+  .mobile-pane {
+    transition: none;
+    transform: none !important;
+  }
+  .mobile-pane[aria-hidden="true"] {
+    pointer-events: auto;
+  }
+}
+
 /* 印刷スタイル */
 @media print {
   /* サイドバー・記事一覧・印刷非対象要素を非表示 */
