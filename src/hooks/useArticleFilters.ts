@@ -5,15 +5,32 @@ import { STORAGE_KEYS, storageGet, storageSet, loadStoredEnum } from "../lib/sto
 import { useDebounce } from "./useDebounce";
 import { cycleValue, DATE_RANGE_CYCLE, READING_TIME_RANGE_CYCLE } from "../lib/article-utils";
 
+type BoolFilterKey =
+  | "unreadOnly"
+  | "bookmarkOnly"
+  | "readingListOnly"
+  | "likeOnly"
+  | "noteOnly"
+  | "digestMode";
+
+const BOOL_FILTER_STORAGE: Record<BoolFilterKey, string> = {
+  unreadOnly: STORAGE_KEYS.UNREAD_ONLY,
+  bookmarkOnly: STORAGE_KEYS.BOOKMARK_ONLY,
+  readingListOnly: STORAGE_KEYS.READING_LIST_ONLY,
+  likeOnly: STORAGE_KEYS.LIKE_ONLY,
+  noteOnly: STORAGE_KEYS.NOTE_ONLY,
+  digestMode: STORAGE_KEYS.DIGEST_MODE,
+};
+
 function toggleBoolFilter(
-  setter: Dispatch<SetStateAction<boolean>>,
-  key: string,
+  key: BoolFilterKey,
+  setBoolFilters: Dispatch<SetStateAction<Record<BoolFilterKey, boolean>>>,
   resetPage: () => void,
 ): void {
-  setter((v) => {
-    const next = !v;
-    storageSet(key, next ? "1" : "0");
-    return next;
+  setBoolFilters((prev) => {
+    const next = !prev[key];
+    storageSet(BOOL_FILTER_STORAGE[key], next ? "1" : "0");
+    return { ...prev, [key]: next };
   });
   resetPage();
 }
@@ -45,16 +62,15 @@ export function useArticleFilters({
   selectedGroupId,
   resetPage,
 }: UseArticleFiltersOptions) {
-  const [unreadOnly, setUnreadOnly] = useState(() => storageGet(STORAGE_KEYS.UNREAD_ONLY) === "1");
-  const [bookmarkOnly, setBookmarkOnly] = useState(
-    () => storageGet(STORAGE_KEYS.BOOKMARK_ONLY) === "1",
+  const [boolFilters, setBoolFilters] = useState<Record<BoolFilterKey, boolean>>(
+    () =>
+      Object.fromEntries(
+        (Object.keys(BOOL_FILTER_STORAGE) as BoolFilterKey[]).map((k) => [
+          k,
+          storageGet(BOOL_FILTER_STORAGE[k]) === "1",
+        ]),
+      ) as Record<BoolFilterKey, boolean>,
   );
-  const [readingListOnly, setReadingListOnly] = useState(
-    () => storageGet(STORAGE_KEYS.READING_LIST_ONLY) === "1",
-  );
-  const [likeOnly, setLikeOnly] = useState(() => storageGet(STORAGE_KEYS.LIKE_ONLY) === "1");
-  const [noteOnly, setNoteOnly] = useState(() => storageGet(STORAGE_KEYS.NOTE_ONLY) === "1");
-  const [digestMode, setDigestMode] = useState(() => storageGet(STORAGE_KEYS.DIGEST_MODE) === "1");
 
   const [dateRange, setDateRange] = useState<DateRange>(() =>
     loadStoredEnum(STORAGE_KEYS.DATE_RANGE, DATE_RANGE_CYCLE, "all"),
@@ -95,14 +111,14 @@ export function useArticleFilters({
     cycleReadingTimeRange,
   } = useMemo(() => {
     const rp = () => resetPageRef.current();
+    const toggle = (key: BoolFilterKey) => () => toggleBoolFilter(key, setBoolFilters, rp);
     return {
-      toggleUnreadOnly: () => toggleBoolFilter(setUnreadOnly, STORAGE_KEYS.UNREAD_ONLY, rp),
-      toggleBookmarkOnly: () => toggleBoolFilter(setBookmarkOnly, STORAGE_KEYS.BOOKMARK_ONLY, rp),
-      toggleReadingListOnly: () =>
-        toggleBoolFilter(setReadingListOnly, STORAGE_KEYS.READING_LIST_ONLY, rp),
-      toggleLikeOnly: () => toggleBoolFilter(setLikeOnly, STORAGE_KEYS.LIKE_ONLY, rp),
-      toggleNoteOnly: () => toggleBoolFilter(setNoteOnly, STORAGE_KEYS.NOTE_ONLY, rp),
-      toggleDigestMode: () => toggleBoolFilter(setDigestMode, STORAGE_KEYS.DIGEST_MODE, rp),
+      toggleUnreadOnly: toggle("unreadOnly"),
+      toggleBookmarkOnly: toggle("bookmarkOnly"),
+      toggleReadingListOnly: toggle("readingListOnly"),
+      toggleLikeOnly: toggle("likeOnly"),
+      toggleNoteOnly: toggle("noteOnly"),
+      toggleDigestMode: toggle("digestMode"),
       updateQuery: (q: string) => {
         setRawQuery(q);
         resetPageRef.current();
@@ -126,12 +142,7 @@ export function useArticleFilters({
   }, []);
 
   return {
-    unreadOnly,
-    bookmarkOnly,
-    readingListOnly,
-    likeOnly,
-    noteOnly,
-    digestMode,
+    ...boolFilters,
     dateRange,
     readingTimeRange,
     rawQuery,
