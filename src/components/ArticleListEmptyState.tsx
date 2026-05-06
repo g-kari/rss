@@ -35,14 +35,22 @@ export default function ArticleListEmptyState({
     <>
       {/* ローディング状態 */}
       {loading && !fetchError && filteredCount === 0 && (
-        <div className="flex flex-col items-center justify-center h-40 gap-2">
+        <div
+          className="flex flex-col items-center justify-center h-40 gap-2"
+          aria-live="polite"
+          aria-busy="true"
+        >
           <Spinner className="w-5 h-5 text-text-faint" />
           <p className="text-[12px] text-text-faint">読み込み中...</p>
         </div>
       )}
       {/* フェッチエラー状態 */}
       {fetchError && !loading && filteredCount === 0 && (
-        <div className="flex flex-col items-center justify-center h-40 gap-3 animate-fade-in">
+        <div
+          className="flex flex-col items-center justify-center h-40 gap-3 animate-fade-in"
+          role="alert"
+          aria-live="assertive"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
