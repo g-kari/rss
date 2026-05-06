@@ -2,6 +2,15 @@
 
 ## 2026-05-06 (latest)
 
+### セキュリティ対策っ
+
+- **/api/ogp と /api/engagement にレートリミットを追加したよ〜** — Issue #383。OGP 取得はキャッシュ MISS 時のみ 2 秒クールダウンで外部フェッチの連打を防止したよっ🔒 エンゲージメント記録 (POST) は 1 秒クールダウンで書き込み操作の連打を防止したよ〜✨ キャッシュ HIT 時はレートリミットなしで高速レスポンスは維持してるよっ🎀
+
+### パフォーマンス改善っ
+
+- **ReadingTimeBadge の readingTime() を useMemo でキャッシュしたよ〜** — Issue #377。レンダリングのたびに HTML パースが走ってたの、useMemo で content/summary が変わった時だけ再計算するようにしたよっ⚡ メモリも時間も節約できてハッピー〜✨
+- **記事アイテムのキーボードハンドラーを useCallback でメモ化したよ〜** — Issue #382。CompactItem・ListItem・CardItem・MagazineItem・GalleryItem の handleKeyDown を useCallback に置き換えたよっ🔧 memo コンポーネントの Props 比較が毎回 false になってた問題が解消されて、不要な再レンダリングがなくなったよ〜💡
+
 ### バグ修正っ
 
 - **フィード追加クールダウンが 3 秒になってたタイポを修正したよ〜** — Issue #369。`app/api/feeds/route.ts` の `30 * 100`（3 秒）が `30 * 1000`（30 秒）の typo だったよっ💡 意図通りの 30 秒クールダウンになったよ〜✨
