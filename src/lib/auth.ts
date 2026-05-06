@@ -138,6 +138,8 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
 
     // aud (audience) 検証 — CLIENT_ID を優先。id.0g0.xyz が aud=authBaseUrl を
     // 発行する暫定実装に追従するため AUTH_BASE_URL もフォールバックで許容する。
+    // TODO(#379): 上流で aud=CLIENT_ID に修正され次第、acceptedAuds から authBaseUrl を削除。
+    // 削除時は acceptedAuds を [expectedAud] のみにして fallback warn ブロックも除去すること。
     const expectedAud = process.env.CLIENT_ID;
     if (!expectedAud) {
       console.error("[auth/verify] CLIENT_ID 未設定のため aud を検証できません");
