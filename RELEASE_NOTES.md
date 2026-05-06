@@ -1,5 +1,11 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
+## 2026-05-06 (latest)
+
+### リファクタリングっ
+
+- **AppModals コンポーネント抽出** — Issue #345。`App.tsx` から 5 つのモーダル（SessionExpiredModal / SnoozeModal / KeyboardShortcutsModal / UserSettingsModal / FeedQuickSwitchModal）を `AppModals.tsx` に分離したよ〜🔧 App.tsx がスッキリしてメンテしやすくなったよっ✨ スヌーズのロジックは `handleSnooze` として `useCallback` 化して App 側にスッキリ切り出したよ〜💡
+
 ## 2026-05-06
 
 ### 激アツ新機能っ

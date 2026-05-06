@@ -115,6 +115,7 @@ src/
     FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
     FeedHealthModal.tsx      # フィードヘルス監視モーダル（エラー・レートリミット・オーバーサイズのフィードを一覧表示）
+    AppModals.tsx            # App レベルのモーダル群集約コンポーネント（SessionExpired / Snooze / KeyboardShortcuts / UserSettings / FeedQuickSwitch）
     ArticleList.tsx          # 記事一覧 (5レイアウト対応・仮想スクロール)
     ArticleListEmptyState.tsx # 記事一覧の空状態表示（ローディング・エラー・未登録・検索無結果・既読済みなど）
     ArticleListHeader.tsx    # 記事一覧ヘッダー（後方互換再エクスポート → article-list-header/）
