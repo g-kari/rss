@@ -2,6 +2,16 @@
 
 ## 2026-05-07 (latest)
 
+### UX改善っ
+
+- **一括既読の確認ダイアログ（`window.confirm`）を廃止したよ〜** — Issue #407。元々 `markAllReadWithUndo` には取り消しトーストがあるから二重確認は不要だったよっ✨ すっきり即実行されるようになったよ〜💡
+- **ToastContainer のエラー/info アイコンに type 別の色を付けたよ〜** — Issue #405 🎨
+
+### バグ修正っ
+
+- **`syncImmediately` が clean 状態でも POST を送ってたバグを修正したよ〜** — Issue #404。`isDirtyRef` が false かつ pending timer がない場合は早期リターンするようにしたよっ💡
+- **ArticleView のタイトルエリアから不要な min-h を削除して空記事での余白をなくしたよ〜** — Issue #403 ✨
+
 ### セキュリティ対策っ
 
 - **認証ログから Referer ヘッダーを削除したよ〜** — Issue #422。`/api/auth/login` と `/api/auth/callback` のデバッグログに `referer` を含めてたせいで機密 URL が漏れる可能性があったから、ログから除去したよっ🔒

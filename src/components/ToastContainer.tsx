@@ -18,6 +18,13 @@ const iconPath: Record<ToastItem["type"], string> = {
   undo: "M3 10h10a5 5 0 0 1 0 10H9M3 10l4-4M3 10l4 4",
 };
 
+const iconColor: Record<ToastItem["type"], string> = {
+  success: "text-emerald-500",
+  error: "text-rose-500",
+  info: "text-text-muted",
+  undo: "text-amber-500",
+};
+
 export default function ToastContainer() {
   const { toasts, dismiss } = useToast();
 
@@ -44,7 +51,7 @@ export default function ToastContainer() {
               strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="mt-px flex-shrink-0 text-text-muted"
+              className={`mt-px flex-shrink-0 ${iconColor[toast.type]}`}
             >
               <path d={iconPath[toast.type]} />
             </svg>

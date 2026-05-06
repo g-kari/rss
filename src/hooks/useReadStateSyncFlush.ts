@@ -113,10 +113,10 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
 
   const syncImmediately = useCallback(() => {
     if (!userRef.current) return;
+    if (!isDirtyRef.current && syncTimerRef.current === null) return;
     if (syncTimerRef.current) {
       clearTimeout(syncTimerRef.current);
     }
-    isDirtyRef.current = true;
     syncTimerRef.current = setTimeout(() => {
       syncTimerRef.current = null;
       if (!userRef.current) return;

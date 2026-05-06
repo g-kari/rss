@@ -232,7 +232,7 @@ function ArticleView({
           onCreateCollection={onCreateCollection}
         />
 
-        <h1 className="text-[22px] font-light leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[91px]">
+        <h1 className="text-[22px] font-light leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3">
           {article.title}
         </h1>
 
