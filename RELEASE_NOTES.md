@@ -2,6 +2,12 @@
 
 ## 2026-05-06 (latest)
 
+### セキュリティ対策っ
+
+- **pnpm-lock.yaml の glob deprecated 警告を解消** — Issue #361。`@node-minify/core` が transitive 依存として持ってた古い `glob v9`（deprecated）を `pnpm.overrides` で `>=10` に上書きして、`glob 12.0.0` に統一したよ〜🔒 lockfile もアップデート済みだよっ✨
+
+## 2026-05-06
+
 ### リファクタリングっ
 
 - **useArticleFilters の boolean フィルタートグルをジェネリック化** — Issue #357。6 つの個別 `useState` を `boolFilters` 1 つにまとめて、`BOOL_FILTER_STORAGE` マップと `toggle()` ファクトリで生成するようにしたよ〜🔧 外部 API は変わらないし型安全もバッチリ！新しいフィルターを追加するときはマップに 1 行追加するだけで済むようになったよっ✨
