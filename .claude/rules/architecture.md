@@ -102,6 +102,8 @@ src/
   App.tsx                    # 3ペインレイアウト + 認証状態管理 ('use client')
   types.ts                   # Feed / Article / UserProfile / AuthSession 型
   cloudflare-env.d.ts        # CloudflareEnv 拡張 (RSS_DATA, RATE_LIMIT, AI, IMAGES, FINDME_RSS 等)
+  config/
+    shortcuts.ts             # キーボードショートカット Single Source of Truth（ShortcutDef / ShortcutGroup / SHORTCUT_DEFS / KEYBOARD_SHORTCUTS）— useKeyboardNav と KeyboardShortcutsModal の両方が参照
   contexts/
     ArticleFilterContext.tsx  # 記事フィルター状態の React Context（FilterState + onSaveFilter）
     ReaderSettingsContext.tsx # リーダー表示設定の React Context（フォントサイズ・行間・テーマ等）
