@@ -78,6 +78,19 @@ export async function GET(request: Request) {
   });
 }
 
+/**
+ * POST /api/feeds — フィード追加
+ *
+ * @body `{ url: string, cookie?: string, cssSelector?: string, useRsshub?: boolean }`
+ * @returns 201 `Feed` オブジェクト
+ * @error 400 `INVALID_URL` — URL が空または http(s) 以外
+ * @error 400 `INVALID_COOKIE` — Cookie ヘッダー値が不正
+ * @error 400 `INVALID_SELECTOR` — CSS セレクタが不正または 500 文字超
+ * @error 409 `FEED_EXISTS` — 同一フィードが既に登録済み
+ * @error 422 `NO_FEED_FOUND` — RSS が見つからず LLM 推論も失敗
+ * @error 422 `FEED_LIMIT_REACHED` — フィード上限 (MAX_FEEDS_PER_USER) に達している
+ * @error 429 `COOLDOWN` — 30 秒クールダウン中
+ */
 export async function POST(request: Request) {
   return withJsonBody<{
     url?: unknown;

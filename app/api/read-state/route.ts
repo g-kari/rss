@@ -25,6 +25,11 @@ import {
   type ReadStateUpdate,
 } from "@/lib/read-state-merge";
 
+/**
+ * GET /api/read-state — 既読・ブックマーク・スヌーズ・メモなどの状態を取得する
+ *
+ * @returns 200 `ReadState` オブジェクト（欠落フィールドは空配列/nullで補完）
+ */
 export async function GET(request: Request) {
   return withSession(request, async ({ session, env }) => {
     // Partial で受け取り、欠落フィールドを [] で補完する（古いデータ形式との互換性）
@@ -33,6 +38,13 @@ export async function GET(request: Request) {
   });
 }
 
+/**
+ * POST /api/read-state — 既読状態をサーバーにフラッシュ・マージする
+ *
+ * @body `ReadStateUpdate` — readIds / bookmarkIds / removedIds / snoozedUntil / notes / tagIds 等
+ * @returns 200 マージ後の `ReadState` オブジェクト
+ * @error 413 `PAYLOAD_TOO_LARGE` — ID 配列がサイズ上限超過
+ */
 export async function POST(req: NextRequest) {
   return withJsonBody<ReadStateUpdate>(req, async ({ body, session, env }) => {
     const readIds = extractIds(body.readIds, MAX_READ_IDS);
