@@ -135,7 +135,7 @@ export function toPlainText(html: string): string {
 function sanitizeStyleAttr(style: string): string {
   return (
     style
-      .replace(/\burl\s*\([^)]*\)/gi, "")
+      .replace(/\burl\s*\(\s*(?:'[^']*'|"[^"]*"|[^)'"]*)\s*\)/gi, "")
       // -webkit- プレフィックス付きは \b が `-` 前に効かないため \b なしで除去
       .replace(/-webkit-image-set\s*\([^)]*\)/gi, "")
       .replace(/\bimage-set\s*\([^)]*\)/gi, "")
