@@ -70,11 +70,27 @@ export interface ShortcutContext {
   onShowFeedSwitcher: () => void;
 }
 
+/** ショートカットのグループ分類 */
+export type ShortcutGroup = "navigation" | "article" | "filter" | "display" | "global";
+
 export interface ShortcutDef {
   keys: string[];
   displayKey: string;
   description: string;
+  /** ショートカットのカテゴリ。KeyboardShortcutsModal でのグルーピングに使用 */
+  group: ShortcutGroup;
   handler?: (ctx: ShortcutContext, e: KeyboardEvent) => void;
+}
+
+/**
+ * キーボードショートカットの Single Source of Truth。
+ * `useKeyboardNav`（実装）と `KeyboardShortcutsModal`（UI表示）の両方がここを参照する。
+ * Issue #360: 実装と仕様の乖離を防ぐための定数。
+ */
+export interface KeyboardShortcut {
+  key: string;
+  description: string;
+  group: ShortcutGroup;
 }
 
 function filterToastMsg(current: boolean, label: string): string {
@@ -101,6 +117,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["j", "ArrowDown"],
     displayKey: "j / ↓",
     description: "次の記事",
+    group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
       ctx.navigateTo(ctx.list[ctx.idx + 1]);
@@ -110,6 +127,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["k", "ArrowUp"],
     displayKey: "k / ↑",
     description: "前の記事",
+    group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
       if (ctx.idx > 0) ctx.navigateTo(ctx.list[ctx.idx - 1]);
@@ -119,6 +137,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["n"],
     displayKey: "n",
     description: "次の未読記事へ",
+    group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
       ctx.navigateTo(
@@ -132,6 +151,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["p"],
     displayKey: "p",
     description: "前の未読記事へ",
+    group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
       ctx.navigateTo(
@@ -146,6 +166,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["x"],
     displayKey: "x",
     description: "ランダム未読記事へ",
+    group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
       const unread = ctx.list.filter(
@@ -164,6 +185,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["g"],
     displayKey: "g",
     description: "先頭の記事へ",
+    group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
       ctx.navigateTo(ctx.list[0]);
@@ -173,6 +195,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["G"],
     displayKey: "G",
     description: "末尾の記事へ",
+    group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
       ctx.navigateTo(ctx.list[ctx.list.length - 1]);
@@ -182,19 +205,26 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["o"],
     displayKey: "o",
     description: "元記事を開く",
+    group: "navigation",
     handler: (ctx) => {
       if (ctx.selectedArticle?.link)
         window.open(ctx.selectedArticle.link, "_blank", "noopener,noreferrer");
     },
   },
-  { keys: [], displayKey: "v", description: "全文を取得" },
-  { keys: [], displayKey: "a", description: "AI 要約" },
-  { keys: [], displayKey: "P", description: "読み上げ開始 / 停止" },
-  { keys: [], displayKey: "Space / Shift+Space", description: "記事を下 / 上にスクロール" },
+  { keys: [], displayKey: "v", description: "全文を取得", group: "article" },
+  { keys: [], displayKey: "a", description: "AI 要約", group: "article" },
+  { keys: [], displayKey: "P", description: "読み上げ開始 / 停止", group: "article" },
+  {
+    keys: [],
+    displayKey: "Space / Shift+Space",
+    description: "記事を下 / 上にスクロール",
+    group: "article",
+  },
   {
     keys: ["b"],
     displayKey: "b",
     description: "ブックマーク切替",
+    group: "article",
     handler: (ctx) => {
       if (ctx.selectedArticle) ctx.toggleBookmark(ctx.selectedArticle.id);
     },
@@ -203,6 +233,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["L"],
     displayKey: "L",
     description: "いいね切替",
+    group: "article",
     handler: (ctx) => {
       if (ctx.selectedArticle) {
         ctx.toggleLike(ctx.selectedArticle.id);
@@ -214,6 +245,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["R"],
     displayKey: "R",
     description: "フィードを更新",
+    group: "global",
     handler: (ctx) => {
       const isSpecial =
         ctx.selectedFeedId !== null &&
@@ -231,6 +263,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["t"],
     displayKey: "t",
     description: "リーディングリスト切替",
+    group: "article",
     handler: (ctx) => {
       if (ctx.selectedArticle) {
         ctx.toggleReadingList(ctx.selectedArticle.id);
@@ -246,6 +279,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["r"],
     displayKey: "r",
     description: "既読 / 未読切替",
+    group: "article",
     handler: (ctx) => {
       if (ctx.selectedArticle) ctx.toggleRead(ctx.selectedArticle.id);
     },
@@ -254,6 +288,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["z"],
     displayKey: "z",
     description: "スヌーズ（期間選択）",
+    group: "article",
     handler: (ctx, e) => {
       if (ctx.selectedArticle) {
         e.preventDefault();
@@ -265,6 +300,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["e"],
     displayKey: "e",
     description: "現在記事より上を全既読",
+    group: "article",
     handler: (ctx, e) => {
       e.preventDefault();
       if (ctx.idx < 0) return;
@@ -277,6 +313,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["m"],
     displayKey: "m",
     description: "全既読にする",
+    group: "article",
     handler: (ctx) => {
       const unreadCount = ctx.list.filter(
         (a) => !isArticleRead(a, ctx.readIds, ctx.readBeforeTimestamp),
@@ -291,6 +328,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["u"],
     displayKey: "u",
     description: "未読フィルター切替",
+    group: "filter",
     handler: (ctx, e) => {
       e.preventDefault();
       ctx.toggleUnreadOnly();
@@ -301,6 +339,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["B"],
     displayKey: "B",
     description: "ブックマークフィルター切替",
+    group: "filter",
     handler: (ctx) => {
       ctx.toggleBookmarkOnly();
       ctx.showToast(filterToastMsg(ctx.bookmarkOnly, "ブックマークフィルター"));
@@ -310,6 +349,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["T"],
     displayKey: "T",
     description: "リーディングリストフィルター切替",
+    group: "filter",
     handler: (ctx) => {
       ctx.toggleReadingListOnly();
       ctx.showToast(filterToastMsg(ctx.readingListOnly, "リーディングリストフィルター"));
@@ -319,6 +359,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["I"],
     displayKey: "I",
     description: "いいねフィルター切替",
+    group: "filter",
     handler: (ctx) => {
       ctx.toggleLikeOnly();
       ctx.showToast(filterToastMsg(ctx.likeOnly, "いいねフィルター"));
@@ -328,6 +369,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["D"],
     displayKey: "D",
     description: "ダイジェストモード切替（全フィード: フィードごとに最新3件）",
+    group: "filter",
     handler: (ctx) => {
       ctx.toggleDigestMode();
       ctx.showToast(filterToastMsg(ctx.digestMode, "ダイジェストモード"));
@@ -337,6 +379,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["d"],
     displayKey: "d",
     description: "日付フィルター切替",
+    group: "filter",
     handler: (ctx, e) => {
       e.preventDefault();
       const next = ctx.cycleDateRange();
@@ -347,6 +390,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["w"],
     displayKey: "w",
     description: "読了時間フィルター切替",
+    group: "filter",
     handler: (ctx, e) => {
       e.preventDefault();
       const next = ctx.cycleReadingTimeRange();
@@ -357,6 +401,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["s"],
     displayKey: "s",
     description: "ソート順切替",
+    group: "filter",
     handler: (ctx) => {
       const next = ctx.toggleSortOrder();
       ctx.showToast(`ソート: ${SORT_ORDER_LABELS[next]}`);
@@ -366,6 +411,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["c"],
     displayKey: "c",
     description: "リンクをコピー",
+    group: "article",
     handler: (ctx) => {
       if (ctx.selectedArticle?.link) {
         if (typeof navigator.share === "function") {
@@ -382,6 +428,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["C"],
     displayKey: "C",
     description: "Markdownリンクをコピー",
+    group: "article",
     handler: (ctx) => {
       if (ctx.selectedArticle?.link) {
         const mdTitle = (ctx.selectedArticle.title || ctx.selectedArticle.link).replace(
@@ -400,6 +447,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["f"],
     displayKey: "f",
     description: "フォントサイズ切替",
+    group: "display",
     handler: (ctx) => {
       const next = cycleValue(FONT_SIZE_CYCLE, ctx.fontSize);
       ctx.onChangeFontSize(next);
@@ -410,6 +458,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["F"],
     displayKey: "F",
     description: "フォントファミリー切替 (ゴシック / 明朝 / 等幅)",
+    group: "display",
     handler: (ctx) => {
       const next = cycleValue(FONT_FAMILY_CYCLE, ctx.fontFamily);
       ctx.onChangeFontFamily(next);
@@ -420,6 +469,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["l"],
     displayKey: "l",
     description: "レイアウト切替",
+    group: "display",
     handler: (ctx) => {
       const next = cycleValue(LAYOUT_CYCLE, ctx.layout);
       ctx.onChangeLayout(next);
@@ -430,6 +480,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["/"],
     displayKey: "/",
     description: "記事を検索",
+    group: "global",
     handler: (ctx, e) => {
       e.preventDefault();
       ctx.searchRef.current?.focus();
@@ -439,6 +490,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["]", "["],
     displayKey: "] / [",
     description: "次 / 前のフィード",
+    group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
       const ordered = buildFeedOrder(ctx.feeds, ctx.pinnedFeedIds);
@@ -455,13 +507,19 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     keys: ["q"],
     displayKey: "q",
     description: "フィードクイックスイッチャー",
+    group: "global",
     handler: (ctx, e) => {
       e.preventDefault();
       ctx.onShowFeedSwitcher();
     },
   },
-  { keys: [], displayKey: "?", description: "このヘルプを表示" },
-  { keys: [], displayKey: "\\", description: "フォーカスモード切替（記事のみ全画面）" },
+  { keys: [], displayKey: "?", description: "このヘルプを表示", group: "global" },
+  {
+    keys: [],
+    displayKey: "\\",
+    description: "フォーカスモード切替（記事のみ全画面）",
+    group: "display",
+  },
 ];
 
 const shortcutLookup: ReadonlyMap<string, ShortcutDef> = (() => {
@@ -484,3 +542,14 @@ export const SHORTCUTS: readonly [string, string][] = SHORTCUT_DEFS.map(
 );
 
 export const SHORTCUT_MAP: Readonly<Record<string, string>> = Object.fromEntries(SHORTCUTS);
+
+/**
+ * Issue #360: キーボードショートカット仕様の Single Source of Truth。
+ * `key`・`description`・`group` のシンプルな形式でエクスポートする。
+ * 実装詳細（handler）を含まない純粋な仕様定義として利用できる。
+ */
+export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcut[] = SHORTCUT_DEFS.map((def) => ({
+  key: def.displayKey,
+  description: def.description,
+  group: def.group,
+}));
