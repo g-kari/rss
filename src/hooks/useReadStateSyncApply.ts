@@ -22,18 +22,14 @@ export interface OtherStateDispatchers {
   setTagIdsState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
 }
 
-function mergeServerSet(
-  setState: (updater: (prev: Set<string>) => Set<string>) => void,
-  storageKey: string,
-  serverValues: string[],
-): void {
-  setState((prev) => {
-    const newValues = serverValues.filter((v) => !prev.has(v));
-    if (newValues.length === 0) return prev;
-    const merged = new Set([...prev, ...newValues]);
-    deferSaveSet(storageKey, merged);
-    return merged;
-  });
+/**
+ * ローカル Set にサーバー値をマージした新しい Set を返す純粋関数。
+ * 変更がない場合は null を返す（setState の不要な呼び出しを回避する）。
+ */
+function computeMergedSet(local: Set<string>, serverValues: string[]): Set<string> | null {
+  const newValues = serverValues.filter((v) => !local.has(v));
+  if (newValues.length === 0) return null;
+  return new Set([...local, ...newValues]);
 }
 
 export interface ApplyServerStateDeps {
@@ -95,10 +91,30 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
           }
         }
       }
-      mergeServerSet(setReadIds, STORAGE_KEYS.READ_IDS, state.readIds);
-      mergeServerSet(setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS, state.bookmarkIds);
-      mergeServerSet(setReadingListIds, STORAGE_KEYS.READING_LIST_IDS, state.readingListIds);
-      mergeServerSet(setLikeIds, STORAGE_KEYS.LIKE_IDS, state.likeIds);
+
+      // Set 系: computeMergedSet で純粋計算し、変更があれば setState と deferSaveSet を呼ぶ
+      // （setState コールバック内での副作用を排除して React Strict Mode の二重実行に対応）
+      const mergedRead = computeMergedSet(localSets.read, state.readIds);
+      if (mergedRead) {
+        setReadIds(mergedRead);
+        deferSaveSet(STORAGE_KEYS.READ_IDS, mergedRead);
+      }
+      const mergedBookmarks = computeMergedSet(localSets.bookmarks, state.bookmarkIds);
+      if (mergedBookmarks) {
+        setBookmarkIds(mergedBookmarks);
+        deferSaveSet(STORAGE_KEYS.BOOKMARK_IDS, mergedBookmarks);
+      }
+      const mergedReadingList = computeMergedSet(localSets.readingList, state.readingListIds);
+      if (mergedReadingList) {
+        setReadingListIds(mergedReadingList);
+        deferSaveSet(STORAGE_KEYS.READING_LIST_IDS, mergedReadingList);
+      }
+      const mergedLikes = computeMergedSet(localSets.likes, state.likeIds);
+      if (mergedLikes) {
+        setLikeIds(mergedLikes);
+        deferSaveSet(STORAGE_KEYS.LIKE_IDS, mergedLikes);
+      }
+
       if ("globalFilter" in state) {
         const serverFilter = state.globalFilter ?? null;
         saveJson(STORAGE_KEYS.GLOBAL_FILTER, serverFilter);
@@ -111,51 +127,47 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
       }
       if ("readBeforeTimestamp" in state && state.readBeforeTimestamp) {
         const rbt = state.readBeforeTimestamp;
-        setReadBeforeTimestamp((prev) => {
-          const next = !prev || rbt > prev ? rbt : prev;
-          if (next !== prev) storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
-          return next;
-        });
+        const prev = stateRef.current.readBeforeTimestamp;
+        const next = !prev || rbt > prev ? rbt : prev;
+        if (next !== prev) {
+          storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
+          setReadBeforeTimestamp(next);
+        }
       }
       if ("snoozedUntil" in state && state.snoozedUntil) {
         const snoozed = state.snoozedUntil;
-        setSnoozedUntil((prev) => {
-          const result: Record<string, string> = { ...snoozed };
-          for (const [id, until] of Object.entries(prev)) {
-            if (!result[id] || until > result[id]) result[id] = until;
-          }
-          const merged = pruneExpiredSnoozes(result);
-          saveJson(STORAGE_KEYS.SNOOZED_UNTIL, merged);
-          return merged;
-        });
+        const result: Record<string, string> = { ...snoozed };
+        for (const [id, until] of Object.entries(stateRef.current.snoozedUntil)) {
+          if (!result[id] || until > result[id]) result[id] = until;
+        }
+        const merged = pruneExpiredSnoozes(result);
+        saveJson(STORAGE_KEYS.SNOOZED_UNTIL, merged);
+        setSnoozedUntil(merged);
       }
       if ("notes" in state) {
-        setNotesState((prev) => {
-          const merged = { ...prev, ...(state.notes ?? {}) };
-          saveJson(STORAGE_KEYS.NOTES, merged);
-          return merged;
-        });
+        const merged = { ...stateRef.current.notes, ...(state.notes ?? {}) };
+        saveJson(STORAGE_KEYS.NOTES, merged);
+        setNotesState(merged);
       }
       if ("tagIds" in state) {
         const serverTags = state.tagIds ?? {};
-        setTagIdsState((prev) => {
-          const result: Record<string, string[]> = {};
-          for (const [k, v] of Object.entries(serverTags)) {
-            if (pendingTagRemovedRef.current.has(k)) continue;
-            if (pendingTagChangedRef.current.has(k)) continue;
-            result[k] = v;
+        const prev = stateRef.current.tagIds;
+        const result: Record<string, string[]> = {};
+        for (const [k, v] of Object.entries(serverTags)) {
+          if (pendingTagRemovedRef.current.has(k)) continue;
+          if (pendingTagChangedRef.current.has(k)) continue;
+          result[k] = v;
+        }
+        for (const [k, v] of Object.entries(prev)) {
+          if (pendingTagRemovedRef.current.has(k)) continue;
+          if (k in result) continue;
+          result[k] = v;
+          if (!(k in serverTags)) {
+            pendingTagChangedRef.current.add(k);
           }
-          for (const [k, v] of Object.entries(prev)) {
-            if (pendingTagRemovedRef.current.has(k)) continue;
-            if (k in result) continue;
-            result[k] = v;
-            if (!(k in serverTags)) {
-              pendingTagChangedRef.current.add(k);
-            }
-          }
-          saveJson(STORAGE_KEYS.TAGS, result);
-          return result;
-        });
+        }
+        saveJson(STORAGE_KEYS.TAGS, result);
+        setTagIdsState(result);
       }
     },
     [

@@ -169,7 +169,7 @@ function ArticleView({
   return (
     <main
       ref={mainRef}
-      className="h-full overflow-y-auto bg-surface-elevated animate-fade-in relative"
+      className="h-full overflow-y-auto overflow-x-hidden bg-surface-elevated animate-fade-in relative"
       onScroll={handleScroll}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}

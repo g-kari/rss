@@ -13,7 +13,7 @@ import { AI_MODELS, type WorkersAiModelId, DEFAULT_AI_MODEL } from "./ai-models"
 const VALID_MODEL_IDS = AI_MODELS.map((m) => m.id) as WorkersAiModelId[];
 
 const AI_WINDOW_MS = 60 * 1000;
-const AI_MAX_CALLS = 10;
+const AI_MAX_CALLS = 20;
 const AI_MAX_CALLS_70B = 3;
 
 type AiMessage = { role: "system" | "user"; content: string };

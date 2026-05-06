@@ -77,13 +77,18 @@ export function useGestureNav({
   }
 
   function dispatchSwipe(dx: number) {
-    // モバイル view ペインで右スワイプ → ペイン遷移（list へ戻る）を優先
-    if (dx > 0 && currentMobilePane === "view" && onGoBack) {
-      onGoBack();
+    if (dx < 0) {
+      onSelectNext?.();
       return;
     }
-    if (dx < 0) onSelectNext?.();
-    else if (dx > 0) onSelectPrev?.();
+    if (dx > 0) {
+      // 前の記事を優先。前の記事がない（onSelectPrev 未設定）場合のみ記事一覧に戻る
+      if (onSelectPrev) {
+        onSelectPrev();
+        return;
+      }
+      if (currentMobilePane === "view") onGoBack?.();
+    }
   }
 
   function handleNavMouseUp(e: React.MouseEvent) {

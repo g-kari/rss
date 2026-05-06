@@ -31,7 +31,11 @@ interface JwkWithKid extends JsonWebKey {
 const keyCache = new Map<string, CryptoKey>();
 let jwksCache: JwkWithKid[] | null = null;
 let jwksCacheExpiry = 0;
-const JWKS_CACHE_TTL_MS = 15 * 60 * 1000; // 15分
+// 15 分間キャッシュ。Workers はリクエスト間でモジュールスコープを共有するため有効。
+// ただしアイソレートが複数起動している場合は各インスタンスが独立したキャッシュを持つため、
+// 鍵ローテーション時に古いキャッシュを持つインスタンスが最大 15 分間存在し得る（LOW リスク）。
+// 0g0 ID の運用では頻繁な鍵ローテーションは想定しないため現状のままとする。
+const JWKS_CACHE_TTL_MS = 15 * 60 * 1000;
 
 /**
  * Base64URL 文字列を `Uint8Array` に変換する。

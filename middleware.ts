@@ -14,9 +14,9 @@ const STATIC_CSP_SUFFIX = [
   // Tailwind のインライン style は 'unsafe-inline' が必要
   "style-src 'self' 'unsafe-inline'",
   // 外部画像は /api/image-proxy 経由。
-  // data: は favicon.ts が canvas.toDataURL() で動的生成する未読バッジ用 data:image/png を許可するため必要。
-  // data: 画像は <img>/<link rel=icon> でスクリプト実行されないため、object-src 'none' と併せて XSS リスクは限定的。
-  "img-src 'self' data:",
+  // favicon.ts は canvas.toBlob() + URL.createObjectURL() で Blob URL を使用するため data: 不要。
+  // blob: は createObjectURL で生成した URL の読み込みに必要（同一オリジン内のみ有効、XSS リスクなし）。
+  "img-src 'self' blob:",
   FRAME_SRC,
   // ポッドキャスト等のメディアは HTTPS のみ
   "media-src https:",

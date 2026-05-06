@@ -1,5 +1,7 @@
 /** ベース画像をキャッシュして再読み込みを避ける */
 let baseImg: HTMLImageElement | null = null;
+/** 前回生成した Blob URL。次回更新時に revoke してメモリリークを防ぐ */
+let prevBlobUrl: string | null = null;
 
 function loadBaseImage(): Promise<HTMLImageElement> {
   if (baseImg) return Promise.resolve(baseImg);
@@ -17,6 +19,9 @@ function loadBaseImage(): Promise<HTMLImageElement> {
 /**
  * ファビコンに未読件数バッジを描画する。
  * count が 0 の場合は元のファビコンに戻す。
+ *
+ * canvas.toBlob() + URL.createObjectURL() を使用することで、
+ * CSP の img-src に data: を不要にしている。
  */
 export async function updateFaviconBadge(count: number): Promise<void> {
   try {
@@ -56,7 +61,13 @@ export async function updateFaviconBadge(count: number): Promise<void> {
       document.head.appendChild(link);
     }
     link.type = "image/png";
-    link.href = canvas.toDataURL("image/png");
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) return;
+
+    if (prevBlobUrl) URL.revokeObjectURL(prevBlobUrl);
+    prevBlobUrl = URL.createObjectURL(blob);
+    link.href = prevBlobUrl;
   } catch {
     // ファビコン更新失敗は無視（ブラウザ互換性問題など）
   }

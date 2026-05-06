@@ -22,6 +22,16 @@
   --color-accent-dot: #fb7185; /* rose-400: 未読ドット */
   --color-bookmark: #fbbf24; /* amber-400: ブックマーク */
   --color-highlight: #fef3c7; /* amber-100: 検索ハイライト */
+  /* シンタックスハイライト (highlight.js / GitHub Light) */
+  --color-hljs-fg: #24292e;
+  --color-hljs-comment: #6e7781;
+  --color-hljs-keyword: #cf222e;
+  --color-hljs-string: #0a3069;
+  --color-hljs-number: #0550ae;
+  --color-hljs-title: #8250df;
+  --color-hljs-type: #0550ae;
+  --color-hljs-variable: #953800;
+  --color-hljs-deletion: #82071e;
 }
 
 /* ダークテーマ (zinc/indigo パレット) */
@@ -43,6 +53,16 @@
   --color-accent-dot: #6366f1; /* indigo-500 */
   --color-bookmark: #fbbf24;
   --color-highlight: rgba(99, 102, 241, 0.18); /* indigo-500/18: 検索ハイライト */
+  /* シンタックスハイライト (highlight.js / GitHub Dark) */
+  --color-hljs-fg: #e6edf3;
+  --color-hljs-comment: #8b949e;
+  --color-hljs-keyword: #ff7b72;
+  --color-hljs-string: #a5d6ff;
+  --color-hljs-number: #79c0ff;
+  --color-hljs-title: #d2a8ff;
+  --color-hljs-type: #79c0ff;
+  --color-hljs-variable: #ffa657;
+  --color-hljs-deletion: #ffa198;
 }
 
 html,
@@ -291,95 +311,52 @@ body {
 }
 
 /* ── Syntax highlighting (highlight.js) ──────────────────────────────────── */
-/* hljs ベーススタイル: 背景は pre から継承 */
+/* テーマ切り替えは @theme / [data-theme="dark"] の --color-hljs-* 変数で自動対応 */
 .article-content .hljs {
   background: transparent;
-  color: #24292e;
+  color: var(--color-hljs-fg);
 }
-
-/* ライトテーマ トークン (GitHub Light) */
 .article-content .hljs-comment,
 .article-content .hljs-punctuation {
-  color: #6e7781;
+  color: var(--color-hljs-comment);
 }
 .article-content .hljs-keyword,
 .article-content .hljs-selector-tag,
 .article-content .hljs-tag {
-  color: #cf222e;
+  color: var(--color-hljs-keyword);
 }
 .article-content .hljs-string,
 .article-content .hljs-attr,
 .article-content .hljs-addition {
-  color: #0a3069;
+  color: var(--color-hljs-string);
 }
 .article-content .hljs-number,
 .article-content .hljs-literal,
 .article-content .hljs-link {
-  color: #0550ae;
+  color: var(--color-hljs-number);
 }
 .article-content .hljs-title,
 .article-content .hljs-title.function_,
 .article-content .hljs-title.class_ {
-  color: #8250df;
+  color: var(--color-hljs-title);
 }
 .article-content .hljs-type,
 .article-content .hljs-built_in,
 .article-content .hljs-class .hljs-title {
-  color: #0550ae;
+  color: var(--color-hljs-type);
 }
 .article-content .hljs-variable,
 .article-content .hljs-template-variable {
-  color: #953800;
+  color: var(--color-hljs-variable);
 }
 .article-content .hljs-deletion {
-  color: #82071e;
+  color: var(--color-hljs-deletion);
 }
 .article-content .hljs-emphasis {
   font-style: italic;
 }
 .article-content .hljs-strong {
   font-weight: bold;
-}
-
-/* ダークテーマ トークン (GitHub Dark) */
-[data-theme="dark"] .article-content .hljs {
-  color: #e6edf3;
-}
-[data-theme="dark"] .article-content .hljs-comment,
-[data-theme="dark"] .article-content .hljs-punctuation {
-  color: #8b949e;
-}
-[data-theme="dark"] .article-content .hljs-keyword,
-[data-theme="dark"] .article-content .hljs-selector-tag,
-[data-theme="dark"] .article-content .hljs-tag {
-  color: #ff7b72;
-}
-[data-theme="dark"] .article-content .hljs-string,
-[data-theme="dark"] .article-content .hljs-attr,
-[data-theme="dark"] .article-content .hljs-addition {
-  color: #a5d6ff;
-}
-[data-theme="dark"] .article-content .hljs-number,
-[data-theme="dark"] .article-content .hljs-literal,
-[data-theme="dark"] .article-content .hljs-link {
-  color: #79c0ff;
-}
-[data-theme="dark"] .article-content .hljs-title,
-[data-theme="dark"] .article-content .hljs-title.function_,
-[data-theme="dark"] .article-content .hljs-title.class_ {
-  color: #d2a8ff;
-}
-[data-theme="dark"] .article-content .hljs-type,
-[data-theme="dark"] .article-content .hljs-built_in,
-[data-theme="dark"] .article-content .hljs-class .hljs-title {
-  color: #79c0ff;
-}
-[data-theme="dark"] .article-content .hljs-variable,
-[data-theme="dark"] .article-content .hljs-template-variable {
-  color: #ffa657;
-}
-[data-theme="dark"] .article-content .hljs-deletion {
-  color: #ffa198;
 }
 
 /* Qiita / Zenn: コードブロックのファイル名ラベル */

@@ -12,6 +12,8 @@
  * 優先度:
  *   1. Sec-Fetch-Site ヘッダー (modern browsers) — `same-origin` のみ許可
  *   2. Referer ヘッダー — origin が self と一致する場合のみ許可
+ *      ※ Referer は HTTP レベルで偽造可能なため curl 等からバイパスされ得る（LOW リスク）。
+ *        画像プロキシには checkSlidingWindow レートリミットがあるため実用上の乱用は抑制される。
  *
  * どちらも存在しない・判定できない場合は拒否する（fail-closed）。
  */

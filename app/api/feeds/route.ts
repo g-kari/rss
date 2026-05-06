@@ -146,6 +146,14 @@ export async function POST(request: Request) {
       }
     }
 
+    // 外部 HTTP 取得前に FEED_LIMIT を先行チェック（discoverFeedUrl は最大 15 秒かかるため）
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    if (subs.length >= MAX_FEEDS_PER_USER) {
+      return apiError(`Feed limit reached (max ${MAX_FEEDS_PER_USER})`, 422, {
+        code: "FEED_LIMIT_REACHED",
+      });
+    }
+
     // 3 段階フォールバック: RSS 探索 → 手動 CSS セレクタ → LLM CSS セレクタ推論
     const discovered = await discoverFeedUrl(url);
     let inferred: { selectors: SelectorConfig; siteTitle: string; siteUrl: string } | null = null;
@@ -179,14 +187,8 @@ export async function POST(request: Request) {
       ? await computePrivateFeedHash(url, session.userId)
       : await computeFeedHash(url);
 
-    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     if (subs.some((s) => s.feedHash === feedHash)) {
       return apiError("Feed already exists", 409, { code: "FEED_EXISTS" });
-    }
-    if (subs.length >= MAX_FEEDS_PER_USER) {
-      return apiError(`Feed limit reached (max ${MAX_FEEDS_PER_USER})`, 422, {
-        code: "FEED_LIMIT_REACHED",
-      });
     }
 
     // 共有 meta を取得（他ユーザーがすでに登録している場合は既存を流用、なければ新規作成）
