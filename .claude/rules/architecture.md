@@ -114,6 +114,7 @@ src/
     FeedItem.tsx             # フィードアイテム（コンテキストメニュー付き）
     FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
+    FeedHealthModal.tsx      # フィードヘルス監視モーダル（エラー・レートリミット・オーバーサイズのフィードを一覧表示）
     ArticleList.tsx          # 記事一覧 (5レイアウト対応・仮想スクロール)
     ArticleListHeader.tsx    # 記事一覧ヘッダー（後方互換再エクスポート → article-list-header/）
     article-list-header/     # 記事一覧ヘッダーサブコンポーネント群（index.tsx オーケストレーター / LayoutSwitcher / FilterPills / FilterPillButton / CategoryFilter / SortButton / MarkAllReadButton / SearchBar / types.ts / constants.ts）
