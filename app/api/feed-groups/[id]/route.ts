@@ -3,7 +3,7 @@ import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readFeedGroups, writeFeedGroups, FEED_GROUP_NAME_MAX_LENGTH } from "@/lib/feed-groups";
 import { readUserSubscriptions, writeUserSubscriptions } from "@/lib/shared-feed";
-import { stripControlChars } from "@/lib/validation";
+import { parseName } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,14 +18,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!group) return apiError("Feed group not found", 404, { code: "FEED_GROUP_NOT_FOUND" });
 
     if ("name" in body) {
-      if (typeof body.name !== "string") {
-        return apiError("name must be a string", 400, { code: "INVALID_NAME" });
-      }
-      const name = stripControlChars(body.name.trim());
-      if (!name) return apiError("name must be a non-empty string", 400, { code: "INVALID_NAME" });
-      if (name.length > FEED_GROUP_NAME_MAX_LENGTH) {
-        return apiError("name too long", 400, { code: "INVALID_NAME" });
-      }
+      const nameResult = parseName(body.name, FEED_GROUP_NAME_MAX_LENGTH);
+      if (!nameResult.ok) return nameResult.error;
+      const { name } = nameResult;
       if (groups.some((g) => g.id !== id && g.name === name)) {
         return apiError("name already exists", 409, { code: "DUPLICATE_NAME" });
       }

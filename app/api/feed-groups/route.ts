@@ -7,7 +7,7 @@ import {
   MAX_FEED_GROUPS_PER_USER,
   FEED_GROUP_NAME_MAX_LENGTH,
 } from "@/lib/feed-groups";
-import { stripControlChars } from "@/lib/validation";
+import { parseName } from "@/lib/validation";
 import type { FeedGroup } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -20,15 +20,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   return withJsonBody<{ name?: unknown }>(request, async ({ body, session, env }) => {
-    const rawName = body.name;
-    if (typeof rawName !== "string") {
-      return apiError("name must be a string", 400, { code: "INVALID_NAME" });
-    }
-    const name = stripControlChars(rawName.trim());
-    if (!name) return apiError("name must be a non-empty string", 400, { code: "INVALID_NAME" });
-    if (name.length > FEED_GROUP_NAME_MAX_LENGTH) {
-      return apiError("name too long", 400, { code: "INVALID_NAME" });
-    }
+    const nameResult = parseName(body.name, FEED_GROUP_NAME_MAX_LENGTH);
+    if (!nameResult.ok) return nameResult.error;
+    const { name } = nameResult;
 
     const groups = await readFeedGroups(env.RSS_DATA, session.userId);
     if (groups.length >= MAX_FEED_GROUPS_PER_USER) {
