@@ -332,6 +332,14 @@ function ArticleList({
     overscan: 3,
   });
 
+  const magazineVirtualizer = useVirtualizer({
+    count: Math.max(0, nonGalleryDisplayItems.length - 1),
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 44,
+    getItemKey: (i) => nonGalleryDisplayItems[i + 1]?.id ?? `magazine-${i}`,
+    overscan: 5,
+  });
+
   const scrollPositionsRef = useRef<Map<string, number>>(new Map());
   const prevFeedIdRef = useRef<string | null>(null);
 
@@ -355,6 +363,7 @@ function ArticleList({
   });
   const flatItemsRef = useSyncedRef(flatItems);
   const visibleRef = useSyncedRef(visible);
+  const nonGalleryDisplayItemsRef = useSyncedRef(nonGalleryDisplayItems);
   useEffect(() => {
     if (!selectedArticleId) return;
     if (
@@ -372,6 +381,11 @@ function ArticleList({
       const articleIdx = visibleRef.current.findIndex((a) => a.id === selectedArticleId);
       if (articleIdx >= 0)
         cardVirtualizer.scrollToIndex(Math.floor(articleIdx / 2), { align: "auto" });
+    } else if (layout === "magazine") {
+      const magazineIdx = nonGalleryDisplayItemsRef.current.findIndex(
+        (a, i) => i > 0 && a.id === selectedArticleId,
+      );
+      if (magazineIdx >= 1) magazineVirtualizer.scrollToIndex(magazineIdx - 1, { align: "auto" });
     } else {
       const el = document.getElementById(`article-${selectedArticleId}`);
       const container = scrollContainerRef.current;
@@ -382,7 +396,7 @@ function ArticleList({
         if (!isVisible) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・flatItemsRef・visibleRef は安定参照。記事選択・レイアウト変更時のみスクロール
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・magazineVirtualizer・flatItemsRef・visibleRef・nonGalleryDisplayItemsRef は安定参照。記事選択・レイアウト変更時のみスクロール
   }, [selectedArticleId, layout]);
 
   const resolveItemProps = useCallback(
@@ -580,7 +594,7 @@ function ArticleList({
             </div>
           )}
 
-          {/* magazine — 仮想スクロールなし（先頭フィーチャー記事 + コンパクトリスト） */}
+          {/* magazine — 仮想スクロール（先頭フィーチャー記事 + 仮想化コンパクトリスト） */}
           {layout === "magazine" && nonGalleryDisplayItems.length > 0 && (
             <>
               <div className="p-2">
@@ -593,17 +607,41 @@ function ArticleList({
                   )}
                 />
               </div>
-              {nonGalleryDisplayItems.slice(1).map((a, i) => (
-                <CompactArticleItem
-                  key={a.id}
-                  {...resolveItemProps(
-                    a,
-                    i + 1,
-                    nonGalleryDeletingIds.has(a.id),
-                    nonGalleryNewIds.has(a.id),
-                  )}
-                />
-              ))}
+              {nonGalleryDisplayItems.length > 1 && (
+                <div style={{ height: magazineVirtualizer.getTotalSize(), position: "relative" }}>
+                  {magazineVirtualizer.getVirtualItems().map((vItem) => {
+                    const a = nonGalleryDisplayItems[vItem.index + 1];
+                    if (!a) return null;
+                    return (
+                      <div
+                        key={vItem.key}
+                        data-index={vItem.index}
+                        ref={magazineVirtualizer.measureElement}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${vItem.start}px)`,
+                          transition:
+                            nonGalleryDeletingIds.size > 0 || nonGalleryNewIds.size > 0
+                              ? "transform 0.2s ease"
+                              : undefined,
+                        }}
+                      >
+                        <CompactArticleItem
+                          {...resolveItemProps(
+                            a,
+                            vItem.index + 1,
+                            nonGalleryDeletingIds.has(a.id),
+                            nonGalleryNewIds.has(a.id),
+                          )}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </>
           )}
 
