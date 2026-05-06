@@ -152,7 +152,9 @@ src/
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
-    useFeeds.ts              # /api/feeds + /api/articles fetch (5分ポーリング)
+    useFeeds.ts              # useFeedData + useArticleData を合成するオーケストレーター（後方互換）
+    useFeedData.ts           # フィード一覧 fetch・初回ロード・CRUD 補助（onFeedAdded・updateFeed 等）
+    useArticleData.ts        # 記事取得・5分ポーリング・マージ・ページネーション・TTL 管理
     useFeedFilters.ts        # nsfwFeedIds / groupFeedIds / mutedFeedIds の useMemo を集約（App.tsx から分割）
     useFeedOperations.ts     # フィード CRUD 操作
     useFeedGroups.ts         # /api/feed-groups CRUD + 楽観的更新（create / rename / collapse / mute / reorder / delete）
