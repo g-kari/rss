@@ -164,12 +164,15 @@ export function useFilteredArticles({
   const historyIdsForStructure = isHistoryFeed ? historyIds : EMPTY_SET;
   const articleTagsForDeps = selectedTag ? articleTags : undefined;
 
-  const readIdsForState = unreadOnly ? readIds : EMPTY_SET;
+  const isSpecialFeed = isBookmarksFeed || isReadingListFeed || isLikesFeed || isHistoryFeed;
+  const effectiveUnreadOnly = unreadOnly && !isSpecialFeed;
+
+  const readIdsForState = effectiveUnreadOnly ? readIds : EMPTY_SET;
   const bookmarkIdsForState = bookmarkOnly ? bookmarkIds : EMPTY_SET;
   const readingListIdsForState = readingListOnly ? readingListIds : EMPTY_SET;
   const likeIdsForState = likeOnly ? likeIds : EMPTY_SET;
   const noteIdsForState = noteOnly ? noteIds : EMPTY_SET;
-  const readBeforeForState = unreadOnly ? readBeforeTimestamp : null;
+  const readBeforeForState = effectiveUnreadOnly ? readBeforeTimestamp : null;
   const historyOrderForState = isHistoryFeed ? historyOrder : EMPTY_STR_ARRAY;
 
   const structuralFiltered = useMemo(
@@ -247,7 +250,7 @@ export function useFilteredArticles({
         bookmarkIds: bookmarkIdsForState,
         readingListIds: readingListIdsForState,
         likeIds: likeIdsForState,
-        unreadOnly,
+        unreadOnly: effectiveUnreadOnly,
         bookmarkOnly,
         readingListOnly,
         likeOnly,
@@ -271,7 +274,7 @@ export function useFilteredArticles({
       bookmarkIdsForState,
       readingListIdsForState,
       likeIdsForState,
-      unreadOnly,
+      effectiveUnreadOnly,
       bookmarkOnly,
       readingListOnly,
       likeOnly,
