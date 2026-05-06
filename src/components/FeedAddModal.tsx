@@ -24,6 +24,7 @@ interface Props {
 /**
  * フィード追加モーダル。Issue #115 対応でインラインフォームから移行。
  * URL 必須 + Cookie / CSS セレクタは折りたたみで任意指定。
+ * Issue #396: 追加中（adding=true）はモーダルを閉じられないようにする。
  */
 export default function FeedAddModal({
   url,
@@ -43,8 +44,11 @@ export default function FeedAddModal({
   onSubmit,
   onClose,
 }: Props) {
+  // Issue #396: 追加処理中はモーダルを閉じられないようにする
+  const handleClose = adding ? () => {} : onClose;
+
   return (
-    <Modal title="フィードを追加" onClose={onClose} width="sm:w-[440px]">
+    <Modal title="フィードを追加" onClose={handleClose} width="sm:w-[440px]">
       <div className="p-4">
         <form onSubmit={onSubmit}>
           <input
@@ -133,8 +137,9 @@ export default function FeedAddModal({
             </button>
             <button
               type="button"
-              onClick={onClose}
-              className="text-[12px] px-4 py-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200"
+              onClick={handleClose}
+              disabled={adding}
+              className="text-[12px] px-4 py-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               キャンセル
             </button>

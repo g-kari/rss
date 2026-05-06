@@ -191,19 +191,23 @@ function FeedSidebar({
     clearError,
   } = useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported });
 
+  // Issue #410: フォームリセットとモーダルクローズを一括処理する共通関数
+  function handleCloseFeedAdd() {
+    setInputOpen(false);
+    setCookieOpen(false);
+    setCssSelectorOpen(false);
+    setNewUrl("");
+    setNewCookie("");
+    setNewCssSelector("");
+    setNewUseRsshub(true);
+    clearError();
+  }
+
   async function handleAddFeed(e: React.FormEvent) {
     e.preventDefault();
     const result = await addFeed(
       newUrl,
-      () => {
-        setNewUrl("");
-        setNewCookie("");
-        setNewCssSelector("");
-        setNewUseRsshub(true);
-        setCookieOpen(false);
-        setCssSelectorOpen(false);
-        setInputOpen(false);
-      },
+      handleCloseFeedAdd,
       newCookie || undefined,
       newCssSelector || undefined,
       newUseRsshub,
@@ -317,7 +321,14 @@ function FeedSidebar({
         isOnline={isOnline}
         onActivateNsfw={onActivateNsfw}
         onDeactivateNsfw={onDeactivateNsfw}
-        onToggleInput={() => setInputOpen((v) => !v)}
+        onToggleInput={() => {
+          if (inputOpen) {
+            // Issue #410: モーダルを閉じる際は必ずフォームをリセットする
+            handleCloseFeedAdd();
+          } else {
+            setInputOpen(true);
+          }
+        }}
         onRefresh={onRefresh}
       />
 
@@ -339,16 +350,7 @@ function FeedSidebar({
           adding={adding}
           error={error ?? null}
           onSubmit={handleAddFeed}
-          onClose={() => {
-            setInputOpen(false);
-            setCookieOpen(false);
-            setCssSelectorOpen(false);
-            setNewUrl("");
-            setNewCookie("");
-            setNewCssSelector("");
-            setNewUseRsshub(true);
-            clearError();
-          }}
+          onClose={handleCloseFeedAdd}
         />
       )}
 
