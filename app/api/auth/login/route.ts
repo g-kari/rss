@@ -25,7 +25,6 @@ export async function GET(request: Request) {
     existingAuthStatePrefix: existingAuthState?.slice(0, 8),
     existingCookies: cookieNames,
     userAgent: request.headers.get("user-agent")?.slice(0, 80),
-    referer: request.headers.get("referer"),
     host: request.headers.get("host"),
   });
 

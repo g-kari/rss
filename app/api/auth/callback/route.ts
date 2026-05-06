@@ -54,7 +54,6 @@ export async function GET(request: Request) {
     stateMatch: state === savedState,
     existingCookies: cookieNames,
     userAgent: request.headers.get("user-agent")?.slice(0, 80),
-    referer: request.headers.get("referer"),
     host: request.headers.get("host"),
     origin: request.headers.get("origin"),
   });
@@ -82,7 +81,7 @@ export async function GET(request: Request) {
     console.error("[auth/callback] invalid APP_BASE_URL:", appBaseUrl);
     return authError("サーバー設定エラー", 500);
   }
-  if (parsedAppBase.protocol !== "https:" && parsedAppBase.hostname !== "localhost") {
+  if (parsedAppBase.protocol !== "https:") {
     console.error("[auth/callback] APP_BASE_URL must be HTTPS:", appBaseUrl);
     return authError("サーバー設定エラー", 500);
   }
