@@ -2,6 +2,10 @@
 
 ## 2026-05-08
 
+### セキュリティ対策っ
+
+- **クライアントサイドの `console.error` を本番環境で抑制** — Issue #349。`'use client'` フック（`useCollections` / `useFeedGroups` / `useFeeds` / `usePushNotifications`）の catch 節にある `console.error` を `process.env.NODE_ENV !== "production"` ガードで囲んだよ〜🔒 開発環境ではそのまま出るけど本番ブラウザのコンソールにエラー詳細が漏れなくなったよ！ユーザーへのフィードバックは既存の `onError` コールバックで継続してるから UX は変わらないよ〜✨ `ErrorBoundary` の `componentDidCatch` は React エラー境界の標準ログとして残してるよっ🎀
+
 ### リファクタリングっ
 
 - **`useFeedDragDrop` フック抽出** — `FeedSidebar` に inline で書かれてた D&D 関連の state・ハンドラーを `src/hooks/useFeedDragDrop.ts` に分離したよ〜🔧 `draggedFeedId` / `dragOverGroupId` / `dragOverUngrouped` の 3 state と `handleDropFeedOnView` / `handleDropFeedOnGroup` / `draggedFeedInGroup` をまとめてフックにしたから、コンポーネントがすっきりしてテストもしやすくなったよっ✨

@@ -99,7 +99,7 @@ export function useFeeds(
   const isOnlineRef = useSyncedRef(isOnline);
   // useRef で安定化して deps から除外する（onErrorRef 経由で最新コールバックを参照するため再生成不要）
   const onErrRef = useRef((err: unknown, msg: string) => {
-    console.error(err);
+    if (process.env.NODE_ENV !== "production") console.error(err);
     onErrorRef.current?.(msg);
   });
   const latestArticleIdRef = useRef<string | null>(null);
@@ -192,7 +192,8 @@ export function useFeeds(
       // ポーリング成功時に次回の since 基準を更新する
       lastPollTimeRef.current = pollStartTime;
     } catch (err) {
-      console.error("[polling] 新着記事の取得に失敗:", err);
+      if (process.env.NODE_ENV !== "production")
+        console.error("[polling] 新着記事の取得に失敗:", err);
       onErrorRef.current?.("新着記事の取得に失敗しました");
     } finally {
       isPollingRef.current = false;
@@ -303,7 +304,8 @@ export function useFeeds(
         setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
         mergeArticles(await apiFetchJson<Article[]>("/api/articles"));
       } catch (err) {
-        console.error(`[${endpoint}] feed action failed:`, err);
+        if (process.env.NODE_ENV !== "production")
+          console.error(`[${endpoint}] feed action failed:`, err);
         onErrorRef.current?.(errorMessage);
       }
     },

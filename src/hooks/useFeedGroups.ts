@@ -117,7 +117,7 @@ export function useFeedGroups(
           body: JSON.stringify({ collapsed }),
         });
       } catch (err) {
-        console.error(err);
+        if (process.env.NODE_ENV !== "production") console.error(err);
         onError?.("グループの折りたたみ変更に失敗しました");
         setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, collapsed: !collapsed } : g)));
       }
@@ -136,7 +136,7 @@ export function useFeedGroups(
           body: JSON.stringify({ muted }),
         });
       } catch (err) {
-        console.error(err);
+        if (process.env.NODE_ENV !== "production") console.error(err);
         onError?.("グループのミュート変更に失敗しました");
         setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, muted: !muted } : g)));
       }
@@ -195,7 +195,7 @@ export function useFeedGroups(
           body: JSON.stringify({ orderedIds }),
         });
       } catch (err) {
-        console.error(err);
+        if (process.env.NODE_ENV !== "production") console.error(err);
         onError?.("グループの並び替えに失敗しました");
         if (snapshot) {
           setGroups(sortByOrder(snapshot));

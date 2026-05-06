@@ -102,7 +102,7 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
         setSubscribed(true);
       }
     } catch (err) {
-      console.error("Push toggle failed:", err);
+      if (process.env.NODE_ENV !== "production") console.error("Push toggle failed:", err);
       setError("エラーが発生しました");
     } finally {
       setLoading(false);
