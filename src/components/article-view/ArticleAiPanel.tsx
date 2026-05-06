@@ -1,9 +1,10 @@
 import React from "react";
 import type { Article, EngagementAction } from "../../types";
+import type { AiError } from "../../hooks/useArticleAi";
 
 interface ArticleAiPanelProps {
   aiResult: string | null;
-  aiError: string;
+  aiError: AiError | null;
   summaryRating: "good" | "neutral" | "bad" | null;
   setSummaryRating: (rating: "good" | "neutral" | "bad") => void;
   article: Article;
@@ -13,6 +14,7 @@ interface ArticleAiPanelProps {
     action: EngagementAction,
     value?: string,
   ) => void;
+  onRetry?: () => void;
 }
 
 function renderSummary(text: string) {
@@ -48,6 +50,24 @@ function renderSummary(text: string) {
     .filter((el): el is React.JSX.Element => el !== null);
 }
 
+function RetryIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M1 4v6h6" />
+      <path d="M3.51 15a9 9 0 1 0 .49-3" />
+    </svg>
+  );
+}
+
 export default function ArticleAiPanel({
   aiResult,
   aiError,
@@ -55,6 +75,7 @@ export default function ArticleAiPanel({
   setSummaryRating,
   article,
   onEngagement,
+  onRetry,
 }: ArticleAiPanelProps) {
   return (
     <>
@@ -94,7 +115,44 @@ export default function ArticleAiPanel({
           <div className="space-y-0.5">{renderSummary(aiResult)}</div>
         </div>
       )}
-      {aiError && <p className="mb-6 text-[11px] text-rose-400">{aiError}</p>}
+      {aiError && (
+        <div className="mb-6 flex flex-col gap-2">
+          <div className="flex items-start gap-2">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-rose-400 mt-[1px] shrink-0"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] text-rose-400">{aiError.message}</p>
+              {aiError.type === "rate_limit" && (
+                <p className="text-[11px] text-text-muted mt-0.5">
+                  少し時間をおいてから再試行してください。
+                </p>
+              )}
+            </div>
+          </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="self-start flex items-center gap-1.5 px-3 py-1.5 text-[11px] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200"
+            >
+              <RetryIcon />
+              再試行
+            </button>
+          )}
+        </div>
+      )}
     </>
   );
 }

@@ -11,6 +11,15 @@ import { toPlainText } from "../lib/html";
 /** AI プロバイダー識別子（要約・翻訳共通） */
 export type TranslationProvider = "browser" | "workers-ai";
 
+/** AI 操作のエラー種別 */
+export type AiErrorType = "network" | "rate_limit" | "model_error" | "unknown";
+
+/** AI 操作のエラー情報 */
+export interface AiError {
+  type: AiErrorType;
+  message: string;
+}
+
 /** 翻訳・要約結果は plain text または HTML のどちらも取り得るため区別する */
 export interface AiOperationResult {
   text: string;
@@ -22,13 +31,13 @@ export interface AiOperationResult {
 interface ArticleAiState {
   aiResult: string | null;
   aiLoading: boolean;
-  aiError: string;
+  aiError: AiError | null;
   /** AI 要約を実行する（LRU キャッシュ優先）。html を渡すとブラウザ Summarizer API を試行する。 */
   doRunAi: (url: string, articleId?: string, html?: string) => Promise<void>;
   resetAi: () => void;
   translateResult: AiOperationResult | null;
   translateLoading: boolean;
-  translateError: string;
+  translateError: AiError | null;
   /**
    * AI 翻訳を実行する（LRU キャッシュ優先）。
    * `html` を渡すと Chrome Translator API が使える環境で HTML 構造を保持したまま翻訳し、
@@ -66,6 +75,27 @@ function encodeForCache(result: AiOperationResult): string {
   return JSON.stringify(result);
 }
 
+/** HTTP ステータスコードから AiErrorType を判定する */
+function classifyHttpError(status: number): AiErrorType {
+  if (status === 429) return "rate_limit";
+  if (status >= 500 && status <= 503) return "model_error";
+  return "unknown";
+}
+
+/** AiErrorType に対応するユーザー向けメッセージを返す */
+function getErrorMessage(type: AiErrorType, fallback: string): string {
+  switch (type) {
+    case "network":
+      return "ネットワークエラーが発生しました。接続を確認してください。";
+    case "rate_limit":
+      return "リクエストが多すぎます。しばらく待ってから再試行してください。";
+    case "model_error":
+      return "AI モデルでエラーが発生しました。しばらく待ってから再試行してください。";
+    case "unknown":
+      return fallback;
+  }
+}
+
 /**
  * AI 操作（要約・翻訳など）の状態とロジックを管理するプライベートフック。
  *
@@ -81,14 +111,14 @@ function useAiOperation(
 ) {
   const [result, setResult] = useState<AiOperationResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<AiError | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     setResult(null);
-    setError("");
+    setError(null);
     setLoading(false);
   }, []);
 
@@ -111,7 +141,7 @@ function useAiOperation(
       abortRef.current = controller;
 
       setLoading(true);
-      setError("");
+      setError(null);
 
       // クライアント側処理を試行（Chrome Translator API 等）
       if (localProcessor && localInput) {
@@ -136,6 +166,11 @@ function useAiOperation(
           body: JSON.stringify({ url, articleId: currentArticleId }),
           signal: controller.signal,
         });
+        if (!res.ok) {
+          const type = classifyHttpError(res.status);
+          setError({ type, message: getErrorMessage(type, errorMessage) });
+          return;
+        }
         const data = (await res.json()) as { result?: string; error?: string };
         if (data.result) {
           const entry: AiOperationResult = {
@@ -146,13 +181,13 @@ function useAiOperation(
           if (currentArticleId) lruCache.set(currentArticleId, encodeForCache(entry));
           setResult(entry);
         } else if (data.error) {
-          setError(data.error);
+          setError({ type: "unknown", message: data.error });
         } else {
-          setError(errorMessage);
+          setError({ type: "unknown", message: errorMessage });
         }
       } catch (err) {
         if (isAbortError(err)) return;
-        setError(errorMessage);
+        setError({ type: "network", message: getErrorMessage("network", errorMessage) });
       } finally {
         setLoading(false);
       }

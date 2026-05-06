@@ -253,6 +253,7 @@ function ArticleView({
           setSummaryRating={setSummaryRating}
           article={article}
           onEngagement={onEngagement}
+          onRetry={article.link ? () => void doRunAi(article.link!, article.id) : undefined}
         />
 
         <ArticleContentBody
@@ -263,6 +264,7 @@ function ArticleView({
           resolvedOgImage={resolvedOgImage}
           translateResult={translateResult}
           translateError={translateError}
+          onRetryTranslate={handleTranslate}
           contentTab={contentTab}
           setContentTab={setContentTab}
           translateRating={translateRating}
