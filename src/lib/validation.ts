@@ -1,5 +1,8 @@
 /** 各種入力バリデーションユーティリティ */
 
+import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
+
 // ---------------------------------------------------------------------------
 // 共通
 // ---------------------------------------------------------------------------
@@ -76,6 +79,32 @@ export const IMAGE_PROXY_MAX_CALLS = 120;
 /** 制御文字（U+0000–U+001F, U+007F）を除去する */
 export function stripControlChars(value: string): string {
   return value.replace(/[\u0000-\u001F\u007F]/g, "");
+}
+
+/**
+ * 名前フィールドのバリデーション共通ヘルパー。
+ * - 文字列型チェック
+ * - 制御文字除去 + trim
+ * - 空文字チェック
+ * - 最大長チェック
+ *
+ * 重複名チェックなど Handler 固有のロジックは含まない。
+ */
+export function parseName(
+  raw: unknown,
+  maxLength: number,
+): { ok: true; name: string } | { ok: false; error: NextResponse } {
+  if (typeof raw !== "string")
+    return { ok: false, error: apiError("name must be a string", 400, { code: "INVALID_NAME" }) };
+  const name = stripControlChars(raw.trim());
+  if (!name)
+    return {
+      ok: false,
+      error: apiError("name must be a non-empty string", 400, { code: "INVALID_NAME" }),
+    };
+  if (name.length > maxLength)
+    return { ok: false, error: apiError("name too long", 400, { code: "INVALID_NAME" }) };
+  return { ok: true, name };
 }
 
 /** base64url 形式かつ指定バイト範囲に収まるかを検証する */

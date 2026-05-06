@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readCollections, writeCollections, COLLECTION_NAME_MAX_LENGTH } from "@/lib/collections";
-import { stripControlChars } from "@/lib/validation";
+import { parseName } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,14 +17,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!collection) return apiError("Collection not found", 404, { code: "COLLECTION_NOT_FOUND" });
 
     if ("name" in body) {
-      if (typeof body.name !== "string") {
-        return apiError("name must be a string", 400, { code: "INVALID_NAME" });
-      }
-      const name = stripControlChars(body.name.trim());
-      if (!name) return apiError("name must be a non-empty string", 400, { code: "INVALID_NAME" });
-      if (name.length > COLLECTION_NAME_MAX_LENGTH) {
-        return apiError("name too long", 400, { code: "INVALID_NAME" });
-      }
+      const nameResult = parseName(body.name, COLLECTION_NAME_MAX_LENGTH);
+      if (!nameResult.ok) return nameResult.error;
+      const { name } = nameResult;
       if (collections.some((c) => c.id !== id && c.name === name)) {
         return apiError("name already exists", 409, { code: "DUPLICATE_NAME" });
       }
