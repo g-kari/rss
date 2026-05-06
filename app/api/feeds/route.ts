@@ -10,6 +10,7 @@ import {
 } from "@/lib/cache-helper";
 import { feedAddCooldownKey } from "@/lib/r2";
 import { isValidFeedUrl } from "@/lib/url";
+import { isValidCookieHeader } from "@/lib/validation";
 import { discoverFeedUrl } from "@/lib/feed-discovery";
 import { resolveRSSHubUrl, getRSSHubInstance } from "@/lib/rsshub";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
@@ -75,29 +76,6 @@ export async function GET(request: Request) {
     cachePutAsync(cacheKey, buildJsonCacheResponse(feeds, FEEDS_CACHE_TTL_SEC), ctx, "feeds-list");
     return NextResponse.json(feeds, { headers: { "X-Cache": "MISS" } });
   });
-}
-
-/** Cookie ヘッダー値として安全な文字列か検証する（HTTP ヘッダーインジェクション・Cookie jar poison 防止） */
-function isValidCookieHeader(value: string): boolean {
-  // 長さ上限を 2000 文字に制限（HTTP ヘッダー全体 8KB 制限に対して余裕を確保）
-  if (value.length > 2000) return false;
-  // CRLF インジェクション対策: \r \n を明示的に拒否（ヘッダー分割攻撃の防止）
-  if (/[\r\n]/.test(value)) return false;
-  // [\x20-\x7E] は印字可能 ASCII のみ許容し、制御文字を除外する
-  if (!/^[\x20-\x7E]*$/.test(value)) return false;
-  // RFC 6265 準拠: name=value ペアの形式検証（複数は "; " で区切る）
-  const pairs = value.split(/;\s*/);
-  for (const pair of pairs) {
-    const eqIdx = pair.indexOf("=");
-    if (eqIdx <= 0) return false; // name が空または "=" がない
-    const name = pair.slice(0, eqIdx).trim();
-    const val = pair.slice(eqIdx + 1);
-    // name: RFC 2616 token 文字のみ（空白・制御文字・区切り文字を禁止）
-    if (!/^[\w\-!#$%&'*+.^`|~]+$/.test(name)) return false;
-    // value: セミコロン・カンマを禁止して Cookie jar poisoning を防止
-    if (/[;,]/.test(val)) return false;
-  }
-  return true;
 }
 
 export async function POST(request: Request) {

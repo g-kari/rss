@@ -2,6 +2,10 @@
 
 ## 2026-05-06 (latest)
 
+### テスト強化っ
+
+- **`isValidCookieHeader` を `validation.ts` に移動して E2E テストを追加したよ〜** — Issue #375。Cookie バリデーション関数を `app/api/feeds/route.ts` の内部関数から `src/lib/validation.ts` の export 関数に移動したよっ🔧 CRLF インジェクション・長さ制限・制御文字・フォーマット違反など 19 ケースの E2E テストを `e2e/feeds-validation.spec.ts` に追加したよ〜✨
+
 ### 激アツ新機能っ
 
 - **AI モデルをユーザー設定で切り替えられるようになったよ〜** — Issue #378。要約・翻訳で使う Workers AI モデルをユーザー設定から選べるようにしたよっ✨ Llama 3.1 8B（速くてお気軽）・3.2 3B（超高速軽量）・3.1 70B（高精度）の 3 種類から選べるよ〜🎀 設定は localStorage に保存されてページリロード後も維持されるよっ💡
