@@ -24,6 +24,8 @@
 
 ### リファクタリングっ
 
+- **useFeeds.ts の責務分割** — Issue #356。437 行に肥大化してた `useFeeds.ts` を 3 ファイルに分割したよ〜🔧 `useFeedData`（フィード一覧 fetch・初回ロード）と `useArticleData`（記事取得・5分ポーリング・マージ・ページネーション）に責務を分けて、`useFeeds` は薄いオーケストレーターとして後方互換を維持したよっ✨ `App.tsx` 側の変更ゼロで既存インターフェースそのままだよ！
+
 - **useArticleFilters の boolean フィルタートグルをジェネリック化** — Issue #357。6 つの個別 `useState` を `boolFilters` 1 つにまとめて、`BOOL_FILTER_STORAGE` マップと `toggle()` ファクトリで生成するようにしたよ〜🔧 外部 API は変わらないし型安全もバッチリ！新しいフィルターを追加するときはマップに 1 行追加するだけで済むようになったよっ✨
 
 ## 2026-05-06
