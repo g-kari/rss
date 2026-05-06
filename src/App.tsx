@@ -122,6 +122,8 @@ export default function App() {
     onChangeImageDlFolder,
     imageDlFolderNsfw,
     onChangeImageDlFolderNsfw,
+    aiModel,
+    onChangeAiModel,
   } = useUIState(initialMobilePane);
 
   const toast = useToastState();
@@ -257,6 +259,8 @@ export default function App() {
       onChangeImageDlFolder,
       imageDlFolderNsfw,
       onChangeImageDlFolderNsfw,
+      aiModel,
+      onChangeAiModel,
     }),
     [
       fontSize,
@@ -293,6 +297,8 @@ export default function App() {
       onChangeImageDlFolder,
       imageDlFolderNsfw,
       onChangeImageDlFolderNsfw,
+      aiModel,
+      onChangeAiModel,
     ],
   );
 

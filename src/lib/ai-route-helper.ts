@@ -8,11 +8,21 @@ import { aiRateLimitKey } from "@/lib/r2";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 import { apiError } from "@/lib/api-error";
 
-// @cf/meta/llama-3.1-8b-instruct は workers-types 未掲載のためキャスト
-const MODEL: AiModelId = "@cf/meta/llama-3.1-8b-instruct" as AiModelId;
+export const AI_MODELS = [
+  { id: "@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B（バランス）" },
+  { id: "@cf/meta/llama-3.2-3b-instruct", label: "Llama 3.2 3B（高速）" },
+  { id: "@cf/meta/llama-3.1-70b-instruct", label: "Llama 3.1 70B（高精度）" },
+] as const;
+
+export type WorkersAiModelId = (typeof AI_MODELS)[number]["id"];
+
+export const DEFAULT_AI_MODEL: WorkersAiModelId = "@cf/meta/llama-3.1-8b-instruct";
+
+const VALID_MODEL_IDS = AI_MODELS.map((m) => m.id) as WorkersAiModelId[];
 
 const AI_WINDOW_MS = 60 * 1000;
 const AI_MAX_CALLS = 10;
+const AI_MAX_CALLS_70B = 3;
 
 type AiMessage = { role: "system" | "user"; content: string };
 
@@ -43,7 +53,9 @@ export async function runAiJob(
   buildMessages: (plain: string) => AiMessage[],
   cacheType: AiCacheType = "summary",
 ): Promise<NextResponse> {
-  const parsed = await parseJsonBody<{ url?: unknown; articleId?: unknown }>(request);
+  const parsed = await parseJsonBody<{ url?: unknown; articleId?: unknown; model?: unknown }>(
+    request,
+  );
   if (!parsed.ok) return parsed.error;
   const body = parsed.data;
   if (typeof body?.url !== "string" || !isValidFeedUrl(body.url)) {
@@ -56,6 +68,13 @@ export async function runAiJob(
       ? body.articleId
       : null;
 
+  const model: WorkersAiModelId =
+    typeof body.model === "string" && VALID_MODEL_IDS.includes(body.model as WorkersAiModelId)
+      ? (body.model as WorkersAiModelId)
+      : DEFAULT_AI_MODEL;
+
+  const is70b = model === "@cf/meta/llama-3.1-70b-instruct";
+
   if (articleId) {
     const cached = await getAiCacheById(env.RSS_DATA, articleId, cacheType);
     if (cached) return NextResponse.json({ result: cached });
@@ -65,7 +84,7 @@ export async function runAiJob(
     env.RATE_LIMIT,
     aiRateLimitKey(session.userId),
     AI_WINDOW_MS,
-    AI_MAX_CALLS,
+    is70b ? AI_MAX_CALLS_70B : AI_MAX_CALLS,
   );
   if (limited) return limited;
 
@@ -87,7 +106,7 @@ export async function runAiJob(
 
   let result: string;
   try {
-    const response = (await env.AI.run(MODEL, {
+    const response = (await env.AI.run(model as AiModelId, {
       messages: buildMessages(plain),
       max_tokens: 2048,
     })) as { response?: string };

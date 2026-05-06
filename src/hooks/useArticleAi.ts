@@ -7,6 +7,8 @@ import { isAbortError } from "../lib/fetch";
 import { translateHtmlInBrowser } from "../lib/translate-html";
 import { summarizeInBrowser } from "../lib/browser-summarizer";
 import { toPlainText } from "../lib/html";
+import { DEFAULT_AI_MODEL } from "../lib/ai-route-helper";
+import { STORAGE_KEYS, storageGet } from "../lib/storage";
 
 /** AI プロバイダー識別子（要約・翻訳共通） */
 export type TranslationProvider = "browser" | "workers-ai";
@@ -160,10 +162,11 @@ function useAiOperation(
       }
 
       try {
+        const model = storageGet(STORAGE_KEYS.AI_MODEL) ?? DEFAULT_AI_MODEL;
         const res = await apiFetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, articleId: currentArticleId }),
+          body: JSON.stringify({ url, articleId: currentArticleId, model }),
           signal: controller.signal,
         });
         if (!res.ok) {

@@ -72,6 +72,7 @@ export const STORAGE_KEYS = {
   DEDUP_BY_LINK: "rss-dedup-by-link",
   IMAGE_DL_FOLDER: "rss-image-dl-folder",
   IMAGE_DL_FOLDER_NSFW: "rss-image-dl-folder-nsfw",
+  AI_MODEL: "rss-ai-model",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────
