@@ -106,6 +106,7 @@ src/
     shortcuts.ts             # キーボードショートカット Single Source of Truth（ShortcutDef / ShortcutGroup / SHORTCUT_DEFS / KEYBOARD_SHORTCUTS）— useKeyboardNav と KeyboardShortcutsModal の両方が参照
   contexts/
     ArticleFilterContext.tsx  # 記事フィルター状態の React Context（FilterState + onSaveFilter）
+    FeedSidebarContext.tsx    # FeedSidebar 操作関数の React Context（on*** コールバック群を Props Drilling なしに提供）
     ReaderSettingsContext.tsx # リーダー表示設定の React Context（フォントサイズ・行間・テーマ等）
     SelectedArticleContext.ts # 選択中の記事 ID を提供する Context（ArticleItem の不要な re-render 回避）
     ToastContext.tsx          # トースト通知 API の React Context（useToast のグローバル提供）

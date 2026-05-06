@@ -2,6 +2,12 @@
 
 ## 2026-05-06 (latest)
 
+### リファクタリングっ
+
+- **FeedSidebar の Props Drilling を FeedSidebarContext で解消** — Issue #359。40 本以上あった `on***` コールバックを `FeedSidebarContext` に移して、`FeedSidebar` の Props は表示データだけにスッキリしたよ〜🔧 `src/contexts/FeedSidebarContext.tsx` に `FeedSidebarActions` 型 + `FeedSidebarProvider` + `useFeedSidebarContext()` をセットで追加したよっ✨ `App.tsx` では `<FeedSidebarProvider value={...}>` でラップするだけで OK！子コンポーネントが深くなっても Context から直接取れるようになったよ〜🎀
+
+## 2026-05-06
+
 ### UX改善っ
 
 - **AI パネルのエラー表示・リトライ UI を充実させたよ〜** — Issue #358。要約・翻訳でエラーが出たとき、1行テキストだけだったのを改善したよっ✨ ネットワークエラー・レートリミット・モデルエラーの 3 種類をちゃんと判別して、それぞれ適切なメッセージを表示するようになったよ〜💡 レートリミット（429）のときは「しばらく待ってから再試行してください」って追加案内も出るよっ！あとリトライボタンも追加したから、エラーになっても諦めずに再試行できちゃう🚀 要約（`ArticleAiPanel`）も翻訳（`ArticleContentBody`）も両方対応したよ〜🎀

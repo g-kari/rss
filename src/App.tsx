@@ -38,6 +38,7 @@ import { useSyncedRef } from "./hooks/useSyncedRef";
 import { ReaderSettingsProvider, type ReaderSettings } from "./contexts/ReaderSettingsContext";
 import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { ToastProvider } from "./contexts/ToastContext";
+import { FeedSidebarProvider } from "./contexts/FeedSidebarContext";
 import ToastContainer from "./components/ToastContainer";
 import { useToastState } from "./hooks/useToast";
 import LandingPage from "./components/LandingPage";
@@ -981,144 +982,146 @@ export default function App() {
                 <SkeletonSidebar />
               ) : (
                 <ErrorBoundary label="サイドバー">
-                  <FeedSidebar
-                    feeds={feeds}
-                    articles={articles}
-                    readIds={readIds}
-                    readBeforeTimestamp={readBeforeTimestamp}
-                    bookmarkCount={bookmarkCount}
-                    readingListCount={readingListCount}
-                    likeCount={likeCount}
-                    historyCount={historyCount}
-                    selectedFeedId={selectedFeedId}
-                    selectedGroupId={selectedGroupId}
-                    user={user}
-                    theme={theme}
-                    onSelectFeed={(id) => {
-                      setSelectedFeedId(id);
-                      setSelectedGroupId(null);
-                      setSelectedTag(null);
-                      setSelectedArticle(null);
-                      setMobilePane("list");
-                      const feed = feeds.find((f) => f.id === id);
-                      if (feed?.view === "pictures" || feed?.view === "videos") {
-                        onChangeLayout("gallery");
-                      }
+                  <FeedSidebarProvider
+                    value={{
+                      onSelectFeed: (id) => {
+                        setSelectedFeedId(id);
+                        setSelectedGroupId(null);
+                        setSelectedTag(null);
+                        setSelectedArticle(null);
+                        setMobilePane("list");
+                        const feed = feeds.find((f) => f.id === id);
+                        if (feed?.view === "pictures" || feed?.view === "videos") {
+                          onChangeLayout("gallery");
+                        }
+                      },
+                      onSelectGroup: (id) => {
+                        setSelectedGroupId(id);
+                        setSelectedFeedId(null);
+                        setSelectedTag(null);
+                        setSelectedArticle(null);
+                        setMobilePane("list");
+                      },
+                      onSelectTag: (tag) => {
+                        setSelectedTag(tag);
+                        setSelectedFeedId(null);
+                        setSelectedGroupId(null);
+                        setSelectedArticle(null);
+                        setMobilePane("list");
+                      },
+                      onFeedAdded,
+                      onFeedDeleted,
+                      onFeedRenamed: updateFeed,
+                      onFeedsImported: appendFeeds,
+                      onMarkAllRead: (feedId) => {
+                        const count = feedId
+                          ? articles.filter(
+                              (a) =>
+                                a.feedHash === feedId &&
+                                !isArticleRead(a, readIds, readBeforeTimestamp),
+                            ).length
+                          : totalUnread;
+                        if (
+                          count >= 50 &&
+                          !window.confirm(`${count}件の未読記事を全て既読にしますか？`)
+                        )
+                          return;
+                        markAllReadWithUndo(feedId, toast);
+                      },
+                      onToggleTheme: toggleTheme,
+                      onOpenSettings: () => setShowSettings(true),
+                      onOpenHelp: () => setShowHelp(true),
+                      onSaveArticleUrl,
+                      onRefresh: refreshFeeds,
+                      onRetryFeed: retryFeed,
+                      onReinferFeed: reinferFeed,
+                      onTogglePinFeed: togglePinFeed,
+                      onToggleCollapseCategory: toggleCollapseCategory,
+                      onActivateNsfw: activateNSFW,
+                      onDeactivateNsfw: deactivateNSFW,
+                      onToggleNsfwFeed: toggleNsfwFeed,
+                      onTogglePriorityFeed: togglePriorityFeed,
+                      onSetCategoryFeed: setCategoryFeed,
+                      onSetGroupFeed: setGroupFeed,
+                      onCreateFeedGroup: createGroup,
+                      onRenameFeedGroup: renameGroup,
+                      onDeleteFeedGroup: deleteGroup,
+                      onToggleCollapseFeedGroup: setFeedGroupCollapsed,
+                      onToggleMuteFeedGroup: setFeedGroupMuted,
+                      onReorderFeedGroup: reorderGroup,
+                      onMarkAllReadInGroup: (feedIds) => {
+                        const feedSet = new Set(feedIds);
+                        const ids = articles
+                          .filter((a) => feedSet.has(a.feedHash))
+                          .map((a) => a.id);
+                        if (ids.length > 0) markBulkRead(ids);
+                      },
+                      onMuteFeed: muteFeed,
+                      onSetFeedView: setFeedView,
+                      onChangeActiveFeedView: (view) => {
+                        onChangeActiveFeedView(view);
+                        setSelectedFeedId(null);
+                        setSelectedGroupId(null);
+                        setSelectedArticle(null);
+                        if (view === "pictures" || view === "videos") {
+                          onChangeLayout("gallery");
+                        }
+                      },
+                      onDismissRecommendation: dismissRecommendation,
+                      onRefreshRecommendations: refreshRecommendations,
+                      onExportMarkdown: (mode) => {
+                        const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
+                        exportArticlesToMarkdown(articles, ids, feeds, mode);
+                      },
+                      onExportNotes: () => {
+                        exportNotesToMarkdown(articles, notes, feeds);
+                      },
+                      onSelectCollection: setSelectedCollectionId,
+                      onCreateCollection: createCollection,
+                      onRenameCollection: renameCollection,
+                      onDeleteCollection: deleteCollection,
                     }}
-                    onSelectGroup={(id) => {
-                      setSelectedGroupId(id);
-                      setSelectedFeedId(null);
-                      setSelectedTag(null);
-                      setSelectedArticle(null);
-                      setMobilePane("list");
-                    }}
-                    selectedTag={selectedTag}
-                    onSelectTag={(tag) => {
-                      setSelectedTag(tag);
-                      setSelectedFeedId(null);
-                      setSelectedGroupId(null);
-                      setSelectedArticle(null);
-                      setMobilePane("list");
-                    }}
-                    articleTagIds={articleTagIds}
-                    onFeedAdded={onFeedAdded}
-                    onFeedDeleted={onFeedDeleted}
-                    onFeedRenamed={updateFeed}
-                    onFeedsImported={appendFeeds}
-                    onMarkAllRead={(feedId) => {
-                      const count = feedId
-                        ? articles.filter(
-                            (a) =>
-                              a.feedHash === feedId &&
-                              !isArticleRead(a, readIds, readBeforeTimestamp),
-                          ).length
-                        : totalUnread;
-                      if (
-                        count >= 50 &&
-                        !window.confirm(`${count}件の未読記事を全て既読にしますか？`)
-                      )
-                        return;
-                      markAllReadWithUndo(feedId, toast);
-                    }}
-                    onToggleTheme={toggleTheme}
-                    onOpenSettings={() => setShowSettings(true)}
-                    onOpenHelp={() => setShowHelp(true)}
-                    onSaveArticleUrl={onSaveArticleUrl}
-                    onRefresh={refreshFeeds}
-                    onRetryFeed={retryFeed}
-                    onReinferFeed={reinferFeed}
-                    refreshing={refreshing}
-                    loadingFeeds={loadingFeeds}
-                    isOnline={isOnline}
-                    pinnedFeedIds={pinnedFeedIds}
-                    onTogglePinFeed={togglePinFeed}
-                    collapsedCategories={collapsedCategories}
-                    onToggleCollapseCategory={toggleCollapseCategory}
-                    nsfwMode={nsfwMode}
-                    onActivateNsfw={activateNSFW}
-                    onDeactivateNsfw={deactivateNSFW}
-                    onToggleNsfwFeed={toggleNsfwFeed}
-                    onTogglePriorityFeed={togglePriorityFeed}
-                    onSetCategoryFeed={setCategoryFeed}
-                    feedGroups={feedGroups}
-                    onSetGroupFeed={setGroupFeed}
-                    onCreateFeedGroup={createGroup}
-                    onRenameFeedGroup={renameGroup}
-                    onDeleteFeedGroup={deleteGroup}
-                    onToggleCollapseFeedGroup={setFeedGroupCollapsed}
-                    onToggleMuteFeedGroup={setFeedGroupMuted}
-                    onReorderFeedGroup={reorderGroup}
-                    onMarkAllReadInGroup={(feedIds) => {
-                      // グループ内フィードの記事 ID を 1 パスで集約して markBulkRead に渡す
-                      // （feedIds ループで markAllRead を呼ぶと articlesRef を N 回スキャンするのを回避）
-                      const feedSet = new Set(feedIds);
-                      const ids = articles.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
-                      if (ids.length > 0) markBulkRead(ids);
-                    }}
-                    onMuteFeed={muteFeed}
-                    onSetFeedView={setFeedView}
-                    activeFeedView={activeFeedView}
-                    onChangeActiveFeedView={(view) => {
-                      // カテゴリ横断表示のため、タブ切替時はフィード・グループ選択を解除する
-                      onChangeActiveFeedView(view);
-                      setSelectedFeedId(null);
-                      setSelectedGroupId(null);
-                      setSelectedArticle(null);
-                      // 画像/動画カテゴリはギャラリーレイアウトに自動切替 — 全画像/動画の展開表示を期待する仕様
-                      // ユーザーが後で手動で別レイアウトを選んだ場合は尊重する（次にカテゴリ切替するまで）
-                      if (view === "pictures" || view === "videos") {
-                        onChangeLayout("gallery");
-                      }
-                    }}
-                    recommendations={recommendations}
-                    recommendationsLoading={recommendationsLoading}
-                    recommendationsRefreshing={recommendationsRefreshing}
-                    onDismissRecommendation={dismissRecommendation}
-                    onRefreshRecommendations={refreshRecommendations}
-                    onExportMarkdown={(mode) => {
-                      const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
-                      exportArticlesToMarkdown(articles, ids, feeds, mode);
-                    }}
-                    onExportNotes={() => {
-                      exportNotesToMarkdown(articles, notes, feeds);
-                    }}
-                    noteCount={Object.keys(notes).length}
-                    collections={collections}
-                    selectedCollectionId={selectedCollectionId}
-                    onSelectCollection={setSelectedCollectionId}
-                    onCreateCollection={createCollection}
-                    onRenameCollection={renameCollection}
-                    onDeleteCollection={deleteCollection}
-                    install={install}
-                    push={{
-                      supported: pushSupported,
-                      subscribed: pushSubscribed,
-                      loading: pushLoading,
-                      error: pushError,
-                      onToggle: togglePush,
-                      onSendTest: sendPushTest,
-                    }}
-                  />
+                  >
+                    <FeedSidebar
+                      feeds={feeds}
+                      articles={articles}
+                      readIds={readIds}
+                      readBeforeTimestamp={readBeforeTimestamp}
+                      bookmarkCount={bookmarkCount}
+                      readingListCount={readingListCount}
+                      likeCount={likeCount}
+                      historyCount={historyCount}
+                      selectedFeedId={selectedFeedId}
+                      selectedGroupId={selectedGroupId}
+                      user={user}
+                      theme={theme}
+                      selectedTag={selectedTag}
+                      articleTagIds={articleTagIds}
+                      refreshing={refreshing}
+                      loadingFeeds={loadingFeeds}
+                      isOnline={isOnline}
+                      pinnedFeedIds={pinnedFeedIds}
+                      collapsedCategories={collapsedCategories}
+                      nsfwMode={nsfwMode}
+                      feedGroups={feedGroups}
+                      activeFeedView={activeFeedView}
+                      recommendations={recommendations}
+                      recommendationsLoading={recommendationsLoading}
+                      recommendationsRefreshing={recommendationsRefreshing}
+                      noteCount={Object.keys(notes).length}
+                      collections={collections}
+                      selectedCollectionId={selectedCollectionId}
+                      install={install}
+                      push={{
+                        supported: pushSupported,
+                        subscribed: pushSubscribed,
+                        loading: pushLoading,
+                        error: pushError,
+                        onToggle: togglePush,
+                        onSendTest: sendPushTest,
+                      }}
+                    />
+                  </FeedSidebarProvider>
                 </ErrorBoundary>
               )}
             </div>

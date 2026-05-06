@@ -12,6 +12,7 @@ import type {
 } from "../../types";
 import dynamic from "next/dynamic";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
+import { useFeedSidebarContext } from "../../contexts/FeedSidebarContext";
 import FeedItem, { formatCount } from "../FeedItem";
 import FeedAddModal from "../FeedAddModal";
 import RecommendationSection from "../RecommendationSection";
@@ -53,61 +54,17 @@ interface Props {
   isOnline: boolean;
   pinnedFeedIds: Set<string>;
   collapsedCategories?: Set<string>;
-  onToggleCollapseCategory?: (category: string) => void;
   nsfwMode: boolean;
-  onSelectFeed: (id: string | null) => void;
-  onSelectGroup?: (id: string | null) => void;
-  onFeedAdded: (feed: Feed) => void;
-  onFeedDeleted: (id: string) => void;
-  onFeedRenamed: (feed: Feed) => void;
-  onFeedsImported: (feeds: Feed[]) => void;
-  onMarkAllRead: (feedId: string | null) => void;
-  onToggleTheme: () => void;
-  onOpenSettings: () => void;
-  onOpenHelp: () => void;
-  onSaveArticleUrl: (url: string, mode: "bookmark" | "reading_list") => Promise<void>;
-  onRefresh: () => void;
-  onRetryFeed: (id: string) => Promise<void>;
-  onReinferFeed?: (id: string) => Promise<void>;
-  onTogglePinFeed: (id: string) => void;
-  onActivateNsfw: () => void;
-  onDeactivateNsfw: () => void;
-  onToggleNsfwFeed: (feed: Feed) => void;
-  onTogglePriorityFeed: (feed: Feed) => void;
-  onSetCategoryFeed?: (feed: Feed, category: string | null) => Promise<void>;
-  feedGroups?: FeedGroup[];
-  onSetGroupFeed?: (feed: Feed, groupId: string | null) => Promise<void>;
-  onCreateFeedGroup?: (name: string) => Promise<FeedGroup | { error: string }>;
-  onRenameFeedGroup?: (id: string, name: string) => Promise<FeedGroup | { error: string }>;
-  onDeleteFeedGroup?: (id: string) => Promise<boolean>;
-  onToggleCollapseFeedGroup?: (id: string, collapsed: boolean) => Promise<void>;
-  onToggleMuteFeedGroup?: (id: string, muted: boolean) => Promise<void>;
-  onReorderFeedGroup?: (id: string, direction: "up" | "down") => Promise<void>;
-  onMarkAllReadInGroup?: (feedIds: string[]) => void;
-  onMuteFeed?: (feed: Feed, mutedUntil: string | null) => Promise<void>;
-  onSetFeedView?: (feed: Feed, view: FeedView | null) => Promise<void>;
   activeFeedView: FeedView;
-  onChangeActiveFeedView: (view: FeedView) => void;
   recommendations?: RecommendedFeed[];
   recommendationsLoading?: boolean;
   recommendationsRefreshing?: boolean;
-  onDismissRecommendation?: (id: string) => void;
-  onRefreshRecommendations?: () => void;
-  onExportMarkdown?: (mode: "bookmark" | "reading_list") => void;
-  onExportNotes?: () => void;
   noteCount?: number;
-  /** 選択中のユーザータグ（そのタグが付いた記事のみ表示） */
   selectedTag?: string | null;
-  /** タグ選択コールバック */
-  onSelectTag?: (tag: string | null) => void;
-  /** articleId → タグ配列マップ — タグ別記事数の集計に使用 */
   articleTagIds?: Record<string, string[]>;
   collections?: Collection[];
   selectedCollectionId?: string | null;
-  onSelectCollection?: (id: string | null) => void;
-  onCreateCollection?: (name: string) => Promise<Collection | { error: string }>;
-  onRenameCollection?: (id: string, name: string) => Promise<Collection | { error: string }>;
-  onDeleteCollection?: (id: string) => Promise<boolean>;
+  feedGroups?: FeedGroup[];
   install?: { canInstall: boolean; onInstall: () => void };
   push?: {
     supported: boolean;
@@ -132,66 +89,66 @@ function FeedSidebar({
   selectedGroupId = null,
   user,
   theme,
-  onSelectFeed,
-  onSelectGroup,
-  onFeedAdded,
-  onFeedDeleted,
-  onFeedRenamed,
-  onFeedsImported,
-  onMarkAllRead,
-  onToggleTheme,
-  onOpenSettings,
-  onOpenHelp,
-  onSaveArticleUrl,
-  onRefresh,
-  onRetryFeed,
-  onReinferFeed,
   refreshing,
   loadingFeeds = false,
   isOnline,
   pinnedFeedIds,
   collapsedCategories = new Set(),
-  onToggleCollapseCategory,
-  onTogglePinFeed,
   nsfwMode,
-  onActivateNsfw,
-  onDeactivateNsfw,
-  onToggleNsfwFeed,
-  onTogglePriorityFeed,
-  onSetCategoryFeed,
-  feedGroups,
-  onSetGroupFeed,
-  onCreateFeedGroup,
-  onRenameFeedGroup,
-  onDeleteFeedGroup,
-  onToggleCollapseFeedGroup,
-  onToggleMuteFeedGroup,
-  onReorderFeedGroup,
-  onMarkAllReadInGroup,
-  onMuteFeed,
-  onSetFeedView,
   activeFeedView,
-  onChangeActiveFeedView,
   recommendations,
   recommendationsLoading,
   recommendationsRefreshing,
-  onDismissRecommendation,
-  onRefreshRecommendations,
-  onExportMarkdown,
-  onExportNotes,
   noteCount,
   selectedTag = null,
-  onSelectTag,
   articleTagIds,
   collections,
   selectedCollectionId = null,
-  onSelectCollection,
-  onCreateCollection,
-  onRenameCollection: _onRenameCollection,
-  onDeleteCollection: _onDeleteCollection,
+  feedGroups,
   install,
   push,
 }: Props) {
+  const {
+    onSelectFeed,
+    onSelectGroup,
+    onSelectTag,
+    onFeedAdded,
+    onFeedDeleted,
+    onFeedRenamed,
+    onFeedsImported,
+    onMarkAllRead,
+    onToggleTheme,
+    onOpenSettings,
+    onOpenHelp,
+    onSaveArticleUrl,
+    onRefresh,
+    onRetryFeed,
+    onReinferFeed,
+    onTogglePinFeed,
+    onToggleCollapseCategory,
+    onActivateNsfw,
+    onDeactivateNsfw,
+    onToggleNsfwFeed,
+    onTogglePriorityFeed,
+    onSetCategoryFeed,
+    onSetGroupFeed,
+    onCreateFeedGroup,
+    onRenameFeedGroup,
+    onDeleteFeedGroup,
+    onToggleCollapseFeedGroup,
+    onToggleMuteFeedGroup,
+    onReorderFeedGroup,
+    onMarkAllReadInGroup,
+    onMuteFeed,
+    onSetFeedView,
+    onChangeActiveFeedView,
+    onDismissRecommendation,
+    onRefreshRecommendations,
+    onExportMarkdown,
+    onExportNotes,
+    onSelectCollection,
+    onCreateCollection,
+  } = useFeedSidebarContext();
   const { onSaveFilter } = useArticleFilter();
   const [newUrl, setNewUrl] = useState("");
   const [newCookie, setNewCookie] = useState("");
