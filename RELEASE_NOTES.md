@@ -4,6 +4,12 @@
 
 ### リファクタリングっ
 
+- **useArticleFilters の boolean フィルタートグルをジェネリック化** — Issue #357。6 つの個別 `useState` を `boolFilters` 1 つにまとめて、`BOOL_FILTER_STORAGE` マップと `toggle()` ファクトリで生成するようにしたよ〜🔧 外部 API は変わらないし型安全もバッチリ！新しいフィルターを追加するときはマップに 1 行追加するだけで済むようになったよっ✨
+
+## 2026-05-06
+
+### リファクタリングっ
+
 - **AppModals コンポーネント抽出** — Issue #345。`App.tsx` から 5 つのモーダル（SessionExpiredModal / SnoozeModal / KeyboardShortcutsModal / UserSettingsModal / FeedQuickSwitchModal）を `AppModals.tsx` に分離したよ〜🔧 App.tsx がスッキリしてメンテしやすくなったよっ✨ スヌーズのロジックは `handleSnooze` として `useCallback` 化して App 側にスッキリ切り出したよ〜💡
 
 ## 2026-05-06
