@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, withJsonBody, requireString } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { r2Get, r2Put, engagementKey } from "@/lib/r2";
+import { r2Get, r2Put, engagementKey, engagementCooldownKey } from "@/lib/r2";
+import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
 import { MAX_ID_LENGTH, MAX_ENGAGEMENT_ENTRIES, isValidFeedHash } from "@/lib/validation";
+
+const ENGAGEMENT_COOLDOWN_MS = 1_000; // POST 連打防止
+
 const VALID_ACTIONS: EngagementAction[] = [
   "fetch_full",
   "open_original",
@@ -31,6 +35,13 @@ export async function POST(req: NextRequest) {
     action?: unknown;
     value?: unknown;
   }>(req, async ({ body, session, env }) => {
+    const limited = await checkAndUpdateCooldown(
+      env.RATE_LIMIT,
+      engagementCooldownKey(session.userId),
+      ENGAGEMENT_COOLDOWN_MS,
+    );
+    if (limited) return limited;
+
     const articleId = requireString(body.articleId, MAX_ID_LENGTH);
     const feedHash = requireString(body.feedHash, MAX_ID_LENGTH);
     const action = requireString(body.action, MAX_ID_LENGTH);
