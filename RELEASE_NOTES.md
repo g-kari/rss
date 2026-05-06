@@ -2,6 +2,10 @@
 
 ## 2026-05-06 (latest)
 
+### ドキュメント整備っ
+
+- **API エンドポイント仕様書を追加したよ〜** — Issue #387。`.claude/rules/api-spec.md` に高優先度エンドポイント（`POST /api/feeds`・`GET/POST /api/read-state`・`POST /api/ai/summarize`・`POST /api/ai/translate`・`GET /api/articles`・`POST /api/feeds/import`）のリクエスト/レスポンス/エラーコードを詳細に記載したよっ📝 各 Route Handler にも JSDoc コメントを追加して IDE から仕様を確認できるようになったよ〜✨
+
 ### テスト強化っ
 
 - **`isValidCookieHeader` を `validation.ts` に移動して E2E テストを追加したよ〜** — Issue #375。Cookie バリデーション関数を `app/api/feeds/route.ts` の内部関数から `src/lib/validation.ts` の export 関数に移動したよっ🔧 CRLF インジェクション・長さ制限・制御文字・フォーマット違反など 19 ケースの E2E テストを `e2e/feeds-validation.spec.ts` に追加したよ〜✨
