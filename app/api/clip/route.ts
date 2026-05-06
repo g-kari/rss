@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withJsonBody } from "@/lib/server-auth";
+import { withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { validateClipRequest } from "@/lib/clip";
 import { extractMainContent } from "@/lib/content";
 import { buildClipCacheKey, saveContentToCache } from "@/lib/fetch-article-content";
-import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { clipCooldownKey } from "@/lib/r2";
 
 const CLIP_COOLDOWN_MS = 60 * 1000; // 1分
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
   return withJsonBody<{ html?: unknown; url?: unknown }>(
     req,
     async ({ body, session, env, ctx }) => {
-      const limited = await checkAndUpdateCooldown(
+      const limited = await applyCooldown(
         env.RATE_LIMIT,
         clipCooldownKey(session.userId),
         CLIP_COOLDOWN_MS,

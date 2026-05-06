@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession } from "@/lib/server-auth";
+import { withSession, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import {
   readUserSubscriptions,
@@ -9,7 +9,6 @@ import {
 } from "@/lib/shared-feed";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import { fetchSingleFeed } from "@/cron/fetch";
-import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { reinferCooldownKey } from "@/lib/r2";
 import { isValidFeedHash, MAX_FAILED_SELECTORS } from "@/lib/validation";
 
@@ -41,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // レートリミット: AI + 外部フェッチを伴う重い操作のため 60 秒クールダウン
-    const limited = await checkAndUpdateCooldown(
+    const limited = await applyCooldown(
       env.RATE_LIMIT,
       reinferCooldownKey(session.userId, feedHash),
       REINFER_COOLDOWN_MS,

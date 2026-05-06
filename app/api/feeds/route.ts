@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withSession, withJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError, formatError } from "@/lib/api-error";
 import {
   buildCacheKey,
@@ -8,7 +8,6 @@ import {
   matchCfCache,
   purgeFeedsCache,
 } from "@/lib/cache-helper";
-import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { feedAddCooldownKey } from "@/lib/r2";
 import { isValidFeedUrl } from "@/lib/url";
 import { discoverFeedUrl } from "@/lib/feed-discovery";
@@ -108,7 +107,7 @@ export async function POST(request: Request) {
     cssSelector?: unknown;
     useRsshub?: unknown;
   }>(request, async ({ body, session, env, ctx }) => {
-    const limited = await checkAndUpdateCooldown(
+    const limited = await applyCooldown(
       env.RATE_LIMIT,
       feedAddCooldownKey(session.userId),
       30 * 1000,

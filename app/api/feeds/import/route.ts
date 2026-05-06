@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { withSession } from "@/lib/server-auth";
+import { withSession, applyCooldown } from "@/lib/server-auth";
 import { apiError, formatError } from "@/lib/api-error";
 import { purgeFeedsCache } from "@/lib/cache-helper";
-import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { opmlImportCooldownKey } from "@/lib/r2";
 import { XMLParser } from "fast-xml-parser";
 import { isValidFeedUrl } from "@/lib/url";
@@ -52,7 +51,7 @@ const OPML_IMPORT_COOLDOWN_MS = 60 * 1000; // 60秒
 
 export async function POST(request: Request) {
   return withSession(request, async ({ session, env, ctx }) => {
-    const limited = await checkAndUpdateCooldown(
+    const limited = await applyCooldown(
       env.RATE_LIMIT,
       opmlImportCooldownKey(session.userId),
       OPML_IMPORT_COOLDOWN_MS,

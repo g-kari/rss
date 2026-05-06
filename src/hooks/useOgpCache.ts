@@ -7,7 +7,6 @@ import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
 const MAX_OGP_CACHE_SIZE = 2000;
-const FETCH_BATCH_SIZE = 10;
 const SAVE_DEBOUNCE_MS = 500;
 
 export function useOgpCache(visible: Article[]): Record<string, string> {
@@ -21,32 +20,26 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seenLinksRef = useRef<Set<string>>(new Set());
 
-  const linksKey = useMemo(
-    () =>
-      visible
-        .map((a) => a.link)
-        .filter(Boolean)
-        .join("\n"),
-    [visible],
-  );
+  // 記事 ID ベースの軽量キー（全リンクを join する O(n) 文字列計算を回避）
+  const linksKey = useMemo(() => visible.map((a) => a.id).join(","), [visible]);
 
   useEffect(() => {
     if (!linksKey) return;
 
-    const allLinks = linksKey.split("\n");
+    // linksKey.split() の代わりに visible から直接リンクを取得
+    const allLinks = visible.map((a) => a.link).filter(Boolean) as string[];
     const newLinks = allLinks.filter((link) => !seenLinksRef.current.has(link));
     if (newLinks.length === 0) return;
 
     for (const link of newLinks) seenLinksRef.current.add(link);
 
-    const toFetch = newLinks
-      .filter(
-        (link) =>
-          !ogpCacheRef.current[link] &&
-          !fetchingRef.current.has(link) &&
-          !noImageRef.current.has(link),
-      )
-      .slice(0, FETCH_BATCH_SIZE);
+    // バッチ制限なし — 未取得リンクを全件並列フェッチ
+    const toFetch = newLinks.filter(
+      (link) =>
+        !ogpCacheRef.current[link] &&
+        !fetchingRef.current.has(link) &&
+        !noImageRef.current.has(link),
+    );
 
     if (toFetch.length === 0) return;
 

@@ -4,6 +4,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { verifyJwt, refreshTokens, getJwtExp, type RefreshResult } from "./auth";
 import { apiError, formatError } from "./api-error";
 import { isCsrfViolation } from "./csrf";
+import { checkAndUpdateCooldown } from "./rate-limit";
 
 // CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
 export { isCsrfViolation } from "./csrf";
@@ -131,8 +132,31 @@ export async function bindDbscToServerSession(
   return true;
 }
 
-/** リフレッシュリクエストの重複実行を防ぐ Map（refreshToken → Promise） */
-const inflightRefresh = new Map<string, Promise<RefreshResult>>();
+/** inflightRefresh エントリの TTL（ミリ秒）*/
+const INFLIGHT_TTL_MS = 30_000;
+/** inflightRefresh の最大サイズ（超過時は全クリア）*/
+const INFLIGHT_MAX_SIZE = 100;
+
+type InflightEntry = { promise: Promise<RefreshResult>; ts: number };
+
+/** リフレッシュリクエストの重複実行を防ぐ Map（refreshToken → { promise, ts }） */
+const inflightRefresh = new Map<string, InflightEntry>();
+
+/**
+ * 古い inflight エントリを削除する。
+ * - Map サイズが INFLIGHT_MAX_SIZE を超えた場合は全クリア
+ * - INFLIGHT_TTL_MS 以上前のエントリを削除
+ */
+function cleanupInflight(): void {
+  if (inflightRefresh.size > INFLIGHT_MAX_SIZE) {
+    inflightRefresh.clear();
+    return;
+  }
+  const cutoff = Date.now() - INFLIGHT_TTL_MS;
+  for (const [key, entry] of inflightRefresh) {
+    if (entry.ts < cutoff) inflightRefresh.delete(key);
+  }
+}
 
 /**
  * refreshTokens の重複呼び出しを deduplication する。
@@ -151,18 +175,18 @@ const inflightRefresh = new Map<string, Promise<RefreshResult>>();
  * 異なるアイソレート間（別の Workers インスタンス）では独立して動作する。
  */
 export function deduplicatedRefresh(refreshToken: string): Promise<RefreshResult> {
-  const inflight = inflightRefresh.get(refreshToken);
-  if (inflight) return inflight;
+  cleanupInflight();
+  const existing = inflightRefresh.get(refreshToken);
+  if (existing) return existing.promise;
   const p = refreshTokens(refreshToken)
     // 想定外の reject は transient として扱う。500 ではなく 503/ログアウト保留にフォールバックさせる。
     .catch((): RefreshResult => ({ kind: "transient" }))
     .finally(() => {
       // 自分の Promise だけ削除する。完了後に別の Promise が登録されていれば触らない。
-      if (inflightRefresh.get(refreshToken) === p) {
-        inflightRefresh.delete(refreshToken);
-      }
+      const current = inflightRefresh.get(refreshToken);
+      if (current?.promise === p) inflightRefresh.delete(refreshToken);
     });
-  inflightRefresh.set(refreshToken, p);
+  inflightRefresh.set(refreshToken, { promise: p, ts: Date.now() });
   return p;
 }
 
@@ -366,6 +390,18 @@ export async function withJsonBody<T>(
     if (!parsed.ok) return parsed.error;
     return handler({ ...params, body: parsed.data });
   });
+}
+
+/**
+ * クールダウンチェック。制限中なら 429 NextResponse を返し、通過なら null を返す。
+ * Route Handler の重複 import を削減するためのラッパー。
+ */
+export async function applyCooldown(
+  kv: KVNamespace,
+  key: string,
+  ms: number,
+): Promise<NextResponse | null> {
+  return checkAndUpdateCooldown(kv, key, ms);
 }
 
 /**
