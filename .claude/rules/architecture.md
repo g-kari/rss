@@ -108,14 +108,15 @@ src/
     SelectedArticleContext.ts # 選択中の記事 ID を提供する Context（ArticleItem の不要な re-render 回避）
     ToastContext.tsx          # トースト通知 API の React Context（useToast のグローバル提供）
   components/
-    feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection）
-    feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / types.ts）
+    feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection / TagsSection / CollectionsSection / FeedSearchBar）
+    feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / FeedTitleContent / types.ts）
     article-items/           # レイアウト別記事アイテム（index.tsx / shared.tsx / CompactItem / ListItem / CardItem / MagazineItem / GalleryItem）
     FeedItem.tsx             # フィードアイテム（コンテキストメニュー付き）
     FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
     FeedHealthModal.tsx      # フィードヘルス監視モーダル（エラー・レートリミット・オーバーサイズのフィードを一覧表示）
     ArticleList.tsx          # 記事一覧 (5レイアウト対応・仮想スクロール)
+    ArticleListEmptyState.tsx # 記事一覧の空状態表示（ローディング・エラー・未登録・検索無結果・既読済みなど）
     ArticleListHeader.tsx    # 記事一覧ヘッダー（後方互換再エクスポート → article-list-header/）
     article-list-header/     # 記事一覧ヘッダーサブコンポーネント群（index.tsx オーケストレーター / LayoutSwitcher / FilterPills / FilterPillButton / CategoryFilter / SortButton / MarkAllReadButton / SearchBar / types.ts / constants.ts）
     ArticleItems.tsx         # 記事一覧アイテム（レイアウト別 memo コンポーネント）

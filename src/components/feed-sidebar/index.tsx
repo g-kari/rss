@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, memo } from "react";
+import { useState, memo } from "react";
 import type {
   Feed,
   Article,
@@ -26,6 +26,9 @@ import { StatItem } from "./FooterIconButton";
 import SidebarHeader from "./SidebarHeader";
 import SidebarFooter from "./SidebarFooter";
 import CategorySection from "./CategorySection";
+import TagsSection from "./TagsSection";
+import CollectionsSection from "./CollectionsSection";
+import FeedSearchBar from "./FeedSearchBar";
 
 const ReadingStatsModal = dynamic(() => import("../ReadingStatsModal"), { ssr: false });
 const SaveUrlModal = dynamic(() => import("../SaveUrlModal"), { ssr: false });
@@ -201,7 +204,6 @@ function FeedSidebar({
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showFeedHealth, setShowFeedHealth] = useState(false);
-  const feedSearchRef = useRef<HTMLInputElement>(null);
   const [saveUrl, setSaveUrl] = useState("");
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -399,62 +401,7 @@ function FeedSidebar({
       />
 
       {/* フィード検索（インライン常時表示） */}
-      {feeds.length > 0 && (
-        <div className="px-3 py-2 border-b border-border-subtle">
-          <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-subtle rounded-md border border-border-subtle focus-within:border-border-default transition-colors duration-200">
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 11 11"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              className="text-text-faint flex-shrink-0"
-            >
-              <circle cx="4.5" cy="4.5" r="3" />
-              <line x1="7" y1="7" x2="10" y2="10" strokeLinecap="round" />
-            </svg>
-            <input
-              ref={feedSearchRef}
-              type="text"
-              placeholder="フィードを検索..."
-              value={feedSearch}
-              onChange={(e) => setFeedSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setFeedSearch("");
-                  feedSearchRef.current?.blur();
-                }
-              }}
-              className="flex-1 bg-transparent text-[12px] text-text-default placeholder:text-text-faint outline-none min-w-0"
-            />
-            {feedSearch && (
-              <button
-                type="button"
-                onClick={() => {
-                  setFeedSearch("");
-                  feedSearchRef.current?.focus();
-                }}
-                className="flex-shrink-0 text-text-faint hover:text-text-muted transition-colors duration-150"
-                aria-label="検索をクリア"
-              >
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 10 10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                >
-                  <line x1="2" y1="2" x2="8" y2="8" />
-                  <line x1="8" y1="2" x2="2" y2="8" />
-                </svg>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {feeds.length > 0 && <FeedSearchBar value={feedSearch} onChange={setFeedSearch} />}
 
       {/* フィードリスト */}
       <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2">
@@ -517,85 +464,21 @@ function FeedSidebar({
           />
         ))}
 
-        {sortedTags.length > 0 && onSelectTag && (
-          <div className="mt-1 pt-2 border-t border-border-subtle">
-            <div className="px-4 pb-1 flex items-center">
-              <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-                Tags
-              </span>
-            </div>
-            {sortedTags.map(([tag, count]) => {
-              const isSelected = selectedTag === tag;
-              return (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => onSelectTag(isSelected ? null : tag)}
-                  className={`w-full px-4 py-1.5 flex items-center justify-between gap-2 text-left transition-colors ${
-                    isSelected
-                      ? "bg-surface-subtle text-text-strong"
-                      : "hover:bg-surface-hover text-text-muted hover:text-text-strong"
-                  }`}
-                  title={tag}
-                >
-                  <span className="text-[13px] truncate">#{tag}</span>
-                  <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
-                    {count > 99 ? "99+" : count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        {onSelectTag && (
+          <TagsSection
+            sortedTags={sortedTags}
+            selectedTag={selectedTag ?? null}
+            onSelectTag={onSelectTag}
+          />
         )}
 
-        {collections && collections.length > 0 && onSelectCollection && (
-          <div className="mt-1 pt-2 border-t border-border-subtle">
-            <div className="px-4 pb-1 flex items-center">
-              <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-                Collections
-              </span>
-              {onCreateCollection && (
-                <button
-                  onClick={() => onCreateCollection("")}
-                  className="ml-auto w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
-                  title="コレクションを作成"
-                >
-                  <svg
-                    width="9"
-                    height="9"
-                    viewBox="0 0 9 9"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <line x1="4.5" y1="1" x2="4.5" y2="8" strokeLinecap="round" />
-                    <line x1="1" y1="4.5" x2="8" y2="4.5" strokeLinecap="round" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            {collections.map((c) => {
-              const isSelected = selectedCollectionId === c.id;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => onSelectCollection(isSelected ? null : c.id)}
-                  className={`w-full px-4 py-1.5 flex items-center justify-between gap-2 text-left transition-colors ${
-                    isSelected
-                      ? "bg-surface-subtle text-text-strong"
-                      : "hover:bg-surface-hover text-text-muted hover:text-text-strong"
-                  }`}
-                  title={c.name}
-                >
-                  <span className="text-[13px] truncate">{c.name}</span>
-                  <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
-                    {c.articleIds.length > 99 ? "99+" : c.articleIds.length}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        {collections && onSelectCollection && (
+          <CollectionsSection
+            collections={collections}
+            selectedCollectionId={selectedCollectionId ?? null}
+            onSelectCollection={onSelectCollection}
+            onCreateCollection={onCreateCollection}
+          />
         )}
 
         {/* 統計 */}

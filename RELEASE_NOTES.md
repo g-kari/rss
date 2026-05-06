@@ -11,6 +11,10 @@
 
 - **フィード切り替え時のスクロール位置保存** — Issue #350。フィードを切り替えてまた戻ってきたとき、スクロール位置がリセットされてたのを修正したよ〜💡 フィードごとに位置を記憶しておくから、読んでた場所に戻れるようになったよっ✨
 
+### リファクタリングっ
+
+- **大型コンポーネントの整理** — Issue #347。`FeedSidebar`（823→708行）・`FeedItemComponent`（776→638行）・`ArticleList`（760→646行）を分割したよ〜🔧 `TagsSection` / `CollectionsSection` / `FeedSearchBar` / `FeedTitleContent` / `ArticleListEmptyState` の 5 コンポーネントを新規抽出して、それぞれ独立ファイルにまとめたよっ✨
+
 ## 2026-05-08
 
 ### セキュリティ対策っ
