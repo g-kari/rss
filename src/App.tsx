@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
+import AppModals from "./components/AppModals";
 import FeedSidebar from "./components/feed-sidebar";
 import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
@@ -43,17 +43,6 @@ import { useToastState } from "./hooks/useToast";
 import LandingPage from "./components/LandingPage";
 import BetaRestrictedPage from "./components/BetaRestrictedPage";
 
-const KeyboardShortcutsModal = dynamic(() => import("./components/KeyboardShortcutsModal"), {
-  ssr: false,
-});
-const UserSettingsModal = dynamic(() => import("./components/UserSettingsModal"), { ssr: false });
-const FeedQuickSwitchModal = dynamic(() => import("./components/FeedQuickSwitchModal"), {
-  ssr: false,
-});
-const SnoozeModal = dynamic(() => import("./components/SnoozeModal"), { ssr: false });
-const SessionExpiredModal = dynamic(() => import("./components/SessionExpiredModal"), {
-  ssr: false,
-});
 import SkeletonSidebar from "./components/SkeletonSidebar";
 import SkeletonArticleList from "./components/SkeletonArticleList";
 
@@ -755,6 +744,22 @@ export default function App() {
     ],
   );
 
+  const snoozeArticleTitle = snoozeTargetId
+    ? (articles.find((a) => a.id === snoozeTargetId)?.title ?? "")
+    : "";
+  const handleSnooze = useCallback(
+    (durationMs: number) => {
+      if (!snoozeTargetId) return;
+      snoozeArticle(snoozeTargetId, durationMs);
+      const hours = Math.round(durationMs / (60 * 60 * 1000));
+      toast.info(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
+      const idx = filtered.findIndex((a) => a.id === snoozeTargetId);
+      const next = filtered[idx + 1];
+      if (next) setSelectedArticle(next);
+    },
+    [snoozeTargetId, snoozeArticle, toast, filtered, setSelectedArticle],
+  );
+
   // ローディング
   if (user === undefined) {
     return (
@@ -818,44 +823,25 @@ export default function App() {
 
             <ToastContainer />
 
-            {/* セッション期限切れモーダル */}
-            {sessionExpired && <SessionExpiredModal />}
-
-            {/* スヌーズ期間選択 */}
-            {snoozeTargetId &&
-              (() => {
-                const article = articles.find((a) => a.id === snoozeTargetId);
-                const idx = filtered.findIndex((a) => a.id === snoozeTargetId);
-                return (
-                  <SnoozeModal
-                    articleTitle={article?.title ?? ""}
-                    onSnooze={(durationMs) => {
-                      snoozeArticle(snoozeTargetId, durationMs);
-                      const hours = Math.round(durationMs / (60 * 60 * 1000));
-                      toast.info(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
-                      const next = filtered[idx + 1];
-                      if (next) setSelectedArticle(next);
-                    }}
-                    onClose={() => setSnoozeTargetId(null)}
-                  />
-                );
-              })()}
-            {/* キーボードショートカット ヘルプ */}
-            {showHelp && <KeyboardShortcutsModal onClose={() => setShowHelp(false)} />}
-            {/* ユーザー設定 */}
-            {showSettings && <UserSettingsModal onClose={() => setShowSettings(false)} />}
-            {/* フィードクイックスイッチャー */}
-            {showFeedSwitcher && (
-              <FeedQuickSwitchModal
-                feeds={feeds}
-                articles={articles}
-                readIds={readIds}
-                readBeforeTimestamp={readBeforeTimestamp}
-                selectedFeedId={selectedFeedId}
-                onSelectFeed={setSelectedFeedId}
-                onClose={() => setShowFeedSwitcher(false)}
-              />
-            )}
+            <AppModals
+              sessionExpired={sessionExpired}
+              snoozeTargetId={snoozeTargetId}
+              snoozeArticleTitle={snoozeArticleTitle}
+              onSnooze={handleSnooze}
+              onSnoozeClose={() => setSnoozeTargetId(null)}
+              showHelp={showHelp}
+              onHelpClose={() => setShowHelp(false)}
+              showSettings={showSettings}
+              onSettingsClose={() => setShowSettings(false)}
+              showFeedSwitcher={showFeedSwitcher}
+              feeds={feeds}
+              articles={articles}
+              readIds={readIds}
+              readBeforeTimestamp={readBeforeTimestamp}
+              selectedFeedId={selectedFeedId}
+              onSelectFeed={setSelectedFeedId}
+              onFeedSwitcherClose={() => setShowFeedSwitcher(false)}
+            />
             {/* NSFW 目が開くアニメーション */}
             {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
             {newArticleCount > 0 && !focusMode && !listFocusMode && (
