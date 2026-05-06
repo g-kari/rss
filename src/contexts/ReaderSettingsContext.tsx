@@ -2,7 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import type { FontFamily, FontSize } from "../types";
-import type { Theme, AutoReadThreshold } from "../hooks/useUIState";
+import type { Theme, AutoReadThreshold, WorkersAiModelId } from "../hooks/useUIState";
 import type {
   LineHeight,
   ContentWidth,
@@ -45,6 +45,8 @@ export interface ReaderSettings {
   onChangeImageDlFolder: (v: string) => void;
   imageDlFolderNsfw: string;
   onChangeImageDlFolderNsfw: (v: string) => void;
+  aiModel: WorkersAiModelId;
+  onChangeAiModel: (v: WorkersAiModelId) => void;
 }
 
 const ReaderSettingsContext = createContext<ReaderSettings | null>(null);

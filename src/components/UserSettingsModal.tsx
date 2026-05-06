@@ -39,6 +39,7 @@ import {
 } from "../lib/reader-settings";
 import { AUTO_READ_THRESHOLD_CYCLE } from "../hooks/useUIState";
 import { ARTICLE_TTL_DAYS } from "../lib/article-ttl";
+import { AI_MODELS } from "../lib/ai-route-helper";
 import type { FontFamily, FontSize } from "../types";
 
 interface Props {
@@ -106,6 +107,8 @@ export default function UserSettingsModal({ onClose }: Props) {
     onChangeImageDlFolder,
     imageDlFolderNsfw,
     onChangeImageDlFolderNsfw,
+    aiModel,
+    onChangeAiModel,
   } = useReaderSettings();
 
   const toast = useToast();
@@ -399,6 +402,28 @@ export default function UserSettingsModal({ onClose }: Props) {
             )}
           </div>
         )}
+
+        <SettingRow label="Workers AI モデル">
+          <select
+            value={aiModel}
+            onChange={(e) =>
+              onChangeAiModel(e.target.value as Parameters<typeof onChangeAiModel>[0])
+            }
+            className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
+          >
+            {AI_MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </SettingRow>
+        <div className="flex flex-col gap-1 pl-28">
+          <span className="text-[11px] text-text-muted">
+            AI 要約・翻訳で使用する Workers AI モデルを選択します。70B は高精度ですが 1 分間 3
+            回の制限があります。
+          </span>
+        </div>
 
         <SettingRow label="重複記事の非表示">
           <button

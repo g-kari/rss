@@ -22,10 +22,10 @@ import { useAccessibilitySettings } from "./useAccessibilitySettings";
 import type { MobilePane } from "./useMobilePane";
 // UIState interface で使うためのローカル import（re-export だけではローカルスコープに入らない）
 import type { Theme } from "./useThemePreference";
-import type { AutoReadThreshold } from "./useAutoReadSettings";
+import type { AutoReadThreshold, WorkersAiModelId } from "./useAutoReadSettings";
 export type { MobilePane };
 export type { Theme } from "./useThemePreference";
-export type { AutoReadThreshold } from "./useAutoReadSettings";
+export type { AutoReadThreshold, WorkersAiModelId } from "./useAutoReadSettings";
 export { AUTO_READ_THRESHOLD_CYCLE } from "./useAutoReadSettings";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -98,6 +98,8 @@ export interface UIState {
   onChangeImageDlFolder: (v: string) => void;
   imageDlFolderNsfw: string;
   onChangeImageDlFolderNsfw: (v: string) => void;
+  aiModel: WorkersAiModelId;
+  onChangeAiModel: (v: WorkersAiModelId) => void;
 }
 
 export function useUIState(initialMobilePane: MobilePane): UIState {
@@ -134,6 +136,8 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     toggleAutoTranslate,
     deduplicateByLink,
     toggleDeduplicateByLink,
+    aiModel,
+    onChangeAiModel,
   } = useAutoReadSettings();
   const { lineHeight, onChangeLineHeight, textJustify, onChangeTextJustify } =
     useAccessibilitySettings();
@@ -322,5 +326,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     onChangeImageDlFolder,
     imageDlFolderNsfw,
     onChangeImageDlFolderNsfw,
+    aiModel,
+    onChangeAiModel,
   };
 }

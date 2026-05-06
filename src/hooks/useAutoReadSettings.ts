@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
+import { AI_MODELS, DEFAULT_AI_MODEL, type WorkersAiModelId } from "../lib/ai-route-helper";
 
 export const AUTO_READ_THRESHOLD_CYCLE = [70, 80, 90] as const;
 export type AutoReadThreshold = (typeof AUTO_READ_THRESHOLD_CYCLE)[number];
@@ -29,12 +30,23 @@ function loadDeduplicateByLink(): boolean {
   return stored !== "0";
 }
 
+function loadAiModel(): WorkersAiModelId {
+  const stored = storageGet(STORAGE_KEYS.AI_MODEL);
+  const valid = AI_MODELS.map((m) => m.id) as WorkersAiModelId[];
+  return stored && valid.includes(stored as WorkersAiModelId)
+    ? (stored as WorkersAiModelId)
+    : DEFAULT_AI_MODEL;
+}
+
+export { AI_MODELS, type WorkersAiModelId };
+
 export function useAutoReadSettings() {
   const [autoReadEnabled, setAutoReadEnabled] = useState<boolean>(loadAutoReadEnabled);
   const [autoReadThreshold, setAutoReadThreshold] =
     useState<AutoReadThreshold>(loadAutoReadThreshold);
   const [autoTranslate, setAutoTranslate] = useState<boolean>(loadAutoTranslate);
   const [deduplicateByLink, setDeduplicateByLink] = useState<boolean>(loadDeduplicateByLink);
+  const [aiModel, setAiModel] = useState<WorkersAiModelId>(loadAiModel);
 
   const toggleAutoRead = useCallback(() => {
     setAutoReadEnabled((v) => {
@@ -74,6 +86,11 @@ export function useAutoReadSettings() {
     });
   }, []);
 
+  const onChangeAiModel = useCallback((next: WorkersAiModelId) => {
+    setAiModel(next);
+    storageSet(STORAGE_KEYS.AI_MODEL, next);
+  }, []);
+
   return {
     autoReadEnabled,
     toggleAutoRead,
@@ -84,5 +101,7 @@ export function useAutoReadSettings() {
     toggleAutoTranslate,
     deduplicateByLink,
     toggleDeduplicateByLink,
+    aiModel,
+    onChangeAiModel,
   } as const;
 }
