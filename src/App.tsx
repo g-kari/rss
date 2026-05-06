@@ -45,6 +45,7 @@ import BetaRestrictedPage from "./components/BetaRestrictedPage";
 
 import SkeletonSidebar from "./components/SkeletonSidebar";
 import SkeletonArticleList from "./components/SkeletonArticleList";
+import { getMobilePaneTransform } from "./hooks/useMobilePane";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -972,7 +973,9 @@ export default function App() {
             )}
             <div
               data-pane="sidebar"
-              className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "sidebar" ? "hidden lg:block" : ""}`}
+              className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
+              style={{ transform: getMobilePaneTransform("sidebar", mobilePane) }}
+              aria-hidden={mobilePane !== "sidebar" || undefined}
             >
               {loadingFeeds && feeds.length === 0 ? (
                 <SkeletonSidebar />
@@ -1123,7 +1126,9 @@ export default function App() {
               id="main-content"
               tabIndex={-1}
               data-pane="list"
-              className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "list" ? "hidden lg:block" : ""} focus:outline-none`}
+              className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane focus:outline-none"
+              style={{ transform: getMobilePaneTransform("list", mobilePane) }}
+              aria-hidden={mobilePane !== "list" || undefined}
             >
               {loadingFeeds && feeds.length === 0 ? (
                 <SkeletonArticleList layout={layout} />
@@ -1194,7 +1199,9 @@ export default function App() {
             </div>
             <main
               data-pane="view"
-              className={`absolute inset-0 lg:relative lg:inset-auto overflow-hidden ${mobilePane !== "view" ? "hidden lg:block" : ""}`}
+              className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
+              style={{ transform: getMobilePaneTransform("view", mobilePane) }}
+              aria-hidden={mobilePane !== "view" || undefined}
             >
               <ErrorBoundary label="記事表示">
                 <ArticleView {...articleViewProps} />

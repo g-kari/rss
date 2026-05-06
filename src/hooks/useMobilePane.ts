@@ -6,6 +6,26 @@ import { useEventListener } from "./useEventListener";
 /** モバイル向け3ペインのうちアクティブなペイン */
 export type MobilePane = "sidebar" | "list" | "view";
 
+/** ペインの順序インデックス（アニメーション方向計算用） */
+const PANE_ORDER: Record<MobilePane, number> = {
+  sidebar: 0,
+  list: 1,
+  view: 2,
+};
+
+/**
+ * ペインのスライドアニメーション用 CSS transform 値を返す。
+ *
+ * アクティブペインは translateX(0%)、左側ペインは translateX(-100%)、
+ * 右側ペインは translateX(100%) に配置する。
+ */
+export function getMobilePaneTransform(pane: MobilePane, activePane: MobilePane): string {
+  const diff = PANE_ORDER[pane] - PANE_ORDER[activePane];
+  if (diff === 0) return "translateX(0%)";
+  if (diff < 0) return "translateX(-100%)";
+  return "translateX(100%)";
+}
+
 /**
  * モバイル向けペイン切り替えを管理するフック。
  *
