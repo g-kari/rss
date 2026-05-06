@@ -4,6 +4,16 @@
 
 ### バグ修正っ
 
+- **フィード追加クールダウンが 3 秒になってたタイポを修正したよ〜** — Issue #369。`app/api/feeds/route.ts` の `30 * 100`（3 秒）が `30 * 1000`（30 秒）の typo だったよっ💡 意図通りの 30 秒クールダウンになったよ〜✨
+
+### UX改善っ
+
+- **ローディング・エラー状態をスクリーンリーダーに通知するようにしたよ〜** — Issue #385。`ArticleListEmptyState` のローディング `div` に `aria-live="polite"` と `aria-busy="true"` を、エラー `div` に `role="alert"` と `aria-live="assertive"` を追加したよっ♿ WCAG 4.1.3 準拠になったよ〜✨
+
+## 2026-05-06
+
+### バグ修正っ
+
 - **記事を選択しても一覧から消えなくなったよ〜** — Issue #368。`unreadOnly` フィルターが ON の状態で既読記事を選択すると、しばらく一覧から消えちゃってた問題を修正したよっ💡 `filtered` useMemo の依存配列に `selectedArticleId` と `gracePeriodId` を追加して、記事選択時に即座に再計算されるようにしたよ〜✨ galleryAutoRead による頻繁な再計算は引き続き ref で回避してるから、パフォーマンスも安心だよっ🎀
 
 ## 2026-05-06
