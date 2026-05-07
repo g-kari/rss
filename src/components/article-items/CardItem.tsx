@@ -44,7 +44,7 @@ export const CardArticleItem = memo(function CardArticleItem({
     <div
       role="option"
       aria-selected={isSelected}
-      tabIndex={0}
+      tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
       onKeyDown={handleKeyDown}
