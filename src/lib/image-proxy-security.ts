@@ -9,15 +9,13 @@
 /**
  * 同一オリジンからの画像リクエストかを判定する。
  *
- * 優先度:
- *   1. Sec-Fetch-Site ヘッダー (modern browsers) — `same-origin` のみ許可
- *   2. Referer ヘッダー — origin が self と一致する場合のみ許可
- *      ※ Referer は HTTP レベルで偽造可能なため curl 等からバイパスされ得る（LOW リスク）。
- *        画像プロキシには checkSlidingWindow レートリミットがあるため実用上の乱用は抑制される。
+ * Sec-Fetch-Site ヘッダー (modern browsers) が `same-origin` の場合のみ許可する。
+ * Sec-Fetch-Site が存在しない場合（curl 等の非ブラウザクライアント）は拒否する（fail-closed）。
  *
- * どちらも存在しない・判定できない場合は拒否する（fail-closed）。
+ * ※ 旧来の Referer フォールバックは HTTP レベルで偽造可能なため廃止 (#493)。
+ *    有効なセッション Cookie を持つ攻撃者が Referer を偽装してプロキシを濫用できる問題を防ぐ。
  */
-export function isSameOriginImageRequest(headers: Headers, selfOrigin: string): boolean {
+export function isSameOriginImageRequest(headers: Headers, _selfOrigin: string): boolean {
   // Sec-Fetch-Mode が "navigate" の場合はブラウザの直接ナビゲーションリクエストであり、
   // 画像プロキシへの正当な利用ではないため拒否する。
   // （例: アドレスバーへの URL 直打ち、<a href> でのページ遷移など）
@@ -31,16 +29,11 @@ export function isSameOriginImageRequest(headers: Headers, selfOrigin: string): 
     return secFetchSite === "same-origin";
   }
 
-  // Referer ヘッダーによるフォールバック。
-  // ⚠️ Referer は HTTP レベルで偽造可能なため curl 等の非ブラウザクライアントからバイパスされ得る。
-  // ただし画像プロキシには checkSlidingWindow レートリミットがあるため実用上の乱用は抑制される。
-  const referer = headers.get("referer");
-  if (!referer) return false;
-  try {
-    return new URL(referer).origin === selfOrigin;
-  } catch {
-    return false;
-  }
+  // Sec-Fetch-Site が存在しない（非モダンブラウザ / curl 等）場合は拒否する（fail-closed）。
+  // 旧来の Referer フォールバックは HTTP レベルで偽造可能なため廃止 (#493)。
+  // 画像プロキシへの正当なリクエストはブラウザの <img> タグ経由であり、
+  // Sec-Fetch-Site ヘッダーを付与しないクライアントからの利用は想定しない。
+  return false;
 }
 
 /**

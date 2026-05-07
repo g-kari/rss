@@ -5,8 +5,8 @@ import { isSameOriginImageRequest, isContentTypeConsistent } from "../src/lib/im
  * image-proxy の Origin 検証ロジック
  *
  * 同一オリジンからのリクエストのみ許可する。
- * - Sec-Fetch-Site ヘッダーがあれば優先して判定
- * - Sec-Fetch-Site がない場合は Referer を origin 比較
+ * - Sec-Fetch-Site ヘッダーが `same-origin` の場合のみ許可
+ * - Sec-Fetch-Site がない場合（curl 等）は Referer によらず拒否（#493）
  */
 
 const SELF_ORIGIN = "https://rss.0g0.xyz";
@@ -43,21 +43,17 @@ test.describe("isSameOriginImageRequest — Sec-Fetch-Site 優先", () => {
   });
 });
 
-test.describe("isSameOriginImageRequest — Referer フォールバック", () => {
-  test("Referer が同一 origin なら許可", () => {
+test.describe("isSameOriginImageRequest — Sec-Fetch-Site なし（非ブラウザ / curl）", () => {
+  test("Referer が同一 origin でも Sec-Fetch-Site がなければ拒否（#493 偽装防止）", () => {
     expect(
       isSameOriginImageRequest(headers({ referer: "https://rss.0g0.xyz/article/1" }), SELF_ORIGIN),
-    ).toBe(true);
-  });
-
-  test("Referer が別 origin なら拒否", () => {
-    expect(
-      isSameOriginImageRequest(headers({ referer: "https://evil.example.com/" }), SELF_ORIGIN),
     ).toBe(false);
   });
 
-  test("Referer が不正な URL なら拒否", () => {
-    expect(isSameOriginImageRequest(headers({ referer: "not-a-url" }), SELF_ORIGIN)).toBe(false);
+  test("Referer が別 origin かつ Sec-Fetch-Site なしも拒否", () => {
+    expect(
+      isSameOriginImageRequest(headers({ referer: "https://evil.example.com/" }), SELF_ORIGIN),
+    ).toBe(false);
   });
 
   test("Referer も Sec-Fetch-Site もない場合は拒否", () => {
