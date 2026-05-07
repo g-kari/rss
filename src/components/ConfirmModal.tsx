@@ -1,0 +1,91 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { usePopupLock } from "@/hooks/usePopupLock";
+
+interface Props {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  danger?: boolean;
+}
+
+export default function ConfirmModal({
+  isOpen,
+  title,
+  message,
+  confirmLabel = "確認",
+  cancelLabel = "キャンセル",
+  onConfirm,
+  onCancel,
+  danger = false,
+}: Props) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  usePopupLock();
+
+  useEffect(() => {
+    if (isOpen) {
+      cancelRef.current?.focus();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onCancel();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onCancel]);
+
+  if (!isOpen) return null;
+
+  return createPortal(
+    <>
+      <div className="fixed inset-0 z-[49] bg-black/30" onPointerDown={onCancel} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        className="fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[360px] bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden outline-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4">
+          <h2 id="confirm-modal-title" className="text-[13px] font-medium text-text-strong mb-2">
+            {title}
+          </h2>
+          <p className="text-[12px] text-text-soft leading-relaxed whitespace-pre-wrap">
+            {message}
+          </p>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border-subtle">
+          <button
+            ref={cancelRef}
+            onClick={onCancel}
+            className="px-4 py-1.5 text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`px-4 py-1.5 text-[12px] rounded-lg transition-colors ${
+              danger
+                ? "bg-rose-500 hover:bg-rose-600 text-white"
+                : "bg-ink hover:bg-ink-hover text-ink-text"
+            }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </>,
+    document.body,
+  );
+}

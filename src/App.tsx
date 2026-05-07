@@ -21,7 +21,6 @@ import { useReadingHistory } from "./hooks/useReadingHistory";
 import { useUIState } from "./hooks/useUIState";
 import { useHasOpenPopup } from "./hooks/usePopupLock";
 import { updateFaviconBadge } from "./lib/favicon";
-import { exportArticlesToMarkdown, exportNotesToMarkdown } from "./lib/export-markdown";
 import { apiFetch, onApiError } from "./lib/api-fetch";
 import { isArticle } from "./lib/type-guards";
 import { isArticleRead } from "./lib/article-filter";
@@ -37,6 +36,11 @@ import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
 import { useColumnResize } from "./hooks/useColumnResize";
 import { useSyncedRef } from "./hooks/useSyncedRef";
+import { useConfirm } from "./hooks/useConfirm";
+import { useMarkAllRead } from "./hooks/useMarkAllRead";
+import { useFeedSidebarActions } from "./hooks/useFeedSidebarActions";
+import ConfirmModal from "./components/ConfirmModal";
+import ThreePaneLayout from "./components/ThreePaneLayout";
 import { ReaderSettingsProvider, type ReaderSettings } from "./contexts/ReaderSettingsContext";
 import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { ToastProvider } from "./contexts/ToastContext";
@@ -127,6 +131,12 @@ export default function App() {
   } = useUIState(initialMobilePane);
 
   const toast = useToastState();
+  const { confirm, confirmModalProps } = useConfirm();
+  // キーボードショートカット用のシンプルな confirm ラッパー（メッセージのみ）
+  const confirmMessage = useCallback(
+    (message: string) => confirm({ title: "確認", message }),
+    [confirm],
+  );
 
   useEffect(() => {
     if (isOnline && !prevOnlineRef.current) {
@@ -205,7 +215,6 @@ export default function App() {
     snoozedUntil,
     markRead,
     markBulkRead,
-    markAllRead: _markAllRead,
     markAllReadWithUndo,
     toggleRead,
     toggleBookmark,
@@ -540,6 +549,85 @@ export default function App() {
     globalFilter,
   ]);
 
+  const { onMarkAllRead } = useMarkAllRead({
+    articles,
+    filtered,
+    readIds,
+    readBeforeTimestamp,
+    selectedFeedId,
+    groupFeedIds,
+    selectedCollectionId,
+    selectedTag,
+    activeFeedView,
+    totalUnread,
+    markBulkRead,
+    markAllReadWithUndo,
+    skipRemainingPages,
+    toast,
+    confirm,
+  });
+
+  const feedSidebarActions = useFeedSidebarActions({
+    feeds,
+    articles,
+    readIds,
+    readBeforeTimestamp,
+    bookmarkIds,
+    readingListIds,
+    notes,
+    totalUnread,
+    setSelectedFeedId,
+    setSelectedGroupId,
+    setSelectedTag,
+    setSelectedArticle,
+    setMobilePane,
+    onChangeLayout,
+    onFeedAdded,
+    onFeedDeleted,
+    updateFeed,
+    appendFeeds,
+    markAllReadWithUndo,
+    markBulkRead,
+    toast,
+    confirm,
+    toggleTheme,
+    setShowSettings,
+    setShowHelp,
+    onSaveArticleUrl,
+    refreshFeeds,
+    retryFeed,
+    reinferFeed,
+    togglePinFeed,
+    toggleCollapseCategory,
+    activateNSFW,
+    deactivateNSFW,
+    toggleNsfwFeed,
+    togglePriorityFeed,
+    setCategoryFeed,
+    setGroupFeed,
+    createGroup,
+    renameGroup,
+    deleteGroup,
+    setFeedGroupCollapsed,
+    setFeedGroupMuted,
+    reorderGroup,
+    muteFeed,
+    setFeedView,
+    setDigestLimit,
+    onChangeActiveFeedView,
+    setSelectedFeedIdNull: () => {
+      setSelectedFeedId(null);
+      setSelectedGroupId(null);
+      setSelectedArticle(null);
+    },
+    dismissRecommendation,
+    refreshRecommendations,
+    setSelectedCollectionId,
+    createCollection,
+    renameCollection,
+    deleteCollection,
+  });
+
   const listFocusModeRef = useSyncedRef(listFocusMode);
   const wasInListFocusModeRef = useRef(false);
 
@@ -625,6 +713,7 @@ export default function App() {
     onShowSnoozeMenu: setSnoozeTargetId,
     onShowFeedSwitcher: () => setShowFeedSwitcher(true),
     onArticleAnnounce: setArticleAnnouncement,
+    confirm: confirmMessage,
   });
 
   const articleViewProps = useMemo(
@@ -728,16 +817,10 @@ export default function App() {
     <ToastProvider value={toast}>
       <ReaderSettingsProvider value={readerSettings}>
         <ArticleFilterProvider value={articleFilter}>
-          <div
-            data-layout="root"
-            className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
-            style={{
-              gridTemplateColumns: listFocusMode
-                ? `0px 1fr 0px`
-                : `${sidebarWidth}px ${listWidth}px 1fr`,
-              gridTemplateRows: "100%",
-              transition: "grid-template-columns 0.25s ease",
-            }}
+          <ThreePaneLayout
+            sidebarWidth={sidebarWidth}
+            listWidth={listWidth}
+            listFocusMode={listFocusMode}
           >
             {/* skip-to-content: Tab キーでフォーカス時のみ表示。サイドバーをスキップして記事一覧へ */}
             <a
@@ -771,6 +854,8 @@ export default function App() {
             )}
 
             <ToastContainer />
+
+            <ConfirmModal {...confirmModalProps} />
 
             <AppModals
               sessionExpired={sessionExpired}
@@ -929,107 +1014,7 @@ export default function App() {
                 <SkeletonSidebar />
               ) : (
                 <ErrorBoundary label="サイドバー">
-                  <FeedSidebarProvider
-                    value={{
-                      onSelectFeed: (id) => {
-                        setSelectedFeedId(id);
-                        setSelectedGroupId(null);
-                        setSelectedTag(null);
-                        setSelectedArticle(null);
-                        setMobilePane("list");
-                        const feed = feeds.find((f) => f.id === id);
-                        if (feed?.view === "pictures" || feed?.view === "videos") {
-                          onChangeLayout("gallery");
-                        }
-                      },
-                      onSelectGroup: (id) => {
-                        setSelectedGroupId(id);
-                        setSelectedFeedId(null);
-                        setSelectedTag(null);
-                        setSelectedArticle(null);
-                        setMobilePane("list");
-                      },
-                      onSelectTag: (tag) => {
-                        setSelectedTag(tag);
-                        setSelectedFeedId(null);
-                        setSelectedGroupId(null);
-                        setSelectedArticle(null);
-                        setMobilePane("list");
-                      },
-                      onFeedAdded,
-                      onFeedDeleted,
-                      onFeedRenamed: updateFeed,
-                      onFeedsImported: appendFeeds,
-                      onMarkAllRead: (feedId) => {
-                        const count = feedId
-                          ? articles.filter(
-                              (a) =>
-                                a.feedHash === feedId &&
-                                !isArticleRead(a, readIds, readBeforeTimestamp),
-                            ).length
-                          : totalUnread;
-                        if (
-                          count >= 50 &&
-                          !window.confirm(`${count}件の未読記事を全て既読にしますか？`)
-                        )
-                          return;
-                        markAllReadWithUndo(feedId, toast);
-                      },
-                      onToggleTheme: toggleTheme,
-                      onOpenSettings: () => setShowSettings(true),
-                      onOpenHelp: () => setShowHelp(true),
-                      onSaveArticleUrl,
-                      onRefresh: refreshFeeds,
-                      onRetryFeed: retryFeed,
-                      onReinferFeed: reinferFeed,
-                      onTogglePinFeed: togglePinFeed,
-                      onToggleCollapseCategory: toggleCollapseCategory,
-                      onActivateNsfw: activateNSFW,
-                      onDeactivateNsfw: deactivateNSFW,
-                      onToggleNsfwFeed: toggleNsfwFeed,
-                      onTogglePriorityFeed: togglePriorityFeed,
-                      onSetCategoryFeed: setCategoryFeed,
-                      onSetGroupFeed: setGroupFeed,
-                      onCreateFeedGroup: createGroup,
-                      onRenameFeedGroup: renameGroup,
-                      onDeleteFeedGroup: deleteGroup,
-                      onToggleCollapseFeedGroup: setFeedGroupCollapsed,
-                      onToggleMuteFeedGroup: setFeedGroupMuted,
-                      onReorderFeedGroup: reorderGroup,
-                      onMarkAllReadInGroup: (feedIds) => {
-                        const feedSet = new Set(feedIds);
-                        const ids = articles
-                          .filter((a) => feedSet.has(a.feedHash))
-                          .map((a) => a.id);
-                        if (ids.length > 0) markBulkRead(ids);
-                      },
-                      onMuteFeed: muteFeed,
-                      onSetFeedView: setFeedView,
-                      onSetDigestLimit: setDigestLimit,
-                      onChangeActiveFeedView: (view) => {
-                        onChangeActiveFeedView(view);
-                        setSelectedFeedId(null);
-                        setSelectedGroupId(null);
-                        setSelectedArticle(null);
-                        if (view === "pictures" || view === "videos") {
-                          onChangeLayout("gallery");
-                        }
-                      },
-                      onDismissRecommendation: dismissRecommendation,
-                      onRefreshRecommendations: refreshRecommendations,
-                      onExportMarkdown: (mode) => {
-                        const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
-                        exportArticlesToMarkdown(articles, ids, feeds, mode);
-                      },
-                      onExportNotes: () => {
-                        exportNotesToMarkdown(articles, notes, feeds);
-                      },
-                      onSelectCollection: setSelectedCollectionId,
-                      onCreateCollection: createCollection,
-                      onRenameCollection: renameCollection,
-                      onDeleteCollection: deleteCollection,
-                    }}
-                  >
+                  <FeedSidebarProvider value={feedSidebarActions}>
                     <FeedSidebar
                       feeds={feeds}
                       articles={articles}
@@ -1102,40 +1087,7 @@ export default function App() {
                     onToggleRead={toggleRead}
                     onToggleBookmark={toggleBookmark}
                     onMarkRead={markRead}
-                    onMarkAllRead={() => {
-                      const hasSubFilter =
-                        (groupFeedIds && groupFeedIds.size > 0) ||
-                        selectedCollectionId ||
-                        selectedTag ||
-                        activeFeedView;
-                      if (hasSubFilter) {
-                        const ids = filtered
-                          .filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp))
-                          .map((a) => a.id);
-                        if (ids.length === 0) return;
-                        if (
-                          ids.length >= 50 &&
-                          !window.confirm(`${ids.length}件の未読記事を全て既読にしますか？`)
-                        )
-                          return;
-                        markBulkRead(ids);
-                        return;
-                      }
-                      const unreadCount = selectedFeedId
-                        ? articles.filter(
-                            (a) =>
-                              a.feedHash === selectedFeedId &&
-                              !isArticleRead(a, readIds, readBeforeTimestamp),
-                          ).length
-                        : totalUnread;
-                      if (
-                        unreadCount >= 50 &&
-                        !window.confirm(`${unreadCount}件の未読記事を全て既読にしますか？`)
-                      )
-                        return;
-                      markAllReadWithUndo(selectedFeedId, toast);
-                      skipRemainingPages(selectedFeedId);
-                    }}
+                    onMarkAllRead={onMarkAllRead}
                     feedHasMorePages={feedHasMorePages}
                     onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
                     notes={notes}
@@ -1158,7 +1110,7 @@ export default function App() {
                 <ArticleView {...articleViewProps} />
               </ErrorBoundary>
             </main>
-          </div>
+          </ThreePaneLayout>
         </ArticleFilterProvider>
       </ReaderSettingsProvider>
     </ToastProvider>

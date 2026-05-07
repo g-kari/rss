@@ -2,6 +2,8 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import type { FeedGroup, Feed } from "../../types";
+import { useConfirm } from "@/hooks/useConfirm";
+import ConfirmModal from "@/components/ConfirmModal";
 import { formatCount } from "../FeedItem";
 
 export default function FeedGroupsSection({
@@ -49,6 +51,7 @@ export default function FeedGroupsSection({
   const [editError, setEditError] = useState<string | null>(null);
   const createInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const { confirm, confirmModalProps } = useConfirm();
 
   async function commitCreate() {
     const name = newName.trim();
@@ -86,8 +89,13 @@ export default function FeedGroupsSection({
 
   async function handleDelete(group: FeedGroup) {
     if (!onDelete) return;
-    const msg = `グループ「${group.name}」を削除しますか？\n所属フィードはグループ解除されます。`;
-    if (!window.confirm(msg)) return;
+    const ok = await confirm({
+      title: "グループの削除",
+      message: `グループ「${group.name}」を削除しますか？\n所属フィードはグループ解除されます。`,
+      confirmLabel: "削除",
+      danger: true,
+    });
+    if (!ok) return;
     await onDelete(group.id);
   }
 
@@ -461,6 +469,7 @@ export default function FeedGroupsSection({
           </div>
         );
       })}
+      <ConfirmModal {...confirmModalProps} />
     </>
   );
 }

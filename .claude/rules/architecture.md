@@ -129,6 +129,8 @@ src/
     LoadMoreButton.tsx       # 追加読み込みボタン（IntersectionObserver 自動トリガー）
     ArticleView.tsx          # 記事本文
     Modal.tsx                # 汎用モーダル基盤コンポーネント
+    ConfirmModal.tsx         # 確認ダイアログモーダル（window.confirm 代替。useConfirm hook と組み合わせて使う）
+    ThreePaneLayout.tsx      # 3ペイン CSS Grid レイアウトコンテナ（sidebarWidth / listWidth / listFocusMode props）
     ToastContainer.tsx       # トースト通知コンテナ（右下スタック・3種別・自動消去・ポータル描画）
     RecommendationSection.tsx # フィード推薦セクション
     KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
@@ -230,6 +232,9 @@ src/
     usePopupLock.ts          # ブラウザポップアップの多重表示防止ロック（lib/popup-lock 連携）
     useMenuKeyboard.ts       # ポータルメニューのキーボードナビゲーション（Arrow Up/Down・ESC・フォーカストラップ）
     useDelayedGalleryItems.ts # 削除された items を 300ms 保持してフェードアウト遷移を可能にする（masonic 中間削除アニメーション用）
+    useConfirm.ts            # window.confirm 代替 hook（Promise ベース確認モーダル。confirmModalProps を ConfirmModal に渡す）
+    useMarkAllRead.ts        # 全既読ロジック集約 hook（サブフィルター判定・50件確認・アンドゥ対応）
+    useFeedSidebarActions.ts # FeedSidebarProvider value オブジェクト生成 hook（App.tsx から分割・useMemo 済み）
     useToast.ts              # トースト通知状態管理（success/error/info 3種別・最大3件スタック・自動消去）
     useGlobalFilterAutoRead.ts # globalFilter に引っかかった記事を自動既読にする（フィルター除外記事の未読カウント混入防止）
     useAutoLoadMoreArticles.ts # フィルター後の表示不足時にサーバーから過去記事を自動取得する（最大3回・無限ロード防止）

@@ -62,6 +62,7 @@ interface KeyboardNavOptions {
   onShowSnoozeMenu: (articleId: string) => void;
   onShowFeedSwitcher: () => void;
   onArticleAnnounce?: (title: string) => void;
+  confirm?: (message: string) => Promise<boolean>;
 }
 
 function buildContext(opts: KeyboardNavOptions): ShortcutContext {
@@ -78,6 +79,7 @@ function buildContext(opts: KeyboardNavOptions): ShortcutContext {
         opts.onArticleAnnounce?.(article.title);
       }
     },
+    confirm: opts.confirm,
   };
 }
 

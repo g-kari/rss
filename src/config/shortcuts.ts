@@ -68,6 +68,8 @@ export interface ShortcutContext {
   retryFeed: (feedId: string) => Promise<void>;
   onShowSnoozeMenu: (articleId: string) => void;
   onShowFeedSwitcher: () => void;
+  /** window.confirm の代替。未指定時は window.confirm にフォールバック。 */
+  confirm?: (message: string) => Promise<boolean>;
 }
 
 /** ショートカットのグループ分類 */
@@ -314,12 +316,15 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     displayKey: "m",
     description: "全既読にする",
     group: "article",
-    handler: (ctx) => {
+    handler: async (ctx) => {
       const unreadCount = ctx.list.filter(
         (a) => !isArticleRead(a, ctx.readIds, ctx.readBeforeTimestamp),
       ).length;
-      if (unreadCount >= 50 && !window.confirm(`${unreadCount}件の記事を全既読にしますか？`)) {
-        return;
+      if (unreadCount >= 50) {
+        const ok = ctx.confirm
+          ? await ctx.confirm(`${unreadCount}件の記事を全既読にしますか？`)
+          : window.confirm(`${unreadCount}件の記事を全既読にしますか？`);
+        if (!ok) return;
       }
       ctx.markAllRead(ctx.selectedFeedId);
     },

@@ -2,6 +2,11 @@
 
 ## 2026-05-07 (latest)
 
+### 激アツ新機能っ
+
+- **`window.confirm` / `window.prompt` をカスタムモーダルに置き換えたよ〜** — Issue #468。ブラウザネイティブのダサいダイアログとはお別れっ✨ `ConfirmModal` + `useConfirm` hook を新設して、フィード削除・グループ削除・全既読・キーボードショートカット全部をオシャレなモーダルに統一したよ〜🎀 `window.prompt` も SearchBar のインラインフォームに置き換えたよっ💡
+- **`App.tsx` の責務分離でコードがスッキリしたよ〜** — Issue #471。1200 行超えてたモンスターファイルを解体したよっ✨ `useMarkAllRead`（全既読ロジック）・`useFeedSidebarActions`（サイドバーコールバック群）・`ThreePaneLayout`（3ペイングリッド）を新設して、`App.tsx` がスッキリしたよ〜🚀
+
 ### ドキュメント整備っ
 
 - **`api-spec.md` に未記載エンドポイントの仕様を追記したよ〜** — Issue #477。`GET/POST /api/engagement`・`GET /api/stats`・`GET/PUT /api/push/config`・`PATCH /api/feeds/:id`・`POST /api/feeds/:id/refresh`・`POST /api/recommendations/dismiss`・`POST /api/recommendations/refresh`・`PATCH /api/collections/:id` のリクエスト/レスポンス/エラーコードを全部書いたよっ✨ これで仕様書とコードがバッチリ一致したよ〜📚

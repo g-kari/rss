@@ -3,6 +3,8 @@
 import { useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { FeedView } from "../../types";
+import { useConfirm } from "@/hooks/useConfirm";
+import ConfirmModal from "@/components/ConfirmModal";
 
 const FeedFilterModal = dynamic(() => import("../FeedFilterModal"), { ssr: false });
 const FeedDetailModal = dynamic(() => import("../FeedDetailModal"), { ssr: false });
@@ -84,6 +86,8 @@ export default function FeedItem({
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  const { confirm, confirmModalProps } = useConfirm();
 
   usePopupLock(menuOpen || muteOpen || groupOpen || viewOpen || digestOpen);
 
@@ -477,10 +481,14 @@ export default function FeedItem({
           <line x1="9" y1="1" x2="1" y2="9" />
         </svg>
       ),
-      onClick: () => {
-        if (window.confirm(`「${feed.title}」を削除しますか？`)) {
-          onDelete();
-        }
+      onClick: async () => {
+        const ok = await confirm({
+          title: "フィードの削除",
+          message: `「${feed.title}」を削除しますか？`,
+          confirmLabel: "削除",
+          danger: true,
+        });
+        if (ok) onDelete();
       },
       className: "text-text-faint hover:text-rose-400",
       variant: "danger" as const,
@@ -646,6 +654,7 @@ export default function FeedItem({
         />
       )}
       {detailOpen && <FeedDetailModal feed={feed} onClose={() => setDetailOpen(false)} />}
+      <ConfirmModal {...confirmModalProps} />
       {muteOpen && onMute && (
         <MuteMenuPortal
           menuPortalStyle={menuPortalStyle}
