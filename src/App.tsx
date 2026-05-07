@@ -904,7 +904,7 @@ export default function App() {
                 onClick={() => {
                   dismissNewArticles();
                   document
-                    .querySelector<HTMLElement>('[role="listbox"][aria-label="記事"]')
+                    .querySelector<HTMLElement>('[role="feed"][aria-label="記事"]')
                     ?.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 onKeyDown={(e) => {
@@ -912,7 +912,7 @@ export default function App() {
                     e.preventDefault();
                     dismissNewArticles();
                     document
-                      .querySelector<HTMLElement>('[role="listbox"][aria-label="記事"]')
+                      .querySelector<HTMLElement>('[role="feed"][aria-label="記事"]')
                       ?.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}

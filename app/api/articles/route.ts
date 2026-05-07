@@ -13,14 +13,8 @@ import { applyKeywordFilter, applyKeywordFilterMap, buildFilterMap } from "@/lib
 import { compareByDateDesc } from "@/lib/article-utils";
 import { buildProtectedIds, filterExpiredArticles } from "@/lib/article-ttl";
 import { isValidFeedHash } from "@/lib/validation";
+import { normalizeReadState } from "@/lib/read-state-merge";
 import type { Article, ReadState } from "@/types";
-
-const DEFAULT_READ_STATE: ReadState = {
-  readIds: [],
-  bookmarkIds: [],
-  readingListIds: [],
-  likeIds: [],
-};
 
 export async function GET(request: NextRequest) {
   return withSession(request, async ({ session, env }) => {
@@ -48,7 +42,9 @@ export async function GET(request: NextRequest) {
       const [subs, articles, readState] = await Promise.all([
         readUserSubscriptions(env.RSS_DATA, session.userId),
         fetchArticles,
-        r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), DEFAULT_READ_STATE),
+        r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
+          normalizeReadState,
+        ),
       ]);
       const sub = subs.find((s) => s.feedHash === feedHash);
       if (!sub) {
@@ -61,7 +57,9 @@ export async function GET(request: NextRequest) {
           ? keywordFiltered
           : filterExpiredArticles(keywordFiltered, protectedIds, readState.ttlDays ?? undefined);
       return NextResponse.json(filtered, {
-        headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
+        headers: {
+          "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+        },
       });
     }
 
@@ -91,7 +89,9 @@ export async function GET(request: NextRequest) {
     const [feedArticles, savedArticles, readState] = await Promise.all([
       getUserLatestArticles(env.RSS_DATA, session.userId, activeSubs),
       r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
-      r2Get<ReadState>(env.RSS_DATA, readStateKey(session.userId), DEFAULT_READ_STATE),
+      r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
+        normalizeReadState,
+      ),
     ]);
 
     // フィードごとのキーワードフィルターを適用（キーワードは小文字化済み）
@@ -125,7 +125,9 @@ export async function GET(request: NextRequest) {
 
     const all = [...finalSavedArticles, ...finalFeedArticles].sort(compareByDateDesc);
     return NextResponse.json(all, {
-      headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
+      headers: {
+        "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+      },
     });
   });
 }
