@@ -61,6 +61,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.2.4
         version: 4.2.4
+      '@types/dompurify':
+        specifier: ^3.2.0
+        version: 3.2.0
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.14
@@ -70,9 +73,15 @@ importers:
       '@typescript/native-preview':
         specifier: 7.0.0-dev.20260502.1
         version: 7.0.0-dev.20260502.1
+      dompurify:
+        specifier: ^3.4.2
+        version: 3.4.2
       esbuild:
         specifier: ^0.28.0
         version: 0.28.0
+      happy-dom:
+        specifier: ^20.9.0
+        version: 20.9.0
       next:
         specifier: ~16.2.4
         version: 16.2.4(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -90,7 +99,7 @@ importers:
         version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3)
       vite-plus:
         specifier: ^0.1.20
-        version: 0.1.20(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(typescript@6.0.3)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3)
+        version: 0.1.20(@types/node@25.5.0)(esbuild@0.28.0)(happy-dom@20.9.0)(jiti@2.6.1)(terser@5.16.9)(typescript@6.0.3)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3)
       wrangler:
         specifier: ^4.87.0
         version: 4.87.0(@cloudflare/workers-types@4.20260503.1)
@@ -1958,6 +1967,10 @@ packages:
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
 
+  '@types/dompurify@3.2.0':
+    resolution: {integrity: sha512-Fgg31wv9QbLDA0SpTOXO3MaxySc4DKGLi8sna4/Utjo4r3ZRPdCt4UQee8BWr+Q5z21yifghREPJGYaEOEIACg==}
+    deprecated: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+
   '@types/node-fetch@2.6.13':
     resolution: {integrity: sha512-QGpRVpzSaUs30JBSGPjOg4Uveu384erbHBoT1zeONvyCfwQxIkUshLAOqN/k9EjGviPRmWTTe6aH2qySWKTVSw==}
 
@@ -1974,6 +1987,15 @@ packages:
 
   '@types/react@19.2.14':
     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
+
+  '@types/trusted-types@2.0.7':
+    resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+
+  '@types/whatwg-mimetype@3.0.2':
+    resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260502.1':
     resolution: {integrity: sha512-+usfUIAClShkS8U9YGeX4v3xq7082+Nm7V38llOHYM0YMoUgMvif8u3K44mMUund5LswKjMsFLp8m96mALf7cg==}
@@ -2360,6 +2382,9 @@ packages:
     resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
     engines: {node: '>= 4'}
 
+  dompurify@3.4.2:
+    resolution: {integrity: sha512-lHeS9SA/IKeIFFyYciHBr2n0v1VMPlSj843HdLOwjb2OxNwdq9Xykxqhk+FE42MzAdHvInbAolSE4mhahPpjXA==}
+
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
 
@@ -2560,6 +2585,10 @@ packages:
   gzip-size@6.0.0:
     resolution: {integrity: sha512-ax7ZYomf6jqPTQ4+XCpUGyXKHk5WweS+e05MBO4/y3WJ5RkmPXNKvX+bx1behVILVwr6JSQvZAku021CHPXG3Q==}
     engines: {node: '>=10'}
+
+  happy-dom@20.9.0:
+    resolution: {integrity: sha512-GZZ9mKe8r646NUAf/zemnGbjYh4Bt8/MqASJY+pSm5ZDtc3YQox+4gsLI7yi1hba6o+eCsGxpHn5+iEVn31/FQ==}
+    engines: {node: '>=20.0.0'}
 
   has-symbols@1.1.0:
     resolution: {integrity: sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==}
@@ -3240,6 +3269,10 @@ packages:
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
+
+  whatwg-mimetype@3.0.0:
+    resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
+    engines: {node: '>=12'}
 
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
@@ -5254,6 +5287,10 @@ snapshots:
 
   '@types/deep-eql@4.0.2': {}
 
+  '@types/dompurify@3.2.0':
+    dependencies:
+      dompurify: 3.4.2
+
   '@types/node-fetch@2.6.13':
     dependencies:
       '@types/node': 25.5.0
@@ -5274,6 +5311,15 @@ snapshots:
   '@types/react@19.2.14':
     dependencies:
       csstype: 3.2.3
+
+  '@types/trusted-types@2.0.7':
+    optional: true
+
+  '@types/whatwg-mimetype@3.0.2': {}
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 25.5.0
 
   '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260502.1':
     optional: true
@@ -5339,7 +5385,7 @@ snapshots:
   '@voidzero-dev/vite-plus-linux-x64-musl@0.1.20':
     optional: true
 
-  '@voidzero-dev/vite-plus-test@0.1.20(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(typescript@6.0.3)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3)':
+  '@voidzero-dev/vite-plus-test@0.1.20(@types/node@25.5.0)(esbuild@0.28.0)(happy-dom@20.9.0)(jiti@2.6.1)(terser@5.16.9)(typescript@6.0.3)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@types/chai': 5.2.3
@@ -5357,6 +5403,7 @@ snapshots:
       ws: 8.20.0
     optionalDependencies:
       '@types/node': 25.5.0
+      happy-dom: 20.9.0
     transitivePeerDependencies:
       - '@arethetypeswrong/core'
       - '@tsdown/css'
@@ -5549,6 +5596,10 @@ snapshots:
   domhandler@5.0.3:
     dependencies:
       domelementtype: 2.3.0
+
+  dompurify@3.4.2:
+    optionalDependencies:
+      '@types/trusted-types': 2.0.7
 
   domutils@3.2.2:
     dependencies:
@@ -5851,6 +5902,18 @@ snapshots:
   gzip-size@6.0.0:
     dependencies:
       duplexer: 0.1.2
+
+  happy-dom@20.9.0:
+    dependencies:
+      '@types/node': 25.5.0
+      '@types/whatwg-mimetype': 3.0.2
+      '@types/ws': 8.18.1
+      entities: 7.0.1
+      whatwg-mimetype: 3.0.0
+      ws: 8.20.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   has-symbols@1.1.0: {}
 
@@ -6471,11 +6534,11 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite-plus@0.1.20(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(typescript@6.0.3)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3):
+  vite-plus@0.1.20(@types/node@25.5.0)(esbuild@0.28.0)(happy-dom@20.9.0)(jiti@2.6.1)(terser@5.16.9)(typescript@6.0.3)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3):
     dependencies:
       '@oxc-project/types': 0.127.0
       '@voidzero-dev/vite-plus-core': 0.1.20(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(typescript@6.0.3)(yaml@2.8.3)
-      '@voidzero-dev/vite-plus-test': 0.1.20(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(typescript@6.0.3)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3)
+      '@voidzero-dev/vite-plus-test': 0.1.20(@types/node@25.5.0)(esbuild@0.28.0)(happy-dom@20.9.0)(jiti@2.6.1)(terser@5.16.9)(typescript@6.0.3)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.16.9)(yaml@2.8.3))(yaml@2.8.3)
       oxfmt: 0.46.0
       oxlint: 1.61.0(oxlint-tsgolint@0.22.0)
       oxlint-tsgolint: 0.22.0
@@ -6536,6 +6599,8 @@ snapshots:
   web-streams-polyfill@4.0.0-beta.3: {}
 
   webidl-conversions@3.0.1: {}
+
+  whatwg-mimetype@3.0.0: {}
 
   whatwg-url@5.0.0:
     dependencies:
