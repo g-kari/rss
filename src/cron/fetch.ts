@@ -87,7 +87,7 @@ function fetchViaBinding(env: FetchEnv, url: string, init?: RequestInit): Promis
 // ── 記事ビルド ────────────────────────────────────────────────────
 
 /** RSS アイテムを Article に変換する（決定論的 ID を使用） */
-async function buildArticle(
+export async function buildArticle(
   item: ParsedItem,
   feedHash: string,
   feedUrl: string,
@@ -135,13 +135,13 @@ function resetFeedSuccessState(meta: SharedFeedMeta): void {
   meta.rateLimitedUntil = null;
 }
 
-function applyFeedSuccess(meta: SharedFeedMeta, parsed: ReturnType<typeof parseFeed>): void {
+export function applyFeedSuccess(meta: SharedFeedMeta, parsed: ReturnType<typeof parseFeed>): void {
   meta.title = parsed.title || meta.title;
   meta.siteUrl = parsed.siteUrl || meta.siteUrl;
   resetFeedSuccessState(meta);
 }
 
-function applyFeedRateLimit(meta: SharedFeedMeta, error: RateLimitError): void {
+export function applyFeedRateLimit(meta: SharedFeedMeta, error: RateLimitError): void {
   meta.rateLimitedUntil = new Date(Date.now() + error.retryAfterMs).toISOString();
   meta.fetchError = error.message;
   console.warn("Feed rate limited", {
@@ -151,7 +151,7 @@ function applyFeedRateLimit(meta: SharedFeedMeta, error: RateLimitError): void {
   });
 }
 
-function applyFeedError(meta: SharedFeedMeta, error: unknown): void {
+export function applyFeedError(meta: SharedFeedMeta, error: unknown): void {
   meta.consecutiveErrors = Math.min(
     (meta.consecutiveErrors ?? 0) + 1,
     CONSECUTIVE_ERROR_SKIP_THRESHOLD,

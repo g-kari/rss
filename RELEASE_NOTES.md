@@ -1,6 +1,16 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
-## 2026-05-07 (latest)
+## 2026-05-08 (latest)
+
+### テストっ
+
+- **cron/fetch.ts のコアRSSロジックにユニットテスト追加したよ〜** — Issue #520。`buildBatchedPushPayload`・`buildArticle`・`applyFeedSuccess`・`applyFeedRateLimit`・`applyFeedError` の 35 件テストが全部 PASS！R2 不要の純粋関数に `export` 付けてテスト可能にしたよっ✨🧪
+
+### セキュリティ対策っ
+
+- **happy-dom + DOMPurify の Cloudflare Workers 互換性を検証したよ〜** — Issue #514。Node.js 環境では 13 件全 PASS だけど happy-dom が `vm` モジュール依存で Workers 非対応と判明！現行 regex ベース `sanitizeHtml()` を継続利用する方針に決定したよっ🔍🔒
+
+## 2026-05-07
 
 ### アクセシビリティ改善っ
 
