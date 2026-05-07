@@ -2,6 +2,10 @@
 
 ## 2026-05-07 (latest)
 
+### 激アツ新機能っ
+
+- **ユーザー設定モーダルにフィード管理セクションを追加したよ〜** — Issue #420。「登録フィード: X / 1000 件」の現在数/上限数が確認できるようになったよっ✨ 上限の 80% 以上になると amber 色で警告表示されるよ〜⚠️ 「フィードの健全性を確認」ボタンからそのまま FeedHealthModal も開けるようになったよっ📊
+
 ### リファクタリングっ
 
 - **`useReadStatePersistence` の raw dispatcher を外部から隠蔽したよ〜** — Issue #399。`ReadStatePersistenceResult` から生の `setReadIds` / `setBookmarkIds` 等 9 つの `React.Dispatch` を削除して、`getSetStateDispatchers()` / `getOtherStateDispatchers()` ファクトリメソッドに集約したよっ🔧 `useReadState` 以外から誤って内部 dispatcher を触れなくなって安全になったよ〜✨
