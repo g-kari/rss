@@ -12,10 +12,10 @@ import {
   assembleClientFeed,
   readUserSubscriptions,
   writeUserSubscriptions,
-  pMap,
   R2_CONCURRENCY,
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
+import { pMapSettled } from "@/lib/concurrency";
 import type { SharedFeedMeta, FeedGroup } from "@/types";
 import { fetchArticles } from "@/cron/fetch";
 import { readFeedGroups, writeFeedGroups, MAX_FEED_GROUPS_PER_USER } from "@/lib/feed-groups";
@@ -104,25 +104,32 @@ export async function POST(request: Request) {
       candidates.push({ entry, feedHash });
     }
 
-    const metaResults = await pMap(
+    const settled = await pMapSettled(
       candidates,
       async ({ entry, feedHash }) => {
-        try {
-          return await getOrCreateFeedMeta(
-            env.RSS_DATA,
-            feedHash,
-            entry.url,
-            entry.title,
-            entry.siteUrl,
-          );
-        } catch {
-          return null;
-        }
+        const meta = await getOrCreateFeedMeta(
+          env.RSS_DATA,
+          feedHash,
+          entry.url,
+          entry.title,
+          entry.siteUrl,
+        );
+        return { candidate: { entry, feedHash }, meta };
       },
       R2_CONCURRENCY,
     );
-    const succeededMetas = metaResults.filter((m): m is SharedFeedMeta => m !== null);
-    const succeededCandidates = candidates.filter((_, i) => metaResults[i] !== null);
+    const succeeded = settled
+      .filter(
+        (
+          r,
+        ): r is PromiseFulfilledResult<{
+          candidate: { entry: FeedEntry; feedHash: string };
+          meta: SharedFeedMeta;
+        }> => r.status === "fulfilled" && r.value.meta !== null,
+      )
+      .map((r) => r.value);
+    const succeededMetas = succeeded.map((s) => s.meta);
+    const succeededCandidates = succeeded.map((s) => s.candidate);
 
     const folderNames = [
       ...new Set(succeededCandidates.map((c) => c.entry.folder).filter((f): f is string => !!f)),
