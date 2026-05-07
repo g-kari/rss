@@ -85,7 +85,14 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
   const ref = useSyncedRef(options);
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    const target = e.target;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    )
+      return;
 
     const def = getShortcutDef(e.key);
     if (!def?.handler) return;
