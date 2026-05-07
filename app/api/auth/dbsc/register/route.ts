@@ -73,6 +73,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid P-256 public key" }, { status: 400 });
     }
 
+    // 既存の DBSC バインドがある場合は上書きを拒否する（Issue #433: クロスデバイス上書き防止）
+    // 再登録が必要な場合は DELETE /api/auth/dbsc/session で解除してから再登録すること
+    const existingSession = await r2Get<DbscSession | null>(
+      env.RSS_DATA,
+      `users/${session.userId}/dbsc-session.json`,
+      null,
+    );
+    if (existingSession) {
+      return NextResponse.json(
+        { error: "DBSC session already registered. Delete existing binding first." },
+        { status: 409 },
+      );
+    }
+
     // DbscSession を R2 に保存
     const dbscSession: DbscSession = {
       publicKey,
