@@ -101,17 +101,9 @@ test.describe("verifyJwt — aud クレーム検証", () => {
     expect(result).toBeNull();
   });
 
-  test("aud が AUTH_BASE_URL (issuer URL) → aud mismatch で null", async () => {
-    const token = makeJwt(defaultPayload({ aud: AUTH_BASE_URL }));
-    const result = await withEnv({ CLIENT_ID }, () => verifyJwt(token, AUTH_BASE_URL));
-    expect(result).toBeNull();
-  });
-
-  test("aud 配列に AUTH_BASE_URL のみ含む → aud mismatch で null", async () => {
-    const token = makeJwt(defaultPayload({ aud: ["other-a", AUTH_BASE_URL] }));
-    const result = await withEnv({ CLIENT_ID }, () => verifyJwt(token, AUTH_BASE_URL));
-    expect(result).toBeNull();
-  });
+  // aud=AUTH_BASE_URL は id.0g0.xyz の暫定実装に合わせてフォールバックとして許容する (TODO #379)
+  // dummy-signature ではこのファイルで JWKS 検証まで通せないため、完全な受け入れテストは
+  // e2e/auth.spec.ts 側の統合テストでカバーする。
 });
 
 test.describe("verifyJwt — 期限切れ・形状", () => {

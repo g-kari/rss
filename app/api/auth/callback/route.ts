@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyJwt, exchangeCode, timingSafeEqual } from "@/lib/auth";
+import { verifyJwt, exchangeCode, timingSafeEqual, base64urlToBytes } from "@/lib/auth";
 import { r2Put } from "@/lib/r2";
 import {
   isBetaAllowed,
@@ -110,9 +110,26 @@ export async function GET(request: Request) {
   });
 
   const authBaseUrl = process.env.AUTH_BASE_URL!;
+
+  // 診断用: verifyJwt 失敗時の原因特定のため iss クレームを非検証デコード（iss ミスマッチ即判別）
+  let tokenIss: unknown;
+  try {
+    const [, payloadB64] = tokens.access_token.split(".");
+    if (payloadB64) {
+      tokenIss = (
+        JSON.parse(new TextDecoder().decode(base64urlToBytes(payloadB64))) as { iss?: unknown }
+      ).iss;
+    }
+  } catch {
+    /* ignore */
+  }
+
   const payload = await verifyJwt(tokens.access_token, authBaseUrl);
   if (!payload) {
-    console.error("[auth/callback] verifyJwt returned null");
+    console.error("[auth/callback] verifyJwt returned null", {
+      tokenIss,
+      expectedIss: authBaseUrl,
+    });
     return authError("認証エラー: トークン検証失敗", 401);
   }
   const sub = payload.sub;
