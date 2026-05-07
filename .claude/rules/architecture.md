@@ -57,6 +57,7 @@ app/
       dbsc/
         register/route.ts  # POST /api/auth/dbsc/register — DBSC 公開鍵登録スタブ (TODO: TPM 鍵バインド実装)
         challenge/route.ts # POST /api/auth/dbsc/challenge — DBSC チャレンジ発行・検証スタブ
+        session/route.ts   # DELETE /api/auth/dbsc/session — DBSC バインド済みデバイス登録解除
     feeds/
       route.ts               # GET (一覧) / POST (追加) /api/feeds
       [id]/route.ts          # DELETE /api/feeds/:id

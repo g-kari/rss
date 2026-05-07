@@ -4,6 +4,9 @@
 
 ### 激アツ新機能っ
 
+- **Workers AI モデルに Gemma 3 と Qwen 2.5 Coder を追加したよ〜** — Issue #481。`@cf/google/gemma-3-27b-it`（多言語対応で日本語の要約がめちゃ得意っ✨）と `@cf/qwen/qwen2.5-coder-1.5b-instruct`（コード記事の要約に特化したモデルっ💻）をモデル選択に追加したよ〜！ユーザー設定のモデル選択から使えるよっ🎀
+- **DBSC デバイス登録解除エンドポイントを追加したよ〜** — Issue #475。`DELETE /api/auth/dbsc/session` で DBSC バインド済みデバイスをサクッと登録解除できるようになったよっ✨ `dbsc-session.json` を R2 からまるごと削除するシンプル設計だよ〜🔒
+
 - **`window.confirm` / `window.prompt` をカスタムモーダルに置き換えたよ〜** — Issue #468。ブラウザネイティブのダサいダイアログとはお別れっ✨ `ConfirmModal` + `useConfirm` hook を新設して、フィード削除・グループ削除・全既読・キーボードショートカット全部をオシャレなモーダルに統一したよ〜🎀 `window.prompt` も SearchBar のインラインフォームに置き換えたよっ💡
 - **`App.tsx` の責務分離でコードがスッキリしたよ〜** — Issue #471。1200 行超えてたモンスターファイルを解体したよっ✨ `useMarkAllRead`（全既読ロジック）・`useFeedSidebarActions`（サイドバーコールバック群）・`ThreePaneLayout`（3ペイングリッド）を新設して、`App.tsx` がスッキリしたよ〜🚀
 

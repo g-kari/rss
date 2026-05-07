@@ -13,6 +13,26 @@
 
 ---
 
+## DELETE /api/auth/dbsc/session
+
+DBSC バインド済みデバイスの登録を解除する。`users/{userId}/dbsc-session.json` を R2 から削除する。
+
+### 成功レスポンス
+
+```
+204 No Content
+```
+
+キーが存在しない場合も 204 を返す（冪等）。
+
+### エラー一覧
+
+| ステータス | code | 説明   |
+| ---------- | ---- | ------ |
+| `401`      | —    | 未認証 |
+
+---
+
 ## POST /api/feeds
 
 フィードを追加する。最大 `MAX_FEEDS_PER_USER`（現在 20）件まで登録可能。
@@ -152,9 +172,11 @@
 
 **使用可能なモデル:**
 
-- `@cf/meta/llama-3.1-8b-instruct`（デフォルト、60秒 10回まで）
-- `@cf/meta/llama-3.2-3b-instruct`（高速軽量、60秒 10回まで）
+- `@cf/meta/llama-3.1-8b-instruct`（デフォルト、60秒 20回まで）
+- `@cf/meta/llama-3.2-3b-instruct`（高速軽量、60秒 20回まで）
 - `@cf/meta/llama-3.1-70b-instruct`（高精度、60秒 3回まで）
+- `@cf/google/gemma-3-27b-it`（多言語・日本語向き、60秒 20回まで）
+- `@cf/qwen/qwen2.5-coder-1.5b-instruct`（コード記事向き、60秒 20回まで）
 
 ### 成功レスポンス
 
