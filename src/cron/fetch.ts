@@ -42,8 +42,8 @@ const FEED_MAX_BYTES = 10 * 1024 * 1024;
 /** 1 フィードあたりの最大記事数。巨大フィードの初回取得で R2 操作が爆発しないよう制限 */
 const FEED_MAX_ITEMS = 1000;
 
-/** cron 実行時のフィード並行取得数上限 */
-const FEED_FETCH_CONCURRENCY = 5;
+/** cron 実行時のフィード並行取得数上限（I/Oバウンドのため高めに設定） */
+const FEED_FETCH_CONCURRENCY = 20;
 /** cron 実行時のユーザー並行処理数上限（Push 通知用） */
 const USER_FETCH_CONCURRENCY = 3;
 

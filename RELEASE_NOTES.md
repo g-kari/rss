@@ -2,6 +2,19 @@
 
 ## 2026-05-07 (latest)
 
+### セキュリティ対策っ (追加)
+
+- **DBSC 登録が既存のデバイスバインドを上書きできてたのを防いだよ〜** — Issue #433。`POST /api/auth/dbsc/register` で既存バインドがある場合は 409 Conflict を返すようにしたよっ🔒 access_token が漏洩しても DBSC バインドを攻撃者が上書きできなくなったよ〜✨
+
+### パフォーマンス改善っ (追加)
+
+- **shared-feed の knownIds 比較コストを削減したよ〜** — Issue #397。配列比較に長さチェックを追加して `JSON.stringify` を早期スキップ、`new Set()` の重複除去も不要な中間処理を削除したよっ🚀
+- **cron の R2 LIST 操作を 2 回 → 1 回に削減したよ〜** — Issue #402。`listAllFeedHashes` を廃止して `feedUserMap.keys()` を直接利用するようにしたよっ💡
+
+### UX改善っ (追加)
+
+- **FeedDetailModal の Push 通知トグル失敗時にトーストを表示するようにしたよ〜** — Issue #398。API エラーや `res.ok=false` 時にユーザーにフィードバックが届くようになったよっ✨
+
 ### パフォーマンス改善っ
 
 - **フィード追加時の無駄な外部 HTTP 取得をなくしたよ〜** — Issue #409。上限チェック（FEED_LIMIT）を外部 HTTP 取得より前に先行実施するようにしたよっ✨ 上限超えてたらすぐ 422 を返すから、最大 15 秒かかる `discoverFeedUrl` を無駄に呼ばなくて済むよ〜🚀

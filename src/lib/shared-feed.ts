@@ -530,15 +530,21 @@ export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
   return { feedUserMap, feedLastAccessMap, feedHasPriority, privateFeedCookies };
 }
 
-/** feedUserMap の KV キャッシュキー（TTL: 60分） */
-export const FEED_USER_MAP_CACHE_KEY = "feedUserMap:v1";
-const FEED_USER_MAP_TTL_SEC = 3600;
+/** feedUserMap フルキャッシュの KV キャッシュキー（TTL: 15分） */
+export const FEED_USER_MAP_CACHE_KEY = "feedUserMapFull:v2";
+const FEED_USER_MAP_TTL_SEC = 900;
+
+interface FeedUserMapCacheEntry {
+  feedUserMap: Record<string, string[]>;
+  feedLastAccessMap: Record<string, string>;
+  feedHasPriority: string[];
+  privateFeedCookies: Record<string, string>;
+}
 
 /**
  * buildFeedUserMap のキャッシュ付きラッパー。
- * RATE_LIMIT KV に feedUserMap を JSON でキャッシュし、60分間は R2 読み取りをスキップする。
- * feedLastAccessMap / feedHasPriority / privateFeedCookies はキャッシュ不要なので
- * キャッシュヒット時も引き続き R2 から取得する。
+ * RATE_LIMIT KV に全データを JSON でキャッシュし、15分間は R2 読み取りをスキップする。
+ * 4つのデータ構造を一括キャッシュすることで、キャッシュヒット時の R2 読み取りをゼロにする（Issue #394）。
  */
 export async function buildFeedUserMapCached(
   bucket: R2Bucket,
@@ -550,51 +556,28 @@ export async function buildFeedUserMapCached(
   privateFeedCookies: Map<string, string>;
 }> {
   // KV キャッシュを確認
-  const cached = await kv.get<Record<string, string[]>>(FEED_USER_MAP_CACHE_KEY, "json");
+  const cached = await kv.get<FeedUserMapCacheEntry>(FEED_USER_MAP_CACHE_KEY, "json");
   if (cached) {
-    // feedUserMap だけキャッシュから復元。その他は R2 から再計算する。
-    const feedUserMap = new Map<string, string[]>(Object.entries(cached));
-    const feedLastAccessMap = new Map<string, string>();
-    const feedHasPriority = new Set<string>();
-    const privateFeedCookies = new Map<string, string>();
-
-    const userIds = await listPrefixedIds(bucket, "users/");
-    const allSubs = await pMap(
-      userIds,
-      (uid) => readUserSubscriptions(bucket, uid),
-      R2_CONCURRENCY,
+    console.log(
+      `cron: buildFeedUserMapCached: KV cache hit (${Object.keys(cached.feedUserMap).length} feeds)`,
     );
-    for (const subs of allSubs) {
-      for (const s of subs) {
-        if (s.requestCookie) {
-          privateFeedCookies.set(s.feedHash, s.requestCookie);
-        }
-        if (s.lastAccessedAt) {
-          const current = feedLastAccessMap.get(s.feedHash);
-          if (!current || s.lastAccessedAt > current) {
-            feedLastAccessMap.set(s.feedHash, s.lastAccessedAt);
-          }
-        }
-        if (s.priority === "high") {
-          feedHasPriority.add(s.feedHash);
-        }
-      }
-    }
-    // 複数ユーザーが購読する feedHash では Cookie を使わない
-    for (const [feedHash] of privateFeedCookies) {
-      const users = feedUserMap.get(feedHash);
-      if (users && users.length > 1) {
-        privateFeedCookies.delete(feedHash);
-      }
-    }
-    console.log(`cron: buildFeedUserMapCached: KV cache hit (${feedUserMap.size} feeds)`);
-    return { feedUserMap, feedLastAccessMap, feedHasPriority, privateFeedCookies };
+    return {
+      feedUserMap: new Map(Object.entries(cached.feedUserMap)),
+      feedLastAccessMap: new Map(Object.entries(cached.feedLastAccessMap)),
+      feedHasPriority: new Set(cached.feedHasPriority),
+      privateFeedCookies: new Map(Object.entries(cached.privateFeedCookies)),
+    };
   }
 
-  // キャッシュミス: R2 から全量取得
+  // キャッシュミス: R2 から全量取得してキャッシュ
   const result = await buildFeedUserMap(bucket);
-  // feedUserMap を KV にキャッシュ（Map は JSON 非対応なので Object に変換）
-  await kv.put(FEED_USER_MAP_CACHE_KEY, JSON.stringify(Object.fromEntries(result.feedUserMap)), {
+  const entry: FeedUserMapCacheEntry = {
+    feedUserMap: Object.fromEntries(result.feedUserMap),
+    feedLastAccessMap: Object.fromEntries(result.feedLastAccessMap),
+    feedHasPriority: [...result.feedHasPriority],
+    privateFeedCookies: Object.fromEntries(result.privateFeedCookies),
+  };
+  await kv.put(FEED_USER_MAP_CACHE_KEY, JSON.stringify(entry), {
     expirationTtl: FEED_USER_MAP_TTL_SEC,
   });
   console.log(
