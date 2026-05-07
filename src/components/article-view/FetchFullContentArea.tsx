@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import type { EngagementAction } from "../../types";
 import Spinner from "../Spinner";
 import { DownloadIcon, ExternalLinkIcon } from "./icons";
@@ -27,6 +27,17 @@ export default function FetchFullContentArea({
   onFetch,
   onEngagement,
 }: Props) {
+  const [isSlow, setIsSlow] = useState(false);
+
+  useEffect(() => {
+    if (!fetching) {
+      setIsSlow(false);
+      return;
+    }
+    const timer = setTimeout(() => setIsSlow(true), 5000);
+    return () => clearTimeout(timer);
+  }, [fetching]);
+
   return (
     <div className="mt-6 pt-6 border-t border-border-subtle flex flex-col items-center gap-2">
       <div className="flex items-center gap-2">
@@ -59,6 +70,9 @@ export default function FetchFullContentArea({
           元記事を開く
         </a>
       </div>
+      {fetching && isSlow && (
+        <p className="text-[11px] text-text-muted">(時間がかかっています...)</p>
+      )}
       {fetchError && (
         <div className="flex items-center gap-2">
           <p className="text-[11px] text-rose-400">{fetchError}</p>

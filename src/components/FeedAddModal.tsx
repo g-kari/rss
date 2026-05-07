@@ -1,6 +1,13 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Modal from "./Modal";
+
+const PROGRESS_STEPS = [
+  { at: 0, label: "フィードを確認中..." },
+  { at: 2000, label: "RSS フィードを探索中..." },
+  { at: 5000, label: "AI でセレクタを推論中...（しばらくお待ちください）" },
+] as const;
 
 interface Props {
   url: string;
@@ -46,6 +53,25 @@ export default function FeedAddModal({
 }: Props) {
   // Issue #396: 追加処理中はモーダルを閉じられないようにする
   const handleClose = adding ? () => {} : onClose;
+
+  const [progressLabel, setProgressLabel] = useState<string>(PROGRESS_STEPS[0].label);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    if (!adding) {
+      setProgressLabel(PROGRESS_STEPS[0].label);
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
+      return;
+    }
+    setProgressLabel(PROGRESS_STEPS[0].label);
+    timersRef.current = PROGRESS_STEPS.slice(1).map(({ at, label }) =>
+      setTimeout(() => setProgressLabel(label), at),
+    );
+    return () => {
+      timersRef.current.forEach(clearTimeout);
+    };
+  }, [adding]);
 
   return (
     <Modal title="フィードを追加" onClose={handleClose} width="sm:w-[440px]">
@@ -125,6 +151,10 @@ export default function FeedAddModal({
             <p role="alert" className="text-[12px] text-rose-400 mt-2">
               {error}
             </p>
+          )}
+
+          {adding && (
+            <p className="text-[11px] text-text-muted mt-2 animate-pulse">{progressLabel}</p>
           )}
 
           <div className="flex gap-2 mt-3">
