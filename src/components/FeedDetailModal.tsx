@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { Feed } from "../types";
 import Modal from "./Modal";
+import { useToast } from "@/contexts/ToastContext";
 
 interface Props {
   feed: Feed;
@@ -11,6 +12,7 @@ interface Props {
 
 export default function FeedDetailModal({ feed, onClose }: Props) {
   const health = getHealthStatus(feed);
+  const toast = useToast();
 
   const [pushDisabled, setPushDisabled] = useState<boolean | null>(null);
   const [pushLoading, setPushLoading] = useState(false);
@@ -23,7 +25,10 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
       .then((data) => {
         if (data) setPushDisabled(data.disabledFeeds[feed.id] === true);
       })
-      .catch(() => {});
+      .catch(() => {
+        toast.error("Push 通知設定の取得に失敗しました");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- toast.error は安定した useCallback
   }, [feed.id]);
 
   const handlePushToggle = async () => {
@@ -36,8 +41,13 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ disabledFeeds: { [feed.id]: next } }),
       });
-      if (res.ok) setPushDisabled(next);
+      if (res.ok) {
+        setPushDisabled(next);
+      } else {
+        toast.error("Push 通知設定の変更に失敗しました");
+      }
     } catch {
+      toast.error("Push 通知設定の変更に失敗しました");
     } finally {
       setPushLoading(false);
     }

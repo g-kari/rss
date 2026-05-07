@@ -18,6 +18,10 @@
 
 ### リファクタリングっ
 
+- **useReadStateSyncFlush の visibilitychange コード重複を解消したよ〜** — Issue #401。非表示時のフラッシュロジックを `flushToServer()` 再利用に変更して 25 行削除したよっ🔧 おまけで `hasPendingChanges` の更新漏れバグも直ったよ〜✨
+- **useKeyboardNav の buildContext を 55 行 → 12 行に削減したよ〜** — Issue #424。手動フィールドマッピングを `...opts` スプレッド + 派生フィールド 3 つだけに置き換えたよっ💡 新フィールド追加時の修正箇所が 2 箇所 → 1 箇所になったよ〜✨
+- **useArticleFilters の `useMemo([])` を `useCallback` に統一したよ〜** — Issue #414。「安定した関数参照」の意図を正しく `useCallback` で表現するようにしたよっ🔧 使われなくなった `makeCycler` ヘルパーも削除したよ〜💡
+- **useFilteredArticles の activeIdsRef に設計コメントを追記したよ〜** — Issue #408。2段階フィルタリングと galleryAutoReadIds 最適化の意図を明文化したよっ📝
 - **useArticleData のエラーハンドラー Ref を1本に統合したよ〜** — Issue #434。`onErrorRef`（useSyncedRef）と `onErrRef`（useRef クロージャ）の2段重ねを `logErrorRef`（useSyncedRef）1本に整理したよっ🔧 二重間接参照がなくなってコードが読みやすくなったよ〜✨
 - **useFilteredArticles の noteIds 計算から JSON roundtrip を削除したよ〜** — Issue #411。`JSON.stringify` → `JSON.parse` の無駄な変換を除去して、`Object.keys(notes)` から直接 Set を作るようにしたよっ💡 2つの useMemo が1つになってすっきりしたよ〜✨
 - **useReadStateSyncApply の deps 配列から Ref を除去したよ〜** — Issue #427。useRef の安定参照は依存配列に含める必要がないのに混入してたので取り除いたよっ🔧 useCallback の再生成が抑えられてパフォーマンスも微改善したよ〜💡
