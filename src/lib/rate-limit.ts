@@ -38,14 +38,20 @@ export async function checkSlidingWindow(
 ): Promise<NextResponse | null> {
   return serialized(key, async () => {
     const now = Date.now();
-    const raw = await kv.get(key);
     let calls: number[] = [];
-    if (raw) {
-      try {
-        calls = JSON.parse(raw) as number[];
-      } catch {
-        /* corrupted KV data — reset */
+    try {
+      const raw = await kv.get(key);
+      if (raw) {
+        try {
+          calls = JSON.parse(raw) as number[];
+        } catch {
+          /* corrupted KV data — reset */
+        }
       }
+    } catch (err) {
+      // KV の読み取りエラーはレートリミットを適用しない（fail-open）
+      console.error("[rate-limit] checkSlidingWindow: KV get failed", err);
+      return null;
     }
     const recent = calls.filter((t) => now - t < windowMs);
     if (recent.length >= maxCalls) {
@@ -60,9 +66,14 @@ export async function checkSlidingWindow(
       return res;
     }
     recent.push(now);
-    await kv.put(key, JSON.stringify(recent), {
-      expirationTtl: Math.max(60, Math.ceil(windowMs / 1000)),
-    });
+    try {
+      await kv.put(key, JSON.stringify(recent), {
+        expirationTtl: Math.max(60, Math.ceil(windowMs / 1000)),
+      });
+    } catch (err) {
+      // KV の書き込みエラーはリクエストを通す（サービス継続優先）
+      console.error("[rate-limit] checkSlidingWindow: KV put failed", err);
+    }
     return null;
   });
 }
