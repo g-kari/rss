@@ -44,10 +44,10 @@ export async function POST(req: NextRequest) {
 
     // Step 2: response が存在する場合は署名検証フロー
     if (response !== undefined) {
-      if (typeof response !== "string" || response.length === 0) {
+      if (typeof response !== "string" || response.length === 0 || response.length > 4096) {
         return NextResponse.json({ error: "response must be a non-empty string" }, { status: 400 });
       }
-      if (typeof challenge !== "string" || challenge.length === 0) {
+      if (typeof challenge !== "string" || challenge.length === 0 || challenge.length > 256) {
         return NextResponse.json(
           { error: "challenge is required when response is present" },
           { status: 400 },

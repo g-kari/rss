@@ -58,6 +58,11 @@ export async function GET(request: Request) {
     origin: request.headers.get("origin"),
   });
 
+  // code の長さ・文字種チェック（認可コードは英数字・ハイフン・アンダースコアのみ、最大512文字）
+  if (code && (code.length > 512 || !/^[\w-]+$/.test(code))) {
+    return authError("認証エラー: 不正な認可コード", 400);
+  }
+
   // state 不一致の具体的な理由をログに残す（どのケースで失敗したかすぐに判別できるようにする）
   if (!code || !state || !savedState || state !== savedState) {
     const reason = !code

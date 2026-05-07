@@ -28,8 +28,16 @@ export async function POST(req: NextRequest) {
   }>(req, async ({ body, session, env }) => {
     const { publicKey, sessionId, attestation, challenge } = body;
 
-    if (typeof publicKey !== "string" || publicKey.length === 0) {
-      return NextResponse.json({ error: "publicKey is required" }, { status: 400 });
+    const MAX_PUBLIC_KEY_LENGTH = 4096;
+    const MAX_CHALLENGE_LENGTH = 256;
+    const MAX_ATTESTATION_LENGTH = 65536;
+
+    if (
+      typeof publicKey !== "string" ||
+      publicKey.length === 0 ||
+      publicKey.length > MAX_PUBLIC_KEY_LENGTH
+    ) {
+      return NextResponse.json({ error: "publicKey is invalid" }, { status: 400 });
     }
     if (typeof sessionId !== "string" || sessionId.length === 0) {
       return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
@@ -37,11 +45,18 @@ export async function POST(req: NextRequest) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
       return NextResponse.json({ error: "invalid sessionId" }, { status: 400 });
     }
-    if (attestation !== undefined && typeof attestation !== "string") {
+    if (
+      attestation !== undefined &&
+      (typeof attestation !== "string" || attestation.length > MAX_ATTESTATION_LENGTH)
+    ) {
       return NextResponse.json({ error: "attestation must be a string" }, { status: 400 });
     }
-    if (typeof challenge !== "string" || challenge.length === 0) {
-      return NextResponse.json({ error: "challenge is required" }, { status: 400 });
+    if (
+      typeof challenge !== "string" ||
+      challenge.length === 0 ||
+      challenge.length > MAX_CHALLENGE_LENGTH
+    ) {
+      return NextResponse.json({ error: "challenge is invalid" }, { status: 400 });
     }
 
     // 登録フローで発行したチャレンジを R2 から取得して照合
