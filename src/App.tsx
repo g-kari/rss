@@ -410,19 +410,10 @@ export default function App() {
     selectedGroupId,
   );
 
-  const { bookmarkCount, readingListCount, likeCount, historyCount } = useMemo(() => {
-    let bm = 0,
-      rl = 0,
-      lk = 0,
-      hist = 0;
-    for (const a of articles) {
-      if (bookmarkIds.has(a.id)) bm++;
-      if (readingListIds.has(a.id)) rl++;
-      if (likeIds.has(a.id)) lk++;
-      if (historyIds.has(a.id)) hist++;
-    }
-    return { bookmarkCount: bm, readingListCount: rl, likeCount: lk, historyCount: hist };
-  }, [articles, bookmarkIds, readingListIds, likeIds, historyIds]);
+  const bookmarkCount = bookmarkIds.size;
+  const readingListCount = readingListIds.size;
+  const likeCount = likeIds.size;
+  const historyCount = historyIds.size;
 
   const collectionArticleIds = useMemo(
     () =>
