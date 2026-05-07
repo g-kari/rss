@@ -343,26 +343,53 @@ export function buildBatchedPushPayload(feedEntries: FeedNewArticles[]): PushPay
   };
 }
 
-async function sendPushBatched(
+async function sendPushAll(
   env: FetchEnv,
   userFeedMap: Map<string, FeedNewArticles[]>,
+  userFeedErrorMap: Map<string, FeedNewArticles[]>,
 ): Promise<void> {
+  const userIds = new Set([...userFeedMap.keys(), ...userFeedErrorMap.keys()]);
+  if (userIds.size === 0) return;
+
   await pMapSettled(
-    [...userFeedMap.entries()],
-    async ([userId, feedEntries]) => {
+    [...userIds],
+    async (userId) => {
       const pushKey = userPushKey(userId);
       const config = await r2Get<PushConfig>(env.RSS_DATA, pushKey, { subscriptions: [] });
       if (config.subscriptions.length === 0) return;
 
       if (isInSilentHours(config)) return;
 
+      const feedEntries = userFeedMap.get(userId) ?? [];
+      const errorFeeds = userFeedErrorMap.get(userId) ?? [];
+
       const enabledEntries = config.disabledFeeds
         ? feedEntries.filter((e) => !config.disabledFeeds![e.feedHash])
         : feedEntries;
-      if (enabledEntries.length === 0) return;
 
-      const payload = buildBatchedPushPayload(enabledEntries);
-      const remaining = await sendPushToAll(config.subscriptions, payload);
+      let remaining = config.subscriptions;
+
+      if (enabledEntries.length > 0) {
+        const payload = buildBatchedPushPayload(enabledEntries);
+        remaining = await sendPushToAll(remaining, payload);
+      }
+
+      if (errorFeeds.length > 0 && config.errorNotificationsEnabled !== false) {
+        const payload: PushPayload =
+          errorFeeds.length === 1
+            ? {
+                title: "フィードのエラー",
+                body: `「${errorFeeds[0].feedTitle}」の取得に連続して失敗しています`,
+                url: "/",
+              }
+            : {
+                title: "フィードのエラー",
+                body: `${errorFeeds.length} 件のフィードで取得エラーが続いています`,
+                url: "/",
+              };
+        remaining = await sendPushToAll(remaining, payload);
+      }
+
       if (remaining.length !== config.subscriptions.length) {
         config.subscriptions = remaining;
         await r2Put(env.RSS_DATA, pushKey, config);
@@ -373,41 +400,6 @@ async function sendPushBatched(
 }
 
 /** フィード連続エラーが閾値に達したユーザーへ Push 通知を送る */
-async function sendPushError(
-  env: FetchEnv,
-  userFeedErrorMap: Map<string, FeedNewArticles[]>,
-): Promise<void> {
-  await pMapSettled(
-    [...userFeedErrorMap.entries()],
-    async ([userId, errorFeeds]) => {
-      const pushKey = userPushKey(userId);
-      const config = await r2Get<PushConfig>(env.RSS_DATA, pushKey, { subscriptions: [] });
-      if (config.subscriptions.length === 0) return;
-      // 明示的に無効化している場合のみスキップ（未設定 = 有効）
-      if (config.errorNotificationsEnabled === false) return;
-      if (isInSilentHours(config)) return;
-
-      const payload: PushPayload =
-        errorFeeds.length === 1
-          ? {
-              title: "フィードのエラー",
-              body: `「${errorFeeds[0].feedTitle}」の取得に連続して失敗しています`,
-              url: "/",
-            }
-          : {
-              title: "フィードのエラー",
-              body: `${errorFeeds.length} 件のフィードで取得エラーが続いています`,
-              url: "/",
-            };
-      const remaining = await sendPushToAll(config.subscriptions, payload);
-      if (remaining.length !== config.subscriptions.length) {
-        config.subscriptions = remaining;
-        await r2Put(env.RSS_DATA, pushKey, config);
-      }
-    },
-    USER_FETCH_CONCURRENCY,
-  );
-}
 
 // ── エントリポイント（cron / API ルートから呼ばれる）──────────────
 
@@ -518,13 +510,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
     USER_FETCH_CONCURRENCY,
   );
 
-  if (userFeedMap.size > 0) {
-    await sendPushBatched(env, userFeedMap);
-  }
-
-  if (userFeedErrorMap.size > 0) {
-    await sendPushError(env, userFeedErrorMap);
-  }
+  await sendPushAll(env, userFeedMap, userFeedErrorMap);
 }
 
 /**
