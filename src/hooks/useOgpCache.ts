@@ -33,7 +33,6 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
 
     for (const link of newLinks) seenLinksRef.current.add(link);
 
-    // バッチ制限なし — 未取得リンクを全件並列フェッチ
     const toFetch = newLinks.filter(
       (link) =>
         !ogpCacheRef.current[link] &&
@@ -43,6 +42,10 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
 
     if (toFetch.length === 0) return;
 
+    // 一度に最大10件まで並列フェッチ（429防止）
+    const OGP_BATCH_SIZE = 10;
+    const batch = toFetch.slice(0, OGP_BATCH_SIZE);
+
     const scheduleSave = (data: Record<string, string>) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
@@ -50,7 +53,7 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
       }, SAVE_DEBOUNCE_MS);
     };
 
-    toFetch.forEach((link) => {
+    batch.forEach((link) => {
       fetchingRef.current.add(link);
       apiFetch(`/api/ogp?url=${encodeURIComponent(link)}`)
         .then((r) => {

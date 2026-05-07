@@ -9,13 +9,14 @@ import {
 } from "@/lib/cache-helper";
 import { unescapeHtml } from "@/lib/html";
 import { fetchPageOgpMeta, isTwitterLikeUrl, fetchTwitterFallbackImage } from "@/lib/ogp";
-import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+import { checkSlidingWindow } from "@/lib/rate-limit";
 import { ogpCooldownKey } from "@/lib/r2";
 
 const FETCH_TIMEOUT_MS = 5_000;
 const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const OGP_NEGATIVE_CACHE_TTL_SEC = 24 * 60 * 60; // 1日（og:image なし・フェッチ失敗）
-const OGP_COOLDOWN_MS = 2_000; // キャッシュ MISS 時の外部フェッチ連打防止
+const OGP_RATE_WINDOW_MS = 60_000; // 60秒ウィンドウ
+const OGP_RATE_MAX_CALLS = 30; // 60秒あたり最大30リクエスト
 
 export async function GET(request: Request) {
   return withSession(request, ({ session, env, ctx }) =>
@@ -50,10 +51,11 @@ async function handleGet(
   }
 
   // キャッシュ MISS 時のみレートリミット（外部フェッチの連打防止）
-  const limited = await checkAndUpdateCooldown(
+  const limited = await checkSlidingWindow(
     env.RATE_LIMIT,
     ogpCooldownKey(userId),
-    OGP_COOLDOWN_MS,
+    OGP_RATE_WINDOW_MS,
+    OGP_RATE_MAX_CALLS,
   );
   if (limited) return limited;
 
