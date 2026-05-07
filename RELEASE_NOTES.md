@@ -2,6 +2,11 @@
 
 ## 2026-05-07 (latest)
 
+### リファクタリングっ
+
+- **`deduplicateByLink` の重複検出を 1 パスに最適化したよ〜** — Issue #489。`linkGroups` の構築ループで `hasDupes` フラグも同時に立てるようにして、重複なし時の早期リターンをより確実に。最終フィルターも `Set.has` で O(1) ルックアップなのを明示したよ〜🚀
+- **`useArticleFilters` の `eslint-disable` コメントを全部消したよ〜** — Issue #504。`useCallback` の依存配列に `resetPageRef`・`dateRangeRef`・`readingTimeRangeRef`（いずれも `useSyncedRef` で常に安定）を明示的に追加することで、ESLint ルール違反なしに同等の効果を実現したよっ✨
+
 ### 激アツ新機能っ
 
 - **ユーザー設定モーダルをタブ分割したよ〜** — Issue #479。1 スクロールで迷子になってたユーザー設定を「表示」「AI・通知」「フィード管理」「インポート・エクスポート」の 4 タブに整理したよっ✨ `role="tablist"` / `role="tabpanel"` / `aria-controls` でアクセシビリティもバッチリ対応したよ〜🎀
