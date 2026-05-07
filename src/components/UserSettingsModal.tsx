@@ -43,6 +43,8 @@ import { ARTICLE_TTL_DAYS } from "../lib/article-ttl";
 import { AI_MODELS } from "../lib/ai-models";
 import { MAX_FEEDS_PER_USER } from "../lib/shared-feed";
 import type { FontFamily, FontSize, Feed } from "../types";
+import { useHeaderShareTargets } from "../hooks/useHeaderShareTargets";
+import { SHARE_TARGETS, type ShareTargetId } from "./article-view/shareTargets";
 
 interface Props {
   onClose: () => void;
@@ -113,6 +115,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     aiModel,
     onChangeAiModel,
   } = useReaderSettings();
+
+  const [headerShareTargetIds, setHeaderShareTargetIds] = useHeaderShareTargets();
 
   const toast = useToast();
   const importRef = useRef<HTMLInputElement>(null);

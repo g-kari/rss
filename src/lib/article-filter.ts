@@ -22,31 +22,27 @@ export function isArticleRead(
   return ts <= readBeforeTimestamp;
 }
 
-export interface ArticleFilterOptions {
+/** フィード構造・選択に関するフィルターオプション */
+export interface FilterByStructureOptions {
   feedId: string | null;
   /** feedHash → CompiledKeywordFilter のマップ（呼び出し側で buildFilterMap を使って事前計算すること） */
   feedFilterMap: Map<string, CompiledKeywordFilter>;
-  readIds: Set<string>;
-  bookmarkIds: Set<string>;
-  readingListIds: Set<string>;
-  likeIds: Set<string>;
-  historyIds: Set<string>;
-  historyOrder: string[];
-  unreadOnly: boolean;
-  bookmarkOnly: boolean;
-  readingListOnly: boolean;
-  likeOnly: boolean;
-  noteOnly: boolean;
-  noteIds: Set<string>;
-  query: string;
-  sortOrder: "newest" | "oldest";
-  dateRange: DateRange;
-  /** 現在選択中 or 直前まで選択していた記事ID（フィルタ対象外） */
-  activeIds: Set<string>;
+  /** グループ選択時の対象フィード ID セット — 設定時は feedHash が含まれる記事のみ表示 */
+  groupFeedIds?: Set<string>;
+  /** feedHash → フィード表示名のマップ — `feed:` クエリで使用（未指定時は feed: クエリは常にミス） */
+  feedTitleByHash?: ReadonlyMap<string, string>;
+  /**
+   * FeedView カテゴリタブに属するフィード ID セット（feedId/groupFeedIds 未選択時のみ適用）。
+   * 設定時（空 Set を含む）はそのカテゴリに属するフィードの記事のみ表示。undefined なら従来通り全フィード。
+   */
+  viewFeedIds?: Set<string>;
+}
+
+/** 記事コンテンツフィルター（NSFW・ミュート・キーワード・検索クエリ等）のオプション */
+export interface ArticleContentFilterOptions {
   nsfwMode: boolean;
   nsfwFeedIds: Set<string>;
   globalFilter: CompiledKeywordFilter | null;
-  readBeforeTimestamp: string | null;
   /** スヌーズ中の記事 — articleId → スヌーズ解除予定時刻（ISO 8601） */
   snoozedUntil?: Record<string, string>;
   /** 読了時間フィルター（"all" = フィルタなし） */
@@ -59,19 +55,6 @@ export interface ArticleFilterOptions {
   categoryFilter?: string | null;
   /** feedHash → カテゴリ名のマップ（categoryFilter と組み合わせて使用） */
   feedCategoryMap?: Map<string, string>;
-  /** ダイジェストモード — 全フィード表示時にフィードごとの最大件数を制限する */
-  digestMode?: boolean;
-  /** feedHash → ダイジェスト表示件数のマップ（0 = 全件, undefined = デフォルト 3） */
-  digestLimitMap?: Map<string, number>;
-  /** グループ選択時の対象フィード ID セット — 設定時は feedHash が含まれる記事のみ表示 */
-  groupFeedIds?: Set<string>;
-  /** feedHash → フィード表示名のマップ — `feed:` クエリで使用（未指定時は feed: クエリは常にミス） */
-  feedTitleByHash?: ReadonlyMap<string, string>;
-  /**
-   * FeedView カテゴリタブに属するフィード ID セット（feedId/groupFeedIds 未選択時のみ適用）。
-   * 設定時（空 Set を含む）はそのカテゴリに属するフィードの記事のみ表示。undefined なら従来通り全フィード。
-   */
-  viewFeedIds?: Set<string>;
   /** 選択中のユーザータグ（そのタグが付いた記事のみ表示。null = フィルタなし） */
   selectedTag?: string | null;
   /** articleId → タグ配列マップ（selectedTag の判定に使用） */
@@ -81,6 +64,43 @@ export interface ArticleFilterOptions {
   /** コレクション選択時の対象記事 ID セット — 設定時はそのコレクション内の記事のみ表示 */
   collectionArticleIds?: Set<string>;
 }
+
+/** 記事状態フィルター（既読・ブックマーク・リーディングリスト等）に関するクエリオプション */
+export interface ArticleStateQueryOptions {
+  readIds: Set<string>;
+  bookmarkIds: Set<string>;
+  readingListIds: Set<string>;
+  likeIds: Set<string>;
+  historyIds: Set<string>;
+  historyOrder: string[];
+  unreadOnly: boolean;
+  bookmarkOnly: boolean;
+  readingListOnly: boolean;
+  likeOnly: boolean;
+  noteOnly: boolean;
+  noteIds: Set<string>;
+  readBeforeTimestamp: string | null;
+}
+
+/** 検索・日付・ソート等の表示オプション */
+export interface ArticleDisplayOptions {
+  query: string;
+  sortOrder: "newest" | "oldest";
+  dateRange: DateRange;
+  /** 現在選択中 or 直前まで選択していた記事ID（フィルタ対象外） */
+  activeIds: Set<string>;
+  /** ダイジェストモード — 全フィード表示時にフィードごとの最大件数を制限する */
+  digestMode?: boolean;
+  /** feedHash → ダイジェスト表示件数のマップ（0 = 全件, undefined = デフォルト 3） */
+  digestLimitMap?: Map<string, number>;
+}
+
+export interface ArticleFilterOptions
+  extends
+    FilterByStructureOptions,
+    ArticleContentFilterOptions,
+    ArticleStateQueryOptions,
+    ArticleDisplayOptions {}
 
 /**
  * 記事の読了時間が指定の範囲に収まるかを判定する。

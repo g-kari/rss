@@ -73,6 +73,7 @@ export const STORAGE_KEYS = {
   IMAGE_DL_FOLDER: "rss-image-dl-folder",
   IMAGE_DL_FOLDER_NSFW: "rss-image-dl-folder-nsfw",
   AI_MODEL: "rss-ai-model",
+  HEADER_SHARE_TARGETS: "rss-header-share-targets",
 } as const;
 
 // ── 低レベルラッパー ──────────────────────────────────────────

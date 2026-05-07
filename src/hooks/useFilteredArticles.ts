@@ -12,33 +12,49 @@ const EMPTY_SET = new Set<string>();
 const EMPTY_STR_ARRAY: string[] = [];
 const EMPTY_FEED_ARRAY: Feed[] = [];
 
-interface Options {
-  articles: Article[];
-  feeds?: Feed[];
+/** フィード選択に関する状態 */
+export interface FeedSelectionOptions {
   feedId: string | null;
+  groupFeedIds?: Set<string>;
+  activeFeedView?: FeedView;
+  selectedGroupId?: string | null;
+}
+
+/** 既読・保存状態 */
+export interface ReadStateOptions {
   readIds: Set<string>;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
   likeIds?: Set<string>;
-  historyIds?: Set<string>;
-  historyOrder?: string[];
-  selectedArticleId?: string | null;
-  nsfwMode?: boolean;
-  nsfwFeedIds?: Set<string>;
-  globalFilter: KeywordFilter | null;
-  setGlobalFilter: (filter: KeywordFilter | null) => void;
   readBeforeTimestamp?: string | null;
   snoozedUntil?: Record<string, string>;
-  mutedFeedIds?: Set<string>;
+  historyIds?: Set<string>;
+  historyOrder?: string[];
   notes?: Record<string, string>;
-  groupFeedIds?: Set<string>;
-  selectedGroupId?: string | null;
-  activeFeedView?: FeedView;
+}
+
+/** コンテンツフィルタリング */
+export interface ContentFilterOptions {
+  nsfwMode?: boolean;
+  nsfwFeedIds?: Set<string>;
+  mutedFeedIds?: Set<string>;
+  globalFilter: KeywordFilter | null;
+  setGlobalFilter: (filter: KeywordFilter | null) => void;
+}
+
+/** UI 状態 */
+export interface UiOptions {
+  selectedArticleId?: string | null;
+  galleryAutoReadIds?: Set<string>;
+  deduplicateByLink?: boolean;
   articleTags?: Record<string, string[]>;
   selectedTag?: string | null;
   collectionArticleIds?: Set<string>;
-  galleryAutoReadIds?: Set<string>;
-  deduplicateByLink?: boolean;
+}
+
+interface Options extends FeedSelectionOptions, ReadStateOptions, ContentFilterOptions, UiOptions {
+  articles: Article[];
+  feeds?: Feed[];
 }
 
 export function useFilteredArticles({

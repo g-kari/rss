@@ -16,6 +16,8 @@ import SnoozeMenu from "./SnoozeMenu";
 import TagEditor from "./TagEditor";
 import { DownloadIcon } from "./icons";
 import type { EmbedInfo } from "../../lib/embed-utils";
+import { useHeaderShareTargets } from "../../hooks/useHeaderShareTargets";
+import { SHARE_TARGETS } from "./shareTargets";
 
 interface Props {
   article: Article;
@@ -146,6 +148,8 @@ export default function ArticleHeader({
     updateQuery: onSetQuery,
     setAuthorFilter,
   } = useArticleFilter();
+  const [headerShareTargetIds] = useHeaderShareTargets();
+  const enabledShareTargets = SHARE_TARGETS.filter((t) => headerShareTargetIds.includes(t.id));
 
   const onSetAuthorFilter = (author: string) => {
     setAuthorFilter(author);
@@ -389,6 +393,29 @@ export default function ArticleHeader({
           >
             {`${ttsRate}x`}
           </button>
+        )}
+
+        {/* クイックシェアボタン（設定で有効にしたものだけ表示） */}
+        {enabledShareTargets.length > 0 && article.link && (
+          <div className="flex items-center gap-1">
+            {enabledShareTargets.map((target) => (
+              <button
+                key={target.id}
+                onClick={() =>
+                  window.open(
+                    target.buildUrl(article.link!, article.title),
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+                title={target.label}
+                aria-label={target.label}
+                className="p-2 -m-2 lg:p-0 lg:m-0 text-text-faint hover:text-text-muted transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
+              >
+                {target.icon}
+              </button>
+            ))}
+          </div>
         )}
 
         {article.link && (
