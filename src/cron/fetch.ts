@@ -372,6 +372,43 @@ async function sendPushBatched(
   );
 }
 
+/** フィード連続エラーが閾値に達したユーザーへ Push 通知を送る */
+async function sendPushError(
+  env: FetchEnv,
+  userFeedErrorMap: Map<string, FeedNewArticles[]>,
+): Promise<void> {
+  await pMapSettled(
+    [...userFeedErrorMap.entries()],
+    async ([userId, errorFeeds]) => {
+      const pushKey = userPushKey(userId);
+      const config = await r2Get<PushConfig>(env.RSS_DATA, pushKey, { subscriptions: [] });
+      if (config.subscriptions.length === 0) return;
+      // 明示的に無効化している場合のみスキップ（未設定 = 有効）
+      if (config.errorNotificationsEnabled === false) return;
+      if (isInSilentHours(config)) return;
+
+      const payload: PushPayload =
+        errorFeeds.length === 1
+          ? {
+              title: "フィードのエラー",
+              body: `「${errorFeeds[0].feedTitle}」の取得に連続して失敗しています`,
+              url: "/",
+            }
+          : {
+              title: "フィードのエラー",
+              body: `${errorFeeds.length} 件のフィードで取得エラーが続いています`,
+              url: "/",
+            };
+      const remaining = await sendPushToAll(config.subscriptions, payload);
+      if (remaining.length !== config.subscriptions.length) {
+        config.subscriptions = remaining;
+        await r2Put(env.RSS_DATA, pushKey, config);
+      }
+    },
+    USER_FETCH_CONCURRENCY,
+  );
+}
+
 // ── エントリポイント（cron / API ルートから呼ばれる）──────────────
 
 /**
@@ -418,6 +455,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
 
   // Push 通知と feed-last-fetched 更新用マップを同時に構築する
   const userFeedMap = new Map<string, FeedNewArticles[]>();
+  const userFeedErrorMap = new Map<string, FeedNewArticles[]>();
   const userTimestamps = new Map<string, Record<string, string>>();
 
   for (let i = 0; i < activeFeedHashes.length; i++) {
@@ -427,6 +465,15 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
     if (!meta) continue;
     const feedHash = activeFeedHashes[i];
     const userIds = feedUserMap.get(feedHash) ?? [];
+
+    // 今回のフェッチで連続エラーが閾値にちょうど達したフィードを検出する
+    // applyFeedError は consecutiveErrors を min(現在+1, 閾値) でクランプするため
+    // consecutiveErrors === CONSECUTIVE_ERROR_SKIP_THRESHOLD かつ fetchError が存在すれば
+    // 閾値に達した（新着なし = エラースキップまたはエラー発生）
+    const justReachedErrorThreshold =
+      (meta.consecutiveErrors ?? 0) === CONSECUTIVE_ERROR_SKIP_THRESHOLD &&
+      meta.fetchError !== null &&
+      newArticles.length === 0;
 
     for (const userId of userIds) {
       // feed-last-fetched 更新: フェッチ成功フィードの lastFetchedAt をキャッシュする
@@ -448,6 +495,16 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
         }
         entries.push({ articles: newArticles, feedTitle: meta.title ?? "RSS", feedHash });
       }
+
+      // エラー通知: 連続エラーが閾値に達したフィードのみ
+      if (justReachedErrorThreshold) {
+        let errorEntries = userFeedErrorMap.get(userId);
+        if (!errorEntries) {
+          errorEntries = [];
+          userFeedErrorMap.set(userId, errorEntries);
+        }
+        errorEntries.push({ articles: [], feedTitle: meta.title ?? "RSS", feedHash });
+      }
     }
   }
 
@@ -463,6 +520,10 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
 
   if (userFeedMap.size > 0) {
     await sendPushBatched(env, userFeedMap);
+  }
+
+  if (userFeedErrorMap.size > 0) {
+    await sendPushError(env, userFeedErrorMap);
   }
 }
 

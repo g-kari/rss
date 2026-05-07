@@ -231,6 +231,8 @@ export interface PushConfig {
   silentEnd?: string;
   /** タイムゾーン (IANA tz, e.g. "Asia/Tokyo") */
   timezone?: string;
+  /** フィードエラー通知の有効/無効。デフォルト有効（未設定時は有効扱い） */
+  errorNotificationsEnabled?: boolean;
 }
 
 /**
