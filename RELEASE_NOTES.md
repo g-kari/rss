@@ -4,6 +4,38 @@
 
 ### セキュリティ対策っ
 
+- **`withJsonBody` に 512KB ペイロード上限チェックを追加したよ〜** — Issue #558。大きな JSON ボディで Worker OOM を誘発できてたのを `request.text()` でサイズ確認してから parse するよう修正したよっ🔒✨
+
+### パフォーマンス改善っ
+
+- **`useFeedData`・`useFeedGroups`・`useCollections` に AbortController を追加したよ〜** — Issue #561。アンマウント後もフェッチが続いてネットワークリソースが無駄になってたのを修正したよっ⚡💡
+
+### 激アツ新機能っ
+
+- **`useCollections` にリトライ機能を追加したよ〜** — Issue #565。コレクション読み込み失敗時に再試行ボタンが表示されるようになったよっ✨🎀
+- **AI 429 エラー時に Retry-After ヘッダーから待機時間を表示するようにしたよ〜** — Issue #564。「60秒後に再試行できます」って具体的に教えてくれるよっ💡✨
+- **フィードの nsfw・priority 等の PATCH 操作に楽観的更新を追加したよ〜** — Issue #567。サーバー応答待ちなしで即座に UI に反映されるよっ🚀🎀
+
+### リファクタリングっ
+
+- **`article-utils.ts` から React import を除去して `article-ui-helpers.ts` に分離したよ〜** — Issue #569。サーバーサイドコードに React が混入しないスッキリ構成になったよっ🔧✨
+
+### 簡素化っ
+
+- **`devError` ヘルパーを作成して console.error ガードを統一したよ〜** — Issue #568。17 箇所に散在してた `if (process.env.NODE_ENV !== 'production') console.error(...)` を `devError()` 1 行にまとめたよっ🎀💡
+
+### テスト追加っ
+
+- **`pMapSettled` / `pMap`（concurrency.ts）のテストを追加したよ〜** — Issue #573。17 テストケースで並行処理の動作をしっかり検証できるようになったよっ✅🎀
+- **`browser-summarizer.ts` のテストを追加したよ〜** — Issue #575。`browser-translator.ts` と対称的なテスト体制になったよっ✅✨
+
+### ドキュメント整備っ
+
+- **api-spec.md に Push 通知エンドポイントの仕様を追記したよ〜** — Issue #572。vapid-key・status・subscribe・unsubscribe・test の 5 エンドポイントが仕様書に載ったよっ📝🎀
+- **api-spec.md に Collections・FeedGroups・Feeds export/reinfer の仕様を追記したよ〜** — Issue #574。10 エンドポイント分の仕様をちゃんと書いたよっ📝✨
+
+### セキュリティ対策っ
+
 - **`/api/stats` にスライディングウィンドウ（60秒 30回）・`/api/auth/me` に 5 秒クールダウンを追加したよ〜** — Issue #558。レートリミットなしで DoS ベクターになってたのを修正したよっ🔒✨
 - **DBSC ルートハンドラのエラーレスポンスを `apiError()` に統一したよ〜** — Issue #571。`code` フィールドが欠落してたのを直したよっ🔒🎀
 
