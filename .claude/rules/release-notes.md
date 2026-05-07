@@ -13,10 +13,17 @@
 - **テンション**: 新機能は特にテンション高め、バグ修正はサクッと報告感
 - **禁止**: ギャル男口調（「〜っすよ」）は NG。あくまで令和の女子ギャル
 
-## architecture.md の同期必須
+## architecture.md / api-spec.md の同期必須
 
 新規 API エンドポイント（`app/api/**/route.ts`）・hooks（`src/hooks/*.ts`）・lib（`src/lib/*.ts`）・components（`src/components/**/*.tsx`）を追加した際は、**同じ PR 内で** `.claude/rules/architecture.md` のディレクトリ構造セクションにも 1 行の責務記述を追記すること。
 型定義（`src/types.ts`）で R2 に保存されるインターフェース（`ReadState` / `UserSubscription` / `SharedFeedMeta` / `FeedGroup` 等）にプロパティを追加した場合も、`## R2 データ構造` セクションの該当行を更新する。
+
+**役割分担（どちらを参照するか）**:
+
+- **エンドポイントの一覧と責務**: `.claude/rules/architecture.md` の「全体像」セクション（単行説明）
+- **リクエスト/レスポンスの詳細仕様**: `.claude/rules/api-spec.md`（詳細は順次追記）
+
+新規エンドポイントで外部から呼ばれる `POST`/`PUT` エンドポイントを追加した場合は、**`api-spec.md` にもリクエスト・レスポンス・エラー一覧を追記すること**。
 
 ## 更新対象ファイル
 
