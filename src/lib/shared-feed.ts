@@ -31,7 +31,7 @@ export const KNOWN_IDS_MAX = 10_000;
 export const MAX_USER_ARTICLES = 10_000;
 
 /** R2 同時読み取りの並行度上限 */
-export const R2_CONCURRENCY = 10;
+export const R2_CONCURRENCY = 50;
 
 // ── キー計算 ──────────────────────────────────────────────────────
 
@@ -454,11 +454,9 @@ export async function getUserLatestArticles(
   const resolvedSubs = subs ?? (await readUserSubscriptions(bucket, userId));
   if (resolvedSubs.length === 0) return [];
 
-  const pages = await pMap(
-    resolvedSubs,
-    (s) => readLatestArticles(bucket, s.feedHash),
-    R2_CONCURRENCY,
-  );
+  // R2 GET はサブリクエストとして並列実行可能（CF Workers は最大 1000 サブリクエスト）
+  // pMap の直列バッチ制限を排除し、全フィードを一括で取得する
+  const pages = await Promise.all(resolvedSubs.map((s) => readLatestArticles(bucket, s.feedHash)));
   return sortByDate(pages.flat()).slice(0, MAX_USER_ARTICLES);
 }
 
