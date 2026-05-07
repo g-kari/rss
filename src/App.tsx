@@ -1009,6 +1009,7 @@ export default function App() {
               className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
               style={{ transform: getMobilePaneTransform("sidebar", mobilePane) }}
               aria-hidden={mobilePane !== "sidebar" || undefined}
+              inert={mobilePane !== "sidebar" || undefined}
             >
               {loadingFeeds && feeds.length === 0 ? (
                 <SkeletonSidebar />
@@ -1065,6 +1066,7 @@ export default function App() {
               className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane focus:outline-none"
               style={{ transform: getMobilePaneTransform("list", mobilePane) }}
               aria-hidden={mobilePane !== "list" || undefined}
+              inert={mobilePane !== "list" || undefined}
             >
               {loadingFeeds && feeds.length === 0 ? (
                 <SkeletonArticleList layout={layout} />
@@ -1105,6 +1107,7 @@ export default function App() {
               className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
               style={{ transform: getMobilePaneTransform("view", mobilePane) }}
               aria-hidden={mobilePane !== "view" || undefined}
+              inert={mobilePane !== "view" || undefined}
             >
               <ErrorBoundary label="記事表示">
                 <ArticleView {...articleViewProps} />

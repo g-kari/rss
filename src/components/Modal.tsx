@@ -94,7 +94,7 @@ export default function Modal({
           <button
             onClick={onClose}
             aria-label="閉じる"
-            className="text-text-faint hover:text-text-default transition-colors"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-text-faint hover:text-text-default transition-colors"
           >
             <svg
               width="14"

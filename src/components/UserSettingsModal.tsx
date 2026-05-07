@@ -76,10 +76,10 @@ const PREVIEW_TEXT =
   "The quick brown fox jumps over the lazy dog. RSS リーダーの表示設定をプレビューしながら調整できますわ。";
 
 /**
- * ユーザー設定モーダル (Issue #79)
+ * ユーザー設定モーダル (Issue #79, #479)
  *
- * フォントサイズ・フォント・行間・コンテンツ幅・両端揃え・自動既読などの
- * 表示設定をプレビューしながら変更できるダイアログ。
+ * タブ形式で設定カテゴリを分類。
+ * 表示 / AI・通知 / フィード管理 / インポート・エクスポート
  */
 export default function UserSettingsModal({ onClose, feeds }: Props) {
   const {
@@ -262,6 +262,16 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSilentStart, debouncedSilentEnd, debouncedTimezone]);
 
+  type TabId = "display" | "ai-notifications" | "feeds" | "import-export";
+  const [activeTab, setActiveTab] = useState<TabId>("display");
+
+  const TABS: { id: TabId; label: string }[] = [
+    { id: "display", label: "表示" },
+    { id: "ai-notifications", label: "AI・通知" },
+    { id: "feeds", label: "フィード管理" },
+    { id: "import-export", label: "インポート・エクスポート" },
+  ];
+
   return (
     <>
       <Modal
@@ -270,415 +280,474 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
         onClose={onClose}
         width="sm:w-[560px]"
       >
-        <div className="flex flex-col gap-5 px-5 py-4">
-          <PreviewArea
-            fontSize={fontSize}
-            fontFamily={fontFamily}
-            lineHeight={lineHeight}
-            contentWidth={contentWidth}
-            textJustify={textJustify}
-          />
-
-          <SettingRow label="フォントサイズ">
-            <SegmentGroup
-              options={FONT_SIZE_CYCLE.map((v) => ({
-                value: v,
-                label: FONT_SIZE_LABELS[v],
-              }))}
-              value={fontSize}
-              onChange={onChangeFontSize}
-              ariaLabel="フォントサイズ"
-            />
-          </SettingRow>
-
-          <SettingRow label="フォント">
-            <SegmentGroup
-              options={FONT_FAMILY_CYCLE.map((v) => ({ value: v, label: FONT_FAMILY_LABELS[v] }))}
-              value={fontFamily}
-              onChange={onChangeFontFamily}
-              ariaLabel="フォント"
-            />
-          </SettingRow>
-
-          <SettingRow label="行間">
-            <SegmentGroup
-              options={LINE_HEIGHT_CYCLE.map((v) => ({ value: v, label: LINE_HEIGHT_LABELS[v] }))}
-              value={lineHeight}
-              onChange={onChangeLineHeight}
-              ariaLabel="行間"
-            />
-          </SettingRow>
-
-          <SettingRow label="コンテンツ幅">
-            <SegmentGroup
-              options={CONTENT_WIDTH_CYCLE.map((v) => ({
-                value: v,
-                label: CONTENT_WIDTH_LABELS[v],
-              }))}
-              value={contentWidth}
-              onChange={onChangeContentWidth}
-              ariaLabel="コンテンツ幅"
-            />
-          </SettingRow>
-
-          <SettingRow label="ギャラリー列数">
-            <SegmentGroup
-              options={GALLERY_COLUMNS_CYCLE.map((v) => ({
-                value: v,
-                label: GALLERY_COLUMNS_LABELS[v],
-              }))}
-              value={galleryColumns}
-              onChange={onChangeGalleryColumns}
-              ariaLabel="ギャラリー列数"
-            />
-          </SettingRow>
-
-          <SettingRow label="カードサイズ">
-            <SegmentGroup
-              options={GALLERY_CARD_SIZE_CYCLE.map((v) => ({
-                value: v,
-                label: GALLERY_CARD_SIZE_LABELS[v],
-              }))}
-              value={galleryCardSize}
-              onChange={onChangeGalleryCardSize}
-              ariaLabel="カードサイズ"
-            />
-          </SettingRow>
-
-          <SettingRow label="最小画像サイズ">
-            <div className="flex items-center gap-2 w-full">
-              <input
-                type="range"
-                min={GALLERY_MIN_IMAGE_PX_MIN}
-                max={GALLERY_MIN_IMAGE_PX_MAX}
-                step={GALLERY_MIN_IMAGE_PX_STEP}
-                value={galleryMinImagePx}
-                onChange={(e) => onChangeGalleryMinImagePx(Number(e.target.value))}
-                className="flex-1 accent-ink h-1 cursor-pointer"
-              />
-              <span className="text-[11px] text-text-muted tabular-nums w-10 text-right">
-                {galleryMinImagePx === 0 ? "なし" : `${galleryMinImagePx}px`}
-              </span>
-            </div>
-          </SettingRow>
-
-          <SettingRow label="記事保持期間">
-            <div className="flex gap-1">
-              {TTL_OPTIONS.map((opt) => {
-                const current = ttlDays ?? 30;
-                const isSelected = opt.value === current;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() =>
-                      onChangeTtlDays(opt.value === ARTICLE_TTL_DAYS ? null : opt.value)
-                    }
-                    className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${
-                      isSelected
-                        ? "bg-ink text-ink-text"
-                        : "text-text-muted hover:text-text-default hover:bg-surface-hover"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          </SettingRow>
-
-          <SettingRow label="両端揃え">
+        {/* タブナビゲーション */}
+        <div
+          role="tablist"
+          aria-label="設定カテゴリ"
+          className="flex border-b border-border-default overflow-x-auto flex-shrink-0"
+        >
+          {TABS.map((tab) => (
             <button
-              type="button"
-              role="switch"
-              aria-checked={textJustify}
-              aria-label={textJustify ? "両端揃えを OFF にする" : "両端揃えを ON にする"}
-              onClick={() => onChangeTextJustify(!textJustify)}
-              className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-                textJustify ? "bg-ink" : "bg-border-default"
+              key={tab.id}
+              id={`tab-${tab.id}`}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-[13px] border-b-2 whitespace-nowrap transition-colors flex-shrink-0 ${
+                activeTab === tab.id
+                  ? "border-ink text-text-strong font-medium"
+                  : "border-transparent text-text-muted hover:text-text-default"
               }`}
             >
-              <span
-                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-                  textJustify ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
+              {tab.label}
             </button>
-          </SettingRow>
+          ))}
+        </div>
 
-          <SettingRow label="自動既読">
-            <div className="flex items-center gap-3">
+        {/* 表示タブ */}
+        <div
+          id="panel-display"
+          role="tabpanel"
+          aria-labelledby="tab-display"
+          hidden={activeTab !== "display"}
+        >
+          <div className="flex flex-col gap-5 px-5 py-4">
+            <PreviewArea
+              fontSize={fontSize}
+              fontFamily={fontFamily}
+              lineHeight={lineHeight}
+              contentWidth={contentWidth}
+              textJustify={textJustify}
+            />
+
+            <SettingRow label="フォントサイズ">
+              <SegmentGroup
+                options={FONT_SIZE_CYCLE.map((v) => ({
+                  value: v,
+                  label: FONT_SIZE_LABELS[v],
+                }))}
+                value={fontSize}
+                onChange={onChangeFontSize}
+                ariaLabel="フォントサイズ"
+              />
+            </SettingRow>
+
+            <SettingRow label="フォント">
+              <SegmentGroup
+                options={FONT_FAMILY_CYCLE.map((v) => ({
+                  value: v,
+                  label: FONT_FAMILY_LABELS[v],
+                }))}
+                value={fontFamily}
+                onChange={onChangeFontFamily}
+                ariaLabel="フォント"
+              />
+            </SettingRow>
+
+            <SettingRow label="行間">
+              <SegmentGroup
+                options={LINE_HEIGHT_CYCLE.map((v) => ({
+                  value: v,
+                  label: LINE_HEIGHT_LABELS[v],
+                }))}
+                value={lineHeight}
+                onChange={onChangeLineHeight}
+                ariaLabel="行間"
+              />
+            </SettingRow>
+
+            <SettingRow label="コンテンツ幅">
+              <SegmentGroup
+                options={CONTENT_WIDTH_CYCLE.map((v) => ({
+                  value: v,
+                  label: CONTENT_WIDTH_LABELS[v],
+                }))}
+                value={contentWidth}
+                onChange={onChangeContentWidth}
+                ariaLabel="コンテンツ幅"
+              />
+            </SettingRow>
+
+            <SettingRow label="ギャラリー列数">
+              <SegmentGroup
+                options={GALLERY_COLUMNS_CYCLE.map((v) => ({
+                  value: v,
+                  label: GALLERY_COLUMNS_LABELS[v],
+                }))}
+                value={galleryColumns}
+                onChange={onChangeGalleryColumns}
+                ariaLabel="ギャラリー列数"
+              />
+            </SettingRow>
+
+            <SettingRow label="カードサイズ">
+              <SegmentGroup
+                options={GALLERY_CARD_SIZE_CYCLE.map((v) => ({
+                  value: v,
+                  label: GALLERY_CARD_SIZE_LABELS[v],
+                }))}
+                value={galleryCardSize}
+                onChange={onChangeGalleryCardSize}
+                ariaLabel="カードサイズ"
+              />
+            </SettingRow>
+
+            <SettingRow label="最小画像サイズ">
+              <div className="flex items-center gap-2 w-full">
+                <input
+                  type="range"
+                  min={GALLERY_MIN_IMAGE_PX_MIN}
+                  max={GALLERY_MIN_IMAGE_PX_MAX}
+                  step={GALLERY_MIN_IMAGE_PX_STEP}
+                  value={galleryMinImagePx}
+                  onChange={(e) => onChangeGalleryMinImagePx(Number(e.target.value))}
+                  className="flex-1 accent-ink h-1 cursor-pointer"
+                />
+                <span className="text-[11px] text-text-muted tabular-nums w-10 text-right">
+                  {galleryMinImagePx === 0 ? "なし" : `${galleryMinImagePx}px`}
+                </span>
+              </div>
+            </SettingRow>
+
+            <SettingRow label="記事保持期間">
+              <div className="flex gap-1">
+                {TTL_OPTIONS.map((opt) => {
+                  const current = ttlDays ?? 30;
+                  const isSelected = opt.value === current;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        onChangeTtlDays(opt.value === ARTICLE_TTL_DAYS ? null : opt.value)
+                      }
+                      className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${
+                        isSelected
+                          ? "bg-ink text-ink-text"
+                          : "text-text-muted hover:text-text-default hover:bg-surface-hover"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </SettingRow>
+
+            <SettingRow label="両端揃え">
               <button
                 type="button"
                 role="switch"
-                aria-checked={autoReadEnabled}
-                aria-label={autoReadEnabled ? "自動既読を OFF にする" : "自動既読を ON にする"}
-                onClick={toggleAutoRead}
+                aria-checked={textJustify}
+                aria-label={textJustify ? "両端揃えを OFF にする" : "両端揃えを ON にする"}
+                onClick={() => onChangeTextJustify(!textJustify)}
                 className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-                  autoReadEnabled ? "bg-ink" : "bg-border-default"
+                  textJustify ? "bg-ink" : "bg-border-default"
                 }`}
               >
                 <span
                   className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-                    autoReadEnabled ? "translate-x-5" : "translate-x-0"
+                    textJustify ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
               </button>
-              {autoReadEnabled && (
-                <SegmentGroup
-                  options={AUTO_READ_THRESHOLD_CYCLE.map((v) => ({ value: v, label: `${v}%` }))}
-                  value={autoReadThreshold}
-                  onChange={onChangeAutoReadThreshold}
-                  ariaLabel="自動既読タイミング"
-                />
-              )}
-            </div>
-          </SettingRow>
+            </SettingRow>
 
-          <SettingRow label="自動翻訳">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={autoTranslate}
-              aria-label={autoTranslate ? "自動翻訳を OFF にする" : "自動翻訳を ON にする"}
-              onClick={toggleAutoTranslate}
-              className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-                autoTranslate ? "bg-ink" : "bg-border-default"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-                  autoTranslate ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </SettingRow>
-
-          {(translatorDiag || summarizerDiag) && (
-            <div className="flex flex-col gap-1.5 pl-28">
-              {translatorDiag && (
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[11px] text-text-muted">
-                    翻訳プロバイダ:{" "}
-                    {translatorDiag.available ? (
-                      <span className="text-text-default">Chrome 翻訳 &#x2713;</span>
-                    ) : (
-                      <span className="text-text-default">Workers AI (フォールバック)</span>
-                    )}
-                  </span>
-                  {!translatorDiag.available && translatorDiag.reason && (
-                    <span className="text-[10px] text-text-faint">
-                      {translatorDiag.reason === "not-chromium" &&
-                        "Chrome/Edge 以外のブラウザでは Chrome 翻訳を利用できません"}
-                      {translatorDiag.reason === "chrome-too-old" &&
-                        "Chrome Translator API は Chrome 131 以上が必要です。Chrome をアップデートしてください"}
-                      {translatorDiag.reason === "flag-disabled" &&
-                        "chrome://flags/#translation-api を Enabled にして Chrome を再起動してください（Chrome 138 以上では不要）"}
-                      {translatorDiag.reason === "not-available" &&
-                        "言語パックが利用できません。Chrome の設定から言語を追加してください"}
-                    </span>
-                  )}
-                </div>
-              )}
-              {summarizerDiag && (
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[11px] text-text-muted">
-                    要約プロバイダ:{" "}
-                    {summarizerDiag.available ? (
-                      <span className="text-text-default">Chrome 要約 &#x2713;</span>
-                    ) : (
-                      <span className="text-text-default">Workers AI (フォールバック)</span>
-                    )}
-                  </span>
-                  {!summarizerDiag.available && summarizerDiag.reason && (
-                    <span className="text-[10px] text-text-faint">
-                      {summarizerDiag.reason === "not-chromium" &&
-                        "Chrome/Edge 以外のブラウザでは Chrome 要約を利用できません"}
-                      {summarizerDiag.reason === "chrome-too-old" &&
-                        "Chrome Summarizer API は Chrome 131 以上が必要です。Chrome をアップデートしてください"}
-                      {summarizerDiag.reason === "flag-disabled" &&
-                        "chrome://flags/#summarization-api-for-gemini-nano を Enabled にして Chrome を再起動してください"}
-                      {summarizerDiag.reason === "not-available" &&
-                        "要約モデルが利用できません。Chrome の設定を確認してください"}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <SettingRow label="Workers AI モデル">
-            <select
-              value={aiModel}
-              onChange={(e) =>
-                onChangeAiModel(e.target.value as Parameters<typeof onChangeAiModel>[0])
-              }
-              className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
-            >
-              {AI_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </SettingRow>
-          <div className="flex flex-col gap-1 pl-28">
-            <span className="text-[11px] text-text-muted">
-              AI 要約・翻訳で使用する Workers AI モデルを選択します。70B は高精度ですが 1 分間 3
-              回の制限があります。
-            </span>
-          </div>
-
-          <SettingRow label="重複記事の非表示">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={deduplicateByLink}
-              aria-label={
-                deduplicateByLink
-                  ? "クロスフィード重複排除を OFF にする"
-                  : "クロスフィード重複排除を ON にする"
-              }
-              onClick={toggleDeduplicateByLink}
-              className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-                deduplicateByLink ? "bg-ink" : "bg-border-default"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-                  deduplicateByLink ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </SettingRow>
-          <div className="flex flex-col gap-1 pl-28">
-            <span className="text-[11px] text-text-muted">
-              同一 URL の記事が複数フィードにある場合、最新の 1 件のみ表示します。
-            </span>
-          </div>
-
-          <SettingRow label="画像DL先">
-            <input
-              type="text"
-              placeholder="フォルダ名（空欄: デフォルト）"
-              value={imageDlFolder}
-              onChange={(e) => onChangeImageDlFolder(e.target.value)}
-              className="w-full max-w-[200px] px-2 py-1 text-[11px] rounded-md border border-border-default bg-surface-elevated text-text-default placeholder:text-text-faint focus:outline-none focus:border-ink transition-colors"
-            />
-          </SettingRow>
-
-          <SettingRow label="画像DL先(NSFW)">
-            <input
-              type="text"
-              placeholder="フォルダ名（空欄: 通常と同じ）"
-              value={imageDlFolderNsfw}
-              onChange={(e) => onChangeImageDlFolderNsfw(e.target.value)}
-              className="w-full max-w-[200px] px-2 py-1 text-[11px] rounded-md border border-border-default bg-surface-elevated text-text-default placeholder:text-text-faint focus:outline-none focus:border-ink transition-colors"
-            />
-          </SettingRow>
-          <div className="flex flex-col gap-1 pl-28">
-            <span className="text-[11px] text-text-muted">
-              画像ダウンロード時のファイル名にフォルダプレフィックスを付与します。
-            </span>
-          </div>
-
-          <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
-            <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-              シェア設定
-            </span>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-text-default">
-                ヘッダーに表示するシェア先
-              </span>
-              <div className="flex flex-wrap gap-x-4 gap-y-2 mt-1">
-                {SHARE_TARGETS.map((target) => {
-                  const checked = headerShareTargetIds.includes(target.id);
-                  return (
-                    <label
-                      key={target.id}
-                      className="flex items-center gap-1.5 cursor-pointer select-none"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          const next = checked
-                            ? headerShareTargetIds.filter((id) => id !== target.id)
-                            : [...headerShareTargetIds, target.id as ShareTargetId];
-                          setHeaderShareTargetIds(next);
-                        }}
-                        className="accent-ink w-3.5 h-3.5 cursor-pointer"
-                      />
-                      <span className="text-[12px] text-text-default">{target.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-              <span className="text-[11px] text-text-muted mt-0.5">
-                チェックしたシェア先が記事ヘッダーにクイックボタンとして表示されます。
-              </span>
-            </div>
-          </div>
-
-          {pushEnabled && (
-            <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
-              <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-                Push 通知サイレント時間帯
-              </span>
-              <SettingRow label="開始時刻">
-                <input
-                  type="time"
-                  value={silentStart}
-                  onChange={(e) => setSilentStart(e.target.value)}
-                  className="px-2 py-1 text-[13px] rounded-md border border-border-default bg-surface-elevated text-text-default focus:outline-none focus:border-ink transition-colors"
-                />
-              </SettingRow>
-              <SettingRow label="終了時刻">
-                <input
-                  type="time"
-                  value={silentEnd}
-                  onChange={(e) => setSilentEnd(e.target.value)}
-                  className="px-2 py-1 text-[13px] rounded-md border border-border-default bg-surface-elevated text-text-default focus:outline-none focus:border-ink transition-colors"
-                />
-              </SettingRow>
-              {timezones.length > 0 && (
-                <SettingRow label="タイムゾーン">
-                  <select
-                    value={timezone}
-                    onChange={(e) => setTimezone(e.target.value)}
-                    className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
-                  >
-                    <option value="">未設定</option>
-                    {timezones.map((tz) => (
-                      <option key={tz} value={tz}>
-                        {tz}
-                      </option>
-                    ))}
-                  </select>
-                </SettingRow>
-              )}
-              <div className="pl-28">
+            <SettingRow label="自動既読">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  disabled={pushConfigLoading}
-                  onClick={handleSaveSilentHours}
-                  className="px-3 py-1.5 text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50"
+                  role="switch"
+                  aria-checked={autoReadEnabled}
+                  aria-label={autoReadEnabled ? "自動既読を OFF にする" : "自動既読を ON にする"}
+                  onClick={toggleAutoRead}
+                  className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+                    autoReadEnabled ? "bg-ink" : "bg-border-default"
+                  }`}
                 >
-                  保存
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                      autoReadEnabled ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
                 </button>
+                {autoReadEnabled && (
+                  <SegmentGroup
+                    options={AUTO_READ_THRESHOLD_CYCLE.map((v) => ({ value: v, label: `${v}%` }))}
+                    value={autoReadThreshold}
+                    onChange={onChangeAutoReadThreshold}
+                    ariaLabel="自動既読タイミング"
+                  />
+                )}
               </div>
-              <div className="flex flex-col gap-1 pl-28">
-                <span className="text-[11px] text-text-muted">
-                  設定した時間帯は Push 通知を送信しません。開始・終了どちらかが空の場合は無効です。
+            </SettingRow>
+
+            <SettingRow label="重複記事の非表示">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={deduplicateByLink}
+                aria-label={
+                  deduplicateByLink
+                    ? "クロスフィード重複排除を OFF にする"
+                    : "クロスフィード重複排除を ON にする"
+                }
+                onClick={toggleDeduplicateByLink}
+                className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+                  deduplicateByLink ? "bg-ink" : "bg-border-default"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                    deduplicateByLink ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </SettingRow>
+            <div className="flex flex-col gap-1 pl-28">
+              <span className="text-[11px] text-text-muted">
+                同一 URL の記事が複数フィードにある場合、最新の 1 件のみ表示します。
+              </span>
+            </div>
+
+            <SettingRow label="画像保存フォルダー">
+              <input
+                type="text"
+                placeholder="フォルダ名（空欄: デフォルト）"
+                value={imageDlFolder}
+                onChange={(e) => onChangeImageDlFolder(e.target.value)}
+                className="w-full max-w-[200px] px-2 py-1 text-[11px] rounded-md border border-border-default bg-surface-elevated text-text-default placeholder:text-text-faint focus:outline-none focus:border-ink transition-colors"
+              />
+            </SettingRow>
+
+            <SettingRow label="画像DL先(NSFW)">
+              <input
+                type="text"
+                placeholder="フォルダ名（空欄: 通常と同じ）"
+                value={imageDlFolderNsfw}
+                onChange={(e) => onChangeImageDlFolderNsfw(e.target.value)}
+                className="w-full max-w-[200px] px-2 py-1 text-[11px] rounded-md border border-border-default bg-surface-elevated text-text-default placeholder:text-text-faint focus:outline-none focus:border-ink transition-colors"
+              />
+            </SettingRow>
+            <div className="flex flex-col gap-1 pl-28">
+              <span className="text-[11px] text-text-muted">
+                画像ダウンロード時のファイル名にフォルダプレフィックスを付与します。
+              </span>
+            </div>
+
+            <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
+              <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                シェア設定
+              </span>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[12px] font-medium text-text-default">
+                  ヘッダーに表示するシェア先
+                </span>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 mt-1">
+                  {SHARE_TARGETS.map((target) => {
+                    const checked = headerShareTargetIds.includes(target.id);
+                    return (
+                      <label
+                        key={target.id}
+                        className="flex items-center gap-1.5 cursor-pointer select-none"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            const next = checked
+                              ? headerShareTargetIds.filter((id) => id !== target.id)
+                              : [...headerShareTargetIds, target.id as ShareTargetId];
+                            setHeaderShareTargetIds(next);
+                          }}
+                          className="accent-ink w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="text-[12px] text-text-default">{target.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <span className="text-[11px] text-text-muted mt-0.5">
+                  チェックしたシェア先が記事ヘッダーにクイックボタンとして表示されます。
                 </span>
               </div>
             </div>
-          )}
 
-          <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
-            <p className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-0">
-              フィード管理
+            <p className="text-[11px] text-text-muted">
+              変更は即座にプレビューに反映され、自動的に保存されますわ。
             </p>
+          </div>
+        </div>
+
+        {/* AI・通知タブ */}
+        <div
+          id="panel-ai-notifications"
+          role="tabpanel"
+          aria-labelledby="tab-ai-notifications"
+          hidden={activeTab !== "ai-notifications"}
+        >
+          <div className="flex flex-col gap-5 px-5 py-4">
+            <SettingRow label="自動翻訳">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoTranslate}
+                aria-label={autoTranslate ? "自動翻訳を OFF にする" : "自動翻訳を ON にする"}
+                onClick={toggleAutoTranslate}
+                className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+                  autoTranslate ? "bg-ink" : "bg-border-default"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                    autoTranslate ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </SettingRow>
+
+            {(translatorDiag || summarizerDiag) && (
+              <div className="flex flex-col gap-1.5 pl-28">
+                {translatorDiag && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[11px] text-text-muted">
+                      翻訳プロバイダ:{" "}
+                      {translatorDiag.available ? (
+                        <span className="text-text-default">Chrome 翻訳 &#x2713;</span>
+                      ) : (
+                        <span className="text-text-default">Workers AI (フォールバック)</span>
+                      )}
+                    </span>
+                    {!translatorDiag.available && translatorDiag.reason && (
+                      <span className="text-[10px] text-text-faint">
+                        {translatorDiag.reason === "not-chromium" &&
+                          "Chrome/Edge 以外のブラウザでは Chrome 翻訳を利用できません"}
+                        {translatorDiag.reason === "chrome-too-old" &&
+                          "Chrome Translator API は Chrome 131 以上が必要です。Chrome をアップデートしてください"}
+                        {translatorDiag.reason === "flag-disabled" &&
+                          "chrome://flags/#translation-api を Enabled にして Chrome を再起動してください（Chrome 138 以上では不要）"}
+                        {translatorDiag.reason === "not-available" &&
+                          "言語パックが利用できません。Chrome の設定から言語を追加してください"}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {summarizerDiag && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[11px] text-text-muted">
+                      要約プロバイダ:{" "}
+                      {summarizerDiag.available ? (
+                        <span className="text-text-default">Chrome 要約 &#x2713;</span>
+                      ) : (
+                        <span className="text-text-default">Workers AI (フォールバック)</span>
+                      )}
+                    </span>
+                    {!summarizerDiag.available && summarizerDiag.reason && (
+                      <span className="text-[10px] text-text-faint">
+                        {summarizerDiag.reason === "not-chromium" &&
+                          "Chrome/Edge 以外のブラウザでは Chrome 要約を利用できません"}
+                        {summarizerDiag.reason === "chrome-too-old" &&
+                          "Chrome Summarizer API は Chrome 131 以上が必要です。Chrome をアップデートしてください"}
+                        {summarizerDiag.reason === "flag-disabled" &&
+                          "chrome://flags/#summarization-api-for-gemini-nano を Enabled にして Chrome を再起動してください"}
+                        {summarizerDiag.reason === "not-available" &&
+                          "要約モデルが利用できません。Chrome の設定を確認してください"}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <SettingRow label="Workers AI モデル">
+              <select
+                value={aiModel}
+                onChange={(e) =>
+                  onChangeAiModel(e.target.value as Parameters<typeof onChangeAiModel>[0])
+                }
+                className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
+              >
+                {AI_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </SettingRow>
+            <div className="flex flex-col gap-1 pl-28">
+              <span className="text-[11px] text-text-muted">
+                AI 要約・翻訳で使用する Workers AI モデルを選択します。70B は高精度ですが 1 分間 3
+                回の制限があります。
+              </span>
+            </div>
+
+            {pushEnabled && (
+              <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
+                <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                  Push 通知サイレント時間帯
+                </span>
+                <SettingRow label="開始時刻">
+                  <input
+                    type="time"
+                    value={silentStart}
+                    onChange={(e) => setSilentStart(e.target.value)}
+                    className="px-2 py-1 text-[13px] rounded-md border border-border-default bg-surface-elevated text-text-default focus:outline-none focus:border-ink transition-colors"
+                  />
+                </SettingRow>
+                <SettingRow label="終了時刻">
+                  <input
+                    type="time"
+                    value={silentEnd}
+                    onChange={(e) => setSilentEnd(e.target.value)}
+                    className="px-2 py-1 text-[13px] rounded-md border border-border-default bg-surface-elevated text-text-default focus:outline-none focus:border-ink transition-colors"
+                  />
+                </SettingRow>
+                {timezones.length > 0 && (
+                  <SettingRow label="タイムゾーン">
+                    <select
+                      value={timezone}
+                      onChange={(e) => setTimezone(e.target.value)}
+                      className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
+                    >
+                      <option value="">未設定</option>
+                      {timezones.map((tz) => (
+                        <option key={tz} value={tz}>
+                          {tz}
+                        </option>
+                      ))}
+                    </select>
+                  </SettingRow>
+                )}
+                <div className="pl-28">
+                  <button
+                    type="button"
+                    disabled={pushConfigLoading}
+                    onClick={handleSaveSilentHours}
+                    className="px-3 py-1.5 text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50"
+                  >
+                    保存
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1 pl-28">
+                  <span className="text-[11px] text-text-muted">
+                    設定した時間帯は Push
+                    通知を送信しません。開始・終了どちらかが空の場合は無効です。
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* フィード管理タブ */}
+        <div
+          id="panel-feeds"
+          role="tabpanel"
+          aria-labelledby="tab-feeds"
+          hidden={activeTab !== "feeds"}
+        >
+          <div className="flex flex-col gap-5 px-5 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex flex-col gap-0.5">
                 <span className="text-[12px] text-text-default">
@@ -720,8 +789,16 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
               </button>
             </div>
           </div>
+        </div>
 
-          <div className="border-t border-border-subtle pt-4 flex flex-col gap-2">
+        {/* インポート・エクスポートタブ */}
+        <div
+          id="panel-import-export"
+          role="tabpanel"
+          aria-labelledby="tab-import-export"
+          hidden={activeTab !== "import-export"}
+        >
+          <div className="flex flex-col gap-5 px-5 py-4">
             <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
               フィードのインポート / エクスポート
             </span>
@@ -784,10 +861,6 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
               </button>
             </div>
           </div>
-
-          <p className="text-[11px] text-text-muted">
-            変更は即座にプレビューに反映され、自動的に保存されますわ。
-          </p>
         </div>
       </Modal>
       {showFeedHealth && <FeedHealthModal feeds={feeds} onClose={() => setShowFeedHealth(false)} />}
@@ -847,6 +920,7 @@ function SegmentGroup<T extends string | number>({
             type="button"
             role="radio"
             aria-checked={active}
+            aria-label={opt.label}
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(opt.value)}
             className={`px-2.5 py-1 text-[11px] transition-colors duration-150 ${
