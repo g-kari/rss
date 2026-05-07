@@ -87,60 +87,56 @@ export function useArticleFilters({
     setRawQuery("");
     setAuthorFilter(null);
     setCategoryFilter(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- resetPageRef は useSyncedRef の安定参照。フィード/グループ切替時のみリセット
-  }, [feedId, selectedGroupId]);
+  }, [feedId, selectedGroupId, resetPageRef]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- setBoolFilters は安定参照。resetPageRef は useSyncedRef の安定 ref
+  // setBoolFilters は useState setter（常に安定）、resetPageRef は useSyncedRef（常に安定）。
+  // ref を依存配列に含めることで eslint-disable なしに同等の効果を得る。
   const toggleUnreadOnly = useCallback(
     () => toggleBoolFilter("unreadOnly", setBoolFilters, resetPageRef.current),
-    [],
+    [resetPageRef],
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const toggleBookmarkOnly = useCallback(
     () => toggleBoolFilter("bookmarkOnly", setBoolFilters, resetPageRef.current),
-    [],
+    [resetPageRef],
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const toggleReadingListOnly = useCallback(
     () => toggleBoolFilter("readingListOnly", setBoolFilters, resetPageRef.current),
-    [],
+    [resetPageRef],
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const toggleLikeOnly = useCallback(
     () => toggleBoolFilter("likeOnly", setBoolFilters, resetPageRef.current),
-    [],
+    [resetPageRef],
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const toggleNoteOnly = useCallback(
     () => toggleBoolFilter("noteOnly", setBoolFilters, resetPageRef.current),
-    [],
+    [resetPageRef],
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const toggleDigestMode = useCallback(
     () => toggleBoolFilter("digestMode", setBoolFilters, resetPageRef.current),
-    [],
+    [resetPageRef],
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const updateQuery = useCallback((q: string) => {
-    setRawQuery(q);
-    resetPageRef.current();
-  }, []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- dateRangeRef・resetPageRef は安定 ref
+  const updateQuery = useCallback(
+    (q: string) => {
+      setRawQuery(q);
+      resetPageRef.current();
+    },
+    [resetPageRef],
+  );
+  // dateRangeRef・readingTimeRangeRef・resetPageRef はいずれも useSyncedRef（常に安定）
   const cycleDateRange = useCallback((): DateRange => {
     const next = cycleValue(DATE_RANGE_CYCLE, dateRangeRef.current);
     storageSet(STORAGE_KEYS.DATE_RANGE, next);
     setDateRange(next);
     resetPageRef.current();
     return next;
-  }, []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- readingTimeRangeRef・resetPageRef は安定 ref
+  }, [dateRangeRef, resetPageRef]);
   const cycleReadingTimeRange = useCallback((): ReadingTimeRange => {
     const next = cycleValue(READING_TIME_RANGE_CYCLE, readingTimeRangeRef.current);
     storageSet(STORAGE_KEYS.READING_TIME_RANGE, next);
     setReadingTimeRange(next);
     resetPageRef.current();
     return next;
-  }, []);
+  }, [readingTimeRangeRef, resetPageRef]);
 
   return {
     ...boolFilters,

@@ -164,12 +164,14 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
           applyServerState(state);
         });
       } else {
-        // タブ非表示・バックグラウンド遷移時は、ペンディングタイマーを即時実行するだけでなく
-        // 常に flushToServer() を呼び出してサーバーと同期する。
+        // タブ非表示・バックグラウンド遷移時は、未送信の変更がある場合のみフラッシュする。
         // beforeunload の sendBeacon は 60KB 超のペイロードで失敗することがあるため、
         // visibilitychange の段階でできる限り早期にフラッシュしてデータロストリスクを低減する。
-        flushIfPending();
-        void flushToServer();
+        const hadPending = flushIfPending();
+        if (hadPending || isDirtyRef.current) {
+          isDirtyRef.current = false;
+          void flushToServer();
+        }
       }
     },
     document,

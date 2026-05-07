@@ -558,9 +558,6 @@ export async function buildFeedUserMapCached(
   // KV キャッシュを確認
   const cached = await kv.get<FeedUserMapCacheEntry>(FEED_USER_MAP_CACHE_KEY, "json");
   if (cached) {
-    console.log(
-      `cron: buildFeedUserMapCached: KV cache hit (${Object.keys(cached.feedUserMap).length} feeds)`,
-    );
     return {
       feedUserMap: new Map(Object.entries(cached.feedUserMap)),
       feedLastAccessMap: new Map(Object.entries(cached.feedLastAccessMap)),
@@ -580,8 +577,5 @@ export async function buildFeedUserMapCached(
   await kv.put(FEED_USER_MAP_CACHE_KEY, JSON.stringify(entry), {
     expirationTtl: FEED_USER_MAP_TTL_SEC,
   });
-  console.log(
-    `cron: buildFeedUserMapCached: KV cache miss, cached ${result.feedUserMap.size} feeds`,
-  );
   return result;
 }

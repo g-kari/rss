@@ -245,6 +245,7 @@ pre-commit install   # 初回セットアップ
 | POST     | `/api/auth/logout`         | ログアウト（cookie クリア）         |
 | POST     | `/api/auth/dbsc/register`  | DBSC 公開鍵登録（スタブ）           |
 | POST     | `/api/auth/dbsc/challenge` | DBSC チャレンジ発行・検証（スタブ） |
+| DELETE   | `/api/auth/dbsc/session`   | DBSC バインド済みデバイス登録解除   |
 
 ### フィード
 
