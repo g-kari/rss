@@ -1049,6 +1049,7 @@ export default function App() {
                       collapsedCategories={collapsedCategories}
                       nsfwMode={nsfwMode}
                       feedGroups={feedGroups}
+                      totalUnread={totalUnread}
                       activeFeedView={activeFeedView}
                       recommendations={recommendations}
                       recommendationsLoading={recommendationsLoading}
