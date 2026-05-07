@@ -22,7 +22,6 @@ import {
   createFeedMeta,
   mergeNewArticles,
   readUserSubscriptions,
-  listAllFeedHashes,
   buildFeedUserMapCached,
   readLatestArticles,
   assembleClientFeed,
@@ -382,19 +381,16 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
   const { feedUserMap, feedLastAccessMap, feedHasPriority, privateFeedCookies } =
     await buildFeedUserMapCached(env.RSS_DATA, env.RATE_LIMIT);
 
-  const feedHashes = await listAllFeedHashes(env.RSS_DATA);
-  if (feedHashes.length === 0) return;
+  // feedUserMap.keys() を使うことで listAllFeedHashes (R2 LIST) を省略する（Issue #402）
+  // 購読者がいない孤立フィードは feedUserMap に存在しないため、動作は同一
+  const allFeedHashes = [...feedUserMap.keys()];
+  if (allFeedHashes.length === 0) return;
 
   // 非アクティブフィードをスキップ
   const inactiveThresholdMs = INACTIVE_FEED_DAYS * 24 * 60 * 60 * 1000;
   const now = Date.now();
   let skipped = 0;
-  const activeFeedHashes = feedHashes.filter((feedHash) => {
-    // 購読者がいないフィード → スキップ
-    if (!feedUserMap.has(feedHash)) {
-      skipped++;
-      return false;
-    }
+  const activeFeedHashes = allFeedHashes.filter((feedHash) => {
     // 高優先度フィード → 常にフェッチ
     if (feedHasPriority.has(feedHash)) return true;
     // lastAccessedAt 未設定（既存ユーザー or 移行期間）→ 安全側でフェッチ
@@ -408,7 +404,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
     return true;
   });
   console.log(
-    `cron: skipped ${skipped}/${feedHashes.length} inactive feeds, fetching ${activeFeedHashes.length}`,
+    `cron: skipped ${skipped}/${allFeedHashes.length} inactive feeds, fetching ${activeFeedHashes.length}`,
   );
 
   const results = await pMapSettled(
