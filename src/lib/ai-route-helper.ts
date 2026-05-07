@@ -8,9 +8,7 @@ import { aiRateLimitKey } from "@/lib/r2";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 import { apiError } from "@/lib/api-error";
 
-import { AI_MODELS, type WorkersAiModelId, DEFAULT_AI_MODEL } from "./ai-models";
-
-const VALID_MODEL_IDS = AI_MODELS.map((m) => m.id) as WorkersAiModelId[];
+import { isWorkersAiModelId, type WorkersAiModelId, DEFAULT_AI_MODEL } from "./ai-models";
 
 const AI_WINDOW_MS = 60 * 1000;
 const AI_MAX_CALLS = 20;
@@ -69,10 +67,7 @@ export async function runAiJob(
       ? body.articleId
       : null;
 
-  const model: WorkersAiModelId =
-    typeof body.model === "string" && VALID_MODEL_IDS.includes(body.model as WorkersAiModelId)
-      ? (body.model as WorkersAiModelId)
-      : DEFAULT_AI_MODEL;
+  const model: WorkersAiModelId = isWorkersAiModelId(body.model) ? body.model : DEFAULT_AI_MODEL;
 
   const is70b = model === "@cf/meta/llama-3.1-70b-instruct";
 

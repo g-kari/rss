@@ -35,5 +35,7 @@ export function useGlobalFilterAutoRead(
     }
     if (newIds.length > 0) markBulkRead(newIds);
     for (const a of articles) checkedArticleIdsRef.current.add(a.id);
-  }, [articles, globalFilter, markBulkRead, readIdsRef]);
+    // readIdsRef は useSyncedRef により常に最新値を参照するため deps 不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articles, globalFilter, markBulkRead]);
 }

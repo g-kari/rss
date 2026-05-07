@@ -2,7 +2,12 @@
 
 import { useState, useCallback } from "react";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
-import { AI_MODELS, DEFAULT_AI_MODEL, type WorkersAiModelId } from "../lib/ai-models";
+import {
+  AI_MODELS,
+  DEFAULT_AI_MODEL,
+  isWorkersAiModelId,
+  type WorkersAiModelId,
+} from "../lib/ai-models";
 
 export const AUTO_READ_THRESHOLD_CYCLE = [70, 80, 90] as const;
 export type AutoReadThreshold = (typeof AUTO_READ_THRESHOLD_CYCLE)[number];
@@ -32,10 +37,7 @@ function loadDeduplicateByLink(): boolean {
 
 function loadAiModel(): WorkersAiModelId {
   const stored = storageGet(STORAGE_KEYS.AI_MODEL);
-  const valid = AI_MODELS.map((m) => m.id) as WorkersAiModelId[];
-  return stored && valid.includes(stored as WorkersAiModelId)
-    ? (stored as WorkersAiModelId)
-    : DEFAULT_AI_MODEL;
+  return stored && isWorkersAiModelId(stored) ? stored : DEFAULT_AI_MODEL;
 }
 
 export { AI_MODELS, type WorkersAiModelId };
