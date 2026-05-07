@@ -29,6 +29,7 @@ export default function MarkAllReadButton({ onMarkAllRead }: MarkAllReadButtonPr
   return (
     <button
       onClick={handleClick}
+      aria-label={confirmMarkAll ? "全記事を既読にする（確認）" : "全て既読にする"}
       title={confirmMarkAll ? "もう一度押すと全て既読にします" : `${SHORTCUT_MAP["m"]} (m)`}
       className={`flex items-center justify-center rounded-full transition-all duration-200 ${
         confirmMarkAll

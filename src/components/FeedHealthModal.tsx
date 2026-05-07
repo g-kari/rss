@@ -2,21 +2,12 @@
 
 import { useMemo } from "react";
 import type { Feed } from "@/types";
+import { timeAgo } from "@/lib/article-utils";
 import Modal from "./Modal";
 
 interface Props {
   feeds: Feed[];
   onClose: () => void;
-}
-
-function timeAgoLabel(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 60) return `${minutes}分前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}時間前`;
-  const days = Math.floor(hours / 24);
-  return `${days}日前`;
 }
 
 function untilLabel(iso: string): string {
@@ -148,7 +139,7 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                     <span className="text-[11px] text-text-faint truncate">{feed.url}</span>
                     {feed.lastErrorAt && (
                       <span className="text-[11px] text-text-faint flex-shrink-0">
-                        {timeAgoLabel(feed.lastErrorAt)}
+                        {timeAgo(feed.lastErrorAt)}
                       </span>
                     )}
                   </div>

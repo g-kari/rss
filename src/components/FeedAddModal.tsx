@@ -237,7 +237,13 @@ export default function FeedAddModal({
           )}
 
           {adding && (
-            <p className="text-[11px] text-text-muted mt-2 animate-pulse">{progressLabel}</p>
+            <p
+              aria-live="polite"
+              aria-atomic="true"
+              className="text-[11px] text-text-muted mt-2 animate-pulse"
+            >
+              {progressLabel}
+            </p>
           )}
 
           <div className="flex gap-2 mt-3">

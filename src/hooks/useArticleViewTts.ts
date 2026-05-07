@@ -58,13 +58,7 @@ export function useArticleViewTts(
       if (!ttsSupported) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key !== "P") return;
-      if (!article) return;
-      if (ttsPlaying || ttsPaused) {
-        ttsStop();
-      } else {
-        const text = buildTtsText(article, processedContent);
-        if (text.trim()) speak(text);
-      }
+      handleTtsToggle();
     },
     document,
   );
