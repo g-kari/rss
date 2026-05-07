@@ -11,7 +11,7 @@ import {
 } from "../lib/fetch";
 import { sendPushToAll, type PushPayload } from "../lib/web-push";
 import { parseRetryAfter as parseRetryAfterRaw } from "../lib/retry-after";
-import { r2Get, r2Put, userPushKey } from "../lib/r2";
+import { r2Get, r2Put, userPushKey, feedLastFetchedKey } from "../lib/r2";
 import { formatError } from "../lib/serialize-error";
 import {
   computeFeedHash,
@@ -413,23 +413,52 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
     FEED_FETCH_CONCURRENCY,
   );
 
-  // Push 通知: userId → FeedNewArticles[] のマップを構築して一括送信
+  // Push 通知と feed-last-fetched 更新用マップを同時に構築する
   const userFeedMap = new Map<string, FeedNewArticles[]>();
+  const userTimestamps = new Map<string, Record<string, string>>();
+
   for (let i = 0; i < activeFeedHashes.length; i++) {
     const result = results[i];
-    if (result.status !== "fulfilled" || result.value.newArticles.length === 0) continue;
+    if (result.status !== "fulfilled") continue;
     const { newArticles, meta } = result.value;
+    if (!meta) continue;
     const feedHash = activeFeedHashes[i];
     const userIds = feedUserMap.get(feedHash) ?? [];
+
     for (const userId of userIds) {
-      let entries = userFeedMap.get(userId);
-      if (!entries) {
-        entries = [];
-        userFeedMap.set(userId, entries);
+      // feed-last-fetched 更新: フェッチ成功フィードの lastFetchedAt をキャッシュする
+      if (meta.lastFetchedAt) {
+        let timestamps = userTimestamps.get(userId);
+        if (!timestamps) {
+          timestamps = {};
+          userTimestamps.set(userId, timestamps);
+        }
+        timestamps[feedHash] = meta.lastFetchedAt;
       }
-      entries.push({ articles: newArticles, feedTitle: meta?.title ?? "RSS", feedHash });
+
+      // Push 通知: 新着記事があるフィードのみ
+      if (newArticles.length > 0) {
+        let entries = userFeedMap.get(userId);
+        if (!entries) {
+          entries = [];
+          userFeedMap.set(userId, entries);
+        }
+        entries.push({ articles: newArticles, feedTitle: meta.title ?? "RSS", feedHash });
+      }
     }
   }
+
+  // feed-last-fetched.json を更新（since フィルタリングの N+1 meta.json 読み込みを排除）
+  await pMapSettled(
+    [...userTimestamps.entries()],
+    async ([userId, timestamps]) => {
+      const key = feedLastFetchedKey(userId);
+      const existing = await r2Get<Record<string, string>>(env.RSS_DATA, key, {});
+      await r2Put(env.RSS_DATA, key, { ...existing, ...timestamps });
+    },
+    USER_FETCH_CONCURRENCY,
+  );
+
   if (userFeedMap.size > 0) {
     await sendPushBatched(env, userFeedMap);
   }

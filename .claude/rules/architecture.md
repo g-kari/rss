@@ -411,6 +411,7 @@ users/{userId}/saved.json               # 手動保存記事（/api/articles/sav
 users/{userId}/dbsc-session.json        # DbscSession（DBSC 登録済み公開鍵・検証日時）
 users/{userId}/dbsc-challenge-{sessionId}.json  # DBSC チャレンジ（challenge・expiresAt、検証後削除）
 users/{userId}/dbsc-pending-challenge.json      # DBSC 登録用ペンディングチャレンジ（登録完了後削除）
+users/{userId}/feed-last-fetched.json           # { [feedHash]: lastFetchedAt } — cron が更新。/api/articles?since= の N+1 meta.json 読み込みを 1 R2 GET に削減するキャッシュ
 ```
 
 `userId` = JWT の `sub` クレームをそのまま使用（`server-auth.ts` で `userId: payload.sub` と設定）。
