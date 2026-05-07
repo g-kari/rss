@@ -2,6 +2,16 @@
 
 ## 2026-05-08 (latest)
 
+### セキュリティ対策っ
+
+- **`PUT /api/push/config` の disabledFeeds に feedHash 形式チェックと件数上限を追加したよ〜** — Issue #531。任意の文字列キーで R2 が肥大化するストレージ DoS を修正！`/^[0-9a-f]{16}$/` と `MAX_FEEDS_PER_USER` でガッチリガードしたよっ🔒
+- **`POST /api/articles/save` に 5 秒クールダウンを追加したよ〜** — Issue #532。外部 OGP フェッチが無制限に叩かれる問題を修正！他のエンドポイントと同様に `applyCooldown` でレートリミット実装したよっ🚀
+- **`useContentLinkPreviews` の `r.ok` チェック漏れを修正したよ〜** — Issue #535。API が4xx/5xx を返しても無言で失敗してた問題を `if (!r.ok) throw new Error(...)` で正しく処理するようにしたよっ✨
+
+### パフォーマンス改善っ
+
+- **`useFeedSidebarActions` の deps を `useSyncedRef` でスリム化したよ〜** — Issue #530。記事を読むたびにサイドバー全体が再レンダリングされてた問題を修正！`readIds`・`articles` 等を `useSyncedRef` でラップして deps から外したことで無駄な再描画がなくなったよっ✨🎀
+
 ### テストっ
 
 - **cron/fetch.ts のコアRSSロジックにユニットテスト追加したよ〜** — Issue #520。`buildBatchedPushPayload`・`buildArticle`・`applyFeedSuccess`・`applyFeedRateLimit`・`applyFeedError` の 35 件テストが全部 PASS！R2 不要の純粋関数に `export` 付けてテスト可能にしたよっ✨🧪
