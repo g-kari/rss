@@ -170,12 +170,10 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
         setTagIdsState(result);
       }
     },
+    // Ref オブジェクト（stateRef, pendingAddedRef 等）は useRef の安定参照のため deps 不要。
+    // stateRef.current.* へのアクセスは applyServerState 呼び出し時の最新値参照のみに使用。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      stateRef,
-      pendingAddedRef,
-      pendingRemovedRef,
-      pendingTagChangedRef,
-      pendingTagRemovedRef,
       setReadIds,
       setBookmarkIds,
       setReadingListIds,

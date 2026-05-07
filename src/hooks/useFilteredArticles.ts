@@ -105,12 +105,10 @@ export function useFilteredArticles({
   const activeIdsRef = useRef(activeIds);
   activeIdsRef.current = activeIds;
 
-  // notes のキー集合のみで Set を再生成する（値の変更では再計算しない）
-  const noteKeysJson = useMemo(() => JSON.stringify(Object.keys(notes ?? {}).sort()), [notes]);
   const noteIds = useMemo(() => {
-    const keys: string[] = JSON.parse(noteKeysJson) as string[];
+    const keys = Object.keys(notes ?? {});
     return keys.length > 0 ? new Set(keys) : EMPTY_SET;
-  }, [noteKeysJson]);
+  }, [notes]);
 
   const filterCompileCacheRef = useRef<Map<string, CompiledKeywordFilter>>(new Map());
 

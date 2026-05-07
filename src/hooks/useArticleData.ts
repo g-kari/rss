@@ -67,11 +67,10 @@ export function useArticleData(
 
   const loadedFeedPagesRef = useSyncedRef(loadedFeedPages);
   const loadingFeedIdsRef = useRef(new Set<string>());
-  const onErrorRef = useSyncedRef(onError);
   const isOnlineRef = useSyncedRef(isOnline);
-  const onErrRef = useRef((err: unknown, msg: string) => {
+  const logErrorRef = useSyncedRef((err: unknown, msg: string) => {
     if (process.env.NODE_ENV !== "production") console.error(err);
-    onErrorRef.current?.(msg);
+    onError?.(msg);
   });
   const latestArticleIdRef = useRef<string | null>(null);
   const isPollingRef = useRef(false);
@@ -101,12 +100,13 @@ export function useArticleData(
     setFetchError(false);
     fetchAndSetArticles()
       .catch((err) => {
-        onErrRef.current(err, "記事の読み込みに失敗しました");
+        logErrorRef.current(err, "記事の読み込みに失敗しました");
         setFetchError(true);
       })
       .finally(() => {
         setLoadingArticles(false);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- logErrorRef は useSyncedRef で安定した ref
   }, [userId, fetchAndSetArticles]);
 
   const pollNow = useCallback(async () => {
@@ -130,11 +130,12 @@ export function useArticleData(
     } catch (err) {
       if (process.env.NODE_ENV !== "production")
         console.error("[polling] 新着記事の取得に失敗:", err);
-      onErrorRef.current?.("新着記事の取得に失敗しました");
+      logErrorRef.current(err, "新着記事の取得に失敗しました");
     } finally {
       isPollingRef.current = false;
     }
-  }, [mergeArticles, onErrorRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- logErrorRef は useSyncedRef で安定した ref
+  }, [mergeArticles]);
 
   const pollNowRef = useSyncedRef(pollNow);
 
@@ -194,11 +195,11 @@ export function useArticleData(
       if (data.length === 0) return;
       setArticles((prev) => mergeUniqueArticles(prev, data));
     } catch (err) {
-      onErrRef.current(err, "過去の記事の読み込みに失敗しました");
+      logErrorRef.current(err, "過去の記事の読み込みに失敗しました");
     } finally {
       loadingFeedIdsRef.current.delete(feedId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadedFeedPagesRef・loadingFeedIdsRef・onErrRef は ref 経由で最新値を参照するため deps 不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadedFeedPagesRef・loadingFeedIdsRef・logErrorRef は ref 経由で最新値を参照するため deps 不要
   }, []);
 
   const loadMoreAllFeedsArticles = useCallback(async (feeds: Feed[]): Promise<void> => {
@@ -224,7 +225,7 @@ export function useArticleData(
       (r): r is PromiseFulfilledResult<FeedPageResult> => r.status === "fulfilled",
     );
     if (succeeded.length < results.length) {
-      onErrRef.current(
+      logErrorRef.current(
         "loadMoreAllFeedsArticles: some feeds failed",
         "過去の記事の読み込みに失敗しました",
       );
@@ -240,7 +241,7 @@ export function useArticleData(
     if (succeeded.length === 0) return;
     const newArticles = succeeded.flatMap(({ value }) => value.data);
     if (newArticles.length > 0) setArticles((prev) => mergeUniqueArticles(prev, newArticles));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadedFeedPagesRef・loadingFeedIdsRef・onErrRef は ref 経由で最新値を参照するため deps 不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadedFeedPagesRef・loadingFeedIdsRef・logErrorRef は ref 経由で最新値を参照するため deps 不要
   }, []);
 
   const skipRemainingPages = useCallback((feedId: string | null, feeds: Feed[]) => {
