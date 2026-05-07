@@ -22,6 +22,7 @@
 
 ### リファクタリングっ
 
+- **`processNestedBlocks` を正規表現単一パスに変更してO(n²)を解消したよ〜** — Issue #507。タグごとに `indexOf` を繰り返す O(n × tags) ループを `matchAll` で全タグを一括収集 → スタックベースの単一パスに書き換えたよ〜🚀 `htmlLower` の二重保持も不要になって、コードもすっきりシンプルになったよっ✨
 - **`usePrefetchGalleryContents` の重複コンテンツ取得ロジックを `fetchAndCacheArticle` に抽出したよ〜** — Issue #500。`fetchOne`（バッチプリフェッチ）と `retryArticle`（手動リトライ）がほぼ同じ apiFetch → 429 判定 → 失敗記録 → キャッシュ書き込み → state 更新のフローを持ってたのを共通ヘルパーに集約したよっ🔧✨
 - **`deduplicateByLink` の重複検出を 1 パスに最適化したよ〜** — Issue #489。`linkGroups` の構築ループで `hasDupes` フラグも同時に立てるようにして、重複なし時の早期リターンをより確実に。最終フィルターも `Set.has` で O(1) ルックアップなのを明示したよ〜🚀
 - **`useArticleFilters` の `eslint-disable` コメントを全部消したよ〜** — Issue #504。`useCallback` の依存配列に `resetPageRef`・`dateRangeRef`・`readingTimeRangeRef`（いずれも `useSyncedRef` で常に安定）を明示的に追加することで、ESLint ルール違反なしに同等の効果を実現したよっ✨
