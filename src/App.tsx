@@ -911,14 +911,13 @@ export default function App() {
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
                 新着記事 {newArticleCount} 件
-                <span
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     dismissNewArticles();
                   }}
                   className="ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center -my-2 -mr-2 opacity-60 hover:opacity-100 transition-opacity"
                   aria-label="通知を閉じる"
-                  role="img"
                 >
                   <svg
                     width="12"
@@ -931,7 +930,7 @@ export default function App() {
                   >
                     <path d="M2 2l8 8M10 2l-8 8" />
                   </svg>
-                </span>
+                </button>
               </button>
             )}
             {/* 記事一覧フォーカスモード解除ボタン（PC のみ表示。モバイルは単一ペイン表示のため不要） */}

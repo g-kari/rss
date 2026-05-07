@@ -3,6 +3,7 @@ import { withJsonBody } from "@/lib/server-auth";
 import { timingSafeEqual } from "@/lib/auth";
 import { generateDbscChallenge, verifyDbscResponse, type DbscSession } from "@/lib/dbsc";
 import { r2Get, r2Put } from "@/lib/r2";
+import { apiError } from "@/lib/api-error";
 
 /**
  * POST /api/auth/dbsc/challenge
@@ -37,22 +38,19 @@ export async function POST(req: NextRequest) {
     const { sessionId, response, challenge } = body;
 
     if (typeof sessionId !== "string" || sessionId.length === 0) {
-      return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
+      return apiError("sessionId is required", 400);
     }
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
-      return NextResponse.json({ error: "invalid sessionId" }, { status: 400 });
+      return apiError("invalid sessionId", 400);
     }
 
     // Step 2: response が存在する場合は署名検証フロー
     if (response !== undefined) {
       if (typeof response !== "string" || response.length === 0 || response.length > 4096) {
-        return NextResponse.json({ error: "response must be a non-empty string" }, { status: 400 });
+        return apiError("response must be a non-empty string", 400);
       }
       if (typeof challenge !== "string" || challenge.length === 0 || challenge.length > 256) {
-        return NextResponse.json(
-          { error: "challenge is required when response is present" },
-          { status: 400 },
-        );
+        return apiError("challenge is required when response is present", 400);
       }
 
       // R2 から保存済みチャレンジを取得して検証
@@ -64,13 +62,13 @@ export async function POST(req: NextRequest) {
       );
 
       if (!storedChallenge) {
-        return NextResponse.json({ error: "Challenge not found or expired" }, { status: 401 });
+        return apiError("Challenge not found or expired", 401);
       }
 
       // 期限切れチェック
       if (storedChallenge.expiresAt < Date.now()) {
         env.RSS_DATA.delete(challengeKey).catch(() => {});
-        return NextResponse.json({ error: "Challenge expired" }, { status: 401 });
+        return apiError("Challenge expired", 401);
       }
 
       // リプレイ攻撃防止：チャレンジを即座に削除
@@ -78,7 +76,7 @@ export async function POST(req: NextRequest) {
 
       // チャレンジ値の照合
       if (!timingSafeEqual(storedChallenge.challenge, challenge)) {
-        return NextResponse.json({ error: "Challenge mismatch" }, { status: 401 });
+        return apiError("Challenge mismatch", 401);
       }
 
       // R2 から登録済み公開鍵を取得
@@ -88,13 +86,13 @@ export async function POST(req: NextRequest) {
         null,
       );
       if (!dbscSession) {
-        return NextResponse.json({ error: "DBSC session not found" }, { status: 404 });
+        return apiError("DBSC session not found", 404);
       }
 
       // 署名検証
       const verified = await verifyDbscResponse(challenge, response, dbscSession.publicKey);
       if (!verified) {
-        return NextResponse.json({ error: "Signature verification failed" }, { status: 401 });
+        return apiError("Signature verification failed", 401);
       }
 
       // 検証成功: lastVerifiedAt を更新

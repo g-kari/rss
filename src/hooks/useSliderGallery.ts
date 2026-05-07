@@ -12,8 +12,10 @@ export function useSliderGallery(
   processedContent: string | null,
 ): void {
   useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
     const el = contentRef.current;
-    if (!el) return;
+    if (!el) return () => controller.abort();
     const sliders = el.querySelectorAll<HTMLElement>(".rss-image-slider");
     sliders.forEach((slider) => {
       if (slider.closest(".rss-slider-wrapper")) return; // 二重注入を防止
@@ -41,11 +43,14 @@ export function useSliderGallery(
           `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="white" ` +
           `stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
           `<path d="${path}"/></svg>`;
-        btn.addEventListener("click", () =>
-          slider.scrollBy({
-            left: dir === "prev" ? -slider.clientWidth : slider.clientWidth,
-            behavior: "smooth",
-          }),
+        btn.addEventListener(
+          "click",
+          () =>
+            slider.scrollBy({
+              left: dir === "prev" ? -slider.clientWidth : slider.clientWidth,
+              behavior: "smooth",
+            }),
+          { signal },
         );
         wrapper.appendChild(btn);
         return btn;
@@ -53,14 +58,22 @@ export function useSliderGallery(
 
       const prevBtn = makeNavBtn("prev");
       const nextBtn = makeNavBtn("next");
-      wrapper.addEventListener("mouseenter", () => {
-        prevBtn.style.opacity = "1";
-        nextBtn.style.opacity = "1";
-      });
-      wrapper.addEventListener("mouseleave", () => {
-        prevBtn.style.opacity = "0";
-        nextBtn.style.opacity = "0";
-      });
+      wrapper.addEventListener(
+        "mouseenter",
+        () => {
+          prevBtn.style.opacity = "1";
+          nextBtn.style.opacity = "1";
+        },
+        { signal },
+      );
+      wrapper.addEventListener(
+        "mouseleave",
+        () => {
+          prevBtn.style.opacity = "0";
+          nextBtn.style.opacity = "0";
+        },
+        { signal },
+      );
 
       // マウスホイールの縦スクロールを横スクロールに変換（PC 操作性向上）
       slider.addEventListener(
@@ -73,9 +86,10 @@ export function useSliderGallery(
             behavior: "smooth",
           });
         },
-        { passive: false },
+        { passive: false, signal },
       );
     });
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- contentRef は useSyncedRef の安定参照のため deps 不要
   }, [processedContent]);
 }

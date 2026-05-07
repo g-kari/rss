@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withJsonBody, bindDbscToServerSession, SESSION_COOKIE } from "@/lib/server-auth";
 import { r2Get, r2Put } from "@/lib/r2";
 import { importDbscPublicKey, type DbscSession } from "@/lib/dbsc";
+import { apiError } from "@/lib/api-error";
 
 /**
  * POST /api/auth/dbsc/register
@@ -37,26 +38,26 @@ export async function POST(req: NextRequest) {
       publicKey.length === 0 ||
       publicKey.length > MAX_PUBLIC_KEY_LENGTH
     ) {
-      return NextResponse.json({ error: "publicKey is invalid" }, { status: 400 });
+      return apiError("publicKey is invalid", 400);
     }
     if (typeof sessionId !== "string" || sessionId.length === 0) {
-      return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
+      return apiError("sessionId is required", 400);
     }
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
-      return NextResponse.json({ error: "invalid sessionId" }, { status: 400 });
+      return apiError("invalid sessionId", 400);
     }
     if (
       attestation !== undefined &&
       (typeof attestation !== "string" || attestation.length > MAX_ATTESTATION_LENGTH)
     ) {
-      return NextResponse.json({ error: "attestation must be a string" }, { status: 400 });
+      return apiError("attestation must be a string", 400);
     }
     if (
       typeof challenge !== "string" ||
       challenge.length === 0 ||
       challenge.length > MAX_CHALLENGE_LENGTH
     ) {
-      return NextResponse.json({ error: "challenge is invalid" }, { status: 400 });
+      return apiError("challenge is invalid", 400);
     }
 
     // 登録フローで発行したチャレンジを R2 から取得して照合
@@ -68,24 +69,24 @@ export async function POST(req: NextRequest) {
     );
 
     if (!pendingChallenge) {
-      return NextResponse.json({ error: "Challenge not found or expired" }, { status: 401 });
+      return apiError("Challenge not found or expired", 401);
     }
     if (pendingChallenge.expiresAt < Date.now()) {
       env.RSS_DATA.delete(pendingKey).catch(() => {});
-      return NextResponse.json({ error: "Challenge expired" }, { status: 401 });
+      return apiError("Challenge expired", 401);
     }
     // チャレンジを削除（一回限り使用）— 照合前に削除してリプレイ攻撃を防ぐ
     await env.RSS_DATA.delete(pendingKey);
 
     if (pendingChallenge.challenge !== challenge) {
-      return NextResponse.json({ error: "Challenge mismatch" }, { status: 401 });
+      return apiError("Challenge mismatch", 401);
     }
 
     // P-256 ECDSA 公開鍵フォーマット検証
     try {
       await importDbscPublicKey(publicKey);
     } catch {
-      return NextResponse.json({ error: "Invalid P-256 public key" }, { status: 400 });
+      return apiError("Invalid P-256 public key", 400);
     }
 
     // 既存の DBSC バインドがある場合は上書きを拒否する（Issue #433: クロスデバイス上書き防止）
@@ -96,10 +97,7 @@ export async function POST(req: NextRequest) {
       null,
     );
     if (existingSession) {
-      return NextResponse.json(
-        { error: "DBSC session already registered. Delete existing binding first." },
-        { status: 409 },
-      );
+      return apiError("DBSC session already registered. Delete existing binding first.", 409);
     }
 
     // DbscSession を R2 に保存

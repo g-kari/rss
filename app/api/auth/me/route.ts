@@ -14,6 +14,9 @@ import {
 } from "@/lib/server-auth";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
+import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+
+const AUTH_ME_COOLDOWN_MS = 5 * 1000; // 5秒
 
 type VerifyResult =
   | { kind: "invalid" }
@@ -47,7 +50,18 @@ export async function GET() {
     return NextResponse.json({ user: null });
   }
 
+  // セッション ID または アクセストークン を持つリクエストにのみレートリミットを適用
+  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
   const token = cookieStore.get("access_token")?.value;
+  const rateLimitId = sessionId ?? token;
+  if (rateLimitId) {
+    const limited = await checkAndUpdateCooldown(
+      env.RATE_LIMIT,
+      `${rateLimitId}:auth-me-cooldown`,
+      AUTH_ME_COOLDOWN_MS,
+    );
+    if (limited) return limited;
+  }
   if (token) {
     const r = await verifyAndLoad(token, authBaseUrl, env);
     if (r.kind === "restricted") return NextResponse.json({ user: null, betaRestricted: true });
@@ -57,7 +71,6 @@ export async function GET() {
   // アクセストークン期限切れ → サーバーサイドセッション経由でリフレッシュ試行
   // deduplicatedRefresh を使うことで、同一アイソレート内で /api/auth/me と他の
   // Route Handler が同時に refresh しようとしても 1 回だけ実行される。
-  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
   if (sessionId) {
     const sessionData = await getServerSession(env.RSS_DATA, sessionId);
     if (!sessionData) {

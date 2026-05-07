@@ -9,3 +9,9 @@ export const AI_MODELS = [
 export type WorkersAiModelId = (typeof AI_MODELS)[number]["id"];
 
 export const DEFAULT_AI_MODEL: WorkersAiModelId = "@cf/meta/llama-3.1-8b-instruct";
+
+export const VALID_MODEL_IDS = AI_MODELS.map((m) => m.id) as ReadonlyArray<WorkersAiModelId>;
+
+export function isWorkersAiModelId(v: unknown): v is WorkersAiModelId {
+  return typeof v === "string" && (VALID_MODEL_IDS as readonly string[]).includes(v);
+}
