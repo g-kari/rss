@@ -13,8 +13,6 @@ import { r2Get, r2Put, sha256Hex } from "./r2";
 import { compareByDateDesc } from "./article-utils";
 import { pMap } from "./concurrency";
 
-export { pMap };
-
 /** 1 ページあたりの記事数 */
 export const PAGE_SIZE = 500;
 

@@ -7,13 +7,8 @@ import type {
 import { r2Get, r2Put, sha256Hex, engagementKey } from "./r2";
 import { scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
 import { discoverFeedUrl } from "./feed-discovery";
-import {
-  buildFeedUserMap,
-  readFeedMeta,
-  readLatestArticles,
-  pMap,
-  R2_CONCURRENCY,
-} from "./shared-feed";
+import { buildFeedUserMap, readFeedMeta, readLatestArticles, R2_CONCURRENCY } from "./shared-feed";
+import { pMap } from "./concurrency";
 import { fetchWithTimeout } from "./fetch";
 import { buildContentCacheKey } from "./fetch-article-content";
 

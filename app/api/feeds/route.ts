@@ -24,11 +24,11 @@ import {
   readUserSubscriptions,
   writeUserSubscriptions,
   assembleClientFeed,
-  pMap,
   R2_CONCURRENCY,
   MAX_FEEDS_PER_USER,
   FEED_USER_MAP_CACHE_KEY,
 } from "@/lib/shared-feed";
+import { pMap } from "@/lib/concurrency";
 import type { SelectorConfig } from "@/types";
 import { registerAndFetchFeed } from "@/cron/fetch";
 import type { UserSubscription } from "@/types";

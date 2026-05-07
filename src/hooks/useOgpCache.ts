@@ -27,7 +27,7 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
     if (!linksKey) return;
 
     // linksKey.split() の代わりに visible から直接リンクを取得
-    const allLinks = visible.map((a) => a.link).filter(Boolean) as string[];
+    const allLinks = visible.map((a) => a.link).filter((l): l is string => l != null);
     const newLinks = allLinks.filter((link) => !seenLinksRef.current.has(link));
     if (newLinks.length === 0) return;
 

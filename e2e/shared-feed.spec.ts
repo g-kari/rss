@@ -3,7 +3,6 @@ import {
   computeFeedHash,
   computeArticleId,
   computePrivateFeedHash,
-  pMap,
   assembleClientFeed,
   mergeNewArticles,
   PAGE_SIZE,
@@ -13,6 +12,7 @@ import {
   MAX_USER_ARTICLES,
   R2_CONCURRENCY,
 } from "../src/lib/shared-feed";
+import { pMap } from "../src/lib/concurrency";
 import type { SharedFeedMeta, UserSubscription, Article } from "../src/types";
 
 // ── ヘルパー ──────────────────────────────────────────────────────
