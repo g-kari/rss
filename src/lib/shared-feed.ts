@@ -297,7 +297,9 @@ export function isArticleMutated(ex: Article, incoming: Article): boolean {
     const av = incoming[key];
     const ev = ex[key];
     if (Array.isArray(av) || Array.isArray(ev)) {
-      if (JSON.stringify(av ?? null) !== JSON.stringify(ev ?? null)) return true;
+      if (!Array.isArray(av) || !Array.isArray(ev)) return true;
+      if (av.length !== ev.length) return true;
+      if (JSON.stringify(av) !== JSON.stringify(ev)) return true;
     } else if (av !== ev) {
       return true;
     }
@@ -366,15 +368,13 @@ export async function mergeNewArticles(
     if (oversized) meta.oversizeAlert = true;
   }
 
-  // knownIds を更新
-  // latest ページの ID を末尾に配置して切り詰め時に必ず残るようにする
+  // knownIds を更新: latest ページ ID を末尾に置いて切り詰め時に必ず残るようにする
+  // historical / overflowNewIds / latestPageIds は互いに disjoint のため dedup 不要
+  const latestPageIds = new Set(merged.slice(0, PAGE_SIZE).map((a) => a.id));
   const prevKnown = meta.knownIds ?? latest.map((a) => a.id);
-  const newIds = brandNew.map((a) => a.id);
-  const latestIds = new Set(merged.slice(0, PAGE_SIZE).map((a) => a.id));
-  const historical = prevKnown.filter((id) => !latestIds.has(id));
-  const updatedKnownIds = [...historical, ...newIds, ...latestIds];
-  const uniqueKnown = [...new Set(updatedKnownIds)];
-  meta.knownIds = uniqueKnown.slice(-KNOWN_IDS_MAX);
+  const historical = prevKnown.filter((id) => !latestPageIds.has(id));
+  const overflowNewIds = brandNew.filter((a) => !latestPageIds.has(a.id)).map((a) => a.id);
+  meta.knownIds = [...historical, ...overflowNewIds, ...latestPageIds].slice(-KNOWN_IDS_MAX);
 
   meta.articleCount = (meta.articleCount ?? 0) + brandNew.length;
   return brandNew;
