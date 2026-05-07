@@ -33,22 +33,21 @@ export function useCollections(
       setCollections([]);
       return;
     }
-    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
-    apiFetchJson<Collection[]>("/api/collections")
+    apiFetchJson<Collection[]>("/api/collections", { signal: controller.signal })
       .then((data) => {
-        if (!cancelled) setCollections(sortByOrder(data));
+        setCollections(sortByOrder(data));
       })
       .catch((err) => {
+        if (err.name === "AbortError") return;
         devError(err);
         onErrorRef.current?.("コレクションの読み込みに失敗しました");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onErrorRef は ref 経由で最新値を参照するため deps 不要
   }, [user]);
 

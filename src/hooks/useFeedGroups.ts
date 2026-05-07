@@ -48,22 +48,21 @@ export function useFeedGroups(
       setGroups([]);
       return;
     }
-    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
-    apiFetchJson<FeedGroup[]>("/api/feed-groups")
+    apiFetchJson<FeedGroup[]>("/api/feed-groups", { signal: controller.signal })
       .then((data) => {
-        if (!cancelled) setGroups(sortByOrder(data));
+        setGroups(sortByOrder(data));
       })
       .catch((err) => {
+        if (err.name === "AbortError") return;
         devError(err);
         onErrorRef.current?.("フィードグループの読み込みに失敗しました");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onErrorRef は ref 経由で最新値を参照するため deps 不要
   }, [user]);
 

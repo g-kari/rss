@@ -30,18 +30,20 @@ export function useFeedData(
 
   const userId = user?.id ?? null;
 
-  const fetchFeeds = useCallback(async (): Promise<Feed[]> => {
-    const data = await apiFetchJson<Feed[]>("/api/feeds");
+  const fetchFeeds = useCallback(async (signal?: AbortSignal): Promise<Feed[]> => {
+    const data = await apiFetchJson<Feed[]>("/api/feeds", { signal });
     setFeeds(data);
     return data;
   }, []);
 
   useEffect(() => {
     if (!userId) return;
+    const controller = new AbortController();
     setLoadingFeeds(true);
     setFeedLoadError(false);
-    fetchFeeds()
+    fetchFeeds(controller.signal)
       .catch((err) => {
+        if (err.name === "AbortError") return;
         devError(err);
         onErrorRef.current?.("フィードの読み込みに失敗しました");
         setFeedLoadError(true);
@@ -49,6 +51,7 @@ export function useFeedData(
       .finally(() => {
         setLoadingFeeds(false);
       });
+    return () => controller.abort();
   }, [userId, fetchFeeds, onErrorRef]);
 
   const retryFeedList = useCallback(() => {
