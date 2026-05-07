@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import type { Feed, FeedPatchPayload, FeedView, KeywordFilter } from "../types";
 import { apiFetch } from "../lib/api-fetch";
+import { devError } from "../lib/dev-log";
 import { isFeed } from "../lib/type-guards";
 
 export interface FeedPatchActions {
@@ -32,66 +33,114 @@ export function useFeedPatch(updateFeed: (feed: Feed) => void): FeedPatchActions
     [],
   );
 
-  const applyFeedPatch = useCallback(
-    async (id: string, patch: FeedPatchPayload): Promise<Feed | null> => {
-      const updated = await patchFeed(id, patch);
-      if (updated) updateFeed(updated);
-      return updated;
+  /**
+   * 楽観的更新パターン:
+   * 1. optimisticFeed でローカル state を即時更新（サーバー応答を待たない）
+   * 2. PATCH リクエストを送信
+   * 3. 成功時はサーバー応答で確定 / 失敗時は元の feed にロールバック
+   */
+  const applyFeedPatchOptimistic = useCallback(
+    async (feed: Feed, optimisticFeed: Feed, patch: FeedPatchPayload): Promise<Feed | null> => {
+      // 楽観的更新
+      updateFeed(optimisticFeed);
+      try {
+        const updated = await patchFeed(feed.id, patch);
+        if (updated) {
+          // サーバー応答で確定（楽観的更新との差分を解消）
+          updateFeed(updated);
+          return updated;
+        }
+        // res.ok=false の場合はロールバック
+        updateFeed(feed);
+        return null;
+      } catch (err) {
+        devError("[useFeedPatch] patch failed:", err);
+        // エラーはロールバック
+        updateFeed(feed);
+        return null;
+      }
     },
     [patchFeed, updateFeed],
   );
 
   const toggleNsfwFeed = useCallback(
-    (feed: Feed) => applyFeedPatch(feed.id, { nsfw: !feed.nsfw }),
-    [applyFeedPatch],
+    (feed: Feed) =>
+      applyFeedPatchOptimistic(feed, { ...feed, nsfw: !feed.nsfw }, { nsfw: !feed.nsfw }),
+    [applyFeedPatchOptimistic],
   );
 
   const togglePriorityFeed = useCallback(
-    (feed: Feed) => applyFeedPatch(feed.id, { priority: feed.priority === "high" ? null : "high" }),
-    [applyFeedPatch],
+    (feed: Feed) => {
+      const newPriority: "high" | null = feed.priority === "high" ? null : "high";
+      const optimisticFeed: Feed = {
+        ...feed,
+        priority: newPriority === "high" ? "high" : undefined,
+      };
+      return applyFeedPatchOptimistic(feed, optimisticFeed, { priority: newPriority });
+    },
+    [applyFeedPatchOptimistic],
   );
 
   const setCategoryFeed = useCallback(
     async (feed: Feed, category: string | null) => {
-      await applyFeedPatch(feed.id, { category });
+      await applyFeedPatchOptimistic(
+        feed,
+        { ...feed, category: category ?? undefined },
+        {
+          category,
+        },
+      );
     },
-    [applyFeedPatch],
+    [applyFeedPatchOptimistic],
   );
 
   const setGroupFeed = useCallback(
     async (feed: Feed, groupId: string | null) => {
-      await applyFeedPatch(feed.id, { groupId });
+      await applyFeedPatchOptimistic(feed, { ...feed, groupId: groupId ?? undefined }, { groupId });
     },
-    [applyFeedPatch],
+    [applyFeedPatchOptimistic],
   );
 
   const muteFeed = useCallback(
     async (feed: Feed, mutedUntil: string | null) => {
-      await applyFeedPatch(feed.id, { mutedUntil });
+      await applyFeedPatchOptimistic(
+        feed,
+        { ...feed, mutedUntil: mutedUntil ?? undefined },
+        { mutedUntil },
+      );
     },
-    [applyFeedPatch],
+    [applyFeedPatchOptimistic],
   );
 
   const setFeedView = useCallback(
     async (feed: Feed, view: FeedView | null) => {
-      await applyFeedPatch(feed.id, { view });
+      await applyFeedPatchOptimistic(feed, { ...feed, view: view ?? undefined }, { view });
     },
-    [applyFeedPatch],
+    [applyFeedPatchOptimistic],
   );
 
   const saveFilter = useCallback(
     async (feedId: string, filter: KeywordFilter | null) => {
-      const updated = await applyFeedPatch(feedId, { filter });
-      if (!updated) throw new Error("フィルターの保存に失敗しました");
+      // saveFilter はフィードオブジェクトなしで呼ばれるため楽観的更新なし（サーバー応答後に確定）
+      const updated = await patchFeed(feedId, { filter });
+      if (updated) {
+        updateFeed(updated);
+      } else {
+        throw new Error("フィルターの保存に失敗しました");
+      }
     },
-    [applyFeedPatch],
+    [patchFeed, updateFeed],
   );
 
   const setDigestLimit = useCallback(
     async (feed: Feed, limit: number | null) => {
-      await applyFeedPatch(feed.id, { digestLimit: limit });
+      await applyFeedPatchOptimistic(
+        feed,
+        { ...feed, digestLimit: limit ?? undefined },
+        { digestLimit: limit },
+      );
     },
-    [applyFeedPatch],
+    [applyFeedPatchOptimistic],
   );
 
   return {
