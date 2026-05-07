@@ -11,6 +11,8 @@
 ### パフォーマンス改善っ
 
 - **`useFeedSidebarActions` の deps を `useSyncedRef` でスリム化したよ〜** — Issue #530。記事を読むたびにサイドバー全体が再レンダリングされてた問題を修正！`readIds`・`articles` 等を `useSyncedRef` でラップして deps から外したことで無駄な再描画がなくなったよっ✨🎀
+- **`FeedSidebar` に `totalUnread` を prop 経由で渡して二重計算をなくしたよ〜** — Issue #533。App.tsx で計算済みの値をそのまま渡すだけで `useSidebarFeeds` による同じ全記事走査が不要に！✨🚀
+- **`getUserLatestArticles` の無制限並行 R2 アクセスを `pMap` で制限したよ〜** — Issue #534。`Promise.all` で全フィードを一斉に R2 GET してた問題を `pMap(R2_CONCURRENCY=50)` に変更！Workers サブリクエスト上限リスクを解消したよっ🔒
 
 ### テストっ
 
