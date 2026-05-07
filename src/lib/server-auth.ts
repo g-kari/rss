@@ -353,14 +353,24 @@ export async function withSession(
   const result = await requireSession();
   if ("error" in result) return result.error;
   const { env, ctx } = await getCloudflareContext({ async: true });
+  const requestId = crypto.randomUUID().slice(0, 8);
+  const url = new URL(req.url);
+  console.log(
+    `[access] ${req.method} ${url.pathname} userId=${result.session.userId} requestId=${requestId}`,
+  );
   try {
     const response = await handler({ session: result.session, env, ctx });
     return applyRefreshedTokens(response, result.session);
   } catch (err) {
     // スタックトレースにシークレットが含まれるリスクを避けるため、メッセージのみをログに出力する
     const name = err instanceof Error ? err.name : "UnknownError";
-    console.error("[withSession] unhandled error:", name, formatError(err));
-    return apiError("Internal Server Error", 500, { code: "INTERNAL_ERROR" });
+    const incident = crypto.randomUUID().slice(0, 8);
+    console.error(
+      `[withSession] unhandled error requestId=${requestId} incident=${incident}:`,
+      name,
+      formatError(err),
+    );
+    return apiError("Internal Server Error", 500, { code: "INTERNAL_ERROR", incident });
   }
 }
 
@@ -453,12 +463,22 @@ export async function withBinarySession(
   const result = await requireSession();
   if ("error" in result) return result.error;
   const { env, ctx } = await getCloudflareContext({ async: true });
+  const requestId = crypto.randomUUID().slice(0, 8);
+  const url = new URL(req.url);
+  console.log(
+    `[access] ${req.method} ${url.pathname} userId=${result.session.userId} requestId=${requestId}`,
+  );
   try {
     const response = await handler({ session: result.session, env, ctx });
     return applyRefreshedTokensToResponse(response, result.session);
   } catch (err) {
     const name = err instanceof Error ? err.name : "UnknownError";
-    console.error("[withBinarySession] unhandled error:", name, formatError(err));
+    const incident = crypto.randomUUID().slice(0, 8);
+    console.error(
+      `[withBinarySession] unhandled error requestId=${requestId} incident=${incident}:`,
+      name,
+      formatError(err),
+    );
     return new Response("Internal Server Error", { status: 500 });
   }
 }

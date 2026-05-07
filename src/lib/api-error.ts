@@ -9,6 +9,7 @@ export interface ApiError {
   code?: string;
   hint?: string;
   retryable?: boolean;
+  incident?: string; // インシデントID（5xxエラー時に設定）
   [key: string]: unknown;
 }
 
