@@ -2,6 +2,10 @@
 
 ## 2026-05-07 (latest)
 
+### UX 改善っ
+
+- **Chrome AI 利用不可時に具体的な理由と手順を表示するよ〜** — Issue #512。要約プロバイダが Workers AI にフォールバックしてる時、「Chrome の設定を確認してください」って曖昧なメッセージしか出てなかったのを改善したよっ！モデルダウンロード中・ストレージ不足・フラグ未設定など理由別に具体的なアクションを表示するようにしたよ〜🔍✨
+
 ### セキュリティ対策っ
 
 - **OAuth callback の認可コードに長さ・文字種バリデーションを追加したよ〜** — Issue #484。`code` パラメータが 512 文字超 or 英数字・ハイフン・アンダースコア以外の場合に 400 を返すようにしたよっ！外部リクエスト発生前にはじくから安心だよ〜🔒✨
@@ -11,6 +15,7 @@
 
 - **Cron の `feed-last-fetched.json` 更新から不要な R2 GET を除去したよ〜** — Issue #483。毎 Cron 実行でユーザー数分の R2 GET が走ってたのを直接上書きに変更して Cron 実行を高速化したよっ🚀✨
 - **`mergeNewArticles` の `existingLatest` を必須化して二重 R2 GET を排除したよ〜** — Issue #496。`existingLatest?: Article[] | null` → `existingLatest: Article[]` に変更してコンパイル時に二重 GET の可能性を排除したよっ🚀💡
+- **`/api/articles` の R2 GET を全フィード真並列化したよ〜** — Issue #486。`getUserLatestArticles` を `pMap(concurrency=10)` から `Promise.all` に変更して、フィード数が多いユーザーの応答を高速化したよっ！CF Workers は最大 1000 サブリクエスト対応だから直列バッチ制限を排除できるよ〜🚀✨ `R2_CONCURRENCY` も 10 → 50 に引き上げて `readFeedMeta` バッチも速くなったよっ
 
 ### バグ修正っ
 
