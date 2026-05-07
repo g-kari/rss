@@ -650,9 +650,11 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
                         {summarizerDiag.reason === "chrome-too-old" &&
                           "Chrome Summarizer API は Chrome 131 以上が必要です。Chrome をアップデートしてください"}
                         {summarizerDiag.reason === "flag-disabled" &&
-                          "chrome://flags/#summarization-api-for-gemini-nano を Enabled にして Chrome を再起動してください"}
-                        {summarizerDiag.reason === "not-available" &&
-                          "要約モデルが利用できません。Chrome の設定を確認してください"}
+                          "chrome://flags/#summarization-api-for-gemini-nano を Enabled にして Chrome を再起動してください（Chrome 138 以上では chrome://flags/#optimization-guide-on-device-model も Enabled にしてください）"}
+                        {summarizerDiag.reason === "model-downloading" &&
+                          "要約モデルをダウンロード中です。しばらくお待ちください（chrome://settings/aiPage でダウンロード状況を確認できます）"}
+                        {summarizerDiag.reason === "model-unavailable" &&
+                          "要約モデルをデバイスで使用できません。ストレージ空き容量を確認してください"}
                       </span>
                     )}
                   </div>

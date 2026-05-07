@@ -48,7 +48,8 @@ export type SummarizerUnavailableReason =
   | "not-chromium"
   | "chrome-too-old"
   | "flag-disabled"
-  | "not-available"
+  | "model-downloading"
+  | "model-unavailable"
   | null;
 
 export async function diagnoseSummarizerAvailability(): Promise<{
@@ -71,9 +72,10 @@ export async function diagnoseSummarizerAvailability(): Promise<{
       length: "medium",
     });
     if (shouldUseBrowserSummarizer(availability)) return { available: true, reason: null };
-    return { available: false, reason: "not-available" };
+    if (availability === "downloading") return { available: false, reason: "model-downloading" };
+    return { available: false, reason: "model-unavailable" };
   } catch {
-    return { available: false, reason: "not-available" };
+    return { available: false, reason: "model-unavailable" };
   }
 }
 
