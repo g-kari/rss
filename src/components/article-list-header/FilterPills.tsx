@@ -56,7 +56,7 @@ export default function FilterPills({
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   const feedCategories = useMemo(
-    () => [...new Set(feeds.map((f) => f.category).filter(Boolean) as string[])].sort(),
+    () => [...new Set(feeds.map((f) => f.category).filter((c): c is string => c != null))].sort(),
     [feeds],
   );
 

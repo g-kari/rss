@@ -18,6 +18,12 @@
 - **ギャラリーのチカチカが減ったよ〜** — Issue #517。OGP 画像が 1 件取得されるたびにギャラリー全カードが再レンダリングされていた問題を修正！`ogpCacheRef.current` を使うように変更して無駄な再描画をなくしたよっ✨🚀
 - **Cron Push通知の R2 二重読み込みを削減したよ〜** — Issue #522。`sendPushBatched` と `sendPushError` を `sendPushAll` に統合して、同一ユーザーの `push.json` を1回だけ読むようにしたよっ！Cron 実行中の R2 操作コストが下がってコスパ最高〜✨🚀
 
+### リファクタリングっ
+
+- **`stripHtml` の重複実装を統合したよ〜** — Issue #523。`full-text-search.ts` にあった独自 `stripHtml` 関数を削除して `html.ts` の正規実装を import するように一本化したよっ🔧
+- **`pMap` の再エクスポートをスッキリさせたよ〜** — Issue #523。`shared-feed.ts` からの `export { pMap }` を削除して、各呼び出し元が `concurrency.ts` から直接 import するように整理したよっ✨
+- **`filter(Boolean)` を型安全な型ガードに置き換えたよ〜** — Issue #523。`as string[]` キャストを使わずに `filter((x): x is string => x != null)` で型安全に書き直したよっ💡
+
 ---
 
 ## 2026-05-07

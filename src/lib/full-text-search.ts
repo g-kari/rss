@@ -9,6 +9,8 @@
  * - 構文を含まない単純クエリは title / summary / author / categories / content を横断 (既存互換)
  */
 
+import { stripHtml } from "./html";
+
 export type SearchField = "title" | "author" | "feed" | "category" | "content";
 
 const FIELD_NAMES: ReadonlySet<SearchField> = new Set([
@@ -176,12 +178,6 @@ export function parseSearchQuery(query: string): SearchNode | null {
 /* -------------------------------------------------------------------------- */
 /*                                  Evaluator                                 */
 /* -------------------------------------------------------------------------- */
-
-const HTML_TAG_RE = /<[^>]*>/g;
-
-function stripHtml(html: string): string {
-  return html.replace(HTML_TAG_RE, " ");
-}
 
 function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: SearchContext): string {
   switch (field) {
