@@ -40,7 +40,7 @@ export function isSummarizerApiSupported(): boolean {
   return typeof self !== "undefined" && "Summarizer" in self;
 }
 
-function shouldUseBrowserSummarizer(availability: Availability): boolean {
+export function shouldUseBrowserSummarizer(availability: Availability): boolean {
   return availability === "available" || availability === "downloadable";
 }
 
