@@ -38,6 +38,8 @@ export interface ArticleItemProps {
   query: string;
   /** 同一リンクの重複記事があるフィード名一覧（重複検出時のみ） */
   duplicateFeedNames?: string[];
+  /** role="feed" 内の総記事数（aria-setsize 用） */
+  totalCount?: number;
   // 親の安定参照をそのまま渡す（子側でクロージャを生成してメモ比較を壊さない）
   onSelectArticle: (a: Article) => void;
   onToggleRead: (id: string) => void;

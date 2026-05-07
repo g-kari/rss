@@ -66,5 +66,12 @@ invocation_logs = true
 # Brave Search API (レコメンドエンジン用、オプション):
 # npx wrangler secret put BRAVE_SEARCH_API_KEY
 #
+# セルフホスト RSSHub 連携 (オプション):
+# npx wrangler secret put RSSHUB_INSTANCE_URL    # 例: https://rsshub.example.com
+# npx wrangler secret put RSSHUB_ACCESS_KEY      # RSSHub のアクセスキー (未設定時はなし)
+#
+# Workers 間通信の User-Agent (オプション、Cloudflare Bot Fight Mode 回避用):
+# wrangler.toml の [vars] に追記: INTERNAL_SERVICE_USER_AGENT = "my-app/1.0"
+#
 # ※ INTERNAL_SERVICE_SECRET_RSS は廃止。Basic 認証 (CLIENT_ID/CLIENT_SECRET) のみ使用。
 # 0g0-id の services テーブルに CLIENT_ID を登録しておくこと。

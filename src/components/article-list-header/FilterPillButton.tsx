@@ -14,6 +14,8 @@ export default function FilterPillButton({
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       className={`${PILL_BASE_CLASS} ${active ? PILL_ACTIVE_CLASSES[variant] : PILL_INACTIVE_CLASS}`}
     >
       {children}

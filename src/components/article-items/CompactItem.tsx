@@ -18,6 +18,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   showFeedName,
   query,
   duplicateFeedNames,
+  totalCount,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -36,6 +37,8 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   return (
     <div
       role="article"
+      aria-setsize={totalCount ?? -1}
+      aria-posinset={index + 1}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}

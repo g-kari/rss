@@ -178,6 +178,13 @@ Brave Search API キー（フィード推薦で外部検索を使う場合のみ
 npx wrangler secret put BRAVE_SEARCH_API_KEY
 ```
 
+セルフホスト RSSHub を使う場合（オプション）:
+
+```bash
+npx wrangler secret put RSSHUB_INSTANCE_URL   # 例: https://rsshub.example.com
+npx wrangler secret put RSSHUB_ACCESS_KEY     # RSSHub のアクセスキー（未設定時はなし）
+```
+
 ### 7. wrangler.toml 設定
 
 `wrangler.toml` の `[vars]` を環境に合わせて更新:

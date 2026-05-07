@@ -25,6 +25,7 @@ export const CardArticleItem = memo(function CardArticleItem({
   showFeedName,
   query,
   duplicateFeedNames,
+  totalCount,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -43,6 +44,8 @@ export const CardArticleItem = memo(function CardArticleItem({
   return (
     <div
       role="article"
+      aria-setsize={totalCount ?? -1}
+      aria-posinset={index + 1}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}

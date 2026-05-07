@@ -524,6 +524,7 @@ export default function FeedItem({
     <div
       role="option"
       aria-selected={isSelected}
+      aria-label={feed.title || feed.url}
       onClick={
         editing || categoryEditing
           ? undefined
