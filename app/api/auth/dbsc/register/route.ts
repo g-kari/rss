@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withJsonBody, bindDbscToServerSession, SESSION_COOKIE } from "@/lib/server-auth";
 import { r2Get, r2Put } from "@/lib/r2";
 import { importDbscPublicKey, type DbscSession } from "@/lib/dbsc";
+import { timingSafeEqual } from "@/lib/auth";
 import { apiError } from "@/lib/api-error";
 
 /**
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
     // チャレンジを削除（一回限り使用）— 照合前に削除してリプレイ攻撃を防ぐ
     await env.RSS_DATA.delete(pendingKey);
 
-    if (pendingChallenge.challenge !== challenge) {
+    if (!timingSafeEqual(pendingChallenge.challenge, challenge)) {
       return apiError("Challenge mismatch", 401);
     }
 

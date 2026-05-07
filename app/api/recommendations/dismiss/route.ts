@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withJsonBody, requireString } from "@/lib/server-auth";
+import { withJsonBody, requireString, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readCache, writeCache } from "@/lib/recommendation";
 import { MAX_ID_LENGTH, MAX_DISMISSED_IDS } from "@/lib/validation";
+
+const DISMISS_COOLDOWN_MS = 2 * 1000; // 2秒
 
 export async function POST(req: NextRequest) {
   return withJsonBody<{ id?: unknown }>(req, async ({ body, session, env }) => {
@@ -10,6 +12,13 @@ export async function POST(req: NextRequest) {
     if (!dismissId) {
       return apiError("id is required", 400, { code: "INVALID_ID" });
     }
+
+    const limited = await applyCooldown(
+      env.RATE_LIMIT,
+      `${session.userId}:dismiss-cooldown`,
+      DISMISS_COOLDOWN_MS,
+    );
+    if (limited) return limited;
 
     const cache = await readCache(env.RSS_DATA, session.userId);
     if (!cache) {
