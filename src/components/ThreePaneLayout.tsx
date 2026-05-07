@@ -22,7 +22,7 @@ export default function ThreePaneLayout({
   return (
     <div
       data-layout="root"
-      className="relative h-screen font-sans antialiased bg-surface-base text-text-strong lg:grid"
+      className="relative h-screen overflow-hidden font-sans antialiased bg-surface-base text-text-strong lg:grid"
       style={{
         gridTemplateColumns: listFocusMode ? `0px 1fr 0px` : `${sidebarWidth}px ${listWidth}px 1fr`,
         gridTemplateRows: "100%",
