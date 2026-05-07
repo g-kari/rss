@@ -4,6 +4,7 @@
 
 ### セキュリティ対策っ
 
+- **`GET /api/recommendations` から副作用（AI 生成・R2 書き込み・KV 書き込み）を除去したよ〜** — Issue #560。HTTP GET が R2/KV 書き込みと Workers AI 呼び出しを発動してたのを修正！GET はキャッシュ読み取りのみ、生成は `POST /refresh` に移動して HTTP セマンティクス準拠・CSRF 安全になったよっ🔒✨
 - **`withJsonBody` に 512KB ペイロード上限チェックを追加したよ〜** — Issue #558。大きな JSON ボディで Worker OOM を誘発できてたのを `request.text()` でサイズ確認してから parse するよう修正したよっ🔒✨
 
 ### パフォーマンス改善っ

@@ -12,25 +12,30 @@ interface UseRecommendationsResult {
   refreshing: boolean;
 }
 
-/**
- * フィード推薦取得フック。
- *
- * `/api/recommendations` から推薦フィード一覧を取得する。
- * 推薦結果は R2 に 24 時間キャッシュされ、Workers AI でエンゲージメント履歴を分析して生成される。
- * `user` が未ログインの場合はフェッチしない。
- * `dismiss(id)` で特定の推薦を非表示にし、`refresh()` でキャッシュを破棄して再生成する。
- */
 export function useRecommendations(user: UserProfile | null | undefined): UseRecommendationsResult {
   const [recommendations, setRecommendations] = useState<RecommendedFeed[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const triggerRefresh = useCallback(async (): Promise<RecommendedFeed[]> => {
+    const res = await apiFetch("/api/recommendations/refresh", { method: "POST" });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { recommendations?: RecommendedFeed[] };
+    return data.recommendations ?? [];
+  }, []);
+
   const loadRecommendations = useCallback(async () => {
     const res = await apiFetch("/api/recommendations");
+    if (res.status === 204) {
+      // 未生成 or 期限切れ → 自動でリフレッシュを試みる
+      const items = await triggerRefresh().catch(() => []);
+      setRecommendations(items);
+      return;
+    }
     if (!res.ok) return;
     const data = (await res.json()) as { recommendations: RecommendedFeed[] };
     setRecommendations(data.recommendations ?? []);
-  }, []);
+  }, [triggerRefresh]);
 
   useEffect(() => {
     if (!user) return;
@@ -52,14 +57,14 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
   const refresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      await apiFetch("/api/recommendations/refresh", { method: "POST" });
-      await loadRecommendations();
+      const items = await triggerRefresh();
+      setRecommendations(items);
     } catch {
       // 静かに失敗
     } finally {
       setRefreshing(false);
     }
-  }, [loadRecommendations]);
+  }, [triggerRefresh]);
 
   return { recommendations, loading, dismiss, refresh, refreshing };
 }
