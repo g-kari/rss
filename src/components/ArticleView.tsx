@@ -181,7 +181,7 @@ function ArticleView({
         style={{ display: "none" }}
       />
       <div
-        className="mx-auto px-4 py-6 lg:px-10 lg:py-12 transition-[max-width] duration-200"
+        className="w-full mx-auto px-4 py-6 lg:px-10 lg:py-12 transition-[max-width] duration-200"
         style={getContentWidthStyle(contentWidth)}
       >
         <ArticleHeader
