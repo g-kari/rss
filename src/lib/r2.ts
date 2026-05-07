@@ -63,3 +63,4 @@ export const pushSubscribeCooldownKey = (userId: string) => `${userId}:push-subs
 export const ogpCooldownKey = (userId: string) => `${userId}:ogp-cooldown`;
 export const engagementCooldownKey = (userId: string) => `${userId}:engagement-cooldown`;
 export const feedLastFetchedKey = (userId: string) => userKey(userId, "feed-last-fetched.json");
+export const saveArticleCooldownKey = (userId: string) => `${userId}:save-article-cooldown`;

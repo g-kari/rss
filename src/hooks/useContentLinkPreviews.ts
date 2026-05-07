@@ -109,7 +109,10 @@ export function useContentLinkPreviews(
     for (const anchor of anchors) {
       const url = anchor.href;
       apiFetch(`/api/ogp?url=${encodeURIComponent(url)}`, { signal: controller.signal })
-        .then((r) => r.json() as Promise<OgpData>)
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json() as Promise<OgpData>;
+        })
         .then((ogp) => {
           if (!el.isConnected || !anchor.isConnected) return;
           const card = buildPreviewCard(url, ogp);

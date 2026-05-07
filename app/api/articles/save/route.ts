@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { withJsonBody } from "@/lib/server-auth";
+import { withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { isValidFeedUrl } from "@/lib/url";
-import { r2Get, r2Put, sha256Hex, savedArticlesKey } from "@/lib/r2";
+import { r2Get, r2Put, sha256Hex, savedArticlesKey, saveArticleCooldownKey } from "@/lib/r2";
 import { fetchPageOgpMeta } from "@/lib/ogp";
 import type { Article } from "@/types";
 import { MAX_SAVED_ARTICLES } from "@/lib/validation";
 const FETCH_TIMEOUT_MS = 8_000;
+const SAVE_ARTICLE_COOLDOWN_MS = 5_000;
 
 /** POST /api/articles/save — URL から記事を保存する */
 export async function POST(request: Request) {
@@ -19,6 +20,13 @@ export async function POST(request: Request) {
 
     // 決定論的 ID（同じ URL は常に同じ ID）
     const id = (await sha256Hex(`__saved__|${url}`)).slice(0, 16);
+
+    const limited = await applyCooldown(
+      env.RATE_LIMIT,
+      saveArticleCooldownKey(session.userId),
+      SAVE_ARTICLE_COOLDOWN_MS,
+    );
+    if (limited) return limited;
 
     const key = savedArticlesKey(session.userId);
     const saved = await r2Get<Article[]>(env.RSS_DATA, key, []);
