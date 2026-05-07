@@ -108,6 +108,7 @@ interface GalleryItemContextValue {
   galleryExpandingIds: Set<string>;
   galleryRetryArticle: (id: string) => void;
   onGalleryContextMenu: (e: React.MouseEvent, article: Article, index: number) => void;
+  onGalleryLongPress: (article: Article, index: number, x: number, y: number) => void;
 }
 
 const GalleryItemCtx = createContext<GalleryItemContextValue | null>(null);
@@ -131,6 +132,35 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
   width: number;
 }) {
   const ctx = useContext(GalleryItemCtx);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchPos = useRef({ x: 0, y: 0 });
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!ctx) return;
+      const touch = e.touches[0];
+      touchPos.current = { x: touch.clientX, y: touch.clientY };
+      longPressTimer.current = setTimeout(() => {
+        ctx.onGalleryLongPress(data, index, touchPos.current.x, touchPos.current.y);
+      }, 500);
+    },
+    [ctx, data, index],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
   if (!ctx) return null;
   const isDeleting = ctx.deletingIds.has(data.id);
   const isNew = ctx.newIds.has(data.id);
@@ -138,6 +168,9 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
     <div
       style={isDeleting ? GALLERY_CARD_WRAPPER_STYLE_DELETING : GALLERY_CARD_WRAPPER_STYLE_VISIBLE}
       onContextMenu={(e) => ctx.onGalleryContextMenu(e, data, index)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
     >
       <GalleryArticleItem
         {...ctx.resolveItemProps(data, index, isDeleting, isNew)}
@@ -253,6 +286,17 @@ function ArticleList({
       const thumb = resolveThumbnail(article, ogpCacheRef.current) ?? null;
       const isNsfw = !!feeds.find((f) => f.id === article.feedHash)?.nsfw;
       setGalleryCtxMenu({ article, thumb, images, x: e.clientX, y: e.clientY, isNsfw });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ogpCacheRef は useSyncedRef の安定参照のため deps 不要
+    [galleryImagesForItem, feeds],
+  );
+
+  const handleGalleryLongPress = useCallback(
+    (article: Article, _index: number, x: number, y: number) => {
+      const images = galleryImagesForItem(article.id);
+      const thumb = resolveThumbnail(article, ogpCacheRef.current) ?? null;
+      const isNsfw = !!feeds.find((f) => f.id === article.feedHash)?.nsfw;
+      setGalleryCtxMenu({ article, thumb, images, x, y, isNsfw });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ogpCacheRef は useSyncedRef の安定参照のため deps 不要
     [galleryImagesForItem, feeds],
@@ -444,6 +488,7 @@ function ArticleList({
       galleryExpandingIds,
       galleryRetryArticle,
       onGalleryContextMenu: handleGalleryContextMenu,
+      onGalleryLongPress: handleGalleryLongPress,
     }),
     [
       resolveItemProps,
@@ -455,6 +500,7 @@ function ArticleList({
       galleryExpandingIds,
       galleryRetryArticle,
       handleGalleryContextMenu,
+      handleGalleryLongPress,
     ],
   );
 
