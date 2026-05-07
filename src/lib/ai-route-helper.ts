@@ -18,6 +18,15 @@ const AI_MAX_CALLS_70B = 3;
 
 type AiMessage = { role: "system" | "user"; content: string };
 
+function isAiError(err: unknown): err is { status: number; headers?: Record<string, string> } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "status" in err &&
+    typeof (err as { status: unknown }).status === "number"
+  );
+}
+
 /**
  * AI ルートハンドラの共通ロジック。
  * URL 検証・コンテンツ取得・キャッシュ確認・AI 実行・キャッシュ保存を担う。
@@ -107,27 +116,24 @@ export async function runAiJob(
     result = response.response ?? "";
   } catch (err) {
     console.error("[runAiJob] AI.run failed:", err);
-    const errObj = typeof err === "object" && err !== null ? (err as Record<string, unknown>) : {};
-    const status = typeof errObj.status === "number" ? errObj.status : 0;
-    if (status === 429) {
-      const retryAfter =
-        typeof errObj.headers === "object" && errObj.headers !== null
-          ? (errObj.headers as Record<string, string>)["retry-after"]
-          : undefined;
-      return apiError("rate_limited", 429, {
-        code: "RATE_LIMITED",
-        retryable: true,
-        ...(retryAfter ? { retryAfter } : {}),
-      });
-    }
-    if (status === 401) {
-      return apiError("unauthorized", 401, { code: "UNAUTHORIZED" });
-    }
-    if (status === 503) {
-      return apiError("service_unavailable", 503, {
-        code: "SERVICE_UNAVAILABLE",
-        retryable: true,
-      });
+    if (isAiError(err)) {
+      if (err.status === 429) {
+        const retryAfter = err.headers?.["retry-after"];
+        return apiError("rate_limited", 429, {
+          code: "RATE_LIMITED",
+          retryable: true,
+          ...(retryAfter ? { retryAfter } : {}),
+        });
+      }
+      if (err.status === 401) {
+        return apiError("unauthorized", 401, { code: "UNAUTHORIZED" });
+      }
+      if (err.status === 503) {
+        return apiError("service_unavailable", 503, {
+          code: "SERVICE_UNAVAILABLE",
+          retryable: true,
+        });
+      }
     }
     return apiError("AI処理中にエラーが発生しました", 502, {
       code: "AI_ERROR",
