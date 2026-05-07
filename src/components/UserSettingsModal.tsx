@@ -143,6 +143,11 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     if (!file) return;
     // reset so the same file can be selected again
     e.target.value = "";
+    const MAX_OPML_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_OPML_FILE_SIZE) {
+      toast.error("OPMLファイルのサイズが大きすぎます（上限5MB）");
+      return;
+    }
     setOpmlLoading(true);
     try {
       const text = await file.text();
