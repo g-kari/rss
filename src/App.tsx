@@ -66,6 +66,17 @@ export default function App() {
       ? "list"
       : "sidebar";
 
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   const {
     theme,
     toggleTheme,
@@ -640,9 +651,17 @@ export default function App() {
       setSelectedArticle(article);
       markRead(article.id);
       addToHistory(article.id);
-      setMobilePane("view");
+      if (!isDesktop) setMobilePane("view");
     },
-    [listFocusModeRef, toggleFocusMode, setSelectedArticle, markRead, addToHistory, setMobilePane],
+    [
+      listFocusModeRef,
+      toggleFocusMode,
+      setSelectedArticle,
+      markRead,
+      addToHistory,
+      setMobilePane,
+      isDesktop,
+    ],
   );
 
   // フォーカスモード終了時にリストフォーカスモードを復元する
@@ -1008,8 +1027,8 @@ export default function App() {
               data-pane="sidebar"
               className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
               style={{ transform: getMobilePaneTransform("sidebar", mobilePane) }}
-              aria-hidden={mobilePane !== "sidebar" || undefined}
-              inert={mobilePane !== "sidebar" || undefined}
+              aria-hidden={(!isDesktop && mobilePane !== "sidebar") || undefined}
+              inert={(!isDesktop && mobilePane !== "sidebar") || undefined}
             >
               {loadingFeeds && feeds.length === 0 ? (
                 <SkeletonSidebar />
@@ -1065,8 +1084,8 @@ export default function App() {
               data-pane="list"
               className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane focus:outline-none"
               style={{ transform: getMobilePaneTransform("list", mobilePane) }}
-              aria-hidden={mobilePane !== "list" || undefined}
-              inert={mobilePane !== "list" || undefined}
+              aria-hidden={(!isDesktop && mobilePane !== "list") || undefined}
+              inert={(!isDesktop && mobilePane !== "list") || undefined}
             >
               {loadingFeeds && feeds.length === 0 ? (
                 <SkeletonArticleList layout={layout} />
@@ -1106,8 +1125,8 @@ export default function App() {
               data-pane="view"
               className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
               style={{ transform: getMobilePaneTransform("view", mobilePane) }}
-              aria-hidden={mobilePane !== "view" || undefined}
-              inert={mobilePane !== "view" || undefined}
+              aria-hidden={(!isDesktop && mobilePane !== "view") || undefined}
+              inert={(!isDesktop && mobilePane !== "view") || undefined}
             >
               <ErrorBoundary label="記事表示">
                 <ArticleView {...articleViewProps} />
