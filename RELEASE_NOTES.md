@@ -2,6 +2,10 @@
 
 ## 2026-05-07 (latest)
 
+### 激アツ新機能っ
+
+- **Slack・Discord をシェア設定先に追加したよ〜** — Issue #511。記事ヘッダーのクイックシェアボタンにピン留めできるようになったよっ！タイトル＋URL がクリップボードにコピーされてアプリが自動で開くから、サクッとシェアできちゃう感じ最高〜✨🎀
+
 ### リファクタリングっ
 
 - **UserSettingsModal（973行）をタブ別サブコンポーネントに分割したよ〜** — Issue #502。973行の巨大コンポーネントを `src/components/user-settings/` 配下の4タブパネル（DisplayTabPanel・AiNotificationTabPanel・FeedManagementTabPanel・ImportExportTabPanel）＋共有ユーティリティ（shared.tsx）に分割したよっ！メインファイルは 153行まで激減して、各タブの責務がスッキリ分かれたよ〜🔧✨

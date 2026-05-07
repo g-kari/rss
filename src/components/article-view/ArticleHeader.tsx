@@ -401,13 +401,27 @@ export default function ArticleHeader({
             {enabledShareTargets.map((target) => (
               <button
                 key={target.id}
-                onClick={() =>
-                  window.open(
-                    target.buildUrl(article.link!, article.title),
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
-                }
+                onClick={() => {
+                  if (target.clipboardText) {
+                    const text = target.clipboardText(article.link!, article.title);
+                    navigator.clipboard
+                      .writeText(text)
+                      .then(() =>
+                        window.open(
+                          target.buildUrl(article.link!, article.title),
+                          "_blank",
+                          "noopener,noreferrer",
+                        ),
+                      )
+                      .catch(() => toast.error("コピーに失敗しました"));
+                  } else {
+                    window.open(
+                      target.buildUrl(article.link!, article.title),
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  }
+                }}
                 title={target.label}
                 aria-label={target.label}
                 className="p-2 -m-2 lg:p-0 lg:m-0 text-text-faint hover:text-text-muted transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
