@@ -4,6 +4,9 @@
 
 ### セキュリティ対策っ
 
+- **未使用の `dompurify` を devDependencies から削除したよ〜** — Workers 非対応が判明済みだったのに残ってたパッケージを削除。`@types/dompurify`（deprecated）も一緒に除去したよっ🔒🎀
+- **DBSC `/api/auth/dbsc/register` のチャレンジ照合を `timingSafeEqual` に統一したよ〜** — `challenge` ルートは既に対応済みだったのに `register` ルートだけ通常の文字列比較だったの修正。一貫性バッチリになったよっ🔒✨
+- **`POST /api/recommendations/dismiss` に 2 秒クールダウンを追加したよ〜** — 他の POST エンドポイントと一致させて R2 読み書きの乱用を防いだよっ🔒💡
 - **`GET /api/recommendations` から副作用（AI 生成・R2 書き込み・KV 書き込み）を除去したよ〜** — Issue #560。HTTP GET が R2/KV 書き込みと Workers AI 呼び出しを発動してたのを修正！GET はキャッシュ読み取りのみ、生成は `POST /refresh` に移動して HTTP セマンティクス準拠・CSRF 安全になったよっ🔒✨
 - **`withJsonBody` に 512KB ペイロード上限チェックを追加したよ〜** — Issue #558。大きな JSON ボディで Worker OOM を誘発できてたのを `request.text()` でサイズ確認してから parse するよう修正したよっ🔒✨
 
