@@ -41,77 +41,71 @@ export function processNestedBlocks(
   filter: ((openTag: string) => boolean) | null,
   replacer: (openTag: string, inner: string) => string,
 ): string {
-  const htmlLower = html.toLowerCase();
+  const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const tagPattern = new RegExp(`<(\\/)?(?:${tags.map(escapeRe).join("|")})\\b[^>]*>`, "gi");
+
+  // matchAll で全開閉タグを一括収集（インデックス付き）
+  const matches = [...html.matchAll(tagPattern)];
+
   let result = "";
   let i = 0;
+  let mi = 0;
 
-  while (i < html.length) {
-    // 最も早い候補タグを探す
-    let earliest = -1;
-    let earliestTag = "";
-    for (const tag of tags) {
-      const idx = htmlLower.indexOf(`<${tag}`, i);
-      if (idx !== -1 && (earliest === -1 || idx < earliest)) {
-        earliest = idx;
-        earliestTag = tag;
-      }
-    }
-    if (earliest === -1) {
-      result += html.slice(i);
-      break;
+  while (mi < matches.length) {
+    const m = matches[mi];
+    const isClose = !!m[1]; // m[1] は "/" の有無
+
+    if (isClose) {
+      mi++;
+      continue;
     }
 
-    const tagEnd = htmlLower.indexOf(">", earliest);
-    if (tagEnd === -1) {
-      result += html.slice(i);
-      break;
+    // 開きタグ
+    const earliest = m.index!;
+    const openTag = m[0];
+    const tagName = openTag.match(/<([a-z]+)/i)?.[1]?.toLowerCase() ?? "";
+
+    if (filter && !filter(openTag)) {
+      result += html.slice(i, earliest + openTag.length);
+      i = earliest + openTag.length;
+      mi++;
+      continue;
     }
 
-    const openTag = html.slice(earliest, tagEnd + 1);
+    // 対応する閉じタグをスタックベースで探す
+    let depth = 1;
+    let nmi = mi + 1;
+    let found = false;
 
-    if (!filter || filter(openTag)) {
-      // ネスト深度を追跡して対応する閉じタグを探す
-      const closeTag = `</${earliestTag}>`;
-      const openPrefix = `<${earliestTag}`;
-      let depth = 1;
-      let pos = tagEnd + 1;
-      let found = false;
-
-      while (pos < html.length) {
-        const nextOpen = htmlLower.indexOf(openPrefix, pos);
-        const nextClose = htmlLower.indexOf(closeTag, pos);
-
-        if (nextClose === -1) {
-          pos = html.length;
+    while (nmi < matches.length && depth > 0) {
+      const nm = matches[nmi];
+      const nmName = nm[0].match(/<\/?([a-z]+)/i)?.[1]?.toLowerCase() ?? "";
+      if (nmName === tagName) {
+        if (nm[1]) depth--;
+        else depth++;
+        if (depth === 0) {
+          const closeStart = nm.index!;
+          const inner = html.slice(earliest + openTag.length, closeStart);
+          result += html.slice(i, earliest);
+          result += replacer(openTag, inner);
+          i = closeStart + nm[0].length;
+          mi = nmi + 1;
+          found = true;
           break;
         }
-
-        if (nextOpen !== -1 && nextOpen < nextClose) {
-          depth++;
-          pos = nextOpen + openPrefix.length;
-        } else {
-          depth--;
-          if (depth === 0) {
-            result += html.slice(i, earliest);
-            result += replacer(openTag, html.slice(tagEnd + 1, nextClose));
-            i = nextClose + closeTag.length;
-            found = true;
-            break;
-          }
-          pos = nextClose + closeTag.length;
-        }
       }
+      nmi++;
+    }
 
-      if (!found) {
-        result += html.slice(i, earliest);
-        i = pos;
-      }
-    } else {
-      result += html.slice(i, tagEnd + 1);
-      i = tagEnd + 1;
+    if (!found) {
+      // 対応する閉じタグが見つからない場合は開きタグを出力してスキップ
+      result += html.slice(i, earliest + openTag.length);
+      i = earliest + openTag.length;
+      mi++;
     }
   }
 
+  result += html.slice(i);
   return result;
 }
 

@@ -2,6 +2,14 @@
 
 ## 2026-05-07 (latest)
 
+### バグ修正っ
+
+- **デスクトップで記事詳細を開くと他のペインの操作が効かなくなる問題を修正したよ〜** — Issue #508。`inert` 属性がモバイルのシングルペインナビ専用なのにデスクトップでも適用されちゃってたのを `isDesktop` フラグで制御したよっ！`window.matchMedia('(min-width: 1024px)')` で判定して、デスクトップでは全ペインを常にインタラクティブにしたよ〜🖥️✨ `selectArticle` の `setMobilePane("view")` もデスクトップでは呼ばないよう修正したよっ💡
+
+### UX 改善っ
+
+- **モバイルで記事アイテムのアクションボタン（既読・ブックマーク）を常時表示にしたよ〜** — Issue #495。`@media(hover:none)` 環境（タッチデバイス）では `opacity-0` が解除されず隠れたままになってたのを `max-md:opacity-100 max-md:pointer-events-auto` で修正したよっ📱✨ CompactItem・ListItem・CardItem・MagazineItem・GalleryItem の 5 レイアウト全部対応したよ〜🎀
+
 ### A11y・UX 改善っ
 
 - **ArticleNavigation の前後ボタンに `aria-label` を追加したよ〜** — Issue #485。前後の記事タイトルを `aria-label` に含めることでスクリーンリーダーが記事名まで読み上げられるようになったよっ✨
@@ -14,6 +22,7 @@
 
 ### リファクタリングっ
 
+- **`usePrefetchGalleryContents` の重複コンテンツ取得ロジックを `fetchAndCacheArticle` に抽出したよ〜** — Issue #500。`fetchOne`（バッチプリフェッチ）と `retryArticle`（手動リトライ）がほぼ同じ apiFetch → 429 判定 → 失敗記録 → キャッシュ書き込み → state 更新のフローを持ってたのを共通ヘルパーに集約したよっ🔧✨
 - **`deduplicateByLink` の重複検出を 1 パスに最適化したよ〜** — Issue #489。`linkGroups` の構築ループで `hasDupes` フラグも同時に立てるようにして、重複なし時の早期リターンをより確実に。最終フィルターも `Set.has` で O(1) ルックアップなのを明示したよ〜🚀
 - **`useArticleFilters` の `eslint-disable` コメントを全部消したよ〜** — Issue #504。`useCallback` の依存配列に `resetPageRef`・`dateRangeRef`・`readingTimeRangeRef`（いずれも `useSyncedRef` で常に安定）を明示的に追加することで、ESLint ルール違反なしに同等の効果を実現したよっ✨
 - **`shared-feed.ts` のデバッグ用 `console.log` を除去したよ〜** — Issue #506。Cron の KV キャッシュヒット/ミスログが Workers ログのノイズになってたのをクリーンにしたよっ🧹

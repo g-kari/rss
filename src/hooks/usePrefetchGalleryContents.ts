@@ -39,6 +39,75 @@ interface Options {
   requestDelayMs?: number;
 }
 
+interface FetchAndCacheOpts {
+  rateLimitUntilRef: { current: number };
+  setFailedIds: (fn: (prev: Set<string>) => Set<string>) => void;
+  setMedia: (fn: (prev: Map<string, PrefetchedMedia>) => Map<string, PrefetchedMedia>) => void;
+  signal?: AbortSignal;
+  /** 429 受信時に呼ばれる追加コールバック（rateLimited フラグのセット・abort 等） */
+  onRateLimit?: () => void;
+}
+
+/**
+ * 1 記事のコンテンツを取得してキャッシュ・state に反映する共通ロジック。
+ * fetchOne（useEffect 内バッチ処理）と retryArticle（手動リトライ）の両方から利用される。
+ *
+ * 戻り値: 取得成功時は PrefetchedMedia、スキップ・失敗時は null
+ */
+async function fetchAndCacheArticle(
+  article: Article,
+  opts: FetchAndCacheOpts,
+): Promise<PrefetchedMedia | null> {
+  if (!article.link) return null;
+
+  try {
+    const res = await apiFetch(`/api/content?url=${encodeURIComponent(article.link)}`, {
+      signal: opts.signal,
+    });
+
+    if (res.status === 429) {
+      // レート制限を検出したら以降のリクエストをバックオフさせる
+      const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"), {
+        fallbackMs: 60_000,
+        // UX 上、プリフェッチの自主停止は最大 10 分に制限
+        maxMs: 10 * 60_000,
+      });
+      opts.rateLimitUntilRef.current = Date.now() + retryAfterMs;
+      opts.onRateLimit?.();
+      return null;
+    }
+
+    if (!res.ok) {
+      // 429 以外の非 200 レスポンスは失敗として記録
+      opts.setFailedIds((prev) => {
+        const next = new Set(prev);
+        next.add(article.id);
+        return next;
+      });
+      return null;
+    }
+
+    const data = (await res.json()) as { content?: string };
+    if (!data.content) return null;
+
+    contentLruCache.set(article.id, data.content);
+    const entry: PrefetchedMedia = {
+      images: collectImageUrlsFromHtml(data.content),
+      embeds: collectIframeUrlsFromHtml(data.content),
+    };
+    opts.setMedia((prev) => {
+      const next = new Map(prev);
+      next.set(article.id, entry);
+      return next;
+    });
+    return entry;
+  } catch (err) {
+    if (isAbortError(err)) return null;
+    // ネットワークエラー等: 呼び出し側でハンドリング（throw して伝播させる）
+    throw err;
+  }
+}
+
 /**
  * 画像・動画カテゴリのギャラリー表示で、記事本文を事前にバックグラウンド取得するフック。
  *
@@ -141,48 +210,18 @@ export function usePrefetchGalleryContents({
       if (inflight.has(article.id)) return;
       inflight.add(article.id);
       try {
-        const res = await apiFetch(`/api/content?url=${encodeURIComponent(article.link)}`, {
+        await fetchAndCacheArticle(article, {
+          rateLimitUntilRef,
+          setFailedIds,
+          setMedia,
           signal: controller.signal,
+          onRateLimit: () => {
+            rateLimited = true;
+            controller.abort();
+          },
         });
-        if (res.status === 429) {
-          // レート制限を検出したらそのドメイン・アップストリームをこれ以上叩かない
-          // サーバー (api/content) が上流の Retry-After を pass-through しているので、
-          // その値を読んでクールダウン期限を記録し、次回 effect 起動時にも復帰を遅らせる
-          const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"), {
-            fallbackMs: 60_000,
-            // UX 上、プリフェッチの自主停止は最大 10 分に制限
-            maxMs: 10 * 60_000,
-          });
-          rateLimitUntilRef.current = Date.now() + retryAfterMs;
-          rateLimited = true;
-          controller.abort();
-          return;
-        }
-        if (!res.ok) {
-          // 429 以外の非 200 レスポンスは失敗として記録
-          setFailedIds((prev) => {
-            const next = new Set(prev);
-            next.add(article.id);
-            return next;
-          });
-          return;
-        }
-        const data = (await res.json()) as { content?: string };
-        if (!data.content || cancelled) return;
-        contentLruCache.set(article.id, data.content);
-        const entry: PrefetchedMedia = {
-          images: collectImageUrlsFromHtml(data.content),
-          embeds: collectIframeUrlsFromHtml(data.content),
-        };
-        setMedia((prev) => {
-          const next = new Map(prev);
-          next.set(article.id, entry);
-          return next;
-        });
-      } catch (err) {
-        if (!isAbortError(err)) {
-          // ネットワークエラーはサイレント — サムネイル拡張は best-effort
-        }
+      } catch {
+        // ネットワークエラーはサイレント — サムネイル拡張は best-effort
       } finally {
         inflight.delete(article.id);
       }
@@ -234,37 +273,12 @@ export function usePrefetchGalleryContents({
     // 個別に再フェッチ
     (async () => {
       try {
-        const res = await apiFetch(`/api/content?url=${encodeURIComponent(article.link!)}`);
-        if (res.status === 429) {
-          // リトライでも 429 を受信した場合はクールダウンを設定
-          const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"), {
-            fallbackMs: 60_000,
-            maxMs: 10 * 60_000,
-          });
-          rateLimitUntilRef.current = Date.now() + retryAfterMs;
-          // 429 は failedIds に追加しない（レート制限は一時的なもの）
-          return;
-        }
-        if (!res.ok) {
-          // 再度失敗 → failedIds に戻す
-          setFailedIds((prev) => {
-            const next = new Set(prev);
-            next.add(articleId);
-            return next;
-          });
-          return;
-        }
-        const data = (await res.json()) as { content?: string };
-        if (!data.content) return;
-        contentLruCache.set(articleId, data.content);
-        const entry: PrefetchedMedia = {
-          images: collectImageUrlsFromHtml(data.content),
-          embeds: collectIframeUrlsFromHtml(data.content),
-        };
-        setMedia((prev) => {
-          const next = new Map(prev);
-          next.set(articleId, entry);
-          return next;
+        await fetchAndCacheArticle(article, {
+          rateLimitUntilRef,
+          setFailedIds,
+          setMedia,
+          // signal なし（手動リトライは unmount まで継続させる）
+          // 429 は failedIds に追加しない（レート制限は一時的なもの）—— onRateLimit 未指定
         });
       } catch {
         // ネットワークエラー → failedIds に戻す
