@@ -32,6 +32,7 @@ interface Props {
  * フィード追加モーダル。Issue #115 対応でインラインフォームから移行。
  * URL 必須 + Cookie / CSS セレクタは折りたたみで任意指定。
  * Issue #396: 追加中（adding=true）はモーダルを閉じられないようにする。
+ * Issue #459: paste & go + リアルタイム URL バリデーション追加。
  */
 export default function FeedAddModal({
   url,
@@ -57,6 +58,9 @@ export default function FeedAddModal({
   const [progressLabel, setProgressLabel] = useState<string>(PROGRESS_STEPS[0].label);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // Issue #459: リアルタイム URL バリデーション状態
+  const [urlValid, setUrlValid] = useState<boolean | null>(null);
+
   useEffect(() => {
     if (!adding) {
       setProgressLabel(PROGRESS_STEPS[0].label);
@@ -73,22 +77,87 @@ export default function FeedAddModal({
     };
   }, [adding]);
 
+  // Issue #459: URL バリデーションユーティリティ
+  function isValidHttpUrl(value: string): boolean {
+    try {
+      const u = new URL(value);
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  function handleUrlChange(value: string) {
+    onUrlChange(value);
+    if (value === "") {
+      setUrlValid(null);
+    } else {
+      setUrlValid(isValidHttpUrl(value));
+    }
+  }
+
+  // Issue #459: paste & go — ペースト直後に値を取得して有効な URL なら自動送信
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text");
+    setTimeout(() => {
+      if (isValidHttpUrl(pasted)) {
+        onUrlChange(pasted);
+        setUrlValid(true);
+        const form = e.currentTarget.closest("form");
+        if (form) {
+          form.requestSubmit();
+        }
+      }
+    }, 0);
+  }
+
+  // 追加ボタンのスタイル: URL が有効なら ring でハイライト
+  const submitClass = [
+    "flex-1 text-[12px] tracking-[0.06em] py-2 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40",
+    urlValid === true && !adding ? "ring-2 ring-offset-1 ring-ink" : "",
+  ]
+    .join(" ")
+    .trim();
+
   return (
     <Modal title="フィードを追加" onClose={handleClose} width="sm:w-[440px]">
       <div className="p-4">
         <form onSubmit={onSubmit}>
-          <input
-            type="url"
-            inputMode="url"
-            placeholder="https://..."
-            value={url}
-            onChange={(e) => onUrlChange(e.target.value)}
-            disabled={adding}
-            autoFocus
-            aria-required
-            aria-invalid={error ? true : undefined}
-            className="w-full text-[13px] bg-surface-base border border-border-default rounded-lg px-3 py-2 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
-          />
+          <div className="relative">
+            <input
+              type="url"
+              inputMode="url"
+              placeholder="https://..."
+              value={url}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              onPaste={handlePaste}
+              disabled={adding}
+              autoFocus
+              aria-required
+              aria-invalid={error ? true : undefined}
+              className={[
+                "w-full text-[13px] bg-surface-base border rounded-lg px-3 py-2 text-text-strong placeholder-text-faint outline-none transition-colors duration-200",
+                urlValid === false
+                  ? "border-rose-400 focus:border-rose-400"
+                  : urlValid === true
+                    ? "border-text-muted focus:border-text-muted"
+                    : "border-border-default focus:border-text-muted",
+              ].join(" ")}
+            />
+            {urlValid === true && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-[12px] pointer-events-none">
+                ✓
+              </span>
+            )}
+            {urlValid === false && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-400 text-[12px] pointer-events-none">
+                ✗
+              </span>
+            )}
+          </div>
+          {urlValid === false && (
+            <p className="text-[11px] text-rose-400 mt-1">有効な http(s) URL を入力してください</p>
+          )}
 
           {/* Cookie オプション（年齢確認ゲート等の突破用） */}
           <button
@@ -158,11 +227,7 @@ export default function FeedAddModal({
           )}
 
           <div className="flex gap-2 mt-3">
-            <button
-              type="submit"
-              disabled={adding}
-              className="flex-1 text-[12px] tracking-[0.06em] py-2 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
-            >
+            <button type="submit" disabled={adding} className={submitClass}>
               {adding ? "追加中..." : "追加"}
             </button>
             <button
