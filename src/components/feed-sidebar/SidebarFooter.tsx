@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { UserProfile } from "../../types";
 import { buildImageProxyUrl } from "../../lib/image-proxy-url";
 import FooterIconButton from "./FooterIconButton";
+import { useToast } from "../../contexts/ToastContext";
 
 interface Props {
   user: UserProfile;
@@ -50,8 +52,24 @@ export default function SidebarFooter({
   onToggleTheme,
   onLogout,
 }: Props) {
+  const { success, error: showError } = useToast();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  // 「もっと見る」ドロップダウンの外クリックで閉じる
+  useEffect(() => {
+    if (!moreOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [moreOpen]);
+
   return (
-    <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-2">
+    <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-1">
       {user.picture ? (
         <img
           src={buildImageProxyUrl(user.picture)}
@@ -62,21 +80,8 @@ export default function SidebarFooter({
         <div className="w-5 h-5 rounded-full bg-surface-subtle flex-shrink-0" />
       )}
       <span className="text-[11px] text-text-muted truncate flex-1">{user.name}</span>
-      {/* OPMLインポート */}
-      <FooterIconButton onClick={onImport} disabled={importing} title="OPMLインポート">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-        />
-      </FooterIconButton>
-      <FooterIconButton onClick={onShowReleaseNotes} title="リリースノート">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-        />
-      </FooterIconButton>
+
+      {/* 常時表示: 頻度の高いボタン群 */}
       <FooterIconButton onClick={onShowStats} title="読書統計">
         <path
           strokeLinecap="round"
@@ -84,60 +89,23 @@ export default function SidebarFooter({
           d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
         />
       </FooterIconButton>
-      <FooterIconButton onClick={onExportOpml} title="OPMLエクスポート">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-        />
-      </FooterIconButton>
-      {onExportMarkdown && (
-        <FooterIconButton
-          onClick={() => onExportMarkdown("bookmark")}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            onExportMarkdown("reading_list");
-          }}
-          title="ブックマークをMarkdownでエクスポート (右クリック: 後で読む)"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-          />
-        </FooterIconButton>
-      )}
-      {onExportNotes && (noteCount ?? 0) > 0 && (
-        <FooterIconButton
-          onClick={onExportNotes}
-          title={`メモをMarkdownでエクスポート (${noteCount}件)`}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-          />
-        </FooterIconButton>
-      )}
-      {install?.canInstall && (
-        <FooterIconButton onClick={install.onInstall} title="アプリをインストール">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5"
-          />
-        </FooterIconButton>
-      )}
+
+      {/* Push通知ボタン (右クリックでテスト送信 → Toast化 #454) */}
       {push?.supported && (
         <button
           onClick={push.onToggle}
           onContextMenu={(e) => {
             if (!push.subscribed || !push.onSendTest) return;
             e.preventDefault();
-            void push.onSendTest().then((msg) => alert(msg));
+            void push
+              .onSendTest()
+              .then((msg) => success(msg))
+              .catch((err: unknown) => {
+                showError(err instanceof Error ? err.message : "テスト送信に失敗しました");
+              });
           }}
           disabled={push.loading}
-          className={`transition-colors duration-200 flex-shrink-0 ${push.error ? "text-rose-400" : push.subscribed ? "text-accent-dot" : "text-text-faint hover:text-text-muted"} disabled:opacity-50`}
+          className={`p-2 rounded transition-colors duration-200 flex-shrink-0 ${push.error ? "text-rose-400" : push.subscribed ? "text-accent-dot" : "text-text-faint hover:text-text-muted"} disabled:opacity-50`}
           title={
             push.error ??
             (push.subscribed ? "プッシュ通知をオフ (右クリックでテスト送信)" : "プッシュ通知をオン")
@@ -168,13 +136,7 @@ export default function SidebarFooter({
           </svg>
         </button>
       )}
-      <FooterIconButton onClick={onShowFeedHealth} title="フィードヘルス">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-        />
-      </FooterIconButton>
+
       <FooterIconButton onClick={onOpenSettings} title="ユーザー設定">
         <path
           strokeLinecap="round"
@@ -183,6 +145,7 @@ export default function SidebarFooter({
         />
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
       </FooterIconButton>
+
       <FooterIconButton onClick={onOpenHelp} title="キーボードショートカット (?)">
         <path
           strokeLinecap="round"
@@ -190,6 +153,7 @@ export default function SidebarFooter({
           d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.5M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
         />
       </FooterIconButton>
+
       <FooterIconButton
         onClick={onToggleTheme}
         title={theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"}
@@ -208,17 +172,252 @@ export default function SidebarFooter({
           />
         )}
       </FooterIconButton>
-      <FooterIconButton
-        onClick={onLogout}
-        title="ログアウト"
-        className="text-text-faint hover:text-text-soft transition-colors duration-200 flex-shrink-0"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-        />
-      </FooterIconButton>
+
+      {/* 「もっと見る」ドロップダウン（低頻度ボタン群 #454） */}
+      <div className="relative flex-shrink-0" ref={moreRef}>
+        <button
+          onClick={() => setMoreOpen((v) => !v)}
+          className="p-2 text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
+          title="その他のメニュー"
+          aria-label="その他のメニュー"
+          aria-expanded={moreOpen}
+        >
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="5" cy="12" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="19" cy="12" r="1.5" />
+          </svg>
+        </button>
+
+        {moreOpen && (
+          <div className="absolute bottom-full right-0 mb-1 w-52 bg-surface-elevated border border-border-default rounded-lg shadow-lg py-1 z-50">
+            {/* OPMLインポート */}
+            <button
+              onClick={() => {
+                onImport();
+                setMoreOpen(false);
+              }}
+              disabled={importing}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover disabled:opacity-40 transition-colors"
+            >
+              <svg
+                className="w-3.5 h-3.5 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                />
+              </svg>
+              OPML インポート
+            </button>
+
+            {/* OPMLエクスポート */}
+            <button
+              onClick={() => {
+                onExportOpml();
+                setMoreOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+            >
+              <svg
+                className="w-3.5 h-3.5 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                />
+              </svg>
+              OPML エクスポート
+            </button>
+
+            {/* Markdownエクスポート */}
+            {onExportMarkdown && (
+              <>
+                <button
+                  onClick={() => {
+                    onExportMarkdown("bookmark");
+                    setMoreOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                    />
+                  </svg>
+                  ブックマーク → Markdown
+                </button>
+                <button
+                  onClick={() => {
+                    onExportMarkdown("reading_list");
+                    setMoreOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                    />
+                  </svg>
+                  後で読む → Markdown
+                </button>
+              </>
+            )}
+
+            {/* メモエクスポート */}
+            {onExportNotes && (noteCount ?? 0) > 0 && (
+              <button
+                onClick={() => {
+                  onExportNotes();
+                  setMoreOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+              >
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                  />
+                </svg>
+                メモを Markdown で出力 ({noteCount}件)
+              </button>
+            )}
+
+            {/* フィードヘルス */}
+            <button
+              onClick={() => {
+                onShowFeedHealth();
+                setMoreOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+            >
+              <svg
+                className="w-3.5 h-3.5 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+                />
+              </svg>
+              フィードヘルス
+            </button>
+
+            {/* リリースノート */}
+            <button
+              onClick={() => {
+                onShowReleaseNotes();
+                setMoreOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+            >
+              <svg
+                className="w-3.5 h-3.5 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                />
+              </svg>
+              リリースノート
+            </button>
+
+            {/* PWAインストール */}
+            {install?.canInstall && (
+              <button
+                onClick={() => {
+                  install.onInstall();
+                  setMoreOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+              >
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5"
+                  />
+                </svg>
+                アプリをインストール
+              </button>
+            )}
+
+            <div className="border-t border-border-subtle my-1" />
+
+            {/* ログアウト */}
+            <button
+              onClick={() => {
+                onLogout();
+                setMoreOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-soft hover:text-text-default hover:bg-surface-hover transition-colors"
+            >
+              <svg
+                className="w-3.5 h-3.5 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              ログアウト
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
