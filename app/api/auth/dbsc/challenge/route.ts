@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withJsonBody } from "@/lib/server-auth";
+import { timingSafeEqual } from "@/lib/auth";
 import { generateDbscChallenge, verifyDbscResponse, type DbscSession } from "@/lib/dbsc";
 import { r2Get, r2Put } from "@/lib/r2";
 
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
       await env.RSS_DATA.delete(challengeKey);
 
       // チャレンジ値の照合
-      if (storedChallenge.challenge !== challenge) {
+      if (!timingSafeEqual(storedChallenge.challenge, challenge)) {
         return NextResponse.json({ error: "Challenge mismatch" }, { status: 401 });
       }
 

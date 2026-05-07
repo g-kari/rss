@@ -51,6 +51,17 @@ export function base64urlToBytes(str: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
 }
 
+export function timingSafeEqual(a: string, b: string): boolean {
+  const aBytes = new TextEncoder().encode(a);
+  const bBytes = new TextEncoder().encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    diff |= aBytes[i] ^ bBytes[i];
+  }
+  return diff === 0;
+}
+
 /**
  * 0g0 auth server の `/.well-known/jwks.json` から公開鍵セットを取得する。
  * 取得結果は `JWKS_CACHE_TTL_MS`（15分）メモリキャッシュされる。
@@ -144,30 +155,19 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
       return null;
     }
 
-    // aud (audience) 検証 — CLIENT_ID を優先。id.0g0.xyz が aud=authBaseUrl を
-    // 発行する暫定実装に追従するため AUTH_BASE_URL もフォールバックで許容する。
-    // TODO(#379): 上流で aud=CLIENT_ID に修正され次第、acceptedAuds から authBaseUrl を削除。
-    // 削除時は acceptedAuds を [expectedAud] のみにして fallback warn ブロックも除去すること。
     const expectedAud = process.env.CLIENT_ID;
     if (!expectedAud) {
       console.error("[auth/verify] CLIENT_ID 未設定のため aud を検証できません");
       return null;
     }
-    const acceptedAuds = [expectedAud, authBaseUrl];
     const audClaim = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-    const matched = audClaim.find((a) => typeof a === "string" && acceptedAuds.includes(a));
+    const matched = audClaim.find((a) => typeof a === "string" && a === expectedAud);
     if (!matched) {
       console.error("[auth/verify] aud claim mismatch", {
-        accepted: acceptedAuds,
+        expected: expectedAud,
         actual: payload.aud,
       });
       return null;
-    }
-    if (matched !== expectedAud) {
-      console.warn("[auth/verify] aud fallback to authBaseUrl — id.0g0.xyz 側の修正待ち", {
-        matched,
-        expectedAud,
-      });
     }
 
     const jwks = await getJwks(authBaseUrl);

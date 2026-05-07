@@ -89,7 +89,7 @@ test.describe("verifyJwt — aud クレーム検証", () => {
     expect(result).toBeNull();
   });
 
-  test("aud 配列に CLIENT_ID も AUTH_BASE_URL も含まない → null", async () => {
+  test("aud 配列に CLIENT_ID を含まない → null", async () => {
     const token = makeJwt(defaultPayload({ aud: ["other-a", "other-b"] }));
     const result = await withEnv({ CLIENT_ID }, () => verifyJwt(token, AUTH_BASE_URL));
     expect(result).toBeNull();
@@ -101,15 +101,13 @@ test.describe("verifyJwt — aud クレーム検証", () => {
     expect(result).toBeNull();
   });
 
-  test("aud が AUTH_BASE_URL (issuer URL) → aud チェック通過（署名検証で落ちて null）", async () => {
+  test("aud が AUTH_BASE_URL (issuer URL) → aud mismatch で null", async () => {
     const token = makeJwt(defaultPayload({ aud: AUTH_BASE_URL }));
-    // aud フォールバックで authBaseUrl を許容するため aud チェック自体は通過する。
-    // ダミー署名のため最終的に null だが、aud mismatch ログは出ない。
     const result = await withEnv({ CLIENT_ID }, () => verifyJwt(token, AUTH_BASE_URL));
     expect(result).toBeNull();
   });
 
-  test("aud 配列に AUTH_BASE_URL のみ含む（CLIENT_ID なし） → aud チェック通過（署名検証で落ちて null）", async () => {
+  test("aud 配列に AUTH_BASE_URL のみ含む → aud mismatch で null", async () => {
     const token = makeJwt(defaultPayload({ aud: ["other-a", AUTH_BASE_URL] }));
     const result = await withEnv({ CLIENT_ID }, () => verifyJwt(token, AUTH_BASE_URL));
     expect(result).toBeNull();

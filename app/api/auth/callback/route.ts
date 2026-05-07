@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyJwt, exchangeCode } from "@/lib/auth";
+import { verifyJwt, exchangeCode, timingSafeEqual } from "@/lib/auth";
 import { r2Put } from "@/lib/r2";
 import {
   isBetaAllowed,
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
     statePrefix: state?.slice(0, 8),
     hasSavedState: !!savedState,
     savedStatePrefix: savedState?.slice(0, 8),
-    stateMatch: state === savedState,
+    stateMatch: !!state && !!savedState && timingSafeEqual(state, savedState),
     existingCookies: cookieNames,
     userAgent: request.headers.get("user-agent")?.slice(0, 80),
     host: request.headers.get("host"),
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
   }
 
   // state 不一致の具体的な理由をログに残す（どのケースで失敗したかすぐに判別できるようにする）
-  if (!code || !state || !savedState || state !== savedState) {
+  if (!code || !state || !savedState || !timingSafeEqual(state, savedState)) {
     const reason = !code
       ? "code_missing"
       : !state
