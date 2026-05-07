@@ -316,11 +316,11 @@ export async function mergeNewArticles(
   bucket: R2Bucket,
   meta: SharedFeedMeta,
   fetchedArticles: Article[],
-  existingLatest?: Article[] | null,
+  existingLatest: Article[],
 ): Promise<Article[]> {
   if (fetchedArticles.length === 0) return [];
 
-  const latest = existingLatest ?? (await readLatestArticles(bucket, meta.feedHash));
+  const latest = existingLatest;
 
   // knownIds が存在する場合はそれを重複チェックに使う（全ページ横断の既知 ID）
   // 存在しない場合は latest の ID のみでチェック（後方互換）

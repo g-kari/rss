@@ -304,7 +304,10 @@ export async function fetchAndUpdateSharedFeed(
       conditional: !forceRetry,
       requestCookie,
     });
-    newArticles = await mergeNewArticles(env.RSS_DATA, meta, fetched, existingLatest);
+    // existingLatest が null の場合は 304 Not Modified で fetched も空配列のためスキップ
+    if (existingLatest !== null) {
+      newArticles = await mergeNewArticles(env.RSS_DATA, meta, fetched, existingLatest);
+    }
   } catch (e) {
     if (e instanceof RateLimitError) {
       applyFeedRateLimit(meta, e);
