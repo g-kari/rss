@@ -97,8 +97,8 @@ test.describe("定数値", () => {
     expect(MAX_USER_ARTICLES).toBe(10_000);
   });
 
-  test("R2_CONCURRENCY は 10", () => {
-    expect(R2_CONCURRENCY).toBe(10);
+  test("R2_CONCURRENCY は 50", () => {
+    expect(R2_CONCURRENCY).toBe(50);
   });
 });
 
