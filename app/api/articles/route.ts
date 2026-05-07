@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { r2Get, savedArticlesKey, readStateKey } from "@/lib/r2";
+import { r2Get, savedArticlesKey, readStateKey, feedLastFetchedKey } from "@/lib/r2";
 import {
-  getFeedsMeta,
   getUserLatestArticles,
   MAX_PAGES,
   readArticlePage,
@@ -70,19 +69,21 @@ export async function GET(request: NextRequest) {
     // subscriptions.json は一度だけ読み、getUserLatestArticles に渡して再利用する
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
 
-    // since が指定された場合: lastFetchedAt が since より新しいフィードだけ読む（R2 GET 削減）
-    // getFeedsMeta で並行度制限付き一括取得して N+1 R2 リクエストを回避する
+    // since が指定された場合: feed-last-fetched.json（1 R2 GET）で更新済みフィードだけに絞る
+    // cron が更新するキャッシュファイルを参照することで meta.json の N 件読み込みを排除する
     const activeSubs =
       sinceMs !== null
         ? await (async () => {
-            const metas = await getFeedsMeta(
+            const feedLastFetched = await r2Get<Record<string, string>>(
               env.RSS_DATA,
-              subs.map((s) => s.feedHash),
+              feedLastFetchedKey(session.userId),
+              {},
             );
-            return subs.filter((_, i) => {
-              const meta = metas[i];
-              if (!meta?.lastFetchedAt) return false;
-              return new Date(meta.lastFetchedAt).getTime() > sinceMs;
+            return subs.filter((s) => {
+              const lastFetchedAt = feedLastFetched[s.feedHash];
+              // キャッシュ未設定（初回 or cron 未実行）は保守的に含める
+              if (!lastFetchedAt) return true;
+              return new Date(lastFetchedAt).getTime() > sinceMs;
             });
           })()
         : subs;
