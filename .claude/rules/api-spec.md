@@ -246,3 +246,307 @@ OPML ファイルから複数フィードを一括インポートする。
 | `400`      | `INVALID_OPML`       | OPML 形式が不正          |
 | `422`      | `FEED_LIMIT_REACHED` | フィード上限に達している |
 | `429`      | `COOLDOWN`           | インポートクールダウン中 |
+
+---
+
+## PATCH /api/feeds/:id
+
+フィードの属性（タイトル・フィルター・NSFW・優先度・カテゴリ・グループ・ミュート・ビュー・ダイジスト上限）を部分更新する。
+
+### パスパラメータ
+
+| パラメータ | 型     | 説明                             |
+| ---------- | ------ | -------------------------------- |
+| `id`       | string | feedHash（16 文字の hex 文字列） |
+
+### リクエスト
+
+すべてのフィールドはオプション。指定したフィールドのみ更新される。
+
+```json
+{
+  "title": "string", // カスタムタイトル（1〜200 文字）
+  "filter": {
+    // キーワードフィルター（null で削除）
+    "include": ["keyword"],
+    "exclude": ["keyword"]
+  },
+  "nsfw": true, // NSFW フラグ（boolean）
+  "priority": "high", // 優先度（"high" または null）
+  "category": "string", // カテゴリ（最大 50 文字、null で削除）
+  "groupId": "string", // フィードグループ ID（null で解除）
+  "mutedUntil": "2024-12-01T09:00:00Z", // ミュート期限 ISO 8601（null で解除）
+  "view": "articles", // ビューモード（"articles" | "pictures" | "videos" | "social" | null）
+  "digestLimit": 10 // 1フィードの最大表示件数（0〜100 の整数、null で無制限）
+}
+```
+
+### 成功レスポンス
+
+```json
+// 200 OK — 更新後の Feed オブジェクトを返す
+{ "feedHash": "...", "url": "...", "title": "...", ... }
+```
+
+### エラー一覧
+
+| ステータス | code                   | 説明                                        |
+| ---------- | ---------------------- | ------------------------------------------- |
+| `400`      | `INVALID_TITLE`        | タイトルが空または 200 文字超               |
+| `400`      | `INVALID_FILTER`       | フィルターの形式不正                        |
+| `400`      | `INVALID_NSFW`         | nsfw が boolean でない                      |
+| `400`      | `INVALID_PRIORITY`     | priority が "high" でも null でもない       |
+| `400`      | `INVALID_CATEGORY`     | category が string でない、または 50 文字超 |
+| `400`      | `INVALID_GROUP_ID`     | groupId が string でない                    |
+| `400`      | `INVALID_MUTED_UNTIL`  | mutedUntil が ISO 8601 文字列でない         |
+| `400`      | `INVALID_VIEW`         | view が許可された値でない                   |
+| `400`      | `INVALID_DIGEST_LIMIT` | digestLimit が 0〜100 の整数でない          |
+| `404`      | `FEED_NOT_FOUND`       | 指定した feedHash が購読一覧にない          |
+| `404`      | `FEED_GROUP_NOT_FOUND` | 指定した groupId が存在しない               |
+
+---
+
+## POST /api/feeds/:id/refresh
+
+単体フィードを手動でリフレッシュする。30 秒クールダウンあり。
+
+### パスパラメータ
+
+| パラメータ | 型     | 説明                             |
+| ---------- | ------ | -------------------------------- |
+| `id`       | string | feedHash（16 文字の hex 文字列） |
+
+### 成功レスポンス
+
+```json
+// 200 OK — 更新後の SharedFeedMeta を返す
+{ "feedHash": "...", "url": "...", "title": "...", "lastFetchedAt": "...", ... }
+```
+
+### エラー一覧
+
+| ステータス | code             | 説明                         |
+| ---------- | ---------------- | ---------------------------- |
+| `400`      | `INVALID_FEED`   | feedHash の形式が不正        |
+| `404`      | `FEED_NOT_FOUND` | 指定したフィードが存在しない |
+| `429`      | `COOLDOWN`       | 30 秒クールダウン中          |
+
+---
+
+## GET /api/engagement
+
+ユーザーのエンゲージメントログ（記事操作履歴）を取得する。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{
+  "entries": [
+    {
+      "articleId": "string",
+      "feedHash": "string",
+      "action": "fetch_full", // fetch_full | open_original | reading_list | bookmark | like | ai_feedback
+      "timestamp": "2024-11-01T00:00:00Z",
+      "value": "good:summary" // ai_feedback の場合のみ: "{good|neutral|bad}:{summary|translate}"
+    }
+  ]
+}
+```
+
+---
+
+## POST /api/engagement
+
+エンゲージメントイベントを記録する。1 秒クールダウンあり。最大 `MAX_ENGAGEMENT_ENTRIES` 件を保持し、超過分は古い順に削除される。
+
+### リクエスト
+
+```json
+{
+  "articleId": "string", // 必須: 記事 ID（最大 128 文字）
+  "feedHash": "string", // 必須: feedHash（16 文字の hex 文字列）
+  "action": "fetch_full", // 必須: fetch_full | open_original | reading_list | bookmark | like | ai_feedback
+  "value": "good:summary" // ai_feedback の場合のみ必須: "{good|neutral|bad}:{summary|translate}"
+}
+```
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true }
+```
+
+### エラー一覧
+
+| ステータス | code              | 説明                                                           |
+| ---------- | ----------------- | -------------------------------------------------------------- |
+| `400`      | `INVALID_PAYLOAD` | 必須フィールド欠損・feedHash 不正・action 不正・value 形式不正 |
+| `429`      | `COOLDOWN`        | 1 秒クールダウン中                                             |
+
+---
+
+## GET /api/stats
+
+ユーザーの読了統計を取得する。エンゲージメントログ（`fetch_full` / `open_original` アクション）から算出される。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{
+  "dailyReadCounts": [{ "date": "2024-11-01", "count": 5 }], // 直近 7 日の日別アクション数
+  "yearlyHeatmap": [{ "date": "2024-11-01", "count": 5 }], // 過去 365 日のヒートマップ用日別アクション数
+  "topFeeds": [{ "feedHash": "...", "score": 42 }], // 最もよく操作したフィード TOP5（ai_feedback を除く全アクション集計）
+  "weeklyTotal": 23, // 今週（UTC 月曜〜）の合計アクション数
+  "allTimeTotal": 1024, // 全期間の合計アクション数
+  "currentStreak": 7 // 連続活動日数（今日または昨日から遡って途切れるまで）
+}
+```
+
+---
+
+## GET /api/push/config
+
+Push 通知の設定（フィード別無効化・サイレント時間帯・タイムゾーン）を取得する。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{
+  "disabledFeeds": { "feedHash": true }, // Push 通知を無効にしたフィードの feedHash マップ
+  "silentStart": "23:00", // サイレント開始時刻（HH:MM 形式）または null
+  "silentEnd": "07:00", // サイレント終了時刻（HH:MM 形式）または null
+  "timezone": "Asia/Tokyo" // IANA タイムゾーン文字列または null
+}
+```
+
+---
+
+## PUT /api/push/config
+
+Push 通知設定を保存する。省略したフィールドはサーバーの既存値をそのまま保持する。
+
+### リクエスト
+
+すべてのフィールドはオプション。
+
+```json
+{
+  "disabledFeeds": { "feedHash": true }, // フィード別 Push 無効化マップ（全量で上書き）
+  "silentStart": "23:00", // サイレント開始時刻（HH:MM 形式、null でクリア）
+  "silentEnd": "07:00", // サイレント終了時刻（HH:MM 形式、null でクリア）
+  "timezone": "Asia/Tokyo" // IANA タイムゾーン文字列（null でクリア）
+}
+```
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true }
+```
+
+### エラー一覧
+
+| ステータス | code                   | 説明                                      |
+| ---------- | ---------------------- | ----------------------------------------- |
+| `400`      | `INVALID_SILENT_START` | silentStart が HH:MM 形式でない           |
+| `400`      | `INVALID_SILENT_END`   | silentEnd が HH:MM 形式でない             |
+| `400`      | `INVALID_TIMEZONE`     | timezone が有効な IANA タイムゾーンでない |
+
+---
+
+## POST /api/recommendations/dismiss
+
+フィード推薦を非表示（dismissed）にする。`dismissedIds` に追加され、次回の推薦一覧から除外される。上限（`MAX_DISMISSED_IDS`）を超えた場合は最古の ID を削除して新しい ID を追加する（FIFO）。
+
+### リクエスト
+
+```json
+{
+  "id": "string" // 必須: 非表示にする推薦 ID（最大 128 文字）
+}
+```
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true }
+```
+
+### エラー一覧
+
+| ステータス | code         | 説明                |
+| ---------- | ------------ | ------------------- |
+| `400`      | `INVALID_ID` | id が空または未指定 |
+
+---
+
+## POST /api/recommendations/refresh
+
+フィード推薦を再生成する。`generatedAt` をクリアして次回 `GET /api/recommendations` 時に再生成をトリガーする。5 分クールダウンあり。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true }
+```
+
+### エラー一覧
+
+| ステータス | code       | 説明               |
+| ---------- | ---------- | ------------------ |
+| `429`      | `COOLDOWN` | 5 分クールダウン中 |
+
+---
+
+## PATCH /api/collections/:id
+
+コレクションのプロパティ（名前・並び順・記事追加・記事削除）を部分更新する。
+
+### パスパラメータ
+
+| パラメータ | 型     | 説明                    |
+| ---------- | ------ | ----------------------- |
+| `id`       | string | コレクション ID（UUID） |
+
+### リクエスト
+
+すべてのフィールドはオプション。指定したフィールドのみ更新される。
+
+```json
+{
+  "name": "string", // コレクション名（1〜最大文字数、重複不可）
+  "order": 0, // 並び順（整数）
+  "addArticleIds": ["id1"], // 追加する記事 ID の配列（重複は無視）
+  "removeArticleIds": ["id1"] // 削除する記事 ID の配列
+}
+```
+
+### 成功レスポンス
+
+```json
+// 200 OK — 更新後の Collection オブジェクトを返す
+{
+  "id": "uuid",
+  "name": "string",
+  "articleIds": ["id1", "id2"],
+  "createdAt": "2024-11-01T00:00:00Z",
+  "order": 0
+}
+```
+
+### エラー一覧
+
+| ステータス | code                   | 説明                                                |
+| ---------- | ---------------------- | --------------------------------------------------- |
+| `400`      | `INVALID_NAME`         | name が空、または最大文字数超え                     |
+| `400`      | `INVALID_ORDER`        | order が整数でない                                  |
+| `400`      | `INVALID_ARTICLE_IDS`  | addArticleIds / removeArticleIds が文字列配列でない |
+| `404`      | `COLLECTION_NOT_FOUND` | 指定した ID のコレクションが存在しない              |
+| `409`      | `DUPLICATE_NAME`       | 同名のコレクションが既に存在する                    |

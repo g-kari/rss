@@ -72,11 +72,13 @@ export async function runAiJob(
     if (cached) return NextResponse.json({ result: cached });
   }
 
+  // AI エンドポイントは課金が発生するため KV 障害時も fail-closed にする（Issue #463）
   const limited = await checkSlidingWindow(
     env.RATE_LIMIT,
     aiRateLimitKey(session.userId),
     AI_WINDOW_MS,
     is70b ? AI_MAX_CALLS_70B : AI_MAX_CALLS,
+    { failClosed: true },
   );
   if (limited) return limited;
 

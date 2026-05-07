@@ -1,16 +1,15 @@
 /**
- * R2 から JSON データを読み込む。キーが存在しない場合またはエラー時は fallback を返す。
- * エラーはログに出力するが呼び出し元には伝搬しない（r2Put とは異なる）。
+ * R2 から JSON データを読み込む。キーが存在しない場合（null）は fallback を返す。
+ * R2 の実エラー（権限・ネットワーク障害等）は呼び出し元に伝搬する（握り潰さない）。
+ * これにより read-state.json や subscriptions.json の R2 障害時に空データを返す代わりに
+ * 呼び出し元のルートハンドラが 500 を返せるようになる。
  */
 export async function r2Get<T>(bucket: R2Bucket, key: string, fallback: T): Promise<T> {
-  try {
-    const obj = await bucket.get(key);
-    if (!obj) return fallback;
-    return await obj.json<T>();
-  } catch (e) {
-    console.error(`[r2Get] Failed to read ${key}:`, e);
-    return fallback;
-  }
+  // R2 の get() は「キーなし」なら null を返す。例外は実際のエラー（権限・ネットワーク等）。
+  // キーなし → fallback を返す。実エラー → 呼び出し元に伝搬して 500 を返させる。
+  const obj = await bucket.get(key);
+  if (!obj) return fallback;
+  return await obj.json<T>();
 }
 
 /**

@@ -35,6 +35,7 @@ export async function checkSlidingWindow(
   key: string,
   windowMs: number,
   maxCalls: number,
+  { failClosed = false }: { failClosed?: boolean } = {},
 ): Promise<NextResponse | null> {
   return serialized(key, async () => {
     const now = Date.now();
@@ -49,6 +50,14 @@ export async function checkSlidingWindow(
         }
       }
     } catch (err) {
+      if (failClosed) {
+        // AI など課金が発生するエンドポイントでは KV 障害時も fail-closed にする
+        console.error("[rate-limit] checkSlidingWindow: KV get failed (fail-closed)", err);
+        return apiError("Too many requests", 429, {
+          code: "RATE_LIMITED",
+          retryable: true,
+        });
+      }
       // KV の読み取りエラーはレートリミットを適用しない（fail-open）
       console.error("[rate-limit] checkSlidingWindow: KV get failed", err);
       return null;

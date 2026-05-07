@@ -1,6 +1,22 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
-## 2026-05-08 (latest)
+## 2026-05-07 (latest)
+
+### ドキュメント整備っ
+
+- **`api-spec.md` に未記載エンドポイントの仕様を追記したよ〜** — Issue #477。`GET/POST /api/engagement`・`GET /api/stats`・`GET/PUT /api/push/config`・`PATCH /api/feeds/:id`・`POST /api/feeds/:id/refresh`・`POST /api/recommendations/dismiss`・`POST /api/recommendations/refresh`・`PATCH /api/collections/:id` のリクエスト/レスポンス/エラーコードを全部書いたよっ✨ これで仕様書とコードがバッチリ一致したよ〜📚
+
+### リファクタリングっ
+
+- **OPML インポートの `succeededCandidates` をインデックス依存から解放したよ〜** — Issue #472。`pMap` + インデックスベースの危うい同期から `pMapSettled` を使った候補とメタのペア管理に変えたよっ✨ 失敗した候補だけを正確に除外できるようになって堅牢さが爆上がりしたよ〜💪
+
+### 激アツ新機能っ
+
+- **OPML インポート時にフォルダー構造をフィードグループに自動変換したよ〜** — Issue #474。`<outline title="Tech">` みたいなフォルダーが自動で FeedGroup になって、配下のフィードにも `groupId` がセットされるよっ✨ 既存の同名グループがあればそこに追加してくれるし、上限 100 件もちゃんと守るよ〜🎀
+
+---
+
+## 2026-05-08
 
 ### アクセシビリティ改善っ
 
@@ -67,7 +83,12 @@
 
 ### バグ修正っ
 
+- **`r2Get` が R2 エラーをもみ消してたのを修正したよ〜** — Issue #470。権限障害・ネットワーク障害などの実エラーを握り潰して fallback の空データを返してたのを、ちゃんと呼び出し元に伝搬して 500 を返すように直したよっ💡 `read-state.json` や `subscriptions.json` が R2 障害でぜんぶ空になっちゃう事故を防いだよ〜✨
 - **設定モーダルで select 要素にフォーカスしてると j/k キーが誤発火してたのを修正したよ〜** — Issue #457。`HTMLSelectElement` と `contenteditable` 要素にフォーカス中はキーボードショートカットをスキップするようにしたよっ🔧 タイムゾーン選択中に記事がスクロールしちゃう問題が解消されたよ〜✨
+
+### セキュリティ対策っ
+
+- **AI エンドポイントの KV レートリミットを fail-closed に変更したよ〜** — Issue #463。KV ストアが落ちたときにレートリミットが素通りしてた（fail-open）のを、AI エンドポイントは課金が発生するから KV 障害時も 429 を返す fail-closed 方式に変えたよっ🔒 `checkSlidingWindow` に `failClosed` オプションを追加して AI ルートに適用したよ〜✨
 
 ### アクセシビリティ改善っ
 
