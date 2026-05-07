@@ -550,6 +550,44 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
             </span>
           </div>
 
+          <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
+            <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+              シェア設定
+            </span>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-text-default">
+                ヘッダーに表示するシェア先
+              </span>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 mt-1">
+                {SHARE_TARGETS.map((target) => {
+                  const checked = headerShareTargetIds.includes(target.id);
+                  return (
+                    <label
+                      key={target.id}
+                      className="flex items-center gap-1.5 cursor-pointer select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked
+                            ? headerShareTargetIds.filter((id) => id !== target.id)
+                            : [...headerShareTargetIds, target.id as ShareTargetId];
+                          setHeaderShareTargetIds(next);
+                        }}
+                        className="accent-ink w-3.5 h-3.5 cursor-pointer"
+                      />
+                      <span className="text-[12px] text-text-default">{target.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <span className="text-[11px] text-text-muted mt-0.5">
+                チェックしたシェア先が記事ヘッダーにクイックボタンとして表示されます。
+              </span>
+            </div>
+          </div>
+
           {pushEnabled && (
             <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
               <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
