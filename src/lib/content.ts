@@ -225,8 +225,11 @@ export async function fetchMarkdownFromHtml(
   if (!accountId || !apiToken) return null;
 
   try {
+    const MAX_TOMARKDOWN_BYTES = 500_000; // 500KB
+    const truncatedHtml =
+      html.length > MAX_TOMARKDOWN_BYTES ? html.slice(0, MAX_TOMARKDOWN_BYTES) : html;
     const formData = new FormData();
-    formData.append("files", new Blob([html], { type: "text/html" }), "page.html");
+    formData.append("files", new Blob([truncatedHtml], { type: "text/html" }), "page.html");
     formData.append("conversionOptions", JSON.stringify({ hostname }));
 
     const res = await fetch(
