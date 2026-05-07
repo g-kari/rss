@@ -2,6 +2,14 @@
 
 ## 2026-05-07 (latest)
 
+### テスト強化っ
+
+- **API エンドポイント統合テストを追加したよ〜** — Issue #464 #465。`e2e/feeds-crud.spec.ts`・`e2e/read-state-api.spec.ts`・`e2e/feed-groups-api.spec.ts`・`e2e/collections-api.spec.ts`・`e2e/push-api.spec.ts` を新設したよっ✨ フィード URL バリデーション・OPML ラウンドトリップ・read-state マージエッジケース・サイレント時間帯（深夜またぎ含む）まで合計 169 テストが全部グリーンだよ〜💚🎀
+
+---
+
+## 2026-05-07
+
 ### 激アツ新機能っ
 
 - **Workers AI モデルに Gemma 3 と Qwen 2.5 Coder を追加したよ〜** — Issue #481。`@cf/google/gemma-3-27b-it`（多言語対応で日本語の要約がめちゃ得意っ✨）と `@cf/qwen/qwen2.5-coder-1.5b-instruct`（コード記事の要約に特化したモデルっ💻）をモデル選択に追加したよ〜！ユーザー設定のモデル選択から使えるよっ🎀
