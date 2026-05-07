@@ -4,6 +4,22 @@
 
 ### セキュリティ対策っ
 
+- **`/api/stats` にスライディングウィンドウ（60秒 30回）・`/api/auth/me` に 5 秒クールダウンを追加したよ〜** — Issue #558。レートリミットなしで DoS ベクターになってたのを修正したよっ🔒✨
+- **DBSC ルートハンドラのエラーレスポンスを `apiError()` に統一したよ〜** — Issue #571。`code` フィールドが欠落してたのを直したよっ🔒🎀
+
+### パフォーマンス改善っ
+
+- **`useSliderGallery` のイベントリスナーに AbortController を追加してメモリリークを修正したよ〜** — Issue #561。記事切り替えのたびにリスナーが蓄積されてたのをちゃんとクリーンアップするようにしたよっ⚡✨
+- **`useGlobalFilterAutoRead` の `readIdsRef` を deps から除去して不要な全記事再走査を防いだよ〜** — Issue #563。既読操作のたびに全記事スキャンしてたのを修正したよっ⚡💡
+
+### アクセシビリティ改善っ
+
+- **新着記事通知バナーの閉じるボタンを `role="img"` span から `<button>` 要素に修正したよ〜** — Issue #564。スクリーンリーダーがクリック可能なボタンとして認識できるようになったよっ♿🎀
+
+### リファクタリングっ
+
+- **`WorkersAiModelId` の型ガード関数を `ai-models.ts` に集約して 2 ファイルの重複と unsafe キャストを排除したよ〜** — Issue #570。`isWorkersAiModelId()` で型安全に検証できるようになったよっ🔧✨
+
 - **`DELETE` / `PATCH /api/feeds/:id` に `isValidFeedHash` バリデーションを追加したよ〜** — Issue #539。`/refresh` や `/reinfer` と同じガードパターンに統一したよっ🔒✨
 - **`PATCH` / `DELETE /api/collections/:id` に UUID フォーマット検証を追加したよ〜** — Issue #539。任意長文字列がそのまま処理を通過しちゃう問題を修正したよっ🔒🎀
 
