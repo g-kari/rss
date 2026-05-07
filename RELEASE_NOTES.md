@@ -2,6 +2,12 @@
 
 ## 2026-05-08 (latest)
 
+### アクセシビリティ改善っ
+
+- **FilterPillButton に `aria-label` と `aria-pressed` を追加したよ〜** — Issue #466。フィルターピルボタンがスクリーンリーダーに読み上げられるようになったよっ✨ ON/OFF 状態も `aria-pressed` で伝わるよ〜🎀
+- **フィードアイテムに `aria-label` を追加したよ〜** — Issue #466。フィード一覧の各アイテムにフィード名が `aria-label` でセットされてスクリーンリーダー対応したよっ✨
+- **記事一覧に `aria-setsize` / `aria-posinset` を追加したよ〜** — Issue #467。仮想スクロールの記事に位置情報が付いて「何件中何件目」がスクリーンリーダーに伝わるようになったよっ✨🎀
+
 ### セキュリティ対策っ
 
 - **JWKS フェッチに 10 秒タイムアウトを追加したよ〜** — Issue #462。`getJwks()` が `id.0g0.xyz` の無応答で永遠にハングするリスクを解消したよっ✨ 既存の `fetchWithTimeout` を使って認証ハングを防いだよ〜🔒
@@ -9,6 +15,10 @@
 ### バグ修正っ
 
 - **エラーコード `FEED_NOT_FOUND` を `NO_FEED_FOUND` に統一したよ〜** — Issue #473。`api-spec.md` の仕様と実際のコードが一致してなかった問題を修正したよっ✨💡
+
+### ドキュメント整備っ
+
+- **wrangler.toml と README にオプション環境変数を追記したよ〜** — Issue #476。`RSSHUB_INSTANCE_URL`・`RSSHUB_ACCESS_KEY` の設定方法をコメントとして明記したよっ✨ セルフホスト RSSHub を使いたいユーザーが迷わなくなったよ〜📚
 
 ### リファクタリングっ
 
