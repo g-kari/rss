@@ -453,8 +453,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
     [...userTimestamps.entries()],
     async ([userId, timestamps]) => {
       const key = feedLastFetchedKey(userId);
-      const existing = await r2Get<Record<string, string>>(env.RSS_DATA, key, {});
-      await r2Put(env.RSS_DATA, key, { ...existing, ...timestamps });
+      await r2Put(env.RSS_DATA, key, timestamps); // GET 不要 - 直接上書き
     },
     USER_FETCH_CONCURRENCY,
   );
