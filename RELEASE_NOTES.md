@@ -18,6 +18,9 @@
 
 ### リファクタリングっ
 
+- **useArticleData のエラーハンドラー Ref を1本に統合したよ〜** — Issue #434。`onErrorRef`（useSyncedRef）と `onErrRef`（useRef クロージャ）の2段重ねを `logErrorRef`（useSyncedRef）1本に整理したよっ🔧 二重間接参照がなくなってコードが読みやすくなったよ〜✨
+- **useFilteredArticles の noteIds 計算から JSON roundtrip を削除したよ〜** — Issue #411。`JSON.stringify` → `JSON.parse` の無駄な変換を除去して、`Object.keys(notes)` から直接 Set を作るようにしたよっ💡 2つの useMemo が1つになってすっきりしたよ〜✨
+- **useReadStateSyncApply の deps 配列から Ref を除去したよ〜** — Issue #427。useRef の安定参照は依存配列に含める必要がないのに混入してたので取り除いたよっ🔧 useCallback の再生成が抑えられてパフォーマンスも微改善したよ〜💡
 - **useApplyServerState の setState コールバックを純粋関数化したよ〜** — Issue #442 #441。localStorage 書き込みや ref 書き換えを setState コールバック外に移動して React Strict Mode の二重実行に対応したよっ🔧 `computeMergedSet` 純粋関数を導入して Set マージロジックもすっきりしたよ〜✨
 - **globals.css のシンタックスハイライト色を CSS 変数化したよ〜** — Issue #426。ハードコードの 16 進数を `--color-hljs-*` 変数に変換して、ライト/ダーク切り替えを変数定義だけで完結させたよっ💡 重複したダークテーマセレクタも削除されてスリムになったよ〜✨
 

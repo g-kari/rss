@@ -101,7 +101,9 @@ export function useFilteredArticles({
     return ids;
   }, [selectedArticleId, gracePeriodId, galleryAutoReadIds]);
 
-  // structuralFiltered では activeIds の変動（特に galleryAutoReadIds）で再計算を避けるため ref を使用
+  // activeIdsRef: structuralFiltered の useMemo は galleryAutoReadIds の高頻度変化で再計算を避けるため
+  // activeIds を依存配列に含めず ref 経由でアクセスする（useSyncedRef とは目的が異なる意図的な最適化）。
+  // filtered の useMemo では selectedArticleId / gracePeriodId を deps に明示してカバーしている。
   const activeIdsRef = useRef(activeIds);
   activeIdsRef.current = activeIds;
 

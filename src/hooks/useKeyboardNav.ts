@@ -67,26 +67,10 @@ interface KeyboardNavOptions {
 function buildContext(opts: KeyboardNavOptions): ShortcutContext {
   const list = opts.filteredArticles;
   const idx = opts.selectedArticle ? list.findIndex((a) => a.id === opts.selectedArticle!.id) : -1;
-
   return {
+    ...opts,
     list,
     idx,
-    selectedArticle: opts.selectedArticle,
-    selectedFeedId: opts.selectedFeedId,
-    feeds: opts.feeds,
-    pinnedFeedIds: opts.pinnedFeedIds,
-    readIds: opts.readIds,
-    readBeforeTimestamp: opts.readBeforeTimestamp,
-    readingListIds: opts.readingListIds,
-    likeIds: opts.likeIds,
-    fontSize: opts.fontSize,
-    fontFamily: opts.fontFamily,
-    layout: opts.layout,
-    unreadOnly: opts.unreadOnly,
-    bookmarkOnly: opts.bookmarkOnly,
-    readingListOnly: opts.readingListOnly,
-    likeOnly: opts.likeOnly,
-    digestMode: opts.digestMode,
     navigateTo: (article) => {
       if (article) {
         opts.setSelectedArticle(article);
@@ -94,30 +78,6 @@ function buildContext(opts: KeyboardNavOptions): ShortcutContext {
         opts.onArticleAnnounce?.(article.title);
       }
     },
-    onSelectFeed: opts.onSelectFeed,
-    markBulkRead: opts.markBulkRead,
-    markAllRead: opts.markAllRead,
-    toggleBookmark: opts.toggleBookmark,
-    toggleRead: opts.toggleRead,
-    toggleReadingList: opts.toggleReadingList,
-    toggleLike: opts.toggleLike,
-    showToast: opts.showToast,
-    onChangeFontSize: opts.onChangeFontSize,
-    onChangeFontFamily: opts.onChangeFontFamily,
-    onChangeLayout: opts.onChangeLayout,
-    toggleUnreadOnly: opts.toggleUnreadOnly,
-    toggleBookmarkOnly: opts.toggleBookmarkOnly,
-    toggleReadingListOnly: opts.toggleReadingListOnly,
-    toggleLikeOnly: opts.toggleLikeOnly,
-    toggleDigestMode: opts.toggleDigestMode,
-    toggleSortOrder: opts.toggleSortOrder,
-    cycleDateRange: opts.cycleDateRange,
-    cycleReadingTimeRange: opts.cycleReadingTimeRange,
-    searchRef: opts.searchRef,
-    refreshFeeds: opts.refreshFeeds,
-    retryFeed: opts.retryFeed,
-    onShowSnoozeMenu: opts.onShowSnoozeMenu,
-    onShowFeedSwitcher: opts.onShowFeedSwitcher,
   };
 }
 

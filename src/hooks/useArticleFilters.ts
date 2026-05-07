@@ -1,4 +1,11 @@
-import { useState, useMemo, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { DateRange, ReadingTimeRange } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, storageGet, storageSet, loadStoredEnum } from "../lib/storage";
@@ -33,22 +40,6 @@ function toggleBoolFilter(
     return { ...prev, [key]: next };
   });
   resetPage();
-}
-
-function makeCycler<T extends string>(
-  cycle: readonly T[],
-  ref: { readonly current: T },
-  storageKey: string,
-  setState: Dispatch<SetStateAction<T>>,
-  resetPage: () => void,
-): () => T {
-  return () => {
-    const next = cycleValue(cycle, ref.current);
-    storageSet(storageKey, next);
-    setState(next);
-    resetPage();
-    return next;
-  };
 }
 
 interface UseArticleFiltersOptions {
@@ -99,46 +90,56 @@ export function useArticleFilters({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resetPageRef は useSyncedRef の安定参照。フィード/グループ切替時のみリセット
   }, [feedId, selectedGroupId]);
 
-  const {
-    toggleUnreadOnly,
-    toggleBookmarkOnly,
-    toggleReadingListOnly,
-    toggleLikeOnly,
-    toggleNoteOnly,
-    toggleDigestMode,
-    updateQuery,
-    cycleDateRange,
-    cycleReadingTimeRange,
-  } = useMemo(() => {
-    const rp = () => resetPageRef.current();
-    const toggle = (key: BoolFilterKey) => () => toggleBoolFilter(key, setBoolFilters, rp);
-    return {
-      toggleUnreadOnly: toggle("unreadOnly"),
-      toggleBookmarkOnly: toggle("bookmarkOnly"),
-      toggleReadingListOnly: toggle("readingListOnly"),
-      toggleLikeOnly: toggle("likeOnly"),
-      toggleNoteOnly: toggle("noteOnly"),
-      toggleDigestMode: toggle("digestMode"),
-      updateQuery: (q: string) => {
-        setRawQuery(q);
-        resetPageRef.current();
-      },
-      cycleDateRange: makeCycler(
-        DATE_RANGE_CYCLE,
-        dateRangeRef,
-        STORAGE_KEYS.DATE_RANGE,
-        setDateRange,
-        rp,
-      ),
-      cycleReadingTimeRange: makeCycler(
-        READING_TIME_RANGE_CYCLE,
-        readingTimeRangeRef,
-        STORAGE_KEYS.READING_TIME_RANGE,
-        setReadingTimeRange,
-        rp,
-      ),
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 全 setter・ref は安定参照。マウント時に一度だけ生成するメモ化オブジェクト
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- setBoolFilters は安定参照。resetPageRef は useSyncedRef の安定 ref
+  const toggleUnreadOnly = useCallback(
+    () => toggleBoolFilter("unreadOnly", setBoolFilters, resetPageRef.current),
+    [],
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const toggleBookmarkOnly = useCallback(
+    () => toggleBoolFilter("bookmarkOnly", setBoolFilters, resetPageRef.current),
+    [],
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const toggleReadingListOnly = useCallback(
+    () => toggleBoolFilter("readingListOnly", setBoolFilters, resetPageRef.current),
+    [],
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const toggleLikeOnly = useCallback(
+    () => toggleBoolFilter("likeOnly", setBoolFilters, resetPageRef.current),
+    [],
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const toggleNoteOnly = useCallback(
+    () => toggleBoolFilter("noteOnly", setBoolFilters, resetPageRef.current),
+    [],
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const toggleDigestMode = useCallback(
+    () => toggleBoolFilter("digestMode", setBoolFilters, resetPageRef.current),
+    [],
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const updateQuery = useCallback((q: string) => {
+    setRawQuery(q);
+    resetPageRef.current();
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- dateRangeRef・resetPageRef は安定 ref
+  const cycleDateRange = useCallback((): DateRange => {
+    const next = cycleValue(DATE_RANGE_CYCLE, dateRangeRef.current);
+    storageSet(STORAGE_KEYS.DATE_RANGE, next);
+    setDateRange(next);
+    resetPageRef.current();
+    return next;
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- readingTimeRangeRef・resetPageRef は安定 ref
+  const cycleReadingTimeRange = useCallback((): ReadingTimeRange => {
+    const next = cycleValue(READING_TIME_RANGE_CYCLE, readingTimeRangeRef.current);
+    storageSet(STORAGE_KEYS.READING_TIME_RANGE, next);
+    setReadingTimeRange(next);
+    resetPageRef.current();
+    return next;
   }, []);
 
   return {

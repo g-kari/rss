@@ -165,14 +165,7 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
         });
       } else {
         if (!flushIfPending()) return;
-        const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
-        saveReadState(body).then((result) => {
-          if (result.ok && result.state) {
-            applyServerState(result.state);
-          } else {
-            restorePending(pendingRefs, snapshot);
-          }
-        });
+        void flushToServer();
       }
     },
     document,
