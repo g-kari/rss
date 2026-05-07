@@ -22,7 +22,7 @@ export default function FooterIconButton({
       onClick={onClick}
       onContextMenu={onContextMenu}
       disabled={disabled}
-      className={`${className}${disabled ? " disabled:opacity-40" : ""}`}
+      className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${className}${disabled ? " disabled:opacity-40" : ""}`}
       title={title}
       aria-label={title}
     >

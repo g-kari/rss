@@ -8,6 +8,8 @@ import { useSyncedRef } from "./useSyncedRef";
 interface FeedDataState {
   feeds: Feed[];
   loadingFeeds: boolean;
+  feedLoadError: boolean;
+  retryFeedList: () => void;
   setFeeds: React.Dispatch<React.SetStateAction<Feed[]>>;
   onFeedAdded: (feed: Feed) => void;
   removeFeedFromList: (id: string) => void;
@@ -22,6 +24,7 @@ export function useFeedData(
 ): FeedDataState {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loadingFeeds, setLoadingFeeds] = useState(false);
+  const [feedLoadError, setFeedLoadError] = useState(false);
   const onErrorRef = useSyncedRef(onError);
 
   const userId = user?.id ?? null;
@@ -35,15 +38,31 @@ export function useFeedData(
   useEffect(() => {
     if (!userId) return;
     setLoadingFeeds(true);
+    setFeedLoadError(false);
     fetchFeeds()
       .catch((err) => {
         if (process.env.NODE_ENV !== "production") console.error(err);
         onErrorRef.current?.("フィードの読み込みに失敗しました");
+        setFeedLoadError(true);
       })
       .finally(() => {
         setLoadingFeeds(false);
       });
   }, [userId, fetchFeeds, onErrorRef]);
+
+  const retryFeedList = useCallback(() => {
+    setFeedLoadError(false);
+    setLoadingFeeds(true);
+    fetchFeeds()
+      .catch((err) => {
+        if (process.env.NODE_ENV !== "production") console.error(err);
+        onErrorRef.current?.("フィードの読み込みに失敗しました");
+        setFeedLoadError(true);
+      })
+      .finally(() => {
+        setLoadingFeeds(false);
+      });
+  }, [fetchFeeds, onErrorRef]);
 
   const refreshFeedsList = useCallback(async (): Promise<Feed[]> => {
     return fetchFeeds();
@@ -68,6 +87,8 @@ export function useFeedData(
   return {
     feeds,
     loadingFeeds,
+    feedLoadError,
+    retryFeedList,
     setFeeds,
     onFeedAdded,
     removeFeedFromList,

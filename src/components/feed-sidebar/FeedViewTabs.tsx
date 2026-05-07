@@ -138,7 +138,7 @@ export default function FeedViewTabs({
             onDragEnter={(e) => handleDragEnter(e, t.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, t.id)}
-            className={`flex-1 flex items-center justify-center gap-1 px-1 py-1 rounded transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-1 px-1 min-h-[44px] rounded transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
               isDragOver
                 ? "ring-2 ring-inset ring-text-muted bg-surface-subtle text-text-strong"
                 : isActive

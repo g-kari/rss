@@ -180,7 +180,9 @@ export default function App() {
     loadMoreAllFeedsArticles,
     skipRemainingPages,
     fetchError,
+    feedLoadError,
     retryInitialLoad,
+    retryFeedList,
   } = useFeeds(user, toast.error);
 
   const {
@@ -1065,6 +1067,8 @@ export default function App() {
                       collections={collections}
                       selectedCollectionId={selectedCollectionId}
                       install={install}
+                      loadError={feedLoadError ? "フィードの読み込みに失敗しました" : null}
+                      onRetry={retryFeedList}
                       push={{
                         supported: pushSupported,
                         subscribed: pushSubscribed,

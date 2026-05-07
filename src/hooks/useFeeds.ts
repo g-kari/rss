@@ -16,7 +16,9 @@ interface FeedsState {
   newArticleCount: number;
   loadedFeedPages: Map<string, number>;
   fetchError: boolean;
+  feedLoadError: boolean;
   retryInitialLoad: () => void;
+  retryFeedList: () => void;
   onFeedAdded: (feed: Feed) => void;
   prependArticle: (article: Article) => void;
   removeFeed: (id: string) => void;
@@ -41,6 +43,8 @@ export function useFeeds(
   const {
     feeds,
     loadingFeeds,
+    feedLoadError,
+    retryFeedList,
     onFeedAdded,
     removeFeedFromList,
     updateFeed,
@@ -164,7 +168,9 @@ export function useFeeds(
     newArticleCount,
     loadedFeedPages,
     fetchError,
+    feedLoadError,
     retryInitialLoad,
+    retryFeedList,
     onFeedAdded,
     prependArticle,
     removeFeed,

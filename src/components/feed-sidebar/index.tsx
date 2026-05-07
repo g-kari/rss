@@ -51,6 +51,8 @@ interface Props {
   theme: "light" | "dark";
   refreshing: boolean;
   loadingFeeds?: boolean;
+  loadError?: string | null;
+  onRetry?: () => void;
   isOnline: boolean;
   pinnedFeedIds: Set<string>;
   collapsedCategories?: Set<string>;
@@ -91,6 +93,8 @@ function FeedSidebar({
   theme,
   refreshing,
   loadingFeeds = false,
+  loadError = null,
+  onRetry,
   isOnline,
   pinnedFeedIds,
   collapsedCategories = new Set(),
@@ -369,7 +373,7 @@ function FeedSidebar({
         <button
           type="button"
           onClick={() => onSelectFeed(null)}
-          className={`group flex items-center justify-between gap-2 px-4 py-1.5 w-full cursor-pointer transition-all duration-200 ${
+          className={`group flex items-center justify-between gap-2 px-4 min-h-[44px] w-full cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset ${
             selectedFeedId === null
               ? "text-text-strong bg-surface-subtle"
               : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
@@ -389,7 +393,7 @@ function FeedSidebar({
                     e.stopPropagation();
                     onMarkAllRead(null);
                   }}
-                  className="p-0.5 text-text-faint hover:text-text-default transition-colors duration-150"
+                  className="p-0.5 text-text-faint hover:text-text-default transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded"
                   title="全て既読 (m)"
                 >
                   <svg
@@ -516,6 +520,21 @@ function FeedSidebar({
                 />
               </div>
             ))}
+          </div>
+        )}
+
+        {loadError && feeds.length === 0 && (
+          <div className="px-4 py-3 text-center">
+            <p className="text-[12px] text-rose-400 mb-2">{loadError}</p>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="text-[12px] text-text-default hover:text-text-strong underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded"
+              >
+                再試行
+              </button>
+            )}
           </div>
         )}
 

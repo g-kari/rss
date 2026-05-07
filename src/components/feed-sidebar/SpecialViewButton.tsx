@@ -19,7 +19,7 @@ export default function SpecialViewButton({
     <button
       onClick={() => onSelectFeed(id)}
       aria-current={selectedFeedId === id ? "page" : undefined}
-      className={`w-full flex items-center justify-between gap-2 px-4 py-1.5 text-left transition-all duration-200 ${
+      className={`w-full flex items-center justify-between gap-2 px-4 min-h-[44px] text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset ${
         selectedFeedId === id
           ? "text-text-strong bg-surface-subtle"
           : "text-text-muted hover:text-text-strong hover:bg-surface-hover"

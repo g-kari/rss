@@ -105,7 +105,7 @@ export default function SidebarFooter({
               });
           }}
           disabled={push.loading}
-          className={`p-2 rounded transition-colors duration-200 flex-shrink-0 ${push.error ? "text-rose-400" : push.subscribed ? "text-accent-dot" : "text-text-faint hover:text-text-muted"} disabled:opacity-50`}
+          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors duration-200 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${push.error ? "text-rose-400" : push.subscribed ? "text-accent-dot" : "text-text-faint hover:text-text-muted"} disabled:opacity-50`}
           title={
             push.error ??
             (push.subscribed ? "プッシュ通知をオフ (右クリックでテスト送信)" : "プッシュ通知をオン")
@@ -177,7 +177,7 @@ export default function SidebarFooter({
       <div className="relative flex-shrink-0" ref={moreRef}>
         <button
           onClick={() => setMoreOpen((v) => !v)}
-          className="p-2 text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded"
           title="その他のメニュー"
           aria-label="その他のメニュー"
           aria-expanded={moreOpen}
