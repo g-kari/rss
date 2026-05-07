@@ -67,6 +67,7 @@ interface Props {
   collections?: Collection[];
   selectedCollectionId?: string | null;
   feedGroups?: FeedGroup[];
+  totalUnread?: number;
   install?: { canInstall: boolean; onInstall: () => void };
   push?: {
     supported: boolean;
@@ -109,6 +110,7 @@ function FeedSidebar({
   collections,
   selectedCollectionId = null,
   feedGroups,
+  totalUnread: totalUnreadProp,
   install,
   push,
 }: Props) {
@@ -291,7 +293,7 @@ function FeedSidebar({
   const {
     sortedTags,
     unreadByFeed,
-    totalUnread,
+    totalUnread: totalUnreadCalc,
     lastPublishedByFeed,
     readTodayCount,
     pinnedFeeds,
@@ -310,6 +312,8 @@ function FeedSidebar({
     activeFeedView,
     nsfwMode,
   });
+
+  const totalUnread = totalUnreadProp ?? totalUnreadCalc;
 
   return (
     <aside

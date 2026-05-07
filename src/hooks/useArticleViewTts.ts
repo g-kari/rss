@@ -15,6 +15,12 @@ export interface ArticleViewTtsResult {
   handleTtsToggle: () => void;
 }
 
+function buildTtsText(article: Article, processedContent: string | null): string {
+  return [article.title, toPlainText(processedContent ?? article.summary ?? "")]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function useArticleViewTts(
   article: Article | null,
   processedContent: string | null,
@@ -40,9 +46,7 @@ export function useArticleViewTts(
       ttsStop();
     } else {
       if (!article) return;
-      const text = [article.title, toPlainText(processedContent ?? article.summary ?? "")]
-        .filter(Boolean)
-        .join("\n\n");
+      const text = buildTtsText(article, processedContent);
       if (text.trim()) speak(text);
     }
   }, [ttsPlaying, ttsPaused, ttsStop, speak, article, processedContent]);
@@ -58,9 +62,7 @@ export function useArticleViewTts(
       if (ttsPlaying || ttsPaused) {
         ttsStop();
       } else {
-        const text = [article.title, toPlainText(processedContent ?? article.summary ?? "")]
-          .filter(Boolean)
-          .join("\n\n");
+        const text = buildTtsText(article, processedContent);
         if (text.trim()) speak(text);
       }
     },

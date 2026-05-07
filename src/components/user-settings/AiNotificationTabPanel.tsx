@@ -12,6 +12,7 @@ import {
 import { AI_MODELS, type WorkersAiModelId } from "../../lib/ai-models";
 import { useToast } from "@/contexts/ToastContext";
 import { useDebounce } from "../../hooks/useDebounce";
+import { apiFetch } from "@/lib/api-fetch";
 import { SettingRow } from "./shared";
 
 interface AiNotificationTabPanelProps {
@@ -59,7 +60,7 @@ export default function AiNotificationTabPanel({
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     setPushEnabled(true);
-    fetch("/api/push/config")
+    apiFetch("/api/push/config")
       .then((r) =>
         r.ok
           ? (r.json() as Promise<{
@@ -91,7 +92,7 @@ export default function AiNotificationTabPanel({
           silentEnd: end || null,
           timezone: tz || null,
         };
-        const res = await fetch("/api/push/config", {
+        const res = await apiFetch("/api/push/config", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -116,7 +117,7 @@ export default function AiNotificationTabPanel({
     const next = !errorNotificationsEnabled;
     setErrorNotificationsEnabled(next);
     try {
-      await fetch("/api/push/config", {
+      await apiFetch("/api/push/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ errorNotificationsEnabled: next }),

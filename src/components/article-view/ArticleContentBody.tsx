@@ -212,8 +212,13 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
 
         {/* 原文 / 翻訳タブ（翻訳結果がある場合のみ表示） */}
         {translateResult && processedContent && (
-          <div className="mb-4 flex items-center gap-1 border-b border-border-default">
+          <div
+            className="mb-4 flex items-center gap-1 border-b border-border-default"
+            role="tablist"
+          >
             <button
+              role="tab"
+              aria-selected={contentTab === "original"}
               onClick={() => setContentTab("original")}
               className={`px-3 py-2 text-[11px] tracking-[0.08em] uppercase transition-colors duration-150 border-b-2 -mb-px ${
                 contentTab === "original"
@@ -224,6 +229,8 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
               原文
             </button>
             <button
+              role="tab"
+              aria-selected={contentTab === "translate"}
               onClick={() => setContentTab("translate")}
               className={`px-3 py-2 text-[11px] tracking-[0.08em] uppercase transition-colors duration-150 border-b-2 -mb-px ${
                 contentTab === "translate"

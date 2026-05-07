@@ -40,6 +40,8 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
         onClick={toggle}
         title="共有 (c)"
         aria-label="共有"
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg

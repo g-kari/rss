@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { Feed } from "../types";
 import Modal from "./Modal";
 import { useToast } from "@/contexts/ToastContext";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface Props {
   feed: Feed;
@@ -18,7 +19,7 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
   const [pushLoading, setPushLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/push/config")
+    apiFetch("/api/push/config")
       .then((r) =>
         r.ok ? (r.json() as Promise<{ disabledFeeds: Record<string, boolean> }>) : null,
       )
@@ -36,7 +37,7 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
     setPushLoading(true);
     const next = !pushDisabled;
     try {
-      const res = await fetch("/api/push/config", {
+      const res = await apiFetch("/api/push/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ disabledFeeds: { [feed.id]: next } }),

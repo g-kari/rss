@@ -80,7 +80,11 @@ export default function ArticleAiPanel({
   return (
     <>
       {aiResult && (
-        <div className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up">
+        <div
+          className="mb-8 px-4 py-3 rounded-lg border border-border-default bg-surface-base animate-fade-up"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">AI 要約</p>
             <div className="flex items-center gap-1">

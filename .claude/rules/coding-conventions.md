@@ -178,7 +178,7 @@ const hash = await sha256Hex(url);
 
 ## Cron (`src/cron/fetch.ts`)
 
-- `FetchEnv = Pick<CloudflareEnv, 'RSS_DATA'>` 型を使う (AI 不要)
+- `FetchEnv = Pick<CloudflareEnv, 'RSS_DATA' | 'FINDME_RSS' | 'RATE_LIMIT'>` 型を使う (AI 不要)
 - `fetchAllUsers(env: FetchEnv)` → R2 のユーザー一覧を列挙して全員分取得
 - `fetchArticles(userId: string, env: FetchEnv)` → 特定ユーザーの RSS 取得
 
