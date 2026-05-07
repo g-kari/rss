@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { UserProfile } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { base64urlToBytes } from "../lib/auth";
+import { devError } from "../lib/dev-log";
 
 export interface PushNotificationState {
   /** ブラウザが Web Push をサポートしているか */
@@ -102,7 +103,7 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
         setSubscribed(true);
       }
     } catch (err) {
-      if (process.env.NODE_ENV !== "production") console.error("Push toggle failed:", err);
+      devError("Push toggle failed:", err);
       setError("エラーが発生しました");
     } finally {
       setLoading(false);

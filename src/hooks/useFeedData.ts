@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Feed, UserProfile } from "../types";
 import { apiFetchJson } from "../lib/api-fetch";
+import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
 
 interface FeedDataState {
@@ -41,7 +42,7 @@ export function useFeedData(
     setFeedLoadError(false);
     fetchFeeds()
       .catch((err) => {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onErrorRef.current?.("フィードの読み込みに失敗しました");
         setFeedLoadError(true);
       })
@@ -55,7 +56,7 @@ export function useFeedData(
     setLoadingFeeds(true);
     fetchFeeds()
       .catch((err) => {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onErrorRef.current?.("フィードの読み込みに失敗しました");
         setFeedLoadError(true);
       })

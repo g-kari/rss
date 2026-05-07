@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import type { Feed, Article, UserProfile } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
+import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
 import { useFeedData } from "./useFeedData";
 import { useArticleData } from "./useArticleData";
@@ -75,7 +76,7 @@ export function useFeeds(
     setLoadingArticles(true);
     fetchAndSetArticles()
       .catch((err) => {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onErrorRef.current?.("記事の読み込みに失敗しました");
         setFetchError(true);
       })
@@ -91,7 +92,7 @@ export function useFeeds(
       try {
         await fetchAndSetArticles();
       } catch (err) {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onErrorRef.current?.("記事の読み込みに失敗しました");
       } finally {
         setLoadingArticles(false);
@@ -110,7 +111,7 @@ export function useFeeds(
       ]);
       mergeArticles(fresh);
     } catch (err) {
-      if (process.env.NODE_ENV !== "production") console.error(err);
+      devError(err);
       onErrorRef.current?.("更新に失敗しました");
     } finally {
       setRefreshing(false);
@@ -127,7 +128,7 @@ export function useFeeds(
         mergeArticles(await apiFetchJson<Article[]>("/api/articles"));
       } catch (err) {
         if (process.env.NODE_ENV !== "production")
-          console.error(`[${endpoint}] feed action failed:`, err);
+          devError(`[${endpoint}] feed action failed:`, err);
         onErrorRef.current?.(errorMessage);
       }
     },

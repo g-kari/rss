@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch, apiFetchJson } from "@/lib/api-fetch";
+import { devError } from "@/lib/dev-log";
 import type { Collection, UserProfile } from "@/types";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -39,7 +40,7 @@ export function useCollections(
         if (!cancelled) setCollections(sortByOrder(data));
       })
       .catch((err) => {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onErrorRef.current?.("コレクションの読み込みに失敗しました");
       })
       .finally(() => {
@@ -124,7 +125,7 @@ export function useCollections(
           body: JSON.stringify({ addArticleIds: [articleId] }),
         });
       } catch (err) {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onError?.("コレクションへの追加に失敗しました");
         setCollections((prev) =>
           prev.map((c) =>
@@ -154,7 +155,7 @@ export function useCollections(
           body: JSON.stringify({ removeArticleIds: [articleId] }),
         });
       } catch (err) {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onError?.("コレクションからの削除に失敗しました");
         setCollections((prev) =>
           prev.map((c) =>

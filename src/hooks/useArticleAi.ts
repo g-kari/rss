@@ -9,6 +9,7 @@ import { summarizeInBrowser } from "../lib/browser-summarizer";
 import { toPlainText } from "../lib/html";
 import { DEFAULT_AI_MODEL } from "../lib/ai-models";
 import { STORAGE_KEYS, storageGet } from "../lib/storage";
+import { parseRetryAfter } from "../lib/retry-after";
 
 /** AI プロバイダー識別子（要約・翻訳共通） */
 export type TranslationProvider = "browser" | "workers-ai";
@@ -171,7 +172,17 @@ function useAiOperation(
         });
         if (!res.ok) {
           const type = classifyHttpError(res.status);
-          setError({ type, message: getErrorMessage(type, errorMessage) });
+          let message: string;
+          if (res.status === 429) {
+            const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"), {
+              fallbackMs: 60_000,
+            });
+            const seconds = Math.ceil(retryAfterMs / 1000);
+            message = `レート制限中です。${seconds}秒後に再試行してください。`;
+          } else {
+            message = getErrorMessage(type, errorMessage);
+          }
+          setError({ type, message });
           return;
         }
         const data = (await res.json()) as { result?: string; error?: string };

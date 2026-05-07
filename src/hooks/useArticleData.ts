@@ -5,6 +5,7 @@ import type { Article, Feed, UserProfile } from "../types";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { apiFetchJson } from "../lib/api-fetch";
 import { compareByDateDesc } from "../lib/article-utils";
+import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
@@ -69,7 +70,7 @@ export function useArticleData(
   const loadingFeedIdsRef = useRef(new Set<string>());
   const isOnlineRef = useSyncedRef(isOnline);
   const logErrorRef = useSyncedRef((err: unknown, msg: string) => {
-    if (process.env.NODE_ENV !== "production") console.error(err);
+    devError(err);
     onError?.(msg);
   });
   const latestArticleIdRef = useRef<string | null>(null);
@@ -128,8 +129,7 @@ export function useArticleData(
       }
       lastPollTimeRef.current = pollStartTime;
     } catch (err) {
-      if (process.env.NODE_ENV !== "production")
-        console.error("[polling] 新着記事の取得に失敗:", err);
+      devError("[polling] 新着記事の取得に失敗:", err);
       logErrorRef.current(err, "新着記事の取得に失敗しました");
     } finally {
       isPollingRef.current = false;

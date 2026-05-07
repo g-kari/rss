@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FeedGroup, UserProfile } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
+import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
 
 /** `useFeedGroups` の戻り値型 */
@@ -54,7 +55,7 @@ export function useFeedGroups(
         if (!cancelled) setGroups(sortByOrder(data));
       })
       .catch((err) => {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onErrorRef.current?.("フィードグループの読み込みに失敗しました");
       })
       .finally(() => {
@@ -117,7 +118,7 @@ export function useFeedGroups(
           body: JSON.stringify({ collapsed }),
         });
       } catch (err) {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onError?.("グループの折りたたみ変更に失敗しました");
         setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, collapsed: !collapsed } : g)));
       }
@@ -136,7 +137,7 @@ export function useFeedGroups(
           body: JSON.stringify({ muted }),
         });
       } catch (err) {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onError?.("グループのミュート変更に失敗しました");
         setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, muted: !muted } : g)));
       }
@@ -195,7 +196,7 @@ export function useFeedGroups(
           body: JSON.stringify({ orderedIds }),
         });
       } catch (err) {
-        if (process.env.NODE_ENV !== "production") console.error(err);
+        devError(err);
         onError?.("グループの並び替えに失敗しました");
         if (snapshot) {
           setGroups(sortByOrder(snapshot));
