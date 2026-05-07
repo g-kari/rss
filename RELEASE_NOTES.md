@@ -2,6 +2,23 @@
 
 ## 2026-05-08 (latest)
 
+### アクセシビリティ改善っ
+
+- **`ShareMenu` のトリガーボタンに `aria-expanded` / `aria-haspopup` を追加したよ〜** — Issue #525。スクリーンリーダーがポップアップの開閉状態を読み上げられるようになったよっ！同ディレクトリの SnoozeMenu / FilterMenu に合わせて実装したよ〜♿✨
+- **`ArticleView` の `<main>` に `aria-label="記事本文"` を追加したよ〜** — Issue #526。landmark ナビゲーションでスクリーンリーダーが記事本文エリアに直接ジャンプできるようになったよっ！♿💡
+- **`ArticleAiPanel` の AI 要約結果に `aria-live="polite"` を追加したよ〜** — Issue #527。要約が非同期で生成されたとき、スクリーンリーダーが自動でアナウンスしてくれるようになったよっ！♿🎀
+- **新着バナーのネストした `<button>` 問題を修正したよ〜** — Issue #528。`<div role="button">` を `<button>` に変更して、内部の閉じるボタンを `<span>` に変更したよ！HTML 仕様違反が解消されて二重読み上げもなくなったよっ♿🔧
+- **翻訳/原文タブに `role="tablist"` / `role="tab"` / `aria-selected` を追加したよ〜** — Issue #529。スクリーンリーダーがタブ UI として認識できるようになって、矢印キーで標準的なタブナビゲーションができるよっ！♿✨
+
+### リファクタリングっ
+
+- **`useArticleViewTts` の TTS テキスト構築ロジックを `buildTtsText` 関数に抽出したよ〜** — Issue #537。`handleTtsToggle` と Shift+P キーショートカットの2箇所に重複してたコードを1つにまとめたよっ🔧
+- **`FeedDetailModal` / `AiNotificationTabPanel` の素の `fetch()` を `apiFetch` に統一したよ〜** — Issue #536。セッション期限切れ時の自動リフレッシュリトライと DBSC チャレンジ処理が `/api/push/config` にも適用されるようになったよっ✨🔒
+
+### ドキュメント整備っ
+
+- **`coding-conventions.md` の `FetchEnv` 型定義を実装に合わせて修正したよ〜** — Issue #538。`Pick<CloudflareEnv, 'RSS_DATA'>` と記載してたのを実際の `RSS_DATA | FINDME_RSS | RATE_LIMIT` に更新したよっ📝
+
 ### セキュリティ対策っ
 
 - **`PUT /api/push/config` の disabledFeeds に feedHash 形式チェックと件数上限を追加したよ〜** — Issue #531。任意の文字列キーで R2 が肥大化するストレージ DoS を修正！`/^[0-9a-f]{16}$/` と `MAX_FEEDS_PER_USER` でガッチリガードしたよっ🔒
