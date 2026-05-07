@@ -7,6 +7,7 @@ import type { ToastApi } from "./useToast";
 import type { ConfirmOptions } from "./useConfirm";
 import { isArticleRead } from "../lib/article-filter";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "../lib/export-markdown";
+import { useSyncedRef } from "./useSyncedRef";
 
 interface Options {
   feeds: Feed[];
@@ -133,6 +134,16 @@ export function useFeedSidebarActions({
   renameCollection,
   deleteCollection,
 }: Options): FeedSidebarActions {
+  // readIds / articles は記事を読むたびに変化するため useSyncedRef でラップして deps から外す。
+  // これにより FeedSidebar 全体が readIds 更新のたびに再レンダリングされる問題を回避する。
+  const articlesRef = useSyncedRef(articles);
+  const readIdsRef = useSyncedRef(readIds);
+  const readBeforeTimestampRef = useSyncedRef(readBeforeTimestamp);
+  const bookmarkIdsRef = useSyncedRef(bookmarkIds);
+  const readingListIdsRef = useSyncedRef(readingListIds);
+  const notesRef = useSyncedRef(notes);
+  const totalUnreadRef = useSyncedRef(totalUnread);
+
   return useMemo<FeedSidebarActions>(
     () => ({
       onSelectFeed: (id) => {
@@ -166,10 +177,12 @@ export function useFeedSidebarActions({
       onFeedsImported: appendFeeds,
       onMarkAllRead: async (feedId) => {
         const count = feedId
-          ? articles.filter(
-              (a) => a.feedHash === feedId && !isArticleRead(a, readIds, readBeforeTimestamp),
+          ? articlesRef.current.filter(
+              (a) =>
+                a.feedHash === feedId &&
+                !isArticleRead(a, readIdsRef.current, readBeforeTimestampRef.current),
             ).length
-          : totalUnread;
+          : totalUnreadRef.current;
         if (count >= 50) {
           const ok = await confirm({
             title: "全既読の確認",
@@ -203,7 +216,7 @@ export function useFeedSidebarActions({
       onReorderFeedGroup: reorderGroup,
       onMarkAllReadInGroup: (feedIds) => {
         const feedSet = new Set(feedIds);
-        const ids = articles.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
+        const ids = articlesRef.current.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
         if (ids.length > 0) markBulkRead(ids);
       },
       onMuteFeed: muteFeed,
@@ -221,11 +234,11 @@ export function useFeedSidebarActions({
       onDismissRecommendation: dismissRecommendation,
       onRefreshRecommendations: refreshRecommendations,
       onExportMarkdown: (mode) => {
-        const ids = mode === "reading_list" ? readingListIds : bookmarkIds;
-        exportArticlesToMarkdown(articles, ids, feeds, mode);
+        const ids = mode === "reading_list" ? readingListIdsRef.current : bookmarkIdsRef.current;
+        exportArticlesToMarkdown(articlesRef.current, ids, feeds, mode);
       },
       onExportNotes: () => {
-        exportNotesToMarkdown(articles, notes, feeds);
+        exportNotesToMarkdown(articlesRef.current, notesRef.current, feeds);
       },
       onSelectCollection: setSelectedCollectionId,
       onCreateCollection: createCollection,
@@ -234,13 +247,6 @@ export function useFeedSidebarActions({
     }),
     [
       feeds,
-      articles,
-      readIds,
-      readBeforeTimestamp,
-      bookmarkIds,
-      readingListIds,
-      notes,
-      totalUnread,
       setSelectedFeedId,
       setSelectedGroupId,
       setSelectedTag,
