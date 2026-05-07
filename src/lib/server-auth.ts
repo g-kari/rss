@@ -385,8 +385,16 @@ export function requireString(value: unknown, maxLength = 128): string | null {
 export async function parseJsonBody<T>(
   request: Request,
 ): Promise<{ ok: true; data: T } | { ok: false; error: NextResponse }> {
+  const text = await request.text();
+  // 512KB を超えるペイロードは Worker OOM の原因になるため拒否する
+  if (text.length > 512 * 1024) {
+    return {
+      ok: false,
+      error: apiError("Payload too large", 413, { code: "PAYLOAD_TOO_LARGE" }),
+    };
+  }
   try {
-    return { ok: true, data: (await request.json()) as T };
+    return { ok: true, data: JSON.parse(text) as T };
   } catch {
     return { ok: false, error: apiError("Invalid JSON", 400, { code: "INVALID_JSON" }) };
   }
