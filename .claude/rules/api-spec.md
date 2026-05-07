@@ -572,3 +572,134 @@ Push 通知設定を保存する。省略したフィールドはサーバーの
 | `400`      | `INVALID_ARTICLE_IDS`  | addArticleIds / removeArticleIds が文字列配列でない |
 | `404`      | `COLLECTION_NOT_FOUND` | 指定した ID のコレクションが存在しない              |
 | `409`      | `DUPLICATE_NAME`       | 同名のコレクションが既に存在する                    |
+
+---
+
+## GET /api/push/vapid-key
+
+Web Push サブスクリプション開始時に必要な VAPID 公開鍵を返す。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "publicKey": "BNcC..." } // URL-safe base64 エンコードされた VAPID 公開鍵
+```
+
+### エラー一覧
+
+| ステータス | code                  | 説明                              |
+| ---------- | --------------------- | --------------------------------- |
+| `401`      | —                     | 未認証                            |
+| `503`      | `PUSH_NOT_CONFIGURED` | VAPID_PUBLIC_KEY 環境変数が未設定 |
+
+---
+
+## GET /api/push/status
+
+現在のユーザーの Push サブスクリプション登録数を返す。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "subscriptionCount": 2 } // 登録済みサブスクリプション数
+```
+
+### エラー一覧
+
+| ステータス | code | 説明   |
+| ---------- | ---- | ------ |
+| `401`      | —    | 未認証 |
+
+---
+
+## POST /api/push/subscribe
+
+Push サブスクリプションを登録する。同一 endpoint が既に登録済みの場合は上書きする。5 秒クールダウンあり。上限は 1 ユーザーあたり 20 件。
+
+### リクエスト
+
+```json
+{
+  "endpoint": "https://fcm.googleapis.com/...", // 必須: HTTPS URL（SSRF 対策済み）
+  "expirationTime": null, // オプション: 有効期限（ミリ秒タイムスタンプ または null）
+  "keys": {
+    "p256dh": "BCxyz...", // 必須: 非圧縮 P-256 公開鍵（65 bytes、base64url）
+    "auth": "AbCd..." // 必須: 認証シークレット（16 bytes、base64url）
+  }
+}
+```
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true }
+```
+
+### エラー一覧
+
+| ステータス | code                     | 説明                                                |
+| ---------- | ------------------------ | --------------------------------------------------- |
+| `400`      | `INVALID_SUBSCRIPTION`   | endpoint / p256dh / auth のいずれかが欠損           |
+| `400`      | `INVALID_ENDPOINT`       | endpoint が HTTPS URL でない、またはプライベート IP |
+| `400`      | `INVALID_P256DH`         | p256dh が base64url 形式でない、またはサイズ不正    |
+| `400`      | `INVALID_AUTH_KEY`       | auth が base64url 形式でない、またはサイズ不正      |
+| `401`      | —                        | 未認証                                              |
+| `429`      | `TOO_MANY_SUBSCRIPTIONS` | サブスクリプション上限（20 件）に達している         |
+| `429`      | `COOLDOWN`               | 5 秒クールダウン中                                  |
+
+---
+
+## POST /api/push/unsubscribe
+
+Push サブスクリプションを解除する。5 秒クールダウンあり。
+
+### リクエスト
+
+```json
+{
+  "endpoint": "https://fcm.googleapis.com/..." // 必須: 解除する HTTPS URL
+}
+```
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true }
+```
+
+### エラー一覧
+
+| ステータス | code               | 説明                                   |
+| ---------- | ------------------ | -------------------------------------- |
+| `400`      | `INVALID_ENDPOINT` | endpoint が空、または HTTPS URL でない |
+| `401`      | —                  | 未認証                                 |
+| `429`      | `COOLDOWN`         | 5 秒クールダウン中                     |
+
+---
+
+## POST /api/push/test
+
+テスト用 Push 通知を全登録済みサブスクリプションに送信する。期限切れサブスクリプションは送信後に自動削除される。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{
+  "sent": 3, // 送信試行したサブスクリプション数
+  "expired": 1, // 送信後に期限切れと判定されて削除した数
+  "remaining": 2 // 有効なサブスクリプション残数
+}
+```
+
+### エラー一覧
+
+| ステータス | code                   | 説明                                   |
+| ---------- | ---------------------- | -------------------------------------- |
+| `401`      | —                      | 未認証                                 |
+| `404`      | `NO_SUBSCRIPTIONS`     | 登録済みサブスクリプションが存在しない |
+| `503`      | `VAPID_NOT_CONFIGURED` | VAPID キーが環境変数に未設定           |
