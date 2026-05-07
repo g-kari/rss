@@ -7,6 +7,7 @@ import { STORAGE_KEYS, saveSet, loadSet, loadJson, storageGet } from "../lib/sto
 import { type PendingSets, emptyPendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
 import { useReadStateToggles } from "./useReadStateToggles";
 import { useReadStateActions } from "./useReadStateActions";
+import type { SetStateDispatchers, OtherStateDispatchers } from "./useReadStateSyncApply";
 
 export type ReadStateSets = {
   read: Set<string>;
@@ -22,27 +23,18 @@ export type ReadStateSets = {
 
 export interface ReadStatePersistenceResult {
   readIds: Set<string>;
-  setReadIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   bookmarkIds: Set<string>;
-  setBookmarkIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   readingListIds: Set<string>;
-  setReadingListIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   likeIds: Set<string>;
-  setLikeIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   globalFilter: KeywordFilter | null;
   setGlobalFilter: (filter: KeywordFilter | null) => void;
   readBeforeTimestamp: string | null;
-  setReadBeforeTimestamp: React.Dispatch<React.SetStateAction<string | null>>;
   snoozedUntil: Record<string, string>;
-  setSnoozedUntil: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   notes: Record<string, string>;
-  setNotesState: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   tagIds: Record<string, string[]>;
   setTagIdsState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
-  setGlobalFilterState: React.Dispatch<React.SetStateAction<KeywordFilter | null>>;
   ttlDays: number | null;
   setTtlDays: (days: number | null) => void;
-  setTtlDaysState: React.Dispatch<React.SetStateAction<number | null>>;
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;
@@ -59,6 +51,8 @@ export interface ReadStatePersistenceResult {
   pendingAddedRef: React.MutableRefObject<PendingSets>;
   pendingRemovedRef: React.MutableRefObject<PendingSets>;
   globalFilterDirtyRef: React.MutableRefObject<boolean>;
+  getSetStateDispatchers: () => SetStateDispatchers;
+  getOtherStateDispatchers: () => OtherStateDispatchers;
 }
 
 const CLIENT_MAX_READ_IDS = 50_000;
@@ -180,27 +174,18 @@ export function useReadStatePersistence(
 
   return {
     readIds,
-    setReadIds,
     bookmarkIds,
-    setBookmarkIds,
     readingListIds,
-    setReadingListIds,
     likeIds,
-    setLikeIds,
     globalFilter,
     setGlobalFilter,
     ttlDays,
     setTtlDays,
-    setTtlDaysState,
     readBeforeTimestamp,
-    setReadBeforeTimestamp,
     snoozedUntil,
-    setSnoozedUntil,
     notes,
-    setNotesState,
     tagIds,
     setTagIdsState,
-    setGlobalFilterState,
     markRead,
     markBulkRead,
     markAllRead,
@@ -217,5 +202,19 @@ export function useReadStatePersistence(
     pendingAddedRef,
     pendingRemovedRef,
     globalFilterDirtyRef,
+    getSetStateDispatchers: (): SetStateDispatchers => ({
+      read: setReadIds,
+      bookmarks: setBookmarkIds,
+      readingList: setReadingListIds,
+      likes: setLikeIds,
+    }),
+    getOtherStateDispatchers: (): OtherStateDispatchers => ({
+      setGlobalFilterState,
+      setTtlDaysState,
+      setReadBeforeTimestamp,
+      setSnoozedUntil,
+      setNotesState,
+      setTagIdsState,
+    }),
   };
 }

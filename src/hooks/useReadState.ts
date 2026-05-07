@@ -3,7 +3,6 @@
 import { useRef } from "react";
 import type { Article, KeywordFilter, UserProfile } from "../types";
 import type { ToastApi } from "./useToast";
-import type { SetStateDispatchers, OtherStateDispatchers } from "./useReadStateSyncApply";
 import { useReadStatePersistence } from "./useReadStatePersistence";
 import { useReadStateSync } from "./useReadStateSync";
 import { useReadStateTags } from "./useReadStateTags";
@@ -73,21 +72,8 @@ export function useReadState(
     scheduleSyncToServer: () => scheduleSyncRef.current(),
   });
 
-  const dispatchers: SetStateDispatchers = {
-    read: persistence.setReadIds,
-    bookmarks: persistence.setBookmarkIds,
-    readingList: persistence.setReadingListIds,
-    likes: persistence.setLikeIds,
-  };
-
-  const otherDispatchers: OtherStateDispatchers = {
-    setGlobalFilterState: persistence.setGlobalFilterState,
-    setTtlDaysState: persistence.setTtlDaysState,
-    setReadBeforeTimestamp: persistence.setReadBeforeTimestamp,
-    setSnoozedUntil: persistence.setSnoozedUntil,
-    setNotesState: persistence.setNotesState,
-    setTagIdsState: persistence.setTagIdsState,
-  };
+  const dispatchers = persistence.getSetStateDispatchers();
+  const otherDispatchers = persistence.getOtherStateDispatchers();
 
   const sync = useReadStateSync({
     user,

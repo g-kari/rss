@@ -59,7 +59,7 @@ export default function AppModals({
         />
       )}
       {showHelp && <KeyboardShortcutsModal onClose={onHelpClose} />}
-      {showSettings && <UserSettingsModal onClose={onSettingsClose} />}
+      {showSettings && <UserSettingsModal feeds={feeds} onClose={onSettingsClose} />}
       {showFeedSwitcher && (
         <FeedQuickSwitchModal
           feeds={feeds}

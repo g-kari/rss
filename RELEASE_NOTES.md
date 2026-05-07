@@ -2,6 +2,14 @@
 
 ## 2026-05-07 (latest)
 
+### リファクタリングっ
+
+- **`useReadStatePersistence` の raw dispatcher を外部から隠蔽したよ〜** — Issue #399。`ReadStatePersistenceResult` から生の `setReadIds` / `setBookmarkIds` 等 9 つの `React.Dispatch` を削除して、`getSetStateDispatchers()` / `getOtherStateDispatchers()` ファクトリメソッドに集約したよっ🔧 `useReadState` 以外から誤って内部 dispatcher を触れなくなって安全になったよ〜✨
+
+---
+
+## 2026-05-07
+
 ### UX改善っ (追加)
 
 - **全文取得中のスピナーに「取得中...」テキストと時間超過警告を追加したよ〜** — Issue #412。スピナーだけで何も分からなかったのが、5秒超えると「(時間がかかっています...)」も出るようになったよっ✨ ユーザーが諦めずに待てるようになったよ〜💡
