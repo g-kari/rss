@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Modal from "./Modal";
 import FeedHealthModal from "./FeedHealthModal";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
@@ -45,6 +45,7 @@ import { MAX_FEEDS_PER_USER } from "../lib/shared-feed";
 import type { FontFamily, FontSize, Feed } from "../types";
 import { useHeaderShareTargets } from "../hooks/useHeaderShareTargets";
 import { SHARE_TARGETS, type ShareTargetId } from "./article-view/shareTargets";
+import { useDebounce } from "../hooks/useDebounce";
 
 interface Props {
   onClose: () => void;
@@ -190,6 +191,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
   const [silentEnd, setSilentEnd] = useState("");
   const [timezone, setTimezone] = useState("");
   const [pushConfigLoading, setPushConfigLoading] = useState(false);
+  const silentHoursLoaded = useRef(false);
   const timezones =
     typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
 
@@ -212,35 +214,53 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
         setSilentStart(data.silentStart ?? "");
         setSilentEnd(data.silentEnd ?? "");
         setTimezone(data.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "");
+        // config ロード完了後から自動保存を有効化
+        silentHoursLoaded.current = true;
       })
       .catch(() => {});
   }, []);
 
-  const handleSaveSilentHours = async () => {
-    if (pushConfigLoading) return;
-    setPushConfigLoading(true);
-    try {
-      const body: Record<string, string | null> = {
-        silentStart: silentStart || null,
-        silentEnd: silentEnd || null,
-        timezone: timezone || null,
-      };
-      const res = await fetch("/api/push/config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        toast.success("サイレント時間帯を保存しました");
-      } else {
+  const saveSilentHours = useCallback(
+    async (start: string, end: string, tz: string) => {
+      setPushConfigLoading(true);
+      try {
+        const body: Record<string, string | null> = {
+          silentStart: start || null,
+          silentEnd: end || null,
+          timezone: tz || null,
+        };
+        const res = await fetch("/api/push/config", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          toast.success("サイレント時間帯を保存しました");
+        } else {
+          toast.error("保存に失敗しました");
+        }
+      } catch {
         toast.error("保存に失敗しました");
+      } finally {
+        setPushConfigLoading(false);
       }
-    } catch {
-      toast.error("保存に失敗しました");
-    } finally {
-      setPushConfigLoading(false);
-    }
-  };
+    },
+    [toast],
+  );
+
+  const handleSaveSilentHours = () => saveSilentHours(silentStart, silentEnd, timezone);
+
+  // サイレント時間帯フィールドの変更を 1000ms デバウンスして自動保存
+  const debouncedSilentStart = useDebounce(silentStart, 1000);
+  const debouncedSilentEnd = useDebounce(silentEnd, 1000);
+  const debouncedTimezone = useDebounce(timezone, 1000);
+
+  useEffect(() => {
+    // config ロード完了前（初期空文字列フェーズ）は自動保存しない
+    if (!silentHoursLoaded.current) return;
+    saveSilentHours(debouncedSilentStart, debouncedSilentEnd, debouncedTimezone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSilentStart, debouncedSilentEnd, debouncedTimezone]);
 
   return (
     <>
@@ -267,6 +287,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
               }))}
               value={fontSize}
               onChange={onChangeFontSize}
+              ariaLabel="フォントサイズ"
             />
           </SettingRow>
 
@@ -275,6 +296,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
               options={FONT_FAMILY_CYCLE.map((v) => ({ value: v, label: FONT_FAMILY_LABELS[v] }))}
               value={fontFamily}
               onChange={onChangeFontFamily}
+              ariaLabel="フォント"
             />
           </SettingRow>
 
@@ -283,6 +305,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
               options={LINE_HEIGHT_CYCLE.map((v) => ({ value: v, label: LINE_HEIGHT_LABELS[v] }))}
               value={lineHeight}
               onChange={onChangeLineHeight}
+              ariaLabel="行間"
             />
           </SettingRow>
 
@@ -294,6 +317,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
               }))}
               value={contentWidth}
               onChange={onChangeContentWidth}
+              ariaLabel="コンテンツ幅"
             />
           </SettingRow>
 
@@ -305,6 +329,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
               }))}
               value={galleryColumns}
               onChange={onChangeGalleryColumns}
+              ariaLabel="ギャラリー列数"
             />
           </SettingRow>
 
@@ -316,6 +341,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
               }))}
               value={galleryCardSize}
               onChange={onChangeGalleryCardSize}
+              ariaLabel="カードサイズ"
             />
           </SettingRow>
 
@@ -403,6 +429,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
                   options={AUTO_READ_THRESHOLD_CYCLE.map((v) => ({ value: v, label: `${v}%` }))}
                   value={autoReadThreshold}
                   onChange={onChangeAutoReadThreshold}
+                  ariaLabel="自動既読タイミング"
                 />
               )}
             </div>
@@ -786,20 +813,41 @@ function SegmentGroup<T extends string | number>({
   options,
   value,
   onChange,
+  ariaLabel,
 }: {
   options: readonly SegmentOption<T>[];
   value: T;
   onChange: (v: T) => void;
+  ariaLabel?: string;
 }) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const currentIndex = options.findIndex((opt) => opt.value === value);
+    if (currentIndex === -1) return;
+    const nextIndex =
+      e.key === "ArrowRight"
+        ? (currentIndex + 1) % options.length
+        : (currentIndex - 1 + options.length) % options.length;
+    onChange(options[nextIndex].value);
+  };
+
   return (
-    <div className="inline-flex rounded-lg border border-border-default overflow-hidden">
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      onKeyDown={handleKeyDown}
+      className="inline-flex rounded-lg border border-border-default overflow-hidden"
+    >
       {options.map((opt) => {
         const active = opt.value === value;
         return (
           <button
             key={String(opt.value)}
             type="button"
-            aria-pressed={active}
+            role="radio"
+            aria-checked={active}
+            tabIndex={active ? 0 : -1}
             onClick={() => onChange(opt.value)}
             className={`px-2.5 py-1 text-[11px] transition-colors duration-150 ${
               active
