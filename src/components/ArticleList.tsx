@@ -371,7 +371,7 @@ function ArticleList({
   const cardVirtualizer = useVirtualizer({
     count: cardRows.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 224,
+    estimateSize: () => 160,
     getItemKey: (i) => `card-row-${i}`,
     overscan: 3,
   });
@@ -524,8 +524,9 @@ function ArticleList({
       <SelectedArticleCtx.Provider value={selectedArticleId ?? null}>
         <div
           ref={scrollContainerRef}
-          role="listbox"
+          role="feed"
           aria-label="記事"
+          aria-busy={loading}
           className="flex-1 min-h-0 overflow-y-auto"
         >
           <ArticleListEmptyState

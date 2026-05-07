@@ -41,8 +41,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   );
   return (
     <div
-      role="option"
-      aria-selected={isSelected}
+      role="article"
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
