@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useCallback, useContext } from "react";
-import { timeAgo, highlightText } from "../../lib/article-utils";
+import { timeAgo } from "../../lib/article-utils";
+import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
 import { NoteIcon } from "../article-view/icons";
 import {
