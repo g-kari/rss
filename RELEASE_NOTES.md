@@ -2,10 +2,25 @@
 
 ## 2026-05-07 (latest)
 
+### A11y・UX 改善っ
+
+- **ArticleNavigation の前後ボタンに `aria-label` を追加したよ〜** — Issue #485。前後の記事タイトルを `aria-label` に含めることでスクリーンリーダーが記事名まで読み上げられるようになったよっ✨
+- **記事ビューの「戻る」ボタンのタッチターゲットを 44px に修正したよ〜** — Issue #488。WCAG 2.5.5 準拠っ！`ArticleHeader` の戻るボタンに `min-w-[44px] min-h-[44px]` を追加したよ〜📱
+- **FeedAddModal の入力フィールドに `label` 要素を追加したよ〜** — Issue #491。URL・Cookie・CSS セレクタの 3 フィールドに `sr-only` ラベルを付けてスクリーンリーダー対応したよっ🎀
+
+### パフォーマンス改善っ
+
+- **`visibilitychange=hidden` 時の不要な read-state フラッシュを防止したよ〜** — Issue #492。変更がないのに毎回 `POST /api/read-state` が飛んでたのを `isDirtyRef` チェックで防いだよ〜🚀 タブ切り替えのたびに無駄なリクエストが消えたよっ💡
+
 ### リファクタリングっ
 
 - **`deduplicateByLink` の重複検出を 1 パスに最適化したよ〜** — Issue #489。`linkGroups` の構築ループで `hasDupes` フラグも同時に立てるようにして、重複なし時の早期リターンをより確実に。最終フィルターも `Set.has` で O(1) ルックアップなのを明示したよ〜🚀
 - **`useArticleFilters` の `eslint-disable` コメントを全部消したよ〜** — Issue #504。`useCallback` の依存配列に `resetPageRef`・`dateRangeRef`・`readingTimeRangeRef`（いずれも `useSyncedRef` で常に安定）を明示的に追加することで、ESLint ルール違反なしに同等の効果を実現したよっ✨
+- **`shared-feed.ts` のデバッグ用 `console.log` を除去したよ〜** — Issue #506。Cron の KV キャッシュヒット/ミスログが Workers ログのノイズになってたのをクリーンにしたよっ🧹
+
+### ドキュメント整備っ
+
+- **README.md に `DELETE /api/auth/dbsc/session` を追記したよ〜** — Issue #505。#475 でリリース済みのエンドポイントが API 一覧から漏れてたのを補完したよっ📚
 
 ### 激アツ新機能っ
 
