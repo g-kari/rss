@@ -65,27 +65,36 @@ export function timingSafeEqual(a: string, b: string): boolean {
 /**
  * 0g0 auth server の `/.well-known/jwks.json` から公開鍵セットを取得する。
  * 取得結果は `JWKS_CACHE_TTL_MS`（15分）メモリキャッシュされる。
- * キャッシュ期限切れ時は `keyCache` も同時にクリアし、鍵ローテーションに対応する。
+ * フェッチ成功時のみ `keyCache` をクリアし、鍵ローテーションに対応する。
+ * フェッチ失敗時は古い `jwksCache` をフォールバックとして使用する（認証の継続性を保護）。
  */
 async function getJwks(authBaseUrl: string): Promise<JwkWithKid[]> {
   const now = Date.now();
   if (jwksCache && now < jwksCacheExpiry) return jwksCache;
 
-  // キャッシュ期限切れ時はキーキャッシュも破棄（ローテーション対応）
-  keyCache.clear();
-
   const userAgent =
     process.env.INTERNAL_SERVICE_USER_AGENT || "rss-reader/1.0 (+https://rss.0g0.xyz)";
-  const res = await fetchWithTimeout(
-    `${authBaseUrl}/.well-known/jwks.json`,
-    { headers: { "User-Agent": userAgent } },
-    10_000,
-  );
-  if (!res.ok) throw new Error(`JWKS fetch failed: ${res.status}`);
-  const { keys } = (await res.json()) as { keys: JwkWithKid[] };
-  jwksCache = keys;
-  jwksCacheExpiry = now + JWKS_CACHE_TTL_MS;
-  return keys;
+  try {
+    const res = await fetchWithTimeout(
+      `${authBaseUrl}/.well-known/jwks.json`,
+      { headers: { "User-Agent": userAgent } },
+      10_000,
+    );
+    if (!res.ok) throw new Error(`JWKS fetch failed: ${res.status}`);
+    const { keys } = (await res.json()) as { keys: JwkWithKid[] };
+    // フェッチ成功後にのみキーキャッシュをクリア（ローテーション対応）
+    keyCache.clear();
+    jwksCache = keys;
+    jwksCacheExpiry = now + JWKS_CACHE_TTL_MS;
+    return keys;
+  } catch (err) {
+    // フェッチ失敗時はステールキャッシュで継続（一時的な上流障害で認証が全断しないように）
+    if (jwksCache) {
+      console.warn("[auth/jwks] fetch failed, using stale cache:", String(err));
+      return jwksCache;
+    }
+    throw err;
+  }
 }
 
 /**
