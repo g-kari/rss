@@ -15,6 +15,8 @@
  * - Workers はリクエスト間でモジュールスコープを共有するため有効
  */
 
+import { fetchWithTimeout } from "@/lib/fetch";
+
 export interface JWTPayload {
   sub: string;
   exp: number;
@@ -63,9 +65,11 @@ async function getJwks(authBaseUrl: string): Promise<JwkWithKid[]> {
 
   const userAgent =
     process.env.INTERNAL_SERVICE_USER_AGENT || "rss-reader/1.0 (+https://rss.0g0.xyz)";
-  const res = await fetch(`${authBaseUrl}/.well-known/jwks.json`, {
-    headers: { "User-Agent": userAgent },
-  });
+  const res = await fetchWithTimeout(
+    `${authBaseUrl}/.well-known/jwks.json`,
+    { headers: { "User-Agent": userAgent } },
+    10_000,
+  );
   if (!res.ok) throw new Error(`JWKS fetch failed: ${res.status}`);
   const { keys } = (await res.json()) as { keys: JwkWithKid[] };
   jwksCache = keys;

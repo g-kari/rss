@@ -176,7 +176,7 @@ export async function POST(request: Request) {
       inferred = await inferFeedFromUrl(url, env.AI, cookie);
       if (!inferred) {
         return apiError("RSS フィードが見つかりませんでした", 422, {
-          code: "FEED_NOT_FOUND",
+          code: "NO_FEED_FOUND",
           hint: "このサイトには RSS がなく、自動認識にも失敗しました。CSS セレクタを手動で指定して再試行できます。",
           canRetryWithSelector: true,
         });
