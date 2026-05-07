@@ -366,9 +366,10 @@ function FeedSidebar({
 
       {/* フィードリスト */}
       <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2">
-        <div
+        <button
+          type="button"
           onClick={() => onSelectFeed(null)}
-          className={`group flex items-center justify-between gap-2 px-4 py-1.5 cursor-pointer transition-all duration-200 ${
+          className={`group flex items-center justify-between gap-2 px-4 py-1.5 w-full cursor-pointer transition-all duration-200 ${
             selectedFeedId === null
               ? "text-text-strong bg-surface-subtle"
               : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
@@ -407,7 +408,7 @@ function FeedSidebar({
               </span>
             )}
           </span>
-        </div>
+        </button>
 
         {[
           { id: SPECIAL_FEED_IDS.HISTORY, label: "履歴", count: historyCount },
