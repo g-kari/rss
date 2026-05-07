@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Feed, FeedGroup, FeedView } from "../../types";
 import type { Action } from "./types";
@@ -18,6 +19,14 @@ interface ContextMenuProps {
 }
 
 export function ContextMenuPortal({ visibleActions, menuPortalStyle, onClose }: ContextMenuProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return createPortal(
     <>
       {/* backdrop: タップ貫通防止 */}
@@ -29,6 +38,7 @@ export function ContextMenuPortal({ visibleActions, menuPortalStyle, onClose }: 
         }}
       />
       <div
+        role="menu"
         onClick={(e) => e.stopPropagation()}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[120px]"
         style={menuPortalStyle}
@@ -36,6 +46,7 @@ export function ContextMenuPortal({ visibleActions, menuPortalStyle, onClose }: 
         {visibleActions.map((action) => (
           <button
             key={action.key}
+            role="menuitem"
             onClick={(e) => {
               e.stopPropagation();
               onClose();
@@ -63,6 +74,14 @@ interface MuteMenuProps {
 }
 
 export function MuteMenuPortal({ menuPortalStyle, onClose, onMute }: MuteMenuProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return createPortal(
     <>
       <div
@@ -74,6 +93,7 @@ export function MuteMenuPortal({ menuPortalStyle, onClose, onMute }: MuteMenuPro
       />
       <div
         onClick={(e) => e.stopPropagation()}
+        role="menu"
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[160px]"
         style={menuPortalStyle}
       >
@@ -86,6 +106,7 @@ export function MuteMenuPortal({ menuPortalStyle, onClose, onMute }: MuteMenuPro
           {MUTE_OPTIONS.map((opt) => (
             <button
               key={opt.durationMs}
+              role="menuitem"
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
@@ -126,6 +147,14 @@ interface ViewMenuProps {
 }
 
 export function ViewMenuPortal({ feed, menuPortalStyle, onClose, onSetView }: ViewMenuProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return createPortal(
     <>
       <div
@@ -137,6 +166,7 @@ export function ViewMenuPortal({ feed, menuPortalStyle, onClose, onSetView }: Vi
       />
       <div
         onClick={(e) => e.stopPropagation()}
+        role="menu"
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
         style={menuPortalStyle}
       >
@@ -158,6 +188,7 @@ export function ViewMenuPortal({ feed, menuPortalStyle, onClose, onSetView }: Vi
             return (
               <button
                 key={opt.id}
+                role="menuitem"
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose();
@@ -201,6 +232,14 @@ export function DigestMenuPortal({
   onClose,
   onSetDigestLimit,
 }: DigestMenuProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return createPortal(
     <>
       <div
@@ -211,6 +250,7 @@ export function DigestMenuPortal({
         }}
       />
       <div
+        role="menu"
         onClick={(e) => e.stopPropagation()}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
         style={menuPortalStyle}
@@ -227,6 +267,7 @@ export function DigestMenuPortal({
             return (
               <button
                 key={String(opt.value)}
+                role="menuitem"
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose();
@@ -263,6 +304,14 @@ export function GroupMenuPortal({
   onClose,
   onSetGroup,
 }: GroupMenuProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return createPortal(
     <>
       <div
@@ -273,6 +322,7 @@ export function GroupMenuPortal({
         }}
       />
       <div
+        role="menu"
         onClick={(e) => e.stopPropagation()}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px] max-h-[60vh] overflow-y-auto"
         style={menuPortalStyle}
@@ -284,6 +334,7 @@ export function GroupMenuPortal({
         </div>
         <div className="border-t border-border-subtle">
           <button
+            role="menuitem"
             onClick={(e) => {
               e.stopPropagation();
               onClose();
@@ -316,6 +367,7 @@ export function GroupMenuPortal({
               return (
                 <button
                   key={g.id}
+                  role="menuitem"
                   onClick={(e) => {
                     e.stopPropagation();
                     onClose();

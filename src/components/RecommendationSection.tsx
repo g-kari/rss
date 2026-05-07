@@ -84,7 +84,7 @@ export default function RecommendationSection({
             </div>
             <div className="text-[11px] text-text-faint truncate">{rec.reason}</div>
           </div>
-          <div className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0">
+          <div className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-within:opacity-100 transition-opacity duration-150 flex-shrink-0">
             <button
               onClick={async () => {
                 setAddingId(rec.id);
@@ -99,7 +99,8 @@ export default function RecommendationSection({
               }}
               disabled={addingId === rec.id}
               title="購読する"
-              className="text-text-faint hover:text-text-strong transition-colors duration-200 disabled:opacity-50"
+              aria-label={`${rec.title}を購読する`}
+              className="text-text-faint hover:text-text-strong focus-visible:opacity-100 transition-colors duration-200 disabled:opacity-50"
             >
               <svg
                 width="12"
@@ -116,7 +117,8 @@ export default function RecommendationSection({
             <button
               onClick={() => onDismiss(rec.id)}
               title="非表示"
-              className="text-text-faint hover:text-text-muted transition-colors duration-200"
+              aria-label={`${rec.title}を非表示`}
+              className="text-text-faint hover:text-text-muted focus-visible:opacity-100 transition-colors duration-200"
             >
               <svg
                 width="12"

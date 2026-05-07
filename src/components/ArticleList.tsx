@@ -443,39 +443,48 @@ function ArticleList({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・magazineVirtualizer・flatItemsRef・visibleRef・nonGalleryDisplayItemsRef は安定参照。記事選択・レイアウト変更時のみスクロール
   }, [selectedArticleId, layout]);
 
+  const onSelectArticleRef = useSyncedRef(onSelectArticle);
+  const onToggleReadRef = useSyncedRef(onToggleRead);
+  const onToggleBookmarkRef = useSyncedRef(onToggleBookmark);
+  const readIdsRef = useSyncedRef(readIds);
+  const bookmarkIdsRef = useSyncedRef(bookmarkIds);
+  const notesRef = useSyncedRef(notes);
+  const duplicateInfoRef = useSyncedRef(duplicateInfo);
+
   const resolveItemProps = useCallback(
     (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => ({
       article,
       index,
-      isRead: isArticleRead(article, readIds, readBeforeTimestamp),
-      isBookmarked: bookmarkIds.has(article.id),
+      isRead: isArticleRead(article, readIdsRef.current, readBeforeTimestamp),
+      isBookmarked: bookmarkIdsRef.current.has(article.id),
       isDeleting,
       isNew,
-      hasNote: !!notes?.[article.id],
+      hasNote: !!notesRef.current?.[article.id],
       feedName: feedMap.get(article.feedHash) ?? "",
       thumb: resolveThumbnail(article, ogpCacheRef.current),
       showFeedName,
       query,
-      duplicateFeedNames: duplicateInfo?.get(article.id),
+      duplicateFeedNames: duplicateInfoRef.current?.get(article.id),
       totalCount: filtered.length,
-      onSelectArticle,
-      onToggleRead,
-      onToggleBookmark,
+      onSelectArticle: (a: Article) => onSelectArticleRef.current(a),
+      onToggleRead: (id: string) => onToggleReadRef.current(id),
+      onToggleBookmark: (id: string) => onToggleBookmarkRef.current(id),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- readIds・bookmarkIds・notes・duplicateInfo・onSelectArticle・onToggleRead・onToggleBookmark は ref 経由で最新値を参照するため deps 不要
     [
-      readIds,
       readBeforeTimestamp,
-      bookmarkIds,
-      notes,
       feedMap,
       ogpCacheRef,
       showFeedName,
       query,
-      duplicateInfo,
       filtered.length,
-      onSelectArticle,
-      onToggleRead,
-      onToggleBookmark,
+      readIdsRef,
+      bookmarkIdsRef,
+      notesRef,
+      duplicateInfoRef,
+      onSelectArticleRef,
+      onToggleReadRef,
+      onToggleBookmarkRef,
     ],
   );
 

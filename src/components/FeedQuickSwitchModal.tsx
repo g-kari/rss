@@ -118,6 +118,9 @@ export default function FeedQuickSwitchModal({
     <>
       <div className="fixed inset-0 z-[49] bg-black/30" onPointerDown={onClose} />
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="フィードを素早く切り替え"
         className="fixed z-50 inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[400px] max-h-[65dvh] flex flex-col bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >

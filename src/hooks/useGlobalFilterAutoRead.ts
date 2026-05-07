@@ -34,8 +34,6 @@ export function useGlobalFilterAutoRead(
       if (!matchesKeywordFilter(a, normalized)) newIds.push(a.id);
     }
     if (newIds.length > 0) markBulkRead(newIds);
-    const nextChecked = new Set<string>();
-    for (const a of articles) nextChecked.add(a.id);
-    checkedArticleIdsRef.current = nextChecked;
+    for (const a of articles) checkedArticleIdsRef.current.add(a.id);
   }, [articles, globalFilter, markBulkRead, readIdsRef]);
 }

@@ -88,7 +88,8 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       const newIds = articleIds.filter((id) => !stateRef.current.read.has(id));
       if (newIds.length === 0) return;
       setReadIds((prev) => {
-        const next = new Set([...prev, ...newIds]);
+        const next = new Set(prev);
+        for (const id of newIds) next.add(id);
         deferSaveSet(STORAGE_KEYS.READ_IDS, next);
         return next;
       });
