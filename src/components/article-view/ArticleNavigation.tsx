@@ -24,6 +24,7 @@ export default function ArticleNavigation({
       {prevArticle ? (
         <button
           onClick={onSelectPrev}
+          aria-label={`前の記事: ${prevArticle.title}`}
           className="flex-1 text-left px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
         >
           <span className="flex items-center gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">
@@ -40,6 +41,7 @@ export default function ArticleNavigation({
       {nextArticle ? (
         <button
           onClick={onSelectNext}
+          aria-label={`次の記事: ${nextArticle.title}`}
           className="flex-1 text-right px-4 py-3 rounded-lg border border-border-default hover:border-text-faint hover:bg-surface-subtle transition-all duration-200 group"
         >
           <span className="flex items-center justify-end gap-1 text-[10px] tracking-[0.08em] uppercase text-text-faint mb-1.5">

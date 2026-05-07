@@ -165,7 +165,7 @@ export default function ArticleHeader({
         {onMobileBack && (
           <button
             onClick={onMobileBack}
-            className="lg:hidden -ml-1 mr-1 p-1.5 text-text-muted hover:text-text-strong transition-colors flex-shrink-0"
+            className="lg:hidden -ml-1 mr-1 p-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-text-muted hover:text-text-strong transition-colors flex-shrink-0"
             aria-label="記事一覧に戻る"
           >
             <svg

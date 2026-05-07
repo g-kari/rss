@@ -124,7 +124,11 @@ export default function FeedAddModal({
       <div className="p-4">
         <form onSubmit={onSubmit}>
           <div className="relative">
+            <label htmlFor="feed-add-url" className="sr-only">
+              フィード URL
+            </label>
             <input
+              id="feed-add-url"
               type="url"
               inputMode="url"
               placeholder="https://..."
@@ -168,14 +172,20 @@ export default function FeedAddModal({
             {cookieOpen ? "▾ Cookie を隠す" : "▸ Cookie を設定（任意）"}
           </button>
           {cookieOpen && (
-            <input
-              type="text"
-              placeholder="例: age_check_done=1"
-              value={cookie}
-              onChange={(e) => onCookieChange(e.target.value)}
-              disabled={adding}
-              className="mt-1 w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
-            />
+            <>
+              <label htmlFor="feed-add-cookie" className="sr-only">
+                Cookie
+              </label>
+              <input
+                id="feed-add-cookie"
+                type="text"
+                placeholder="例: age_check_done=1"
+                value={cookie}
+                onChange={(e) => onCookieChange(e.target.value)}
+                disabled={adding}
+                className="mt-1 w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
+              />
+            </>
           )}
 
           {/* CSS セレクタ手動指定（RSS なし・LLM 推論失敗時のフォールバック） */}
@@ -190,7 +200,11 @@ export default function FeedAddModal({
           </button>
           {cssSelectorOpen && (
             <div className="mt-1 space-y-1">
+              <label htmlFor="feed-add-css-selector" className="sr-only">
+                CSS セレクタ
+              </label>
               <input
+                id="feed-add-css-selector"
                 type="text"
                 placeholder="例: ul.news-list li a"
                 value={cssSelector}
