@@ -2,6 +2,10 @@
 
 ## 2026-05-07 (latest)
 
+### リファクタリングっ
+
+- **UserSettingsModal（973行）をタブ別サブコンポーネントに分割したよ〜** — Issue #502。973行の巨大コンポーネントを `src/components/user-settings/` 配下の4タブパネル（DisplayTabPanel・AiNotificationTabPanel・FeedManagementTabPanel・ImportExportTabPanel）＋共有ユーティリティ（shared.tsx）に分割したよっ！メインファイルは 153行まで激減して、各タブの責務がスッキリ分かれたよ〜🔧✨
+
 ### アクセシビリティ改善っ
 
 - **ダークテーマの薄いテキスト色を WCAG AA 準拠に修正したよ〜** — Issue #498。`text-muted` が zinc-500（#71717a）で zinc-900 背景に対してコントラスト比 3.57:1 しかなくて、`text-faint` にいたっては zinc-600（#52525b）でなんと 2.21:1 しかなかったよっ！WCAG AA 基準（通常テキスト 4.5:1、大テキスト 3:1）に全然届いてなかったから、`text-muted` を zinc-400（#a1a1aa、コントラスト比 ~5.75:1）に、`text-faint` を zinc-500（#71717a、コントラスト比 ~3.57:1）にアップデートしたよ〜🔍♿✨
