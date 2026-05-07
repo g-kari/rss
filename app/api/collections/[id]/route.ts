@@ -4,8 +4,13 @@ import { apiError } from "@/lib/api-error";
 import { readCollections, writeCollections, COLLECTION_NAME_MAX_LENGTH } from "@/lib/collections";
 import { parseName } from "@/lib/validation";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!UUID_RE.test(id)) {
+    return apiError("Invalid collection id", 400, { code: "INVALID_ID" });
+  }
   return withJsonBody<{
     name?: unknown;
     order?: unknown;
@@ -72,6 +77,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!UUID_RE.test(id)) {
+    return apiError("Invalid collection id", 400, { code: "INVALID_ID" });
+  }
   return withSession(request, async ({ session, env }) => {
     const collections = await readCollections(env.RSS_DATA, session.userId);
     if (!collections.some((c) => c.id === id)) {

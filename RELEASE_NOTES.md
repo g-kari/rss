@@ -2,6 +2,28 @@
 
 ## 2026-05-08 (latest)
 
+### セキュリティ対策っ
+
+- **`DELETE` / `PATCH /api/feeds/:id` に `isValidFeedHash` バリデーションを追加したよ〜** — Issue #539。`/refresh` や `/reinfer` と同じガードパターンに統一したよっ🔒✨
+- **`PATCH` / `DELETE /api/collections/:id` に UUID フォーマット検証を追加したよ〜** — Issue #539。任意長文字列がそのまま処理を通過しちゃう問題を修正したよっ🔒🎀
+
+### アクセシビリティ改善っ
+
+- **`MarkAllReadButton` に `aria-label` を追加したよ〜** — Issue #545。アイコンのみのボタンが `title` 属性だけだったのを修正して、スクリーンリーダーがちゃんと読み上げられるようになったよっ♿✨
+- **`ToggleIconButton` に `aria-pressed` を追加したよ〜** — Issue #550。isActive 状態をセマンティクスでも伝えられるようになったよっ♿💡
+- **`FeedAddModal` の進行中テキストに `aria-live="polite"` を追加したよ〜** — Issue #549。RSS フィードを探索中のステータス変化がスクリーンリーダーに通知されるようになったよっ♿🎀
+
+### リファクタリングっ
+
+- **`FeedHealthModal` のローカル `timeAgoLabel` 関数を削除して `article-utils.ts` の `timeAgo` を再利用したよ〜** — Issue #551。DRY 違反を解消したよっ🔧
+- **`useArticleViewTts` の Shift+P キーダウンハンドラを `handleTtsToggle()` 呼び出しに統一したよ〜** — Issue #552。同一ロジックの重複をなくしてコードをスッキリさせたよっ🔧✨
+
+### ドキュメント整備っ
+
+- **`architecture.md` のテストカバレッジマップに `e2e/cron-fetch.spec.ts` を追記したよ〜** — Issue #557。カバレッジ状況が正確に把握できるようになったよっ📝
+
+---
+
 ### アクセシビリティ改善っ
 
 - **`ShareMenu` のトリガーボタンに `aria-expanded` / `aria-haspopup` を追加したよ〜** — Issue #525。スクリーンリーダーがポップアップの開閉状態を読み上げられるようになったよっ！同ディレクトリの SnoozeMenu / FilterMenu に合わせて実装したよ〜♿✨
