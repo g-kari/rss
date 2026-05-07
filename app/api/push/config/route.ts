@@ -10,6 +10,7 @@ interface PushConfigUpdate {
   silentStart?: string | null;
   silentEnd?: string | null;
   timezone?: string | null;
+  errorNotificationsEnabled?: boolean;
 }
 
 /** Push 通知設定を取得する */
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
       silentStart: config.silentStart ?? null,
       silentEnd: config.silentEnd ?? null,
       timezone: config.timezone ?? null,
+      errorNotificationsEnabled: config.errorNotificationsEnabled ?? true,
     });
   });
 }
@@ -76,6 +78,14 @@ export async function PUT(request: Request) {
       } else {
         config.timezone = body.timezone;
       }
+    }
+    if (body.errorNotificationsEnabled !== undefined) {
+      if (typeof body.errorNotificationsEnabled !== "boolean") {
+        return apiError("errorNotificationsEnabled must be a boolean", 400, {
+          code: "INVALID_ERROR_NOTIFICATIONS",
+        });
+      }
+      config.errorNotificationsEnabled = body.errorNotificationsEnabled;
     }
 
     await r2Put(env.RSS_DATA, key, config);

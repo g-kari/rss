@@ -49,6 +49,7 @@ export default function AiNotificationTabPanel({
   const [silentStart, setSilentStart] = useState("");
   const [silentEnd, setSilentEnd] = useState("");
   const [timezone, setTimezone] = useState("");
+  const [errorNotificationsEnabled, setErrorNotificationsEnabled] = useState(true);
   const [pushConfigLoading, setPushConfigLoading] = useState(false);
   const silentHoursLoaded = useRef(false);
   const timezones =
@@ -65,6 +66,7 @@ export default function AiNotificationTabPanel({
               silentStart: string | null;
               silentEnd: string | null;
               timezone: string | null;
+              errorNotificationsEnabled: boolean;
             }>)
           : null,
       )
@@ -73,6 +75,7 @@ export default function AiNotificationTabPanel({
         setSilentStart(data.silentStart ?? "");
         setSilentEnd(data.silentEnd ?? "");
         setTimezone(data.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "");
+        setErrorNotificationsEnabled(data.errorNotificationsEnabled ?? true);
         // config ロード完了後から自動保存を有効化
         silentHoursLoaded.current = true;
       })
@@ -108,6 +111,22 @@ export default function AiNotificationTabPanel({
   );
 
   const handleSaveSilentHours = () => saveSilentHours(silentStart, silentEnd, timezone);
+
+  const toggleErrorNotifications = useCallback(async () => {
+    const next = !errorNotificationsEnabled;
+    setErrorNotificationsEnabled(next);
+    try {
+      await fetch("/api/push/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ errorNotificationsEnabled: next }),
+      });
+    } catch {
+      // ロールバック
+      setErrorNotificationsEnabled(!next);
+      toast.error("保存に失敗しました");
+    }
+  }, [errorNotificationsEnabled, toast]);
 
   // サイレント時間帯フィールドの変更を 1000ms デバウンスして自動保存
   const debouncedSilentStart = useDebounce(silentStart, 1000);
@@ -226,6 +245,36 @@ export default function AiNotificationTabPanel({
         {pushEnabled && (
           <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
             <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+              Push 通知設定
+            </span>
+            <SettingRow label="フィードエラー通知">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={errorNotificationsEnabled}
+                aria-label={
+                  errorNotificationsEnabled
+                    ? "フィードエラー通知を OFF にする"
+                    : "フィードエラー通知を ON にする"
+                }
+                onClick={toggleErrorNotifications}
+                className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+                  errorNotificationsEnabled ? "bg-ink" : "bg-border-default"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                    errorNotificationsEnabled ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </SettingRow>
+            <div className="flex flex-col gap-1 pl-28">
+              <span className="text-[11px] text-text-muted">
+                5回連続でフィードの取得に失敗したときに Push 通知で知らせます。
+              </span>
+            </div>
+            <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted pt-2">
               Push 通知サイレント時間帯
             </span>
             <SettingRow label="開始時刻">

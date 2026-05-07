@@ -828,3 +828,46 @@ test.describe("sanitizeHtml — 正常コンテンツの保持", () => {
     expect(sanitizeHtml("")).toBe("");
   });
 });
+
+test.describe("sanitizeHtml — XSS バイパスパターン検証 (Issue #487)", () => {
+  test("制御文字を含む onerror 属性をサニタイズする", () => {
+    // 改行 (\x0a) をイベント属性名に挿入するバイパス
+    // HTML パーサーは属性名中の制御文字を無視してイベントハンドラとして解釈することがある
+    const dirty = "<img src=x onerror\x0a=alert(1)>";
+    const clean = sanitizeHtml(dirty);
+    expect(clean).not.toContain("onerror");
+    expect(clean).not.toContain("alert");
+  });
+
+  test("SVG コンテキストの XSS をサニタイズする", () => {
+    // SVG 内の <script> タグは HTML コンテキストとは別のパーサーで処理されるため
+    // 除去漏れが起きやすい攻撃ベクトル
+    const dirty = "<svg><script>alert(1)</script></svg>";
+    const clean = sanitizeHtml(dirty);
+    expect(clean).not.toContain("script");
+    expect(clean).not.toContain("alert");
+  });
+
+  test("HTML エンティティエンコードされた javascript: スキームをブロックする", () => {
+    // &#106; = 'j' にデコードされ javascript: となる
+    // ブラウザは href 属性値の HTML エンティティをデコードするため XSS となりうる
+    const dirty = '<a href="&#106;avascript:alert(1)">click</a>';
+    const clean = sanitizeHtml(dirty);
+    expect(clean).not.toMatch(/javascript:/i);
+  });
+
+  test("data: URI をブロックする", () => {
+    // data:text/html は HTML コンテンツを直接埋め込める危険な URI スキーム
+    const dirty = '<img src="data:text/html,<script>alert(1)</script>">';
+    const clean = sanitizeHtml(dirty);
+    expect(clean).not.toContain("data:text/html");
+  });
+
+  test("MathML コンテキストの XSS をサニタイズする", () => {
+    // MathML の <mtext> 内に HTML コンテキストが埋め込まれることがある
+    // 一部のパーサーでは MathML 内の <script> が実行される
+    const dirty = "<math><mtext><script>alert(1)</script></mtext></math>";
+    const clean = sanitizeHtml(dirty);
+    expect(clean).not.toContain("script");
+  });
+});
