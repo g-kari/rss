@@ -7,6 +7,8 @@ interface Props {
   selectedCollectionId: string | null;
   onSelectCollection: (id: string | null) => void;
   onCreateCollection?: (name: string) => Promise<Collection | { error: string }>;
+  loadError?: Error | null;
+  onRetryCollections?: () => void;
 }
 
 export default function CollectionsSection({
@@ -14,15 +16,26 @@ export default function CollectionsSection({
   selectedCollectionId,
   onSelectCollection,
   onCreateCollection,
+  loadError,
+  onRetryCollections,
 }: Props) {
-  if (collections.length === 0) return null;
+  if (collections.length === 0 && !loadError) return null;
   return (
     <div className="mt-1 pt-2 border-t border-border-subtle">
       <div className="px-4 pb-1 flex items-center">
         <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
           Collections
         </span>
-        {onCreateCollection && (
+        {loadError && onRetryCollections && (
+          <button
+            onClick={onRetryCollections}
+            className="ml-auto text-[11px] text-text-muted hover:text-text-default px-2 py-1"
+            title="再読み込み"
+          >
+            再試行
+          </button>
+        )}
+        {!loadError && onCreateCollection && (
           <button
             onClick={() => onCreateCollection("")}
             className="ml-auto w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"

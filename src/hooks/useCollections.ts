@@ -9,6 +9,10 @@ import { useSyncedRef } from "./useSyncedRef";
 export interface CollectionsState {
   collections: Collection[];
   loading: boolean;
+  /** コレクション取得失敗時のエラー（null = エラーなし） */
+  loadError: Error | null;
+  /** コレクション再取得を試みる */
+  retryCollections: () => void;
   createCollection: (name: string) => Promise<Collection | { error: string }>;
   renameCollection: (id: string, name: string) => Promise<Collection | { error: string }>;
   deleteCollection: (id: string) => Promise<boolean>;
@@ -26,6 +30,8 @@ export function useCollections(
 ): CollectionsState {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<Error | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const onErrorRef = useSyncedRef(onError);
 
   useEffect(() => {
@@ -35,6 +41,7 @@ export function useCollections(
     }
     const controller = new AbortController();
     setLoading(true);
+    setLoadError(null);
     apiFetchJson<Collection[]>("/api/collections", { signal: controller.signal })
       .then((data) => {
         setCollections(sortByOrder(data));
@@ -42,14 +49,20 @@ export function useCollections(
       .catch((err) => {
         if (err.name === "AbortError") return;
         devError(err);
+        setLoadError(err instanceof Error ? err : new Error(String(err)));
         onErrorRef.current?.("コレクションの読み込みに失敗しました");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onErrorRef は ref 経由で最新値を参照するため deps 不要
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onErrorRef は ref 経由・retryCount は再フェッチトリガー
+  }, [user, retryCount]);
+
+  const retryCollections = useCallback(() => {
+    setLoadError(null);
+    setRetryCount((n) => n + 1);
+  }, []);
 
   const createCollection = useCallback(
     async (name: string): Promise<Collection | { error: string }> => {
@@ -169,6 +182,8 @@ export function useCollections(
   return {
     collections,
     loading,
+    loadError,
+    retryCollections,
     createCollection,
     renameCollection,
     deleteCollection,

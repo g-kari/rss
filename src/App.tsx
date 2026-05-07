@@ -202,6 +202,8 @@ export default function App() {
     deleteCollection,
     addArticleToCollection,
     removeArticleFromCollection,
+    loadError: collectionsLoadError,
+    retryCollections,
   } = useCollections(user, toast.error);
 
   const {
@@ -1055,6 +1057,8 @@ export default function App() {
                       recommendationsRefreshing={recommendationsRefreshing}
                       noteCount={Object.keys(notes).length}
                       collections={collections}
+                      collectionsLoadError={collectionsLoadError}
+                      onRetryCollections={retryCollections}
                       selectedCollectionId={selectedCollectionId}
                       install={install}
                       loadError={feedLoadError ? "フィードの読み込みに失敗しました" : null}

@@ -65,6 +65,8 @@ interface Props {
   selectedTag?: string | null;
   articleTagIds?: Record<string, string[]>;
   collections?: Collection[];
+  collectionsLoadError?: Error | null;
+  onRetryCollections?: () => void;
   selectedCollectionId?: string | null;
   feedGroups?: FeedGroup[];
   totalUnread?: number;
@@ -108,6 +110,8 @@ function FeedSidebar({
   selectedTag = null,
   articleTagIds,
   collections,
+  collectionsLoadError,
+  onRetryCollections,
   selectedCollectionId = null,
   feedGroups,
   totalUnread: totalUnreadProp,
@@ -442,12 +446,14 @@ function FeedSidebar({
           />
         )}
 
-        {collections && onSelectCollection && (
+        {(collections || collectionsLoadError) && onSelectCollection && (
           <CollectionsSection
-            collections={collections}
+            collections={collections ?? []}
             selectedCollectionId={selectedCollectionId ?? null}
             onSelectCollection={onSelectCollection}
             onCreateCollection={onCreateCollection}
+            loadError={collectionsLoadError}
+            onRetryCollections={onRetryCollections}
           />
         )}
 
