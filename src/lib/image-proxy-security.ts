@@ -18,10 +18,22 @@
  * どちらも存在しない・判定できない場合は拒否する（fail-closed）。
  */
 export function isSameOriginImageRequest(headers: Headers, selfOrigin: string): boolean {
+  // Sec-Fetch-Mode が "navigate" の場合はブラウザの直接ナビゲーションリクエストであり、
+  // 画像プロキシへの正当な利用ではないため拒否する。
+  // （例: アドレスバーへの URL 直打ち、<a href> でのページ遷移など）
+  const secFetchMode = headers.get("sec-fetch-mode");
+  if (secFetchMode === "navigate") {
+    return false;
+  }
+
   const secFetchSite = headers.get("sec-fetch-site");
   if (secFetchSite !== null) {
     return secFetchSite === "same-origin";
   }
+
+  // Referer ヘッダーによるフォールバック。
+  // ⚠️ Referer は HTTP レベルで偽造可能なため curl 等の非ブラウザクライアントからバイパスされ得る。
+  // ただし画像プロキシには checkSlidingWindow レートリミットがあるため実用上の乱用は抑制される。
   const referer = headers.get("referer");
   if (!referer) return false;
   try {
