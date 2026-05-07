@@ -439,14 +439,10 @@ export default function ArticleHeader({
           <SnoozeMenu articleId={article.id} onSnooze={onSnooze} onSelectNext={onSelectNext} />
         )}
 
-        {/* 後で読む / ブックマーク / いいね — 排他スイッチ */}
+        {/* 後で読む / ブックマーク / いいね — 独立トグル */}
         <div className="flex items-center rounded-full border border-border-default overflow-hidden">
           <button
             onClick={() => {
-              if (!isInReadingList) {
-                if (isBookmarked) onToggleBookmark(article.id);
-                if (isLiked) onToggleLike(article.id);
-              }
               onToggleReadingList(article.id);
               toast.info(isInReadingList ? "後で読むから削除" : "後で読むに追加");
             }}
@@ -473,10 +469,6 @@ export default function ArticleHeader({
           <div className="w-px self-stretch bg-border-default" />
           <button
             onClick={() => {
-              if (!isBookmarked) {
-                if (isInReadingList) onToggleReadingList(article.id);
-                if (isLiked) onToggleLike(article.id);
-              }
               onToggleBookmark(article.id);
             }}
             title={isBookmarked ? "ブックマーク解除 (b)" : "ブックマーク (b)"}
@@ -503,10 +495,6 @@ export default function ArticleHeader({
           <div className="w-px self-stretch bg-border-default" />
           <button
             onClick={() => {
-              if (!isLiked) {
-                if (isInReadingList) onToggleReadingList(article.id);
-                if (isBookmarked) onToggleBookmark(article.id);
-              }
               onToggleLike(article.id);
             }}
             title={isLiked ? "いいね解除 (I)" : "いいね (I)"}
@@ -571,7 +559,7 @@ export default function ArticleHeader({
           onClick={onToggleFocusMode}
           title={focusMode ? "フォーカスモード終了 (\\)" : "フォーカスモード (\\)"}
           aria-label={focusMode ? "フォーカスモード終了" : "フォーカスモード"}
-          className={`hidden lg:block p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+          className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
         >
           <svg
             className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"
