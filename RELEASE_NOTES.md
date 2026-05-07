@@ -22,6 +22,30 @@
 
 - **`architecture.md` のテストカバレッジマップに `e2e/cron-fetch.spec.ts` を追記したよ〜** — Issue #557。カバレッジ状況が正確に把握できるようになったよっ📝
 
+### アクセシビリティ改善っ (追加)
+
+- **`FeedQuickSwitchModal` に `role="dialog"` / `aria-modal` / `aria-label` を追加したよ〜** — Issue #544。createPortal 描画のモーダルがスクリーンリーダーにダイアログとして認識されるようになったよっ♿✨
+- **`RecommendationSection` の購読/非表示ボタンに `aria-label` と `focus-visible:opacity-100` を追加したよ〜** — Issue #546。キーボード操作でもボタンが表示されて説明が読み上げられるようになったよっ♿🎀
+- **`FeedContextMenu` の全ポータルメニューに `role="menu"` / `role="menuitem"` と Escape キー処理を追加したよ〜** — Issue #547。5つのメニューポータルが全てキーボードで閉じられるようになったよっ♿💡
+- **`ConfirmModal` に Tab/Shift+Tab フォーカストラップを追加したよ〜** — Issue #548。Modal.tsx と同じパターンで実装してモーダル外へのフォーカス漏れを防いだよっ♿🔧
+
+### パフォーマンス改善っ (追加)
+
+- **`markBulkRead` の `new Set([...prev, ...newIds])` スプレッドを `for...of` ループに変更したよ〜** — Issue #543。50,000件規模の一括既読処理で中間配列生成コストを排除したよっ🚀✨
+- **`useGlobalFilterAutoRead` の全記事 Set 再構築を差分追加に変更したよ〜** — Issue #542。5分ポーリングのたびに O(n) Set コピーが走ってた問題を新着 ID だけ追加する形に修正したよっ🚀🎀
+- **`useSidebarFeeds` の `unreadByFeed` 計算を `useSyncedRef` 最適化したよ〜** — Issue #541。既読操作のたびに全記事走査が再実行されてた問題を、`readIds` と `readBeforeTimestamp` を ref 化して deps から除外することで解決したよっ🚀💡
+- **`ArticleList` の `resolveItemProps` を `useSyncedRef` でラップして `CompactItem` の memo を有効化したよ〜** — Issue #540。インライン関数で memo スキップが機能しなかった問題を修正して仮想スクロールのパフォーマンスを改善したよっ🚀🔧
+
+### リファクタリングっ (追加)
+
+- **`ai-route-helper.ts` に `isAiError` 型ガードを追加して unsafe キャストを排除したよ〜** — Issue #553。`err as Record<string, unknown>` キャストを型安全な型ガード関数に置き換えたよっ🔧✨
+
+### テストっ (追加)
+
+- **`validation.ts` の未テスト関数 5 個にユニットテストを追加したよ〜** — Issue #554。`isValidIso8601` / `extractIds` / `parseNotes` / `parseSnoozedUntil` / `isValidBase64url` の 53 件テストを `e2e/validation-functions.spec.ts` として新規作成したよっ🧪✨
+- **`retry-after.ts` の `parseRetryAfter` にユニットテストを追加したよ〜** — Issue #555。delta-seconds・HTTP-date・fallbackMs・maxMs オプションを全網羅した `e2e/retry-after.spec.ts` を新規作成したよっ🧪🎀
+- **`embed-utils.ts` の `extractEmbedThumbnailUrl` にユニットテストを追加したよ〜** — Issue #556。YouTube / youtube-nocookie.com / Shorts / embed URL の全バリエーションをカバーした `e2e/embed-utils.spec.ts` を新規作成したよっ🧪💡
+
 ---
 
 ### アクセシビリティ改善っ
