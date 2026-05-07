@@ -52,6 +52,11 @@ export function useReadState(
   articles: Article[],
   historyIds?: Set<string>,
 ): ReadStateResult {
+  // 循環依存をrefで解消するパターン（React Strict Mode でも安全）:
+  // useReadStatePersistence は scheduleSyncRef/syncImmediatelyRef を呼ぶが、
+  // これらは effects/イベントハンドラからのみ呼ばれる（render 時には呼ばれない）。
+  // useReadStateSync が返す実体を render 末尾で ref に代入するため、
+  // effect が実行される時点では必ず最新の関数が ref.current に入っている。
   const scheduleSyncRef = useRef<() => void>(() => {});
   const syncImmediatelyRef = useRef<() => void>(() => {});
 
@@ -97,7 +102,7 @@ export function useReadState(
     otherDispatchers,
   });
 
-  // 安定参照を更新
+  // render 末尾で ref を最新関数に更新（上記コメント参照）
   scheduleSyncRef.current = sync.scheduleSyncToServer;
   syncImmediatelyRef.current = sync.syncImmediately;
 

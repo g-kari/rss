@@ -115,6 +115,11 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
         deferSaveSet(STORAGE_KEYS.LIKE_IDS, mergedLikes);
       }
 
+      // `"field" in state` チェックの意図:
+      // ReadState の optional フィールドは R2 古データとの後方互換性のため省略可能。
+      //   - フィールドが存在しない（undefined）→ 古いデータ形式 → ローカル状態を上書きしない
+      //   - フィールドが存在して null   → 明示的なクリア操作 → ローカル状態を null にリセット
+      // この区別により、別デバイスでの設定変更と古いデータ形式の両方を正しく扱える。
       if ("globalFilter" in state) {
         const serverFilter = state.globalFilter ?? null;
         saveJson(STORAGE_KEYS.GLOBAL_FILTER, serverFilter);

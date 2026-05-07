@@ -233,7 +233,22 @@ export interface PushConfig {
   timezone?: string;
 }
 
-/** 既読・ブックマーク・後で読む・いいね状態 — /api/read-state の入出力型 */
+/**
+ * 既読・ブックマーク・後で読む・いいね状態 — /api/read-state の入出力型。
+ *
+ * ## optional フィールドについて
+ *
+ * `globalFilter` / `readBeforeTimestamp` / `snoozedUntil` / `notes` / `tagIds` / `ttlDays`
+ * が optional なのは、**R2 に保存された古いデータとの後方互換性**を維持するためです。
+ * これらのフィールドが存在しなかった時代に保存されたデータを読み込んでも
+ * TypeScript の型エラーにならないよう、意図的に省略可能にしています。
+ *
+ * - R2 から生データを読み込む場合は `Partial<ReadState>` で取得し、
+ *   `normalizeReadState()` を呼んで完全な `ReadState` に変換してください。
+ * - `applyServerState` でフィールドの有無を `"field" in state` でチェックするのは、
+ *   `undefined`（フィールド欠落 → ローカル状態を保持）と
+ *   `null`（明示的なクリア → ローカル状態をリセット）を区別するためです。
+ */
 export interface ReadState {
   readIds: string[];
   bookmarkIds: string[];
