@@ -3,6 +3,8 @@ import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, userPushKey } from "@/lib/r2";
 import { isValidTimeHHMM, isValidIanaTimezone } from "@/lib/push-silent-hours";
+import { isValidFeedHash } from "@/lib/validation";
+import { MAX_FEEDS_PER_USER } from "@/lib/shared-feed";
 import type { PushConfig } from "@/types";
 
 interface PushConfigUpdate {
@@ -56,7 +58,17 @@ export async function PUT(request: Request) {
     const config = await r2Get<PushConfig>(env.RSS_DATA, key, { subscriptions: [] });
 
     if (body.disabledFeeds !== undefined) {
-      config.disabledFeeds = body.disabledFeeds;
+      if (typeof body.disabledFeeds !== "object" || Array.isArray(body.disabledFeeds)) {
+        return apiError("disabledFeeds must be an object", 400, { code: "INVALID_DISABLED_FEEDS" });
+      }
+      const validated: Record<string, boolean> = {};
+      for (const [k, v] of Object.entries(body.disabledFeeds as Record<string, unknown>)) {
+        if (!isValidFeedHash(k)) continue;
+        if (typeof v !== "boolean") continue;
+        if (Object.keys(validated).length >= MAX_FEEDS_PER_USER) break;
+        validated[k] = v;
+      }
+      config.disabledFeeds = validated;
     }
     if (body.silentStart !== undefined) {
       if (body.silentStart === null) {
