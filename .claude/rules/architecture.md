@@ -114,7 +114,7 @@ src/
     ToastContext.tsx          # トースト通知 API の React Context（useToast のグローバル提供）
   components/
     feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection / TagsSection / CollectionsSection / FeedSearchBar）
-    feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / FeedTitleContent / types.ts）
+    feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / FeedTitleContent / feedActions.tsx / types.ts）
     article-items/           # レイアウト別記事アイテム（index.tsx / shared.tsx / CompactItem / ListItem / CardItem / MagazineItem / GalleryItem）
     FeedItem.tsx             # フィードアイテム（コンテキストメニュー付き）
     FeedDetailModal.tsx      # フィード詳細モーダル
