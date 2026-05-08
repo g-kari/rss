@@ -24,8 +24,9 @@ binding = "IMAGES"
 AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL = "https://rss.0g0.xyz"
 # ベータアクセス制限: 許可する sub をカンマ区切りで列挙。空文字・未設定 = 制限なし（全員許可）
-# 本番環境では `wrangler secret put BETA_ALLOWED_SUBS` でシークレットとして上書き可能
-BETA_ALLOWED_SUBS = "c11ce2603f2809f553a595228d28c2c9ccbdd86d9245ec3b4b332f2e11d3f0d0"
+# pairwise sub を public repo に晒さないため、本番値は wrangler secret で管理する：
+#   `npx wrangler secret put BETA_ALLOWED_SUBS`
+# vars と secret は同名で共存できないため、wrangler.toml には宣言しない。
 VAPID_SUBJECT = "mailto:admin@0g0.xyz"
 # Cloudflare AI toMarkdown API (全文取得フォールバック用)
 # CLOUDFLARE_API_TOKEN は `npx wrangler secret put CLOUDFLARE_API_TOKEN` で設定
