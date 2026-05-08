@@ -174,7 +174,8 @@ const hash = await sha256Hex(url);
 - `fast-xml-parser` のみ使用 (Workers 互換、pure JS)
 - RSS 2.0 + Atom 両対応
 - `toArray()` ヘルパーで配列正規化 (単一要素が object になる挙動を吸収)
-- `stripHtml()` でサマリーからタグを除去
+- **summary には `stripHtmlWithBreaks()` を使う**: `stripHtml()` は `<br>` を空文字列に置換するため `foo<br>bar` → `foobar` の単語連結を起こす。プレビュー用の summary では `<br>` / `<p>` を改行に変換する `stripHtmlWithBreaks()` が正解（#645）
+- `stripHtml()` は title など改行が不要な単一行テキストにのみ使う
 
 ## Cron (`src/cron/fetch.ts`)
 
@@ -216,6 +217,44 @@ useEffect(() => {
 ```
 
 主な使用箇所: `useReadState`, `useFilteredArticles`, `useKeyboardNav`
+
+## ref vs state の使い分け（同期チェック vs useEffect 再実行）
+
+「外部からの一時的中断 → 自動回復」シナリオ（429 クールダウン後の再開、スリープからの復帰など）では **ref だけでは不十分**。`useRef` は React 再レンダーをトリガーしないため、ref に「期限値」を書き込んでも `useEffect` は再実行されない。
+
+- **ref**: 同期 fetch ループ内の高頻度チェック用（`if (Date.now() < ref.current) return;`）
+- **state**: `useEffect` 再実行のトリガー用（依存配列に含める）
+
+両方を併用するパターン:
+
+```typescript
+const rateLimitUntilRef = useRef<number>(0);
+const [rateLimitedUntil, setRateLimitedUntil] = useState<number>(0);
+
+// クールダウン期限到達 → state リセット → メイン useEffect 再実行
+useEffect(() => {
+  if (rateLimitedUntil <= 0) return;
+  const remaining = rateLimitedUntil - Date.now();
+  if (remaining <= 0) {
+    setRateLimitedUntil(0);
+    return;
+  }
+  const id = setTimeout(() => setRateLimitedUntil(0), remaining);
+  return () => clearTimeout(id);
+}, [rateLimitedUntil]);
+
+// メイン useEffect: rateLimitedUntil を依存に入れることで再開がトリガーされる
+useEffect(() => {
+  if (Date.now() < rateLimitUntilRef.current) return; // ref で同期チェック
+  // ... fetch loop
+  // 429 受信時:
+  // const until = Date.now() + retryAfterMs;
+  // rateLimitUntilRef.current = until;
+  // setRateLimitedUntil(until);  // ← state にも反映して useEffect 再実行を予約
+}, [, /* ... */ rateLimitedUntil]);
+```
+
+主な使用箇所: `usePrefetchGalleryContents`（429 クールダウン後の自動リトライ #642）
 
 ## 読み取り状態のマージ戦略 (`useReadState`)
 
