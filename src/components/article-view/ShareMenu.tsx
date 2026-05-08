@@ -1,7 +1,8 @@
-import React, { useRef } from "react";
+import React from "react";
 import { createPortal } from "react-dom";
 import type { Article, Feed } from "../../types";
 import { usePortalMenu } from "../../hooks/usePortalMenu";
+import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { useToast } from "@/contexts/ToastContext";
 import { storageGet, STORAGE_KEYS } from "../../lib/storage";
 import { articleToMarkdown } from "../../lib/html-to-markdown";
@@ -18,7 +19,7 @@ interface Props {
 export default function ShareMenu({ article, feed, contentHtml }: Props) {
   const toast = useToast();
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
-  const menuRef = useRef<HTMLDivElement>(null);
+  const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   function openShareWindow(url: string) {
     setOpen(false);
@@ -68,11 +69,15 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
             />
             <div
               ref={menuRef}
+              role="menu"
+              aria-label="共有"
+              onKeyDown={handleKeyDown}
               className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[140px]"
               style={{ top: pos.top, right: pos.right }}
             >
               {typeof navigator.share === "function" && (
                 <button
+                  role="menuitem"
                   onClick={() => {
                     setOpen(false);
                     navigator.share({ url: article.link!, title: article.title }).catch(() => {});
@@ -97,6 +102,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
               {SHARE_TARGETS.map((target) => (
                 <button
                   key={target.id}
+                  role="menuitem"
                   onClick={() => {
                     if (target.clipboardText) {
                       const text = target.clipboardText(article.link!, article.title);
@@ -125,6 +131,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                 </button>
               ))}
               <button
+                role="menuitem"
                 onClick={() =>
                   copyText(`${article.title}\n${article.link!}`, "タイトルと URL をコピーしました")
                 }
@@ -146,6 +153,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                 タイトル + URL をコピー
               </button>
               <button
+                role="menuitem"
                 onClick={() => {
                   // `\` を先にエスケープしてから `[`/`]` をエスケープする。
                   // これにより `\[` のような入力が二重エスケープされず、Markdown ラベルの整合性が保たれる。
@@ -170,6 +178,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                 Markdown リンクをコピー
               </button>
               <button
+                role="menuitem"
                 onClick={() => {
                   setOpen(false);
                   window.print();
@@ -195,6 +204,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
               {feed && (
                 <>
                   <button
+                    role="menuitem"
                     onClick={() => {
                       try {
                         const md = articleToMarkdown(article, feed, contentHtml);
@@ -229,6 +239,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                     Markdown 全文コピー
                   </button>
                   <button
+                    role="menuitem"
                     onClick={() => {
                       try {
                         const vault = storageGet(STORAGE_KEYS.OBSIDIAN_VAULT) ?? "";

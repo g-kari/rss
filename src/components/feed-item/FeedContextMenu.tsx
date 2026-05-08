@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Feed, FeedGroup, FeedView } from "../../types";
 import type { Action } from "./types";
+import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 
 const MUTE_OPTIONS = [
   { label: "1時間", durationMs: 60 * 60 * 1000 },
@@ -16,15 +17,22 @@ interface ContextMenuProps {
   visibleActions: Action[];
   menuPortalStyle: React.CSSProperties;
   onClose: () => void;
+  btnRef: React.RefObject<HTMLButtonElement | null>;
 }
+export function ContextMenuPortal({
+  visibleActions,
+  menuPortalStyle,
+  onClose,
+  btnRef,
+}: ContextMenuProps) {
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), btnRef);
 
-export function ContextMenuPortal({ visibleActions, menuPortalStyle, onClose }: ContextMenuProps) {
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
   }, [onClose]);
 
   return createPortal(
@@ -38,7 +46,9 @@ export function ContextMenuPortal({ visibleActions, menuPortalStyle, onClose }: 
         }}
       />
       <div
+        ref={menuRef}
         role="menu"
+        onKeyDown={handleKeyDown}
         onClick={(e) => e.stopPropagation()}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[120px]"
         style={menuPortalStyle}

@@ -533,12 +533,24 @@ export default function FeedItem({
       role="option"
       aria-selected={isSelected}
       aria-label={feed.title || feed.url}
+      tabIndex={isSelected ? 0 : -1}
       onClick={
         editing || categoryEditing
           ? undefined
           : () => {
               setMenuOpen(false);
               onSelect();
+            }
+      }
+      onKeyDown={
+        editing || categoryEditing
+          ? undefined
+          : (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setMenuOpen(false);
+                onSelect();
+              }
             }
       }
       onDoubleClick={editing || categoryEditing ? undefined : startEdit}
@@ -644,6 +656,7 @@ export default function FeedItem({
           visibleActions={visibleActions}
           menuPortalStyle={menuPortalStyle}
           onClose={() => setMenuOpen(false)}
+          btnRef={menuButtonRef}
         />
       )}
       {filterModalOpen && onFilterSave && (
