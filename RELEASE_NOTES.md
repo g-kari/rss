@@ -2,8 +2,15 @@
 
 ## 2026-05-09 (latest)
 
+### 激アツ新機能っ
+
+- **記事一覧（card / magazine）にホバーで「後で読む」ボタンを追加したよ〜** — Issue #633。これまで「後で読む」は記事ビュー (ArticleView) を開かないと操作できなかったの〜！😣 今回 `ArticleActions` に時計アイコン型の「後で読む」ボタンを追加して、card / magazine レイアウトでホバーするとサクッと登録/解除できるようになったよ〜⏰✨ compact / list / gallery は情報密度が高いので未対応（A3 全レイアウト右クリックメニュー対応は別 PR で）。`t` キーでの登録は前から動いてたんだけど改めて確認、記事一覧フォーカス時もちゃんと動くよ〜🎀
+
 ### バグ修正っ
 
+- **ギャラリー無限スクロールが途中で止まる症状を直したよ〜** — Issue #636 症状 1。masonic 仮想化で sentinel に到達しない結果 `hasMore` が永遠に true のままになって、過去記事が自動で読み込まれない問題があったの〜😭 `LoadMoreButton` を `feedHasMorePages` だけで表示するようにして、ボタン自身の IntersectionObserver で確実に発火させるように！🚀 `MAX_AUTO_LOAD` も 3→5 に緩和して、フィルター時にもう少し深く遡れるよ〜📚 `overscanBy` 6→12 で末端の描画余裕も確保したの〜
+- **ギャラリー画像のレイアウトシフトを緩和したよ〜** — Issue #636 症状 2。`<img className="w-full h-auto">` だと画像読み込み完了まで高さ 0 で配置されてて、ロード後に高さ確定 → masonic が全カード位置再計算 → 画面ガタつきの原因になってたの😱 ロード前は `aspectRatio: "1 / 1"` で空間予約、ロード後は `naturalWidth / naturalHeight` から実比率に切り替えるように！🎨 完全な再計算ゼロは難しいけど、初回ロード時の大ジャンプは大幅に減るよ〜
+- **read-state の readIds を自動 prune するように〜** — Issue #635 A1。ヘビーユーザー（1 日 100 件以上既読）で R2 の `read-state.json` が数万件規模に肥大化してた問題を、`pruneOldReadIds` 純粋関数で自動削除するよう改善！🧹 `readBeforeTimestamp` 以前の publishedAt を持つ記事は `isArticleRead` で一括既読扱いされるから、個別 ID を保持する必要がないの〜♻️ クライアントが取得済みの記事範囲では readIds の大半が削除可能で、想定では数 MB → 数百 KB に圧縮できるよ〜📉 TDD で 9 ケース全 Green！B1 (readIds 別ファイル分離) は別 PR で。
 - **TTS 読み上げで URL をアルファベット 1 文字ずつ読み上げてた問題を直したよ〜** — Issue #655。これまで記事本文中の URL (`https://example.com/...`) を Web Speech API が「エイチティーティーピーエス、コロン...」って延々読み上げちゃって聴くに耐えなかったの〜！😱 `src/lib/tts-text.ts` に新規純粋関数 `preprocessTtsText` を追加して、URL を「リンク」っていう短い日本語トークンに置換してから speak() に渡すように！🎙️✨ 句読点や閉じ括弧は URL に巻き込まないから「リンク、ご覧ください」のように自然な読み上げになるよ〜📖 TDD で 12 ケース全部 Green！
 - **Twitter / X 系フィードで video の poster をサムネにできるようになったよ〜** — Issue #645 続編。これまで X feed の description 内に `<video poster="...">` があってもサムネとしては拾われず、ユーザーアバターとか OGP に頼ってサムネがミスマッチしてたの。今回 `extractImage` の優先順位に video poster 抽出を追加して、`<img>` より優先採用するように！🎥✨ ただし `media:content` (image) があればそっちを優先するから、ちゃんと指定された画像があればそっちを使うよ〜📷 TDD で 3 ケース追加、合計 33 ケース全 Green！
 
