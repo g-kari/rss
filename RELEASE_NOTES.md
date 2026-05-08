@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### 激アツ新機能っ
+
+- **CLI から記事詳細キャッシュをクリアできるようになったよ〜** — `DELETE /api/content?url=...` (個別 URL) と `POST /api/feeds/:id/purge-content-cache` (フィード単位の全記事一括クリア) の 2 エンドポイントを追加！🛠️ ロジック修正後にキャッシュ TTL 7 日待たなくても、`curl -X POST -H "Cookie: access_token=xxx" "https://rss.0g0.xyz/api/feeds/92bd33f28976b959/purge-content-cache"` で即座にフィード全記事のキャッシュをクリアできるよ〜🚀✨ shared cache + clip cache 両方クリアして、削除件数が `{ purged, failed, total }` で返るからモニタリングもしやすい！
+
 ### バグ修正っ
 
 - **everia.club などの WordPress nextpage で 2 ページ目以降が取得されないバグを直したよ〜** — Issue #652 関連。原因は **percent-encoding の大文字小文字差異**！記事 URL は大文字 (`%E5%A1%A9...`) なのに HTML 内のページネーションリンクは小文字 (`%e5%a1%a9...`) で、`isPaginatedVariant` の pathname 比較が文字列一致で false 返してた...！🔧 `decodeURI` で正規化してから比較するように修正、`MAX_PAGINATION_PAGES` も 5→10 に増やして長い画像記事もカバーできるようにしたよ〜📚✨ TDD の 6 ケース全 pass！
