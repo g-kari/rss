@@ -217,10 +217,20 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
   { keys: [], displayKey: "a", description: "AI 要約", group: "article" },
   { keys: [], displayKey: "P", description: "読み上げ開始 / 停止", group: "article" },
   {
-    keys: [],
+    keys: [" "],
     displayKey: "Space / Shift+Space",
     description: "記事を下 / 上にスクロール",
     group: "article",
+    handler: (ctx, e) => {
+      // 記事が選択されているときのみ反応
+      if (!ctx.selectedArticle) return;
+      const main = document.querySelector<HTMLElement>('main[aria-label="記事本文"]');
+      if (!main) return;
+      // ブラウザのデフォルト Space スクロールを抑止して、自前で記事ビュー領域内をスクロール
+      e.preventDefault();
+      const direction = e.shiftKey ? -1 : 1;
+      main.scrollBy({ top: direction * main.clientHeight * 0.9, behavior: "smooth" });
+    },
   },
   {
     keys: ["b"],
