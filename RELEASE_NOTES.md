@@ -4,6 +4,7 @@
 
 ### リファクタリングっ
 
+- **useUIState を完全廃止したよ〜（Phase 2）** — Issue #629。App.tsx で 9 サブフック（`useThemePreference` / `useLayoutSettings` / `useAutoReadSettings` / `useAccessibilitySettings` / `useMobilePane` / `useNSFWMode` / `useFocusMode` / `usePWAInstall` / `usePinnedAndCategories`）を直接並列呼び出しする形に変更。中間合成層を取り除いて純減 222 行（useUIState.ts 239 行削除 + App.tsx +22）。`?` / Escape の keydown ハンドラは App.tsx に直接配置して、フォーカスモード Escape は useFocusMode 側で独立処理する責務分離が綺麗に通ったよ〜🔧✨
 - **useUIState (334 行) を Phase 1 で 3 サブフックに分割したよ〜** — Issue #627。`useFocusMode`（フォーカスモード制御 + window.history 連携 + キーボード）/ `usePWAInstall`（PWA インストールプロンプト）/ `usePinnedAndCategories`（ピン留めフィード + カテゴリ折りたたみ）の 3 つに固有ロジックを切り出して、useUIState は薄い合成層（334 → 213 行）に！API 互換性を維持してるから App.tsx 側の変更ゼロだよ。Phase 2（useUIState 完全廃止）は別 Issue で対応予定っ🔧
 
 ### セキュリティ対策っ

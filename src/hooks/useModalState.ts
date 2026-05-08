@@ -17,8 +17,8 @@ export interface ModalState {
  * - スヌーズモーダルの表示制御（snoozeTargetId）
  * - スクリーンリーダー向けライブアナウンス（articleAnnouncement）
  *
- * showSettings / showHelp / showFeedSwitcher は useUIState が管理する
- * （keydown ショートカットとの密な連携があるため）。
+ * showSettings / showHelp / showFeedSwitcher は App.tsx で直接 useState 管理する
+ * （`?` / Escape の keydown ハンドラと密に連携するため）。
  */
 export function useModalState(): ModalState {
   const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
