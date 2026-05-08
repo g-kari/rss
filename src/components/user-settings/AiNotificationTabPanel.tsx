@@ -183,13 +183,13 @@ export default function AiNotificationTabPanel({
                 {!translatorDiag.available && translatorDiag.reason && (
                   <span className="text-[10px] text-text-faint">
                     {translatorDiag.reason === "not-chromium" &&
-                      "Chrome/Edge 以外のブラウザでは Chrome 翻訳を利用できません"}
+                      "ご利用のブラウザでは端末上の翻訳が使えないため、サーバー側 (Workers AI) で翻訳します"}
                     {translatorDiag.reason === "chrome-too-old" &&
-                      "Chrome Translator API は Chrome 131 以上が必要です。Chrome をアップデートしてください"}
+                      "Chrome のバージョンが古いため、サーバー側で翻訳します（Chrome 131 以上にアップデートすると端末上で翻訳できます）"}
                     {translatorDiag.reason === "flag-disabled" &&
-                      "chrome://flags/#translation-api を Enabled にして Chrome を再起動してください（Chrome 138 以上では不要）"}
+                      "Chrome 翻訳はオプトインが必要なため、サーバー側で翻訳します（chrome://flags/#translation-api で有効化可能、Chrome 138 以上では不要）"}
                     {translatorDiag.reason === "not-available" &&
-                      "言語パックが利用できません。Chrome の設定から言語を追加してください"}
+                      "言語パックが未インストールのため、サーバー側で翻訳します（Chrome の設定から言語を追加すると端末上で翻訳できます）"}
                   </span>
                 )}
               </div>
@@ -207,15 +207,15 @@ export default function AiNotificationTabPanel({
                 {!summarizerDiag.available && summarizerDiag.reason && (
                   <span className="text-[10px] text-text-faint">
                     {summarizerDiag.reason === "not-chromium" &&
-                      "Chrome/Edge 以外のブラウザでは Chrome 要約を利用できません"}
+                      "ご利用のブラウザでは端末上の要約が使えないため、サーバー側 (Workers AI) で要約します"}
                     {summarizerDiag.reason === "chrome-too-old" &&
-                      "Chrome Summarizer API は Chrome 131 以上が必要です。Chrome をアップデートしてください"}
+                      "Chrome のバージョンが古いため、サーバー側で要約します（Chrome 131 以上にアップデートすると端末上で要約できます）"}
                     {summarizerDiag.reason === "flag-disabled" &&
-                      "chrome://flags/#summarization-api-for-gemini-nano を Enabled にして Chrome を再起動してください（Chrome 138 以上では chrome://flags/#optimization-guide-on-device-model も Enabled にしてください）"}
+                      "Chrome 要約はオプトインが必要なため、サーバー側で要約します（chrome://flags/#summarization-api-for-gemini-nano を Enabled で利用可能）"}
                     {summarizerDiag.reason === "model-downloading" &&
-                      "要約モデルをダウンロード中です。しばらくお待ちください（chrome://settings/aiPage でダウンロード状況を確認できます）"}
+                      "Chrome がモデルをダウンロード中です。完了するまではサーバー側で要約します"}
                     {summarizerDiag.reason === "model-unavailable" &&
-                      "要約モデルをデバイスで利用できません。ハードウェア要件（GPU・ストレージ・OS バージョン）を確認してください。詳細は chrome://on-device-internals で確認できます"}
+                      "ご利用環境では端末上の要約が使えないため、サーバー側 (Workers AI) で要約します"}
                   </span>
                 )}
               </div>
