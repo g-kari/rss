@@ -95,13 +95,11 @@ async function handleGet(
     const res = await fetchFollowSafeRedirects(url, ARTICLE_FETCH_OPTS, FETCH_TIMEOUT_MS);
 
     if (!res.ok) {
-      // 上流が 429 を返したら Retry-After をクライアントに pass-through してクールダウン判断を委ねる
+      // 上流が 429 を返したら Retry-After をクライアントに pass-through してクールダウン判断を委ねる。
+      // ただし上流が Retry-After ヘッダを付けていない場合 (wallhaven.cc 等) は
+      // クライアント側のリトライロジックが破綻するため、デフォルト 60 秒を補う (#662)。
       if (res.status === 429) {
-        const retryAfterHeader = res.headers.get("Retry-After");
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-        if (retryAfterHeader) headers["Retry-After"] = retryAfterHeader;
+        const retryAfterHeader = res.headers.get("Retry-After") ?? "60";
         return NextResponse.json(
           {
             error: "Upstream rate limited",
@@ -109,7 +107,13 @@ async function handleGet(
             retryable: true,
             retryAfter: retryAfterHeader,
           },
-          { status: 429, headers },
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json",
+              "Retry-After": retryAfterHeader,
+            },
+          },
         );
       }
       // 4xx はクライアント起因（アクセス不可・存在しない）なのでそのまま返す
