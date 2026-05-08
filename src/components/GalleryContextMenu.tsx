@@ -1,12 +1,16 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { downloadBlob } from "../lib/download";
+import { addUrlToHistory, MAX_DOWNLOAD_HISTORY } from "../lib/download-history";
+import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useToast } from "../contexts/ToastContext";
+import { useConfirm } from "../hooks/useConfirm";
+import ConfirmModal from "./ConfirmModal";
 
 export interface GalleryContextMenuTarget {
   article: Article;
@@ -41,10 +45,31 @@ export default function GalleryContextMenu({
 }: GalleryContextMenuProps) {
   const { imageDlFolder, imageDlFolderNsfw } = useReaderSettings();
   const toast = useToast();
+  const { confirm, confirmModalProps } = useConfirm();
   const isRead = readIds.has(target.article.id);
   const isBookmarked = bookmarkIds.has(target.article.id);
 
   const dlFolder = target.isNsfw && imageDlFolderNsfw ? imageDlFolderNsfw : imageDlFolder;
+
+  // DL 済み URL 履歴（localStorage 永続化、再 DL 時に確認ダイアログを出す #648）
+  const [downloadHistory, setDownloadHistory] = useState<string[]>(() => {
+    const raw = storageGet(STORAGE_KEYS.DOWNLOADED_IMAGE_URLS);
+    if (!raw) return [];
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const recordDownloaded = useCallback((url: string) => {
+    setDownloadHistory((prev) => {
+      const next = addUrlToHistory(prev, url, MAX_DOWNLOAD_HISTORY);
+      if (next !== prev) storageSet(STORAGE_KEYS.DOWNLOADED_IMAGE_URLS, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const buildSafeTitle = useCallback((title: string | null | undefined) => {
     return (
@@ -59,8 +84,20 @@ export default function GalleryContextMenu({
   // <a download> 直リンクは画像プロキシのレートリミット (429) で「サイトでファイルが取得できませんでした」
   // となるため、fetch → blob → URL.createObjectURL → a.click → revoke で取得する
   // （記事詳細の useImageDownload と同じ blob ベース方式）
+  //
+  // skipDuplicateCheck: true のとき履歴チェックをスキップ（一括保存内で個別に確認しないため）
   const downloadImage = useCallback(
-    async (url: string, filename?: string) => {
+    async (url: string, filename?: string, skipDuplicateCheck = false) => {
+      // DL 済み URL チェック (#648)。一括保存ではスキップし、外側で 1 回だけ確認する。
+      if (!skipDuplicateCheck && downloadHistory.includes(url)) {
+        const ok = await confirm({
+          title: "再ダウンロードの確認",
+          message: "この画像はすでにダウンロード済みです。再度ダウンロードしますか？",
+          confirmLabel: "ダウンロード",
+          cancelLabel: "キャンセル",
+        });
+        if (!ok) return;
+      }
       const proxyUrl = buildImageProxyUrl(url);
       const finalFilename = applyFolderPrefix(
         dlFolder,
@@ -74,27 +111,40 @@ export default function GalleryContextMenu({
         }
         const blob = await res.blob();
         downloadBlob(blob, finalFilename);
+        recordDownloaded(url);
       } catch (err) {
         console.error("[GalleryContextMenu] image download failed", err);
         toast.error("画像の保存に失敗しました");
       }
     },
-    [dlFolder, toast],
+    [dlFolder, toast, confirm, downloadHistory, recordDownloaded],
   );
 
-  // 複数枚保存は逐次実行（並列だと画像プロキシの 429 を踏みやすい）
+  // 複数枚保存は逐次実行（並列だと画像プロキシの 429 を踏みやすい）。
+  // 既に DL 済みの画像が含まれている場合は最初に 1 度だけ確認し、OK なら全件再 DL。
   const downloadAllImages = useCallback(
     async (images: string[], article: Article) => {
+      const alreadyDownloaded = images.filter((u) => downloadHistory.includes(u)).length;
+      if (alreadyDownloaded > 0) {
+        const ok = await confirm({
+          title: "再ダウンロードの確認",
+          message: `${alreadyDownloaded} 枚はすでにダウンロード済みです。${images.length} 枚すべて再ダウンロードしますか？`,
+          confirmLabel: "ダウンロード",
+          cancelLabel: "キャンセル",
+        });
+        if (!ok) return;
+      }
       const safeTitle = buildSafeTitle(article.title);
       for (let i = 0; i < images.length; i++) {
         const url = images[i]!;
         const ext = url.split(".").pop()?.split("?")[0] ?? "";
         const rawFilename = ext ? `${safeTitle}-${i + 1}.${ext}` : `${safeTitle}-${i + 1}`;
-        await downloadImage(url, rawFilename);
+        // 一括では外側で確認済みのため downloadImage 内の重複チェックをスキップ
+        await downloadImage(url, rawFilename, true);
         if (i < images.length - 1) await new Promise((r) => setTimeout(r, 200));
       }
     },
-    [buildSafeTitle, downloadImage],
+    [buildSafeTitle, downloadImage, confirm, downloadHistory],
   );
 
   const btnClass =
@@ -240,6 +290,7 @@ export default function GalleryContextMenu({
           </button>
         )}
       </div>
+      <ConfirmModal {...confirmModalProps} />
     </>,
     document.body,
   );
