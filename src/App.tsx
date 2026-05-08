@@ -44,6 +44,7 @@ import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
 import { useFeedSidebarActions } from "./hooks/useFeedSidebarActions";
 import { useArticleViewProps } from "./hooks/useArticleViewProps";
+import { useDigestFeedOrder } from "./hooks/useDigestFeedOrder";
 import ConfirmModal from "./components/ConfirmModal";
 import ThreePaneLayout from "./components/ThreePaneLayout";
 import { ReaderSettingsProvider, type ReaderSettings } from "./contexts/ReaderSettingsContext";
@@ -344,6 +345,7 @@ export default function App() {
   }, [toast]);
 
   const { recordEngagement } = useEngagement(user);
+  const digestFeedOrder = useDigestFeedOrder(user);
   const {
     recommendations,
     loading: recommendationsLoading,
@@ -497,6 +499,7 @@ export default function App() {
     collectionArticleIds: collectionArticleIds,
     galleryAutoReadIds,
     deduplicateByLink,
+    feedEngagementOrder: digestFeedOrder,
   });
 
   const {

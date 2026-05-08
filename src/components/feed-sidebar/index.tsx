@@ -425,6 +425,7 @@ function FeedSidebar({
         </button>
 
         {[
+          { id: SPECIAL_FEED_IDS.DIGEST, label: "ダイジェスト", count: undefined },
           { id: SPECIAL_FEED_IDS.HISTORY, label: "履歴", count: historyCount },
           { id: SPECIAL_FEED_IDS.BOOKMARKS, label: "ブックマーク", count: bookmarkCount },
           { id: SPECIAL_FEED_IDS.READING_LIST, label: "後で読む", count: readingListCount },

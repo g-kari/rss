@@ -62,6 +62,7 @@ export default function FeedQuickSwitchModal({
   const allOptions: FeedOption[] = useMemo(
     () => [
       { id: null, label: "すべて", unreadCount: totalUnread },
+      { id: SPECIAL_FEED_IDS.DIGEST, label: "ダイジェスト", unreadCount: 0 },
       { id: SPECIAL_FEED_IDS.BOOKMARKS, label: "ブックマーク", unreadCount: 0 },
       { id: SPECIAL_FEED_IDS.READING_LIST, label: "リーディングリスト", unreadCount: 0 },
       { id: SPECIAL_FEED_IDS.LIKES, label: "いいね", unreadCount: 0 },
