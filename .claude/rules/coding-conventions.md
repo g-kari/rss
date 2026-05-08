@@ -323,6 +323,32 @@ test("正常ケース", () => {
 });
 ```
 
+## 依存管理 — Dependabot / pnpm.overrides
+
+### Dependabot alerts の確認タイミング
+
+- `gh api repos/.../dependabot/alerts` の結果は **キャッシュ遅延**があるため、push 前のチェックでは新規脆弱性を見逃すことがある
+- **master push 後の `git push` レスポンスメッセージ**（"GitHub found N vulnerabilities ..."）も必ず確認する
+- 検出された場合は `--severity high` から優先対応
+
+### transitive dependency の強制更新（`pnpm.overrides`）
+
+直接依存していない transitive dep に脆弱性が出た場合、`package.json` の `pnpm.overrides` で強制更新する：
+
+```json
+{
+  "pnpm": {
+    "overrides": {
+      "fast-xml-builder": ">=1.1.7"
+    }
+  }
+}
+```
+
+`pnpm install` 実行で resolved version が更新される。`pnpm-lock.yaml` の変更を確認後、関連 e2e テストで動作確認してからコミット。
+
+主な使用箇所: `fast-xml-parser` の依存である `fast-xml-builder`（GHSA-2025-attribute-bypass / comment-regex）
+
 ## 禁止事項
 
 - D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
