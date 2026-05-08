@@ -517,7 +517,7 @@ export default function ArticleHeader({
             className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
               isLiked
                 ? "bg-rose-400 text-white"
-                : "text-text-faint hover:text-rose-400 hover:bg-surface-hover"
+                : "text-text-faint hover:text-error hover:bg-surface-hover"
             }`}
           >
             <svg

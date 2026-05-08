@@ -137,7 +137,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
       onClick: () => onToggleNsfw?.(),
       show: !!onToggleNsfw,
       className: feed.nsfw
-        ? "text-rose-400 hover:text-rose-300"
+        ? "text-error hover:text-rose-300"
         : "text-text-faint hover:text-text-default",
     },
     {
@@ -374,7 +374,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
       onClick: handleRetry,
       disabled: loadingAction === "retry",
       className: feed.fetchError
-        ? "text-rose-400 hover:text-rose-300"
+        ? "text-error hover:text-rose-300"
         : "text-text-faint hover:text-text-default",
       variant: feed.fetchError ? ("danger" as const) : undefined,
     },
@@ -424,7 +424,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
         const ok = await confirmDelete();
         if (ok) onDelete();
       },
-      className: "text-text-faint hover:text-rose-400",
+      className: "text-text-faint hover:text-error",
       variant: "danger" as const,
     },
   ];

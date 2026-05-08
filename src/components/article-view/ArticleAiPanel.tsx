@@ -131,14 +131,14 @@ export default function ArticleAiPanel({
               strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-rose-400 mt-[1px] shrink-0"
+              className="text-error mt-[1px] shrink-0"
             >
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-rose-400">{aiError.message}</p>
+              <p className="text-[11px] text-error">{aiError.message}</p>
               {aiError.type === "rate_limit" && (
                 <p className="text-[11px] text-text-muted mt-0.5">
                   少し時間をおいてから再試行してください。

@@ -107,7 +107,7 @@ export default function SidebarFooter({
               });
           }}
           disabled={push.loading}
-          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors duration-200 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${push.error ? "text-rose-400" : push.subscribed ? "text-accent-dot" : "text-text-faint hover:text-text-muted"} disabled:opacity-50`}
+          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors duration-200 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${push.error ? "text-error" : push.subscribed ? "text-accent-dot" : "text-text-faint hover:text-text-muted"} disabled:opacity-50`}
           title={
             push.error ??
             (push.subscribed ? "プッシュ通知をオフ (右クリックでテスト送信)" : "プッシュ通知をオン")

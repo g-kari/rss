@@ -75,7 +75,7 @@ export default function FetchFullContentArea({
       )}
       {fetchError && (
         <div className="flex items-center gap-2">
-          <p className="text-[11px] text-rose-400">{fetchError}</p>
+          <p className="text-[11px] text-error">{fetchError}</p>
           <button
             onClick={() => onFetch(() => onEngagement?.(articleId, feedHash, "fetch_full"))}
             disabled={fetching}

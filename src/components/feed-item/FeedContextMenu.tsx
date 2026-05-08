@@ -64,7 +64,7 @@ export function ContextMenuPortal({
             }}
             disabled={action.disabled}
             className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
-              action.variant === "danger" ? "text-rose-400" : "text-text-default"
+              action.variant === "danger" ? "text-error" : "text-text-default"
             }`}
           >
             {action.icon}

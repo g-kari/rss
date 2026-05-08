@@ -69,7 +69,7 @@ export default function RecommendationSection({
       {/* エラー */}
       {error && !loading && (
         <div className="px-4 py-2 flex items-center gap-2">
-          <span className="text-[11px] text-rose-400">{error}</span>
+          <span className="text-[11px] text-error">{error}</span>
           <button
             onClick={onRefresh}
             disabled={refreshing}

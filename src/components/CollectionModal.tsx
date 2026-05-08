@@ -45,7 +45,7 @@ export default function CollectionModal({ mode, initialName = "", onSubmit, onCl
             className="w-full px-3 py-2 text-[13px] bg-surface-base border border-border-default rounded-lg text-text-strong placeholder:text-text-faint focus:outline-none focus:ring-1 focus:ring-text-muted"
           />
           {error && (
-            <p role="alert" className="mt-1 text-[11px] text-rose-400">
+            <p role="alert" className="mt-1 text-[11px] text-error">
               {error}
             </p>
           )}

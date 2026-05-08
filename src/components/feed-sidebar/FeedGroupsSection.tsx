@@ -156,7 +156,7 @@ export default function FeedGroupsSection({
             className="w-full text-[12px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted placeholder-text-faint"
           />
           {createError && (
-            <span role="alert" className="text-[10px] text-rose-400">
+            <span role="alert" className="text-[10px] text-error">
               {createError}
             </span>
           )}
@@ -433,7 +433,7 @@ export default function FeedGroupsSection({
                         e.stopPropagation();
                         void handleDelete(group);
                       }}
-                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-rose-400 hover:bg-surface-subtle"
+                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-error hover:bg-surface-subtle"
                       title="グループを削除"
                       aria-label={`${group.name} を削除`}
                     >
@@ -454,7 +454,7 @@ export default function FeedGroupsSection({
               )}
             </div>
             {editError && editingId === group.id && (
-              <div role="alert" className="px-4 pb-1 text-[10px] text-rose-400">
+              <div role="alert" className="px-4 pb-1 text-[10px] text-error">
                 {editError}
               </div>
             )}
