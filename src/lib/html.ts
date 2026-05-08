@@ -24,6 +24,23 @@ export function stripHtml(html: string): string {
   return stripTagsIter(html, "").trim();
 }
 
+/**
+ * HTML タグを除去するが、`<br>` / `<p>` などのブロック要素は改行に置換する。
+ *
+ * `stripHtml` は全タグを空文字列に置換するため、`foo<br>bar` が `foobar` のように
+ * 単語が直接連結してしまう。RSS の description プレビューなどで「BR で途切れる」
+ * ように見える原因。`<br>`・`<p>` は改行に変換することで自然な可読性を保つ。
+ */
+export function stripHtmlWithBreaks(html: string): string {
+  // 1. <br> 系（自己閉じ・属性付き含む）を \n に置換
+  let curr = html.replace(/<br\b[^>]*>/gi, "\n");
+  // 2. <p> / </p> も改行扱い（開始・終了どちらも段落区切り）
+  curr = curr.replace(/<\/?p\b[^>]*>/gi, "\n");
+  // 3. 残りのタグを除去（不動点反復）
+  curr = stripTagsIter(curr, "");
+  return curr.trim();
+}
+
 /** HTML 特殊文字をエスケープする（テキストを属性値・要素内容として安全に埋め込む） */
 export function escapeHtml(s: string): string {
   return s
