@@ -77,6 +77,7 @@ export const STORAGE_KEYS = {
   IMAGE_DL_FOLDER_NSFW: "rss-image-dl-folder-nsfw",
   AI_MODEL: "rss-ai-model",
   HEADER_SHARE_TARGETS: "rss-header-share-targets",
+  ARTICLE_DETAIL_OVERLAY_WIDTH: "rss-article-detail-overlay-width",
 } as const;
 
 /**
