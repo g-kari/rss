@@ -35,6 +35,22 @@ test.describe("buildCacheKey", () => {
   });
 });
 
+test.describe("buildContentCacheKey — バージョニング", () => {
+  test("content キャッシュキーは v2 名前空間を含む（POP キャッシュ無効化用）", async () => {
+    const req = await buildContentCacheKey("https://rss.0g0.xyz", "https://example.com/article");
+    const u = new URL(req.url);
+    expect(u.pathname.startsWith("/__cache/content/v2/")).toBe(true);
+  });
+
+  test("v2 キーは旧 v1 (`/__cache/content/{hash}`) と衝突しない", async () => {
+    const url = "https://example.com/article";
+    const origin = "https://rss.0g0.xyz";
+    const v2 = await buildContentCacheKey(origin, url);
+    const v1 = await buildCacheKey(origin, "content", url);
+    expect(v2.url).not.toBe(v1.url);
+  });
+});
+
 test.describe("buildClipCacheKey — ユーザースコープ clip キャッシュ", () => {
   test("clip キャッシュキーは共有コンテンツキャッシュと異なる", async () => {
     const url = "https://example.com/article";
