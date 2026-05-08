@@ -12,7 +12,6 @@ import ShareMenu from "./ShareMenu";
 import ToggleIconButton from "./ToggleIconButton";
 import FilterMenu from "./FilterMenu";
 import GlobalFilterMenu from "./GlobalFilterMenu";
-import SnoozeMenu from "./SnoozeMenu";
 import TagEditor from "./TagEditor";
 import { DownloadIcon } from "./icons";
 import type { EmbedInfo } from "../../lib/embed-utils";
@@ -129,8 +128,11 @@ export default function ArticleHeader({
   noteExpanded,
   setNoteExpanded,
   onSetNote,
-  onSnooze,
-  onSelectNext,
+  // onSnooze / onSelectNext は #619 でスヌーズ UI をオミットしたため未使用。
+  // バックエンド復活時に SnoozeMenu レンダリングで利用するため、props は残しつつ
+  // アンダースコアプレフィックスで lint 抑止する。
+  onSnooze: _onSnooze,
+  onSelectNext: _onSelectNext,
   tags,
   onAddTag,
   onRemoveTag,
@@ -449,9 +451,8 @@ export default function ArticleHeader({
             onSaveGlobalFilter={onSaveGlobalFilter}
           />
         )}
-        {onSnooze && (
-          <SnoozeMenu articleId={article.id} onSnooze={onSnooze} onSelectNext={onSelectNext} />
-        )}
+        {/* スヌーズ機能は UI からオミット (#619)。バックエンドの hook / lib は残してあるため、
+            必要時に SnoozeMenu レンダリングを復活させれば再有効化できる。 */}
 
         {/* 後で読む / ブックマーク / いいね — 独立トグル */}
         <div className="flex items-center rounded-full border border-border-default overflow-hidden">
