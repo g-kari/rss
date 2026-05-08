@@ -30,6 +30,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   onToggleRead,
   onToggleBookmark,
   onToggleReadingList,
+  onContextMenu,
 }: Omit<ArticleItemProps, "index">) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
@@ -42,12 +43,21 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
     },
     [article, onSelectArticle],
   );
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onContextMenu) return;
+      e.preventDefault();
+      onContextMenu(article, e.clientX, e.clientY);
+    },
+    [article, onContextMenu],
+  );
   return (
     <div
       role="article"
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
+      onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
       className={`group relative cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""

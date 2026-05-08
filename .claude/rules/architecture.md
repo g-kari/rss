@@ -129,6 +129,7 @@ src/
     article-list-header/     # 記事一覧ヘッダーサブコンポーネント群（index.tsx オーケストレーター / LayoutSwitcher / FilterPills / FilterPillButton / CategoryFilter / SortButton / MarkAllReadButton / SearchBar / types.ts / constants.ts）
     ArticleItems.tsx         # 記事一覧アイテム（レイアウト別 memo コンポーネント）
     GalleryContextMenu.tsx   # ギャラリーレイアウト右クリックメニュー（画像保存・既読切替）
+    ArticleContextMenu.tsx   # compact / list / card / magazine の汎用右クリックメニュー（既読・ブックマーク・後で読む・一覧から削除、#633 A3）
     LoadMoreButton.tsx       # 追加読み込みボタン（IntersectionObserver 自動トリガー）
     ArticleView.tsx          # 記事本文
     Modal.tsx                # 汎用モーダル基盤コンポーネント
