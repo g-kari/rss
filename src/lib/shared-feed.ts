@@ -489,7 +489,11 @@ export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
   const feedLastAccessMap = new Map<string, string>();
   const feedHasPriority = new Set<string>();
   const privateFeedCookies = new Map<string, string>();
-  const userIds = await listPrefixedIds(bucket, "users/");
+
+  // インデックス優先: meta/user-index.json があればそれを使い R2 LIST を省略する。
+  // インデックスが空（初回 / 破損）の場合は既存の LIST にフォールバックして後方互換を保つ。
+  const indexedIds = await readUserIndex(bucket);
+  const userIds = indexedIds.length > 0 ? indexedIds : await listPrefixedIds(bucket, "users/");
 
   const allSubs = await pMap(
     userIds,
@@ -527,7 +531,7 @@ export async function buildFeedUserMap(bucket: R2Bucket): Promise<{
 
 /** feedUserMap フルキャッシュの KV キャッシュキー（TTL: 15分） */
 export const FEED_USER_MAP_CACHE_KEY = "feedUserMapFull:v2";
-const FEED_USER_MAP_TTL_SEC = 900;
+const FEED_USER_MAP_TTL_SEC = 1800;
 
 interface FeedUserMapCacheEntry {
   feedUserMap: Record<string, string[]>;
@@ -541,6 +545,45 @@ interface FeedUserMapCacheEntry {
  * RATE_LIMIT KV に全データを JSON でキャッシュし、15分間は R2 読み取りをスキップする。
  * 4つのデータ構造を一括キャッシュすることで、キャッシュヒット時の R2 読み取りをゼロにする（Issue #394）。
  */
+
+// ── ユーザーインデックス（meta/user-index.json）────────────────────
+//
+// cron の buildFeedUserMap が毎回 R2 LIST + 全購読ファイル取得するコストを削減するため、
+// フィード追加・削除のタイミングで userId 一覧を meta/user-index.json に同期管理する。
+// インデックスが空（初回 / 破損）の場合は既存の LIST フォールバックを使い後方互換を保つ。
+
+/** ユーザーインデックスの R2 キー */
+export const USER_INDEX_KEY = "meta/user-index.json";
+
+/**
+ * meta/user-index.json を読み込む。存在しない場合は空配列を返す。
+ */
+export async function readUserIndex(bucket: R2Bucket): Promise<string[]> {
+  return r2Get<string[]>(bucket, USER_INDEX_KEY, []);
+}
+
+/**
+ * userId をインデックスに追加する（未追加の場合のみ）。
+ * 並行書き込みによる競合リスクを最小化するため、追加前に再読み込みする。
+ */
+export async function addUserToIndex(bucket: R2Bucket, userId: string): Promise<void> {
+  const index = await readUserIndex(bucket);
+  if (index.includes(userId)) return; // 既に登録済みならスキップ
+  index.push(userId);
+  await r2Put(bucket, USER_INDEX_KEY, index);
+}
+
+/**
+ * userId をインデックスから削除する。
+ * フィード削除後の購読件数がゼロになった場合のみ呼ぶ想定。
+ */
+export async function removeUserFromIndex(bucket: R2Bucket, userId: string): Promise<void> {
+  const index = await readUserIndex(bucket);
+  const filtered = index.filter((id) => id !== userId);
+  if (filtered.length === index.length) return; // 変化なしなら書き込み不要
+  await r2Put(bucket, USER_INDEX_KEY, filtered);
+}
+
 export async function buildFeedUserMapCached(
   bucket: R2Bucket,
   kv: KVNamespace,

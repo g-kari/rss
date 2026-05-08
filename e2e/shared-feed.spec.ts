@@ -5,6 +5,10 @@ import {
   computePrivateFeedHash,
   assembleClientFeed,
   mergeNewArticles,
+  readUserIndex,
+  addUserToIndex,
+  removeUserFromIndex,
+  USER_INDEX_KEY,
   PAGE_SIZE,
   MAX_FEEDS_PER_USER,
   MAX_PAGES,
@@ -647,5 +651,80 @@ test.describe("mergeNewArticles", () => {
 
     expect(brandNew).toHaveLength(1);
     expect(brandNew[0].id).toBe("new1");
+  });
+});
+
+// ── readUserIndex / addUserToIndex / removeUserFromIndex ──────────
+
+test.describe("ユーザーインデックス (meta/user-index.json)", () => {
+  test("readUserIndex: インデックスが存在しない場合は空配列を返す", async () => {
+    const { bucket } = makeR2Mock();
+    const index = await readUserIndex(bucket);
+    expect(index).toEqual([]);
+  });
+
+  test("USER_INDEX_KEY は meta/user-index.json", () => {
+    expect(USER_INDEX_KEY).toBe("meta/user-index.json");
+  });
+
+  test("addUserToIndex: 新規 userId を追加できる", async () => {
+    const { bucket, store } = makeR2Mock();
+    await addUserToIndex(bucket, "user1");
+    const index = JSON.parse(store.get("meta/user-index.json") ?? "[]") as string[];
+    expect(index).toContain("user1");
+    expect(index).toHaveLength(1);
+  });
+
+  test("addUserToIndex: 既に登録済みの userId は重複追加されない", async () => {
+    const { bucket, store } = makeR2Mock();
+    await addUserToIndex(bucket, "user1");
+    await addUserToIndex(bucket, "user1");
+    const index = JSON.parse(store.get("meta/user-index.json") ?? "[]") as string[];
+    expect(index).toHaveLength(1);
+  });
+
+  test("addUserToIndex: 複数の userId を追加できる", async () => {
+    const { bucket, store } = makeR2Mock();
+    await addUserToIndex(bucket, "user1");
+    await addUserToIndex(bucket, "user2");
+    await addUserToIndex(bucket, "user3");
+    const index = JSON.parse(store.get("meta/user-index.json") ?? "[]") as string[];
+    expect(index).toHaveLength(3);
+    expect(index).toContain("user1");
+    expect(index).toContain("user2");
+    expect(index).toContain("user3");
+  });
+
+  test("removeUserFromIndex: 指定した userId を削除できる", async () => {
+    const { bucket, store } = makeR2Mock();
+    // 事前にインデックスを作る
+    await addUserToIndex(bucket, "user1");
+    await addUserToIndex(bucket, "user2");
+    await removeUserFromIndex(bucket, "user1");
+    const index = JSON.parse(store.get("meta/user-index.json") ?? "[]") as string[];
+    expect(index).not.toContain("user1");
+    expect(index).toContain("user2");
+  });
+
+  test("removeUserFromIndex: 存在しない userId を指定しても書き込みは発生しない", async () => {
+    const { bucket, store } = makeR2Mock();
+    await addUserToIndex(bucket, "user1");
+    const writeBefore = store.size;
+    await removeUserFromIndex(bucket, "nonexistent");
+    // store のキー数は変わるがインデックス内容は変わらない
+    const index = JSON.parse(store.get("meta/user-index.json") ?? "[]") as string[];
+    expect(index).toContain("user1");
+    expect(index).toHaveLength(1);
+    // 書き込みが発生していないことを確認（store.size が増えていない）
+    expect(store.size).toBe(writeBefore);
+  });
+
+  test("addUserToIndex + readUserIndex の往復整合性", async () => {
+    const { bucket } = makeR2Mock();
+    await addUserToIndex(bucket, "userA");
+    await addUserToIndex(bucket, "userB");
+    const index = await readUserIndex(bucket);
+    expect(index).toContain("userA");
+    expect(index).toContain("userB");
   });
 });

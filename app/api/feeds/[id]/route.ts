@@ -7,6 +7,7 @@ import {
   writeUserSubscriptions,
   readFeedMeta,
   assembleClientFeed,
+  removeUserFromIndex,
   FEED_USER_MAP_CACHE_KEY,
 } from "@/lib/shared-feed";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
@@ -24,11 +25,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
     }
     // 購読から削除するだけ（共有フィードデータは残す）
-    await writeUserSubscriptions(
-      env.RSS_DATA,
-      session.userId,
-      subs.filter((s) => s.feedHash !== feedHash),
-    );
+    const remainingSubs = subs.filter((s) => s.feedHash !== feedHash);
+    await writeUserSubscriptions(env.RSS_DATA, session.userId, remainingSubs);
+    // 購読がゼロになったユーザーはインデックスから削除（cron の R2 LIST 削減）
+    if (remainingSubs.length === 0) {
+      await removeUserFromIndex(env.RSS_DATA, session.userId);
+    }
     // フィード削除時に feedUserMap KV キャッシュを無効化
     await env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY);
     const origin = new URL(request.url).origin;

@@ -24,6 +24,7 @@ import {
   readUserSubscriptions,
   writeUserSubscriptions,
   assembleClientFeed,
+  addUserToIndex,
   R2_CONCURRENCY,
   MAX_FEEDS_PER_USER,
   FEED_USER_MAP_CACHE_KEY,
@@ -212,6 +213,8 @@ export async function POST(request: Request) {
     };
     subs.push(newSub);
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
+    // ユーザーインデックスに追加（cron の R2 LIST 削減）
+    await addUserToIndex(env.RSS_DATA, session.userId);
     // フィード追加時に feedUserMap KV キャッシュを無効化
     await env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY);
 
