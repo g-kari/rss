@@ -726,7 +726,7 @@ function ArticleList({
                   scrollElement={scrollEl}
                   columnWidth={getGalleryCardWidth(galleryCardSize)}
                   columnGutter={12}
-                  overscanBy={6}
+                  overscanBy={12}
                   columns={
                     galleryColumns === "auto" ? (listFocusMode ? 6 : null) : Number(galleryColumns)
                   }
@@ -737,8 +737,13 @@ function ArticleList({
             </div>
           )}
 
-          <div ref={sentinelRef} className="h-10" aria-hidden />
-          {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
+          {/* IntersectionObserver の sentinel — gallery 仮想化の末端でも
+              到達できるよう min-height を確保 (#636) */}
+          <div ref={sentinelRef} className="h-32" aria-hidden />
+          {/* LoadMoreButton はサーバー側に過去ページが残っているなら常に表示する。
+              gallery の masonic 仮想化で sentinel が末端に到達しないケースでも
+              LoadMoreButton 自身の IntersectionObserver で自動発火させるため (#636)。 */}
+          {feedHasMorePages && onLoadMoreFeedArticles && (
             <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
           )}
         </div>
