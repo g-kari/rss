@@ -13,6 +13,7 @@ import ArticleContentBody from "./article-view/ArticleContentBody";
 import ArticleNotePanel from "./article-view/ArticleNotePanel";
 import ImageDownloadModal from "./article-view/ImageDownloadModal";
 import InlineArticleNav from "./article-view/InlineArticleNav";
+import AutoReadController from "./article-view/AutoReadController";
 
 interface Props {
   article: Article | null;
@@ -53,6 +54,12 @@ interface Props {
   currentMobilePane?: "sidebar" | "list" | "view";
   /** モバイル view ペインで右スワイプしたときのペイン戻り処理 */
   onGoBack?: () => void;
+  /** オートモード ON/OFF（true ならコンテンツ取得 → TTS → 次へ自動） */
+  autoMode?: boolean;
+  /** オートモード解除コールバック（最終記事到達時に呼ばれる） */
+  onAutoModeStop?: () => void;
+  /** オートモードトグル（ヘッダーのボタン用） */
+  onToggleAutoMode?: () => void;
 }
 
 function ArticleView({
@@ -84,6 +91,9 @@ function ArticleView({
   onCreateCollection,
   currentMobilePane,
   onGoBack,
+  autoMode = false,
+  onAutoModeStop,
+  onToggleAutoMode,
 }: Props) {
   const {
     contentWidth,
@@ -120,6 +130,8 @@ function ArticleView({
     ttsRate,
     ttsCycleRate,
     handleTtsToggle,
+    ttsSpeak,
+    buildTtsText,
     mainRef,
     contentRef,
     progressBarRef,
@@ -207,6 +219,8 @@ function ArticleView({
           ttsRate={ttsRate}
           ttsCycleRate={ttsCycleRate}
           onTtsToggle={handleTtsToggle}
+          autoMode={autoMode}
+          onToggleAutoMode={onToggleAutoMode ?? (() => {})}
           hasImages={hasImages}
           downloadAllImages={downloadAllImages}
           downloadingImages={downloadingImages}
@@ -313,6 +327,24 @@ function ArticleView({
           onClose={clearSelectionPopup}
         />
       )}
+      <AutoReadController
+        enabled={autoMode}
+        article={article}
+        ttsSupported={ttsSupported}
+        ttsPlaying={ttsPlaying}
+        ttsPaused={ttsPaused}
+        fetching={fetching}
+        fetchError={fetchError}
+        hasContent={hasContent}
+        canFetch={canFetch}
+        ttsText={buildTtsText(article, processedContent)}
+        onSpeak={ttsSpeak}
+        onFetch={() => fetchFullContent()}
+        hasNext={!!nextArticle}
+        onSelectNext={onSelectNext}
+        onAutoMarkRead={onAutoMarkRead}
+        onAutoModeStop={onAutoModeStop ?? (() => {})}
+      />
     </main>
   );
 }

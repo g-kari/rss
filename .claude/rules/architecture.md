@@ -153,6 +153,7 @@ src/
     GalleryMasonry.tsx       # masonic ベースの Pinterest 型 masonry + 親スクロールコンテナ対応の仮想スクロール
     UserSettingsModal.tsx    # ユーザー設定モーダル（フォントサイズ・行間・コンテンツ幅・自動既読閾値・テーマ）
     SaveUrlModal.tsx         # 任意 URL を手動保存するモーダル（POST /api/articles/save 連携）
+    article-view/AutoReadController.tsx  # オートモードの副作用コントローラ（fetch → speak → 次の記事への自動進行）
     FeedAddModal.tsx         # フィード追加ダイアログ（RSS 自動検出・LLM CSS セレクタ推論・Cookie 指定対応）
     BetaRestrictedPage.tsx   # ベータ制限ページ（未許可ユーザー向け表示）
     LandingPage.tsx          # 未ログイン時のランディングページ
@@ -177,6 +178,7 @@ src/
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useThemePreference.ts    # テーマ（light/dark）+ DOM 同期（useUIState から分割）
     useFocusMode.ts          # フォーカスモード制御（focusMode / listFocusMode / window.history 連携 / \\ Shift+\\ Escape キー）— useUIState から分割
+    useAutoReadMode.ts       # オートモード（自動全文取得 → 読み上げ → 次の記事へ）の状態管理
     usePWAInstall.ts         # PWA インストールプロンプト管理（beforeinstallprompt event）— useUIState から分割
     usePinnedAndCategories.ts # ピン留めフィード ID と折りたたみカテゴリ名の管理（localStorage 同期）— useUIState から分割
     useModalState.ts         # App レベルのモーダル状態集約（snoozeTargetId・articleAnnouncement）
@@ -275,6 +277,7 @@ src/
     api-fetch.ts             # 認証付きクライアントサイド fetch ラッパー
     embed-utils.ts           # iframe embed 処理ユーティリティ
     engagement-score.ts      # エンゲージメントスコア計算ロジック
+    auto-read.ts             # オートモードの状態遷移判定純粋関数（isAutoReadFinished / shouldTriggerAutoFetch / shouldStartAutoSpeak）
     article-filter.ts        # 記事フィルタリングロジック (feedId / 日付 / キーワード / クエリ)
     keyword-filter.ts        # キーワードフィルタリングマッチング（正規表現対応）
     linkedom-types.ts        # linkedom DOM 操作用の共有型定義（LDElement / LDDocument）
@@ -595,6 +598,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `digest-skip-read.spec.ts`            | `src/lib/article-filter.ts` — ダイジェスト時に既読は digestLimit カウントから除外（#620 Option A）                    |
 | `article-search.spec.ts`              | `src/hooks/useFullTextSearch` 経由の全文検索                                                                          |
 | `article-ttl.spec.ts`                 | `src/lib/article-ttl.ts` — TTL 管理純粋関数                                                                           |
+| `auto-read.spec.ts`                   | `src/lib/auto-read.ts` — オートモード状態遷移判定純粋関数                                                             |
 | `article-utils.spec.ts`               | `src/lib/article-utils.ts` — readingTime / timeAgo                                                                    |
 | `articles-save.spec.ts`               | `app/api/articles/save/route.ts` — 記事手動保存 API                                                                   |
 | `auth-headers.spec.ts`                | 認証ヘッダー処理                                                                                                      |

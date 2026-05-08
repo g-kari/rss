@@ -149,8 +149,17 @@ export function useArticleViewState({
   } = useArticleViewContent(article, storedContent, resolvedOgImage, theme);
 
   // --- TTS ---
-  const { ttsSupported, ttsPlaying, ttsPaused, ttsRate, ttsCycleRate, handleTtsToggle } =
-    useArticleViewTts(article, processedContent);
+  const {
+    ttsSupported,
+    ttsPlaying,
+    ttsPaused,
+    ttsRate,
+    ttsCycleRate,
+    handleTtsToggle,
+    ttsSpeak,
+    ttsStop,
+    buildTtsText,
+  } = useArticleViewTts(article, processedContent);
 
   // --- Keyboard shortcuts + auto-translate ---
   useArticleViewShortcuts({
@@ -243,6 +252,9 @@ export function useArticleViewState({
     ttsRate,
     ttsCycleRate,
     handleTtsToggle,
+    ttsSpeak,
+    ttsStop,
+    buildTtsText,
     mainRef,
     contentRef,
     progressBarRef,

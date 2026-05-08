@@ -28,6 +28,7 @@ import { useAutoReadSettings } from "./hooks/useAutoReadSettings";
 import { useAccessibilitySettings } from "./hooks/useAccessibilitySettings";
 import { useNSFWMode } from "./hooks/useNSFWMode";
 import { useFocusMode } from "./hooks/useFocusMode";
+import { useAutoReadMode } from "./hooks/useAutoReadMode";
 import { usePWAInstall } from "./hooks/usePWAInstall";
 import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
 import { useEventListener } from "./hooks/useEventListener";
@@ -138,6 +139,11 @@ export default function App() {
   const { focusMode, listFocusMode, toggleFocusMode, toggleListFocusMode, exitFocusMode } =
     useFocusMode();
   const install = usePWAInstall();
+  const { autoMode, toggleAutoMode, disableAutoMode } = useAutoReadMode();
+  const ttsSupported = useMemo(
+    () => typeof window !== "undefined" && "speechSynthesis" in window,
+    [],
+  );
 
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
@@ -755,6 +761,9 @@ export default function App() {
     onShowFeedSwitcher: () => setShowFeedSwitcher(true),
     onArticleAnnounce: setArticleAnnouncement,
     confirm: confirmMessage,
+    autoMode,
+    toggleAutoMode,
+    ttsSupported,
   });
 
   const articleViewProps = useArticleViewProps({
@@ -786,6 +795,9 @@ export default function App() {
     addArticleToCollection,
     removeArticleFromCollection,
     createCollection,
+    autoMode,
+    onAutoModeStop: disableAutoMode,
+    onToggleAutoMode: toggleAutoMode,
   });
 
   const snoozeArticleTitle = snoozeTargetId
