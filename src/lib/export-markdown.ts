@@ -1,22 +1,10 @@
 import type { Article, Feed } from "@/types";
 import { downloadBlob } from "@/lib/download";
+import { stripHtml } from "@/lib/html";
 
 /** Markdown のリンク構文を壊す文字をエスケープする */
 function escapeMarkdown(s: string): string {
   return s.replace(/[[\]()\\`*_{}#|>]/g, "\\$&");
-}
-
-/** タグ除去は除去後再結合バイパスを防ぐため不動点反復で行う */
-function stripTagsFixedPoint(s: string): string {
-  let prev: string;
-  let curr = s;
-  let pass = 0;
-  do {
-    prev = curr;
-    curr = curr.replace(/<[^>]*>/g, "");
-    pass++;
-  } while (curr !== prev && pass < 8);
-  return curr;
 }
 
 /**
@@ -71,7 +59,7 @@ export function exportArticlesToMarkdown(
       if (meta.length > 0) lines.push(meta.join(" | "), "");
 
       if (article.summary) {
-        const plain = stripTagsFixedPoint(article.summary).trim().slice(0, 300);
+        const plain = stripHtml(article.summary).slice(0, 300);
         if (plain) lines.push(plain, "");
       }
 
