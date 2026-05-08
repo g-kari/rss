@@ -21,6 +21,7 @@
 
 ### テスト追加っ
 
+- **`rate-limit.ts` の `checkSlidingWindow` を `rate-limit-logic.ts` に純粋関数として切り出してテストしたよ〜** — Issue #618。`next/*` 非依存にすることで Playwright の Node ランナーから直接 import してユニットテストできるようになったの！通過/拒否判定・window 境界・Retry-After 算出・maxCalls=0 や空配列のエッジケース等 10 ケースで網羅したよ。`failClosed` 等の KV 障害時挙動は呼び出し側 (`rate-limit.ts`) に残してて、ロジックだけ別ファイルに切り出した綺麗な分離だよっ✅✨
 - **`dev-auth-bypass.ts` と `storage.ts` のユニットテストを追加したよ〜** — Issue #612。`getDevBypassUserId` の正規表現境界値（128 文字ぴったり / 129 文字超 / 許可外文字）と `buildDevBypassProfile` の戻り値構造、`toggleSetItem` の Set トグル動作（追加・削除・空 Set 起点・immutable）と deferred-save の冪等性・複数キー独立性を 18 ケースで網羅したよ〜。`rate-limit.ts` の `checkSlidingWindow` テストは `next/server` 依存問題で純粋関数化リファクタが必要なため #618 で別途対応するよ✅✨
 
 ### アクセシビリティ改善っ
