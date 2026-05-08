@@ -56,6 +56,18 @@ export async function purgeFeedsCache(
 }
 
 /**
+ * Cloudflare Cache API のエントリを同期的に削除する。
+ * 削除に成功した場合は true、対象キーが無かった場合や削除失敗は false。
+ */
+export async function deleteCfCache(cacheKey: Request): Promise<boolean> {
+  try {
+    return await caches.default.delete(cacheKey);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * JSON ペイロード用のキャッシュ保存 Response を構築する。
  * `Content-Type: application/json` と `Cache-Control: public, max-age={ttl}` を付与する。
  */

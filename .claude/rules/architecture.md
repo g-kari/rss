@@ -63,6 +63,7 @@ app/
       [id]/route.ts          # DELETE /api/feeds/:id
       [id]/refresh/route.ts  # POST /api/feeds/:id/refresh — 単体フィード手動更新
       [id]/reinfer/route.ts  # POST /api/feeds/:id/reinfer — LLM CSS セレクタ再推論
+      [id]/purge-content-cache/route.ts # POST /api/feeds/:id/purge-content-cache — フィード全記事の content Cache 一括クリア（CLI 用）
       refresh/route.ts       # POST /api/feeds/refresh — 全フィード手動更新
       import/route.ts        # POST /api/feeds/import — OPML インポート
       export/route.ts        # GET /api/feeds/export — OPML エクスポート
@@ -79,7 +80,7 @@ app/
     ai/
       summarize/route.ts     # POST /api/ai/summarize (Workers AI)
       translate/route.ts     # POST /api/ai/translate (Workers AI)
-    content/route.ts         # GET /api/content?url=... (フルテキストプロキシ)
+    content/route.ts         # GET /api/content?url=... (フルテキストプロキシ) / DELETE /api/content?url=... (個別 Cache クリア)
     engagement/route.ts      # GET / POST /api/engagement — エンゲージメント記録
     image-proxy/route.ts     # GET /api/image-proxy?url=... (外部画像プロキシ)
     ogp/route.ts             # GET /api/ogp?url=... (OGP 画像 URL 取得)

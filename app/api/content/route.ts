@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withSession, type AuthSession } from "@/lib/server-auth";
 import { apiError, formatError } from "@/lib/api-error";
-import { matchCfCache } from "@/lib/cache-helper";
+import { deleteCfCache, matchCfCache } from "@/lib/cache-helper";
 import { isValidFeedUrl } from "@/lib/url";
 import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fetch";
 import {
@@ -21,6 +21,34 @@ const CONTENT_WINDOW_MS = 60 * 1000;
 
 export async function GET(request: Request) {
   return withSession(request, ({ session, env, ctx }) => handleGet(request, session, env, ctx));
+}
+
+/**
+ * 個別 URL の Cloudflare Cache を削除する。CLI 経由で `curl -X DELETE` から呼ぶことを想定。
+ *
+ * @example
+ * curl -X DELETE -H "Cookie: access_token=..." \
+ *   "https://rss.0g0.xyz/api/content?url=https://everia.club/.../slug/"
+ */
+export async function DELETE(request: Request) {
+  return withSession(request, async ({ session }) => {
+    const reqUrl = new URL(request.url);
+    const url = reqUrl.searchParams.get("url");
+    if (!url) return apiError("url is required", 400, { code: "INVALID_URL" });
+    if (!isValidFeedUrl(url)) {
+      return apiError("Invalid URL", 400, { code: "INVALID_URL" });
+    }
+
+    const sharedKey = await buildContentCacheKey(reqUrl.origin, url);
+    const clipKey = await buildClipCacheKey(reqUrl.origin, session.userId, url);
+
+    const [sharedDeleted, clipDeleted] = await Promise.all([
+      deleteCfCache(sharedKey),
+      deleteCfCache(clipKey),
+    ]);
+
+    return NextResponse.json({ ok: true, deleted: { shared: sharedDeleted, clip: clipDeleted } });
+  });
 }
 
 async function handleGet(
