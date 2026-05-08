@@ -88,14 +88,15 @@
 
 ```css
 ::-webkit-scrollbar {
-  width: 3px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-text-faint);
-  border-radius: 2px;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);

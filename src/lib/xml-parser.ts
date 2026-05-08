@@ -295,10 +295,16 @@ function extractImage(item: FeedItem): string {
     }
   }
 
-  // 5. content/description 中の最初の <img>
+  // 5. content/description 中の <video poster="..."> (Twitter/X など video 主体の RSS 用、#645)
+  //    description に <video> タグが含まれる場合、その poster をサムネとして採用する。
+  //    <img> より優先することで、ユーザーアバターのような副次画像が拾われるのを防ぐ。
   const html = str(
     item["content:encoded"] ?? item.description ?? item.content ?? item.summary ?? "",
   );
+  const videoPoster = html.match(/<video[^>]+poster=["']([^"'#][^"']{4,})["']/i);
+  if (videoPoster?.[1] && !videoPoster[1].startsWith("data:")) return unescapeHtml(videoPoster[1]);
+
+  // 6. content/description 中の最初の <img>
   const m = html.match(/<img[^>]+src=["']([^"'#][^"']{4,})["']/i);
   if (m?.[1] && !m[1].startsWith("data:")) return unescapeHtml(m[1]);
 
