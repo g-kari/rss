@@ -16,6 +16,19 @@
 - **`GET /api/recommendations` から副作用（AI 生成・R2 書き込み・KV 書き込み）を除去したよ〜** — Issue #560。HTTP GET が R2/KV 書き込みと Workers AI 呼び出しを発動してたのを修正！GET はキャッシュ読み取りのみ、生成は `POST /refresh` に移動して HTTP セマンティクス準拠・CSRF 安全になったよっ🔒✨
 - **`withJsonBody` に 512KB ペイロード上限チェックを追加したよ〜** — Issue #558。大きな JSON ボディで Worker OOM を誘発できてたのを `request.text()` でサイズ確認してから parse するよう修正したよっ🔒✨
 
+### 激アツ新機能っ
+
+- **SingleFile 連携の設定 UI を追加したよ〜** — Issue #590。ユーザー設定の「インポート/エクスポート」タブに clip エンドポイント URL とコピーボタンが追加されたよ！SingleFile ブラウザ拡張から記事をサクッと保存できるようになったよっ✨🎀
+- **`useRecommendations` に失敗時リトライ UI を追加したよ〜** — Issue #583。推薦読み込みに失敗してもサイレント失敗せず、エラーメッセージ＋「再試行」ボタンが表示されるようになったよっ💡🎀
+
+### アクセシビリティ改善っ
+
+- **`FeedContextMenu`・`ShareMenu`・`FeedItemComponent` にキーボードナビを追加したよ〜** — Issue #582。Arrow Up/Down でのフォーカス移動・ESC でのメニュー閉じが有効になり、`ShareMenu` に `role="menu"` / `role="menuitem"` も追加したよっ🎀✨。`FeedItemComponent` も `tabIndex` と Enter/Space キー選択に対応したよっ！
+
+### テスト追加っ
+
+- **`web-push.ts` の VAPID 署名・暗号化ロジックのテストを追加したよ〜** — Issue #585。`sendPush` / `sendPushToAll` の正常系・期限切れ endpoint・VAPID 未設定・SSRF 防御など 21 テストケースで網羅したよっ✅🔒
+
 ### パフォーマンス改善っ
 
 - **`buildFeedUserMap` にユーザーインデックスを追加して cron の R2 LIST を削減したよ〜** — Issue #592。`meta/user-index.json` でユーザー ID 一覧を管理して、cron が毎回 R2 LIST + 全購読ファイル読み込みしてたのを廃止！インデックスが空の場合は既存フォールバックで後方互換もバッチリだよっ⚡🚀。KV キャッシュ TTL も 900秒 → 1800秒に延長してさらに効率アップしたよっ✨
