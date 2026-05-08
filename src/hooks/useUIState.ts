@@ -227,12 +227,14 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     document,
   );
 
+  // ピン留め・カテゴリ折りたたみは少量の Set なので同期保存で OK
+  // （ホットパスの readIds 等はデフォルト遅延が効く）
   const togglePinFeed = useCallback((feedId: string) => {
-    toggleSetItem(setPinnedFeedIds, STORAGE_KEYS.PINNED_FEED_IDS, feedId);
+    toggleSetItem(setPinnedFeedIds, STORAGE_KEYS.PINNED_FEED_IDS, feedId, false);
   }, []);
 
   const toggleCollapseCategory = useCallback((category: string) => {
-    toggleSetItem(setCollapsedCategories, STORAGE_KEYS.COLLAPSED_CATEGORIES, category);
+    toggleSetItem(setCollapsedCategories, STORAGE_KEYS.COLLAPSED_CATEGORIES, category, false);
   }, []);
 
   const toggleFocusMode = useCallback(() => {
