@@ -231,7 +231,7 @@ export const GalleryExpandButton = memo(function GalleryExpandButton({
         onClick();
       }}
       disabled={isExpanding}
-      className={`flex items-center gap-1 px-2 py-1 rounded bg-surface-hover hover:bg-ink hover:text-ink-text text-[10px] text-text-default transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`flex items-center gap-1 px-2 py-1 max-md:min-h-[44px] rounded bg-surface-hover hover:bg-ink hover:text-ink-text text-[10px] text-text-default transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
       {isExpanding ? (
         <svg
