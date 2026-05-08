@@ -14,8 +14,8 @@
   --color-text-strong: #292524; /* stone-800: 見出し・選択 */
   --color-text-default: #57534e; /* stone-600: 通常テキスト */
   --color-text-soft: #78716c; /* stone-500: 本文 */
-  --color-text-muted: #a8a29e; /* stone-400: 薄テキスト */
-  --color-text-faint: #d6d3d1; /* stone-300: 最弱テキスト */
+  --color-text-muted: #78716c; /* stone-500: 薄テキスト (WCAG AA: ~4.6:1 on stone-50) */
+  --color-text-faint: #a8a29e; /* stone-400: 最弱テキスト (WCAG AA large text: ~3.0:1 on stone-50) */
   --color-ink: #292524; /* stone-800: 主アクション背景 */
   --color-ink-hover: #44403c; /* stone-700: 主アクションホバー */
   --color-ink-text: #ffffff; /* white: 主アクション上のテキスト */
