@@ -77,23 +77,50 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
               ))}
         </div>
       ) : isFetchFailed ? (
-        <div className="w-full aspect-square bg-surface-subtle flex flex-col items-center justify-center gap-2">
-          <svg
-            className="w-5 h-5 text-text-muted"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z"
+        thumb ? (
+          // 画像展開失敗時でも、取得済みの OGP/サムネがあれば背景に表示しつつエラー UI を重ねる
+          <div className="relative">
+            <ArticleThumbnail
+              thumb={thumb}
+              className="w-full h-auto object-cover bg-surface-subtle opacity-50"
             />
-          </svg>
-          <span className="text-[10px] text-text-muted">取得失敗</span>
-          {onRetry && <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />}
-        </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-surface-base/40 backdrop-blur-[1px]">
+              <svg
+                className="w-5 h-5 text-text-strong drop-shadow-sm"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z"
+                />
+              </svg>
+              <span className="text-[10px] text-text-strong drop-shadow-sm">取得失敗</span>
+              {onRetry && <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />}
+            </div>
+          </div>
+        ) : (
+          <div className="w-full aspect-square bg-surface-subtle flex flex-col items-center justify-center gap-2">
+            <svg
+              className="w-5 h-5 text-text-muted"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z"
+              />
+            </svg>
+            <span className="text-[10px] text-text-muted">取得失敗</span>
+            {onRetry && <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />}
+          </div>
+        )
       ) : thumb ? (
         <div className="relative">
           <ArticleThumbnail
