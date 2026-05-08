@@ -601,6 +601,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `article-ttl.spec.ts`                 | `src/lib/article-ttl.ts` — TTL 管理純粋関数                                                                           |
 | `auto-read.spec.ts`                   | `src/lib/auto-read.ts` — オートモード状態遷移判定純粋関数                                                             |
 | `inline-nav-click.spec.ts`            | `src/lib/inline-nav.ts` — インラインナビ クリック位置判定純粋関数                                                     |
+| `strip-html-with-breaks.spec.ts`      | `src/lib/html.ts#stripHtmlWithBreaks` — `<br>` / `<p>` を改行に変換する HTML strip                                    |
 | `article-utils.spec.ts`               | `src/lib/article-utils.ts` — readingTime / timeAgo                                                                    |
 | `articles-save.spec.ts`               | `app/api/articles/save/route.ts` — 記事手動保存 API                                                                   |
 | `auth-headers.spec.ts`                | 認証ヘッダー処理                                                                                                      |

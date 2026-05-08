@@ -1,5 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
-import { unescapeHtml, stripHtml } from "./html";
+import { unescapeHtml, stripHtml, stripHtmlWithBreaks } from "./html";
 import { applyCorePipeline } from "./html-post-processor";
 
 /** XML 属性を持つノード（fast-xml-parser の属性プレフィックス "@_" 付き） */
@@ -364,8 +364,8 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
     const link = safeUrl(item.url ?? item.external_url ?? "");
     const content = isHtml ? applyCorePipeline(raw, link) : raw;
     const summary = item.summary
-      ? stripHtml(item.summary).slice(0, 200)
-      : (isHtml ? stripHtml(raw) : raw).slice(0, 200);
+      ? stripHtmlWithBreaks(item.summary).slice(0, 200)
+      : (isHtml ? stripHtmlWithBreaks(raw) : raw).slice(0, 200);
     const itemAuthors = item.authors ?? (item.author ? [item.author] : feedAuthors);
     const author = itemAuthors
       .map((a) => a.name ?? "")
@@ -433,7 +433,7 @@ export function parseFeed(xml: string): ParsedFeed {
           guid: str(item.guid ?? item.link),
           title: stripHtml(str(item.title)),
           link,
-          summary: stripHtml(raw).slice(0, 200),
+          summary: stripHtmlWithBreaks(raw).slice(0, 200),
           content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
@@ -467,7 +467,7 @@ export function parseFeed(xml: string): ParsedFeed {
           guid: str(entry.id),
           title: stripHtml(str(entry.title)),
           link,
-          summary: stripHtml(raw).slice(0, 200),
+          summary: stripHtmlWithBreaks(raw).slice(0, 200),
           content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(entry)),
           author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
@@ -501,7 +501,7 @@ export function parseFeed(xml: string): ParsedFeed {
           guid,
           title: stripHtml(str(item.title)),
           link,
-          summary: stripHtml(raw).slice(0, 200),
+          summary: stripHtmlWithBreaks(raw).slice(0, 200),
           content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
