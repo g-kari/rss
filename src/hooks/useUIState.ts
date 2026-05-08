@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState } from "react";
 import { useEventListener } from "./useEventListener";
 
-import { useSyncedRef } from "./useSyncedRef";
-import { STORAGE_KEYS, loadSet, toggleSetItem } from "../lib/storage";
 import type { FontFamily, Layout, FontSize, FeedView } from "../types";
 import type {
   ContentWidth,
@@ -18,6 +16,9 @@ import { useThemePreference } from "./useThemePreference";
 import { useLayoutSettings } from "./useLayoutSettings";
 import { useAutoReadSettings } from "./useAutoReadSettings";
 import { useAccessibilitySettings } from "./useAccessibilitySettings";
+import { usePinnedAndCategories } from "./usePinnedAndCategories";
+import { useFocusMode } from "./useFocusMode";
+import { usePWAInstall } from "./usePWAInstall";
 
 import type { MobilePane } from "./useMobilePane";
 // UIState interface で使うためのローカル import（re-export だけではローカルスコープに入らない）
@@ -27,14 +28,6 @@ export type { MobilePane };
 export type { Theme } from "./useThemePreference";
 export type { AutoReadThreshold, WorkersAiModelId } from "./useAutoReadSettings";
 export { AUTO_READ_THRESHOLD_CYCLE } from "./useAutoReadSettings";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
-
-const loadPinnedFeedIds = () => loadSet(STORAGE_KEYS.PINNED_FEED_IDS);
-const loadCollapsedCategories = () => loadSet(STORAGE_KEYS.COLLAPSED_CATEGORIES);
 
 export interface UIState {
   theme: Theme;
@@ -102,6 +95,11 @@ export interface UIState {
   onChangeAiModel: (v: WorkersAiModelId) => void;
 }
 
+/**
+ * UI 状態を集約する薄い合成層。
+ * 個別の関心事は専用サブフックに切り出し済み（useFocusMode / usePWAInstall / usePinnedAndCategories 等）。
+ * Phase 2（別 Issue）で本フックは廃止し、App.tsx で各サブフックを直接呼び出す予定。
+ */
 export function useUIState(initialMobilePane: MobilePane): UIState {
   const { theme, toggleTheme } = useThemePreference();
   const {
@@ -141,132 +139,39 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
   } = useAutoReadSettings();
   const { lineHeight, onChangeLineHeight, textJustify, onChangeTextJustify } =
     useAccessibilitySettings();
-
-  const [pinnedFeedIds, setPinnedFeedIds] = useState<Set<string>>(loadPinnedFeedIds);
-  const [collapsedCategories, setCollapsedCategories] =
-    useState<Set<string>>(loadCollapsedCategories);
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
-  const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
-  const [focusMode, setFocusMode] = useState(false);
-  const [listFocusMode, setListFocusMode] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
   const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
     useNSFWMode();
+  const { pinnedFeedIds, togglePinFeed, collapsedCategories, toggleCollapseCategory } =
+    usePinnedAndCategories();
+  const {
+    focusMode,
+    listFocusMode,
+    toggleFocusMode,
+    toggleListFocusMode,
+    setListFocusMode,
+    exitFocusMode,
+  } = useFocusMode();
+  const install = usePWAInstall();
 
-  const focusModeRef = useSyncedRef(focusMode);
-  const listFocusModeRef = useSyncedRef(listFocusMode);
-  const focusHistoryRef = useRef(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  const pushFocusHistory = useCallback(() => {
-    if (!focusHistoryRef.current) {
-      focusHistoryRef.current = true;
-      window.history.pushState({ focus: true }, "");
-    }
-  }, []);
-
-  const exitFocusViaHistory = useCallback(() => {
-    if (focusHistoryRef.current) {
-      focusHistoryRef.current = false;
-      window.history.back();
-    } else {
-      setFocusMode(false);
-      setListFocusMode(false);
-    }
-  }, []);
-
-  useEventListener("popstate", () => {
-    if (!focusHistoryRef.current) return;
-    if (window.history.state?.focus) return;
-    focusHistoryRef.current = false;
-    setFocusMode(false);
-    setListFocusMode(false);
-  });
-
-  useEventListener(
-    "beforeinstallprompt",
-    (e) => {
-      e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
-    },
-    window,
-  );
-
+  // モーダル系のグローバルキー: ? でヘルプトグル、Escape で閉じる
+  // フォーカスモードの Escape は useFocusMode 側で別途処理される
   useEventListener(
     "keydown",
     (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "?") setShowHelp((v) => !v);
-      if (e.key === "\\") {
-        if (e.shiftKey) {
-          if (listFocusModeRef.current) {
-            exitFocusViaHistory();
-          } else {
-            pushFocusHistory();
-            setListFocusMode(true);
-            setFocusMode(false);
-          }
-        } else {
-          if (focusModeRef.current) {
-            exitFocusViaHistory();
-          } else {
-            pushFocusHistory();
-            setFocusMode(true);
-            setListFocusMode(false);
-          }
-        }
-      }
       if (e.key === "Escape") {
         setShowHelp(false);
         setShowFeedSwitcher(false);
-        exitFocusViaHistory();
       }
     },
     document,
   );
-
-  // ピン留め・カテゴリ折りたたみは少量の Set なので同期保存で OK
-  // （ホットパスの readIds 等はデフォルト遅延が効く）
-  const togglePinFeed = useCallback((feedId: string) => {
-    toggleSetItem(setPinnedFeedIds, STORAGE_KEYS.PINNED_FEED_IDS, feedId, false);
-  }, []);
-
-  const toggleCollapseCategory = useCallback((category: string) => {
-    toggleSetItem(setCollapsedCategories, STORAGE_KEYS.COLLAPSED_CATEGORIES, category, false);
-  }, []);
-
-  const toggleFocusMode = useCallback(() => {
-    if (focusModeRef.current) {
-      exitFocusViaHistory();
-    } else {
-      pushFocusHistory();
-      setFocusMode(true);
-      setListFocusMode(false);
-    }
-  }, [focusModeRef, exitFocusViaHistory, pushFocusHistory]);
-
-  const toggleListFocusMode = useCallback(() => {
-    if (listFocusModeRef.current) {
-      exitFocusViaHistory();
-    } else {
-      pushFocusHistory();
-      setListFocusMode(true);
-      setFocusMode(false);
-    }
-  }, [listFocusModeRef, exitFocusViaHistory, pushFocusHistory]);
-
-  const exitFocusMode = useCallback(() => {
-    exitFocusViaHistory();
-  }, [exitFocusViaHistory]);
-
-  const installApp = useCallback(async () => {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === "accepted") setInstallPrompt(null);
-  }, [installPrompt]);
 
   return {
     theme,
@@ -283,7 +188,7 @@ export function useUIState(initialMobilePane: MobilePane): UIState {
     toggleCollapseCategory,
     mobilePane,
     setMobilePane,
-    install: { canInstall: !!installPrompt, onInstall: installApp },
+    install,
     showHelp,
     setShowHelp,
     showFeedSwitcher,

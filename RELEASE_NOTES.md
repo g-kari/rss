@@ -2,6 +2,10 @@
 
 ## 2026-05-08 (latest)
 
+### リファクタリングっ
+
+- **useUIState (334 行) を Phase 1 で 3 サブフックに分割したよ〜** — Issue #627。`useFocusMode`（フォーカスモード制御 + window.history 連携 + キーボード）/ `usePWAInstall`（PWA インストールプロンプト）/ `usePinnedAndCategories`（ピン留めフィード + カテゴリ折りたたみ）の 3 つに固有ロジックを切り出して、useUIState は薄い合成層（334 → 213 行）に！API 互換性を維持してるから App.tsx 側の変更ゼロだよ。Phase 2（useUIState 完全廃止）は別 Issue で対応予定っ🔧
+
 ### セキュリティ対策っ
 
 - **DBSC の dbscSessionId を R2 から読み出し時にも UUID 検証するように堅牢化したよ〜** — Issue #628。register エンドポイント側では既に UUID 形式を検証してたんだけど、R2 から読み出した時も再検証する defense in depth パターンを追加！信頼境界を越える値はすべて再検証するっていう監査時の説明責任が綺麗に通るようになったよ〜🔒
