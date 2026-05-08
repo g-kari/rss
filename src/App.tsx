@@ -29,6 +29,7 @@ import { useAccessibilitySettings } from "./hooks/useAccessibilitySettings";
 import { useNSFWMode } from "./hooks/useNSFWMode";
 import { useFocusMode } from "./hooks/useFocusMode";
 import { useAutoReadMode } from "./hooks/useAutoReadMode";
+import { isSpeechSupported } from "./lib/auto-read";
 import { usePWAInstall } from "./hooks/usePWAInstall";
 import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
 import { useEventListener } from "./hooks/useEventListener";
@@ -140,10 +141,7 @@ export default function App() {
     useFocusMode();
   const install = usePWAInstall();
   const { autoMode, toggleAutoMode, disableAutoMode } = useAutoReadMode();
-  const ttsSupported = useMemo(
-    () => typeof window !== "undefined" && "speechSynthesis" in window,
-    [],
-  );
+  const ttsSupported = useMemo(() => isSpeechSupported(), []);
 
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);

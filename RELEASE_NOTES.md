@@ -4,6 +4,7 @@
 
 ### リファクタリングっ
 
+- **`isSpeechSupported()` で 3 箇所重複してた Web Speech API 判定を統一したよ〜** — simplify。`App.tsx` の useMemo / `useSpeechSynthesis.ts` のモジュール定数 / `auto-read.ts` の純粋関数 で同じ `typeof window !== "undefined" && "speechSynthesis" in window` がコピペされてたから、`auto-read.ts#isSpeechSupported` に統一して全部 import 経由で参照するように！🔧 細かいけど本質変更ゼロでテスト 30 件 (xml-parser) 回帰なし。
 - **ArticleHeader.tsx (648行) を機能別 4 サブコンポーネントに分割したよ〜** — Issue #647。AI / TTS / 画像 DL / シェア / ブックマーク / 後で読む / いいね / メモ / コレクション / フォーカスモード の 10 機能集約コンポーネントを、`ArticleHeaderMeta` (メタ情報) / `ArticleHeaderAiTts` (AI・TTS・画像 DL) / `ArticleHeaderShare` (シェア・フィルターメニュー) / `ArticleHeaderEngagement` (ブックマーク・後で読む・いいね・メモ・コレクション・フォーカスモード) の 4 つに分離して、ArticleHeader 本体は 250 行のオーケストレーターに！🔧 既存の import パスは維持してるから ArticleView 側の変更ゼロだよ〜✨ 機能ごとの差分が読みやすくなって、将来の機能追加もラクになったの〜📦 全 e2e テスト 2217 件回帰なし！
 
 ### セキュリティ対策っ

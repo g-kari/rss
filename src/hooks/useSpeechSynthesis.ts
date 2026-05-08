@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import { cycleValue } from "../lib/article-utils";
+import { isSpeechSupported } from "../lib/auto-read";
 import { useSyncedRef } from "./useSyncedRef";
 
 // Web Speech API の有無は実行中に変わらないのでモジュール定数にする
-const SPEECH_SUPPORTED = typeof window !== "undefined" && "speechSynthesis" in window;
+const SPEECH_SUPPORTED = isSpeechSupported();
 
 export const TTS_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0] as const;
 export type TtsRate = (typeof TTS_RATES)[number];
