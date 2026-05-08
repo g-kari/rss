@@ -7,7 +7,6 @@
  * - 文字エンコーディング検出
  * - Cloudflare AI toMarkdown API フォールバック
  */
-import { marked } from "marked";
 import {
   replaceUntilStable,
   tryParseBase,
@@ -251,7 +250,8 @@ export async function fetchMarkdownFromHtml(
 /**
  * Markdown を HTML に変換する（marked 使用）。
  */
-export function markdownToHtml(md: string): string {
+export async function markdownToHtml(md: string): Promise<string> {
+  const { marked } = await import("marked");
   return marked.parse(md, { async: false }) as string;
 }
 

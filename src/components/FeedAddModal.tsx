@@ -139,6 +139,7 @@ export default function FeedAddModal({
               autoFocus
               aria-required
               aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "feed-add-error" : undefined}
               className={[
                 "w-full text-[13px] bg-surface-base border rounded-lg px-3 py-2 text-text-strong placeholder-text-faint outline-none transition-colors duration-200",
                 urlValid === false
@@ -231,7 +232,12 @@ export default function FeedAddModal({
           </label>
 
           {error && (
-            <p role="alert" className="text-[12px] text-rose-400 mt-2">
+            <p
+              id="feed-add-error"
+              role="alert"
+              aria-live="assertive"
+              className="text-[12px] text-rose-400 mt-2"
+            >
               {error}
             </p>
           )}

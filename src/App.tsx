@@ -38,6 +38,7 @@ import { useColumnResize } from "./hooks/useColumnResize";
 import { useSyncedRef } from "./hooks/useSyncedRef";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
+import { useDebounce } from "./hooks/useDebounce";
 import { useFeedSidebarActions } from "./hooks/useFeedSidebarActions";
 import ConfirmModal from "./components/ConfirmModal";
 import ThreePaneLayout from "./components/ThreePaneLayout";
@@ -367,9 +368,13 @@ export default function App() {
 
   useGlobalFilterAutoRead(articles, globalFilter, readIds, markBulkRead);
 
+  const debouncedReadIds = useDebounce(readIds, 200);
+  const debouncedReadBeforeTimestamp = useDebounce(readBeforeTimestamp, 200);
   const totalUnread = useMemo(
-    () => articles.filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp)).length,
-    [articles, readIds, readBeforeTimestamp],
+    () =>
+      articles.filter((a) => !isArticleRead(a, debouncedReadIds, debouncedReadBeforeTimestamp))
+        .length,
+    [articles, debouncedReadIds, debouncedReadBeforeTimestamp],
   );
 
   useEffect(() => {

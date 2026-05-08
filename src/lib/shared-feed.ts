@@ -473,9 +473,6 @@ async function listPrefixedIds(bucket: R2Bucket, prefix: string): Promise<string
 }
 
 /** 全 feedHash を R2 の feeds/ プレフィックスから列挙する */
-export async function listAllFeedHashes(bucket: R2Bucket): Promise<string[]> {
-  return listPrefixedIds(bucket, "feeds/");
-}
 
 /** 全ユーザーの subscriptions.json から feedHash → userId[] のマップを構築する。
  *  requestCookie 付き購読は privateFeedCookies に分離し、共有フィードに Cookie を流出させない。 */
