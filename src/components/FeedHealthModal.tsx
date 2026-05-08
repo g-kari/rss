@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Feed } from "@/types";
 import { timeAgo } from "@/lib/article-utils";
 import Modal from "./Modal";
@@ -22,7 +22,8 @@ function untilLabel(iso: string): string {
 }
 
 export default function FeedHealthModal({ feeds, onClose }: Props) {
-  const now = useMemo(() => new Date(), []);
+  // モーダル open 時に Date を 1 度だけ確定させる（useMemo[]) は React 仕様上メモが破棄される可能性がある）
+  const [now] = useState(() => new Date());
 
   const errorFeeds = useMemo(
     () => feeds.filter((f) => f.fetchError && (f.consecutiveErrors ?? 0) >= 1),
