@@ -155,6 +155,9 @@ src/
     FeedAddModal.tsx         # フィード追加ダイアログ（RSS 自動検出・LLM CSS セレクタ推論・Cookie 指定対応）
     BetaRestrictedPage.tsx   # ベータ制限ページ（未許可ユーザー向け表示）
     LandingPage.tsx          # 未ログイン時のランディングページ
+    OfflineBanner.tsx        # オフライン時の固定バナー（同期待ちインジケーター付き）— App.tsx から分割
+    NewArticleBanner.tsx     # 新着記事通知バナー（スクロールトップ・閉じるボタン付き）— App.tsx から分割
+    FocusModeOverlay.tsx     # フォーカスモード全画面オーバーレイ（ArticleView ラッパー）— App.tsx から分割
     article-view/            # ArticleView 補助コンポーネント群（ヘッダー・本文・AI パネル・メモ・モーダル・ナビゲーション・インラインナビ・フィルタメニュー・ギャラリー・共有・スヌーズ・タグエディタ等）
     user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel / FeedManagementTabPanel / ImportExportTabPanel / shared）
   hooks/
@@ -236,6 +239,7 @@ src/
     useDelayedGalleryItems.ts # 削除された items を 300ms 保持してフェードアウト遷移を可能にする（masonic 中間削除アニメーション用）
     useConfirm.ts            # window.confirm 代替 hook（Promise ベース確認モーダル。confirmModalProps を ConfirmModal に渡す）
     useMarkAllRead.ts        # 全既読ロジック集約 hook（サブフィルター判定・50件確認・アンドゥ対応）
+    useArticleViewProps.ts   # ArticleView に渡す props オブジェクトの useMemo 集約 hook（App.tsx から分割）
     useFeedSidebarActions.ts # FeedSidebarProvider value オブジェクト生成 hook（App.tsx から分割・useMemo 済み）
     useToast.ts              # トースト通知状態管理（success/error/info 3種別・最大3件スタック・自動消去）
     useGlobalFilterAutoRead.ts # globalFilter に引っかかった記事を自動既読にする（フィルター除外記事の未読カウント混入防止）
