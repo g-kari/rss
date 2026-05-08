@@ -20,3 +20,5 @@ skills-lock.json
 src/markdown.d.ts
 e2e/_test-import*.spec.ts
 e2e/auth-utils-edge.spec.ts
+
+.claude/scheduled_tasks.lock

@@ -54,4 +54,23 @@ test.describe("popup-lock カバレッジ — fixed inset-0 モーダル網羅",
     }
     expect(offenders, `ロック未取得のモーダル: ${offenders.join(", ")}`).toEqual([]);
   });
+
+  // Issue #606: 親で常時マウント＋内部 isOpen 判定のモーダルが usePopupLock() を引数なしで呼ぶと、
+  // アプリ起動から常時ロックが立ち、リサイザー等の `hasOpenPopup` 連動 UI が永続的に無効になる。
+  // 検査対象は components/ 以下の React コンポーネントのみ（lib/release-notes-data.ts などの
+  // データファイルにはリリースノート本文として `usePopupLock()` の文字列が含まれることがあるため除外）。
+  test("`if (!isOpen) return null` パターンと `usePopupLock()` 引数なしの組合せを禁止", async () => {
+    const files = await listTsxFiles(join(SRC_DIR, "components"));
+    const offenders: string[] = [];
+    for (const file of files) {
+      const content = await readFile(file, "utf-8");
+      const earlyReturn = /if\s*\(!\s*(isOpen|open|show|visible|active)\s*\)\s*return\s+null/i.test(
+        content,
+      );
+      if (!earlyReturn) continue;
+      const arglessLock = /usePopupLock\(\s*\)/.test(content);
+      if (arglessLock) offenders.push(file.replace(SRC_DIR + "/", ""));
+    }
+    expect(offenders, `early return + usePopupLock 引数なし: ${offenders.join(", ")}`).toEqual([]);
+  });
 });
