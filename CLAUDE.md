@@ -52,3 +52,7 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 GitHub Actions (`deploy.yml`) は存在しない。`npm run deploy` をローカルで手動実行する必要もない。
 
 **禁止**: Route Handler に `export const runtime = 'edge'` を書かないこと（`@opennextjs/cloudflare` は Edge Runtime 非対応）。
+
+## Issue / PR の起票主体マーカー
+
+AI が起票・コメントする GitHub Issue / PR は、起票主体を一目で識別できるバナー（`> 🤖 AI 起票 (Claude Code)` / `> 🤖 AI 投稿 (Claude Code)`）を **必ず** 付ける。詳細は `issue-handler` skill の規定に従うこと。
