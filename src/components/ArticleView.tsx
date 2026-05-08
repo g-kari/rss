@@ -131,6 +131,7 @@ function ArticleView({
     ttsCycleRate,
     handleTtsToggle,
     ttsSpeak,
+    ttsStop,
     buildTtsText,
     mainRef,
     contentRef,
@@ -339,6 +340,7 @@ function ArticleView({
         canFetch={canFetch}
         ttsText={buildTtsText(article, processedContent)}
         onSpeak={ttsSpeak}
+        onTtsStop={ttsStop}
         onFetch={() => fetchFullContent()}
         hasNext={!!nextArticle}
         onSelectNext={onSelectNext}
