@@ -11,6 +11,7 @@ import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
 import OfflineBanner from "./components/OfflineBanner";
 import NewArticleBanner from "./components/NewArticleBanner";
 import FocusModeOverlay from "./components/FocusModeOverlay";
+import ArticleDetailOverlay from "./components/ArticleDetailOverlay";
 import type { Article } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
@@ -134,14 +135,8 @@ export default function App() {
     useNSFWMode();
   const { pinnedFeedIds, togglePinFeed, collapsedCategories, toggleCollapseCategory } =
     usePinnedAndCategories();
-  const {
-    focusMode,
-    listFocusMode,
-    toggleFocusMode,
-    toggleListFocusMode,
-    setListFocusMode,
-    exitFocusMode,
-  } = useFocusMode();
+  const { focusMode, listFocusMode, toggleFocusMode, toggleListFocusMode, exitFocusMode } =
+    useFocusMode();
   const install = usePWAInstall();
 
   const [showHelp, setShowHelp] = useState(false);
@@ -673,39 +668,33 @@ export default function App() {
   });
 
   const listFocusModeRef = useSyncedRef(listFocusMode);
-  const wasInListFocusModeRef = useRef(false);
+  const [articleDetailOverlayOpen, setArticleDetailOverlayOpen] = useState(false);
 
   const selectArticle = useCallback(
     (article: Article) => {
-      if (listFocusModeRef.current) {
-        wasInListFocusModeRef.current = true;
-        toggleFocusMode();
-      }
       setSelectedArticle(article);
       markRead(article.id);
       addToHistory(article.id);
-      if (!isDesktop) setMobilePane("view");
+      if (listFocusModeRef.current) {
+        // listFocusMode 中はフォーカスモード切替の代わりに右からスライドする overlay を開く
+        setArticleDetailOverlayOpen(true);
+      } else if (!isDesktop) {
+        setMobilePane("view");
+      }
     },
-    [
-      listFocusModeRef,
-      toggleFocusMode,
-      setSelectedArticle,
-      markRead,
-      addToHistory,
-      setMobilePane,
-      isDesktop,
-    ],
+    [listFocusModeRef, setSelectedArticle, markRead, addToHistory, setMobilePane, isDesktop],
   );
 
-  // フォーカスモード終了時にリストフォーカスモードを復元する
-  const prevFocusModeRef = useRef(focusMode);
+  // listFocusMode が解除されたら overlay も閉じる
   useEffect(() => {
-    if (prevFocusModeRef.current && !focusMode && wasInListFocusModeRef.current) {
-      wasInListFocusModeRef.current = false;
-      setListFocusMode(true);
+    if (!listFocusMode && articleDetailOverlayOpen) {
+      setArticleDetailOverlayOpen(false);
     }
-    prevFocusModeRef.current = focusMode;
-  }, [focusMode, setListFocusMode]);
+  }, [listFocusMode, articleDetailOverlayOpen]);
+
+  const closeArticleDetailOverlay = useCallback(() => {
+    setArticleDetailOverlayOpen(false);
+  }, []);
 
   const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useEngagementToggles(
     articles,
@@ -910,6 +899,11 @@ export default function App() {
             <FocusModeOverlay
               focusMode={focusMode}
               exitFocusMode={exitFocusMode}
+              articleViewProps={articleViewProps}
+            />
+            <ArticleDetailOverlay
+              open={articleDetailOverlayOpen}
+              onClose={closeArticleDetailOverlay}
               articleViewProps={articleViewProps}
             />
             {/* カラムリサイズハンドル (PCのみ、記事一覧フォーカス / ポップアップ表示中は無効) */}
