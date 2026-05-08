@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { Article, KeywordFilter } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, saveSet, loadSet, loadJson, storageGet } from "../lib/storage";
 import { type PendingSets, emptyPendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
+import { pruneOldReadIds } from "../lib/read-state-prune";
 import { useReadStateToggles } from "./useReadStateToggles";
 import { useReadStateActions } from "./useReadStateActions";
 import type { SetStateDispatchers, OtherStateDispatchers } from "./useReadStateSyncApply";
@@ -131,6 +132,16 @@ export function useReadStatePersistence(
     tagIds,
     ttlDays,
   };
+
+  // --- 自動 prune (#635 A1): readBeforeTimestamp 以前の publishedAt を持つ既知記事の
+  //     readId を物理削除して localStorage / R2 のサイズ肥大化を抑制する。
+  //     readBeforeTimestamp と articles の変化時のみ評価。pruneOldReadIds は冪等で
+  //     削除なし時に元の Set インスタンスを返すため、setReadIds の参照同一性で
+  //     不要な再レンダーを避ける。
+  useEffect(() => {
+    if (!readBeforeTimestamp || articles.length === 0) return;
+    setReadIds((current) => pruneOldReadIds(current, articles, readBeforeTimestamp));
+  }, [readBeforeTimestamp, articles]);
 
   // --- Toggles ---
   const { toggleRead, toggleBookmark, toggleReadingList, toggleLike } = useReadStateToggles({

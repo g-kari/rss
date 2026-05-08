@@ -338,6 +338,7 @@ src/
     serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
     retry-after.ts           # HTTP Retry-After ヘッダー（delta-seconds / HTTP-date）をミリ秒に変換（クライアント・cron で共有）
     read-state-storage.ts    # ReadState の localStorage 永続化ユーティリティ + ペンディング状態スナップショット
+    read-state-prune.ts      # readBeforeTimestamp 以前の publishedAt を持つ既知記事の readId を物理削除する純粋関数（#635 A1）
     read-state-sync-api.ts   # ReadState のサーバー通信（fetchReadState・saveReadState）
     sw-cache.ts              # Service Worker キャッシュ管理
     type-guards.ts           # TypeScript 型ガード関数
@@ -674,6 +675,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `read-state-api.spec.ts`              | `app/api/read-state/route.ts` — 既読状態 API                                                                          |
 | `read-state-merge.spec.ts`            | `src/lib/read-state-merge.ts` — 状態マージ純粋関数                                                                    |
 | `read-state-storage.spec.ts`          | `src/lib/read-state-storage.ts` — localStorage 永続化                                                                 |
+| `read-state-prune.spec.ts`            | `src/lib/read-state-prune.ts` — readBeforeTimestamp 以前の readId 物理削除純粋関数（#635 A1）                         |
 | `reader-settings.spec.ts`             | `src/lib/reader-settings.ts` — リーダー設定バリデーション                                                             |
 | `reading-progress.spec.ts`            | `src/lib/reading-progress.ts` — 読書進捗計算                                                                          |
 | `recommendation.spec.ts`              | `src/lib/recommendation.ts` — `sanitizeForPrompt` / `isCacheValid`                                                    |

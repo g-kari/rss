@@ -48,6 +48,8 @@ interface Props {
   readIds: Set<string>;
   readBeforeTimestamp?: string | null;
   bookmarkIds: Set<string>;
+  /** 後で読むに登録された記事 ID（#633、card/magazine のホバーボタンで使用） */
+  readingListIds?: Set<string>;
   selectedArticleId: string | null;
   selectedFeedId: string | null;
   layout: Layout;
@@ -58,6 +60,8 @@ interface Props {
   onSelectArticle: (article: Article) => void;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
+  /** 後で読むのトグル（#633、card/magazine のホバーボタンで使用） */
+  onToggleReadingList?: (id: string) => void;
   onMarkRead: (id: string) => void;
   onMarkAllRead?: () => void;
   onMobileBack?: () => void;
@@ -204,6 +208,8 @@ function ArticleList({
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
+  onToggleReadingList,
+  readingListIds,
   onMarkRead,
   onMarkAllRead,
   onMobileBack,
@@ -446,6 +452,7 @@ function ArticleList({
   const onSelectArticleRef = useSyncedRef(onSelectArticle);
   const onToggleReadRef = useSyncedRef(onToggleRead);
   const onToggleBookmarkRef = useSyncedRef(onToggleBookmark);
+  const onToggleReadingListRef = useSyncedRef(onToggleReadingList);
 
   // bookmarkIds / readIds / notes は state 値を直接参照する（ref パターンを使うと
   // memo された GalleryCardRenderer (Context 経由) で再描画が発火しないバグになる: #634）
@@ -457,6 +464,7 @@ function ArticleList({
         index,
         isRead: isArticleRead(article, readIds, readBeforeTimestamp),
         isBookmarked: bookmarkIds.has(article.id),
+        isInReadingList: readingListIds?.has(article.id) ?? false,
         isDeleting,
         isNew,
         hasNote: !!notes?.[article.id],
@@ -469,9 +477,12 @@ function ArticleList({
         onSelectArticle: (a: Article) => onSelectArticleRef.current(a),
         onToggleRead: (id: string) => onToggleReadRef.current(id),
         onToggleBookmark: (id: string) => onToggleBookmarkRef.current(id),
+        onToggleReadingList: onToggleReadingListRef.current
+          ? (id: string) => onToggleReadingListRef.current?.(id)
+          : undefined,
       };
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelectArticle・onToggleRead・onToggleBookmark は ref 経由で最新値を参照するため deps 不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelectArticle・onToggleRead・onToggleBookmark・onToggleReadingList は ref 経由で最新値を参照するため deps 不要
     [
       readBeforeTimestamp,
       feedMap,
@@ -481,11 +492,13 @@ function ArticleList({
       filtered.length,
       readIds,
       bookmarkIds,
+      readingListIds,
       notes,
       duplicateInfo,
       onSelectArticleRef,
       onToggleReadRef,
       onToggleBookmarkRef,
+      onToggleReadingListRef,
     ],
   );
 
@@ -713,7 +726,7 @@ function ArticleList({
                   scrollElement={scrollEl}
                   columnWidth={getGalleryCardWidth(galleryCardSize)}
                   columnGutter={12}
-                  overscanBy={6}
+                  overscanBy={12}
                   columns={
                     galleryColumns === "auto" ? (listFocusMode ? 6 : null) : Number(galleryColumns)
                   }
@@ -724,8 +737,13 @@ function ArticleList({
             </div>
           )}
 
-          <div ref={sentinelRef} className="h-10" aria-hidden />
-          {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
+          {/* IntersectionObserver の sentinel — gallery 仮想化の末端でも
+              到達できるよう min-height を確保 (#636) */}
+          <div ref={sentinelRef} className="h-32" aria-hidden />
+          {/* LoadMoreButton はサーバー側に過去ページが残っているなら常に表示する。
+              gallery の masonic 仮想化で sentinel が末端に到達しないケースでも
+              LoadMoreButton 自身の IntersectionObserver で自動発火させるため (#636)。 */}
+          {feedHasMorePages && onLoadMoreFeedArticles && (
             <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
           )}
         </div>

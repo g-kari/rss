@@ -17,6 +17,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   article,
   isRead,
   isBookmarked,
+  isInReadingList,
   isDeleting,
   isNew,
   hasNote,
@@ -28,6 +29,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
+  onToggleReadingList,
 }: Omit<ArticleItemProps, "index">) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
@@ -98,8 +100,12 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
               className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto"
               isRead={isRead}
               isBookmarked={isBookmarked}
+              isInReadingList={isInReadingList}
               onToggleRead={() => onToggleRead(article.id)}
               onToggleBookmark={() => onToggleBookmark(article.id)}
+              onToggleReadingList={
+                onToggleReadingList ? () => onToggleReadingList(article.id) : undefined
+              }
             />
           </div>
         </div>
