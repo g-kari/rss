@@ -392,9 +392,15 @@ export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOp
         return ai !== bi ? ai - bi : 0;
       });
     }
+    // #620 Option A: ダイジェスト時、既読記事は digestLimit カウントから除外する。
+    // これにより既読消化が進むと「既読は全件表示 + 未読が常に digestLimit 件確保」となり、
+    // 同一フィード内の既読を踏破した後は他フィードの未読が表示される。
     const feedCount = new Map<string, number>();
     return list.filter((a) => {
       if (activeIds.has(a.id)) return true;
+      const isRead = isArticleRead(a, opts.readIds, opts.readBeforeTimestamp);
+      // 既読は count を増やさず常に通過させる（digestLimit を超えても表示する）
+      if (isRead) return true;
       const limit = opts.digestLimitMap?.get(a.feedHash);
       const effectiveLimit = limit === undefined ? 3 : limit === 0 ? Infinity : limit;
       const count = feedCount.get(a.feedHash) ?? 0;
