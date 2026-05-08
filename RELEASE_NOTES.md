@@ -2,6 +2,10 @@
 
 ## 2026-05-08 (latest)
 
+### バグ修正っ
+
+- **LoadMoreButton のページネーション失敗が無音になってた問題を直したよ〜** — Issue #624。IntersectionObserver と click handler の両方で `onLoad()` の reject を catch せず無音 fail してたのを、catch して `toast.error("過去記事の取得に失敗しました")` を表示するように修正！バックエンド障害時にユーザーに気づいてもらえるよ〜💡
+
 ### パフォーマンス改善っ
 
 - **FeedHealthModal の `now` を毎レンダー新規生成しないように修正したよ〜** — Issue #623。`useMemo(() => new Date(), [])` は React 仕様上メモが破棄される可能性があり、依存する `rateLimitedFeeds` が連鎖再計算されてた問題を、`useState(() => new Date())` でモーダル open 時に 1 度だけ確定させるように修正！100 フィード規模で毎フレーム配列フィルタが走らなくなったよ〜🚀
