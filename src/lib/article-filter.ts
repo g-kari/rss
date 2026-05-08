@@ -93,6 +93,8 @@ export interface ArticleDisplayOptions {
   digestMode?: boolean;
   /** feedHash → ダイジェスト表示件数のマップ（0 = 全件, undefined = デフォルト 3） */
   digestLimitMap?: Map<string, number>;
+  /** digestMode 時のフィードスコア順リスト（高スコア順 feedHash[]） */
+  feedEngagementOrder?: string[];
 }
 
 export interface ArticleFilterOptions
@@ -130,6 +132,7 @@ function matchesFeedId(
   if (feedId === SPECIAL_FEED_IDS.READING_LIST) return readingListIds.has(a.id);
   if (feedId === SPECIAL_FEED_IDS.LIKES) return likeIds.has(a.id);
   if (feedId === SPECIAL_FEED_IDS.HISTORY) return historyIds.has(a.id);
+  if (feedId === SPECIAL_FEED_IDS.DIGEST) return true;
   if (feedId) return a.feedHash === feedId;
   return true;
 }
@@ -319,6 +322,8 @@ export interface StateFilterOptions {
   groupFeedIds?: Set<string>;
   /** feedHash → ダイジェスト表示件数のマップ（0 = 全件, undefined = デフォルト 3） */
   digestLimitMap?: Map<string, number>;
+  /** digestMode 時のフィードスコア順リスト（高スコア順 feedHash[]） */
+  feedEngagementOrder?: string[];
 }
 
 export function filterByStructure(articles: Article[], opts: ArticleFilterOptions): Article[] {
@@ -355,7 +360,12 @@ export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOp
   const statePredicate = buildStatePredicate(opts);
 
   const needsSort = opts.feedId === SPECIAL_FEED_IDS.HISTORY || opts.sortOrder === "oldest";
-  const needsDigest = !!(opts.digestMode && !opts.feedId && !opts.groupFeedIds?.size);
+  const isDigestFeed = opts.feedId === SPECIAL_FEED_IDS.DIGEST;
+  const needsDigest = !!(
+    (opts.digestMode || isDigestFeed) &&
+    (!opts.feedId || isDigestFeed) &&
+    !opts.groupFeedIds?.size
+  );
 
   let list: Article[];
   if (statePredicate) {
@@ -374,6 +384,14 @@ export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOp
   }
 
   if (needsDigest) {
+    if (opts.feedEngagementOrder && opts.feedEngagementOrder.length > 0) {
+      const orderIndex = new Map(opts.feedEngagementOrder.map((fh, i) => [fh, i]));
+      list.sort((a, b) => {
+        const ai = orderIndex.get(a.feedHash) ?? Infinity;
+        const bi = orderIndex.get(b.feedHash) ?? Infinity;
+        return ai !== bi ? ai - bi : 0;
+      });
+    }
     const feedCount = new Map<string, number>();
     return list.filter((a) => {
       if (activeIds.has(a.id)) return true;

@@ -55,6 +55,7 @@ export interface UiOptions {
 interface Options extends FeedSelectionOptions, ReadStateOptions, ContentFilterOptions, UiOptions {
   articles: Article[];
   feeds?: Feed[];
+  feedEngagementOrder?: string[];
 }
 
 export function useFilteredArticles({
@@ -84,6 +85,7 @@ export function useFilteredArticles({
   collectionArticleIds,
   galleryAutoReadIds,
   deduplicateByLink = true,
+  feedEngagementOrder,
 }: Options) {
   const [page, setPage] = useState(1);
   const resetPage = useCallback(() => setPage(1), []);
@@ -173,6 +175,7 @@ export function useFilteredArticles({
   const isReadingListFeed = feedId === SPECIAL_FEED_IDS.READING_LIST;
   const isLikesFeed = feedId === SPECIAL_FEED_IDS.LIKES;
   const isHistoryFeed = feedId === SPECIAL_FEED_IDS.HISTORY;
+  const isDigestFeed = feedId === SPECIAL_FEED_IDS.DIGEST;
 
   const bookmarkIdsForStructure = isBookmarksFeed ? bookmarkIds : EMPTY_SET;
   const readingListIdsForStructure = isReadingListFeed ? readingListIds : EMPTY_SET;
@@ -180,7 +183,8 @@ export function useFilteredArticles({
   const historyIdsForStructure = isHistoryFeed ? historyIds : EMPTY_SET;
   const articleTagsForDeps = selectedTag ? articleTags : undefined;
 
-  const isSpecialFeed = isBookmarksFeed || isReadingListFeed || isLikesFeed || isHistoryFeed;
+  const isSpecialFeed =
+    isBookmarksFeed || isReadingListFeed || isLikesFeed || isHistoryFeed || isDigestFeed;
   const effectiveUnreadOnly = unreadOnly && !isSpecialFeed;
 
   const readIdsForState = effectiveUnreadOnly ? readIds : EMPTY_SET;
@@ -279,6 +283,7 @@ export function useFilteredArticles({
         digestMode,
         groupFeedIds,
         digestLimitMap: digestLimitMap.size > 0 ? digestLimitMap : undefined,
+        feedEngagementOrder,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避。selectedArticleId/gracePeriodId は選択記事が unreadOnly 等で除外されないよう明示的に deps に含める
     [
@@ -302,6 +307,7 @@ export function useFilteredArticles({
       digestMode,
       groupFeedIds,
       digestLimitMap,
+      feedEngagementOrder,
     ],
   );
 

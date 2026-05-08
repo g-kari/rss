@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { applyStateFilterAndSort, type StateFilterOptions } from "../src/lib/article-filter";
+import { SPECIAL_FEED_IDS } from "../src/lib/storage";
 import type { Article } from "../src/types";
 
 function makeArticle(id: string, feedHash: string, publishedAt?: string): Article {
@@ -121,4 +122,40 @@ test("activeIds の記事はダイジスト上限に関わらず常に含まれ�
   // 合計 7 件
   expect(result.length).toBe(7);
   expect(result.some((a) => a.id === "a4")).toBe(true);
+});
+
+test("feedEngagementOrder が指定された場合、高スコアフィードの記事が先頭に並ぶ", () => {
+  const result = applyStateFilterAndSort(articles, {
+    ...BASE_STATE_OPTS,
+    digestMode: true,
+    feedEngagementOrder: [FEED_B, FEED_A],
+    activeIds: new Set(),
+  });
+  expect(result[0].feedHash).toBe(FEED_B);
+  expect(result[1].feedHash).toBe(FEED_B);
+  expect(result[2].feedHash).toBe(FEED_B);
+  expect(result[3].feedHash).toBe(FEED_A);
+});
+
+test("feedEngagementOrder 空配列の場合、元の順序（publishedAt 降順）を維持する", () => {
+  const result = applyStateFilterAndSort(articles, {
+    ...BASE_STATE_OPTS,
+    digestMode: true,
+    feedEngagementOrder: [],
+    activeIds: new Set(),
+  });
+  expect(result.length).toBe(6);
+});
+
+test("__digest__ feedId で全フィードの記事を対象にダイジェスト表示する", () => {
+  const result = applyStateFilterAndSort(articles, {
+    ...BASE_STATE_OPTS,
+    feedId: SPECIAL_FEED_IDS.DIGEST,
+    activeIds: new Set(),
+  });
+  expect(result.length).toBe(6);
+  const aCount = result.filter((a) => a.feedHash === FEED_A).length;
+  const bCount = result.filter((a) => a.feedHash === FEED_B).length;
+  expect(aCount).toBe(3);
+  expect(bCount).toBe(3);
 });

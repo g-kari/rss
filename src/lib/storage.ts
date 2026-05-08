@@ -12,6 +12,7 @@ export const SPECIAL_FEED_IDS = {
   READING_LIST: "__reading_list__",
   LIKES: "__likes__",
   HISTORY: "__history__",
+  DIGEST: "__digest__",
 } as const;
 
 export const STORAGE_KEYS = {
