@@ -7,6 +7,7 @@ import { isCsrfViolation } from "./csrf";
 import { checkAndUpdateCooldown } from "./rate-limit";
 import { generateDbscChallenge } from "./dbsc";
 import { isBetaAllowed } from "./beta-allowed";
+import { getDevBypassUserId } from "./dev-auth-bypass";
 
 // CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
 export { isCsrfViolation } from "./csrf";
@@ -220,17 +221,9 @@ export interface AuthSession {
  * null の場合は認証失敗。refreshedTokens がある場合はレスポンスに cookie をセットすること。
  */
 export async function getAuthSession(): Promise<AuthSession | null | { dbscChallenge: string }> {
-  // 開発時の認証バイパス（e2e テスト用）。
-  // - `process.env.NODE_ENV !== "production"` で本番ビルドでは dead code 化される
-  //   （Next.js が build 時に NODE_ENV を inline して tree-shake で除去するため）
-  // - `DEV_AUTH_BYPASS_USER_ID` が未設定なら通常のローカル開発でも有効化されない
-  // 上記 2 条件の AND が揃って初めて fake session を返す。
-  if (process.env.NODE_ENV !== "production") {
-    const bypassUserId = process.env.DEV_AUTH_BYPASS_USER_ID;
-    if (bypassUserId && /^[A-Za-z0-9_\-@.]{1,128}$/.test(bypassUserId)) {
-      return { userId: bypassUserId };
-    }
-  }
+  // 開発時の認証バイパス（e2e テスト用）。詳細は `dev-auth-bypass.ts` を参照。
+  const bypassUserId = getDevBypassUserId();
+  if (bypassUserId) return { userId: bypassUserId };
 
   const authBaseUrl = process.env.AUTH_BASE_URL!;
   const cookieStore = await cookies();
