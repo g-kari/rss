@@ -63,7 +63,8 @@
       "path-to-regexp": "^6.3.0",
       "vite": ">=8.0.5",
       "postcss": ">=8.5.13",
-      "fast-xml-parser": ">=5.7.0"
+      "fast-xml-parser": ">=5.7.0",
+      "fast-xml-builder": ">=1.1.7"
     }
   }
 }
