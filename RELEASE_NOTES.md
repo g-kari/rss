@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### ドキュメント整備っ
+
+- **tsconfig で `.next/dev/types/routes.d.ts` を明示的に除外してビルドエラー再発防止したよ〜** — Issue #646。`.next/dev/types/**/*.ts` include と `.next/dev` exclude の組み合わせで、Next.js が生成する `routes.d.ts` の JSDoc コードフェンス内 TSX サンプルを tsc が誤って構文エラー扱いしてた問題（`error TS1435: Unknown keyword or identifier`）を、Option B 個別ファイル除外で恒久対応！🔧 これで `rm -rf .next` の workaround なしに安定 typecheck できるようになったよ〜✨
+
 ### テスト基盤拡充っ
 
 - **e2e テスト用 R2 シードエンドポイント `/api/test/seed` を追加したよ〜** — Issue #643。これまで認証バイパスはあったけど R2 にテストデータを投入する方法がなくて、UI 振る舞いの再現テストが書けなかったの...！今回からは `e2e/helpers/seed-r2.ts` の `seedFeed` / `seedReadState` / `clearTestData` ヘルパー経由でフィードや既読状態を一発投入できるようになったよ〜🧪✨ プロダクション環境では `getDevBypassUserId()` が null を返すから 404 で本番安全、`validateSeedRequest` 純粋関数 15 ケース + 統合 5 ケースで TDD カバー！これで #634/#624/#625/#623/#632 みたいな UI バグの後追い再現テストが書けるようになったよ〜🚀
