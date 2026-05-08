@@ -446,34 +446,32 @@ function ArticleList({
   const onSelectArticleRef = useSyncedRef(onSelectArticle);
   const onToggleReadRef = useSyncedRef(onToggleRead);
   const onToggleBookmarkRef = useSyncedRef(onToggleBookmark);
-  const readIdsRef = useSyncedRef(readIds);
-  const bookmarkIdsRef = useSyncedRef(bookmarkIds);
-  const notesRef = useSyncedRef(notes);
-  const duplicateInfoRef = useSyncedRef(duplicateInfo);
 
+  // bookmarkIds / readIds / notes は state 値を直接参照する（ref パターンを使うと
+  // memo された GalleryCardRenderer (Context 経由) で再描画が発火しないバグになる: #634）
   const resolveItemProps = useCallback(
     (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => {
       const feed = feedMap.get(article.feedHash);
       return {
         article,
         index,
-        isRead: isArticleRead(article, readIdsRef.current, readBeforeTimestamp),
-        isBookmarked: bookmarkIdsRef.current.has(article.id),
+        isRead: isArticleRead(article, readIds, readBeforeTimestamp),
+        isBookmarked: bookmarkIds.has(article.id),
         isDeleting,
         isNew,
-        hasNote: !!notesRef.current?.[article.id],
+        hasNote: !!notes?.[article.id],
         feedName: feed ? feed.title || feed.url : "",
         thumb: resolveThumbnail(article, ogpCacheRef.current),
         showFeedName,
         query,
-        duplicateFeedNames: duplicateInfoRef.current?.get(article.id),
+        duplicateFeedNames: duplicateInfo?.get(article.id),
         totalCount: filtered.length,
         onSelectArticle: (a: Article) => onSelectArticleRef.current(a),
         onToggleRead: (id: string) => onToggleReadRef.current(id),
         onToggleBookmark: (id: string) => onToggleBookmarkRef.current(id),
       };
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- readIds・bookmarkIds・notes・duplicateInfo・onSelectArticle・onToggleRead・onToggleBookmark は ref 経由で最新値を参照するため deps 不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelectArticle・onToggleRead・onToggleBookmark は ref 経由で最新値を参照するため deps 不要
     [
       readBeforeTimestamp,
       feedMap,
@@ -481,10 +479,10 @@ function ArticleList({
       showFeedName,
       query,
       filtered.length,
-      readIdsRef,
-      bookmarkIdsRef,
-      notesRef,
-      duplicateInfoRef,
+      readIds,
+      bookmarkIds,
+      notes,
+      duplicateInfo,
       onSelectArticleRef,
       onToggleReadRef,
       onToggleBookmarkRef,
