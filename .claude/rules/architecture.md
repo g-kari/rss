@@ -492,7 +492,10 @@ npx wrangler secret put CLIENT_SECRET          # 対応するクライアント�
 npx wrangler secret put VAPID_PUBLIC_KEY       # Web Push VAPID 公開鍵
 npx wrangler secret put VAPID_PRIVATE_KEY      # Web Push VAPID 秘密鍵
 npx wrangler secret put CLOUDFLARE_API_TOKEN   # 全文取得フォールバック用 (オプション)
+npx wrangler secret put CLOUDFLARE_ACCOUNT_ID  # Cloudflare AI toMarkdown API 用アカウント ID（CLOUDFLARE_API_TOKEN と組み合わせて使用、オプション）
 npx wrangler secret put BRAVE_SEARCH_API_KEY   # フィード推薦検索用 (オプション)
+npx wrangler secret put RSSHUB_INSTANCE_URL    # セルフホスト RSSHub の URL（例: https://rsshub.example.com、オプション）
+npx wrangler secret put RSSHUB_ACCESS_KEY      # RSSHub のアクセスキー（オプション）
 ```
 
 > **認証方式**: 0g0-id API との通信は `Authorization: Basic <CLIENT_ID:CLIENT_SECRET>` のみ。

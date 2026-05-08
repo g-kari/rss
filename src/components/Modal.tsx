@@ -24,16 +24,26 @@ export default function Modal({
 }: Props) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   usePopupLock();
 
   useEffect(() => {
+    // モーダルを開いたトリガー要素を退避し、閉じる時に同じ要素へフォーカスを戻す
+    // (WCAG 2.4.3 Focus Order)。トリガーが既に DOM から外れている場合はスキップする。
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
     const el = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
     if (el) {
       el.focus();
     } else {
       dialogRef.current?.focus();
     }
+    return () => {
+      const ret = returnFocusRef.current;
+      if (ret && typeof ret.focus === "function" && document.contains(ret)) {
+        ret.focus();
+      }
+    };
   }, []);
 
   const handleKeyDown = useCallback(

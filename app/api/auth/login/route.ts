@@ -16,14 +16,16 @@ export async function GET(request: Request) {
 
   // state 不一致の調査用: 既存の auth_state cookie の状態と、リクエスト元情報を記録する。
   // state 値自体は CSRF トークンのため、完全値はログに出さずプレフィックスのみ出力。
+  // セッション系 Cookie の存在情報がログ閲覧権限者に渡らないよう、Cookie 名一覧の代わりに
+  // 認証フローに関係するキーの存在のみを bool で記録する。
   const cookieStore = await cookies();
   const existingAuthState = cookieStore.get("auth_state")?.value;
-  const cookieNames = cookieStore.getAll().map((c) => c.name);
   console.log("[auth/login] generated state", {
     statePrefix: state.slice(0, 8),
     hadExistingAuthState: !!existingAuthState,
     existingAuthStatePrefix: existingAuthState?.slice(0, 8),
-    existingCookies: cookieNames,
+    hasSessionCookie: !!cookieStore.get("session_id")?.value,
+    hasAccessToken: !!cookieStore.get("access_token")?.value,
     userAgent: request.headers.get("user-agent")?.slice(0, 80),
     host: request.headers.get("host"),
   });

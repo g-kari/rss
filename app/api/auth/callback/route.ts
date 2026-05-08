@@ -39,10 +39,10 @@ export async function GET(request: Request) {
 
   const cookieStore = await cookies();
   const savedState = cookieStore.get("auth_state")?.value;
-  const cookieNames = cookieStore.getAll().map((c) => c.name);
-
   // state 不一致の原因特定用に十分な情報を出す。
   // state 値自体は CSRF トークンなので完全値を出さず、プレフィックス 8 文字と長さのみ記録する。
+  // セッション系 Cookie の存在情報がログ閲覧権限者に渡らないよう、Cookie 名一覧の代わりに
+  // 認証フローに関係するキーの存在のみを bool で記録する。
   console.log("[auth/callback] received", {
     hasCode: !!code,
     codeLen: code?.length,
@@ -52,7 +52,8 @@ export async function GET(request: Request) {
     hasSavedState: !!savedState,
     savedStatePrefix: savedState?.slice(0, 8),
     stateMatch: !!state && !!savedState && timingSafeEqual(state, savedState),
-    existingCookies: cookieNames,
+    hasSessionCookie: !!cookieStore.get("session_id")?.value,
+    hasAccessToken: !!cookieStore.get("access_token")?.value,
     userAgent: request.headers.get("user-agent")?.slice(0, 80),
     host: request.headers.get("host"),
     origin: request.headers.get("origin"),

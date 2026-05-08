@@ -13,6 +13,44 @@
 
 ---
 
+## POST /api/auth/dbsc/register
+
+DBSC（Device Bound Session Credentials）公開鍵登録スタブ。TPM 鍵バインドの本実装が完了するまで、現在は受け付けるだけのスケルトン。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true }
+```
+
+### エラー一覧
+
+| ステータス | code | 説明   |
+| ---------- | ---- | ------ |
+| `401`      | —    | 未認証 |
+
+---
+
+## POST /api/auth/dbsc/challenge
+
+DBSC チャレンジ発行・検証スタブ。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true }
+```
+
+### エラー一覧
+
+| ステータス | code | 説明   |
+| ---------- | ---- | ------ |
+| `401`      | —    | 未認証 |
+
+---
+
 ## DELETE /api/auth/dbsc/session
 
 DBSC バインド済みデバイスの登録を解除する。`users/{userId}/dbsc-session.json` を R2 から削除する。
@@ -326,6 +364,26 @@ OPML ファイルから複数フィードを一括インポートする。
 | `400`      | `INVALID_DIGEST_LIMIT` | digestLimit が 0〜100 の整数でない          |
 | `404`      | `FEED_NOT_FOUND`       | 指定した feedHash が購読一覧にない          |
 | `404`      | `FEED_GROUP_NOT_FOUND` | 指定した groupId が存在しない               |
+
+---
+
+## POST /api/feeds/refresh
+
+購読中の全フィードを手動で一括リフレッシュする。2 分クールダウンあり。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true }
+```
+
+### エラー一覧
+
+| ステータス | code       | 説明               |
+| ---------- | ---------- | ------------------ |
+| `401`      | —          | 未認証             |
+| `429`      | `COOLDOWN` | 2 分クールダウン中 |
 
 ---
 

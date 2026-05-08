@@ -6,11 +6,28 @@
 
 - **App.tsx を 1145 行 → 1039 行に削減したよ〜** — Issue #581。`articleViewProps` の 24-dep useMemo を `useArticleViewProps` hook に抽出、オフラインバナー・新着バナー・フォーカスモードオーバーレイを専用コンポーネントに分割してメンテしやすくなったよっ🔧✨
 - **`isBetaAllowed` を `src/lib/beta-allowed.ts` に切り出したよ〜** — Issue #597。`next/*` 依存のない純粋関数として分離したから、Playwright の Node ランナーから直接 import してユニットテストできるようになったよっ🔧✨
+- **`stats/route.ts` のインライン重複を `stats-helpers.ts` に集約したよ〜** — Issue #599。`getMondayIso` と `computeCurrentStreak` がインライン実装と二重に書かれてたから、`stats-helpers.ts` の関数を直接呼ぶように統一したよっ。テストカバレッジも自動で route.ts 側に効くようになって、一石二鳥だよっ🔧✨
 
 ### バグ修正っ
 
 - **JWKS フェッチ失敗時にステールキャッシュを使うよう修正したよ〜** — キャッシュ期限切れのタイミングで JWKS サーバーが一時的に落ちてると `keyCache` だけクリアされて「トークン検証失敗」が全ユーザーに出ちゃってたの修正！フェッチ失敗時は古いキャッシュで継続して認証が全断しないようになったよっ🔧💡
 - **`isBetaAllowed` 拒否時に sub の調査ログを出すようにしたよ〜** — Issue #597。Pairwise Sub ID を更新したのにベータ制限で弾かれる問題を切り分けやすくするため、`BETA_ALLOWED_SUBS` のリストに含まれない sub が来たら `subPrefix`（先頭16文字）と `subLength` を `console.warn` で出力するようにしたよ！sub 全体は出さないからログ流出しても安全だよっ🔧🔒
+
+### セキュリティ対策っ
+
+- **auth ルートで Cookie 名一覧をログ出力していた箇所を bool に変えたよ〜** — Issue #601。`/api/auth/login` と `/api/auth/callback` で `existingCookies: cookieNames` として全 Cookie 名をログに出してたんだけど、Cloudflare Workers ログ閲覧権限者に session_id / access_token の存在情報が筒抜けだったの！代わりに `hasSessionCookie` / `hasAccessToken` のフラグだけ残して、必要な情報量はそのままで漏洩リスクをカットしたよ〜🔒💡
+
+### アクセシビリティ改善っ
+
+- **Modal 閉じた時に元のフォーカス要素に戻すようにしたよ〜** — Issue #602。WCAG 2.4.3 (Focus Order) 違反の状態で、モーダルを閉じるとフォーカスが body に飛んでページ先頭に戻されちゃってたの修正！モーダル開くときの `document.activeElement` を `useRef` に退避して、クリーンアップで戻すようにしたよ。Modal をベースにする 10 件以上のモーダル全部に効くよっ🎀✨
+
+### パフォーマンス改善っ
+
+- **ArticleList で `feeds.find()` を `feedMap.get()` に置き換えたよ〜** — Issue #600。ギャラリービューで右クリック・ロングプレスするたびに 1000 フィード分の線形探索（O(n)）が走ってたのを `Map.get()` の O(1) にしたよ〜。`feedMap` を `Map<feedHash, Feed>` に拡張してフィード全体を引けるようにしたよっ⚡🚀
+
+### ドキュメント整備っ
+
+- **`RSSHUB_INSTANCE_URL` / `RSSHUB_ACCESS_KEY` / `CLOUDFLARE_ACCOUNT_ID` を architecture.md に追記したよ〜** — Issue #604。`src/lib/rsshub.ts` と `src/lib/content.ts` で参照してたのに「Cloudflare Workers シークレット」セクションに載ってなくて新規セットアップでハマるポイントだったの！`POST /api/feeds/refresh` と `POST /api/auth/dbsc/{register,challenge}` も api-spec.md に追記してエンドポイント仕様の網羅性を上げたよっ📚✨
 
 ### セキュリティ対策っ
 
