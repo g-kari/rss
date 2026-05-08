@@ -502,4 +502,59 @@ test.describe("parseFeed — サムネイル画像の優先順位 (Issue #117)",
     const result = parseFeed(xml);
     expect(result.items[0].ogImage).toBe("https://example.com/thumb.jpg");
   });
+
+  test('description 内の <video poster="..."> は <img> より優先される（#645）', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Tweet</title>
+      <link>https://x.com/user/status/1</link>
+      <guid>1</guid>
+      <description><![CDATA[テキスト本文<br><img src="https://example.com/avatar.jpg"><video src="https://example.com/video.mp4" poster="https://example.com/poster.jpg"></video>]]></description>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe("https://example.com/poster.jpg");
+  });
+
+  test("description 内に <video poster> がなければ <img> にフォールバックする", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Tweet</title>
+      <link>https://x.com/user/status/2</link>
+      <guid>2</guid>
+      <description><![CDATA[テキスト本文<img src="https://example.com/avatar.jpg">]]></description>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe("https://example.com/avatar.jpg");
+  });
+
+  test("media:content (image) が存在する場合は description 内 <video poster> より優先される", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:media="http://search.yahoo.com/mrss/" version="2.0">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Article</title>
+      <link>https://example.com/a1</link>
+      <guid>a1</guid>
+      <media:content url="https://example.com/media.jpg" medium="image"/>
+      <description><![CDATA[<video poster="https://example.com/poster.jpg"></video>]]></description>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].ogImage).toBe("https://example.com/media.jpg");
+  });
 });
