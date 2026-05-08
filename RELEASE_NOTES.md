@@ -16,6 +16,8 @@
 
 ### パフォーマンス改善っ
 
+- **`PATCH /api/feeds/:id` の R2 読み込みを並列化したよ〜** — Issue #578。`readUserSubscriptions` と `readFeedMeta` を `Promise.all` で同時取得するようにしたよ〜。`groupId` 指定時は `readFeedGroups` も一緒に並列取得してレイテンシ削減できたよっ⚡🚀
+- **`totalUnread` の計算を 200ms デバウンスしたよ〜** — Issue #580。既読にするたびに毎回フルスキャンしてたのをデバウンスして、タブタイトルとファビコンバッジの更新が滑らかになったよっ⚡💡
 - **`useFeedData`・`useFeedGroups`・`useCollections` に AbortController を追加したよ〜** — Issue #561。アンマウント後もフェッチが続いてネットワークリソースが無駄になってたのを修正したよっ⚡💡
 
 ### 激アツ新機能っ
