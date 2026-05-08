@@ -69,7 +69,7 @@ export default function SidebarFooter({
   }, [moreOpen]);
 
   return (
-    <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-1 overflow-x-auto [&>*]:shrink-0">
+    <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-1">
       {user.picture ? (
         <img
           src={buildImageProxyUrl(user.picture)}
