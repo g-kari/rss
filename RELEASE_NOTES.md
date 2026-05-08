@@ -10,6 +10,7 @@
 
 - **App.tsx を 1145 行 → 1039 行に削減したよ〜** — Issue #581。`articleViewProps` の 24-dep useMemo を `useArticleViewProps` hook に抽出、オフラインバナー・新着バナー・フォーカスモードオーバーレイを専用コンポーネントに分割してメンテしやすくなったよっ🔧✨
 - **`isBetaAllowed` を `src/lib/beta-allowed.ts` に切り出したよ〜** — Issue #597。`next/*` 依存のない純粋関数として分離したから、Playwright の Node ランナーから直接 import してユニットテストできるようになったよっ🔧✨
+- **dev 認証バイパスのロジックを `src/lib/dev-auth-bypass.ts` に DRY 化したよ〜** — Issue #609。`getAuthSession` と `/api/auth/me` で重複してた env 読み出し・正規表現・fakeProfile 生成を `getDevBypassUserId()` と `buildDevBypassProfile()` の 2 つの純粋関数に集約。`?` キーでヘルプモーダルを開いて `data-popup-open=true → false` を検証する e2e ケースも追加したから、#606 みたいな popup-lock バグが回帰した時に即検出できるよっ🔧✅
 - **`stats/route.ts` のインライン重複を `stats-helpers.ts` に集約したよ〜** — Issue #599。`getMondayIso` と `computeCurrentStreak` がインライン実装と二重に書かれてたから、`stats-helpers.ts` の関数を直接呼ぶように統一したよっ。テストカバレッジも自動で route.ts 側に効くようになって、一石二鳥だよっ🔧✨
 
 ### UX 改善っ

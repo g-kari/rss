@@ -15,6 +15,7 @@ import {
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+import { getDevBypassUserId, buildDevBypassProfile } from "@/lib/dev-auth-bypass";
 
 const AUTH_ME_COOLDOWN_MS = 5 * 1000; // 5秒
 
@@ -40,20 +41,10 @@ async function verifyAndLoad(
 }
 
 export async function GET() {
-  // 開発時の認証バイパス（e2e テスト用）。本番ビルドでは NODE_ENV inline により dead code 化。
-  // src/lib/server-auth.ts の getAuthSession にも同等のバイパスがあり、両方揃って機能する。
-  if (process.env.NODE_ENV !== "production") {
-    const bypassUserId = process.env.DEV_AUTH_BYPASS_USER_ID;
-    if (bypassUserId && /^[A-Za-z0-9_\-@.]{1,128}$/.test(bypassUserId)) {
-      const fakeProfile: UserProfile = {
-        id: bypassUserId,
-        sub: bypassUserId,
-        email: "e2e@test.local",
-        name: "E2E Test User",
-        picture: "",
-      };
-      return NextResponse.json({ user: fakeProfile });
-    }
+  // 開発時の認証バイパス（e2e テスト用）。詳細は `dev-auth-bypass.ts` を参照。
+  const bypassUserId = getDevBypassUserId();
+  if (bypassUserId) {
+    return NextResponse.json({ user: buildDevBypassProfile(bypassUserId) });
   }
 
   const authBaseUrl = process.env.AUTH_BASE_URL!;
