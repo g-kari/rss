@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### セキュリティ対策っ
+
+- **`fast-xml-builder` の脆弱性 2 件を修正したよ〜** — Dependabot alerts。`fast-xml-parser@5.7.2` の依存として入ってた `fast-xml-builder@1.1.5` に高/中の脆弱性 (CVE: 属性値での不要な引用符バイパス + コメント値正規表現バイパス) があったから、`pnpm.overrides` で `fast-xml-builder: ">=1.1.7"` を追加して `1.2.0` に強制更新！🔒 RSS パーサーの 30 件テスト全部 pass で動作確認済みだよ〜🛡️
+
 ### ドキュメント整備っ
 
 - **tsconfig で `.next/dev/types/routes.d.ts` を明示的に除外してビルドエラー再発防止したよ〜** — Issue #646。`.next/dev/types/**/*.ts` include と `.next/dev` exclude の組み合わせで、Next.js が生成する `routes.d.ts` の JSDoc コードフェンス内 TSX サンプルを tsc が誤って構文エラー扱いしてた問題（`error TS1435: Unknown keyword or identifier`）を、Option B 個別ファイル除外で恒久対応！🔧 これで `rm -rf .next` の workaround なしに安定 typecheck できるようになったよ〜✨
