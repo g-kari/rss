@@ -242,6 +242,7 @@ const merged = new Set([...serverSet, ...localSet]);
 - 純粋関数（パーサー・変換・バリデーション）はファイルを直接 import してユニットテスト
 - Cloudflare バインディングに依存するコードは E2E テスト（dev サーバー起動が必要）でカバー
 - テスト名は日本語可: `test('空のHTMLをMarkdown変換すると空文字を返す', ...)`
+- **テスト名・コメントは実装の意図と用語を整合させる**: 例えば `crypto.randomUUID()` で生成される値の検証で「UUID v4」と書くと v4 固有のバリアントビット制約まで含意してしまう。実際の正規表現が UUID 一般形式なら「UUID 形式」と書く。テスト名と実装の用語齟齬は、後続の開発者が仕様を読み誤る原因になる
 - 共通ファクトリは `e2e/helpers/` に配置（例: `makeArticle()`, `makeFeed()`）
 
 ```typescript
