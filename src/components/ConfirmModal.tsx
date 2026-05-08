@@ -30,7 +30,10 @@ export default function ConfirmModal({
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  usePopupLock();
+  // ConfirmModal は親（App.tsx）で常時マウントされ、内部で isOpen を見て表示制御するため、
+  // usePopupLock も isOpen に連動させないとアプリ起動直後から常時ロックが立ってしまい、
+  // カラム幅リサイザー等の `hasOpenPopup` で無効化する UI 要素が操作できなくなる (#606)。
+  usePopupLock(isOpen);
 
   useEffect(() => {
     if (isOpen) {
