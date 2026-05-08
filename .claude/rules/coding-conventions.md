@@ -218,6 +218,48 @@ useEffect(() => {
 
 主な使用箇所: `useReadState`, `useFilteredArticles`, `useKeyboardNav`
 
+## URL 比較は decodeURI で正規化してから
+
+URL の `pathname` を文字列で直接比較すると、**percent-encoding の大文字小文字差異**で意図しない不一致を引き起こす。`%E5` と `%e5` は同じ文字を表すが、ブラウザは仕様上正規化しない。
+
+```typescript
+// NG: 大文字 %E5 と小文字 %e5 で不一致になる
+if (curUrl.pathname === nextUrl.pathname) { ... }
+
+// OK: decodeURI で正規化してから比較
+function normalizePathname(p: string): string {
+  try {
+    return decodeURI(p);
+  } catch {
+    return p.toLowerCase(); // 不正シーケンスは lowercase fallback
+  }
+}
+const curPath = normalizePathname(curUrl.pathname);
+const nextPath = normalizePathname(nextUrl.pathname);
+if (curPath === nextPath) { ... }
+```
+
+**いつ発生するか**: WordPress / canonical URL / RSSHub などで動的生成されたリンクは、入力時点の URL とは異なる percent-encoding 形式を持つことがある。ユーザーがブラウザに直接入力した URL は大文字、HTML 内のリンクは小文字、のような不一致が頻発。
+
+**主な使用箇所**: `src/lib/content.ts#isPaginatedVariant`（everia.club 等のページング検出 #652 で発覚）
+
+## デバッグ: 生 HTML を見る必要があるとき
+
+`WebFetch` は markdown 化された結果を返すため、`<a>` タグの正確な構造や percent-encoding 形式が見えない。**ブラウザを介さず生 HTML を取得**するには：
+
+```bash
+node -e "
+fetch('URL_HERE', { headers: { 'User-Agent': 'Mozilla/5.0' } })
+  .then(r => r.text())
+  .then(html => {
+    const i = html.indexOf('Pages:');
+    if (i >= 0) console.log(html.slice(i, i + 1500));
+  });
+"
+```
+
+特定の HTML フラグメントを `indexOf` で位置探索して周辺を出力する手法が、巨大ページの分析で有効。
+
 ## 大きいコンポーネントの機能別分割パターン
 
 500 行を超えるコンポーネントは機能別にサブコンポーネントへ分離する。プロジェクトに繰り返し現れるパターン：
