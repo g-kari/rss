@@ -17,6 +17,8 @@ interface Props {
   canFetch: boolean;
   ttsText: string;
   onSpeak: (text: string) => void;
+  /** 現在進行中の TTS を即停止する (#661 オートモード OFF 時に呼ぶ) */
+  onTtsStop: () => void;
   onFetch: () => Promise<void>;
   hasNext: boolean;
   onSelectNext?: () => void;
@@ -44,6 +46,7 @@ export default function AutoReadController({
   canFetch,
   ttsText,
   onSpeak,
+  onTtsStop,
   onFetch,
   hasNext,
   onSelectNext,
@@ -53,16 +56,30 @@ export default function AutoReadController({
   const prevPlayingRef = useRef(false);
   const fetchTriggeredRef = useRef<string | null>(null);
   const fetchRetriedRef = useRef<string | null>(null);
+  const onTtsStopRef = useRef(onTtsStop);
+  onTtsStopRef.current = onTtsStop;
   const toast = useToast();
 
   const articleId = article?.id;
 
-  // 記事切替時に fetch トリガーフラグをリセット
+  // 記事切替時に fetch トリガーフラグと prevPlayingRef をリセット
+  // prevPlayingRef を false に戻さないと、前記事完了直後に新記事に遷移したとき
+  // 「prevPlaying=true && currentPlaying=false」で即「完了」と誤判定され、
+  // 次々と記事が連鎖遷移するループの原因になる (#660)。
   useEffect(() => {
-    if (!enabled || !articleId) return;
+    if (!articleId) return;
+    prevPlayingRef.current = false;
+    if (!enabled) return;
     fetchTriggeredRef.current = null;
     fetchRetriedRef.current = null;
   }, [articleId, enabled]);
+
+  // オートモード OFF (停止ボタン押下) 時に現在発話中の TTS も即止める (#661)。
+  // enabled の変化を監視し、false に遷移したら ttsStop を呼ぶ。
+  useEffect(() => {
+    if (enabled) return;
+    onTtsStopRef.current();
+  }, [enabled]);
 
   // (1) 全文取得トリガー（同じ記事で 1 回 + 失敗時 1 リトライ）
   useEffect(() => {
