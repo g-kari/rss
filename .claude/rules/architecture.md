@@ -178,7 +178,6 @@ src/
     useFocusMode.ts          # フォーカスモード制御（focusMode / listFocusMode / window.history 連携 / \\ Shift+\\ Escape キー）— useUIState から分割
     usePWAInstall.ts         # PWA インストールプロンプト管理（beforeinstallprompt event）— useUIState から分割
     usePinnedAndCategories.ts # ピン留めフィード ID と折りたたみカテゴリ名の管理（localStorage 同期）— useUIState から分割
-    useUIState.ts            # UI 状態管理の薄い合成層（サブフックを統合: useThemePreference / useLayoutSettings / useAutoReadSettings / useAccessibilitySettings / useFocusMode / usePWAInstall / usePinnedAndCategories 等）
     useModalState.ts         # App レベルのモーダル状態集約（snoozeTargetId・articleAnnouncement）
     useArticleFilters.ts     # フィルター状態管理（bool/enum/検索/著者/カテゴリ）
     useArticleSorting.ts     # ソート順管理（SortOrder サイクリング）

@@ -21,7 +21,7 @@ import {
   FONT_FAMILY_CYCLE,
   FONT_FAMILY_LABELS,
 } from "../../lib/article-utils";
-import { AUTO_READ_THRESHOLD_CYCLE } from "../../hooks/useUIState";
+import { AUTO_READ_THRESHOLD_CYCLE } from "../../hooks/useAutoReadSettings";
 import { ARTICLE_TTL_DAYS } from "../../lib/article-ttl";
 import { SHARE_TARGETS, type ShareTargetId } from "../article-view/shareTargets";
 import { SettingRow, SegmentGroup, PreviewArea, TTL_OPTIONS } from "./shared";

@@ -2,7 +2,8 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import type { FontFamily, FontSize } from "../types";
-import type { Theme, AutoReadThreshold, WorkersAiModelId } from "../hooks/useUIState";
+import type { Theme } from "../hooks/useThemePreference";
+import type { AutoReadThreshold, WorkersAiModelId } from "../hooks/useAutoReadSettings";
 import type {
   LineHeight,
   ContentWidth,

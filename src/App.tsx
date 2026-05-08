@@ -21,7 +21,15 @@ import { usePushNotifications } from "./hooks/usePushNotifications";
 import { useKeyboardNav } from "./hooks/useKeyboardNav";
 import { useFilteredArticles } from "./hooks/useFilteredArticles";
 import { useReadingHistory } from "./hooks/useReadingHistory";
-import { useUIState } from "./hooks/useUIState";
+import { useThemePreference } from "./hooks/useThemePreference";
+import { useLayoutSettings } from "./hooks/useLayoutSettings";
+import { useAutoReadSettings } from "./hooks/useAutoReadSettings";
+import { useAccessibilitySettings } from "./hooks/useAccessibilitySettings";
+import { useNSFWMode } from "./hooks/useNSFWMode";
+import { useFocusMode } from "./hooks/useFocusMode";
+import { usePWAInstall } from "./hooks/usePWAInstall";
+import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
+import { useEventListener } from "./hooks/useEventListener";
 import { useHasOpenPopup } from "./hooks/usePopupLock";
 import { updateFaviconBadge } from "./lib/favicon";
 import { apiFetch, onApiError } from "./lib/api-fetch";
@@ -58,7 +66,7 @@ import BetaRestrictedPage from "./components/BetaRestrictedPage";
 
 import SkeletonSidebar from "./components/SkeletonSidebar";
 import SkeletonArticleList from "./components/SkeletonArticleList";
-import { getMobilePaneTransform } from "./hooks/useMobilePane";
+import { useMobilePane, getMobilePaneTransform } from "./hooks/useMobilePane";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -83,37 +91,30 @@ export default function App() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  const { theme, toggleTheme } = useThemePreference();
   const {
-    theme,
-    toggleTheme,
+    layout,
+    onChangeLayout,
     fontSize,
     onChangeFontSize,
     fontFamily,
     onChangeFontFamily,
-    layout,
-    onChangeLayout,
-    pinnedFeedIds,
-    togglePinFeed,
-    collapsedCategories,
-    toggleCollapseCategory,
-    mobilePane,
-    setMobilePane,
-    install,
-    showHelp,
-    setShowHelp,
-    showFeedSwitcher,
-    setShowFeedSwitcher,
-    focusMode,
-    toggleFocusMode,
-    listFocusMode,
-    toggleListFocusMode,
-    setListFocusMode,
-    exitFocusMode,
-    nsfwMode,
-    showNSFWAnimation,
-    activateNSFW,
-    deactivateNSFW,
-    onNSFWAnimationComplete,
+    activeFeedView,
+    onChangeActiveFeedView,
+    galleryColumns,
+    onChangeGalleryColumns,
+    galleryCardSize,
+    onChangeGalleryCardSize,
+    galleryMinImagePx,
+    onChangeGalleryMinImagePx,
+    contentWidth,
+    onChangeContentWidth,
+    imageDlFolder,
+    onChangeImageDlFolder,
+    imageDlFolderNsfw,
+    onChangeImageDlFolderNsfw,
+  } = useLayoutSettings();
+  const {
     autoReadEnabled,
     toggleAutoRead,
     autoReadThreshold,
@@ -123,29 +124,44 @@ export default function App() {
     toggleAutoTranslate,
     deduplicateByLink,
     toggleDeduplicateByLink,
-    lineHeight,
-    onChangeLineHeight,
-    contentWidth,
-    onChangeContentWidth,
-    textJustify,
-    onChangeTextJustify,
-    showSettings,
-    setShowSettings,
-    activeFeedView,
-    onChangeActiveFeedView,
-    galleryColumns,
-    onChangeGalleryColumns,
-    galleryCardSize,
-    onChangeGalleryCardSize,
-    galleryMinImagePx,
-    onChangeGalleryMinImagePx,
-    imageDlFolder,
-    onChangeImageDlFolder,
-    imageDlFolderNsfw,
-    onChangeImageDlFolderNsfw,
     aiModel,
     onChangeAiModel,
-  } = useUIState(initialMobilePane);
+  } = useAutoReadSettings();
+  const { lineHeight, onChangeLineHeight, textJustify, onChangeTextJustify } =
+    useAccessibilitySettings();
+  const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
+  const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
+    useNSFWMode();
+  const { pinnedFeedIds, togglePinFeed, collapsedCategories, toggleCollapseCategory } =
+    usePinnedAndCategories();
+  const {
+    focusMode,
+    listFocusMode,
+    toggleFocusMode,
+    toggleListFocusMode,
+    setListFocusMode,
+    exitFocusMode,
+  } = useFocusMode();
+  const install = usePWAInstall();
+
+  const [showHelp, setShowHelp] = useState(false);
+  const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // モーダル系のグローバルキー: ? でヘルプトグル、Escape で閉じる
+  // フォーカスモードの Escape は useFocusMode 側で別途処理される（責務分離）
+  useEventListener(
+    "keydown",
+    (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "?") setShowHelp((v) => !v);
+      if (e.key === "Escape") {
+        setShowHelp(false);
+        setShowFeedSwitcher(false);
+      }
+    },
+    document,
+  );
 
   const toast = useToastState();
   const { confirm, confirmModalProps } = useConfirm();
