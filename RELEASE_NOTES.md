@@ -19,6 +19,10 @@
 - **要約モデル不可時のエラーメッセージを修正したよ〜** — Issue #610。「ストレージ空き容量を確認してください」だけだとミスリーディング（実際はGPU・OS バージョンなどでも `model-unavailable` reason になる）だったから、ハードウェア要件の確認項目を列挙して、`chrome://on-device-internals` の確認導線も追加したよ〜🔧🎀
 - **フィード属性変更（NSFW/優先度/グループ等）の失敗が無言で消えちゃう問題を直したよ〜** — Issue #603。`useFeedPatch` の楽観的更新がサーバーで失敗するとロールバックはされてたけど toast 通知がなかったから、ユーザー視点では「操作したのに元に戻った」理由が分からなかったの！`onError` コールバックを追加して `toast.error("変更の保存に失敗しました")` で即通知するようにしたよっ🎀💡
 
+### テスト追加っ
+
+- **`dev-auth-bypass.ts` と `storage.ts` のユニットテストを追加したよ〜** — Issue #612。`getDevBypassUserId` の正規表現境界値（128 文字ぴったり / 129 文字超 / 許可外文字）と `buildDevBypassProfile` の戻り値構造、`toggleSetItem` の Set トグル動作（追加・削除・空 Set 起点・immutable）と deferred-save の冪等性・複数キー独立性を 18 ケースで網羅したよ〜。`rate-limit.ts` の `checkSlidingWindow` テストは `next/server` 依存問題で純粋関数化リファクタが必要なため #618 で別途対応するよ✅✨
+
 ### アクセシビリティ改善っ
 
 - **NewArticleBanner の button 入れ子を解消したよ〜** — Issue #611。HTML 仕様違反（インタラクティブ要素の入れ子禁止）でスクリーンリーダーから閉じるボタンが文脈不明になってたから、外側を `role="status"` の div に変えて、スクロールトップ用と閉じる用ボタンを兄弟関係に並べたよ。Tab 順もちゃんと整ったっ🎀✨

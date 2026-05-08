@@ -595,6 +595,8 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `auth-utils.spec.ts`                  | `src/lib/auth.ts` — JWT 検証・トークン交換                                                                            |
 | `auth.spec.ts`                        | `/api/auth/*` エンドポイント統合テスト                                                                                |
 | `beta-allowed.spec.ts`                | `src/lib/beta-allowed.ts` — BETA_ALLOWED_SUBS チェック・拒否時の調査ログ                                              |
+| `dev-auth-bypass-unit.spec.ts`        | `src/lib/dev-auth-bypass.ts` — getDevBypassUserId / buildDevBypassProfile の境界値                                    |
+| `storage.spec.ts`                     | `src/lib/storage.ts` — toggleSetItem の Set トグル動作・deferred-save の冪等性・Node 環境での安全性                   |
 | `browser-summarizer.spec.ts`          | `src/lib/browser-summarizer.ts` — ブラウザネイティブ要約 API                                                          |
 | `browser-translator.spec.ts`          | `src/lib/browser-translator.ts` — Chrome Translator API 検出                                                          |
 | `cache-control.spec.ts`               | `/api/articles` の Cache-Control ヘッダー                                                                             |
