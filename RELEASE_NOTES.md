@@ -2,6 +2,10 @@
 
 ## 2026-05-08 (latest)
 
+### バグ修正っ
+
+- **ギャラリービューで画像展開失敗時に OGP/サムネが表示されるようにしたよ〜** — Issue #632。`isFetchFailed` 時は「取得失敗」プレースホルダだけになって、せっかく取得済みの OGP 画像やサムネ情報まで消えてた問題を修正！背景に半透明で OGP/サムネを表示しつつ、その上に「取得失敗」アイコンとリトライボタンを重ねる UI に変更したよ〜🖼️💡
+
 ### リファクタリングっ
 
 - **useUIState を完全廃止したよ〜（Phase 2）** — Issue #629。App.tsx で 9 サブフック（`useThemePreference` / `useLayoutSettings` / `useAutoReadSettings` / `useAccessibilitySettings` / `useMobilePane` / `useNSFWMode` / `useFocusMode` / `usePWAInstall` / `usePinnedAndCategories`）を直接並列呼び出しする形に変更。中間合成層を取り除いて純減 222 行（useUIState.ts 239 行削除 + App.tsx +22）。`?` / Escape の keydown ハンドラは App.tsx に直接配置して、フォーカスモード Escape は useFocusMode 側で独立処理する責務分離が綺麗に通ったよ〜🔧✨
