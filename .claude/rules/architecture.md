@@ -156,6 +156,7 @@ src/
     BetaRestrictedPage.tsx   # ベータ制限ページ（未許可ユーザー向け表示）
     LandingPage.tsx          # 未ログイン時のランディングページ
     article-view/            # ArticleView 補助コンポーネント群（ヘッダー・本文・AI パネル・メモ・モーダル・ナビゲーション・インラインナビ・フィルタメニュー・ギャラリー・共有・スヌーズ・タグエディタ等）
+    user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel / FeedManagementTabPanel / ImportExportTabPanel / shared）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
@@ -240,6 +241,7 @@ src/
     useGlobalFilterAutoRead.ts # globalFilter に引っかかった記事を自動既読にする（フィルター除外記事の未読カウント混入防止）
     useAutoLoadMoreArticles.ts # フィルター後の表示不足時にサーバーから過去記事を自動取得する（最大3回・無限ロード防止）
     useEngagementToggles.ts  # ブックマーク・後で読む・いいねのトグルハンドラー生成（トグルとエンゲージメント記録を統合）
+    useHeaderShareTargets.ts # ArticleHeader / UserSettingsModal で使用するシェアターゲット設定フック
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()
@@ -314,6 +316,10 @@ src/
     read-state-sync-api.ts   # ReadState のサーバー通信（fetchReadState・saveReadState）
     sw-cache.ts              # Service Worker キャッシュ管理
     type-guards.ts           # TypeScript 型ガード関数
+    ai-models.ts             # Workers AI モデル定数・`isWorkersAiModelId` 型ガード
+    article-ui-helpers.ts    # React 依存テキストハイライト関数（クライアント専用）
+    dev-log.ts               # 開発環境専用 `devError` ラッパー
+    stats-helpers.ts         # 統計計算ヘルパー（`toDateStr` / `buildDayList`）
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
 ```
@@ -568,30 +574,38 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `article-search.spec.ts`              | `src/hooks/useFullTextSearch` 経由の全文検索                                                                          |
 | `article-ttl.spec.ts`                 | `src/lib/article-ttl.ts` — TTL 管理純粋関数                                                                           |
 | `article-utils.spec.ts`               | `src/lib/article-utils.ts` — readingTime / timeAgo                                                                    |
+| `articles-save.spec.ts`               | `app/api/articles/save/route.ts` — 記事手動保存 API                                                                   |
 | `auth-headers.spec.ts`                | 認証ヘッダー処理                                                                                                      |
 | `auth-utils-edge.spec.ts`             | JWT 検証エッジケース                                                                                                  |
 | `auth-utils.spec.ts`                  | `src/lib/auth.ts` — JWT 検証・トークン交換                                                                            |
 | `auth.spec.ts`                        | `/api/auth/*` エンドポイント統合テスト                                                                                |
+| `browser-summarizer.spec.ts`          | `src/lib/browser-summarizer.ts` — ブラウザネイティブ要約 API                                                          |
 | `browser-translator.spec.ts`          | `src/lib/browser-translator.ts` — Chrome Translator API 検出                                                          |
 | `cache-control.spec.ts`               | `/api/articles` の Cache-Control ヘッダー                                                                             |
 | `cache-helper.spec.ts`                | `src/lib/cache-helper.ts` — Cloudflare Cache API ヘルパー                                                             |
 | `cascade-overflow.spec.ts`            | `src/lib/shared-feed.ts` — 500 件超えページカスケード                                                                 |
 | `cron-fetch.spec.ts`                  | `src/cron/fetch.ts` — buildArticle / applyFeedSuccess / applyFeedRateLimit / applyFeedError / buildBatchedPushPayload |
 | `clip.spec.ts`                        | `src/lib/clip.ts` — SingleFile POST バリデーション                                                                    |
+| `collections-api.spec.ts`             | `app/api/collections/**/route.ts` — コレクション CRUD API                                                             |
+| `concurrency.spec.ts`                 | `src/lib/concurrency.ts` — pMap 並行処理                                                                              |
 | `content-extraction.spec.ts`          | `src/lib/content.ts` — 本文抽出 (Readability + regex)                                                                 |
 | `cron-rate-limit.spec.ts`             | `src/lib/rate-limit.ts` — スライディングウィンドウ制限                                                                |
 | `csrf-origin.spec.ts`                 | `src/lib/csrf.ts` — CSRF トークン・Origin 検証                                                                        |
 | `dbsc.spec.ts`                        | `src/lib/dbsc.ts` — チャレンジ生成・ヘッダー構築・署名検証                                                            |
 | `engagement-score.spec.ts`            | `src/lib/engagement-score.ts` — エンゲージメントスコア計算                                                            |
+| `embed-utils.spec.ts`                 | `src/lib/embed-utils.ts` — iframe embed 処理ユーティリティ                                                            |
 | `export-markdown.spec.ts`             | `src/lib/export-markdown.ts` — Markdown エクスポート                                                                  |
 | `feed-discovery.spec.ts`              | `src/lib/feed-discovery.ts` — RSS 自動探索                                                                            |
 | `feed-group-drop.spec.ts`             | `src/lib/feed-group-drop.ts` — D&D 競合解決ロジック                                                                   |
+| `feed-groups-api.spec.ts`             | `app/api/feed-groups/**/route.ts` — フィードグループ CRUD API                                                         |
+| `feeds-crud.spec.ts`                  | `app/api/feeds/**/route.ts` — フィード CRUD API                                                                       |
 | `feeds-validation.spec.ts`            | `src/lib/validation.ts#isValidCookieHeader` — Cookie バリデーション                                                   |
 | `fetch-article-content-clamp.spec.ts` | `src/lib/fetch-article-content.ts` — コンテンツクランプ                                                               |
 | `full-text-search.spec.ts`            | `src/lib/full-text-search.ts` — クエリパーサー                                                                        |
 | `html-post-processor.spec.ts`         | `src/lib/html-post-processor.ts` — HTML 後処理パイプライン                                                            |
 | `html-to-markdown.spec.ts`            | `src/lib/html-to-markdown.ts` — HTML → Markdown 変換                                                                  |
 | `image-extractor.spec.ts`             | `src/lib/image-extractor.ts` — 画像 URL 抽出                                                                          |
+| `image-mime.spec.ts`                  | `src/lib/image-mime.ts` — 画像 MIME タイプ検証                                                                        |
 | `image-proxy-security.spec.ts`        | `src/lib/image-proxy-security.ts` — プロキシリクエスト検証                                                            |
 | `image-proxy-url.spec.ts`             | `src/lib/image-proxy-url.ts` — プロキシ URL ビルダー                                                                  |
 | `json-feed.spec.ts`                   | JSON Feed パース                                                                                                      |
@@ -609,15 +623,20 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `popup-lock.spec.ts`                  | `src/lib/popup-lock.ts` — ロックライフサイクル                                                                        |
 | `push-batch.spec.ts`                  | `src/lib/web-push.ts` — Web Push バッチ送信                                                                           |
 | `push-config.spec.ts`                 | `src/lib/push-silent-hours.ts` — サイレント時間帯判定・disabledFeeds フィルタリング                                   |
+| `push-api.spec.ts`                    | `app/api/push/**/route.ts` — Push 通知 API                                                                            |
 | `article-filter-digest.spec.ts`       | `src/lib/article-filter.ts` — digestLimit per-feed フィルタリング                                                     |
 | `rate-limit-serialized.spec.ts`       | `src/lib/serialize-async.ts` + レートリミット                                                                         |
+| `read-state-api.spec.ts`              | `app/api/read-state/route.ts` — 既読状態 API                                                                          |
 | `read-state-merge.spec.ts`            | `src/lib/read-state-merge.ts` — 状態マージ純粋関数                                                                    |
 | `read-state-storage.spec.ts`          | `src/lib/read-state-storage.ts` — localStorage 永続化                                                                 |
 | `reader-settings.spec.ts`             | `src/lib/reader-settings.ts` — リーダー設定バリデーション                                                             |
 | `reading-progress.spec.ts`            | `src/lib/reading-progress.ts` — 読書進捗計算                                                                          |
 | `recommendation.spec.ts`              | `src/lib/recommendation.ts` — `sanitizeForPrompt` / `isCacheValid`                                                    |
 | `refresh-tokens.spec.ts`              | `src/lib/auth.ts` — リフレッシュトークンフロー                                                                        |
+| `regex-extractor.spec.ts`             | `src/lib/regex-extractor.ts` — 正規表現ベース本文抽出                                                                 |
+| `retry-after.spec.ts`                 | `src/lib/retry-after.ts` — Retry-After ヘッダーパース                                                                 |
 | `rsshub.spec.ts`                      | `src/lib/rsshub.ts` — RSSHub URL 変換                                                                                 |
+| `sanitize-dompurify.spec.ts`          | 調査コード（dompurify Workers 非対応調査、無効化済み）                                                                |
 | `sanitize-for-prompt.spec.ts`         | `src/lib/recommendation.ts#sanitizeForPrompt`                                                                         |
 | `sanitize-html.spec.ts`               | `src/lib/html.ts#sanitizeHtml`                                                                                        |
 | `serialize-error.spec.ts`             | `src/lib/serialize-error.ts` — エラーシリアライズ                                                                     |
@@ -628,6 +647,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `tag-validation.spec.ts`              | `src/lib/validation.ts#parseTagIds` — タグバリデーション                                                              |
 | `translate-html.spec.ts`              | `src/lib/translate-html.ts` — HTML 内テキスト翻訳                                                                     |
 | `url-ssrf.spec.ts`                    | `src/lib/url.ts` — SSRF 対策 URL バリデーション                                                                       |
+| `validation-functions.spec.ts`        | `src/lib/validation.ts` — バリデーション純粋関数                                                                      |
 | `xml-parser.spec.ts`                  | `src/lib/xml-parser.ts` — RSS / Atom パーサー                                                                         |
 
 ### カバレッジ未対応の重要機能
