@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Spinner from "./Spinner";
+import { useToast } from "@/contexts/ToastContext";
 
 interface Props {
   onLoad: () => Promise<void>;
@@ -12,8 +13,11 @@ export default function LoadMoreButton({ onLoad }: Props) {
   const loadingRef = useRef(false);
   const onLoadRef = useRef(onLoad);
   const containerRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
+  const toastRef = useRef(toast);
 
   onLoadRef.current = onLoad;
+  toastRef.current = toast;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -24,12 +28,20 @@ export default function LoadMoreButton({ onLoad }: Props) {
         if (entries[0].isIntersecting && !loadingRef.current) {
           loadingRef.current = true;
           setLoading(true);
-          onLoadRef.current().finally(() => {
-            if (!cancelled) {
-              loadingRef.current = false;
-              setLoading(false);
-            }
-          });
+          onLoadRef
+            .current()
+            .catch((err) => {
+              if (!cancelled) {
+                console.error("[LoadMoreButton] onLoad failed", err);
+                toastRef.current.error("過去記事の取得に失敗しました");
+              }
+            })
+            .finally(() => {
+              if (!cancelled) {
+                loadingRef.current = false;
+                setLoading(false);
+              }
+            });
         }
       },
       { rootMargin: "600px" },
@@ -60,6 +72,9 @@ export default function LoadMoreButton({ onLoad }: Props) {
           setLoading(true);
           try {
             await onLoad();
+          } catch (err) {
+            console.error("[LoadMoreButton] onLoad failed", err);
+            toast.error("過去記事の取得に失敗しました");
           } finally {
             loadingRef.current = false;
             setLoading(false);
