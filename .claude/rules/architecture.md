@@ -225,7 +225,7 @@ src/
     useEngagementEntries.ts  # エンゲージメント生エントリ lazy fetch（フィード別ドリルダウン用）
     useGalleryAutoRead.ts    # ギャラリーレイアウトでスクロール通過した記事を自動既読にする（IntersectionObserver + MutationObserver）
     useGallerySwipeNav.ts    # モバイルギャラリーの横スワイプでカード間スクロールナビゲーション
-    useGestureNav.ts         # スワイプ・ホイール・ドラッグによる前後記事ナビゲーション（横スクロール子要素は除外）
+    useGestureNav.ts         # スワイプ・ホイール・ドラッグ・PC クリックによる前後記事ナビゲーション（横スクロール子要素は除外）
     useReadingProgress.ts    # 記事読書進捗トラッキング（IntersectionObserver + localStorage 永続化・復元）
     useArticleHighlight.ts   # 記事本文テキストのハイライト管理（アノテーション保存・復元）
     useArticleNote.ts        # 記事ごとの個人メモ編集・自動保存（ReadState.notes と同期、最大 2000 文字）
@@ -278,6 +278,7 @@ src/
     embed-utils.ts           # iframe embed 処理ユーティリティ
     engagement-score.ts      # エンゲージメントスコア計算ロジック
     auto-read.ts             # オートモードの状態遷移判定純粋関数（isAutoReadFinished / shouldTriggerAutoFetch / shouldStartAutoSpeak）
+    inline-nav.ts            # インラインナビ領域クリック位置判定純粋関数（whichSideClicked）
     article-filter.ts        # 記事フィルタリングロジック (feedId / 日付 / キーワード / クエリ)
     keyword-filter.ts        # キーワードフィルタリングマッチング（正規表現対応）
     linkedom-types.ts        # linkedom DOM 操作用の共有型定義（LDElement / LDDocument）
@@ -599,6 +600,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `article-search.spec.ts`              | `src/hooks/useFullTextSearch` 経由の全文検索                                                                          |
 | `article-ttl.spec.ts`                 | `src/lib/article-ttl.ts` — TTL 管理純粋関数                                                                           |
 | `auto-read.spec.ts`                   | `src/lib/auto-read.ts` — オートモード状態遷移判定純粋関数                                                             |
+| `inline-nav-click.spec.ts`            | `src/lib/inline-nav.ts` — インラインナビ クリック位置判定純粋関数                                                     |
 | `article-utils.spec.ts`               | `src/lib/article-utils.ts` — readingTime / timeAgo                                                                    |
 | `articles-save.spec.ts`               | `app/api/articles/save/route.ts` — 記事手動保存 API                                                                   |
 | `auth-headers.spec.ts`                | 認証ヘッダー処理                                                                                                      |
