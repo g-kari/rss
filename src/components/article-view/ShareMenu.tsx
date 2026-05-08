@@ -80,7 +80,12 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                   role="menuitem"
                   onClick={() => {
                     setOpen(false);
-                    navigator.share({ url: article.link!, title: article.title }).catch(() => {});
+                    navigator.share({ url: article.link!, title: article.title }).catch((err) => {
+                      // ユーザーキャンセルは無視（AbortError は意図した中断）
+                      if (err instanceof DOMException && err.name === "AbortError") return;
+                      console.error("[ShareMenu] navigator.share failed", err);
+                      toast.error("シェアに失敗しました");
+                    });
                   }}
                   className={MENU_ITEM_CLS}
                 >
