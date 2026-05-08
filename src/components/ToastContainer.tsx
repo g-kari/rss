@@ -30,9 +30,13 @@ export default function ToastContainer() {
 
   if (toasts.length === 0) return null;
 
+  // undo トーストは「元に戻す」ボタンの存在を SR にも伝えるため assertive + atomic に昇格させる (#611)
+  const hasUndoToast = toasts.some((t) => t.type === "undo");
+
   return createPortal(
     <div
-      aria-live="polite"
+      aria-live={hasUndoToast ? "assertive" : "polite"}
+      aria-atomic="true"
       className="fixed bottom-4 right-4 z-50 flex flex-col-reverse gap-2 pointer-events-none"
     >
       {toasts.map((toast) => (

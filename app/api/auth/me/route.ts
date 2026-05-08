@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
-import { r2Get } from "@/lib/r2";
+import { r2Get, sha256Hex } from "@/lib/r2";
 import {
   isBetaAllowed,
   setAccessTokenCookies,
@@ -57,10 +57,12 @@ export async function GET() {
     return NextResponse.json({ user: null });
   }
 
-  // セッション ID または アクセストークン を持つリクエストにのみレートリミットを適用
+  // セッション ID または アクセストークン を持つリクエストにのみレートリミットを適用。
+  // access_token (JWT) を直接 KV キーに連結すると 512 バイト上限超過と JWT 利用記録の
+  // 永続化リスクがあるため、SHA-256 ハッシュ (64 文字) に変換する (#613)。
   const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
   const token = cookieStore.get("access_token")?.value;
-  const rateLimitId = sessionId ?? token;
+  const rateLimitId = sessionId ?? (token ? await sha256Hex(token) : undefined);
   if (rateLimitId) {
     const limited = await checkAndUpdateCooldown(
       env.RATE_LIMIT,

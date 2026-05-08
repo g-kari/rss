@@ -139,7 +139,7 @@ export async function bindDbscToServerSession(
 
 /** inflightRefresh エントリの TTL（ミリ秒）*/
 const INFLIGHT_TTL_MS = 30_000;
-/** inflightRefresh の最大サイズ（超過時は全クリア）*/
+/** inflightRefresh の最大サイズ（超過時は最古エントリを 1 件削除）*/
 const INFLIGHT_MAX_SIZE = 100;
 
 type InflightEntry = { promise: Promise<RefreshResult>; ts: number };
@@ -149,17 +149,28 @@ const inflightRefresh = new Map<string, InflightEntry>();
 
 /**
  * 古い inflight エントリを削除する。
- * - Map サイズが INFLIGHT_MAX_SIZE を超えた場合は全クリア
  * - INFLIGHT_TTL_MS 以上前のエントリを削除
+ * - サイズが INFLIGHT_MAX_SIZE を超える場合は最古エントリを 1 件だけ削除する
+ *
+ * 全クリアにすると進行中の Promise への参照が消え、deduplication が機能しなくなり、
+ * 同一 refreshToken で複数の並行 refresh が発生して使い捨てトークンの 2 回使用 →
+ * セッション無効化を誘発するリスクがあるため、個別削除で deduplication を保護する (#613)。
  */
 function cleanupInflight(): void {
-  if (inflightRefresh.size > INFLIGHT_MAX_SIZE) {
-    inflightRefresh.clear();
-    return;
-  }
   const cutoff = Date.now() - INFLIGHT_TTL_MS;
   for (const [key, entry] of inflightRefresh) {
     if (entry.ts < cutoff) inflightRefresh.delete(key);
+  }
+  if (inflightRefresh.size > INFLIGHT_MAX_SIZE) {
+    let oldestKey: string | null = null;
+    let oldestTs = Infinity;
+    for (const [key, entry] of inflightRefresh) {
+      if (entry.ts < oldestTs) {
+        oldestTs = entry.ts;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey !== null) inflightRefresh.delete(oldestKey);
   }
 }
 
