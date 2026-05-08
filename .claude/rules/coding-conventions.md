@@ -218,6 +218,35 @@ useEffect(() => {
 
 主な使用箇所: `useReadState`, `useFilteredArticles`, `useKeyboardNav`
 
+## dev / e2e 限定エンドポイントの二重ガード
+
+`/api/test/seed` のようなテスト inject 系エンドポイントを本番に絶対漏らさないために、Route Handler の冒頭で **二重ガード** を行う。
+
+```typescript
+// app/api/test/seed/route.ts
+import { getDevBypassUserId } from "@/lib/dev-auth-bypass";
+
+function notFound() {
+  return NextResponse.json({ error: "Not Found" }, { status: 404 });
+}
+
+export async function POST(req: NextRequest) {
+  // ガード 1: production ビルドでは Next.js が NODE_ENV を inline するため
+  // この比較式が `false` 固定となり、以降のコードは tree-shaking で dead code 化される
+  if (process.env.NODE_ENV === "production") return notFound();
+
+  // ガード 2: dev でも DEV_AUTH_BYPASS_USER_ID が未設定なら 404
+  const userId = getDevBypassUserId();
+  if (!userId) return notFound();
+
+  // ... seed ロジック
+}
+```
+
+**なぜ二重ガード**: ガード 1（NODE_ENV）は production ビルドで dead code 化を保証する。ガード 2（getDevBypassUserId）は staging などの非 production 環境でも誤って公開しないための実行時安全網。
+
+主な使用箇所: `app/api/test/seed/route.ts`（e2e テスト用 R2 シード）
+
 ## ref vs state の使い分け（同期チェック vs useEffect 再実行）
 
 「外部からの一時的中断 → 自動回復」シナリオ（429 クールダウン後の再開、スリープからの復帰など）では **ref だけでは不十分**。`useRef` は React 再レンダーをトリガーしないため、ref に「期限値」を書き込んでも `useEffect` は再実行されない。
