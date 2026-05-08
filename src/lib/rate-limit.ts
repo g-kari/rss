@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-error";
 import { serialized } from "@/lib/serialize-async";
+import { evaluateSlidingWindow } from "@/lib/rate-limit-logic";
 
 export async function checkAndUpdateCooldown(
   kv: KVNamespace,
@@ -38,13 +39,12 @@ export async function checkSlidingWindow(
   { failClosed = false }: { failClosed?: boolean } = {},
 ): Promise<NextResponse | null> {
   return serialized(key, async () => {
-    const now = Date.now();
-    let calls: number[] = [];
+    let stored: number[] = [];
     try {
       const raw = await kv.get(key);
       if (raw) {
         try {
-          calls = JSON.parse(raw) as number[];
+          stored = JSON.parse(raw) as number[];
         } catch {
           /* corrupted KV data — reset */
         }
@@ -62,21 +62,18 @@ export async function checkSlidingWindow(
       console.error("[rate-limit] checkSlidingWindow: KV get failed", err);
       return null;
     }
-    const recent = calls.filter((t) => now - t < windowMs);
-    if (recent.length >= maxCalls) {
-      const oldest = Math.min(...recent);
-      const retryAfter = Math.ceil((windowMs - (now - oldest)) / 1000);
+    const result = evaluateSlidingWindow(Date.now(), stored, windowMs, maxCalls);
+    if (!result.allowed) {
       const res = apiError("Too many requests", 429, {
         code: "RATE_LIMITED",
         retryable: true,
-        retryAfter,
+        retryAfter: result.retryAfterSec,
       });
-      res.headers.set("Retry-After", String(retryAfter));
+      res.headers.set("Retry-After", String(result.retryAfterSec ?? 60));
       return res;
     }
-    recent.push(now);
     try {
-      await kv.put(key, JSON.stringify(recent), {
+      await kv.put(key, JSON.stringify(result.recent), {
         expirationTtl: Math.max(60, Math.ceil(windowMs / 1000)),
       });
     } catch (err) {

@@ -295,6 +295,7 @@ src/
     push-silent-hours.ts     # Push 通知サイレント時間帯判定（isInSilentHours / isValidTimeHHMM / isValidIanaTimezone）
     export-markdown.ts       # ブックマーク・読書リスト記事を Markdown ファイルとしてダウンロード
     rate-limit.ts            # KV ベースのクールダウン・スライディングウィンドウ レートリミット (checkAndUpdateCooldown / checkSlidingWindow)
+    rate-limit-logic.ts      # スライディングウィンドウ判定の純粋関数 (evaluateSlidingWindow) — next/* 非依存でユニットテスト可能
     serialize-async.ts       # 同一キー非同期操作の直列化ユーティリティ (serialized)
     obsidian.ts              # Obsidian URI スキーム連携（obsidian://new URI 生成・ファイル名サニタイズ）
     html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
@@ -608,6 +609,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `concurrency.spec.ts`                 | `src/lib/concurrency.ts` — pMap 並行処理                                                                              |
 | `content-extraction.spec.ts`          | `src/lib/content.ts` — 本文抽出 (Readability + regex)                                                                 |
 | `cron-rate-limit.spec.ts`             | `src/lib/rate-limit.ts` — スライディングウィンドウ制限                                                                |
+| `rate-limit-sliding-window.spec.ts`   | `src/lib/rate-limit-logic.ts` — `evaluateSlidingWindow` 通過/拒否判定・Retry-After 算出・境界値                       |
 | `csrf-origin.spec.ts`                 | `src/lib/csrf.ts` — CSRF トークン・Origin 検証                                                                        |
 | `dbsc.spec.ts`                        | `src/lib/dbsc.ts` — チャレンジ生成・ヘッダー構築・署名検証                                                            |
 | `engagement-score.spec.ts`            | `src/lib/engagement-score.ts` — エンゲージメントスコア計算                                                            |
