@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { r2Get, engagementKey } from "@/lib/r2";
 import type { EngagementEntry, EngagementLog } from "@/types";
-import { toDateStr, buildDayList } from "@/lib/stats-helpers";
+import { toDateStr, buildDayList, getMondayIso, computeCurrentStreak } from "@/lib/stats-helpers";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 
 const STATS_WINDOW_MS = 60 * 1000; // 60秒
@@ -41,18 +41,10 @@ export async function GET(request: Request) {
 
     const entries = log.entries;
     const now = new Date();
-    const todayStr = toDateStr(now.toISOString());
 
     const last7Days = buildDayList(now, 7);
     const last365Days = buildDayList(now, 365);
-
-    // 今週（UTC 月曜）の ISO 文字列（文字列比較で週判定）
-    const dayOfWeek = now.getUTCDay(); // 0=Sun
-    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const monday = new Date(now);
-    monday.setUTCDate(monday.getUTCDate() - daysFromMonday);
-    monday.setUTCHours(0, 0, 0, 0);
-    const mondayIso = monday.toISOString();
+    const mondayIso = getMondayIso(now);
 
     // 1 パスで全集計
     const dayCounts = new Map<string, number>(last7Days.map((d) => [d, 0]));
@@ -87,22 +79,13 @@ export async function GET(request: Request) {
       .slice(0, 5)
       .map(([feedHash, score]) => ({ feedHash, score }));
 
-    // 連続活動日数（UTC 日単位）
-    let streak = 0;
-    const checkDate = new Date(now);
-    if (!activeDays.has(todayStr)) checkDate.setUTCDate(checkDate.getUTCDate() - 1);
-    while (activeDays.has(toDateStr(checkDate.toISOString()))) {
-      streak++;
-      checkDate.setUTCDate(checkDate.getUTCDate() - 1);
-    }
-
     const stats: ReadingStats = {
       dailyReadCounts,
       yearlyHeatmap,
       topFeeds,
       weeklyTotal,
       allTimeTotal,
-      currentStreak: streak,
+      currentStreak: computeCurrentStreak(activeDays, now),
     };
 
     return NextResponse.json(stats);

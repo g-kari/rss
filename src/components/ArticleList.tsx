@@ -231,7 +231,7 @@ function ArticleList({
   const { galleryColumns, galleryCardSize, galleryMinImagePx, autoReadEnabled } =
     useReaderSettings();
 
-  const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title || f.url])), [feeds]);
+  const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f])), [feeds]);
   const showFeedName = selectedFeedId === null || selectedFeedId === SPECIAL_FEED_IDS.BOOKMARKS;
 
   const ogpCache = useOgpCache(visible);
@@ -284,22 +284,22 @@ function ArticleList({
       e.stopPropagation();
       const images = galleryImagesForItem(article.id);
       const thumb = resolveThumbnail(article, ogpCacheRef.current) ?? null;
-      const isNsfw = !!feeds.find((f) => f.id === article.feedHash)?.nsfw;
+      const isNsfw = !!feedMap.get(article.feedHash)?.nsfw;
       setGalleryCtxMenu({ article, thumb, images, x: e.clientX, y: e.clientY, isNsfw });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ogpCacheRef は useSyncedRef の安定参照のため deps 不要
-    [galleryImagesForItem, feeds],
+    [galleryImagesForItem, feedMap],
   );
 
   const handleGalleryLongPress = useCallback(
     (article: Article, _index: number, x: number, y: number) => {
       const images = galleryImagesForItem(article.id);
       const thumb = resolveThumbnail(article, ogpCacheRef.current) ?? null;
-      const isNsfw = !!feeds.find((f) => f.id === article.feedHash)?.nsfw;
+      const isNsfw = !!feedMap.get(article.feedHash)?.nsfw;
       setGalleryCtxMenu({ article, thumb, images, x, y, isNsfw });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ogpCacheRef は useSyncedRef の安定参照のため deps 不要
-    [galleryImagesForItem, feeds],
+    [galleryImagesForItem, feedMap],
   );
 
   // ── 仮想スクロール ──────────────────────────────────────────────
@@ -452,24 +452,27 @@ function ArticleList({
   const duplicateInfoRef = useSyncedRef(duplicateInfo);
 
   const resolveItemProps = useCallback(
-    (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => ({
-      article,
-      index,
-      isRead: isArticleRead(article, readIdsRef.current, readBeforeTimestamp),
-      isBookmarked: bookmarkIdsRef.current.has(article.id),
-      isDeleting,
-      isNew,
-      hasNote: !!notesRef.current?.[article.id],
-      feedName: feedMap.get(article.feedHash) ?? "",
-      thumb: resolveThumbnail(article, ogpCacheRef.current),
-      showFeedName,
-      query,
-      duplicateFeedNames: duplicateInfoRef.current?.get(article.id),
-      totalCount: filtered.length,
-      onSelectArticle: (a: Article) => onSelectArticleRef.current(a),
-      onToggleRead: (id: string) => onToggleReadRef.current(id),
-      onToggleBookmark: (id: string) => onToggleBookmarkRef.current(id),
-    }),
+    (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => {
+      const feed = feedMap.get(article.feedHash);
+      return {
+        article,
+        index,
+        isRead: isArticleRead(article, readIdsRef.current, readBeforeTimestamp),
+        isBookmarked: bookmarkIdsRef.current.has(article.id),
+        isDeleting,
+        isNew,
+        hasNote: !!notesRef.current?.[article.id],
+        feedName: feed ? feed.title || feed.url : "",
+        thumb: resolveThumbnail(article, ogpCacheRef.current),
+        showFeedName,
+        query,
+        duplicateFeedNames: duplicateInfoRef.current?.get(article.id),
+        totalCount: filtered.length,
+        onSelectArticle: (a: Article) => onSelectArticleRef.current(a),
+        onToggleRead: (id: string) => onToggleReadRef.current(id),
+        onToggleBookmark: (id: string) => onToggleBookmarkRef.current(id),
+      };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- readIds・bookmarkIds・notes・duplicateInfo・onSelectArticle・onToggleRead・onToggleBookmark は ref 経由で最新値を参照するため deps 不要
     [
       readBeforeTimestamp,
