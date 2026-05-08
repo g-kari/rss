@@ -250,6 +250,7 @@ src/
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()
+    beta-allowed.ts          # isBetaAllowed() — BETA_ALLOWED_SUBS チェック（next/* 非依存・拒否時に sub prefix を console.warn）
     r2.ts                    # r2Get() / r2Put() / sha256Hex()
     xml-parser.ts            # fast-xml-parser ラッパー (RSS 2.0 + Atom)
     content.ts               # コンテンツ抽出・後処理パイプライン (Readability + postProcess)
@@ -584,6 +585,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `auth-utils-edge.spec.ts`             | JWT 検証エッジケース                                                                                                  |
 | `auth-utils.spec.ts`                  | `src/lib/auth.ts` — JWT 検証・トークン交換                                                                            |
 | `auth.spec.ts`                        | `/api/auth/*` エンドポイント統合テスト                                                                                |
+| `beta-allowed.spec.ts`                | `src/lib/beta-allowed.ts` — BETA_ALLOWED_SUBS チェック・拒否時の調査ログ                                              |
 | `browser-summarizer.spec.ts`          | `src/lib/browser-summarizer.ts` — ブラウザネイティブ要約 API                                                          |
 | `browser-translator.spec.ts`          | `src/lib/browser-translator.ts` — Chrome Translator API 検出                                                          |
 | `cache-control.spec.ts`               | `/api/articles` の Cache-Control ヘッダー                                                                             |
