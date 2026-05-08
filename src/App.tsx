@@ -398,7 +398,7 @@ export default function App() {
     setFeedView,
     saveFilter,
     setDigestLimit,
-  } = useFeedPatch(updateFeed);
+  } = useFeedPatch(updateFeed, toast.error);
 
   function onFeedDeleted(id: string) {
     removeFeed(id);

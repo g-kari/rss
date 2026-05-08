@@ -18,7 +18,10 @@ export interface FeedPatchActions {
   setDigestLimit: (feed: Feed, limit: number | null) => Promise<void>;
 }
 
-export function useFeedPatch(updateFeed: (feed: Feed) => void): FeedPatchActions {
+export function useFeedPatch(
+  updateFeed: (feed: Feed) => void,
+  onError?: (msg: string) => void,
+): FeedPatchActions {
   const patchFeed = useCallback(
     async (id: string, body: FeedPatchPayload): Promise<Feed | null> => {
       const res = await apiFetch(`/api/feeds/${id}`, {
@@ -37,7 +40,7 @@ export function useFeedPatch(updateFeed: (feed: Feed) => void): FeedPatchActions
    * 楽観的更新パターン:
    * 1. optimisticFeed でローカル state を即時更新（サーバー応答を待たない）
    * 2. PATCH リクエストを送信
-   * 3. 成功時はサーバー応答で確定 / 失敗時は元の feed にロールバック
+   * 3. 成功時はサーバー応答で確定 / 失敗時は元の feed にロールバック + onError 通知
    */
   const applyFeedPatchOptimistic = useCallback(
     async (feed: Feed, optimisticFeed: Feed, patch: FeedPatchPayload): Promise<Feed | null> => {
@@ -50,17 +53,19 @@ export function useFeedPatch(updateFeed: (feed: Feed) => void): FeedPatchActions
           updateFeed(updated);
           return updated;
         }
-        // res.ok=false の場合はロールバック
+        // res.ok=false の場合はロールバック + ユーザー通知
         updateFeed(feed);
+        onError?.("変更の保存に失敗しました");
         return null;
       } catch (err) {
         devError("[useFeedPatch] patch failed:", err);
-        // エラーはロールバック
+        // エラーはロールバック + ユーザー通知
         updateFeed(feed);
+        onError?.("変更の保存に失敗しました");
         return null;
       }
     },
-    [patchFeed, updateFeed],
+    [patchFeed, updateFeed, onError],
   );
 
   const toggleNsfwFeed = useCallback(

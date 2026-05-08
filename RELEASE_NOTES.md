@@ -12,6 +12,10 @@
 - **`isBetaAllowed` を `src/lib/beta-allowed.ts` に切り出したよ〜** — Issue #597。`next/*` 依存のない純粋関数として分離したから、Playwright の Node ランナーから直接 import してユニットテストできるようになったよっ🔧✨
 - **`stats/route.ts` のインライン重複を `stats-helpers.ts` に集約したよ〜** — Issue #599。`getMondayIso` と `computeCurrentStreak` がインライン実装と二重に書かれてたから、`stats-helpers.ts` の関数を直接呼ぶように統一したよっ。テストカバレッジも自動で route.ts 側に効くようになって、一石二鳥だよっ🔧✨
 
+### UX 改善っ
+
+- **フィード属性変更（NSFW/優先度/グループ等）の失敗が無言で消えちゃう問題を直したよ〜** — Issue #603。`useFeedPatch` の楽観的更新がサーバーで失敗するとロールバックはされてたけど toast 通知がなかったから、ユーザー視点では「操作したのに元に戻った」理由が分からなかったの！`onError` コールバックを追加して `toast.error("変更の保存に失敗しました")` で即通知するようにしたよっ🎀💡
+
 ### バグ修正っ
 
 - **ペイン幅を狭くするとヘッダー/フッターが隠れちゃう問題を横スクロールで救済したよ〜** — Issue #608。`SidebarHeader` / `SidebarFooter` / `ArticleListHeader` 上段の 3 箇所の flex コンテナに `overflow-x-auto` と `[&>*]:shrink-0` を追加！リサイザーで幅を狭くしてもボタン群が潰れず、はみ出した分は横スクロールでアクセスできるようになったよ〜🔧✨
