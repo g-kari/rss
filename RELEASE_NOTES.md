@@ -2,6 +2,10 @@
 
 ## 2026-05-08 (latest)
 
+### バグ修正っ
+
+- **ギャラリービューでブックマークしてもアイコンが変わらないバグを直したよ〜** — Issue #634。`resolveItemProps` が `useSyncedRef` 経由で bookmarkIds/readIds/notes を参照してたから、Context 値の identity が変わらず memo された `GalleryCardRenderer` が再描画されなかったの！state を直接参照に切り替えて、ブックマーク・既読・メモの変更が即座にギャラリーカードに反映されるようにしたよ〜🎀
+
 ### ドキュメント整備っ
 
 - **api-spec.md の `/api/articles` クエリ仕様を実装に同期したよ〜** — Issue #639。仕様書の `feedHash` / `since` (ISO 8601) を実装に合わせて `feed` / `since` (ミリ秒 Unix タイムスタンプ) に修正、page の有効範囲（1〜MAX_PAGES=5、`feed` 指定時のみ有効）を明記して、エラー一覧（INVALID_FEED / INVALID_PAGE）も追加したよ〜📚
