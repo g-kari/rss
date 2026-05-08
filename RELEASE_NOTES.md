@@ -4,6 +4,7 @@
 
 ### バグ修正っ
 
+- **ShareMenu の Web Share API 失敗が無音になってた問題を直したよ〜** — Issue #625。`navigator.share()` の reject を `.catch(() => {})` で握り潰してたのを、`AbortError`（ユーザーキャンセル）以外は `toast.error("シェアに失敗しました")` で通知するように修正！シェアできてないのに気付けなかった問題が解消したよ〜🎀
 - **LoadMoreButton のページネーション失敗が無音になってた問題を直したよ〜** — Issue #624。IntersectionObserver と click handler の両方で `onLoad()` の reject を catch せず無音 fail してたのを、catch して `toast.error("過去記事の取得に失敗しました")` を表示するように修正！バックエンド障害時にユーザーに気づいてもらえるよ〜💡
 
 ### パフォーマンス改善っ
