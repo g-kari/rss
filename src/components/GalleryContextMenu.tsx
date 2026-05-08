@@ -4,7 +4,9 @@ import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
+import { downloadBlob } from "../lib/download";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
+import { useToast } from "../contexts/ToastContext";
 
 export interface GalleryContextMenuTarget {
   article: Article;
@@ -38,6 +40,7 @@ export default function GalleryContextMenu({
   onClose,
 }: GalleryContextMenuProps) {
   const { imageDlFolder, imageDlFolderNsfw } = useReaderSettings();
+  const toast = useToast();
   const isRead = readIds.has(target.article.id);
   const isBookmarked = bookmarkIds.has(target.article.id);
 
@@ -53,31 +56,43 @@ export default function GalleryContextMenu({
     );
   }, []);
 
+  // <a download> 直リンクは画像プロキシのレートリミット (429) で「サイトでファイルが取得できませんでした」
+  // となるため、fetch → blob → URL.createObjectURL → a.click → revoke で取得する
+  // （記事詳細の useImageDownload と同じ blob ベース方式）
   const downloadImage = useCallback(
-    (url: string, filename?: string) => {
+    async (url: string, filename?: string) => {
       const proxyUrl = buildImageProxyUrl(url);
-      const a = document.createElement("a");
-      a.href = proxyUrl;
-      a.download = applyFolderPrefix(
+      const finalFilename = applyFolderPrefix(
         dlFolder,
         filename || url.split("/").pop()?.split("?")[0] || "image",
       );
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      try {
+        const res = await fetch(proxyUrl);
+        if (!res.ok) {
+          toast.error(`画像の取得に失敗しました (HTTP ${res.status})`);
+          return;
+        }
+        const blob = await res.blob();
+        downloadBlob(blob, finalFilename);
+      } catch (err) {
+        console.error("[GalleryContextMenu] image download failed", err);
+        toast.error("画像の保存に失敗しました");
+      }
     },
-    [dlFolder],
+    [dlFolder, toast],
   );
 
+  // 複数枚保存は逐次実行（並列だと画像プロキシの 429 を踏みやすい）
   const downloadAllImages = useCallback(
-    (images: string[], article: Article) => {
+    async (images: string[], article: Article) => {
       const safeTitle = buildSafeTitle(article.title);
-      images.forEach((url, i) => {
+      for (let i = 0; i < images.length; i++) {
+        const url = images[i]!;
         const ext = url.split(".").pop()?.split("?")[0] ?? "";
         const rawFilename = ext ? `${safeTitle}-${i + 1}.${ext}` : `${safeTitle}-${i + 1}`;
-        setTimeout(() => downloadImage(url, rawFilename), i * 200);
-      });
+        await downloadImage(url, rawFilename);
+        if (i < images.length - 1) await new Promise((r) => setTimeout(r, 200));
+      }
     },
     [buildSafeTitle, downloadImage],
   );
