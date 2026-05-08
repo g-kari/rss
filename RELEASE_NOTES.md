@@ -2,6 +2,10 @@
 
 ## 2026-05-08 (latest)
 
+### 激アツ新機能っ
+
+- **メモ付き記事を Readwise CSV でエクスポートできるようになったよ〜** — Issue #616。Readwise の標準フォーマット `Highlight, Title, Author, URL, Note, Date` で出力するから、ブックマーク済みでメモを書いた記事を Readwise や Reader にそのまま手動インポートできるよっ！Highlight 列はメモの 1 行目、Note 列はメモ全文、Author はフィードタイトル、Date は publishedAt（無ければ createdAt）の YYYY-MM-DD。サイドバー左下の「もっと見る」メニューに「メモを Readwise CSV で出力」ボタンを追加したよ〜📚✨
+
 ### テスト追加っ
 
 - **dev 認証バイパス機能を追加して認証後画面の e2e カバレッジを拡充したよ〜** — Issue #607。`DEV_AUTH_BYPASS_USER_ID` 環境変数 と `NODE_ENV !== "production"` の AND 条件が揃った時だけ `/api/auth/me` が fakeProfile を返す仕組みを追加！production ビルドでは NODE_ENV inline により dead code 化されて含まれないから安心だよっ。`playwright.config.ts` の `webServer.env` に `e2e-test-user` をセットして、ThreePaneLayout に `data-popup-open` 属性を追加してリサイザー操作可否を e2e から判定できるようにしたよ〜🧪✨

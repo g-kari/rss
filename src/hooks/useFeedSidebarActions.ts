@@ -7,6 +7,7 @@ import type { ToastApi } from "./useToast";
 import type { ConfirmOptions } from "./useConfirm";
 import { isArticleRead } from "../lib/article-filter";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "../lib/export-markdown";
+import { exportNotesToReadwise } from "../lib/export-readwise";
 import { useSyncedRef } from "./useSyncedRef";
 
 interface Options {
@@ -239,6 +240,9 @@ export function useFeedSidebarActions({
       },
       onExportNotes: () => {
         exportNotesToMarkdown(articlesRef.current, notesRef.current, feeds);
+      },
+      onExportReadwise: () => {
+        exportNotesToReadwise(articlesRef.current, notesRef.current, feeds);
       },
       onSelectCollection: setSelectedCollectionId,
       onCreateCollection: createCollection,

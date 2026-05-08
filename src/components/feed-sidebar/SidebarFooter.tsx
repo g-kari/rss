@@ -16,6 +16,7 @@ interface Props {
   onExportOpml: () => void;
   onExportMarkdown?: (mode: "bookmark" | "reading_list") => void;
   onExportNotes?: () => void;
+  onExportReadwise?: () => void;
   noteCount?: number;
   install?: { canInstall: boolean; onInstall: () => void };
   push?: {
@@ -43,6 +44,7 @@ export default function SidebarFooter({
   onExportOpml,
   onExportMarkdown,
   onExportNotes,
+  onExportReadwise,
   noteCount,
   install,
   push,
@@ -313,6 +315,32 @@ export default function SidebarFooter({
                   />
                 </svg>
                 メモを Markdown で出力 ({noteCount}件)
+              </button>
+            )}
+
+            {/* Readwise CSV エクスポート */}
+            {onExportReadwise && (noteCount ?? 0) > 0 && (
+              <button
+                onClick={() => {
+                  onExportReadwise();
+                  setMoreOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+              >
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                  />
+                </svg>
+                メモを Readwise CSV で出力 ({noteCount}件)
               </button>
             )}
 
