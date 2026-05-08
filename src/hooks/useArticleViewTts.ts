@@ -3,6 +3,7 @@
 import { useCallback, useEffect } from "react";
 import type { Article } from "../types";
 import { toPlainText } from "../lib/html";
+import { preprocessTtsText } from "../lib/tts-text";
 import { useSpeechSynthesis } from "./useSpeechSynthesis";
 import { useEventListener } from "./useEventListener";
 
@@ -19,9 +20,8 @@ export interface ArticleViewTtsResult {
 }
 
 function buildTtsText(article: Article, processedContent: string | null): string {
-  return [article.title, toPlainText(processedContent ?? article.summary ?? "")]
-    .filter(Boolean)
-    .join("\n\n");
+  const body = preprocessTtsText(toPlainText(processedContent ?? article.summary ?? ""));
+  return [article.title, body].filter(Boolean).join("\n\n");
 }
 
 export function useArticleViewTts(
