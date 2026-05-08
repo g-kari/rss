@@ -26,7 +26,7 @@ export default function SidebarHeader({
   const nsfwLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   return (
-    <div className="px-4 py-3.5 border-b border-border-default flex items-center justify-between">
+    <div className="px-4 py-3.5 border-b border-border-default flex items-center justify-between gap-2 overflow-x-auto [&>*]:shrink-0">
       <button
         onClick={onActivateNsfw}
         onPointerDown={() => {

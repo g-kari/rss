@@ -30,7 +30,7 @@ export default function ArticleListHeader({
   return (
     <>
       <div className="flex flex-col border-b border-border-default bg-surface-elevated">
-        <div className="flex items-center gap-2 px-4 py-3 min-w-0">
+        <div className="flex items-center gap-2 px-4 py-3 min-w-0 overflow-x-auto [&>*]:shrink-0">
           <div className="flex items-center gap-1 shrink-0">
             {onMobileBack && (
               <button
