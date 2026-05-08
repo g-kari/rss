@@ -218,6 +218,41 @@ useEffect(() => {
 
 主な使用箇所: `useReadState`, `useFilteredArticles`, `useKeyboardNav`
 
+## 大きいコンポーネントの機能別分割パターン
+
+500 行を超えるコンポーネントは機能別にサブコンポーネントへ分離する。プロジェクトに繰り返し現れるパターン：
+
+```
+（分割前）大きいファイル
+  Component.tsx (648 行: 10 機能集約 + Props 73 行)
+
+（分割後）機能別ファイル
+  Component.tsx              # オーケストレーター（薄い親、250 行）
+  ComponentMeta.tsx          # メタ情報
+  ComponentActionsA.tsx      # 機能 A
+  ComponentActionsB.tsx      # 機能 B
+  ComponentActionsC.tsx      # 機能 C
+```
+
+### 分割の指針
+
+- **親（オーケストレーター）の責務**: Props 型定義、Context subscribe (`useToast` / `useReaderSettings` 等)、サブコンポーネントの合成
+- **子（サブコンポーネント）の責務**: 受け取った props だけでレンダリング。Context は直接呼ばず、親からコールバック (`(msg) => toast.info(msg)` 等) を受け取る
+- **既存 import パスを維持**: `Component.tsx` を空ファイルにせず、オーケストレーターとして残すことで呼び出し側の変更ゼロ
+- **型の引き継ぎ**: `KeywordFilter | null` のような共有型はサブ Props でも正しく宣言する。`{ include: string[]; ... }` のような構造型に置き換えると親との互換性が壊れる
+
+### プロジェクトでの使用箇所
+
+- `ArticleListHeader` → `article-list-header/`（オーケストレーター + LayoutSwitcher / FilterPills 等）
+- `useUIState` → 9 サブフック分割（#629）
+- `useArticleViewState` → useArticleViewContent / useArticleViewTts / useArticleViewShortcuts / useArticleViewProgress に内部分離
+- `ArticleHeader` → `ArticleHeaderMeta` / `ArticleHeaderAiTts` / `ArticleHeaderShare` / `ArticleHeaderEngagement`（#647）
+
+### いつ分割しないか
+
+- 共有 state（local useState）が密結合してサブで取り回しが面倒になるケースは、まず純粋関数化の余地を検討してから分割を進める
+- 1 機能だけ抽出して残りが 400 行以下になるなら、分割するメリット < 移動コスト
+
 ## dev / e2e 限定エンドポイントの二重ガード
 
 `/api/test/seed` のようなテスト inject 系エンドポイントを本番に絶対漏らさないために、Route Handler の冒頭で **二重ガード** を行う。
