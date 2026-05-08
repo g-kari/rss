@@ -27,7 +27,7 @@ export default function FeedTitleContent({ feed, isSelected, isStale, isMuted, h
           </span>
         )}
         {feed.nsfw && (
-          <span title="NSFWフィード" className="flex-shrink-0 text-rose-400">
+          <span title="NSFWフィード" className="flex-shrink-0 text-error">
             <NsfwIcon size={8} />
           </span>
         )}
@@ -76,7 +76,7 @@ export default function FeedTitleContent({ feed, isSelected, isStale, isMuted, h
         {feed.fetchError && (feed.consecutiveErrors ?? 0) >= 3 && (
           <span
             title={`取得エラー (${feed.consecutiveErrors}回連続)`}
-            className="flex-shrink-0 text-rose-400"
+            className="flex-shrink-0 text-error"
           >
             <svg
               width="8"
@@ -153,7 +153,7 @@ export default function FeedTitleContent({ feed, isSelected, isStale, isMuted, h
         </span>
       )}
       {feed.fetchError && (
-        <span className="text-[10px] text-rose-400 truncate block leading-tight mt-0.5">
+        <span className="text-[10px] text-error truncate block leading-tight mt-0.5">
           {(feed.consecutiveErrors ?? 0) >= 5 ? "更新停止 · " : ""}
           {feed.fetchError}
         </span>

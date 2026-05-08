@@ -325,7 +325,7 @@ export default function FeedItem({
       <span className="flex items-center gap-1 ml-1 flex-shrink-0">
         {count > 0 && (
           <span
-            className={`text-[11px] ${feed.fetchError ? "text-rose-400" : "text-text-muted"} tabular-nums group-hover:opacity-0 transition-opacity duration-150 ${menuOpen ? "opacity-0" : ""}`}
+            className={`text-[11px] ${feed.fetchError ? "text-error" : "text-text-muted"} tabular-nums group-hover:opacity-0 transition-opacity duration-150 ${menuOpen ? "opacity-0" : ""}`}
           >
             {formatCount(count)}
           </span>

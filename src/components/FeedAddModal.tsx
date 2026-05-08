@@ -155,13 +155,13 @@ export default function FeedAddModal({
               </span>
             )}
             {urlValid === false && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-400 text-[12px] pointer-events-none">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-error text-[12px] pointer-events-none">
                 ✗
               </span>
             )}
           </div>
           {urlValid === false && (
-            <p className="text-[11px] text-rose-400 mt-1">有効な http(s) URL を入力してください</p>
+            <p className="text-[11px] text-error mt-1">有効な http(s) URL を入力してください</p>
           )}
 
           {/* Cookie オプション（年齢確認ゲート等の突破用） */}
@@ -236,7 +236,7 @@ export default function FeedAddModal({
               id="feed-add-error"
               role="alert"
               aria-live="assertive"
-              className="text-[12px] text-rose-400 mt-2"
+              className="text-[12px] text-error mt-2"
             >
               {error}
             </p>

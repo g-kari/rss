@@ -44,7 +44,7 @@ export default function SidebarHeader({
         onContextMenu={(e) => {
           if (nsfwMode) e.preventDefault();
         }}
-        className={`text-[10px] font-medium tracking-[0.25em] uppercase transition-colors duration-200 select-none cursor-default ${nsfwMode ? "text-rose-400" : "text-text-muted"}`}
+        className={`text-[10px] font-medium tracking-[0.25em] uppercase transition-colors duration-200 select-none cursor-default ${nsfwMode ? "text-error" : "text-text-muted"}`}
         title={nsfwMode ? "長押しでNSFWモード解除" : ""}
       >
         RSS

@@ -314,7 +314,7 @@ export default function ReadingStatsModal({
           </div>
         )}
         {error && (
-          <p role="alert" className="text-[13px] text-rose-400">
+          <p role="alert" className="text-[13px] text-error">
             {error}
           </p>
         )}
@@ -345,7 +345,7 @@ export default function ReadingStatsModal({
                 </span>
                 {entriesLoading && <Spinner />}
                 {entriesError && (
-                  <span role="alert" className="text-[11px] text-rose-400">
+                  <span role="alert" className="text-[11px] text-error">
                     集計データの取得に失敗しました
                   </span>
                 )}

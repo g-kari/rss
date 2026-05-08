@@ -540,7 +540,7 @@ function FeedSidebar({
 
         {loadError && feeds.length === 0 && (
           <div className="px-4 py-3 text-center">
-            <p className="text-[12px] text-rose-400 mb-2">{loadError}</p>
+            <p className="text-[12px] text-error mb-2">{loadError}</p>
             {onRetry && (
               <button
                 type="button"
@@ -680,7 +680,7 @@ function FeedSidebar({
       />
       {importMessage && (
         <div
-          className={`px-3 py-1.5 text-[11px] border-t border-border-subtle ${importMessage.isError ? "text-rose-400" : "text-text-muted"}`}
+          className={`px-3 py-1.5 text-[11px] border-t border-border-subtle ${importMessage.isError ? "text-error" : "text-text-muted"}`}
         >
           {importMessage.text}
         </div>

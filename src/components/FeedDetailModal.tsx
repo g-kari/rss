@@ -68,7 +68,7 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
           <div className="flex items-center gap-2 mb-1">
             <span className={`w-2 h-2 rounded-full ${health.color}`} />
             <span
-              className={`text-[12px] font-medium ${health.color === "bg-emerald-400" ? "text-text-default" : health.color === "bg-amber-400" ? "text-amber-400" : "text-rose-400"}`}
+              className={`text-[12px] font-medium ${health.color === "bg-emerald-400" ? "text-text-default" : health.color === "bg-amber-400" ? "text-amber-400" : "text-error"}`}
             >
               {health.label}
             </span>
@@ -216,7 +216,7 @@ function DetailRow({
     <div className="flex gap-2">
       <span className="flex-shrink-0 w-[100px] text-text-muted">{label}</span>
       <span
-        className={`flex-1 min-w-0 break-all ${mono ? "font-mono text-[11px]" : ""} ${error ? "text-rose-400" : "text-text-default"}`}
+        className={`flex-1 min-w-0 break-all ${mono ? "font-mono text-[11px]" : ""} ${error ? "text-error" : "text-text-default"}`}
       >
         {value}
       </span>
