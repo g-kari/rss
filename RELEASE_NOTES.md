@@ -8,6 +8,7 @@
 
 ### バグ修正っ
 
+- **記事詳細キャッシュキーを v2 にバンプして全 POP 一斉無効化したよ〜** — Cloudflare Cache API は **データセンター（POP）単位** のキャッシュで、`caches.default.delete()` を Worker から呼んでもリクエストが届いた POP のキャッシュしか消せないの...！🌍 ページネーション fix 後も古い POP キャッシュが残存してユーザーが古いコンテンツ見ちゃう問題を、`buildContentCacheKey` の名前空間を `content` → `content/v2` に切り替えることで解決！🔧 名前空間が変わったから世界中の全 POP が一斉に MISS 扱いになって新ロジックで再構築されるよ〜✨ 古い v1 キャッシュは TTL 7 日で自然消滅。今後ロジック修正時はバージョンサフィックスをバンプすれば同様にグローバル無効化できる仕組みっ🚀 TDD 2 ケース追加で v2 名前空間の存在と v1 との衝突回避を保証！
 - **everia.club などの WordPress nextpage で 2 ページ目以降が取得されないバグを直したよ〜** — Issue #652 関連。原因は **percent-encoding の大文字小文字差異**！記事 URL は大文字 (`%E5%A1%A9...`) なのに HTML 内のページネーションリンクは小文字 (`%e5%a1%a9...`) で、`isPaginatedVariant` の pathname 比較が文字列一致で false 返してた...！🔧 `decodeURI` で正規化してから比較するように修正、`MAX_PAGINATION_PAGES` も 5→10 に増やして長い画像記事もカバーできるようにしたよ〜📚✨ TDD の 6 ケース全 pass！
 
 ### リファクタリングっ

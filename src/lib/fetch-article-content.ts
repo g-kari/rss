@@ -50,9 +50,16 @@ export function clampContentBytes(
   return new TextDecoder("utf-8", { fatal: false }).decode(truncated);
 }
 
-/** /api/content と共有する Cloudflare Cache キーを生成する。 */
+/**
+ * /api/content と共有する Cloudflare Cache キーを生成する。
+ *
+ * バージョン名前空間 `content/v2` を採用しており、ロジック修正時にバンプすることで
+ * Cloudflare Cache API の POP 単位キャッシュをグローバルに無効化できる。
+ * （`caches.default.delete()` はリクエストが届いた POP のキャッシュしか消せないため、
+ *   全 POP 一斉無効化にはキー名前空間の差し替えが最も確実な手段）
+ */
 export async function buildContentCacheKey(origin: string, url: string): Promise<Request> {
-  return buildCacheKey(origin, "content", url);
+  return buildCacheKey(origin, "content/v2", url);
 }
 
 /** clip 経由のユーザースコープ Cache キー。保存したユーザー自身のみが /api/content で参照可能。 */
