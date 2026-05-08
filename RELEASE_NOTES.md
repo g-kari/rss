@@ -18,6 +18,7 @@
 
 ### パフォーマンス改善っ
 
+- **`buildFeedUserMap` にユーザーインデックスを追加して cron の R2 LIST を削減したよ〜** — Issue #592。`meta/user-index.json` でユーザー ID 一覧を管理して、cron が毎回 R2 LIST + 全購読ファイル読み込みしてたのを廃止！インデックスが空の場合は既存フォールバックで後方互換もバッチリだよっ⚡🚀。KV キャッシュ TTL も 900秒 → 1800秒に延長してさらに効率アップしたよっ✨
 - **`PATCH /api/feeds/:id` の R2 読み込みを並列化したよ〜** — Issue #578。`readUserSubscriptions` と `readFeedMeta` を `Promise.all` で同時取得するようにしたよ〜。`groupId` 指定時は `readFeedGroups` も一緒に並列取得してレイテンシ削減できたよっ⚡🚀
 - **`totalUnread` の計算を 200ms デバウンスしたよ〜** — Issue #580。既読にするたびに毎回フルスキャンしてたのをデバウンスして、タブタイトルとファビコンバッジの更新が滑らかになったよっ⚡💡
 - **`useFeedData`・`useFeedGroups`・`useCollections` に AbortController を追加したよ〜** — Issue #561。アンマウント後もフェッチが続いてネットワークリソースが無駄になってたのを修正したよっ⚡💡
