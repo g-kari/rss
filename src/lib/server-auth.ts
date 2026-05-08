@@ -8,6 +8,7 @@ import { checkAndUpdateCooldown } from "./rate-limit";
 import { generateDbscChallenge } from "./dbsc";
 import { isBetaAllowed } from "./beta-allowed";
 import { getDevBypassUserId } from "./dev-auth-bypass";
+import { isValidSessionId } from "./validation";
 
 // CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
 export { isCsrfViolation } from "./csrf";
@@ -38,7 +39,6 @@ export const COOKIE_OPTS = {
 // セッション Cookie 名と有効期限
 export const SESSION_COOKIE = "session_id";
 const SESSION_MAX_AGE_SECS = 30 * 24 * 60 * 60; // 30日
-const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** サーバーサイドセッション（R2 保存内容） */
 interface ServerSessionData {
@@ -55,7 +55,7 @@ interface ServerSessionData {
 
 /** sessionId を R2 キーに変換。UUID 形式でない場合はパストラバーサル防止のため null を返す */
 function buildSessionKey(sessionId: string): string | null {
-  return SESSION_ID_RE.test(sessionId) ? `sessions/${sessionId}.json` : null;
+  return isValidSessionId(sessionId) ? `sessions/${sessionId}.json` : null;
 }
 
 /** R2 にセッションを作成し、生成した sessionId を返す */
@@ -130,7 +130,7 @@ export async function bindDbscToServerSession(
   sessionId: string,
   dbscSessionId: string,
 ): Promise<boolean> {
-  if (!SESSION_ID_RE.test(sessionId)) return false;
+  if (!isValidSessionId(sessionId)) return false;
   const serverSession = await getServerSession(r2, sessionId);
   if (!serverSession) return false;
   await r2.put(`sessions/${sessionId}.json`, JSON.stringify({ ...serverSession, dbscSessionId }));
@@ -256,7 +256,7 @@ export async function getAuthSession(): Promise<AuthSession | null | { dbscChall
   // DBSC バインディング済みセッション: チャレンジを発行して鍵所持証明を要求する
   if (sessionData.dbscSessionId) {
     // 防御的検証: R2 から読み出した dbscSessionId を再度 UUID 形式チェック（パストラバーサル防止）
-    if (!SESSION_ID_RE.test(sessionData.dbscSessionId)) {
+    if (!isValidSessionId(sessionData.dbscSessionId)) {
       console.warn("[server-auth] invalid dbscSessionId in stored session, treating as unbound");
       return null;
     }
