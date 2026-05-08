@@ -53,9 +53,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     view?: unknown;
     digestLimit?: unknown;
   }>(request, async ({ body, session, env, ctx }) => {
-    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    // subscriptions と meta を並列で読み込む（独立しているため）
+    // groupId が含まれる場合は feed-groups も同時に取得する
+    const hasGroupId = "groupId" in body && body.groupId !== null;
+    const [subs, meta, groups] = await Promise.all([
+      readUserSubscriptions(env.RSS_DATA, session.userId),
+      readFeedMeta(env.RSS_DATA, feedHash),
+      hasGroupId ? readFeedGroups(env.RSS_DATA, session.userId) : Promise.resolve(null),
+    ]);
+
     const sub = subs.find((s) => s.feedHash === feedHash);
     if (!sub) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
+    if (!meta) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
 
     if ("title" in body) {
       const title = typeof body.title === "string" ? stripControlChars(body.title.trim()) : "";
@@ -111,8 +120,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       } else if (typeof body.groupId !== "string") {
         return apiError("groupId must be a string or null", 400, { code: "INVALID_GROUP_ID" });
       } else {
-        const groups = await readFeedGroups(env.RSS_DATA, session.userId);
-        if (!groups.some((g) => g.id === body.groupId)) {
+        // groups は上の Promise.all で取得済み（hasGroupId=true のため null にはならない）
+        if (!groups || !groups.some((g) => g.id === body.groupId)) {
           return apiError("Feed group not found", 404, { code: "FEED_GROUP_NOT_FOUND" });
         }
         sub.groupId = body.groupId;
@@ -168,10 +177,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         sub.digestLimit = body.digestLimit;
       }
     }
-
-    // meta の存在確認を書き込み前に行う（書き込み後に404を返すと状態が乖離するため）
-    const meta = await readFeedMeta(env.RSS_DATA, feedHash);
-    if (!meta) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
 
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
 
