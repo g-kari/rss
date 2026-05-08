@@ -48,6 +48,8 @@ export interface ArticleItemProps {
   onToggleBookmark: (id: string) => void;
   /** 後で読むのトグル（#633、card/magazine のみホバーボタンで使用） */
   onToggleReadingList?: (id: string) => void;
+  /** 右クリックメニュー（#633 A3、全レイアウトで使用、gallery は GalleryContextMenu が優先） */
+  onContextMenu?: (article: Article, x: number, y: number) => void;
 }
 
 // ── サブコンポーネント ──────────────────────────────────────────────────

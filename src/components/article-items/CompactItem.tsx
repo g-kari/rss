@@ -23,6 +23,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
+  onContextMenu,
 }: ArticleItemProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
@@ -35,6 +36,14 @@ export const CompactArticleItem = memo(function CompactArticleItem({
     },
     [article, onSelectArticle],
   );
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onContextMenu) return;
+      e.preventDefault();
+      onContextMenu(article, e.clientX, e.clientY);
+    },
+    [article, onContextMenu],
+  );
   return (
     <div
       role="article"
@@ -43,6 +52,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
+      onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
       className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""

@@ -32,6 +32,7 @@ export const CardArticleItem = memo(function CardArticleItem({
   onToggleRead,
   onToggleBookmark,
   onToggleReadingList,
+  onContextMenu,
 }: ArticleItemProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
@@ -44,6 +45,14 @@ export const CardArticleItem = memo(function CardArticleItem({
     },
     [article, onSelectArticle],
   );
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onContextMenu) return;
+      e.preventDefault();
+      onContextMenu(article, e.clientX, e.clientY);
+    },
+    [article, onContextMenu],
+  );
   return (
     <div
       role="article"
@@ -52,6 +61,7 @@ export const CardArticleItem = memo(function CardArticleItem({
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={() => onSelectArticle(article)}
+      onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
       className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""

@@ -39,6 +39,7 @@ import {
 } from "./ArticleItems";
 import ArticleListHeader from "./ArticleListHeader";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
+import ArticleContextMenu, { type ArticleContextMenuTarget } from "./ArticleContextMenu";
 import LoadMoreButton from "./LoadMoreButton";
 import ArticleListEmptyState from "./ArticleListEmptyState";
 import { getGalleryCardWidth } from "../lib/reader-settings";
@@ -283,6 +284,15 @@ function ArticleList({
   useEventListener("scroll", () => setGalleryCtxMenu(null), window, true);
   useEventListener("resize", () => setGalleryCtxMenu(null));
 
+  // ── 記事コンテキストメニュー (#633 A3、compact / list / card / magazine 用) ──
+  const [articleCtxMenu, setArticleCtxMenu] = useState<ArticleContextMenuTarget | null>(null);
+  usePopupLock(!!articleCtxMenu);
+  useEventListener("scroll", () => setArticleCtxMenu(null), window, true);
+  useEventListener("resize", () => setArticleCtxMenu(null));
+  const handleArticleContextMenu = useCallback((article: Article, x: number, y: number) => {
+    setArticleCtxMenu({ article, x, y });
+  }, []);
+
   const ogpCacheRef = useSyncedRef(ogpCache);
   const handleGalleryContextMenu = useCallback(
     (e: React.MouseEvent, article: Article, _index: number) => {
@@ -480,6 +490,7 @@ function ArticleList({
         onToggleReadingList: onToggleReadingListRef.current
           ? (id: string) => onToggleReadingListRef.current?.(id)
           : undefined,
+        onContextMenu: handleArticleContextMenu,
       };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelectArticle・onToggleRead・onToggleBookmark・onToggleReadingList は ref 経由で最新値を参照するため deps 不要
@@ -499,6 +510,7 @@ function ArticleList({
       onToggleReadRef,
       onToggleBookmarkRef,
       onToggleReadingListRef,
+      handleArticleContextMenu,
     ],
   );
 
@@ -756,6 +768,18 @@ function ArticleList({
           onToggleRead={onToggleRead}
           onToggleBookmark={onToggleBookmark}
           onClose={() => setGalleryCtxMenu(null)}
+        />
+      )}
+      {articleCtxMenu && onToggleReadingList && readingListIds && (
+        <ArticleContextMenu
+          target={articleCtxMenu}
+          readIds={readIds}
+          bookmarkIds={bookmarkIds}
+          readingListIds={readingListIds}
+          onToggleRead={onToggleRead}
+          onToggleBookmark={onToggleBookmark}
+          onToggleReadingList={onToggleReadingList}
+          onClose={() => setArticleCtxMenu(null)}
         />
       )}
     </section>
