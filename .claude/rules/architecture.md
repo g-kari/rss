@@ -99,6 +99,7 @@ app/
       config/route.ts        # GET / PUT /api/push/config — Push 通知設定（disabledFeeds / サイレント時間帯）
     clip/route.ts            # POST /api/clip — SingleFile 拡張からの HTML 受け取り・本文抽出・キャッシュ保存
     health/route.ts          # GET /api/health
+    test/seed/route.ts       # POST/DELETE /api/test/seed — e2e テスト専用 R2 シード（NODE_ENV !== "production" + DEV_AUTH_BYPASS_USER_ID セット時のみ動作、本番では 404）
 
 src/
   App.tsx                    # 3ペインレイアウト + 認証状態管理 ('use client')
@@ -279,6 +280,7 @@ src/
     engagement-score.ts      # エンゲージメントスコア計算ロジック
     auto-read.ts             # オートモードの状態遷移判定純粋関数（isAutoReadFinished / shouldTriggerAutoFetch / shouldStartAutoSpeak）
     inline-nav.ts            # インラインナビ領域クリック位置判定純粋関数（whichSideClicked）
+    test-seed.ts             # /api/test/seed のリクエストボディ検証純粋関数（validateSeedRequest）
     article-filter.ts        # 記事フィルタリングロジック (feedId / 日付 / キーワード / クエリ)
     keyword-filter.ts        # キーワードフィルタリングマッチング（正規表現対応）
     linkedom-types.ts        # linkedom DOM 操作用の共有型定義（LDElement / LDDocument）
@@ -602,6 +604,8 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `auto-read.spec.ts`                   | `src/lib/auto-read.ts` — オートモード状態遷移判定純粋関数                                                             |
 | `inline-nav-click.spec.ts`            | `src/lib/inline-nav.ts` — インラインナビ クリック位置判定純粋関数                                                     |
 | `strip-html-with-breaks.spec.ts`      | `src/lib/html.ts#stripHtmlWithBreaks` — `<br>` / `<p>` を改行に変換する HTML strip                                    |
+| `test-seed-validation.spec.ts`        | `src/lib/test-seed.ts` — e2e seed リクエストボディ検証純粋関数                                                        |
+| `test-seed-integration.spec.ts`       | `app/api/test/seed/route.ts` — seed エンドポイント smoke test                                                         |
 | `article-utils.spec.ts`               | `src/lib/article-utils.ts` — readingTime / timeAgo                                                                    |
 | `articles-save.spec.ts`               | `app/api/articles/save/route.ts` — 記事手動保存 API                                                                   |
 | `auth-headers.spec.ts`                | 認証ヘッダー処理                                                                                                      |
