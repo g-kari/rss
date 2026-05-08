@@ -8,6 +8,7 @@
 
 ### リファクタリングっ
 
+- **`FeedItemComponent.tsx` の actions を `feedActions.tsx` に切り出したよ〜** — Issue #598。705 行のうち 337 行を占めてた actions 配列リテラルを純粋関数 `buildFeedActions()` に分離して、コンポーネント本体は 405 行までスリム化！`buildFeedActions` 単体で 37 ケースの単体テストも追加したから、各 action の順序・visible・onClick の振る舞いが変わってないことを保証できるよっ🔧✨
 - **App.tsx を 1145 行 → 1039 行に削減したよ〜** — Issue #581。`articleViewProps` の 24-dep useMemo を `useArticleViewProps` hook に抽出、オフラインバナー・新着バナー・フォーカスモードオーバーレイを専用コンポーネントに分割してメンテしやすくなったよっ🔧✨
 - **`isBetaAllowed` を `src/lib/beta-allowed.ts` に切り出したよ〜** — Issue #597。`next/*` 依存のない純粋関数として分離したから、Playwright の Node ランナーから直接 import してユニットテストできるようになったよっ🔧✨
 - **dev 認証バイパスのロジックを `src/lib/dev-auth-bypass.ts` に DRY 化したよ〜** — Issue #609。`getAuthSession` と `/api/auth/me` で重複してた env 読み出し・正規表現・fakeProfile 生成を `getDevBypassUserId()` と `buildDevBypassProfile()` の 2 つの純粋関数に集約。`?` キーでヘルプモーダルを開いて `data-popup-open=true → false` を検証する e2e ケースも追加したから、#606 みたいな popup-lock バグが回帰した時に即検出できるよっ🔧✅
