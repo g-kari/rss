@@ -2,6 +2,14 @@
 
 ## 2026-05-08 (latest)
 
+### ドキュメント整備っ
+
+- **api-spec.md の `/api/articles` クエリ仕様を実装に同期したよ〜** — Issue #639。仕様書の `feedHash` / `since` (ISO 8601) を実装に合わせて `feed` / `since` (ミリ秒 Unix タイムスタンプ) に修正、page の有効範囲（1〜MAX_PAGES=5、`feed` 指定時のみ有効）を明記して、エラー一覧（INVALID_FEED / INVALID_PAGE）も追加したよ〜📚
+
+### リファクタリングっ
+
+- **`stripTagsFixedPoint` を `stripHtml` で置換して重複削除したよ〜** — Issue #640。`html.ts` の `stripTagsIter` と `export-markdown.ts` の `stripTagsFixedPoint` が同じ「HTML タグ不動点反復除去」のロジックだったから、`stripHtml`（内部で stripTagsIter + trim）に統一して -14/+2 行の純減にしたよ〜🔧
+
 ### バグ修正っ
 
 - **ギャラリービューで画像展開失敗時に OGP/サムネが表示されるようにしたよ〜** — Issue #632。`isFetchFailed` 時は「取得失敗」プレースホルダだけになって、せっかく取得済みの OGP 画像やサムネ情報まで消えてた問題を修正！背景に半透明で OGP/サムネを表示しつつ、その上に「取得失敗」アイコンとリトライボタンを重ねる UI に変更したよ〜🖼️💡
