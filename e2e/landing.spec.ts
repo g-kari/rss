@@ -5,6 +5,12 @@ import { test, expect } from "@playwright/test";
  * 認証不要で検証できるため E2E の基礎テストとして使用
  */
 test.describe("ランディングページ", () => {
+  // dev 認証バイパス有効時はログイン済み扱いになりランディングページが表示されないためスキップ
+  test.skip(
+    !!process.env.DEV_AUTH_BYPASS_USER_ID,
+    "DEV_AUTH_BYPASS_USER_ID 設定時はランディングページが表示されないためスキップ",
+  );
+
   test("タイトルと主要要素が表示される", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/RSS Reader/);
