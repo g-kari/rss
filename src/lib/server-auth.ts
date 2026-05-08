@@ -6,10 +6,13 @@ import { apiError, formatError } from "./api-error";
 import { isCsrfViolation } from "./csrf";
 import { checkAndUpdateCooldown } from "./rate-limit";
 import { generateDbscChallenge } from "./dbsc";
+import { isBetaAllowed } from "./beta-allowed";
 
 // CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
 export { isCsrfViolation } from "./csrf";
 export { getJwtExp } from "./auth";
+// isBetaAllowed も同様に next/* に依存しないため `./beta-allowed` に分離している。
+export { isBetaAllowed } from "./beta-allowed";
 
 /**
  * CSRF 違反の場合に 403 NextResponse を、合格時は null を返すラッパー。
@@ -189,13 +192,6 @@ export function deduplicatedRefresh(refreshToken: string): Promise<RefreshResult
     });
   inflightRefresh.set(refreshToken, { promise: p, ts: Date.now() });
   return p;
-}
-
-/** BETA_ALLOWED_SUBS が設定されている場合、sub がリストに含まれるか確認。未設定または空文字 = 制限なし */
-export function isBetaAllowed(sub: string): boolean {
-  const list = process.env.BETA_ALLOWED_SUBS?.trim();
-  if (!list) return true;
-  return list.split(",").some((s) => s.trim() === sub);
 }
 
 /** JWT ペイロードから AuthSession を構築する。ベータ制限に引っかかる場合は null を返す */

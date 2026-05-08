@@ -5,10 +5,12 @@
 ### リファクタリングっ
 
 - **App.tsx を 1145 行 → 1039 行に削減したよ〜** — Issue #581。`articleViewProps` の 24-dep useMemo を `useArticleViewProps` hook に抽出、オフラインバナー・新着バナー・フォーカスモードオーバーレイを専用コンポーネントに分割してメンテしやすくなったよっ🔧✨
+- **`isBetaAllowed` を `src/lib/beta-allowed.ts` に切り出したよ〜** — Issue #597。`next/*` 依存のない純粋関数として分離したから、Playwright の Node ランナーから直接 import してユニットテストできるようになったよっ🔧✨
 
 ### バグ修正っ
 
 - **JWKS フェッチ失敗時にステールキャッシュを使うよう修正したよ〜** — キャッシュ期限切れのタイミングで JWKS サーバーが一時的に落ちてると `keyCache` だけクリアされて「トークン検証失敗」が全ユーザーに出ちゃってたの修正！フェッチ失敗時は古いキャッシュで継続して認証が全断しないようになったよっ🔧💡
+- **`isBetaAllowed` 拒否時に sub の調査ログを出すようにしたよ〜** — Issue #597。Pairwise Sub ID を更新したのにベータ制限で弾かれる問題を切り分けやすくするため、`BETA_ALLOWED_SUBS` のリストに含まれない sub が来たら `subPrefix`（先頭16文字）と `subLength` を `console.warn` で出力するようにしたよ！sub 全体は出さないからログ流出しても安全だよっ🔧🔒
 
 ### セキュリティ対策っ
 
