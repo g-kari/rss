@@ -159,6 +159,7 @@ function FeedSidebar({
     onRefreshRecommendations,
     onExportMarkdown,
     onExportNotes,
+    onExportReadwise,
     onSelectCollection,
     onCreateCollection,
   } = useFeedSidebarContext();
@@ -660,6 +661,7 @@ function FeedSidebar({
         onExportOpml={exportOpml}
         onExportMarkdown={onExportMarkdown}
         onExportNotes={onExportNotes}
+        onExportReadwise={onExportReadwise}
         noteCount={noteCount}
         install={install}
         push={push}

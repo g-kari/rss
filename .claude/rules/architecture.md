@@ -294,6 +294,7 @@ src/
     web-push.ts              # Web Push 送信ヘルパー
     push-silent-hours.ts     # Push 通知サイレント時間帯判定（isInSilentHours / isValidTimeHHMM / isValidIanaTimezone）
     export-markdown.ts       # ブックマーク・読書リスト記事を Markdown ファイルとしてダウンロード
+    export-readwise.ts       # メモ付き記事を Readwise CSV (Highlight/Title/Author/URL/Note/Date) としてダウンロード
     rate-limit.ts            # KV ベースのクールダウン・スライディングウィンドウ レートリミット (checkAndUpdateCooldown / checkSlidingWindow)
     rate-limit-logic.ts      # スライディングウィンドウ判定の純粋関数 (evaluateSlidingWindow) — next/* 非依存でユニットテスト可能
     serialize-async.ts       # 同一キー非同期操作の直列化ユーティリティ (serialized)
@@ -615,6 +616,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `engagement-score.spec.ts`            | `src/lib/engagement-score.ts` — エンゲージメントスコア計算                                                            |
 | `embed-utils.spec.ts`                 | `src/lib/embed-utils.ts` — iframe embed 処理ユーティリティ                                                            |
 | `export-markdown.spec.ts`             | `src/lib/export-markdown.ts` — Markdown エクスポート                                                                  |
+| `export-readwise.spec.ts`             | `src/lib/export-readwise.ts` — Readwise CSV エクスポート                                                              |
 | `feed-discovery.spec.ts`              | `src/lib/feed-discovery.ts` — RSS 自動探索                                                                            |
 | `feed-group-drop.spec.ts`             | `src/lib/feed-group-drop.ts` — D&D 競合解決ロジック                                                                   |
 | `feed-groups-api.spec.ts`             | `app/api/feed-groups/**/route.ts` — フィードグループ CRUD API                                                         |
