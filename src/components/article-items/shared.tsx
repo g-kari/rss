@@ -27,6 +27,8 @@ export interface ArticleItemProps {
   index: number;
   isRead: boolean;
   isBookmarked: boolean;
+  /** 後で読むに登録済みかどうか（#633） */
+  isInReadingList?: boolean;
   /** 削除アニメーション中（既読フィルタなどで visible から抜けた直後の猶予期間） */
   isDeleting?: boolean;
   /** 新規追加アニメーション対象 */
@@ -44,6 +46,8 @@ export interface ArticleItemProps {
   onSelectArticle: (a: Article) => void;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
+  /** 後で読むのトグル（#633、card/magazine のみホバーボタンで使用） */
+  onToggleReadingList?: (id: string) => void;
 }
 
 // ── サブコンポーネント ──────────────────────────────────────────────────
@@ -51,19 +55,25 @@ export interface ArticleItemProps {
 export interface ArticleActionsProps {
   isRead: boolean;
   isBookmarked: boolean;
+  /** 後で読むに登録済みかどうか（#633、onToggleReadingList が指定されたときのみ表示） */
+  isInReadingList?: boolean;
   size?: "sm" | "md";
   className?: string;
   onToggleRead: () => void;
   onToggleBookmark: () => void;
+  /** 指定されたときだけ「後で読む」ボタンを表示する（#633、card/magazine のみ） */
+  onToggleReadingList?: () => void;
 }
 
 export const ArticleActions = memo(function ArticleActions({
   isRead,
   isBookmarked,
+  isInReadingList = false,
   size = "md",
   className = "flex items-center gap-0.5",
   onToggleRead,
   onToggleBookmark,
+  onToggleReadingList,
 }: ArticleActionsProps) {
   const btn =
     size === "sm"
@@ -123,6 +133,33 @@ export const ArticleActions = memo(function ArticleActions({
           <path d="M1 1h9v11l-4.5-3L1 12V1z" />
         </svg>
       </button>
+      {onToggleReadingList && (
+        <button
+          onClick={onToggleReadingList}
+          title={isInReadingList ? "後で読むから解除" : "後で読む"}
+          aria-label={isInReadingList ? "後で読むから解除" : "後で読む"}
+          aria-pressed={isInReadingList}
+          className={`${btn} flex items-center justify-center rounded transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
+            isInReadingList
+              ? "text-text-strong"
+              : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
+          }`}
+        >
+          <svg
+            width={icon}
+            height={icon}
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="6" cy="6" r="4.5" />
+            <path d="M6 3.5v2.7L7.6 7" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 });

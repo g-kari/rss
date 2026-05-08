@@ -1018,6 +1018,7 @@ export default function App() {
                     readIds={readIds}
                     readBeforeTimestamp={readBeforeTimestamp}
                     bookmarkIds={bookmarkIds}
+                    readingListIds={readingListIds}
                     selectedArticleId={selectedArticle?.id ?? null}
                     selectedFeedId={selectedFeedId}
                     layout={layout}
@@ -1029,6 +1030,7 @@ export default function App() {
                     onSelectArticle={selectArticle}
                     onToggleRead={toggleRead}
                     onToggleBookmark={toggleBookmark}
+                    onToggleReadingList={toggleReadingList}
                     onMarkRead={markRead}
                     onMarkAllRead={onMarkAllRead}
                     feedHasMorePages={feedHasMorePages}
