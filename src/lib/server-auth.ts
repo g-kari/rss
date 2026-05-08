@@ -255,6 +255,11 @@ export async function getAuthSession(): Promise<AuthSession | null | { dbscChall
 
   // DBSC バインディング済みセッション: チャレンジを発行して鍵所持証明を要求する
   if (sessionData.dbscSessionId) {
+    // 防御的検証: R2 から読み出した dbscSessionId を再度 UUID 形式チェック（パストラバーサル防止）
+    if (!SESSION_ID_RE.test(sessionData.dbscSessionId)) {
+      console.warn("[server-auth] invalid dbscSessionId in stored session, treating as unbound");
+      return null;
+    }
     const challenge = generateDbscChallenge();
     await env.RSS_DATA.put(
       `users/${sessionData.userId}/dbsc-challenge-${sessionData.dbscSessionId}.json`,
