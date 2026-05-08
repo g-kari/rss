@@ -2,6 +2,15 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **TTS 読み上げで URL をアルファベット 1 文字ずつ読み上げてた問題を直したよ〜** — Issue #655。これまで記事本文中の URL (`https://example.com/...`) を Web Speech API が「エイチティーティーピーエス、コロン...」って延々読み上げちゃって聴くに耐えなかったの〜！😱 `src/lib/tts-text.ts` に新規純粋関数 `preprocessTtsText` を追加して、URL を「リンク」っていう短い日本語トークンに置換してから speak() に渡すように！🎙️✨ 句読点や閉じ括弧は URL に巻き込まないから「リンク、ご覧ください」のように自然な読み上げになるよ〜📖 TDD で 12 ケース全部 Green！
+- **Twitter / X 系フィードで video の poster をサムネにできるようになったよ〜** — Issue #645 続編。これまで X feed の description 内に `<video poster="...">` があってもサムネとしては拾われず、ユーザーアバターとか OGP に頼ってサムネがミスマッチしてたの。今回 `extractImage` の優先順位に video poster 抽出を追加して、`<img>` より優先採用するように！🎥✨ ただし `media:content` (image) があればそっちを優先するから、ちゃんと指定された画像があればそっちを使うよ〜📷 TDD で 3 ケース追加、合計 33 ケース全 Green！
+
+### UX改善っ
+
+- **スクロールバーが細すぎて掴めない問題を直したよ〜** — Issue #656。3px の極細スクロールバーは美学的には可愛いけど、実用ではマウス操作で掴むのほぼ不可能だったの...！👆 8px 幅 + border-radius 4px に拡大して、horizontal スクロールバーも `height: 8px` で見やすくしたよ〜✨ それでも控えめだから視覚的なミニマリズムは維持できてるの〜🎨
+
 ### 激アツ新機能っ
 
 - **CLI から記事詳細キャッシュをクリアできるようになったよ〜** — `DELETE /api/content?url=...` (個別 URL) と `POST /api/feeds/:id/purge-content-cache` (フィード単位の全記事一括クリア) の 2 エンドポイントを追加！🛠️ ロジック修正後にキャッシュ TTL 7 日待たなくても、`curl -X POST -H "Cookie: access_token=xxx" "https://rss.0g0.xyz/api/feeds/92bd33f28976b959/purge-content-cache"` で即座にフィード全記事のキャッシュをクリアできるよ〜🚀✨ shared cache + clip cache 両方クリアして、削除件数が `{ purged, failed, total }` で返るからモニタリングもしやすい！

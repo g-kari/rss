@@ -332,6 +332,7 @@ src/
     browser-translator.ts    # ブラウザネイティブ翻訳 API（Translator）の利用可否判定・言語検出
     browser-summarizer.ts    # ブラウザネイティブ要約 API（Summarizer）の利用可否判定・要約実行
     translate-html.ts        # HTML DOM 内の翻訳対象テキスト抽出・翻訳適用
+    tts-text.ts              # TTS 読み上げ用テキスト前処理純粋関数（URL を「リンク」に置換、#655）
     popup-lock.ts            # 同時に開けるブラウザポップアップ数を制限するクライアントサイドロック
     dbsc.ts                  # Device Bound Session Credentials (DBSC) ユーティリティ — 機能検出・チャレンジ生成・ヘッダービルダー (スケルトン)
     serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
@@ -691,6 +692,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `stats-feed-drilldown.spec.ts`        | `src/lib/stats-helpers.ts` — `aggregateStatsForFeed` フィード別集計純粋関数                                           |
 | `tag-validation.spec.ts`              | `src/lib/validation.ts#parseTagIds` — タグバリデーション                                                              |
 | `translate-html.spec.ts`              | `src/lib/translate-html.ts` — HTML 内テキスト翻訳                                                                     |
+| `tts-text.spec.ts`                    | `src/lib/tts-text.ts` — TTS 読み上げ用 URL 前処理純粋関数（#655）                                                     |
 | `url-ssrf.spec.ts`                    | `src/lib/url.ts` — SSRF 対策 URL バリデーション                                                                       |
 | `validation-functions.spec.ts`        | `src/lib/validation.ts` — バリデーション純粋関数                                                                      |
 | `session-id-validation.spec.ts`       | `src/lib/validation.ts` — `isValidSessionId`（UUID 形式・パストラバーサル防止）                                       |
