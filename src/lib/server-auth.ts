@@ -194,7 +194,8 @@ export function deduplicatedRefresh(refreshToken: string): Promise<RefreshResult
 /** BETA_ALLOWED_SUBS が設定されている場合、sub がリストに含まれるか確認 */
 export function isBetaAllowed(sub: string): boolean {
   const list = process.env.BETA_ALLOWED_SUBS?.trim();
-  if (!list) return true;
+  // Fail-closed: empty string = deny all
+  if (!list || list.trim() === "") return false;
   return list.split(",").some((s) => s.trim() === sub);
 }
 

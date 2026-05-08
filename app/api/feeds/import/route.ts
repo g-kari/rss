@@ -58,6 +58,19 @@ export async function POST(request: Request) {
     );
     if (limited) return limited;
 
+    const contentType = request.headers.get("content-type") ?? "";
+    const isValidContentType =
+      contentType.startsWith("text/xml") ||
+      contentType.startsWith("application/xml") ||
+      contentType.startsWith("text/plain") ||
+      contentType.startsWith("application/x-www-form-urlencoded");
+    if (!isValidContentType) {
+      return NextResponse.json(
+        { error: "Unsupported Media Type", code: "INVALID_CONTENT_TYPE" },
+        { status: 415 },
+      );
+    }
+
     const text = await request.text();
     if (!text || text.length > 1_000_000) {
       return apiError("Invalid or too large OPML file", 400, { code: "INVALID_OPML" });
