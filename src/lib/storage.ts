@@ -187,12 +187,20 @@ export function loadStoredEnum<T extends string>(key: string, valid: readonly T[
   return valid.includes(stored as T) ? (stored as T) : fallback;
 }
 
-/** Set<string> の要素をトグル（追加/削除）して localStorage に保存する */
+/**
+ * Set<string> の要素をトグル（追加/削除）して localStorage に保存する。
+ *
+ * `defer` のデフォルトは true（setTimeout(0) で永続化を遅延）。React の state updater 内で
+ * 同期 saveSet を呼ぶと毎回 JSON.stringify + ディスク I/O が走り、大きな ID 配列
+ * （readIds 等）でホットパスに数十 ms のスパイクが入る。デフォルト遅延化で
+ * 呼び出し側が意識せずとも安全な挙動になる（即時永続化が必要な箇所のみ
+ * 明示的に `defer=false` を渡す）。
+ */
 export function toggleSetItem(
   setState: (updater: (prev: Set<string>) => Set<string>) => void,
   storageKey: string,
   id: string,
-  defer = false,
+  defer = true,
 ): void {
   setState((prev) => {
     const next = new Set(prev);

@@ -192,9 +192,12 @@ export async function POST(request: Request) {
     const addedCount = newSubs.length;
 
     if (addedCount > 0) {
-      await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
       const origin = new URL(request.url).origin;
-      await purgeFeedsCache(origin, session.userId, ctx);
+      // R2 PUT と Cache API DELETE は互いに依存しないため並列化（合計レイテンシ短縮）
+      await Promise.all([
+        writeUserSubscriptions(env.RSS_DATA, session.userId, subs),
+        purgeFeedsCache(origin, session.userId, ctx),
+      ]);
       ctx.waitUntil(
         fetchArticles(env, session.userId).catch((e: unknown) =>
           console.error("[feeds/import] fetchArticles failed:", formatError(e)),
