@@ -14,6 +14,7 @@
 
 ### バグ修正っ
 
+- **ペイン幅を狭くするとヘッダー/フッターが隠れちゃう問題を横スクロールで救済したよ〜** — Issue #608。`SidebarHeader` / `SidebarFooter` / `ArticleListHeader` 上段の 3 箇所の flex コンテナに `overflow-x-auto` と `[&>*]:shrink-0` を追加！リサイザーで幅を狭くしてもボタン群が潰れず、はみ出した分は横スクロールでアクセスできるようになったよ〜🔧✨
 - **コンテンツ幅の境界線をドラッグで動かせなくなってた問題を修正したよ〜** — Issue #606。`ConfirmModal` が App.tsx で常時マウントされてるのに `usePopupLock()` を引数なしで呼んでたから、アプリ起動直後から popup-lock のカウンタが立ちっぱなしになって `hasOpenPopup` が常に true、リサイザーが `pointer-events-none` で操作不能になってたのが原因！`usePopupLock(isOpen)` に変えて isOpen 連動にしたよ。`if (!isOpen) return null` + `usePopupLock()` 引数なしの組み合わせを禁止する静的検査も追加して再発防止っ🔧💡
 - **JWKS フェッチ失敗時にステールキャッシュを使うよう修正したよ〜** — キャッシュ期限切れのタイミングで JWKS サーバーが一時的に落ちてると `keyCache` だけクリアされて「トークン検証失敗」が全ユーザーに出ちゃってたの修正！フェッチ失敗時は古いキャッシュで継続して認証が全断しないようになったよっ🔧💡
 - **`isBetaAllowed` 拒否時に sub の調査ログを出すようにしたよ〜** — Issue #597。Pairwise Sub ID を更新したのにベータ制限で弾かれる問題を切り分けやすくするため、`BETA_ALLOWED_SUBS` のリストに含まれない sub が来たら `subPrefix`（先頭16文字）と `subLength` を `console.warn` で出力するようにしたよ！sub 全体は出さないからログ流出しても安全だよっ🔧🔒
