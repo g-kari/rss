@@ -85,7 +85,7 @@ export async function extractContent(
     const hostname = new URL(url).hostname;
     const md = await fetchMarkdownFromHtml(html, hostname);
     if (md) {
-      content = postProcessMarkdownContent(markdownToHtml(md), url);
+      content = postProcessMarkdownContent(await markdownToHtml(md), url);
       contentSource = "ai-markdown";
     }
   }
