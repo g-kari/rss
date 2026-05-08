@@ -20,10 +20,20 @@ export default function BetaRestrictedPage() {
       <h1 className="text-[28px] font-light text-text-strong tracking-[-0.01em] mb-3">
         現在クローズドベータ中です
       </h1>
-      <p className="text-[14px] text-text-muted leading-relaxed max-w-xs mb-8">
+      <p className="text-[14px] text-text-muted leading-relaxed max-w-xs mb-4">
         このサービスは招待制のベータ版です。
-        <br />
-        アクセス権限をお持ちでない場合はご連絡ください。
+      </p>
+      <p className="text-[14px] text-text-muted leading-relaxed max-w-xs mb-8">
+        アクセスをご希望の方は{" "}
+        <a
+          href="https://x.com/gizensya_kari"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-text-strong underline underline-offset-2 hover:opacity-70 transition-opacity"
+        >
+          @gizensya_kari
+        </a>{" "}
+        までご連絡ください。
       </p>
       <a
         href="/api/auth/login"
