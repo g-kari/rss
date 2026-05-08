@@ -505,6 +505,12 @@ npx wrangler secret put RSSHUB_ACCESS_KEY      # RSSHub のアクセスキー（
 > **オプション環境変数 (wrangler.toml vars)**:
 > `INTERNAL_SERVICE_USER_AGENT` — 0g0-id への fetch に使う User-Agent 文字列（未設定時は `rss-reader/1.0 (+https://rss.0g0.xyz)`）。
 > Cloudflare WAF / Bot Fight Mode で Worker-to-Worker fetch が bot 判定されるのを防ぐために設定する。
+>
+> **dev / e2e 専用環境変数**:
+> `DEV_AUTH_BYPASS_USER_ID` — 開発・e2e テスト時のみ有効な認証バイパスを起動するユーザー ID（英数字 / `_` / `-` / `@` / `.` の 1〜128 文字）。
+> `process.env.NODE_ENV !== "production"` の AND 条件で動作するため、production ビルドでは Next.js の NODE_ENV inline により dead code 化されて含まれない。
+> `playwright.config.ts` の `webServer.env` で `e2e-test-user` が自動セットされ、`/api/auth/me` が fakeProfile を返して認証後画面の e2e カバレッジを取れるようにする。
+> 通常の本番デプロイには **絶対に設定しないこと**。
 
 ## コンテンツ抽出戦略 (`src/lib/content.ts`)
 

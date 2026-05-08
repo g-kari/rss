@@ -2,6 +2,10 @@
 
 ## 2026-05-08 (latest)
 
+### テスト追加っ
+
+- **dev 認証バイパス機能を追加して認証後画面の e2e カバレッジを拡充したよ〜** — Issue #607。`DEV_AUTH_BYPASS_USER_ID` 環境変数 と `NODE_ENV !== "production"` の AND 条件が揃った時だけ `/api/auth/me` が fakeProfile を返す仕組みを追加！production ビルドでは NODE_ENV inline により dead code 化されて含まれないから安心だよっ。`playwright.config.ts` の `webServer.env` に `e2e-test-user` をセットして、ThreePaneLayout に `data-popup-open` 属性を追加してリサイザー操作可否を e2e から判定できるようにしたよ〜🧪✨
+
 ### リファクタリングっ
 
 - **App.tsx を 1145 行 → 1039 行に削減したよ〜** — Issue #581。`articleViewProps` の 24-dep useMemo を `useArticleViewProps` hook に抽出、オフラインバナー・新着バナー・フォーカスモードオーバーレイを専用コンポーネントに分割してメンテしやすくなったよっ🔧✨
