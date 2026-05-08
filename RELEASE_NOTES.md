@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **everia.club などの WordPress nextpage で 2 ページ目以降が取得されないバグを直したよ〜** — Issue #652 関連。原因は **percent-encoding の大文字小文字差異**！記事 URL は大文字 (`%E5%A1%A9...`) なのに HTML 内のページネーションリンクは小文字 (`%e5%a1%a9...`) で、`isPaginatedVariant` の pathname 比較が文字列一致で false 返してた...！🔧 `decodeURI` で正規化してから比較するように修正、`MAX_PAGINATION_PAGES` も 5→10 に増やして長い画像記事もカバーできるようにしたよ〜📚✨ TDD の 6 ケース全 pass！
+
 ### リファクタリングっ
 
 - **`isSpeechSupported()` で 3 箇所重複してた Web Speech API 判定を統一したよ〜** — simplify。`App.tsx` の useMemo / `useSpeechSynthesis.ts` のモジュール定数 / `auto-read.ts` の純粋関数 で同じ `typeof window !== "undefined" && "speechSynthesis" in window` がコピペされてたから、`auto-read.ts#isSpeechSupported` に統一して全部 import 経由で参照するように！🔧 細かいけど本質変更ゼロでテスト 30 件 (xml-parser) 回帰なし。

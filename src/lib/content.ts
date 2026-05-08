@@ -108,6 +108,21 @@ function detectCurrentPageNumber(url: URL): number {
 }
 
 /**
+ * URL pathname を percent-encoding の大文字小文字差異を吸収して正規化する。
+ * decodeURI が失敗（不正シーケンス）した場合は原文を lowerCase 化してフォールバック。
+ *
+ * `everia.club` のように、ブラウザに表示される URL（大文字 %E5）と HTML 内ページ
+ * ネーションリンク（小文字 %e5）でエンコード形式が異なるケースに対応する。
+ */
+function normalizePathnameForCompare(pathname: string): string {
+  try {
+    return decodeURI(pathname);
+  } catch {
+    return pathname.toLowerCase();
+  }
+}
+
+/**
  * nextUrl が currentUrl の記事ページネーション的変種かどうかを判定する。
  * シリーズ記事ナビ・CMS 一覧ページネーション等の誤検知を防ぐ。
  *
@@ -115,6 +130,8 @@ function detectCurrentPageNumber(url: URL): number {
  * 1. 同一パス + page/p/pg/pn クエリパラメータのみ変化
  * 2. パス末尾が /page/N または /p/N 形式
  * 3. パス末尾が /N (bare numeric) かつ base 最終セグメントが slug らしい
+ *
+ * pathname 比較は `normalizePathnameForCompare` で percent-encoding を正規化してから行う。
  */
 function isPaginatedVariant(currentUrl: string, nextUrl: string): boolean {
   let cur: URL, next: URL;
@@ -125,8 +142,11 @@ function isPaginatedVariant(currentUrl: string, nextUrl: string): boolean {
     return false;
   }
 
+  const curPath = normalizePathnameForCompare(cur.pathname);
+  const nextPath = normalizePathnameForCompare(next.pathname);
+
   // 1. クエリパラメータのページ番号のみ変化: /article?page=1 → /article?page=2
-  if (cur.pathname === next.pathname) {
+  if (curPath === nextPath) {
     for (const key of ["page", "p", "pg", "pn"]) {
       const nextVal = next.searchParams.get(key);
       if (nextVal !== null && /^\d+$/.test(nextVal)) {
@@ -141,9 +161,9 @@ function isPaginatedVariant(currentUrl: string, nextUrl: string): boolean {
 
   // 2. パス末尾に /page/N または /p/N が付く: /article/foo → /article/foo/page/2
   const paginationSuffix = /\/(page|p)\/\d+\/?$/i;
-  if (paginationSuffix.test(next.pathname)) {
-    const nextBase = next.pathname.replace(paginationSuffix, "").replace(/\/$/, "") || "/";
-    const curBase = cur.pathname.replace(paginationSuffix, "").replace(/\/$/, "") || "/";
+  if (paginationSuffix.test(nextPath)) {
+    const nextBase = nextPath.replace(paginationSuffix, "").replace(/\/$/, "") || "/";
+    const curBase = curPath.replace(paginationSuffix, "").replace(/\/$/, "") || "/";
     if (curBase === nextBase) return true;
   }
 
@@ -153,9 +173,9 @@ function isPaginatedVariant(currentUrl: string, nextUrl: string): boolean {
   //    cur / next の trailing slash は正規化して比較する (WordPress pretty permalink
   //    のような /.../ → /.../2/ パターンで base が不一致になるのを防ぐ)。
   const bareNumericSuffix = /\/\d+\/?$/;
-  if (bareNumericSuffix.test(next.pathname)) {
-    const nextBase = next.pathname.replace(bareNumericSuffix, "").replace(/\/$/, "") || "/";
-    const curBase = cur.pathname.replace(bareNumericSuffix, "").replace(/\/$/, "") || "/";
+  if (bareNumericSuffix.test(nextPath)) {
+    const nextBase = nextPath.replace(bareNumericSuffix, "").replace(/\/$/, "") || "/";
+    const curBase = curPath.replace(bareNumericSuffix, "").replace(/\/$/, "") || "/";
     if (curBase === nextBase && nextBase !== "/" && lastPathSegmentLooksLikeSlug(nextBase)) {
       return true;
     }
