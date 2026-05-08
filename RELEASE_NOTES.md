@@ -19,6 +19,10 @@
 - **要約モデル不可時のエラーメッセージを修正したよ〜** — Issue #610。「ストレージ空き容量を確認してください」だけだとミスリーディング（実際はGPU・OS バージョンなどでも `model-unavailable` reason になる）だったから、ハードウェア要件の確認項目を列挙して、`chrome://on-device-internals` の確認導線も追加したよ〜🔧🎀
 - **フィード属性変更（NSFW/優先度/グループ等）の失敗が無言で消えちゃう問題を直したよ〜** — Issue #603。`useFeedPatch` の楽観的更新がサーバーで失敗するとロールバックはされてたけど toast 通知がなかったから、ユーザー視点では「操作したのに元に戻った」理由が分からなかったの！`onError` コールバックを追加して `toast.error("変更の保存に失敗しました")` で即通知するようにしたよっ🎀💡
 
+### 機能変更っ
+
+- **スヌーズ機能を UI からオミットしたよ〜** — Issue #619。記事ヘッダーの SnoozeMenu と `z` キーショートカットを削除。バックエンド（`snoozeArticle` / `snoozedUntil` ストレージ・マージロジック・既読フィルター）は丸ごと残してあるから、UI 復活が必要になったら `ArticleHeader.tsx` の `<SnoozeMenu>` レンダリングと `shortcuts.ts` の `z` 定義を戻すだけで OK だよ〜🔧
+
 ### テスト追加っ
 
 - **`rate-limit.ts` の `checkSlidingWindow` を `rate-limit-logic.ts` に純粋関数として切り出してテストしたよ〜** — Issue #618。`next/*` 非依存にすることで Playwright の Node ランナーから直接 import してユニットテストできるようになったの！通過/拒否判定・window 境界・Retry-After 算出・maxCalls=0 や空配列のエッジケース等 10 ケースで網羅したよ。`failClosed` 等の KV 障害時挙動は呼び出し側 (`rate-limit.ts`) に残してて、ロジックだけ別ファイルに切り出した綺麗な分離だよっ✅✨

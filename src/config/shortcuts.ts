@@ -286,18 +286,9 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
       if (ctx.selectedArticle) ctx.toggleRead(ctx.selectedArticle.id);
     },
   },
-  {
-    keys: ["z"],
-    displayKey: "z",
-    description: "スヌーズ（期間選択）",
-    group: "article",
-    handler: (ctx, e) => {
-      if (ctx.selectedArticle) {
-        e.preventDefault();
-        ctx.onShowSnoozeMenu(ctx.selectedArticle.id);
-      }
-    },
-  },
+  // スヌーズショートカット (z) は #619 で UI からオミット。
+  // バックエンド (snoozeArticle / snoozedUntil) は残してあるので、必要時に
+  // この shortcut 定義を戻せば再有効化できる。
   {
     keys: ["e"],
     displayKey: "e",
