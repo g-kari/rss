@@ -68,6 +68,9 @@ export interface ShortcutContext {
   retryFeed: (feedId: string) => Promise<void>;
   onShowSnoozeMenu: (articleId: string) => void;
   onShowFeedSwitcher: () => void;
+  toggleAutoMode: () => void;
+  autoMode: boolean;
+  ttsSupported: boolean;
   /** window.confirm の代替。未指定時は window.confirm にフォールバック。 */
   confirm?: (message: string) => Promise<boolean>;
 }
@@ -216,6 +219,20 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
   { keys: [], displayKey: "v", description: "全文を取得", group: "article" },
   { keys: [], displayKey: "a", description: "AI 要約", group: "article" },
   { keys: [], displayKey: "P", description: "読み上げ開始 / 停止", group: "article" },
+  {
+    keys: ["A"],
+    displayKey: "Shift+A",
+    description: "オートモード切替（自動全文取得 → 読み上げ → 次へ）",
+    group: "article",
+    handler: (ctx) => {
+      if (!ctx.ttsSupported) {
+        ctx.showToast("お使いのブラウザは音声合成に非対応です");
+        return;
+      }
+      ctx.toggleAutoMode();
+      ctx.showToast(filterToastMsg(ctx.autoMode, "オートモード"));
+    },
+  },
   {
     keys: [" "],
     displayKey: "Space / Shift+Space",

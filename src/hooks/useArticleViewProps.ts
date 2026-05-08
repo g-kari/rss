@@ -36,6 +36,9 @@ interface UseArticleViewPropsOptions {
   addArticleToCollection: (collectionId: string, articleId: string) => Promise<void>;
   removeArticleFromCollection: (collectionId: string, articleId: string) => Promise<void>;
   createCollection: (name: string) => Promise<Collection | { error: string }>;
+  autoMode: boolean;
+  onAutoModeStop: () => void;
+  onToggleAutoMode: () => void;
 }
 
 export function useArticleViewProps({
@@ -67,6 +70,9 @@ export function useArticleViewProps({
   addArticleToCollection,
   removeArticleFromCollection,
   createCollection,
+  autoMode,
+  onAutoModeStop,
+  onToggleAutoMode,
 }: UseArticleViewPropsOptions) {
   return useMemo(
     () => ({
@@ -101,6 +107,9 @@ export function useArticleViewProps({
       onAddToCollection: addArticleToCollection,
       onRemoveFromCollection: removeArticleFromCollection,
       onCreateCollection: createCollection,
+      autoMode,
+      onAutoModeStop,
+      onToggleAutoMode,
     }),
     [
       selectedArticle,
@@ -131,6 +140,9 @@ export function useArticleViewProps({
       addArticleToCollection,
       removeArticleFromCollection,
       createCollection,
+      autoMode,
+      onAutoModeStop,
+      onToggleAutoMode,
     ],
   );
 }

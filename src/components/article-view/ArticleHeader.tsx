@@ -51,6 +51,8 @@ interface Props {
   ttsRate: number;
   ttsCycleRate: () => void;
   onTtsToggle: () => void;
+  autoMode: boolean;
+  onToggleAutoMode: () => void;
 
   /* --- 画像ダウンロード --- */
   hasImages: boolean;
@@ -113,6 +115,8 @@ export default function ArticleHeader({
   ttsRate,
   ttsCycleRate,
   onTtsToggle,
+  autoMode,
+  onToggleAutoMode,
   hasImages,
   downloadAllImages,
   downloadingImages,
@@ -379,6 +383,42 @@ export default function ArticleHeader({
                 <path d="M11 4.5C11 4.5 12.5 6 12.5 7C12.5 8 11 9.5 11 9.5" />
               </svg>
             )}
+          </button>
+        )}
+
+        {hasContent && (
+          <button
+            onClick={onToggleAutoMode}
+            title={
+              ttsSupported
+                ? autoMode
+                  ? "オートモード OFF (Shift+A)"
+                  : "オートモード ON：自動で全文取得 → 読み上げ → 次の記事へ (Shift+A)"
+                : "音声合成 API 非対応のためオートモードは使えません"
+            }
+            aria-label={autoMode ? "オートモード OFF" : "オートモード ON"}
+            aria-pressed={autoMode}
+            className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${
+              autoMode ? "text-ink hover:text-text-muted" : "text-text-faint hover:text-text-muted"
+            }`}
+          >
+            {/* 自動モード = 矢印循環アイコン */}
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M11.5 5.5C10.5 3.5 8.5 2.5 7 2.5C4.5 2.5 2.5 4.5 2.5 7" />
+              <polyline points="11.5 2.5 11.5 5.5 8.5 5.5" />
+              <path d="M2.5 8.5C3.5 10.5 5.5 11.5 7 11.5C9.5 11.5 11.5 9.5 11.5 7" />
+              <polyline points="2.5 11.5 2.5 8.5 5.5 8.5" />
+            </svg>
           </button>
         )}
 

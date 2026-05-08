@@ -13,6 +13,9 @@ export interface ArticleViewTtsResult {
   ttsRate: number;
   ttsCycleRate: () => void;
   handleTtsToggle: () => void;
+  ttsSpeak: (text: string) => void;
+  ttsStop: () => void;
+  buildTtsText: (article: Article, processedContent: string | null) => string;
 }
 
 function buildTtsText(article: Article, processedContent: string | null): string {
@@ -70,5 +73,8 @@ export function useArticleViewTts(
     ttsRate,
     ttsCycleRate,
     handleTtsToggle,
+    ttsSpeak: speak,
+    ttsStop,
+    buildTtsText,
   };
 }

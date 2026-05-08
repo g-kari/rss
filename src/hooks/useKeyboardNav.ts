@@ -63,6 +63,9 @@ interface KeyboardNavOptions {
   onShowFeedSwitcher: () => void;
   onArticleAnnounce?: (title: string) => void;
   confirm?: (message: string) => Promise<boolean>;
+  autoMode: boolean;
+  toggleAutoMode: () => void;
+  ttsSupported: boolean;
 }
 
 function buildContext(opts: KeyboardNavOptions): ShortcutContext {
