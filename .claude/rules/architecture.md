@@ -217,6 +217,7 @@ src/
     useLayoutSettings.ts     # レイアウト・フォントサイズ・フォントファミリー・フィードビュー・ギャラリーカラム・コンテンツ幅設定（useUIState から分割）
     useLocalStorageHistory.ts # localStorage 配列の永続化 (先頭追加・重複排除・上限制御)
     useReadingStats.ts       # 読了統計取得 (/api/stats fetch → ReadingStats)
+    useEngagementEntries.ts  # エンゲージメント生エントリ lazy fetch（フィード別ドリルダウン用）
     useGalleryAutoRead.ts    # ギャラリーレイアウトでスクロール通過した記事を自動既読にする（IntersectionObserver + MutationObserver）
     useGallerySwipeNav.ts    # モバイルギャラリーの横スワイプでカード間スクロールナビゲーション
     useGestureNav.ts         # スワイプ・ホイール・ドラッグによる前後記事ナビゲーション（横スクロール子要素は除外）
@@ -666,6 +667,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `shared-feed.spec.ts`                 | `src/lib/shared-feed.ts` — フィードデータ R2 操作                                                                     |
 | `speakerdeck-embed.spec.ts`           | `src/lib/html-embed-transforms.ts` — SpeakerDeck 変換                                                                 |
 | `stats.spec.ts`                       | `src/lib/stats-helpers.ts` — `toDateStr` / `buildDayList`                                                             |
+| `stats-feed-drilldown.spec.ts`        | `src/lib/stats-helpers.ts` — `aggregateStatsForFeed` フィード別集計純粋関数                                           |
 | `tag-validation.spec.ts`              | `src/lib/validation.ts#parseTagIds` — タグバリデーション                                                              |
 | `translate-html.spec.ts`              | `src/lib/translate-html.ts` — HTML 内テキスト翻訳                                                                     |
 | `url-ssrf.spec.ts`                    | `src/lib/url.ts` — SSRF 対策 URL バリデーション                                                                       |
