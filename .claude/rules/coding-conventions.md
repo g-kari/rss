@@ -362,6 +362,73 @@ useEffect(() => {
 
 主な使用箇所: `usePrefetchGalleryContents`（429 クールダウン後の自動リトライ #642）
 
+## ref の論理リセットポイントを忘れない
+
+「前 tick の値を保持する ref」（例: `prevPlayingRef`, `prevSelectedRef`, `lastFiredAtRef`）は、状態の **論理的なリセットポイント**で同期的にリセットしないと、次の cycle で誤判定の連鎖を起こす。
+
+リセットポイントの典型:
+
+- 選択対象（記事 / フィード / セッション）の切替
+- モード（オートモード / フォーカスモード）の ON / OFF
+- ユーザーログアウト
+
+```typescript
+// アンチパターン: ref はそのまま残るので、新記事で「前は再生中だった」と誤判定
+useEffect(() => {
+  // ... ttsPlaying の遷移を見て次記事へ進む
+  prevPlayingRef.current = ttsPlaying;
+}, [ttsPlaying, articleId]);
+
+// 修正パターン: 切替時に ref をリセットする独立 effect を置く
+useEffect(() => {
+  prevPlayingRef.current = false;
+}, [articleId]);
+```
+
+**Why（このルールの背景）**: 2026-05-09 の #660（オートモード次記事への遷移ループ）が原因。`articleId` 変化時に `prevPlayingRef.current` が `true` のまま残り、新記事 TTS 開始前の `ttsPlaying = false` で「完了」と誤判定 → 即次記事へ連鎖していた。
+
+主な使用箇所: `AutoReadController`（#660）, `useReadStateSync`（lastServerSyncRef）
+
+## モード OFF 時に進行中の副作用を停止する
+
+state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
+
+```typescript
+// アンチパターン: enabled = false でも TTS は鳴り続ける
+function AutoReadController({ enabled /* ... */ }) {
+  // 停止ハンドラなし
+}
+
+// 修正パターン: enabled の変化で副作用を止める
+useEffect(() => {
+  if (enabled) return;
+  onTtsStop();
+  // または: abortRef.current?.abort();
+}, [enabled]);
+```
+
+**Why**: 2026-05-09 の #661（オートモード停止ボタンが効かない）が原因。`enabled = false` にしても speechSynthesis.cancel() が呼ばれず、ユーザー目線では「止まらない」体感だった。
+
+**How to apply**: 機能が「ON / OFF」のフラグで動く場合、OFF 遷移時のクリーンアップが副作用を 100% 止めているか必ず確認する。fetch / timer / 音声 / WebSocket / IntersectionObserver などすべて。
+
+## 上流 API プロキシのヘッダ欠落補完
+
+`/api/content` のように上流 HTTP レスポンスを中継する route で、上流が必須ヘッダ（`Retry-After`, `Content-Type` 等）を欠落させた場合に備えて、デフォルト値を補完する。
+
+```typescript
+// アンチパターン: 上流に Retry-After がないと undefined になる
+const retryAfterHeader = res.headers.get("Retry-After");
+if (retryAfterHeader) headers["Retry-After"] = retryAfterHeader;
+
+// 修正パターン: デフォルト値を補完
+const retryAfterHeader = res.headers.get("Retry-After") ?? "60";
+headers["Retry-After"] = retryAfterHeader;
+```
+
+**Why**: 2026-05-09 の #662（wallhaven.cc が 429 を Retry-After なしで返してきてクライアントが即時リトライ → 連鎖）が原因。
+
+**How to apply**: 外部 HTTP レスポンスを中継する Route Handler で、クライアント側 (retry-after.ts 等) が依存しているヘッダがあれば補完を必ず入れる。
+
 ## 読み取り状態のマージ戦略 (`useReadState`)
 
 R2 サーバーデータとローカル `localStorage` のマージは **ローカル優先 (local ∪ server)**。
