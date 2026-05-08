@@ -2,6 +2,10 @@
 
 ## 2026-05-08 (latest)
 
+### 激アツ新機能っ
+
+- **各 feedView でフィルター状態を独立に保存するようにしたよ〜** — Issue #621。articles / pictures / videos / social の 4 つのカテゴリで「未読のみ」「ブックマークのみ」「期間絞り込み」「読了時間」「ダイジェスト」「ソート順」の状態を別々に localStorage に保存！pictures カテゴリで未読のみ ON にしても articles に戻ったら全部表示の状態が残ってる、っていう自然な切り替えができるようになったの〜✨ articles はサフィックスなしの既存キーをそのまま使うから移行不要、新カテゴリ（pictures/videos/social）には `:カテゴリ名` サフィックス付きキーで保存だよ🎀
+
 ### バグ修正っ
 
 - **ギャラリービューでブックマークしてもアイコンが変わらないバグを直したよ〜** — Issue #634。`resolveItemProps` が `useSyncedRef` 経由で bookmarkIds/readIds/notes を参照してたから、Context 値の identity が変わらず memo された `GalleryCardRenderer` が再描画されなかったの！state を直接参照に切り替えて、ブックマーク・既読・メモの変更が即座にギャラリーカードに反映されるようにしたよ〜🎀

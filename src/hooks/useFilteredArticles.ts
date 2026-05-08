@@ -90,8 +90,8 @@ export function useFilteredArticles({
   const [page, setPage] = useState(1);
   const resetPage = useCallback(() => setPage(1), []);
 
-  const filters = useArticleFilters({ feedId, selectedGroupId, resetPage });
-  const { sortOrder, toggleSortOrder } = useArticleSorting(resetPage);
+  const filters = useArticleFilters({ feedId, selectedGroupId, resetPage, activeFeedView });
+  const { sortOrder, toggleSortOrder } = useArticleSorting(resetPage, activeFeedView);
 
   const {
     unreadOnly,
