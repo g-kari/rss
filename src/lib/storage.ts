@@ -75,6 +75,7 @@ export const STORAGE_KEYS = {
   DEDUP_BY_LINK: "rss-dedup-by-link",
   IMAGE_DL_FOLDER: "rss-image-dl-folder",
   IMAGE_DL_FOLDER_NSFW: "rss-image-dl-folder-nsfw",
+  DOWNLOADED_IMAGE_URLS: "rss-downloaded-image-urls",
   AI_MODEL: "rss-ai-model",
   HEADER_SHARE_TARGETS: "rss-header-share-targets",
   ARTICLE_DETAIL_OVERLAY_WIDTH: "rss-article-detail-overlay-width",
