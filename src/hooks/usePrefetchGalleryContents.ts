@@ -45,7 +45,7 @@ interface FetchAndCacheOpts {
   setMedia: (fn: (prev: Map<string, PrefetchedMedia>) => Map<string, PrefetchedMedia>) => void;
   signal?: AbortSignal;
   /** 429 受信時に呼ばれる追加コールバック（rateLimited フラグのセット・abort 等） */
-  onRateLimit?: () => void;
+  onRateLimit?: (untilEpochMs: number) => void;
 }
 
 /**
@@ -72,8 +72,9 @@ async function fetchAndCacheArticle(
         // UX 上、プリフェッチの自主停止は最大 10 分に制限
         maxMs: 10 * 60_000,
       });
-      opts.rateLimitUntilRef.current = Date.now() + retryAfterMs;
-      opts.onRateLimit?.();
+      const until = Date.now() + retryAfterMs;
+      opts.rateLimitUntilRef.current = until;
+      opts.onRateLimit?.(until);
       return null;
     }
 
@@ -136,8 +137,10 @@ export function usePrefetchGalleryContents({
   // enabled=false のとき state を空にすると、切り替え時のチラつきが出るため保持する
   const mediaRef = useRef(media);
   mediaRef.current = media;
-  // 429 受信時に Retry-After で指定された時刻まではプリフェッチを完全停止する
+  // 429 受信時に Retry-After で指定された時刻まではプリフェッチを完全停止する。
+  // ref は fetchAndCacheArticle 内の同期チェック用、state は useEffect 再実行のトリガー用に二重管理する。
   const rateLimitUntilRef = useRef<number>(0);
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number>(0);
   // retryArticle から最新の articles を参照するための ref
   const articlesRef = useRef(articles);
   articlesRef.current = articles;
@@ -152,6 +155,18 @@ export function usePrefetchGalleryContents({
     .filter((a) => Boolean(a.link))
     .map((a) => a.id)
     .join("\0");
+
+  // クールダウン期限が来たら state をリセットして useEffect を再実行（自動リトライ）
+  useEffect(() => {
+    if (rateLimitedUntil <= 0) return;
+    const remaining = rateLimitedUntil - Date.now();
+    if (remaining <= 0) {
+      setRateLimitedUntil(0);
+      return;
+    }
+    const id = setTimeout(() => setRateLimitedUntil(0), remaining);
+    return () => clearTimeout(id);
+  }, [rateLimitedUntil]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -215,8 +230,9 @@ export function usePrefetchGalleryContents({
           setFailedIds,
           setMedia,
           signal: controller.signal,
-          onRateLimit: () => {
+          onRateLimit: (until) => {
             rateLimited = true;
+            setRateLimitedUntil(until);
             controller.abort();
           },
         });
@@ -249,7 +265,7 @@ export function usePrefetchGalleryContents({
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- articles の代わりに articlesKey を依存にし、setMedia 再レンダーによる effect 再実行・fetch 中断を防ぐ
-  }, [articlesKey, enabled, concurrency, maxPrefetch, requestDelayMs]);
+  }, [articlesKey, enabled, concurrency, maxPrefetch, requestDelayMs, rateLimitedUntil]);
 
   /** 失敗した記事を個別にリトライ、または未取得の記事を手動で画像展開する */
   const retryArticle = useCallback((articleId: string) => {
