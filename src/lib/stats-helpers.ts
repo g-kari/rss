@@ -57,3 +57,43 @@ export function computeWeeklyTotal(
   const READ_ACTIONS = new Set(["fetch_full", "open_original"]);
   return entries.filter((e) => READ_ACTIONS.has(e.action) && e.timestamp >= mondayIso).length;
 }
+
+/**
+ * 特定フィード向けに dailyReadCounts (7日) / yearlyHeatmap (365日) / weeklyTotal を集計する純粋関数。
+ * READ_ACTIONS（fetch_full / open_original）のみカウントする。
+ *
+ * 注意: ここで返す weeklyTotal は READ_ACTIONS のみの集計のため、
+ * `app/api/stats/route.ts` 側の topFeeds スコア（ai_feedback を除く全アクション集計）とは定義が異なる。
+ */
+export function aggregateStatsForFeed(
+  entries: { feedHash: string; action: string; timestamp: string }[],
+  feedHash: string,
+  now: Date,
+): {
+  dailyReadCounts: { date: string; count: number }[];
+  yearlyHeatmap: { date: string; count: number }[];
+  weeklyTotal: number;
+} {
+  const READ_ACTIONS = new Set(["fetch_full", "open_original"]);
+  const filtered = entries.filter((e) => e.feedHash === feedHash && READ_ACTIONS.has(e.action));
+
+  const dailyMap = new Map<string, number>();
+  const yearlyMap = new Map<string, number>();
+  for (const e of filtered) {
+    const day = toDateStr(e.timestamp);
+    dailyMap.set(day, (dailyMap.get(day) ?? 0) + 1);
+    yearlyMap.set(day, (yearlyMap.get(day) ?? 0) + 1);
+  }
+
+  const dailyReadCounts = buildDayList(now, 7).map((date) => ({
+    date,
+    count: dailyMap.get(date) ?? 0,
+  }));
+  const yearlyHeatmap = buildDayList(now, 365).map((date) => ({
+    date,
+    count: yearlyMap.get(date) ?? 0,
+  }));
+  const weeklyTotal = computeWeeklyTotal(filtered, now);
+
+  return { dailyReadCounts, yearlyHeatmap, weeklyTotal };
+}

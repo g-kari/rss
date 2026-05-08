@@ -5,6 +5,8 @@ import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useReadingStats } from "../hooks/useReadingStats";
 import { useInboxProgress } from "../hooks/useInboxProgress";
+import { useEngagementEntries } from "../hooks/useEngagementEntries";
+import { aggregateStatsForFeed } from "../lib/stats-helpers";
 import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import type { Article, Feed } from "../types";
 
@@ -267,15 +269,41 @@ export default function ReadingStatsModal({
   onClose,
 }: Props) {
   const { stats, loading, error, fetch: fetchStats } = useReadingStats();
+  const {
+    entries: engagementEntries,
+    loading: entriesLoading,
+    error: entriesError,
+    fetch: fetchEntries,
+  } = useEngagementEntries();
   const inboxStats = useInboxProgress(articles, feeds, readIds, readBeforeTimestamp ?? null);
+  const [selectedFeedHash, setSelectedFeedHash] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
 
+  // ドリルダウン選択時に entries を遅延取得（モーダル open 中のみキャッシュされる）
+  useEffect(() => {
+    if (selectedFeedHash && !engagementEntries) {
+      fetchEntries();
+    }
+  }, [selectedFeedHash, engagementEntries, fetchEntries]);
+
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title])), [feeds]);
 
-  const maxDaily = stats ? Math.max(...stats.dailyReadCounts.map((d) => d.count), 1) : 1;
+  const drillStats = useMemo(() => {
+    if (!selectedFeedHash || !engagementEntries) return null;
+    return aggregateStatsForFeed(engagementEntries, selectedFeedHash, new Date());
+  }, [selectedFeedHash, engagementEntries]);
+
+  // ドリルダウン中は drillStats を、未選択時は全体 stats を表示
+  const displayDailyReadCounts = drillStats?.dailyReadCounts ?? stats?.dailyReadCounts;
+  const displayYearlyHeatmap = drillStats?.yearlyHeatmap ?? stats?.yearlyHeatmap;
+  const displayWeeklyTotal = drillStats?.weeklyTotal ?? stats?.weeklyTotal ?? 0;
+
+  const maxDaily = displayDailyReadCounts
+    ? Math.max(...displayDailyReadCounts.map((d) => d.count), 1)
+    : 1;
 
   return (
     <Modal title="読書統計" onClose={onClose} width="sm:w-[560px]">
@@ -292,23 +320,55 @@ export default function ReadingStatsModal({
         )}
         {stats && !loading && (
           <>
+            {/* ドリルダウン表示中のヘッダー */}
+            {selectedFeedHash && (
+              <div className="flex items-center gap-2 -mb-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedFeedHash(null)}
+                  className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text-strong transition-colors"
+                  aria-label="全体統計に戻る"
+                >
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  全体に戻る
+                </button>
+                <span className="text-[12px] text-text-strong truncate">
+                  {feedMap.get(selectedFeedHash) ?? selectedFeedHash.slice(0, 12) + "…"}
+                </span>
+                {entriesLoading && <Spinner />}
+                {entriesError && (
+                  <span role="alert" className="text-[11px] text-rose-400">
+                    集計データの取得に失敗しました
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* サマリーカード */}
             <div className="grid grid-cols-3 gap-2">
-              <StatCard label="今週" value={stats.weeklyTotal} />
+              <StatCard label="今週" value={displayWeeklyTotal} />
               <StatCard label="累計" value={stats.allTimeTotal} />
               <StatCard label="連続" value={`${stats.currentStreak}日`} />
             </div>
 
             {/* 週間目標 */}
-            <WeeklyGoalSection weeklyTotal={stats.weeklyTotal} />
+            <WeeklyGoalSection weeklyTotal={displayWeeklyTotal} />
 
             {/* 年間ヒートマップ */}
-            {stats.yearlyHeatmap && stats.yearlyHeatmap.length > 0 && (
+            {displayYearlyHeatmap && displayYearlyHeatmap.length > 0 && (
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
                   過去 1 年
                 </span>
-                <HeatmapCalendar data={stats.yearlyHeatmap} />
+                <HeatmapCalendar data={displayYearlyHeatmap} />
               </div>
             )}
 
@@ -318,7 +378,7 @@ export default function ReadingStatsModal({
                 直近 7 日
               </span>
               <div className="flex flex-col gap-1.5">
-                {stats.dailyReadCounts.map(({ date, count }) => {
+                {(displayDailyReadCounts ?? []).map(({ date, count }) => {
                   const label = new Date(date + "T00:00:00Z").toLocaleDateString("ja-JP", {
                     month: "numeric",
                     day: "numeric",
@@ -349,19 +409,32 @@ export default function ReadingStatsModal({
                   {stats.topFeeds.map(({ feedHash, score }, i) => {
                     const title = feedMap.get(feedHash) ?? feedHash.slice(0, 12) + "…";
                     const maxScore = stats.topFeeds[0]?.score ?? 1;
+                    const isSelected = selectedFeedHash === feedHash;
                     return (
-                      <div key={feedHash} className="flex items-center gap-2">
+                      <button
+                        key={feedHash}
+                        type="button"
+                        onClick={() => setSelectedFeedHash(isSelected ? null : feedHash)}
+                        aria-pressed={isSelected}
+                        className={`flex items-center gap-2 -mx-1 px-1 py-0.5 rounded transition-colors ${
+                          isSelected ? "bg-surface-subtle" : "hover:bg-surface-hover"
+                        }`}
+                      >
                         <span className="text-[11px] text-text-faint w-4 flex-shrink-0 text-right">
                           {i + 1}
                         </span>
-                        <span className="text-[12px] text-text-default truncate flex-1 min-w-0">
+                        <span
+                          className={`text-[12px] truncate flex-1 min-w-0 text-left ${
+                            isSelected ? "text-text-strong font-medium" : "text-text-default"
+                          }`}
+                        >
                           {title}
                         </span>
                         <Bar value={score} max={maxScore} />
                         <span className="text-[11px] text-text-muted w-7 text-right tabular-nums flex-shrink-0">
                           {score}
                         </span>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
