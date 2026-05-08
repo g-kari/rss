@@ -8,6 +8,9 @@ import ArticleList from "./components/ArticleList";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
+import OfflineBanner from "./components/OfflineBanner";
+import NewArticleBanner from "./components/NewArticleBanner";
+import FocusModeOverlay from "./components/FocusModeOverlay";
 import type { Article } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
@@ -40,6 +43,7 @@ import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
 import { useFeedSidebarActions } from "./hooks/useFeedSidebarActions";
+import { useArticleViewProps } from "./hooks/useArticleViewProps";
 import ConfirmModal from "./components/ConfirmModal";
 import ThreePaneLayout from "./components/ThreePaneLayout";
 import { ReaderSettingsProvider, type ReaderSettings } from "./contexts/ReaderSettingsContext";
@@ -745,71 +749,36 @@ export default function App() {
     confirm: confirmMessage,
   });
 
-  const articleViewProps = useMemo(
-    () => ({
-      article: selectedArticle,
-      isBookmarked: selectedArticle ? bookmarkIds.has(selectedArticle.id) : false,
-      onToggleBookmark: handleToggleBookmark,
-      isInReadingList: selectedArticle ? readingListIds.has(selectedArticle.id) : false,
-      onToggleReadingList: handleToggleReadingList,
-      isLiked: selectedArticle ? likeIds.has(selectedArticle.id) : false,
-      onToggleLike: handleToggleLike,
-      onEngagement: recordEngagement,
-      onMobileBack: () => setMobilePane("list"),
-      currentMobilePane: mobilePane,
-      onGoBack: () => setMobilePane("list"),
-      prevArticle,
-      nextArticle,
-      onSelectPrev: prevArticle ? () => selectArticle(prevArticle) : undefined,
-      onSelectNext: nextArticle ? () => selectArticle(nextArticle) : undefined,
-      feeds,
-      onSnooze: snoozeArticle,
-      note: selectedArticle ? notes[selectedArticle.id] : undefined,
-      onSetNote: setNote,
-      onDeleteNote: deleteNote,
-      onAutoMarkRead: markRead,
-      tags: selectedArticle ? (articleTagIds[selectedArticle.id] ?? []) : [],
-      allTags: articleTagIds,
-      onAddTag: addTag,
-      onRemoveTag: removeTag,
-      onSetArticleTags: setArticleTags,
-      onClearArticleTags: clearArticleTags,
-      collections,
-      onAddToCollection: addArticleToCollection,
-      onRemoveFromCollection: removeArticleFromCollection,
-      onCreateCollection: createCollection,
-    }),
-    [
-      selectedArticle,
-      bookmarkIds,
-      handleToggleBookmark,
-      readingListIds,
-      handleToggleReadingList,
-      likeIds,
-      handleToggleLike,
-      recordEngagement,
-      mobilePane,
-      setMobilePane,
-      prevArticle,
-      nextArticle,
-      selectArticle,
-      feeds,
-      snoozeArticle,
-      notes,
-      setNote,
-      deleteNote,
-      markRead,
-      articleTagIds,
-      addTag,
-      removeTag,
-      setArticleTags,
-      clearArticleTags,
-      collections,
-      addArticleToCollection,
-      removeArticleFromCollection,
-      createCollection,
-    ],
-  );
+  const articleViewProps = useArticleViewProps({
+    selectedArticle,
+    bookmarkIds,
+    handleToggleBookmark,
+    readingListIds,
+    handleToggleReadingList,
+    likeIds,
+    handleToggleLike,
+    recordEngagement,
+    mobilePane,
+    setMobilePane,
+    prevArticle,
+    nextArticle,
+    selectArticle,
+    feeds,
+    snoozeArticle,
+    notes,
+    setNote,
+    deleteNote,
+    markRead,
+    articleTagIds,
+    addTag,
+    removeTag,
+    setArticleTags,
+    clearArticleTags,
+    collections,
+    addArticleToCollection,
+    removeArticleFromCollection,
+    createCollection,
+  });
 
   const snoozeArticleTitle = snoozeTargetId
     ? (articles.find((a) => a.id === snoozeTargetId)?.title ?? "")
@@ -862,25 +831,7 @@ export default function App() {
             <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
               {articleAnnouncement}
             </div>
-            {/* オフラインバナー */}
-            {!isOnline && (
-              <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 py-1.5 bg-surface-subtle border-b border-border-default text-[11px] tracking-[0.04em] text-text-muted">
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M1 1l10 10M8.5 3.5A4 4 0 0 0 2.5 7M10 5.5A6 6 0 0 0 5 2M4 8a2 2 0 0 1 4 0" />
-                </svg>
-                オフライン — キャッシュされたデータを表示中
-                {hasPendingChanges && <span className="ml-1 text-text-faint">（同期待ち）</span>}
-              </div>
-            )}
+            <OfflineBanner isOnline={isOnline} hasPendingChanges={hasPendingChanges} />
 
             <ToastContainer />
 
@@ -907,40 +858,12 @@ export default function App() {
             />
             {/* NSFW 目が開くアニメーション */}
             {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
-            {newArticleCount > 0 && !focusMode && !listFocusMode && (
-              <button
-                onClick={() => {
-                  dismissNewArticles();
-                  document
-                    .querySelector<HTMLElement>('[role="feed"][aria-label="記事"]')
-                    ?.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-ink text-ink-text text-[12px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] animate-fade-up cursor-pointer"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" />
-                新着記事 {newArticleCount} 件
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    dismissNewArticles();
-                  }}
-                  className="ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center -my-2 -mr-2 opacity-60 hover:opacity-100 transition-opacity"
-                  aria-label="通知を閉じる"
-                >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  >
-                    <path d="M2 2l8 8M10 2l-8 8" />
-                  </svg>
-                </button>
-              </button>
-            )}
+            <NewArticleBanner
+              newArticleCount={newArticleCount}
+              focusMode={focusMode}
+              listFocusMode={listFocusMode}
+              onDismiss={dismissNewArticles}
+            />
             {/* 記事一覧フォーカスモード解除ボタン（PC のみ表示。モバイルは単一ペイン表示のため不要） */}
             {listFocusMode && (
               <button
@@ -965,40 +888,11 @@ export default function App() {
                 フォーカス解除
               </button>
             )}
-            {/* フォーカスモード全画面オーバーレイ */}
-            {focusMode && (
-              <div
-                className="fixed inset-0 z-50 bg-surface-base animate-slide-up overflow-hidden flex flex-col"
-                role="dialog"
-                aria-modal="true"
-                aria-label="フォーカスモード"
-              >
-                <button
-                  onClick={exitFocusMode}
-                  className="absolute top-4 right-4 z-10 p-2 text-text-faint hover:text-text-muted transition-colors duration-200"
-                  aria-label="フォーカスモード終了"
-                  title="フォーカスモード終了 (Esc)"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M4 4l12 12M16 4l-12 12" />
-                  </svg>
-                </button>
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <ErrorBoundary label="フォーカスモード">
-                    <ArticleView {...articleViewProps} />
-                  </ErrorBoundary>
-                </div>
-              </div>
-            )}
+            <FocusModeOverlay
+              focusMode={focusMode}
+              exitFocusMode={exitFocusMode}
+              articleViewProps={articleViewProps}
+            />
             {/* カラムリサイズハンドル (PCのみ、記事一覧フォーカス / ポップアップ表示中は無効) */}
             {!listFocusMode && (
               <>
