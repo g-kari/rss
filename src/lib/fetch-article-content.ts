@@ -23,7 +23,8 @@ import { postProcessMarkdownContent } from "@/lib/html-post-processor";
 import { isValidFeedUrl } from "@/lib/url";
 
 export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
-const MAX_PAGINATION_PAGES = 5;
+// everia.club / WordPress nextpage は 5〜10 ページに渡る記事もあるため余裕を持って 10 に設定
+const MAX_PAGINATION_PAGES = 10;
 export const ARTICLE_FETCH_OPTS = {
   headers: {
     "User-Agent": "Mozilla/5.0 (compatible; rss-reader/1.0)",
