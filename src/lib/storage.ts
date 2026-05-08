@@ -5,6 +5,8 @@
  * 読み書き時は必ず storageGet / storageSet / storageRemove を経由する。
  */
 
+import type { FeedView } from "../types";
+
 // ── キー定数 ──────────────────────────────────────────────────
 
 export const SPECIAL_FEED_IDS = {
@@ -76,6 +78,16 @@ export const STORAGE_KEYS = {
   AI_MODEL: "rss-ai-model",
   HEADER_SHARE_TARGETS: "rss-header-share-targets",
 } as const;
+
+/**
+ * feedView 別に独立した localStorage キーを生成する。
+ *
+ * - `articles` ビューはサフィックスなし（既存キー）。後方互換のため移行不要。
+ * - `pictures` / `videos` / `social` ビューは `${baseKey}:${feedView}` で分離。
+ */
+export function getFeedViewStorageKey(baseKey: string, feedView: FeedView): string {
+  return feedView === "articles" ? baseKey : `${baseKey}:${feedView}`;
+}
 
 // ── 低レベルラッパー ──────────────────────────────────────────
 
