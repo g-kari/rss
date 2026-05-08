@@ -309,9 +309,16 @@ export const FilterableGalleryImage = memo(function FilterableGalleryImage({
 }) {
   const [hidden, setHidden] = useState(false);
   const [failed, setFailed] = useState(false);
+  // ロード前は aspect-ratio を 1/1 で仮置きして空間を予約することで、
+  // 画像読み込み完了時の高さ確定による masonic 全体再配置（レイアウトシフト）
+  // を緩和する (#636 症状 2)。ロード後は naturalWidth/Height から実比率に切替。
+  const [aspectRatio, setAspectRatio] = useState<string>("1 / 1");
   const handleLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
       const img = e.currentTarget;
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        setAspectRatio(`${img.naturalWidth} / ${img.naturalHeight}`);
+      }
       if (minPx > 0 && img.naturalWidth < minPx && img.naturalHeight < minPx) {
         setHidden(true);
       }
@@ -340,7 +347,8 @@ export const FilterableGalleryImage = memo(function FilterableGalleryImage({
     <img
       src={buildImageProxyUrl(src)}
       alt=""
-      className="w-full h-auto object-cover bg-surface-subtle"
+      className="w-full object-cover bg-surface-subtle"
+      style={{ aspectRatio }}
       loading="lazy"
       onLoad={handleLoad}
       onError={() => setFailed(true)}
