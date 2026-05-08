@@ -8,6 +8,8 @@
 
 ### セキュリティ対策っ
 
+- **OPML インポートに Content-Type バリデーションを追加したよ〜** — Issue #577。`text/xml`・`application/xml`・`text/plain` 以外の Content-Type で 415 を返すようにしたよっ。防御の層が増えてセキュリティバッチリ🔒✨
+- **`isBetaAllowed` を fail-closed 設計に変更したよ〜** — Issue #576。`BETA_ALLOWED_SUBS=""` の誤デプロイで全ユーザー許可になるリスクを排除！空文字・未設定 = 全拒否になったよっ🔒🎀
 - **未使用の `dompurify` を devDependencies から削除したよ〜** — Workers 非対応が判明済みだったのに残ってたパッケージを削除。`@types/dompurify`（deprecated）も一緒に除去したよっ🔒🎀
 - **DBSC `/api/auth/dbsc/register` のチャレンジ照合を `timingSafeEqual` に統一したよ〜** — `challenge` ルートは既に対応済みだったのに `register` ルートだけ通常の文字列比較だったの修正。一貫性バッチリになったよっ🔒✨
 - **`POST /api/recommendations/dismiss` に 2 秒クールダウンを追加したよ〜** — 他の POST エンドポイントと一致させて R2 読み書きの乱用を防いだよっ🔒💡
@@ -30,6 +32,8 @@
 
 ### リファクタリングっ
 
+- **`listAllFeedHashes` dead code を削除したよ〜** — Issue #591。cron で使われなくなってた関数を `shared-feed.ts` から完全に除去してスッキリ🔧✨
+- **`marked` を動的 import に変更してバンドルサイズを削減したよ〜** — Issue #579。`content.ts` の静的 import を `await import('marked')` に変更して Worker 起動時間が短縮されたよっ⚡💡
 - **`article-utils.ts` から React import を除去して `article-ui-helpers.ts` に分離したよ〜** — Issue #569。サーバーサイドコードに React が混入しないスッキリ構成になったよっ🔧✨
 
 ### 簡素化っ
@@ -38,11 +42,16 @@
 
 ### テスト追加っ
 
+- **`ai-route-helper.ts` の型ガード・バリデーション関数のテストを追加したよ〜** — Issue #586。`isWorkersAiModelId` など純粋関数を 29 テストでカバーしたよっ✅🎀
+- **`read-state-sync-api.ts` の型ガード・SaveResult 構造のテストを追加したよ〜** — Issue #587。`isReadState` など 24 テストを追加したよっ✅✨
 - **`pMapSettled` / `pMap`（concurrency.ts）のテストを追加したよ〜** — Issue #573。17 テストケースで並行処理の動作をしっかり検証できるようになったよっ✅🎀
 - **`browser-summarizer.ts` のテストを追加したよ〜** — Issue #575。`browser-translator.ts` と対称的なテスト体制になったよっ✅✨
 
 ### ドキュメント整備っ
 
+- **`FeedAddModal` のエラーメッセージに `role="alert"` と `aria-describedby` を追加したよ〜** — Issue #584。スクリーンリーダーがエラー発生を自動アナウンスするようになったよっ🎀✨
+- **api-spec.md に 14 エンドポイントの仕様を追記したよ〜** — Issue #588。認証フロー・フィード管理・コンテンツ取得系など合計 14 本のエンドポイント仕様が揃ったよっ📝✨
+- **architecture.md のカバレッジマップとディレクトリ構造を補完したよ〜** — Issue #589。テスト spec 14 ファイル・lib/hooks/components の追記漏れを全部埋めたよっ📝🎀
 - **api-spec.md に Push 通知エンドポイントの仕様を追記したよ〜** — Issue #572。vapid-key・status・subscribe・unsubscribe・test の 5 エンドポイントが仕様書に載ったよっ📝🎀
 - **api-spec.md に Collections・FeedGroups・Feeds export/reinfer の仕様を追記したよ〜** — Issue #574。10 エンドポイント分の仕様をちゃんと書いたよっ📝✨
 
