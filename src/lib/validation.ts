@@ -204,6 +204,17 @@ export function isValidFeedHash(value: string): boolean {
   return /^[0-9a-f]{16}$/.test(value);
 }
 
+/**
+ * セッション ID（UUID 形式）として有効かどうかを判定する。
+ * crypto.randomUUID() は v4 を生成するが、ここでは R2 キー埋め込みのパストラバーサル防止が
+ * 主目的のため UUID 一般形式を許容する（v4 固有のバリアントビット制約は強制しない）。
+ * 信頼境界を越える sessionId はこの関数で必ず再検証する。
+ */
+const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isValidSessionId(value: string): boolean {
+  return SESSION_ID_RE.test(value);
+}
+
 /** Cookie ヘッダー値として安全な文字列か検証する（HTTP ヘッダーインジェクション・Cookie jar poison 防止） */
 export function isValidCookieHeader(value: string): boolean {
   // 長さ上限を 2000 文字に制限（HTTP ヘッダー全体 8KB 制限に対して余裕を確保）

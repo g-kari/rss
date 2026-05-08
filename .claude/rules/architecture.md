@@ -674,6 +674,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `translate-html.spec.ts`              | `src/lib/translate-html.ts` — HTML 内テキスト翻訳                                                                     |
 | `url-ssrf.spec.ts`                    | `src/lib/url.ts` — SSRF 対策 URL バリデーション                                                                       |
 | `validation-functions.spec.ts`        | `src/lib/validation.ts` — バリデーション純粋関数                                                                      |
+| `session-id-validation.spec.ts`       | `src/lib/validation.ts` — `isValidSessionId`（UUID 形式・パストラバーサル防止）                                       |
 | `xml-parser.spec.ts`                  | `src/lib/xml-parser.ts` — RSS / Atom パーサー                                                                         |
 
 ### カバレッジ未対応の重要機能
