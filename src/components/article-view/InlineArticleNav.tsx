@@ -23,10 +23,12 @@ export default function InlineArticleNav({
 }: Props) {
   return (
     <div
-      className="group relative flex items-center gap-3 h-[52px] mb-3 select-none cursor-ew-resize"
+      className="group relative flex items-center gap-3 h-[52px] mb-3 select-none cursor-pointer"
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseLeave}
+      role="navigation"
+      aria-label="前後の記事へ移動 — 左半分クリックで前、右半分クリックで次"
     >
       <div className="flex-1 overflow-hidden flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         {prevArticle && onSelectPrev && (

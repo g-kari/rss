@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { whichSideClicked } from "../lib/inline-nav";
 
 const SWIPE_THRESHOLD_PX = 60;
 const WHEEL_THRESHOLD_PX = 150;
@@ -95,8 +96,19 @@ export function useGestureNav({
     if (mouseStartXRef.current === null) return;
     const dx = e.clientX - mouseStartXRef.current;
     mouseStartXRef.current = null;
-    if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
-    dispatchSwipe(dx);
+    if (Math.abs(dx) >= SWIPE_THRESHOLD_PX) {
+      dispatchSwipe(dx);
+      return;
+    }
+    // ドラッグなしクリック (PC): 領域の中央より左で前、右で次の記事へ遷移 (#637)
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const side = whichSideClicked(e.clientX, { left: rect.left, right: rect.right });
+    if (side === "left") {
+      onSelectPrev?.();
+    } else {
+      onSelectNext?.();
+    }
   }
 
   function handleNavMouseLeave() {
