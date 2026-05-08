@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### リファクタリングっ
+
+- **ArticleHeader.tsx (648行) を機能別 4 サブコンポーネントに分割したよ〜** — Issue #647。AI / TTS / 画像 DL / シェア / ブックマーク / 後で読む / いいね / メモ / コレクション / フォーカスモード の 10 機能集約コンポーネントを、`ArticleHeaderMeta` (メタ情報) / `ArticleHeaderAiTts` (AI・TTS・画像 DL) / `ArticleHeaderShare` (シェア・フィルターメニュー) / `ArticleHeaderEngagement` (ブックマーク・後で読む・いいね・メモ・コレクション・フォーカスモード) の 4 つに分離して、ArticleHeader 本体は 250 行のオーケストレーターに！🔧 既存の import パスは維持してるから ArticleView 側の変更ゼロだよ〜✨ 機能ごとの差分が読みやすくなって、将来の機能追加もラクになったの〜📦 全 e2e テスト 2217 件回帰なし！
+
 ### セキュリティ対策っ
 
 - **`fast-xml-builder` の脆弱性 2 件を修正したよ〜** — Dependabot alerts。`fast-xml-parser@5.7.2` の依存として入ってた `fast-xml-builder@1.1.5` に高/中の脆弱性 (CVE: 属性値での不要な引用符バイパス + コメント値正規表現バイパス) があったから、`pnpm.overrides` で `fast-xml-builder: ">=1.1.7"` を追加して `1.2.0` に強制更新！🔒 RSS パーサーの 30 件テスト全部 pass で動作確認済みだよ〜🛡️
