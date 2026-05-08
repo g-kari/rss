@@ -7,6 +7,7 @@ import { apiFetch } from "../lib/api-fetch";
 interface UseRecommendationsResult {
   recommendations: RecommendedFeed[];
   loading: boolean;
+  error: string | null;
   dismiss: (id: string) => void;
   refresh: () => void;
   refreshing: boolean;
@@ -16,6 +17,7 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
   const [recommendations, setRecommendations] = useState<RecommendedFeed[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const triggerRefresh = useCallback(async (): Promise<RecommendedFeed[]> => {
     const res = await apiFetch("/api/recommendations/refresh", { method: "POST" });
@@ -27,21 +29,27 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
   const loadRecommendations = useCallback(async () => {
     const res = await apiFetch("/api/recommendations");
     if (res.status === 204) {
-      // 未生成 or 期限切れ → 自動でリフレッシュを試みる
       const items = await triggerRefresh().catch(() => []);
       setRecommendations(items);
+      setError(null);
       return;
     }
-    if (!res.ok) return;
+    if (!res.ok) {
+      setError("推薦の読み込みに失敗しました");
+      return;
+    }
     const data = (await res.json()) as { recommendations: RecommendedFeed[] };
     setRecommendations(data.recommendations ?? []);
+    setError(null);
   }, [triggerRefresh]);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
     loadRecommendations()
-      .catch(() => {})
+      .catch(() => {
+        setError("推薦の読み込みに失敗しました");
+      })
       .finally(() => setLoading(false));
   }, [user, loadRecommendations]);
 
@@ -59,12 +67,13 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
       setRefreshing(true);
       const items = await triggerRefresh();
       setRecommendations(items);
+      setError(null);
     } catch {
-      // 静かに失敗
+      setError("推薦の読み込みに失敗しました");
     } finally {
       setRefreshing(false);
     }
   }, [triggerRefresh]);
 
-  return { recommendations, loading, dismiss, refresh, refreshing };
+  return { recommendations, loading, error, dismiss, refresh, refreshing };
 }

@@ -12,6 +12,9 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
   const toast = useToast();
   const importRef = useRef<HTMLInputElement>(null);
   const [opmlLoading, setOpmlLoading] = useState(false);
+  const [clipUrlCopied, setClipUrlCopied] = useState(false);
+
+  const CLIP_URL = "https://rss.0g0.xyz/api/clip";
 
   const handleExport = async () => {
     if (opmlLoading) return;
@@ -57,6 +60,16 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
       toast.error("インポートに失敗しました");
     } finally {
       setOpmlLoading(false);
+    }
+  };
+
+  const handleCopyClipUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(CLIP_URL);
+      setClipUrlCopied(true);
+      setTimeout(() => setClipUrlCopied(false), 2000);
+    } catch {
+      toast.error("コピーに失敗しました");
     }
   };
 
@@ -128,6 +141,33 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
             </svg>
             OPMLインポート
           </button>
+        </div>
+
+        {/* SingleFile 連携 */}
+        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+          SingleFile 連携
+        </span>
+        <div className="flex flex-col gap-2">
+          <p className="text-[12px] text-text-soft leading-relaxed">
+            SingleFile ブラウザ拡張から記事を保存できます。
+            <br />
+            拡張の設定で以下の URL を「保存先 URL」に設定してください。
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 px-3 py-1.5 text-[12px] rounded-lg bg-surface-subtle text-text-default border border-border-subtle font-mono truncate select-all">
+              {CLIP_URL}
+            </code>
+            <button
+              type="button"
+              onClick={handleCopyClipUrl}
+              className="flex-shrink-0 px-3 py-1.5 text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors"
+            >
+              {clipUrlCopied ? "コピーしました！" : "コピー"}
+            </button>
+          </div>
+          <p className="text-[11px] text-text-muted">
+            保存した記事は「すべての記事」に表示されます。
+          </p>
         </div>
       </div>
     </div>

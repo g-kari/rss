@@ -343,6 +343,7 @@ export default function App() {
   const {
     recommendations,
     loading: recommendationsLoading,
+    error: recommendationsError,
     dismiss: dismissRecommendation,
     refresh: refreshRecommendations,
     refreshing: recommendationsRefreshing,
@@ -1060,6 +1061,7 @@ export default function App() {
                       recommendations={recommendations}
                       recommendationsLoading={recommendationsLoading}
                       recommendationsRefreshing={recommendationsRefreshing}
+                      recommendationsError={recommendationsError}
                       noteCount={Object.keys(notes).length}
                       collections={collections}
                       collectionsLoadError={collectionsLoadError}

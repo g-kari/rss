@@ -7,6 +7,7 @@ import { useToast } from "@/contexts/ToastContext";
 interface Props {
   recommendations: RecommendedFeed[];
   loading: boolean;
+  error: string | null;
   refreshing: boolean;
   onDismiss: (id: string) => void;
   onRefresh: () => void;
@@ -16,6 +17,7 @@ interface Props {
 export default function RecommendationSection({
   recommendations,
   loading,
+  error,
   refreshing,
   onDismiss,
   onRefresh,
@@ -64,8 +66,22 @@ export default function RecommendationSection({
         <div className="px-4 py-2 text-[11px] text-text-faint">読み込み中...</div>
       )}
 
+      {/* エラー */}
+      {error && !loading && (
+        <div className="px-4 py-2 flex items-center gap-2">
+          <span className="text-[11px] text-rose-400">{error}</span>
+          <button
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="text-[11px] text-text-muted hover:text-text-strong underline transition-colors duration-200 disabled:opacity-50"
+          >
+            再試行
+          </button>
+        </div>
+      )}
+
       {/* 空状態 */}
-      {!loading && recommendations.length === 0 && (
+      {!loading && !error && recommendations.length === 0 && (
         <div className="px-4 py-2 text-[11px] text-text-faint leading-relaxed">
           記事をブックマーク・全文取得すると、関連フィードのURLがおすすめに表示されます。↑
           の更新ボタンを押してみてください。

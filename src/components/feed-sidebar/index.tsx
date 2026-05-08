@@ -61,6 +61,7 @@ interface Props {
   recommendations?: RecommendedFeed[];
   recommendationsLoading?: boolean;
   recommendationsRefreshing?: boolean;
+  recommendationsError?: string | null;
   noteCount?: number;
   selectedTag?: string | null;
   articleTagIds?: Record<string, string[]>;
@@ -106,6 +107,7 @@ function FeedSidebar({
   recommendations,
   recommendationsLoading,
   recommendationsRefreshing,
+  recommendationsError,
   noteCount,
   selectedTag = null,
   articleTagIds,
@@ -505,6 +507,7 @@ function FeedSidebar({
           <RecommendationSection
             recommendations={recommendations}
             loading={recommendationsLoading ?? false}
+            error={recommendationsError ?? null}
             refreshing={recommendationsRefreshing ?? false}
             onDismiss={onDismissRecommendation}
             onRefresh={onRefreshRecommendations}
