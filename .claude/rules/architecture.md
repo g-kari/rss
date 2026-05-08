@@ -591,6 +591,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `api-health.spec.ts`                  | `/api/health` エンドポイント・認証ガード                                                                              |
 | `article-filter.spec.ts`              | `src/lib/article-filter.ts` — 記事フィルタリングロジック                                                              |
+| `digest-skip-read.spec.ts`            | `src/lib/article-filter.ts` — ダイジェスト時に既読は digestLimit カウントから除外（#620 Option A）                    |
 | `article-search.spec.ts`              | `src/hooks/useFullTextSearch` 経由の全文検索                                                                          |
 | `article-ttl.spec.ts`                 | `src/lib/article-ttl.ts` — TTL 管理純粋関数                                                                           |
 | `article-utils.spec.ts`               | `src/lib/article-utils.ts` — readingTime / timeAgo                                                                    |
