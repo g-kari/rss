@@ -215,7 +215,7 @@ export default function AiNotificationTabPanel({
                     {summarizerDiag.reason === "model-downloading" &&
                       "要約モデルをダウンロード中です。しばらくお待ちください（chrome://settings/aiPage でダウンロード状況を確認できます）"}
                     {summarizerDiag.reason === "model-unavailable" &&
-                      "要約モデルをデバイスで使用できません。ストレージ空き容量を確認してください"}
+                      "要約モデルをデバイスで利用できません。ハードウェア要件（GPU・ストレージ・OS バージョン）を確認してください。詳細は chrome://on-device-internals で確認できます"}
                   </span>
                 )}
               </div>
