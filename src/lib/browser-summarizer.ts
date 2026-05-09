@@ -34,11 +34,15 @@ interface BrowserSummarizerConstructor {
   availability(options?: {
     type?: "headline" | "tldr" | "teaser" | "key-points";
     length?: "short" | "medium" | "long";
+    expectedInputLanguages?: readonly string[];
+    outputLanguage?: string;
   }): Promise<Availability>;
   create(options?: {
     type?: "headline" | "tldr" | "teaser" | "key-points";
     length?: "short" | "medium" | "long";
     sharedContext?: string;
+    expectedInputLanguages?: readonly string[];
+    outputLanguage?: string;
     monitor?: (m: CreateMonitor) => void;
   }): Promise<BrowserSummarizer>;
 }
@@ -50,10 +54,17 @@ interface BrowserSummarizerConstructor {
  * `type` の有効値は `"key-points" | "tldr" | "teaser" | "headline"` (セミコロン無し)。
  * `"tl;dr"` (セミコロン入り) を渡すと `availability()` が `"unavailable"` を返し、
  * 端末上の要約 API が永久に使えない誤判定になる。
+ *
+ * `outputLanguage` 未指定時は Chrome が "No output language was specified ..." 警告を
+ * 出すため、本プロジェクトの第一読者言語である日本語 (`ja`) を明示する (#664)。
+ * Chrome 公式サポート言語は `[en, es, ja]` のみ。
+ * `expectedInputLanguages` も同様にヒントとして渡し、モデル選択精度を上げる。
  */
 export const SUMMARIZER_OPTIONS = {
   type: "tldr",
   length: "medium",
+  expectedInputLanguages: ["ja", "en"],
+  outputLanguage: "ja",
 } as const;
 
 // Chrome の公式検出パターン `'Summarizer' in self` に合わせ globalThis への宣言とする
