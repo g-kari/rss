@@ -356,3 +356,170 @@ App.tsx / 巨大ページコンポーネントから複数の `useEffect` / `use
 **How to apply**: 機能別分割が落ち着いたら、サブコンポーネント間で `git diff` 風の比較を行って **「ほぼ同一の 5 行以上のブロック」** がないか確認する。simplify 監査エージェントに「similar sub-components の重複」を観点として渡すと自動検出可能。
 
 主な使用箇所: `VirtualRow` (#692 — `article-list-body/` の 3 サブコンポーネントから virtualizer item wrapper を集約)
+
+## React Context パターン (`src/contexts/`)
+
+コンポーネントツリーの深い階層に props を渡す（prop drilling）代わりに、React Context を使用する。
+Context ファイルは `src/contexts/` に配置し、`createContext` + Provider + `useXxx` カスタムフックをセットで提供する。
+
+```typescript
+// src/contexts/ToastContext.tsx
+const ToastContext = createContext<ToastApi | null>(null);
+
+export function ToastProvider({ value, children }: ProviderProps) {
+  return <ToastContext value={value}>{children}</ToastContext>;
+}
+
+export function useToast(): ToastApi {
+  const ctx = useContext(ToastContext);
+  if (!ctx) throw new Error("useToast must be used within ToastProvider");
+  return ctx;
+}
+```
+
+主な使用箇所:
+
+- `SelectedArticleContext` — 選択記事 ID（ArticleItem の不要な re-render 回避）
+- `ArticleFilterContext` — 記事フィルター状態の共有
+- `ReaderSettingsContext` — リーダー表示設定（フォントサイズ・行間・テーマ等）
+- `ToastContext` — トースト通知 API のグローバル提供
+- `TtsAdapterContext` — TTS engine adapter（記事ヘッダー TTS と設定モーダル voice 選択で同一インスタンスを共有）
+
+### 派生ケース: 「内部 state を持つ hook」を複数 consumer で共有したいときは Provider 化必須
+
+`useState` / `useRef` を内包する hook (例: `useSpeechSynthesis` の `isPlaying` / `voiceUri`) を **複数の異なる箇所で別々に呼ぶと別インスタンスになる** ため、state 共有が崩れる。「同じ adapter / 同じ state を複数 consumer で共有したい」要件が出たら、必ず Provider 化する。
+
+```typescript
+// アンチパターン: 各 consumer で個別に呼ぶ → state が分裂
+function ArticleHeader() {
+  const { isPlaying, voiceUri } = useSpeechSynthesis(); // インスタンス A
+}
+function SettingsModal() {
+  const { voiceUri, setVoiceUri } = useSpeechSynthesis(); // インスタンス B
+  // → SettingsModal の voice 変更が ArticleHeader に伝わらない
+}
+
+// 修正パターン: App level で 1 度だけ呼んで Provider に注入
+function App() {
+  const ttsAdapter = useSpeechSynthesis(); // 単一インスタンス
+  return (
+    <TtsAdapterProvider value={ttsAdapter}>
+      <ArticleHeader /> {/* useTtsAdapter() でアクセス */}
+      <SettingsModal /> {/* useTtsAdapter() でアクセス — 同一 state */}
+    </TtsAdapterProvider>
+  );
+}
+```
+
+**Why**: `useState` / `useRef` ベースの hook は呼び出すたびに新しい state slot を React が作る。複数箇所で呼ぶと state 同期が取れず、片方の更新が他方に反映されないバグになる。プロジェクトの典型は「ある UI を別 UI に移動したい」とき: 元の場所だけで使われていた hook を、新しい場所からも参照させると state 分裂が起きる。
+
+**How to apply**: 既存 hook の使用箇所を増やしたいときは:
+
+1. **既存呼び出し箇所が 1 ヶ所か** を grep で確認 (`useXxx` で全件検索)
+2. 1 ヶ所なら → 新規呼び出し側に追加するのではなく、**Provider 化** + 既存呼び出しも context に移行
+3. 既に複数箇所なら → そもそも state 分裂バグが潜んでいる可能性あり、調査要
+4. App.tsx の Provider 階層に追加するときは **JSX 開閉タグの indent 整合** を check:fix で必ず通す (Provider を 1 段増やすと内側全部の indent が +2 ずれる)
+
+主な使用箇所: `TtsAdapterContext` (#675 Phase 1b — `useSpeechSynthesis` を App.tsx で 1 回だけ呼んで記事ヘッダー / 設定モーダル両方で共有)
+
+## 早期 return をコンポーネント / 関数に切り出すと TypeScript narrowing が失われる
+
+巨大コンポーネントの「ロード中 / エラー / 未認証」のような **早期 return パス** をサブコンポーネントや関数に切り出すと、後続のコードで TypeScript narrowing が失われる。呼び出し側で `null` 戻り値を early-return する形に書き換えても、TS の制御フロー解析は呼び出し先関数の戻り値を追跡できないため。
+
+```tsx
+// アンチパターン: 切り出し後 TS が user の non-null narrowing を失う
+function AppLandingState({ user, betaRestricted }: Props) {
+  if (user === undefined) return <Loading />;
+  if (betaRestricted) return <BetaPage />;
+  if (!user) return <LandingPage />;
+  return null;
+}
+
+function App() {
+  const { user, betaRestricted } = useAuth();
+  const landingNode = AppLandingState({ user, betaRestricted });
+  if (landingNode) return landingNode;
+  // ↓ ここで user は依然 UserProfile | null | undefined のまま
+  return <MainUI userId={user.id} />; // TS2322: undefined / null を assign できない
+}
+
+// 修正パターン: landingNode 後に narrowing を再現する明示的なガードを置く
+function App() {
+  const { user, betaRestricted } = useAuth();
+  const landingNode = AppLandingState({ user, betaRestricted });
+  if (landingNode) return landingNode;
+  if (!user) return null; // ← TS narrowing を再導入 (実行時に到達しないが型のために必要)
+  return <MainUI userId={user.id} />; // OK: user は UserProfile に絞り込まれた
+}
+```
+
+**Why**: TypeScript の制御フロー解析は呼び出した関数の **戻り値が non-null かどうか** で呼び出し元の変数を絞り込めない。早期 return を関数に切り出した場合、呼び出し元では「landingNode が null でなければ既に return している」だけしか TS には伝わらず、元の `if (user === undefined) return ...` で得られていた `user: UserProfile` への narrowing は復元されない。
+
+**How to apply**: 早期 return パスをコンポーネント / 関数に切り出すときは、
+
+1. 切り出し前に「**この early-return が narrow していた変数は何か**」を確認する (例: `user`)
+2. 切り出し後、呼び出し元に `if (!targetVar) return null;` のような **TS narrowing 用の明示ガード** を追加する (実行時には早期 return パスで既に弾かれているため到達しないが、型のためだけに残す)
+3. ガード行には `// TS narrowing 用` のような短いコメントを添えて、実行時には冗長に見える理由を明示する
+
+主な使用箇所: `src/components/AppLandingState.tsx` (オーケストレーター呼び出し側で `if (!user) return null;` ガードを併記)
+
+## 子コンポーネントの「自己判断で hidden になる UI」は親で「全件 hidden」を検知して fallback する
+
+子コンポーネントが「自分の都合 (画像が小さすぎる・コンテンツが空・条件不一致など) で `null` を返す」設計のとき、**親はその事実を知らない**ため、全子が `null` を返した結果 **UI が空っぽ** になる症状が発生する。
+
+```tsx
+// アンチパターン: FilterableGalleryImage が単独で hidden 判定して null
+function FilterableGalleryImage({ src, minPx }) {
+  const [hidden, setHidden] = useState(false);
+  const onLoad = (e) => {
+    if (e.currentTarget.naturalWidth < minPx) setHidden(true);
+  };
+  if (hidden) return null;
+  return <img src={src} onLoad={onLoad} />;
+}
+
+// 親: imageSource === "prefetched" → No Image プレースホルダ条件に該当しない
+// → 全子 null だと「空コンテナ + タイトルだけ表示」状態に
+{imageSource !== "none" ? (
+  <div>
+    {images.map((src) => <FilterableGalleryImage src={src} minPx={...} />)}
+  </div>
+) : (
+  <NoImagePlaceholder />
+)}
+
+// 修正パターン: 子は onHide コールバックで hidden を親に通知
+function FilterableGalleryImage({ src, minPx, onHide }) {
+  const [hidden, setHidden] = useState(false);
+  const onLoad = (e) => {
+    if (e.currentTarget.naturalWidth < minPx) {
+      setHidden(true);
+      onHide?.(); // ← 親に通知
+    }
+  };
+  if (hidden) return null;
+  return <img src={src} onLoad={onLoad} />;
+}
+
+// 親: hiddenCount を集約して「全件 hidden」を判定 → fallback 描画
+const [hiddenCount, setHiddenCount] = useState(0);
+useEffect(() => setHiddenCount(0), [images]); // images 入れ替えで reset
+const allHidden = hiddenCount > 0 && hiddenCount >= images.length;
+return allHidden ? <Fallback /> : (
+  <div>
+    {images.map((src) => (
+      <FilterableGalleryImage src={src} minPx={...} onHide={() => setHiddenCount(c => c + 1)} />
+    ))}
+  </div>
+);
+```
+
+**Why**: 子の自己判断 hidden は「個別の見た目」を制御するには良いが、UI 全体としては「何も表示されない不可視な状態」を生む。親は子が消えた事実を知らないので fallback を出せず、ユーザーは「タイトルだけ残った謎の状態」を体験する。
+
+**How to apply**: 子コンポーネントに「自分で `null` 返却して消える」設計を入れる場合、必ず onHide / onSkip コールバックも併せて実装する。親は:
+
+1. `hiddenCount` state で集約
+2. 子の入力配列が入れ替わったら useEffect でリセット
+3. `allHidden = count >= total` 判定で fallback 分岐を追加 (例: 別ソース・空状態プレースホルダ)
+
+主な使用箇所: `FilterableGalleryImage` の `onHide` (#671 後追い・全画像が minPx 未満で隠れる時の thumb / No Image fallback)

@@ -4,6 +4,8 @@
 
 ### ドキュメント整備っ
 
+- **`coding-conventions.md` 段階的分割 Step 3 をやったよ〜 (#694 Step 3)** — Step 2 (大規模コンポーネント分割) に続き、Step 3 では React Context (65行) / 早期 return TS narrowing (41行) / 子コンポーネント hidden fallback (61行) の **3 セクション計 167 行** を `react-patterns.md` へ集約！🎀 各セクション位置に redirect リンクを残して発見性維持〜📚 `coding-conventions.md` は 1451 → 1299 行 (Step 1+2+3 累計で **1785 → 1299 / -486 行 / 27% 削減**)、`react-patterns.md` は 358 → 525 行で React 関連 11 パターンを集約完了！
+
 - **`coding-conventions.md` 段階的分割 Step 2 をやったよ〜 (#694 Step 2)** — Step 1 (state/ref 4 セクション) に続き、Step 2 では「大きいコンポーネントの機能別分割パターン」(本体 + 4 派生ケース) ~165 行を `react-patterns.md` へ抽出！🎀 派生ケース内訳: hook を 1 つずつ別 commit / Phase 1: 純粋関数+TDD / Phase 2: UI 統合 / Phase 0: 型抽象化のみ先行 / 機能別分割後の逆方向集約。`coding-conventions.md` は 1605 → 1451 行 (Step 1 と合算で 1785 → 1451 / -334 行)、`react-patterns.md` は 193 → 358 行〜📚 残 Step 候補は React Context / 早期 return TS narrowing / 子の hidden fallback など。
 
 - **`.claude/rules/coding-conventions.md` (1785 行) の段階的分割 Step 1 をやったよ〜 (#694 Step 1)** — `rule-maintenance.md` の 800 行閾値を 2.2 倍超えてたから、テーマ別に分割する案 C (段階的分割) を着手〜🎀 Step 1 として React state/ref/useEffect クラスター 4 セクション (~189 行) を新ファイル `react-patterns.md` に抽出！🔧 抽出対象: 構造的等価性ガード / ref vs state / trigger counter / ref 論理リセットポイント (+ 実行済み ID ref 派生)。`coding-conventions.md` は 1605 行に縮小、抽出先への redirect リンクを残して発見性を維持〜📚 Step 2 以降で React Context / hook 設計 / 大規模コンポーネント分割等を順次抽出予定！
