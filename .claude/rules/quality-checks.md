@@ -100,6 +100,30 @@ skip メッセージには **次に何をすべきか**（コマンド・URL）�
 | UI 振る舞い・React レンダリング | e2e infrastructure（認証バイパス・テストデータ投入ヘルパー）が揃っているか確認       |
 | Cloudflare バインディング       | dev サーバー起動 + 認証バイパスで e2e 可能か確認                                     |
 
+#### 「純粋関数化できる部分」を見つけるパターン
+
+修正コードが「分類・判別・選択」を含むなら、その判定を pure 関数として切り出せる可能性が高い:
+
+| バグ修正パターン                       | 抽出可能な純粋関数                                          |
+| -------------------------------------- | ----------------------------------------------------------- |
+| エラーオブジェクトの種別判定           | `isAbortError(err)` / `classifyHttpError(status)`           |
+| ID 形式バリデーション                  | `isValidSessionId(s)` / `parseTagIds(input)`                |
+| 状態遷移判定                           | `isAutoReadFinished({...})` / `shouldStartAutoSpeak({...})` |
+| 描画ソースの選択                       | `selectGalleryImages(prefetched, thumb)`                    |
+| 文字列前処理 (URL 置換・HTML strip 等) | `preprocessTtsText(text)` / `buildTtsText(article, ...)`    |
+| TTL / cutoff 計算                      | `computeEffectiveReadBeforeCutoff({manual, ttlDays})`       |
+
+**修正前の自問**: 「この修正の `if` 文 / 三項演算子 / `switch` を `src/lib/` の関数に切り出せるか？」答えが Yes なら、必ず切り出して TDD する。No (= React state や DOM 副作用と密結合) なら Step 2 へ。
+
+#### 抽出が難しいケース (e2e UI テストが必要)
+
+- React の `useMemo` / `memo` の identity 安定性に絡むバグ (例: state ref 経由参照で再描画されない)
+- `useEffect` の発火タイミング・順序に依存するバグ
+- ブラウザ API (Web Share / IntersectionObserver / SpeechSynthesis) の呼び出し副作用
+- DOM 構造への直接介入 (focus / scroll position 等)
+
+これらは Step 2 へ進む。
+
 ### Step 2: 書けない場合の選択肢
 
 - **infrastructure 不足が原因** → 先に「e2e テスト infrastructure 拡充」Issue を起票し、それを完了してから本 Issue に戻る
