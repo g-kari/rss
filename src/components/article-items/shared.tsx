@@ -305,9 +305,12 @@ export const GalleryExpandButton = memo(function GalleryExpandButton({
 export const FilterableGalleryImage = memo(function FilterableGalleryImage({
   src,
   minPx,
+  onHide,
 }: {
   src: string;
   minPx: number;
+  /** minPx 未満で hidden になったときの通知 (#671: 全画像 hidden 時の fallback 用) */
+  onHide?: () => void;
 }) {
   const [hidden, setHidden] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -323,9 +326,10 @@ export const FilterableGalleryImage = memo(function FilterableGalleryImage({
       }
       if (minPx > 0 && img.naturalWidth < minPx && img.naturalHeight < minPx) {
         setHidden(true);
+        onHide?.();
       }
     },
-    [minPx],
+    [minPx, onHide],
   );
   if (hidden) return null;
   if (failed) {
