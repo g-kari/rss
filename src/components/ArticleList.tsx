@@ -116,7 +116,6 @@ function ArticleList({
   const {
     filtered,
     visible,
-    hasMore,
     query,
     sentinelRef,
     unreadOnly,

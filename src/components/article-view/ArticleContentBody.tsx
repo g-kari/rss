@@ -14,6 +14,7 @@ import { useMathRender } from "../../hooks/useMathRender";
 import { useArticleHighlight } from "../../hooks/useArticleHighlight";
 import { useEventListener } from "../../hooks/useEventListener";
 import { sanitizeHtml } from "../../lib/html";
+import { shouldScrollSentence, findScrollableAncestor } from "../../lib/tts-scroll";
 import { buildImageProxyUrl } from "../../lib/image-proxy-url";
 import { FONT_SIZE_CLASSES, FONT_FAMILY_CLASSES } from "../../lib/article-utils";
 import { getLineHeightStyle } from "../../lib/reader-settings";
@@ -81,6 +82,8 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
 
     // #672 Phase 2: activeSentenceIndex に応じて DOM の sentence span に
     // .tts-active-sentence クラスを付け、最初の active span に scrollIntoView
+    // #659: 「画面下部基準で見づらい」「画像で押し下げられる」というユーザー要望に応えて
+    //        block: "nearest" → 快適ゾーン (中央 30〜70%) 外なら block: "center" に切替
     useEffect(() => {
       const root = contentRef.current;
       if (!root) return;
@@ -94,8 +97,21 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
       );
       if (next.length === 0) return;
       next.forEach((el) => el.classList.add("tts-active-sentence"));
-      // 最初の active span にスクロール (常に追従)
-      next[0].scrollIntoView({ block: "nearest", behavior: "smooth" });
+      // 最初の active span を快適ゾーンに収める (画像直後等で下部に来た場合のみセンタリング)
+      const target = next[0];
+      const scrollEl = findScrollableAncestor(target);
+      if (!scrollEl) return;
+      const elRect = target.getBoundingClientRect();
+      const cRect = scrollEl.getBoundingClientRect();
+      const decision = shouldScrollSentence({
+        elementTop: elRect.top,
+        elementBottom: elRect.bottom,
+        containerTop: cRect.top,
+        containerBottom: cRect.bottom,
+      });
+      if (decision.shouldScroll) {
+        target.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
     }, [activeSentenceIndex]);
 
     // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する
