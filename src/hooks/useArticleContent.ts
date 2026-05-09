@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
+import { autoReadDebug } from "../lib/auto-read-debug";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import type { OgpData } from "../types";
 
@@ -108,7 +109,14 @@ export function useArticleContent(
 
   const fetchFullContent = useCallback(
     async (onFetched?: (content: string) => void) => {
-      if (!articleLink) return;
+      if (!articleLink) {
+        autoReadDebug("useArticleContent.fetch-skipped", {
+          articleId,
+          reason: "no-article-link",
+        });
+        return;
+      }
+      autoReadDebug("useArticleContent.fetch-start", { articleId, articleLink });
       // 前の全文フェッチが進行中なら中断
       fetchAbortControllerRef.current?.abort();
       const controller = new AbortController();
@@ -123,13 +131,29 @@ export function useArticleContent(
         if (data.content) {
           if (articleId) contentLruCache.set(articleId, data.content);
           setFetchedState({ id: articleId ?? "", content: data.content });
+          autoReadDebug("useArticleContent.fetch-success", {
+            articleId,
+            contentLength: data.content.length,
+          });
           onFetched?.(data.content);
         } else {
           setFetchError(data.error ?? "取得できませんでした");
+          autoReadDebug("useArticleContent.fetch-no-content", {
+            articleId,
+            error: data.error,
+            httpStatus: res.status,
+          });
         }
       } catch (err) {
-        if (isAbortError(err)) return;
+        if (isAbortError(err)) {
+          autoReadDebug("useArticleContent.fetch-aborted", { articleId });
+          return;
+        }
         setFetchError("ネットワークエラー");
+        autoReadDebug("useArticleContent.fetch-network-error", {
+          articleId,
+          err: err instanceof Error ? err.message : String(err),
+        });
       } finally {
         if (fetchAbortControllerRef.current === controller) {
           fetchAbortControllerRef.current = null;
