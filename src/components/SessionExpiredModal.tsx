@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 export default function SessionExpiredModal() {
@@ -11,12 +11,23 @@ export default function SessionExpiredModal() {
   useEffect(() => {
     loginLinkRef.current?.focus();
   }, []);
+
+  // フォーカストラップ: 単一 focusable element (ログインリンク) のみなので、
+  // Tab / Shift+Tab どちらでも常にログインリンクへフォーカスを戻す
+  // (Modal.tsx の focus trap pattern を踏襲)。
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab") return;
+    e.preventDefault();
+    loginLinkRef.current?.focus();
+  }, []);
+
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
       role="dialog"
       aria-modal="true"
       aria-labelledby="session-expired-title"
+      onKeyDown={handleKeyDown}
     >
       <div className="w-[360px] rounded-xl bg-surface-elevated border border-border-default shadow-[0_8px_32px_rgba(0,0,0,0.25)] p-8 text-center">
         {/* Lock icon */}

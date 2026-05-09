@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentProps } from "react";
 import { createPortal } from "react-dom";
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
@@ -7,6 +7,9 @@ import { usePopupLock } from "@/hooks/usePopupLock";
 import { STORAGE_KEYS, storageGet, storageSet } from "@/lib/storage";
 
 type ArticleViewProps = ComponentProps<typeof ArticleView>;
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface Props {
   open: boolean;
@@ -28,10 +31,31 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
   const [width, setWidth] = useState<number>(() => loadWidth());
   const [mounted, setMounted] = useState(false);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // WCAG 2.4.3: パネルが閉じたら開いたトリガー要素にフォーカスを戻す (Modal.tsx と同パターン)
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // open 切替時の focus 退避・初期 focus・復元 (Modal.tsx と同パターン)
+  useEffect(() => {
+    if (open) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+      // mounted 後 (createPortal が描画後) に dialog 内の最初の focusable を取得
+      // useState の setMounted は別 effect なので setTimeout で 1 tick 待つ
+      const id = window.setTimeout(() => {
+        const el = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+        if (el) el.focus();
+        else dialogRef.current?.focus();
+      }, 0);
+      return () => window.clearTimeout(id);
+    }
+    const ret = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (ret && document.contains(ret)) ret.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -44,6 +68,31 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
   }, [open, onClose]);
+
+  // フォーカストラップ: Modal.tsx と同パターン (Tab で循環、Shift+Tab で逆循環)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab") return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+    if (focusable.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first || document.activeElement === dialog) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last || document.activeElement === dialog) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }, []);
 
   function handleResizeStart(e: React.MouseEvent) {
     e.preventDefault();
@@ -72,7 +121,10 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex justify-end"
+      ref={dialogRef}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+      className="fixed inset-0 z-50 flex justify-end outline-none"
       role="dialog"
       aria-modal="true"
       aria-label="記事詳細パネル"

@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **モーダル系 3 つに focus trap を追加したよ〜 (a11y 監査 82-92% 信頼度)** — `SessionExpiredModal` / `FocusModeOverlay` / `ArticleDetailOverlay` の 3 つで **Tab キーがダイアログ外へ逃げる** WCAG 2.4.3 違反を発見!💥 `Modal.tsx` の canonical pattern (Tab 循環 + Shift+Tab 逆循環) をコピー反映〜🛡️ `ArticleDetailOverlay` には初期 focus + 復元の 3 点セットも追加 (Modal.tsx と同パターン)、`FocusModeOverlay` は既存の focus 復元はそのまま残して Tab トラップだけ追加〜🎀 `SessionExpiredModal` は単一 focusable element (ログインリンク) のみなので Tab / Shift+Tab を常にログインリンクへ戻す簡易版〜📦
+
 ### パフォーマンス改善っ
 
 - **`useReadStateSyncApply` の notes / tagIds に構造的等価性ガードを追加したよ〜 (perf 監査 88% 信頼度)** — 2 秒毎に走るサーバー同期で `setNotesState(merged)` / `setTagIdsState(result)` が **内容変化なしでも毎回新 reference** を作って setState を呼んでた状態を発見!💥 `useFilteredArticles` の派生 useMemo (noteIds Set / タグ別ビュー等) が **2 秒毎に再計算** されて全記事フィルター pass の主スレッドブロックを発生させてたの〜🥲 #686 の `equalSnoozedUntil` パターンを踏襲して `equalNotes` / `equalTagIds` 純粋関数を `read-state-merge.ts` に追加 (TDD 全 19 ケース網羅) + setState 前の構造的等価性ガードを `useReadStateSyncApply.ts` に適用!🛡️ 内容変化なしの多数派ケースで setState を skip して reference を保持する形〜🎀
