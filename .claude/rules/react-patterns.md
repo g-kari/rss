@@ -523,3 +523,164 @@ return allHidden ? <Fallback /> : (
 3. `allHidden = count >= total` 判定で fallback 分岐を追加 (例: 別ソース・空状態プレースホルダ)
 
 主な使用箇所: `FilterableGalleryImage` の `onHide` (#671 後追い・全画像が minPx 未満で隠れる時の thumb / No Image fallback)
+
+## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する
+
+masonic / react-virtual のような **絶対座標で要素を配置する仮想化ライブラリ** を使うと、コンテナの `scrollHeight` はレイアウト確定後に動的に書き換わる。「コンテンツが viewport を埋めているか」を判定する必要がある場合、static な useEffect だけでは初回レイアウト確定タイミングを捉えられない。
+
+```typescript
+// アンチパターン: visible.length 依存だけだと masonic のレイアウト確定後の高さ変化を捕捉できない
+useEffect(() => {
+  const isShort = scrollEl.scrollHeight <= scrollEl.clientHeight;
+  // ↑ 初回レンダー時はまだ masonry 配置前で scrollHeight が 0
+}, [visible.length]);
+
+// 修正パターン: ResizeObserver で scrollContainer のサイズ変化も監視
+useEffect(() => {
+  const observer = new ResizeObserver(() => {
+    const isShort = scrollEl.scrollHeight <= scrollEl.clientHeight + 1;
+    if (isShort && hasMore) loadMore();
+  });
+  observer.observe(scrollEl);
+  return () => observer.disconnect();
+}, []);
+```
+
+**注意点**: `ResizeObserver` は要素自身のリサイズを検知する。子要素が追加されてコンテナが拡張する場合は通常検知されるが、絶対座標配置で **親コンテナ自身の clientHeight が変わらない** ケースでは発火しない。その場合は `MutationObserver` (subtree childList 監視) との併用や、`requestAnimationFrame` を 2 段で待ってからチェックする手法を組み合わせる。
+
+**Why**: masonic / react-virtual の絶対座標配置では、`scrollHeight` がレイアウト確定後に動的に書き換わるため、IntersectionObserver の sentinel に依存するだけでは「列偏在で sentinel に届かない」状態を検知できず無限スクロールが止まる。`ResizeObserver` + rAF 2 段待機の併用で解消する。
+
+## AbortController.abort() の伝播範囲を限定する
+
+**1 つの `AbortController` を複数の並列 fetch で共有しないこと**。共有してしまうと、1 件の fetch を止めるための `controller.abort()` が **他の進行中の fetch も全て中断** してしまう。
+
+```typescript
+// アンチパターン: 全 worker が同じ controller を共有
+const controller = new AbortController();
+async function worker() {
+  while (!cancelled) {
+    await fetchOne({ signal: controller.signal });
+    // 1 件で 429 → onRateLimit が controller.abort() を呼ぶ
+    // → 進行中の他 worker の fetch も全て中断 → 残り未処理記事は処理されない
+  }
+}
+
+// 修正パターン A: フラグだけ立てて while 条件で自然停止
+const controller = new AbortController();
+let rateLimited = false;
+async function worker() {
+  while (!cancelled && !rateLimited) {
+    await fetchOne({
+      signal: controller.signal,
+      onRateLimit: () => {
+        rateLimited = true;
+        // controller.abort() は呼ばない — 進行中の fetch は完走させる
+      },
+    });
+  }
+}
+
+// 修正パターン B: 各 fetch で個別の controller を作る
+async function fetchOne(article) {
+  const localController = new AbortController();
+  return fetch(url, { signal: localController.signal });
+}
+```
+
+**Why**: 共有 controller を 1 件のエラーで abort すると、進行中の他記事の fetch も全て中断され、それらは `failedIds` にも入らず UI 上にリトライボタンも出ない「空カードで停止」状態になる。
+
+**How to apply**: `AbortController` を共有する設計を採るときは、abort のスコープを明示する:
+
+- **コンポーネントアンマウント / effect cleanup での中断** → 1 つの controller で OK（全部止めるのが正しい）
+- **個別エラー時の中断** → 各 fetch ごとに別 controller、または `controller.abort()` ではなくフラグで自然停止
+- **どちらも必要** → cleanup 用 controller と個別 controller を分ける
+
+判定基準: 「この abort で止まる対象は、止めるべき対象と一致しているか？」。一致しないなら controller 共有は誤り。
+
+## useEffect 依存キーの slice() は「N+1 件目以降の変化を検知不能」にする罠
+
+`articles` のような **配列全体を対象に処理したい** useEffect で、依存配列キーを `articles.slice(0, N).map(a => a.id).join(...)` のように作ると、**N+1 件目以降の追加・削除を検知できなくなる**。
+
+```typescript
+// アンチパターン: 先頭 N 件 ID だけのキーで「visible 拡張」を検知できない
+const articlesKey = articles
+  .slice(0, 20) // ← 21 件目以降の変化が無視される
+  .map((a) => a.id)
+  .join("\0");
+
+useEffect(() => {
+  // 21 件目以降の処理がこの effect で行われるべきだが、再実行されない
+  void prefetch(articlesRef.current);
+}, [articlesKey]);
+
+// 修正パターン: 全件 ID でキーを作る (visible 拡張を確実に検知)
+const articlesKey = articles
+  .filter((a) => Boolean(a.link))
+  .map((a) => a.id)
+  .join("\0");
+```
+
+**Why**: 先頭 N 件 ID だけのキーでは、ユーザーがスクロールして visible が拡張されてもキー不変 → effect 再実行されず → N+1 件目以降が永遠に未処理のまま放置される症状になる。
+
+**How to apply**: 依存配列キーを文字列ハッシュで作るときは:
+
+1. **何の変化を検知したいか** を明確にする（先頭固定 N 件 / 全件 / フィルタ後の集合 etc.）
+2. **slice / take / 先頭 N 件**を入れたら、N+1 件目以降の変化が **意図的に無視される設計** か再確認
+3. 「処理対象の上限」と「変化検知の対象」は **別概念** として分離する。上限は effect 内の `targets.slice(0, lim)` で、検知は `articlesKey` で全件。
+4. 全件キーが長くなりすぎる懸念があれば、**ハッシュ関数** (`SHA-1` 短縮など) で短縮するのも一手。ただし `join("\0")` の単純文字列でも数千件までは実用上問題なし
+
+## モード OFF 時に進行中の副作用を停止する
+
+state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
+
+```typescript
+// アンチパターン: enabled = false でも TTS は鳴り続ける
+function AutoReadController({ enabled /* ... */ }) {
+  // 停止ハンドラなし
+}
+
+// 修正パターン: enabled の変化で副作用を止める
+useEffect(() => {
+  if (enabled) return;
+  onTtsStop();
+  // または: abortRef.current?.abort();
+}, [enabled]);
+```
+
+**Why**: state を OFF にしただけだと、ユーザー目線では「停止ボタンが効かない」体感になる。フラグの変化を監視する独立 effect で副作用を明示停止させる必要がある。
+
+**How to apply**: 機能が「ON / OFF」のフラグで動く場合、OFF 遷移時のクリーンアップが副作用を 100% 止めているか必ず確認する。fetch / timer / 音声 / WebSocket / IntersectionObserver などすべて。
+
+## ブラウザ API の遅延通知に備えて初期取得 + イベント購読をペアで書く
+
+`speechSynthesis.getVoices()` のように **初回呼び出しでは空配列を返し、後から `voiceschanged` イベントで利用可能になる** ブラウザ API がある。useEffect で初期取得だけしても永遠に空のままなので、必ずイベント購読とペアで実装する。
+
+```typescript
+// アンチパターン: 初期取得のみで遅延通知を捕捉できない
+useEffect(() => {
+  setVoices(window.speechSynthesis.getVoices()); // Chrome では空配列
+}, []);
+
+// 修正パターン: 初期取得 + voiceschanged 購読をペア
+useEffect(() => {
+  const update = () => setVoices(window.speechSynthesis.getVoices());
+  update(); // Safari など初期取得で取れる環境用
+  window.speechSynthesis.addEventListener("voiceschanged", update);
+  return () => window.speechSynthesis.removeEventListener("voiceschanged", update);
+}, []);
+```
+
+**Why**: ブラウザ API には「初期化が非同期で完了する」ものが多く、初期取得だけだと一部環境で永遠に空/旧値のままになる。Chrome の `voiceschanged` / DOM の `MutationObserver` / `navigator.mediaDevices.devicechange` / `screen.orientation.change` などはすべて同じパターン。
+
+**How to apply**: ブラウザネイティブ API を呼ぶ useEffect を書くとき:
+
+1. **「初回呼び出しで完全な値が取れるか？」を必ず確認** (MDN ドキュメント or 動作確認)
+2. 取れない場合、**変更通知イベントが提供されているか確認** (`xxxchanged` / `change` 系)
+3. 提供されているなら **初期取得 + イベント購読 + cleanup の 3 点セット** を必ず書く
+4. 提供されていない (古い API) なら polling / setInterval を最小頻度で
+
+主な使用箇所:
+
+- `useSpeechSynthesis` の `voiceschanged` 購読 (#654)
+- `useResizeObserver` 系 (`ResizeObserver` の初回コールバック)
+- `useOnlineStatus` の `online` / `offline` イベント購読
