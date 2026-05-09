@@ -8,6 +8,7 @@ import { isAbortError } from "../lib/fetch";
 import { collectImageUrlsFromHtml } from "../lib/image-extractor";
 import { collectIframeUrlsFromHtml } from "../lib/embed-utils";
 import { parseRetryAfter } from "../lib/retry-after";
+import { buildArticlesKey } from "../lib/gallery-prefetch";
 
 export interface PrefetchedMedia {
   /** 本文から抽出した画像 URL（重複排除済み） */
@@ -145,16 +146,12 @@ export function usePrefetchGalleryContents({
   const articlesRef = useRef(articles);
   articlesRef.current = articles;
 
-  // articles は毎レンダーで新参照（visible.slice(...)）になる。
-  // useEffect の依存配列に直接入れると setMedia → 再レンダー → 新参照 → effect 再実行
-  // → 進行中 fetch が abort → 同一記事を再取得、という 429 の原因になる。
-  // 代わりに記事 ID の文字列キーを依存にすることで、内容が変わらない限り effect を再実行しない。
-  const limit = Math.min(isFinite(maxPrefetch) ? maxPrefetch : 200, 200);
-  const articlesKey = articles
-    .slice(0, limit)
-    .filter((a) => Boolean(a.link))
-    .map((a) => a.id)
-    .join("\0");
+  // #669: visible 拡張で effect が再実行されても進行中 fetch を二重起動しないため、
+  // inflight Set を effect 跨ぎで永続化する（旧実装は effect スコープローカルだった）。
+  const inflightRef = useRef<Set<string>>(new Set());
+
+  // 詳細は `src/lib/gallery-prefetch.ts` の `buildArticlesKey` コメント参照 (#669)
+  const articlesKey = buildArticlesKey(articles);
 
   // クールダウン期限が来たら state をリセットして useEffect を再実行（自動リトライ）
   useEffect(() => {
@@ -173,6 +170,9 @@ export function usePrefetchGalleryContents({
     // サーバー / 上流から Retry-After でクールダウンを指示されている間は一切フェッチしない
     if (Date.now() < rateLimitUntilRef.current) return;
     // articlesRef.current を使うことで、依存配列を安定させつつ最新の記事情報を参照する
+    // #669: lim は「同時 fetch 上限」ではなく「対象記事の上限」。スクロールで visible が
+    // 増えるたびに articlesKey が変わって effect 再実行され、未処理だけが mediaRef で
+    // フィルタされて処理される設計のため、200 件まで拡大しても安全。
     const lim = Math.min(isFinite(maxPrefetch) ? maxPrefetch : 200, 200);
     const targets = articlesRef.current.slice(0, lim).filter((a) => a.link);
     if (targets.length === 0) return;
@@ -181,8 +181,9 @@ export function usePrefetchGalleryContents({
     let cancelled = false;
     // 429 を受信したら以降の fetch を全停止するフラグ
     let rateLimited = false;
-    // 同一 article.id への同時並行 fetch を防ぐ in-flight 管理
-    const inflight = new Set<string>();
+    // #669: inflight は useRef で effect 跨ぎ永続化（旧実装の `new Set<string>()` だと
+    // visible 拡張で effect 再実行されたときに同一記事が二重起動される）
+    const inflight = inflightRef.current;
 
     // すでに state にある記事はスキップ
     const pending = targets.filter((a) => !mediaRef.current.has(a.id));
@@ -266,7 +267,10 @@ export function usePrefetchGalleryContents({
 
     return () => {
       cancelled = true;
-      controller.abort();
+      // #669: controller.abort() を呼ぶと visible 拡張による effect 再実行のたびに
+      // 進行中 fetch が中断 → 再 effect で再取得 → 429 連鎖、という旧バグ経路に入る。
+      // cancelled フラグだけ立てて while ループの次 iteration で自然停止させる。
+      // 進行中 fetch は完走（unmount 後の setMedia は React 19 では警告なし）。
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- articles の代わりに articlesKey を依存にし、setMedia 再レンダーによる effect 再実行・fetch 中断を防ぐ
   }, [articlesKey, enabled, concurrency, maxPrefetch, requestDelayMs, rateLimitedUntil]);
