@@ -53,6 +53,7 @@ import { useDesktopMediaQuery } from "./hooks/useDesktopMediaQuery";
 import { useApiErrorToast } from "./hooks/useApiErrorToast";
 import { useOnlineRecoveryToast } from "./hooks/useOnlineRecoveryToast";
 import { useGalleryAutoReadTracking } from "./hooks/useGalleryAutoReadTracking";
+import { useFeedPagination } from "./hooks/useFeedPagination";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -487,36 +488,17 @@ export default function App() {
     [selectedArticle, filtered],
   );
 
-  // サーバー側に未取得ページが残っているか（全フィード表示・単一フィード表示の両方に対応）
-  const feedHasMorePages = useMemo(() => {
-    if (selectedFeedId?.startsWith("__")) return false;
-    if (selectedFeedId) {
-      // 単一フィード表示
-      const feed = feeds.find((f) => f.id === selectedFeedId);
-      if (!feed?.pageCount) return false;
-      const loadedPage = loadedFeedPages.get(selectedFeedId) ?? 1;
-      return loadedPage <= feed.pageCount;
-    }
-    // 全フィード表示: いずれかのフィードに未読み込みページがあれば true
-    return feeds.some((f) => {
-      if (!f.pageCount) return false;
-      const loadedPage = loadedFeedPages.get(f.id) ?? 1;
-      return loadedPage <= f.pageCount;
-    });
-  }, [selectedFeedId, feeds, loadedFeedPages]);
+  const { feedHasMorePages, handleLoadMoreFeedArticles } = useFeedPagination({
+    selectedFeedId,
+    feeds,
+    loadedFeedPages,
+    loadMoreFeedArticles,
+    loadMoreAllFeedsArticles,
+    notifyArticlesAdded,
+  });
   const prevArticle = currentIndex > 0 ? filtered[currentIndex - 1] : null;
   const nextArticle =
     currentIndex >= 0 && currentIndex < filtered.length - 1 ? filtered[currentIndex + 1] : null;
-
-  // サーバーから過去記事をロードし、ロード完了後にクライアントページを自動拡張する
-  const handleLoadMoreFeedArticles = useCallback(async () => {
-    if (selectedFeedId) {
-      await loadMoreFeedArticles(selectedFeedId);
-    } else {
-      await loadMoreAllFeedsArticles(feeds);
-    }
-    notifyArticlesAdded();
-  }, [selectedFeedId, loadMoreFeedArticles, loadMoreAllFeedsArticles, feeds, notifyArticlesAdded]);
 
   useAutoLoadMoreArticles(hasMore, feedHasMorePages, loadingArticles, handleLoadMoreFeedArticles, [
     selectedFeedId,
