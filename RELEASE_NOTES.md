@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### 激アツ新機能っ
+
+- **自動要約機能を追加したよ〜 (#695)** — 自動翻訳 (`autoTranslate`) と同じパターンで、`autoSummarize` ON 時に **記事本文取得完了後に自動で AI 要約** を実行!✨ 設定は ユーザー設定 → AI・通知タブ の「自動要約」トグル〜🎀 既存の「Chrome 要約 (Built-In AI) / Workers AI フォールバック」判定はそのまま再利用するから、Chrome 138+ 環境ならローカル AI で高速要約、未対応環境では Workers AI が自動でフォールバック〜⚡ 実装は `autoTranslate` と完全対称: localStorage `rss-auto-summarize` 永続化 + `useArticleViewShortcuts` の自動要約 effect (`autoSummarizeTriggered` ref で同記事の二重発火防止) + 設定 UI トグル〜📦 #696 (オートモード時に要約を読み上げる) はこの機能を前提とする派生機能で、別途追跡!
+
 ### UX 改善っ
 
 - **AI 要約パネルに「Chrome 要約 / Workers AI」プロバイダーバッジを表示するようにしたよ〜 (#697)** — 翻訳パネルには既に `provider === "browser" ? "Chrome 翻訳" : "Workers AI"` バッジが出てたけど、要約パネルには出てなかったから対称的に追加!🎀 `useArticleAi.aiResultProvider` を expose して、`ArticleAiPanel` の「AI 要約」ラベル右隣に小さなバッジ表示〜📍 `useArticleViewState` → `ArticleView` → `ArticleAiPanel` の prop chain を 1 段ずつ通し、`AiOperationResult.provider` の jsdoc も「翻訳時のプロバイダー (要約では未設定)」→「翻訳・要約のプロバイダー」に修正 (古いコメントが実装と乖離してた)〜📚

@@ -26,6 +26,8 @@ export interface ReaderSettings {
   onChangeAutoReadThreshold: (v: AutoReadThreshold) => void;
   autoTranslate: boolean;
   toggleAutoTranslate: () => void;
+  autoSummarize: boolean;
+  toggleAutoSummarize: () => void;
   lineHeight: LineHeight;
   onChangeLineHeight: (lh: LineHeight) => void;
   contentWidth: ContentWidth;

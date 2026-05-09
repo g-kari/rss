@@ -29,6 +29,10 @@ function loadAutoTranslate(): boolean {
   return storageGet(STORAGE_KEYS.AUTO_TRANSLATE) === "1";
 }
 
+function loadAutoSummarize(): boolean {
+  return storageGet(STORAGE_KEYS.AUTO_SUMMARIZE) === "1";
+}
+
 function loadDeduplicateByLink(): boolean {
   const stored = storageGet(STORAGE_KEYS.DEDUP_BY_LINK);
   // デフォルト: true（未設定時は重複排除ON）
@@ -47,6 +51,7 @@ export function useAutoReadSettings() {
   const [autoReadThreshold, setAutoReadThreshold] =
     useState<AutoReadThreshold>(loadAutoReadThreshold);
   const [autoTranslate, setAutoTranslate] = useState<boolean>(loadAutoTranslate);
+  const [autoSummarize, setAutoSummarize] = useState<boolean>(loadAutoSummarize);
   const [deduplicateByLink, setDeduplicateByLink] = useState<boolean>(loadDeduplicateByLink);
   const [aiModel, setAiModel] = useState<WorkersAiModelId>(loadAiModel);
 
@@ -62,6 +67,14 @@ export function useAutoReadSettings() {
     setAutoTranslate((v) => {
       const next = !v;
       storageSet(STORAGE_KEYS.AUTO_TRANSLATE, next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
+  const toggleAutoSummarize = useCallback(() => {
+    setAutoSummarize((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.AUTO_SUMMARIZE, next ? "1" : "0");
       return next;
     });
   }, []);
@@ -101,6 +114,8 @@ export function useAutoReadSettings() {
     onChangeAutoReadThreshold,
     autoTranslate,
     toggleAutoTranslate,
+    autoSummarize,
+    toggleAutoSummarize,
     deduplicateByLink,
     toggleDeduplicateByLink,
     aiModel,

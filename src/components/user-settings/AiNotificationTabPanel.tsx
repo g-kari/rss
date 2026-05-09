@@ -19,6 +19,8 @@ interface AiNotificationTabPanelProps {
   hidden: boolean;
   autoTranslate: boolean;
   toggleAutoTranslate: () => void;
+  autoSummarize: boolean;
+  toggleAutoSummarize: () => void;
   aiModel: WorkersAiModelId;
   onChangeAiModel: (v: WorkersAiModelId) => void;
 }
@@ -27,6 +29,8 @@ export default function AiNotificationTabPanel({
   hidden,
   autoTranslate,
   toggleAutoTranslate,
+  autoSummarize,
+  toggleAutoSummarize,
   aiModel,
   onChangeAiModel,
 }: AiNotificationTabPanelProps) {
@@ -163,6 +167,25 @@ export default function AiNotificationTabPanel({
             <span
               className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
                 autoTranslate ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </SettingRow>
+
+        <SettingRow label="自動要約">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoSummarize}
+            aria-label={autoSummarize ? "自動要約を OFF にする" : "自動要約を ON にする"}
+            onClick={toggleAutoSummarize}
+            className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+              autoSummarize ? "bg-ink" : "bg-border-default"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                autoSummarize ? "translate-x-5" : "translate-x-0"
               }`}
             />
           </button>

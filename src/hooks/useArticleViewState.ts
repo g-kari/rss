@@ -55,6 +55,7 @@ export function useArticleViewState({
     autoReadEnabled,
     autoReadThreshold,
     autoTranslate,
+    autoSummarize,
     contentWidth,
     imageDlFolder,
     imageDlFolderNsfw,
@@ -195,7 +196,7 @@ export function useArticleViewState({
     return true;
   }, [autoTranslate, storedContent, translateResult, translateError]);
 
-  // --- Keyboard shortcuts + auto-translate ---
+  // --- Keyboard shortcuts + auto-translate + auto-summarize ---
   useArticleViewShortcuts({
     article,
     storedContent,
@@ -208,6 +209,7 @@ export function useArticleViewState({
     handleTranslate,
     mainRef,
     autoTranslate,
+    autoSummarize,
     translateResult,
     translateLoading,
   });

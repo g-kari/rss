@@ -20,6 +20,8 @@ export interface ArticleViewShortcutsDeps {
   handleTranslate: () => void;
   mainRef: React.RefObject<HTMLElement | null>;
   autoTranslate: boolean;
+  /** #695: Built-In AI が利用できる環境では自動要約。autoTranslate と同じトリガーパターン */
+  autoSummarize: boolean;
   translateResult: AiOperationResult | null;
   translateLoading: boolean;
 }
@@ -37,6 +39,7 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     handleTranslate,
     mainRef,
     autoTranslate,
+    autoSummarize,
     translateResult,
     translateLoading,
   } = deps;
@@ -103,4 +106,16 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     translateLoading,
     handleTranslate,
   ]);
+
+  // 自動要約 (#695): autoTranslate と同じトリガーパターン。
+  // storedContent が揃ったら 1 度だけ要約を起動する。doRunAi 自体が browser Summarizer
+  // 利用可否を内部判定 (Workers AI フォールバック含む) するため、ここでは availability を見ない。
+  const autoSummarizeTriggered = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!autoSummarize || !article?.id || !article.link || !storedContent) return;
+    if (aiResult || aiLoading) return;
+    if (autoSummarizeTriggered.current === article.id) return;
+    autoSummarizeTriggered.current = article.id;
+    doRunAi(article.link, article.id);
+  }, [autoSummarize, article?.id, article?.link, storedContent, aiResult, aiLoading, doRunAi]);
 }
