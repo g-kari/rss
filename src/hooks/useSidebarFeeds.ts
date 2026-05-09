@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import type { Feed, Article, FeedGroup, FeedView } from "../types";
 import { isArticleRead } from "../lib/article-filter";
-import { useSyncedRef } from "./useSyncedRef";
 
 interface UseSidebarFeedsInput {
   feeds: Feed[];
@@ -41,9 +40,6 @@ export function useSidebarFeeds({
   activeFeedView,
   nsfwMode,
 }: UseSidebarFeedsInput): UseSidebarFeedsResult {
-  const readIdsRef = useSyncedRef(readIds);
-  const readBeforeTimestampRef = useSyncedRef(readBeforeTimestamp);
-
   const tagCounts = useMemo(() => {
     const map = new Map<string, number>();
     if (!articleTagIds) return map;
@@ -66,7 +62,7 @@ export function useSidebarFeeds({
     let total = 0;
     let todayRead = 0;
     for (const a of articles) {
-      if (!isArticleRead(a, readIdsRef.current, readBeforeTimestampRef.current ?? null)) {
+      if (!isArticleRead(a, readIds, readBeforeTimestamp ?? null)) {
         byFeed.set(a.feedHash, (byFeed.get(a.feedHash) ?? 0) + 1);
         total++;
       } else if (a.publishedAt?.slice(0, 10) === today) {
@@ -85,8 +81,7 @@ export function useSidebarFeeds({
       lastPublishedByFeed: lastPublished,
       readTodayCount: todayRead,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- readIds・readBeforeTimestamp は ref 経由で最新値を参照するため deps 不要
-  }, [articles, readIdsRef, readBeforeTimestampRef]);
+  }, [articles, readIds, readBeforeTimestamp]);
 
   const { pinnedFeeds, groupedFeeds, categoryGroups, uncategorizedFeeds } = useMemo(() => {
     const q = feedSearch.trim().toLowerCase();
