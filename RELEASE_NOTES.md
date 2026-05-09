@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### 激アツ新機能っ
+
+- **読み上げ音声を選択できるようにしたよ〜** — Issue #654 (案 1: Web Speech API ベース・できる限り多種)。記事ヘッダーの TTS 速度ボタン (1.0x) の隣に音声セレクターを追加！🎀 `window.speechSynthesis.getVoices()` で OS / ブラウザが提供する全 voice を列挙して、言語別 (`<optgroup>`) に整理して選択可能に〜🌐 デフォルトは「自動」で記事言語に合わせて選び、明示選択した voice は `localStorage` に永続化。`selectTtsVoice` / `groupVoicesByLang` を `src/lib/tts-voice.ts` の純粋関数化、TDD 16 ケース追加 (preferredUri 一致 / 言語前方一致 / default フラグ / fallback / 空配列 / 大文字小文字差異 / グループ化全網羅)。`voiceschanged` イベントで遅延 voice 取得も対応〜🎵
+
 ### コードレビュー対応っ
 
 - **#625 ShareMenu の abort 判定を `isAbortError` ヘルパーに統一したよ〜** — Issue #644 Step 2。`err instanceof DOMException && err.name === "AbortError"` というインライン重複チェックを `src/lib/fetch.ts#isAbortError` に統一して、abort 判定ロジックを単一ソースに！🎀 TDD で `e2e/abort-error.spec.ts` 9 ケース追加 (DOMException / Error / TypeError / null / undefined / plain object 全網羅) — Web Share API の cancel と fetch AbortController の abort を同じ関数で安全判別できるバッチリ保証〜🛡️

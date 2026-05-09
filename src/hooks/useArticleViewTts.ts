@@ -12,6 +12,12 @@ export interface ArticleViewTtsResult {
   ttsPaused: boolean;
   ttsRate: number;
   ttsCycleRate: () => void;
+  /** Web Speech API から列挙された全 voice (#654) */
+  ttsVoices: SpeechSynthesisVoice[];
+  /** 現在ユーザーが選択している voice URI (null=自動選択) */
+  ttsVoiceUri: string | null;
+  /** voice を切り替える (null で自動選択に戻す) */
+  setTtsVoiceUri: (uri: string | null) => void;
   handleTtsToggle: () => void;
   ttsSpeak: (text: string) => void;
   ttsStop: () => void;
@@ -33,6 +39,9 @@ export function useArticleViewTts(
     isPaused: ttsPaused,
     rate: ttsRate,
     cycleRate: ttsCycleRate,
+    voices: ttsVoices,
+    voiceUri: ttsVoiceUri,
+    setVoiceUri: setTtsVoiceUri,
     speak,
     stop: ttsStop,
   } = useSpeechSynthesis();
@@ -71,6 +80,9 @@ export function useArticleViewTts(
     ttsPaused,
     ttsRate,
     ttsCycleRate,
+    ttsVoices,
+    ttsVoiceUri,
+    setTtsVoiceUri,
     handleTtsToggle,
     ttsSpeak: speak,
     ttsStop,

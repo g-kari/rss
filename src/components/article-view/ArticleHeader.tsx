@@ -44,6 +44,12 @@ interface Props {
   ttsPaused: boolean;
   ttsRate: number;
   ttsCycleRate: () => void;
+  /** Web Speech API から列挙された全 voice (#654) */
+  ttsVoices: SpeechSynthesisVoice[];
+  /** 現在ユーザーが選択している voice URI (null=自動選択) */
+  ttsVoiceUri: string | null;
+  /** voice を切り替える (null で自動選択に戻す) */
+  setTtsVoiceUri: (uri: string | null) => void;
   onTtsToggle: () => void;
   autoMode: boolean;
   onToggleAutoMode: () => void;
@@ -115,6 +121,9 @@ export default function ArticleHeader({
   ttsPaused,
   ttsRate,
   ttsCycleRate,
+  ttsVoices,
+  ttsVoiceUri,
+  setTtsVoiceUri,
   onTtsToggle,
   autoMode,
   onToggleAutoMode,
@@ -205,6 +214,9 @@ export default function ArticleHeader({
           ttsPaused={ttsPaused}
           ttsRate={ttsRate}
           ttsCycleRate={ttsCycleRate}
+          ttsVoices={ttsVoices}
+          ttsVoiceUri={ttsVoiceUri}
+          setTtsVoiceUri={setTtsVoiceUri}
           onTtsToggle={onTtsToggle}
           autoMode={autoMode}
           onToggleAutoMode={onToggleAutoMode}
