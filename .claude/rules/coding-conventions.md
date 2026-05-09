@@ -783,6 +783,71 @@ test("正常ケース", () => {
 
 主な使用箇所: `fast-xml-parser` の依存である `fast-xml-builder`（GHSA-2025-attribute-bypass / comment-regex）
 
+## silent fallback の禁止 — `try/catch → null` には必ず `devError` を添える
+
+外部依存 (Web API・ブラウザネイティブ AI・サードパーティ fetch) のラッパーで「失敗時はサーバー fallback」をしたいとき、`try/catch` で例外を `null` に変換するパターンが頻出する。これ自体は正しいが、**catch ブロックでログを出さないとユーザーから「動かないけど何も表示されない」「ブラウザ DevTools にも何も出ない」状態が生まれ、原因特定不可になる**。
+
+```typescript
+// アンチパターン: 失敗の理由が一切表に出ない
+export async function summarizeInBrowser(text: string): Promise<string | null> {
+  try {
+    const summarizer = await globalThis.Summarizer.create({
+      /* ... */
+    });
+    return await summarizer.summarize(text);
+  } catch {
+    return null; // ← 何が起きたか開発者にもユーザーにも分からない
+  }
+}
+
+// 修正パターン: devError で開発時に DevTools に出す
+import { devError } from "./dev-log";
+
+export async function summarizeInBrowser(text: string): Promise<string | null> {
+  try {
+    // 前提条件チェックも個別に warn する
+    if (availability === "downloadable" && !hasUserActivation()) {
+      devError("[browser-summarizer] requires user activation — falling back");
+      return null;
+    }
+    return await summarizer.summarize(text);
+  } catch (err) {
+    devError("[browser-summarizer] summarize failed", err);
+    return null;
+  }
+}
+```
+
+**Why**: silent fallback は「ユーザー: 最新 Chrome なのに使えない」「開発者: DevTools にも出ない」のダブルブラックボックスを生む。`devError` で出した情報は `process.env.NODE_ENV !== 'production'` でだけ console.error されるため、本番ノイズにならず開発時の調査だけ可能になる。フォールバックが**意図通り動作している**のか**仕様変更で壊れている**のかを区別する唯一の手段。
+
+**How to apply**: 外部依存ラッパーで `catch { return null }` を書きたくなったら、必ず `devError` を併記する。前提条件 (user activation, secure context, hardware requirement, API バージョン) のガード節も同様に reason を `devError` で出す。`null` 返却の経路が複数あるなら全箇所で出す。
+
+主な使用箇所: `src/lib/browser-summarizer.ts` / `src/lib/browser-translator.ts`（Chrome 組み込み AI ラッパー）
+
+## ブラウザ仕様の最低バージョン定数を 1 箇所に集約する
+
+Chrome / Safari の Web API には「Chrome 138+」「Safari 17+」のような最低バージョン要件がある。これを `getChromeVersion() < 131` のようにマジックナンバーで散らすと、API の stable リリース後に bump し忘れて誤診断 (`flag-disabled` 等) を起こす。
+
+```typescript
+// アンチパターン: マジックナンバー
+if (chromeVersion !== null && chromeVersion < 131) {
+  return { available: false, reason: "chrome-too-old" };
+}
+
+// 修正パターン: export const で 1 箇所定義 + UI からも参照可能に
+export const MIN_SUMMARIZER_CHROME_VERSION = 138;
+
+if (chromeVersion !== null && chromeVersion < MIN_SUMMARIZER_CHROME_VERSION) {
+  return { available: false, reason: "chrome-too-old" };
+}
+```
+
+**Why**: バージョン bump 忘れは「ファイル先頭コメントに `Chrome 138+` と書いてあるのに実装は 131 のまま」のような腐敗を起こす。export const 1 箇所にすれば TDD で `MIN_SUMMARIZER_CHROME_VERSION` の整合性を assert できるし、設定 UI のメッセージ (`Chrome 138 以上にアップデートすると…`) も同じ定数から参照できる。
+
+**How to apply**: ブラウザ API のバージョン要件は `MIN_XXX_CHROME_VERSION` 形式で export const 化する。ファイル先頭の jsdoc コメントが「Chrome N+」と述べているなら、その N が定数として実装にも現れているか確認する。UI メッセージの数字もハードコードせず定数を文字列補間する（i18n しない場合でも保守性のため）。
+
+主な使用箇所: `src/lib/browser-summarizer.ts#MIN_SUMMARIZER_CHROME_VERSION` / `src/lib/browser-translator.ts#MIN_TRANSLATOR_CHROME_VERSION`
+
 ## 禁止事項
 
 - D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
