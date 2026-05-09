@@ -1140,6 +1140,113 @@ function usePrefetch({ maxPrefetch = 200 }: Options) {
 
 該当パターン: `--color-tts-highlight` / `--color-tts-highlight-text` (#659)
 
+## 子コンポーネントの「自己判断で hidden になる UI」は親で「全件 hidden」を検知して fallback する
+
+子コンポーネントが「自分の都合 (画像が小さすぎる・コンテンツが空・条件不一致など) で `null` を返す」設計のとき、**親はその事実を知らない**ため、全子が `null` を返した結果 **UI が空っぽ** になる症状が発生する。
+
+```tsx
+// アンチパターン: FilterableGalleryImage が単独で hidden 判定して null
+function FilterableGalleryImage({ src, minPx }) {
+  const [hidden, setHidden] = useState(false);
+  const onLoad = (e) => {
+    if (e.currentTarget.naturalWidth < minPx) setHidden(true);
+  };
+  if (hidden) return null;
+  return <img src={src} onLoad={onLoad} />;
+}
+
+// 親: imageSource === "prefetched" → No Image プレースホルダ条件に該当しない
+// → 全子 null だと「空コンテナ + タイトルだけ表示」状態に
+{imageSource !== "none" ? (
+  <div>
+    {images.map((src) => <FilterableGalleryImage src={src} minPx={...} />)}
+  </div>
+) : (
+  <NoImagePlaceholder />
+)}
+
+// 修正パターン: 子は onHide コールバックで hidden を親に通知
+function FilterableGalleryImage({ src, minPx, onHide }) {
+  const [hidden, setHidden] = useState(false);
+  const onLoad = (e) => {
+    if (e.currentTarget.naturalWidth < minPx) {
+      setHidden(true);
+      onHide?.(); // ← 親に通知
+    }
+  };
+  if (hidden) return null;
+  return <img src={src} onLoad={onLoad} />;
+}
+
+// 親: hiddenCount を集約して「全件 hidden」を判定 → fallback 描画
+const [hiddenCount, setHiddenCount] = useState(0);
+useEffect(() => setHiddenCount(0), [images]); // images 入れ替えで reset
+const allHidden = hiddenCount > 0 && hiddenCount >= images.length;
+return allHidden ? <Fallback /> : (
+  <div>
+    {images.map((src) => (
+      <FilterableGalleryImage src={src} minPx={...} onHide={() => setHiddenCount(c => c + 1)} />
+    ))}
+  </div>
+);
+```
+
+**Why**: 子の自己判断 hidden は「個別の見た目」を制御するには良いが、UI 全体としては「何も表示されない不可視な状態」を生む。親は子が消えた事実を知らないので fallback を出せず、ユーザーは「タイトルだけ残った謎の状態」を体験する。
+
+**How to apply**: 子コンポーネントに「自分で `null` 返却して消える」設計を入れる場合、必ず onHide / onSkip コールバックも併せて実装する。親は:
+
+1. `hiddenCount` state で集約
+2. 子の入力配列が入れ替わったら useEffect でリセット
+3. `allHidden = count >= total` 判定で fallback 分岐を追加 (例: 別ソース・空状態プレースホルダ)
+
+主な使用箇所: `FilterableGalleryImage` の `onHide` (#671 後追い・全画像が minPx 未満で隠れる時の thumb / No Image fallback)
+
+## HTML 後処理で属性に依存する装飾は「属性欠落」のフォールバックを runtime に置く
+
+`fixImageDimensions` のように **HTML 属性 (`width` / `height` / `alt` 等) が前提** の後処理は、属性が無いフィードでは何もしない。CSS 側がその後処理結果に依存している場合 (例: `width: 100%` + per-image inline `max-width`)、属性欠落時に **CSS の意図しない挙動** (小さい画像も画面いっぱい引き伸ばし) が発生する。
+
+```typescript
+// アンチパターン: HTML 属性 width/height が無いと max-width が付かない
+function fixImageDimensions(html: string): string {
+  return html.replace(/<img\b([^>]*)>/g, (m, attrs) => {
+    const w = parseWidthAttr(attrs);
+    const h = parseHeightAttr(attrs);
+    if (w >= 16 && h >= 16) {
+      return `<img${attrs} style="max-width: ${w}px">`;
+    }
+    return m; // ← 属性欠落時は max-width 無し → CSS width: 100% で引き伸ばし
+  });
+}
+
+// 修正パターン: runtime 補完 hook で naturalWidth から max-width を後付け
+export function useArticleImageMaxWidth(contentRef, contentKey) {
+  useEffect(() => {
+    const imgs = contentRef.current?.querySelectorAll<HTMLImageElement>("img");
+    imgs?.forEach((img) => {
+      if (img.style.maxWidth) return; // 既存 inline は尊重
+      const apply = () => {
+        if (img.naturalWidth > 0 && !img.style.maxWidth) {
+          img.style.maxWidth = `${img.naturalWidth}px`;
+        }
+      };
+      if (img.complete) apply();
+      else img.addEventListener("load", apply, { once: true });
+    });
+  }, [contentRef, contentKey]);
+}
+```
+
+**Why**: HTML 後処理は「属性がある場合の最適化」止まりで、属性が無いケースまで責務を伸ばすと正規表現が複雑化する。runtime で `naturalWidth` を読めば確実に補完できる。CSS だけで `width: 100%` を `max-width: 100%` に変えると、属性ありの大きい画像が container 幅まで広がらなくなる副作用があるため、CSS 一律変更は避ける。
+
+**How to apply**: HTML 後処理が「属性に依存した装飾」を出力する場合:
+
+1. 属性が無い場合の挙動を最初に確認 (CSS が想定外の動きをしないか)
+2. 必要なら **runtime hook** で属性の代替情報 (naturalWidth / naturalHeight / textContent) を読んで補完
+3. 既存 inline スタイルがある場合は **上書きしない** ガードを必ず入れる
+4. cleanup (`removeEventListener`) を忘れない
+
+主な使用箇所: `useArticleImageMaxWidth` (#680) — `fixImageDimensions` で max-width が付かない画像を runtime で補完
+
 ## 禁止事項
 
 - D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
