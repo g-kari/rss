@@ -54,6 +54,7 @@ import { useApiErrorToast } from "./hooks/useApiErrorToast";
 import { useOnlineRecoveryToast } from "./hooks/useOnlineRecoveryToast";
 import { useGalleryAutoReadTracking } from "./hooks/useGalleryAutoReadTracking";
 import { useFeedPagination } from "./hooks/useFeedPagination";
+import { useArticleNavigation } from "./hooks/useArticleNavigation";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -483,9 +484,9 @@ export default function App() {
     duplicateInfo,
   } = filterState;
 
-  const currentIndex = useMemo(
-    () => (selectedArticle ? filtered.findIndex((a) => a.id === selectedArticle.id) : -1),
-    [selectedArticle, filtered],
+  const { currentIndex, prevArticle, nextArticle } = useArticleNavigation(
+    selectedArticle,
+    filtered,
   );
 
   const { feedHasMorePages, handleLoadMoreFeedArticles } = useFeedPagination({
@@ -496,9 +497,6 @@ export default function App() {
     loadMoreAllFeedsArticles,
     notifyArticlesAdded,
   });
-  const prevArticle = currentIndex > 0 ? filtered[currentIndex - 1] : null;
-  const nextArticle =
-    currentIndex >= 0 && currentIndex < filtered.length - 1 ? filtered[currentIndex + 1] : null;
 
   useAutoLoadMoreArticles(hasMore, feedHasMorePages, loadingArticles, handleLoadMoreFeedArticles, [
     selectedFeedId,
