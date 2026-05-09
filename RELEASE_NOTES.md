@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **`GET /api/articles?since=` の NaN 検証を追加したよ〜 (code-review 監査 Critical Issue)** — `parseInt("abc", 10)` が NaN を返すと `new Date(...).getTime() > NaN` が常に false になり「全フィードがスキップされて全記事が消える」silent failure 状態だったの〜🥲 通常のクライアントは `Date.now()` の整数を渡すので発生確率は低いけど、ブラウザ拡張・プロキシ・将来の実装ミスで NaN が混入したら無音でデータが消える深刻なバグ!💥 `^\d+$` で厳密検証して、不正値は **`INVALID_SINCE` (400)** で拒否する設計に修正〜🛡️ api-spec.md にもエラーコード追記!📚
+
 ### ドキュメント整備っ
 
 - **docs drift 6 件を omnibus 修正したよ〜 (docs drift 監査)** — `architecture.md` のテストカバレッジマップに `share-targets.spec.ts` 追加、`article-view/` ブロックに `ArticleContentBody` / `EmptyArticleView` / `FetchFullContentArea` / `AddToCollectionMenu` の 4 ファイルを追記、`api-spec.md` に `DELETE /api/content` / `POST /api/test/seed` / `DELETE /api/test/seed` の 3 endpoint spec を追加!📚 すべて pure docs 修正で 1 commit に集約〜🎀
