@@ -4,13 +4,30 @@
  * 利用できる環境ではブラウザ側で要約を完結させ、Workers AI コスト・レイテンシを削減する。
  * 非対応（Safari / Firefox / 古い Chrome）では呼び出し側が従来の Workers AI にフォールバックする。
  *
- * 仕様: https://developer.chrome.com/docs/ai/summarizer-api
+ * 仕様:
+ * - https://developer.chrome.com/docs/ai/summarizer-api
+ * - https://developer.chrome.com/docs/ai/get-started
+ *
+ * 公式仕様の要点:
+ * - 検出は `'Summarizer' in self`
+ * - 状態取得は `Summarizer.availability(options)` (returns: "available" | "downloadable" | "downloading" | "unavailable")
+ * - `Summarizer.create()` で初回ダウンロードがトリガーされる場合 `navigator.userActivation.isActive` 必須
+ * - ダウンロード進捗は `monitor` コールバックで購読する
  */
+
+import { devError } from "./dev-log";
 
 type Availability = "available" | "downloadable" | "downloading" | "unavailable";
 
 interface BrowserSummarizer {
   summarize(text: string): Promise<string>;
+}
+
+interface CreateMonitor {
+  addEventListener(
+    type: "downloadprogress",
+    listener: (event: { loaded: number; total?: number }) => void,
+  ): void;
 }
 
 interface BrowserSummarizerConstructor {
@@ -22,6 +39,7 @@ interface BrowserSummarizerConstructor {
     type?: "headline" | "tl;dr" | "teaser" | "key-points";
     length?: "short" | "medium" | "long";
     sharedContext?: string;
+    monitor?: (m: CreateMonitor) => void;
   }): Promise<BrowserSummarizer>;
 }
 
@@ -30,10 +48,18 @@ declare global {
   var Summarizer: BrowserSummarizerConstructor | undefined;
 }
 
+/** Summarizer API が stable で利用可能になった最低 Chrome メジャーバージョン (公式: 138)。 */
+export const MIN_SUMMARIZER_CHROME_VERSION = 138;
+
+/** UA 文字列から Chrome のメジャーバージョンを抽出する純粋関数。Edge 等の Chromium ベースも対象。 */
+export function parseChromeMajorVersion(userAgent: string): number | null {
+  const match = /Chrome\/(\d+)/.exec(userAgent);
+  return match ? parseInt(match[1], 10) : null;
+}
+
 function getChromeVersion(): number | null {
   if (typeof navigator === "undefined") return null;
-  const match = /Chrome\/(\d+)/.exec(navigator.userAgent);
-  return match ? parseInt(match[1], 10) : null;
+  return parseChromeMajorVersion(navigator.userAgent);
 }
 
 export function isSummarizerApiSupported(): boolean {
@@ -50,6 +76,7 @@ export type SummarizerUnavailableReason =
   | "flag-disabled"
   | "model-downloading"
   | "model-unavailable"
+  | "requires-user-activation"
   | null;
 
 export async function diagnoseSummarizerAvailability(): Promise<{
@@ -61,7 +88,7 @@ export async function diagnoseSummarizerAvailability(): Promise<{
       typeof navigator !== "undefined" && /Chrome\//.test(navigator.userAgent);
     if (!isChromiumBased) return { available: false, reason: "not-chromium" };
     const chromeVersion = getChromeVersion();
-    if (chromeVersion !== null && chromeVersion < 131) {
+    if (chromeVersion !== null && chromeVersion < MIN_SUMMARIZER_CHROME_VERSION) {
       return { available: false, reason: "chrome-too-old" };
     }
     return { available: false, reason: "flag-disabled" };
@@ -74,9 +101,18 @@ export async function diagnoseSummarizerAvailability(): Promise<{
     if (shouldUseBrowserSummarizer(availability)) return { available: true, reason: null };
     if (availability === "downloading") return { available: false, reason: "model-downloading" };
     return { available: false, reason: "model-unavailable" };
-  } catch {
+  } catch (err) {
+    devError("[browser-summarizer] availability() threw", err);
     return { available: false, reason: "model-unavailable" };
   }
+}
+
+/** `Summarizer.create()` 呼び出し前の user activation を確認する。 */
+function hasUserActivation(): boolean {
+  if (typeof navigator === "undefined") return false;
+  // navigator.userActivation は Chrome 72+ で利用可能。Summarizer 138+ では必ず存在する。
+  const ua = (navigator as Navigator & { userActivation?: { isActive: boolean } }).userActivation;
+  return ua?.isActive === true;
 }
 
 export async function summarizeInBrowser(text: string): Promise<string | null> {
@@ -87,15 +123,33 @@ export async function summarizeInBrowser(text: string): Promise<string | null> {
       type: "tl;dr",
       length: "medium",
     });
-    if (!shouldUseBrowserSummarizer(availability)) return null;
+    if (!shouldUseBrowserSummarizer(availability)) {
+      devError("[browser-summarizer] availability not usable:", availability);
+      return null;
+    }
+
+    // モデル未 DL の場合 create() がダウンロードをトリガーするため user activation が必須。
+    // 既に DL 済 (available) の場合は不要だが、安全側に倒して必ず確認する。
+    if (availability === "downloadable" && !hasUserActivation()) {
+      devError(
+        "[browser-summarizer] requires user activation to trigger model download — falling back",
+      );
+      return null;
+    }
 
     const summarizer = await globalThis.Summarizer.create({
       type: "tl;dr",
       length: "medium",
       sharedContext: "RSS feed article summary",
+      monitor(m) {
+        m.addEventListener("downloadprogress", (e) => {
+          devError(`[browser-summarizer] download progress: ${Math.round(e.loaded * 100)}%`);
+        });
+      },
     });
     return await summarizer.summarize(text);
-  } catch {
+  } catch (err) {
+    devError("[browser-summarizer] summarize failed", err);
     return null;
   }
 }

@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **Chrome 組み込み要約 AI が最新 Chrome でも使えなかった問題を直したよ〜** — Issue #664。`browser-summarizer.ts` / `browser-translator.ts` の Chrome 最低バージョンが **131** のまま 2 周遅れになってて、131〜137 のユーザーが `flag-disabled` と誤診断されてたの〜😱 公式ドキュメント準拠で **138** に bump！🔧 さらに `Summarizer.create()` の **`navigator.userActivation` 必須要件**が欠落してて、ユーザー操作なしで呼ばれると黙って null フォールバックする状態だったので `requires-user-activation` reason を新設、user activation チェックを追加！🛡️ `monitor` コールバックで DL 進捗を `devError` ログ、エラー全握りつぶしも `devError` で原因が DevTools に出るように〜🔍 設定 UI のメッセージも 138 ベース + ハードウェア要件 (22GB / GPU 4GB VRAM か CPU 16GB RAM 4 コア) を明示。`parseChromeMajorVersion` を純粋関数化して TDD 5 ケース追加〜✨
+
 ### リファクタリングっ
 
 - **ArticleList を `article-list-body/` ディレクトリに分割して #651 完了したよ〜** — Issue #651 Step 3 (最終)。Step 1 で関数化した renderXxxBody 群を本物のサブコンポーネント (`CompactListBody` / `CardBody` / `MagazineBody` / `GalleryBody` / `GalleryCardRenderer`) に昇格、`GalleryItemCtx` も `gallery-context.ts` に独立！📦✨ ArticleList.tsx は 814 → 521 行 (−293) のオーケストレーター構成に圧縮。Step 2 で抽出した `useArticleListItemProps` hook も併せて、責務が「フィルター/仮想化器の準備」「ボディ描画」「メニュー管理」にきれいに分離されたよ〜🎀
