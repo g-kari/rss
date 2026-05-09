@@ -13,7 +13,15 @@ interface Props {
   ttsPaused: boolean;
   fetching: boolean;
   fetchError: string;
-  hasContent: boolean;
+  /**
+   * 全文 (`processedContent`) が取得済みか (#663)。
+   * オートモードの fetch トリガー / speak gate はこちらで判定する。
+   * サマリ fallback による「概要のみ読み上げ」を防ぐ。
+   *
+   * UI 用「サマリ含む描画可能性」判定 (`useArticleViewContent.hasContent`) は
+   * AI/TTS ボタン表示で別途使われるが、AutoReadController では参照しない。
+   */
+  hasFullContent: boolean;
   canFetch: boolean;
   ttsText: string;
   onSpeak: (text: string) => void;
@@ -42,7 +50,7 @@ export default function AutoReadController({
   ttsPaused,
   fetching,
   fetchError,
-  hasContent,
+  hasFullContent,
   canFetch,
   ttsText,
   onSpeak,
@@ -56,6 +64,11 @@ export default function AutoReadController({
   const prevPlayingRef = useRef(false);
   const fetchTriggeredRef = useRef<string | null>(null);
   const fetchRetriedRef = useRef<string | null>(null);
+  // #663: 同一記事で speak が二重発火するのを防ぐため、speak 発動済みの articleId を記録する。
+  // effect (3) は ttsText / processedContent 変化のたびに再発火するので、
+  // ref で「この article は既に speak 済み」を覚えておかないと、TTS 完了 → 再 speak の
+  // 無限ループに陥る。articleId 切替時に null にリセットして次記事の speak を許可。
+  const speakTriggeredRef = useRef<string | null>(null);
   const onTtsStopRef = useRef(onTtsStop);
   onTtsStopRef.current = onTtsStop;
   const toast = useToast();
@@ -69,6 +82,7 @@ export default function AutoReadController({
   useEffect(() => {
     if (!articleId) return;
     prevPlayingRef.current = false;
+    speakTriggeredRef.current = null; // #663: 新記事で speak を許可
     if (!enabled) return;
     fetchTriggeredRef.current = null;
     fetchRetriedRef.current = null;
@@ -82,15 +96,22 @@ export default function AutoReadController({
   }, [enabled]);
 
   // (1) 全文取得トリガー（同じ記事で 1 回 + 失敗時 1 リトライ）
+  // #663: 「サマリ存在 = hasContent=true」だと fetch がスキップされて概要だけ読み上げに
+  // なるため、判定は `hasFullContent`（processedContent 厳格判定）を使う。
   useEffect(() => {
     if (!enabled || !article) return;
     const articleId = article.id;
-    const trigger = shouldTriggerAutoFetch({ enabled, canFetch, fetching, hasContent });
+    const trigger = shouldTriggerAutoFetch({
+      enabled,
+      canFetch,
+      fetching,
+      hasContent: hasFullContent,
+    });
     if (!trigger) return;
     if (fetchTriggeredRef.current === articleId) return;
     fetchTriggeredRef.current = articleId;
     void onFetch();
-  }, [enabled, article, canFetch, fetching, hasContent, onFetch]);
+  }, [enabled, article, canFetch, fetching, hasFullContent, onFetch]);
 
   // (2) フェッチエラー時のリトライ（1 回まで）
   useEffect(() => {
@@ -102,8 +123,13 @@ export default function AutoReadController({
   }, [enabled, article, fetchError, fetching, onFetch]);
 
   // (3) TTS 開始トリガー
+  // #663: speakTriggeredRef で同記事の二重 speak を防ぐ。これがないと TTS 完了
+  // → ttsPlaying=false → effect 再発火 → 再 speak の無限ループになる。
+  // また `canFetch && !hasFullContent` の場合は fetch 完了待ちで speak を保留。
   useEffect(() => {
     if (!enabled || !article) return;
+    const articleId = article.id;
+    if (speakTriggeredRef.current === articleId) return;
     const start = shouldStartAutoSpeak({
       enabled,
       ttsSupported,
@@ -111,9 +137,24 @@ export default function AutoReadController({
       ttsPaused,
       fetching,
       hasText: !!ttsText.trim(),
+      canFetch,
+      hasFullContent,
     });
-    if (start) onSpeak(ttsText);
-  }, [enabled, article, ttsSupported, ttsPlaying, ttsPaused, fetching, ttsText, onSpeak]);
+    if (!start) return;
+    speakTriggeredRef.current = articleId;
+    onSpeak(ttsText);
+  }, [
+    enabled,
+    article,
+    ttsSupported,
+    ttsPlaying,
+    ttsPaused,
+    fetching,
+    ttsText,
+    canFetch,
+    hasFullContent,
+    onSpeak,
+  ]);
 
   // (4) TTS 完了 → 次の記事へ進む or 終端で停止
   useEffect(() => {

@@ -144,6 +144,7 @@ export function useArticleViewState({
     galleryImages,
     canFetch,
     hasContent,
+    hasFullContent,
     hasImages,
     readingMins,
   } = useArticleViewContent(article, storedContent, resolvedOgImage, theme);
@@ -278,6 +279,7 @@ export function useArticleViewState({
     galleryImages,
     canFetch,
     hasContent,
+    hasFullContent,
     hasImages,
     readingMins,
     handleScroll,

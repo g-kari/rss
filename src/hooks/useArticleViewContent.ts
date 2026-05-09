@@ -14,7 +14,10 @@ export interface ArticleViewContentResult {
   processedContent: string | null;
   galleryImages: string[];
   canFetch: boolean;
+  /** サマリ含む「描画可能なコンテンツがあるか」（AI/TTS ボタン表示判定など UI 用） */
   hasContent: boolean;
+  /** 全文 (`processedContent`) が存在するか — オートモードの speak gate に使う (#663) */
+  hasFullContent: boolean;
   hasImages: boolean;
   readingMins: number;
 }
@@ -46,6 +49,7 @@ export function useArticleViewContent(
   const isShortContent = !article?.content || article.content.length < SHORT_CONTENT_THRESHOLD;
   const canFetch = !embedInfo && !!article?.link && isShortContent && !storedContent;
   const hasContent = !!(processedContent || article?.summary);
+  const hasFullContent = !!processedContent;
   const hasImages =
     !!(article?.ogImage ?? resolvedOgImage) ||
     !!(processedContent && /<img\b/i.test(processedContent));
@@ -57,6 +61,7 @@ export function useArticleViewContent(
     galleryImages,
     canFetch,
     hasContent,
+    hasFullContent,
     hasImages,
     readingMins,
   };
