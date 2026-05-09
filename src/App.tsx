@@ -52,6 +52,7 @@ import { useAppModalState } from "./hooks/useAppModalState";
 import { useSaveArticleUrl } from "./hooks/useSaveArticleUrl";
 import { useSnoozeHandler } from "./hooks/useSnoozeHandler";
 import { useDocumentTitleBadge } from "./hooks/useDocumentTitleBadge";
+import { useDesktopMediaQuery } from "./hooks/useDesktopMediaQuery";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -84,16 +85,7 @@ export default function App() {
       ? "list"
       : "sidebar";
 
-  const [isDesktop, setIsDesktop] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  const isDesktop = useDesktopMediaQuery();
 
   const { theme, toggleTheme } = useThemePreference();
   const {
