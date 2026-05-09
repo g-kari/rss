@@ -32,7 +32,6 @@ import { useAutoReadMode } from "./hooks/useAutoReadMode";
 import { isSpeechSupported } from "./lib/auto-read";
 import { usePWAInstall } from "./hooks/usePWAInstall";
 import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
-import { useEventListener } from "./hooks/useEventListener";
 import { useHasOpenPopup } from "./hooks/usePopupLock";
 import { updateFaviconBadge } from "./lib/favicon";
 import { onApiError } from "./lib/api-fetch";
@@ -50,6 +49,7 @@ import { useRecommendations } from "./hooks/useRecommendations";
 import { useColumnResize } from "./hooks/useColumnResize";
 import { useSyncedRef } from "./hooks/useSyncedRef";
 import { useArticleSelection } from "./hooks/useArticleSelection";
+import { useAppModalState } from "./hooks/useAppModalState";
 import { useSaveArticleUrl } from "./hooks/useSaveArticleUrl";
 import { useSnoozeHandler } from "./hooks/useSnoozeHandler";
 import { useConfirm } from "./hooks/useConfirm";
@@ -146,24 +146,14 @@ export default function App() {
   const { autoMode, toggleAutoMode, disableAutoMode } = useAutoReadMode();
   const ttsSupported = useMemo(() => isSpeechSupported(), []);
 
-  const [showHelp, setShowHelp] = useState(false);
-  const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-
-  // モーダル系のグローバルキー: ? でヘルプトグル、Escape で閉じる
-  // フォーカスモードの Escape は useFocusMode 側で別途処理される（責務分離）
-  useEventListener(
-    "keydown",
-    (e) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "?") setShowHelp((v) => !v);
-      if (e.key === "Escape") {
-        setShowHelp(false);
-        setShowFeedSwitcher(false);
-      }
-    },
-    document,
-  );
+  const {
+    showHelp,
+    setShowHelp,
+    showFeedSwitcher,
+    setShowFeedSwitcher,
+    showSettings,
+    setShowSettings,
+  } = useAppModalState();
 
   const toast = useToastState();
   const { confirm, confirmModalProps } = useConfirm();
