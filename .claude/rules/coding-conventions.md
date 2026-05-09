@@ -1377,6 +1377,112 @@ return { content: augment(extractedContent) + buildGallery(), source: "..." };
 4. 元 Issue にクローズコメントとして達成済み + フォローアップ Issue リンクを残す
 5. 各フォローアップに関連 label (`testing` / `infra` 等) を付ける
 
+## 本番環境のデバッグは「localStorage gate + 専用 debug ヘルパー」で出す
+
+ユーザー報告のバグが「本番でしか再現しない」「DevTools 開いても何も出ない」状態のとき、原因究明には本番環境での詳細ログが必要だが、**全ユーザーの DevTools を恒常的に汚す** のは UX 上 NG。
+
+```typescript
+// 推奨パターン: localStorage gate + xxxDebug
+const DEBUG_KEY = "rss-debug-autoread"; // 機能ごとに専用 key
+let cachedEnabled: boolean | null = null;
+
+export function evaluateXxxDebugEnabled(value: string | null): boolean {
+  return value === "1"; // 厳密一致 (テスタブル純粋関数)
+}
+
+export function isXxxDebugEnabled(): boolean {
+  if (cachedEnabled !== null) return cachedEnabled;
+  if (typeof window === "undefined") return false;
+  cachedEnabled = evaluateXxxDebugEnabled(window.localStorage.getItem(DEBUG_KEY));
+  return cachedEnabled;
+}
+
+export function xxxDebug(label: string, data: Record<string, unknown>): void {
+  if (!isXxxDebugEnabled()) return;
+  console.info(`[Feature] ${label}`, data);
+}
+
+// 状態遷移の入口・分岐ごとに散在配置
+xxxDebug("effect-fetch-trigger", { articleId, canFetch, fetching, willTrigger });
+```
+
+ユーザー側の操作:
+
+```js
+// DevTools Console
+localStorage.setItem("rss-debug-autoread", "1");
+location.reload();
+// → 再現操作 → ログを Issue にペースト
+localStorage.removeItem("rss-debug-autoread"); // OFF
+```
+
+**Why**:
+
+1. **デフォルト OFF**: 一般ユーザーの DevTools には何も出ない (UX 維持)
+2. **ユーザー操作で ON**: 1 行コマンドで詳細ログが出るので「再現するときだけ ON」が可能
+3. **キャッシュ最適化**: `cachedEnabled` で localStorage アクセスを 1 回に抑える (effect 内で頻繁に呼ばれても性能影響なし)
+4. **純粋関数化**: `evaluateXxxDebugEnabled(value)` を分離して TDD 可能 (`window` 不在の node 環境でも動く)
+5. **devError と使い分け**: `devError` (`NODE_ENV !== "production"` ガード) は dev のみ。本番再現困難なバグはこちらの localStorage gate を使う
+
+**How to apply**:
+
+1. 「本番でしか再現しないバグ」の調査を要する機能で、`src/lib/<feature>-debug.ts` ヘルパーを作る
+2. **3 関数セット**: 純粋判定 / 設定取得 (キャッシュ付き) / ログ出力ガード
+3. **専用 STORAGE KEY**: 機能別に独立 key (`rss-debug-autoread` / `rss-debug-content-fetch` 等)
+4. **対象 effect / 関数に散在配置**: 状態遷移の入口・出口・分岐ごとに `xxxDebug("label", { 関連 state })` を埋める
+5. **Issue コメントに使い方明記**: ユーザーが localStorage コマンド + 再現手順 + ログ提出までできるよう導線を示す
+6. **機密情報を含めない**: 記事本文・トークン・メールアドレスは data に入れない。ID とフラグ・数値のみに留める
+
+主な使用箇所: `auto-read-debug.ts` — 本番でのオートモード再現診断
+
+## 永続化された state を「リロード時に自動復元」するときは TTL と防御チェックを必ず入れる
+
+`localStorage` に状態を保存して **リロード後に復元** する設計 (例: オートモード継続) では、復元無条件 = 永続的に ON 状態が固定されるリスクがある。**TTL 期限と防御的バリデーション** を必ず入れる。
+
+```typescript
+// アンチパターン: 無条件復元
+const initial = JSON.parse(localStorage.getItem("autoMode") ?? "false");
+const [autoMode, setAutoMode] = useState(initial);
+// → ユーザーが 1 度 ON にしたら永遠に ON で起動してしまう
+
+// 推奨パターン: TTL + 防御チェック
+export const RESUME_TTL_MS = 60 * 60 * 1000; // 1 時間
+
+export function shouldRestore(state, now, ttlMs = RESUME_TTL_MS) {
+  if (!state) return false;
+  if (!state.enabled) return false;
+  const elapsed = now - state.savedAt;
+  if (elapsed < 0) return false; // ← 時計戻り防止
+  if (elapsed >= ttlMs) return false; // ← 期限超過
+  return true;
+}
+
+// 純粋関数で復元判定 → React state 初期値
+const [enabled, setEnabled] = useState(() => shouldRestore(parsePersisted(raw), Date.now()));
+```
+
+**Why**:
+
+1. **TTL なし** = ユーザーが「先週 ON → 今週 PC 再起動」したら勝手に ON で起動 → 意図しない動作 (TTS 自動再生等)
+2. **時計戻りチェック (`elapsed < 0`)** = OS 時計が過去に戻ったとき (NTP 同期 / 手動変更) に永久復元になるバグ防止
+3. **不正データの fallback** = JSON 構造不一致・型不一致は OFF で起動 (private mode の例外もこれでカバー)
+4. **保存タイムスタンプの併存** = `enabled` だけでは「いつ保存したか」が分からない。`{ enabled, savedAt }` の組で保存する設計が必要
+
+**How to apply**:
+
+1. 永続化対象 state は `{ value, savedAt: number }` 形式で保存 (タイムスタンプ必須)
+2. `parsePersistedXxx(raw)` 純粋関数で安全パース (型ガード含む)
+3. `shouldRestoreXxx(state, now, ttlMs)` 純粋関数で復元可否判定
+4. 復元判定を `useState(() => loadInitial())` の初期化関数で 1 回だけ実行
+5. TTL は機能ごとに「ユーザーが意図的に再開する間隔」を考える:
+   - オートモード: 1 時間 (デプロイリロード対応)
+   - フォーカスモード: 24 時間 (1 日内なら復元)
+   - 検索クエリ: 1 週間 (頻繁に変えるもの) 等
+6. TDD は `now` を引数化することで簡単に書ける (時計依存をテスト不能にしない)
+7. 防御チェック (時計戻り / 期限超過 / 不正データ) は **全てのケースに対して spec を書く**
+
+主な使用箇所: `auto-read-persist.ts` — autoMode の 1 時間期限付き永続化
+
 ## 禁止事項
 
 - D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
