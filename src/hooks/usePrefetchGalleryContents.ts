@@ -233,7 +233,11 @@ export function usePrefetchGalleryContents({
           onRateLimit: (until) => {
             rateLimited = true;
             setRateLimitedUntil(until);
-            controller.abort();
+            // #665: ここで controller.abort() を呼ぶと進行中の **他記事の fetch も
+            // 全て中断** されてしまい、それらの記事は failedIds にも入らず
+            // 「空カードのまま停止」になる。rateLimited フラグだけ立てて
+            // worker の while 条件で次 iteration から自然停止させ、進行中の
+            // fetch は完走させる。再開は rateLimitedUntil リセット → effect 再実行で処理。
           },
         });
       } catch {

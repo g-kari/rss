@@ -34,6 +34,12 @@ export interface ReaderSettings {
   onChangeTextJustify: (v: boolean) => void;
   galleryColumns: GalleryColumns;
   onChangeGalleryColumns: (v: GalleryColumns) => void;
+  /**
+   * フォーカスモード時のギャラリー列数 (#666)。
+   * `"auto"` は「通常列数に追従」を意味する（既存ユーザー後方互換）。
+   */
+  galleryColumnsFocus: GalleryColumns;
+  onChangeGalleryColumnsFocus: (v: GalleryColumns) => void;
   galleryCardSize: GalleryCardSize;
   onChangeGalleryCardSize: (v: GalleryCardSize) => void;
   galleryMinImagePx: number;

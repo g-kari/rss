@@ -15,6 +15,11 @@ interface Props {
   scrollElement: HTMLDivElement | null;
   galleryCardSize: GalleryCardSize;
   galleryColumns: GalleryColumns;
+  /**
+   * フォーカスモード時の列数 (#666)。`"auto"` は通常列数に追従。
+   * 通常列数も `"auto"` のときは従来挙動の 6 列固定にフォールバック。
+   */
+  galleryColumnsFocus: GalleryColumns;
   listFocusMode: boolean;
   contextValue: GalleryItemContextValue;
 }
@@ -27,10 +32,25 @@ export default function GalleryBody({
   scrollElement,
   galleryCardSize,
   galleryColumns,
+  galleryColumnsFocus,
   listFocusMode,
   contextValue,
 }: Props) {
   if (items.length === 0) return null;
+  // #666: フォーカスモード時の列数判定
+  // - listFocusMode=false → 通常 (auto なら masonic 自動、それ以外は固定)
+  // - listFocusMode=true:
+  //   - galleryColumnsFocus="auto" → 通常列数に追従 (通常も auto なら 6 固定)
+  //   - galleryColumnsFocus=固定値 → その値
+  const columns = listFocusMode
+    ? galleryColumnsFocus === "auto"
+      ? galleryColumns === "auto"
+        ? 6
+        : Number(galleryColumns)
+      : Number(galleryColumnsFocus)
+    : galleryColumns === "auto"
+      ? null
+      : Number(galleryColumns);
   return (
     <div className="p-2 mx-auto">
       <GalleryItemCtx.Provider value={contextValue}>
@@ -40,7 +60,7 @@ export default function GalleryBody({
           columnWidth={getGalleryCardWidth(galleryCardSize)}
           columnGutter={12}
           overscanBy={12}
-          columns={galleryColumns === "auto" ? (listFocusMode ? 6 : null) : Number(galleryColumns)}
+          columns={columns}
           itemKey={galleryItemKey}
           render={GalleryCardRenderer}
         />
