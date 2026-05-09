@@ -62,6 +62,11 @@ export function useArticleContent(
   // 呼ばない設計になっており、ここで明示的にリセットする必要がある。
   // fetchedContent は fetchedState.id との照合で自動的に null 扱いになるため個別リセット不要。
   useEffect(() => {
+    const hadController = fetchAbortControllerRef.current !== null;
+    autoReadDebug("useArticleContent.articleId-effect-fired", {
+      articleId,
+      hadController, // ← fetch-start 後にこの effect が再発火していたら abort 真因確定
+    });
     fetchAbortControllerRef.current?.abort();
     fetchAbortControllerRef.current = null;
     setFetchError("");
@@ -117,7 +122,12 @@ export function useArticleContent(
         });
         return;
       }
-      autoReadDebug("useArticleContent.fetch-start", { articleId, articleLink });
+      const hadController = fetchAbortControllerRef.current !== null;
+      autoReadDebug("useArticleContent.fetch-start", {
+        articleId,
+        articleLink,
+        hadController, // ← 同じ articleId 内で fetchFullContent が再呼出されたら true (abort 真因の候補)
+      });
       // 前の全文フェッチが進行中なら中断
       fetchAbortControllerRef.current?.abort();
       const controller = new AbortController();
@@ -174,7 +184,13 @@ export function useArticleContent(
         }
       } catch (err) {
         if (isAbortError(err)) {
-          autoReadDebug("useArticleContent.fetch-aborted", { articleId });
+          autoReadDebug("useArticleContent.fetch-aborted", {
+            articleId,
+            // この時点での ref の状態。null なら useEffect[articleId] が abort した、
+            // 自分以外の controller なら fetchFullContent 再呼出による abort
+            currentControllerIsThis: fetchAbortControllerRef.current === controller,
+            currentControllerIsNull: fetchAbortControllerRef.current === null,
+          });
           return;
         }
         setFetchError("ネットワークエラー");
