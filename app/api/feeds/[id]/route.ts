@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError, assertValidFeedHash } from "@/lib/api-error";
+import { assertFeedSubscribed } from "@/lib/api-feed-guard";
 import { purgeFeedsCache } from "@/lib/cache-helper";
 import {
   readUserSubscriptions,
@@ -19,10 +20,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const validationErr = assertValidFeedHash(feedHash);
   if (validationErr) return validationErr;
   return withSession(request, async ({ session, env, ctx }) => {
-    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
-    if (!subs.some((s) => s.feedHash === feedHash)) {
-      return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
-    }
+    const { subs, err } = await assertFeedSubscribed(env.RSS_DATA, session.userId, feedHash);
+    if (err) return err;
     // 購読から削除するだけ（共有フィードデータは残す）
     const remainingSubs = subs.filter((s) => s.feedHash !== feedHash);
     await writeUserSubscriptions(env.RSS_DATA, session.userId, remainingSubs);

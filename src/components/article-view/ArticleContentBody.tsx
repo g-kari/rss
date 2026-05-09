@@ -2,9 +2,10 @@
 
 import React, { useRef, useEffect } from "react";
 import type { Article, EngagementAction } from "../../types";
+import { AI_RATINGS } from "../../types";
 import type { EmbedInfo } from "../../lib/embed-utils";
 import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
-import type { AiRating, ContentTab } from "../../hooks/useArticleAiRatings";
+import type { AiRatingState, ContentTab } from "../../hooks/useArticleAiRatings";
 import { useReaderSettings } from "../../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
 import { useSliderGallery } from "../../hooks/useSliderGallery";
@@ -35,8 +36,8 @@ interface ArticleContentBodyProps {
   translateError: AiError | null;
   contentTab: ContentTab;
   setContentTab: (tab: ContentTab) => void;
-  translateRating: AiRating;
-  setTranslateRating: (rating: AiRating) => void;
+  translateRating: AiRatingState;
+  setTranslateRating: (rating: AiRatingState) => void;
   onEngagement?: (
     articleId: string,
     feedHash: string,
@@ -292,7 +293,7 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
             )}
             {contentTab === "translate" && (
               <div className="ml-auto flex items-center gap-1 pb-1">
-                {(["good", "neutral", "bad"] as const).map((rating) => (
+                {AI_RATINGS.map((rating) => (
                   <button
                     key={rating}
                     title={rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}

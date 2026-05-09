@@ -1,5 +1,6 @@
 import React from "react";
-import type { Article, EngagementAction } from "../../types";
+import type { Article, EngagementAction, AiRating } from "../../types";
+import { AI_RATINGS } from "../../types";
 import type { AiError, TranslationProvider } from "../../hooks/useArticleAi";
 
 interface ArticleAiPanelProps {
@@ -7,8 +8,8 @@ interface ArticleAiPanelProps {
   /** AI 要約のプロバイダー (#697) — 「Chrome 要約 / Workers AI」バッジ表示に使用 */
   aiResultProvider?: TranslationProvider;
   aiError: AiError | null;
-  summaryRating: "good" | "neutral" | "bad" | null;
-  setSummaryRating: (rating: "good" | "neutral" | "bad") => void;
+  summaryRating: AiRating | null;
+  setSummaryRating: (rating: AiRating) => void;
   article: Article;
   onEngagement?: (
     articleId: string,
@@ -98,7 +99,7 @@ export default function ArticleAiPanel({
               )}
             </div>
             <div className="flex items-center gap-1">
-              {(["good", "neutral", "bad"] as const).map((rating) => (
+              {AI_RATINGS.map((rating) => (
                 <button
                   key={rating}
                   title={rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}

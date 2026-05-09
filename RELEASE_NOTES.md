@@ -2,6 +2,12 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ
+
+- **API ルートの subscription guard を `assertFeedSubscribed` ヘルパーに集約!🛡️ (simplify 監査 88% 信頼度)** — `feeds/[id]/{,refresh,reinfer,purge-content-cache}` で完全に同じ「購読してない feedHash は 404」3 行を 4 routes で重複してた状態を、`src/lib/api-feed-guard.ts` の **discriminated union** ベース helper に集約!💪 `if (guard.err) return guard.err;` で TS narrowing が効いて `sub: UserSubscription` 取れる〜🎯 既存の `assertValidFeedHash` (hash 形式 validate) と隣接配置で security-critical な「認証 + 所有権チェック」二段が明示化〜🔒
+- **API ルートの hash check 配置を `withSession` 外に統一したよ〜!⚡ (simplify 監査 80% 信頼度)** — `purge-content-cache` で feedHash 形式 validate を `withSession` 内で実行してて、不正な hash でも認証 round-trip を発生させる無駄があったのを、`route.ts` / `refresh.ts` と統一して **認証前 fast-fail** に変更!📦 後続実装も「hash check 外、subscription check 内」の規範レイヤリングに揃えれば OK〜🎀
+- **AI 要約・翻訳の評価値 `["good", "neutral", "bad"]` を `AI_RATINGS` const + `AiRating` type で 1 ソース化!🎯 (simplify 監査 82% 信頼度)** — UI コンポーネント 2 箇所 + API 1 箇所 + hook 1 箇所の **計 4 箇所** で `["good", "neutral", "bad"] as const` を独立に重複してたのを、`src/types.ts` の `export const AI_RATINGS` + `export type AiRating = (typeof AI_RATINGS)[number]` に集約!💪 評価値追加・削除時の同期更新ミスを物理的に防止〜🛡️
+
 ### アクセシビリティっ
 
 - **`UserSettingsModal` のタブで Arrow キーナビ追加!⌨️ (a11y 監査 95% 信頼度)** — タブリストの ARIA Authoring Practices §3.21 に準拠して、`ArrowLeft` / `ArrowRight` でタブ移動 (端でループ)、`Home` / `End` で先頭・末尾ジャンプができるように!💪 active タブのみ `tabIndex={0}`、他は `tabIndex={-1}` の roving tabindex pattern で、Tab キーで一気に panel body に飛べる〜🎯 WCAG 2.1.1 (Keyboard) 準拠〜🛡️

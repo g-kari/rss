@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, applyCooldown } from "@/lib/server-auth";
 import { apiError, assertValidFeedHash } from "@/lib/api-error";
-import {
-  readUserSubscriptions,
-  readFeedMeta,
-  writeFeedMeta,
-  assembleClientFeed,
-} from "@/lib/shared-feed";
+import { assertFeedSubscribed } from "@/lib/api-feed-guard";
+import { readFeedMeta, writeFeedMeta, assembleClientFeed } from "@/lib/shared-feed";
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import { fetchSingleFeed } from "@/cron/fetch";
 import { reinferCooldownKey } from "@/lib/r2";
@@ -25,9 +21,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const validationErr = assertValidFeedHash(feedHash);
   if (validationErr) return validationErr;
   return withSession(req, async ({ session, env }) => {
-    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
-    const sub = subs.find((s) => s.feedHash === feedHash);
-    if (!sub) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
+    const guard = await assertFeedSubscribed(env.RSS_DATA, session.userId, feedHash);
+    if (guard.err) return guard.err;
+    const { sub } = guard;
 
     const meta = await readFeedMeta(env.RSS_DATA, feedHash);
     if (!meta) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });

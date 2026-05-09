@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { apiError, assertValidFeedHash } from "@/lib/api-error";
+import { assertFeedSubscribed } from "@/lib/api-feed-guard";
 import { deleteCfCache } from "@/lib/cache-helper";
 import { buildClipCacheKey, buildContentCacheKey } from "@/lib/fetch-article-content";
-import { readLatestArticles, readArticlePage, readUserSubscriptions } from "@/lib/shared-feed";
+import { readLatestArticles, readArticlePage } from "@/lib/shared-feed";
 
 /**
  * フィード（feedHash）に紐づく全記事の Cloudflare Cache (content + clip) を削除する。
@@ -20,16 +21,15 @@ import { readLatestArticles, readArticlePage, readUserSubscriptions } from "@/li
  * Cache はユーザー横断のため、購読中のフィードのみ自分の判断で一括クリアできる設計。
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  return withSession(request, async ({ session, env }) => {
-    const { id: feedHash } = await params;
-    const validationErr = assertValidFeedHash(feedHash);
-    if (validationErr) return validationErr;
+  // hash check は認証前 fast-fail (route.ts / refresh.ts と統一)
+  const { id: feedHash } = await params;
+  const validationErr = assertValidFeedHash(feedHash);
+  if (validationErr) return validationErr;
 
+  return withSession(request, async ({ session, env }) => {
     // #691: 購読チェック — 未購読フィードへの purge は 404 で拒否
-    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
-    if (!subs.some((s) => s.feedHash === feedHash)) {
-      return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
-    }
+    const guard = await assertFeedSubscribed(env.RSS_DATA, session.userId, feedHash);
+    if (guard.err) return guard.err;
 
     const reqUrl = new URL(request.url);
 

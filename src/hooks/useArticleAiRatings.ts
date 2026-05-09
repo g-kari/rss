@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import type { AiOperationResult } from "./useArticleAi";
+import type { AiRating } from "../types";
 
-export type AiRating = "good" | "neutral" | "bad" | null;
+/**
+ * 評価状態は「未評価 (null)」を含むので `AiRating | null` を使う。
+ * 評価値そのものの enum は `src/types.ts` の `AI_RATINGS` / `AiRating` を参照。
+ */
+export type AiRatingState = AiRating | null;
 export type ContentTab = "original" | "translate";
 
 interface UseArticleAiRatingsParams {
@@ -12,10 +17,10 @@ interface UseArticleAiRatingsParams {
 }
 
 interface UseArticleAiRatingsResult {
-  summaryRating: AiRating;
-  setSummaryRating: (rating: AiRating) => void;
-  translateRating: AiRating;
-  setTranslateRating: (rating: AiRating) => void;
+  summaryRating: AiRatingState;
+  setSummaryRating: (rating: AiRatingState) => void;
+  translateRating: AiRatingState;
+  setTranslateRating: (rating: AiRatingState) => void;
   contentTab: ContentTab;
   setContentTab: (tab: ContentTab) => void;
 }
@@ -29,8 +34,8 @@ export function useArticleAiRatings({
   articleId,
   translateResult,
 }: UseArticleAiRatingsParams): UseArticleAiRatingsResult {
-  const [summaryRating, setSummaryRating] = useState<AiRating>(null);
-  const [translateRating, setTranslateRating] = useState<AiRating>(null);
+  const [summaryRating, setSummaryRating] = useState<AiRatingState>(null);
+  const [translateRating, setTranslateRating] = useState<AiRatingState>(null);
   const [contentTab, setContentTab] = useState<ContentTab>("original");
 
   useEffect(() => {
