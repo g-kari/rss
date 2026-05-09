@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppModals from "./components/AppModals";
 import FeedSidebar from "./components/feed-sidebar";
@@ -605,6 +605,11 @@ export default function App() {
     recordEngagement,
   );
 
+  // #684: 記事一覧アンカー用トリガーカウンタ。`.` キーまたは UI ボタンで increment して
+  //       ArticleList に渡し、useEffect で「選択中記事へ強制スクロール」を再実行する。
+  const [anchorTrigger, setAnchorTrigger] = useState(0);
+  const anchorListToSelected = useCallback(() => setAnchorTrigger((c) => c + 1), []);
+
   useKeyboardNav({
     filteredArticles: filtered,
     feeds,
@@ -659,6 +664,7 @@ export default function App() {
     autoMode,
     toggleAutoMode,
     ttsSupported,
+    anchorListToSelected,
   });
 
   const articleViewProps = useArticleViewProps({
@@ -924,6 +930,7 @@ export default function App() {
                     onToggleListFocusMode={toggleListFocusMode}
                     onGalleryAutoRead={handleGalleryAutoRead}
                     duplicateInfo={duplicateInfo}
+                    anchorTrigger={anchorTrigger}
                   />
                 </ErrorBoundary>
               )}

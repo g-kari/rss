@@ -62,6 +62,8 @@ interface Props {
   onToggleListFocusMode: () => void;
   onGalleryAutoRead?: (id: string) => void;
   duplicateInfo?: Map<string, string[]>;
+  /** #684: 値が変化するたびに「選択中記事へ強制スクロール」を再実行するトリガーカウンタ */
+  anchorTrigger?: number;
 }
 
 function getDateGroupLabel(publishedAt: string | null): string {
@@ -112,6 +114,7 @@ function ArticleList({
   onToggleListFocusMode,
   onGalleryAutoRead,
   duplicateInfo,
+  anchorTrigger,
 }: Props) {
   const {
     filtered,
@@ -311,35 +314,42 @@ function ArticleList({
   const wasJustCleared = prevFilteredLengthRef.current > 0 && filtered.length === 0;
   prevFilteredLengthRef.current = filtered.length;
 
-  const prevScrollStateRef = useRef<{ id: string | null; layout: string | null }>({
+  const prevScrollStateRef = useRef<{
+    id: string | null;
+    layout: string | null;
+    anchor: number | undefined;
+  }>({
     id: null,
     layout: null,
+    anchor: undefined,
   });
   const flatItemsRef = useSyncedRef(flatItems);
   const visibleRef = useSyncedRef(visible);
   const nonGalleryDisplayItemsRef = useSyncedRef(nonGalleryDisplayItems);
   useEffect(() => {
     if (!selectedArticleId) return;
-    if (
+    // #684: anchorTrigger が変化したときは prev 一致でも強制再実行 (manual anchor)
+    const sameAsPrev =
       selectedArticleId === prevScrollStateRef.current.id &&
-      layout === prevScrollStateRef.current.layout
-    )
-      return;
-    prevScrollStateRef.current = { id: selectedArticleId, layout };
+      layout === prevScrollStateRef.current.layout;
+    const isManualAnchor = anchorTrigger !== prevScrollStateRef.current.anchor;
+    if (sameAsPrev && !isManualAnchor) return;
+    prevScrollStateRef.current = { id: selectedArticleId, layout, anchor: anchorTrigger };
+    // 手動アンカー時は中央寄せ・通常の選択時は近接寄せ
+    const align = isManualAnchor ? "center" : "auto";
     if (layout === "compact" || layout === "list") {
       const idx = flatItemsRef.current.findIndex(
         (item) => item.type === "article" && item.key === selectedArticleId,
       );
-      if (idx >= 0) listVirtualizer.scrollToIndex(idx, { align: "auto" });
+      if (idx >= 0) listVirtualizer.scrollToIndex(idx, { align });
     } else if (layout === "card") {
       const articleIdx = visibleRef.current.findIndex((a) => a.id === selectedArticleId);
-      if (articleIdx >= 0)
-        cardVirtualizer.scrollToIndex(Math.floor(articleIdx / 2), { align: "auto" });
+      if (articleIdx >= 0) cardVirtualizer.scrollToIndex(Math.floor(articleIdx / 2), { align });
     } else if (layout === "magazine") {
       const magazineIdx = nonGalleryDisplayItemsRef.current.findIndex(
         (a, i) => i > 0 && a.id === selectedArticleId,
       );
-      if (magazineIdx >= 1) magazineVirtualizer.scrollToIndex(magazineIdx - 1, { align: "auto" });
+      if (magazineIdx >= 1) magazineVirtualizer.scrollToIndex(magazineIdx - 1, { align });
     } else {
       const el = document.getElementById(`article-${selectedArticleId}`);
       const container = scrollContainerRef.current;
@@ -347,11 +357,16 @@ function ArticleList({
         const elRect = el.getBoundingClientRect();
         const cRect = container.getBoundingClientRect();
         const isVisible = elRect.bottom > cRect.top && elRect.top < cRect.bottom;
-        if (!isVisible) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        // 通常時: 見えていればスキップ / 手動アンカー時は常にセンタリング
+        if (isManualAnchor) {
+          el.scrollIntoView({ block: "center", behavior: "smooth" });
+        } else if (!isVisible) {
+          el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・magazineVirtualizer・flatItemsRef・visibleRef・nonGalleryDisplayItemsRef は安定参照。記事選択・レイアウト変更時のみスクロール
-  }, [selectedArticleId, layout]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・magazineVirtualizer・flatItemsRef・visibleRef・nonGalleryDisplayItemsRef は安定参照。記事選択・レイアウト変更・手動アンカー時のみスクロール
+  }, [selectedArticleId, layout, anchorTrigger]);
 
   const { resolveItemProps } = useArticleListItemProps({
     feedMap,

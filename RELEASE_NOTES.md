@@ -4,6 +4,7 @@
 
 ### 激アツ新機能っ
 
+- **記事一覧を選択中の記事にアンカーするショートカット `.` を追加したよ〜** — Issue #684。`.` (ピリオド) キーで、現在選択中の記事を **記事一覧の中央** にスクロールしてアンカー！🎯 ロングスクロールで現在位置を見失った時に「今どこ？」を一発復帰〜📍 全レイアウト (compact / list / card / magazine / gallery) に対応、virtualizer の `align: "center"` と `block: "center"` で確実にセンタリング。通常の選択時 (記事を切り替えた時) は従来通り `align: "auto"` (見えていればスキップ)、手動アンカー時のみ強制センタリングの 2 段挙動。
 - **オートモードがリロード後も自動再開するようになったよ〜** — Issue #679 案 A 採用。デプロイで Cloudflare CI/CD のリロードが入るたびオートモードが切れる問題に対応！⚡ `localStorage` に `{ enabled, savedAt }` を保存して、リロード時に **1 時間以内** なら自動的に ON で起動〜🎀 期限超過 / 時計戻り / 不正データ時は防御的に OFF。`shouldRestoreAutoMode` 純粋関数 + TDD 23 ケース全分岐網羅 (parse / shouldRestore / serialize / 期限定数 / round-trip / 境界値 / カスタム ttlMs)。
 - **オートモードに診断ログを追加したよ〜 (#678 案 C)** — 「次の記事に遷移したけど読み上げが始まらない」原因究明のため、`localStorage.setItem('rss-debug-autoread', '1')` で 10 種の診断ログが Console に出るように！🔍 fetch トリガー / speak トリガー / fetch 開始/完了/失敗の各イベントをログ化して、ユーザー再現時の状態を可視化〜📊 デフォルト OFF なので一般ユーザーの DevTools は汚さない設計。
 
