@@ -74,6 +74,34 @@ docs drift 監査エージェントの観点:
 
 監査タイミングの目安: 大型機能追加が 3-5 件続いた後、または `git log --since="14 days ago" --oneline | wc -l` が 50 を超えたら。
 
+### 派生ケース: サブエージェント rate limit 時は `find + grep + comm` で機械的 diff 検出
+
+サブエージェント (`feature-dev:code-reviewer` 等) が rate limit / API 障害で動作しないサイクルでも、**docs drift だけは構造化された機械的タスク** なのでメインエージェントだけで完遂できる。`find` でファイル一覧、`grep` で文書内エントリ抽出、`comm -23` で diff を取れば 5 分程度で網羅検出が可能。
+
+```bash
+# src/lib/ の drift 検出例
+find src/lib -maxdepth 1 -name "*.ts" -type f | xargs -n1 basename | sort > /tmp/actual_lib.txt
+grep -oP "^    [a-z][a-z0-9-]+\.ts" .claude/rules/architecture.md | sed 's/^ *//' | sort -u > /tmp/doc_lib.txt
+comm -23 /tmp/actual_lib.txt /tmp/doc_lib.txt  # 未文書化ファイルのみ出力
+
+# spec ファイルの drift 検出例
+find e2e -name "*.spec.ts" -type f | xargs -n1 basename | sort > /tmp/actual_specs.txt
+grep -oP "\| \`[a-z][a-z0-9-]+\.spec\.ts\`" .claude/rules/architecture.md | sed 's/| `//;s/`//' | sort -u > /tmp/doc_specs.txt
+comm -23 /tmp/actual_specs.txt /tmp/doc_specs.txt
+```
+
+検出後は各 spec / lib ファイルの先頭 12 行を `head -12` で読んで責務を把握し、1 行 description を書くだけ。**エージェント往復より直接実行が速い** (待機 + 結果整形なし)。
+
+**Why**: サブエージェント rate limit は数時間続くことがある。actionable issue が枯渇している状況でサイクルを丸ごと浪費するより、**機械的検出可能なタスク** (drift / dead exports / missing TDD coverage) を直接実行する方が時間効率が高い。docs drift は判断要素なし (ファイルが存在するか / 文書に記載があるかの二択) なので、メインエージェントの判断力でも十分。
+
+**How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
+
+1. **タスクが機械的検出可能か** (yes/no で判別できる、grep / find / comm で出せる) → 直接実行
+2. **タスクが判断/設計要素を含むか** (perf 影響評価 / a11y 重要度判定 / 設計案比較) → サブエージェント復活待ち or ユーザー判断仰ぐ
+3. drift / dead code / TDD missing は #1 に該当することが多い。perf / UX / 設計改善は #2
+
+主な使用箇所: 2026-05-10 サイクル — 3 体並列サブエージェント全員 rate limit → 直接 `find + grep + comm` で 10 件 drift 検出 → 1 commit omnibus 修正
+
 ## 6. 大規模ドキュメント分割は contiguous な小クラスターから段階的に進める
 
 `coding-conventions.md` (1785 行 / 65 セクション) のような大規模ファイルを分割するとき、**全セクションを一度に新ファイルへ移動するのは破壊的**。1 コミットで多数のセクションを抜き出すと:
