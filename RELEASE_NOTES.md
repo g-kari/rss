@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### セキュリティ対策っ
+
+- **cache-purge エンドポイントが他人のキャッシュを無効化できる権限不備を修正したよ〜 (#691)** — `POST /api/feeds/{feedHash}/purge-content-cache` が **認証だけ** チェックして購読チェックを欠いてた〜🥲 任意の認証済ユーザーが「他人が購読中のフィード feedHash」に対して purge を実行すると、shared Cloudflare Cache (最大 5,000 記事分) を無効化できて他ユーザーの読み込み体験を意図的に劣化させる cache busting DoS が成立してたの！💥 `readUserSubscriptions` で購読チェックを追加して、**未購読フィードは 404** で拒否するように修正〜🛡️ 同様に `DELETE /api/content?url=...` も shared cache (ユーザー横断) 削除を撤廃して、自分の clip cache (ユーザー別 key) のみ削除する仕様に変更！shared cache は TTL (7日) で自然失効に任せ、フィード単位の一括クリアは購読チェック付きの purge エンドポイント経由に統一〜🔒
+
 ### UX改善っ
 
 - **記事本文取得が 429 (レート制限) のとき「取得できませんでした」だけだった問題を直したよ〜 (#688)** — `useArticleContent` が `res.ok` チェックを欠いてて、429 / 502 / 503 等の HTTP エラーを silent にスルーしてた〜🥲 ユーザーは「待つべきか / リトライすべきか / 永続的なエラーか」が判断できなかったの！💥 `src/lib/classify-http-error.ts` 純粋関数を新設して、HTTP ステータスを `rate_limit` / `server_error` / `client_error` / `network` / `unknown` に分類 + `formatHttpErrorMessage` で 429 のときは `Retry-After` ヘッダーを秒数表示に整形〜🚀 「レート制限中です。30秒後に再試行してください。」のような具体的なメッセージが出るように！TDD 30 ケース全分岐網羅 (15 ステータス分類 / 9 メッセージ整形 / 6 retryable 判定)。
