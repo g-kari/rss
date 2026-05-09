@@ -477,6 +477,60 @@ shouldStartAutoSpeak({
 
 **How to apply**: fallback を含む文字列・配列を判定関数に渡すときは、判定側で「fallback されたかどうか」を別 boolean で受け取る。`hasText` のような fallback 後の事実だけでなく、`hasOriginal` のような fallback 前の事実も渡せるよう設計する。
 
+## 既存設定 UI を流用して新要件を満たす（新規 UI を増やさない判断軸）
+
+ユーザーから「設定可能化したい」要望が来たとき、**意味的に重なる既存 UI があれば、それを流用して内部ロジックだけ拡張**する選択肢を最初に検討する。
+
+```typescript
+// アンチパターン: 同じ「N 日」値を 2 箇所で設定させる
+// UI: 記事保持期間 (30/60/180 日) ← 既存
+// UI: 既読自動削除 N 日 (30/60/180 日) ← 新規 ← ユーザーが両方設定して齟齬発生
+
+// 修正パターン: 既存 UI の値を内部で複数の用途に再利用
+// UI: 記事保持期間 (30/60/180 日) ← そのまま
+// 内部: ttlDays から effective cutoff を算出して prune にも適用
+```
+
+**Why**: 2026-05-09 の #635 設定可能化で、ユーザーは「prune 閾値も設定できるようにしたい」と要望したが、既存の「記事保持期間 (ttlDays)」UI が同じ「30/60/180 日」値を持っており、意味的に重なっていた。新規 UI を追加せず ttlDays を内部 prune にも流用することで、UI 増加なし・ユーザー混乱なし・実装コスト最小で要望を満たせた。
+
+**How to apply**: 「設定可能化」要望には次の順で検討:
+
+1. **意味が重なる既存設定があるか** → あれば流用（純粋関数で複数用途に値を変換）
+2. 流用すると挙動が予期しない方向に変わるユーザーがいるか → RELEASE_NOTES で告知
+3. 完全に独立した概念なら新規 UI を追加
+
+新規追加した場合、必ず「既存設定との優先順位」を明示する（max / min / 最後の更新優先など）。
+
+主な使用箇所: `useReadStatePersistence` の prune effect が `ttlDays` を流用 (#635)、`computeEffectiveReadBeforeCutoff` で複数 cutoff の合成。
+
+## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する
+
+masonic / react-virtual のような **絶対座標で要素を配置する仮想化ライブラリ** を使うと、コンテナの `scrollHeight` はレイアウト確定後に動的に書き換わる。「コンテンツが viewport を埋めているか」を判定する必要がある場合、static な useEffect だけでは初回レイアウト確定タイミングを捉えられない。
+
+```typescript
+// アンチパターン: visible.length 依存だけだと masonic のレイアウト確定後の高さ変化を捕捉できない
+useEffect(() => {
+  const isShort = scrollEl.scrollHeight <= scrollEl.clientHeight;
+  // ↑ 初回レンダー時はまだ masonry 配置前で scrollHeight が 0
+}, [visible.length]);
+
+// 修正パターン: ResizeObserver で scrollContainer のサイズ変化も監視
+useEffect(() => {
+  const observer = new ResizeObserver(() => {
+    const isShort = scrollEl.scrollHeight <= scrollEl.clientHeight + 1;
+    if (isShort && hasMore) loadMore();
+  });
+  observer.observe(scrollEl);
+  return () => observer.disconnect();
+}, []);
+```
+
+**注意点**: `ResizeObserver` は要素自身のリサイズを検知する。子要素が追加されてコンテナが拡張する場合は通常検知されるが、絶対座標配置で **親コンテナ自身の clientHeight が変わらない** ケースでは発火しない。その場合は `MutationObserver` (subtree childList 監視) との併用や、`requestAnimationFrame` を 2 段で待ってからチェックする手法を組み合わせる。
+
+**Why**: 2026-05-09 の #636 で、masonic ギャラリーの最長列が viewport を超えても最短列にはまだ余白があるケースで、IntersectionObserver の sentinel が交差せず無限スクロールが止まる問題が発生。`ResizeObserver` + rAF 2 段待機 + `scrollHeight <= clientHeight` 判定の併用で解消。
+
+主な使用箇所: `useArticlePagination` の eager load 機構（#636）、`LoadMoreButton` の親要素サイズ監視。
+
 ## モード OFF 時に進行中の副作用を停止する
 
 state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
