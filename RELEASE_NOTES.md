@@ -10,6 +10,8 @@
 
 ### バグ修正っ
 
+- **CI の typecheck が失敗してた問題を直したよ〜** — Issue #668。`src/lib/release-notes-data.ts` は `RELEASE_NOTES.md` から自動生成されるファイル (.gitignore 対象) で、`prebuild` フックでだけ生成されてたの〜🛠️ CI は `pnpm install` 直後に `pnpm run check` → `pnpm run typecheck` を実行するので、ファイル未生成で TS2307 エラー発生！😱 `pretypecheck` / `precheck` / `precheck:fix` を `package.json` に追加して、全実行パスで自動生成されるようにしたよ〜⚙️✨ スクリプト自体は MD 1 個読んで TS 1 個書くだけの軽量処理だから性能影響なし。
+- **ギャラリーで本文画像が 1 枚だけの記事が DL できなかった問題を直したよ〜** — Issue #667。`GalleryContextMenu` の「画像を一括保存」ボタンが `images.length >= 2` の判定で隠れてて、wallhaven のような 1 枚画像記事だと OGP/サムネだけ DL される状態に〜😢 条件を `>= 1` に緩和して、1 枚なら「本文画像を保存」、複数なら従来どおり「画像を一括保存 (N 枚)」と動的ラベル！🖼️✨ 本文 fetch + 画像抽出パイプライン (`collectImageUrlsFromHtml`) は元々 1 枚でも正常動作してたので、UI 表示条件だけのフィックス。
 - **ギャラリーで 1 件の 429 が混入すると他の記事の画像展開も全停止していた問題を直したよ〜** — Issue #665。`usePrefetchGalleryContents` の `onRateLimit` コールバックが `controller.abort()` を呼んで **進行中の全並列 worker を中断** してたの〜🙅‍♀️ おかげで残り未処理記事は処理されないまま終了、しかも abort された fetch は `failedIds` にも入らずリトライボタンすら出ない「空カードで停止」状態に〜😢 修正で `controller.abort()` を削除して、`rateLimited` フラグだけで worker の while 条件で自然停止するように！🛡️ 進行中の fetch は完走、再開は `rateLimitedUntil` リセット時の effect 再実行で処理。404 単独では従来から止まらない設計だったのを再確認〜✨
 
 ### 激アツ新機能っ
