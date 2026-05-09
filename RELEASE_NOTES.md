@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (#650 段階分割継続)
+
+- **App.tsx の Provider 入れ子 4 段を `<AppProviders>` に集約!📦 (#650 Step 1u)** — `ToastProvider` / `TtsAdapterProvider` / `ReaderSettingsProvider` / `ArticleFilterProvider` の 4 段ネストを 1 ファイル (`src/components/AppProviders.tsx`) に閉じ込めて、App.tsx の return JSX を浅く保ったよ〜🎯 Provider の **順序や追加・変更時の影響範囲を 1 ファイルに局所化** できる構造で、将来の Provider 追加 (例: i18n / Analytics) も AppProviders 1 ファイル変更で完結〜🛡️ App.tsx は Provider 直接 import を 4 個削除〜💎
+
 ### パフォーマンス改善っ
 
 - **`readingTimeCache` を「読了時間フィルター無効時は生成しない」に最適化!⚡ (perf 監査 80% 信頼度)** — `useFilteredArticles` で `readingTimeCache` を articles ref 変化のたびに常に生成してたのを、`readingTimeRange === "all"` (デフォルト) のときは `undefined` で skip するように!📦 5 分ポーリングのたびに走る無駄な allocation を排除〜🛡️ deps 配列にも `readingTimeRange` を追加して、フィルター切替時に正しく再生成される〜🎯

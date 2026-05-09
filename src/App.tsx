@@ -55,11 +55,9 @@ import { useFeedSidebarActions } from "./hooks/useFeedSidebarActions";
 import { useArticleViewProps } from "./hooks/useArticleViewProps";
 import { useDigestFeedOrder } from "./hooks/useDigestFeedOrder";
 import ThreePaneLayout from "./components/ThreePaneLayout";
-import { ReaderSettingsProvider } from "./contexts/ReaderSettingsContext";
+import AppProviders from "./components/AppProviders";
 import { useReaderSettingsValue } from "./hooks/useReaderSettingsValue";
-import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFilterContext";
-import { ToastProvider } from "./contexts/ToastContext";
-import { TtsAdapterProvider } from "./contexts/TtsAdapterContext";
+import { type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { useSpeechSynthesis } from "./hooks/useSpeechSynthesis";
 import { useToastState } from "./hooks/useToast";
 import { AppLandingState } from "./components/AppLandingState";
@@ -668,152 +666,151 @@ export default function App() {
   const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
 
   return (
-    <ToastProvider value={toast}>
-      <TtsAdapterProvider value={ttsAdapter}>
-        <ReaderSettingsProvider value={readerSettings}>
-          <ArticleFilterProvider value={articleFilter}>
-            <ThreePaneLayout
-              sidebarWidth={sidebarWidth}
-              listWidth={listWidth}
-              listFocusMode={listFocusMode}
-            >
-              <AppOverlays
-                articleAnnouncement={articleAnnouncement}
-                isOnline={isOnline}
-                hasPendingChanges={hasPendingChanges}
-                confirmModalProps={confirmModalProps}
-                appModalsProps={{
-                  sessionExpired,
-                  snoozeTargetId,
-                  snoozeArticleTitle,
-                  onSnooze: handleSnooze,
-                  onSnoozeClose: () => setSnoozeTargetId(null),
-                  showHelp,
-                  onHelpClose: () => setShowHelp(false),
-                  showSettings,
-                  onSettingsClose: () => setShowSettings(false),
-                  showFeedSwitcher,
-                  feeds,
-                  articles,
-                  readIds,
-                  readBeforeTimestamp,
-                  selectedFeedId,
-                  onSelectFeed: setSelectedFeedId,
-                  onFeedSwitcherClose: () => setShowFeedSwitcher(false),
-                }}
-                showNSFWAnimation={showNSFWAnimation}
-                onNSFWAnimationComplete={onNSFWAnimationComplete}
-                newArticleCount={newArticleCount}
-                focusMode={focusMode}
-                listFocusMode={listFocusMode}
-                dismissNewArticles={dismissNewArticles}
-                exitFocusMode={exitFocusMode}
-                articleViewProps={articleViewProps}
-                articleDetailOverlayOpen={articleDetailOverlayOpen}
-                closeArticleDetailOverlay={closeArticleDetailOverlay}
-                hasOpenPopup={hasOpenPopup}
-                sidebarWidth={sidebarWidth}
-                listWidth={listWidth}
-                onResizeStart={handleResizeStart}
-                resetWidth={resetWidth}
-              />
-              <AppSidebarPane
-                mobilePane={mobilePane}
-                isDesktop={isDesktop}
-                loadingFeeds={loadingFeeds}
-                feedsEmpty={feeds.length === 0}
-                feedSidebarActions={feedSidebarActions}
-                feedSidebarProps={{
-                  feeds,
-                  articles,
-                  readIds,
-                  readBeforeTimestamp,
-                  bookmarkCount,
-                  readingListCount,
-                  likeCount,
-                  historyCount,
-                  selectedFeedId,
-                  selectedGroupId,
-                  user,
-                  theme,
-                  selectedTag,
-                  articleTagIds,
-                  refreshing,
-                  loadingFeeds,
-                  isOnline,
-                  pinnedFeedIds,
-                  collapsedCategories,
-                  nsfwMode,
-                  feedGroups,
-                  totalUnread,
-                  activeFeedView,
-                  recommendations,
-                  recommendationsLoading,
-                  recommendationsRefreshing,
-                  recommendationsError,
-                  noteCount: Object.keys(notes).length,
-                  collections,
-                  collectionsLoadError,
-                  onRetryCollections: retryCollections,
-                  selectedCollectionId,
-                  install,
-                  loadError: feedLoadError ? "フィードの読み込みに失敗しました" : null,
-                  onRetry: retryFeedList,
-                  push: {
-                    supported: pushSupported,
-                    subscribed: pushSubscribed,
-                    loading: pushLoading,
-                    error: pushError,
-                    onToggle: togglePush,
-                    onSendTest: sendPushTest,
-                  },
-                }}
-              />
-              <AppListPane
-                mobilePane={mobilePane}
-                isDesktop={isDesktop}
-                loadingFeeds={loadingFeeds}
-                feedsEmpty={feeds.length === 0}
-                articleListProps={{
-                  feeds,
-                  readIds,
-                  readBeforeTimestamp,
-                  bookmarkIds,
-                  readingListIds,
-                  selectedArticleId: selectedArticle?.id ?? null,
-                  selectedFeedId,
-                  layout,
-                  loading: loadingArticles,
-                  fetchError,
-                  onRetry: retryInitialLoad,
-                  onChangeLayout,
-                  onMobileBack: () => setMobilePane("sidebar"),
-                  onSelectArticle: selectArticle,
-                  onToggleRead: toggleRead,
-                  onToggleBookmark: toggleBookmark,
-                  onToggleReadingList: toggleReadingList,
-                  onMarkRead: markRead,
-                  onMarkAllRead,
-                  feedHasMorePages,
-                  onLoadMoreFeedArticles: handleLoadMoreFeedArticles,
-                  notes,
-                  activeFeedView,
-                  listFocusMode,
-                  onToggleListFocusMode: toggleListFocusMode,
-                  onGalleryAutoRead: handleGalleryAutoRead,
-                  duplicateInfo,
-                  anchorTrigger,
-                }}
-              />
-              <AppViewPane
-                mobilePane={mobilePane}
-                isDesktop={isDesktop}
-                articleViewProps={articleViewProps}
-              />
-            </ThreePaneLayout>
-          </ArticleFilterProvider>
-        </ReaderSettingsProvider>
-      </TtsAdapterProvider>
-    </ToastProvider>
+    <AppProviders
+      toast={toast}
+      ttsAdapter={ttsAdapter}
+      readerSettings={readerSettings}
+      articleFilter={articleFilter}
+    >
+      <ThreePaneLayout
+        sidebarWidth={sidebarWidth}
+        listWidth={listWidth}
+        listFocusMode={listFocusMode}
+      >
+        <AppOverlays
+          articleAnnouncement={articleAnnouncement}
+          isOnline={isOnline}
+          hasPendingChanges={hasPendingChanges}
+          confirmModalProps={confirmModalProps}
+          appModalsProps={{
+            sessionExpired,
+            snoozeTargetId,
+            snoozeArticleTitle,
+            onSnooze: handleSnooze,
+            onSnoozeClose: () => setSnoozeTargetId(null),
+            showHelp,
+            onHelpClose: () => setShowHelp(false),
+            showSettings,
+            onSettingsClose: () => setShowSettings(false),
+            showFeedSwitcher,
+            feeds,
+            articles,
+            readIds,
+            readBeforeTimestamp,
+            selectedFeedId,
+            onSelectFeed: setSelectedFeedId,
+            onFeedSwitcherClose: () => setShowFeedSwitcher(false),
+          }}
+          showNSFWAnimation={showNSFWAnimation}
+          onNSFWAnimationComplete={onNSFWAnimationComplete}
+          newArticleCount={newArticleCount}
+          focusMode={focusMode}
+          listFocusMode={listFocusMode}
+          dismissNewArticles={dismissNewArticles}
+          exitFocusMode={exitFocusMode}
+          articleViewProps={articleViewProps}
+          articleDetailOverlayOpen={articleDetailOverlayOpen}
+          closeArticleDetailOverlay={closeArticleDetailOverlay}
+          hasOpenPopup={hasOpenPopup}
+          sidebarWidth={sidebarWidth}
+          listWidth={listWidth}
+          onResizeStart={handleResizeStart}
+          resetWidth={resetWidth}
+        />
+        <AppSidebarPane
+          mobilePane={mobilePane}
+          isDesktop={isDesktop}
+          loadingFeeds={loadingFeeds}
+          feedsEmpty={feeds.length === 0}
+          feedSidebarActions={feedSidebarActions}
+          feedSidebarProps={{
+            feeds,
+            articles,
+            readIds,
+            readBeforeTimestamp,
+            bookmarkCount,
+            readingListCount,
+            likeCount,
+            historyCount,
+            selectedFeedId,
+            selectedGroupId,
+            user,
+            theme,
+            selectedTag,
+            articleTagIds,
+            refreshing,
+            loadingFeeds,
+            isOnline,
+            pinnedFeedIds,
+            collapsedCategories,
+            nsfwMode,
+            feedGroups,
+            totalUnread,
+            activeFeedView,
+            recommendations,
+            recommendationsLoading,
+            recommendationsRefreshing,
+            recommendationsError,
+            noteCount: Object.keys(notes).length,
+            collections,
+            collectionsLoadError,
+            onRetryCollections: retryCollections,
+            selectedCollectionId,
+            install,
+            loadError: feedLoadError ? "フィードの読み込みに失敗しました" : null,
+            onRetry: retryFeedList,
+            push: {
+              supported: pushSupported,
+              subscribed: pushSubscribed,
+              loading: pushLoading,
+              error: pushError,
+              onToggle: togglePush,
+              onSendTest: sendPushTest,
+            },
+          }}
+        />
+        <AppListPane
+          mobilePane={mobilePane}
+          isDesktop={isDesktop}
+          loadingFeeds={loadingFeeds}
+          feedsEmpty={feeds.length === 0}
+          articleListProps={{
+            feeds,
+            readIds,
+            readBeforeTimestamp,
+            bookmarkIds,
+            readingListIds,
+            selectedArticleId: selectedArticle?.id ?? null,
+            selectedFeedId,
+            layout,
+            loading: loadingArticles,
+            fetchError,
+            onRetry: retryInitialLoad,
+            onChangeLayout,
+            onMobileBack: () => setMobilePane("sidebar"),
+            onSelectArticle: selectArticle,
+            onToggleRead: toggleRead,
+            onToggleBookmark: toggleBookmark,
+            onToggleReadingList: toggleReadingList,
+            onMarkRead: markRead,
+            onMarkAllRead,
+            feedHasMorePages,
+            onLoadMoreFeedArticles: handleLoadMoreFeedArticles,
+            notes,
+            activeFeedView,
+            listFocusMode,
+            onToggleListFocusMode: toggleListFocusMode,
+            onGalleryAutoRead: handleGalleryAutoRead,
+            duplicateInfo,
+            anchorTrigger,
+          }}
+        />
+        <AppViewPane
+          mobilePane={mobilePane}
+          isDesktop={isDesktop}
+          articleViewProps={articleViewProps}
+        />
+      </ThreePaneLayout>
+    </AppProviders>
   );
 }
