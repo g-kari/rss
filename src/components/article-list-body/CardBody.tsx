@@ -4,6 +4,7 @@ import type { Virtualizer } from "@tanstack/react-virtual";
 import type { Article } from "@/types";
 import { CardArticleItem } from "@/components/ArticleItems";
 import type { ResolveItemProps } from "./types";
+import { VirtualRow } from "./VirtualRow";
 
 interface Props {
   rows: Article[][];
@@ -30,20 +31,12 @@ export default function CardBody({
         const row = rows[vItem.index];
         if (!row) return null;
         return (
-          <div
+          <VirtualRow
             key={vItem.key}
-            data-index={vItem.index}
-            ref={virtualizer.measureElement}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              transform: `translateY(${vItem.start}px)`,
-              transition:
-                deletingIds.size > 0 || newIds.size > 0 ? "transform 0.2s ease" : undefined,
-              padding: "4px 8px",
-            }}
+            vItem={vItem}
+            measureRef={virtualizer.measureElement}
+            animating={deletingIds.size > 0 || newIds.size > 0}
+            extraStyle={{ padding: "4px 8px" }}
           >
             <div className="grid grid-cols-2 gap-2">
               {row.map((a, ri) => (
@@ -58,7 +51,7 @@ export default function CardBody({
                 />
               ))}
             </div>
-          </div>
+          </VirtualRow>
         );
       })}
     </div>

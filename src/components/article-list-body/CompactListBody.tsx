@@ -4,6 +4,7 @@ import type { Virtualizer } from "@tanstack/react-virtual";
 import type { Layout } from "@/types";
 import { CompactArticleItem, ListArticleItem } from "@/components/ArticleItems";
 import type { FlatItem, ResolveItemProps } from "./types";
+import { VirtualRow } from "./VirtualRow";
 
 interface Props {
   items: FlatItem[];
@@ -33,19 +34,11 @@ export default function CompactListBody({
         const item = items[vItem.index];
         if (!item) return null;
         return (
-          <div
+          <VirtualRow
             key={vItem.key}
-            data-index={vItem.index}
-            ref={virtualizer.measureElement}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              transform: `translateY(${vItem.start}px)`,
-              transition:
-                deletingIds.size > 0 || newIds.size > 0 ? "transform 0.2s ease" : undefined,
-            }}
+            vItem={vItem}
+            measureRef={virtualizer.measureElement}
+            animating={deletingIds.size > 0 || newIds.size > 0}
           >
             {item.type === "header" ? (
               <div className="px-4 pt-3 pb-1">
@@ -72,7 +65,7 @@ export default function CompactListBody({
                 )}
               />
             )}
-          </div>
+          </VirtualRow>
         );
       })}
     </div>
