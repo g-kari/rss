@@ -123,7 +123,8 @@ src/
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
     FeedHealthModal.tsx      # フィードヘルス監視モーダル（エラー・レートリミット・オーバーサイズのフィードを一覧表示）
     AppModals.tsx            # App レベルのモーダル群集約コンポーネント（SessionExpired / Snooze / KeyboardShortcuts / UserSettings / FeedQuickSwitch）
-    ArticleList.tsx          # 記事一覧 (5レイアウト対応・仮想スクロール)
+    ArticleList.tsx          # 記事一覧オーケストレーター (5レイアウト対応・仮想スクロール、#651 Step 3 で分割)
+    article-list-body/       # レイアウト別ボディサブコンポーネント群（index.ts / CompactListBody / CardBody / MagazineBody / GalleryBody / GalleryCardRenderer / gallery-context.ts / types.ts）
     ArticleListEmptyState.tsx # 記事一覧の空状態表示（ローディング・エラー・未登録・検索無結果・既読済みなど）
     ArticleListHeader.tsx    # 記事一覧ヘッダー（後方互換再エクスポート → article-list-header/）
     article-list-header/     # 記事一覧ヘッダーサブコンポーネント群（index.tsx オーケストレーター / LayoutSwitcher / FilterPills / FilterPillButton / CategoryFilter / SortButton / MarkAllReadButton / SearchBar / types.ts / constants.ts）
@@ -254,6 +255,7 @@ src/
     useConfirm.ts            # window.confirm 代替 hook（Promise ベース確認モーダル。confirmModalProps を ConfirmModal に渡す）
     useMarkAllRead.ts        # 全既読ロジック集約 hook（サブフィルター判定・50件確認・アンドゥ対応）
     useArticleViewProps.ts   # ArticleView に渡す props オブジェクトの useMemo 集約 hook（App.tsx から分割）
+    useArticleListItemProps.ts # ArticleList の各レイアウトが共通で使う ArticleItemProps を構築する hook（#651 Step 2 で抽出）
     useFeedSidebarActions.ts # FeedSidebarProvider value オブジェクト生成 hook（App.tsx から分割・useMemo 済み）
     useToast.ts              # トースト通知状態管理（success/error/info 3種別・最大3件スタック・自動消去）
     useGlobalFilterAutoRead.ts # globalFilter に引っかかった記事を自動既読にする（フィルター除外記事の未読カウント混入防止）
@@ -470,7 +472,6 @@ Route Handler では `session.userId` でアクセスする。
 {userId}:recommendations-gen            # 推薦生成（GET）の同時実行防止クールダウン
 {userId}:feed-add                       # フィード追加のクールダウン
 {userId}:opml-import                    # OPML インポートのクールダウン
-{userId}:image-proxy                    # 画像プロキシのスライディングウィンドウ レートリミット
 ```
 
 ### AI キャッシュ（永続）

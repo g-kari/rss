@@ -4,7 +4,13 @@
 
 ### リファクタリングっ
 
+- **ArticleList を `article-list-body/` ディレクトリに分割して #651 完了したよ〜** — Issue #651 Step 3 (最終)。Step 1 で関数化した renderXxxBody 群を本物のサブコンポーネント (`CompactListBody` / `CardBody` / `MagazineBody` / `GalleryBody` / `GalleryCardRenderer`) に昇格、`GalleryItemCtx` も `gallery-context.ts` に独立！📦✨ ArticleList.tsx は 814 → 521 行 (−293) のオーケストレーター構成に圧縮。Step 2 で抽出した `useArticleListItemProps` hook も併せて、責務が「フィルター/仮想化器の準備」「ボディ描画」「メニュー管理」にきれいに分離されたよ〜🎀
+- **ArticleList から useArticleListItemProps hook を抽出したよ〜** — Issue #651 Step 2。`resolveItemProps` コールバックと関連 useSyncedRef 群（onSelect / onToggle\* / ogpCache）を独立 hook に切り出して、ArticleList のオーケストレーション責務を明確化！🪝 #634 (GalleryCardRenderer 再描画バグ) への注釈も hook 内に移植して、bookmarkIds / readIds / notes は state 直接参照のままキープ〜📋
 - **ArticleList の残り 3 レイアウト (card / magazine / gallery) も関数化して #651 Step 1 完了したよ〜** — Issue #651 Step 1 続編。前回 compact/list を関数化してたので、残り 3 レイアウトも同パターンで `renderCardBody` / `renderMagazineBody` / `renderGalleryBody` として抽出！🔧✨ メイン return 内の 267 行 → 156 行に大幅スリム化。次は Step 2 (hook 抽出 / サブコンポーネント化) で本体さらに圧縮予定〜📦
+
+### バグ修正っ
+
+- **画像プロキシのレートリミット (120 req/分) を撤廃したよ〜** — Issue #649 案 A。これまで画像プロキシに KV 経由のスライディングウィンドウ制限があったけど、Cache HIT の高速化メリットを実質ゼロにしてて画像表示体験を妨げてたの〜🐌 案 A (廃止) を採用！🚀 SSRF・同一オリジン・MIME 検証の防御層は据え置きで、`imageProxyRateLimitKey` / `IMAGE_PROXY_MAX_CALLS` / `IMAGE_PROXY_WINDOW_MS` を削除。Cache MISS 時の遅延もこれで KV 分が消えるよ〜⚡
 
 ### 環境堅牢化っ
 

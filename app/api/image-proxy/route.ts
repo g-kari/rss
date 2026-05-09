@@ -11,12 +11,9 @@ import {
 import { ALLOWED_IMAGE_CONTENT_TYPES, detectImageMimeType } from "@/lib/image-mime";
 import { errorImageSvg } from "@/lib/image-error-placeholder";
 import { isContentTypeConsistent, isSameOriginImageRequest } from "@/lib/image-proxy-security";
-import { MAX_IMAGE_BYTES, IMAGE_PROXY_MAX_CALLS } from "@/lib/validation";
-import { checkSlidingWindow } from "@/lib/rate-limit";
-import { imageProxyRateLimitKey } from "@/lib/r2";
+import { MAX_IMAGE_BYTES } from "@/lib/validation";
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
-const IMAGE_PROXY_WINDOW_MS = 60 * 1000;
 
 // Content-Length 不明時のストリーミング上限（並列リクエストによるメモリ圧迫を緩和）
 const MAX_IMAGE_BYTES_NO_CL = 5 * 1024 * 1024; // 5MB
@@ -48,7 +45,7 @@ async function handleGet(
   if (!isValidPublicUrl(url)) return new Response(null, { status: 400 });
 
   // 遅延計測 (#649): Cloudflare Workers Logs で実測値を見て、
-  // KV / Cache API / fetch のどこがボトルネックかを判定する。
+  // Cache API / fetch のどこがボトルネックかを判定する。
   // ログは wrangler tail / ダッシュボードの Logs で確認できる。
   const t0 = Date.now();
   const cacheKey = await buildCacheKey(reqUrl.origin, "image", url);
@@ -72,22 +69,8 @@ async function handleGet(
     });
   }
 
-  // キャッシュミス時のみレートリミットを確認（外部フェッチを保護）
-  const limited = await checkSlidingWindow(
-    env.RATE_LIMIT,
-    imageProxyRateLimitKey(session.userId),
-    IMAGE_PROXY_WINDOW_MS,
-    IMAGE_PROXY_MAX_CALLS,
-  );
-  const tRateLimit = Date.now();
-  if (limited) {
-    console.log(
-      `[image-proxy] LIMITED kv=${tRateLimit - tCacheMatch}ms cacheMatch=${tCacheMatch - tBuildKey}ms`,
-    );
-    return limited;
-  }
   console.log(
-    `[image-proxy] MISS-START buildKey=${tBuildKey - t0}ms cacheMatch=${tCacheMatch - tBuildKey}ms kv=${tRateLimit - tCacheMatch}ms`,
+    `[image-proxy] MISS-START buildKey=${tBuildKey - t0}ms cacheMatch=${tCacheMatch - tBuildKey}ms`,
   );
 
   try {

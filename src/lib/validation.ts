@@ -68,11 +68,6 @@ export const MAX_RELEASE_NOTES_LIMIT = 50;
 // ---------------------------------------------------------------------------
 export const CONTENT_MAX_CALLS = 120;
 
-// ---------------------------------------------------------------------------
-// 画像プロキシレートリミット
-// ---------------------------------------------------------------------------
-export const IMAGE_PROXY_MAX_CALLS = 120;
-
 /** 制御文字（U+0000–U+001F, U+007F）を除去する */
 export function stripControlChars(value: string): string {
   return value.replace(/[\u0000-\u001F\u007F]/g, "");
