@@ -51,6 +51,7 @@ import { useColumnResize } from "./hooks/useColumnResize";
 import { useSyncedRef } from "./hooks/useSyncedRef";
 import { useArticleSelection } from "./hooks/useArticleSelection";
 import { useSaveArticleUrl } from "./hooks/useSaveArticleUrl";
+import { useSnoozeHandler } from "./hooks/useSnoozeHandler";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -761,21 +762,14 @@ export default function App() {
     onToggleAutoMode: toggleAutoMode,
   });
 
-  const snoozeArticleTitle = snoozeTargetId
-    ? (articles.find((a) => a.id === snoozeTargetId)?.title ?? "")
-    : "";
-  const handleSnooze = useCallback(
-    (durationMs: number) => {
-      if (!snoozeTargetId) return;
-      snoozeArticle(snoozeTargetId, durationMs);
-      const hours = Math.round(durationMs / (60 * 60 * 1000));
-      toast.info(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
-      const idx = filtered.findIndex((a) => a.id === snoozeTargetId);
-      const next = filtered[idx + 1];
-      if (next) setSelectedArticle(next);
-    },
-    [snoozeTargetId, snoozeArticle, toast, filtered, setSelectedArticle],
-  );
+  const { snoozeArticleTitle, handleSnooze } = useSnoozeHandler({
+    snoozeTargetId,
+    articles,
+    filtered,
+    snoozeArticle,
+    setSelectedArticle,
+    toast,
+  });
 
   // ローディング
   if (user === undefined) {
