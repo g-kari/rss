@@ -294,6 +294,7 @@ export function useArticleViewState({
     buildTtsText,
     translatedText,
     autoTranslatePending,
+    autoSummarize,
     mainRef,
     contentRef,
     progressBarRef,

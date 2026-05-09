@@ -28,21 +28,27 @@ export function preprocessTtsText(text: string): string {
  * TTS 読み上げ対象テキストを構築する純粋関数。
  *
  * ソース優先順位 (高→低):
- *   1. translatedText (autoTranslate 完了時の翻訳結果) — #653
- *   2. processedContent (フェッチ済み or RSS 本文)
- *   3. article.summary (RSS サマリ)
+ *   1. summaryText (#696: autoMode + autoSummarize で要約結果を読み上げ)
+ *   2. translatedText (autoTranslate 完了時の翻訳結果) — #653
+ *   3. processedContent (フェッチ済み or RSS 本文)
+ *   4. article.summary (RSS サマリ)
  *
- * タイトルは原文のまま先頭に付ける（翻訳対象は本文のみ）。
+ * タイトルは原文のまま先頭に付ける（要約・翻訳対象は本文のみ）。
  *
- * 空文字 / null / undefined は fallback の起点として扱う。空文字の翻訳結果が
- * 渡された場合は processedContent に fallback する（空翻訳の保護）。
+ * 空文字 / null / undefined は fallback の起点として扱う。空文字の要約・翻訳結果が
+ * 渡された場合は次の候補に fallback する（空結果の保護）。
+ *
+ * summaryText は呼び出し側で「autoMode && autoSummarize && aiResult が揃った場合のみ
+ * 渡す」ガードを掛ける想定 (UI からの手動 TTS 起動では渡さない)。
  */
 export function buildTtsText(
   article: { title?: string; summary?: string },
   processedContent: string | null,
   translatedText?: string | null,
+  summaryText?: string | null,
 ): string {
   const source =
+    (summaryText && summaryText.trim() ? summaryText : null) ??
     (translatedText && translatedText.trim() ? translatedText : null) ??
     processedContent ??
     article.summary ??
