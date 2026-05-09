@@ -72,7 +72,14 @@ export function useArticleViewContent(
   const hasImages =
     !!(article?.ogImage ?? resolvedOgImage) ||
     !!(processedContent && /<img\b/i.test(processedContent));
-  const readingMins = readingTime(processedContent ?? article?.summary ?? "");
+  // readingTime() は内部で stripHtml (8 regex passes) を呼ぶため、
+  // useMemo で processedContent / article.summary 変化時のみ再計算する。
+  // これがないと TTS state 変化や reader settings 開閉などの親 re-render で毎回
+  // 8 regex pass が走り、長記事 (10-50KB HTML) で主スレッドブロックが発生する。
+  const readingMins = useMemo(
+    () => readingTime(processedContent ?? article?.summary ?? ""),
+    [processedContent, article?.summary],
+  );
 
   return {
     embedInfo,
