@@ -187,9 +187,6 @@ export interface EngagementLog {
   entries: EngagementEntry[]; // 最大 5,000 件、古いものから削除
 }
 
-/** レコメンドのソース種別 */
-export type RecommendationSource = "ai_suggestion" | "popular" | "link_discovery" | "web_search";
-
 /** レコメンドされたフィード */
 export interface RecommendedFeed {
   id: string;
@@ -197,7 +194,6 @@ export interface RecommendedFeed {
   title: string;
   siteUrl: string;
   reason: string;
-  source: RecommendationSource;
   score: number;
 }
 

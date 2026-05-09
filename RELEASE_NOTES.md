@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ
+
+- **`Recommendation.source` dead field を完全削除!🗑️ (#710 推奨案 A 採用)** — `RecommendationSource` 型 + `Recommendation.source` フィールドが production caller 0 (UI 表示なし、フィルタリングなし) のまま `recommendation.ts` の 3 箇所で populate されているだけの dead field 状態だったのを完全削除〜🎯 R2 への意味のないデータ書き込み排除 + 型サーフェス縮小〜📦 既存 `users/{userId}/recommendations.json` キャッシュには `source` フィールドが残るが forward-compatible で型削除後は無視される〜🛡️ 将来「推薦ソース別フィルター」で復活させたければ git log + Issue #710 履歴から復元可能〜📚
+
 ### リファクタリングっ (規範統一)
 
 - **`React.X` を named import 化! article-view ディレクトリ 9 ファイル sweep!⚡ (前サイクル保留分の続き)** — 過去サイクルで `import React from "react"` を 12 ファイル削除した際に「実使用中のため別検討」と保留した 4 ファイル + 周辺 5 ファイル、計 9 ファイルで `React.X` 形式を named import に書き換え〜🎯 `React.MouseEvent` → `MouseEvent` / `React.ReactNode` → `ReactNode` / `React.JSX.Element` → `JSX.Element` / `React.TouchEvent` → `TouchEvent` / `React.RefObject` → `RefObject` / `React.UIEvent` → `UIEvent` の type-only named import + `React.forwardRef` / `React.useImperativeHandle` / `React.createElement` / `React.Fragment` の value named import 〜💪 React 19 + Next.js 16 の JSX runtime auto に合わせた書き換えで挙動変化なし〜🛡️ 残 51 ファイルは別 Issue で全プロジェクト sweep を提案〜📚
