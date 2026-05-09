@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **オートモードで本文取得が即 abort されて読み上げ起動しないバグを修正したよ〜 (#678 真因確定)** — `useArticleContent` の `useEffect[articleId]` が **子 (AutoReadController) → 親 (useArticleContent)** の effect 発火順のせいで、AutoReadController が effect(1) で起動した新しい fetch を直後に abort してしまう深刻なバグを発見!💥 ユーザーログ提供で `articleId-effect-fired` が `hadController: true` で 2 回目発火している経路が確定〜🔍 **fetchAbortControllerRef に articleId を併記** して「自身と同じ articleId 用の controller は abort しない」(= 古い articleId 用のみ abort) 設計に変更!💡 これでオートモード遷移時に新 fetch が完走 → 全文取得 → 全文 TTS 読み上げが正常動作するよ〜🚀
+
 ### アクセシビリティ改善っ
 
 - **モーダル類のフォーカス管理を 3 件改善したよ〜** — UX 監査で発見!🛡️ (1) `FocusModeOverlay`: フォーカスモード解除時に元のフォーカス位置へ戻すパターンを `ConfirmModal` (#687) と同じ設計で実装!キーボードユーザーが `\\` で起動 → `Esc` で抜けても元の記事リスト項目にフォーカスが戻るよ〜🎯 (2) `FeedQuickSwitchModal`: `?` キーで開いた時のトリガー要素 (記事リスト等) を returnFocusRef に退避して閉じる時に復元!💡 (3) `SessionExpiredModal`: マウント時にログインリンクへ自動フォーカスして、スクリーンリーダーユーザーがモーダル出現を即座に検知できるように〜🦮 全て WCAG 2.4.3 (Focus Order) 準拠!

@@ -54,23 +54,35 @@ export function useArticleContent(
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
-  // fetchFullContent の進行中フェッチを中断するための ref
-  const fetchAbortControllerRef = useRef<AbortController | null>(null);
+  // fetchFullContent の進行中フェッチを中断するための ref。
+  // articleId を併記して「どの article 用の controller か」を追跡する (#678 真因対策)。
+  const fetchAbortControllerRef = useRef<{
+    controller: AbortController;
+    articleId: string | undefined;
+  } | null>(null);
 
-  // 記事が変わったらフェッチ状態をリセット（進行中のフェッチも中断）
-  // fetchFullContent の finally ブロックは ref が null になっているため setFetching(false) を
-  // 呼ばない設計になっており、ここで明示的にリセットする必要がある。
+  // 記事が変わったらフェッチ状態をリセット（進行中のフェッチも中断）。
+  //
+  // #678: useEffect の発火順は「子 (AutoReadController) → 親 (useArticleContent) 」
+  // のため、AutoReadController が effect(1) で新 fetch を起動した後に
+  // この useEffect が走り、せっかく起動した新 fetch を abort してしまうバグがあった。
+  // → controller に articleId を併記して、「自身と同じ articleId 用の controller」
+  //   は abort しない (= 古い articleId 用の controller のみ abort) 設計に変更。
   // fetchedContent は fetchedState.id との照合で自動的に null 扱いになるため個別リセット不要。
   useEffect(() => {
-    const hadController = fetchAbortControllerRef.current !== null;
+    const ref = fetchAbortControllerRef.current;
+    const isStaleController = ref !== null && ref.articleId !== articleId;
     autoReadDebug("useArticleContent.articleId-effect-fired", {
       articleId,
-      hadController, // ← fetch-start 後にこの effect が再発火していたら abort 真因確定
+      hadController: ref !== null,
+      isStaleController,
     });
-    fetchAbortControllerRef.current?.abort();
-    fetchAbortControllerRef.current = null;
-    setFetchError("");
-    setFetching(false);
+    if (isStaleController) {
+      ref.controller.abort();
+      fetchAbortControllerRef.current = null;
+      setFetchError("");
+      setFetching(false);
+    }
   }, [articleId]);
 
   // OGP 画像の動的解決
@@ -129,9 +141,9 @@ export function useArticleContent(
         hadController, // ← 同じ articleId 内で fetchFullContent が再呼出されたら true (abort 真因の候補)
       });
       // 前の全文フェッチが進行中なら中断
-      fetchAbortControllerRef.current?.abort();
+      fetchAbortControllerRef.current?.controller.abort();
       const controller = new AbortController();
-      fetchAbortControllerRef.current = controller;
+      fetchAbortControllerRef.current = { controller, articleId };
       setFetching(true);
       setFetchError("");
       try {
@@ -188,7 +200,7 @@ export function useArticleContent(
             articleId,
             // この時点での ref の状態。null なら useEffect[articleId] が abort した、
             // 自分以外の controller なら fetchFullContent 再呼出による abort
-            currentControllerIsThis: fetchAbortControllerRef.current === controller,
+            currentControllerIsThis: fetchAbortControllerRef.current?.controller === controller,
             currentControllerIsNull: fetchAbortControllerRef.current === null,
           });
           return;
@@ -199,7 +211,7 @@ export function useArticleContent(
           err: err instanceof Error ? err.message : String(err),
         });
       } finally {
-        if (fetchAbortControllerRef.current === controller) {
+        if (fetchAbortControllerRef.current?.controller === controller) {
           fetchAbortControllerRef.current = null;
           setFetching(false);
         }
