@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppOverlays } from "./components/AppOverlays";
 import { AppSidebarPane } from "./components/AppSidebarPane";
@@ -50,6 +50,7 @@ import { useArticleNavigation } from "./hooks/useArticleNavigation";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useTotalUnreadCount } from "./hooks/useTotalUnreadCount";
+import { useCollectionArticleIds } from "./hooks/useCollectionArticleIds";
 import { useFeedSidebarActions } from "./hooks/useFeedSidebarActions";
 import { useArticleViewProps } from "./hooks/useArticleViewProps";
 import { useDigestFeedOrder } from "./hooks/useDigestFeedOrder";
@@ -364,13 +365,7 @@ export default function App() {
   const likeCount = likeIds.size;
   const historyCount = historyIds.size;
 
-  const collectionArticleIds = useMemo(
-    () =>
-      selectedCollectionId
-        ? new Set(collections.find((c) => c.id === selectedCollectionId)?.articleIds ?? [])
-        : undefined,
-    [selectedCollectionId, collections],
-  );
+  const collectionArticleIds = useCollectionArticleIds(selectedCollectionId, collections);
 
   const { galleryAutoReadIds, handleGalleryAutoRead } = useGalleryAutoReadTracking({
     selectedFeedId,

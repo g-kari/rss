@@ -4,6 +4,8 @@
 
 ### リファクタリングっ
 
+- **App.tsx Step 1t: `useCollectionArticleIds` hook を抽出したよ〜 (#650 段階分割)** — App.tsx に残ってた最後のインライン `useMemo` (選択中コレクションに含まれる記事 ID の Set 導出、7 行) を `src/hooks/useCollectionArticleIds.ts` (28 行) に集約!📦 副次効果: App.tsx から `useMemo` のインポートが完全に削除できた〜🎀 残るは `useCallback` / `useState` の 2 つだけ!`react` からの import がほぼ純正の React 機能のみになって、App.tsx は **「composition オーケストレーター」としての性質が一層明確** に〜🛡️ App.tsx は 814 → 809 行 (-5 行)、累積で **1064 → 809 行 (-255 行 / 約 24% 削減)**!📚
+
 - **App.tsx Step 1s: `AppOverlays` 集約コンポーネントを抽出したよ〜 (#650 段階分割)** — 3 ペイン手前の **グローバル UI 群 11 個** (`A11yHelpers` / `OfflineBanner` / `ToastContainer` / `ConfirmModal` / `AppModals` / `NSFWEyeAnimation` / `NewArticleBanner` / `FocusModeExitButton` / `FocusModeOverlay` / `ArticleDetailOverlay` / `ColumnResizeHandles`) を 53 行 JSX → `src/components/AppOverlays.tsx` (118 行) に集約!📦 App.tsx は 837 → 814 行 (-23 行)、**11 個のオーバーレイ系インポートを App.tsx から削除** 🎀 これで App.tsx の JSX 部分が「`<ThreePaneLayout>` → `<AppOverlays>` → `<AppSidebarPane>` → `<AppListPane>` → `<AppViewPane>`」の素直な 5 行 (内側) 構造に〜🛡️ 累積で App.tsx は **1064 → 814 行 (-250 行 / 約 23% 削減)**!📚
 
 - **App.tsx Step 1r: `AppSidebarPane` 左ペインを抽出 → 3 ペイン対称構造完成!🎉 (#650 段階分割)** — 左ペイン (フィードサイドバー) の `<MobilePane><Skeleton><ErrorBoundary><FeedSidebarProvider><FeedSidebar 38 props/></FeedSidebarProvider></ErrorBoundary></MobilePane>` (54 行) を `src/components/AppSidebarPane.tsx` (56 行) に集約!📦 これで 3 ペイン (sidebar / list / view) すべてが `<App{Sidebar/List/View}Pane>` の対称構造に統一されたよ〜🎀 App.tsx は 844 → 837 行 (-7 行)、`FeedSidebar` / `FeedSidebarProvider` / `SkeletonSidebar` / `ErrorBoundary` / `MobilePane` の 5 インポートが削除できて App.tsx 上部もスッキリ〜📚 累積で App.tsx は **1064 → 837 行 (-227 行 / 約 21% 削減)**!🛡️
