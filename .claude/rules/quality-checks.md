@@ -52,6 +52,42 @@ ppnpm run test:e2e:ui                     # UI モードでデバッグ
 
 新しいバグ修正を行った場合は、そのバグを再現するテストケースを `e2e/` に追加してから修正すること。
 
+## 環境依存テストの skip パターン
+
+外部サービス認証（`wrangler login` / ngrok / 外部 API キー）が必要な e2e テストは、**未準備時に強制 fail させると pre-commit hook 全体が落ちて関係ない PR まで阻害される**。代わりに `test.beforeAll` で前提条件を確認し、満たさない場合は `test.skip` + 案内メッセージで誘導するパターンに統一する。
+
+```typescript
+// e2e/test-seed-integration.spec.ts の例
+let seedEndpointAvailable = true;
+test.beforeAll(async ({ request }) => {
+  try {
+    const res = await request.post(`${BASE_URL}/api/test/seed`, { data: {} });
+    seedEndpointAvailable = res.status() === 200;
+  } catch {
+    seedEndpointAvailable = false;
+  }
+});
+
+test("POST seed: 正しいボディで 200 を返す", async () => {
+  test.skip(
+    !seedEndpointAvailable,
+    "wrangler login required for R2 binding (run: npx wrangler login)",
+  );
+  // ... テスト本体
+});
+```
+
+**Why（このルールの背景）**: 2026-05-09 のセッションで、`wrangler` 未認証の開発環境では `test-seed-integration` が wrangler のリモートモード認証エラー（500）で失敗し、ArticleList リファクタなど無関係の PR の pre-commit hook を阻害していた。テスト側で「環境準備状態」を判定して skip する仕組みに変えれば、開発者の onboarding 負担が下がり、関係ない PR への副作用がなくなる。
+
+**How to apply**: 新規 e2e テストで以下のいずれかが必要なら、必ず `test.beforeAll` + `test.skip` パターンを採用:
+
+- Cloudflare バインディング（R2 / D1 / KV / AI）への実書き込み・読み込み
+- 外部サービス認証（OAuth プロバイダ / Stripe / SendGrid）
+- ローカル開発ツール（ngrok / Cloudflare tunnel）
+- 環境変数で API キーが必要なテスト
+
+skip メッセージには **次に何をすべきか**（コマンド・URL）を必ず書く。例: `"wrangler login required (run: npx wrangler login)"` / `"set OPENAI_API_KEY env var"`。
+
 ## バグ修正の事前判定チェックリスト
 
 `coding-conventions.md` の TDD ルールと当ファイルの「バグを再現するテストケースを追加してから修正すること」を実効化するため、バグ修正に着手する **前に** 以下を必ず判定する。
