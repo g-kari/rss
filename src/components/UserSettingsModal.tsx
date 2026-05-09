@@ -79,6 +79,26 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     { id: "import-export", label: "インポート・エクスポート" },
   ];
 
+  // WAI-ARIA Authoring Practices §3.21 (Tabs Pattern):
+  // - ArrowLeft / ArrowRight でタブ間を移動 (端でループ)
+  // - active タブのみ tabIndex=0、他は tabIndex=-1 (roving tabindex)
+  // - Home / End で先頭・末尾へジャンプ
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const currentIndex = TABS.findIndex((t) => t.id === activeTab);
+    let nextIndex = -1;
+    if (e.key === "ArrowRight") nextIndex = (currentIndex + 1) % TABS.length;
+    else if (e.key === "ArrowLeft") nextIndex = (currentIndex - 1 + TABS.length) % TABS.length;
+    else if (e.key === "Home") nextIndex = 0;
+    else if (e.key === "End") nextIndex = TABS.length - 1;
+    if (nextIndex < 0) return;
+    e.preventDefault();
+    const nextTab = TABS[nextIndex];
+    setActiveTab(nextTab.id);
+    // フォーカスを次のタブボタンに移動 (roving tabindex pattern)
+    const nextEl = document.getElementById(`tab-${nextTab.id}`);
+    nextEl?.focus();
+  };
+
   return (
     <Modal
       title="ユーザー設定"
@@ -90,6 +110,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
       <div
         role="tablist"
         aria-label="設定カテゴリ"
+        onKeyDown={handleTabKeyDown}
         className="flex border-b border-border-default overflow-x-auto flex-shrink-0"
       >
         {TABS.map((tab) => (
@@ -99,6 +120,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
             role="tab"
             aria-selected={activeTab === tab.id}
             aria-controls={`panel-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 text-[13px] border-b-2 whitespace-nowrap transition-colors flex-shrink-0 ${
               activeTab === tab.id

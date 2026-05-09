@@ -187,6 +187,12 @@ export default function FeedQuickSwitchModal({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="フィードを検索..."
+            // ARIA combobox pattern (WAI-ARIA APG): screen reader にカーソル位置を読み上げさせる
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="true"
+            aria-controls="feed-quick-listbox"
+            aria-activedescendant={filtered[cursor] ? `feed-quick-option-${cursor}` : undefined}
             className="flex-1 bg-transparent text-[13px] text-text-strong placeholder-text-faint outline-none"
           />
           {query && (
@@ -209,7 +215,13 @@ export default function FeedQuickSwitchModal({
           )}
         </div>
 
-        <ul ref={listRef} className="overflow-y-auto py-1 flex-1 min-h-0">
+        <ul
+          ref={listRef}
+          id="feed-quick-listbox"
+          role="listbox"
+          aria-label="フィード候補"
+          className="overflow-y-auto py-1 flex-1 min-h-0"
+        >
           {filtered.length === 0 ? (
             <li className="px-4 py-6 text-center text-[12px] text-text-muted">
               見つかりませんでした
@@ -218,6 +230,9 @@ export default function FeedQuickSwitchModal({
             filtered.map((opt, i) => (
               <li key={opt.id ?? "__all__"}>
                 <button
+                  id={`feed-quick-option-${i}`}
+                  role="option"
+                  aria-selected={i === cursor}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 ${
                     i === cursor ? "bg-surface-subtle" : "hover:bg-surface-hover"
                   }`}

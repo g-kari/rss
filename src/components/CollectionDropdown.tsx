@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
+import { createPortal } from "react-dom";
 import type { Collection } from "../types";
 import { useToast } from "@/contexts/ToastContext";
+import { usePortalMenu } from "../hooks/usePortalMenu";
+import { useMenuKeyboard } from "../hooks/useMenuKeyboard";
 
 const CollectionModal = dynamic(() => import("./CollectionModal"), { ssr: false });
 
@@ -15,6 +18,14 @@ interface Props {
   onCreateNew?: (name: string) => Promise<Collection | { error: string }>;
 }
 
+/**
+ * 記事をコレクションに追加 / 削除するドロップダウン。
+ *
+ * a11y: ShareMenu / FilterMenu と同じ規範パターン (#7 a11y 修正):
+ * - usePortalMenu + useMenuKeyboard でキーボードナビ + Escape close + クリック外し閉じる
+ * - aria-haspopup="menu" / aria-expanded={open} / role="menu" / role="menuitem"
+ * - createPortal で `position: fixed` 配置 (overflow:hidden な親の影響を受けない)
+ */
 export default function CollectionDropdown({
   articleId,
   collections,
@@ -22,28 +33,22 @@ export default function CollectionDropdown({
   onRemove,
   onCreateNew,
 }: Props) {
-  const [open, setOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const toast = useToast();
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
+  const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   const inCount = collections.filter((c) => c.articleIds.includes(articleId)).length;
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
-        onClick={() => setOpen(!open)}
+        ref={btnRef}
+        onClick={toggle}
         title="コレクションに追加"
         aria-label="コレクションに追加"
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${
           inCount > 0 ? "text-indigo-400" : "text-text-faint hover:text-text-muted"
         }`}
@@ -62,50 +67,71 @@ export default function CollectionDropdown({
           <line x1="9" y1="14" x2="15" y2="14" />
         </svg>
       </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]">
-          <div className="py-1">
-            {collections.length === 0 && (
-              <p className="px-3 py-2 text-[11px] text-text-muted">コレクションがありません</p>
-            )}
-            {collections.map((c) => {
-              const isIn = c.articleIds.includes(articleId);
-              return (
-                <button
-                  key={c.id}
-                  onClick={async () => {
-                    try {
-                      if (isIn) await onRemove(c.id, articleId);
-                      else await onAdd(c.id, articleId);
-                    } catch {
-                      toast.error("コレクションの更新に失敗しました");
-                    }
-                  }}
-                  className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-surface-hover transition-colors"
-                >
-                  <span className="w-4 text-center text-text-muted">{isIn ? "✓" : ""}</span>
-                  <span className={isIn ? "text-text-strong" : "text-text-default"}>{c.name}</span>
-                </button>
-              );
-            })}
-            {onCreateNew && (
-              <>
-                <div className="border-t border-border-subtle my-1" />
-                <button
-                  onClick={() => {
-                    setOpen(false);
-                    setShowCreateModal(true);
-                  }}
-                  className="w-full px-3 py-1.5 text-left text-[13px] text-text-muted hover:text-text-strong hover:bg-surface-hover transition-colors flex items-center gap-2"
-                >
-                  <span className="w-4 text-center">+</span>
-                  <span>新規コレクション</span>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[49]"
+              onPointerDown={(e) => {
+                if (!menuRef.current?.contains(e.target as Node)) setOpen(false);
+              }}
+            />
+            <div
+              ref={menuRef}
+              role="menu"
+              aria-label="コレクションに追加"
+              onKeyDown={handleKeyDown}
+              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
+              style={{ top: pos.top, right: pos.right }}
+            >
+              <div className="py-1">
+                {collections.length === 0 && (
+                  <p className="px-3 py-2 text-[11px] text-text-muted">コレクションがありません</p>
+                )}
+                {collections.map((c) => {
+                  const isIn = c.articleIds.includes(articleId);
+                  return (
+                    <button
+                      key={c.id}
+                      role="menuitem"
+                      onClick={async () => {
+                        try {
+                          if (isIn) await onRemove(c.id, articleId);
+                          else await onAdd(c.id, articleId);
+                        } catch {
+                          toast.error("コレクションの更新に失敗しました");
+                        }
+                      }}
+                      className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-surface-hover transition-colors"
+                    >
+                      <span className="w-4 text-center text-text-muted">{isIn ? "✓" : ""}</span>
+                      <span className={isIn ? "text-text-strong" : "text-text-default"}>
+                        {c.name}
+                      </span>
+                    </button>
+                  );
+                })}
+                {onCreateNew && (
+                  <>
+                    <div className="border-t border-border-subtle my-1" />
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setOpen(false);
+                        setShowCreateModal(true);
+                      }}
+                      className="w-full px-3 py-1.5 text-left text-[13px] text-text-muted hover:text-text-strong hover:bg-surface-hover transition-colors flex items-center gap-2"
+                    >
+                      <span className="w-4 text-center">+</span>
+                      <span>新規コレクション</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
       {showCreateModal && onCreateNew && (
         <CollectionModal
           mode="create"
@@ -116,6 +142,6 @@ export default function CollectionDropdown({
           onClose={() => setShowCreateModal(false)}
         />
       )}
-    </div>
+    </>
   );
 }

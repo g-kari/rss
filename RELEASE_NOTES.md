@@ -2,6 +2,12 @@
 
 ## 2026-05-10 (latest)
 
+### アクセシビリティっ
+
+- **`UserSettingsModal` のタブで Arrow キーナビ追加!⌨️ (a11y 監査 95% 信頼度)** — タブリストの ARIA Authoring Practices §3.21 に準拠して、`ArrowLeft` / `ArrowRight` でタブ移動 (端でループ)、`Home` / `End` で先頭・末尾ジャンプができるように!💪 active タブのみ `tabIndex={0}`、他は `tabIndex={-1}` の roving tabindex pattern で、Tab キーで一気に panel body に飛べる〜🎯 WCAG 2.1.1 (Keyboard) 準拠〜🛡️
+- **`CollectionDropdown` がキーボードからアクセス可能になったよ〜!⌨️ (a11y 監査 92% 信頼度)** — 元々マウス専用 (mousedown 外しのみ) で **キーボードからは完全に使えない** 状態だったのを、`ShareMenu` / `FilterMenu` の規範パターン (`usePortalMenu` + `useMenuKeyboard`) に揃えて修正!🎀 `aria-haspopup="menu"` / `aria-expanded` / `role="menu"` / `role="menuitem"` 追加で、Escape で閉じる + Tab cycle が効くように〜💎 `createPortal` + `position: fixed` で overflow:hidden な親の影響も受けない構造に!📦
+- **`FeedQuickSwitchModal` (Cmd+K) で screen reader にカーソル位置を読み上げ!📢 (a11y 監査 88% 信頼度)** — Arrow Up/Down で項目を移動するクイック切替で、screen reader が「今どの項目がハイライトされているか」を一切読み上げない silent な状態だったのを修正!🔊 `<input>` に `role="combobox"` + `aria-autocomplete="list"` + `aria-activedescendant`、`<ul>` に `role="listbox"`、`<li>` 内 button に `role="option"` + `aria-selected` を追加〜🎯 ARIA combobox pattern (WAI-ARIA APG) 準拠〜🛡️
+
 ### バグ修正っ
 
 - **記事詳細の画像 DL で wallhaven 等のフル解像度画像が DL されてなかった問題を修正したよ〜!📷 (#667)** — `<a href="フル画像.jpg"><img src="サムネ.jpg"></a>` 構造の記事で、`<img src>` がサムネ (170px 未満) で除外されて結果として OGP 画像しか DL されない状態に〜🥲 `collectImageUrls` / `collectImageUrlsFromHtml` に **anchor href 抽出ロジック** を追加して、`href` が画像拡張子 (jpg/jpeg/png/gif/webp/avif/svg) で終わる場合はその URL も収集対象に含めるよう修正!💪 内部の `<img>` が小さくて除外されても href のフル解像度画像は残る〜🎯 ギャラリー側 (#667 commit 7fa4eb2) と同じ問題が記事詳細側にもあったので両方解決!🛡️ TDD 全 9 ケース追加 (a href が画像 URL / 内部 img が小サイズ / 画像拡張子なし無視 / 拡張子大文字小文字 / クエリ文字列 / 重複排除 / data: 相対 URL 無視 / image-proxy URL)〜📦
