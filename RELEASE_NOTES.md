@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### 激アツ新機能っ
+
+- **ギャラリービューで本文画像が一枚もない記事も OGP/サムネで表示するようにしたよ〜** — Issue #671。これまで本文画像 0 枚 + thumb=undefined の組み合わせは「No image」プレースホルダ固定でちょっと寂しかったの〜🥲 `selectGalleryImages` 純粋関数を新設して、画像ソースを `prefetched` / `thumb` / `none` の 3 分岐で厳密に決定するように！🎀 prefetch が空配列でも thumb (OGP/article.ogImage/YouTube サムネ) があれば fallback として描画、`source==="thumb"` 時は minPx フィルターをバイパスして必ず表示。`isFetchFailed` ブランチも維持して既存動作は完全互換〜📦 TDD 9 ケース追加 (全分岐網羅)。
+
 ### バグ修正っ
 
 - **オートモードで次の記事に遷移後 TTS が止まる + 自動翻訳側を読み上げない問題を直したよ〜** — Issue #653 続編。`hasFullContent = !!processedContent` が緩すぎて、新記事に遷移した瞬間 `article.content` (RSS 本文) で `processedContent` が即非 null になって `hasFullContent=true` で speak が発火 → 直後 `useArticleViewTts` の `ttsStop()` が effect 順で呼ばれて即停止する状態だったの〜🙅‍♀️ 修正で `hasFullContent = !!storedContent || !canFetch` に厳格化（fetch 完了 or fetch 不要のときだけ true）！🛡️ 加えて `buildTtsText` を `src/lib/tts-text.ts` に純粋関数化して `translatedText` パラメータを追加、`autoTranslatePending` ブロッカーを `shouldStartAutoSpeak` に新設で「自動翻訳完了待ち → 翻訳側を読み上げ」の正しいフロー！🌐✨ TDD 11 ケース追加 (buildTtsText 7 + autoTranslatePending 3 + 後方互換 1)。

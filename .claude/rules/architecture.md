@@ -344,6 +344,7 @@ src/
     read-state-prune.ts      # readBeforeTimestamp 以前の publishedAt を持つ既知記事の readId を物理削除する純粋関数 + ttlDays 連動の effective cutoff 算出
     pagination-eager-load.ts # クライアント側ページネーションの eager load 判定純粋関数（sentinel 交差 / コンテンツが viewport を埋めていない判定の OR）
     gallery-prefetch.ts      # `usePrefetchGalleryContents` の `articlesKey` 生成純粋関数（visible 拡張で確実にキー変化させて effect 再実行をトリガー）
+    gallery-display.ts       # `selectGalleryImages` 純粋関数（ギャラリー描画用の画像ソース選択: prefetched / thumb / none の 3 分岐）
     download-history.ts      # 画像 DL 履歴の URL FIFO 管理純粋関数（ギャラリー画像保存時の重複チェック）
     read-state-sync-api.ts   # ReadState のサーバー通信（fetchReadState・saveReadState）
     sw-cache.ts              # Service Worker キャッシュ管理
@@ -683,6 +684,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `read-state-prune.spec.ts`            | `src/lib/read-state-prune.ts` — readBeforeTimestamp 以前の readId 物理削除純粋関数 + `computeEffectiveReadBeforeCutoff`（ttlDays 連動） |
 | `pagination-eager-load.spec.ts`       | `src/lib/pagination-eager-load.ts` — `shouldEagerLoad` 判定純粋関数（ギャラリー無限スクロール）                                         |
 | `gallery-prefetch.spec.ts`            | `src/lib/gallery-prefetch.ts` — `buildArticlesKey` 純粋関数（visible 拡張で確実にキー変化）                                             |
+| `gallery-display.spec.ts`             | `src/lib/gallery-display.ts` — `selectGalleryImages` 純粋関数（prefetched / thumb / none の 3 分岐選択）                                |
 | `download-history.spec.ts`            | `src/lib/download-history.ts` — 画像 DL 履歴の FIFO 管理純粋関数                                                                        |
 | `reader-settings.spec.ts`             | `src/lib/reader-settings.ts` — リーダー設定バリデーション                                                                               |
 | `reading-progress.spec.ts`            | `src/lib/reading-progress.ts` — 読書進捗計算                                                                                            |
