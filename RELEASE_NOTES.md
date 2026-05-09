@@ -4,6 +4,7 @@
 
 ### 激アツ新機能っ
 
+- **TTS 読み上げハイライトの基盤を作ったよ〜 (#659 Phase 1)** — 案 C (boundary イベント + 推定タイミング融合) の純粋関数基盤を `src/lib/tts-sentences.ts` に実装！🎀 `splitIntoSentences` (句点・ピリオド・感嘆/疑問符でセンテンス分割)、`findSentenceAtCharIndex` (charIndex → sentence index)、`estimateCharIndexByElapsed` (経過時間から推定)、`selectActiveCharIndex` (boundary が直近なら採用、古ければ推定値) の 4 関数を提供〜🌐 さらに `useSpeechSynthesis.speak()` に `onBoundary?: (charIndex: number) => void` callback を追加して、Web Speech API の `onboundary` イベント発火時に charIndex を購読可能に。TDD 29 ケース全分岐網羅 (8+6+8+7)。Phase 2 で本文 DOM のセンテンス span ラップ + ハイライト + scroll 追従を実装予定〜📦
 - **読み上げ音声を選択できるようにしたよ〜** — Issue #654 (案 1: Web Speech API ベース・できる限り多種)。記事ヘッダーの TTS 速度ボタン (1.0x) の隣に音声セレクターを追加！🎀 `window.speechSynthesis.getVoices()` で OS / ブラウザが提供する全 voice を列挙して、言語別 (`<optgroup>`) に整理して選択可能に〜🌐 デフォルトは「自動」で記事言語に合わせて選び、明示選択した voice は `localStorage` に永続化。`selectTtsVoice` / `groupVoicesByLang` を `src/lib/tts-voice.ts` の純粋関数化、TDD 16 ケース追加 (preferredUri 一致 / 言語前方一致 / default フラグ / fallback / 空配列 / 大文字小文字差異 / グループ化全網羅)。`voiceschanged` イベントで遅延 voice 取得も対応〜🎵
 
 ### コードレビュー対応っ

@@ -66,7 +66,7 @@ export function useSpeechSynthesis() {
   }, [resetState]);
 
   const speak = useCallback(
-    (text: string) => {
+    (text: string, onBoundary?: (charIndex: number) => void) => {
       if (!SPEECH_SUPPORTED) return;
       currentTextRef.current = text;
       window.speechSynthesis.cancel();
@@ -93,6 +93,12 @@ export function useSpeechSynthesis() {
       };
       utterance.onpause = () => setIsPaused(true);
       utterance.onresume = () => setIsPaused(false);
+      // #659: ハイライト用 charIndex 通知 (Chrome ローカル音声などで発火、リモート音声では発火しない)
+      if (onBoundary) {
+        utterance.onboundary = (event: SpeechSynthesisEvent) => {
+          if (utteranceRef.current === utterance) onBoundary(event.charIndex);
+        };
+      }
 
       window.speechSynthesis.speak(utterance);
     },
