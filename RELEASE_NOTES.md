@@ -4,6 +4,8 @@
 
 ### リファクタリングっ
 
+- **App.tsx からフォーカスモード解除ボタンを分離したよ〜 (#650 段階分割)** — listFocusMode 時に右上 PC 限定で表示する解除ボタン (SVG パス含む 24 行) を `FocusModeExitButton.tsx` に切り出したよ〜🔧 listFocusMode=false なら null 返しで早期 return!📦 App.tsx 947 → 925 行 (-22 行)、累計 961 → 925 行 (-36 行)〜🎀
+
 - **App.tsx からカラムリサイズハンドルを分離したよ〜 (#650 段階分割)** — 3 ペインの「サイドバー / リスト」境界のリサイズ用 `<div>` ペアが App.tsx に直書きで 22 行残ってたから、`ColumnResizeHandles.tsx` に切り出したよっ🔧 listFocusMode 時は null 返しで早期 return、共通の `baseClass` 文字列を関数内に集約して 2 つの handle で重複してた className を 1 箇所に〜🎀 App.tsx 961 → 947 行 (-14 行)、見通しがちょっと良くなった!📦
 
 ### バグ修正っ
