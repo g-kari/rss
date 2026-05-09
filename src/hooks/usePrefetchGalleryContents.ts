@@ -34,7 +34,14 @@ interface Options {
   enabled: boolean;
   /** 同時 fetch 上限 — リモートサイトのレート制限を避けるため既定 2 並列 */
   concurrency?: number;
-  /** 先頭から何件まで先行取得するか — 既定は内部上限 (200) と一致させて visible 全件を対象にする */
+  /**
+   * 先頭から何件まで先行取得するか。
+   * - 未指定 (= Infinity) なら articles 全件 (= visible 全件) を対象。
+   * - スクロールで visible が拡張されると articlesKey 変化 → effect 再実行で
+   *   新規 visible 分も自動的にプリフェッチされる。
+   * - concurrency=2 + requestDelayMs=750ms が自然なレートリミッタとして働くため
+   *   上限値による足切りは不要。
+   */
   maxPrefetch?: number;
   /** 各 fetch 完了後のディレイ (ms) — バースト抑制のため既定 750ms */
   requestDelayMs?: number;
@@ -129,7 +136,7 @@ export function usePrefetchGalleryContents({
   articles,
   enabled,
   concurrency = 2,
-  maxPrefetch = 200,
+  maxPrefetch = Infinity,
   requestDelayMs = 750,
 }: Options): PrefetchGalleryResult {
   const [media, setMedia] = useState<Map<string, PrefetchedMedia>>(() => new Map());
@@ -170,10 +177,12 @@ export function usePrefetchGalleryContents({
     // サーバー / 上流から Retry-After でクールダウンを指示されている間は一切フェッチしない
     if (Date.now() < rateLimitUntilRef.current) return;
     // articlesRef.current を使うことで、依存配列を安定させつつ最新の記事情報を参照する
-    // #669: lim は「同時 fetch 上限」ではなく「対象記事の上限」。スクロールで visible が
-    // 増えるたびに articlesKey が変わって effect 再実行され、未処理だけが mediaRef で
-    // フィルタされて処理される設計のため、200 件まで拡大しても安全。
-    const lim = Math.min(isFinite(maxPrefetch) ? maxPrefetch : 200, 200);
+    // #669: スクロールで visible が増えるたびに articlesKey が変わって effect 再実行され、
+    //       未処理だけが mediaRef でフィルタされて処理される設計。
+    // #673 続: 内部上限を撤廃し articles (= visible) 全件を対象にする。デフォルト
+    //          (maxPrefetch=Infinity) なら slice(0, length) 相当で全件、明示的に
+    //          数値が指定されたら従来通りその件数で足切り。
+    const lim = isFinite(maxPrefetch) ? maxPrefetch : articlesRef.current.length;
     const targets = articlesRef.current.slice(0, lim).filter((a) => a.link);
     if (targets.length === 0) return;
 
