@@ -4,6 +4,7 @@
 
 ### リファクタリングっ
 
+- **App.tsx Step 1q: `AppViewPane` 右ペインを抽出したよ〜 (#650 段階分割)** — 右ペイン (記事詳細) の `<MobilePane as="main"><ErrorBoundary><ArticleView ... /></ErrorBoundary></MobilePane>` (5 行) を `src/components/AppViewPane.tsx` (33 行) に集約!📦 Step 1p の `AppListPane` と完全対称の薄いラッパーで、JSX 構造の対称性を確保〜🎀 `articleViewProps: ComponentProps<typeof ArticleView>` 型継承で ArticleView の prop signature 変化に自動追従〜🛡️ `ArticleView` のインポートも App.tsx から削除〜📚 (App.tsx 行数は変化なし - 削除と新インポート行が相殺、symmetry のための extraction)
 - **App.tsx Step 1p: `AppListPane` 中央ペインを抽出したよ〜 (#650 段階分割)** — 中央ペイン (記事一覧) の **MobilePane + Skeleton 分岐 + ErrorBoundary + ArticleList (29 props)** の 35 行 JSX を `src/components/AppListPane.tsx` (60 行) に集約!📦 `articleListProps: ComponentProps<typeof ArticleList>` 型継承で **ArticleList の prop signature が変化しても本コンポーネントの修正不要** にしたよ〜🎀 App.tsx は 854 → 844 行 (-10 行)、`ArticleList` / `SkeletonArticleList` のインポートも削除〜📚 中央ペイン特有の MobilePane 属性 (`id="main-content"` / `tabIndex={-1}` / `className="focus:outline-none"`) も AppListPane 内に閉じ込めて、a11y まわりの設定が散らないように〜🛡️
 - **App.tsx Step 1o: `MobilePane` ラッパーコンポーネントを抽出したよ〜 (#650 段階分割)** — App.tsx 内で 3 ペイン (`sidebar` / `list` / `view`) それぞれに **6 行のラッパー** (`<div data-pane=... className="..." style={{transform}} aria-hidden inert>`) が重複してた状態を解消!📦 `src/components/MobilePane.tsx` (66 行) に集約して、`aria-hidden` / `inert` の同期 (PC 時は無効) + `transform` 計算 + `data-pane` 属性付与を 1 箇所に閉じ込めたよ〜🎀 中央ペインだけ `<main>` 要素を使う必要があるため `as` prop で要素タイプ切替に対応〜🛡️ App.tsx は 866 → 854 行 (-12 行)、`getMobilePaneTransform` のインポートも削除できて整理〜📚
 
