@@ -1,5 +1,5 @@
 "use client";
-import type { ComponentProps } from "react";
+import { useEffect, useRef, type ComponentProps } from "react";
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
 import { usePopupLock } from "@/hooks/usePopupLock";
@@ -14,6 +14,17 @@ interface Props {
 
 export default function FocusModeOverlay({ focusMode, exitFocusMode, articleViewProps }: Props) {
   usePopupLock(focusMode);
+  // WCAG 2.4.3: フォーカスモード終了時に元のフォーカス位置へ戻す (#687 ConfirmModal と同パターン)
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (focusMode) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+    } else {
+      const ret = returnFocusRef.current;
+      returnFocusRef.current = null;
+      if (ret && document.contains(ret)) ret.focus();
+    }
+  }, [focusMode]);
   if (!focusMode) return null;
   return (
     <div

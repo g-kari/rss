@@ -1,8 +1,16 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 export default function SessionExpiredModal() {
+  // セッション切れモーダルが出たら自動的にログインリンクへフォーカス。
+  // スクリーンリーダーユーザーがモーダルの出現を検知できるようにし、
+  // キーボード操作でも即座にログインできるようにする (Modal.tsx と同パターン)。
+  const loginLinkRef = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    loginLinkRef.current?.focus();
+  }, []);
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
@@ -39,6 +47,7 @@ export default function SessionExpiredModal() {
         </p>
 
         <a
+          ref={loginLinkRef}
           href="/api/auth/login"
           className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-ink hover:bg-ink-hover text-ink-text text-[13px] font-medium rounded-lg transition-all duration-200"
         >
