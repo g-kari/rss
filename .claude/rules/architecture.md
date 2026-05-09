@@ -154,6 +154,7 @@ src/
     AppViewPane.tsx          # 右ペイン (記事詳細) の MobilePane (as="main") + ErrorBoundary + ArticleView を集約（App.tsx Step 1q から分割、AppListPane と対称な薄いラッパー）
     AppSidebarPane.tsx       # 左ペイン (フィードサイドバー) の MobilePane + Skeleton + ErrorBoundary + FeedSidebarProvider + FeedSidebar を集約（App.tsx Step 1r から分割、3 ペイン全てが対称構造に統一）
     AppOverlays.tsx          # 3 ペイン手前 (z-order overlay) のグローバル UI 群を集約（A11y / OfflineBanner / ToastContainer / ConfirmModal / AppModals / NSFW アニメ / 新着バナー / FocusMode 関連 / ColumnResize / ArticleDetailOverlay）。App.tsx Step 1s から分割
+    AppProviders.tsx         # 4 段の React Context Provider (ToastProvider / TtsAdapterProvider / ReaderSettingsProvider / ArticleFilterProvider) を 1 つの集約コンポーネントに閉じ込め（App.tsx Step 1u から分割。Provider 順序や追加・変更時の影響範囲を 1 ファイルに局所化）
     FocusModeExitButton.tsx  # 記事一覧フォーカスモード解除ボタン（PC のみ右上に固定表示）— App.tsx から分割
     A11yHelpers.tsx          # アクセシビリティ補助 (skip-to-content link + aria-live announcement region)— App.tsx から分割
     SessionExpiredModal.tsx  # セッション期限切れ時の再ログインモーダルオーバーレイ
@@ -320,6 +321,7 @@ src/
     ai-cache.ts              # AI 結果 R2 キャッシュ
     ai-route-helper.ts       # AI Route Handler 共通処理
     api-fetch.ts             # 認証付きクライアントサイド fetch ラッパー
+    api-feed-guard.ts        # フィード API の subscription guard（assertFeedSubscribed — discriminated union 戻り値で `if (guard.err) return guard.err;` 後の `sub: UserSubscription` narrowing が効く、#691）
     embed-utils.ts           # iframe embed 処理ユーティリティ
     engagement-score.ts      # エンゲージメントスコア計算ロジック
     auto-ai-fallback.ts      # 自動翻訳・自動要約のブラウザ AI フォールバック判定純粋関数（shouldSkipAutoAi — #700 ブラウザ AI のみ使う設定）

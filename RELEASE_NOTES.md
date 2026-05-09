@@ -2,6 +2,12 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ
+
+- **html-post-processor.ts の dead re-export 3 件を整理したよ〜!📦 (リファクタ監査 85% 信頼度)** — `removeDivsByClass` / `replaceBlocksByClass` (`html-noise-removal.ts` 内部利用のみ) と `extractZennEmbedContent` (`html-embed-transforms.ts` 内部利用のみ) の **production caller 0 + spec 0** 状態だった 3 シンボルを `html-post-processor.ts` の re-export hub から削除〜🎯 「将来 re-export 経由で使われているはず」と誤解しないように内部利用専用とコメント明示〜🛡️ `buildImageSlider` は #321 で caller 削除されたが spec 5 ケース残存のため別 Issue で判断する暫定維持コメント付き〜📚
+- **`useReadingProgress` を `useSyncedRef` 規範に統一!🎯 (リファクタ監査 82% 信頼度)** — `onProgressChangeRef.current = onProgressChange` を render 中に手動 assign する旧パターンを `useSyncedRef(onProgressChange)` に置換〜💪 `coding-conventions.md` の `useSyncedRef` 規範違反を解消、新規開発者が「どっちが正しいパターン?」と迷う drift を排除〜🛡️
+- **architecture.md の docs drift 2 件解消っ!📚** — `src/lib/api-feed-guard.ts` (#691 で追加した `assertFeedSubscribed` helper) と `src/components/AppProviders.tsx` (#650 Step 1u で追加した Provider 集約コンポーネント) が architecture.md に未記載だった drift を、機械的検出 (find + grep + comm) で発見して 1 行ずつ追記〜🎯 サブエージェント rate limit 時の機械的タスク (drift 検出) パターンの定常運用ね〜💎
+
 ### バグ修正っ
 
 - **ユーザー設定モーダルの上下ぴょこぴょこ jump を解消したよ〜!🎀 (#707)** — `Modal.tsx` が `top-1/2 -translate-y-1/2` (垂直中央配置) + `max-h-[90dvh]` のみで **固定高さなし** だったため、`UserSettingsModal` のタブ切替 (表示 / AI・通知 / フィード管理 / インポート・エクスポート) のたびに content の高さが変わって Modal 全体が中央配置のまま伸縮 → 視覚的に上下に「ぴょこぴょこ動く」体感バグだったのを修正!💪 `Modal` に optional `height?: string` prop を追加して、`UserSettingsModal` から `height="sm:h-[640px]"` を渡すことで固定高に〜📦 他の Modal caller (FeedFilterModal / SnoozeModal / ConfirmModal 等) はデフォルト `height=""` でこれまで通りの content 高優先挙動を維持〜🛡️
