@@ -50,6 +50,10 @@ export interface TtsAdapter {
   rate: TtsRate;
   /** 速度を順番に切り替え (engine 別の許容セットで cycle) */
   cycleRate: () => void;
+  /** 現在の音量 (0.0〜1.0、Web Speech API 仕様準拠) */
+  volume: number;
+  /** 音量を変更 (再生中なら新音量で再生し直す)。範囲外は内部で clamp */
+  setVolume: (v: number) => void;
   /** 利用可能な voice 一覧 (非同期に変化することあり: voiceschanged / wasm モデル DL 完了等) */
   voices: TtsVoice[];
   /** 現在ユーザーが選択している voiceURI (null = 自動選択 = 言語マッチ→default→先頭) */

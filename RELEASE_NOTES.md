@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### 激アツ新機能っ
+
+- **TTS の音量をユーザー設定で調整できるようになったよ〜 (#699)** — ユーザー設定 → 表示タブ の **「読み上げ音声」セクションに音量スライダー** を追加!🎚️ 0% (ミュート) 〜 100% (最大) を 1% 刻みで調整できて、`localStorage` (`rss-tts-volume` キー) に永続化〜🎀 再生中に変更したら新音量で再生し直す挙動 (Web Speech API の `utterance.volume` は途中変更不可なので) 〜🛡️ 純粋関数 `clampTtsVolume` / `parseTtsVolume` を `src/lib/tts-volume.ts` に切り出して TDD 全 11 ケースで網羅 (NaN / Infinity / 範囲外 / 不正型 / 境界値 / 文字列 parse / 全部!)〜📦 `TtsAdapter` interface にも `volume` / `setVolume` を追加して将来の Piper wasm engine (#674) でも同様に音量制御可能な土台に〜✨
+
 ### バグ修正っ
 
 - **モーダル系 3 つに focus trap を追加したよ〜 (a11y 監査 82-92% 信頼度)** — `SessionExpiredModal` / `FocusModeOverlay` / `ArticleDetailOverlay` の 3 つで **Tab キーがダイアログ外へ逃げる** WCAG 2.4.3 違反を発見!💥 `Modal.tsx` の canonical pattern (Tab 循環 + Shift+Tab 逆循環) をコピー反映〜🛡️ `ArticleDetailOverlay` には初期 focus + 復元の 3 点セットも追加 (Modal.tsx と同パターン)、`FocusModeOverlay` は既存の focus 復元はそのまま残して Tab トラップだけ追加〜🎀 `SessionExpiredModal` は単一 focusable element (ログインリンク) のみなので Tab / Shift+Tab を常にログインリンクへ戻す簡易版〜📦

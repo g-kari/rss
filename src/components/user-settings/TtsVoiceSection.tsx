@@ -13,7 +13,7 @@ import { groupVoicesByLang } from "../../lib/tts-voice";
  * Phase 2 (#674) で Piper wasm adapter が追加されたら、engine 切替 UI もここに増やす予定。
  */
 export default function TtsVoiceSection() {
-  const { engine, supported, voices, voiceUri, setVoiceUri } = useTtsAdapter();
+  const { engine, supported, voices, voiceUri, setVoiceUri, volume, setVolume } = useTtsAdapter();
   // 記事言語ヒント (document.documentElement.lang) で voice 並び順を最適化
   const docLang = typeof document !== "undefined" ? document.documentElement.lang || null : null;
   const voiceGroups = useMemo(() => groupVoicesByLang(voices, docLang), [voices, docLang]);
@@ -68,6 +68,26 @@ export default function TtsVoiceSection() {
         <span className="text-[11px] text-text-muted">
           記事ヘッダーの ▶︎
           ボタンで使用するボイスです。「自動」を選ぶと記事の言語に合わせて選択しますわ。
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="tts-volume-slider" className="text-[12px] font-medium text-text-default">
+          音量 <span className="text-text-muted tabular-nums">({Math.round(volume * 100)}%)</span>
+        </label>
+        <input
+          id="tts-volume-slider"
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={Math.round(volume * 100)}
+          onChange={(e) => setVolume(parseInt(e.target.value, 10) / 100)}
+          className="w-full accent-ink"
+        />
+        <span className="text-[11px] text-text-muted">
+          0% でミュート、100%
+          でブラウザ既定の最大音量ですわ。再生中に変更すると新しい音量で再生し直しますわ。
         </span>
       </div>
     </div>
