@@ -4,6 +4,7 @@ import type { Virtualizer } from "@tanstack/react-virtual";
 import type { Article } from "@/types";
 import { CompactArticleItem, MagazineFeaturedArticleItem } from "@/components/ArticleItems";
 import type { ResolveItemProps } from "./types";
+import { VirtualRow } from "./VirtualRow";
 
 interface Props {
   items: Article[];
@@ -39,24 +40,16 @@ export default function MagazineBody({
             const a = items[vItem.index + 1];
             if (!a) return null;
             return (
-              <div
+              <VirtualRow
                 key={vItem.key}
-                data-index={vItem.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${vItem.start}px)`,
-                  transition:
-                    deletingIds.size > 0 || newIds.size > 0 ? "transform 0.2s ease" : undefined,
-                }}
+                vItem={vItem}
+                measureRef={virtualizer.measureElement}
+                animating={deletingIds.size > 0 || newIds.size > 0}
               >
                 <CompactArticleItem
                   {...resolveItemProps(a, vItem.index + 1, deletingIds.has(a.id), newIds.has(a.id))}
                 />
-              </div>
+              </VirtualRow>
             );
           })}
         </div>

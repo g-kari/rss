@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### リファクタリングっ
+
+- **仮想スクロール item wrapper を VirtualRow に集約したよ〜 (#692)** — `CompactListBody` / `CardBody` / `MagazineBody` の 3 ファイルでほぼ同一の絶対配置 div ブロック (position: absolute / transform: translateY / 削除アニメ用 transition) が重複してたの〜🥲 `VirtualRow` ヘルパーコンポーネントを新設して 3 箇所を集約〜🔧 各ファイル ~10 行削減 (計 ~30 行)、CardBody の padding 等のレイアウト固有スタイルは `extraStyle` prop で受け取る設計〜🎀 virtualizer の挙動を変える際の同期修正コストが消滅！
+
 ### セキュリティ対策っ
 
 - **cache-purge エンドポイントが他人のキャッシュを無効化できる権限不備を修正したよ〜 (#691)** — `POST /api/feeds/{feedHash}/purge-content-cache` が **認証だけ** チェックして購読チェックを欠いてた〜🥲 任意の認証済ユーザーが「他人が購読中のフィード feedHash」に対して purge を実行すると、shared Cloudflare Cache (最大 5,000 記事分) を無効化できて他ユーザーの読み込み体験を意図的に劣化させる cache busting DoS が成立してたの！💥 `readUserSubscriptions` で購読チェックを追加して、**未購読フィードは 404** で拒否するように修正〜🛡️ 同様に `DELETE /api/content?url=...` も shared cache (ユーザー横断) 削除を撤廃して、自分の clip cache (ユーザー別 key) のみ削除する仕様に変更！shared cache は TTL (7日) で自然失効に任せ、フィード単位の一括クリアは購読チェック付きの purge エンドポイント経由に統一〜🔒
