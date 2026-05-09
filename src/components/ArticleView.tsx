@@ -181,6 +181,7 @@ function ArticleView({
     isNsfw: !!(article && feeds?.find((f) => f.id === article.feedHash)?.nsfw),
     currentMobilePane,
     onGoBack,
+    autoMode,
   });
 
   // #677: ArticleHeader のスクロール連動表示 (下スクロールで隠す・上で表示・上端で常時)
