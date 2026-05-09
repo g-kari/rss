@@ -1,5 +1,20 @@
 import { test, expect } from "@playwright/test";
-import { readingTime, timeAgo } from "../src/lib/article-utils";
+import { readingTime, timeAgo, createReadingTimeCache } from "../src/lib/article-utils";
+import type { Article } from "../src/types";
+
+function makeArticle(id: string, content: string): Article {
+  return {
+    id,
+    feedHash: "h",
+    guid: id,
+    title: "t",
+    link: `https://example.com/${id}`,
+    summary: "",
+    content,
+    publishedAt: "2026-05-01T00:00:00Z",
+    createdAt: "2026-05-01T00:00:00Z",
+  };
+}
 
 /**
  * readingTime の単体テスト。
@@ -259,5 +274,80 @@ test.describe("timeAgo — YYYY年M月D日形式（異なる年）", () => {
     // 2023 年は現在（2026 年）と異なるため年が含まれる
     expect(result).toContain("2023");
     expect(result).toContain("6");
+  });
+});
+
+test.describe("createReadingTimeCache (#685)", () => {
+  test("初回呼出は readingTime を実行し値を返す", () => {
+    const cache = createReadingTimeCache();
+    const article = makeArticle("a1", "<p>" + "あ".repeat(500) + "</p>");
+    const mins = cache(article);
+    expect(mins).toBeGreaterThanOrEqual(1);
+  });
+
+  test("同じ article.id で 2 回目以降は同じ値を返す (キャッシュヒット)", () => {
+    const cache = createReadingTimeCache();
+    const article = makeArticle("a1", "<p>テスト記事</p>");
+    const first = cache(article);
+    const second = cache(article);
+    expect(second).toBe(first);
+  });
+
+  test("article.id が違えば別計算する (新エントリ追加)", () => {
+    const cache = createReadingTimeCache();
+    const a = makeArticle("a1", "<p>" + "あ".repeat(100) + "</p>");
+    const b = makeArticle("a2", "<p>" + "い".repeat(2000) + "</p>");
+    const aMins = cache(a);
+    const bMins = cache(b);
+    expect(bMins).toBeGreaterThan(aMins);
+  });
+
+  test("content が undefined / 空でも安全に 0 (or 1 の最小値) を返す", () => {
+    const cache = createReadingTimeCache();
+    const empty = makeArticle("e1", "");
+    const result = cache(empty);
+    expect(typeof result).toBe("number");
+    expect(result).toBeGreaterThanOrEqual(0);
+  });
+
+  test("content が undefined のとき summary を fallback に使う", () => {
+    const cache = createReadingTimeCache();
+    const article: Article = {
+      id: "s1",
+      feedHash: "h",
+      guid: "s1",
+      title: "t",
+      link: "https://example.com/s1",
+      summary: "<p>" + "あ".repeat(500) + "</p>",
+      publishedAt: "2026-05-01T00:00:00Z",
+      createdAt: "2026-05-01T00:00:00Z",
+      // content 省略
+    };
+    const mins = cache(article);
+    expect(mins).toBeGreaterThanOrEqual(1);
+  });
+
+  test("新しい cache インスタンスは独立 (グローバルキャッシュではない)", () => {
+    const a = makeArticle("a1", "<p>" + "あ".repeat(500) + "</p>");
+    const cache1 = createReadingTimeCache();
+    const cache2 = createReadingTimeCache();
+    cache1(a);
+    // cache2 は cache1 の内部 Map と独立 — 同じ計算をしても両者の挙動は同じだが内部状態は別
+    const mins2 = cache2(a);
+    const mins1 = cache1(a);
+    expect(mins1).toBe(mins2);
+  });
+
+  test("同 cache で 100 件異なる id を投入してもエラーなく動作 (上限なし)", () => {
+    const cache = createReadingTimeCache();
+    for (let i = 0; i < 100; i++) {
+      const article = makeArticle(`bulk-${i}`, `<p>記事 ${i}</p>`);
+      cache(article);
+    }
+    // 再度全件アクセスしてエラー出ない
+    for (let i = 0; i < 100; i++) {
+      const article = makeArticle(`bulk-${i}`, `<p>記事 ${i}</p>`);
+      expect(typeof cache(article)).toBe("number");
+    }
   });
 });

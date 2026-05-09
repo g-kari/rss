@@ -293,7 +293,7 @@ src/
     readability-extractor.ts # Readabilityラッパー（iframe退避・preClean・本文抽出）
     regex-extractor.ts       # 正規表現ベース抽出（stripPageChrome・サイト固有セレクター）
     html.ts                  # sanitizeHtml() / escapeHtml() / toPlainText()
-    article-utils.ts         # readingTime() / timeAgo() / isLikelyJapanese()
+    article-utils.ts         # readingTime() / timeAgo() / isLikelyJapanese() / createReadingTimeCache (#685 メモ化)
     image-extractor.ts       # bestSrcFromSrcset() / collectImageUrlsFromHtml() / collectImageUrls()
     fetch.ts                 # RSS/HTML フェッチヘルパー (タイムアウト・リトライ)
     fetch-article-content.ts # /api/content 内のコンテンツ取得ロジック
@@ -641,7 +641,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `strip-html-with-breaks.spec.ts`      | `src/lib/html.ts#stripHtmlWithBreaks` — `<br>` / `<p>` を改行に変換する HTML strip                                                                                |
 | `test-seed-validation.spec.ts`        | `src/lib/test-seed.ts` — e2e seed リクエストボディ検証純粋関数                                                                                                    |
 | `test-seed-integration.spec.ts`       | `app/api/test/seed/route.ts` — seed エンドポイント smoke test                                                                                                     |
-| `article-utils.spec.ts`               | `src/lib/article-utils.ts` — readingTime / timeAgo                                                                                                                |
+| `article-utils.spec.ts`               | `src/lib/article-utils.ts` — readingTime / timeAgo / createReadingTimeCache (#685 メモ化キャッシュ 7 ケース)                                                      |
 | `articles-save.spec.ts`               | `app/api/articles/save/route.ts` — 記事手動保存 API                                                                                                               |
 | `auth-headers.spec.ts`                | 認証ヘッダー処理                                                                                                                                                  |
 | `auth-utils-edge.spec.ts`             | JWT 検証エッジケース                                                                                                                                              |
