@@ -349,6 +349,7 @@ src/
     tts-voice.ts             # TTS 音声選択純粋関数（selectTtsVoice / groupVoicesByLang — Web Speech API voice 列挙の優先順位・言語別グループ化）
     tts-sentences.ts         # TTS sentence tracking 純粋関数（splitIntoSentences / findSentenceAtCharIndex / estimateCharIndexByElapsed / selectActiveCharIndex — boundary + 推定の融合）
     tts-dom.ts               # TTS ハイライト用 HTML センテンス span ラップ純粋関数（wrapSentencesInHtml — linkedom 使用、`<pre>` `<code>` `<script>` `<style>` `<noscript>` 除外）
+    tts-scroll.ts            # TTS ハイライトスクロール判定純粋関数（shouldScrollSentence — 中央 30〜70% 快適ゾーン外でセンタリングが必要かを返す / findScrollableAncestor）
     popup-lock.ts            # 同時に開けるブラウザポップアップ数を制限するクライアントサイドロック
     dbsc.ts                  # Device Bound Session Credentials (DBSC) ユーティリティ — 機能検出・チャレンジ生成・ヘッダービルダー (スケルトン)
     serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
@@ -702,6 +703,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `tts-voice.spec.ts`                   | `src/lib/tts-voice.ts` — `selectTtsVoice` / `groupVoicesByLang` 純粋関数（voice 選択優先順位・言語別グループ化）                                      |
 | `tts-sentences.spec.ts`               | `src/lib/tts-sentences.ts` — `splitIntoSentences` / `findSentenceAtCharIndex` / `estimateCharIndexByElapsed` / `selectActiveCharIndex` (#659 Phase 1) |
 | `tts-dom.spec.ts`                     | `src/lib/tts-dom.ts` — `wrapSentencesInHtml` 純粋関数（HTML テキストノードをセンテンス span でラップ・skip タグ対応・タグ跨ぎ） (#672 Phase 2)        |
+| `tts-scroll.spec.ts`                  | `src/lib/tts-scroll.ts` — `shouldScrollSentence` 純粋関数（快適ゾーン判定: 中央 30〜70%）                                                             |
 | `download-history.spec.ts`            | `src/lib/download-history.ts` — 画像 DL 履歴の FIFO 管理純粋関数                                                                                      |
 | `reader-settings.spec.ts`             | `src/lib/reader-settings.ts` — リーダー設定バリデーション                                                                                             |
 | `reading-progress.spec.ts`            | `src/lib/reading-progress.ts` — 読書進捗計算                                                                                                          |

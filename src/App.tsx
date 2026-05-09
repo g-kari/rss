@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import AppModals from "./components/AppModals";
 import FeedSidebar from "./components/feed-sidebar";
@@ -12,7 +12,6 @@ import OfflineBanner from "./components/OfflineBanner";
 import NewArticleBanner from "./components/NewArticleBanner";
 import FocusModeOverlay from "./components/FocusModeOverlay";
 import ArticleDetailOverlay from "./components/ArticleDetailOverlay";
-import type { Article } from "./types";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useFeedGroups } from "./hooks/useFeedGroups";
@@ -45,7 +44,6 @@ import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
 import { useColumnResize } from "./hooks/useColumnResize";
-import { useSyncedRef } from "./hooks/useSyncedRef";
 import { useArticleSelection } from "./hooks/useArticleSelection";
 import { useAppModalState } from "./hooks/useAppModalState";
 import { useSaveArticleUrl } from "./hooks/useSaveArticleUrl";
