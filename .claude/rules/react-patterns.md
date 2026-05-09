@@ -476,6 +476,7 @@ JSX 抽出で **行数が変わらない (or 増える)** ケースでも、以�
 2. **将来の拡張に強い**: 例えば 4 ペイン目を追加したくなったとき、symmetric な構造なら新コンポーネントを 1 つ作るだけで済む
 3. **Provider / Boundary 配置の一元化**: ErrorBoundary / Skeleton / Provider のラップは「ペインの責務」として閉じ込められる
 4. **行数削減を絶対視しない**: コード品質 != 行数。symmetry / cohesion が高いほど保守性向上
+5. **transitive cleanup の機会を逃さない**: 全 sibling を抽出しきると、親で使われていた「子 sibling 共通の依存」(import / hook / wrapper component) が **不要になって一括削除可能** になる。例: `AppSidebarPane` / `AppListPane` / `AppViewPane` を全部抽出した時点で、親から `FeedSidebar` / `ArticleList` / `ArticleView` / `ErrorBoundary` / `MobilePane` / `Skeleton*` のインポートが **5 個以上一括削除** できた
 
 **How to apply**: extraction 判定で「行数が増えるからやめる」と即決しない:
 
@@ -484,8 +485,9 @@ JSX 抽出で **行数が変わらない (or 増える)** ケースでも、以�
 3. **将来も sibling として並列扱いか** — Yes なら抽出
 4. 上記が複数 Yes なら **行数増減無視で extraction OK**。コミットメッセージに「symmetry のための extraction」を明記して将来の AI/開発者の判断材料にする
 5. JSDoc に「対称となる sibling コンポーネント」をリンクで明示 (例: `AppListPane と対称な薄いラッパー`)
+6. **「2/3 終わったから残り 1 個もやる」と最初から計画**: 全 sibling を抽出しきって初めて transitive cleanup (上記 Why#5) が発火する。中途半端に終わらせると最大の利得を取りこぼす
 
-主な使用箇所: `AppViewPane` (Step 1q) — `AppListPane` (Step 1p) との symmetry のため、行数削減ゼロでも extraction を採用
+主な使用箇所: `AppViewPane` (Step 1q) — `AppListPane` (Step 1p) との symmetry のため、行数削減ゼロでも extraction を採用 / `AppSidebarPane` (Step 1r) — 3 ペイン全 extraction 完了で親から 5 imports を一括削除
 
 ### 派生ケース: 新機能は「Phase 1: 純粋関数 + TDD」「Phase 2: UI 統合」で分離する
 
