@@ -762,6 +762,43 @@ const { images, source } = selectGalleryImages(prefetched, thumb);
 
 → `.claude/rules/react-patterns.md` を参照 (#694 Step 4 で分割)
 
+## 「読み上げ / 表示 / ハイライト」の source 整合性をペアで担保する
+
+TTS / 字幕 / カラオケ系 UI で「**speak されるテキスト**」と「**ハイライト対象のテキスト**」が **異なる source** から派生していると、「読まれているのと違う場所がハイライトされる」乖離バグが発生する。`useTtsHighlight(sentences, ttsRate, ttsPlaying, ttsSupported)` のような hook は **sentences (=ハイライト対象) と speak text の source を同期**しないと安全でない。
+
+```typescript
+// アンチパターン: speak text と ハイライト sentences の source が別
+const ttsText = buildTtsText(article, processedContent, translatedText, summaryText);
+//   ↑ summaryText (要約) を優先で speak する設計
+const ttsSentences = wrapSentencesInHtml(processedContent).sentences;
+//   ↑ 常に processedContent (記事本文) から sentence 抽出
+//   → 要約読み上げ中は speak text != ハイライト対象 で乖離
+
+const { activeSentenceIndex } = useTtsHighlight(ttsSentences, ttsRate, ttsPlaying, ttsSupported);
+// → 100ms 間隔で記事本文の sentence を進む。実際は要約読み上げているのにハイライトは記事本文上を時間ベースで進む
+
+// 修正パターン: 別 source 読み上げ中はハイライト全停止
+const isReadingDifferentSource = autoMode && autoSummarize && !!aiResult;
+const effectiveSentences = isReadingDifferentSource ? EMPTY_SENTENCES : ttsSentences;
+const { activeSentenceIndex } = useTtsHighlight(effectiveSentences, ...);
+//   ↑ 空配列 → activeSentenceIndex = -1 維持 → ハイライト発生しない
+```
+
+**Why**: TTS / 字幕系 UI は「視覚的な進行 = 聴覚的な進行」が UX の本質。**source の同期が崩れた瞬間に体験が破綻する**。fallback chain (`source = summaryText ?? translatedText ?? processedContent ?? summary`) を speak 側に入れると、ハイライト側も同じ chain で sentence を抽出する必要があるが、HTML から sentence span を生成するコストが大きく、複数 source 化は段階対応になりがち。最小実装は「**別 source 読み上げ中はハイライトを完全に止める**」(空 sentence で抑制)。
+
+**How to apply**: 読み上げ系 / 字幕系 hook を実装するとき:
+
+1. `speak(text)` に渡る text の **真の source** (どの fallback chain の枝か) を判定するフラグを保持 (`isReadingX`)
+2. ハイライト sentences は **同じ source の HTML から派生** したものかチェック
+3. 異なる source なら、以下の選択肢:
+   - **最小**: ハイライト全停止 (空 sentences で activeIndex = -1 維持)
+   - **中規模**: 別 source の sentence span を生成 (要約 UI に span ラッパー導入)
+   - **大規模**: 全 source で sentence 化 (parser を speak/highlight 共通化)
+4. **最小実装でも違和感は解消** されるので、Phase 1 として最小、Phase 2 で機能拡張パターンが安全
+5. **空 sentences の安定 reference** (`const EMPTY_SENTENCES: Sentence[] = []`) をモジュールレベルで宣言。条件で `[]` を毎 render 作ると useMemo / useEffect 依存キーが invalidate される
+
+主な使用箇所: `useArticleViewState` の `isReadingSummary` / `effectiveTtsSentences` (#703 — オートモード + 自動要約で要約読み上げ中の wrong-source ハイライト抑制)
+
 ## 同症状でも別経路の可能性を疑う
 
 「ギャラリーが止まる」「TTS が止まる」のような **同じ症状の連続バグ報告** は、修正後も別経路で再発する可能性が高い。1 つ修正しただけで「同症状の Issue は全部解決」と思い込まないこと。
