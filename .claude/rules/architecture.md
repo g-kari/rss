@@ -685,6 +685,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `pagination-eager-load.spec.ts`       | `src/lib/pagination-eager-load.ts` — `shouldEagerLoad` 判定純粋関数（ギャラリー無限スクロール）                                         |
 | `gallery-prefetch.spec.ts`            | `src/lib/gallery-prefetch.ts` — `buildArticlesKey` 純粋関数（visible 拡張で確実にキー変化）                                             |
 | `gallery-display.spec.ts`             | `src/lib/gallery-display.ts` — `selectGalleryImages` 純粋関数（prefetched / thumb / none の 3 分岐選択）                                |
+| `abort-error.spec.ts`                 | `src/lib/fetch.ts#isAbortError` — DOMException AbortError / Error name="AbortError" / 非 abort error の判別 (#625 後追い)               |
 | `download-history.spec.ts`            | `src/lib/download-history.ts` — 画像 DL 履歴の FIFO 管理純粋関数                                                                        |
 | `reader-settings.spec.ts`             | `src/lib/reader-settings.ts` — リーダー設定バリデーション                                                                               |
 | `reading-progress.spec.ts`            | `src/lib/reading-progress.ts` — 読書進捗計算                                                                                            |

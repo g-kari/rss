@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### コードレビュー対応っ
+
+- **#625 ShareMenu の abort 判定を `isAbortError` ヘルパーに統一したよ〜** — Issue #644 Step 2。`err instanceof DOMException && err.name === "AbortError"` というインライン重複チェックを `src/lib/fetch.ts#isAbortError` に統一して、abort 判定ロジックを単一ソースに！🎀 TDD で `e2e/abort-error.spec.ts` 9 ケース追加 (DOMException / Error / TypeError / null / undefined / plain object 全網羅) — Web Share API の cancel と fetch AbortController の abort を同じ関数で安全判別できるバッチリ保証〜🛡️
+
 ### 激アツ新機能っ
 
 - **ギャラリービューで本文画像が一枚もない記事も OGP/サムネで表示するようにしたよ〜** — Issue #671。これまで本文画像 0 枚 + thumb=undefined の組み合わせは「No image」プレースホルダ固定でちょっと寂しかったの〜🥲 `selectGalleryImages` 純粋関数を新設して、画像ソースを `prefetched` / `thumb` / `none` の 3 分岐で厳密に決定するように！🎀 prefetch が空配列でも thumb (OGP/article.ogImage/YouTube サムネ) があれば fallback として描画、`source==="thumb"` 時は minPx フィルターをバイパスして必ず表示。`isFetchFailed` ブランチも維持して既存動作は完全互換〜📦 TDD 9 ケース追加 (全分岐網羅)。
