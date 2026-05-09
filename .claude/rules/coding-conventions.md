@@ -382,6 +382,42 @@ App.tsx / 巨大ページコンポーネントから複数の `useEffect` / `use
 - `selectGalleryImages` (#671) — Phase 単独で UI 統合まで含めた小規模ケース
 - `splitIntoSentences` / `selectActiveCharIndex` (#659 Phase 1 / #672 Phase 2) — Phase 分離の典型
 
+### 派生ケース: 既存実装の差し替え基盤は「Phase 0: 型抽象化のみ」を先行する
+
+既存の動く実装に **代替実装** を後から差し込みたい場合 (Web Speech API → Piper wasm 等)、いきなり大きな書き換えに着手せず **「Phase 0: 型契約だけ抽象化」を最初の commit にする**。実装のロジックは一切変えない。
+
+```
+リファクタ: TTS engine 抽象化
+  ├─ Phase 0: TtsAdapter / TtsVoice 型 + 既存実装を型に合わせる    ← 1 PR (挙動変化なし)
+  ├─ Phase 1b: voice 選択 UI を抽象 API 経由に切替 + 設定モーダル化  ← 別 PR
+  └─ Phase 2: 代替実装 (Piper wasm) を usePiperTts として追加      ← 別 Issue
+```
+
+**Phase 0 の責務 (型のみ)**:
+
+1. `src/lib/<feature>-adapter.ts` に **engine 共通インターフェース** を定義 (例: `interface TtsAdapter`)
+2. **既存実装を型契約に合わせる** (戻り値型を `TtsAdapter` 明示、内部で API 固有型 → 抽象型へ map)
+3. consumer の prop / state 型を **抽象型に置き換え** (例: `SpeechSynthesisVoice[]` → `TtsVoice[]`)
+4. **TDD**: 抽象型契約のスモーク (dummy 実装が型を満たす) + 既存純粋関数との互換 (例: `selectTtsVoice<TtsVoice>` がそのまま動く) + 変換ヘルパー (例: `speechSynthesisVoiceToTtsVoice` の field 取捨選択) を網羅
+
+**Phase 0 がやらないこと**:
+
+- 実装の差し替え (DI / Provider / Context は Phase 1b へ)
+- 設定 UI の追加 (Phase 1b へ)
+- 代替実装の追加 (Phase 2 へ)
+
+**Why**: 既存実装の書き換えと代替実装追加を一度にやると、変更原因と挙動変化の対応が追えなくなる。Phase 0 を「ユーザー視点で挙動変化なし」に保つと、もし代替実装で問題が出ても Phase 0 commit までは確実に safe な state として bisect / revert 可能。型契約だけ先に確定すれば Phase 1b / 2 は **「型を満たす実装を書く」** 単純な責務に絞れる。
+
+**How to apply**: 既存実装に代替実装を差し込む大型リファクタ要望 (Issue: 「ライブラリ差し替え」「engine 抽象化」「Provider DI 化」等) を見たとき:
+
+1. 最初の commit を **「型契約 + 既存実装を契約準拠化」** に絞る (実装は touch しない)
+2. consumer 側の固有型参照 (`SpeechSynthesisVoice` / `WebSocket` / `Stripe.Subscription` 等) を grep し、**全件抽象型 (`TtsVoice` / `WsLike` / `Subscription`) に置き換える**
+3. 抽象型側にヘルパー (`<source>To<abstract>(v)` 関数) を提供し、テストで「不要 field の取捨選択」を assert
+4. consumer 側の挙動が一切変わらないことを typecheck + 既存 e2e で確認してから commit
+5. Phase 1b 以降を別 Issue 起票して、Phase 0 commit hash をピン留め
+
+主な使用箇所: `src/lib/tts-adapter.ts` (#675 Phase 1a) — Web Speech API → Piper wasm 差し替えの基盤
+
 ## dev / e2e 限定エンドポイントの二重ガード
 
 `/api/test/seed` のようなテスト inject 系エンドポイントを本番に絶対漏らさないために、Route Handler の冒頭で **二重ガード** を行う。
