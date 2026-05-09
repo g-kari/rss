@@ -1076,6 +1076,70 @@ function App() {
 
 主な使用箇所: `src/components/AppLandingState.tsx` (オーケストレーター呼び出し側で `if (!user) return null;` ガードを併記)
 
+## デフォルト引数値は「内部上限」と一致させる
+
+`Options` 型のデフォルト値を **内部上限よりも小さい安全値** に設定すると、**呼び出し元が値を渡さなかった場合に静かに小さい上限が適用される** バグの温床になる。
+
+```typescript
+// アンチパターン: cap=200 だが default=20 で不整合
+interface Options {
+  /** 先頭から何件まで先行取得するか — 既定 20 */
+  maxPrefetch?: number;
+}
+function usePrefetch({ maxPrefetch = 20 }: Options) {
+  const lim = Math.min(isFinite(maxPrefetch) ? maxPrefetch : 200, 200);
+  // ↑ cap は 200 だが default は 20 → 呼び出し元が省略すると 20 で固定される
+  const targets = articles.slice(0, lim);
+}
+
+// 修正パターン: default を cap と一致させる
+function usePrefetch({ maxPrefetch = 200 }: Options) {
+  const lim = Math.min(isFinite(maxPrefetch) ? maxPrefetch : 200, 200);
+  // ↑ default 200 = cap 200。呼び出し元が省略すれば全 visible 対象
+}
+```
+
+**Why**: default を「保守的に小さく」設定すると、ドキュメント上の cap (200) と実際の挙動が乖離する。呼び出し元はライブラリ作者の意図 (「cap まで使ってよい」) を読み取れず、デフォルト 20 で運用してバグ報告が来る。たとえばプリフェッチ系では 21 件目以降が永遠に処理されない症状になる。
+
+**How to apply**: cap 値 (`Math.min(x, MAX)`) を持つ Option では:
+
+1. **default = cap** が最も自然 (「明示しなければ最大限活用」)
+2. **default < cap が必要なら** その理由を JSDoc に明記し、cap との差を意図的に保つ
+3. リファクタで cap だけ引き上げて default を放置するのは禁止 (整合性検査をテストに追加するか、 `MAX_X` 定数を 1 箇所に集約してデフォルトもそれを参照する)
+
+該当パターン: `usePrefetchGalleryContents` の `maxPrefetch`（cap=200 / default=20 → 200 へ修正）
+
+## デザイントークンは「機能別の専用トークン」を作る判断軸
+
+似た役割の既存トークン (`--color-surface-subtle` 等) を流用したくなる場面でも、**ユーザー視点で「目立たせたい強度が違う」なら専用トークンを作る** 方が後の調整が楽になる。
+
+```css
+/* アンチパターン: 検索ハイライトと TTS ハイライトを共通トークンで表現 */
+.search-highlight,
+.tts-active-sentence {
+  background: var(--color-surface-subtle); /* どっちも控えめ */
+}
+/* → ユーザー「TTS は弱すぎる」要望で `--color-surface-subtle` を強くすると、
+     検索ハイライトも一緒に変わって他の UI が崩れる */
+
+/* 修正パターン: 機能別の専用トークン */
+:root {
+  --color-highlight: #fef3c7; /* amber-100: 検索 */
+  --color-tts-highlight: #fde68a; /* amber-200: TTS (より目立たせる) */
+}
+```
+
+**Why**: 「同じ濃度で十分」と判断して共通トークンを使うと、片方だけ調整したい要望が来たときに他の UI を巻き込んで変えてしまう。最初から **「この強度はこの機能のために存在する」** と意図を込めた専用トークンにすると、後の単独チューニングが安全。
+
+**How to apply**: 新しいハイライト・選択状態・強調 UI を追加するとき:
+
+1. 既存トークンと **見た目が完全に同じ** で、**ユーザーが将来「どちらか片方だけ強くしたい」と言わない自信がある** なら流用
+2. それ以外は **`--color-{機能名}-highlight`** のような機能別トークンを新設
+3. ライト / ダーク両テーマで定義する。コントラスト比 (WCAG AA) も併記すると後で楽
+4. テキスト色も別トークン (`--color-{機能名}-highlight-text`) で揃えると、背景色変更時に文字読みやすさが崩れない
+
+該当パターン: `--color-tts-highlight` / `--color-tts-highlight-text` (#659)
+
 ## 禁止事項
 
 - D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
