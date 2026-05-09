@@ -541,6 +541,67 @@ function ArticleList({
     ],
   );
 
+  // ── レイアウト別 render 関数 (#651 Step 1) ─────────────────────────
+  // 各レイアウトの仮想スクロール JSX を関数として抽出し、メイン return の
+  // 見通しを改善する。クロージャで外部 scope の変数を参照しているので、
+  // メモ化は不要（外部 state 変化で親 component 全体が再レンダーされる前提）。
+
+  const renderCompactListBody = () => {
+    if ((layout !== "compact" && layout !== "list") || flatItems.length === 0) return null;
+    return (
+      <div style={{ height: listVirtualizer.getTotalSize(), position: "relative" }}>
+        {listVirtualizer.getVirtualItems().map((vItem) => {
+          const item = flatItems[vItem.index];
+          if (!item) return null;
+          return (
+            <div
+              key={vItem.key}
+              data-index={vItem.index}
+              ref={listVirtualizer.measureElement}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${vItem.start}px)`,
+                transition:
+                  nonGalleryDeletingIds.size > 0 || nonGalleryNewIds.size > 0
+                    ? "transform 0.2s ease"
+                    : undefined,
+              }}
+            >
+              {item.type === "header" ? (
+                <div className="px-4 pt-3 pb-1">
+                  <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                    {item.label}
+                  </span>
+                </div>
+              ) : layout === "compact" ? (
+                <CompactArticleItem
+                  {...resolveItemProps(
+                    item.article,
+                    item.articleIndex,
+                    nonGalleryDeletingIds.has(item.article.id),
+                    nonGalleryNewIds.has(item.article.id),
+                  )}
+                />
+              ) : (
+                <ListArticleItem
+                  {...resolveItemProps(
+                    item.article,
+                    item.articleIndex,
+                    nonGalleryDeletingIds.has(item.article.id),
+                    nonGalleryNewIds.has(item.article.id),
+                  )}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <section
       aria-label="記事一覧"
@@ -581,59 +642,8 @@ function ArticleList({
             onRetry={onRetry}
           />
 
-          {/* compact / list — 仮想スクロール */}
-          {(layout === "compact" || layout === "list") && flatItems.length > 0 && (
-            <div style={{ height: listVirtualizer.getTotalSize(), position: "relative" }}>
-              {listVirtualizer.getVirtualItems().map((vItem) => {
-                const item = flatItems[vItem.index];
-                if (!item) return null;
-                return (
-                  <div
-                    key={vItem.key}
-                    data-index={vItem.index}
-                    ref={listVirtualizer.measureElement}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${vItem.start}px)`,
-                      transition:
-                        nonGalleryDeletingIds.size > 0 || nonGalleryNewIds.size > 0
-                          ? "transform 0.2s ease"
-                          : undefined,
-                    }}
-                  >
-                    {item.type === "header" ? (
-                      <div className="px-4 pt-3 pb-1">
-                        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-                          {item.label}
-                        </span>
-                      </div>
-                    ) : layout === "compact" ? (
-                      <CompactArticleItem
-                        {...resolveItemProps(
-                          item.article,
-                          item.articleIndex,
-                          nonGalleryDeletingIds.has(item.article.id),
-                          nonGalleryNewIds.has(item.article.id),
-                        )}
-                      />
-                    ) : (
-                      <ListArticleItem
-                        {...resolveItemProps(
-                          item.article,
-                          item.articleIndex,
-                          nonGalleryDeletingIds.has(item.article.id),
-                          nonGalleryNewIds.has(item.article.id),
-                        )}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* compact / list — 仮想スクロール (#651 Step 1: 関数化) */}
+          {renderCompactListBody()}
 
           {/* card — 仮想スクロール（2列ずつ行単位で仮想化） */}
           {layout === "card" && cardRows.length > 0 && (
