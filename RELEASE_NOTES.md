@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### UX改善っ
+
+- **記事本文取得が 429 (レート制限) のとき「取得できませんでした」だけだった問題を直したよ〜 (#688)** — `useArticleContent` が `res.ok` チェックを欠いてて、429 / 502 / 503 等の HTTP エラーを silent にスルーしてた〜🥲 ユーザーは「待つべきか / リトライすべきか / 永続的なエラーか」が判断できなかったの！💥 `src/lib/classify-http-error.ts` 純粋関数を新設して、HTTP ステータスを `rate_limit` / `server_error` / `client_error` / `network` / `unknown` に分類 + `formatHttpErrorMessage` で 429 のときは `Retry-After` ヘッダーを秒数表示に整形〜🚀 「レート制限中です。30秒後に再試行してください。」のような具体的なメッセージが出るように！TDD 30 ケース全分岐網羅 (15 ステータス分類 / 9 メッセージ整形 / 6 retryable 判定)。
+
 ### バグ修正っ
 
 - **ConfirmModal を閉じたあとフォーカスがトリガー要素に戻らない問題を直したよ〜 (#687)** — `Modal.tsx` には `returnFocusRef` パターンがあるのに、`ConfirmModal.tsx` だけ抜けてた〜🥲 削除確認ダイアログを ESC やキャンセルで閉じた後、フォーカスが `document.body` に飛んじゃってキーボードユーザーは「次の Tab がどこに飛ぶか」分からなくなる状態だったの！💥 WCAG 2.4.3 (Focus Order) 違反！🛡️ 開く前の `document.activeElement` を ref に保存して、閉じる時に DOM 内に存在すれば `focus()` を戻すように修正〜🎀 スクリーンリーダーユーザーには特にクリティカル (フォーカス位置 = 読み上げ位置)。TDD 3 ケース (基本復元 / トリガー削除時の安全 / 連続開閉の独立性) 全 Green。

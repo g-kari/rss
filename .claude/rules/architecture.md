@@ -340,6 +340,7 @@ src/
     article-ttl.ts           # 記事 TTL 管理（30日超過・非保護の期限切れ記事フィルタリング）
     clip.ts                  # SingleFile POST リクエストバリデーション（validateClipRequest）
     api-error.ts             # API エラー整形ヘルパー（ApiError 型 / apiError() 関数）
+    classify-http-error.ts   # クライアント側 HTTP エラー分類純粋関数（HttpErrorType / classifyHttpError / formatHttpErrorMessage / isRetryableHttpError）— #688
     cache-helper.ts          # Cloudflare Cache API 共通ヘルパー（buildCacheKey / cachePutAsync）
     csrf.ts                  # CSRF トークン発行・検証 + Origin ヘッダー検証（POST/PUT/DELETE 対応）
     rsshub.ts                # RSSHub インスタンス連携（自動 URL マッピング・アクセスキー付与・ルート解決）
@@ -722,6 +723,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `refresh-tokens.spec.ts`              | `src/lib/auth.ts` — リフレッシュトークンフロー                                                                                                                    |
 | `regex-extractor.spec.ts`             | `src/lib/regex-extractor.ts` — 正規表現ベース本文抽出                                                                                                             |
 | `retry-after.spec.ts`                 | `src/lib/retry-after.ts` — Retry-After ヘッダーパース                                                                                                             |
+| `classify-http-error.spec.ts`         | `src/lib/classify-http-error.ts` — `classifyHttpError` / `formatHttpErrorMessage` / `isRetryableHttpError` (#688, 30 ケース全分岐網羅)                            |
 | `rsshub.spec.ts`                      | `src/lib/rsshub.ts` — RSSHub URL 変換                                                                                                                             |
 | `sanitize-dompurify.spec.ts`          | 調査コード（dompurify Workers 非対応調査、無効化済み）                                                                                                            |
 | `sanitize-for-prompt.spec.ts`         | `src/lib/recommendation.ts#sanitizeForPrompt`                                                                                                                     |
