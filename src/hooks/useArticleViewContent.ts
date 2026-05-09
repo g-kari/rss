@@ -49,7 +49,11 @@ export function useArticleViewContent(
   const isShortContent = !article?.content || article.content.length < SHORT_CONTENT_THRESHOLD;
   const canFetch = !embedInfo && !!article?.link && isShortContent && !storedContent;
   const hasContent = !!(processedContent || article?.summary);
-  const hasFullContent = !!processedContent;
+  // #653: hasFullContent は「fetch 完了済み or fetch 不要」を厳格判定する。
+  // 旧実装 `!!processedContent` は article.content (RSS 本文) があれば fetch 前でも
+  // true になり、新記事遷移時に「fetch 前の短い本文で speak → ttsStop で即停止」を起こしていた。
+  // 新実装: storedContent (fetch 済) があるか、または canFetch=false (fetch 不要) なら true。
+  const hasFullContent = !!storedContent || !canFetch;
   const hasImages =
     !!(article?.ogImage ?? resolvedOgImage) ||
     !!(processedContent && /<img\b/i.test(processedContent));

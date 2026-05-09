@@ -24,6 +24,11 @@ interface Props {
   hasFullContent: boolean;
   canFetch: boolean;
   ttsText: string;
+  /**
+   * autoTranslate ON 時の翻訳完了待ち (#653)。
+   * `true` の場合、speak は翻訳完了 (translateResult or translateError) まで保留される。
+   */
+  autoTranslatePending?: boolean;
   onSpeak: (text: string) => void;
   /** 現在進行中の TTS を即停止する (#661 オートモード OFF 時に呼ぶ) */
   onTtsStop: () => void;
@@ -53,6 +58,7 @@ export default function AutoReadController({
   hasFullContent,
   canFetch,
   ttsText,
+  autoTranslatePending,
   onSpeak,
   onTtsStop,
   onFetch,
@@ -139,6 +145,7 @@ export default function AutoReadController({
       hasText: !!ttsText.trim(),
       canFetch,
       hasFullContent,
+      autoTranslatePending,
     });
     if (!start) return;
     speakTriggeredRef.current = articleId;
@@ -153,6 +160,7 @@ export default function AutoReadController({
     ttsText,
     canFetch,
     hasFullContent,
+    autoTranslatePending,
     onSpeak,
   ]);
 

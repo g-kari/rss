@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Article } from "../types";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
+import { isLikelyJapanese } from "../lib/article-utils";
+import { toPlainText } from "../lib/html";
 import { useArticleContent } from "./useArticleContent";
 import { useArticleAi } from "./useArticleAi";
 import { useImageDownload } from "./useImageDownload";
@@ -150,6 +152,8 @@ export function useArticleViewState({
   } = useArticleViewContent(article, storedContent, resolvedOgImage, theme);
 
   // --- TTS ---
+  // #653: 翻訳結果があれば TTS は翻訳側を読み上げる
+  const translatedText = translateResult && translateResult.text ? translateResult.text : null;
   const {
     ttsSupported,
     ttsPlaying,
@@ -160,7 +164,18 @@ export function useArticleViewState({
     ttsSpeak,
     ttsStop,
     buildTtsText,
-  } = useArticleViewTts(article, processedContent);
+  } = useArticleViewTts(article, processedContent, translatedText);
+
+  // #653: autoTranslate ON で翻訳完了を待つべきか
+  // - autoTranslate=true && 非日本語コンテンツ && 翻訳未完了 (loading 中含む) && エラーなし
+  // → AutoReadController が speak を保留する
+  const autoTranslatePending = useMemo(() => {
+    if (!autoTranslate) return false;
+    if (!storedContent) return false; // fetch 前は判定不可
+    if (translateResult || translateError) return false; // 翻訳完了 or 失敗
+    if (isLikelyJapanese(toPlainText(storedContent).slice(0, 200))) return false;
+    return true;
+  }, [autoTranslate, storedContent, translateResult, translateError]);
 
   // --- Keyboard shortcuts + auto-translate ---
   useArticleViewShortcuts({
@@ -256,6 +271,8 @@ export function useArticleViewState({
     ttsSpeak,
     ttsStop,
     buildTtsText,
+    translatedText,
+    autoTranslatePending,
     mainRef,
     contentRef,
     progressBarRef,

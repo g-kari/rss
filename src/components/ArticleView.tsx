@@ -133,6 +133,8 @@ function ArticleView({
     ttsSpeak,
     ttsStop,
     buildTtsText,
+    translatedText,
+    autoTranslatePending,
     mainRef,
     contentRef,
     progressBarRef,
@@ -339,7 +341,8 @@ function ArticleView({
         fetchError={fetchError}
         hasFullContent={hasFullContent}
         canFetch={canFetch}
-        ttsText={buildTtsText(article, processedContent)}
+        ttsText={buildTtsText(article, processedContent, translatedText)}
+        autoTranslatePending={autoTranslatePending}
         onSpeak={ttsSpeak}
         onTtsStop={ttsStop}
         onFetch={() => fetchFullContent()}

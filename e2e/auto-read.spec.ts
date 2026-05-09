@@ -276,3 +276,51 @@ test.describe("shouldTriggerAutoFetch — hasContent 厳格化 (#663)", () => {
     ).toBe(true);
   });
 });
+
+// #653: autoTranslate ON 時は翻訳完了まで speak を待つ
+test.describe("shouldStartAutoSpeak — autoTranslatePending ブロッカー (#653)", () => {
+  test("autoTranslatePending=true なら start しない（翻訳完了待ち）", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+        canFetch: false,
+        hasFullContent: true,
+        autoTranslatePending: true,
+      }),
+    ).toBe(false);
+  });
+
+  test("autoTranslatePending=false なら start する", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+        canFetch: false,
+        hasFullContent: true,
+        autoTranslatePending: false,
+      }),
+    ).toBe(true);
+  });
+
+  test("autoTranslatePending 未指定時は従来挙動を維持（後方互換）", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+      }),
+    ).toBe(true);
+  });
+});

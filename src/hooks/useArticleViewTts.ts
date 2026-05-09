@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import type { Article } from "../types";
-import { toPlainText } from "../lib/html";
-import { preprocessTtsText } from "../lib/tts-text";
+import { buildTtsText } from "../lib/tts-text";
 import { useSpeechSynthesis } from "./useSpeechSynthesis";
 import { useEventListener } from "./useEventListener";
 
@@ -16,17 +15,17 @@ export interface ArticleViewTtsResult {
   handleTtsToggle: () => void;
   ttsSpeak: (text: string) => void;
   ttsStop: () => void;
-  buildTtsText: (article: Article, processedContent: string | null) => string;
-}
-
-function buildTtsText(article: Article, processedContent: string | null): string {
-  const body = preprocessTtsText(toPlainText(processedContent ?? article.summary ?? ""));
-  return [article.title, body].filter(Boolean).join("\n\n");
+  buildTtsText: (
+    article: Article,
+    processedContent: string | null,
+    translatedText?: string | null,
+  ) => string;
 }
 
 export function useArticleViewTts(
   article: Article | null,
   processedContent: string | null,
+  translatedText?: string | null,
 ): ArticleViewTtsResult {
   const {
     supported: ttsSupported,
@@ -49,10 +48,10 @@ export function useArticleViewTts(
       ttsStop();
     } else {
       if (!article) return;
-      const text = buildTtsText(article, processedContent);
+      const text = buildTtsText(article, processedContent, translatedText);
       if (text.trim()) speak(text);
     }
-  }, [ttsPlaying, ttsPaused, ttsStop, speak, article, processedContent]);
+  }, [ttsPlaying, ttsPaused, ttsStop, speak, article, processedContent, translatedText]);
 
   // Shift+P キーボードショートカット
   useEventListener(

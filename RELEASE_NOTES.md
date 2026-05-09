@@ -4,6 +4,7 @@
 
 ### バグ修正っ
 
+- **オートモードで次の記事に遷移後 TTS が止まる + 自動翻訳側を読み上げない問題を直したよ〜** — Issue #653 続編。`hasFullContent = !!processedContent` が緩すぎて、新記事に遷移した瞬間 `article.content` (RSS 本文) で `processedContent` が即非 null になって `hasFullContent=true` で speak が発火 → 直後 `useArticleViewTts` の `ttsStop()` が effect 順で呼ばれて即停止する状態だったの〜🙅‍♀️ 修正で `hasFullContent = !!storedContent || !canFetch` に厳格化（fetch 完了 or fetch 不要のときだけ true）！🛡️ 加えて `buildTtsText` を `src/lib/tts-text.ts` に純粋関数化して `translatedText` パラメータを追加、`autoTranslatePending` ブロッカーを `shouldStartAutoSpeak` に新設で「自動翻訳完了待ち → 翻訳側を読み上げ」の正しいフロー！🌐✨ TDD 11 ケース追加 (buildTtsText 7 + autoTranslatePending 3 + 後方互換 1)。
 - **Chrome 組み込み要約 AI が最新 Chrome でも使えなかった問題を直したよ〜** — Issue #664。`browser-summarizer.ts` / `browser-translator.ts` の Chrome 最低バージョンが **131** のまま 2 周遅れになってて、131〜137 のユーザーが `flag-disabled` と誤診断されてたの〜😱 公式ドキュメント準拠で **138** に bump！🔧 さらに `Summarizer.create()` の **`navigator.userActivation` 必須要件**が欠落してて、ユーザー操作なしで呼ばれると黙って null フォールバックする状態だったので `requires-user-activation` reason を新設、user activation チェックを追加！🛡️ `monitor` コールバックで DL 進捗を `devError` ログ、エラー全握りつぶしも `devError` で原因が DevTools に出るように〜🔍 設定 UI のメッセージも 138 ベース + ハードウェア要件 (22GB / GPU 4GB VRAM か CPU 16GB RAM 4 コア) を明示。`parseChromeMajorVersion` を純粋関数化して TDD 5 ケース追加〜✨
 
 ### リファクタリングっ
