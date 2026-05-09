@@ -12,6 +12,7 @@ import OfflineBanner from "./components/OfflineBanner";
 import NewArticleBanner from "./components/NewArticleBanner";
 import FocusModeOverlay from "./components/FocusModeOverlay";
 import ArticleDetailOverlay from "./components/ArticleDetailOverlay";
+import ColumnResizeHandles from "./components/ColumnResizeHandles";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useFeedGroups } from "./hooks/useFeedGroups";
@@ -811,29 +812,14 @@ export default function App() {
                 onClose={closeArticleDetailOverlay}
                 articleViewProps={articleViewProps}
               />
-              {/* カラムリサイズハンドル (PCのみ、記事一覧フォーカス / ポップアップ表示中は無効) */}
-              {!listFocusMode && (
-                <>
-                  <div
-                    className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
-                    style={{ left: sidebarWidth - 2 }}
-                    onMouseDown={(e) => handleResizeStart("sidebar", e)}
-                    onDoubleClick={() => resetWidth("sidebar")}
-                    aria-hidden={hasOpenPopup}
-                  >
-                    <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
-                  </div>
-                  <div
-                    className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
-                    style={{ left: sidebarWidth + listWidth - 2 }}
-                    onMouseDown={(e) => handleResizeStart("list", e)}
-                    onDoubleClick={() => resetWidth("list")}
-                    aria-hidden={hasOpenPopup}
-                  >
-                    <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
-                  </div>
-                </>
-              )}
+              <ColumnResizeHandles
+                listFocusMode={listFocusMode}
+                hasOpenPopup={hasOpenPopup}
+                sidebarWidth={sidebarWidth}
+                listWidth={listWidth}
+                onResizeStart={handleResizeStart}
+                onResetWidth={resetWidth}
+              />
               <div
                 data-pane="sidebar"
                 className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"

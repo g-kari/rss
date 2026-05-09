@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### リファクタリングっ
+
+- **App.tsx からカラムリサイズハンドルを分離したよ〜 (#650 段階分割)** — 3 ペインの「サイドバー / リスト」境界のリサイズ用 `<div>` ペアが App.tsx に直書きで 22 行残ってたから、`ColumnResizeHandles.tsx` に切り出したよっ🔧 listFocusMode 時は null 返しで早期 return、共通の `baseClass` 文字列を関数内に集約して 2 つの handle で重複してた className を 1 箇所に〜🎀 App.tsx 961 → 947 行 (-14 行)、見通しがちょっと良くなった!📦
+
 ### バグ修正っ
 
 - **Chrome 138+ なのに端末上の要約が使えない問題を修正したよ〜 (#664)** — `Summarizer.availability({ type: "tl;dr" })` でセミコロン入りの非標準値を渡してたから、Chrome の API が **常に `"unavailable"` を返して** 端末上の要約が永遠に使えない状態になってたの〜🥲 公式仕様 (https://developer.chrome.com/docs/ai/summarizer-api) では `type` の有効値は `"tldr"` (セミコロン無し) なので、`SUMMARIZER_OPTIONS` 定数に集約して **`"tldr"` に修正**!💡 これで Chrome 138+ + 22GB 空き + GPU 4GB VRAM (or CPU 16GB RAM 4 コア) を満たす環境では端末上の Summarizer API が正しく動作してコスト・レイテンシが大幅削減されるよ〜🚀 TDD で `SUMMARIZER_OPTIONS.type === "tldr"` をテスト追加して同じセミコロン罠を再発防止!🛡️
