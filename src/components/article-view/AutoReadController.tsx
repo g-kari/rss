@@ -5,6 +5,7 @@ import type { Article } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 import { isAutoReadFinished, shouldStartAutoSpeak, shouldTriggerAutoFetch } from "@/lib/auto-read";
 import { autoReadDebug } from "@/lib/auto-read-debug";
+import { useSyncedRef } from "@/hooks/useSyncedRef";
 
 interface Props {
   enabled: boolean;
@@ -82,8 +83,7 @@ export default function AutoReadController({
   // ref で「この article は既に speak 済み」を覚えておかないと、TTS 完了 → 再 speak の
   // 無限ループに陥る。articleId 切替時に null にリセットして次記事の speak を許可。
   const speakTriggeredRef = useRef<string | null>(null);
-  const onTtsStopRef = useRef(onTtsStop);
-  onTtsStopRef.current = onTtsStop;
+  const onTtsStopRef = useSyncedRef(onTtsStop);
   const toast = useToast();
 
   const articleId = article?.id;

@@ -9,6 +9,7 @@ import { collectImageUrlsFromHtml } from "../lib/image-extractor";
 import { collectIframeUrlsFromHtml } from "../lib/embed-utils";
 import { parseRetryAfter } from "../lib/retry-after";
 import { buildArticlesKey } from "../lib/gallery-prefetch";
+import { useSyncedRef } from "./useSyncedRef";
 
 export interface PrefetchedMedia {
   /** 本文から抽出した画像 URL（重複排除済み） */
@@ -143,15 +144,13 @@ export function usePrefetchGalleryContents({
   const [failedIds, setFailedIds] = useState<Set<string>>(() => new Set());
   const [expandingIds, setExpandingIds] = useState<Set<string>>(() => new Set());
   // enabled=false のとき state を空にすると、切り替え時のチラつきが出るため保持する
-  const mediaRef = useRef(media);
-  mediaRef.current = media;
+  const mediaRef = useSyncedRef(media);
   // 429 受信時に Retry-After で指定された時刻まではプリフェッチを完全停止する。
   // ref は fetchAndCacheArticle 内の同期チェック用、state は useEffect 再実行のトリガー用に二重管理する。
   const rateLimitUntilRef = useRef<number>(0);
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number>(0);
   // retryArticle から最新の articles を参照するための ref
-  const articlesRef = useRef(articles);
-  articlesRef.current = articles;
+  const articlesRef = useSyncedRef(articles);
 
   // #669: visible 拡張で effect が再実行されても進行中 fetch を二重起動しないため、
   // inflight Set を effect 跨ぎで永続化する（旧実装は effect スコープローカルだった）。

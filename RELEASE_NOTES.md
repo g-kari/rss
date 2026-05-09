@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (規範統一)
+
+- **`useSyncedRef` 規範違反を 4 hooks / 5 ref で連続置換!🎯 (機械検出 + 連続適用)** — 前サイクルの `useReadingProgress` と同じパターン (render 中 `Ref.current = X` 手動 assign) を `grep -rEnB1 "Ref\\.current\\s*="` で網羅検出して、4 ファイル 5 ref を一括 `useSyncedRef` に置換〜💪 対象は `AutoReadController.onTtsStopRef` / `usePrefetchGalleryContents.mediaRef + articlesRef` / `useAutoReset.resetRef + durationRef` / `useGalleryAutoScroll.onUserInterruptRef`〜🛡️ `coding-conventions.md` / `react-patterns.md` の `useSyncedRef` 規範違反を解消、新規開発者が「どっちが正しいパターン?」と迷う drift を排除〜📚 `useFilteredArticles.activeIdsRef` は意図的な perf 最適化 (コメント明記済み) のため対象外〜💎
+
 ### テスト整備っ
 
 - **`compareByDateDesc` / `compareByPublishedAtDesc` の 2 関数仕様差分を 14 ケースで明文化!🧪 (テストカバレッジ監査 82% 信頼度)** — 名前と引数の型が似ている 2 つの sort comparator が **「null publishedAt の扱い」と「id stable sort 有無」で意図的に挙動が異なる** ことが暗黙だったのを TDD で固定〜🛡️ `compareByDateDesc` は `publishedAt ?? createdAt` (null は createdAt フォールバック) + 同日付なら id stable sort、`compareByPublishedAtDesc` は `publishedAt ?? ""` (null は末尾) + id 比較なし、を spec 化〜📚 cron / shared-feed.ts / useArticleData.ts の sort 経路で齟齬が起きないことを保証 + 将来「2 関数を統合しよう」のような誤ったリファクタを防止できる **defensive 改善** ね〜🎯 (実バグでなく仕様確定 + regression 防止)

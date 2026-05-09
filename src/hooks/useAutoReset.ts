@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSyncedRef } from "./useSyncedRef";
 
 /**
  * 値をセットしてから一定時間後に自動でリセットする hook。
@@ -13,10 +14,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export function useAutoReset<T>(resetValue: T, duration = 3000) {
   const [value, setValue] = useState<T>(resetValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resetRef = useRef(resetValue);
-  const durationRef = useRef(duration);
-  resetRef.current = resetValue;
-  durationRef.current = duration;
+  const resetRef = useSyncedRef(resetValue);
+  const durationRef = useSyncedRef(duration);
 
   useEffect(
     () => () => {
