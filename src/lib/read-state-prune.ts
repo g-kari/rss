@@ -44,3 +44,31 @@ export function pruneOldReadIds(
   }
   return next;
 }
+
+/**
+ * 自動 prune に使う「実効カットオフ時刻」を計算する純粋関数 (#635 設定可能化)。
+ *
+ * ユーザーが手動設定する `readBeforeTimestamp` と、`ttlDays` から算出した
+ * 「N 日以上前」のカットオフのうち、**より新しい時刻** を採用する。
+ * 「より新しい時刻」を採用する理由: cutoff は「これ以前を削除する」基準なので、
+ * 新しい時刻ほど削除対象が広く（=より積極的に削除）なる。ユーザーの意図を
+ * 取りこぼさないよう、両方の基準を OR で組み合わせる。
+ *
+ * @param readBeforeTimestamp ユーザー手動の cutoff（ISO 8601）または null
+ * @param ttlDays `ReadState.ttlDays`（null/0=無効、1〜365）
+ * @param now 現在時刻のミリ秒タイムスタンプ（テスト容易性のため引数化）
+ * @returns 実効カットオフ ISO 8601、または null（どちらも未設定）
+ */
+export function computeEffectiveReadBeforeCutoff(
+  readBeforeTimestamp: string | null,
+  ttlDays: number | null,
+  now: number,
+): string | null {
+  const ttlCutoffIso =
+    ttlDays != null && ttlDays > 0
+      ? new Date(now - ttlDays * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+  const candidates = [readBeforeTimestamp, ttlCutoffIso].filter((x): x is string => !!x);
+  if (candidates.length === 0) return null;
+  return candidates.reduce((a, b) => (a > b ? a : b));
+}

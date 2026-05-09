@@ -10,7 +10,12 @@
 
 ### バグ修正っ
 
+- **ギャラリービュで列が偏ったときに次ページが読み込まれない問題を直したよ〜** — Issue #636 追加要件。masonic ギャラリーで列の高さがバラバラだと、最長列の底にある sentinel に届かないと無限スクロールが発火しなくて「画面に空きがあるのに次が来ない」状態になってたの〜🙅‍♀️ `shouldEagerLoad` 純粋関数を新設して、`scrollHeight <= clientHeight` を判定する `isContentShort` フラグも load トリガー条件に追加！📐✨ `ResizeObserver` でスクロールコンテナのサイズ変化も監視するから、masonic レイアウト確定後にも自動で再評価。`MAX_EAGER_LOADS=20` の暴走防止カウンタも維持。TDD 8 ケース追加〜📦
 - **オートモードで概要だけ読み上げて先に進まない問題を直したよ〜** — Issue #663。これまで `hasContent` がサマリ fallback で true になっちゃってて、本文 fetch がトリガーされず TTS だけ即起動してたの〜😱 さらに effect (3) に二重発火防止の ref がなくて、TTS 完了 → 再 speak の無限ループも発生してたよ〜🔁 修正で `hasFullContent`（processedContent 厳格判定）を新設、`shouldStartAutoSpeak` に `canFetch` + `hasFullContent` ゲートを追加！🛡️ `speakTriggeredRef` で同記事の二重 speak も防止。これでフル本文取得 → 全文読み上げ → 次の記事の正常フローが復活〜📖✨ TDD 4 ケース追加で再現テストもバッチリ。
+
+### パフォーマンス改善っ
+
+- **既読 ID の自動 prune が「記事保持期間」設定に連動するようにしたよ〜** — Issue #635 設定可能化。これまで自動 prune (#635 A1) は手動の `readBeforeTimestamp` 設定時しか動かなかったけど、ユーザー設定の **「記事保持期間」(30/60/180 日)** からも cutoff を自動算出して既読 ID を物理削除するように！🗑️✨ `computeEffectiveReadBeforeCutoff` 純粋関数で「手動 cutoff」と「ttlDays cutoff」のうちより新しい (積極的に削除する) 方を採用。1 日 100 件読了の重ユーザーでも、180 日設定なら最大 18,000 件を自動でお掃除〜📉 既存の「記事保持期間」UI を変えずにそのまま閾値設定として機能。TDD 7 ケース追加。
 - **画像プロキシのレートリミット (120 req/分) を撤廃したよ〜** — Issue #649 案 A。これまで画像プロキシに KV 経由のスライディングウィンドウ制限があったけど、Cache HIT の高速化メリットを実質ゼロにしてて画像表示体験を妨げてたの〜🐌 案 A (廃止) を採用！🚀 SSRF・同一オリジン・MIME 検証の防御層は据え置きで、`imageProxyRateLimitKey` / `IMAGE_PROXY_MAX_CALLS` / `IMAGE_PROXY_WINDOW_MS` を削除。Cache MISS 時の遅延もこれで KV 分が消えるよ〜⚡
 
 ### 環境堅牢化っ
