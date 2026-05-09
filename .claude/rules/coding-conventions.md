@@ -407,6 +407,76 @@ useEffect(() => {
 
 主な使用箇所: `AutoReadController`（#660）, `useReadStateSync`（lastServerSyncRef）
 
+### 派生ケース: effect の二重発火を防ぐ「実行済み ID」ref
+
+「現在対象 (articleId / sessionId) で副作用を **1 回だけ** 実行したい」effect は、依存配列の変動値（テキスト・派生 state など）で再発火しないように **実行済み ID** を ref で覚える。
+
+```typescript
+// アンチパターン: ttsText / processedContent が変化するたびに onSpeak が再呼ばれる
+useEffect(() => {
+  if (start) onSpeak(ttsText);
+}, [ttsText, ttsPlaying /* ... */]);
+
+// 修正パターン: 同 articleId で speak 済みなら早期 return + 切替時にリセット
+const speakTriggeredRef = useRef<string | null>(null);
+useEffect(() => {
+  if (speakTriggeredRef.current === articleId) return;
+  if (!start) return;
+  speakTriggeredRef.current = articleId;
+  onSpeak(ttsText);
+}, [articleId, ttsText /* ... */]);
+
+// articleId 切替時の独立 reset effect で speakTriggeredRef.current = null
+```
+
+**Why**: 2026-05-09 の #663。`AutoReadController` effect (3) に二重防止 ref がなく、TTS 完了で `ttsPlaying=false` に戻ると effect が再発火 → 同記事を無限に再 speak するループが発生していた。`fetchTriggeredRef` パターン（#660 で導入済み）を speak 側にも適用するのが正解。
+
+**How to apply**: 「副作用が一度だけ走るべき」effect の依存配列に変動値が入っているなら、必ず ID ベースの `triggeredRef` で防護する。`fetchTriggeredRef` / `speakTriggeredRef` のように **「何 ID で何を実行したか」** を ref に持たせて、同 ID で再実行しないようにガードする。
+
+## 同一プロパティ名で意味の異なる派生値を使い分けない
+
+UI 用と判定ロジック用で意味が違う「派生 boolean」は、**別名で分離する**。同名で意味だけ変えると、片方の意味で正しくても他方では誤判定になる。
+
+```typescript
+// アンチパターン: hasContent がサマリ含むかフル本文かで意味がブレる
+const hasContent = !!(processedContent || article?.summary);
+//   ↑ AI/TTS ボタン表示用には正しい
+//   ↑ オートモードの「fetch 不要か」判定には誤り — サマリ fallback で fetch スキップ
+
+// 修正パターン: 用途別に派生値を分ける
+const hasContent = !!(processedContent || article?.summary); // UI 用
+const hasFullContent = !!processedContent; // 全文取得 gate 用
+```
+
+**Why**: 2026-05-09 の #663（オートモードで概要だけ読み上げ + 同記事ループ）の根本原因。`hasContent` がサマリで true になっていたため `shouldTriggerAutoFetch` が「既に読める」と判定して全文 fetch をスキップ → サマリ fallback で TTS が即起動 → 概要だけ読み上げ。
+
+**How to apply**: 派生 boolean / 派生 state を作るときは「どの判定に使うか」を 1 つに絞る。複数の判定で使うなら **判定別に派生値を分ける**。`hasContent` のような汎用名は曖昧なので、`hasFullContent` / `hasSummaryOnly` / `canRender` のように **意図が読み取れる名前** を付ける。
+
+主な使用箇所: `useArticleViewContent`（hasContent vs hasFullContent、#663）
+
+## fallback ロジックの伝播範囲を意識する
+
+`processedContent ?? article.summary ?? ""` のような fallback は、UI 描画では合理的でも、**そのまま判定ロジックに伝播させると意味が変わる**。fallback 結果を渡す境界で「fallback 適用後の値か / 元の値か」を明確に区別する。
+
+```typescript
+// アンチパターン: buildTtsText の fallback 結果がそのまま speak gate に伝播
+function buildTtsText(article, processedContent) {
+  return preprocessTtsText(toPlainText(processedContent ?? article.summary ?? ""));
+}
+// ↑ ttsText は常にサマリ fallback 込みで非空になる → shouldStartAutoSpeak の hasText 条件が常に true に
+
+// 修正パターン: 判定側で「フル本文有無」を別途渡してゲートする
+shouldStartAutoSpeak({
+  hasText: !!ttsText.trim(),
+  canFetch,
+  hasFullContent, // ← fallback 適用前の事実
+});
+```
+
+**Why**: #663 で `buildTtsText` のサマリ fallback が `shouldStartAutoSpeak` に伝播し、本文取得前にサマリで TTS が起動していた。
+
+**How to apply**: fallback を含む文字列・配列を判定関数に渡すときは、判定側で「fallback されたかどうか」を別 boolean で受け取る。`hasText` のような fallback 後の事実だけでなく、`hasOriginal` のような fallback 前の事実も渡せるよう設計する。
+
 ## モード OFF 時に進行中の副作用を停止する
 
 state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
