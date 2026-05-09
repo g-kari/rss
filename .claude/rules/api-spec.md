@@ -1296,6 +1296,87 @@ Cookie `access_token` / `session_id` / `token_exp` が削除される。
 
 ---
 
+## DELETE /api/content
+
+自分の clip cache を削除する。`POST /api/clip` で SingleFile 拡張から保存した HTML を消したい場合に使う。共有 cache (Cloudflare Cache API の content cache、ユーザー横断) は削除しない (#691 で撤廃済み — フィード全体を一括クリアしたい場合は `POST /api/feeds/:id/purge-content-cache` を使うこと)。
+
+### クエリパラメータ
+
+| パラメータ | 型     | 説明                     |
+| ---------- | ------ | ------------------------ |
+| `url`      | string | 必須: 記事の http(s) URL |
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true, "deleted": { "clip": true } }
+```
+
+`deleted.clip` は cache に該当 entry が存在して削除に成功したかを示す boolean。entry がそもそも無かった場合も `false` で返り 200 を返す (冪等)。
+
+### エラー一覧
+
+| ステータス | code          | 説明                        |
+| ---------- | ------------- | --------------------------- |
+| `400`      | `INVALID_URL` | URL が空または http(s) 以外 |
+| `401`      | —             | 未認証                      |
+
+---
+
+## POST /api/test/seed
+
+e2e テスト専用の R2 シード API。**dev / e2e 環境のみ動作**: `process.env.NODE_ENV !== "production"` かつ `DEV_AUTH_BYPASS_USER_ID` がセット済みのときのみ実 endpoint として機能する。**本番では 404** を返す (Next.js の NODE_ENV inline で dead code 化)。
+
+### リクエスト
+
+```json
+{
+  "subscriptions": [{ "feedHash": "string", "url": "string", ... }],
+  "articles": { "feedHashA": [Article, ...], "feedHashB": [...] },
+  "readState": { "readIds": ["..."], "bookmarkIds": ["..."], ... },
+  "feedGroups": [...],
+  "collections": [...]
+}
+```
+
+すべてのフィールドはオプション。指定したフィールドのみ書き込まれる。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true, "userId": "e2e-test-user", "wrote": { "subscriptions": 5, "articles": 12, ... } }
+```
+
+### エラー一覧
+
+| ステータス | code              | 説明                                                                           |
+| ---------- | ----------------- | ------------------------------------------------------------------------------ |
+| `400`      | `INVALID_PAYLOAD` | リクエストボディが期待する型と異なる                                           |
+| `404`      | —                 | 本番環境 (`NODE_ENV === "production"` または `DEV_AUTH_BYPASS_USER_ID` 未設定) |
+
+---
+
+## DELETE /api/test/seed
+
+e2e テスト専用の R2 全削除 API。`POST /api/test/seed` と同じ環境ガード (`NODE_ENV !== "production"` + `DEV_AUTH_BYPASS_USER_ID`) で動作。test 用ユーザー (`DEV_AUTH_BYPASS_USER_ID`) の `users/{userId}/*` 配下を全削除する。**本番では 404** を返す。
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{ "ok": true, "userId": "e2e-test-user", "deleted": 12 }
+```
+
+### エラー一覧
+
+| ステータス | code | 説明                                                                           |
+| ---------- | ---- | ------------------------------------------------------------------------------ |
+| `404`      | —    | 本番環境 (`NODE_ENV === "production"` または `DEV_AUTH_BYPASS_USER_ID` 未設定) |
+
+---
+
 ## GET /api/recommendations
 
 フィード推薦一覧を返す。有効なキャッシュが存在しない場合は 204 を返す（クライアントは `POST /api/recommendations/refresh` を呼んで再生成をトリガーすること）。

@@ -176,6 +176,10 @@ src/
     article-view/ArticleHeaderShare.tsx     # クイックシェア + ShareMenu/FilterMenu/GlobalFilterMenu
     article-view/ArticleHeaderEngagement.tsx # 後で読む/ブックマーク/いいね/メモ/コレクション/フォーカスモード
     article-view/EngagementSegmentButton.tsx # 後で読む/ブックマーク/いいね 3 連トグルボタン共通テンプレート（simplify 監査 Issue 2 で抽出）
+    article-view/ArticleContentBody.tsx     # 記事本文描画ボディ（ArticleView から分割）
+    article-view/EmptyArticleView.tsx       # 記事未選択時のプレースホルダ表示
+    article-view/FetchFullContentArea.tsx   # 「全文取得」CTA 領域（ボタン・retry・進捗）
+    article-view/AddToCollectionMenu.tsx    # 記事をコレクションに追加するインラインメニュー
     user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel / FeedManagementTabPanel / ImportExportTabPanel / TtsVoiceSection / shared）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
@@ -684,7 +688,8 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `feeds-crud.spec.ts`                  | `app/api/feeds/**/route.ts` — フィード CRUD API                                                                                                                   |
 | `feeds-validation.spec.ts`            | `src/lib/validation.ts#isValidCookieHeader` — Cookie バリデーション                                                                                               |
 | `fetch-article-content-clamp.spec.ts` | `src/lib/fetch-article-content.ts` — コンテンツクランプ                                                                                                           |
-| `full-text-search.spec.ts`            | `src/lib/full-text-search.ts` — クエリパーサー                                                                                                                    |
+| `full-text-search.spec.ts`            | `src/lib/full-text-search.ts` — クエリパーサー + `compileSearchQuery` evaluator 再利用                                                                            |
+| `share-targets.spec.ts`               | `src/components/article-view/shareTargets.ts` — `triggerShareTarget` clipboardText 有/無の DI テスト                                                              |
 | `html-post-processor.spec.ts`         | `src/lib/html-post-processor.ts` — HTML 後処理パイプライン                                                                                                        |
 | `orphaned-icon-svgs.spec.ts`          | `src/lib/html-noise-removal.ts#removeOrphanedIconSvgs` — `<svg><use href="#fragment">` 孤立 icon 参照の除去                                                       |
 | `json-ld-images.spec.ts`              | `src/lib/json-ld-images.ts` — `extractJsonLdImages` / `appendMissingJsonLdImages` 純粋関数（JSON-LD Article image 抽出と本文補完）                                |

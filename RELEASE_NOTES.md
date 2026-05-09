@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### ドキュメント整備っ
+
+- **docs drift 6 件を omnibus 修正したよ〜 (docs drift 監査)** — `architecture.md` のテストカバレッジマップに `share-targets.spec.ts` 追加、`article-view/` ブロックに `ArticleContentBody` / `EmptyArticleView` / `FetchFullContentArea` / `AddToCollectionMenu` の 4 ファイルを追記、`api-spec.md` に `DELETE /api/content` / `POST /api/test/seed` / `DELETE /api/test/seed` の 3 endpoint spec を追加!📚 すべて pure docs 修正で 1 commit に集約〜🎀
+
 ### セキュリティ対策っ
 
 - **`POST /api/engagement` に購読チェックを追加したよ〜 (security 監査 Issue 2)** — エンゲージメント記録 API が認証だけ通せば任意の `feedHash` を受け付けてた状態を発見!💥 ユーザーが自分が購読していない `feedHash` を送信して `users/{userId}/engagement.json` の `topFeeds` 統計を任意に汚染できた状態 (cross-user 影響なしだが self-data + 推薦生成精度に影響)〜🥲 #691 と同パターンで `readUserSubscriptions` で購読チェックを追加して未購読 feedHash は 400 で拒否!🛡️
