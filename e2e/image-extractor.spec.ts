@@ -107,3 +107,82 @@ test.describe("collectImageUrlsFromHtml — サイズフィルタ", () => {
     ]);
   });
 });
+
+/**
+ * #667: wallhaven 等の `<a href="full画像"><img src="thumb"></a>` 構造で、
+ * `<img src>` (= サムネ) が `MIN_IMAGE_SIZE_PX` 未満で除外され、結果として
+ * フル解像度画像も DL されないバグを修正するための anchor href 抽出。
+ */
+test.describe("collectImageUrlsFromHtml — anchor href からフル解像度画像を抽出", () => {
+  test("a href が画像 URL の場合、href も収集対象に含める", () => {
+    const html =
+      '<a href="https://w.wallhaven.cc/full/5y/wallhaven-5yk1q9.jpg"><img src="https://th.wallhaven.cc/small/5y/wallhaven-5yk1q9.jpg" width="300" height="200"></a>';
+    expect(collectImageUrlsFromHtml(html)).toEqual([
+      "https://w.wallhaven.cc/full/5y/wallhaven-5yk1q9.jpg",
+      "https://th.wallhaven.cc/small/5y/wallhaven-5yk1q9.jpg",
+    ]);
+  });
+
+  test("a href が画像 URL で内部の img が小さくて除外されても、href は残る", () => {
+    const html =
+      '<a href="https://example.com/full.jpg"><img src="https://example.com/thumb.png" width="60" height="60"></a>';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/full.jpg"]);
+  });
+
+  test("a href が画像拡張子でない場合は無視 (記事リンクなど)", () => {
+    const html =
+      '<a href="https://example.com/article/123"><img src="https://example.com/thumb.jpg" width="600" height="400"></a>';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/thumb.jpg"]);
+  });
+
+  test("対応拡張子: jpg / jpeg / png / gif / webp / avif / svg", () => {
+    const html = `
+      <a href="https://example.com/a.jpg"></a>
+      <a href="https://example.com/b.jpeg"></a>
+      <a href="https://example.com/c.png"></a>
+      <a href="https://example.com/d.gif"></a>
+      <a href="https://example.com/e.webp"></a>
+      <a href="https://example.com/f.avif"></a>
+    `;
+    expect(collectImageUrlsFromHtml(html)).toEqual([
+      "https://example.com/a.jpg",
+      "https://example.com/b.jpeg",
+      "https://example.com/c.png",
+      "https://example.com/d.gif",
+      "https://example.com/e.webp",
+      "https://example.com/f.avif",
+    ]);
+  });
+
+  test("拡張子の大文字小文字を区別しない", () => {
+    const html = '<a href="https://example.com/PHOTO.JPG"></a>';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/PHOTO.JPG"]);
+  });
+
+  test("href にクエリ文字列が付いていても拾う", () => {
+    const html = '<a href="https://example.com/full.jpg?v=2"></a>';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/full.jpg?v=2"]);
+  });
+
+  test("href が img の src と同 URL なら重複排除", () => {
+    const html =
+      '<a href="https://example.com/x.jpg"><img src="https://example.com/x.jpg" width="600" height="400"></a>';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/x.jpg"]);
+  });
+
+  test("data: / 相対 URL の href は無視", () => {
+    const html = `
+      <a href="data:image/png;base64,AAAA"></a>
+      <a href="/local/path.jpg"></a>
+      <a href="https://example.com/ok.jpg"></a>
+    `;
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/ok.jpg"]);
+  });
+
+  test("/api/image-proxy 経由の href も拾う", () => {
+    const html = '<a href="/api/image-proxy?url=https%3A%2F%2Fexample.com%2Ffull.jpg"></a>';
+    expect(collectImageUrlsFromHtml(html)).toEqual([
+      "/api/image-proxy?url=https%3A%2F%2Fexample.com%2Ffull.jpg",
+    ]);
+  });
+});

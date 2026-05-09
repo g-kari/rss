@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### バグ修正っ
+
+- **記事詳細の画像 DL で wallhaven 等のフル解像度画像が DL されてなかった問題を修正したよ〜!📷 (#667)** — `<a href="フル画像.jpg"><img src="サムネ.jpg"></a>` 構造の記事で、`<img src>` がサムネ (170px 未満) で除外されて結果として OGP 画像しか DL されない状態に〜🥲 `collectImageUrls` / `collectImageUrlsFromHtml` に **anchor href 抽出ロジック** を追加して、`href` が画像拡張子 (jpg/jpeg/png/gif/webp/avif/svg) で終わる場合はその URL も収集対象に含めるよう修正!💪 内部の `<img>` が小さくて除外されても href のフル解像度画像は残る〜🎯 ギャラリー側 (#667 commit 7fa4eb2) と同じ問題が記事詳細側にもあったので両方解決!🛡️ TDD 全 9 ケース追加 (a href が画像 URL / 内部 img が小サイズ / 画像拡張子なし無視 / 拡張子大文字小文字 / クエリ文字列 / 重複排除 / data: 相対 URL 無視 / image-proxy URL)〜📦
+
 ### 激アツ新機能っ
 
 - **ギャラリービューに自動スクロール機能追加!🎬 (#690 案 D ハイブリッド)** — ユーザー設定 → 表示タブ の「自動スクロール」で **5 段階の速度** (OFF / 遅 / 中 / 速 / スライドショー) を選べるように!🎀 連続スクロール (遅 30px/秒、中 60px/秒、速 120px/秒) は `requestAnimationFrame` ベースで滑らか〜⚡ スライドショーモードは 3 秒ごとに 1 viewport 分ジャンプ (Pinterest 風)〜🖼️ ホイール / タッチでの **手動スクロールで自動的に OFF** に戻るので「読みたい記事を見つけたら止まる」一時停止メカニズム内蔵!🛡️ 純粋関数 `computeContinuousScrollDelta` / `computeSlideshowJump` 等を `src/lib/gallery-autoscroll.ts` に切り出して TDD 全 22 ケース網羅 (5 速度 × 4 関数 + 境界値 / 不正値 / null fallback)〜📦 hook `useGalleryAutoScroll` で連続/スライドショー両モードの ライフサイクル管理 + 手動操作検出を集約〜📚
