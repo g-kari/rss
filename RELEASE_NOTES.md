@@ -4,6 +4,8 @@
 
 ### パフォーマンス改善っ
 
+- **`useReadStateSyncApply` の notes / tagIds に構造的等価性ガードを追加したよ〜 (perf 監査 88% 信頼度)** — 2 秒毎に走るサーバー同期で `setNotesState(merged)` / `setTagIdsState(result)` が **内容変化なしでも毎回新 reference** を作って setState を呼んでた状態を発見!💥 `useFilteredArticles` の派生 useMemo (noteIds Set / タグ別ビュー等) が **2 秒毎に再計算** されて全記事フィルター pass の主スレッドブロックを発生させてたの〜🥲 #686 の `equalSnoozedUntil` パターンを踏襲して `equalNotes` / `equalTagIds` 純粋関数を `read-state-merge.ts` に追加 (TDD 全 19 ケース網羅) + setState 前の構造的等価性ガードを `useReadStateSyncApply.ts` に適用!🛡️ 内容変化なしの多数派ケースで setState を skip して reference を保持する形〜🎀
+
 - **`useArticleViewContent` の `readingTime()` を useMemo で安定化したよ〜 (perf 監査 92% 信頼度)** — `readingTime()` は内部で `stripHtml` (8 regex passes) を呼ぶ重い計算なのに **bare で毎 render 実行** されてた状態を発見!💥 TTS state 変化 / reader settings 開閉 / scroll progress 発火など **親 re-render の度に長記事 (10-50KB HTML) を毎回 8 regex pass** で stripping してて主スレッドブロックの主因になってたの〜🥲 `useMemo([processedContent, article?.summary])` で安定化!🛡️ プロジェクトの「`createReadingTimeCache` を使う」ルール (#685) と整合させた形〜🎀
 
 ### リファクタリングっ

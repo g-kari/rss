@@ -4,7 +4,7 @@ import { useCallback, useRef } from "react";
 import type { KeywordFilter, ReadState } from "../types";
 import { STORAGE_KEYS, deferSaveSet, saveJson, storageSet } from "../lib/storage";
 import { type SetKind, type PendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
-import { equalSnoozedUntil } from "../lib/read-state-merge";
+import { equalSnoozedUntil, equalNotes, equalTagIds } from "../lib/read-state-merge";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
 export interface SetStateDispatchers {
@@ -157,8 +157,14 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
       }
       if ("notes" in state) {
         const merged = { ...stateRef.current.notes, ...(state.notes ?? {}) };
-        saveJson(STORAGE_KEYS.NOTES, merged);
-        setNotesState(merged);
+        // #686 同等の構造的等価性ガード: 内容変化なしなら setState を skip し
+        // reference を保持する。useFilteredArticles の noteIds useMemo が notes を
+        // 依存に持つため、reference 不安定だと 2 秒毎の同期で全記事フィルター pass
+        // が再走していた。
+        if (!equalNotes(stateRef.current.notes, merged)) {
+          saveJson(STORAGE_KEYS.NOTES, merged);
+          setNotesState(merged);
+        }
       }
       if ("tagIds" in state) {
         const serverTags = state.tagIds ?? {};
@@ -177,8 +183,12 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
             pendingTagChangedRef.current.add(k);
           }
         }
-        saveJson(STORAGE_KEYS.TAGS, result);
-        setTagIdsState(result);
+        // #686 同等の構造的等価性ガード: tagIds は記事フィルター・タグ別ビュー等の
+        // useMemo が依存するため、reference 不安定だと 2 秒毎の同期で再計算が走る。
+        if (!equalTagIds(prev, result)) {
+          saveJson(STORAGE_KEYS.TAGS, result);
+          setTagIdsState(result);
+        }
       }
     },
     // Ref オブジェクト（stateRef, pendingAddedRef 等）は useRef の安定参照のため deps 不要。
