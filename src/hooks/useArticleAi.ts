@@ -27,12 +27,14 @@ export interface AiError {
 export interface AiOperationResult {
   text: string;
   isHtml: boolean;
-  /** 翻訳時のプロバイダー（要約では未設定） */
+  /** 翻訳・要約のプロバイダー（ブラウザネイティブ AI / Workers AI フォールバック） */
   provider?: TranslationProvider;
 }
 
 interface ArticleAiState {
   aiResult: string | null;
+  /** AI 要約のプロバイダー (#697) — UI で「Chrome 要約 / Workers AI」バッジ表示に使用 */
+  aiResultProvider: TranslationProvider | undefined;
   aiLoading: boolean;
   aiError: AiError | null;
   /** AI 要約を実行する（LRU キャッシュ優先）。html を渡すとブラウザ Summarizer API を試行する。 */
@@ -250,6 +252,7 @@ export function useArticleAi(articleId: string | undefined): ArticleAiState {
 
   return {
     aiResult: ai.result?.text ?? null,
+    aiResultProvider: ai.result?.provider,
     aiLoading: ai.loading,
     aiError: ai.error,
     doRunAi: ai.run,

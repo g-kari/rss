@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### UX 改善っ
+
+- **AI 要約パネルに「Chrome 要約 / Workers AI」プロバイダーバッジを表示するようにしたよ〜 (#697)** — 翻訳パネルには既に `provider === "browser" ? "Chrome 翻訳" : "Workers AI"` バッジが出てたけど、要約パネルには出てなかったから対称的に追加!🎀 `useArticleAi.aiResultProvider` を expose して、`ArticleAiPanel` の「AI 要約」ラベル右隣に小さなバッジ表示〜📍 `useArticleViewState` → `ArticleView` → `ArticleAiPanel` の prop chain を 1 段ずつ通し、`AiOperationResult.provider` の jsdoc も「翻訳時のプロバイダー (要約では未設定)」→「翻訳・要約のプロバイダー」に修正 (古いコメントが実装と乖離してた)〜📚
+
 ### バグ修正っ
 
 - **ブラウザ要約 API に `outputLanguage` / `expectedInputLanguages` を指定したよ〜 (#664)** — Chrome の Summarizer API を呼ぶたび `"No output language was specified in a Summarizer API request..."` 警告が DevTools に出てて、ユーザー報告でも見えてた状態を修正!💥 公式サポート言語 `[en, es, ja]` の中から日本語 RSS リーダーらしく **`outputLanguage: "ja"` 固定** + `expectedInputLanguages: ["ja", "en"]` をヒントとして指定〜🇯🇵 警告だけでなくモデル側の言語推定誤判定も解消されるはずだから、`"The model process crashed too many times"` 系の不安定さも改善が期待できる〜🛡️ TDD 3 ケース追加 (公式サポート言語 / ja 固定 / 英日混在ヒント)〜📚
