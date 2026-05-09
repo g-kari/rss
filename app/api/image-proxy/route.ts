@@ -47,11 +47,20 @@ async function handleGet(
   // 画像 URL はサーバー取得コンテンツ由来のため長さ制限なし。SSRF 対策のみ行う。
   if (!isValidPublicUrl(url)) return new Response(null, { status: 400 });
 
+  // 遅延計測 (#649): Cloudflare Workers Logs で実測値を見て、
+  // KV / Cache API / fetch のどこがボトルネックかを判定する。
+  // ログは wrangler tail / ダッシュボードの Logs で確認できる。
+  const t0 = Date.now();
   const cacheKey = await buildCacheKey(reqUrl.origin, "image", url);
+  const tBuildKey = Date.now();
 
   // Cloudflare Cache API で確認
   const cached = await matchCfCache(cacheKey);
+  const tCacheMatch = Date.now();
   if (cached) {
+    console.log(
+      `[image-proxy] HIT total=${tCacheMatch - t0}ms buildKey=${tBuildKey - t0}ms cacheMatch=${tCacheMatch - tBuildKey}ms`,
+    );
     return new Response(cached.body, {
       headers: {
         "Content-Type": cached.headers.get("Content-Type") ?? "image/jpeg",
@@ -70,7 +79,16 @@ async function handleGet(
     IMAGE_PROXY_WINDOW_MS,
     IMAGE_PROXY_MAX_CALLS,
   );
-  if (limited) return limited;
+  const tRateLimit = Date.now();
+  if (limited) {
+    console.log(
+      `[image-proxy] LIMITED kv=${tRateLimit - tCacheMatch}ms cacheMatch=${tCacheMatch - tBuildKey}ms`,
+    );
+    return limited;
+  }
+  console.log(
+    `[image-proxy] MISS-START buildKey=${tBuildKey - t0}ms cacheMatch=${tCacheMatch - tBuildKey}ms kv=${tRateLimit - tCacheMatch}ms`,
+  );
 
   try {
     const res = await fetchFollowSafeRedirects(
