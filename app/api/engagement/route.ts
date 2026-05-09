@@ -5,6 +5,7 @@ import { r2Get, r2Put, engagementKey, engagementCooldownKey } from "@/lib/r2";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { readUserSubscriptions } from "@/lib/shared-feed";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
+import { AI_RATINGS } from "@/types";
 import { MAX_ID_LENGTH, MAX_ENGAGEMENT_ENTRIES, isValidFeedHash } from "@/lib/validation";
 
 const ENGAGEMENT_COOLDOWN_MS = 1_000; // POST 連打防止
@@ -17,7 +18,8 @@ const VALID_ACTIONS: EngagementAction[] = [
   "like",
   "ai_feedback",
 ];
-const VALID_AI_FEEDBACK_VALUES = ["good", "neutral", "bad"] as const;
+// AI フィードバック評価値は src/types.ts の AI_RATINGS を SSOT として使う (#4 simplify 監査)
+const VALID_AI_FEEDBACK_VALUES = AI_RATINGS;
 const VALID_AI_FEEDBACK_TARGETS = ["summary", "translate"] as const;
 
 export async function GET(request: Request) {

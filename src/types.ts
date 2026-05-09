@@ -164,6 +164,14 @@ export type EngagementAction =
   | "like" // いいね
   | "ai_feedback"; // AI要約・翻訳の品質評価
 
+/**
+ * AI 要約・翻訳の品質評価値。
+ * UI / API / hook 全てで参照する単一ソース (#4 simplify 監査での集約対象)。
+ * `["good", "neutral", "bad"] as const` を 4 箇所で重複していたのを統合。
+ */
+export const AI_RATINGS = ["good", "neutral", "bad"] as const;
+export type AiRating = (typeof AI_RATINGS)[number];
+
 /** エンゲージメントの1イベント */
 export interface EngagementEntry {
   articleId: string;
