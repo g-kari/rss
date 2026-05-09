@@ -1130,6 +1130,55 @@ localStorage.removeItem("rss-debug-autoread"); // OFF
 
 主な使用箇所: `auto-read-debug.ts` — 本番でのオートモード再現診断
 
+### 派生ケース: AbortController / Ref ベースの状態遷移バグは「ref の差分」をログに出す
+
+`AbortController.abort()` / `useRef` の値変化が原因の連鎖バグ (記事切替時の fetch abort / 画像キャッシュの上書き / hook 識別子のドリフト) は、**「どの瞬間にどの ref がどの値だったか」** が分かるログがないと解析不能になる。エージェントを派遣しても複数仮説が出て断定できないことが多い。本番環境で再現できるなら、**ref の状態スナップショット** を各遷移ポイントで出力する設計に切り替える。
+
+```typescript
+// アンチパターン: イベント名のみログ
+useEffect(() => {
+  abortRef.current?.abort();
+  abortRef.current = null;
+  debug("articleId-changed");
+}, [articleId]);
+
+// 修正パターン: ref の状態 (差分・null 性) を一緒に出力
+useEffect(() => {
+  const hadController = abortRef.current !== null;
+  debug("articleId-effect-fired", { articleId, hadController });
+  // ↑ hadController:true = 進行中 fetch を abort することになる証拠
+  abortRef.current?.abort();
+  abortRef.current = null;
+}, [articleId]);
+
+// catch 側: どの controller が abort 元かを出力
+catch (err) {
+  if (isAbortError(err)) {
+    debug("fetch-aborted", {
+      articleId,
+      currentControllerIsThis: abortRef.current === controller,
+      currentControllerIsNull: abortRef.current === null,
+      // ↑ null = useEffect[articleId] が abort した
+      //   別 controller = fetchFullContent 再呼出による abort
+      //   this = 自分が abort された (外部要因)
+    });
+    return;
+  }
+}
+```
+
+**Why**: AbortController の abort は「どこから呼ばれたか」がスタックトレースに残らない (非同期境界を跨ぐ)。コードレビュー / エージェント分析で「複数経路の中でどれが真因か」を断定できないとき、**本番ログに ref の状態スナップショット** を散在配置すれば、ユーザーから 1 回のログ提出で経路が判定できる。「abort された」だけのログは観測点として不足。
+
+**How to apply**: AbortController / useRef ベースの「複雑な遷移バグ」を調査するとき:
+
+1. **ref の値変化を起こす全箇所** を grep で列挙 (例: `abortRef.current = ` / `abortRef.current?.abort()`)
+2. 各箇所の **ref の前後状態** (`hadX` / `currentXIsNull` / `currentXIsThis`) を debug ログに含める
+3. catch / cleanup 側でも **「自分の controller か / null か / 別 controller か」** を 3 値判定で出す
+4. ユーザー Issue コメントに **判定表** (どのログ列がどの真因か) を明記して再現協力を依頼
+5. 真因確定後、追加ログは残すか削除するか判断 (再発リスクが高ければ残す)
+
+主な使用箇所: `useArticleContent.ts` の `fetchAbortControllerRef` 状態スナップショット (#678 — fetch-start / articleId-effect-fired / fetch-aborted の 3 点で hadController / currentControllerIsX を出力)
+
 ## 永続化された state を「リロード時に自動復元」するときは TTL と防御チェックを必ず入れる
 
 `localStorage` に状態を保存して **リロード後に復元** する設計 (例: オートモード継続) では、復元無条件 = 永続的に ON 状態が固定されるリスクがある。**TTL 期限と防御的バリデーション** を必ず入れる。
