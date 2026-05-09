@@ -15,7 +15,7 @@ paths: "backend/repositories/rss/**/*.ts,backend/repositories/rss/**/*.tsx"
 | E2E テスト           | `npm run test:e2e`  | Playwright                |
 | ビルド               | `npm run build`     | `next build`              |
 
-**Why**: 2026-05-09 に dokodemo-claude ルートの build-check.md の指示通り `npm run check-all` を実行して "Missing script" エラーになった事象を防ぐため。`paths` でこのファイルを rss プロジェクトの TS/TSX 編集時のみロードさせ、ルートの指示を上書きする。
+**Why**: dokodemo-claude ルートの build-check.md にある `npm run check-all` は rss プロジェクトに存在しないため、このファイルが TS/TSX 編集時にロードされてルート指示を上書きする。
 
 ## コミット前フロー
 
