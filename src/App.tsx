@@ -66,8 +66,7 @@ import { ToastProvider } from "./contexts/ToastContext";
 import { FeedSidebarProvider } from "./contexts/FeedSidebarContext";
 import ToastContainer from "./components/ToastContainer";
 import { useToastState } from "./hooks/useToast";
-import LandingPage from "./components/LandingPage";
-import BetaRestrictedPage from "./components/BetaRestrictedPage";
+import { AppLandingState } from "./components/AppLandingState";
 
 import SkeletonSidebar from "./components/SkeletonSidebar";
 import SkeletonArticleList from "./components/SkeletonArticleList";
@@ -771,18 +770,11 @@ export default function App() {
     toast,
   });
 
-  // ローディング
-  if (user === undefined) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-surface-base">
-        <div className="w-1.5 h-1.5 rounded-full bg-surface-subtle animate-pulse" />
-      </div>
-    );
-  }
-
-  if (betaRestricted) return <BetaRestrictedPage />;
-
-  if (!user) return <LandingPage />;
+  // ロード中 / ベータ制限 / 未ログイン の早期 return パスを集約 (#650 Step 2)
+  const landingNode = AppLandingState({ user, betaRestricted });
+  if (landingNode) return landingNode;
+  // landingNode が null の時点で user は確実にログイン済 (TypeScript narrowing 用)
+  if (!user) return null;
 
   const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
 
