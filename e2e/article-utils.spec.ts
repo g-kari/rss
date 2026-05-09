@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { readingTime, timeAgo, createReadingTimeCache } from "../src/lib/article-utils";
+import {
+  readingTime,
+  timeAgo,
+  createReadingTimeCache,
+  compareByDateDesc,
+  compareByPublishedAtDesc,
+} from "../src/lib/article-utils";
 import type { Article } from "../src/types";
 
 function makeArticle(id: string, content: string): Article {
@@ -349,5 +355,136 @@ test.describe("createReadingTimeCache (#685)", () => {
       const article = makeArticle(`bulk-${i}`, `<p>記事 ${i}</p>`);
       expect(typeof cache(article)).toBe("number");
     }
+  });
+});
+
+/**
+ * compareByDateDesc / compareByPublishedAtDesc の単体テスト。
+ *
+ * 2 関数は名前と引数の型が似ているが「null publishedAt の扱い」と「id stable sort 有無」で
+ * 意図的に挙動が異なる。両者の差異を spec で明文化することで、将来「両者を統合しよう」
+ * のような誤ったリファクタを防ぐ + cron / shared-feed.ts / useArticleData.ts の
+ * sort 経路で齟齬が起きないことを保証する。
+ *
+ * 仕様:
+ * - compareByDateDesc: `publishedAt ?? createdAt` (null は createdAt フォールバック)
+ *   + 同日付なら id で stable sort
+ * - compareByPublishedAtDesc: `publishedAt ?? ""` (null は空文字 → 結果として末尾)
+ *   + id 比較なし (= 同 publishedAt は順序維持)
+ */
+
+test.describe("compareByDateDesc — publishedAt + createdAt フォールバック + id stable sort", () => {
+  test("両方 publishedAt あり: 新しい方が前", () => {
+    const a = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "2026-05-10T00:00:00Z" };
+    const b = { publishedAt: "2026-05-09T00:00:00Z", createdAt: "2026-05-09T00:00:00Z" };
+    expect(compareByDateDesc(a, b)).toBe(-1); // a が前
+    expect(compareByDateDesc(b, a)).toBe(1);
+  });
+
+  test("publishedAt が null: createdAt にフォールバック", () => {
+    const a = { publishedAt: null, createdAt: "2026-05-10T00:00:00Z" };
+    const b = { publishedAt: null, createdAt: "2026-05-09T00:00:00Z" };
+    expect(compareByDateDesc(a, b)).toBe(-1);
+  });
+
+  test("片方 publishedAt あり / 片方 null: それぞれの基準日で比較", () => {
+    const a = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "2020-01-01T00:00:00Z" };
+    const b = { publishedAt: null, createdAt: "2026-05-09T00:00:00Z" };
+    // a は publishedAt 2026-05-10、b は createdAt 2026-05-09 → a が前
+    expect(compareByDateDesc(a, b)).toBe(-1);
+  });
+
+  test("同日付で id あり: id 昇順で stable sort", () => {
+    const a = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x", id: "id-aaa" };
+    const b = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x", id: "id-bbb" };
+    expect(compareByDateDesc(a, b)).toBe(-1); // id-aaa < id-bbb なので a が前
+    expect(compareByDateDesc(b, a)).toBe(1);
+  });
+
+  test("同日付 + 同 id: 0 を返す", () => {
+    const a = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x", id: "same" };
+    const b = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x", id: "same" };
+    expect(compareByDateDesc(a, b)).toBe(0);
+  });
+
+  test("同日付で id 欠落: 0 を返す (順序維持)", () => {
+    const a = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x" };
+    const b = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x" };
+    expect(compareByDateDesc(a, b)).toBe(0);
+  });
+
+  test("配列ソート: 全要素のパターンで降順 + id stable sort される", () => {
+    const arr = [
+      { publishedAt: "2026-05-08T00:00:00Z", createdAt: "x", id: "c" },
+      { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x", id: "b" },
+      { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x", id: "a" },
+      { publishedAt: null, createdAt: "2026-05-09T00:00:00Z", id: "d" },
+    ];
+    arr.sort(compareByDateDesc);
+    expect(arr.map((x) => x.id)).toEqual(["a", "b", "d", "c"]);
+    // 2026-05-10 (a < b) → 2026-05-09 (d, fallback) → 2026-05-08 (c)
+  });
+});
+
+test.describe("compareByPublishedAtDesc — publishedAt のみ / null は末尾 / id 無視", () => {
+  test("両方 publishedAt あり: 新しい方が前", () => {
+    const a = { publishedAt: "2026-05-10T00:00:00Z" };
+    const b = { publishedAt: "2026-05-09T00:00:00Z" };
+    expect(compareByPublishedAtDesc(a, b)).toBe(-1);
+    expect(compareByPublishedAtDesc(b, a)).toBe(1);
+  });
+
+  test("片方 null: null は末尾 (空文字フォールバック → 全 ISO 文字列より小)", () => {
+    const a = { publishedAt: null };
+    const b = { publishedAt: "2026-05-09T00:00:00Z" };
+    expect(compareByPublishedAtDesc(a, b)).toBe(1); // b が前 → a (null) 末尾
+    expect(compareByPublishedAtDesc(b, a)).toBe(-1);
+  });
+
+  test("両方 null: 0 を返す (順序維持)", () => {
+    const a = { publishedAt: null };
+    const b = { publishedAt: null };
+    expect(compareByPublishedAtDesc(a, b)).toBe(0);
+  });
+
+  test("同 publishedAt: 0 を返す (id 比較なし)", () => {
+    // compareByDateDesc と違い id 比較は行わない
+    const a = { publishedAt: "2026-05-10T00:00:00Z" };
+    const b = { publishedAt: "2026-05-10T00:00:00Z" };
+    expect(compareByPublishedAtDesc(a, b)).toBe(0);
+  });
+
+  test("配列ソート: null は末尾に集約される", () => {
+    const arr = [
+      { publishedAt: null, key: "a" },
+      { publishedAt: "2026-05-10T00:00:00Z", key: "b" },
+      { publishedAt: null, key: "c" },
+      { publishedAt: "2026-05-09T00:00:00Z", key: "d" },
+    ];
+    arr.sort(compareByPublishedAtDesc);
+    // 新しい順 (b, d) → null 群 (a, c は順序維持)
+    expect(arr[0].key).toBe("b");
+    expect(arr[1].key).toBe("d");
+    expect(new Set([arr[2].key, arr[3].key])).toEqual(new Set(["a", "c"]));
+  });
+});
+
+test.describe("compareByDateDesc vs compareByPublishedAtDesc — 仕様差分の明文化", () => {
+  test("同 publishedAt の扱い: ByDate は id で stable / ByPublishedAt は順序維持", () => {
+    const a = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x", id: "z" };
+    const b = { publishedAt: "2026-05-10T00:00:00Z", createdAt: "x", id: "a" };
+    // ByDate は id で z > a なので b が前 (= -1 を返さず +1)
+    expect(compareByDateDesc(a, b)).toBe(1);
+    // ByPublishedAt は同 publishedAt なら 0
+    expect(compareByPublishedAtDesc(a, b)).toBe(0);
+  });
+
+  test("publishedAt: null の扱い: ByDate は createdAt fallback / ByPublishedAt は末尾", () => {
+    const newCreated = { publishedAt: null, createdAt: "2026-05-10T00:00:00Z" };
+    const oldPublished = { publishedAt: "2020-01-01T00:00:00Z", createdAt: "x" };
+    // ByDate: newCreated の createdAt (2026) は oldPublished (2020) より新しい → newCreated が前
+    expect(compareByDateDesc(newCreated, oldPublished)).toBe(-1);
+    // ByPublishedAt: null は "" → "" < "2020..." → oldPublished が前
+    expect(compareByPublishedAtDesc(newCreated, oldPublished)).toBe(1);
   });
 });
