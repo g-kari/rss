@@ -77,6 +77,13 @@ export interface AutoReadSpeakTriggerState {
    * `false` / 未指定なら従来通り即 speak。
    */
   autoTranslatePending?: boolean;
+  /**
+   * autoMode + autoSummarize ON で要約が未完了か (#696)。
+   * `true` の場合は要約完了 (aiResult or aiError) を待ってから speak する。
+   * 要約結果を `ttsText` として読み上げたいが、要約完了前に speak が走ると
+   * 全文を読み上げてしまうため、明示的に gate する。
+   */
+  autoSummarizePending?: boolean;
 }
 
 /**
@@ -101,5 +108,7 @@ export function shouldStartAutoSpeak(state: AutoReadSpeakTriggerState): boolean 
   if (state.canFetch && !state.hasFullContent) return false;
   // autoTranslate 完了待ち（翻訳結果で speak したい）
   if (state.autoTranslatePending) return false;
+  // autoMode + autoSummarize 完了待ち (#696: 要約結果を speak したい)
+  if (state.autoSummarizePending) return false;
   return true;
 }

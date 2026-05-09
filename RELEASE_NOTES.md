@@ -4,6 +4,8 @@
 
 ### 激アツ新機能っ
 
+- **オートモード時に要約結果を TTS で読み上げる機能を追加したよ〜 (#696)** — オートモード (auto-read) ON + 自動要約 (`autoSummarize`) ON のとき、本文の代わりに **AI 要約結果を読み上げ対象** にする派生機能を実装!🎀 `buildTtsText` に第 4 引数 `summaryText` を追加して優先順位の最上位に配置 (要約 > 翻訳 > 本文 > サマリ)〜📚 さらに `shouldStartAutoSpeak` に `autoSummarizePending` ガードを追加して、要約完了前に本文で speak が走らないように〜🛡️ TDD 9 ケース追加 (`buildTtsText` 5 ケース + `shouldStartAutoSpeak` 4 ケース)〜✨ 手動 TTS 起動 (記事詳細ヘッダーボタン / Shift+P) では従来通り本文を読み上げ — オートモード限定の挙動でユーザーの意図を尊重!
+
 - **自動要約機能を追加したよ〜 (#695)** — 自動翻訳 (`autoTranslate`) と同じパターンで、`autoSummarize` ON 時に **記事本文取得完了後に自動で AI 要約** を実行!✨ 設定は ユーザー設定 → AI・通知タブ の「自動要約」トグル〜🎀 既存の「Chrome 要約 (Built-In AI) / Workers AI フォールバック」判定はそのまま再利用するから、Chrome 138+ 環境ならローカル AI で高速要約、未対応環境では Workers AI が自動でフォールバック〜⚡ 実装は `autoTranslate` と完全対称: localStorage `rss-auto-summarize` 永続化 + `useArticleViewShortcuts` の自動要約 effect (`autoSummarizeTriggered` ref で同記事の二重発火防止) + 設定 UI トグル〜📦 #696 (オートモード時に要約を読み上げる) はこの機能を前提とする派生機能で、別途追跡!
 
 ### UX 改善っ

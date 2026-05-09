@@ -324,3 +324,68 @@ test.describe("shouldStartAutoSpeak — autoTranslatePending ブロッカー (#6
     ).toBe(true);
   });
 });
+
+// #696: autoMode + autoSummarize ON 時は要約完了まで speak を待つ
+test.describe("shouldStartAutoSpeak — autoSummarizePending ブロッカー (#696)", () => {
+  test("autoSummarizePending=true なら start しない（要約完了待ち）", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+        canFetch: false,
+        hasFullContent: true,
+        autoSummarizePending: true,
+      }),
+    ).toBe(false);
+  });
+
+  test("autoSummarizePending=false なら start する", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+        canFetch: false,
+        hasFullContent: true,
+        autoSummarizePending: false,
+      }),
+    ).toBe(true);
+  });
+
+  test("autoSummarizePending 未指定時は従来挙動を維持（後方互換）", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+      }),
+    ).toBe(true);
+  });
+
+  test("autoTranslatePending と autoSummarizePending が共に true なら start しない", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+        canFetch: false,
+        hasFullContent: true,
+        autoTranslatePending: true,
+        autoSummarizePending: true,
+      }),
+    ).toBe(false);
+  });
+});

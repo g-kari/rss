@@ -30,6 +30,11 @@ interface Props {
    * `true` の場合、speak は翻訳完了 (translateResult or translateError) まで保留される。
    */
   autoTranslatePending?: boolean;
+  /**
+   * #696: autoMode + autoSummarize ON 時の要約完了待ち。
+   * `true` の場合、speak は要約完了 (aiResult or aiError) まで保留される。
+   */
+  autoSummarizePending?: boolean;
   onSpeak: (text: string) => void;
   /** 現在進行中の TTS を即停止する (#661 オートモード OFF 時に呼ぶ) */
   onTtsStop: () => void;
@@ -60,6 +65,7 @@ export default function AutoReadController({
   canFetch,
   ttsText,
   autoTranslatePending,
+  autoSummarizePending,
   onSpeak,
   onTtsStop,
   onFetch,
@@ -159,6 +165,7 @@ export default function AutoReadController({
       canFetch,
       hasFullContent,
       autoTranslatePending,
+      autoSummarizePending,
     });
     autoReadDebug("effect(3)-speak-trigger", {
       articleId,
@@ -172,6 +179,7 @@ export default function AutoReadController({
       canFetch,
       hasFullContent,
       autoTranslatePending,
+      autoSummarizePending,
       start,
     });
     if (!start) return;
@@ -189,6 +197,7 @@ export default function AutoReadController({
     canFetch,
     hasFullContent,
     autoTranslatePending,
+    autoSummarizePending,
     onSpeak,
   ]);
 

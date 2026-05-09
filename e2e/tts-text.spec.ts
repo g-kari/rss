@@ -126,3 +126,35 @@ test.describe("buildTtsText — ソース優先順位", () => {
     expect(result).toBe("Title\n\nProcessed");
   });
 });
+
+test.describe("buildTtsText: summaryText (#696)", () => {
+  test("summaryText が指定されたら最優先で使う (autoMode + autoSummarize)", () => {
+    const article = { title: "T", summary: "S" };
+    const result = buildTtsText(article, "<p>処理済み本文</p>", "翻訳本文", "要約本文");
+    expect(result).toBe("T\n\n要約本文");
+  });
+
+  test("summaryText が空文字なら translatedText に fallback", () => {
+    const article = { title: "T", summary: "S" };
+    const result = buildTtsText(article, "<p>処理済み</p>", "翻訳本文", "");
+    expect(result).toBe("T\n\n翻訳本文");
+  });
+
+  test("summaryText が null なら従来の優先順位 (translatedText / processedContent / summary)", () => {
+    const article = { title: "T", summary: "S" };
+    const result = buildTtsText(article, "<p>処理済み</p>", null, null);
+    expect(result).toBe("T\n\n処理済み");
+  });
+
+  test("summaryText だけ指定 (translatedText / processedContent なし) でも動く", () => {
+    const article = { title: "T", summary: "S" };
+    const result = buildTtsText(article, null, null, "要約のみ");
+    expect(result).toBe("T\n\n要約のみ");
+  });
+
+  test("summaryText も URL 置換が効く", () => {
+    const article = { title: "T", summary: "" };
+    const result = buildTtsText(article, null, null, "詳細は https://example.com を参照");
+    expect(result).toBe("T\n\n詳細は リンク を参照");
+  });
+});

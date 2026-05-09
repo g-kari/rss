@@ -19,6 +19,8 @@ export interface ArticleViewTtsResult {
     article: Article,
     processedContent: string | null,
     translatedText?: string | null,
+    /** #696: autoMode + autoSummarize で要約結果を読み上げる場合に渡す */
+    summaryText?: string | null,
   ) => string;
 }
 

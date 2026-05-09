@@ -137,6 +137,7 @@ function ArticleView({
     buildTtsText,
     translatedText,
     autoTranslatePending,
+    autoSummarize,
     mainRef,
     contentRef,
     progressBarRef,
@@ -366,8 +367,15 @@ function ArticleView({
         fetchError={fetchError}
         hasFullContent={hasFullContent}
         canFetch={canFetch}
-        ttsText={buildTtsText(article, processedContent, translatedText)}
+        ttsText={buildTtsText(
+          article,
+          processedContent,
+          translatedText,
+          // #696: オートモード時に自動要約 ON で要約結果が揃ったら、要約を読み上げ対象にする
+          autoMode && autoSummarize ? aiResult : null,
+        )}
         autoTranslatePending={autoTranslatePending}
+        autoSummarizePending={autoMode && autoSummarize && !aiResult && !aiError}
         onSpeak={ttsSpeak}
         onTtsStop={ttsStop}
         onFetch={() => fetchFullContent()}
