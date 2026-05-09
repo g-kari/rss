@@ -50,6 +50,7 @@ import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
 import { useColumnResize } from "./hooks/useColumnResize";
 import { useSyncedRef } from "./hooks/useSyncedRef";
+import { useArticleSelection } from "./hooks/useArticleSelection";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -677,34 +678,15 @@ export default function App() {
     deleteCollection,
   });
 
-  const listFocusModeRef = useSyncedRef(listFocusMode);
-  const [articleDetailOverlayOpen, setArticleDetailOverlayOpen] = useState(false);
-
-  const selectArticle = useCallback(
-    (article: Article) => {
-      setSelectedArticle(article);
-      markRead(article.id);
-      addToHistory(article.id);
-      if (listFocusModeRef.current) {
-        // listFocusMode 中はフォーカスモード切替の代わりに右からスライドする overlay を開く
-        setArticleDetailOverlayOpen(true);
-      } else if (!isDesktop) {
-        setMobilePane("view");
-      }
-    },
-    [listFocusModeRef, setSelectedArticle, markRead, addToHistory, setMobilePane, isDesktop],
-  );
-
-  // listFocusMode が解除されたら overlay も閉じる
-  useEffect(() => {
-    if (!listFocusMode && articleDetailOverlayOpen) {
-      setArticleDetailOverlayOpen(false);
-    }
-  }, [listFocusMode, articleDetailOverlayOpen]);
-
-  const closeArticleDetailOverlay = useCallback(() => {
-    setArticleDetailOverlayOpen(false);
-  }, []);
+  const { selectArticle, articleDetailOverlayOpen, closeArticleDetailOverlay } =
+    useArticleSelection({
+      setSelectedArticle,
+      markRead,
+      addToHistory,
+      setMobilePane,
+      isDesktop,
+      listFocusMode,
+    });
 
   const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useEngagementToggles(
     articles,
