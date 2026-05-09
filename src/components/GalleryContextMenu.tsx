@@ -196,7 +196,11 @@ export default function GalleryContextMenu({
           </button>
         )}
 
-        {target.images && target.images.length >= 2 && (
+        {/* #667: 本文画像が 1 枚の場合も保存ボタンを出す。従来は >=2 で
+            non-表示だったため、wallhaven のような 1 枚画像記事では OGP/サムネ
+            だけが DL される問題があった。1 枚なら「本文画像を保存」、複数なら
+            従来どおり「画像を一括保存 (N 枚)」を表示する。 */}
+        {target.images && target.images.length >= 1 && (
           <button
             className={btnClass}
             onClick={() => {
@@ -218,7 +222,9 @@ export default function GalleryContextMenu({
               <path d="M1 10h10" />
               <rect x="9" y="0" width="3" height="3" rx="1" fill="currentColor" stroke="none" />
             </svg>
-            画像を一括保存 ({target.images.length}枚)
+            {target.images.length === 1
+              ? "本文画像を保存"
+              : `画像を一括保存 (${target.images.length}枚)`}
           </button>
         )}
 
