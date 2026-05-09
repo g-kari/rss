@@ -34,7 +34,7 @@ interface Options {
   enabled: boolean;
   /** 同時 fetch 上限 — リモートサイトのレート制限を避けるため既定 2 並列 */
   concurrency?: number;
-  /** 先頭から何件まで先行取得するか — ビューポートに収まる枚数 + α を目安に（既定 20） */
+  /** 先頭から何件まで先行取得するか — 既定は内部上限 (200) と一致させて visible 全件を対象にする */
   maxPrefetch?: number;
   /** 各 fetch 完了後のディレイ (ms) — バースト抑制のため既定 750ms */
   requestDelayMs?: number;
@@ -129,7 +129,7 @@ export function usePrefetchGalleryContents({
   articles,
   enabled,
   concurrency = 2,
-  maxPrefetch = 20,
+  maxPrefetch = 200,
   requestDelayMs = 750,
 }: Options): PrefetchGalleryResult {
   const [media, setMedia] = useState<Map<string, PrefetchedMedia>>(() => new Map());
