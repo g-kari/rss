@@ -130,13 +130,14 @@ export function useSpeechSynthesis(): TtsAdapter {
     window.speechSynthesis.resume();
   }, [isPaused]);
 
-  const cycleRate = useCallback(() => {
+  const cycleRate = useCallback((): number => {
     const next = cycleValue(TTS_RATES, rateRef.current);
     storageSet(STORAGE_KEYS.TTS_RATE, String(next));
     rateRef.current = next;
     setRate(next);
     const text = currentTextRef.current;
     if (text) speak(text);
+    return next;
   }, [speak, rateRef]);
 
   /**

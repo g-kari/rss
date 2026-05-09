@@ -2,9 +2,17 @@
 
 import React from "react";
 import type { Article } from "../../types";
-import type { AiOperationResult } from "../../hooks/useArticleAi";
+import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
 import Spinner from "../Spinner";
+import { TTS_RATES } from "../../hooks/useSpeechSynthesis";
 import { DownloadIcon } from "./icons";
+
+/** UX 監査 (#2): cycle の次値を計算 (TTS_RATES の循環) */
+function nextTtsRate(current: number): number {
+  const idx = (TTS_RATES as readonly number[]).indexOf(current);
+  if (idx < 0) return TTS_RATES[0];
+  return TTS_RATES[(idx + 1) % TTS_RATES.length];
+}
 
 interface Props {
   article: Article;
@@ -15,11 +23,15 @@ interface Props {
   /* AI */
   aiResult: string | null;
   aiLoading: boolean;
+  /** UX 監査 (#1): エラー時にヘッダーボタンを `border-error` で目立たせる */
+  aiError: AiError | null;
   resetAi: () => void;
   doRunAi: (link: string, articleId: string) => void;
   handleTranslate: () => void;
   translateResult: AiOperationResult | null;
   translateLoading: boolean;
+  /** UX 監査 (#1): エラー時にヘッダーボタンを `border-error` で目立たせる */
+  translateError: AiError | null;
 
   /* TTS — voice 選択は #675 Phase 1b で UserSettingsModal の DisplayTabPanel に移動 */
   ttsSupported: boolean;
@@ -50,11 +62,13 @@ export default function ArticleHeaderAiTts({
   fetching,
   aiResult,
   aiLoading,
+  aiError,
   resetAi,
   doRunAi,
   handleTranslate,
   translateResult,
   translateLoading,
+  translateError,
   ttsSupported,
   ttsPlaying,
   ttsPaused,
@@ -80,12 +94,16 @@ export default function ArticleHeaderAiTts({
               if (article.link) doRunAi(article.link, article.id);
             }}
             disabled={aiLoading || fetching}
-            title="AI 要約 (a)"
+            title={
+              aiError ? `AI 要約エラー: ${aiError.message ?? "失敗しました"} (a)` : "AI 要約 (a)"
+            }
             aria-label="AI 要約"
             className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               aiResult
                 ? "border-ink bg-ink text-ink-text"
-                : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
+                : aiError
+                  ? "border-error text-error hover:bg-error/10"
+                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
             }`}
           >
             {aiLoading ? "…" : "要約"}
@@ -93,12 +111,18 @@ export default function ArticleHeaderAiTts({
           <button
             onClick={handleTranslate}
             disabled={translateLoading || fetching}
-            title="AI 翻訳（日本語）(z)"
+            title={
+              translateError
+                ? `AI 翻訳エラー: ${translateError.message ?? "失敗しました"} (z)`
+                : "AI 翻訳（日本語）(z)"
+            }
             aria-label="AI 翻訳"
             className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               translateResult
                 ? "border-ink bg-ink text-ink-text"
-                : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
+                : translateError
+                  ? "border-error text-error hover:bg-error/10"
+                  : "border-border-default text-text-muted hover:border-text-muted hover:text-text-default"
             }`}
           >
             {translateLoading ? "…" : "翻訳"}
@@ -210,7 +234,7 @@ export default function ArticleHeaderAiTts({
       {ttsSupported && hasContent && (
         <button
           onClick={ttsCycleRate}
-          title={`読み上げ速度: ${ttsRate}x（クリックで変更）`}
+          title={`読み上げ速度: ${ttsRate}x → 次: ${nextTtsRate(ttsRate)}x（クリック / Shift+R）`}
           aria-label={`読み上げ速度 ${ttsRate}倍`}
           className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 text-[10px] font-medium tabular-nums leading-none ${
             ttsPlaying || ttsPaused

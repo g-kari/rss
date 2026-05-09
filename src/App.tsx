@@ -611,6 +611,7 @@ export default function App() {
     autoMode,
     toggleAutoMode,
     ttsSupported,
+    cycleTtsRate: ttsAdapter.cycleRate,
     anchorListToSelected,
   });
 

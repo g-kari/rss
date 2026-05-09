@@ -66,6 +66,8 @@ interface KeyboardNavOptions {
   autoMode: boolean;
   toggleAutoMode: () => void;
   ttsSupported: boolean;
+  /** UX 監査 (#2): 読み上げ速度を次値にサイクル (Shift+R) */
+  cycleTtsRate: () => number;
   /** #684: 記事一覧を選択中記事へアンカー (`.` キー) */
   anchorListToSelected?: () => void;
 }

@@ -233,12 +233,14 @@ function ArticleView({
             hasContent={hasContent}
             aiResult={aiResult}
             aiLoading={aiLoading}
+            aiError={aiError}
             resetAi={resetAi}
             doRunAi={doRunAi}
             fetching={fetching}
             handleTranslate={handleTranslate}
             translateResult={translateResult}
             translateLoading={translateLoading}
+            translateError={translateError}
             ttsSupported={ttsSupported}
             ttsPlaying={ttsPlaying}
             ttsPaused={ttsPaused}

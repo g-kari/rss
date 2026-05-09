@@ -71,6 +71,8 @@ export interface ShortcutContext {
   toggleAutoMode: () => void;
   autoMode: boolean;
   ttsSupported: boolean;
+  /** UX 監査 (#2): 読み上げ速度を次値にサイクル (Shift+R) */
+  cycleTtsRate: () => number;
   /** #684: 記事一覧を選択中記事にスクロール (アンカー) */
   anchorListToSelected?: () => void;
   /** window.confirm の代替。未指定時は window.confirm にフォールバック。 */
@@ -243,6 +245,20 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
       }
       ctx.toggleAutoMode();
       ctx.showToast(filterToastMsg(ctx.autoMode, "オートモード"));
+    },
+  },
+  {
+    keys: ["R"],
+    displayKey: "Shift+R",
+    description: "読み上げ速度を切替（0.5x → 0.75x → 1x → … → 4x → 0.5x）",
+    group: "article",
+    handler: (ctx) => {
+      if (!ctx.ttsSupported) {
+        ctx.showToast("お使いのブラウザは音声合成に非対応です");
+        return;
+      }
+      const next = ctx.cycleTtsRate();
+      ctx.showToast(`読み上げ速度: ${next}x`);
     },
   },
   {

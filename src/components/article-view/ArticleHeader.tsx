@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../../types";
-import type { AiOperationResult } from "../../hooks/useArticleAi";
+import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
 import { useToast } from "../../contexts/ToastContext";
 import { useReaderSettings } from "../../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
@@ -31,12 +31,16 @@ interface Props {
   hasContent: boolean;
   aiResult: string | null;
   aiLoading: boolean;
+  /** UX 監査 (#1): エラー時にヘッダーボタンを目立たせる */
+  aiError: AiError | null;
   resetAi: () => void;
   doRunAi: (link: string, articleId: string) => void;
   fetching: boolean;
   handleTranslate: () => void;
   translateResult: AiOperationResult | null;
   translateLoading: boolean;
+  /** UX 監査 (#1): エラー時にヘッダーボタンを目立たせる */
+  translateError: AiError | null;
 
   /* --- TTS --- */
   ttsSupported: boolean;
@@ -104,12 +108,14 @@ export default function ArticleHeader({
   hasContent,
   aiResult,
   aiLoading,
+  aiError,
   resetAi,
   doRunAi,
   fetching,
   handleTranslate,
   translateResult,
   translateLoading,
+  translateError,
   ttsSupported,
   ttsPlaying,
   ttsPaused,
@@ -195,11 +201,13 @@ export default function ArticleHeader({
           fetching={fetching}
           aiResult={aiResult}
           aiLoading={aiLoading}
+          aiError={aiError}
           resetAi={resetAi}
           doRunAi={doRunAi}
           handleTranslate={handleTranslate}
           translateResult={translateResult}
           translateLoading={translateLoading}
+          translateError={translateError}
           ttsSupported={ttsSupported}
           ttsPlaying={ttsPlaying}
           ttsPaused={ttsPaused}
