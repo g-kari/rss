@@ -71,6 +71,12 @@ export interface AutoReadSpeakTriggerState {
    * サマリは含めない厳格判定 (#663)。
    */
   hasFullContent?: boolean;
+  /**
+   * autoTranslate ON で翻訳が未完了か (#653)。
+   * `true` の場合は翻訳完了 (translateResult or translateError) を待ってから speak する。
+   * `false` / 未指定なら従来通り即 speak。
+   */
+  autoTranslatePending?: boolean;
 }
 
 /**
@@ -82,6 +88,9 @@ export interface AutoReadSpeakTriggerState {
  *
  * `canFetch=false` の記事 (埋め込みコンテンツ・既に長い本文を持つ記事) は
  * 元々 fetch 対象外なので、サマリ fallback でも speak を開始してよい。
+ *
+ * #653: `autoTranslatePending=true` の場合は翻訳完了を待つ。これがないと
+ * 翻訳完了前に原文で speak が始まり、「翻訳側を読み上げない」状態になる。
  */
 export function shouldStartAutoSpeak(state: AutoReadSpeakTriggerState): boolean {
   if (!state.enabled || !state.ttsSupported) return false;
@@ -90,5 +99,7 @@ export function shouldStartAutoSpeak(state: AutoReadSpeakTriggerState): boolean 
   if (!state.hasText) return false;
   // canFetch 対象記事はフル本文が揃うまで待つ（サマリ fallback による誤発火防止）
   if (state.canFetch && !state.hasFullContent) return false;
+  // autoTranslate 完了待ち（翻訳結果で speak したい）
+  if (state.autoTranslatePending) return false;
   return true;
 }

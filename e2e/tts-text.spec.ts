@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { preprocessTtsText } from "../src/lib/tts-text";
+import { preprocessTtsText, buildTtsText } from "../src/lib/tts-text";
 
 /**
  * preprocessTtsText の単体テスト。
@@ -68,5 +68,61 @@ test.describe("preprocessTtsText — URL 置換", () => {
   test("ftp:// などスキーム違いは置換しない（http(s) のみ対象）", () => {
     const input = "ftp://example.com";
     expect(preprocessTtsText(input)).toBe("ftp://example.com");
+  });
+});
+
+/**
+ * buildTtsText の単体テスト。
+ *
+ * 優先順位 (高→低):
+ *   1. translatedText (autoTranslate 完了時)
+ *   2. processedContent (フェッチ済み or RSS 本文)
+ *   3. article.summary (RSS サマリ)
+ *
+ * タイトルは原文のまま先頭に付ける（翻訳対象は本文のみ）。
+ */
+test.describe("buildTtsText — ソース優先順位", () => {
+  test("translatedText があれば最優先（#653: 自動翻訳時に翻訳側を読む）", () => {
+    const article = { title: "Title", summary: "Summary" };
+    const result = buildTtsText(article, "<p>Original processed</p>", "翻訳済み本文");
+    expect(result).toBe("Title\n\n翻訳済み本文");
+  });
+
+  test("translatedText がなければ processedContent を使う", () => {
+    const article = { title: "Title", summary: "Summary" };
+    const result = buildTtsText(article, "<p>Processed content</p>", null);
+    expect(result).toBe("Title\n\nProcessed content");
+  });
+
+  test("processedContent もなければ summary を使う", () => {
+    const article = { title: "Title", summary: "Summary text" };
+    const result = buildTtsText(article, null, null);
+    expect(result).toBe("Title\n\nSummary text");
+  });
+
+  test("title が空でも本文だけは返す", () => {
+    const article = { title: "", summary: "" };
+    const result = buildTtsText(article, "<p>本文のみ</p>", null);
+    expect(result).toBe("本文のみ");
+  });
+
+  test("translatedText が HTML でも plain 化される", () => {
+    const article = { title: "Title", summary: "" };
+    const result = buildTtsText(article, null, "<p>翻訳<br>本文</p>");
+    expect(result).toContain("Title");
+    expect(result).toContain("翻訳");
+    expect(result).toContain("本文");
+  });
+
+  test("URL は preprocess で「リンク」に置換される", () => {
+    const article = { title: "Title", summary: "" };
+    const result = buildTtsText(article, "詳細は https://example.com を参照", null);
+    expect(result).toBe("Title\n\n詳細は リンク を参照");
+  });
+
+  test("translatedText が空文字なら fallback（空翻訳の保護）", () => {
+    const article = { title: "Title", summary: "Summary" };
+    const result = buildTtsText(article, "Processed", "");
+    expect(result).toBe("Title\n\nProcessed");
   });
 });
