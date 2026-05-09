@@ -168,9 +168,9 @@ test.describe("computeEffectiveReadBeforeCutoff (#635 設定可能化)", () => {
     //   → "2026-05" > "2026-04" だから手動が選ばれる (たまたま正しい)
     // でも、もし手動が ttl と **同じ年月** で +00:00 形式なら lex で誤判定する:
     const ttlIso = new Date(NOW - 30 * 86400000).toISOString(); // 2026-04-09
-    // 手動を ttl の 1 ms 後に設定 (+00:00 形式)
-    const slightlyNewer = new Date(NOW - 30 * 86400000 + 1).toISOString().replace(".001Z", ".001Z");
-    // ↑ これだと .Z 形式なので OK。代わりに +00:00 形式で 1 日後を作る
+    // 試行 attempt: 手動を ttl の 1 ms 後 (+00:00 形式) で再現を試みたが、
+    // toISOString() は .NNNZ 形式しか返さないため +00:00 形式の 1 ms 後 ISO は手作成が必要。
+    // 代わりに +00:00 形式で 1 日後を作る (lex でも偶然正しい結果になる検証)。
     const oneDayAfterTtl = new Date(NOW - 29 * 86400000).toISOString().replace(".000Z", "+00:00"); // 2026-04-10T00:00:00+00:00 (ttl より 1 日新しい)
     const result = computeEffectiveReadBeforeCutoff(oneDayAfterTtl, 30, NOW);
     // lex 比較だと: "2026-04-10T00:00:00+00:00" vs "2026-04-09T00:00:00.000Z"
