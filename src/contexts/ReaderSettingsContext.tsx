@@ -10,6 +10,7 @@ import type {
   GalleryColumns,
   GalleryCardSize,
 } from "../lib/reader-settings";
+import type { GalleryAutoScrollSpeed } from "../lib/gallery-autoscroll";
 
 export interface ReaderSettings {
   fontSize: FontSize;
@@ -52,6 +53,13 @@ export interface ReaderSettings {
   onChangeGalleryCardSize: (v: GalleryCardSize) => void;
   galleryMinImagePx: number;
   onChangeGalleryMinImagePx: (v: number) => void;
+  /**
+   * #690: ギャラリービュー自動スクロール速度。
+   * "off" / "slow" / "medium" / "fast" / "slideshow" の 5 段階。
+   * "slideshow" は連続スクロールではなく N 秒ごとの 1 viewport ジャンプ (スライドショー風)。
+   */
+  galleryAutoScrollSpeed: GalleryAutoScrollSpeed;
+  onChangeGalleryAutoScrollSpeed: (v: GalleryAutoScrollSpeed) => void;
   deduplicateByLink: boolean;
   toggleDeduplicateByLink: () => void;
   ttlDays: number | null;

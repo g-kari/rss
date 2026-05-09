@@ -17,6 +17,11 @@ import {
 import { useStoredSetting } from "./useStoredSetting";
 import { useState, useCallback } from "react";
 import { storageGet, storageSet } from "../lib/storage";
+import {
+  GALLERY_AUTO_SCROLL_SPEEDS,
+  parseGalleryAutoScrollSpeed,
+  type GalleryAutoScrollSpeed,
+} from "../lib/gallery-autoscroll";
 
 const loadLayout = () => loadStoredEnum(STORAGE_KEYS.LAYOUT, LAYOUT_CYCLE, "list" as Layout);
 const FEED_VIEW_CYCLE: readonly FeedView[] = ["articles", "pictures", "videos", "social"] as const;
@@ -28,6 +33,11 @@ const loadFontFamily = () =>
   loadStoredEnum(STORAGE_KEYS.FONT_FAMILY, FONT_FAMILY_CYCLE, "sans" as FontFamily);
 const loadGalleryColumns = () =>
   loadStoredEnum(STORAGE_KEYS.GALLERY_COLUMNS, GALLERY_COLUMNS_CYCLE, "auto" as GalleryColumns);
+// #690: ギャラリー自動スクロール速度 (off / slow / medium / fast / slideshow)
+// 専用 parser を使う理由: loadStoredEnum と異なり「不正値 → off フォールバック」を
+// 純粋関数化済み (gallery-autoscroll.spec.ts でテスト網羅)。
+const loadGalleryAutoScrollSpeed = (): GalleryAutoScrollSpeed =>
+  parseGalleryAutoScrollSpeed(storageGet(STORAGE_KEYS.GALLERY_AUTO_SCROLL_SPEED));
 const loadGalleryColumnsFocus = () =>
   loadStoredEnum(
     STORAGE_KEYS.GALLERY_COLUMNS_FOCUS,
@@ -96,6 +106,11 @@ export function useLayoutSettings() {
     loadImageDlFolderNsfw,
     STORAGE_KEYS.IMAGE_DL_FOLDER_NSFW,
   );
+  const [galleryAutoScrollSpeed, onChangeGalleryAutoScrollSpeed] =
+    useStoredSetting<GalleryAutoScrollSpeed>(
+      loadGalleryAutoScrollSpeed,
+      STORAGE_KEYS.GALLERY_AUTO_SCROLL_SPEED,
+    );
 
   return {
     layout,
@@ -120,5 +135,9 @@ export function useLayoutSettings() {
     onChangeImageDlFolder,
     imageDlFolderNsfw,
     onChangeImageDlFolderNsfw,
+    galleryAutoScrollSpeed,
+    onChangeGalleryAutoScrollSpeed,
   } as const;
 }
+
+export { GALLERY_AUTO_SCROLL_SPEEDS, type GalleryAutoScrollSpeed };
