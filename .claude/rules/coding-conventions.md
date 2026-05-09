@@ -485,6 +485,58 @@ export async function POST(req: NextRequest) {
 
 主な使用箇所: `app/api/test/seed/route.ts`（e2e テスト用 R2 シード）
 
+## state 更新前に「構造的等価性ガード」を入れて reference を安定化する
+
+`useState<Record<string, T>>` のような object/Record state を周期的に再生成 (例: サーバー同期マージ) する処理は、**内容が変わっていなくても新しい reference を作って `setState` を呼ぶ**ことが多い。React は値の === 比較で再 render を skip する閾値を持つが、object の比較は reference 比較のため、**毎回 reference が変わると下流の useMemo が再計算される**。
+
+```typescript
+// アンチパターン: 内容が同じでも毎回新しい reference
+function useReadStateSyncApply() {
+  function applyServerState(state) {
+    if ("snoozedUntil" in state) {
+      const merged = mergeSnoozedUntil(currentSnoozed, state.snoozedUntil);
+      // ↓ merged の中身が currentSnoozed と同じでも新しい object → 再 render
+      setSnoozedUntil(merged);
+    }
+  }
+}
+
+// → useFilteredArticles の useMemo([..., snoozedUntil]) が 2 秒毎に再実行
+//   全記事 (500+) でフィルター pass を再走 → 主スレッド 20-80ms ブロック
+
+// 修正パターン: 構造的等価性ガード
+function useReadStateSyncApply() {
+  function applyServerState(state) {
+    if ("snoozedUntil" in state) {
+      const merged = mergeSnoozedUntil(currentSnoozed, state.snoozedUntil);
+      if (!equalSnoozedUntil(currentSnoozed, merged)) {
+        setSnoozedUntil(merged); // 内容変化ありのみ更新
+      }
+    }
+  }
+}
+```
+
+**Why**: object/Record state は reference 不安定が直接 useMemo / useCallback / useEffect の再実行を引き起こす。同期処理 (R2 / WebSocket / polling) は通常「内容変化なし」のケースが多数派 (例: スヌーズエントリは滅多に変わらない)。この多数派ケースで state 更新を skip すれば下流の再計算が完全停止する。
+
+**How to apply**: 周期的・冗長な setState 呼出を見つけたら、以下を確認:
+
+1. **state の type は object / Record / array か** — boolean / number / string なら React の === 比較で skip されるので問題なし
+2. **内容変化なしの呼出が多数派か** — debounce / polling / WebSocket イベントで毎回新 object を作るパターン
+3. **下流に重い useMemo / useEffect があるか** — 軽量 derive なら問題なし
+4. 全部 yes なら **構造的等価性ガード** を追加:
+   - 純粋関数 `equalXxx(a, b): boolean` を `src/lib/<feature>-merge.ts` に切り出す
+   - TDD で「同 reference / 同内容別 reference / 順序差異 / キー差異 / 値差異 / N 件大量 entries」を網羅
+   - setState 直前に `if (!equalXxx(prev, next)) setXxx(next)` でガード
+
+注意点:
+
+- 等価判定が **更新ロジックより重い** ケースは逆効果 (例: 100 万件 array の deep equal)。state size に上限がある (本プロジェクトの snoozed: 500 件) のが前提
+- **JSON.stringify による等価判定は避ける** — オブジェクト key 順序に依存して誤判定する可能性 (V8 と Safari で順序が違う)
+- ref 安定化は副次的に **debounce / throttle が不要になる** ことがある (内容変化のみで naturally fired される)
+
+主な使用箇所: `equalSnoozedUntil` / `useReadStateSyncApply` (#686 — 2 秒毎の主スレッドブロック解消)
+
 ## ref vs state の使い分け（同期チェック vs useEffect 再実行）
 
 「外部からの一時的中断 → 自動回復」シナリオ（429 クールダウン後の再開、スリープからの復帰など）では **ref だけでは不十分**。`useRef` は React 再レンダーをトリガーしないため、ref に「期限値」を書き込んでも `useEffect` は再実行されない。
