@@ -580,6 +580,75 @@ async function fetchOne(article) {
 
 主な使用箇所: `usePrefetchGalleryContents`（#665 で修正、現在は `rateLimited` フラグで自然停止）、`useArticleContent.fetchFullContent`（記事切替時のみ abort、これは正しい挙動）。
 
+## UI 表示条件の「N 件以上」マジックナンバーを慎重に扱う
+
+「複数件あるときだけ UI を出す」のような条件 (`length >= 2` / `> 1` 等) は、**「1 件しかない場合のユーザーニーズ」を見落としやすい**。設計時は「複数のとき集約 UI を出す」意図でも、ユーザー視点では「1 件でもその UI が欲しい」ケースがほとんど。
+
+```tsx
+// アンチパターン: 「複数枚あるときだけ一括保存ボタン」
+{
+  images.length >= 2 && <button>一括保存 ({images.length}枚)</button>;
+}
+// → 1 枚しかない記事では「保存」できなくなる
+
+// 修正パターン: 1 件でも表示してラベルを動的化
+{
+  images.length >= 1 && (
+    <button>{images.length === 1 ? "保存" : `一括保存 (${images.length}枚)`}</button>
+  );
+}
+```
+
+**Why**: 2026-05-09 の #667 で、wallhaven のような本文画像 1 枚記事で「画像を一括保存」ボタンが `>= 2` 判定で非表示になり、ユーザーは OGP/サムネしか DL できない状態になっていた。`downloadAllImages` 自体は 1 枚配列でも正常動作する設計だったため、UI 表示判定の `>= 2` だけが障壁だった。
+
+**How to apply**: UI 条件で「N 件以上」を書くときは:
+
+1. **0 件と 1 件以上で分ければ十分か** を最初に検討（`> 0` / `>= 1`）
+2. **本当に「複数件」を要求する根拠**（DL ファイル名衝突回避など）があるかチェック。なければ `>= 1` に緩和
+3. ラベルや動作が件数で変わるなら **動的に切り替える**（「保存」 vs 「一括保存 (N 枚)」）
+4. 「集約系 UI」と「単発 UI」が冗長に併存する場合 (例: thumb の「保存」と本文の「一括保存」) は問題ない。両方選べる方がユーザー親切
+
+主な使用箇所: `GalleryContextMenu` の本文画像保存ボタン（#667 で修正）。
+
+## 自動生成ファイルは全実行パスで生成フックを設置する
+
+`.gitignore` 対象の自動生成ファイル（`scripts/sync-*.mjs` で生成されるなど）は、**ビルドだけでなく lint / typecheck / e2e のすべての実行パス** で生成されるよう pre-script を設置する。
+
+```json
+// アンチパターン: prebuild だけ。CI の typecheck で生成漏れ
+{
+  "scripts": {
+    "prebuild": "node scripts/sync-release-notes.mjs",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "check": "vp check"
+  }
+}
+
+// 修正パターン: 全 entry に pre-script 設置
+{
+  "scripts": {
+    "prebuild": "node scripts/sync-release-notes.mjs",
+    "build": "next build",
+    "pretypecheck": "node scripts/sync-release-notes.mjs",
+    "typecheck": "tsc --noEmit",
+    "precheck": "node scripts/sync-release-notes.mjs",
+    "check": "vp check",
+    "precheck:fix": "node scripts/sync-release-notes.mjs",
+    "check:fix": "vp check --fix"
+  }
+}
+```
+
+**Why**: 2026-05-09 の #668 で、CI が `pnpm install` 直後に `pnpm run check` → `pnpm run typecheck` を実行するため、`prebuild` フック未起動で `release-notes-data.ts` が生成されず TS2307 エラーになっていた。ローカル開発では `predev` / `prebuild` で生成されるため気付きにくい。
+
+**How to apply**: 自動生成ファイルを参照するスクリプトを追加するときは、想定される実行コマンド (`build` / `dev` / `typecheck` / `check` / `test:e2e` 等) **すべてに pre-script を設置** する。スクリプトが軽量 (数十 ms 以下) なら頻繁に走っても性能影響なし。重いなら以下を検討:
+
+- 出力ファイルの存在チェックでスキップする idempotent な実装にする
+- CI でのみ明示的に実行するステップを追加する
+
+代替策: 自動生成ファイルを `.gitignore` から外して commit する（trade-off: PR diff が増える、人間が手で編集してしまうリスク）。
+
 ## モード OFF 時に進行中の副作用を停止する
 
 state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
