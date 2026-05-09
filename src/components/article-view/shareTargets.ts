@@ -10,6 +10,56 @@ export interface ShareTarget {
   clipboardText?: (link: string, title: string) => string;
 }
 
+export interface TriggerShareTargetResult {
+  /** clipboardText 経由で text を copy したか (UI フィードバック分岐用) */
+  copied: boolean;
+}
+
+export interface TriggerShareTargetDeps {
+  /** clipboard 書き込み (デフォルト: navigator.clipboard.writeText)。テスト時は注入可能 */
+  writeText?: (text: string) => Promise<void>;
+  /** ウィンドウ open (デフォルト: window.open + noopener,noreferrer)。テスト時は注入可能 */
+  openWindow?: (url: string) => void;
+}
+
+/**
+ * シェアターゲット起動の共通ロジック。
+ *
+ * `clipboardText` が定義されたターゲット (Slack / Discord 等) は
+ *  1. `writeText(text)` で text を copy
+ *  2. 成功したら `openWindow(buildUrl)` でアプリを開く
+ * `clipboardText` がないターゲット (X / Bluesky / LINE / Hatena 等) は
+ *  - `openWindow(buildUrl)` で直接シェア URL を開く
+ *
+ * UI フィードバック (toast.success / onShareError 等) は呼び出し側で
+ * `result.copied` または `.catch(...)` で分岐する。
+ *
+ * `ArticleHeaderShare` と `ShareMenu` の両方で同一フローを使う重複を解消。
+ *
+ * 第 4 引数 `deps` は DI 用 (テスト注入)。本番呼出は省略可能。
+ */
+export async function triggerShareTarget(
+  target: ShareTarget,
+  link: string,
+  title: string,
+  deps?: TriggerShareTargetDeps,
+): Promise<TriggerShareTargetResult> {
+  const writeText = deps?.writeText ?? ((t: string) => navigator.clipboard.writeText(t));
+  const openWindow =
+    deps?.openWindow ??
+    ((u: string) => {
+      window.open(u, "_blank", "noopener,noreferrer");
+    });
+  if (target.clipboardText) {
+    const text = target.clipboardText(link, title);
+    await writeText(text);
+    openWindow(target.buildUrl(link, title));
+    return { copied: true };
+  }
+  openWindow(target.buildUrl(link, title));
+  return { copied: false };
+}
+
 export const SHARE_TARGETS: ShareTarget[] = [
   {
     id: "x",

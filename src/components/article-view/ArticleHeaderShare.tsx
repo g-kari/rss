@@ -6,7 +6,7 @@ import ShareMenu from "./ShareMenu";
 import FilterMenu from "./FilterMenu";
 import GlobalFilterMenu from "./GlobalFilterMenu";
 import { useHeaderShareTargets } from "../../hooks/useHeaderShareTargets";
-import { SHARE_TARGETS } from "./shareTargets";
+import { SHARE_TARGETS, triggerShareTarget } from "./shareTargets";
 
 interface Props {
   article: Article;
@@ -46,25 +46,9 @@ export default function ArticleHeaderShare({
             <button
               key={target.id}
               onClick={() => {
-                if (target.clipboardText) {
-                  const text = target.clipboardText(article.link!, article.title);
-                  navigator.clipboard
-                    .writeText(text)
-                    .then(() =>
-                      window.open(
-                        target.buildUrl(article.link!, article.title),
-                        "_blank",
-                        "noopener,noreferrer",
-                      ),
-                    )
-                    .catch(() => onShareError("コピーに失敗しました"));
-                } else {
-                  window.open(
-                    target.buildUrl(article.link!, article.title),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                }
+                triggerShareTarget(target, article.link!, article.title).catch(() =>
+                  onShareError("コピーに失敗しました"),
+                );
               }}
               title={target.label}
               aria-label={target.label}
