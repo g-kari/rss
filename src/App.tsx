@@ -53,6 +53,7 @@ import { useSnoozeHandler } from "./hooks/useSnoozeHandler";
 import { useDocumentTitleBadge } from "./hooks/useDocumentTitleBadge";
 import { useDesktopMediaQuery } from "./hooks/useDesktopMediaQuery";
 import { useApiErrorToast } from "./hooks/useApiErrorToast";
+import { useOnlineRecoveryToast } from "./hooks/useOnlineRecoveryToast";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -77,7 +78,6 @@ export default function App() {
   const searchParams = useSearchParams();
   const { user, betaRestricted, sessionExpired } = useAuth();
   const isOnline = useOnlineStatus();
-  const prevOnlineRef = useRef(isOnline);
 
   const initialMobilePane = searchParams.get("article")
     ? "view"
@@ -155,12 +155,7 @@ export default function App() {
     [confirm],
   );
 
-  useEffect(() => {
-    if (isOnline && !prevOnlineRef.current) {
-      toast.success("接続が復帰しました");
-    }
-    prevOnlineRef.current = isOnline;
-  }, [isOnline, toast]);
+  useOnlineRecoveryToast(isOnline, toast);
 
   // カラム幅（PC）
   const { sidebarWidth, listWidth, handleResizeStart, resetWidth } = useColumnResize();
