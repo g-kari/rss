@@ -61,12 +61,23 @@ export function getContentWidthStyle(width: ContentWidth): CSSProperties {
 
 // ===== ギャラリー列数 =====
 
-export type GalleryColumns = "auto" | "2" | "3" | "4" | "5" | "6" | "7" | "8";
+export type GalleryColumns = "auto" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8";
 
-export const GALLERY_COLUMNS_CYCLE: GalleryColumns[] = ["auto", "2", "3", "4", "5", "6", "7", "8"];
+export const GALLERY_COLUMNS_CYCLE: GalleryColumns[] = [
+  "auto",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+];
 
 export const GALLERY_COLUMNS_LABELS: Record<GalleryColumns, string> = {
   auto: "自動",
+  "1": "1",
   "2": "2",
   "3": "3",
   "4": "4",
@@ -82,6 +93,7 @@ export const GALLERY_COLUMNS_LABELS: Record<GalleryColumns, string> = {
  */
 export const GALLERY_COLUMNS_FOCUS_LABELS: Record<GalleryColumns, string> = {
   auto: "通常と同じ",
+  "1": "1",
   "2": "2",
   "3": "3",
   "4": "4",

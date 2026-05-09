@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### 激アツ新機能っ
+
+- **ギャラリービュの列数設定に「1」を追加したよ〜** — Issue #681。`GALLERY_COLUMNS_CYCLE` に `"1"` を追加して、シングルカラム表示が選べるようになったよ〜🎀 縦に大きく一枚ずつ表示できるから、Pinterest 風じゃなくてフィード風に流したい時に便利〜📜 通常モードもフォーカスモードも両方対応！
+
 ### バグ修正っ
 
 - **記事本文の小さい画像が画面いっぱいに引き伸ばされる問題を直したよ〜** — Issue #680。HTML の `<img>` に `width` / `height` 属性がないフィードだと、`fixImageDimensions` が inline `max-width` を付けられず、CSS `width: 100%` で 100x100 の小さい画像も画面幅いっぱいに引き伸ばされてたの〜🥲 `useArticleImageMaxWidth` hook を新設して、runtime で `naturalWidth` を読み取って `max-width: Npx` を補完するように修正！🔧 既存 inline `max-width` がある場合は上書きしないので `fixImageDimensions` の結果は安全に保たれるよ〜📐
