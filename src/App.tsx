@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import AppModals from "./components/AppModals";
 import FeedSidebar from "./components/feed-sidebar";
 import { AppListPane } from "./components/AppListPane";
-import ArticleView from "./components/ArticleView";
+import { AppViewPane } from "./components/AppViewPane";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
 import OfflineBanner from "./components/OfflineBanner";
@@ -830,11 +830,11 @@ export default function App() {
                   anchorTrigger,
                 }}
               />
-              <MobilePane pane="view" currentPane={mobilePane} isDesktop={isDesktop} as="main">
-                <ErrorBoundary label="記事表示">
-                  <ArticleView {...articleViewProps} />
-                </ErrorBoundary>
-              </MobilePane>
+              <AppViewPane
+                mobilePane={mobilePane}
+                isDesktop={isDesktop}
+                articleViewProps={articleViewProps}
+              />
             </ThreePaneLayout>
           </ArticleFilterProvider>
         </ReaderSettingsProvider>
