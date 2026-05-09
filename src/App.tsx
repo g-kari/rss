@@ -77,7 +77,8 @@ import { AppLandingState } from "./components/AppLandingState";
 
 import SkeletonSidebar from "./components/SkeletonSidebar";
 import SkeletonArticleList from "./components/SkeletonArticleList";
-import { useMobilePane, getMobilePaneTransform } from "./hooks/useMobilePane";
+import { useMobilePane } from "./hooks/useMobilePane";
+import { MobilePane } from "./components/MobilePane";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -739,13 +740,7 @@ export default function App() {
                 onResizeStart={handleResizeStart}
                 onResetWidth={resetWidth}
               />
-              <div
-                data-pane="sidebar"
-                className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
-                style={{ transform: getMobilePaneTransform("sidebar", mobilePane) }}
-                aria-hidden={(!isDesktop && mobilePane !== "sidebar") || undefined}
-                inert={(!isDesktop && mobilePane !== "sidebar") || undefined}
-              >
+              <MobilePane pane="sidebar" currentPane={mobilePane} isDesktop={isDesktop}>
                 {loadingFeeds && feeds.length === 0 ? (
                   <SkeletonSidebar />
                 ) : (
@@ -799,15 +794,14 @@ export default function App() {
                     </FeedSidebarProvider>
                   </ErrorBoundary>
                 )}
-              </div>
-              <div
+              </MobilePane>
+              <MobilePane
+                pane="list"
+                currentPane={mobilePane}
+                isDesktop={isDesktop}
                 id="main-content"
                 tabIndex={-1}
-                data-pane="list"
-                className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane focus:outline-none"
-                style={{ transform: getMobilePaneTransform("list", mobilePane) }}
-                aria-hidden={(!isDesktop && mobilePane !== "list") || undefined}
-                inert={(!isDesktop && mobilePane !== "list") || undefined}
+                className="focus:outline-none"
               >
                 {loadingFeeds && feeds.length === 0 ? (
                   <SkeletonArticleList layout={layout} />
@@ -845,18 +839,12 @@ export default function App() {
                     />
                   </ErrorBoundary>
                 )}
-              </div>
-              <main
-                data-pane="view"
-                className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
-                style={{ transform: getMobilePaneTransform("view", mobilePane) }}
-                aria-hidden={(!isDesktop && mobilePane !== "view") || undefined}
-                inert={(!isDesktop && mobilePane !== "view") || undefined}
-              >
+              </MobilePane>
+              <MobilePane pane="view" currentPane={mobilePane} isDesktop={isDesktop} as="main">
                 <ErrorBoundary label="記事表示">
                   <ArticleView {...articleViewProps} />
                 </ErrorBoundary>
-              </main>
+              </MobilePane>
             </ThreePaneLayout>
           </ArticleFilterProvider>
         </ReaderSettingsProvider>

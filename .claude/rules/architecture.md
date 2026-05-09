@@ -149,6 +149,7 @@ src/
     NSFWEyeAnimation.tsx     # NSFW コンテンツ表示アニメーション
     ArticleDetailOverlay.tsx # listFocusMode 時の記事詳細パネル（右からスライドイン・幅ドラッグリサイズ・createPortal）
     ColumnResizeHandles.tsx  # 3 ペインの「サイドバー / リスト」境界カラムリサイズハンドル（PC のみ、listFocusMode/popup 時無効）— App.tsx から分割
+    MobilePane.tsx           # 3 ペイン (sidebar / list / view) 各ペインの mobile スライドラッパー（aria-hidden / inert / transform を集約、App.tsx Step 1o から分割）
     FocusModeExitButton.tsx  # 記事一覧フォーカスモード解除ボタン（PC のみ右上に固定表示）— App.tsx から分割
     A11yHelpers.tsx          # アクセシビリティ補助 (skip-to-content link + aria-live announcement region)— App.tsx から分割
     SessionExpiredModal.tsx  # セッション期限切れ時の再ログインモーダルオーバーレイ
