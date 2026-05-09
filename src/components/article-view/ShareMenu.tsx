@@ -7,6 +7,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { storageGet, STORAGE_KEYS } from "../../lib/storage";
 import { articleToMarkdown } from "../../lib/html-to-markdown";
 import { buildObsidianUri } from "../../lib/obsidian";
+import { isAbortError } from "../../lib/fetch";
 import { MENU_ITEM_CLS } from "./constants";
 import { SHARE_TARGETS } from "./shareTargets";
 
@@ -82,7 +83,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                     setOpen(false);
                     navigator.share({ url: article.link!, title: article.title }).catch((err) => {
                       // ユーザーキャンセルは無視（AbortError は意図した中断）
-                      if (err instanceof DOMException && err.name === "AbortError") return;
+                      if (isAbortError(err)) return;
                       console.error("[ShareMenu] navigator.share failed", err);
                       toast.error("シェアに失敗しました");
                     });
