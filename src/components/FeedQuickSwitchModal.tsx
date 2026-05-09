@@ -37,11 +37,19 @@ export default function FeedQuickSwitchModal({
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  // WCAG 2.4.3: 閉じたときにトリガー要素 (?キー押下した記事一覧 etc.) へフォーカス復元
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   usePopupLock();
 
   useEffect(() => {
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
     inputRef.current?.focus();
+    return () => {
+      const ret = returnFocusRef.current;
+      returnFocusRef.current = null;
+      if (ret && document.contains(ret)) ret.focus();
+    };
   }, []);
 
   const unreadByFeed = useMemo(() => {
