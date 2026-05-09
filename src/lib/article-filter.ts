@@ -63,6 +63,12 @@ export interface ArticleContentFilterOptions {
   taggedOnly?: boolean;
   /** コレクション選択時の対象記事 ID セット — 設定時はそのコレクション内の記事のみ表示 */
   collectionArticleIds?: Set<string>;
+  /**
+   * 記事の読了時間を返すメモ化付き関数 (#685)。
+   * 未指定時は `readingTime()` を毎回実行する (パフォーマンス劣化注意)。
+   * `createReadingTimeCache()` で生成し、articles 配列の reference 変化時に再生成する。
+   */
+  readingTimeCache?: (article: Article) => number;
 }
 
 /** 記事状態フィルター（既読・ブックマーク・リーディングリスト等）に関するクエリオプション */
@@ -107,10 +113,18 @@ export interface ArticleFilterOptions
 /**
  * 記事の読了時間が指定の範囲に収まるかを判定する。
  * "all" の場合は常に true を返す（フィルタなし）。
+ *
+ * #685: `getMins` を渡せばメモ化付きキャッシュ (`createReadingTimeCache`) を経由する。
+ * 渡さない場合は毎回 `readingTime()` を実行するため、フィルター呼出のたびに stripHtml が
+ * 8 回 regex pass を走らせる重い処理になる (大量記事で 150-400ms ラグ)。
  */
-function matchesReadingTimeRange(article: Article, range: ReadingTimeRange): boolean {
+function matchesReadingTimeRange(
+  article: Article,
+  range: ReadingTimeRange,
+  getMins?: (article: Article) => number,
+): boolean {
   if (range === "all") return true;
-  const mins = readingTime(article.content ?? article.summary);
+  const mins = getMins ? getMins(article) : readingTime(article.content ?? article.summary);
   if (range === "short") return mins <= 5;
   if (range === "medium") return mins > 5 && mins <= 15;
   return mins > 15; // "long"
@@ -271,7 +285,8 @@ function buildCategoryPredicate(opts: ArticleFilterOptions): ((a: Article) => bo
 function buildReadingTimePredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
   const { readingTimeRange = "all" } = opts;
   if (readingTimeRange === "all") return null;
-  return (a) => matchesReadingTimeRange(a, readingTimeRange);
+  const getMins = opts.readingTimeCache;
+  return (a) => matchesReadingTimeRange(a, readingTimeRange, getMins);
 }
 
 /** 検索クエリ述語（activeIds に関わらず常に適用） */

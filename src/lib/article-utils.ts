@@ -210,3 +210,32 @@ export function resolveThumbnail(
   if (yt) return `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg`;
   return undefined;
 }
+
+/**
+ * 記事の読了時間 (分) をメモ化付きで返すキャッシュインスタンスを作成する (#685)。
+ *
+ * `readingTime()` は内部で `stripHtml()` を呼び、これは正規表現を 8 回まで反復実行する
+ * 重い処理。記事フィルター (`matchesReadingTimeRange`) はフィルター条件変更や記事リスト
+ * 更新のたびに全記事に対して再計算するため、500+ 記事 × 5-15KB HTML × 8 regex pass で
+ * 体感ラグになる。
+ *
+ * 使い方:
+ * ```typescript
+ * const cache = useMemo(() => createReadingTimeCache(), [articles]);
+ * // ↑ articles の reference 変化でキャッシュをリセット
+ * cache(article); // 同じ articleId で 2 回目以降はキャッシュ済の値を返す
+ * ```
+ *
+ * キャッシュキー: `article.id` (記事の content / summary は ID が同じなら不変前提)。
+ * 戻り値の関数は副作用ありなのでテストでは新規インスタンスを毎回作る。
+ */
+export function createReadingTimeCache(): (article: Article) => number {
+  const cache = new Map<string, number>();
+  return (article: Article): number => {
+    const cached = cache.get(article.id);
+    if (cached !== undefined) return cached;
+    const mins = readingTime(article.content ?? article.summary);
+    cache.set(article.id, mins);
+    return mins;
+  };
+}

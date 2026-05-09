@@ -3,6 +3,7 @@ import type { Article, Feed, FeedView, KeywordFilter } from "../types";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { useGracePeriod } from "./useGracePeriod";
 import { filterByStructure, applyStateFilterAndSort } from "../lib/article-filter";
+import { createReadingTimeCache } from "../lib/article-utils";
 import { buildFilterMap, normalizeFilter, type CompiledKeywordFilter } from "../lib/keyword-filter";
 import { useArticleFilters } from "./useArticleFilters";
 import { useArticleSorting } from "./useArticleSorting";
@@ -171,6 +172,10 @@ export function useFilteredArticles({
     [globalFilter],
   );
 
+  // #685: 読了時間フィルター用メモ化キャッシュ。articles の reference 変化時に新規生成して
+  // フィルター呼出のたびに重い stripHtml + 8 regex pass を回避する。
+  const readingTimeCache = useMemo(() => createReadingTimeCache(), [articles]);
+
   const isBookmarksFeed = feedId === SPECIAL_FEED_IDS.BOOKMARKS;
   const isReadingListFeed = feedId === SPECIAL_FEED_IDS.READING_LIST;
   const isLikesFeed = feedId === SPECIAL_FEED_IDS.LIKES;
@@ -222,6 +227,7 @@ export function useFilteredArticles({
         readBeforeTimestamp: null,
         snoozedUntil,
         readingTimeRange,
+        readingTimeCache,
         mutedFeedIds,
         authorFilter,
         categoryFilter,
