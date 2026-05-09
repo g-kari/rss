@@ -4,6 +4,8 @@
 
 ### ドキュメント整備っ
 
+- **`coding-conventions.md` 段階的分割 Step 4 をやったよ〜 (#694 Step 4)** — Step 3 (React Context + 早期return + 子hidden) に続き、Step 4 では ResizeObserver (26行) / AbortController.abort() 伝播範囲 (47行) / useEffect 依存キー罠 slice() (32行) / モード OFF 時副作用停止 (22行) / ブラウザ API 遅延通知ペアパターン (34行) の **5 セクション計 161 行** を `react-patterns.md` へ集約！🎀 各セクション位置に redirect リンクを残して発見性維持〜📚 `coding-conventions.md` は 1299 → 1158 行 (Step 1+2+3+4 累計で **1785 → 1158 / -627 行 / 35% 削減**)、`react-patterns.md` は 525 → 686 行で React/ブラウザ API 関連 16 パターンを集約！残 Step 候補は silent fallback / ブラウザ最低バージョン定数 / 永続化 state TTL の **browser-platform クラスター**(別ファイルに分割するかも判断要)〜📦
+
 - **`coding-conventions.md` 段階的分割 Step 3 をやったよ〜 (#694 Step 3)** — Step 2 (大規模コンポーネント分割) に続き、Step 3 では React Context (65行) / 早期 return TS narrowing (41行) / 子コンポーネント hidden fallback (61行) の **3 セクション計 167 行** を `react-patterns.md` へ集約！🎀 各セクション位置に redirect リンクを残して発見性維持〜📚 `coding-conventions.md` は 1451 → 1299 行 (Step 1+2+3 累計で **1785 → 1299 / -486 行 / 27% 削減**)、`react-patterns.md` は 358 → 525 行で React 関連 11 パターンを集約完了！
 
 - **`coding-conventions.md` 段階的分割 Step 2 をやったよ〜 (#694 Step 2)** — Step 1 (state/ref 4 セクション) に続き、Step 2 では「大きいコンポーネントの機能別分割パターン」(本体 + 4 派生ケース) ~165 行を `react-patterns.md` へ抽出！🎀 派生ケース内訳: hook を 1 つずつ別 commit / Phase 1: 純粋関数+TDD / Phase 2: UI 統合 / Phase 0: 型抽象化のみ先行 / 機能別分割後の逆方向集約。`coding-conventions.md` は 1605 → 1451 行 (Step 1 と合算で 1785 → 1451 / -334 行)、`react-patterns.md` は 193 → 358 行〜📚 残 Step 候補は React Context / 早期 return TS narrowing / 子の hidden fallback など。
