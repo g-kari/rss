@@ -8,7 +8,7 @@ import { useSyncedRef } from "./useSyncedRef";
 // Web Speech API の有無は実行中に変わらないのでモジュール定数にする
 const SPEECH_SUPPORTED = isSpeechSupported();
 
-export const TTS_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0] as const;
+export const TTS_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0] as const;
 export type TtsRate = (typeof TTS_RATES)[number];
 
 function loadRate(): TtsRate {
@@ -26,7 +26,7 @@ function loadVoiceUri(): string | null {
  * - pause(): 一時停止
  * - resume(): 再開
  * - stop(): 停止・リセット
- * - cycleRate(): 読み上げ速度を順番に切り替え（0.5x→0.75x→1x→1.25x→1.5x→2x→0.5x…）
+ * - cycleRate(): 読み上げ速度を順番に切り替え（0.5x→0.75x→1x→1.25x→1.5x→2x→2.5x→3x→3.5x→4x→0.5x…）
  * - voices / voiceUri / setVoiceUri: ユーザーが選択した voice を localStorage 永続化 (#654)
  */
 export function useSpeechSynthesis() {

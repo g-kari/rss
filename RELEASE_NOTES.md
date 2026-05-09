@@ -4,6 +4,14 @@
 
 ### 激アツ新機能っ
 
+- **TTS スピードに 2.5x / 3x / 3.5x / 4x の選択肢を追加したよ〜** — Issue #676。これまで最大 2x 止まりだった読み上げ速度を **4x まで拡張** ！⚡ `TTS_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]` に追加して、`cycleRate` ボタンを連打すると 0.5x → 0.75x → 1x → 1.25x → 1.5x → 2x → 2.5x → 3x → 3.5x → 4x → 0.5x… でループ〜🎵 高速読み上げ派の倍速プレイヤー欲求にバッチリ対応〜🚀 既に保存されてる rate 値はそのまま継続。
+
+### バグ修正っ
+
+- **ギャラリービューの自動画像展開が 20 件で止まる問題を直したよ〜** — Issue #673。`usePrefetchGalleryContents` の `maxPrefetch` デフォルト値が **20** で内部上限 (200) と一致してなかったの〜🥲 `articlesKey` は visible 全件で構築されてたけど `targets = slice(0, 20)` で先頭 20 件に固定されてたから、scroll で visible が拡張されても 21 件目以降のプリフェッチが永遠に走らない状態だったよ。デフォルト値を 200 に引き上げて visible 全件を対象に修正〜🛠️ inflight dedup で二重 fetch も防止済み。
+
+### 激アツ新機能っ
+
 - **TTS 読み上げ中のセンテンスがハイライト + スクロール追従するようにしたよ〜 (#672 Phase 2)** — #659 Phase 1 の純粋関数基盤を実 UI に統合！🎀 `wrapSentencesInHtml` で記事本文の HTML を `<span data-tts-sentence-idx="N">` でラップ (linkedom 使用、`<pre>` `<code>` `<script>` `<style>` `<noscript>` は除外)、`useTtsHighlight` hook で boundary + 推定融合 (案 C) で `activeSentenceIndex` を 100ms interval で計算、ArticleContentBody の useEffect で該当 span に `.tts-active-sentence` クラス付与 + `scrollIntoView({block: "nearest", behavior: "smooth"})` で常時追従〜🌐 同センテンスが複数 span に跨る場合 (例: `<a>` リンク内外) は全部にハイライト適用。CSS は \`var(--color-surface-subtle)\` 背景で控えめに、200ms transition で滑らか〜🎵 TDD 15 ケース追加 (基本 / skip タグ / タグ跨ぎ / エッジケース全網羅)。
 - **TTS 読み上げハイライトの基盤を作ったよ〜 (#659 Phase 1)** — 案 C (boundary イベント + 推定タイミング融合) の純粋関数基盤を `src/lib/tts-sentences.ts` に実装！🎀 `splitIntoSentences` (句点・ピリオド・感嘆/疑問符でセンテンス分割)、`findSentenceAtCharIndex` (charIndex → sentence index)、`estimateCharIndexByElapsed` (経過時間から推定)、`selectActiveCharIndex` (boundary が直近なら採用、古ければ推定値) の 4 関数を提供〜🌐 さらに `useSpeechSynthesis.speak()` に `onBoundary?: (charIndex: number) => void` callback を追加して、Web Speech API の `onboundary` イベント発火時に charIndex を購読可能に。TDD 29 ケース全分岐網羅 (8+6+8+7)。Phase 2 で本文 DOM のセンテンス span ラップ + ハイライト + scroll 追従を実装予定〜📦
 - **読み上げ音声を選択できるようにしたよ〜** — Issue #654 (案 1: Web Speech API ベース・できる限り多種)。記事ヘッダーの TTS 速度ボタン (1.0x) の隣に音声セレクターを追加！🎀 `window.speechSynthesis.getVoices()` で OS / ブラウザが提供する全 voice を列挙して、言語別 (`<optgroup>`) に整理して選択可能に〜🌐 デフォルトは「自動」で記事言語に合わせて選び、明示選択した voice は `localStorage` に永続化。`selectTtsVoice` / `groupVoicesByLang` を `src/lib/tts-voice.ts` の純粋関数化、TDD 16 ケース追加 (preferredUri 一致 / 言語前方一致 / default フラグ / fallback / 空配列 / 大文字小文字差異 / グループ化全網羅)。`voiceschanged` イベントで遅延 voice 取得も対応〜🎵
