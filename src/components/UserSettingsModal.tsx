@@ -41,6 +41,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     onChangeAutoReadThreshold,
     autoTranslate,
     toggleAutoTranslate,
+    autoSummarize,
+    toggleAutoSummarize,
     galleryColumns,
     onChangeGalleryColumns,
     galleryColumnsFocus,
@@ -145,6 +147,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
         hidden={activeTab !== "ai-notifications"}
         autoTranslate={autoTranslate}
         toggleAutoTranslate={toggleAutoTranslate}
+        autoSummarize={autoSummarize}
+        toggleAutoSummarize={toggleAutoSummarize}
         aiModel={aiModel}
         onChangeAiModel={onChangeAiModel}
       />

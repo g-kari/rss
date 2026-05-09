@@ -67,6 +67,7 @@ export const STORAGE_KEYS = {
   AUTO_READ_MODE_STATE: "rss-auto-read-mode-state",
   AUTO_READ_THRESHOLD: "rss-auto-read-threshold",
   AUTO_TRANSLATE: "rss-auto-translate",
+  AUTO_SUMMARIZE: "rss-auto-summarize",
   ACTIVE_FEED_VIEW: "rss-active-feed-view",
   SAVED_SEARCHES: "rss-saved-searches",
   GALLERY_COLUMNS: "rss-gallery-columns",
