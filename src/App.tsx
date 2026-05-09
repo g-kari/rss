@@ -33,7 +33,6 @@ import { isSpeechSupported } from "./lib/auto-read";
 import { usePWAInstall } from "./hooks/usePWAInstall";
 import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
 import { useHasOpenPopup } from "./hooks/usePopupLock";
-import { updateFaviconBadge } from "./lib/favicon";
 import { onApiError } from "./lib/api-fetch";
 import { isArticleRead } from "./lib/article-filter";
 import { useGlobalFilterAutoRead } from "./hooks/useGlobalFilterAutoRead";
@@ -52,6 +51,7 @@ import { useArticleSelection } from "./hooks/useArticleSelection";
 import { useAppModalState } from "./hooks/useAppModalState";
 import { useSaveArticleUrl } from "./hooks/useSaveArticleUrl";
 import { useSnoozeHandler } from "./hooks/useSnoozeHandler";
+import { useDocumentTitleBadge } from "./hooks/useDocumentTitleBadge";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -396,10 +396,7 @@ export default function App() {
     [articles, debouncedReadIds, debouncedReadBeforeTimestamp],
   );
 
-  useEffect(() => {
-    document.title = totalUnread > 0 ? `(${totalUnread}) RSS Reader` : "RSS Reader";
-    updateFaviconBadge(totalUnread).catch(() => {});
-  }, [totalUnread]);
+  useDocumentTitleBadge(totalUnread);
 
   const {
     toggleNsfwFeed,
