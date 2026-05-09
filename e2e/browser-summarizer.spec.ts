@@ -141,6 +141,24 @@ test.describe("SUMMARIZER_OPTIONS — Chrome 公式仕様準拠", () => {
   test("length は公式仕様の許可値", () => {
     expect(["short", "medium", "long"]).toContain(SUMMARIZER_OPTIONS.length);
   });
+
+  // #664: Chrome が "No output language was specified" 警告を出さないようにする
+  // 公式サポート言語は [en, es, ja] のみ。本プロジェクトは日本語 RSS リーダーなので "ja" 固定。
+  test("outputLanguage は公式サポート言語 (en/es/ja) のいずれか — Issue #664", () => {
+    expect(["en", "es", "ja"]).toContain(SUMMARIZER_OPTIONS.outputLanguage);
+  });
+
+  test("outputLanguage は日本語 RSS リーダーなので 'ja' 固定 — Issue #664", () => {
+    expect(SUMMARIZER_OPTIONS.outputLanguage).toBe("ja");
+  });
+
+  test("expectedInputLanguages はモデル選択精度向上のヒント — Issue #664", () => {
+    expect(Array.isArray(SUMMARIZER_OPTIONS.expectedInputLanguages)).toBe(true);
+    expect(SUMMARIZER_OPTIONS.expectedInputLanguages.length).toBeGreaterThan(0);
+    // 日本語 + 英語の RSS が大半なので両方をヒントとして含める
+    expect(SUMMARIZER_OPTIONS.expectedInputLanguages).toContain("ja");
+    expect(SUMMARIZER_OPTIONS.expectedInputLanguages).toContain("en");
+  });
 });
 
 // ==========================================================================
