@@ -283,6 +283,7 @@ src/
     content.ts               # コンテンツ抽出・後処理パイプライン (Readability + postProcess)
     html-post-processor.ts   # HTML後処理パイプライン本体（postProcess・applyCorePipeline・fixExternalLinks・wrapTables）+ サブモジュール re-export
     html-noise-removal.ts    # HTMLノイズ除去（removeNoise・processNestedBlocks・removeDivsByClass・replaceBlocksByClass・replaceUntilStable・removeOrphanedIconSvgs）
+    json-ld-images.ts        # JSON-LD `Article` 型 image フィールドから記事主要画像 URL を抽出（extractJsonLdImages / appendMissingJsonLdImages）— 画像主体ページで Readability が主要画像を取りこぼした場合の補完源
     html-image-processors.ts # HTML画像処理（fixLazyImages・fixImageDimensions・rewriteImageUrls・removeSmallThumbnailImages・buildImageSlider・tryParseBase）
     html-embed-transforms.ts # HTML埋め込み変換（Zenn・X Tweet・SpeakerDeck・SlideShare の iframe/リンク変換）
     readability-extractor.ts # Readabilityラッパー（iframe退避・preClean・本文抽出）
@@ -671,6 +672,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `full-text-search.spec.ts`            | `src/lib/full-text-search.ts` — クエリパーサー                                                                                                        |
 | `html-post-processor.spec.ts`         | `src/lib/html-post-processor.ts` — HTML 後処理パイプライン                                                                                            |
 | `orphaned-icon-svgs.spec.ts`          | `src/lib/html-noise-removal.ts#removeOrphanedIconSvgs` — `<svg><use href="#fragment">` 孤立 icon 参照の除去                                           |
+| `json-ld-images.spec.ts`              | `src/lib/json-ld-images.ts` — `extractJsonLdImages` / `appendMissingJsonLdImages` 純粋関数（JSON-LD Article image 抽出と本文補完）                    |
 | `html-to-markdown.spec.ts`            | `src/lib/html-to-markdown.ts` — HTML → Markdown 変換                                                                                                  |
 | `image-extractor.spec.ts`             | `src/lib/image-extractor.ts` — 画像 URL 抽出                                                                                                          |
 | `image-mime.spec.ts`                  | `src/lib/image-mime.ts` — 画像 MIME タイプ検証                                                                                                        |

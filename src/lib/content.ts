@@ -19,6 +19,7 @@ import {
 } from "./html-post-processor";
 import { extractWithReadability } from "./readability-extractor";
 import { extractWithRegex } from "./regex-extractor";
+import { extractJsonLdImages, appendMissingJsonLdImages } from "./json-ld-images";
 
 /**
  * inside-games.jp 等の thumb-list / capt-thumb-list ギャラリー UL を検出し、
@@ -346,6 +347,13 @@ export function extractMainContent(
   const buildGallery = () =>
     galleryImgs.length > 0 ? rewriteImageUrls(`<div hidden>${galleryImgs.join("")}</div>`) : "";
 
+  // JSON-LD `Article` 型の `image` フィールドを採取して、抽出結果に主要画像が含まれて
+  // いない場合のフォールバック補完源とする。Readability が画像主体ページで「推薦」等を
+  // 本文と誤判定して主要画像を取りこぼす症状の defensive backup。
+  const jsonLdImages = extractJsonLdImages(preprocessed);
+  const augmentWithJsonLd = (content: string) =>
+    jsonLdImages.length > 0 ? appendMissingJsonLdImages(content, jsonLdImages) : content;
+
   const rc = extractWithReadability(preprocessed, pageUrl);
   if (rc && isContentSufficient(rc)) {
     // Readability が元ページの画像を大量に削除した場合は regex フォールバックを優先する。
@@ -359,13 +367,16 @@ export function extractMainContent(
       // rcImgCount が 0 の場合 rcImgCount * 2 = 0 となり条件が常に true になるため
       // Math.max(1, ...) で「regex に最低 1 枚以上の img がある」ことを保証する
       if (regexImgCount >= Math.max(1, rcImgCount * 2)) {
-        return { content: regexContent + buildGallery(), source: "regex" };
+        return { content: augmentWithJsonLd(regexContent) + buildGallery(), source: "regex" };
       }
     }
-    return { content: postProcess(rc, pageUrl) + buildGallery(), source: "readability" };
+    return {
+      content: augmentWithJsonLd(postProcess(rc, pageUrl)) + buildGallery(),
+      source: "readability",
+    };
   }
   const regexContent = extractWithRegex(preprocessed, pageUrl);
-  return { content: regexContent + buildGallery(), source: "regex" };
+  return { content: augmentWithJsonLd(regexContent) + buildGallery(), source: "regex" };
 }
 
 /**
