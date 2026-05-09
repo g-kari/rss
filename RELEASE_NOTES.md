@@ -2,6 +2,14 @@
 
 ## 2026-05-09 (latest)
 
+### リファクタリングっ
+
+- **ArticleList の compact/list レイアウト JSX を関数化したよ〜** — Issue #651 Step 1 最小スコープ。50 行の仮想スクロール JSX を `renderCompactListBody` ローカル関数として抽出して、メイン return が 1 行の関数呼び出しになったの〜🔧✨ クロージャで外部 scope の変数を参照してるから依存配列管理は React に委譲。残り 3 レイアウト (card / magazine / gallery) は次 PR で同様に関数化予定。
+
+### パフォーマンス調査っ
+
+- **image-proxy に遅延計測ログを追加したよ〜** — Issue #649。ユーザー仮説「KV で遅延してるなら rate_limit はやめる」を検証するために、`buildCacheKey` (SHA-256) / `matchCfCache` (Cache API) / `checkSlidingWindow` (KV) の各セクションを `Date.now()` 差分で計測！⏱️ ログ形式は `[image-proxy] HIT total=Xms buildKey=Yms cacheMatch=Zms` のような感じ〜📊 案 B (Cache HIT 時に rate-limit スキップ) は **既に実装済み** だったので、本番デプロイ後に `wrangler tail` で実測値を見てユーザーが判断してね〜🔍
+
 ### 激アツ新機能っ
 
 - **記事一覧の全レイアウトで右クリックメニューが使えるようになったよ〜** — Issue #633 A3。これまでギャラリーレイアウトだけ右クリックメニューがあったけど、新規 `ArticleContextMenu` コンポーネントで compact / list / card / magazine の 4 レイアウトにも展開！🖱️✨ メニュー項目は「既読切替」「ブックマーク」「後で読む」「一覧から削除（未読のみ）」のシンプル 4 項目。ギャラリー用の `GalleryContextMenu` は画像保存機能込みなのでそのまま維持してる〜📋 これで A2 (ホバーボタン) + A3 (右クリック) + B1 (`t` キー) の 3 ルートで「後で読む」追加できるよ〜🎀
