@@ -4,6 +4,7 @@
 
 ### バグ修正っ
 
+- **ユーザー設定モーダルの上下ぴょこぴょこ jump を解消したよ〜!🎀 (#707)** — `Modal.tsx` が `top-1/2 -translate-y-1/2` (垂直中央配置) + `max-h-[90dvh]` のみで **固定高さなし** だったため、`UserSettingsModal` のタブ切替 (表示 / AI・通知 / フィード管理 / インポート・エクスポート) のたびに content の高さが変わって Modal 全体が中央配置のまま伸縮 → 視覚的に上下に「ぴょこぴょこ動く」体感バグだったのを修正!💪 `Modal` に optional `height?: string` prop を追加して、`UserSettingsModal` から `height="sm:h-[640px]"` を渡すことで固定高に〜📦 他の Modal caller (FeedFilterModal / SnoozeModal / ConfirmModal 等) はデフォルト `height=""` でこれまで通りの content 高優先挙動を維持〜🛡️
 - **オートモード + 自動要約で要約を読み上げ中の TTS ハイライトを抑制!🎯 (#703)** — `autoMode + autoSummarize + aiResult` が揃って **要約テキストを TTS で読み上げ中** のとき、ハイライトは「**記事本文**」の sentence span に当たってて、読まれているテキストとハイライト位置が乖離してた問題を修正!💪 `useArticleViewState` で `isReadingSummary` 判定 → `ttsSentences` を空配列に置き換えて `useTtsHighlight` の `activeSentenceIndex = -1` 維持〜🛡️ 要約 UI 自体に sentence span を導入する大規模対応はせず、**ハイライト抑制** のみで「読んでるテキストと違うところがハイライトされる」違和感を解消〜📦
 
 - **ISO 8601 cutoff の比較を Date.parse ベースに修正で `+00:00` 形式も正しく扱うよ〜!📅 (code-quality 監査 85%)** — `computeEffectiveReadBeforeCutoff` で `readBeforeTimestamp` と ttl 由来 cutoff を **lexicographic 比較** してて、ASCII で `+` (0x2B) < `.` (0x2E) のため **同じ時刻** を `+00:00` 形式と `.000Z` 形式で表現すると後者が常に「新しい」と誤判定する潜在バグを修正!💪 `Date.parse(a) > Date.parse(b)` のミリ秒比較に変更〜🛡️ TDD で同時刻 +00:00/Z 形式 + 異時刻パターン全網羅〜📚
