@@ -28,7 +28,6 @@ import { useAccessibilitySettings } from "./hooks/useAccessibilitySettings";
 import { useNSFWMode } from "./hooks/useNSFWMode";
 import { useFocusMode } from "./hooks/useFocusMode";
 import { useAutoReadMode } from "./hooks/useAutoReadMode";
-import { isSpeechSupported } from "./lib/auto-read";
 import { usePWAInstall } from "./hooks/usePWAInstall";
 import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
 import { useHasOpenPopup } from "./hooks/usePopupLock";
@@ -67,6 +66,8 @@ import { ReaderSettingsProvider, type ReaderSettings } from "./contexts/ReaderSe
 import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import { FeedSidebarProvider } from "./contexts/FeedSidebarContext";
+import { TtsAdapterProvider } from "./contexts/TtsAdapterContext";
+import { useSpeechSynthesis } from "./hooks/useSpeechSynthesis";
 import ToastContainer from "./components/ToastContainer";
 import { useToastState } from "./hooks/useToast";
 import { AppLandingState } from "./components/AppLandingState";
@@ -137,7 +138,11 @@ export default function App() {
     useFocusMode();
   const install = usePWAInstall();
   const { autoMode, toggleAutoMode, disableAutoMode } = useAutoReadMode();
-  const ttsSupported = useMemo(() => isSpeechSupported(), []);
+  // #675 Phase 1b: TTS adapter を 1 箇所で生成して Provider 経由で配下に注入。
+  // 配下で `useTtsAdapter()` を呼ぶ全 consumer (記事ヘッダー TTS / 設定モーダル voice 選択) で
+  // 同じ isPlaying / rate / voice state を共有する。
+  const ttsAdapter = useSpeechSynthesis();
+  const ttsSupported = ttsAdapter.supported;
 
   const {
     showHelp,
@@ -720,235 +725,237 @@ export default function App() {
 
   return (
     <ToastProvider value={toast}>
-      <ReaderSettingsProvider value={readerSettings}>
-        <ArticleFilterProvider value={articleFilter}>
-          <ThreePaneLayout
-            sidebarWidth={sidebarWidth}
-            listWidth={listWidth}
-            listFocusMode={listFocusMode}
-          >
-            {/* skip-to-content: Tab キーでフォーカス時のみ表示。サイドバーをスキップして記事一覧へ */}
-            <a
-              href="#main-content"
-              className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-3 focus:py-1.5 focus:rounded-md focus:bg-surface-elevated focus:text-text-strong focus:text-[13px] focus:shadow-lg focus:border focus:border-border-default focus:outline-none"
-            >
-              記事一覧へスキップ
-            </a>
-            {/* スクリーンリーダー向け: キーボードナビで記事切り替え時にタイトルをアナウンス */}
-            <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-              {articleAnnouncement}
-            </div>
-            <OfflineBanner isOnline={isOnline} hasPendingChanges={hasPendingChanges} />
-
-            <ToastContainer />
-
-            <ConfirmModal {...confirmModalProps} />
-
-            <AppModals
-              sessionExpired={sessionExpired}
-              snoozeTargetId={snoozeTargetId}
-              snoozeArticleTitle={snoozeArticleTitle}
-              onSnooze={handleSnooze}
-              onSnoozeClose={() => setSnoozeTargetId(null)}
-              showHelp={showHelp}
-              onHelpClose={() => setShowHelp(false)}
-              showSettings={showSettings}
-              onSettingsClose={() => setShowSettings(false)}
-              showFeedSwitcher={showFeedSwitcher}
-              feeds={feeds}
-              articles={articles}
-              readIds={readIds}
-              readBeforeTimestamp={readBeforeTimestamp}
-              selectedFeedId={selectedFeedId}
-              onSelectFeed={setSelectedFeedId}
-              onFeedSwitcherClose={() => setShowFeedSwitcher(false)}
-            />
-            {/* NSFW 目が開くアニメーション */}
-            {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
-            <NewArticleBanner
-              newArticleCount={newArticleCount}
-              focusMode={focusMode}
+      <TtsAdapterProvider value={ttsAdapter}>
+        <ReaderSettingsProvider value={readerSettings}>
+          <ArticleFilterProvider value={articleFilter}>
+            <ThreePaneLayout
+              sidebarWidth={sidebarWidth}
+              listWidth={listWidth}
               listFocusMode={listFocusMode}
-              onDismiss={dismissNewArticles}
-            />
-            {/* 記事一覧フォーカスモード解除ボタン（PC のみ表示。モバイルは単一ペイン表示のため不要） */}
-            {listFocusMode && (
-              <button
-                onClick={exitFocusMode}
-                className="fixed top-3 right-3 z-50 hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
-                aria-label="フォーカスモード解除"
-                title="フォーカスモード解除 (Esc)"
-              >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M4.5 1.5H1.5v3M7.5 1.5h3v3M1.5 7.5v3h3M10.5 7.5v3h-3" />
-                </svg>
-                フォーカス解除
-              </button>
-            )}
-            <FocusModeOverlay
-              focusMode={focusMode}
-              exitFocusMode={exitFocusMode}
-              articleViewProps={articleViewProps}
-            />
-            <ArticleDetailOverlay
-              open={articleDetailOverlayOpen}
-              onClose={closeArticleDetailOverlay}
-              articleViewProps={articleViewProps}
-            />
-            {/* カラムリサイズハンドル (PCのみ、記事一覧フォーカス / ポップアップ表示中は無効) */}
-            {!listFocusMode && (
-              <>
-                <div
-                  className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
-                  style={{ left: sidebarWidth - 2 }}
-                  onMouseDown={(e) => handleResizeStart("sidebar", e)}
-                  onDoubleClick={() => resetWidth("sidebar")}
-                  aria-hidden={hasOpenPopup}
-                >
-                  <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
-                </div>
-                <div
-                  className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
-                  style={{ left: sidebarWidth + listWidth - 2 }}
-                  onMouseDown={(e) => handleResizeStart("list", e)}
-                  onDoubleClick={() => resetWidth("list")}
-                  aria-hidden={hasOpenPopup}
-                >
-                  <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
-                </div>
-              </>
-            )}
-            <div
-              data-pane="sidebar"
-              className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
-              style={{ transform: getMobilePaneTransform("sidebar", mobilePane) }}
-              aria-hidden={(!isDesktop && mobilePane !== "sidebar") || undefined}
-              inert={(!isDesktop && mobilePane !== "sidebar") || undefined}
             >
-              {loadingFeeds && feeds.length === 0 ? (
-                <SkeletonSidebar />
-              ) : (
-                <ErrorBoundary label="サイドバー">
-                  <FeedSidebarProvider value={feedSidebarActions}>
-                    <FeedSidebar
+              {/* skip-to-content: Tab キーでフォーカス時のみ表示。サイドバーをスキップして記事一覧へ */}
+              <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-3 focus:py-1.5 focus:rounded-md focus:bg-surface-elevated focus:text-text-strong focus:text-[13px] focus:shadow-lg focus:border focus:border-border-default focus:outline-none"
+              >
+                記事一覧へスキップ
+              </a>
+              {/* スクリーンリーダー向け: キーボードナビで記事切り替え時にタイトルをアナウンス */}
+              <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+                {articleAnnouncement}
+              </div>
+              <OfflineBanner isOnline={isOnline} hasPendingChanges={hasPendingChanges} />
+
+              <ToastContainer />
+
+              <ConfirmModal {...confirmModalProps} />
+
+              <AppModals
+                sessionExpired={sessionExpired}
+                snoozeTargetId={snoozeTargetId}
+                snoozeArticleTitle={snoozeArticleTitle}
+                onSnooze={handleSnooze}
+                onSnoozeClose={() => setSnoozeTargetId(null)}
+                showHelp={showHelp}
+                onHelpClose={() => setShowHelp(false)}
+                showSettings={showSettings}
+                onSettingsClose={() => setShowSettings(false)}
+                showFeedSwitcher={showFeedSwitcher}
+                feeds={feeds}
+                articles={articles}
+                readIds={readIds}
+                readBeforeTimestamp={readBeforeTimestamp}
+                selectedFeedId={selectedFeedId}
+                onSelectFeed={setSelectedFeedId}
+                onFeedSwitcherClose={() => setShowFeedSwitcher(false)}
+              />
+              {/* NSFW 目が開くアニメーション */}
+              {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
+              <NewArticleBanner
+                newArticleCount={newArticleCount}
+                focusMode={focusMode}
+                listFocusMode={listFocusMode}
+                onDismiss={dismissNewArticles}
+              />
+              {/* 記事一覧フォーカスモード解除ボタン（PC のみ表示。モバイルは単一ペイン表示のため不要） */}
+              {listFocusMode && (
+                <button
+                  onClick={exitFocusMode}
+                  className="fixed top-3 right-3 z-50 hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
+                  aria-label="フォーカスモード解除"
+                  title="フォーカスモード解除 (Esc)"
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M4.5 1.5H1.5v3M7.5 1.5h3v3M1.5 7.5v3h3M10.5 7.5v3h-3" />
+                  </svg>
+                  フォーカス解除
+                </button>
+              )}
+              <FocusModeOverlay
+                focusMode={focusMode}
+                exitFocusMode={exitFocusMode}
+                articleViewProps={articleViewProps}
+              />
+              <ArticleDetailOverlay
+                open={articleDetailOverlayOpen}
+                onClose={closeArticleDetailOverlay}
+                articleViewProps={articleViewProps}
+              />
+              {/* カラムリサイズハンドル (PCのみ、記事一覧フォーカス / ポップアップ表示中は無効) */}
+              {!listFocusMode && (
+                <>
+                  <div
+                    className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
+                    style={{ left: sidebarWidth - 2 }}
+                    onMouseDown={(e) => handleResizeStart("sidebar", e)}
+                    onDoubleClick={() => resetWidth("sidebar")}
+                    aria-hidden={hasOpenPopup}
+                  >
+                    <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+                  </div>
+                  <div
+                    className={`hidden lg:block absolute top-0 bottom-0 w-3 cursor-col-resize z-[5] group ${hasOpenPopup ? "pointer-events-none opacity-0" : ""}`}
+                    style={{ left: sidebarWidth + listWidth - 2 }}
+                    onMouseDown={(e) => handleResizeStart("list", e)}
+                    onDoubleClick={() => resetWidth("list")}
+                    aria-hidden={hasOpenPopup}
+                  >
+                    <div className="absolute inset-y-0 left-1/2 w-px bg-border-default group-hover:bg-text-muted transition-colors" />
+                  </div>
+                </>
+              )}
+              <div
+                data-pane="sidebar"
+                className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
+                style={{ transform: getMobilePaneTransform("sidebar", mobilePane) }}
+                aria-hidden={(!isDesktop && mobilePane !== "sidebar") || undefined}
+                inert={(!isDesktop && mobilePane !== "sidebar") || undefined}
+              >
+                {loadingFeeds && feeds.length === 0 ? (
+                  <SkeletonSidebar />
+                ) : (
+                  <ErrorBoundary label="サイドバー">
+                    <FeedSidebarProvider value={feedSidebarActions}>
+                      <FeedSidebar
+                        feeds={feeds}
+                        articles={articles}
+                        readIds={readIds}
+                        readBeforeTimestamp={readBeforeTimestamp}
+                        bookmarkCount={bookmarkCount}
+                        readingListCount={readingListCount}
+                        likeCount={likeCount}
+                        historyCount={historyCount}
+                        selectedFeedId={selectedFeedId}
+                        selectedGroupId={selectedGroupId}
+                        user={user}
+                        theme={theme}
+                        selectedTag={selectedTag}
+                        articleTagIds={articleTagIds}
+                        refreshing={refreshing}
+                        loadingFeeds={loadingFeeds}
+                        isOnline={isOnline}
+                        pinnedFeedIds={pinnedFeedIds}
+                        collapsedCategories={collapsedCategories}
+                        nsfwMode={nsfwMode}
+                        feedGroups={feedGroups}
+                        totalUnread={totalUnread}
+                        activeFeedView={activeFeedView}
+                        recommendations={recommendations}
+                        recommendationsLoading={recommendationsLoading}
+                        recommendationsRefreshing={recommendationsRefreshing}
+                        recommendationsError={recommendationsError}
+                        noteCount={Object.keys(notes).length}
+                        collections={collections}
+                        collectionsLoadError={collectionsLoadError}
+                        onRetryCollections={retryCollections}
+                        selectedCollectionId={selectedCollectionId}
+                        install={install}
+                        loadError={feedLoadError ? "フィードの読み込みに失敗しました" : null}
+                        onRetry={retryFeedList}
+                        push={{
+                          supported: pushSupported,
+                          subscribed: pushSubscribed,
+                          loading: pushLoading,
+                          error: pushError,
+                          onToggle: togglePush,
+                          onSendTest: sendPushTest,
+                        }}
+                      />
+                    </FeedSidebarProvider>
+                  </ErrorBoundary>
+                )}
+              </div>
+              <div
+                id="main-content"
+                tabIndex={-1}
+                data-pane="list"
+                className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane focus:outline-none"
+                style={{ transform: getMobilePaneTransform("list", mobilePane) }}
+                aria-hidden={(!isDesktop && mobilePane !== "list") || undefined}
+                inert={(!isDesktop && mobilePane !== "list") || undefined}
+              >
+                {loadingFeeds && feeds.length === 0 ? (
+                  <SkeletonArticleList layout={layout} />
+                ) : (
+                  <ErrorBoundary label="記事一覧">
+                    <ArticleList
                       feeds={feeds}
-                      articles={articles}
                       readIds={readIds}
                       readBeforeTimestamp={readBeforeTimestamp}
-                      bookmarkCount={bookmarkCount}
-                      readingListCount={readingListCount}
-                      likeCount={likeCount}
-                      historyCount={historyCount}
+                      bookmarkIds={bookmarkIds}
+                      readingListIds={readingListIds}
+                      selectedArticleId={selectedArticle?.id ?? null}
                       selectedFeedId={selectedFeedId}
-                      selectedGroupId={selectedGroupId}
-                      user={user}
-                      theme={theme}
-                      selectedTag={selectedTag}
-                      articleTagIds={articleTagIds}
-                      refreshing={refreshing}
-                      loadingFeeds={loadingFeeds}
-                      isOnline={isOnline}
-                      pinnedFeedIds={pinnedFeedIds}
-                      collapsedCategories={collapsedCategories}
-                      nsfwMode={nsfwMode}
-                      feedGroups={feedGroups}
-                      totalUnread={totalUnread}
+                      layout={layout}
+                      loading={loadingArticles}
+                      fetchError={fetchError}
+                      onRetry={retryInitialLoad}
+                      onChangeLayout={onChangeLayout}
+                      onMobileBack={() => setMobilePane("sidebar")}
+                      onSelectArticle={selectArticle}
+                      onToggleRead={toggleRead}
+                      onToggleBookmark={toggleBookmark}
+                      onToggleReadingList={toggleReadingList}
+                      onMarkRead={markRead}
+                      onMarkAllRead={onMarkAllRead}
+                      feedHasMorePages={feedHasMorePages}
+                      onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
+                      notes={notes}
                       activeFeedView={activeFeedView}
-                      recommendations={recommendations}
-                      recommendationsLoading={recommendationsLoading}
-                      recommendationsRefreshing={recommendationsRefreshing}
-                      recommendationsError={recommendationsError}
-                      noteCount={Object.keys(notes).length}
-                      collections={collections}
-                      collectionsLoadError={collectionsLoadError}
-                      onRetryCollections={retryCollections}
-                      selectedCollectionId={selectedCollectionId}
-                      install={install}
-                      loadError={feedLoadError ? "フィードの読み込みに失敗しました" : null}
-                      onRetry={retryFeedList}
-                      push={{
-                        supported: pushSupported,
-                        subscribed: pushSubscribed,
-                        loading: pushLoading,
-                        error: pushError,
-                        onToggle: togglePush,
-                        onSendTest: sendPushTest,
-                      }}
+                      listFocusMode={listFocusMode}
+                      onToggleListFocusMode={toggleListFocusMode}
+                      onGalleryAutoRead={handleGalleryAutoRead}
+                      duplicateInfo={duplicateInfo}
+                      anchorTrigger={anchorTrigger}
                     />
-                  </FeedSidebarProvider>
+                  </ErrorBoundary>
+                )}
+              </div>
+              <main
+                data-pane="view"
+                className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
+                style={{ transform: getMobilePaneTransform("view", mobilePane) }}
+                aria-hidden={(!isDesktop && mobilePane !== "view") || undefined}
+                inert={(!isDesktop && mobilePane !== "view") || undefined}
+              >
+                <ErrorBoundary label="記事表示">
+                  <ArticleView {...articleViewProps} />
                 </ErrorBoundary>
-              )}
-            </div>
-            <div
-              id="main-content"
-              tabIndex={-1}
-              data-pane="list"
-              className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane focus:outline-none"
-              style={{ transform: getMobilePaneTransform("list", mobilePane) }}
-              aria-hidden={(!isDesktop && mobilePane !== "list") || undefined}
-              inert={(!isDesktop && mobilePane !== "list") || undefined}
-            >
-              {loadingFeeds && feeds.length === 0 ? (
-                <SkeletonArticleList layout={layout} />
-              ) : (
-                <ErrorBoundary label="記事一覧">
-                  <ArticleList
-                    feeds={feeds}
-                    readIds={readIds}
-                    readBeforeTimestamp={readBeforeTimestamp}
-                    bookmarkIds={bookmarkIds}
-                    readingListIds={readingListIds}
-                    selectedArticleId={selectedArticle?.id ?? null}
-                    selectedFeedId={selectedFeedId}
-                    layout={layout}
-                    loading={loadingArticles}
-                    fetchError={fetchError}
-                    onRetry={retryInitialLoad}
-                    onChangeLayout={onChangeLayout}
-                    onMobileBack={() => setMobilePane("sidebar")}
-                    onSelectArticle={selectArticle}
-                    onToggleRead={toggleRead}
-                    onToggleBookmark={toggleBookmark}
-                    onToggleReadingList={toggleReadingList}
-                    onMarkRead={markRead}
-                    onMarkAllRead={onMarkAllRead}
-                    feedHasMorePages={feedHasMorePages}
-                    onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
-                    notes={notes}
-                    activeFeedView={activeFeedView}
-                    listFocusMode={listFocusMode}
-                    onToggleListFocusMode={toggleListFocusMode}
-                    onGalleryAutoRead={handleGalleryAutoRead}
-                    duplicateInfo={duplicateInfo}
-                    anchorTrigger={anchorTrigger}
-                  />
-                </ErrorBoundary>
-              )}
-            </div>
-            <main
-              data-pane="view"
-              className="absolute inset-0 lg:relative lg:inset-auto overflow-hidden mobile-pane"
-              style={{ transform: getMobilePaneTransform("view", mobilePane) }}
-              aria-hidden={(!isDesktop && mobilePane !== "view") || undefined}
-              inert={(!isDesktop && mobilePane !== "view") || undefined}
-            >
-              <ErrorBoundary label="記事表示">
-                <ArticleView {...articleViewProps} />
-              </ErrorBoundary>
-            </main>
-          </ThreePaneLayout>
-        </ArticleFilterProvider>
-      </ReaderSettingsProvider>
+              </main>
+            </ThreePaneLayout>
+          </ArticleFilterProvider>
+        </ReaderSettingsProvider>
+      </TtsAdapterProvider>
     </ToastProvider>
   );
 }

@@ -2,7 +2,13 @@
 
 ## 2026-05-09 (latest)
 
+### UX改善っ
+
+- **読み上げ音声 (voice) の選択を設定モーダルに移動したよ〜 (#675 Phase 1b)** — これまで記事ヘッダーの隅にあった voice 選択 dropdown は記事を開くたびに表示されてヘッダーが情報過多だったの〜🥲 設定モーダル → 表示タブ → 「読み上げ音声」セクションに引越しして、1 度設定すれば全記事に適用される自然な UX に〜🎀 同セクションには現在の TTS エンジン名 (Web Speech API) も表示。Phase 2 (#674 Piper wasm) でエンジン切替 UI もここに増える予定！記事ヘッダーは ▶︎ 再生 / 速度 / オートモード ボタンのみのスッキリ表示に〜✨
+
 ### リファクタリングっ
+
+- **TTS adapter を `TtsAdapterContext` で全 consumer 共有化したよ〜 (#675 Phase 1b)** — `useSpeechSynthesis()` を App.tsx で 1 回だけ呼んで `<TtsAdapterProvider>` 配下に注入！🔧 記事ヘッダー TTS と設定モーダル voice 選択が同じ adapter インスタンスを共有するから、isPlaying / rate / voice が常に同期。Phase 2 で `usePiperTts()` に差し替えるとき、Provider value を切替えるだけで全 consumer が自動追従する設計〜🎀 useArticleViewTts は `useTtsAdapter()` を介して context から adapter を取得、voice 関連 props (`ttsVoices` / `ttsVoiceUri` / `setTtsVoiceUri`) は ArticleHeader 経路から完全削除。
 
 - **TTS エンジン抽象化レイヤー `TtsAdapter` を導入したよ〜 (#675 Phase 1a)** — 既存の Web Speech API と将来の wasm 実装 (Piper / つくよみちゃん #674) を共通インターフェース経由で扱えるように準備〜🔧 `src/lib/tts-adapter.ts` に `TtsVoice` / `TtsEngineId` / `TtsAdapter` 型を定義。`useSpeechSynthesis` が `TtsAdapter` を返すように型付けして、内部で `SpeechSynthesisVoice` → `TtsVoice` に map することで Web Speech 固有 field (`localService` 等) を捨てる構造に〜🎀 consumer (`useArticleViewTts` / `ArticleHeader` / `ArticleHeaderAiTts`) も `TtsVoice[]` 型に揃えて engine 種別非依存に！TDD 7 ケース (voice 変換 / 既存純粋関数との互換 / 型契約) で抽象化境界を保証。
 

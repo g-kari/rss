@@ -114,6 +114,7 @@ src/
     ReaderSettingsContext.tsx # リーダー表示設定の React Context（フォントサイズ・行間・テーマ等）
     SelectedArticleContext.ts # 選択中の記事 ID を提供する Context（ArticleItem の不要な re-render 回避）
     ToastContext.tsx          # トースト通知 API の React Context（useToast のグローバル提供）
+    TtsAdapterContext.tsx     # TTS engine adapter の React Context（#675 Phase 1b — App.tsx で 1 回だけ生成し、記事ヘッダー TTS / 設定モーダル voice 選択で同一インスタンスを共有）
   components/
     feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection / TagsSection / CollectionsSection / FeedSearchBar）
     feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / FeedTitleContent / feedActions.tsx / types.ts）
@@ -171,7 +172,7 @@ src/
     article-view/ArticleHeaderAiTts.tsx     # AI 要約・翻訳・画像 DL・TTS・オートモード ボタン群
     article-view/ArticleHeaderShare.tsx     # クイックシェア + ShareMenu/FilterMenu/GlobalFilterMenu
     article-view/ArticleHeaderEngagement.tsx # 後で読む/ブックマーク/いいね/メモ/コレクション/フォーカスモード
-    user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel / FeedManagementTabPanel / ImportExportTabPanel / shared）
+    user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel / FeedManagementTabPanel / ImportExportTabPanel / TtsVoiceSection / shared）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
