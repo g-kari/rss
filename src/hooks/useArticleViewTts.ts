@@ -3,6 +3,7 @@
 import { useCallback, useEffect, type RefObject } from "react";
 import type { Article } from "../types";
 import { buildTtsText } from "../lib/tts-text";
+import type { TtsVoice } from "../lib/tts-adapter";
 import { useSpeechSynthesis } from "./useSpeechSynthesis";
 import { useEventListener } from "./useEventListener";
 
@@ -12,8 +13,8 @@ export interface ArticleViewTtsResult {
   ttsPaused: boolean;
   ttsRate: number;
   ttsCycleRate: () => void;
-  /** Web Speech API から列挙された全 voice (#654) */
-  ttsVoices: SpeechSynthesisVoice[];
+  /** TTS engine から列挙された全 voice (#654 / #675 Phase 1a で TtsVoice に抽象化) */
+  ttsVoices: TtsVoice[];
   /** 現在ユーザーが選択している voice URI (null=自動選択) */
   ttsVoiceUri: string | null;
   /** voice を切り替える (null で自動選択に戻す) */

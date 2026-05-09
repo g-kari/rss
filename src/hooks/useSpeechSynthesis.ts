@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import { cycleValue } from "../lib/article-utils";
 import { isSpeechSupported } from "../lib/auto-read";
 import { selectTtsVoice } from "../lib/tts-voice";
+import { speechSynthesisVoiceToTtsVoice, type TtsAdapter } from "../lib/tts-adapter";
 import { useSyncedRef } from "./useSyncedRef";
 
 // Web Speech API の有無は実行中に変わらないのでモジュール定数にする
@@ -21,15 +22,21 @@ function loadVoiceUri(): string | null {
 }
 
 /**
- * Web Speech API (SpeechSynthesis) を使った読み上げ管理フック。
+ * Web Speech API (SpeechSynthesis) を使った読み上げ管理フック。`TtsAdapter` (#675 Phase 1a)
+ * の `web-speech` engine 実装。
+ *
  * - speak(text): テキストを読み上げ開始
  * - pause(): 一時停止
  * - resume(): 再開
  * - stop(): 停止・リセット
  * - cycleRate(): 読み上げ速度を順番に切り替え（0.5x→0.75x→1x→1.25x→1.5x→2x→2.5x→3x→3.5x→4x→0.5x…）
  * - voices / voiceUri / setVoiceUri: ユーザーが選択した voice を localStorage 永続化 (#654)
+ *
+ * 戻り値の `voices` は `TtsVoice[]` 型 (engine 共通) — 内部で SpeechSynthesisVoice → TtsVoice
+ * へ map している。consumer が `SpeechSynthesisVoice` 固有 API に依存しないため、Piper wasm
+ * 等の代替 engine と差し替え可能。
  */
-export function useSpeechSynthesis() {
+export function useSpeechSynthesis(): TtsAdapter {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [rate, setRate] = useState<TtsRate>(loadRate);
@@ -147,13 +154,18 @@ export function useSpeechSynthesis() {
     };
   }, []);
 
+  // SpeechSynthesisVoice (Web Speech API 固有型) を抽象 TtsVoice に map。
+  // 構造的には互換だが、明示的変換で localService 等の余計な field を捨てる。
+  const ttsVoices = useMemo(() => voices.map(speechSynthesisVoiceToTtsVoice), [voices]);
+
   return {
+    engine: "web-speech",
     supported: SPEECH_SUPPORTED,
     isPlaying,
     isPaused,
     rate,
     cycleRate,
-    voices,
+    voices: ttsVoices,
     voiceUri,
     setVoiceUri,
     speak,

@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### リファクタリングっ
+
+- **TTS エンジン抽象化レイヤー `TtsAdapter` を導入したよ〜 (#675 Phase 1a)** — 既存の Web Speech API と将来の wasm 実装 (Piper / つくよみちゃん #674) を共通インターフェース経由で扱えるように準備〜🔧 `src/lib/tts-adapter.ts` に `TtsVoice` / `TtsEngineId` / `TtsAdapter` 型を定義。`useSpeechSynthesis` が `TtsAdapter` を返すように型付けして、内部で `SpeechSynthesisVoice` → `TtsVoice` に map することで Web Speech 固有 field (`localService` 等) を捨てる構造に〜🎀 consumer (`useArticleViewTts` / `ArticleHeader` / `ArticleHeaderAiTts`) も `TtsVoice[]` 型に揃えて engine 種別非依存に！TDD 7 ケース (voice 変換 / 既存純粋関数との互換 / 型契約) で抽象化境界を保証。
+
 ### 激アツ新機能っ
 
 - **記事一覧を選択中の記事にアンカーするショートカット `.` を追加したよ〜** — Issue #684。`.` (ピリオド) キーで、現在選択中の記事を **記事一覧の中央** にスクロールしてアンカー！🎯 ロングスクロールで現在位置を見失った時に「今どこ？」を一発復帰〜📍 全レイアウト (compact / list / card / magazine / gallery) に対応、virtualizer の `align: "center"` と `block: "center"` で確実にセンタリング。通常の選択時 (記事を切り替えた時) は従来通り `align: "auto"` (見えていればスキップ)、手動アンカー時のみ強制センタリングの 2 段挙動。
