@@ -4,6 +4,7 @@ import { useCallback, useRef } from "react";
 import type { KeywordFilter, ReadState } from "../types";
 import { STORAGE_KEYS, deferSaveSet, saveJson, storageSet } from "../lib/storage";
 import { type SetKind, type PendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
+import { equalSnoozedUntil } from "../lib/read-state-merge";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
 export interface SetStateDispatchers {
@@ -146,8 +147,13 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
           if (!result[id] || until > result[id]) result[id] = until;
         }
         const merged = pruneExpiredSnoozes(result);
-        saveJson(STORAGE_KEYS.SNOOZED_UNTIL, merged);
-        setSnoozedUntil(merged);
+        // #686: 内容変化なしなら setState を skip して reference を保持する。
+        // useFilteredArticles の structuralFiltered useMemo が snoozedUntil を依存に
+        // 持つため、reference 不安定だと 2 秒毎に全記事フィルター再実行になっていた。
+        if (!equalSnoozedUntil(stateRef.current.snoozedUntil, merged)) {
+          saveJson(STORAGE_KEYS.SNOOZED_UNTIL, merged);
+          setSnoozedUntil(merged);
+        }
       }
       if ("notes" in state) {
         const merged = { ...stateRef.current.notes, ...(state.notes ?? {}) };

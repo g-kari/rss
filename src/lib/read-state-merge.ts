@@ -175,3 +175,34 @@ export function normalizeReadState(stored: Partial<ReadState>): ReadState {
     ttlDays: stored.ttlDays ?? null,
   };
 }
+
+/**
+ * 2 つの snoozedUntil マップが構造的に等しいかを判定する (#686)。
+ *
+ * `useReadStateSyncApply` のサーバーマージ処理は、内容が変わっていなくても
+ * `setSnoozedUntil(new Object)` を呼んで reference を更新してしまう。これにより
+ * `useFilteredArticles` の `structuralFiltered` useMemo が 2 秒毎に再実行されて
+ * 全記事フィルター pass で 20-80ms の主スレッドブロックを発生させていた。
+ *
+ * 本関数を `setSnoozedUntil` 前のガードに使えば、内容変化なしの場合は state 更新を
+ * skip して reference を保持し、useMemo の不要な再実行を回避できる。
+ *
+ * 等価判定:
+ *   - キー集合が同じ
+ *   - 各キーの値 (ISO 8601 文字列) が同じ
+ *
+ * 実装上の注意:
+ *   - `Object.entries` でループするので O(n) (snoozed は最大 500 件制約あり)
+ *   - 値は ISO 8601 文字列なので === で比較可
+ *   - キー順序は問わない (Record なので順序は無関係)
+ */
+export function equalSnoozedUntil(a: Record<string, string>, b: Record<string, string>): boolean {
+  if (a === b) return true;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}

@@ -4,6 +4,7 @@
 
 ### パフォーマンスっ
 
+- **snoozedUntil の reference 不安定で 2 秒毎に主スレッドブロックしてた問題を直したよ〜 (#686)** — `useReadStateSyncApply` がサーバーマージ後に `setSnoozedUntil(new Object)` を呼ぶせいで、内容が変わっていなくても reference が更新されてた〜🥲 これが `useFilteredArticles` の `structuralFiltered` useMemo の依存配列に入ってるから、**2 秒毎に全記事フィルター再実行 → 500 記事で 20-80ms の主スレッドブロックが常時発生** してたの！💥 `equalSnoozedUntil` 純粋関数を `read-state-merge.ts` に追加して、マージ結果が前回と構造的に等しければ setState を skip するように修正！🚀 reference 保持で useMemo の再計算を完全に止められたわ〜🎀 TDD 10 ケース (空 / 同一 reference / 同 key 同 value 別 reference / キー順序差異 / 片側欠落 / 値差異 / キー名差異 / 100 件全一致 / 100 件 1 件差異) で等価判定を網羅。
 - **読了時間フィルターが激重だった問題を直したよ〜 (#685)** — `readingTime()` は内部で `stripHtml()` を呼んで正規表現を **8 回反復** する重い処理だったの〜🥲 これがフィルター呼出のたびに全記事 (500+ 件) で再計算されてて、`readingTimeRange` を切替えるたびに 150-400ms の主スレッドブロックが発生してた！💥 `createReadingTimeCache()` 純粋関数を新設して `useFilteredArticles` 内で `articles` reference 変化時のみリセットされる Map<articleId, mins> でメモ化〜🚀 同じ記事の読了時間は 1 回計算したら以降キャッシュヒット。TDD 7 ケース (キャッシュヒット / 別 id 別計算 / fallback / 100 件投入 / インスタンス独立性) で安全性を保証〜🎀
 
 ### UX改善っ
