@@ -10,6 +10,13 @@ interface Props {
   onClose: () => void;
   children: React.ReactNode;
   width?: string;
+  /**
+   * #707: コンテンツ高さが切り替わる Modal (タブ UI 等) で、
+   * 垂直中央配置 (`top-1/2 -translate-y-1/2`) のままだと中身が伸縮するたびに
+   * Modal 全体が「上下にぴょこぴょこ動く」体感バグになる。
+   * 固定高さの Tailwind class (例: `sm:h-[640px]`) を渡すと jump を抑止できる。
+   */
+  height?: string;
 }
 
 const FOCUSABLE_SELECTOR =
@@ -21,6 +28,7 @@ export default function Modal({
   onClose,
   children,
   width = "sm:w-[480px]",
+  height = "",
 }: Props) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -87,7 +95,7 @@ export default function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
-        className={`fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 ${width} max-h-[90dvh] flex flex-col bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden outline-none`}
+        className={`fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 ${width} ${height} max-h-[90dvh] flex flex-col bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden outline-none`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle flex-shrink-0">

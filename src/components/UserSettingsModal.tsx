@@ -105,6 +105,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
       subtitle="記事表示のカスタマイズ"
       onClose={onClose}
       width="sm:w-[560px]"
+      height="sm:h-[640px]"
     >
       {/* タブナビゲーション */}
       <div
