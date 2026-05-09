@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { pruneOldReadIds } from "../src/lib/read-state-prune";
+import { pruneOldReadIds, computeEffectiveReadBeforeCutoff } from "../src/lib/read-state-prune";
 import type { Article } from "../src/types";
 
 /**
@@ -97,5 +97,46 @@ test.describe("pruneOldReadIds", () => {
     expect(result.has("id49")).toBe(false);
     expect(result.has("id50")).toBe(true);
     expect(result.has("id99")).toBe(true);
+  });
+});
+
+// #635 設定可能化: ttlDays から自動的に readBeforeTimestamp の cutoff を算出
+test.describe("computeEffectiveReadBeforeCutoff (#635 設定可能化)", () => {
+  const NOW = Date.parse("2026-05-09T00:00:00Z");
+
+  test("どちらも null → null", () => {
+    expect(computeEffectiveReadBeforeCutoff(null, null, NOW)).toBe(null);
+  });
+
+  test("readBeforeTimestamp のみ → そのまま返す", () => {
+    expect(computeEffectiveReadBeforeCutoff("2026-04-01T00:00:00Z", null, NOW)).toBe(
+      "2026-04-01T00:00:00Z",
+    );
+  });
+
+  test("ttlDays のみ → now - ttlDays 日 を ISO で返す", () => {
+    const result = computeEffectiveReadBeforeCutoff(null, 30, NOW);
+    expect(result).toBe(new Date(NOW - 30 * 86400000).toISOString());
+  });
+
+  test("両方ある場合は新しい時刻を採用 (積極的削除)", () => {
+    // ttlDays=30 → 2026-04-09 / 手動=2026-05-01 → 手動の方が新しい
+    const result = computeEffectiveReadBeforeCutoff("2026-05-01T00:00:00Z", 30, NOW);
+    expect(result).toBe("2026-05-01T00:00:00Z");
+  });
+
+  test("両方ある場合: ttl の方が新しいなら ttl を採用", () => {
+    // 手動=2026-01-01 / ttlDays=10 → 2026-04-29 → ttl の方が新しい
+    const result = computeEffectiveReadBeforeCutoff("2026-01-01T00:00:00Z", 10, NOW);
+    expect(result).toBe(new Date(NOW - 10 * 86400000).toISOString());
+  });
+
+  test("ttlDays=0 は無効扱い (null と同じ)", () => {
+    expect(computeEffectiveReadBeforeCutoff(null, 0, NOW)).toBe(null);
+  });
+
+  test("ttlDays=180 で約半年前", () => {
+    const result = computeEffectiveReadBeforeCutoff(null, 180, NOW);
+    expect(result).toBe(new Date(NOW - 180 * 86400000).toISOString());
   });
 });

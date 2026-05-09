@@ -5,7 +5,7 @@ import type { Article, KeywordFilter } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, saveSet, loadSet, loadJson, storageGet } from "../lib/storage";
 import { type PendingSets, emptyPendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
-import { pruneOldReadIds } from "../lib/read-state-prune";
+import { pruneOldReadIds, computeEffectiveReadBeforeCutoff } from "../lib/read-state-prune";
 import { useReadStateToggles } from "./useReadStateToggles";
 import { useReadStateActions } from "./useReadStateActions";
 import type { SetStateDispatchers, OtherStateDispatchers } from "./useReadStateSyncApply";
@@ -133,15 +133,22 @@ export function useReadStatePersistence(
     ttlDays,
   };
 
-  // --- 自動 prune (#635 A1): readBeforeTimestamp 以前の publishedAt を持つ既知記事の
-  //     readId を物理削除して localStorage / R2 のサイズ肥大化を抑制する。
-  //     readBeforeTimestamp と articles の変化時のみ評価。pruneOldReadIds は冪等で
-  //     削除なし時に元の Set インスタンスを返すため、setReadIds の参照同一性で
-  //     不要な再レンダーを避ける。
+  // --- 自動 prune (#635 A1 + 設定可能化): ユーザー手動の readBeforeTimestamp と
+  //     ttlDays から計算した「N 日以上前」のうち、より新しい cutoff を採用して
+  //     readId を物理削除する。ttlDays が 30/60/180 日のどれかに設定されていれば
+  //     その閾値が暗黙的に prune に効き、UI から閾値変更が可能になる。
+  //     pruneOldReadIds は冪等で削除なし時に元の Set インスタンスを返すため、
+  //     setReadIds の参照同一性で不要な再レンダーを避ける。
   useEffect(() => {
-    if (!readBeforeTimestamp || articles.length === 0) return;
-    setReadIds((current) => pruneOldReadIds(current, articles, readBeforeTimestamp));
-  }, [readBeforeTimestamp, articles]);
+    if (articles.length === 0) return;
+    const effectiveCutoff = computeEffectiveReadBeforeCutoff(
+      readBeforeTimestamp,
+      ttlDays,
+      Date.now(),
+    );
+    if (!effectiveCutoff) return;
+    setReadIds((current) => pruneOldReadIds(current, articles, effectiveCutoff));
+  }, [readBeforeTimestamp, articles, ttlDays]);
 
   // --- Toggles ---
   const { toggleRead, toggleBookmark, toggleReadingList, toggleLike } = useReadStateToggles({
