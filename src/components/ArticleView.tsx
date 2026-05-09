@@ -1,9 +1,10 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../types";
 import { getContentWidthStyle } from "../lib/reader-settings";
 import { useArticleViewState } from "../hooks/useArticleViewState";
+import { useHeaderScrollVisibility } from "../hooks/useHeaderScrollVisibility";
 import EmptyArticleView from "./article-view/EmptyArticleView";
 import ArticleNavigation from "./article-view/ArticleNavigation";
 import SelectionExcludePopup from "./article-view/SelectionExcludePopup";
@@ -183,6 +184,16 @@ function ArticleView({
     onGoBack,
   });
 
+  // #677: ArticleHeader のスクロール連動表示 (下スクロールで隠す・上で表示・上端で常時)
+  const { headerVisible, handleScrollForHeader } = useHeaderScrollVisibility(mainRef);
+  const composedScroll = useCallback(
+    (e: React.UIEvent<HTMLElement>) => {
+      handleScroll(e);
+      handleScrollForHeader(e);
+    },
+    [handleScroll, handleScrollForHeader],
+  );
+
   if (!article) {
     return <EmptyArticleView onMobileBack={onMobileBack} />;
   }
@@ -192,7 +203,7 @@ function ArticleView({
       ref={mainRef}
       aria-label="記事本文"
       className="h-full overflow-y-auto overflow-x-hidden bg-surface-elevated animate-fade-in relative"
-      onScroll={handleScroll}
+      onScroll={composedScroll}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
@@ -206,58 +217,66 @@ function ArticleView({
         className="w-full mx-auto px-4 py-6 lg:px-10 lg:py-12 transition-[max-width] duration-200"
         style={getContentWidthStyle(contentWidth)}
       >
-        <ArticleHeader
-          article={article}
-          onMobileBack={onMobileBack}
-          onEngagement={onEngagement}
-          feeds={feeds}
-          embedInfo={embedInfo}
-          readingMins={readingMins}
-          hasContent={hasContent}
-          aiResult={aiResult}
-          aiLoading={aiLoading}
-          resetAi={resetAi}
-          doRunAi={doRunAi}
-          fetching={fetching}
-          handleTranslate={handleTranslate}
-          translateResult={translateResult}
-          translateLoading={translateLoading}
-          ttsSupported={ttsSupported}
-          ttsPlaying={ttsPlaying}
-          ttsPaused={ttsPaused}
-          ttsRate={ttsRate}
-          ttsCycleRate={ttsCycleRate}
-          ttsVoices={ttsVoices}
-          ttsVoiceUri={ttsVoiceUri}
-          setTtsVoiceUri={setTtsVoiceUri}
-          onTtsToggle={handleTtsToggle}
-          autoMode={autoMode}
-          onToggleAutoMode={onToggleAutoMode ?? (() => {})}
-          hasImages={hasImages}
-          downloadAllImages={downloadAllImages}
-          downloadingImages={downloadingImages}
-          imageDownloadProgress={imageDownloadProgress}
-          storedContent={storedContent}
-          isBookmarked={isBookmarked}
-          onToggleBookmark={onToggleBookmark}
-          isInReadingList={isInReadingList}
-          onToggleReadingList={onToggleReadingList}
-          isLiked={isLiked}
-          onToggleLike={onToggleLike}
-          note={note}
-          noteExpanded={noteExpanded}
-          setNoteExpanded={setNoteExpanded}
-          onSetNote={onSetNote}
-          onSnooze={onSnooze}
-          onSelectNext={onSelectNext}
-          tags={tags}
-          onAddTag={onAddTag}
-          onRemoveTag={onRemoveTag}
-          collections={collections}
-          onAddToCollection={onAddToCollection}
-          onRemoveFromCollection={onRemoveFromCollection}
-          onCreateCollection={onCreateCollection}
-        />
+        {/* #677: 下スクロールで隠す sticky ラッパー (上スクロール / 上端で表示) */}
+        <div
+          className="sticky top-0 z-20 bg-surface-elevated transition-transform duration-200 ease-out"
+          style={{
+            transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
+          }}
+        >
+          <ArticleHeader
+            article={article}
+            onMobileBack={onMobileBack}
+            onEngagement={onEngagement}
+            feeds={feeds}
+            embedInfo={embedInfo}
+            readingMins={readingMins}
+            hasContent={hasContent}
+            aiResult={aiResult}
+            aiLoading={aiLoading}
+            resetAi={resetAi}
+            doRunAi={doRunAi}
+            fetching={fetching}
+            handleTranslate={handleTranslate}
+            translateResult={translateResult}
+            translateLoading={translateLoading}
+            ttsSupported={ttsSupported}
+            ttsPlaying={ttsPlaying}
+            ttsPaused={ttsPaused}
+            ttsRate={ttsRate}
+            ttsCycleRate={ttsCycleRate}
+            ttsVoices={ttsVoices}
+            ttsVoiceUri={ttsVoiceUri}
+            setTtsVoiceUri={setTtsVoiceUri}
+            onTtsToggle={handleTtsToggle}
+            autoMode={autoMode}
+            onToggleAutoMode={onToggleAutoMode ?? (() => {})}
+            hasImages={hasImages}
+            downloadAllImages={downloadAllImages}
+            downloadingImages={downloadingImages}
+            imageDownloadProgress={imageDownloadProgress}
+            storedContent={storedContent}
+            isBookmarked={isBookmarked}
+            onToggleBookmark={onToggleBookmark}
+            isInReadingList={isInReadingList}
+            onToggleReadingList={onToggleReadingList}
+            isLiked={isLiked}
+            onToggleLike={onToggleLike}
+            note={note}
+            noteExpanded={noteExpanded}
+            setNoteExpanded={setNoteExpanded}
+            onSetNote={onSetNote}
+            onSnooze={onSnooze}
+            onSelectNext={onSelectNext}
+            tags={tags}
+            onAddTag={onAddTag}
+            onRemoveTag={onRemoveTag}
+            collections={collections}
+            onAddToCollection={onAddToCollection}
+            onRemoveFromCollection={onRemoveFromCollection}
+            onCreateCollection={onCreateCollection}
+          />
+        </div>
 
         <h1 className="text-[22px] font-light leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[calc(3*1.375em)]">
           {article.title}
