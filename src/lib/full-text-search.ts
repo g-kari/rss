@@ -240,3 +240,23 @@ export function matchesAdvancedQuery(
   if (!ast) return true;
   return evaluate(ast, article, ctx);
 }
+
+/**
+ * クエリを 1 度だけパースして evaluator 関数を返す (perf 最適化)。
+ *
+ * `matchesAdvancedQuery` を per-article に呼ぶと `parseSearchQuery` が
+ * 記事数分実行されてしまうため、フィルタリングのループ外で `compileSearchQuery`
+ * で AST を bind した evaluator を作り、それをループ内で再利用する。
+ *
+ * 空クエリ / パース失敗は `null` を返す。呼び出し側で「クエリ述語なし」として
+ * 早期 return する設計を想定。
+ */
+export function compileSearchQuery(
+  query: string,
+): ((article: SearchableArticle, ctx: SearchContext) => boolean) | null {
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+  const ast = parseSearchQuery(trimmed);
+  if (!ast) return null;
+  return (article, ctx) => evaluate(ast, article, ctx);
+}

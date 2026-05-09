@@ -1,7 +1,7 @@
 import type { Article, DateRange, ReadingTimeRange } from "../types";
 import { type CompiledKeywordFilter, matchesKeywordFilter } from "./keyword-filter";
 import { getDateRangeStart, readingTime } from "./article-utils";
-import { matchesAdvancedQuery, type SearchContext } from "./full-text-search";
+import { compileSearchQuery, type SearchContext } from "./full-text-search";
 import { SPECIAL_FEED_IDS } from "./storage";
 
 /** 空の feedTitleByHash — feed: クエリ未対応時のデフォルト */
@@ -291,10 +291,13 @@ function buildReadingTimePredicate(opts: ArticleFilterOptions): ((a: Article) =>
 
 /** 検索クエリ述語（activeIds に関わらず常に適用） */
 function buildQueryPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
-  const q = opts.query.trim();
-  if (!q) return null;
+  // perf: AST を 1 度だけパースして bind した evaluator を返す。
+  // matchesAdvancedQuery を per-article で呼ぶと parseSearchQuery が
+  // 記事数分 (1000+ 件) 実行されてフィルタリング体感ラグの原因になる。
+  const evaluator = compileSearchQuery(opts.query);
+  if (!evaluator) return null;
   const ctx: SearchContext = { feedTitleByHash: opts.feedTitleByHash ?? EMPTY_FEED_TITLE_MAP };
-  return (a) => matchesAdvancedQuery(a, q, ctx);
+  return (a) => evaluator(a, ctx);
 }
 
 /** 日付範囲述語（activeIds に関わらず常に適用） */
