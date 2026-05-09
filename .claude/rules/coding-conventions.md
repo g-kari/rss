@@ -174,7 +174,7 @@ const hash = await sha256Hex(url);
 - `fast-xml-parser` のみ使用 (Workers 互換、pure JS)
 - RSS 2.0 + Atom 両対応
 - `toArray()` ヘルパーで配列正規化 (単一要素が object になる挙動を吸収)
-- **summary には `stripHtmlWithBreaks()` を使う**: `stripHtml()` は `<br>` を空文字列に置換するため `foo<br>bar` → `foobar` の単語連結を起こす。プレビュー用の summary では `<br>` / `<p>` を改行に変換する `stripHtmlWithBreaks()` が正解（#645）
+- **summary には `stripHtmlWithBreaks()` を使う**: `stripHtml()` は `<br>` を空文字列に置換するため `foo<br>bar` → `foobar` の単語連結を起こす。プレビュー用の summary では `<br>` / `<p>` を改行に変換する `stripHtmlWithBreaks()` が正解
 - `stripHtml()` は title など改行が不要な単一行テキストにのみ使う
 
 ## Cron (`src/cron/fetch.ts`)
@@ -241,7 +241,7 @@ if (curPath === nextPath) { ... }
 
 **いつ発生するか**: WordPress / canonical URL / RSSHub などで動的生成されたリンクは、入力時点の URL とは異なる percent-encoding 形式を持つことがある。ユーザーがブラウザに直接入力した URL は大文字、HTML 内のリンクは小文字、のような不一致が頻発。
 
-**主な使用箇所**: `src/lib/content.ts#isPaginatedVariant`（everia.club 等のページング検出 #652 で発覚）
+**主な使用箇所**: `src/lib/content.ts#isPaginatedVariant`（everia.club 等のページング検出）
 
 ## デバッグ: 生 HTML を見る必要があるとき
 
@@ -286,9 +286,9 @@ fetch('URL_HERE', { headers: { 'User-Agent': 'Mozilla/5.0' } })
 ### プロジェクトでの使用箇所
 
 - `ArticleListHeader` → `article-list-header/`（オーケストレーター + LayoutSwitcher / FilterPills 等）
-- `useUIState` → 9 サブフック分割（#629）
+- `useUIState` → 9 サブフック分割
 - `useArticleViewState` → useArticleViewContent / useArticleViewTts / useArticleViewShortcuts / useArticleViewProgress に内部分離
-- `ArticleHeader` → `ArticleHeaderMeta` / `ArticleHeaderAiTts` / `ArticleHeaderShare` / `ArticleHeaderEngagement`（#647）
+- `ArticleHeader` → `ArticleHeaderMeta` / `ArticleHeaderAiTts` / `ArticleHeaderShare` / `ArticleHeaderEngagement`
 
 ### いつ分割しないか
 
@@ -300,7 +300,7 @@ fetch('URL_HERE', { headers: { 'User-Agent': 'Mozilla/5.0' } })
 大規模リファクタを Step 1 / Step 2 / Step 3 に分けても、各 Step 自体が大きい場合がある。**Step 内をさらに細分化して 1 PR を確実に通すパターン**:
 
 ```
-Step 1: render 分岐の関数化 (#651 起票時の提案)
+Step 1: render 分岐の関数化
   ├─ 1-a: compact / list レイアウトのみ関数化 ← 最初の PR
   ├─ 1-b: card レイアウトを関数化            ← 次の PR
   ├─ 1-c: magazine レイアウトを関数化        ← 次の PR
@@ -310,8 +310,6 @@ Step 1: render 分岐の関数化 (#651 起票時の提案)
 **Why**: 一度に全レイアウトを関数化すると差分が大きく、レビュー困難・回帰リスク高。1 レイアウトずつ抽出すれば typecheck + e2e で確実に検証でき、問題があれば局所的にロールバック可能。
 
 **How to apply**: Step を着手する前に「この Step で扱う対象を 1 つに絞れるか」を判断する。1〜3 個に絞れる場合は最も独立性が高い 1 個から開始し、別 PR に分けて進める。
-
-主な使用箇所: `ArticleList.tsx` の render 分岐関数化（#651 Step 1）
 
 ## dev / e2e 限定エンドポイントの二重ガード
 
@@ -378,7 +376,7 @@ useEffect(() => {
 }, [, /* ... */ rateLimitedUntil]);
 ```
 
-主な使用箇所: `usePrefetchGalleryContents`（429 クールダウン後の自動リトライ #642）
+主な使用箇所: `usePrefetchGalleryContents`（429 クールダウン後の自動リトライ）
 
 ## ref の論理リセットポイントを忘れない
 
@@ -403,9 +401,7 @@ useEffect(() => {
 }, [articleId]);
 ```
 
-**Why（このルールの背景）**: 2026-05-09 の #660（オートモード次記事への遷移ループ）が原因。`articleId` 変化時に `prevPlayingRef.current` が `true` のまま残り、新記事 TTS 開始前の `ttsPlaying = false` で「完了」と誤判定 → 即次記事へ連鎖していた。
-
-主な使用箇所: `AutoReadController`（#660）, `useReadStateSync`（lastServerSyncRef）
+**Why**: ref をリセットしないと「前は再生中だった」が次記事に持ち越され、新記事 TTS 開始前の `ttsPlaying = false` で「完了」と誤判定 → 即次記事への連鎖遷移ループになる。
 
 ### 派生ケース: effect の二重発火を防ぐ「実行済み ID」ref
 
@@ -429,7 +425,7 @@ useEffect(() => {
 // articleId 切替時の独立 reset effect で speakTriggeredRef.current = null
 ```
 
-**Why**: 2026-05-09 の #663。`AutoReadController` effect (3) に二重防止 ref がなく、TTS 完了で `ttsPlaying=false` に戻ると effect が再発火 → 同記事を無限に再 speak するループが発生していた。`fetchTriggeredRef` パターン（#660 で導入済み）を speak 側にも適用するのが正解。
+**Why**: 二重防止 ref がないと TTS 完了で `ttsPlaying=false` に戻った瞬間に effect が再発火し、同記事を無限に再 speak するループが発生する。
 
 **How to apply**: 「副作用が一度だけ走るべき」effect の依存配列に変動値が入っているなら、必ず ID ベースの `triggeredRef` で防護する。`fetchTriggeredRef` / `speakTriggeredRef` のように **「何 ID で何を実行したか」** を ref に持たせて、同 ID で再実行しないようにガードする。
 
@@ -448,11 +444,9 @@ const hasContent = !!(processedContent || article?.summary); // UI 用
 const hasFullContent = !!processedContent; // 全文取得 gate 用
 ```
 
-**Why**: 2026-05-09 の #663（オートモードで概要だけ読み上げ + 同記事ループ）の根本原因。`hasContent` がサマリで true になっていたため `shouldTriggerAutoFetch` が「既に読める」と判定して全文 fetch をスキップ → サマリ fallback で TTS が即起動 → 概要だけ読み上げ。
+**Why**: 同名の派生 boolean が UI 用と判定用で意味がブレると、片方の用途で「既に十分」と判定されて他方の処理（fetch トリガーなど）がスキップされる連鎖バグが起きる。
 
 **How to apply**: 派生 boolean / 派生 state を作るときは「どの判定に使うか」を 1 つに絞る。複数の判定で使うなら **判定別に派生値を分ける**。`hasContent` のような汎用名は曖昧なので、`hasFullContent` / `hasSummaryOnly` / `canRender` のように **意図が読み取れる名前** を付ける。
-
-主な使用箇所: `useArticleViewContent`（hasContent vs hasFullContent、#663）
 
 ## fallback ロジックの伝播範囲を意識する
 
@@ -473,7 +467,7 @@ shouldStartAutoSpeak({
 });
 ```
 
-**Why**: #663 で `buildTtsText` のサマリ fallback が `shouldStartAutoSpeak` に伝播し、本文取得前にサマリで TTS が起動していた。
+**Why**: 描画用の fallback 結果（サマリ等）がそのまま判定関数に伝播すると、「本来 fetch されるべきタイミング」がバイパスされて本文未取得のまま下流処理（TTS / 既読判定など）が走ってしまう。
 
 **How to apply**: fallback を含む文字列・配列を判定関数に渡すときは、判定側で「fallback されたかどうか」を別 boolean で受け取る。`hasText` のような fallback 後の事実だけでなく、`hasOriginal` のような fallback 前の事実も渡せるよう設計する。
 
@@ -491,7 +485,7 @@ shouldStartAutoSpeak({
 // 内部: ttlDays から effective cutoff を算出して prune にも適用
 ```
 
-**Why**: 2026-05-09 の #635 設定可能化で、ユーザーは「prune 閾値も設定できるようにしたい」と要望したが、既存の「記事保持期間 (ttlDays)」UI が同じ「30/60/180 日」値を持っており、意味的に重なっていた。新規 UI を追加せず ttlDays を内部 prune にも流用することで、UI 増加なし・ユーザー混乱なし・実装コスト最小で要望を満たせた。
+**Why**: 同じ値（例: 30/60/180 日）を意味重複する 2 箇所で設定させると、ユーザーが両方設定して齟齬が発生する / 片方しか設定せず期待と動作がズレる、などの混乱を招く。
 
 **How to apply**: 「設定可能化」要望には次の順で検討:
 
@@ -500,8 +494,6 @@ shouldStartAutoSpeak({
 3. 完全に独立した概念なら新規 UI を追加
 
 新規追加した場合、必ず「既存設定との優先順位」を明示する（max / min / 最後の更新優先など）。
-
-主な使用箇所: `useReadStatePersistence` の prune effect が `ttlDays` を流用 (#635)、`computeEffectiveReadBeforeCutoff` で複数 cutoff の合成。
 
 ## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する
 
@@ -527,9 +519,7 @@ useEffect(() => {
 
 **注意点**: `ResizeObserver` は要素自身のリサイズを検知する。子要素が追加されてコンテナが拡張する場合は通常検知されるが、絶対座標配置で **親コンテナ自身の clientHeight が変わらない** ケースでは発火しない。その場合は `MutationObserver` (subtree childList 監視) との併用や、`requestAnimationFrame` を 2 段で待ってからチェックする手法を組み合わせる。
 
-**Why**: 2026-05-09 の #636 で、masonic ギャラリーの最長列が viewport を超えても最短列にはまだ余白があるケースで、IntersectionObserver の sentinel が交差せず無限スクロールが止まる問題が発生。`ResizeObserver` + rAF 2 段待機 + `scrollHeight <= clientHeight` 判定の併用で解消。
-
-主な使用箇所: `useArticlePagination` の eager load 機構（#636）、`LoadMoreButton` の親要素サイズ監視。
+**Why**: masonic / react-virtual の絶対座標配置では、`scrollHeight` がレイアウト確定後に動的に書き換わるため、IntersectionObserver の sentinel に依存するだけでは「列偏在で sentinel に届かない」状態を検知できず無限スクロールが止まる。`ResizeObserver` + rAF 2 段待機の併用で解消する。
 
 ## AbortController.abort() の伝播範囲を限定する
 
@@ -568,7 +558,7 @@ async function fetchOne(article) {
 }
 ```
 
-**Why**: 2026-05-09 の #665 で、`usePrefetchGalleryContents` が 1 つの `AbortController` を全並列 worker で共有していた。1 件で 429 が来ると `onRateLimit` で `controller.abort()` が呼ばれ、進行中の **他記事の prefetch も全て中断**。さらに abort された fetch は `failedIds` に入らず UI 上にリトライボタンも出ない「空カードで停止」状態に。
+**Why**: 共有 controller を 1 件のエラーで abort すると、進行中の他記事の fetch も全て中断され、それらは `failedIds` にも入らず UI 上にリトライボタンも出ない「空カードで停止」状態になる。
 
 **How to apply**: `AbortController` を共有する設計を採るときは、abort のスコープを明示する:
 
@@ -577,8 +567,6 @@ async function fetchOne(article) {
 - **どちらも必要** → cleanup 用 controller と個別 controller を分ける
 
 判定基準: 「この abort で止まる対象は、止めるべき対象と一致しているか？」。一致しないなら controller 共有は誤り。
-
-主な使用箇所: `usePrefetchGalleryContents`（#665 で修正、現在は `rateLimited` フラグで自然停止）、`useArticleContent.fetchFullContent`（記事切替時のみ abort、これは正しい挙動）。
 
 ## UI 表示条件の「N 件以上」マジックナンバーを慎重に扱う
 
@@ -599,7 +587,7 @@ async function fetchOne(article) {
 }
 ```
 
-**Why**: 2026-05-09 の #667 で、wallhaven のような本文画像 1 枚記事で「画像を一括保存」ボタンが `>= 2` 判定で非表示になり、ユーザーは OGP/サムネしか DL できない状態になっていた。`downloadAllImages` 自体は 1 枚配列でも正常動作する設計だったため、UI 表示判定の `>= 2` だけが障壁だった。
+**Why**: 「複数枚向けの集約 UI」を `>= 2` で隠すと、1 枚しかない記事でその UI が利用できず、ユーザーは関連機能（保存・選択など）を実行できなくなる。内部処理（`downloadAllImages` 等）は 1 件配列でも正常動作することがほとんど。
 
 **How to apply**: UI 条件で「N 件以上」を書くときは:
 
@@ -607,8 +595,6 @@ async function fetchOne(article) {
 2. **本当に「複数件」を要求する根拠**（DL ファイル名衝突回避など）があるかチェック。なければ `>= 1` に緩和
 3. ラベルや動作が件数で変わるなら **動的に切り替える**（「保存」 vs 「一括保存 (N 枚)」）
 4. 「集約系 UI」と「単発 UI」が冗長に併存する場合 (例: thumb の「保存」と本文の「一括保存」) は問題ない。両方選べる方がユーザー親切
-
-主な使用箇所: `GalleryContextMenu` の本文画像保存ボタン（#667 で修正）。
 
 ## 自動生成ファイルは全実行パスで生成フックを設置する
 
@@ -640,7 +626,7 @@ async function fetchOne(article) {
 }
 ```
 
-**Why**: 2026-05-09 の #668 で、CI が `pnpm install` 直後に `pnpm run check` → `pnpm run typecheck` を実行するため、`prebuild` フック未起動で `release-notes-data.ts` が生成されず TS2307 エラーになっていた。ローカル開発では `predev` / `prebuild` で生成されるため気付きにくい。
+**Why**: CI は `pnpm install` 直後に lint / typecheck を実行するため `prebuild` が起動しない。ローカル開発では `predev` / `prebuild` で生成されるため気付きにくく、CI だけで TS2307 エラーになる。
 
 **How to apply**: 自動生成ファイルを参照するスクリプトを追加するときは、想定される実行コマンド (`build` / `dev` / `typecheck` / `check` / `test:e2e` 等) **すべてに pre-script を設置** する。スクリプトが軽量 (数十 ms 以下) なら頻繁に走っても性能影響なし。重いなら以下を検討:
 
@@ -672,7 +658,7 @@ const articlesKey = articles
   .join("\0");
 ```
 
-**Why**: 2026-05-09 の #669 で、`usePrefetchGalleryContents` の `articlesKey` が `articles.slice(0, maxPrefetch=20)` で先頭 20 件 ID 固定だった。ユーザーがスクロールして visible が 50→100 件に拡張されてもキー不変 → effect 再実行されない → 21 件目以降が永遠にプリフェッチされない症状になっていた。
+**Why**: 先頭 N 件 ID だけのキーでは、ユーザーがスクロールして visible が拡張されてもキー不変 → effect 再実行されず → N+1 件目以降が永遠に未処理のまま放置される症状になる。
 
 **How to apply**: 依存配列キーを文字列ハッシュで作るときは:
 
@@ -681,26 +667,17 @@ const articlesKey = articles
 3. 「処理対象の上限」と「変化検知の対象」は **別概念** として分離する。上限は effect 内の `targets.slice(0, lim)` で、検知は `articlesKey` で全件。
 4. 全件キーが長くなりすぎる懸念があれば、**ハッシュ関数** (`SHA-1` 短縮など) で短縮するのも一手。ただし `join("\0")` の単純文字列でも数千件までは実用上問題なし
 
-主な使用箇所: `usePrefetchGalleryContents` の `buildArticlesKey` (#669 で修正)、`useArticlePagination` の visible.length deps (#636)。
-
 ## 同症状でも別経路の可能性を疑う
 
 「ギャラリーが止まる」「TTS が止まる」のような **同じ症状の連続バグ報告** は、修正後も別経路で再発する可能性が高い。1 つ修正しただけで「同症状の Issue は全部解決」と思い込まないこと。
 
-**Why**: 2026-05-09 セッションで「ギャラリーが止まる」系のバグが #665 → #669 と連続した。
-
-- #665: 1 件 429 で `controller.abort()` が全 worker 中断
-- #669: `articlesKey` の slice(0, N) で N+1 件目以降が永遠に未処理
-
-両方「ギャラリーが止まる」症状だが、原因経路は完全に独立。1 件目を修正してすぐ閉じたら 2 件目が見えなくなるところだった。
+**Why**: 同症状で別経路のバグは「前の修正で直したつもり」が認知バイアスとして働き、新規調査を怠りがち。実例として「ギャラリー停止」系で「全 worker abort」と「先頭 N 件キー固定」の 2 経路が連続発生したケースがある。
 
 **How to apply**:
 
 - 「同症状の Issue を再起票された」ら、**前回修正のコミット diff** を読み直して「自分が直したのは本当に唯一の原因か」を疑う
 - 「修正したのに直らない」「修正したのにまた起きた」のキーワードがコメントに出たら、必ず別経路を疑って再調査
 - バグ修正のコミットメッセージには **「真因 = 〇〇」** を明記して、別経路調査時の参照点にする
-
-主な参考: #665 / #669 のコミットメッセージは両方とも明確に経路を区別。
 
 ## モード OFF 時に進行中の副作用を停止する
 
@@ -720,7 +697,7 @@ useEffect(() => {
 }, [enabled]);
 ```
 
-**Why**: 2026-05-09 の #661（オートモード停止ボタンが効かない）が原因。`enabled = false` にしても speechSynthesis.cancel() が呼ばれず、ユーザー目線では「止まらない」体感だった。
+**Why**: state を OFF にしただけだと、ユーザー目線では「停止ボタンが効かない」体感になる。フラグの変化を監視する独立 effect で副作用を明示停止させる必要がある。
 
 **How to apply**: 機能が「ON / OFF」のフラグで動く場合、OFF 遷移時のクリーンアップが副作用を 100% 止めているか必ず確認する。fetch / timer / 音声 / WebSocket / IntersectionObserver などすべて。
 
@@ -738,7 +715,7 @@ const retryAfterHeader = res.headers.get("Retry-After") ?? "60";
 headers["Retry-After"] = retryAfterHeader;
 ```
 
-**Why**: 2026-05-09 の #662（wallhaven.cc が 429 を Retry-After なしで返してきてクライアントが即時リトライ → 連鎖）が原因。
+**Why**: 一部の上流サイト (wallhaven.cc 等) は 429 を `Retry-After` なしで返してくる。クライアント側の retry-after.ts が遅延時間を判定できず即時リトライ → 再 429 の連鎖になるため、プロキシ層で必ず補完する。
 
 **How to apply**: 外部 HTTP レスポンスを中継する Route Handler で、クライアント側 (retry-after.ts 等) が依存しているヘッダがあれば補完を必ず入れる。
 
