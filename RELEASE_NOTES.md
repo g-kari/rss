@@ -4,6 +4,7 @@
 
 ### リファクタリングっ (規範統一)
 
+- **未使用 `import React from "react"` を 12 ファイルで一括削除!📦 (機械検出)** — React 19 + Next.js 16 では JSX runtime auto のため `import React` は型/value で参照する場合以外不要〜🎯 `grep -rn "^import React from"` で 16 ファイル検出 → うち 12 ファイルが `React.X` 参照 0 (完全 unused) → 一括 sed 削除〜🛡️ 残 4 ファイル (`InlineArticleNav` / `ArticleAiPanel` / `ToggleIconButton` / `shareTargets`) は `React.MouseEvent` / `React.ReactNode` / `React.createElement` で実際に使用中のため型 named import への書き換えは別検討〜📚 ドキュメント整備っセクションでも紹介する `code drift sweep` パターンの実例〜💎
 - **`useSyncedRef` 規範違反を 4 hooks / 5 ref で連続置換!🎯 (機械検出 + 連続適用)** — 前サイクルの `useReadingProgress` と同じパターン (render 中 `Ref.current = X` 手動 assign) を `grep -rEnB1 "Ref\\.current\\s*="` で網羅検出して、4 ファイル 5 ref を一括 `useSyncedRef` に置換〜💪 対象は `AutoReadController.onTtsStopRef` / `usePrefetchGalleryContents.mediaRef + articlesRef` / `useAutoReset.resetRef + durationRef` / `useGalleryAutoScroll.onUserInterruptRef`〜🛡️ `coding-conventions.md` / `react-patterns.md` の `useSyncedRef` 規範違反を解消、新規開発者が「どっちが正しいパターン?」と迷う drift を排除〜📚 `useFilteredArticles.activeIdsRef` は意図的な perf 最適化 (コメント明記済み) のため対象外〜💎
 
 ### テスト整備っ

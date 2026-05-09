@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type { Article, Collection } from "../../types";
 import CollectionDropdown from "../CollectionDropdown";
 import ToggleIconButton from "./ToggleIconButton";

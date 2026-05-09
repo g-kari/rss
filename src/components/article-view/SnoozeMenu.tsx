@@ -1,4 +1,3 @@
-import React from "react";
 import { createPortal } from "react-dom";
 import { usePortalMenu } from "../../hooks/usePortalMenu";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";

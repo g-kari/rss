@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../../types";
 import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
 import { useToast } from "../../contexts/ToastContext";

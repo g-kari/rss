@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type { Article, Feed, KeywordFilter } from "../../types";
 import type { EmbedInfo } from "../../lib/embed-utils";
 import type { EngagementAction } from "../../types";
