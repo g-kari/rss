@@ -1,18 +1,7 @@
 "use client";
 
-import {
-  useMemo,
-  useEffect,
-  useLayoutEffect,
-  useState,
-  useCallback,
-  useRef,
-  createContext,
-  useContext,
-  memo,
-} from "react";
+import { useMemo, useEffect, useLayoutEffect, useState, useCallback, useRef, memo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import GalleryMasonry from "./GalleryMasonry";
 import { useDelayedGalleryItems } from "@/hooks/useDelayedGalleryItems";
 import { useEventListener } from "@/hooks/useEventListener";
 import { usePopupLock } from "@/hooks/usePopupLock";
@@ -28,21 +17,20 @@ import { useGalleryAutoRead } from "../hooks/useGalleryAutoRead";
 import { useGallerySwipeNav } from "../hooks/useGallerySwipeNav";
 import { useArticleListItemProps } from "../hooks/useArticleListItemProps";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
-import {
-  type ArticleItemProps,
-  resolveThumbnail,
-  CompactArticleItem,
-  ListArticleItem,
-  CardArticleItem,
-  MagazineFeaturedArticleItem,
-  GalleryArticleItem,
-} from "./ArticleItems";
+import { resolveThumbnail } from "./ArticleItems";
 import ArticleListHeader from "./ArticleListHeader";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
 import ArticleContextMenu, { type ArticleContextMenuTarget } from "./ArticleContextMenu";
 import LoadMoreButton from "./LoadMoreButton";
 import ArticleListEmptyState from "./ArticleListEmptyState";
-import { getGalleryCardWidth } from "../lib/reader-settings";
+import {
+  CompactListBody,
+  CardBody,
+  MagazineBody,
+  GalleryBody,
+  type GalleryItemContextValue,
+  type FlatItem,
+} from "./article-list-body";
 
 interface Props {
   feeds: Feed[];
@@ -92,104 +80,6 @@ function getDateGroupLabel(publishedAt: string | null): string {
   return "それ以前";
 }
 
-type FlatItem =
-  | { type: "header"; label: string; key: string }
-  | { type: "article"; article: Article; articleIndex: number; key: string };
-
-// ── ギャラリーレンダラー（チカチカ対策: render の identity を安定化） ─────
-
-interface GalleryItemContextValue {
-  resolveItemProps: (
-    article: Article,
-    index: number,
-    isDeleting?: boolean,
-    isNew?: boolean,
-  ) => ArticleItemProps;
-  galleryImagesForItem: (articleId: string) => string[] | undefined;
-  galleryMinImagePx: number;
-  deletingIds: Set<string>;
-  newIds: Set<string>;
-  galleryFailedIds: Set<string>;
-  galleryExpandingIds: Set<string>;
-  galleryRetryArticle: (id: string) => void;
-  onGalleryContextMenu: (e: React.MouseEvent, article: Article, index: number) => void;
-  onGalleryLongPress: (article: Article, index: number, x: number, y: number) => void;
-}
-
-const GalleryItemCtx = createContext<GalleryItemContextValue | null>(null);
-
-const GALLERY_CARD_WRAPPER_STYLE_VISIBLE = {
-  transition: "opacity 0.25s ease",
-  opacity: 1,
-};
-const GALLERY_CARD_WRAPPER_STYLE_DELETING = {
-  transition: "opacity 0.25s ease",
-  opacity: 0,
-  pointerEvents: "none" as const,
-};
-
-const GalleryCardRenderer = memo(function GalleryCardRenderer({
-  data,
-  index,
-}: {
-  data: Article;
-  index: number;
-  width: number;
-}) {
-  const ctx = useContext(GalleryItemCtx);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchPos = useRef({ x: 0, y: 0 });
-
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      if (!ctx) return;
-      const touch = e.touches[0];
-      touchPos.current = { x: touch.clientX, y: touch.clientY };
-      longPressTimer.current = setTimeout(() => {
-        ctx.onGalleryLongPress(data, index, touchPos.current.x, touchPos.current.y);
-      }, 500);
-    },
-    [ctx, data, index],
-  );
-
-  const handleTouchEnd = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }, []);
-
-  const handleTouchMove = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }, []);
-
-  if (!ctx) return null;
-  const isDeleting = ctx.deletingIds.has(data.id);
-  const isNew = ctx.newIds.has(data.id);
-  return (
-    <div
-      style={isDeleting ? GALLERY_CARD_WRAPPER_STYLE_DELETING : GALLERY_CARD_WRAPPER_STYLE_VISIBLE}
-      onContextMenu={(e) => ctx.onGalleryContextMenu(e, data, index)}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchMove={handleTouchMove}
-    >
-      <GalleryArticleItem
-        {...ctx.resolveItemProps(data, index, isDeleting, isNew)}
-        prefetchedImages={ctx.galleryImagesForItem(data.id)}
-        galleryMinImagePx={ctx.galleryMinImagePx}
-        isFetchFailed={ctx.galleryFailedIds.has(data.id)}
-        isExpanding={ctx.galleryExpandingIds.has(data.id)}
-        onRetry={() => ctx.galleryRetryArticle(data.id)}
-      />
-    </div>
-  );
-});
-
-const galleryItemKey = (a: Article) => a.id;
 const getArticleId = (a: Article) => a.id;
 
 // ── メインコンポーネント ───────────────────────────────────────────────
@@ -505,187 +395,6 @@ function ArticleList({
     ],
   );
 
-  // ── レイアウト別 render 関数 (#651 Step 1) ─────────────────────────
-  // 各レイアウトの仮想スクロール JSX を関数として抽出し、メイン return の
-  // 見通しを改善する。クロージャで外部 scope の変数を参照しているので、
-  // メモ化は不要（外部 state 変化で親 component 全体が再レンダーされる前提）。
-
-  const renderGalleryBody = () => {
-    if (layout !== "gallery" || galleryDisplayItems.length === 0) return null;
-    return (
-      <div className="p-2 mx-auto">
-        <GalleryItemCtx.Provider value={galleryCtxValue}>
-          <GalleryMasonry
-            items={galleryDisplayItems}
-            scrollElement={scrollEl}
-            columnWidth={getGalleryCardWidth(galleryCardSize)}
-            columnGutter={12}
-            overscanBy={12}
-            columns={
-              galleryColumns === "auto" ? (listFocusMode ? 6 : null) : Number(galleryColumns)
-            }
-            itemKey={galleryItemKey}
-            render={GalleryCardRenderer}
-          />
-        </GalleryItemCtx.Provider>
-      </div>
-    );
-  };
-
-  const renderMagazineBody = () => {
-    if (layout !== "magazine" || nonGalleryDisplayItems.length === 0) return null;
-    return (
-      <>
-        <div className="p-2">
-          <MagazineFeaturedArticleItem
-            {...resolveItemProps(
-              nonGalleryDisplayItems[0],
-              0,
-              nonGalleryDeletingIds.has(nonGalleryDisplayItems[0].id),
-              nonGalleryNewIds.has(nonGalleryDisplayItems[0].id),
-            )}
-          />
-        </div>
-        {nonGalleryDisplayItems.length > 1 && (
-          <div style={{ height: magazineVirtualizer.getTotalSize(), position: "relative" }}>
-            {magazineVirtualizer.getVirtualItems().map((vItem) => {
-              const a = nonGalleryDisplayItems[vItem.index + 1];
-              if (!a) return null;
-              return (
-                <div
-                  key={vItem.key}
-                  data-index={vItem.index}
-                  ref={magazineVirtualizer.measureElement}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateY(${vItem.start}px)`,
-                    transition:
-                      nonGalleryDeletingIds.size > 0 || nonGalleryNewIds.size > 0
-                        ? "transform 0.2s ease"
-                        : undefined,
-                  }}
-                >
-                  <CompactArticleItem
-                    {...resolveItemProps(
-                      a,
-                      vItem.index + 1,
-                      nonGalleryDeletingIds.has(a.id),
-                      nonGalleryNewIds.has(a.id),
-                    )}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </>
-    );
-  };
-
-  const renderCardBody = () => {
-    if (layout !== "card" || cardRows.length === 0) return null;
-    return (
-      <div style={{ height: cardVirtualizer.getTotalSize() + 16, position: "relative" }}>
-        {cardVirtualizer.getVirtualItems().map((vItem) => {
-          const row = cardRows[vItem.index];
-          if (!row) return null;
-          return (
-            <div
-              key={vItem.key}
-              data-index={vItem.index}
-              ref={cardVirtualizer.measureElement}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                transform: `translateY(${vItem.start}px)`,
-                transition:
-                  nonGalleryDeletingIds.size > 0 || nonGalleryNewIds.size > 0
-                    ? "transform 0.2s ease"
-                    : undefined,
-                padding: "4px 8px",
-              }}
-            >
-              <div className="grid grid-cols-2 gap-2">
-                {row.map((a, ri) => (
-                  <CardArticleItem
-                    key={a.id}
-                    {...resolveItemProps(
-                      a,
-                      vItem.index * 2 + ri,
-                      nonGalleryDeletingIds.has(a.id),
-                      nonGalleryNewIds.has(a.id),
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const renderCompactListBody = () => {
-    if ((layout !== "compact" && layout !== "list") || flatItems.length === 0) return null;
-    return (
-      <div style={{ height: listVirtualizer.getTotalSize(), position: "relative" }}>
-        {listVirtualizer.getVirtualItems().map((vItem) => {
-          const item = flatItems[vItem.index];
-          if (!item) return null;
-          return (
-            <div
-              key={vItem.key}
-              data-index={vItem.index}
-              ref={listVirtualizer.measureElement}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                transform: `translateY(${vItem.start}px)`,
-                transition:
-                  nonGalleryDeletingIds.size > 0 || nonGalleryNewIds.size > 0
-                    ? "transform 0.2s ease"
-                    : undefined,
-              }}
-            >
-              {item.type === "header" ? (
-                <div className="px-4 pt-3 pb-1">
-                  <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-                    {item.label}
-                  </span>
-                </div>
-              ) : layout === "compact" ? (
-                <CompactArticleItem
-                  {...resolveItemProps(
-                    item.article,
-                    item.articleIndex,
-                    nonGalleryDeletingIds.has(item.article.id),
-                    nonGalleryNewIds.has(item.article.id),
-                  )}
-                />
-              ) : (
-                <ListArticleItem
-                  {...resolveItemProps(
-                    item.article,
-                    item.articleIndex,
-                    nonGalleryDeletingIds.has(item.article.id),
-                    nonGalleryNewIds.has(item.article.id),
-                  )}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   return (
     <section
       aria-label="記事一覧"
@@ -726,17 +435,51 @@ function ArticleList({
             onRetry={onRetry}
           />
 
-          {/* compact / list — 仮想スクロール (#651 Step 1: 関数化) */}
-          {renderCompactListBody()}
+          {/* compact / list — 仮想スクロール (#651 Step 3: サブコンポーネント化) */}
+          {(layout === "compact" || layout === "list") && (
+            <CompactListBody
+              items={flatItems}
+              layout={layout}
+              deletingIds={nonGalleryDeletingIds}
+              newIds={nonGalleryNewIds}
+              virtualizer={listVirtualizer}
+              resolveItemProps={resolveItemProps}
+            />
+          )}
 
-          {/* card — 仮想スクロール（2列ずつ行単位、#651 Step 1: 関数化） */}
-          {renderCardBody()}
+          {/* card — 2 列グリッド行単位の仮想化 */}
+          {layout === "card" && (
+            <CardBody
+              rows={cardRows}
+              deletingIds={nonGalleryDeletingIds}
+              newIds={nonGalleryNewIds}
+              virtualizer={cardVirtualizer}
+              resolveItemProps={resolveItemProps}
+            />
+          )}
 
-          {/* magazine — 仮想スクロール（先頭フィーチャー + 仮想化コンパクトリスト、#651 Step 1: 関数化） */}
-          {renderMagazineBody()}
+          {/* magazine — 先頭フィーチャー + 仮想化コンパクトリスト */}
+          {layout === "magazine" && (
+            <MagazineBody
+              items={nonGalleryDisplayItems}
+              deletingIds={nonGalleryDeletingIds}
+              newIds={nonGalleryNewIds}
+              virtualizer={magazineVirtualizer}
+              resolveItemProps={resolveItemProps}
+            />
+          )}
 
-          {/* gallery — masonic 型 masonry (#651 Step 1: 関数化) */}
-          {renderGalleryBody()}
+          {/* gallery — masonic 型 masonry */}
+          {layout === "gallery" && (
+            <GalleryBody
+              items={galleryDisplayItems}
+              scrollElement={scrollEl}
+              galleryCardSize={galleryCardSize}
+              galleryColumns={galleryColumns}
+              listFocusMode={listFocusMode}
+              contextValue={galleryCtxValue}
+            />
+          )}
 
           {/* IntersectionObserver の sentinel — gallery 仮想化の末端でも
               到達できるよう min-height を確保 (#636) */}
