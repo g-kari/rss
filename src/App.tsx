@@ -339,13 +339,15 @@ export default function App() {
     setDigestLimit,
   } = useFeedPatch(updateFeed, toast.error);
 
-  function onFeedDeleted(id: string) {
-    removeFeed(id);
-    if (selectedFeedId === id) {
-      setSelectedFeedId(null);
-      setSelectedArticle(null);
-    }
-  }
+  // フィード削除時、削除対象が現在選択中なら選択も解除する (#650 Step 1u)。
+  // selectFeedClearingArticle(null) は useFeedSelection が提供するアトミック解除操作。
+  const onFeedDeleted = useCallback(
+    (id: string) => {
+      removeFeed(id);
+      if (selectedFeedId === id) selectFeedClearingArticle(null);
+    },
+    [removeFeed, selectedFeedId, selectFeedClearingArticle],
+  );
 
   const onSaveArticleUrl = useSaveArticleUrl({
     prependArticle,
