@@ -34,7 +34,6 @@ import { useAutoReadMode } from "./hooks/useAutoReadMode";
 import { usePWAInstall } from "./hooks/usePWAInstall";
 import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
 import { useHasOpenPopup } from "./hooks/usePopupLock";
-import { isArticleRead } from "./lib/article-filter";
 import { useGlobalFilterAutoRead } from "./hooks/useGlobalFilterAutoRead";
 import { useAutoLoadMoreArticles } from "./hooks/useAutoLoadMoreArticles";
 import { useEngagementToggles } from "./hooks/useEngagementToggles";
@@ -59,7 +58,7 @@ import { useFeedPagination } from "./hooks/useFeedPagination";
 import { useArticleNavigation } from "./hooks/useArticleNavigation";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
-import { useDebounce } from "./hooks/useDebounce";
+import { useTotalUnreadCount } from "./hooks/useTotalUnreadCount";
 import { useFeedSidebarActions } from "./hooks/useFeedSidebarActions";
 import { useArticleViewProps } from "./hooks/useArticleViewProps";
 import { useDigestFeedOrder } from "./hooks/useDigestFeedOrder";
@@ -336,14 +335,7 @@ export default function App() {
 
   useGlobalFilterAutoRead(articles, globalFilter, readIds, markBulkRead);
 
-  const debouncedReadIds = useDebounce(readIds, 200);
-  const debouncedReadBeforeTimestamp = useDebounce(readBeforeTimestamp, 200);
-  const totalUnread = useMemo(
-    () =>
-      articles.filter((a) => !isArticleRead(a, debouncedReadIds, debouncedReadBeforeTimestamp))
-        .length,
-    [articles, debouncedReadIds, debouncedReadBeforeTimestamp],
-  );
+  const totalUnread = useTotalUnreadCount(articles, readIds, readBeforeTimestamp);
 
   useDocumentTitleBadge(totalUnread);
 

@@ -268,6 +268,7 @@ src/
     useMarkAllRead.ts        # 全既読ロジック集約 hook（サブフィルター判定・50件確認・アンドゥ対応）
     useArticleViewProps.ts   # ArticleView に渡す props オブジェクトの useMemo 集約 hook（App.tsx から分割）
     useReaderSettingsValue.ts # ReaderSettingsProvider に渡す value オブジェクトを 1 箇所で構築する useMemo 集約 hook（App.tsx Step 1l から分割・40 フィールド集約）
+    useTotalUnreadCount.ts   # 全記事の未読件数を 200ms デバウンス付きで計算する hook（App.tsx Step 1m から分割）
     useArticleListItemProps.ts # ArticleList の各レイアウトが共通で使う ArticleItemProps を構築する hook
     useFeedSidebarActions.ts # FeedSidebarProvider value オブジェクト生成 hook（App.tsx から分割・useMemo 済み）
     useToast.ts              # トースト通知状態管理（success/error/info 3種別・最大3件スタック・自動消去）
