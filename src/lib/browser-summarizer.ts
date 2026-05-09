@@ -32,16 +32,29 @@ interface CreateMonitor {
 
 interface BrowserSummarizerConstructor {
   availability(options?: {
-    type?: "headline" | "tl;dr" | "teaser" | "key-points";
+    type?: "headline" | "tldr" | "teaser" | "key-points";
     length?: "short" | "medium" | "long";
   }): Promise<Availability>;
   create(options?: {
-    type?: "headline" | "tl;dr" | "teaser" | "key-points";
+    type?: "headline" | "tldr" | "teaser" | "key-points";
     length?: "short" | "medium" | "long";
     sharedContext?: string;
     monitor?: (m: CreateMonitor) => void;
   }): Promise<BrowserSummarizer>;
 }
+
+/**
+ * `availability()` / `create()` に渡す共通オプション。
+ *
+ * ❗ Chrome 公式仕様 (https://developer.chrome.com/docs/ai/summarizer-api) では
+ * `type` の有効値は `"key-points" | "tldr" | "teaser" | "headline"` (セミコロン無し)。
+ * `"tl;dr"` (セミコロン入り) を渡すと `availability()` が `"unavailable"` を返し、
+ * 端末上の要約 API が永久に使えない誤判定になる。
+ */
+export const SUMMARIZER_OPTIONS = {
+  type: "tldr",
+  length: "medium",
+} as const;
 
 // Chrome の公式検出パターン `'Summarizer' in self` に合わせ globalThis への宣言とする
 declare global {
@@ -94,10 +107,7 @@ export async function diagnoseSummarizerAvailability(): Promise<{
     return { available: false, reason: "flag-disabled" };
   }
   try {
-    const availability = await globalThis.Summarizer!.availability({
-      type: "tl;dr",
-      length: "medium",
-    });
+    const availability = await globalThis.Summarizer!.availability(SUMMARIZER_OPTIONS);
     if (shouldUseBrowserSummarizer(availability)) return { available: true, reason: null };
     if (availability === "downloading") return { available: false, reason: "model-downloading" };
     return { available: false, reason: "model-unavailable" };
@@ -119,10 +129,7 @@ export async function summarizeInBrowser(text: string): Promise<string | null> {
   if (!isSummarizerApiSupported() || !globalThis.Summarizer) return null;
 
   try {
-    const availability = await globalThis.Summarizer.availability({
-      type: "tl;dr",
-      length: "medium",
-    });
+    const availability = await globalThis.Summarizer.availability(SUMMARIZER_OPTIONS);
     if (!shouldUseBrowserSummarizer(availability)) {
       devError("[browser-summarizer] availability not usable:", availability);
       return null;
@@ -138,8 +145,7 @@ export async function summarizeInBrowser(text: string): Promise<string | null> {
     }
 
     const summarizer = await globalThis.Summarizer.create({
-      type: "tl;dr",
-      length: "medium",
+      ...SUMMARIZER_OPTIONS,
       sharedContext: "RSS feed article summary",
       monitor(m) {
         m.addEventListener("downloadprogress", (e) => {

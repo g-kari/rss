@@ -6,6 +6,7 @@ import {
   summarizeInBrowser,
   parseChromeMajorVersion,
   MIN_SUMMARIZER_CHROME_VERSION,
+  SUMMARIZER_OPTIONS,
 } from "../src/lib/browser-summarizer";
 
 /**
@@ -118,6 +119,27 @@ test.describe("diagnoseSummarizerAvailability — Node 環境", () => {
       "requires-user-activation",
     ];
     expect(validReasons).toContain(result.reason);
+  });
+});
+
+// ==========================================================================
+// SUMMARIZER_OPTIONS — Chrome 公式仕様準拠の enum 値
+// ==========================================================================
+
+test.describe("SUMMARIZER_OPTIONS — Chrome 公式仕様準拠", () => {
+  // 公式: https://developer.chrome.com/docs/ai/summarizer-api
+  // type の有効値: "key-points" (default) / "tldr" / "teaser" / "headline"
+  // ❗ "tl;dr" (セミコロン入り) は無効値で availability() が "unavailable" を返す
+  test("type は公式仕様の 'tldr' (セミコロン無し) — Issue #664 対策", () => {
+    expect(SUMMARIZER_OPTIONS.type).toBe("tldr");
+  });
+
+  test("type に 'tl;dr' (セミコロン入り) を含めない — Chrome の availability() が unavailable を返す原因", () => {
+    expect(SUMMARIZER_OPTIONS.type).not.toBe("tl;dr");
+  });
+
+  test("length は公式仕様の許可値", () => {
+    expect(["short", "medium", "long"]).toContain(SUMMARIZER_OPTIONS.length);
   });
 });
 
