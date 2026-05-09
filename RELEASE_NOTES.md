@@ -4,6 +4,12 @@
 
 ### リファクタリングっ
 
+- **ArticleList の残り 3 レイアウト (card / magazine / gallery) も関数化して #651 Step 1 完了したよ〜** — Issue #651 Step 1 続編。前回 compact/list を関数化してたので、残り 3 レイアウトも同パターンで `renderCardBody` / `renderMagazineBody` / `renderGalleryBody` として抽出！🔧✨ メイン return 内の 267 行 → 156 行に大幅スリム化。次は Step 2 (hook 抽出 / サブコンポーネント化) で本体さらに圧縮予定〜📦
+
+### 環境堅牢化っ
+
+- **e2e/test-seed-integration が wrangler 未認証時に自動 skip するようにしたよ〜** — `wrangler login` してない開発環境では R2 バインディングが取れず 5 件中 3 件が 500 エラーで pre-commit hook を阻害してたの〜😭 `test.beforeAll` で seed エンドポイントの可用性を確認、未認証時は 3 件 skip + 案内メッセージで `npx wrangler login` を表示！🛡️ これで wrangler 未ログイン環境でも他のテストが通るから、開発フローが快適に〜
+
 - **ArticleList の compact/list レイアウト JSX を関数化したよ〜** — Issue #651 Step 1 最小スコープ。50 行の仮想スクロール JSX を `renderCompactListBody` ローカル関数として抽出して、メイン return が 1 行の関数呼び出しになったの〜🔧✨ クロージャで外部 scope の変数を参照してるから依存配列管理は React に委譲。残り 3 レイアウト (card / magazine / gallery) は次 PR で同様に関数化予定。
 
 ### パフォーマンス調査っ
