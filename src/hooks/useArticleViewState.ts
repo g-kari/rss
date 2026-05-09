@@ -4,8 +4,12 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Article } from "../types";
 import type { Sentence } from "../lib/tts-sentences";
 
-/** #703: 要約読み上げ中にハイライトを抑制するための安定参照 (毎 render の identity 不変) */
-const EMPTY_SENTENCES: Sentence[] = [];
+/**
+ * #703: 要約読み上げ中にハイライトを抑制するための安定参照 (毎 render の identity 不変)。
+ * Object.freeze で下流が誤って .push() しても TypeError throw する safety net。
+ * (`react-patterns.md` の sentinel freeze 派生ケースに準拠)
+ */
+const EMPTY_SENTENCES = Object.freeze([] as Sentence[]) as Sentence[];
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { isLikelyJapanese } from "../lib/article-utils";

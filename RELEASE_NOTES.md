@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### ドキュメント整備っ + リファクタリングっ
+
+- **sentinel freeze 規範を `react-patterns.md` に codify + `EMPTY_SENTENCES` も sweep!📚 (規範統一サイクル)** — 前サイクルの `useFilteredArticles` sentinel freeze を `react-patterns.md` の「state 更新前に構造的等価性ガード」セクション末尾に **派生ケース** として codify〜🎯 「mutable 型 (Set/Map/Array/Object) は freeze 対象、ReadonlySet/Array で型守られているなら freeze 不要」のガイドラインも明示〜📚 同サイクルで残 sentinel `EMPTY_SENTENCES` (#703 TTS ハイライト抑制用) も freeze 化、`EMPTY_FEED_TITLE_MAP` は `ReadonlyMap` 型で型守られているため対象外と判定〜🛡️ 検出 grep `grep -rEn "^const EMPTY[A-Z_]*"` で全 6 sentinel を網羅、freeze 化対象 4 件 / 型守られ 2 件 / freeze 済 1 件で完全 sweep 達成〜💎
+
 ### リファクタリングっ (規範統一)
 
 - **`useFilteredArticles` の sentinel オブジェクト 3 種を `Object.freeze` で汚染防止!🛡️ (機械検出 sweep)** — `EMPTY_SET` / `EMPTY_STR_ARRAY` / `EMPTY_FEED_ARRAY` の 3 sentinel が freeze されておらず、下流コンポーネントが誤って `.add()` / `.push()` した場合にプロセス全体で sentinel が汚染される潜在バグを修正〜🎯 既存の `useDelayedGalleryItems.ts` の `EMPTY_SET = Object.freeze(...)` パターンに統一〜📚 同名 sentinel が異なるファイルで「frozen / 非 frozen」で混在する drift を解消、`grep -rEn "^const EMPTY"` の機械検出で発見〜💎

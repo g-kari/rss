@@ -55,6 +55,38 @@ function useReadStateSyncApply() {
 
 主な使用箇所: `equalSnoozedUntil` / `useReadStateSyncApply` (#686 — 2 秒毎の主スレッドブロック解消)
 
+### 派生ケース: モジュールレベル sentinel オブジェクトは `Object.freeze` で下流汚染を防ぐ
+
+`useFilteredArticles` のように **多数の派生 props** として `EMPTY_SET` / `EMPTY_ARRAY` 等の sentinel を渡す hook では、freeze されていない sentinel を下流が誤って `.add()` / `.push()` するとプロセス全体で sentinel が汚染され「次回からは empty じゃない」状態になる。`Object.freeze` で runtime safety net を入れる。
+
+```typescript
+// アンチパターン: freeze なし sentinel
+const EMPTY_SET = new Set<string>();
+// 多数の consumer に渡される → 1 箇所で .add() されたら全 consumer が汚染
+//   → 「filter 適用してないのに empty じゃない」連鎖バグ
+
+// 修正パターン: Object.freeze で runtime safety net
+const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
+// 型は Set<string> のまま (consumer 側の型変更を要求しない) +
+// runtime で .add() が TypeError throw する defense in depth
+```
+
+**Why**: TypeScript の `Set<string>` / `Array<T>` 型は **mutable をマークしない**。`ReadonlySet` / `ReadonlyArray` で渡せば型でも守れるが、consumer 全箇所の型変更を要求するため漸進的移行と相性が悪い。`Object.freeze + as cast` なら **PR スコープを最小化** しながら runtime での汚染検知を獲得できる。安定参照のため module-level で 1 度だけ作る sentinel は consumer が増えるほど誰かが mutate する事故確率が上がるため、defense in depth として freeze を入れる価値がある。
+
+**How to apply**: `const EMPTY_X = ...` のような module-level sentinel を新規宣言するとき:
+
+1. **mutable 型 (Set / Map / Array / Object) はすべて freeze 対象**。primitive (string / number / boolean) は不要
+2. **frozen 型注釈は元の mutable 型のまま** (`as Set<string>` で consumer 側の型変更を回避)
+3. **`ReadonlySet` / `ReadonlyArray` 派にしたいケース** (新規モジュールで consumer もまだ少ない) なら最初からそちらが clean。**既存モジュール** (consumer 多数) に後追いで freeze を入れるなら as cast で
+4. プリミティブの sentinel (`const EMPTY_STR = ""` 等) は freeze 不要 (immutable)
+
+検出方法: `grep -rEn "^const EMPTY[A-Z_]*" src/` で module-level sentinel 全件列挙 → `Object.freeze` 無しのものを抽出。`code drift sweep` (`rule-maintenance.md` セクション 5) パターンで定期適用可能。
+
+主な使用箇所:
+
+- `useFilteredArticles.ts` の `EMPTY_SET` / `EMPTY_STR_ARRAY` / `EMPTY_FEED_ARRAY` (3 sentinel を一括 freeze 化)
+- `useDelayedGalleryItems.ts` の `EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>` (先行採用パターン)
+
 ## ref vs state の使い分け（同期チェック vs useEffect 再実行）
 
 「外部からの一時的中断 → 自動回復」シナリオ（429 クールダウン後の再開、スリープからの復帰など）では **ref だけでは不十分**。`useRef` は React 再レンダーをトリガーしないため、ref に「期限値」を書き込んでも `useEffect` は再実行されない。
