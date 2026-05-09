@@ -273,6 +273,7 @@ src/
     useDesktopMediaQuery.ts  # `(min-width: 1024px)` matchMedia listener を SSR セーフに購読する hook（App.tsx から分割）
     useApiErrorToast.ts      # apiFetch 経由の通信エラーをトーストに 3 秒スロットルで通知する hook（App.tsx から分割）
     useOnlineRecoveryToast.ts # オフライン → オンライン復帰時のトースト通知 hook（前回 online 状態を ref で管理。App.tsx から分割）
+    useArticleImageMaxWidth.ts # 記事本文 `<img>` の HTML 属性 width/height が無いケースで naturalWidth から max-width を補完する hook（小さい画像の引き伸ばし防止）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()

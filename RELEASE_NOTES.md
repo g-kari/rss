@@ -2,6 +2,12 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **記事本文の小さい画像が画面いっぱいに引き伸ばされる問題を直したよ〜** — Issue #680。HTML の `<img>` に `width` / `height` 属性がないフィードだと、`fixImageDimensions` が inline `max-width` を付けられず、CSS `width: 100%` で 100x100 の小さい画像も画面幅いっぱいに引き伸ばされてたの〜🥲 `useArticleImageMaxWidth` hook を新設して、runtime で `naturalWidth` を読み取って `max-width: Npx` を補完するように修正！🔧 既存 inline `max-width` がある場合は上書きしないので `fixImageDimensions` の結果は安全に保たれるよ〜📐
+- **ギャラリーで全画像が minPx 未満で hidden になると「タイトルだけ表示」になる問題を直したよ〜 (#671 後追い)** — ユーザー報告: 「修正してもらったはずだけど、まだ表示されないパターンがある」🥲 `FilterableGalleryImage` の `minPx` フィルタで全 prefetched 画像が hidden になると、`imageSource === "prefetched"` だから No Image プレースホルダ条件にも該当せず、空コンテナで「タイトルだけ」状態だったの〜！`onHide` コールバックで hidden カウント管理 → 全件 hidden + thumb あり → thumb 描画 / + thumb なし → No Image プレースホルダにフォールバック！🛡️
+- **ギャラリー prefetch の 200 件キャップを撤廃したよ〜 (#673 続)** — 前回修正で「default 20 → 200」にしたけど、内部上限 (`Math.min(x, 200)`) も 200 のままで、scroll で visible が 200 件超に拡張されても 201 件目以降プリフェッチされない状態だったの〜🥲 内部上限を撤廃して `maxPrefetch=Infinity` をデフォルトに、`articles.length` (= visible 全件) を対象に修正！🚀 concurrency=2 + requestDelayMs=750ms が自然なレートリミッタとして働くから上限値による足切りは不要〜📜
+
 ### UX改善っ
 
 - **TTS 読み上げハイライトをもっとはっきり + 画面中央スクロールにしたよ〜** — Issue #659 ユーザー要望対応。これまで `--color-surface-subtle` (stone-100/zinc-800) の控えめハイライトで「弱い」って指摘があったので、専用 `--color-tts-highlight` トークンを追加してマーカーペン風の **amber-200 (light) / amber-400/30 (dark)** に変更！🎨 高コントラストテキスト + 細い shadow でセンテンスが「光ってる」ように〜✨ さらにスクロールも `block: "nearest"` → 快適ゾーン判定で `block: "center"` に変更。要素中心が画面中央 30〜70% 内なら静止、外れたらセンタリング。「画像直後で要素が画面下部に来る」「画面下部基準で見づらい」問題を解消〜📜 `shouldScrollSentence` 純粋関数を `src/lib/tts-scroll.ts` に切り出して TDD 11 ケース全分岐網羅。
