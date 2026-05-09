@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### ドキュメント整備っ
+
+- **`.claude/rules/coding-conventions.md` (1785 行) の段階的分割 Step 1 をやったよ〜 (#694 Step 1)** — `rule-maintenance.md` の 800 行閾値を 2.2 倍超えてたから、テーマ別に分割する案 C (段階的分割) を着手〜🎀 Step 1 として React state/ref/useEffect クラスター 4 セクション (~189 行) を新ファイル `react-patterns.md` に抽出！🔧 抽出対象: 構造的等価性ガード / ref vs state / trigger counter / ref 論理リセットポイント (+ 実行済み ID ref 派生)。`coding-conventions.md` は 1605 行に縮小、抽出先への redirect リンクを残して発見性を維持〜📚 Step 2 以降で React Context / hook 設計 / 大規模コンポーネント分割等を順次抽出予定！
+
 ### リファクタリングっ
 
 - **仮想スクロール item wrapper を VirtualRow に集約したよ〜 (#692)** — `CompactListBody` / `CardBody` / `MagazineBody` の 3 ファイルでほぼ同一の絶対配置 div ブロック (position: absolute / transform: translateY / 削除アニメ用 transition) が重複してたの〜🥲 `VirtualRow` ヘルパーコンポーネントを新設して 3 箇所を集約〜🔧 各ファイル ~10 行削減 (計 ~30 行)、CardBody の padding 等のレイアウト固有スタイルは `extraStyle` prop で受け取る設計〜🎀 virtualizer の挙動を変える際の同期修正コストが消滅！
