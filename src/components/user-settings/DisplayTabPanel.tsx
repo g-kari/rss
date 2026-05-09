@@ -26,6 +26,7 @@ import { AUTO_READ_THRESHOLD_CYCLE } from "../../hooks/useAutoReadSettings";
 import { ARTICLE_TTL_DAYS } from "../../lib/article-ttl";
 import { SHARE_TARGETS, type ShareTargetId } from "../article-view/shareTargets";
 import { SettingRow, SegmentGroup, PreviewArea, TTL_OPTIONS } from "./shared";
+import TtsVoiceSection from "./TtsVoiceSection";
 
 interface DisplayTabPanelProps {
   hidden: boolean;
@@ -341,6 +342,8 @@ export default function DisplayTabPanel({
             画像ダウンロード時のファイル名にフォルダプレフィックスを付与します。
           </span>
         </div>
+
+        <TtsVoiceSection />
 
         <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
           <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
