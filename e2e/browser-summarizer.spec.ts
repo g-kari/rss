@@ -4,6 +4,8 @@ import {
   shouldUseBrowserSummarizer,
   diagnoseSummarizerAvailability,
   summarizeInBrowser,
+  parseChromeMajorVersion,
+  MIN_SUMMARIZER_CHROME_VERSION,
 } from "../src/lib/browser-summarizer";
 
 /**
@@ -27,7 +29,6 @@ test.describe("isSummarizerApiSupported — Node 環境", () => {
 
 // ==========================================================================
 // shouldUseBrowserSummarizer — availability 判定
-// （browser-translator.spec.ts の shouldUseBrowserTranslation と対称的に実装）
 // ==========================================================================
 
 test.describe("shouldUseBrowserSummarizer — availability 判定", () => {
@@ -45,6 +46,47 @@ test.describe("shouldUseBrowserSummarizer — availability 判定", () => {
 
   test("unavailable はフォールバック対象", () => {
     expect(shouldUseBrowserSummarizer("unavailable")).toBe(false);
+  });
+});
+
+// ==========================================================================
+// parseChromeMajorVersion — UA 解析の純粋関数
+// ==========================================================================
+
+test.describe("parseChromeMajorVersion — UA 文字列解析", () => {
+  test("通常の Chrome UA からメジャーバージョンを抽出", () => {
+    const ua =
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.7390.55 Safari/537.36";
+    expect(parseChromeMajorVersion(ua)).toBe(142);
+  });
+
+  test("Edge (Chromium ベース) でも Chrome/N が返る", () => {
+    const ua =
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0";
+    expect(parseChromeMajorVersion(ua)).toBe(138);
+  });
+
+  test("Safari の UA は null", () => {
+    const ua =
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
+    expect(parseChromeMajorVersion(ua)).toBeNull();
+  });
+
+  test("空文字 / 不正値は null", () => {
+    expect(parseChromeMajorVersion("")).toBeNull();
+    expect(parseChromeMajorVersion("not-a-ua-string")).toBeNull();
+  });
+});
+
+// ==========================================================================
+// MIN_SUMMARIZER_CHROME_VERSION — 公式仕様準拠（138+）
+// ==========================================================================
+
+test.describe("MIN_SUMMARIZER_CHROME_VERSION — 仕様整合性", () => {
+  test("最低バージョンは 138（Summarizer API stable リリース）", () => {
+    // 公式: https://developer.chrome.com/docs/ai/summarizer-api
+    // Chrome 138 で stable origin trial 終了 → 一般提供
+    expect(MIN_SUMMARIZER_CHROME_VERSION).toBe(138);
   });
 });
 
@@ -73,6 +115,7 @@ test.describe("diagnoseSummarizerAvailability — Node 環境", () => {
       "flag-disabled",
       "model-downloading",
       "model-unavailable",
+      "requires-user-activation",
     ];
     expect(validReasons).toContain(result.reason);
   });

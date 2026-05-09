@@ -36,6 +36,9 @@ declare global {
   }
 }
 
+/** Translator API が stable で利用可能になった最低 Chrome メジャーバージョン (公式: 138)。 */
+export const MIN_TRANSLATOR_CHROME_VERSION = 138;
+
 function getChromeVersion(): number | null {
   if (typeof navigator === "undefined") return null;
   const match = /Chrome\/(\d+)/.exec(navigator.userAgent);
@@ -100,7 +103,7 @@ export async function diagnoseTranslatorAvailability(): Promise<{
     const isChromiumBased = /Chrome\//.test(navigator.userAgent);
     if (!isChromiumBased) return { available: false, reason: "not-chromium" };
     const chromeVersion = getChromeVersion();
-    if (chromeVersion !== null && chromeVersion < 131) {
+    if (chromeVersion !== null && chromeVersion < MIN_TRANSLATOR_CHROME_VERSION) {
       return { available: false, reason: "chrome-too-old" };
     }
     return { available: false, reason: "flag-disabled" };

@@ -185,9 +185,9 @@ export default function AiNotificationTabPanel({
                     {translatorDiag.reason === "not-chromium" &&
                       "ご利用のブラウザでは端末上の翻訳が使えないため、サーバー側 (Workers AI) で翻訳します"}
                     {translatorDiag.reason === "chrome-too-old" &&
-                      "Chrome のバージョンが古いため、サーバー側で翻訳します（Chrome 131 以上にアップデートすると端末上で翻訳できます）"}
+                      "Chrome のバージョンが古いため、サーバー側で翻訳します（Chrome 138 以上にアップデートすると端末上で翻訳できます）"}
                     {translatorDiag.reason === "flag-disabled" &&
-                      "Chrome 翻訳はオプトインが必要なため、サーバー側で翻訳します（chrome://flags/#translation-api で有効化可能、Chrome 138 以上では不要）"}
+                      "Chrome 翻訳はオプトインが必要なため、サーバー側で翻訳します（Chrome 138 未満では chrome://flags/#translation-api を有効化してください）"}
                     {translatorDiag.reason === "not-available" &&
                       "言語パックが未インストールのため、サーバー側で翻訳します（Chrome の設定から言語を追加すると端末上で翻訳できます）"}
                   </span>
@@ -209,13 +209,15 @@ export default function AiNotificationTabPanel({
                     {summarizerDiag.reason === "not-chromium" &&
                       "ご利用のブラウザでは端末上の要約が使えないため、サーバー側 (Workers AI) で要約します"}
                     {summarizerDiag.reason === "chrome-too-old" &&
-                      "Chrome のバージョンが古いため、サーバー側で要約します（Chrome 131 以上にアップデートすると端末上で要約できます）"}
+                      "Chrome のバージョンが古いため、サーバー側で要約します（Chrome 138 以上にアップデートすると端末上で要約できます）"}
                     {summarizerDiag.reason === "flag-disabled" &&
-                      "Chrome 要約はオプトインが必要なため、サーバー側で要約します（chrome://flags/#summarization-api-for-gemini-nano を Enabled で利用可能）"}
+                      "Chrome 要約 API が無効化されています。chrome://flags/#summarization-api-for-gemini-nano を Enabled にして再起動してください。chrome://on-device-internals でモデル DL 状況も確認できます"}
                     {summarizerDiag.reason === "model-downloading" &&
-                      "Chrome がモデルをダウンロード中です。完了するまではサーバー側で要約します"}
+                      "Chrome がモデル (約 22GB) をダウンロード中です。完了までサーバー側で要約します。chrome://on-device-internals で進捗を確認できます"}
+                    {summarizerDiag.reason === "requires-user-activation" &&
+                      "Chrome 要約 API は初回ダウンロード時にユーザー操作が必要です。AI 要約ボタンを再度クリックしてください"}
                     {summarizerDiag.reason === "model-unavailable" &&
-                      "ご利用環境では端末上の要約が使えないため、サーバー側 (Workers AI) で要約します"}
+                      "ご利用環境では端末上の要約が使えないため、サーバー側 (Workers AI) で要約します（要件: Chrome 138+ / 22GB 空き / GPU 4GB VRAM か CPU 16GB RAM 4 コア）"}
                   </span>
                 )}
               </div>
