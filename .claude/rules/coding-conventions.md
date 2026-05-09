@@ -531,6 +531,55 @@ useEffect(() => {
 
 主な使用箇所: `useArticlePagination` の eager load 機構（#636）、`LoadMoreButton` の親要素サイズ監視。
 
+## AbortController.abort() の伝播範囲を限定する
+
+**1 つの `AbortController` を複数の並列 fetch で共有しないこと**。共有してしまうと、1 件の fetch を止めるための `controller.abort()` が **他の進行中の fetch も全て中断** してしまう。
+
+```typescript
+// アンチパターン: 全 worker が同じ controller を共有
+const controller = new AbortController();
+async function worker() {
+  while (!cancelled) {
+    await fetchOne({ signal: controller.signal });
+    // 1 件で 429 → onRateLimit が controller.abort() を呼ぶ
+    // → 進行中の他 worker の fetch も全て中断 → 残り未処理記事は処理されない
+  }
+}
+
+// 修正パターン A: フラグだけ立てて while 条件で自然停止
+const controller = new AbortController();
+let rateLimited = false;
+async function worker() {
+  while (!cancelled && !rateLimited) {
+    await fetchOne({
+      signal: controller.signal,
+      onRateLimit: () => {
+        rateLimited = true;
+        // controller.abort() は呼ばない — 進行中の fetch は完走させる
+      },
+    });
+  }
+}
+
+// 修正パターン B: 各 fetch で個別の controller を作る
+async function fetchOne(article) {
+  const localController = new AbortController();
+  return fetch(url, { signal: localController.signal });
+}
+```
+
+**Why**: 2026-05-09 の #665 で、`usePrefetchGalleryContents` が 1 つの `AbortController` を全並列 worker で共有していた。1 件で 429 が来ると `onRateLimit` で `controller.abort()` が呼ばれ、進行中の **他記事の prefetch も全て中断**。さらに abort された fetch は `failedIds` に入らず UI 上にリトライボタンも出ない「空カードで停止」状態に。
+
+**How to apply**: `AbortController` を共有する設計を採るときは、abort のスコープを明示する:
+
+- **コンポーネントアンマウント / effect cleanup での中断** → 1 つの controller で OK（全部止めるのが正しい）
+- **個別エラー時の中断** → 各 fetch ごとに別 controller、または `controller.abort()` ではなくフラグで自然停止
+- **どちらも必要** → cleanup 用 controller と個別 controller を分ける
+
+判定基準: 「この abort で止まる対象は、止めるべき対象と一致しているか？」。一致しないなら controller 共有は誤り。
+
+主な使用箇所: `usePrefetchGalleryContents`（#665 で修正、現在は `rateLimited` フラグで自然停止）、`useArticleContent.fetchFullContent`（記事切替時のみ abort、これは正しい挙動）。
+
 ## モード OFF 時に進行中の副作用を停止する
 
 state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
