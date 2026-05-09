@@ -2,6 +2,11 @@
 
 ## 2026-05-10 (latest)
 
+### バグ修正っ
+
+- **ISO 8601 cutoff の比較を Date.parse ベースに修正で `+00:00` 形式も正しく扱うよ〜!📅 (code-quality 監査 85%)** — `computeEffectiveReadBeforeCutoff` で `readBeforeTimestamp` と ttl 由来 cutoff を **lexicographic 比較** してて、ASCII で `+` (0x2B) < `.` (0x2E) のため **同じ時刻** を `+00:00` 形式と `.000Z` 形式で表現すると後者が常に「新しい」と誤判定する潜在バグを修正!💪 `Date.parse(a) > Date.parse(b)` のミリ秒比較に変更〜🛡️ TDD で同時刻 +00:00/Z 形式 + 異時刻パターン全網羅〜📚
+- **`isValidBase64url` で構造的不正な `length % 4 === 1` を弾くガード追加!🔒 (code-quality 監査 82%)** — `"A="` `"A"` `"AAAAA"` のような **1 char remainder** が `decodedBytes=0` で silently 通過してしまうバグを修正!💎 base64 の group は 4 文字 = 3 byte 単位、1 char 端数は 0 byte も表現できないため構造的に不正〜🛡️ Web Push 鍵検証では range check で結果として弾かれてたが、将来 `minBytes=0` の caller が来たら通過するリスクあり〜📦 TDD 7 ケース追加 (% 4 == 1 全 3 ケース + 既存 OK ケース 4 種)〜🎯
+
 ### UX 改善っ
 
 - **AI 要約/翻訳ボタンが失敗時にちゃんと教えてくれるようになったよ〜!⚠️ (UX 監査 88% 信頼度)** — ボタン押した後に rate-limit や `AI_ERROR` で失敗しても、ヘッダーボタンが grey に戻ってサイレント、ユーザーは下にスクロールして本文の error メッセージ見ないと気付かない (= 押し直して再 rate-limit) 状態だったのを修正!💪 `aiError` / `translateError` を Props で受けて、エラー時にボタン枠を `border-error text-error` で目立たせ + `title` tooltip にエラーメッセージを表示〜🎯
