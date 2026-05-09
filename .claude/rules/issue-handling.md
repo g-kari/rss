@@ -281,3 +281,103 @@ UX/バグ修正で「あっちの hook と同じパターンを使えば直る�
 **Why**: エージェントは古い情報や別ファイルを参照して誤分析することがある。指摘された行番号 / シンボル名を Read で再現確認する手間は数秒だが、誤った修正を入れた場合のロールバック・調査コストは桁違い。
 
 **How to apply**: 「Read 1〜2 回でエージェント分析を裏付けられる」レベルなら必ず確認する。エージェントが指摘した行番号 / シンボル名は **常に Read で再現確認** してから実装パスを確定する。
+
+### 派生ケース: 正規表現分析は `node -e` で実証してから採用 / 却下を判断する
+
+監査エージェントが指摘した「この正規表現は X 形式の入力にマッチしない」「Y 形式で誤検知する」型の主張は、**`node -e` で 1 分実証** で裏付けるべき。エージェントは特に正規表現の **`.*` greedy 挙動 / バックトラック / グループ捕捉順序** の誤読が頻発する。Read で正規表現を見ただけでは挙動を追い切れない場合があり、確実な検証は実行のみ。
+
+```bash
+# 例: YouTube URL 正規表現の挙動を 1 コマンドで全エッジケース検証
+node -e "
+const re = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+const cases = [
+  'https://www.youtube.com/watch?v=abcde12345F',
+  'https://www.youtube.com/watch?list=PL&v=abcde12345F',
+  'https://www.youtube.com/watch?v=abcde12345F&t=30s',
+  'https://www.youtube.com/watch?t=30s&list=PL&v=abcde12345F',
+  'https://youtu.be/abcde12345F',
+  'https://www.youtube.com/shorts/abcde12345F',
+];
+for (const c of cases) {
+  const m = c.match(re);
+  console.log((m ? 'OK' : 'NG') + ' ' + c + ' -> ' + (m ? m[1] : 'NO MATCH'));
+}
+"
+```
+
+**Why**: 正規表現の `(?:.*&)?` のような optional greedy グループは、エージェントが「`v=` の前に `&` 必須と誤解」「greedy backtrack で末尾までマッチして失敗と推測」のような誤読をしやすい。実行可能な純粋関数 (= 副作用なし) はエージェント分析より **`node -e` 実証が常に正確**。1 分実証で false positive を見抜けるなら、その手間を惜しまない方が TDD spec を書く前のスクリーニングとして有効。
+
+**How to apply**: 監査エージェントが指摘する以下のキーワードを見たら `node -e` で実証する習慣を持つ:
+
+1. **正規表現挙動** ("X 形式にマッチしない" / "Y で誤検知" / "greedy backtrack")
+2. **文字列パース系純粋関数** (URL parse / JSON-LD walk / Markdown extractor)
+3. **数値計算 / 比較ロジック** (sort comparator / threshold 判定)
+
+実証で false positive と判明したら **TDD spec を書かない** (theoretical な regression spec は逆にコードを保守困難にする)。エージェント report に対しては「実証で全エッジケース pass、不採用」とコメントで残す (将来同じ指摘が再来したときに即却下できる)。
+
+主な使用箇所: `resolveThumbnail` YouTube regex (エージェント 78% 信頼度の "?list=PL&v=ID 形式が漏れる" 主張を `node -e` 6 ケース実証で全マッチ確認 → false positive 判定で TDD 着手回避)
+
+### 派生ケース: dead export 監査結果は `grep -rn <symbol> e2e/` で spec 参照確認してから削除する
+
+監査エージェントが「production caller 0 = dead export」と判定しても、**spec ファイルが re-export hub 経由でその symbol を import している** ケースで export を削除すると spec が壊れる。エージェントへのプロンプトで「production code only」観点を指示しても、spec の import 影響まで評価しないことが多い。
+
+```bash
+# dead export 削除前の必須チェック
+grep -rn "<SymbolName>" e2e/ src/
+# 出力に "e2e/*.spec.ts" の行があれば、その spec の import path 切替コストを別評価する
+```
+
+判定パターン:
+
+| spec 参照状況                             | production caller | 判定                                                                       |
+| ----------------------------------------- | ----------------- | -------------------------------------------------------------------------- |
+| spec 参照なし                             | 0                 | **export 削除可** (安全)                                                   |
+| spec 参照あり (re-export hub 経由)        | 0                 | **export 維持 + 別 Issue で「spec ごと削除 / 機能配線 / 現状維持」を判断** |
+| spec 参照あり (source module 直接 import) | 0                 | **export 維持 + spec の意図を JSDoc 等で残す**                             |
+| spec 参照なし                             | 1+                | dead でない (production 利用中)                                            |
+
+**Why**: 「production callers 0」だけで export 削除すると、spec の import path を re-export hub から source module へ書き換える追加コストが発生する (それ自体は些細だが、複数件あると PR スコープが膨張する)。spec 参照を別評価して「現状維持 + 別 Issue で判断仰ぐ」を選べば、リファクタ PR を 1 関心事に保てる。
+
+**How to apply**: dead export 監査エージェント派遣時のプロンプトに **「Check both production callers AND spec imports」** を明示。エージェント report 受領後に自分でも `grep -rn <symbol> e2e/` で確認。spec 参照ありの場合は同サイクルで触らず別 Issue 起票で判断仰ぐ (案 A 「spec ごと削除」/ 案 B 「現状維持」/ 案 C 「機能配線」のテンプレート使用)。
+
+主な使用箇所: `buildImageSlider` (production caller 0 だが spec 5 ケースが re-export hub 経由 import → 同サイクル削除を撤回 → Issue 起票で判断仰ぐ)
+
+## コードコメント・commit message・PR 本文への「未起票 Issue 番号フォワードリファレンス」を禁止
+
+GitHub の Issue 番号は **起票時に連番で払い出される** ため、未起票時点での番号予測は確実に外れる。コメントに `(#714 で経緯確認予定)` のように仮置きで書くと、実際の起票番号 (例: #708) と乖離して「ある架空の番号」コメントが永久に残る。
+
+```typescript
+// アンチパターン: 未起票時点で番号を仮置き
+// buildImageSlider は production caller がないが、spec test を残してあるため
+// 将来配線する候補として re-export を維持する (#714 で経緯確認予定)。
+// ↑ 実際に起票したら番号は #708 で、#714 は別の Issue 番号として腐る
+
+// 修正パターン A: 参照不要テキストにする
+// buildImageSlider は #321 で content.ts 側 caller が削除されたが spec が残存しているため、
+// 「dead 削除 / 機能配線 / spec ごと整理」のいずれを取るかを別 Issue で判断するまで暫定で re-export を維持する。
+
+// 修正パターン B: 先に Issue 起票 → 番号取得後に commit に含める
+// 1. gh issue create ... → "https://github.com/.../issues/708" を取得
+// 2. コメントに #708 を入れて commit
+```
+
+**Why**: フォワードリファレンスは確実に腐る。「`#714` を見たら何が分かるはずか?」が永久に不明な状態が git log と source code に残る。`git blame` で過去経緯を辿る人が混乱し、実際の起票 Issue (`#708`) と関連付けることもできない。
+
+**How to apply**: コードコメント・commit message・PR 本文・RELEASE_NOTES に Issue 番号 `#NNN` を含めようとするとき、以下を判定:
+
+1. **Issue は既に起票済みか?** → Yes なら番号確定、含めて OK
+2. **Issue を未起票で番号を仮置きしようとしているか?** → 以下のいずれかを選ぶ:
+   - **A. 参照不要テキストに置換** (例: 「別 Issue で判断するまで暫定維持」「後続 PR で対応予定」)
+   - **B. 先に `gh issue create` で起票して番号確定** → 番号を含めて commit
+   - **C. 起票後に別 commit で追記** (commit を分けることで「番号確定後の追記」が履歴に明示される)
+3. **commit を急ぎたい場合は A** が最安全 (Issue 起票が後回しになっても commit メッセージが腐らない)
+
+特に注意すべき場面: **複数件をバッチ commit する場合** 。1 commit に複数の Issue 番号を含めようとして「あと 2 件起票するから #714 #715 #716 ぐらい」と仮置きしがち。実際は他者の起票で番号がずれる可能性があるため、必ず先に gh で起票して払い出された番号を使う。
+
+**反例 (許容されるケース)**:
+
+- **既に起票済みの Issue 番号** (`closes #708` 等) → OK
+- **過去の closed Issue への履歴参照** (`#321 で削除された caller` 等) → OK (過去の確定番号)
+- **「該当 Issue なし」と明示するコメント** (例: `// 関連 Issue: なし (内部 refactor)`) → OK
+
+主な使用箇所: `html-post-processor.ts` コメント — 当初 `(#714 で経緯確認予定)` と仮置きで commit しようとした → 起票後実際の番号は #708 と判明 → コメントを参照不要テキストに修正してから commit
