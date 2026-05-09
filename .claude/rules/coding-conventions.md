@@ -449,6 +449,54 @@ useEffect(() => {
 
 主な使用箇所: `usePrefetchGalleryContents`（429 クールダウン後の自動リトライ）
 
+## trigger counter で「同じ依存値」でも useEffect を強制再実行する
+
+「同じ記事を選んでいるけど **もう一度** 強制スクロールしたい」「同じ条件のまま **再** 取得したい」のように、**state は変わらないがユーザー操作の都度 effect を再発火** したいケース。`useEffect` の依存配列は **値の equality** で判定するため、同じ値を再代入しても再実行されない。
+
+```typescript
+// アンチパターン: setSelectedArticleId(同じ id) では useEffect 再実行されない
+function App() {
+  const [selectedId, setSelectedId] = useState<string>("a");
+  // ユーザーが「同じ記事の中央にスクロールし直し」したくても再実行されない
+  return <List selectedId={selectedId} />;
+}
+
+// 修正パターン: increment-only な trigger counter を別 state で持つ
+function App() {
+  const [selectedId, setSelectedId] = useState<string>("a");
+  const [anchorTrigger, setAnchorTrigger] = useState(0);
+  const anchorListToSelected = useCallback(() => setAnchorTrigger((c) => c + 1), []);
+  return <List selectedId={selectedId} anchorTrigger={anchorTrigger} />;
+}
+
+// 子側: trigger counter を ref に保存し、変化検知 + 通常の id 変化と区別
+function List({ selectedId, anchorTrigger }: Props) {
+  const prevRef = useRef<{ id: string | null; anchor: number | undefined }>({
+    id: null,
+    anchor: undefined,
+  });
+  useEffect(() => {
+    const idChanged = selectedId !== prevRef.current.id;
+    const isManualAnchor = anchorTrigger !== prevRef.current.anchor;
+    if (!idChanged && !isManualAnchor) return;
+    prevRef.current = { id: selectedId, anchor: anchorTrigger };
+    // ↓ isManualAnchor フラグで通常選択 vs 手動アンカーの挙動を切り替える
+    scrollToItem(selectedId, { force: isManualAnchor });
+  }, [selectedId, anchorTrigger]);
+}
+```
+
+**Why**: 同じ `selectedId` で再スクロールさせたい場合、`setSelectedId(同じ値)` では React が re-render を skip するため effect も発火しない。`anchorTrigger` のような **monotonic に増えるカウンタ** を別 state に持てば、increment のたびに必ず re-render + effect 再実行を引き起こせる。ref と組み合わせれば「id 変化なのか / trigger 変化なのか」を区別して挙動を切り替えられる (例: 通常選択は `align: "auto"`、手動 anchor は `align: "center"`)。
+
+**How to apply**: 「同じ依存値でユーザー操作の都度 effect を再発火したい」要件を見つけたら:
+
+1. **trigger counter state** を親に置く: `const [trigger, setTrigger] = useState(0);`
+2. **increment コールバック** を提供: `const fire = useCallback(() => setTrigger((c) => c + 1), []);`
+3. **子の useEffect の依存配列に trigger を追加** + `prevRef` で「同 trigger なら skip」「trigger 変化なら強制実行」を判定
+4. **通常変化 vs 手動 trigger の挙動分岐** が必要なら `isManualTrigger` フラグで `align` / `behavior` などを切り替える
+
+主な使用箇所: `App.tsx` の `anchorTrigger` ↔ `ArticleList.tsx` の scroll useEffect (#684 — `.` キーで選択中記事を中央アンカー)
+
 ## ref の論理リセットポイントを忘れない
 
 「前 tick の値を保持する ref」（例: `prevPlayingRef`, `prevSelectedRef`, `lastFiredAtRef`）は、状態の **論理的なリセットポイント**で同期的にリセットしないと、次の cycle で誤判定の連鎖を起こす。
