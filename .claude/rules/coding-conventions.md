@@ -738,6 +738,38 @@ export async function summarizeInBrowser(text: string): Promise<string | null> {
 
 主な使用箇所: `src/lib/browser-summarizer.ts` / `src/lib/browser-translator.ts`（Chrome 組み込み AI ラッパー）
 
+### 派生ケース: `availability()` が `unavailable` を返したら **入力引数も一緒にログに出す**
+
+外部 API の `availability()` / `validate()` 系判定関数が **「使えない」結果** を返したとき、結果値だけログに出すと「ハードウェア要件不足」と誤診しがち。実際は **渡している引数値が API 仕様と乖離している** 可能性が常にある。`devError` で **入力引数も一緒に** 出力する設計にすれば、仕様乖離を最初の調査で検出できる。
+
+```typescript
+// アンチパターン: 結果値だけログ → 「unavailable = 環境問題」と誤診
+const availability = await api.availability({ type: "tl;dr", length: "medium" });
+if (!isUsable(availability)) {
+  devError("[wrapper] availability not usable:", availability);
+  // ↑ "unavailable" としか出ない → "tl;dr" が無効値だったことに気づかない
+  return null;
+}
+
+// 修正パターン: 入力引数も一緒にログ
+const options = { type: "tldr", length: "medium" } as const;
+const availability = await api.availability(options);
+if (!isUsable(availability)) {
+  devError("[wrapper] availability not usable:", { availability, options });
+  // ↑ 渡した引数も見えるので、API 仕様変更 / typo を即座に切り分けできる
+  return null;
+}
+```
+
+**Why**: ブラウザ AI / 外部サービスの `availability()` 系 API は **無効な引数値** を渡されると `"unavailable"` を返すことがある（明示的な型エラーを投げない）。結果値だけ見ると「環境問題」に見えて、実は実装側のオプション値が公式仕様と一致していなかった、というケースが頻発する。入力引数を一緒にログに出せば「渡している値が公式仕様の enum と一致しているか」を最初の調査ステップで確認できる。
+
+**How to apply**: 外部 API の `availability()` / `validate()` / `canX()` 系判定関数を呼ぶラッパーで:
+
+1. **オプション値は const オブジェクトに集約** (`SUMMARIZER_OPTIONS` / `TRANSLATOR_OPTIONS` 等) して 1 箇所参照
+2. **TDD で「渡している enum 値が公式仕様と一致するか」を assert** (例: `expect(SUMMARIZER_OPTIONS.type).toBe("tldr")`)
+3. **判定が下りた場合の `devError` は `{ result, options }` の形式** で入力引数も含める
+4. ユーザーから「環境要件は満たしているのに使えない」報告が来たら、**最初に渡している引数値を公式仕様と照合** する (環境調査より先)
+
 ## ブラウザ仕様の最低バージョン定数を 1 箇所に集約する
 
 Chrome / Safari の Web API には「Chrome 138+」「Safari 17+」のような最低バージョン要件がある。これを `getChromeVersion() < 131` のようにマジックナンバーで散らすと、API の stable リリース後に bump し忘れて誤診断 (`flag-disabled` 等) を起こす。
