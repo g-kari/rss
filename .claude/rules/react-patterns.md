@@ -266,6 +266,134 @@ App.tsx / 巨大ページコンポーネントから複数の `useEffect` / `use
 
 **How to apply**: 巨大コンポーネントから抽出する hook を最初に箇条書きで列挙 (4〜10 個程度) → 上記優先順位で 1 個ずつ抽出 → 各 commit で `pnpm run typecheck` 通過を確認 → 8 個程度溜まったら master へ no-ff merge して 1 ブランチを完了させる。
 
+### 派生ケース: 同じ意味のインライン lambda が複数箇所に散在 → 既存 hook 内の useCallback に集約
+
+巨大コンポーネントから state hook (`useFeedSelection` / `useReadState` 等) の戻り値 setter を取り出して **複数箇所でインライン lambda として** 同じ操作を組み立てているケース:
+
+```typescript
+// アンチパターン: 同じ「フィード切替時に記事もクリア」が 2 箇所に散在
+function App() {
+  const { setSelectedFeedId, setSelectedGroupId, setSelectedArticle } = useFeedSelection(...);
+
+  // 場所 1: useFeedSidebarActions に渡す
+  const sidebarActions = useFeedSidebarActions({
+    setSelectedFeedIdNull: () => {
+      setSelectedFeedId(null);
+      setSelectedGroupId(null);
+      setSelectedArticle(null);
+    },
+    // ...
+  });
+
+  // 場所 2: useKeyboardNav に渡す
+  useKeyboardNav({
+    onSelectFeed: (id) => {
+      setSelectedFeedId(id);
+      setSelectedArticle(null);
+    },
+    // ...
+  });
+}
+```
+
+これは **state hook 自体に「複合操作」名を持つ useCallback を追加** して 1 箇所に集約する:
+
+```typescript
+// 修正パターン: useFeedSelection 内に useCallback で公開
+export function useFeedSelection(...) {
+  const [selectedFeedId, setSelectedFeedId] = useState(null);
+  // ... 他 state
+
+  const selectFeedClearingArticle = useCallback((id: string | null) => {
+    setSelectedFeedId(id);
+    setSelectedArticle(null);
+  }, []);
+
+  const clearFeedGroupArticleSelection = useCallback(() => {
+    setSelectedFeedId(null);
+    setSelectedGroupId(null);
+    setSelectedArticle(null);
+  }, []);
+
+  return {
+    selectedFeedId, setSelectedFeedId,
+    // ...
+    selectFeedClearingArticle,        // ← 公開
+    clearFeedGroupArticleSelection,   // ← 公開
+  };
+}
+
+// App.tsx 側
+function App() {
+  const { selectFeedClearingArticle, clearFeedGroupArticleSelection } = useFeedSelection(...);
+
+  const sidebarActions = useFeedSidebarActions({
+    setSelectedFeedIdNull: clearFeedGroupArticleSelection, // ← 1 行
+    // ...
+  });
+
+  useKeyboardNav({
+    onSelectFeed: selectFeedClearingArticle, // ← 1 行
+    // ...
+  });
+}
+```
+
+**Why**:
+
+1. **アトミック性が名前で表現される**: `selectFeedClearingArticle` の名前から「フィード選択 + 記事クリア」が 1 つの不可分操作と読める。インライン lambda だと「複数 setter の集まり」にしか見えない
+2. **2 箇所のインライン lambda が乖離するリスクを排除**: 一方が「`setSelectedGroupId(null)` も追加」と修正されたとき、他方が古いままになる drift を物理的に防ぐ
+3. **render-stability 向上**: `useCallback` 化で reference 不変になり、子コンポーネント (例: `useFeedSidebarActions` の `useMemo` deps) の不要な再計算を抑制できる
+4. **state hook の責務が明確化**: 「state を持つ」だけでなく「state に対するアトミック操作を提供する」役割が明示される
+
+**How to apply**: 巨大コンポーネントから抽出済の state hook (`useXxxxxxx`) を見たら、**そこから取り出した setter を複数箇所でインライン lambda として組み合わせている箇所** を grep で探す:
+
+1. `set<HookState>` setter を grep して使用箇所を列挙
+2. 同じ複数 setter を **同じ順序** で呼ぶ lambda が 2 箇所以上あれば集約候補
+3. その lambda の意図を表す **名前** を考える (例: `selectFeedClearingArticle` / `clearFeedGroupArticleSelection`)
+4. state hook 内に `useCallback` で追加 → consumer 側を 1 行に簡素化
+5. **deps 配列は空 `[]`**: setter は `useState` の戻り値で identity 不変なので deps 不要
+
+主な使用箇所: `useFeedSelection` の `selectFeedClearingArticle` / `clearFeedGroupArticleSelection` (App.tsx Step 1n) — 元々 `setSelectedFeedIdNull: () => {...}` と `onSelectFeed: (id) => {...}` の 2 インライン lambda が散在していた
+
+### 派生ケース: 同形 JSX ラッパーが 3 回以上重複 → ポリモーフィック `as` props 付きラッパーコンポーネント化
+
+App.tsx / レイアウトコンポーネントで、**同形の wrapper JSX** (`<div data-X className="..." style={{...}} aria-X inert ...>...</div>`) が **同じ props pattern + 微妙に異なる属性値** で 3 回以上繰り返されているケース。
+
+```tsx
+// アンチパターン: 3 ペインそれぞれに 6 行のラッパーが重複
+<div
+  data-pane="sidebar"
+  className="absolute inset-0 ... mobile-pane"
+  style={{ transform: getMobilePaneTransform("sidebar", mobilePane) }}
+  aria-hidden={(!isDesktop && mobilePane !== "sidebar") || undefined}
+  inert={(!isDesktop && mobilePane !== "sidebar") || undefined}
+>...</div>
+<div data-pane="list" /* 同パターン */>...</div>
+<main data-pane="view" /* 同パターン (要素タイプだけ違う) */>...</main>
+
+// 修正パターン: ラッパーコンポーネントに集約 + as prop で要素タイプ切替
+<MobilePane pane="sidebar" currentPane={mobilePane} isDesktop={isDesktop}>...</MobilePane>
+<MobilePane pane="list" currentPane={mobilePane} isDesktop={isDesktop} id="main-content" tabIndex={-1}>...</MobilePane>
+<MobilePane pane="view" currentPane={mobilePane} isDesktop={isDesktop} as="main">...</MobilePane>
+```
+
+**Why**:
+
+1. **属性派生ロジック (例: `aria-hidden` / `inert` の同期) を 1 箇所に閉じ込める**: 「PC 時は無効」のような条件が散在すると、片方だけ条件追加されてアクセシビリティが壊れるリスク
+2. **新ペイン追加時のコピペミス防止**: コピペで一部属性を書き換え忘れる事故を物理的に防ぐ
+3. **要素タイプの差異** (`<div>` vs `<main>`) は `as: ElementType` props で吸収すれば 1 コンポーネントで対応可能
+
+**How to apply**: 同形 wrapper JSX を見たら以下を判定:
+
+1. **同形 JSX が 3 回以上** あるか (2 回程度は重複の判断微妙)
+2. **属性値の差異が「派生可能」** か (例: `data-pane="sidebar"` の `"sidebar"` だけ違う = props で渡せる / 完全に違う style = 集約困難)
+3. **要素タイプの違い** は `as: ElementType = "div"` の polymorphic component pattern で吸収
+4. ラッパーコンポーネントの位置: `src/components/<Wrapper>.tsx` (汎用なら) / `src/components/<feature>/<Wrapper>.tsx` (機能限定なら)
+5. **JSDoc に「集約した属性派生ロジック」を明示**: 後の開発者が「なぜラッパー化したか」を理解できる
+
+主な使用箇所: `MobilePane` (App.tsx Step 1o) — 元々 sidebar / list / view 3 ペインに 6 行ラッパーが重複、`aria-hidden` / `inert` の PC 無効化ロジックを集約
+
 ### 派生ケース: 新機能は「Phase 1: 純粋関数 + TDD」「Phase 2: UI 統合」で分離する
 
 `splitIntoSentences` / `selectActiveCharIndex` / `findSentenceAtCharIndex` のような **データ変換・状態判定ロジック** を含む機能は、UI 統合と切り離して **Phase 1 で純粋関数 + TDD だけ commit** する。Phase 2 で React hook + DOM 操作 + CSS を統合する。
