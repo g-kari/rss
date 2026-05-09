@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { mergeReadStateUpdate, equalSnoozedUntil } from "../src/lib/read-state-merge";
+import {
+  mergeReadStateUpdate,
+  equalSnoozedUntil,
+  equalNotes,
+  equalTagIds,
+} from "../src/lib/read-state-merge";
 import type { ReadState } from "../src/types";
 
 /**
@@ -358,5 +363,117 @@ test.describe("equalSnoozedUntil (#686)", () => {
     }
     b["id50"] = "2099-12-31T00:00:00Z";
     expect(equalSnoozedUntil(a, b)).toBe(false);
+  });
+});
+
+test.describe("equalNotes", () => {
+  test("両方空オブジェクトなら true", () => {
+    expect(equalNotes({}, {})).toBe(true);
+  });
+
+  test("同一 reference は早期 true", () => {
+    const a = { a1: "メモ 1" };
+    expect(equalNotes(a, a)).toBe(true);
+  });
+
+  test("同じ key + 同じ value は true (別 reference でも)", () => {
+    const a = { a1: "メモ 1", a2: "メモ 2" };
+    const b = { a1: "メモ 1", a2: "メモ 2" };
+    expect(equalNotes(a, b)).toBe(true);
+  });
+
+  test("キー順序が違っても等価判定する", () => {
+    const a = { a1: "x", a2: "y" };
+    const b = { a2: "y", a1: "x" };
+    expect(equalNotes(a, b)).toBe(true);
+  });
+
+  test("片方にだけキーがあれば false", () => {
+    expect(equalNotes({ a1: "x" }, {})).toBe(false);
+    expect(equalNotes({}, { a1: "x" })).toBe(false);
+  });
+
+  test("同じキーで違う値は false (メモ更新)", () => {
+    expect(equalNotes({ a1: "old" }, { a1: "new" })).toBe(false);
+  });
+
+  test("キー数が同じでもキー名が違えば false", () => {
+    expect(equalNotes({ a1: "x" }, { a2: "x" })).toBe(false);
+  });
+
+  test("空文字列の値も区別される", () => {
+    expect(equalNotes({ a1: "" }, { a1: "" })).toBe(true);
+    expect(equalNotes({ a1: "" }, { a1: "x" })).toBe(false);
+  });
+});
+
+test.describe("equalTagIds", () => {
+  test("両方空オブジェクトなら true", () => {
+    expect(equalTagIds({}, {})).toBe(true);
+  });
+
+  test("同一 reference は早期 true", () => {
+    const a = { a1: ["tech", "ai"] };
+    expect(equalTagIds(a, a)).toBe(true);
+  });
+
+  test("同じ key + 同じ tag 配列 (順序含む) は true", () => {
+    const a = { a1: ["tech", "ai"], a2: ["news"] };
+    const b = { a1: ["tech", "ai"], a2: ["news"] };
+    expect(equalTagIds(a, b)).toBe(true);
+  });
+
+  test("キー順序が違っても等価判定する", () => {
+    const a = { a1: ["x"], a2: ["y"] };
+    const b = { a2: ["y"], a1: ["x"] };
+    expect(equalTagIds(a, b)).toBe(true);
+  });
+
+  test("片方にだけキーがあれば false", () => {
+    expect(equalTagIds({ a1: ["x"] }, {})).toBe(false);
+    expect(equalTagIds({}, { a1: ["x"] })).toBe(false);
+  });
+
+  test("同じキーで配列の長さが違えば false", () => {
+    expect(equalTagIds({ a1: ["x"] }, { a1: ["x", "y"] })).toBe(false);
+  });
+
+  test("同じキーで配列内容 (要素値) が違えば false", () => {
+    expect(equalTagIds({ a1: ["x", "y"] }, { a1: ["x", "z"] })).toBe(false);
+  });
+
+  test("配列の順序違いは false (UI 表示順を尊重)", () => {
+    expect(equalTagIds({ a1: ["x", "y"] }, { a1: ["y", "x"] })).toBe(false);
+  });
+
+  test("空配列同士の同じキーは true", () => {
+    expect(equalTagIds({ a1: [] }, { a1: [] })).toBe(true);
+  });
+
+  test("空配列と要素ありは false", () => {
+    expect(equalTagIds({ a1: [] }, { a1: ["x"] })).toBe(false);
+  });
+
+  test("100 件の entries で全 key + 全 tag 一致なら true", () => {
+    const a: Record<string, string[]> = {};
+    const b: Record<string, string[]> = {};
+    for (let i = 0; i < 100; i++) {
+      const tags = [`tag${i}a`, `tag${i}b`];
+      a[`id${i}`] = tags;
+      b[`id${i}`] = [...tags];
+    }
+    expect(equalTagIds(a, b)).toBe(true);
+  });
+
+  test("100 件のうち 1 件だけタグ追加されていれば false", () => {
+    const a: Record<string, string[]> = {};
+    const b: Record<string, string[]> = {};
+    for (let i = 0; i < 100; i++) {
+      const tags = [`tag${i}`];
+      a[`id${i}`] = tags;
+      b[`id${i}`] = [...tags];
+    }
+    b["id50"] = ["tag50", "extra"];
+    expect(equalTagIds(a, b)).toBe(false);
   });
 });

@@ -206,3 +206,61 @@ export function equalSnoozedUntil(a: Record<string, string>, b: Record<string, s
   }
   return true;
 }
+
+/**
+ * 2 つの notes マップが構造的に等しいかを判定する。
+ *
+ * `equalSnoozedUntil` と同じ #686 の構造的等価性ガード適用例。
+ * notes は `Record<articleId, noteText>` 形式で、`useFilteredArticles` の
+ * 派生計算 (例: `noteIds` Set) が依存するため、reference 不安定だと 2 秒毎の
+ * サーバー同期サイクルで全記事フィルター pass が再走する。
+ *
+ * 等価判定:
+ *   - キー集合が同じ
+ *   - 各キーの noteText (string) が同じ
+ *
+ * O(n) ループ。`maxNotes` の上限制約 (1,000 件) があるため十分高速。
+ */
+export function equalNotes(a: Record<string, string>, b: Record<string, string>): boolean {
+  if (a === b) return true;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
+/**
+ * 2 つの tagIds マップが構造的に等しいかを判定する。
+ *
+ * tagIds は `Record<articleId, string[]>` 形式で、各記事に付いたタグの配列を保持する。
+ * 等価判定は次の順:
+ *   - キー集合が同じ
+ *   - 各キーの string[] の長さが同じ
+ *   - 各 index の文字列が === で同じ (タグ並び順も比較対象)
+ *
+ * 並び順を比較対象にする理由:
+ *   - tagIds の order は UI で表示順として使われる
+ *   - 並び替えのみ発生したケースでも setState を発火させて UI を更新したい
+ *
+ * O(n*m) ループ (n: 記事数、m: 平均タグ数)。tagIds は最大 2,000 記事 ×
+ * 数十タグ程度なので実用上問題なし。
+ */
+export function equalTagIds(a: Record<string, string[]>, b: Record<string, string[]>): boolean {
+  if (a === b) return true;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    const av = a[key];
+    const bv = b[key];
+    if (!av || !bv) return false;
+    if (av.length !== bv.length) return false;
+    for (let i = 0; i < av.length; i++) {
+      if (av[i] !== bv[i]) return false;
+    }
+  }
+  return true;
+}
