@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Article } from "../types";
+import type { Sentence } from "../lib/tts-sentences";
+
+/** #703: 要約読み上げ中にハイライトを抑制するための安定参照 (毎 render の identity 不変) */
+const EMPTY_SENTENCES: Sentence[] = [];
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { isLikelyJapanese } from "../lib/article-utils";
@@ -37,6 +41,8 @@ interface UseArticleViewStateParams {
   currentMobilePane?: "sidebar" | "list" | "view";
   /** モバイル view ペインで右スワイプしたときのペイン戻り処理 */
   onGoBack?: () => void;
+  /** #703: オートモード ON 時に要約を読み上げ中ならハイライトを抑制するために渡す */
+  autoMode?: boolean;
 }
 
 export function useArticleViewState({
@@ -50,6 +56,7 @@ export function useArticleViewState({
   isNsfw,
   currentMobilePane,
   onGoBack,
+  autoMode = false,
 }: UseArticleViewStateParams) {
   const {
     theme,
@@ -176,9 +183,16 @@ export function useArticleViewState({
     buildTtsText,
   } = useArticleViewTts(article, processedContent, translatedText, onBoundaryRef, onSpeakStartRef);
 
+  // #703: オートモード + autoSummarize で要約を読み上げているとき、ハイライトは
+  // 「記事本文」ではなく実際に読み上げているテキスト (要約) と一致させたい。
+  // 要約テキストは sentence span 化していないため、その間はハイライト全体を抑制する
+  // (ttsSentences を空配列にすることで activeSentenceIndex は -1 維持)。
+  const isReadingSummary = autoMode && autoSummarize && !!aiResult;
+  const effectiveTtsSentences = isReadingSummary ? EMPTY_SENTENCES : ttsSentences;
+
   // #672 Phase 2: TTS ハイライト hook (sentences と TTS state を渡して activeSentenceIndex を計算)
   const { activeSentenceIndex, handleBoundary, markSpeakStart } = useTtsHighlight(
-    ttsSentences,
+    effectiveTtsSentences,
     ttsRate,
     ttsPlaying,
     ttsSupported,

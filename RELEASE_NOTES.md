@@ -4,6 +4,8 @@
 
 ### バグ修正っ
 
+- **オートモード + 自動要約で要約を読み上げ中の TTS ハイライトを抑制!🎯 (#703)** — `autoMode + autoSummarize + aiResult` が揃って **要約テキストを TTS で読み上げ中** のとき、ハイライトは「**記事本文**」の sentence span に当たってて、読まれているテキストとハイライト位置が乖離してた問題を修正!💪 `useArticleViewState` で `isReadingSummary` 判定 → `ttsSentences` を空配列に置き換えて `useTtsHighlight` の `activeSentenceIndex = -1` 維持〜🛡️ 要約 UI 自体に sentence span を導入する大規模対応はせず、**ハイライト抑制** のみで「読んでるテキストと違うところがハイライトされる」違和感を解消〜📦
+
 - **ISO 8601 cutoff の比較を Date.parse ベースに修正で `+00:00` 形式も正しく扱うよ〜!📅 (code-quality 監査 85%)** — `computeEffectiveReadBeforeCutoff` で `readBeforeTimestamp` と ttl 由来 cutoff を **lexicographic 比較** してて、ASCII で `+` (0x2B) < `.` (0x2E) のため **同じ時刻** を `+00:00` 形式と `.000Z` 形式で表現すると後者が常に「新しい」と誤判定する潜在バグを修正!💪 `Date.parse(a) > Date.parse(b)` のミリ秒比較に変更〜🛡️ TDD で同時刻 +00:00/Z 形式 + 異時刻パターン全網羅〜📚
 - **`isValidBase64url` で構造的不正な `length % 4 === 1` を弾くガード追加!🔒 (code-quality 監査 82%)** — `"A="` `"A"` `"AAAAA"` のような **1 char remainder** が `decodedBytes=0` で silently 通過してしまうバグを修正!💎 base64 の group は 4 文字 = 3 byte 単位、1 char 端数は 0 byte も表現できないため構造的に不正〜🛡️ Web Push 鍵検証では range check で結果として弾かれてたが、将来 `minBytes=0` の caller が来たら通過するリスクあり〜📦 TDD 7 ケース追加 (% 4 == 1 全 3 ケース + 既存 OK ケース 4 種)〜🎯
 
