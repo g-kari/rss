@@ -75,5 +75,7 @@ export function computeEffectiveReadBeforeCutoff(
       : null;
   const candidates = [readBeforeTimestamp, ttlCutoffIso].filter((x): x is string => !!x);
   if (candidates.length === 0) return null;
-  return candidates.reduce((a, b) => (a > b ? a : b));
+  // code-quality 監査 (#1): lexicographic 比較は ISO 8601 の `+00:00` (0x2B) と
+  // `.000Z` (0x2E) の差で同一時刻の比較が正しくない。Date.parse で ms 比較する。
+  return candidates.reduce((a, b) => (Date.parse(a) > Date.parse(b) ? a : b));
 }

@@ -106,6 +106,10 @@ export function parseName(raw: unknown, maxLength: number): ParseNameResult {
 export function isValidBase64url(value: string, minBytes: number, maxBytes: number): boolean {
   if (!/^[A-Za-z0-9_-]+=*$/.test(value)) return false;
   const stripped = value.replace(/=+$/, "");
+  // code-quality 監査 (#2): base64 group は 4 文字単位 (1 group = 3 byte)。
+  // 端数が 1 文字残るケースは構造的に不正 (1 char では 0 byte も表現できない)。
+  // この check がないと "A=" / 単独 "A" 等が minBytes=0 で誤って通過する。
+  if (stripped.length % 4 === 1) return false;
   const decodedBytes = Math.floor((stripped.length * 3) / 4);
   return decodedBytes >= minBytes && decodedBytes <= maxBytes;
 }

@@ -392,5 +392,38 @@ test.describe("isValidBase64url", () => {
     test("スペースを含む場合は拒否される", () => {
       expect(isValidBase64url("YWJ j", 1, 100)).toBe(false);
     });
+
+    // code-quality 監査 (#2, 82% 信頼度): 構造的に不正な base64
+    // (`stripped.length % 4 === 1`) は 0 バイトとして silently 通過してしまう。
+    test("stripped.length % 4 === 1 (1 文字 + パディング) は構造的不正で拒否される", () => {
+      // "A=" — 1 base64 char + 1 padding。stripped="A" (length=1, % 4 == 1)
+      // 1 char では 0 byte の base64 group は表現できない。修正前はこれが minBytes=0 で true を返す。
+      expect(isValidBase64url("A=", 0, 100)).toBe(false);
+    });
+
+    test("単一文字 (パディングなし) も構造的不正", () => {
+      // "A" — 1 base64 char、padding なし。同じく invalid。
+      expect(isValidBase64url("A", 0, 100)).toBe(false);
+    });
+
+    test("5 文字 (パディングなし) も構造的不正 (5 % 4 == 1)", () => {
+      // "AAAAA" — 5 chars、stripped length=5、% 4 == 1
+      expect(isValidBase64url("AAAAA", 0, 100)).toBe(false);
+    });
+
+    test("4 文字 (% 4 == 0) は OK", () => {
+      // "AAAA" — 4 chars、3 byte が抽出可能
+      expect(isValidBase64url("AAAA", 0, 100)).toBe(true);
+    });
+
+    test("2 文字 + パディング (% 4 == 2) は OK", () => {
+      // "AA==" — 1 byte
+      expect(isValidBase64url("AA==", 0, 100)).toBe(true);
+    });
+
+    test("3 文字 + パディング (% 4 == 3) は OK", () => {
+      // "AAA=" — 2 byte
+      expect(isValidBase64url("AAA=", 0, 100)).toBe(true);
+    });
   });
 });
