@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### パフォーマンス改善っ
+
+- **`readingTimeCache` を「読了時間フィルター無効時は生成しない」に最適化!⚡ (perf 監査 80% 信頼度)** — `useFilteredArticles` で `readingTimeCache` を articles ref 変化のたびに常に生成してたのを、`readingTimeRange === "all"` (デフォルト) のときは `undefined` で skip するように!📦 5 分ポーリングのたびに走る無駄な allocation を排除〜🛡️ deps 配列にも `readingTimeRange` を追加して、フィルター切替時に正しく再生成される〜🎯
+
 ### リファクタリングっ
 
 - **API ルートの subscription guard を `assertFeedSubscribed` ヘルパーに集約!🛡️ (simplify 監査 88% 信頼度)** — `feeds/[id]/{,refresh,reinfer,purge-content-cache}` で完全に同じ「購読してない feedHash は 404」3 行を 4 routes で重複してた状態を、`src/lib/api-feed-guard.ts` の **discriminated union** ベース helper に集約!💪 `if (guard.err) return guard.err;` で TS narrowing が効いて `sub: UserSubscription` 取れる〜🎯 既存の `assertValidFeedHash` (hash 形式 validate) と隣接配置で security-critical な「認証 + 所有権チェック」二段が明示化〜🔒
