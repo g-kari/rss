@@ -447,6 +447,51 @@ shouldStartAutoSpeak({
 
 **How to apply**: fallback を含む文字列・配列を判定関数に渡すときは、判定側で「fallback されたかどうか」を別 boolean で受け取る。`hasText` のような fallback 後の事実だけでなく、`hasOriginal` のような fallback 前の事実も渡せるよう設計する。
 
+### 派生ケース: 同じデータに対して動作する sibling 純粋関数は fallback chain を完全に揃える
+
+`isArticleRead(article, readIds, readBeforeTimestamp)` と `pruneOldReadIds(readIds, articles, readBeforeTimestamp)` のように、**同じデータ構造の同じフィールドを判定軸にする sibling 純粋関数** を複数持つとき、判定で使う **fallback chain (`A ?? B ?? C`) を完全に揃える** こと。片方が `publishedAt ?? createdAt` でも他方が `publishedAt` だけだと、両関数の挙動が乖離して **「片方は既読扱いするのに他方は削除しない」** のような連鎖バグが起きる。
+
+```typescript
+// アンチパターン: isArticleRead は publishedAt ?? createdAt fallback を使うのに
+// pruneOldReadIds は publishedAt だけしか見ない → readId が永久蓄積
+function isArticleRead(article, readIds, cutoff) {
+  const ts = article.publishedAt ?? article.createdAt; // fallback
+  return ts && ts < cutoff; // ← cutoff 以前は一括既読扱い
+}
+function pruneOldReadIds(readIds, articles, cutoff) {
+  for (const a of articles) {
+    if (!a.publishedAt) continue; // ← createdAt fallback なし!
+    if (Date.parse(a.publishedAt) < cutoff && readIds.has(a.id)) {
+      removeSet.add(a.id);
+    }
+  }
+}
+// → publishedAt: null + createdAt 古い記事の readId が永久に残る (#635 A1 半減)
+
+// 修正パターン: 完全に同じ fallback chain
+function pruneOldReadIds(readIds, articles, cutoff) {
+  for (const a of articles) {
+    const tsRaw = a.publishedAt ?? a.createdAt; // ← isArticleRead と完全一致
+    if (!tsRaw) continue;
+    if (Date.parse(tsRaw) < cutoff && readIds.has(a.id)) {
+      removeSet.add(a.id);
+    }
+  }
+}
+```
+
+**Why**: 同じデータ (例: `Article`) に対して動作する複数の sibling 関数が存在するとき、判定軸の「fallback chain」が揃っていないと、片方の関数が「対象に含む」と判定したものを他方が「対象外」とする乖離が発生する。これが起きると **データの不整合 (readIds の永久蓄積等) が time に応じて累積** する潜在バグになる。1 関数だけ見てバグレビューしても気付けず、ペアで読まないと発見できないため厄介。
+
+**How to apply**: 同じデータに動作する sibling 関数を作るときは:
+
+1. **「判定で使うフィールド + fallback chain」を 1 箇所に定義** — 例: `getArticleTimestamp(a) = a.publishedAt ?? a.createdAt`
+2. 全ての sibling 関数 (`isArticleRead` / `pruneOldReadIds` / `filterExpiredArticles` 等) が **その共通関数を呼ぶ**
+3. 共通関数化が難しいなら、**各関数の判定行に `// {他関数名} と fallback chain を揃える` のコメントを置く**
+4. 新しい sibling 関数を追加するときは既存の fallback chain を確認してから書く
+5. **TDD で「fallback 適用ケース」を網羅** (例: `publishedAt: null` + `createdAt 古い` → 削除されるか)
+
+主な使用箇所: `isArticleRead` (`article-filter.ts`) ↔ `pruneOldReadIds` (`read-state-prune.ts`) — `publishedAt ?? createdAt` fallback chain を統一 (`feedHash: "__saved__"` の手動保存記事や RSS で publishedAt 抜けの記事の readId が永久蓄積するバグ修正)
+
 ### 派生ケース: 派生 boolean は fallback 混入後の値ではなく、fallback **前の origin** から導出する
 
 派生 boolean を「正しい用途名」で分離した (例: `hasContent` → `hasFullContent`) としても、**その派生元が fallback 込みの値**だと依然として誤判定が起きる。
