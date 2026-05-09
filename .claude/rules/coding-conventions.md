@@ -593,6 +593,63 @@ async function fetchOne(article) {
 
 判定基準: 「この abort で止まる対象は、止めるべき対象と一致しているか？」。一致しないなら controller 共有は誤り。
 
+## UI 描画分岐の入れ子三項は「ソース選択」純粋関数で平坦化する
+
+複数の props (prefetched / fallback / error 等) の組み合わせで「何を描画するか」を決める入れ子三項は、**条件の組み合わせの抜けに気付きにくい**。組み合わせの判定を `select<X>(args): { value, source }` 形式の純粋関数に切り出して UI と分離する。
+
+```tsx
+// アンチパターン: 入れ子三項で組み合わせが暗黙
+{
+  hasMultipleImages ? (
+    <BodyImages images={prefetched} minPx={minPx} />
+  ) : isFetchFailed ? (
+    <FailedUI thumb={thumb} />
+  ) : thumb ? (
+    <ThumbFallback thumb={thumb} />
+  ) : (
+    <NoImagePlaceholder />
+  );
+}
+// ↑ prefetched=[] (空) と prefetched=undefined (未取得) の挙動差が暗黙
+// ↑ thumb と prefetched の優先順位がコードから読み取りにくい
+// ↑ 「prefetched=空 + thumb=set」の組み合わせがどこで処理されるか追跡が必要
+
+// 修正パターン: ソース選択を純粋関数化
+export function selectGalleryImages(
+  prefetched: string[] | undefined,
+  thumb: string | undefined,
+): { images: string[]; source: "prefetched" | "thumb" | "none" } {
+  if (prefetched && prefetched.length > 0) return { images: prefetched, source: "prefetched" };
+  if (thumb) return { images: [thumb], source: "thumb" };
+  return { images: [], source: "none" };
+}
+
+// UI: source の値で 1 段の switch にする
+const { images, source } = selectGalleryImages(prefetched, thumb);
+{
+  isFetchFailed ? (
+    <FailedUI thumb={thumb} />
+  ) : source !== "none" ? (
+    <ImageList images={images} useFilter={source === "prefetched"} />
+  ) : (
+    <NoImagePlaceholder />
+  );
+}
+```
+
+**Why**: 入れ子三項は「フォールバックの順序」と「組み合わせの網羅」が暗黙のまま蓄積する。新しい状態 (例: `prefetched=[]` で「明示的に空」を表現) を追加したとき、既存ブランチで意図しない動作になる確率が高い。純粋関数で「何が選ばれたか」(`source`) と「何を描画するか」(`images`) を **明示的に分離** すれば、TDD で全組み合わせをテスト可能。
+
+**How to apply**: 3 段以上の入れ子三項を書きそうになったら、まず「どの値を選ぶか」を `select<X>` 純粋関数に切り出す:
+
+1. **入力**: 描画判定に使う props 全部 (boolean / 配列 / null 含む)
+2. **出力**: `{ value, source }` 形式 — `source` は `"a" | "b" | "none"` のような **判別可能な enum**
+3. **テスト**: 全分岐 + edge case (空配列 / null / 空文字列) を spec で網羅
+4. **UI**: `source` で switch (1 段の三項 or `match`) — 入れ子は最大 1 段に抑える
+
+純粋関数化のメリット: ① 全組み合わせの spec カバレッジ、② UI 側のロジックが 1 行で読める、③ 後で「動画 fallback も追加」のような拡張で `source` enum を増やすだけで済む。
+
+主な使用箇所: `src/lib/gallery-display.ts#selectGalleryImages` / `src/lib/auto-read.ts#shouldStartAutoSpeak`
+
 ## UI 表示条件の「N 件以上」マジックナンバーを慎重に扱う
 
 「複数件あるときだけ UI を出す」のような条件 (`length >= 2` / `> 1` 等) は、**「1 件しかない場合のユーザーニーズ」を見落としやすい**。設計時は「複数のとき集約 UI を出す」意図でも、ユーザー視点では「1 件でもその UI が欲しい」ケースがほとんど。
