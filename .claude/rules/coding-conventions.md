@@ -1055,11 +1055,20 @@ return { content: augment(extractedContent) + buildGallery(), source: "..." };
 「issue が無いときに監査して新規 Issue 起票」を依頼されたら、**観点別の専門エージェントを並行派遣**して、各エージェントから 1-3 件の高信頼指摘を集める。1 つの汎用エージェントに「全観点を見て」と依頼すると深さが足りない。
 
 ```
-並行派遣テンプレート:
-  ├─ feature-dev:code-reviewer (perf 観点)  ← React re-render hotspots / 重い計算の重複 / R2 アクセスパターン
-  ├─ feature-dev:code-reviewer (UX 観点)   ← フォーカストラップ / ローディング / エラーメッセージ
-  └─ feature-dev:code-reviewer (security)  ← 必要に応じて
+並行派遣テンプレート (3 体並列が最適点):
+  ├─ feature-dev:code-reviewer (perf 観点)     ← React re-render hotspots / 重い計算の重複 / R2 アクセスパターン
+  ├─ feature-dev:code-reviewer (UX/a11y 観点)  ← フォーカストラップ / ARIA / pattern drift
+  └─ feature-dev:code-reviewer (simplify 観点) ← 重複 helper 化 / dead code / 過度な複雑性
+                                                (security は脆弱性疑い時のみ追加)
 ```
+
+**3 体並列が最適な理由**:
+
+- 1-2 体: 観点が偏る or 取れる指摘数が少ない (1 サイクルの作業量に届かない)
+- 3 体: 各観点で 1-3 件 × 3 観点 = 4-9 件の指摘 → 同サイクルで 5-7 件適用 + 1-2 件 Issue 化が現実的
+- 4 体以上: 観点が被って同じ箇所を複数エージェントが指摘するリスク + 消化不能な件数
+
+観点を非重複に分離することが重要 (perf エージェントが a11y を見ない、a11y が simplify を見ない)。プロンプトで「focus areas」を明示して観点境界を強制する。
 
 各エージェントへのプロンプトに **必ず含める要素**:
 
@@ -1078,7 +1087,10 @@ return { content: augment(extractedContent) + buildGallery(), source: "..." };
 3. **Issue 本文に**: 「状況」「影響」「修正方針案 (案 A/B/C)」「推奨」「必要な対応箇所」「関連 (元コメント / 関連実装)」のテンプレート従う
 4. **同サイクルで 1 件は対応する** — 監査だけで Issue を量産すると消化不良。最も impact が大きい 1 件をそのサイクルで完結する流れを基本にする
 
-主な使用箇所: 2026-05-09 のサイクル — perf/UX 監査を並行派遣 → 4 件 (#685-#688) 起票 → #685 (readingTime cache) を同サイクルで対応
+主な使用箇所:
+
+- perf / UX 監査 2 体並行 → 4 件起票 → 1 件同サイクル対応
+- perf / UX-a11y / simplify 監査 3 体並行 → 8 件指摘 → 7 件同サイクル一括適用 + 1 件 Issue 化 (#701) の最大消化サイクル
 
 ### 派生ケース: 高信頼度の独立修正は「Issue 起票せず同サイクルで連続修正」する
 
