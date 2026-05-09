@@ -702,7 +702,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `article-filter-digest.spec.ts`       | `src/lib/article-filter.ts` — digestLimit per-feed フィルタリング                                                                                                 |
 | `rate-limit-serialized.spec.ts`       | `src/lib/serialize-async.ts` + レートリミット                                                                                                                     |
 | `read-state-api.spec.ts`              | `app/api/read-state/route.ts` — 既読状態 API                                                                                                                      |
-| `read-state-merge.spec.ts`            | `src/lib/read-state-merge.ts` — 状態マージ純粋関数                                                                                                                |
+| `read-state-merge.spec.ts`            | `src/lib/read-state-merge.ts` — 状態マージ純粋関数 + `equalSnoozedUntil` 構造的等価判定 (#686)                                                                    |
 | `read-state-storage.spec.ts`          | `src/lib/read-state-storage.ts` — localStorage 永続化                                                                                                             |
 | `read-state-prune.spec.ts`            | `src/lib/read-state-prune.ts` — readBeforeTimestamp 以前の readId 物理削除純粋関数 + `computeEffectiveReadBeforeCutoff`（ttlDays 連動）                           |
 | `pagination-eager-load.spec.ts`       | `src/lib/pagination-eager-load.ts` — `shouldEagerLoad` 判定純粋関数（ギャラリー無限スクロール）                                                                   |

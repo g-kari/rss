@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { mergeReadStateUpdate } from "../src/lib/read-state-merge";
+import { mergeReadStateUpdate, equalSnoozedUntil } from "../src/lib/read-state-merge";
 import type { ReadState } from "../src/types";
 
 /**
@@ -290,4 +290,73 @@ test("ttlDays: null で上書きするとデフォルトに戻る", () => {
   const existing: ReadState = { ...emptyState(), ttlDays: 90 };
   const result = mergeReadStateUpdate(existing, { ttlDays: null });
   expect(result.ttlDays).toBeNull();
+});
+
+test.describe("equalSnoozedUntil (#686)", () => {
+  test("両方空オブジェクトなら true", () => {
+    expect(equalSnoozedUntil({}, {})).toBe(true);
+  });
+
+  test("同一 reference は早期 true", () => {
+    const a = { id1: "2026-05-09T00:00:00Z" };
+    expect(equalSnoozedUntil(a, a)).toBe(true);
+  });
+
+  test("同じ key + 同じ value は true (別 reference でも)", () => {
+    const a = { id1: "2026-05-09T00:00:00Z", id2: "2026-05-10T00:00:00Z" };
+    const b = { id1: "2026-05-09T00:00:00Z", id2: "2026-05-10T00:00:00Z" };
+    expect(equalSnoozedUntil(a, b)).toBe(true);
+  });
+
+  test("キー順序が違っても等価判定する (Record なので順序非関連)", () => {
+    const a = { id1: "2026-05-09T00:00:00Z", id2: "2026-05-10T00:00:00Z" };
+    const b = { id2: "2026-05-10T00:00:00Z", id1: "2026-05-09T00:00:00Z" };
+    expect(equalSnoozedUntil(a, b)).toBe(true);
+  });
+
+  test("片方にだけキーがあれば false", () => {
+    const a = { id1: "2026-05-09T00:00:00Z" };
+    const b = {};
+    expect(equalSnoozedUntil(a, b)).toBe(false);
+    expect(equalSnoozedUntil(b, a)).toBe(false);
+  });
+
+  test("同じキーで違う値は false (期限延長など)", () => {
+    const a = { id1: "2026-05-09T00:00:00Z" };
+    const b = { id1: "2026-05-10T00:00:00Z" };
+    expect(equalSnoozedUntil(a, b)).toBe(false);
+  });
+
+  test("キー数が同じでもキー名が違えば false", () => {
+    const a = { id1: "2026-05-09T00:00:00Z" };
+    const b = { id2: "2026-05-09T00:00:00Z" };
+    expect(equalSnoozedUntil(a, b)).toBe(false);
+  });
+
+  test("片方が空オブジェクトでもう片方に entries があれば false", () => {
+    expect(equalSnoozedUntil({}, { id1: "2026-05-09T00:00:00Z" })).toBe(false);
+  });
+
+  test("100 件の entries で全 key 一致なら true", () => {
+    const a: Record<string, string> = {};
+    const b: Record<string, string> = {};
+    for (let i = 0; i < 100; i++) {
+      const ts = `2026-05-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z`;
+      a[`id${i}`] = ts;
+      b[`id${i}`] = ts;
+    }
+    expect(equalSnoozedUntil(a, b)).toBe(true);
+  });
+
+  test("100 件のうち 1 件だけ値が違えば false", () => {
+    const a: Record<string, string> = {};
+    const b: Record<string, string> = {};
+    for (let i = 0; i < 100; i++) {
+      const ts = `2026-05-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z`;
+      a[`id${i}`] = ts;
+      b[`id${i}`] = ts;
+    }
+    b["id50"] = "2099-12-31T00:00:00Z";
+    expect(equalSnoozedUntil(a, b)).toBe(false);
+  });
 });
