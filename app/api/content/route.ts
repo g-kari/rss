@@ -24,11 +24,18 @@ export async function GET(request: Request) {
 }
 
 /**
- * 個別 URL の Cloudflare Cache を削除する。CLI 経由で `curl -X DELETE` から呼ぶことを想定。
+ * 個別 URL の **自分の clip Cache** のみを削除する。CLI 経由で `curl -X DELETE` から呼ぶことを想定。
  *
  * @example
  * curl -X DELETE -H "Cookie: access_token=..." \
  *   "https://rss.0g0.xyz/api/content?url=https://everia.club/.../slug/"
+ *
+ * #691 セキュリティ修正:
+ * 以前は shared cache (ユーザー横断) も削除していたが、任意の認証済ユーザーが
+ * 任意の URL の shared cache を無効化できる権限不備だった (cache busting DoS)。
+ * 現在は clip cache (ユーザー別 key) のみを削除する。shared cache は TTL (7日)
+ * で自然失効に任せ、フィード購読単位の一括クリアは
+ * `POST /api/feeds/{feedHash}/purge-content-cache` (購読チェック付き) を使う。
  */
 export async function DELETE(request: Request) {
   return withSession(request, async ({ session }) => {
@@ -39,15 +46,10 @@ export async function DELETE(request: Request) {
       return apiError("Invalid URL", 400, { code: "INVALID_URL" });
     }
 
-    const sharedKey = await buildContentCacheKey(reqUrl.origin, url);
     const clipKey = await buildClipCacheKey(reqUrl.origin, session.userId, url);
+    const clipDeleted = await deleteCfCache(clipKey);
 
-    const [sharedDeleted, clipDeleted] = await Promise.all([
-      deleteCfCache(sharedKey),
-      deleteCfCache(clipKey),
-    ]);
-
-    return NextResponse.json({ ok: true, deleted: { shared: sharedDeleted, clip: clipDeleted } });
+    return NextResponse.json({ ok: true, deleted: { clip: clipDeleted } });
   });
 }
 

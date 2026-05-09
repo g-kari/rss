@@ -3,7 +3,7 @@ import { withSession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { deleteCfCache } from "@/lib/cache-helper";
 import { buildClipCacheKey, buildContentCacheKey } from "@/lib/fetch-article-content";
-import { readLatestArticles, readArticlePage } from "@/lib/shared-feed";
+import { readLatestArticles, readArticlePage, readUserSubscriptions } from "@/lib/shared-feed";
 import { isValidFeedHash } from "@/lib/validation";
 
 /**
@@ -16,14 +16,21 @@ import { isValidFeedHash } from "@/lib/validation";
  *   "https://rss.0g0.xyz/api/feeds/92bd33f28976b959/purge-content-cache"
  *
  * R2 から記事一覧を読み出し、各記事 link の Cache を削除する。
- * 認証必須（自分のセッションで）だが、Cache はユーザー横断のためフィード単位で
- * 一括クリアする。
+ * 認証必須 + **購読チェック必須** (#691): リクエストユーザーが対象 feedHash を購読していない場合、
+ * 他ユーザーの shared cache を意図的に無効化できてしまう (cache busting DoS) ため 404 を返す。
+ * Cache はユーザー横断のため、購読中のフィードのみ自分の判断で一括クリアできる設計。
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   return withSession(request, async ({ session, env }) => {
     const { id: feedHash } = await params;
     if (!isValidFeedHash(feedHash)) {
       return apiError("Invalid feed hash", 400, { code: "INVALID_FEED" });
+    }
+
+    // #691: 購読チェック — 未購読フィードへの purge は 404 で拒否
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    if (!subs.some((s) => s.feedHash === feedHash)) {
+      return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
     }
 
     const reqUrl = new URL(request.url);
