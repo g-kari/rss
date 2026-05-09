@@ -397,6 +397,7 @@ src/
     ai-models.ts             # Workers AI モデル定数・`isWorkersAiModelId` 型ガード
     article-ui-helpers.ts    # React 依存テキストハイライト関数（クライアント専用）
     dev-log.ts               # 開発環境専用 `devError` ラッパー
+    dev-auth-bypass.ts       # dev / e2e 専用認証バイパス（getDevBypassUserId / buildDevBypassProfile — `DEV_AUTH_BYPASS_USER_ID` + `NODE_ENV !== "production"` 二重ガード）
     stats-helpers.ts         # 統計計算ヘルパー（`toDateStr` / `buildDayList`）
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
@@ -655,12 +656,15 @@ const match = matchesKeywordFilter(article, compiledFilter);
 
 | テストファイル                        | 対象モジュール / 機能                                                                                                                                             |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ai-route-helper.spec.ts`             | `src/lib/ai-models.ts` — `isWorkersAiModelId` 型ガード（ai-route-helper.ts は Cloudflare バインディング依存のため間接検証）                                       |
 | `api-health.spec.ts`                  | `/api/health` エンドポイント・認証ガード                                                                                                                          |
 | `article-filter.spec.ts`              | `src/lib/article-filter.ts` — 記事フィルタリングロジック                                                                                                          |
 | `digest-skip-read.spec.ts`            | `src/lib/article-filter.ts` — ダイジェスト時に既読は digestLimit カウントから除外                                                                                 |
 | `article-search.spec.ts`              | `src/hooks/useFullTextSearch` 経由の全文検索                                                                                                                      |
 | `article-ttl.spec.ts`                 | `src/lib/article-ttl.ts` — TTL 管理純粋関数                                                                                                                       |
 | `auto-read.spec.ts`                   | `src/lib/auto-read.ts` — オートモード状態遷移判定純粋関数                                                                                                         |
+| `auto-read-debug.spec.ts`             | `src/lib/auto-read-debug.ts` — `evaluateAutoReadDebugEnabled` localStorage gate 純粋判定 (#678)                                                                   |
+| `auto-read-persist.spec.ts`           | `src/lib/auto-read-persist.ts` — `parsePersistedAutoReadState` / `serializeAutoReadState` / `shouldRestoreAutoMode` (1 時間 TTL 復元) (#679)                      |
 | `auto-ai-fallback.spec.ts`            | `src/lib/auto-ai-fallback.ts` — `shouldSkipAutoAi` 純粋関数（#700 ブラウザ AI のみ使う設定の skip 判定 全 4 ケース）                                              |
 | `scroll-direction.spec.ts`            | `src/lib/scroll-direction.ts` — `computeScrollDirection` / `computeHeaderVisibility` 純粋関数 (#677, ArticleHeader sticky toggle)                                 |
 | `inline-nav-click.spec.ts`            | `src/lib/inline-nav.ts` — インラインナビ クリック位置判定純粋関数                                                                                                 |
@@ -675,6 +679,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `auth.spec.ts`                        | `/api/auth/*` エンドポイント統合テスト                                                                                                                            |
 | `beta-allowed.spec.ts`                | `src/lib/beta-allowed.ts` — BETA_ALLOWED_SUBS チェック・拒否時の調査ログ                                                                                          |
 | `dev-auth-bypass-unit.spec.ts`        | `src/lib/dev-auth-bypass.ts` — getDevBypassUserId / buildDevBypassProfile の境界値                                                                                |
+| `dev-auth-bypass.spec.ts`             | `src/lib/dev-auth-bypass.ts` 統合テスト — `/api/auth/me` が fakeProfile を返すか e2e 検証 (`DEV_AUTH_BYPASS_USER_ID` セット時)                                    |
 | `storage.spec.ts`                     | `src/lib/storage.ts` — toggleSetItem の Set トグル動作・deferred-save の冪等性・Node 環境での安全性                                                               |
 | `browser-summarizer.spec.ts`          | `src/lib/browser-summarizer.ts` — ブラウザネイティブ要約 API                                                                                                      |
 | `browser-translator.spec.ts`          | `src/lib/browser-translator.ts` — Chrome Translator API 検出                                                                                                      |
@@ -691,11 +696,14 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `csrf-origin.spec.ts`                 | `src/lib/csrf.ts` — CSRF トークン・Origin 検証                                                                                                                    |
 | `dbsc.spec.ts`                        | `src/lib/dbsc.ts` — チャレンジ生成・ヘッダー構築・署名検証                                                                                                        |
 | `engagement-score.spec.ts`            | `src/lib/engagement-score.ts` — エンゲージメントスコア計算                                                                                                        |
+| `everia-pagination.spec.ts`           | `src/lib/content.ts#detectNextPageUrl` — everia.club WordPress `<!--nextpage-->` ページネーション検出                                                             |
 | `embed-utils.spec.ts`                 | `src/lib/embed-utils.ts` — iframe embed 処理ユーティリティ                                                                                                        |
 | `export-markdown.spec.ts`             | `src/lib/export-markdown.ts` — Markdown エクスポート                                                                                                              |
 | `export-readwise.spec.ts`             | `src/lib/export-readwise.ts` — Readwise CSV エクスポート                                                                                                          |
+| `feed-actions.spec.ts`                | `src/components/feed-item/feedActions.ts#buildFeedActions` — FeedItem actions 配列構築純粋関数                                                                    |
 | `feed-discovery.spec.ts`              | `src/lib/feed-discovery.ts` — RSS 自動探索                                                                                                                        |
 | `feed-group-drop.spec.ts`             | `src/lib/feed-group-drop.ts` — D&D 競合解決ロジック                                                                                                               |
+| `feedview-storage-key.spec.ts`        | `src/lib/storage.ts#getFeedViewStorageKey` — articles/pictures/videos/social ビュー別 localStorage key 生成                                                       |
 | `feed-groups-api.spec.ts`             | `app/api/feed-groups/**/route.ts` — フィードグループ CRUD API                                                                                                     |
 | `feeds-crud.spec.ts`                  | `app/api/feeds/**/route.ts` — フィード CRUD API                                                                                                                   |
 | `feeds-validation.spec.ts`            | `src/lib/validation.ts#isValidCookieHeader` — Cookie バリデーション                                                                                               |
@@ -731,6 +739,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `rate-limit-serialized.spec.ts`       | `src/lib/serialize-async.ts` + レートリミット                                                                                                                     |
 | `read-state-api.spec.ts`              | `app/api/read-state/route.ts` — 既読状態 API                                                                                                                      |
 | `read-state-merge.spec.ts`            | `src/lib/read-state-merge.ts` — 状態マージ純粋関数 + `equalSnoozedUntil` 構造的等価判定 (#686)                                                                    |
+| `read-state-sync-api.spec.ts`         | `src/lib/type-guards.ts#isReadState` — read-state-sync-api.ts 依存の型ガード検証 (Issue #587)                                                                     |
 | `read-state-storage.spec.ts`          | `src/lib/read-state-storage.ts` — localStorage 永続化                                                                                                             |
 | `read-state-prune.spec.ts`            | `src/lib/read-state-prune.ts` — readBeforeTimestamp 以前の readId 物理削除純粋関数 + `computeEffectiveReadBeforeCutoff`（ttlDays 連動）                           |
 | `pagination-eager-load.spec.ts`       | `src/lib/pagination-eager-load.ts` — `shouldEagerLoad` 判定純粋関数（ギャラリー無限スクロール）                                                                   |
@@ -767,6 +776,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `url-ssrf.spec.ts`                    | `src/lib/url.ts` — SSRF 対策 URL バリデーション                                                                                                                   |
 | `validation-functions.spec.ts`        | `src/lib/validation.ts` — バリデーション純粋関数                                                                                                                  |
 | `session-id-validation.spec.ts`       | `src/lib/validation.ts` — `isValidSessionId`（UUID 形式・パストラバーサル防止）                                                                                   |
+| `web-push.spec.ts`                    | `src/lib/web-push.ts#sendPush` / `sendPushToAll` — Web Push 送信ヘルパー (P-256 鍵ペア生成 + payload 暗号化検証)                                                  |
 | `xml-parser.spec.ts`                  | `src/lib/xml-parser.ts` — RSS / Atom パーサー                                                                                                                     |
 
 ### カバレッジ未対応の重要機能
