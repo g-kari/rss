@@ -471,6 +471,31 @@ shouldStartAutoSpeak({
 
 **How to apply**: fallback を含む文字列・配列を判定関数に渡すときは、判定側で「fallback されたかどうか」を別 boolean で受け取る。`hasText` のような fallback 後の事実だけでなく、`hasOriginal` のような fallback 前の事実も渡せるよう設計する。
 
+### 派生ケース: 派生 boolean は fallback 混入後の値ではなく、fallback **前の origin** から導出する
+
+派生 boolean を「正しい用途名」で分離した (例: `hasContent` → `hasFullContent`) としても、**その派生元が fallback 込みの値**だと依然として誤判定が起きる。
+
+```typescript
+// アンチパターン: hasFullContent は名前は正しいが、processedContent が fallback 込み
+const rawContent = storedContent ?? article?.content ?? null;
+//                              ↑ ここで fallback が混入
+const processedContent = rawContent ? processContent(rawContent) : null;
+const hasFullContent = !!processedContent;
+//                     ↑ article.content (RSS 本文) があれば fetch 前でも true → speak 早期発火
+
+// 修正パターン: fallback 前の origin (storedContent) から直接導出
+const hasFullContent = !!storedContent || !canFetch;
+//                     ↑ fetch 完了済 OR fetch 不要のときだけ true
+```
+
+**Why**: 派生 boolean の「名前」を正しくしても、その派生元が fallback 込みの中間値だと、fallback がトリガーされた瞬間に boolean が誤って true になる。`processedContent` のような **「複数ソースを ?? で混ぜた値」を経由した派生 boolean は、必ず origin (storedContent / article.content) のどちらから来たかを区別する**。
+
+**How to apply**: 派生 boolean を作るとき:
+
+1. **派生元を辿る**: `derived = !!middleValue` と書きたくなったら、`middleValue` の定義を見て fallback (`A ?? B ?? C`) が含まれていないか確認
+2. **fallback 込みなら origin から再構築**: 「fetch 済か」を判定したいなら `!!storedContent`、「fetch 不要か」を判定したいなら `!canFetch`。両方なら `!!storedContent || !canFetch`
+3. **テストで検証**: 「fallback 元 (article.content) があるが fetch 前」のケースで boolean が false になるか、ユニットテストで明示
+
 ## 既存設定 UI を流用して新要件を満たす（新規 UI を増やさない判断軸）
 
 ユーザーから「設定可能化したい」要望が来たとき、**意味的に重なる既存 UI があれば、それを流用して内部ロジックだけ拡張**する選択肢を最初に検討する。
