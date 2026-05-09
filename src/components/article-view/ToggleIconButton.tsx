@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactNode } from "react";
 
 interface Props {
   isActive: boolean;
@@ -6,7 +6,7 @@ interface Props {
   title: string;
   activeClass: string;
   inactiveClass: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export default function ToggleIconButton({

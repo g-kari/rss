@@ -1,4 +1,4 @@
-import React from "react";
+import type { MouseEvent } from "react";
 import type { Article } from "../../types";
 import { ChevronSmall } from "./icons";
 
@@ -7,8 +7,8 @@ interface Props {
   nextArticle?: Article | null;
   onSelectPrev?: () => void;
   onSelectNext?: () => void;
-  onMouseDown: (e: React.MouseEvent) => void;
-  onMouseUp: (e: React.MouseEvent) => void;
+  onMouseDown: (e: MouseEvent) => void;
+  onMouseUp: (e: MouseEvent) => void;
   onMouseLeave: () => void;
 }
 

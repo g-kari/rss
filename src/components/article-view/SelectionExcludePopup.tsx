@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type RefObject } from "react";
 import type { KeywordFilter } from "../../types";
 import { usePopupLock } from "../../hooks/usePopupLock";
 import { useToast } from "@/contexts/ToastContext";
@@ -12,7 +12,7 @@ export interface SelectionPopupState {
 }
 
 /** 記事本文エリア内のテキスト選択を検知してポップアップ表示用の状態を返す */
-export function useSelectionExclude(containerRef: React.RefObject<HTMLElement | null>) {
+export function useSelectionExclude(containerRef: RefObject<HTMLElement | null>) {
   const [popup, setPopup] = useState<SelectionPopupState | null>(null);
 
   useEffect(() => {

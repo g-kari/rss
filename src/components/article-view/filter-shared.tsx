@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Article, KeywordFilter } from "../../types";
 import { usePortalMenu } from "../../hooks/usePortalMenu";
 import { MENU_ITEM_CLS } from "./constants";

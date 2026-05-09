@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import type { Article, EngagementAction } from "../../types";
 import { AI_RATINGS } from "../../types";
 import type { EmbedInfo } from "../../lib/embed-utils";
@@ -52,7 +52,7 @@ interface ArticleContentBodyProps {
   onRetryTranslate?: () => void;
 }
 
-const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyProps>(
+const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
   function ArticleContentBody(props, ref) {
     const {
       article,
@@ -77,7 +77,7 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
     } = props;
 
     const contentRef = useRef<HTMLDivElement>(null);
-    React.useImperativeHandle(ref, () => contentRef.current!);
+    useImperativeHandle(ref, () => contentRef.current!);
 
     const { fontSize, fontFamily, lineHeight, textJustify } = useReaderSettings();
     const { query } = useArticleFilter();

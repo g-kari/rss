@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import type { EngagementAction } from "../../types";
 import Spinner from "../Spinner";
 import { useToast } from "@/contexts/ToastContext";

@@ -1,4 +1,4 @@
-import React from "react";
+import type { JSX } from "react";
 import type { Article, EngagementAction, AiRating } from "../../types";
 import { AI_RATINGS } from "../../types";
 import type { AiError, TranslationProvider } from "../../hooks/useArticleAi";
@@ -50,7 +50,7 @@ function renderSummary(text: string) {
         </p>
       );
     })
-    .filter((el): el is React.JSX.Element => el !== null);
+    .filter((el): el is JSX.Element => el !== null);
 }
 
 function RetryIcon() {
