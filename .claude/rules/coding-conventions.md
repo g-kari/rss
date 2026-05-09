@@ -1068,6 +1068,70 @@ return { content: augment(extractedContent) + buildGallery(), source: "..." };
 
 主な使用箇所: `extractJsonLdImages` / `appendMissingJsonLdImages` (`json-ld-images.ts`) — `extractMainContent` の 3 抽出パス全てに `augmentWithJsonLd` を適用
 
+## 画像 DOM 走査では `<img>` 単体でなく `<a href>` のフル解像度画像も拾う
+
+画像系サイト (wallhaven / WordPress 系の写真記事 / pixiv 等) では `<a href="フル解像度.jpg"><img src="サムネ.jpg"></a>` 構造が一般的。`<img>` 要素だけ走査するロジックは:
+
+1. **サムネ URL を取得** (= `<img src>` のサイズフィルタで除外されることが多い)
+2. **フル解像度 URL を取りこぼす** (= `<a href>` の中にある)
+
+結果として「画像 DL ボタンを押しても OGP 画像 (= 1 枚) しか保存されない」体感に直結する。`<a href>` 走査を追加することで、サムネが除外されてもフル解像度を確実に拾える。
+
+```typescript
+// アンチパターン: <img> 単体走査 — wallhaven 等で thumb 除外 → OGP のみ DL
+export function collectImageUrls(container: Element): string[] {
+  const result: string[] = [];
+  for (const img of container.querySelectorAll("img")) {
+    const src = img.currentSrc || img.getAttribute("src") || "";
+    if (img.naturalWidth < MIN_IMAGE_SIZE_PX) continue; // ← サムネは除外
+    result.push(src);
+  }
+  return result;
+}
+
+// 修正パターン: <a href> を先に拾ってフル解像度を確保
+export function collectImageUrls(container: Element): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  // 先に <a href="image-url"> を走査
+  for (const a of container.querySelectorAll("a[href]")) {
+    const href = (a as HTMLAnchorElement).getAttribute("href") ?? "";
+    if (!isImageHref(href)) continue; // .jpg / .png / .webp / .avif / .gif / .svg
+    if (seen.has(href)) continue;
+    seen.add(href);
+    result.push(href);
+  }
+
+  // 次に <img> を走査 (サムネが除外されてもフル解像度は確保済み)
+  for (const img of container.querySelectorAll("img")) {
+    /* 既存ロジック */
+  }
+  return result;
+}
+```
+
+**Why**: 画像系サイトは「リンク先 = フル解像度 / 表示画像 = サムネ」という UX 設計が標準。サムネは「**サイズフィルタの対象**」(170px 未満で除外される閾値帯に入る) だが、フル解像度は「**`<a href>` にしか存在しない**」(クリックで遷移する想定)。`<img>` 単体走査では「ユーザーがクリックして見たかったフル解像度」を完全に取り逃がす。OGP 画像が 1 枚あれば「DL は動いている」ように見えるため、症状が「**1 枚しか DL されない**」と表面化するまで気付かれにくい潜在バグ。
+
+**How to apply**: 画像 DL / 画像コレクション系の DOM 走査ロジックを書くとき:
+
+1. **`<img>` 単体走査だけで十分か** を最初に検討
+2. ターゲットサイトに以下のいずれかが該当するなら **`<a href>` 走査も追加**:
+   - 画像系サイト (写真共有 / 壁紙 / pixiv 等)
+   - WordPress 系 (写真記事は thumb→full の anchor 構造が一般的)
+   - 「サムネクリックで拡大表示」UX を持つサイト
+3. **拡張子判定ヘルパー** を切り出す: `isImageHref(href): boolean` で `.jpg/.jpeg/.png/.gif/.webp/.avif/.svg` + クエリ文字列・大文字小文字対応
+4. **`/api/image-proxy?url=...` 経由の URL** も対応 (内部の `url` パラメータをデコードして拡張子判定)
+5. **走査順序**: `<a href>` を先に拾って seen set に登録 → 次に `<img>` を走査。これで href と img src が同 URL のときも自動的に重複排除される
+6. TDD 必須: 「a href が画像 / 内部 img が小サイズで除外でも href は残る / 拡張子なしは無視 / 大文字小文字 / クエリ文字列 / 重複排除 / data: 相対 URL は無視 / proxy URL」を網羅
+
+**反例 (やらない方が良いケース)**:
+
+- **記事本文系サイト** (Qiita / Zenn / 技術ブログ等) — `<a href="画像">` で画像にリンクすることは少なく、anchor href は記事内リンク。誤検知は少ないが過剰実装になる可能性あり (拡張子チェックで弾かれるので実害なし)
+- **広告画像が a タグで囲まれている UI** — 通常は広告自体が削除済み (`removeNoise` パイプライン) なので残らない
+
+主な使用箇所: `collectImageUrls` / `collectImageUrlsFromHtml` (`image-extractor.ts`) — wallhaven 等の thumb→full 構造で OGP のみ DL されるバグ修正 (#667)
+
 ## 大きい retrospective Issue は「技術スタック別フォローアップ Issue」に分割してクローズする
 
 「複数のバグ修正に後追いテストをまとめて追加する」のような **横断的 retrospective Issue** は、進捗管理としては意義があるが **個別 PR の単位として扱いづらい**。残作業の技術スタックが分かれてくると、
