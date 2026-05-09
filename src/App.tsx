@@ -32,11 +32,7 @@ import { useAutoReadMode } from "./hooks/useAutoReadMode";
 import { isSpeechSupported } from "./lib/auto-read";
 import { usePWAInstall } from "./hooks/usePWAInstall";
 import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
-import { useEventListener } from "./hooks/useEventListener";
 import { useHasOpenPopup } from "./hooks/usePopupLock";
-import { updateFaviconBadge } from "./lib/favicon";
-import { apiFetch, onApiError } from "./lib/api-fetch";
-import { isArticle } from "./lib/type-guards";
 import { isArticleRead } from "./lib/article-filter";
 import { useGlobalFilterAutoRead } from "./hooks/useGlobalFilterAutoRead";
 import { useAutoLoadMoreArticles } from "./hooks/useAutoLoadMoreArticles";
@@ -50,6 +46,14 @@ import { useEngagement } from "./hooks/useEngagement";
 import { useRecommendations } from "./hooks/useRecommendations";
 import { useColumnResize } from "./hooks/useColumnResize";
 import { useSyncedRef } from "./hooks/useSyncedRef";
+import { useArticleSelection } from "./hooks/useArticleSelection";
+import { useAppModalState } from "./hooks/useAppModalState";
+import { useSaveArticleUrl } from "./hooks/useSaveArticleUrl";
+import { useSnoozeHandler } from "./hooks/useSnoozeHandler";
+import { useDocumentTitleBadge } from "./hooks/useDocumentTitleBadge";
+import { useDesktopMediaQuery } from "./hooks/useDesktopMediaQuery";
+import { useApiErrorToast } from "./hooks/useApiErrorToast";
+import { useOnlineRecoveryToast } from "./hooks/useOnlineRecoveryToast";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -64,8 +68,7 @@ import { ToastProvider } from "./contexts/ToastContext";
 import { FeedSidebarProvider } from "./contexts/FeedSidebarContext";
 import ToastContainer from "./components/ToastContainer";
 import { useToastState } from "./hooks/useToast";
-import LandingPage from "./components/LandingPage";
-import BetaRestrictedPage from "./components/BetaRestrictedPage";
+import { AppLandingState } from "./components/AppLandingState";
 
 import SkeletonSidebar from "./components/SkeletonSidebar";
 import SkeletonArticleList from "./components/SkeletonArticleList";
@@ -75,7 +78,6 @@ export default function App() {
   const searchParams = useSearchParams();
   const { user, betaRestricted, sessionExpired } = useAuth();
   const isOnline = useOnlineStatus();
-  const prevOnlineRef = useRef(isOnline);
 
   const initialMobilePane = searchParams.get("article")
     ? "view"
@@ -83,16 +85,7 @@ export default function App() {
       ? "list"
       : "sidebar";
 
-  const [isDesktop, setIsDesktop] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  const isDesktop = useDesktopMediaQuery();
 
   const { theme, toggleTheme } = useThemePreference();
   const {
@@ -145,24 +138,14 @@ export default function App() {
   const { autoMode, toggleAutoMode, disableAutoMode } = useAutoReadMode();
   const ttsSupported = useMemo(() => isSpeechSupported(), []);
 
-  const [showHelp, setShowHelp] = useState(false);
-  const [showFeedSwitcher, setShowFeedSwitcher] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-
-  // モーダル系のグローバルキー: ? でヘルプトグル、Escape で閉じる
-  // フォーカスモードの Escape は useFocusMode 側で別途処理される（責務分離）
-  useEventListener(
-    "keydown",
-    (e) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "?") setShowHelp((v) => !v);
-      if (e.key === "Escape") {
-        setShowHelp(false);
-        setShowFeedSwitcher(false);
-      }
-    },
-    document,
-  );
+  const {
+    showHelp,
+    setShowHelp,
+    showFeedSwitcher,
+    setShowFeedSwitcher,
+    showSettings,
+    setShowSettings,
+  } = useAppModalState();
 
   const toast = useToastState();
   const { confirm, confirmModalProps } = useConfirm();
@@ -172,12 +155,7 @@ export default function App() {
     [confirm],
   );
 
-  useEffect(() => {
-    if (isOnline && !prevOnlineRef.current) {
-      toast.success("接続が復帰しました");
-    }
-    prevOnlineRef.current = isOnline;
-  }, [isOnline, toast]);
+  useOnlineRecoveryToast(isOnline, toast);
 
   // カラム幅（PC）
   const { sidebarWidth, listWidth, handleResizeStart, resetWidth } = useColumnResize();
@@ -353,17 +331,7 @@ export default function App() {
     ],
   );
 
-  // 通信エラーをトーストで通知する。短時間に複数発生しても 1 回に集約（UI ノイズ抑止）。
-  useEffect(() => {
-    let lastShownAt = 0;
-    const unsubscribe = onApiError(({ message }) => {
-      const now = Date.now();
-      if (now - lastShownAt < 3000) return;
-      lastShownAt = now;
-      toast.error(`通信エラー: ${message}`);
-    });
-    return unsubscribe;
-  }, [toast]);
+  useApiErrorToast(toast);
 
   const { recordEngagement } = useEngagement(user);
   const digestFeedOrder = useDigestFeedOrder(user);
@@ -405,10 +373,7 @@ export default function App() {
     [articles, debouncedReadIds, debouncedReadBeforeTimestamp],
   );
 
-  useEffect(() => {
-    document.title = totalUnread > 0 ? `(${totalUnread}) RSS Reader` : "RSS Reader";
-    updateFaviconBadge(totalUnread).catch(() => {});
-  }, [totalUnread]);
+  useDocumentTitleBadge(totalUnread);
 
   const {
     toggleNsfwFeed,
@@ -429,37 +394,12 @@ export default function App() {
     }
   }
 
-  const onSaveArticleUrl = useCallback(
-    async (url: string, mode: "bookmark" | "reading_list") => {
-      try {
-        const res = await apiFetch("/api/articles/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        });
-        const raw = (await res.json()) as { error?: string };
-        if (!res.ok) {
-          toast.error(raw.error ?? "保存に失敗しました");
-          return;
-        }
-        if (!isArticle(raw)) {
-          toast.error("保存に失敗しました");
-          return;
-        }
-        prependArticle(raw);
-        if (mode === "bookmark") {
-          toggleBookmark(raw.id);
-          toast.success("ブックマークに追加しました");
-        } else {
-          toggleReadingList(raw.id);
-          toast.success("後で読むに追加しました");
-        }
-      } catch {
-        toast.error("保存に失敗しました");
-      }
-    },
-    [prependArticle, toggleBookmark, toggleReadingList, toast],
-  );
+  const onSaveArticleUrl = useSaveArticleUrl({
+    prependArticle,
+    toggleBookmark,
+    toggleReadingList,
+    toast,
+  });
 
   const { nsfwFeedIds, groupFeedIds, mutedFeedIds } = useFeedFilters(
     feeds,
@@ -677,34 +617,15 @@ export default function App() {
     deleteCollection,
   });
 
-  const listFocusModeRef = useSyncedRef(listFocusMode);
-  const [articleDetailOverlayOpen, setArticleDetailOverlayOpen] = useState(false);
-
-  const selectArticle = useCallback(
-    (article: Article) => {
-      setSelectedArticle(article);
-      markRead(article.id);
-      addToHistory(article.id);
-      if (listFocusModeRef.current) {
-        // listFocusMode 中はフォーカスモード切替の代わりに右からスライドする overlay を開く
-        setArticleDetailOverlayOpen(true);
-      } else if (!isDesktop) {
-        setMobilePane("view");
-      }
-    },
-    [listFocusModeRef, setSelectedArticle, markRead, addToHistory, setMobilePane, isDesktop],
-  );
-
-  // listFocusMode が解除されたら overlay も閉じる
-  useEffect(() => {
-    if (!listFocusMode && articleDetailOverlayOpen) {
-      setArticleDetailOverlayOpen(false);
-    }
-  }, [listFocusMode, articleDetailOverlayOpen]);
-
-  const closeArticleDetailOverlay = useCallback(() => {
-    setArticleDetailOverlayOpen(false);
-  }, []);
+  const { selectArticle, articleDetailOverlayOpen, closeArticleDetailOverlay } =
+    useArticleSelection({
+      setSelectedArticle,
+      markRead,
+      addToHistory,
+      setMobilePane,
+      isDesktop,
+      listFocusMode,
+    });
 
   const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useEngagementToggles(
     articles,
@@ -804,34 +725,20 @@ export default function App() {
     onToggleAutoMode: toggleAutoMode,
   });
 
-  const snoozeArticleTitle = snoozeTargetId
-    ? (articles.find((a) => a.id === snoozeTargetId)?.title ?? "")
-    : "";
-  const handleSnooze = useCallback(
-    (durationMs: number) => {
-      if (!snoozeTargetId) return;
-      snoozeArticle(snoozeTargetId, durationMs);
-      const hours = Math.round(durationMs / (60 * 60 * 1000));
-      toast.info(hours < 24 ? `${hours}時間スヌーズ` : "スヌーズ設定");
-      const idx = filtered.findIndex((a) => a.id === snoozeTargetId);
-      const next = filtered[idx + 1];
-      if (next) setSelectedArticle(next);
-    },
-    [snoozeTargetId, snoozeArticle, toast, filtered, setSelectedArticle],
-  );
+  const { snoozeArticleTitle, handleSnooze } = useSnoozeHandler({
+    snoozeTargetId,
+    articles,
+    filtered,
+    snoozeArticle,
+    setSelectedArticle,
+    toast,
+  });
 
-  // ローディング
-  if (user === undefined) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-surface-base">
-        <div className="w-1.5 h-1.5 rounded-full bg-surface-subtle animate-pulse" />
-      </div>
-    );
-  }
-
-  if (betaRestricted) return <BetaRestrictedPage />;
-
-  if (!user) return <LandingPage />;
+  // ロード中 / ベータ制限 / 未ログイン の早期 return パスを集約 (#650 Step 2)
+  const landingNode = AppLandingState({ user, betaRestricted });
+  if (landingNode) return landingNode;
+  // landingNode が null の時点で user は確実にログイン済 (TypeScript narrowing 用)
+  if (!user) return null;
 
   const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
 
