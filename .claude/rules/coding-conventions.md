@@ -570,6 +570,62 @@ const hasFullContent = !!storedContent || !canFetch;
 
 主な使用箇所: `autoAiBrowserOnly` 設定 (#700) — 「Workers AI フォールバックを発動させたくない」要望に default OFF で対応
 
+### 派生ケース: 「同カテゴリ機能 (連続値 + 離散ジャンプ)」は N 段階セグメントに統合する
+
+「自動スクロール」と「スライドショー」のように、**同じカテゴリ (= 自動進行)** で異なる挙動の機能を別 toggle にすると UX が複雑化する。**1 SegmentGroup の段階的選択** に統合すると認知負荷が下がる。
+
+```typescript
+// アンチパターン: 2 つの独立 toggle
+<Toggle label="自動スクロール" value={autoScrollEnabled} />
+<Toggle label="スライドショー" value={slideshowEnabled} />
+// → 「両方 ON にしたらどうなる?」「どっちが優先?」で混乱
+
+// 修正パターン: 1 SegmentGroup で N 段階
+<SegmentGroup
+  options={["off", "slow", "medium", "fast", "slideshow"]}
+  value={galleryAutoScrollSpeed}
+/>
+// → 「速さを上げていくと最終的にスライドショー」と直感的
+```
+
+**Why**: 同カテゴリ機能を別 toggle にすると、ユーザーは「どっちを ON にすべきか」「両方 ON で何が起きるか」を考える必要がある。N 段階セグメントなら **1 つの軸で連続的に強度を選ぶ** だけでよく、離散ジャンプ (slideshow) は「最強モード」として位置づけられる。
+
+**How to apply**: 「機能 A」と「機能 B」を実装するとき:
+
+1. **機能 A と B が同カテゴリか** (例: 自動進行 / 通知頻度 / プライバシーレベル) を判定
+2. 同カテゴリなら **「A の強度を上げていくと B になる」** 順序で並べられるか検討
+3. 並べられるなら N 段階 SegmentGroup に統合 (既存「設定 UI を流用」原則の延長)
+4. 並べられないなら別 toggle (例: 「自動翻訳」と「自動要約」は別概念なので別 toggle)
+
+主な使用箇所: `galleryAutoScrollSpeed` (#690 案 D) — 連続スクロール 3 段階 + slideshow 1 段階を 1 軸に統合
+
+### 派生ケース: 自動操作中の手動操作で自動的に OFF (一時停止 UX)
+
+自動再生・自動進行系機能で「再生 / 一時停止」を ▶/⏸ ボタンで明示する設計は動画プレイヤーの慣習。だが軽量な自動進行 (自動スクロール、ポーリング、自動同期等) では **「ユーザーが手動操作したら自然に停止」** が直感的。専用ボタンを増やさず、`onUserInterrupt` callback で speed を OFF に戻すだけで一時停止を実現できる。
+
+```tsx
+// アンチパターン: ▶/⏸ ボタンを別 UI として配置
+<button onClick={togglePlayback}>{isPlaying ? "⏸" : "▶"}</button>;
+
+// 修正パターン: 手動操作で OFF に戻す
+useGalleryAutoScroll({
+  scrollEl,
+  speed,
+  onUserInterrupt: () => onChangeSpeed("off"), // wheel/touch で即停止
+});
+```
+
+**Why**: 動画プレイヤーは「再生中もユーザーは画面を見ている」前提。一方、自動スクロール / ポーリング系は **「裏で動いてほしいが、ユーザー操作したら譲る」** 用途が多い。手動操作 (wheel / touchstart / click 等) を一時停止トリガーにすれば、UI 数を減らしつつ自然な操作感を実現できる。
+
+**How to apply**: 自動進行系機能を実装するとき:
+
+1. **「ユーザーが手動操作したらどうなるべきか」** を最初に考える
+2. 「手動操作で停止」が自然なら ▶/⏸ ボタンは不要、`onUserInterrupt` callback で speed/enabled を OFF に
+3. 「手動操作と並行して自動進行を続けたい」(例: 動画再生中の seek) なら ▶/⏸ ボタンが必要
+4. UserSettings の速度選択 = on/off の役割を兼ねるなら、専用 toggle ボタンは削減可能
+
+主な使用箇所: `useGalleryAutoScroll` の `onUserInterrupt` (#690) — wheel/touchstart で speed を "off" に戻す
+
 ## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する
 
 → `.claude/rules/react-patterns.md` を参照 (#694 Step 4 で分割)
