@@ -489,6 +489,77 @@ JSX 抽出で **行数が変わらない (or 増える)** ケースでも、以�
 
 主な使用箇所: `AppViewPane` (Step 1q) — `AppListPane` (Step 1p) との symmetry のため、行数削減ゼロでも extraction を採用 / `AppSidebarPane` (Step 1r) — 3 ペイン全 extraction 完了で親から 5 imports を一括削除
 
+### 派生ケース: 「カテゴリで括れる異種 JSX 群」は category-bucket 集約コンポーネントに
+
+巨大コンポーネントの JSX に **異なる責務だが同じ category に属する小さな JSX が複数並ぶ** ケース (例: 「overlays / banners / floating chrome」「forms 群」「dashboard widgets」)。個別に extract するほど大きくなく、symmetry もない (各々違う props を取る) が、**「親の責務から離す」価値はある**。
+
+```tsx
+// アンチパターン: 11 個の異種 overlay JSX が親に並んでいる
+function App() {
+  return (
+    <ThreePaneLayout>
+      <A11yHelpers announcement={articleAnnouncement} />
+      <OfflineBanner isOnline={isOnline} hasPendingChanges={hasPendingChanges} />
+      <ToastContainer />
+      <ConfirmModal {...confirmModalProps} />
+      <AppModals { /* 17 props */ } />
+      {showNSFWAnimation && <NSFWEyeAnimation onComplete={...} />}
+      <NewArticleBanner { /* 4 props */ } />
+      <FocusModeExitButton { /* 2 props */ } />
+      <FocusModeOverlay { /* 3 props */ } />
+      <ArticleDetailOverlay { /* 3 props */ } />
+      <ColumnResizeHandles { /* 6 props */ } />
+      {/* ... 3 panes */}
+    </ThreePaneLayout>
+  );
+}
+// → 親が「3 panes + 11 overlays」を抱えて JSX が縦に長い
+//   各 overlay は個別に extract するほど大きくない (3-5 props) が、
+//   並べると「概念のごちゃ混ぜ」感がある
+
+// 修正パターン: category-bucket コンポーネントに集約
+function App() {
+  return (
+    <ThreePaneLayout>
+      <AppOverlays
+        articleAnnouncement={articleAnnouncement}
+        isOnline={isOnline}
+        hasPendingChanges={hasPendingChanges}
+        confirmModalProps={confirmModalProps}
+        appModalsProps={{ /* 17 props まとめ */ }}
+        // ... 残り
+      />
+      {/* 3 panes */}
+    </ThreePaneLayout>
+  );
+}
+```
+
+**Why**:
+
+1. **親の責務を「3 panes 構造の組み立て」だけに絞れる** — overlay の追加・削除で親の JSX が肥大化しなくなる
+2. **category 内の cohesion 向上** — 「floating chrome を追加したい」要望が来たとき、AppOverlays 1 ファイルだけ修正すれば済む
+3. **import の transitive cleanup** — 11 個の overlay コンポーネントが親で不要になるので、まとめてインポート削除可能 (#650 Step 1s 実例で 11 imports 削除)
+4. **集約コンポーネント自身は state を持たない pure pass-through** で良い — 状態管理は親に残るので bug surface は変わらない
+
+**How to apply**: 異種 JSX の集約候補を判定:
+
+1. **同じ category** に属するか (例: 「overlay」「dashboard widget」「dialog 群」) — Yes が前提
+2. **3 個以上** の JSX が並んでいるか (2 個以下なら個別の方が読みやすい)
+3. **個別 extract するほど大きくない** か (3-10 props 程度の小さい単位)
+4. 上記 3 つ Yes なら **category-bucket コンポーネント** (`<AppOverlays>` / `<DashboardWidgets>` 等) を作る:
+   - 各 JSX 子の props は **flat prop** で受ける (15+ props) or **nested object** (例: `appModalsProps: ComponentProps<typeof AppModals>`) で受ける
+   - 集約コンポーネント自身は **状態を持たず pure pass-through**
+   - 親の JSX が「カテゴリ単位の 1 行」になることを目標にする
+
+**反例 (やらない方が良いケース)**:
+
+- 1 個か 2 個しか並んでいない → bucket 化のオーバーヘッドが純益を上回る
+- 異なる category が混ざっている (「overlay とか settings panel とか」) → 中途半端な集約になる
+- 親の状態 (state hook) が大量に必要 → bucket 化しても prop drilling が酷くなるだけ
+
+主な使用箇所: `AppOverlays` (Step 1s) — 11 個の overlay/modal/banner/handles を集約、親 (App.tsx) を「`<ThreePaneLayout>` → `<AppOverlays>` → 3 panes」の 5 行構造に簡素化
+
 ### 派生ケース: 新機能は「Phase 1: 純粋関数 + TDD」「Phase 2: UI 統合」で分離する
 
 `splitIntoSentences` / `selectActiveCharIndex` / `findSentenceAtCharIndex` のような **データ変換・状態判定ロジック** を含む機能は、UI 統合と切り離して **Phase 1 で純粋関数 + TDD だけ commit** する。Phase 2 で React hook + DOM 操作 + CSS を統合する。
