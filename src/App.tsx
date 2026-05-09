@@ -2,18 +2,10 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import AppModals from "./components/AppModals";
+import { AppOverlays } from "./components/AppOverlays";
 import { AppSidebarPane } from "./components/AppSidebarPane";
 import { AppListPane } from "./components/AppListPane";
 import { AppViewPane } from "./components/AppViewPane";
-import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
-import OfflineBanner from "./components/OfflineBanner";
-import NewArticleBanner from "./components/NewArticleBanner";
-import FocusModeOverlay from "./components/FocusModeOverlay";
-import ArticleDetailOverlay from "./components/ArticleDetailOverlay";
-import ColumnResizeHandles from "./components/ColumnResizeHandles";
-import FocusModeExitButton from "./components/FocusModeExitButton";
-import A11yHelpers from "./components/A11yHelpers";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useFeedGroups } from "./hooks/useFeedGroups";
@@ -61,7 +53,6 @@ import { useTotalUnreadCount } from "./hooks/useTotalUnreadCount";
 import { useFeedSidebarActions } from "./hooks/useFeedSidebarActions";
 import { useArticleViewProps } from "./hooks/useArticleViewProps";
 import { useDigestFeedOrder } from "./hooks/useDigestFeedOrder";
-import ConfirmModal from "./components/ConfirmModal";
 import ThreePaneLayout from "./components/ThreePaneLayout";
 import { ReaderSettingsProvider } from "./contexts/ReaderSettingsContext";
 import { useReaderSettingsValue } from "./hooks/useReaderSettingsValue";
@@ -69,7 +60,6 @@ import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFil
 import { ToastProvider } from "./contexts/ToastContext";
 import { TtsAdapterProvider } from "./contexts/TtsAdapterContext";
 import { useSpeechSynthesis } from "./hooks/useSpeechSynthesis";
-import ToastContainer from "./components/ToastContainer";
 import { useToastState } from "./hooks/useToast";
 import { AppLandingState } from "./components/AppLandingState";
 
@@ -682,58 +672,45 @@ export default function App() {
               listWidth={listWidth}
               listFocusMode={listFocusMode}
             >
-              <A11yHelpers announcement={articleAnnouncement} />
-              <OfflineBanner isOnline={isOnline} hasPendingChanges={hasPendingChanges} />
-
-              <ToastContainer />
-
-              <ConfirmModal {...confirmModalProps} />
-
-              <AppModals
-                sessionExpired={sessionExpired}
-                snoozeTargetId={snoozeTargetId}
-                snoozeArticleTitle={snoozeArticleTitle}
-                onSnooze={handleSnooze}
-                onSnoozeClose={() => setSnoozeTargetId(null)}
-                showHelp={showHelp}
-                onHelpClose={() => setShowHelp(false)}
-                showSettings={showSettings}
-                onSettingsClose={() => setShowSettings(false)}
-                showFeedSwitcher={showFeedSwitcher}
-                feeds={feeds}
-                articles={articles}
-                readIds={readIds}
-                readBeforeTimestamp={readBeforeTimestamp}
-                selectedFeedId={selectedFeedId}
-                onSelectFeed={setSelectedFeedId}
-                onFeedSwitcherClose={() => setShowFeedSwitcher(false)}
-              />
-              {/* NSFW 目が開くアニメーション */}
-              {showNSFWAnimation && <NSFWEyeAnimation onComplete={onNSFWAnimationComplete} />}
-              <NewArticleBanner
+              <AppOverlays
+                articleAnnouncement={articleAnnouncement}
+                isOnline={isOnline}
+                hasPendingChanges={hasPendingChanges}
+                confirmModalProps={confirmModalProps}
+                appModalsProps={{
+                  sessionExpired,
+                  snoozeTargetId,
+                  snoozeArticleTitle,
+                  onSnooze: handleSnooze,
+                  onSnoozeClose: () => setSnoozeTargetId(null),
+                  showHelp,
+                  onHelpClose: () => setShowHelp(false),
+                  showSettings,
+                  onSettingsClose: () => setShowSettings(false),
+                  showFeedSwitcher,
+                  feeds,
+                  articles,
+                  readIds,
+                  readBeforeTimestamp,
+                  selectedFeedId,
+                  onSelectFeed: setSelectedFeedId,
+                  onFeedSwitcherClose: () => setShowFeedSwitcher(false),
+                }}
+                showNSFWAnimation={showNSFWAnimation}
+                onNSFWAnimationComplete={onNSFWAnimationComplete}
                 newArticleCount={newArticleCount}
                 focusMode={focusMode}
                 listFocusMode={listFocusMode}
-                onDismiss={dismissNewArticles}
-              />
-              <FocusModeExitButton listFocusMode={listFocusMode} onExit={exitFocusMode} />
-              <FocusModeOverlay
-                focusMode={focusMode}
+                dismissNewArticles={dismissNewArticles}
                 exitFocusMode={exitFocusMode}
                 articleViewProps={articleViewProps}
-              />
-              <ArticleDetailOverlay
-                open={articleDetailOverlayOpen}
-                onClose={closeArticleDetailOverlay}
-                articleViewProps={articleViewProps}
-              />
-              <ColumnResizeHandles
-                listFocusMode={listFocusMode}
+                articleDetailOverlayOpen={articleDetailOverlayOpen}
+                closeArticleDetailOverlay={closeArticleDetailOverlay}
                 hasOpenPopup={hasOpenPopup}
                 sidebarWidth={sidebarWidth}
                 listWidth={listWidth}
                 onResizeStart={handleResizeStart}
-                onResetWidth={resetWidth}
+                resetWidth={resetWidth}
               />
               <AppSidebarPane
                 mobilePane={mobilePane}
