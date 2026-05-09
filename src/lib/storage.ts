@@ -57,6 +57,7 @@ export const STORAGE_KEYS = {
   SCROLL_POSITIONS: "rss-scroll-positions",
   TTS_RATE: "tts-rate",
   TTS_VOICE_URI: "rss-tts-voice-uri",
+  TTS_VOLUME: "rss-tts-volume",
   OBSIDIAN_VAULT: "rss-obsidian-vault",
   LINE_HEIGHT: "rss-line-height",
   CONTENT_WIDTH: "rss-content-width",

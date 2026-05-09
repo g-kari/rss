@@ -374,6 +374,7 @@ src/
     translate-html.ts        # HTML DOM 内の翻訳対象テキスト抽出・翻訳適用
     tts-adapter.ts           # TTS engine 抽象化（TtsAdapter / TtsVoice / TtsEngineId 型 + speechSynthesisVoiceToTtsVoice 変換）— #675 Phase 1a で追加、#674 Piper wasm の差し替え基盤
     tts-text.ts              # TTS 読み上げ用テキスト前処理純粋関数（URL を「リンク」に置換）
+    tts-volume.ts            # TTS 音量設定純粋関数（clampTtsVolume / parseTtsVolume — `[0.0, 1.0]` クランプ + localStorage 復元時の安全フォールバック、#699）
     tts-voice.ts             # TTS 音声選択純粋関数（selectTtsVoice / groupVoicesByLang — Web Speech API voice 列挙の優先順位・言語別グループ化）
     tts-sentences.ts         # TTS sentence tracking 純粋関数（splitIntoSentences / findSentenceAtCharIndex / estimateCharIndexByElapsed / selectActiveCharIndex — boundary + 推定の融合）
     tts-dom.ts               # TTS ハイライト用 HTML センテンス span ラップ純粋関数（wrapSentencesInHtml — linkedom 使用、`<pre>` `<code>` `<script>` `<style>` `<noscript>` 除外）
@@ -759,6 +760,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `tag-validation.spec.ts`              | `src/lib/validation.ts#parseTagIds` — タグバリデーション                                                                                                          |
 | `translate-html.spec.ts`              | `src/lib/translate-html.ts` — HTML 内テキスト翻訳                                                                                                                 |
 | `tts-text.spec.ts`                    | `src/lib/tts-text.ts` — TTS 読み上げ用 URL 前処理純粋関数                                                                                                         |
+| `tts-volume.spec.ts`                  | `src/lib/tts-volume.ts` — `clampTtsVolume` / `parseTtsVolume` 純粋関数（音量クランプ・localStorage 復元、#699 全 11 ケース）                                      |
 | `url-ssrf.spec.ts`                    | `src/lib/url.ts` — SSRF 対策 URL バリデーション                                                                                                                   |
 | `validation-functions.spec.ts`        | `src/lib/validation.ts` — バリデーション純粋関数                                                                                                                  |
 | `session-id-validation.spec.ts`       | `src/lib/validation.ts` — `isValidSessionId`（UUID 形式・パストラバーサル防止）                                                                                   |

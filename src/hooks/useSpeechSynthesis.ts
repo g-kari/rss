@@ -4,6 +4,7 @@ import { cycleValue } from "../lib/article-utils";
 import { isSpeechSupported } from "../lib/auto-read";
 import { selectTtsVoice } from "../lib/tts-voice";
 import { speechSynthesisVoiceToTtsVoice, type TtsAdapter } from "../lib/tts-adapter";
+import { clampTtsVolume, parseTtsVolume } from "../lib/tts-volume";
 import { useSyncedRef } from "./useSyncedRef";
 
 // Web Speech API の有無は実行中に変わらないのでモジュール定数にする
@@ -19,6 +20,10 @@ function loadRate(): TtsRate {
 
 function loadVoiceUri(): string | null {
   return storageGet(STORAGE_KEYS.TTS_VOICE_URI) ?? null;
+}
+
+function loadVolume(): number {
+  return parseTtsVolume(storageGet(STORAGE_KEYS.TTS_VOLUME));
 }
 
 /**
@@ -42,10 +47,12 @@ export function useSpeechSynthesis(): TtsAdapter {
   const [rate, setRate] = useState<TtsRate>(loadRate);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
+  const [volume, setVolumeState] = useState<number>(loadVolume);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const rateRef = useSyncedRef(rate);
   const voicesRef = useSyncedRef(voices);
   const voiceUriRef = useSyncedRef(voiceUri);
+  const volumeRef = useSyncedRef(volume);
   const currentTextRef = useRef<string>("");
 
   // voice 一覧を非同期に取得 (Chrome は voiceschanged イベントで遅延通知)
@@ -80,6 +87,7 @@ export function useSpeechSynthesis(): TtsAdapter {
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = rateRef.current;
+      utterance.volume = volumeRef.current;
       // ユーザー指定 voice (or 言語マッチで自動選択)
       const docLang =
         typeof document !== "undefined" ? document.documentElement.lang || null : null;
@@ -109,7 +117,7 @@ export function useSpeechSynthesis(): TtsAdapter {
 
       window.speechSynthesis.speak(utterance);
     },
-    [resetState, rateRef, voicesRef, voiceUriRef],
+    [resetState, rateRef, voicesRef, voiceUriRef, volumeRef],
   );
 
   const pause = useCallback(() => {
@@ -147,6 +155,22 @@ export function useSpeechSynthesis(): TtsAdapter {
     [speak, voiceUriRef],
   );
 
+  /**
+   * 読み上げ音量を設定 (#699)。範囲外は内部で `[0.0, 1.0]` にクランプ。
+   * 再生中ならその場で音量を反映して再生し直す (utterance.volume は途中変更不可のため)。
+   */
+  const setVolume = useCallback(
+    (v: number) => {
+      const clamped = clampTtsVolume(v);
+      storageSet(STORAGE_KEYS.TTS_VOLUME, String(clamped));
+      volumeRef.current = clamped;
+      setVolumeState(clamped);
+      const text = currentTextRef.current;
+      if (text) speak(text);
+    },
+    [speak, volumeRef],
+  );
+
   // アンマウント時にキャンセル
   useEffect(() => {
     return () => {
@@ -165,6 +189,8 @@ export function useSpeechSynthesis(): TtsAdapter {
     isPaused,
     rate,
     cycleRate,
+    volume,
+    setVolume,
     voices: ttsVoices,
     voiceUri,
     setVoiceUri,

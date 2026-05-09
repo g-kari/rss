@@ -79,6 +79,8 @@ test.describe("TtsAdapter 型契約", () => {
       isPaused: false,
       rate: 1.0,
       cycleRate: () => {},
+      volume: 1.0,
+      setVolume: () => {},
       voices: [],
       voiceUri: null,
       setVoiceUri: () => {},
