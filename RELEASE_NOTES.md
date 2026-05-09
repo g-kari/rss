@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### リファクタリングっ
+
+- **App.tsx Step 1l: `useReaderSettingsValue` hook を抽出したよ〜 (#650 段階分割)** — App.tsx 内に 86 行のインライン `useMemo<ReaderSettings>` (40 フィールド + 同じ deps を 2 回手書き) があったの〜🥲 新フィールド追加時に `useMemo` の戻り値と deps 配列の両方を同期更新する必要があり、ミスりやすかった!💧 `src/hooks/useReaderSettingsValue.ts` (104 行) に集約して、App.tsx は 922 → 879 行 (-43 行) に減量〜📦 `ReaderSettings` 型を入力 props にとって useMemo で安定化する単純構造で、後方互換 100%〜🛡️ Step 1a-1k と同じ「1 hook ずつ別 commit」運用!
+
 ### 激アツ新機能っ
 
 - **オートモード時に要約結果を TTS で読み上げる機能を追加したよ〜 (#696)** — オートモード (auto-read) ON + 自動要約 (`autoSummarize`) ON のとき、本文の代わりに **AI 要約結果を読み上げ対象** にする派生機能を実装!🎀 `buildTtsText` に第 4 引数 `summaryText` を追加して優先順位の最上位に配置 (要約 > 翻訳 > 本文 > サマリ)〜📚 さらに `shouldStartAutoSpeak` に `autoSummarizePending` ガードを追加して、要約完了前に本文で speak が走らないように〜🛡️ TDD 9 ケース追加 (`buildTtsText` 5 ケース + `shouldStartAutoSpeak` 4 ケース)〜✨ 手動 TTS 起動 (記事詳細ヘッダーボタン / Shift+P) では従来通り本文を読み上げ — オートモード限定の挙動でユーザーの意図を尊重!
