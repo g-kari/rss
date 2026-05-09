@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (規範統一)
+
+- **`React.X` を named import 化! article-view ディレクトリ 9 ファイル sweep!⚡ (前サイクル保留分の続き)** — 過去サイクルで `import React from "react"` を 12 ファイル削除した際に「実使用中のため別検討」と保留した 4 ファイル + 周辺 5 ファイル、計 9 ファイルで `React.X` 形式を named import に書き換え〜🎯 `React.MouseEvent` → `MouseEvent` / `React.ReactNode` → `ReactNode` / `React.JSX.Element` → `JSX.Element` / `React.TouchEvent` → `TouchEvent` / `React.RefObject` → `RefObject` / `React.UIEvent` → `UIEvent` の type-only named import + `React.forwardRef` / `React.useImperativeHandle` / `React.createElement` / `React.Fragment` の value named import 〜💪 React 19 + Next.js 16 の JSX runtime auto に合わせた書き換えで挙動変化なし〜🛡️ 残 51 ファイルは別 Issue で全プロジェクト sweep を提案〜📚
+
 ### ドキュメント整備っ + リファクタリングっ
 
 - **sentinel freeze 規範を `react-patterns.md` に codify + `EMPTY_SENTENCES` も sweep!📚 (規範統一サイクル)** — 前サイクルの `useFilteredArticles` sentinel freeze を `react-patterns.md` の「state 更新前に構造的等価性ガード」セクション末尾に **派生ケース** として codify〜🎯 「mutable 型 (Set/Map/Array/Object) は freeze 対象、ReadonlySet/Array で型守られているなら freeze 不要」のガイドラインも明示〜📚 同サイクルで残 sentinel `EMPTY_SENTENCES` (#703 TTS ハイライト抑制用) も freeze 化、`EMPTY_FEED_TITLE_MAP` は `ReadonlyMap` 型で型守られているため対象外と判定〜🛡️ 検出 grep `grep -rEn "^const EMPTY[A-Z_]*"` で全 6 sentinel を網羅、freeze 化対象 4 件 / 型守られ 2 件 / freeze 済 1 件で完全 sweep 達成〜💎

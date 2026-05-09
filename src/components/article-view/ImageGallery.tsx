@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useRef, useState, type TouchEvent } from "react";
 import { useSyncedRef } from "../../hooks/useSyncedRef";
 import { useEventListener } from "../../hooks/useEventListener";
 import { usePopupLock } from "../../hooks/usePopupLock";
@@ -24,12 +24,12 @@ export default function ImageGallery({ images }: Props) {
       setLightboxIndex((i) => (i !== null && i < imageCount - 1 ? i + 1 : i));
   });
 
-  function handleLightboxTouchStart(e: React.TouchEvent) {
+  function handleLightboxTouchStart(e: TouchEvent) {
     e.stopPropagation();
     lightboxTouchRef.current = e.touches[0].clientX;
   }
 
-  function handleLightboxTouchEnd(e: React.TouchEvent) {
+  function handleLightboxTouchEnd(e: TouchEvent) {
     e.stopPropagation();
     if (lightboxTouchRef.current === null || lightboxIndex === null) return;
     const dx = e.changedTouches[0].clientX - lightboxTouchRef.current;
