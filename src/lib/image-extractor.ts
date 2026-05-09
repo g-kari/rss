@@ -33,6 +33,24 @@ function isCollectableUrl(src: string, seen: Set<string>): boolean {
   );
 }
 
+/**
+ * #667: `<a href>` が画像 URL を直接指している場合に拾うための拡張子判定。
+ * wallhaven 等の `<a href="full画像"><img src="thumb"></a>` 構造で、
+ * `<img src>` がサムネサイズで除外されてもフル解像度を DL できるようにする。
+ *
+ * クエリ文字列・フラグメント (`?v=2`, `#anchor`) は無視して拡張子を見る。
+ */
+const IMAGE_HREF_EXTENSION_RE = /\.(jpe?g|png|gif|webp|avif|svg)(?:[?#].*)?$/i;
+
+export function isImageHref(href: string): boolean {
+  if (!href) return false;
+  // image-proxy 経由は内部の url パラメータをデコードして判定
+  const target = href.startsWith("/api/image-proxy?")
+    ? decodeURIComponent(href.replace(/^\/api\/image-proxy\?url=/, ""))
+    : href;
+  return IMAGE_HREF_EXTENSION_RE.test(target);
+}
+
 /** "60" / "60px" など数値のみ受け付け、"100%" や "auto" は null を返す */
 function parseSizeAttr(value: string | null | undefined): number | null {
   if (!value) return null;
@@ -89,13 +107,26 @@ function isTooSmallByAttrs(
  * HTML 文字列から画像 URL を重複なしで抽出する。
  * useMemo など DOM 操作が不要なコンテキスト向け。
  *
- * - src 属性を優先し、data: の場合は srcset からフォールバック
+ * - `<a href="*.jpg/.png/...">` で画像を直接指すアンカー (#667: wallhaven 等の thumb→full 構造) を先に拾う
+ * - 次に `<img>` を走査。src 属性を優先し、data: の場合は srcset からフォールバック
  * - data: URI / 非 proxy・非絶対 URL は除外
  * - width/height 属性（または style）から両辺とも `MIN_IMAGE_SIZE_PX` 未満と判定できる画像は除外
  */
 export function collectImageUrlsFromHtml(html: string): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
+
+  // #667: <a href="image-url"> を先に走査してフル解像度画像を拾う
+  const aRe = /<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi;
+  let am: RegExpExecArray | null;
+  while ((am = aRe.exec(html)) !== null) {
+    const href = am[1];
+    if (!isImageHref(href)) continue;
+    if (!isCollectableUrl(href, seen)) continue;
+    seen.add(href);
+    result.push(href);
+  }
+
   const imgRe = /<img\b([^>]*)>/gi;
   let m: RegExpExecArray | null;
   while ((m = imgRe.exec(html)) !== null) {
@@ -121,6 +152,7 @@ export function collectImageUrlsFromHtml(html: string): string[] {
  * コンテナ内の全 img 要素から画像 URL を重複なしで抽出する。
  * live DOM（useImageDownload 等）向け。
  *
+ * - `<a href="*.jpg/.png/...">` で画像を直接指すアンカー (#667: wallhaven 等の thumb→full 構造) を先に拾う
  * - live DOM では currentSrc（srcset 解決済み）を優先
  * - data: プレースホルダーは srcset からフォールバック
  * - data: URI / 非 proxy・非絶対 URL は除外
@@ -130,6 +162,16 @@ export function collectImageUrlsFromHtml(html: string): string[] {
 export function collectImageUrls(container: Element, seen?: Set<string>): string[] {
   const s = seen ?? new Set<string>();
   const result: string[] = [];
+
+  // #667: <a href="image-url"> を先に走査してフル解像度画像を拾う
+  for (const a of container.querySelectorAll("a[href]")) {
+    const href = (a as HTMLAnchorElement).getAttribute("href") ?? "";
+    if (!isImageHref(href)) continue;
+    if (!isCollectableUrl(href, s)) continue;
+    s.add(href);
+    result.push(href);
+  }
+
   for (const img of container.querySelectorAll("img")) {
     const el = img as HTMLImageElement;
     let src = el.currentSrc || el.getAttribute("src") || "";
