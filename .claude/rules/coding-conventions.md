@@ -198,6 +198,43 @@ useEffect(() => {
 
 主な使用箇所: `useReadState`, `useFilteredArticles`, `useKeyboardNav`
 
+### 派生ケース: `useSyncedRef` を `useMemo` / `useEffect` の **deps 配列** に入れてはいけない
+
+`useSyncedRef` の戻り値は「ref オブジェクト自体」が安定 reference (`useRef` と同じ identity 不変)。これを useMemo / useCallback / useEffect の **deps 配列に入れると、ref.current が変わってもメモが再計算されず、effect も再発火しない**。「ref 経由で最新値が読めるから deps 不要」という直感は **キャッシュ無効化** を引き起こす。
+
+```typescript
+// アンチパターン: deps に ref を入れて「ref で最新値を参照するから deps 不要」のつもり
+const readIdsRef = useSyncedRef(readIds);
+const result = useMemo(() => {
+  // ref.current は最新だが、useMemo はそもそも再実行されない
+  for (const a of articles) {
+    if (!isArticleRead(a, readIdsRef.current, ...)) { /* ... */ }
+  }
+  return result;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- ref で deps 不要 ← 嘘
+}, [articles, readIdsRef]); // ← readIdsRef は永久に同 identity → readIds 変化が無視される
+
+// 修正パターン: 値を直接 deps に渡す
+const result = useMemo(() => {
+  for (const a of articles) {
+    if (!isArticleRead(a, readIds, ...)) { /* ... */ }
+  }
+  return result;
+}, [articles, readIds, readBeforeTimestamp]); // ← 値の identity 変化で再計算される
+```
+
+**Why**: `useSyncedRef` の本来用途は **「effect 内で stale closure 回避」** のみ (subscription / timer callback など、effect が `[]` deps で 1 度だけ走る場面)。useMemo / useCallback の deps に入れると「ref はオブジェクト identity 不変 → React が変化なしと判定 → 再実行されず → ref から得る値も古いまま使われる」という錯覚バグになる。新しい `Set(prev)` のように値の reference が変わるパターンでは、**直接 deps に入れた方が正確に再計算される**。perf 影響を懸念して ref に「最適化」したくなるが、O(n) 単純ループなら直接 deps が正解。
+
+**How to apply**: `useSyncedRef` を使うときは以下の判定:
+
+1. **`useEffect(() => { ... }, [])` の中で参照** (subscription / 1 度だけのセットアップ) → ✅ ref で OK
+2. **`useEffect(() => { ... }, [deps])` の deps 配列** → ❌ ref を deps に入れない / 値を直接 deps に渡す
+3. **`useMemo(() => { ... }, [deps])` の deps 配列** → ❌ ref を deps に入れない / 値を直接 deps に渡す
+4. 「perf 最適化のため ref に逃がす」のは罠。**まず素直に値を deps に渡し、計測して問題があれば別の最適化** (例: 構造的等価性ガード) を検討
+5. `eslint-disable-next-line react-hooks/exhaustive-deps` を書きたくなったら、本当に正しい設計か疑う。多くは間違ったパターンの言い訳
+
+主な使用箇所: `useSidebarFeeds.ts` (前は `readIdsRef` を deps に入れて未読カウント永続的にキャッシュされる重大バグが発生 → 直接 `readIds` deps に修正)
+
 ## hook の循環依存を ref で解消する
 
 Hook A の出力 (state) を Hook B の入力に渡し、かつ Hook B の出力 (callback) を Hook A の内部処理 (例: `speak` 内の boundary handler) に注入したいとき、宣言順だけでは解決できない循環が発生する。**callback 用の ref を「Hook A 呼び出し前」に作って両方に渡す** と解決する。
