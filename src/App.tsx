@@ -52,6 +52,7 @@ import { useDocumentTitleBadge } from "./hooks/useDocumentTitleBadge";
 import { useDesktopMediaQuery } from "./hooks/useDesktopMediaQuery";
 import { useApiErrorToast } from "./hooks/useApiErrorToast";
 import { useOnlineRecoveryToast } from "./hooks/useOnlineRecoveryToast";
+import { useGalleryAutoReadTracking } from "./hooks/useGalleryAutoReadTracking";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -418,18 +419,12 @@ export default function App() {
     [selectedCollectionId, collections],
   );
 
-  const [galleryAutoReadIds, setGalleryAutoReadIds] = useState<Set<string>>(() => new Set());
-  const handleGalleryAutoRead = useCallback((id: string) => {
-    setGalleryAutoReadIds((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-  }, []);
-  useEffect(() => {
-    setGalleryAutoReadIds(new Set());
-  }, [selectedFeedId, selectedGroupId, activeFeedView, layout]);
+  const { galleryAutoReadIds, handleGalleryAutoRead } = useGalleryAutoReadTracking({
+    selectedFeedId,
+    selectedGroupId,
+    activeFeedView,
+    layout,
+  });
 
   const filterState = useFilteredArticles({
     articles,
