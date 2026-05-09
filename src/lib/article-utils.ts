@@ -228,6 +228,12 @@ export function resolveThumbnail(
  *
  * キャッシュキー: `article.id` (記事の content / summary は ID が同じなら不変前提)。
  * 戻り値の関数は副作用ありなのでテストでは新規インスタンスを毎回作る。
+ *
+ * **不変性契約 (#693)**: 本キャッシュは「同じ article.id を持つ記事オブジェクトは
+ * content / summary が変わらない」前提で動く。`useArticleData` の merge ロジックが
+ * 既存記事をオブジェクト mutation で更新すると、ID が同じなのに content が変わって
+ * stale な readingTime が返るバグになる。merge 側は必ず新しいオブジェクト reference
+ * を生成すること (今のところ `mergeUniqueArticles` は新オブジェクトを生成している)。
  */
 export function createReadingTimeCache(): (article: Article) => number {
   const cache = new Map<string, number>();

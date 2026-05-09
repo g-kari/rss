@@ -421,6 +421,46 @@ OPML ファイルから複数フィードを一括インポートする。
 
 ---
 
+## POST /api/feeds/:id/purge-content-cache
+
+フィード（feedHash）に紐づく全記事の Cloudflare Cache (content + clip) を削除する。CLI 経由で `curl -X POST` から呼ぶ想定。
+
+**認証必須 + 購読チェック必須** (#691): リクエストユーザーが対象 feedHash を購読していない場合は 404 を返す。共有 cache の意図的無効化 (cache busting DoS) を防ぐための security-critical な挙動。
+
+### パスパラメータ
+
+| パラメータ | 型     | 説明                             |
+| ---------- | ------ | -------------------------------- |
+| `id`       | string | feedHash（16 文字の hex 文字列） |
+
+### 成功レスポンス
+
+```json
+// 200 OK
+{
+  "ok": true,
+  "feedHash": "abc123...",
+  "total": 500, // R2 から読み出した記事総数
+  "purged": 498, // Cache 削除に成功した記事数
+  "failed": 2 // 削除に失敗した記事数 (例: 既に存在しない)
+}
+```
+
+### エラー一覧
+
+| ステータス | code             | 説明                                                           |
+| ---------- | ---------------- | -------------------------------------------------------------- |
+| `400`      | `INVALID_FEED`   | feedHash の形式が不正                                          |
+| `404`      | `FEED_NOT_FOUND` | リクエストユーザーが購読していない feedHash、または記事が 0 件 |
+| `401`      | —                | 未認証                                                         |
+
+### 関連
+
+- `DELETE /api/content?url=...` (clip cache のみ自分で削除可能)
+- `.claude/rules/caching.md` (Cloudflare Cache API の使い方)
+
+---
+
 ## GET /api/engagement
 
 ユーザーのエンゲージメントログ（記事操作履歴）を取得する。

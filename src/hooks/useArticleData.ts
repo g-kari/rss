@@ -13,6 +13,15 @@ const HIDDEN_POLL_INTERVAL_MS = 15 * 60 * 1000;
 
 type FeedPageResult = { feedId: string; nextPage: number; data: Article[] };
 
+/**
+ * 記事配列を id / link / guid の重複排除付きでマージする。
+ *
+ * **不変性契約 (#693)**: 既存記事のオブジェクトは絶対に mutation せず、新しい配列を返す。
+ * `createReadingTimeCache` (article-utils.ts) が「同 article.id のオブジェクトは
+ * content / summary が変わらない」前提で memoize しているため、既存記事を mutation
+ * 更新すると stale な readingTime が永続キャッシュされる。新フィールドを追加したい
+ * 場合は必ず `{ ...existing, newField: value }` で新オブジェクトを生成すること。
+ */
 function mergeUniqueArticles(existing: Article[], incoming: Article[]): Article[] {
   if (incoming.length === 0) return existing;
 
