@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### テスト整備っ
+
+- **`compareByDateDesc` / `compareByPublishedAtDesc` の 2 関数仕様差分を 14 ケースで明文化!🧪 (テストカバレッジ監査 82% 信頼度)** — 名前と引数の型が似ている 2 つの sort comparator が **「null publishedAt の扱い」と「id stable sort 有無」で意図的に挙動が異なる** ことが暗黙だったのを TDD で固定〜🛡️ `compareByDateDesc` は `publishedAt ?? createdAt` (null は createdAt フォールバック) + 同日付なら id stable sort、`compareByPublishedAtDesc` は `publishedAt ?? ""` (null は末尾) + id 比較なし、を spec 化〜📚 cron / shared-feed.ts / useArticleData.ts の sort 経路で齟齬が起きないことを保証 + 将来「2 関数を統合しよう」のような誤ったリファクタを防止できる **defensive 改善** ね〜🎯 (実バグでなく仕様確定 + regression 防止)
+
 ### リファクタリングっ
 
 - **html-post-processor.ts の dead re-export 3 件を整理したよ〜!📦 (リファクタ監査 85% 信頼度)** — `removeDivsByClass` / `replaceBlocksByClass` (`html-noise-removal.ts` 内部利用のみ) と `extractZennEmbedContent` (`html-embed-transforms.ts` 内部利用のみ) の **production caller 0 + spec 0** 状態だった 3 シンボルを `html-post-processor.ts` の re-export hub から削除〜🎯 「将来 re-export 経由で使われているはず」と誤解しないように内部利用専用とコメント明示〜🛡️ `buildImageSlider` は #321 で caller 削除されたが spec 5 ケース残存のため別 Issue で判断する暫定維持コメント付き〜📚
