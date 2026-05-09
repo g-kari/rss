@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { computeProgress, clampProgress, buildAnchorSelector } from "../lib/reading-progress";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
+import { useSyncedRef } from "./useSyncedRef";
 
 interface ProgressEntry {
   progress: number;
@@ -46,8 +47,7 @@ export function useReadingProgress({
   // 現在の最大可視インデックスを ref で管理（クロージャ汚染防止）
   const maxIndexRef = useRef<number>(0);
   const progressRef = useRef<number>(0);
-  const onProgressChangeRef = useRef(onProgressChange);
-  onProgressChangeRef.current = onProgressChange;
+  const onProgressChangeRef = useSyncedRef(onProgressChange);
 
   // 記事切り替え時にリセット + アンカー復元
   useEffect(() => {

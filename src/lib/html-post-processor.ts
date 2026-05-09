@@ -17,15 +17,14 @@ import { removeNoise } from "./html-noise-removal";
 import { fixLazyImages, removeSmallThumbnailImages } from "./html-image-processors";
 
 // ── re-export: html-noise-removal.ts ────────────────────────────
-export {
-  replaceUntilStable,
-  processNestedBlocks,
-  removeDivsByClass,
-  replaceBlocksByClass,
-  removeNoise,
-} from "./html-noise-removal";
+// removeDivsByClass / replaceBlocksByClass は html-noise-removal.ts の
+// 内部利用 (removeNoise) でしか呼ばれず、外部 production caller も spec も
+// ないため re-export しない (module-private 相当)。
+export { replaceUntilStable, processNestedBlocks, removeNoise } from "./html-noise-removal";
 
 // ── re-export: html-image-processors.ts ─────────────────────────
+// buildImageSlider は #321 で content.ts 側 caller が削除されたが spec が残存しているため、
+// 「dead 削除 / 機能配線 / spec ごと整理」のいずれを取るかを別 Issue で判断するまで暫定で re-export を維持する。
 export {
   tryParseBase,
   fixLazyImages,
@@ -36,8 +35,9 @@ export {
 } from "./html-image-processors";
 
 // ── re-export: html-embed-transforms.ts ─────────────────────────
+// extractZennEmbedContent は html-embed-transforms.ts 内部利用のみで
+// 外部 caller がないため re-export しない。
 export {
-  extractZennEmbedContent,
   transformZennLinkEmbeds,
   transformZennMermaidEmbeds,
   transformXTweetEmbeds,
