@@ -33,7 +33,6 @@ import { isSpeechSupported } from "./lib/auto-read";
 import { usePWAInstall } from "./hooks/usePWAInstall";
 import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
 import { useHasOpenPopup } from "./hooks/usePopupLock";
-import { onApiError } from "./lib/api-fetch";
 import { isArticleRead } from "./lib/article-filter";
 import { useGlobalFilterAutoRead } from "./hooks/useGlobalFilterAutoRead";
 import { useAutoLoadMoreArticles } from "./hooks/useAutoLoadMoreArticles";
@@ -53,6 +52,7 @@ import { useSaveArticleUrl } from "./hooks/useSaveArticleUrl";
 import { useSnoozeHandler } from "./hooks/useSnoozeHandler";
 import { useDocumentTitleBadge } from "./hooks/useDocumentTitleBadge";
 import { useDesktopMediaQuery } from "./hooks/useDesktopMediaQuery";
+import { useApiErrorToast } from "./hooks/useApiErrorToast";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -336,17 +336,7 @@ export default function App() {
     ],
   );
 
-  // 通信エラーをトーストで通知する。短時間に複数発生しても 1 回に集約（UI ノイズ抑止）。
-  useEffect(() => {
-    let lastShownAt = 0;
-    const unsubscribe = onApiError(({ message }) => {
-      const now = Date.now();
-      if (now - lastShownAt < 3000) return;
-      lastShownAt = now;
-      toast.error(`通信エラー: ${message}`);
-    });
-    return unsubscribe;
-  }, [toast]);
+  useApiErrorToast(toast);
 
   const { recordEngagement } = useEngagement(user);
   const digestFeedOrder = useDigestFeedOrder(user);
