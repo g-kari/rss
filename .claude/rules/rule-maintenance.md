@@ -102,6 +102,40 @@ comm -23 /tmp/actual_specs.txt /tmp/doc_specs.txt
 
 主な使用箇所: 2026-05-10 サイクル — 3 体並列サブエージェント全員 rate limit → 直接 `find + grep + comm` で 10 件 drift 検出 → 1 commit omnibus 修正
 
+### 派生ケース: 規範ルール codify 後は「code drift」も機械的に sweep する
+
+`docs drift` (文書 vs 実コードの乖離) と並んで、**「規範ルール codify 後にコードに残っている旧パターン」= code rule drift** も機械的に sweep する対象。1 ファイル修正 + 規範 codify で満足すると、新規追加された ref / 既存見落としの旧パターンが規範違反として累積する。
+
+```
+パターン: 規範 codify → 数サイクル後に sweep
+  1. 1 ファイル (例: useReadingProgress) で旧パターンを修正
+  2. retrospective-codify で規範を `react-patterns.md` 等に書き出し
+  3. 規範違反を検出する grep regex を「主な使用箇所」コメントに併記
+  4. 数サイクル後 (actionable issues 枯渇時など) に sweep を実行:
+     grep -rEnB1 "Ref\.current\s*=" src/hooks/ src/components/
+  5. 残骸全件を 1 commit で連続修正
+```
+
+**Why**: 「規範を文章化する」工程と「全コードへの規範適用」工程は別物。1 ファイル修正で codify を完了したと感じても、実際には他に残骸が散在している。新規開発者がコピペで増やすこともある。`docs drift` と同じく **judgment 不要 + grep で機械検出可能** なので、actionable issues 枯渇サイクルの sweep 対象として最適。
+
+**How to apply**: 規範を新規 codify するとき:
+
+1. **検出 grep コマンド** をルール本文の「主な使用箇所」または専用「検出方法」セクションに併記:
+   - 例: `useSyncedRef` 規範 → `grep -rEnB1 "Ref\.current\s*=" src/hooks/ src/components/`
+   - 例: `EMPTY_SENTENCES` 安定参照規範 → `grep -rn ": Sentence\[\] = \[\]" src/`
+2. 数サイクル後の sweep でそのコマンドをそのまま実行
+3. 検出された箇所は **意図的な例外** (perf 最適化等で旧パターン継続) と **規範違反** に分類:
+   - 意図的例外には **その理由をコメント明記** して次回 sweep で再検出されないようにする
+   - 規範違反は同サイクルで連続修正
+4. sweep 結果が 0 件になったら sweep 完了 (規範が全コードに浸透)
+
+**反例 (sweep 不要なケース)**:
+
+- 規範が **判断要素を含む** もの (例: 「巨大コンポーネント機能別分割」は何が「巨大」かが文脈依存) → grep だけでは判別不可、人間判断要
+- 規範が **新規追加コードのみ対象** (既存コードは維持) で明示されているもの
+
+主な使用箇所: 2026-05-10 サイクル — `useReadingProgress` を `useSyncedRef` 化 + 規範 codify → 数サイクル後に `grep -rEnB1 "Ref\.current\s*="` sweep で 4 hooks / 5 ref 残骸検出 → 一括連続修正
+
 ## 6. 大規模ドキュメント分割は contiguous な小クラスターから段階的に進める
 
 `coding-conventions.md` (1785 行 / 65 セクション) のような大規模ファイルを分割するとき、**全セクションを一度に新ファイルへ移動するのは破壊的**。1 コミットで多数のセクションを抜き出すと:

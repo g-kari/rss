@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type { Article } from "../../types";
 import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
 import Spinner from "../Spinner";

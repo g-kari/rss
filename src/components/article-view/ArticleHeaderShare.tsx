@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type { Article, Feed, KeywordFilter } from "../../types";
 import ShareMenu from "./ShareMenu";
 import FilterMenu from "./FilterMenu";

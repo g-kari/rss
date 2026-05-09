@@ -1,4 +1,3 @@
-import React from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import type { Article, KeywordFilter } from "../../types";

@@ -1,4 +1,3 @@
-import React from "react";
 import { createPortal } from "react-dom";
 import type { Article, Feed } from "../../types";
 import { usePortalMenu } from "../../hooks/usePortalMenu";
