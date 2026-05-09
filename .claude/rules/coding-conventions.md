@@ -456,6 +456,61 @@ App.tsx / 巨大ページコンポーネントから複数の `useEffect` / `use
 
 主な使用箇所: `src/lib/tts-adapter.ts` (#675 Phase 1a) — Web Speech API → Piper wasm 差し替えの基盤
 
+## shared resource を変更する API は「認証 + 所有権チェック」を二段で行う
+
+`withSession` は **「認証されたユーザーかどうか」** しか判定しない。共有リソース (shared cache / 共有フィードデータ / 他ユーザーが購読する R2 オブジェクト) を変更する API では、**追加で「リクエストユーザーが対象リソースを所有 / 購読しているか」のチェックが必須**。
+
+```typescript
+// アンチパターン: 認証だけで shared resource を操作可能
+export async function POST(request, { params }) {
+  return withSession(request, async ({ session, env }) => {
+    const { id: feedHash } = await params;
+    if (!isValidFeedHash(feedHash)) return apiError("Invalid", 400);
+    // ↓ 認証されていれば任意の feedHash の shared cache を破棄可能 → DoS 攻撃成立
+    await purgeSharedCache(feedHash);
+    return NextResponse.json({ ok: true });
+  });
+}
+
+// 修正パターン: 認証 + 購読チェック (所有権チェック)
+export async function POST(request, { params }) {
+  return withSession(request, async ({ session, env }) => {
+    const { id: feedHash } = await params;
+    if (!isValidFeedHash(feedHash)) return apiError("Invalid", 400);
+    // ↓ リクエストユーザーが対象 feed を購読していなければ 404
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    if (!subs.some((s) => s.feedHash === feedHash)) {
+      return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
+    }
+    await purgeSharedCache(feedHash);
+    return NextResponse.json({ ok: true });
+  });
+}
+```
+
+**Why**: shared resource (Cloudflare Cache / 共有 R2 オブジェクト) は **複数ユーザーで共有される** ため、1 人の操作が他全ユーザーに影響する。認証だけ通せば誰でも他人のデータを破壊・無効化できる状態は、`cache busting DoS` / `cross-user state corruption` 等の攻撃ベクトルになる。「認証 = 自分のリソースに何でもできる」と「認証 = ログイン済」を混同しないこと。
+
+**How to apply**: API 設計時に以下のチェックリスト:
+
+1. **このエンドポイントが変更/削除する対象は shared resource か？**
+   - shared cache (`Cloudflare Cache API` / `caches.default`) → YES
+   - 共有 R2 オブジェクト (`feeds/{feedHash}/...`) → YES
+   - ユーザー別 R2 オブジェクト (`users/{userId}/...`) → NO (session.userId と path が一致するなら認証だけで OK)
+2. YES なら **所有権/購読チェックを追加**:
+   - フィード関連: `subs.some((s) => s.feedHash === feedHash)` で購読確認
+   - 記事関連: 該当フィードを購読しているか or 自分の bookmark/savedArticles に含まれるか
+   - グループ/コレクション: 自分のユーザー ID と紐付くデータか
+3. **チェック失敗時は 404** (`FEED_NOT_FOUND` 等) で返す。403 だと「リソースは存在するが権限なし」を leak するので、未購読フィードは存在しないかのように見せる
+4. e2e テストで「他ユーザーの feedHash で操作 → 404」を必ず追加 (テスト infra が整ったら)
+5. PR コメントに「shared resource 変更 → 所有権チェック追加」を明示
+
+**反例 (チェック不要なケース)**:
+
+- `GET /api/articles` — 自分の subscriptions と join して返すだけで、他人のデータに副作用なし
+- `POST /api/read-state` — `users/{session.userId}/read-state.json` のみ更新で他ユーザーに影響なし
+
+主な使用箇所: `POST /api/feeds/{feedHash}/purge-content-cache` の購読チェック (#691) — 認証だけで cache busting DoS が成立していた脆弱性を修正
+
 ## dev / e2e 限定エンドポイントの二重ガード
 
 `/api/test/seed` のようなテスト inject 系エンドポイントを本番に絶対漏らさないために、Route Handler の冒頭で **二重ガード** を行う。
