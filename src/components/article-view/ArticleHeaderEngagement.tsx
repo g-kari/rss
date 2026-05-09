@@ -4,6 +4,7 @@ import React from "react";
 import type { Article, Collection } from "../../types";
 import CollectionDropdown from "../CollectionDropdown";
 import ToggleIconButton from "./ToggleIconButton";
+import EngagementSegmentButton from "./EngagementSegmentButton";
 
 interface Props {
   article: Article;
@@ -61,18 +62,16 @@ export default function ArticleHeaderEngagement({
   return (
     <>
       <div className="flex items-center rounded-full border border-border-default overflow-hidden">
-        <button
+        <EngagementSegmentButton
+          isActive={isInReadingList}
           onClick={() => {
             onToggleReadingList(article.id);
             onReadingListToast(isInReadingList ? "後で読むから削除" : "後で読むに追加");
           }}
           title={isInReadingList ? "後で読むから削除" : "後で読む (T)"}
-          aria-label={isInReadingList ? "後で読むから削除" : "後で読む"}
-          className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
-            isInReadingList
-              ? "bg-ink text-ink-text"
-              : "text-text-faint hover:text-text-default hover:bg-surface-hover"
-          }`}
+          ariaLabel={isInReadingList ? "後で読むから削除" : "後で読む"}
+          activeClass="bg-ink text-ink-text"
+          inactiveHoverClass="hover:text-text-default"
         >
           <svg
             viewBox="0 0 24 24"
@@ -85,19 +84,15 @@ export default function ArticleHeaderEngagement({
             <path d="M12 6v6l4 2" />
             <circle cx="12" cy="12" r="9" />
           </svg>
-        </button>
+        </EngagementSegmentButton>
         <div className="w-px self-stretch bg-border-default" />
-        <button
-          onClick={() => {
-            onToggleBookmark(article.id);
-          }}
+        <EngagementSegmentButton
+          isActive={isBookmarked}
+          onClick={() => onToggleBookmark(article.id)}
           title={isBookmarked ? "ブックマーク解除 (b)" : "ブックマーク (b)"}
-          aria-label={isBookmarked ? "ブックマーク解除" : "ブックマーク"}
-          className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
-            isBookmarked
-              ? "bg-bookmark text-ink-text"
-              : "text-text-faint hover:text-bookmark hover:bg-surface-hover"
-          }`}
+          ariaLabel={isBookmarked ? "ブックマーク解除" : "ブックマーク"}
+          activeClass="bg-bookmark text-ink-text"
+          inactiveHoverClass="hover:text-bookmark"
         >
           <svg
             viewBox="0 0 24 24"
@@ -111,19 +106,15 @@ export default function ArticleHeaderEngagement({
               d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
             />
           </svg>
-        </button>
+        </EngagementSegmentButton>
         <div className="w-px self-stretch bg-border-default" />
-        <button
-          onClick={() => {
-            onToggleLike(article.id);
-          }}
+        <EngagementSegmentButton
+          isActive={isLiked}
+          onClick={() => onToggleLike(article.id)}
           title={isLiked ? "いいね解除 (I)" : "いいね (I)"}
-          aria-label={isLiked ? "いいね解除" : "いいね"}
-          className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
-            isLiked
-              ? "bg-rose-400 text-white"
-              : "text-text-faint hover:text-error hover:bg-surface-hover"
-          }`}
+          ariaLabel={isLiked ? "いいね解除" : "いいね"}
+          activeClass="bg-rose-400 text-white"
+          inactiveHoverClass="hover:text-error"
         >
           <svg
             viewBox="0 0 24 24"
@@ -135,7 +126,7 @@ export default function ArticleHeaderEngagement({
           >
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
-        </button>
+        </EngagementSegmentButton>
       </div>
       {onSetNote && (
         <ToggleIconButton
