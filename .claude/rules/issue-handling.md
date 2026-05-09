@@ -175,6 +175,32 @@ npx wrangler tail
 
 **How to apply**: 自分の起票・コメント済み Issue を再読する際、前回の AI 返信が今回の調査結果と矛盾するなら、必ず明示的な訂正コメントを投稿してから新しい説明に進む。沈黙のまま新しい返信を投稿するのは NG。
 
+## 「同種コンポーネント間のパターン整合性」は監査の高優先項目にする
+
+`Modal.tsx` と `ConfirmModal.tsx` のように「**役割は似ているが別ファイル**」のコンポーネントは、片方に実装されたベストプラクティス (focus 復元 / aria 属性 / 例外ハンドリング) が他方で抜けやすい。これは「機能追加時に **似てるから新ファイル** で書き始める → ベース機能の比較を忘れる」典型パターン。
+
+監査エージェント派遣時は、**「似た役割のコンポーネント間で実装が揃っているか」を明示的に観点に含める**。
+
+```
+監査プロンプトに含める例:
+「Compare implementation patterns between similar components:
+   - Modal.tsx vs ConfirmModal.tsx (focus trap / focus restore / aria)
+   - SnoozeModal.tsx vs FeedAddModal.tsx (loading states / error handling)
+   - ArticleHeaderShare vs ArticleHeaderEngagement (button group accessibility)
+ Report any pattern that exists in one but is missing in the other.」
+```
+
+**Why**: 同種コンポーネント間のパターン抜けは、監査エージェントが「個別ファイル独立に評価」すると見落としやすい (各ファイル単体では「動いている」)。「対比対象との差分」を見るよう明示的に指示すると、抜けが浮上する。実例として #687 (ConfirmModal の focus 復元抜け) は Modal.tsx に既に実装されていたパターンが ConfirmModal に展開されてなかったケース。
+
+**How to apply**:
+
+1. 監査依頼時に「similar components」の対比観点を明示
+2. プロジェクトに **「規範実装 (canonical pattern)」** がある場合は、そのファイルパスを監査エージェントに渡して「他の類似コンポーネントと差分があるか」を見させる
+3. 発見されたパターン抜けは **そのまま規範実装をコピー** すればよい (pattern 複製は安全な変更)
+4. 修正後、規範実装側にコメントを追加して「他のコンポーネントもこのパターンに従う」を明示するのも検討 (ドリフト抑止)
+
+主な使用箇所: `Modal.tsx ↔ ConfirmModal.tsx` (#687 — focus 復元の Modal pattern を ConfirmModal にコピー反映)
+
 ## サブエージェント調査結果は該当コードで検証してから採用する
 
 `feature-dev:code-explorer` 等のサブエージェントが「根本原因はこれです」「修正案はこうです」と報告してきても、**該当ファイルの該当行を Read して内容を確認** してから実装に入る。エージェントが意図せず古い情報や別ファイルの内容を参照している場合、誤った修正につながる。
