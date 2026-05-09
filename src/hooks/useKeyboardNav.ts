@@ -66,6 +66,8 @@ interface KeyboardNavOptions {
   autoMode: boolean;
   toggleAutoMode: () => void;
   ttsSupported: boolean;
+  /** #684: 記事一覧を選択中記事へアンカー (`.` キー) */
+  anchorListToSelected?: () => void;
 }
 
 function buildContext(opts: KeyboardNavOptions): ShortcutContext {

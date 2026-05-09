@@ -71,6 +71,8 @@ export interface ShortcutContext {
   toggleAutoMode: () => void;
   autoMode: boolean;
   ttsSupported: boolean;
+  /** #684: 記事一覧を選択中記事にスクロール (アンカー) */
+  anchorListToSelected?: () => void;
   /** window.confirm の代替。未指定時は window.confirm にフォールバック。 */
   confirm?: (message: string) => Promise<boolean>;
 }
@@ -204,6 +206,16 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     handler: (ctx, e) => {
       e.preventDefault();
       ctx.navigateTo(ctx.list[ctx.list.length - 1]);
+    },
+  },
+  {
+    keys: ["."],
+    displayKey: ".",
+    description: "記事一覧を選択中の記事にアンカー (#684)",
+    group: "navigation",
+    handler: (ctx, e) => {
+      e.preventDefault();
+      ctx.anchorListToSelected?.();
     },
   },
   {
