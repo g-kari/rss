@@ -4,6 +4,8 @@
 
 ### 激アツ新機能っ
 
+- **「ブラウザ AI のみ使う」トグルで Workers AI への自動フォールバックを抑止できるようになったよ〜 (#700)** — ユーザー設定 → AI・通知タブ に **「ブラウザ AI のみ使う」トグル** を追加!🎀 ON にするとブラウザネイティブ AI (Chrome 翻訳・要約) が使えない記事では **自動翻訳・自動要約を完全 skip** して Workers AI へのフォールバックを発動させない〜🛡️ デフォルト OFF (既存挙動維持) なので影響範囲なし、ON にしたい人だけ恩恵を受けられる設計〜📦 手動の AI / 翻訳ボタンは影響を受けないからユーザーの明示的な選択は尊重される〜✨ 純粋関数 `shouldSkipAutoAi` を `src/lib/auto-ai-fallback.ts` に切り出して TDD 全 4 ケース網羅 (設定 OFF / ON × 利用可 / 不可 / 診断中)〜📚 `useBrowserAiAvailability` hook で mount 時に diagnoseSummarizer/Translator を 1 回だけ呼んで判定する設計〜🎯
+
 - **TTS の音量をユーザー設定で調整できるようになったよ〜 (#699)** — ユーザー設定 → 表示タブ の **「読み上げ音声」セクションに音量スライダー** を追加!🎚️ 0% (ミュート) 〜 100% (最大) を 1% 刻みで調整できて、`localStorage` (`rss-tts-volume` キー) に永続化〜🎀 再生中に変更したら新音量で再生し直す挙動 (Web Speech API の `utterance.volume` は途中変更不可なので) 〜🛡️ 純粋関数 `clampTtsVolume` / `parseTtsVolume` を `src/lib/tts-volume.ts` に切り出して TDD 全 11 ケースで網羅 (NaN / Infinity / 範囲外 / 不正型 / 境界値 / 文字列 parse / 全部!)〜📦 `TtsAdapter` interface にも `volume` / `setVolume` を追加して将来の Piper wasm engine (#674) でも同様に音量制御可能な土台に〜✨
 
 ### バグ修正っ

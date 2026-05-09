@@ -7,6 +7,7 @@ import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
 import { isLikelyJapanese } from "../lib/article-utils";
 import { toPlainText } from "../lib/html";
+import { shouldSkipAutoAi } from "../lib/auto-ai-fallback";
 
 export interface ArticleViewShortcutsDeps {
   article: Article | null;
@@ -22,6 +23,21 @@ export interface ArticleViewShortcutsDeps {
   autoTranslate: boolean;
   /** #695: Built-In AI が利用できる環境では自動要約。autoTranslate と同じトリガーパターン */
   autoSummarize: boolean;
+  /**
+   * #700: ON ならブラウザネイティブ AI が使えないとき auto-translate / auto-summarize を skip。
+   * Workers AI へのフォールバックを発動させたくない場合に使う。
+   */
+  autoAiBrowserOnly: boolean;
+  /**
+   * #700: ブラウザ Translator の利用可否 (`null` は診断中)。
+   * `autoAiBrowserOnly=true` のとき auto-translate skip 判定に使う。
+   */
+  translatorAvailable: boolean | null;
+  /**
+   * #700: ブラウザ Summarizer の利用可否 (`null` は診断中)。
+   * `autoAiBrowserOnly=true` のとき auto-summarize skip 判定に使う。
+   */
+  summarizerAvailable: boolean | null;
   translateResult: AiOperationResult | null;
   translateLoading: boolean;
 }
@@ -40,6 +56,9 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     mainRef,
     autoTranslate,
     autoSummarize,
+    autoAiBrowserOnly,
+    translatorAvailable,
+    summarizerAvailable,
     translateResult,
     translateLoading,
   } = deps;
@@ -96,6 +115,8 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
       return;
     if (autoTranslateTriggered.current === article.id) return;
     if (isLikelyJapanese(toPlainText(storedContent).slice(0, 200))) return;
+    // #700: ブラウザ翻訳が使えなくて Workers AI フォールバックを避けたい場合は skip
+    if (shouldSkipAutoAi(translatorAvailable, autoAiBrowserOnly)) return;
     autoTranslateTriggered.current = article.id;
     handleTranslate();
   }, [
@@ -105,6 +126,8 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     translateResult,
     translateLoading,
     handleTranslate,
+    autoAiBrowserOnly,
+    translatorAvailable,
   ]);
 
   // 自動要約 (#695): autoTranslate と同じトリガーパターン。
@@ -115,7 +138,19 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     if (!autoSummarize || !article?.id || !article.link || !storedContent) return;
     if (aiResult || aiLoading) return;
     if (autoSummarizeTriggered.current === article.id) return;
+    // #700: ブラウザ要約が使えなくて Workers AI フォールバックを避けたい場合は skip
+    if (shouldSkipAutoAi(summarizerAvailable, autoAiBrowserOnly)) return;
     autoSummarizeTriggered.current = article.id;
     doRunAi(article.link, article.id);
-  }, [autoSummarize, article?.id, article?.link, storedContent, aiResult, aiLoading, doRunAi]);
+  }, [
+    autoSummarize,
+    article?.id,
+    article?.link,
+    storedContent,
+    aiResult,
+    aiLoading,
+    doRunAi,
+    autoAiBrowserOnly,
+    summarizerAvailable,
+  ]);
 }

@@ -17,6 +17,7 @@ import { useSelectionExclude } from "../components/article-view/SelectionExclude
 import { useArticleViewContent } from "./useArticleViewContent";
 import { useArticleViewTts } from "./useArticleViewTts";
 import { useArticleViewShortcuts } from "./useArticleViewShortcuts";
+import { useBrowserAiAvailability } from "./useBrowserAiAvailability";
 import { useArticleViewProgress } from "./useArticleViewProgress";
 import { useTtsHighlight } from "./useTtsHighlight";
 
@@ -56,6 +57,7 @@ export function useArticleViewState({
     autoReadThreshold,
     autoTranslate,
     autoSummarize,
+    autoAiBrowserOnly,
     contentWidth,
     imageDlFolder,
     imageDlFolderNsfw,
@@ -197,6 +199,9 @@ export function useArticleViewState({
   }, [autoTranslate, storedContent, translateResult, translateError]);
 
   // --- Keyboard shortcuts + auto-translate + auto-summarize ---
+  // #700: ブラウザネイティブ AI の利用可否を mount 時に診断 (auto-trigger 判定用)
+  const { translatorAvailable, summarizerAvailable } = useBrowserAiAvailability();
+
   useArticleViewShortcuts({
     article,
     storedContent,
@@ -210,6 +215,9 @@ export function useArticleViewState({
     mainRef,
     autoTranslate,
     autoSummarize,
+    autoAiBrowserOnly,
+    translatorAvailable,
+    summarizerAvailable,
     translateResult,
     translateLoading,
   });
