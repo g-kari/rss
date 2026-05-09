@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### リファクタリングっ
+
+- **シェアターゲット起動ロジックを純粋関数に集約したよ〜 (simplify 監査 Issue 1)** — `ArticleHeaderShare.tsx` と `ShareMenu.tsx` に「`clipboardText` 有り → copy → open / 無し → 直接 open」の同じ条件分岐 + 5〜10 行のフローが両方に書かれてたから、`triggerShareTarget(target, link, title): Promise<{copied}>` を `shareTargets.ts` に新設して 2 consumer から呼び出す形に統合〜🎀 ShareMenu の `openShareWindow` dead code も削除!🧹 TDD 3 ケース (clipboard 成功 / 失敗 / clipboardText なし) で挙動保証〜🛡️
+
 ### バグ修正っ
 
 - **オートモードで本文取得が即 abort されて読み上げ起動しないバグを修正したよ〜 (#678 真因確定)** — `useArticleContent` の `useEffect[articleId]` が **子 (AutoReadController) → 親 (useArticleContent)** の effect 発火順のせいで、AutoReadController が effect(1) で起動した新しい fetch を直後に abort してしまう深刻なバグを発見!💥 ユーザーログ提供で `articleId-effect-fired` が `hadController: true` で 2 回目発火している経路が確定〜🔍 **fetchAbortControllerRef に articleId を併記** して「自身と同じ articleId 用の controller は abort しない」(= 古い articleId 用のみ abort) 設計に変更!💡 これでオートモード遷移時に新 fetch が完走 → 全文取得 → 全文 TTS 読み上げが正常動作するよ〜🚀

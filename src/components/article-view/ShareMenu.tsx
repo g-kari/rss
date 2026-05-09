@@ -9,7 +9,7 @@ import { articleToMarkdown } from "../../lib/html-to-markdown";
 import { buildObsidianUri } from "../../lib/obsidian";
 import { isAbortError } from "../../lib/fetch";
 import { MENU_ITEM_CLS } from "./constants";
-import { SHARE_TARGETS } from "./shareTargets";
+import { SHARE_TARGETS, triggerShareTarget } from "./shareTargets";
 
 interface Props {
   article: Article;
@@ -21,11 +21,6 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
   const toast = useToast();
   const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
-
-  function openShareWindow(url: string) {
-    setOpen(false);
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
 
   function copyText(text: string, successMsg: string) {
     setOpen(false);
@@ -110,25 +105,16 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                   key={target.id}
                   role="menuitem"
                   onClick={() => {
-                    if (target.clipboardText) {
-                      const text = target.clipboardText(article.link!, article.title);
-                      setOpen(false);
-                      navigator.clipboard
-                        .writeText(text)
-                        .then(() => {
+                    setOpen(false);
+                    triggerShareTarget(target, article.link!, article.title)
+                      .then((r) => {
+                        if (r.copied) {
                           toast.success(
                             `コピーしました。${target.label.replace("で共有", "")}を開きます`,
                           );
-                          window.open(
-                            target.buildUrl(article.link!, article.title),
-                            "_blank",
-                            "noopener,noreferrer",
-                          );
-                        })
-                        .catch(() => toast.error("コピーに失敗しました"));
-                    } else {
-                      openShareWindow(target.buildUrl(article.link!, article.title));
-                    }
+                        }
+                      })
+                      .catch(() => toast.error("コピーに失敗しました"));
                   }}
                   className={MENU_ITEM_CLS}
                 >
