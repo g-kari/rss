@@ -336,6 +336,7 @@ src/
     browser-summarizer.ts    # ブラウザネイティブ要約 API（Summarizer）の利用可否判定・要約実行
     translate-html.ts        # HTML DOM 内の翻訳対象テキスト抽出・翻訳適用
     tts-text.ts              # TTS 読み上げ用テキスト前処理純粋関数（URL を「リンク」に置換）
+    tts-voice.ts             # TTS 音声選択純粋関数（selectTtsVoice / groupVoicesByLang — Web Speech API voice 列挙の優先順位・言語別グループ化）
     popup-lock.ts            # 同時に開けるブラウザポップアップ数を制限するクライアントサイドロック
     dbsc.ts                  # Device Bound Session Credentials (DBSC) ユーティリティ — 機能検出・チャレンジ生成・ヘッダービルダー (スケルトン)
     serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
@@ -686,6 +687,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `gallery-prefetch.spec.ts`            | `src/lib/gallery-prefetch.ts` — `buildArticlesKey` 純粋関数（visible 拡張で確実にキー変化）                                             |
 | `gallery-display.spec.ts`             | `src/lib/gallery-display.ts` — `selectGalleryImages` 純粋関数（prefetched / thumb / none の 3 分岐選択）                                |
 | `abort-error.spec.ts`                 | `src/lib/fetch.ts#isAbortError` — DOMException AbortError / Error name="AbortError" / 非 abort error の判別 (#625 後追い)               |
+| `tts-voice.spec.ts`                   | `src/lib/tts-voice.ts` — `selectTtsVoice` / `groupVoicesByLang` 純粋関数（voice 選択優先順位・言語別グループ化）                        |
 | `download-history.spec.ts`            | `src/lib/download-history.ts` — 画像 DL 履歴の FIFO 管理純粋関数                                                                        |
 | `reader-settings.spec.ts`             | `src/lib/reader-settings.ts` — リーダー設定バリデーション                                                                               |
 | `reading-progress.spec.ts`            | `src/lib/reading-progress.ts` — 読書進捗計算                                                                                            |

@@ -129,6 +129,9 @@ function ArticleView({
     ttsPaused,
     ttsRate,
     ttsCycleRate,
+    ttsVoices,
+    ttsVoiceUri,
+    setTtsVoiceUri,
     handleTtsToggle,
     ttsSpeak,
     ttsStop,
@@ -222,6 +225,9 @@ function ArticleView({
           ttsPaused={ttsPaused}
           ttsRate={ttsRate}
           ttsCycleRate={ttsCycleRate}
+          ttsVoices={ttsVoices}
+          ttsVoiceUri={ttsVoiceUri}
+          setTtsVoiceUri={setTtsVoiceUri}
           onTtsToggle={handleTtsToggle}
           autoMode={autoMode}
           onToggleAutoMode={onToggleAutoMode ?? (() => {})}

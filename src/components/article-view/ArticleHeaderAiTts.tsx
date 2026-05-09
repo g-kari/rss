@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import type { Article } from "../../types";
 import type { AiOperationResult } from "../../hooks/useArticleAi";
+import { groupVoicesByLang } from "../../lib/tts-voice";
 import Spinner from "../Spinner";
 import { DownloadIcon } from "./icons";
 
@@ -27,6 +28,12 @@ interface Props {
   ttsPaused: boolean;
   ttsRate: number;
   ttsCycleRate: () => void;
+  /** Web Speech API から列挙された全 voice (#654) */
+  ttsVoices: SpeechSynthesisVoice[];
+  /** 現在ユーザーが選択している voice URI (null=自動選択) */
+  ttsVoiceUri: string | null;
+  /** voice を切り替える (null で自動選択に戻す) */
+  setTtsVoiceUri: (uri: string | null) => void;
   onTtsToggle: () => void;
   autoMode: boolean;
   onToggleAutoMode: () => void;
@@ -60,6 +67,9 @@ export default function ArticleHeaderAiTts({
   ttsPaused,
   ttsRate,
   ttsCycleRate,
+  ttsVoices,
+  ttsVoiceUri,
+  setTtsVoiceUri,
   onTtsToggle,
   autoMode,
   onToggleAutoMode,
@@ -67,6 +77,9 @@ export default function ArticleHeaderAiTts({
   downloadingImages,
   imageDownloadProgress,
 }: Props) {
+  // #654: 記事言語ヒント (article 上に lang プロパティはないので document.documentElement.lang から)
+  const docLang = typeof document !== "undefined" ? document.documentElement.lang || null : null;
+  const voiceGroups = useMemo(() => groupVoicesByLang(ttsVoices, docLang), [ttsVoices, docLang]);
   return (
     <>
       {hasContent && (
@@ -220,6 +233,27 @@ export default function ArticleHeaderAiTts({
         >
           {`${ttsRate}x`}
         </button>
+      )}
+
+      {ttsSupported && hasContent && ttsVoices.length > 0 && (
+        <select
+          value={ttsVoiceUri ?? ""}
+          onChange={(e) => setTtsVoiceUri(e.target.value || null)}
+          title="読み上げ音声を選択（自動：記事の言語に合わせて選びます）"
+          aria-label="読み上げ音声"
+          className="text-[10px] bg-transparent border border-border-default rounded px-1 py-0.5 text-text-muted hover:border-text-muted hover:text-text-default transition-colors duration-200 max-w-[120px] truncate"
+        >
+          <option value="">自動</option>
+          {voiceGroups.map((group) => (
+            <optgroup key={group.lang} label={group.lang.toUpperCase()}>
+              {group.voices.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  {v.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
       )}
     </>
   );
