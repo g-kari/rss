@@ -394,6 +394,99 @@ App.tsx / レイアウトコンポーネントで、**同形の wrapper JSX** (`
 
 主な使用箇所: `MobilePane` (App.tsx Step 1o) — 元々 sidebar / list / view 3 ペインに 6 行ラッパーが重複、`aria-hidden` / `inert` の PC 無効化ロジックを集約
 
+### 派生ケース: 子コンポーネントの 30+ props 一括 forwarding は `ComponentProps<typeof Child>` 型継承で受ける
+
+巨大コンポーネントから「子コンポーネント (例: `<ArticleList>`) を ErrorBoundary や Skeleton 分岐と一緒に包んだ薄いラッパー (例: `<AppListPane>`)」を抽出するとき、子コンポーネントが **30+ props を取る** 場合がある。このとき **props を 1 つずつ手動で再宣言すると drift しやすい** (子の props が増えたら親も毎回追従修正が必要)。
+
+```tsx
+// アンチパターン: ArticleList の Props を手動で再宣言 → 子の prop 追加で 2 箇所同期更新
+interface AppListPaneProps {
+  feeds: Feed[];
+  readIds: Set<string>;
+  // ... 30 行の prop 宣言
+  duplicateInfo?: Map<string, string[]>;
+  anchorTrigger?: number;
+  // ↑ ArticleList の Props と完全同期しなければならない
+  loadingFeeds: boolean;
+  feedsEmpty: boolean;
+  mobilePane: MobilePaneId;
+  isDesktop: boolean;
+}
+export function AppListPane({ feeds, readIds, /* 30 props 個別 */, ... }) {
+  return <ArticleList feeds={feeds} readIds={readIds} /* 30 props 個別 */ />;
+}
+
+// 修正パターン: ComponentProps<typeof Child> で型継承 + spread 渡し
+interface AppListPaneProps {
+  // 親独自の状態だけ宣言
+  mobilePane: MobilePaneId;
+  isDesktop: boolean;
+  loadingFeeds: boolean;
+  feedsEmpty: boolean;
+  /** 子コンポーネントに丸ごと渡す props */
+  articleListProps: ComponentProps<typeof ArticleList>;
+}
+export function AppListPane({ articleListProps, ... }) {
+  return <ArticleList {...articleListProps} />;
+}
+```
+
+**Why**:
+
+1. **drift 防止**: `ComponentProps<typeof ArticleList>` は子コンポーネントの Props 型を **TypeScript が自動継承** するので、ArticleList の Props 追加・削除に親が自動追従する
+2. **親の責務が明示**: 親独自の状態 (`mobilePane` / `isDesktop` / `loadingFeeds`) と「子に転送するだけ」の状態 (`articleListProps`) が型レベルで分離される
+3. **テスト時の mock が容易**: `articleListProps` を 1 つの object として渡せば良いので、テストで 30 props を個別に与える必要がない
+
+**How to apply**: 「子コンポーネントを薄く包むラッパー」を新設するとき:
+
+1. 子コンポーネントの Props を **個別宣言しない** — 必ず `ComponentProps<typeof Child>` で受ける
+2. 親独自の追加 props (loading 状態 / レイアウト制御等) は `interface` の別フィールドとして宣言
+3. JSX で **spread 渡し** (`<Child {...articleListProps} />`) で全 props を転送
+4. 子コンポーネントが `Props` interface を export していなくても `ComponentProps` は使える (型推論ベース)
+5. ラッパーが特殊属性 (例: MobilePane の `id="main-content"` / `tabIndex={-1}`) を持つなら、それは親の責務として `ComponentProps` 外で固定
+
+主な使用箇所: `AppListPane` (Step 1p) / `AppViewPane` (Step 1q) — `articleListProps: ComponentProps<typeof ArticleList>` / `articleViewProps: ComponentProps<typeof ArticleView>` で 29+30 props を 1 オブジェクトで継承
+
+### 派生ケース: 行数削減ゼロでも「対称性」のための extraction は採用する判断軸
+
+JSX 抽出で **行数が変わらない (or 増える)** ケースでも、以下の条件が揃えば extraction の価値あり:
+
+- **同列の sibling 概念** が 2 つ以上 (例: 3 ペインの sidebar/list/view、4 つの dialog)
+- **片方だけ抽出済** で他方がインラインのまま → 「視覚的不整合 + 認知負荷」
+- 将来も sibling として並列に扱う見込み (機能拡張で同パターンが増える)
+
+```tsx
+// アンチパターン: AppListPane だけ抽出 → AppViewPane (5 行) は inline のまま
+<AppListPane mobilePane={...} isDesktop={...} loadingFeeds={...} ... />
+<MobilePane pane="view" currentPane={mobilePane} isDesktop={isDesktop} as="main">
+  <ErrorBoundary label="記事表示">
+    <ArticleView {...articleViewProps} />
+  </ErrorBoundary>
+</MobilePane>
+// → 「なぜ list だけ component で view は inline なのか?」が読み手に問いを生む
+
+// 修正パターン: 両方 component 化して symmetric に
+<AppListPane mobilePane={...} isDesktop={...} loadingFeeds={...} ... />
+<AppViewPane mobilePane={...} isDesktop={...} articleViewProps={...} />
+```
+
+**Why**:
+
+1. **認知一貫性**: 「sidebar / list / view が同じパターンで書かれている」は読み手にとって理解負荷が低い。片方だけ inline だと「なぜ?」と立ち止まらせる
+2. **将来の拡張に強い**: 例えば 4 ペイン目を追加したくなったとき、symmetric な構造なら新コンポーネントを 1 つ作るだけで済む
+3. **Provider / Boundary 配置の一元化**: ErrorBoundary / Skeleton / Provider のラップは「ペインの責務」として閉じ込められる
+4. **行数削減を絶対視しない**: コード品質 != 行数。symmetry / cohesion が高いほど保守性向上
+
+**How to apply**: extraction 判定で「行数が増えるからやめる」と即決しない:
+
+1. **sibling 概念の数を数える** — 2 つなら微妙、3 つ以上なら強い動機
+2. **既に sibling の片方が抽出済** か — Yes なら symmetry のため抽出推奨
+3. **将来も sibling として並列扱いか** — Yes なら抽出
+4. 上記が複数 Yes なら **行数増減無視で extraction OK**。コミットメッセージに「symmetry のための extraction」を明記して将来の AI/開発者の判断材料にする
+5. JSDoc に「対称となる sibling コンポーネント」をリンクで明示 (例: `AppListPane と対称な薄いラッパー`)
+
+主な使用箇所: `AppViewPane` (Step 1q) — `AppListPane` (Step 1p) との symmetry のため、行数削減ゼロでも extraction を採用
+
 ### 派生ケース: 新機能は「Phase 1: 純粋関数 + TDD」「Phase 2: UI 統合」で分離する
 
 `splitIntoSentences` / `selectActiveCharIndex` / `findSentenceAtCharIndex` のような **データ変換・状態判定ロジック** を含む機能は、UI 統合と切り離して **Phase 1 で純粋関数 + TDD だけ commit** する。Phase 2 で React hook + DOM 操作 + CSS を統合する。
