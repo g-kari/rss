@@ -14,6 +14,7 @@ import FocusModeOverlay from "./components/FocusModeOverlay";
 import ArticleDetailOverlay from "./components/ArticleDetailOverlay";
 import ColumnResizeHandles from "./components/ColumnResizeHandles";
 import FocusModeExitButton from "./components/FocusModeExitButton";
+import A11yHelpers from "./components/A11yHelpers";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { useFeedGroups } from "./hooks/useFeedGroups";
@@ -735,17 +736,7 @@ export default function App() {
               listWidth={listWidth}
               listFocusMode={listFocusMode}
             >
-              {/* skip-to-content: Tab キーでフォーカス時のみ表示。サイドバーをスキップして記事一覧へ */}
-              <a
-                href="#main-content"
-                className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-3 focus:py-1.5 focus:rounded-md focus:bg-surface-elevated focus:text-text-strong focus:text-[13px] focus:shadow-lg focus:border focus:border-border-default focus:outline-none"
-              >
-                記事一覧へスキップ
-              </a>
-              {/* スクリーンリーダー向け: キーボードナビで記事切り替え時にタイトルをアナウンス */}
-              <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-                {articleAnnouncement}
-              </div>
+              <A11yHelpers announcement={articleAnnouncement} />
               <OfflineBanner isOnline={isOnline} hasPendingChanges={hasPendingChanges} />
 
               <ToastContainer />
