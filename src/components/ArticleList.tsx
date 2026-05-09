@@ -125,8 +125,13 @@ function ArticleList({
     likeOnly,
     noteOnly,
   } = useArticleFilter();
-  const { galleryColumns, galleryCardSize, galleryMinImagePx, autoReadEnabled } =
-    useReaderSettings();
+  const {
+    galleryColumns,
+    galleryColumnsFocus,
+    galleryCardSize,
+    galleryMinImagePx,
+    autoReadEnabled,
+  } = useReaderSettings();
 
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f])), [feeds]);
   const showFeedName = selectedFeedId === null || selectedFeedId === SPECIAL_FEED_IDS.BOOKMARKS;
@@ -476,6 +481,7 @@ function ArticleList({
               scrollElement={scrollEl}
               galleryCardSize={galleryCardSize}
               galleryColumns={galleryColumns}
+              galleryColumnsFocus={galleryColumnsFocus}
               listFocusMode={listFocusMode}
               contextValue={galleryCtxValue}
             />

@@ -43,6 +43,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     toggleAutoTranslate,
     galleryColumns,
     onChangeGalleryColumns,
+    galleryColumnsFocus,
+    onChangeGalleryColumnsFocus,
     galleryCardSize,
     onChangeGalleryCardSize,
     galleryMinImagePx,
@@ -117,6 +119,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
         onChangeTextJustify={onChangeTextJustify}
         galleryColumns={galleryColumns}
         onChangeGalleryColumns={onChangeGalleryColumns}
+        galleryColumnsFocus={galleryColumnsFocus}
+        onChangeGalleryColumnsFocus={onChangeGalleryColumnsFocus}
         galleryCardSize={galleryCardSize}
         onChangeGalleryCardSize={onChangeGalleryCardSize}
         galleryMinImagePx={galleryMinImagePx}

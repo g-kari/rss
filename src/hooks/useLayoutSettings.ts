@@ -28,6 +28,12 @@ const loadFontFamily = () =>
   loadStoredEnum(STORAGE_KEYS.FONT_FAMILY, FONT_FAMILY_CYCLE, "sans" as FontFamily);
 const loadGalleryColumns = () =>
   loadStoredEnum(STORAGE_KEYS.GALLERY_COLUMNS, GALLERY_COLUMNS_CYCLE, "auto" as GalleryColumns);
+const loadGalleryColumnsFocus = () =>
+  loadStoredEnum(
+    STORAGE_KEYS.GALLERY_COLUMNS_FOCUS,
+    GALLERY_COLUMNS_CYCLE,
+    "auto" as GalleryColumns,
+  );
 const loadGalleryCardSize = () =>
   loadStoredEnum(
     STORAGE_KEYS.GALLERY_CARD_SIZE,
@@ -63,6 +69,10 @@ export function useLayoutSettings() {
   const [galleryColumns, onChangeGalleryColumns] = useStoredSetting<GalleryColumns>(
     loadGalleryColumns,
     STORAGE_KEYS.GALLERY_COLUMNS,
+  );
+  const [galleryColumnsFocus, onChangeGalleryColumnsFocus] = useStoredSetting<GalleryColumns>(
+    loadGalleryColumnsFocus,
+    STORAGE_KEYS.GALLERY_COLUMNS_FOCUS,
   );
   const [galleryCardSize, onChangeGalleryCardSize] = useStoredSetting<GalleryCardSize>(
     loadGalleryCardSize,
@@ -100,6 +110,8 @@ export function useLayoutSettings() {
     onChangeActiveFeedView,
     galleryColumns,
     onChangeGalleryColumns,
+    galleryColumnsFocus,
+    onChangeGalleryColumnsFocus,
     galleryCardSize,
     onChangeGalleryCardSize,
     galleryMinImagePx,

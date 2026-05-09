@@ -10,6 +10,14 @@
 
 ### バグ修正っ
 
+- **ギャラリーで 1 件の 429 が混入すると他の記事の画像展開も全停止していた問題を直したよ〜** — Issue #665。`usePrefetchGalleryContents` の `onRateLimit` コールバックが `controller.abort()` を呼んで **進行中の全並列 worker を中断** してたの〜🙅‍♀️ おかげで残り未処理記事は処理されないまま終了、しかも abort された fetch は `failedIds` にも入らずリトライボタンすら出ない「空カードで停止」状態に〜😢 修正で `controller.abort()` を削除して、`rateLimited` フラグだけで worker の while 条件で自然停止するように！🛡️ 進行中の fetch は完走、再開は `rateLimitedUntil` リセット時の effect 再実行で処理。404 単独では従来から止まらない設計だったのを再確認〜✨
+
+### 激アツ新機能っ
+
+- **ギャラリービューのフォーカスモード時の列数を独立指定できるようにしたよ〜** — Issue #666。これまで通常時とフォーカスモード時で同じ `galleryColumns` 設定が共有されてて、`auto` のときだけフォーカスでハードコード 6 列固定になってたの〜🤔 新規 `galleryColumnsFocus` 設定を追加して「フォーカス時列数」UI で別途指定可能に！🖼️✨ デフォルトは `"通常と同じ"` (auto) なので既存ユーザーへの動作影響なし。`localStorage` に永続化、9 ファイルに add-only 変更で破壊的変更ゼロ〜📦
+
+### バグ修正っ
+
 - **ギャラリービュで列が偏ったときに次ページが読み込まれない問題を直したよ〜** — Issue #636 追加要件。masonic ギャラリーで列の高さがバラバラだと、最長列の底にある sentinel に届かないと無限スクロールが発火しなくて「画面に空きがあるのに次が来ない」状態になってたの〜🙅‍♀️ `shouldEagerLoad` 純粋関数を新設して、`scrollHeight <= clientHeight` を判定する `isContentShort` フラグも load トリガー条件に追加！📐✨ `ResizeObserver` でスクロールコンテナのサイズ変化も監視するから、masonic レイアウト確定後にも自動で再評価。`MAX_EAGER_LOADS=20` の暴走防止カウンタも維持。TDD 8 ケース追加〜📦
 - **オートモードで概要だけ読み上げて先に進まない問題を直したよ〜** — Issue #663。これまで `hasContent` がサマリ fallback で true になっちゃってて、本文 fetch がトリガーされず TTS だけ即起動してたの〜😱 さらに effect (3) に二重発火防止の ref がなくて、TTS 完了 → 再 speak の無限ループも発生してたよ〜🔁 修正で `hasFullContent`（processedContent 厳格判定）を新設、`shouldStartAutoSpeak` に `canFetch` + `hasFullContent` ゲートを追加！🛡️ `speakTriggeredRef` で同記事の二重 speak も防止。これでフル本文取得 → 全文読み上げ → 次の記事の正常フローが復活〜📖✨ TDD 4 ケース追加で再現テストもバッチリ。
 

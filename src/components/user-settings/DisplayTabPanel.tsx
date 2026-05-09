@@ -9,6 +9,7 @@ import {
   CONTENT_WIDTH_LABELS,
   GALLERY_COLUMNS_CYCLE,
   GALLERY_COLUMNS_LABELS,
+  GALLERY_COLUMNS_FOCUS_LABELS,
   GALLERY_CARD_SIZE_CYCLE,
   GALLERY_CARD_SIZE_LABELS,
   GALLERY_MIN_IMAGE_PX_MIN,
@@ -43,6 +44,8 @@ interface DisplayTabPanelProps {
   // Gallery
   galleryColumns: (typeof GALLERY_COLUMNS_CYCLE)[number];
   onChangeGalleryColumns: (v: (typeof GALLERY_COLUMNS_CYCLE)[number]) => void;
+  galleryColumnsFocus: (typeof GALLERY_COLUMNS_CYCLE)[number];
+  onChangeGalleryColumnsFocus: (v: (typeof GALLERY_COLUMNS_CYCLE)[number]) => void;
   galleryCardSize: (typeof GALLERY_CARD_SIZE_CYCLE)[number];
   onChangeGalleryCardSize: (v: (typeof GALLERY_CARD_SIZE_CYCLE)[number]) => void;
   galleryMinImagePx: number;
@@ -82,6 +85,8 @@ export default function DisplayTabPanel({
   onChangeTextJustify,
   galleryColumns,
   onChangeGalleryColumns,
+  galleryColumnsFocus,
+  onChangeGalleryColumnsFocus,
   galleryCardSize,
   onChangeGalleryCardSize,
   galleryMinImagePx,
@@ -169,6 +174,18 @@ export default function DisplayTabPanel({
             value={galleryColumns}
             onChange={onChangeGalleryColumns}
             ariaLabel="ギャラリー列数"
+          />
+        </SettingRow>
+
+        <SettingRow label="フォーカス時列数">
+          <SegmentGroup
+            options={GALLERY_COLUMNS_CYCLE.map((v) => ({
+              value: v,
+              label: GALLERY_COLUMNS_FOCUS_LABELS[v],
+            }))}
+            value={galleryColumnsFocus}
+            onChange={onChangeGalleryColumnsFocus}
+            ariaLabel="フォーカスモード時のギャラリー列数"
           />
         </SettingRow>
 

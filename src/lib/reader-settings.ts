@@ -76,6 +76,21 @@ export const GALLERY_COLUMNS_LABELS: Record<GalleryColumns, string> = {
   "8": "8",
 };
 
+/**
+ * フォーカスモード時のギャラリー列数ラベル (#666)。
+ * `auto` は「通常列数と同じに追従」を意味する。
+ */
+export const GALLERY_COLUMNS_FOCUS_LABELS: Record<GalleryColumns, string> = {
+  auto: "通常と同じ",
+  "2": "2",
+  "3": "3",
+  "4": "4",
+  "5": "5",
+  "6": "6",
+  "7": "7",
+  "8": "8",
+};
+
 // ===== ギャラリーカードサイズ =====
 
 export type GalleryCardSize = "small" | "medium" | "large" | "xlarge";

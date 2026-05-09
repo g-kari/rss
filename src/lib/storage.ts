@@ -68,6 +68,7 @@ export const STORAGE_KEYS = {
   ACTIVE_FEED_VIEW: "rss-active-feed-view",
   SAVED_SEARCHES: "rss-saved-searches",
   GALLERY_COLUMNS: "rss-gallery-columns",
+  GALLERY_COLUMNS_FOCUS: "rss-gallery-columns-focus",
   GALLERY_CARD_SIZE: "rss-gallery-card-size",
   GALLERY_MIN_IMAGE_FILTER: "rss-gallery-min-image-filter",
   BEACON_OVERFLOW: "rss-beacon-overflow",
