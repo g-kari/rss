@@ -2,6 +2,22 @@
 
 ## 2026-05-09 (latest)
 
+### パフォーマンス改善っ
+
+- **`useArticleViewContent` の `embedInfo` を useMemo で安定化したよ〜 (perf 監査 92% 信頼度)** — `extractEmbedInfo()` が **毎 render ごとに新オブジェクト reference** を返してて、`processedContent` useMemo の deps に直接入ってたから親 re-render の度に **HTML サニタイズパイプライン全体が再実行** されてた状態を発見!💥 TTS state 変化 (100ms 周期 + boundary event) や reader settings 変更で、長記事 (10-50KB HTML) の `processContent` / `wrapSentencesInHtml` / `collectImageUrlsFromHtml` が連鎖再計算 → 主スレッドブロック〜🥲 `useMemo([article?.link])` で安定化!🛡️
+- **TTS 非対応ブラウザでは `wrapSentencesInHtml` を skip するようになったよ〜 (perf 監査 85% 信頼度)** — Web Speech API 非対応ブラウザ (一部 Firefox / Safari 古バージョン等) でも、`useArticleViewContent` が **毎記事 linkedom フル DOM parse + sentence span ラップ** を実行してた!📦 `SPEECH_SUPPORTED` モジュール定数で gate して非対応環境では完全 skip〜🛡️ `ArticleContentBody` は wrappedContent が null のとき processedContent に fallback する既存設計なので影響なし〜🎀
+
+### バグ修正っ
+
+- **`FeedQuickSwitchModal` に focus trap を追加したよ〜 (a11y 監査 88% 信頼度)** — 検索フィールドの「クリアボタン」から Tab を押すと **ダイアログ外へ抜けてしまう** WCAG 2.1.2 違反を発見!💥 Modal.tsx の canonical focus trap pattern (Tab 循環 + Shift+Tab 逆循環) をダイアログ container に追加〜🛡️
+- **`EngagementSegmentButton` に `aria-pressed` を追加したよ〜 (a11y 監査 92% 信頼度)** — 「後で読む / ブックマーク / いいね」3 連トグルボタンが **トグル状態を screen reader に伝えていない** 状態だった!💧 同じ Header 内の `ToggleIconButton` / autoMode ボタンには既に `aria-pressed` があったので、sibling pattern drift パターン〜🎀 WCAG 4.1.2 Name, Role, Value 対応〜📚
+
+### リファクタリングっ
+
+- **`useStoredBoolToggle` 共通 hook を抽出したよ〜 (simplify 監査 88% 信頼度)** — `useAutoReadSettings` に **5 連の同型 `useState + setX(v=>!v) + storageSet` ブロック** が散在してた状態を解消!💡 `src/hooks/useStoredSetting.ts` に `useStoredBoolToggle(load, key, onValue?, offValue?)` を追加して、5 つの toggle (autoRead / autoTranslate / autoSummarize / autoAiBrowserOnly / deduplicateByLink) を **1 行宣言に集約** 〜📦 boolean 永続化エンコーディング ("1"/"0") を変更したいときも 1 箇所修正で済む形〜🛡️
+- **`useLayoutSettings` の `imageDlFolder` を既存 `useStoredSetting` 抽象に統合したよ〜 (simplify 監査 90% 信頼度)** — `useStoredSetting<T extends string>` は元々 `string` も受け付ける設計なのに `imageDlFolder` / `imageDlFolderNsfw` だけ `useState + useCallback + storageSet` の 8 行 inline 実装で残ってた!📦 既存 enum 系設定と挙動・型を揃えて 1 行宣言に統一〜🎀
+- **`assertValidFeedHash` 共通 helper を抽出したよ〜 (simplify 監査 82% 信頼度)** — `feedHash` パスパラメータ検証ガードが **5 つ以上の Route Handler に重複** してて、`purge-content-cache/route.ts` だけメッセージが `"Invalid feed hash"` で他 (`"Invalid feed"`) と乖離してた!💥 `src/lib/api-error.ts` に集約してメッセージも `"Invalid feed"` で統一〜🛡️ `feeds/[id]/route.ts` (DELETE / PATCH 両方)、`refresh / reinfer / purge-content-cache` 全て移行〜📚
+
 ### 激アツ新機能っ
 
 - **「ブラウザ AI のみ使う」トグルで Workers AI への自動フォールバックを抑止できるようになったよ〜 (#700)** — ユーザー設定 → AI・通知タブ に **「ブラウザ AI のみ使う」トグル** を追加!🎀 ON にするとブラウザネイティブ AI (Chrome 翻訳・要約) が使えない記事では **自動翻訳・自動要約を完全 skip** して Workers AI へのフォールバックを発動させない〜🛡️ デフォルト OFF (既存挙動維持) なので影響範囲なし、ON にしたい人だけ恩恵を受けられる設計〜📦 手動の AI / 翻訳ボタンは影響を受けないからユーザーの明示的な選択は尊重される〜✨ 純粋関数 `shouldSkipAutoAi` を `src/lib/auto-ai-fallback.ts` に切り出して TDD 全 4 ケース網羅 (設定 OFF / ON × 利用可 / 不可 / 診断中)〜📚 `useBrowserAiAvailability` hook で mount 時に diagnoseSummarizer/Translator を 1 回だけ呼んで判定する設計〜🎯

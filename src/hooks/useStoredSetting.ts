@@ -17,3 +17,31 @@ export function useStoredSetting<T extends string>(
   );
   return [value, onChange];
 }
+
+/**
+ * boolean トグル設定を localStorage に永続化する hook。
+ *
+ * `useAutoReadSettings` 等で 5+ 箇所に重複していた `useState + setX(v => !v) + storageSet`
+ * パターンを 1 行に集約する。
+ *
+ * @param load - 初期値を localStorage から復元する関数
+ * @param key - localStorage キー
+ * @param onValue - true 時の永続化値（既定 "1"）
+ * @param offValue - false 時の永続化値（既定 "0"）
+ */
+export function useStoredBoolToggle(
+  load: () => boolean,
+  key: string,
+  onValue: string = "1",
+  offValue: string = "0",
+): [boolean, () => void] {
+  const [value, setValue] = useState<boolean>(load);
+  const toggle = useCallback(() => {
+    setValue((v) => {
+      const next = !v;
+      storageSet(key, next ? onValue : offValue);
+      return next;
+    });
+  }, [key, onValue, offValue]);
+  return [value, toggle];
+}

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isValidFeedHash } from "./validation";
 
 /**
  * API エラーレスポンスの共通型。
@@ -27,6 +28,20 @@ export function apiError(
 ): NextResponse {
   const body: ApiError = { error: message, ...opts };
   return NextResponse.json(body, { status });
+}
+
+/**
+ * feedHash パスパラメータの妥当性を検証し、不正なら `INVALID_FEED` エラーレスポンスを返す。
+ * 検証 OK なら `null` を返すので呼び出し側は `if (err) return err;` で扱う。
+ *
+ * 5+ Route Handler (`feeds/[id]/{,refresh,reinfer,purge-content-cache}/route.ts` 等) で
+ * 完全に同じ guard を書いていた重複を解消。エラーメッセージも `"Invalid feed"` で統一。
+ */
+export function assertValidFeedHash(feedHash: string): NextResponse | null {
+  if (!isValidFeedHash(feedHash)) {
+    return apiError("Invalid feed", 400, { code: "INVALID_FEED" });
+  }
+  return null;
 }
 
 // formatError は next/server に依存しないユニットテスト互換性のため serialize-error.ts に置く

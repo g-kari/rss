@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, applyCooldown } from "@/lib/server-auth";
-import { apiError } from "@/lib/api-error";
+import { apiError, assertValidFeedHash } from "@/lib/api-error";
 import {
   readUserSubscriptions,
   readFeedMeta,
@@ -10,7 +10,7 @@ import {
 import { inferFeedFromUrl } from "@/lib/llm-feed-generator";
 import { fetchSingleFeed } from "@/cron/fetch";
 import { reinferCooldownKey } from "@/lib/r2";
-import { isValidFeedHash, MAX_FAILED_SELECTORS } from "@/lib/validation";
+import { MAX_FAILED_SELECTORS } from "@/lib/validation";
 
 const REINFER_COOLDOWN_MS = 60 * 1000; // 60秒
 
@@ -22,9 +22,8 @@ const REINFER_COOLDOWN_MS = 60 * 1000; // 60秒
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  if (!isValidFeedHash(feedHash)) {
-    return apiError("Invalid feed", 400, { code: "INVALID_FEED" });
-  }
+  const validationErr = assertValidFeedHash(feedHash);
+  if (validationErr) return validationErr;
   return withSession(req, async ({ session, env }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     const sub = subs.find((s) => s.feedHash === feedHash);

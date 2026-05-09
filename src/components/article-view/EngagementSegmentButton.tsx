@@ -38,6 +38,7 @@ export default function EngagementSegmentButton({
       onClick={onClick}
       title={title}
       aria-label={ariaLabel}
+      aria-pressed={isActive}
       className={`px-2.5 py-1.5 transition-colors duration-200 [&>svg]:w-[14px] [&>svg]:h-[14px] lg:[&>svg]:w-[12px] lg:[&>svg]:h-[12px] ${
         isActive ? activeClass : `text-text-faint ${inactiveHoverClass} hover:bg-surface-hover`
       }`}

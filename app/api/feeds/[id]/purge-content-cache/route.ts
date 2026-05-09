@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
-import { apiError } from "@/lib/api-error";
+import { apiError, assertValidFeedHash } from "@/lib/api-error";
 import { deleteCfCache } from "@/lib/cache-helper";
 import { buildClipCacheKey, buildContentCacheKey } from "@/lib/fetch-article-content";
 import { readLatestArticles, readArticlePage, readUserSubscriptions } from "@/lib/shared-feed";
-import { isValidFeedHash } from "@/lib/validation";
 
 /**
  * フィード（feedHash）に紐づく全記事の Cloudflare Cache (content + clip) を削除する。
@@ -23,9 +22,8 @@ import { isValidFeedHash } from "@/lib/validation";
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   return withSession(request, async ({ session, env }) => {
     const { id: feedHash } = await params;
-    if (!isValidFeedHash(feedHash)) {
-      return apiError("Invalid feed hash", 400, { code: "INVALID_FEED" });
-    }
+    const validationErr = assertValidFeedHash(feedHash);
+    if (validationErr) return validationErr;
 
     // #691: 購読チェック — 未購読フィードへの purge は 404 で拒否
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);

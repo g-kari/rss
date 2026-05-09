@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, applyCooldown } from "@/lib/server-auth";
-import { apiError } from "@/lib/api-error";
+import { apiError, assertValidFeedHash } from "@/lib/api-error";
 import { fetchSingleFeed } from "@/cron/fetch";
 import { singleFeedRefreshCooldownKey } from "@/lib/r2";
-import { isValidFeedHash } from "@/lib/validation";
 
 const SINGLE_FEED_COOLDOWN_MS = 30 * 1000; // 30秒
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  if (!isValidFeedHash(feedHash)) {
-    return apiError("Invalid feed", 400, { code: "INVALID_FEED" });
-  }
+  const validationErr = assertValidFeedHash(feedHash);
+  if (validationErr) return validationErr;
   return withSession(req, async ({ session, env }) => {
     const limited = await applyCooldown(
       env.RATE_LIMIT,
