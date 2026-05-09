@@ -161,6 +161,7 @@ src/
     FeedAddModal.tsx         # フィード追加ダイアログ（RSS 自動検出・LLM CSS セレクタ推論・Cookie 指定対応）
     BetaRestrictedPage.tsx   # ベータ制限ページ（未許可ユーザー向け表示）
     LandingPage.tsx          # 未ログイン時のランディングページ
+    AppLandingState.tsx      # App.tsx の早期 return パス集約（auth ロード中 / ベータ制限 / 未ログイン）— 関数として呼び出して JSX | null を返す
     OfflineBanner.tsx        # オフライン時の固定バナー（同期待ちインジケーター付き）— App.tsx から分割
     NewArticleBanner.tsx     # 新着記事通知バナー（スクロールトップ・閉じるボタン付き）— App.tsx から分割
     FocusModeOverlay.tsx     # フォーカスモード全画面オーバーレイ（ArticleView ラッパー）— App.tsx から分割
@@ -264,6 +265,14 @@ src/
     useEngagementToggles.ts  # ブックマーク・後で読む・いいねのトグルハンドラー生成（トグルとエンゲージメント記録を統合）
     useHeaderShareTargets.ts # ArticleHeader / UserSettingsModal で使用するシェアターゲット設定フック
     useDigestFeedOrder.ts    # エンゲージメントスコアに基づくフィード表示順リスト（高スコア順 feedHash[]）を返す hook（ダイジェストビュー用）
+    useArticleSelection.ts   # 記事選択ハンドラ + listFocusMode 時の overlay 開閉管理 hook（App.tsx から分割）
+    useSaveArticleUrl.ts     # 任意 URL を /api/articles/save で保存して bookmark / readingList に登録するハンドラ hook（App.tsx から分割）
+    useSnoozeHandler.ts      # スヌーズ実行ハンドラ + 表示用記事タイトル + 次記事自動遷移 hook（App.tsx から分割）
+    useAppModalState.ts      # showHelp / showFeedSwitcher / showSettings の集約 + ?/Escape キーボードショートカット hook（App.tsx から分割）
+    useDocumentTitleBadge.ts # 未読総数 → document.title + favicon バッジ更新の useEffect を切り出した hook（App.tsx から分割）
+    useDesktopMediaQuery.ts  # `(min-width: 1024px)` matchMedia listener を SSR セーフに購読する hook（App.tsx から分割）
+    useApiErrorToast.ts      # apiFetch 経由の通信エラーをトーストに 3 秒スロットルで通知する hook（App.tsx から分割）
+    useOnlineRecoveryToast.ts # オフライン → オンライン復帰時のトースト通知 hook（前回 online 状態を ref で管理。App.tsx から分割）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()

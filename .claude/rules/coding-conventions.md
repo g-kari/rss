@@ -335,6 +335,29 @@ Step 1: render 分岐の関数化
 
 **How to apply**: Step を着手する前に「この Step で扱う対象を 1 つに絞れるか」を判断する。1〜3 個に絞れる場合は最も独立性が高い 1 個から開始し、別 PR に分けて進める。
 
+### 派生ケース: 巨大コンポーネントの hook 抽出は 1 hook ずつ別 commit で進める
+
+App.tsx / 巨大ページコンポーネントから複数の `useEffect` / `useState` / `useCallback` を切り出すリファクタは、**1 hook ずつ別 commit** で進める。8 個まとめて抽出して 1 commit にまとめると、回帰の切り分け不能 + レビュー困難になる。
+
+```
+リファクタ: App.tsx 段階分割
+  ├─ Step 1a: useArticleSelection 抽出   ← typecheck + e2e 通過 → commit
+  ├─ Step 1b: useSaveArticleUrl 抽出     ← typecheck + e2e 通過 → commit
+  ├─ Step 1c: useSnoozeHandler 抽出      ← typecheck + e2e 通過 → commit
+  └─ ... (1 hook ごとに小 commit を積む)
+```
+
+抽出候補の優先順位:
+
+1. **State + Effect が 1 セット** で外部依存が少ないもの (例: `document.title` 更新 effect) — 純粋にコピペで切り出せる
+2. **既存 hook で完結する handler** (例: トースト表示・URL POST) — Props 経由で依存注入すれば切り離せる
+3. **早期 return パス** (loading / unauthenticated) — コンポーネント or 関数として抽出。ただし「TypeScript narrowing が失われる」罠 (本ファイル別節) に注意
+4. **関連する複数の useState を集約した hook** (例: `useAppModalState` で 3 つのモーダル state + キーボードショートカット) — まとめて抽出した方がカプセル化が綺麗
+
+**Why**: 1 hook ずつ commit すれば、後で `git bisect` でバグ commit を 1 hook 単位に絞り込める。8 hook 一括 commit だと「どの抽出で挙動が変わったか」を再調査する手間が爆発する。各 commit で typecheck + e2e を通すと「この hook 抽出時点では動いていた」が確定するため、心理的負担も減る。
+
+**How to apply**: 巨大コンポーネントから抽出する hook を最初に箇条書きで列挙 (4〜10 個程度) → 上記優先順位で 1 個ずつ抽出 → 各 commit で `pnpm run typecheck` 通過を確認 → 8 個程度溜まったら master へ no-ff merge して 1 ブランチを完了させる。
+
 ### 派生ケース: 新機能は「Phase 1: 純粋関数 + TDD」「Phase 2: UI 統合」で分離する
 
 `splitIntoSentences` / `selectActiveCharIndex` / `findSentenceAtCharIndex` のような **データ変換・状態判定ロジック** を含む機能は、UI 統合と切り離して **Phase 1 で純粋関数 + TDD だけ commit** する。Phase 2 で React hook + DOM 操作 + CSS を統合する。
@@ -1011,6 +1034,47 @@ if (chromeVersion !== null && chromeVersion < MIN_SUMMARIZER_CHROME_VERSION) {
 **How to apply**: ブラウザ API のバージョン要件は `MIN_XXX_CHROME_VERSION` 形式で export const 化する。ファイル先頭の jsdoc コメントが「Chrome N+」と述べているなら、その N が定数として実装にも現れているか確認する。UI メッセージの数字もハードコードせず定数を文字列補間する（i18n しない場合でも保守性のため）。
 
 主な使用箇所: `src/lib/browser-summarizer.ts#MIN_SUMMARIZER_CHROME_VERSION` / `src/lib/browser-translator.ts#MIN_TRANSLATOR_CHROME_VERSION`
+
+## 早期 return をコンポーネント / 関数に切り出すと TypeScript narrowing が失われる
+
+巨大コンポーネントの「ロード中 / エラー / 未認証」のような **早期 return パス** をサブコンポーネントや関数に切り出すと、後続のコードで TypeScript narrowing が失われる。呼び出し側で `null` 戻り値を early-return する形に書き換えても、TS の制御フロー解析は呼び出し先関数の戻り値を追跡できないため。
+
+```tsx
+// アンチパターン: 切り出し後 TS が user の non-null narrowing を失う
+function AppLandingState({ user, betaRestricted }: Props) {
+  if (user === undefined) return <Loading />;
+  if (betaRestricted) return <BetaPage />;
+  if (!user) return <LandingPage />;
+  return null;
+}
+
+function App() {
+  const { user, betaRestricted } = useAuth();
+  const landingNode = AppLandingState({ user, betaRestricted });
+  if (landingNode) return landingNode;
+  // ↓ ここで user は依然 UserProfile | null | undefined のまま
+  return <MainUI userId={user.id} />; // TS2322: undefined / null を assign できない
+}
+
+// 修正パターン: landingNode 後に narrowing を再現する明示的なガードを置く
+function App() {
+  const { user, betaRestricted } = useAuth();
+  const landingNode = AppLandingState({ user, betaRestricted });
+  if (landingNode) return landingNode;
+  if (!user) return null; // ← TS narrowing を再導入 (実行時に到達しないが型のために必要)
+  return <MainUI userId={user.id} />; // OK: user は UserProfile に絞り込まれた
+}
+```
+
+**Why**: TypeScript の制御フロー解析は呼び出した関数の **戻り値が non-null かどうか** で呼び出し元の変数を絞り込めない。早期 return を関数に切り出した場合、呼び出し元では「landingNode が null でなければ既に return している」だけしか TS には伝わらず、元の `if (user === undefined) return ...` で得られていた `user: UserProfile` への narrowing は復元されない。
+
+**How to apply**: 早期 return パスをコンポーネント / 関数に切り出すときは、
+
+1. 切り出し前に「**この early-return が narrow していた変数は何か**」を確認する (例: `user`)
+2. 切り出し後、呼び出し元に `if (!targetVar) return null;` のような **TS narrowing 用の明示ガード** を追加する (実行時には早期 return パスで既に弾かれているため到達しないが、型のためだけに残す)
+3. ガード行には `// TS narrowing 用` のような短いコメントを添えて、実行時には冗長に見える理由を明示する
+
+主な使用箇所: `src/components/AppLandingState.tsx` (オーケストレーター呼び出し側で `if (!user) return null;` ガードを併記)
 
 ## 禁止事項
 
