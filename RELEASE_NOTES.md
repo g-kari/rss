@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **Chrome 138+ なのに端末上の要約が使えない問題を修正したよ〜 (#664)** — `Summarizer.availability({ type: "tl;dr" })` でセミコロン入りの非標準値を渡してたから、Chrome の API が **常に `"unavailable"` を返して** 端末上の要約が永遠に使えない状態になってたの〜🥲 公式仕様 (https://developer.chrome.com/docs/ai/summarizer-api) では `type` の有効値は `"tldr"` (セミコロン無し) なので、`SUMMARIZER_OPTIONS` 定数に集約して **`"tldr"` に修正**!💡 これで Chrome 138+ + 22GB 空き + GPU 4GB VRAM (or CPU 16GB RAM 4 コア) を満たす環境では端末上の Summarizer API が正しく動作してコスト・レイテンシが大幅削減されるよ〜🚀 TDD で `SUMMARIZER_OPTIONS.type === "tldr"` をテスト追加して同じセミコロン罠を再発防止!🛡️
+
 ### ドキュメント整備っ
 
 - **`coding-conventions.md` 段階的分割 Step 4 をやったよ〜 (#694 Step 4)** — Step 3 (React Context + 早期return + 子hidden) に続き、Step 4 では ResizeObserver (26行) / AbortController.abort() 伝播範囲 (47行) / useEffect 依存キー罠 slice() (32行) / モード OFF 時副作用停止 (22行) / ブラウザ API 遅延通知ペアパターン (34行) の **5 セクション計 161 行** を `react-patterns.md` へ集約！🎀 各セクション位置に redirect リンクを残して発見性維持〜📚 `coding-conventions.md` は 1299 → 1158 行 (Step 1+2+3+4 累計で **1785 → 1158 / -627 行 / 35% 削減**)、`react-patterns.md` は 525 → 686 行で React/ブラウザ API 関連 16 パターンを集約！残 Step 候補は silent fallback / ブラウザ最低バージョン定数 / 永続化 state TTL の **browser-platform クラスター**(別ファイルに分割するかも判断要)〜📦
