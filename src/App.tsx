@@ -326,6 +326,8 @@ export default function App() {
     setSelectedArticle,
     selectedCollectionId,
     setSelectedCollectionId,
+    selectFeedClearingArticle,
+    clearFeedGroupArticleSelection,
   } = useFeedSelection(articles, feedGroups);
 
   const { snoozeTargetId, setSnoozeTargetId, articleAnnouncement, setArticleAnnouncement } =
@@ -537,11 +539,7 @@ export default function App() {
     setFeedView,
     setDigestLimit,
     onChangeActiveFeedView,
-    setSelectedFeedIdNull: () => {
-      setSelectedFeedId(null);
-      setSelectedGroupId(null);
-      setSelectedArticle(null);
-    },
+    setSelectedFeedIdNull: clearFeedGroupArticleSelection,
     dismissRecommendation,
     refreshRecommendations,
     setSelectedCollectionId,
@@ -584,10 +582,7 @@ export default function App() {
     readingListIds,
     likeIds,
     setSelectedArticle,
-    onSelectFeed: (id) => {
-      setSelectedFeedId(id);
-      setSelectedArticle(null);
-    },
+    onSelectFeed: selectFeedClearingArticle,
     markRead,
     markBulkRead,
     markAllRead: (feedId: string | null) => markAllReadWithUndo(feedId, toast),

@@ -4,6 +4,7 @@
 
 ### リファクタリングっ
 
+- **App.tsx Step 1n: `useFeedSelection` に選択操作 helper 2 種を追加したよ〜 (#650 段階分割)** — App.tsx 内に **同じ意味のインライン lambda** が 2 箇所散在してた状態 (`onSelectFeed: (id) => {setSelectedFeedId(id); setSelectedArticle(null);}` と `setSelectedFeedIdNull: () => {setSelectedFeedId(null); setSelectedGroupId(null); setSelectedArticle(null);}`) を `selectFeedClearingArticle` / `clearFeedGroupArticleSelection` の useCallback として `useFeedSelection` 内部に移動!📦 「選択操作」の責務が同 hook に集約されてアトミック性が明示的に〜🎀 App.tsx は 871 → 866 行 (-5 行)、useCallback 化で render-stability 向上の副次効果も〜🛡️
 - **App.tsx Step 1m: `useTotalUnreadCount` hook を抽出したよ〜 (#650 段階分割)** — 「全記事未読件数を 200ms デバウンス付きで計算」する 7 行のクラスタ (`useDebounce` x2 + `useMemo`) を `src/hooks/useTotalUnreadCount.ts` に集約!📦 App.tsx は 879 → 871 行 (-8 行)、`isArticleRead` / `useDebounce` のインポートも削除できてさらにスッキリ〜🎀 連続した既読操作 (j キー連打) で `articles.filter()` が毎フレーム走るのを抑制するという「未読カウント計算」の単一目的が明示的に〜🛡️
 - **App.tsx Step 1l: `useReaderSettingsValue` hook を抽出したよ〜 (#650 段階分割)** — App.tsx 内に 86 行のインライン `useMemo<ReaderSettings>` (40 フィールド + 同じ deps を 2 回手書き) があったの〜🥲 新フィールド追加時に `useMemo` の戻り値と deps 配列の両方を同期更新する必要があり、ミスりやすかった!💧 `src/hooks/useReaderSettingsValue.ts` (104 行) に集約して、App.tsx は 922 → 879 行 (-43 行) に減量〜📦 `ReaderSettings` 型を入力 props にとって useMemo で安定化する単純構造で、後方互換 100%〜🛡️ Step 1a-1k と同じ「1 hook ずつ別 commit」運用!
 
