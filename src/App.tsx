@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppModals from "./components/AppModals";
 import FeedSidebar from "./components/feed-sidebar";
-import ArticleList from "./components/ArticleList";
+import { AppListPane } from "./components/AppListPane";
 import ArticleView from "./components/ArticleView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
@@ -76,7 +76,6 @@ import { useToastState } from "./hooks/useToast";
 import { AppLandingState } from "./components/AppLandingState";
 
 import SkeletonSidebar from "./components/SkeletonSidebar";
-import SkeletonArticleList from "./components/SkeletonArticleList";
 import { useMobilePane } from "./hooks/useMobilePane";
 import { MobilePane } from "./components/MobilePane";
 
@@ -795,51 +794,42 @@ export default function App() {
                   </ErrorBoundary>
                 )}
               </MobilePane>
-              <MobilePane
-                pane="list"
-                currentPane={mobilePane}
+              <AppListPane
+                mobilePane={mobilePane}
                 isDesktop={isDesktop}
-                id="main-content"
-                tabIndex={-1}
-                className="focus:outline-none"
-              >
-                {loadingFeeds && feeds.length === 0 ? (
-                  <SkeletonArticleList layout={layout} />
-                ) : (
-                  <ErrorBoundary label="記事一覧">
-                    <ArticleList
-                      feeds={feeds}
-                      readIds={readIds}
-                      readBeforeTimestamp={readBeforeTimestamp}
-                      bookmarkIds={bookmarkIds}
-                      readingListIds={readingListIds}
-                      selectedArticleId={selectedArticle?.id ?? null}
-                      selectedFeedId={selectedFeedId}
-                      layout={layout}
-                      loading={loadingArticles}
-                      fetchError={fetchError}
-                      onRetry={retryInitialLoad}
-                      onChangeLayout={onChangeLayout}
-                      onMobileBack={() => setMobilePane("sidebar")}
-                      onSelectArticle={selectArticle}
-                      onToggleRead={toggleRead}
-                      onToggleBookmark={toggleBookmark}
-                      onToggleReadingList={toggleReadingList}
-                      onMarkRead={markRead}
-                      onMarkAllRead={onMarkAllRead}
-                      feedHasMorePages={feedHasMorePages}
-                      onLoadMoreFeedArticles={handleLoadMoreFeedArticles}
-                      notes={notes}
-                      activeFeedView={activeFeedView}
-                      listFocusMode={listFocusMode}
-                      onToggleListFocusMode={toggleListFocusMode}
-                      onGalleryAutoRead={handleGalleryAutoRead}
-                      duplicateInfo={duplicateInfo}
-                      anchorTrigger={anchorTrigger}
-                    />
-                  </ErrorBoundary>
-                )}
-              </MobilePane>
+                loadingFeeds={loadingFeeds}
+                feedsEmpty={feeds.length === 0}
+                articleListProps={{
+                  feeds,
+                  readIds,
+                  readBeforeTimestamp,
+                  bookmarkIds,
+                  readingListIds,
+                  selectedArticleId: selectedArticle?.id ?? null,
+                  selectedFeedId,
+                  layout,
+                  loading: loadingArticles,
+                  fetchError,
+                  onRetry: retryInitialLoad,
+                  onChangeLayout,
+                  onMobileBack: () => setMobilePane("sidebar"),
+                  onSelectArticle: selectArticle,
+                  onToggleRead: toggleRead,
+                  onToggleBookmark: toggleBookmark,
+                  onToggleReadingList: toggleReadingList,
+                  onMarkRead: markRead,
+                  onMarkAllRead,
+                  feedHasMorePages,
+                  onLoadMoreFeedArticles: handleLoadMoreFeedArticles,
+                  notes,
+                  activeFeedView,
+                  listFocusMode,
+                  onToggleListFocusMode: toggleListFocusMode,
+                  onGalleryAutoRead: handleGalleryAutoRead,
+                  duplicateInfo,
+                  anchorTrigger,
+                }}
+              />
               <MobilePane pane="view" currentPane={mobilePane} isDesktop={isDesktop} as="main">
                 <ErrorBoundary label="記事表示">
                   <ArticleView {...articleViewProps} />
