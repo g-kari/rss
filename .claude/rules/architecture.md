@@ -152,6 +152,7 @@ src/
     MobilePane.tsx           # 3 ペイン (sidebar / list / view) 各ペインの mobile スライドラッパー（aria-hidden / inert / transform を集約、App.tsx Step 1o から分割）
     AppListPane.tsx          # 中央ペイン (記事一覧) の MobilePane + Skeleton + ErrorBoundary + ArticleList を集約（App.tsx Step 1p から分割、ArticleList の prop 変化に追従可能な ComponentProps 型継承）
     AppViewPane.tsx          # 右ペイン (記事詳細) の MobilePane (as="main") + ErrorBoundary + ArticleView を集約（App.tsx Step 1q から分割、AppListPane と対称な薄いラッパー）
+    AppSidebarPane.tsx       # 左ペイン (フィードサイドバー) の MobilePane + Skeleton + ErrorBoundary + FeedSidebarProvider + FeedSidebar を集約（App.tsx Step 1r から分割、3 ペイン全てが対称構造に統一）
     FocusModeExitButton.tsx  # 記事一覧フォーカスモード解除ボタン（PC のみ右上に固定表示）— App.tsx から分割
     A11yHelpers.tsx          # アクセシビリティ補助 (skip-to-content link + aria-live announcement region)— App.tsx から分割
     SessionExpiredModal.tsx  # セッション期限切れ時の再ログインモーダルオーバーレイ

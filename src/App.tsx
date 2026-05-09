@@ -3,10 +3,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppModals from "./components/AppModals";
-import FeedSidebar from "./components/feed-sidebar";
+import { AppSidebarPane } from "./components/AppSidebarPane";
 import { AppListPane } from "./components/AppListPane";
 import { AppViewPane } from "./components/AppViewPane";
-import ErrorBoundary from "./components/ErrorBoundary";
 import NSFWEyeAnimation from "./components/NSFWEyeAnimation";
 import OfflineBanner from "./components/OfflineBanner";
 import NewArticleBanner from "./components/NewArticleBanner";
@@ -68,16 +67,13 @@ import { ReaderSettingsProvider } from "./contexts/ReaderSettingsContext";
 import { useReaderSettingsValue } from "./hooks/useReaderSettingsValue";
 import { ArticleFilterProvider, type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { ToastProvider } from "./contexts/ToastContext";
-import { FeedSidebarProvider } from "./contexts/FeedSidebarContext";
 import { TtsAdapterProvider } from "./contexts/TtsAdapterContext";
 import { useSpeechSynthesis } from "./hooks/useSpeechSynthesis";
 import ToastContainer from "./components/ToastContainer";
 import { useToastState } from "./hooks/useToast";
 import { AppLandingState } from "./components/AppLandingState";
 
-import SkeletonSidebar from "./components/SkeletonSidebar";
 import { useMobilePane } from "./hooks/useMobilePane";
-import { MobilePane } from "./components/MobilePane";
 
 export default function App() {
   const searchParams = useSearchParams();
@@ -739,61 +735,58 @@ export default function App() {
                 onResizeStart={handleResizeStart}
                 onResetWidth={resetWidth}
               />
-              <MobilePane pane="sidebar" currentPane={mobilePane} isDesktop={isDesktop}>
-                {loadingFeeds && feeds.length === 0 ? (
-                  <SkeletonSidebar />
-                ) : (
-                  <ErrorBoundary label="サイドバー">
-                    <FeedSidebarProvider value={feedSidebarActions}>
-                      <FeedSidebar
-                        feeds={feeds}
-                        articles={articles}
-                        readIds={readIds}
-                        readBeforeTimestamp={readBeforeTimestamp}
-                        bookmarkCount={bookmarkCount}
-                        readingListCount={readingListCount}
-                        likeCount={likeCount}
-                        historyCount={historyCount}
-                        selectedFeedId={selectedFeedId}
-                        selectedGroupId={selectedGroupId}
-                        user={user}
-                        theme={theme}
-                        selectedTag={selectedTag}
-                        articleTagIds={articleTagIds}
-                        refreshing={refreshing}
-                        loadingFeeds={loadingFeeds}
-                        isOnline={isOnline}
-                        pinnedFeedIds={pinnedFeedIds}
-                        collapsedCategories={collapsedCategories}
-                        nsfwMode={nsfwMode}
-                        feedGroups={feedGroups}
-                        totalUnread={totalUnread}
-                        activeFeedView={activeFeedView}
-                        recommendations={recommendations}
-                        recommendationsLoading={recommendationsLoading}
-                        recommendationsRefreshing={recommendationsRefreshing}
-                        recommendationsError={recommendationsError}
-                        noteCount={Object.keys(notes).length}
-                        collections={collections}
-                        collectionsLoadError={collectionsLoadError}
-                        onRetryCollections={retryCollections}
-                        selectedCollectionId={selectedCollectionId}
-                        install={install}
-                        loadError={feedLoadError ? "フィードの読み込みに失敗しました" : null}
-                        onRetry={retryFeedList}
-                        push={{
-                          supported: pushSupported,
-                          subscribed: pushSubscribed,
-                          loading: pushLoading,
-                          error: pushError,
-                          onToggle: togglePush,
-                          onSendTest: sendPushTest,
-                        }}
-                      />
-                    </FeedSidebarProvider>
-                  </ErrorBoundary>
-                )}
-              </MobilePane>
+              <AppSidebarPane
+                mobilePane={mobilePane}
+                isDesktop={isDesktop}
+                loadingFeeds={loadingFeeds}
+                feedsEmpty={feeds.length === 0}
+                feedSidebarActions={feedSidebarActions}
+                feedSidebarProps={{
+                  feeds,
+                  articles,
+                  readIds,
+                  readBeforeTimestamp,
+                  bookmarkCount,
+                  readingListCount,
+                  likeCount,
+                  historyCount,
+                  selectedFeedId,
+                  selectedGroupId,
+                  user,
+                  theme,
+                  selectedTag,
+                  articleTagIds,
+                  refreshing,
+                  loadingFeeds,
+                  isOnline,
+                  pinnedFeedIds,
+                  collapsedCategories,
+                  nsfwMode,
+                  feedGroups,
+                  totalUnread,
+                  activeFeedView,
+                  recommendations,
+                  recommendationsLoading,
+                  recommendationsRefreshing,
+                  recommendationsError,
+                  noteCount: Object.keys(notes).length,
+                  collections,
+                  collectionsLoadError,
+                  onRetryCollections: retryCollections,
+                  selectedCollectionId,
+                  install,
+                  loadError: feedLoadError ? "フィードの読み込みに失敗しました" : null,
+                  onRetry: retryFeedList,
+                  push: {
+                    supported: pushSupported,
+                    subscribed: pushSubscribed,
+                    loading: pushLoading,
+                    error: pushError,
+                    onToggle: togglePush,
+                    onSendTest: sendPushTest,
+                  },
+                }}
+              />
               <AppListPane
                 mobilePane={mobilePane}
                 isDesktop={isDesktop}
