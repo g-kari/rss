@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import type { Article, EngagementAction } from "../../types";
 import type { EmbedInfo } from "../../lib/embed-utils";
 import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
@@ -24,6 +24,10 @@ interface ArticleContentBodyProps {
   article: Article;
   embedInfo: EmbedInfo | null;
   processedContent: string | null;
+  /** sentence span ラップ済み HTML (#672 Phase 2) — TTS ハイライト時に使用 */
+  wrappedContent?: string | null;
+  /** 現在 active なセンテンス index (#672 Phase 2)。-1 = 非アクティブ */
+  activeSentenceIndex?: number;
   resolvedOgImage: string | null;
   translateResult: AiOperationResult | null;
   translateError: AiError | null;
@@ -51,6 +55,8 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
       article,
       embedInfo,
       processedContent,
+      wrappedContent,
+      activeSentenceIndex = -1,
       resolvedOgImage,
       translateResult,
       translateError,
@@ -72,6 +78,25 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
 
     const { fontSize, fontFamily, lineHeight, textJustify } = useReaderSettings();
     const { query } = useArticleFilter();
+
+    // #672 Phase 2: activeSentenceIndex に応じて DOM の sentence span に
+    // .tts-active-sentence クラスを付け、最初の active span に scrollIntoView
+    useEffect(() => {
+      const root = contentRef.current;
+      if (!root) return;
+      // 旧 active を全削除
+      const previous = root.querySelectorAll<HTMLElement>(".tts-active-sentence");
+      previous.forEach((el) => el.classList.remove("tts-active-sentence"));
+      if (activeSentenceIndex < 0) return;
+      // 新 active を追加 (同センテンスが複数 span に分割されている可能性あり)
+      const next = root.querySelectorAll<HTMLElement>(
+        `[data-tts-sentence-idx="${activeSentenceIndex}"]`,
+      );
+      if (next.length === 0) return;
+      next.forEach((el) => el.classList.add("tts-active-sentence"));
+      // 最初の active span にスクロール (常に追従)
+      next[0].scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, [activeSentenceIndex]);
 
     // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する
     useSliderGallery(contentRef, processedContent);
@@ -302,7 +327,7 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
             className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
             style={getLineHeightStyle(lineHeight)}
             translate="yes"
-            dangerouslySetInnerHTML={{ __html: processedContent }}
+            dangerouslySetInnerHTML={{ __html: wrappedContent ?? processedContent }}
           />
         ) : article.summary ? (
           <p

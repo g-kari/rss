@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, type RefObject } from "react";
 import type { Article } from "../types";
 import { buildTtsText } from "../lib/tts-text";
 import { useSpeechSynthesis } from "./useSpeechSynthesis";
@@ -32,6 +32,10 @@ export function useArticleViewTts(
   article: Article | null,
   processedContent: string | null,
   translatedText?: string | null,
+  /** speak 時に utterance.onboundary に注入する callback の ref (#672 Phase 2) */
+  onBoundaryRef?: RefObject<((charIndex: number) => void) | null>,
+  /** speak 開始時に呼ぶ callback の ref (#672 Phase 2) */
+  onSpeakStartRef?: RefObject<(() => void) | null>,
 ): ArticleViewTtsResult {
   const {
     supported: ttsSupported,
@@ -52,15 +56,33 @@ export function useArticleViewTts(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ttsStop を deps に入れると再生→停止→再生のループが発生する
   }, [article?.id]);
 
+  // speak をハイライト連携 (boundary + speak 開始通知) で wrap する (#672 Phase 2)
+  const speakWithHighlight = useCallback(
+    (text: string) => {
+      onSpeakStartRef?.current?.();
+      const onBoundary = onBoundaryRef?.current ?? undefined;
+      speak(text, onBoundary);
+    },
+    [speak, onBoundaryRef, onSpeakStartRef],
+  );
+
   const handleTtsToggle = useCallback(() => {
     if (ttsPlaying || ttsPaused) {
       ttsStop();
     } else {
       if (!article) return;
       const text = buildTtsText(article, processedContent, translatedText);
-      if (text.trim()) speak(text);
+      if (text.trim()) speakWithHighlight(text);
     }
-  }, [ttsPlaying, ttsPaused, ttsStop, speak, article, processedContent, translatedText]);
+  }, [
+    ttsPlaying,
+    ttsPaused,
+    ttsStop,
+    speakWithHighlight,
+    article,
+    processedContent,
+    translatedText,
+  ]);
 
   // Shift+P キーボードショートカット
   useEventListener(
@@ -84,7 +106,7 @@ export function useArticleViewTts(
     ttsVoiceUri,
     setTtsVoiceUri,
     handleTtsToggle,
-    ttsSpeak: speak,
+    ttsSpeak: speakWithHighlight,
     ttsStop,
     buildTtsText,
   };

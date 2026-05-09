@@ -6,12 +6,18 @@ import type { Theme } from "./useThemePreference";
 import { readingTime } from "../lib/article-utils";
 import { collectImageUrlsFromHtml } from "../lib/image-extractor";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
+import { wrapSentencesInHtml } from "../lib/tts-dom";
+import type { Sentence } from "../lib/tts-sentences";
 
 const SHORT_CONTENT_THRESHOLD = 400;
 
 export interface ArticleViewContentResult {
   embedInfo: ReturnType<typeof extractEmbedInfo>;
   processedContent: string | null;
+  /** sentence span でラップされた HTML — TTS ハイライトに使用 (#672 Phase 2) */
+  wrappedContent: string | null;
+  /** wrappedContent 内の data-tts-sentence-idx 順の sentence 配列 */
+  ttsSentences: Sentence[];
   galleryImages: string[];
   canFetch: boolean;
   /** サマリ含む「描画可能なコンテンツがあるか」（AI/TTS ボタン表示判定など UI 用） */
@@ -46,6 +52,15 @@ export function useArticleViewContent(
     [processedContent],
   );
 
+  // #672 Phase 2: TTS ハイライト用にセンテンス span でラップした HTML と sentence 配列
+  const { html: wrappedContent, sentences: ttsSentences } = useMemo(
+    () =>
+      processedContent
+        ? wrapSentencesInHtml(processedContent)
+        : { html: null as string | null, sentences: [] },
+    [processedContent],
+  );
+
   const isShortContent = !article?.content || article.content.length < SHORT_CONTENT_THRESHOLD;
   const canFetch = !embedInfo && !!article?.link && isShortContent && !storedContent;
   const hasContent = !!(processedContent || article?.summary);
@@ -62,6 +77,8 @@ export function useArticleViewContent(
   return {
     embedInfo,
     processedContent,
+    wrappedContent,
+    ttsSentences,
     galleryImages,
     canFetch,
     hasContent,

@@ -158,6 +158,8 @@ function ArticleView({
     cancelDownload,
     embedInfo,
     processedContent,
+    wrappedContent,
+    activeSentenceIndex,
     galleryImages,
     canFetch,
     hasContent,
@@ -286,6 +288,8 @@ function ArticleView({
           article={article}
           embedInfo={embedInfo}
           processedContent={processedContent}
+          wrappedContent={wrappedContent}
+          activeSentenceIndex={activeSentenceIndex}
           resolvedOgImage={resolvedOgImage}
           translateResult={translateResult}
           translateError={translateError}

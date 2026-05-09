@@ -184,6 +184,15 @@ body {
   overflow-wrap: break-word;
   word-break: break-word;
 }
+
+/* #672 Phase 2: TTS 読み上げ中のセンテンスハイライト */
+.article-content [data-tts-sentence-idx] {
+  transition: background-color 200ms ease;
+}
+.article-content .tts-active-sentence {
+  background-color: var(--color-surface-subtle);
+  border-radius: 2px;
+}
 .article-content p {
   margin-bottom: 1.25em;
 }
