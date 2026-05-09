@@ -214,4 +214,65 @@ test.describe("shouldStartAutoSpeak", () => {
       }),
     ).toBe(false);
   });
+
+  // #663: サマリ fallback による早期 speak 起動の防止
+  test("canFetch=true かつ hasFullContent=false なら start しない（fetch 完了待ち）", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+        canFetch: true,
+        hasFullContent: false,
+      }),
+    ).toBe(false);
+  });
+
+  test("canFetch=true かつ hasFullContent=true なら start する（fetch 完了済み）", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+        canFetch: true,
+        hasFullContent: true,
+      }),
+    ).toBe(true);
+  });
+
+  test("canFetch=false ならサマリだけでも start する（fetch 不要な記事）", () => {
+    expect(
+      shouldStartAutoSpeak({
+        enabled: true,
+        ttsSupported: true,
+        ttsPlaying: false,
+        ttsPaused: false,
+        fetching: false,
+        hasText: true,
+        canFetch: false,
+        hasFullContent: false,
+      }),
+    ).toBe(true);
+  });
+});
+
+// #663: shouldTriggerAutoFetch は「フル本文取得済み」基準で判定する。
+// hasContent がサマリ fallback で true になっても fetch をトリガーすべき。
+test.describe("shouldTriggerAutoFetch — hasContent 厳格化 (#663)", () => {
+  test("サマリのみ存在 (hasContent=false) で canFetch=true なら trigger する", () => {
+    expect(
+      shouldTriggerAutoFetch({
+        enabled: true,
+        canFetch: true,
+        fetching: false,
+        hasContent: false,
+      }),
+    ).toBe(true);
+  });
 });

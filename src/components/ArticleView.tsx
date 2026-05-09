@@ -156,6 +156,7 @@ function ArticleView({
     galleryImages,
     canFetch,
     hasContent,
+    hasFullContent,
     hasImages,
     readingMins,
     handleScroll,
@@ -336,7 +337,7 @@ function ArticleView({
         ttsPaused={ttsPaused}
         fetching={fetching}
         fetchError={fetchError}
-        hasContent={hasContent}
+        hasFullContent={hasFullContent}
         canFetch={canFetch}
         ttsText={buildTtsText(article, processedContent)}
         onSpeak={ttsSpeak}

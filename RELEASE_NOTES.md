@@ -10,6 +10,7 @@
 
 ### バグ修正っ
 
+- **オートモードで概要だけ読み上げて先に進まない問題を直したよ〜** — Issue #663。これまで `hasContent` がサマリ fallback で true になっちゃってて、本文 fetch がトリガーされず TTS だけ即起動してたの〜😱 さらに effect (3) に二重発火防止の ref がなくて、TTS 完了 → 再 speak の無限ループも発生してたよ〜🔁 修正で `hasFullContent`（processedContent 厳格判定）を新設、`shouldStartAutoSpeak` に `canFetch` + `hasFullContent` ゲートを追加！🛡️ `speakTriggeredRef` で同記事の二重 speak も防止。これでフル本文取得 → 全文読み上げ → 次の記事の正常フローが復活〜📖✨ TDD 4 ケース追加で再現テストもバッチリ。
 - **画像プロキシのレートリミット (120 req/分) を撤廃したよ〜** — Issue #649 案 A。これまで画像プロキシに KV 経由のスライディングウィンドウ制限があったけど、Cache HIT の高速化メリットを実質ゼロにしてて画像表示体験を妨げてたの〜🐌 案 A (廃止) を採用！🚀 SSRF・同一オリジン・MIME 検証の防御層は据え置きで、`imageProxyRateLimitKey` / `IMAGE_PROXY_MAX_CALLS` / `IMAGE_PROXY_WINDOW_MS` を削除。Cache MISS 時の遅延もこれで KV 分が消えるよ〜⚡
 
 ### 環境堅牢化っ

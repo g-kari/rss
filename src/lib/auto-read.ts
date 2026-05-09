@@ -61,14 +61,34 @@ export interface AutoReadSpeakTriggerState {
   fetching: boolean;
   /** 読み上げ対象テキストの有無 */
   hasText: boolean;
+  /**
+   * 全文取得トリガー対象の記事か (`useArticleViewContent.canFetch`)。
+   * `true` の場合は `hasFullContent` が揃うまで TTS を待つ (#663)。
+   */
+  canFetch?: boolean;
+  /**
+   * 全文コンテンツ (`processedContent`) が取得済みか。
+   * サマリは含めない厳格判定 (#663)。
+   */
+  hasFullContent?: boolean;
 }
 
 /**
  * オートモード中、TTS speak を開始すべきかを判定する。
+ *
+ * #663: `canFetch=true` の記事は **全文取得が完了するまで** speak しない。
+ * 従来は `hasText` だけで判定していたため、`buildTtsText` がサマリを
+ * fallback で返すと「概要のみ読み上げ」が発生していた。
+ *
+ * `canFetch=false` の記事 (埋め込みコンテンツ・既に長い本文を持つ記事) は
+ * 元々 fetch 対象外なので、サマリ fallback でも speak を開始してよい。
  */
 export function shouldStartAutoSpeak(state: AutoReadSpeakTriggerState): boolean {
   if (!state.enabled || !state.ttsSupported) return false;
   if (state.ttsPlaying || state.ttsPaused) return false;
   if (state.fetching) return false;
-  return state.hasText;
+  if (!state.hasText) return false;
+  // canFetch 対象記事はフル本文が揃うまで待つ（サマリ fallback による誤発火防止）
+  if (state.canFetch && !state.hasFullContent) return false;
+  return true;
 }
