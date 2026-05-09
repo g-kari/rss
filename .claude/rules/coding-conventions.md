@@ -654,21 +654,7 @@ const { images, source } = selectGalleryImages(prefetched, thumb);
 
 ## 上流 API プロキシのヘッダ欠落補完
 
-`/api/content` のように上流 HTTP レスポンスを中継する route で、上流が必須ヘッダ（`Retry-After`, `Content-Type` 等）を欠落させた場合に備えて、デフォルト値を補完する。
-
-```typescript
-// アンチパターン: 上流に Retry-After がないと undefined になる
-const retryAfterHeader = res.headers.get("Retry-After");
-if (retryAfterHeader) headers["Retry-After"] = retryAfterHeader;
-
-// 修正パターン: デフォルト値を補完
-const retryAfterHeader = res.headers.get("Retry-After") ?? "60";
-headers["Retry-After"] = retryAfterHeader;
-```
-
-**Why**: 一部の上流サイト (wallhaven.cc 等) は 429 を `Retry-After` なしで返してくる。クライアント側の retry-after.ts が遅延時間を判定できず即時リトライ → 再 429 の連鎖になるため、プロキシ層で必ず補完する。
-
-**How to apply**: 外部 HTTP レスポンスを中継する Route Handler で、クライアント側 (retry-after.ts 等) が依存しているヘッダがあれば補完を必ず入れる。
+→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割)
 
 ## 読み取り状態のマージ戦略 (`useReadState`)
 
@@ -736,100 +722,11 @@ test("正常ケース", () => {
 
 ## silent fallback の禁止 — `try/catch → null` には必ず `devError` を添える
 
-外部依存 (Web API・ブラウザネイティブ AI・サードパーティ fetch) のラッパーで「失敗時はサーバー fallback」をしたいとき、`try/catch` で例外を `null` に変換するパターンが頻出する。これ自体は正しいが、**catch ブロックでログを出さないとユーザーから「動かないけど何も表示されない」「ブラウザ DevTools にも何も出ない」状態が生まれ、原因特定不可になる**。
-
-```typescript
-// アンチパターン: 失敗の理由が一切表に出ない
-export async function summarizeInBrowser(text: string): Promise<string | null> {
-  try {
-    const summarizer = await globalThis.Summarizer.create({
-      /* ... */
-    });
-    return await summarizer.summarize(text);
-  } catch {
-    return null; // ← 何が起きたか開発者にもユーザーにも分からない
-  }
-}
-
-// 修正パターン: devError で開発時に DevTools に出す
-import { devError } from "./dev-log";
-
-export async function summarizeInBrowser(text: string): Promise<string | null> {
-  try {
-    // 前提条件チェックも個別に warn する
-    if (availability === "downloadable" && !hasUserActivation()) {
-      devError("[browser-summarizer] requires user activation — falling back");
-      return null;
-    }
-    return await summarizer.summarize(text);
-  } catch (err) {
-    devError("[browser-summarizer] summarize failed", err);
-    return null;
-  }
-}
-```
-
-**Why**: silent fallback は「ユーザー: 最新 Chrome なのに使えない」「開発者: DevTools にも出ない」のダブルブラックボックスを生む。`devError` で出した情報は `process.env.NODE_ENV !== 'production'` でだけ console.error されるため、本番ノイズにならず開発時の調査だけ可能になる。フォールバックが**意図通り動作している**のか**仕様変更で壊れている**のかを区別する唯一の手段。
-
-**How to apply**: 外部依存ラッパーで `catch { return null }` を書きたくなったら、必ず `devError` を併記する。前提条件 (user activation, secure context, hardware requirement, API バージョン) のガード節も同様に reason を `devError` で出す。`null` 返却の経路が複数あるなら全箇所で出す。
-
-主な使用箇所: `src/lib/browser-summarizer.ts` / `src/lib/browser-translator.ts`（Chrome 組み込み AI ラッパー）
-
-### 派生ケース: `availability()` が `unavailable` を返したら **入力引数も一緒にログに出す**
-
-外部 API の `availability()` / `validate()` 系判定関数が **「使えない」結果** を返したとき、結果値だけログに出すと「ハードウェア要件不足」と誤診しがち。実際は **渡している引数値が API 仕様と乖離している** 可能性が常にある。`devError` で **入力引数も一緒に** 出力する設計にすれば、仕様乖離を最初の調査で検出できる。
-
-```typescript
-// アンチパターン: 結果値だけログ → 「unavailable = 環境問題」と誤診
-const availability = await api.availability({ type: "tl;dr", length: "medium" });
-if (!isUsable(availability)) {
-  devError("[wrapper] availability not usable:", availability);
-  // ↑ "unavailable" としか出ない → "tl;dr" が無効値だったことに気づかない
-  return null;
-}
-
-// 修正パターン: 入力引数も一緒にログ
-const options = { type: "tldr", length: "medium" } as const;
-const availability = await api.availability(options);
-if (!isUsable(availability)) {
-  devError("[wrapper] availability not usable:", { availability, options });
-  // ↑ 渡した引数も見えるので、API 仕様変更 / typo を即座に切り分けできる
-  return null;
-}
-```
-
-**Why**: ブラウザ AI / 外部サービスの `availability()` 系 API は **無効な引数値** を渡されると `"unavailable"` を返すことがある（明示的な型エラーを投げない）。結果値だけ見ると「環境問題」に見えて、実は実装側のオプション値が公式仕様と一致していなかった、というケースが頻発する。入力引数を一緒にログに出せば「渡している値が公式仕様の enum と一致しているか」を最初の調査ステップで確認できる。
-
-**How to apply**: 外部 API の `availability()` / `validate()` / `canX()` 系判定関数を呼ぶラッパーで:
-
-1. **オプション値は const オブジェクトに集約** (`SUMMARIZER_OPTIONS` / `TRANSLATOR_OPTIONS` 等) して 1 箇所参照
-2. **TDD で「渡している enum 値が公式仕様と一致するか」を assert** (例: `expect(SUMMARIZER_OPTIONS.type).toBe("tldr")`)
-3. **判定が下りた場合の `devError` は `{ result, options }` の形式** で入力引数も含める
-4. ユーザーから「環境要件は満たしているのに使えない」報告が来たら、**最初に渡している引数値を公式仕様と照合** する (環境調査より先)
+→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割。`availability()` 派生ケースも同ファイルへ移動)
 
 ## ブラウザ仕様の最低バージョン定数を 1 箇所に集約する
 
-Chrome / Safari の Web API には「Chrome 138+」「Safari 17+」のような最低バージョン要件がある。これを `getChromeVersion() < 131` のようにマジックナンバーで散らすと、API の stable リリース後に bump し忘れて誤診断 (`flag-disabled` 等) を起こす。
-
-```typescript
-// アンチパターン: マジックナンバー
-if (chromeVersion !== null && chromeVersion < 131) {
-  return { available: false, reason: "chrome-too-old" };
-}
-
-// 修正パターン: export const で 1 箇所定義 + UI からも参照可能に
-export const MIN_SUMMARIZER_CHROME_VERSION = 138;
-
-if (chromeVersion !== null && chromeVersion < MIN_SUMMARIZER_CHROME_VERSION) {
-  return { available: false, reason: "chrome-too-old" };
-}
-```
-
-**Why**: バージョン bump 忘れは「ファイル先頭コメントに `Chrome 138+` と書いてあるのに実装は 131 のまま」のような腐敗を起こす。export const 1 箇所にすれば TDD で `MIN_SUMMARIZER_CHROME_VERSION` の整合性を assert できるし、設定 UI のメッセージ (`Chrome 138 以上にアップデートすると…`) も同じ定数から参照できる。
-
-**How to apply**: ブラウザ API のバージョン要件は `MIN_XXX_CHROME_VERSION` 形式で export const 化する。ファイル先頭の jsdoc コメントが「Chrome N+」と述べているなら、その N が定数として実装にも現れているか確認する。UI メッセージの数字もハードコードせず定数を文字列補間する（i18n しない場合でも保守性のため）。
-
-主な使用箇所: `src/lib/browser-summarizer.ts#MIN_SUMMARIZER_CHROME_VERSION` / `src/lib/browser-translator.ts#MIN_TRANSLATOR_CHROME_VERSION`
+→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割)
 
 ## 早期 return をコンポーネント / 関数に切り出すと TypeScript narrowing が失われる
 
@@ -1147,158 +1044,11 @@ return { content: augment(extractedContent) + buildGallery(), source: "..." };
 
 ## 本番環境のデバッグは「localStorage gate + 専用 debug ヘルパー」で出す
 
-ユーザー報告のバグが「本番でしか再現しない」「DevTools 開いても何も出ない」状態のとき、原因究明には本番環境での詳細ログが必要だが、**全ユーザーの DevTools を恒常的に汚す** のは UX 上 NG。
-
-```typescript
-// 推奨パターン: localStorage gate + xxxDebug
-const DEBUG_KEY = "rss-debug-autoread"; // 機能ごとに専用 key
-let cachedEnabled: boolean | null = null;
-
-export function evaluateXxxDebugEnabled(value: string | null): boolean {
-  return value === "1"; // 厳密一致 (テスタブル純粋関数)
-}
-
-export function isXxxDebugEnabled(): boolean {
-  if (cachedEnabled !== null) return cachedEnabled;
-  if (typeof window === "undefined") return false;
-  cachedEnabled = evaluateXxxDebugEnabled(window.localStorage.getItem(DEBUG_KEY));
-  return cachedEnabled;
-}
-
-export function xxxDebug(label: string, data: Record<string, unknown>): void {
-  if (!isXxxDebugEnabled()) return;
-  console.info(`[Feature] ${label}`, data);
-}
-
-// 状態遷移の入口・分岐ごとに散在配置
-xxxDebug("effect-fetch-trigger", { articleId, canFetch, fetching, willTrigger });
-```
-
-ユーザー側の操作:
-
-```js
-// DevTools Console
-localStorage.setItem("rss-debug-autoread", "1");
-location.reload();
-// → 再現操作 → ログを Issue にペースト
-localStorage.removeItem("rss-debug-autoread"); // OFF
-```
-
-**Why**:
-
-1. **デフォルト OFF**: 一般ユーザーの DevTools には何も出ない (UX 維持)
-2. **ユーザー操作で ON**: 1 行コマンドで詳細ログが出るので「再現するときだけ ON」が可能
-3. **キャッシュ最適化**: `cachedEnabled` で localStorage アクセスを 1 回に抑える (effect 内で頻繁に呼ばれても性能影響なし)
-4. **純粋関数化**: `evaluateXxxDebugEnabled(value)` を分離して TDD 可能 (`window` 不在の node 環境でも動く)
-5. **devError と使い分け**: `devError` (`NODE_ENV !== "production"` ガード) は dev のみ。本番再現困難なバグはこちらの localStorage gate を使う
-
-**How to apply**:
-
-1. 「本番でしか再現しないバグ」の調査を要する機能で、`src/lib/<feature>-debug.ts` ヘルパーを作る
-2. **3 関数セット**: 純粋判定 / 設定取得 (キャッシュ付き) / ログ出力ガード
-3. **専用 STORAGE KEY**: 機能別に独立 key (`rss-debug-autoread` / `rss-debug-content-fetch` 等)
-4. **対象 effect / 関数に散在配置**: 状態遷移の入口・出口・分岐ごとに `xxxDebug("label", { 関連 state })` を埋める
-5. **Issue コメントに使い方明記**: ユーザーが localStorage コマンド + 再現手順 + ログ提出までできるよう導線を示す
-6. **機密情報を含めない**: 記事本文・トークン・メールアドレスは data に入れない。ID とフラグ・数値のみに留める
-
-主な使用箇所: `auto-read-debug.ts` — 本番でのオートモード再現診断
-
-### 派生ケース: AbortController / Ref ベースの状態遷移バグは「ref の差分」をログに出す
-
-`AbortController.abort()` / `useRef` の値変化が原因の連鎖バグ (記事切替時の fetch abort / 画像キャッシュの上書き / hook 識別子のドリフト) は、**「どの瞬間にどの ref がどの値だったか」** が分かるログがないと解析不能になる。エージェントを派遣しても複数仮説が出て断定できないことが多い。本番環境で再現できるなら、**ref の状態スナップショット** を各遷移ポイントで出力する設計に切り替える。
-
-```typescript
-// アンチパターン: イベント名のみログ
-useEffect(() => {
-  abortRef.current?.abort();
-  abortRef.current = null;
-  debug("articleId-changed");
-}, [articleId]);
-
-// 修正パターン: ref の状態 (差分・null 性) を一緒に出力
-useEffect(() => {
-  const hadController = abortRef.current !== null;
-  debug("articleId-effect-fired", { articleId, hadController });
-  // ↑ hadController:true = 進行中 fetch を abort することになる証拠
-  abortRef.current?.abort();
-  abortRef.current = null;
-}, [articleId]);
-
-// catch 側: どの controller が abort 元かを出力
-catch (err) {
-  if (isAbortError(err)) {
-    debug("fetch-aborted", {
-      articleId,
-      currentControllerIsThis: abortRef.current === controller,
-      currentControllerIsNull: abortRef.current === null,
-      // ↑ null = useEffect[articleId] が abort した
-      //   別 controller = fetchFullContent 再呼出による abort
-      //   this = 自分が abort された (外部要因)
-    });
-    return;
-  }
-}
-```
-
-**Why**: AbortController の abort は「どこから呼ばれたか」がスタックトレースに残らない (非同期境界を跨ぐ)。コードレビュー / エージェント分析で「複数経路の中でどれが真因か」を断定できないとき、**本番ログに ref の状態スナップショット** を散在配置すれば、ユーザーから 1 回のログ提出で経路が判定できる。「abort された」だけのログは観測点として不足。
-
-**How to apply**: AbortController / useRef ベースの「複雑な遷移バグ」を調査するとき:
-
-1. **ref の値変化を起こす全箇所** を grep で列挙 (例: `abortRef.current = ` / `abortRef.current?.abort()`)
-2. 各箇所の **ref の前後状態** (`hadX` / `currentXIsNull` / `currentXIsThis`) を debug ログに含める
-3. catch / cleanup 側でも **「自分の controller か / null か / 別 controller か」** を 3 値判定で出す
-4. ユーザー Issue コメントに **判定表** (どのログ列がどの真因か) を明記して再現協力を依頼
-5. 真因確定後、追加ログは残すか削除するか判断 (再発リスクが高ければ残す)
-
-主な使用箇所: `useArticleContent.ts` の `fetchAbortControllerRef` 状態スナップショット (#678 — fetch-start / articleId-effect-fired / fetch-aborted の 3 点で hadController / currentControllerIsX を出力)
+→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割。AbortController/Ref 派生ケースも同ファイルへ移動)
 
 ## 永続化された state を「リロード時に自動復元」するときは TTL と防御チェックを必ず入れる
 
-`localStorage` に状態を保存して **リロード後に復元** する設計 (例: オートモード継続) では、復元無条件 = 永続的に ON 状態が固定されるリスクがある。**TTL 期限と防御的バリデーション** を必ず入れる。
-
-```typescript
-// アンチパターン: 無条件復元
-const initial = JSON.parse(localStorage.getItem("autoMode") ?? "false");
-const [autoMode, setAutoMode] = useState(initial);
-// → ユーザーが 1 度 ON にしたら永遠に ON で起動してしまう
-
-// 推奨パターン: TTL + 防御チェック
-export const RESUME_TTL_MS = 60 * 60 * 1000; // 1 時間
-
-export function shouldRestore(state, now, ttlMs = RESUME_TTL_MS) {
-  if (!state) return false;
-  if (!state.enabled) return false;
-  const elapsed = now - state.savedAt;
-  if (elapsed < 0) return false; // ← 時計戻り防止
-  if (elapsed >= ttlMs) return false; // ← 期限超過
-  return true;
-}
-
-// 純粋関数で復元判定 → React state 初期値
-const [enabled, setEnabled] = useState(() => shouldRestore(parsePersisted(raw), Date.now()));
-```
-
-**Why**:
-
-1. **TTL なし** = ユーザーが「先週 ON → 今週 PC 再起動」したら勝手に ON で起動 → 意図しない動作 (TTS 自動再生等)
-2. **時計戻りチェック (`elapsed < 0`)** = OS 時計が過去に戻ったとき (NTP 同期 / 手動変更) に永久復元になるバグ防止
-3. **不正データの fallback** = JSON 構造不一致・型不一致は OFF で起動 (private mode の例外もこれでカバー)
-4. **保存タイムスタンプの併存** = `enabled` だけでは「いつ保存したか」が分からない。`{ enabled, savedAt }` の組で保存する設計が必要
-
-**How to apply**:
-
-1. 永続化対象 state は `{ value, savedAt: number }` 形式で保存 (タイムスタンプ必須)
-2. `parsePersistedXxx(raw)` 純粋関数で安全パース (型ガード含む)
-3. `shouldRestoreXxx(state, now, ttlMs)` 純粋関数で復元可否判定
-4. 復元判定を `useState(() => loadInitial())` の初期化関数で 1 回だけ実行
-5. TTL は機能ごとに「ユーザーが意図的に再開する間隔」を考える:
-   - オートモード: 1 時間 (デプロイリロード対応)
-   - フォーカスモード: 24 時間 (1 日内なら復元)
-   - 検索クエリ: 1 週間 (頻繁に変えるもの) 等
-6. TDD は `now` を引数化することで簡単に書ける (時計依存をテスト不能にしない)
-7. 防御チェック (時計戻り / 期限超過 / 不正データ) は **全てのケースに対して spec を書く**
-
-主な使用箇所: `auto-read-persist.ts` — autoMode の 1 時間期限付き永続化
+→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割)
 
 ## 禁止事項
 
