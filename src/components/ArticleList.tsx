@@ -26,8 +26,8 @@ import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useGalleryAutoRead } from "../hooks/useGalleryAutoRead";
 import { useGallerySwipeNav } from "../hooks/useGallerySwipeNav";
+import { useArticleListItemProps } from "../hooks/useArticleListItemProps";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
-import { isArticleRead } from "../lib/article-filter";
 import {
   type ArticleItemProps,
   resolveThumbnail,
@@ -459,60 +459,24 @@ function ArticleList({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・magazineVirtualizer・flatItemsRef・visibleRef・nonGalleryDisplayItemsRef は安定参照。記事選択・レイアウト変更時のみスクロール
   }, [selectedArticleId, layout]);
 
-  const onSelectArticleRef = useSyncedRef(onSelectArticle);
-  const onToggleReadRef = useSyncedRef(onToggleRead);
-  const onToggleBookmarkRef = useSyncedRef(onToggleBookmark);
-  const onToggleReadingListRef = useSyncedRef(onToggleReadingList);
-
-  // bookmarkIds / readIds / notes は state 値を直接参照する（ref パターンを使うと
-  // memo された GalleryCardRenderer (Context 経由) で再描画が発火しないバグになる: #634）
-  const resolveItemProps = useCallback(
-    (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => {
-      const feed = feedMap.get(article.feedHash);
-      return {
-        article,
-        index,
-        isRead: isArticleRead(article, readIds, readBeforeTimestamp),
-        isBookmarked: bookmarkIds.has(article.id),
-        isInReadingList: readingListIds?.has(article.id) ?? false,
-        isDeleting,
-        isNew,
-        hasNote: !!notes?.[article.id],
-        feedName: feed ? feed.title || feed.url : "",
-        thumb: resolveThumbnail(article, ogpCacheRef.current),
-        showFeedName,
-        query,
-        duplicateFeedNames: duplicateInfo?.get(article.id),
-        totalCount: filtered.length,
-        onSelectArticle: (a: Article) => onSelectArticleRef.current(a),
-        onToggleRead: (id: string) => onToggleReadRef.current(id),
-        onToggleBookmark: (id: string) => onToggleBookmarkRef.current(id),
-        onToggleReadingList: onToggleReadingListRef.current
-          ? (id: string) => onToggleReadingListRef.current?.(id)
-          : undefined,
-        onContextMenu: handleArticleContextMenu,
-      };
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelectArticle・onToggleRead・onToggleBookmark・onToggleReadingList は ref 経由で最新値を参照するため deps 不要
-    [
-      readBeforeTimestamp,
-      feedMap,
-      ogpCacheRef,
-      showFeedName,
-      query,
-      filtered.length,
-      readIds,
-      bookmarkIds,
-      readingListIds,
-      notes,
-      duplicateInfo,
-      onSelectArticleRef,
-      onToggleReadRef,
-      onToggleBookmarkRef,
-      onToggleReadingListRef,
-      handleArticleContextMenu,
-    ],
-  );
+  const { resolveItemProps } = useArticleListItemProps({
+    feedMap,
+    readIds,
+    readBeforeTimestamp,
+    bookmarkIds,
+    readingListIds,
+    notes,
+    showFeedName,
+    query,
+    duplicateInfo,
+    filteredCount: filtered.length,
+    ogpCache,
+    onSelectArticle,
+    onToggleRead,
+    onToggleBookmark,
+    onToggleReadingList,
+    onContextMenu: handleArticleContextMenu,
+  });
 
   const galleryCtxValue = useMemo<GalleryItemContextValue>(
     () => ({
