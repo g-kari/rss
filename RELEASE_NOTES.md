@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### リファクタリングっ
+
+- **エンゲージメント 3 連トグルボタンを EngagementSegmentButton に集約したよ〜 (simplify 監査 Issue 2)** — `ArticleHeaderEngagement.tsx` の「後で読む / ブックマーク / いいね」3 button がほぼ同形 (`px-2.5 py-1.5 transition-colors` + active/inactive 色 + svg 14/12px) だったから、新規 `EngagementSegmentButton.tsx` (45 行) に共通テンプレートを抽出!🔧 デザイントークンの差 (`bg-ink` / `bg-bookmark` / `bg-rose-400`) は `activeClass` props で吸収、SVG icon は children 経由で注入する設計〜🎀 ArticleHeaderEngagement は 213 → 203 行 (-10 行) でロジックが見やすく〜📦 セグメント化ラッパー (`overflow-hidden` + `<div className="w-px ...">` 区切り) は親側に維持!
+
 ### ドキュメント整備っ
 
 - **`coding-conventions.md` 段階的分割 Step 5 をやったよ〜 (#694 Step 5)** — ユーザー採用「案 A: browser-platform.md 新設」に従って **5 セクション + 2 派生ケース 計 248 行** を新ファイル `browser-platform.md` へ集約!🎀 抽出対象: 上流 API プロキシヘッダ補完 / silent fallback 禁止 (+ availability() 入力引数ログ派生) / ブラウザ最低バージョン定数 / 本番 localStorage gate デバッグ (+ AbortController/Ref 状態スナップショット派生) / 永続化 state TTL 防御チェック〜📚 各セクション位置に `→ browser-platform.md を参照` の redirect リンクを残して発見性維持!`coding-conventions.md` は 1312 → 1062 行 (Step 1〜5 累計で **1785 → 1062 / -723 行 / 40% 削減**)、`browser-platform.md` は 275 行〜📦 `rule-maintenance.md` の 800 行閾値超過から 1.3 倍まで縮小!

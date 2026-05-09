@@ -175,6 +175,7 @@ src/
     article-view/ArticleHeaderAiTts.tsx     # AI 要約・翻訳・画像 DL・TTS・オートモード ボタン群
     article-view/ArticleHeaderShare.tsx     # クイックシェア + ShareMenu/FilterMenu/GlobalFilterMenu
     article-view/ArticleHeaderEngagement.tsx # 後で読む/ブックマーク/いいね/メモ/コレクション/フォーカスモード
+    article-view/EngagementSegmentButton.tsx # 後で読む/ブックマーク/いいね 3 連トグルボタン共通テンプレート（simplify 監査 Issue 2 で抽出）
     user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel / FeedManagementTabPanel / ImportExportTabPanel / TtsVoiceSection / shared）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
