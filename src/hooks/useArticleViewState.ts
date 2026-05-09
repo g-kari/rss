@@ -66,6 +66,7 @@ export function useArticleViewState({
 
   const {
     aiResult,
+    aiResultProvider,
     aiLoading,
     aiError,
     doRunAi,
@@ -260,6 +261,7 @@ export function useArticleViewState({
     fetchFullContent,
     resolvedOgImage,
     aiResult,
+    aiResultProvider,
     aiLoading,
     aiError,
     doRunAi: handleRunAi,

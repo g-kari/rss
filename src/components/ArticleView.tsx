@@ -106,6 +106,7 @@ function ArticleView({
     fetchFullContent,
     resolvedOgImage,
     aiResult,
+    aiResultProvider,
     aiLoading,
     aiError,
     doRunAi,
@@ -288,6 +289,7 @@ function ArticleView({
 
         <ArticleAiPanel
           aiResult={aiResult}
+          aiResultProvider={aiResultProvider}
           aiError={aiError}
           summaryRating={summaryRating}
           setSummaryRating={setSummaryRating}

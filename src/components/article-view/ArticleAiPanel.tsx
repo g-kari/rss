@@ -1,9 +1,11 @@
 import React from "react";
 import type { Article, EngagementAction } from "../../types";
-import type { AiError } from "../../hooks/useArticleAi";
+import type { AiError, TranslationProvider } from "../../hooks/useArticleAi";
 
 interface ArticleAiPanelProps {
   aiResult: string | null;
+  /** AI 要約のプロバイダー (#697) — 「Chrome 要約 / Workers AI」バッジ表示に使用 */
+  aiResultProvider?: TranslationProvider;
   aiError: AiError | null;
   summaryRating: "good" | "neutral" | "bad" | null;
   setSummaryRating: (rating: "good" | "neutral" | "bad") => void;
@@ -70,6 +72,7 @@ function RetryIcon() {
 
 export default function ArticleAiPanel({
   aiResult,
+  aiResultProvider,
   aiError,
   summaryRating,
   setSummaryRating,
@@ -86,7 +89,14 @@ export default function ArticleAiPanel({
           aria-atomic="true"
         >
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">AI 要約</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">AI 要約</p>
+              {aiResultProvider && (
+                <span className="text-[10px] text-text-muted px-1.5 py-0.5 rounded bg-surface-subtle">
+                  {aiResultProvider === "browser" ? "Chrome 要約" : "Workers AI"}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1">
               {(["good", "neutral", "bad"] as const).map((rating) => (
                 <button
