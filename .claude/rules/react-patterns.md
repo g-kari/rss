@@ -757,6 +757,50 @@ function App() {
 
 主な使用箇所: `src/components/AppLandingState.tsx` (オーケストレーター呼び出し側で `if (!user) return null;` ガードを併記)
 
+### 派生ケース: 戻り値型を **discriminated union** にすれば呼び出し元で narrowing が効く
+
+「早期 return ガード関数」(例: `assertFeedSubscribed(r2, userId, feedHash)`) を抽出するとき、**戻り値型を discriminated union にすると呼び出し元で TypeScript narrowing が効く**。`!` (non-null assertion) や別行ガード を書かずに済む。
+
+```typescript
+// アンチパターン: { sub: T | undefined, err: NextResponse | null } の plain object
+async function assertFeedSubscribed(...) {
+  const sub = subs.find(...);
+  if (!sub) return { subs, sub: undefined, err: apiError(...) };
+  return { subs, sub, err: null };
+}
+// 呼び出し側:
+const { sub, err } = await assertFeedSubscribed(...);
+if (err) return err;
+sub.requestCookie; // ← TS error: sub は UserSubscription | undefined のまま
+sub!.requestCookie; // ← `!` で誤魔化す or `if (!sub) return null;` を別途書く
+
+// 修正パターン: discriminated union 戻り値
+type FeedSubscribedResult =
+  | { subs: UserSubscription[]; sub: UserSubscription; err: null }
+  | { subs: UserSubscription[]; sub: undefined; err: NextResponse };
+
+async function assertFeedSubscribed(...): Promise<FeedSubscribedResult> { /* same impl */ }
+
+// 呼び出し側:
+const guard = await assertFeedSubscribed(...);
+if (guard.err) return guard.err; // ← TS narrowing: guard が { sub: UserSubscription; err: null } に絞られる
+const { sub } = guard;            // ← sub: UserSubscription (non-null narrowed)
+sub.requestCookie;                // ← `!` 不要
+```
+
+**Why**: TypeScript の制御フロー解析は **discriminator field** (本例の `err`) で union を絞り込む。`if (guard.err) return guard.err;` の後、`guard.err === null` が確定するため、union のうち `sub: UserSubscription` の枝に narrowed される。plain object ベースだと `err === null` と `sub !== undefined` の関係を TS が知らないので narrowing できず、`!` で誤魔化す醜いコードになる。
+
+**How to apply**: 「早期 return + 抽出データ返却」型の helper を書くとき:
+
+1. 戻り値を **plain object でなく discriminated union** にする
+2. **discriminator field** を 1 つ選ぶ (本例の `err`、または `ok: true | false` も慣用)
+3. 各 union メンバーで「err = null のとき他フィールドは確実に存在」を **型レベルで保証** する
+4. 呼び出し側は `if (guard.err) return guard.err;` (TS narrowing が走る) → 以降 `!` 不要
+5. helper の jsdoc に **typing の意図** (「`err === null` なら他フィールド non-null」) を必ず明記
+6. 旧 plain object 戻り値の helper があれば段階的に discriminated union へ置き換える
+
+主な使用箇所: `src/lib/api-feed-guard.ts#FeedSubscribedResult` — `feeds/[id]/{,refresh,reinfer,purge-content-cache}` の subscription guard で `sub: UserSubscription` を `!` なしで取得
+
 ## 子コンポーネントの「自己判断で hidden になる UI」は親で「全件 hidden」を検知して fallback する
 
 子コンポーネントが「自分の都合 (画像が小さすぎる・コンテンツが空・条件不一致など) で `null` を返す」設計のとき、**親はその事実を知らない**ため、全子が `null` を返した結果 **UI が空っぽ** になる症状が発生する。
