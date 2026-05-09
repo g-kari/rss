@@ -29,8 +29,13 @@ export function pruneOldReadIds(
 
   const removeSet = new Set<string>();
   for (const article of knownArticles) {
-    if (!article.publishedAt) continue;
-    const ts = Date.parse(article.publishedAt);
+    // isArticleRead (article-filter.ts) と同じく publishedAt → createdAt の
+    // フォールバックチェーンを採る。これがないと `feedHash: "__saved__"` の
+    // 手動保存記事 (publishedAt が null) などで isArticleRead は createdAt で
+    // 既読扱いするのに pruneOldReadIds は何もせず、readIds が永久に蓄積する。
+    const tsRaw = article.publishedAt ?? article.createdAt;
+    if (!tsRaw) continue;
+    const ts = Date.parse(tsRaw);
     if (isNaN(ts)) continue;
     if (ts < cutoff && readIds.has(article.id)) {
       removeSet.add(article.id);

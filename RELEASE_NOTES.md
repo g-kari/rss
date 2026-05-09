@@ -4,6 +4,7 @@
 
 ### バグ修正っ
 
+- **`pruneOldReadIds` が `publishedAt: null` 記事の readId を永久蓄積するバグを修正したよ〜 (code-review 監査 Important Issue)** — `isArticleRead` (`article-filter.ts`) は `publishedAt ?? createdAt` のフォールバックで `readBeforeTimestamp` 以前を一括既読扱いするのに、`pruneOldReadIds` は `publishedAt` だけ見て `null` だと早期 continue してたの〜💥 これだと `feedHash: "__saved__"` の手動保存記事 (publishedAt が常に null) や RSS で publishedAt 抜けの記事の readId が **永久に R2 / localStorage に蓄積** される潜在バグ💧 #635 A1 (readIds 物理削除) の効果を半減させてた〜🥲 `tsRaw = article.publishedAt ?? article.createdAt` のフォールバックチェーンを揃えて `isArticleRead` と判定軸を完全一致させたよ〜🛡️ TDD 2 ケース追加 (publishedAt:null + createdAt 古い → 削除 / 境界値の整合)〜📚
 - **`GET /api/articles?since=` の NaN 検証を追加したよ〜 (code-review 監査 Critical Issue)** — `parseInt("abc", 10)` が NaN を返すと `new Date(...).getTime() > NaN` が常に false になり「全フィードがスキップされて全記事が消える」silent failure 状態だったの〜🥲 通常のクライアントは `Date.now()` の整数を渡すので発生確率は低いけど、ブラウザ拡張・プロキシ・将来の実装ミスで NaN が混入したら無音でデータが消える深刻なバグ!💥 `^\d+$` で厳密検証して、不正値は **`INVALID_SINCE` (400)** で拒否する設計に修正〜🛡️ api-spec.md にもエラーコード追記!📚
 
 ### ドキュメント整備っ

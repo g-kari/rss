@@ -63,11 +63,16 @@ test.describe("pruneOldReadIds", () => {
     expect(result.has("unknown1")).toBe(true);
   });
 
-  test("publishedAt が null の記事は削除しない", () => {
-    const articles = [baseArticle({ id: "nodate", publishedAt: null })];
-    const readIds = new Set(["nodate"]);
+  test("publishedAt が null でも createdAt が古ければ削除する (isArticleRead と整合)", () => {
+    // isArticleRead は publishedAt ?? createdAt のフォールバックで既読判定するため、
+    // pruneOldReadIds も同じフォールバックで物理削除しないと、`feedHash: "__saved__"`
+    // のような publishedAt=null 記事の readId が永久蓄積する。
+    const articles = [
+      baseArticle({ id: "old-saved", publishedAt: null, createdAt: "2024-01-01T00:00:00Z" }),
+    ];
+    const readIds = new Set(["old-saved"]);
     const result = pruneOldReadIds(readIds, articles, "2024-03-01T00:00:00Z");
-    expect(result.has("nodate")).toBe(true);
+    expect(result.has("old-saved")).toBe(false);
   });
 
   test("削除対象がなければ元の Set インスタンスを返す（参照同一性で再レンダー抑制）", () => {
