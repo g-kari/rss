@@ -88,16 +88,14 @@ export function useLayoutSettings() {
     loadContentWidth,
     STORAGE_KEYS.CONTENT_WIDTH,
   );
-  const [imageDlFolder, setImageDlFolder] = useState(loadImageDlFolder);
-  const onChangeImageDlFolder = useCallback((v: string) => {
-    setImageDlFolder(v);
-    storageSet(STORAGE_KEYS.IMAGE_DL_FOLDER, v);
-  }, []);
-  const [imageDlFolderNsfw, setImageDlFolderNsfw] = useState(loadImageDlFolderNsfw);
-  const onChangeImageDlFolderNsfw = useCallback((v: string) => {
-    setImageDlFolderNsfw(v);
-    storageSet(STORAGE_KEYS.IMAGE_DL_FOLDER_NSFW, v);
-  }, []);
+  const [imageDlFolder, onChangeImageDlFolder] = useStoredSetting<string>(
+    loadImageDlFolder,
+    STORAGE_KEYS.IMAGE_DL_FOLDER,
+  );
+  const [imageDlFolderNsfw, onChangeImageDlFolderNsfw] = useStoredSetting<string>(
+    loadImageDlFolderNsfw,
+    STORAGE_KEYS.IMAGE_DL_FOLDER_NSFW,
+  );
 
   return {
     layout,

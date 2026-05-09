@@ -8,8 +8,13 @@ import { collectImageUrlsFromHtml } from "../lib/image-extractor";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { wrapSentencesInHtml } from "../lib/tts-dom";
 import type { Sentence } from "../lib/tts-sentences";
+import { isSpeechSupported } from "../lib/auto-read";
 
 const SHORT_CONTENT_THRESHOLD = 400;
+// Web Speech API の有無は実行中に変わらないのでモジュール定数化。
+// useArticleViewContent の wrapSentencesInHtml ガードに使う (TTS 非対応環境では
+// 高コストな linkedom DOM parse を skip)。
+const SPEECH_SUPPORTED = isSpeechSupported();
 
 export interface ArticleViewContentResult {
   embedInfo: ReturnType<typeof extractEmbedInfo>;
@@ -34,7 +39,13 @@ export function useArticleViewContent(
   resolvedOgImage: string | null,
   theme: Theme,
 ): ArticleViewContentResult {
-  const embedInfo = article?.link ? extractEmbedInfo(article.link) : null;
+  // article.link 変化時のみ再計算 — extractEmbedInfo は新オブジェクトを返すため、
+  // useMemo なしだと毎 render ごとに新 reference となり、processedContent useMemo 等が
+  // すべて再実行される (TTS state 変化など親 re-render の度に 10-50KB HTML が再 sanitize)。
+  const embedInfo = useMemo(
+    () => (article?.link ? extractEmbedInfo(article.link) : null),
+    [article?.link],
+  );
 
   const rawContent = storedContent ?? article?.content ?? null;
   const processedContent = useMemo(
@@ -53,9 +64,12 @@ export function useArticleViewContent(
   );
 
   // #672 Phase 2: TTS ハイライト用にセンテンス span でラップした HTML と sentence 配列
+  // SPEECH_SUPPORTED ガード: Web Speech API 非対応ブラウザでは wrappedContent を使わないため、
+  // 重い linkedom DOM parse + sentence span 挿入 (10-50KB HTML) を完全 skip する。
+  // ArticleContentBody は wrappedContent が null のとき processedContent に fallback する設計。
   const { html: wrappedContent, sentences: ttsSentences } = useMemo(
     () =>
-      processedContent
+      processedContent && SPEECH_SUPPORTED
         ? wrapSentencesInHtml(processedContent)
         : { html: null as string | null, sentences: [] },
     [processedContent],

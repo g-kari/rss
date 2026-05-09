@@ -8,6 +8,7 @@ import {
   isWorkersAiModelId,
   type WorkersAiModelId,
 } from "../lib/ai-models";
+import { useStoredBoolToggle } from "./useStoredSetting";
 
 export const AUTO_READ_THRESHOLD_CYCLE = [70, 80, 90] as const;
 export type AutoReadThreshold = (typeof AUTO_READ_THRESHOLD_CYCLE)[number];
@@ -52,46 +53,29 @@ function loadAiModel(): WorkersAiModelId {
 export { AI_MODELS, type WorkersAiModelId };
 
 export function useAutoReadSettings() {
-  const [autoReadEnabled, setAutoReadEnabled] = useState<boolean>(loadAutoReadEnabled);
+  const [autoReadEnabled, toggleAutoRead] = useStoredBoolToggle(
+    loadAutoReadEnabled,
+    STORAGE_KEYS.AUTO_READ_ENABLED,
+  );
   const [autoReadThreshold, setAutoReadThreshold] =
     useState<AutoReadThreshold>(loadAutoReadThreshold);
-  const [autoTranslate, setAutoTranslate] = useState<boolean>(loadAutoTranslate);
-  const [autoSummarize, setAutoSummarize] = useState<boolean>(loadAutoSummarize);
-  const [autoAiBrowserOnly, setAutoAiBrowserOnly] = useState<boolean>(loadAutoAiBrowserOnly);
-  const [deduplicateByLink, setDeduplicateByLink] = useState<boolean>(loadDeduplicateByLink);
+  const [autoTranslate, toggleAutoTranslate] = useStoredBoolToggle(
+    loadAutoTranslate,
+    STORAGE_KEYS.AUTO_TRANSLATE,
+  );
+  const [autoSummarize, toggleAutoSummarize] = useStoredBoolToggle(
+    loadAutoSummarize,
+    STORAGE_KEYS.AUTO_SUMMARIZE,
+  );
+  const [autoAiBrowserOnly, toggleAutoAiBrowserOnly] = useStoredBoolToggle(
+    loadAutoAiBrowserOnly,
+    STORAGE_KEYS.AUTO_AI_BROWSER_ONLY,
+  );
+  const [deduplicateByLink, toggleDeduplicateByLink] = useStoredBoolToggle(
+    loadDeduplicateByLink,
+    STORAGE_KEYS.DEDUP_BY_LINK,
+  );
   const [aiModel, setAiModel] = useState<WorkersAiModelId>(loadAiModel);
-
-  const toggleAutoRead = useCallback(() => {
-    setAutoReadEnabled((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.AUTO_READ_ENABLED, next ? "1" : "0");
-      return next;
-    });
-  }, []);
-
-  const toggleAutoTranslate = useCallback(() => {
-    setAutoTranslate((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.AUTO_TRANSLATE, next ? "1" : "0");
-      return next;
-    });
-  }, []);
-
-  const toggleAutoSummarize = useCallback(() => {
-    setAutoSummarize((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.AUTO_SUMMARIZE, next ? "1" : "0");
-      return next;
-    });
-  }, []);
-
-  const toggleAutoAiBrowserOnly = useCallback(() => {
-    setAutoAiBrowserOnly((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.AUTO_AI_BROWSER_ONLY, next ? "1" : "0");
-      return next;
-    });
-  }, []);
 
   const cycleAutoReadThreshold = useCallback(() => {
     setAutoReadThreshold((prev) => {
@@ -105,14 +89,6 @@ export function useAutoReadSettings() {
   const onChangeAutoReadThreshold = useCallback((next: AutoReadThreshold) => {
     setAutoReadThreshold(next);
     storageSet(STORAGE_KEYS.AUTO_READ_THRESHOLD, String(next));
-  }, []);
-
-  const toggleDeduplicateByLink = useCallback(() => {
-    setDeduplicateByLink((v) => {
-      const next = !v;
-      storageSet(STORAGE_KEYS.DEDUP_BY_LINK, next ? "1" : "0");
-      return next;
-    });
   }, []);
 
   const onChangeAiModel = useCallback((next: WorkersAiModelId) => {

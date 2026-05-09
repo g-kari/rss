@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, withJsonBody } from "@/lib/server-auth";
-import { apiError } from "@/lib/api-error";
+import { apiError, assertValidFeedHash } from "@/lib/api-error";
 import { purgeFeedsCache } from "@/lib/cache-helper";
 import {
   readUserSubscriptions,
@@ -12,13 +12,12 @@ import {
 } from "@/lib/shared-feed";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
 import { readFeedGroups } from "@/lib/feed-groups";
-import { stripControlChars, isValidIso8601, isValidFeedHash } from "@/lib/validation";
+import { stripControlChars, isValidIso8601 } from "@/lib/validation";
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  if (!isValidFeedHash(feedHash)) {
-    return apiError("Invalid feed", 400, { code: "INVALID_FEED" });
-  }
+  const validationErr = assertValidFeedHash(feedHash);
+  if (validationErr) return validationErr;
   return withSession(request, async ({ session, env, ctx }) => {
     const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
     if (!subs.some((s) => s.feedHash === feedHash)) {
@@ -41,9 +40,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
-  if (!isValidFeedHash(feedHash)) {
-    return apiError("Invalid feed", 400, { code: "INVALID_FEED" });
-  }
+  const validationErr = assertValidFeedHash(feedHash);
+  if (validationErr) return validationErr;
   return withJsonBody<{
     title?: unknown;
     filter?: unknown;

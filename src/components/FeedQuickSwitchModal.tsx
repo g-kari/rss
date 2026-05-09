@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { Feed, Article } from "../types";
 import { isArticleRead } from "../lib/article-filter";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { usePopupLock } from "../hooks/usePopupLock";
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface Props {
   feeds: Feed[];
@@ -37,6 +40,7 @@ export default function FeedQuickSwitchModal({
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   // WCAG 2.4.3: 閉じたときにトリガー要素 (?キー押下した記事一覧 etc.) へフォーカス復元
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -120,6 +124,32 @@ export default function FeedQuickSwitchModal({
     }
   }
 
+  // Modal.tsx と同じ focus trap pattern (WCAG 2.1.2 No Keyboard Trap)。
+  // 入力フィールド以外 (clear-query ボタンなど) からの Tab がダイアログ外へ抜けるのを防ぐ。
+  const handleDialogKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab") return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+    if (focusable.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first || document.activeElement === dialog) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last || document.activeElement === dialog) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }, []);
+
   const isSelected = (opt: FeedOption) =>
     opt.id === selectedFeedId || (opt.id === null && selectedFeedId === null);
 
@@ -127,10 +157,13 @@ export default function FeedQuickSwitchModal({
     <>
       <div className="fixed inset-0 z-[49] bg-black/30" onPointerDown={onClose} />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="フィードを素早く切り替え"
-        className="fixed z-50 inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[400px] max-h-[65dvh] flex flex-col bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden"
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
+        className="fixed z-50 inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[400px] max-h-[65dvh] flex flex-col bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-border-subtle flex-shrink-0">
