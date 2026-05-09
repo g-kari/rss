@@ -1248,6 +1248,36 @@ export function collectImageUrls(container: Element): string[] {
 
 連続修正のときも、各 commit の RELEASE_NOTES 追記 + master 反映 + push は省略しない (デプロイ可能な状態を保つ)。
 
+### 派生ケース: 監査エージェントの提案は実装着手前に「影響範囲 vs 利得」で再評価する
+
+監査エージェントは **「fix の概要」だけ提示** することが多く、実装範囲の見積りが甘い (例: 「2 つの hook を統合」と書いてあるが、実は **Context lift up + 4 ファイル変更** が必要なケース)。連続修正の判定表で「規範パターン複製 + 1〜2 ファイル」に該当しても、実際にコードを Read してみたら 5 ファイル超え/Context 設計要となることがある。
+
+```
+パターン: 着手前の再評価ステップ
+  1. エージェント提案を読む (例: "useTotalUnreadCount を useSidebarFeeds に統合")
+  2. 影響範囲の Read で実装スコープを確認:
+     - 削除する hook の caller を grep
+     - 統合先 hook の caller を grep (子コンポーネントだけか? Context lift 要か?)
+     - state 共有の方向 (parent → child / child → parent / sibling)
+  3. 着手判定:
+     - 「1〜2 ファイル + 既存パターンの延長」 → そのまま連続修正
+     - 「Context 新設 / hook lift up / 3 ファイル超え」 → Issue 起票へ降格
+     - 「設計判断必要 (Context vs prop drilling vs callback)」 → Issue 起票
+  4. Issue 起票時は **エージェント分析結果 + 案 A/B/C + 推奨案** をテンプレで貼る
+```
+
+**Why**: エージェント分析は「短い report 制約」で表面しか書けない。「統合」「集約」「helper 化」のキーワードに飛びつくと、実装着手後に「思ったより大きい」と気付いて中途半端な commit を作るリスク。**着手前の Read 1-2 回で最終 PR の規模を予測** すれば、適切に Issue 化に降格できる。「同サイクルで修正できないなら Issue 化」は逃げではなく、**1 PR = 1 関心事を保つ品質判断**。
+
+**How to apply**: 監査エージェント提案を受けたら:
+
+1. **「変更対象ファイル数」と「新規ファイル数」を Read で見積る** (caller grep, 既存 export grep)
+2. **3 ファイル超え or 新 Context/Provider 必要** なら Issue 起票へ降格
+3. **既存規範パターン (Modal.tsx の focus trap, ShareMenu の portal menu 等) のコピー** なら 1〜3 ファイルでもそのまま着手 (パターン適用は予測可能)
+4. **エージェント分析が含む「partial」「unclear」表現** に注意。「could be merged」「should be extracted」など曖昧な動詞は実装スコープが大きいシグナル
+5. Issue 起票時は **エージェントの impact 計算と confidence** を引用しつつ、**案 A/B/C + 必要な対応箇所 (具体ファイル名)** を必ず列挙
+
+主な使用箇所: 2026-05-10 サイクルの perf #1 (useTotalUnreadCount 統合) — エージェント 85% 信頼度だったが Read で Context lift up 必要と判明 → Issue #702 起票して降格
+
 ## 本番環境のデバッグは「localStorage gate + 専用 debug ヘルパー」で出す
 
 → `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割。AbortController/Ref 派生ケースも同ファイルへ移動)
