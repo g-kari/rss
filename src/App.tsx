@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import AppModals from "./components/AppModals";
 import FeedSidebar from "./components/feed-sidebar";
@@ -484,10 +484,7 @@ export default function App() {
     duplicateInfo,
   } = filterState;
 
-  const { currentIndex, prevArticle, nextArticle } = useArticleNavigation(
-    selectedArticle,
-    filtered,
-  );
+  const { prevArticle, nextArticle } = useArticleNavigation(selectedArticle, filtered);
 
   const { feedHasMorePages, handleLoadMoreFeedArticles } = useFeedPagination({
     selectedFeedId,
