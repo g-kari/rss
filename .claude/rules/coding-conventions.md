@@ -783,6 +783,40 @@ useEffect(() => {
 
 **How to apply**: 機能が「ON / OFF」のフラグで動く場合、OFF 遷移時のクリーンアップが副作用を 100% 止めているか必ず確認する。fetch / timer / 音声 / WebSocket / IntersectionObserver などすべて。
 
+## ブラウザ API の遅延通知に備えて初期取得 + イベント購読をペアで書く
+
+`speechSynthesis.getVoices()` のように **初回呼び出しでは空配列を返し、後から `voiceschanged` イベントで利用可能になる** ブラウザ API がある。useEffect で初期取得だけしても永遠に空のままなので、必ずイベント購読とペアで実装する。
+
+```typescript
+// アンチパターン: 初期取得のみで遅延通知を捕捉できない
+useEffect(() => {
+  setVoices(window.speechSynthesis.getVoices()); // Chrome では空配列
+}, []);
+
+// 修正パターン: 初期取得 + voiceschanged 購読をペア
+useEffect(() => {
+  const update = () => setVoices(window.speechSynthesis.getVoices());
+  update(); // Safari など初期取得で取れる環境用
+  window.speechSynthesis.addEventListener("voiceschanged", update);
+  return () => window.speechSynthesis.removeEventListener("voiceschanged", update);
+}, []);
+```
+
+**Why**: ブラウザ API には「初期化が非同期で完了する」ものが多く、初期取得だけだと一部環境で永遠に空/旧値のままになる。Chrome の `voiceschanged` / DOM の `MutationObserver` / `navigator.mediaDevices.devicechange` / `screen.orientation.change` などはすべて同じパターン。
+
+**How to apply**: ブラウザネイティブ API を呼ぶ useEffect を書くとき:
+
+1. **「初回呼び出しで完全な値が取れるか？」を必ず確認** (MDN ドキュメント or 動作確認)
+2. 取れない場合、**変更通知イベントが提供されているか確認** (`xxxchanged` / `change` 系)
+3. 提供されているなら **初期取得 + イベント購読 + cleanup の 3 点セット** を必ず書く
+4. 提供されていない (古い API) なら polling / setInterval を最小頻度で
+
+主な使用箇所:
+
+- `useSpeechSynthesis` の `voiceschanged` 購読 (#654)
+- `useResizeObserver` 系 (`ResizeObserver` の初回コールバック)
+- `useOnlineStatus` の `online` / `offline` イベント購読
+
 ## 上流 API プロキシのヘッダ欠落補完
 
 `/api/content` のように上流 HTTP レスポンスを中継する route で、上流が必須ヘッダ（`Retry-After`, `Content-Type` 等）を欠落させた場合に備えて、デフォルト値を補完する。
