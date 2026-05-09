@@ -21,6 +21,9 @@ interface AiNotificationTabPanelProps {
   toggleAutoTranslate: () => void;
   autoSummarize: boolean;
   toggleAutoSummarize: () => void;
+  /** #700: ON でブラウザ AI 不可なら auto-translate / auto-summarize skip (Workers AI フォールバック防止) */
+  autoAiBrowserOnly: boolean;
+  toggleAutoAiBrowserOnly: () => void;
   aiModel: WorkersAiModelId;
   onChangeAiModel: (v: WorkersAiModelId) => void;
 }
@@ -31,6 +34,8 @@ export default function AiNotificationTabPanel({
   toggleAutoTranslate,
   autoSummarize,
   toggleAutoSummarize,
+  autoAiBrowserOnly,
+  toggleAutoAiBrowserOnly,
   aiModel,
   onChangeAiModel,
 }: AiNotificationTabPanelProps) {
@@ -190,6 +195,34 @@ export default function AiNotificationTabPanel({
             />
           </button>
         </SettingRow>
+
+        <SettingRow label="ブラウザ AI のみ使う">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoAiBrowserOnly}
+            aria-label={
+              autoAiBrowserOnly
+                ? "ブラウザ AI のみ使う設定を OFF にする"
+                : "ブラウザ AI のみ使う設定を ON にする"
+            }
+            onClick={toggleAutoAiBrowserOnly}
+            className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+              autoAiBrowserOnly ? "bg-ink" : "bg-border-default"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                autoAiBrowserOnly ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </SettingRow>
+        <p className="text-[11px] text-text-muted pl-28 -mt-2">
+          ON のとき、ブラウザネイティブ AI (Chrome 翻訳・要約)
+          が使えない記事では自動翻訳・自動要約を行わず Workers AI
+          へのフォールバックを防ぎますわ。手動の AI / 翻訳ボタンは影響を受けません。
+        </p>
 
         {(translatorDiag || summarizerDiag) && (
           <div className="flex flex-col gap-1.5 pl-28">

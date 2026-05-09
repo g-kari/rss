@@ -43,6 +43,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     toggleAutoTranslate,
     autoSummarize,
     toggleAutoSummarize,
+    autoAiBrowserOnly,
+    toggleAutoAiBrowserOnly,
     galleryColumns,
     onChangeGalleryColumns,
     galleryColumnsFocus,
@@ -149,6 +151,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
         toggleAutoTranslate={toggleAutoTranslate}
         autoSummarize={autoSummarize}
         toggleAutoSummarize={toggleAutoSummarize}
+        autoAiBrowserOnly={autoAiBrowserOnly}
+        toggleAutoAiBrowserOnly={toggleAutoAiBrowserOnly}
         aiModel={aiModel}
         onChangeAiModel={onChangeAiModel}
       />

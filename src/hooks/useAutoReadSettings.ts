@@ -33,6 +33,11 @@ function loadAutoSummarize(): boolean {
   return storageGet(STORAGE_KEYS.AUTO_SUMMARIZE) === "1";
 }
 
+function loadAutoAiBrowserOnly(): boolean {
+  // default false (既存挙動維持: ブラウザ AI 不可なら Workers AI へフォールバック)
+  return storageGet(STORAGE_KEYS.AUTO_AI_BROWSER_ONLY) === "1";
+}
+
 function loadDeduplicateByLink(): boolean {
   const stored = storageGet(STORAGE_KEYS.DEDUP_BY_LINK);
   // デフォルト: true（未設定時は重複排除ON）
@@ -52,6 +57,7 @@ export function useAutoReadSettings() {
     useState<AutoReadThreshold>(loadAutoReadThreshold);
   const [autoTranslate, setAutoTranslate] = useState<boolean>(loadAutoTranslate);
   const [autoSummarize, setAutoSummarize] = useState<boolean>(loadAutoSummarize);
+  const [autoAiBrowserOnly, setAutoAiBrowserOnly] = useState<boolean>(loadAutoAiBrowserOnly);
   const [deduplicateByLink, setDeduplicateByLink] = useState<boolean>(loadDeduplicateByLink);
   const [aiModel, setAiModel] = useState<WorkersAiModelId>(loadAiModel);
 
@@ -75,6 +81,14 @@ export function useAutoReadSettings() {
     setAutoSummarize((v) => {
       const next = !v;
       storageSet(STORAGE_KEYS.AUTO_SUMMARIZE, next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
+  const toggleAutoAiBrowserOnly = useCallback(() => {
+    setAutoAiBrowserOnly((v) => {
+      const next = !v;
+      storageSet(STORAGE_KEYS.AUTO_AI_BROWSER_ONLY, next ? "1" : "0");
       return next;
     });
   }, []);
@@ -116,6 +130,8 @@ export function useAutoReadSettings() {
     toggleAutoTranslate,
     autoSummarize,
     toggleAutoSummarize,
+    autoAiBrowserOnly,
+    toggleAutoAiBrowserOnly,
     deduplicateByLink,
     toggleDeduplicateByLink,
     aiModel,

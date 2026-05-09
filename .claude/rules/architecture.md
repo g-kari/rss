@@ -239,7 +239,8 @@ src/
     usePortalMenu.ts         # ポータルベースのドロップダウンメニュー位置管理
     useGracePeriod.ts        # 直前選択記事を 30 秒間フィルター対象外にする猶予期間管理
     useDebounce.ts           # デバウンスユーティリティ
-    useAutoReadSettings.ts   # 自動既読閾値・自動翻訳設定（useUIState から分割）
+    useAutoReadSettings.ts   # 自動既読閾値・自動翻訳・自動要約・autoAiBrowserOnly (#700) 設定（useUIState から分割）
+    useBrowserAiAvailability.ts # ブラウザネイティブ AI (Chrome Translator / Summarizer) の利用可否を mount 時に診断する hook（#700 auto-trigger 判定用）
     useAutoReset.ts          # 値セット後に自動リセット (duration 経過後に初期値へ戻す)
     useEventListener.ts      # DOM イベントリスナーライフサイクル管理 (window / document 対応)
     useInboxProgress.ts      # フィード別未読消化率を計算 (unread 数・readRatio、最大 10 件)
@@ -320,6 +321,7 @@ src/
     api-fetch.ts             # 認証付きクライアントサイド fetch ラッパー
     embed-utils.ts           # iframe embed 処理ユーティリティ
     engagement-score.ts      # エンゲージメントスコア計算ロジック
+    auto-ai-fallback.ts      # 自動翻訳・自動要約のブラウザ AI フォールバック判定純粋関数（shouldSkipAutoAi — #700 ブラウザ AI のみ使う設定）
     auto-read.ts             # オートモードの状態遷移判定純粋関数（isAutoReadFinished / shouldTriggerAutoFetch / shouldStartAutoSpeak）
     auto-read-debug.ts       # オートモード診断ログ用 localStorage gate ヘルパー（rss-debug-autoread キーで autoReadDebug を有効化、#678）
     auto-read-persist.ts     # オートモード ON 状態を localStorage に保存・1 時間 TTL で復元する純粋関数（shouldRestore / parsePersisted、#679）
@@ -659,6 +661,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `article-search.spec.ts`              | `src/hooks/useFullTextSearch` 経由の全文検索                                                                                                                      |
 | `article-ttl.spec.ts`                 | `src/lib/article-ttl.ts` — TTL 管理純粋関数                                                                                                                       |
 | `auto-read.spec.ts`                   | `src/lib/auto-read.ts` — オートモード状態遷移判定純粋関数                                                                                                         |
+| `auto-ai-fallback.spec.ts`            | `src/lib/auto-ai-fallback.ts` — `shouldSkipAutoAi` 純粋関数（#700 ブラウザ AI のみ使う設定の skip 判定 全 4 ケース）                                              |
 | `scroll-direction.spec.ts`            | `src/lib/scroll-direction.ts` — `computeScrollDirection` / `computeHeaderVisibility` 純粋関数 (#677, ArticleHeader sticky toggle)                                 |
 | `inline-nav-click.spec.ts`            | `src/lib/inline-nav.ts` — インラインナビ クリック位置判定純粋関数                                                                                                 |
 | `strip-html-with-breaks.spec.ts`      | `src/lib/html.ts#stripHtmlWithBreaks` — `<br>` / `<p>` を改行に変換する HTML strip                                                                                |

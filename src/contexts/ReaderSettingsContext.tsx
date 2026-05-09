@@ -28,6 +28,12 @@ export interface ReaderSettings {
   toggleAutoTranslate: () => void;
   autoSummarize: boolean;
   toggleAutoSummarize: () => void;
+  /**
+   * #700: ON のときブラウザネイティブ AI が利用不可な記事では auto-translate / auto-summarize
+   * を skip し、Workers AI へのフォールバックを発動させない。
+   */
+  autoAiBrowserOnly: boolean;
+  toggleAutoAiBrowserOnly: () => void;
   lineHeight: LineHeight;
   onChangeLineHeight: (lh: LineHeight) => void;
   contentWidth: ContentWidth;
