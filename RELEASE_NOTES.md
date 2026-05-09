@@ -2,6 +2,12 @@
 
 ## 2026-05-10 (latest)
 
+### UX 改善っ
+
+- **AI 要約/翻訳ボタンが失敗時にちゃんと教えてくれるようになったよ〜!⚠️ (UX 監査 88% 信頼度)** — ボタン押した後に rate-limit や `AI_ERROR` で失敗しても、ヘッダーボタンが grey に戻ってサイレント、ユーザーは下にスクロールして本文の error メッセージ見ないと気付かない (= 押し直して再 rate-limit) 状態だったのを修正!💪 `aiError` / `translateError` を Props で受けて、エラー時にボタン枠を `border-error text-error` で目立たせ + `title` tooltip にエラーメッセージを表示〜🎯
+- **読み上げ速度に `Shift+R` キーボードショートカット追加 + 次値 hint!⌨️ (UX 監査 82% 信頼度)** — 元々 `1x` ラベルボタンを **クリックして cycle するしかなかった** 速度切替を、`Shift+R` で再生中もキーボードから変更できるように!💎 `KeyboardShortcutsModal` (?キー) にも掲載で discoverable〜🎀 `title` tooltip も「読み上げ速度: 1x → 次: 1.5x（クリック / Shift+R）」と次値を明示〜📚 `cycleRate()` の戻り値を `void → number` に変更して shortcut の toast 表示に使える設計〜🛡️
+- **「全文を取得」成功時に toast.info で確認フィードバック!✨ (UX 監査 80% 信頼度)** — 元々 `<FetchFullContentArea>` ボタン押した後、Spinner が消えて UI が無音で消えるだけで、ユーザーがスクロール下部にいると本文更新に気付かない問題を修正!🎯 `useImageDownload` と同じ pattern で `toast.info("全文を取得しました")` 発火〜🔊
+
 ### リファクタリングっ (#650 段階分割継続)
 
 - **App.tsx の Provider 入れ子 4 段を `<AppProviders>` に集約!📦 (#650 Step 1u)** — `ToastProvider` / `TtsAdapterProvider` / `ReaderSettingsProvider` / `ArticleFilterProvider` の 4 段ネストを 1 ファイル (`src/components/AppProviders.tsx`) に閉じ込めて、App.tsx の return JSX を浅く保ったよ〜🎯 Provider の **順序や追加・変更時の影響範囲を 1 ファイルに局所化** できる構造で、将来の Provider 追加 (例: i18n / Analytics) も AppProviders 1 ファイル変更で完結〜🛡️ App.tsx は Provider 直接 import を 4 個削除〜💎

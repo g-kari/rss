@@ -48,8 +48,8 @@ export interface TtsAdapter {
   isPaused: boolean;
   /** 現在の速度 */
   rate: TtsRate;
-  /** 速度を順番に切り替え (engine 別の許容セットで cycle) */
-  cycleRate: () => void;
+  /** 速度を順番に切り替え (engine 別の許容セットで cycle)。戻り値は次の rate 値 (UX 監査 #2: Shift+R toast 表示用) */
+  cycleRate: () => number;
   /** 現在の音量 (0.0〜1.0、Web Speech API 仕様準拠) */
   volume: number;
   /** 音量を変更 (再生中なら新音量で再生し直す)。範囲外は内部で clamp */
