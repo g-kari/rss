@@ -1247,6 +1247,98 @@ export function useArticleImageMaxWidth(contentRef, contentKey) {
 
 主な使用箇所: `useArticleImageMaxWidth` (#680) — `fixImageDimensions` で max-width が付かない画像を runtime で補完
 
+## SVG sprite パターンの本文抽出: `<use href="#fragment">` 孤立参照は除去する
+
+ページ本体に `<svg style="display:none"><symbol id="i-twitter">...</symbol></svg>` で SVG sprite を定義し、本文中に `<svg><use href="#i-twitter">` で参照する設計は普及しているが、**Readability で本文だけ切り出すと sprite 定義が失われ参照だけが残る**。
+
+```html
+<!-- 元ページ -->
+<body>
+  <div style="display:none">
+    <svg><symbol id="i-twitter"><path d="..."/></symbol></svg>
+  </div>
+  <article>
+    <a><svg><use href="#i-twitter"></svg></a>  ← Readability に拾われる
+  </article>
+</body>
+
+<!-- Readability 抽出後 -->
+<a><svg><use href="#i-twitter"></svg></a>  ← symbol 定義が無いので空
+```
+
+問題: SVG 要素は HTML5 仕様で **デフォルトサイズ 300×150px** を持つ。未定義参照の空 `<svg>` は icon 1 個ごとに 300×150 の **謎の空白領域** として描画され、記事内に 10〜15 個並ぶと「ガタつき」「謎の空白」状態になる。
+
+修正パターン: 本文後処理で「`<use>` のみで構成された `<svg>`」を識別して除去する純粋関数を入れる。
+
+```typescript
+export function removeOrphanedIconSvgs(html: string): string {
+  return processNestedBlocks(html, ["svg"], null, (openTag, inner) => {
+    const stripped = inner
+      .replace(/<use\b[^>]*\/?>(?:[\s\S]*?<\/use\s*>)?/gi, "")
+      .replace(/<svg\b[^>]*>\s*<\/svg\s*>/gi, "") // ネストした空 svg も除去
+      .trim();
+    if (stripped === "") return ""; // 孤立 icon 参照 → 除去
+    return `${openTag}${inner}</svg>`; // 実コンテンツあり → openTag (属性) 保持
+  });
+}
+```
+
+**Why**: SVG sprite は CSS / アクセシビリティ的には正しい設計だが、Readability のような「本文ブロック切り出し」型ツールとは相性が悪い。元ページで「不可視」だった sprite 定義が、本文だけ切り出した瞬間に「必要な参照先が消える」状態になる。
+
+**How to apply**: HTML 後処理で `<use>` のみの `<svg>` を識別して除去する純粋関数 + TDD (孤立 use / href 形式 / 複数 use / 実コンテンツ保持 / 親 a 残し / 属性保持 / ネスト) を入れる。`removeNoise` パイプラインの末尾に追加するのが安全な配置。
+
+主な使用箇所: `removeOrphanedIconSvgs` (`html-noise-removal.ts`) — Twitter 系 / Skebetter 等 SVG sprite ページの「謎の空白」防止
+
+## 画像主体ページは JSON-LD `image` を抽出して Readability の取りこぼしを補完する
+
+Readability は **テキスト密度ベース** で本文を判定するため、テキストが少ない画像主体ページでは `「推薦」「関連記事」` 等を本文と誤判定して **記事固有の主要画像を取りこぼす** ことがある。
+
+```
+症状例 (Skebetter author/manga 個別ページ):
+- 元 HTML に <img> 130 個、うち主要漫画画像 2 枚を含む
+- Readability 抽出結果: profile_images だけ 54 個 (推薦セクションを「本文」と誤判定)
+- 主要画像 0 枚 → ユーザー報告「2 枚あるはずなのに取れない」
+```
+
+既存の「画像損失 fallback」(`srcImgCount >= 8 && rcImgCount * 5 < srcImgCount`) は、`rcImgCount` (= 推薦の profile_images 54 個) が膨らんで条件が成立せず機能しない。
+
+修正パターン: **JSON-LD `<script type="application/ld+json">` の `Article` 型 `image` フィールド** を主要画像の信頼ソースとして使う純粋関数を追加し、抽出結果に不足する画像を `<div hidden>` で末尾補完する。
+
+```typescript
+// 1. JSON-LD から記事主要画像を抽出
+export function extractJsonLdImages(html: string): string[] {
+  // <script type="application/ld+json"> を全て JSON.parse
+  // @type が Article / NewsArticle / BlogPosting 等の image を採用
+  // image は string / array / ImageObject ({ url } / { contentUrl }) 形式に対応
+}
+
+// 2. 抽出結果に含まれない画像のみ <div hidden> で補完
+export function appendMissingJsonLdImages(content: string, urls: string[]): string {
+  const missing = urls.filter((u) => !content.includes(u));
+  if (missing.length === 0) return content;
+  return content + `<div hidden>${missing.map((u) => `<img src="${u}" />`).join("")}</div>`;
+}
+
+// 3. extractMainContent の全パスに適用
+const jsonLdImages = extractJsonLdImages(preprocessed);
+const augment = (c: string) => appendMissingJsonLdImages(c, jsonLdImages);
+return { content: augment(extractedContent) + buildGallery(), source: "..." };
+```
+
+**Why**: JSON-LD の `Article.image` は schema.org 標準で、サイトが「この記事の主要画像」と公式に宣言したもの。Readability の本文判定が外しても、JSON-LD 由来の URL は確実に「正しい画像」として信頼できる。`<div hidden>` で補完すれば、本文と重複表示せず、クライアント側 `ImageGallery` がギャラリーとして拾える。
+
+**How to apply**:
+
+1. テキスト密度ベースの本文抽出ツール (Readability 等) を使うとき、画像主体ページの fallback として JSON-LD を採取する
+2. `@type` は `Article` / `NewsArticle` / `BlogPosting` / `TechArticle` 等の **article 系の型** を全て認識
+3. `image` フィールドは `string` / `array` / `ImageObject ({ url } / { contentUrl })` の **3 形式** に対応
+4. 入れ子オブジェクト (`BreadcrumbList` 内の関連 image など) を再帰探索して取りこぼさない
+5. http(s) URL のみ採用 (data: / 相対 / javascript: 除外)
+6. **抽出結果に既に含まれていれば追加しない** (重複排除)
+7. `<div hidden>` 形式で末尾追加 (ImageGallery 互換、本文表示への影響なし)
+
+主な使用箇所: `extractJsonLdImages` / `appendMissingJsonLdImages` (`json-ld-images.ts`) — `extractMainContent` の 3 抽出パス全てに `augmentWithJsonLd` を適用
+
 ## 禁止事項
 
 - D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
