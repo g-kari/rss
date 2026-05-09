@@ -649,6 +649,59 @@ async function fetchOne(article) {
 
 代替策: 自動生成ファイルを `.gitignore` から外して commit する（trade-off: PR diff が増える、人間が手で編集してしまうリスク）。
 
+## useEffect 依存キーの slice() は「N+1 件目以降の変化を検知不能」にする罠
+
+`articles` のような **配列全体を対象に処理したい** useEffect で、依存配列キーを `articles.slice(0, N).map(a => a.id).join(...)` のように作ると、**N+1 件目以降の追加・削除を検知できなくなる**。
+
+```typescript
+// アンチパターン: 先頭 N 件 ID だけのキーで「visible 拡張」を検知できない
+const articlesKey = articles
+  .slice(0, 20) // ← 21 件目以降の変化が無視される
+  .map((a) => a.id)
+  .join("\0");
+
+useEffect(() => {
+  // 21 件目以降の処理がこの effect で行われるべきだが、再実行されない
+  void prefetch(articlesRef.current);
+}, [articlesKey]);
+
+// 修正パターン: 全件 ID でキーを作る (visible 拡張を確実に検知)
+const articlesKey = articles
+  .filter((a) => Boolean(a.link))
+  .map((a) => a.id)
+  .join("\0");
+```
+
+**Why**: 2026-05-09 の #669 で、`usePrefetchGalleryContents` の `articlesKey` が `articles.slice(0, maxPrefetch=20)` で先頭 20 件 ID 固定だった。ユーザーがスクロールして visible が 50→100 件に拡張されてもキー不変 → effect 再実行されない → 21 件目以降が永遠にプリフェッチされない症状になっていた。
+
+**How to apply**: 依存配列キーを文字列ハッシュで作るときは:
+
+1. **何の変化を検知したいか** を明確にする（先頭固定 N 件 / 全件 / フィルタ後の集合 etc.）
+2. **slice / take / 先頭 N 件**を入れたら、N+1 件目以降の変化が **意図的に無視される設計** か再確認
+3. 「処理対象の上限」と「変化検知の対象」は **別概念** として分離する。上限は effect 内の `targets.slice(0, lim)` で、検知は `articlesKey` で全件。
+4. 全件キーが長くなりすぎる懸念があれば、**ハッシュ関数** (`SHA-1` 短縮など) で短縮するのも一手。ただし `join("\0")` の単純文字列でも数千件までは実用上問題なし
+
+主な使用箇所: `usePrefetchGalleryContents` の `buildArticlesKey` (#669 で修正)、`useArticlePagination` の visible.length deps (#636)。
+
+## 同症状でも別経路の可能性を疑う
+
+「ギャラリーが止まる」「TTS が止まる」のような **同じ症状の連続バグ報告** は、修正後も別経路で再発する可能性が高い。1 つ修正しただけで「同症状の Issue は全部解決」と思い込まないこと。
+
+**Why**: 2026-05-09 セッションで「ギャラリーが止まる」系のバグが #665 → #669 と連続した。
+
+- #665: 1 件 429 で `controller.abort()` が全 worker 中断
+- #669: `articlesKey` の slice(0, N) で N+1 件目以降が永遠に未処理
+
+両方「ギャラリーが止まる」症状だが、原因経路は完全に独立。1 件目を修正してすぐ閉じたら 2 件目が見えなくなるところだった。
+
+**How to apply**:
+
+- 「同症状の Issue を再起票された」ら、**前回修正のコミット diff** を読み直して「自分が直したのは本当に唯一の原因か」を疑う
+- 「修正したのに直らない」「修正したのにまた起きた」のキーワードがコメントに出たら、必ず別経路を疑って再調査
+- バグ修正のコミットメッセージには **「真因 = 〇〇」** を明記して、別経路調査時の参照点にする
+
+主な参考: #665 / #669 のコミットメッセージは両方とも明確に経路を区別。
+
 ## モード OFF 時に進行中の副作用を停止する
 
 state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
