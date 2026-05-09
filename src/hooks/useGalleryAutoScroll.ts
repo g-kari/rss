@@ -10,6 +10,7 @@ import {
   isContinuousScrollMode,
   isSlideshowMode,
 } from "../lib/gallery-autoscroll";
+import { useSyncedRef } from "./useSyncedRef";
 
 /**
  * ギャラリービューの自動スクロール hook (#690 案 D ハイブリッド)。
@@ -35,8 +36,7 @@ export function useGalleryAutoScroll(params: {
   onUserInterrupt?: () => void;
 }): void {
   const { scrollEl, speed, enabled, onUserInterrupt } = params;
-  const onUserInterruptRef = useRef(onUserInterrupt);
-  onUserInterruptRef.current = onUserInterrupt;
+  const onUserInterruptRef = useSyncedRef(onUserInterrupt);
 
   // 連続スクロール (rAF) ループ
   useEffect(() => {
