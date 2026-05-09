@@ -174,5 +174,49 @@ export function removeNoise(html: string): string {
     }
     return imgs.length >= 3 ? `<div hidden>${imgs.join("")}</div>` : `${openTag}${inner}</ul>`;
   });
+  // 孤立 SVG アイコン: <svg> の中身が <use href="#..."> のみのものは、
+  // ページ本体から切り出された記事に <symbol> 定義が残らないため空のまま描画される。
+  // SVG はデフォルトサイズ 300x150 (HTML5 仕様) で謎の空白領域を生むので除去する。
+  html = removeOrphanedIconSvgs(html);
   return html;
+}
+
+/**
+ * 「孤立した SVG アイコン参照」(`<svg><use href="#fragment" /></svg>`) を除去する。
+ *
+ * 多くの Web サイトは `<svg style="display:none">` 内に `<symbol id="i-twitter">` を
+ * 定義し、本文中で `<svg><use href="#i-twitter">` で参照する SVG sprite パターンを使う。
+ * Readability で本文を切り出すと sprite 定義は失われ、参照だけが残る。
+ *
+ * SVG 要素は HTML5 仕様でデフォルト表示サイズ 300x150 を持つため、未定義参照の
+ * `<svg>` は **「謎の 300x150 空白」** として記事内に多数現れる症状を引き起こす。
+ *
+ * 判定: `<svg>` の内側が **空白 + `<use>` タグのみ** で構成されているなら icon 参照と
+ * みなして除去。テキストや `<image>` `<rect>` `<path>` 等の実コンテンツがあれば保持。
+ *
+ * 親が `<a>` 等のリンクでもそのままタグだけ残す (テキスト含むリンクは別の処理で
+ * 既に表示されているため、空 `<a>` だけ残っても影響は限定的)。
+ */
+export function removeOrphanedIconSvgs(html: string): string {
+  // ネストした <svg> (内側 svg もまた孤立 icon) は外側 1 パスでは inner 文字列として残る
+  // ため、不動点反復で除去する。MAX_PASSES = 4 で実用的な深さをカバー。
+  const MAX_PASSES = 4;
+  let prev: string;
+  let curr = html;
+  let pass = 0;
+  do {
+    prev = curr;
+    curr = processNestedBlocks(curr, ["svg"], null, (openTag, inner) => {
+      // <use> と空の <svg></svg> を取り除いた残りに意味のあるコンテンツがあるか確認。
+      // 空 <svg> 除去はネストした孤立 icon の検出に必要 (inner に内側 <svg></svg> が残っている場合)。
+      const stripped = inner
+        .replace(/<use\b[^>]*\/?>(?:[\s\S]*?<\/use\s*>)?/gi, "")
+        .replace(/<svg\b[^>]*>\s*<\/svg\s*>/gi, "")
+        .trim();
+      if (stripped === "") return ""; // <use> のみ (= 孤立 icon 参照) → 除去
+      return `${openTag}${inner}</svg>`; // 実コンテンツあり → openTag (属性含む) 保持
+    });
+    pass++;
+  } while (curr !== prev && pass < MAX_PASSES);
+  return curr;
 }

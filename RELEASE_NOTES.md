@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **記事本文の「謎の空白領域」問題を直したよ〜** — Twitter / Skebetter 系の SVG sprite を多用するサイトで、Readability 抽出後に `<svg><use href="#i-twitter">` のような **孤立 SVG icon 参照** が記事内に多数残ってたの〜🥲 SVG はデフォルト 300×150px で描画されるから、icon 1 個ごとに巨大な空白が生まれて「ガタつき」「謎の空白」状態に！💥 `removeOrphanedIconSvgs` 純粋関数を `html-noise-removal.ts` に追加して、`<use>` のみで構成された空 SVG は除去するように〜🛠️ ネストした SVG (`<svg><svg><use></svg></svg>`) にも対応する不動点反復で漏らさず除去！TDD 13 ケース全分岐網羅 (孤立 use / href 形式 / 複数 use / path 等の実コンテンツ保持 / 親 a 残し / 属性保持 / ネスト)。
+
 ### 激アツ新機能っ
 
 - **ギャラリービュの列数設定に「1」を追加したよ〜** — Issue #681。`GALLERY_COLUMNS_CYCLE` に `"1"` を追加して、シングルカラム表示が選べるようになったよ〜🎀 縦に大きく一枚ずつ表示できるから、Pinterest 風じゃなくてフィード風に流したい時に便利〜📜 通常モードもフォーカスモードも両方対応！
