@@ -1499,6 +1499,36 @@ return { content: augment(extractedContent) + buildGallery(), source: "..." };
 4. 元 Issue にクローズコメントとして達成済み + フォローアップ Issue リンクを残す
 5. 各フォローアップに関連 label (`testing` / `infra` 等) を付ける
 
+## コード監査は専門エージェント並行派遣 → 高信頼指摘を選別 Issue 化
+
+「issue が無いときに監査して新規 Issue 起票」を依頼されたら、**観点別の専門エージェントを並行派遣**して、各エージェントから 1-3 件の高信頼指摘を集める。1 つの汎用エージェントに「全観点を見て」と依頼すると深さが足りない。
+
+```
+並行派遣テンプレート:
+  ├─ feature-dev:code-reviewer (perf 観点)  ← React re-render hotspots / 重い計算の重複 / R2 アクセスパターン
+  ├─ feature-dev:code-reviewer (UX 観点)   ← フォーカストラップ / ローディング / エラーメッセージ
+  └─ feature-dev:code-reviewer (security)  ← 必要に応じて
+```
+
+各エージェントへのプロンプトに **必ず含める要素**:
+
+1. **「Find 1-3 high-confidence issues that are genuinely impactful」** — 件数上限 (1-3) + confidence 縛り
+2. **Skip if** 節 — 「purely theoretical」「fix complexity > gain」「already addressed」を明示
+3. **Report format** — file path + line number / observation / impact / fix の 4 項目
+4. **「Use serena tools」** — find_symbol / search_for_pattern で効率的に navigate
+5. **語数制限** — 「Report under 400 words」で出力肥大化防止
+
+**Why**: 漠然とした「コードレビューして」依頼だと、エージェントは「気になった点全部」を 30 件レポートしてきて、95% は theoretical / minor。`Skip if` + 件数上限 + confidence 縛りで強制的に「真に対応すべき指摘だけ」を絞り込ませる。
+
+**How to apply**: 監査依頼 → エージェント結果集約 → 各指摘を:
+
+1. **実コード Read で再現確認** (`サブエージェント調査結果は該当コードで検証してから採用` ルール参照)
+2. **高信頼性 (confidence 80+) のみ Issue 化** — ラベル (`performance` / `bug` / `accessibility` 等) + `🤖 AI 起票` バナー必須
+3. **Issue 本文に**: 「状況」「影響」「修正方針案 (案 A/B/C)」「推奨」「必要な対応箇所」「関連 (元コメント / 関連実装)」のテンプレート従う
+4. **同サイクルで 1 件は対応する** — 監査だけで Issue を量産すると消化不良。最も impact が大きい 1 件をそのサイクルで完結する流れを基本にする
+
+主な使用箇所: 2026-05-09 のサイクル — perf/UX 監査を並行派遣 → 4 件 (#685-#688) 起票 → #685 (readingTime cache) を同サイクルで対応
+
 ## 本番環境のデバッグは「localStorage gate + 専用 debug ヘルパー」で出す
 
 ユーザー報告のバグが「本番でしか再現しない」「DevTools 開いても何も出ない」状態のとき、原因究明には本番環境での詳細ログが必要だが、**全ユーザーの DevTools を恒常的に汚す** のは UX 上 NG。
