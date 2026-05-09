@@ -597,7 +597,74 @@ async function fetchOne(article) {
 
 判定基準: 「この abort で止まる対象は、止めるべき対象と一致しているか？」。一致しないなら controller 共有は誤り。
 
-## useEffect 依存キーの slice() は「N+1 件目以降の変化を検知不能」にする罠
+### 派生ケース: useEffect で「articleId 変更時に in-flight fetch を abort」する設計は **child → parent の effect 発火順** で破綻する
+
+「データ取得 hook」(useArticleContent / useFeedContent 等) の `useEffect[targetId]` で「対象が変わったら進行中の fetch を abort」する設計はよくあるが、**同じ親コンポーネントが render する子コンポーネント (AutoXxxController など) が effect(1) で同 hook の `fetchFullContent` を呼ぶと、effect 発火順 (子 → 親) のせいで子が起動した新 fetch を親の cleanup effect が abort する**。
+
+```typescript
+// アンチパターン: 親の cleanup が子の起動した新 fetch を abort
+function useArticleContent(articleId) {
+  const fetchAbortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    fetchAbortControllerRef.current?.abort(); // ← 子が直前に set した V_new を abort!
+    fetchAbortControllerRef.current = null;
+  }, [articleId]);
+
+  const fetchFullContent = useCallback(async () => {
+    fetchAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    fetchAbortControllerRef.current = controller;
+    await apiFetch(url, { signal: controller.signal });
+  }, [articleId]);
+}
+
+// 子コンポーネント (AutoReadController) で effect(1) が onFetch を呼ぶ
+useEffect(() => {
+  if (shouldFetch) onFetch(); // ← この effect は子のため先に発火
+}, [articleId, ...]);
+
+// 発火順:
+//  1. 子 effect: onFetch → fetchFullContent → V_new set, await yield
+//  2. 親 useEffect[articleId]: V_new.abort()  ← 即 abort!
+```
+
+修正パターン: **controller に articleId を併記して、stale (古い articleId 用) のときのみ abort**:
+
+```typescript
+const fetchAbortControllerRef = useRef<{
+  controller: AbortController;
+  articleId: string | undefined;
+} | null>(null);
+
+useEffect(() => {
+  const ref = fetchAbortControllerRef.current;
+  // 自身と同じ articleId 用 (= 子が直前に set した新 fetch) はスキップ
+  if (ref && ref.articleId !== articleId) {
+    ref.controller.abort();
+    fetchAbortControllerRef.current = null;
+  }
+}, [articleId]);
+
+const fetchFullContent = useCallback(async () => {
+  fetchAbortControllerRef.current?.controller.abort();
+  const controller = new AbortController();
+  fetchAbortControllerRef.current = { controller, articleId }; // ← articleId 記録
+  await apiFetch(url, { signal: controller.signal });
+}, [articleId]);
+```
+
+**Why**: React の useEffect 発火順は **子 → 親** (depth-first, bottom-up)。親が render する子コンポーネントが「親の hook で公開された関数 (fetchFullContent / startSubscription 等) を effect(1) で呼ぶ」設計の場合、子の effect が先に走って ref を set し、その後に親の cleanup effect が abort する逆転現象が起きる。「無条件 abort」が正しいのは「親の hook 内だけで完結する設計」のときのみ。子に hook の public 関数を渡している場合は **「自分が起動した fetch か / 古い fetch か」を ref で識別** しないと cleanup が新 fetch を殺してしまう。
+
+**How to apply**: `useRef<AbortController>` + `useEffect[targetId]` で abort + cleanup する hook を書くとき:
+
+1. **その hook が公開する関数 (fetch / subscribe / start) を、子コンポーネントが effect で呼んでいないか** を確認
+2. 呼んでいる場合、**子の effect は親の cleanup より先に発火する** ことを意識
+3. ref の値に **「対象 ID」を併記** (`{ controller, articleId }`) して、cleanup では **stale 判定** してから abort
+4. ID が一致するときの abort をスキップしても、`fetchFullContent` 内の `ref.current?.controller.abort()` (新 fetch 起動時) で旧 fetch は確実に abort されるので問題ない
+5. **本番ログで abort 発火元を切り分ける必要があるとき** は、`articleId-effect-fired { hadController, isStaleController }` のように **ref の状態 + 判定結果** をログに出す
+
+主な使用箇所: `useArticleContent.ts` の `fetchAbortControllerRef = { controller, articleId }` 構造 (#678 — オートモードで全文取得が即 abort されて summary だけ読み上げのバグ修正)
 
 `articles` のような **配列全体を対象に処理したい** useEffect で、依存配列キーを `articles.slice(0, N).map(a => a.id).join(...)` のように作ると、**N+1 件目以降の追加・削除を検知できなくなる**。
 
