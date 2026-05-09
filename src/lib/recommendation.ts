@@ -279,7 +279,6 @@ export async function generateWebSearchFeeds(
       title: candidate.title || new URL(candidate.url).hostname,
       siteUrl: candidate.url,
       reason: `「${sanitizeForPrompt(candidate.topic, 60)}」の検索結果から発見`,
-      source: "web_search" as const,
       score: 0.9,
     })),
   );
@@ -325,7 +324,6 @@ export async function generatePopularFeeds(
         title: meta.title ?? meta.url,
         siteUrl: meta.siteUrl ?? meta.url,
         reason: `${subscriberCount}人が購読中`,
-        source: "popular" as const,
         score,
       };
     } catch (err) {
@@ -438,7 +436,6 @@ export async function generateLinkDiscoveryFeeds(
       title: new URL(url).hostname,
       siteUrl: url,
       reason: `「${sanitizeForPrompt(articleTitle, 60)}」内のリンクから発見`,
-      source: "link_discovery" as const,
       score: 0.85,
     })),
   );
