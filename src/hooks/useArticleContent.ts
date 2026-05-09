@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
+import { classifyHttpError, formatHttpErrorMessage } from "../lib/classify-http-error";
 import { autoReadDebug } from "../lib/auto-read-debug";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import type { OgpData } from "../types";
@@ -127,6 +128,23 @@ export function useArticleContent(
         const res = await apiFetch(`/api/content?url=${encodeURIComponent(articleLink)}`, {
           signal: controller.signal,
         });
+        // #688: 非 2xx をサイレント無視せず HttpErrorType に分類して
+        // 429 のときは Retry-After を秒数表示に整形 (useArticleAi と同じパターン)
+        if (!res.ok) {
+          const type = classifyHttpError(res.status);
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          const message = formatHttpErrorMessage(type, {
+            retryAfterHeader: res.headers.get("Retry-After"),
+            fallback: body.error ?? "取得できませんでした",
+          });
+          setFetchError(message);
+          autoReadDebug("useArticleContent.fetch-http-error", {
+            articleId,
+            httpStatus: res.status,
+            errorType: type,
+          });
+          return;
+        }
         const data = (await res.json()) as { content?: string; error?: string };
         if (data.content) {
           if (articleId) contentLruCache.set(articleId, data.content);
