@@ -255,6 +255,7 @@ src/
     usePopupLock.ts          # ブラウザポップアップの多重表示防止ロック（lib/popup-lock 連携）
     useMenuKeyboard.ts       # ポータルメニューのキーボードナビゲーション（Arrow Up/Down・ESC・フォーカストラップ）
     useDelayedGalleryItems.ts # 削除された items を 300ms 保持してフェードアウト遷移を可能にする（masonic 中間削除アニメーション用）
+    useHeaderScrollVisibility.ts # 下スクロールで header を隠し、上スクロール / 上端で表示する hook（scroll-direction.ts ラッパー、#677）
     useConfirm.ts            # window.confirm 代替 hook（Promise ベース確認モーダル。confirmModalProps を ConfirmModal に渡す）
     useMarkAllRead.ts        # 全既読ロジック集約 hook（サブフィルター判定・50件確認・アンドゥ対応）
     useArticleViewProps.ts   # ArticleView に渡す props オブジェクトの useMemo 集約 hook（App.tsx から分割）
@@ -304,6 +305,9 @@ src/
     embed-utils.ts           # iframe embed 処理ユーティリティ
     engagement-score.ts      # エンゲージメントスコア計算ロジック
     auto-read.ts             # オートモードの状態遷移判定純粋関数（isAutoReadFinished / shouldTriggerAutoFetch / shouldStartAutoSpeak）
+    auto-read-debug.ts       # オートモード診断ログ用 localStorage gate ヘルパー（rss-debug-autoread キーで autoReadDebug を有効化、#678）
+    auto-read-persist.ts     # オートモード ON 状態を localStorage に保存・1 時間 TTL で復元する純粋関数（shouldRestore / parsePersisted、#679）
+    scroll-direction.ts      # スクロール方向判定純粋関数（computeScrollDirection / computeHeaderVisibility、#677 ArticleHeader sticky toggle 用）
     inline-nav.ts            # インラインナビ領域クリック位置判定純粋関数（whichSideClicked）
     test-seed.ts             # /api/test/seed のリクエストボディ検証純粋関数（validateSeedRequest）
     article-filter.ts        # 記事フィルタリングロジック (feedId / 日付 / キーワード / クエリ)
@@ -638,6 +642,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `article-search.spec.ts`              | `src/hooks/useFullTextSearch` 経由の全文検索                                                                                                                      |
 | `article-ttl.spec.ts`                 | `src/lib/article-ttl.ts` — TTL 管理純粋関数                                                                                                                       |
 | `auto-read.spec.ts`                   | `src/lib/auto-read.ts` — オートモード状態遷移判定純粋関数                                                                                                         |
+| `scroll-direction.spec.ts`            | `src/lib/scroll-direction.ts` — `computeScrollDirection` / `computeHeaderVisibility` 純粋関数 (#677, ArticleHeader sticky toggle)                                 |
 | `inline-nav-click.spec.ts`            | `src/lib/inline-nav.ts` — インラインナビ クリック位置判定純粋関数                                                                                                 |
 | `strip-html-with-breaks.spec.ts`      | `src/lib/html.ts#stripHtmlWithBreaks` — `<br>` / `<p>` を改行に変換する HTML strip                                                                                |
 | `test-seed-validation.spec.ts`        | `src/lib/test-seed.ts` — e2e seed リクエストボディ検証純粋関数                                                                                                    |

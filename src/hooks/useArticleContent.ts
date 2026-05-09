@@ -132,7 +132,17 @@ export function useArticleContent(
         // 429 のときは Retry-After を秒数表示に整形 (useArticleAi と同じパターン)
         if (!res.ok) {
           const type = classifyHttpError(res.status);
-          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          // #693 (#688 後追い): JSON parse 失敗 (Cloudflare HTML エラーページ等) を捕捉して
+          // catch 内でも debug log を出す。これがないと本番で「fallback メッセージのみ表示
+          // → 実際のレスポンス body が一切わからない」観測性ギャップが残る。
+          const body = (await res.json().catch((parseErr) => {
+            autoReadDebug("useArticleContent.fetch-json-parse-failed", {
+              articleId,
+              httpStatus: res.status,
+              parseError: String(parseErr).slice(0, 100),
+            });
+            return {};
+          })) as { error?: string };
           const message = formatHttpErrorMessage(type, {
             retryAfterHeader: res.headers.get("Retry-After"),
             fallback: body.error ?? "取得できませんでした",
