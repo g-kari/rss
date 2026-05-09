@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Article, FeedGroup } from "../types";
 
@@ -15,6 +15,17 @@ export interface FeedSelectionState {
   setSelectedArticle: (article: Article | null) => void;
   selectedCollectionId: string | null;
   setSelectedCollectionId: (id: string | null) => void;
+  /**
+   * フィードを選択して同時に表示中の記事をクリアする (#650 Step 1n)。
+   * `useKeyboardNav` のフィード移動・FeedSidebar の切替で「同じ記事が違うフィードに残る」
+   * 違和感を避けるためのアトミック操作。
+   */
+  selectFeedClearingArticle: (id: string | null) => void;
+  /**
+   * フィード/グループ/記事の選択を全てクリアする (#650 Step 1n)。
+   * activeFeedView 変更時など、選択コンテキストごと切り替えるシーンで使う。
+   */
+  clearFeedGroupArticleSelection: () => void;
 }
 
 export function useFeedSelection(articles: Article[], feedGroups: FeedGroup[]): FeedSelectionState {
@@ -71,6 +82,17 @@ export function useFeedSelection(articles: Article[], feedGroups: FeedGroup[]): 
     }
   }, [selectedGroupId, feedGroups]);
 
+  const selectFeedClearingArticle = useCallback((id: string | null) => {
+    setSelectedFeedId(id);
+    setSelectedArticle(null);
+  }, []);
+
+  const clearFeedGroupArticleSelection = useCallback(() => {
+    setSelectedFeedId(null);
+    setSelectedGroupId(null);
+    setSelectedArticle(null);
+  }, []);
+
   return {
     selectedFeedId,
     setSelectedFeedId,
@@ -82,5 +104,7 @@ export function useFeedSelection(articles: Article[], feedGroups: FeedGroup[]): 
     setSelectedArticle,
     selectedCollectionId,
     setSelectedCollectionId,
+    selectFeedClearingArticle,
+    clearFeedGroupArticleSelection,
   };
 }
