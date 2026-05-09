@@ -3,6 +3,7 @@ import { withSession, withJsonBody, requireString } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, engagementKey, engagementCooldownKey } from "@/lib/r2";
 import { checkAndUpdateCooldown } from "@/lib/rate-limit";
+import { readUserSubscriptions } from "@/lib/shared-feed";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
 import { MAX_ID_LENGTH, MAX_ENGAGEMENT_ENTRIES, isValidFeedHash } from "@/lib/validation";
 
@@ -52,6 +53,14 @@ export async function POST(req: NextRequest) {
       !action ||
       !VALID_ACTIONS.includes(action as EngagementAction)
     ) {
+      return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
+    }
+
+    // 所有権チェック (#691 と同パターン): リクエストユーザーが対象 feedHash を購読していなければ拒否。
+    // 未購読 feedHash でエンゲージメントを記録できると、自分の topFeeds 統計や
+    // 推薦生成精度が任意に汚染される (cross-user 影響なしだが self-data corruption)。
+    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    if (!subs.some((s) => s.feedHash === feedHash)) {
       return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
     }
 

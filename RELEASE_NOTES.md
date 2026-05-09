@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### セキュリティ対策っ
+
+- **`POST /api/engagement` に購読チェックを追加したよ〜 (security 監査 Issue 2)** — エンゲージメント記録 API が認証だけ通せば任意の `feedHash` を受け付けてた状態を発見!💥 ユーザーが自分が購読していない `feedHash` を送信して `users/{userId}/engagement.json` の `topFeeds` 統計を任意に汚染できた状態 (cross-user 影響なしだが self-data + 推薦生成精度に影響)〜🥲 #691 と同パターンで `readUserSubscriptions` で購読チェックを追加して未購読 feedHash は 400 で拒否!🛡️
+
 ### リファクタリングっ
 
 - **エンゲージメント 3 連トグルボタンを EngagementSegmentButton に集約したよ〜 (simplify 監査 Issue 2)** — `ArticleHeaderEngagement.tsx` の「後で読む / ブックマーク / いいね」3 button がほぼ同形 (`px-2.5 py-1.5 transition-colors` + active/inactive 色 + svg 14/12px) だったから、新規 `EngagementSegmentButton.tsx` (45 行) に共通テンプレートを抽出!🔧 デザイントークンの差 (`bg-ink` / `bg-bookmark` / `bg-rose-400`) は `activeClass` props で吸収、SVG icon は children 経由で注入する設計〜🎀 ArticleHeaderEngagement は 213 → 203 行 (-10 行) でロジックが見やすく〜📦 セグメント化ラッパー (`overflow-hidden` + `<div className="w-px ...">` 区切り) は親側に維持!
