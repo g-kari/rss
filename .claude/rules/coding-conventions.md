@@ -1339,6 +1339,44 @@ return { content: augment(extractedContent) + buildGallery(), source: "..." };
 
 主な使用箇所: `extractJsonLdImages` / `appendMissingJsonLdImages` (`json-ld-images.ts`) — `extractMainContent` の 3 抽出パス全てに `augmentWithJsonLd` を適用
 
+## 大きい retrospective Issue は「技術スタック別フォローアップ Issue」に分割してクローズする
+
+「複数のバグ修正に後追いテストをまとめて追加する」のような **横断的 retrospective Issue** は、進捗管理としては意義があるが **個別 PR の単位として扱いづらい**。残作業の技術スタックが分かれてくると、
+
+- どのバグはどの infra (e2e / unit / RTL / network mock) で扱うか不明瞭
+- PR が膨らむ / レビュー困難
+- 部分達成しても Issue がクローズできず、open のまま放置
+
+これを避けるため、**部分達成した時点で残作業を「技術スタック別の小さい Issue」に分割して元 Issue をクローズ** するパターンを採用する。
+
+```
+元 Issue (6 件のバグに後追いテスト)
+  ├─ 達成 (2/6): 純粋関数化できたバグの再現テスト
+  └─ 残 (4/6) → 技術スタック別に分割:
+      ├─ フォローアップ A: React Testing Library 導入 + React 動作テスト要のバグ
+      └─ フォローアップ B: e2e UI テスト拡張 + network mock 要のバグ
+  → 元 Issue はクローズ + フォローアップへのリンクをコメントに残す
+```
+
+**Why**:
+
+1. **スコープの明確化**: 「RTL infra 整備」と「network mock infra 整備」は別タスク (担当者・PR・依存ライブラリも別)。元 Issue でまとめると並行進行が困難
+2. **クローズの心理的効果**: 部分達成でも Issue を閉じられると、次セッションで「ここまでは終わった」という安心感が得られ、残作業に集中できる
+3. **infra 投資の見える化**: フォローアップ Issue でそれぞれ「pnpm add -D vitest @testing-library/react」「Playwright page.route 拡張」のような投資が明示されると、優先度判断がしやすい
+
+**How to apply**:
+
+1. 横断的 retrospective Issue で 50% 以上達成したら、残作業を技術スタック別に分類できないか検討
+2. 分類できる場合、各分類について **完結する独立 Issue** を新規起票 (タイトルに「テスト infrastructure: ...」等の prefix で由来明示)
+3. 各フォローアップには:
+   - 元 Issue へのリンク
+   - 該当する残作業の個別バグ commit と内容
+   - 推奨技術スタック (npm パッケージ / 設定ファイル / 既存 infra)
+   - 必要なテストケース (具体的な assert 内容)
+   - ブロッカー / 留意点
+4. 元 Issue にクローズコメントとして達成済み + フォローアップ Issue リンクを残す
+5. 各フォローアップに関連 label (`testing` / `infra` 等) を付ける
+
 ## 禁止事項
 
 - D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
