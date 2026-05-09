@@ -12,6 +12,7 @@ import { useContentLinkPreviews } from "../../hooks/useContentLinkPreviews";
 import { useSyntaxHighlight } from "../../hooks/useSyntaxHighlight";
 import { useMathRender } from "../../hooks/useMathRender";
 import { useArticleHighlight } from "../../hooks/useArticleHighlight";
+import { useArticleImageMaxWidth } from "../../hooks/useArticleImageMaxWidth";
 import { useEventListener } from "../../hooks/useEventListener";
 import { sanitizeHtml } from "../../lib/html";
 import { shouldScrollSentence, findScrollableAncestor } from "../../lib/tts-scroll";
@@ -116,6 +117,9 @@ const ArticleContentBody = React.forwardRef<HTMLDivElement, ArticleContentBodyPr
 
     // PC 用: 画像スライダーに prev/next ボタンと wheel リダイレクトを注入する
     useSliderGallery(contentRef, processedContent);
+
+    // #680: HTML 属性 width/height がない画像の引き伸ばしを防止
+    useArticleImageMaxWidth(contentRef, processedContent);
 
     // X (Twitter) ツイート iframe を postMessage で動的リサイズ
     // platform.twitter.com から {"method":"twttr.resize","params":{"height":N}} が届くたびに
