@@ -23,6 +23,10 @@ import {
   FONT_FAMILY_LABELS,
 } from "../../lib/article-utils";
 import { AUTO_READ_THRESHOLD_CYCLE } from "../../hooks/useAutoReadSettings";
+import {
+  GALLERY_AUTO_SCROLL_SPEEDS,
+  type GalleryAutoScrollSpeed,
+} from "../../lib/gallery-autoscroll";
 import { ARTICLE_TTL_DAYS } from "../../lib/article-ttl";
 import { SHARE_TARGETS, type ShareTargetId } from "../article-view/shareTargets";
 import { SettingRow, SegmentGroup, PreviewArea, TTL_OPTIONS } from "./shared";
@@ -51,6 +55,9 @@ interface DisplayTabPanelProps {
   onChangeGalleryCardSize: (v: (typeof GALLERY_CARD_SIZE_CYCLE)[number]) => void;
   galleryMinImagePx: number;
   onChangeGalleryMinImagePx: (v: number) => void;
+  // Gallery auto-scroll (#690)
+  galleryAutoScrollSpeed: GalleryAutoScrollSpeed;
+  onChangeGalleryAutoScrollSpeed: (v: GalleryAutoScrollSpeed) => void;
   // Auto read
   autoReadEnabled: boolean;
   toggleAutoRead: () => void;
@@ -92,6 +99,8 @@ export default function DisplayTabPanel({
   onChangeGalleryCardSize,
   galleryMinImagePx,
   onChangeGalleryMinImagePx,
+  galleryAutoScrollSpeed,
+  onChangeGalleryAutoScrollSpeed,
   autoReadEnabled,
   toggleAutoRead,
   autoReadThreshold,
@@ -218,6 +227,31 @@ export default function DisplayTabPanel({
             </span>
           </div>
         </SettingRow>
+
+        <SettingRow label="自動スクロール">
+          <SegmentGroup
+            options={GALLERY_AUTO_SCROLL_SPEEDS.map((v) => ({
+              value: v,
+              label:
+                v === "off"
+                  ? "OFF"
+                  : v === "slow"
+                    ? "遅"
+                    : v === "medium"
+                      ? "中"
+                      : v === "fast"
+                        ? "速"
+                        : "スライドショー",
+            }))}
+            value={galleryAutoScrollSpeed}
+            onChange={onChangeGalleryAutoScrollSpeed}
+            ariaLabel="ギャラリー自動スクロール速度"
+          />
+        </SettingRow>
+        <p className="text-[11px] text-text-muted pl-28 -mt-2">
+          ギャラリービュー表示中、自動でスクロール / スライドショー再生しますわ。手動でスクロール
+          (ホイール / タッチ) すると OFF に戻りますの。
+        </p>
 
         <SettingRow label="記事保持期間">
           <div className="flex gap-1">

@@ -70,6 +70,7 @@ export const STORAGE_KEYS = {
   AUTO_TRANSLATE: "rss-auto-translate",
   AUTO_SUMMARIZE: "rss-auto-summarize",
   AUTO_AI_BROWSER_ONLY: "rss-auto-ai-browser-only",
+  GALLERY_AUTO_SCROLL_SPEED: "rss-gallery-autoscroll-speed",
   ACTIVE_FEED_VIEW: "rss-active-feed-view",
   SAVED_SEARCHES: "rss-saved-searches",
   GALLERY_COLUMNS: "rss-gallery-columns",

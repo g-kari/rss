@@ -53,6 +53,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     onChangeGalleryCardSize,
     galleryMinImagePx,
     onChangeGalleryMinImagePx,
+    galleryAutoScrollSpeed,
+    onChangeGalleryAutoScrollSpeed,
     deduplicateByLink,
     toggleDeduplicateByLink,
     ttlDays,
@@ -129,6 +131,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
         onChangeGalleryCardSize={onChangeGalleryCardSize}
         galleryMinImagePx={galleryMinImagePx}
         onChangeGalleryMinImagePx={onChangeGalleryMinImagePx}
+        galleryAutoScrollSpeed={galleryAutoScrollSpeed}
+        onChangeGalleryAutoScrollSpeed={onChangeGalleryAutoScrollSpeed}
         autoReadEnabled={autoReadEnabled}
         toggleAutoRead={toggleAutoRead}
         autoReadThreshold={autoReadThreshold}

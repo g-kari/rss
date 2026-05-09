@@ -15,6 +15,7 @@ import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useGalleryAutoRead } from "../hooks/useGalleryAutoRead";
 import { useGallerySwipeNav } from "../hooks/useGallerySwipeNav";
+import { useGalleryAutoScroll } from "../hooks/useGalleryAutoScroll";
 import { useArticleListItemProps } from "../hooks/useArticleListItemProps";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { resolveThumbnail } from "./ArticleItems";
@@ -133,6 +134,8 @@ function ArticleList({
     galleryCardSize,
     galleryMinImagePx,
     autoReadEnabled,
+    galleryAutoScrollSpeed,
+    onChangeGalleryAutoScrollSpeed,
   } = useReaderSettings();
 
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f])), [feeds]);
@@ -238,6 +241,13 @@ function ArticleList({
     onMarkRead: handleGalleryAutoRead,
   });
   useGallerySwipeNav(scrollEl, layout === "gallery");
+  // #690: ギャラリー自動スクロール (連続 / スライドショー ハイブリッド)
+  useGalleryAutoScroll({
+    scrollEl,
+    speed: galleryAutoScrollSpeed,
+    enabled: layout === "gallery",
+    onUserInterrupt: () => onChangeGalleryAutoScrollSpeed("off"),
+  });
 
   const {
     displayItems: nonGalleryDisplayItems,

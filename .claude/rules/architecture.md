@@ -241,6 +241,7 @@ src/
     useDebounce.ts           # デバウンスユーティリティ
     useAutoReadSettings.ts   # 自動既読閾値・自動翻訳・自動要約・autoAiBrowserOnly (#700) 設定（useUIState から分割）
     useBrowserAiAvailability.ts # ブラウザネイティブ AI (Chrome Translator / Summarizer) の利用可否を mount 時に診断する hook（#700 auto-trigger 判定用）
+    useGalleryAutoScroll.ts  # ギャラリー自動スクロール hook（連続/スライドショー両モード + 手動操作で OFF 復帰、#690）
     useAutoReset.ts          # 値セット後に自動リセット (duration 経過後に初期値へ戻す)
     useEventListener.ts      # DOM イベントリスナーライフサイクル管理 (window / document 対応)
     useInboxProgress.ts      # フィード別未読消化率を計算 (unread 数・readRatio、最大 10 件)
@@ -323,6 +324,7 @@ src/
     engagement-score.ts      # エンゲージメントスコア計算ロジック
     auto-ai-fallback.ts      # 自動翻訳・自動要約のブラウザ AI フォールバック判定純粋関数（shouldSkipAutoAi — #700 ブラウザ AI のみ使う設定）
     auto-read.ts             # オートモードの状態遷移判定純粋関数（isAutoReadFinished / shouldTriggerAutoFetch / shouldStartAutoSpeak）
+    gallery-autoscroll.ts    # ギャラリー自動スクロール純粋関数（5 段階速度: off/slow/medium/fast/slideshow、computeContinuousScrollDelta / computeSlideshowJump / parseGalleryAutoScrollSpeed、#690）
     auto-read-debug.ts       # オートモード診断ログ用 localStorage gate ヘルパー（rss-debug-autoread キーで autoReadDebug を有効化、#678）
     auto-read-persist.ts     # オートモード ON 状態を localStorage に保存・1 時間 TTL で復元する純粋関数（shouldRestore / parsePersisted、#679）
     scroll-direction.ts      # スクロール方向判定純粋関数（computeScrollDirection / computeHeaderVisibility、#677 ArticleHeader sticky toggle 用）
@@ -666,6 +668,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `auto-read-debug.spec.ts`             | `src/lib/auto-read-debug.ts` — `evaluateAutoReadDebugEnabled` localStorage gate 純粋判定 (#678)                                                                   |
 | `auto-read-persist.spec.ts`           | `src/lib/auto-read-persist.ts` — `parsePersistedAutoReadState` / `serializeAutoReadState` / `shouldRestoreAutoMode` (1 時間 TTL 復元) (#679)                      |
 | `auto-ai-fallback.spec.ts`            | `src/lib/auto-ai-fallback.ts` — `shouldSkipAutoAi` 純粋関数（#700 ブラウザ AI のみ使う設定の skip 判定 全 4 ケース）                                              |
+| `gallery-autoscroll.spec.ts`          | `src/lib/gallery-autoscroll.ts` — 5 段階速度 enum / 連続スクロール delta 計算 / スライドショー jump 計算 / 不正値 fallback 全 22 ケース (#690)                    |
 | `scroll-direction.spec.ts`            | `src/lib/scroll-direction.ts` — `computeScrollDirection` / `computeHeaderVisibility` 純粋関数 (#677, ArticleHeader sticky toggle)                                 |
 | `inline-nav-click.spec.ts`            | `src/lib/inline-nav.ts` — インラインナビ クリック位置判定純粋関数                                                                                                 |
 | `strip-html-with-breaks.spec.ts`      | `src/lib/html.ts#stripHtmlWithBreaks` — `<br>` / `<p>` を改行に変換する HTML strip                                                                                |
