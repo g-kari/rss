@@ -18,6 +18,7 @@ import { useArticleViewContent } from "./useArticleViewContent";
 import { useArticleViewTts } from "./useArticleViewTts";
 import { useArticleViewShortcuts } from "./useArticleViewShortcuts";
 import { useArticleViewProgress } from "./useArticleViewProgress";
+import { useTtsHighlight } from "./useTtsHighlight";
 
 interface UseArticleViewStateParams {
   article: Article | null;
@@ -143,6 +144,8 @@ export function useArticleViewState({
   const {
     embedInfo,
     processedContent,
+    wrappedContent,
+    ttsSentences,
     galleryImages,
     canFetch,
     hasContent,
@@ -154,6 +157,9 @@ export function useArticleViewState({
   // --- TTS ---
   // #653: 翻訳結果があれば TTS は翻訳側を読み上げる
   const translatedText = translateResult && translateResult.text ? translateResult.text : null;
+  // #672 Phase 2: TTS ハイライト用 ref (useArticleViewTts に渡して speak 時に boundary を購読)
+  const onBoundaryRef = useRef<((charIndex: number) => void) | null>(null);
+  const onSpeakStartRef = useRef<(() => void) | null>(null);
   const {
     ttsSupported,
     ttsPlaying,
@@ -167,7 +173,18 @@ export function useArticleViewState({
     ttsSpeak,
     ttsStop,
     buildTtsText,
-  } = useArticleViewTts(article, processedContent, translatedText);
+  } = useArticleViewTts(article, processedContent, translatedText, onBoundaryRef, onSpeakStartRef);
+
+  // #672 Phase 2: TTS ハイライト hook (sentences と TTS state を渡して activeSentenceIndex を計算)
+  const { activeSentenceIndex, handleBoundary, markSpeakStart } = useTtsHighlight(
+    ttsSentences,
+    ttsRate,
+    ttsPlaying,
+    ttsSupported,
+  );
+  // ref に最新ハンドラをアサイン (useArticleViewTts.speakWithHighlight が読む)
+  onBoundaryRef.current = handleBoundary;
+  onSpeakStartRef.current = markSpeakStart;
 
   // #653: autoTranslate ON で翻訳完了を待つべきか
   // - autoTranslate=true && 非日本語コンテンツ && 翻訳未完了 (loading 中含む) && エラーなし
@@ -299,6 +316,8 @@ export function useArticleViewState({
     cancelDownload,
     embedInfo,
     processedContent,
+    wrappedContent,
+    activeSentenceIndex,
     galleryImages,
     canFetch,
     hasContent,

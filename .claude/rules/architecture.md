@@ -244,6 +244,7 @@ src/
     useArticleViewTts.ts     # 記事 TTS（読み上げライフサイクル・Shift+P ショートカット・トグル）
     useArticleViewShortcuts.ts # 記事ビューキーボードショートカット（v/a/z/space）+ 自動翻訳トリガー
     useArticleViewProgress.ts  # 読書進捗バー・自動既読・スクロールハンドラー
+    useTtsHighlight.ts         # TTS 読み上げハイライト hook (#672 Phase 2 — boundary + 100ms interval 推定融合で activeSentenceIndex を計算)
     useFullTextSearch.ts     # 記事全文検索（クエリパース・フィールド絞り込み・正規表現対応）
     usePrefetchGalleryContents.ts # ギャラリー表示時の本文・画像事前フェッチ
     useSliderGallery.ts      # スライダー型ギャラリー UI 状態管理（ページング・キーボードナビ）
@@ -338,6 +339,7 @@ src/
     tts-text.ts              # TTS 読み上げ用テキスト前処理純粋関数（URL を「リンク」に置換）
     tts-voice.ts             # TTS 音声選択純粋関数（selectTtsVoice / groupVoicesByLang — Web Speech API voice 列挙の優先順位・言語別グループ化）
     tts-sentences.ts         # TTS sentence tracking 純粋関数（splitIntoSentences / findSentenceAtCharIndex / estimateCharIndexByElapsed / selectActiveCharIndex — boundary + 推定の融合）
+    tts-dom.ts               # TTS ハイライト用 HTML センテンス span ラップ純粋関数（wrapSentencesInHtml — linkedom 使用、`<pre>` `<code>` `<script>` `<style>` `<noscript>` 除外）
     popup-lock.ts            # 同時に開けるブラウザポップアップ数を制限するクライアントサイドロック
     dbsc.ts                  # Device Bound Session Credentials (DBSC) ユーティリティ — 機能検出・チャレンジ生成・ヘッダービルダー (スケルトン)
     serialize-error.ts       # Error オブジェクトの構造化シリアライズ（ログ・通知用）
@@ -690,6 +692,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `abort-error.spec.ts`                 | `src/lib/fetch.ts#isAbortError` — DOMException AbortError / Error name="AbortError" / 非 abort error の判別 (#625 後追い)                             |
 | `tts-voice.spec.ts`                   | `src/lib/tts-voice.ts` — `selectTtsVoice` / `groupVoicesByLang` 純粋関数（voice 選択優先順位・言語別グループ化）                                      |
 | `tts-sentences.spec.ts`               | `src/lib/tts-sentences.ts` — `splitIntoSentences` / `findSentenceAtCharIndex` / `estimateCharIndexByElapsed` / `selectActiveCharIndex` (#659 Phase 1) |
+| `tts-dom.spec.ts`                     | `src/lib/tts-dom.ts` — `wrapSentencesInHtml` 純粋関数（HTML テキストノードをセンテンス span でラップ・skip タグ対応・タグ跨ぎ） (#672 Phase 2)        |
 | `download-history.spec.ts`            | `src/lib/download-history.ts` — 画像 DL 履歴の FIFO 管理純粋関数                                                                                      |
 | `reader-settings.spec.ts`             | `src/lib/reader-settings.ts` — リーダー設定バリデーション                                                                                             |
 | `reading-progress.spec.ts`            | `src/lib/reading-progress.ts` — 読書進捗計算                                                                                                          |
