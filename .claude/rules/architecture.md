@@ -691,6 +691,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `llm-feed-generator.spec.ts`          | `src/lib/llm-feed-generator.ts` — LLM CSS セレクタ推論                                                                                                            |
 | `lru-cache.spec.ts`                   | `src/lib/lru-cache.ts` — LRU キャッシュ                                                                                                                           |
 | `modal-focus-trap.spec.ts`            | モーダルのフォーカストラップ                                                                                                                                      |
+| `confirm-modal-focus.spec.ts`         | ConfirmModal が閉じたときのトリガー要素へのフォーカス復元 (#687, WCAG 2.4.3)                                                                                      |
 | `modal-popup-lock-coverage.spec.ts`   | `src/lib/popup-lock.ts` — ポップアップ多重防止                                                                                                                    |
 | `obsidian.spec.ts`                    | `src/lib/obsidian.ts` — Obsidian URI 生成                                                                                                                         |
 | `ogp-url-normalize.spec.ts`           | `/api/ogp` URL 正規化                                                                                                                                             |

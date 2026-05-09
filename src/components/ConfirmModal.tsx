@@ -30,6 +30,9 @@ export default function ConfirmModal({
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  // #687: モーダルを開いたトリガー要素を退避し、閉じるときに同じ要素へフォーカスを戻す
+  // (WCAG 2.4.3 Focus Order)。Modal.tsx と同じパターン。
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   // ConfirmModal は親（App.tsx）で常時マウントされ、内部で isOpen を見て表示制御するため、
   // usePopupLock も isOpen に連動させないとアプリ起動直後から常時ロックが立ってしまい、
   // カラム幅リサイザー等の `hasOpenPopup` で無効化する UI 要素が操作できなくなる (#606)。
@@ -37,7 +40,16 @@ export default function ConfirmModal({
 
   useEffect(() => {
     if (isOpen) {
+      // 開く前のフォーカス位置を保存
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
       cancelRef.current?.focus();
+    } else {
+      // 閉じる時にトリガー要素へフォーカスを戻す。トリガーが既に DOM から外れている場合はスキップ。
+      const ret = returnFocusRef.current;
+      returnFocusRef.current = null;
+      if (ret && typeof ret.focus === "function" && document.contains(ret)) {
+        ret.focus();
+      }
     }
   }, [isOpen]);
 

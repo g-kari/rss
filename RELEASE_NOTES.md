@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### バグ修正っ
+
+- **ConfirmModal を閉じたあとフォーカスがトリガー要素に戻らない問題を直したよ〜 (#687)** — `Modal.tsx` には `returnFocusRef` パターンがあるのに、`ConfirmModal.tsx` だけ抜けてた〜🥲 削除確認ダイアログを ESC やキャンセルで閉じた後、フォーカスが `document.body` に飛んじゃってキーボードユーザーは「次の Tab がどこに飛ぶか」分からなくなる状態だったの！💥 WCAG 2.4.3 (Focus Order) 違反！🛡️ 開く前の `document.activeElement` を ref に保存して、閉じる時に DOM 内に存在すれば `focus()` を戻すように修正〜🎀 スクリーンリーダーユーザーには特にクリティカル (フォーカス位置 = 読み上げ位置)。TDD 3 ケース (基本復元 / トリガー削除時の安全 / 連続開閉の独立性) 全 Green。
+
 ### パフォーマンスっ
 
 - **snoozedUntil の reference 不安定で 2 秒毎に主スレッドブロックしてた問題を直したよ〜 (#686)** — `useReadStateSyncApply` がサーバーマージ後に `setSnoozedUntil(new Object)` を呼ぶせいで、内容が変わっていなくても reference が更新されてた〜🥲 これが `useFilteredArticles` の `structuralFiltered` useMemo の依存配列に入ってるから、**2 秒毎に全記事フィルター再実行 → 500 記事で 20-80ms の主スレッドブロックが常時発生** してたの！💥 `equalSnoozedUntil` 純粋関数を `read-state-merge.ts` に追加して、マージ結果が前回と構造的に等しければ setState を skip するように修正！🚀 reference 保持で useMemo の再計算を完全に止められたわ〜🎀 TDD 10 ケース (空 / 同一 reference / 同 key 同 value 別 reference / キー順序差異 / 片側欠落 / 値差異 / キー名差異 / 100 件全一致 / 100 件 1 件差異) で等価判定を網羅。
