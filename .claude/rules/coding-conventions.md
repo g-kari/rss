@@ -218,6 +218,30 @@ useEffect(() => {
 
 主な使用箇所: `useReadState`, `useFilteredArticles`, `useKeyboardNav`
 
+## hook の循環依存を ref で解消する
+
+Hook A の出力 (state) を Hook B の入力に渡し、かつ Hook B の出力 (callback) を Hook A の内部処理 (例: `speak` 内の boundary handler) に注入したいとき、宣言順だけでは解決できない循環が発生する。**callback 用の ref を「Hook A 呼び出し前」に作って両方に渡す** と解決する。
+
+```typescript
+// アンチパターン: useTts の handleTtsToggle が useHighlight.handleBoundary を呼びたいが
+// useHighlight は useTts の isPlaying を必要とするので宣言順を入れ替えられない
+const tts = useTts(article); // ← speak 内で onBoundary を呼びたい
+const highlight = useHighlight(sentences, tts.isPlaying); // ← isPlaying が必要
+// tts.handleTtsToggle が highlight.handleBoundary を呼びたいが、ここでは tts は既に確定済み
+
+// 修正パターン: ref を 1 つ前で作って両方に渡す
+const onBoundaryRef = useRef<((idx: number) => void) | null>(null);
+const tts = useTts(article, onBoundaryRef); // 内部で onBoundaryRef.current?.(idx) を呼ぶ
+const highlight = useHighlight(sentences, tts.isPlaying);
+onBoundaryRef.current = highlight.handleBoundary; // 後付けで assign
+```
+
+**Why**: `useState` ベースで宣言順を変えるのは難しく、`useState`/`setState` を hoist すると役割が混ざる。`useRef` はレンダー位置に依存しない安定参照なので、「Hook A 作成時点では callback がまだ無いが、Hook A が `ref.current?.(...)` を **遅延呼び出し** する形で耐える」設計が成立する。
+
+**How to apply**: hook 同士で「片方の output が他方の input、その output 先が更にもう片方の internal 処理を呼ぶ」三角関係を見つけたら、callback 用 ref を 1 つ前に作って両 hook に渡す。Hook A 内部では `ref.current?.(...)` で安全に呼び出し (null チェック必須)、Hook B から取得した callback を効果的に **後付け assign** する。assign は render 中で OK (ref はマウント前から不変)。
+
+主な使用箇所: `useArticleViewTts` ↔ `useTtsHighlight` の boundary 配線 (#672)
+
 ## URL 比較は decodeURI で正規化してから
 
 URL の `pathname` を文字列で直接比較すると、**percent-encoding の大文字小文字差異**で意図しない不一致を引き起こす。`%E5` と `%e5` は同じ文字を表すが、ブラウザは仕様上正規化しない。
