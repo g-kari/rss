@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### パフォーマンス改善っ
+
+- **記事フィルタリングの検索クエリ AST パースを 1 度だけにしたよ〜** — `matchesAdvancedQuery` を記事ごとに呼ぶと内部で `parseSearchQuery` が 1000 件 × 1 回 = 1000 回実行されて、複合クエリ (OR / フレーズ / フィールド) ほど線形にコスト増加してたの〜🥲 `compileSearchQuery` を新設して **AST を 1 度だけパースして bind した evaluator** を返す設計に変更!💡 1000 件・複合クエリで AST パース 1000 回 → 1 回になり、検索キー入力ごとのフィルタリング体感ラグが大幅改善〜🚀 TDD 5 ケースで evaluator の整合性を保証!🛡️
+
 ### バグ修正っ
 
 - **cron の `feed-last-fetched.json` が今回 fetch しなかったフィードの timestamp を消してた問題を修正したよ〜** — cron の最後に `r2Put` でファイル全量上書きしてたから、inactive / cooldown / エラースキップで今回 fetch されなかったフィードの過去 timestamp が消えて、次回 `/api/articles?since=` で対象フィードの `meta.json` 個別 GET (N+1 問題) が再発してたの〜🥲 `r2Get` で既存値を読んでマージしてから `r2Put` する設計に修正!💡 50+ フィード購読ユーザーで cron tick あたり R2 GET 1 回追加 (微小コスト) と引き換えに、`/api/articles` 呼出ごとの N+1 GET (10〜30 個 / 呼出) を完全排除〜🚀

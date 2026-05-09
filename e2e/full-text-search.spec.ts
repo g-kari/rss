@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   parseSearchQuery,
   matchesAdvancedQuery,
+  compileSearchQuery,
   type SearchContext,
 } from "../src/lib/full-text-search";
 
@@ -230,5 +231,47 @@ test.describe("matchesAdvancedQuery — エッジケース", () => {
 
   test("title: 単体（値なし）はトークンとして無視", () => {
     expect(parseSearchQuery("title:")).toBeNull();
+  });
+});
+
+// ==========================================================================
+// compileSearchQuery — AST を 1 度だけパースして evaluator を返す
+// ==========================================================================
+
+test.describe("compileSearchQuery — perf 最適化用 (AST を再利用)", () => {
+  test("空クエリは null を返す", () => {
+    expect(compileSearchQuery("")).toBeNull();
+    expect(compileSearchQuery("   ")).toBeNull();
+  });
+
+  test("有効なクエリは evaluator 関数を返す", () => {
+    const evaluator = compileSearchQuery("TypeScript");
+    expect(evaluator).not.toBeNull();
+    expect(typeof evaluator).toBe("function");
+  });
+
+  test("evaluator は matchesAdvancedQuery と同じ判定結果を返す", () => {
+    const evaluator = compileSearchQuery("TypeScript");
+    expect(evaluator).not.toBeNull();
+    if (!evaluator) return;
+    expect(evaluator(BASE, CTX)).toBe(matchesAdvancedQuery(BASE, "TypeScript", CTX));
+  });
+
+  test("複合クエリ (AND/OR/NOT/フィールド) でも整合する", () => {
+    const queries = ["title:TypeScript", "TypeScript -Rust", "TypeScript OR Rust", "feed:Zenn"];
+    for (const q of queries) {
+      const evaluator = compileSearchQuery(q);
+      expect(evaluator).not.toBeNull();
+      if (!evaluator) continue;
+      expect(evaluator(BASE, CTX)).toBe(matchesAdvancedQuery(BASE, q, CTX));
+    }
+  });
+
+  test("同一 evaluator を複数記事に適用しても各記事で正しい結果", () => {
+    const evaluator = compileSearchQuery("TypeScript");
+    if (!evaluator) throw new Error("expected evaluator");
+    const otherArticle = { ...BASE, id: "a2", title: "Rust 入門", categories: ["Rust"] };
+    expect(evaluator(BASE, CTX)).toBe(true);
+    expect(evaluator(otherArticle, CTX)).toBe(false);
   });
 });
