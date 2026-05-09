@@ -1,8 +1,9 @@
 "use client";
 
-import { memo, useCallback, useContext } from "react";
+import { memo, useCallback, useContext, useMemo } from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
+import { selectGalleryImages } from "../../lib/gallery-display";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
 import { NoteIcon } from "../article-view/icons";
 import {
@@ -37,7 +38,16 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
 }: Omit<ArticleItemProps, "index" | "isDeleting"> & GalleryItemExtraProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
-  const hasMultipleImages = !!prefetchedImages && prefetchedImages.length > 0;
+  // #671: prefetched body images が空 (またはまだ undefined) で thumb があれば
+  // OGP/サムネを fallback として描画する。selectGalleryImages 純粋関数で 3 分岐
+  // (prefetched / thumb / none) を厳密に決定し、UI 側はこれに従う。
+  const { images: displayImages, source: imageSource } = useMemo(
+    () => selectGalleryImages(prefetchedImages, thumb),
+    [prefetchedImages, thumb],
+  );
+  // 「prefetched 未取得 (undefined)」の場合のみ手動展開 (retry) ボタンを表示。
+  // prefetched 完了で空配列 (= 本文に画像なし) の場合は thumb fallback で完結するため不要。
+  const showRetryOverlay = onRetry && prefetchedImages === undefined;
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -62,21 +72,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
           : "border-border-default hover:border-text-muted bg-surface-elevated"
       }`}
     >
-      {hasMultipleImages ? (
-        <div className="flex flex-col">
-          {galleryMinImagePx > 0
-            ? prefetchedImages.map((src, i) => (
-                <FilterableGalleryImage key={`${src}-${i}`} src={src} minPx={galleryMinImagePx} />
-              ))
-            : prefetchedImages.map((src, i) => (
-                <ArticleThumbnail
-                  key={`${src}-${i}`}
-                  thumb={src}
-                  className="w-full h-auto object-cover bg-surface-subtle"
-                />
-              ))}
-        </div>
-      ) : isFetchFailed ? (
+      {isFetchFailed ? (
         thumb ? (
           // 画像展開失敗時でも、取得済みの OGP/サムネがあれば背景に表示しつつエラー UI を重ねる
           <div className="relative">
@@ -121,13 +117,20 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
             {onRetry && <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />}
           </div>
         )
-      ) : thumb ? (
-        <div className="relative">
-          <ArticleThumbnail
-            thumb={thumb}
-            className="w-full h-auto object-cover bg-surface-subtle"
-          />
-          {onRetry && !prefetchedImages && (
+      ) : imageSource !== "none" ? (
+        <div className="flex flex-col relative">
+          {imageSource === "prefetched" && galleryMinImagePx > 0
+            ? displayImages.map((src, i) => (
+                <FilterableGalleryImage key={`${src}-${i}`} src={src} minPx={galleryMinImagePx} />
+              ))
+            : displayImages.map((src, i) => (
+                <ArticleThumbnail
+                  key={`${src}-${i}`}
+                  thumb={src}
+                  className="w-full h-auto object-cover bg-surface-subtle"
+                />
+              ))}
+          {showRetryOverlay && (
             <div className="absolute bottom-1.5 right-1.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150">
               <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />
             </div>
