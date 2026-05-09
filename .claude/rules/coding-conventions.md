@@ -132,6 +132,44 @@ export function useToast(): ToastApi {
 - `ArticleFilterContext` — 記事フィルター状態の共有
 - `ReaderSettingsContext` — リーダー表示設定（フォントサイズ・行間・テーマ等）
 - `ToastContext` — トースト通知 API のグローバル提供
+- `TtsAdapterContext` — TTS engine adapter（記事ヘッダー TTS と設定モーダル voice 選択で同一インスタンスを共有）
+
+### 派生ケース: 「内部 state を持つ hook」を複数 consumer で共有したいときは Provider 化必須
+
+`useState` / `useRef` を内包する hook (例: `useSpeechSynthesis` の `isPlaying` / `voiceUri`) を **複数の異なる箇所で別々に呼ぶと別インスタンスになる** ため、state 共有が崩れる。「同じ adapter / 同じ state を複数 consumer で共有したい」要件が出たら、必ず Provider 化する。
+
+```typescript
+// アンチパターン: 各 consumer で個別に呼ぶ → state が分裂
+function ArticleHeader() {
+  const { isPlaying, voiceUri } = useSpeechSynthesis(); // インスタンス A
+}
+function SettingsModal() {
+  const { voiceUri, setVoiceUri } = useSpeechSynthesis(); // インスタンス B
+  // → SettingsModal の voice 変更が ArticleHeader に伝わらない
+}
+
+// 修正パターン: App level で 1 度だけ呼んで Provider に注入
+function App() {
+  const ttsAdapter = useSpeechSynthesis(); // 単一インスタンス
+  return (
+    <TtsAdapterProvider value={ttsAdapter}>
+      <ArticleHeader /> {/* useTtsAdapter() でアクセス */}
+      <SettingsModal /> {/* useTtsAdapter() でアクセス — 同一 state */}
+    </TtsAdapterProvider>
+  );
+}
+```
+
+**Why**: `useState` / `useRef` ベースの hook は呼び出すたびに新しい state slot を React が作る。複数箇所で呼ぶと state 同期が取れず、片方の更新が他方に反映されないバグになる。プロジェクトの典型は「ある UI を別 UI に移動したい」とき: 元の場所だけで使われていた hook を、新しい場所からも参照させると state 分裂が起きる。
+
+**How to apply**: 既存 hook の使用箇所を増やしたいときは:
+
+1. **既存呼び出し箇所が 1 ヶ所か** を grep で確認 (`useXxx` で全件検索)
+2. 1 ヶ所なら → 新規呼び出し側に追加するのではなく、**Provider 化** + 既存呼び出しも context に移行
+3. 既に複数箇所なら → そもそも state 分裂バグが潜んでいる可能性あり、調査要
+4. App.tsx の Provider 階層に追加するときは **JSX 開閉タグの indent 整合** を check:fix で必ず通す (Provider を 1 段増やすと内側全部の indent が +2 ずれる)
+
+主な使用箇所: `TtsAdapterContext` (#675 Phase 1b — `useSpeechSynthesis` を App.tsx で 1 回だけ呼んで記事ヘッダー / 設定モーダル両方で共有)
 
 ## 認証ヘルパー (`src/lib/server-auth.ts`)
 
