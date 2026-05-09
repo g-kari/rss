@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import type { Article } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 import { isAutoReadFinished, shouldStartAutoSpeak, shouldTriggerAutoFetch } from "@/lib/auto-read";
+import { autoReadDebug } from "@/lib/auto-read-debug";
 
 interface Props {
   enabled: boolean;
@@ -87,6 +88,7 @@ export default function AutoReadController({
   // 次々と記事が連鎖遷移するループの原因になる (#660)。
   useEffect(() => {
     if (!articleId) return;
+    autoReadDebug("articleId-changed", { articleId, enabled });
     prevPlayingRef.current = false;
     speakTriggeredRef.current = null; // #663: 新記事で speak を許可
     if (!enabled) return;
@@ -113,9 +115,20 @@ export default function AutoReadController({
       fetching,
       hasContent: hasFullContent,
     });
+    autoReadDebug("effect(1)-fetch-trigger", {
+      articleId,
+      enabled,
+      canFetch,
+      fetching,
+      hasFullContent,
+      trigger,
+      fetchTriggeredRef: fetchTriggeredRef.current,
+      willTrigger: trigger && fetchTriggeredRef.current !== articleId,
+    });
     if (!trigger) return;
     if (fetchTriggeredRef.current === articleId) return;
     fetchTriggeredRef.current = articleId;
+    autoReadDebug("effect(1)-onFetch-called", { articleId });
     void onFetch();
   }, [enabled, article, canFetch, fetching, hasFullContent, onFetch]);
 
@@ -147,8 +160,23 @@ export default function AutoReadController({
       hasFullContent,
       autoTranslatePending,
     });
+    autoReadDebug("effect(3)-speak-trigger", {
+      articleId,
+      enabled,
+      ttsSupported,
+      ttsPlaying,
+      ttsPaused,
+      fetching,
+      hasText: !!ttsText.trim(),
+      ttsTextLength: ttsText.length,
+      canFetch,
+      hasFullContent,
+      autoTranslatePending,
+      start,
+    });
     if (!start) return;
     speakTriggeredRef.current = articleId;
+    autoReadDebug("effect(3)-onSpeak-called", { articleId, ttsTextLength: ttsText.length });
     onSpeak(ttsText);
   }, [
     enabled,
