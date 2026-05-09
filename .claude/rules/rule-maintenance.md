@@ -48,7 +48,33 @@ hasContent がサマリで true になっていたため shouldTriggerAutoFetch 
 
 セクションが増えすぎたファイル (例: `coding-conventions.md` が 800 行超え) は、テーマ別の小ファイルに分割を検討する。
 
-## 5. 削除よりも一般化を優先
+## 5. docs drift は「機能追加サイクルでは捕捉できない」前提で定期監査する
+
+新ファイル追加・新エンドポイント追加のたびに `architecture.md` / `api-spec.md` を同期更新する **release-notes.md ルール** はあるが、実際には機能追加に集中するセッション中に docs 更新を忘れがち。「気付いたときに直す」では捕捉できない。
+
+**運用パターン**: AI 自走の actionable issues が枯渇したサイクルで、**docs drift 専用の監査エージェント** を派遣して `architecture.md` / `api-spec.md` を実コードと照合する。発見 4-5 件を 1 件の omnibus Issue に集約して一括対応。
+
+```
+docs drift 監査エージェントの観点:
+- architecture.md の src/lib/ / src/hooks/ / app/api/** ディレクトリ構造が
+  実ファイルと一致するか (新規ファイル / 削除ファイル両方)
+- テストカバレッジマップに実 spec ファイルが網羅されているか
+- api-spec.md に実装済 POST/PUT/DELETE エンドポイント全てがあるか
+- 既存 spec の status code / レスポンス形式が実装と一致するか
+```
+
+**Why**: 機能追加 PR のレビュアーは「動くか」「テストがあるか」を見るが、docs 更新までは確認しきれない。docs drift は単独で発見しやすく単独で修正しやすい (実装変更を伴わない pure docs 修正) ため、AI 自走サイクルが暇なときに **専用監査** で集中対応するのが効率的。
+
+**How to apply**:
+
+1. 監査エージェントに「architecture.md と実ファイル + 実テスト spec の差分を出して」と明示
+2. 「個別 Issue にすると数が多くなる小さな drift」は 1 omnibus Issue に集約 (タイトル例: 「ドキュメント整備: docs drift (N ファイル + M endpoint)」)
+3. 修正は 1 commit で完結 (各 entry は 1-2 行追加なので diff も小さい)
+4. **副次的な観測性ギャップ** (debug log 漏れ等) も同サイクルで一緒に拾う
+
+監査タイミングの目安: 大型機能追加が 3-5 件続いた後、または `git log --since="14 days ago" --oneline | wc -l` が 50 を超えたら。
+
+## 6. 削除よりも一般化を優先
 
 「もう使わないルール」を見つけても **即削除しない**。まず以下を検討:
 
