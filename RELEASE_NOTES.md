@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### パフォーマンス改善っ
+
+- **`useArticleViewContent` の `readingTime()` を useMemo で安定化したよ〜 (perf 監査 92% 信頼度)** — `readingTime()` は内部で `stripHtml` (8 regex passes) を呼ぶ重い計算なのに **bare で毎 render 実行** されてた状態を発見!💥 TTS state 変化 / reader settings 開閉 / scroll progress 発火など **親 re-render の度に長記事 (10-50KB HTML) を毎回 8 regex pass** で stripping してて主スレッドブロックの主因になってたの〜🥲 `useMemo([processedContent, article?.summary])` で安定化!🛡️ プロジェクトの「`createReadingTimeCache` を使う」ルール (#685) と整合させた形〜🎀
+
 ### リファクタリングっ
 
 - **App.tsx Step 1u: `onFeedDeleted` を `selectFeedClearingArticle` 利用に簡素化 + useCallback 化 (#650 段階分割)** — App.tsx の `function onFeedDeleted` (7 行) が直接 `setSelectedFeedId(null)` + `setSelectedArticle(null)` を並べてた状態を解消!💡 Step 1n で導入済みの **アトミック解除操作 `selectFeedClearingArticle(null)`** を使う形にリファクタして、setter 並びの drift リスクを排除〜🛡️ あわせて `useCallback` 化で render-stability 向上 (consumer の `useFeedSidebarActions` の useMemo deps が安定化)〜🎀 行数自体は +2 (useCallback wrapper のオーバーヘッド) だけど、それと引き換えに **既存ヘルパーの再利用 + reference 安定化** を獲得!📦
