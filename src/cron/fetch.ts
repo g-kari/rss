@@ -501,11 +501,16 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
   }
 
   // feed-last-fetched.json を更新（since フィルタリングの N+1 meta.json 読み込みを排除）
+  // 既存値とマージする (GET → merge → PUT)。今回 cycle で fetch されなかった
+  // フィード (inactive / cooldown / error skip) の lastFetchedAt が消えると、
+  // 次回 /api/articles?since= で当該フィードの meta.json 個別 GET (N+1) が
+  // 再発するため、既存タイムスタンプを保持する必要がある。
   await pMapSettled(
     [...userTimestamps.entries()],
     async ([userId, timestamps]) => {
       const key = feedLastFetchedKey(userId);
-      await r2Put(env.RSS_DATA, key, timestamps); // GET 不要 - 直接上書き
+      const existing = await r2Get<Record<string, string>>(env.RSS_DATA, key, {});
+      await r2Put(env.RSS_DATA, key, { ...existing, ...timestamps });
     },
     USER_FETCH_CONCURRENCY,
   );

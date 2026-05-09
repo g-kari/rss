@@ -4,6 +4,8 @@
 
 ### バグ修正っ
 
+- **cron の `feed-last-fetched.json` が今回 fetch しなかったフィードの timestamp を消してた問題を修正したよ〜** — cron の最後に `r2Put` でファイル全量上書きしてたから、inactive / cooldown / エラースキップで今回 fetch されなかったフィードの過去 timestamp が消えて、次回 `/api/articles?since=` で対象フィードの `meta.json` 個別 GET (N+1 問題) が再発してたの〜🥲 `r2Get` で既存値を読んでマージしてから `r2Put` する設計に修正!💡 50+ フィード購読ユーザーで cron tick あたり R2 GET 1 回追加 (微小コスト) と引き換えに、`/api/articles` 呼出ごとの N+1 GET (10〜30 個 / 呼出) を完全排除〜🚀
+
 - **サイドバー未読カウントが既読操作してもすぐ更新されない問題を修正したよ〜** — `useSidebarFeeds` の未読集計 useMemo の deps が `useSyncedRef` 経由になってて、ref のオブジェクト identity は永久に変わらないから既読操作してもメモが再計算されない深刻なバグを発見!💥 ユーザー視点では「記事を既読にしてもサイドバーの未読バッジが 5 分間 (cron ポーリング間隔) 古いままに見える」状態だったよ〜🥲 ref を撤去して `[articles, readIds, readBeforeTimestamp]` を直接 deps に入れる実装に戻したの〜🛡️ 50 フィード規模でも O(n) 単純ループで <2ms の計算なので perf 影響なし!🚀
 
 ### リファクタリングっ
