@@ -2,6 +2,10 @@
 
 ## 2026-05-09 (latest)
 
+### ドキュメント整備っ
+
+- **`coding-conventions.md` 段階的分割 Step 5 をやったよ〜 (#694 Step 5)** — ユーザー採用「案 A: browser-platform.md 新設」に従って **5 セクション + 2 派生ケース 計 248 行** を新ファイル `browser-platform.md` へ集約!🎀 抽出対象: 上流 API プロキシヘッダ補完 / silent fallback 禁止 (+ availability() 入力引数ログ派生) / ブラウザ最低バージョン定数 / 本番 localStorage gate デバッグ (+ AbortController/Ref 状態スナップショット派生) / 永続化 state TTL 防御チェック〜📚 各セクション位置に `→ browser-platform.md を参照` の redirect リンクを残して発見性維持!`coding-conventions.md` は 1312 → 1062 行 (Step 1〜5 累計で **1785 → 1062 / -723 行 / 40% 削減**)、`browser-platform.md` は 275 行〜📦 `rule-maintenance.md` の 800 行閾値超過から 1.3 倍まで縮小!
+
 ### リファクタリングっ
 
 - **シェアターゲット起動ロジックを純粋関数に集約したよ〜 (simplify 監査 Issue 1)** — `ArticleHeaderShare.tsx` と `ShareMenu.tsx` に「`clipboardText` 有り → copy → open / 無し → 直接 open」の同じ条件分岐 + 5〜10 行のフローが両方に書かれてたから、`triggerShareTarget(target, link, title): Promise<{copied}>` を `shareTargets.ts` に新設して 2 consumer から呼び出す形に統合〜🎀 ShareMenu の `openShareWindow` dead code も削除!🧹 TDD 3 ケース (clipboard 成功 / 失敗 / clipboardText なし) で挙動保証〜🛡️
