@@ -35,8 +35,7 @@ import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
 import { useEventListener } from "./hooks/useEventListener";
 import { useHasOpenPopup } from "./hooks/usePopupLock";
 import { updateFaviconBadge } from "./lib/favicon";
-import { apiFetch, onApiError } from "./lib/api-fetch";
-import { isArticle } from "./lib/type-guards";
+import { onApiError } from "./lib/api-fetch";
 import { isArticleRead } from "./lib/article-filter";
 import { useGlobalFilterAutoRead } from "./hooks/useGlobalFilterAutoRead";
 import { useAutoLoadMoreArticles } from "./hooks/useAutoLoadMoreArticles";
@@ -51,6 +50,7 @@ import { useRecommendations } from "./hooks/useRecommendations";
 import { useColumnResize } from "./hooks/useColumnResize";
 import { useSyncedRef } from "./hooks/useSyncedRef";
 import { useArticleSelection } from "./hooks/useArticleSelection";
+import { useSaveArticleUrl } from "./hooks/useSaveArticleUrl";
 import { useConfirm } from "./hooks/useConfirm";
 import { useMarkAllRead } from "./hooks/useMarkAllRead";
 import { useDebounce } from "./hooks/useDebounce";
@@ -430,37 +430,12 @@ export default function App() {
     }
   }
 
-  const onSaveArticleUrl = useCallback(
-    async (url: string, mode: "bookmark" | "reading_list") => {
-      try {
-        const res = await apiFetch("/api/articles/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        });
-        const raw = (await res.json()) as { error?: string };
-        if (!res.ok) {
-          toast.error(raw.error ?? "保存に失敗しました");
-          return;
-        }
-        if (!isArticle(raw)) {
-          toast.error("保存に失敗しました");
-          return;
-        }
-        prependArticle(raw);
-        if (mode === "bookmark") {
-          toggleBookmark(raw.id);
-          toast.success("ブックマークに追加しました");
-        } else {
-          toggleReadingList(raw.id);
-          toast.success("後で読むに追加しました");
-        }
-      } catch {
-        toast.error("保存に失敗しました");
-      }
-    },
-    [prependArticle, toggleBookmark, toggleReadingList, toast],
-  );
+  const onSaveArticleUrl = useSaveArticleUrl({
+    prependArticle,
+    toggleBookmark,
+    toggleReadingList,
+    toast,
+  });
 
   const { nsfwFeedIds, groupFeedIds, mutedFeedIds } = useFeedFilters(
     feeds,
