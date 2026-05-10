@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useCallback, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useCallback,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { FOCUSABLE_SELECTOR } from "@/lib/modal-focus";
 
 interface Props {
   isOpen: boolean;
@@ -30,6 +34,9 @@ export default function ConfirmModal({
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  // 同 Modal が並列で複数描画される (portal / 入れ子 dialog) ケースで ID 衝突を防ぐ。
+  // canonical: Modal.tsx — `useId()` で生成した値を `aria-labelledby` と `<h2 id>` の両方に紐付ける。
+  const titleId = useId();
   // #687: モーダルを開いたトリガー要素を退避し、閉じるときに同じ要素へフォーカスを戻す
   // (WCAG 2.4.3 Focus Order)。Modal.tsx と同じパターン。
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -97,14 +104,14 @@ export default function ConfirmModal({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="confirm-modal-title"
+        aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={handleTabKeyDown}
         className="fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[360px] bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4">
-          <h2 id="confirm-modal-title" className="text-[13px] font-medium text-text-strong mb-2">
+          <h2 id={titleId} className="text-[13px] font-medium text-text-strong mb-2">
             {title}
           </h2>
           <p className="text-[12px] text-text-soft leading-relaxed whitespace-pre-wrap">
@@ -115,13 +122,13 @@ export default function ConfirmModal({
           <button
             ref={cancelRef}
             onClick={onCancel}
-            className="px-4 py-1.5 text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors"
+            className="min-h-[44px] px-4 py-2 text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`px-4 py-1.5 text-[12px] rounded-lg transition-colors ${
+            className={`min-h-[44px] px-4 py-2 text-[12px] rounded-lg transition-colors ${
               danger
                 ? "bg-rose-500 hover:bg-rose-600 text-white"
                 : "bg-ink hover:bg-ink-hover text-ink-text"

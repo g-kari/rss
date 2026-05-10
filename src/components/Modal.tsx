@@ -3,6 +3,7 @@
 import { useId, useRef, useEffect, useCallback, type ReactNode, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
+import { FOCUSABLE_SELECTOR } from "@/lib/modal-focus";
 
 interface Props {
   title: string;
@@ -18,9 +19,6 @@ interface Props {
    */
   height?: string;
 }
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export default function Modal({
   title,

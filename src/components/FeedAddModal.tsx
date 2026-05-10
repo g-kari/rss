@@ -113,7 +113,7 @@ export default function FeedAddModal({
 
   // 追加ボタンのスタイル: URL が有効なら ring でハイライト
   const submitClass = [
-    "flex-1 text-[12px] tracking-[0.06em] py-2 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40",
+    "flex-1 min-h-[44px] text-[12px] tracking-[0.06em] py-3 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40",
     urlValid === true && !adding ? "ring-2 ring-offset-1 ring-ink" : "",
   ]
     .join(" ")
@@ -262,7 +262,7 @@ export default function FeedAddModal({
               type="button"
               onClick={handleClose}
               disabled={adding}
-              className="text-[12px] px-4 py-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="min-h-[44px] text-[12px] px-4 py-3 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               キャンセル
             </button>
