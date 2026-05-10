@@ -146,6 +146,85 @@ docs drift 監査エージェントが「未文書化ファイル」「削除済
 
 主な使用箇所: 40th cycle docs drift 監査 — agent が 5 件 drift 主張 → 検証で gitignored 4 件 (release-notes-data.ts / \_test-import\*.spec.ts × 2 / auth-utils-edge.spec.ts) + scan 範囲限定 1 件 (shortcuts.ts は src/config/ に実在) と判明、**真の drift = 0** で Issue 起票却下
 
+### 派生ケース: Security audit エージェントの XSS 主張は **データフロー上流 (source)** を必ず遡って sanitize 済か確認する
+
+Security audit エージェントが `dangerouslySetInnerHTML` / `innerHTML` を XSS 脆弱性として指摘するとき、**末端 (描画 UI) からしか追跡せず、source (server-side processing) を遡らない傾向**がある。本プロジェクトでは `postProcess` pipeline の最終ステップで必ず `sanitizeHtml` を経由しているため、UI 側で再度 `sanitizeHtml` 呼び出すのは redundant。逆に過剰 sanitize はレンダリングに必要なタグ (例: TTS span) を破壊するリスクあり。
+
+```
+パターン: Security agent の XSS 主張検証フロー
+  1. agent report 受領: "L351 で sanitizeHtml なしで innerHTML 描画"
+  2. 該当 line を Read で確認 (例: `dangerouslySetInnerHTML={{ __html: processedContent }}`)
+  3. 「processedContent」の出所を grep:
+     grep -rn "processedContent" src/hooks/ src/components/ | head -5
+  4. 出所が server API (例: useArticleContent → /api/content) なら、
+     server 側で既に sanitized されているか pipeline 末端を確認:
+     grep -nE "return sanitizeHtml|sanitizeHtml\(.+\)$" src/lib/<pipeline>.ts
+  5. 末端で sanitize 済なら **false positive** 判定 (UI 側追加 sanitize 不要)
+  6. 末端で sanitize なしなら true positive (修正対応)
+```
+
+**Why**: client-side sanitization と server-side sanitization は **どちらか 1 箇所で十分**。server-side で sanitize 済の HTML を client で再 sanitize すると:
+
+1. **再走するコスト** — 大型記事で client CPU 圧迫
+2. **過剰除去のリスク** — TTS span / 数式 KaTeX / SyntaxHighlight のような後処理で挿入されたタグが除去される
+3. **真の脆弱性を見落とす** — 「念のため sanitize」を入れて満足すると、source 側 sanitize が抜けても気付かない
+
+server 側での sanitize 済を確認するチェックリスト:
+
+```
+□ /api/<endpoint> が <処理> を返すとき、処理 pipeline の末端は sanitizeHtml か?
+□ pipeline の途中で sanitize 済と仮定して raw HTML を構築する箇所はないか?
+□ HTML を client に渡す前に R2 / Cache に保存しているなら、保存前の sanitize 状態を確認
+□ client で server 由来の HTML を transform (例: span ラップ) している箇所は、
+   transform 前 input が sanitized なら output も safe (linkedom などが新規攻撃ベクトルを
+   挿入しないことを確認)
+```
+
+**How to apply**: Security audit から `dangerouslySetInnerHTML` / `innerHTML` 指摘を受けたら:
+
+1. **該当行を Read** で確認 (skill 規範「サブエージェント調査結果は該当コードで検証してから採用」)
+2. **データソースを grep** で source まで遡る (`useArticleContent` → `/api/content` route handler → `extractMainContent` → `postProcess` → `sanitizeHtml`)
+3. **source side で sanitize 済なら false positive 判定** + agent report に「source side で既 sanitize 済」と返答 (将来同じ指摘を即却下できるよう知識蓄積)
+4. **source side で sanitize なしなら true positive** + 修正
+
+主な使用箇所: 41st cycle Security audit — agent が `ArticleContentBody.tsx:351` を XSS 脆弱性主張 → 検証で `processedContent` は `/api/content` 経由で `html-post-processor.ts:136 (sanitizeHtml 最終)` を通過済と判明、**false positive** で対応見送り。同 audit の Finding 1 (`refresh/route.ts` 購読チェック欠落) は実コードと canonical (`purge-content-cache/route.ts`) で確認 → true positive で同サイクル修正
+
+### 派生ケース: Security audit エージェントは context overflow 回避のため **3 specific check + 対象ファイル絞り込み済 prompt** で派遣する
+
+Security audit は他観点 (perf / refactor / UX) より対象ファイルが広い (auth / sanitize / SSRF / proxy / rate limit / data validation 等の cross-cutting) ため、broad-scope prompt だと agent が多数のファイルを Read して **context overflow (autocompact thrashing)** を引き起こす。1 サイクル丸ごと結果を取り逃がすリスク。
+
+**安全な prompt パターン**:
+
+```
+- check 数を 3 つに限定 (5+ は context overflow リスク)
+- 各 check の対象ファイルパスを prompt 内で具体的に指定
+  例: "対象ファイル: app/api/feeds/[id]/{refresh,reinfer,purge-content-cache,route}.ts"
+- canonical 例も prompt 内で 1 ファイル指定 (agent が比較対照を即特定可能に)
+- "5-10 分以内 + 必要以上にファイル read しない" を明示
+- output ≤300 words でまとめ
+```
+
+**broad-scope の失敗パターン**:
+
+```
+- "Find security issues in: XSS, SSRF, auth, ownership, validation, rate limit..."
+  → agent が 各観点で multiple files を Read → 50+ files 読了 → context overflow
+- "Audit the entire codebase for security"
+  → 何もしないか autocompact で abort
+```
+
+**Why**: Security の対象範囲は本質的に cross-cutting で、agent は不安から多数のファイルを Read しようとする。`feature-dev:code-reviewer` の token budget は限られているため、scope を絞らないと結果を返す前に context が尽きる。1 cycle で結果を確実に取得するために、**「狭く深く」** の prompt 設計が肝要。
+
+**How to apply**: Security audit を派遣する前に:
+
+1. **3 つの check に絞る** (XSS / SSRF / auth bypass / ownership / validation / sanitize 等から最重要 3 つを選択)
+2. **各 check の対象 path を 4-6 ファイルに絞り込み済** で prompt に明記 (agent に「ここだけ Read」と指示)
+3. **canonical 例 1 ファイル** を prompt 内で指定 (比較対照を agent が探さずに済む)
+4. **output 制限**: ≤300 words / 各 check で 1 finding か「該当なし」明記
+5. 1 cycle で 3 check 全部カバーできなければ次サイクル別 check で追加 (broad-scope より sequential narrow-scope の方が信頼性高い)
+
+主な使用箇所: 40th cycle broad-scope security audit (5 things) → context overflow で失敗 → 41st cycle で 3 specific check + 対象ファイル絞り込み済 prompt に変更 → 2 finding (1 true positive + 1 false positive) を確実に返却して同サイクル修正完了
+
 ### 派生ケース: 規範ルール codify 後は「code drift」も機械的に sweep する
 
 `docs drift` (文書 vs 実コードの乖離) と並んで、**「規範ルール codify 後にコードに残っている旧パターン」= code rule drift** も機械的に sweep する対象。1 ファイル修正 + 規範 codify で満足すると、新規追加された ref / 既存見落としの旧パターンが規範違反として累積する。
