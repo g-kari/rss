@@ -215,6 +215,7 @@ export default function FeedGroupsSection({
                 className="flex-shrink-0 w-4 h-4 flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-subtle"
                 title={isCollapsed ? "展開" : "折りたたむ"}
                 aria-label={isCollapsed ? `${group.name} を展開` : `${group.name} を折りたたむ`}
+                aria-expanded={!isCollapsed}
               >
                 <svg
                   width="10"
