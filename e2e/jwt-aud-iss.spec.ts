@@ -101,9 +101,21 @@ test.describe("verifyJwt — aud クレーム検証", () => {
     expect(result).toBeNull();
   });
 
-  // aud=AUTH_BASE_URL は id.0g0.xyz の暫定実装に合わせてフォールバックとして許容する (TODO #379)
-  // dummy-signature ではこのファイルで JWKS 検証まで通せないため、完全な受け入れテストは
-  // e2e/auth.spec.ts 側の統合テストでカバーする。
+  // (#705) aud=AUTH_BASE_URL の fallback 受入を撤廃。
+  // 上流 0g0-id では既に OAuth クライアント (rss-reader 等) のトークンは
+  // aud=clientId 固定で発行される (workers/id/src/utils/token-pair.ts#issueTokenPair)。
+  // cross-service token replay 防止のため、aud=AUTH_BASE_URL のトークンは reject。
+  test("aud が AUTH_BASE_URL のみ → null (#705 cross-service token replay 防御)", async () => {
+    const token = makeJwt(defaultPayload({ aud: AUTH_BASE_URL }));
+    const result = await withEnv({ CLIENT_ID }, () => verifyJwt(token, AUTH_BASE_URL));
+    expect(result).toBeNull();
+  });
+
+  test("aud 配列に AUTH_BASE_URL があっても CLIENT_ID 不在なら null (#705)", async () => {
+    const token = makeJwt(defaultPayload({ aud: [AUTH_BASE_URL, "other-client"] }));
+    const result = await withEnv({ CLIENT_ID }, () => verifyJwt(token, AUTH_BASE_URL));
+    expect(result).toBeNull();
+  });
 });
 
 test.describe("verifyJwt — 期限切れ・形状", () => {

@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### セキュリティ対策っ
+
+- **#705 修正: JWT cross-service token replay 防御 (aud=authBaseUrl fallback 撤廃)!🔒** — `src/lib/auth.ts#verifyJwt` で旧実装は `acceptedAuds = [expectedAud, authBaseUrl]` だったため、**同 IdP (id.0g0.xyz) を使う別サービス (例: 別の rss-reader / 0g0-id 配下の他アプリ) の access_token を本サービスで受け入れてしまう** cross-service token replay リスクがあった問題を修正〜🎯 上流 0g0-id リポジトリ調査 (`workers/id/src/utils/token-pair.ts#issueTokenPair`) で **OAuth クライアント (rss-reader 等) のトークンは `aud = clientId` 固定で発行されている** ことを確認 → fallback 不要と判定〜📦 案 A 採用: `acceptedAuds = [expectedAud]` に縮退、TODO(#379) コメント削除、fallback warning ログも削除〜🛡️ TDD `e2e/jwt-aud-iss.spec.ts` に新規 2 spec 追加 (aud=AUTH_BASE_URL のみ / 配列に AUTH_BASE_URL 含む但し CLIENT_ID 不在 → 両方 reject)、全 10 ケース pass〜📚 (security 監査エージェント Confidence 85% 指摘、#379 closed の後継 #705 として最終決着)
+
 ### リファクタリングっ + simplify (監査エージェント発見 3 件一括修正)
 
 - **simplify 3 連続修正!🎀** — リファクタ監査エージェントが confidence 85〜92% で発見した 3 件を同サイクル一括修正〜🎯 (1) `app/api/collections/[id]/route.ts` / `app/api/auth/dbsc/challenge/route.ts` / `app/api/auth/dbsc/register/route.ts` の 3 ファイルで重複していた UUID 正規表現 (`^[0-9a-f]{8}-[0-9a-f]{4}-...`) を既存 `isValidSessionId()` 共通ヘルパーに置換 (4 箇所同期修正のリスク解消)、(2) `useFeedGroups` / `useCollections` で重複していた `sortByOrder` 関数を `src/lib/sort-utils.ts` に集約 (新規 hook 追加時の 3 件目 drift 防止) + TDD 8 ケース全 pass (`e2e/sort-utils.spec.ts`)、(3) `src/lib/article-filter.ts#EMPTY_FEED_TITLE_MAP` sentinel に `Object.freeze` 追加 (`react-patterns.md` 規範準拠、`useFilteredArticles` consumer 多数で誤 mutate 防止)〜🛡️ 全件「規範パターン複製レベル + 1〜2 ファイル touch + 設計判断不要」なので Issue 起票せず同サイクル一括修正パターン採用〜📚
