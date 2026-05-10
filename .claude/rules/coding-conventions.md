@@ -1249,7 +1249,30 @@ export function collectImageUrls(container: Element): string[] {
 主な使用箇所:
 
 - perf / UX 監査 2 体並行 → 4 件起票 → 1 件同サイクル対応
-- perf / UX-a11y / simplify 監査 3 体並行 → 8 件指摘 → 7 件同サイクル一括適用 + 1 件 Issue 化 (#701) の最大消化サイクル
+- perf / UX-a11y / simplify 監査 3 体並行 → 8 件指摘 → 7 件同サイクル一括適用 + 1 件 Issue 化 (#701)
+- perf / UX-a11y / simplify 監査 3 体並行 → 9 件指摘 → 8 件同サイクル一括適用 (a11y 3 + simplify 3 + perf 2) + 1 件 Issue 化 (#719) の最大消化サイクル更新
+
+### 派生ケース: 監査エージェントに既存規範遵守チェックも依頼すると pattern drift が早期発見される
+
+監査エージェントへのプロンプトに「**既存規範ファイル (`.claude/rules/*.md`) と照合して違反がないか**」を明示すると、**「規範を codify した直後は守られていたが、その後の新規追加コードで drift した」** ケースを早期検出できる。本来 codify 時に「主な使用箇所」コメント + grep 検出パターン (`rule-maintenance.md` 派生ケース 5) で自動 sweep する設計だが、grep で表現しにくい規範 (例: `try/catch → null` に必ず `devError` を併記) は人間判断要のため監査エージェント観点に組み込むのが効率的。
+
+```
+プロンプト例 (simplify エージェントへ):
+「Focus area の `simplify` に加えて、`browser-platform.md` / `react-patterns.md` 等の
+ 既存規範ファイルへの違反を 1 件含めても良い。**規範違反は同種コンポーネントの canonical
+ pattern と照合 (例: browser-summarizer.ts vs browser-translator.ts) して報告する」
+```
+
+**Why**: codify した規範は「全コードへの即時適用」までは保証されない。新規 PR で「同種コンポーネントを書くとき canonical pattern からコピペで始めなかった」場合に drift が発生する。grep で機械検出可能な規範 (例: `Set<string>` sentinel の `Object.freeze` 化) は `rule-maintenance.md` の派生ケース 5 で sweep 可能だが、判断要素を含む規範 (例: `try/catch → null` で `devError` を「いつ」「どのレベルで」併記すべきか) は人間 (or AI) の judgment 要のため、監査エージェントが既存 canonical pattern と照合する形でないと detect できない。
+
+**How to apply**: 観点別監査エージェントへのプロンプトに以下を追加:
+
+1. **既存規範ファイル (`.claude/rules/*.md`) を読んで、focus area に関連するルールを認識**
+2. **canonical pattern を実装している既存ファイル** (例: browser-summarizer.ts / Modal.tsx / read-state-merge.ts) を **対比対象として明示**
+3. **「同種コンポーネントを比較 (similar components compare)」で新規ファイルの規範違反を検出**
+4. 検出された規範違反は report に **「規範: <ルール名>」「canonical: <ファイル名>」** を含める形で報告
+
+主な使用箇所: 2026-05-10 32th サイクル — simplify エージェントが `browser-translator.ts` の silent `catch { return null }` を発見 (規範: browser-platform.md「silent fallback の禁止 — `try/catch → null` には必ず `devError` を添える」/ canonical: `browser-summarizer.ts`)、即修正で `devError` 追加
 
 ### 派生ケース: 高信頼度の独立修正は「Issue 起票せず同サイクルで連続修正」する
 
