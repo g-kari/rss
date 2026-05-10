@@ -169,7 +169,7 @@ function useAiOperation(
         const res = await apiFetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, articleId: currentArticleId, model }),
+          body: JSON.stringify({ url, model }),
           signal: controller.signal,
         });
         if (!res.ok) {

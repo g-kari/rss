@@ -4,7 +4,7 @@ import { runAiJob } from "@/lib/ai-route-helper";
 /**
  * POST /api/ai/translate — 記事を Workers AI で日本語に翻訳する
  *
- * @body `{ url: string, articleId?: string, model?: WorkersAiModelId }`
+ * @body `{ url: string, model?: WorkersAiModelId }`
  * @returns 200 `{ result: string }` — 翻訳テキスト（プレーンテキスト）
  * @error 400 `INVALID_URL`
  * @error 429 `RATE_LIMITED` — 60秒間 10回（70B は 3回）超過
