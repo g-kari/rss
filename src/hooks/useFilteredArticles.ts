@@ -446,12 +446,19 @@ export function useFilteredArticles({
         keepIds.add(group[0].id);
         continue;
       }
-      // publishedAt が最新の記事を代表にする
+      // publishedAt が最新の記事を代表にする。
+      // bug 監査 44th cycle (#1, confidence 88%): ISO 8601 文字列の lexicographic 比較バグ
+      // (`"2026-01-01T00:00:00.999Z" > "2026-01-01T00:00:01+00:00"` のような誤判定) を防ぐため、
+      // sibling 規範 (`read-state-merge.ts#isLaterIso` / `read-state-prune.ts`) と揃えて
+      // `Date.parse` 絶対時刻ベース比較に変更。不正 ISO 文字列は NaN guard で除外。
       let best = group[0];
+      let bestTs = Date.parse(best.publishedAt ?? best.createdAt ?? "");
       for (let i = 1; i < group.length; i++) {
         const curr = group[i];
-        if ((curr.publishedAt ?? curr.createdAt) > (best.publishedAt ?? best.createdAt)) {
+        const currTs = Date.parse(curr.publishedAt ?? curr.createdAt ?? "");
+        if (!isNaN(currTs) && (isNaN(bestTs) || currTs > bestTs)) {
           best = curr;
+          bestTs = currTs;
         }
       }
       keepIds.add(best.id);
