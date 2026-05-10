@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Modal from "@/components/Modal";
 
 interface Props {
@@ -15,7 +15,7 @@ export default function CollectionModal({ mode, initialName = "", onSubmit, onCl
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim() || submitting) return;
     setError("");
