@@ -164,31 +164,26 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
       return null;
     }
 
-    // aud (audience) 検証 — CLIENT_ID を優先。id.0g0.xyz が aud=authBaseUrl を
-    // 発行する実装に追従するため AUTH_BASE_URL もフォールバックで許容する。
-    // TODO(#379): 上流で aud=CLIENT_ID に修正され次第、authBaseUrl を acceptedAuds から削除すること。
+    // aud (audience) 検証 — CLIENT_ID 固定 (#705 cross-service token replay 防御)。
+    // 上流 0g0-id では既に OAuth クライアント (rss-reader 等) のトークンは
+    // workers/id/src/utils/token-pair.ts#issueTokenPair で `aud = clientId` 固定で発行される
+    // (`clientId: authCode.service_id !== null ? idTokenAud : undefined` で OAuth 経路は必ず clientId)。
+    // 旧実装は `aud = authBaseUrl` を fallback 受入していたが、これは同 IdP を使う
+    // 別サービスの access_token を本サービスで accept する replay リスクだった (#379 後継)。
     const expectedAud = process.env.CLIENT_ID;
     if (!expectedAud) {
       console.error("[auth/verify] CLIENT_ID 未設定のため aud を検証できません");
       return null;
     }
-    const acceptedAuds = [expectedAud, authBaseUrl];
     const audClaim = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-    const matched = audClaim.find((a) => typeof a === "string" && acceptedAuds.includes(a));
+    const matched = audClaim.find((a) => typeof a === "string" && a === expectedAud);
     if (!matched) {
       console.error("[auth/verify] aud claim mismatch", {
-        accepted: acceptedAuds,
+        expected: expectedAud,
         actual: payload.aud,
       });
       return null;
     }
-    if (matched !== expectedAud) {
-      console.warn("[auth/verify] aud fallback to authBaseUrl — id.0g0.xyz 側の修正待ち", {
-        matched,
-        expectedAud,
-      });
-    }
-
     const jwks = await getJwks(authBaseUrl);
     const jwk = header.kid ? jwks.find((k) => k.kid === header.kid) : jwks[0];
     if (!jwk) {
