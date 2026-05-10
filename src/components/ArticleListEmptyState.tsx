@@ -15,6 +15,8 @@ interface Props {
   likeOnly: boolean;
   noteOnly: boolean;
   onRetry?: () => void;
+  /** フィード未登録時の空状態に「フィードを追加」CTA を表示するためのコールバック */
+  onAddFeed?: () => void;
 }
 
 export default function ArticleListEmptyState({
@@ -30,6 +32,7 @@ export default function ArticleListEmptyState({
   likeOnly,
   noteOnly,
   onRetry,
+  onAddFeed,
 }: Props) {
   return (
     <>
@@ -95,6 +98,15 @@ export default function ArticleListEmptyState({
             />
           </svg>
           <p className="text-[12px] text-text-faint">フィードを追加して記事を読みましょう</p>
+          {onAddFeed && (
+            <button
+              type="button"
+              onClick={onAddFeed}
+              className="mt-2 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[12px] rounded-lg transition-all duration-200"
+            >
+              フィードを追加
+            </button>
+          )}
         </div>
       )}
       {/* フィード登録済みだが記事が見つからない場合 */}

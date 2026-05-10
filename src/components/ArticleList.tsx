@@ -55,6 +55,8 @@ interface Props {
   loading?: boolean;
   fetchError?: boolean;
   onRetry?: () => void;
+  /** フィード未登録時の空状態に「フィードを追加」CTA を出すためのコールバック */
+  onAddFeed?: () => void;
   onChangeLayout: (layout: Layout) => void;
   onSelectArticle: (article: Article) => void;
   onToggleRead: (id: string) => void;
@@ -107,6 +109,7 @@ function ArticleList({
   loading = false,
   fetchError = false,
   onRetry,
+  onAddFeed,
   onChangeLayout,
   onSelectArticle,
   onToggleRead,
@@ -471,6 +474,7 @@ function ArticleList({
             likeOnly={likeOnly}
             noteOnly={noteOnly}
             onRetry={onRetry}
+            onAddFeed={onAddFeed}
           />
 
           {/* compact / list — 仮想スクロール (#651 Step 3: サブコンポーネント化) */}

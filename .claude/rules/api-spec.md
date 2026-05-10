@@ -359,19 +359,19 @@ OPML ファイルから複数フィードを一括インポートする。
 
 ### エラー一覧
 
-| ステータス | code                   | 説明                                        |
-| ---------- | ---------------------- | ------------------------------------------- |
-| `400`      | `INVALID_TITLE`        | タイトルが空または 200 文字超               |
-| `400`      | `INVALID_FILTER`       | フィルターの形式不正                        |
-| `400`      | `INVALID_NSFW`         | nsfw が boolean でない                      |
-| `400`      | `INVALID_PRIORITY`     | priority が "high" でも null でもない       |
-| `400`      | `INVALID_CATEGORY`     | category が string でない、または 50 文字超 |
-| `400`      | `INVALID_GROUP_ID`     | groupId が string でない                    |
-| `400`      | `INVALID_MUTED_UNTIL`  | mutedUntil が ISO 8601 文字列でない         |
-| `400`      | `INVALID_VIEW`         | view が許可された値でない                   |
-| `400`      | `INVALID_DIGEST_LIMIT` | digestLimit が 0〜100 の整数でない          |
-| `404`      | `FEED_NOT_FOUND`       | 指定した feedHash が購読一覧にない          |
-| `404`      | `FEED_GROUP_NOT_FOUND` | 指定した groupId が存在しない               |
+| ステータス | code                   | 説明                                                                         |
+| ---------- | ---------------------- | ---------------------------------------------------------------------------- |
+| `400`      | `INVALID_TITLE`        | タイトルが空または 200 文字超                                                |
+| `400`      | `INVALID_FILTER`       | フィルターの形式不正                                                         |
+| `400`      | `INVALID_NSFW`         | nsfw が boolean でない                                                       |
+| `400`      | `INVALID_PRIORITY`     | priority が "high" でも null でもない                                        |
+| `400`      | `INVALID_CATEGORY`     | category が string でない、または 50 文字超                                  |
+| `400`      | `INVALID_GROUP_ID`     | groupId が string でない                                                     |
+| `400`      | `INVALID_MUTED_UNTIL`  | mutedUntil が ISO 8601 文字列でない                                          |
+| `400`      | `INVALID_VIEW`         | view が許可された値でない                                                    |
+| `400`      | `INVALID_DIGEST_LIMIT` | digestLimit が 0〜100 の整数でない                                           |
+| `404`      | `FEED_NOT_FOUND`       | 指定した feedHash が購読一覧にない、または共有フィードメタが R2 に存在しない |
+| `404`      | `FEED_GROUP_NOT_FOUND` | 指定した groupId が存在しない                                                |
 
 ---
 
