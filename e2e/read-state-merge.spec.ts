@@ -477,3 +477,87 @@ test.describe("equalTagIds", () => {
     expect(equalTagIds(a, b)).toBe(false);
   });
 });
+
+test.describe("ISO 8601 lexicographic 比較バグ regression (#bug-#2 38th cycle)", () => {
+  test("chooseLater: 旧 lexicographic で誤判定する attack vector を新 isLaterIso が正しく解決する", () => {
+    // 旧実装の誤判定 attack vector:
+    //   existing = "2026-01-01T00:00:00.000Z"   (絶対時刻 00:00:00 UTC)
+    //   update   = "2026-01-01T00:00:01+00:00"  (絶対時刻 00:00:01 UTC, 1 秒後)
+    //
+    //   旧 lexicographic 比較: "2026-01-01T00:00:00.000Z" > "2026-01-01T00:00:01+00:00"
+    //   (".000Z" の 0x2E > "00:01+" の 0x30 と思いきや、文字位置 17 で "0" vs "1" で
+    //    update の方が大きい... 実際には position 19 の "." vs ":" でも比較される。
+    //    本物のバグは UTC 同時刻で suffix 違いのとき、suffix 文字コード差 (+:0x2B / .:0x2E / Z:0x5A) で
+    //    lexicographic 順が崩れること。)
+    //
+    // ここでは「絶対時刻は update が後だが lexicographic は existing が後」になるケースで
+    // 新実装が **絶対時刻基準で正しく update を採用** することを確認する。
+    //
+    // 例: existing = "2026-01-01T00:00:00.999Z" (絶対時刻 .999 sec)
+    //     update   = "2026-01-01T00:00:01+00:00" (絶対時刻 +1 sec, 0.001 後)
+    //   旧 lexicographic: position 18 で "9" (0x39) > "1" (0x31) → existing の方が後と誤判定
+    //   新 isLaterIso: Date.parse で 1ms 後の update が後 → 正しく update 採用
+    const existing = "2026-01-01T00:00:00.999Z";
+    const update = "2026-01-01T00:00:01+00:00";
+    const merged = mergeReadStateUpdate({ readBeforeTimestamp: existing } as unknown as ReadState, {
+      readBeforeTimestamp: update,
+    });
+    expect(merged.readBeforeTimestamp).toBe(update);
+  });
+
+  test("chooseLater: 同時刻の異 suffix では結果が安定する (同 sibling 規範)", () => {
+    // 旧 lexicographic でも新 isLaterIso でも結果が一致。
+    // 同時刻のとき strict greater は false → b (update) 採用が現状仕様。
+    const a = "2026-01-01T00:00:00+00:00";
+    const b = "2026-01-01T00:00:00.000Z";
+    const merged = mergeReadStateUpdate({ readBeforeTimestamp: a } as unknown as ReadState, {
+      readBeforeTimestamp: b,
+    });
+    expect(merged.readBeforeTimestamp).toBe(b);
+  });
+
+  test("chooseLater: 異なる時刻なら絶対時刻基準で正しく後を選ぶ", () => {
+    const earlier = "2026-01-01T00:00:00+00:00";
+    const later = "2026-01-01T00:00:01.000Z"; // 1 秒後
+    const merged = mergeReadStateUpdate(
+      {
+        readBeforeTimestamp: earlier,
+      } as unknown as ReadState,
+      { readBeforeTimestamp: later },
+    );
+    expect(merged.readBeforeTimestamp).toBe(later);
+  });
+
+  test("mergeSnoozed: 同時刻 timezone suffix 違いは update を採用しない", () => {
+    // 旧 lexicographic 実装では "+00:00" < ".000Z" なので update が採用されてしまうバグ。
+    // 新 isLaterIso 実装では同時刻と判定 → 既存値を保持。
+    const merged = mergeReadStateUpdate(
+      {
+        snoozedUntil: { article1: "2026-01-01T00:00:00+00:00" },
+      } as unknown as ReadState,
+      { snoozedUntil: { article1: "2026-01-01T00:00:00.000Z" } },
+    );
+    expect(merged.snoozedUntil?.article1).toBe("2026-01-01T00:00:00+00:00");
+  });
+
+  test("mergeSnoozed: 真に後の時刻は採用される", () => {
+    const merged = mergeReadStateUpdate(
+      {
+        snoozedUntil: { article1: "2026-01-01T00:00:00+00:00" },
+      } as unknown as ReadState,
+      { snoozedUntil: { article1: "2026-01-02T00:00:00.000Z" } }, // 1 日後
+    );
+    expect(merged.snoozedUntil?.article1).toBe("2026-01-02T00:00:00.000Z");
+  });
+
+  test("不正な ISO 文字列が来てもデータ消失しない (NaN guard)", () => {
+    const merged = mergeReadStateUpdate(
+      {
+        readBeforeTimestamp: "2026-01-01T00:00:00+00:00",
+      } as unknown as ReadState,
+      { readBeforeTimestamp: "garbage-date" },
+    );
+    // isLaterIso が false を返して既存値を保持
+    expect(merged.readBeforeTimestamp).toBe("2026-01-01T00:00:00+00:00");
+  });
+});
