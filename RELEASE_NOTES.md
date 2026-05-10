@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### セキュリティ対策っ
+
+- **#706 修正: OGP cache poisoning 防御 (Twitter fallback 経路の TTL 短縮)!🔒** — `fetchTwitterFallbackImage` (X/Twitter 投稿で OGP 画像が無いとき tweet 内リンク先 OGP 画像をフォールバック取得する経路) は **攻撃者が tweet に任意 image を含む linked page を投稿すると、その image URL が 30 日間 shared cache に居座り、同じ tweet を見る全ユーザーに拡散する poisoning が成立** していた問題を修正〜🎯 案 A 採用: fallback 経路の TTL を **30 日 → 1 日に短縮** して影響範囲を限定 (攻撃者が tweet を継続維持しないと poisoning 持続不可)〜📦 純粋関数 `computeOgpCacheTtl({ hasContent, isFallback })` を `src/lib/ogp-cache-ttl.ts` に新設して TDD で全 4 分岐網羅 (通常成功 30 日 / fallback 経路 1 日 / 空応答 1 日 / fallback+空応答 1 日)〜🛡️ negative cache の既存 TTL (`OGP_NEGATIVE_CACHE_TTL_SEC = 24h`) と同一なので独立定数は不要、命名で意図を表現〜📚 (security 監査エージェント Confidence 88% 指摘)
+
 ### パフォーマンス改善っ
 
 - **#702 修正: 全記事 unread 統計の二重 scan を解消!⚡** — 旧実装で `useTotalUnreadCount` (App.tsx) と `useSidebarFeeds` 内の useMemo が同じ `articles` 配列を独立 full scan していたため、`readIds` 変化のたびに全記事 (500+) を 2 回走査して主スレッドをブロックしていた問題を修正〜🎯 案 A 採用: 新規 hook `useArticleUnreadStats` で 1 回だけ scan + 200ms debounce → `UnreadStatsContext` Provider で `<FeedSidebar>` と `useDocumentTitleBadge` (App.tsx) の両方に配信〜📦 既存 `useTotalUnreadCount` を削除、`useSidebarFeeds` の articles/readIds/readBeforeTimestamp 引数を削除して context 経由に統合〜💎 `useArticleUnreadStats` は `unreadByFeed` (feedHash → 未読件数) / `totalUnread` / `lastPublishedByFeed` (feedHash → 最新 publishedAt) / `readTodayCount` を 1 ループで全部計算 → 旧 `useSidebarFeeds` の独自 useMemo より集計項目も増えてオールインワンに〜🛡️

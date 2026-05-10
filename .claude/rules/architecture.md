@@ -339,6 +339,7 @@ src/
     llm-feed-generator.ts    # LLM で RSS のないサイトからフィード生成
     lru-cache.ts             # クライアントサイド LRU キャッシュ
     ogp.ts                   # OGP メタデータ取得ロジック
+    ogp-cache-ttl.ts         # OGP cache TTL 算出純粋関数（computeOgpCacheTtl — Twitter fallback 経路の TTL を 1 日に短縮して poisoning 影響範囲を限定、#706）
     opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
     recommendation.ts        # フィード推薦ロジック
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
@@ -736,6 +737,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `modal-popup-lock-coverage.spec.ts`   | `src/lib/popup-lock.ts` — ポップアップ多重防止                                                                                                                                                 |
 | `obsidian.spec.ts`                    | `src/lib/obsidian.ts` — Obsidian URI 生成                                                                                                                                                      |
 | `ogp-url-normalize.spec.ts`           | `/api/ogp` URL 正規化                                                                                                                                                                          |
+| `ogp-cache-ttl.spec.ts`               | `src/lib/ogp-cache-ttl.ts` — `computeOgpCacheTtl` 純粋関数（Twitter fallback 経路 1 日 / 通常成功 30 日 / 空応答 1 日 / 全 4 分岐網羅、#706 cache poisoning 防御）                             |
 | `opml-feed-groups.spec.ts`            | `src/lib/opml.ts` — OPML パース・ビルド                                                                                                                                                        |
 | `popup-lock.spec.ts`                  | `src/lib/popup-lock.ts` — ロックライフサイクル                                                                                                                                                 |
 | `push-batch.spec.ts`                  | `src/lib/web-push.ts` — Web Push バッチ送信                                                                                                                                                    |
