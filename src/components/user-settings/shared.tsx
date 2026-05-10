@@ -1,5 +1,6 @@
 "use client";
 
+import type { KeyboardEvent, ReactNode } from "react";
 import type { FontSize, FontFamily } from "../../types";
 import type { ContentWidth, LineHeight } from "../../lib/reader-settings";
 import { getLineHeightStyle, CONTENT_WIDTH_LABELS } from "../../lib/reader-settings";
@@ -28,7 +29,7 @@ export const PREVIEW_TEXT =
   "吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。" +
   "The quick brown fox jumps over the lazy dog. RSS リーダーの表示設定をプレビューしながら調整できますわ。";
 
-export function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+export function SettingRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-[12px] font-medium text-text-default flex-shrink-0 w-24">{label}</span>
@@ -53,7 +54,7 @@ export function SegmentGroup<T extends string | number>({
   onChange: (v: T) => void;
   ariaLabel?: string;
 }) {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     e.preventDefault();
     const currentIndex = options.findIndex((opt) => opt.value === value);

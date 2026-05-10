@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import {
+  useRef,
+  useState,
+  useCallback,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import dynamic from "next/dynamic";
 import { useConfirm } from "@/hooks/useConfirm";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -25,7 +32,7 @@ export { formatCount };
 
 /** Enter/Escape キーに対応したインプット用キーハンドラーを生成する。 */
 function makeInputKeyHandler(onEnter: () => void | Promise<void>, onEscape: () => void) {
-  return (e: React.KeyboardEvent<HTMLInputElement>) => {
+  return (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
       void onEnter();
@@ -94,7 +101,7 @@ export default function FeedItem({
   useEventListener("resize", () => setMenuOpen(false));
 
   const startEdit = useCallback(
-    (e: React.MouseEvent) => {
+    (e: MouseEvent) => {
       e.stopPropagation();
       setEditTitle(feed.title || feed.url);
       setEditing(true);
@@ -199,7 +206,7 @@ export default function FeedItem({
 
   const menuBtnRect = menuButtonRef.current?.getBoundingClientRect();
 
-  const menuPortalStyle: React.CSSProperties = (() => {
+  const menuPortalStyle: CSSProperties = (() => {
     const MIN_MENU_WIDTH = 180;
     const estimatedMenuHeight = visibleActions.length * 34;
 

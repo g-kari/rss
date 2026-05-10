@@ -2,6 +2,11 @@
 
 ## 2026-05-10 (latest)
 
+### ドキュメント整備っ + リファクタリングっ (#712 第 8 段階 + 規範 codify)
+
+- **`React.X` named import sweep 第 8 段階! components 軽量 5 ファイル!⚡ (#712 第 8 段階)** — 第 7 段階 (hooks 完全消化) に続き、components 軽量 5 ファイル (`ImportExportTabPanel.tsx` (1 ref) / `feed-sidebar/index.tsx` (1 ref) / `article-items/shared.tsx` (3 ref) / `user-settings/shared.tsx` (2 ref) / `feed-item/FeedItemComponent.tsx` (3 ref)、計 10 references) で `React.X` を named import に書き換え〜🎯 `React.ChangeEvent` → `ChangeEvent` / `React.FormEvent` → `FormEvent` / `React.KeyboardEvent` → `KeyboardEvent` / `React.SyntheticEvent` → `SyntheticEvent` / `React.MouseEvent` → `MouseEvent` / `React.CSSProperties` → `CSSProperties` / `React.ReactNode` → `ReactNode` の type-only named import 〜📦 全ファイル DOM `addEventListener` 未使用 → alias 不要〜🛡️ 残 11 ファイル後続サイクルで継続 sweep (進捗 78%) 〜📚
+- **規範 codify: `react-patterns.md` に「default `import React from 'react'` を named import に置き換える」派生ケース追加!📚 (前サイクル提案分の即時実証)** — 前サイクル末で発見した「default React import を named に変える」パターンを `react-patterns.md` の「DOM global 衝突対応」セクション末尾に派生ケースとして codify〜🎯 React 19 + Next.js 16 の JSX runtime auto では default `React` import 不要 → named import で value (`createElement` / `Fragment` / `forwardRef` 等) を取り出す方が tree-shaking 改善 + 一貫性向上〜💪 反例 (古い React 16 系 / Class component / type-only namespace import) も併記して誤適用回避〜🛡️ 規範化 → 即時自己実証パターン 6 度目 (`useSyncedRef` / `react-named-imports` / `sentinel-freeze` / 自走 5 条件 / DOM global 衝突対応に続く)〜💎
+
 ### リファクタリングっ (#712 案 B 段階的 sweep 第 7 段階 — hooks 完全消化)
 
 - **`React.X` named import sweep 第 7 段階! 残 hooks 4 ファイル + `article-ui-helpers.ts`!⚡ (#712 第 7 段階)** — 第 6 段階 (useReadState 系 5 ファイル / 39 ref) に続き、残 hooks 4 ファイル + lib 1 ファイルを処理。これで hooks ディレクトリの React.X sweep が完全消化〜🎯 対象: `useArticleData.ts` (2 ref) / `useArticleViewProgress.ts` (4 ref) / `useFeedData.ts` (1 ref) / `useReadStateSyncApply.ts` (15 ref) / `lib/article-ui-helpers.ts` (2 ref)、計 24 references 〜📦 `Dispatch` / `SetStateAction` / `MutableRefObject` / `RefObject` / `UIEvent` の type-only named import + `article-ui-helpers.ts` は default `import React` を named `createElement` / `Fragment` import に変換 (default import 廃止パターン) 〜🛡️ 全ファイル DOM `addEventListener` 確認 → `useArticleData.ts` のみ `visibilitychange` 使用するが React event 型と被らないため alias 不要 〜💪 残 16 ファイル後続サイクルで継続 sweep (進捗 69%) 〜📚

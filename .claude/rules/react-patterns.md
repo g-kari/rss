@@ -944,6 +944,46 @@ document.addEventListener("mousemove", onMouseMove); // 型整合 OK
 
 主な使用箇所: `useColumnResize.ts` (#712 第 2 段階 sweep 作業時、`React.MouseEvent` → `MouseEvent` 化で `addEventListener("mousemove", ...)` overload と衝突 → `MouseEvent as ReactMouseEvent` で解決)
 
+### 派生ケース: `import React from "react"` default import は React 19 + Next.js 16 では named import に置き換える
+
+React 19 + Next.js 16 の **JSX runtime auto** (Next.js が自動で `react/jsx-runtime` を挿入) では、JSX を書くために default `React` import は **不要**。`React.createElement` / `React.Fragment` / `React.forwardRef` 等の value も全て named import で取り出せる。
+
+```typescript
+// アンチパターン: default import + qualified value 使用
+import React, { type ReactNode } from "react";
+function highlight(): ReactNode {
+  return React.createElement(React.Fragment, null, ...parts);
+}
+
+// 修正パターン: named import に統一
+import { Fragment, createElement, type ReactNode } from "react";
+function highlight(): ReactNode {
+  return createElement(Fragment, null, ...parts);
+}
+```
+
+**Why**: React 17+ の new JSX transform 以降、JSX は内部で `react/jsx-runtime` の `jsx()` を呼ぶため `React` global は不要。`React 19` + `Next.js 16` ではこれが標準で自動有効。default `React` import を残すと:
+
+1. **bundle に React 全モジュールがインポートされる可能性** (tree-shaking が tsconfig 設定によっては効きにくい)
+2. **「React の何を使っているか」が見えない** (`React.createElement` / `React.Fragment` 等を qualified で使うと grep しにくい)
+3. **React.X 形式と named import 形式の混在で一貫性が崩れる** (本ファイル冒頭の「DOM global 衝突対応」と同じ理由 — 全ファイル統一が望ましい)
+
+**How to apply**: ファイル中で `import React from "react"` を見つけたら、以下のステップで named import に変換:
+
+1. **value 系を named import に追加**: `createElement` / `Fragment` / `forwardRef` / `useImperativeHandle` / `memo` 等
+2. **type 系も同時に named import 化** (本ファイル「DOM global 衝突対応」セクションのフロー適用)
+3. **default import を削除**: `import React from ...` → `import { ... } from "react";`
+4. **`React.X` の qualified 参照を全置換**: `replace_all` で `React.createElement` → `createElement` 等
+5. **typecheck で漏れチェック**: `pnpm run typecheck` で残った `React.X` は検出される
+
+**反例 (default import を残すべきケース)**:
+
+- **古い React 16 系プロジェクト** (legacy JSX transform 前提) — 本プロジェクトは React 19 なので該当なし
+- **Class component で `React.Component` extending** — 本プロジェクトでは関数コンポーネントのみ (CLAUDE.md 規約) なので該当なし
+- **type-only import で `React.X` namespace 全部使うとき** — `import type * as React from "react";` の形なら可だが、named import の方が一般的
+
+主な使用箇所: `article-ui-helpers.ts` (#712 第 7 段階 sweep 作業時、default `import React, { type ReactNode }` → named `import { Fragment, createElement, type ReactNode }` に変換)
+
 ## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する
 
 masonic / react-virtual のような **絶対座標で要素を配置する仮想化ライブラリ** を使うと、コンテナの `scrollHeight` はレイアウト確定後に動的に書き換わる。「コンテンツが viewport を埋めているか」を判定する必要がある場合、static な useEffect だけでは初回レイアウト確定タイミングを捉えられない。
