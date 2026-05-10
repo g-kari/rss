@@ -1,14 +1,20 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import {
+  useCallback,
+  useRef,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from "react";
 import { STORAGE_KEYS, saveJson } from "../lib/storage";
 import { normalizeTagName, normalizeTagArray } from "../lib/read-state-storage";
 import { useSyncedRef } from "./useSyncedRef";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
 export interface ReadStateTagsDeps {
-  stateRef: React.MutableRefObject<ReadStateSets>;
-  setTagIdsState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
+  stateRef: MutableRefObject<ReadStateSets>;
+  setTagIdsState: Dispatch<SetStateAction<Record<string, string[]>>>;
   scheduleSyncToServer: () => void;
 }
 
@@ -17,8 +23,8 @@ export interface ReadStateTagsResult {
   removeTag: (articleId: string, tag: string) => void;
   setArticleTags: (articleId: string, tags: readonly string[]) => void;
   clearArticleTags: (articleId: string) => void;
-  pendingTagChangedRef: React.MutableRefObject<Set<string>>;
-  pendingTagRemovedRef: React.MutableRefObject<Set<string>>;
+  pendingTagChangedRef: MutableRefObject<Set<string>>;
+  pendingTagRemovedRef: MutableRefObject<Set<string>>;
 }
 
 export function useReadStateTags(deps: ReadStateTagsDeps): ReadStateTagsResult {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useEventListener } from "./useEventListener";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -18,7 +18,7 @@ export function useFocusMode(): {
   listFocusMode: boolean;
   toggleFocusMode: () => void;
   toggleListFocusMode: () => void;
-  setListFocusMode: React.Dispatch<React.SetStateAction<boolean>>;
+  setListFocusMode: Dispatch<SetStateAction<boolean>>;
   exitFocusMode: () => void;
 } {
   const [focusMode, setFocusMode] = useState(false);

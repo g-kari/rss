@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import type { Feed } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 import { invalidateSwCache } from "../lib/sw-cache";
@@ -100,7 +100,7 @@ export function useFeedOperations({
     }
   }
 
-  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImportFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setImporting(true);

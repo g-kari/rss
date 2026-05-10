@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import type { Article } from "../types";
 import type { AiOperationResult } from "./useArticleAi";
 import { useSyncedRef } from "./useSyncedRef";
@@ -19,7 +19,7 @@ export interface ArticleViewShortcutsDeps {
   doRunAi: (link: string, id: string) => void;
   resetAi: () => void;
   handleTranslate: () => void;
-  mainRef: React.RefObject<HTMLElement | null>;
+  mainRef: RefObject<HTMLElement | null>;
   autoTranslate: boolean;
   /** #695: Built-In AI が利用できる環境では自動要約。autoTranslate と同じトリガーパターン */
   autoSummarize: boolean;
