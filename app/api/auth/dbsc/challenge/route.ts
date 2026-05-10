@@ -4,6 +4,7 @@ import { timingSafeEqual } from "@/lib/auth";
 import { generateDbscChallenge, verifyDbscResponse, type DbscSession } from "@/lib/dbsc";
 import { r2Get, r2Put } from "@/lib/r2";
 import { apiError } from "@/lib/api-error";
+import { isValidSessionId } from "@/lib/validation";
 
 /**
  * POST /api/auth/dbsc/challenge
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     if (typeof sessionId !== "string" || sessionId.length === 0) {
       return apiError("sessionId is required", 400);
     }
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+    if (!isValidSessionId(sessionId)) {
       return apiError("invalid sessionId", 400);
     }
 

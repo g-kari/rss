@@ -4,8 +4,11 @@ import { getDateRangeStart, readingTime } from "./article-utils";
 import { compileSearchQuery, type SearchContext } from "./full-text-search";
 import { SPECIAL_FEED_IDS } from "./storage";
 
-/** 空の feedTitleByHash — feed: クエリ未対応時のデフォルト */
-const EMPTY_FEED_TITLE_MAP: ReadonlyMap<string, string> = new Map();
+/** 空の feedTitleByHash — feed: クエリ未対応時のデフォルト (`Object.freeze` で誤った write を runtime 検知) */
+const EMPTY_FEED_TITLE_MAP = Object.freeze(new Map<string, string>()) as ReadonlyMap<
+  string,
+  string
+>;
 
 /**
  * 記事が既読かどうかを判定する。

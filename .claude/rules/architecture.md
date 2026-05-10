@@ -361,6 +361,7 @@ src/
     rate-limit.ts            # KV ベースのクールダウン・スライディングウィンドウ レートリミット (checkAndUpdateCooldown / checkSlidingWindow)
     rate-limit-logic.ts      # スライディングウィンドウ判定の純粋関数 (evaluateSlidingWindow) — next/* 非依存でユニットテスト可能
     serialize-async.ts       # 同一キー非同期操作の直列化ユーティリティ (serialized)
+    sort-utils.ts            # `order: number` フィールドを持つ配列の安定ソート純粋関数（sortByOrder — useFeedGroups / useCollections の重複ロジックを集約）
     obsidian.ts              # Obsidian URI スキーム連携（obsidian://new URI 生成・ファイル名サニタイズ）
     html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
     reading-progress.ts      # 読書進捗計算純粋関数（computeProgress / clampProgress / buildAnchorSelector）
@@ -681,8 +682,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `article-utils.spec.ts`               | `src/lib/article-utils.ts` — readingTime / timeAgo / createReadingTimeCache (#685 メモ化キャッシュ 7 ケース) / compareByDateDesc / compareByPublishedAtDesc (2 関数の仕様差分明文化 14 ケース) |
 | `articles-save.spec.ts`               | `app/api/articles/save/route.ts` — 記事手動保存 API                                                                                                                                            |
 | `auth-headers.spec.ts`                | 認証ヘッダー処理                                                                                                                                                                               |
-| `auth-utils-edge.spec.ts`             | JWT 検証エッジケース                                                                                                                                                                           |
-| `auth-utils.spec.ts`                  | `src/lib/auth.ts` — JWT 検証・トークン交換                                                                                                                                                     |
+| `auth-utils.spec.ts`                  | `src/lib/auth.ts` — JWT 検証・トークン交換 (`getJwtExp` の null/exp 数値以外/有効 JWT 全 4 ケース網羅)                                                                                         |
 | `auth.spec.ts`                        | `/api/auth/*` エンドポイント統合テスト                                                                                                                                                         |
 | `beta-allowed.spec.ts`                | `src/lib/beta-allowed.ts` — BETA_ALLOWED_SUBS チェック・拒否時の調査ログ                                                                                                                       |
 | `dev-auth-bypass-unit.spec.ts`        | `src/lib/dev-auth-bypass.ts` — getDevBypassUserId / buildDevBypassProfile の境界値                                                                                                             |
@@ -771,7 +771,9 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `sanitize-dompurify.spec.ts`          | 調査コード（dompurify Workers 非対応調査、無効化済み）                                                                                                                                         |
 | `sanitize-for-prompt.spec.ts`         | `src/lib/recommendation.ts#sanitizeForPrompt`                                                                                                                                                  |
 | `sanitize-html.spec.ts`               | `src/lib/html.ts#sanitizeHtml`                                                                                                                                                                 |
+| `script-loaded-images.spec.ts`        | `src/lib/content.ts#resolveScriptLoadedImages` — WordPress プラグインの `loadImage(elementId, jpgUrl, gifUrl)` で gif (動的) を優先採用する純粋関数 (digitallover.moe 対応)                    |
 | `serialize-error.spec.ts`             | `src/lib/serialize-error.ts` — エラーシリアライズ                                                                                                                                              |
+| `sort-utils.spec.ts`                  | `src/lib/sort-utils.ts#sortByOrder` — order 昇順ソート純粋関数（mutate しない / 空配列 / stable sort / readonly 互換、全 8 ケース網羅）                                                        |
 | `shared-feed-merge.spec.ts`           | `src/lib/shared-feed.ts#mergeNewArticles`                                                                                                                                                      |
 | `shared-feed.spec.ts`                 | `src/lib/shared-feed.ts` — フィードデータ R2 操作                                                                                                                                              |
 | `speakerdeck-embed.spec.ts`           | `src/lib/html-embed-transforms.ts` — SpeakerDeck 変換                                                                                                                                          |
