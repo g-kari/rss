@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import Modal from "./Modal";
 
 const PROGRESS_STEPS = [
@@ -24,7 +24,7 @@ interface Props {
   onUseRsshubChange: (v: boolean) => void;
   adding: boolean;
   error: string | null;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: FormEvent) => void;
   onClose: () => void;
 }
 
@@ -97,7 +97,7 @@ export default function FeedAddModal({
   }
 
   // Issue #459: paste & go — ペースト直後に値を取得して有効な URL なら自動送信
-  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+  function handlePaste(e: ClipboardEvent<HTMLInputElement>) {
     const pasted = e.clipboardData.getData("text");
     setTimeout(() => {
       if (isValidHttpUrl(pasted)) {

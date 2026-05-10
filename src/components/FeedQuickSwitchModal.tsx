@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Feed, Article } from "../types";
 import { isArticleRead } from "../lib/article-filter";
@@ -106,7 +106,7 @@ export default function FeedQuickSwitchModal({
     item?.scrollIntoView({ block: "nearest" });
   }, [cursor]);
 
-  function handleKeyDown(e: React.KeyboardEvent) {
+  function handleKeyDown(e: KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setCursor((c) => Math.min(c + 1, filtered.length - 1));
@@ -126,7 +126,7 @@ export default function FeedQuickSwitchModal({
 
   // Modal.tsx と同じ focus trap pattern (WCAG 2.1.2 No Keyboard Trap)。
   // 入力フィールド以外 (clear-query ボタンなど) からの Tab がダイアログ外へ抜けるのを防ぐ。
-  const handleDialogKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleDialogKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Tab") return;
     const dialog = dialogRef.current;
     if (!dialog) return;

@@ -1,5 +1,13 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, type ComponentProps } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
@@ -70,7 +78,7 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
   }, [open, onClose]);
 
   // フォーカストラップ: Modal.tsx と同パターン (Tab で循環、Shift+Tab で逆循環)
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Tab") return;
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -94,7 +102,7 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
     }
   }, []);
 
-  function handleResizeStart(e: React.MouseEvent) {
+  function handleResizeStart(e: ReactMouseEvent) {
     e.preventDefault();
     dragRef.current = { startX: e.clientX, startWidth: width };
 

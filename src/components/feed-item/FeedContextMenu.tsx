@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { Feed, FeedGroup, FeedView } from "../../types";
 import type { Action } from "./types";
@@ -15,9 +15,9 @@ const MUTE_OPTIONS = [
 
 interface ContextMenuProps {
   visibleActions: Action[];
-  menuPortalStyle: React.CSSProperties;
+  menuPortalStyle: CSSProperties;
   onClose: () => void;
-  btnRef: React.RefObject<HTMLButtonElement | null>;
+  btnRef: RefObject<HTMLButtonElement | null>;
 }
 export function ContextMenuPortal({
   visibleActions,
@@ -78,7 +78,7 @@ export function ContextMenuPortal({
 }
 
 interface MuteMenuProps {
-  menuPortalStyle: React.CSSProperties;
+  menuPortalStyle: CSSProperties;
   onClose: () => void;
   onMute: (mutedUntil: string | null) => Promise<void>;
 }
@@ -151,7 +151,7 @@ export function MuteMenuPortal({ menuPortalStyle, onClose, onMute }: MuteMenuPro
 
 interface ViewMenuProps {
   feed: Feed;
-  menuPortalStyle: React.CSSProperties;
+  menuPortalStyle: CSSProperties;
   onClose: () => void;
   onSetView: (view: FeedView | null) => Promise<void>;
 }
@@ -231,7 +231,7 @@ const DIGEST_OPTIONS = [
 
 interface DigestMenuProps {
   feed: Feed;
-  menuPortalStyle: React.CSSProperties;
+  menuPortalStyle: CSSProperties;
   onClose: () => void;
   onSetDigestLimit: (limit: number | null) => Promise<void>;
 }
@@ -302,7 +302,7 @@ export function DigestMenuPortal({
 interface GroupMenuProps {
   feed: Feed;
   groups: FeedGroup[];
-  menuPortalStyle: React.CSSProperties;
+  menuPortalStyle: CSSProperties;
   onClose: () => void;
   onSetGroup: (groupId: string | null) => Promise<void>;
 }
