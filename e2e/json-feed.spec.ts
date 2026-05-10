@@ -157,8 +157,10 @@ test.describe("parseFeed — JSON Feed エッジケース", () => {
       ],
     });
     const result = parseFeed(feed);
-    // summary は 200 文字以内に切り詰められる
-    expect(result.items[0].summary.length).toBeLessThanOrEqual(200);
+    // summary は MAX_SUMMARY_LENGTH (5000) 以内に切り詰められる (#721)
+    expect(result.items[0].summary.length).toBeLessThanOrEqual(5000);
+    // 300 文字本文は完全保持される (旧 200 制限は撤廃済み)
+    expect(result.items[0].summary.length).toBe(300);
   });
 
   test("XSS を含む content_html をサニタイズする", () => {

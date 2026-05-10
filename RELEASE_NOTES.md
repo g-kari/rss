@@ -6,6 +6,10 @@
 
 - **#702 修正: 全記事 unread 統計の二重 scan を解消!⚡** — 旧実装で `useTotalUnreadCount` (App.tsx) と `useSidebarFeeds` 内の useMemo が同じ `articles` 配列を独立 full scan していたため、`readIds` 変化のたびに全記事 (500+) を 2 回走査して主スレッドをブロックしていた問題を修正〜🎯 案 A 採用: 新規 hook `useArticleUnreadStats` で 1 回だけ scan + 200ms debounce → `UnreadStatsContext` Provider で `<FeedSidebar>` と `useDocumentTitleBadge` (App.tsx) の両方に配信〜📦 既存 `useTotalUnreadCount` を削除、`useSidebarFeeds` の articles/readIds/readBeforeTimestamp 引数を削除して context 経由に統合〜💎 `useArticleUnreadStats` は `unreadByFeed` (feedHash → 未読件数) / `totalUnread` / `lastPublishedByFeed` (feedHash → 最新 publishedAt) / `readTodayCount` を 1 ループで全部計算 → 旧 `useSidebarFeeds` の独自 useMemo より集計項目も増えてオールインワンに〜🛡️
 
+### バグ修正っ
+
+- **#721 修正: feed の description 文字数制限を 200 → 5000 に緩和!📝** — VRChat seller bot 等の長い `<description>` (アバター 30+ 件列挙等) が 200 文字で切られて「すべて表示されていない」ユーザー報告に対応〜🎯 `xml-parser.ts` の `MAX_SUMMARY_LENGTH` 定数を新設して RSS 2.0 / Atom / JSON Feed の 4 箇所すべてで一括適用、25 倍に緩和して大半の RSS で完全表示〜📦 完全撤廃でなく上限を残す理由: 悪意ある巨大 description (1MB+) による R2 storage / シリアライズコスト DoS の防御〜🛡️ TDD 3 ケース全 pass (1000 文字保持 / 8000 文字 truncate / Atom 1500 文字保持) `e2e/xml-parser.spec.ts`〜📚
+
 ### バグ修正っ + ドキュメント整備っ (Phase 1 真因切り分け)
 
 - **#715 Phase 1 真因切り分け: digitallover.moe で `<video>` が表示されない真因 = CSS 欠落!🎬** — 当初 4 仮説 (Readability 削除 / noise removal / クライアント render / CORS) を検討、TDD spec で仮説 A (Readability text-density 判定) を pass で **却下**。残仮説を Read で詰めた結果、`app/globals.css` に **`.article-content video` の CSS rule が完全欠落** していたことが判明〜🎯 既存 `.article-content img { width: 100%; height: auto; ... }` は定義されていたが、`<video>` は未定義でブラウザ default の inline display 挙動により WordPress `<figure class="wp-block-video">` 内では描画されないケースが発生〜🛡️ defensive 対応として `.article-content video` + `.article-content audio` の rule を追加 (img と同じ pattern)、regression spec も `e2e/content-extraction.spec.ts` に追加 (#715 Phase 1)〜📚 video-proxy 新設は不要 (Phase 2 取りやめ)、ユーザー実機確認待ち〜⚙️
