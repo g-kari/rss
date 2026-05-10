@@ -3,7 +3,6 @@ import {
   replaceUntilStable,
   tryParseBase,
   wrapTables,
-  buildImageSlider,
   removeNoise,
   transformZennLinkEmbeds,
   transformZennMermaidEmbeds,
@@ -600,35 +599,6 @@ test.describe("wrapTables", () => {
     const result = wrapTables(html);
     const wrapperCount = (result.match(/overflow-x:auto/g) || []).length;
     expect(wrapperCount).toBe(2);
-  });
-});
-
-// ── buildImageSlider ────────────────────────────────────────────
-
-test.describe("buildImageSlider", () => {
-  test("img 配列からスライダー HTML を生成する", () => {
-    const imgs = ['<img src="a.jpg">', '<img src="b.jpg">'];
-    const result = buildImageSlider(imgs);
-    expect(result).toContain("rss-image-slider");
-    expect(result).toContain("scroll-snap-type:x mandatory");
-    expect(result).toContain("rss-slider-slide");
-    expect(result).toContain('src="a.jpg"');
-    expect(result).toContain('src="b.jpg"');
-  });
-
-  test("空配列は空文字列を返す", () => {
-    expect(buildImageSlider([])).toBe("");
-  });
-
-  test("1枚の画像でもスライダーを生成する", () => {
-    const result = buildImageSlider(['<img src="single.jpg">']);
-    expect(result).toContain("rss-image-slider");
-    expect(result).toContain("single.jpg");
-  });
-
-  test("scroll-snap-stop:always が含まれる（高速スワイプ防止）", () => {
-    const result = buildImageSlider(['<img src="a.jpg">', '<img src="b.jpg">']);
-    expect(result).toContain("scroll-snap-stop:always");
   });
 });
 

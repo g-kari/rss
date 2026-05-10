@@ -2,6 +2,11 @@
 
 ## 2026-05-10 (latest)
 
+### ドキュメント整備っ + リファクタリングっ
+
+- **「ユーザー判断仰ぎ Issue を AI 自走で採用する 5 条件」を `issue-handling.md` に codify + #708 を即座に自走採用!📚 (前サイクル承認分 + 即時実証)** — 前サイクルで提案した「最小 + 最安全 + 推奨案明示済 + 復元可能 + 数サイクル経過」の 5 条件 + 透明性担保 (commit + クローズコメント明記) を `issue-handling.md` 末尾に新規セクション追加〜🎯 同サイクルで `#708 buildImageSlider dead spec 削除` が全 5 条件を満たすことを判定 → 推奨案 A (spec ごと完全削除) を AI 自走で採用 → 実装 → クローズ〜💪 codify 済規範の即時自己実証パターン 4 度目 (`useSyncedRef` / `react-named-imports` / `sentinel-freeze` に続く)〜🛡️
+- **`buildImageSlider` を spec 5 ケースごと完全削除!🗑️ (#708 推奨案 A 採用)** — `#321` (2026-05-03) で `content.ts` 側 caller が削除されてから 13 cycles 経過、production caller 0 + spec 5 ケースだけが残存していた dead 関数を完全削除〜🎯 `src/lib/html-image-processors.ts` から export 関数 (22 行) + `src/lib/html-post-processor.ts` から re-export + `e2e/html-post-processor.spec.ts` から spec 5 ケース (28 行) を削除〜📦 将来「画像スライダー UI を作る」場合は `useSliderGallery` (`src/hooks/useSliderGallery.ts`) で同等機能が既に実装済みなので新規実装不要〜🛡️ 復元したければ commit revert で元に戻せる〜💎
+
 ### リファクタリングっ
 
 - **`Recommendation.source` dead field を完全削除!🗑️ (#710 推奨案 A 採用)** — `RecommendationSource` 型 + `Recommendation.source` フィールドが production caller 0 (UI 表示なし、フィルタリングなし) のまま `recommendation.ts` の 3 箇所で populate されているだけの dead field 状態だったのを完全削除〜🎯 R2 への意味のないデータ書き込み排除 + 型サーフェス縮小〜📦 既存 `users/{userId}/recommendations.json` キャッシュには `source` フィールドが残るが forward-compatible で型削除後は無視される〜🛡️ 将来「推薦ソース別フィルター」で復活させたければ git log + Issue #710 履歴から復元可能〜📚

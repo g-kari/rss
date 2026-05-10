@@ -235,30 +235,3 @@ export function removeSmallThumbnailImages(html: string): string {
     return full;
   });
 }
-
-/**
- * img タグ配列から CSS scroll-snap スライダー HTML を生成する。
- * removeNoise の EC ギャラリー変換と shopifyDesc の商品画像ギャラリーで共用。
- */
-export function buildImageSlider(imgs: string[]): string {
-  if (imgs.length === 0) return "";
-  const slides = imgs
-    .map(
-      (img) =>
-        // scroll-snap-stop:always — 高速スワイプ時に複数枚飛ばしを防止
-        // class="rss-slider-slide" — CSS でサイズ管理（fixImageDimensions に除去されないよう inline style を使わない）
-        `<div class="rss-slider-slide" style="flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always">` +
-        img +
-        `</div>`,
-    )
-    .join("");
-  return (
-    // class="rss-image-slider" — ArticleView で PC 用ナビゲーションボタンを注入するために使用
-    // overscroll-behavior-x:contain — 横スクロールが親要素に伝播するのを防止
-    // -webkit-overflow-scrolling:touch を削除 — CSS scroll-snap との競合を防止
-    `<div class="rss-image-slider" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0;` +
-    `margin:0 0 1.25em;border-radius:8px;overscroll-behavior-x:contain;scrollbar-width:none">` +
-    slides +
-    `</div>`
-  );
-}

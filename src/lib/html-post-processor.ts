@@ -23,15 +23,12 @@ import { fixLazyImages, removeSmallThumbnailImages } from "./html-image-processo
 export { replaceUntilStable, processNestedBlocks, removeNoise } from "./html-noise-removal";
 
 // ── re-export: html-image-processors.ts ─────────────────────────
-// buildImageSlider は #321 で content.ts 側 caller が削除されたが spec が残存しているため、
-// 「dead 削除 / 機能配線 / spec ごと整理」のいずれを取るかを別 Issue で判断するまで暫定で re-export を維持する。
 export {
   tryParseBase,
   fixLazyImages,
   fixImageDimensions,
   rewriteImageUrls,
   removeSmallThumbnailImages,
-  buildImageSlider,
 } from "./html-image-processors";
 
 // ── re-export: html-embed-transforms.ts ─────────────────────────
