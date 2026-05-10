@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (#712 案 B 段階的 sweep 第 9 段階)
+
+- **`React.X` named import sweep 第 9 段階! Modal/Overlay 軽量 5 ファイル!⚡ (#712 第 9 段階)** — 第 8 段階 (components 軽量 5 ファイル) に続き、Modal/Overlay 系の軽量 5 ファイル (`FocusModeOverlay.tsx` (1 ref) / `FeedDetailModal.tsx` (1 ref) / `FeedFilterModal.tsx` (1 ref) / `ReadingStatsModal.tsx` (1 ref) / `UserSettingsModal.tsx` (1 ref)、計 5 references) で `React.X` を named import に書き換え〜🎯 全ファイル 1 ref のみで影響最小、`React.KeyboardEvent` → `KeyboardEvent` / `React.ReactNode` → `ReactNode` の type-only named import 〜📦 全ファイル DOM `addEventListener` 未使用 → alias 不要〜🛡️ 残 6 ファイル後続サイクルで継続 sweep (進捗 88%) 〜📚
+
 ### ドキュメント整備っ + リファクタリングっ (#712 第 8 段階 + 規範 codify)
 
 - **`React.X` named import sweep 第 8 段階! components 軽量 5 ファイル!⚡ (#712 第 8 段階)** — 第 7 段階 (hooks 完全消化) に続き、components 軽量 5 ファイル (`ImportExportTabPanel.tsx` (1 ref) / `feed-sidebar/index.tsx` (1 ref) / `article-items/shared.tsx` (3 ref) / `user-settings/shared.tsx` (2 ref) / `feed-item/FeedItemComponent.tsx` (3 ref)、計 10 references) で `React.X` を named import に書き換え〜🎯 `React.ChangeEvent` → `ChangeEvent` / `React.FormEvent` → `FormEvent` / `React.KeyboardEvent` → `KeyboardEvent` / `React.SyntheticEvent` → `SyntheticEvent` / `React.MouseEvent` → `MouseEvent` / `React.CSSProperties` → `CSSProperties` / `React.ReactNode` → `ReactNode` の type-only named import 〜📦 全ファイル DOM `addEventListener` 未使用 → alias 不要〜🛡️ 残 11 ファイル後続サイクルで継続 sweep (進捗 78%) 〜📚

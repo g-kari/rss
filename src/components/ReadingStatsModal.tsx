@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useReadingStats } from "../hooks/useReadingStats";
@@ -203,7 +203,7 @@ function WeeklyGoalSection({ weeklyTotal }: { weeklyTotal: number }) {
     setEditing(false);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") commitEdit();
     if (e.key === "Escape") setEditing(false);
   }

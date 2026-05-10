@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import type { Feed } from "../types";
 import Modal from "./Modal";
 import { useToast } from "@/contexts/ToastContext";
@@ -180,7 +180,7 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
   );
 }
 
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div>
       <div className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted mb-2">
