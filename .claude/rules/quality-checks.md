@@ -174,3 +174,44 @@ skip メッセージには **次に何をすべきか**（コマンド・URL）�
 **反例**: 「Red にならないからいいや」と spec を削除する → エージェント分析の取り組みが無駄になる + 同じ問題が再発した時に検出する手段がなくなる。**spec は Red にならなくても残す**。
 
 主な使用箇所: 2026-05-10 サイクルの code-quality #1 (lexicographic 比較バグ) — エージェント 85% 信頼度だったが、本プロジェクトの実データ前提では Red にならず、defensive 改善 + regression 防止 spec として commit
+
+### 派生ケース: TDD spec が pure function 層で pass する場合、真因は CSS / runtime レイヤー
+
+ユーザー報告のバグが **「特定環境で再現する UI 表示問題」** (例: 「動画が表示されない」「画像が引き伸ばされる」「フォーカスが行方不明」) のとき、最初に純粋関数層 (パーサー / 抽出 / 変換 / バリデーション) を疑って TDD spec を書きがち。だが spec が pass する場合、**真因は CSS / runtime レイヤーにある可能性が高い** ことを認識する必要がある。
+
+```
+パターン: TDD spec pass → CSS / runtime 層を疑う調査フロー
+  1. UI 表示問題の bug 報告を受ける
+  2. 純粋関数層 (extractMainContent / postProcess / sanitizeHtml 等) で TDD spec
+  3. spec が pass → 真因は別レイヤー
+  4. 候補:
+     a. CSS (display: none / 0 サイズ / overflow: hidden / 当該 selector 欠落)
+     b. クライアント React 描画 (dangerouslySetInnerHTML 経路 / 条件分岐 / 子の hidden 判定)
+     c. ブラウザ runtime (CORS / referrer policy / CSP / event listener)
+     d. WebStorage (localStorage 不正値 / sessionStorage 衝突)
+  5. 候補 a (CSS) を最優先で確認: `app/globals.css` で当該要素タイプの rule が
+     定義されているか grep 確認
+  6. CSS rule 欠落なら **defensive 対応 + regression spec (extractor 層に
+     残す価値あり)** で完結。それ以外なら b / c / d へ
+```
+
+**Why**: TDD は「pure function を Red→Green→Refactor で書く」のが基本だが、UI 表示問題の真因は **「pure function は OK だが view layer で消える」** パターンが多い。本プロジェクトでは extractor / sanitizer は `<video>` / `<audio>` / `<iframe>` を保持するが、`.article-content video` の CSS rule が欠落していて画面に出ないケースが #715 で発生した。spec が pass した時点で「真因は別レイヤー」と切り分けられる利点を活かす。
+
+逆に言えば、TDD spec が pass すれば **「pure function 層は安全」** ことが保証されるため、調査範囲を view layer に絞れる (spec が無いと「pure function かもしれない / view かもしれない」両面調査が必要)。
+
+**How to apply**: UI 表示問題の bug 報告を受けたら:
+
+1. **Step 1**: 純粋関数層 (extractor / parser / transformer) を疑う TDD spec を書く
+2. **Step 2 (Red 確認)**: spec が fail するか確認
+   - **Fail (Red)** → 純粋関数層が真因、Red→Green→Refactor で修正
+   - **Pass (Green)** → 真因は別レイヤー、Step 3 へ
+3. **Step 3 (CSS 確認)**: `app/globals.css` で当該 HTML element 型の rule を grep
+   - 例: `<video>` 問題なら `grep -n "video\|aspect-ratio" app/globals.css`
+   - rule 欠落なら **canonical pattern (例: `.article-content img`) を複製して rule 追加**
+4. **Step 4 (React 描画確認)**: ArticleContentBody / 該当コンポーネントで `dangerouslySetInnerHTML` 経路を Read、条件分岐や子コンポーネントで hidden 化されないか確認
+5. **Step 5 (CORS / runtime 確認)**: ブラウザ DevTools での実機確認をユーザーに依頼 (本番 / dev で再現確認、`api-fetch` ログ等)
+6. **Step 2 で書いた spec は削除しない** — pure function 層の regression 防止として残す価値あり
+
+**反例**: spec が pass した時点で「バグなしと判定して終了」しない。pure function は OK でも view layer で消えている可能性が常にある。
+
+主な使用箇所: 2026-05-10 33th サイクルの #715 Phase 1 — digitallover.moe で `<video>` が表示されない bug 報告 → extractMainContent 経由の TDD spec が pass → CSS で `.article-content video` rule 欠落と判明 → defensive 対応で `.article-content video { width: 100%; height: auto; ... }` 追加 + regression spec を残す
