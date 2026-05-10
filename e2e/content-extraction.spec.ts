@@ -465,6 +465,38 @@ test.describe("extractMainContent — 動画埋込み保持 (Issue #120)", () =>
     const { content } = extractMainContent(html, "https://example.com/article");
     expect(content).not.toContain("evil.example.com");
   });
+
+  // #715 Phase 1 真因切り分け
+  // ユーザー報告: digitallover.moe/archives/19237 で <figure class="wp-block-video"><video>
+  // のみ含む WordPress 記事が本文に表示されない。実 HTML 構造を最小再現:
+  //   <div class="entry-content"><figure class="wp-block-video"><video src="*.mp4"></video></figure></div>
+  // 周囲にテキスト本文がほぼ無い (PR ラベル + 推薦画像のみ)。
+  //
+  // Phase 1 結果: extractMainContent は `<video>` を **正しく保持** する (本 spec が pass)。
+  // つまり真因は **CSS / クライアント描画レイヤー** にあると判明。
+  // app/globals.css に `.article-content video` の rule が無く、ブラウザのデフォルト
+  // インライン display で video element がコンテナ内で見えない問題が判明。
+  // → Phase 2 として `.article-content video { width: 100%; height: auto; ... }` を追加で
+  // defensive 対応 (commit で同梱)。video-proxy 新設は不要 (CORS 経由再生は別問題)。
+  test('#715: <figure class="wp-block-video"><video> のみで本文テキストが少ない記事でも video が保持される (regression)', () => {
+    const html = `
+      <html>
+        <head><title>動画記事</title></head>
+        <body>
+          <div class="entry-content cf" itemprop="mainEntityOfPage">
+            <figure class="wp-block-video">
+              <video height="480" style="aspect-ratio: 720 / 480;" width="720" controls
+                     src="https://example.com/wp-content/uploads/2026/05/sample.mp4"></video>
+            </figure>
+          </div>
+          <strong>[PR]</strong>
+        </body>
+      </html>
+    `;
+    const { content } = extractMainContent(html, "https://example.com/archives/19237");
+    expect(content).toContain("<video");
+    expect(content).toContain("sample.mp4");
+  });
 });
 
 test.describe("extractMainContent — Color Me Shop ギャラリー (Issue #82)", () => {

@@ -269,6 +269,25 @@ body {
 .article-content figure {
   margin: 1.25em 0;
 }
+
+/* 動画: コンテナ幅いっぱいに広げつつ、元動画サイズ以上には引き伸ばさない。
+   img と同じ pattern (#715 Phase 1)。aspect-ratio は HTML 属性 width/height から
+   自動推論され layout shift を防ぐ。
+   inline display で video element がコンテナに対して縮小しない問題に対する defensive
+   対応 (digitallover.moe の `<figure class="wp-block-video"><video>` で報告)。 */
+.article-content video {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 1.25em 0;
+  display: block;
+}
+.article-content audio {
+  width: 100%;
+  margin: 1.25em 0;
+  display: block;
+}
 .article-content figcaption {
   font-family: var(--font-sans);
   font-size: 0.8em;

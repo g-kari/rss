@@ -6,6 +6,10 @@
 
 - **#702 修正: 全記事 unread 統計の二重 scan を解消!⚡** — 旧実装で `useTotalUnreadCount` (App.tsx) と `useSidebarFeeds` 内の useMemo が同じ `articles` 配列を独立 full scan していたため、`readIds` 変化のたびに全記事 (500+) を 2 回走査して主スレッドをブロックしていた問題を修正〜🎯 案 A 採用: 新規 hook `useArticleUnreadStats` で 1 回だけ scan + 200ms debounce → `UnreadStatsContext` Provider で `<FeedSidebar>` と `useDocumentTitleBadge` (App.tsx) の両方に配信〜📦 既存 `useTotalUnreadCount` を削除、`useSidebarFeeds` の articles/readIds/readBeforeTimestamp 引数を削除して context 経由に統合〜💎 `useArticleUnreadStats` は `unreadByFeed` (feedHash → 未読件数) / `totalUnread` / `lastPublishedByFeed` (feedHash → 最新 publishedAt) / `readTodayCount` を 1 ループで全部計算 → 旧 `useSidebarFeeds` の独自 useMemo より集計項目も増えてオールインワンに〜🛡️
 
+### バグ修正っ + ドキュメント整備っ (Phase 1 真因切り分け)
+
+- **#715 Phase 1 真因切り分け: digitallover.moe で `<video>` が表示されない真因 = CSS 欠落!🎬** — 当初 4 仮説 (Readability 削除 / noise removal / クライアント render / CORS) を検討、TDD spec で仮説 A (Readability text-density 判定) を pass で **却下**。残仮説を Read で詰めた結果、`app/globals.css` に **`.article-content video` の CSS rule が完全欠落** していたことが判明〜🎯 既存 `.article-content img { width: 100%; height: auto; ... }` は定義されていたが、`<video>` は未定義でブラウザ default の inline display 挙動により WordPress `<figure class="wp-block-video">` 内では描画されないケースが発生〜🛡️ defensive 対応として `.article-content video` + `.article-content audio` の rule を追加 (img と同じ pattern)、regression spec も `e2e/content-extraction.spec.ts` に追加 (#715 Phase 1)〜📚 video-proxy 新設は不要 (Phase 2 取りやめ)、ユーザー実機確認待ち〜⚙️
+
 ### simplify + パフォーマンス改善っ (監査エージェント発見 5 件一括修正)
 
 - **simplify 3 連続修正!🎀** — (1) `engagement/route.ts` / `auth/me/route.ts` で `checkAndUpdateCooldown` 直 import を `applyCooldown` ラッパー経由に統一 (`server-auth.ts` で集約済の wrapper を 12 ルート全箇所で使う形に揃える)、(2) `r2.ts` の KV cooldown key を「legacy R2-style (`users/{userId}/xxx.json`)」と「current KV-style (`{userId}:xxx`)」に分類して JSDoc コメント追加 (新規キーは current 形式で書くガイドライン明示)、(3) `browser-translator.ts` の 2 つの silent catch に `devError` を追加 (`browser-platform.md` 規範違反解消、`browser-summarizer.ts` と同パターン)〜🛡️ 全件 1〜2 ファイル touch + 規範パターン複製レベル〜📚
