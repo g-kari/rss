@@ -47,6 +47,26 @@ function equalStringMap(a: Map<string, string>, b: Map<string, string>): boolean
   return true;
 }
 
+/**
+ * `Map<string, CompiledKeywordFilter>` の構造的等価判定 (perf 監査 43rd cycle, confidence 88%)。
+ *
+ * `buildFilterMap` は `compiledCache` 経由で同一フィルター内容に対して同じ
+ * `CompiledKeywordFilter` reference を返すため、値は reference 比較で十分。
+ * 5 分ポーリングで `feeds` reference が変わっても、フィルター設定が変化していなければ
+ * 旧 Map reference を維持して `structuralFiltered` の O(n) 再フィルタを回避する。
+ */
+function equalCompiledFilterMap(
+  a: Map<string, CompiledKeywordFilter>,
+  b: Map<string, CompiledKeywordFilter>,
+): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [key, val] of a) {
+    if (b.get(key) !== val) return false;
+  }
+  return true;
+}
+
 /** フィード選択に関する状態 */
 export interface FeedSelectionOptions {
   feedId: string | null;
@@ -167,10 +187,20 @@ export function useFilteredArticles({
 
   const filterCompileCacheRef = useRef<Map<string, CompiledKeywordFilter>>(new Map());
 
-  const feedFilterMap = useMemo(
+  // perf 監査 43rd cycle (#1, confidence 88%): feedCategoryMap / feedTitleByHash / digestLimitMap と
+  // 同様、5 分ポーリングで `feeds` reference 変化のたびに `buildFilterMap` が新 Map identity を返し
+  // `structuralFiltered` の O(n) 再フィルタ (500+ articles, 20-80ms ブロック × 12 回/hour) を
+  // 引き起こす。`compiledCache` で `CompiledKeywordFilter` 自体は同一 reference なので
+  // Map 値の reference 比較で構造的等価ガード可能。
+  const stableFeedFilterMapRef = useRef<Map<string, CompiledKeywordFilter>>(new Map());
+  const computedFeedFilterMap = useMemo(
     () => buildFilterMap(feeds, (f) => f.id, filterCompileCacheRef.current),
     [feeds],
   );
+  if (!equalCompiledFilterMap(stableFeedFilterMapRef.current, computedFeedFilterMap)) {
+    stableFeedFilterMapRef.current = computedFeedFilterMap;
+  }
+  const feedFilterMap = stableFeedFilterMapRef.current;
   // perf 監査 37th cycle (#1, confidence 95%): feedCategoryMap / feedTitleByHash も
   // digestLimitMap と同様に内容不変なポーリングで reference が変わると structuralFiltered の
   // O(n) 再フィルタ (500+ articles, 20-80ms ブロック) を 12×/hour 引き起こす。

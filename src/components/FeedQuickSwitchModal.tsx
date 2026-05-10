@@ -6,9 +6,7 @@ import type { Feed, Article } from "../types";
 import { isArticleRead } from "../lib/article-filter";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { usePopupLock } from "../hooks/usePopupLock";
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { FOCUSABLE_SELECTOR } from "../lib/modal-focus";
 
 interface Props {
   feeds: Feed[];
