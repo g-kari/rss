@@ -6,6 +6,10 @@
 
 - **#702 修正: 全記事 unread 統計の二重 scan を解消!⚡** — 旧実装で `useTotalUnreadCount` (App.tsx) と `useSidebarFeeds` 内の useMemo が同じ `articles` 配列を独立 full scan していたため、`readIds` 変化のたびに全記事 (500+) を 2 回走査して主スレッドをブロックしていた問題を修正〜🎯 案 A 採用: 新規 hook `useArticleUnreadStats` で 1 回だけ scan + 200ms debounce → `UnreadStatsContext` Provider で `<FeedSidebar>` と `useDocumentTitleBadge` (App.tsx) の両方に配信〜📦 既存 `useTotalUnreadCount` を削除、`useSidebarFeeds` の articles/readIds/readBeforeTimestamp 引数を削除して context 経由に統合〜💎 `useArticleUnreadStats` は `unreadByFeed` (feedHash → 未読件数) / `totalUnread` / `lastPublishedByFeed` (feedHash → 最新 publishedAt) / `readTodayCount` を 1 ループで全部計算 → 旧 `useSidebarFeeds` の独自 useMemo より集計項目も増えてオールインワンに〜🛡️
 
+### a11y 改善っ (監査エージェント発見 3 件一括修正)
+
+- **a11y 3 連続修正: ARIA disclosure / menu button pattern を WCAG 4.1.2 / 2.1.1 準拠に!♿** — a11y 監査エージェントが発見した 3 件を同サイクルで連続修正〜🎯 (1) `FeedGroupsSection.tsx` のグループ折りたたみボタンに `aria-expanded` 追加 (WCAG 4.1.2 disclosure pattern)、(2) `SidebarFooter.tsx` の「⋯ その他のメニュー」ドロップダウンに `aria-haspopup="menu"` / `role="menu"` / `role="menuitem"` (全 11 件) / Escape キーハンドラ追加 (WCAG 2.1.1 + menu button pattern)、(3) `FeedAddModal.tsx` の Cookie / CSS セレクタ disclosure ボタンに `aria-expanded` 追加〜🛡️ 全件「規範パターン (CollectionDropdown / Modal.tsx) 複製レベル」+ 1〜2 ファイル touch なので Issue 起票せず同サイクル一括修正パターン採用 (issue-handling.md 派生ケース)〜📚
+
 ### UX 改善っ
 
 - **#717 対応: BuiltInAI (Chrome Summarizer) の自動要約に詳細度を追加!📝** — `SUMMARIZER_OPTIONS.length` を `"medium"` → `"long"` に拡張、tldr 形式 (端的な要約) のまま情報量を最大化〜🎯 「もう少し内容が欲しい」というユーザー報告に対応、UX 互換性を保ちつつ詳細度のみ向上〜📦 TDD: `e2e/browser-summarizer.spec.ts` に「length は 'long' を採用」spec 追加 (22 ケース全 pass)〜🛡️

@@ -70,6 +70,18 @@ export default function SidebarFooter({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [moreOpen]);
 
+  // a11y: Escape キーでドロップダウンを閉じる (WCAG 2.1.1 / menu button pattern)
+  useEffect(() => {
+    if (!moreOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMoreOpen(false);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [moreOpen]);
+
   return (
     <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-1">
       {user.picture ? (
@@ -183,6 +195,7 @@ export default function SidebarFooter({
           title="その他のメニュー"
           aria-label="その他のメニュー"
           aria-expanded={moreOpen}
+          aria-haspopup="menu"
         >
           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
             <circle cx="5" cy="12" r="1.5" />
@@ -192,7 +205,11 @@ export default function SidebarFooter({
         </button>
 
         {moreOpen && (
-          <div className="absolute bottom-full right-0 mb-1 w-52 bg-surface-elevated border border-border-default rounded-lg shadow-lg py-1 z-50">
+          <div
+            role="menu"
+            aria-label="その他のメニュー"
+            className="absolute bottom-full right-0 mb-1 w-52 bg-surface-elevated border border-border-default rounded-lg shadow-lg py-1 z-50"
+          >
             {/* OPMLインポート */}
             <button
               onClick={() => {
@@ -200,6 +217,7 @@ export default function SidebarFooter({
                 setMoreOpen(false);
               }}
               disabled={importing}
+              role="menuitem"
               className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover disabled:opacity-40 transition-colors"
             >
               <svg
@@ -224,6 +242,7 @@ export default function SidebarFooter({
                 onExportOpml();
                 setMoreOpen(false);
               }}
+              role="menuitem"
               className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
             >
               <svg
@@ -250,6 +269,7 @@ export default function SidebarFooter({
                     onExportMarkdown("bookmark");
                     setMoreOpen(false);
                   }}
+                  role="menuitem"
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
                 >
                   <svg
@@ -272,6 +292,7 @@ export default function SidebarFooter({
                     onExportMarkdown("reading_list");
                     setMoreOpen(false);
                   }}
+                  role="menuitem"
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
                 >
                   <svg
@@ -299,6 +320,7 @@ export default function SidebarFooter({
                   onExportNotes();
                   setMoreOpen(false);
                 }}
+                role="menuitem"
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
               >
                 <svg
@@ -325,6 +347,7 @@ export default function SidebarFooter({
                   onExportReadwise();
                   setMoreOpen(false);
                 }}
+                role="menuitem"
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
               >
                 <svg
@@ -350,6 +373,7 @@ export default function SidebarFooter({
                 onShowFeedHealth();
                 setMoreOpen(false);
               }}
+              role="menuitem"
               className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
             >
               <svg
@@ -374,6 +398,7 @@ export default function SidebarFooter({
                 onShowReleaseNotes();
                 setMoreOpen(false);
               }}
+              role="menuitem"
               className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
             >
               <svg
@@ -399,6 +424,7 @@ export default function SidebarFooter({
                   install.onInstall();
                   setMoreOpen(false);
                 }}
+                role="menuitem"
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
               >
                 <svg
@@ -426,6 +452,7 @@ export default function SidebarFooter({
                 onLogout();
                 setMoreOpen(false);
               }}
+              role="menuitem"
               className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-soft hover:text-text-default hover:bg-surface-hover transition-colors"
             >
               <svg

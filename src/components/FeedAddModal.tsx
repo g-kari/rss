@@ -169,6 +169,7 @@ export default function FeedAddModal({
             type="button"
             onClick={() => onCookieOpenChange(!cookieOpen)}
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
+            aria-expanded={cookieOpen}
           >
             {cookieOpen ? "▾ Cookie を隠す" : "▸ Cookie を設定（任意）"}
           </button>
@@ -194,6 +195,7 @@ export default function FeedAddModal({
             type="button"
             onClick={() => onCssSelectorOpenChange(!cssSelectorOpen)}
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
+            aria-expanded={cssSelectorOpen}
           >
             {cssSelectorOpen
               ? "▾ CSS セレクタを隠す"
