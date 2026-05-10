@@ -338,6 +338,51 @@ if (curPath === nextPath) { ... }
 
 **主な使用箇所**: `src/lib/content.ts#isPaginatedVariant`（everia.club 等のページング検出）
 
+## 上流連携サービスの実装確認は `gh api search/code` で効率化する
+
+外部依存 (例: `id.0g0.xyz` の JWT 発行ロジック / OEmbed provider 各社のレスポンス形式) の実装を確認したいとき、ローカル clone なしで **GitHub API 経由でリモートリポジトリのソースコードを直接調査** できる。Issue で「上流の修正状況を確認して」のような依頼を受けたら、以下 4 ステップで完結する。
+
+```bash
+# Step 1: ディレクトリ構造把握 (top-level dirs)
+gh api repos/{owner}/{repo}/git/trees/master --jq '.tree[] | select(.type == "tree") | .path'
+
+# Step 2: keyword で symbol 検索 (search/code)
+gh api "search/code?q=repo:{owner}/{repo}+{keyword}+language:TypeScript" \
+  --jq '.items[].path'
+
+# Step 3: 該当ファイル本文取得 (base64 decode)
+gh api repos/{owner}/{repo}/contents/{path} --jq '.content' | base64 -d
+
+# Step 4: caller 横断確認 (path 複数 loop で grep)
+for path in path1 path2 path3; do
+  echo "===== $path ====="
+  gh api "repos/{owner}/{repo}/contents/$path" --jq '.content' | base64 -d \
+    | grep -E "{symbol_pattern}"
+done
+```
+
+**Why**: ローカル clone は ① 容量・時間コスト ② 不要なファイルツリー (node_modules / .git) の保持 ③ master の最新追従コスト すべて発生する。Issue の調査ではしばしば「**1 関数の実装と 4-5 caller の確認**」だけで十分なため、`gh api` 経由のピンポイント取得が圧倒的に効率的。連携サービスのリポジトリが private でも、認証された `gh` CLI なら同等にアクセス可能。
+
+**How to apply**: ユーザー指示に「**上流 / 連携サービス / 別リポジトリ を調査して**」が含まれたら以下のフロー:
+
+1. **対象リポジトリ特定**: `gh repo list {owner} --limit 100 --json name,description` で候補列挙
+2. **Step 1 でディレクトリ把握** (`workers/` `src/` `packages/` 等のトップレベル構造)
+3. **Step 2 で keyword search** (調査対象の関数名 / 型名 / 設定 key)
+4. **Step 3 で 1〜3 ファイル本文取得** (search 結果の最も関連深いもの)
+5. **Step 4 で caller を横断確認** (規約が全パスで守られているか検証)
+6. **調査結果を Issue コメント** で:
+   - 該当ファイル `:path:line` への GitHub URL リンク
+   - 該当コードの引用 (3-5 行)
+   - 「OAuth 経路は必ず X 渡す」のような **横断的な事実** を表として整理
+
+**反例 (gh api でなくローカル clone が必要なケース)**:
+
+- **ビルド・実行が必要** (型チェック / e2e 実行 / wasm ビルド) — gh api は静的読み取りのみ
+- **コード生成が複数ファイルに渡る** (新機能を上流側に PR で送りたい等) — その場合 fork + clone
+- **diff 比較を 100 ファイル超** で行いたい — gh api は API rate limit に当たる
+
+主な使用箇所: #705 (rss-reader → 0g0-id `workers/id/src/utils/token-pair.ts#issueTokenPair` 調査) — `aud = clientId ?? IDP_ORIGIN` 確認 + caller 4 経路 (auth/exchange / token/auth-code / auth/refresh / token/refresh-grant) 横断確認 → 「OAuth 経路は必ず clientId 渡す」を 5 分で検証
+
 ## デバッグ: 生 HTML を見る必要があるとき
 
 `WebFetch` は markdown 化された結果を返すため、`<a>` タグの正確な構造や percent-encoding 形式が見えない。**ブラウザを介さず生 HTML を取得**するには：
