@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (#712 案 B 段階的 sweep 第 2 段階)
+
+- **`React.X` named import sweep 第 2 段階! hooks 5 ファイル!⚡ (#712 第 2 段階)** — 第 1 段階 (5 ファイル) に続き、hooks ディレクトリの 5 ファイルで `React.X` を named import に書き換え〜🎯 対象: `useColumnResize.ts` (1 ref) / `useGestureNav.ts` (5 ref) / `useHeaderScrollVisibility.ts` (2 ref) / `useImageDownload.ts` (1 ref) / `useMenuKeyboard.ts` (2 ref) — 計 11 references 〜💪 `React.MouseEvent` → `MouseEvent` / `React.TouchEvent` → `TouchEvent` / `React.WheelEvent` → `WheelEvent` / `React.UIEvent` → `UIEvent` / `React.KeyboardEvent` → `KeyboardEvent` / `React.RefObject` → `RefObject` の type-only named import 〜📦 `useColumnResize.ts` は DOM `MouseEvent` global と衝突するため `MouseEvent as ReactMouseEvent` で alias 解決 (派生ケース learn) 〜🛡️ 残 41 ファイル後続サイクルで継続 sweep 〜📚
+
 ### リファクタリングっ (#712 案 B 段階的 sweep 第 1 段階)
 
 - **`React.X` named import sweep を案 B 段階的アプローチで再開! 軽微 5 ファイル!⚡ (#712 第 1 段階)** — 残 51 ファイルの `React.X` named import 化を 1 サイクル一括 (案 A) ではなく **5 ファイル/サイクル の段階的 sweep (案 B)** に切り替えて再開〜🎯 自走 5 条件 (最小スコープ ≤ 5 / 最安全 / 推奨案明示済 / 復元可能 / 数サイクル経過) を完全充足する形に分割〜💪 第 1 段階対象: `app/layout.tsx` (1 ref) / `src/components/feed-item/types.ts` (1 ref) / `src/components/article-list-body/gallery-context.ts` (1 ref) / `src/components/article-list-body/GalleryCardRenderer.tsx` (1 ref) / `src/components/feed-sidebar/FooterIconButton.tsx` (1 ref) — いずれも参照 1 件のみで影響極小〜🛡️ `React.ReactNode` → `ReactNode` / `React.MouseEvent` → `MouseEvent` / `React.TouchEvent` → `TouchEvent` の type-only named import 〜📦 残 46 ファイルは後続サイクルで継続 sweep 〜📚

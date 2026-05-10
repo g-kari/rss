@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, type KeyboardEvent, type RefObject } from "react";
 
 /**
  * Portal ベースのドロップダウンメニューに対して
@@ -11,7 +11,7 @@ import { useEffect, useRef, useCallback } from "react";
 export function useMenuKeyboard(
   open: boolean,
   setOpen: (v: boolean) => void,
-  btnRef: React.RefObject<HTMLButtonElement | null>,
+  btnRef: RefObject<HTMLButtonElement | null>,
 ) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +34,7 @@ export function useMenuKeyboard(
   }, [open, getItems]);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent) => {
       const items = getItems();
       if (items.length === 0) return;
 

@@ -1,13 +1,13 @@
 "use client";
 
-import { type RefObject, useCallback, useRef, useState } from "react";
+import { type RefObject, type UIEvent, useCallback, useRef, useState } from "react";
 import { computeHeaderVisibility, computeScrollDirection } from "../lib/scroll-direction";
 
 export interface HeaderScrollVisibilityResult {
   /** 表示可否 (true で表示・false で隠す) */
   headerVisible: boolean;
   /** スクロールイベントから direction 判定して headerVisible を更新するハンドラ */
-  handleScrollForHeader: (e: React.UIEvent<HTMLElement>) => void;
+  handleScrollForHeader: (e: UIEvent<HTMLElement>) => void;
 }
 
 /**
@@ -26,7 +26,7 @@ export function useHeaderScrollVisibility(
   const [headerVisible, setHeaderVisible] = useState(true);
   const prevTopRef = useRef(0);
 
-  const handleScrollForHeader = useCallback((e: React.UIEvent<HTMLElement>) => {
+  const handleScrollForHeader = useCallback((e: UIEvent<HTMLElement>) => {
     const currentTop = e.currentTarget.scrollTop;
     const direction = computeScrollDirection(prevTopRef.current, currentTop);
     prevTopRef.current = currentTop;

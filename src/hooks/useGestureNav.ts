@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent, type TouchEvent, type WheelEvent } from "react";
 import { whichSideClicked } from "../lib/inline-nav";
 
 const SWIPE_THRESHOLD_PX = 60;
@@ -55,7 +55,7 @@ export function useGestureNav({
     };
   }, []);
 
-  function handleWheel(e: React.WheelEvent) {
+  function handleWheel(e: WheelEvent) {
     if (hasScrollableAncestor(e.target, e.currentTarget)) return;
     if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * WHEEL_X_Y_RATIO) return;
     const state = wheelDeltaRef.current;
@@ -73,7 +73,7 @@ export function useGestureNav({
     }
   }
 
-  function handleNavMouseDown(e: React.MouseEvent) {
+  function handleNavMouseDown(e: MouseEvent) {
     mouseStartXRef.current = e.clientX;
   }
 
@@ -92,7 +92,7 @@ export function useGestureNav({
     }
   }
 
-  function handleNavMouseUp(e: React.MouseEvent) {
+  function handleNavMouseUp(e: MouseEvent) {
     if (mouseStartXRef.current === null) return;
     const dx = e.clientX - mouseStartXRef.current;
     mouseStartXRef.current = null;
@@ -115,13 +115,13 @@ export function useGestureNav({
     mouseStartXRef.current = null;
   }
 
-  function handleTouchStart(e: React.TouchEvent) {
+  function handleTouchStart(e: TouchEvent) {
     if (hasScrollableAncestor(e.target, e.currentTarget)) return;
     const t = e.touches[0];
     touchStartRef.current = { x: t.clientX, y: t.clientY };
   }
 
-  function handleTouchEnd(e: React.TouchEvent) {
+  function handleTouchEnd(e: TouchEvent) {
     if (!touchStartRef.current) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStartRef.current.x;
