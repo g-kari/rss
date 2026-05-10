@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (#712 案 B 段階的 sweep 第 6 段階)
+
+- **`React.X` named import sweep 第 6 段階! useReadState 系 hooks 5 ファイル!⚡ (#712 第 6 段階)** — 第 5 段階 (軽量 hooks 5 ファイル) に続き、useReadState 系 hooks 5 ファイル (`useReadStateSyncFlush.ts` (5 ref) / `useReadStatePersistence.ts` (6 ref) / `useReadStateSync.ts` (7 ref) / `useReadStateToggles.ts` (10 ref) / `useReadStateActions.ts` (11 ref)、計 39 references) で `React.X` を named import に書き換え〜🎯 全ファイル DOM `addEventListener` 未使用なので alias 不要、`Dispatch` / `SetStateAction` / `MutableRefObject` / `RefObject` の type-only named import 〜📦 useReadState 系は型共通 (Set state setters / refs) なので 5 ファイル一括 `replace_all` で機械的置換、39 references を 5 ファイル touch で完遂〜🛡️ 残 21 ファイル後続サイクルで継続 sweep (進捗 59%) 〜📚
+
 ### リファクタリングっ (#712 案 B 段階的 sweep 第 5 段階)
 
 - **`React.X` named import sweep 第 5 段階! hooks 軽量 5 ファイル!⚡ (#712 第 5 段階)** — 第 4 段階 (article-items 5 ファイル) に続き、軽量 hooks 5 ファイル (`useReadingProgress.ts` (1 ref) / `useFocusMode.ts` (1 ref) / `useArticleViewShortcuts.ts` (1 ref) / `useFeedOperations.ts` (1 ref) / `useReadStateTags.ts` (4 ref)、計 8 references) で `React.X` を named import に書き換え〜🎯 `React.RefObject` → `RefObject` / `React.Dispatch<React.SetStateAction<T>>` → `Dispatch<SetStateAction<T>>` / `React.MutableRefObject` → `MutableRefObject` / `React.ChangeEvent` → `ChangeEvent` の type-only named import 〜📦 全ファイル DOM `addEventListener` 未使用なので alias 不要〜🛡️ 残 26 ファイル後続サイクルで継続 sweep (進捗 49% — 過半数到達!) 〜📚

@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback } from "react";
+import {
+  useCallback,
+  type Dispatch,
+  type MutableRefObject,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 import type { Article, KeywordFilter } from "../types";
 import type { ToastApi } from "./useToast";
 import { useSyncedRef } from "./useSyncedRef";
@@ -12,27 +18,27 @@ import type { ReadStateSets } from "./useReadStatePersistence";
 export interface ReadStateActionDeps {
   articles: Article[];
   historyIds: Set<string> | undefined;
-  stateRef: React.MutableRefObject<ReadStateSets>;
-  setReadIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setReadBeforeTimestamp: React.Dispatch<React.SetStateAction<string | null>>;
-  setSnoozedUntil: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setNotesState: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setGlobalFilterState: React.Dispatch<React.SetStateAction<KeywordFilter | null>>;
-  setTtlDaysState: React.Dispatch<React.SetStateAction<number | null>>;
-  pendingAddedRef: React.MutableRefObject<{
+  stateRef: MutableRefObject<ReadStateSets>;
+  setReadIds: Dispatch<SetStateAction<Set<string>>>;
+  setReadBeforeTimestamp: Dispatch<SetStateAction<string | null>>;
+  setSnoozedUntil: Dispatch<SetStateAction<Record<string, string>>>;
+  setNotesState: Dispatch<SetStateAction<Record<string, string>>>;
+  setGlobalFilterState: Dispatch<SetStateAction<KeywordFilter | null>>;
+  setTtlDaysState: Dispatch<SetStateAction<number | null>>;
+  pendingAddedRef: MutableRefObject<{
     read: Set<string>;
     bookmarks: Set<string>;
     readingList: Set<string>;
     likes: Set<string>;
   }>;
-  pendingRemovedRef: React.MutableRefObject<{
+  pendingRemovedRef: MutableRefObject<{
     read: Set<string>;
     bookmarks: Set<string>;
     readingList: Set<string>;
     likes: Set<string>;
   }>;
-  globalFilterDirtyRef: React.MutableRefObject<boolean>;
-  scheduleSyncRef: React.RefObject<() => void>;
+  globalFilterDirtyRef: MutableRefObject<boolean>;
+  scheduleSyncRef: RefObject<() => void>;
 }
 
 export interface ReadStateActionResult {

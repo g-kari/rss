@@ -1,5 +1,6 @@
 "use client";
 
+import type { MutableRefObject, RefObject } from "react";
 import type { KeywordFilter } from "../types";
 import type { PendingSets } from "../lib/read-state-storage";
 import type { ReadStateSets } from "./useReadStatePersistence";
@@ -10,13 +11,13 @@ import { useReadStateSyncFlush } from "./useReadStateSyncFlush";
 
 export interface ReadStateSyncDeps {
   user: UserProfile | null | undefined;
-  stateRef: React.MutableRefObject<ReadStateSets>;
-  globalFilterRef: React.RefObject<KeywordFilter | null>;
-  pendingAddedRef: React.MutableRefObject<PendingSets>;
-  pendingRemovedRef: React.MutableRefObject<PendingSets>;
-  globalFilterDirtyRef: React.MutableRefObject<boolean>;
-  pendingTagChangedRef: React.MutableRefObject<Set<string>>;
-  pendingTagRemovedRef: React.MutableRefObject<Set<string>>;
+  stateRef: MutableRefObject<ReadStateSets>;
+  globalFilterRef: RefObject<KeywordFilter | null>;
+  pendingAddedRef: MutableRefObject<PendingSets>;
+  pendingRemovedRef: MutableRefObject<PendingSets>;
+  globalFilterDirtyRef: MutableRefObject<boolean>;
+  pendingTagChangedRef: MutableRefObject<Set<string>>;
+  pendingTagRemovedRef: MutableRefObject<Set<string>>;
   dispatchers: SetStateDispatchers;
   otherDispatchers: OtherStateDispatchers;
 }
