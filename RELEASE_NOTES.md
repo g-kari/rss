@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (#712 完了 — 全プロジェクト React.X named import 化達成! 🎉)
+
+- **`React.X` named import sweep 完了!🎉 全 51 ファイル / 11 サイクルで完遂!⚡ (#712 クローズ)** — 第 10 段階 (Modal/Overlay 系 5 ファイル) に続き、最後の 2 ファイル (`ArticleList.tsx` (1 ref) / `ArticleView.tsx` (1 ref)、計 2 references) で `React.X` を named import に書き換え〜🎯 これで全プロジェクト (`src/` + `app/`) の `React.X` qualified 形式は完全に named import に統一されました (`release-notes-data.ts` は auto-generated で対象外) 〜📦 11 サイクル × 平均 4.5 ファイル / cycle = 51 ファイル / **計 161 references** を機械的置換で完遂、typecheck + e2e 全 pass、衝突発生 2 ファイル (`useColumnResize.ts` / `ArticleDetailOverlay.tsx`) は規範通り `as ReactX` alias で解決〜🛡️ 案 B 段階的アプローチのおかげで 1 サイクル 5 ファイル制約を一度も破らず、PR レビューしやすい diff サイズで安全に完遂 (前サイクルまでで規範 codify 2 件: 「DOM global 衝突対応」+ 「default React import を named に変える」も `react-patterns.md` に書き出し済) 〜📚
+
 ### リファクタリングっ (#712 案 B 段階的 sweep 第 10 段階)
 
 - **`React.X` named import sweep 第 10 段階! Modal/Overlay 系 5 ファイル!⚡ (#712 第 10 段階)** — 第 9 段階 (Modal/Overlay 軽量 5 ファイル) に続き、残 Modal/Overlay 5 ファイル (`ArticleDetailOverlay.tsx` (2 ref) / `FeedAddModal.tsx` (2 ref) / `FeedQuickSwitchModal.tsx` (2 ref) / `CollectionModal.tsx` (1 ref) / `feed-item/FeedContextMenu.tsx` (6 ref)、計 13 references) で `React.X` を named import に書き換え〜🎯 `KeyboardEvent` / `MouseEvent` / `FormEvent` / `ClipboardEvent` / `CSSProperties` / `RefObject` の type-only named import 〜📦 `ArticleDetailOverlay.tsx` のみ DOM `addEventListener("keydown"/"mousemove"/"mouseup")` 使用 → `KeyboardEvent as ReactKeyboardEvent` + `MouseEvent as ReactMouseEvent` の alias で衝突回避 (規範通り) 〜🛡️ 残 2 ファイル (ArticleList / ArticleView) のみ次サイクルで完了予定 (進捗 96%) 〜📚
