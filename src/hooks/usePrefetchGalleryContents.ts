@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { contentLruCache } from "../lib/lru-cache";
@@ -157,7 +157,8 @@ export function usePrefetchGalleryContents({
   const inflightRef = useRef<Set<string>>(new Set());
 
   // 詳細は `src/lib/gallery-prefetch.ts` の `buildArticlesKey` コメント参照 (#669)
-  const articlesKey = buildArticlesKey(articles);
+  // perf: useMemo で `articles` reference 不変なら O(n) filter+map+join を skip (perf F1)
+  const articlesKey = useMemo(() => buildArticlesKey(articles), [articles]);
 
   // クールダウン期限が来たら state をリセットして useEffect を再実行（自動リトライ）
   useEffect(() => {

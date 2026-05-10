@@ -15,6 +15,22 @@ const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
 const EMPTY_STR_ARRAY = Object.freeze([] as string[]) as string[];
 const EMPTY_FEED_ARRAY = Object.freeze([] as Feed[]) as Feed[];
 
+/**
+ * 2 つの digestLimit Map が構造的に等しいか判定する純粋関数 (perf F2)。
+ *
+ * 5 分ポーリング等で `feeds` reference が変わるたびに `digestLimitMap` が新規生成
+ * されるが、`digestLimit` 値自体は通常変化しない。本関数で旧 reference を保持して
+ * `filtered` useMemo の不要な O(n log n) 再 sort を回避する (#686 equalSnoozedUntil 同パターン)。
+ */
+function equalDigestLimitMap(a: Map<string, number>, b: Map<string, number>): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [key, val] of a) {
+    if (b.get(key) !== val) return false;
+  }
+  return true;
+}
+
 /** フィード選択に関する状態 */
 export interface FeedSelectionOptions {
   feedId: string | null;
@@ -148,7 +164,11 @@ export function useFilteredArticles({
     () => new Map(feeds.map((f) => [f.id, f.title] as [string, string])),
     [feeds],
   );
-  const digestLimitMap = useMemo(
+  // perf F2: 構造的等価ガードで内容不変なら旧 reference を保持し、`filtered` useMemo の
+  // 再 sort を回避する。`feeds` の lastFetchedAt 更新で reference 変化が頻発する一方、
+  // digestLimit 設定は安定していることが多いため大半のポーリングで再計算が不要になる。
+  const stableDigestLimitMapRef = useRef<Map<string, number>>(new Map());
+  const computedDigestLimitMap = useMemo(
     () =>
       new Map(
         feeds
@@ -157,6 +177,10 @@ export function useFilteredArticles({
       ),
     [feeds],
   );
+  if (!equalDigestLimitMap(stableDigestLimitMapRef.current, computedDigestLimitMap)) {
+    stableDigestLimitMapRef.current = computedDigestLimitMap;
+  }
+  const digestLimitMap = stableDigestLimitMapRef.current;
   const viewFeedIds = useMemo(() => {
     if (!activeFeedView) return undefined;
     const ids = new Set<string>();
