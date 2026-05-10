@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Feed, FeedGroup, FeedView, KeywordFilter } from "../../types";
 
 export interface FeedItemProps {
@@ -31,7 +32,7 @@ export interface FeedItemProps {
 export interface Action {
   key: string;
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   onClick: () => void;
   disabled?: boolean;
   className?: string;

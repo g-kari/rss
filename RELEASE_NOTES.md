@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (#712 案 B 段階的 sweep 第 1 段階)
+
+- **`React.X` named import sweep を案 B 段階的アプローチで再開! 軽微 5 ファイル!⚡ (#712 第 1 段階)** — 残 51 ファイルの `React.X` named import 化を 1 サイクル一括 (案 A) ではなく **5 ファイル/サイクル の段階的 sweep (案 B)** に切り替えて再開〜🎯 自走 5 条件 (最小スコープ ≤ 5 / 最安全 / 推奨案明示済 / 復元可能 / 数サイクル経過) を完全充足する形に分割〜💪 第 1 段階対象: `app/layout.tsx` (1 ref) / `src/components/feed-item/types.ts` (1 ref) / `src/components/article-list-body/gallery-context.ts` (1 ref) / `src/components/article-list-body/GalleryCardRenderer.tsx` (1 ref) / `src/components/feed-sidebar/FooterIconButton.tsx` (1 ref) — いずれも参照 1 件のみで影響極小〜🛡️ `React.ReactNode` → `ReactNode` / `React.MouseEvent` → `MouseEvent` / `React.TouchEvent` → `TouchEvent` の type-only named import 〜📦 残 46 ファイルは後続サイクルで継続 sweep 〜📚
+
 ### ドキュメント整備っ + リファクタリングっ
 
 - **「ユーザー判断仰ぎ Issue を AI 自走で採用する 5 条件」を `issue-handling.md` に codify + #708 を即座に自走採用!📚 (前サイクル承認分 + 即時実証)** — 前サイクルで提案した「最小 + 最安全 + 推奨案明示済 + 復元可能 + 数サイクル経過」の 5 条件 + 透明性担保 (commit + クローズコメント明記) を `issue-handling.md` 末尾に新規セクション追加〜🎯 同サイクルで `#708 buildImageSlider dead spec 削除` が全 5 条件を満たすことを判定 → 推奨案 A (spec ごと完全削除) を AI 自走で採用 → 実装 → クローズ〜💪 codify 済規範の即時自己実証パターン 4 度目 (`useSyncedRef` / `react-named-imports` / `sentinel-freeze` に続く)〜🛡️

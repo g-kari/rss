@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type MouseEvent, type ReactNode } from "react";
 
 export default function FooterIconButton({
   onClick,
@@ -11,7 +11,7 @@ export default function FooterIconButton({
   children,
 }: {
   onClick: () => void;
-  onContextMenu?: (e: React.MouseEvent) => void;
+  onContextMenu?: (e: MouseEvent) => void;
   title: string;
   disabled?: boolean;
   className?: string;
