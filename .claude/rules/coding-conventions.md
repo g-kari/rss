@@ -176,6 +176,58 @@ const hash = await sha256Hex(url);
 **注意**: DB (D1) を使っていた時代の snake_case (`published_at`, `feed_id`) は完全に廃止済み。
 JSON データは全て camelCase。
 
+## 新規 Route Handler / hook を書くときは既存 lib helpers を先に grep して流用を検討する
+
+新規 Route Handler / hook を実装するとき、`src/lib/validation.ts` / `src/lib/r2.ts` / `src/lib/api-error.ts` 等に **同じ判定ロジック / 同じ helper が既に存在する** ケースが多い。新規にインライン定義すると **「helper drift」** (= dead code でなく、既存 helper を流用し忘れて重複定義された状態) が発生する。
+
+```typescript
+// アンチパターン: 既存 isValidSessionId を知らずに新規 UUID 正規表現を定義
+// app/api/collections/[id]/route.ts
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export async function PATCH(request, { params }) {
+  const { id } = await params;
+  if (!UUID_RE.test(id)) return apiError("Invalid id", 400);
+  // ...
+}
+// → src/lib/validation.ts に isValidSessionId(value: string) が既存 → drift
+
+// 修正パターン: 既存 helper を import して流用
+import { isValidSessionId } from "@/lib/validation";
+export async function PATCH(request, { params }) {
+  const { id } = await params;
+  if (!isValidSessionId(id)) return apiError("Invalid id", 400);
+  // ...
+}
+```
+
+**Why**: helper drift は dead code 監査 (production caller 0 grep) で検出できないため、コードレビュー / リファクタ監査エージェントの確認まで発見されにくい。重複定義を放置すると:
+
+1. **仕様変更時の同期修正リスク** — 例: 「UUID v4 バリアントビット検証を厳格化」が必要になったとき、4 箇所同時修正を忘れて drift 永続化
+2. **実装スタイルの不統一** — ある場所では `const UUID_RE` 定数、別の場所ではインライン正規表現、で grep 困難
+3. **同種データを扱う新規コードを書くとき「どの helper を使うか」が不明** — 重複定義が増えて選択肢爆発
+
+**How to apply**: 新規 Route Handler / hook / lib モジュールを書くときに以下を判定:
+
+1. **判定ロジック / バリデーションを書く前に、`src/lib/validation.ts` を grep**:
+   ```bash
+   grep -nE "isValid|parse|assertValid" src/lib/validation.ts
+   ```
+2. **R2 アクセス / KV アクセスを書く前に**, `src/lib/r2.ts` の helper を確認:
+   ```bash
+   grep -nE "^export (async function|function|const)" src/lib/r2.ts
+   ```
+3. **エラーレスポンスを書く前に** `src/lib/api-error.ts` の `apiError` を使う (素の `NextResponse.json({error}, {status})` は禁止)
+4. **同じ pattern (sort / filter / merge) のロジックを 2 ファイルで書きそうになったら**, 共通ユーティリティとして `src/lib/<name>-utils.ts` に切り出す (例: `sort-utils.ts` の `sortByOrder`)
+5. **判断時間が惜しいなら** リファクタ監査エージェントに「dead exports + helper drift」観点を渡して定期 sweep
+
+**反例 (新規定義 OK のケース)**:
+
+- 既存 helper が **当該 use case と semantic 的に異なる** (例: `isValidFeedHash` は 16 文字 hex のみで UUID 検証には使えない)
+- 既存 helper が **より厳密 / より緩い検証で当該 endpoint の要件と合わない** (例: `isValidPublicUrl` は SSRF 対策込み、内部 fetch には不要すぎる)
+- **type guard が必要** で既存 helper が type predicate を返さない場合 (型 narrow のため別途定義)
+
+主な使用箇所: `app/api/collections/[id]/route.ts` / `app/api/auth/dbsc/{challenge,register}/route.ts` の UUID 正規表現 4 箇所重複 → `isValidSessionId` 集約 (リファクタ監査エージェント confidence 92%)
+
 ## stale closure 回避パターン (`useSyncedRef`)
 
 `useEffect` / `useCallback` のクロージャが古い値を参照する問題を `useSyncedRef` で回避する。
