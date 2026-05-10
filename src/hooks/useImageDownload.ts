@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, type RefObject } from "react";
 import type { Article } from "../types";
 import { useToast } from "@/contexts/ToastContext";
 import { apiFetch } from "../lib/api-fetch";
@@ -77,7 +77,7 @@ function applyFolderPrefix(folder: string, filename: string): string {
 export function useImageDownload(
   article: Article | null,
   resolvedOgImage: string | null,
-  contentRef: React.RefObject<HTMLDivElement | null>,
+  contentRef: RefObject<HTMLDivElement | null>,
   options?: { isNsfw?: boolean; dlFolder?: string; dlFolderNsfw?: string },
 ): ImageDownloadState {
   const toast = useToast();

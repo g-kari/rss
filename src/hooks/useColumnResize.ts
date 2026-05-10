@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 
 interface ColumnConfig {
@@ -54,7 +54,7 @@ export function useColumnResize() {
     onMouseUp: () => void;
   } | null>(null);
 
-  function handleResizeStart(column: "sidebar" | "list", e: React.MouseEvent) {
+  function handleResizeStart(column: "sidebar" | "list", e: ReactMouseEvent) {
     e.preventDefault();
 
     // mouseup が未発火のまま次のドラッグが始まった場合（ウィンドウ外離脱等）の二重登録を防ぐ
