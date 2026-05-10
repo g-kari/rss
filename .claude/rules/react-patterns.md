@@ -173,6 +173,62 @@ function List({ selectedId, anchorTrigger }: Props) {
 
 主な使用箇所: `App.tsx` の `anchorTrigger` ↔ `ArticleList.tsx` の scroll useEffect (#684 — `.` キーで選択中記事を中央アンカー)
 
+### 派生ケース: ブラウザ API の「手動 cancel」と「自然完了」を物理的に区別する monotonic counter
+
+`speechSynthesis.cancel()` (TTS 手動停止) と `utterance.onend` (TTS 自然完了) のように、**ブラウザ API には「手動 cancel パス」と「自然完了パス」が別の callback / event を持つ** ものが多い (Web Speech / WebSocket close / `<video>` `<audio>` end vs pause / `EventSource.close()` 等)。これらを **派生 boolean (= state 遷移)** で判定すると、両方のパスで同じ state 遷移 (`playing: true → false` 等) が起きて誤判定する。
+
+```typescript
+// アンチパターン: state 遷移ベースで「TTS 完了」を判定
+useEffect(() => {
+  if (prevPlayingRef.current && !ttsPlaying && !ttsPaused) {
+    advanceToNextItem(); // ← cancel() でも発火してしまう!
+  }
+  prevPlayingRef.current = ttsPlaying;
+}, [ttsPlaying, ttsPaused]);
+
+// 修正パターン: 自然完了側のイベントだけを monotonic counter 化
+// useSpeechSynthesis (engine 側):
+const [endedCount, setEndedCount] = useState(0);
+utterance.onend = () => setEndedCount((c) => c + 1); // 自然完了のみ increment
+const stop = () => speechSynthesis.cancel(); // cancel は increment しない (onend 不発火)
+
+// AutoReadController (consumer 側):
+useEffect(() => {
+  if (ttsEndedCount > prevEndedCountRef.current && !ttsPaused) {
+    advanceToNextItem(); // 手動 cancel と確実に区別される
+  }
+  prevEndedCountRef.current = ttsEndedCount;
+}, [ttsEndedCount, ttsPaused]);
+```
+
+**Why**: ブラウザ API の挙動規約として **「`cancel()` 系メソッドは自然完了イベントを発火させない」** ものが多数 (Web Speech / WebSocket / EventSource / fetch AbortController 等)。この規約を活用して **「自然完了イベントの発火回数」を monotonic counter で expose** すれば、`cancel()` がイベントを発火させない事実を利用して、手動停止と自然完了を **物理的に区別** できる。state 遷移 (`playing: true → false`) は両パスで同じため、派生 boolean ベースの判定は原理的に区別不可能。
+
+**How to apply**: ブラウザネイティブ API のラッパー hook で「自然完了 → 何かを発火」したい要件を実装するとき:
+
+1. **API の挙動規約を MDN で確認** — 「`cancel()` (or 同等の手動停止メソッド) は自然完了イベントを発火させるか?」を確認
+2. **発火させない仕様** なら → **自然完了イベントだけで increment する monotonic counter** を hook の戻り値に追加 (例: `endedCount` / `closedCount` / `naturalEndCount`)
+3. **発火させる仕様** なら → 別の判定軸が必要 (例: イベント payload の `wasClean` / `reason` フィールド、もしくは「直前に手動 stop を呼んだか」の ref フラグ)
+4. **派生 boolean で判定したくなったら止まる** — `playing: true → false` のような遷移は手動 / 自然両方で起きるので、必ず「どちらの起源か」を識別できる field を別に持つ
+5. **TDD** で「手動 cancel → counter 不変 → finished=false」「自然完了 → counter 増加 → finished=true」を network mock 不要の純粋関数として網羅可能
+
+**該当する典型 API**:
+
+| API                     | 手動 cancel メソッド          | 自然完了イベント                      | counter 化対象       |
+| ----------------------- | ----------------------------- | ------------------------------------- | -------------------- |
+| Web Speech API          | `speechSynthesis.cancel()`    | `utterance.onend`                     | endedCount           |
+| WebSocket               | `ws.close()`                  | `onclose` (server 主導)               | (要 reason 判定)     |
+| `<video>` / `<audio>`   | `pause()` / `currentTime = 0` | `ended` event                         | endedCount           |
+| EventSource             | `es.close()`                  | (`onerror` で自然切断時 readyState=2) | (要 readyState 判定) |
+| AbortController + fetch | `controller.abort()`          | resolve した promise                  | resolvedCount        |
+
+**反例 (counter 化が不要なケース)**:
+
+- 状態の **値そのものに意味がある** (例: form input の値、select の選択肢) → state 遷移ベースで OK
+- 自然完了パスが存在しない、もしくは手動 cancel しか起きない単方向 API → counter 不要
+- 手動 cancel と自然完了で **異なる UI 結果を期待する要件がない** (例: どちらでも「停止状態」表示で十分) → counter 不要 (派生 boolean で十分)
+
+主な使用箇所: `useSpeechSynthesis` の `endedCount` ↔ `AutoReadController` の `prevEndedCountRef` (#716 — TTS 手動停止で勝手に次記事へ遷移するバグ修正)
+
 ## ref の論理リセットポイントを忘れない
 
 「前 tick の値を保持する ref」（例: `prevPlayingRef`, `prevSelectedRef`, `lastFiredAtRef`）は、状態の **論理的なリセットポイント**で同期的にリセットしないと、次の cycle で誤判定の連鎖を起こす。
