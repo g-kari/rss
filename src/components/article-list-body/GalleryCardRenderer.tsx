@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useContext, useRef } from "react";
+import { memo, useCallback, useContext, useRef, type TouchEvent } from "react";
 import type { Article } from "@/types";
 import { GalleryArticleItem } from "@/components/ArticleItems";
 import { GalleryItemCtx } from "./gallery-context";
@@ -33,7 +33,7 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
   const touchPos = useRef({ x: 0, y: 0 });
 
   const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
+    (e: TouchEvent) => {
       if (!ctx) return;
       const touch = e.touches[0];
       touchPos.current = { x: touch.clientX, y: touch.clientY };

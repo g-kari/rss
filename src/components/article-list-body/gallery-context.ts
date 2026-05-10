@@ -1,4 +1,4 @@
-import { createContext } from "react";
+import { createContext, type MouseEvent } from "react";
 import type { Article } from "@/types";
 import type { ResolveItemProps } from "./types";
 
@@ -15,7 +15,7 @@ export interface GalleryItemContextValue {
   galleryFailedIds: Set<string>;
   galleryExpandingIds: Set<string>;
   galleryRetryArticle: (id: string) => void;
-  onGalleryContextMenu: (e: React.MouseEvent, article: Article, index: number) => void;
+  onGalleryContextMenu: (e: MouseEvent, article: Article, index: number) => void;
   onGalleryLongPress: (article: Article, index: number, x: number, y: number) => void;
 }
 
