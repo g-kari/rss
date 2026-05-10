@@ -107,6 +107,45 @@ comm -23 /tmp/actual_specs.txt /tmp/doc_specs.txt
 
 主な使用箇所: 2026-05-10 サイクル — 3 体並列サブエージェント全員 rate limit → 直接 `find + grep + comm` で 10 件 drift 検出 → 1 commit omnibus 修正
 
+### 派生ケース: docs drift 監査エージェントの結果は **gitignored ファイル除外 + scan 対象ディレクトリ確認** で false positive を排除する
+
+docs drift 監査エージェントが「未文書化ファイル」「削除済ファイル」と判定しても、**自動的に Issue 化してはならない**。エージェントは `find` で全ファイルを列挙するが、以下 2 種の false positive を高頻度で発生させる:
+
+1. **gitignored ファイルを「未文書化」と誤検知**: `release-notes-data.ts` (auto-generated) / `_test-import*.spec.ts` (local debugging) / `auth-utils-edge.spec.ts` (環境依存) など、`.gitignore` で意図的に除外されているファイルを「文書に記載がない」と判定する。これらは文書化対象外なので false positive。
+
+2. **scan ディレクトリの限定で「削除済」と誤検知**: agent が `src/lib/` だけ `find` したが、実際には `src/config/` に存在するファイル (例: `shortcuts.ts`) を「architecture.md に記載されているのに実体がない」と判定する。文書側は `src/config/shortcuts.ts` として正しく書かれているのに、agent の scan 範囲が狭くて実体を見つけられない。
+
+```
+パターン: docs drift agent 結果の検証フロー
+  1. agent report 受領 (例: "未文書化 N 件 / 削除済 M 件")
+  2. gitignored 確認:
+     for f in <reported file paths>; do
+       git check-ignore -v "$f" && echo "✗ FALSE POSITIVE: gitignored"
+     done
+  3. 削除済主張のファイルは別ディレクトリも検索:
+     for f in <reported deleted files>; do
+       find src -name "$(basename $f)"  # src 全体を scan
+     done
+  4. false positive を除いた残りが真の drift
+  5. 真の drift が 0 件なら Issue 起票せず却下
+```
+
+**Why**: docs drift は「ファイル存在 vs 文書記載」の **2 つの集合の差分** を取るタスクで、機械的に見える。だが現実には:
+
+- gitignored ファイルは「存在するが文書化対象外」(集合 A の部分集合)
+- 別ディレクトリのファイルは「文書化されているが agent の scan 範囲外」(集合 B の漏れ)
+
+両方を考慮しないと「実存するから drift」「文書から消えてるから drift」の両方の判定が誤る。1 ファイルあたり 2 秒で検証可能 (`git check-ignore` / `find` 1 回ずつ) なので、agent report の全件に対して必ず実施する。
+
+**How to apply**: docs drift 監査エージェントから report を受けたら:
+
+1. **gitignored 検証**: agent が指摘した全ファイルパスに `git check-ignore -v` で gitignored 確認 → ignored なら false positive 判定
+2. **scan 範囲拡大検証**: 「削除済」主張のファイルは `find src -name "<basename>"` / `find . -name "<basename>"` で別ディレクトリ確認 → 別 path で見つかれば false positive
+3. **残った真 drift のみ Issue 化** — 0 件なら起票不要、1-3 件なら同 commit で修正、4+ 件なら omnibus Issue 起票
+4. agent prompt 改善: 次回派遣時に「gitignored ファイルは除外して列挙して」「scan 対象は src/ 全体 (lib / config / hooks / components / cron / contexts) を網羅して」を明示
+
+主な使用箇所: 40th cycle docs drift 監査 — agent が 5 件 drift 主張 → 検証で gitignored 4 件 (release-notes-data.ts / \_test-import\*.spec.ts × 2 / auth-utils-edge.spec.ts) + scan 範囲限定 1 件 (shortcuts.ts は src/config/ に実在) と判明、**真の drift = 0** で Issue 起票却下
+
 ### 派生ケース: 規範ルール codify 後は「code drift」も機械的に sweep する
 
 `docs drift` (文書 vs 実コードの乖離) と並んで、**「規範ルール codify 後にコードに残っている旧パターン」= code rule drift** も機械的に sweep する対象。1 ファイル修正 + 規範 codify で満足すると、新規追加された ref / 既存見落としの旧パターンが規範違反として累積する。
