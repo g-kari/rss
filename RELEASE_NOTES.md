@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### ドキュメント整備っ (規範 codify)
+
+- **規範 codify: `issue-handling.md` に「`closes #N` で自動クローズされた Issue へのコメント投稿手順」追加!📚** — #712 クローズ時に `gh issue close 712 --comment "..."` が "Already closed" エラーで `--comment` 未投稿になる事象に遭遇 → `merge commit` の `closes #712` で自動クローズ済だったため発生〜🎯 「Issue クローズ時のコメント」セクションに派生節として追加: 案 A (closes キーワード + 別 gh issue comment) / 案 B (commit に closes なし + gh issue close --comment 同時) の運用パターン明示〜🛡️ 規範化 → 即時自己実証パターン 7 度目 (`useSyncedRef` / `react-named-imports` / `sentinel-freeze` / 自走 5 条件 / DOM global 衝突対応 / default React import / closes 自動クローズに続く)〜💎
+
 ### リファクタリングっ (#712 完了 — 全プロジェクト React.X named import 化達成! 🎉)
 
 - **`React.X` named import sweep 完了!🎉 全 51 ファイル / 11 サイクルで完遂!⚡ (#712 クローズ)** — 第 10 段階 (Modal/Overlay 系 5 ファイル) に続き、最後の 2 ファイル (`ArticleList.tsx` (1 ref) / `ArticleView.tsx` (1 ref)、計 2 references) で `React.X` を named import に書き換え〜🎯 これで全プロジェクト (`src/` + `app/`) の `React.X` qualified 形式は完全に named import に統一されました (`release-notes-data.ts` は auto-generated で対象外) 〜📦 11 サイクル × 平均 4.5 ファイル / cycle = 51 ファイル / **計 161 references** を機械的置換で完遂、typecheck + e2e 全 pass、衝突発生 2 ファイル (`useColumnResize.ts` / `ArticleDetailOverlay.tsx`) は規範通り `as ReactX` alias で解決〜🛡️ 案 B 段階的アプローチのおかげで 1 サイクル 5 ファイル制約を一度も破らず、PR レビューしやすい diff サイズで安全に完遂 (前サイクルまでで規範 codify 2 件: 「DOM global 衝突対応」+ 「default React import を named に変える」も `react-patterns.md` に書き出し済) 〜📚

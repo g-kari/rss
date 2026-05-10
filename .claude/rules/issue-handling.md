@@ -143,6 +143,38 @@ done
 - 関連 commit の SHA
 - master マージ済みであれば「自動デプロイされます」を明記
 
+### `closes #N` で自動クローズされた Issue へのコメント投稿手順
+
+commit message や PR body に `closes #N` / `fixes #N` / `resolves #N` を含めて master push すると、GitHub が **merge 完了時に自動で Issue をクローズ** する。この場合、後で `gh issue close <N> --comment "..."` を実行しても **「Already closed」エラーで `--comment` が投稿されない**。
+
+```bash
+# アンチパターン: closes #712 を commit に含めてから --comment で閉じようとする
+git commit -m "... closes #712"
+git push origin master
+gh issue close 712 --comment "完了サマリー"  # → "Already closed" エラーでコメント未投稿!
+
+# 修正パターン A: クローズコメントは別 gh issue comment で投稿
+git commit -m "... closes #712"
+git push origin master
+# Issue は自動でクローズ済 (gh issue close 不要)
+gh issue comment 712 --body "完了サマリー"  # ← 別途投稿で OK
+
+# 修正パターン B: commit に closes を入れず、明示クローズで comment 同時投稿
+git commit -m "..."  # closes キーワードなし
+git push origin master
+gh issue close 712 --comment "完了サマリー"  # ← 明示クローズ + コメント投稿
+```
+
+**Why**: GitHub の自動クローズは便利だが、`gh issue close --comment` の `--comment` フラグは「未クローズの Issue を閉じる際に同時にコメント投稿」する設計なので、既にクローズ済の Issue では効かない。完了サマリーをクローズと同時に投稿したい運用なら、A or B のどちらかに統一する。
+
+**How to apply**: 完了サマリーコメントを必ず投稿したい Issue では:
+
+1. **A 方式 (推奨)**: `closes` キーワードを commit に含める → 自動クローズ → `gh issue comment` で別途完了サマリーを投稿
+2. **B 方式**: `closes` キーワードを commit に含めない → `gh issue close --comment` で明示クローズと同時にコメント投稿
+3. **どちらか統一** することでオペレーションが簡単になる (本プロジェクトは A 方式が多い: merge commit に `closes #N` + 後で別途コメント)
+
+主な使用箇所: 2026-05-10 サイクル — `#712` (React.X sweep) クローズ時、merge commit に `closes #712` を含めてから `gh issue close 712 --comment "..."` を実行して "Already closed" エラー → 別途 `gh issue comment` で完了サマリー投稿で復旧
+
 ## AI が直接実行できないタスクへの対処パターン
 
 ユーザー指示の中には AI セッション内では完結できないタスクがある:
