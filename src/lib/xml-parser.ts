@@ -87,6 +87,16 @@ export interface ParsedFeed {
   items: ParsedItem[];
 }
 
+/**
+ * Article.summary の最大文字数 (#721)。
+ *
+ * 旧 200 制限では VRChat seller bot 等の長い `<description>` が冒頭で切られて
+ * 「すべて表示されていない」とユーザー報告があった。5000 に緩和して大半の RSS で
+ * 完全表示できるようにしつつ、悪意ある巨大 description (1MB+) による R2 storage /
+ * シリアライズコスト DoS を防ぐため上限は残す。
+ */
+const MAX_SUMMARY_LENGTH = 5000;
+
 const BASE_PARSER_OPTIONS = {
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
@@ -370,8 +380,8 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
     const link = safeUrl(item.url ?? item.external_url ?? "");
     const content = isHtml ? applyCorePipeline(raw, link) : raw;
     const summary = item.summary
-      ? stripHtmlWithBreaks(item.summary).slice(0, 200)
-      : (isHtml ? stripHtmlWithBreaks(raw) : raw).slice(0, 200);
+      ? stripHtmlWithBreaks(item.summary).slice(0, MAX_SUMMARY_LENGTH)
+      : (isHtml ? stripHtmlWithBreaks(raw) : raw).slice(0, MAX_SUMMARY_LENGTH);
     const itemAuthors = item.authors ?? (item.author ? [item.author] : feedAuthors);
     const author = itemAuthors
       .map((a) => a.name ?? "")
@@ -439,7 +449,7 @@ export function parseFeed(xml: string): ParsedFeed {
           guid: str(item.guid ?? item.link),
           title: stripHtml(str(item.title)),
           link,
-          summary: stripHtmlWithBreaks(raw).slice(0, 200),
+          summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),
           content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
@@ -473,7 +483,7 @@ export function parseFeed(xml: string): ParsedFeed {
           guid: str(entry.id),
           title: stripHtml(str(entry.title)),
           link,
-          summary: stripHtmlWithBreaks(raw).slice(0, 200),
+          summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),
           content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(entry)),
           author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
@@ -507,7 +517,7 @@ export function parseFeed(xml: string): ParsedFeed {
           guid,
           title: stripHtml(str(item.title)),
           link,
-          summary: stripHtmlWithBreaks(raw).slice(0, 200),
+          summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),
           content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),

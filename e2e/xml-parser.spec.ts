@@ -558,3 +558,66 @@ test.describe("parseFeed — サムネイル画像の優先順位 (Issue #117)",
     expect(result.items[0].ogImage).toBe("https://example.com/media.jpg");
   });
 });
+
+test.describe("parseFeed — summary 文字数制限緩和 (#721)", () => {
+  // ユーザー報告: VRChat seller bot 等の長い <description> が冒頭 200 文字で
+  // 切られてしまい、最後まで表示されない。200 → 5000 に緩和して
+  // 大半の RSS フィードで完全表示できるようにする。
+  // 完全撤廃でなく上限を残す理由: 悪意ある巨大 description (1MB+) による
+  // R2 storage / シリアライズコスト DoS の防御。
+
+  test("RSS 2.0: 1000 文字の description が完全保持される (旧 200 制限の回帰防止)", () => {
+    const longDesc = "あ".repeat(1000);
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Long</title>
+      <link>https://example.com/a1</link>
+      <guid>a1</guid>
+      <description><![CDATA[${longDesc}]]></description>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].summary.length).toBe(1000);
+  });
+
+  test("RSS 2.0: 8000 文字の description は 5000 文字で truncate (DoS 防御)", () => {
+    const longDesc = "あ".repeat(8000);
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test</title>
+    <link>https://example.com</link>
+    <item>
+      <title>VeryLong</title>
+      <link>https://example.com/a1</link>
+      <guid>a1</guid>
+      <description><![CDATA[${longDesc}]]></description>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].summary.length).toBe(5000);
+  });
+
+  test("Atom: 1500 文字の summary が完全保持される", () => {
+    const longSummary = "い".repeat(1500);
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Test</title>
+  <link href="https://example.com"/>
+  <entry>
+    <title>Atom Long</title>
+    <id>atom-1</id>
+    <link href="https://example.com/atom-1"/>
+    <summary>${longSummary}</summary>
+  </entry>
+</feed>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].summary.length).toBe(1500);
+  });
+});
