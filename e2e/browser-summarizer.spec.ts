@@ -142,6 +142,12 @@ test.describe("SUMMARIZER_OPTIONS — Chrome 公式仕様準拠", () => {
     expect(["short", "medium", "long"]).toContain(SUMMARIZER_OPTIONS.length);
   });
 
+  test("#717: length は 'long' を採用 — 要約が短すぎるユーザー報告に対応", () => {
+    // tldr 形式のまま情報量を最大化するため "long" を選択。
+    // "medium" → "long" 切替で UX 互換性を保ちつつ詳細度のみ向上させる。
+    expect(SUMMARIZER_OPTIONS.length).toBe("long");
+  });
+
   // #664: Chrome が "No output language was specified" 警告を出さないようにする
   // 公式サポート言語は [en, es, ja] のみ。本プロジェクトは日本語 RSS リーダーなので "ja" 固定。
   test("outputLanguage は公式サポート言語 (en/es/ja) のいずれか — Issue #664", () => {
