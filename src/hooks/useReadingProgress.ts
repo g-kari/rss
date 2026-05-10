@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { computeProgress, clampProgress, buildAnchorSelector } from "../lib/reading-progress";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { useSyncedRef } from "./useSyncedRef";
@@ -27,7 +27,7 @@ interface UseReadingProgressOptions {
   /** 追跡対象の記事 ID */
   articleId: string | undefined;
   /** article-content の直下要素を取得するための ref */
-  contentRef: React.RefObject<HTMLElement | null>;
+  contentRef: RefObject<HTMLElement | null>;
   /** 進捗が変化したときに呼ばれるコールバック */
   onProgressChange?: (progress: number) => void;
 }

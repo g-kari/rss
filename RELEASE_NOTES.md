@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (#712 案 B 段階的 sweep 第 5 段階)
+
+- **`React.X` named import sweep 第 5 段階! hooks 軽量 5 ファイル!⚡ (#712 第 5 段階)** — 第 4 段階 (article-items 5 ファイル) に続き、軽量 hooks 5 ファイル (`useReadingProgress.ts` (1 ref) / `useFocusMode.ts` (1 ref) / `useArticleViewShortcuts.ts` (1 ref) / `useFeedOperations.ts` (1 ref) / `useReadStateTags.ts` (4 ref)、計 8 references) で `React.X` を named import に書き換え〜🎯 `React.RefObject` → `RefObject` / `React.Dispatch<React.SetStateAction<T>>` → `Dispatch<SetStateAction<T>>` / `React.MutableRefObject` → `MutableRefObject` / `React.ChangeEvent` → `ChangeEvent` の type-only named import 〜📦 全ファイル DOM `addEventListener` 未使用なので alias 不要〜🛡️ 残 26 ファイル後続サイクルで継続 sweep (進捗 49% — 過半数到達!) 〜📚
+
 ### リファクタリングっ (#712 案 B 段階的 sweep 第 4 段階)
 
 - **`React.X` named import sweep 第 4 段階! article-items 系 5 ファイル!⚡ (#712 第 4 段階)** — 第 3 段階 (Modal 系 5 ファイル) に続き、`article-items/` 系 5 ファイル (`CardItem.tsx` (2 ref) / `CompactItem.tsx` (2 ref) / `GalleryItem.tsx` (1 ref) / `ListItem.tsx` (2 ref) / `MagazineItem.tsx` (2 ref)、計 9 references) で `React.X` を named import に書き換え〜🎯 全ファイル DOM `addEventListener` 未使用なので alias 不要、素直な `KeyboardEvent` / `MouseEvent` named import で OK 〜📦 第 3 段階で codify した「DOM global 衝突対応」規範を grep でチェックして alias 判断 → 5 ファイル全て alias 不要 → 規範の負荷判定が機能している証拠 〜🛡️ 残 31 ファイル後続サイクルで継続 sweep (進捗 39%) 〜📚
