@@ -309,9 +309,6 @@ function FeedSidebar({
     uncategorizedFeeds,
   } = useSidebarFeeds({
     feeds,
-    articles,
-    readIds,
-    readBeforeTimestamp,
     articleTagIds,
     pinnedFeedIds,
     feedSearch,

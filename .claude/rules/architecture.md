@@ -115,6 +115,7 @@ src/
     SelectedArticleContext.ts # 選択中の記事 ID を提供する Context（ArticleItem の不要な re-render 回避）
     ToastContext.tsx          # トースト通知 API の React Context（useToast のグローバル提供）
     TtsAdapterContext.tsx     # TTS engine adapter の React Context（#675 Phase 1b — App.tsx で 1 回だけ生成し、記事ヘッダー TTS / 設定モーダル voice 選択で同一インスタンスを共有）
+    UnreadStatsContext.tsx    # 全記事の未読統計 (`unreadByFeed` / `totalUnread` / `lastPublishedByFeed` / `readTodayCount`) の React Context（#702 — App.tsx で `useArticleUnreadStats` を 1 回呼んで `useDocumentTitleBadge` と `useSidebarFeeds` の二重 scan を解消）
   components/
     feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection / TagsSection / CollectionsSection / FeedSearchBar）
     feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / FeedTitleContent / feedActions.tsx / types.ts）
@@ -234,7 +235,8 @@ src/
     useMobilePane.ts         # モバイル向けペイン切り替え (sidebar/list/view)
     useNSFWMode.ts           # NSFW モード（連打で活性化）
     useStoredSetting.ts      # localStorage 永続化 enum 設定の共通ユーティリティ
-    useSidebarFeeds.ts       # サイドバーのフィード集計・フィルタ・グループ化（タグ集計・未読数・ピン留め・グループ・カテゴリ）
+    useSidebarFeeds.ts       # サイドバーのフィード集計・フィルタ・グループ化（タグ集計・ピン留め・グループ・カテゴリ）— 未読数 / lastPublished は UnreadStatsContext から取得 (#702)
+    useArticleUnreadStats.ts # 全記事を 1 回 scan で `unreadByFeed` / `totalUnread` / `lastPublishedByFeed` / `readTodayCount` を計算 (200ms debounce) — App.tsx で 1 度だけ呼んで UnreadStatsProvider に注入 (#702)
     useSyncedRef.ts          # stale closure 回避用の最新値 ref ユーティリティ
     useColumnResize.ts       # カラム幅リサイズ操作と localStorage 永続化
     usePortalMenu.ts         # ポータルベースのドロップダウンメニュー位置管理
@@ -276,7 +278,6 @@ src/
     useMarkAllRead.ts        # 全既読ロジック集約 hook（サブフィルター判定・50件確認・アンドゥ対応）
     useArticleViewProps.ts   # ArticleView に渡す props オブジェクトの useMemo 集約 hook（App.tsx から分割）
     useReaderSettingsValue.ts # ReaderSettingsProvider に渡す value オブジェクトを 1 箇所で構築する useMemo 集約 hook（App.tsx Step 1l から分割・40 フィールド集約）
-    useTotalUnreadCount.ts   # 全記事の未読件数を 200ms デバウンス付きで計算する hook（App.tsx Step 1m から分割）
     useCollectionArticleIds.ts # 選択中コレクションに含まれる記事 ID の Set を導出する hook（App.tsx Step 1t から分割）
     useArticleListItemProps.ts # ArticleList の各レイアウトが共通で使う ArticleItemProps を構築する hook
     useFeedSidebarActions.ts # FeedSidebarProvider value オブジェクト生成 hook（App.tsx から分割・useMemo 済み）
