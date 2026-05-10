@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useEffect, useCallback } from "react";
+import { useId, useRef, useEffect, useCallback, type ReactNode, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
 
@@ -8,7 +8,7 @@ interface Props {
   title: string;
   subtitle?: string;
   onClose: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   width?: string;
   /**
    * #707: コンテンツ高さが切り替わる Modal (タブ UI 等) で、
@@ -55,7 +55,7 @@ export default function Modal({
   }, []);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
+    (e: KeyboardEvent<HTMLDivElement>) => {
       if (e.key === "Escape") {
         onClose();
         return;

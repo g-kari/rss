@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, type FocusEvent, type KeyboardEvent } from "react";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
 import { useSearchHistory } from "../../hooks/useSearchHistory";
 import { useFullTextSearch } from "../../hooks/useFullTextSearch";
@@ -16,14 +16,14 @@ export default function SearchBar() {
 
   const { savedSearches, save: saveSearch, removeSaved } = useFullTextSearch();
 
-  const handleSearchBlur = useCallback((e: React.FocusEvent) => {
+  const handleSearchBlur = useCallback((e: FocusEvent) => {
     if (!searchContainerRef.current?.contains(e.relatedTarget as Node)) {
       setShowHistory(false);
     }
   }, []);
 
   const handleSearchKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
+    (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Escape") {
         updateQuery("");
         searchRef.current?.blur();

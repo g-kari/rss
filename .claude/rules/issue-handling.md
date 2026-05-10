@@ -403,6 +403,32 @@ GitHub の Issue 番号は **起票時に連番で払い出される** ため、
 - **復元困難な変更** (テスト spec 大量削除、設計変更を伴うリファクタ) — git revert で戻せない設計判断
 - **大規模 touch** (>10 ファイル / 1 commit、>200 行 diff) — レビュー範囲を超える
 - **セキュリティ判断要** (脆弱性修正の方針選択) — 影響範囲評価が必要
+- **新規 npm pkg 追加** (`package.json` dependencies / devDependencies の新エントリ) — transitive deps / bundle size / license / 維持コスト全てがプロジェクト長期負債、ライブラリ選定はユーザーの好みが反映されるべき
+- **新規 infra 採用** (wasm / IndexedDB / Service Worker / Web Worker / WebGPU / 新 Cloudflare バインディング 等) — runtime 要件 + ブラウザ互換性 + 既存アーキテクチャとの整合性で大きな設計判断要
+- **データ schema / R2 layout の新規追加** (`feeds/{feedHash}/<新ファイル>` / `users/{userId}/<新ファイル>` 等) — ストレージコスト + マイグレーション戦略 + 既存ヘルパーとの整合性が長期影響大
+
+### 「ユーザー判断付き Issue + 段階処理 OK」でも追加で判断仰ぐべきケース
+
+`#674 (TTS wasm)` のようにユーザーが「案 X 採用」「段階処理 OK / 都度報告不要」と明確判断していて、自走 5 条件もほぼ充足するケースでも、Phase 1 着手前に **以下の未判断要素** があれば追加で判断を仰ぐ:
+
+| 要素                          | 判断仰ぎ必須                         | 理由                                    |
+| ----------------------------- | ------------------------------------ | --------------------------------------- |
+| ライブラリ選定                | 案 A/B/C 提示 + ユーザー選択         | 不可逆的依存追加、bundle / license 影響 |
+| 新規 npm pkg バージョン range | latest pin か caret range か         | 上流脆弱性追従ポリシーが分かれる        |
+| 新規 infra (wasm 等) 採用     | 採用判断 + bundle size 試算          | 既存アーキテクチャ整合性影響大          |
+| モデル / アセット配信戦略     | バンドル / 公式 DL / セルフホスト    | 法的グレー (再配布 license) 評価要      |
+| R2 / KV / D1 新規 key 追加    | key naming + 上限 + マイグレーション | コスト + 既存ヘルパー整合性             |
+
+**Why**: 「段階処理 OK」は段階分割 + commit progressive を許可するシグナルだが、**ライブラリ選択そのもの** には及ばない。Phase 1 を勝手に着手して `package.json` に新 npm pkg を追加すると revert が複雑化し (lock file + transitive deps + 別箇所での import が transient に発生する) ユーザーが望まなかった依存が固定化される。**「段階処理 OK」はあくまで「方向性が定まった後の実装段階」を指す** と解釈し、方向性を決めるライブラリ選定は別途判断仰ぐ。
+
+**How to apply**: ユーザー判断付き Issue で Phase N に着手する前に:
+
+1. **新規 dependency / infra / R2 key が増えるか** を Phase 計画でチェック
+2. 増えるなら **「ライブラリ選定の判断仰ぎコメント」を Issue に投稿** — 案 A/B/C + 推奨案 + 必要対応箇所 + ユーザー判断項目を明示
+3. ユーザーが「案 A で OK」「自由に選んで」等の応答を返したら Phase N 着手
+4. 「自由に選んで」が来た場合のみ AI 自走で選定 + 透明性コメント (commit message に「ライブラリ X を選んだ理由」明記)
+
+主な使用箇所: 2026-05-10 19th cycle — `#674` でユーザーが「案 C + 案 B + つくよみちゃん + 段階処理 OK」と判断済 → ただし Piper wasm のどの npm pkg を採用するかは未判断 → ライブラリ選定の判断仰ぎコメント (`@mintplex-labs/piper-tts-web` / 公式 wasm 直接 / 別 wrapper) を投稿して Phase 1 着手を保留
 
 ### 透明性の担保
 

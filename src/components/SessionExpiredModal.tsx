@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
 export default function SessionExpiredModal() {
@@ -15,7 +15,7 @@ export default function SessionExpiredModal() {
   // フォーカストラップ: 単一 focusable element (ログインリンク) のみなので、
   // Tab / Shift+Tab どちらでも常にログインリンクへフォーカスを戻す
   // (Modal.tsx の focus trap pattern を踏襲)。
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Tab") return;
     e.preventDefault();
     loginLinkRef.current?.focus();

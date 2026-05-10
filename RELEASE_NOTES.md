@@ -2,6 +2,12 @@
 
 ## 2026-05-10 (latest)
 
+### ドキュメント整備っ + リファクタリングっ (#712 第 3 段階 + 規範 codify)
+
+- **`React.X` named import sweep 第 3 段階! Modal 系 5 ファイル + 衝突対応規範 codify!⚡ (#712 第 3 段階)** — 第 2 段階 (hooks 5 ファイル) に続き、Modal 系 5 ファイル (`SkeletonArticleList.tsx` (1 ref) / `SessionExpiredModal.tsx` (1 ref) / `Modal.tsx` (2 ref) / `ConfirmModal.tsx` (1 ref) / `article-list-header/SearchBar.tsx` (2 ref)、計 7 references) で `React.X` を named import に書き換え〜🎯 `React.JSX.Element` → `JSX.Element` / `React.KeyboardEvent` → `KeyboardEvent` / `React.ReactNode` → `ReactNode` / `React.FocusEvent` → `FocusEvent` の type-only named import 〜📦 `ConfirmModal.tsx` のみ DOM `addEventListener("keydown", ...)` を使うため `KeyboardEvent as ReactKeyboardEvent` の alias で衝突回避〜🛡️ 残 36 ファイル後続サイクルで継続 sweep 〜📚
+- **規範 codify: `react-patterns.md` に「React event 型 named import 化時の DOM global 衝突対応」追加 + `issue-handling.md` の自走禁止リストに 3 項目追加!📚 (前サイクル提案分の即時実証)** — 前サイクル末で提案した 2 件のルールを書き出し: (1) `react-patterns.md` に DOM global 衝突 (`MouseEvent` / `KeyboardEvent` 等 11 種) + import alias 解決パターン + 検出 grep を新規セクション追加〜🎯 (2) `issue-handling.md` の「自走禁止」リストに「新規 npm pkg 追加」「新規 infra 採用 (wasm/IndexedDB/SW/Worker/WebGPU)」「データ schema/R2 layout 新規」を追加〜🛡️ さらに「ユーザー判断付き Issue + 段階処理 OK」でも追加判断仰ぐべき要素テーブル (ライブラリ選定 / モデル配信 / R2 key) を新セクション追加〜💎 同サイクルで本規範を `ConfirmModal.tsx` の alias 採用に即実証 (規範化 → 即時自己実証パターン 5 度目)〜💪
+- **#674 (TTS wasm) ライブラリ選定の判断仰ぎコメント投稿!📝** — ユーザー判断 (案 C 抽象化 + 案 B モデル DL アップロード方式 + つくよみちゃん `piper-plus-tsukuyomi-chan`) は明確だが、Phase 1 着手前に Piper wasm のライブラリ選定 (`@mintplex-labs/piper-tts-web` (案 A 推奨) / 公式 wasm 直接 (案 B) / 別 wrapper (案 C)) + 配信モデル (DL 先 URL ハードコード or 設定可能) でユーザー判断を仰ぐコメントを投稿〜🎯 自走 5 条件はほぼ充足するが、新規 npm pkg + wasm infra 採用は不可逆な依存追加なので「ライブラリ選定」だけ判断仰ぐ〜🛡️ Phase 1a (skeleton 1 ファイル) 〜 Phase 1c (UI 配線 3-5 ファイル) の段階分割案も提示〜📚
+
 ### リファクタリングっ (#712 案 B 段階的 sweep 第 2 段階)
 
 - **`React.X` named import sweep 第 2 段階! hooks 5 ファイル!⚡ (#712 第 2 段階)** — 第 1 段階 (5 ファイル) に続き、hooks ディレクトリの 5 ファイルで `React.X` を named import に書き換え〜🎯 対象: `useColumnResize.ts` (1 ref) / `useGestureNav.ts` (5 ref) / `useHeaderScrollVisibility.ts` (2 ref) / `useImageDownload.ts` (1 ref) / `useMenuKeyboard.ts` (2 ref) — 計 11 references 〜💪 `React.MouseEvent` → `MouseEvent` / `React.TouchEvent` → `TouchEvent` / `React.WheelEvent` → `WheelEvent` / `React.UIEvent` → `UIEvent` / `React.KeyboardEvent` → `KeyboardEvent` / `React.RefObject` → `RefObject` の type-only named import 〜📦 `useColumnResize.ts` は DOM `MouseEvent` global と衝突するため `MouseEvent as ReactMouseEvent` で alias 解決 (派生ケース learn) 〜🛡️ 残 41 ファイル後続サイクルで継続 sweep 〜📚

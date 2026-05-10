@@ -1,5 +1,6 @@
 "use client";
 
+import type { JSX } from "react";
 import type { Layout } from "@/types";
 
 interface Props {
@@ -167,7 +168,7 @@ function GallerySkeleton() {
   );
 }
 
-const skeletonMap: Record<Layout, () => React.JSX.Element> = {
+const skeletonMap: Record<Layout, () => JSX.Element> = {
   compact: CompactSkeleton,
   list: ListSkeleton,
   card: CardSkeleton,
