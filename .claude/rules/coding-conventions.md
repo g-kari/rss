@@ -369,6 +369,52 @@ export async function POST(request, { params }) {
 
 主な使用箇所: `POST /api/feeds/{feedHash}/purge-content-cache` の購読チェック (#691) — 認証だけで cache busting DoS が成立していた脆弱性を修正
 
+### 派生ケース: shared cache に「未検証ソース由来のデータ」を注入する経路は TTL を短縮して影響範囲を限定する
+
+shared cache (Cloudflare Cache API / 共有 R2) に「ユーザー入力を起点に外部から fetch した結果」を保存する経路では、**保存内容の検証だけでなく「攻撃者が任意データを注入できた場合の persistence 期間」** を考慮する必要がある。完全な input sanitization が困難なケース (HTML / OGP / fallback fetcher 等の構造的に複雑な入力) では、**TTL 短縮で影響範囲を時間軸で限定** する案が defense in depth として有効。
+
+```typescript
+// アンチパターン: 通常成功と「攻撃 vector になりうる経路」を同じ長 TTL で扱う
+const ttl = hasContent ? CACHE_TTL_30D : NEGATIVE_TTL_1D;
+cachePutAsync(key, response, ctx, "ogp");
+// ↑ fallback 経路 (tweet 内リンク先 OGP 抽出) で攻撃者が任意 image 注入可能
+//   → 30 日間 shared cache に居座り全ユーザーに拡散
+
+// 修正パターン: 「攻撃 vector になりうる経路」を pure function で識別 + 短 TTL
+function computeCacheTtl({ hasContent, isFallback }: Input): number {
+  if (isFallback) return NEGATIVE_TTL_1D; // 攻撃影響範囲を 1 日に限定
+  if (hasContent) return CACHE_TTL_30D;
+  return NEGATIVE_TTL_1D;
+}
+const ttl = computeCacheTtl({ hasContent, isFallback });
+```
+
+**Why**: shared cache は **複数ユーザー横断で共有** されるため、攻撃者が 1 度 cache 注入に成功すると、TTL 期間中ずっと **継続的な攻撃を維持しなくても** 全ユーザーに被害が拡散する。完全な input sanitization (例: 画像 URL のホワイトリスト検証) はトレードオフが大きい (合法 image を弾く / fallback fetcher の意義が失われる) ため、「**TTL 短縮で攻撃の経済性を変える**」アプローチが現実的:
+
+1. **攻撃者が攻撃 input を継続維持しないと** poisoning が持続不可になる (例: tweet を削除すると次回 fetch で失効)
+2. **通常ユーザー UX への影響が極小** (fallback 経路は usage 頻度が低い)
+3. **既存 negative cache TTL を再利用できる** ことが多い (新定数不要)
+
+**How to apply**: 新しい cache 注入経路 (Route Handler で `cachePutAsync` を呼ぶ箇所) を実装するときに以下を判定:
+
+1. **cache に保存するデータの「ソース」を分類**:
+   - **検証済みソース** (自社 API レスポンス / signed URL / static asset) → 長 TTL OK
+   - **未検証ソース** (ユーザー入力 URL から fetch した HTML / OGP / fallback chain で別ドメインから取得) → **短 TTL を検討**
+2. **fallback 経路** (元 source が空 / エラー時に別の URL を fetch する経路) は **要注意**:
+   - 攻撃者が「元 source を空にする」「fallback が別ドメインから fetch する」を悪用可能
+   - 例: Twitter OGP fallback / RSS feed link → original site fetch / OEmbed fallback
+3. **TTL 算出を pure function に切り出す**: `computeXxxCacheTtl({ ...源由来フラグ })` の形で TDD 可能に
+4. **既存 negative cache TTL を再利用**: 多くの場合 1 日 TTL は「失敗 cache」と同じなので、独立定数は不要 (命名だけで意図を表現)
+5. **ユーザー UX 影響を測る**: fallback 経路の 1 日 TTL でも cache hit 率が許容範囲か (Cloudflare Analytics / log で確認)
+
+**反例 (短 TTL 不要なケース)**:
+
+- 自社 R2 から取得した article content (検証済みソース) → 7 日 TTL OK
+- 検証済み画像 URL (HTTPS only / SSRF check 通過 / MIME 検証済み) → 30 日 TTL OK
+- 認証されたユーザー専用 cache (cache key にユーザー ID 含む) → 攻撃影響が単一ユーザーに限定されるので長 TTL OK
+
+主な使用箇所: `src/lib/ogp-cache-ttl.ts#computeOgpCacheTtl` (#706 — Twitter fallback 経路の TTL を 30 日 → 1 日に短縮して poisoning 影響範囲を限定)
+
 ## dev / e2e 限定エンドポイントの二重ガード
 
 `/api/test/seed` のようなテスト inject 系エンドポイントを本番に絶対漏らさないために、Route Handler の冒頭で **二重ガード** を行う。
