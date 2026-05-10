@@ -228,3 +228,122 @@ Step 3: 残り
 3. **完全に陳腐化していて誤った指針になっているか** → 削除
 
 陳腐化の判断は慎重に。「この前のセッションで使わなかった」だけでは陳腐化ではない。
+
+## 8. プロジェクトの `.claude/skills/` が gitignored なら skill 化前に必ず gitignore 例外を確認する
+
+`.claude/skills/` がプロジェクトの `.gitignore` に登録されているケースは少なくない。理由は典型的に:
+
+- **skills は外部からインストールするもの** という運用想定 (例: 別リポジトリの `.agents/skills/` への symlink)
+- **個人用 skill は version control 対象外** (チームで共有しない)
+- **skill は user-level で管理する** (`~/.claude/skills/`) 設計
+
+このプロジェクトで `.claude/rules/<rule>.md` を skill 化しようとすると、`git add` が **「The following paths are ignored by one of your .gitignore files」** で拒否されて移行が破綻する。
+
+```bash
+# 移行前に必ず確認:
+grep -nE "^\.claude/skills" .gitignore
+# 出力があれば skills/ は gitignored
+# → 例外行を追加しないと commit 不能
+```
+
+### 判断フロー
+
+```
+1. .gitignore で .claude/skills/ が ignored か確認
+   ├─ Yes (ignored)
+   │   ├─ 選択 A: gitignore 例外を追加 (推奨)
+   │   │   !.claude/skills/<target-skill>/
+   │   │   !.claude/skills/<target-skill>/**
+   │   │   → skill として project-tracked にできる
+   │   │
+   │   ├─ 選択 B: rules + paths で代替
+   │   │   skill 化を見送り、paths frontmatter で条件付きロード
+   │   │   → workflow rule (paths が馴染まない) には不向き
+   │   │
+   │   └─ 選択 C: .claude/commands/ にスラッシュコマンド化
+   │      ユーザー手動 invoke なら commands も選択肢
+   │      → auto-discovery 失われるが gitignore 対象外なら tracked
+   │
+   └─ No (not ignored)
+       そのまま skill 化可能 (一般的なケース)
+```
+
+### 例外行の正しい書き方
+
+```gitignore
+.claude/skills/
+!.claude/skills/<target-skill>/
+!.claude/skills/<target-skill>/**
+```
+
+**重要**: 親ディレクトリ自体の `!.claude/skills/<target-skill>/` (末尾スラッシュ) と、**配下全ファイルの `!.claude/skills/<target-skill>/**`(二重 wildcard)** の両方が必要。片方だけだと`git check-ignore`は OK だが`git add` が「親ディレクトリが ignored」で拒否する。
+
+それでも `git add` が拒否される場合は **`git add -f <path>`** で強制追加できる (例外規則は機能しているが git の警告のみのケース)。
+
+**Why**: skill 化を計画段階で承認した後で gitignore 衝突に気付くと、すでに `git mv` でファイル移動を実行済みのケースで「commit できない / 戻すと履歴が汚れる」状態になる。実装着手前の `.gitignore` 確認 1 コマンドでこの罠を完全回避できる。
+
+**How to apply**: skill 化案 (例: 既存 rules を `.claude/skills/<name>/SKILL.md` に移管) を承認する **前に** プラン段階で:
+
+1. `grep -nE "^\.claude/skills" .gitignore` で gitignore 状況を確認
+2. ignored なら判断フローで A/B/C のどれを採るかを選択肢として提示
+3. 例外行追加 (選択 A) を採るなら、commit 内容に `.gitignore` の変更も含める
+
+`vercel-react-best-practices` のように **シンボリックリンク (`.claude/skills/vercel-react-best-practices -> ../../.agents/skills/vercel-react-best-practices`)** で外部の skill を参照する設計が既にあるなら、本プロジェクトの skill 運用は「**外部からインストールする / 内部 authoring しない**」が前提。例外を 1 つ作るのは OK だが、複数作ると一貫性が崩れて将来の AI/開発者が混乱するので、**例外は本質的に project-specific な knowledge** (例: project 固有の Issue 対応ルール) に限る。
+
+主な使用箇所: `issue-handling.md` を `.claude/skills/issue-handling/SKILL.md` に skill 化したとき、`.gitignore` の `.claude/skills/` 行で commit 拒否 → `!.claude/skills/issue-handling/` 例外追加で解決。skill 化判断時にこの確認ステップが抜けると plan 後の実装段階で blocked になる
+
+## 9. 大量 Issue を 1 サイクルで処理するときの 3 トラック並列パターン
+
+「open Issue が 10+ 件あり、それぞれユーザー判断要 / 採用済 / 大規模 / 軽微 が混在する」サイクルで、すべてを順番に処理すると 1 件あたりの context switch コストが大きい。**役割別に 3 トラックを並列化** して効率を上げる。
+
+### 3 トラック構成
+
+| トラック             | 並列度                                  | 安全性           | 用途                                                    |
+| -------------------- | --------------------------------------- | ---------------- | ------------------------------------------------------- |
+| **調査トラック**     | 高 (5+ agents 並列)                     | safe (read-only) | コード調査 + 設計方針コメント案を作成                   |
+| **実装トラック**     | 中 (worktree で 1-2 並列 or sequential) | 中               | feature branch で実装、衝突回避のため sequential が無難 |
+| **判断仰ぎトラック** | sequential (gh CLI 操作)                | safe (network)   | 既存 Issue へ comment 投稿のみ                          |
+
+### 適用手順
+
+```
+1. open Issue を skill のチェックリスト (本文 + ユーザー本人コメント抽出) で分類:
+   - A: ユーザー採用表明済 + AI 自走条件充足 → 実装トラック
+   - B: 設計方針コメント未投稿 / 詳細不足 → 調査トラック
+   - C: 設計方針コメント済 + ユーザー判断待ち + 自走条件未満 → 残置 (アクション不要)
+   - D: AI 自走条件外の大規模変更 → 判断仰ぎトラック (status コメント or sub-judgment)
+
+2. 調査トラック (B 群) を並列派遣:
+   - 各 issue に 1 つの Explore subagent
+   - 出力フォーマットを揃える (issue-handling skill のテンプレート遵守)
+   - run_in_background: true で main thread を blocking しない
+
+3. 並行して main thread で実装トラック (A 群) を進める:
+   - feature branch 作成 → 実装 → typecheck → e2e → master merge
+   - 衝突回避のため A 群は sequential
+
+4. 調査トラックの結果が returns し次第:
+   - 各 issue へ gh issue comment で投稿
+   - 1 issue ずつ、main thread で sequential
+
+5. 判断仰ぎトラック (D 群):
+   - status / sub-judgment コメントを sequential 投稿
+```
+
+### 失敗パターン
+
+- **すべて sequential**: 件数が多いと 1 サイクル消化不能、actionable backlog が積み上がる
+- **すべて並列**: 実装トラックの並列が衝突を引き起こす (master 上でのファイル変更同期問題)
+- **調査結果を待たずに実装着手**: 調査結果が「実装方針誤り」を示唆していたとき手戻りが大きい
+
+### 安全策
+
+1. **調査トラックは出力フォーマットを厳密化** — issue-handling skill の設計方針コメントテンプレートに従わせる (案 A/B/C + 推奨 + 必要対応箇所 + ユーザー判断項目)
+2. **調査エージェントには「実コードで確認」を必須化** — 「サブエージェント調査結果は該当コードで検証してから採用する」原則を agent prompt にも入れる
+3. **実装トラックは AI 自走 5 条件で絞り込み** — touch ≤5 / 機能変化なし / 推奨案明示済 / 復元可能 / 3 サイクル経過、すべて Yes のみ着手
+
+**Why**: 「14 open issues + 1 サイクル」で全件 sequential 処理すると 1 件 5 分換算でも 70 分超え、コンテキストも肥大化。3 トラック並列なら調査 5 件 (5 分並列) + 実装 1-2 件 (10 分 sequential) + コメント 5-7 件 (10 分 sequential) で合計 25-30 分。役割境界が明確になることで「どの issue は今サイクル / 次サイクル」の判断も整理される。
+
+**How to apply**: 「issue 多数の状態で issue 処理依頼を受けた」サイクルでは、最初に Issue 分類 (A/B/C/D) を表で整理してからトラック起動。skill のチェックリスト (Step 1: 自分起票確認 / Step 2: ユーザー本人コメント抽出 / Step 3: 状態判定) を全 issue に一括実行してから分類するのが効率的 (本人コメント抽出は `for n in ...; do gh issue view $n ...; done` でバッチ処理)。
+
+主な使用箇所: 14 件 open issue を 1 サイクルで処理 — 調査 5 並列 (#720 / #718 / #714 / #713 / #709) → 設計方針コメント投稿、実装トラック (#711 Phase 1 / #715 Phase 2) は AI 自走条件外で残置、判断仰ぎ (#682 / #674) で status コメント、軽微 (#725) は最適化作業で解決済としてクローズ
