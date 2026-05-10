@@ -1234,6 +1234,74 @@ useEffect(() => {
 
 **How to apply**: 機能が「ON / OFF」のフラグで動く場合、OFF 遷移時のクリーンアップが副作用を 100% 止めているか必ず確認する。fetch / timer / 音声 / WebSocket / IntersectionObserver などすべて。
 
+## 時刻境界 (midnight / 月跨ぎ等) で再 render する hook pattern
+
+`new Date()` を `useMemo` 内で呼ぶと **memo 作成時の日付/時刻がキャプチャ** されて、後続 render で古い値を使い続けるバグが起きる。tab を開きっぱなしで日付跨ぎ / 月跨ぎ / 年跨ぎが起きたとき、UI 表示が前日基準のまま腐る。
+
+```typescript
+// アンチパターン: useMemo 内で new Date() — memo 再実行されない限り stale
+const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+const todayCount = articles.filter((a) => a.publishedAt?.startsWith(today)).length;
+// → 日付跨ぎで「今日の記事 0 件」表示が一日中続く
+
+// 修正パターン: midnight setTimeout で state を更新する hook
+function useUtcDate(): string {
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  useEffect(() => {
+    const now = new Date();
+    const nextMidnight = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0),
+    );
+    const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+    const id = setTimeout(
+      () => setDate(new Date().toISOString().slice(0, 10)),
+      msUntilMidnight + 1000,
+    );
+    return () => clearTimeout(id);
+  }, [date]);
+  return date;
+}
+
+// consumer 側
+const today = useUtcDate();
+const todayCount = articles.filter((a) => a.publishedAt?.startsWith(today)).length;
+```
+
+**Why**: 時刻自体には「変化通知イベント」が無い (ブラウザ API の `voiceschanged` 等とは異なる)。**「次の境界まで `setTimeout`」+「境界到達で setState」+「state 変化で次の `setTimeout` を再 schedule」** の自己再帰パターンで実装する必要がある。+1000ms はクロックずれ / 微小遅延の安全マージン。
+
+**通常の render 負荷はほぼゼロ**: 境界到達時に 1 回だけ state 変化 → 関連 useMemo / useEffect が再評価されるだけ。`setInterval(1000ms)` のような頻繁な polling は不要。
+
+**How to apply**: 「**時刻境界をキー** にした表示 / 集計」を書くときは hook 化を検討:
+
+| 用途                          | hook 名                       | 境界                   | 適用例                        |
+| ----------------------------- | ----------------------------- | ---------------------- | ----------------------------- |
+| 「今日」の件数 / バッジ       | `useUtcDate` / `useLocalDate` | midnight (UTC / local) | `readTodayCount` / 既読バッジ |
+| 「今月」の集計 / グラフ       | `useCurrentMonth`             | 月初 0:00              | 月間統計 / heatmap 区切り     |
+| 「今週」の集計                | `useCurrentWeek`              | 週初 (月曜 0:00 等)    | 週間目標 / streak 計算        |
+| 「シフト中か」(7-19 時)       | `useShiftWindow`              | shift 開始 / 終了時刻  | 業務時間限定 UI               |
+| cron 風タイマー (毎時 0 分等) | `useCronTick`                 | 任意の cron expression | データ自動更新トリガー        |
+
+**TDD**: `now` を引数化して純粋に判定:
+
+```typescript
+export function nextMidnightDelay(now: Date): number {
+  const nextMidnight = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0),
+  );
+  return nextMidnight.getTime() - now.getTime();
+}
+```
+
+これを spec で「now=23:59:59 → 1000ms」「now=00:00:01 → 約 24h」等を assert 可能に。
+
+**反例 (時刻境界 hook が不要なケース)**:
+
+- 表示する時刻自体がリアルタイムで動く必要がある (例: 時計 UI) → `setInterval(1000)` で full polling が正解
+- ユーザーアクションで再 render される頻度が「日付境界より高い」 (例: 自動ポーリング 5 分) → useMemo 再評価で副作用的に最新化されるので hook 不要
+- SSR で時刻を確定させる必要があるとき (本プロジェクトは CSR 'use client' のため非該当)
+
+主な使用箇所: `useUtcDate` (`useArticleUnreadStats.ts`) — `readTodayCount` の midnight stale バグ修正 (37th cycle perf #3, confidence 82%)
+
 ## ブラウザ API の遅延通知に備えて初期取得 + イベント購読をペアで書く
 
 `speechSynthesis.getVoices()` のように **初回呼び出しでは空配列を返し、後から `voiceschanged` イベントで利用可能になる** ブラウザ API がある。useEffect で初期取得だけしても永遠に空のままなので、必ずイベント購読とペアで実装する。

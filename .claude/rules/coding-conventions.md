@@ -1483,6 +1483,47 @@ export function collectImageUrls(container: Element): string[] {
 
 主な使用箇所: 2026-05-10 サイクルの perf #1 (useTotalUnreadCount 統合) — エージェント 85% 信頼度だったが Read で Context lift up 必要と判明 → Issue #702 起票して降格
 
+### 派生ケース: 監査エージェントの提案は「prop 受け口」と「配線」を分離して部分達成できる
+
+「Issue 起票へ降格」の前に、**「prop 受け口の追加 (1 ファイル)」と「配線 wiring (3〜4 ファイル + state lift up 等)」を分離** して **prop 受け口だけ同サイクル commit + 配線は別 Issue 起票** という部分達成パターンを採れることがある。「全部か全くやらないか」の二択でなく、安全な前半だけ commit を進められる。
+
+```
+パターン: 受け口と配線を分離
+  1. エージェント提案を Read で再評価 → 全体は 3-4 ファイル touch + state lift up
+  2. 「目的のコンポーネント側」(例: ArticleListEmptyState) は 1 ファイル touch で
+     受け口 prop (onAddFeed?: () => void) + UI 要素 (CTA ボタン) を追加可能
+  3. 「呼び出し側」(例: App.tsx) は state lift up + caller chain 全部修正で 3-4 ファイル
+  4. 受け口だけ commit、配線は別 Issue で案 A/B/C 提示
+
+判定:
+  - 受け口の prop が optional (`?`) で、未配線でも既存挙動を変えないか? → YES なら部分達成 OK
+  - 受け口が非 optional / 配線必須なら → 全体まとめて Issue 起票
+```
+
+**Why**: 部分達成パターンの利点:
+
+1. **回帰リスク最小**: 受け口だけ追加なら typecheck で機械的検証可能、未配線なら既存挙動を変えない
+2. **配線 Issue で案を立てやすい**: 「prop 受け口は既に存在 → 配線方式 (state lift up vs Context vs callback chain) を 1 軸で比較」と issue 内容が清潔になる
+3. **将来の AI / 開発者がコード reading で気付ける**: `onAddFeed?: () => void` の存在が「配線待ちの未完了機能」を明示するシグナルになる
+
+**How to apply**: 監査エージェント提案を Read で再評価したとき:
+
+1. **「受け口」と「配線」を分離可能か** を判定:
+   - 受け口 (新 prop / 新 Context value) の追加が **1〜2 ファイル touch + 既存挙動非破壊** で完結するか
+   - 配線 (caller chain 修正 / state lift up / Provider 構成変更) は別 PR で完結する規模か
+2. **YES なら部分達成パターン採用**:
+   - 受け口部分を同サイクル commit (RELEASE_NOTES に「prop 受け口のみ、配線は別 Issue」と明記)
+   - 配線 Issue を gh issue create で起票 → 「prop 受け口は commit XXX で既存」を所与として案 A/B/C 提示
+3. **NO なら全体まとめて Issue 起票** (従来通り)
+
+**反例 (部分達成 NG)**:
+
+- 受け口 prop が **非 optional** で配線なしだと typecheck error → 全体まとめて Issue
+- UI 要素を追加するが配線なしだと **「ボタンが押せるが何も起きない」破綻 UX** → 全体まとめて
+- 受け口が **runtime invariant に依存** (例: 「この prop が undefined のときは throw」) → 全体まとめて
+
+主な使用箇所: 37th cycle UX #2 (空状態 CTA) — `ArticleListEmptyState` + `ArticleList` に `onAddFeed?: () => void` 受け口だけ commit、`App.tsx` の state lift up は #722 で別 Issue 起票 (案 A state lift up / 案 B Context expose / 案 C 重複 modal)
+
 ## 本番環境のデバッグは「localStorage gate + 専用 debug ヘルパー」で出す
 
 → `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割。AbortController/Ref 派生ケースも同ファイルへ移動)
