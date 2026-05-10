@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from "react";
 import type { Feed, UserProfile } from "../types";
 import { apiFetchJson } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
@@ -11,7 +11,7 @@ interface FeedDataState {
   loadingFeeds: boolean;
   feedLoadError: boolean;
   retryFeedList: () => void;
-  setFeeds: React.Dispatch<React.SetStateAction<Feed[]>>;
+  setFeeds: Dispatch<SetStateAction<Feed[]>>;
   onFeedAdded: (feed: Feed) => void;
   removeFeedFromList: (id: string) => void;
   updateFeed: (feed: Feed) => void;
