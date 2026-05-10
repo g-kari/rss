@@ -1,3 +1,8 @@
+---
+description: ブラウザ API ラッパー / silent fallback 禁止 / バージョン定数 / 永続化 TTL / 本番デバッグなどブラウザ環境固有の運用パターン集
+paths: "src/**/*.ts,src/**/*.tsx,src/lib/**/*.ts,src/hooks/**/*.ts"
+---
+
 # ブラウザプラットフォーム運用パターン
 
 `coding-conventions.md` から #694 Step 5 で分割した「ブラウザ環境固有の運用パターン」集。

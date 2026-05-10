@@ -1,3 +1,8 @@
+---
+description: RELEASE_NOTES.md の令和ギャル文体ルール・architecture.md / api-spec.md 同期必須事項
+paths: "RELEASE_NOTES.md,src/lib/release-notes-data.ts"
+---
+
 # リリースノート運用ルール 〜ギャルが書くよ〜
 
 コードを変更して master にマージしたら、**必ず** リリースノートを更新すること。

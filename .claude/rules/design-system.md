@@ -1,3 +1,8 @@
+---
+description: フラットミニマル design system — カラートークン / タイポグラフィ / 3 ペインレイアウト / コンポーネントパターン / アイコン
+paths: "src/components/**/*.tsx,src/**/*.tsx,app/globals.css"
+---
+
 # デザインシステム
 
 フラットミニマル。Oksskolten ライク。ライト/ダーク切り替え対応。

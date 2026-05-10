@@ -1,3 +1,8 @@
+---
+description: ディレクトリ構造・データフロー・R2 schema・テストカバレッジマップなど横断的アーキテクチャ参照
+paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
+---
+
 # アーキテクチャ
 
 ## 全体像

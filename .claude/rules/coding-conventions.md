@@ -1,3 +1,8 @@
+---
+description: TypeScript / Next.js / React コーディング規約・hook / 命名規則・派生ケース集
+paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
+---
+
 # コーディング規約
 
 ## TypeScript
@@ -108,10 +113,7 @@ const filtered = useMemo(() => {
 
 ## React Context パターン
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 3 で分割):
-
-- React Context パターン (`src/contexts/`) — Provider + useXxx hook 設計
-- 派生ケース: 内部 state を持つ hook を複数 consumer で共有したいときは Provider 化必須
+→ `.claude/rules/react-patterns.md` を参照 (#694 Step 3 で分割)
 
 ## 認証ヘルパー (`src/lib/server-auth.ts`)
 
@@ -402,14 +404,7 @@ fetch('URL_HERE', { headers: { 'User-Agent': 'Mozilla/5.0' } })
 
 ## 大きいコンポーネントの機能別分割パターン
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 2 で分割):
-
-- 大きいコンポーネントの機能別分割パターン (基本指針 / 使用箇所 / いつ分割しないか)
-- Step 内のさらなる最小スコープ化
-- 派生ケース: 巨大コンポーネントの hook 抽出は 1 hook ずつ別 commit
-- 派生ケース: 新機能は「Phase 1: 純粋関数 + TDD」「Phase 2: UI 統合」分離
-- 派生ケース: 既存実装の差し替え基盤は「Phase 0: 型抽象化のみ」先行
-- 派生ケース: 機能別分割後の「逆方向の集約」(共通 wrapper 抽出)
+→ `.claude/rules/react-patterns.md` を参照 (#694 Step 2 で分割)
 
 ## shared resource を変更する API は「認証 + 所有権チェック」を二段で行う
 
@@ -543,12 +538,7 @@ export async function POST(req: NextRequest) {
 
 ## React state / ref / useEffect パターン
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 1 で分割):
-
-- state 更新前に「構造的等価性ガード」を入れて reference を安定化する
-- ref vs state の使い分け（同期チェック vs useEffect 再実行）
-- trigger counter で「同じ依存値」でも useEffect を強制再実行する
-- ref の論理リセットポイントを忘れない (+ 派生ケース: 実行済み ID ref)
+→ `.claude/rules/react-patterns.md` を参照 (#694 Step 1 で分割)
 
 ## 同一プロパティ名で意味の異なる派生値を使い分けない
 

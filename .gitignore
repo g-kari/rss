@@ -13,7 +13,10 @@ demo-*.png
 src/lib/release-notes-data.ts
 .agents/
 .claude/skills/
+!.claude/skills/issue-handling/
+!.claude/skills/issue-handling/**
 .claude/worktrees/
+.claude/.bak/
 .serena/
 a.out
 skills-lock.json

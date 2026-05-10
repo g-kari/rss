@@ -1,3 +1,8 @@
+---
+description: rules / CLAUDE.md ドキュメントのメンテナンス原則・docs drift 監査・大規模分割の段階手順
+paths: ".claude/rules/**/*.md,CLAUDE.md"
+---
+
 # ルール文書のメンテナンス原則
 
 `.claude/rules/*.md` および `CLAUDE.md` を更新するときは、以下の原則に従う。

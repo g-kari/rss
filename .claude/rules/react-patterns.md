@@ -1,3 +1,8 @@
+---
+description: React state / ref / useEffect / Context / コンポーネント分割パターン集
+paths: "src/**/*.tsx,src/hooks/**/*.ts,src/contexts/**/*.tsx,src/components/**/*.tsx,app/**/*.tsx"
+---
+
 # React パターン (state / ref / useEffect)
 
 `coding-conventions.md` から #694 Step 1 で分割した React 固有の state / ref / useEffect パターン集。

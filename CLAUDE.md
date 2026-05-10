@@ -56,3 +56,7 @@ GitHub Actions (`deploy.yml`) は存在しない。`npm run deploy` をローカ
 ## Issue / PR の起票主体マーカー
 
 AI が起票・コメントする GitHub Issue / PR は、起票主体を一目で識別できるバナー（`> 🤖 AI 起票 (Claude Code)` / `> 🤖 AI 投稿 (Claude Code)`）を **必ず** 付ける。詳細は `issue-handler` skill の規定に従うこと。
+
+## Issue / PR 作業時のプロジェクト固有ルール
+
+`gh issue` (`view` / `close` / `comment` / `list`) を扱うとき、または Issue / PR の本文・コメントを作成するときは、本プロジェクト固有の処理前チェックリスト・設計方針コメントテンプレート・タイトルのみ Issue 対応・自動クローズ後コメント運用・最小スコープ判断軸・自走採用条件などの retrospective 派生ケースが集約された **`issue-handling` skill を必ず invoke** してから作業すること。

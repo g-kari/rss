@@ -1,3 +1,8 @@
+---
+name: issue-handling
+description: rss プロジェクト固有の GitHub Issue 対応ルール集 — 処理前チェックリスト、設計判断が必要な Issue へのコメントテンプレート、タイトルのみ Issue 対応、自動クローズ後のコメント運用、AI 直接実行できないタスクの橋渡し、過去返信の訂正パターン、最小スコープ判断軸、自走採用条件、forward reference 禁止、TODO(#N) トレーサビリティなど。`gh issue view` / `gh issue close` / `gh issue comment` / `gh issue list` を呼ぶ前後で必ず参照する。
+---
+
 # Issue 対応ルール
 
 ## 処理前チェックリスト（必ず実行）
