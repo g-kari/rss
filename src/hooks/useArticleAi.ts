@@ -9,13 +9,20 @@ import { summarizeInBrowser } from "../lib/browser-summarizer";
 import { toPlainText } from "../lib/html";
 import { DEFAULT_AI_MODEL } from "../lib/ai-models";
 import { STORAGE_KEYS, storageGet } from "../lib/storage";
-import { parseRetryAfter } from "../lib/retry-after";
+import {
+  classifyHttpError,
+  formatHttpErrorMessage,
+  type HttpErrorType,
+} from "../lib/classify-http-error";
 
 /** AI プロバイダー識別子（要約・翻訳共通） */
 export type TranslationProvider = "browser" | "workers-ai";
 
-/** AI 操作のエラー種別 */
-export type AiErrorType = "network" | "rate_limit" | "model_error" | "unknown";
+/**
+ * AI 操作のエラー種別。`classify-http-error.ts` の canonical `HttpErrorType` を再利用。
+ * 旧 `"model_error"` は `"server_error"` に統合済 (ユーザー向けメッセージは同一)。
+ */
+export type AiErrorType = HttpErrorType;
 
 /** AI 操作のエラー情報 */
 export interface AiError {
@@ -78,27 +85,6 @@ function decodeCached(cached: string): AiOperationResult {
 
 function encodeForCache(result: AiOperationResult): string {
   return JSON.stringify(result);
-}
-
-/** HTTP ステータスコードから AiErrorType を判定する */
-function classifyHttpError(status: number): AiErrorType {
-  if (status === 429) return "rate_limit";
-  if (status >= 500 && status <= 503) return "model_error";
-  return "unknown";
-}
-
-/** AiErrorType に対応するユーザー向けメッセージを返す */
-function getErrorMessage(type: AiErrorType, fallback: string): string {
-  switch (type) {
-    case "network":
-      return "ネットワークエラーが発生しました。接続を確認してください。";
-    case "rate_limit":
-      return "リクエストが多すぎます。しばらく待ってから再試行してください。";
-    case "model_error":
-      return "AI モデルでエラーが発生しました。しばらく待ってから再試行してください。";
-    case "unknown":
-      return fallback;
-  }
 }
 
 /**
@@ -174,16 +160,10 @@ function useAiOperation(
         });
         if (!res.ok) {
           const type = classifyHttpError(res.status);
-          let message: string;
-          if (res.status === 429) {
-            const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"), {
-              fallbackMs: 60_000,
-            });
-            const seconds = Math.ceil(retryAfterMs / 1000);
-            message = `レート制限中です。${seconds}秒後に再試行してください。`;
-          } else {
-            message = getErrorMessage(type, errorMessage);
-          }
+          const message = formatHttpErrorMessage(type, {
+            retryAfterHeader: res.headers.get("Retry-After"),
+            fallback: errorMessage,
+          });
           setError({ type, message });
           return;
         }
@@ -203,7 +183,10 @@ function useAiOperation(
         }
       } catch (err) {
         if (isAbortError(err)) return;
-        setError({ type: "network", message: getErrorMessage("network", errorMessage) });
+        setError({
+          type: "network",
+          message: formatHttpErrorMessage("network", { fallback: errorMessage }),
+        });
       } finally {
         setLoading(false);
       }
