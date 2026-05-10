@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import {
+  useCallback,
+  useRef,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from "react";
 import type { KeywordFilter, ReadState } from "../types";
 import { STORAGE_KEYS, deferSaveSet, saveJson, storageSet } from "../lib/storage";
 import { type SetKind, type PendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
@@ -8,19 +14,19 @@ import { equalSnoozedUntil, equalNotes, equalTagIds } from "../lib/read-state-me
 import type { ReadStateSets } from "./useReadStatePersistence";
 
 export interface SetStateDispatchers {
-  read: React.Dispatch<React.SetStateAction<Set<string>>>;
-  bookmarks: React.Dispatch<React.SetStateAction<Set<string>>>;
-  readingList: React.Dispatch<React.SetStateAction<Set<string>>>;
-  likes: React.Dispatch<React.SetStateAction<Set<string>>>;
+  read: Dispatch<SetStateAction<Set<string>>>;
+  bookmarks: Dispatch<SetStateAction<Set<string>>>;
+  readingList: Dispatch<SetStateAction<Set<string>>>;
+  likes: Dispatch<SetStateAction<Set<string>>>;
 }
 
 export interface OtherStateDispatchers {
-  setGlobalFilterState: React.Dispatch<React.SetStateAction<KeywordFilter | null>>;
-  setTtlDaysState: React.Dispatch<React.SetStateAction<number | null>>;
-  setReadBeforeTimestamp: React.Dispatch<React.SetStateAction<string | null>>;
-  setSnoozedUntil: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setNotesState: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setTagIdsState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
+  setGlobalFilterState: Dispatch<SetStateAction<KeywordFilter | null>>;
+  setTtlDaysState: Dispatch<SetStateAction<number | null>>;
+  setReadBeforeTimestamp: Dispatch<SetStateAction<string | null>>;
+  setSnoozedUntil: Dispatch<SetStateAction<Record<string, string>>>;
+  setNotesState: Dispatch<SetStateAction<Record<string, string>>>;
+  setTagIdsState: Dispatch<SetStateAction<Record<string, string[]>>>;
 }
 
 /**
@@ -34,11 +40,11 @@ function computeMergedSet(local: Set<string>, serverValues: string[]): Set<strin
 }
 
 export interface ApplyServerStateDeps {
-  stateRef: React.MutableRefObject<ReadStateSets>;
-  pendingAddedRef: React.MutableRefObject<PendingSets>;
-  pendingRemovedRef: React.MutableRefObject<PendingSets>;
-  pendingTagChangedRef: React.MutableRefObject<Set<string>>;
-  pendingTagRemovedRef: React.MutableRefObject<Set<string>>;
+  stateRef: MutableRefObject<ReadStateSets>;
+  pendingAddedRef: MutableRefObject<PendingSets>;
+  pendingRemovedRef: MutableRefObject<PendingSets>;
+  pendingTagChangedRef: MutableRefObject<Set<string>>;
+  pendingTagRemovedRef: MutableRefObject<Set<string>>;
   dispatchers: SetStateDispatchers;
   otherDispatchers: OtherStateDispatchers;
 }

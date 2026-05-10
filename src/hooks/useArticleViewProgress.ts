@@ -1,20 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type RefObject, type UIEvent } from "react";
 import { useSyncedRef } from "./useSyncedRef";
 import { useReadingProgress, loadProgress } from "./useReadingProgress";
 
 export interface ArticleViewProgressDeps {
   articleId: string | undefined;
-  contentRef: React.RefObject<HTMLDivElement | null>;
+  contentRef: RefObject<HTMLDivElement | null>;
   autoReadEnabled: boolean;
   autoReadThreshold: number;
   onAutoMarkRead?: (articleId: string) => void;
 }
 
 export interface ArticleViewProgressResult {
-  progressBarRef: React.RefObject<HTMLDivElement | null>;
-  handleScroll: (e: React.UIEvent<HTMLElement>) => void;
+  progressBarRef: RefObject<HTMLDivElement | null>;
+  handleScroll: (e: UIEvent<HTMLElement>) => void;
 }
 
 export function useArticleViewProgress(deps: ArticleViewProgressDeps): ArticleViewProgressResult {
@@ -58,7 +58,7 @@ export function useArticleViewProgress(deps: ArticleViewProgressDeps): ArticleVi
 
   // スクロールイベントベースの進捗更新
   const handleScroll = useCallback(
-    (e: React.UIEvent<HTMLElement>) => {
+    (e: UIEvent<HTMLElement>) => {
       const el = e.currentTarget;
       const scrollable = el.scrollHeight - el.clientHeight;
       const progress = scrollable > 0 ? Math.round((el.scrollTop / scrollable) * 100) : 0;

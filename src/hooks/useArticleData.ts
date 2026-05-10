@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { Article, Feed, UserProfile } from "../types";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { apiFetchJson } from "../lib/api-fetch";
@@ -60,8 +67,8 @@ interface ArticleDataState {
   loadMoreFeedArticles: (feedId: string) => Promise<void>;
   loadMoreAllFeedsArticles: (feeds: Feed[]) => Promise<void>;
   skipRemainingPages: (feedId: string | null, feeds: Feed[]) => void;
-  setFetchError: React.Dispatch<React.SetStateAction<boolean>>;
-  setLoadingArticles: React.Dispatch<React.SetStateAction<boolean>>;
+  setFetchError: Dispatch<SetStateAction<boolean>>;
+  setLoadingArticles: Dispatch<SetStateAction<boolean>>;
 }
 
 export function useArticleData(

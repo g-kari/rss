@@ -1,6 +1,6 @@
 "use client";
 
-import React, { type ReactNode } from "react";
+import { Fragment, createElement, type ReactNode } from "react";
 
 /**
  * テキスト中の検索クエリ語をハイライトした ReactNode を返す。
@@ -41,7 +41,7 @@ export function highlightText(text: string, query: string): ReactNode {
   for (const { start, end } of merged) {
     if (start > pos) parts.push(text.slice(pos, start));
     parts.push(
-      React.createElement(
+      createElement(
         "mark",
         {
           key: key++,
@@ -58,5 +58,5 @@ export function highlightText(text: string, query: string): ReactNode {
     pos = end;
   }
   if (pos < text.length) parts.push(text.slice(pos));
-  return React.createElement(React.Fragment, null, ...parts);
+  return createElement(Fragment, null, ...parts);
 }

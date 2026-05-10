@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (#712 案 B 段階的 sweep 第 7 段階 — hooks 完全消化)
+
+- **`React.X` named import sweep 第 7 段階! 残 hooks 4 ファイル + `article-ui-helpers.ts`!⚡ (#712 第 7 段階)** — 第 6 段階 (useReadState 系 5 ファイル / 39 ref) に続き、残 hooks 4 ファイル + lib 1 ファイルを処理。これで hooks ディレクトリの React.X sweep が完全消化〜🎯 対象: `useArticleData.ts` (2 ref) / `useArticleViewProgress.ts` (4 ref) / `useFeedData.ts` (1 ref) / `useReadStateSyncApply.ts` (15 ref) / `lib/article-ui-helpers.ts` (2 ref)、計 24 references 〜📦 `Dispatch` / `SetStateAction` / `MutableRefObject` / `RefObject` / `UIEvent` の type-only named import + `article-ui-helpers.ts` は default `import React` を named `createElement` / `Fragment` import に変換 (default import 廃止パターン) 〜🛡️ 全ファイル DOM `addEventListener` 確認 → `useArticleData.ts` のみ `visibilitychange` 使用するが React event 型と被らないため alias 不要 〜💪 残 16 ファイル後続サイクルで継続 sweep (進捗 69%) 〜📚
+
 ### リファクタリングっ (#712 案 B 段階的 sweep 第 6 段階)
 
 - **`React.X` named import sweep 第 6 段階! useReadState 系 hooks 5 ファイル!⚡ (#712 第 6 段階)** — 第 5 段階 (軽量 hooks 5 ファイル) に続き、useReadState 系 hooks 5 ファイル (`useReadStateSyncFlush.ts` (5 ref) / `useReadStatePersistence.ts` (6 ref) / `useReadStateSync.ts` (7 ref) / `useReadStateToggles.ts` (10 ref) / `useReadStateActions.ts` (11 ref)、計 39 references) で `React.X` を named import に書き換え〜🎯 全ファイル DOM `addEventListener` 未使用なので alias 不要、`Dispatch` / `SetStateAction` / `MutableRefObject` / `RefObject` の type-only named import 〜📦 useReadState 系は型共通 (Set state setters / refs) なので 5 ファイル一括 `replace_all` で機械的置換、39 references を 5 ファイル touch で完遂〜🛡️ 残 21 ファイル後続サイクルで継続 sweep (進捗 59%) 〜📚
