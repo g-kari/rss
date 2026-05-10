@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { downloadBlob } from "../../lib/download";
 
@@ -32,7 +32,7 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
     }
   };
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     // reset so the same file can be selected again

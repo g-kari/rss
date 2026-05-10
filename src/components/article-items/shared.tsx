@@ -1,6 +1,13 @@
 "use client";
 
-import { memo, useCallback, useMemo, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+  type SyntheticEvent,
+} from "react";
 import type { Article } from "../../types";
 import { readingTime } from "../../lib/article-utils";
 import { buildImageProxyUrl } from "../../lib/image-proxy-url";
@@ -11,8 +18,8 @@ import { buildImageProxyUrl } from "../../lib/image-proxy-url";
 export function handleArticleKeyDown(
   article: Article,
   onSelectArticle: (a: Article) => void,
-): (e: React.KeyboardEvent) => void {
-  return (e: React.KeyboardEvent) => {
+): (e: KeyboardEvent) => void {
+  return (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onSelectArticle(article);
@@ -319,7 +326,7 @@ export const FilterableGalleryImage = memo(function FilterableGalleryImage({
   // を緩和する (#636 症状 2)。ロード後は naturalWidth/Height から実比率に切替。
   const [aspectRatio, setAspectRatio] = useState<string>("1 / 1");
   const handleLoad = useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
+    (e: SyntheticEvent<HTMLImageElement>) => {
       const img = e.currentTarget;
       if (img.naturalWidth > 0 && img.naturalHeight > 0) {
         setAspectRatio(`${img.naturalWidth} / ${img.naturalHeight}`);

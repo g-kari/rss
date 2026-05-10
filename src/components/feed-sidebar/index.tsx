@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, memo, type FormEvent } from "react";
 import type {
   Feed,
   Article,
@@ -216,7 +216,7 @@ function FeedSidebar({
     clearError();
   }
 
-  async function handleAddFeed(e: React.FormEvent) {
+  async function handleAddFeed(e: FormEvent) {
     e.preventDefault();
     const result = await addFeed(
       newUrl,
