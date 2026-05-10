@@ -1,12 +1,9 @@
 import { useMemo } from "react";
-import type { Feed, Article, FeedGroup, FeedView } from "../types";
-import { isArticleRead } from "../lib/article-filter";
+import type { Feed, FeedGroup, FeedView } from "../types";
+import { useUnreadStats } from "../contexts/UnreadStatsContext";
 
 interface UseSidebarFeedsInput {
   feeds: Feed[];
-  articles: Article[];
-  readIds: Set<string>;
-  readBeforeTimestamp?: string | null;
   articleTagIds?: Record<string, string[]>;
   pinnedFeedIds: Set<string>;
   feedSearch: string;
@@ -30,9 +27,6 @@ interface UseSidebarFeedsResult {
 
 export function useSidebarFeeds({
   feeds,
-  articles,
-  readIds,
-  readBeforeTimestamp,
   articleTagIds,
   pinnedFeedIds,
   feedSearch,
@@ -40,6 +34,11 @@ export function useSidebarFeeds({
   activeFeedView,
   nsfwMode,
 }: UseSidebarFeedsInput): UseSidebarFeedsResult {
+  // #702: 旧実装は articles full scan を独自に行っていたが、App.tsx で
+  // useArticleUnreadStats を 1 回計算 → UnreadStatsProvider 経由で配信する形に統合。
+  // 二重 scan が解消される。
+  const { unreadByFeed, totalUnread, lastPublishedByFeed, readTodayCount } = useUnreadStats();
+
   const tagCounts = useMemo(() => {
     const map = new Map<string, number>();
     if (!articleTagIds) return map;
@@ -54,34 +53,6 @@ export function useSidebarFeeds({
     arr.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     return arr;
   }, [tagCounts]);
-
-  const { unreadByFeed, totalUnread, lastPublishedByFeed, readTodayCount } = useMemo(() => {
-    const byFeed = new Map<string, number>();
-    const lastPublished = new Map<string, string>();
-    const today = new Date().toISOString().slice(0, 10);
-    let total = 0;
-    let todayRead = 0;
-    for (const a of articles) {
-      if (!isArticleRead(a, readIds, readBeforeTimestamp ?? null)) {
-        byFeed.set(a.feedHash, (byFeed.get(a.feedHash) ?? 0) + 1);
-        total++;
-      } else if (a.publishedAt?.slice(0, 10) === today) {
-        todayRead++;
-      }
-      if (a.publishedAt) {
-        const prev = lastPublished.get(a.feedHash);
-        if (!prev || a.publishedAt > prev) {
-          lastPublished.set(a.feedHash, a.publishedAt);
-        }
-      }
-    }
-    return {
-      unreadByFeed: byFeed,
-      totalUnread: total,
-      lastPublishedByFeed: lastPublished,
-      readTodayCount: todayRead,
-    };
-  }, [articles, readIds, readBeforeTimestamp]);
 
   const { pinnedFeeds, groupedFeeds, categoryGroups, uncategorizedFeeds } = useMemo(() => {
     const q = feedSearch.trim().toLowerCase();

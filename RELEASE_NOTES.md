@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### パフォーマンス改善っ
+
+- **#702 修正: 全記事 unread 統計の二重 scan を解消!⚡** — 旧実装で `useTotalUnreadCount` (App.tsx) と `useSidebarFeeds` 内の useMemo が同じ `articles` 配列を独立 full scan していたため、`readIds` 変化のたびに全記事 (500+) を 2 回走査して主スレッドをブロックしていた問題を修正〜🎯 案 A 採用: 新規 hook `useArticleUnreadStats` で 1 回だけ scan + 200ms debounce → `UnreadStatsContext` Provider で `<FeedSidebar>` と `useDocumentTitleBadge` (App.tsx) の両方に配信〜📦 既存 `useTotalUnreadCount` を削除、`useSidebarFeeds` の articles/readIds/readBeforeTimestamp 引数を削除して context 経由に統合〜💎 `useArticleUnreadStats` は `unreadByFeed` (feedHash → 未読件数) / `totalUnread` / `lastPublishedByFeed` (feedHash → 最新 publishedAt) / `readTodayCount` を 1 ループで全部計算 → 旧 `useSidebarFeeds` の独自 useMemo より集計項目も増えてオールインワンに〜🛡️
+
 ### バグ修正っ
 
 - **digitallover.moe で GIF が 404 になる問題を修正!🎬** — `loadImage('id', 'jpg', 'gif')` パターンで第 2 引数 (jpg) を一律採用していたが、jpg=404/gif=200 の実例 (`gyutto.com/data/item_img/.../283294_430.{jpg,gif}` 実測) があったため第 3 引数 (gif) を優先採用するロジックに修正〜🎯 後方互換: 第 3 引数なし or 非 https の場合は jpg にフォールバック〜🛡️ TDD 7 ケース全 pass (`e2e/script-loaded-images.spec.ts` 新設、デフォルトの jpg 採用 / gif 優先 / 相対 URL fallback / 既存 src 維持 / loadImage 不在 / 実例再現を網羅)〜📚
