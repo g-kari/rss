@@ -10,6 +10,8 @@ export interface ArticleViewTtsResult {
   ttsSupported: boolean;
   ttsPlaying: boolean;
   ttsPaused: boolean;
+  /** #716: TTS 自然完了 (`utterance.onend`) の累積カウンタ — 手動 stop では increment しない */
+  ttsEndedCount: number;
   ttsRate: number;
   ttsCycleRate: () => void;
   handleTtsToggle: () => void;
@@ -37,6 +39,7 @@ export function useArticleViewTts(
     supported: ttsSupported,
     isPlaying: ttsPlaying,
     isPaused: ttsPaused,
+    endedCount: ttsEndedCount,
     rate: ttsRate,
     cycleRate: ttsCycleRate,
     speak,
@@ -93,6 +96,7 @@ export function useArticleViewTts(
     ttsSupported,
     ttsPlaying,
     ttsPaused,
+    ttsEndedCount,
     ttsRate,
     ttsCycleRate,
     handleTtsToggle,

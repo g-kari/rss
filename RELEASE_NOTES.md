@@ -8,6 +8,7 @@
 
 ### バグ修正っ
 
+- **#716 修正: オートモード中に TTS を手動停止すると勝手に次記事へ遷移するバグ解消!🛑** — 旧実装で `isAutoReadFinished` が `prevPlaying=true → currentPlaying=false` の遷移を「TTS 完了」と判定していたため、ユーザーが Shift+P 等で `speechSynthesis.cancel()` した瞬間も「完了」とみなして 500ms 後に次記事へ自動遷移していたのを修正〜🎯 判定軸を「自然完了カウンタ (`utterance.onend`) の増加」に変更: `useSpeechSynthesis` の `onend` でのみ `endedCount` を increment、`cancel()` 経由の手動停止は increment しない (大半のブラウザ仕様で保証) 〜🛡️ TtsAdapter 型に `endedCount: number` 追加、`useArticleViewTts` / `useArticleViewState` / `ArticleView` を経由して `AutoReadController` まで配線〜📦 TDD: `e2e/auto-read.spec.ts` 7 ケース全 pass (旧 `prevPlaying / currentPlaying` から `prevEndedCount / currentEndedCount` へ全面置換 + 手動停止 / 複数件まとめ完了の新規ケース追加) 〜📚
 - **digitallover.moe で GIF が 404 になる問題を修正!🎬** — `loadImage('id', 'jpg', 'gif')` パターンで第 2 引数 (jpg) を一律採用していたが、jpg=404/gif=200 の実例 (`gyutto.com/data/item_img/.../283294_430.{jpg,gif}` 実測) があったため第 3 引数 (gif) を優先採用するロジックに修正〜🎯 後方互換: 第 3 引数なし or 非 https の場合は jpg にフォールバック〜🛡️ TDD 7 ケース全 pass (`e2e/script-loaded-images.spec.ts` 新設、デフォルトの jpg 採用 / gif 優先 / 相対 URL fallback / 既存 src 維持 / loadImage 不在 / 実例再現を網羅)〜📚
 
 ### セキュリティ対策っ + a11yっ

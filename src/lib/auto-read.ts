@@ -12,23 +12,29 @@ export function isSpeechSupported(): boolean {
 export interface AutoReadAdvanceState {
   enabled: boolean;
   ttsSupported: boolean;
-  /** 直前 tick の TTS 再生状態（true → false の遷移で完了とみなす） */
-  prevPlaying: boolean;
-  /** 現 tick の TTS 再生状態 */
-  currentPlaying: boolean;
+  /** 直前 tick で観測した TTS 自然完了 (`utterance.onend`) のカウンタ */
+  prevEndedCount: number;
+  /** 現 tick の TTS 自然完了カウンタ — 増加で「自然完了」とみなす */
+  currentEndedCount: number;
   /** TTS 一時停止中なら完了扱いしない */
   paused: boolean;
 }
 
 /**
- * オートモード中、TTS が完了したと見なせるかを判定する。
+ * オートモード中、TTS が「自然完了」したと見なせるかを判定する。
  *
  * - enabled が false / TTS 非対応 / 一時停止中ならスキップ
- * - prevPlaying=true → currentPlaying=false の遷移で「完了」とみなす
+ * - `currentEndedCount > prevEndedCount`（自然完了カウンタが増加）で完了とみなす
+ *
+ * #716: 旧実装は `prevPlaying=true → currentPlaying=false` の遷移で完了判定していたが、
+ * これは `speechSynthesis.cancel()` 経由の手動停止 (Shift+P など) でも成立してしまい、
+ * 「ユーザーが止めたのに次記事へ自動遷移」のバグになっていた。
+ * `utterance.onend` は cancel() では発火しない (大半のブラウザで保証される挙動) ので、
+ * 自然完了カウンタの増分のみを finished の根拠にすると手動停止と確実に区別できる。
  */
 export function isAutoReadFinished(state: AutoReadAdvanceState): boolean {
   if (!state.enabled || !state.ttsSupported || state.paused) return false;
-  return state.prevPlaying && !state.currentPlaying;
+  return state.currentEndedCount > state.prevEndedCount;
 }
 
 export interface AutoReadFetchTriggerState {

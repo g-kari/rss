@@ -13,6 +13,12 @@ interface Props {
   ttsSupported: boolean;
   ttsPlaying: boolean;
   ttsPaused: boolean;
+  /**
+   * #716: TTS 自然完了 (`utterance.onend`) の累積カウンタ。
+   * 手動 stop (`speechSynthesis.cancel()`) では increment しないため、
+   * 「TTS 完了 → 次記事へ」の判定はこの値の増加でのみ行う。
+   */
+  ttsEndedCount: number;
   fetching: boolean;
   fetchError: string;
   /**
@@ -60,6 +66,7 @@ export default function AutoReadController({
   ttsSupported,
   ttsPlaying,
   ttsPaused,
+  ttsEndedCount,
   fetching,
   fetchError,
   hasFullContent,
@@ -75,7 +82,10 @@ export default function AutoReadController({
   onAutoMarkRead,
   onAutoModeStop,
 }: Props) {
-  const prevPlayingRef = useRef(false);
+  // #716: 旧 prevPlayingRef は cancel() 経由の手動停止と TTS 自然完了を区別できなかった。
+  // ttsEndedCount (utterance.onend のみ increment) の前 tick 値を覚えておき、
+  // 増加したときだけ「自然完了」として次記事遷移を発火する。
+  const prevEndedCountRef = useRef(0);
   const fetchTriggeredRef = useRef<string | null>(null);
   const fetchRetriedRef = useRef<string | null>(null);
   // #663: 同一記事で speak が二重発火するのを防ぐため、speak 発動済みの articleId を記録する。
@@ -88,18 +98,19 @@ export default function AutoReadController({
 
   const articleId = article?.id;
 
-  // 記事切替時に fetch トリガーフラグと prevPlayingRef をリセット
-  // prevPlayingRef を false に戻さないと、前記事完了直後に新記事に遷移したとき
-  // 「prevPlaying=true && currentPlaying=false」で即「完了」と誤判定され、
-  // 次々と記事が連鎖遷移するループの原因になる (#660)。
+  // 記事切替時に fetch トリガーフラグと prevEndedCountRef をリセット
+  // prevEndedCountRef を新記事の現在 ttsEndedCount に同期させないと、
+  // 前記事完了直後に新記事に遷移したとき「prev < current」で即「完了」と誤判定され、
+  // 次々と記事が連鎖遷移するループの原因になる (#660 / #716)。
   useEffect(() => {
     if (!articleId) return;
-    autoReadDebug("articleId-changed", { articleId, enabled });
-    prevPlayingRef.current = false;
+    autoReadDebug("articleId-changed", { articleId, enabled, ttsEndedCount });
+    prevEndedCountRef.current = ttsEndedCount;
     speakTriggeredRef.current = null; // #663: 新記事で speak を許可
     if (!enabled) return;
     fetchTriggeredRef.current = null;
     fetchRetriedRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ttsEndedCount は同期スナップショット用 (この effect の再発火対象ではなく articleId/enabled で再発火する)
   }, [articleId, enabled]);
 
   // オートモード OFF (停止ボタン押下) 時に現在発話中の TTS も即止める (#661)。
@@ -202,15 +213,19 @@ export default function AutoReadController({
   ]);
 
   // (4) TTS 完了 → 次の記事へ進む or 終端で停止
+  // #716: 判定軸を「prevPlaying → currentPlaying の遷移」から
+  // 「TTS 自然完了カウンタ (utterance.onend) の増加」に変更。
+  // ユーザーが Shift+P 等で手動停止 (cancel()) しても endedCount は不変なので、
+  // 手動停止と自然完了が確実に区別され、勝手に次記事へ遷移するバグを解消。
   useEffect(() => {
     const finished = isAutoReadFinished({
       enabled,
       ttsSupported,
-      prevPlaying: prevPlayingRef.current,
-      currentPlaying: ttsPlaying,
+      prevEndedCount: prevEndedCountRef.current,
+      currentEndedCount: ttsEndedCount,
       paused: ttsPaused,
     });
-    prevPlayingRef.current = ttsPlaying;
+    prevEndedCountRef.current = ttsEndedCount;
     if (!finished || !article) return;
 
     const articleId = article.id;
@@ -228,7 +243,7 @@ export default function AutoReadController({
     enabled,
     article,
     ttsSupported,
-    ttsPlaying,
+    ttsEndedCount,
     ttsPaused,
     hasNext,
     onSelectNext,

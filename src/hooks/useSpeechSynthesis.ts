@@ -44,6 +44,10 @@ function loadVolume(): number {
 export function useSpeechSynthesis(): TtsAdapter {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  // #716: 自然完了 (utterance.onend) でのみ increment するカウンタ。
+  // 手動 stop (= speechSynthesis.cancel) では increment しない → AutoReadController が
+  // 「ユーザーによる中断」と「TTS 自然完了」を区別するための signal。
+  const [endedCount, setEndedCount] = useState(0);
   const [rate, setRate] = useState<TtsRate>(loadRate);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
@@ -101,7 +105,11 @@ export function useSpeechSynthesis(): TtsAdapter {
       };
       // キャンセルされた旧 utterance の非同期コールバックが新 utterance の state を壊さないよう identity ガード
       utterance.onend = () => {
-        if (utteranceRef.current === utterance) resetState();
+        if (utteranceRef.current === utterance) {
+          // #716: 自然完了のみ endedCount を increment。手動 stop (cancel) は onend を発火させない。
+          setEndedCount((c) => c + 1);
+          resetState();
+        }
       };
       utterance.onerror = () => {
         if (utteranceRef.current === utterance) resetState();
@@ -188,6 +196,7 @@ export function useSpeechSynthesis(): TtsAdapter {
     supported: SPEECH_SUPPORTED,
     isPlaying,
     isPaused,
+    endedCount,
     rate,
     cycleRate,
     volume,
