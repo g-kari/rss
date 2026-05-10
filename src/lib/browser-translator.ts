@@ -8,6 +8,7 @@
  */
 
 import { isLikelyJapanese } from "./article-utils";
+import { devError } from "./dev-log";
 
 type Availability = "available" | "downloadable" | "downloading" | "unavailable";
 
@@ -115,7 +116,8 @@ export async function diagnoseTranslatorAvailability(): Promise<{
     });
     if (shouldUseBrowserTranslation(availability)) return { available: true, reason: null };
     return { available: false, reason: "not-available" };
-  } catch {
+  } catch (err) {
+    devError("[browser-translator] diagnose availability failed", err);
     return { available: false, reason: "not-available" };
   }
 }
@@ -144,7 +146,8 @@ export async function translateInBrowser(
 
     const translator = await window.Translator.create({ sourceLanguage, targetLanguage });
     return await translator.translate(text);
-  } catch {
+  } catch (err) {
+    devError("[browser-translator] translate failed", err);
     return null;
   }
 }

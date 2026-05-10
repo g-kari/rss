@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, withJsonBody, requireString } from "@/lib/server-auth";
+import { withSession, withJsonBody, requireString, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { r2Get, r2Put, engagementKey, engagementCooldownKey } from "@/lib/r2";
-import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { readUserSubscriptions } from "@/lib/shared-feed";
 import type { EngagementAction, EngagementEntry, EngagementLog } from "@/types";
 import { AI_RATINGS } from "@/types";
@@ -38,7 +37,7 @@ export async function POST(req: NextRequest) {
     action?: unknown;
     value?: unknown;
   }>(req, async ({ body, session, env }) => {
-    const limited = await checkAndUpdateCooldown(
+    const limited = await applyCooldown(
       env.RATE_LIMIT,
       engagementCooldownKey(session.userId),
       ENGAGEMENT_COOLDOWN_MS,

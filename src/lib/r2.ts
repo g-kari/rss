@@ -42,6 +42,25 @@ export const userPushKey = (userId: string) => userKey(userId, "push.json");
 export const savedArticlesKey = (userId: string) => userKey(userId, "saved.json");
 export const readStateKey = (userId: string) => userKey(userId, "read-state.json");
 export const engagementKey = (userId: string) => userKey(userId, "engagement.json");
+
+// ============================================================================
+// KV クールダウン / レートリミット用キー命名
+// ============================================================================
+//
+// **legacy R2-style (`users/{userId}/xxx.json`)**: 旧来の R2 path 形式を KV キーに
+// 流用したもの。下記 8 件は既存の RATE_LIMIT KV にエントリが存在するため改名できない
+// (ライブクールダウンが一時的に通過状態に戻ってしまう)。
+//
+// **current KV-style (`{userId}:xxx`)**: 推奨形式。コロン区切りで KV namespace 標準。
+// `architecture.md` の KV section に記載されている形式と一致する。
+//
+// **新規 KV クールダウンキーは必ず `{userId}:xxx` 形式で追加すること**。
+// `users/` プレフィックスは R2 path を連想させ KV dump で混乱の元になる。
+// 旧キーをまとめて current 形式に統一するには KV migration が必要 (別 Issue 化推奨)。
+//
+// (#86 simplify F2 — KV key naming pattern drift を文書化)
+
+// legacy R2-style (do not add new entries with this format)
 export const refreshCooldownKey = (userId: string) => userKey(userId, "last-full-refresh.json");
 export const aiRateLimitKey = (userId: string) => userKey(userId, "ai-cooldown.json");
 export const singleFeedRefreshCooldownKey = (userId: string, feedHash: string) =>
@@ -55,9 +74,12 @@ export const contentFetchRateLimitKey = (userId: string) =>
   userKey(userId, "content-fetch-rate-limit.json");
 export const clipCooldownKey = (userId: string) => userKey(userId, "clip-cooldown.json");
 export const opmlImportCooldownKey = (userId: string) => userKey(userId, "opml-import.json");
-export const pushSubscribeCooldownKey = (userId: string) => `${userId}:push-subscribe`;
 
+// current KV-style (use this format for new cooldown keys)
+export const pushSubscribeCooldownKey = (userId: string) => `${userId}:push-subscribe`;
 export const ogpCooldownKey = (userId: string) => `${userId}:ogp-cooldown`;
 export const engagementCooldownKey = (userId: string) => `${userId}:engagement-cooldown`;
-export const feedLastFetchedKey = (userId: string) => userKey(userId, "feed-last-fetched.json");
 export const saveArticleCooldownKey = (userId: string) => `${userId}:save-article-cooldown`;
+
+// R2 (not KV) — feed-last-fetched は R2 path のまま
+export const feedLastFetchedKey = (userId: string) => userKey(userId, "feed-last-fetched.json");

@@ -11,10 +11,10 @@ import {
   getServerSession,
   updateServerSession,
   deleteServerSession,
+  applyCooldown,
 } from "@/lib/server-auth";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
-import { checkAndUpdateCooldown } from "@/lib/rate-limit";
 import { getDevBypassUserId, buildDevBypassProfile } from "@/lib/dev-auth-bypass";
 
 const AUTH_ME_COOLDOWN_MS = 5 * 1000; // 5秒
@@ -64,7 +64,7 @@ export async function GET() {
   const token = cookieStore.get("access_token")?.value;
   const rateLimitId = sessionId ?? (token ? await sha256Hex(token) : undefined);
   if (rateLimitId) {
-    const limited = await checkAndUpdateCooldown(
+    const limited = await applyCooldown(
       env.RATE_LIMIT,
       `${rateLimitId}:auth-me-cooldown`,
       AUTH_ME_COOLDOWN_MS,
