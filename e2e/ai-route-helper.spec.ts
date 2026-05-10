@@ -92,51 +92,6 @@ test.describe("VALID_MODEL_IDS", () => {
   });
 });
 
-test.describe("articleId バリデーション（ai-route-helper.ts の正規表現）", () => {
-  /**
-   * ai-route-helper.ts 内の articleId バリデーション正規表現:
-   *   /^[A-Za-z0-9_-]{1,128}$/
-   * をここで直接テストする。
-   */
-  const ARTICLE_ID_REGEX = /^[A-Za-z0-9_-]{1,128}$/;
-
-  test("英数字のみは有効", () => {
-    expect(ARTICLE_ID_REGEX.test("abc123")).toBe(true);
-  });
-
-  test("アンダースコアとハイフンを含む場合も有効", () => {
-    expect(ARTICLE_ID_REGEX.test("article_id-001")).toBe(true);
-  });
-
-  test("128 文字は有効（上限）", () => {
-    expect(ARTICLE_ID_REGEX.test("a".repeat(128))).toBe(true);
-  });
-
-  test("1 文字は有効（下限）", () => {
-    expect(ARTICLE_ID_REGEX.test("a")).toBe(true);
-  });
-
-  test("129 文字は無効（上限超過）", () => {
-    expect(ARTICLE_ID_REGEX.test("a".repeat(129))).toBe(false);
-  });
-
-  test("空文字列は無効", () => {
-    expect(ARTICLE_ID_REGEX.test("")).toBe(false);
-  });
-
-  test("スラッシュを含む場合は無効", () => {
-    expect(ARTICLE_ID_REGEX.test("feeds/abc")).toBe(false);
-  });
-
-  test("スペースを含む場合は無効", () => {
-    expect(ARTICLE_ID_REGEX.test("article id")).toBe(false);
-  });
-
-  test("ドットを含む場合は無効", () => {
-    expect(ARTICLE_ID_REGEX.test("article.id")).toBe(false);
-  });
-
-  test("日本語を含む場合は無効", () => {
-    expect(ARTICLE_ID_REGEX.test("記事id")).toBe(false);
-  });
-});
+// #698: articleId 形式バリデーション (旧仕様) は ai-route-helper.ts から完全削除
+// (cross-user cache poisoning 対策で url ベースの sha256 hash key に切替)
+// 旧 articleId regex の spec はここで一括削除済 (commit history で過去経緯を参照)。

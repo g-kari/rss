@@ -4,7 +4,7 @@ import { runAiJob } from "@/lib/ai-route-helper";
 /**
  * POST /api/ai/summarize — 記事を Workers AI で要約する
  *
- * @body `{ url: string, articleId?: string, model?: WorkersAiModelId }`
+ * @body `{ url: string, model?: WorkersAiModelId }`
  * @returns 200 `{ result: string }` — マークダウン形式の要約
  * @error 400 `INVALID_URL`
  * @error 429 `RATE_LIMITED` — 60秒間 10回（70B は 3回）超過

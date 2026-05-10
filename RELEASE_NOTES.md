@@ -2,6 +2,11 @@
 
 ## 2026-05-10 (latest)
 
+### セキュリティ対策っ + a11yっ
+
+- **#698 修正: AI 要約・翻訳キャッシュの cross-user poisoning 脆弱性を解消!🔒** — `articleId` がユーザー入力をそのまま信用していたため、攻撃者が被害ユーザーの `articleId` (購読者なら誰でも知れる決定論的値) で偽 `url` を渡して全ユーザーに偽 AI 結果をばらまける状態だったのを修正〜🛡️ 案 A 採用: cache key を `ai-cache/{type}/id-{articleId}` → `ai-cache/{type}/url-{sha256(url)}` に変更、攻撃者は自身が制御する url の cache しか書けないため完全分離〜🎯 旧 cache は無効化されるが「既存は無視 OK」とユーザー判断あり〜📦 関連修正: `useArticleAi.ts` で server に `articleId` 送信を停止、`ai-route-helper.ts` から `articleId` バリデーションを削除、e2e の旧 regex spec を削除〜💎
+- **#701 修正: `ArticleContextMenu` (記事右クリックメニュー) にキーボードナビ追加!♿** — WCAG 2.1.1 Keyboard Level A 違反だった右クリックメニューを修正〜🎯 `role="menu"` / `role="menuitem"` 付与 + 開時に最初の項目へ自動フォーカス + ArrowDown/Up/Home/End/Tab で項目間移動 + Escape で閉じる + Tab トラップ実装〜♿ 右クリック起点 (トリガーボタンなし) なので `useMenuKeyboard` hook の signature と合わず独自実装、focus 復元はなし (右クリック源は記事カードでトリガー特定不能)〜🛡️ 案 A 採用 (将来 Shift+F10 の案 B が必要なら別 Issue)〜📚
+
 ### ドキュメント整備っ (規範 codify)
 
 - **規範 codify: `issue-handling.md` に「`closes #N` で自動クローズされた Issue へのコメント投稿手順」追加!📚** — #712 クローズ時に `gh issue close 712 --comment "..."` が "Already closed" エラーで `--comment` 未投稿になる事象に遭遇 → `merge commit` の `closes #712` で自動クローズ済だったため発生〜🎯 「Issue クローズ時のコメント」セクションに派生節として追加: 案 A (closes キーワード + 別 gh issue comment) / 案 B (commit に closes なし + gh issue close --comment 同時) の運用パターン明示〜🛡️ 規範化 → 即時自己実証パターン 7 度目 (`useSyncedRef` / `react-named-imports` / `sentinel-freeze` / 自走 5 条件 / DOM global 衝突対応 / default React import / closes 自動クローズに続く)〜💎

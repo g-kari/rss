@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseJsonBody, type AuthSession } from "@/lib/server-auth";
-import { getAiCacheById, setAiCacheById, type AiCacheType } from "@/lib/ai-cache";
+import { getAiCacheByUrl, setAiCacheByUrl, type AiCacheType } from "@/lib/ai-cache";
 import { toPlainText } from "@/lib/html";
 import { fetchArticleContent } from "@/lib/fetch-article-content";
 import { isValidFeedUrl } from "@/lib/url";
@@ -52,9 +52,7 @@ export async function runAiJob(
   buildMessages: (plain: string) => AiMessage[],
   cacheType: AiCacheType = "summary",
 ): Promise<NextResponse> {
-  const parsed = await parseJsonBody<{ url?: unknown; articleId?: unknown; model?: unknown }>(
-    request,
-  );
+  const parsed = await parseJsonBody<{ url?: unknown; model?: unknown }>(request);
   if (!parsed.ok) return parsed.error;
   const body = parsed.data;
   if (typeof body?.url !== "string" || !isValidFeedUrl(body.url)) {
@@ -62,19 +60,15 @@ export async function runAiJob(
   }
 
   const url = body.url;
-  const articleId =
-    typeof body.articleId === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(body.articleId)
-      ? body.articleId
-      : null;
 
   const model: WorkersAiModelId = isWorkersAiModelId(body.model) ? body.model : DEFAULT_AI_MODEL;
 
   const is70b = model === "@cf/meta/llama-3.1-70b-instruct";
 
-  if (articleId) {
-    const cached = await getAiCacheById(env.RSS_DATA, articleId, cacheType);
-    if (cached) return NextResponse.json({ result: cached });
-  }
+  // #698: cache key を url ベースに変更 (cross-user poisoning 対策)
+  // 攻撃者は自身が制御する url の cache しか書けないため、被害ユーザーの cache を汚染できない
+  const cached = await getAiCacheByUrl(env.RSS_DATA, url, cacheType);
+  if (cached) return NextResponse.json({ result: cached });
 
   // AI エンドポイントは課金が発生するため KV 障害時も fail-closed にする（Issue #463）
   const limited = await checkSlidingWindow(
@@ -136,8 +130,7 @@ export async function runAiJob(
     });
   }
 
-  if (result && articleId)
-    ctx.waitUntil(setAiCacheById(env.RSS_DATA, articleId, result, cacheType));
+  if (result) ctx.waitUntil(setAiCacheByUrl(env.RSS_DATA, url, result, cacheType));
 
   return NextResponse.json({ result });
 }
