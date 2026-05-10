@@ -894,6 +894,56 @@ return allHidden ? <Fallback /> : (
 
 主な使用箇所: `FilterableGalleryImage` の `onHide` (#671 後追い・全画像が minPx 未満で隠れる時の thumb / No Image fallback)
 
+## React event 型を named import 化するときに DOM global と衝突する
+
+`React.MouseEvent` のような qualified 形式を `MouseEvent` named import に書き換えると、**同名の DOM global と shadow 衝突** する。同じファイル内で `addEventListener("mousemove", handler)` のように DOM event を扱っている箇所があると、TypeScript overload マッチに失敗して typecheck エラーになる。
+
+```typescript
+// アンチパターン: React 由来 MouseEvent の named import が DOM global を覆す
+import { type MouseEvent } from "react";
+function handleClick(e: MouseEvent) { /* React.MouseEvent */ }
+function onMouseMove(ev: MouseEvent) { /* ← React.MouseEvent と推論される */ }
+document.addEventListener("mousemove", onMouseMove);
+// ↑ TS2769: '(ev: React.MouseEvent) => void' is not assignable to
+//   '(this: Document, ev: globalThis.MouseEvent) => any'
+
+// 修正パターン A: ファイル内に DOM addEventListener が無い → そのまま named import OK
+import { type MouseEvent } from "react";
+function handleClick(e: MouseEvent) { ... }
+
+// 修正パターン B: DOM addEventListener と React handler 両方使う → import alias で区別
+import { type MouseEvent as ReactMouseEvent } from "react";
+function handleClick(e: ReactMouseEvent) { /* React */ }
+function onMouseMove(ev: MouseEvent) { /* DOM global そのまま */ }
+document.addEventListener("mousemove", onMouseMove); // 型整合 OK
+```
+
+**Why**: React の event 型 (`MouseEvent` / `KeyboardEvent` / `TouchEvent` / `WheelEvent` / `FocusEvent` / `DragEvent` / `ClipboardEvent` / `PointerEvent` / `AnimationEvent` / `TransitionEvent` / `UIEvent`) は **DOM global と完全同名**。`React.X` qualified 形式なら namespace で区別できるが、named import に書き換えると import がモジュールスコープ内で global を shadow する。`addEventListener("mousemove", h)` の callback signature は DOM `MouseEvent` を要求するため、shadow された React 由来型を渡すと overload マッチ失敗で typecheck が連鎖的に壊れる。
+
+**How to apply**: `React.X` を named import に書き換える sweep 作業を行うとき:
+
+1. **書き換え対象ファイルで DOM event listener が使われていないかチェック**:
+   ```bash
+   grep -nE "addEventListener|removeEventListener" <target-file>
+   ```
+2. **DOM event 名 (`"mousemove"` / `"keydown"` / `"touchstart"` / `"wheel"` / `"focus"` / `"blur"` / `"drag"` / `"copy"` / `"paste"` 等) が見つかった場合**: import alias を使う
+   - `import { type MouseEvent as ReactMouseEvent } from "react";`
+   - 同様に `KeyboardEvent as ReactKeyboardEvent` / `TouchEvent as ReactTouchEvent` 等
+3. **DOM event listener が無い (React handler のみ) ファイル**: alias 不要、そのまま named import で OK
+4. **判断に迷ったら alias 採用が安全側** — alias で書いても可読性は大きく落ちない (むしろ「React 由来か DOM か」の区別が明示的)
+
+**衝突する React event 型の一覧** (DOM global と同名):
+
+`MouseEvent` / `KeyboardEvent` / `TouchEvent` / `WheelEvent` / `FocusEvent` / `DragEvent` / `ClipboardEvent` / `PointerEvent` / `AnimationEvent` / `TransitionEvent` / `UIEvent` / `Event`
+
+**衝突しない React event 型** (DOM global に同名なし、alias 不要):
+
+`SyntheticEvent` / `ChangeEvent` / `FormEvent` / `CompositionEvent` (DOM にはあるが日常的に使う形式が異なる) / `InvalidEvent`
+
+**反例 (alias 不要なケース)**: 修正パターン A の通り、ファイル内が React handler のみで DOM `addEventListener` を使わない場合は alias 不要。**全ファイルで予防的に alias する必要はない** (可読性とのトレードオフで shadow が無いケースは素直な named import が良い)。
+
+主な使用箇所: `useColumnResize.ts` (#712 第 2 段階 sweep 作業時、`React.MouseEvent` → `MouseEvent` 化で `addEventListener("mousemove", ...)` overload と衝突 → `MouseEvent as ReactMouseEvent` で解決)
+
 ## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する
 
 masonic / react-virtual のような **絶対座標で要素を配置する仮想化ライブラリ** を使うと、コンテナの `scrollHeight` はレイアウト確定後に動的に書き換わる。「コンテンツが viewport を埋めているか」を判定する必要がある場合、static な useEffect だけでは初回レイアウト確定タイミングを捉えられない。

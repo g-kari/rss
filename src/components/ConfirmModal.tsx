@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
 
@@ -64,7 +64,7 @@ export default function ConfirmModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onCancel]);
 
-  const handleTabKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleTabKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Tab") return;
     const dialog = dialogRef.current;
     if (!dialog) return;
