@@ -9,12 +9,11 @@ import {
 } from "@/lib/cache-helper";
 import { unescapeHtml } from "@/lib/html";
 import { fetchPageOgpMeta, isTwitterLikeUrl, fetchTwitterFallbackImage } from "@/lib/ogp";
+import { computeOgpCacheTtl } from "@/lib/ogp-cache-ttl";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 import { ogpCooldownKey } from "@/lib/r2";
 
 const FETCH_TIMEOUT_MS = 5_000;
-const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
-const OGP_NEGATIVE_CACHE_TTL_SEC = 24 * 60 * 60; // 1日（og:image なし・フェッチ失敗）
 const OGP_RATE_WINDOW_MS = 60_000; // 60秒ウィンドウ
 const OGP_RATE_MAX_CALLS = 30; // 60秒あたり最大30リクエスト
 
@@ -61,17 +60,23 @@ async function handleGet(
 
   const { title, description, image: rawImage } = await fetchPageOgpMeta(url, FETCH_TIMEOUT_MS);
   let image = isValidPublicUrl(rawImage) ? rawImage : "";
+  let isFallback = false;
 
   // X/Twitter 投稿で OGP 画像がない場合、投稿内リンク先の OGP 画像をフォールバック取得
+  // (#706) この経路は攻撃者が tweet 経由で任意 image を shared cache に注入可能なため、
+  // TTL を 1 日に短縮 (computeOgpCacheTtl) して poisoning 影響範囲を限定する
   if (!image && isTwitterLikeUrl(url)) {
     const fallbackImage = await fetchTwitterFallbackImage(url);
-    if (fallbackImage) image = fallbackImage;
+    if (fallbackImage) {
+      image = fallbackImage;
+      isFallback = true;
+    }
   }
 
   // Cloudflare Cache API に保存（fire-and-forget）
   // 全フィールドが空でも短い TTL で負キャッシュ — 繰り返しフェッチを防ぐ
   const hasContent = !!(image || title || description);
-  const ttl = hasContent ? OGP_CACHE_TTL_SEC : OGP_NEGATIVE_CACHE_TTL_SEC;
+  const ttl = computeOgpCacheTtl({ hasContent, isFallback });
   cachePutAsync(cacheKey, buildJsonCacheResponse({ image, title, description }, ttl), ctx, "ogp");
 
   return NextResponse.json({ image, title, description }, { headers: { "X-Cache": "MISS" } });
