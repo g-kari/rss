@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ (#712 案 B 段階的 sweep 第 4 段階)
+
+- **`React.X` named import sweep 第 4 段階! article-items 系 5 ファイル!⚡ (#712 第 4 段階)** — 第 3 段階 (Modal 系 5 ファイル) に続き、`article-items/` 系 5 ファイル (`CardItem.tsx` (2 ref) / `CompactItem.tsx` (2 ref) / `GalleryItem.tsx` (1 ref) / `ListItem.tsx` (2 ref) / `MagazineItem.tsx` (2 ref)、計 9 references) で `React.X` を named import に書き換え〜🎯 全ファイル DOM `addEventListener` 未使用なので alias 不要、素直な `KeyboardEvent` / `MouseEvent` named import で OK 〜📦 第 3 段階で codify した「DOM global 衝突対応」規範を grep でチェックして alias 判断 → 5 ファイル全て alias 不要 → 規範の負荷判定が機能している証拠 〜🛡️ 残 31 ファイル後続サイクルで継続 sweep (進捗 39%) 〜📚
+
 ### ドキュメント整備っ + リファクタリングっ (#712 第 3 段階 + 規範 codify)
 
 - **`React.X` named import sweep 第 3 段階! Modal 系 5 ファイル + 衝突対応規範 codify!⚡ (#712 第 3 段階)** — 第 2 段階 (hooks 5 ファイル) に続き、Modal 系 5 ファイル (`SkeletonArticleList.tsx` (1 ref) / `SessionExpiredModal.tsx` (1 ref) / `Modal.tsx` (2 ref) / `ConfirmModal.tsx` (1 ref) / `article-list-header/SearchBar.tsx` (2 ref)、計 7 references) で `React.X` を named import に書き換え〜🎯 `React.JSX.Element` → `JSX.Element` / `React.KeyboardEvent` → `KeyboardEvent` / `React.ReactNode` → `ReactNode` / `React.FocusEvent` → `FocusEvent` の type-only named import 〜📦 `ConfirmModal.tsx` のみ DOM `addEventListener("keydown", ...)` を使うため `KeyboardEvent as ReactKeyboardEvent` の alias で衝突回避〜🛡️ 残 36 ファイル後続サイクルで継続 sweep 〜📚

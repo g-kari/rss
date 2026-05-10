@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useContext } from "react";
+import { memo, useCallback, useContext, type KeyboardEvent, type MouseEvent } from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
@@ -35,7 +35,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         onSelectArticle(article);
@@ -44,7 +44,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
     [article, onSelectArticle],
   );
   const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
+    (e: MouseEvent) => {
       if (!onContextMenu) return;
       e.preventDefault();
       onContextMenu(article, e.clientX, e.clientY);

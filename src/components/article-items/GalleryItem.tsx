@@ -1,6 +1,14 @@
 "use client";
 
-import { memo, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { selectGalleryImages } from "../../lib/gallery-display";
@@ -66,7 +74,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   const fallbackToThumb = allFiltered && !!thumb;
   const fallbackToNoImage = allFiltered && !thumb;
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         onSelectArticle(article);
