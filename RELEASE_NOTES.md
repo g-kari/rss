@@ -6,6 +6,10 @@
 
 - **#702 修正: 全記事 unread 統計の二重 scan を解消!⚡** — 旧実装で `useTotalUnreadCount` (App.tsx) と `useSidebarFeeds` 内の useMemo が同じ `articles` 配列を独立 full scan していたため、`readIds` 変化のたびに全記事 (500+) を 2 回走査して主スレッドをブロックしていた問題を修正〜🎯 案 A 採用: 新規 hook `useArticleUnreadStats` で 1 回だけ scan + 200ms debounce → `UnreadStatsContext` Provider で `<FeedSidebar>` と `useDocumentTitleBadge` (App.tsx) の両方に配信〜📦 既存 `useTotalUnreadCount` を削除、`useSidebarFeeds` の articles/readIds/readBeforeTimestamp 引数を削除して context 経由に統合〜💎 `useArticleUnreadStats` は `unreadByFeed` (feedHash → 未読件数) / `totalUnread` / `lastPublishedByFeed` (feedHash → 最新 publishedAt) / `readTodayCount` を 1 ループで全部計算 → 旧 `useSidebarFeeds` の独自 useMemo より集計項目も増えてオールインワンに〜🛡️
 
+### UX 改善っ
+
+- **#717 対応: BuiltInAI (Chrome Summarizer) の自動要約に詳細度を追加!📝** — `SUMMARIZER_OPTIONS.length` を `"medium"` → `"long"` に拡張、tldr 形式 (端的な要約) のまま情報量を最大化〜🎯 「もう少し内容が欲しい」というユーザー報告に対応、UX 互換性を保ちつつ詳細度のみ向上〜📦 TDD: `e2e/browser-summarizer.spec.ts` に「length は 'long' を採用」spec 追加 (22 ケース全 pass)〜🛡️
+
 ### バグ修正っ
 
 - **#716 修正: オートモード中に TTS を手動停止すると勝手に次記事へ遷移するバグ解消!🛑** — 旧実装で `isAutoReadFinished` が `prevPlaying=true → currentPlaying=false` の遷移を「TTS 完了」と判定していたため、ユーザーが Shift+P 等で `speechSynthesis.cancel()` した瞬間も「完了」とみなして 500ms 後に次記事へ自動遷移していたのを修正〜🎯 判定軸を「自然完了カウンタ (`utterance.onend`) の増加」に変更: `useSpeechSynthesis` の `onend` でのみ `endedCount` を increment、`cancel()` 経由の手動停止は increment しない (大半のブラウザ仕様で保証) 〜🛡️ TtsAdapter 型に `endedCount: number` 追加、`useArticleViewTts` / `useArticleViewState` / `ArticleView` を経由して `AutoReadController` まで配線〜📦 TDD: `e2e/auto-read.spec.ts` 7 ケース全 pass (旧 `prevPlaying / currentPlaying` から `prevEndedCount / currentEndedCount` へ全面置換 + 手動停止 / 複数件まとめ完了の新規ケース追加) 〜📚

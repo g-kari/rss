@@ -62,7 +62,10 @@ interface BrowserSummarizerConstructor {
  */
 export const SUMMARIZER_OPTIONS = {
   type: "tldr",
-  length: "medium",
+  // #717: 自動要約が短すぎるとのユーザー報告 → "medium" → "long" に拡張。
+  // Chrome 公式仕様で "long" は最も詳細度が高い length 値。tldr 形式 (端的な要約) のまま
+  // 文字数 / 情報量を増やすため、UX 互換性を保ちつつ「もう少し内容が欲しい」要望に応える。
+  length: "long",
   expectedInputLanguages: ["ja", "en"],
   outputLanguage: "ja",
 } as const;
