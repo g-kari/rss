@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### バグ修正っ (監査エージェント発見 2 件一括対応)
+
+- **バグ修正 2 連続!💡** — バグ監査エージェント (confidence 82〜88%) が発見した 2 件を同サイクル一括修正〜🎯 (1) `purge-content-cache` API のカウンタ不整合: linkless 記事 (Atom 形式で `<link>` を持たない記事) を `total` カウントに含めるが `purged` / `failed` どちらにも増えず CLI 側で `total === purged + failed` 不変条件が崩れる問題を修正、`linkArticles` で事前 filter してから `total` 報告に変更〜🛡️ (2) `read-state-merge.ts` の `chooseLater` / `mergeSnoozed` で **ISO 8601 文字列の lexicographic 比較バグ**: `"2026-01-01T00:00:00.999Z"` > `"2026-01-01T00:00:01+00:00"` (後者は 0.001 秒後だが lexicographic で逆判定) で `readBeforeTimestamp` / `snoozedUntil` が誤った時刻を採用するリスク → `Date.parse` で絶対時刻基準比較に変更 (code-quality #1 で `read-state-prune.ts` に施した同 sibling 規範を完全適用)、不正 ISO 文字列の NaN guard も追加〜🛡️ TDD 6 ケース全 pass (既存 50 + 新規 6 = 58 件)〜📚
+
 ### パフォーマンス改善っ + UX 改善っ + ドキュメント整備っ (監査エージェント発見 6 件一括対応)
 
 - **perf 3 連続修正!⚡** — 監査エージェント (perf 観点 confidence 82〜95%) が発見した 3 件を同サイクル一括修正〜🎯 (1) `useFilteredArticles` の `feedCategoryMap` / `feedTitleByHash` に **構造的等価ガード** (`equalStringMap`) を追加 → 5 分ポーリングで `feeds` reference が変わるたびに走っていた 500+ 記事の O(n) 再フィルタ (20-80ms ブロック × 12回/h) を内容変化時のみに削減、(2) `useArticleUnreadStats` の `lastPublishedByFeed` を **別 useMemo に分離** → `readIds` 変化 (j キー連打 / mark-all-read) で再計算しない設計に変更、(3) 同 hook で `today` を **midnight refresh する `useUtcDate` hook** に切り出し → tab 開きっぱなしで日付跨ぎ時の `readTodayCount` stale バグを修正〜📊 89 件全関連 spec pass〜🛡️

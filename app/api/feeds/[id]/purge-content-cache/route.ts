@@ -50,10 +50,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     let purged = 0;
     let failed = 0;
 
-    // 各記事 link について shared + clip Cache を削除
+    // link を持つ記事のみが purge 対象。total は purge 対象数で報告し、
+    // 呼び出し元 (CLI 等) が `total === purged + failed` の不変条件で
+    // 部分失敗を検知できるようにする (linkless 記事は対象外で報告しない)。
+    const linkArticles = allArticles.filter((a) => a.link);
+
     await Promise.all(
-      allArticles.map(async (article) => {
-        if (!article.link) return;
+      linkArticles.map(async (article) => {
         try {
           const sharedKey = await buildContentCacheKey(reqUrl.origin, article.link);
           const clipKey = await buildClipCacheKey(reqUrl.origin, session.userId, article.link);
@@ -68,7 +71,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({
       ok: true,
       feedHash,
-      total: allArticles.length,
+      total: linkArticles.length,
       purged,
       failed,
     });

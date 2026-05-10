@@ -52,7 +52,10 @@ function mergeSnoozed(
   const merged: Record<string, string> = { ...(existing ?? {}) };
   for (const [id, until] of Object.entries(incoming ?? {})) {
     const prev = merged[id];
-    if (!prev || until > prev) merged[id] = until;
+    // ISO 8601 文字列の lexicographic 比較は timezone suffix で誤判定する
+    // (例: "2026-01-01T00:00:00+00:00" < "2026-01-01T00:00:00.000Z" だが同時刻)。
+    // Date.parse で時刻基準で比較。code-quality #1 / #2 と同じ sibling 規範。
+    if (!prev || isLaterIso(until, prev)) merged[id] = until;
   }
   return Object.keys(merged).length > 0 ? merged : null;
 }
@@ -100,10 +103,36 @@ function mergeTags(
   return Object.keys(merged).length > 0 ? merged : null;
 }
 
+/**
+ * ISO 8601 文字列 a が b より厳密に後の時刻か判定する純粋ヘルパー。
+ *
+ * `a > b` の lexicographic 比較は timezone suffix の文字コード差で誤判定する
+ * (例: `"2026-01-01T00:00:00+00:00"` (`+` = 0x2B) < `"2026-01-01T00:00:00.000Z"` (`.` = 0x2E)
+ * だが同時刻)。`Date.parse` で **絶対時刻基準** で比較する。
+ *
+ * 不正な ISO 文字列は `NaN` 比較で false を返す (= 既存値を優先) ため、
+ * 万一壊れた input が来てもデータ消失しない。
+ *
+ * code-quality #1 (`isLaterIso8601` in `read-state-prune.ts`) と同じ sibling 規範
+ * (`coding-conventions.md` 「同じデータに動作する sibling 純粋関数は fallback chain を完全に揃える」)。
+ */
+function isLaterIso(a: string, b: string): boolean {
+  const ta = Date.parse(a);
+  const tb = Date.parse(b);
+  if (isNaN(ta) || isNaN(tb)) return false;
+  return ta > tb;
+}
+
 function chooseLater(a: string | null | undefined, b: string | null | undefined): string | null {
   if (!a) return b ?? null;
   if (!b) return a ?? null;
-  return a > b ? a : b;
+  // 不正な ISO 文字列が片方だけのときは valid な方を採用 (データ消失防止)
+  const ta = Date.parse(a);
+  const tb = Date.parse(b);
+  if (isNaN(ta) && isNaN(tb)) return a; // 両方不正 → 既存維持
+  if (isNaN(ta)) return b;
+  if (isNaN(tb)) return a;
+  return ta > tb ? a : b;
 }
 
 /**
