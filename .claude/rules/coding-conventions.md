@@ -1535,6 +1535,65 @@ export function collectImageUrls(container: Element): string[] {
 
 主な使用箇所: 37th cycle UX #2 (空状態 CTA) — `ArticleListEmptyState` + `ArticleList` に `onAddFeed?: () => void` 受け口だけ commit、`App.tsx` の state lift up は #722 で別 Issue 起票 (案 A state lift up / 案 B Context expose / 案 C 重複 modal)
 
+### 派生ケース: 監査エージェントの観点はサイクル横断でローテーションする
+
+過去 3-5 サイクルで perf / a11y / simplify 等を連続派遣済なら、次サイクルは **未走査観点** (bug / 新機能 / security narrow scope / docs drift / Dependabot alerts / refactor / dead code) で多様化する。同観点を連続派遣すると以下の問題が発生:
+
+1. **発見の重複**: 同観点エージェントは同じ hot path を Read するため、結果が前回と類似
+2. **観点疲弊**: perf 改善の余地は本来限られており (1-2 cycle で大半消化)、連続派遣で発見が枯渇する
+3. **未走査観点のバグ累積**: bug / security / docs drift は cross-cutting で、低頻度派遣だと潜在問題が累積する
+
+**ローテーション運用 (3 観点 × 3 サイクルで 1 周)**:
+
+| サイクル   | 観点 1          | 観点 2   | 観点 3                |
+| ---------- | --------------- | -------- | --------------------- |
+| N          | perf            | a11y     | simplify              |
+| N+1        | bug             | 新機能   | docs drift mechanical |
+| N+2        | security narrow | refactor | dead code             |
+| N+3 (循環) | perf            | a11y     | simplify              |
+
+3-5 サイクル間隔で同観点が戻るので、間に他観点で発見した改修が次回派遣時の「新しい view」になる。
+
+**Why**: 監査エージェントは「現在のコード状態」を読むため、毎サイクルが「新しい修正後の状態」になっていれば新たな発見の機会がある。同観点を連続派遣すると agent が前回と同じ context を読むので発見が枯渇する。逆に bug / security / docs drift は本質的に「他観点での変更後に新規発生する」ことが多く、定期 sweep の方が ROI 高い。
+
+**How to apply**:
+
+1. **サイクル開始時に過去 3 サイクルの派遣観点を確認** (`git log --since="2 weeks ago" --grep="監査エージェント"` 等で履歴抽出)
+2. **未走査観点を優先**: 過去 3 サイクル未派遣の観点 (例: bug / security / Dependabot) を本サイクルに投入
+3. **機械的に検出可能な観点は subagent 不要**: docs drift / Dependabot alerts / dead code grep は `find + grep + comm` / `gh api` で直接実行可能 → エージェント枠を bug / 新機能 / security 等の判断要観点に確保
+4. **新機能監査は special care**: false positive 率が他観点より高いため、agent prompt に「verification grep with command output」を強制 (`coding-conventions.md` の派生ケース「実コード grep で必ず実存確認」と統合)
+
+**反例 (ローテーション不要なケース)**:
+
+- 直前 cycle で大規模 refactor を行ったとき → 同 hot path を perf / a11y 再派遣して新発見を期待可能
+- ユーザーが特定観点を明示指示 ("perf 観点だけ深く見て") → ローテーション無視で指示優先
+
+主な使用箇所: 41st (security narrow) → 42nd (e2e regression test) → 43rd (perf / a11y / simplify) → 44th (bug / 新機能 / docs drift / Dependabot) で 1 周完了。各サイクルで 4-9 件発見、消化 4-7 件で安定運用
+
+### 派生ケース: 規範 codify 後の grep sweep を「retrospective 本文に結果引用」+「次サイクル開始時に再 sweep」で二段保証する
+
+`rule-maintenance.md` 派生ケース 5 (規範 codify 後は code drift も機械的に sweep する) と派生ケース 6 (code-quality バグ修正時に同 pattern の grep 検出コマンドを併記 + 後続 sweep を Issue 化) は **「規範 codify 時に検出 grep を併記する」** を要求しているが、それだけでは **「codify 時の grep 結果が 0 件を保証しない」** ため、別ファイルに同種バグが残存していることが後の cycle で判明する。
+
+**二段保証パターン**:
+
+1. **codify 時の grep 結果を retrospective commit message / 規範本文に明示引用**
+   - 例: `grep -rEn 'a > b \? a : b|until > prev|publishedAt > [a-z]+\.publishedAt' src/ → 0 件 (適用済 src/lib/read-state-merge.ts / read-state-prune.ts)`
+   - 結果が 0 件であることを書くことで「全箇所適用済」を文書で証跡化
+2. **次サイクル開始時に再 sweep をルーティン化**
+   - bug 監査エージェント派遣時に `Pre-narrowed scope` に「過去 3 cycle で codify した bug pattern の sweep」を含める
+   - エージェント prompt 例: `Check if the following codified bug patterns are fully swept across the codebase: 1. ISO 8601 lexicographic comparison (canonical: Date.parse), 2. ...`
+
+**Why**: 規範 codify 直後の grep は「修正した特定ファイル」を主に確認するため、別レイヤー (hooks / route handlers / cron) に同種バグが残っていても検出されないことがある。1 サイクル後の bug 監査エージェント派遣で同種バグが検出されるのは、**「規範 codify 時点では検出されない sibling」が存在していた** ことを意味する。これを再発させないには「codify 時の grep 結果」と「次サイクルの再 sweep」の二段保証が必要。
+
+**How to apply**:
+
+1. **規範 codify 時**: 検出 grep コマンドを実行 → 0 件であることを retrospective commit message に引用
+2. **0 件でない場合**: 残箇所を同 commit で連続修正、または別 Issue 起票で sweep
+3. **次サイクル開始時 (or 3 サイクル後)**: bug 監査エージェントの prompt に「**過去 codify した bug pattern を grep sweep**」を含める
+4. **発見した場合**: 規範 codify 時に「sweep 漏れがあった」事実を retrospective に追記して保証強化
+
+主な使用箇所: 38th cycle で `isLaterIso` / `pruneOldReadIds` の lexicographic ISO 比較バグを codify したが、`useFilteredArticles.ts:453` 同種バグが 6 cycle 後の 44th bug 監査エージェントで発見 → 二段保証を追加運用ルール化
+
 ## 本番環境のデバッグは「localStorage gate + 専用 debug ヘルパー」で出す
 
 → `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割。AbortController/Ref 派生ケースも同ファイルへ移動)
