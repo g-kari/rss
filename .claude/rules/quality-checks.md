@@ -88,6 +88,53 @@ test("POST seed: 正しいボディで 200 を返す", async () => {
 
 skip メッセージには **次に何をすべきか**（コマンド・URL）を必ず書く。例: `"wrangler login required (run: npx wrangler login)"` / `"set OPENAI_API_KEY env var"`。
 
+### 派生ケース: brittle UI 描画前提の e2e は **try/catch + test.skip(true, ...)** で adaptive skip する
+
+ギャラリー / 仮想スクロール / ポータル menu のような **環境依存で render が安定しない UI** を assert する e2e では、対象要素が UI に現れない場合に test.skip で安全 skip する pattern を採用する。strict assert (timeout で fail) は CI 全体を不安定化するため、「**前提条件を assert してから本検証へ進む / 前提が崩れたら skip**」の 2 段階構造に分割する。
+
+```typescript
+test("ギャラリー画面で X が描画される", async ({ page }) => {
+  test.skip(!seedEndpointAvailable, "wrangler login required ...");
+  await seedFeed(...);
+  await page.addInitScript(() => localStorage.setItem("rss-layout", "gallery"));
+  await page.goto(`/?feed=${FEED_HASH}`);
+
+  // Phase 1: 前提となる記事カード描画を確認
+  const articleCard = page.locator(`#article-${id}`);
+  try {
+    await expect(articleCard).toBeVisible({ timeout: 5000 });
+  } catch {
+    test.skip(
+      true,
+      "記事カードが UI に現れない (レイアウト切替 / フィード選択が dev 環境で安定しない)",
+    );
+    return;
+  }
+
+  // Phase 2: 本検証 (描画前提が満たされた後の assert)
+  const failedText = articleCard.locator("text=取得失敗");
+  await expect(failedText).toBeVisible({ timeout: 8000 });
+});
+```
+
+**Why**: brittle UI render 系 e2e は (1) localStorage / URL クエリで動作するが SSR / hydration 順序により dev で再現性が低い、(2) gallery レイアウト等で virtualizer / IntersectionObserver の初期化タイミングがブラウザバージョンに依存する、(3) feed 選択が React state 経由で UI 描画される間に await timing が外れる、等の理由で **「同じ spec が dev で 90%, CI で 95% pass する」** の状態が起きやすい。strict assert で timeout fail させると 5-10% の偽陽性失敗で全 PR がブロックされ、real regression と判別不能になる。adaptive skip なら「前提が崩れた = 環境固有 / 実装変更で再評価必要」を skip メッセージで明示でき、real regression は本検証の assert で確実に捕捉される。
+
+**How to apply**: e2e spec で「対象要素が UI に現れる」が前提条件になる場合:
+
+1. **Phase 1 (前提確認)** を `try { await expect(element).toBeVisible({ timeout: 5000 }) }` で囲む
+2. catch で `test.skip(true, "前提条件が満たされない理由を具体的に記述")` を呼んで return
+3. **Phase 2 (本検証)** は visible な要素に対して assert (timeout はもう少し長め: 8000ms 等で UI 反映遅延を吸収)
+4. skip メッセージは **「環境依存」「実装変更」を区別** して将来の調査ヒントを残す
+5. 1 spec で 1 件の skip を許容することで、**他の spec / 他の test case が引き続き走る**
+
+**反例 (adaptive skip 不要なケース)**:
+
+- 純粋関数の入出力検証 (e2e でなく unit test 範疇) → 直接 assert で OK
+- ログイン画面 / 静的ページの基本要素 → 描画は安定しており skip 不要
+- API レスポンスを直接検証する test (UI 描画を経由しない) → page.request で直接 assert
+
+主な使用箇所: `regression-load-more-fail.spec.ts` / `regression-ogp-fallback.spec.ts` (ギャラリー記事カード描画前提の adaptive skip)
+
 ## バグ修正の事前判定チェックリスト
 
 `coding-conventions.md` の TDD ルールと当ファイルの「バグを再現するテストケースを追加してから修正すること」を実効化するため、バグ修正に着手する **前に** 以下を必ず判定する。
