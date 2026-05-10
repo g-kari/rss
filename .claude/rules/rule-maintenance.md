@@ -136,6 +136,40 @@ comm -23 /tmp/actual_specs.txt /tmp/doc_specs.txt
 
 主な使用箇所: 2026-05-10 サイクル — `useReadingProgress` を `useSyncedRef` 化 + 規範 codify → 数サイクル後に `grep -rEnB1 "Ref\.current\s*="` sweep で 4 hooks / 5 ref 残骸検出 → 一括連続修正
 
+### 派生ケース: code-quality バグ修正時に同 pattern の grep 検出コマンドを併記 + 後続 sweep を Issue 化する
+
+code-quality バグ (lexicographic 比較バグ / off-by-one / boundary value 等) を 1 ファイルで修正したあと、**「同じ pattern が他の sibling 関数で残っていないか」を grep で sweep するのを忘れる** と、4-5 cycle 後に別ファイルで同類バグを再発見することがある。1 commit で同類修正をまとめて完結させるか、できないなら **「次サイクル sweep 対象」として Issue 化** することで再発防止できる。
+
+```
+パターン: code-quality バグ修正の sweep フロー
+  1. 1 ファイルで code-quality バグ修正
+  2. retrospective-codify で「同 pattern 規範」を codify (例: sibling 純粋関数は
+     fallback chain を完全に揃える)
+  3. ★ 規範に **検出 grep コマンドを併記** (本派生ケース 5 と同じ運用):
+     例: `grep -rEn 'a > b \\? a : b|until > prev|publishedAt > [a-z]+\\.publishedAt' src/`
+  4. 同サイクルで grep を実行 → 残骸が出れば連続修正
+  5. 残骸ゼロでも、**同サイクル末か次サイクル開始時に再 sweep を Issue 化**
+     (「コードが変わるたびに新規発生する可能性」を継続監視)
+```
+
+**Why**: `code-quality` バグ修正は **「特定の関数だけ直して終わり」になりがち** だが、実際には:
+
+1. **同じ author** が同 pattern を別ファイルで書いている可能性 (新規 hook 追加時など)
+2. **コピペ起源の sibling 関数群** で全体が同 pattern を共有 (例: `mergeNotes` / `mergeSnoozed` / `mergeTags` / `chooseLater` の merge 系統)
+3. **テスト spec が無い古いコード** で隠れている可能性
+
+`grep` で機械的に sweep すれば「**今この瞬間の全コード**」を確認できる。新規追加コードの drift は派生ケース 5 (規範 codify 後の sweep) でカバー、既存コードの drift は本派生ケースでカバーする。
+
+**How to apply**: code-quality バグ修正 retrospective で:
+
+1. **「修正した bug pattern」を grep で表現可能か** を判定 (lexicographic 比較 / off-by-one / null check / 等価ガード等は可能)
+2. 可能なら **検出コマンドを規範本文に併記** + 同サイクルで `grep -rEn '<pattern>' src/` を実行
+3. 残骸検出 → 同 commit で連続修正 (1 PR = 1 関心事を維持できる規模なら)
+4. 残骸多数 → **「next cycle で sweep」Issue 起票** (本サイクル commit を肥大化させない)
+5. retrospective-codify では **「sweep 結果」も記載** (「sweep で 0 件」or 「N 件発見、別 Issue 起票」)
+
+主な使用箇所: 2026-05-10 38th cycle — `chooseLater` / `mergeSnoozed` で ISO 8601 lexicographic 比較バグを修正 → code-quality #1 (34th cycle で `read-state-prune.ts` の同類修正後) **規範は codify 済だったが grep sweep が抜けていた** ため 4 cycle 越しに sibling ファイルで再発。本派生ケースで「sweep 併記 + Issue 化」を運用ルール化
+
 ## 6. 大規模ドキュメント分割は contiguous な小クラスターから段階的に進める
 
 `coding-conventions.md` (1785 行 / 65 セクション) のような大規模ファイルを分割するとき、**全セクションを一度に新ファイルへ移動するのは破壊的**。1 コミットで多数のセクションを抜き出すと:

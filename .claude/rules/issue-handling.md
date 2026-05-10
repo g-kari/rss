@@ -374,6 +374,44 @@ grep -rn "<SymbolName>" e2e/ src/
 
 主な使用箇所: `buildImageSlider` (production caller 0 だが spec 5 ケースが re-export hub 経由 import → 同サイクル削除を撤回 → Issue 起票で判断仰ぐ)
 
+### 派生ケース: 新機能監査エージェントの「機能 X 未実装」主張は実コード grep で必ず実存確認する
+
+新機能監査 (`focus area: 新機能開発の余地`) でエージェントが **「機能 X が実装されていない」「機能 Y が無いので追加可能」** を主張するケースは、**bug / perf 監査より誤検知率が高い**。エージェントは新規追加 file (例: `TagsSection.tsx`) を見落として「未実装」と判定することがある。
+
+```
+パターン: 新機能監査結果の検証フロー
+  1. エージェント report 受領 (例: "Feature 1: タグサイドバーフィルター 92%")
+  2. 実コード grep で該当機能の **実存確認**:
+     - find . -name "*.tsx" -path "*sidebar*" | xargs grep -l "tag\|Tag" | head -5
+     - find . -name "*.tsx" | xargs grep -l "<コンポーネント名候補>"
+     - grep -rn "<想定する hook 名>" src/hooks/
+  3. 既実装と判定:
+     - false positive として skip (Issue 起票しない)
+     - 「既実装」をエージェント結果に追記してから他の候補へ
+  4. 未実装と確認:
+     - Issue 起票で案 A/B/C 提示
+```
+
+**Why**: 新機能監査の「未実装」主張は **「無いものを示す」否定証明** で、bug / perf の「ある問題を示す」より検証コストが低い。`grep` で 1 ファイル発見すれば即 false positive 判定できる。逆に検証を省くと、**既実装機能の重複 Issue 起票** で:
+
+1. ユーザーの判断時間を奪う (「これ既にあるけど?」と返される)
+2. AI セッションの信頼性が下がる (「適当に提案している」印象)
+3. Issue tracker のノイズになる
+
+**How to apply**: 新機能監査エージェントの report に対して、**最低 1 回は実コード grep で実存確認** する習慣を持つ:
+
+1. **キーワード grep**: 機能名 / 想定コンポーネント名 / 想定 hook 名 で `grep -rn`
+2. **ファイル名 grep**: `find . -name "*<feature>*"` で類似名 file 探索
+3. **ディレクトリ grep**: 関連ディレクトリ (sidebar / article-view 等) を `ls + grep` で深堀
+4. 1〜2 分の検証で false positive を排除できる
+
+**反例 (検証不要なケース)**:
+
+- **「既存機能の小規模拡張」提案** (例: 「既存 SnoozeModal にカスタム時間入力追加」) → 拡張対象ファイル名が明示されており、エージェントが既実装を引用している → 検証不要
+- **「既存 hook 引数追加」提案** (例: 「buildTtsText に noteText 追加」) → エージェントが既存シグネチャを引用 → 検証不要
+
+主な使用箇所: 38th cycle 新機能監査 — Feature 1 (タグサイドバーフィルター) を 92% で提案されたが `src/components/feed-sidebar/TagsSection.tsx` で **既実装** と判明 → false positive 判定して Issue 起票せず
+
 ## コードコメント・commit message・PR 本文への「未起票 Issue 番号フォワードリファレンス」を禁止
 
 GitHub の Issue 番号は **起票時に連番で払い出される** ため、未起票時点での番号予測は確実に外れる。コメントに `(#714 で経緯確認予定)` のように仮置きで書くと、実際の起票番号 (例: #708) と乖離して「ある架空の番号」コメントが永久に残る。
