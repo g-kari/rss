@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, type UIEvent } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../types";
 import { getContentWidthStyle } from "../lib/reader-settings";
 import { useArticleViewState } from "../hooks/useArticleViewState";
@@ -187,7 +187,7 @@ function ArticleView({
   // #677: ArticleHeader のスクロール連動表示 (下スクロールで隠す・上で表示・上端で常時)
   const { headerVisible, handleScrollForHeader } = useHeaderScrollVisibility(mainRef);
   const composedScroll = useCallback(
-    (e: React.UIEvent<HTMLElement>) => {
+    (e: UIEvent<HTMLElement>) => {
       handleScroll(e);
       handleScrollForHeader(e);
     },

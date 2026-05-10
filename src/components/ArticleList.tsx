@@ -1,6 +1,15 @@
 "use client";
 
-import { useMemo, useEffect, useLayoutEffect, useState, useCallback, useRef, memo } from "react";
+import {
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useCallback,
+  useRef,
+  memo,
+  type MouseEvent,
+} from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDelayedGalleryItems } from "@/hooks/useDelayedGalleryItems";
 import { useEventListener } from "@/hooks/useEventListener";
@@ -195,7 +204,7 @@ function ArticleList({
 
   const ogpCacheRef = useSyncedRef(ogpCache);
   const handleGalleryContextMenu = useCallback(
-    (e: React.MouseEvent, article: Article, _index: number) => {
+    (e: MouseEvent, article: Article, _index: number) => {
       e.preventDefault();
       e.stopPropagation();
       const images = galleryImagesForItem(article.id);
