@@ -13,6 +13,7 @@ import type {
 import dynamic from "next/dynamic";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
 import { useFeedSidebarContext } from "../../contexts/FeedSidebarContext";
+import { useToast } from "../../contexts/ToastContext";
 import FeedItem, { formatCount } from "../FeedItem";
 import FeedAddModal from "../FeedAddModal";
 import RecommendationSection from "../RecommendationSection";
@@ -164,6 +165,7 @@ function FeedSidebar({
     onCreateCollection,
   } = useFeedSidebarContext();
   const { onSaveFilter } = useArticleFilter();
+  const toast = useToast();
   const [newUrl, setNewUrl] = useState("");
   const [newCookie, setNewCookie] = useState("");
   const [newCssSelector, setNewCssSelector] = useState("");
@@ -202,7 +204,13 @@ function FeedSidebar({
     renameFeed,
     handleImportFile,
     clearError,
-  } = useFeedOperations({ onFeedAdded, onFeedDeleted, onFeedRenamed, onFeedsImported });
+  } = useFeedOperations({
+    onFeedAdded,
+    onFeedDeleted,
+    onFeedRenamed,
+    onFeedsImported,
+    onError: toast.error,
+  });
 
   // Issue #410: フォームリセットとモーダルクローズを一括処理する共通関数
   function handleCloseFeedAdd() {

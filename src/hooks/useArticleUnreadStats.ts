@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Article } from "../types";
 import { isArticleRead } from "../lib/article-filter";
 import { useDebounce } from "./useDebounce";
@@ -16,6 +16,33 @@ export interface ArticleUnreadStats {
   readTodayCount: number;
 }
 
+/** 現在の UTC 日付 (`YYYY-MM-DD` 形式) を返す。 */
+function currentUtcDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * UTC 日付が変わるタイミング (午前 0:00 UTC) で再 render する hook。
+ *
+ * `new Date()` を useMemo 内で呼ぶと「memo 作成時の日付」がキャプチャされ、
+ * tab を開きっぱなしで日付を跨いだとき `readTodayCount` が前日基準で stale になる
+ * (perf 監査 37th cycle, confidence 82%)。midnight でのみ state 更新するため
+ * 通常の render 負荷はほぼゼロ。
+ */
+function useUtcDate(): string {
+  const [date, setDate] = useState(currentUtcDate);
+  useEffect(() => {
+    const now = new Date();
+    const nextMidnight = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0),
+    );
+    const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+    const id = setTimeout(() => setDate(currentUtcDate()), msUntilMidnight + 1000);
+    return () => clearTimeout(id);
+  }, [date]);
+  return date;
+}
+
 /**
  * 全記事の未読統計を 1 回だけ scan で計算する hook (#702 案 A)。
  *
@@ -27,6 +54,11 @@ export interface ArticleUnreadStats {
  * `readIds` / `readBeforeTimestamp` を 200ms デバウンスして、連続した既読操作
  * (j キー連打など) で `articles.filter()` が毎フレーム走るのを抑制。
  * サイドバーの未読バッジも同じ debounce に合わせるため、200ms の表示遅延あり。
+ *
+ * **memo 分離 (perf 監査 37th cycle #2)**:
+ * `lastPublishedByFeed` は `articles` のみに依存するため、`readIds` 変化で再計算
+ * しないよう別 useMemo に分離。`unreadByFeed` / `totalUnread` / `readTodayCount` は
+ * `readIds` / `readBeforeTimestamp` 変化時のみ再計算する。
  */
 export function useArticleUnreadStats(
   articles: Article[],
@@ -35,11 +67,25 @@ export function useArticleUnreadStats(
 ): ArticleUnreadStats {
   const debouncedReadIds = useDebounce(readIds, 200);
   const debouncedReadBeforeTimestamp = useDebounce(readBeforeTimestamp, 200);
+  const today = useUtcDate();
 
-  return useMemo(() => {
-    const byFeed = new Map<string, number>();
+  // articles のみ依存: feedHash → 最新 publishedAt
+  // readIds 変化 (j キー連打 / mark-all-read) では再計算しない
+  const lastPublishedByFeed = useMemo(() => {
     const lastPublished = new Map<string, string>();
-    const today = new Date().toISOString().slice(0, 10);
+    for (const a of articles) {
+      if (!a.publishedAt) continue;
+      const prev = lastPublished.get(a.feedHash);
+      if (!prev || a.publishedAt > prev) {
+        lastPublished.set(a.feedHash, a.publishedAt);
+      }
+    }
+    return lastPublished;
+  }, [articles]);
+
+  // articles + debouncedReadIds + debouncedReadBeforeTimestamp + today 依存
+  const { unreadByFeed, totalUnread, readTodayCount } = useMemo(() => {
+    const byFeed = new Map<string, number>();
     let total = 0;
     let todayRead = 0;
     for (const a of articles) {
@@ -49,18 +95,16 @@ export function useArticleUnreadStats(
       } else if (a.publishedAt?.slice(0, 10) === today) {
         todayRead++;
       }
-      if (a.publishedAt) {
-        const prev = lastPublished.get(a.feedHash);
-        if (!prev || a.publishedAt > prev) {
-          lastPublished.set(a.feedHash, a.publishedAt);
-        }
-      }
     }
     return {
       unreadByFeed: byFeed,
       totalUnread: total,
-      lastPublishedByFeed: lastPublished,
       readTodayCount: todayRead,
     };
-  }, [articles, debouncedReadIds, debouncedReadBeforeTimestamp]);
+  }, [articles, debouncedReadIds, debouncedReadBeforeTimestamp, today]);
+
+  return useMemo(
+    () => ({ unreadByFeed, totalUnread, lastPublishedByFeed, readTodayCount }),
+    [unreadByFeed, totalUnread, lastPublishedByFeed, readTodayCount],
+  );
 }

@@ -31,6 +31,22 @@ function equalDigestLimitMap(a: Map<string, number>, b: Map<string, number>): bo
   return true;
 }
 
+/**
+ * `Map<string, string>` の構造的等価判定。
+ *
+ * `feedCategoryMap` / `feedTitleByHash` 等、5 分ポーリングで `feeds` reference が
+ * 変わるたびに rebuild されるが内容自体は通常変化しない Map に適用する。
+ * `equalDigestLimitMap` の string 値版 (perf 監査 37th cycle, confidence 95%)。
+ */
+function equalStringMap(a: Map<string, string>, b: Map<string, string>): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [key, val] of a) {
+    if (b.get(key) !== val) return false;
+  }
+  return true;
+}
+
 /** フィード選択に関する状態 */
 export interface FeedSelectionOptions {
   feedId: string | null;
@@ -155,15 +171,30 @@ export function useFilteredArticles({
     () => buildFilterMap(feeds, (f) => f.id, filterCompileCacheRef.current),
     [feeds],
   );
-  const feedCategoryMap = useMemo(
+  // perf 監査 37th cycle (#1, confidence 95%): feedCategoryMap / feedTitleByHash も
+  // digestLimitMap と同様に内容不変なポーリングで reference が変わると structuralFiltered の
+  // O(n) 再フィルタ (500+ articles, 20-80ms ブロック) を 12×/hour 引き起こす。
+  // equalStringMap で構造的等価ガード。
+  const stableFeedCategoryMapRef = useRef<Map<string, string>>(new Map());
+  const computedFeedCategoryMap = useMemo(
     () =>
       new Map(feeds.filter((f) => f.category).map((f) => [f.id, f.category!] as [string, string])),
     [feeds],
   );
-  const feedTitleByHash = useMemo(
+  if (!equalStringMap(stableFeedCategoryMapRef.current, computedFeedCategoryMap)) {
+    stableFeedCategoryMapRef.current = computedFeedCategoryMap;
+  }
+  const feedCategoryMap = stableFeedCategoryMapRef.current;
+
+  const stableFeedTitleByHashRef = useRef<Map<string, string>>(new Map());
+  const computedFeedTitleByHash = useMemo(
     () => new Map(feeds.map((f) => [f.id, f.title] as [string, string])),
     [feeds],
   );
+  if (!equalStringMap(stableFeedTitleByHashRef.current, computedFeedTitleByHash)) {
+    stableFeedTitleByHashRef.current = computedFeedTitleByHash;
+  }
+  const feedTitleByHash = stableFeedTitleByHashRef.current;
   // perf F2: 構造的等価ガードで内容不変なら旧 reference を保持し、`filtered` useMemo の
   // 再 sort を回避する。`feeds` の lastFetchedAt 更新で reference 変化が頻発する一方、
   // digestLimit 設定は安定していることが多いため大半のポーリングで再計算が不要になる。

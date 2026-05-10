@@ -2,6 +2,12 @@
 
 ## 2026-05-10 (latest)
 
+### パフォーマンス改善っ + UX 改善っ + ドキュメント整備っ (監査エージェント発見 6 件一括対応)
+
+- **perf 3 連続修正!⚡** — 監査エージェント (perf 観点 confidence 82〜95%) が発見した 3 件を同サイクル一括修正〜🎯 (1) `useFilteredArticles` の `feedCategoryMap` / `feedTitleByHash` に **構造的等価ガード** (`equalStringMap`) を追加 → 5 分ポーリングで `feeds` reference が変わるたびに走っていた 500+ 記事の O(n) 再フィルタ (20-80ms ブロック × 12回/h) を内容変化時のみに削減、(2) `useArticleUnreadStats` の `lastPublishedByFeed` を **別 useMemo に分離** → `readIds` 変化 (j キー連打 / mark-all-read) で再計算しない設計に変更、(3) 同 hook で `today` を **midnight refresh する `useUtcDate` hook** に切り出し → tab 開きっぱなしで日付跨ぎ時の `readTodayCount` stale バグを修正〜📊 89 件全関連 spec pass〜🛡️
+- **UX 1 件修正 + 1 件 prop 受け口準備!💡** — (1) `useFeedOperations` (deleteFeed / renameFeed / addFeed) のエラー通知が **サイドバーのローカル `setError` (3 秒後消去) のみで記事一覧ペインまで届かない** 問題を修正、`onError` callback 引数追加 → `feed-sidebar` で `toast.error` に接続して `ToastContainer` 経由で確実に届くように〜🛡️ (2) `ArticleListEmptyState` (フィード未登録時の空状態) に「フィードを追加」CTA ボタン追加 (prop 受け口のみ、配線は別 Issue 起票予定)〜🎀
+- **ドキュメント整備っ** — `api-spec.md` の `PATCH /api/feeds/:id` の `FEED_NOT_FOUND` 説明を補足: 実装は「購読一覧にない」+「共有フィードメタが R2 に存在しない」の **2 経路** で 404 を返すが、文書は前者のみ記載 (docs drift 監査 confidence 82%)〜📚
+
 ### セキュリティ対策っ
 
 - **#705 修正: JWT cross-service token replay 防御 (aud=authBaseUrl fallback 撤廃)!🔒** — `src/lib/auth.ts#verifyJwt` で旧実装は `acceptedAuds = [expectedAud, authBaseUrl]` だったため、**同 IdP (id.0g0.xyz) を使う別サービス (例: 別の rss-reader / 0g0-id 配下の他アプリ) の access_token を本サービスで受け入れてしまう** cross-service token replay リスクがあった問題を修正〜🎯 上流 0g0-id リポジトリ調査 (`workers/id/src/utils/token-pair.ts#issueTokenPair`) で **OAuth クライアント (rss-reader 等) のトークンは `aud = clientId` 固定で発行されている** ことを確認 → fallback 不要と判定〜📦 案 A 採用: `acceptedAuds = [expectedAud]` に縮退、TODO(#379) コメント削除、fallback warning ログも削除〜🛡️ TDD `e2e/jwt-aud-iss.spec.ts` に新規 2 spec 追加 (aud=AUTH_BASE_URL のみ / 配列に AUTH_BASE_URL 含む但し CLIENT_ID 不在 → 両方 reject)、全 10 ケース pass〜📚 (security 監査エージェント Confidence 85% 指摘、#379 closed の後継 #705 として最終決着)

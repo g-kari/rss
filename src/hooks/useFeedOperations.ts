@@ -11,6 +11,12 @@ interface Callbacks {
   onFeedDeleted: (id: string) => void;
   onFeedRenamed: (feed: Feed) => void;
   onFeedsImported: (feeds: Feed[]) => void;
+  /**
+   * 操作失敗時に呼ばれる通知コールバック (例: `toast.error`)。
+   * 内部の `setError` (3 秒テキスト表示) は記事一覧ペインまで届かないため、
+   * 同じメッセージを `ToastContainer` 経由でも表示する用途。
+   */
+  onError?: (msg: string) => void;
 }
 
 export interface ImportMessage {
@@ -32,7 +38,12 @@ export function useFeedOperations({
   onFeedDeleted,
   onFeedRenamed,
   onFeedsImported,
+  onError,
 }: Callbacks) {
+  const notify = (msg: string) => {
+    setError(msg);
+    onError?.(msg);
+  };
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useAutoReset("", 3000);
@@ -63,7 +74,7 @@ export function useFeedOperations({
       });
       if (!res.ok) {
         const data = (await res.json()) as { error: string; canRetryWithSelector?: boolean };
-        setError(data.error ?? "フィードの追加に失敗しました");
+        notify(data.error ?? "フィードの追加に失敗しました");
         return { canRetryWithSelector: data.canRetryWithSelector };
       }
       const feed = (await res.json()) as Feed;
@@ -71,7 +82,7 @@ export function useFeedOperations({
       onSuccess();
       onFeedAdded(feed);
     } catch {
-      setError("ネットワークエラーが発生しました");
+      notify("ネットワークエラーが発生しました");
     } finally {
       setAdding(false);
     }
@@ -83,7 +94,7 @@ export function useFeedOperations({
       invalidateSwCache(["/api/feeds", "/api/articles"]);
       onFeedDeleted(id);
     } catch {
-      setError("フィードの削除に失敗しました");
+      notify("フィードの削除に失敗しました");
     }
   }
 
@@ -96,7 +107,7 @@ export function useFeedOperations({
       });
       onFeedRenamed(updated);
     } catch {
-      setError("フィードのタイトル変更に失敗しました");
+      notify("フィードのタイトル変更に失敗しました");
     }
   }
 
