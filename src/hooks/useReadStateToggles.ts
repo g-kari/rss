@@ -1,12 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import {
+  useMemo,
+  type Dispatch,
+  type MutableRefObject,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 import { STORAGE_KEYS, toggleSetItem } from "../lib/storage";
 import type { SetKind, PendingSets } from "../lib/read-state-storage";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
 function makeToggle(
-  setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+  setter: Dispatch<SetStateAction<Set<string>>>,
   key: string,
   schedule: () => void,
   getCurrentSet: () => Set<string>,
@@ -26,15 +32,15 @@ function makeToggle(
 }
 
 export interface ToggleDeps {
-  setReadIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setBookmarkIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setReadingListIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setLikeIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  stateRef: React.MutableRefObject<ReadStateSets>;
-  pendingAddedRef: React.MutableRefObject<PendingSets>;
-  pendingRemovedRef: React.MutableRefObject<PendingSets>;
-  scheduleSyncRef: React.RefObject<() => void>;
-  syncImmediatelyRef: React.RefObject<() => void>;
+  setReadIds: Dispatch<SetStateAction<Set<string>>>;
+  setBookmarkIds: Dispatch<SetStateAction<Set<string>>>;
+  setReadingListIds: Dispatch<SetStateAction<Set<string>>>;
+  setLikeIds: Dispatch<SetStateAction<Set<string>>>;
+  stateRef: MutableRefObject<ReadStateSets>;
+  pendingAddedRef: MutableRefObject<PendingSets>;
+  pendingRemovedRef: MutableRefObject<PendingSets>;
+  scheduleSyncRef: RefObject<() => void>;
+  syncImmediatelyRef: RefObject<() => void>;
 }
 
 export interface ToggleResult {

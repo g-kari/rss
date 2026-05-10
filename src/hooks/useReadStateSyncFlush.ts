@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useCallback, useRef, useState } from "react";
+import {
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type RefObject,
+} from "react";
 import type { KeywordFilter, ReadState } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
@@ -17,10 +24,10 @@ import type { ReadStateSets } from "./useReadStatePersistence";
 
 export interface FlushDeps extends PendingRefs {
   user: { sub: string } | null | undefined;
-  stateRef: React.MutableRefObject<ReadStateSets>;
-  globalFilterRef: React.RefObject<KeywordFilter | null>;
+  stateRef: MutableRefObject<ReadStateSets>;
+  globalFilterRef: RefObject<KeywordFilter | null>;
   applyServerState: (state: ReadState) => void;
-  lastServerSyncRef: React.MutableRefObject<number>;
+  lastServerSyncRef: MutableRefObject<number>;
 }
 
 export interface FlushResult {
@@ -36,8 +43,8 @@ interface FlushPayload {
 
 function prepareFlush(
   pendingRefs: PendingRefs,
-  globalFilterRef: React.RefObject<KeywordFilter | null>,
-  stateRef: React.MutableRefObject<ReadStateSets>,
+  globalFilterRef: RefObject<KeywordFilter | null>,
+  stateRef: MutableRefObject<ReadStateSets>,
 ): FlushPayload {
   const snapshot = extractAndResetPending(pendingRefs);
   const body = serializeReadState(

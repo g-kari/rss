@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  type Dispatch,
+  type MutableRefObject,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 import type { Article, KeywordFilter } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, saveSet, loadSet, loadJson, storageGet } from "../lib/storage";
@@ -33,7 +41,7 @@ export interface ReadStatePersistenceResult {
   snoozedUntil: Record<string, string>;
   notes: Record<string, string>;
   tagIds: Record<string, string[]>;
-  setTagIdsState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
+  setTagIdsState: Dispatch<SetStateAction<Record<string, string[]>>>;
   ttlDays: number | null;
   setTtlDays: (days: number | null) => void;
   markRead: (articleId: string) => void;
@@ -47,11 +55,11 @@ export interface ReadStatePersistenceResult {
   snoozeArticle: (articleId: string, durationMs: number) => void;
   setNote: (articleId: string, text: string) => void;
   deleteNote: (articleId: string) => void;
-  stateRef: React.MutableRefObject<ReadStateSets>;
-  globalFilterRef: React.RefObject<KeywordFilter | null>;
-  pendingAddedRef: React.MutableRefObject<PendingSets>;
-  pendingRemovedRef: React.MutableRefObject<PendingSets>;
-  globalFilterDirtyRef: React.MutableRefObject<boolean>;
+  stateRef: MutableRefObject<ReadStateSets>;
+  globalFilterRef: RefObject<KeywordFilter | null>;
+  pendingAddedRef: MutableRefObject<PendingSets>;
+  pendingRemovedRef: MutableRefObject<PendingSets>;
+  globalFilterDirtyRef: MutableRefObject<boolean>;
   getSetStateDispatchers: () => SetStateDispatchers;
   getOtherStateDispatchers: () => OtherStateDispatchers;
 }
