@@ -230,6 +230,27 @@ export async function PATCH(request, { params }) {
 
 主な使用箇所: `app/api/collections/[id]/route.ts` / `app/api/auth/dbsc/{challenge,register}/route.ts` の UUID 正規表現 4 箇所重複 → `isValidSessionId` 集約 (リファクタ監査エージェント confidence 92%)
 
+### 派生ケース: 同名 enum / type の重複は canonical の `type X = Y` alias に統合する
+
+別 hook で **canonical 型と同じ意味の独立 enum** が定義されているケース (例: `AiErrorType = "network" | "rate_limit" | "model_error" | "unknown"` と canonical `HttpErrorType = "network" | "rate_limit" | "server_error" | "client_error" | "unknown"`)。consumer が narrow チェック (例: `aiError.type === "rate_limit"`) するだけなら、**`type AiErrorType = HttpErrorType;` の alias 化** で互換性を保ちつつ統合できる。
+
+**判定フロー**:
+
+1. **consumer の narrow チェック箇所を grep**: `grep -rn "<typeName>\|\.type === \"" src/ --include="*.tsx"` で `.type === "X"` のような literal 比較を全件抽出
+2. **canonical 型に含まれない literal を参照しているか確認**: 例えば `AiErrorType` の `"model_error"` は canonical `HttpErrorType` (`"server_error"`) に統合可能か → consumer で `"model_error"` を直接参照していなければ OK
+3. canonical 型に含まれない literal が consumer で参照されているなら、その literal を canonical 型に追加してから alias 化
+4. **canonical 型と完全に同じ意味なら type alias 化**: `export type X = CanonicalType;` で互換性維持
+
+**Why**: 同名 enum の重複は単純な型互換性のずれ (例: `"model_error"` vs `"server_error"`) で「人間が同じ意味と理解しているのに型が違う」状態を生む。alias 化することで「同じ型」が型システムで保証され、片方の canonical に variant が追加されたとき consumer 側にも自動的に反映される (drift 防止)。
+
+**反例 (alias 化が不適切なケース)**:
+
+- canonical 型に **意図的に存在しない literal** がローカル enum にある場合 → alias 化は別の場所で drift を生む。alias 化せず canonical 型に variant を追加するか、独立を維持
+- canonical 型の責務とローカル型の責務が **本質的に異なる** 場合 (例: HTTP 由来の error vs AI モデルロード状態) → alias 化せず独立を維持
+- alias 化で **メッセージ文言が canonical と乖離** する場合 → canonical の `formatXxx(type, opts)` を同時に流用すれば文言も統一可能
+
+主な使用箇所: `useArticleAi.ts` の `AiErrorType = HttpErrorType` 統合 (43rd cycle simplify #1 — `classifyHttpError` / `getErrorMessage` 重複定義削除 + 429 で Retry-After ヘッダー秒数表示バグも同時修正)
+
 ## stale closure 回避パターン (`useSyncedRef`)
 
 `useEffect` / `useCallback` のクロージャが古い値を参照する問題を `useSyncedRef` で回避する。

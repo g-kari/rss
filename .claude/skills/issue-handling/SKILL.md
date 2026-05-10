@@ -417,6 +417,40 @@ grep -rn "<SymbolName>" e2e/ src/
 
 主な使用箇所: 38th cycle 新機能監査 — Feature 1 (タグサイドバーフィルター) を 92% で提案されたが `src/components/feed-sidebar/TagsSection.tsx` で **既実装** と判明 → false positive 判定して Issue 起票せず
 
+### 派生ケース: 調査エージェントの「関数 A が機能 B を含む」のような構造的仮定は、当該関数を Read で開いて検証する
+
+調査エージェント (Explore / feature-dev:code-explorer) が **「関数 A は機能 B を内包する」「pipeline P は処理 Q を含む」「helper H は X / Y を組み合わせる」** のような **複合関数の内部構造に関する仮定** を提示した場合、エージェントが **その関数を実際に開いて確認していない可能性** が高い。エージェントは「呼出関係」を `grep` で見るだけで「関数本体の内訳」までは Read していないことがある。
+
+```bash
+# 仮説: applyCorePipeline は slide transform を含む
+grep -n "transformSpeakerDeck\|transformSlideShare" src/lib/html-post-processor.ts
+# → 出力で applyCorePipeline 内部から呼ばれていないなら仮説は誤り
+```
+
+**判定フロー**:
+
+1. エージェント report で **「関数 A は B / C を内包する」** のような構造的主張を見つけたら、その関数を `Read` で開く (skill 規範「サブエージェント調査結果は該当コードで検証してから採用」の延長)
+2. 主張内容が実際に関数本体に含まれているか確認 — 含まれているのは **呼出関係** か **関数本体** か
+3. 含まれていなければ、**修正計画を「A に B / C を追加する」へ調整** (元の修正計画は「B / C は既にある前提で C' を追加」のような誤った前提を持っている可能性)
+4. 設計案を Issue コメントで提示するときは「**真因確認結果**」セクションを設けて、Read で確認した結果を明示 (将来の AI が同じ誤読を再発しないように)
+
+**Why**: 調査エージェントは pipeline / wrapper / orchestrator のような **複合関数の内訳** を grep の呼出関係だけで判定し、関数本体まで読まないことがある。「呼ばれている」と「含まれている」は別概念 — 例えば「`extractMainContent` から transform を呼ぶ」ことと「`applyCorePipeline` の中に transform が組み込まれている」ことは全く違う。grep で `transformX` が登場する箇所が複数あっても、それは別の caller かもしれない。
+
+**How to apply**: エージェント report で以下のキーワードを見つけたら `Read` で当該関数本体を開く習慣を持つ:
+
+1. **「pipeline P は処理 Q を含む」** — `Read` で pipeline 関数本体を開いて Q が呼ばれているか確認
+2. **「orchestrator A は B / C / D を組み合わせる」** — `Read` で A の関数本体を開いて B / C / D が呼ばれているか
+3. **「wrapper W は X 化された出力を返す」** — `Read` で W の関数本体を開いて X 化処理 (例: sanitize / encode) が呼ばれているか
+4. **「helper H には Y のフォールバックが組み込まれている」** — `Read` で H の関数本体を開いて Y フォールバック (例: `??` chain / try-catch) が含まれているか
+
+**反例 (Read 検証不要なケース)**:
+
+- エージェントが既に **関数本体の引用 (3-5 行)** を report に含めている場合 → 引用先を信頼可能
+- 関数名が **完全に責務を表現** (例: `sanitizeHtml(x)` は sanitize する) → Read 不要
+- 主張が **「呼出関係」のみ** (例: 「caller X は Y を呼ぶ」) → grep で確認すれば十分
+
+主な使用箇所: 43rd cycle #709 スライド埋め込み調査 — エージェント report が暗黙に「applyCorePipeline に slide transform が含まれる前提で xml-parser content にも iframe が保存されている」と仮定。実コード Read で applyCorePipeline には含まれず、xml-parser content にも iframe なしと判明 → 設計案を「applyCorePipeline に追加する」方向に修正
+
 ## コードコメント・commit message・PR 本文への「未起票 Issue 番号フォワードリファレンス」を禁止
 
 GitHub の Issue 番号は **起票時に連番で払い出される** ため、未起票時点での番号予測は確実に外れる。コメントに `(#714 で経緯確認予定)` のように仮置きで書くと、実際の起票番号 (例: #708) と乖離して「ある架空の番号」コメントが永久に残る。
