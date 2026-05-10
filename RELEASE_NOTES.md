@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### リファクタリングっ + simplify (監査エージェント発見 3 件一括修正)
+
+- **simplify 3 連続修正!🎀** — リファクタ監査エージェントが confidence 85〜92% で発見した 3 件を同サイクル一括修正〜🎯 (1) `app/api/collections/[id]/route.ts` / `app/api/auth/dbsc/challenge/route.ts` / `app/api/auth/dbsc/register/route.ts` の 3 ファイルで重複していた UUID 正規表現 (`^[0-9a-f]{8}-[0-9a-f]{4}-...`) を既存 `isValidSessionId()` 共通ヘルパーに置換 (4 箇所同期修正のリスク解消)、(2) `useFeedGroups` / `useCollections` で重複していた `sortByOrder` 関数を `src/lib/sort-utils.ts` に集約 (新規 hook 追加時の 3 件目 drift 防止) + TDD 8 ケース全 pass (`e2e/sort-utils.spec.ts`)、(3) `src/lib/article-filter.ts#EMPTY_FEED_TITLE_MAP` sentinel に `Object.freeze` 追加 (`react-patterns.md` 規範準拠、`useFilteredArticles` consumer 多数で誤 mutate 防止)〜🛡️ 全件「規範パターン複製レベル + 1〜2 ファイル touch + 設計判断不要」なので Issue 起票せず同サイクル一括修正パターン採用〜📚
+
 ### セキュリティ対策っ
 
 - **#706 修正: OGP cache poisoning 防御 (Twitter fallback 経路の TTL 短縮)!🔒** — `fetchTwitterFallbackImage` (X/Twitter 投稿で OGP 画像が無いとき tweet 内リンク先 OGP 画像をフォールバック取得する経路) は **攻撃者が tweet に任意 image を含む linked page を投稿すると、その image URL が 30 日間 shared cache に居座り、同じ tweet を見る全ユーザーに拡散する poisoning が成立** していた問題を修正〜🎯 案 A 採用: fallback 経路の TTL を **30 日 → 1 日に短縮** して影響範囲を限定 (攻撃者が tweet を継続維持しないと poisoning 持続不可)〜📦 純粋関数 `computeOgpCacheTtl({ hasContent, isFallback })` を `src/lib/ogp-cache-ttl.ts` に新設して TDD で全 4 分岐網羅 (通常成功 30 日 / fallback 経路 1 日 / 空応答 1 日 / fallback+空応答 1 日)〜🛡️ negative cache の既存 TTL (`OGP_NEGATIVE_CACHE_TTL_SEC = 24h`) と同一なので独立定数は不要、命名で意図を表現〜📚 (security 監査エージェント Confidence 88% 指摘)

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch, apiFetchJson } from "@/lib/api-fetch";
 import { devError } from "@/lib/dev-log";
+import { sortByOrder } from "@/lib/sort-utils";
 import type { Collection, UserProfile } from "@/types";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -18,10 +19,6 @@ export interface CollectionsState {
   deleteCollection: (id: string) => Promise<boolean>;
   addArticleToCollection: (collectionId: string, articleId: string) => Promise<void>;
   removeArticleFromCollection: (collectionId: string, articleId: string) => Promise<void>;
-}
-
-function sortByOrder(list: Collection[]): Collection[] {
-  return [...list].sort((a, b) => a.order - b.order);
 }
 
 export function useCollections(

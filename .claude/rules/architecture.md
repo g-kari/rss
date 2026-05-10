@@ -361,6 +361,7 @@ src/
     rate-limit.ts            # KV ベースのクールダウン・スライディングウィンドウ レートリミット (checkAndUpdateCooldown / checkSlidingWindow)
     rate-limit-logic.ts      # スライディングウィンドウ判定の純粋関数 (evaluateSlidingWindow) — next/* 非依存でユニットテスト可能
     serialize-async.ts       # 同一キー非同期操作の直列化ユーティリティ (serialized)
+    sort-utils.ts            # `order: number` フィールドを持つ配列の安定ソート純粋関数（sortByOrder — useFeedGroups / useCollections の重複ロジックを集約）
     obsidian.ts              # Obsidian URI スキーム連携（obsidian://new URI 生成・ファイル名サニタイズ）
     html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
     reading-progress.ts      # 読書進捗計算純粋関数（computeProgress / clampProgress / buildAnchorSelector）
@@ -772,6 +773,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `sanitize-html.spec.ts`               | `src/lib/html.ts#sanitizeHtml`                                                                                                                                                                 |
 | `script-loaded-images.spec.ts`        | `src/lib/content.ts#resolveScriptLoadedImages` — WordPress プラグインの `loadImage(elementId, jpgUrl, gifUrl)` で gif (動的) を優先採用する純粋関数 (digitallover.moe 対応)                    |
 | `serialize-error.spec.ts`             | `src/lib/serialize-error.ts` — エラーシリアライズ                                                                                                                                              |
+| `sort-utils.spec.ts`                  | `src/lib/sort-utils.ts#sortByOrder` — order 昇順ソート純粋関数（mutate しない / 空配列 / stable sort / readonly 互換、全 8 ケース網羅）                                                        |
 | `shared-feed-merge.spec.ts`           | `src/lib/shared-feed.ts#mergeNewArticles`                                                                                                                                                      |
 | `shared-feed.spec.ts`                 | `src/lib/shared-feed.ts` — フィードデータ R2 操作                                                                                                                                              |
 | `speakerdeck-embed.spec.ts`           | `src/lib/html-embed-transforms.ts` — SpeakerDeck 変換                                                                                                                                          |

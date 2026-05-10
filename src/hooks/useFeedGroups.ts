@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FeedGroup, UserProfile } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
+import { sortByOrder } from "../lib/sort-utils";
 import { useSyncedRef } from "./useSyncedRef";
 
 /** `useFeedGroups` の戻り値型 */
@@ -22,10 +23,6 @@ export interface FeedGroupsState {
    * 先頭での "up" や末尾での "down" は no-op。
    */
   reorderGroup: (id: string, direction: "up" | "down") => Promise<void>;
-}
-
-function sortByOrder(groups: FeedGroup[]): FeedGroup[] {
-  return [...groups].sort((a, b) => a.order - b.order);
 }
 
 /**
