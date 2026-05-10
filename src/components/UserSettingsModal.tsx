@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import Modal from "./Modal";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useHeaderShareTargets } from "../hooks/useHeaderShareTargets";
@@ -83,7 +83,7 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
   // - ArrowLeft / ArrowRight でタブ間を移動 (端でループ)
   // - active タブのみ tabIndex=0、他は tabIndex=-1 (roving tabindex)
   // - Home / End で先頭・末尾へジャンプ
-  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleTabKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const currentIndex = TABS.findIndex((t) => t.id === activeTab);
     let nextIndex = -1;
     if (e.key === "ArrowRight") nextIndex = (currentIndex + 1) % TABS.length;

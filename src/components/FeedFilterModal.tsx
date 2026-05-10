@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, type KeyboardEvent } from "react";
 import type { Feed, KeywordFilter } from "../types";
 import Modal from "./Modal";
 
@@ -43,7 +43,7 @@ function TagInput({
     [tags, onChange],
   );
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       addTag(input);

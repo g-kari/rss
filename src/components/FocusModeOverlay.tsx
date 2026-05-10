@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, type ComponentProps } from "react";
+import { useCallback, useEffect, useRef, type ComponentProps, type KeyboardEvent } from "react";
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
 import { usePopupLock } from "@/hooks/usePopupLock";
@@ -34,7 +34,7 @@ export default function FocusModeOverlay({ focusMode, exitFocusMode, articleView
   // Shift+Tab で最初の要素 → 最後の要素へ循環させ、ダイアログ外へ抜けない。
   // Escape でフォーカスモード終了。
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
+    (e: KeyboardEvent<HTMLDivElement>) => {
       if (e.key === "Escape") {
         exitFocusMode();
         return;
