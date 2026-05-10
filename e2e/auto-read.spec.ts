@@ -6,13 +6,13 @@ import {
 } from "../src/lib/auto-read";
 
 test.describe("isAutoReadFinished", () => {
-  test("playing → not playing の遷移で完了とみなす", () => {
+  test("endedCount が増加 → 自然完了とみなす", () => {
     expect(
       isAutoReadFinished({
         enabled: true,
         ttsSupported: true,
-        prevPlaying: true,
-        currentPlaying: false,
+        prevEndedCount: 0,
+        currentEndedCount: 1,
         paused: false,
       }),
     ).toBe(true);
@@ -23,8 +23,8 @@ test.describe("isAutoReadFinished", () => {
       isAutoReadFinished({
         enabled: false,
         ttsSupported: true,
-        prevPlaying: true,
-        currentPlaying: false,
+        prevEndedCount: 0,
+        currentEndedCount: 1,
         paused: false,
       }),
     ).toBe(false);
@@ -35,8 +35,8 @@ test.describe("isAutoReadFinished", () => {
       isAutoReadFinished({
         enabled: true,
         ttsSupported: false,
-        prevPlaying: true,
-        currentPlaying: false,
+        prevEndedCount: 0,
+        currentEndedCount: 1,
         paused: false,
       }),
     ).toBe(false);
@@ -47,35 +47,52 @@ test.describe("isAutoReadFinished", () => {
       isAutoReadFinished({
         enabled: true,
         ttsSupported: true,
-        prevPlaying: true,
-        currentPlaying: false,
+        prevEndedCount: 0,
+        currentEndedCount: 1,
         paused: true,
       }),
     ).toBe(false);
   });
 
-  test("再生中 → 再生中は完了ではない", () => {
+  test("endedCount 不変なら完了ではない (再生中)", () => {
     expect(
       isAutoReadFinished({
         enabled: true,
         ttsSupported: true,
-        prevPlaying: true,
-        currentPlaying: true,
+        prevEndedCount: 0,
+        currentEndedCount: 0,
         paused: false,
       }),
     ).toBe(false);
   });
 
-  test("停止中 → 再生中は完了ではない（再生開始）", () => {
+  test("#716: 手動停止 (cancel) では endedCount が増えない → finished=false", () => {
+    // ユーザーが Shift+P で TTS を止めると `speechSynthesis.cancel()` が呼ばれて
+    // `utterance.onend` は発火しない (大半のブラウザの挙動)。
+    // → endedCount は不変なので「自然完了」と区別され、次記事への自動遷移は起きない。
     expect(
       isAutoReadFinished({
         enabled: true,
         ttsSupported: true,
-        prevPlaying: false,
-        currentPlaying: true,
+        prevEndedCount: 3,
+        currentEndedCount: 3, // cancel() は increment しない
         paused: false,
       }),
     ).toBe(false);
+  });
+
+  test("複数件まとめて endedCount が増加しても 1 回だけ finished とみなす", () => {
+    // 複数 utterance が連続で onend → endedCount が 2 以上増加しても
+    // 「increase あり」で finished=true。1 回の effect で 1 件分の advance が走る前提。
+    expect(
+      isAutoReadFinished({
+        enabled: true,
+        ttsSupported: true,
+        prevEndedCount: 5,
+        currentEndedCount: 7,
+        paused: false,
+      }),
+    ).toBe(true);
   });
 });
 

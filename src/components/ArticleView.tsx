@@ -129,6 +129,7 @@ function ArticleView({
     ttsSupported,
     ttsPlaying,
     ttsPaused,
+    ttsEndedCount,
     ttsRate,
     ttsCycleRate,
     handleTtsToggle,
@@ -366,6 +367,7 @@ function ArticleView({
         ttsSupported={ttsSupported}
         ttsPlaying={ttsPlaying}
         ttsPaused={ttsPaused}
+        ttsEndedCount={ttsEndedCount}
         fetching={fetching}
         fetchError={fetchError}
         hasFullContent={hasFullContent}

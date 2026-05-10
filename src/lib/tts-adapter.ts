@@ -46,6 +46,16 @@ export interface TtsAdapter {
   isPlaying: boolean;
   /** 一時停止中か */
   isPaused: boolean;
+  /**
+   * TTS が「自然完了」(`utterance.onend` 相当) した累積回数 (#716)。
+   *
+   * 手動 `stop()` (= `speechSynthesis.cancel()`) では increment しない。
+   * オートモード (`AutoReadController`) は本値の増加を「自然完了」のシグナルとして使い、
+   * 手動停止と確実に区別して次記事への自動遷移を判定する。
+   *
+   * 値の絶対値に意味はない (overflow 設計不要)。`prev → current` の差分でのみ判定する。
+   */
+  endedCount: number;
   /** 現在の速度 */
   rate: TtsRate;
   /** 速度を順番に切り替え (engine 別の許容セットで cycle)。戻り値は次の rate 値 (UX 監査 #2: Shift+R toast 表示用) */
