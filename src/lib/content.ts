@@ -281,15 +281,26 @@ export async function markdownToHtml(md: string): Promise<string> {
  * 画像 URL を静的に解決する。
  * digitallover.moe 等が WordPress プラグインで埋め込む非標準遅延ロード画像に対応。
  * preClean で <script> が除去される前に元 HTML から URL を抽出して img[src] に差し込む。
+ *
+ * **gif 優先採用 ロジック**: `loadImage(id, jpg, gif)` で第 3 引数 (gif) があり、かつ
+ * https:// URL なら gif を採用する。digitallover.moe では jpg は静止サムネ・gif が
+ * 本物の動的画像で、jpg 側は 404 を返すケースがあるため (実測: jpg=404, gif=200)。
+ * gif が無い / 不正なら jpg にフォールバック。
  */
 export function resolveScriptLoadedImages(html: string): string {
   const idToUrl = new Map<string, string>();
   for (const scriptMatch of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi)) {
     for (const callMatch of scriptMatch[1].matchAll(
-      /loadImage\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/gi,
+      /loadImage\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"](?:\s*,\s*['"]([^'"]+)['"])?/gi,
     )) {
-      const [, elementId, jpgUrl] = callMatch;
-      if (/^https?:\/\//i.test(jpgUrl)) idToUrl.set(elementId, jpgUrl);
+      const [, elementId, jpgUrl, gifUrl] = callMatch;
+      const preferred =
+        gifUrl && /^https?:\/\//i.test(gifUrl)
+          ? gifUrl
+          : /^https?:\/\//i.test(jpgUrl)
+            ? jpgUrl
+            : null;
+      if (preferred) idToUrl.set(elementId, preferred);
     }
   }
   if (idToUrl.size === 0) return html;

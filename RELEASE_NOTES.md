@@ -2,6 +2,10 @@
 
 ## 2026-05-10 (latest)
 
+### バグ修正っ
+
+- **digitallover.moe で GIF が 404 になる問題を修正!🎬** — `loadImage('id', 'jpg', 'gif')` パターンで第 2 引数 (jpg) を一律採用していたが、jpg=404/gif=200 の実例 (`gyutto.com/data/item_img/.../283294_430.{jpg,gif}` 実測) があったため第 3 引数 (gif) を優先採用するロジックに修正〜🎯 後方互換: 第 3 引数なし or 非 https の場合は jpg にフォールバック〜🛡️ TDD 7 ケース全 pass (`e2e/script-loaded-images.spec.ts` 新設、デフォルトの jpg 採用 / gif 優先 / 相対 URL fallback / 既存 src 維持 / loadImage 不在 / 実例再現を網羅)〜📚
+
 ### セキュリティ対策っ + a11yっ
 
 - **#698 修正: AI 要約・翻訳キャッシュの cross-user poisoning 脆弱性を解消!🔒** — `articleId` がユーザー入力をそのまま信用していたため、攻撃者が被害ユーザーの `articleId` (購読者なら誰でも知れる決定論的値) で偽 `url` を渡して全ユーザーに偽 AI 結果をばらまける状態だったのを修正〜🛡️ 案 A 採用: cache key を `ai-cache/{type}/id-{articleId}` → `ai-cache/{type}/url-{sha256(url)}` に変更、攻撃者は自身が制御する url の cache しか書けないため完全分離〜🎯 旧 cache は無効化されるが「既存は無視 OK」とユーザー判断あり〜📦 関連修正: `useArticleAi.ts` で server に `articleId` 送信を停止、`ai-route-helper.ts` から `articleId` バリデーションを削除、e2e の旧 regex spec を削除〜💎
