@@ -95,42 +95,97 @@ async function handleGet(
       DEFAULT_FETCH_TIMEOUT_MS,
     );
 
+    const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+
+    // #749: 失敗時の詳細を console.error + X-Image-Proxy-* ヘッダーで返し、wrangler tail / DevTools
+    // どちらからでも切り分け可能にする (前 #720 案 B では原因が見えないまま close した反省)。
     if (!res.ok) {
-      return errorImageSvg(res.status === 404 ? "not_found" : "unavailable");
+      console.error(
+        `[image-proxy] upstream not ok: url=${url} status=${res.status} content-type="${ct}"`,
+      );
+      const reason =
+        res.status === 404 ? "not_found" : res.status === 403 ? "bot_blocked" : "unavailable";
+      return errorImageSvg(reason, {
+        upstreamStatus: res.status,
+        upstreamContentType: ct || undefined,
+      });
     }
 
-    const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
     const needsMagicCheck = ct === "application/octet-stream" || ct === "";
 
     // Content-Type ベースの検証：ALLOWED_IMAGE_CONTENT_TYPES に含まれない形式は拒否する。
     // ホワイトリスト方式により、SVG など XSS リスクのある形式を一括排除する。
     if (!needsMagicCheck && !ALLOWED_IMAGE_CONTENT_TYPES.has(ct)) {
-      return errorImageSvg("unavailable");
+      console.error(`[image-proxy] MIME rejected: url=${url} content-type="${ct}"`);
+      return errorImageSvg("mime_rejected", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+      });
     }
 
     // Content-Length による事前検証: ボディを読む前にサイズ超過を検出して即拒否する。
     const contentLength = res.headers.get("content-length");
     const clBytes = contentLength ? parseInt(contentLength, 10) : NaN;
     if (contentLength && clBytes > MAX_IMAGE_BYTES) {
-      return errorImageSvg("too_large");
+      console.error(
+        `[image-proxy] too large (Content-Length): url=${url} cl=${clBytes} max=${MAX_IMAGE_BYTES}`,
+      );
+      return errorImageSvg("too_large", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+        bodySize: clBytes,
+      });
     }
 
     // Content-Length が無い場合は上限を 5MB に制限し、並列リクエストによるメモリ圧迫を緩和する。
     const effectiveMax =
       contentLength && clBytes <= MAX_IMAGE_BYTES ? MAX_IMAGE_BYTES : MAX_IMAGE_BYTES_NO_CL;
 
-    if (!res.body) return errorImageSvg("unavailable");
+    if (!res.body) {
+      console.error(`[image-proxy] no body: url=${url} content-type="${ct}"`);
+      return errorImageSvg("unavailable", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+      });
+    }
     const merged = await readBodyBytes(res.body, effectiveMax);
-    if (merged === null) return errorImageSvg("too_large");
+    if (merged === null) {
+      console.error(
+        `[image-proxy] size unknown over limit: url=${url} content-type="${ct}" cl-header=${contentLength ?? "none"} effective-max=${effectiveMax}`,
+      );
+      return errorImageSvg(contentLength ? "too_large" : "size_unknown", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+      });
+    }
 
     // Content-Type ヘッダーは偽装できるため、常にマジックバイトで MIME タイプを検証する。
     // image/* と宣言されていても実際のバイト列が画像でなければ拒否する。
     const mimeType = detectImageMimeType(merged);
-    if (!mimeType) return errorImageSvg("unavailable");
+    if (!mimeType) {
+      console.error(
+        `[image-proxy] magic bytes detection failed: url=${url} content-type="${ct}" body-size=${merged.byteLength}`,
+      );
+      return errorImageSvg("unavailable", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+        bodySize: merged.byteLength,
+      });
+    }
 
     // 宣言された Content-Type とマジックバイト由来の MIME が矛盾する場合はキャッシュ汚染を防ぐため拒否。
     // 例: 攻撃者が `Content-Type: image/png` で JPEG を返してプロキシキャッシュを占拠する試みを遮断。
-    if (!isContentTypeConsistent(ct, mimeType)) return errorImageSvg("unavailable");
+    if (!isContentTypeConsistent(ct, mimeType)) {
+      console.error(
+        `[image-proxy] content-type mismatch: url=${url} declared="${ct}" detected="${mimeType}"`,
+      );
+      return errorImageSvg("content_type_mismatch", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+        detectedMime: mimeType,
+        bodySize: merged.byteLength,
+      });
+    }
 
     // Cloudflare Cache API に保存（fire-and-forget）
     cachePutAsync(
