@@ -324,8 +324,24 @@ export default function App() {
     clearFeedGroupArticleSelection,
   } = useFeedSelection(articles, feedGroups);
 
-  const { snoozeTargetId, setSnoozeTargetId, articleAnnouncement, setArticleAnnouncement } =
-    useModalState();
+  const {
+    snoozeTargetId,
+    setSnoozeTargetId,
+    snoozeReturnFocusEl,
+    setSnoozeReturnFocusEl,
+    articleAnnouncement,
+    setArticleAnnouncement,
+  } = useModalState();
+
+  // #748: snooze trigger 時に直前の活性要素 (article 内 menu / shortcut key 発火元) を snapshot し、
+  // article が DOM から消えても fallback 復元先を確保する。
+  const handleShowSnoozeMenu = useCallback(
+    (id: string | null) => {
+      if (id) setSnoozeReturnFocusEl(document.activeElement as HTMLElement | null);
+      setSnoozeTargetId(id);
+    },
+    [setSnoozeTargetId, setSnoozeReturnFocusEl],
+  );
 
   const hasOpenPopup = useHasOpenPopup();
 
@@ -612,7 +628,7 @@ export default function App() {
     refreshFeeds,
     retryFeed,
     snoozeArticle,
-    onShowSnoozeMenu: setSnoozeTargetId,
+    onShowSnoozeMenu: handleShowSnoozeMenu,
     onShowFeedSwitcher: () => setShowFeedSwitcher(true),
     onArticleAnnounce: setArticleAnnouncement,
     confirm: confirmMessage,
@@ -698,6 +714,7 @@ export default function App() {
               snoozeArticleTitle,
               onSnooze: handleSnooze,
               onSnoozeClose: () => setSnoozeTargetId(null),
+              snoozeReturnFocusEl,
               showHelp,
               onHelpClose: () => setShowHelp(false),
               showSettings,

@@ -15,6 +15,8 @@ interface Props {
   snoozeArticleTitle: string;
   onSnooze: (durationMs: number) => void;
   onSnoozeClose: () => void;
+  /** #748: snooze で article が DOM から消えた場合のフォーカス復元先 (App.tsx で activeElement snapshot 済) */
+  snoozeReturnFocusEl: HTMLElement | null;
   showHelp: boolean;
   onHelpClose: () => void;
   showSettings: boolean;
@@ -35,6 +37,7 @@ export default function AppModals({
   snoozeArticleTitle,
   onSnooze,
   onSnoozeClose,
+  snoozeReturnFocusEl,
   showHelp,
   onHelpClose,
   showSettings,
@@ -56,6 +59,7 @@ export default function AppModals({
           articleTitle={snoozeArticleTitle}
           onSnooze={onSnooze}
           onClose={onSnoozeClose}
+          returnFocusEl={snoozeReturnFocusEl}
         />
       )}
       {showHelp && <KeyboardShortcutsModal onClose={onHelpClose} />}
