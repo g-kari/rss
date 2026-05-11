@@ -1,6 +1,6 @@
 # https://pre-commit.ci/
 ci:
-  skip: [check-fix, typecheck, e2e-test] # CI 環境に vp / node_modules / ブラウザがないためスキップ
+  skip: [check-fix, typecheck, e2e-test, unit-test] # CI 環境に vp / node_modules / ブラウザがないためスキップ
   autofix_prs: true
   autoupdate_schedule: monthly
 
@@ -17,6 +17,13 @@ repos:
       - id: typecheck
         name: tsc --noEmit
         entry: npm run typecheck
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: unit-test
+        name: vitest unit (#682 Phase C)
+        entry: npm run test:unit
         language: system
         pass_filenames: false
         stages: [pre-commit]
