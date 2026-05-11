@@ -379,7 +379,45 @@ UX/バグ修正で「あっちの hook と同じパターンを使えば直る�
 grep -rn "article\.ogImage\|article\.thumb\|article\.summary" src/components/article-list-body/ src/components/article-view/
 ```
 
-主な使用箇所: webtan.impress.co.jp で一覧 (`/api/ogp` 取得の main image) と詳細 (`article.ogImage` の tiny thumbnail) で表示が分裂する症状報告 → `resolveThumbnail` の共通化が次サイクル課題
+主な使用箇所: webtan.impress.co.jp で一覧 (`/api/ogp` 取得の main image) と詳細 (`article.ogImage` の tiny thumbnail) で表示が分裂する症状報告 → `useArticleContent` の OGP cache 確認の早期 return ガードを修正して `resolvedOgImage` が cache を反映するように統一
+
+#### さらなる派生: divergence の root cause は「同じ source を参照する 2 経路の早期 return パスが分裂している」ことが多い
+
+list と detail が同じ localStorage / Cache API / KV key を参照しているのに表示が違うとき、source 自体は同じでも **「source を読み込むかどうか」の早期 return 条件が経路ごとに違う** ことが root cause。
+
+```typescript
+// アンチパターン: detail 側で「RSS から ogImage 来ていれば cache 確認 skip」
+useEffect(() => {
+  if (!articleLink || articleOgImage) return; // ← cache 確認すらスキップ
+  const cache = loadJson(STORAGE_KEYS.OGP_CACHE);
+  if (cache[articleLink]) setResolvedOgImage(cache[articleLink]);
+  // ...
+}, [articleLink, articleOgImage]);
+
+// → 一覧 (useOgpCache) は同じ localStorage に write しているのに、
+//   detail はその cache を読まずに article.ogImage (tiny) を表示
+
+// 修正パターン: cache 確認を早期 return より前に移動
+useEffect(() => {
+  if (!articleLink) return;
+  const cache = loadJson(STORAGE_KEYS.OGP_CACHE);
+  if (cache[articleLink]) {
+    setResolvedOgImage(cache[articleLink]);
+    return; // cache hit なら fetch も RSS fallback も不要
+  }
+  if (articleOgImage) return; // RSS にあれば fetch skip
+  // /api/ogp fetch
+}, [articleLink, articleOgImage]);
+```
+
+**How to apply**: list と detail (or 2 経路) で表示が違うバグを受けたとき、まず source layer (localStorage / KV / Cache API) のキーを確認 + 両経路から同じキーを読んでいるか確認:
+
+1. **両経路の source 参照コードを grep** で並べて見比べる (例: `grep -rn "STORAGE_KEYS.OGP_CACHE"`)
+2. **早期 return パスを並べて比較**: 「list は cache を読む」「detail は cache を読まずに skip する」のような分岐が見つかる
+3. **より厳密な早期 return がある側を「cache 確認 → 早期 return」の順に修正** (source 参照を必ず通る経路にする)
+4. **両経路の表示優先順位も揃える**: 例えば一覧が `cache[link] > article.ogImage` なら詳細も `resolvedOgImage > article.ogImage` の優先順位に揃える
+
+主な使用箇所: `useArticleContent` (#742 cycle 51) — `if (!articleLink || articleOgImage) return;` で cache 確認を skip していた早期 return ガードを「cache 確認後の return」に組み替え、list/detail で同じ source of truth を共有
 
 ## サブエージェント調査結果は該当コードで検証してから採用する
 
