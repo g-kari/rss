@@ -355,6 +355,32 @@ UX/バグ修正で「あっちの hook と同じパターンを使えば直る�
 
 主な使用箇所: `Modal.tsx ↔ ConfirmModal.tsx` (focus 復元の Modal pattern を ConfirmModal にコピー反映)
 
+### 派生ケース: 「同じ概念データ」を扱う list view と detail view で解決ロジックが分裂しないか確認する
+
+`ArticleList` の `resolveThumbnail` (一覧) と `ArticleContentBody` (詳細) のように、**同じ「記事のサムネ画像」というデータを別の解決ロジック** で扱う sibling 経路は、片方が更新されてもう片方が取り残されると **「一覧に出る画像と詳細に出る画像が違う」UX バグ** を生む。
+
+典型的な divergence パターン:
+- 一覧: `ogpCache[link] ?? article.ogImage ?? youtube_fallback` (キャッシュ優先)
+- 詳細: `article.ogImage ?? resolvedOgImage` (RSS 値優先)
+
+ロジック自体は両方とも独立して動作するが、優先順位や source の取捨選択が異なるため、特定の feed (例: webtan.impress.co.jp の RSS `og:image` が tiny thumbnail、`/api/ogp` が main image を返す) で **見た目に差分が出る**。
+
+**How to apply**: 新規 list view / detail view コンポーネントを書くとき、または bug 報告で「一覧と詳細で表示が違う」「フィードの記事と本文で表示が違う」型を受けたとき:
+
+1. **両 view で同じデータを扱っているか** を grep で確認 (`resolveThumbnail` / `selectXxx` / `formatXxx` 等の解決関数名で grep)
+2. ロジックが分かれているなら **共通の純粋関数に切り出して両 view から呼ぶ** (例: `resolveArticleThumbnail(article, ogpCache, resolvedOgImage)` のような unified helper)
+3. 共通関数化が難しい場合 (引数取得元が違うなど) は、**優先順位を意識的に揃える** + 仕様 comment を両 view 側に明記
+4. 監査エージェントの観点に「list view vs detail view の同種データ取扱の比較」を追加
+5. UI bug 報告では「一覧では大きい画像、詳細では小さい画像」など **divergence の症状** が出やすいので、bug 受信時にまず両 view 経路を比較
+
+検出 grep 例 (sibling 経路で同じ field を読んでいる箇所):
+```bash
+# article.ogImage / article.thumb / article.summary などを使う場所を sibling 経路ごとに列挙
+grep -rn "article\.ogImage\|article\.thumb\|article\.summary" src/components/article-list-body/ src/components/article-view/
+```
+
+主な使用箇所: webtan.impress.co.jp で一覧 (`/api/ogp` 取得の main image) と詳細 (`article.ogImage` の tiny thumbnail) で表示が分裂する症状報告 → `resolveThumbnail` の共通化が次サイクル課題
+
 ## サブエージェント調査結果は該当コードで検証してから採用する
 
 `feature-dev:code-explorer` 等のサブエージェントが「根本原因はこれです」「修正案はこうです」と報告してきても、**該当ファイルの該当行を Read して内容を確認** してから実装に入る。エージェントが意図せず古い情報や別ファイルの内容を参照している場合、誤った修正につながる。
