@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession, applyCooldown } from "@/lib/server-auth";
-import { formatError } from "@/lib/api-error";
+import { apiError, formatError } from "@/lib/api-error";
 import { readUserSubscriptions } from "@/lib/shared-feed";
 import { readCache, generateRecommendations } from "@/lib/recommendation";
 import { recommendationsCooldownKey } from "@/lib/r2";
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       });
     } catch (err) {
       console.error("[recommendations/refresh] generateRecommendations failed:", formatError(err));
-      return NextResponse.json({ error: "推薦生成に失敗しました" }, { status: 500 });
+      return apiError("推薦生成に失敗しました", 500);
     }
 
     // 生成後のキャッシュを返す（クライアントの再 GET を省略できる）
