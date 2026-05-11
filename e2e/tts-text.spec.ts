@@ -184,3 +184,56 @@ test.describe("buildTtsText: noteText (#724)", () => {
     expect(result).toBe("T\n\n本文\n\nメモ: 詳細 リンク");
   });
 });
+
+test.describe("buildTtsText: x.com / twitter.com OGP fallback (#718)", () => {
+  test("x.com + JS error processedContent → article.summary (OGP) を読み上げる", () => {
+    const article = {
+      title: "user tweet",
+      summary: "今日は良い天気だった",
+      link: "https://x.com/user/status/12345",
+    };
+    const result = buildTtsText(article, "JavaScript is not available.", null, null, null);
+    expect(result).toBe("user tweet\n\n今日は良い天気だった");
+  });
+
+  test("twitter.com + JS error processedContent → article.summary fallback", () => {
+    const article = {
+      title: "tweet title",
+      summary: "ツイートの本文",
+      link: "https://twitter.com/user/status/12345",
+    };
+    const result = buildTtsText(article, "Please enable JavaScript", null, null, null);
+    expect(result).toBe("tweet title\n\nツイートの本文");
+  });
+
+  test("x.com + 通常 tweet content → processedContent をそのまま使う (fallback 不発動)", () => {
+    const article = {
+      title: "T",
+      summary: "サマリー",
+      link: "https://x.com/user/status/12345",
+    };
+    const result = buildTtsText(article, "通常のツイート本文", null, null, null);
+    expect(result).toBe("T\n\n通常のツイート本文");
+  });
+
+  test("非 x.com + JS error content → fallback しない (他サイトでは元の挙動維持)", () => {
+    const article = {
+      title: "T",
+      summary: "サマリー",
+      link: "https://example.com/article",
+    };
+    const result = buildTtsText(article, "JavaScript is not available", null, null, null);
+    // x.com ではないので processedContent をそのまま使う
+    expect(result).toBe("T\n\nJavaScript is not available");
+  });
+
+  test("x.com + JS error + translatedText あり → translatedText 優先 (fallback 経路は processedContent のみ)", () => {
+    const article = {
+      title: "T",
+      summary: "サマリー",
+      link: "https://x.com/user/status/12345",
+    };
+    const result = buildTtsText(article, "JavaScript is not available", "翻訳本文", null, null);
+    expect(result).toBe("T\n\n翻訳本文");
+  });
+});
