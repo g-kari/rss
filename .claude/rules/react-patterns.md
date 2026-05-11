@@ -1050,6 +1050,51 @@ main thread:
 
 主な使用箇所: `#714` Phase 2 — masonic v4 は viewport 外 item を最初から render しない仕様のため、当初の案「viewport 外で画像 load → positioner.update」がシナリオ全体としては成立しないと Phase 2 着手時に判明。代替案 (固定 height グリッド化 / aspectRatio 切替抑制 / 現状受容) を Issue 進捗報告で提示して needs-user-decision 化
 
+### 派生ケース: Phase 1 完了後に「ライブラリ乗り換え」代替案が出てきたら、移行コストでなく「乗り換え先が元目的を達成できるか」で判断する
+
+Phase 1 (純粋関数 + TDD) 完了 → Phase 2 (UI 統合) 着手前に **ユーザーから「いっそ別ライブラリに乗り換えませんか」型の代替案** が提示されるケースがある。このとき:
+
+- **移行コスト自体が小さい** ことだけを根拠に乗り換えると、**乗り換え先が Phase 1 で達成しようとしていた目的を満たさない**ケースで二重損失 (Phase 1 投資 dead code + 元目的未達) になる
+- 「移行コストが小さい」と「元目的が達成できる」は **独立した判断軸**
+
+```
+パターン: Phase 1 完了後の代替案検証フロー
+  1. 並列調査エージェント 2 体派遣 (互いに非依存):
+     - Agent A: 代替ライブラリの API / bundle size / 機能調査 (cloudflare-markdown / WebFetch)
+     - Agent B: 既存ライブラリの移行コスト分析 (public API leak / 内部結合 / e2e 影響)
+  2. 結果を 2 軸で整理:
+     - 軸 1: 移行コスト (small / medium / large)
+     - 軸 2: 乗り換え先で **元 Phase 1 目的が達成できるか** (yes / no / partial)
+  3. 判定マトリクス:
+     | 移行コスト | 元目的達成 | 推奨                                                   |
+     | ---------- | ---------- | ------------------------------------------------------ |
+     | small      | yes        | 乗り換え推奨                                           |
+     | small      | no         | **乗り換え見送り推奨** (Phase 1 投資が dead code 化)   |
+     | small      | partial    | trade-off 整理して **ユーザー判断仰ぎ**                |
+     | large      | yes        | trade-off 整理して **ユーザー判断仰ぎ**                |
+     | large      | no         | 乗り換え見送り (二重損失)                              |
+  4. Phase 1 投資 (純粋関数 + spec) が dead code 化するなら **その旨を Issue コメントに明示**
+  5. 3 案 (続行 / 乗り換え / 中止) を flat 提示してユーザーがトレードオフを選べる形にする
+```
+
+**How to apply**: Phase 1 完了済 Issue で「いっそ X に乗り換えませんか」型コメントを受けたら (移行コスト自体が小さくても乗り換え先で元目的が未達なら二重損失、調査エージェントの「機能事実」と「元目的との整合」を独立軸で判定する):
+
+1. **採用済 Phase 1 投資 (純粋関数 / spec / 設計判断) を列挙** — 何が dead code 化するかを最初に明確化
+2. **代替ライブラリの fundamental design choice** が **元 Phase 1 の目的と整合するか** を最優先で確認
+   - 例: 「viewport 外を render しない」設計の lib に「viewport 外でレイアウトを整える」を期待しても不可能
+   - 例: 「automatic measurement only」の lib に「manual height override」を期待しても不可能
+3. **trade-off を 3 軸表で整理** (bundle size / Phase 1 投資ロス / 機能達成度 / 移行コスト)
+4. **「移行コスト小 + 元目的未達」と判明したら、乗り換えを default 見送り推奨に** (Phase 1 投資 dead code 化が真の cost)
+5. 3 案 (continue / migrate / cancel) を flat 提示して **「ユーザーが何を最優先したいか」で案を選べる** 判定軸を併記
+
+**反例 (乗り換え採用が妥当なケース)**:
+
+- 代替ライブラリが Phase 1 純粋関数を **そのまま再利用できる** 構造 (= 抽象化が library に依存していない)
+- 元 Phase 1 目的自体が **Phase 1 完了後にユーザー側で取り下げられた** (= 当初要求が変わった、これは codify 対象外)
+- 代替ライブラリの設計思想が **元目的の上位互換** (= より広い問題を解決する) で trade-off 一方向に有利
+
+主な使用箇所: `#714` Phase 1 完了 → ユーザー「いっそ virtuoso に乗り換えませんか」コメント → 2 体並列調査 (virtuoso API + 移行コスト) → 「移行コスト SMALL だが viewport-only rendering 強制で『viewport 外の列バランス維持』元目的が原理的に達成不能」と判明 → 案 A 続行 vs 案 B 乗り換え (元目的諦め) vs 案 C 中止の 3 案 trade-off 比較コメントで再判断仰ぎ
+
 ### 派生ケース: 既存実装の差し替え基盤は「Phase 0: 型抽象化のみ」を先行する
 
 既存の動く実装に **代替実装** を後から差し込みたい場合 (Web Speech API → Piper wasm 等)、いきなり大きな書き換えに着手せず **「Phase 0: 型契約だけ抽象化」を最初の commit にする**。実装のロジックは一切変えない。
