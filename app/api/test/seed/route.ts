@@ -11,12 +11,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { r2Put, readStateKey } from "@/lib/r2";
+import { apiError } from "@/lib/api-error";
 import { getDevBypassUserId } from "@/lib/dev-auth-bypass";
 import { validateSeedRequest, type SeedFeedInput } from "@/lib/test-seed";
 import type { UserSubscription } from "@/types";
 
 function notFound() {
-  return NextResponse.json({ error: "Not Found" }, { status: 404 });
+  return apiError("Not Found", 404);
 }
 
 async function deleteByPrefix(bucket: R2Bucket, prefix: string): Promise<void> {
@@ -43,12 +44,12 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
+    return apiError("INVALID_JSON", 400);
   }
 
   const validation = validateSeedRequest(body);
   if (!validation.ok) {
-    return NextResponse.json({ error: validation.error }, { status: 400 });
+    return apiError(validation.error, 400);
   }
 
   const { env } = await getCloudflareContext({ async: true });

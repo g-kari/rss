@@ -60,40 +60,40 @@ export default function ConfirmModal({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
+  // Escape / Tab を canonical Modal.tsx と同じく onKeyDown で処理。
+  // 旧実装は `document.addEventListener("keydown", ...)` で Escape を捕捉していたが、
+  // ConfirmModal が別 Modal に入れ子で開かれた場合、document リスナーが z-order を
+  // 無視して両方の close handler を発火させる risk があった (canonical との divergence)。
+  const handleKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLDivElement>) => {
       if (e.key === "Escape") {
         onCancel();
+        return;
       }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onCancel]);
-
-  const handleTabKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab") return;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-    if (focusable.length === 0) {
-      e.preventDefault();
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (e.shiftKey) {
-      if (document.activeElement === first || document.activeElement === dialog) {
+      if (e.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (focusable.length === 0) {
         e.preventDefault();
-        last.focus();
+        return;
       }
-    } else {
-      if (document.activeElement === last || document.activeElement === dialog) {
-        e.preventDefault();
-        first.focus();
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first || document.activeElement === dialog) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last || document.activeElement === dialog) {
+          e.preventDefault();
+          first.focus();
+        }
       }
-    }
-  }, []);
+    },
+    [onCancel],
+  );
 
   if (!isOpen) return null;
 
@@ -105,8 +105,9 @@ export default function ConfirmModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={`${titleId}-desc`}
         tabIndex={-1}
-        onKeyDown={handleTabKeyDown}
+        onKeyDown={handleKeyDown}
         className="fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[360px] bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden outline-none"
         onClick={(e) => e.stopPropagation()}
       >
@@ -114,7 +115,10 @@ export default function ConfirmModal({
           <h2 id={titleId} className="text-[13px] font-medium text-text-strong mb-2">
             {title}
           </h2>
-          <p className="text-[12px] text-text-soft leading-relaxed whitespace-pre-wrap">
+          <p
+            id={`${titleId}-desc`}
+            className="text-[12px] text-text-soft leading-relaxed whitespace-pre-wrap"
+          >
             {message}
           </p>
         </div>

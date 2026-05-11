@@ -3,11 +3,9 @@ import { useCallback, useEffect, useRef, type ComponentProps, type KeyboardEvent
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
 import { usePopupLock } from "@/hooks/usePopupLock";
+import { FOCUSABLE_SELECTOR } from "@/lib/modal-focus";
 
 type ArticleViewProps = ComponentProps<typeof ArticleView>;
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface Props {
   focusMode: boolean;
