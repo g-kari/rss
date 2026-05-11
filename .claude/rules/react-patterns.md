@@ -666,6 +666,40 @@ function App() {
 - `selectGalleryImages` — Phase 単独で UI 統合まで含めた小規模ケース
 - `splitIntoSentences` / `selectActiveCharIndex` — Phase 分離の典型
 
+### 派生ケース: Phase 1 実装中は **ライブラリ調査エージェントを並列派遣** して Phase 2 用情報を蓄積する
+
+Phase 1 (純粋関数 + TDD) は **依存ライブラリの内部 API を読まなくても完結する** ことが多い (純粋関数は input/output だけで設計可能)。一方 Phase 2 (UI 統合) はライブラリ API への深い理解が必要で、設計判断ポイント (どの API を使えば「viewport 外のみ更新」を実現できるか等) が事前に分からないと着手の見積もり困難。
+
+`Phase 1 実装 (main thread) + ライブラリ API 調査エージェント (run_in_background: true)` を並列起動することで、Phase 1 commit と同サイクルで **Phase 2 設計メモを Issue コメントに蓄積** できる。次サイクル Phase 2 着手時にウォームスタート可能。
+
+```
+main thread:
+  Phase 1 spec 作成 → Red 確認 → 純粋関数実装 → Green → commit
+
+並列エージェント (run_in_background: true):
+  node_modules/<lib>/ の type definitions + 実装を Read
+  → Phase 2 で使う API の挙動を 300 words 以内でレポート
+  → 結果は Issue コメントに転載して将来参照可能に
+```
+
+**How to apply**: Phase 1 / Phase 2 分離した Issue で Phase 1 着手するとき (Phase 1 main thread + Phase 2 用ライブラリ調査エージェントの並列分業は、依存ライブラリの非自明な制約を Phase 2 着手前に把握する保険になり、Phase 2 設計の手戻りを防ぐ):
+
+1. Phase 1 純粋関数の **signature と TDD spec を main thread で書き始める** と同時に
+2. 別エージェント (Agent + run_in_background: true) で **「Phase 2 で使う予定のライブラリ API の挙動」** を調査
+   - prompt の形式: 「`node_modules/<lib>/dist/` 配下を Read して、X / Y / Z の挙動と公開メソッドを確認、300 words 以内で報告」
+   - 「コード変更は不要」を明示
+   - serena tools (find_symbol / search_for_pattern) を使うよう指示
+3. Phase 1 commit の commit message + Issue コメントに **エージェント調査結果 (制約 / 回避策) を転載**
+4. Phase 2 着手時に **同 Issue コメントから設計メモを参照** してウォームスタート
+
+**反例 (並列派遣が不要なケース)**:
+
+- 純粋関数自体が単純で Phase 2 設計が自明 (例: `selectGalleryImages` のように UI 統合まで含めて小規模)
+- 依存ライブラリの API が完全に把握済 (過去サイクルで調査済 / 公式 docs を頻繁に参照中)
+- main thread が他の Issue 処理で busy で並列管理コストを正当化できない
+
+主な使用箇所: `gallery-offviewport.ts` (`#714 Phase 1`) — main thread で `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` の TDD spec + 実装、並列エージェントで masonic v4 の `positioner.update` / `useResizeObserver` / `onRender(start, stop)` の挙動調査 → 「`positioner.update` は同列再 layout 制約あり / `onRender` の stop 捕捉で回避可能」という Phase 2 設計メモを 1 サイクルで取得
+
 ### 派生ケース: 既存実装の差し替え基盤は「Phase 0: 型抽象化のみ」を先行する
 
 既存の動く実装に **代替実装** を後から差し込みたい場合 (Web Speech API → Piper wasm 等)、いきなり大きな書き換えに着手せず **「Phase 0: 型契約だけ抽象化」を最初の commit にする**。実装のロジックは一切変えない。
