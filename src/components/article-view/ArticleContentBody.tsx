@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import { useRef, useEffect, useState, useMemo, forwardRef, useImperativeHandle } from "react";
 import type { Article, EngagementAction } from "../../types";
 import { AI_RATINGS } from "../../types";
 import type { EmbedInfo } from "../../lib/embed-utils";
@@ -159,6 +159,21 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
 
     // 検索クエリのハイライト — query / processedContent が変わるたびに DOM に <mark> を注入
     useArticleHighlight({ contentRef, query, processedContent });
+
+    // #709: RSS の `<content:encoded>` / `<description>` に SpeakerDeck / SlideShare
+    // iframe 等のリッチ HTML が含まれる場合、`/api/content` で全文取得しなくても
+    // article.content を直接描画してスライドを表示する。
+    // xml-parser → applyCorePipeline で iframe 変換 + sanitize 済みだが、cache 経路や
+    // 過去データ混入の安全網として再 sanitize する (sanitizeHtml は冪等)。
+    const sanitizedArticleContent = useMemo(
+      () => (article.content ? sanitizeHtml(article.content) : null),
+      [article.content],
+    );
+    // sanitize 後に意味のあるリッチ HTML (タグを含む) が残っているか確認。
+    // 単なる plain text なら summary との重複なので fallback 不要。
+    const hasArticleContentHtml = !!(
+      sanitizedArticleContent && /<[a-z][\s\S]*?>/i.test(sanitizedArticleContent)
+    );
 
     return (
       <>
@@ -343,6 +358,14 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
             style={getLineHeightStyle(lineHeight)}
             translate="yes"
             dangerouslySetInnerHTML={{ __html: wrappedContent ?? processedContent }}
+          />
+        ) : hasArticleContentHtml ? (
+          <div
+            ref={contentRef}
+            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
+            style={getLineHeightStyle(lineHeight)}
+            translate="yes"
+            dangerouslySetInnerHTML={{ __html: sanitizedArticleContent! }}
           />
         ) : article.summary ? (
           <p

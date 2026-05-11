@@ -762,4 +762,44 @@ test.describe("applyCorePipeline", () => {
     expect(result).not.toContain("<script>");
     expect(result).not.toContain("alert");
   });
+
+  // #709: RSS の content/description に SpeakerDeck script や SlideShare リンクが含まれる場合、
+  // xml-parser → applyCorePipeline 経路 (= 全文取得しない) でも iframe 化されていること。
+  // content.ts:340-345 の Readability 前変換は維持しつつ、applyCorePipeline 側で
+  // RSS 直流入経路も補完する設計 (両経路で冪等な多重呼出 OK)。
+  test("SpeakerDeck の <script class='speakerdeck-embed'> を sanitize 直前で iframe 化する (#709)", () => {
+    const html =
+      "<p>本日の発表資料</p>" +
+      '<script async class="speakerdeck-embed" data-id="0c10de77615947f082ce9f8daa5c5569" data-ratio="1.7777777777777777" src="//speakerdeck.com/assets/embed.js"></script>';
+    const result = applyCorePipeline(html, "https://example.com/article");
+
+    // <script> が iframe に置き換わっている (sanitize 後も残る)
+    expect(result).not.toContain("<script");
+    expect(result).toContain("speakerdeck.com/player/0c10de77615947f082ce9f8daa5c5569");
+    expect(result).toContain("<iframe");
+    // 本文の <p> は保持されている
+    expect(result).toContain("本日の発表資料");
+  });
+
+  test("SlideShare の <a href='.../slideshow/{slug}/{id}'> を sanitize 直前で iframe 化する (#709)", () => {
+    const html =
+      "<p>共有スライド:</p>" +
+      '<a href="https://www.slideshare.net/slideshow/claude-code-demo/287205719">スライドを開く</a>';
+    const result = applyCorePipeline(html, "https://example.com/article");
+
+    // <a> が iframe + フォールバックリンクに変換されている
+    expect(result).toContain("slideshare.net/slideshow/embed_code/287205719");
+    expect(result).toContain("<iframe");
+    expect(result).toContain("SlideShare で見る");
+  });
+
+  test("transform 結果の iframe が sanitizeHtml の TRUSTED_IFRAME_RULES を通過する (#709)", () => {
+    // sanitize より後段で transform を呼ぶと iframe が除去される回帰を防ぐ
+    const html =
+      '<script class="speakerdeck-embed" data-id="abc1234567890def" src="//speakerdeck.com/assets/embed.js"></script>';
+    const result = applyCorePipeline(html, "https://example.com/article");
+
+    expect(result).toContain("<iframe");
+    expect(result).toContain("speakerdeck.com/player/abc1234567890def");
+  });
 });

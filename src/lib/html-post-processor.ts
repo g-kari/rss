@@ -12,7 +12,12 @@
 import { sanitizeHtml } from "./html";
 import { processNestedBlocks } from "./html-noise-removal";
 import { tryParseBase, fixImageDimensions, rewriteImageUrls } from "./html-image-processors";
-import { transformZennLinkEmbeds, transformZennMermaidEmbeds } from "./html-embed-transforms";
+import {
+  transformZennLinkEmbeds,
+  transformZennMermaidEmbeds,
+  transformSpeakerDeckScriptEmbeds,
+  transformSlideShareEmbedLinks,
+} from "./html-embed-transforms";
 import { removeNoise } from "./html-noise-removal";
 import { fixLazyImages, removeSmallThumbnailImages } from "./html-image-processors";
 
@@ -125,13 +130,20 @@ export function fixExternalLinks(html: string, pageUrl = ""): string {
  *   1. fixImageDimensions: 相対パスを pageUrl ベースで絶対 URL 化 + loading="lazy" 付与
  *   2. rewriteImageUrls:   絶対 URL 化済みの src を /api/image-proxy 経由に書き換え（1 の後が必須）
  *   3. fixExternalLinks:   <a> href も同様に絶対 URL 化 + target="_blank" rel 付与
- *   4. wrapTables:         <table> をレスポンシブラッパーで包む
- *   5. sanitizeHtml:       XSS 除去（必ず最後。これ以降に処理を追加しても無効化される）
+ *   4. transformSpeakerDeckScriptEmbeds / transformSlideShareEmbedLinks:
+ *        slide embed を iframe に変換（#709）。xml-parser → applyCorePipeline 経路でも
+ *        全文取得を待たずスライドが表示されるよう、sanitize 直前に組み込む。
+ *        extractMainContent (Readability 経由) では Readability 前に同じ transform を
+ *        呼んでおり (content.ts)、ここで再呼出しても冪等なので二重実行可。
+ *   5. wrapTables:         <table> をレスポンシブラッパーで包む
+ *   6. sanitizeHtml:       XSS 除去（必ず最後。これ以降に処理を追加しても無効化される）
  */
 export function applyCorePipeline(html: string, pageUrl = ""): string {
   let h = fixImageDimensions(html, pageUrl);
   h = rewriteImageUrls(h);
   h = fixExternalLinks(h, pageUrl);
+  h = transformSpeakerDeckScriptEmbeds(h);
+  h = transformSlideShareEmbedLinks(h);
   h = wrapTables(h);
   return sanitizeHtml(h);
 }
