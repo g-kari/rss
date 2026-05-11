@@ -282,6 +282,69 @@ vi.stubGlobal("AudioContext", MockAudioContext);
 
 主な使用箇所: `useBackgroundAudio.test.ts` (#745 Phase A) — `vi.fn(() => mockCtx)` で AudioContext 作成カウントが 0 のまま fail → class MockAudioContext に書き換えで 6 ケース全 pass
 
+### 派生ケース: frozen state を helper 関数で参照したいときは引数化必須 (内部で live API を呼ばない)
+
+`useState(() => new Date())` で **mount 時 1 回固定** された `now` を、コンポーネント内のロジック (`rateLimitedFeeds = filter((f) => new Date(f.until) > now)`) で使うところまでは正しい。ところが **同コンポーネントから呼ぶ helper 関数** (例: `untilLabel(iso)` で「あと N 分」表示) が **内部で `Date.now()` を呼ぶ** と、judging logic と display logic の時間源が乖離して "section に残っているのに『解除済み』表示" のような UI 矛盾が起きる。
+
+```typescript
+// アンチパターン: helper が内部で live API
+function untilLabel(iso: string): string {
+  const diff = new Date(iso).getTime() - Date.now(); // ← live 時刻
+  // ...
+}
+function FeedHealthModal({ feeds }) {
+  const [now] = useState(() => new Date()); // ← frozen
+  const rateLimitedFeeds = useMemo(
+    () => feeds.filter((f) => new Date(f.until) > now),
+    [feeds, now],
+  );
+  return rateLimitedFeeds.map((f) => <span>{untilLabel(f.until)}</span>);
+  // ↑ rateLimitedFeeds は frozen now で判定、untilLabel は live Date.now() で判定
+  //   → 「セクションに残っているが『解除済み』」が分単位で発生
+}
+
+// 修正パターン: helper を引数化して frozen state を渡す
+function untilLabel(iso: string, nowMs: number): string {
+  const diff = new Date(iso).getTime() - nowMs;
+  // ...
+}
+function FeedHealthModal({ feeds }) {
+  const [now] = useState(() => new Date());
+  const rateLimitedFeeds = useMemo(
+    () => feeds.filter((f) => new Date(f.until) > now),
+    [feeds, now],
+  );
+  return rateLimitedFeeds.map((f) => (
+    <span>{untilLabel(f.until, now.getTime())}</span>
+  ));
+}
+```
+
+**How to apply**: `useState(() => fn())` / `useMemo(() => fn(), [])` 等で **mount 時固定** した値を持つコンポーネントで helper 関数を書くとき (judging logic と display logic が異なる時間源を見ると、ユーザーから見て「片方は残っているのに片方は解除済み」のような UI 矛盾が起きる):
+
+1. **helper 関数が内部で参照している API** (`Date.now()` / `performance.now()` / `crypto.randomUUID()` / `Math.random()` / `process.env.X`) を列挙
+2. **コンポーネント本体が frozen state を持つか** を確認 — Yes なら helper にその state を引数で渡す
+3. helper シグネチャ: `untilLabel(iso, nowMs: number)` のように **frozen 値を primitive で受ける** (Date オブジェクトより `getTime()` した number の方が equality 比較しやすい)
+4. **TDD**: helper 単独を pure 関数として spec 書く (`untilLabel("2026-05-12T10:10:00Z", new Date("2026-05-12T10:00:00Z").getTime())` で「あと 10 分」を assert)
+5. **「内部で live API を呼ぶ helper を書きそうになったら止まる」** — 呼出元の context (frozen / live) を確認してから決める
+
+**該当する典型ケース**:
+
+| コンポーネント側 frozen state         | helper 内部の live API | リスク                           |
+| ------------------------------------- | ---------------------- | -------------------------------- |
+| `useState(() => new Date())`          | `Date.now()`           | 判定基準と表示基準が異なる時刻に |
+| `useState(() => crypto.randomUUID())` | `crypto.randomUUID()`  | session/instance ID の不一致     |
+| `useMemo(() => readConfig(), [])`     | `readConfig()` 直呼出  | 同 render 中の config 不整合     |
+| `useRef({ origin: ... })`             | `location.href` 直呼出 | SPA navigate 後の origin 乖離    |
+
+**反例 (引数化が不要なケース)**:
+
+- helper が **frozen state と無関係な計算** (例: 文字列フォーマット / 配列 sort) — 内部で live API を呼ばないなら問題なし
+- helper が **明示的に live API の最新値** を表現する責務 (例: `getCurrentBatteryLevel()` のようなセンサー値取得) — frozen 化すべき場面ではない
+- 単一 render 中で **frozen / live の差が許容される表示** (例: 数十秒で揮発する toast の表示時刻) — UX 影響を判定して許容
+
+主な使用箇所: `FeedHealthModal.tsx` の `untilLabel(iso, nowMs)` — perf 監査エージェントの指摘で `Date.now()` 内部呼出を引数化し frozen `now` と整合 (judging logic / display logic の時間源乖離防止)
+
 ### 派生ケース: 「component 再描画バグ」の test は **hook level の root cause assertion** に降格して setup コストを下げる
 
 memo された Component / Context Consumer が再描画されないバグ (例: #634 ギャラリーブックマーク再描画) を test するとき、Issue 推奨は **完全 component-level 検証** (`<ArticleList layout='gallery'>` + Context Provider 階層 + Modal portal + memo Consumer まで含めた render assertion) になりがち。だが setup コストが大きく、テスト保守 burden + 環境依存 (happy-dom が一部 React 19 機能未対応等) のリスク。
