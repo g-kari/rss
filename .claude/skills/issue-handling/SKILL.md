@@ -116,8 +116,16 @@ done
 
 1. **判断必要 判定基準を 1 つずつ確認** (上表の左欄)
 2. すべて NO → **直接実装着手** + 完了サマリーコメント (案 A/B/C 提示テンプレートは使わない)
-3. 1 つでも YES → **`gh issue edit N --add-label needs-user-decision`** で label 付与 + 設計方針コメント投稿
+3. 1 つでも YES → **`gh issue comment` で設計方針コメント投稿 + 直後に `gh issue edit N --add-label needs-user-decision`** をワンセットで実行 (片方だけ実行すると次サイクル sweep で見落とされる)
 4. 「迷う」レベル (touch 6 で僅かに超過 / 既存 pattern と 80% 一致) → 自走禁止寄りに判断 (安全側、判断仰ぐ)
+
+**ワンセット運用の重要性**: `gh issue comment` だけ実行してラベル付与忘れると、次サイクル Step 0 sweep で「本人最新コメントが AI 案提示への返答なし」状態として **「本人実装承認済 → 着手」誤判定** されるリスクがある (本人は判断未済なのに sweep が空振りする)。ラベル付与でこの誤判定を構造的に防止する。
+
+```bash
+# 推奨パターン: 1 文で連続実行
+gh issue comment N --body "<設計方針コメント>" && \
+gh issue edit N --add-label needs-user-decision
+```
 
 **反例 (判断不要 = 自走対象の典型)**:
 - 「list と detail で表示が違う」「特定 feed で画像が小さい」型のバグ修正 (root cause 特定 + 既存 pattern で修正)
