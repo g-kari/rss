@@ -266,6 +266,44 @@ gh issue edit N --add-label needs-user-decision
 
 主な使用箇所: ギャラリー列偏り Issue (タイトルのみ + ユーザーコメント「案 C で進めて」だけ → 本文に案 A/B/C 記載なし) — 推測案 A/B/C を提示する確認コメントを投稿、次サイクルで実装着手の判断
 
+## 大規模 Issue は Phase 分離で着手 + Phase 完了コメント + Issue を open のまま継続管理
+
+新規 infrastructure 導入 (test runner / wasm / Service Worker / IndexedDB 等) のように **「全部を 1 サイクルで実装できないが、最小 Phase は完結する」** 種類の Issue は、`Phase A / Phase B / Phase C` に分割して **1 サイクル 1 Phase + Phase 完了報告コメント + Issue open 継続** で進める。
+
+```
+パターン: Phase 分離運用
+  Phase A (本サイクル):
+    最小 infra のみ (config / setup / smoke test) → master 反映 → Phase A 完了コメント
+  Phase B (次サイクル):
+    最初の実コンテンツ追加 (1 件のユニットテスト等) → master 反映 → Phase B 完了コメント
+  Phase C (将来):
+    残り全件 + hook 連携 → master 反映 → Issue 全完了でクローズ
+```
+
+**Phase 完了コメントの必須要素**:
+
+1. 対応内容を **表形式** で項目化 (ランナー / DOM 環境 / matcher / paths 等)
+2. **Issue 推奨との差分** を明示 (例: jsdom → happy-dom 代替採用 + 採用理由 + 将来切替 plan)
+3. **動作確認結果** (smoke test pass / e2e pass 等)
+4. **次 Phase 候補** を箇条書き (Phase B-1 / Phase B-2 / Phase C で具体タスク列挙)
+5. **「Phase A のみで close せず open のまま」** を明示
+
+**How to apply**: ユーザー実装承認済の **大規模 Issue** (touch ≥ 6 ファイル / 新規 infra / 複数機能の組合せ) に着手するとき:
+
+1. **Issue 本文 + 推奨スタックを Read** → 最小 Phase 境界を設計 (config + smoke が 1 Phase の典型)
+2. **Phase A scope を AI 自走 5 条件で再評価** → touch ≤ 5 / TDD 可能 / 機能変化なし or 既存挙動互換 → 自走着手
+3. master 反映後 **Phase 完了コメント投稿** (Issue は close しない)
+4. 次サイクル冒頭の Step 0 sweep で **「Phase 残作業あり」状態を確認** → Phase B 着手
+5. 全 Phase 完了時に Issue クローズ + 総合 summary コメント
+
+**反例 (Phase 分離不要なケース)**:
+
+- 単一 ファイル touch で完結する Issue → Phase 分離は overhead
+- 機能境界が分割不能 (Phase A だけ commit すると runtime invariant 破綻) → 全体まとめて 1 サイクル
+- ユーザーが「全部一括で実装して」明示指示 → Phase 分離せず一括
+
+主な使用箇所: #682 (RTL + vitest infra) — Phase A (config + smoke test 1 件、5 ファイル touch) を 1 サイクルで完結 + master 反映 + Issue open 継続、Phase B (#634 / #623 のユニットテスト化) は次サイクル送り
+
 ## Issue クローズ時のコメント
 
 対応完了時は以下を含むクローズコメントを残す:

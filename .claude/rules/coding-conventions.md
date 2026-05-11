@@ -213,6 +213,32 @@ export async function PATCH(request, { params }) {
 
 主な使用箇所: `app/api/collections/[id]/route.ts` / `app/api/auth/dbsc/{challenge,register}/route.ts` の UUID 正規表現 4 箇所重複 → `isValidSessionId` 集約 (リファクタ監査エージェント confidence 92%)
 
+### 派生ケース: 新規 dev dependency 追加前に既存 devDeps の流用可能性を grep 確認する
+
+Issue 本文や監査エージェント report で推奨された npm パッケージ (例: `jsdom` / `axios` / `date-fns`) を追加する前に、**`package.json` の `devDependencies` / `dependencies` を grep して同等機能の既存依存がないか確認する**。「Issue 推奨だから」と機械的に追加すると、**依存重複** (同じ機能を持つ複数パッケージが共存) や **bundle size 膨張** を招く。
+
+```bash
+# 新規 dep 追加前に必須チェック:
+grep -nE "<推奨パッケージ名>|<類似機能>" package.json
+# 例: jsdom 追加前 → happy-dom が既に devDeps にあると判明
+```
+
+**How to apply**: 新規 npm 依存追加の判断時 (新規 dep 追加コスト: install サイズ + lock file 肥大 + supply chain 攻撃面拡大、既存 dep 流用が安全):
+
+1. **`grep -nE "<推奨>|<類似>" package.json`** で推奨パッケージ + 類似機能パッケージを両方検索
+2. **既存依存あり + API 互換 + 性能同等以上** なら代替採用 (Issue 推奨と差分を完了コメントに明示)
+3. **既存依存あり + API 非互換 / 性能劣る / 維持困難** なら新規 dep 追加 (代替検討記録を commit message に残す)
+4. **既存依存なし** なら新規 dep 追加 (Issue 推奨に従う)
+5. 代替採用時は **「将来 X の互換性問題が出たら推奨パッケージに切替」plan を Phase 完了コメントに記載** (`happy-dom → jsdom` 等、置き換え準備の知識残存)
+
+**反例 (新規 dep 追加が正しいケース)**:
+
+- 既存依存と **本質的に異なるドメイン** (例: `vitest` は test runner、既存の `vite` は build tool — 同 family だが責務別)
+- 既存依存が **deprecated** で migration 推奨されている
+- 既存依存の **active maintenance が停止** している (`npm info <pkg> maintainers` で確認)
+
+主な使用箇所: #682 Phase A で `jsdom` 推奨だったが `happy-dom@20.9.0` が既存 devDeps にあり代替採用 — API 互換 + 3x 高速 + 依存重複回避
+
 ### 派生ケース: 同名 enum / type の重複は canonical の `type X = Y` alias に統合する
 
 別 hook で **canonical 型と同じ意味の独立 enum** が定義されているケース (例: `AiErrorType = "network" | "rate_limit" | "model_error" | "unknown"` と canonical `HttpErrorType = "network" | "rate_limit" | "server_error" | "client_error" | "unknown"`)。consumer が narrow チェック (例: `aiError.type === "rate_limit"`) するだけなら、**`type AiErrorType = HttpErrorType;` の alias 化** で互換性を保ちつつ統合できる。
