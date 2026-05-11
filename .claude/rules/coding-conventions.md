@@ -7,18 +7,7 @@ paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
 
 ## TypeScript
 
-- `strict: true` 前提。`any` は使わない
-- 型は `interface` で定義 (`src/types.ts` に集約)
-- Cloudflare バインディングは `src/cloudflare-env.d.ts` の `CloudflareEnv` インターフェースで拡張
-  ```typescript
-  // src/cloudflare-env.d.ts
-  interface CloudflareEnv {
-    RSS_DATA: R2Bucket;
-    AI: Ai;
-  }
-  ```
-- `tsconfig.json` の `types` に `"@cloudflare/workers-types"` を含める
-- `tsconfig.json` の `lib` に `"DOM"` と `"DOM.Iterable"` を含める (Workers + React 共存)
+→ `.claude/rules/typescript-conventions.md` を参照 (#733 Step 1 で分割)
 
 ## Next.js App Router
 
