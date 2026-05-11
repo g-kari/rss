@@ -25,6 +25,62 @@ headers["Retry-After"] = retryAfterHeader;
 
 **How to apply**: 外部 HTTP レスポンスを中継する Route Handler で、クライアント側 (retry-after.ts 等) が依存しているヘッダがあれば補完を必ず入れる (一部上流サイトは 429 を `Retry-After` なしで返し、補完がないと即時リトライ → 再 429 の連鎖になる)。
 
+## 特定ドメインの content fallback は「ドメイン × content pattern」の AND 判定 + scan 範囲限定で false positive を防ぐ
+
+`x.com` / `twitter.com` のように **JavaScript 必須のサイトは JS 無効な fetch クライアント (Cloudflare Workers の `fetch`) からアクセスすると「JS を有効にしてください」エラーページ HTML** を返す。それをそのまま記事本文として処理すると TTS が無価値な文字列を読み上げたり AI 要約の入力に使われたりする。
+
+このパターンの defensive fallback は **「特定ドメイン × content pattern」の 2 軸 AND 判定** + **scan 範囲限定** が原則:
+
+```typescript
+// アンチパターン: ドメインだけで判定 → 通常 tweet が取れても fallback してしまう
+function needsFallback(link: string): boolean {
+  return new URL(link).hostname === "x.com"; // ← 正常に取れた tweet も fallback 対象に
+}
+
+// アンチパターン: pattern だけで判定 → 長文記事の本文中に偶然含まれる文字列で誤検知
+function needsFallback(content: string): boolean {
+  return /JavaScript is not available/.test(content);
+  //  ↑ どこかの記事本文に「JS 用語解説」で出現したら誤検知
+}
+
+// 修正パターン: ドメイン × pattern の AND + scan 範囲を先頭 N 文字に限定
+const TARGET_HOSTS = new Set(["x.com", "www.x.com", "mobile.x.com", "twitter.com", ...]);
+const JS_ERROR_PATTERNS: readonly RegExp[] = [
+  /JavaScript is not available/i,
+  /Please enable JavaScript/i,
+  // ...
+];
+
+export function isTargetHost(link: string | null | undefined): boolean {
+  if (!link) return false;
+  try {
+    return TARGET_HOSTS.has(new URL(link).hostname.toLowerCase());
+  } catch { return false; }
+}
+
+export function isErrorContent(content: string | null | undefined): boolean {
+  if (!content) return false;
+  // 先頭 500 文字のみチェック (長文記事の本文中に偶然含まれる場合の false positive を防ぐ)
+  return JS_ERROR_PATTERNS.some((p) => p.test(content.slice(0, 500)));
+}
+
+export function needsFallback(link, content): boolean {
+  return isTargetHost(link) && isErrorContent(content);
+  //  ↑ AND 判定: 両方 true でのみ fallback 発動
+}
+```
+
+**How to apply**: 特定ドメインで外部 fetch の content quality が信頼できないケースを発見したとき (例: TTS が無価値な文字列を読み上げる / AI 要約に JS エラーが入る / 一覧サムネが broken image になる) (1 軸判定だと「ドメイン全体 fallback でユーザーの正常 tweet 体験を壊す」or「pattern 誤検知で関係ない記事を壊す」リスク発生、AND + scan 限定で両方回避):
+
+1. **3 純粋関数に分割**: `isTargetHost(link)` / `isErrorContent(content)` / `needsFallback(link, content)` (テストしやすさ + 再利用性)
+2. **host 集合は Set で表現** + サブドメイン (www / mobile) のバリエーションを網羅
+3. **content pattern は配列で readonly RegExp[]** + case-insensitive `i` flag
+4. **scan 範囲は `content.slice(0, N)` で先頭 N 文字に限定** (N = 500 程度が典型値)
+5. **TDD で網羅**: host 判定 (対象 / 別サービス / 不正 URL / 大文字小文字) + content 判定 (各 pattern × 通常 content × 長文末尾 / scan 範囲外) + 統合判定 (host × content の 4 組合せ)
+6. **consumer 側 (例: `buildTtsText`)** で `needsFallback(...) ? null : content` のパターンで content を skip → 別 source (`article.summary` 等 OGP description) に切替
+
+主な使用箇所: `src/lib/x-com-fallback.ts` — x.com / twitter.com 系で JS 無効エラー HTML を検出して TTS は OGP description (`article.summary`) を読み上げる (#718)。`buildTtsText` で processedContent を skip して `article.summary` fallback に切替
+
 ## silent fallback の禁止 — `try/catch → null` には必ず `devError` を添える
 
 外部依存 (Web API・ブラウザネイティブ AI・サードパーティ fetch) のラッパーで「失敗時はサーバー fallback」をしたいとき、`try/catch` で例外を `null` に変換するパターンが頻出する。これ自体は正しいが、**catch ブロックでログを出さないとユーザーから「動かないけど何も表示されない」「ブラウザ DevTools にも何も出ない」状態が生まれ、原因特定不可になる**。
