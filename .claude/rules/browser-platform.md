@@ -64,6 +64,44 @@ export async function summarizeInBrowser(text: string): Promise<string | null> {
 
 主な使用箇所: `src/lib/browser-summarizer.ts` / `src/lib/browser-translator.ts`（Chrome 組み込み AI ラッパー）
 
+### 派生ケース: イベントハンドラ (`onerror` / `onclose` 等) の silent fail は **monotonic counter + consumer 側 toast** で表面化する
+
+`utterance.onerror` (Web Speech API) / `ws.onerror` (WebSocket) / `audio.onerror` (HTMLMediaElement) のような **engine 由来の非同期エラーイベント** は、callback 内で `resetState()` だけ呼んでも consumer (UI 層) が「何が起きたか」を知る手段がないと silent fail になる。`devError` ログだけでは本番ユーザーが「ボタンが反応しない」状態で気付かない。
+
+`react-patterns.md` の monotonic counter パターン (手動 cancel と自然完了の区別) と同じ実装基盤を使って、**`errorCount` カウンタを expose** → consumer が `prev → current` 差分検知で toast 表示。
+
+```typescript
+// engine 側 hook (例: useSpeechSynthesis):
+const [errorCount, setErrorCount] = useState(0);
+utterance.onerror = (e) => {
+  if (utteranceRef.current === utterance) {
+    devError("[useSpeechSynthesis] utterance.onerror", { error: e.error, voice: ..., ... });
+    setErrorCount((c) => c + 1); // ← monotonic increment
+    resetState();
+  }
+};
+return { ..., errorCount };
+
+// consumer 側 hook (例: useArticleViewTts):
+const prevErrorCountRef = useRef(errorCount);
+useEffect(() => {
+  if (errorCount > prevErrorCountRef.current) {
+    prevErrorCountRef.current = errorCount;
+    toast.error("読み上げに失敗しました (voice 互換性または engine エラー)");
+  }
+}, [errorCount, toast]);
+```
+
+**How to apply**: ブラウザ API ラッパー hook で **engine 由来エラーイベントを catch する箇所** を実装するとき (silent reset では本番でユーザーが「動かない理由が分からない」状態が永続化する、devError ログだけでは本番調査がブラックボックス):
+
+1. **`xxxCount: number` の monotonic counter** を hook の戻り値に追加 (interface 型にも追加 → 全 caller に追従義務発生 = ドリフト防止)
+2. **エラーイベント発火時に setXxxCount((c) => c + 1)** + `devError` で context (input args / state) も出力
+3. **consumer 側で `prevXxxCountRef` + useEffect** で差分検知 → toast / banner / 専用 UI で表面化
+4. **空入力 silent skip も同様に表面化** — `if (!text.trim()) return;` を見つけたら `toast.info` で「入力が空です」を表示
+5. interface 拡張時は **全 dummy 実装 (e2e の minimal adapter test 等)** も同期更新 (typecheck で漏れ検出)
+
+主な使用箇所: `TtsAdapter.errorCount` (`useSpeechSynthesis` の `utterance.onerror` → `useArticleViewTts` で toast 表示 + 空テキスト silent skip も同時対応)
+
 ### 派生ケース: `availability()` が `unavailable` を返したら **入力引数も一緒にログに出す**
 
 外部 API の `availability()` / `validate()` 系判定関数が **「使えない」結果** を返したとき、結果値だけログに出すと「ハードウェア要件不足」と誤診しがち。実際は **渡している引数値が API 仕様と乖離している** 可能性が常にある。`devError` で **入力引数も一緒に** 出力する設計にすれば、仕様乖離を最初の調査で検出できる。
