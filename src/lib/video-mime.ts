@@ -5,6 +5,8 @@
  * マジックバイト検証で Content-Type ヘッダーの偽装にも対応する。
  */
 
+import { parseFtypBrand } from "./mime-utils";
+
 /** 許可する動画 MIME タイプのホワイトリスト (#715)。 */
 export const ALLOWED_VIDEO_CONTENT_TYPES = new Set<string>([
   "video/mp4",
@@ -23,26 +25,20 @@ export const ALLOWED_VIDEO_CONTENT_TYPES = new Set<string>([
 export function detectVideoMimeType(bytes: Uint8Array): string | null {
   if (bytes.length < 4) return null;
 
-  // ISO BMFF (mp4 / quicktime / 3gp): offset 4-7 = "ftyp" + brand で判別
-  if (
-    bytes.length >= 12 &&
-    bytes[4] === 0x66 &&
-    bytes[5] === 0x74 &&
-    bytes[6] === 0x79 &&
-    bytes[7] === 0x70
-  ) {
-    const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
-    if (brand === "qt  ") return "video/quicktime";
+  // ISO BMFF (mp4 / quicktime / 3gp): ftyp box の brand で判別
+  const ftypBrand = parseFtypBrand(bytes);
+  if (ftypBrand) {
+    if (ftypBrand === "qt  ") return "video/quicktime";
     // mp4 系 brand (isom / mp41 / mp42 / iso2 / avc1 / dash 等) は全て mp4 として扱う
     if (
-      brand === "isom" ||
-      brand === "iso2" ||
-      brand === "mp41" ||
-      brand === "mp42" ||
-      brand === "avc1" ||
-      brand === "dash" ||
-      brand === "M4V " ||
-      brand === "M4A "
+      ftypBrand === "isom" ||
+      ftypBrand === "iso2" ||
+      ftypBrand === "mp41" ||
+      ftypBrand === "mp42" ||
+      ftypBrand === "avc1" ||
+      ftypBrand === "dash" ||
+      ftypBrand === "M4V " ||
+      ftypBrand === "M4A "
     ) {
       return "video/mp4";
     }

@@ -44,20 +44,11 @@ async function handleGet(
   // 画像 URL はサーバー取得コンテンツ由来のため長さ制限なし。SSRF 対策のみ行う。
   if (!isValidPublicUrl(url)) return new Response(null, { status: 400 });
 
-  // 遅延計測 (#649): Cloudflare Workers Logs で実測値を見て、
-  // Cache API / fetch のどこがボトルネックかを判定する。
-  // ログは wrangler tail / ダッシュボードの Logs で確認できる。
-  const t0 = Date.now();
   const cacheKey = await buildCacheKey(reqUrl.origin, "image", url);
-  const tBuildKey = Date.now();
 
   // Cloudflare Cache API で確認
   const cached = await matchCfCache(cacheKey);
-  const tCacheMatch = Date.now();
   if (cached) {
-    console.log(
-      `[image-proxy] HIT total=${tCacheMatch - t0}ms buildKey=${tBuildKey - t0}ms cacheMatch=${tCacheMatch - tBuildKey}ms`,
-    );
     return new Response(cached.body, {
       headers: {
         "Content-Type": cached.headers.get("Content-Type") ?? "image/jpeg",
@@ -68,10 +59,6 @@ async function handleGet(
       },
     });
   }
-
-  console.log(
-    `[image-proxy] MISS-START buildKey=${tBuildKey - t0}ms cacheMatch=${tCacheMatch - tBuildKey}ms`,
-  );
 
   try {
     // #720: Qiita の imgix CDN (`qiita-user-contents.imgix.net` 等) はホットリンク保護で
