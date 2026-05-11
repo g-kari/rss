@@ -23,9 +23,7 @@ const retryAfterHeader = res.headers.get("Retry-After") ?? "60";
 headers["Retry-After"] = retryAfterHeader;
 ```
 
-**Why**: 一部の上流サイト (wallhaven.cc 等) は 429 を `Retry-After` なしで返してくる。クライアント側の retry-after.ts が遅延時間を判定できず即時リトライ → 再 429 の連鎖になるため、プロキシ層で必ず補完する。
-
-**How to apply**: 外部 HTTP レスポンスを中継する Route Handler で、クライアント側 (retry-after.ts 等) が依存しているヘッダがあれば補完を必ず入れる。
+**How to apply**: 外部 HTTP レスポンスを中継する Route Handler で、クライアント側 (retry-after.ts 等) が依存しているヘッダがあれば補完を必ず入れる (一部上流サイトは 429 を `Retry-After` なしで返し、補完がないと即時リトライ → 再 429 の連鎖になる)。
 
 ## silent fallback の禁止 — `try/catch → null` には必ず `devError` を添える
 
@@ -62,9 +60,7 @@ export async function summarizeInBrowser(text: string): Promise<string | null> {
 }
 ```
 
-**Why**: silent fallback は「ユーザー: 最新 Chrome なのに使えない」「開発者: DevTools にも出ない」のダブルブラックボックスを生む。`devError` で出した情報は `process.env.NODE_ENV !== 'production'` でだけ console.error されるため、本番ノイズにならず開発時の調査だけ可能になる。フォールバックが**意図通り動作している**のか**仕様変更で壊れている**のかを区別する唯一の手段。
-
-**How to apply**: 外部依存ラッパーで `catch { return null }` を書きたくなったら、必ず `devError` を併記する。前提条件 (user activation, secure context, hardware requirement, API バージョン) のガード節も同様に reason を `devError` で出す。`null` 返却の経路が複数あるなら全箇所で出す。
+**How to apply**: 外部依存ラッパーで `catch { return null }` を書きたくなったら、必ず `devError` を併記する (silent fallback はユーザー・開発者の両方にとってブラックボックスで、「仕様通り動作」「仕様変更で破損」を区別する唯一の手段が devError ログ)。前提条件 (user activation, secure context, hardware requirement, API バージョン) のガード節も同様に reason を `devError` で出す。`null` 返却の経路が複数あるなら全箇所で出す。
 
 主な使用箇所: `src/lib/browser-summarizer.ts` / `src/lib/browser-translator.ts`（Chrome 組み込み AI ラッパー）
 
@@ -91,9 +87,7 @@ if (!isUsable(availability)) {
 }
 ```
 
-**Why**: ブラウザ AI / 外部サービスの `availability()` 系 API は **無効な引数値** を渡されると `"unavailable"` を返すことがある（明示的な型エラーを投げない）。結果値だけ見ると「環境問題」に見えて、実は実装側のオプション値が公式仕様と一致していなかった、というケースが頻発する。入力引数を一緒にログに出せば「渡している値が公式仕様の enum と一致しているか」を最初の調査ステップで確認できる。
-
-**How to apply**: 外部 API の `availability()` / `validate()` / `canX()` 系判定関数を呼ぶラッパーで:
+**How to apply**: 外部 API の `availability()` / `validate()` / `canX()` 系判定関数を呼ぶラッパーで (`availability()` 系は無効な引数値を渡されても明示的な型エラーを投げず `"unavailable"` を返すケースが頻発するため、結果値だけ見ると「環境問題」と誤診する):
 
 1. **オプション値は const オブジェクトに集約** (`SUMMARIZER_OPTIONS` / `TRANSLATOR_OPTIONS` 等) して 1 箇所参照
 2. **TDD で「渡している enum 値が公式仕様と一致するか」を assert** (例: `expect(SUMMARIZER_OPTIONS.type).toBe("tldr")`)
@@ -117,8 +111,6 @@ if (chromeVersion !== null && chromeVersion < MIN_SUMMARIZER_CHROME_VERSION) {
   return { available: false, reason: "chrome-too-old" };
 }
 ```
-
-**Why**: バージョン bump 忘れは「ファイル先頭コメントに `Chrome 138+` と書いてあるのに実装は 131 のまま」のような腐敗を起こす。export const 1 箇所にすれば TDD で `MIN_SUMMARIZER_CHROME_VERSION` の整合性を assert できるし、設定 UI のメッセージ (`Chrome 138 以上にアップデートすると…`) も同じ定数から参照できる。
 
 **How to apply**: ブラウザ API のバージョン要件は `MIN_XXX_CHROME_VERSION` 形式で export const 化する。ファイル先頭の jsdoc コメントが「Chrome N+」と述べているなら、その N が定数として実装にも現れているか確認する。UI メッセージの数字もハードコードせず定数を文字列補間する（i18n しない場合でも保守性のため）。
 
@@ -163,13 +155,7 @@ location.reload();
 localStorage.removeItem("rss-debug-autoread"); // OFF
 ```
 
-**Why**:
-
-1. **デフォルト OFF**: 一般ユーザーの DevTools には何も出ない (UX 維持)
-2. **ユーザー操作で ON**: 1 行コマンドで詳細ログが出るので「再現するときだけ ON」が可能
-3. **キャッシュ最適化**: `cachedEnabled` で localStorage アクセスを 1 回に抑える (effect 内で頻繁に呼ばれても性能影響なし)
-4. **純粋関数化**: `evaluateXxxDebugEnabled(value)` を分離して TDD 可能 (`window` 不在の node 環境でも動く)
-5. **devError と使い分け**: `devError` (`NODE_ENV !== "production"` ガード) は dev のみ。本番再現困難なバグはこちらの localStorage gate を使う
+**devError との使い分け**: `devError` (`NODE_ENV !== "production"` ガード) は dev のみ。本番再現困難なバグはこちらの localStorage gate を使う。
 
 **How to apply**:
 
@@ -219,9 +205,7 @@ catch (err) {
 }
 ```
 
-**Why**: AbortController の abort は「どこから呼ばれたか」がスタックトレースに残らない (非同期境界を跨ぐ)。コードレビュー / エージェント分析で「複数経路の中でどれが真因か」を断定できないとき、**本番ログに ref の状態スナップショット** を散在配置すれば、ユーザーから 1 回のログ提出で経路が判定できる。「abort された」だけのログは観測点として不足。
-
-**How to apply**: AbortController / useRef ベースの「複雑な遷移バグ」を調査するとき:
+**How to apply**: AbortController / useRef ベースの「複雑な遷移バグ」を調査するとき (`AbortController.abort()` の呼び出し元はスタックトレースに残らず非同期境界を跨ぐので、「abort された」だけのログは観測点として不足。ref の状態スナップショットを散在配置すれば 1 回のログ提出で経路特定可能):
 
 1. **ref の値変化を起こす全箇所** を grep で列挙 (例: `abortRef.current = ` / `abortRef.current?.abort()`)
 2. 各箇所の **ref の前後状態** (`hadX` / `currentXIsNull` / `currentXIsThis`) を debug ログに含める
@@ -257,14 +241,7 @@ export function shouldRestore(state, now, ttlMs = RESUME_TTL_MS) {
 const [enabled, setEnabled] = useState(() => shouldRestore(parsePersisted(raw), Date.now()));
 ```
 
-**Why**:
-
-1. **TTL なし** = ユーザーが「先週 ON → 今週 PC 再起動」したら勝手に ON で起動 → 意図しない動作 (TTS 自動再生等)
-2. **時計戻りチェック (`elapsed < 0`)** = OS 時計が過去に戻ったとき (NTP 同期 / 手動変更) に永久復元になるバグ防止
-3. **不正データの fallback** = JSON 構造不一致・型不一致は OFF で起動 (private mode の例外もこれでカバー)
-4. **保存タイムスタンプの併存** = `enabled` だけでは「いつ保存したか」が分からない。`{ enabled, savedAt }` の組で保存する設計が必要
-
-**How to apply**:
+**How to apply** (時計戻りチェック `elapsed < 0` は OS 時計が NTP 同期 / 手動変更で過去に戻ったときの永久復元バグを防ぐので必須):
 
 1. 永続化対象 state は `{ value, savedAt: number }` 形式で保存 (タイムスタンプ必須)
 2. `parsePersistedXxx(raw)` 純粋関数で安全パース (型ガード含む)

@@ -40,8 +40,6 @@ function useReadStateSyncApply() {
 }
 ```
 
-**Why**: object/Record state は reference 不安定が直接 useMemo / useCallback / useEffect の再実行を引き起こす。同期処理 (R2 / WebSocket / polling) は通常「内容変化なし」のケースが多数派 (例: スヌーズエントリは滅多に変わらない)。この多数派ケースで state 更新を skip すれば下流の再計算が完全停止する。
-
 **How to apply**: 周期的・冗長な setState 呼出を見つけたら、以下を確認:
 
 1. **state の type は object / Record / array か** — boolean / number / string なら React の === 比較で skip されるので問題なし
@@ -76,9 +74,7 @@ const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
 // runtime で .add() が TypeError throw する defense in depth
 ```
 
-**Why**: TypeScript の `Set<string>` / `Array<T>` 型は **mutable をマークしない**。`ReadonlySet` / `ReadonlyArray` で渡せば型でも守れるが、consumer 全箇所の型変更を要求するため漸進的移行と相性が悪い。`Object.freeze + as cast` なら **PR スコープを最小化** しながら runtime での汚染検知を獲得できる。安定参照のため module-level で 1 度だけ作る sentinel は consumer が増えるほど誰かが mutate する事故確率が上がるため、defense in depth として freeze を入れる価値がある。
-
-**How to apply**: `const EMPTY_X = ...` のような module-level sentinel を新規宣言するとき:
+**How to apply**: `const EMPTY_X = ...` のような module-level sentinel を新規宣言するとき (`ReadonlySet`/`ReadonlyArray` は consumer 全箇所の型変更要求のため漸進移行と相性が悪い、`Object.freeze + as cast` なら scope 最小で runtime 汚染検知できる):
 
 1. **mutable 型 (Set / Map / Array / Object) はすべて freeze 対象**。primitive (string / number / boolean) は不要
 2. **frozen 型注釈は元の mutable 型のまま** (`as Set<string>` で consumer 側の型変更を回避)
@@ -167,8 +163,6 @@ function List({ selectedId, anchorTrigger }: Props) {
 }
 ```
 
-**Why**: 同じ `selectedId` で再スクロールさせたい場合、`setSelectedId(同じ値)` では React が re-render を skip するため effect も発火しない。`anchorTrigger` のような **monotonic に増えるカウンタ** を別 state に持てば、increment のたびに必ず re-render + effect 再実行を引き起こせる。ref と組み合わせれば「id 変化なのか / trigger 変化なのか」を区別して挙動を切り替えられる (例: 通常選択は `align: "auto"`、手動 anchor は `align: "center"`)。
-
 **How to apply**: 「同じ依存値でユーザー操作の都度 effect を再発火したい」要件を見つけたら:
 
 1. **trigger counter state** を親に置く: `const [trigger, setTrigger] = useState(0);`
@@ -206,9 +200,7 @@ useEffect(() => {
 }, [ttsEndedCount, ttsPaused]);
 ```
 
-**Why**: ブラウザ API の挙動規約として **「`cancel()` 系メソッドは自然完了イベントを発火させない」** ものが多数 (Web Speech / WebSocket / EventSource / fetch AbortController 等)。この規約を活用して **「自然完了イベントの発火回数」を monotonic counter で expose** すれば、`cancel()` がイベントを発火させない事実を利用して、手動停止と自然完了を **物理的に区別** できる。state 遷移 (`playing: true → false`) は両パスで同じため、派生 boolean ベースの判定は原理的に区別不可能。
-
-**How to apply**: ブラウザネイティブ API のラッパー hook で「自然完了 → 何かを発火」したい要件を実装するとき:
+**How to apply**: ブラウザネイティブ API のラッパー hook で「自然完了 → 何かを発火」したい要件を実装するとき (state 遷移ベースだと手動 cancel と自然完了が原理的に区別不可、`cancel()` がイベント不発火する API 規約を利用):
 
 1. **API の挙動規約を MDN で確認** — 「`cancel()` (or 同等の手動停止メソッド) は自然完了イベントを発火させるか?」を確認
 2. **発火させない仕様** なら → **自然完了イベントだけで increment する monotonic counter** を hook の戻り値に追加 (例: `endedCount` / `closedCount` / `naturalEndCount`)
@@ -257,8 +249,6 @@ useEffect(() => {
 }, [articleId]);
 ```
 
-**Why**: ref をリセットしないと「前は再生中だった」が次記事に持ち越され、新記事 TTS 開始前の `ttsPlaying = false` で「完了」と誤判定 → 即次記事への連鎖遷移ループになる。
-
 ### 派生ケース: effect の二重発火を防ぐ「実行済み ID」ref
 
 「現在対象 (articleId / sessionId) で副作用を **1 回だけ** 実行したい」effect は、依存配列の変動値（テキスト・派生 state など）で再発火しないように **実行済み ID** を ref で覚える。
@@ -280,8 +270,6 @@ useEffect(() => {
 
 // articleId 切替時の独立 reset effect で speakTriggeredRef.current = null
 ```
-
-**Why**: 二重防止 ref がないと TTS 完了で `ttsPlaying=false` に戻った瞬間に effect が再発火し、同記事を無限に再 speak するループが発生する。
 
 **How to apply**: 「副作用が一度だけ走るべき」effect の依存配列に変動値が入っているなら、必ず ID ベースの `triggeredRef` で防護する。`fetchTriggeredRef` / `speakTriggeredRef` のように **「何 ID で何を実行したか」** を ref に持たせて、同 ID で再実行しないようにガードする。
 
@@ -332,8 +320,6 @@ Step 1: render 分岐の関数化
   └─ 1-d: gallery レイアウトを関数化         ← 次の PR
 ```
 
-**Why**: 一度に全レイアウトを関数化すると差分が大きく、レビュー困難・回帰リスク高。1 レイアウトずつ抽出すれば typecheck + e2e で確実に検証でき、問題があれば局所的にロールバック可能。
-
 **How to apply**: Step を着手する前に「この Step で扱う対象を 1 つに絞れるか」を判断する。1〜3 個に絞れる場合は最も独立性が高い 1 個から開始し、別 PR に分けて進める。
 
 ### 派生ケース: 巨大コンポーネントの hook 抽出は 1 hook ずつ別 commit で進める
@@ -354,8 +340,6 @@ App.tsx / 巨大ページコンポーネントから複数の `useEffect` / `use
 2. **既存 hook で完結する handler** (例: トースト表示・URL POST) — Props 経由で依存注入すれば切り離せる
 3. **早期 return パス** (loading / unauthenticated) — コンポーネント or 関数として抽出。ただし「TypeScript narrowing が失われる」罠 (本ファイル別節) に注意
 4. **関連する複数の useState を集約した hook** (例: `useAppModalState` で 3 つのモーダル state + キーボードショートカット) — まとめて抽出した方がカプセル化が綺麗
-
-**Why**: 1 hook ずつ commit すれば、後で `git bisect` でバグ commit を 1 hook 単位に絞り込める。8 hook 一括 commit だと「どの抽出で挙動が変わったか」を再調査する手間が爆発する。各 commit で typecheck + e2e を通すと「この hook 抽出時点では動いていた」が確定するため、心理的負担も減る。
 
 **How to apply**: 巨大コンポーネントから抽出する hook を最初に箇条書きで列挙 (4〜10 個程度) → 上記優先順位で 1 個ずつ抽出 → 各 commit で `pnpm run typecheck` 通過を確認 → 8 個程度溜まったら master へ no-ff merge して 1 ブランチを完了させる。
 
@@ -432,13 +416,6 @@ function App() {
 }
 ```
 
-**Why**:
-
-1. **アトミック性が名前で表現される**: `selectFeedClearingArticle` の名前から「フィード選択 + 記事クリア」が 1 つの不可分操作と読める。インライン lambda だと「複数 setter の集まり」にしか見えない
-2. **2 箇所のインライン lambda が乖離するリスクを排除**: 一方が「`setSelectedGroupId(null)` も追加」と修正されたとき、他方が古いままになる drift を物理的に防ぐ
-3. **render-stability 向上**: `useCallback` 化で reference 不変になり、子コンポーネント (例: `useFeedSidebarActions` の `useMemo` deps) の不要な再計算を抑制できる
-4. **state hook の責務が明確化**: 「state を持つ」だけでなく「state に対するアトミック操作を提供する」役割が明示される
-
 **How to apply**: 巨大コンポーネントから抽出済の state hook (`useXxxxxxx`) を見たら、**そこから取り出した setter を複数箇所でインライン lambda として組み合わせている箇所** を grep で探す:
 
 1. `set<HookState>` setter を grep して使用箇所を列挙
@@ -470,12 +447,6 @@ App.tsx / レイアウトコンポーネントで、**同形の wrapper JSX** (`
 <MobilePane pane="list" currentPane={mobilePane} isDesktop={isDesktop} id="main-content" tabIndex={-1}>...</MobilePane>
 <MobilePane pane="view" currentPane={mobilePane} isDesktop={isDesktop} as="main">...</MobilePane>
 ```
-
-**Why**:
-
-1. **属性派生ロジック (例: `aria-hidden` / `inert` の同期) を 1 箇所に閉じ込める**: 「PC 時は無効」のような条件が散在すると、片方だけ条件追加されてアクセシビリティが壊れるリスク
-2. **新ペイン追加時のコピペミス防止**: コピペで一部属性を書き換え忘れる事故を物理的に防ぐ
-3. **要素タイプの差異** (`<div>` vs `<main>`) は `as: ElementType` props で吸収すれば 1 コンポーネントで対応可能
 
 **How to apply**: 同形 wrapper JSX を見たら以下を判定:
 
@@ -524,12 +495,6 @@ export function AppListPane({ articleListProps, ... }) {
 }
 ```
 
-**Why**:
-
-1. **drift 防止**: `ComponentProps<typeof ArticleList>` は子コンポーネントの Props 型を **TypeScript が自動継承** するので、ArticleList の Props 追加・削除に親が自動追従する
-2. **親の責務が明示**: 親独自の状態 (`mobilePane` / `isDesktop` / `loadingFeeds`) と「子に転送するだけ」の状態 (`articleListProps`) が型レベルで分離される
-3. **テスト時の mock が容易**: `articleListProps` を 1 つの object として渡せば良いので、テストで 30 props を個別に与える必要がない
-
 **How to apply**: 「子コンポーネントを薄く包むラッパー」を新設するとき:
 
 1. 子コンポーネントの Props を **個別宣言しない** — 必ず `ComponentProps<typeof Child>` で受ける
@@ -563,14 +528,6 @@ JSX 抽出で **行数が変わらない (or 増える)** ケースでも、以�
 <AppViewPane mobilePane={...} isDesktop={...} articleViewProps={...} />
 ```
 
-**Why**:
-
-1. **認知一貫性**: 「sidebar / list / view が同じパターンで書かれている」は読み手にとって理解負荷が低い。片方だけ inline だと「なぜ?」と立ち止まらせる
-2. **将来の拡張に強い**: 例えば 4 ペイン目を追加したくなったとき、symmetric な構造なら新コンポーネントを 1 つ作るだけで済む
-3. **Provider / Boundary 配置の一元化**: ErrorBoundary / Skeleton / Provider のラップは「ペインの責務」として閉じ込められる
-4. **行数削減を絶対視しない**: コード品質 != 行数。symmetry / cohesion が高いほど保守性向上
-5. **transitive cleanup の機会を逃さない**: 全 sibling を抽出しきると、親で使われていた「子 sibling 共通の依存」(import / hook / wrapper component) が **不要になって一括削除可能** になる。例: `AppSidebarPane` / `AppListPane` / `AppViewPane` を全部抽出した時点で、親から `FeedSidebar` / `ArticleList` / `ArticleView` / `ErrorBoundary` / `MobilePane` / `Skeleton*` のインポートが **5 個以上一括削除** できた
-
 **How to apply**: extraction 判定で「行数が増えるからやめる」と即決しない:
 
 1. **sibling 概念の数を数える** — 2 つなら微妙、3 つ以上なら強い動機
@@ -578,7 +535,7 @@ JSX 抽出で **行数が変わらない (or 増える)** ケースでも、以�
 3. **将来も sibling として並列扱いか** — Yes なら抽出
 4. 上記が複数 Yes なら **行数増減無視で extraction OK**。コミットメッセージに「symmetry のための extraction」を明記して将来の AI/開発者の判断材料にする
 5. JSDoc に「対称となる sibling コンポーネント」をリンクで明示 (例: `AppListPane と対称な薄いラッパー`)
-6. **「2/3 終わったから残り 1 個もやる」と最初から計画**: 全 sibling を抽出しきって初めて transitive cleanup (上記 Why#5) が発火する。中途半端に終わらせると最大の利得を取りこぼす
+6. **「2/3 終わったから残り 1 個もやる」と最初から計画**: 全 sibling を抽出しきって初めて transitive cleanup (親から子 sibling 共通の依存 imports/hooks を一括削除) が発火する。中途半端に終わらせると最大の利得を取りこぼす
 
 主な使用箇所: `AppViewPane` (Step 1q) — `AppListPane` (Step 1p) との symmetry のため、行数削減ゼロでも extraction を採用 / `AppSidebarPane` (Step 1r) — 3 ペイン全 extraction 完了で親から 5 imports を一括削除
 
@@ -628,13 +585,6 @@ function App() {
 }
 ```
 
-**Why**:
-
-1. **親の責務を「3 panes 構造の組み立て」だけに絞れる** — overlay の追加・削除で親の JSX が肥大化しなくなる
-2. **category 内の cohesion 向上** — 「floating chrome を追加したい」要望が来たとき、AppOverlays 1 ファイルだけ修正すれば済む
-3. **import の transitive cleanup** — 11 個の overlay コンポーネントが親で不要になるので、まとめてインポート削除可能 (#650 Step 1s 実例で 11 imports 削除)
-4. **集約コンポーネント自身は state を持たない pure pass-through** で良い — 状態管理は親に残るので bug surface は変わらない
-
 **How to apply**: 異種 JSX の集約候補を判定:
 
 1. **同じ category** に属するか (例: 「overlay」「dashboard widget」「dialog 群」) — Yes が前提
@@ -662,8 +612,6 @@ function App() {
   ├─ Phase 1: 純粋関数 + TDD 全分岐網羅 + speak() callback 拡張    ← 1 PR (testable / shippable)
   └─ Phase 2: useTtsHighlight hook + DOM span ラップ + scroll 追従 + 設定 UI ← 別 Issue / 別 PR
 ```
-
-**Why**: 純粋関数だけなら TDD で全分岐網羅できて高信頼で commit 可能。UI 統合は React state / DOM 副作用が絡んで複雑なので別フェーズに分けると、Phase 1 のロジックを既に検証済みの土台として Phase 2 を組み立てられる。「Phase 1 が動かない」という不確実性を最初に潰せる。
 
 **How to apply**: 大きな新機能 Issue を見たとき、まず実装計画を「データ変換層 (純粋関数)」と「副作用層 (UI / DOM / async)」に分ける:
 
@@ -701,9 +649,7 @@ function App() {
 - 設定 UI の追加 (Phase 1b へ)
 - 代替実装の追加 (Phase 2 へ)
 
-**Why**: 既存実装の書き換えと代替実装追加を一度にやると、変更原因と挙動変化の対応が追えなくなる。Phase 0 を「ユーザー視点で挙動変化なし」に保つと、もし代替実装で問題が出ても Phase 0 commit までは確実に safe な state として bisect / revert 可能。型契約だけ先に確定すれば Phase 1b / 2 は **「型を満たす実装を書く」** 単純な責務に絞れる。
-
-**How to apply**: 既存実装に代替実装を差し込む大型リファクタ要望 (Issue: 「ライブラリ差し替え」「engine 抽象化」「Provider DI 化」等) を見たとき:
+**How to apply**: 既存実装に代替実装を差し込む大型リファクタ要望 (Issue: 「ライブラリ差し替え」「engine 抽象化」「Provider DI 化」等) を見たとき (Phase 0 を「挙動変化なし」に保つと bisect/revert 可能):
 
 1. 最初の commit を **「型契約 + 既存実装を契約準拠化」** に絞る (実装は touch しない)
 2. consumer 側の固有型参照 (`SpeechSynthesisVoice` / `WebSocket` / `Stripe.Subscription` 等) を grep し、**全件抽象型 (`TtsVoice` / `WsLike` / `Subscription`) に置き換える**
@@ -737,8 +683,6 @@ function App() {
 2. props 設計で **個別バリエーション** に対応 (`extraStyle?: CSSProperties` で CardBody の padding など)
 3. 「閉じた抽象」にする (内部の動作詳細は隠蔽、必要に応じて props で漏らす)
 4. テストなし: 純粋抽出は挙動変化なし、`typecheck` + 既存 e2e で OK
-
-**Why**: 機能別分割は「1000 行 → 200 行 × 5 ファイル」を達成して満足しがち。だが本当の保守性は「**各サブコンポーネントが個別に完結している** + **共通部分は 1 箇所にまとまっている**」両方が必要。前者だけだと「virtualizer 挙動を変えるとき 3 ファイル同期修正が要る」状態が残る。
 
 **How to apply**: 機能別分割が落ち着いたら、サブコンポーネント間で `git diff` 風の比較を行って **「ほぼ同一の 5 行以上のブロック」** がないか確認する。simplify 監査エージェントに「similar sub-components の重複」を観点として渡すと自動検出可能。
 
@@ -798,9 +742,7 @@ function App() {
 }
 ```
 
-**Why**: `useState` / `useRef` ベースの hook は呼び出すたびに新しい state slot を React が作る。複数箇所で呼ぶと state 同期が取れず、片方の更新が他方に反映されないバグになる。プロジェクトの典型は「ある UI を別 UI に移動したい」とき: 元の場所だけで使われていた hook を、新しい場所からも参照させると state 分裂が起きる。
-
-**How to apply**: 既存 hook の使用箇所を増やしたいときは:
+**How to apply**: 既存 hook の使用箇所を増やしたいときは (`useState`/`useRef` ベース hook は呼び出しごとに別 state slot ができるので state 共有要件は Provider 化必須):
 
 1. **既存呼び出し箇所が 1 ヶ所か** を grep で確認 (`useXxx` で全件検索)
 2. 1 ヶ所なら → 新規呼び出し側に追加するのではなく、**Provider 化** + 既存呼び出しも context に移行
@@ -840,9 +782,7 @@ function App() {
 }
 ```
 
-**Why**: TypeScript の制御フロー解析は呼び出した関数の **戻り値が non-null かどうか** で呼び出し元の変数を絞り込めない。早期 return を関数に切り出した場合、呼び出し元では「landingNode が null でなければ既に return している」だけしか TS には伝わらず、元の `if (user === undefined) return ...` で得られていた `user: UserProfile` への narrowing は復元されない。
-
-**How to apply**: 早期 return パスをコンポーネント / 関数に切り出すときは、
+**How to apply**: 早期 return パスをコンポーネント / 関数に切り出すときは (TS 制御フロー解析は関数戻り値の non-null 性で呼出元変数を narrow できないため):
 
 1. 切り出し前に「**この early-return が narrow していた変数は何か**」を確認する (例: `user`)
 2. 切り出し後、呼び出し元に `if (!targetVar) return null;` のような **TS narrowing 用の明示ガード** を追加する (実行時には早期 return パスで既に弾かれているため到達しないが、型のためだけに残す)
@@ -881,9 +821,7 @@ const { sub } = guard;            // ← sub: UserSubscription (non-null narrowe
 sub.requestCookie;                // ← `!` 不要
 ```
 
-**Why**: TypeScript の制御フロー解析は **discriminator field** (本例の `err`) で union を絞り込む。`if (guard.err) return guard.err;` の後、`guard.err === null` が確定するため、union のうち `sub: UserSubscription` の枝に narrowed される。plain object ベースだと `err === null` と `sub !== undefined` の関係を TS が知らないので narrowing できず、`!` で誤魔化す醜いコードになる。
-
-**How to apply**: 「早期 return + 抽出データ返却」型の helper を書くとき:
+**How to apply**: 「早期 return + 抽出データ返却」型の helper を書くとき (TS は discriminator field で union を narrow するので plain object より discriminated union が `!` 不要):
 
 1. 戻り値を **plain object でなく discriminated union** にする
 2. **discriminator field** を 1 つ選ぶ (本例の `err`、または `ok: true | false` も慣用)
@@ -945,8 +883,6 @@ return allHidden ? <Fallback /> : (
 );
 ```
 
-**Why**: 子の自己判断 hidden は「個別の見た目」を制御するには良いが、UI 全体としては「何も表示されない不可視な状態」を生む。親は子が消えた事実を知らないので fallback を出せず、ユーザーは「タイトルだけ残った謎の状態」を体験する。
-
 **How to apply**: 子コンポーネントに「自分で `null` 返却して消える」設計を入れる場合、必ず onHide / onSkip コールバックも併せて実装する。親は:
 
 1. `hiddenCount` state で集約
@@ -979,9 +915,7 @@ function onMouseMove(ev: MouseEvent) { /* DOM global そのまま */ }
 document.addEventListener("mousemove", onMouseMove); // 型整合 OK
 ```
 
-**Why**: React の event 型 (`MouseEvent` / `KeyboardEvent` / `TouchEvent` / `WheelEvent` / `FocusEvent` / `DragEvent` / `ClipboardEvent` / `PointerEvent` / `AnimationEvent` / `TransitionEvent` / `UIEvent`) は **DOM global と完全同名**。`React.X` qualified 形式なら namespace で区別できるが、named import に書き換えると import がモジュールスコープ内で global を shadow する。`addEventListener("mousemove", h)` の callback signature は DOM `MouseEvent` を要求するため、shadow された React 由来型を渡すと overload マッチ失敗で typecheck が連鎖的に壊れる。
-
-**How to apply**: `React.X` を named import に書き換える sweep 作業を行うとき:
+**How to apply**: `React.X` を named import に書き換える sweep 作業を行うとき (React 由来の event 型は DOM global と同名のため、named import すると shadow して `addEventListener` overload マッチが壊れる):
 
 1. **書き換え対象ファイルで DOM event listener が使われていないかチェック**:
    ```bash
@@ -1023,13 +957,7 @@ function highlight(): ReactNode {
 }
 ```
 
-**Why**: React 17+ の new JSX transform 以降、JSX は内部で `react/jsx-runtime` の `jsx()` を呼ぶため `React` global は不要。`React 19` + `Next.js 16` ではこれが標準で自動有効。default `React` import を残すと:
-
-1. **bundle に React 全モジュールがインポートされる可能性** (tree-shaking が tsconfig 設定によっては効きにくい)
-2. **「React の何を使っているか」が見えない** (`React.createElement` / `React.Fragment` 等を qualified で使うと grep しにくい)
-3. **React.X 形式と named import 形式の混在で一貫性が崩れる** (本ファイル冒頭の「DOM global 衝突対応」と同じ理由 — 全ファイル統一が望ましい)
-
-**How to apply**: ファイル中で `import React from "react"` を見つけたら、以下のステップで named import に変換:
+**How to apply**: ファイル中で `import React from "react"` を見つけたら、以下のステップで named import に変換 (React 17+ new JSX transform 以降、`React` global は JSX のために不要):
 
 1. **value 系を named import に追加**: `createElement` / `Fragment` / `forwardRef` / `useImperativeHandle` / `memo` 等
 2. **type 系も同時に named import 化** (本ファイル「DOM global 衝突対応」セクションのフロー適用)
@@ -1069,8 +997,6 @@ useEffect(() => {
 
 **注意点**: `ResizeObserver` は要素自身のリサイズを検知する。子要素が追加されてコンテナが拡張する場合は通常検知されるが、絶対座標配置で **親コンテナ自身の clientHeight が変わらない** ケースでは発火しない。その場合は `MutationObserver` (subtree childList 監視) との併用や、`requestAnimationFrame` を 2 段で待ってからチェックする手法を組み合わせる。
 
-**Why**: masonic / react-virtual の絶対座標配置では、`scrollHeight` がレイアウト確定後に動的に書き換わるため、IntersectionObserver の sentinel に依存するだけでは「列偏在で sentinel に届かない」状態を検知できず無限スクロールが止まる。`ResizeObserver` + rAF 2 段待機の併用で解消する。
-
 ## AbortController.abort() の伝播範囲を限定する
 
 **1 つの `AbortController` を複数の並列 fetch で共有しないこと**。共有してしまうと、1 件の fetch を止めるための `controller.abort()` が **他の進行中の fetch も全て中断** してしまう。
@@ -1107,8 +1033,6 @@ async function fetchOne(article) {
   return fetch(url, { signal: localController.signal });
 }
 ```
-
-**Why**: 共有 controller を 1 件のエラーで abort すると、進行中の他記事の fetch も全て中断され、それらは `failedIds` にも入らず UI 上にリトライボタンも出ない「空カードで停止」状態になる。
 
 **How to apply**: `AbortController` を共有する設計を採るときは、abort のスコープを明示する:
 
@@ -1175,9 +1099,7 @@ const fetchFullContent = useCallback(async () => {
 }, [articleId]);
 ```
 
-**Why**: React の useEffect 発火順は **子 → 親** (depth-first, bottom-up)。親が render する子コンポーネントが「親の hook で公開された関数 (fetchFullContent / startSubscription 等) を effect(1) で呼ぶ」設計の場合、子の effect が先に走って ref を set し、その後に親の cleanup effect が abort する逆転現象が起きる。「無条件 abort」が正しいのは「親の hook 内だけで完結する設計」のときのみ。子に hook の public 関数を渡している場合は **「自分が起動した fetch か / 古い fetch か」を ref で識別** しないと cleanup が新 fetch を殺してしまう。
-
-**How to apply**: `useRef<AbortController>` + `useEffect[targetId]` で abort + cleanup する hook を書くとき:
+**How to apply**: `useRef<AbortController>` + `useEffect[targetId]` で abort + cleanup する hook を書くとき (useEffect 発火順は子→親 depth-first なので、子 effect が新 fetch を set した後で親 cleanup がそれを abort する逆転が発生する):
 
 1. **その hook が公開する関数 (fetch / subscribe / start) を、子コンポーネントが effect で呼んでいないか** を確認
 2. 呼んでいる場合、**子の effect は親の cleanup より先に発火する** ことを意識
@@ -1208,8 +1130,6 @@ const articlesKey = articles
   .join("\0");
 ```
 
-**Why**: 先頭 N 件 ID だけのキーでは、ユーザーがスクロールして visible が拡張されてもキー不変 → effect 再実行されず → N+1 件目以降が永遠に未処理のまま放置される症状になる。
-
 **How to apply**: 依存配列キーを文字列ハッシュで作るときは:
 
 1. **何の変化を検知したいか** を明確にする（先頭固定 N 件 / 全件 / フィルタ後の集合 etc.）
@@ -1234,8 +1154,6 @@ useEffect(() => {
   // または: abortRef.current?.abort();
 }, [enabled]);
 ```
-
-**Why**: state を OFF にしただけだと、ユーザー目線では「停止ボタンが効かない」体感になる。フラグの変化を監視する独立 effect で副作用を明示停止させる必要がある。
 
 **How to apply**: 機能が「ON / OFF」のフラグで動く場合、OFF 遷移時のクリーンアップが副作用を 100% 止めているか必ず確認する。fetch / timer / 音声 / WebSocket / IntersectionObserver などすべて。
 
@@ -1272,9 +1190,7 @@ const today = useUtcDate();
 const todayCount = articles.filter((a) => a.publishedAt?.startsWith(today)).length;
 ```
 
-**Why**: 時刻自体には「変化通知イベント」が無い (ブラウザ API の `voiceschanged` 等とは異なる)。**「次の境界まで `setTimeout`」+「境界到達で setState」+「state 変化で次の `setTimeout` を再 schedule」** の自己再帰パターンで実装する必要がある。+1000ms はクロックずれ / 微小遅延の安全マージン。
-
-**通常の render 負荷はほぼゼロ**: 境界到達時に 1 回だけ state 変化 → 関連 useMemo / useEffect が再評価されるだけ。`setInterval(1000ms)` のような頻繁な polling は不要。
+**通常の render 負荷はほぼゼロ**: 境界到達時に 1 回だけ state 変化 → 関連 useMemo / useEffect が再評価されるだけ。`setInterval(1000ms)` のような頻繁な polling は不要 (時刻には変化通知イベントが無いので「次の境界まで `setTimeout` → 境界到達で setState → state 変化で再 schedule」の自己再帰パターン、+1000ms はクロックずれの安全マージン)。
 
 **How to apply**: 「**時刻境界をキー** にした表示 / 集計」を書くときは hook 化を検討:
 
@@ -1326,9 +1242,7 @@ useEffect(() => {
 }, []);
 ```
 
-**Why**: ブラウザ API には「初期化が非同期で完了する」ものが多く、初期取得だけだと一部環境で永遠に空/旧値のままになる。Chrome の `voiceschanged` / DOM の `MutationObserver` / `navigator.mediaDevices.devicechange` / `screen.orientation.change` などはすべて同じパターン。
-
-**How to apply**: ブラウザネイティブ API を呼ぶ useEffect を書くとき:
+**How to apply**: ブラウザネイティブ API を呼ぶ useEffect を書くとき (`voiceschanged` / `MutationObserver` / `navigator.mediaDevices.devicechange` / `screen.orientation.change` 等、初期化が非同期で完了する API は初期取得 + イベント購読のペア必須):
 
 1. **「初回呼び出しで完全な値が取れるか？」を必ず確認** (MDN ドキュメント or 動作確認)
 2. 取れない場合、**変更通知イベントが提供されているか確認** (`xxxchanged` / `change` 系)

@@ -15,8 +15,6 @@ paths: "backend/repositories/rss/**/*.ts,backend/repositories/rss/**/*.tsx"
 | E2E テスト           | `npm run test:e2e`  | Playwright                |
 | ビルド               | `npm run build`     | `next build`              |
 
-**Why**: dokodemo-claude ルートの build-check.md にある `npm run check-all` は rss プロジェクトに存在しないため、このファイルが TS/TSX 編集時にロードされてルート指示を上書きする。
-
 ## コミット前フロー
 
 ```bash
