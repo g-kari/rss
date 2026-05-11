@@ -1,22 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { buildProtectedIds, filterExpiredArticles, ARTICLE_TTL_DAYS } from "../src/lib/article-ttl";
-import type { ReadState, Article } from "../src/types";
+import type { ReadState } from "../src/types";
+import { makeArticle } from "./helpers/article";
 
 // ── ヘルパー ───────────────────────────────────────────────────────
-
-function makeArticle(overrides: Partial<Article> = {}): Article {
-  return {
-    id: "abc1234567890123",
-    feedHash: "feedhash1234567",
-    guid: "https://example.com/article-1",
-    title: "テスト記事",
-    link: "https://example.com/article-1",
-    summary: "テスト要約",
-    publishedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    ...overrides,
-  };
-}
 
 function daysAgo(n: number): string {
   const d = new Date();

@@ -7,20 +7,10 @@ import {
   compareByPublishedAtDesc,
 } from "../src/lib/article-utils";
 import type { Article } from "../src/types";
+import { makeArticle as makeBaseArticle } from "./helpers/article";
 
-function makeArticle(id: string, content: string): Article {
-  return {
-    id,
-    feedHash: "h",
-    guid: id,
-    title: "t",
-    link: `https://example.com/${id}`,
-    summary: "",
-    content,
-    publishedAt: "2026-05-01T00:00:00Z",
-    createdAt: "2026-05-01T00:00:00Z",
-  };
-}
+// このファイル特有の signature (id, content) をラップ — 内部で override object に変換
+const makeArticle = (id: string, content: string) => makeBaseArticle({ id, content });
 
 /**
  * readingTime の単体テスト。

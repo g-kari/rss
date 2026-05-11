@@ -1,31 +1,29 @@
 import { test, expect } from "@playwright/test";
 import { buildArticlesKey } from "../src/lib/gallery-prefetch";
-import type { Article } from "../src/types";
+import { makeArticle as makeBaseArticle } from "./helpers/article";
 
-const makeArticle = (id: string, link?: string): Article =>
-  ({
+const makeArticle = (id: string, link?: string) =>
+  makeBaseArticle({
     id,
     feedHash: "abc123def456",
     guid: id,
     title: id,
     link: link ?? `https://example.com/${id}`,
-    summary: "",
     publishedAt: "2026-05-09T00:00:00Z",
     createdAt: "2026-05-09T00:00:00Z",
-  }) as Article;
+  });
 
-// link なし / 空文字を擬似的に作る (型を欺く必要があるが、実装の filter テストのため許容)
-const makeArticleNoLink = (id: string, link: string): Article =>
-  ({
+// link なし / 空文字を擬似的に作る (実装の filter テスト用)
+const makeArticleNoLink = (id: string, link: string) =>
+  makeBaseArticle({
     id,
     feedHash: "abc123def456",
     guid: id,
     title: id,
     link,
-    summary: "",
     publishedAt: "2026-05-09T00:00:00Z",
     createdAt: "2026-05-09T00:00:00Z",
-  }) as Article;
+  });
 
 test.describe("buildArticlesKey (#669)", () => {
   test("空配列 → 空文字", () => {

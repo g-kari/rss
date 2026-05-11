@@ -1,32 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { buildReadwiseCsv } from "../src/lib/export-readwise";
-import type { Article, Feed } from "../src/types";
-
-function makeArticle(overrides: Partial<Article> = {}): Article {
-  return {
-    id: "article-001",
-    feedHash: "feed-hash-01",
-    guid: "guid-001",
-    title: "テスト記事タイトル",
-    link: "https://example.com/article/1",
-    summary: "<p>サマリー</p>",
-    publishedAt: "2026-04-12T10:00:00Z",
-    createdAt: "2026-04-12T10:00:00Z",
-    ...overrides,
-  } as Article;
-}
-
-function makeFeed(overrides: Partial<Feed> = {}): Feed {
-  return {
-    id: "feed-hash-01",
-    title: "テックブログ",
-    url: "https://example.com/feed.xml",
-    siteUrl: "https://example.com",
-    lastFetchedAt: null,
-    fetchError: null,
-    ...overrides,
-  } as Feed;
-}
+import { makeArticle } from "./helpers/article";
+import { makeFeed } from "./helpers/feed";
 
 test.describe("buildReadwiseCsv — ヘッダー行", () => {
   test("先頭行は Readwise の CSV ヘッダー", () => {
@@ -73,7 +48,7 @@ test.describe("buildReadwiseCsv — 1 記事の出力", () => {
 
   test("Author 列に feed.title が入る", () => {
     const article = makeArticle();
-    const feed = makeFeed({ title: "Vercel Blog" });
+    const feed = makeFeed({ id: article.feedHash, title: "Vercel Blog" });
     const notes = { [article.id]: "メモ" };
 
     const csv = buildReadwiseCsv([article], notes, [feed]);

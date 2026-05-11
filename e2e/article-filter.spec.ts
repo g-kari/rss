@@ -7,6 +7,7 @@ import {
   type CompiledKeywordFilter,
 } from "../src/lib/keyword-filter";
 import { SPECIAL_FEED_IDS } from "../src/lib/storage";
+import { makeArticle as makeBaseArticle } from "./helpers/article";
 
 /**
  * filterAndSortArticles の単体テスト。
@@ -23,19 +24,18 @@ import { SPECIAL_FEED_IDS } from "../src/lib/storage";
 
 // ── ヘルパー ──────────────────────────────────────────────────────
 
-function makeArticle(id: string, feedHash: string, overrides: Partial<Article> = {}): Article {
-  return {
+const makeArticle = (id: string, feedHash: string, overrides: Partial<Article> = {}) =>
+  makeBaseArticle({
     id,
     feedHash,
     guid: id,
-    title: overrides.title ?? `記事 ${id}`,
+    title: `記事 ${id}`,
     link: `https://example.com/${id}`,
-    summary: overrides.summary ?? `サマリー ${id}`,
-    publishedAt: overrides.publishedAt ?? "2024-06-01T00:00:00Z",
-    createdAt: overrides.createdAt ?? "2024-06-01T00:00:00Z",
+    summary: `サマリー ${id}`,
+    publishedAt: "2024-06-01T00:00:00Z",
+    createdAt: "2024-06-01T00:00:00Z",
     ...overrides,
-  };
-}
+  });
 
 const BASE_OPTS: ArticleFilterOptions = {
   feedId: null,

@@ -4,21 +4,14 @@ import { isValidCookieHeader, parseName } from "../src/lib/validation";
 import { FEED_GROUP_NAME_MAX_LENGTH } from "../src/lib/feed-groups";
 import { buildOpml, extractFeeds } from "../src/lib/opml";
 import type { Feed, FeedGroup } from "../src/types";
+import { makeFeed as makeBaseFeed } from "./helpers/feed";
 
 // ---------------------------------------------------------------------------
 // ヘルパー
 // ---------------------------------------------------------------------------
 
-function makeFeed(overrides: Partial<Feed> & { url: string }): Feed {
-  return {
-    id: overrides.url,
-    title: overrides.title ?? "Test Feed",
-    siteUrl: overrides.siteUrl ?? "https://example.com",
-    lastFetchedAt: null,
-    fetchError: null,
-    ...overrides,
-  };
-}
+const makeFeed = (overrides: Partial<Feed> & { url: string }) =>
+  makeBaseFeed({ id: overrides.url, ...overrides });
 
 function makeGroup(overrides: Partial<FeedGroup> & { id: string; name: string }): FeedGroup {
   return {

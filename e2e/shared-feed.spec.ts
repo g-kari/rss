@@ -18,11 +18,12 @@ import {
 } from "../src/lib/shared-feed";
 import { pMap } from "../src/lib/concurrency";
 import type { SharedFeedMeta, UserSubscription, Article } from "../src/types";
+import { makeArticle as makeBaseArticle } from "./helpers/article";
 
 // ── ヘルパー ──────────────────────────────────────────────────────
 
-function makeArticle(id: string, publishedAt: string, extra: Partial<Article> = {}): Article {
-  return {
+const makeArticle = (id: string, publishedAt: string, extra: Partial<Article> = {}) =>
+  makeBaseArticle({
     id,
     feedHash: "abc123",
     guid: `guid-${id}`,
@@ -32,8 +33,7 @@ function makeArticle(id: string, publishedAt: string, extra: Partial<Article> = 
     publishedAt,
     createdAt: publishedAt,
     ...extra,
-  };
-}
+  });
 
 function makeMeta(overrides: Partial<SharedFeedMeta> = {}): SharedFeedMeta {
   return {

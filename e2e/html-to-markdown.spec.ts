@@ -1,31 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { htmlToMarkdown, generateFrontmatter } from "../src/lib/html-to-markdown";
-import type { Article, Feed } from "../src/types";
-
-// テスト用ファクトリ
-function makeArticle(overrides: Partial<Article> = {}): Article {
-  return {
-    id: "test-id",
-    feedHash: "feed-hash-01",
-    title: "テスト記事",
-    link: "https://example.com/article",
-    summary: "",
-    content: "",
-    author: "著者名",
-    publishedAt: "2026-04-12T10:00:00Z",
-    ...overrides,
-  } as Article;
-}
-
-function makeFeed(overrides: Partial<Feed> = {}): Feed {
-  return {
-    id: "feed-hash-01",
-    title: "テストフィード",
-    url: "https://example.com/feed.xml",
-    siteUrl: "https://example.com",
-    ...overrides,
-  } as Feed;
-}
+import { makeArticle } from "./helpers/article";
+import { makeFeed } from "./helpers/feed";
 
 // ===== htmlToMarkdown =====
 
@@ -154,8 +130,8 @@ test.describe("htmlToMarkdown — blockquote", () => {
 
 test.describe("generateFrontmatter", () => {
   test("title・url・feed を含む YAML を返す", () => {
-    const article = makeArticle();
-    const feed = makeFeed();
+    const article = makeArticle({ title: "テスト記事" });
+    const feed = makeFeed({ title: "テストフィード" });
     const result = generateFrontmatter(article, feed);
 
     expect(result).toContain("---");

@@ -2,16 +2,14 @@ import { test, expect } from "@playwright/test";
 import { XMLParser } from "fast-xml-parser";
 import { buildOpml, extractFeeds, type OpmlOutline } from "../src/lib/opml";
 import type { Feed, FeedGroup } from "../src/types";
+import { makeFeed as makeBaseFeed } from "./helpers/feed";
 
-function makeFeed(overrides: Partial<Feed> & { id: string; url: string }): Feed {
-  return {
+const makeFeed = (overrides: Partial<Feed> & { id: string; url: string }): Feed =>
+  makeBaseFeed({
     title: overrides.id,
     siteUrl: `https://${overrides.id}.example.com`,
-    lastFetchedAt: null,
-    fetchError: null,
     ...overrides,
-  };
-}
+  });
 
 function makeGroup(overrides: Partial<FeedGroup> & { id: string; name: string }): FeedGroup {
   return {
