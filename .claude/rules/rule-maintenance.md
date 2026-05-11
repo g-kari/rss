@@ -341,6 +341,38 @@ Step 3: 残り
 - `react-patterns.md` (`coding-conventions.md` から state/ref クラスター 4 セクション抽出、180 行削減)
 - `audit-workflow.md` (`coding-conventions.md` から「監査エージェント並行派遣」+ 派生ケース 6 個を 223 行で抽出、`coding-conventions.md` -214 行)。paths を `e2e/**/*.spec.ts` に絞り、コード編集時のロード対象外として注意資源希釈を抑制
 - `html-pipeline.md` (`coding-conventions.md` から HTML 後処理 pipeline 関連 5 セクション 261 行抽出、`coding-conventions.md` -249 行)。paths を `src/lib/html-*.ts,content.ts,image-*.ts,json-ld-images.ts,regex-extractor.ts,readability-extractor.ts,hooks/useArticleImageMaxWidth.ts` に絞り、UI / hook / API 編集時のロード対象外化
+- `react-effect-patterns.md` (`react-patterns.md` から useEffect 副作用 5 セクション 290 行抽出、`react-patterns.md` -270 行)。**外部ファイル `coding-conventions.md` からの redirect 4 箇所** (ResizeObserver / AbortController / モード OFF / ブラウザ API 遅延通知) も同時更新
+
+### 派生ケース: 抽出対象に外部ファイルから redirect placeholder が指している場合は同サイクルで全て更新する
+
+`react-patterns.md` → `react-effect-patterns.md` のように **抽出元ファイル A を別ファイル B (例: `coding-conventions.md`) から redirect している**場合、抽出を実施しても B の redirect は依然 A を指したままになる。A から消えたセクションを B が A に redirect → A の末尾 redirect で C (新ファイル) に飛ぶ二重リダイレクトでも一応動くが、**reader が「なぜ 2 段 redirect なのか」を疑う認知負荷** + **将来 A の redirect が削除されたら broken link** になる。
+
+```bash
+# 抽出 commit に含めるべき同時更新の検出フロー
+# 1. 抽出元ファイル名から redirect している外部ファイルを grep
+grep -rn "react-patterns.md" .claude/rules/ --include="*.md" \
+  | grep -v "react-patterns.md:" | grep -v "react-effect-patterns.md:"
+
+# 2. その redirect が指しているセクション名と、抽出するセクション名を照合
+# 一致するなら redirect 先を新ファイル名に更新
+```
+
+**How to apply**: rule ファイル X からセクション群を新ファイル Y に抽出する Step を実施するとき:
+
+1. 抽出セクションのタイトル (例: `## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する`) を列挙
+2. **`.claude/rules/` 全体で `grep -rn "X" .claude/rules/`** (= 抽出元ファイル名 X が他ファイルから言及されている箇所を全列挙)
+3. 各 hit の **直前 2-3 行** を Read して、それが抽出対象セクション名と一致する redirect か確認
+4. 一致するなら **同 commit で redirect 先を新ファイル名 Y に更新** (Step 4 の sed 削除と並行して Edit ツールで実施)
+5. 更新後に `grep -rn "X" .claude/rules/` を再実行して、抽出セクションへの古い redirect が残っていないか最終確認
+6. **broken redirect (本体削除されて redirect placeholder だけ残っている)** を別途発見したら、同サイクルでは触らず別 Issue 起票 (本 Step の scope 拡大を防ぐ)
+
+**反例 (同時更新が不要なケース)**:
+
+- 抽出元 X が他ファイルから redirect されていない (= X が「葉」ファイルで誰も参照していない)
+- 抽出セクションが X 内部完結 (= X 内で他セクションが redirect しているだけ、抽出後 X 末尾の集約 redirect で吸収可能)
+- 抽出セクションのタイトルが redirect 文と一致しない (= redirect は別 セクションを指している、誤検知)
+
+主な使用箇所: `react-effect-patterns.md` 抽出時 — `coding-conventions.md` から 4 箇所 redirect (`ResizeObserver` / `AbortController` / `モード OFF` / `ブラウザ API 遅延通知`) を grep 検出して同サイクルで全て新ファイル名 `react-effect-patterns.md` に更新。同 `coding-conventions.md` に **broken redirect** (`useEffect 依存キーの slice()` の本体が削除済み) も発見したが scope 拡大回避のため別件として残置
 
 ### 派生ケース: 「N ファイル mechanical refactor」は wrapper adapter で callsite 不変を保ち scope 圧縮する
 
