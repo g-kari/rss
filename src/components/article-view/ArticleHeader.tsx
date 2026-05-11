@@ -47,6 +47,8 @@ interface Props {
   ttsPaused: boolean;
   ttsRate: number;
   ttsCycleRate: () => void;
+  ttsVolume: number;
+  ttsCycleVolume: () => void;
   onTtsToggle: () => void;
   autoMode: boolean;
   onToggleAutoMode: () => void;
@@ -120,6 +122,8 @@ export default function ArticleHeader({
   ttsPaused,
   ttsRate,
   ttsCycleRate,
+  ttsVolume,
+  ttsCycleVolume,
   onTtsToggle,
   autoMode,
   onToggleAutoMode,
@@ -212,6 +216,8 @@ export default function ArticleHeader({
           ttsPaused={ttsPaused}
           ttsRate={ttsRate}
           ttsCycleRate={ttsCycleRate}
+          ttsVolume={ttsVolume}
+          ttsCycleVolume={ttsCycleVolume}
           onTtsToggle={onTtsToggle}
           autoMode={autoMode}
           onToggleAutoMode={onToggleAutoMode}

@@ -132,6 +132,8 @@ function ArticleView({
     ttsEndedCount,
     ttsRate,
     ttsCycleRate,
+    ttsVolume,
+    ttsCycleVolume,
     handleTtsToggle,
     ttsSpeak,
     ttsStop,
@@ -248,6 +250,8 @@ function ArticleView({
             ttsPaused={ttsPaused}
             ttsRate={ttsRate}
             ttsCycleRate={ttsCycleRate}
+            ttsVolume={ttsVolume}
+            ttsCycleVolume={ttsCycleVolume}
             onTtsToggle={handleTtsToggle}
             autoMode={autoMode}
             onToggleAutoMode={onToggleAutoMode ?? (() => {})}

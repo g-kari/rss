@@ -185,6 +185,24 @@ export function useArticleFilters({
     resetPageRef.current();
     return next;
   }, [readingTimeRangeRef, resetPageRef, feedViewRef]);
+  const resetAllFilters = useCallback(() => {
+    const view = feedViewRef.current;
+    const emptyBools = Object.fromEntries(
+      (Object.keys(BOOL_FILTER_STORAGE) as BoolFilterKey[]).map((k) => [k, false]),
+    ) as Record<BoolFilterKey, boolean>;
+    setBoolFilters(emptyBools);
+    for (const k of Object.keys(BOOL_FILTER_STORAGE) as BoolFilterKey[]) {
+      storageSet(getFeedViewStorageKey(BOOL_FILTER_STORAGE[k], view), "0");
+    }
+    setDateRange("all");
+    storageSet(getFeedViewStorageKey(STORAGE_KEYS.DATE_RANGE, view), "all");
+    setReadingTimeRange("all");
+    storageSet(getFeedViewStorageKey(STORAGE_KEYS.READING_TIME_RANGE, view), "all");
+    setRawQuery("");
+    setAuthorFilter(null);
+    setCategoryFilter(null);
+    resetPageRef.current();
+  }, [feedViewRef, resetPageRef]);
 
   return {
     ...boolFilters,
@@ -206,6 +224,7 @@ export function useArticleFilters({
     cycleReadingTimeRange,
     setAuthorFilter,
     setCategoryFilter,
+    resetAllFilters,
   };
 }
 

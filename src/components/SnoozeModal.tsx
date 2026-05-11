@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Modal from "./Modal";
 
 interface SnoozeOption {
@@ -68,8 +69,23 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * `<input type="datetime-local">` の min 属性用に「現在時刻 (ローカル)」を
+ * `YYYY-MM-DDTHH:mm` 形式で返す純粋関数。タイムゾーン情報は datetime-local が
+ * ローカル前提なので含めない (`d.toISOString()` を使うと UTC にズレるため避ける)。
+ */
+function formatLocalDateTimeInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function SnoozeModal({ articleTitle, onSnooze, onClose }: Props) {
   const options = buildOptions();
+  const [customDateTime, setCustomDateTime] = useState("");
+  // min 属性 (datetime-local) を 1 度だけ計算して安定化 (毎 render の "now" 揺らぎ防止)
+  const minDateTime = useMemo(() => formatLocalDateTimeInput(new Date()), []);
+  const customMs = customDateTime ? new Date(customDateTime).getTime() - Date.now() : 0;
+  const customValid = customDateTime !== "" && customMs > 0;
 
   return (
     <Modal title="スヌーズ" subtitle={articleTitle} onClose={onClose} width="sm:w-[320px]">
@@ -87,6 +103,30 @@ export default function SnoozeModal({ articleTitle, onSnooze, onClose }: Props) 
             <span className="text-[11px] text-text-muted tabular-nums">{opt.sublabel}</span>
           </button>
         ))}
+        <div className="border-t border-border-subtle mt-2 pt-3 px-4 pb-3 flex flex-col gap-2">
+          <label className="text-[11px] text-text-muted tracking-wide" htmlFor="snooze-custom-dt">
+            カスタム日時
+          </label>
+          <input
+            id="snooze-custom-dt"
+            type="datetime-local"
+            value={customDateTime}
+            min={minDateTime}
+            onChange={(e) => setCustomDateTime(e.target.value)}
+            className="w-full px-2 py-1.5 text-[13px] bg-surface-subtle text-text-strong border border-border-default rounded-md focus:outline-none focus:border-ink"
+          />
+          <button
+            onClick={() => {
+              if (!customValid) return;
+              onSnooze(customMs);
+              onClose();
+            }}
+            disabled={!customValid}
+            className="w-full px-3 py-1.5 text-[12px] bg-ink text-ink-text rounded-md hover:bg-ink-hover disabled:bg-surface-subtle disabled:text-text-faint transition-colors"
+          >
+            この日時までスヌーズ
+          </button>
+        </div>
       </div>
     </Modal>
   );

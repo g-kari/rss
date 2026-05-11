@@ -520,6 +520,7 @@ export function useFilteredArticles({
     setAuthorFilter: filters.setAuthorFilter,
     categoryFilter,
     setCategoryFilter: filters.setCategoryFilter,
+    resetAllFilters: filters.resetAllFilters,
     duplicateInfo,
   };
 }

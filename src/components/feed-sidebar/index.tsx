@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo, type FormEvent } from "react";
+import { useState, useEffect, useRef, memo, type FormEvent } from "react";
 import type {
   Feed,
   Article,
@@ -81,6 +81,12 @@ interface Props {
     onToggle: () => void;
     onSendTest?: () => Promise<string>;
   };
+  /**
+   * #722: 外部 (App.tsx の空状態 CTA など) からフィード追加モーダルを開くための trigger counter。
+   * 値が変化するたびに `setInputOpen(true)` を呼んで FeedAddModal を表示する。
+   * `react-patterns.md` の「trigger counter で同じ依存値でも useEffect を強制再実行する」パターン。
+   */
+  openFeedAddTrigger?: number;
 }
 
 function FeedSidebar({
@@ -120,6 +126,7 @@ function FeedSidebar({
   totalUnread: totalUnreadProp,
   install,
   push,
+  openFeedAddTrigger,
 }: Props) {
   const {
     onSelectFeed,
@@ -173,6 +180,15 @@ function FeedSidebar({
   const [cssSelectorOpen, setCssSelectorOpen] = useState(false);
   const [cookieOpen, setCookieOpen] = useState(false);
   const [inputOpen, setInputOpen] = useState(false);
+  // #722: 外部 trigger counter 変化で FeedAddModal を開く (空状態 CTA からの起動)
+  const prevOpenTriggerRef = useRef<number | undefined>(openFeedAddTrigger);
+  useEffect(() => {
+    if (openFeedAddTrigger === undefined) return;
+    if (prevOpenTriggerRef.current !== openFeedAddTrigger) {
+      prevOpenTriggerRef.current = openFeedAddTrigger;
+      setInputOpen(true);
+    }
+  }, [openFeedAddTrigger]);
   const [feedSearch, setFeedSearch] = useState("");
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showStats, setShowStats] = useState(false);

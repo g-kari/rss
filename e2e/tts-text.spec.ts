@@ -158,3 +158,29 @@ test.describe("buildTtsText: summaryText (#696)", () => {
     expect(result).toBe("T\n\n詳細は リンク を参照");
   });
 });
+
+test.describe("buildTtsText: noteText (#724)", () => {
+  test("noteText が指定されたら本文末尾に「メモ: <text>」で連結する", () => {
+    const article = { title: "T", summary: "" };
+    const result = buildTtsText(article, "本文", null, null, "覚えておく");
+    expect(result).toBe("T\n\n本文\n\nメモ: 覚えておく");
+  });
+
+  test("noteText が null なら本文末尾に何も追加しない (既存挙動)", () => {
+    const article = { title: "T", summary: "" };
+    const result = buildTtsText(article, "本文", null, null, null);
+    expect(result).toBe("T\n\n本文");
+  });
+
+  test("noteText が空文字 / 空白のみなら追加しない", () => {
+    const article = { title: "T", summary: "" };
+    expect(buildTtsText(article, "本文", null, null, "")).toBe("T\n\n本文");
+    expect(buildTtsText(article, "本文", null, null, "   \n  ")).toBe("T\n\n本文");
+  });
+
+  test("noteText に URL があっても preprocess で「リンク」に置換される", () => {
+    const article = { title: "T", summary: "" };
+    const result = buildTtsText(article, "本文", null, null, "詳細 https://example.com");
+    expect(result).toBe("T\n\n本文\n\nメモ: 詳細 リンク");
+  });
+});

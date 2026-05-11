@@ -50,7 +50,22 @@ export default function FilterPills({
     setAuthorFilter,
     categoryFilter,
     setCategoryFilter,
+    rawQuery,
+    resetAllFilters,
   } = useArticleFilter();
+
+  const anyFilterActive =
+    unreadOnly ||
+    bookmarkOnly ||
+    readingListOnly ||
+    likeOnly ||
+    noteOnly ||
+    digestMode ||
+    dateRange !== "all" ||
+    readingTimeRange !== "all" ||
+    Boolean(authorFilter) ||
+    Boolean(categoryFilter) ||
+    rawQuery.length > 0;
 
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
@@ -242,6 +257,27 @@ export default function FilterPills({
           <path d="M1 2.5h10M3 6h6M5 9.5h2" />
         </svg>
       </button>
+      {anyFilterActive && (
+        <button
+          onClick={resetAllFilters}
+          title="すべてのフィルターをクリア"
+          aria-label="すべてのフィルターをクリア"
+          className="flex items-center gap-1 px-2 h-6 rounded-full text-[11px] text-text-faint hover:text-text-strong hover:bg-surface-subtle transition-all duration-200"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          >
+            <path d="M2 2l8 8M10 2l-8 8" />
+          </svg>
+          <span>クリア</span>
+        </button>
+      )}
       {onMarkAllRead && <MarkAllReadButton onMarkAllRead={onMarkAllRead} />}
     </div>
   );
