@@ -1104,6 +1104,65 @@ export function useArticleImageMaxWidth(contentRef, contentKey) {
 
 主な使用箇所: `useArticleImageMaxWidth` — `fixImageDimensions` で max-width が付かない画像を runtime で補完
 
+## 冪等な HTML transform は複数 pipeline 経路で重複呼出して安全網にする
+
+`postProcess` (Readability 経由) / `applyCorePipeline` (xml-parser RSS 経由) のように **同じ output 形態を最終的に作る複数の pipeline 経路** がある場合、ある transform を 1 経路でしか呼ばないと、もう片方の経路で「変換漏れ」が発生する。
+
+`transformSpeakerDeckScriptEmbeds` / `transformSlideShareEmbedLinks` / `transformZennLinkEmbeds` のように **冪等な (= 同入力に同出力 / 二度実行しても結果が変わらない) transform** は、**両経路で呼んで重複実行する** のが安全網パターン。
+
+```typescript
+// アンチパターン: extractMainContent (Readability 前変換) でのみ呼ぶ
+function extractMainContent(html, pageUrl) {
+  let preprocessed = transformSpeakerDeckScriptEmbeds(html); // ← Readability 用に script を iframe 化
+  // ... Readability 抽出
+  return postProcess(content, pageUrl); // ← postProcess は transform を呼ばない
+}
+function postProcess(content, pageUrl) {
+  return applyCorePipeline(content, pageUrl); // ← sanitize 前に transform 呼んでいない
+}
+// → xml-parser → applyCorePipeline 経路 (RSS content 直流入) で script が
+//   sanitize で除去される → ユーザーは「全文取得しないと iframe 出ない」状態
+
+// 修正パターン: applyCorePipeline (両経路共通最終 stage) でも transform を呼ぶ
+function applyCorePipeline(html, pageUrl) {
+  let h = fixImageDimensions(html, pageUrl);
+  h = rewriteImageUrls(h);
+  h = fixExternalLinks(h, pageUrl);
+  h = transformSpeakerDeckScriptEmbeds(h); // ← 冪等。Readability 経由でも二度実行 OK
+  h = transformSlideShareEmbedLinks(h);
+  h = wrapTables(h);
+  return sanitizeHtml(h);
+}
+// extractMainContent 側の Readability 前変換は **依然必須** (Readability が script を
+// 除去するため preClean 前に iframe 化しないと data-id が消失)。両方で呼ぶことで
+// RSS 直流入 / Readability 経由の双方をカバー。
+```
+
+### 冪等判定軸
+
+transform が冪等か判定する `f(f(x)) === f(x)` テスト:
+
+| transform                                      | 冪等?       | 理由                                                                          |
+| ---------------------------------------------- | ----------- | ----------------------------------------------------------------------------- |
+| `transformSpeakerDeckScriptEmbeds`             | ✅ Yes      | 既に iframe 化済の HTML には script が無く no-op                              |
+| `transformSlideShareEmbedLinks`                | ✅ Yes      | 既に iframe 化済の HTML には対象 `<a>` が無く no-op                           |
+| `transformZennLinkEmbeds`                      | ✅ Yes      | 既に外部リンク化済の HTML には対象 span が無く no-op                          |
+| `sanitizeHtml`                                 | ✅ Yes      | 一度 sanitize 済の HTML を再 sanitize しても安全 (denylist 経路全 match なし) |
+| `rewriteImageUrls` (`/api/image-proxy` 経由化) | ❌ No       | 既にプロキシ化済の URL を再度プロキシで包む → 二重 encoded で壊れる           |
+| `fixExternalLinks` (rel/target 付与)           | ⚠️ ほぼ Yes | rel/target 既存属性は上書きしないガードあれば冪等                             |
+
+`rewriteImageUrls` のような **非冪等な transform** は 1 経路でのみ呼ぶ。冪等な transform だけが「重複呼出 OK」。
+
+**How to apply**: HTML transform 関数を pipeline に組み込むときに以下を判定 (冪等な transform を複数経路で呼ぶことで、新規 pipeline 経路追加時の「変換漏れ」を未然に防げる):
+
+1. **transform は冪等か?** TDD で `f(f(x)) === f(x)` を 1 ケース追加して確認
+2. **冪等 + 全経路で必要** なら → 共通最終 stage (`applyCorePipeline` 等) に組み込む
+3. **冪等 + Readability 前など特定タイミング必須** なら → 専用経路でも呼びつつ、共通 stage でも呼ぶ (二度実行で no-op)
+4. **非冪等** なら → 1 経路でのみ呼ぶ。pipeline のコメントで「ここで 1 度だけ実行」を明示
+5. 既存 transform の冪等性をリファクタで損なわないよう、spec に冪等性テストを追加するか jsdoc に「冪等」を明記
+
+主な使用箇所: `applyCorePipeline` で `transformSpeakerDeckScriptEmbeds` / `transformSlideShareEmbedLinks` を Zenn と同パターンで重複呼出 — xml-parser → applyCorePipeline 経路 (RSS 直流入) で全文取得を待たずスライドが表示される
+
 ## SVG sprite パターンの本文抽出: `<use href="#fragment">` 孤立参照は除去する
 
 ページ本体に `<svg style="display:none"><symbol id="i-twitter">...</symbol></svg>` で SVG sprite を定義し、本文中に `<svg><use href="#i-twitter">` で参照する設計は普及しているが、**Readability で本文だけ切り出すと sprite 定義が失われ参照だけが残る**。
