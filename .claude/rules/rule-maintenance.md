@@ -338,6 +338,44 @@ Step 3: 残り
 
 主な使用箇所: `react-patterns.md` (`coding-conventions.md` から state/ref クラスター 4 セクション抽出、180 行削減)
 
+### 派生ケース: 「N ファイル mechanical refactor」は wrapper adapter で callsite 不変を保ち scope 圧縮する
+
+「19 ファイルで重複定義された helper を共通ファクトリに集約」「3 ファイルの API 引数 signature を named arg 化」のような **N ファイル mechanical refactor** で、すべての callsite を新 signature に書き換えると **diff が膨張** (例: 19 spec × 50 行 ≈ 950 行) し、レビューが困難になる。代わりに「**各ファイル内で位置引数 → override object 変換 wrapper** を残す」アプローチを採れば、callsite は touch せず diff を最小化できる。
+
+```typescript
+// アンチパターン: helper を直接使うために全 callsite を書き換える (19 ファイル × 50 行)
+// 旧: makeArticle("id1", "hash1", "2026-01-01")
+// 新: makeArticle({ id: "id1", feedHash: "hash1", publishedAt: "2026-01-01" })
+// → 19 spec × 5-15 件の callsite を全部書き換え、レビュー困難
+
+// 修正パターン: 各 spec 内に wrapper を残す (ローカル定義の defaults を引き継ぐ)
+import { makeArticle as makeBaseArticle } from "./helpers/article";
+
+// このファイル固有の signature (位置引数 + デフォルト値) を wrap
+const makeArticle = (id: string, feedHash: string, publishedAt = "2026-05-01T00:00:00Z") =>
+  makeBaseArticle({ id, feedHash, guid: id, title: `${id} title`, link: ..., publishedAt, ... });
+
+// callsite は touch なし (位置引数のまま動く)
+makeArticle("a1", "feed-A", "2026-01-01T00:00:00Z")
+```
+
+**How to apply**: N ファイルでの mechanical refactor (helper 集約 / API rename / signature 変更) を計画するとき (callsite 書き換えで diff が 500 行を超えるとレビュー困難、wrapper adapter なら 19 spec × 5 行で完結):
+
+1. **callsite 書き換えが必要な箇所数を見積もる** (`grep -c` で件数把握)
+2. **件数 × 1 callsite 行数が >300 行** なら wrapper adapter 採用検討
+3. **各ファイル内に local wrapper を残す**: 新 signature を呼びつつ、旧 signature を expose
+4. **default 値の引き継ぎを確実に**: ローカル定義の default に依存するテストは migration で露呈する (例: feed lookup test が `feed.id` ↔ `article.feedHash` 一致前提に依存)
+5. **all-tests pass で commit** + commit message に「wrapper 採用理由 (scope 圧縮)」を明記
+6. wrapper が永続化する可能性あり (将来の caller 書き換えに別 Issue 化) — それは scope 圧縮のトレードオフとして許容
+
+**反例 (wrapper 不要 = 全 callsite 書き換えが正しいケース)**:
+
+- callsite 件数 × 行数 が 100 行未満 → 直接書き換えの方が clean
+- 新 signature 自体が大幅違いで wrapper の対応コストが本書き換えと近い (例: 引数順 + 名前 + 型 が全部変わる) → 直接書き換え
+- 既存 caller が **理解不能になる程度に位置引数依存** している場合 (例: `makeArticle("a", "b", "c")` の意味がコメントを読まないと分からない) → 全件 named arg に書き換える方が長期保守性が良い
+
+主な使用箇所: 47th-49th cycle `#711` (19 spec の `makeArticle/makeFeed` 重複定義集約、11 spec で wrapper adapter 採用 — caller 不変を維持しつつ helpers 集約)
+
 ## 7. 削除よりも一般化を優先
 
 「もう使わないルール」を見つけても **即削除しない**。まず以下を検討:
