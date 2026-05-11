@@ -243,10 +243,11 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
           </div>
         )}
 
-        {/* OGP 画像 (埋め込みなし) — #741: 小サムネ (< 200px) は w-full / aspect-video の枠で
-            縮小されず中央に小さく表示されてしまう。naturalWidth で検知して hide する。 */}
-        {!embedInfo && (article.ogImage ?? resolvedOgImage) && (
-          <OgImageThumbnail src={buildImageProxyUrl((article.ogImage ?? resolvedOgImage)!)} />
+        {/* OGP 画像 (埋め込みなし)。#742: 一覧 (`resolveThumbnail`) と detail でサムネ解決が
+            分裂する問題のため、useOgpCache 由来の resolvedOgImage を article.ogImage より優先。
+            #741: 小サムネ (< 200px) は naturalWidth で検知して hide する。 */}
+        {!embedInfo && (resolvedOgImage ?? article.ogImage) && (
+          <OgImageThumbnail src={buildImageProxyUrl((resolvedOgImage ?? article.ogImage)!)} />
         )}
 
         {/* 原文 / 翻訳タブ（翻訳結果がある場合のみ表示） */}

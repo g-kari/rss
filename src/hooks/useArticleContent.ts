@@ -90,13 +90,18 @@ export function useArticleContent(
   // 古い OGP 画像が新しい記事に適用されるレースコンディションを防ぐ
   useEffect(() => {
     setResolvedOgImage(null);
-    if (!articleLink || articleOgImage) return;
-    // useOgpCache が localStorage に保存済みのキャッシュを先に確認する（重複フェッチ防止）
+    if (!articleLink) return;
+    // useOgpCache が localStorage に保存済みのキャッシュを常に確認する (#742):
+    // RSS の `article.ogImage` が tiny thumbnail でも `/api/ogp` から取れる主画像のほうが
+    // 適切なケースがあるため、cache hit があればそれを resolvedOgImage に採用して
+    // ArticleContentBody 側で article.ogImage より優先する。
     const ogpCache = loadJson<Record<string, string>>(STORAGE_KEYS.OGP_CACHE, {});
     if (ogpCache[articleLink]) {
       setResolvedOgImage(ogpCache[articleLink]);
       return;
     }
+    // RSS から ogImage が来ていれば fetch を skip (cache 未登録 + article.ogImage あり)
+    if (articleOgImage) return;
     const controller = new AbortController();
     apiFetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
       .then((r) => {
