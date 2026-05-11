@@ -462,3 +462,74 @@ grep -nE "^\.claude/skills" .gitignore
 **How to apply**: 「issue 多数の状態で issue 処理依頼を受けた」サイクルでは、最初に Issue 分類 (A/B/C/D) を表で整理してからトラック起動。skill のチェックリスト (Step 1: 自分起票確認 / Step 2: ユーザー本人コメント抽出 / Step 3: 状態判定) を全 issue に一括実行してから分類するのが効率的 (本人コメント抽出は `for n in ...; do gh issue view $n ...; done` でバッチ処理)。
 
 主な使用箇所: 14 件 open issue を 1 サイクルで処理 — 調査 5 並列で設計方針コメント投稿、実装トラックは AI 自走条件外で残置、判断仰ぎで status コメント、軽微は最適化作業で解決済としてクローズ
+
+## 10. rule を hook / lint 強制化する計画は事前に lint tool capability を検証する
+
+`coding-conventions.md` 等の禁止事項を rule から削除して hook / lint 強制に置換える計画 (Claude Code best practice の「フックに変換」原則) を立てるときは、**Issue 起票・Phase 計画前に使用中の lint ツールが該当ルールをサポートするか検証する**。検証なしで Phase 計画すると、実装段階で「Rule not found」エラーが出て計画破綻 → 1 サイクル無駄。
+
+**事前検証手順**:
+
+1. **対象 lint ツールの rule sheet を確認** (oxlint なら https://oxc.rs の rules 一覧)
+2. **試しに minimal config に 1 ルール追加** → `pnpm check` でエラー文確認
+3. ターゲットルール (`no-restricted-syntax` 等) が **「Rule not found」「Not supported」** を出したら計画変更
+
+**How to apply**: hook / lint 化提案 Issue を書く前に:
+
+1. `pnpm check` で対象 lint ツール挙動を確認 (1 ルール追加 → exit code 確認)
+2. 未対応なら **Phase 計画から該当 phase を除外** + Issue 本文に「lint tool 未対応のため Phase X 除外」を明記
+3. 提案 commit 後に未対応判明したら、**「失敗 phase の見送り」を明示** して Issue を close (将来 lint tool が rule サポート追加したら再着手)
+4. 対象 1 ルールのみ確認すれば planning が進む — 他にも未対応 rule があるかは関連 Issue ごとに個別検証
+
+主な使用箇所: `coding-conventions.md` 禁止事項 hook 化計画 — Phase 2 で oxlint の `no-restricted-syntax` を前提に設計 → 実装時に `Rule 'no-restricted-syntax' not found in plugin 'eslint'` で破綻 → Phase 2 見送り + Phase 1 (tsconfig strict: true 既存確認 + rule 文面整理) のみで完結
+
+### 派生ケース: 自動化 infrastructure は markers + script を先行配置し、データ整備を別 phase に分離する
+
+「e2e spec → テストカバレッジ table 自動生成」のような **「データ整備が前提のオートメーション」** を導入するときは、**Phase 1 (今すぐ): AUTO_GEN markers + script 配置 / Phase 2 (運用切替時): データ整備 + script 実行** に分離する。Phase 1 のみで commit すれば、整備サイクルが運用切替時に自然に進む。
+
+```
+パターン: 自動化 infra の Phase 分離
+  Phase 1:
+    - integration markers (`<!-- AUTO_GEN START/END -->`) を canonical doc に挿入
+    - 生成 script を作成・package.json に追加 (実行は将来)
+    - marker 内のコメントで「Phase 2 で <データ整備> 後にスクリプト実行」を明記
+    - canonical 既存内容は marker 内に保持 (script 実行で上書きされるまで canonical)
+
+  Phase 2 (運用切替で着手):
+    - 新規 file/spec 追加時に metadata (JSDoc / front matter 等) を書く慣行を確立
+    - 既存ファイルの整備率が一定 (> 70%) を超えたら script 実行で上書き
+```
+
+**How to apply**: 「整備済 input → 自動生成 output」型のオートメーション提案を受けたら:
+
+1. **input 整備状況を確認** (例: 128 specs 中 124 が JSDoc 未記載 → 整備率 3%)
+2. 整備率 30% 未満 → Phase 1 (markers + script) のみ commit、Phase 2 (整備 + 実行) は別サイクル
+3. 整備率 70%+ → Phase 1 + Phase 2 同サイクル可
+4. **canonical 既存内容は markers 内に保持** + marker コメントで「Phase 2 で上書き予定」明記 (Phase 2 着手まで誤って script 実行されないよう script の wrapping 確認)
+5. 整備率が中間 (30-70%) → 残りの整備を別 Issue 化、その Issue を closes すれば Phase 2 自動着手の流れに
+
+主な使用箇所: テストカバレッジマップ自動生成 — 128 specs 中 124 が JSDoc 未記載 (整備率 3%) → Phase 1 (markers + script + package.json script) のみ commit、現存 canonical テーブルは markers 内に保持、Phase 2 は spec JSDoc 整備が運用浸透してから着手
+
+## 11. subagent の "0 changes" 結果は既存 corpus の品質確認として valid
+
+ルール / コード sweep をサブエージェントに派遣して **「変更なし (0 changes)」** が返ってきた場合、これは valid な outcome。「subagent が探さなかった」「精度が低い」と疑うのではなく、**「既存 corpus が判定クライテリアを満たしている」確認** として記録する。
+
+**0 changes が valid と判断できるサイン**:
+
+- subagent prompt が明確な判定クライテリア (HIGH 誘惑性 / trade-off 文書化済 / 規約遵守 等) を含む
+- sweep 範囲が明示済 (target files specified)
+- subagent report が「各候補を見て、X 個は HIGH 誘惑性 / Y 個は trade-off 済 → 0 changes」と **審査プロセスを記述している**
+
+逆に **0 changes を疑うサイン**:
+
+- prompt のクライテリアが vague (「良いコードか確認して」等)
+- subagent report が「特に問題なし」だけで審査プロセスを書いていない
+- sweep 範囲が広すぎて取りこぼしの可能性 (全 src/ 等)
+
+**How to apply**: subagent から 0 changes report が返ってきたとき:
+
+1. **prompt のクライテリアが具体的だったかを確認** — vague なら再派遣 (明確なクライテリア付き)
+2. クライテリア具体的 + 全候補を審査済 + 0 changes → **Issue close で「0 changes で完了」を明記**
+3. commit message に同 Issue を含めない (変更なしなので不要)
+4. **retrospective で「0 changes outcome」を記録** — 次回同種 sweep の優先度判定材料 (corpus 品質安定 = 同 sweep を数サイクル後まで遅延可能)
+
+主な使用箇所: アンチパターン / 修正パターンの誘惑性判定 sweep — subagent が 50+ 対をレビュー → 全て HIGH 誘惑性 or trade-off 文書化済と判定 → 0 changes で Issue close、「次回同種 sweep は数サイクル後まで不要」と判定材料に記録
