@@ -304,6 +304,41 @@ gh issue edit N --add-label needs-user-decision
 
 主な使用箇所: #682 (RTL + vitest infra) — Phase A (config + smoke test 1 件、5 ファイル touch) を 1 サイクルで完結 + master 反映 + Issue open 継続、Phase B (#634 / #623 のユニットテスト化) は次サイクル送り
 
+### 派生ケース: 全 Phase 完了時の Issue クローズコメントは「Phase 進捗表 + 残余地明示」を必須要素にする
+
+Phase 分離 Issue が全 Phase 完了したとき (= Issue close するとき) は、各 Phase の commit hash と内容を **表形式で整理** + **「敢えて残した余地」** を明示する。後の AI / 開発者が「この Issue は何を達成して何を残したか」を 30 秒で把握できる形に。
+
+```markdown
+## 完了内容 (N commit / M サイクル跨り)
+
+| Phase | commit | 内容 |
+|-------|--------|------|
+| A | commit-hash-1 | infra 導入 + smoke test |
+| B-1 | commit-hash-2 | 主要機能テスト N ケース |
+| B-2 | commit-hash-3 | 派生機能テスト N ケース |
+| C | commit-hash-4 | pre-commit hook / 配線 |
+
+## 最終 [metric]
+(test 件数 / カバレッジ / 性能数値等)
+
+## 元 Issue で残した余地
+- **Phase X.5**: <内容> — <優先度判定>
+- **新規 <category> の追加**: 個別 Issue 起票時に随時
+```
+
+**Phase クローズコメントの必須 4 要素**:
+
+1. **「N commit / M サイクル跨り」**: 規模感を 1 行で
+2. **Phase 進捗表**: commit hash + 内容を 1 行/Phase で
+3. **最終 metric**: 何が達成されたかの定量証拠 (test 件数 / コードカバレッジ / 性能改善値 / 削減行数等)
+4. **残余地リスト**: 「Phase B-1.5 (低優先度)」「新規 X の追加 (個別 Issue 起票)」のような **「敢えて残した」「将来の AI 自走候補」** を明示
+
+**最長サイクル跨り実例**: `#682` は 5 サイクル跨り (4 commit) で完結 — Phase A → B-1 → B-2 → C。各 Phase は前 Phase の infra (vitest config / hook test pattern / pre-commit) を **累積的に再利用**。
+
+**How to apply**: 全 Phase 完了時に上記 4 要素テンプレートで close コメントを投稿してから、`gh issue close N` (or `closes #N` を最後の commit に含める) で確実にクローズ。残余地リストは「将来の自走候補」として次サイクル以降に拾われる。
+
+主な使用箇所: #682 (RTL + vitest infra) — 5 サイクル / 4 commit (Phase A → B-1 → B-2 → C) で完結、Phase B-1.5 (実 component test) を残余地として明示
+
 ## Issue クローズ時のコメント
 
 対応完了時は以下を含むクローズコメントを残す:

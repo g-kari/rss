@@ -32,7 +32,35 @@ console.log('段落2が含まれるか:', result?.[1].includes('段落2'));
 ```bash
 pnpm run check        # Oxlint + Oxfmt + tsgo（高速）
 pnpm run typecheck    # tsc — Next.js plugin 込みの完全な型チェック
+pnpm run test:unit    # vitest — React hook test / 純粋関数 spec (~500ms)
 ```
+
+## pre-commit hook の順序は「高速 → 遅い」で早期失敗検知
+
+`.pre-commit-config.yaml` に hook を追加するとき、**実行時間が短い hook を前に配置**して失敗を早期検知する。長い hook (playwright e2e ~30s) を先に走らせると、後段の単純エラー (型 / lint) で fail したときに数十秒の wait が無駄になる。
+
+```yaml
+# 推奨順序 (高速 → 遅い):
+hooks:
+  - check-fix # oxlint + oxfmt (~1s)         ← 最も高速、format fail を最初に
+  - typecheck # tsc --noEmit (~3-5s)         ← 型エラーを早期検出
+  - unit-test # vitest (~500ms)              ← React/hook 単体エラーを検知
+  - e2e-test # playwright (~30s)            ← 最も遅い、最後の砦
+```
+
+**How to apply**: 新規 hook を追加するときに以下を判定 (順序を間違えると pre-commit が「無駄に長い」と感じられて hook 全体が無効化される動機になる、高速 hook 先で大半の fail を即検知):
+
+1. **新規 hook の実行時間を計測** (`time npm run <new-hook>`)
+2. **既存 hook の実行時間と比較** して **「より遅い hook の直前」** に配置
+3. `ci.skip` 設定 (pre-commit.ci 用) も同時に更新 — CI 環境で node_modules / browser がない hook は skip リストに追加
+4. **hook の責務が重複する場合は統合** (例: check-fix が typecheck も内包するなら typecheck hook は削除)
+
+**反例 (順序入れ替えが正しいケース)**:
+
+- 重要度が高い hook (例: security scan) は速度を犠牲にしても **最前列に配置** (失敗時の影響範囲が大きい場合)
+- 依存関係がある hook (例: codegen → typecheck) は **codegen を typecheck の前** に固定
+
+主な使用箇所: `.pre-commit-config.yaml` (#682 Phase C) — vitest unit-test を typecheck と e2e-test の間に配置、check-fix < typecheck < unit-test < e2e-test の昇順
 
 ## E2E テスト
 
