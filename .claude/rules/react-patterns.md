@@ -700,6 +700,29 @@ main thread:
 
 主な使用箇所: `gallery-offviewport.ts` (`#714 Phase 1`) — main thread で `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` の TDD spec + 実装、並列エージェントで masonic v4 の `positioner.update` / `useResizeObserver` / `onRender(start, stop)` の挙動調査 → 「`positioner.update` は同列再 layout 制約あり / `onRender` の stop 捕捉で回避可能」という Phase 2 設計メモを 1 サイクルで取得
 
+### 派生ケース: ライブラリ調査エージェントの「API 単位の事実」と「シナリオ全体の整合性」を区別する
+
+ライブラリ調査エージェントは **「個別 API の存在 / 挙動」** は正確に報告するが、**「そのライブラリ全体の制約を踏まえたシナリオの実行可能性」** までは検証しないことがある。Phase 2 着手時に **「個別 API は揃っているのに、シナリオ全体としては成立しない」** という事態が発覚することがある。
+
+```
+パターン: シナリオ整合性の漏れ
+  1. エージェント報告 (API 単位): 「`positioner.update(idx, h)` で任意 index の高さ更新可能」
+     ✓ 事実として正しい
+  2. Phase 2 着手で判明 (シナリオ全体): 「viewport 外 item で画像 load → update 呼出」
+     ✗ 実は masonic は viewport 外を最初から render しないため、画像 load イベント自体が発生しない
+  3. → 「個別 API は使える」が「想定シナリオは起きない」のミスマッチ
+```
+
+**How to apply**: ライブラリ調査エージェントの結果を Phase 2 設計に取り込む前に (個別 API の事実だけでは「ユーザー要望を満たす実装経路」が成立するかは検証されない):
+
+1. **エージェント prompt に「シナリオ整合性の検証」を明示**:
+   - 例: 「`positioner.update` の挙動を確認」だけでなく **「viewport 外 item で画像 load イベントが発生するか? = ライブラリは viewport 外を render するか?」** も併せて報告させる
+2. **Phase 2 着手の最初の 30 分で「想定シナリオの最小再現実験」** を試みる (実装着手の前に、想定する trigger event が実際に発火するか確認)
+3. **シナリオが成立しない場合は即座に Issue 進捗報告**: 当初の判断 (案 X) では実現不可と判明したことを明示し、代替案 (固定 height グリッド / 部分実装 / 現状受容) を提示
+4. **当該シナリオが masonic / lodash / react-router 等の「fundamental design choice」に起因するなら、ライブラリ変更でなく要望側の調整** を選ぶ判断もあり (ユーザー要望「viewport 外のみ適応」を「Pinterest 型を諦めて Instagram 型グリッド」に妥協する等)
+
+主な使用箇所: `#714` Phase 2 — masonic v4 は viewport 外 item を最初から render しない仕様のため、当初の案「viewport 外で画像 load → positioner.update」がシナリオ全体としては成立しないと Phase 2 着手時に判明。代替案 (固定 height グリッド化 / aspectRatio 切替抑制 / 現状受容) を Issue 進捗報告で提示して needs-user-decision 化
+
 ### 派生ケース: 既存実装の差し替え基盤は「Phase 0: 型抽象化のみ」を先行する
 
 既存の動く実装に **代替実装** を後から差し込みたい場合 (Web Speech API → Piper wasm 等)、いきなり大きな書き換えに着手せず **「Phase 0: 型契約だけ抽象化」を最初の commit にする**。実装のロジックは一切変えない。
