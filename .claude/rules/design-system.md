@@ -1,6 +1,6 @@
 ---
 description: フラットミニマル design system — カラートークン / タイポグラフィ / 3 ペインレイアウト / コンポーネントパターン / アイコン
-paths: "src/components/**/*.tsx,src/**/*.tsx,app/globals.css"
+paths: "src/components/**/*.tsx,app/globals.css"
 ---
 
 # デザインシステム
