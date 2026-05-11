@@ -12,6 +12,7 @@
 import { sanitizeHtml } from "./html";
 import { processNestedBlocks } from "./html-noise-removal";
 import { tryParseBase, fixImageDimensions, rewriteImageUrls } from "./html-image-processors";
+import { rewriteVideoUrls } from "./html-video-processors";
 import {
   transformZennLinkEmbeds,
   transformZennMermaidEmbeds,
@@ -141,6 +142,7 @@ export function fixExternalLinks(html: string, pageUrl = ""): string {
 export function applyCorePipeline(html: string, pageUrl = ""): string {
   let h = fixImageDimensions(html, pageUrl);
   h = rewriteImageUrls(h);
+  h = rewriteVideoUrls(h);
   h = fixExternalLinks(h, pageUrl);
   h = transformSpeakerDeckScriptEmbeds(h);
   h = transformSlideShareEmbedLinks(h);
