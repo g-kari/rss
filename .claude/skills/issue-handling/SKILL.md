@@ -9,15 +9,15 @@ description: rss プロジェクト固有の GitHub Issue 対応ルール集 —
 
 Issue に対して何かアクションを取る前（コメント / 実装 / 設計提案）に、以下を必ず確認する:
 
-### Step 0: サイクル開始時に `needs-user-decision` ラベル一掃 sweep を必ず実行
+### Step 0: サイクル開始時に **全 open Issue** の本人最新コメント sweep を必ず実行
 
 **サイクル冒頭で最初に必ずこの sweep を実行する。** 自分起票で自分でラベル付与した Issue でも例外なく対象。Step 1〜4 より先に行う。
 
-`needs-user-decision` ラベルは「ユーザー判断待ち」状態を示すが、**ラベル付与後のサイクルで本人が「実装して」とコメントしても、AI 側がラベル解除しなければブロック状態が永続化する**。これは AI 自走の最大の阻害要因。
+**重要**: `needs-user-decision` ラベル付き Issue **だけでなく、ラベルなしの open Issue も全て対象**。ラベルが付いていなくても「ユーザーが過去サイクルで方針案を見て『案 A で進めて』『実装して』とコメントした実装承認済 Issue」が滞留している可能性がある。
 
 ```bash
-# サイクル開始時、最初の bash 呼び出しで実行:
-for n in $(gh issue list --state open --label needs-user-decision --json number --jq '.[].number'); do
+# サイクル開始時、最初の bash 呼び出しで実行 (全 open issue 対象):
+for n in $(gh issue list --state open --limit 100 --json number --jq '.[].number'); do
   body=$(gh issue view $n --json comments \
     --jq '.comments[] | select(.body | test("AI 投稿|AI 起票") | not)
           | "[" + .createdAt + "]\n" + .body + "\n---"' 2>/dev/null)
@@ -28,7 +28,7 @@ for n in $(gh issue list --state open --label needs-user-decision --json number 
 done
 ```
 
-**判定**: 最新コメントが以下の **アクション語** を含むなら、**即座に `gh issue edit N --remove-label needs-user-decision`**:
+**判定**: 最新コメントが以下の **アクション語** を含むなら、**着手対象としてリスト化** (ラベル付きなら `gh issue edit N --remove-label needs-user-decision` で解除も同時に):
 
 | カテゴリ | 検出語の例 |
 |---|---|
@@ -48,7 +48,10 @@ done
 
 **How to apply**: サイクル開始の最初の bash で上記コマンドを実行 → アクション語検出した Issue を `--remove-label needs-user-decision` で解除 → サイクル本体で実装着手対象として処理。**この sweep を skip すると複数 Issue のストールを招き、ユーザーの信頼を失う**。
 
-主な使用箇所: 54th cycle 末で 6 件 (`#714` `#745` `#720` `#715` `#682` `#674`) のラベル取り逃しが発覚 → 本 Step 0 を skill 構造的欠陥の修正として追加 (それ以前は Step 2 が「コメント / 着手前」目的限定で書かれており、ラベル sweep フローが存在しなかった)
+主な使用箇所:
+
+- 54th cycle 末で 6 件 (`#714` `#745` `#720` `#715` `#682` `#674`) のラベル取り逃しが発覚 → 本 Step 0 を skill 構造的欠陥の修正として追加 (それ以前は Step 2 が「コメント / 着手前」目的限定で書かれており、ラベル sweep フローが存在しなかった)
+- 58th cycle 冒頭で 7 件 (`#745` `#733` `#728` `#715` `#714` `#682` `#674`) が **ラベル無しで本人 "実装して" コメント済** で滞留と判明 → 本 Step 0 を **「label needs-user-decision 付き」限定から「全 open issue」対象に拡大** (それ以前は `--label needs-user-decision` 絞り込みで label なしは sweep 対象外だった)
 
 ### Step 1: 自分起票か `/approve` 済みか確認
 
