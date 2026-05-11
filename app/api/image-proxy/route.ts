@@ -74,13 +74,22 @@ async function handleGet(
   );
 
   try {
+    // #720: Qiita の imgix CDN (`qiita-user-contents.imgix.net` 等) はホットリンク保護で
+    // qiita.com 以外の Referer を拒否する。`.imgix.net` かつホスト名に "qiita" を含む場合のみ
+    // Referer を `https://qiita.com/` に差し替える。他サービスの imgix では origin そのままを維持。
+    const targetHostname = new URL(url).hostname.toLowerCase();
+    const isQiitaImgix = targetHostname.endsWith(".imgix.net") && targetHostname.includes("qiita");
+    const referer = isQiitaImgix ? "https://qiita.com/" : new URL(url).origin + "/";
+
     const res = await fetchFollowSafeRedirects(
       url,
       {
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; rss-reader/1.0)",
+          // 実ブラウザ風 UA で bot 判定 (Cloudflare Bot Fight 等) を回避 (#720 案 B)
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
           Accept: "image/*,*/*",
-          Referer: new URL(url).origin + "/",
+          Referer: referer,
         },
       },
       DEFAULT_FETCH_TIMEOUT_MS,
