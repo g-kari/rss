@@ -5,7 +5,7 @@ import { apiFetch } from "../lib/api-fetch";
 import type { OgpData } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 
-export const LINK_PREVIEW_CLASS = "ogp-link-preview";
+const LINK_PREVIEW_CLASS = "ogp-link-preview";
 
 /** 1記事あたりの同時OGPフェッチ上限（多数のリンクがある記事でのリクエスト爆発を防ぐ） */
 const MAX_LINK_PREVIEWS = 10;

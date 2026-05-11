@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { readCollections, writeCollections, COLLECTION_NAME_MAX_LENGTH } from "@/lib/collections";
+import {
+  readCollections,
+  writeCollections,
+  COLLECTION_NAME_MAX_LENGTH,
+  MAX_ARTICLES_PER_COLLECTION,
+} from "@/lib/collections";
 import { isValidSessionId, parseName } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -52,6 +57,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           collection.articleIds.push(aid);
           existing.add(aid);
         }
+      }
+      // security 監査 45th cycle (#1, confidence 87%): 認証ユーザーが
+      // 連続 PATCH で R2 オブジェクトを無制限に膨張させる自己 DoS を防止。
+      if (collection.articleIds.length > MAX_ARTICLES_PER_COLLECTION) {
+        return apiError(
+          `コレクション記事の上限（${MAX_ARTICLES_PER_COLLECTION}件）に達しました`,
+          422,
+          { code: "COLLECTION_ARTICLE_LIMIT_REACHED" },
+        );
       }
     }
 

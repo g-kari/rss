@@ -4,14 +4,8 @@ import type { Article } from "../../types";
 import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
 import Spinner from "../Spinner";
 import { TTS_RATES } from "../../hooks/useSpeechSynthesis";
+import { cycleValue } from "../../lib/article-utils";
 import { DownloadIcon } from "./icons";
-
-/** UX 監査 (#2): cycle の次値を計算 (TTS_RATES の循環) */
-function nextTtsRate(current: number): number {
-  const idx = (TTS_RATES as readonly number[]).indexOf(current);
-  if (idx < 0) return TTS_RATES[0];
-  return TTS_RATES[(idx + 1) % TTS_RATES.length];
-}
 
 interface Props {
   article: Article;
@@ -233,7 +227,7 @@ export default function ArticleHeaderAiTts({
       {ttsSupported && hasContent && (
         <button
           onClick={ttsCycleRate}
-          title={`読み上げ速度: ${ttsRate}x → 次: ${nextTtsRate(ttsRate)}x（クリック / Shift+R）`}
+          title={`読み上げ速度: ${ttsRate}x → 次: ${cycleValue(TTS_RATES, ttsRate)}x（クリック / Shift+R）`}
           aria-label={`読み上げ速度 ${ttsRate}倍`}
           className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 text-[10px] font-medium tabular-nums leading-none ${
             ttsPlaying || ttsPaused
