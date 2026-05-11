@@ -5,6 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "gen:coverage-map": "node scripts/generate-test-coverage-map.mjs",
     "predev": "node scripts/sync-release-notes.mjs",
     "dev": "next dev",
     "prebuild": "node scripts/sync-release-notes.mjs",

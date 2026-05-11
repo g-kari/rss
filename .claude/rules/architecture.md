@@ -667,6 +667,14 @@ const match = matchesKeywordFilter(article, compiledFilter);
 
 `e2e/*.spec.ts` 各ファイルと対象モジュールの対応表。
 
+<!-- TEST_COVERAGE_MAP_AUTO_GEN START -->
+<!--
+  この section は将来 `scripts/generate-test-coverage-map.mjs` で自動生成する設計 (#731 Phase 2)。
+  Phase 1 (本マーカー設置時点): スクリプト作成済だが未実行。下記既存テーブルが canonical。
+  Phase 2 で各 spec の冒頭 JSDoc 1 行目に description を整備 → `pnpm run gen:coverage-map` で
+  このマーカー間が自動上書きされる。
+-->
+
 | テストファイル                        | 対象モジュール / 機能                                                                                                                                                                                                                    |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ai-route-helper.spec.ts`             | `src/lib/ai-models.ts` — `isWorkersAiModelId` 型ガード（ai-route-helper.ts は Cloudflare バインディング依存のため間接検証）                                                                                                              |
@@ -796,6 +804,8 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `session-id-validation.spec.ts`       | `src/lib/validation.ts` — `isValidSessionId`（UUID 形式・パストラバーサル防止）                                                                                                                                                          |
 | `web-push.spec.ts`                    | `src/lib/web-push.ts#sendPush` / `sendPushToAll` — Web Push 送信ヘルパー (P-256 鍵ペア生成 + payload 暗号化検証)                                                                                                                         |
 | `xml-parser.spec.ts`                  | `src/lib/xml-parser.ts` — RSS / Atom パーサー                                                                                                                                                                                            |
+
+<!-- TEST_COVERAGE_MAP_AUTO_GEN END -->
 
 ### カバレッジ未対応の重要機能
 

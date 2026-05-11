@@ -294,7 +294,7 @@ code-quality バグ (lexicographic 比較バグ / off-by-one / boundary value �
 4. 残骸多数 → **「next cycle で sweep」Issue 起票** (本サイクル commit を肥大化させない)
 5. retrospective-codify では **「sweep 結果」も記載** (「sweep で 0 件」or 「N 件発見、別 Issue 起票」)
 
-主な使用箇所: 2026-05-10 38th cycle — `chooseLater` / `mergeSnoozed` で ISO 8601 lexicographic 比較バグを修正 → code-quality #1 (34th cycle で `read-state-prune.ts` の同類修正後) **規範は codify 済だったが grep sweep が抜けていた** ため 4 cycle 越しに sibling ファイルで再発。本派生ケースで「sweep 併記 + Issue 化」を運用ルール化
+主な使用箇所: `chooseLater` / `mergeSnoozed` で ISO 8601 lexicographic 比較バグを修正 → `read-state-prune.ts` の同類修正後 **規範は codify 済だったが grep sweep が抜けていた** ため複数サイクル越しに sibling ファイルで再発。本派生ケースで「sweep 併記 + Issue 化」を運用ルール化
 
 ## 6. 大規模ドキュメント分割は contiguous な小クラスターから段階的に進める
 
@@ -336,7 +336,7 @@ Step 3: 残り
 3. 1 サイクル 1 Step、各 Step は **1 トピック完結**
 4. ユーザーが Step N の結果を見て **継続 OK / 中止 / 別案に切替** を判断できる粒度を保つ
 
-主な使用箇所: `react-patterns.md` (#694 Step 1 — `coding-conventions.md` から state/ref クラスター 4 セクション抽出、180 行削減)
+主な使用箇所: `react-patterns.md` (`coding-conventions.md` から state/ref クラスター 4 セクション抽出、180 行削減)
 
 ## 7. 削除よりも一般化を優先
 
@@ -461,4 +461,4 @@ grep -nE "^\.claude/skills" .gitignore
 
 **How to apply**: 「issue 多数の状態で issue 処理依頼を受けた」サイクルでは、最初に Issue 分類 (A/B/C/D) を表で整理してからトラック起動。skill のチェックリスト (Step 1: 自分起票確認 / Step 2: ユーザー本人コメント抽出 / Step 3: 状態判定) を全 issue に一括実行してから分類するのが効率的 (本人コメント抽出は `for n in ...; do gh issue view $n ...; done` でバッチ処理)。
 
-主な使用箇所: 14 件 open issue を 1 サイクルで処理 — 調査 5 並列 (#720 / #718 / #714 / #713 / #709) → 設計方針コメント投稿、実装トラック (#711 Phase 1 / #715 Phase 2) は AI 自走条件外で残置、判断仰ぎ (#682 / #674) で status コメント、軽微 (#725) は最適化作業で解決済としてクローズ
+主な使用箇所: 14 件 open issue を 1 サイクルで処理 — 調査 5 並列で設計方針コメント投稿、実装トラックは AI 自走条件外で残置、判断仰ぎで status コメント、軽微は最適化作業で解決済としてクローズ

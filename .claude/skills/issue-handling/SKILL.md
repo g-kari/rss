@@ -101,7 +101,7 @@ done
 
 ## タイトルのみの Issue (本文・コメント空) への対応
 
-ユーザーが**タイトルだけ書いて起票**するケースが頻繁にある (例: `#703` "オートモードの際に、要約したものを読んでるのにハイライトが記事本文" / `#704` "BuiltInAIで要約した場合にフォーマットが違う")。本文も詳細コメントもない場合の対処順:
+ユーザーが**タイトルだけ書いて起票**するケースが頻繁にある (例: "オートモードの際に、要約したものを読んでるのにハイライトが記事本文" / "BuiltInAIで要約した場合にフォーマットが違う")。本文も詳細コメントもない場合の対処順:
 
 ```
 1. タイトルから症状を分解する
@@ -126,12 +126,12 @@ done
 
 1. `gh issue view N --json title,body,comments` で **本文・コメント全件** が空であることを確認
 2. **コードを Read** して症状の発生条件を特定 (タイトルから推測した経路を grep)
-3. **再現条件が明確かつ修正範囲が小さい (1〜2 ファイル) なら同サイクル修正** (#703 のパターン)
-4. **設計判断 / フォーマット選択 / Chrome 実機確認等が必要なら Issue コメントで案提示** (#704 のパターン)
+3. **再現条件が明確かつ修正範囲が小さい (1〜2 ファイル) なら同サイクル修正**
+4. **設計判断 / フォーマット選択 / Chrome 実機確認等が必要なら Issue コメントで案提示**
 5. クローズコメントに「タイトルから読み取った症状仮説 + 真因 + 修正内容 + 確認方法」を必ず明記 (本文空なので解釈ズレが起きやすい)
 6. 「タイトルのみ起票」自体を批判しない (UX として正しい使い方)
 
-主な使用箇所: 2026-05-10 サイクル — `#703` (タイトルのみ → コード調査で源 source 乖離を特定 → 同サイクル修正クローズ) / `#704` (タイトルのみ → 案 A〜D 提示してユーザー判断仰ぐ)
+主な使用箇所: タイトルのみ Issue → コード調査で源 source 乖離を特定 → 同サイクル修正クローズ、または案 A〜D 提示してユーザー判断仰ぐ
 
 ## Issue クローズ時のコメント
 
@@ -170,7 +170,7 @@ gh issue close 712 --comment "完了サマリー"  # ← 明示クローズ + �
 2. **B 方式**: `closes` キーワードを commit に含めない → `gh issue close --comment` で明示クローズと同時にコメント投稿
 3. **どちらか統一** することでオペレーションが簡単になる (本プロジェクトは A 方式が多い: merge commit に `closes #N` + 後で別途コメント)
 
-主な使用箇所: 2026-05-10 サイクル — `#712` (React.X sweep) クローズ時、merge commit に `closes #712` を含めてから `gh issue close 712 --comment "..."` を実行して "Already closed" エラー → 別途 `gh issue comment` で完了サマリー投稿で復旧
+主な使用箇所: React.X sweep Issue クローズ時、merge commit に `closes #N` を含めてから `gh issue close N --comment "..."` を実行して "Already closed" エラー → 別途 `gh issue comment` で完了サマリー投稿で復旧
 
 ## AI が直接実行できないタスクへの対処パターン
 
@@ -258,9 +258,9 @@ npx wrangler tail
 2. **候補間の依存・統合関係を明示**: 「案 B 連動なら 案 F に統合」のような relationship を本文の「推奨」「関連」セクションに必ず書く
 3. **対話で省略した「リスク・コスト・推定行数」を追加**: 「~300 行削減見込み」「touch 5 ファイル」「初期実装 1 時間」のように具体化
 4. **判断項目を明示**: 「ユーザー判断: 案 A / 案 B / 案 C のいずれで進めるか」を末尾に必ず記載
-5. **連番 Issue 起票** (#728-#733 のように): 後で sweep するときの参照単位として連続番号が便利
+5. **連番 Issue 起票**: 後で sweep するときの参照単位として連続番号が便利
 
-主な使用箇所: 45th cycle 「最適化候補 6 件 (A-F)」を対話末で提示 → 翌セッションで「全部 Issue 化」指示 → #728-#733 で 6 件連続起票 (paths 精緻化 / 主な使用箇所 sweep / アンチパターン削減 / テストカバレッジ自動化 / hook 移行 / 大規模ファイル分割)
+主な使用箇所: 「最適化候補 6 件 (A-F)」を対話末で提示 → 翌セッションで「全部 Issue 化」指示 → 6 件連続起票 (paths 精緻化 / 主な使用箇所 sweep / アンチパターン削減 / テストカバレッジ自動化 / hook 移行 / 大規模ファイル分割)
 
 ## バグ修正の最小スコープを守って「動いてる類似実装」を触らない判断軸
 
@@ -288,7 +288,7 @@ UX/バグ修正で「あっちの hook と同じパターンを使えば直る�
 3. **差分が単なるバラつき (ドリフト) で意図なしなら統合 OK** — ただし PR スコープに「既存挙動の互換変更」を明記
 4. PR の commit message / Issue クローズコメントに **「未変更の理由」** を必ず書く (後の AI/開発者が「なぜ統合しなかった」と疑問を持ったとき答えられるよう)
 
-主な使用箇所: `useArticleContent` で `classify-http-error.ts` 共通化 (#688) 時、`useArticleAi.ts` の AI 専用メッセージ ("AI モデルでエラー") を保つため未統合のまま残した
+主な使用箇所: `useArticleContent` で `classify-http-error.ts` 共通化時、`useArticleAi.ts` の AI 専用メッセージ ("AI モデルでエラー") を保つため未統合のまま残した
 
 ## 「同種コンポーネント間のパターン整合性」は監査の高優先項目にする
 
@@ -312,7 +312,7 @@ UX/バグ修正で「あっちの hook と同じパターンを使えば直る�
 3. 発見されたパターン抜けは **そのまま規範実装をコピー** すればよい (pattern 複製は安全な変更)
 4. 修正後、規範実装側にコメントを追加して「他のコンポーネントもこのパターンに従う」を明示するのも検討 (ドリフト抑止)
 
-主な使用箇所: `Modal.tsx ↔ ConfirmModal.tsx` (#687 — focus 復元の Modal pattern を ConfirmModal にコピー反映)
+主な使用箇所: `Modal.tsx ↔ ConfirmModal.tsx` (focus 復元の Modal pattern を ConfirmModal にコピー反映)
 
 ## サブエージェント調査結果は該当コードで検証してから採用する
 
@@ -445,7 +445,7 @@ grep -n "transformSpeakerDeck\|transformSlideShare" src/lib/html-post-processor.
 - 関数名が **完全に責務を表現** (例: `sanitizeHtml(x)` は sanitize する) → Read 不要
 - 主張が **「呼出関係」のみ** (例: 「caller X は Y を呼ぶ」) → grep で確認すれば十分
 
-主な使用箇所: 43rd cycle #709 スライド埋め込み調査 — エージェント report が暗黙に「applyCorePipeline に slide transform が含まれる前提で xml-parser content にも iframe が保存されている」と仮定。実コード Read で applyCorePipeline には含まれず、xml-parser content にも iframe なしと判明 → 設計案を「applyCorePipeline に追加する」方向に修正
+主な使用箇所: スライド埋め込み調査 — エージェント report が暗黙に「applyCorePipeline に slide transform が含まれる前提で xml-parser content にも iframe が保存されている」と仮定。実コード Read で applyCorePipeline には含まれず、xml-parser content にも iframe なしと判明 → 設計案を「applyCorePipeline に追加する」方向に修正
 
 ## コードコメント・commit message・PR 本文への「未起票 Issue 番号フォワードリファレンス」を禁止
 
@@ -483,7 +483,7 @@ GitHub の Issue 番号は **起票時に連番で払い出される** ため、
 - **過去の closed Issue への履歴参照** (`#321 で削除された caller` 等) → OK (過去の確定番号)
 - **「該当 Issue なし」と明示するコメント** (例: `// 関連 Issue: なし (内部 refactor)`) → OK
 
-主な使用箇所: `html-post-processor.ts` コメント — 当初 `(#714 で経緯確認予定)` と仮置きで commit しようとした → 起票後実際の番号は #708 と判明 → コメントを参照不要テキストに修正してから commit
+主な使用箇所: `html-post-processor.ts` コメント — 当初仮置き番号で commit しようとした → 起票後実際の番号と乖離が判明 → コメントを参照不要テキストに修正してから commit
 
 ### 派生ケース: 既存 closed Issue 番号付き `TODO(#N)` コメントは「外部依存待ち作業」のトレーサビリティ機構として推奨
 
@@ -509,7 +509,7 @@ const acceptedAuds = [expectedAud, authBaseUrl];
 4. **後継 Issue で対応する場合**: 元 Issue を closed しつつ、`TODO(#N)` の N は **元番号のまま残す** (= 履歴トレーサビリティ重視)。後継 Issue 番号は別途 commit message / Issue クローズコメントで言及
 5. **サイクル末で `grep -rn "TODO(#" src/` を sweep** して「すべての TODO に対応する Issue が現存するか」確認 (closed なら後継 Issue 確認、無いなら新 Issue 起票)
 
-主な使用箇所: `src/lib/auth.ts:169` の `TODO(#379)` — 3 cycle 跨いで本サイクル (#705 後継) で AI が自動的に拾い、上流調査 → fallback 撤廃 → TODO コメント削除で完了
+主な使用箇所: `src/lib/auth.ts:169` の `TODO(#N)` — 数 cycle 跨いで後続 Issue で AI が自動的に拾い、上流調査 → fallback 撤廃 → TODO コメント削除で完了
 
 ## ユーザー判断仰ぎ Issue を AI 自走で採用する判断基準と透明性担保
 
@@ -538,7 +538,7 @@ const acceptedAuds = [expectedAud, authBaseUrl];
 
 ### 「ユーザー判断付き Issue + 段階処理 OK」でも追加で判断仰ぐべきケース
 
-`#674 (TTS wasm)` のようにユーザーが「案 X 採用」「段階処理 OK / 都度報告不要」と明確判断していて、自走 5 条件もほぼ充足するケースでも、Phase 1 着手前に **以下の未判断要素** があれば追加で判断を仰ぐ:
+TTS wasm 採用判断のように、ユーザーが「案 X 採用」「段階処理 OK / 都度報告不要」と明確判断していて、自走 5 条件もほぼ充足するケースでも、Phase 1 着手前に **以下の未判断要素** があれば追加で判断を仰ぐ:
 
 | 要素                          | 判断仰ぎ必須                         | 理由                                    |
 | ----------------------------- | ------------------------------------ | --------------------------------------- |
@@ -555,7 +555,7 @@ const acceptedAuds = [expectedAud, authBaseUrl];
 3. ユーザーが「案 A で OK」「自由に選んで」等の応答を返したら Phase N 着手
 4. 「自由に選んで」が来た場合のみ AI 自走で選定 + 透明性コメント (commit message に「ライブラリ X を選んだ理由」明記)
 
-主な使用箇所: 2026-05-10 19th cycle — `#674` でユーザーが「案 C + 案 B + つくよみちゃん + 段階処理 OK」と判断済 → ただし Piper wasm のどの npm pkg を採用するかは未判断 → ライブラリ選定の判断仰ぎコメント (`@mintplex-labs/piper-tts-web` / 公式 wasm 直接 / 別 wrapper) を投稿して Phase 1 着手を保留
+主な使用箇所: TTS wasm Issue でユーザーが「案 C + 案 B + つくよみちゃん + 段階処理 OK」と判断済 → ただし Piper wasm のどの npm pkg を採用するかは未判断 → ライブラリ選定の判断仰ぎコメント (`@mintplex-labs/piper-tts-web` / 公式 wasm 直接 / 別 wrapper) を投稿して Phase 1 着手を保留
 
 ### 透明性の担保
 
@@ -573,4 +573,4 @@ const acceptedAuds = [expectedAud, authBaseUrl];
 2. いずれか No → 判断仰ぎ継続、Issue は残す
 3. **判定が微妙なケース** (例: 「touch 6 ファイルで 5 を僅かに超える」) → 自走禁止寄りに判断 (安全側)
 
-主な使用箇所: 2026-05-10 16th cycle — `#710 (Recommendation.source dead field 削除)` を 12 cycles 経過 + 5 条件全 Yes と判定して自走採用、commit `e226ee1` で透明性担保コメント付きで実装 → クローズ
+主な使用箇所: `Recommendation.source` dead field 削除 Issue を 12 cycles 経過 + 5 条件全 Yes と判定して自走採用、commit で透明性担保コメント付きで実装 → クローズ

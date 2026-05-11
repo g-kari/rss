@@ -113,7 +113,7 @@ const filtered = useMemo(() => {
 
 ## React Context パターン
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 3 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## 認証ヘルパー (`src/lib/server-auth.ts`)
 
@@ -241,7 +241,7 @@ export async function PATCH(request, { params }) {
 - canonical 型の責務とローカル型の責務が **本質的に異なる** 場合 (例: HTTP 由来の error vs AI モデルロード状態) → alias 化せず独立を維持
 - alias 化で **メッセージ文言が canonical と乖離** する場合 → canonical の `formatXxx(type, opts)` を同時に流用すれば文言も統一可能
 
-主な使用箇所: `useArticleAi.ts` の `AiErrorType = HttpErrorType` 統合 (43rd cycle simplify #1 — `classifyHttpError` / `getErrorMessage` 重複定義削除 + 429 で Retry-After ヘッダー秒数表示バグも同時修正)
+主な使用箇所: `useArticleAi.ts` の `AiErrorType = HttpErrorType` 統合 — `classifyHttpError` / `getErrorMessage` 重複定義削除 + 429 で Retry-After ヘッダー秒数表示バグも同時修正
 
 ## stale closure 回避パターン (`useSyncedRef`)
 
@@ -322,7 +322,7 @@ onBoundaryRef.current = highlight.handleBoundary; // 後付けで assign
 
 **How to apply**: hook 同士で「片方の output が他方の input、その output 先が更にもう片方の internal 処理を呼ぶ」三角関係を見つけたら、callback 用 ref を 1 つ前に作って両 hook に渡す。Hook A 内部では `ref.current?.(...)` で安全に呼び出し (null チェック必須)、Hook B から取得した callback を効果的に **後付け assign** する。assign は render 中で OK (ref はマウント前から不変)。
 
-主な使用箇所: `useArticleViewTts` ↔ `useTtsHighlight` の boundary 配線 (#672)
+主な使用箇所: `useArticleViewTts` ↔ `useTtsHighlight` の boundary 配線
 
 ## URL 比較は decodeURI で正規化してから
 
@@ -390,7 +390,7 @@ done
 - **コード生成が複数ファイルに渡る** (新機能を上流側に PR で送りたい等) — その場合 fork + clone
 - **diff 比較を 100 ファイル超** で行いたい — gh api は API rate limit に当たる
 
-主な使用箇所: #705 (rss-reader → 0g0-id `workers/id/src/utils/token-pair.ts#issueTokenPair` 調査) — `aud = clientId ?? IDP_ORIGIN` 確認 + caller 4 経路 (auth/exchange / token/auth-code / auth/refresh / token/refresh-grant) 横断確認 → 「OAuth 経路は必ず clientId 渡す」を 5 分で検証
+主な使用箇所: rss-reader → 0g0-id `workers/id/src/utils/token-pair.ts#issueTokenPair` 調査 — `aud = clientId ?? IDP_ORIGIN` 確認 + caller 4 経路 (auth/exchange / token/auth-code / auth/refresh / token/refresh-grant) 横断確認 → 「OAuth 経路は必ず clientId 渡す」を 5 分で検証
 
 ## デバッグ: 生 HTML を見る必要があるとき
 
@@ -411,7 +411,7 @@ fetch('URL_HERE', { headers: { 'User-Agent': 'Mozilla/5.0' } })
 
 ## 大きいコンポーネントの機能別分割パターン
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 2 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## shared resource を変更する API は「認証 + 所有権チェック」を二段で行う
 
@@ -464,7 +464,7 @@ export async function POST(request, { params }) {
 - `GET /api/articles` — 自分の subscriptions と join して返すだけで、他人のデータに副作用なし
 - `POST /api/read-state` — `users/{session.userId}/read-state.json` のみ更新で他ユーザーに影響なし
 
-主な使用箇所: `POST /api/feeds/{feedHash}/purge-content-cache` の購読チェック (#691) — 認証だけで cache busting DoS が成立していた脆弱性を修正
+主な使用箇所: `POST /api/feeds/{feedHash}/purge-content-cache` の購読チェック — 認証だけで cache busting DoS が成立していた脆弱性を修正
 
 ### 派生ケース: shared cache に「未検証ソース由来のデータ」を注入する経路は TTL を短縮して影響範囲を限定する
 
@@ -504,7 +504,7 @@ const ttl = computeCacheTtl({ hasContent, isFallback });
 - 検証済み画像 URL (HTTPS only / SSRF check 通過 / MIME 検証済み) → 30 日 TTL OK
 - 認証されたユーザー専用 cache (cache key にユーザー ID 含む) → 攻撃影響が単一ユーザーに限定されるので長 TTL OK
 
-主な使用箇所: `src/lib/ogp-cache-ttl.ts#computeOgpCacheTtl` (#706 — Twitter fallback 経路の TTL を 30 日 → 1 日に短縮して poisoning 影響範囲を限定)
+主な使用箇所: `src/lib/ogp-cache-ttl.ts#computeOgpCacheTtl` (Twitter fallback 経路の TTL を 30 日 → 1 日に短縮して poisoning 影響範囲を限定)
 
 ## dev / e2e 限定エンドポイントの二重ガード
 
@@ -537,7 +537,7 @@ export async function POST(req: NextRequest) {
 
 ## React state / ref / useEffect パターン
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 1 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## 同一プロパティ名で意味の異なる派生値を使い分けない
 
@@ -596,7 +596,7 @@ function pruneOldReadIds(readIds, articles, cutoff) {
     }
   }
 }
-// → publishedAt: null + createdAt 古い記事の readId が永久に残る (#635 A1 半減)
+// → publishedAt: null + createdAt 古い記事の readId が永久に残る
 
 // 修正パターン: 完全に同じ fallback chain
 function pruneOldReadIds(readIds, articles, cutoff) {
@@ -690,7 +690,7 @@ const hasFullContent = !!storedContent || !canFetch;
 
 抑制機能の判定キーワード: 「〜しないようにしたい」「〜を防ぎたい」「〜を発動させたくない」。これらが要望文にあれば、抑制機能として default OFF で実装する。
 
-主な使用箇所: `autoAiBrowserOnly` 設定 (#700) — 「Workers AI フォールバックを発動させたくない」要望に default OFF で対応
+主な使用箇所: `autoAiBrowserOnly` 設定 — 「Workers AI フォールバックを発動させたくない」要望に default OFF で対応
 
 ### 派生ケース: 「同カテゴリ機能 (連続値 + 離散ジャンプ)」は N 段階セグメントに統合する
 
@@ -717,7 +717,7 @@ const hasFullContent = !!storedContent || !canFetch;
 3. 並べられるなら N 段階 SegmentGroup に統合 (既存「設定 UI を流用」原則の延長)
 4. 並べられないなら別 toggle (例: 「自動翻訳」と「自動要約」は別概念なので別 toggle)
 
-主な使用箇所: `galleryAutoScrollSpeed` (#690 案 D) — 連続スクロール 3 段階 + slideshow 1 段階を 1 軸に統合
+主な使用箇所: `galleryAutoScrollSpeed` — 連続スクロール 3 段階 + slideshow 1 段階を 1 軸に統合
 
 ### 派生ケース: 自動操作中の手動操作で自動的に OFF (一時停止 UX)
 
@@ -742,15 +742,15 @@ useGalleryAutoScroll({
 3. 「手動操作と並行して自動進行を続けたい」(例: 動画再生中の seek) なら ▶/⏸ ボタンが必要
 4. UserSettings の速度選択 = on/off の役割を兼ねるなら、専用 toggle ボタンは削減可能
 
-主な使用箇所: `useGalleryAutoScroll` の `onUserInterrupt` (#690) — wheel/touchstart で speed を "off" に戻す
+主な使用箇所: `useGalleryAutoScroll` の `onUserInterrupt` — wheel/touchstart で speed を "off" に戻す
 
 ## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 4 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## AbortController.abort() の伝播範囲を限定する
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 4 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## UI 描画分岐の入れ子三項は「ソース選択」純粋関数で平坦化する
 
@@ -872,7 +872,7 @@ const { images, source } = selectGalleryImages(prefetched, thumb);
 
 ## useEffect 依存キーの slice() は「N+1 件目以降の変化を検知不能」にする罠
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 4 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## 「読み上げ / 表示 / ハイライト」の source 整合性をペアで担保する
 
@@ -907,7 +907,7 @@ const { activeSentenceIndex } = useTtsHighlight(effectiveSentences, ...);
 4. **最小実装でも違和感は解消** されるので、Phase 1 として最小、Phase 2 で機能拡張パターンが安全
 5. **空 sentences の安定 reference** (`const EMPTY_SENTENCES: Sentence[] = []`) をモジュールレベルで宣言。条件で `[]` を毎 render 作ると useMemo / useEffect 依存キーが invalidate される
 
-主な使用箇所: `useArticleViewState` の `isReadingSummary` / `effectiveTtsSentences` (#703 — オートモード + 自動要約で要約読み上げ中の wrong-source ハイライト抑制)
+主な使用箇所: `useArticleViewState` の `isReadingSummary` / `effectiveTtsSentences` (オートモード + 自動要約で要約読み上げ中の wrong-source ハイライト抑制)
 
 ## 同症状でも別経路の可能性を疑う
 
@@ -921,15 +921,15 @@ const { activeSentenceIndex } = useTtsHighlight(effectiveSentences, ...);
 
 ## モード OFF 時に進行中の副作用を停止する
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 4 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## ブラウザ API の遅延通知に備えて初期取得 + イベント購読をペアで書く
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 4 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## 上流 API プロキシのヘッダ欠落補完
 
-→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割)
+→ `.claude/rules/browser-platform.md` を参照
 
 ## 読み取り状態のマージ戦略 (`useReadState`)
 
@@ -997,15 +997,15 @@ test("正常ケース", () => {
 
 ## silent fallback の禁止 — `try/catch → null` には必ず `devError` を添える
 
-→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割。`availability()` 派生ケースも同ファイルへ移動)
+→ `.claude/rules/browser-platform.md` を参照 (`availability()` 派生ケースも同ファイルへ移動)
 
 ## ブラウザ仕様の最低バージョン定数を 1 箇所に集約する
 
-→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割)
+→ `.claude/rules/browser-platform.md` を参照
 
 ## 早期 return をコンポーネント / 関数に切り出すと TypeScript narrowing が失われる
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 3 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## デフォルト引数値は「内部上限」と一致させる
 
@@ -1065,11 +1065,11 @@ function usePrefetch({ maxPrefetch = 200 }: Options) {
 3. ライト / ダーク両テーマで定義する。コントラスト比 (WCAG AA) も併記すると後で楽
 4. テキスト色も別トークン (`--color-{機能名}-highlight-text`) で揃えると、背景色変更時に文字読みやすさが崩れない
 
-該当パターン: `--color-tts-highlight` / `--color-tts-highlight-text` (#659)
+該当パターン: `--color-tts-highlight` / `--color-tts-highlight-text`
 
 ## 子コンポーネントの「自己判断で hidden になる UI」は親で「全件 hidden」を検知して fallback する
 
-→ `.claude/rules/react-patterns.md` を参照 (#694 Step 3 で分割)
+→ `.claude/rules/react-patterns.md` を参照
 
 ## HTML 後処理で属性に依存する装飾は「属性欠落」のフォールバックを runtime に置く
 
@@ -1113,7 +1113,7 @@ export function useArticleImageMaxWidth(contentRef, contentKey) {
 3. 既存 inline スタイルがある場合は **上書きしない** ガードを必ず入れる
 4. cleanup (`removeEventListener`) を忘れない
 
-主な使用箇所: `useArticleImageMaxWidth` (#680) — `fixImageDimensions` で max-width が付かない画像を runtime で補完
+主な使用箇所: `useArticleImageMaxWidth` — `fixImageDimensions` で max-width が付かない画像を runtime で補完
 
 ## SVG sprite パターンの本文抽出: `<use href="#fragment">` 孤立参照は除去する
 
@@ -1263,7 +1263,7 @@ export function collectImageUrls(container: Element): string[] {
 - **記事本文系サイト** (Qiita / Zenn / 技術ブログ等) — `<a href="画像">` で画像にリンクすることは少なく、anchor href は記事内リンク。誤検知は少ないが過剰実装になる可能性あり (拡張子チェックで弾かれるので実害なし)
 - **広告画像が a タグで囲まれている UI** — 通常は広告自体が削除済み (`removeNoise` パイプライン) なので残らない
 
-主な使用箇所: `collectImageUrls` / `collectImageUrlsFromHtml` (`image-extractor.ts`) — wallhaven 等の thumb→full 構造で OGP のみ DL されるバグ修正 (#667)
+主な使用箇所: `collectImageUrls` / `collectImageUrlsFromHtml` (`image-extractor.ts`) — wallhaven 等の thumb→full 構造で OGP のみ DL されるバグ修正
 
 ## 大きい retrospective Issue は「技術スタック別フォローアップ Issue」に分割してクローズする
 
@@ -1335,8 +1335,8 @@ export function collectImageUrls(container: Element): string[] {
 主な使用箇所:
 
 - perf / UX 監査 2 体並行 → 4 件起票 → 1 件同サイクル対応
-- perf / UX-a11y / simplify 監査 3 体並行 → 8 件指摘 → 7 件同サイクル一括適用 + 1 件 Issue 化 (#701)
-- perf / UX-a11y / simplify 監査 3 体並行 → 9 件指摘 → 8 件同サイクル一括適用 (a11y 3 + simplify 3 + perf 2) + 1 件 Issue 化 (#719) の最大消化サイクル更新
+- perf / UX-a11y / simplify 監査 3 体並行 → 8 件指摘 → 7 件同サイクル一括適用 + 1 件 Issue 化
+- perf / UX-a11y / simplify 監査 3 体並行 → 9 件指摘 → 8 件同サイクル一括適用 (a11y 3 + simplify 3 + perf 2) + 1 件 Issue 化の最大消化サイクル更新
 
 ### 派生ケース: 監査エージェントに既存規範遵守チェックも依頼すると pattern drift が早期発見される
 
@@ -1418,7 +1418,7 @@ export function collectImageUrls(container: Element): string[] {
 4. **エージェント分析が含む「partial」「unclear」表現** に注意。「could be merged」「should be extracted」など曖昧な動詞は実装スコープが大きいシグナル
 5. Issue 起票時は **エージェントの impact 計算と confidence** を引用しつつ、**案 A/B/C + 必要な対応箇所 (具体ファイル名)** を必ず列挙
 
-主な使用箇所: 2026-05-10 サイクルの perf #1 (useTotalUnreadCount 統合) — エージェント 85% 信頼度だったが Read で Context lift up 必要と判明 → Issue #702 起票して降格
+主な使用箇所: perf 監査 (useTotalUnreadCount 統合) — エージェント 85% 信頼度だったが Read で Context lift up 必要と判明 → Issue 起票して降格
 
 ### 派生ケース: 監査エージェントの提案は「prop 受け口」と「配線」を分離して部分達成できる
 
@@ -1453,7 +1453,7 @@ export function collectImageUrls(container: Element): string[] {
 - UI 要素を追加するが配線なしだと **「ボタンが押せるが何も起きない」破綻 UX** → 全体まとめて
 - 受け口が **runtime invariant に依存** (例: 「この prop が undefined のときは throw」) → 全体まとめて
 
-主な使用箇所: 37th cycle UX #2 (空状態 CTA) — `ArticleListEmptyState` + `ArticleList` に `onAddFeed?: () => void` 受け口だけ commit、`App.tsx` の state lift up は #722 で別 Issue 起票 (案 A state lift up / 案 B Context expose / 案 C 重複 modal)
+主な使用箇所: UX 監査 (空状態 CTA) — `ArticleListEmptyState` + `ArticleList` に `onAddFeed?: () => void` 受け口だけ commit、`App.tsx` の state lift up は別 Issue 起票 (案 A state lift up / 案 B Context expose / 案 C 重複 modal)
 
 ### 派生ケース: 監査エージェントの観点はサイクル横断でローテーションする
 
@@ -1512,19 +1512,20 @@ export function collectImageUrls(container: Element): string[] {
 
 ## 本番環境のデバッグは「localStorage gate + 専用 debug ヘルパー」で出す
 
-→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割。AbortController/Ref 派生ケースも同ファイルへ移動)
+→ `.claude/rules/browser-platform.md` を参照 (AbortController/Ref 派生ケースも同ファイルへ移動)
 
 ## 永続化された state を「リロード時に自動復元」するときは TTL と防御チェックを必ず入れる
 
-→ `.claude/rules/browser-platform.md` を参照 (#694 Step 5 で分割)
+→ `.claude/rules/browser-platform.md` を参照
 
 ## 禁止事項
 
 - D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
 - 外部 CSS ライブラリ (Tailwind のみ)
 - 外部アイコンライブラリ (インライン SVG のみ)
-- `any` 型の使用
 - 16進数カラーのハードコード
 - Hono の `c.json<T>()` パターン (Next.js Route Handlers では使えない)
 - `r.json<T>()` (ブラウザ fetch には型引数なし。`r.json() as Promise<T>` を使う)
 - モジュールレベルのキャッシュ変数 (Edge Runtime では各リクエストで再実行される)
+
+`any` 型禁止は本ファイル冒頭「TypeScript の strict 設定」(`strict: true` 前提) で扱う。`noImplicitAny` で機械強制済 — explicit `: any` も冒頭ルールで禁止。

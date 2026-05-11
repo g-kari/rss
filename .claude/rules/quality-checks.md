@@ -212,7 +212,7 @@ test("ギャラリー画面で X が描画される", async ({ page }) => {
 
 **反例**: 「Red にならないからいいや」と spec を削除する → エージェント分析の取り組みが無駄になる + 同じ問題が再発した時に検出する手段がなくなる。**spec は Red にならなくても残す**。
 
-主な使用箇所: 2026-05-10 サイクルの code-quality #1 (lexicographic 比較バグ) — エージェント 85% 信頼度だったが、本プロジェクトの実データ前提では Red にならず、defensive 改善 + regression 防止 spec として commit
+主な使用箇所: code-quality 監査 (lexicographic 比較バグ) — エージェント 85% 信頼度だったが、本プロジェクトの実データ前提では Red にならず、defensive 改善 + regression 防止 spec として commit
 
 ### 派生ケース: TDD spec が pure function 層で pass する場合、真因は CSS / runtime レイヤー
 
@@ -249,4 +249,4 @@ test("ギャラリー画面で X が描画される", async ({ page }) => {
 
 **反例**: spec が pass した時点で「バグなしと判定して終了」しない。pure function は OK でも view layer で消えている可能性が常にある。
 
-主な使用箇所: 2026-05-10 33th サイクルの #715 Phase 1 — digitallover.moe で `<video>` が表示されない bug 報告 → extractMainContent 経由の TDD spec が pass → CSS で `.article-content video` rule 欠落と判明 → defensive 対応で `.article-content video { width: 100%; height: auto; ... }` 追加 + regression spec を残す
+主な使用箇所: digitallover.moe で `<video>` が表示されない bug 報告 → extractMainContent 経由の TDD spec が pass → CSS で `.article-content video` rule 欠落と判明 → defensive 対応で `.article-content video { width: 100%; height: auto; ... }` 追加 + regression spec を残す

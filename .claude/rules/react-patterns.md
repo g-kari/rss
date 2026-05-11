@@ -5,8 +5,8 @@ paths: "src/**/*.tsx,src/hooks/**/*.ts,src/contexts/**/*.tsx,src/components/**/*
 
 # React パターン (state / ref / useEffect)
 
-`coding-conventions.md` から #694 Step 1 で分割した React 固有の state / ref / useEffect パターン集。
-React Context / hook 設計 / コンポーネント分割等の React 関連ルールも順次本ファイルに集約予定 (#694 Step 2 以降)。
+`coding-conventions.md` から分割した React 固有の state / ref / useEffect パターン集。
+React Context / hook 設計 / コンポーネント分割等の React 関連ルールも順次本ファイルに集約予定。
 
 ## state 更新前に「構造的等価性ガード」を入れて reference を安定化する
 
@@ -56,7 +56,7 @@ function useReadStateSyncApply() {
 - **JSON.stringify による等価判定は避ける** — オブジェクト key 順序に依存して誤判定する可能性 (V8 と Safari で順序が違う)
 - ref 安定化は副次的に **debounce / throttle が不要になる** ことがある (内容変化のみで naturally fired される)
 
-主な使用箇所: `equalSnoozedUntil` / `useReadStateSyncApply` (#686 — 2 秒毎の主スレッドブロック解消)
+主な使用箇所: `equalSnoozedUntil` / `useReadStateSyncApply` (2 秒毎の主スレッドブロック解消)
 
 ### 派生ケース: モジュールレベル sentinel オブジェクトは `Object.freeze` で下流汚染を防ぐ
 
@@ -170,7 +170,7 @@ function List({ selectedId, anchorTrigger }: Props) {
 3. **子の useEffect の依存配列に trigger を追加** + `prevRef` で「同 trigger なら skip」「trigger 変化なら強制実行」を判定
 4. **通常変化 vs 手動 trigger の挙動分岐** が必要なら `isManualTrigger` フラグで `align` / `behavior` などを切り替える
 
-主な使用箇所: `App.tsx` の `anchorTrigger` ↔ `ArticleList.tsx` の scroll useEffect (#684 — `.` キーで選択中記事を中央アンカー)
+主な使用箇所: `App.tsx` の `anchorTrigger` ↔ `ArticleList.tsx` の scroll useEffect (`.` キーで選択中記事を中央アンカー)
 
 ### 派生ケース: ブラウザ API の「手動 cancel」と「自然完了」を物理的に区別する monotonic counter
 
@@ -224,7 +224,7 @@ useEffect(() => {
 - 自然完了パスが存在しない、もしくは手動 cancel しか起きない単方向 API → counter 不要
 - 手動 cancel と自然完了で **異なる UI 結果を期待する要件がない** (例: どちらでも「停止状態」表示で十分) → counter 不要 (派生 boolean で十分)
 
-主な使用箇所: `useSpeechSynthesis` の `endedCount` ↔ `AutoReadController` の `prevEndedCountRef` (#716 — TTS 手動停止で勝手に次記事へ遷移するバグ修正)
+主な使用箇所: `useSpeechSynthesis` の `endedCount` ↔ `AutoReadController` の `prevEndedCountRef`
 
 ## ref の論理リセットポイントを忘れない
 
@@ -622,8 +622,8 @@ function App() {
 
 実例:
 
-- `selectGalleryImages` (#671) — Phase 単独で UI 統合まで含めた小規模ケース
-- `splitIntoSentences` / `selectActiveCharIndex` (#659 Phase 1 / #672 Phase 2) — Phase 分離の典型
+- `selectGalleryImages` — Phase 単独で UI 統合まで含めた小規模ケース
+- `splitIntoSentences` / `selectActiveCharIndex` — Phase 分離の典型
 
 ### 派生ケース: 既存実装の差し替え基盤は「Phase 0: 型抽象化のみ」を先行する
 
@@ -657,7 +657,7 @@ function App() {
 4. consumer 側の挙動が一切変わらないことを typecheck + 既存 e2e で確認してから commit
 5. Phase 1b 以降を別 Issue 起票して、Phase 0 commit hash をピン留め
 
-主な使用箇所: `src/lib/tts-adapter.ts` (#675 Phase 1a) — Web Speech API → Piper wasm 差し替えの基盤
+主な使用箇所: `src/lib/tts-adapter.ts` — Web Speech API → Piper wasm 差し替えの基盤
 
 ### 派生ケース: 機能別分割後の「逆方向の集約」(共通 wrapper 抽出) も忘れない
 
@@ -686,7 +686,7 @@ function App() {
 
 **How to apply**: 機能別分割が落ち着いたら、サブコンポーネント間で `git diff` 風の比較を行って **「ほぼ同一の 5 行以上のブロック」** がないか確認する。simplify 監査エージェントに「similar sub-components の重複」を観点として渡すと自動検出可能。
 
-主な使用箇所: `VirtualRow` (#692 — `article-list-body/` の 3 サブコンポーネントから virtualizer item wrapper を集約)
+主な使用箇所: `VirtualRow` (`article-list-body/` の 3 サブコンポーネントから virtualizer item wrapper を集約)
 
 ## React Context パターン (`src/contexts/`)
 
@@ -749,7 +749,7 @@ function App() {
 3. 既に複数箇所なら → そもそも state 分裂バグが潜んでいる可能性あり、調査要
 4. App.tsx の Provider 階層に追加するときは **JSX 開閉タグの indent 整合** を check:fix で必ず通す (Provider を 1 段増やすと内側全部の indent が +2 ずれる)
 
-主な使用箇所: `TtsAdapterContext` (#675 Phase 1b — `useSpeechSynthesis` を App.tsx で 1 回だけ呼んで記事ヘッダー / 設定モーダル両方で共有)
+主な使用箇所: `TtsAdapterContext` (`useSpeechSynthesis` を App.tsx で 1 回だけ呼んで記事ヘッダー / 設定モーダル両方で共有)
 
 ## 早期 return をコンポーネント / 関数に切り出すと TypeScript narrowing が失われる
 
@@ -889,7 +889,7 @@ return allHidden ? <Fallback /> : (
 2. 子の入力配列が入れ替わったら useEffect でリセット
 3. `allHidden = count >= total` 判定で fallback 分岐を追加 (例: 別ソース・空状態プレースホルダ)
 
-主な使用箇所: `FilterableGalleryImage` の `onHide` (#671 後追い・全画像が minPx 未満で隠れる時の thumb / No Image fallback)
+主な使用箇所: `FilterableGalleryImage` の `onHide` (全画像が minPx 未満で隠れる時の thumb / No Image fallback)
 
 ## React event 型を named import 化するときに DOM global と衝突する
 
@@ -937,7 +937,7 @@ document.addEventListener("mousemove", onMouseMove); // 型整合 OK
 
 **反例 (alias 不要なケース)**: 修正パターン A の通り、ファイル内が React handler のみで DOM `addEventListener` を使わない場合は alias 不要。**全ファイルで予防的に alias する必要はない** (可読性とのトレードオフで shadow が無いケースは素直な named import が良い)。
 
-主な使用箇所: `useColumnResize.ts` (#712 第 2 段階 sweep 作業時、`React.MouseEvent` → `MouseEvent` 化で `addEventListener("mousemove", ...)` overload と衝突 → `MouseEvent as ReactMouseEvent` で解決)
+主な使用箇所: `useColumnResize.ts` (`React.MouseEvent` → `MouseEvent` 化で `addEventListener("mousemove", ...)` overload と衝突 → `MouseEvent as ReactMouseEvent` で解決)
 
 ### 派生ケース: `import React from "react"` default import は React 19 + Next.js 16 では named import に置き換える
 
@@ -971,7 +971,7 @@ function highlight(): ReactNode {
 - **Class component で `React.Component` extending** — 本プロジェクトでは関数コンポーネントのみ (CLAUDE.md 規約) なので該当なし
 - **type-only import で `React.X` namespace 全部使うとき** — `import type * as React from "react";` の形なら可だが、named import の方が一般的
 
-主な使用箇所: `article-ui-helpers.ts` (#712 第 7 段階 sweep 作業時、default `import React, { type ReactNode }` → named `import { Fragment, createElement, type ReactNode }` に変換)
+主な使用箇所: `article-ui-helpers.ts` (default `import React, { type ReactNode }` → named `import { Fragment, createElement, type ReactNode }` に変換)
 
 ## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する
 
@@ -1107,7 +1107,7 @@ const fetchFullContent = useCallback(async () => {
 4. ID が一致するときの abort をスキップしても、`fetchFullContent` 内の `ref.current?.controller.abort()` (新 fetch 起動時) で旧 fetch は確実に abort されるので問題ない
 5. **本番ログで abort 発火元を切り分ける必要があるとき** は、`articleId-effect-fired { hadController, isStaleController }` のように **ref の状態 + 判定結果** をログに出す
 
-主な使用箇所: `useArticleContent.ts` の `fetchAbortControllerRef = { controller, articleId }` 構造 (#678 — オートモードで全文取得が即 abort されて summary だけ読み上げのバグ修正)
+主な使用箇所: `useArticleContent.ts` の `fetchAbortControllerRef = { controller, articleId }` 構造
 
 `articles` のような **配列全体を対象に処理したい** useEffect で、依存配列キーを `articles.slice(0, N).map(a => a.id).join(...)` のように作ると、**N+1 件目以降の追加・削除を検知できなくなる**。
 
@@ -1221,7 +1221,7 @@ export function nextMidnightDelay(now: Date): number {
 - ユーザーアクションで再 render される頻度が「日付境界より高い」 (例: 自動ポーリング 5 分) → useMemo 再評価で副作用的に最新化されるので hook 不要
 - SSR で時刻を確定させる必要があるとき (本プロジェクトは CSR 'use client' のため非該当)
 
-主な使用箇所: `useUtcDate` (`useArticleUnreadStats.ts`) — `readTodayCount` の midnight stale バグ修正 (37th cycle perf #3, confidence 82%)
+主な使用箇所: `useUtcDate` (`useArticleUnreadStats.ts`) — `readTodayCount` の midnight stale バグ修正
 
 ## ブラウザ API の遅延通知に備えて初期取得 + イベント購読をペアで書く
 
@@ -1251,6 +1251,6 @@ useEffect(() => {
 
 主な使用箇所:
 
-- `useSpeechSynthesis` の `voiceschanged` 購読 (#654)
+- `useSpeechSynthesis` の `voiceschanged` 購読
 - `useResizeObserver` 系 (`ResizeObserver` の初回コールバック)
 - `useOnlineStatus` の `online` / `offline` イベント購読

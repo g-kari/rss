@@ -5,7 +5,7 @@ paths: "src/**/*.ts,src/**/*.tsx,src/lib/**/*.ts,src/hooks/**/*.ts"
 
 # ブラウザプラットフォーム運用パターン
 
-`coding-conventions.md` から #694 Step 5 で分割した「ブラウザ環境固有の運用パターン」集。
+`coding-conventions.md` から分割した「ブラウザ環境固有の運用パターン」集。
 silent fallback / バージョン要件 / 永続化 TTL / プロキシヘッダ補完 / 本番 localStorage デバッグ等、
 **ブラウザネイティブ API を扱う際の判断軸** を集約しています。
 
@@ -213,7 +213,7 @@ catch (err) {
 4. ユーザー Issue コメントに **判定表** (どのログ列がどの真因か) を明記して再現協力を依頼
 5. 真因確定後、追加ログは残すか削除するか判断 (再発リスクが高ければ残す)
 
-主な使用箇所: `useArticleContent.ts` の `fetchAbortControllerRef` 状態スナップショット (#678 — fetch-start / articleId-effect-fired / fetch-aborted の 3 点で hadController / currentControllerIsX を出力)
+主な使用箇所: `useArticleContent.ts` の `fetchAbortControllerRef` 状態スナップショット (fetch-start / articleId-effect-fired / fetch-aborted の 3 点で hadController / currentControllerIsX を出力)
 
 ## 永続化された state を「リロード時に自動復元」するときは TTL と防御チェックを必ず入れる
 
