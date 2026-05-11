@@ -12,6 +12,7 @@
  */
 
 import { toPlainText } from "./html";
+import { needsXComOgpFallback } from "./x-com-fallback";
 
 const URL_PATTERN = /https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&'*+;=%]+/g;
 const TRAILING_PUNCT_PATTERN = /[.,;:!?)\]]+$/;
@@ -42,16 +43,21 @@ export function preprocessTtsText(text: string): string {
  * 渡す」ガードを掛ける想定 (UI からの手動 TTS 起動では渡さない)。
  */
 export function buildTtsText(
-  article: { title?: string; summary?: string },
+  article: { title?: string; summary?: string; link?: string },
   processedContent: string | null,
   translatedText?: string | null,
   summaryText?: string | null,
   noteText?: string | null,
 ): string {
+  // #718: x.com / twitter.com で JS 無効エラー content が processedContent に来ているとき
+  // article.summary (RSS 由来の OGP description = tweet 本文) を優先するため processedContent を skip
+  const effectiveProcessedContent = needsXComOgpFallback(article.link, processedContent)
+    ? null
+    : processedContent;
   const source =
     (summaryText && summaryText.trim() ? summaryText : null) ??
     (translatedText && translatedText.trim() ? translatedText : null) ??
-    processedContent ??
+    effectiveProcessedContent ??
     article.summary ??
     "";
   const body = preprocessTtsText(toPlainText(source));
