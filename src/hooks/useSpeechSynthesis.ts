@@ -5,6 +5,7 @@ import { isSpeechSupported } from "../lib/auto-read";
 import { selectTtsVoice } from "../lib/tts-voice";
 import { speechSynthesisVoiceToTtsVoice, type TtsAdapter } from "../lib/tts-adapter";
 import { clampTtsVolume, parseTtsVolume } from "../lib/tts-volume";
+import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
 
 // Web Speech API の有無は実行中に変わらないのでモジュール定数にする
@@ -48,6 +49,9 @@ export function useSpeechSynthesis(): TtsAdapter {
   // 手動 stop (= speechSynthesis.cancel) では increment しない → AutoReadController が
   // 「ユーザーによる中断」と「TTS 自然完了」を区別するための signal。
   const [endedCount, setEndedCount] = useState(0);
+  // #743: utterance.onerror 発火を表面化するカウンタ。
+  // consumer はこのカウンタ増加でユーザーに toast 等で通知する (silent fail を避ける)。
+  const [errorCount, setErrorCount] = useState(0);
   const [rate, setRate] = useState<TtsRate>(loadRate);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
@@ -111,8 +115,17 @@ export function useSpeechSynthesis(): TtsAdapter {
           resetState();
         }
       };
-      utterance.onerror = () => {
-        if (utteranceRef.current === utterance) resetState();
+      utterance.onerror = (e) => {
+        if (utteranceRef.current === utterance) {
+          // #743: silent fail を避けるため errorCount を increment してエラーを表面化
+          devError("[useSpeechSynthesis] utterance.onerror", {
+            error: e.error,
+            voice: utterance.voice?.name ?? "(none)",
+            voicesLength: voicesRef.current.length,
+          });
+          setErrorCount((c) => c + 1);
+          resetState();
+        }
       };
       utterance.onpause = () => setIsPaused(true);
       utterance.onresume = () => setIsPaused(false);
@@ -197,6 +210,7 @@ export function useSpeechSynthesis(): TtsAdapter {
     isPlaying,
     isPaused,
     endedCount,
+    errorCount,
     rate,
     cycleRate,
     volume,

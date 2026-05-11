@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import type { Article, EngagementAction } from "../../types";
 import { AI_RATINGS } from "../../types";
 import type { EmbedInfo } from "../../lib/embed-utils";
@@ -243,17 +243,10 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
           </div>
         )}
 
-        {/* OGP 画像 (埋め込みなし) */}
+        {/* OGP 画像 (埋め込みなし) — #741: 小サムネ (< 200px) は w-full / aspect-video の枠で
+            縮小されず中央に小さく表示されてしまう。naturalWidth で検知して hide する。 */}
         {!embedInfo && (article.ogImage ?? resolvedOgImage) && (
-          <img
-            src={buildImageProxyUrl((article.ogImage ?? resolvedOgImage)!)}
-            alt=""
-            className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
-            loading="lazy"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
+          <OgImageThumbnail src={buildImageProxyUrl((article.ogImage ?? resolvedOgImage)!)} />
         )}
 
         {/* 原文 / 翻訳タブ（翻訳結果がある場合のみ表示） */}
@@ -394,5 +387,26 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
     );
   },
 );
+
+/** OGP 画像。naturalWidth < 200px は小サムネと判定して非表示 (#741)。 */
+const OG_THUMBNAIL_MIN_WIDTH = 200;
+function OgImageThumbnail({ src }: { src: string }) {
+  const [hidden, setHidden] = useState(false);
+  if (hidden) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
+      loading="lazy"
+      onLoad={(e) => {
+        if (e.currentTarget.naturalWidth < OG_THUMBNAIL_MIN_WIDTH) setHidden(true);
+      }}
+      onError={(e) => {
+        (e.target as HTMLImageElement).style.display = "none";
+      }}
+    />
+  );
+}
 
 export default ArticleContentBody;
