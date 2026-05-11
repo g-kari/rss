@@ -25,6 +25,54 @@ headers["Retry-After"] = retryAfterHeader;
 
 **How to apply**: 外部 HTTP レスポンスを中継する Route Handler で、クライアント側 (retry-after.ts 等) が依存しているヘッダがあれば補完を必ず入れる (一部上流サイトは 429 を `Retry-After` なしで返し、補完がないと即時リトライ → 再 429 の連鎖になる)。
 
+### 派生ケース: 上流 API プロキシのエラー観測性は server-side log + response header の二段で構造化する
+
+上流 fetch をプロキシする Route Handler (`/api/image-proxy` / `/api/content` / `/api/ogp` 等) でエラー応答を返すとき、**「なぜ失敗したか」を server-side (`console.error`) + response header (`X-{Service}-*`) の両方で出力する**。`devError` (ブラウザ側 dev-only) と違い、本番 wrangler tail でサーバー側ログを見られ、かつブラウザ DevTools Network タブで response header から失敗理由を読める二段構えにする。silent fallback (理由なしの汎用 SVG / 空応答) は同じ症状の Issue が再発しても切り分けに本番再現が必要で調査コストが膨らむ。
+
+```typescript
+// アンチパターン: 同じ "unavailable" reason に 5 つの異なる失敗経路が集約され、
+// ユーザー側にも運用側にも切り分け手段がない
+if (!res.ok) return errorImageSvg("unavailable");
+if (!ALLOWED.has(ct)) return errorImageSvg("unavailable");
+if (!res.body) return errorImageSvg("unavailable");
+if (!detectMimeType(bytes)) return errorImageSvg("unavailable");
+if (!isContentTypeConsistent(ct, mime)) return errorImageSvg("unavailable");
+
+// 修正パターン: reason 細分化 + console.error + X-Header で詳細返却
+if (!res.ok) {
+  console.error(
+    `[image-proxy] upstream not ok: url=${url} status=${res.status} content-type="${ct}"`,
+  );
+  const reason =
+    res.status === 404 ? "not_found" : res.status === 403 ? "bot_blocked" : "unavailable";
+  return errorImageSvg(reason, { upstreamStatus: res.status, upstreamContentType: ct });
+}
+// errorImageSvg は X-Image-Proxy-Error / -Upstream-Status / -Upstream-Type 等を返す
+
+// レスポンス例 (DevTools Network):
+//   Status: 200 (SVG プレースホルダー描画は壊さない)
+//   X-Image-Proxy-Error: bot_blocked
+//   X-Image-Proxy-Upstream-Status: 403
+//   X-Image-Proxy-Upstream-Type: text/html
+```
+
+**How to apply**: 上流 fetch のプロキシ系 Route Handler を実装するとき:
+
+1. **エラー reason を `union type` で細分化**: `"not_found" | "bot_blocked" | "mime_rejected" | "content_type_mismatch" | "size_unknown" | "too_large" | "unavailable" | "network"` のように、**失敗経路ごとに独立した reason** を持たせる (同じ `unavailable` に集約しない)
+2. **各 return 箇所で `console.error("[label] <reason>: key1=v1 key2=v2")`**: label にはエンドポイント名 (`image-proxy` / `content` / `ogp`)、key には URL / status / content-type / body-size 等の判別材料
+3. **`X-{Service}-Error: <reason>`** を必ず返す (常時出力)。詳細は `X-{Service}-*` で optional (`upstreamStatus` / `upstreamContentType` / `detectedMime` / `bodySize` 等)
+4. **詳細パラメータは `Details` interface でまとめる** (`ImageErrorDetails` 等) → caller が型安全に渡せて drift しない
+5. **新規 reason 追加時のラベル**: SVG / message リソースは既存アイコン再利用で OK (semantic 的に近いものを選ぶ)。実装コストを最小化して reason 細分化を優先
+6. **本番調査フロー** (Issue クローズコメントにも明記): ユーザーが DevTools Network で `X-{Service}-Error` を見る → 必要なら `npx wrangler tail` で server-side ログを見る → 真因確定
+
+**反例 (細分化しないケース)**:
+
+- エラー reason が **本質的に 1 種類しかない** (例: `/api/health` の DB 接続失敗のみ) → 単一 reason で OK
+- プロキシせず自社データを返すだけの endpoint → server-side log のみで十分 (`X-Header` 不要)
+- 上流が **エラー詳細を一切返さない** (`fetch` の throw のみ) → `network` reason + `console.error("[label] fetch error:", formatError(err))` で完結
+
+主な使用箇所: `app/api/image-proxy/route.ts` + `src/lib/image-error-placeholder.ts` (`errorImageSvg(reason, details?)` で 8 種類の reason × `X-Image-Proxy-*` ヘッダー × `console.error` 詳細ログの 3 軸観測性)
+
 ## 特定ドメインの content fallback は「ドメイン × content pattern」の AND 判定 + scan 範囲限定で false positive を防ぐ
 
 `x.com` / `twitter.com` のように **JavaScript 必須のサイトは JS 無効な fetch クライアント (Cloudflare Workers の `fetch`) からアクセスすると「JS を有効にしてください」エラーページ HTML** を返す。それをそのまま記事本文として処理すると TTS が無価値な文字列を読み上げたり AI 要約の入力に使われたりする。
