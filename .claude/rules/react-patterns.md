@@ -172,6 +172,47 @@ function List({ selectedId, anchorTrigger }: Props) {
 
 主な使用箇所: `App.tsx` の `anchorTrigger` ↔ `ArticleList.tsx` の scroll useEffect (`.` キーで選択中記事を中央アンカー)
 
+### 派生ケース: 子コンポーネントの内部 state を外部から起動するときも trigger counter で「state lift up より侵襲が小さい」配線が選べる
+
+「子コンポーネント (例: `FeedSidebar`) が内部で持つ state (例: `inputOpen = FeedAddModal の表示 boolean`) を、外部 (例: 親の空状態 CTA ボタン) から起動したい」要件のとき、**state lift up (内部 state を親に上げて props でコントロール) は侵襲が大きい** (子の内部 `setInputOpen(true)` を呼ぶ全箇所を controlled モード対応に書き換える必要)。これを **trigger counter pattern** で代替すれば、子の内部 state はそのまま保ちつつ「外部 trigger 変化を検知して内部 setter を呼ぶ useEffect」を 1 つ追加するだけで済む。
+
+```typescript
+// アンチパターン: state lift up で子の内部 state を controlled 化
+// → 子の既存 setInputOpen(true) callers 全件を props.setInputOpen 経由に書き換え必要
+function FeedSidebar({ inputOpen, setInputOpen }: Props) {
+  // ... 既存の内部 callers が全部 props 経由になる (10+ 箇所修正)
+}
+
+// 修正パターン: trigger counter で「外部 trigger 変化を検知 → 内部 setter 呼出」
+function FeedSidebar({ openFeedAddTrigger }: Props & { openFeedAddTrigger?: number }) {
+  const [inputOpen, setInputOpen] = useState(false); // ← 内部 state そのまま維持
+  const prevTriggerRef = useRef<number | undefined>(openFeedAddTrigger);
+  useEffect(() => {
+    if (openFeedAddTrigger === undefined) return;
+    if (prevTriggerRef.current !== openFeedAddTrigger) {
+      prevTriggerRef.current = openFeedAddTrigger;
+      setInputOpen(true);
+    }
+  }, [openFeedAddTrigger]);
+  // ... 既存の内部 setInputOpen 利用は触らない (一切変更不要)
+}
+
+// 親 (App.tsx):
+const [openFeedAddTrigger, setOpenFeedAddTrigger] = useState(0);
+const openFeedAddModal = useCallback(() => setOpenFeedAddTrigger((c) => c + 1), []);
+// ArticleList の空状態 CTA → onAddFeed: openFeedAddModal を渡す
+```
+
+**How to apply**: 「子の内部 state を外部から起動したい」要件を見つけたら (state lift up は既存 callers の controlled 化で侵襲大、trigger counter pattern なら useEffect 1 つ追加で済む):
+
+1. **state lift up vs trigger counter** を比較。lift up の touch ファイル数を見積もる
+2. 子の内部 setter 利用箇所が **3 箇所以上 / 触りたくない既存挙動を保つ** なら trigger counter 採用
+3. **prevTriggerRef.current** で `prev !== current` 判定を入れる (`useEffect[trigger]` だけだと初回マウントで誤発火)
+4. **trigger 型は `number | undefined`** にして、`undefined` のとき (props 未渡し) は何もしない設計が後方互換的
+5. trigger counter は **一方向起動専用** (open のみ / close は子の内部 state で完結)。両方向制御が必要なら state lift up が正しい
+
+主な使用箇所: `FeedSidebar` の `openFeedAddTrigger` (空状態 CTA から FeedAddModal を起動、内部 `setInputOpen` 既存 callers はそのまま)
+
 ### 派生ケース: ブラウザ API の「手動 cancel」と「自然完了」を物理的に区別する monotonic counter
 
 `speechSynthesis.cancel()` (TTS 手動停止) と `utterance.onend` (TTS 自然完了) のように、**ブラウザ API には「手動 cancel パス」と「自然完了パス」が別の callback / event を持つ** ものが多い (Web Speech / WebSocket close / `<video>` `<audio>` end vs pause / `EventSource.close()` 等)。これらを **派生 boolean (= state 遷移)** で判定すると、両方のパスで同じ state 遷移 (`playing: true → false` 等) が起きて誤判定する。
