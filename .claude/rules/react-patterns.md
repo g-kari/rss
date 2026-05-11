@@ -209,6 +209,79 @@ it("mount 後に時刻を進めて rerender しても、now は mount 時刻の�
 
 主な使用箇所: `FeedHealthModal.test.tsx` (#682 Phase B-2 / 元 #623) — `useState(() => new Date())` mount 時固定挙動を `vi.fakeTimers + rerender` で間接検証、`useMemo([])` 旧実装との差を spec で固定
 
+### 派生ケース: `new Ctor()` で呼ばれるブラウザ API は **class 形式** で mock する (`vi.fn()` は this binding が崩れる)
+
+`AudioContext` / `Worker` / `WebSocket` / `EventSource` / `IntersectionObserver` / `ResizeObserver` 等の **`new` 演算子で呼ばれる Web API** を mock するとき、**`vi.fn(() => obj)` を `vi.stubGlobal` で注入すると `new` で呼ばれて `this` binding が崩れ、return が無視される or 想定外オブジェクトが返る**。必ず `class` 形式で mock を構築する。
+
+```typescript
+// アンチパターン: vi.fn() を new で呼ぶと this binding が想定外
+const ContextCtor = vi.fn(() => {
+  const ctx = buildMockCtx();
+  createdContexts.push(ctx);
+  return ctx; // ← `new ContextCtor()` で呼ばれると return が貼り付かないケース有
+});
+vi.stubGlobal("AudioContext", ContextCtor);
+
+// hook 内で `new AudioContext()` → createdContexts に push されないことが起きる
+
+// 修正パターン: class 形式の mock
+class MockAudioContext {
+  destination = {};
+  close = vi.fn(() => Promise.resolve());
+
+  constructor() {
+    createdContexts.push(this); // ← `new` で呼ばれた瞬間に確実に this が積まれる
+  }
+
+  createOscillator() {
+    const osc = { connect: vi.fn(), start: vi.fn(), stop: vi.fn() };
+    createdOscillators.push(osc);
+    return osc;
+  }
+
+  createGain() {
+    const gain = { gain: { value: 1 }, connect: vi.fn() };
+    createdGains.push(gain);
+    return gain;
+  }
+}
+vi.stubGlobal("AudioContext", MockAudioContext);
+```
+
+**JavaScript `new` 仕様の罠**:
+
+- `new fn()`: コンストラクタが **object を return すれば** その object が結果、**primitive (undefined 含む) を return すれば `this` (新しい空オブジェクト)** が結果
+- `vi.fn(() => mockCtx)` の戻り値型は vitest 内部で wrap されており、`new` 呼び出し時に return が object として認識されないケースがある
+- class 構文なら **constructor body 内で `this` をセットアップして `push(this)`** とするので、確実に同じインスタンスが test 側から参照可能
+
+**How to apply**: `new ApiName()` で生成されるブラウザ API を mock するときは (vi.fn() の戻り値が new 演算子で正しく機能しない罠を避けるため、class 形式が唯一安全):
+
+1. **`class MockApiName { ... }`** で mock を定義する (`vi.fn` 単独で `new` 用 mock を作らない)
+2. **`constructor()` で `createdInstances.push(this)`** して test 側がインスタンスを参照可能に
+3. **メソッドは class field arrow function (`close = vi.fn(...)`)** か **regular method (`createOscillator() { ... }`)** で定義、いずれも `this` 経由でアクセス
+4. test の前提となる **child object (Oscillator / GainNode 等) を別配列に push** して個別 assertion 可能に
+5. `vi.stubGlobal("AudioContext", MockAudioContext)` で注入、`afterEach` で `vi.unstubAllGlobals()`
+
+**該当する典型 Web API** (`new` で生成):
+
+| API                                   | 用途                 | mock 必要場面                   |
+| ------------------------------------- | -------------------- | ------------------------------- |
+| `AudioContext` / `webkitAudioContext` | WebAudio 再生        | 無音再生 hook / TTS 制御 hook   |
+| `Worker` / `SharedWorker`             | バックグラウンド処理 | 重い計算 / network 処理 hook    |
+| `WebSocket`                           | リアルタイム通信     | チャット / 通知 / 同期 hook     |
+| `EventSource`                         | サーバー送信イベント | 通知 hook / ライブアップデート  |
+| `IntersectionObserver`                | 可視性監視           | 無限スクロール / lazy load hook |
+| `ResizeObserver`                      | サイズ変化監視       | 仮想スクロール / 動的レイアウト |
+| `MutationObserver`                    | DOM 変化監視         | 動的コンテンツ追跡 hook         |
+| `AbortController`                     | fetch cancel         | (実装は native でも mock 可能)  |
+
+**反例 (vi.fn で OK なケース)**:
+
+- `new` を使わない関数呼び出し API (`fetch` / `localStorage.getItem` 等) — `vi.fn()` で問題なし
+- mock object 自体を直接 `vi.stubGlobal` に注入する API (`navigator.mediaSession = mockSession`) — class 不要
+
+主な使用箇所: `useBackgroundAudio.test.ts` (#745 Phase A) — `vi.fn(() => mockCtx)` で AudioContext 作成カウントが 0 のまま fail → class MockAudioContext に書き換えで 6 ケース全 pass
+
 ## ref vs state の使い分け（同期チェック vs useEffect 再実行）
 
 「外部からの一時的中断 → 自動回復」シナリオ（429 クールダウン後の再開、スリープからの復帰など）では **ref だけでは不十分**。`useRef` は React 再レンダーをトリガーしないため、ref に「期限値」を書き込んでも `useEffect` は再実行されない。
