@@ -46,6 +46,7 @@ export function buildTtsText(
   processedContent: string | null,
   translatedText?: string | null,
   summaryText?: string | null,
+  noteText?: string | null,
 ): string {
   const source =
     (summaryText && summaryText.trim() ? summaryText : null) ??
@@ -54,5 +55,6 @@ export function buildTtsText(
     article.summary ??
     "";
   const body = preprocessTtsText(toPlainText(source));
-  return [article.title, body].filter(Boolean).join("\n\n");
+  const note = noteText && noteText.trim() ? `メモ: ${preprocessTtsText(noteText.trim())}` : null;
+  return [article.title, body, note].filter(Boolean).join("\n\n");
 }

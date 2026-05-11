@@ -123,8 +123,8 @@ function buildFeedOrder(feeds: Feed[], pinnedFeedIds: Set<string>): (Feed | null
 
 export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
   {
-    keys: ["j", "ArrowDown"],
-    displayKey: "j / ↓",
+    keys: ["j", "ArrowDown", "PageDown"],
+    displayKey: "j / ↓ / PgDn",
     description: "次の記事",
     group: "navigation",
     handler: (ctx, e) => {
@@ -133,8 +133,8 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     },
   },
   {
-    keys: ["k", "ArrowUp"],
-    displayKey: "k / ↑",
+    keys: ["k", "ArrowUp", "PageUp"],
+    displayKey: "k / ↑ / PgUp",
     description: "前の記事",
     group: "navigation",
     handler: (ctx, e) => {

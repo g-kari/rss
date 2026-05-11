@@ -182,11 +182,20 @@ export function useArticleViewState({
     ttsEndedCount,
     ttsRate,
     ttsCycleRate,
+    ttsVolume,
+    ttsCycleVolume,
     handleTtsToggle,
     ttsSpeak,
     ttsStop,
     buildTtsText,
-  } = useArticleViewTts(article, processedContent, translatedText, onBoundaryRef, onSpeakStartRef);
+  } = useArticleViewTts(
+    article,
+    processedContent,
+    translatedText,
+    onBoundaryRef,
+    onSpeakStartRef,
+    noteText,
+  );
 
   // #703: オートモード + autoSummarize で要約を読み上げているとき、ハイライトは
   // 「記事本文」ではなく実際に読み上げているテキスト (要約) と一致させたい。
@@ -316,6 +325,8 @@ export function useArticleViewState({
     ttsEndedCount,
     ttsRate,
     ttsCycleRate,
+    ttsVolume,
+    ttsCycleVolume,
     handleTtsToggle,
     ttsSpeak,
     ttsStop,

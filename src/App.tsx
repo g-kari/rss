@@ -564,6 +564,9 @@ export default function App() {
   //       ArticleList に渡し、useEffect で「選択中記事へ強制スクロール」を再実行する。
   const [anchorTrigger, setAnchorTrigger] = useState(0);
   const anchorListToSelected = useCallback(() => setAnchorTrigger((c) => c + 1), []);
+  // #722: 空状態 CTA「フィードを追加」用の trigger counter
+  const [openFeedAddTrigger, setOpenFeedAddTrigger] = useState(0);
+  const openFeedAddModal = useCallback(() => setOpenFeedAddTrigger((c) => c + 1), []);
 
   useKeyboardNav({
     filteredArticles: filtered,
@@ -774,6 +777,7 @@ export default function App() {
                 onToggle: togglePush,
                 onSendTest: sendPushTest,
               },
+              openFeedAddTrigger,
             }}
           />
           <AppListPane
@@ -810,6 +814,7 @@ export default function App() {
               onGalleryAutoRead: handleGalleryAutoRead,
               duplicateInfo,
               anchorTrigger,
+              onAddFeed: openFeedAddModal,
             }}
           />
           <AppViewPane

@@ -32,6 +32,9 @@ interface Props {
   ttsPaused: boolean;
   ttsRate: number;
   ttsCycleRate: () => void;
+  /** #727: 3 段階 (full / half / muted) で cycle する音量。再生中のみ表示 */
+  ttsVolume: number;
+  ttsCycleVolume: () => void;
   onTtsToggle: () => void;
   autoMode: boolean;
   onToggleAutoMode: () => void;
@@ -67,6 +70,8 @@ export default function ArticleHeaderAiTts({
   ttsPaused,
   ttsRate,
   ttsCycleRate,
+  ttsVolume,
+  ttsCycleVolume,
   onTtsToggle,
   autoMode,
   onToggleAutoMode,
@@ -236,6 +241,62 @@ export default function ArticleHeaderAiTts({
           }`}
         >
           {`${ttsRate}x`}
+        </button>
+      )}
+      {(ttsPlaying || ttsPaused) && (
+        <button
+          onClick={ttsCycleVolume}
+          title={`音量: ${Math.round(ttsVolume * 100)}% → クリックで切替（フル / 半 / ミュート）`}
+          aria-label={`音量 ${Math.round(ttsVolume * 100)}パーセント`}
+          className="p-2 -m-2 lg:p-0 lg:m-0 text-ink hover:text-text-muted transition-colors duration-200"
+        >
+          {ttsVolume >= 0.99 ? (
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 5.5h2.5L7.5 3v8L4.5 8.5H2v-3z" />
+              <path d="M9.5 5.5C10 6 10 8 9.5 8.5" />
+              <path d="M11 4C12 5 12 9 11 10" />
+            </svg>
+          ) : ttsVolume >= 0.49 ? (
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 5.5h2.5L7.5 3v8L4.5 8.5H2v-3z" />
+              <path d="M9.5 5.5C10 6 10 8 9.5 8.5" />
+            </svg>
+          ) : (
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 5.5h2.5L7.5 3v8L4.5 8.5H2v-3z" />
+              <path d="M9 5l4 4M13 5l-4 4" />
+            </svg>
+          )}
         </button>
       )}
     </>

@@ -14,6 +14,8 @@ export interface ArticleViewTtsResult {
   ttsEndedCount: number;
   ttsRate: number;
   ttsCycleRate: () => void;
+  ttsVolume: number;
+  ttsCycleVolume: () => void;
   handleTtsToggle: () => void;
   ttsSpeak: (text: string) => void;
   ttsStop: () => void;
@@ -23,6 +25,8 @@ export interface ArticleViewTtsResult {
     translatedText?: string | null,
     /** #696: autoMode + autoSummarize で要約結果を読み上げる場合に渡す */
     summaryText?: string | null,
+    /** #724: 記事メモを末尾に読み上げる場合に渡す */
+    noteText?: string | null,
   ) => string;
 }
 
@@ -34,6 +38,8 @@ export function useArticleViewTts(
   onBoundaryRef?: RefObject<((charIndex: number) => void) | null>,
   /** speak 開始時に呼ぶ callback の ref (#672 Phase 2) */
   onSpeakStartRef?: RefObject<(() => void) | null>,
+  /** #724: 記事メモ。空文字 / null の場合は本文末尾に何も追加しない */
+  noteText?: string | null,
 ): ArticleViewTtsResult {
   const {
     supported: ttsSupported,
@@ -42,9 +48,17 @@ export function useArticleViewTts(
     endedCount: ttsEndedCount,
     rate: ttsRate,
     cycleRate: ttsCycleRate,
+    volume: ttsVolume,
+    setVolume: setTtsVolume,
     speak,
     stop: ttsStop,
   } = useTtsAdapter();
+
+  // #727: TTS 音量 3 段階 cycle (1.0 = full / 0.5 = half / 0.0 = muted)
+  const ttsCycleVolume = useCallback(() => {
+    const next = ttsVolume >= 0.99 ? 0.5 : ttsVolume >= 0.49 ? 0 : 1;
+    setTtsVolume(next);
+  }, [ttsVolume, setTtsVolume]);
 
   // 記事切り替え時にTTSを停止
   useEffect(() => {
@@ -67,7 +81,7 @@ export function useArticleViewTts(
       ttsStop();
     } else {
       if (!article) return;
-      const text = buildTtsText(article, processedContent, translatedText);
+      const text = buildTtsText(article, processedContent, translatedText, null, noteText);
       if (text.trim()) speakWithHighlight(text);
     }
   }, [
@@ -78,6 +92,7 @@ export function useArticleViewTts(
     article,
     processedContent,
     translatedText,
+    noteText,
   ]);
 
   // Shift+P キーボードショートカット
@@ -99,6 +114,8 @@ export function useArticleViewTts(
     ttsEndedCount,
     ttsRate,
     ttsCycleRate,
+    ttsVolume,
+    ttsCycleVolume,
     handleTtsToggle,
     ttsSpeak: speakWithHighlight,
     ttsStop,
