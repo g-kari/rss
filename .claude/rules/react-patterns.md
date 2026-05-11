@@ -58,6 +58,71 @@ function useReadStateSyncApply() {
 
 主な使用箇所: `equalSnoozedUntil` / `useReadStateSyncApply` (2 秒毎の主スレッドブロック解消)
 
+### 派生ケース: deps 配列に直接渡せる「structural signature string」パターン
+
+`equalXxxMap` のような **`if (!eq) setXxx(next)` ガード + useRef 経由の安定 reference** は、`useFilteredArticles` のように **複数の派生 state を 1 つの useMemo で生成する** ケースには使えるが、setup が重い (Map 構造ごとに `equalMap` ヘルパー + ref + 条件 update の 3 点セット)。
+
+別パターンとして、**entity 配列を 1 行 signature string にシリアライズ** して useMemo の deps に渡す方式がある。React の useMemo は deps を `===` で比較するため、signature が同じ string なら自動的に再計算 skip される。
+
+```typescript
+// アンチパターン: feeds reference を直接 deps に → 5 分 polling で毎回再計算
+const { pinnedFeeds, groupedFeeds, ... } = useMemo(() => {
+  // ... 重い sort + filter 群
+}, [feeds, pinnedFeedIds, feedSearch, ...]);
+
+// 修正パターン: structural signature string で deps を置換
+function computeFeedStructuralSignature(feeds: Feed[]): string {
+  const parts: string[] = [];
+  for (const f of feeds) {
+    parts.push(
+      `${f.id}|${f.title ?? ""}|${f.category ?? ""}|${f.groupId ?? ""}|${f.nsfw ? 1 : 0}|${f.priority ?? ""}|${f.view ?? ""}`,
+    );
+  }
+  return parts.join("\n");
+}
+
+const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+const feedsRef = useRef(feeds);
+feedsRef.current = feeds;
+
+// eslint-disable-next-line react-hooks/exhaustive-deps -- signature が feeds 構造を encode 済
+const { pinnedFeeds, groupedFeeds, ... } = useMemo(() => {
+  const feeds = feedsRef.current; // 構造的等価ガード後の安定 reference を採用
+  // ... 既存ロジック (sort / filter)
+}, [feedStructuralSignature, pinnedFeedIds, feedSearch, ...]);
+```
+
+### Map ガード vs Signature string の使い分け
+
+| 観点                                               | Map / 個別 `equalXxxMap`                    | Signature string                                           |
+| -------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------- |
+| **setup コスト**                                   | 中 (ヘルパー + ref + 条件 update)           | 低 (純粋関数 1 個 + signature useMemo + deps 置換)         |
+| **deps 配列との整合**                              | 派生 Map を deps に追加                     | signature を deps に置換 (自動再計算)                      |
+| **複数 useMemo に再利用**                          | 1 つの安定 reference を deps として共有可能 | signature の文字列 identity を共有可能                     |
+| **比較対象が「Map 全体」か「個別 entity 配列」か** | Map 全体 (例: `feedCategoryMap`)            | 配列 (例: `feeds: Feed[]`)                                 |
+| **lint warning**                                   | なし                                        | `react-hooks/exhaustive-deps` 1 件 (eslint-disable で許容) |
+
+**選択基準**:
+
+- **派生 Map 1 個だけ作る** → `equalXxxMap` パターン (Map 単位の比較ヘルパー流用可能)
+- **配列を sort + filter + group して複数派生 state を生成** → Signature string パターン (deps 置換が自然、`feedsRef.current` で安定参照を提供)
+- どちらも構造的等価ガードの目的 (内容変化なしで下流再計算を防ぐ) は同じ
+
+### Signature string パターンの注意点
+
+1. **encode する field を「下流計算に影響する全 field」に絞る**:
+   - `feeds: Feed[]` でも `lastFetchedAt` / `articleCount` 等は sidebar layout に影響しない → signature に含めない
+   - 漏れると stale render が発生するので慎重に
+2. **signature 計算コストを `O(N × c)` に抑える** (c = field 数 + concat overhead):
+   - 1000 feeds × 7 field でも < 1ms (本プロジェクト実測)
+   - 配列 size に上限が無い場合は signature 計算自体が hot path 化するリスクあり → 上限を確認
+3. **`feedsRef.current` で deps 不一致を回避**:
+   - 内側 useMemo は `feeds` を closure で参照するが、deps には signature しか入れない
+   - `eslint-disable-next-line react-hooks/exhaustive-deps` でルール除外 + 理由コメント明記
+   - `feedsRef.current = feeds` を render 中で書く (`useSyncedRef` 同思想)
+
+主な使用箇所: `useSidebarFeeds.ts` の `computeFeedStructuralSignature` — 5 分 polling で feeds reference が新規でも構造変化なしなら 4 派生 state (pinnedFeeds / groupedFeeds / categoryGroups / uncategorizedFeeds) の sort + filter 再計算を skip
+
 ### 派生ケース: モジュールレベル sentinel オブジェクトは `Object.freeze` で下流汚染を防ぐ
 
 `useFilteredArticles` のように **多数の派生 props** として `EMPTY_SET` / `EMPTY_ARRAY` 等の sentinel を渡す hook では、freeze されていない sentinel を下流が誤って `.add()` / `.push()` するとプロセス全体で sentinel が汚染され「次回からは empty じゃない」状態になる。`Object.freeze` で runtime safety net を入れる。
