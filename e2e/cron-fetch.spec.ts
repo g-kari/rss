@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
-import type { Article } from "../src/types";
 import type { SharedFeedMeta } from "../src/types";
 import type { ParsedFeed } from "../src/lib/xml-parser";
+import { makeArticle } from "./helpers/article";
 
 import {
   buildBatchedPushPayload,
@@ -37,20 +37,6 @@ function makeParsedFeed(overrides: Partial<ParsedFeed> = {}): ParsedFeed {
     title: "Parsed Title",
     siteUrl: "https://example.com",
     items: [],
-    ...overrides,
-  };
-}
-
-function makeArticle(overrides: Partial<Article> = {}): Article {
-  return {
-    id: "a1b2c3d4e5f6a7b8",
-    feedHash: "abc123def456abcd",
-    guid: "https://example.com/article-1",
-    title: "テスト記事",
-    link: "https://example.com/article-1",
-    summary: "テスト記事の概要",
-    publishedAt: "2026-01-01T00:00:00Z",
-    createdAt: "2026-01-01T00:00:00Z",
     ...overrides,
   };
 }

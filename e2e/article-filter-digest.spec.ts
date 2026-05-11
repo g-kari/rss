@@ -2,19 +2,21 @@ import { test, expect } from "@playwright/test";
 import { applyStateFilterAndSort, type StateFilterOptions } from "../src/lib/article-filter";
 import { SPECIAL_FEED_IDS } from "../src/lib/storage";
 import type { Article } from "../src/types";
+import { makeArticle as makeBaseArticle } from "./helpers/article";
 
-function makeArticle(id: string, feedHash: string, publishedAt?: string): Article {
-  return {
+const makeArticle = (id: string, feedHash: string, publishedAt?: string) => {
+  const ts = publishedAt ?? "2024-06-01T00:00:00Z";
+  return makeBaseArticle({
     id,
     feedHash,
     guid: id,
     title: `記事 ${id}`,
     link: `https://example.com/${id}`,
     summary: `サマリー ${id}`,
-    publishedAt: publishedAt ?? "2024-06-01T00:00:00Z",
-    createdAt: publishedAt ?? "2024-06-01T00:00:00Z",
-  };
-}
+    publishedAt: ts,
+    createdAt: ts,
+  });
+};
 
 const BASE_STATE_OPTS: StateFilterOptions = {
   feedId: null,

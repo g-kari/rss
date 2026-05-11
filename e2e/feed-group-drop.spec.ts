@@ -1,18 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { resolveFeedGroupDrop, resolveFeedViewDrop } from "../src/lib/feed-group-drop";
-import type { Feed } from "../src/types";
-
-function makeFeed(overrides: Partial<Feed>): Feed {
-  return {
-    id: "feed-1",
-    url: "https://example.com/feed.xml",
-    title: "Example",
-    siteUrl: "https://example.com",
-    lastFetchedAt: null,
-    fetchError: null,
-    ...overrides,
-  };
-}
+import { makeFeed } from "./helpers/feed";
 
 test("resolveFeedGroupDrop: 対象 feed が存在しないとき null を返す", () => {
   const feeds = [makeFeed({ id: "feed-1" })];

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { isArticleMutated } from "../src/lib/shared-feed";
-import type { Article } from "../src/types";
+import { makeArticle } from "./helpers/article";
 
 /**
  * isArticleMutated の単体テスト。
@@ -8,20 +8,6 @@ import type { Article } from "../src/types";
  * Issue #97: mergeNewArticles が変更なしでも毎回 R2 PUT を発生させる問題の
  * 回帰テスト。createdAt は呼び出し側で保持されるため比較対象外。
  */
-
-function makeArticle(overrides: Partial<Article> = {}): Article {
-  return {
-    id: "a1",
-    feedHash: "abc",
-    guid: "g1",
-    title: "Title",
-    link: "https://example.com/1",
-    summary: "summary",
-    publishedAt: "2026-01-01T00:00:00Z",
-    createdAt: "2026-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
 
 test("isArticleMutated: 全フィールド同一なら false", () => {
   const ex = makeArticle();

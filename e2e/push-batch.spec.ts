@@ -1,22 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { buildBatchedPushPayload, type FeedNewArticles } from "../src/cron/fetch";
-import type { Article } from "../src/types";
-
-function makeArticle(overrides: Partial<Article> = {}): Article {
-  return {
-    id: "a1",
-    feedHash: "feed1",
-    guid: "guid1",
-    title: "テスト記事",
-    link: "https://example.com/1",
-    summary: "",
-    publishedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    categories: [],
-    metadata: [],
-    ...overrides,
-  };
-}
+import { makeArticle } from "./helpers/article";
 
 test.describe("buildBatchedPushPayload", () => {
   test("単一フィード・単一記事の場合はフィード名と記事タイトルを表示", () => {

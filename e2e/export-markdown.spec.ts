@@ -4,32 +4,8 @@ import {
   generateFrontmatter,
   htmlToMarkdown,
 } from "../src/lib/html-to-markdown";
-import type { Article, Feed } from "../src/types";
-
-// テスト用ファクトリ
-function makeArticle(overrides: Partial<Article> = {}): Article {
-  return {
-    id: "article-001",
-    feedHash: "feed-hash-01",
-    title: "テスト記事タイトル",
-    link: "https://example.com/article/1",
-    summary: "<p>記事のサマリーテキスト。</p>",
-    content: "",
-    author: "山田太郎",
-    publishedAt: "2026-04-12T10:00:00Z",
-    ...overrides,
-  } as Article;
-}
-
-function makeFeed(overrides: Partial<Feed> = {}): Feed {
-  return {
-    id: "feed-hash-01",
-    title: "テックブログ",
-    url: "https://example.com/feed.xml",
-    siteUrl: "https://example.com",
-    ...overrides,
-  } as Feed;
-}
+import { makeArticle } from "./helpers/article";
+import { makeFeed } from "./helpers/feed";
 
 // ===== articleToMarkdown =====
 

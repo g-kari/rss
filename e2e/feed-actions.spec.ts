@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { buildFeedActions } from "../src/components/feed-item/feedActions";
 import type { Feed, FeedGroup } from "../src/types";
+import { makeFeed } from "./helpers/feed";
 
 /**
  * buildFeedActions の単体テスト。
@@ -9,18 +10,6 @@ import type { Feed, FeedGroup } from "../src/types";
  * 「動作を変えない」ことを保証するため、各 action の存在・順序・visible / className の挙動・
  * onClick が対応するハンドラを呼ぶことを検証する。
  */
-
-function makeFeed(overrides: Partial<Feed> = {}): Feed {
-  return {
-    id: "feedhash00000001",
-    url: "https://example.com/feed",
-    title: "Example Feed",
-    siteUrl: "https://example.com",
-    lastFetchedAt: null,
-    fetchError: null,
-    ...overrides,
-  };
-}
 
 interface BuilderOverrides {
   feed?: Feed;

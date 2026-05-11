@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { cascadeOverflow } from "../src/lib/shared-feed";
 import type { Article } from "../src/types";
+import { makeArticle as makeBaseArticle } from "./helpers/article";
 
 /**
  * Issue #131: cascadeOverflow で MAX_PAGES 超過時の overflow が silent drop される
@@ -9,18 +10,16 @@ import type { Article } from "../src/types";
  * テスト用に pageSize / maxPages を小さくして同じシナリオを再現する。
  */
 
-function makeArticle(id: string, publishedAt: string): Article {
-  return {
+const makeArticle = (id: string, publishedAt: string) =>
+  makeBaseArticle({
     id,
     feedHash: "abc",
     guid: id,
     title: `Title ${id}`,
     link: `https://example.com/${id}`,
-    summary: "",
     publishedAt,
     createdAt: publishedAt,
-  };
-}
+  });
 
 /** Cloudflare R2Bucket の最低限のモック（get / put のみ） */
 function makeR2Mock() {

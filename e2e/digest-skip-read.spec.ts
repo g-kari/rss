@@ -1,20 +1,18 @@
 import { test, expect } from "@playwright/test";
 import { applyStateFilterAndSort, type StateFilterOptions } from "../src/lib/article-filter";
 import { SPECIAL_FEED_IDS } from "../src/lib/storage";
-import type { Article } from "../src/types";
+import { makeArticle as makeBaseArticle } from "./helpers/article";
 
-function makeArticle(id: string, feedHash: string, publishedAt = "2026-05-01T00:00:00Z"): Article {
-  return {
+const makeArticle = (id: string, feedHash: string, publishedAt = "2026-05-01T00:00:00Z") =>
+  makeBaseArticle({
     id,
     feedHash,
     guid: id,
     title: `${id} title`,
     link: `https://example.com/${id}`,
-    summary: "",
     publishedAt,
     createdAt: publishedAt,
-  } as Article;
-}
+  });
 
 function baseOpts(overrides: Partial<StateFilterOptions> = {}): StateFilterOptions {
   return {
