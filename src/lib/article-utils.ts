@@ -221,8 +221,10 @@ export function resolveThumbnail(
  *
  * 使い方:
  * ```typescript
- * const cache = useMemo(() => createReadingTimeCache(), [articles]);
- * // ↑ articles の reference 変化でキャッシュをリセット
+ * const cache = useMemo(() => createReadingTimeCache(), [readingTimeRange]);
+ * // ↑ #746: deps に articles を含めない。`mergeUniqueArticles` (#693) の immutability 契約により
+ * //   既存 article object identity が polling 横断で保たれるため、article.id ベースの cache は
+ * //   articles reference 変化で破棄する必要なし (5 分 polling での無用な再計算を防ぐ)。
  * cache(article); // 同じ articleId で 2 回目以降はキャッシュ済の値を返す
  * ```
  *

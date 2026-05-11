@@ -264,9 +264,12 @@ export function useFilteredArticles({
   //
   // perf 監査 (#2): readingTimeRange === "all" のときは buildReadingTimePredicate が
   // 早期 return null で cache を呼ばないため、cache 生成自体を skip して allocation を省く。
+  // #746: cache は article.id で識別し、`mergeUniqueArticles` (#693) の immutability 契約により
+  // 既存 article object identity は polling 横断で保たれる。よって deps から articles を外しても
+  // stale データは発生せず、polling 毎の cache 破棄 (500+ articles × O(content length) 再走) を防げる。
   const readingTimeCache = useMemo(
     () => (readingTimeRange === "all" ? undefined : createReadingTimeCache()),
-    [articles, readingTimeRange],
+    [readingTimeRange],
   );
 
   const isBookmarksFeed = feedId === SPECIAL_FEED_IDS.BOOKMARKS;

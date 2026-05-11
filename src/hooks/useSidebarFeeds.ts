@@ -1,6 +1,24 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { Feed, FeedGroup, FeedView } from "../types";
 import { useUnreadStats } from "../contexts/UnreadStatsContext";
+
+/**
+ * #747: feeds の構造的内容 (sidebar layout に影響する field) を 1 行にシリアライズする。
+ * 5 分 polling で `feeds` reference が毎回新しくなるが、構造的内容変化なしなら
+ * 旧 signature と一致して下流の useMemo を再計算 skip させる。
+ *
+ * 含めるフィールド: id / title / category / groupId / nsfw / priority / view
+ * (uncategorizedFeeds / categoryGroups / groupedFeeds / pinnedFeeds 派生に影響する全 field)
+ */
+function computeFeedStructuralSignature(feeds: Feed[]): string {
+  const parts: string[] = [];
+  for (const f of feeds) {
+    parts.push(
+      `${f.id}|${f.title ?? ""}|${f.category ?? ""}|${f.groupId ?? ""}|${f.nsfw ? 1 : 0}|${f.priority ?? ""}|${f.view ?? ""}`,
+    );
+  }
+  return parts.join("\n");
+}
 
 interface UseSidebarFeedsInput {
   feeds: Feed[];
@@ -54,7 +72,19 @@ export function useSidebarFeeds({
     return arr;
   }, [tagCounts]);
 
+  // #747: feeds の構造的内容を signature 化して下流 useMemo の deps に使う。
+  // 5 分 polling で `feeds` reference が新規でも内容変化なしなら signature 同じ → useMemo skip。
+  // signature 計算は N feeds × 数文字 concat で軽量 (1000 feeds でも < 1ms)。
+  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+
+  // useMemo の deps から feeds を外して signature に置換。
+  // feeds reference は useMemo の closure 経由でアクセスするため、内側ロジックは変更不要。
+  const feedsRef = useRef(feeds);
+  feedsRef.current = feeds;
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- feedStructuralSignature が feeds 構造を encode 済。feedsRef は ref 安定参照
   const { pinnedFeeds, groupedFeeds, categoryGroups, uncategorizedFeeds } = useMemo(() => {
+    const feeds = feedsRef.current; // 構造的等価ガード後の安定 reference を採用
     const q = feedSearch.trim().toLowerCase();
     const matchFeed = (f: Feed) => !q || (f.title || f.url).toLowerCase().includes(q);
     const matchView = (f: Feed) =>
@@ -108,7 +138,7 @@ export function useSidebarFeeds({
       categoryGroups: sorted,
       uncategorizedFeeds: uncategorized,
     };
-  }, [feeds, pinnedFeedIds, feedSearch, feedGroups, activeFeedView, nsfwMode]);
+  }, [feedStructuralSignature, pinnedFeedIds, feedSearch, feedGroups, activeFeedView, nsfwMode]);
 
   return {
     tagCounts,
