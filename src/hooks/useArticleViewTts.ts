@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { Article } from "../types";
 import { buildTtsText } from "../lib/tts-text";
 import { useTtsAdapter } from "../contexts/TtsAdapterContext";
+import { useToast } from "../contexts/ToastContext";
 import { useEventListener } from "./useEventListener";
 
 export interface ArticleViewTtsResult {
@@ -46,6 +47,7 @@ export function useArticleViewTts(
     isPlaying: ttsPlaying,
     isPaused: ttsPaused,
     endedCount: ttsEndedCount,
+    errorCount: ttsErrorCount,
     rate: ttsRate,
     cycleRate: ttsCycleRate,
     volume: ttsVolume,
@@ -53,6 +55,16 @@ export function useArticleViewTts(
     speak,
     stop: ttsStop,
   } = useTtsAdapter();
+  const toast = useToast();
+
+  // #743: TTS エラー (utterance.onerror) が表面化したときユーザーに toast 通知
+  const prevErrorCountRef = useRef(ttsErrorCount);
+  useEffect(() => {
+    if (ttsErrorCount > prevErrorCountRef.current) {
+      prevErrorCountRef.current = ttsErrorCount;
+      toast.error("読み上げに失敗しました (voice 互換性または engine エラー)");
+    }
+  }, [ttsErrorCount, toast]);
 
   // #727: TTS 音量 3 段階 cycle (1.0 = full / 0.5 = half / 0.0 = muted)
   const ttsCycleVolume = useCallback(() => {
@@ -82,7 +94,12 @@ export function useArticleViewTts(
     } else {
       if (!article) return;
       const text = buildTtsText(article, processedContent, translatedText, null, noteText);
-      if (text.trim()) speakWithHighlight(text);
+      if (!text.trim()) {
+        // #743: 空テキストで silent skip しない (ユーザーには「ボタンが反応しない」に見えるため)
+        toast.info("読み上げ可能なテキストがありません (本文取得をお試しください)");
+        return;
+      }
+      speakWithHighlight(text);
     }
   }, [
     ttsPlaying,
@@ -93,6 +110,7 @@ export function useArticleViewTts(
     processedContent,
     translatedText,
     noteText,
+    toast,
   ]);
 
   // Shift+P キーボードショートカット

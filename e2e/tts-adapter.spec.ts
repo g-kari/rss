@@ -78,6 +78,7 @@ test.describe("TtsAdapter 型契約", () => {
       isPlaying: false,
       isPaused: false,
       endedCount: 0,
+      errorCount: 0,
       rate: 1.0,
       cycleRate: () => 1.0,
       volume: 1.0,

@@ -56,6 +56,12 @@ export interface TtsAdapter {
    * 値の絶対値に意味はない (overflow 設計不要)。`prev → current` の差分でのみ判定する。
    */
   endedCount: number;
+  /**
+   * TTS が `utterance.onerror` (engine 由来エラー) で停止した累積回数 (#743)。
+   * consumer はこのカウンタの増加を検知してユーザーにエラー通知 (toast 等) を出す。
+   * silent fail を避けるための表面化チャネル。
+   */
+  errorCount: number;
   /** 現在の速度 */
   rate: TtsRate;
   /** 速度を順番に切り替え (engine 別の許容セットで cycle)。戻り値は次の rate 値 (UX 監査 #2: Shift+R toast 表示用) */
