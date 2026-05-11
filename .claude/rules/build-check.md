@@ -1,6 +1,5 @@
 ---
-description: rss プロジェクト固有のビルドチェックコマンド
-paths: "backend/repositories/rss/**/*.ts,backend/repositories/rss/**/*.tsx"
+description: rss プロジェクト固有のビルドチェックコマンド (npm run check / typecheck / build) — 27 行で常時ロード
 ---
 
 # rss プロジェクトのビルドチェックコマンド

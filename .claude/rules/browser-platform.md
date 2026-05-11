@@ -1,6 +1,6 @@
 ---
 description: ブラウザ API ラッパー / silent fallback 禁止 / バージョン定数 / 永続化 TTL / 本番デバッグなどブラウザ環境固有の運用パターン集
-paths: "src/**/*.ts,src/**/*.tsx,src/lib/**/*.ts,src/hooks/**/*.ts"
+paths: "src/lib/**/*.ts,src/hooks/**/*.ts"
 ---
 
 # ブラウザプラットフォーム運用パターン

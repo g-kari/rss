@@ -1,6 +1,6 @@
 ---
 description: React state / ref / useEffect / Context / コンポーネント分割パターン集
-paths: "src/**/*.tsx,src/hooks/**/*.ts,src/contexts/**/*.tsx,src/components/**/*.tsx,app/**/*.tsx"
+paths: "src/**/*.tsx,src/hooks/**/*.ts"
 ---
 
 # React パターン (state / ref / useEffect)
