@@ -575,3 +575,75 @@ grep -nE "^\.claude/skills" .gitignore
 4. **retrospective で「0 changes outcome」を記録** — 次回同種 sweep の優先度判定材料 (corpus 品質安定 = 同 sweep を数サイクル後まで遅延可能)
 
 主な使用箇所: アンチパターン / 修正パターンの誘惑性判定 sweep — subagent が 50+ 対をレビュー → 全て HIGH 誘惑性 or trade-off 文書化済と判定 → 0 changes で Issue close、「次回同種 sweep は数サイクル後まで不要」と判定材料に記録
+
+## 12. paths frontmatter の dead path / 重複 / 過剰グローバルを定期 sweep する
+
+`paths` frontmatter は match 結果が **無音で間違う** ことがある (match しなくても error にならない、過剰 match しても自動検知されない)。本プロジェクトで実際に発生した典型 3 ミス:
+
+### ミス A: 親プロジェクトからコピペした dead path
+
+親プロジェクト (`/home/gizen/dokodemo-claude/.claude/rules/`) の rule をコピペして本プロジェクト (`/home/gizen/dokodemo-claude/backend/repositories/rss/.claude/rules/`) に貼り付けたとき、`paths` も一緒にコピーされる:
+
+```yaml
+# 親プロジェクトの build-check.md (正しい):
+paths: "backend/repositories/rss/**/*.ts,backend/repositories/rss/**/*.tsx"
+
+# 本プロジェクトにコピペしたら → 永久に match しない (dead path):
+# 実際の resolve: /home/gizen/dokodemo-claude/backend/repositories/rss/backend/repositories/rss/**/*.ts
+```
+
+paths は **そのファイルが置かれたディレクトリの project root** 相対なので、親 dir を含む path は本プロジェクト内では存在しないパスになる。
+
+### ミス B: subset と superset の重複
+
+```yaml
+# アンチパターン: src/**/*.tsx が src/components/**/*.tsx を完全 subset として含む
+paths: "src/components/**/*.tsx,src/**/*.tsx,app/globals.css"
+
+# 修正パターン: superset のみ残すか、subset のみ残すか (ロード意図で選択)
+paths: "src/components/**/*.tsx,app/globals.css"  # design-system は components 専用なら subset
+# OR
+paths: "src/**/*.tsx,app/globals.css"  # 広く適用するなら superset
+```
+
+重複は **挙動には影響しない** (paths は OR で評価) が、後の rule reader が「2 つ書いてある意図」を疑う認知負荷が発生する。
+
+### ミス C: グローバルパターンの誤発火
+
+```yaml
+# アンチパターン: .claude/rules/** や .serena/** や node_modules/** も match する
+paths: "**/*.ts,**/*.tsx"
+
+# 修正パターン: 適用範囲を明示
+paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,e2e/**/*.ts"
+```
+
+特に `quality-checks.md` のような「**/\* で全 ts/tsx を対象」と書きたい rule は、**実際には rule 文書自身の編集時にもロードされる\*\* ことに注意。意図しない自己ロード = 注意資源希釈。
+
+### 検出 + 修正フロー
+
+```bash
+# 全 paths frontmatter を一覧
+for f in .claude/rules/*.md; do
+  paths=$(awk '/^paths:/ {print; exit}' "$f")
+  echo "$f: $paths"
+done
+
+# 各 paths が実際に match するか確認 (1 paths 分)
+ls $(echo "$paths" | sed 's/paths: //; s/"//g; s/,/ /g' | tr ' ' '\n' | head -3)
+```
+
+**How to apply**: 以下のタイミングで paths frontmatter sweep を実行する:
+
+1. **新規 rule 追加時** — paths を書いた直後に上記検出コマンドで全 rule の paths を一覧、近接重複がないか確認
+2. **大規模 rule 分割サイクル末** — 分割で新規 rule が複数追加された後、必ず sweep して dead path / 重複を排除
+3. **親プロジェクトからの rule コピペ後** — paths が親 dir を含んでいないか必ず確認
+4. **paths 削除の判断軸** — 27 行程度の短い rule は paths 削除して常時ロード許容 (paths 設計コスト > 常時ロード コスト)
+
+**反例 (paths 精緻化が overkill なケース)**:
+
+- 50 行以下の rule は paths 不要 (常時ロードで context impact 最小)
+- 1 rule で複数 path 群に跨る場合は **広い superset** (`src/**/*.ts`) で OK (subset 列挙は冗長)
+- 「全 code edit でロードしたい」(coding-conventions 等の core rule) は `src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts` のような広いセットで意図通り
+
+主な使用箇所: #728 案 B 部分達成サイクル — 5 件精緻化 (build-check.md dead path 削除 + react-patterns / browser-platform / design-system の subset 重複削除 + quality-checks の グローバル限定) を 1 commit で完結
