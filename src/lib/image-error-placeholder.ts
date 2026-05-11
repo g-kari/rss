@@ -4,7 +4,34 @@
  * 画像取得失敗時に透明 GIF の代わりに意味のある SVG アイコンを返す。
  */
 
-export type ImageErrorReason = "not_found" | "network" | "too_large" | "unavailable";
+export type ImageErrorReason =
+  | "not_found"
+  | "network"
+  | "too_large"
+  | "unavailable"
+  /** #749: 上流が 403 等で bot 判定で拒否 (User-Agent ベースのホットリンク保護等) */
+  | "bot_blocked"
+  /** #749: 上流の Content-Type が ALLOWED_IMAGE_CONTENT_TYPES に含まれない */
+  | "mime_rejected"
+  /** #749: 宣言された Content-Type とマジックバイト由来 MIME が不一致 */
+  | "content_type_mismatch"
+  /** #749: Content-Length 不明で 5MB 上限を超えた (実体サイズ不明) */
+  | "size_unknown";
+
+/**
+ * #749: errorImageSvg の詳細情報 (X-Image-Proxy-* ヘッダーで返す)。
+ * デバッグ時にレスポンスヘッダーから実際の失敗理由を取り出せる。
+ */
+export interface ImageErrorDetails {
+  /** 上流レスポンスの HTTP status (network エラー時は省略) */
+  upstreamStatus?: number;
+  /** 上流が返した Content-Type */
+  upstreamContentType?: string;
+  /** マジックバイト由来の MIME (Content-Type 検証時のみ) */
+  detectedMime?: string;
+  /** ボディ取得時のサイズ (bytes、Content-Length なしで読み切ったとき) */
+  bodySize?: number;
+}
 
 /**
  * フレーム＋アイコン＋ラベルから SVG 文字列を組み立てる。
@@ -59,14 +86,37 @@ const ERROR_SVGS: Record<ImageErrorReason, string> = {
   network: buildErrorSvg(ICON_NETWORK, "Network Error"),
   too_large: buildErrorSvg(ICON_TOO_LARGE, "Too Large"),
   unavailable: buildErrorSvg(ICON_UNAVAILABLE, "Unavailable"),
+  // #749: 新規 4 種は既存アイコンを再利用 (semantic 的に近いもの)。
+  bot_blocked: buildErrorSvg(ICON_UNAVAILABLE, "Bot Blocked"),
+  mime_rejected: buildErrorSvg(ICON_UNAVAILABLE, "MIME Rejected"),
+  content_type_mismatch: buildErrorSvg(ICON_UNAVAILABLE, "MIME Mismatch"),
+  size_unknown: buildErrorSvg(ICON_TOO_LARGE, "Size Unknown"),
 };
 
-/** エラー理由に対応する SVG プレースホルダーレスポンスを返す。 */
-export function errorImageSvg(reason: ImageErrorReason): Response {
-  return new Response(ERROR_SVGS[reason], {
-    headers: {
-      "Content-Type": "image/svg+xml",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+/**
+ * エラー理由に対応する SVG プレースホルダーレスポンスを返す。
+ *
+ * #749: details パラメータで `X-Image-Proxy-*` ヘッダーを返し、フロントエンド DevTools の
+ * Network タブでレスポンスヘッダーから「なぜ画像取得が失敗したか」を即座に切り分け可能にする。
+ * `X-Image-Proxy-Error` ヘッダーは常に reason 文字列を含む。
+ */
+export function errorImageSvg(reason: ImageErrorReason, details?: ImageErrorDetails): Response {
+  const headers: Record<string, string> = {
+    "Content-Type": "image/svg+xml",
+    "Cache-Control": "public, max-age=3600",
+    "X-Image-Proxy-Error": reason,
+  };
+  if (details?.upstreamStatus !== undefined) {
+    headers["X-Image-Proxy-Upstream-Status"] = String(details.upstreamStatus);
+  }
+  if (details?.upstreamContentType) {
+    headers["X-Image-Proxy-Upstream-Type"] = details.upstreamContentType;
+  }
+  if (details?.detectedMime) {
+    headers["X-Image-Proxy-Detected-Mime"] = details.detectedMime;
+  }
+  if (details?.bodySize !== undefined) {
+    headers["X-Image-Proxy-Body-Size"] = String(details.bodySize);
+  }
+  return new Response(ERROR_SVGS[reason], { headers });
 }
