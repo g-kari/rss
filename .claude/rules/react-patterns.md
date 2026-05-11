@@ -282,6 +282,76 @@ vi.stubGlobal("AudioContext", MockAudioContext);
 
 主な使用箇所: `useBackgroundAudio.test.ts` (#745 Phase A) — `vi.fn(() => mockCtx)` で AudioContext 作成カウントが 0 のまま fail → class MockAudioContext に書き換えで 6 ケース全 pass
 
+### 派生ケース: 「component 再描画バグ」の test は **hook level の root cause assertion** に降格して setup コストを下げる
+
+memo された Component / Context Consumer が再描画されないバグ (例: #634 ギャラリーブックマーク再描画) を test するとき、Issue 推奨は **完全 component-level 検証** (`<ArticleList layout='gallery'>` + Context Provider 階層 + Modal portal + memo Consumer まで含めた render assertion) になりがち。だが setup コストが大きく、テスト保守 burden + 環境依存 (happy-dom が一部 React 19 機能未対応等) のリスク。
+
+代わりに **「root cause を hook level で 1 layer 上から assert」** することで、setup コストを大幅に下げつつ等価以上の回帰防止を実現する。
+
+```
+バグ階層 (再描画されない症状):
+  L3 (UI): GalleryCardRenderer の bookmark icon が古いまま
+       ↑
+  L2 (React): memo + Context Consumer が再描画 skip (= prop reference 不変)
+       ↑
+  L1 (Hook): useArticleListItemProps の resolveItemProps identity 不変 (= useCallback deps 配列空)
+       ↑
+  L0 (Root cause): bookmarkIds が useSyncedRef 経由でしか参照されてない (deps に入っていない)
+
+⊕ Issue 推奨: L3 で実 component を render して bookmark アイコン変化を assert
+  → setup: Context Provider 階層 + Modal portal + RTL screen.findBy*
+  → 環境依存: happy-dom の React 19 strict mode 二重実行 / Context Consumer の memo 挙動
+
+⊕ 修正パターン: L1 で hook を renderHook して identity 変化を assert
+  → setup: 1 hook + 純粋データ Set/Record
+  → React/Context は test 対象外 (React 自体の責務)
+```
+
+```typescript
+// 修正パターン: hook level assertion (#682 Phase B-1)
+it("bookmarkIds 変更で resolveItemProps の identity が変わる", () => {
+  const { result, rerender } = renderHook(
+    ({ bookmarkIds }) => useArticleListItemProps(defaultParams({ bookmarkIds })),
+    { initialProps: { bookmarkIds: new Set<string>() } },
+  );
+  const firstResolve = result.current.resolveItemProps;
+
+  rerender({ bookmarkIds: new Set<string>(["art-1"]) });
+
+  // ref 経由 (旧バグ) では identity 不変、state 直接参照 + deps 追加で identity 変化
+  expect(result.current.resolveItemProps).not.toBe(firstResolve);
+});
+```
+
+**How to apply**: 「memo / Context Consumer の再描画」バグの test を計画するとき (setup コストが test 数 × 保守 burden を増やすため、root cause が hook level にあるならそこで止める):
+
+1. **バグ階層を分解** (UI 症状 → memo skip → callback identity 不変 → deps 配列 → root cause)
+2. **root cause が `useCallback` / `useMemo` / `useEffect` の deps 配列** にあるなら **hook level で assert**
+3. hook test での assert 内容:
+   - **identity 変化**: `expect(result.current.fn).not.toBe(firstFn)` (deps 変化時)
+   - **identity 維持**: `expect(result.current.fn).toBe(firstFn)` (reference 同一時)
+   - **戻り値反映**: `expect(props.isBookmarked).toBe(true)` (戻り値の正しさ)
+4. **memo + Consumer の挙動は React の責務** と認識して vitest 対象外にする
+5. 完全 component test (UI 描画含む) は **将来必要なら別 Phase で追加** (例: Phase B-1.5)
+
+**反例 (hook level に降格できないケース)**:
+
+- バグの root cause が **DOM レベル** (focus / scroll / `position: absolute`) — hook では再現不能、component test 必須
+- **複数 component の協調動作** に起因 (例: Parent の state update → Child の effect → Grandchild の render) — hook 単体では再現不能
+- React 自体の **メジャーアップグレード** (React 19 → 20 等) で挙動が変わる可能性 — react-testing-library で実 component を render する価値あり
+
+**判定キーワード**:
+
+| バグ症状                                  | root cause 推定        | test level |
+| ----------------------------------------- | ---------------------- | ---------- |
+| 「再描画されない」「アイコン変わらない」  | useCallback deps 配列  | **hook**   |
+| 「memo skip」「Context Consumer 不変」    | hook 戻り値 identity   | **hook**   |
+| 「focus 飛ぶ」「scroll ずれる」           | DOM レベル side effect | component  |
+| 「クリックで何も起きない」                | event handler 配線     | component  |
+| 「modal 開かない」「portal 描画されない」 | render / portal        | component  |
+
+主な使用箇所: `useArticleListItemProps.test.ts` (#682 Phase B-1 / 元 #634) — bookmarkIds / readIds / notes 変更時の resolveItemProps identity 変化を hook level で検証、完全 component test (GalleryCardRenderer 実描画) は Phase B-1.5 として後回し
+
 ## ref vs state の使い分け（同期チェック vs useEffect 再実行）
 
 「外部からの一時的中断 → 自動回復」シナリオ（429 クールダウン後の再開、スリープからの復帰など）では **ref だけでは不十分**。`useRef` は React 再レンダーをトリガーしないため、ref に「期限値」を書き込んでも `useEffect` は再実行されない。
