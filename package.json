@@ -20,7 +20,9 @@
     "precheck:fix": "node scripts/sync-release-notes.mjs",
     "check:fix": "vp check --fix",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
@@ -39,6 +41,8 @@
     "@opennextjs/cloudflare": "^1.19.8",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@typescript/native-preview": "7.0.0-dev.20260507.1",
@@ -50,6 +54,7 @@
     "typescript": "^6.0.3",
     "vite": "^8.0.11",
     "vite-plus": "^0.1.20",
+    "vitest": "^4.1.6",
     "wrangler": "^4.90.0"
   },
   "packageManager": "pnpm@10.29.3",
