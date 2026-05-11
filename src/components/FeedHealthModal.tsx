@@ -10,8 +10,11 @@ interface Props {
   onClose: () => void;
 }
 
-function untilLabel(iso: string): string {
-  const diff = new Date(iso).getTime() - Date.now();
+// nowMs を引数で受けることで、呼出元の frozen `now` (mount 時刻) と判定基準を一致させる。
+// 引数化前は内部で `Date.now()` を呼んでおり、`rateLimitedFeeds` の useMemo が使う
+// frozen `now` と乖離して「セクションに残っているのに『解除済み』表示」が起こり得た。
+function untilLabel(iso: string, nowMs: number): string {
+  const diff = new Date(iso).getTime() - nowMs;
   if (diff <= 0) return "解除済み";
   const minutes = Math.floor(diff / 60_000);
   if (minutes < 60) return `あと${minutes}分`;
@@ -50,26 +53,29 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
       onClose={onClose}
       width="sm:w-[560px]"
     >
-      {/* サマリーバー */}
+      {/* サマリーバー — 装飾 dot は隣接テキストで意味を担保しているため `aria-hidden` で AT から除外 */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle">
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-rose-400 flex-shrink-0" />
+          <span className="w-2 h-2 rounded-full bg-rose-400 flex-shrink-0" aria-hidden="true" />
           <span className="text-[12px] text-text-muted">エラー {errorFeeds.length}件</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+          <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" aria-hidden="true" />
           <span className="text-[12px] text-text-muted">
             レートリミット {rateLimitedFeeds.length}件
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" />
+          <span className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" aria-hidden="true" />
           <span className="text-[12px] text-text-muted">
             オーバーサイズ {oversizeFeeds.length}件
           </span>
         </div>
         <div className="flex items-center gap-1.5 ml-auto">
-          <span className="w-2 h-2 rounded-full bg-surface-subtle flex-shrink-0 border border-border-default" />
+          <span
+            className="w-2 h-2 rounded-full bg-surface-subtle flex-shrink-0 border border-border-default"
+            aria-hidden="true"
+          />
           <span className="text-[12px] text-text-muted">正常 {healthyCount}件</span>
         </div>
       </div>
@@ -96,8 +102,11 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
 
         {/* エラーフィード */}
         {errorFeeds.length > 0 && (
-          <section className="px-4 pt-4 pb-2">
-            <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2">
+          <section className="px-4 pt-4 pb-2" aria-labelledby="fhm-section-errors">
+            <h3
+              id="fhm-section-errors"
+              className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2"
+            >
               エラー
             </h3>
             <ul className="flex flex-col gap-2">
@@ -150,8 +159,11 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
 
         {/* レートリミットフィード */}
         {rateLimitedFeeds.length > 0 && (
-          <section className="px-4 pt-4 pb-2">
-            <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2">
+          <section className="px-4 pt-4 pb-2" aria-labelledby="fhm-section-rate-limited">
+            <h3
+              id="fhm-section-rate-limited"
+              className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2"
+            >
               レートリミット中
             </h3>
             <ul className="flex flex-col gap-2">
@@ -180,7 +192,9 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                           {feed.title}
                         </span>
                         <span className="text-[10px] text-amber-400 flex-shrink-0">
-                          {feed.rateLimitedUntil ? untilLabel(feed.rateLimitedUntil) : ""}
+                          {feed.rateLimitedUntil
+                            ? untilLabel(feed.rateLimitedUntil, now.getTime())
+                            : ""}
                         </span>
                       </div>
                       <span className="text-[11px] text-text-faint truncate block mt-0.5">
@@ -196,8 +210,11 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
 
         {/* オーバーサイズフィード */}
         {oversizeFeeds.length > 0 && (
-          <section className="px-4 pt-4 pb-2">
-            <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2">
+          <section className="px-4 pt-4 pb-2" aria-labelledby="fhm-section-oversize">
+            <h3
+              id="fhm-section-oversize"
+              className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2"
+            >
               オーバーサイズ
             </h3>
             <ul className="flex flex-col gap-2">
