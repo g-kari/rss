@@ -153,6 +153,62 @@ const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
 - `useFilteredArticles.ts` の `EMPTY_SET` / `EMPTY_STR_ARRAY` / `EMPTY_FEED_ARRAY` (3 sentinel を一括 freeze 化)
 - `useDelayedGalleryItems.ts` の `EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>` (先行採用パターン)
 
+## ライブラリ仕様への依存は `vi.fakeTimers + rerender` で「実挙動の固定スペック」として残す
+
+`useState(() => new Date())` の **mount 時 initializer 1 回固定** や `useMemo([])` の **React は memo を破棄可能** のような **「React 仕様 or ブラウザ API 仕様への依存」** は、コードコメントだけでなく **vitest で実挙動を spec として固定** する。仕様変更で挙動が変わったときに spec が落ちて検知できる。
+
+```typescript
+// 対象実装: const [now] = useState(() => new Date());
+
+// アンチパターン: コメントだけで仕様依存を表明
+// → React が将来 useState initializer の挙動を変えたとき、検知できない
+
+// 修正パターン: vitest で「rerender しても now が固定」を assert
+it("mount 後に時刻を進めて rerender しても、now は mount 時刻のまま固定される", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-05-12T10:00:00Z"));
+
+  const feeds = [{ rateLimitedUntil: "2026-05-12T10:10:00Z", ... }];
+  const { rerender } = render(<FeedHealthModal feeds={feeds} onClose={() => {}} />);
+  expect(screen.getByText("レートリミット中")).toBeInTheDocument();
+
+  // 時刻を 20 分進めて feeds 新インスタンスで rerender
+  vi.setSystemTime(new Date("2026-05-12T10:20:00Z"));
+  rerender(<FeedHealthModal feeds={[...feeds]} onClose={() => {}} />);
+
+  // useState initializer が再実行されない React 仕様に依存
+  // → mount-time now (10:00) で判定継続 → section 残存
+  expect(screen.getByText("レートリミット中")).toBeInTheDocument();
+});
+```
+
+**How to apply**: 実装に「React 仕様 / ブラウザ API 仕様への暗黙的依存」がある箇所を見つけたら (コードコメントだけでは仕様変更時に検知できない、vitest spec で実挙動を固定すれば仕様変更で spec が落ちて早期発見できる):
+
+1. **依存している仕様** を明示 (例: 「`useState(() => fn())` の initializer は mount 時 1 回」「`speechSynthesis.cancel()` は `onend` を発火させない」「`masonic` は viewport 外 item を render しない」)
+2. **その仕様が変わったら何が壊れるか** を 1 文で書ける形にする (例: 「now が再評価されると `rateLimitedFeeds` の判定基準が動的に変わって、UI 表示が時刻と共に変わる」)
+3. **vitest + RTL + `vi.fakeTimers`** (or 同等の mock) で「仕様通りなら X」「仕様違反なら Y」の差を assert
+4. テストファイルの冒頭 JSDoc に **「対象実装」「依存している仕様」「旧実装との差」** を明記
+5. 関連する `useMemo([])` などのアンチパターンとの差分も spec で残す (本例: `useState(() => fn())` と `useMemo(() => fn(), [])` で挙動が違うことの実証)
+
+**該当する典型ケース**:
+
+| 実装パターン                                      | 依存仕様                         | 仕様変更時のリスク                      |
+| ------------------------------------------------- | -------------------------------- | --------------------------------------- |
+| `useState(() => new Date())`                      | initializer は mount 時 1 回固定 | 動的に再評価されると時刻基準が動く      |
+| `useMemo(() => fn(), [])`                         | (公式は破棄可能を明言)           | 既に破棄されうるので spec で明示しない  |
+| `useRef(initial)`                                 | render 中 identity 不変          | 識別子変動で stale 参照バグ             |
+| `speechSynthesis.cancel()` 後の `utterance.onend` | onend 不発火                     | 手動 cancel と自然完了の区別が崩れる    |
+| `<masonic>` の viewport 外 item                   | render されない (内部最適化)     | viewport 外 item 高さ取得が不可能になる |
+| `localStorage.setItem` 同期書込                   | 同 tick で読み戻し可能           | 非同期化で race condition 発生          |
+
+**反例 (spec 化が overkill なケース)**:
+
+- ライブラリ公式 docs に **「将来変更しない」明記** されている挙動 (例: ECMAScript spec の `Array.prototype.sort` stability — Node.js 12+ 保証)
+- 実用上「壊れたら即座に開発時に気付く」挙動 (例: `useState` の setter で render 発火 — 壊れたら全機能停止で即発覚)
+- **依存している仕様自体が deprecated 予定** で代替実装に移行中 (spec を書いてもすぐ陳腐化)
+
+主な使用箇所: `FeedHealthModal.test.tsx` (#682 Phase B-2 / 元 #623) — `useState(() => new Date())` mount 時固定挙動を `vi.fakeTimers + rerender` で間接検証、`useMemo([])` 旧実装との差を spec で固定
+
 ## ref vs state の使い分け（同期チェック vs useEffect 再実行）
 
 「外部からの一時的中断 → 自動回復」シナリオ（429 クールダウン後の再開、スリープからの復帰など）では **ref だけでは不十分**。`useRef` は React 再レンダーをトリガーしないため、ref に「期限値」を書き込んでも `useEffect` は再実行されない。
