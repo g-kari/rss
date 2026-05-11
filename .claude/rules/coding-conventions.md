@@ -761,11 +761,11 @@ useGalleryAutoScroll({
 
 ## ResizeObserver で絶対座標仮想化レイアウトの末端高さを監視する
 
-→ `.claude/rules/react-patterns.md` を参照
+→ `.claude/rules/react-effect-patterns.md` を参照
 
 ## AbortController.abort() の伝播範囲を限定する
 
-→ `.claude/rules/react-patterns.md` を参照
+→ `.claude/rules/react-effect-patterns.md` を参照
 
 ## UI 描画分岐の入れ子三項は「ソース選択」純粋関数で平坦化する
 
@@ -936,11 +936,11 @@ const { activeSentenceIndex } = useTtsHighlight(effectiveSentences, ...);
 
 ## モード OFF 時に進行中の副作用を停止する
 
-→ `.claude/rules/react-patterns.md` を参照
+→ `.claude/rules/react-effect-patterns.md` を参照
 
 ## ブラウザ API の遅延通知に備えて初期取得 + イベント購読をペアで書く
 
-→ `.claude/rules/react-patterns.md` を参照
+→ `.claude/rules/react-effect-patterns.md` を参照
 
 ## 上流 API プロキシのヘッダ欠落補完
 
