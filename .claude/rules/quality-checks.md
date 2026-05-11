@@ -77,9 +77,7 @@ test("POST seed: 正しいボディで 200 を返す", async () => {
 });
 ```
 
-**Why**: 強制 fail させると無関係の PR の pre-commit hook まで阻害される。`test.beforeAll` で「環境準備状態」を判定して skip すれば開発者 onboarding 負担が下がる。
-
-**How to apply**: 新規 e2e テストで以下のいずれかが必要なら、必ず `test.beforeAll` + `test.skip` パターンを採用:
+**How to apply**: 新規 e2e テストで以下のいずれかが必要なら、必ず `test.beforeAll` + `test.skip` パターンを採用 (強制 fail させると無関係 PR の pre-commit hook まで阻害される):
 
 - Cloudflare バインディング（R2 / D1 / KV / AI）への実書き込み・読み込み
 - 外部サービス認証（OAuth プロバイダ / Stripe / SendGrid）
@@ -117,9 +115,7 @@ test("ギャラリー画面で X が描画される", async ({ page }) => {
 });
 ```
 
-**Why**: brittle UI render 系 e2e は (1) localStorage / URL クエリで動作するが SSR / hydration 順序により dev で再現性が低い、(2) gallery レイアウト等で virtualizer / IntersectionObserver の初期化タイミングがブラウザバージョンに依存する、(3) feed 選択が React state 経由で UI 描画される間に await timing が外れる、等の理由で **「同じ spec が dev で 90%, CI で 95% pass する」** の状態が起きやすい。strict assert で timeout fail させると 5-10% の偽陽性失敗で全 PR がブロックされ、real regression と判別不能になる。adaptive skip なら「前提が崩れた = 環境固有 / 実装変更で再評価必要」を skip メッセージで明示でき、real regression は本検証の assert で確実に捕捉される。
-
-**How to apply**: e2e spec で「対象要素が UI に現れる」が前提条件になる場合:
+**How to apply**: e2e spec で「対象要素が UI に現れる」が前提条件になる場合 (strict assert で timeout fail させると 5-10% 偽陽性で全 PR がブロックされ real regression と判別不能になるため):
 
 1. **Phase 1 (前提確認)** を `try { await expect(element).toBeVisible({ timeout: 5000 }) }` で囲む
 2. catch で `test.skip(true, "前提条件が満たされない理由を具体的に記述")` を呼んで return
@@ -183,8 +179,6 @@ test("ギャラリー画面で X が描画される", async ({ page }) => {
 - バグ修正コミット（feat / fix / バグ修正 などのメッセージ）に `*.spec.ts` の追加・拡張が含まれているか
 - 含まれていない場合は Step 1〜2 を再評価する
 
-**Why**: TDD ルールが明文化されていても、実行前の判定プロセスがないと無自覚に省略される。明示的なチェックリストで判定を強制する。
-
 ## TDD spec を書いて Red にならないときは「テスト設計を疑う前にバグ再現条件を再確認」する
 
 監査エージェントの指摘に基づいて TDD spec を書いたとき、**最初の `npx playwright test` で全 pass (Red にならない)** ことがある。これは以下のいずれか:
@@ -207,9 +201,7 @@ test("ギャラリー画面で X が描画される", async ({ page }) => {
      - **既に防御済みなら**: 修正不要。エージェント発見だが実装不要として skip
 ```
 
-**Why**: 「Red を確認してから Green に進む」が TDD の前提だが、Red にならない時点で **テストか実装か分析のどれかが間違っている**。「とりあえず spec 通っているし良し」と進むと、そもそも修正が無意味なのに commit してしまう (実害はないが PR 履歴を汚す)。Red にならないことを「気付き」として活用すれば、エージェント信頼度の overstated を検出できる。
-
-**How to apply**: TDD spec を書いた後:
+**How to apply**: TDD spec を書いた後 (Red にならない時点で **テストか実装か分析のどれかが間違っている** ことを示すシグナルとして活用):
 
 1. **必ず最初に Red 確認**: `npx playwright test e2e/<file>.spec.ts` で **新規 spec が fail** することを確認
 2. Red にならないなら、上記フローで判断:
@@ -242,11 +234,7 @@ test("ギャラリー画面で X が描画される", async ({ page }) => {
      残す価値あり)** で完結。それ以外なら b / c / d へ
 ```
 
-**Why**: TDD は「pure function を Red→Green→Refactor で書く」のが基本だが、UI 表示問題の真因は **「pure function は OK だが view layer で消える」** パターンが多い。本プロジェクトでは extractor / sanitizer は `<video>` / `<audio>` / `<iframe>` を保持するが、`.article-content video` の CSS rule が欠落していて画面に出ないケースが #715 で発生した。spec が pass した時点で「真因は別レイヤー」と切り分けられる利点を活かす。
-
-逆に言えば、TDD spec が pass すれば **「pure function 層は安全」** ことが保証されるため、調査範囲を view layer に絞れる (spec が無いと「pure function かもしれない / view かもしれない」両面調査が必要)。
-
-**How to apply**: UI 表示問題の bug 報告を受けたら:
+**How to apply**: UI 表示問題の bug 報告を受けたら (spec が pass した時点で「真因は別レイヤー (CSS / runtime / WebStorage)」と切り分けられる利点を活かす):
 
 1. **Step 1**: 純粋関数層 (extractor / parser / transformer) を疑う TDD spec を書く
 2. **Step 2 (Red 確認)**: spec が fail するか確認

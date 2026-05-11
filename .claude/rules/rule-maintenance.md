@@ -9,22 +9,54 @@ paths: ".claude/rules/**/*.md,CLAUDE.md"
 
 ## 1. 「再利用可能な原則」を書く、「ケーススタディ」は書かない
 
-ルールは将来の自分・他の AI セッションが参照する **抽象化された原則** であるべき。「Why」「How to apply」を書くときは、**特定 Issue 番号や日付セッション** に依存しない形で記述する。
+ルールは将来の自分・他の AI セッションが参照する **抽象化された原則** であるべき。`How to apply` を書くときは、**特定 Issue 番号や日付セッション** に依存しない形で記述する。
 
 ```markdown
 ❌ アンチパターン (具体的すぎる):
-**Why**: 2026-05-09 の #663 (オートモードで概要だけ読み上げ + 同記事ループ) で、
-hasContent がサマリで true になっていたため shouldTriggerAutoFetch が「既に
-読める」と判定して全文 fetch をスキップ → サマリ fallback で TTS が即起動 →
-概要だけ読み上げ。
+**How to apply**: 2026-05-09 の #663 で発覚した hasContent がサマリで true …
 
 ✅ 修正パターン (再利用可能):
-**Why**: 同名の派生 boolean が UI 用と判定用で意味がブレると、片方の用途で
-「既に十分」と判定されて他方の処理（fetch トリガーなど）がスキップされる
-連鎖バグが起きる。
+**How to apply**: 派生 boolean を作るときは「どの判定に使うか」を 1 つに絞る。
+複数の判定で使うなら判定別に派生値を分ける。
 ```
 
-抽象化された Why は「なぜそのルールが必要か」を新規開発者にも伝えられる。Issue 番号と日付は git log で追える。
+抽象化された原則は新規開発者にも伝えられる。Issue 番号と日付は git log で追える。
+
+## 1b. Why セクションは default 削除 (Claude Code ベストプラクティス準拠)
+
+Claude Code 公式ベストプラクティス ([best-practices](https://code.claude.com/docs/ja/best-practices)) の引用:
+
+- **「各行について『これを削除すると Claude が間違いを犯しますか？』と問う。そうでない場合は削除します。」**
+- **「容赦なく削除します。Claude が指示なしで既に何かを正しく行う場合、削除するか、フックに変換します」**
+- **「膨らんだ CLAUDE.md ファイルは Claude があなたの実際の指示を無視するようにします」**
+- **「除外する: 長い説明またはチュートリアル」**
+
+これに従い、`**Why:**` セクションは **default で削除する**:
+
+- ルール本文 + `How to apply` で行動指示は完結する
+- Why は人間理解用の文章で、削除しても Claude の行動は変わらない
+- 「長い説明」に該当することが多く、注意資源を希釈する
+
+### Why 削除の判定フロー (容赦なく削除 default)
+
+1. **Why セクションが書きたくなったら、まず削除を default 検討**
+2. **削除して Claude が誤判定する edge case が実在するか?** を自問
+3. 実在しない → **完全削除**
+4. 実在する → **`How to apply` のチェックリスト 1 行に統合**して Why セクション自体は削除
+5. **独立した `**Why:**` セクションは原則作らない** (How to apply に解けない場合のみ例外)
+
+### 既存 Why の sweep 判定表
+
+| Why の内容                                   | 判定                                  |
+| -------------------------------------------- | ------------------------------------- |
+| ルール本文の言い換え (同義反復)              | 削除                                  |
+| 過去 incident の詳細説明                     | 削除 (git log で追跡)                 |
+| `How to apply` で代替可能な指示              | 削除                                  |
+| 設計トレードオフ説明 (1-3 行で抽象的)        | `How to apply` 冒頭 1 行に統合 → 削除 |
+| edge case 判断材料 (How to apply で書けない) | `How to apply` 末尾 1 行に統合 → 削除 |
+| 反例の根拠                                   | 反例セクションに統合 → Why 自体は削除 |
+
+**「圧縮して残す」は default 選択肢でない**。`**判断材料:** <要約>` の形で残すのは、How to apply に統合できない真の edge case のみ (年に数件程度を想定)。
 
 ## 2. ルール本文に Issue 番号タグ `(#XXX)` を埋め込まない
 
@@ -68,8 +100,6 @@ docs drift 監査エージェントの観点:
 - 既存 spec の status code / レスポンス形式が実装と一致するか
 ```
 
-**Why**: 機能追加 PR のレビュアーは「動くか」「テストがあるか」を見るが、docs 更新までは確認しきれない。docs drift は単独で発見しやすく単独で修正しやすい (実装変更を伴わない pure docs 修正) ため、AI 自走サイクルが暇なときに **専用監査** で集中対応するのが効率的。
-
 **How to apply**:
 
 1. 監査エージェントに「architecture.md と実ファイル + 実テスト spec の差分を出して」と明示
@@ -96,8 +126,6 @@ comm -23 /tmp/actual_specs.txt /tmp/doc_specs.txt
 ```
 
 検出後は各 spec / lib ファイルの先頭 12 行を `head -12` で読んで責務を把握し、1 行 description を書くだけ。**エージェント往復より直接実行が速い** (待機 + 結果整形なし)。
-
-**Why**: サブエージェント rate limit は数時間続くことがある。actionable issue が枯渇している状況でサイクルを丸ごと浪費するより、**機械的検出可能なタスク** (drift / dead exports / missing TDD coverage) を直接実行する方が時間効率が高い。docs drift は判断要素なし (ファイルが存在するか / 文書に記載があるかの二択) なので、メインエージェントの判断力でも十分。
 
 **How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
 
@@ -130,13 +158,6 @@ docs drift 監査エージェントが「未文書化ファイル」「削除済
   5. 真の drift が 0 件なら Issue 起票せず却下
 ```
 
-**Why**: docs drift は「ファイル存在 vs 文書記載」の **2 つの集合の差分** を取るタスクで、機械的に見える。だが現実には:
-
-- gitignored ファイルは「存在するが文書化対象外」(集合 A の部分集合)
-- 別ディレクトリのファイルは「文書化されているが agent の scan 範囲外」(集合 B の漏れ)
-
-両方を考慮しないと「実存するから drift」「文書から消えてるから drift」の両方の判定が誤る。1 ファイルあたり 2 秒で検証可能 (`git check-ignore` / `find` 1 回ずつ) なので、agent report の全件に対して必ず実施する。
-
 **How to apply**: docs drift 監査エージェントから report を受けたら:
 
 1. **gitignored 検証**: agent が指摘した全ファイルパスに `git check-ignore -v` で gitignored 確認 → ignored なら false positive 判定
@@ -163,13 +184,7 @@ Security audit エージェントが `dangerouslySetInnerHTML` / `innerHTML` を
   6. 末端で sanitize なしなら true positive (修正対応)
 ```
 
-**Why**: client-side sanitization と server-side sanitization は **どちらか 1 箇所で十分**。server-side で sanitize 済の HTML を client で再 sanitize すると:
-
-1. **再走するコスト** — 大型記事で client CPU 圧迫
-2. **過剰除去のリスク** — TTS span / 数式 KaTeX / SyntaxHighlight のような後処理で挿入されたタグが除去される
-3. **真の脆弱性を見落とす** — 「念のため sanitize」を入れて満足すると、source 側 sanitize が抜けても気付かない
-
-server 側での sanitize 済を確認するチェックリスト:
+server 側での sanitize 済を確認するチェックリスト (sanitize は 1 箇所で十分。client 再 sanitize は TTS span / KaTeX / SyntaxHighlight タグを過剰除去するリスク):
 
 ```
 □ /api/<endpoint> が <処理> を返すとき、処理 pipeline の末端は sanitizeHtml か?
@@ -213,8 +228,6 @@ Security audit は他観点 (perf / refactor / UX) より対象ファイルが�
   → 何もしないか autocompact で abort
 ```
 
-**Why**: Security の対象範囲は本質的に cross-cutting で、agent は不安から多数のファイルを Read しようとする。`feature-dev:code-reviewer` の token budget は限られているため、scope を絞らないと結果を返す前に context が尽きる。1 cycle で結果を確実に取得するために、**「狭く深く」** の prompt 設計が肝要。
-
 **How to apply**: Security audit を派遣する前に:
 
 1. **3 つの check に絞る** (XSS / SSRF / auth bypass / ownership / validation / sanitize 等から最重要 3 つを選択)
@@ -238,8 +251,6 @@ Security audit は他観点 (perf / refactor / UX) より対象ファイルが�
      grep -rEnB1 "Ref\.current\s*=" src/hooks/ src/components/
   5. 残骸全件を 1 commit で連続修正
 ```
-
-**Why**: 「規範を文章化する」工程と「全コードへの規範適用」工程は別物。1 ファイル修正で codify を完了したと感じても、実際には他に残骸が散在している。新規開発者がコピペで増やすこともある。`docs drift` と同じく **judgment 不要 + grep で機械検出可能** なので、actionable issues 枯渇サイクルの sweep 対象として最適。
 
 **How to apply**: 規範を新規 codify するとき:
 
@@ -274,14 +285,6 @@ code-quality バグ (lexicographic 比較バグ / off-by-one / boundary value �
   5. 残骸ゼロでも、**同サイクル末か次サイクル開始時に再 sweep を Issue 化**
      (「コードが変わるたびに新規発生する可能性」を継続監視)
 ```
-
-**Why**: `code-quality` バグ修正は **「特定の関数だけ直して終わり」になりがち** だが、実際には:
-
-1. **同じ author** が同 pattern を別ファイルで書いている可能性 (新規 hook 追加時など)
-2. **コピペ起源の sibling 関数群** で全体が同 pattern を共有 (例: `mergeNotes` / `mergeSnoozed` / `mergeTags` / `chooseLater` の merge 系統)
-3. **テスト spec が無い古いコード** で隠れている可能性
-
-`grep` で機械的に sweep すれば「**今この瞬間の全コード**」を確認できる。新規追加コードの drift は派生ケース 5 (規範 codify 後の sweep) でカバー、既存コードの drift は本派生ケースでカバーする。
 
 **How to apply**: code-quality バグ修正 retrospective で:
 
@@ -326,9 +329,7 @@ Step 3: 残り
 5. 分割前後の line count を `wc -l` で確認 (合計が ~10-20 行増えるのは redirect overhead で正常)
 6. 元ファイル末尾までセクション順序が崩れていないかスポットチェック
 
-**Why**: ドキュメント分割は機能変更ではないため typecheck / e2e ではバグが捕捉できない。視覚的な diff レビューが頼りになるため、**1 コミットの diff 量を 200-300 行以下** に保つことが重要。`#694 Step 1` では 4 セクション 189 行を抽出して合計 +203 / -186 (= ~390 行 diff) で運用上ギリギリ許容ライン。
-
-**How to apply**: 800 行超の rule ファイルを分割するとき:
+**How to apply**: 800 行超の rule ファイルを分割するとき (typecheck / e2e で捕捉できない視覚 diff レビュー前提のため、**1 コミットの diff 量を 200-300 行以下** に保つ):
 
 1. **Issue 起票** で分割案 A (一括) / B (目次追加のみ) / C (段階分割) を提示
 2. **案 C 採用** が基本 (リスク最小化)
@@ -398,8 +399,6 @@ grep -nE "^\.claude/skills" .gitignore
 
 それでも `git add` が拒否される場合は **`git add -f <path>`** で強制追加できる (例外規則は機能しているが git の警告のみのケース)。
 
-**Why**: skill 化を計画段階で承認した後で gitignore 衝突に気付くと、すでに `git mv` でファイル移動を実行済みのケースで「commit できない / 戻すと履歴が汚れる」状態になる。実装着手前の `.gitignore` 確認 1 コマンドでこの罠を完全回避できる。
-
 **How to apply**: skill 化案 (例: 既存 rules を `.claude/skills/<name>/SKILL.md` に移管) を承認する **前に** プラン段階で:
 
 1. `grep -nE "^\.claude/skills" .gitignore` で gitignore 状況を確認
@@ -459,8 +458,6 @@ grep -nE "^\.claude/skills" .gitignore
 1. **調査トラックは出力フォーマットを厳密化** — issue-handling skill の設計方針コメントテンプレートに従わせる (案 A/B/C + 推奨 + 必要対応箇所 + ユーザー判断項目)
 2. **調査エージェントには「実コードで確認」を必須化** — 「サブエージェント調査結果は該当コードで検証してから採用する」原則を agent prompt にも入れる
 3. **実装トラックは AI 自走 5 条件で絞り込み** — touch ≤5 / 機能変化なし / 推奨案明示済 / 復元可能 / 3 サイクル経過、すべて Yes のみ着手
-
-**Why**: 「14 open issues + 1 サイクル」で全件 sequential 処理すると 1 件 5 分換算でも 70 分超え、コンテキストも肥大化。3 トラック並列なら調査 5 件 (5 分並列) + 実装 1-2 件 (10 分 sequential) + コメント 5-7 件 (10 分 sequential) で合計 25-30 分。役割境界が明確になることで「どの issue は今サイクル / 次サイクル」の判断も整理される。
 
 **How to apply**: 「issue 多数の状態で issue 処理依頼を受けた」サイクルでは、最初に Issue 分類 (A/B/C/D) を表で整理してからトラック起動。skill のチェックリスト (Step 1: 自分起票確認 / Step 2: ユーザー本人コメント抽出 / Step 3: 状態判定) を全 issue に一括実行してから分類するのが効率的 (本人コメント抽出は `for n in ...; do gh issue view $n ...; done` でバッチ処理)。
 

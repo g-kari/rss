@@ -202,12 +202,6 @@ export async function PATCH(request, { params }) {
 }
 ```
 
-**Why**: helper drift は dead code 監査 (production caller 0 grep) で検出できないため、コードレビュー / リファクタ監査エージェントの確認まで発見されにくい。重複定義を放置すると:
-
-1. **仕様変更時の同期修正リスク** — 例: 「UUID v4 バリアントビット検証を厳格化」が必要になったとき、4 箇所同時修正を忘れて drift 永続化
-2. **実装スタイルの不統一** — ある場所では `const UUID_RE` 定数、別の場所ではインライン正規表現、で grep 困難
-3. **同種データを扱う新規コードを書くとき「どの helper を使うか」が不明** — 重複定義が増えて選択肢爆発
-
 **How to apply**: 新規 Route Handler / hook / lib モジュールを書くときに以下を判定:
 
 1. **判定ロジック / バリデーションを書く前に、`src/lib/validation.ts` を grep**:
@@ -240,8 +234,6 @@ export async function PATCH(request, { params }) {
 2. **canonical 型に含まれない literal を参照しているか確認**: 例えば `AiErrorType` の `"model_error"` は canonical `HttpErrorType` (`"server_error"`) に統合可能か → consumer で `"model_error"` を直接参照していなければ OK
 3. canonical 型に含まれない literal が consumer で参照されているなら、その literal を canonical 型に追加してから alias 化
 4. **canonical 型と完全に同じ意味なら type alias 化**: `export type X = CanonicalType;` で互換性維持
-
-**Why**: 同名 enum の重複は単純な型互換性のずれ (例: `"model_error"` vs `"server_error"`) で「人間が同じ意味と理解しているのに型が違う」状態を生む。alias 化することで「同じ型」が型システムで保証され、片方の canonical に variant が追加されたとき consumer 側にも自動的に反映される (drift 防止)。
 
 **反例 (alias 化が不適切なケース)**:
 
@@ -298,8 +290,6 @@ const result = useMemo(() => {
 }, [articles, readIds, readBeforeTimestamp]); // ← 値の identity 変化で再計算される
 ```
 
-**Why**: `useSyncedRef` の本来用途は **「effect 内で stale closure 回避」** のみ (subscription / timer callback など、effect が `[]` deps で 1 度だけ走る場面)。useMemo / useCallback の deps に入れると「ref はオブジェクト identity 不変 → React が変化なしと判定 → 再実行されず → ref から得る値も古いまま使われる」という錯覚バグになる。新しい `Set(prev)` のように値の reference が変わるパターンでは、**直接 deps に入れた方が正確に再計算される**。perf 影響を懸念して ref に「最適化」したくなるが、O(n) 単純ループなら直接 deps が正解。
-
 **How to apply**: `useSyncedRef` を使うときは以下の判定:
 
 1. **`useEffect(() => { ... }, [])` の中で参照** (subscription / 1 度だけのセットアップ) → ✅ ref で OK
@@ -329,8 +319,6 @@ const tts = useTts(article, onBoundaryRef); // 内部で onBoundaryRef.current?.
 const highlight = useHighlight(sentences, tts.isPlaying);
 onBoundaryRef.current = highlight.handleBoundary; // 後付けで assign
 ```
-
-**Why**: `useState` ベースで宣言順を変えるのは難しく、`useState`/`setState` を hoist すると役割が混ざる。`useRef` はレンダー位置に依存しない安定参照なので、「Hook A 作成時点では callback がまだ無いが、Hook A が `ref.current?.(...)` を **遅延呼び出し** する形で耐える」設計が成立する。
 
 **How to apply**: hook 同士で「片方の output が他方の input、その output 先が更にもう片方の internal 処理を呼ぶ」三角関係を見つけたら、callback 用 ref を 1 つ前に作って両 hook に渡す。Hook A 内部では `ref.current?.(...)` で安全に呼び出し (null チェック必須)、Hook B から取得した callback を効果的に **後付け assign** する。assign は render 中で OK (ref はマウント前から不変)。
 
@@ -383,8 +371,6 @@ for path in path1 path2 path3; do
     | grep -E "{symbol_pattern}"
 done
 ```
-
-**Why**: ローカル clone は ① 容量・時間コスト ② 不要なファイルツリー (node_modules / .git) の保持 ③ master の最新追従コスト すべて発生する。Issue の調査ではしばしば「**1 関数の実装と 4-5 caller の確認**」だけで十分なため、`gh api` 経由のピンポイント取得が圧倒的に効率的。連携サービスのリポジトリが private でも、認証された `gh` CLI なら同等にアクセス可能。
 
 **How to apply**: ユーザー指示に「**上流 / 連携サービス / 別リポジトリ を調査して**」が含まれたら以下のフロー:
 
@@ -459,8 +445,6 @@ export async function POST(request, { params }) {
 }
 ```
 
-**Why**: shared resource (Cloudflare Cache / 共有 R2 オブジェクト) は **複数ユーザーで共有される** ため、1 人の操作が他全ユーザーに影響する。認証だけ通せば誰でも他人のデータを破壊・無効化できる状態は、`cache busting DoS` / `cross-user state corruption` 等の攻撃ベクトルになる。「認証 = 自分のリソースに何でもできる」と「認証 = ログイン済」を混同しないこと。
-
 **How to apply**: API 設計時に以下のチェックリスト:
 
 1. **このエンドポイントが変更/削除する対象は shared resource か？**
@@ -501,12 +485,6 @@ function computeCacheTtl({ hasContent, isFallback }: Input): number {
 }
 const ttl = computeCacheTtl({ hasContent, isFallback });
 ```
-
-**Why**: shared cache は **複数ユーザー横断で共有** されるため、攻撃者が 1 度 cache 注入に成功すると、TTL 期間中ずっと **継続的な攻撃を維持しなくても** 全ユーザーに被害が拡散する。完全な input sanitization (例: 画像 URL のホワイトリスト検証) はトレードオフが大きい (合法 image を弾く / fallback fetcher の意義が失われる) ため、「**TTL 短縮で攻撃の経済性を変える**」アプローチが現実的:
-
-1. **攻撃者が攻撃 input を継続維持しないと** poisoning が持続不可になる (例: tweet を削除すると次回 fetch で失効)
-2. **通常ユーザー UX への影響が極小** (fallback 経路は usage 頻度が低い)
-3. **既存 negative cache TTL を再利用できる** ことが多い (新定数不要)
 
 **How to apply**: 新しい cache 注入経路 (Route Handler で `cachePutAsync` を呼ぶ箇所) を実装するときに以下を判定:
 
@@ -576,8 +554,6 @@ const hasContent = !!(processedContent || article?.summary); // UI 用
 const hasFullContent = !!processedContent; // 全文取得 gate 用
 ```
 
-**Why**: 同名の派生 boolean が UI 用と判定用で意味がブレると、片方の用途で「既に十分」と判定されて他方の処理（fetch トリガーなど）がスキップされる連鎖バグが起きる。
-
 **How to apply**: 派生 boolean / 派生 state を作るときは「どの判定に使うか」を 1 つに絞る。複数の判定で使うなら **判定別に派生値を分ける**。`hasContent` のような汎用名は曖昧なので、`hasFullContent` / `hasSummaryOnly` / `canRender` のように **意図が読み取れる名前** を付ける。
 
 ## fallback ロジックの伝播範囲を意識する
@@ -598,8 +574,6 @@ shouldStartAutoSpeak({
   hasFullContent, // ← fallback 適用前の事実
 });
 ```
-
-**Why**: 描画用の fallback 結果（サマリ等）がそのまま判定関数に伝播すると、「本来 fetch されるべきタイミング」がバイパスされて本文未取得のまま下流処理（TTS / 既読判定など）が走ってしまう。
 
 **How to apply**: fallback を含む文字列・配列を判定関数に渡すときは、判定側で「fallback されたかどうか」を別 boolean で受け取る。`hasText` のような fallback 後の事実だけでなく、`hasOriginal` のような fallback 前の事実も渡せるよう設計する。
 
@@ -636,8 +610,6 @@ function pruneOldReadIds(readIds, articles, cutoff) {
 }
 ```
 
-**Why**: 同じデータ (例: `Article`) に対して動作する複数の sibling 関数が存在するとき、判定軸の「fallback chain」が揃っていないと、片方の関数が「対象に含む」と判定したものを他方が「対象外」とする乖離が発生する。これが起きると **データの不整合 (readIds の永久蓄積等) が time に応じて累積** する潜在バグになる。1 関数だけ見てバグレビューしても気付けず、ペアで読まないと発見できないため厄介。
-
 **How to apply**: 同じデータに動作する sibling 関数を作るときは:
 
 1. **「判定で使うフィールド + fallback chain」を 1 箇所に定義** — 例: `getArticleTimestamp(a) = a.publishedAt ?? a.createdAt`
@@ -665,8 +637,6 @@ const hasFullContent = !!storedContent || !canFetch;
 //                     ↑ fetch 完了済 OR fetch 不要のときだけ true
 ```
 
-**Why**: 派生 boolean の「名前」を正しくしても、その派生元が fallback 込みの中間値だと、fallback がトリガーされた瞬間に boolean が誤って true になる。`processedContent` のような **「複数ソースを ?? で混ぜた値」を経由した派生 boolean は、必ず origin (storedContent / article.content) のどちらから来たかを区別する**。
-
 **How to apply**: 派生 boolean を作るとき:
 
 1. **派生元を辿る**: `derived = !!middleValue` と書きたくなったら、`middleValue` の定義を見て fallback (`A ?? B ?? C`) が含まれていないか確認
@@ -686,8 +656,6 @@ const hasFullContent = !!storedContent || !canFetch;
 // UI: 記事保持期間 (30/60/180 日) ← そのまま
 // 内部: ttlDays から effective cutoff を算出して prune にも適用
 ```
-
-**Why**: 同じ値（例: 30/60/180 日）を意味重複する 2 箇所で設定させると、ユーザーが両方設定して齟齬が発生する / 片方しか設定せず期待と動作がズレる、などの混乱を招く。
 
 **How to apply**: 「設定可能化」要望には次の順で検討:
 
@@ -712,8 +680,6 @@ const hasFullContent = !!storedContent || !canFetch;
   - 既存ユーザーへの影響ゼロ (回帰なし)
   - 後で default 変更したくなったら判断材料を集めてから決定
 ```
-
-**Why**: 「抑制機能」要望は **要望者の特殊事情** (例: Workers AI コスト懸念 / フォールバックの挙動変化を嫌う) に基づくことが多く、全ユーザーに当てはまるわけではない。default OFF にしておけば、要望者だけが恩恵を受け、他ユーザーへの影響を最小化できる。
 
 **How to apply**: 「便利機能」と「抑制機能」を実装時に判定:
 
@@ -744,8 +710,6 @@ const hasFullContent = !!storedContent || !canFetch;
 // → 「速さを上げていくと最終的にスライドショー」と直感的
 ```
 
-**Why**: 同カテゴリ機能を別 toggle にすると、ユーザーは「どっちを ON にすべきか」「両方 ON で何が起きるか」を考える必要がある。N 段階セグメントなら **1 つの軸で連続的に強度を選ぶ** だけでよく、離散ジャンプ (slideshow) は「最強モード」として位置づけられる。
-
 **How to apply**: 「機能 A」と「機能 B」を実装するとき:
 
 1. **機能 A と B が同カテゴリか** (例: 自動進行 / 通知頻度 / プライバシーレベル) を判定
@@ -770,8 +734,6 @@ useGalleryAutoScroll({
   onUserInterrupt: () => onChangeSpeed("off"), // wheel/touch で即停止
 });
 ```
-
-**Why**: 動画プレイヤーは「再生中もユーザーは画面を見ている」前提。一方、自動スクロール / ポーリング系は **「裏で動いてほしいが、ユーザー操作したら譲る」** 用途が多い。手動操作 (wheel / touchstart / click 等) を一時停止トリガーにすれば、UI 数を減らしつつ自然な操作感を実現できる。
 
 **How to apply**: 自動進行系機能を実装するとき:
 
@@ -834,8 +796,6 @@ const { images, source } = selectGalleryImages(prefetched, thumb);
 }
 ```
 
-**Why**: 入れ子三項は「フォールバックの順序」と「組み合わせの網羅」が暗黙のまま蓄積する。新しい状態 (例: `prefetched=[]` で「明示的に空」を表現) を追加したとき、既存ブランチで意図しない動作になる確率が高い。純粋関数で「何が選ばれたか」(`source`) と「何を描画するか」(`images`) を **明示的に分離** すれば、TDD で全組み合わせをテスト可能。
-
 **How to apply**: 3 段以上の入れ子三項を書きそうになったら、まず「どの値を選ぶか」を `select<X>` 純粋関数に切り出す:
 
 1. **入力**: 描画判定に使う props 全部 (boolean / 配列 / null 含む)
@@ -865,8 +825,6 @@ const { images, source } = selectGalleryImages(prefetched, thumb);
   );
 }
 ```
-
-**Why**: 「複数枚向けの集約 UI」を `>= 2` で隠すと、1 枚しかない記事でその UI が利用できず、ユーザーは関連機能（保存・選択など）を実行できなくなる。内部処理（`downloadAllImages` 等）は 1 件配列でも正常動作することがほとんど。
 
 **How to apply**: UI 条件で「N 件以上」を書くときは:
 
@@ -905,8 +863,6 @@ const { images, source } = selectGalleryImages(prefetched, thumb);
 }
 ```
 
-**Why**: CI は `pnpm install` 直後に lint / typecheck を実行するため `prebuild` が起動しない。ローカル開発では `predev` / `prebuild` で生成されるため気付きにくく、CI だけで TS2307 エラーになる。
-
 **How to apply**: 自動生成ファイルを参照するスクリプトを追加するときは、想定される実行コマンド (`build` / `dev` / `typecheck` / `check` / `test:e2e` 等) **すべてに pre-script を設置** する。スクリプトが軽量 (数十 ms 以下) なら頻繁に走っても性能影響なし。重いなら以下を検討:
 
 - 出力ファイルの存在チェックでスキップする idempotent な実装にする
@@ -940,8 +896,6 @@ const { activeSentenceIndex } = useTtsHighlight(effectiveSentences, ...);
 //   ↑ 空配列 → activeSentenceIndex = -1 維持 → ハイライト発生しない
 ```
 
-**Why**: TTS / 字幕系 UI は「視覚的な進行 = 聴覚的な進行」が UX の本質。**source の同期が崩れた瞬間に体験が破綻する**。fallback chain (`source = summaryText ?? translatedText ?? processedContent ?? summary`) を speak 側に入れると、ハイライト側も同じ chain で sentence を抽出する必要があるが、HTML から sentence span を生成するコストが大きく、複数 source 化は段階対応になりがち。最小実装は「**別 source 読み上げ中はハイライトを完全に止める**」(空 sentence で抑制)。
-
 **How to apply**: 読み上げ系 / 字幕系 hook を実装するとき:
 
 1. `speak(text)` に渡る text の **真の source** (どの fallback chain の枝か) を判定するフラグを保持 (`isReadingX`)
@@ -958,8 +912,6 @@ const { activeSentenceIndex } = useTtsHighlight(effectiveSentences, ...);
 ## 同症状でも別経路の可能性を疑う
 
 「ギャラリーが止まる」「TTS が止まる」のような **同じ症状の連続バグ報告** は、修正後も別経路で再発する可能性が高い。1 つ修正しただけで「同症状の Issue は全部解決」と思い込まないこと。
-
-**Why**: 同症状で別経路のバグは「前の修正で直したつもり」が認知バイアスとして働き、新規調査を怠りがち。実例として「ギャラリー停止」系で「全 worker abort」と「先頭 N 件キー固定」の 2 経路が連続発生したケースがある。
 
 **How to apply**:
 
@@ -1078,8 +1030,6 @@ function usePrefetch({ maxPrefetch = 200 }: Options) {
 }
 ```
 
-**Why**: default を「保守的に小さく」設定すると、ドキュメント上の cap (200) と実際の挙動が乖離する。呼び出し元はライブラリ作者の意図 (「cap まで使ってよい」) を読み取れず、デフォルト 20 で運用してバグ報告が来る。たとえばプリフェッチ系では 21 件目以降が永遠に処理されない症状になる。
-
 **How to apply**: cap 値 (`Math.min(x, MAX)`) を持つ Option では:
 
 1. **default = cap** が最も自然 (「明示しなければ最大限活用」)
@@ -1107,8 +1057,6 @@ function usePrefetch({ maxPrefetch = 200 }: Options) {
   --color-tts-highlight: #fde68a; /* amber-200: TTS (より目立たせる) */
 }
 ```
-
-**Why**: 「同じ濃度で十分」と判断して共通トークンを使うと、片方だけ調整したい要望が来たときに他の UI を巻き込んで変えてしまう。最初から **「この強度はこの機能のために存在する」** と意図を込めた専用トークンにすると、後の単独チューニングが安全。
 
 **How to apply**: 新しいハイライト・選択状態・強調 UI を追加するとき:
 
@@ -1158,9 +1106,7 @@ export function useArticleImageMaxWidth(contentRef, contentKey) {
 }
 ```
 
-**Why**: HTML 後処理は「属性がある場合の最適化」止まりで、属性が無いケースまで責務を伸ばすと正規表現が複雑化する。runtime で `naturalWidth` を読めば確実に補完できる。CSS だけで `width: 100%` を `max-width: 100%` に変えると、属性ありの大きい画像が container 幅まで広がらなくなる副作用があるため、CSS 一律変更は避ける。
-
-**How to apply**: HTML 後処理が「属性に依存した装飾」を出力する場合:
+**How to apply**: HTML 後処理が「属性に依存した装飾」を出力する場合 (CSS 一律変更は副作用大、runtime で `naturalWidth` 補完が安全):
 
 1. 属性が無い場合の挙動を最初に確認 (CSS が想定外の動きをしないか)
 2. 必要なら **runtime hook** で属性の代替情報 (naturalWidth / naturalHeight / textContent) を読んで補完
@@ -1205,8 +1151,6 @@ export function removeOrphanedIconSvgs(html: string): string {
 }
 ```
 
-**Why**: SVG sprite は CSS / アクセシビリティ的には正しい設計だが、Readability のような「本文ブロック切り出し」型ツールとは相性が悪い。元ページで「不可視」だった sprite 定義が、本文だけ切り出した瞬間に「必要な参照先が消える」状態になる。
-
 **How to apply**: HTML 後処理で `<use>` のみの `<svg>` を識別して除去する純粋関数 + TDD (孤立 use / href 形式 / 複数 use / 実コンテンツ保持 / 親 a 残し / 属性保持 / ネスト) を入れる。`removeNoise` パイプラインの末尾に追加するのが安全な配置。
 
 主な使用箇所: `removeOrphanedIconSvgs` (`html-noise-removal.ts`) — Twitter 系 / Skebetter 等 SVG sprite ページの「謎の空白」防止
@@ -1246,8 +1190,6 @@ const jsonLdImages = extractJsonLdImages(preprocessed);
 const augment = (c: string) => appendMissingJsonLdImages(c, jsonLdImages);
 return { content: augment(extractedContent) + buildGallery(), source: "..." };
 ```
-
-**Why**: JSON-LD の `Article.image` は schema.org 標準で、サイトが「この記事の主要画像」と公式に宣言したもの。Readability の本文判定が外しても、JSON-LD 由来の URL は確実に「正しい画像」として信頼できる。`<div hidden>` で補完すれば、本文と重複表示せず、クライアント側 `ImageGallery` がギャラリーとして拾える。
 
 **How to apply**:
 
@@ -1304,9 +1246,7 @@ export function collectImageUrls(container: Element): string[] {
 }
 ```
 
-**Why**: 画像系サイトは「リンク先 = フル解像度 / 表示画像 = サムネ」という UX 設計が標準。サムネは「**サイズフィルタの対象**」(170px 未満で除外される閾値帯に入る) だが、フル解像度は「**`<a href>` にしか存在しない**」(クリックで遷移する想定)。`<img>` 単体走査では「ユーザーがクリックして見たかったフル解像度」を完全に取り逃がす。OGP 画像が 1 枚あれば「DL は動いている」ように見えるため、症状が「**1 枚しか DL されない**」と表面化するまで気付かれにくい潜在バグ。
-
-**How to apply**: 画像 DL / 画像コレクション系の DOM 走査ロジックを書くとき:
+**How to apply**: 画像 DL / 画像コレクション系の DOM 走査ロジックを書くとき (画像系サイトはサムネがサイズフィルタで除外されてフル解像度が `<a href>` にしか存在しないことが多い):
 
 1. **`<img>` 単体走査だけで十分か** を最初に検討
 2. ターゲットサイトに以下のいずれかが該当するなら **`<a href>` 走査も追加**:
@@ -1343,12 +1283,6 @@ export function collectImageUrls(container: Element): string[] {
       └─ フォローアップ B: e2e UI テスト拡張 + network mock 要のバグ
   → 元 Issue はクローズ + フォローアップへのリンクをコメントに残す
 ```
-
-**Why**:
-
-1. **スコープの明確化**: 「RTL infra 整備」と「network mock infra 整備」は別タスク (担当者・PR・依存ライブラリも別)。元 Issue でまとめると並行進行が困難
-2. **クローズの心理的効果**: 部分達成でも Issue を閉じられると、次セッションで「ここまでは終わった」という安心感が得られ、残作業に集中できる
-3. **infra 投資の見える化**: フォローアップ Issue でそれぞれ「pnpm add -D vitest @testing-library/react」「Playwright page.route 拡張」のような投資が明示されると、優先度判断がしやすい
 
 **How to apply**:
 
@@ -1391,8 +1325,6 @@ export function collectImageUrls(container: Element): string[] {
 4. **「Use serena tools」** — find_symbol / search_for_pattern で効率的に navigate
 5. **語数制限** — 「Report under 400 words」で出力肥大化防止
 
-**Why**: 漠然とした「コードレビューして」依頼だと、エージェントは「気になった点全部」を 30 件レポートしてきて、95% は theoretical / minor。`Skip if` + 件数上限 + confidence 縛りで強制的に「真に対応すべき指摘だけ」を絞り込ませる。
-
 **How to apply**: 監査依頼 → エージェント結果集約 → 各指摘を:
 
 1. **実コード Read で再現確認** (`サブエージェント調査結果は該当コードで検証してから採用` ルール参照)
@@ -1417,9 +1349,7 @@ export function collectImageUrls(container: Element): string[] {
  pattern と照合 (例: browser-summarizer.ts vs browser-translator.ts) して報告する」
 ```
 
-**Why**: codify した規範は「全コードへの即時適用」までは保証されない。新規 PR で「同種コンポーネントを書くとき canonical pattern からコピペで始めなかった」場合に drift が発生する。grep で機械検出可能な規範 (例: `Set<string>` sentinel の `Object.freeze` 化) は `rule-maintenance.md` の派生ケース 5 で sweep 可能だが、判断要素を含む規範 (例: `try/catch → null` で `devError` を「いつ」「どのレベルで」併記すべきか) は人間 (or AI) の judgment 要のため、監査エージェントが既存 canonical pattern と照合する形でないと detect できない。
-
-**How to apply**: 観点別監査エージェントへのプロンプトに以下を追加:
+**How to apply**: 観点別監査エージェントへのプロンプトに以下を追加 (grep で機械検出できない判断要素を含む規範は canonical pattern との照合で初めて検出可能):
 
 1. **既存規範ファイル (`.claude/rules/*.md`) を読んで、focus area に関連するルールを認識**
 2. **canonical pattern を実装している既存ファイル** (例: browser-summarizer.ts / Modal.tsx / read-state-merge.ts) を **対比対象として明示**
@@ -1451,9 +1381,7 @@ export function collectImageUrls(container: Element): string[] {
   → 残 3 件 (主観・大規模) のみ Issue 起票してユーザー判断仰ぐ
 ```
 
-**Why**: バグ修正 / a11y 修正 / perf 修正は **「起票して議論」より「修正して reverted されたら戻す」** の方が早いことが多い。特に規範実装 (Modal.tsx の returnFocusRef 等) が既にあるパターンは、起票時のテンプレート埋めコストの方が修正コストより大きい。Issue は **「ユーザーが判断する必要がある」もの** に集中させる。
-
-**How to apply**: 監査結果を以下の表で振り分け:
+**How to apply**: 監査結果を以下の表で振り分け (Issue は「ユーザー判断が必要なもの」に集中):
 
 | 判定                               | 例                                           | 対応                                              |
 | ---------------------------------- | -------------------------------------------- | ------------------------------------------------- |
@@ -1482,9 +1410,7 @@ export function collectImageUrls(container: Element): string[] {
   4. Issue 起票時は **エージェント分析結果 + 案 A/B/C + 推奨案** をテンプレで貼る
 ```
 
-**Why**: エージェント分析は「短い report 制約」で表面しか書けない。「統合」「集約」「helper 化」のキーワードに飛びつくと、実装着手後に「思ったより大きい」と気付いて中途半端な commit を作るリスク。**着手前の Read 1-2 回で最終 PR の規模を予測** すれば、適切に Issue 化に降格できる。「同サイクルで修正できないなら Issue 化」は逃げではなく、**1 PR = 1 関心事を保つ品質判断**。
-
-**How to apply**: 監査エージェント提案を受けたら:
+**How to apply**: 監査エージェント提案を受けたら (短い report は scope を過小評価しがち、着手前の Read 1-2 回で PR 規模を予測):
 
 1. **「変更対象ファイル数」と「新規ファイル数」を Read で見積る** (caller grep, 既存 export grep)
 2. **3 ファイル超え or 新 Context/Provider 必要** なら Issue 起票へ降格
@@ -1510,12 +1436,6 @@ export function collectImageUrls(container: Element): string[] {
   - 受け口の prop が optional (`?`) で、未配線でも既存挙動を変えないか? → YES なら部分達成 OK
   - 受け口が非 optional / 配線必須なら → 全体まとめて Issue 起票
 ```
-
-**Why**: 部分達成パターンの利点:
-
-1. **回帰リスク最小**: 受け口だけ追加なら typecheck で機械的検証可能、未配線なら既存挙動を変えない
-2. **配線 Issue で案を立てやすい**: 「prop 受け口は既に存在 → 配線方式 (state lift up vs Context vs callback chain) を 1 軸で比較」と issue 内容が清潔になる
-3. **将来の AI / 開発者がコード reading で気付ける**: `onAddFeed?: () => void` の存在が「配線待ちの未完了機能」を明示するシグナルになる
 
 **How to apply**: 監査エージェント提案を Read で再評価したとき:
 
@@ -1554,8 +1474,6 @@ export function collectImageUrls(container: Element): string[] {
 
 3-5 サイクル間隔で同観点が戻るので、間に他観点で発見した改修が次回派遣時の「新しい view」になる。
 
-**Why**: 監査エージェントは「現在のコード状態」を読むため、毎サイクルが「新しい修正後の状態」になっていれば新たな発見の機会がある。同観点を連続派遣すると agent が前回と同じ context を読むので発見が枯渇する。逆に bug / security / docs drift は本質的に「他観点での変更後に新規発生する」ことが多く、定期 sweep の方が ROI 高い。
-
 **How to apply**:
 
 1. **サイクル開始時に過去 3 サイクルの派遣観点を確認** (`git log --since="2 weeks ago" --grep="監査エージェント"` 等で履歴抽出)
@@ -1582,8 +1500,6 @@ export function collectImageUrls(container: Element): string[] {
 2. **次サイクル開始時に再 sweep をルーティン化**
    - bug 監査エージェント派遣時に `Pre-narrowed scope` に「過去 3 cycle で codify した bug pattern の sweep」を含める
    - エージェント prompt 例: `Check if the following codified bug patterns are fully swept across the codebase: 1. ISO 8601 lexicographic comparison (canonical: Date.parse), 2. ...`
-
-**Why**: 規範 codify 直後の grep は「修正した特定ファイル」を主に確認するため、別レイヤー (hooks / route handlers / cron) に同種バグが残っていても検出されないことがある。1 サイクル後の bug 監査エージェント派遣で同種バグが検出されるのは、**「規範 codify 時点では検出されない sibling」が存在していた** ことを意味する。これを再発させないには「codify 時の grep 結果」と「次サイクルの再 sweep」の二段保証が必要。
 
 **How to apply**:
 
