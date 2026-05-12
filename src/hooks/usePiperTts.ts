@@ -69,6 +69,7 @@ interface PiperPlusLib {
     model: string;
     ort: unknown;
     wasmG2pUrl?: string;
+    zhDictBaseUrl?: string;
     onProgress?: (info: { stage: string; progress: number; message: string }) => void;
   }) => Promise<PiperPlusInstance>;
 }
@@ -168,6 +169,12 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       // `__wbg_init` が `new URL(bg.wasm, import.meta.url)` で相対解決するため、絶対 URL
       // (= window.location.origin + path) に変換しておく必要がある。
       wasmG2pUrl: new URL(PIPER_WASM_LOADER_URL, window.location.origin).toString(),
+      // piper-plus は Chinese pinyin dict を `new URL('../../assets/', import.meta.url)`
+      // の default で fetch しようとするが、bundle 環境ではこれが build 時の `file:///ROOT/...`
+      // 絶対 path に解決されて CSP 違反 + fetch 失敗になる。同 URL は npm package に含まれず
+      // 元から存在しないため、same-origin の `/api/wasm/` を渡して 404 graceful degrade させる
+      // (piper-plus は `pinyin_single.json` 取得失敗時に "zh will use passthrough" で続行)。
+      zhDictBaseUrl: new URL("/api/wasm/", window.location.origin).toString(),
     });
     ttsInstanceRef.current = instance;
     ttsVoiceIdRef.current = voice.id;
