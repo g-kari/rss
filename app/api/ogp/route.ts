@@ -8,7 +8,12 @@ import {
   matchCfCache,
 } from "@/lib/cache-helper";
 import { unescapeHtml } from "@/lib/html";
-import { fetchPageOgpMeta, isTwitterLikeUrl, fetchTwitterFallbackImage } from "@/lib/ogp";
+import {
+  fetchPageOgpMeta,
+  fetchPageOgpMetaViaBrowserRendering,
+  isTwitterLikeUrl,
+  fetchTwitterFallbackImage,
+} from "@/lib/ogp";
 import { computeOgpCacheTtl } from "@/lib/ogp-cache-ttl";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 import { ogpCooldownKey } from "@/lib/r2";
@@ -68,7 +73,8 @@ async function handleGet(
   if (limited) return limited;
 
   const meta = await fetchPageOgpMeta(url, FETCH_TIMEOUT_MS);
-  const { title, description, image: rawImage, errorReason, upstreamStatus } = meta;
+  let { title, description } = meta;
+  const { image: rawImage, errorReason, upstreamStatus } = meta;
   let image = isValidPublicUrl(rawImage) ? rawImage : "";
   let isFallback = false;
   let fallbackReason: string | null = null;
@@ -82,6 +88,28 @@ async function handleGet(
       image = fallbackImage;
       isFallback = true;
       fallbackReason = "twitter_link_fallback";
+    }
+  }
+
+  // #768: bot 検出で primary fetch が失敗 (403 / challenge page) した場合は
+  // Cloudflare Browser Rendering REST API で実ブラウザ fetch を試みる。
+  // booth.pm のような Cloudflare Workers IP を block するサイトを救済する fallback。
+  // 攻撃面: Browser Rendering 経由で任意 URL の OGP を取得できるため、isFallback=true で
+  // 1 日 TTL に短縮して poisoning 影響範囲を限定する (Twitter fallback と同じ扱い)。
+  if (
+    !image &&
+    !title &&
+    !description &&
+    (errorReason === "non_ok_status" || errorReason === "no_meta_tags")
+  ) {
+    const brMeta = await fetchPageOgpMetaViaBrowserRendering(url, FETCH_TIMEOUT_MS);
+    const brImage = isValidPublicUrl(brMeta.image) ? brMeta.image : "";
+    if (brImage || brMeta.title || brMeta.description) {
+      title = brMeta.title;
+      description = brMeta.description;
+      image = brImage;
+      isFallback = true;
+      fallbackReason = "browser_rendering";
     }
   }
 

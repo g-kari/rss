@@ -105,6 +105,97 @@ export interface OgpMetaWithError extends OgpMeta {
   readonly upstreamStatus: number | null;
 }
 
+/**
+ * #768: Cloudflare Browser Rendering REST API で URL を実ブラウザ fetch して HTML を取得し、
+ * OGP メタデータを抽出する fallback 経路。
+ *
+ * 用途: booth.pm のような **Cloudflare bot 検出で Workers IP からの fetch を 403 で拒否する** サイト。
+ * 通常 fetch では bot challenge HTML が返るが、Browser Rendering は Cloudflare 内部の実ブラウザを
+ * 経由して fetch するため bot 検出を回避できる。
+ *
+ * 制約:
+ * - `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` 必須 (未設定で empty + errorReason 返却)
+ * - API token に **Browser Rendering 権限** が必要
+ * - Cloudflare Workers Paid プランの Browser Rendering 課金対象 (free tier 10 分/日)
+ * - cost は OGP cache (1 日 negative / 30 日 positive) で bounded
+ */
+export async function fetchPageOgpMetaViaBrowserRendering(
+  url: string,
+  timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS,
+): Promise<OgpMetaWithError> {
+  const empty = { title: "", description: "", image: "" } as const;
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  if (!accountId || !apiToken) {
+    console.error(`[ogp:br] CLOUDFLARE_ACCOUNT_ID/API_TOKEN unset; cannot fallback. url=${url}`);
+    return { ...empty, errorReason: "fetch_throw", upstreamStatus: null };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    let res: Response;
+    try {
+      res = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering/content`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url }),
+          signal: controller.signal,
+        },
+      );
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!res.ok) {
+      console.error(
+        `[ogp:br] browser-rendering api not ok: url=${url} status=${res.status} content-type="${res.headers.get("content-type") ?? ""}"`,
+      );
+      return { ...empty, errorReason: "non_ok_status", upstreamStatus: res.status };
+    }
+
+    const json = (await res.json()) as {
+      result?: string;
+      success?: boolean;
+      errors?: { code: number; message: string }[];
+    };
+    if (!json.success || !json.result) {
+      console.error(
+        `[ogp:br] browser-rendering api unsuccessful: url=${url} errors=${JSON.stringify(json.errors ?? []).slice(0, 200)}`,
+      );
+      return { ...empty, errorReason: "no_body", upstreamStatus: res.status };
+    }
+
+    const html = json.result;
+    const ogTitle = extractOgMeta(html, "title");
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const pageTitle = unescapeHtml((titleMatch?.[1] ?? "").trim());
+    const title = stripHtml(ogTitle || pageTitle).slice(0, 500);
+    const description = stripHtml(extractOgMeta(html, "description")).slice(0, 500);
+    const rawImage = extractOgMeta(html, "image");
+    const image = isValidPublicUrl(rawImage) ? rawImage : "";
+
+    if (!title && !description && !image) {
+      console.error(
+        `[ogp:br] no meta tags via browser-rendering: url=${url} html-preview="${html.slice(0, 200).replace(/\s+/g, " ")}"`,
+      );
+      return { ...empty, errorReason: "no_meta_tags", upstreamStatus: 200 };
+    }
+
+    return { title, description, image, errorReason: null, upstreamStatus: 200 };
+  } catch (err) {
+    console.error(
+      `[ogp:br] fetch threw: url=${url} err=${err instanceof Error ? err.name + ": " + err.message : String(err)}`,
+    );
+    return { ...empty, errorReason: "fetch_throw", upstreamStatus: null };
+  }
+}
+
 export async function fetchPageOgpMeta(
   url: string,
   timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS,
