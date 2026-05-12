@@ -178,16 +178,10 @@ export default function ArticleHeader({
         article={article}
         onMobileBack={onMobileBack}
         onEngagement={onEngagement}
-        feeds={feeds}
         embedInfo={embedInfo}
         readingMins={readingMins}
         onSetAuthorFilter={onSetAuthorFilter}
-        onSaveFilter={onSaveFilter}
         onSetQuery={onSetQuery}
-        onCategoryToast={(msg, level) => {
-          if (level === "success") toast.success(msg);
-          else toast.info(msg);
-        }}
         tags={tags}
         onAddTag={onAddTag}
         onRemoveTag={onRemoveTag}

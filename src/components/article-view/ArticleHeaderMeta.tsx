@@ -1,6 +1,6 @@
 "use client";
 
-import type { Article, Feed, KeywordFilter } from "../../types";
+import type { Article } from "../../types";
 import type { EmbedInfo } from "../../lib/embed-utils";
 import type { EngagementAction } from "../../types";
 import TagEditor from "./TagEditor";
@@ -14,13 +14,11 @@ interface Props {
     action: EngagementAction,
     value?: string,
   ) => void;
-  feeds?: Feed[];
   embedInfo: EmbedInfo | null;
   readingMins: number;
   onSetAuthorFilter: (author: string) => void;
-  onSaveFilter?: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
+  /** カテゴリクリック時の検索クエリ設定 (絞り込み)。未指定なら静的 span 表示 */
   onSetQuery?: (query: string) => void;
-  onCategoryToast: (msg: string, level?: "info" | "success") => void;
   tags?: readonly string[];
   onAddTag?: (articleId: string, tag: string) => void;
   onRemoveTag?: (articleId: string, tag: string) => void;
@@ -36,19 +34,14 @@ export default function ArticleHeaderMeta({
   article,
   onMobileBack,
   onEngagement,
-  feeds,
   embedInfo,
   readingMins,
   onSetAuthorFilter,
-  onSaveFilter,
   onSetQuery,
-  onCategoryToast,
   tags,
   onAddTag,
   onRemoveTag,
 }: Props) {
-  const filterFeed = feeds ? feeds.find((f) => f.id === article.feedHash) : undefined;
-
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
       {onMobileBack && (
@@ -105,30 +98,10 @@ export default function ArticleHeaderMeta({
       )}
       {article.categories &&
         article.categories.length > 0 &&
+        // #763: タグ 1 クリックで除外フィルターに追加する機能は誤操作を招くため削除。
+        // 検索クエリ絞り込みパスのみ維持し、それ以外は表示のみ (静的 span)。
         article.categories.slice(0, 5).map((cat) =>
-          filterFeed && onSaveFilter ? (
-            <button
-              key={cat}
-              onClick={() => {
-                const existingExclude = filterFeed.filter?.exclude ?? [];
-                if (existingExclude.includes(cat)) {
-                  onCategoryToast(`「${cat}」は既に除外フィルターに登録されています`);
-                  return;
-                }
-                void Promise.resolve(
-                  onSaveFilter(filterFeed.id, {
-                    include: filterFeed.filter?.include ?? [],
-                    exclude: [...existingExclude, cat],
-                    matchCategories: true,
-                  }),
-                ).then(() => onCategoryToast(`「${cat}」を除外カテゴリに追加しました`, "success"));
-              }}
-              title={`「${cat}」をフィードの除外カテゴリに追加`}
-              className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
-            >
-              {cat}
-            </button>
-          ) : onSetQuery ? (
+          onSetQuery ? (
             <button
               key={cat}
               onClick={() => onSetQuery(cat)}
