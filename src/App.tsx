@@ -1,42 +1,866 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import AppShell from "./components/AppShell";
+import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { AppOverlays } from "./components/AppOverlays";
+import { AppSidebarPane } from "./components/AppSidebarPane";
+import { AppListPane } from "./components/AppListPane";
+import { AppViewPane } from "./components/AppViewPane";
+import { useAuth } from "./hooks/useAuth";
+import { useFeeds } from "./hooks/useFeeds";
+import { useFeedGroups } from "./hooks/useFeedGroups";
+import { useCollections } from "./hooks/useCollections";
+import { useReadState } from "./hooks/useReadState";
+import { usePushNotifications } from "./hooks/usePushNotifications";
+import { useKeyboardNav } from "./hooks/useKeyboardNav";
+import { useFilteredArticles } from "./hooks/useFilteredArticles";
+import { useReadingHistory } from "./hooks/useReadingHistory";
+import { useThemePreference } from "./hooks/useThemePreference";
+import { useLayoutSettings } from "./hooks/useLayoutSettings";
+import { useAutoReadSettings } from "./hooks/useAutoReadSettings";
+import { useAccessibilitySettings } from "./hooks/useAccessibilitySettings";
+import { useNSFWMode } from "./hooks/useNSFWMode";
+import { useFocusMode } from "./hooks/useFocusMode";
+import { useAutoReadMode } from "./hooks/useAutoReadMode";
+import { usePWAInstall } from "./hooks/usePWAInstall";
+import { usePinnedAndCategories } from "./hooks/usePinnedAndCategories";
+import { useHasOpenPopup } from "./hooks/usePopupLock";
+import { useGlobalFilterAutoRead } from "./hooks/useGlobalFilterAutoRead";
+import { useAutoLoadMoreArticles } from "./hooks/useAutoLoadMoreArticles";
+import { useEngagementToggles } from "./hooks/useEngagementToggles";
+import { useFeedSelection } from "./hooks/useFeedSelection";
+import { useModalState } from "./hooks/useModalState";
+import { useFeedFilters } from "./hooks/useFeedFilters";
+import { useFeedPatch } from "./hooks/useFeedPatch";
+import { useOnlineStatus } from "./hooks/useOnlineStatus";
+import { useEngagement } from "./hooks/useEngagement";
+import { useRecommendations } from "./hooks/useRecommendations";
+import { useColumnResize } from "./hooks/useColumnResize";
+import { useArticleSelection } from "./hooks/useArticleSelection";
+import { useAppModalState } from "./hooks/useAppModalState";
+import { useSaveArticleUrl } from "./hooks/useSaveArticleUrl";
+import { useSnoozeHandler } from "./hooks/useSnoozeHandler";
+import { useDocumentTitleBadge } from "./hooks/useDocumentTitleBadge";
+import { useDesktopMediaQuery } from "./hooks/useDesktopMediaQuery";
+import { useApiErrorToast } from "./hooks/useApiErrorToast";
+import { useOnlineRecoveryToast } from "./hooks/useOnlineRecoveryToast";
+import { useGalleryAutoReadTracking } from "./hooks/useGalleryAutoReadTracking";
+import { useFeedPagination } from "./hooks/useFeedPagination";
+import { useArticleNavigation } from "./hooks/useArticleNavigation";
+import { useConfirm } from "./hooks/useConfirm";
+import { useMarkAllRead } from "./hooks/useMarkAllRead";
+import { useArticleUnreadStats } from "./hooks/useArticleUnreadStats";
+import { UnreadStatsProvider } from "./contexts/UnreadStatsContext";
+import { useCollectionArticleIds } from "./hooks/useCollectionArticleIds";
+import { useFeedSidebarActions } from "./hooks/useFeedSidebarActions";
+import { useArticleViewProps } from "./hooks/useArticleViewProps";
+import { useDigestFeedOrder } from "./hooks/useDigestFeedOrder";
+import ThreePaneLayout from "./components/ThreePaneLayout";
+import AppProviders from "./components/AppProviders";
+import { useReaderSettingsValue } from "./hooks/useReaderSettingsValue";
+import { type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { useSpeechSynthesis } from "./hooks/useSpeechSynthesis";
+import { useBackgroundAudio } from "./hooks/useBackgroundAudio";
+// usePiperTts は Phase 2c (Turbopack 互換性問題対応) まで App.tsx で呼ばない。
+// Emscripten 生成 chunk の `require("fs")` を Turbopack が解決できず build fail するため、
+// 別 Issue で next/dynamic({ssr:false}) 隔離 or webpack fallback 設定で対応する。
 import { useTtsEngineSetting } from "./hooks/useTtsEngineSetting";
-import type { TtsAdapter } from "./lib/tts-adapter";
+import { useToastState } from "./hooks/useToast";
+import { AppLandingState } from "./components/AppLandingState";
 
-/**
- * Piper wasm engine の hook host を `next/dynamic({ ssr: false })` で隔離する (#674 Phase 2c /
- * closes #753)。`@mintplex-labs/piper-tts-web` 内部 chunk は Emscripten 由来の `require("fs")`
- * を含み、Next.js 16 default の Turbopack 静的解析を壊すため、本 dynamic import で client bundle
- * 限定 + ssr 時 skip にする。
- *
- * 構造案 2 + render prop (ユーザー採用案 — Issue #753 2026-05-12T07:02:45Z 判断):
- *   - PiperEngineHost は常時 mount (children render prop で adapter を expose)
- *   - `enabled={engine === "piper"}` を渡し、Web Speech 選択中は usePiperTts 側で wasm load /
- *     voices fetch / speak を完全 skip (リソース節約)
- *   - AppShell 側で engine 設定値に応じて piperAdapter / speechSynAdapter を切替
- *   - engine 切替時の中断は AppShell の useEffect で adapter.stop() を呼んで実現
- */
-const PiperEngineHost = dynamic(() => import("./components/PiperEngineHost"), { ssr: false });
+import { useMobilePane } from "./hooks/useMobilePane";
 
 export default function App() {
-  // useTtsEngineSetting / useSpeechSynthesis は React Rules of Hooks により React component
-  // 内でしか呼べないため、render prop callback で AppShell を render する構造にして、それぞれの
-  // 戻り値を props で AppShell に注入する。
-  const { engine, setEngine } = useTtsEngineSetting();
+  const searchParams = useSearchParams();
+  const { user, betaRestricted, sessionExpired } = useAuth();
+  const isOnline = useOnlineStatus();
+
+  const initialMobilePane = searchParams.get("article")
+    ? "view"
+    : searchParams.get("feed")
+      ? "list"
+      : "sidebar";
+
+  const isDesktop = useDesktopMediaQuery();
+
+  const { theme, toggleTheme } = useThemePreference();
+  const {
+    layout,
+    onChangeLayout,
+    fontSize,
+    onChangeFontSize,
+    fontFamily,
+    onChangeFontFamily,
+    activeFeedView,
+    onChangeActiveFeedView,
+    galleryColumns,
+    onChangeGalleryColumns,
+    galleryColumnsFocus,
+    onChangeGalleryColumnsFocus,
+    galleryCardSize,
+    onChangeGalleryCardSize,
+    galleryMinImagePx,
+    onChangeGalleryMinImagePx,
+    galleryAutoScrollSpeed,
+    onChangeGalleryAutoScrollSpeed,
+    contentWidth,
+    onChangeContentWidth,
+    imageDlFolder,
+    onChangeImageDlFolder,
+    imageDlFolderNsfw,
+    onChangeImageDlFolderNsfw,
+  } = useLayoutSettings();
+  const {
+    autoReadEnabled,
+    toggleAutoRead,
+    autoReadThreshold,
+    cycleAutoReadThreshold,
+    onChangeAutoReadThreshold,
+    autoTranslate,
+    toggleAutoTranslate,
+    autoSummarize,
+    toggleAutoSummarize,
+    autoAiBrowserOnly,
+    toggleAutoAiBrowserOnly,
+    deduplicateByLink,
+    toggleDeduplicateByLink,
+    aiModel,
+    onChangeAiModel,
+  } = useAutoReadSettings();
+  const { lineHeight, onChangeLineHeight, textJustify, onChangeTextJustify } =
+    useAccessibilitySettings();
+  const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
+  const { nsfwMode, showNSFWAnimation, activateNSFW, deactivateNSFW, onNSFWAnimationComplete } =
+    useNSFWMode();
+  const { pinnedFeedIds, togglePinFeed, collapsedCategories, toggleCollapseCategory } =
+    usePinnedAndCategories();
+  const { focusMode, listFocusMode, toggleFocusMode, toggleListFocusMode, exitFocusMode } =
+    useFocusMode();
+  const install = usePWAInstall();
+  const { autoMode, toggleAutoMode, disableAutoMode } = useAutoReadMode();
+  // #675 Phase 1b: TTS adapter を 1 箇所で生成して Provider 経由で配下に注入。
+  // 配下で `useTtsAdapter()` を呼ぶ全 consumer (記事ヘッダー TTS / 設定モーダル voice 選択) で
+  // 同じ isPlaying / rate / voice state を共有する。
+  // #674 Phase 2b: setEngine / availableEngines は useTtsEngineSetting で永続化済、
+  // 実際の engine 切替 (= usePiperTts への dispatch) は Phase 2c で復活予定 (Turbopack 互換性問題のため一時無効)。
+  const { setEngine: setTtsEngine } = useTtsEngineSetting();
   const speechSynAdapter = useSpeechSynthesis();
+  const ttsAdapter = useMemo(
+    () => ({
+      ...speechSynAdapter,
+      setEngine: setTtsEngine,
+      availableEngines: ["web-speech"] as const, // Phase 2c で ["web-speech", "piper"] に拡張
+    }),
+    [speechSynAdapter, setTtsEngine],
+  );
+  const ttsSupported = ttsAdapter.supported;
+  // #745 Phase B: TTS 再生中 (or 一時停止中) の間、WebAudio の無音 oscillator を継続。
+  // これでスマホブラウザは「メディア再生中」と認識し、speechSynthesis のバックグラウンド休眠を回避できる。
+  // Phase A で hook 実装したが production caller 0 のままだったため、本サイクルで配線する。
+  useBackgroundAudio(ttsAdapter.isPlaying || ttsAdapter.isPaused);
+
+  const {
+    showHelp,
+    setShowHelp,
+    showFeedSwitcher,
+    setShowFeedSwitcher,
+    showSettings,
+    setShowSettings,
+  } = useAppModalState();
+
+  const toast = useToastState();
+  const { confirm, confirmModalProps } = useConfirm();
+  // キーボードショートカット用のシンプルな confirm ラッパー（メッセージのみ）
+  const confirmMessage = useCallback(
+    (message: string) => confirm({ title: "確認", message }),
+    [confirm],
+  );
+
+  useOnlineRecoveryToast(isOnline, toast);
+
+  // カラム幅（PC）
+  const { sidebarWidth, listWidth, handleResizeStart, resetWidth } = useColumnResize();
+
+  const {
+    feeds,
+    articles,
+    loadingFeeds,
+    loadingArticles,
+    refreshing,
+    newArticleCount,
+    loadedFeedPages,
+    onFeedAdded,
+    prependArticle,
+    removeFeed,
+    updateFeed,
+    appendFeeds,
+    refreshFeeds,
+    retryFeed,
+    reinferFeed,
+    dismissNewArticles,
+    loadMoreFeedArticles,
+    loadMoreAllFeedsArticles,
+    skipRemainingPages,
+    fetchError,
+    feedLoadError,
+    retryInitialLoad,
+    retryFeedList,
+  } = useFeeds(user, toast.error);
+
+  const {
+    groups: feedGroups,
+    createGroup,
+    renameGroup,
+    setCollapsed: setFeedGroupCollapsed,
+    setMuted: setFeedGroupMuted,
+    deleteGroup,
+    reorderGroup,
+  } = useFeedGroups(user, toast.error);
+
+  const {
+    collections,
+    createCollection,
+    renameCollection,
+    deleteCollection,
+    addArticleToCollection,
+    removeArticleFromCollection,
+    loadError: collectionsLoadError,
+    retryCollections,
+  } = useCollections(user, toast.error);
+
+  const {
+    supported: pushSupported,
+    subscribed: pushSubscribed,
+    loading: pushLoading,
+    error: pushError,
+    toggle: togglePush,
+    sendTest: sendPushTest,
+  } = usePushNotifications(user);
+
+  const { historyIds, historyOrder, addToHistory } = useReadingHistory();
+
+  const {
+    readIds,
+    bookmarkIds,
+    readingListIds,
+    likeIds,
+    globalFilter,
+    setGlobalFilter,
+    ttlDays,
+    setTtlDays,
+    readBeforeTimestamp,
+    snoozedUntil,
+    markRead,
+    markBulkRead,
+    markAllReadWithUndo,
+    toggleRead,
+    toggleBookmark,
+    toggleReadingList,
+    toggleLike,
+    snoozeArticle,
+    notes,
+    setNote,
+    deleteNote,
+    tagIds: articleTagIds,
+    addTag,
+    removeTag,
+    setArticleTags,
+    clearArticleTags,
+    hasPendingChanges,
+  } = useReadState(user, articles, historyIds);
+
+  const readerSettings = useReaderSettingsValue({
+    fontSize,
+    onChangeFontSize,
+    fontFamily,
+    onChangeFontFamily,
+    theme,
+    focusMode,
+    toggleFocusMode,
+    autoReadEnabled,
+    toggleAutoRead,
+    autoReadThreshold,
+    cycleAutoReadThreshold,
+    onChangeAutoReadThreshold,
+    autoTranslate,
+    toggleAutoTranslate,
+    autoSummarize,
+    toggleAutoSummarize,
+    autoAiBrowserOnly,
+    toggleAutoAiBrowserOnly,
+    lineHeight,
+    onChangeLineHeight,
+    contentWidth,
+    onChangeContentWidth,
+    textJustify,
+    onChangeTextJustify,
+    galleryColumns,
+    onChangeGalleryColumns,
+    galleryColumnsFocus,
+    onChangeGalleryColumnsFocus,
+    galleryCardSize,
+    onChangeGalleryCardSize,
+    galleryMinImagePx,
+    onChangeGalleryMinImagePx,
+    galleryAutoScrollSpeed,
+    onChangeGalleryAutoScrollSpeed,
+    deduplicateByLink,
+    toggleDeduplicateByLink,
+    ttlDays,
+    onChangeTtlDays: setTtlDays,
+    imageDlFolder,
+    onChangeImageDlFolder,
+    imageDlFolderNsfw,
+    onChangeImageDlFolderNsfw,
+    aiModel,
+    onChangeAiModel,
+  });
+
+  useApiErrorToast(toast);
+
+  const { recordEngagement } = useEngagement(user);
+  const digestFeedOrder = useDigestFeedOrder(user);
+  const {
+    recommendations,
+    loading: recommendationsLoading,
+    error: recommendationsError,
+    dismiss: dismissRecommendation,
+    refresh: refreshRecommendations,
+    refreshing: recommendationsRefreshing,
+  } = useRecommendations(user);
+
+  const {
+    selectedFeedId,
+    setSelectedFeedId,
+    selectedGroupId,
+    setSelectedGroupId,
+    selectedTag,
+    setSelectedTag,
+    selectedArticle,
+    setSelectedArticle,
+    selectedCollectionId,
+    setSelectedCollectionId,
+    selectFeedClearingArticle,
+    clearFeedGroupArticleSelection,
+  } = useFeedSelection(articles, feedGroups);
+
+  const {
+    snoozeTargetId,
+    setSnoozeTargetId,
+    snoozeReturnFocusEl,
+    setSnoozeReturnFocusEl,
+    articleAnnouncement,
+    setArticleAnnouncement,
+  } = useModalState();
+
+  // #748: snooze trigger 時に直前の活性要素 (article 内 menu / shortcut key 発火元) を snapshot し、
+  // article が DOM から消えても fallback 復元先を確保する。
+  const handleShowSnoozeMenu = useCallback(
+    (id: string | null) => {
+      if (id) setSnoozeReturnFocusEl(document.activeElement as HTMLElement | null);
+      setSnoozeTargetId(id);
+    },
+    [setSnoozeTargetId, setSnoozeReturnFocusEl],
+  );
+
+  const hasOpenPopup = useHasOpenPopup();
+
+  useGlobalFilterAutoRead(articles, globalFilter, readIds, markBulkRead);
+
+  // #702: useTotalUnreadCount + useSidebarFeeds 内の独自 articles scan を統合。
+  // ここで 1 回だけ計算 → UnreadStatsProvider 経由で <FeedSidebar> や
+  // useDocumentTitleBadge に共有することで二重 scan を解消する。
+  const unreadStats = useArticleUnreadStats(articles, readIds, readBeforeTimestamp);
+  const { totalUnread } = unreadStats;
+
+  useDocumentTitleBadge(totalUnread);
+
+  const {
+    toggleNsfwFeed,
+    togglePriorityFeed,
+    setCategoryFeed,
+    setGroupFeed,
+    muteFeed,
+    setFeedView,
+    saveFilter,
+    setDigestLimit,
+  } = useFeedPatch(updateFeed, toast.error);
+
+  // フィード削除時、削除対象が現在選択中なら選択も解除する (#650 Step 1u)。
+  // selectFeedClearingArticle(null) は useFeedSelection が提供するアトミック解除操作。
+  const onFeedDeleted = useCallback(
+    (id: string) => {
+      removeFeed(id);
+      if (selectedFeedId === id) selectFeedClearingArticle(null);
+    },
+    [removeFeed, selectedFeedId, selectFeedClearingArticle],
+  );
+
+  const onSaveArticleUrl = useSaveArticleUrl({
+    prependArticle,
+    toggleBookmark,
+    toggleReadingList,
+    toast,
+  });
+
+  const { nsfwFeedIds, groupFeedIds, mutedFeedIds } = useFeedFilters(
+    feeds,
+    feedGroups,
+    selectedGroupId,
+  );
+
+  const bookmarkCount = bookmarkIds.size;
+  const readingListCount = readingListIds.size;
+  const likeCount = likeIds.size;
+  const historyCount = historyIds.size;
+
+  const collectionArticleIds = useCollectionArticleIds(selectedCollectionId, collections);
+
+  const { galleryAutoReadIds, handleGalleryAutoRead } = useGalleryAutoReadTracking({
+    selectedFeedId,
+    selectedGroupId,
+    activeFeedView,
+    layout,
+  });
+
+  const filterState = useFilteredArticles({
+    articles,
+    feeds,
+    feedId: selectedFeedId,
+    readIds,
+    bookmarkIds,
+    readingListIds,
+    likeIds,
+    historyIds,
+    historyOrder,
+    selectedArticleId: selectedArticle?.id,
+    nsfwMode,
+    nsfwFeedIds,
+    globalFilter,
+    setGlobalFilter,
+    readBeforeTimestamp,
+    snoozedUntil,
+    mutedFeedIds,
+    notes,
+    groupFeedIds,
+    selectedGroupId,
+    activeFeedView,
+    articleTags: articleTagIds,
+    selectedTag,
+    collectionArticleIds: collectionArticleIds,
+    galleryAutoReadIds,
+    deduplicateByLink,
+    feedEngagementOrder: digestFeedOrder,
+  });
+
+  const {
+    filtered,
+    hasMore,
+    unreadOnly,
+    toggleUnreadOnly,
+    bookmarkOnly,
+    toggleBookmarkOnly,
+    readingListOnly,
+    toggleReadingListOnly,
+    likeOnly,
+    toggleLikeOnly,
+    noteOnly,
+    digestMode,
+    toggleDigestMode,
+    sortOrder,
+    toggleSortOrder,
+    dateRange,
+    cycleDateRange,
+    readingTimeRange,
+    cycleReadingTimeRange,
+    query,
+    searchRef,
+    notifyArticlesAdded,
+    duplicateInfo,
+  } = filterState;
+
+  const { prevArticle, nextArticle } = useArticleNavigation(selectedArticle, filtered);
+
+  const { feedHasMorePages, handleLoadMoreFeedArticles } = useFeedPagination({
+    selectedFeedId,
+    feeds,
+    loadedFeedPages,
+    loadMoreFeedArticles,
+    loadMoreAllFeedsArticles,
+    notifyArticlesAdded,
+  });
+
+  useAutoLoadMoreArticles(hasMore, feedHasMorePages, loadingArticles, handleLoadMoreFeedArticles, [
+    selectedFeedId,
+    unreadOnly,
+    bookmarkOnly,
+    readingListOnly,
+    noteOnly,
+    sortOrder,
+    dateRange,
+    readingTimeRange,
+    query,
+    globalFilter,
+  ]);
+
+  const { onMarkAllRead } = useMarkAllRead({
+    articles,
+    filtered,
+    readIds,
+    readBeforeTimestamp,
+    selectedFeedId,
+    groupFeedIds,
+    selectedCollectionId,
+    selectedTag,
+    activeFeedView,
+    totalUnread,
+    markBulkRead,
+    markAllReadWithUndo,
+    skipRemainingPages,
+    toast,
+    confirm,
+  });
+
+  const feedSidebarActions = useFeedSidebarActions({
+    feeds,
+    articles,
+    readIds,
+    readBeforeTimestamp,
+    bookmarkIds,
+    readingListIds,
+    notes,
+    totalUnread,
+    setSelectedFeedId,
+    setSelectedGroupId,
+    setSelectedTag,
+    setSelectedArticle,
+    setMobilePane,
+    onChangeLayout,
+    onFeedAdded,
+    onFeedDeleted,
+    updateFeed,
+    appendFeeds,
+    markAllReadWithUndo,
+    markBulkRead,
+    toast,
+    confirm,
+    toggleTheme,
+    setShowSettings,
+    setShowHelp,
+    onSaveArticleUrl,
+    refreshFeeds,
+    retryFeed,
+    reinferFeed,
+    togglePinFeed,
+    toggleCollapseCategory,
+    activateNSFW,
+    deactivateNSFW,
+    toggleNsfwFeed,
+    togglePriorityFeed,
+    setCategoryFeed,
+    setGroupFeed,
+    createGroup,
+    renameGroup,
+    deleteGroup,
+    setFeedGroupCollapsed,
+    setFeedGroupMuted,
+    reorderGroup,
+    muteFeed,
+    setFeedView,
+    setDigestLimit,
+    onChangeActiveFeedView,
+    setSelectedFeedIdNull: clearFeedGroupArticleSelection,
+    dismissRecommendation,
+    refreshRecommendations,
+    setSelectedCollectionId,
+    createCollection,
+    renameCollection,
+    deleteCollection,
+  });
+
+  const { selectArticle, articleDetailOverlayOpen, closeArticleDetailOverlay } =
+    useArticleSelection({
+      setSelectedArticle,
+      markRead,
+      addToHistory,
+      setMobilePane,
+      isDesktop,
+      listFocusMode,
+    });
+
+  const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useEngagementToggles(
+    articles,
+    toggleBookmark,
+    toggleReadingList,
+    toggleLike,
+    recordEngagement,
+  );
+
+  // #684: 記事一覧アンカー用トリガーカウンタ。`.` キーまたは UI ボタンで increment して
+  //       ArticleList に渡し、useEffect で「選択中記事へ強制スクロール」を再実行する。
+  const [anchorTrigger, setAnchorTrigger] = useState(0);
+  const anchorListToSelected = useCallback(() => setAnchorTrigger((c) => c + 1), []);
+  // #722: 空状態 CTA「フィードを追加」用の trigger counter
+  const [openFeedAddTrigger, setOpenFeedAddTrigger] = useState(0);
+  const openFeedAddModal = useCallback(() => setOpenFeedAddTrigger((c) => c + 1), []);
+
+  useKeyboardNav({
+    filteredArticles: filtered,
+    feeds,
+    pinnedFeedIds,
+    selectedFeedId,
+    selectedArticle,
+    readIds,
+    readBeforeTimestamp,
+    readingListIds,
+    likeIds,
+    setSelectedArticle,
+    onSelectFeed: selectFeedClearingArticle,
+    markRead,
+    markBulkRead,
+    markAllRead: (feedId: string | null) => markAllReadWithUndo(feedId, toast),
+    toggleBookmark,
+    toggleRead,
+    toggleReadingList,
+    toggleLike,
+    showToast: toast.info,
+    fontSize,
+    onChangeFontSize,
+    fontFamily,
+    onChangeFontFamily,
+    layout,
+    onChangeLayout,
+    unreadOnly,
+    toggleUnreadOnly,
+    bookmarkOnly,
+    toggleBookmarkOnly,
+    readingListOnly,
+    toggleReadingListOnly,
+    likeOnly,
+    toggleLikeOnly,
+    digestMode,
+    toggleDigestMode,
+    toggleSortOrder,
+    cycleDateRange,
+    cycleReadingTimeRange,
+    readingTimeRange,
+    searchRef,
+    refreshFeeds,
+    retryFeed,
+    snoozeArticle,
+    onShowSnoozeMenu: handleShowSnoozeMenu,
+    onShowFeedSwitcher: () => setShowFeedSwitcher(true),
+    onArticleAnnounce: setArticleAnnouncement,
+    confirm: confirmMessage,
+    autoMode,
+    toggleAutoMode,
+    ttsSupported,
+    cycleTtsRate: ttsAdapter.cycleRate,
+    anchorListToSelected,
+  });
+
+  const articleViewProps = useArticleViewProps({
+    selectedArticle,
+    bookmarkIds,
+    handleToggleBookmark,
+    readingListIds,
+    handleToggleReadingList,
+    likeIds,
+    handleToggleLike,
+    recordEngagement,
+    mobilePane,
+    setMobilePane,
+    prevArticle,
+    nextArticle,
+    selectArticle,
+    feeds,
+    snoozeArticle,
+    notes,
+    setNote,
+    deleteNote,
+    markRead,
+    articleTagIds,
+    addTag,
+    removeTag,
+    setArticleTags,
+    clearArticleTags,
+    collections,
+    addArticleToCollection,
+    removeArticleFromCollection,
+    createCollection,
+    autoMode,
+    onAutoModeStop: disableAutoMode,
+    onToggleAutoMode: toggleAutoMode,
+  });
+
+  const { snoozeArticleTitle, handleSnooze } = useSnoozeHandler({
+    snoozeTargetId,
+    articles,
+    filtered,
+    snoozeArticle,
+    setSelectedArticle,
+    toast,
+  });
+
+  // ロード中 / ベータ制限 / 未ログイン の早期 return パスを集約 (#650 Step 2)
+  const landingNode = AppLandingState({ user, betaRestricted });
+  if (landingNode) return landingNode;
+  // landingNode が null の時点で user は確実にログイン済 (TypeScript narrowing 用)
+  if (!user) return null;
+
+  const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
+
   return (
-    <PiperEngineHost enabled={engine === "piper"}>
-      {(piperAdapter: TtsAdapter) => (
-        <AppShell
-          engine={engine}
-          setEngine={setEngine}
-          speechSynAdapter={speechSynAdapter}
-          piperAdapter={piperAdapter}
-        />
-      )}
-    </PiperEngineHost>
+    <AppProviders
+      toast={toast}
+      ttsAdapter={ttsAdapter}
+      readerSettings={readerSettings}
+      articleFilter={articleFilter}
+    >
+      <UnreadStatsProvider value={unreadStats}>
+        <ThreePaneLayout
+          sidebarWidth={sidebarWidth}
+          listWidth={listWidth}
+          listFocusMode={listFocusMode}
+        >
+          <AppOverlays
+            articleAnnouncement={articleAnnouncement}
+            isOnline={isOnline}
+            hasPendingChanges={hasPendingChanges}
+            confirmModalProps={confirmModalProps}
+            appModalsProps={{
+              sessionExpired,
+              snoozeTargetId,
+              snoozeArticleTitle,
+              onSnooze: handleSnooze,
+              onSnoozeClose: () => setSnoozeTargetId(null),
+              snoozeReturnFocusEl,
+              showHelp,
+              onHelpClose: () => setShowHelp(false),
+              showSettings,
+              onSettingsClose: () => setShowSettings(false),
+              showFeedSwitcher,
+              feeds,
+              articles,
+              readIds,
+              readBeforeTimestamp,
+              selectedFeedId,
+              onSelectFeed: setSelectedFeedId,
+              onFeedSwitcherClose: () => setShowFeedSwitcher(false),
+            }}
+            showNSFWAnimation={showNSFWAnimation}
+            onNSFWAnimationComplete={onNSFWAnimationComplete}
+            newArticleCount={newArticleCount}
+            focusMode={focusMode}
+            listFocusMode={listFocusMode}
+            dismissNewArticles={dismissNewArticles}
+            exitFocusMode={exitFocusMode}
+            articleViewProps={articleViewProps}
+            articleDetailOverlayOpen={articleDetailOverlayOpen}
+            closeArticleDetailOverlay={closeArticleDetailOverlay}
+            hasOpenPopup={hasOpenPopup}
+            sidebarWidth={sidebarWidth}
+            listWidth={listWidth}
+            onResizeStart={handleResizeStart}
+            resetWidth={resetWidth}
+          />
+          <AppSidebarPane
+            mobilePane={mobilePane}
+            isDesktop={isDesktop}
+            loadingFeeds={loadingFeeds}
+            feedsEmpty={feeds.length === 0}
+            feedSidebarActions={feedSidebarActions}
+            feedSidebarProps={{
+              feeds,
+              articles,
+              readIds,
+              readBeforeTimestamp,
+              bookmarkCount,
+              readingListCount,
+              likeCount,
+              historyCount,
+              selectedFeedId,
+              selectedGroupId,
+              user,
+              theme,
+              selectedTag,
+              articleTagIds,
+              refreshing,
+              loadingFeeds,
+              isOnline,
+              pinnedFeedIds,
+              collapsedCategories,
+              nsfwMode,
+              feedGroups,
+              totalUnread,
+              activeFeedView,
+              recommendations,
+              recommendationsLoading,
+              recommendationsRefreshing,
+              recommendationsError,
+              noteCount: Object.keys(notes).length,
+              collections,
+              collectionsLoadError,
+              onRetryCollections: retryCollections,
+              selectedCollectionId,
+              install,
+              loadError: feedLoadError ? "フィードの読み込みに失敗しました" : null,
+              onRetry: retryFeedList,
+              push: {
+                supported: pushSupported,
+                subscribed: pushSubscribed,
+                loading: pushLoading,
+                error: pushError,
+                onToggle: togglePush,
+                onSendTest: sendPushTest,
+              },
+              openFeedAddTrigger,
+            }}
+          />
+          <AppListPane
+            mobilePane={mobilePane}
+            isDesktop={isDesktop}
+            loadingFeeds={loadingFeeds}
+            feedsEmpty={feeds.length === 0}
+            articleListProps={{
+              feeds,
+              readIds,
+              readBeforeTimestamp,
+              bookmarkIds,
+              readingListIds,
+              selectedArticleId: selectedArticle?.id ?? null,
+              selectedFeedId,
+              layout,
+              loading: loadingArticles,
+              fetchError,
+              onRetry: retryInitialLoad,
+              onChangeLayout,
+              onMobileBack: () => setMobilePane("sidebar"),
+              onSelectArticle: selectArticle,
+              onToggleRead: toggleRead,
+              onToggleBookmark: toggleBookmark,
+              onToggleReadingList: toggleReadingList,
+              onMarkRead: markRead,
+              onMarkAllRead,
+              feedHasMorePages,
+              onLoadMoreFeedArticles: handleLoadMoreFeedArticles,
+              notes,
+              activeFeedView,
+              listFocusMode,
+              onToggleListFocusMode: toggleListFocusMode,
+              onGalleryAutoRead: handleGalleryAutoRead,
+              duplicateInfo,
+              anchorTrigger,
+              onAddFeed: openFeedAddModal,
+            }}
+          />
+          <AppViewPane
+            mobilePane={mobilePane}
+            isDesktop={isDesktop}
+            articleViewProps={articleViewProps}
+          />
+        </ThreePaneLayout>
+      </UnreadStatsProvider>
+    </AppProviders>
   );
 }

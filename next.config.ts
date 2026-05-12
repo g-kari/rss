@@ -85,18 +85,6 @@ const nextConfig: NextConfig = {
   // ESM only / browser only library なので serverExternalPackages からは除外
   // (server-side では dynamic import 自体が実行されないので影響なし)。
   transpilePackages: ["@mintplex-labs/piper-tts-web", "onnxruntime-web"],
-  // Piper wasm engine (#753 Phase 2c) — Emscripten 生成 chunk が `require("fs")` /
-  // `require("path")` を含み、browser runtime では `ENVIRONMENT_IS_NODE === false`
-  // の分岐ガードで dead code 化されるが、Turbopack の静的解析が解決を試みて
-  // `Module not found` を吐く。`{ browser: ... }` 条件付き resolveAlias で
-  // browser bundle 解決時のみ empty module に向けて build を通す
-  // (server bundle には `next/dynamic({ ssr: false })` で含まれないため影響なし)。
-  turbopack: {
-    resolveAlias: {
-      fs: { browser: "./src/lib/empty-module.js" },
-      path: { browser: "./src/lib/empty-module.js" },
-    },
-  },
 };
 
 export default nextConfig;
