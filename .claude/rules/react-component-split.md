@@ -578,7 +578,70 @@ Phase 0 (型抽象化) 完了済の Issue で Phase 2a (新 engine 実装) に�
 - ライブラリ API が複雑で純粋関数 part だけで全てカバーできない (戻り値型がライブラリ依存) → part1 で型を `unknown` 的に書くと spec が薄くなる、part1 を見送り
 - 純粋関数層が **既存抽象型 (`tts-adapter.ts` 等) を import するだけ** で自己完結する場合は適用範囲広い
 
-主な使用箇所: `#674` Phase 2a-part1 — `piper-adapter.ts` (87 行) + 13 ケース spec を `@mintplex-labs/piper-tts-web` 未 install のまま先行 commit。Phase 2a-part2 で hook 実装 + npm install を次サイクル予定
+主な使用箇所: `#674` Phase 2a-part1 — `piper-adapter.ts` (87 行) + 13 ケース spec を `@mintplex-labs/piper-tts-web` 未 install のまま先行 commit。Phase 2a-part2 (本サイクル) で hook 実装 + npm install を完了 (`usePiperTts.ts` 332 行 + 11 ケース spec + dynamic import lazy load パターン)
+
+### 派生ケース: Phase 2a-part2 (代替 engine 実装) の dynamic import singleton + token counter で「engine 起動コスト分離 + 進行中処理破棄」を両立する
+
+Phase 2a-part1 で型 mapping を切り出し済の hook 実装 part2 で、**wasm engine のような重い依存** を統合するとき:
+
+1. **engine 起動 (wasm load + onnxruntime init) コストは初回 speak() 時のみ** にしたい → module-level `Promise<X> | null` singleton + `await import("...")` で実現
+2. **進行中 predict() の Promise を新 speak / stop で破棄** したい → `playToken: number` counter で「自分の token が `playTokenRef.current` と一致するか」で破棄判定
+3. **boundary 通知 (charIndex) を提供しない engine** にも対応 → 経過時間 × 推定 cps × playbackRate で setInterval 擬似発火
+
+```typescript
+// 単一 promise キャッシュで lazy load を 1 回に限定
+let piperLibPromise: Promise<PiperLib> | null = null;
+function loadPiperLib(): Promise<PiperLib> {
+  if (!piperLibPromise) {
+    piperLibPromise = import("@mintplex-labs/piper-tts-web").then(
+      (mod) => ({ predict: mod.predict, voices: mod.voices }) as PiperLib,
+    );
+  }
+  return piperLibPromise;
+}
+
+// token counter で進行中 predict 結果を破棄判定
+const playTokenRef = useRef(0);
+
+const stop = useCallback(() => {
+  playTokenRef.current += 1; // 即無効化
+  resetState();
+}, [...]);
+
+const speak = useCallback((text, onBoundary?) => {
+  releaseAudio();
+  const token = ++playTokenRef.current;
+  (async () => {
+    const lib = await loadPiperLib();
+    const blob = await lib.predict({ text, voiceId });
+    if (token !== playTokenRef.current) return; // stop / 別 speak で破棄
+    // ... <audio> 生成 + 再生
+  })();
+}, [...]);
+
+// boundary 擬似発火 (engine API なし)
+const ESTIMATED_CPS = 12;
+boundaryTimerRef.current = setInterval(() => {
+  const elapsedMs = Date.now() - startTimeRef.current;
+  const charIndex = Math.floor((elapsedMs * ESTIMATED_CPS * rateRef.current) / 1000);
+  onBoundaryRef.current?.(Math.min(charIndex, currentTextRef.current.length));
+}, 100);
+```
+
+**How to apply**: 既存 hook (`useSpeechSynthesis` 等) と並列で代替 engine の hook を実装するとき (engine 起動コストは module-level singleton で確実に 1 回に絞れる + token counter で非同期境界での race condition を予防):
+
+1. **dynamic import を関数化** (`loadXxxLib()`) + module-level `let xxxPromise: Promise<X> | null = null` で singleton
+2. **非同期 fetch / predict / connect を含む `speak()` / `start()` / `connect()`** は **token counter** で進行中処理破棄パターンを採用
+3. **engine が boundary / progress 等の通知 API を提供しない** なら、setInterval + 推定式で擬似発火 (精度が必要なら別 Phase で改善)
+4. **`<audio>` / `<video>` / `Worker` などの DOM/runtime resource** は `releaseXxx()` ヘルパーで cleanup を 1 箇所に集約 (resetState / stop / 新 speak / unmount すべてから呼ぶ)
+5. test mock では library を `vi.mock("@xxx/lib", () => ({ ... }))` + DOM API (`Audio` / `URL.createObjectURL`) を class 形式 mock + 個別メソッド `Object.defineProperty` (前述「ハイブリッド API」派生ケース) で stub
+
+**反例 (token counter 不要なケース)**:
+
+- engine 起動と speak() が同期で完結 (Web Speech API のように `speak()` が即時 queue に積むのみ) → token 不要、`utteranceRef.current === utterance` の identity 比較で十分
+- 非同期境界が 1 つしかない (predict() の単一 await のみ) → AbortController でも代替可能だが、ライブラリが AbortSignal を受け取らない場合は token counter が現実的
+
+主な使用箇所: `usePiperTts.ts` (#674 Phase 2a-part2) — dynamic import singleton + `playToken` counter で `predict()` await 中の stop / 別 speak を破棄、`setInterval` 経由 boundary 擬似発火で onBoundary callback を提供
 
 ### 派生ケース: 機能別分割後の「逆方向の集約」(共通 wrapper 抽出) も忘れない
 

@@ -279,7 +279,54 @@ vi.stubGlobal("AudioContext", MockAudioContext);
 - `new` を使わない関数呼び出し API (`fetch` / `localStorage.getItem` 等) — `vi.fn()` で問題なし
 - mock object 自体を直接 `vi.stubGlobal` に注入する API (`navigator.mediaSession = mockSession`) — class 不要
 
-主な使用箇所: `useBackgroundAudio.test.ts` (#745 Phase A) — `vi.fn(() => mockCtx)` で AudioContext 作成カウントが 0 のまま fail → class MockAudioContext に書き換えで 6 ケース全 pass
+主な使用箇所: `useBackgroundAudio.test.ts` — `vi.fn(() => mockCtx)` で AudioContext 作成カウントが 0 のまま fail → class MockAudioContext に書き換えで 6 ケース全 pass
+
+### 派生ケース: ハイブリッド API (constructor + 静的メソッド併用) は **全体 stub せず個別メソッドを `Object.defineProperty` で stub** する
+
+`URL` / `Request` / `Response` のように **`new URL()` (constructor) + `URL.createObjectURL()` (静的メソッド)** の両方を使う Web API は、`vi.stubGlobal("URL", { createObjectURL: vi.fn(), ... })` で **全体 stub すると constructor 機能が消失** する。テスト対象が同じファイル内で `new URL(absoluteUrl).hostname` のような constructor 利用箇所を持つと、`TypeError: URL is not a constructor` で全 case fail する典型罠。
+
+```typescript
+// アンチパターン: URL 全体を stub → new URL() が壊れる
+vi.stubGlobal("URL", {
+  createObjectURL: vi.fn((blob) => "blob:mock-1"),
+  revokeObjectURL: vi.fn(),
+});
+// テスト対象内: new URL(href) → TypeError: URL is not a constructor
+
+// 修正パターン: 既存 URL の静的メソッドのみ Object.defineProperty で上書き
+Object.defineProperty(URL, "createObjectURL", {
+  value: vi.fn((blob: Blob) => `blob:mock-${++count}`),
+  configurable: true,
+  writable: true,
+});
+Object.defineProperty(URL, "revokeObjectURL", {
+  value: vi.fn(),
+  configurable: true,
+  writable: true,
+});
+// → constructor (new URL(href)) は native のまま、静的メソッドだけ mock
+```
+
+**How to apply**: 「constructor + 静的メソッド」の両方を持つ Web API (`URL` / `Request` / `Response` / `Blob` / `File` / `FormData`) を mock するとき (全体 `vi.stubGlobal` は class 形式 mock で動くが、ハイブリッド API では constructor 機能が消失して別箇所の `new` 呼び出しが破壊される):
+
+1. **対象 API が constructor で呼ばれている箇所をテスト対象ファイルで grep** (例: `new URL\(` / `new Blob\(`)
+2. **constructor も静的メソッドも使う** なら個別 `Object.defineProperty(API, "method", {value, configurable, writable})` で stub
+3. **constructor は使われていない** (`vi.stubGlobal` の class 形式パターンが正しい) ケースは前述 (前項) のとおり全体 stub OK
+4. **afterEach での cleanup**: `configurable: true` なら test 終了時に `Object.defineProperty(URL, "createObjectURL", { value: originalURLCreateObjectURL })` で復元可能 (`vi.unstubAllGlobals` は個別 defineProperty を戻さないので、必要なら手動)
+5. `vi.spyOn(URL, "createObjectURL")` も使えるが、`vi.spyOn` は **元実装の振る舞いを保持** するので spy 用途。完全 mock したいなら `Object.defineProperty` の `value` 上書き
+
+**該当する典型 API** (constructor + 静的メソッド併用):
+
+| API        | constructor               | 静的メソッド                                     |
+| ---------- | ------------------------- | ------------------------------------------------ |
+| `URL`      | `new URL(href, base?)`    | `URL.createObjectURL` / `URL.revokeObjectURL`    |
+| `Blob`     | `new Blob([data], opts?)` | (V8 にはなし、仕様上将来追加可能性)              |
+| `Response` | `new Response(body)`      | `Response.json` / `Response.error` / `.redirect` |
+| `Request`  | `new Request(input)`      | (なし)                                           |
+| `FormData` | `new FormData(form?)`     | (なし)                                           |
+| `Headers`  | `new Headers(init?)`      | (なし)                                           |
+
+主な使用箇所: `usePiperTts.test.ts` — `URL.createObjectURL` mock のため `vi.stubGlobal("URL", {...})` を採用したら hook 内部の `new Audio(url)` 経由で URL constructor が呼ばれず TypeError、`Object.defineProperty(URL, "createObjectURL", {...})` に書き換えで 11 ケース全 pass
 
 ### 派生ケース: frozen state を helper 関数で参照したいときは引数化必須 (内部で live API を呼ばない)
 
