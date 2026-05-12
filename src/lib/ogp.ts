@@ -135,34 +135,51 @@ export async function fetchPageOgpMetaViaBrowserRendering(
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let res: Response;
     try {
-      // 注: env.BROWSER.fetch() の URL hostname は placeholder。binding が内部で
-      // Cloudflare の Browser Rendering REST endpoint (/content) にルーティングする。
-      // 公式 docs: https://developers.cloudflare.com/browser-rendering/get-started/sending-rest-api-requests-with-workers-binding/
+      // 注: binding 経由でも URL は full Cloudflare REST API path が必要。
+      // binding が auto-auth を提供 (Token / Authorization header 不要)。
+      // 公式 docs: https://developers.cloudflare.com/browser-rendering/rest-api/content-endpoint/
+      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+      if (!accountId) {
+        console.error(`[ogp:br] CLOUDFLARE_ACCOUNT_ID unset; cannot construct REST URL.`);
+        return { ...empty, errorReason: "fetch_throw", upstreamStatus: null };
+      }
       res = await browserBinding.fetch(
-        new Request("https://browser-rendering/content", {
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering/content`,
+        {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url }),
           signal: controller.signal,
-        }),
+        },
       );
     } finally {
       clearTimeout(timeoutId);
     }
 
     if (!res.ok) {
+      const bodyPreview = await res
+        .text()
+        .then((t) => t.slice(0, 200))
+        .catch(() => "");
       console.error(
-        `[ogp:br] browser-rendering binding not ok: url=${url} status=${res.status} content-type="${res.headers.get("content-type") ?? ""}"`,
+        `[ogp:br] browser-rendering binding not ok: url=${url} status=${res.status} content-type="${res.headers.get("content-type") ?? ""}" body-preview="${bodyPreview.replace(/\s+/g, " ")}"`,
       );
       return { ...empty, errorReason: "non_ok_status", upstreamStatus: res.status };
     }
 
-    // Browser Rendering /content は実 HTML を直接返却 (Workers binding 経由でも同様)
-    const html = await res.text();
-    if (!html) {
-      console.error(`[ogp:br] empty response body: url=${url} status=${res.status}`);
+    // Cloudflare REST API は `{ result: "...html...", success: true, errors: [], messages: [] }` を返却
+    const json = (await res.json()) as {
+      result?: string;
+      success?: boolean;
+      errors?: { code: number; message: string }[];
+    };
+    if (!json.success || !json.result) {
+      console.error(
+        `[ogp:br] browser-rendering api unsuccessful: url=${url} errors=${JSON.stringify(json.errors ?? []).slice(0, 200)}`,
+      );
       return { ...empty, errorReason: "no_body", upstreamStatus: res.status };
     }
+    const html = json.result;
     const ogTitle = extractOgMeta(html, "title");
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const pageTitle = unescapeHtml((titleMatch?.[1] ?? "").trim());
