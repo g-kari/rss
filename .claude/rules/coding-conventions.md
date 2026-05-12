@@ -552,7 +552,7 @@ export async function POST(req: NextRequest) {
 
 ## React state / ref / useEffect パターン
 
-→ `.claude/rules/react-patterns.md` を参照
+→ `.claude/rules/react-state-ref.md` (state / ref / vi.fakeTimers 関連) / `.claude/rules/react-effect-patterns.md` (useEffect 副作用) を参照
 
 ## 同一プロパティ名で意味の異なる派生値を使い分けない
 
@@ -887,7 +887,7 @@ const { images, source } = selectGalleryImages(prefetched, thumb);
 
 ## useEffect 依存キーの slice() は「N+1 件目以降の変化を検知不能」にする罠
 
-→ `.claude/rules/react-patterns.md` を参照
+→ `.claude/rules/react-effect-patterns.md` を参照
 
 ## 「読み上げ / 表示 / ハイライト」の source 整合性をペアで担保する
 
