@@ -1,6 +1,6 @@
 ---
 description: Cloudflare Cache API キャッシュ方針 — 外部フェッチ実装時に必ず参照
-paths: "app/api/**"
+paths: "app/api/**/route.ts,src/lib/cache-helper.ts,src/lib/r2.ts"
 ---
 
 # キャッシュ方針

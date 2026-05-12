@@ -1,6 +1,6 @@
 ---
 description: REST API エンドポイント仕様 (リクエスト/レスポンス/エラーコード) — Route Handler 編集時に参照
-paths: "app/api/**/*.ts"
+paths: "app/api/**/route.ts"
 ---
 
 # API エンドポイント仕様
