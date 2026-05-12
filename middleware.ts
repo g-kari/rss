@@ -39,10 +39,22 @@ function buildCsp(nonce: string): string {
   // Next.js は request ヘッダーの CSP から nonce を読んでインライン script に自動付与する
   // ref: next/dist/server/app-render/get-script-nonce-from-header.js
   //
-  // `'wasm-unsafe-eval'` は Chrome 95+ で WebAssembly.compile / instantiate / instantiateStreaming
-  // を許可するための専用 source (#761 Piper TTS engine の onnxruntime-web + Rust phonemizer 用)。
-  // `'unsafe-eval'` (任意 eval 許可) より遥かに狭い WASM 専用緩和なので XSS 攻撃面を最小化できる。
-  return `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; ${STATIC_CSP_SUFFIX}`;
+  // CSP `script-src` の緩和は 2 段階:
+  //
+  // - `'wasm-unsafe-eval'` (Chrome 95+): WebAssembly.compile / instantiate / instantiateStreaming
+  //   を許可。WASM 専用なので XSS 攻撃面への影響は最小。#761 Piper TTS engine の
+  //   onnxruntime-web + Rust phonemizer 用。
+  //
+  // - `'unsafe-eval'`: 任意の JS eval (`new Function()` / `eval()` 等) を許可。
+  //   patches/piper-plus.patch で書き換えた `new Function("u", "return import(u)")` (Turbopack の
+  //   static analyzer が library 内部の `await import(url)` を解決できない問題への bypass) が
+  //   CSP `'unsafe-eval'` を要求するため、本緩和が必須。
+  //
+  //   セキュリティ評価: nonce-based CSP では任意 JS 注入経路がほぼ閉じているため、
+  //   `'unsafe-eval'` 追加で増えるリスクは「nonce 付き script 内での eval 利用」に限定される
+  //   (CSP 全体としては既存のスクリプト出所制限が継続)。長期的には Service Worker fetch
+  //   interceptor / piper-plus library の upstream resolve で本緩和を撤回する余地あり。
+  return `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' 'unsafe-eval' https://static.cloudflareinsights.com; ${STATIC_CSP_SUFFIX}`;
 }
 
 export function middleware(request: NextRequest): NextResponse {
