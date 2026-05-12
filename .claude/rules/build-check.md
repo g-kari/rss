@@ -25,9 +25,15 @@ git commit
 
 pre-commit hook (`oxlint + oxfmt (auto-fix)`, `tsc --noEmit`, `playwright e2e`) が走るため、`check:fix` を手動で走らせる必要はない。pre-commit が auto-fix した内容はコミットに自動的に含まれる。
 
-## pre-commit hook が外部認証問題で blocked のときは `SKIP=<hook-id>` で部分 commit する
+## pre-commit hook の wrangler 認証問題は `remoteBindings: false` で根本解決する
 
-pre-commit hook の **e2e 系 hook** (`playwright e2e` = id `e2e-test`) は内部で `npm run dev` (= `next dev` + `@opennextjs/cloudflare` の `initOpenNextCloudflareForDev`) を起動し、これが **wrangler remote dev session 認証** を要求する。**wrangler login が切れている / token expired** の環境では `Failed to fetch auth token: 400 Bad Request` で web server 起動失敗 → playwright が timeout → pre-commit fail。これは **コード変更とは独立した環境問題** なので、その commit のために wrangler login を要求するのは不適切。
+**真の root cause**: `next.config.ts` の `initOpenNextCloudflareForDev()` の option `remoteBindings` が default `true` で本番 binding へのリモート接続認証 (`wrangler login`) を要求する。これにより pre-commit hook の playwright e2e (内部で `npm run dev` 起動) が wrangler login 切れ環境で fail する。
+
+**正しい解決**: `cloudflare-constraints.md` 「`initOpenNextCloudflareForDev` の `remoteBindings`」セクション参照。`{ remoteBindings: false }` を渡すと wrangler login 不要 + ローカル miniflare のみで動作 + pre-commit e2e が安定。
+
+**それでも `SKIP=<hook-id>` が必要な場面 (例外的)**
+
+`remoteBindings: false` でも build エラー (例: Emscripten chunk の `require("fs")` Turbopack 解決失敗) で e2e が起動できない場合は **暫定で SKIP** + 根本解決 (`next/dynamic({ssr:false})` 隔離等) を別 Issue で扱う。
 
 ```bash
 # アンチパターン: 認証問題で fail し続けるのに同じ commit を繰り返す → 進捗 0

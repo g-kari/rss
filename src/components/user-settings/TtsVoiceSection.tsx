@@ -28,7 +28,8 @@ export default function TtsVoiceSection() {
   const docLang = typeof document !== "undefined" ? document.documentElement.lang || null : null;
   const voiceGroups = useMemo(() => groupVoicesByLang(voices, docLang), [voices, docLang]);
 
-  // engine 切替 UI は #674 Phase 2b で App.tsx が `setEngine` を注入したときのみ表示
+  // engine 切替 UI は availableEngines が 2 つ以上で setEngine が注入された場合のみ表示。
+  // Phase 2b では availableEngines = ["web-speech"] のみ (Piper は Phase 2c で復活予定)。
   const canSwitchEngine = setEngine !== undefined && (availableEngines?.length ?? 0) > 1;
 
   if (!supported) {

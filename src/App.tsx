@@ -60,7 +60,9 @@ import AppProviders from "./components/AppProviders";
 import { useReaderSettingsValue } from "./hooks/useReaderSettingsValue";
 import { type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { useSpeechSynthesis } from "./hooks/useSpeechSynthesis";
-import { usePiperTts } from "./hooks/usePiperTts";
+// usePiperTts は Phase 2c (Turbopack 互換性問題対応) まで App.tsx で呼ばない。
+// Emscripten 生成 chunk の `require("fs")` を Turbopack が解決できず build fail するため、
+// 別 Issue で next/dynamic({ssr:false}) 隔離 or webpack fallback 設定で対応する。
 import { useTtsEngineSetting } from "./hooks/useTtsEngineSetting";
 import { useToastState } from "./hooks/useToast";
 import { AppLandingState } from "./components/AppLandingState";
@@ -138,19 +140,17 @@ export default function App() {
   // #675 Phase 1b: TTS adapter を 1 箇所で生成して Provider 経由で配下に注入。
   // 配下で `useTtsAdapter()` を呼ぶ全 consumer (記事ヘッダー TTS / 設定モーダル voice 選択) で
   // 同じ isPlaying / rate / voice state を共有する。
-  // #674 Phase 2b: TTS engine 切替を localStorage 設定値で動的に行う。
-  // 両 engine の hook を呼ぶが、Piper 側は enabled=false で voices fetch / wasm load を skip しリソース節約。
-  const { engine: ttsEngine, setEngine: setTtsEngine } = useTtsEngineSetting();
+  // #674 Phase 2b: setEngine / availableEngines は useTtsEngineSetting で永続化済、
+  // 実際の engine 切替 (= usePiperTts への dispatch) は Phase 2c で復活予定 (Turbopack 互換性問題のため一時無効)。
+  const { setEngine: setTtsEngine } = useTtsEngineSetting();
   const speechSynAdapter = useSpeechSynthesis();
-  const piperAdapter = usePiperTts({ enabled: ttsEngine === "piper" });
-  const baseTtsAdapter = ttsEngine === "piper" ? piperAdapter : speechSynAdapter;
   const ttsAdapter = useMemo(
     () => ({
-      ...baseTtsAdapter,
+      ...speechSynAdapter,
       setEngine: setTtsEngine,
-      availableEngines: ["web-speech", "piper"] as const,
+      availableEngines: ["web-speech"] as const, // Phase 2c で ["web-speech", "piper"] に拡張
     }),
-    [baseTtsAdapter, setTtsEngine],
+    [speechSynAdapter, setTtsEngine],
   );
   const ttsSupported = ttsAdapter.supported;
 

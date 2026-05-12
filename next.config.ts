@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-initOpenNextCloudflareForDev();
+// remoteBindings: false で wrangler remote dev session 認証要求を無効化し、ローカル miniflare のみで動作。
+// playwright e2e の web server が wrangler login 不要で起動できる。本番 R2 / AI へのリモート接続が
+// 必要な dev 検証時のみ option を一時的に変えれば良い。
+initOpenNextCloudflareForDev({ remoteBindings: false });
 
 const securityHeaders = [
   {

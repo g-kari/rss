@@ -35,6 +35,35 @@ Route Handler に `export const runtime = 'edge'` を書いてはいけない。
 
 新しい外部フェッチを追加する際は、e2e カバレッジ手段（UI 経由 or R2 直接読み）を実装と同時に検討すること。
 
+## `initOpenNextCloudflareForDev` の `remoteBindings` で wrangler 認証要求を制御する
+
+`next.config.ts` の `initOpenNextCloudflareForDev()` は内部で wrangler の `getPlatformProxy()` を呼び、その option `remoteBindings` が **default `true`** で本番 R2 / AI / KV へのリモート接続認証 (`wrangler login`) を要求する。`wrangler login` が切れた環境では `Failed to fetch auth token: 400 Bad Request` で `next dev` 起動失敗 → playwright e2e の web server 起動も連鎖失敗する。
+
+```typescript
+// アンチパターン (default): wrangler login 必須
+initOpenNextCloudflareForDev();
+// → next dev 起動時に wrangler remote dev session 認証要求 → login 切れで 400 Bad Request
+
+// 修正パターン: ローカル miniflare のみで動作
+initOpenNextCloudflareForDev({ remoteBindings: false });
+// → wrangler login 不要、KV / R2 / DO は miniflare local mock を使う
+//   AI binding は依然 remote (warning 表示、charges 発生注意)
+```
+
+**判定軸**:
+
+- **dev で本番 R2 / KV を確認したい** → `remoteBindings: true` (default)、`wrangler login` 必須
+- **dev で本番 binding を汚さず作業したい (= 大部分のケース)** → `remoteBindings: false`、login 不要
+- **CI / playwright e2e** → `remoteBindings: false` 推奨 (認証 secret 不要、build 安定)
+
+**How to apply**: `initOpenNextCloudflareForDev()` を見直すタイミング:
+
+1. **pre-commit hook の playwright e2e が wrangler 認証で fail** したら、`remoteBindings: false` を試す
+2. **dev で getCloudflareContext().env を使う Route Handler** をテストするとき、ローカル miniflare で十分なら `false`
+3. **本番 R2 データを dev で直接見たい** ときだけ `true` に戻して `wrangler login` 実行
+
+主な使用箇所: `next.config.ts` — `initOpenNextCloudflareForDev({ remoteBindings: false })` で wrangler login 不要 + playwright e2e の web server 安定起動 (#674 Phase 2b 配線時に判明)
+
 ## wasm / 内部 chunk import を持つブラウザ専用ライブラリは `transpilePackages` に追加する
 
 `@mintplex-labs/piper-tts-web` (onnxruntime-web peer-dep) のように **dist/ 配下に複数の内部 chunk file** (`piper-XXXX.js` 等) を持ち、それらを **dynamic import で chunk 分割 load** するブラウザ専用ライブラリは、Next.js Turbopack の dev/build で **内部 chunk 解決失敗** (`Module not found`) を起こすケースがある。`transpilePackages` に追加することで Next.js transformer を通し、chunk 解決の path resolution を補正できる。
@@ -80,3 +109,42 @@ const nextConfig: NextConfig = {
 - type 定義のみのパッケージ (`@types/*`) — runtime 影響なし
 
 主な使用箇所: `next.config.ts` — `@mintplex-labs/piper-tts-web` + `onnxruntime-web` (#674 Phase 2b、Piper wasm engine 配線時に判明)
+
+### 派生ケース: Emscripten 生成 wasm ラッパーは `require("fs")` / `require("path")` で Turbopack build fail する
+
+`@mintplex-labs/piper-tts-web` の内部 chunk `piper-XXXX.js` のような **Emscripten で wasm から生成された JS wrapper** は、Node.js 実行環境向け fallback として `require("fs")` / `require("path")` を含む (`ENVIRONMENT_IS_NODE` 分岐内)。これは browser runtime では `false` になって dead code 化されるが、**ビルド時には Turbopack が解決を試みて `Module not found: Can't resolve 'fs'`** を出す。`transpilePackages` だけでは解決しない (transpile してもコード自体は残る)。
+
+```typescript
+// Emscripten 生成 chunk の典型 pattern:
+var read_, readAsync, readBinary;
+if (ENVIRONMENT_IS_NODE) {
+  var fs = require("fs"); // ← Turbopack build で「fs not found」を出す
+  var nodePath = require("path");
+  // ...
+}
+// browser runtime では ENVIRONMENT_IS_NODE === false で dead code、
+// しかし build 時の static 解析では解決が試みられる
+```
+
+**対処オプション**:
+
+| 案  | 内容                                                                                               | 適用範囲                                 |
+| --- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| A   | `next.config.ts` の **`webpack` callback で `resolve.fallback`** に `fs: false / path: false` 設定 | webpack mode の Next.js                  |
+| B   | **`next/dynamic({ ssr: false })`** で library 使用コンポーネントを完全 client 隔離                 | Turbopack mode (現状 Next.js 16 default) |
+| C   | **library 使用部分を一時撤去** + 別 Issue で対応 (短期)                                            | scope を一時縮小したいケース             |
+
+Next.js 16 default の Turbopack mode では **option A は効かない** ことがある (webpack callback が Turbopack に伝わらない)。option B が最も汎用。
+
+**How to apply**: Emscripten / wasm ラッパーを含む npm パッケージを統合するとき (transpilePackages だけでは Node.js fallback の require が残る、SSR を skip して client-only bundle に隔離するのが最も汎用):
+
+1. **build / dev で `Can't resolve 'fs'` / `'path'` / `'crypto'` 等が出る** か確認
+2. 出たら **option B (`next/dynamic({ ssr: false })`)** で library を呼ぶコンポーネントを wrap:
+   ```typescript
+   const PiperHost = dynamic(() => import("./PiperHost"), { ssr: false });
+   ```
+3. PiperHost 内で `usePiperTts` 等を直接呼ぶ — server bundle には含まれず client のみで解決
+4. 親コンポーネント (App.tsx 等) は PiperHost を JSX で render するだけ、hook 直呼びは避ける
+5. **adapter pattern と組合せ**: PiperHost が `useTtsAdapter()` Context の value を提供する別 Provider tree を構築すれば、既存 consumer は変更不要
+
+主な使用箇所: `#674` Phase 2b で `@mintplex-labs/piper-tts-web` の `piper-XXXX.js` chunk が `require("fs")` を含み Turbopack で Module not found → Phase 2c で `next/dynamic({ssr:false})` 隔離予定
