@@ -372,7 +372,10 @@ grep -rn "react-patterns.md" .claude/rules/ --include="*.md" \
 - 抽出セクションが X 内部完結 (= X 内で他セクションが redirect しているだけ、抽出後 X 末尾の集約 redirect で吸収可能)
 - 抽出セクションのタイトルが redirect 文と一致しない (= redirect は別 セクションを指している、誤検知)
 
-主な使用箇所: `react-effect-patterns.md` 抽出時 — `coding-conventions.md` から 4 箇所 redirect (`ResizeObserver` / `AbortController` / `モード OFF` / `ブラウザ API 遅延通知`) を grep 検出して同サイクルで全て新ファイル名 `react-effect-patterns.md` に更新。同 `coding-conventions.md` に **broken redirect** (`useEffect 依存キーの slice()` の本体が削除済み) も発見したが scope 拡大回避のため別件として残置
+主な使用箇所:
+
+- `react-effect-patterns.md` 抽出時 — `coding-conventions.md` から 4 箇所 redirect (`ResizeObserver` / `AbortController` / `モード OFF` / `ブラウザ API 遅延通知`) を grep 検出して同サイクルで全て新ファイル名 `react-effect-patterns.md` に更新。`useEffect 依存キーの slice()` の redirect も同 commit で更新すべきだったが grep 漏れで翌サイクル訂正 (= **教訓: `grep -rn "<抽出元ファイル名>" .claude/rules/` を必ず実行して、抽出対象セクション名の hit を全件確認、見落とすと「broken redirect」と誤認して別 Issue 化する罠**)
+- `react-state-ref.md` 抽出時 — `coding-conventions.md` から `## React state / ref / useEffect パターン` redirect を `react-state-ref.md` + `react-effect-patterns.md` 併記に更新 (state-ref と effect で本体が 2 ファイルに分かれたため両方リンク)。同サイクルで前述の grep 漏れ訂正も吸収
 
 ### 派生ケース: 「N ファイル mechanical refactor」は wrapper adapter で callsite 不変を保ち scope 圧縮する
 
