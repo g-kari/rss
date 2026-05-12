@@ -229,6 +229,7 @@ src/
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
     useArticleAi.ts          # /api/ai/* fetch
     useSpeechSynthesis.ts    # 記事読み上げ（Web Speech API: speak / pause / resume / stop）
+    usePiperTts.ts           # 記事読み上げ（Piper wasm engine: @mintplex-labs/piper-tts-web — predict → Audio 再生、TtsAdapter 実装）
     useContentLinkPreviews.ts # 記事本文内リンクのプレビュー取得
     useEngagement.ts         # エンゲージメント記録 (/api/engagement)
     useRecommendations.ts    # フィード推薦 (/api/recommendations) fetch
@@ -771,6 +772,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `gallery-offviewport.spec.ts`         | `src/lib/gallery-offviewport.ts` — `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` 純粋関数（masonic で viewport 外 item のみ再配置する設計の判定層、#714 Phase 1、全 17 ケース網羅）                                |
 | `abort-error.spec.ts`                 | `src/lib/fetch.ts#isAbortError` — DOMException AbortError / Error name="AbortError" / 非 abort error の判別 (#625 後追い)                                                                                                                |
 | `tts-adapter.spec.ts`                 | `src/lib/tts-adapter.ts` — `speechSynthesisVoiceToTtsVoice` / `TtsAdapter` 型契約 / `TtsVoice` と既存 `selectTtsVoice` `groupVoicesByLang` の互換 (#675 Phase 1a)                                                                        |
+| `usePiperTts.test.ts`                 | `src/hooks/usePiperTts.ts` — Piper wasm engine の TtsAdapter 実装（dynamic import + Audio 制御 + boundary 擬似発火 + endedCount / errorCount monotonic counter、#674 Phase 2a-part2、全 11 ケース網羅）                                  |
 | `tts-voice.spec.ts`                   | `src/lib/tts-voice.ts` — `selectTtsVoice` / `groupVoicesByLang` 純粋関数（voice 選択優先順位・言語別グループ化）                                                                                                                         |
 | `tts-sentences.spec.ts`               | `src/lib/tts-sentences.ts` — `splitIntoSentences` / `findSentenceAtCharIndex` / `estimateCharIndexByElapsed` / `selectActiveCharIndex` (#659 Phase 1)                                                                                    |
 | `tts-dom.spec.ts`                     | `src/lib/tts-dom.ts` — `wrapSentencesInHtml` 純粋関数（HTML テキストノードをセンテンス span でラップ・skip タグ対応・タグ跨ぎ） (#672 Phase 2)                                                                                           |
