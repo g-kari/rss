@@ -74,9 +74,12 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   }, []);
   const useFilteredPath = imageSource === "prefetched" && galleryMinImagePx > 0;
   const allFiltered = useFilteredPath && hiddenCount > 0 && hiddenCount >= displayImages.length;
-  // 全画像 hidden で thumb があれば thumb fallback、なければ No Image プレースホルダ
-  const fallbackToThumb = allFiltered && !!thumb;
-  const fallbackToNoImage = allFiltered && !thumb;
+  // forcedImageSrc 指定 (= 1 記事 N 画像分解、Phase 1) で min-px フィルタにより hidden に
+  // なった場合は thumb fallback せずカード自体を非表示にする (小さい画像の fallback 不要)。
+  const isForcedHidden = !!forcedImageSrc && allFiltered;
+  // 従来 1 記事 1 カード時の thumb fallback / No Image プレースホルダ (forcedImageSrc 時は skip)
+  const fallbackToThumb = allFiltered && !!thumb && !forcedImageSrc;
+  const fallbackToNoImage = allFiltered && !thumb && !forcedImageSrc;
   // Phase 1: forcedImageSrc + onSelectImage が両方あれば画像ライトボックスを開く、
   // 無ければ従来通り記事詳細を開く。
   const handleClick = useCallback(() => {
@@ -95,6 +98,11 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
     },
     [handleClick],
   );
+  if (isForcedHidden) {
+    // masonic は items.length に基づいて positioner を作るため null は返さず、
+    // hidden な空 div を返してぺったんこセル化する (高さ 0、layout 影響なし)。
+    return <div className="hidden" aria-hidden="true" />;
+  }
   return (
     <div
       role="article"
