@@ -20,6 +20,8 @@ import type { Article } from "../types";
  * - `imageSrc !== null` は「展開済」(画像 1 枚 1 カード)。
  */
 export interface GalleryEntry {
+  /** 型判別用 discriminant (#769)。Article | GalleryEntry の型ガードで判別 */
+  readonly _type: "gallery-entry";
   /** 元記事への reference。既読/ブックマーク状態の参照元 */
   article: Article;
   /** 描画する画像 URL。null なら従来の prefetched/thumb fallback ロジックに委ねる */
@@ -45,6 +47,7 @@ export function explodeArticlesIntoGalleryEntries(
 ): GalleryEntry[] {
   if (!options.explode) {
     return articles.map((article) => ({
+      _type: "gallery-entry",
       article,
       imageSrc: null,
       imageIndex: null,
@@ -58,6 +61,7 @@ export function explodeArticlesIntoGalleryEntries(
     if (images === undefined) {
       // prefetch 未完了 → placeholder 用 1 entry
       entries.push({
+        _type: "gallery-entry",
         article,
         imageSrc: null,
         imageIndex: null,
@@ -69,6 +73,7 @@ export function explodeArticlesIntoGalleryEntries(
     if (images.length === 0) {
       // 本文画像なし → thumb fallback 用 1 entry (totalImages: 0 で明示)
       entries.push({
+        _type: "gallery-entry",
         article,
         imageSrc: null,
         imageIndex: null,
@@ -79,6 +84,7 @@ export function explodeArticlesIntoGalleryEntries(
     }
     for (let i = 0; i < images.length; i++) {
       entries.push({
+        _type: "gallery-entry",
         article,
         imageSrc: images[i]!,
         imageIndex: i,

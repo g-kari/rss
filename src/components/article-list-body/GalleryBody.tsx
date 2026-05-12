@@ -35,7 +35,10 @@ interface Props {
 }
 
 function isEntryArray(items: Article[] | GalleryEntry[]): items is GalleryEntry[] {
-  return items.length > 0 && (items[0] as GalleryEntry).article !== undefined;
+  // discriminated union (#769): _type field で Article との判別を行う。
+  // 旧実装は `article` field の存在チェックだったが、Article が将来 `article` 名の field を
+  // 持つと誤判定するリスクがあったため、明示的な discriminant 文字列に切替。
+  return items.length > 0 && (items[0] as GalleryEntry)._type === "gallery-entry";
 }
 
 /**
@@ -60,6 +63,9 @@ export default function GalleryBody({
     : galleryColumns === "auto"
       ? null
       : Number(galleryColumns);
+  // 双子 JSX (GalleryEntry[] / Article[]) は GalleryMasonry の generic <T> を items 型で確定する
+  // ために維持する。`Article[] | GalleryEntry[]` → `(Article | GalleryEntry)[]` への union widen は
+  // TypeScript で自動推論されず、JSX 統合は型 cast が増えて却って読みづらくなる (#769 で検討の結果保留)。
   const useEntries = isEntryArray(items);
   return (
     <div className="p-2 mx-auto">

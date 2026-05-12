@@ -37,6 +37,7 @@ test.describe("explodeArticlesIntoGalleryEntries — explode=false (従来挙動
     });
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
+      _type: "gallery-entry",
       article: articles[0],
       imageSrc: null,
       imageIndex: null,
@@ -44,6 +45,7 @@ test.describe("explodeArticlesIntoGalleryEntries — explode=false (従来挙動
       key: "a",
     });
     expect(result[1]).toMatchObject({
+      _type: "gallery-entry",
       article: articles[1],
       imageSrc: null,
       imageIndex: null,
@@ -70,6 +72,7 @@ test.describe("explodeArticlesIntoGalleryEntries — explode=true (画像分解)
     });
     expect(result).toHaveLength(3);
     expect(result[0]).toMatchObject({
+      _type: "gallery-entry",
       article,
       imageSrc: "img-1.jpg",
       imageIndex: 0,
@@ -77,6 +80,7 @@ test.describe("explodeArticlesIntoGalleryEntries — explode=true (画像分解)
       key: "a-0",
     });
     expect(result[1]).toMatchObject({
+      _type: "gallery-entry",
       article,
       imageSrc: "img-2.jpg",
       imageIndex: 1,
@@ -84,6 +88,7 @@ test.describe("explodeArticlesIntoGalleryEntries — explode=true (画像分解)
       key: "a-1",
     });
     expect(result[2]).toMatchObject({
+      _type: "gallery-entry",
       article,
       imageSrc: "img-3.jpg",
       imageIndex: 2,
@@ -100,6 +105,7 @@ test.describe("explodeArticlesIntoGalleryEntries — explode=true (画像分解)
     });
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
+      _type: "gallery-entry",
       article,
       imageSrc: null,
       imageIndex: null,
@@ -116,6 +122,7 @@ test.describe("explodeArticlesIntoGalleryEntries — explode=true (画像分解)
     });
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
+      _type: "gallery-entry",
       article,
       imageSrc: null,
       imageIndex: null,
@@ -185,5 +192,26 @@ test.describe("explodeArticlesIntoGalleryEntries — 型契約", () => {
     // 全 entry が同じ article reference を共有する (既読 toggle が全画像カードに反映されるため)
     expect(result[0].article).toBe(article);
     expect(result[1].article).toBe(article);
+  });
+
+  test("全 entry に discriminant `_type: 'gallery-entry'` が付与される (#769 Article との型ガード判別)", () => {
+    const a = makeArticle("a");
+    const b = makeArticle("b");
+    const result = explodeArticlesIntoGalleryEntries([a, b], {
+      explode: true,
+      prefetchedImagesByArticleId: (id) => (id === "a" ? ["x.jpg", "y.jpg"] : undefined),
+    });
+    // explode=true / 展開済 entry / placeholder entry の全パターンで _type が付与される
+    for (const entry of result) {
+      expect(entry._type).toBe("gallery-entry");
+    }
+  });
+
+  test("explode=false でも _type discriminant が付与される (#769)", () => {
+    const result = explodeArticlesIntoGalleryEntries([makeArticle("a")], {
+      explode: false,
+      prefetchedImagesByArticleId: () => undefined,
+    });
+    expect(result[0]._type).toBe("gallery-entry");
   });
 });

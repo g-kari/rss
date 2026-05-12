@@ -18,10 +18,12 @@ const GALLERY_CARD_WRAPPER_STYLE_DELETING = {
 
 /**
  * data が GalleryEntry か Article かを判別する型ガード。
- * GalleryEntry は `article` / `imageSrc` / `key` を持つが、Article は持たない。
+ * discriminated union (#769): `_type: "gallery-entry"` field で明示判別する。
+ * 旧実装は `article` field の存在チェックだったが、Article が将来 `article` 名の field を
+ * 持つと誤判定する潜在リスクがあったため、discriminant 文字列に切替。
  */
 function isGalleryEntry(data: Article | GalleryEntry): data is GalleryEntry {
-  return (data as GalleryEntry).article !== undefined;
+  return (data as GalleryEntry)._type === "gallery-entry";
 }
 
 /**
