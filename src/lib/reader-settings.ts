@@ -141,13 +141,19 @@ export const GALLERY_MIN_IMAGE_PX_DEFAULT = 0;
 // 「ギャラリー」と命名しているが現実装では全 layout に同じ値を適用する (UI 設計の
 // 簡潔さ優先、必要なら将来 layout 別に分離可能)。
 
-export type GalleryPageSize = 50 | 100 | 200 | 500;
+export type GalleryPageSize = 10 | 20 | 30 | 40 | 50 | 100 | 200 | 500;
 
-export const GALLERY_PAGE_SIZE_CYCLE: readonly GalleryPageSize[] = [50, 100, 200, 500] as const;
+export const GALLERY_PAGE_SIZE_CYCLE: readonly GalleryPageSize[] = [
+  10, 20, 30, 40, 50, 100, 200, 500,
+] as const;
 
 export const GALLERY_PAGE_SIZE_DEFAULT: GalleryPageSize = 50;
 
 export const GALLERY_PAGE_SIZE_LABELS: Record<GalleryPageSize, string> = {
+  10: "10 件",
+  20: "20 件",
+  30: "30 件",
+  40: "40 件",
   50: "50 件",
   100: "100 件",
   200: "200 件",
