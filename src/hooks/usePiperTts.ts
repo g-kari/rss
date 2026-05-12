@@ -159,11 +159,15 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     }
     const { lib, ort } = await loadPiperLib();
     const instance = await lib.initialize({
+      // HuggingFace repo 名 (`ayousanz/piper-plus-tsukuyomi-chan`) は library 内部で
+      // huggingface.co/<repo>/resolve/main/ から自動 resolve される (standard path)。
       model: voice.model,
       ort,
       // patched piper-plus (patches/piper-plus.patch) で `new Function` 経由に書き換え済の
-      // `import(url)` 経路を通すため、wasmLoader でなく wasmG2pUrl で URL を渡す
-      wasmG2pUrl: PIPER_WASM_LOADER_URL,
+      // `import(url)` 経路を通すため wasmG2pUrl で URL を渡す。同 URL は wasm-bindgen の
+      // `__wbg_init` が `new URL(bg.wasm, import.meta.url)` で相対解決するため、絶対 URL
+      // (= window.location.origin + path) に変換しておく必要がある。
+      wasmG2pUrl: new URL(PIPER_WASM_LOADER_URL, window.location.origin).toString(),
     });
     ttsInstanceRef.current = instance;
     ttsVoiceIdRef.current = voice.id;

@@ -1,6 +1,15 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
-## 2026-05-10 (latest)
+## 2026-05-12 (latest)
+
+### 激アツ新機能っ
+
+- **#761 つくよみちゃん voice で日本語自然読み上げ実装!🎙️✨** — Piper TTS engine の library を `piper-plus@0.6.0` (8 言語 + OpenJTalk 内蔵 / MIT) に置き換えて、ついに **つくよみちゃん voice (CV.夢前黎)** で記事を日本語自然読み上げできるようになったよ〜🎀 配信戦略は voice / WASM で使い分け: **piper-plus Rust phonemizer WASM (60 MiB)** は Cloudflare R2 セルフホスト (`/api/wasm/[file]`) で Workers 25 MiB 上限を回避、**voice モデル (`ayousanz/piper-plus-tsukuyomi-chan`)** は piper-plus の standard path に従って **HuggingFace から直接 fetch** (CSP `connect-src huggingface.co` は #760 で許可済)〜📦 初回再生時にブラウザにキャッシュされて 2 回目以降は瞬時〜⚡ Next.js 16 Turbopack の static analyzer が library 内部の `await import(url)` を解決できない問題は **`pnpm patch` で `new Function` 経由に書き換え** (`patches/piper-plus.patch`) で minimum invasive 対処、`pnpm.patchedDependencies` を初採用したよ〜🛡️
+- **#761 つくよみちゃんコーパスのクレジット表記対応!📜** — つくよみちゃんコーパス利用規約 (CC BY 4.0 + コーパス規約) の **「目立つ場所に十分な文字サイズで掲載」義務** と **「派生物 (出力音声) の二次利用制限のユーザー告知」義務** を満たすため、**設定 → 表示 → 読み上げ音声** に専用クレジット欄を追加〜🎀 公式 URL リンク (`https://tyc.rei-yumesaki.net/material/corpus/`) + 「出力音声の禁止用途」(批判・攻撃 / 政治的賛同呼びかけ / 成人向け非ゾーニング公開 / 他者二次素材としての再配布) も明示〜🛡️ README.md のライセンス節にも音声素材ライセンスを追記〜📚
+
+### バグ修正っ
+
+- **#761 piper-plus model URL 誤解釈の修正 (HF 直接配信に切替)!💡** — `PIPER_PLUS_VOICES` で渡していた相対 URL (`/api/piper-voice/tsukuyomi.onnx`) を piper-plus 内部が `huggingface.co/api/models/<value>` として解決を試みる誤動作で 404 になっていた問題を修正〜🎯 case A: 絶対 URL 変換ではなく、case B: piper-plus の standard design に従って **HuggingFace repo 名 (`ayousanz/piper-plus-tsukuyomi-chan`) を直接 model option に渡す** 方針に変更 → library 内部の resolver が `huggingface.co/<repo>/resolve/main/` から自動取得するように〜🛡️
 
 ### バグ修正っ (監査エージェント発見 2 件一括対応)
 

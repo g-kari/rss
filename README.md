@@ -548,6 +548,26 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 | marked                  | MIT          |
 | masonic                 | MIT          |
 | @tanstack/react-virtual | MIT          |
+| piper-plus              | MIT          |
+| @piper-plus/g2p         | MIT          |
+| onnxruntime-web         | MIT          |
+
+### 音声素材ライセンス (TTS engine: Piper)
+
+Piper TTS engine の voice として **つくよみちゃんコーパス** (CC BY 4.0 + コーパス利用規約) を採用しています。
+
+- **音声合成には、フリー素材キャラクター「つくよみちゃん」の音声データを使用しています。**
+- **つくよみちゃんコーパス（CV.夢前黎）**
+- 公式: <https://tyc.rei-yumesaki.net/material/corpus/>
+
+出力音声を以下の用途に使用することは禁止されています (コーパス利用規約に基づく):
+
+- 批判・攻撃
+- 政治的主張への賛同呼びかけ
+- 成人向け作品でゾーニングなしの公開
+- 他者の二次素材としての再配布
+
+詳細はアプリ内「設定 → 表示 → 読み上げ音声」のクレジット欄、および公式規約をご確認ください。
 
 ### デザイン参考
 
