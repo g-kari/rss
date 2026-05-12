@@ -257,6 +257,25 @@ describe("usePiperTts (#674 Phase 2a-part2)", () => {
     expect(audio.volume).toBe(0.0);
   });
 
+  it("enabled=false なら voices fetch も speak も skip (#674 Phase 2b リソース節約)", async () => {
+    const piperMod = await import("@mintplex-labs/piper-tts-web");
+    const voicesMock = vi.mocked(piperMod.voices);
+    const predictMock = vi.mocked(piperMod.predict);
+    voicesMock.mockClear();
+    predictMock.mockClear();
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts({ enabled: false }));
+    // voices() は呼ばれない
+    await new Promise((r) => setTimeout(r, 50));
+    expect(voicesMock).not.toHaveBeenCalled();
+    expect(result.current.voices).toEqual([]);
+    // speak() も early return
+    act(() => result.current.setVoiceUri("piper:en_US-amy-medium"));
+    act(() => result.current.speak("hello"));
+    expect(predictMock).not.toHaveBeenCalled();
+    expect(createdAudios.length).toBe(0);
+  });
+
   it("voices() が throw しても hook がクラッシュせず voices=[] のまま", async () => {
     const piperMod = await import("@mintplex-labs/piper-tts-web");
     vi.mocked(piperMod.voices).mockRejectedValueOnce(new Error("offline"));

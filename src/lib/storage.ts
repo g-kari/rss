@@ -58,6 +58,7 @@ export const STORAGE_KEYS = {
   TTS_RATE: "tts-rate",
   TTS_VOICE_URI: "rss-tts-voice-uri",
   TTS_VOLUME: "rss-tts-volume",
+  TTS_ENGINE: "rss-tts-engine",
   OBSIDIAN_VAULT: "rss-obsidian-vault",
   LINE_HEIGHT: "rss-line-height",
   CONTENT_WIDTH: "rss-content-width",

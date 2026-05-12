@@ -84,6 +84,17 @@ export interface TtsAdapter {
   resume: () => void;
   /** 停止・リセット */
   stop: () => void;
+  /**
+   * engine を切り替える (UserSettingsModal で expose 用、optional)。
+   * App.tsx で composition 経由で注入される。`useSpeechSynthesis` / `usePiperTts` 単体では undefined。
+   * #674 Phase 2b で導入。
+   */
+  setEngine?: (engine: TtsEngineId) => void;
+  /**
+   * 当該実行環境で利用可能な engine 一覧 (UI の engine 切替メニューで列挙する)。
+   * App.tsx で composition 経由で注入される。
+   */
+  availableEngines?: readonly TtsEngineId[];
 }
 
 /**

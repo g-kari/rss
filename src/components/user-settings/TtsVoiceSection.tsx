@@ -13,10 +13,23 @@ import { groupVoicesByLang } from "../../lib/tts-voice";
  * Phase 2 (#674) で Piper wasm adapter が追加されたら、engine 切替 UI もここに増やす予定。
  */
 export default function TtsVoiceSection() {
-  const { engine, supported, voices, voiceUri, setVoiceUri, volume, setVolume } = useTtsAdapter();
+  const {
+    engine,
+    supported,
+    voices,
+    voiceUri,
+    setVoiceUri,
+    volume,
+    setVolume,
+    setEngine,
+    availableEngines,
+  } = useTtsAdapter();
   // 記事言語ヒント (document.documentElement.lang) で voice 並び順を最適化
   const docLang = typeof document !== "undefined" ? document.documentElement.lang || null : null;
   const voiceGroups = useMemo(() => groupVoicesByLang(voices, docLang), [voices, docLang]);
+
+  // engine 切替 UI は #674 Phase 2b で App.tsx が `setEngine` を注入したときのみ表示
+  const canSwitchEngine = setEngine !== undefined && (availableEngines?.length ?? 0) > 1;
 
   if (!supported) {
     return (
@@ -25,8 +38,19 @@ export default function TtsVoiceSection() {
           読み上げ音声
         </span>
         <span className="text-[12px] text-text-muted">
-          このブラウザは Web Speech API に対応していないため、読み上げ機能は利用できませんわ。
+          {engine === "piper"
+            ? "Piper wasm engine は OPFS 非対応ブラウザでは利用できませんわ。"
+            : "このブラウザは Web Speech API に対応していないため、読み上げ機能は利用できませんわ。"}
         </span>
+        {canSwitchEngine && setEngine && (
+          <button
+            type="button"
+            onClick={() => setEngine(engine === "piper" ? "web-speech" : "piper")}
+            className="self-start text-[12px] bg-surface-elevated border border-border-default rounded px-3 py-1.5 text-text-default hover:border-text-muted transition-colors"
+          >
+            {engine === "piper" ? "ブラウザ標準に切替" : "Piper に切替"}
+          </button>
+        )}
       </div>
     );
   }
@@ -38,10 +62,30 @@ export default function TtsVoiceSection() {
       </span>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[12px] font-medium text-text-default">エンジン</span>
-        <span className="text-[12px] text-text-soft">
-          {engine === "web-speech" ? "ブラウザ標準 (Web Speech API)" : engine}
-        </span>
+        <label htmlFor="tts-engine-select" className="text-[12px] font-medium text-text-default">
+          エンジン
+        </label>
+        {canSwitchEngine && setEngine ? (
+          <select
+            id="tts-engine-select"
+            value={engine}
+            onChange={(e) => setEngine(e.target.value as "web-speech" | "piper")}
+            className="text-[12px] bg-surface-elevated border border-border-default rounded px-2 py-1.5 text-text-default hover:border-text-muted focus:outline-none focus:border-text-strong transition-colors duration-200"
+          >
+            <option value="web-speech">ブラウザ標準 (Web Speech API)</option>
+            <option value="piper">Piper (wasm: 自然な日本語読み上げ / モデル DL 要)</option>
+          </select>
+        ) : (
+          <span className="text-[12px] text-text-soft">
+            {engine === "web-speech" ? "ブラウザ標準 (Web Speech API)" : engine}
+          </span>
+        )}
+        {engine === "piper" && (
+          <span className="text-[11px] text-text-muted">
+            初回再生時にモデル (数十 MB) がブラウザ OPFS に DL されますわ。つくよみちゃん等の voice
+            は公式 huggingface から自動取得されます。
+          </span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">

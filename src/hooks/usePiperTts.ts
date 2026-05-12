@@ -63,7 +63,17 @@ function loadPiperLib(): Promise<PiperLib> {
   return piperLibPromise;
 }
 
-export function usePiperTts(): TtsAdapter {
+export interface UsePiperTtsOptions {
+  /**
+   * false の間は voices fetch / speak / dynamic import を全て skip し、リソース消費を抑える。
+   * App.tsx で engine 設定値 === "piper" のときだけ true を渡すことで、Web Speech engine
+   * 選択中は HuggingFace fetch / wasm load を発生させない (#674 Phase 2b)。default = true。
+   */
+  enabled?: boolean;
+}
+
+export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
+  const enabled = options?.enabled ?? true;
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [endedCount, setEndedCount] = useState(0);
@@ -96,9 +106,10 @@ export function usePiperTts(): TtsAdapter {
     return true;
   }, []);
 
-  // voice 一覧を mount 時に取得 (lazy)
+  // voice 一覧を mount 時に取得 (lazy)。enabled=false の間は skip (リソース節約)。
   useEffect(() => {
     if (!supported) return;
+    if (!enabled) return;
     let cancelled = false;
     (async () => {
       try {
@@ -120,7 +131,7 @@ export function usePiperTts(): TtsAdapter {
     return () => {
       cancelled = true;
     };
-  }, [supported]);
+  }, [supported, enabled]);
 
   const clearBoundaryTimer = useCallback(() => {
     if (boundaryTimerRef.current !== null) {
@@ -161,6 +172,7 @@ export function usePiperTts(): TtsAdapter {
   const speak = useCallback(
     (text: string, onBoundary?: (charIndex: number) => void) => {
       if (!supported) return;
+      if (!enabled) return;
       currentTextRef.current = text;
       onBoundaryRef.current = onBoundary ?? null;
       const voiceId = extractPiperVoiceId(voiceUriRef.current);
@@ -241,7 +253,16 @@ export function usePiperTts(): TtsAdapter {
         }
       })();
     },
-    [supported, releaseAudio, resetState, clearBoundaryTimer, rateRef, voiceUriRef, volumeRef],
+    [
+      supported,
+      enabled,
+      releaseAudio,
+      resetState,
+      clearBoundaryTimer,
+      rateRef,
+      voiceUriRef,
+      volumeRef,
+    ],
   );
 
   const pause = useCallback(() => {

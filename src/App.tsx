@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppOverlays } from "./components/AppOverlays";
 import { AppSidebarPane } from "./components/AppSidebarPane";
@@ -60,6 +60,8 @@ import AppProviders from "./components/AppProviders";
 import { useReaderSettingsValue } from "./hooks/useReaderSettingsValue";
 import { type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { useSpeechSynthesis } from "./hooks/useSpeechSynthesis";
+import { usePiperTts } from "./hooks/usePiperTts";
+import { useTtsEngineSetting } from "./hooks/useTtsEngineSetting";
 import { useToastState } from "./hooks/useToast";
 import { AppLandingState } from "./components/AppLandingState";
 
@@ -136,7 +138,20 @@ export default function App() {
   // #675 Phase 1b: TTS adapter を 1 箇所で生成して Provider 経由で配下に注入。
   // 配下で `useTtsAdapter()` を呼ぶ全 consumer (記事ヘッダー TTS / 設定モーダル voice 選択) で
   // 同じ isPlaying / rate / voice state を共有する。
-  const ttsAdapter = useSpeechSynthesis();
+  // #674 Phase 2b: TTS engine 切替を localStorage 設定値で動的に行う。
+  // 両 engine の hook を呼ぶが、Piper 側は enabled=false で voices fetch / wasm load を skip しリソース節約。
+  const { engine: ttsEngine, setEngine: setTtsEngine } = useTtsEngineSetting();
+  const speechSynAdapter = useSpeechSynthesis();
+  const piperAdapter = usePiperTts({ enabled: ttsEngine === "piper" });
+  const baseTtsAdapter = ttsEngine === "piper" ? piperAdapter : speechSynAdapter;
+  const ttsAdapter = useMemo(
+    () => ({
+      ...baseTtsAdapter,
+      setEngine: setTtsEngine,
+      availableEngines: ["web-speech", "piper"] as const,
+    }),
+    [baseTtsAdapter, setTtsEngine],
+  );
   const ttsSupported = ttsAdapter.supported;
 
   const {
