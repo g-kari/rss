@@ -14,6 +14,19 @@ index 885d291d4881396ae70d5d8c3b43d3081ad12122..f73d7f90a7fb368b9abdd0432c3bb21a
              },
            );
            // Route all languages through WASM
+@@ -850,7 +855,11 @@ export class PiperPlus {
+       feeds.speaker_embedding_mask = new ort.Tensor(
+         'int64',
+         new BigInt64Array([1n]),
+-        [1]
++        // PATCHED (rss-reader #761): upstream の speaker_embedding_mask は rank 1 (shape `[1]`) で
++        // 作成されるが、tsukuyomi-chan などの WavLM Prosody base 派生 model は rank 2 (shape `[1, 1]`)
++        // を期待する。runtime error: "Invalid rank for input: speaker_embedding_mask Got: 1 Expected: 2"
++        // を解消するため shape を [1, 1] に変更。
++        [1, 1]
+       );
+     }
+
 diff --git a/src/phonemizer/rust-wasm-adapter.js b/src/phonemizer/rust-wasm-adapter.js
 index 33bcff9b1543dc8d54d9d7e7021c8e28ab84de31..cf01c57690a7318d94cb0efd69141f9c62284c87 100644
 --- a/src/phonemizer/rust-wasm-adapter.js
