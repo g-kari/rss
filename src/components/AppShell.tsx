@@ -122,6 +122,8 @@ export default function AppShell({
     onChangeGalleryMinImagePx,
     galleryAutoScrollSpeed,
     onChangeGalleryAutoScrollSpeed,
+    galleryPageSize,
+    onChangeGalleryPageSize,
     contentWidth,
     onChangeContentWidth,
     imageDlFolder,
@@ -344,6 +346,8 @@ export default function AppShell({
     onChangeGalleryMinImagePx,
     galleryAutoScrollSpeed,
     onChangeGalleryAutoScrollSpeed,
+    galleryPageSize,
+    onChangeGalleryPageSize,
     deduplicateByLink,
     toggleDeduplicateByLink,
     ttlDays,
@@ -491,6 +495,7 @@ export default function AppShell({
     galleryAutoReadIds,
     deduplicateByLink,
     feedEngagementOrder: digestFeedOrder,
+    pageSize: galleryPageSize,
   });
 
   const {

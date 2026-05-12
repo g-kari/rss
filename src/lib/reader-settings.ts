@@ -133,3 +133,33 @@ export const GALLERY_MIN_IMAGE_PX_MIN = 0;
 export const GALLERY_MIN_IMAGE_PX_MAX = 500;
 export const GALLERY_MIN_IMAGE_PX_STEP = 10;
 export const GALLERY_MIN_IMAGE_PX_DEFAULT = 0;
+
+// ===== ギャラリー 1 ページの記事件数 (#714 関連) =====
+// useArticlePagination の chunk サイズ。ユーザーが scroll で `loadMore` する度に
+// `+pageSize` 件 visible に追加される。gallery layout で多数のサムネを一度に表示
+// したいケースのため設定可能化。
+// 「ギャラリー」と命名しているが現実装では全 layout に同じ値を適用する (UI 設計の
+// 簡潔さ優先、必要なら将来 layout 別に分離可能)。
+
+export type GalleryPageSize = 50 | 100 | 200 | 500;
+
+export const GALLERY_PAGE_SIZE_CYCLE: readonly GalleryPageSize[] = [50, 100, 200, 500] as const;
+
+export const GALLERY_PAGE_SIZE_DEFAULT: GalleryPageSize = 50;
+
+export const GALLERY_PAGE_SIZE_LABELS: Record<GalleryPageSize, string> = {
+  50: "50 件",
+  100: "100 件",
+  200: "200 件",
+  500: "500 件",
+};
+
+/** 不正値 / null → デフォルトに fallback する parser */
+export function parseGalleryPageSize(raw: string | null): GalleryPageSize {
+  if (!raw) return GALLERY_PAGE_SIZE_DEFAULT;
+  const n = Number(raw);
+  if (GALLERY_PAGE_SIZE_CYCLE.includes(n as GalleryPageSize)) {
+    return n as GalleryPageSize;
+  }
+  return GALLERY_PAGE_SIZE_DEFAULT;
+}

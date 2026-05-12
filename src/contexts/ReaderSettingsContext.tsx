@@ -9,6 +9,7 @@ import type {
   ContentWidth,
   GalleryColumns,
   GalleryCardSize,
+  GalleryPageSize,
 } from "../lib/reader-settings";
 import type { GalleryAutoScrollSpeed } from "../lib/gallery-autoscroll";
 
@@ -60,6 +61,13 @@ export interface ReaderSettings {
    */
   galleryAutoScrollSpeed: GalleryAutoScrollSpeed;
   onChangeGalleryAutoScrollSpeed: (v: GalleryAutoScrollSpeed) => void;
+  /**
+   * #714 関連: ギャラリー 1 ページの記事件数 (`useArticlePagination` の chunk サイズ)。
+   * 50 / 100 / 200 / 500 から選択可能。default は 50。
+   * UI 設計の簡潔さ優先で全 layout に同じ値を適用する (将来 layout 別に分離可能)。
+   */
+  galleryPageSize: GalleryPageSize;
+  onChangeGalleryPageSize: (v: GalleryPageSize) => void;
   deduplicateByLink: boolean;
   toggleDeduplicateByLink: () => void;
   ttlDays: number | null;

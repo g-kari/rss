@@ -15,6 +15,9 @@ import {
   GALLERY_MIN_IMAGE_PX_MIN,
   GALLERY_MIN_IMAGE_PX_MAX,
   GALLERY_MIN_IMAGE_PX_STEP,
+  GALLERY_PAGE_SIZE_CYCLE,
+  GALLERY_PAGE_SIZE_LABELS,
+  type GalleryPageSize,
 } from "../../lib/reader-settings";
 import {
   FONT_SIZE_CYCLE,
@@ -58,6 +61,9 @@ interface DisplayTabPanelProps {
   // Gallery auto-scroll (#690)
   galleryAutoScrollSpeed: GalleryAutoScrollSpeed;
   onChangeGalleryAutoScrollSpeed: (v: GalleryAutoScrollSpeed) => void;
+  // Gallery page size (#714 関連): 1 ページの記事件数 (50 / 100 / 200 / 500)
+  galleryPageSize: GalleryPageSize;
+  onChangeGalleryPageSize: (v: GalleryPageSize) => void;
   // Auto read
   autoReadEnabled: boolean;
   toggleAutoRead: () => void;
@@ -101,6 +107,8 @@ export default function DisplayTabPanel({
   onChangeGalleryMinImagePx,
   galleryAutoScrollSpeed,
   onChangeGalleryAutoScrollSpeed,
+  galleryPageSize,
+  onChangeGalleryPageSize,
   autoReadEnabled,
   toggleAutoRead,
   autoReadThreshold,
@@ -251,6 +259,21 @@ export default function DisplayTabPanel({
         <p className="text-[11px] text-text-muted pl-28 -mt-2">
           ギャラリービュー表示中、自動でスクロール / スライドショー再生しますわ。手動でスクロール
           (ホイール / タッチ) すると OFF に戻りますの。
+        </p>
+
+        <SettingRow label="1ページの件数">
+          <SegmentGroup
+            options={GALLERY_PAGE_SIZE_CYCLE.map((v) => ({
+              value: v,
+              label: GALLERY_PAGE_SIZE_LABELS[v],
+            }))}
+            value={galleryPageSize}
+            onChange={onChangeGalleryPageSize}
+            ariaLabel="1 ページの記事件数"
+          />
+        </SettingRow>
+        <p className="text-[11px] text-text-muted pl-28 -mt-2">
+          一度に表示する記事の件数ですわ。多くするとスクロールでまとめて読めますが、初回描画が重くなりますの。
         </p>
 
         <SettingRow label="記事保持期間">

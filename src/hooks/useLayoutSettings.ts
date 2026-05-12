@@ -10,9 +10,11 @@ import {
   GALLERY_MIN_IMAGE_PX_DEFAULT,
   GALLERY_MIN_IMAGE_PX_MAX,
   GALLERY_MIN_IMAGE_PX_MIN,
+  parseGalleryPageSize,
   type ContentWidth,
   type GalleryColumns,
   type GalleryCardSize,
+  type GalleryPageSize,
 } from "../lib/reader-settings";
 import { useStoredSetting } from "./useStoredSetting";
 import { useState, useCallback } from "react";
@@ -38,6 +40,8 @@ const loadGalleryColumns = () =>
 // 純粋関数化済み (gallery-autoscroll.spec.ts でテスト網羅)。
 const loadGalleryAutoScrollSpeed = (): GalleryAutoScrollSpeed =>
   parseGalleryAutoScrollSpeed(storageGet(STORAGE_KEYS.GALLERY_AUTO_SCROLL_SPEED));
+const loadGalleryPageSize = (): GalleryPageSize =>
+  parseGalleryPageSize(storageGet(STORAGE_KEYS.GALLERY_PAGE_SIZE));
 const loadGalleryColumnsFocus = () =>
   loadStoredEnum(
     STORAGE_KEYS.GALLERY_COLUMNS_FOCUS,
@@ -111,6 +115,13 @@ export function useLayoutSettings() {
       loadGalleryAutoScrollSpeed,
       STORAGE_KEYS.GALLERY_AUTO_SCROLL_SPEED,
     );
+  // GalleryPageSize は number union のため `useStoredSetting<T extends string>` は使えず、
+  // 個別に useState + useCallback + storageSet で永続化する。
+  const [galleryPageSize, setGalleryPageSize] = useState<GalleryPageSize>(loadGalleryPageSize);
+  const onChangeGalleryPageSize = useCallback((v: GalleryPageSize) => {
+    setGalleryPageSize(v);
+    storageSet(STORAGE_KEYS.GALLERY_PAGE_SIZE, String(v));
+  }, []);
 
   return {
     layout,
@@ -137,6 +148,8 @@ export function useLayoutSettings() {
     onChangeImageDlFolderNsfw,
     galleryAutoScrollSpeed,
     onChangeGalleryAutoScrollSpeed,
+    galleryPageSize,
+    onChangeGalleryPageSize,
   } as const;
 }
 

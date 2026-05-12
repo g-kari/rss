@@ -111,6 +111,8 @@ interface Options extends FeedSelectionOptions, ReadStateOptions, ContentFilterO
   articles: Article[];
   feeds?: Feed[];
   feedEngagementOrder?: string[];
+  /** 1 ページの件数 (`useArticlePagination` chunk サイズ)。省略時は 50 */
+  pageSize?: number;
 }
 
 export function useFilteredArticles({
@@ -141,6 +143,7 @@ export function useFilteredArticles({
   galleryAutoReadIds,
   deduplicateByLink = true,
   feedEngagementOrder,
+  pageSize,
 }: Options) {
   const [page, setPage] = useState(1);
   const resetPage = useCallback(() => setPage(1), []);
@@ -487,6 +490,7 @@ export function useFilteredArticles({
     deduplicated,
     page,
     setPage,
+    pageSize,
   );
 
   return {

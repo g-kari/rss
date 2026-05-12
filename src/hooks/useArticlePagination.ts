@@ -10,7 +10,8 @@ import type { Article } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { shouldEagerLoad } from "../lib/pagination-eager-load";
 
-const PAGE_SIZE = 50;
+/** デフォルトの 1 ページ件数 (`useFilteredArticles` 経由で UserSettings の値を渡すと上書き) */
+const DEFAULT_PAGE_SIZE = 50;
 /** Maximum consecutive eager loads to prevent runaway loops */
 const MAX_EAGER_LOADS = 20;
 
@@ -31,6 +32,7 @@ export function useArticlePagination(
   filtered: Article[],
   page: number,
   setPage: Dispatch<SetStateAction<number>>,
+  pageSize: number = DEFAULT_PAGE_SIZE,
 ) {
   const loadMore = useCallback(() => {
     setPage((p) => p + 1);
@@ -41,14 +43,17 @@ export function useArticlePagination(
     setServerLoadCount((c) => c + 1);
   }, []);
 
+  const pageSizeRef = useSyncedRef(pageSize);
   const filteredRef = useSyncedRef(filtered);
   useEffect(() => {
     if (serverLoadCount === 0) return;
-    setPage((prev) => Math.max(prev, Math.ceil(filteredRef.current.length / PAGE_SIZE) || 1));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- filteredRef は useSyncedRef の安定参照のため deps 不要
+    setPage((prev) =>
+      Math.max(prev, Math.ceil(filteredRef.current.length / pageSizeRef.current) || 1),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs は useSyncedRef の安定参照のため deps 不要
   }, [serverLoadCount, setPage]);
 
-  const visible = filtered.slice(0, page * PAGE_SIZE);
+  const visible = filtered.slice(0, page * pageSize);
   const hasMore = visible.length < filtered.length;
 
   const sentinelRef = useRef<HTMLDivElement>(null);
