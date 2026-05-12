@@ -364,6 +364,57 @@ const stop = () => {
 
 主な使用箇所: `usePiperTts` (#766) — `piper-plus@0.6.0` の `AudioResult.play()` が内部 BufferSourceNode を closure に握って外部 stop 不能 → `audio.samples` / `audio.sampleRate` を取り出して自前 BufferSourceNode 再生に切替、`audioSourceRef` で source 保持、`releaseAudioSource()` で stop + disconnect 集約
 
+### 派生ケース: ライブラリの fundamental 制限 (integer overflow / max length 等) は上流入力を分割して逐次処理で回避する
+
+ライブラリ内部の数値型上限 (ONNX SafeInt int32 overflow / WebGL max texture size / WebAssembly memory 上限 等) は **ライブラリ側で解決不能** な fundamental 制限。ライブラリの戻り値や API 設計を変えても回避できない場合、**hook 側で input を分割して逐次処理** することで制限を構造的に回避する。
+
+```typescript
+// アンチパターン: 一括 input でライブラリの制限に当たる
+async function speak(text: string) {
+  const audio = await piperLib.synthesize(text); // ← 長文で SafeInt overflow
+  await playAudio(audio);
+}
+
+// 修正パターン: splitter で input を分割 → 逐次処理
+async function speak(text: string, onBoundary?: (idx: number) => void) {
+  const chunks = splitIntoSentences(text); // 既存純粋関数を流用
+  if (chunks.length === 0) {
+    setEndedCount((c) => c + 1); // 空入力 silent skip + auto-advance 継続
+    return;
+  }
+  const token = ++playTokenRef.current;
+  for (let i = 0; i < chunks.length; i++) {
+    if (token !== playTokenRef.current) return; // stop で chain 中断
+    const chunk = chunks[i]!;
+    const audio = await piperLib.synthesize(chunk.text);
+    if (token !== playTokenRef.current) return;
+    // boundary は chunk.start 累積 offset で全体 charIndex を計算
+    startBoundaryTimer(chunk.start);
+    await playAudio(audio);
+  }
+  // 全 chunks 完了で 1 回だけ natural-end 発火
+  setEndedCount((c) => c + 1);
+  resetPlaybackState();
+}
+```
+
+**How to apply**: ライブラリの fundamental 制限 (integer overflow / max length / memory cap 等) を回避したいとき (ライブラリ作者で解決不能な制限は、入力分割という consumer 側の制御で回避する以外に方法がない):
+
+1. **既存の純粋関数 splitter があるか grep** (`splitIntoSentences` / `chunkArray` / `paginate` 等) → あれば流用、無ければ新規切り出し
+2. **空配列ガード**: splitter が空配列を返すケース (空入力 / 空白のみ) は **silent skip + natural-end 発火** で caller の auto-advance を継続させる
+3. **token check で chunk chain 中断**: stop() / 別 speak 介入時に `if (token !== playTokenRef.current) return;` を chunk loop の境界 (loop 先頭 / synthesize 後 / playback 後) で実行
+4. **boundary callback の累積 offset**: chunk 内の local charIndex に `chunk.start` を加算して全体 charIndex で発火 (`splitIntoSentences` の `Sentence.start` のような offset 情報を活用)
+5. **完了通知は最終 chunk のみ**: 各 chunk で発火させると caller の auto-advance が中間で誤起動。loop 抜けた後で 1 回だけ `endedCount++`
+6. **エラー時は残 chunks 中止**: synthesize / playback fail で `lastError` set + `resetPlaybackState()` + early return
+
+**反例 (上流分割が不要なケース)**:
+
+- ライブラリが **streaming API を提供** している (`synthesizeStreaming` / `fetch with stream` 等) → library 側 chunk 化を使う
+- 制限が **稀にしか発生しない** (例: 10 万文字超のみ) + UX 影響軽微 → 入力 truncate + warning toast で十分
+- 制限が **library 側で fix される予定** (next release で対応予告) → 暫定 truncate で待つ判断もあり
+
+主な使用箇所: `usePiperTts` (#767) — piper-plus の `tts.synthesize(text)` で長文記事で ONNX SafeInt int32 overflow → `splitIntoSentences` で text を sentence chunks に分割 → 各 chunk を順次 synthesize + 自前 BufferSource 再生、boundary は `chunk.start` 累積 offset で全体 charIndex、最終 chunk 完了で endedCount++
+
 ## モード OFF 時に進行中の副作用を停止する
 
 state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
