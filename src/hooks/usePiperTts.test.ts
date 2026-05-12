@@ -3,6 +3,11 @@
  *
  * piper-plus と onnxruntime-web は dynamic import なので `vi.mock` で全 API を差し替える
  * (実際の wasm を test 環境で load させないため必須)。
+ *
+ * #766 修正: piper-plus AudioResult.play() を使わず、自前で AudioContext + BufferSourceNode で
+ * 再生する設計に変更。テストも `playMock` → `class MockAudioContext` (BufferSourceNode の
+ * start / onended を持つ) の mock に切替。class 形式 mock は `react-state-ref.md` の派生ケース
+ * 「`new Ctor()` で呼ばれるブラウザ API は class 形式で mock」に準拠。
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -10,7 +15,6 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 const synthesizeMock = vi.fn();
 const synthesizeWithCloningMock = vi.fn();
 const disposeMock = vi.fn();
-const playMock = vi.fn(() => Promise.resolve());
 const initializeMock = vi.fn();
 
 vi.mock("piper-plus", () => ({
@@ -23,13 +27,103 @@ vi.mock("onnxruntime-web", () => ({
   env: { wasm: { wasmPaths: "" } },
 }));
 
+/**
+ * BufferSourceNode の mock: start() で onended を非同期発火させて natural-end 経路を再現。
+ * stop() 呼出後は onended が null に差し替えられる前提なので発火しない。
+ */
+type MockSource = {
+  buffer: AudioBuffer | null;
+  onended: (() => void) | null;
+  connect: ReturnType<typeof vi.fn>;
+  disconnect: ReturnType<typeof vi.fn>;
+  start: ReturnType<typeof vi.fn>;
+  stop: ReturnType<typeof vi.fn>;
+};
+
+let createdSources: MockSource[] = [];
+let startErrorOnce: Error | null = null;
+/**
+ * true なら start() は natural-end (`source.onended`) を発火させない。
+ * stop() の介入テストで race を避けるためのフラグ (stop 時に明示的に true 化)。
+ */
+let suppressNaturalEnd = false;
+
+class MockAudioContext {
+  state: "running" | "suspended" | "closed" = "running";
+  destination = {} as AudioDestinationNode;
+
+  constructor() {
+    /* no-op */
+  }
+
+  createBuffer(_ch: number, length: number, sampleRate: number): AudioBuffer {
+    return {
+      length,
+      sampleRate,
+      duration: length / sampleRate,
+      numberOfChannels: 1,
+      copyToChannel: vi.fn(),
+      copyFromChannel: vi.fn(),
+      getChannelData: vi.fn(() => new Float32Array(length)),
+    } as unknown as AudioBuffer;
+  }
+
+  createBufferSource(): AudioBufferSourceNode {
+    const source: MockSource = {
+      buffer: null,
+      onended: null,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      start: vi.fn(() => {
+        if (startErrorOnce) {
+          const err = startErrorOnce;
+          startErrorOnce = null;
+          throw err;
+        }
+        if (suppressNaturalEnd) return;
+        // natural-end を queueMicrotask で即時非同期発火
+        queueMicrotask(() => {
+          source.onended?.();
+        });
+      }),
+      stop: vi.fn(),
+    };
+    createdSources.push(source);
+    return source as unknown as AudioBufferSourceNode;
+  }
+
+  createGain(): GainNode {
+    return {
+      gain: { value: 1 },
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    } as unknown as GainNode;
+  }
+
+  resume() {
+    this.state = "running";
+    return Promise.resolve();
+  }
+
+  suspend() {
+    this.state = "suspended";
+    return Promise.resolve();
+  }
+
+  close() {
+    this.state = "closed";
+    return Promise.resolve();
+  }
+}
+
 function resetMocks() {
   initializeMock.mockReset();
   synthesizeMock.mockReset();
   synthesizeWithCloningMock.mockReset();
   disposeMock.mockReset();
-  playMock.mockReset();
-  playMock.mockImplementation(() => Promise.resolve());
+  createdSources = [];
+  startErrorOnce = null;
+  suppressNaturalEnd = false;
 
   initializeMock.mockImplementation(async () => ({
     synthesize: (...args: unknown[]) => synthesizeMock(...args),
@@ -37,7 +131,8 @@ function resetMocks() {
     dispose: disposeMock,
   }));
   const audioFactory = (text: string) => ({
-    play: playMock,
+    // play は使われない (自前 BufferSourceNode 再生に切替)
+    play: vi.fn(() => Promise.resolve()),
     duration: text.length * 0.1,
     sampleRate: 22050,
     samples: new Float32Array(text.length * 100),
@@ -47,15 +142,16 @@ function resetMocks() {
 }
 
 function setupBrowserMocks() {
-  // AudioContext 存在判定 (hook の supported 判定で参照)
-  // 実体は使わない (piper-plus 内部で AudioContext を使うが、play() は mock 化済み)
-  if (typeof globalThis.AudioContext === "undefined") {
-    Object.defineProperty(globalThis, "AudioContext", { value: class {}, configurable: true });
-  }
+  Object.defineProperty(globalThis, "AudioContext", {
+    value: MockAudioContext,
+    configurable: true,
+    writable: true,
+  });
 }
 
-describe("usePiperTts (#761 piper-plus)", () => {
+describe("usePiperTts (#761 piper-plus / #766 自前 BufferSource 再生)", () => {
   beforeEach(() => {
+    vi.resetModules(); // module-level singleton AudioContext / piperLibPromise を毎回 reset
     resetMocks();
     setupBrowserMocks();
   });
@@ -102,13 +198,14 @@ describe("usePiperTts (#761 piper-plus)", () => {
     expect(initializeMock).not.toHaveBeenCalled();
   });
 
-  it("speak() で initialize → synthesize → play が順に呼ばれる (tsukuyomi は voice cloning path)", async () => {
+  it("speak() で initialize → synthesize → BufferSource.start が順に呼ばれる (tsukuyomi は voice cloning path)", async () => {
     const { usePiperTts } = await import("./usePiperTts");
     const { result } = renderHook(() => usePiperTts());
     act(() => result.current.setVoiceUri("piper:tsukuyomi"));
     act(() => result.current.speak("こんにちは"));
     await waitFor(() => {
-      expect(playMock).toHaveBeenCalled();
+      expect(createdSources.length).toBeGreaterThan(0);
+      expect(createdSources[0].start).toHaveBeenCalled();
     });
     expect(initializeMock).toHaveBeenCalledTimes(1);
     // tsukuyomi は requiresSpeakerEmbedding: true → synthesizeWithVoiceCloning が呼ばれる
@@ -116,7 +213,6 @@ describe("usePiperTts (#761 piper-plus)", () => {
     expect(synthesizeMock).not.toHaveBeenCalled();
     const callArgs = synthesizeWithCloningMock.mock.calls[0];
     expect(callArgs[0]).toBe("こんにちは");
-    // 第 2 引数は Float32Array(256) zero-fill
     expect(callArgs[1]).toBeInstanceOf(Float32Array);
     expect((callArgs[1] as Float32Array).length).toBe(256);
     expect((callArgs[1] as Float32Array).every((v) => v === 0)).toBe(true);
@@ -128,9 +224,7 @@ describe("usePiperTts (#761 piper-plus)", () => {
     const { result } = renderHook(() => usePiperTts());
     act(() => result.current.setVoiceUri("piper:css10-ja"));
     act(() => result.current.speak("テスト"));
-    await waitFor(() => {
-      expect(playMock).toHaveBeenCalled();
-    });
+    await waitFor(() => expect(createdSources.length).toBeGreaterThan(0));
     expect(synthesizeMock).toHaveBeenCalledTimes(1);
     expect(synthesizeWithCloningMock).not.toHaveBeenCalled();
     expect(synthesizeMock).toHaveBeenCalledWith(
@@ -144,13 +238,13 @@ describe("usePiperTts (#761 piper-plus)", () => {
     const { result } = renderHook(() => usePiperTts());
     act(() => result.current.setVoiceUri("piper:tsukuyomi"));
     act(() => result.current.speak("a"));
-    await waitFor(() => expect(playMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.endedCount).toBe(1));
     act(() => result.current.speak("b"));
-    await waitFor(() => expect(playMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.endedCount).toBe(2));
     expect(initializeMock).toHaveBeenCalledTimes(1);
   });
 
-  it("play() resolve 後に endedCount++ + isPlaying=false", async () => {
+  it("natural end (source.onended) で endedCount++ + isPlaying=false", async () => {
     const { usePiperTts } = await import("./usePiperTts");
     const { result } = renderHook(() => usePiperTts());
     act(() => result.current.setVoiceUri("piper:tsukuyomi"));
@@ -160,7 +254,6 @@ describe("usePiperTts (#761 piper-plus)", () => {
   });
 
   it("synthesize 失敗で errorCount++ + lastError=model-error", async () => {
-    // tsukuyomi は voice cloning path なので cloning mock を reject
     synthesizeWithCloningMock.mockRejectedValueOnce(new Error("inference failed"));
     const { usePiperTts } = await import("./usePiperTts");
     const { result } = renderHook(() => usePiperTts());
@@ -182,10 +275,10 @@ describe("usePiperTts (#761 piper-plus)", () => {
     expect(result.current.lastError).toBe("network");
   });
 
-  it("play() NotAllowedError で lastError=not-allowed", async () => {
+  it("source.start NotAllowedError で lastError=not-allowed (#766: autoplay policy)", async () => {
     const notAllowed = new Error("autoplay blocked");
     notAllowed.name = "NotAllowedError";
-    playMock.mockRejectedValueOnce(notAllowed);
+    startErrorOnce = notAllowed;
     const { usePiperTts } = await import("./usePiperTts");
     const { result } = renderHook(() => usePiperTts());
     act(() => result.current.setVoiceUri("piper:tsukuyomi"));
@@ -194,14 +287,52 @@ describe("usePiperTts (#761 piper-plus)", () => {
     expect(result.current.lastError).toBe("not-allowed");
   });
 
+  it("stop() で audioSource.stop が呼ばれて再生が確実に止まる (#766 主目的)", async () => {
+    // natural-end 発火を抑制して stop() の介入を確実に検証
+    suppressNaturalEnd = true;
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:tsukuyomi"));
+    act(() => result.current.speak("hello"));
+    await waitFor(() => {
+      expect(createdSources.length).toBeGreaterThan(0);
+      expect(createdSources[0].start).toHaveBeenCalled();
+    });
+    act(() => result.current.stop());
+    // source.stop() が呼ばれて再生停止
+    expect(createdSources[0].stop).toHaveBeenCalled();
+    // onended は null セットされて natural-end 経路が発火しない (endedCount は increment しない)
+    expect(createdSources[0].onended).toBeNull();
+    await waitFor(() => expect(result.current.isPlaying).toBe(false));
+    expect(result.current.endedCount).toBe(0);
+  });
+
   it("stop() で playToken が advance され、進行中 synthesize 結果は破棄される", async () => {
+    // synthesize を resolve 遅延させて stop の介入余地を作る
+    synthesizeWithCloningMock.mockImplementationOnce(
+      (text: string) =>
+        new Promise((resolve) => {
+          setTimeout(
+            () =>
+              resolve({
+                play: vi.fn(() => Promise.resolve()),
+                duration: 1,
+                sampleRate: 22050,
+                samples: new Float32Array(100),
+              }),
+            10,
+          );
+        }),
+    );
     const { usePiperTts } = await import("./usePiperTts");
     const { result } = renderHook(() => usePiperTts());
     act(() => result.current.setVoiceUri("piper:tsukuyomi"));
     act(() => result.current.speak("hello"));
     act(() => result.current.stop());
-    // 進行中の async は破棄される (token mismatch で early return)
-    await waitFor(() => expect(result.current.isPlaying).toBe(false));
+    // synthesize 解決後でも token mismatch で early return → source 作られない
+    await new Promise((r) => setTimeout(r, 50));
+    expect(createdSources.length).toBe(0);
+    expect(result.current.isPlaying).toBe(false);
   });
 
   it("cycleRate() で rate が次値に進む (次 synthesize の lengthScale に反映)", async () => {

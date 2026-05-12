@@ -102,6 +102,33 @@ function loadPiperLib(): Promise<{ lib: PiperPlusLib; ort: unknown }> {
   return piperLibPromise;
 }
 
+/**
+ * module-level singleton AudioContext (#766)。
+ * piper-plus の `AudioResult.play()` は内部の AudioBufferSourceNode を外部に expose せず
+ * stop() できないため、自前で AudioContext + BufferSource を組み立てて source を ref で保持し、
+ * stop 時に確実に再生停止する設計に切替 (案 A)。
+ *
+ * `useBackgroundAudio` と同じ「component lifetime 中 1 個保持 + suspend/resume 切替」パターン
+ * (`react-effect-patterns.md` の「起動コストの重いブラウザ API resource は useRef で lifetime
+ * 保持」規範) を踏襲。複数 speak 間で context を共有して OS audio session 切替コストを回避。
+ */
+let audioContextSingleton: AudioContext | null = null;
+function getAudioContext(): AudioContext | null {
+  if (audioContextSingleton) return audioContextSingleton;
+  if (typeof window === "undefined") return null;
+  const Ctx =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctx) return null;
+  try {
+    audioContextSingleton = new Ctx();
+  } catch (err) {
+    devError("[usePiperTts] AudioContext init failed", err);
+    return null;
+  }
+  return audioContextSingleton;
+}
+
 export interface UsePiperTtsOptions {
   enabled?: boolean;
 }
@@ -135,6 +162,9 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   const onBoundaryRef = useRef<((charIndex: number) => void) | null>(null);
   const boundaryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
+  // 進行中の AudioBufferSourceNode を保持 (#766)。stop() / resetPlaybackState() で
+  // source.stop() を呼んで piper-plus 内の再生を確実に停止する。
+  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
   // voice 一覧は static (PIPER_PLUS_VOICES から導出)
   const voices = useMemo<TtsVoice[]>(() => PIPER_PLUS_VOICES.map(piperPlusVoiceToTtsVoice), []);
@@ -155,13 +185,36 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     }
   }, []);
 
+  /**
+   * 進行中の AudioBufferSourceNode を停止して ref をクリアする (#766)。
+   * onended は null に差し替えて natural-end 経路を発火させず、stop による無音化のみを担保する。
+   * stop() 後の `source.start()` 再呼出は不可なので必ず使い捨て (next speak で新 source 生成)。
+   */
+  const releaseAudioSource = useCallback(() => {
+    const source = audioSourceRef.current;
+    if (!source) return;
+    audioSourceRef.current = null;
+    source.onended = null;
+    try {
+      source.stop();
+    } catch {
+      /* already stopped / not started */
+    }
+    try {
+      source.disconnect();
+    } catch {
+      /* */
+    }
+  }, []);
+
   const resetPlaybackState = useCallback(() => {
     clearBoundaryTimer();
+    releaseAudioSource();
     currentTextRef.current = "";
     onBoundaryRef.current = null;
     setIsPlaying(false);
     setIsPaused(false);
-  }, [clearBoundaryTimer]);
+  }, [clearBoundaryTimer, releaseAudioSource]);
 
   const ensureInstance = useCallback(async (voice: PiperPlusVoice): Promise<PiperPlusInstance> => {
     if (ttsInstanceRef.current && ttsVoiceIdRef.current === voice.id) {
@@ -316,11 +369,55 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
           }, BOUNDARY_TICK_MS);
         }
 
+        // #766: piper-plus AudioResult.play() は内部の AudioBufferSourceNode を expose せず
+        // 外部から stop できないため、samples + sampleRate を取り出して自前で再生する。
+        // 完了通知は source.onended で受け取り、stop() 時は releaseAudioSource() で source.stop()。
         try {
-          await audio.play();
+          const ctx = getAudioContext();
+          if (!ctx) throw new Error("AudioContext unavailable");
+          if (ctx.state === "suspended") {
+            try {
+              await ctx.resume();
+            } catch {
+              /* resume failure はそのまま再生 (autoplay policy で start 時に NotAllowedError 発火) */
+            }
+          }
+          if (token !== playTokenRef.current) return;
+          const buffer = ctx.createBuffer(1, audio.samples.length, audio.sampleRate);
+          // copyToChannel は Float32Array<ArrayBuffer> を要求する型定義になっている。
+          // piper-plus は Float32Array<ArrayBufferLike> (= SharedArrayBuffer ありえる) を返すため、
+          // 新規 Float32Array でコピーして型整合を取る (samples 自体は read-only なので copy 安全)
+          buffer.copyToChannel(new Float32Array(audio.samples), 0);
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          const gain = ctx.createGain();
+          gain.gain.value = volumeRef.current;
+          source.connect(gain);
+          gain.connect(ctx.destination);
+          // 旧 source が残っていれば停止 (theoretical: ensureInstance/synth await 中に
+          // stop() 呼ばれていた場合は token check で既に return しているが念のため)
+          releaseAudioSource();
+          audioSourceRef.current = source;
+          await new Promise<void>((resolve, reject) => {
+            source.onended = () => {
+              // token check で stop 経由の onended (releaseAudioSource で null 化済) と区別
+              if (audioSourceRef.current === source) {
+                audioSourceRef.current = null;
+                resolve();
+              } else {
+                // stop 経由 → onended は null セットされているはずだが防衛的に resolve
+                resolve();
+              }
+            };
+            try {
+              source.start();
+            } catch (err) {
+              reject(err);
+            }
+          });
         } catch (err) {
           if (token !== playTokenRef.current) return;
-          devError("[usePiperTts] audio.play() failed", err);
+          devError("[usePiperTts] audio playback failed", err);
           const name = err instanceof Error ? err.name : "";
           const message = err instanceof Error ? err.message : String(err);
           const code: TtsErrorCode =
@@ -340,7 +437,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
           return;
         }
         if (token !== playTokenRef.current) return;
-        // play() resolve = 再生終了 (piper-plus 仕様)
+        // 自前再生の onended resolve = 再生終了
         setEndedCount((c) => c + 1);
         resetPlaybackState();
       })();
@@ -350,8 +447,10 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       enabled,
       voiceUriRef,
       rateRef,
+      volumeRef,
       ensureInstance,
       clearBoundaryTimer,
+      releaseAudioSource,
       resetPlaybackState,
     ],
   );
