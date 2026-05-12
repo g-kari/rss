@@ -37,7 +37,11 @@ function buildCsp(nonce: string): string {
   // Cloudflare Web Analytics (beacon) は static.cloudflareinsights.com から外部読込。
   // Next.js は request ヘッダーの CSP から nonce を読んでインライン script に自動付与する
   // ref: next/dist/server/app-render/get-script-nonce-from-header.js
-  return `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://static.cloudflareinsights.com; ${STATIC_CSP_SUFFIX}`;
+  //
+  // `'wasm-unsafe-eval'` は Chrome 95+ で WebAssembly.compile / instantiate / instantiateStreaming
+  // を許可するための専用 source (#761 Piper TTS engine の onnxruntime-web + Rust phonemizer 用)。
+  // `'unsafe-eval'` (任意 eval 許可) より遥かに狭い WASM 専用緩和なので XSS 攻撃面を最小化できる。
+  return `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; ${STATIC_CSP_SUFFIX}`;
 }
 
 export function middleware(request: NextRequest): NextResponse {
