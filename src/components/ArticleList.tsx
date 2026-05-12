@@ -194,13 +194,30 @@ function ArticleList({
 
   // Phase 1: 画像/動画 view のギャラリー layout のとき、1 記事 N 画像を N カードに分解する。
   // explode flag は galleryPrefetchEnabled と同じ条件 (prefetch 完了画像を使うため一致が必要)。
+  // hiddenEntryKeys: min-px フィルタで hidden になった entry を items 配列から除外して
+  // masonic に layout 再計算させる (display:none のままだと空白セルが残る問題への対処)。
+  const [hiddenEntryKeys, setHiddenEntryKeys] = useState<Set<string>>(new Set());
+  const handleHideForcedImage = useCallback((entryKey: string) => {
+    setHiddenEntryKeys((prev) => {
+      if (prev.has(entryKey)) return prev;
+      const next = new Set(prev);
+      next.add(entryKey);
+      return next;
+    });
+  }, []);
+  // galleryMinImagePx / view 切替時は累積していた hidden を全リセット (再判定)。
+  useEffect(() => {
+    setHiddenEntryKeys(new Set());
+  }, [galleryMinImagePx, galleryPrefetchEnabled]);
   const galleryEntries = useMemo<GalleryEntry[] | null>(() => {
     if (!galleryPrefetchEnabled) return null;
-    return explodeArticlesIntoGalleryEntries(galleryDisplayItems, {
+    const raw = explodeArticlesIntoGalleryEntries(galleryDisplayItems, {
       explode: true,
       prefetchedImagesByArticleId: galleryImagesForItem,
     });
-  }, [galleryPrefetchEnabled, galleryDisplayItems, galleryImagesForItem]);
+    if (hiddenEntryKeys.size === 0) return raw;
+    return raw.filter((e) => !hiddenEntryKeys.has(e.key));
+  }, [galleryPrefetchEnabled, galleryDisplayItems, galleryImagesForItem, hiddenEntryKeys]);
 
   // ── 画像ライトボックス (Phase 1) ─────────────────────────────────
   const [lightboxState, setLightboxState] = useState<{
@@ -471,6 +488,8 @@ function ArticleList({
       // explode=false (= 通常 view) では undefined のままで、カードクリックは従来通り
       // 記事詳細を開く。
       onSelectImage: galleryEntries ? handleSelectImage : undefined,
+      // explode=true のときだけ「hidden になった entry を親で除外」する通知を有効化。
+      onHideForcedImage: galleryEntries ? handleHideForcedImage : undefined,
     }),
     [
       resolveItemProps,
@@ -485,6 +504,7 @@ function ArticleList({
       handleGalleryLongPress,
       galleryEntries,
       handleSelectImage,
+      handleHideForcedImage,
     ],
   );
 

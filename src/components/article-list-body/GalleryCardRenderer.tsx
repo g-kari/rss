@@ -93,7 +93,9 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
         isExpanding={ctx.galleryExpandingIds.has(article.id)}
         onRetry={() => ctx.galleryRetryArticle(article.id)}
         forcedImageSrc={forcedImageSrc}
+        forcedImageKey={entry?.key}
         onSelectImage={ctx.onSelectImage}
+        onHideForcedImage={ctx.onHideForcedImage}
       />
     </div>
   );

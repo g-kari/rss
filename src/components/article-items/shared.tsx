@@ -263,10 +263,21 @@ export interface GalleryItemExtraProps {
    */
   forcedImageSrc?: string | null;
   /**
+   * forcedImageSrc が属する entry の masonic key (= `${article.id}-${imageIndex}`)。
+   * onHideForcedImage 通知時の識別子。
+   */
+  forcedImageKey?: string;
+  /**
    * forcedImageSrc 指定時のクリックハンドラ (画像ライトボックスを開く)。
    * 未指定の場合は通常通り onSelectArticle が呼ばれる。
    */
   onSelectImage?: (imageSrc: string, article: Article) => void;
+  /**
+   * forcedImageSrc が min-px フィルタで hidden になった際の通知。
+   * 親 (ArticleList) で hidden entry を items 配列から除外することで、masonic に
+   * layout を再計算させて空白セルを消す。
+   */
+  onHideForcedImage?: (entryKey: string) => void;
 }
 
 /** 画像展開ボタン（ギャラリーカード内に表示） */

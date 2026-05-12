@@ -44,7 +44,9 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   isExpanding,
   onRetry,
   forcedImageSrc,
+  forcedImageKey,
   onSelectImage,
+  onHideForcedImage,
 }: Omit<ArticleItemProps, "index" | "isDeleting"> & GalleryItemExtraProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
@@ -71,7 +73,12 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   }, [displayImages]);
   const handleImageHide = useCallback(() => {
     setHiddenCount((c) => c + 1);
-  }, []);
+    // forcedImageSrc 指定時 (= Phase 1 分解 entry) は親に通知して items 配列から除外させる。
+    // 「カード非表示 + masonic 空白」回避のため、return null ではなく親フィルタで完全削除。
+    if (forcedImageSrc && forcedImageKey && onHideForcedImage) {
+      onHideForcedImage(forcedImageKey);
+    }
+  }, [forcedImageSrc, forcedImageKey, onHideForcedImage]);
   const useFilteredPath = imageSource === "prefetched" && galleryMinImagePx > 0;
   const allFiltered = useFilteredPath && hiddenCount > 0 && hiddenCount >= displayImages.length;
   // forcedImageSrc 指定 (= 1 記事 N 画像分解、Phase 1) で min-px フィルタにより hidden に
@@ -99,8 +106,8 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
     [handleClick],
   );
   if (isForcedHidden) {
-    // masonic は items.length に基づいて positioner を作るため null は返さず、
-    // hidden な空 div を返してぺったんこセル化する (高さ 0、layout 影響なし)。
+    // 親 (ArticleList) で `onHideForcedImage` 通知後に items から除外されるが、
+    // 通知から filter 反映までの 1 フレームの隙間で空 div を返して点滅を防ぐ。
     return <div className="hidden" aria-hidden="true" />;
   }
   return (

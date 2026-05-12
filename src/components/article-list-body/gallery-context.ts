@@ -24,6 +24,11 @@ export interface GalleryItemContextValue {
    * 未指定 (= articles/social view または explode=false) では undefined。
    */
   onSelectImage?: (imageSrc: string, article: Article) => void;
+  /**
+   * forcedImageSrc が min-px フィルタで hidden になった際の通知 (entry.key 単位)。
+   * 親で hidden entry を items 配列から除外して masonic の空白セルを消す。
+   */
+  onHideForcedImage?: (entryKey: string) => void;
 }
 
 export const GalleryItemCtx = createContext<GalleryItemContextValue | null>(null);
