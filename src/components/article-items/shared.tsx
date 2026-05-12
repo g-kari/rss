@@ -246,7 +246,10 @@ export function ArticleThumbnail({ thumb, className }: { thumb: string; classNam
   );
 }
 
-export interface GalleryItemExtraProps {
+/**
+ * GalleryItem に渡す追加 props のうち、forcedImageSrc/Key の整合性を要求しない常時 optional な base。
+ */
+interface GalleryItemBaseExtraProps {
   /** 本文から先行取得した全画像 URL（設定時は thumb の代わりに全枚数を縦スタック表示） */
   prefetchedImages?: string[];
   /** 最小画像サイズ (px)。この値未満の naturalWidth/Height を持つ画像を非表示にする */
@@ -258,27 +261,39 @@ export interface GalleryItemExtraProps {
   /** 失敗した記事のリトライ / 未取得記事の手動展開ハンドラー */
   onRetry?: () => void;
   /**
-   * 画像/動画 view で 1 記事 N 画像を N カードに分解した際の単一画像 URL。
-   * 指定時は prefetchedImages / thumb fallback を無視して **この 1 枚だけ** を表示する (Phase 1)。
-   */
-  forcedImageSrc?: string | null;
-  /**
-   * forcedImageSrc が属する entry の masonic key (= `${article.id}-${imageIndex}`)。
-   * onHideForcedImage 通知時の識別子。
-   */
-  forcedImageKey?: string;
-  /**
    * forcedImageSrc 指定時のクリックハンドラ (画像ライトボックスを開く)。
    * 未指定の場合は通常通り onSelectArticle が呼ばれる。
    */
   onSelectImage?: (imageSrc: string, article: Article) => void;
-  /**
-   * forcedImageSrc が min-px フィルタで hidden になった際の通知。
-   * 親 (ArticleList) で hidden entry を items 配列から除外することで、masonic に
-   * layout を再計算させて空白セルを消す。
-   */
-  onHideForcedImage?: (entryKey: string) => void;
 }
+
+/**
+ * 画像/動画 view で 1 記事 N 画像を N カードに分解した際の forcedImage 系 props。
+ * discriminated union (#770): `forcedImageSrc: string` を指定したら `forcedImageKey` と
+ * `onHideForcedImage` も必ず指定する必要がある (silent failure 経路の構造的除去)。
+ *
+ * - 分解 mode  (`{ forcedImageSrc: string; forcedImageKey: string; onHideForcedImage: ... }`):
+ *   画像/動画 view + ギャラリー layout で 1 記事 1 カード分解。`onHideForcedImage` で
+ *   min-px フィルタ hidden 時に親へ通知 (entry を items 配列から除外させる)。
+ * - 従来 mode (`{ forcedImageSrc?: null | undefined; ... }`): 1 記事 1 カード、thumb fallback。
+ *   forcedImageKey / onHideForcedImage は意味を持たず、設定すると型エラー。
+ */
+type GalleryItemForcedImageProps =
+  | {
+      /** 分解 entry の単一画像 URL */
+      forcedImageSrc: string;
+      /** 分解 entry の masonic key (= `${article.id}-${imageIndex}`)、hide 通知識別子 */
+      forcedImageKey: string;
+      /** min-px フィルタ hidden 時に親に通知 (items 配列から除外) */
+      onHideForcedImage: (entryKey: string) => void;
+    }
+  | {
+      forcedImageSrc?: null;
+      forcedImageKey?: never;
+      onHideForcedImage?: never;
+    };
+
+export type GalleryItemExtraProps = GalleryItemBaseExtraProps & GalleryItemForcedImageProps;
 
 /** 画像展開ボタン（ギャラリーカード内に表示） */
 export const GalleryExpandButton = memo(function GalleryExpandButton({

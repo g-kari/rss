@@ -48,7 +48,6 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
 
   const entry = isGalleryEntry(data) ? data : null;
   const article = entry ? entry.article : (data as Article);
-  const forcedImageSrc = entry?.imageSrc ?? null;
 
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
@@ -94,10 +93,17 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
         isFetchFailed={ctx.galleryFailedIds.has(article.id)}
         isExpanding={ctx.galleryExpandingIds.has(article.id)}
         onRetry={() => ctx.galleryRetryArticle(article.id)}
-        forcedImageSrc={forcedImageSrc}
-        forcedImageKey={entry?.key}
         onSelectImage={ctx.onSelectImage}
-        onHideForcedImage={ctx.onHideForcedImage}
+        // discriminated union (#770): forcedImage 3 props は「entry mode (3 値必須)」or
+        // 「null mode (全部 undefined)」のどちらか一方を spread で渡す。TS の union narrow が
+        // 動くことで「forcedImageSrc 渡したが key 忘れた」silent failure を構造的に防止。
+        {...(entry && entry.imageSrc && ctx.onHideForcedImage
+          ? {
+              forcedImageSrc: entry.imageSrc,
+              forcedImageKey: entry.key,
+              onHideForcedImage: ctx.onHideForcedImage,
+            }
+          : { forcedImageSrc: null })}
       />
     </div>
   );

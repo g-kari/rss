@@ -73,8 +73,10 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   }, [displayImages]);
   const handleImageHide = useCallback(() => {
     setHiddenCount((c) => c + 1);
-    // forcedImageSrc 指定時 (= Phase 1 分解 entry) は親に通知して items 配列から除外させる。
-    // 「カード非表示 + masonic 空白」回避のため、return null ではなく親フィルタで完全削除。
+    // discriminated union (#770): caller の型レベル契約で forcedImageSrc=string と
+    // forcedImageKey/onHideForcedImage の同時提供が保証される。
+    // 但し destructure 後は TS の narrow が伝播しないため、3 値 guard は実行時 safety として残す
+    // (caller 漏れの将来再発は型エラーで未然に防止済)。
     if (forcedImageSrc && forcedImageKey && onHideForcedImage) {
       onHideForcedImage(forcedImageKey);
     }
