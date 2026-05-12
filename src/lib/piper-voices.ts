@@ -202,6 +202,24 @@ export const PIPER_PLUS_VOICES: readonly PiperPlusVoice[] = [
     },
   },
   {
+    id: "css10-ja",
+    // CSS10 Japanese (single-speaker、Kyubyong/css10 corpus 由来)
+    // tsukuyomi-chan の multi-speaker base 派生で speaker_embedding が必須となる問題を回避する
+    // 「動作検証用 + fallback」voice として登録 (#761、shinshin86 ttsService.ts 参考)
+    model: "ayousanz/piper-plus-css10-ja-6lang",
+    lang: "ja-JP",
+    synthesisLanguage: "ja",
+    name: "CSS10 Japanese (Piper, single-speaker)",
+    credit: {
+      creditText:
+        "音声合成には CSS10 Japanese dataset (Kyubyong/css10) を使用しています。\n" +
+        "MB-iSTFT-VITS (Kawamura et al., 2023) + Piper Plus base (ayousanz / ayutaz) を基盤としています。",
+      creditUrl: "https://huggingface.co/ayousanz/piper-plus-css10-ja-6lang",
+      license: "CSS10 Public Domain",
+      restrictions: [],
+    },
+  },
+  {
     id: "mera",
     // Kizuna Intelligence の看板キャラクター「メラちゃん」voice (合成音声、声優由来なし)
     model: "kizuna-intelligence/piper-plus-mera-multilingual",
