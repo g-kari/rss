@@ -32,10 +32,14 @@ import { apiError } from "@/lib/api-error";
  *   upload + 失敗時 exit 1)。ALLOWED_FILES と script 内 WASM_FILES を同期更新すること。
  */
 const ALLOWED_FILES: ReadonlySet<string> = new Set([
+  // onnxruntime-web wasm (peer dep)
   "ort-wasm-simd-threaded.wasm",
   "ort-wasm-simd-threaded.jsep.wasm",
   "ort-wasm-simd-threaded.asyncify.wasm",
   "ort-wasm-simd-threaded.jspi.wasm",
+  // piper-plus Rust phonemizer wasm (#761) — loader JS が同 path から bg.wasm を fetch
+  "piper_plus_wasm.js",
+  "piper_plus_wasm_bg.wasm",
 ]);
 
 export async function GET(_request: Request, { params }: { params: Promise<{ file: string }> }) {
@@ -48,12 +52,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fil
   if (!obj) {
     return apiError("Not Found", 404, { code: "NOT_FOUND" });
   }
+  // piper_plus_wasm.js (loader) は application/javascript で配信、それ以外は wasm として配信
+  const contentType = file.endsWith(".js") ? "application/javascript" : "application/wasm";
   return new Response(obj.body, {
     headers: {
-      "Content-Type": "application/wasm",
-      // wasm ファイル名は version 固定 (npm package 内 plain 名)、内容も同 version で
-      // 不変なので 1 年 immutable cache。新 version 採用時は ALLOWED_FILES 更新 +
-      // R2 upload 時にファイル名を変える運用とする (CDN cache bust 不要)。
+      "Content-Type": contentType,
+      // ファイル名は version 固定 (npm package 内 plain 名)、内容も同 version で不変なので
+      // 1 年 immutable cache。新 version 採用時は ALLOWED_FILES 更新 + R2 upload 時に
+      // ファイル名を変える運用とする (CDN cache bust 不要)。
       "Cache-Control": "public, max-age=31536000, immutable",
     },
   });

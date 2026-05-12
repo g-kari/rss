@@ -15,13 +15,15 @@ overrides:
   fast-xml-parser: '>=5.7.0'
   fast-xml-builder: '>=1.1.7'
 
+patchedDependencies:
+  piper-plus:
+    hash: 217d1a780a65d85b7a27b03f534de93f3fd361f93af024003c01c59ce0d71c9b
+    path: patches/piper-plus.patch
+
 importers:
 
   .:
     dependencies:
-      '@mintplex-labs/piper-tts-web':
-        specifier: ^1.0.4
-        version: 1.0.4(onnxruntime-web@1.26.0)
       '@mozilla/readability':
         specifier: ^0.6.0
         version: 0.6.0
@@ -49,6 +51,9 @@ importers:
       onnxruntime-web:
         specifier: ^1.26.0
         version: 1.26.0
+      piper-plus:
+        specifier: ^0.6.0
+        version: 0.6.0(patch_hash=217d1a780a65d85b7a27b03f534de93f3fd361f93af024003c01c59ce0d71c9b)(onnxruntime-web@1.26.0)
       react:
         specifier: ^19.2.6
         version: 19.2.6
@@ -1114,11 +1119,6 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@mintplex-labs/piper-tts-web@1.0.4':
-    resolution: {integrity: sha512-Y24X+CJaGXoY5HFPSstHvJI6408OAtw3Pmq2OIYwpRpcwLLbgadWg8l1ODHNkgpB0Ps5fS9PAAQB60fHA3Bdag==}
-    peerDependencies:
-      onnxruntime-web: ^1.18.0
-
   '@mozilla/readability@0.6.0':
     resolution: {integrity: sha512-juG5VWh4qAivzTAeMzvY9xs9HY5rAcr2E4I7tiSSCokRFi7XIZCAu92ZkSTsIj1OPceCifL3cpfteP3pDT9/QQ==}
     engines: {node: '>=14.0.0'}
@@ -1507,6 +1507,10 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@piper-plus/g2p@0.4.0':
+    resolution: {integrity: sha512-/cswJRqioXto6T7pABDJkc/6aZ2GsbturdyewGQbjfvF/yvQ3xYJ4LJg3XkMJv5xnUqJXiWJhOT/hgVBLZukZA==}
+    engines: {node: '>=24.0.0'}
 
   '@playwright/test@1.59.1':
     resolution: {integrity: sha512-PG6q63nQg5c9rIi4/Z5lR5IVF7yU5MqmKaPOe0HSc0O2cX1fPi96sUQu5j7eo4gKCkB2AnNGoWt7y4/Xx3Kcqg==}
@@ -3123,6 +3127,12 @@ packages:
   picomatch@4.0.4:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
     engines: {node: '>=12'}
+
+  piper-plus@0.6.0:
+    resolution: {integrity: sha512-hly52rRUKrQLFwLC0tPCd4o9raZTGoYC0KZ5AfZoVpouiiLQ3C7+GcdlhepqXA5Y5YSq4h44HCmgdeWIa0UNUw==}
+    engines: {node: '>=24.0.0'}
+    peerDependencies:
+      onnxruntime-web: '>=1.21.0'
 
   pixelmatch@7.1.0:
     resolution: {integrity: sha512-1wrVzJ2STrpmONHKBy228LM1b84msXDUoAzVEl0R8Mz4Ce6EPr+IVtxm8+yvrqLYMHswREkjYFaMxnyGnaY3Ng==}
@@ -4765,10 +4775,6 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@mintplex-labs/piper-tts-web@1.0.4(onnxruntime-web@1.26.0)':
-    dependencies:
-      onnxruntime-web: 1.26.0
-
   '@mozilla/readability@0.6.0': {}
 
   '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
@@ -5009,6 +5015,8 @@ snapshots:
 
   '@oxlint/binding-win32-x64-msvc@1.61.0':
     optional: true
+
+  '@piper-plus/g2p@0.4.0': {}
 
   '@playwright/test@1.59.1':
     dependencies:
@@ -6637,6 +6645,11 @@ snapshots:
   picocolors@1.1.1: {}
 
   picomatch@4.0.4: {}
+
+  piper-plus@0.6.0(patch_hash=217d1a780a65d85b7a27b03f534de93f3fd361f93af024003c01c59ce0d71c9b)(onnxruntime-web@1.26.0):
+    dependencies:
+      '@piper-plus/g2p': 0.4.0
+      onnxruntime-web: 1.26.0
 
   pixelmatch@7.1.0:
     dependencies:

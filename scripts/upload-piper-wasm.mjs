@@ -24,56 +24,77 @@ import { execSync } from "node:child_process";
 
 const BUCKET = "rss-reader-data";
 const R2_PREFIX = "piper-wasm";
-const WASM_FILES = [
-  "ort-wasm-simd-threaded.wasm",
-  "ort-wasm-simd-threaded.jsep.wasm",
-  "ort-wasm-simd-threaded.asyncify.wasm",
-  "ort-wasm-simd-threaded.jspi.wasm",
+
+/**
+ * @typedef {{ pkgName: string; subDir: string; files: string[] }} WasmSource
+ */
+
+/** @type {WasmSource[]} */
+const WASM_SOURCES = [
+  // onnxruntime-web (peer dep for piper-plus)
+  {
+    pkgName: "onnxruntime-web",
+    subDir: "dist",
+    files: [
+      "ort-wasm-simd-threaded.wasm",
+      "ort-wasm-simd-threaded.jsep.wasm",
+      "ort-wasm-simd-threaded.asyncify.wasm",
+      "ort-wasm-simd-threaded.jspi.wasm",
+    ],
+  },
+  // piper-plus Rust phonemizer wasm (#761)
+  {
+    pkgName: "piper-plus",
+    subDir: "dist/rust-wasm",
+    files: ["piper_plus_wasm.js", "piper_plus_wasm_bg.wasm"],
+  },
 ];
 
 const PNPM_BASE = "node_modules/.pnpm";
 
-/** pnpm の hash 化された path を解決して onnxruntime-web の dist dir を返す */
-async function locateWasmDir() {
+/** pnpm の hash 化された path を解決して特定パッケージの dir を返す */
+async function locatePkgDir(pkgName) {
   let entries;
   try {
     entries = await readdir(PNPM_BASE);
   } catch (err) {
     if (err && typeof err === "object" && "code" in err && err.code === "ENOENT") {
       throw new Error(
-        `${PNPM_BASE} not found. Run \`pnpm install\` first to ensure onnxruntime-web is available.`,
+        `${PNPM_BASE} not found. Run \`pnpm install\` first to ensure ${pkgName} is available.`,
       );
     }
     throw err;
   }
-  const ortDir = entries.find((d) => d.startsWith("onnxruntime-web@"));
-  if (!ortDir) {
+  const pkgDir = entries.find((d) => d.startsWith(`${pkgName}@`));
+  if (!pkgDir) {
     throw new Error(
-      `onnxruntime-web not found in ${PNPM_BASE}. Verify it is listed in package.json dependencies.`,
+      `${pkgName} not found in ${PNPM_BASE}. Verify it is listed in package.json dependencies.`,
     );
   }
-  return `${PNPM_BASE}/${ortDir}/node_modules/onnxruntime-web/dist`;
+  return `${PNPM_BASE}/${pkgDir}/node_modules/${pkgName}`;
 }
-
-const wasmDir = await locateWasmDir();
-console.log(`[upload-piper-wasm] source dir: ${wasmDir}`);
-console.log(`[upload-piper-wasm] target:     r2://${BUCKET}/${R2_PREFIX}/`);
 
 let success = 0;
 let failed = 0;
-for (const f of WASM_FILES) {
-  console.log(`\n===== uploading ${f} =====`);
-  try {
-    execSync(
-      `npx wrangler r2 object put "${BUCKET}/${R2_PREFIX}/${f}" --file="${wasmDir}/${f}" --remote`,
-      { stdio: "inherit" },
-    );
-    success++;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[upload-piper-wasm] FAILED: ${f}`);
-    console.error(`  ${msg}`);
-    failed++;
+for (const src of WASM_SOURCES) {
+  const pkgDir = await locatePkgDir(src.pkgName);
+  const srcDir = `${pkgDir}/${src.subDir}`;
+  console.log(`\n[upload-piper-wasm] source dir: ${srcDir}`);
+  console.log(`[upload-piper-wasm] target:     r2://${BUCKET}/${R2_PREFIX}/`);
+  for (const f of src.files) {
+    console.log(`\n===== uploading ${f} =====`);
+    try {
+      execSync(
+        `npx wrangler r2 object put "${BUCKET}/${R2_PREFIX}/${f}" --file="${srcDir}/${f}" --remote`,
+        { stdio: "inherit" },
+      );
+      success++;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[upload-piper-wasm] FAILED: ${f}`);
+      console.error(`  ${msg}`);
+      failed++;
+    }
   }
 }
 

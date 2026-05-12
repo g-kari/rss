@@ -1,32 +1,40 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import { cycleValue } from "../lib/article-utils";
-import { piperVoiceToTtsVoice } from "../lib/piper-adapter";
+import {
+  PIPER_PLUS_VOICES,
+  findPiperPlusVoice,
+  piperPlusVoiceToTtsVoice,
+  type PiperPlusVoice,
+} from "../lib/piper-voices";
 import type { TtsAdapter, TtsErrorCode, TtsVoice } from "../lib/tts-adapter";
 import { clampTtsVolume, parseTtsVolume } from "../lib/tts-volume";
 import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
 
 /**
- * Piper TTS wasm engine (`@mintplex-labs/piper-tts-web`) を用いた読み上げ管理 hook (#674 Phase 2a-part2)。
+ * Piper TTS wasm engine (`piper-plus` library) を用いた読み上げ管理 hook (#761)。
  *
- * `TtsAdapter` interface を実装し、`useSpeechSynthesis` と同じ契約を満たす。AppProviders 側で
- * 設定値に応じて切替可能にする (UI 配線は Phase 2b 別サイクル予定)。
+ * `TtsAdapter` interface を実装し、`useSpeechSynthesis` と同じ契約を満たす。
  *
- * 設計差分 (Web Speech との比較):
- * - speak() は engine 内部で text → wav Blob を非同期生成し、`<audio>` 要素で再生する非同期パイプライン
- * - rate は `audio.playbackRate` で実現 (predict 後でも変更可能、Web Speech と違い再 utterance 不要)
- * - volume は `audio.volume` でリアルタイム反映
- * - onBoundary は `tts-sentences` の `estimateCharIndexByElapsed` を setInterval で発火する擬似実装
- *   (Piper には boundary 通知 API がないため、経過時間 × 推定 cps で charIndex を進める)
- * - voices は mount 時に library から取得 (HuggingFace fetch → OPFS fallback)
- * - ライブラリは dynamic import で lazy load (Cloudflare Workers ビルドへの影響を避ける)
+ * piper-plus API:
+ *   - `PiperPlus.initialize({ model, ort, wasmG2pUrl, onProgress })` — model は HF / shortcut / URL
+ *   - `tts.synthesize(text, { language, lengthScale, ... })` → `AudioResult`
+ *   - `AudioResult.play()` で再生 (内部で AudioContext + BufferSource)
+ *   - `tts.dispose()` で resource 解放
+ *
+ * 設計:
+ *   - voice 切替時に instance recreate (model DL コストあり、ただし同 voice の再 speak は再利用)
+ *   - boundary 通知は piper-plus に native API なし → setInterval で経過時間 × 推定 cps で擬似発火
+ *   - WASM / model は R2 経由 (`/api/wasm/piper_plus_wasm.js` / `/api/piper-voice/<id>.onnx`)
  */
 export const PIPER_TTS_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0] as const;
 export type PiperTtsRate = (typeof PIPER_TTS_RATES)[number];
 
-const ESTIMATED_CPS = 12; // 日本語/英語平均の推定 char-per-second (boundary 擬似発火用)
-const BOUNDARY_TICK_MS = 100; // 経過時間 → charIndex 更新の tick
+const ESTIMATED_CPS = 12;
+const BOUNDARY_TICK_MS = 100;
+
+const PIPER_WASM_LOADER_URL = "/api/wasm/piper_plus_wasm.js";
 
 function loadRate(): PiperTtsRate {
   const v = parseFloat(storageGet(STORAGE_KEYS.TTS_RATE) ?? "");
@@ -41,45 +49,48 @@ function loadVolume(): number {
   return parseTtsVolume(storageGet(STORAGE_KEYS.TTS_VOLUME));
 }
 
-/** voiceURI が `piper:` prefix を持つときに voiceId 部分を返す。Web Speech voice は null */
-function extractPiperVoiceId(voiceUri: string | null): string | null {
-  if (!voiceUri || !voiceUri.startsWith("piper:")) return null;
-  return voiceUri.slice("piper:".length);
+interface PiperPlusAudioResult {
+  play: () => Promise<void>;
+  duration: number;
+  sampleRate: number;
+  samples: Float32Array;
 }
 
-interface PiperLib {
-  predict: (config: { text: string; voiceId: string }) => Promise<Blob>;
-  voices: () => Promise<Array<{ key: string }>>;
+interface PiperPlusInstance {
+  synthesize: (
+    text: string,
+    options?: { language?: string; lengthScale?: number },
+  ) => Promise<PiperPlusAudioResult>;
+  dispose: () => void;
 }
 
-/** dynamic import で library を 1 回だけ読み込む (singleton キャッシュ) */
-let piperLibPromise: Promise<PiperLib> | null = null;
-function loadPiperLib(): Promise<PiperLib> {
+interface PiperPlusLib {
+  initialize: (options: {
+    model: string;
+    ort: unknown;
+    wasmG2pUrl?: string;
+    onProgress?: (info: { stage: string; progress: number; message: string }) => void;
+  }) => Promise<PiperPlusInstance>;
+}
+
+/** dynamic import で library + onnxruntime-web を 1 回だけ読み込む (singleton) */
+let piperLibPromise: Promise<{ lib: PiperPlusLib; ort: unknown }> | null = null;
+function loadPiperLib(): Promise<{ lib: PiperPlusLib; ort: unknown }> {
   if (!piperLibPromise) {
     piperLibPromise = (async () => {
-      // #674 Phase 2c (closes #753): onnxruntime-web の wasm を bundle から除外して
-      // R2 経由 (`/api/wasm/<file>`) で fetch する設定。Cloudflare Workers の単一 asset
-      // 上限 25 MiB に `ort-wasm-simd-threaded.jsep.wasm` (25 MiB) が抵触するため、
-      // `scripts/remove-bundled-wasm.mjs` で bundle 後 wasm を削除 + 事前に R2 upload した
-      // 上で本 path から fetch する。trailing slash 必須 (ort 側で `<path> + <filename>` で
-      // resolve される)。
       const ort = await import("onnxruntime-web");
       if (typeof window !== "undefined") {
+        // onnxruntime-web の wasm も同 R2 prefix 配下 (`/api/wasm/`) から fetch
         ort.env.wasm.wasmPaths = "/api/wasm/";
       }
-      const mod = await import("@mintplex-labs/piper-tts-web");
-      return { predict: mod.predict, voices: mod.voices } as PiperLib;
+      const mod = (await import("piper-plus")) as unknown as { PiperPlus: PiperPlusLib };
+      return { lib: mod.PiperPlus, ort };
     })();
   }
   return piperLibPromise;
 }
 
 export interface UsePiperTtsOptions {
-  /**
-   * false の間は voices fetch / speak / dynamic import を全て skip し、リソース消費を抑える。
-   * App.tsx で engine 設定値 === "piper" のときだけ true を渡すことで、Web Speech engine
-   * 選択中は HuggingFace fetch / wasm load を発生させない (#674 Phase 2b)。default = true。
-   */
   enabled?: boolean;
 }
 
@@ -89,17 +100,13 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   const [isPaused, setIsPaused] = useState(false);
   const [endedCount, setEndedCount] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
-  // #756: 直近の TTS エラー種別。Piper は silent skip 対象 (canceled/interrupted/audio-busy) が
-  // 構造的に存在しないため、errorCount は常に setErrorCount と同時に setLastError される。
   const [lastError, setLastError] = useState<TtsErrorCode | null>(null);
   const [rate, setRate] = useState<PiperTtsRate>(loadRate);
-  const [voices, setVoices] = useState<TtsVoice[]>([]);
   const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
   const [volume, setVolumeState] = useState<number>(loadVolume);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUrlRef = useRef<string | null>(null);
-  // 同期 predict のための識別子 (新 speak でこれが上書きされたら旧 predict 結果は破棄)
+  const ttsInstanceRef = useRef<PiperPlusInstance | null>(null);
+  const ttsVoiceIdRef = useRef<string | null>(null);
   const playTokenRef = useRef(0);
   const rateRef = useSyncedRef(rate);
   const voiceUriRef = useSyncedRef(voiceUri);
@@ -109,43 +116,17 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   const boundaryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
 
-  // 環境サポート判定: `Audio` + `URL.createObjectURL` + OPFS が必要 (OPFS は initial mount でチェック)
+  // voice 一覧は static (PIPER_PLUS_VOICES から導出)
+  const voices = useMemo<TtsVoice[]>(() => PIPER_PLUS_VOICES.map(piperPlusVoiceToTtsVoice), []);
+
+  // 環境サポート判定
   const supported = useMemo(() => {
     if (typeof window === "undefined") return false;
-    if (typeof Audio === "undefined") return false;
-    if (typeof URL === "undefined" || typeof URL.createObjectURL !== "function") return false;
-    // OPFS (StorageManager.getDirectory) はモデル保存先として必須
-    const sm = (navigator as { storage?: { getDirectory?: unknown } }).storage;
-    if (!sm || typeof sm.getDirectory !== "function") return false;
+    if (typeof AudioContext === "undefined" && typeof window.AudioContext === "undefined") {
+      return false;
+    }
     return true;
   }, []);
-
-  // voice 一覧を mount 時に取得 (lazy)。enabled=false の間は skip (リソース節約)。
-  useEffect(() => {
-    if (!supported) return;
-    if (!enabled) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const lib = await loadPiperLib();
-        const raw = await lib.voices();
-        if (cancelled) return;
-        const mapped: TtsVoice[] = [];
-        for (const v of raw) {
-          const tts = piperVoiceToTtsVoice(v.key);
-          if (tts) mapped.push(tts);
-        }
-        setVoices(mapped);
-      } catch (err) {
-        if (!cancelled) {
-          devError("[usePiperTts] voices() failed", err);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supported, enabled]);
 
   const clearBoundaryTimer = useCallback(() => {
     if (boundaryTimerRef.current !== null) {
@@ -154,64 +135,76 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     }
   }, []);
 
-  const releaseAudio = useCallback(() => {
+  const resetPlaybackState = useCallback(() => {
     clearBoundaryTimer();
-    const audio = audioRef.current;
-    if (audio) {
-      audio.pause();
-      audio.removeAttribute("src");
-      audio.load();
-    }
-    if (audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current);
-      audioUrlRef.current = null;
-    }
-  }, [clearBoundaryTimer]);
-
-  const resetState = useCallback(() => {
-    releaseAudio();
-    audioRef.current = null;
     currentTextRef.current = "";
     onBoundaryRef.current = null;
     setIsPlaying(false);
     setIsPaused(false);
-  }, [releaseAudio]);
+  }, [clearBoundaryTimer]);
+
+  const ensureInstance = useCallback(async (voice: PiperPlusVoice): Promise<PiperPlusInstance> => {
+    if (ttsInstanceRef.current && ttsVoiceIdRef.current === voice.id) {
+      return ttsInstanceRef.current;
+    }
+    // voice 変更時は旧 instance を dispose
+    if (ttsInstanceRef.current) {
+      try {
+        ttsInstanceRef.current.dispose();
+      } catch {
+        /* silent */
+      }
+      ttsInstanceRef.current = null;
+      ttsVoiceIdRef.current = null;
+    }
+    const { lib, ort } = await loadPiperLib();
+    const instance = await lib.initialize({
+      model: voice.model,
+      ort,
+      // patched piper-plus (patches/piper-plus.patch) で `new Function` 経由に書き換え済の
+      // `import(url)` 経路を通すため、wasmLoader でなく wasmG2pUrl で URL を渡す
+      wasmG2pUrl: PIPER_WASM_LOADER_URL,
+    });
+    ttsInstanceRef.current = instance;
+    ttsVoiceIdRef.current = voice.id;
+    return instance;
+  }, []);
 
   const stop = useCallback(() => {
     if (!supported) return;
-    playTokenRef.current += 1; // 進行中の predict を即無効化
-    resetState();
-  }, [supported, resetState]);
+    playTokenRef.current += 1;
+    resetPlaybackState();
+  }, [supported, resetPlaybackState]);
 
   const speak = useCallback(
     (text: string, onBoundary?: (charIndex: number) => void) => {
       if (!supported) return;
       if (!enabled) return;
-      currentTextRef.current = text;
-      onBoundaryRef.current = onBoundary ?? null;
-      const voiceId = extractPiperVoiceId(voiceUriRef.current);
-      if (!voiceId) {
-        devError("[usePiperTts] no piper voice selected (voiceUri must start with 'piper:')", {
+      const voice = findPiperPlusVoice(voiceUriRef.current);
+      if (!voice) {
+        devError("[usePiperTts] no piper-plus voice selected", {
           voiceUri: voiceUriRef.current,
         });
         setLastError("voice-unavailable");
         setErrorCount((c) => c + 1);
         return;
       }
-      // 進行中の再生を停止
-      releaseAudio();
-      audioRef.current = null;
+      currentTextRef.current = text;
+      onBoundaryRef.current = onBoundary ?? null;
       const token = ++playTokenRef.current;
 
       (async () => {
-        let blob: Blob;
+        let audio: PiperPlusAudioResult;
         try {
-          const lib = await loadPiperLib();
-          blob = await lib.predict({ text, voiceId });
+          const instance = await ensureInstance(voice);
+          if (token !== playTokenRef.current) return;
+          audio = await instance.synthesize(text, {
+            language: voice.synthesisLanguage,
+            lengthScale: 1 / rateRef.current, // 速度逆数 (rate=2 → lengthScale=0.5 で 2 倍速)
+          });
         } catch (err) {
-          if (token !== playTokenRef.current) return; // 古い predict、破棄
-          devError("[usePiperTts] predict failed", { voiceId, error: err });
-          // network エラー (HuggingFace fetch / OPFS write 失敗) か engine 内部失敗かを大まかに判定
+          if (token !== playTokenRef.current) return;
+          devError("[usePiperTts] synthesize failed", { voiceId: voice.id, error: err });
           const message = err instanceof Error ? err.message.toLowerCase() : "";
           const code: TtsErrorCode =
             message.includes("fetch") || message.includes("network") ? "network" : "model-error";
@@ -219,96 +212,60 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
           setErrorCount((c) => c + 1);
           return;
         }
-        if (token !== playTokenRef.current) return; // 進行中に stop / 別 speak が来た
+        if (token !== playTokenRef.current) return;
 
-        const url = URL.createObjectURL(blob);
-        audioUrlRef.current = url;
-        const audio = new Audio(url);
-        audio.playbackRate = rateRef.current;
-        audio.volume = volumeRef.current;
-        audioRef.current = audio;
-
-        audio.onplaying = () => {
-          if (token !== playTokenRef.current) return;
-          setIsPlaying(true);
-          setIsPaused(false);
-          startTimeRef.current = Date.now();
-          // boundary 擬似発火: 経過時間 × 推定 cps × playbackRate で charIndex を更新
-          clearBoundaryTimer();
-          if (onBoundaryRef.current) {
-            boundaryTimerRef.current = setInterval(() => {
-              const cb = onBoundaryRef.current;
-              if (!cb) return;
-              const elapsedMs = Date.now() - startTimeRef.current;
-              const charIndex = Math.floor((elapsedMs * ESTIMATED_CPS * rateRef.current) / 1000);
-              const clamped = Math.min(charIndex, currentTextRef.current.length);
-              cb(clamped);
-            }, BOUNDARY_TICK_MS);
-          }
-        };
-        audio.onpause = () => {
-          if (token !== playTokenRef.current) return;
-          // ended の前に発火することがあるため `audio.ended` で区別
-          if (!audio.ended) setIsPaused(true);
-        };
-        audio.onended = () => {
-          if (token !== playTokenRef.current) return;
-          setEndedCount((c) => c + 1);
-          resetState();
-        };
-        audio.onerror = () => {
-          if (token !== playTokenRef.current) return;
-          devError("[usePiperTts] audio.onerror", { error: audio.error });
-          setLastError("synthesis-failed");
-          setErrorCount((c) => c + 1);
-          resetState();
-        };
+        setIsPlaying(true);
+        setIsPaused(false);
+        startTimeRef.current = Date.now();
+        clearBoundaryTimer();
+        if (onBoundaryRef.current) {
+          boundaryTimerRef.current = setInterval(() => {
+            const cb = onBoundaryRef.current;
+            if (!cb) return;
+            const elapsedMs = Date.now() - startTimeRef.current;
+            const charIndex = Math.floor((elapsedMs * ESTIMATED_CPS * rateRef.current) / 1000);
+            const clamped = Math.min(charIndex, currentTextRef.current.length);
+            cb(clamped);
+          }, BOUNDARY_TICK_MS);
+        }
 
         try {
           await audio.play();
         } catch (err) {
           if (token !== playTokenRef.current) return;
           devError("[usePiperTts] audio.play() failed", err);
-          // NotAllowedError (autoplay 拒否) と一般失敗を区別
           const name = err instanceof Error ? err.name : "";
           setLastError(name === "NotAllowedError" ? "not-allowed" : "synthesis-failed");
           setErrorCount((c) => c + 1);
-          resetState();
+          resetPlaybackState();
+          return;
         }
+        if (token !== playTokenRef.current) return;
+        // play() resolve = 再生終了 (piper-plus 仕様)
+        setEndedCount((c) => c + 1);
+        resetPlaybackState();
       })();
     },
     [
       supported,
       enabled,
-      releaseAudio,
-      resetState,
-      clearBoundaryTimer,
-      rateRef,
       voiceUriRef,
-      volumeRef,
+      rateRef,
+      ensureInstance,
+      clearBoundaryTimer,
+      resetPlaybackState,
     ],
   );
 
   const pause = useCallback(() => {
     if (!supported) return;
-    const audio = audioRef.current;
-    if (!audio || audio.paused) return;
-    audio.pause();
+    // piper-plus AudioResult.play() 中の pause API は library に無いため non-op
+    // (将来 streaming synthesis + AudioContext.suspend で実装余地あり)
   }, [supported]);
 
   const resume = useCallback(() => {
     if (!supported) return;
-    const audio = audioRef.current;
-    if (!audio || !audio.paused) return;
-    audio.play().then(
-      () => setIsPaused(false),
-      (err) => {
-        devError("[usePiperTts] resume play() failed", err);
-        const name = err instanceof Error ? err.name : "";
-        setLastError(name === "NotAllowedError" ? "not-allowed" : "synthesis-failed");
-        setErrorCount((c) => c + 1);
-      },
-    );
+    // 同上 — pause 対応待ち
   }, [supported]);
 
   const cycleRate = useCallback((): number => {
@@ -316,13 +273,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     storageSet(STORAGE_KEYS.TTS_RATE, String(next));
     rateRef.current = next;
     setRate(next);
-    // 再生中なら即反映 (Web Speech と違い、playbackRate は途中変更可能)
-    const audio = audioRef.current;
-    if (audio) {
-      audio.playbackRate = next;
-      // boundary 推定の基準時刻も更新 (簡易: cycleRate 時点で startTime をリセット)
-      startTimeRef.current = Date.now();
-    }
+    // piper-plus は再生中の rate 変更不可 (synthesize 時の lengthScale で固定) → 次 speak で反映
     return next;
   }, [rateRef]);
 
@@ -343,19 +294,27 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       storageSet(STORAGE_KEYS.TTS_VOLUME, String(clamped));
       volumeRef.current = clamped;
       setVolumeState(clamped);
-      const audio = audioRef.current;
-      if (audio) audio.volume = clamped;
+      // piper-plus AudioResult は volume control API なし (将来 AudioContext.GainNode 経由で実装余地)
     },
     [volumeRef],
   );
 
-  // アンマウント時にクリーンアップ
+  // アンマウント時に instance dispose
   useEffect(() => {
     return () => {
       playTokenRef.current += 1;
-      releaseAudio();
+      clearBoundaryTimer();
+      if (ttsInstanceRef.current) {
+        try {
+          ttsInstanceRef.current.dispose();
+        } catch {
+          /* silent */
+        }
+        ttsInstanceRef.current = null;
+        ttsVoiceIdRef.current = null;
+      }
     };
-  }, [releaseAudio]);
+  }, [clearBoundaryTimer]);
 
   return {
     engine: "piper",
