@@ -60,6 +60,7 @@ import AppProviders from "./components/AppProviders";
 import { useReaderSettingsValue } from "./hooks/useReaderSettingsValue";
 import { type ArticleFilter } from "./contexts/ArticleFilterContext";
 import { useSpeechSynthesis } from "./hooks/useSpeechSynthesis";
+import { useBackgroundAudio } from "./hooks/useBackgroundAudio";
 // usePiperTts は Phase 2c (Turbopack 互換性問題対応) まで App.tsx で呼ばない。
 // Emscripten 生成 chunk の `require("fs")` を Turbopack が解決できず build fail するため、
 // 別 Issue で next/dynamic({ssr:false}) 隔離 or webpack fallback 設定で対応する。
@@ -153,6 +154,10 @@ export default function App() {
     [speechSynAdapter, setTtsEngine],
   );
   const ttsSupported = ttsAdapter.supported;
+  // #745 Phase B: TTS 再生中 (or 一時停止中) の間、WebAudio の無音 oscillator を継続。
+  // これでスマホブラウザは「メディア再生中」と認識し、speechSynthesis のバックグラウンド休眠を回避できる。
+  // Phase A で hook 実装したが production caller 0 のままだったため、本サイクルで配線する。
+  useBackgroundAudio(ttsAdapter.isPlaying || ttsAdapter.isPaused);
 
   const {
     showHelp,
