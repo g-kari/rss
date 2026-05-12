@@ -11,7 +11,7 @@
     "prebuild": "node scripts/sync-release-notes.mjs",
     "build": "next build",
     "preview": "wrangler dev",
-    "build:cf": "npx @opennextjs/cloudflare build && node scripts/add-scheduled-handler.mjs",
+    "build:cf": "npx @opennextjs/cloudflare build && node scripts/remove-bundled-wasm.mjs && node scripts/add-scheduled-handler.mjs",
     "deploy": "node scripts/stamp-sw-version.mjs && npm run build:cf && wrangler deploy",
     "pretypecheck": "node scripts/sync-release-notes.mjs",
     "typecheck": "tsc --noEmit",

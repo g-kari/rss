@@ -56,9 +56,20 @@ interface PiperLib {
 let piperLibPromise: Promise<PiperLib> | null = null;
 function loadPiperLib(): Promise<PiperLib> {
   if (!piperLibPromise) {
-    piperLibPromise = import("@mintplex-labs/piper-tts-web").then(
-      (mod) => ({ predict: mod.predict, voices: mod.voices }) as PiperLib,
-    );
+    piperLibPromise = (async () => {
+      // #674 Phase 2c (closes #753): onnxruntime-web の wasm を bundle から除外して
+      // R2 経由 (`/api/wasm/<file>`) で fetch する設定。Cloudflare Workers の単一 asset
+      // 上限 25 MiB に `ort-wasm-simd-threaded.jsep.wasm` (25 MiB) が抵触するため、
+      // `scripts/remove-bundled-wasm.mjs` で bundle 後 wasm を削除 + 事前に R2 upload した
+      // 上で本 path から fetch する。trailing slash 必須 (ort 側で `<path> + <filename>` で
+      // resolve される)。
+      const ort = await import("onnxruntime-web");
+      if (typeof window !== "undefined") {
+        ort.env.wasm.wasmPaths = "/api/wasm/";
+      }
+      const mod = await import("@mintplex-labs/piper-tts-web");
+      return { predict: mod.predict, voices: mod.voices } as PiperLib;
+    })();
   }
   return piperLibPromise;
 }
