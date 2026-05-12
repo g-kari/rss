@@ -1,3 +1,19 @@
+diff --git a/src/index.js b/src/index.js
+index 885d291d4881396ae70d5d8c3b43d3081ad12122..f73d7f90a7fb368b9abdd0432c3bb21a60e2090e 100644
+--- a/src/index.js
++++ b/src/index.js
+@@ -657,6 +657,11 @@ export class PiperPlus {
+             {
+               wasmUrl: options.wasmG2pUrl || '../../dist/rust-wasm/piper_plus_wasm.js',
+               wasmLoader: options.wasmLoader,
++              // PATCHED (rss-reader #761): upstream の forward 漏れ修正。
++              // PiperPlus.initialize({ zhDictBaseUrl }) で渡しても rust-wasm-adapter に
++              // 伝わっていないため、default の `new URL('../../assets/', import.meta.url)` が
++              // build 時の `file:///ROOT/...` 絶対 path に解決されて CSP 違反になっていた。
++              zhDictBaseUrl: options.zhDictBaseUrl,
+             },
+           );
+           // Route all languages through WASM
 diff --git a/src/phonemizer/rust-wasm-adapter.js b/src/phonemizer/rust-wasm-adapter.js
 index 33bcff9b1543dc8d54d9d7e7021c8e28ab84de31..cf01c57690a7318d94cb0efd69141f9c62284c87 100644
 --- a/src/phonemizer/rust-wasm-adapter.js
