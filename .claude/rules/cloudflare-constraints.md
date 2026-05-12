@@ -216,14 +216,16 @@ const ort = await import("onnxruntime-web");
 ort.env.wasm.wasmPaths = "/api/wasm/"; // trailing slash 必須
 ```
 
-**事前 R2 upload (デプロイ前に手動 1 回)**:
+**事前 R2 upload (新規環境 / library バージョンアップ時)**:
+
+専用 script を `scripts/upload-<feature>-wasm.mjs` として配置し、`package.json` に `upload:<feature>-wasm` 等で登録する。`--remote` flag が必須 (省略するとローカル miniflare R2 emulator にしか書き込まれず production には反映されない罠)。
 
 ```bash
-WASM_DIR=node_modules/.pnpm/<lib-pkg>/node_modules/<lib>/dist
-for f in <wasm-files>; do
-  npx wrangler r2 object put rss-reader-data/<prefix>/$f --file=$WASM_DIR/$f
-done
+npx wrangler login  # 初回のみ
+npm run upload:piper-wasm  # 実体: node scripts/upload-piper-wasm.mjs
 ```
+
+script は **pnpm hash 化された path を自動解決** (`node_modules/.pnpm/<lib>@<ver>/node_modules/<lib>/dist`) + **4 ファイル順次 upload** + **失敗時 exit 1** で書くと、`onnxruntime-web` バージョンアップ時に再 upload するだけで運用継続できる。
 
 **How to apply**: 新規 wasm 依存追加 (onnxruntime-web / pyodide / sql.js 等) の build / deploy fail を見たら (25 MiB 制約は Cloudflare Workers asset の硬性上限で、bundle 内では回避不能 + 別ホスト fetch が唯一の解):
 

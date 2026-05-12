@@ -22,14 +22,14 @@ import { apiError } from "@/lib/api-error";
  *   - 任意 R2 オブジェクト参照を防ぐため `ALLOWED_FILES` allowlist で厳格に絞る
  *   - new file 種別を追加する場合は必ず本 allowlist と R2 upload を同時更新
  *
- * R2 upload 手順 (デプロイ前に手動 1 回):
+ * R2 upload 手順 (新規環境 / onnxruntime-web バージョンアップ時):
  *   ```
- *   WASM_DIR=node_modules/.pnpm/onnxruntime-web@*\/node_modules/onnxruntime-web/dist
- *   for f in ort-wasm-simd-threaded.wasm ort-wasm-simd-threaded.jsep.wasm \
- *            ort-wasm-simd-threaded.asyncify.wasm ort-wasm-simd-threaded.jspi.wasm; do
- *     npx wrangler r2 object put rss-reader-data/piper-wasm/$f --file=$WASM_DIR/$f
- *   done
+ *   npx wrangler login  # 初回のみ
+ *   npm run upload:piper-wasm
  *   ```
+ *
+ *   実体は `scripts/upload-piper-wasm.mjs` (pnpm hash 化 path 自動解決 + 4 ファイル順次
+ *   upload + 失敗時 exit 1)。ALLOWED_FILES と script 内 WASM_FILES を同期更新すること。
  */
 const ALLOWED_FILES: ReadonlySet<string> = new Set([
   "ort-wasm-simd-threaded.wasm",
