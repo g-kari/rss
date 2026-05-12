@@ -105,6 +105,13 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   const [rate, setRate] = useState<PiperTtsRate>(loadRate);
   const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
   const [volume, setVolumeState] = useState<number>(loadVolume);
+  // engine 初期化中の進捗 (null = 初期化していない / 完了済)。
+  // PiperPlus.initialize の onProgress callback で更新、UI 側で floating progress toast に表示。
+  const [initProgress, setInitProgress] = useState<{
+    stage: string;
+    progress: number;
+    message: string;
+  } | null>(null);
 
   const ttsInstanceRef = useRef<PiperPlusInstance | null>(null);
   const ttsVoiceIdRef = useRef<string | null>(null);
@@ -162,11 +169,20 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     console.info(`[usePiperTts] initializing voice=${voice.id} model=${voice.model}`);
     const { lib, ort } = await loadPiperLib();
     console.info(`[usePiperTts] library loaded, calling PiperPlus.initialize`);
+    // 初期化開始時に progress を初期状態に
+    setInitProgress({ stage: "starting", progress: 0, message: "初期化を開始しています..." });
     const instance = await lib.initialize({
       // HuggingFace repo 名 (`ayousanz/piper-plus-tsukuyomi-chan`) は library 内部で
       // huggingface.co/<repo>/resolve/main/ から自動 resolve される (standard path)。
       model: voice.model,
       ort,
+      onProgress: (info) => {
+        setInitProgress({
+          stage: info.stage,
+          progress: info.progress,
+          message: info.message,
+        });
+      },
       // patched piper-plus (patches/piper-plus.patch) で `new Function` 経由に書き換え済の
       // `import(url)` 経路を通すため wasmG2pUrl で URL を渡す。同 URL は wasm-bindgen の
       // `__wbg_init` が `new URL(bg.wasm, import.meta.url)` で相対解決するため、絶対 URL
@@ -182,6 +198,10 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     console.info(`[usePiperTts] PiperPlus.initialize complete for voice=${voice.id}`);
     ttsInstanceRef.current = instance;
     ttsVoiceIdRef.current = voice.id;
+    // 初期化完了で progress を non-null のまま「完了」表示にして自動で消える
+    // (UI 側で 1 秒程度の "完了!" 表示後 fade out する設計)
+    setInitProgress({ stage: "complete", progress: 1, message: "準備完了" });
+    setTimeout(() => setInitProgress(null), 1500);
     return instance;
   }, []);
 
@@ -234,6 +254,8 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
             lower.includes("fetch") || lower.includes("network") ? "network" : "model-error";
           setLastError(code);
           setErrorCount((c) => c + 1);
+          // 失敗時も progress を消去 (toast / banner で error 通知に切り替わる前提)
+          setInitProgress(null);
           return;
         }
         if (token !== playTokenRef.current) return;
@@ -359,5 +381,6 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     pause,
     resume,
     stop,
+    initProgress,
   };
 }

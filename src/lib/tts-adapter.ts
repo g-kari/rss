@@ -186,6 +186,20 @@ export interface TtsAdapter {
    * App.tsx で composition 経由で注入される。
    */
   availableEngines?: readonly TtsEngineId[];
+  /**
+   * engine 初期化中の進捗情報 (#761)。
+   *
+   * - `null` = 初期化していない / 完了済
+   * - object = 進行中 (UI 側で floating progress toast 等に表示)
+   *
+   * Web Speech engine では常に `null` (初期化即時完了のため進捗なし)。Piper engine では
+   * library / WASM / model DL の各段階で更新される。`progress` は 0.0〜1.0。
+   */
+  initProgress?: {
+    stage: string;
+    progress: number;
+    message: string;
+  } | null;
 }
 
 /**
