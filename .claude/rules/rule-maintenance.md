@@ -758,3 +758,79 @@ ls $(echo "$paths" | sed 's/paths: //; s/"//g; s/,/ /g' | tr ' ' '\n' | head -3)
 - 「全 code edit でロードしたい」(coding-conventions 等の core rule) は `src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts` のような広いセットで意図通り
 
 主な使用箇所: #728 案 B 部分達成サイクル — 5 件精緻化 (build-check.md dead path 削除 + react-patterns / browser-platform / design-system の subset 重複削除 + quality-checks の グローバル限定) を 1 commit で完結
+
+## 13. Cloudflare CI/CD の deploy fail と production outage を区別して revert vs fix-forward を判断する
+
+master push 直後の Cloudflare CI/CD ログで「deploy step が失敗」を観測したとき、**「本番が壊れている」と早合点して即 `git revert` push する** のは罠。実際は **CI/CD の deploy step だけが失敗** で、本番は **前回成功した deploy** のまま稼働継続している (= production は無影響) ケースが大半。早合点 revert は以下のコストを生む:
+
+1. **不要な revert commit を master に追加** + push (履歴ノイズ + ユーザー監視に「壊れた」の偽シグナル)
+2. **revert 取消の追加 commit** が必要に (本来の修正へ復帰するため、計 3 commit を 1 cycle で消費)
+3. **同サイクル内の他作業 scope を圧迫** (retrospective や別 Issue 対応の時間を取る)
+
+```bash
+# アンチパターン: deploy fail = 本番壊れた と即決して revert
+# (Cloudflare CI/CD log で "Asset too large" / "Build failed" を見た瞬間)
+git revert HEAD --no-edit
+git push origin master
+# ↑ ユーザー指摘で「本番は前 deploy のまま」と判明 → 取消必要
+
+# 修正パターン: deploy fail を観測したらまず本番稼働確認
+curl -sI https://<prod-domain>/ | head -3
+# HTTP/2 200 → 前 deploy で稼働中、revert 不要、fix-forward で進める
+curl -sI https://<prod-domain>/api/health
+# 200 → API も生存、revert は不要
+
+# 200 / 2xx 確認後:
+# - 追加 fix commit を作る (asset 削除 script / config 修正 等)
+# - master push → CI/CD 再 deploy 試行
+# - 成功すれば fix-forward 完了、本番は最新版に更新
+```
+
+### 判定フロー
+
+```
+deploy fail を観測:
+  ↓
+本番稼働確認 (curl で URL + /api/health の 2xx 確認):
+  ├─ 2xx 返る → 前 deploy で稼働継続中、production outage なし
+  │   → fix-forward (追加 commit で問題解決) を選択
+  │
+  ├─ 5xx / timeout / 0 接続失敗 → production outage 発生
+  │   → revert で復旧 (前回 deploy で動いていた commit に戻す)
+  │   → 修正後 commit で再 deploy
+  │
+  └─ 確認手段がない (curl 通らない / 本番未設定) → fix-forward を default に
+      (revert は元戻り保証もないので、追加 commit で前進)
+```
+
+### deploy fail と production outage を区別する観点
+
+| 観点             | deploy fail                                        | production outage                      |
+| ---------------- | -------------------------------------------------- | -------------------------------------- |
+| CI/CD ログ       | "Build failed" / "Asset too large" / "Auth failed" | (CI/CD ログだけでは判定不能)           |
+| 本番 HTTP status | **2xx で稼働中** (前 deploy のまま)                | 5xx / timeout / 0                      |
+| ユーザー影響     | **なし** (前 deploy で動いている)                  | あり (機能停止 / page broken)          |
+| 緊急度           | 低 (fix-forward で OK)                             | 高 (revert で即復旧 → 修正後再 deploy) |
+| 対応             | 追加 commit で前進                                 | revert + 修正後再 deploy               |
+
+**How to apply**: Cloudflare CI/CD で deploy fail / 任意の deploy エラーを観測したら (deploy fail は CI/CD step の失敗、production outage は本番が実際に応答不能、両者は **別の事象** で対応も別):
+
+1. **CI/CD ログだけでは判定しない** — 必ず本番 URL を curl / browser で確認
+2. **本番が 2xx 返るなら revert 禁止** — fix-forward (追加 commit で前進) のみ実施
+3. **本番が 5xx / timeout / 0 ならまず revert** で復旧 → 別 commit で fix-forward 試行
+4. **判定 5 分以内に本番確認するルーチン** を持つ (deploy fail 直後、master push でログ確認するなら同時に本番確認も)
+5. **ユーザー指摘前に自己訂正可能な誤り** = revert push 後すぐ取消が必要になったら、本ルールを再読 (将来同じ誤りを繰り返さない)
+
+**反例 (revert が正しいケース)**:
+
+- 本番が **5xx / timeout** を返している → revert 必須 (production outage 復旧優先)
+- deploy fail の **commit 内容が他観点でも壊れている** (= 修正不能 / scope 過大) → revert で振り出しに戻すのが効率的
+- ユーザーが明示的に **「revert で戻して」** と指示した → 指示優先
+
+**fix-forward 例**:
+
+- `Asset too large` (Cloudflare Workers asset 25 MiB 上限抵触) → bundle 除外 script 追加 + R2 セルフホストの追加 commit で fix-forward
+- `Build failed: Module not found` (依存追加忘れ / config 抜け) → 該当 config の追加 commit で fix-forward
+- `Auth failed` (wrangler 認証切れ) → CI/CD 設定の secret 更新 → 再 push で fix-forward
+
+主な使用箇所: `#753` Phase 2c で `Asset too large: 25 MiB ort-wasm-simd-threaded.jsep.wasm` deploy fail を「本番壊れた」と早合点して revert push → ユーザー指摘 (「デプロイできていないから大丈夫でしょ」) で「deploy fail のみ、本番は前 deploy のまま稼働継続」と判明 → revert 取消 + R2 セルフホスト戦略の fix-forward に復帰、計 3 commit (revert / revert-revert / 本 fix) を消費して `1 cycle` 内の他作業 scope を圧迫

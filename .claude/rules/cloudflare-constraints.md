@@ -128,23 +128,116 @@ if (ENVIRONMENT_IS_NODE) {
 
 **対処オプション**:
 
-| 案  | 内容                                                                                               | 適用範囲                                 |
-| --- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| A   | `next.config.ts` の **`webpack` callback で `resolve.fallback`** に `fs: false / path: false` 設定 | webpack mode の Next.js                  |
-| B   | **`next/dynamic({ ssr: false })`** で library 使用コンポーネントを完全 client 隔離                 | Turbopack mode (現状 Next.js 16 default) |
-| C   | **library 使用部分を一時撤去** + 別 Issue で対応 (短期)                                            | scope を一時縮小したいケース             |
+| 案  | 内容                                                                                               | 適用範囲                                                                          |
+| --- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| A   | `next.config.ts` の **`webpack` callback で `resolve.fallback`** に `fs: false / path: false` 設定 | webpack mode の Next.js                                                           |
+| B   | **`next/dynamic({ ssr: false })`** で library 使用コンポーネントを完全 client 隔離                 | server bundle 除外のみ。**Turbopack の client bundle 静的解析エラーは解決しない** |
+| C   | **library 使用部分を一時撤去** + 別 Issue で対応 (短期)                                            | scope を一時縮小したいケース                                                      |
+| D   | **`turbopack.resolveAlias` で `{ browser: empty-module }` 条件付き alias** (推奨)                  | Turbopack mode (Next.js 16 default)。option B と併用が canonical                  |
 
-Next.js 16 default の Turbopack mode では **option A は効かない** ことがある (webpack callback が Turbopack に伝わらない)。option B が最も汎用。
+**Next.js 16 default の Turbopack mode では option B 単独では不十分**。`next/dynamic({ ssr: false })` は SSR (server bundle) を skip するだけで、Turbopack は **client bundle 内で `require("fs")` を依然静的解析しようとする** ため build / dev で `Module not found: Can't resolve 'fs'` を吐き続ける。**option D (resolveAlias) を併用** することで、browser bundle 解決時のみ `fs`/`path` を empty module に向けて build を通す (実行時は `ENVIRONMENT_IS_NODE === false` で dead code 化されるので影響なし)。
 
-**How to apply**: Emscripten / wasm ラッパーを含む npm パッケージを統合するとき (transpilePackages だけでは Node.js fallback の require が残る、SSR を skip して client-only bundle に隔離するのが最も汎用):
+```typescript
+// 自前 empty module (src/lib/empty-module.js):
+//   module.exports = {};
+
+// next.config.ts:
+const nextConfig: NextConfig = {
+  transpilePackages: ["@mintplex-labs/piper-tts-web", "onnxruntime-web"],
+  turbopack: {
+    resolveAlias: {
+      fs: { browser: "./src/lib/empty-module.js" },
+      path: { browser: "./src/lib/empty-module.js" },
+    },
+  },
+};
+```
+
+**How to apply**: Emscripten / wasm ラッパーを含む npm パッケージを統合するとき (option B 単独だと build / dev は依然 fail、option D 併用で client bundle 解決を補正):
 
 1. **build / dev で `Can't resolve 'fs'` / `'path'` / `'crypto'` 等が出る** か確認
-2. 出たら **option B (`next/dynamic({ ssr: false })`)** で library を呼ぶコンポーネントを wrap:
+2. **option B (`next/dynamic({ ssr: false })`) で library 使用コンポーネントを client 隔離**:
    ```typescript
    const PiperHost = dynamic(() => import("./PiperHost"), { ssr: false });
    ```
-3. PiperHost 内で `usePiperTts` 等を直接呼ぶ — server bundle には含まれず client のみで解決
-4. 親コンポーネント (App.tsx 等) は PiperHost を JSX で render するだけ、hook 直呼びは避ける
-5. **adapter pattern と組合せ**: PiperHost が `useTtsAdapter()` Context の value を提供する別 Provider tree を構築すれば、既存 consumer は変更不要
+   server bundle に library を含めないことで SSR 失敗を防ぐ
+3. **option D (`turbopack.resolveAlias`) で `fs` / `path` を browser-only empty module に alias** (`{ browser: <empty-module path> }` 条件付き):
+   - 自前 `empty-module.js` を `src/lib/` 等に配置 (`module.exports = {};`)
+   - `turbopack.resolveAlias: { fs: { browser: "./src/lib/empty-module.js" }, path: { browser: "..." } }`
+4. PiperHost 内で `usePiperTts` 等を直接呼ぶ — server bundle 除外 + client bundle 静的解析回避の 2 段構え
+5. **adapter pattern と組合せ**: PiperHost が render prop で `TtsAdapter` を expose する場合、React Rules of Hooks (callback 内 hook 呼出禁止) のため **App.tsx の中身を別コンポーネント (AppShell) に切り出して PiperHost の render prop 内で render** する必要がある
 
-主な使用箇所: `#674` Phase 2b で `@mintplex-labs/piper-tts-web` の `piper-XXXX.js` chunk が `require("fs")` を含み Turbopack で Module not found → Phase 2c で `next/dynamic({ssr:false})` 隔離予定
+主な使用箇所: `#674` Phase 2c (closes `#753`) で `@mintplex-labs/piper-tts-web` を配線するとき、初回 option B のみで commit → master push → Cloudflare CI/CD build が依然 `Module not found: Can't resolve 'fs'` で fail と判明 → option D (`turbopack.resolveAlias`) を追加 commit で本配線完成。option B 単独が「最も汎用」という旧 codify は本サイクルで訂正済
+
+## Cloudflare Workers の単一 asset 25 MiB 上限に抵触する wasm は R2 セルフホスト + Route Handler 経由で fetch
+
+`onnxruntime-web@1.26.0` の `ort-wasm-simd-threaded.jsep.wasm` (25.02 MiB) のように、**Cloudflare Workers の単一 asset 最大サイズ 25 MiB にちょうど抵触** する大型 wasm を `.open-next/assets/_next/static/media/` 配下に bundle すると、`opennextjs-cloudflare deploy` が `Error: Asset too large` で fail する。Turbopack build / Next.js 互換性が通っても deploy 不能になる別軸の制約。
+
+**対処パターン**: bundle から wasm を除外 + R2 セルフホスト + Route Handler 経由 fetch + library 側 wasm path 設定の 4 点セット。
+
+```typescript
+// 1. scripts/remove-bundled-wasm.mjs — build:cf post-step で wasm を削除
+import { readdir, rm, stat } from "node:fs/promises";
+import { join } from "node:path";
+const MEDIA_DIR = ".open-next/assets/_next/static/media";
+for (const f of await readdir(MEDIA_DIR)) {
+  if (!f.endsWith(".wasm")) continue;
+  const p = join(MEDIA_DIR, f);
+  const s = await stat(p);
+  await rm(p);
+  console.log(`removed ${f} (${(s.size / 1024 / 1024).toFixed(2)} MiB)`);
+}
+
+// 2. package.json build:cf に統合:
+// "build:cf": "npx @opennextjs/cloudflare build && node scripts/remove-bundled-wasm.mjs && ..."
+
+// 3. app/api/wasm/[file]/route.ts — R2 から fetch して serve
+const ALLOWED_FILES: ReadonlySet<string> = new Set([
+  "ort-wasm-simd-threaded.wasm",
+  "ort-wasm-simd-threaded.jsep.wasm",
+  // ... allowlist 厳格化
+]);
+export async function GET(_req: Request, { params }: { params: Promise<{ file: string }> }) {
+  const { file } = await params;
+  if (!ALLOWED_FILES.has(file)) return apiError("Not Found", 404, { code: "NOT_FOUND" });
+  const { env } = await getCloudflareContext({ async: true });
+  const obj = await env.RSS_DATA.get(`piper-wasm/${file}`);
+  if (!obj) return apiError("Not Found", 404, { code: "NOT_FOUND" });
+  return new Response(obj.body, {
+    headers: {
+      "Content-Type": "application/wasm",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    },
+  });
+}
+
+// 4. library 側で wasm 解決先を指定 (onnxruntime-web 例)
+const ort = await import("onnxruntime-web");
+ort.env.wasm.wasmPaths = "/api/wasm/"; // trailing slash 必須
+```
+
+**事前 R2 upload (デプロイ前に手動 1 回)**:
+
+```bash
+WASM_DIR=node_modules/.pnpm/<lib-pkg>/node_modules/<lib>/dist
+for f in <wasm-files>; do
+  npx wrangler r2 object put rss-reader-data/<prefix>/$f --file=$WASM_DIR/$f
+done
+```
+
+**How to apply**: 新規 wasm 依存追加 (onnxruntime-web / pyodide / sql.js 等) の build / deploy fail を見たら (25 MiB 制約は Cloudflare Workers asset の硬性上限で、bundle 内では回避不能 + 別ホスト fetch が唯一の解):
+
+1. **deploy fail log で `Asset too large` 確認** + 該当 wasm ファイルサイズを `ls -lh` で確認
+2. **bundle から除外する script を `scripts/remove-bundled-wasm.mjs` で書く** + `package.json` の `build:cf` に統合 (post `@opennextjs/cloudflare build` step)
+3. **Route Handler `app/api/<prefix>/[file]/route.ts` を ALLOWED_FILES allowlist で作る** (任意 R2 object 参照を防ぐ + immutable cache)
+4. **library 側の wasm path option を確認** (例: `ort.env.wasm.wasmPaths` / `pyodide.indexURL` / `sql.js locateFile`) → `/api/<prefix>/` を指定
+5. **R2 へ wasm を事前 upload** (`wrangler r2 object put` を手動 1 回、運用作業として明文化)
+6. **CSP 確認**: `/api/<prefix>/` は same-origin なので `script-src` / `connect-src` 緩和不要
+
+**反例 (R2 セルフホストが不要なケース)**:
+
+- wasm サイズが 25 MiB 未満 → bundle 内で OK (= 通常の `_next/static/media/` 配下)
+- library が CDN URL を default で参照する (例: pyodide の jsdelivr CDN default) → CSP 緩和で fetch 許可するだけで動く
+- 一時的 PoC で deploy しない (`next dev` 開発のみ) → 不要
+
+主な使用箇所: `#674` Phase 2c (closes `#753`) で `onnxruntime-web@1.26.0` の `ort-wasm-simd-threaded.jsep.wasm` (25.02 MiB) が Cloudflare deploy 上限抵触 → `scripts/remove-bundled-wasm.mjs` で bundle 除外 + `app/api/wasm/[file]/route.ts` + `ort.env.wasm.wasmPaths = "/api/wasm/"` の 4 点セットで配線 (commit `29d0e629`)
