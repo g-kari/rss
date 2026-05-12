@@ -3,7 +3,13 @@ import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import { cycleValue } from "../lib/article-utils";
 import { isSpeechSupported } from "../lib/auto-read";
 import { selectTtsVoice } from "../lib/tts-voice";
-import { speechSynthesisVoiceToTtsVoice, type TtsAdapter } from "../lib/tts-adapter";
+import {
+  TTS_SILENT_SKIP_ERRORS,
+  normalizeWebSpeechError,
+  speechSynthesisVoiceToTtsVoice,
+  type TtsAdapter,
+  type TtsErrorCode,
+} from "../lib/tts-adapter";
 import { clampTtsVolume, parseTtsVolume } from "../lib/tts-volume";
 import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
@@ -51,7 +57,10 @@ export function useSpeechSynthesis(): TtsAdapter {
   const [endedCount, setEndedCount] = useState(0);
   // #743: utterance.onerror 発火を表面化するカウンタ。
   // consumer はこのカウンタ増加でユーザーに toast 等で通知する (silent fail を避ける)。
+  // #756: TTS_SILENT_SKIP_ERRORS (canceled / interrupted / audio-busy) では increment しない。
   const [errorCount, setErrorCount] = useState(0);
+  // #756: 直近の TTS エラー種別 (consumer が文言切替に使う)。silent skip も lastError には記録。
+  const [lastError, setLastError] = useState<TtsErrorCode | null>(null);
   const [rate, setRate] = useState<TtsRate>(loadRate);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
@@ -117,13 +126,24 @@ export function useSpeechSynthesis(): TtsAdapter {
       };
       utterance.onerror = (e) => {
         if (utteranceRef.current === utterance) {
-          // #743: silent fail を避けるため errorCount を increment してエラーを表面化
+          const code = normalizeWebSpeechError(e.error);
           devError("[useSpeechSynthesis] utterance.onerror", {
             error: e.error,
+            normalized: code,
             voice: utterance.voice?.name ?? "(none)",
             voicesLength: voicesRef.current.length,
           });
-          setErrorCount((c) => c + 1);
+          setLastError(code);
+          // #756: silent skip (canceled / interrupted / audio-busy) では errorCount を increment しない
+          if (!TTS_SILENT_SKIP_ERRORS.has(code)) {
+            setErrorCount((c) => c + 1);
+          }
+          // #756: voice-unavailable で voiceUri を自動 reset (consumer は toast で通知)
+          if (code === "voice-unavailable") {
+            storageSet(STORAGE_KEYS.TTS_VOICE_URI, "");
+            voiceUriRef.current = null;
+            setVoiceUriState(null);
+          }
           resetState();
         }
       };
@@ -215,6 +235,7 @@ export function useSpeechSynthesis(): TtsAdapter {
       isPaused,
       endedCount,
       errorCount,
+      lastError,
       rate,
       cycleRate,
       volume,
@@ -232,6 +253,7 @@ export function useSpeechSynthesis(): TtsAdapter {
       isPaused,
       endedCount,
       errorCount,
+      lastError,
       rate,
       cycleRate,
       volume,

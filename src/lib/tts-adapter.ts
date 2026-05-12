@@ -34,6 +34,90 @@ export type TtsRate = number;
 export type TtsEngineId = "web-speech" | "piper";
 
 /**
+ * 抽象化された TTS エラーコード (#756)。
+ *
+ * Web Speech API の `SpeechSynthesisErrorCode` と Piper wasm engine の内部エラーを統合し、
+ * consumer (UI 層) が engine 種別を意識せずに「どんな失敗だったか」を判定できるようにする。
+ *
+ * 値別の推奨処理:
+ * - `canceled` / `interrupted` / `audio-busy` → silent skip (engine 側で `errorCount` を increment しない)
+ * - `voice-unavailable` → 自動で `setVoiceUri(null)` reset + toast
+ * - `language-unavailable` / `not-allowed` / `synthesis-failed` / `audio-hardware` / `network` / `model-error` / `unknown` → toast (文言は consumer 側で切替)
+ */
+export type TtsErrorCode =
+  | "canceled"
+  | "interrupted"
+  | "audio-busy"
+  | "not-allowed"
+  | "language-unavailable"
+  | "voice-unavailable"
+  | "synthesis-failed"
+  | "audio-hardware"
+  | "network"
+  | "model-error"
+  | "unknown";
+
+/**
+ * `errorCount` を increment せず devError ログのみで処理する「silent skip」対象。
+ * バックグラウンド遷移や明示的 cancel など、ユーザーへ通知すべきでないエラー種別。
+ */
+export const TTS_SILENT_SKIP_ERRORS: ReadonlySet<TtsErrorCode> = new Set<TtsErrorCode>([
+  "canceled",
+  "interrupted",
+  "audio-busy",
+]);
+
+/**
+ * Web Speech API の `SpeechSynthesisErrorEvent.error` 値を抽象 `TtsErrorCode` に正規化する。
+ * 未知の値は `"unknown"` にフォールバック。
+ */
+export function normalizeWebSpeechError(rawError: string): TtsErrorCode {
+  switch (rawError) {
+    case "canceled":
+    case "interrupted":
+    case "audio-busy":
+    case "not-allowed":
+    case "language-unavailable":
+    case "voice-unavailable":
+    case "synthesis-failed":
+    case "audio-hardware":
+    case "network":
+      return rawError;
+    default:
+      return "unknown";
+  }
+}
+
+/**
+ * `TtsErrorCode` 別のユーザー向け toast 文言を返す。`null` 戻り値は「toast 不要」を意味する
+ * (silent skip 対象 + canceled)。
+ */
+export function formatTtsErrorMessage(code: TtsErrorCode | null): string | null {
+  if (code === null) return null;
+  if (TTS_SILENT_SKIP_ERRORS.has(code)) return null;
+  switch (code) {
+    case "language-unavailable":
+      return "端末でこの言語の voice が利用できません。設定 → Voice で別の voice を選んでください";
+    case "voice-unavailable":
+      return "選択中の voice が利用できなくなりました。自動選択に戻します";
+    case "not-allowed":
+      return "ブラウザの音声再生許可が必要です。画面をタップしてからお試しください";
+    case "synthesis-failed":
+      return "読み上げエンジンで内部エラーが発生しました";
+    case "audio-hardware":
+      return "音声出力デバイスでエラーが発生しました";
+    case "network":
+      return "ネットワークエラーで読み上げに失敗しました";
+    case "model-error":
+      return "Piper モデル読み込みに失敗しました";
+    case "unknown":
+      return "読み上げに失敗しました (詳細不明)";
+    default:
+      return null;
+  }
+}
+
+/**
  * 読み上げエンジンの抽象インターフェース。`useSpeechSynthesis` (Web Speech) や
  * 将来の `usePiperTts` が共に実装する。
  */
@@ -60,8 +144,15 @@ export interface TtsAdapter {
    * TTS が `utterance.onerror` (engine 由来エラー) で停止した累積回数 (#743)。
    * consumer はこのカウンタの増加を検知してユーザーにエラー通知 (toast 等) を出す。
    * silent fail を避けるための表面化チャネル。
+   *
+   * `TTS_SILENT_SKIP_ERRORS` (canceled / interrupted / audio-busy) では increment しない (#756)。
    */
   errorCount: number;
+  /**
+   * 直近の TTS エラー種別 (#756)。`errorCount` 増加時に consumer が文言切替に使う。
+   * silent skip された error も lastError には記録される (debug 用)。`null` = エラーなし状態。
+   */
+  lastError: TtsErrorCode | null;
   /** 現在の速度 */
   rate: TtsRate;
   /** 速度を順番に切り替え (engine 別の許容セットで cycle)。戻り値は次の rate 値 (UX 監査 #2: Shift+R toast 表示用) */
