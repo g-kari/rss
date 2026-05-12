@@ -6,6 +6,8 @@
  */
 import { unescapeHtml } from "./html";
 import { IMAGE_MIN_DIMENSION } from "./image-constants";
+import { rewriteMediaSrcAttrs } from "./html-media-processors";
+import { transformSrcset } from "./html-srcset";
 
 /** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */
 export function tryParseBase(pageUrl: string): URL | null {
@@ -22,40 +24,7 @@ export function tryParseBase(pageUrl: string): URL | null {
  * 形式: "url1 descriptor1, url2 descriptor2, ..."
  * URL が http(s) でない場合（data: など）は変換をスキップする。
  */
-function transformSrcset(srcset: string, rewriteUrl: (url: string) => string): string {
-  // HTML srcset 仕様 (https://html.spec.whatwg.org/#parse-a-srcset-attribute) に寄せたパース。
-  // URL は whitespace までを境界とし、URL 末尾の `,` のみ候補区切りとして扱う。
-  // これにより Cloudinary のように path 内に生の `,` を含む URL (c_limit,f_auto,... 等) でも壊れない。
-  const isWs = (c: string) => c === " " || c === "\t" || c === "\n" || c === "\r" || c === "\f";
-  const parts: string[] = [];
-  let i = 0;
-  const s = srcset;
-  while (i < s.length) {
-    while (i < s.length && (isWs(s[i]) || s[i] === ",")) i++;
-    if (i >= s.length) break;
-    const urlStart = i;
-    while (i < s.length && !isWs(s[i])) i++;
-    let url = s.slice(urlStart, i);
-    let descriptor = "";
-    // URL 末尾に付く `,` は候補区切り。複数付いていても取り除く。
-    let trailingComma = false;
-    while (url.endsWith(",")) {
-      url = url.slice(0, -1);
-      trailingComma = true;
-    }
-    if (!trailingComma) {
-      while (i < s.length && isWs(s[i])) i++;
-      const dStart = i;
-      while (i < s.length && s[i] !== ",") i++;
-      descriptor = s.slice(dStart, i).trim();
-      if (i < s.length && s[i] === ",") i++;
-    }
-    if (!url) continue;
-    const out = rewriteUrl(url);
-    parts.push(descriptor ? `${out} ${descriptor}` : out);
-  }
-  return parts.join(", ");
-}
+// transformSrcset は src/lib/html-srcset.ts に分離 (#752)。本ファイル内では import 経由で利用。
 
 /**
  * 相対 URL を base に対して絶対 URL に解決する。
@@ -196,25 +165,12 @@ export function fixImageDimensions(html: string, pageUrl = ""): string {
 }
 
 /**
- * 記事本文内の外部画像 URL を /api/image-proxy 経由に書き換える。
+ * 記事本文内の外部画像 URL を /api/image-proxy 経由に書き換える (#752 で thin wrapper 化)。
  * fixImageDimensions で相対パスが絶対 URL に解決された後に適用する。
- * src と srcset の両方を対象とする。
+ * src と srcset の両方を対象とする。実体は `html-media-processors.ts#rewriteMediaSrcAttrs`。
  */
 export function rewriteImageUrls(html: string): string {
-  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
-    let rewritten = attrs.replace(
-      /\bsrc=["'](https?:\/\/[^"']+)["']/gi,
-      (_sm, src: string) => `src="/api/image-proxy?url=${encodeURIComponent(unescapeHtml(src))}"`,
-    );
-    rewritten = rewritten.replace(/\bsrcset=["']([^"']+)["']/gi, (_sm, srcset: string) => {
-      const proxied = transformSrcset(srcset, (url) => {
-        if (!/^https?:\/\//i.test(url)) return url;
-        return `/api/image-proxy?url=${encodeURIComponent(unescapeHtml(url))}`;
-      });
-      return `srcset="${proxied}"`;
-    });
-    return `<img${rewritten}>`;
-  });
+  return rewriteMediaSrcAttrs(html, { tags: ["img"], proxyPath: "image-proxy", srcset: true });
 }
 
 /**
