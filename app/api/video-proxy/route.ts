@@ -9,6 +9,7 @@ import {
   readBodyBytes,
 } from "@/lib/fetch";
 import { ALLOWED_VIDEO_CONTENT_TYPES, detectVideoMimeType } from "@/lib/video-mime";
+import { errorVideoResponse } from "@/lib/video-error-placeholder";
 import { isSameOriginImageRequest } from "@/lib/image-proxy-security";
 import { MAX_VIDEO_BYTES } from "@/lib/validation";
 
@@ -79,14 +80,22 @@ async function handleGet(
       console.error(
         `[video-proxy] upstream not ok: url=${url} status=${res.status} content-type="${ct}"`,
       );
-      return new Response(null, { status: res.status === 404 ? 404 : 502 });
+      const reason =
+        res.status === 404 ? "not_found" : res.status === 403 ? "bot_blocked" : "unavailable";
+      return errorVideoResponse(reason, {
+        upstreamStatus: res.status,
+        upstreamContentType: ct || undefined,
+      });
     }
 
     const needsMagicCheck = ct === "application/octet-stream" || ct === "";
 
     if (!needsMagicCheck && !ALLOWED_VIDEO_CONTENT_TYPES.has(ct)) {
       console.error(`[video-proxy] MIME rejected: url=${url} content-type="${ct}"`);
-      return new Response(null, { status: 415 });
+      return errorVideoResponse("mime_rejected", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+      });
     }
 
     const contentLength = res.headers.get("content-length");
@@ -95,7 +104,11 @@ async function handleGet(
       console.error(
         `[video-proxy] too large (Content-Length): url=${url} cl=${clBytes} max=${MAX_VIDEO_BYTES}`,
       );
-      return new Response(null, { status: 413 });
+      return errorVideoResponse("too_large", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+        bodySize: clBytes,
+      });
     }
 
     const effectiveMax =
@@ -103,14 +116,20 @@ async function handleGet(
 
     if (!res.body) {
       console.error(`[video-proxy] no body: url=${url} content-type="${ct}"`);
-      return new Response(null, { status: 502 });
+      return errorVideoResponse("unavailable", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+      });
     }
     const merged = await readBodyBytes(res.body, effectiveMax);
     if (merged === null) {
       console.error(
         `[video-proxy] size unknown over limit: url=${url} content-type="${ct}" cl-header=${contentLength ?? "none"} effective-max=${effectiveMax}`,
       );
-      return new Response(null, { status: 413 });
+      return errorVideoResponse(contentLength ? "too_large" : "size_unknown", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+      });
     }
 
     // マジックバイト検証で MIME 偽装をブロック
@@ -119,7 +138,12 @@ async function handleGet(
       console.error(
         `[video-proxy] magic bytes detection failed: url=${url} content-type="${ct}" detected="${mimeType ?? "null"}" body-size=${merged.byteLength}`,
       );
-      return new Response(null, { status: 415 });
+      return errorVideoResponse("content_type_mismatch", {
+        upstreamStatus: res.status,
+        upstreamContentType: ct,
+        detectedMime: mimeType ?? undefined,
+        bodySize: merged.byteLength,
+      });
     }
 
     cachePutAsync(
@@ -147,6 +171,6 @@ async function handleGet(
     if (!isAbortError(err)) {
       console.error("[video-proxy] fetch error:", formatError(err));
     }
-    return new Response(null, { status: 502 });
+    return errorVideoResponse("network");
   }
 }
