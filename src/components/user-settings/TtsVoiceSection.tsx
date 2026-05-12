@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useTtsAdapter } from "../../contexts/TtsAdapterContext";
 import { groupVoicesByLang } from "../../lib/tts-voice";
+import { findPiperPlusVoice, PIPER_PLUS_VOICES } from "../../lib/piper-voices";
 
 /**
  * UserSettingsModal の表示タブに表示する「読み上げ音声」セクション (#675 Phase 1b)。
@@ -31,6 +32,17 @@ export default function TtsVoiceSection() {
   // engine 切替 UI は availableEngines が 2 つ以上で setEngine が注入された場合のみ表示。
   // Phase 2b では availableEngines = ["web-speech"] のみ (Piper は Phase 2c で復活予定)。
   const canSwitchEngine = setEngine !== undefined && (availableEngines?.length ?? 0) > 1;
+
+  // 選択中 voice (Piper engine の場合) の credit 情報。non-Piper voice や未選択時は null。
+  // engine="piper" のとき、voice 未選択 (自動) でも tsukuyomi credit を必ず表示する
+  // (公式規約「目立つ場所に十分な文字サイズで掲載」を満たすため、Piper 使用者全員に告知)。
+  const piperCreditVoice = useMemo(() => {
+    if (engine !== "piper") return null;
+    const selected = findPiperPlusVoice(voiceUri);
+    if (selected?.credit) return selected;
+    // 未選択時は credit を持つ最初の voice (tsukuyomi 等) を fallback として表示
+    return PIPER_PLUS_VOICES.find((v) => v.credit) ?? null;
+  }, [engine, voiceUri]);
 
   if (!supported) {
     return (
@@ -83,11 +95,43 @@ export default function TtsVoiceSection() {
         )}
         {engine === "piper" && (
           <span className="text-[11px] text-text-muted">
-            初回再生時にモデル (数十 MB) がブラウザ OPFS に DL されますわ。つくよみちゃん等の voice
-            は公式 huggingface から自動取得されます。
+            初回再生時にモデル (数十 MB) がブラウザにキャッシュされますわ。
           </span>
         )}
       </div>
+
+      {/* Piper voice のクレジット表記 (つくよみちゃんコーパス利用規約に基づく必須掲載) */}
+      {piperCreditVoice?.credit && (
+        <div className="border border-border-default rounded p-3 bg-surface-elevated flex flex-col gap-2">
+          <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+            音声素材クレジット
+          </span>
+          <p className="text-[13px] text-text-default whitespace-pre-line leading-relaxed">
+            {piperCreditVoice.credit.creditText}
+          </p>
+          <a
+            href={piperCreditVoice.credit.creditUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[12px] text-text-default underline hover:text-text-strong break-all"
+          >
+            {piperCreditVoice.credit.creditUrl}
+          </a>
+          <div className="flex flex-col gap-1 pt-1 border-t border-border-subtle">
+            <span className="text-[11px] font-medium text-text-default">
+              ライセンス: {piperCreditVoice.credit.license}
+            </span>
+            <span className="text-[11px] text-text-muted">
+              出力音声を以下の用途に使用することは禁止されておりますわ:
+            </span>
+            <ul className="text-[11px] text-text-muted list-disc list-inside pl-1 flex flex-col gap-0.5">
+              {piperCreditVoice.credit.restrictions.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="tts-voice-select" className="text-[12px] font-medium text-text-default">
