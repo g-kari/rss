@@ -304,6 +304,66 @@ export function useBackgroundAudio(active: boolean): void {
 
 主な使用箇所: `useBackgroundAudio` — TTS バックグラウンド継続用の無音 `AudioContext` を component lifetime 中 1 個保持、active 切替で `suspend()`/`resume()` + oscillator start/stop だけ切替 (OS audio session 切替の数十 ms コスト + Chrome 6 個上限を回避)
 
+### 派生ケース: ライブラリの内部 resource が外部から制御不能なときは「低レベル API + 自前再生」で奪い返す
+
+外部ライブラリ (例: `piper-plus@0.6.0` の `AudioResult.play()`) が **内部で `AudioBufferSourceNode` / `Worker` / `EventSource` 等の resource を生成して closure 内に握ったまま外部に expose しない** ケースがある。この場合、ライブラリ提供の高レベル再生 API (`audio.play()` / `worker.run()`) を呼ぶと **後から `stop()` / `terminate()` できず**、ユーザー操作 (停止ボタン) で止まらない silent failure を生む。
+
+```typescript
+// アンチパターン: library 高レベル API を呼ぶ → source ref を取れず止められない
+async function speak() {
+  const audio = await piperLib.synthesize(text);
+  await audio.play(); // ← 内部 BufferSourceNode は外から見えない
+}
+const stop = () => {
+  playTokenRef.current += 1; // token 進めても、既に start した再生は止まらない
+};
+
+// 修正パターン: library から低レベル data (samples / sampleRate) を取り出して自前再生
+async function speak() {
+  const audio = await piperLib.synthesize(text);
+  const ctx = getAudioContext(); // module-level singleton
+  const buffer = ctx.createBuffer(1, audio.samples.length, audio.sampleRate);
+  buffer.copyToChannel(new Float32Array(audio.samples), 0);
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const gain = ctx.createGain();
+  gain.gain.value = volumeRef.current;
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  audioSourceRef.current = source; // ← ref で source 保持
+  await new Promise<void>((resolve) => {
+    source.onended = () => resolve();
+    source.start();
+  });
+}
+const stop = () => {
+  playTokenRef.current += 1;
+  const source = audioSourceRef.current;
+  if (source) {
+    audioSourceRef.current = null;
+    source.onended = null; // natural-end の偽発火を防止
+    source.stop();
+    source.disconnect();
+  }
+};
+```
+
+**How to apply**: 外部ライブラリの高レベル API を hook で使うとき、以下を判定 (ライブラリの「便利な高レベル API」が外部 stop 不能なら、低レベル data を取り出して自前 resource 制御に切り替えた方が UX 保全に直結する):
+
+1. **library API の戻り値で内部 resource (source / worker / observer) にアクセスできるか** を確認 (MDN / library docs / type definitions)
+2. アクセス不可なら **library に低レベル data 取得 API があるか** (例: `audio.samples` / `audio.sampleRate` / `worker.getCurrentMessage()`) — あれば自前再生に切替
+3. **自前 resource は `useRef` で hook lifetime 中保持** + 専用 `releaseXxx()` helper で stop + disconnect を 1 箇所集約
+4. **natural-end 経路と手動 stop 経路を区別**: stop 時は `onended = null` セット → natural-end 偽発火を防ぐ + monotonic counter (`endedCount`) は手動 cancel では increment させない (`react-state-ref.md` 派生ケース「monotonic counter で手動 cancel と自然完了の区別」と整合)
+5. test では library mock の高レベル API (`play()`) でなく **低レベル data (samples) を返す mock + class 形式 `MockAudioContext`** で BufferSourceNode 経由を verify (`react-state-ref.md`「`new Ctor()` API は class 形式 mock」規範)
+
+**反例 (library 高レベル API のままで OK なケース)**:
+
+- library が **`AbortSignal` / cancel callback / external stop API** を expose している (例: `fetch(url, { signal })` / `audio.cancel()`) → library API で停止可能、自前再生不要
+- 再生が **数秒以内に確実に終わる短い任意のメディア** (例: 効果音 click sfx) → 停止 UX が不要、library 高レベル API で OK
+- library 内部 resource が **library lifecycle で自動破棄** される (例: lazy load 完了で `URL.revokeObjectURL` される画像) → 外部制御不要
+
+主な使用箇所: `usePiperTts` (#766) — `piper-plus@0.6.0` の `AudioResult.play()` が内部 BufferSourceNode を closure に握って外部 stop 不能 → `audio.samples` / `audio.sampleRate` を取り出して自前 BufferSourceNode 再生に切替、`audioSourceRef` で source 保持、`releaseAudioSource()` で stop + disconnect 集約
+
 ## モード OFF 時に進行中の副作用を停止する
 
 state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
