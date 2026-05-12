@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import A11yHelpers from "./A11yHelpers";
 import OfflineBanner from "./OfflineBanner";
 import ToastContainer from "./ToastContainer";
+import PiperInitProgressToast from "./PiperInitProgressToast";
 import ConfirmModal from "./ConfirmModal";
 import AppModals from "./AppModals";
 import NSFWEyeAnimation from "./NSFWEyeAnimation";
@@ -92,6 +93,7 @@ export function AppOverlays({
       <A11yHelpers announcement={articleAnnouncement} />
       <OfflineBanner isOnline={isOnline} hasPendingChanges={hasPendingChanges} />
       <ToastContainer />
+      <PiperInitProgressToast />
       <ConfirmModal {...confirmModalProps} />
       <AppModals {...appModalsProps} />
       {/* NSFW 目が開くアニメーション */}
