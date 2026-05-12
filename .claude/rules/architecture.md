@@ -413,6 +413,7 @@ src/
     gallery-prefetch.ts      # `usePrefetchGalleryContents` の `articlesKey` 生成純粋関数（visible 拡張で確実にキー変化させて effect 再実行をトリガー）
     gallery-display.ts       # `selectGalleryImages` 純粋関数（ギャラリー描画用の画像ソース選択: prefetched / thumb / none の 3 分岐）
     gallery-offviewport.ts   # `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` 純粋関数（masonic ギャラリーで「viewport 外 item のみ positioner.update」する設計の判定層、#714 Phase 1）
+    gallery-explode.ts       # `explodeArticlesIntoGalleryEntries` 純粋関数（画像/動画 view で 1 記事 N 画像を N カードに分解、`GalleryEntry` 型、Phase 0b）
     download-history.ts      # 画像 DL 履歴の URL FIFO 管理純粋関数（ギャラリー画像保存時の重複チェック）
     read-state-sync-api.ts   # ReadState のサーバー通信（fetchReadState・saveReadState）
     sw-cache.ts              # Service Worker キャッシュ管理
@@ -779,6 +780,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `gallery-prefetch.spec.ts`            | `src/lib/gallery-prefetch.ts` — `buildArticlesKey` 純粋関数（visible 拡張で確実にキー変化）                                                                                                                                                       |
 | `gallery-display.spec.ts`             | `src/lib/gallery-display.ts` — `selectGalleryImages` 純粋関数（prefetched / thumb / none の 3 分岐選択）                                                                                                                                          |
 | `gallery-offviewport.spec.ts`         | `src/lib/gallery-offviewport.ts` — `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` 純粋関数（masonic で viewport 外 item のみ再配置する設計の判定層、#714 Phase 1、全 17 ケース網羅）                                         |
+| `gallery-explode.spec.ts`             | `src/lib/gallery-explode.ts` — `explodeArticlesIntoGalleryEntries` 純粋関数（画像/動画 view で 1 記事 N 画像を N カードに分解、`GalleryEntry` 型、Phase 0b、全 10 ケース網羅）                                                                    |
 | `abort-error.spec.ts`                 | `src/lib/fetch.ts#isAbortError` — DOMException AbortError / Error name="AbortError" / 非 abort error の判別 (#625 後追い)                                                                                                                         |
 | `tts-adapter.spec.ts`                 | `src/lib/tts-adapter.ts` — `speechSynthesisVoiceToTtsVoice` / `TtsAdapter` 型契約 / `TtsVoice` と既存 `selectTtsVoice` `groupVoicesByLang` の互換 (#675 Phase 1a)                                                                                 |
 | `usePiperTts.test.ts`                 | `src/hooks/usePiperTts.ts` — Piper wasm engine の TtsAdapter 実装（dynamic import + Audio 制御 + boundary 擬似発火 + endedCount / errorCount monotonic counter + enabled=false で voices/speak skip、#674 Phase 2a-part2 + 2b、全 12 ケース網羅） |

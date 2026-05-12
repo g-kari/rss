@@ -27,6 +27,7 @@ interface GalleryContextMenuProps {
   bookmarkIds: Set<string>;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
+  onSelectArticle: (article: Article) => void;
   onClose: () => void;
 }
 
@@ -41,6 +42,7 @@ export default function GalleryContextMenu({
   bookmarkIds,
   onToggleRead,
   onToggleBookmark,
+  onSelectArticle,
   onClose,
 }: GalleryContextMenuProps) {
   const { imageDlFolder, imageDlFolderNsfw } = useReaderSettings();
@@ -227,6 +229,29 @@ export default function GalleryContextMenu({
               : `画像を一括保存 (${target.images.length}枚)`}
           </button>
         )}
+
+        <button
+          className={btnClass}
+          onClick={() => {
+            onSelectArticle(target.article);
+            onClose();
+          }}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2 2h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+            <path d="M3 4.5h4M3 6.5h4M3 8.5h3" />
+          </svg>
+          記事を表示
+        </button>
 
         <button
           className={btnClass}
