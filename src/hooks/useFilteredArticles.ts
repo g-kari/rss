@@ -486,7 +486,7 @@ export function useFilteredArticles({
     };
   }, [filtered, deduplicateByLink, feedTitleByHash]);
 
-  const { visible, hasMore, sentinelRef, notifyArticlesAdded } = useArticlePagination(
+  const { visible, hasMore, sentinelRef, notifyArticlesAdded, loadMore } = useArticlePagination(
     deduplicated,
     page,
     setPage,
@@ -521,6 +521,7 @@ export function useFilteredArticles({
     globalFilter,
     setGlobalFilter,
     notifyArticlesAdded,
+    loadMore,
     readingTimeRange,
     cycleReadingTimeRange: filters.cycleReadingTimeRange,
     authorFilter,

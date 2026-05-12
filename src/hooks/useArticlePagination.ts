@@ -147,5 +147,5 @@ export function useArticlePagination(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- visible.length drives re-check; refs are stable
   }, [visible.length]);
 
-  return { visible, hasMore, sentinelRef, notifyArticlesAdded } as const;
+  return { visible, hasMore, sentinelRef, notifyArticlesAdded, loadMore } as const;
 }
