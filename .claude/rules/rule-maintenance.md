@@ -342,6 +342,8 @@ Step 3: 残り
 - `audit-workflow.md` (`coding-conventions.md` から「監査エージェント並行派遣」+ 派生ケース 6 個を 223 行で抽出、`coding-conventions.md` -214 行)。paths を `e2e/**/*.spec.ts` に絞り、コード編集時のロード対象外として注意資源希釈を抑制
 - `html-pipeline.md` (`coding-conventions.md` から HTML 後処理 pipeline 関連 5 セクション 261 行抽出、`coding-conventions.md` -249 行)。paths を `src/lib/html-*.ts,content.ts,image-*.ts,json-ld-images.ts,regex-extractor.ts,readability-extractor.ts,hooks/useArticleImageMaxWidth.ts` に絞り、UI / hook / API 編集時のロード対象外化
 - `react-effect-patterns.md` (`react-patterns.md` から useEffect 副作用 5 セクション 290 行抽出、`react-patterns.md` -270 行)。**外部ファイル `coding-conventions.md` からの redirect 4 箇所** (ResizeObserver / AbortController / モード OFF / ブラウザ API 遅延通知) も同時更新
+- `react-state-ref.md` (`react-patterns.md` から state / ref / vi.fakeTimers 関連 5 セクション 642 行抽出、`react-patterns.md` -623 行)。`coding-conventions.md` の `## React state / ref / useEffect パターン` redirect も state-ref + effect 併記に更新
+- `react-component-split.md` (`react-patterns.md` から大きいコンポーネント機能別分割 + 派生 11+ 計 526 行抽出、`react-patterns.md` -516 行)。**3 サイクル連続段階分割** (effect / state-ref / component-split) で `react-patterns.md` を 1726 → 317 行 (1.6x、best practice 200 行目標近く到達) まで圧縮。`coding-conventions.md` の `## 大きいコンポーネントの機能別分割パターン` redirect も同時更新
 
 ### 派生ケース: 抽出対象に外部ファイルから redirect placeholder が指している場合は同サイクルで全て更新する
 
