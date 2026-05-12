@@ -1,17 +1,27 @@
 "use client";
 
 import type { Article } from "@/types";
+import type { GalleryEntry } from "@/lib/gallery-explode";
 import GalleryMasonry from "@/components/GalleryMasonry";
 import {
   getGalleryCardWidth,
   type GalleryCardSize,
   type GalleryColumns,
 } from "@/lib/reader-settings";
-import { GalleryItemCtx, type GalleryItemContextValue, galleryItemKey } from "./gallery-context";
+import {
+  GalleryItemCtx,
+  type GalleryItemContextValue,
+  galleryItemKey,
+  galleryEntryItemKey,
+} from "./gallery-context";
 import GalleryCardRenderer from "./GalleryCardRenderer";
 
 interface Props {
-  items: Article[];
+  /**
+   * Article[] (従来 1 article 1 card) または GalleryEntry[] (Phase 1 で 1 記事 N 画像分解) のいずれか。
+   * GalleryCardRenderer 側で型ガードして両対応。
+   */
+  items: Article[] | GalleryEntry[];
   scrollElement: HTMLDivElement | null;
   galleryCardSize: GalleryCardSize;
   galleryColumns: GalleryColumns;
@@ -24,8 +34,12 @@ interface Props {
   contextValue: GalleryItemContextValue;
 }
 
+function isEntryArray(items: Article[] | GalleryEntry[]): items is GalleryEntry[] {
+  return items.length > 0 && (items[0] as GalleryEntry).article !== undefined;
+}
+
 /**
- * gallery レイアウトのボディ。masonic 仮想化と Provider のラッピングを担う (#651 Step 3)。
+ * gallery レイアウトのボディ。masonic 仮想化と Provider のラッピングを担う。
  */
 export default function GalleryBody({
   items,
@@ -37,11 +51,6 @@ export default function GalleryBody({
   contextValue,
 }: Props) {
   if (items.length === 0) return null;
-  // #666: フォーカスモード時の列数判定
-  // - listFocusMode=false → 通常 (auto なら masonic 自動、それ以外は固定)
-  // - listFocusMode=true:
-  //   - galleryColumnsFocus="auto" → 通常列数に追従 (通常も auto なら 6 固定)
-  //   - galleryColumnsFocus=固定値 → その値
   const columns = listFocusMode
     ? galleryColumnsFocus === "auto"
       ? galleryColumns === "auto"
@@ -51,19 +60,33 @@ export default function GalleryBody({
     : galleryColumns === "auto"
       ? null
       : Number(galleryColumns);
+  const useEntries = isEntryArray(items);
   return (
     <div className="p-2 mx-auto">
       <GalleryItemCtx.Provider value={contextValue}>
-        <GalleryMasonry
-          items={items}
-          scrollElement={scrollElement}
-          columnWidth={getGalleryCardWidth(galleryCardSize)}
-          columnGutter={12}
-          overscanBy={12}
-          columns={columns}
-          itemKey={galleryItemKey}
-          render={GalleryCardRenderer}
-        />
+        {useEntries ? (
+          <GalleryMasonry
+            items={items as GalleryEntry[]}
+            scrollElement={scrollElement}
+            columnWidth={getGalleryCardWidth(galleryCardSize)}
+            columnGutter={12}
+            overscanBy={12}
+            columns={columns}
+            itemKey={galleryEntryItemKey}
+            render={GalleryCardRenderer}
+          />
+        ) : (
+          <GalleryMasonry
+            items={items as Article[]}
+            scrollElement={scrollElement}
+            columnWidth={getGalleryCardWidth(galleryCardSize)}
+            columnGutter={12}
+            overscanBy={12}
+            columns={columns}
+            itemKey={galleryItemKey}
+            render={GalleryCardRenderer}
+          />
+        )}
       </GalleryItemCtx.Provider>
     </div>
   );

@@ -257,6 +257,16 @@ export interface GalleryItemExtraProps {
   isExpanding?: boolean;
   /** 失敗した記事のリトライ / 未取得記事の手動展開ハンドラー */
   onRetry?: () => void;
+  /**
+   * 画像/動画 view で 1 記事 N 画像を N カードに分解した際の単一画像 URL。
+   * 指定時は prefetchedImages / thumb fallback を無視して **この 1 枚だけ** を表示する (Phase 1)。
+   */
+  forcedImageSrc?: string | null;
+  /**
+   * forcedImageSrc 指定時のクリックハンドラ (画像ライトボックスを開く)。
+   * 未指定の場合は通常通り onSelectArticle が呼ばれる。
+   */
+  onSelectImage?: (imageSrc: string, article: Article) => void;
 }
 
 /** 画像展開ボタン（ギャラリーカード内に表示） */

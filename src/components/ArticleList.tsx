@@ -31,8 +31,10 @@ import { resolveThumbnail } from "./ArticleItems";
 import ArticleListHeader from "./ArticleListHeader";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
 import ArticleContextMenu, { type ArticleContextMenuTarget } from "./ArticleContextMenu";
+import ImageLightbox from "./ImageLightbox";
 import LoadMoreButton from "./LoadMoreButton";
 import ArticleListEmptyState from "./ArticleListEmptyState";
+import { explodeArticlesIntoGalleryEntries, type GalleryEntry } from "../lib/gallery-explode";
 import {
   CompactListBody,
   CardBody,
@@ -189,6 +191,50 @@ function ArticleList({
     deletingIds: galleryDeletingIds,
     newIds: galleryNewIds,
   } = useDelayedGalleryItems(visible, getArticleId, 300);
+
+  // Phase 1: 画像/動画 view のギャラリー layout のとき、1 記事 N 画像を N カードに分解する。
+  // explode flag は galleryPrefetchEnabled と同じ条件 (prefetch 完了画像を使うため一致が必要)。
+  const galleryEntries = useMemo<GalleryEntry[] | null>(() => {
+    if (!galleryPrefetchEnabled) return null;
+    return explodeArticlesIntoGalleryEntries(galleryDisplayItems, {
+      explode: true,
+      prefetchedImagesByArticleId: galleryImagesForItem,
+    });
+  }, [galleryPrefetchEnabled, galleryDisplayItems, galleryImagesForItem]);
+
+  // ── 画像ライトボックス (Phase 1) ─────────────────────────────────
+  const [lightboxState, setLightboxState] = useState<{
+    article: Article;
+    imageIndex: number;
+    images: string[];
+  } | null>(null);
+  usePopupLock(!!lightboxState);
+  const handleSelectImage = useCallback(
+    (imageSrc: string, article: Article) => {
+      const images = galleryImagesForItem(article.id);
+      if (!images || images.length === 0) return;
+      const imageIndex = images.indexOf(imageSrc);
+      setLightboxState({
+        article,
+        imageIndex: imageIndex >= 0 ? imageIndex : 0,
+        images,
+      });
+    },
+    [galleryImagesForItem],
+  );
+  const handleLightboxPrev = useCallback(() => {
+    setLightboxState((s) => {
+      if (!s || s.imageIndex <= 0) return s;
+      return { ...s, imageIndex: s.imageIndex - 1 };
+    });
+  }, []);
+  const handleLightboxNext = useCallback(() => {
+    setLightboxState((s) => {
+      if (!s || s.imageIndex >= s.images.length - 1) return s;
+      return { ...s, imageIndex: s.imageIndex + 1 };
+    });
+  }, []);
+  const handleLightboxClose = useCallback(() => setLightboxState(null), []);
 
   // ── ギャラリーコンテキストメニュー ───────────────────────────────
   const [galleryCtxMenu, setGalleryCtxMenu] = useState<GalleryContextMenuTarget | null>(null);
@@ -421,6 +467,10 @@ function ArticleList({
       galleryRetryArticle,
       onGalleryContextMenu: handleGalleryContextMenu,
       onGalleryLongPress: handleGalleryLongPress,
+      // Phase 1: explode=true のときだけ画像ライトボックスを開くハンドラを expose する。
+      // explode=false (= 通常 view) では undefined のままで、カードクリックは従来通り
+      // 記事詳細を開く。
+      onSelectImage: galleryEntries ? handleSelectImage : undefined,
     }),
     [
       resolveItemProps,
@@ -433,6 +483,8 @@ function ArticleList({
       galleryRetryArticle,
       handleGalleryContextMenu,
       handleGalleryLongPress,
+      galleryEntries,
+      handleSelectImage,
     ],
   );
 
@@ -514,7 +566,7 @@ function ArticleList({
           {/* gallery — masonic 型 masonry */}
           {layout === "gallery" && (
             <GalleryBody
-              items={galleryDisplayItems}
+              items={galleryEntries ?? galleryDisplayItems}
               scrollElement={scrollEl}
               galleryCardSize={galleryCardSize}
               galleryColumns={galleryColumns}
@@ -544,6 +596,18 @@ function ArticleList({
           onToggleBookmark={onToggleBookmark}
           onSelectArticle={onSelectArticle}
           onClose={() => setGalleryCtxMenu(null)}
+        />
+      )}
+      {lightboxState && (
+        <ImageLightbox
+          imageSrc={lightboxState.images[lightboxState.imageIndex]!}
+          article={lightboxState.article}
+          onPrev={lightboxState.imageIndex > 0 ? handleLightboxPrev : null}
+          onNext={
+            lightboxState.imageIndex < lightboxState.images.length - 1 ? handleLightboxNext : null
+          }
+          onClose={handleLightboxClose}
+          onSelectArticle={onSelectArticle}
         />
       )}
       {articleCtxMenu && onToggleReadingList && readingListIds && (

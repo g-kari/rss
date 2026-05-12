@@ -43,16 +43,20 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   isFetchFailed,
   isExpanding,
   onRetry,
+  forcedImageSrc,
+  onSelectImage,
 }: Omit<ArticleItemProps, "index" | "isDeleting"> & GalleryItemExtraProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
-  // #671: prefetched body images が空 (またはまだ undefined) で thumb があれば
-  // OGP/サムネを fallback として描画する。selectGalleryImages 純粋関数で 3 分岐
-  // (prefetched / thumb / none) を厳密に決定し、UI 側はこれに従う。
-  const { images: displayImages, source: imageSource } = useMemo(
-    () => selectGalleryImages(prefetchedImages, thumb),
-    [prefetchedImages, thumb],
-  );
+  // Phase 1: forcedImageSrc が指定されたら、prefetched / thumb fallback を無視して
+  // この 1 枚だけ表示する (画像/動画 view の 1 記事 N 画像分解時)。
+  // forcedImageSrc 未指定 → 従来通り selectGalleryImages で prefetched/thumb/none を選択。
+  const { images: displayImages, source: imageSource } = useMemo(() => {
+    if (forcedImageSrc) {
+      return { images: [forcedImageSrc], source: "prefetched" as const };
+    }
+    return selectGalleryImages(prefetchedImages, thumb);
+  }, [forcedImageSrc, prefetchedImages, thumb]);
   // 「prefetched 未取得 (undefined)」の場合のみ手動展開 (retry) ボタンを表示。
   // prefetched 完了で空配列 (= 本文に画像なし) の場合は thumb fallback で完結するため不要。
   const showRetryOverlay = onRetry && prefetchedImages === undefined;
@@ -73,21 +77,30 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   // 全画像 hidden で thumb があれば thumb fallback、なければ No Image プレースホルダ
   const fallbackToThumb = allFiltered && !!thumb;
   const fallbackToNoImage = allFiltered && !thumb;
+  // Phase 1: forcedImageSrc + onSelectImage が両方あれば画像ライトボックスを開く、
+  // 無ければ従来通り記事詳細を開く。
+  const handleClick = useCallback(() => {
+    if (forcedImageSrc && onSelectImage) {
+      onSelectImage(forcedImageSrc, article);
+    } else {
+      onSelectArticle(article);
+    }
+  }, [article, forcedImageSrc, onSelectImage, onSelectArticle]);
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        onSelectArticle(article);
+        handleClick();
       }
     },
-    [article, onSelectArticle],
+    [handleClick],
   );
   return (
     <div
       role="article"
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
-      onClick={() => onSelectArticle(article)}
+      onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={`group relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isNew ? "animate-fade-up" : ""
