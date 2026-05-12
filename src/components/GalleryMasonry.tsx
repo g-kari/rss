@@ -10,7 +10,8 @@ import {
   type CSSProperties,
   type RefObject,
 } from "react";
-import { useMasonry, usePositioner, useResizeObserver } from "masonic";
+import { useMasonry, usePositioner } from "masonic";
+import { OffViewportObserverCtx, useOffViewportPositioner } from "@/hooks/useOffViewportPositioner";
 
 // 各セル wrapper に当てる CSS transition — 参照安定化のため module scope に定義
 const ITEM_TRANSITION_STYLE: CSSProperties = {
@@ -119,11 +120,24 @@ export default function GalleryMasonry<T>({
   const positioner = usePositioner({ width, columnWidth: effectiveColumnWidth, columnGutter }, [
     itemsIdentity,
   ]);
-  const resizeObserver = useResizeObserver(positioner);
+
+  // #714 Phase 2: masonic 標準の useResizeObserver(positioner) は viewport 内 / 外を区別
+  // せず全 item を即 update してちらつかせるため、自前 hook で viewport 外のみ update +
+  // viewport 内は pending 退避する設計に差し替え。
+  const offViewport = useOffViewportPositioner(
+    positioner,
+    Math.max(0, scrollTop - offsetTop),
+    height,
+  );
+
+  // scroll で位置関係が変わるたびに pending を flush (off-viewport 化した entry を反映)
+  useEffect(() => {
+    offViewport.flush();
+  }, [scrollTop, offViewport]);
 
   const content = useMasonry({
     positioner,
-    resizeObserver,
+    // resizeObserver は意図的に渡さない (offViewport 経由で自前管理)
     items,
     height,
     scrollTop: Math.max(0, scrollTop - offsetTop),
@@ -136,8 +150,10 @@ export default function GalleryMasonry<T>({
   });
 
   return (
-    <div ref={containerRef} className="relative">
-      {width > 0 ? content : null}
-    </div>
+    <OffViewportObserverCtx value={offViewport}>
+      <div ref={containerRef} className="relative">
+        {width > 0 ? content : null}
+      </div>
+    </OffViewportObserverCtx>
   );
 }
