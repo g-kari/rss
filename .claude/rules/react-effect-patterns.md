@@ -31,6 +31,79 @@ useEffect(() => {
 
 **注意点**: `ResizeObserver` は要素自身のリサイズを検知する。子要素が追加されてコンテナが拡張する場合は通常検知されるが、絶対座標配置で **親コンテナ自身の clientHeight が変わらない** ケースでは発火しない。その場合は `MutationObserver` (subtree childList 監視) との併用や、`requestAnimationFrame` を 2 段で待ってからチェックする手法を組み合わせる。
 
+### 派生ケース: IntersectionObserver は `isIntersecting: true` 維持時に新規 callback を発火させない罠
+
+`IntersectionObserver` は **`isIntersecting: false → true` の遷移時にのみ** callback を発火させる。一度 `true` になった後、要素 size 変化や parent scroll で **再評価が走っても、`isIntersecting: true` のままなら新規 callback は来ない**。
+
+無限スクロール (sentinel-based loadMore) で以下のシナリオが詰まる典型:
+
+```
+1. visible 10 件 → sentinel が viewport 内 (intersect=true) → loadMore 発火 → visible 20 件
+2. visible 20 件でも viewport 高さに満たない (pageSize 小 / フィルター済 / 単一フィード等)
+   → sentinel 依然 viewport 内 (intersect=true 維持)
+3. IntersectionObserver は intersect=true のままで新規 callback を発火させない
+   → 次の loadMore が永久に発火しない → ユーザーから見るとスクロールしても記事が読み込まれない
+```
+
+```typescript
+// アンチパターン: IntersectionObserver 単独 + loadMore 後の sentinel 詰まりに無策
+useEffect(() => {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting && hasMoreRef.current) {
+        loadMoreRef.current();
+      }
+    },
+    { rootMargin: "600px" },
+  );
+  observer.observe(sentinelRef.current!);
+  return () => observer.disconnect();
+}, []);
+// → コンテンツが少なくて sentinel が viewport 内に留まる場合、初回 1 回 loadMore で詰まる
+
+// 修正パターン: visible.length 変化を deps にした「再 viewport チェック」useEffect 追加
+useEffect(() => {
+  if (!hasMore) return;
+  const el = sentinelRef.current;
+  if (!el) return;
+  const id = setTimeout(() => {
+    if (!hasMoreRef.current) return;
+    const rect = el.getBoundingClientRect();
+    const rootMargin = 600;
+    const inViewport = rect.top < window.innerHeight + rootMargin && rect.bottom > -rootMargin;
+    if (inViewport) {
+      loadMoreRef.current();
+    }
+  }, 0);
+  return () => clearTimeout(id);
+}, [visible.length, hasMore]);
+```
+
+**動作**:
+
+- visible.length 変化 (= loadMore 後) のたびに 1 tick 待ち
+- sentinel の `getBoundingClientRect()` で viewport 内 (rootMargin 含む) かを判定
+- 内なら `loadMore()` をもう 1 回発火 → 連鎖的にロード継続を担保
+- `hasMore: false` になった瞬間に停止 → 無限ループは発生しない
+
+**How to apply**: IntersectionObserver で「intersect=true → 何か処理 → DOM 変化」する設計を書くとき (IO は遷移 trigger のみで、`isIntersecting: true` 維持時の新規 callback は仕様で発火しない、観察対象の DOM size 変化や追加要素 push で再評価しても callback は来ない):
+
+1. **「観察対象 (sentinel / lazy target / sticky 切替判定要素) が DOM 変化後も `isIntersecting: true` のまま残る可能性があるか**」を判定
+2. 可能性ありなら、**DOM 変化を deps にした「再 viewport 内チェック」useEffect** を追加:
+   - deps に `visible.length` / `items.length` / `state` 等の DOM 変化 trigger を含める
+   - `setTimeout(0)` で 1 tick 待ち (intersection 通常 callback と区別 + DOM レイアウト確定後)
+   - `getBoundingClientRect()` で viewport 判定 (IO の rootMargin と同等の判定式)
+   - 停止条件 (`hasMore: false` 等) を明示して無限ループ防止
+3. **eager-load を撤廃するときは IO 仕様限界を再考慮** — eager-load 削除で IO 単独に絞ったら、本派生ケースが必須になる可能性高い
+
+**反例 (本派生ケースが不要なケース)**:
+
+- 観察対象が DOM 変化後に必ず viewport 外に出る (例: sticky header の切替判定で、スクロール位置が一意に決まる)
+- DOM 変化が発生しない one-shot 観察 (例: lazy image load で intersect=true 1 回で `unobserve()` する)
+- IO の `threshold` を多段に設定して partial intersection でも callback 発火させる設計 (高度、本罠を別軸で回避)
+
+主な使用箇所: `useArticlePagination.ts` (#772) — pageSize 10 + フィルター済 + 単一フィードで sentinel が viewport 内に留まり次 loadMore が永久に発火しない問題、`visible.length` を deps にした追加 useEffect で「viewport 内なら 1 回追加発火」を実装。`68a37daf` で eager-load 撤廃した際に IO 仕様限界を再考慮しないと本罠が再発するため codify
+
 ## AbortController.abort() の伝播範囲を限定する
 
 **1 つの `AbortController` を複数の並列 fetch で共有しないこと**。共有してしまうと、1 件の fetch を止めるための `controller.abort()` が **他の進行中の fetch も全て中断** してしまう。
