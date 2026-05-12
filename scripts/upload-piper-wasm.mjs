@@ -31,7 +31,7 @@ const R2_PREFIX = "piper-wasm";
 
 /** @type {WasmSource[]} */
 const WASM_SOURCES = [
-  // onnxruntime-web (peer dep for piper-plus)
+  // onnxruntime-web (peer dep for piper-plus) — `.wasm` 本体 + `.mjs` ES module loader の対
   {
     pkgName: "onnxruntime-web",
     subDir: "dist",
@@ -40,6 +40,10 @@ const WASM_SOURCES = [
       "ort-wasm-simd-threaded.jsep.wasm",
       "ort-wasm-simd-threaded.asyncify.wasm",
       "ort-wasm-simd-threaded.jspi.wasm",
+      "ort-wasm-simd-threaded.mjs",
+      "ort-wasm-simd-threaded.jsep.mjs",
+      "ort-wasm-simd-threaded.asyncify.mjs",
+      "ort-wasm-simd-threaded.jspi.mjs",
     ],
   },
   // piper-plus Rust phonemizer wasm (#761)
