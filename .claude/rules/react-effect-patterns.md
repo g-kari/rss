@@ -488,6 +488,62 @@ async function speak(text: string, onBoundary?: (idx: number) => void) {
 
 主な使用箇所: `usePiperTts` (#767) — piper-plus の `tts.synthesize(text)` で長文記事で ONNX SafeInt int32 overflow → `splitIntoSentences` で text を sentence chunks に分割 → 各 chunk を順次 synthesize + 自前 BufferSource 再生、boundary は `chunk.start` 累積 offset で全体 charIndex、最終 chunk 完了で endedCount++
 
+### 派生ケース: 環境依存挙動 (iOS / Android / Web View) は library 制御 + OS-level API の defense in depth で堅牢化する
+
+「スマホで TTS がバックグラウンドで停止する」「iOS Safari ロック画面で speechSynthesis 休眠」のような **環境依存の動作不安定** は、library 単独制御 (`speechSynthesis.speak()` / WebAudio 無音 oscillator 等) では完全に補えないことが多い。OS-level の宣言的 API (Media Session / Wake Lock / Permissions) を併用して **defense in depth** で堅牢化する。
+
+```typescript
+// アンチパターン: WebAudio 無音 oscillator 単独
+useBackgroundAudio(ttsAdapter.isPlaying || ttsAdapter.isPaused);
+// → 一部環境 (iOS Safari lockscreen / Android Chrome 一部 build) で依然停止する
+//   報告再発時に「何が効いて何が効かないか」原因切り分け不能
+
+// 修正パターン: library 制御 + OS-level API の 2 段構え
+// 1. 既存 (defense layer 1): WebAudio 無音 oscillator で「メディア再生中」認識
+useBackgroundAudio(ttsAdapter.isPlaying || ttsAdapter.isPaused);
+// 2. OS-level (defense layer 2): MediaSession API で OS 側に再生宣言
+useMediaSession({ article: selectedArticle, ttsAdapter });
+// → どちらか単独で動かない環境でも他方が effect
+```
+
+**Defense in depth の設計原則**:
+
+1. **layer 1 (library / WebAudio)**: ブラウザ仕様で「メディア再生中」と認識させる暗黙的 trick
+2. **layer 2 (OS-level)**: ブラウザを介して OS に明示的宣言 (lockscreen UI 表示 + 操作受付)
+3. **layer 3 (debug helper)**: 各 layer の silent fail を `localStorage` gate で観測可能化 → 真因切り分け
+
+`browser-platform.md` の「本番環境のデバッグは localStorage gate + 専用 debug ヘルパー」規範と組み合わせて、layer 別の状態遷移ログを散在配置 (`effect-fired` / `ctx-created` / `osc-started` / `metadata-set` 等) すると、再発報告時に「どの layer まで効いているか」が 1 サイクルで切り分け可能になる。
+
+**How to apply**: 環境依存の動作不安定 (lockscreen 停止 / background 休眠 / hardware activation 不可 / permission 拒否) を扱う hook を実装するとき (library 単独制御は環境依存仕様の網羅困難、OS-level API 併用で「片方失敗時に他方が effect」する design が真因切り分け + UX 安定の両方を担保):
+
+1. **対象環境の OS-level API を MDN / W3C で確認**:
+   - audio / 再生継続 → MediaSession API (`navigator.mediaSession`)
+   - 画面オン継続 → Wake Lock API (`navigator.wakeLock`)
+   - 通知 → Notifications API (`Notification.requestPermission`)
+   - センサー → Permissions API (`navigator.permissions`)
+2. **library 制御は維持しつつ OS-level API を併用追加** — どちらか single で動かない環境への保険
+3. **debug helper を併設** (`localStorage gate + xxxDebug`) — silent fail の観測点を確保
+4. **defense layer ごとに状態 snapshot ログを散在配置** — 再発時に「どの layer まで効いた」を 1 サイクルで切り分け
+5. **未対応環境 (`navigator.mediaSession` 不在 等) は silent skip** — defense layer 自体が動かない環境では layer 1 のみで動作継続
+
+**該当する典型 API 組合せ**:
+
+| 用途                     | library / WebAudio (layer 1) | OS-level (layer 2)              |
+| ------------------------ | ---------------------------- | ------------------------------- |
+| TTS バックグラウンド継続 | WebAudio 無音 oscillator     | MediaSession API                |
+| 画面オン継続             | (なし)                       | Wake Lock API                   |
+| 音楽再生継続             | `<audio>` element            | MediaSession API                |
+| 通知許可                 | (なし)                       | Notifications + Permissions API |
+| ロケーション継続         | `watchPosition`              | Wake Lock + Permissions API     |
+
+**反例 (defense in depth が overkill なケース)**:
+
+- 単一環境 (PC Chrome のみ等) で完結する機能 → library 制御で十分
+- OS-level API が **より制約強い** (Permission 必須 / user activation 必須等) で UX 悪化 → trade-off で見送り
+- 環境依存報告が **稀にしか発生しない** (1% 未満) → debug helper のみで観測継続
+
+主な使用箇所: `useBackgroundAudio` + `useMediaSession` (#745 Phase C 案 C) — WebAudio 無音 oscillator (layer 1) + MediaSession API (layer 2) + `bgaudio-debug.ts` (layer 3) の 3 段構え。iOS Safari lockscreen / Android Chrome background での TTS 継続を「片方失敗時に他方が effect」する design で堅牢化、再発時の真因切り分け点を `[BgAudio] *` ログで提供
+
 ## モード OFF 時に進行中の副作用を停止する
 
 state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。
