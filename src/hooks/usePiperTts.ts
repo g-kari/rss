@@ -10,6 +10,7 @@ import {
 } from "../lib/piper-voices";
 import type { TtsAdapter, TtsErrorCode, TtsVoice } from "../lib/tts-adapter";
 import { clampTtsVolume, parseTtsVolume } from "../lib/tts-volume";
+import { splitIntoSentences } from "../lib/tts-sentences";
 import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -300,144 +301,154 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       onBoundaryRef.current = onBoundary ?? null;
       const token = ++playTokenRef.current;
 
-      (async () => {
-        let audio: PiperPlusAudioResult;
-        try {
-          const instance = await ensureInstance(voice);
-          if (token !== playTokenRef.current) return;
-          const synthOptions = {
-            language: voice.synthesisLanguage,
-            lengthScale: 1 / rateRef.current, // 速度逆数 (rate=2 → lengthScale=0.5 で 2 倍速)
-          };
-          if (voice.requiresSpeakerEmbedding) {
-            // Multi-speaker / WavLM Prosody base 派生 model は ONNX graph に `speaker_embedding` input
-            // tensor を要求する。zero-filled Float32Array(256) を渡すと default speaker 0 の voice が
-            // 合成される (tsukuyomi-chan 等)。voice cloning ではなく default voice 利用が目的。
-            const dim = voice.speakerEmbeddingDim ?? DEFAULT_SPEAKER_EMBEDDING_DIM;
-            audio = await instance.synthesizeWithVoiceCloning(
-              text,
-              new Float32Array(dim),
-              synthOptions,
-            );
-          } else {
-            audio = await instance.synthesize(text, synthOptions);
-          }
-        } catch (err) {
-          if (token !== playTokenRef.current) return;
-          // 本番環境でも詳細を出すため console.error 直接使用 (#761 デバッグ強化)
-          // err.message / err.stack / err.name すべて確実に出して原因特定を可能にする
-          const errMsg = err instanceof Error ? err.message : String(err);
-          const errName = err instanceof Error ? err.name : "";
-          const errStack = err instanceof Error ? err.stack : "";
-          console.error(
-            `[usePiperTts] synthesize failed voiceId=${voice.id} model=${voice.model}`,
-            { name: errName, message: errMsg, stack: errStack, raw: err },
-          );
-          devError("[usePiperTts] synthesize failed", { voiceId: voice.id, error: err });
-          const lower = errMsg.toLowerCase();
-          const code: TtsErrorCode =
-            lower.includes("fetch") || lower.includes("network") ? "network" : "model-error";
-          setLastError(code);
-          setLastErrorDetail({
-            code,
-            message: errMsg,
-            name: errName || undefined,
-            voiceUri: `piper:${voice.id}`,
-            model: voice.model,
-            engine: "piper",
-            occurredAt: new Date().toISOString(),
-          });
-          setErrorCount((c) => c + 1);
-          // 失敗時も progress を消去 (toast / banner で error 通知に切り替わる前提)
-          setInitProgress(null);
-          return;
-        }
-        if (token !== playTokenRef.current) return;
+      // #767: 長文記事で ONNX SafeInt overflow を回避するため sentence 単位 chunk 化。
+      // 空テキスト / 空白のみは silent skip + endedCount 進めて caller の auto-advance を継続。
+      const chunks = splitIntoSentences(text);
+      if (chunks.length === 0) {
+        setEndedCount((c) => c + 1);
+        return;
+      }
 
+      (async () => {
         setIsPlaying(true);
         setIsPaused(false);
-        startTimeRef.current = Date.now();
-        clearBoundaryTimer();
-        if (onBoundaryRef.current) {
-          boundaryTimerRef.current = setInterval(() => {
-            const cb = onBoundaryRef.current;
-            if (!cb) return;
-            const elapsedMs = Date.now() - startTimeRef.current;
-            const charIndex = Math.floor((elapsedMs * ESTIMATED_CPS * rateRef.current) / 1000);
-            const clamped = Math.min(charIndex, currentTextRef.current.length);
-            cb(clamped);
-          }, BOUNDARY_TICK_MS);
-        }
+        for (let i = 0; i < chunks.length; i++) {
+          if (token !== playTokenRef.current) return;
+          const chunk = chunks[i]!;
 
-        // #766: piper-plus AudioResult.play() は内部の AudioBufferSourceNode を expose せず
-        // 外部から stop できないため、samples + sampleRate を取り出して自前で再生する。
-        // 完了通知は source.onended で受け取り、stop() 時は releaseAudioSource() で source.stop()。
-        try {
-          const ctx = getAudioContext();
-          if (!ctx) throw new Error("AudioContext unavailable");
-          if (ctx.state === "suspended") {
-            try {
-              await ctx.resume();
-            } catch {
-              /* resume failure はそのまま再生 (autoplay policy で start 時に NotAllowedError 発火) */
+          let audio: PiperPlusAudioResult;
+          try {
+            const instance = await ensureInstance(voice);
+            if (token !== playTokenRef.current) return;
+            const synthOptions = {
+              language: voice.synthesisLanguage,
+              lengthScale: 1 / rateRef.current,
+            };
+            if (voice.requiresSpeakerEmbedding) {
+              const dim = voice.speakerEmbeddingDim ?? DEFAULT_SPEAKER_EMBEDDING_DIM;
+              audio = await instance.synthesizeWithVoiceCloning(
+                chunk.text,
+                new Float32Array(dim),
+                synthOptions,
+              );
+            } else {
+              audio = await instance.synthesize(chunk.text, synthOptions);
             }
+          } catch (err) {
+            if (token !== playTokenRef.current) return;
+            const errMsg = err instanceof Error ? err.message : String(err);
+            const errName = err instanceof Error ? err.name : "";
+            const errStack = err instanceof Error ? err.stack : "";
+            console.error(
+              `[usePiperTts] synthesize failed voiceId=${voice.id} model=${voice.model} chunkIndex=${i}/${chunks.length}`,
+              { name: errName, message: errMsg, stack: errStack, raw: err },
+            );
+            devError("[usePiperTts] synthesize failed", {
+              voiceId: voice.id,
+              chunkIndex: i,
+              error: err,
+            });
+            const lower = errMsg.toLowerCase();
+            const code: TtsErrorCode =
+              lower.includes("fetch") || lower.includes("network") ? "network" : "model-error";
+            setLastError(code);
+            setLastErrorDetail({
+              code,
+              message: errMsg,
+              name: errName || undefined,
+              voiceUri: `piper:${voice.id}`,
+              model: voice.model,
+              engine: "piper",
+              occurredAt: new Date().toISOString(),
+            });
+            setErrorCount((c) => c + 1);
+            setInitProgress(null);
+            resetPlaybackState();
+            return;
           }
           if (token !== playTokenRef.current) return;
-          const buffer = ctx.createBuffer(1, audio.samples.length, audio.sampleRate);
-          // copyToChannel は Float32Array<ArrayBuffer> を要求する型定義になっている。
-          // piper-plus は Float32Array<ArrayBufferLike> (= SharedArrayBuffer ありえる) を返すため、
-          // 新規 Float32Array でコピーして型整合を取る (samples 自体は read-only なので copy 安全)
-          buffer.copyToChannel(new Float32Array(audio.samples), 0);
-          const source = ctx.createBufferSource();
-          source.buffer = buffer;
-          const gain = ctx.createGain();
-          gain.gain.value = volumeRef.current;
-          source.connect(gain);
-          gain.connect(ctx.destination);
-          // 旧 source が残っていれば停止 (theoretical: ensureInstance/synth await 中に
-          // stop() 呼ばれていた場合は token check で既に return しているが念のため)
-          releaseAudioSource();
-          audioSourceRef.current = source;
-          await new Promise<void>((resolve, reject) => {
-            source.onended = () => {
-              // token check で stop 経由の onended (releaseAudioSource で null 化済) と区別
-              if (audioSourceRef.current === source) {
-                audioSourceRef.current = null;
-                resolve();
-              } else {
-                // stop 経由 → onended は null セットされているはずだが防衛的に resolve
-                resolve();
+
+          // chunk 開始: boundary timer を re-init して累積 offset 込みで全体 charIndex 計算
+          startTimeRef.current = Date.now();
+          clearBoundaryTimer();
+          if (onBoundaryRef.current) {
+            const chunkOffset = chunk.start;
+            boundaryTimerRef.current = setInterval(() => {
+              const cb = onBoundaryRef.current;
+              if (!cb) return;
+              const elapsedMs = Date.now() - startTimeRef.current;
+              const localCharIndex = Math.floor(
+                (elapsedMs * ESTIMATED_CPS * rateRef.current) / 1000,
+              );
+              const globalCharIndex = Math.min(
+                chunkOffset + localCharIndex,
+                currentTextRef.current.length,
+              );
+              cb(globalCharIndex);
+            }, BOUNDARY_TICK_MS);
+          }
+
+          // #766: 自前 AudioContext + BufferSourceNode 再生 (stop 確実化)
+          try {
+            const ctx = getAudioContext();
+            if (!ctx) throw new Error("AudioContext unavailable");
+            if (ctx.state === "suspended") {
+              try {
+                await ctx.resume();
+              } catch {
+                /* resume failure はそのまま再生 (start 時に NotAllowedError) */
               }
-            };
-            try {
-              source.start();
-            } catch (err) {
-              reject(err);
             }
-          });
-        } catch (err) {
+            if (token !== playTokenRef.current) return;
+            const buffer = ctx.createBuffer(1, audio.samples.length, audio.sampleRate);
+            buffer.copyToChannel(new Float32Array(audio.samples), 0);
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            const gain = ctx.createGain();
+            gain.gain.value = volumeRef.current;
+            source.connect(gain);
+            gain.connect(ctx.destination);
+            releaseAudioSource();
+            audioSourceRef.current = source;
+            await new Promise<void>((resolve, reject) => {
+              source.onended = () => {
+                if (audioSourceRef.current === source) {
+                  audioSourceRef.current = null;
+                }
+                resolve();
+              };
+              try {
+                source.start();
+              } catch (err) {
+                reject(err);
+              }
+            });
+          } catch (err) {
+            if (token !== playTokenRef.current) return;
+            devError("[usePiperTts] audio playback failed", err);
+            const name = err instanceof Error ? err.name : "";
+            const message = err instanceof Error ? err.message : String(err);
+            const code: TtsErrorCode =
+              name === "NotAllowedError" ? "not-allowed" : "synthesis-failed";
+            setLastError(code);
+            setLastErrorDetail({
+              code,
+              message,
+              name: name || undefined,
+              voiceUri: `piper:${voice.id}`,
+              model: voice.model,
+              engine: "piper",
+              occurredAt: new Date().toISOString(),
+            });
+            setErrorCount((c) => c + 1);
+            resetPlaybackState();
+            return;
+          }
           if (token !== playTokenRef.current) return;
-          devError("[usePiperTts] audio playback failed", err);
-          const name = err instanceof Error ? err.name : "";
-          const message = err instanceof Error ? err.message : String(err);
-          const code: TtsErrorCode =
-            name === "NotAllowedError" ? "not-allowed" : "synthesis-failed";
-          setLastError(code);
-          setLastErrorDetail({
-            code,
-            message,
-            name: name || undefined,
-            voiceUri: `piper:${voice.id}`,
-            model: voice.model,
-            engine: "piper",
-            occurredAt: new Date().toISOString(),
-          });
-          setErrorCount((c) => c + 1);
-          resetPlaybackState();
-          return;
+          // chunk 完了 → 次 chunk へ (or 全 chunks 完了で loop 抜け)
         }
         if (token !== playTokenRef.current) return;
-        // 自前再生の onended resolve = 再生終了
+        // 全 chunks 完了 = 自然 end
         setEndedCount((c) => c + 1);
         resetPlaybackState();
       })();

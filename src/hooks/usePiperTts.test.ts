@@ -356,6 +356,55 @@ describe("usePiperTts (#761 piper-plus / #766 自前 BufferSource 再生)", () =
     expect(result.current.volume).toBe(0.0);
   });
 
+  it("#767 chunk 化: 複数 sentence の長文で synthesize が chunks.length 回呼ばれる", async () => {
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:tsukuyomi"));
+    // 3 文 (3 sentences) のテキスト
+    act(() => result.current.speak("最初の文。二番目の文。三番目の文。"));
+    // 3 chunks すべて完了して endedCount=1 になるまで待つ
+    await waitFor(() => expect(result.current.endedCount).toBe(1));
+    // synthesizeWithVoiceCloning が 3 回呼ばれる (tsukuyomi は voice cloning path)
+    expect(synthesizeWithCloningMock).toHaveBeenCalledTimes(3);
+    expect(synthesizeWithCloningMock.mock.calls[0]![0]).toBe("最初の文。");
+    expect(synthesizeWithCloningMock.mock.calls[1]![0]).toBe("二番目の文。");
+    expect(synthesizeWithCloningMock.mock.calls[2]![0]).toBe("三番目の文。");
+    // BufferSource は 3 回作られる
+    expect(createdSources.length).toBe(3);
+  });
+
+  it("#767 chunk 化: stop() で chunks chain が中断される (残 chunks は synthesize されない)", async () => {
+    suppressNaturalEnd = true; // natural-end 抑制で stop 介入を確実化
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:tsukuyomi"));
+    act(() => result.current.speak("最初の文。二番目の文。三番目の文。"));
+    // 最初の chunk が再生開始するまで待つ
+    await waitFor(() => {
+      expect(createdSources.length).toBeGreaterThan(0);
+      expect(createdSources[0].start).toHaveBeenCalled();
+    });
+    act(() => result.current.stop());
+    // stop 後に残 chunks が synthesize されないことを確認
+    await new Promise((r) => setTimeout(r, 50));
+    // 1 件のみ synthesize 呼ばれて打ち切られる (token mismatch で次 chunk 起動せず)
+    expect(synthesizeWithCloningMock.mock.calls.length).toBeLessThan(3);
+    // source.stop も呼ばれた
+    expect(createdSources[0].stop).toHaveBeenCalled();
+    expect(result.current.endedCount).toBe(0); // 全 chunks 完了していないので endedCount は 0
+  });
+
+  it("#767 chunk 化: 空テキスト / 空白のみは silent skip で endedCount++ (caller の auto-advance 継続)", async () => {
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:tsukuyomi"));
+    act(() => result.current.speak("   "));
+    await waitFor(() => expect(result.current.endedCount).toBe(1));
+    // synthesize は呼ばれない
+    expect(synthesizeWithCloningMock).not.toHaveBeenCalled();
+    expect(createdSources.length).toBe(0);
+  });
+
   it("enabled=false なら speak は early return (initialize 呼ばれない)", async () => {
     const { usePiperTts } = await import("./usePiperTts");
     const { result } = renderHook(() => usePiperTts({ enabled: false }));
