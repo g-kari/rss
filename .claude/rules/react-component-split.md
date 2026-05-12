@@ -495,6 +495,43 @@ Phase 1 (純粋関数 + TDD) 完了 → Phase 2 (UI 統合) 着手前に **ユ�
 
 主な使用箇所: `src/lib/tts-adapter.ts` — Web Speech API → Piper wasm 差し替えの基盤
 
+### 派生ケース: Phase 2a の「純粋関数 + TDD (part1) → hook 実装 + ライブラリ追加 (part2)」細分でライブラリ追加判断を遅らせる
+
+Phase 0 (型抽象化) 完了済の Issue で Phase 2a (新 engine 実装) に着手するとき、**Phase 2a を更に part1 (ライブラリ追加なしの mapping 純粋関数 + TDD) / part2 (ライブラリ追加 + hook 実装)** に細分すると、ライブラリ追加 commit を遅らせて以下のメリットを得られる:
+
+1. **bisect 粒度向上** — 純粋関数 commit と hook 実装 commit が分かれるので、回帰検出時にどちらが原因か即特定
+2. **既存依存への擦り寄せ調査余地** — part1 完了時点で純粋関数 spec が走るため、ライブラリ追加判断 (npm install) を 1 サイクル遅らせて既存依存 (`@cloudflare/workers-types` / 既存 hook 等) で代替可能か再評価できる
+3. **TDD の安心感** — ライブラリ依存のない mapping ロジックが Green になっていると、hook 実装で「失敗の原因がライブラリか mapping か」を即区別可能
+4. **ライセンス調査の遅延** — npm install 前にライブラリの再配布権・transitive deps を debate できる
+
+```
+パターン: Phase 2a 細分による段階的着手
+  ├─ Phase 0 (完了済): 型抽象化のみ (TtsAdapter / TtsVoice 等の interface)
+  ├─ Phase 2a-part1: ライブラリ独立な mapping 純粋関数 + TDD ← 本サイクル commit
+  │   - 例: piperVoiceToTtsVoice(voiceId): TtsVoice | null
+  │   - 例: parsePiperVoiceId, formatVoiceName, langCodeConvert 等
+  │   - 全 spec が Green、ライブラリ未 install
+  ├─ Phase 2a-part2: ライブラリ追加 + hook 実装 ← 次サイクル commit
+  │   - npm install + usePiperTts 実装 + Audio 再生管理
+  └─ Phase 2b: UI 配線 + engine 切替 ← part2 完了後別サイクル
+```
+
+**How to apply**: 「大規模新機能 (新 engine / 新 lib / 新 wasm) 着手時に Phase 2a が複数 step を含む場合」(part1 commit が pre-commit hook を独立通過することで bisect 粒度 + ライブラリ追加判断遅延の両方を得られる):
+
+1. **Phase 2a の touch ファイル一覧** を先に列挙 (型 mapping 純粋関数 / hook / コンポーネント設定変更 / ライブラリ install)
+2. **mapping 純粋関数 (= ライブラリ独立)** と **hook 実装 (= ライブラリ依存)** を分離可能か確認
+3. 分離可能なら part1 / part2 で別 commit
+4. part1 commit に「**Phase 2a-part1: 純粋関数 + TDD、ライブラリ追加は part2 で**」と明記
+5. part2 着手時に **既存依存で代替可能か再評価** (1 サイクル経過で他観点の調査結果も入っているかも)
+
+**反例 (細分が overkill なケース)**:
+
+- Phase 2a が小規模 (50 行未満) で mapping と hook が一体的に書ける → 単一 commit で OK
+- ライブラリ API が複雑で純粋関数 part だけで全てカバーできない (戻り値型がライブラリ依存) → part1 で型を `unknown` 的に書くと spec が薄くなる、part1 を見送り
+- 純粋関数層が **既存抽象型 (`tts-adapter.ts` 等) を import するだけ** で自己完結する場合は適用範囲広い
+
+主な使用箇所: `#674` Phase 2a-part1 — `piper-adapter.ts` (87 行) + 13 ケース spec を `@mintplex-labs/piper-tts-web` 未 install のまま先行 commit。Phase 2a-part2 で hook 実装 + npm install を次サイクル予定
+
 ### 派生ケース: 機能別分割後の「逆方向の集約」(共通 wrapper 抽出) も忘れない
 
 「大きいコンポーネントを機能別に分割」したあと、**サブコンポーネント間に同じ wrapper / 同じ前処理が重複** することがある。これは「分割した結果、本来 1 箇所だった共通部分が複製された」逆向きの問題。分割完了で満足せず、サブコンポーネント完成後にもう一度 **共通部分を抜き出して helper 化** する第 2 段階を意識する。
