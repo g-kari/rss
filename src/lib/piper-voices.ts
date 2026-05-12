@@ -174,7 +174,32 @@ export interface PiperPlusVoice {
    * 必ず設定すること。UI が自動でクレジット欄を表示する。
    */
   readonly credit?: PiperPlusVoiceCredit;
+  /**
+   * Multi-speaker / voice-cloning architecture (WavLM Prosody / MB-iSTFT-VITS multi-speaker base 派生) の
+   * ONNX model で `speaker_embedding` input tensor が必須なものは `true`。
+   *
+   * 該当 voice は piper-plus の `synthesizeWithVoiceCloning(text, embedding, options)` 経由で
+   * zero-filled `Float32Array(speakerEmbeddingDim ?? 256)` を渡して合成する (= default speaker)。
+   *
+   * 判定方法: モデルの ONNX グラフを netron 等で開いて inputs に `speaker_embedding` があるか確認、
+   * もしくは `synthesize()` 実行時に `input 'speaker_embedding' is missing in 'feeds'` エラーが
+   * 発生する model を該当扱いとする。
+   *
+   * 例: `ayousanz/piper-plus-tsukuyomi-chan` (WavLM Prosody base) は `true`、
+   * `ayousanz/piper-plus-css10-ja-6lang` (single-speaker MB-iSTFT-VITS) は `false` or 未指定。
+   */
+  readonly requiresSpeakerEmbedding?: boolean;
+  /**
+   * `requiresSpeakerEmbedding: true` のときの speaker embedding 次元数 (default = 256)。
+   *
+   * piper-plus 標準の SpeakerEncoder 出力は 256 dim (`src/speaker-encoder.js` line 64 JSDoc 参照)。
+   * 異なる architecture (例: 512 dim WavLM-large) の model のみ明示指定すること。
+   */
+  readonly speakerEmbeddingDim?: number;
 }
+
+/** speaker_embedding 必須 model に zero embedding (= default speaker 0) を渡すときの default 次元数。 */
+export const DEFAULT_SPEAKER_EMBEDDING_DIM = 256;
 
 export const PIPER_PLUS_VOICES: readonly PiperPlusVoice[] = [
   {
@@ -184,6 +209,11 @@ export const PIPER_PLUS_VOICES: readonly PiperPlusVoice[] = [
     lang: "ja-JP",
     synthesisLanguage: "ja",
     name: "つくよみちゃん (Piper)",
+    // tsukuyomi-chan-6lang-fp16.onnx は WavLM Prosody base (multi-speaker architecture) の派生で、
+    // ONNX graph に `speaker_embedding` input tensor を要求する。usePiperTts.ts 側で
+    // `synthesizeWithVoiceCloning(text, new Float32Array(256), opts)` 経由で zero embedding を
+    // 渡すことで default speaker 0 の voice を合成する。
+    requiresSpeakerEmbedding: true,
     // つくよみちゃんコーパス利用規約 (https://tyc.rei-yumesaki.net/material/corpus/)
     // ③ソフト配布の場合、公式規定文を「目立つ場所に十分な文字サイズで」掲載する義務あり。
     // 派生物の二次利用制限 (出力音声の禁止用途) も UI でユーザーに告知が必要。

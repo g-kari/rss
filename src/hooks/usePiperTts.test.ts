@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
 const synthesizeMock = vi.fn();
+const synthesizeWithCloningMock = vi.fn();
 const disposeMock = vi.fn();
 const playMock = vi.fn(() => Promise.resolve());
 const initializeMock = vi.fn();
@@ -25,20 +26,24 @@ vi.mock("onnxruntime-web", () => ({
 function resetMocks() {
   initializeMock.mockReset();
   synthesizeMock.mockReset();
+  synthesizeWithCloningMock.mockReset();
   disposeMock.mockReset();
   playMock.mockReset();
   playMock.mockImplementation(() => Promise.resolve());
 
   initializeMock.mockImplementation(async () => ({
     synthesize: (...args: unknown[]) => synthesizeMock(...args),
+    synthesizeWithVoiceCloning: (...args: unknown[]) => synthesizeWithCloningMock(...args),
     dispose: disposeMock,
   }));
-  synthesizeMock.mockImplementation(async (text: string) => ({
+  const audioFactory = (text: string) => ({
     play: playMock,
     duration: text.length * 0.1,
     sampleRate: 22050,
     samples: new Float32Array(text.length * 100),
-  }));
+  });
+  synthesizeMock.mockImplementation(async (text: string) => audioFactory(text));
+  synthesizeWithCloningMock.mockImplementation(async (text: string) => audioFactory(text));
 }
 
 function setupBrowserMocks() {
@@ -83,6 +88,7 @@ describe("usePiperTts (#761 piper-plus)", () => {
     });
     expect(initializeMock).not.toHaveBeenCalled();
     expect(synthesizeMock).not.toHaveBeenCalled();
+    expect(synthesizeWithCloningMock).not.toHaveBeenCalled();
   });
 
   it("voiceUri が piper: prefix を持たない場合も errorCount を increment", async () => {
@@ -96,7 +102,7 @@ describe("usePiperTts (#761 piper-plus)", () => {
     expect(initializeMock).not.toHaveBeenCalled();
   });
 
-  it("speak() で initialize → synthesize → play が順に呼ばれる", async () => {
+  it("speak() で initialize → synthesize → play が順に呼ばれる (tsukuyomi は voice cloning path)", async () => {
     const { usePiperTts } = await import("./usePiperTts");
     const { result } = renderHook(() => usePiperTts());
     act(() => result.current.setVoiceUri("piper:tsukuyomi"));
@@ -105,9 +111,30 @@ describe("usePiperTts (#761 piper-plus)", () => {
       expect(playMock).toHaveBeenCalled();
     });
     expect(initializeMock).toHaveBeenCalledTimes(1);
+    // tsukuyomi は requiresSpeakerEmbedding: true → synthesizeWithVoiceCloning が呼ばれる
+    expect(synthesizeWithCloningMock).toHaveBeenCalledTimes(1);
+    expect(synthesizeMock).not.toHaveBeenCalled();
+    const callArgs = synthesizeWithCloningMock.mock.calls[0];
+    expect(callArgs[0]).toBe("こんにちは");
+    // 第 2 引数は Float32Array(256) zero-fill
+    expect(callArgs[1]).toBeInstanceOf(Float32Array);
+    expect((callArgs[1] as Float32Array).length).toBe(256);
+    expect((callArgs[1] as Float32Array).every((v) => v === 0)).toBe(true);
+    expect(callArgs[2]).toMatchObject({ language: "ja" });
+  });
+
+  it("requiresSpeakerEmbedding なし voice (css10-ja) は通常 synthesize が呼ばれる", async () => {
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:css10-ja"));
+    act(() => result.current.speak("テスト"));
+    await waitFor(() => {
+      expect(playMock).toHaveBeenCalled();
+    });
     expect(synthesizeMock).toHaveBeenCalledTimes(1);
+    expect(synthesizeWithCloningMock).not.toHaveBeenCalled();
     expect(synthesizeMock).toHaveBeenCalledWith(
-      "こんにちは",
+      "テスト",
       expect.objectContaining({ language: "ja" }),
     );
   });
@@ -133,7 +160,8 @@ describe("usePiperTts (#761 piper-plus)", () => {
   });
 
   it("synthesize 失敗で errorCount++ + lastError=model-error", async () => {
-    synthesizeMock.mockRejectedValueOnce(new Error("inference failed"));
+    // tsukuyomi は voice cloning path なので cloning mock を reject
+    synthesizeWithCloningMock.mockRejectedValueOnce(new Error("inference failed"));
     const { usePiperTts } = await import("./usePiperTts");
     const { result } = renderHook(() => usePiperTts());
     act(() => result.current.setVoiceUri("piper:tsukuyomi"));
@@ -145,7 +173,7 @@ describe("usePiperTts (#761 piper-plus)", () => {
   });
 
   it("synthesize fetch エラーは lastError=network", async () => {
-    synthesizeMock.mockRejectedValueOnce(new Error("fetch failed (network)"));
+    synthesizeWithCloningMock.mockRejectedValueOnce(new Error("fetch failed (network)"));
     const { usePiperTts } = await import("./usePiperTts");
     const { result } = renderHook(() => usePiperTts());
     act(() => result.current.setVoiceUri("piper:tsukuyomi"));

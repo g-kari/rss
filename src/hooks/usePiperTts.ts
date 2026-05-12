@@ -3,6 +3,7 @@ import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import { cycleValue } from "../lib/article-utils";
 import {
   PIPER_PLUS_VOICES,
+  DEFAULT_SPEAKER_EMBEDDING_DIM,
   findPiperPlusVoice,
   piperPlusVoiceToTtsVoice,
   type PiperPlusVoice,
@@ -59,6 +60,16 @@ interface PiperPlusAudioResult {
 interface PiperPlusInstance {
   synthesize: (
     text: string,
+    options?: { language?: string; lengthScale?: number },
+  ) => Promise<PiperPlusAudioResult>;
+  /**
+   * Multi-speaker / voice-cloning model 向け合成 API。speaker embedding (Float32Array) を
+   * 渡して ONNX model の `speaker_embedding` input tensor を埋める。
+   * zero-filled embedding を渡すと default speaker 0 の voice が合成される。
+   */
+  synthesizeWithVoiceCloning: (
+    text: string,
+    speakerEmbedding: Float32Array,
     options?: { language?: string; lengthScale?: number },
   ) => Promise<PiperPlusAudioResult>;
   dispose: () => void;
@@ -233,10 +244,23 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
         try {
           const instance = await ensureInstance(voice);
           if (token !== playTokenRef.current) return;
-          audio = await instance.synthesize(text, {
+          const synthOptions = {
             language: voice.synthesisLanguage,
             lengthScale: 1 / rateRef.current, // 速度逆数 (rate=2 → lengthScale=0.5 で 2 倍速)
-          });
+          };
+          if (voice.requiresSpeakerEmbedding) {
+            // Multi-speaker / WavLM Prosody base 派生 model は ONNX graph に `speaker_embedding` input
+            // tensor を要求する。zero-filled Float32Array(256) を渡すと default speaker 0 の voice が
+            // 合成される (tsukuyomi-chan 等)。voice cloning ではなく default voice 利用が目的。
+            const dim = voice.speakerEmbeddingDim ?? DEFAULT_SPEAKER_EMBEDDING_DIM;
+            audio = await instance.synthesizeWithVoiceCloning(
+              text,
+              new Float32Array(dim),
+              synthOptions,
+            );
+          } else {
+            audio = await instance.synthesize(text, synthOptions);
+          }
         } catch (err) {
           if (token !== playTokenRef.current) return;
           // 本番環境でも詳細を出すため console.error 直接使用 (#761 デバッグ強化)
