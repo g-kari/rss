@@ -27,6 +27,7 @@
     "upload:piper-voices": "node scripts/upload-piper-voices.mjs"
   },
   "dependencies": {
+    "@cloudflare/puppeteer": "^1.1.0",
     "@mozilla/readability": "^0.6.0",
     "@tanstack/react-virtual": "^3.13.24",
     "fast-xml-parser": "^5.7.3",

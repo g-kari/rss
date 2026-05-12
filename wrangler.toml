@@ -23,9 +23,6 @@ binding = "IMAGES"
 [vars]
 AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL = "https://rss.0g0.xyz"
-# Cloudflare account ID (Browser Rendering binding 経由で REST API を呼ぶときに URL に含める必要がある)
-# 値は wrangler tail の `$metadata.account` フィールドで確認可能 (公開値、token / secret ではない)
-CLOUDFLARE_ACCOUNT_ID = "b54ccb4a294a6ecbb74aecc1a8e0b502"
 # ベータアクセス制限: 許可する sub をカンマ区切りで列挙。空文字・未設定 = 制限なし（全員許可）
 # pairwise sub を public repo に晒さないため、本番値は wrangler secret で管理する：
 #   `npx wrangler secret put BETA_ALLOWED_SUBS`
