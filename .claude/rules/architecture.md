@@ -317,6 +317,9 @@ src/
     html-noise-removal.ts    # HTMLノイズ除去（removeNoise・processNestedBlocks・removeDivsByClass・replaceBlocksByClass・replaceUntilStable・removeOrphanedIconSvgs）
     json-ld-images.ts        # JSON-LD `Article` 型 image フィールドから記事主要画像 URL を抽出（extractJsonLdImages / appendMissingJsonLdImages）— 画像主体ページで Readability が主要画像を取りこぼした場合の補完源
     html-image-processors.ts # HTML画像処理（fixLazyImages・fixImageDimensions・rewriteImageUrls・removeSmallThumbnailImages・buildImageSlider・tryParseBase）
+    html-video-processors.ts # HTML video / source 処理（rewriteVideoUrls — html-media-processors の thin wrapper、video-proxy 経由）
+    html-media-processors.ts # HTML メディア (image / video) URL の proxy 統合書き換え純粋関数（rewriteMediaSrcAttrs、tags / proxyPath / srcset option 受取で image-proxy / video-proxy を統合）
+    html-srcset.ts           # srcset 属性パース + URL 変換純粋関数（transformSrcset — Cloudinary など path 内 `,` 含む URL でも壊れない仕様）
     html-embed-transforms.ts # HTML埋め込み変換（Zenn・X Tweet・SpeakerDeck・SlideShare の iframe/リンク変換）
     readability-extractor.ts # Readabilityラッパー（iframe退避・preClean・本文抽出）
     regex-extractor.ts       # 正規表現ベース抽出（stripPageChrome・サイト固有セレクター）
@@ -361,7 +364,10 @@ src/
     validation.ts            # 各種入力バリデーションユーティリティ
     image-constants.ts       # 画像処理の共有定数（IMAGE_MIN_DIMENSION）
     image-mime.ts            # 画像 MIME タイプ検証（ホワイトリスト方式・マジックバイト対応）
-    image-error-placeholder.ts # 画像エラー時の SVG プレースホルダー生成
+    image-error-placeholder.ts # 画像エラー時の SVG プレースホルダー生成（errorImageSvg — reason 細分化 + X-Image-Proxy-* ヘッダー二段観測性）
+    video-mime.ts            # 動画 MIME タイプ検証（mp4 / webm / ogg / hls 等のホワイトリスト + マジックバイト）
+    video-error-placeholder.ts # 動画エラー時のプレースホルダー応答（errorVideoResponse — body: null + X-Video-Proxy-Error ヘッダー、#751）
+    mime-utils.ts            # MIME 共通ユーティリティ（parseFtypBrand — ISO BMFF ftyp box ブランド抽出）
     favicon.ts               # ファビコン未読バッジ
     web-push.ts              # Web Push 送信ヘルパー
     push-silent-hours.ts     # Push 通知サイレント時間帯判定（isInSilentHours / isValidTimeHHMM / isValidIanaTimezone）

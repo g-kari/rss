@@ -204,23 +204,45 @@ export function useSpeechSynthesis(): TtsAdapter {
   // 構造的には互換だが、明示的変換で localService 等の余計な field を捨てる。
   const ttsVoices = useMemo(() => voices.map(speechSynthesisVoiceToTtsVoice), [voices]);
 
-  return {
-    engine: "web-speech",
-    supported: SPEECH_SUPPORTED,
-    isPlaying,
-    isPaused,
-    endedCount,
-    errorCount,
-    rate,
-    cycleRate,
-    volume,
-    setVolume,
-    voices: ttsVoices,
-    voiceUri,
-    setVoiceUri,
-    speak,
-    pause,
-    resume,
-    stop,
-  };
+  // perf: 戻り値を useMemo で wrap し identity を安定化。
+  // App.tsx の `ttsAdapter` useMemo + TtsAdapterProvider value の identity が
+  // state 変化時のみ更新されるようにして、全 consumer の不要 re-render を防ぐ。
+  return useMemo<TtsAdapter>(
+    () => ({
+      engine: "web-speech",
+      supported: SPEECH_SUPPORTED,
+      isPlaying,
+      isPaused,
+      endedCount,
+      errorCount,
+      rate,
+      cycleRate,
+      volume,
+      setVolume,
+      voices: ttsVoices,
+      voiceUri,
+      setVoiceUri,
+      speak,
+      pause,
+      resume,
+      stop,
+    }),
+    [
+      isPlaying,
+      isPaused,
+      endedCount,
+      errorCount,
+      rate,
+      cycleRate,
+      volume,
+      setVolume,
+      ttsVoices,
+      voiceUri,
+      setVoiceUri,
+      speak,
+      pause,
+      resume,
+      stop,
+    ],
+  );
 }

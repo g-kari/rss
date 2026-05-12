@@ -29,6 +29,8 @@ let createdGains: MockGain[] = [];
 class MockAudioContext {
   destination = {};
   close = vi.fn(() => Promise.resolve());
+  suspend = vi.fn(() => Promise.resolve());
+  resume = vi.fn(() => Promise.resolve());
 
   constructor() {
     createdContexts.push(this);
@@ -90,7 +92,7 @@ describe("useBackgroundAudio (#745 Phase A)", () => {
     expect(createdContexts[0].close).toHaveBeenCalledOnce();
   });
 
-  it("active=false → true 切替で AudioContext が新規作成される", () => {
+  it("active=false → true 切替で AudioContext が新規作成される (lazy 生成)", () => {
     const { rerender } = renderHook(({ active }) => useBackgroundAudio(active), {
       initialProps: { active: false },
     });
@@ -99,12 +101,39 @@ describe("useBackgroundAudio (#745 Phase A)", () => {
     expect(createdContexts.length).toBe(1);
   });
 
-  it("active=true → false 切替で前回 AudioContext が close される", () => {
+  it("active=true → false 切替で AudioContext は close せず suspend する (perf optimization)", () => {
     const { rerender } = renderHook(({ active }) => useBackgroundAudio(active), {
       initialProps: { active: true },
     });
     expect(createdContexts.length).toBe(1);
     rerender({ active: false });
-    expect(createdContexts[0].close).toHaveBeenCalledOnce();
+    expect(createdContexts[0].close).not.toHaveBeenCalled();
+    expect(createdContexts[0].suspend).toHaveBeenCalled();
+    expect(createdOscillators[0].stop).toHaveBeenCalled();
+  });
+
+  it("active false → true → false → true で AudioContext は 1 つだけ保持される (perf)", () => {
+    const { rerender } = renderHook(({ active }) => useBackgroundAudio(active), {
+      initialProps: { active: false },
+    });
+    rerender({ active: true });
+    rerender({ active: false });
+    rerender({ active: true });
+    // AudioContext は 1 個だけ作成、suspend/resume で切替
+    expect(createdContexts.length).toBe(1);
+    expect(createdContexts[0].resume).toHaveBeenCalled();
+  });
+
+  it("active=true → false → true で同じ AudioContext を resume + 新 OscillatorNode を生成", () => {
+    const { rerender } = renderHook(({ active }) => useBackgroundAudio(active), {
+      initialProps: { active: true },
+    });
+    expect(createdOscillators.length).toBe(1); // 初回 oscillator
+    rerender({ active: false });
+    expect(createdOscillators[0].stop).toHaveBeenCalled();
+    rerender({ active: true });
+    // ctx は同じ、oscillator は新規 (stop した node は再 start 不可なので)
+    expect(createdContexts.length).toBe(1);
+    expect(createdOscillators.length).toBe(2);
   });
 });

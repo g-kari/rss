@@ -12,7 +12,7 @@ import {
 import { applyKeywordFilter, applyKeywordFilterMap, buildFilterMap } from "@/lib/keyword-filter";
 import { compareByDateDesc } from "@/lib/article-utils";
 import { buildProtectedIds, filterExpiredArticles } from "@/lib/article-ttl";
-import { isValidFeedHash } from "@/lib/validation";
+import { assertValidFeedHash } from "@/lib/api-error";
 import { normalizeReadState } from "@/lib/read-state-merge";
 import type { Article, ReadState } from "@/types";
 
@@ -32,8 +32,9 @@ export async function GET(request: NextRequest) {
       return apiError("Invalid since", 400, { code: "INVALID_SINCE" });
     }
 
-    if (feedHash && !isValidFeedHash(feedHash)) {
-      return apiError("Invalid feed", 400, { code: "INVALID_FEED" });
+    if (feedHash) {
+      const err = assertValidFeedHash(feedHash);
+      if (err) return err;
     }
 
     if (feedHash && (!Number.isInteger(page) || page < 1 || page > MAX_PAGES)) {
