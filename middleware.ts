@@ -20,12 +20,13 @@ const STATIC_CSP_SUFFIX = [
   FRAME_SRC,
   // ポッドキャスト等のメディアは HTTPS のみ
   "media-src https:",
-  // Cloudflare Analytics 送信先 + Piper TTS engine の voice / wasm fetch 先 (#760 短期対応)
-  // - huggingface.co: voices.json + 各 voice .onnx / .onnx.json (@mintplex-labs/piper-tts-web HF_BASE)
-  // - cdn.jsdelivr.net: piper_phonemize wasm (@mintplex-labs/piper-tts-web WASM_BASE)
-  // - cdnjs.cloudflare.com: 古い onnxruntime-web 参照 (library 内部、現状未使用想定)
-  // 長期戦略 (#761 想定): R2 セルフホスト + Service Worker fetch interceptor で外部依存ゼロ化
-  "connect-src 'self' https://cloudflareinsights.com https://huggingface.co https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+  // Cloudflare Analytics 送信先 + Piper TTS engine の voice / wasm fetch 先 (#761)
+  // - huggingface.co: API endpoint (model metadata 取得 → redirect で *.hf.co の CDN へ)
+  // - *.hf.co: HuggingFace Xet/LFS CDN (例: cas-bridge.xethub.hf.co、cdn-lfs.hf.co)
+  //   モデル本体 (.onnx / config.json) は huggingface.co から redirect でこの subdomain 経由配信される。
+  //   subdomain ワイルドカードで将来の CDN ドメイン変更にも自動対応。
+  // - cdn.jsdelivr.net / cdnjs.cloudflare.com: piper-plus が internal で参照する場合の保険
+  "connect-src 'self' https://cloudflareinsights.com https://huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
   "font-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
