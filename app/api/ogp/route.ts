@@ -31,22 +31,31 @@ async function handleGet(
 ): Promise<NextResponse> {
   const reqUrl = new URL(request.url);
   const url = reqUrl.searchParams.get("url");
+  // #768: cache buster — `?refresh=1` で cache lookup を skip して必ず上流再取得
+  // (negative cache に張り付いた x.com / booth.pm 等のデバッグ + 復旧用)
+  const skipCache = reqUrl.searchParams.get("refresh") === "1";
   if (!url) return NextResponse.json({ image: "" });
   if (!isValidFeedUrl(url)) return NextResponse.json({ image: "" });
 
   const cacheKey = await buildCacheKey(reqUrl.origin, "ogp", url);
 
   // Cloudflare Cache API で確認（HIT 時はレートリミット不要）
-  const cached = await matchCfCache(cacheKey);
-  if (cached) {
-    const data = (await cached.json()) as { image: string; title?: string; description?: string };
-    // &amp; エンコードされた旧キャッシュエントリに対応するため unescapeHtml でデコードする
-    const decoded = unescapeHtml(data.image);
-    const image = isValidPublicUrl(decoded) ? decoded : "";
-    return NextResponse.json(
-      { image, title: data.title ?? "", description: data.description ?? "" },
-      { headers: { "X-Cache": "HIT" } },
-    );
+  if (!skipCache) {
+    const cached = await matchCfCache(cacheKey);
+    if (cached) {
+      const data = (await cached.json()) as {
+        image: string;
+        title?: string;
+        description?: string;
+      };
+      // &amp; エンコードされた旧キャッシュエントリに対応するため unescapeHtml でデコードする
+      const decoded = unescapeHtml(data.image);
+      const image = isValidPublicUrl(decoded) ? decoded : "";
+      return NextResponse.json(
+        { image, title: data.title ?? "", description: data.description ?? "" },
+        { headers: { "X-Cache": "HIT" } },
+      );
+    }
   }
 
   // キャッシュ MISS 時のみレートリミット（外部フェッチの連打防止）
@@ -58,9 +67,11 @@ async function handleGet(
   );
   if (limited) return limited;
 
-  const { title, description, image: rawImage } = await fetchPageOgpMeta(url, FETCH_TIMEOUT_MS);
+  const meta = await fetchPageOgpMeta(url, FETCH_TIMEOUT_MS);
+  const { title, description, image: rawImage, errorReason, upstreamStatus } = meta;
   let image = isValidPublicUrl(rawImage) ? rawImage : "";
   let isFallback = false;
+  let fallbackReason: string | null = null;
 
   // X/Twitter 投稿で OGP 画像がない場合、投稿内リンク先の OGP 画像をフォールバック取得
   // (#706) この経路は攻撃者が tweet 経由で任意 image を shared cache に注入可能なため、
@@ -70,6 +81,7 @@ async function handleGet(
     if (fallbackImage) {
       image = fallbackImage;
       isFallback = true;
+      fallbackReason = "twitter_link_fallback";
     }
   }
 
@@ -79,5 +91,11 @@ async function handleGet(
   const ttl = computeOgpCacheTtl({ hasContent, isFallback });
   cachePutAsync(cacheKey, buildJsonCacheResponse({ image, title, description }, ttl), ctx, "ogp");
 
-  return NextResponse.json({ image, title, description }, { headers: { "X-Cache": "MISS" } });
+  // #768: 観測性ヘッダー — DevTools / wrangler tail で失敗経路を即特定可能に
+  const headers: Record<string, string> = { "X-Cache": skipCache ? "BYPASS" : "MISS" };
+  if (errorReason) headers["X-Ogp-Error"] = errorReason;
+  if (upstreamStatus !== null) headers["X-Ogp-Upstream-Status"] = String(upstreamStatus);
+  if (fallbackReason) headers["X-Ogp-Fallback"] = fallbackReason;
+
+  return NextResponse.json({ image, title, description }, { headers });
 }

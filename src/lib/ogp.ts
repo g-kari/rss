@@ -86,16 +86,44 @@ export interface OgpMeta {
  * URL のページから OGP メタデータ（title / description / og:image）を取得する。
  * charset 検出を行い、非 UTF-8 ページにも対応する。
  * フェッチ失敗時は空文字のフォールバック値を返す。
+ *
+ * #768: 失敗経路ごとに `errorReason` を埋めて server-side log + response header 観測性を提供。
+ * 各 reason は browser-platform.md の「上流 API プロキシのエラー観測性は server-side log +
+ * response header の二段で構造化する」派生ケースに従う。
  */
+export type OgpFetchErrorReason =
+  | "fetch_throw"
+  | "non_ok_status"
+  | "no_body"
+  | "no_meta_tags"
+  | null;
+
+export interface OgpMetaWithError extends OgpMeta {
+  /** 失敗経路の reason (成功時は null)。`X-Ogp-Error` header に転載される */
+  readonly errorReason: OgpFetchErrorReason;
+  /** 上流の HTTP status (`!res.ok` 経路のみセット) */
+  readonly upstreamStatus: number | null;
+}
+
 export async function fetchPageOgpMeta(
   url: string,
   timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS,
-): Promise<OgpMeta> {
+): Promise<OgpMetaWithError> {
+  const empty = { title: "", description: "", image: "" } as const;
   try {
     const fetchUrl = normalizeOgpFetchUrl(url);
     const headers = buildFetchHeaders(fetchUrl);
     const res = await fetchFollowSafeRedirects(fetchUrl, { headers }, timeoutMs);
-    if (!res.ok || !res.body) return { title: "", description: "", image: "" };
+    if (!res.ok) {
+      console.error(
+        `[ogp] upstream not ok: url=${url} fetchUrl=${fetchUrl} status=${res.status} content-type="${res.headers.get("content-type") ?? ""}"`,
+      );
+      return { ...empty, errorReason: "non_ok_status", upstreamStatus: res.status };
+    }
+    if (!res.body) {
+      console.error(`[ogp] no body: url=${url} status=${res.status}`);
+      return { ...empty, errorReason: "no_body", upstreamStatus: res.status };
+    }
 
     const bytes = await readBodyBytesPartial(res.body, MAX_BYTES);
     const contentType = res.headers.get("content-type") ?? "";
@@ -112,9 +140,21 @@ export async function fetchPageOgpMeta(
     const rawImage = extractOgMeta(html, "image");
     const image = isValidPublicUrl(rawImage) ? rawImage : "";
 
-    return { title, description, image };
-  } catch {
-    return { title: "", description: "", image: "" };
+    // 200 OK + body 取得済だが title / image / description すべて空 = HTML 構造に
+    // og: tags が含まれていない or bot 検出で challenge page が返された可能性
+    if (!title && !description && !image) {
+      console.error(
+        `[ogp] no meta tags extracted: url=${url} status=${res.status} content-type="${contentType}" bytes=${bytes.length} html-preview="${html.slice(0, 200).replace(/\s+/g, " ")}"`,
+      );
+      return { ...empty, errorReason: "no_meta_tags", upstreamStatus: res.status };
+    }
+
+    return { title, description, image, errorReason: null, upstreamStatus: res.status };
+  } catch (err) {
+    console.error(
+      `[ogp] fetch threw: url=${url} err=${err instanceof Error ? err.name + ": " + err.message : String(err)}`,
+    );
+    return { ...empty, errorReason: "fetch_throw", upstreamStatus: null };
   }
 }
 
