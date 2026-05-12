@@ -113,6 +113,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   const [endedCount, setEndedCount] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
   const [lastError, setLastError] = useState<TtsErrorCode | null>(null);
+  const [lastErrorDetail, setLastErrorDetail] = useState<TtsAdapter["lastErrorDetail"]>(null);
   const [rate, setRate] = useState<PiperTtsRate>(loadRate);
   const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
   const [volume, setVolumeState] = useState<number>(loadVolume);
@@ -232,6 +233,13 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
           voiceUri: voiceUriRef.current,
         });
         setLastError("voice-unavailable");
+        setLastErrorDetail({
+          code: "voice-unavailable",
+          message: `Piper voice "${voiceUriRef.current ?? "(null)"}" が PIPER_PLUS_VOICES に見つかりませんでした`,
+          voiceUri: voiceUriRef.current,
+          engine: "piper",
+          occurredAt: new Date().toISOString(),
+        });
         setErrorCount((c) => c + 1);
         return;
       }
@@ -277,6 +285,15 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
           const code: TtsErrorCode =
             lower.includes("fetch") || lower.includes("network") ? "network" : "model-error";
           setLastError(code);
+          setLastErrorDetail({
+            code,
+            message: errMsg,
+            name: errName || undefined,
+            voiceUri: `piper:${voice.id}`,
+            model: voice.model,
+            engine: "piper",
+            occurredAt: new Date().toISOString(),
+          });
           setErrorCount((c) => c + 1);
           // 失敗時も progress を消去 (toast / banner で error 通知に切り替わる前提)
           setInitProgress(null);
@@ -305,7 +322,19 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
           if (token !== playTokenRef.current) return;
           devError("[usePiperTts] audio.play() failed", err);
           const name = err instanceof Error ? err.name : "";
-          setLastError(name === "NotAllowedError" ? "not-allowed" : "synthesis-failed");
+          const message = err instanceof Error ? err.message : String(err);
+          const code: TtsErrorCode =
+            name === "NotAllowedError" ? "not-allowed" : "synthesis-failed";
+          setLastError(code);
+          setLastErrorDetail({
+            code,
+            message,
+            name: name || undefined,
+            voiceUri: `piper:${voice.id}`,
+            model: voice.model,
+            engine: "piper",
+            occurredAt: new Date().toISOString(),
+          });
           setErrorCount((c) => c + 1);
           resetPlaybackState();
           return;
@@ -394,6 +423,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     endedCount,
     errorCount,
     lastError,
+    lastErrorDetail,
     rate,
     cycleRate,
     volume,

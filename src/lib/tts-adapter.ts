@@ -153,6 +153,31 @@ export interface TtsAdapter {
    * silent skip された error も lastError には記録される (debug 用)。`null` = エラーなし状態。
    */
   lastError: TtsErrorCode | null;
+  /**
+   * 直近の TTS エラーの詳細情報 (DevTools がないスマホでも原因切り分けできるようにする)。
+   *
+   * `errorCount` 増加と同時に set される (silent skip 対象は detail も null のまま)。
+   * 専用 floating toast (`PiperErrorDetailToast`) が監視して voice / model / message を
+   * 表示 + クリップボードコピーボタンを提供。
+   *
+   * `null` = エラーなし or silent skip。
+   */
+  lastErrorDetail?: {
+    /** エラー種別 (lastError と同じ値、コピー時の文脈に含める) */
+    code: TtsErrorCode;
+    /** Error.message or 等価のメッセージ */
+    message: string;
+    /** Error.name (例: "NotAllowedError" / "NetworkError") */
+    name?: string;
+    /** 該当 voice の identifier (例: "piper:tsukuyomi" / Web Speech voiceURI) */
+    voiceUri?: string | null;
+    /** 該当 model の identifier (例: "ayousanz/piper-plus-tsukuyomi-chan"、Piper のみ) */
+    model?: string;
+    /** engine 種別 (コピー時の文脈に含める) */
+    engine: TtsEngineId;
+    /** 発生時刻 (ISO 8601、コピー時の文脈に含める) */
+    occurredAt: string;
+  } | null;
   /** 現在の速度 */
   rate: TtsRate;
   /** 速度を順番に切り替え (engine 別の許容セットで cycle)。戻り値は次の rate 値 (UX 監査 #2: Shift+R toast 表示用) */

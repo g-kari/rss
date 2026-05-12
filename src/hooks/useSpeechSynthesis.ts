@@ -61,6 +61,8 @@ export function useSpeechSynthesis(): TtsAdapter {
   const [errorCount, setErrorCount] = useState(0);
   // #756: 直近の TTS エラー種別 (consumer が文言切替に使う)。silent skip も lastError には記録。
   const [lastError, setLastError] = useState<TtsErrorCode | null>(null);
+  // スマホで DevTools がない状態でも原因切り分けできるよう詳細を expose。silent skip 時は null。
+  const [lastErrorDetail, setLastErrorDetail] = useState<TtsAdapter["lastErrorDetail"]>(null);
   const [rate, setRate] = useState<TtsRate>(loadRate);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
@@ -137,6 +139,14 @@ export function useSpeechSynthesis(): TtsAdapter {
           // #756: silent skip (canceled / interrupted / audio-busy) では errorCount を increment しない
           if (!TTS_SILENT_SKIP_ERRORS.has(code)) {
             setErrorCount((c) => c + 1);
+            setLastErrorDetail({
+              code,
+              message: `SpeechSynthesisErrorEvent.error="${e.error}"`,
+              name: "SpeechSynthesisErrorEvent",
+              voiceUri: utterance.voice?.voiceURI ?? null,
+              engine: "web-speech",
+              occurredAt: new Date().toISOString(),
+            });
           }
           // #756: voice-unavailable で voiceUri を自動 reset (consumer は toast で通知)
           if (code === "voice-unavailable") {
@@ -236,6 +246,7 @@ export function useSpeechSynthesis(): TtsAdapter {
       endedCount,
       errorCount,
       lastError,
+      lastErrorDetail,
       rate,
       cycleRate,
       volume,
@@ -254,6 +265,7 @@ export function useSpeechSynthesis(): TtsAdapter {
       endedCount,
       errorCount,
       lastError,
+      lastErrorDetail,
       rate,
       cycleRate,
       volume,
