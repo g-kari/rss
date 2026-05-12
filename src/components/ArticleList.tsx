@@ -135,7 +135,6 @@ function ArticleList({
     filtered,
     visible,
     hasMore,
-    loadMore,
     query,
     sentinelRef,
     unreadOnly,
@@ -603,25 +602,13 @@ function ArticleList({
             />
           )}
 
-          {/* IntersectionObserver の sentinel — gallery 仮想化の末端でも
-              到達できるよう min-height を確保 (#636) */}
+          {/* IntersectionObserver の sentinel — スクロール時に client side で page+=1 する */}
           <div ref={sentinelRef} className="h-32" aria-hidden />
-          {/* LoadMoreButton 二段切替: client side に未表示の記事がまだあれば client loadMore で
-              page+=1 (= 軽量、サーバー fetch なし)、client 全件表示済なら server fetch する。
-              pageSize=10 等の小さい設定で「LoadMoreButton 自動発火 = 必ずサーバー過去ページ取得」
-              になっていた挙動を改善。 */}
-          {(hasMore || (feedHasMorePages && onLoadMoreFeedArticles)) && (
-            <LoadMoreButton
-              onLoad={async () => {
-                if (hasMore) {
-                  loadMore();
-                  return;
-                }
-                if (onLoadMoreFeedArticles) {
-                  await onLoadMoreFeedArticles();
-                }
-              }}
-            />
+          {/* LoadMoreButton はクライアント側 visible が現 filtered を満たし終えてから
+              (hasMore=false) かつサーバー側に過去ページが残っている場合のみ表示する。
+              ユーザー仕様: 「最初 500 件のうち pageSize 件ずつ表示 → 500 全部表示後に次 500 取得」 */}
+          {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
+            <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
           )}
         </div>
       </SelectedArticleCtx.Provider>
