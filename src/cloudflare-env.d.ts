@@ -22,4 +22,6 @@ interface CloudflareEnv {
   IMAGES: ImagesBinding;
   /** findme-rss サービスバインディング (内部通信で Bot 検出を回避) */
   FINDME_RSS: Fetcher;
+  /** Browser Rendering バインディング (#768) — booth.pm 等の bot 検出 sites を実ブラウザで fetch */
+  BROWSER: Fetcher;
 }

@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 async function handleGet(
   request: Request,
   userId: string,
-  env: { RATE_LIMIT: KVNamespace },
+  env: { RATE_LIMIT: KVNamespace; BROWSER: Fetcher },
   ctx: ExecutionContext,
 ): Promise<NextResponse> {
   const reqUrl = new URL(request.url);
@@ -102,7 +102,7 @@ async function handleGet(
     !description &&
     (errorReason === "non_ok_status" || errorReason === "no_meta_tags")
   ) {
-    const brMeta = await fetchPageOgpMetaViaBrowserRendering(url, FETCH_TIMEOUT_MS);
+    const brMeta = await fetchPageOgpMetaViaBrowserRendering(url, env.BROWSER, FETCH_TIMEOUT_MS);
     const brImage = isValidPublicUrl(brMeta.image) ? brMeta.image : "";
     if (brImage || brMeta.title || brMeta.description) {
       title = brMeta.title;

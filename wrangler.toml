@@ -46,6 +46,13 @@ id = "5119630203bf4cd584a98877ec2aa0e4"
 [ai]
 binding = "AI"
 
+# Browser Rendering バインディング (#768)
+# booth.pm 等の Cloudflare bot 検出で Workers IP fetch が 403 になるサイトの
+# OGP 取得 fallback 用。env.BROWSER.fetch() で REST API を Token 管理不要 + sub-request 課金なしで叩ける。
+# https://developers.cloudflare.com/browser-rendering/get-started/sending-rest-api-requests-with-workers-binding/
+[browser]
+binding = "BROWSER"
+
 [triggers]
 crons = ["*/30 * * * *"]
 
