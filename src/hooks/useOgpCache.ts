@@ -5,6 +5,7 @@ import type { Article, OgpData } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
+import { extractBoothFallbackUrl } from "../lib/booth-fallback";
 
 const MAX_OGP_CACHE_SIZE = 2000;
 const SAVE_DEBOUNCE_MS = 500;
@@ -53,8 +54,47 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
       }, SAVE_DEBOUNCE_MS);
     };
 
+    const cacheImage = (link: string, image: string) => {
+      setOgpCache((prev) => {
+        const next = { ...prev, [link]: image };
+        const keys = Object.keys(next);
+        const result =
+          keys.length > MAX_OGP_CACHE_SIZE
+            ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
+            : next;
+        scheduleSave(result);
+        return result;
+      });
+    };
+
+    // #765 / #750 Phase 2: x.com 系記事で primary OGP が空 or fetch error のとき、
+    // summary に含まれる booth.pm URL の OGP を取得して thumbnail として使う。
+    // booth fallback も失敗したら noImageRef に登録して以後 retry しない。
+    const tryBoothFallback = async (link: string, article: Article | undefined) => {
+      const boothUrl = article
+        ? extractBoothFallbackUrl({ link: article.link, summary: article.summary })
+        : null;
+      if (!boothUrl) {
+        noImageRef.current.add(link);
+        return;
+      }
+      try {
+        const r = await apiFetch(`/api/ogp?url=${encodeURIComponent(boothUrl)}`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const { image: boothImage } = (await r.json()) as OgpData;
+        if (boothImage) {
+          cacheImage(link, boothImage);
+        } else {
+          noImageRef.current.add(link);
+        }
+      } catch {
+        noImageRef.current.add(link);
+      }
+    };
+
     batch.forEach((link) => {
       fetchingRef.current.add(link);
+      const article = visible.find((a) => a.link === link);
       apiFetch(`/api/ogp?url=${encodeURIComponent(link)}`)
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -62,23 +102,12 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
         })
         .then(({ image }) => {
           if (image) {
-            setOgpCache((prev) => {
-              const next = { ...prev, [link]: image };
-              const keys = Object.keys(next);
-              const result =
-                keys.length > MAX_OGP_CACHE_SIZE
-                  ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
-                  : next;
-              scheduleSave(result);
-              return result;
-            });
+            cacheImage(link, image);
           } else {
-            noImageRef.current.add(link);
+            return tryBoothFallback(link, article);
           }
         })
-        .catch(() => {
-          noImageRef.current.add(link);
-        })
+        .catch(() => tryBoothFallback(link, article))
         .finally(() => {
           fetchingRef.current.delete(link);
         });
