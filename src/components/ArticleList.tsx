@@ -207,10 +207,11 @@ function ArticleList({
       return next;
     });
   }, []);
-  // galleryMinImagePx / view 切替時は累積していた hidden を全リセット (再判定)。
+  // galleryMinImagePx / view 切替 / フォーカスモード切替時は累積していた hidden を全リセット
+  // (再判定)。listFocusMode は列数変化で min-px filter を通る画像が増減するため必要 (#771)。
   useEffect(() => {
     setHiddenEntryKeys(new Set());
-  }, [galleryMinImagePx, galleryPrefetchEnabled]);
+  }, [galleryMinImagePx, galleryPrefetchEnabled, listFocusMode]);
   const galleryEntries = useMemo<GalleryEntry[] | null>(() => {
     if (!galleryPrefetchEnabled) return null;
     const raw = explodeArticlesIntoGalleryEntries(galleryDisplayItems, {
@@ -474,6 +475,10 @@ function ArticleList({
     onContextMenu: handleArticleContextMenu,
   });
 
+  // #771: galleryEntries は hiddenEntryKeys 変化で毎回新 reference になるため、
+  // 直接 deps にすると 1 カード hide で galleryCtxValue 全再生成 → 全カード re-render の
+  // perf 問題が発生する。「entries モードか否か」だけを stable boolean で参照する。
+  const hasEntries = galleryEntries !== null;
   const galleryCtxValue = useMemo<GalleryItemContextValue>(
     () => ({
       resolveItemProps,
@@ -489,9 +494,9 @@ function ArticleList({
       // Phase 1: explode=true のときだけ画像ライトボックスを開くハンドラを expose する。
       // explode=false (= 通常 view) では undefined のままで、カードクリックは従来通り
       // 記事詳細を開く。
-      onSelectImage: galleryEntries ? handleSelectImage : undefined,
+      onSelectImage: hasEntries ? handleSelectImage : undefined,
       // explode=true のときだけ「hidden になった entry を親で除外」する通知を有効化。
-      onHideForcedImage: galleryEntries ? handleHideForcedImage : undefined,
+      onHideForcedImage: hasEntries ? handleHideForcedImage : undefined,
     }),
     [
       resolveItemProps,
@@ -504,7 +509,7 @@ function ArticleList({
       galleryRetryArticle,
       handleGalleryContextMenu,
       handleGalleryLongPress,
-      galleryEntries,
+      hasEntries,
       handleSelectImage,
       handleHideForcedImage,
     ],
