@@ -412,19 +412,25 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
   },
 );
 
-/** OGP 画像。naturalWidth < 200px は小サムネと判定して非表示 (#741)。 */
+/** OGP 画像。naturalWidth < 200px は小サムネと判定して自然サイズで中央配置に切替 (#741, #764)。
+ *  #764: 一覧 (`resolveThumbnail`) はサイズチェックなしで表示するため list/detail で divergence が
+ *  発生していた。hide すると「サムネ全く表示されない」UX 劣化になるので、w-full / aspect-video を外して
+ *  自然サイズ中央配置にすることで「w-full の中で小さく見える」#741 問題も同時に解消する。 */
 const OG_THUMBNAIL_MIN_WIDTH = 200;
 function OgImageThumbnail({ src }: { src: string }) {
-  const [hidden, setHidden] = useState(false);
-  if (hidden) return null;
+  const [isSmall, setIsSmall] = useState(false);
   return (
     <img
       src={src}
       alt=""
-      className="w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
+      className={
+        isSmall
+          ? "max-w-[200px] mx-auto rounded-lg mb-6"
+          : "w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
+      }
       loading="lazy"
       onLoad={(e) => {
-        if (e.currentTarget.naturalWidth < OG_THUMBNAIL_MIN_WIDTH) setHidden(true);
+        if (e.currentTarget.naturalWidth < OG_THUMBNAIL_MIN_WIDTH) setIsSmall(true);
       }}
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = "none";
