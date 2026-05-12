@@ -78,13 +78,12 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // Piper wasm engine (#674 Phase 2b) — `@mintplex-labs/piper-tts-web` は内部で
-  // `onnxruntime-web` を chunk import するため、Next.js Turbopack が dynamic chunk
-  // 解決に失敗するケースがある。transpilePackages で明示的に Next.js transformer
-  // を通すことで `dist/piper-XXXX.js` 等の sub-chunk が解決される。
+  // Piper wasm engine (#761) — `piper-plus` は内部で `onnxruntime-web` を peer 依存として
+  // 使い、Rust wasm phonemizer (`dist/rust-wasm/piper_plus_wasm.js`) を dynamic import する。
+  // また `@piper-plus/g2p` (8 言語 G2P) も内部で chunk 化されるので合わせて transpile。
   // ESM only / browser only library なので serverExternalPackages からは除外
   // (server-side では dynamic import 自体が実行されないので影響なし)。
-  transpilePackages: ["@mintplex-labs/piper-tts-web", "onnxruntime-web"],
+  transpilePackages: ["piper-plus", "@piper-plus/g2p", "onnxruntime-web"],
   // Piper wasm engine (#753 Phase 2c) — Emscripten 生成 chunk が `require("fs")` /
   // `require("path")` を含み、browser runtime では `ENVIRONMENT_IS_NODE === false`
   // の分岐ガードで dead code 化されるが、Turbopack の静的解析が解決を試みて

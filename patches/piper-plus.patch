@@ -1,0 +1,17 @@
+diff --git a/src/phonemizer/rust-wasm-adapter.js b/src/phonemizer/rust-wasm-adapter.js
+index 33bcff9b1543dc8d54d9d7e7021c8e28ab84de31..cf01c57690a7318d94cb0efd69141f9c62284c87 100644
+--- a/src/phonemizer/rust-wasm-adapter.js
++++ b/src/phonemizer/rust-wasm-adapter.js
+@@ -41,7 +41,11 @@ export class RustWasmAdapter {
+     } else {
+       const url = options.wasmUrl;
+       if (!url) throw new Error('Either wasmUrl or wasmLoader must be provided');
+-      wasmModule = await import(url);
++      // PATCHED (rss-reader #761): Next.js 16 Turbopack の static analyzer は
++      // `await import(url)` (runtime URL) を解決できず `Module not found: Can't resolve <dynamic>`
++      // を吐く。`new Function` 経由の eval なら Turbopack はソース解析できないので bypass 可能。
++      const importFn = new Function('u', 'return import(u)');
++      wasmModule = await importFn(url);
+       await wasmModule.default(); // init() — load WASM binary
+     }
+     const wasm = new wasmModule.WasmPhonemizer(configJson);
