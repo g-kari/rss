@@ -75,6 +75,13 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Piper wasm engine (#674 Phase 2b) — `@mintplex-labs/piper-tts-web` は内部で
+  // `onnxruntime-web` を chunk import するため、Next.js Turbopack が dynamic chunk
+  // 解決に失敗するケースがある。transpilePackages で明示的に Next.js transformer
+  // を通すことで `dist/piper-XXXX.js` 等の sub-chunk が解決される。
+  // ESM only / browser only library なので serverExternalPackages からは除外
+  // (server-side では dynamic import 自体が実行されないので影響なし)。
+  transpilePackages: ["@mintplex-labs/piper-tts-web", "onnxruntime-web"],
 };
 
 export default nextConfig;
