@@ -60,6 +60,7 @@ import AppProviders from "./AppProviders";
 import { useReaderSettingsValue } from "../hooks/useReaderSettingsValue";
 import { type ArticleFilter } from "../contexts/ArticleFilterContext";
 import { useBackgroundAudio } from "../hooks/useBackgroundAudio";
+import { useMediaSession } from "../hooks/useMediaSession";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import type { TtsAdapter, TtsEngineId } from "../lib/tts-adapter";
 import { useToastState } from "../hooks/useToast";
@@ -387,6 +388,12 @@ export default function AppShell({
     selectFeedClearingArticle,
     clearFeedGroupArticleSelection,
   } = useFeedSelection(articles, feedGroups);
+
+  // #745 Phase C 案 A: MediaSession API で iOS Safari lockscreen / Android 通知センターに
+  // 記事タイトル + play/pause/stop コントロールを表示。speechSynthesis が OS 観点で
+  // 「メディア再生中」と認識されてバックグラウンド休眠を回避する canonical solution。
+  // 既存 useBackgroundAudio (WebAudio 無音 oscillator) は defense in depth として継続。
+  useMediaSession({ article: selectedArticle, ttsAdapter });
 
   const {
     snoozeTargetId,
