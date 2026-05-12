@@ -18,7 +18,9 @@ import { test, expect } from "@playwright/test";
 import { seedFeed, clearTestData, makeArticle } from "./helpers/seed-r2";
 
 const BASE_URL = "http://localhost:3000";
-const FEED_HASH = "0632ogpfallback00";
+// isValidFeedHash 規約: 16 文字 lowercase hex (computeFeedHash の SHA-256 先頭 16 文字)。
+// 旧値 "0632ogpfallback00" は非 hex (o/g/p/l/c/k を含む) で seed POST が 400 fail していた。
+const FEED_HASH = "0632fa11bac0fade";
 
 let seedEndpointAvailable = true;
 test.beforeAll(async ({ request }) => {
