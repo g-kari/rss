@@ -158,7 +158,10 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       ttsInstanceRef.current = null;
       ttsVoiceIdRef.current = null;
     }
+    // 本番デバッグ用ログ (#761): library load / initialize の段階を可視化
+    console.info(`[usePiperTts] initializing voice=${voice.id} model=${voice.model}`);
     const { lib, ort } = await loadPiperLib();
+    console.info(`[usePiperTts] library loaded, calling PiperPlus.initialize`);
     const instance = await lib.initialize({
       // HuggingFace repo 名 (`ayousanz/piper-plus-tsukuyomi-chan`) は library 内部で
       // huggingface.co/<repo>/resolve/main/ から自動 resolve される (standard path)。
@@ -176,6 +179,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       // (piper-plus は `pinyin_single.json` 取得失敗時に "zh will use passthrough" で続行)。
       zhDictBaseUrl: new URL("/api/wasm/", window.location.origin).toString(),
     });
+    console.info(`[usePiperTts] PiperPlus.initialize complete for voice=${voice.id}`);
     ttsInstanceRef.current = instance;
     ttsVoiceIdRef.current = voice.id;
     return instance;
@@ -215,10 +219,19 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
           });
         } catch (err) {
           if (token !== playTokenRef.current) return;
+          // 本番環境でも詳細を出すため console.error 直接使用 (#761 デバッグ強化)
+          // err.message / err.stack / err.name すべて確実に出して原因特定を可能にする
+          const errMsg = err instanceof Error ? err.message : String(err);
+          const errName = err instanceof Error ? err.name : "";
+          const errStack = err instanceof Error ? err.stack : "";
+          console.error(
+            `[usePiperTts] synthesize failed voiceId=${voice.id} model=${voice.model}`,
+            { name: errName, message: errMsg, stack: errStack, raw: err },
+          );
           devError("[usePiperTts] synthesize failed", { voiceId: voice.id, error: err });
-          const message = err instanceof Error ? err.message.toLowerCase() : "";
+          const lower = errMsg.toLowerCase();
           const code: TtsErrorCode =
-            message.includes("fetch") || message.includes("network") ? "network" : "model-error";
+            lower.includes("fetch") || lower.includes("network") ? "network" : "model-error";
           setLastError(code);
           setErrorCount((c) => c + 1);
           return;
