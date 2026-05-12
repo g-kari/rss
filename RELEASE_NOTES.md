@@ -4,6 +4,7 @@
 
 ### 激アツ新機能っ
 
+- **#761 Piper engine に メラちゃん voice (Kizuna Intelligence) を追加!💖** — Kizuna Intelligence の看板キャラクター **メラちゃん** の合成音声モデル (`kizuna-intelligence/piper-plus-mera-multilingual`) を選択肢に追加〜🎀 設定モーダル → 表示 → 読み上げ音声 → ボイスから「メラちゃん (Kizuna Intelligence)」を選んで使えるよ〜🎙️ piper-plus 完全互換 + 6 言語対応 (ja/en/zh/es/fr/pt) + Apache 2.0 ライセンスで商用利用も OK〜📜 つくよみちゃんと並んで 2 種類のかわいい voice が選べるようになりましたわ〜🌸 (HuggingFace モデル: <https://huggingface.co/kizuna-intelligence/piper-plus-mera-multilingual>)
 - **#761 つくよみちゃん voice で日本語自然読み上げ実装!🎙️✨** — Piper TTS engine の library を `piper-plus@0.6.0` (8 言語 + OpenJTalk 内蔵 / MIT) に置き換えて、ついに **つくよみちゃん voice (CV.夢前黎)** で記事を日本語自然読み上げできるようになったよ〜🎀 配信戦略は voice / WASM で使い分け: **piper-plus Rust phonemizer WASM (60 MiB)** は Cloudflare R2 セルフホスト (`/api/wasm/[file]`) で Workers 25 MiB 上限を回避、**voice モデル (`ayousanz/piper-plus-tsukuyomi-chan`)** は piper-plus の standard path に従って **HuggingFace から直接 fetch** (CSP `connect-src huggingface.co` は #760 で許可済)〜📦 初回再生時にブラウザにキャッシュされて 2 回目以降は瞬時〜⚡ Next.js 16 Turbopack の static analyzer が library 内部の `await import(url)` を解決できない問題は **`pnpm patch` で `new Function` 経由に書き換え** (`patches/piper-plus.patch`) で minimum invasive 対処、`pnpm.patchedDependencies` を初採用したよ〜🛡️
 - **#761 つくよみちゃんコーパスのクレジット表記対応!📜** — つくよみちゃんコーパス利用規約 (CC BY 4.0 + コーパス規約) の **「目立つ場所に十分な文字サイズで掲載」義務** と **「派生物 (出力音声) の二次利用制限のユーザー告知」義務** を満たすため、**設定 → 表示 → 読み上げ音声** に専用クレジット欄を追加〜🎀 公式 URL リンク (`https://tyc.rei-yumesaki.net/material/corpus/`) + 「出力音声の禁止用途」(批判・攻撃 / 政治的賛同呼びかけ / 成人向け非ゾーニング公開 / 他者二次素材としての再配布) も明示〜🛡️ README.md のライセンス節にも音声素材ライセンスを追記〜📚
 
