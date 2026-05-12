@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Article } from "../types";
 import { isArticleRead } from "../lib/article-filter";
+import { equalLastPublishedByFeed, equalUnreadByFeed } from "../lib/unread-stats-merge";
 import { useDebounce } from "./useDebounce";
 
 export interface ArticleUnreadStats {
@@ -69,18 +70,27 @@ export function useArticleUnreadStats(
   const debouncedReadBeforeTimestamp = useDebounce(readBeforeTimestamp, 200);
   const today = useUtcDate();
 
+  // 構造的等価性ガード (#758): 内容変化なしなら前回 Map reference を返して下流 Provider /
+  // FeedSidebar の不要 re-render を防ぐ (`react-state-ref.md` の規範)。
+  const lastPublishedRef = useRef<Map<string, string>>(new Map());
+  const unreadByFeedRef = useRef<Map<string, number>>(new Map());
+
   // articles のみ依存: feedHash → 最新 publishedAt
   // readIds 変化 (j キー連打 / mark-all-read) では再計算しない
   const lastPublishedByFeed = useMemo(() => {
-    const lastPublished = new Map<string, string>();
+    const next = new Map<string, string>();
     for (const a of articles) {
       if (!a.publishedAt) continue;
-      const prev = lastPublished.get(a.feedHash);
+      const prev = next.get(a.feedHash);
       if (!prev || a.publishedAt > prev) {
-        lastPublished.set(a.feedHash, a.publishedAt);
+        next.set(a.feedHash, a.publishedAt);
       }
     }
-    return lastPublished;
+    if (equalLastPublishedByFeed(lastPublishedRef.current, next)) {
+      return lastPublishedRef.current;
+    }
+    lastPublishedRef.current = next;
+    return next;
   }, [articles]);
 
   // articles + debouncedReadIds + debouncedReadBeforeTimestamp + today 依存
@@ -96,8 +106,12 @@ export function useArticleUnreadStats(
         todayRead++;
       }
     }
+    // 構造的等価性ガード: unreadByFeed の内容変化なしなら前回 reference を返す
+    const stableUnreadByFeed = equalUnreadByFeed(unreadByFeedRef.current, byFeed)
+      ? unreadByFeedRef.current
+      : ((unreadByFeedRef.current = byFeed), byFeed);
     return {
-      unreadByFeed: byFeed,
+      unreadByFeed: stableUnreadByFeed,
       totalUnread: total,
       readTodayCount: todayRead,
     };

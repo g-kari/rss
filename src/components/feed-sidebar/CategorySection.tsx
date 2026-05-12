@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import type { Feed } from "../../types";
 import { formatCount } from "../FeedItem";
 
@@ -14,7 +14,7 @@ interface Props {
   renderFeed: (feed: Feed, isPinned: boolean, globalIdx: number) => ReactNode;
 }
 
-export default function CategorySection({
+function CategorySectionImpl({
   categoryGroups,
   uncategorizedFeeds,
   collapsedCategories,
@@ -79,3 +79,12 @@ export default function CategorySection({
 
   return <>{elements}</>;
 }
+
+/**
+ * #758: memo 化で props shallow equal なら re-render skip。
+ * `useArticleUnreadStats` の構造的等価性ガードで `unreadByFeed` Map が内容変化なし時に
+ * 同 reference を返すため、`readIds` 連打などで親が re-render しても本コンポーネント
+ * は skip 可能になる。
+ */
+const CategorySection = memo(CategorySectionImpl);
+export default CategorySection;

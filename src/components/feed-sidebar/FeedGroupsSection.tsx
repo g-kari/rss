@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { memo, useRef, useState, type ReactNode } from "react";
 import type { FeedGroup, Feed } from "../../types";
 import { useConfirm } from "@/hooks/useConfirm";
 import ConfirmModal from "@/components/ConfirmModal";
 import { formatCount } from "../FeedItem";
 
-export default function FeedGroupsSection({
+function FeedGroupsSectionImpl({
   groups,
   unreadByFeed,
   renderFeed,
@@ -474,3 +474,12 @@ export default function FeedGroupsSection({
     </>
   );
 }
+
+/**
+ * #758: memo 化で props shallow equal なら re-render skip。
+ * `useArticleUnreadStats` の構造的等価性ガードで `unreadByFeed` Map が内容変化なし時に
+ * 同 reference を返すため、`readIds` 連打などで親が re-render しても本コンポーネント
+ * は skip 可能になる。
+ */
+const FeedGroupsSection = memo(FeedGroupsSectionImpl);
+export default FeedGroupsSection;
