@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { Article } from "../types";
 import { buildTtsText } from "../lib/tts-text";
+import { formatTtsErrorMessage } from "../lib/tts-adapter";
 import { useTtsAdapter } from "../contexts/TtsAdapterContext";
 import { useToast } from "../contexts/ToastContext";
 import { useEventListener } from "./useEventListener";
@@ -48,6 +49,7 @@ export function useArticleViewTts(
     isPaused: ttsPaused,
     endedCount: ttsEndedCount,
     errorCount: ttsErrorCount,
+    lastError: ttsLastError,
     rate: ttsRate,
     cycleRate: ttsCycleRate,
     volume: ttsVolume,
@@ -57,14 +59,17 @@ export function useArticleViewTts(
   } = useTtsAdapter();
   const toast = useToast();
 
-  // #743: TTS エラー (utterance.onerror) が表面化したときユーザーに toast 通知
+  // #743/#756: TTS エラー (utterance.onerror) が表面化したときユーザーに lastError 別の toast 通知。
+  // engine 側で silent skip 対象 (canceled/interrupted/audio-busy) は errorCount を increment しないため
+  // ここまで届かない。formatTtsErrorMessage が null を返した場合は念のため silent skip。
   const prevErrorCountRef = useRef(ttsErrorCount);
   useEffect(() => {
     if (ttsErrorCount > prevErrorCountRef.current) {
       prevErrorCountRef.current = ttsErrorCount;
-      toast.error("読み上げに失敗しました (voice 互換性または engine エラー)");
+      const message = formatTtsErrorMessage(ttsLastError);
+      if (message) toast.error(message);
     }
-  }, [ttsErrorCount, toast]);
+  }, [ttsErrorCount, ttsLastError, toast]);
 
   // #727: TTS 音量 3 段階 cycle (1.0 = full / 0.5 = half / 0.0 = muted)
   const ttsCycleVolume = useCallback(() => {

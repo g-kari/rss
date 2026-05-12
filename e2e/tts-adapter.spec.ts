@@ -1,9 +1,13 @@
 import { test, expect } from "@playwright/test";
 import {
+  TTS_SILENT_SKIP_ERRORS,
+  formatTtsErrorMessage,
+  normalizeWebSpeechError,
   speechSynthesisVoiceToTtsVoice,
   type TtsVoice,
   type TtsAdapter,
   type TtsEngineId,
+  type TtsErrorCode,
 } from "../src/lib/tts-adapter";
 import { selectTtsVoice, groupVoicesByLang } from "../src/lib/tts-voice";
 
@@ -79,6 +83,7 @@ test.describe("TtsAdapter 型契約", () => {
       isPaused: false,
       endedCount: 0,
       errorCount: 0,
+      lastError: null,
       rate: 1.0,
       cycleRate: () => 1.0,
       volume: 1.0,
@@ -99,5 +104,105 @@ test.describe("TtsAdapter 型契約", () => {
   test("piper engine も engine 識別子として許容する", () => {
     const piperEngine: TtsEngineId = "piper";
     expect(piperEngine).toBe("piper");
+  });
+});
+
+test.describe("TtsErrorCode 正規化と文言マッピング (#756)", () => {
+  test("normalizeWebSpeechError は既知の SpeechSynthesisErrorCode をそのまま返す", () => {
+    const knownCodes: TtsErrorCode[] = [
+      "canceled",
+      "interrupted",
+      "audio-busy",
+      "not-allowed",
+      "language-unavailable",
+      "voice-unavailable",
+      "synthesis-failed",
+      "audio-hardware",
+      "network",
+    ];
+    for (const code of knownCodes) {
+      expect(normalizeWebSpeechError(code)).toBe(code);
+    }
+  });
+
+  test("normalizeWebSpeechError は未知の値を 'unknown' に fallback", () => {
+    expect(normalizeWebSpeechError("invalid-argument")).toBe("unknown");
+    expect(normalizeWebSpeechError("")).toBe("unknown");
+    expect(normalizeWebSpeechError("future-error-code")).toBe("unknown");
+  });
+
+  test("TTS_SILENT_SKIP_ERRORS は canceled / interrupted / audio-busy を含む", () => {
+    expect(TTS_SILENT_SKIP_ERRORS.has("canceled")).toBe(true);
+    expect(TTS_SILENT_SKIP_ERRORS.has("interrupted")).toBe(true);
+    expect(TTS_SILENT_SKIP_ERRORS.has("audio-busy")).toBe(true);
+    expect(TTS_SILENT_SKIP_ERRORS.size).toBe(3);
+  });
+
+  test("TTS_SILENT_SKIP_ERRORS は toast 通知すべき error を含まない", () => {
+    const shouldNotify: TtsErrorCode[] = [
+      "not-allowed",
+      "language-unavailable",
+      "voice-unavailable",
+      "synthesis-failed",
+      "audio-hardware",
+      "network",
+      "model-error",
+      "unknown",
+    ];
+    for (const code of shouldNotify) {
+      expect(TTS_SILENT_SKIP_ERRORS.has(code)).toBe(false);
+    }
+  });
+
+  test("formatTtsErrorMessage は null / silent skip error で null を返す", () => {
+    expect(formatTtsErrorMessage(null)).toBeNull();
+    expect(formatTtsErrorMessage("canceled")).toBeNull();
+    expect(formatTtsErrorMessage("interrupted")).toBeNull();
+    expect(formatTtsErrorMessage("audio-busy")).toBeNull();
+  });
+
+  test("formatTtsErrorMessage は通知対象 error で非 null の文言を返す", () => {
+    const shouldNotify: TtsErrorCode[] = [
+      "not-allowed",
+      "language-unavailable",
+      "voice-unavailable",
+      "synthesis-failed",
+      "audio-hardware",
+      "network",
+      "model-error",
+      "unknown",
+    ];
+    for (const code of shouldNotify) {
+      const msg = formatTtsErrorMessage(code);
+      expect(msg).not.toBeNull();
+      expect(typeof msg).toBe("string");
+      expect(msg!.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("formatTtsErrorMessage の文言は error 種別ごとに異なる (重複なし)", () => {
+    const shouldNotify: TtsErrorCode[] = [
+      "not-allowed",
+      "language-unavailable",
+      "voice-unavailable",
+      "synthesis-failed",
+      "audio-hardware",
+      "network",
+      "model-error",
+      "unknown",
+    ];
+    const messages = shouldNotify.map((c) => formatTtsErrorMessage(c));
+    const uniqueMessages = new Set(messages);
+    expect(uniqueMessages.size).toBe(messages.length);
+  });
+
+  test("formatTtsErrorMessage('voice-unavailable') は自動 reset を示唆する文言", () => {
+    const msg = formatTtsErrorMessage("voice-unavailable");
+    expect(msg).toMatch(/自動選択に戻/);
+  });
+
+  test("formatTtsErrorMessage('language-unavailable') は voice 選択 UI 誘導を示唆", () => {
+    const msg = formatTtsErrorMessage("language-unavailable");
+    expect(msg).toMatch(/設定|Voice|voice/);
   });
 });

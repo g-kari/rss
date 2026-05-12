@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import { cycleValue } from "../lib/article-utils";
 import { piperVoiceToTtsVoice } from "../lib/piper-adapter";
-import type { TtsAdapter, TtsVoice } from "../lib/tts-adapter";
+import type { TtsAdapter, TtsErrorCode, TtsVoice } from "../lib/tts-adapter";
 import { clampTtsVolume, parseTtsVolume } from "../lib/tts-volume";
 import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
@@ -78,6 +78,9 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   const [isPaused, setIsPaused] = useState(false);
   const [endedCount, setEndedCount] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
+  // #756: 直近の TTS エラー種別。Piper は silent skip 対象 (canceled/interrupted/audio-busy) が
+  // 構造的に存在しないため、errorCount は常に setErrorCount と同時に setLastError される。
+  const [lastError, setLastError] = useState<TtsErrorCode | null>(null);
   const [rate, setRate] = useState<PiperTtsRate>(loadRate);
   const [voices, setVoices] = useState<TtsVoice[]>([]);
   const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
@@ -180,6 +183,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
         devError("[usePiperTts] no piper voice selected (voiceUri must start with 'piper:')", {
           voiceUri: voiceUriRef.current,
         });
+        setLastError("voice-unavailable");
         setErrorCount((c) => c + 1);
         return;
       }
@@ -196,6 +200,11 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
         } catch (err) {
           if (token !== playTokenRef.current) return; // 古い predict、破棄
           devError("[usePiperTts] predict failed", { voiceId, error: err });
+          // network エラー (HuggingFace fetch / OPFS write 失敗) か engine 内部失敗かを大まかに判定
+          const message = err instanceof Error ? err.message.toLowerCase() : "";
+          const code: TtsErrorCode =
+            message.includes("fetch") || message.includes("network") ? "network" : "model-error";
+          setLastError(code);
           setErrorCount((c) => c + 1);
           return;
         }
@@ -239,6 +248,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
         audio.onerror = () => {
           if (token !== playTokenRef.current) return;
           devError("[usePiperTts] audio.onerror", { error: audio.error });
+          setLastError("synthesis-failed");
           setErrorCount((c) => c + 1);
           resetState();
         };
@@ -248,6 +258,9 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
         } catch (err) {
           if (token !== playTokenRef.current) return;
           devError("[usePiperTts] audio.play() failed", err);
+          // NotAllowedError (autoplay 拒否) と一般失敗を区別
+          const name = err instanceof Error ? err.name : "";
+          setLastError(name === "NotAllowedError" ? "not-allowed" : "synthesis-failed");
           setErrorCount((c) => c + 1);
           resetState();
         }
@@ -280,6 +293,8 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       () => setIsPaused(false),
       (err) => {
         devError("[usePiperTts] resume play() failed", err);
+        const name = err instanceof Error ? err.name : "";
+        setLastError(name === "NotAllowedError" ? "not-allowed" : "synthesis-failed");
         setErrorCount((c) => c + 1);
       },
     );
@@ -338,6 +353,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     isPaused,
     endedCount,
     errorCount,
+    lastError,
     rate,
     cycleRate,
     volume,
