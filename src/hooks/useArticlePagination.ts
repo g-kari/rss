@@ -66,5 +66,29 @@ export function useArticlePagination(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMoreRef・hasMoreRef は useSyncedRef の安定参照、マウント時に一度だけ設定
   }, []);
 
+  // #772: pageSize 小 (例: 10) + フィルター済 + 単一フィードで visible.length が少なく、
+  // loadMore 後も sentinel が依然 viewport 内 (intersect=true のまま) のケースで、
+  // IntersectionObserver の仕様 (false → true 遷移でのみ callback 発火) により次の
+  // loadMore が永久に発火しない問題を修正。
+  // visible.length 変化後 1 tick 待ち + sentinel が viewport 内 (rootMargin 600px 含む) なら
+  // もう 1 回 loadMore を発火させて連鎖的にロード継続を担保する。
+  // hasMore が false になった瞬間に停止するため無限ループは発生しない。
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const id = setTimeout(() => {
+      if (!hasMoreRef.current) return;
+      const rect = el.getBoundingClientRect();
+      const rootMargin = 600;
+      const inViewport = rect.top < window.innerHeight + rootMargin && rect.bottom > -rootMargin;
+      if (inViewport) {
+        loadMoreRef.current();
+      }
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMoreRef / hasMoreRef は安定参照
+  }, [visible.length, hasMore]);
+
   return { visible, hasMore, sentinelRef, notifyArticlesAdded, loadMore } as const;
 }
