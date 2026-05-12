@@ -206,6 +206,93 @@ useEffect(() => {
 
 主な使用箇所: `TtsAdapter.errorCount` (`useSpeechSynthesis` の `utterance.onerror` → `useArticleViewTts` で toast 表示 + 空テキスト silent skip も同時対応)
 
+### 派生ケース: monotonic counter に加えて **「silent skip set」+「abstract error code」+「format function」の 3 点セット** で error 種別ごとの処理を分離する
+
+`errorCount` 単独だと「全ての error で同じ toast 文言」になり、ユーザー視点では:
+
+- **silent skip すべき error** (`canceled` / `interrupted` / `audio-busy` 等の正常終了 / 中断系) で誤発火 → 「何もしてないのに toast が出る」UX 劣化
+- **action 可能な error** (`voice-unavailable` / `language-unavailable` / `not-allowed` 等) で汎用文言 → ユーザーが対処できない
+
+この問題を解決する **3 点セットパターン** (#756 で確立):
+
+```typescript
+// 1. abstract error code (engine 横断の union 型)
+export type TtsErrorCode =
+  | "canceled"
+  | "interrupted"
+  | "audio-busy" // silent skip 対象
+  | "not-allowed"
+  | "language-unavailable"
+  | "voice-unavailable"
+  | "synthesis-failed"
+  | "audio-hardware"
+  | "network"
+  | "model-error"
+  | "unknown";
+
+// 2. silent skip set (errorCount を increment しない対象)
+export const TTS_SILENT_SKIP_ERRORS: ReadonlySet<TtsErrorCode> = new Set([
+  "canceled",
+  "interrupted",
+  "audio-busy",
+]);
+
+// 3. format function (null 戻り値 = toast 不要)
+export function formatTtsErrorMessage(code: TtsErrorCode | null): string | null {
+  if (code === null || TTS_SILENT_SKIP_ERRORS.has(code)) return null;
+  switch (code) {
+    case "language-unavailable":
+      return "端末でこの言語の voice が利用できません。設定 → Voice で別の voice を選んでください";
+    case "voice-unavailable":
+      return "選択中の voice が利用できなくなりました。自動選択に戻します";
+    // ... 種別別文言
+  }
+}
+
+// engine 側で normalize + silent skip 判定:
+const code = normalizeWebSpeechError(e.error);
+setLastError(code);
+if (!TTS_SILENT_SKIP_ERRORS.has(code)) {
+  setErrorCount((c) => c + 1); // silent skip では increment しない
+}
+// voice-unavailable で auto reset 等の副作用も engine 側で完結
+
+// consumer 側 (errorCount 差分検知 + formatXxxMessage で文言切替):
+useEffect(() => {
+  if (errorCount > prevErrorCountRef.current) {
+    prevErrorCountRef.current = errorCount;
+    const message = formatTtsErrorMessage(lastError);
+    if (message) toast.error(message); // null なら silent
+  }
+}, [errorCount, lastError, toast]);
+```
+
+**How to apply**: ブラウザ API ラッパー hook で error 種別が **3 つ以上** に分かれる場合に採用 (種別が 1-2 なら monotonic counter 単独で十分):
+
+1. **abstract error code union 型** を `<feature>-adapter.ts` 等に定義 — engine ごとの raw error を normalize 関数 (`normalizeWebSpeechError` / `normalizePiperError` 等) で統一
+2. **silent skip set** をモジュールレベル `Set<XxxErrorCode>` で定義 — 「正常終了 / 中断 / 環境一時障害」を含める
+3. **`xxxLastError: XxxErrorCode | null` を interface に追加** — engine 側で setLastError + errorCount 増加を組み合わせる
+4. **format function** で `null` 戻り値 = silent / 文言 = toast を表現 — consumer は `if (message) toast.error(message)` の 1 行ガード
+5. **engine 側で error 種別ごとの副作用も完結** — 例: `voice-unavailable` で `setVoiceUri(null)` + localStorage クリア (consumer はそれを意識しない)
+
+**該当する典型 API** (error 種別が多い):
+
+| API                                | 主要 error 種別                                          | silent skip 対象                          |
+| ---------------------------------- | -------------------------------------------------------- | ----------------------------------------- |
+| Web Speech API `utterance.onerror` | 9 種類 (`SpeechSynthesisErrorCode`)                      | `canceled` / `interrupted` / `audio-busy` |
+| WebSocket `onclose`                | code (1000-4999)                                         | 1000 (normal closure) / 1001 (going away) |
+| `<video>` / `<audio>` `onerror`    | `MediaError.code` (1-4)                                  | (基本全て通知すべき)                      |
+| `fetch` reject                     | `AbortError` / `TypeError` (network) / `TimeoutError`    | `AbortError` (明示 cancel)                |
+| Geolocation `onerror`              | `PERMISSION_DENIED` / `POSITION_UNAVAILABLE` / `TIMEOUT` | (種別別に文言切替)                        |
+
+**反例 (3 点セットが overkill なケース)**:
+
+- error 種別が **1-2 種類だけ** で文言切替不要 → monotonic counter + 単一 toast 文言で十分
+- error が **連続発火しない 1 回限り** の操作 → state 1 つで十分、counter 不要
+- consumer 側で **silent skip 判定を engine 側で済ませる必要がない** (consumer 側で `if (xxx) toast` する方が文脈情報を持つ場合) → 各箇所で個別判定
+
+主な使用箇所: `src/lib/tts-adapter.ts` の `TtsErrorCode` / `TTS_SILENT_SKIP_ERRORS` / `normalizeWebSpeechError` / `formatTtsErrorMessage` (#756) — useSpeechSynthesis / usePiperTts 両 engine の error を統合、silent skip + 文言細分化 + voice 自動 reset を engine 側で完結
+
 ### 派生ケース: `availability()` が `unavailable` を返したら **入力引数も一緒にログに出す**
 
 外部 API の `availability()` / `validate()` 系判定関数が **「使えない」結果** を返したとき、結果値だけログに出すと「ハードウェア要件不足」と誤診しがち。実際は **渡している引数値が API 仕様と乖離している** 可能性が常にある。`devError` で **入力引数も一緒に** 出力する設計にすれば、仕様乖離を最初の調査で検出できる。
