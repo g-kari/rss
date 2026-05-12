@@ -121,14 +121,18 @@ export default function TtsVoiceSection() {
             <span className="text-[11px] font-medium text-text-default">
               ライセンス: {piperCreditVoice.credit.license}
             </span>
-            <span className="text-[11px] text-text-muted">
-              出力音声を以下の用途に使用することは禁止されておりますわ:
-            </span>
-            <ul className="text-[11px] text-text-muted list-disc list-inside pl-1 flex flex-col gap-0.5">
-              {piperCreditVoice.credit.restrictions.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
+            {piperCreditVoice.credit.restrictions.length > 0 && (
+              <>
+                <span className="text-[11px] text-text-muted">
+                  出力音声を以下の用途に使用することは禁止されておりますわ:
+                </span>
+                <ul className="text-[11px] text-text-muted list-disc list-inside pl-1 flex flex-col gap-0.5">
+                  {piperCreditVoice.credit.restrictions.map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         </div>
       )}

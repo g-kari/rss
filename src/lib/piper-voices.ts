@@ -201,6 +201,26 @@ export const PIPER_PLUS_VOICES: readonly PiperPlusVoice[] = [
       ],
     },
   },
+  {
+    id: "mera",
+    // Kizuna Intelligence の看板キャラクター「メラちゃん」voice (合成音声、声優由来なし)
+    model: "kizuna-intelligence/piper-plus-mera-multilingual",
+    lang: "ja-JP",
+    synthesisLanguage: "ja",
+    name: "メラちゃん (Kizuna Intelligence)",
+    // Apache-2.0 ライセンス: クレジット表記は MUST ではなく推奨。ただし piper-plus base
+    // (ayousanz) + Piper 元実装 (rhasspy/piper) への謝意を含める設計。
+    // 利用制限は Apache 2.0 標準 (著作権表示保持 / NOTICE 伝達 / 改変箇所明示)、
+    // 厳格な「禁止用途」リストはコーパス規約のような制約は無いため空配列。
+    credit: {
+      creditText:
+        "メラちゃん voice は Kizuna Intelligence が公開する合成音声モデルです。\n" +
+        "piper-plus base (ayousanz) + Piper 元実装 (rhasspy/piper) を基盤としています。",
+      creditUrl: "https://huggingface.co/kizuna-intelligence/piper-plus-mera-multilingual",
+      license: "Apache License 2.0",
+      restrictions: [],
+    },
+  },
 ];
 
 /**
