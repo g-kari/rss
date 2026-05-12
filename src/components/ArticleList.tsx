@@ -134,6 +134,7 @@ function ArticleList({
   const {
     filtered,
     visible,
+    hasMore,
     query,
     sentinelRef,
     unreadOnly,
@@ -599,10 +600,11 @@ function ArticleList({
           {/* IntersectionObserver の sentinel — gallery 仮想化の末端でも
               到達できるよう min-height を確保 (#636) */}
           <div ref={sentinelRef} className="h-32" aria-hidden />
-          {/* LoadMoreButton はサーバー側に過去ページが残っているなら常に表示する。
-              gallery の masonic 仮想化で sentinel が末端に到達しないケースでも
-              LoadMoreButton 自身の IntersectionObserver で自動発火させるため (#636)。 */}
-          {feedHasMorePages && onLoadMoreFeedArticles && (
+          {/* LoadMoreButton はクライアント側 visible が現 filtered を満たしてから (hasMore=false)
+              かつサーバーに過去ページが残っているときのみ表示する。pageSize=10 など小さい設定で
+              client visible が 10 件しかない時点で IntersectionObserver 自動発火してサーバー fetch
+              してしまう問題を回避。 */}
+          {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
             <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
           )}
         </div>
