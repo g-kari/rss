@@ -25,6 +25,7 @@
     "test:unit:watch": "vitest"
   },
   "dependencies": {
+    "@mintplex-labs/piper-tts-web": "^1.0.4",
     "@mozilla/readability": "^0.6.0",
     "@tanstack/react-virtual": "^3.13.24",
     "fast-xml-parser": "^5.7.3",
@@ -33,6 +34,7 @@
     "linkedom": "^0.18.12",
     "marked": "^18.0.3",
     "masonic": "^4.1.0",
+    "onnxruntime-web": "^1.26.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
