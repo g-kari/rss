@@ -426,7 +426,7 @@ fetch('URL_HERE', { headers: { 'User-Agent': 'Mozilla/5.0' } })
 
 ## 大きいコンポーネントの機能別分割パターン
 
-→ `.claude/rules/react-patterns.md` を参照
+→ `.claude/rules/react-component-split.md` を参照
 
 ## shared resource を変更する API は「認証 + 所有権チェック」を二段で行う
 
