@@ -213,6 +213,50 @@ export async function PATCH(request, { params }) {
 
 主な使用箇所: `app/api/collections/[id]/route.ts` / `app/api/auth/dbsc/{challenge,register}/route.ts` の UUID 正規表現 4 箇所重複 → `isValidSessionId` 集約 (リファクタ監査エージェント confidence 92%)
 
+### 派生ケース: helper drift 解消で「同じエンドポイントの既存 error code 契約」を変更してはならない
+
+別 Route Handler から helper (`assertValidFeedHash` / `assertFeedSubscribed` 等) を流用するとき、helper の error code が **既存エンドポイントの API spec に記載されている error code と異なる** ケースがある (例: helper は `INVALID_FEED` を返すが、対象 endpoint の既存 spec は `INVALID_PAYLOAD`)。helper を機械的に置換すると **client 側の error 分岐コードが壊れる** + **api-spec.md と実装が乖離する** という二重損失が発生する。
+
+```typescript
+// アンチパターン: helper drift 解消で error code を変更
+// app/api/engagement/route.ts (元実装)
+if (!feedHash || !isValidFeedHash(feedHash)) {
+  return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
+}
+
+// アンチパターン: helper を機械的に置換 → error code が INVALID_FEED に変わる
+const err = assertValidFeedHash(feedHash);
+if (err) return err; // ← INVALID_FEED を返す!
+// → api-spec.md の "INVALID_PAYLOAD" 記載と乖離、client の error 分岐コード破綻
+
+// 修正パターン: error code 互換性を確認してから判断
+// 案 A: helper 流用見送り (既存 error code 維持)
+if (!feedHash || !isValidFeedHash(feedHash)) {
+  return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
+}
+// 案 B: helper に optional error code 引数を追加
+const err = assertValidFeedHash(feedHash, { code: "INVALID_PAYLOAD" });
+if (err) return err;
+// 案 C: api-spec.md と client 側を含めて全体移行 (大規模変更、別 Issue)
+```
+
+**How to apply**: 別 Route Handler の validation logic を helper に集約しようとするとき (helper の機械的置換は drift 解消としては正しいが、error code 契約破壊は client / api-spec.md 二箇所の不整合を生むので「helper drift 解消」と「API 互換性破壊」は別の問題として分離する):
+
+1. **対象 endpoint の `api-spec.md` を Read** して既存 error code を確認 (`grep -nE "code.+:" .claude/rules/api-spec.md`)
+2. **helper の error code が既存 spec と一致するか** を確認:
+   - 一致 → helper 流用 OK (典型: 同じ `INVALID_FEED` を返す articles / feeds / refresh など)
+   - 不一致 → 案 A (流用見送り) / 案 B (helper 拡張) / 案 C (全体移行) のいずれかを選択
+3. **`grep -rn "code:.+INVALID_PAYLOAD"` 等で client 側の error 分岐コードも確認** — 影響範囲が広いなら helper 拡張 (案 B) で互換維持
+4. **commit message に「helper 流用見送りの理由」を明記** (将来の AI/開発者が「なぜ helper 化しなかった」と疑問を持ったとき答えられるよう)
+
+**反例 (helper drift 解消が妥当なケース)**:
+
+- 対象 endpoint の error code 仕様 (`api-spec.md` 記載) が helper と完全一致 → そのまま流用
+- 対象 endpoint が **新規 endpoint で client 側 caller がまだ存在しない** → helper の error code に合わせて新規仕様策定
+- error code 差異が **意味的に同等** (例: `INVALID_FEED_HASH` ↔ `INVALID_FEED`) で API spec も同サイクルで更新可能 → 案 C 全体移行
+
+主な使用箇所: `articles` route の `assertValidFeedHash` 流用 (INVALID_FEED 互換) は採用、`engagement` route の同 helper 流用は INVALID_PAYLOAD → INVALID_FEED に error code 変更してしまうため撤回 (api-spec.md "INVALID_PAYLOAD" 記載維持のため `isValidFeedHash` 直接呼び出しを継続)
+
 ### 派生ケース: 新規 dev dependency 追加前に既存 devDeps の流用可能性を grep 確認する
 
 Issue 本文や監査エージェント report で推奨された npm パッケージ (例: `jsdom` / `axios` / `date-fns`) を追加する前に、**`package.json` の `devDependencies` / `dependencies` を grep して同等機能の既存依存がないか確認する**。「Issue 推奨だから」と機械的に追加すると、**依存重複** (同じ機能を持つ複数パッケージが共存) や **bundle size 膨張** を招く。

@@ -171,6 +171,139 @@ const articlesKey = articles
 3. 「処理対象の上限」と「変化検知の対象」は **別概念** として分離する。上限は effect 内の `targets.slice(0, lim)` で、検知は `articlesKey` で全件。
 4. 全件キーが長くなりすぎる懸念があれば、**ハッシュ関数** (`SHA-1` 短縮など) で短縮するのも一手。ただし `join("\0")` の単純文字列でも数千件までは実用上問題なし
 
+## 起動コストの重いブラウザ API resource は `useRef` で component lifetime に保持し、active 変化は suspend/resume で切替える
+
+`AudioContext` / `Worker` / `EventSource` / `WebSocket` / `IntersectionObserver` のような **起動コストが重いブラウザ API resource** を、active=true/false の度に new/close すると以下の問題が起きる:
+
+1. **OS audio session 切替コスト** (`AudioContext`: 数十 ms ブロック)
+2. **ブラウザの同時インスタンス上限** (Chrome の AudioContext: 6 個)
+3. **wasm runtime 再 init** (`Worker` + OffscreenCanvas / onnxruntime-web 等で数百 ms)
+4. **接続再確立コスト** (`WebSocket` の handshake / `EventSource` の reconnect)
+
+これを避けるため、resource は **`useRef` で component lifetime 中 1 個だけ保持** し、active 変化では **resource の suspend/resume + 子オブジェクト (oscillator / observer など) の start/stop** だけ切り替える設計が canonical。
+
+```typescript
+// アンチパターン: active 切替の度に new/close → 起動コストが毎回発生
+export function useBackgroundAudio(active: boolean): void {
+  useEffect(() => {
+    if (!active) return;
+    const ctx = new AudioContext(); // 新規生成
+    const osc = ctx.createOscillator();
+    osc.start();
+    return () => {
+      osc.stop();
+      void ctx.close(); // close → 次の active=true で再生成 (OS audio session 切替)
+    };
+  }, [active]);
+}
+
+// 修正パターン: ctx は lifetime 中 1 個、active 変化で suspend/resume + osc start/stop
+export function useBackgroundAudio(active: boolean): void {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const oscRef = useRef<OscillatorNode | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (!active) {
+      // oscillator stop + ctx suspend (close せず保持)
+      if (oscRef.current) {
+        try {
+          oscRef.current.stop();
+        } catch {
+          /* already stopped */
+        }
+        oscRef.current = null;
+      }
+      void ctxRef.current?.suspend().catch(() => {
+        /* silent */
+      });
+      return;
+    }
+
+    // active=true: lazy 生成 (初回のみ)
+    if (!ctxRef.current) {
+      const Ctx =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      try {
+        ctxRef.current = new Ctx();
+      } catch {
+        return;
+      }
+    }
+
+    // suspended なら resume
+    void ctxRef.current.resume().catch(() => {
+      /* silent */
+    });
+
+    // oscillator が無ければ起動 (前回 stop で null 化されている)
+    if (!oscRef.current) {
+      const osc = ctxRef.current.createOscillator();
+      const gain = ctxRef.current.createGain();
+      gain.gain.value = 0;
+      osc.connect(gain);
+      gain.connect(ctxRef.current.destination);
+      osc.start();
+      oscRef.current = osc;
+    }
+  }, [active]);
+
+  // unmount で確実に close + stop
+  useEffect(() => {
+    return () => {
+      if (oscRef.current) {
+        try {
+          oscRef.current.stop();
+        } catch {
+          /* */
+        }
+        oscRef.current = null;
+      }
+      if (ctxRef.current) {
+        void ctxRef.current.close().catch(() => {
+          /* */
+        });
+        ctxRef.current = null;
+      }
+    };
+  }, []);
+}
+```
+
+**How to apply**: ブラウザ API resource を hook で扱うときは (active 切替の度に new/close すると OS audio session 切替コスト + ブラウザの同時インスタンス上限抵触 + wasm 再 init 等のコストが累積する、useRef で lifetime 持続 + suspend/resume なら 1 回コストで済む):
+
+1. **resource の起動コスト** を MDN / 実測で確認 — 数十 ms 以上 or ブラウザ上限ありなら lifetime 保持対象
+2. **resource に `suspend()` / `pause()` / `disconnect()` 等の一時停止 API があるか** を確認 — あれば lifetime 保持が canonical
+3. **active 変化用の useEffect** で:
+   - `!active` → 子オブジェクト (oscillator / message handler / observer target) を stop + resource を suspend (close せず)
+   - `active` → resource が `null` なら lazy 生成 + resume + 子オブジェクトを start
+4. **unmount 用の別 useEffect (`[]` deps)** で確実に close + stop (memory leak 防止)
+5. **resource 生成失敗 (AudioContext の hardware 不在 / Permissions Policy 拒否 等)** は try/catch で silent fail + 影響を機能 OFF に限定
+
+**該当する典型 API**:
+
+| API                                   | 起動コスト                          | 一時停止 API                | lifetime 保持の効用     |
+| ------------------------------------- | ----------------------------------- | --------------------------- | ----------------------- |
+| `AudioContext` / `webkitAudioContext` | OS audio session 切替 (数十 ms)     | `suspend()` / `resume()`    | Chrome 6 個上限抵触回避 |
+| `Worker` / `SharedWorker`             | wasm load + init (数百 ms)          | message 停止 (handler 解除) | wasm 再 init コスト削減 |
+| `WebSocket` / `EventSource`           | handshake / reconnect (数百 ms)     | (close / reconnect のみ)    | reconnect 嵐回避        |
+| `IntersectionObserver`                | observe target 走査 (target 数比例) | `unobserve()` + `observe()` | target 再走査コスト削減 |
+| `ResizeObserver`                      | observe target 走査                 | `unobserve()` + `observe()` | 同上                    |
+| `MutationObserver`                    | DOM 走査                            | `disconnect()` + 再接続     | DOM 再走査コスト削減    |
+| `MediaQueryList`                      | (低い)                              | (event listener 解除)       | lifetime 保持の効用は小 |
+
+**反例 (lifetime 保持が overkill なケース)**:
+
+- 起動コストが軽い API (`MediaQueryList` / `localStorage`) — 毎回 new でも実用上問題なし
+- 一時停止 API がない resource (`fetch` の Response / `crypto.subtle.digest` の Promise) — そもそも保持できない
+- active 切替が **数時間〜数日に 1 度** のような低頻度 — 起動コストが UX に表れない
+- resource が **active=true の間だけ存在すべき意味的制約** (例: 認証 token のような時間制限あり resource) — 期限切れで再生成が正しい
+
+主な使用箇所: `useBackgroundAudio` — TTS バックグラウンド継続用の無音 `AudioContext` を component lifetime 中 1 個保持、active 切替で `suspend()`/`resume()` + oscillator start/stop だけ切替 (OS audio session 切替の数十 ms コスト + Chrome 6 個上限を回避)
+
 ## モード OFF 時に進行中の副作用を停止する
 
 state を OFF にしただけでは、すでに実行中の副作用（TTS 発話・進行中の fetch・タイマー）は止まらない。**モード変化を監視する useEffect で明示的に停止コールを行う**。

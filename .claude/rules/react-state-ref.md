@@ -152,6 +152,61 @@ const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
 - `useFilteredArticles.ts` の `EMPTY_SET` / `EMPTY_STR_ARRAY` / `EMPTY_FEED_ARRAY` (3 sentinel を一括 freeze 化)
 - `useDelayedGalleryItems.ts` の `EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>` (先行採用パターン)
 
+### 派生ケース: 複数 state を return する hook は **戻り値全体を `useMemo` で wrap** して Provider value の identity を安定化する
+
+`useSpeechSynthesis` のような **複数 state field + 複数関数を集約した object を return する hook** は、毎 render で新オブジェクト reference を作る。これを Provider value に渡すと、内部 state (`isPlaying` 等) が変わらなくても全 consumer が re-render される。
+
+```typescript
+// アンチパターン: 戻り値が毎 render で新オブジェクト identity
+export function useSpeechSynthesis(): TtsAdapter {
+  const [isPlaying, setIsPlaying] = useState(false);
+  // ... 他 state / callback
+  return {
+    engine: "web-speech",
+    isPlaying,
+    speak,
+    pause,
+    // ... 15 field
+  };
+}
+
+// App.tsx で:
+const ttsAdapter = useSpeechSynthesis();
+// → ttsAdapter は毎 render 新 reference → TtsAdapterProvider value identity が毎 render 変わる
+// → useTtsAdapter() consumer が全員 re-render
+
+// 修正パターン: 戻り値を useMemo で wrap
+export function useSpeechSynthesis(): TtsAdapter {
+  // ... state / callback
+  return useMemo<TtsAdapter>(
+    () => ({
+      engine: "web-speech",
+      isPlaying,
+      speak,
+      pause,
+      // ... 15 field
+    }),
+    [isPlaying, speak, pause /* 他 deps */],
+  );
+}
+```
+
+**How to apply**: 複数 state / callback を集約した object を返す hook を作るとき (戻り値の identity が毎 render 変わると、Provider value 経由で配下 consumer が全員 re-render する。useMemo wrap で state 変化時のみ identity 更新に切り替えれば、不要 re-render を防げる):
+
+1. **hook が `return { ... }` で複数 field の object を返している** か確認
+2. **その hook の戻り値が Provider value や useMemo deps に渡される** か確認 (= 下流の identity 比較が走る)
+3. 該当するなら **戻り値を `useMemo<ReturnType>(() => ({ ... }), [field1, field2, ...])` で wrap**
+4. **deps 配列に全 field を列挙** — 漏れると stale closure バグ。useCallback で identity 安定化された関数は deps に入れても安全
+5. useMemo wrap しない hook の戻り値はそのまま使う場合 (= 1 consumer のみ + Provider 経由しない) は不要
+
+**反例 (useMemo wrap が overkill なケース)**:
+
+- hook の戻り値が **1 consumer 1 用途** で Provider に渡らない (例: useArticleContent → 単一 component で消費)
+- 戻り値が **primitive 単体** (`return value` / `return [a, b]` 配列 destructure pattern) → React の `===` 比較で skip される
+- 戻り値が **絶対に変化しない constant object** (例: `useState(() => ...)` の setter のみ返す) → 既に identity 安定
+
+主な使用箇所: `useSpeechSynthesis` (#674 Phase 2b 配線 + 79th cycle perf 監査) — 戻り値 16 field を `useMemo([isPlaying, isPaused, endedCount, errorCount, rate, cycleRate, volume, setVolume, ttsVoices, voiceUri, setVoiceUri, speak, pause, resume, stop])` で wrap。App.tsx の `ttsAdapter` useMemo + TtsAdapterProvider value の identity が state 変化時のみ更新されるようになり、不要 re-render を防止
+
 ## ライブラリ仕様への依存は `vi.fakeTimers + rerender` で「実挙動の固定スペック」として残す
 
 `useState(() => new Date())` の **mount 時 initializer 1 回固定** や `useMemo([])` の **React は memo を破棄可能** のような **「React 仕様 or ブラウザ API 仕様への依存」** は、コードコメントだけでなく **vitest で実挙動を spec として固定** する。仕様変更で挙動が変わったときに spec が落ちて検知できる。
