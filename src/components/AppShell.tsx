@@ -66,6 +66,7 @@ import type { TtsAdapter, TtsEngineId } from "../lib/tts-adapter";
 import { useToastState } from "../hooks/useToast";
 import { AppLandingState } from "./AppLandingState";
 
+import { computeEffectiveReadBeforeCutoff } from "../lib/read-state-prune";
 import { useMobilePane } from "../hooks/useMobilePane";
 
 /**
@@ -421,7 +422,12 @@ export default function AppShell({
   // #702: useTotalUnreadCount + useSidebarFeeds 内の独自 articles scan を統合。
   // ここで 1 回だけ計算 → UnreadStatsProvider 経由で <FeedSidebar> や
   // useDocumentTitleBadge に共有することで二重 scan を解消する。
-  const unreadStats = useArticleUnreadStats(articles, readIds, readBeforeTimestamp);
+  const effectiveReadBeforeTimestamp = useMemo(
+    () => computeEffectiveReadBeforeCutoff(readBeforeTimestamp, ttlDays, Date.now()),
+    [readBeforeTimestamp, ttlDays],
+  );
+
+  const unreadStats = useArticleUnreadStats(articles, readIds, effectiveReadBeforeTimestamp);
   const { totalUnread } = unreadStats;
 
   useDocumentTitleBadge(totalUnread);
@@ -489,7 +495,7 @@ export default function AppShell({
     nsfwFeedIds,
     globalFilter,
     setGlobalFilter,
-    readBeforeTimestamp,
+    readBeforeTimestamp: effectiveReadBeforeTimestamp,
     snoozedUntil,
     mutedFeedIds,
     notes,
