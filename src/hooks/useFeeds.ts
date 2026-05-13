@@ -71,6 +71,7 @@ export function useFeeds(
     setLoadingArticles,
   } = useArticleData(user, onError);
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const retryInitialLoad = useCallback(() => {
     setFetchError(false);
     setLoadingArticles(true);
@@ -83,8 +84,10 @@ export function useFeeds(
       .finally(() => {
         setLoadingArticles(false);
       });
-  }, [fetchAndSetArticles, onErrorRef, setFetchError, setLoadingArticles]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchAndSetArticles, setFetchError, setLoadingArticles]);
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const appendFeeds = useCallback(
     async (newFeeds: Feed[]) => {
       appendFeedsToList(newFeeds);
@@ -98,9 +101,11 @@ export function useFeeds(
         setLoadingArticles(false);
       }
     },
-    [appendFeedsToList, fetchAndSetArticles, onErrorRef, setLoadingArticles],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [appendFeedsToList, fetchAndSetArticles, setLoadingArticles],
   );
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const refreshFeeds = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -116,8 +121,10 @@ export function useFeeds(
     } finally {
       setRefreshing(false);
     }
-  }, [mergeArticles, onErrorRef, refreshFeedsList]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergeArticles, refreshFeedsList]);
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const feedActionWithRefresh = useCallback(
     async (feedId: string, endpoint: string, errorMessage: string): Promise<void> => {
       try {
@@ -132,7 +139,8 @@ export function useFeeds(
         onErrorRef.current?.(errorMessage);
       }
     },
-    [mergeArticles, onErrorRef, updateFeed],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mergeArticles, updateFeed],
   );
 
   const retryFeed = useCallback(

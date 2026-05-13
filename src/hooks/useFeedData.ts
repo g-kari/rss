@@ -36,6 +36,8 @@ export function useFeedData(
     return data;
   }, []);
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!userId) return;
     const controller = new AbortController();
@@ -52,8 +54,10 @@ export function useFeedData(
         setLoadingFeeds(false);
       });
     return () => controller.abort();
-  }, [userId, fetchFeeds, onErrorRef]);
+  }, [userId, fetchFeeds]);
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const retryFeedList = useCallback(() => {
     setFeedLoadError(false);
     setLoadingFeeds(true);
@@ -66,7 +70,7 @@ export function useFeedData(
       .finally(() => {
         setLoadingFeeds(false);
       });
-  }, [fetchFeeds, onErrorRef]);
+  }, [fetchFeeds]);
 
   const refreshFeedsList = useCallback(async (): Promise<Feed[]> => {
     return fetchFeeds();

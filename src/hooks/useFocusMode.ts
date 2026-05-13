@@ -82,6 +82,8 @@ export function useFocusMode(): {
     document,
   );
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const toggleFocusMode = useCallback(() => {
     if (focusModeRef.current) {
       exitFocusViaHistory();
@@ -90,8 +92,10 @@ export function useFocusMode(): {
       setFocusMode(true);
       setListFocusMode(false);
     }
-  }, [focusModeRef, exitFocusViaHistory, pushFocusHistory]);
+  }, [exitFocusViaHistory, pushFocusHistory]);
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const toggleListFocusMode = useCallback(() => {
     if (listFocusModeRef.current) {
       exitFocusViaHistory();
@@ -100,7 +104,7 @@ export function useFocusMode(): {
       setListFocusMode(true);
       setFocusMode(false);
     }
-  }, [listFocusModeRef, exitFocusViaHistory, pushFocusHistory]);
+  }, [exitFocusViaHistory, pushFocusHistory]);
 
   const exitFocusMode = useCallback(() => {
     exitFocusViaHistory();
