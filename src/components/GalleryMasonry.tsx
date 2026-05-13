@@ -136,7 +136,9 @@ export default function GalleryMasonry<T>({
   });
 
   return (
-    <div ref={containerRef} className="relative">
+    // [overflow-anchor:none]: masonic の absolute 配置アイテムが再配置される際に
+    // ブラウザの scroll anchor 補正でスクロール位置が巻き戻るのを防ぐ (#773)
+    <div ref={containerRef} className="relative [overflow-anchor:none]">
       {width > 0 ? content : null}
     </div>
   );

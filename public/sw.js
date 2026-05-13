@@ -6,8 +6,13 @@ const API_CACHE = `${CACHE_VERSION}-api`;
 const API_CACHE_TTL_MS = 5 * 60 * 1000; // 5分
 
 // stale-while-revalidate でキャッシュする API パス（前方一致）
-// /api/auth/me はオフライン時でも認証状態を維持するためにキャッシュする
-const API_CACHE_PATHS = ["/api/articles", "/api/feeds", "/api/auth/me"];
+// NOTE: /api/auth/me はレートリミット（5秒クールダウン）があるため含めない。
+// 認証エンドポイントは常にネットワーク優先で取得し、オフライン時のみキャッシュにフォールバックする。
+const API_CACHE_PATHS = ["/api/articles", "/api/feeds"];
+
+// ネットワーク優先でオフライン時のみキャッシュにフォールバックする API パス（前方一致）
+// /api/auth/me: レートリミットとの衝突を避けるため stale-while-revalidate に含めない
+const API_NETWORK_FIRST_PATHS = ["/api/auth/me"];
 
 // インストール: 即座に有効化
 self.addEventListener("install", () => {
@@ -81,6 +86,30 @@ self.addEventListener("fetch", (e) => {
           status: 503,
           headers: { "Content-Type": "application/json; charset=utf-8" },
         });
+      })(),
+    );
+    return;
+  }
+
+  // 認証 API: ネットワーク優先、オフライン時のみキャッシュにフォールバック
+  // stale-while-revalidate を使わないことでレートリミット（5秒クールダウン）との衝突を防ぐ
+  if (API_NETWORK_FIRST_PATHS.some((p) => pathname.startsWith(p))) {
+    e.respondWith(
+      (async () => {
+        const cache = await caches.open(API_CACHE);
+        try {
+          const res = await fetch(e.request);
+          if (res.ok) cache.put(e.request, stampResponse(res.clone()));
+          return res;
+        } catch {
+          // オフライン時: キャッシュにフォールバック
+          const cached = await cache.match(e.request);
+          if (cached) return cached;
+          return new Response(JSON.stringify({ user: null }), {
+            status: 503,
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+          });
+        }
       })(),
     );
     return;

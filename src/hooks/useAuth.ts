@@ -109,8 +109,9 @@ export function useAuth(): AuthState {
       try {
         const r = await fetch("/api/auth/me");
         // 503 + { transient: true } は上流認可サーバーの一時的障害。
-        // ログアウト扱いにせず、既存の認証状態を維持して次回リフレッシュを待つ。
-        if (r.status === 503) {
+        // 429 はレートリミット（SW のバックグラウンドリクエストが先に叩いた等）。
+        // いずれもログアウト扱いにせず、既存の認証状態を維持して次回リフレッシュを待つ。
+        if (r.status === 503 || r.status === 429) {
           if (mounted) scheduleNextRefresh();
           return;
         }
@@ -171,7 +172,14 @@ export function useAuth(): AuthState {
           // 初回訪問の未ログイン状態 — キャッシュをクリア
           storageRemove(STORAGE_KEYS.CACHED_USER);
         }
-        setUser(u ?? null);
+        // サーバー応答がキャッシュ済みのユーザーと同一内容の場合はオブジェクト参照を維持する。
+        // 参照が変わると useFeedGroups/useCollections の useEffect が再実行されて
+        // 進行中の fetch が AbortController でキャンセルされてしまうため。
+        setUser((prev) => {
+          const next = u ?? null;
+          if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+          return next;
+        });
         scheduleNextRefresh();
       } catch {
         if (mounted) {
