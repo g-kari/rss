@@ -643,6 +643,34 @@ test.describe("readBeforeTimestamp — 一括既読タイムスタンプ", () =>
     // old1 は readIds で既読、recent は readBeforeTimestamp で既読 → 全件除外
     expect(result).toHaveLength(0);
   });
+
+  test("publishedAt が null の記事は createdAt で既読判定される", () => {
+    // #774 回帰: Date.parse() で数値比較することで正確な判定
+    const noPublished = makeArticle("no-pub", "feed1", {
+      publishedAt: null,
+      createdAt: "2024-01-01T00:00:00Z",
+    });
+    const result = run([noPublished], {
+      unreadOnly: true,
+      readBeforeTimestamp: "2026-01-01T00:00:00.000Z",
+    });
+    // createdAt "2024-01-01" は readBefore "2026-01-01" 以前 → 既読扱いで除外される
+    expect(ids(result)).not.toContain("no-pub");
+  });
+
+  test("タイムゾーン形式が異なる同一時刻は正しく既読扱いされる", () => {
+    // #774 回帰: lexicographic 比較では ".000Z" (ASCII 46) > "+00:00" (ASCII 43) なので
+    // publishedAt が ".000Z"、readBeforeTimestamp が "+00:00" のとき false になる誤判定
+    const article = makeArticle("tz-test", "feed1", {
+      publishedAt: "2024-01-01T00:00:00.000Z",
+    });
+    const result = run([article], {
+      unreadOnly: true,
+      readBeforeTimestamp: "2024-01-01T00:00:00+00:00",
+    });
+    // 同一時刻なので既読扱い → unreadOnly で除外される
+    expect(ids(result)).not.toContain("tz-test");
+  });
 });
 
 // ==========================================================================

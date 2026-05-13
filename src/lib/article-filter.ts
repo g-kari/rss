@@ -22,7 +22,8 @@ export function isArticleRead(
   if (readIds.has(article.id)) return true;
   if (!readBeforeTimestamp) return false;
   const ts = article.publishedAt ?? article.createdAt;
-  return ts <= readBeforeTimestamp;
+  if (!ts) return false;
+  return Date.parse(ts) <= Date.parse(readBeforeTimestamp);
 }
 
 /** フィード構造・選択に関するフィルターオプション */
