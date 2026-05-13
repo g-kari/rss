@@ -293,3 +293,65 @@ b7bcfb7d security(api/wasm,piper-voice): ...
 - format / lint の auto-fix が **そもそも全 implementer で同じ結果** になる (idempotent) → 取り込まれても害なし、ただし commit semantics は依然汚れる
 
 主な使用箇所: 1 サイクル内で 6 implementer 並列稼働中、#782 implementer の pre-commit hook が #783 implementer 編集中の `useReadStateTags.ts` を auto-fix で format → `b7bcfb7d` commit に意図しないファイル混入 (#783 implementer は rebase で吸収して進行継続したが commit boundary 汚染)
+
+### 派生ケース: subagent 中断時の unstaged 変更を main opus で Read + 検証 + 自前 commit で回復するパターン
+
+3 並列 implementer のうち 1-2 体が autocompact thrashing で中断したとき、**unstaged 変更が残置される場合と完全 revert される場合の 2 パターン** がある:
+
+| 残置状態                  | 対処                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| unstaged 変更が残っている | main opus で `git diff` で内容検証 → typecheck/check → 自前 commit + push で吸収 |
+| 完全 revert (変更ゼロ)    | 作業ロスト確定、次サイクル送り (Issue にコメントで進捗共有)                      |
+
+main opus による自前 commit 吸収フロー:
+
+```bash
+# 1. 状態確認
+git status
+git log --oneline -5
+git diff --stat src/<target>.ts
+
+# 2. 変更内容を Read で検証 (規範整合 + 機能変化なし確認)
+# - deps 配列から ref 削除されているか
+# - 規範コメント追加されているか
+# - eslint-disable-next-line が必要箇所に付与されているか
+
+# 3. typecheck + check
+pnpm run typecheck
+pnpm run check
+
+# 4. 検証 OK なら自前 commit + push
+git add <target files>
+git commit -m "..."  # pre-commit hook 通過
+git push origin master
+```
+
+**How to apply**: 3+ 並列 implementer で中断通知 (autocompact thrashing 等) を受けたら以下のフロー (実装が 80% 完了して unstaged で残っている場合、main opus による Read + 検証 + commit で「ロスト 1 hour」を「メイン 5 分」で回復できる):
+
+1. **`git status` + `git log` + `git diff --stat`** で残置状態を 1 ターンで確認
+2. **完全 revert なら** Issue にコメントして次サイクル送り (それ以上の回復努力は不要)
+3. **unstaged 残置なら** `git diff <files>` で内容検証:
+   - 規範整合 (deps 削除パターンが canonical と一致)
+   - touch 範囲が想定内 (agent prompt の指示通り)
+   - 自走 5 条件の機能変化なし担保
+4. typecheck + check で機械的検証
+5. 検証 OK なら main opus で自前 commit + push (pre-commit hook を通過させる)
+6. **検証 NG (部分実装で中途半端 / 想定外ファイル混入 / 機能変化あり) なら `git restore` で revert** + 次サイクル送り
+
+**反例 (自前 commit 不可なケース)**:
+
+- 変更が **論理的に完結していない** (TDD spec を書きかけて Red 確認していない、必要な周辺修正が抜けている) → restore + 次サイクル送り
+- 変更が **大規模で main opus 自身の context も圧迫する** (200+ 行 diff の Read + 検証) → 次サイクル新 implementer 委譲
+- 検証で **規範違反 / 想定外変更** が発覚 → restore + agent prompt を refine して再委譲
+
+**並列実行時の中断パターン (本プロジェクト実測)**:
+
+- 1 並列: thrash ほぼなし
+- 2 並列: thrash 5% 程度
+- 3 並列 (touch 1 ファイル/各): thrash 10% 程度
+- 3 並列 (touch 3+ ファイル/1 体含む): **thrash 30-60%** (本サイクル実測: 3 並列で 2 体 thrash)
+- 6 並列 (1 サイクル全期間): commit 全件成功するが pre-commit auto-fix 衝突発生 (前派生ケース参照)
+
+main opus 側 context も並列体数に比例して圧迫されるため、**touch 多ファイル / 大規模 refactor は 1-2 並列が安全**。
+
+主な使用箇所: useFeeds/useFeedData/useFocusMode の useSyncedRef deps 8 箇所 sweep が implementer thrash で commit 直前に中断 → main opus が `git diff` 検証 + typecheck + 自前 commit `3d96a84a` で吸収。同サイクル B-2 useSpeechSynthesis は完全 revert で次サイクル送り判定
