@@ -16,7 +16,7 @@ const STATIC_CSP_SUFFIX = [
   // 外部画像は /api/image-proxy 経由。
   // favicon.ts は canvas.toBlob() + URL.createObjectURL() で Blob URL を使用するため data: 不要。
   // blob: は createObjectURL で生成した URL の読み込みに必要（同一オリジン内のみ有効、XSS リスクなし）。
-  "img-src 'self' blob:",
+  "img-src 'self' blob: https://qiita-user-contents.imgix.net https://game.watch.impress.co.jp",
   FRAME_SRC,
   // ポッドキャスト等のメディアは HTTPS のみ
   "media-src https:",
