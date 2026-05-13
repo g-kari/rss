@@ -202,6 +202,118 @@ grep -rEn "useRef<HTML.*>\(null\)" src/hooks/ | head -20
 
 主な使用箇所: `#772` Symptom 2 (cycle 82) — `useArticlePagination` は AppShell 初回 render (auth loading 中 / articles fetch 前) で呼ばれ、`useEffect([])` 実行時点で ArticleList の sentinel `<div>` が未 mount。`useRef + useEffect([])` で IO + scroll listener を attach する設計が破綻 → callback ref + useState + `[sentinelEl]` deps パターンに変更で 3 つの effect が DOM mount 後に確実に attach される構造に修正
 
+#### さらなる派生: scrollContainer 末尾 sentinel + IO `root: null` は intersect=true で常時固定される罠 (cascade overshoot 真因)
+
+無限スクロールで sentinel を **scrollContainer の末尾** (例: `<div className="h-32" />` を scroll 可能 div の最後の子に配置) に置き、IO を `root: null` (window viewport) + `rootMargin: "600px"` で attach した場合、**scrollTop の値に関わらず sentinel が常時 window viewport 内に留まる**という非自明な落とし穴がある。
+
+理由: sentinel.top in window = `scrollContainer.top + (sentinel internal pos) - scrollContainer.scrollTop`。scrollContainer の `clientHeight` + sentinel `h-32` (128px) がほぼ scrollContainer の visible 領域全体を覆うため、user が scrollTop を max まで動かしても、sentinel.top in window は scrollContainer の bottom 付近 (= window.innerHeight - 128 + scrollContainer.top) 程度で安定する → 常に extended viewport 内 (rootMargin 600 含む) → IO は `intersecting: true` で stable → false→true transition 不能 → callback 不発火。
+
+```
+scrollContainer (height=720, scroll可能)
+┌────────────────────┐ window top
+│  ┌──────────────┐  │ scrollContainer.top = 111
+│  │  ...content  │  │
+│  │  (virtualizer│  │
+│  │   total 1928)│  │ scrollTop=0 ─ content 上端
+│  ├──────────────┤  │ visible 領域 (clientHeight=609)
+│  │              │  │
+│  │              │  │ ← user スクロール時、内容がスライド
+│  ├──────────────┤  │ sentinel.h-32 (128px, 末尾)
+│  └──────────────┘  │ ← sentinel.top in window = 111 + 1800 - scrollTop
+└────────────────────┘ window bottom (window.innerHeight = 720)
+
+scrollTop=0 のとき: sentinel.top = 111+1800 = 1911 (window 外)
+scrollTop=max (1319) のとき: sentinel.top = 111+1800-1319 = 592 (window 内)
+→ 「scroll bottom 付近で必ず window viewport 内」だが、
+   IO root=null + rootMargin 600 だと extended viewport bottom = 1320 で、
+   sentinel が 1320 を下回った瞬間に true、それ以降ずっと true 固定。
+```
+
+これを secondary effect (visible.length 変化で再評価して loadMore) と組み合わせると、**loadMore のたびに sentinel が in viewport 判定され続け、cascade が永久連鎖 → 全件 burst** する。
+
+```typescript
+// アンチパターン: root=null + viewport 内判定で常時 true → 全件 cascade
+useEffect(() => {
+  if (!sentinelEl) return;
+  const observer = new IntersectionObserver(
+    ([entry]) => entry.isIntersecting && loadMore(),
+    { rootMargin: "600px" }, // ← root=null と組合せて常時 intersecting
+  );
+  observer.observe(sentinelEl);
+  return () => observer.disconnect();
+}, [sentinelEl]);
+
+useEffect(() => {
+  // visible.length 変化で cascade
+  if (!hasMore) return;
+  setTimeout(() => {
+    const rect = sentinelEl.getBoundingClientRect();
+    if (rect.top < window.innerHeight + 600) loadMore(); // ← 常時 true
+  }, 0);
+}, [visible.length, hasMore, filtered.length, sentinelEl]);
+
+// 修正パターン: IO root を scrollable ancestor に + cascade を isContentShort 限定に
+function findScrollableAncestor(el: HTMLElement | null): HTMLElement | null {
+  let parent = el?.parentElement ?? null;
+  while (parent && parent !== document.body) {
+    const overflowY = window.getComputedStyle(parent).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") return parent;
+    parent = parent.parentElement;
+  }
+  return null;
+}
+
+useEffect(() => {
+  if (!sentinelEl) return;
+  const scrollRoot = findScrollableAncestor(sentinelEl);
+  const observer = new IntersectionObserver(
+    ([entry]) => entry.isIntersecting && loadMore(),
+    { root: scrollRoot, rootMargin: "0px" }, // ← scrollContainer viewport 基準で transition
+  );
+  observer.observe(sentinelEl);
+  return () => observer.disconnect();
+}, [sentinelEl]);
+
+useEffect(() => {
+  if (!hasMore || !sentinelEl) return;
+  const scrollRoot = findScrollableAncestor(sentinelEl);
+  if (!scrollRoot) return;
+  setTimeout(() => {
+    // cascade は「コンテンツが viewport を埋めていない場合のみ」(fill-viewport 専用)
+    const isContentShort = scrollRoot.scrollHeight <= scrollRoot.clientHeight;
+    if (isContentShort) loadMore();
+  }, 0);
+}, [visible.length, hasMore, filtered.length, sentinelEl]);
+```
+
+**How to apply**: 無限スクロール sentinel pattern を書くときに以下を判定 (`root: null` は window viewport 基準で transition 発火するが、nested scroll container の末尾 sentinel は scrollTop に追従して常時 window viewport 内に留まるため transition 不能、root=scrollContainer で scrollContainer の viewport 基準にすると正しく出入り transition が取れる):
+
+1. **sentinel の DOM 配置を確認** — `<div className="h-32" />` のように **scrollContainer の最後の子** として配置されているか?
+2. YES なら **IO の root を scrollable ancestor にする** (`root: null` 禁止):
+   - `findScrollableAncestor(sentinelEl)` で `overflow-y: auto/scroll` の最寄り祖先を取得
+   - `new IntersectionObserver(..., { root: scrollRoot, rootMargin: "0px" })`
+   - rootMargin は preload 距離。0px なら「実際に viewport に触れた瞬間」、200px 等で「200px 手前で preload」
+3. **secondary cascade effect は viewport 検査でなく `isContentShort` 限定に**:
+   - 旧: `rect.top < window.innerHeight + 600` (常時 true で全件 burst)
+   - 新: `scrollRoot.scrollHeight <= scrollRoot.clientHeight` (viewport を埋めるまでだけ cascade)
+4. **scroll event listener は basically 不要** — IO root=scrollContainer で transition が正しく取れるため redundant。複雑性を増やすだけなので削除
+
+**反例 (root=null で OK なケース)**:
+
+- sentinel が **window scroll の document 直下** にある (= scrollContainer 入れ子でない) → `root: null` で window viewport を正しく root にできる
+- sentinel が **scrollContainer の中央付近** に配置されている (= 末尾ではない) → scrollTop 変化で sentinel.top in window が大きく変動するので IO transition が取れる
+
+**検出方法**:
+
+```bash
+# sentinel-based IO で root: null + rootMargin が 0 でない pattern を grep
+grep -rEn "new IntersectionObserver" src/hooks/ src/components/ | head -10
+# 各箇所について「sentinel 配置位置」「scrollable ancestor の有無」を確認、
+# scrollContainer 末尾 sentinel + root: null なら本派生ケースの対象
+```
+
+主な使用箇所: `#772` cycle 82 末で「scroll で残り全件 burst する」 regression 発生 → 真因が「sentinel が scrollContainer 末尾 + IO root=null で常時 intersect=true」と判明 → IO root を scrollable ancestor に + secondary effect を `isContentShort` 限定 cascade に + redundant な scroll listener を削除する 3 点修正で完全解決
+
 ## AbortController.abort() の伝播範囲を限定する
 
 **1 つの `AbortController` を複数の並列 fetch で共有しないこと**。共有してしまうと、1 件の fetch を止めるための `controller.abort()` が **他の進行中の fetch も全て中断** してしまう。
