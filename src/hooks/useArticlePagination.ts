@@ -5,6 +5,17 @@ import { useSyncedRef } from "./useSyncedRef";
 /** デフォルトの 1 ページ件数 (`useFilteredArticles` 経由で UserSettings の値を渡すと上書き) */
 const DEFAULT_PAGE_SIZE = 50;
 
+/** sentinel の最寄り scrollable ancestor (`overflow-y: auto/scroll`) を遡って探す */
+function findScrollableAncestor(el: HTMLElement | null): HTMLElement | null {
+  let parent: HTMLElement | null = el?.parentElement ?? null;
+  while (parent && parent !== document.body) {
+    const overflowY = window.getComputedStyle(parent).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") return parent;
+    parent = parent.parentElement;
+  }
+  return null;
+}
+
 export function useArticlePagination(
   filtered: Article[],
   page: number,
@@ -29,13 +40,13 @@ export function useArticlePagination(
   const hasMore = visible.length < filtered.length;
 
   // #772 Symptom 2 真因: 旧実装は `useRef<HTMLDivElement>(null)` + `useEffect([])` で
-  // IO / scroll listener を attach していたが、AppShell の初回 render (authentication loading 中)
+  // IO を attach していたが、AppShell の初回 render (authentication loading 中)
   // で `useArticlePagination` が呼ばれた時点で ArticleList はまだ JSX を返しておらず
   // sentinel DOM が存在しない → `useEffect([])` は `sentinelRef.current === null` で
-  // 早期 return → IO / scroll listener が attach 不能のまま終わる罠。
-  // 後の visible.length 変化で secondary effect は再発火するが、IO / scroll listener は再 attach されない。
+  // 早期 return → IO が attach 不能のまま終わる罠。
+  // 後の visible.length 変化で secondary effect は再発火するが、IO は再 attach されない。
   // callback ref + useState パターンに変更して、DOM 取得タイミングで state 更新 → effect 再評価 →
-  // IO / scroll listener を確実に attach できる構造に直す。
+  // IO を確実に attach できる構造に直す。
   const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
   const sentinelRef = useCallback((el: HTMLDivElement | null) => {
     setSentinelEl(el);
@@ -44,18 +55,31 @@ export function useArticlePagination(
   const hasMoreRef = useSyncedRef(hasMore);
 
   // sentinel-based IntersectionObserver でスクロール時に loadMore を発火させる。
-  // intersect 状態変化 (false → true) のたびに 1 回だけ loadMore を呼ぶ設計。
-  // ユーザー仕様: 「スクロールで pageSize ずつ追加」(#771 関連) のため、
-  // eager-load の連続発火 (= 自動的に全件 visible まで先読み) は撤廃済。
+  //
+  // #772 cascade overshoot 対策: 旧実装は `root: null` (window viewport) + `rootMargin: "600px"`
+  // を使っていた。sentinel は scrollContainer 末尾に配置されており、scrollContainer の
+  // clientHeight + sentinel.h-32 (128px) がほぼ scrollContainer 全体を覆うため、scroll 位置に
+  // 関わらず sentinel が常時 window viewport 内に留まる → IO が連続 intersecting=true で
+  // transition 不能 → cascade が secondary effect で永久連鎖 → 全件 burst になる。
+  //
+  // root を **scrollable ancestor** に変更すると、IO は sentinel が scrollContainer の
+  // viewport (clientHeight 領域) を出入りする transition を検出する。
+  // sentinel が scrollContainer の viewport 内に入る瞬間 (= 「下端付近までスクロール」) のみ
+  // loadMore 1 回発火 → 過剰 cascade を構造的に防止する。
+  //
+  // rootMargin=0px で「実際に viewport に触れた瞬間」のみ発火 (preload なし)。
+  // ユーザー仕様: 「スクロールで pageSize ずつ追加」(#771) と一致する控えめ挙動。
   useEffect(() => {
     if (!sentinelEl) return;
+    const scrollRoot = findScrollableAncestor(sentinelEl);
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMoreRef.current) {
           loadMoreRef.current();
         }
       },
-      { rootMargin: "600px" },
+      // scrollable ancestor が見つからなければ window viewport にフォールバック
+      { root: scrollRoot, rootMargin: "0px" },
     );
     observer.observe(sentinelEl);
     return () => {
@@ -64,71 +88,33 @@ export function useArticlePagination(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMoreRef・hasMoreRef は useSyncedRef の安定参照
   }, [sentinelEl]);
 
-  // #772: pageSize 小 (例: 10) + フィルター済 + 単一フィードで visible.length が少なく、
-  // loadMore 後も sentinel が依然 viewport 内 (intersect=true のまま) のケースで、
-  // IntersectionObserver の仕様 (false → true 遷移でのみ callback 発火) により次の
-  // loadMore が永久に発火しない問題を修正。
-  // visible.length 変化後 1 tick 待ち + sentinel が viewport 内 (rootMargin 600px 含む) なら
-  // もう 1 回 loadMore を発火させて連鎖的にロード継続を担保する。
-  // hasMore が false になった瞬間に停止するため無限ループは発生しない。
+  // #772: 初回ロード + filter cycle 時に「scrollContainer のコンテンツが viewport を埋めていない」
+  // (= `scrollHeight <= clientHeight`) ケースで auto-cascade して viewport を埋める effect。
   //
-  // #772 Symptom 2: filter ON→OFF→ON cycle で visible.length が同値 (10→10) を維持し
-  // 本 effect の deps が変化しないケースを救うため、`filtered.length` も deps に含める。
-  // filter 切替で filtered.length が変動するため effect が再評価され、cascade を再開できる。
+  // 旧実装は `rect.top < window.innerHeight + 600` で常に true 判定 (sentinel が window viewport
+  // 内に留まるため) → 過剰 cascade で全件 burst していた。
+  //
+  // 修正: `scrollContainer.scrollHeight <= scrollContainer.clientHeight` の `isContentShort`
+  // 条件に限定して、コンテンツが viewport を埋めるまで cascade。scrollable になった時点で停止し、
+  // 以降は IO (sentinel viewport 出入り transition) のみが loadMore を発火する設計。
+  //
+  // filter cycle で visible.length が同値 (10→10) でも `filtered.length` 変動で再評価され、
+  // filter 切替後の cascade を担保する。
   useEffect(() => {
     if (!hasMore) return;
     if (!sentinelEl) return;
+    const scrollRoot = findScrollableAncestor(sentinelEl);
+    if (!scrollRoot) return;
     const id = setTimeout(() => {
       if (!hasMoreRef.current) return;
-      const rect = sentinelEl.getBoundingClientRect();
-      const rootMargin = 600;
-      const inViewport = rect.top < window.innerHeight + rootMargin && rect.bottom > -rootMargin;
-      if (inViewport) {
+      const isContentShort = scrollRoot.scrollHeight <= scrollRoot.clientHeight;
+      if (isContentShort) {
         loadMoreRef.current();
       }
     }, 0);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMoreRef / hasMoreRef は安定参照
   }, [visible.length, hasMore, filtered.length, sentinelEl]);
-
-  // #772 Symptom 2: scroll event listener を sentinel の最寄り scrollable ancestor に
-  // attach して、ユーザースクロール時に viewport check を fallback 発火させる。
-  // IntersectionObserver は `intersecting: true → true` の維持時に新規 callback を
-  // 発火しないため、cascade 後の visible.length 停滞状態では scroll しても loadMore が
-  // 発火しない罠を回避する。rAF throttle で 1 frame に最大 1 回まで loadMore を起動。
-  useEffect(() => {
-    if (!sentinelEl) return;
-
-    // sentinel の最寄り scrollable ancestor を探索 (`overflow-y: auto` or `scroll`)
-    let scrollParent: HTMLElement | null = sentinelEl.parentElement;
-    while (scrollParent && scrollParent !== document.body) {
-      const overflowY = window.getComputedStyle(scrollParent).overflowY;
-      if (overflowY === "auto" || overflowY === "scroll") break;
-      scrollParent = scrollParent.parentElement;
-    }
-    if (!scrollParent || scrollParent === document.body) return;
-
-    let scheduled = false;
-    const onScroll = () => {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(() => {
-        scheduled = false;
-        if (!hasMoreRef.current) return;
-        const rect = sentinelEl.getBoundingClientRect();
-        const rootMargin = 600;
-        if (rect.top < window.innerHeight + rootMargin && rect.bottom > -rootMargin) {
-          loadMoreRef.current();
-        }
-      });
-    };
-
-    scrollParent.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      scrollParent.removeEventListener("scroll", onScroll);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMoreRef / hasMoreRef は安定参照
-  }, [sentinelEl]);
 
   return { visible, hasMore, sentinelRef, notifyArticlesAdded, loadMore } as const;
 }

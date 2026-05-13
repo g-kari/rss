@@ -57,6 +57,36 @@ async function seedFiftyUnread() {
   await seedFeed(BASE_URL, { feedHash: FEED_HASH, articles });
 }
 
+/**
+ * 「scroll で loadMore が発火する」+「ただし全件 burst しない (cascade overshoot 防止)」
+ * を両方確認する helper。50 articles が全件即 burst するなら 50 件分 scrollHeight が一気に
+ * 増えるため、「初回 → 1 回 scroll 後」で scrollHeight 増分が pageSize × itemHeight × 1〜3 ページ
+ * 程度に収まることを assert する。
+ *
+ * 50 articles × 60px ≈ 3000px (sentinel + headers 込みで ~3128) が全件 burst の上限値。
+ * 部分読み込みなら scrollHeight 増分 < 1500 (= 25 articles 程度) で収まる。
+ */
+async function scrollOnceAndAssertProgressive(
+  page: import("@playwright/test").Page,
+  scrollContainer: ReturnType<import("@playwright/test").Page["getByRole"]>,
+) {
+  const beforeScrollHeight = await scrollContainer.evaluate((el) => el.scrollHeight);
+
+  await scrollContainer.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await page.waitForTimeout(500);
+
+  const afterScrollHeight = await scrollContainer.evaluate((el) => el.scrollHeight);
+
+  // 1) 増加していること (loadMore が発火した)
+  expect(afterScrollHeight).toBeGreaterThan(beforeScrollHeight);
+  // 2) 全件 burst していないこと (= filtered.length 全件 ≈ 3000px に達していない)
+  //    pageSize=10 で 1 scroll = 1〜3 page 程度の cascade に収まることを期待
+  expect(afterScrollHeight - beforeScrollHeight).toBeLessThan(1500);
+  return { beforeScrollHeight, afterScrollHeight };
+}
+
 test.describe("#772 Symptom 2: filter toggle + scroll で loadMore 発火", () => {
   test("filter ON + scroll で次ページが読み込まれる (visible 件数増加)", async ({ page }) => {
     test.skip(
@@ -92,25 +122,9 @@ test.describe("#772 Symptom 2: filter toggle + scroll で loadMore 発火", () =
     // scrollContainer の scrollHeight を loadMore 発火の signal にする。
     // 記事 item は @tanstack/react-virtual で virtualize されるため
     // articleItems.count() は viewport 内のみカウントで不安定。
-    // scrollHeight = virtualizer.getTotalSize() + sentinel 高さ + header 高さで、
-    // visible.length 増加で totalSize が pageSize 単位で増えるため signal として安定。
+    // 1 回 scroll で部分読み込み (cascade overshoot しない) を確認する helper を使う。
     const scrollContainer = page.getByRole("feed");
-    const initialScrollHeight = await scrollContainer.evaluate((el) => el.scrollHeight);
-
-    // 複数回スクロールして loadMore を連続発火させる (1 回で expect 確定するためには
-    // scroll listener / secondary check の発火回数が単発で十分な必要があるが、
-    // 多重スクロールで cascade 経路を通せばどの実装でも検知可能)
-    for (let i = 0; i < 3; i++) {
-      await scrollContainer.evaluate((el) => {
-        el.scrollTop = el.scrollHeight;
-      });
-      await page.waitForTimeout(300);
-    }
-
-    const finalScrollHeight = await scrollContainer.evaluate((el) => el.scrollHeight);
-
-    // assertion: 3 回スクロールで loadMore が発火していれば visible 増加 → totalSize 増加 → scrollHeight 増加
-    expect(finalScrollHeight).toBeGreaterThan(initialScrollHeight);
+    await scrollOnceAndAssertProgressive(page, scrollContainer);
   });
 
   test("filter ON → OFF → ON cycle 後の scroll で loadMore が発火する", async ({ page }) => {
@@ -148,17 +162,7 @@ test.describe("#772 Symptom 2: filter toggle + scroll で loadMore 発火", () =
     await expect(articleItems.first()).toBeVisible({ timeout: 5000 });
 
     const scrollContainer = page.getByRole("feed");
-    const beforeScrollHeight = await scrollContainer.evaluate((el) => el.scrollHeight);
-
-    for (let i = 0; i < 3; i++) {
-      await scrollContainer.evaluate((el) => {
-        el.scrollTop = el.scrollHeight;
-      });
-      await page.waitForTimeout(300);
-    }
-
-    const afterScrollHeight = await scrollContainer.evaluate((el) => el.scrollHeight);
-    expect(afterScrollHeight).toBeGreaterThan(beforeScrollHeight);
+    await scrollOnceAndAssertProgressive(page, scrollContainer);
   });
 
   test("filter OFF で 50 件中 visible が scroll で増える (filter なし回帰防止)", async ({
@@ -187,16 +191,6 @@ test.describe("#772 Symptom 2: filter toggle + scroll で loadMore 発火", () =
     await page.waitForTimeout(300);
 
     const scrollContainer = page.getByRole("feed");
-    const initialScrollHeight = await scrollContainer.evaluate((el) => el.scrollHeight);
-
-    for (let i = 0; i < 3; i++) {
-      await scrollContainer.evaluate((el) => {
-        el.scrollTop = el.scrollHeight;
-      });
-      await page.waitForTimeout(300);
-    }
-
-    const finalScrollHeight = await scrollContainer.evaluate((el) => el.scrollHeight);
-    expect(finalScrollHeight).toBeGreaterThan(initialScrollHeight);
+    await scrollOnceAndAssertProgressive(page, scrollContainer);
   });
 });
