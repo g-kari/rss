@@ -10,11 +10,11 @@ globs: "app/api/articles/**,app/api/read-state/**,app/api/content/**,app/api/cli
 
 ### クエリパラメータ
 
-| パラメータ | 型     | 説明                                   |
-| ---------- | ------ | -------------------------------------- |
-| `feed`     | string | feedHash でフィルタ                    |
-| `since`    | number | ms タイムスタンプ (これより新しい記事) |
-| `page`     | number | 1〜5 (feed パラメータ指定時のみ有効)   |
+| パラメータ | 型     | 説明                                                                    |
+| ---------- | ------ | ----------------------------------------------------------------------- |
+| `feed`     | string | feedHash でフィルタ (16 文字 hex)                                       |
+| `since`    | number | ms タイムスタンプ (これより新しい記事、数字以外は 400)                  |
+| `page`     | number | 1〜`MAX_PAGES` (feed パラメータ指定時のみ有効、`shared-feed.ts` で定義) |
 
 ### 成功レスポンス
 
@@ -25,9 +25,13 @@ globs: "app/api/articles/**,app/api/read-state/**,app/api/content/**,app/api/cli
 
 ### エラー一覧
 
-| ステータス | code | 説明   |
-| ---------- | ---- | ------ |
-| `401`      | —    | 未認証 |
+| ステータス | code             | 説明                                             |
+| ---------- | ---------------- | ------------------------------------------------ |
+| `400`      | `INVALID_SINCE`  | since が数字以外の文字列                         |
+| `400`      | `INVALID_FEED`   | feedHash の形式が不正 (16 文字 hex でない)       |
+| `400`      | `INVALID_PAGE`   | page が整数でない / 範囲外 (1 〜 `MAX_PAGES`)    |
+| `401`      | —                | 未認証                                           |
+| `404`      | `FEED_NOT_FOUND` | feed 指定で購読していない / 共有メタが存在しない |
 
 ---
 
@@ -67,16 +71,21 @@ globs: "app/api/articles/**,app/api/read-state/**,app/api/content/**,app/api/cli
 
 ### リクエスト
 
+削除対象 ID は `removedIds: { readIds, bookmarkIds, readingListIds, likeIds, tagIds }` でネスト構造に集約する (top-level の `removed*Ids` ではない)。
+
 ```json
 {
   "readIds": ["..."],
-  "removedReadIds": ["..."],
   "bookmarkIds": ["..."],
-  "removedBookmarkIds": ["..."],
   "readingListIds": ["..."],
-  "removedReadingListIds": ["..."],
   "likeIds": ["..."],
-  "removedLikeIds": ["..."],
+  "removedIds": {
+    "readIds": ["..."],
+    "bookmarkIds": ["..."],
+    "readingListIds": ["..."],
+    "likeIds": ["..."],
+    "tagIds": ["..."]
+  },
   "snoozedUntil": null,
   "notes": {},
   "tagIds": {},
@@ -88,12 +97,12 @@ globs: "app/api/articles/**,app/api/read-state/**,app/api/content/**,app/api/cli
 
 ### マージ戦略
 
-| フィールド         | マージルール                             |
-| ------------------ | ---------------------------------------- |
-| `*Ids` (Set 系)    | local ∪ server; `removed*Ids` で明示削除 |
-| `snoozedUntil`     | 後の日時を優先 (later wins)              |
-| `notes` / `tagIds` | サーバー優先 (server wins)               |
-| `globalFilter` 等  | クライアント送信値でそのまま上書き       |
+| フィールド         | マージルール                              |
+| ------------------ | ----------------------------------------- |
+| `*Ids` (Set 系)    | local ∪ server; `removedIds.*` で明示削除 |
+| `snoozedUntil`     | 後の日時を優先 (later wins)               |
+| `notes` / `tagIds` | サーバー優先 (server wins)                |
+| `globalFilter` 等  | クライアント送信値でそのまま上書き        |
 
 ### 成功レスポンス
 
@@ -104,9 +113,10 @@ globs: "app/api/articles/**,app/api/read-state/**,app/api/content/**,app/api/cli
 
 ### エラー一覧
 
-| ステータス | code | 説明   |
-| ---------- | ---- | ------ |
-| `401`      | —    | 未認証 |
+| ステータス | code                | 説明                                    |
+| ---------- | ------------------- | --------------------------------------- |
+| `401`      | —                   | 未認証                                  |
+| `413`      | `PAYLOAD_TOO_LARGE` | ID 配列が `MAX_READ_IDS` 等の上限を超過 |
 
 ---
 

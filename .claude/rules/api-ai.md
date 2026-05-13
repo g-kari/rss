@@ -37,18 +37,19 @@ globs: "app/api/ai/**"
 
 ```json
 // 200 OK
-{ "summary": "要約テキスト..." }
+{ "result": "要約テキスト..." }
 ```
 
 ### エラー一覧
 
-| ステータス | code             | 説明                        |
-| ---------- | ---------------- | --------------------------- |
-| `400`      | `INVALID_URL`    | URL が空または http(s) 以外 |
-| `401`      | —                | 未認証                      |
-| `429`      | `RATE_LIMITED`   | レートリミット超過          |
-| `502`      | `FETCH_FAILED`   | 外部コンテンツ取得失敗      |
-| `503`      | `AI_UNAVAILABLE` | Workers AI 一時障害         |
+| ステータス | code                   | 説明                                         |
+| ---------- | ---------------------- | -------------------------------------------- |
+| `400`      | `INVALID_URL`          | URL が空または http(s) 以外                  |
+| `401`      | `UNAUTHORIZED`         | 未認証 (Workers AI 認証エラー含む)           |
+| `429`      | `RATE_LIMITED`         | レートリミット超過 (KV 障害時は fail-closed) |
+| `502`      | `CONTENT_FETCH_FAILED` | 外部コンテンツ取得失敗                       |
+| `502`      | `AI_ERROR`             | Workers AI 処理エラー (汎用)                 |
+| `503`      | `SERVICE_UNAVAILABLE`  | Workers AI 一時障害                          |
 
 ---
 
@@ -74,7 +75,7 @@ globs: "app/api/ai/**"
 
 ```json
 // 200 OK
-{ "translation": "翻訳テキスト..." }
+{ "result": "翻訳テキスト..." }
 ```
 
 ### エラー一覧
