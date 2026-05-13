@@ -140,6 +140,68 @@ useEffect(() => {
 
 主な使用箇所: `#772` cycle 80 で worktree commit が secondary viewport check effect の deps を `[visible.length, hasMore]` → `[serverLoadCount, hasMore]` に「cascade 防止」目的で変更 → フィルター切替時のロード補完が壊れる over-correction と判明、cycle 81 で `[visible.length, hasMore]` に戻して page 自動進行 useEffect 削除のみで Symptom 1 を解決
 
+#### さらなる派生: 親 hook で `useRef + useEffect([])` で attach する設計は、子 component の DOM mount 前に effect が走って永久に attach 不能になる罠
+
+**症状**: ページネーション hook (例: `useArticlePagination`) を parent component (例: `AppShell`) が呼び、戻り値の `sentinelRef` を child component (例: `ArticleList`) が `<div ref={sentinelRef}>` で attach する設計のとき、**parent の初回 render が child JSX 未確定 (例: auth loading 中 / articles 未取得で empty state) で行われる**と:
+
+1. parent renders → `useArticlePagination` 呼出 → `sentinelRef = useRef(null)` 作成 → JSX 返却 (child は loading state で sentinel `<div>` 不在)
+2. React commits → effects 実行: `useEffect([])` で `sentinelRef.current === null` → 早期 return → **IntersectionObserver / scroll listener が永久に attach されない**
+3. その後 child が sentinel を含む JSX を render → `sentinelRef.current` に DOM 設定される
+4. **だが `useEffect([])` は再実行されない** (deps 空配列) → IO は永久に attach されないまま
+
+```typescript
+// アンチパターン: ref object + useEffect([]) で attach
+const sentinelRef = useRef<HTMLDivElement>(null);
+useEffect(() => {
+  const el = sentinelRef.current;
+  if (!el) return; // ← 初回 render で empty state なら null で早期 return
+  const observer = new IntersectionObserver(...);
+  observer.observe(el);
+  return () => observer.disconnect();
+}, []); // ← 空 deps で 1 回限定実行 → DOM 後mount で再 attach されない
+
+// 修正パターン: callback ref + useState で DOM mount タイミングを検知
+const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
+const sentinelRef = useCallback((el: HTMLDivElement | null) => {
+  setSentinelEl(el);
+}, []);
+
+useEffect(() => {
+  if (!sentinelEl) return;
+  const observer = new IntersectionObserver(...);
+  observer.observe(sentinelEl);
+  return () => observer.disconnect();
+}, [sentinelEl]); // ← DOM mount 時に state 更新 → effect 再評価 → attach 実行
+```
+
+**How to apply**: 「parent hook が ref を返して child component で attach させる」設計を書くときに以下を判定 (`useRef + useEffect([])` 組合せは parent と child の render タイミングが完全同期する保証がないと壊れる、callback ref + useState なら DOM mount タイミングで確実に再評価される):
+
+1. **対象 hook が ref を返して別 component で attach される構造か** を確認
+2. **parent component の初回 render で child JSX が確定するか** を確認 (auth loading / data fetch などで child が遅延描画されるなら NO)
+3. NO なら **callback ref + useState パターン**:
+   - `useState<HTMLElement | null>(null)` で sentinel DOM を state 管理
+   - `useCallback(el => setSentinelEl(el), [])` を返り値の ref として返す
+   - 各 effect の deps に `[sentinelEl]` を含めて DOM mount で再評価
+4. callback ref を ref として渡しても React は function ref をサポートする (consumer の `<div ref={sentinelRef}>` 変更不要)
+5. **複数 effect (IO / scroll listener / secondary check) が同じ sentinel を参照する** なら全部に `[sentinelEl]` 追加
+
+**反例 (useRef + useEffect([]) で OK なケース)**:
+
+- hook 自身が JSX も返す (ref 作成と DOM mount が同一 component 内) → タイミングずれない、useRef OK
+- ref がオプショナル attach (sentinel 不在でも機能する) → null 早期 return が望ましい挙動
+- parent が **常に child まで一括 render** (loading 中も sentinel を含む JSX を返す) → ref attach が render 後に必ず完了
+
+**検出方法**:
+
+```bash
+# parent hook で ref を作って戻り値に含めて、useEffect([]) で観測している pattern を grep
+grep -rEn "useRef<HTML.*>\(null\)" src/hooks/ | head -20
+# 各 hook について、戻り値の ref が ArticleList / 別 component で `ref={xxx}` 経由で attach されているか確認
+# attach され、かつ parent が loading state で child を遅延描画する可能性があるなら本派生ケースの対象
+```
+
+主な使用箇所: `#772` Symptom 2 (cycle 82) — `useArticlePagination` は AppShell 初回 render (auth loading 中 / articles fetch 前) で呼ばれ、`useEffect([])` 実行時点で ArticleList の sentinel `<div>` が未 mount。`useRef + useEffect([])` で IO + scroll listener を attach する設計が破綻 → callback ref + useState + `[sentinelEl]` deps パターンに変更で 3 つの effect が DOM mount 後に確実に attach される構造に修正
+
 ## AbortController.abort() の伝播範囲を限定する
 
 **1 つの `AbortController` を複数の並列 fetch で共有しないこと**。共有してしまうと、1 件の fetch を止めるための `controller.abort()` が **他の進行中の fetch も全て中断** してしまう。
