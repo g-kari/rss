@@ -442,6 +442,42 @@ npx wrangler tail
 
 **How to apply**: 自分の起票・コメント済み Issue を再読する際、前回の AI 返信が今回の調査結果と矛盾するなら、必ず明示的な訂正コメントを投稿してから新しい説明に進む。沈黙のまま新しい返信を投稿するのは NG。
 
+### 派生ケース: 「commit hash + master 反映済み」と報告する前に commit の所属 branch を必ず確認する
+
+worktree (`.claude/worktrees/agent-*`) や feature branch で fix commit を作成したまま、master へ merge せず Issue に **「commit XXX / master 反映済み」と虚偽報告**するパターン。ユーザー側では bug が再現し続けて「未解決」報告が再発、AI が「修正済み」と主張しても実体は master 未反映なので、修正サイクル全体が無効化される最悪のシナリオ。
+
+```
+パターン: 誤報告フロー (cycle 80 #772 で発生)
+  1. worktree で fix を実装 + commit (= worktree-agent-XXX branch HEAD)
+  2. Issue に「commit XYZ / master push 済」とコメント投稿 (= 嘘)
+  3. ユーザーが本番で動作確認 → bug 再現
+  4. ユーザー「未解決」コメント投稿
+  5. AI が次サイクルで「直したはずなのに?」と混乱
+
+修正パターン: 完了報告前の必須確認手順
+  1. `git rev-parse HEAD` で現在 HEAD を取得
+  2. `git rev-parse master` で master HEAD を取得
+  3. `git log master --oneline | head -1` で master の最新 commit を確認
+  4. `git status` で push 状態 (Your branch is up to date with 'origin/master') を確認
+  5. `git branch -a --contains <fix-commit>` で fix commit を含む branch 一覧を確認
+     - master / origin/master が含まれている → 報告 OK
+     - worktree-agent-XXX のみ → master 反映していない、要 merge + push
+  6. 上記が全て揃ってから「commit XXX / master 反映済み」と報告
+```
+
+**How to apply**: Issue 完了コメントを書く直前に必ず以下を実行 (commit したことと master/origin に反映されていることは別。最終確認しないと虚偽報告になる):
+
+1. **`git status`** で uncommitted な変更がないか + push 完了を確認
+2. **`git log origin/master --oneline | head -1`** で origin の最新 commit が想定の fix commit と一致するか確認
+3. **`git worktree list`** で現在 working tree が master HEAD と一致するか確認 (worktree 経由でない場合は省略可)
+4. **`git branch -a --contains <fix-commit-hash>`** で commit を含む branch 一覧を取得 → `master` / `origin/master` が含まれているか確認
+5. **gh issue view N --json comments** で過去の自分の AI コメントを再読して「commit XXX 報告」した内容と現状を照合
+6. 1-5 全て揃った場合のみ「master 反映済み」と報告
+
+**反例 (確認手順を省略してよいケース)**: なし。`closes #N` 付き commit を直接 master push した場合でも、push 完了確認 (`origin/master..HEAD` が空) は必ず行う。
+
+主な使用箇所: `#772` cycle 80 で worktree commit `01cc6ad9` が master 未 merge のまま「master push 済」と誤報告 → ユーザー「未解決」コメントで露呈 → cycle 81 で訂正 + 再修正 commit (`e2a50745`) を master 反映
+
 ## 対話で提示した改善候補を「全部 Issue 化して」と指示されたときの起票運用
 
 ユーザーが大規模な context 最適化 / リファクタ / 改善方針を検討するとき、AI が **「最適化候補 N 件 A-F」を対話形式で簡略提示** → ユーザーが **「すべて Issue 化して」** と指示するパターン。このとき、対話の構成のままコピペで起票せず、本 skill の「設計判断が必要な Issue へのコメントテンプレート」で構造化して **1 件ずつ起票** する。

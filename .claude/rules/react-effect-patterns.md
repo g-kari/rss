@@ -104,6 +104,42 @@ useEffect(() => {
 
 主な使用箇所: `useArticlePagination.ts` (#772) — pageSize 10 + フィルター済 + 単一フィードで sentinel が viewport 内に留まり次 loadMore が永久に発火しない問題、`visible.length` を deps にした追加 useEffect で「viewport 内なら 1 回追加発火」を実装。`68a37daf` で eager-load 撤廃した際に IO 仕様限界を再考慮しないと本罠が再発するため codify
 
+#### さらなる派生: secondary viewport check effect の deps を `[serverLoadCount, hasMore]` に変えてはいけない
+
+本 effect の **「viewport 内 cascade ロード」は desired UX** であって bug ではない。client loadMore で visible.length が変化 → 再評価 → viewport 内なら追加発火、を繰り返して **「sentinel が viewport を抜けるか hasMore=false まで loadMore する」** のが本 effect の責務。
+
+過去サイクルで cascade を「無駄なロード」と誤判定して deps を `[serverLoadCount, hasMore]` に変更すると、以下が同時に壊れる:
+
+1. **フィルター切替時のロード補完が発火しない** — フィルター ON→OFF で filtered が拡大 + page リセットされても、`serverLoadCount` は変化しないため effect が再評価されない → viewport が埋まらない 10 件のまま停止
+2. **pageSize 小 + 単一フィードで初回 viewport 埋まらない** — server fetch 不要なケースでは serverLoadCount が 0 のままで effect が一度も発火しない
+
+```typescript
+// アンチパターン: cascade 防止のつもりで deps を変更
+useEffect(() => {
+  /* viewport check */
+}, [serverLoadCount, hasMore]);
+// → フィルター切替時のロード補完が発火しない (Symptom 2)
+//   pageSize 小 + 単一フィードで viewport が埋まらない (Symptom 1 と関連)
+
+// 修正パターン: visible.length のままにする (cascade は feature)
+useEffect(() => {
+  /* viewport check */
+}, [visible.length, hasMore]);
+// → viewport を埋めるまで loadMore を連鎖発火 (desired UX)
+//   sentinel が viewport を抜けた時点で自然停止 (無限ループなし)
+```
+
+**How to apply**: ページネーション系 hook の secondary viewport check effect を見たら:
+
+1. **deps が `[visible.length, hasMore]` なら触らない** — cascade は feature であって bug ではない
+2. **「cascade で全件表示される」症状を見たら**、本 effect 以外 (例: page 自動進行 useEffect で `setPage(ceil(filtered.length / pageSize))` する別 effect) が真因の可能性を疑う
+3. **cascade 自体の停止条件は 2 つで十分**:
+   - `if (!hasMoreRef.current) return;` (内部 guard)
+   - sentinel が viewport を抜けたら `inViewport === false` で no-op
+4. **deps を `[serverLoadCount, hasMore]` に変更したくなったら止まる** — フィルター切替時のロード発火が壊れる over-correction
+
+主な使用箇所: `#772` cycle 80 で worktree commit が secondary viewport check effect の deps を `[visible.length, hasMore]` → `[serverLoadCount, hasMore]` に「cascade 防止」目的で変更 → フィルター切替時のロード補完が壊れる over-correction と判明、cycle 81 で `[visible.length, hasMore]` に戻して page 自動進行 useEffect 削除のみで Symptom 1 を解決
+
 ## AbortController.abort() の伝播範囲を限定する
 
 **1 つの `AbortController` を複数の並列 fetch で共有しないこと**。共有してしまうと、1 件の fetch を止めるための `controller.abort()` が **他の進行中の fetch も全て中断** してしまう。
