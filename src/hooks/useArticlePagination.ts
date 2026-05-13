@@ -1,11 +1,4 @@
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
+import { useEffect, useRef, useCallback, type Dispatch, type SetStateAction } from "react";
 import type { Article } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -22,20 +15,15 @@ export function useArticlePagination(
     setPage((p) => p + 1);
   }, [setPage]);
 
-  const [serverLoadCount, setServerLoadCount] = useState(0);
+  // #772: 過去の `notifyArticlesAdded` は `serverLoadCount` state を bump して
+  // `setPage(prev => Math.ceil(filtered.length / pageSize))` の自動進行 effect を駆動していたが、
+  // フィルター解除/小 pageSize 設定でサーバー読込後に全件一括表示を引き起こすため effect を削除済。
+  // サーバー読込後の secondary viewport check は filtered 再 render 経由で
+  // visible.length / hasMore の変化を検知して自然に発火するため、本 callback は no-op で API のみ維持。
+  // useFeedPagination の呼び出し側互換 + 将来の re-introduction 余地を残すため残置。
   const notifyArticlesAdded = useCallback(() => {
-    setServerLoadCount((c) => c + 1);
+    // intentionally no-op (see comment above)
   }, []);
-
-  const pageSizeRef = useSyncedRef(pageSize);
-  const filteredRef = useSyncedRef(filtered);
-  useEffect(() => {
-    if (serverLoadCount === 0) return;
-    setPage((prev) =>
-      Math.max(prev, Math.ceil(filteredRef.current.length / pageSizeRef.current) || 1),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs は useSyncedRef の安定参照のため deps 不要
-  }, [serverLoadCount, setPage]);
 
   const visible = filtered.slice(0, page * pageSize);
   const hasMore = visible.length < filtered.length;
