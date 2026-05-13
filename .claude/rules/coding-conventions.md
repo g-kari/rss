@@ -34,16 +34,6 @@ paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
 - データ取得ロジックは custom hooks (`src/hooks/`) に分離
 - コンポーネントは API を呼ばない (FeedSidebar の add/delete は例外)
 
-### クライアントサイドフィルタリング
-
-```typescript
-const filtered = useMemo(() => {
-  let list = feedId ? articles.filter((a) => a.feedId === feedId) : articles;
-  if (unreadOnly) list = list.filter((a) => !readIds.has(a.id));
-  return list;
-}, [articles, feedId, readIds, unreadOnly]);
-```
-
 ## React Context パターン
 
 → `.claude/rules/react-patterns.md` を参照
