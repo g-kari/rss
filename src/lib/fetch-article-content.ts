@@ -27,7 +27,8 @@ export const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
 const MAX_PAGINATION_PAGES = 10;
 export const ARTICLE_FETCH_OPTS = {
   headers: {
-    "User-Agent": "Mozilla/5.0 (compatible; rss-reader/1.0)",
+    "User-Agent":
+      "Mozilla/5.0 (compatible; Googlebot/2.1; rss-reader/1.0; +https://rss.0g0.xyz/bot)",
     Accept: "text/html,application/xhtml+xml",
   },
 };
