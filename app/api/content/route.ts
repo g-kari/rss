@@ -85,11 +85,14 @@ async function handleGet(
   }
 
   // キャッシュミス時のみレートリミットを確認（外部フェッチを保護）
+  // #779: KV 障害時も fail-closed (外部 fetch コスト・DoS を防ぐ)。
+  // AI エンドポイント (ai-route-helper) と整合させた defense in depth。
   const limited = await checkSlidingWindow(
     env.RATE_LIMIT,
     contentFetchRateLimitKey(session.userId),
     CONTENT_WINDOW_MS,
     CONTENT_MAX_CALLS,
+    { failClosed: true },
   );
   if (limited) return limited;
 

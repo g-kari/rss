@@ -299,7 +299,10 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     },
   },
   {
-    keys: ["R"],
+    // #776: 衝突回避 — Shift+R (TTS rate cycle) は keys:["R"] (大文字、shifted)、
+    // フィード更新は keys:["r"] (小文字、unshifted) に分離。
+    // displayKey は視認性のため "R" (大文字) のまま維持。
+    keys: ["r"],
     displayKey: "R",
     description: "フィードを更新",
     group: "global",

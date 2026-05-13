@@ -64,11 +64,14 @@ async function handleGet(
   }
 
   // キャッシュ MISS 時のみレートリミット（外部フェッチの連打防止）
+  // #779: KV 障害時も fail-closed (外部 fetch コスト・DoS を防ぐ)。
+  // AI エンドポイント (ai-route-helper) と整合させた defense in depth。
   const limited = await checkSlidingWindow(
     env.RATE_LIMIT,
     ogpCooldownKey(userId),
     OGP_RATE_WINDOW_MS,
     OGP_RATE_MAX_CALLS,
+    { failClosed: true },
   );
   if (limited) return limited;
 
