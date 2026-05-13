@@ -9,6 +9,7 @@
 
 import { isLikelyJapanese } from "./article-utils";
 import { devError } from "./dev-log";
+import { parseChromeMajorVersion } from "./browser-summarizer";
 
 type Availability = "available" | "downloadable" | "downloading" | "unavailable";
 
@@ -40,12 +41,6 @@ declare global {
 /** Translator API が stable で利用可能になった最低 Chrome メジャーバージョン (公式: 138)。 */
 export const MIN_TRANSLATOR_CHROME_VERSION = 138;
 
-function getChromeVersion(): number | null {
-  if (typeof navigator === "undefined") return null;
-  const match = /Chrome\/(\d+)/.exec(navigator.userAgent);
-  return match ? parseInt(match[1], 10) : null;
-}
-
 /** Translator API が window 上に実装されているかをチェックする。 */
 export function isTranslatorApiSupported(): boolean {
   return typeof window !== "undefined" && typeof window.Translator !== "undefined";
@@ -67,8 +62,8 @@ export async function detectSourceLanguage(text: string): Promise<string> {
         const top = results[0];
         if (top && top.confidence > 0.5) return top.detectedLanguage;
       }
-    } catch {
-      /* 失敗時はフォールバック判定に回す */
+    } catch (e) {
+      devError("[browser-translator] detectSourceLanguage LanguageDetector threw", e);
     }
   }
   return isLikelyJapanese(sample) ? "ja" : "en";
@@ -103,7 +98,8 @@ export async function diagnoseTranslatorAvailability(): Promise<{
   if (typeof window.Translator === "undefined") {
     const isChromiumBased = /Chrome\//.test(navigator.userAgent);
     if (!isChromiumBased) return { available: false, reason: "not-chromium" };
-    const chromeVersion = getChromeVersion();
+    const chromeVersion =
+      typeof navigator !== "undefined" ? parseChromeMajorVersion(navigator.userAgent) : null;
     if (chromeVersion !== null && chromeVersion < MIN_TRANSLATOR_CHROME_VERSION) {
       return { available: false, reason: "chrome-too-old" };
     }
