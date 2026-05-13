@@ -1,7 +1,8 @@
-import { useRef, useState, type TouchEvent } from "react";
+import { useRef, useState, useMemo, type TouchEvent } from "react";
 import { useSyncedRef } from "../../hooks/useSyncedRef";
 import { useEventListener } from "../../hooks/useEventListener";
 import { usePopupLock } from "../../hooks/usePopupLock";
+import { buildImageProxyUrl } from "../../lib/image-proxy-url";
 
 interface Props {
   images: string[];
@@ -14,6 +15,8 @@ export default function ImageGallery({ images }: Props) {
 
   // ライトボックス表示中はリサイズバーを無効化する（Issue #81）
   usePopupLock(lightboxIndex !== null);
+
+  const proxiedImages = useMemo(() => images.map(buildImageProxyUrl), [images]);
 
   useEventListener("keydown", (e) => {
     const { lightboxIndex: idx, imageCount } = lightboxRef.current;
@@ -52,7 +55,7 @@ export default function ImageGallery({ images }: Props) {
               className="flex-shrink-0 cursor-zoom-in"
             >
               <img
-                src={src}
+                src={proxiedImages[i]}
                 alt=""
                 className="h-24 w-auto max-w-[180px] object-cover rounded bg-surface-subtle"
                 loading="lazy"
@@ -132,7 +135,7 @@ export default function ImageGallery({ images }: Props) {
             </button>
           )}
           <img
-            src={images[lightboxIndex]}
+            src={proxiedImages[lightboxIndex]}
             alt=""
             className="max-w-[90vw] max-h-[90vh] object-contain rounded"
             onClick={(e) => e.stopPropagation()}
