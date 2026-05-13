@@ -1,6 +1,4 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
-import { cycleValue } from "../lib/article-utils";
 import {
   PIPER_PLUS_VOICES,
   DEFAULT_SPEAKER_EMBEDDING_DIM,
@@ -9,10 +7,10 @@ import {
   type PiperPlusVoice,
 } from "../lib/piper-voices";
 import type { TtsAdapter, TtsErrorCode, TtsVoice } from "../lib/tts-adapter";
-import { clampTtsVolume, parseTtsVolume } from "../lib/tts-volume";
+
 import { splitIntoSentences } from "../lib/tts-sentences";
 import { devError } from "../lib/dev-log";
-import { useSyncedRef } from "./useSyncedRef";
+import { useTtsControls } from "./useTtsControls";
 
 /**
  * Piper TTS wasm engine (`piper-plus` library) を用いた読み上げ管理 hook (#761)。
@@ -37,19 +35,6 @@ const ESTIMATED_CPS = 12;
 const BOUNDARY_TICK_MS = 100;
 
 const PIPER_WASM_LOADER_URL = "/api/wasm/piper_plus_wasm.js";
-
-function loadRate(): PiperTtsRate {
-  const v = parseFloat(storageGet(STORAGE_KEYS.TTS_RATE) ?? "");
-  return (PIPER_TTS_RATES as readonly number[]).includes(v) ? (v as PiperTtsRate) : 1.0;
-}
-
-function loadVoiceUri(): string | null {
-  return storageGet(STORAGE_KEYS.TTS_VOICE_URI) ?? null;
-}
-
-function loadVolume(): number {
-  return parseTtsVolume(storageGet(STORAGE_KEYS.TTS_VOLUME));
-}
 
 interface PiperPlusAudioResult {
   play: () => Promise<void>;
@@ -142,9 +127,6 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   const [errorCount, setErrorCount] = useState(0);
   const [lastError, setLastError] = useState<TtsErrorCode | null>(null);
   const [lastErrorDetail, setLastErrorDetail] = useState<TtsAdapter["lastErrorDetail"]>(null);
-  const [rate, setRate] = useState<PiperTtsRate>(loadRate);
-  const [voiceUri, setVoiceUriState] = useState<string | null>(loadVoiceUri);
-  const [volume, setVolumeState] = useState<number>(loadVolume);
   // engine 初期化中の進捗 (null = 初期化していない / 完了済)。
   // PiperPlus.initialize の onProgress callback で更新、UI 側で floating progress toast に表示。
   const [initProgress, setInitProgress] = useState<{
@@ -156,9 +138,6 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   const ttsInstanceRef = useRef<PiperPlusInstance | null>(null);
   const ttsVoiceIdRef = useRef<string | null>(null);
   const playTokenRef = useRef(0);
-  const rateRef = useSyncedRef(rate);
-  const voiceUriRef = useSyncedRef(voiceUri);
-  const volumeRef = useSyncedRef(volume);
   const currentTextRef = useRef<string>("");
   const onBoundaryRef = useRef<((charIndex: number) => void) | null>(null);
   const boundaryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -270,6 +249,34 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     setTimeout(() => setInitProgress(null), 1500);
     return instance;
   }, []);
+
+  // speak を ref で保持して useTtsControls の onVoiceChange callback から参照するため、
+  // まず useTtsControls を呼んで voiceUriRef / rateRef / volumeRef を確定させる。
+  // onVoiceChange 内で speakRef.current を使うことで循環依存を回避する。
+  const speakRef = useRef<(text: string, onBoundary?: (charIndex: number) => void) => void>(
+    () => {},
+  );
+
+  const {
+    rate,
+    cycleRate,
+    voiceUri,
+    setVoiceUri,
+    volume,
+    setVolume,
+    rateRef,
+    voiceUriRef,
+    volumeRef,
+  } = useTtsControls<PiperTtsRate>({
+    rates: PIPER_TTS_RATES,
+    defaultRate: 1.0,
+    // onRateChange は指定しない (rate 変化で再 speak しない usePiperTts 仕様)
+    onVoiceChange: () => {
+      const text = currentTextRef.current;
+      if (text) speakRef.current(text, onBoundaryRef.current ?? undefined);
+    },
+    // onVolumeChange も指定しない (volume 変化で再 speak しない usePiperTts 仕様)
+  });
 
   const stop = useCallback(() => {
     if (!supported) return;
@@ -466,6 +473,9 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     ],
   );
 
+  // speakRef を最新の speak で更新 (useSyncedRef 相当の手動更新)
+  speakRef.current = speak;
+
   const pause = useCallback(() => {
     if (!supported) return;
     // piper-plus AudioResult.play() 中の pause API は library に無いため non-op
@@ -476,37 +486,6 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     if (!supported) return;
     // 同上 — pause 対応待ち
   }, [supported]);
-
-  const cycleRate = useCallback((): number => {
-    const next = cycleValue(PIPER_TTS_RATES, rateRef.current);
-    storageSet(STORAGE_KEYS.TTS_RATE, String(next));
-    rateRef.current = next;
-    setRate(next);
-    // piper-plus は再生中の rate 変更不可 (synthesize 時の lengthScale で固定) → 次 speak で反映
-    return next;
-  }, [rateRef]);
-
-  const setVoiceUri = useCallback(
-    (uri: string | null) => {
-      storageSet(STORAGE_KEYS.TTS_VOICE_URI, uri ?? "");
-      voiceUriRef.current = uri;
-      setVoiceUriState(uri);
-      const text = currentTextRef.current;
-      if (text) speak(text, onBoundaryRef.current ?? undefined);
-    },
-    [speak, voiceUriRef],
-  );
-
-  const setVolume = useCallback(
-    (v: number) => {
-      const clamped = clampTtsVolume(v);
-      storageSet(STORAGE_KEYS.TTS_VOLUME, String(clamped));
-      volumeRef.current = clamped;
-      setVolumeState(clamped);
-      // piper-plus AudioResult は volume control API なし (将来 AudioContext.GainNode 経由で実装余地)
-    },
-    [volumeRef],
-  );
 
   // アンマウント時に instance dispose
   useEffect(() => {
