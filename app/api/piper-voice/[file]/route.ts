@@ -1,4 +1,4 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { withBinarySession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 
 /**
@@ -22,24 +22,25 @@ import { apiError } from "@/lib/api-error";
  */
 const ALLOWED_FILES: ReadonlySet<string> = new Set(["tsukuyomi.onnx", "tsukuyomi.onnx.json"]);
 
-export async function GET(_request: Request, { params }: { params: Promise<{ file: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ file: string }> }) {
   const { file } = await params;
   if (!ALLOWED_FILES.has(file)) {
     return apiError("Not Found", 404, { code: "NOT_FOUND" });
   }
-  const { env } = await getCloudflareContext({ async: true });
-  const obj = await env.RSS_DATA.get(`piper-voices/${file}`);
-  if (!obj) {
-    return apiError("Not Found", 404, { code: "NOT_FOUND" });
-  }
-  // .onnx.json は JSON、.onnx は ONNX バイナリ (application/octet-stream)
-  const contentType = file.endsWith(".json") ? "application/json" : "application/octet-stream";
-  return new Response(obj.body, {
-    headers: {
-      "Content-Type": contentType,
-      // voice ファイル名は version 固定 (HF revision 単位)、内容不変なので 1 年 immutable
-      // 新 version 採用時は ALLOWED_FILES + R2 upload 時にファイル名を変える運用
-      "Cache-Control": "public, max-age=31536000, immutable",
-    },
+  return withBinarySession(request, async ({ env }) => {
+    const obj = await env.RSS_DATA.get(`piper-voices/${file}`);
+    if (!obj) {
+      return apiError("Not Found", 404, { code: "NOT_FOUND" });
+    }
+    // .onnx.json は JSON、.onnx は ONNX バイナリ (application/octet-stream)
+    const contentType = file.endsWith(".json") ? "application/json" : "application/octet-stream";
+    return new Response(obj.body, {
+      headers: {
+        "Content-Type": contentType,
+        // voice ファイル名は version 固定 (HF revision 単位)、内容不変なので 1 年 immutable
+        // 新 version 採用時は ALLOWED_FILES + R2 upload 時にファイル名を変える運用
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
   });
 }

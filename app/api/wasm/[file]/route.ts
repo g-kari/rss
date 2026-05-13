@@ -1,4 +1,4 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { withBinarySession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 
 /**
@@ -47,26 +47,27 @@ const ALLOWED_FILES: ReadonlySet<string> = new Set([
   "piper_plus_wasm_bg.wasm",
 ]);
 
-export async function GET(_request: Request, { params }: { params: Promise<{ file: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ file: string }> }) {
   const { file } = await params;
   if (!ALLOWED_FILES.has(file)) {
     return apiError("Not Found", 404, { code: "NOT_FOUND" });
   }
-  const { env } = await getCloudflareContext({ async: true });
-  const obj = await env.RSS_DATA.get(`piper-wasm/${file}`);
-  if (!obj) {
-    return apiError("Not Found", 404, { code: "NOT_FOUND" });
-  }
-  // `.js` / `.mjs` (ES module loader) は application/javascript で配信、`.wasm` は wasm として配信
-  const isJsLoader = file.endsWith(".js") || file.endsWith(".mjs");
-  const contentType = isJsLoader ? "application/javascript" : "application/wasm";
-  return new Response(obj.body, {
-    headers: {
-      "Content-Type": contentType,
-      // ファイル名は version 固定 (npm package 内 plain 名)、内容も同 version で不変なので
-      // 1 年 immutable cache。新 version 採用時は ALLOWED_FILES 更新 + R2 upload 時に
-      // ファイル名を変える運用とする (CDN cache bust 不要)。
-      "Cache-Control": "public, max-age=31536000, immutable",
-    },
+  return withBinarySession(request, async ({ env }) => {
+    const obj = await env.RSS_DATA.get(`piper-wasm/${file}`);
+    if (!obj) {
+      return apiError("Not Found", 404, { code: "NOT_FOUND" });
+    }
+    // `.js` / `.mjs` (ES module loader) は application/javascript で配信、`.wasm` は wasm として配信
+    const isJsLoader = file.endsWith(".js") || file.endsWith(".mjs");
+    const contentType = isJsLoader ? "application/javascript" : "application/wasm";
+    return new Response(obj.body, {
+      headers: {
+        "Content-Type": contentType,
+        // ファイル名は version 固定 (npm package 内 plain 名)、内容も同 version で不変なので
+        // 1 年 immutable cache。新 version 採用時は ALLOWED_FILES 更新 + R2 upload 時に
+        // ファイル名を変える運用とする (CDN cache bust 不要)。
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
   });
 }
