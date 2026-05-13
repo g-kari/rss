@@ -45,6 +45,8 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
 
     // 一度に最大10件まで並列フェッチ（429防止）
     const OGP_BATCH_SIZE = 10;
+    // リロード時の一斉フェッチ burst を防ぐインデックスごとの遅延（ms）
+    const OGP_STAGGER_MS = 150;
     const batch = toFetch.slice(0, OGP_BATCH_SIZE);
 
     const scheduleSave = (data: Record<string, string>) => {
@@ -92,25 +94,28 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
       }
     };
 
-    batch.forEach((link) => {
+    batch.forEach((link, i) => {
       fetchingRef.current.add(link);
       const article = visible.find((a) => a.link === link);
-      apiFetch(`/api/ogp?url=${encodeURIComponent(link)}`)
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json() as Promise<OgpData>;
-        })
-        .then(({ image }) => {
-          if (image) {
-            cacheImage(link, image);
-          } else {
-            return tryBoothFallback(link, article);
-          }
-        })
-        .catch(() => tryBoothFallback(link, article))
-        .finally(() => {
-          fetchingRef.current.delete(link);
-        });
+      // リロード時の /api/ogp 一斉フェッチ burst を防ぐため、インデックスに応じて遅延する（#762）
+      setTimeout(() => {
+        apiFetch(`/api/ogp?url=${encodeURIComponent(link)}`)
+          .then((r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json() as Promise<OgpData>;
+          })
+          .then(({ image }) => {
+            if (image) {
+              cacheImage(link, image);
+            } else {
+              return tryBoothFallback(link, article);
+            }
+          })
+          .catch(() => tryBoothFallback(link, article))
+          .finally(() => {
+            fetchingRef.current.delete(link);
+          });
+      }, i * OGP_STAGGER_MS);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linksKey]);
