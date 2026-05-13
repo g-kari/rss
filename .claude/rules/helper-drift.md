@@ -148,3 +148,64 @@ grep -nE "<推奨パッケージ名>|<類似機能>" package.json
 - alias 化で **メッセージ文言が canonical と乖離** する場合 → canonical の `formatXxx(type, opts)` を同時に流用すれば文言も統一可能
 
 主な使用箇所: `useArticleAi.ts` の `AiErrorType = HttpErrorType` 統合 — `classifyHttpError` / `getErrorMessage` 重複定義削除 + 429 で Retry-After ヘッダー秒数表示バグも同時修正
+
+### 派生ケース: sibling hook 統合前に「内部 silent 副作用経路」を grep して signature を先に確定する
+
+2 つの hook (例: `useSpeechSynthesis` / `usePiperTts`) で **rate/voice/volume 制御コードが ~120 行重複** していて共通化したくなる、というケース。同じ public API (state + setter) でも、片方の hook が **内部で silent に state を書き換える経路** (例: error event handler 内で `setVoiceUriState(null)` を直接呼ぶ + `onChange` callback を呼ばない自動 reset) を持っていることがある。この経路を見落として共通 hook の `setVoiceUri(uri)` 経由に置き換えると、`onChange` callback で `speak()` 等の副作用が**再発火する罠**になる。
+
+```typescript
+// アンチパターン (silent reset 経路を見落として共通化)
+// 既存 useSpeechSynthesis 内部:
+utterance.onerror = (e) => {
+  if (code === "voice-unavailable") {
+    storageSet(STORAGE_KEYS.TTS_VOICE_URI, "");
+    voiceUriRef.current = null;
+    setVoiceUriState(null); // ← 内部 state setter 直接、onChange 呼ばない silent reset
+  }
+};
+
+// 共通 useTtsControls 化:
+const { setVoiceUri } = useTtsControls({
+  onVoiceChange: () => {
+    if (currentText) speak(currentText);
+  }, // ← speak 再発火 callback
+});
+
+// 既存 onerror を共通 hook 経由に書き換え:
+utterance.onerror = (e) => {
+  if (code === "voice-unavailable") setVoiceUri(null);
+  //                                ↑ onChange で speak(currentText) が呼ばれて
+  //                                  voice-unavailable 直後に再 speak で同じ error 連鎖!
+};
+
+// 修正パターン (共通 hook signature に silent variant を用意)
+const { setVoiceUri, setVoiceUriSilent } = useTtsControls({
+  onVoiceChange: () => {
+    if (currentText) speak(currentText);
+  },
+});
+
+utterance.onerror = (e) => {
+  if (code === "voice-unavailable") setVoiceUriSilent(null); // ← onChange skip
+};
+```
+
+**How to apply**: 2 hook 間で「同 public API + ~100 行重複」を見つけて共通 hook 化したくなったら、**実装着手前に内部 silent 経路を grep** (silent 経路を後から発見すると共通 hook の signature 修正 + 全 caller 再修正で context 倍増):
+
+1. **対象 hook 内で内部 state setter (`setXxxState` / `setVoiceUriState` 等) の直接呼出を全件 grep**:
+   ```bash
+   grep -nE "set[A-Z][a-zA-Z]*State\s*\(" src/hooks/<target1>.ts src/hooks/<target2>.ts
+   ```
+2. **各呼出が public API (`setXxx`) ではなく内部 setter なら、その意図を確認**:
+   - 通常の user action 経由 (props / event handler) → 共通 hook の public `setXxx` 経由に置き換え OK
+   - **internal error / cleanup / 自動 reset 経路** で silent (callback を呼ばずに state だけ変える) → 共通 hook signature に **`setXxxSilent` (callback skip variant) を用意**する必要あり
+3. **silent variant が必要と判明したら signature を先に確定** してから共通 hook を実装 (signature 設計が後追いになると Phase 分離 + 全 caller 再修正で context overflow リスク)
+4. 共通 hook の signature は **`setXxxSilent` 追加 / `setXxx(uri, { silent: true })` 2 引数化 / consumer 側で reentrancy ガード** の 3 案を trade-off で比較 (semantic 明示性 vs API 個数)
+5. **TDD spec で silent / non-silent 両方の経路を assert** (silent 経路は callback 呼ばれないことを spec で固定)
+
+**反例 (silent variant 不要なケース)**:
+
+- 内部 state setter 呼出が **同 hook 内で 1 経路だけ** (cleanup / mount 初期化等で副作用なし) → 共通 hook の `setXxx` で十分
+- silent 経路の副作用 (callback 内容) が **本質的に冪等** (同じ値で呼んでも害なし) → callback 経由でも OK
+
+主な使用箇所: `useTtsControls` の `useSpeechSynthesis` voice-unavailable silent reset 経路 — agent 委譲時に grep を怠った結果 signature 修正が必要と判明 → Phase 分離で次サイクル送り

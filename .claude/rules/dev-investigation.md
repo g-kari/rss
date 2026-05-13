@@ -171,3 +171,50 @@ const { activeSentenceIndex } = useTtsHighlight(effectiveSentences, ...);
 - 「同症状の Issue を再起票された」ら、**前回修正のコミット diff** を読み直して「自分が直したのは本当に唯一の原因か」を疑う
 - 「修正したのに直らない」「修正したのにまた起きた」のキーワードがコメントに出たら、必ず別経路を疑って再調査
 - バグ修正のコミットメッセージには **「真因 = 〇〇」** を明記して、別経路調査時の参照点にする
+
+## サーバーサイド fetch で User-Agent によって SSR レスポンスが SPA shell ↔ 完全 HTML に分岐するサイトの検出
+
+ユーザーから「本文の画像が取れない」「サムネが出ない」報告を受けたとき、本文取得 pipeline (`extractMainContent` / `fixLazyImages` / `Readability`) を疑う前に **そもそもサーバーサイド fetch で `<img>` が返ってきているか** を確認する。一部サイトは **User-Agent で bot 判定** して bot 向けに SPA shell (`<img>` 0 件)、Googlebot や Slackbot 向けに完全 HTML を返す設計を持つ。pipeline 修正では構造的に対処不能で、UA 戦略の選択が要件になる。
+
+```bash
+# 検出スクリプト: 同一 URL を 3 種類の UA で fetch して <img> 数を比較
+node -e "
+const url = 'https://example.com/path';
+const uas = [
+  ['default', 'Mozilla/5.0 (compatible; rss-reader/1.0)'],
+  ['Mozilla', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'],
+  ['Googlebot', 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'],
+  ['Slackbot', 'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)'],
+];
+(async () => {
+  for (const [label, ua] of uas) {
+    const r = await fetch(url, { headers: { 'User-Agent': ua } });
+    const html = await r.text();
+    const imgs = html.match(/<img[^>]+>/gi) || [];
+    console.log(label, 'imgs=' + imgs.length, 'size=' + html.length);
+  }
+})();
+"
+```
+
+**判定**:
+
+- 全 UA で `<img>` 数が同じ + 0 件 → 完全 SPA、pipeline で対処不能 (SSR されていない)
+- 全 UA で `<img>` 数が同じ + N 件 → 通常 SSR、pipeline 修正で対応可能 (lazy load 属性 / `<picture>` 等)
+- **UA で `<img>` 数が分岐** → bot 判定サイト、UA 戦略選択が要件 (ユーザー判断要)
+
+UA 戦略の選択肢:
+
+1. UA を Googlebot 互換に変更 — spoofing リスクあり (robots.txt / 利用規約抵触)
+2. `og:image` のみ採用、本文画像は諦め — 単画像で済むサイトは UX 維持
+3. Cloudflare Browser Rendering API — 新 infra、レイテンシ増、$
+4. 対応見送り — UX 劣化のまま
+
+**How to apply**: 「本文画像が取れない」報告で **pipeline 修正案を出す前に** 上記検出スクリプトを実行 (User-Agent bot 判定罠を見落とすと pipeline 修正で対応不能のまま数サイクル彷徨う、UA 比較は 1 分で済む):
+
+1. **3 UA で `<img>` 数比較** — 分岐があれば bot 判定確定
+2. 分岐ありなら pipeline 修正案は提示せず、**UA 戦略 4 案を Issue コメントでユーザー判断仰ぐ** (`api-security.md` / 利用規約の判断要素を含むため設計判断要)
+3. 分岐なしなら通常の pipeline 修正フロー (lazy load / `<picture>` / `<source>` / JSON-LD 補完等) を進める
+4. 検出スクリプトの結果は **Issue 本文 / 設計方針コメントに表形式で引用** して将来の参照点を残す
+
+主な使用箇所: kai-you.net 系で「本文画像取得失敗」報告 → pipeline 修正案 (`preClean` 拡張 / `fixLazyImages` 拡張) を立てた後、UA 比較で Mozilla 0 件 / Googlebot 49 件 / Slackbot 49 件と判明 → pipeline 修正では対処不能と判定し UA 戦略 4 案を設計方針として投稿

@@ -221,3 +221,34 @@ paths: "e2e/**/*.spec.ts"
 4. **発見した場合**: 規範 codify 時に「sweep 漏れがあった」事実を retrospective に追記して保証強化
 
 主な使用箇所: `isLaterIso` / `pruneOldReadIds` の lexicographic ISO 比較バグを codify したが、`useFilteredArticles.ts` 同種バグが 6 cycle 後の bug 監査エージェントで発見 → 二段保証を追加運用ルール化
+
+### 派生ケース: subagent (implementer 役) への refactor 委譲 prompt は touch ≤ 3 ファイル + signature 確定済 trivial 置換に絞る
+
+sonnet モデルで動く subagent (implementer 役) に **3 ファイル超えの refactor** を委譲すると、agent 側で対象ファイル全件 Read + 既存 spec Read + 設計判断で **context overflow (autocompact thrashing) を起こして中断** する典型的な罠がある。Security audit エージェントで同様の罠 (broad-scope prompt → context overflow → 中断) は本ファイル別派生ケースで既知だが、**implementer 役の refactor タスクでも同じ罠が成立する**。
+
+```
+アンチパターン (overflow を起こした実例):
+  prompt: "3 hooks (useSpeechSynthesis 260 行 + usePiperTts 570 行) の
+          rate/voice/volume 制御を共通 hook に集約して 2 既存 hook を置換"
+  → agent: 両 hook 全文 Read + spec 構造把握 + 共通 hook 設計 + 2 既存 hook 置換
+          → context 圧迫 → autocompact thrash → 中断 (新 hook ファイル untracked のみ残る)
+
+修正パターン (Phase 分離):
+  prompt 1: "新 hook A を Write + spec 1 件で TDD (signature 確定)"  → 1 commit
+  prompt 2 (次サイクル): "既存 hook X を新 hook A 呼出に置換"        → 1 commit
+  prompt 3 (次サイクル): "既存 hook Y を新 hook A 呼出に置換"        → 1 commit
+```
+
+**How to apply**: subagent (implementer 役) に refactor を委譲する prompt を書くときに以下を判定 (sonnet モデルは context 余裕が opus より少なく、3 ファイル × 数百行 の同時把握で thrashing が発生する閾値が低い):
+
+1. **touch ファイル数を見積もる** (Read 対象を含む) — **4+ ファイルなら委譲 NG**、Phase 分離して各 Phase で touch ≤ 3 に
+2. **signature が確定済か** — 「共通 hook の戻り値 / option / generic 引数」を **メイン opus 側で確定** してから委譲。agent に signature 設計を任せない (設計判断は context を喰う + agent が誤推測する)
+3. **既存 hook の特殊副作用 (silent reset / 直接 state setter 呼出 / 内部 ref 操作) を事前に grep** して prompt に明記。共通 hook 化で**動かなくなる箇所**を agent が後から発見すると context が膨らむ
+4. **TDD spec が新規 1 件で完結するか** — 既存 spec 群を読み直す必要がある (既存 spec が internal state を assert している等) なら Phase 分離
+
+**反例 (4+ ファイル委譲が妥当なケース)**:
+
+- 各ファイルが **独立変更** (機械的 sweep / 同一 pattern 置換 N 件) で agent が 1 ファイルずつ完結可能 → touch 多くても context 圧迫しない
+- 既存 spec を一切読まない (typecheck + 既存 e2e のみで担保) refactor → context 節約
+
+主な使用箇所: TTS engine の rate/voice/volume 共通化を 1 subagent 委譲で 3 hooks 跨ぎ実行 → context overflow で中断、新 hook 作成のみで既存 hook 置換は次サイクル送りに Phase 分離
