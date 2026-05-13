@@ -1,25 +1,82 @@
 /**
- * スマホでの TTS バックグラウンド継続用 (#745 Phase A + perf optimization)
+ * スマホでの TTS バックグラウンド継続用 (#745 Phase A + perf optimization + Phase D)
  *
- * `speechSynthesis` 単独だとスマホブラウザはバックグラウンドで休眠する。WebAudio API で
- * 無音を再生 (OscillatorNode + GainNode `gain=0`) し続けると、ブラウザは「メディア再生中」
- * と認識して `speechSynthesis` も停止されにくくなる。
+ * ## Phase D 変更 (Android 通知欄修正)
+ * Android Chrome は HTML `<audio>` / `<video>` 要素が実際に再生されているときのみ
+ * 通知トレイに「再生中」コントロールを表示する。
+ * - Web Speech API (SpeechSynthesis) → OS は「メディア再生中」と認識しない ❌
+ * - Web Audio API Oscillator → OS は「メディア再生中」と認識しない ❌
+ * - HTML `<audio>` 要素 → OS が「メディア再生中」と認識して通知表示 ✅
+ *
+ * 方針:
+ * 1. まず HTML `<audio>` 要素 (無音 WAV data URI, loop=true) を試みる [Primary]
+ * 2. `<audio>` が使えない環境 (SSR 等) は WebAudio oscillator にフォールバック [Fallback]
+ *
+ * 無音 WAV: 1 サンプルの最小 WAV ファイル (44 バイト, 無音)。追加 asset / Cache 設定不要。
  *
  * **perf optimization**: AudioContext は `useRef` でコンポーネントライフタイム中 1 つだけ
- * 保持し、active 変化では oscillator start/stop + ctx suspend/resume のみ切り替える
- * (新規生成 / close はしない)。これで TTS 再生のたびに OS audio session 切替コスト
- * (数十 ms) を発生させず、Chrome の同時 AudioContext 数上限 (6 個) にも抵触しない。
- *
- * 無音 mp3 asset を配信する代わりに WebAudio API を使うので、追加 asset / Cache 設定不要。
+ * 保持し、active 変化では oscillator start/stop + ctx suspend/resume のみ切り替える。
  */
 import { useEffect, useRef } from "react";
 import { bgAudioDebug } from "../lib/bgaudio-debug";
 import { devError } from "../lib/dev-log";
 
+/**
+ * 最小無音 WAV (1 サンプル, 44 バイト)
+ * Android Chrome の Media Notification を起動させるには、
+ * HTML audio 要素が実際に再生されている必要がある。
+ */
+const SILENT_AUDIO_URI =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
 export function useBackgroundAudio(active: boolean): void {
+  // Primary: HTML <audio> 要素 (Android 通知に必須)
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Fallback: WebAudio oscillator (HTML audio が使えない環境向け)
   const ctxRef = useRef<AudioContext | null>(null);
   const oscRef = useRef<OscillatorNode | null>(null);
 
+  // Primary: HTML <audio> 要素による無音再生
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    bgAudioDebug("audio-effect-fired", { active, hasAudio: !!audioRef.current });
+
+    if (!active) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        bgAudioDebug("audio-paused", {});
+      }
+      return;
+    }
+
+    // active=true: audio 要素を lazy 生成して再生
+    if (!audioRef.current) {
+      try {
+        const audio = new Audio(SILENT_AUDIO_URI);
+        audio.loop = true;
+        // volume は 1 のまま (muted 属性なし) — OS が「再生中」と認識するために必要
+        audioRef.current = audio;
+        bgAudioDebug("audio-created", {});
+      } catch (err) {
+        devError("[useBackgroundAudio] Audio element creation failed", err);
+        bgAudioDebug("audio-create-failed", { error: String(err) });
+        // フォールバック: WebAudio oscillator へ
+      }
+    }
+
+    if (audioRef.current) {
+      audioRef.current.play().catch((err) => {
+        // autoplay policy に引っかかった場合は silent fail
+        // (ユーザー操作なしの再生はブロックされることがある)
+        devError("[useBackgroundAudio] audio.play() failed", err);
+        bgAudioDebug("audio-play-failed", { error: String(err) });
+      });
+      bgAudioDebug("audio-play-called", {});
+    }
+  }, [active]);
+
+  // Fallback: WebAudio oscillator (HTML audio が再生できない環境向け)
   useEffect(() => {
     if (typeof window === "undefined") return;
     bgAudioDebug("effect-fired", { active, hasCtx: !!ctxRef.current, hasOsc: !!oscRef.current });
@@ -91,9 +148,15 @@ export function useBackgroundAudio(active: boolean): void {
     }
   }, [active]);
 
-  // unmount 時に確実に stop + close
+  // unmount 時に確実に stop + close (oscillator + audio 両方)
   useEffect(() => {
     return () => {
+      // audio 要素のクリーンアップ
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      // oscillator のクリーンアップ
       if (oscRef.current) {
         try {
           oscRef.current.stop();
