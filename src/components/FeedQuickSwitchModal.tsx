@@ -195,7 +195,9 @@ export default function FeedQuickSwitchModal({
           />
           {query && (
             <button
+              type="button"
               onClick={() => setQuery("")}
+              aria-label="検索をクリア"
               className="text-text-faint hover:text-text-muted transition-colors flex-shrink-0"
             >
               <svg

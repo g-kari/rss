@@ -170,11 +170,12 @@ export default function FeedAddModal({
             onClick={() => onCookieOpenChange(!cookieOpen)}
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
             aria-expanded={cookieOpen}
+            aria-controls="feed-add-cookie-section"
           >
             {cookieOpen ? "▾ Cookie を隠す" : "▸ Cookie を設定（任意）"}
           </button>
           {cookieOpen && (
-            <>
+            <div id="feed-add-cookie-section">
               <label htmlFor="feed-add-cookie" className="sr-only">
                 Cookie
               </label>
@@ -187,7 +188,7 @@ export default function FeedAddModal({
                 disabled={adding}
                 className="mt-1 w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
               />
-            </>
+            </div>
           )}
 
           {/* CSS セレクタ手動指定（RSS なし・LLM 推論失敗時のフォールバック） */}
@@ -196,13 +197,14 @@ export default function FeedAddModal({
             onClick={() => onCssSelectorOpenChange(!cssSelectorOpen)}
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
             aria-expanded={cssSelectorOpen}
+            aria-controls="feed-add-selector-section"
           >
             {cssSelectorOpen
               ? "▾ CSS セレクタを隠す"
               : "▸ CSS セレクタを指定（RSS のないサイト用）"}
           </button>
           {cssSelectorOpen && (
-            <div className="mt-1 space-y-1">
+            <div id="feed-add-selector-section" className="mt-1 space-y-1">
               <label htmlFor="feed-add-css-selector" className="sr-only">
                 CSS セレクタ
               </label>

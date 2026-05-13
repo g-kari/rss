@@ -27,6 +27,7 @@ export default function SessionExpiredModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="session-expired-title"
+      tabIndex={-1}
       onKeyDown={handleKeyDown}
     >
       <div className="w-[360px] rounded-xl bg-surface-elevated border border-border-default shadow-[0_8px_32px_rgba(0,0,0,0.25)] p-8 text-center">
