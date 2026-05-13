@@ -537,7 +537,7 @@ function ArticleList({
           role="feed"
           aria-label="記事"
           aria-busy={loading}
-          className="flex-1 min-h-0 overflow-y-auto"
+          className="flex-1 min-h-0 overflow-y-auto [overflow-anchor:none]"
         >
           <ArticleListEmptyState
             loading={loading}
