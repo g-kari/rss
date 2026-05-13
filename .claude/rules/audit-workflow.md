@@ -251,4 +251,45 @@ sonnet モデルで動く subagent (implementer 役) に **3 ファイル超え�
 - 各ファイルが **独立変更** (機械的 sweep / 同一 pattern 置換 N 件) で agent が 1 ファイルずつ完結可能 → touch 多くても context 圧迫しない
 - 既存 spec を一切読まない (typecheck + 既存 e2e のみで担保) refactor → context 節約
 
-主な使用箇所: TTS engine の rate/voice/volume 共通化を 1 subagent 委譲で 3 hooks 跨ぎ実行 → context overflow で中断、新 hook 作成のみで既存 hook 置換は次サイクル送りに Phase 分離
+主な使用箇所: TTS engine の rate/voice/volume 共通化を 1 subagent 委譲で 3 hooks 跨ぎ実行 → context overflow で中断、新 hook 作成のみで次サイクルに Phase 分離。次サイクルでは Phase B-1 (useTtsControls に setVoiceUriSilent variant 追加 + 15 ケース TDD spec) を 2 ファイル touch に絞って 1 implementer に委譲 → 1 commit で完了 (signature 確定済の trivial 置換に絞った成功事例)
+
+### 派生ケース: subagent 並列実行で別 implementer の touch ファイルに pre-commit auto-fix が偶発的影響を及ぼす罠
+
+3+ implementer を並列稼働させると、各 agent が `git commit` する瞬間に pre-commit hook (`oxlint --fix` / `oxfmt` / 他 lint auto-fix) が **agent 自身が触っていないファイル** を format 修正して commit に取り込むことがある。具体的には:
+
+```
+時刻 t0: implementer A が ファイル X を Edit (#783 useReadState 系 sweep)
+時刻 t1: implementer B が ファイル Y を Edit (#782 wasm 認証)
+時刻 t2: implementer B が `git commit` → pre-commit hook が ファイル X (A 編集中) を auto-fix で format
+        → ファイル X の format 修正分が B の commit に取り込まれる
+時刻 t3: implementer A が `git pull --rebase origin master`
+        → B が取り込んだ X の format 分と A の Edit が rebase で衝突 (or A が rebase 後 push)
+```
+
+実害は **commit boundary が混在** することと **rebase 解決の手間** + **bisect 時に「なぜこの commit にこのファイルの format 修正が入っているのか」が不可解になる** 点。
+
+```bash
+# アンチパターン例 (1 サイクル内で 6 commit のうち b7bcfb7d に意図しないファイルが含まれる):
+b7bcfb7d security(api/wasm,piper-voice): ...
+  touched: 4 ファイル (本来は 3 ファイル、useReadStateTags.ts は #783 implementer 編集中だった pre-commit auto-fix の影響)
+
+# 修正パターン: 並列稼働時の auto-fix 露出を抑える運用
+# A: 各 implementer に「auto-fix で意図しないファイルが含まれた場合は git restore して再 commit」と prompt 明記
+# B: pre-commit hook の auto-fix 対象を「staged file のみ」に限定 (.pre-commit-config.yaml で files: パターン制限)
+# C: 並列実行する implementer の touch 範囲を完全に分離 (異なるディレクトリ / 異なる関心事)
+```
+
+**How to apply**: 3+ implementer を並列委譲するときに以下を判定 (auto-fix の commit 取り込みは小さなノイズだが累積すると bisect / blame 困難になり commit semantics が壊れる):
+
+1. **touch 対象ディレクトリが重ならないか** を確認 (`src/lib/` と `src/hooks/` 分離 / `app/api/` と `src/components/` 分離 等)
+2. 重なる場合は **agent prompt で「commit 前に `git diff --stat` で touch ファイルが想定範囲内か確認、想定外ファイルが含まれていたら `git restore <file>` で revert してから再 commit」を明記**
+3. **完了報告の `touched: N files` を main thread で検証** — 想定より多ければ「何が含まれたか」を確認し、別 implementer の作業との重複 / pre-commit auto-fix 影響を切り分け
+4. **将来的には `.pre-commit-config.yaml` の auto-fix hook を `files: ^staged-only.*$` のように staged file のみに限定** (但し本プロジェクトの oxlint+oxfmt は repo-wide auto-fix がデフォルト挙動なので config 修正コストあり)
+
+**反例 (auto-fix 混入が許容されるケース)**:
+
+- 1 implementer のみ稼働 (並列なし) → auto-fix は単一 commit に閉じる、問題なし
+- 並列でも touch ディレクトリが完全分離 → 物理的に auto-fix が他 implementer に影響しない
+- format / lint の auto-fix が **そもそも全 implementer で同じ結果** になる (idempotent) → 取り込まれても害なし、ただし commit semantics は依然汚れる
+
+主な使用箇所: 1 サイクル内で 6 implementer 並列稼働中、#782 implementer の pre-commit hook が #783 implementer 編集中の `useReadStateTags.ts` を auto-fix で format → `b7bcfb7d` commit に意図しないファイル混入 (#783 implementer は rebase で吸収して進行継続したが commit boundary 汚染)
