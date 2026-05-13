@@ -13,6 +13,14 @@ import type { OgpData } from "../types";
 const OGP_CACHE_MAX_ENTRIES = 2000;
 
 /**
+ * リロード時に複数の useArticleContent インスタンスが同時に /api/ogp を叩く burst を防ぐ
+ * モジュールレベルの連番カウンター。hook インターフェースは変えずに stagger を実現する。
+ */
+let _ogpMountCounter = 0;
+const OGP_STAGGER_MS = 150;
+const OGP_STAGGER_WINDOW = 10; // 10 件ごとにカウンターを wrap する
+
+/**
  * `useArticleContent` フックの戻り値型。
  * 記事全文コンテンツのフェッチ状態・キャッシュ・OGP画像解決結果を保持する。
  */
@@ -42,6 +50,15 @@ export function useArticleContent(
   articleLink: string | undefined,
   articleOgImage: string | undefined | null,
 ): ArticleContentState {
+  // リロード時の /api/ogp burst を防ぐ stagger 遅延（ms）。
+  // モジュールレベルカウンターをフック初回レンダー時に 1 回だけ読んで ref に保持する。
+  // hook インターフェース（引数/返り値）は変えない。
+  const staggerDelayRef = useRef<number | null>(null);
+  if (staggerDelayRef.current === null) {
+    staggerDelayRef.current = (_ogpMountCounter % OGP_STAGGER_WINDOW) * OGP_STAGGER_MS;
+    _ogpMountCounter++;
+  }
+
   const cachedContent = useMemo(
     () => (articleId ? (contentLruCache.get(articleId) ?? null) : null),
     [articleId],
@@ -103,31 +120,38 @@ export function useArticleContent(
     // RSS から ogImage が来ていれば fetch を skip (cache 未登録 + article.ogImage あり)
     if (articleOgImage) return;
     const controller = new AbortController();
-    apiFetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<OgpData>;
-      })
-      .then(({ image }) => {
-        if (!image) return;
-        setResolvedOgImage(image);
-        // useOgpCache と同じ localStorage に保存して、直接開いた記事でも
-        // 次回以降 /api/ogp を再フェッチしないようにする。
-        // 上限超過時は古いキーから切り詰める（useOgpCache と同じ挙動）。
-        const current = loadJson<Record<string, string>>(STORAGE_KEYS.OGP_CACHE, {});
-        const next = { ...current, [articleLink]: image };
-        const keys = Object.keys(next);
-        saveJson(
-          STORAGE_KEYS.OGP_CACHE,
-          keys.length > OGP_CACHE_MAX_ENTRIES
-            ? Object.fromEntries(keys.slice(-OGP_CACHE_MAX_ENTRIES).map((k) => [k, next[k]]))
-            : next,
-        );
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) return;
-      });
-    return () => controller.abort();
+    // リロード時の /api/ogp burst を防ぐため、マウント順に応じた遅延を挟む（#762）
+    const delay = staggerDelayRef.current ?? 0;
+    const timerId = setTimeout(() => {
+      apiFetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json() as Promise<OgpData>;
+        })
+        .then(({ image }) => {
+          if (!image) return;
+          setResolvedOgImage(image);
+          // useOgpCache と同じ localStorage に保存して、直接開いた記事でも
+          // 次回以降 /api/ogp を再フェッチしないようにする。
+          // 上限超過時は古いキーから切り詰める（useOgpCache と同じ挙動）。
+          const current = loadJson<Record<string, string>>(STORAGE_KEYS.OGP_CACHE, {});
+          const next = { ...current, [articleLink]: image };
+          const keys = Object.keys(next);
+          saveJson(
+            STORAGE_KEYS.OGP_CACHE,
+            keys.length > OGP_CACHE_MAX_ENTRIES
+              ? Object.fromEntries(keys.slice(-OGP_CACHE_MAX_ENTRIES).map((k) => [k, next[k]]))
+              : next,
+          );
+        })
+        .catch((err: unknown) => {
+          if (isAbortError(err)) return;
+        });
+    }, delay);
+    return () => {
+      clearTimeout(timerId);
+      controller.abort();
+    };
   }, [articleId, articleLink, articleOgImage]);
 
   const fetchFullContent = useCallback(
