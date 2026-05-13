@@ -12,6 +12,7 @@ import type { Article, Feed, UserProfile } from "../types";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { apiFetchJson } from "../lib/api-fetch";
 import { compareByDateDesc } from "../lib/article-utils";
+import { pMapSettled } from "../lib/concurrency";
 import { devError } from "../lib/dev-log";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -230,12 +231,19 @@ export function useArticleData(
       targets.map((f) => [f.id, (loadedFeedPagesRef.current.get(f.id) ?? 1) + 1]),
     );
     for (const f of targets) loadingFeedIdsRef.current.add(f.id);
-    const results = await Promise.allSettled(
-      targets.map(async (f) => {
+    // #778: pMapSettled で concurrency=4 に制限。
+    // 旧 Promise.allSettled は targets.length 並列 (20 feeds 購読時に 20 並列発射) で
+    // ブラウザ 6 並列上限超過分が queue 滞留 + サーバー側 KV/R2 競合を起こしていた。
+    // pMapSettled は failure を rejected 結果に収集するため、既存の Promise.allSettled
+    // 互換セマンティクス (個別 failure を全体 fail にしない) を維持する。
+    const results = await pMapSettled(
+      targets,
+      async (f) => {
         const nextPage = nextPages.get(f.id) ?? 2;
         const data = await apiFetchJson<Article[]>(`/api/articles?feed=${f.id}&page=${nextPage}`);
         return { feedId: f.id, nextPage, data };
-      }),
+      },
+      4,
     );
     const succeeded = results.filter(
       (r): r is PromiseFulfilledResult<FeedPageResult> => r.status === "fulfilled",
