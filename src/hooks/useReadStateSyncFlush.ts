@@ -103,8 +103,10 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
       restorePending(pendingRefs, snapshot);
       setHasPendingChanges(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- pendingRefs は安定参照
-  }, [applyServerState, globalFilterRef, stateRef, userRef]);
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // pendingRefs / globalFilterRef / stateRef / userRef はいずれも ref (identity 不変)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyServerState]);
 
   const scheduleSyncToServer = useCallback(() => {
     isDirtyRef.current = true;
@@ -130,7 +132,9 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
       isDirtyRef.current = false;
       void flushToServer();
     }, 0);
-  }, [flushToServer, userRef]);
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flushToServer]);
 
   // ログイン後にサーバーの状態をマージ + オーバーフローリカバリ
   const userSub = user?.sub;

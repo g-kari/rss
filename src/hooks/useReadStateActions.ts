@@ -86,7 +86,9 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       pendingRemovedRef.current.read.delete(articleId);
       scheduleSyncRef.current();
     },
-    [setReadIds, pendingAddedRef, pendingRemovedRef, scheduleSyncRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setReadIds],
   );
 
   const markBulkRead = useCallback(
@@ -105,7 +107,9 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       }
       scheduleSyncRef.current();
     },
-    [stateRef, setReadIds, pendingAddedRef, pendingRemovedRef, scheduleSyncRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setReadIds],
   );
 
   const markAllRead = useCallback(
@@ -200,7 +204,9 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       });
       scheduleSyncRef.current();
     },
-    [setSnoozedUntil, scheduleSyncRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setSnoozedUntil],
   );
 
   const setNote = useCallback(
@@ -215,7 +221,9 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       });
       scheduleSyncRef.current();
     },
-    [setNotesState, scheduleSyncRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setNotesState],
   );
 
   const deleteNote = useCallback(
@@ -229,7 +237,9 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       });
       scheduleSyncRef.current();
     },
-    [setNotesState, scheduleSyncRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setNotesState],
   );
 
   const setGlobalFilter = useCallback(
@@ -239,7 +249,9 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       globalFilterDirtyRef.current = true;
       scheduleSyncRef.current();
     },
-    [setGlobalFilterState, globalFilterDirtyRef, scheduleSyncRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setGlobalFilterState],
   );
 
   const setTtlDays = useCallback(
@@ -248,7 +260,9 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       setTtlDaysState(days);
       scheduleSyncRef.current();
     },
-    [setTtlDaysState, scheduleSyncRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setTtlDaysState],
   );
 
   return {
