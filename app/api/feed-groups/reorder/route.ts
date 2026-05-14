@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readFeedGroups, writeFeedGroups } from "@/lib/feed-groups";
+import { sortByOrder } from "@/lib/sort-utils";
 
 export async function POST(request: NextRequest) {
   return withJsonBody<{ orderedIds?: unknown }>(request, async ({ body, session, env }) => {
@@ -36,6 +37,6 @@ export async function POST(request: NextRequest) {
     }
 
     await writeFeedGroups(env.RSS_DATA, session.userId, groups);
-    return NextResponse.json(groups.sort((a, b) => a.order - b.order));
+    return NextResponse.json(sortByOrder(groups));
   });
 }

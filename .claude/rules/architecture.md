@@ -231,6 +231,10 @@ src/
     useSpeechSynthesis.ts    # 記事読み上げ（Web Speech API: speak / pause / resume / stop）
     usePiperTts.ts           # 記事読み上げ（Piper wasm engine: @mintplex-labs/piper-tts-web — predict → Audio 再生、TtsAdapter 実装、`enabled` option でリソース節約）
     useTtsEngineSetting.ts   # TTS engine 切替設定（"web-speech" / "piper"）の localStorage 永続化 + storage event 別タブ同期
+    useTtsControls.ts        # TTS engine 共通 rate / voiceUri / volume 制御 hook（useSpeechSynthesis / usePiperTts の重複コードを集約、setVoiceUriSilent variant で error handler 自動 reset の onChange skip 経路を提供、#674 Phase 2b）
+    useBackgroundAudio.ts    # スマホでの TTS バックグラウンド継続用 hook（Web Audio 無音 oscillator + HTML `<audio>` element の 2 段構え、Android Chrome 通知欄表示対応、#745 Phase A + Phase D）
+    useMediaSession.ts       # MediaSession API 配線 hook（記事タイトル + play/pause/stop アクションを iOS Safari ロック画面 / Android 通知センターに表示、TTS adapter に bind、#745 Phase C）
+    useImageProxyFallback.ts # 画像 proxy URL → 原 URL の fallback chain hook（attempt 0: proxy → 1: 原 URL → 2: 諦め、`<FallbackImage>` で wrap して consumer 側は url prop だけ渡す設計、#788 Phase 1）
     useContentLinkPreviews.ts # 記事本文内リンクのプレビュー取得
     useEngagement.ts         # エンゲージメント記録 (/api/engagement)
     useRecommendations.ts    # フィード推薦 (/api/recommendations) fetch
@@ -339,6 +343,7 @@ src/
     auto-read.ts             # オートモードの状態遷移判定純粋関数（isAutoReadFinished / shouldTriggerAutoFetch / shouldStartAutoSpeak）
     gallery-autoscroll.ts    # ギャラリー自動スクロール純粋関数（5 段階速度: off/slow/medium/fast/slideshow、computeContinuousScrollDelta / computeSlideshowJump / parseGalleryAutoScrollSpeed、#690）
     auto-read-debug.ts       # オートモード診断ログ用 localStorage gate ヘルパー（rss-debug-autoread キーで autoReadDebug を有効化、#678）
+    bgaudio-debug.ts         # useBackgroundAudio 診断ログ用 localStorage gate ヘルパー（rss-debug-bgaudio キーで bgaudioDebug を有効化、#745 Phase C）
     auto-read-persist.ts     # オートモード ON 状態を localStorage に保存・1 時間 TTL で復元する純粋関数（shouldRestore / parsePersisted、#679）
     scroll-direction.ts      # スクロール方向判定純粋関数（computeScrollDirection / computeHeaderVisibility、#677 ArticleHeader sticky toggle 用）
     inline-nav.ts            # インラインナビ領域クリック位置判定純粋関数（whichSideClicked）
@@ -351,6 +356,7 @@ src/
     modal-focus.ts           # Modal / Dialog 系コンポーネントで共有する `FOCUSABLE_SELECTOR` 定数（Tab フォーカス可能要素 selector — Modal.tsx / ConfirmModal.tsx / FeedQuickSwitchModal.tsx の重複定義 drift を解消）
     ogp.ts                   # OGP メタデータ取得ロジック
     ogp-cache-ttl.ts         # OGP cache TTL 算出純粋関数（computeOgpCacheTtl — Twitter fallback 経路の TTL を 1 日に短縮して poisoning 影響範囲を限定、#706）
+    binary-proxy-handler.ts  # image / video / 将来追加 binary 型のプロキシ共通 handler（handleBinaryProxy — auth ガード → URL 検証 → cache lookup → upstream fetch → mime 検証 → cachePutAsync を 1 箇所集約、image-proxy / video-proxy route から thin wrapper で呼ぶ、#757）
     booth-fallback.ts        # x.com / twitter.com 系フィードで summary 内の booth.pm URL を thumbnail fallback として抽出する純粋関数（extractBoothFallbackUrl — #750 Phase 1）
     opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
     recommendation.ts        # フィード推薦ロジック
@@ -423,6 +429,8 @@ src/
     dev-log.ts               # 開発環境専用 `devError` ラッパー
     dev-auth-bypass.ts       # dev / e2e 専用認証バイパス（getDevBypassUserId / buildDevBypassProfile — `DEV_AUTH_BYPASS_USER_ID` + `NODE_ENV !== "production"` 二重ガード）
     stats-helpers.ts         # 統計計算ヘルパー（`toDateStr` / `buildDayList`）
+    unread-stats-merge.ts    # 未読統計 Map の structural equality 判定純粋関数（equalUnreadByFeed / equalLastPublishedByFeed — `useArticleUnreadStats` の Map 内容比較で reference を安定化、不要 re-render 抑制、#758）
+    x-com-fallback.ts        # x.com / twitter.com の TTS / AI fallback 判定純粋関数（isTargetHost / isErrorContent / needsFallback — JS 無効エラー HTML を検出して別 source に切替、#718）
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
 ```

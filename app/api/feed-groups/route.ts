@@ -8,13 +8,13 @@ import {
   FEED_GROUP_NAME_MAX_LENGTH,
 } from "@/lib/feed-groups";
 import { parseName } from "@/lib/validation";
+import { sortByOrder } from "@/lib/sort-utils";
 import type { FeedGroup } from "@/types";
 
 export async function GET(request: NextRequest) {
   return withSession(request, async ({ session, env }) => {
     const groups = await readFeedGroups(env.RSS_DATA, session.userId);
-    groups.sort((a, b) => a.order - b.order);
-    return NextResponse.json(groups);
+    return NextResponse.json(sortByOrder(groups));
   });
 }
 

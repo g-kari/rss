@@ -34,11 +34,6 @@ export function isAutoReadDebugEnabled(): boolean {
   return cachedEnabled;
 }
 
-/** テスト用 / hot reload 用のキャッシュリセット (通常は呼ばない)。 */
-export function resetAutoReadDebugCache(): void {
-  cachedEnabled = null;
-}
-
 /**
  * 診断ログを出力する。`isAutoReadDebugEnabled()` が true のときだけ console.info に
  * `[AutoRead]` prefix 付きでデータを出す。

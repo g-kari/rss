@@ -8,13 +8,13 @@ import {
   COLLECTION_NAME_MAX_LENGTH,
 } from "@/lib/collections";
 import { parseName } from "@/lib/validation";
+import { sortByOrder } from "@/lib/sort-utils";
 import type { Collection } from "@/types";
 
 export async function GET(request: NextRequest) {
   return withSession(request, async ({ session, env }) => {
     const collections = await readCollections(env.RSS_DATA, session.userId);
-    collections.sort((a, b) => a.order - b.order);
-    return NextResponse.json(collections);
+    return NextResponse.json(sortByOrder(collections));
   });
 }
 

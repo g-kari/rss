@@ -36,11 +36,6 @@ export function isBgAudioDebugEnabled(): boolean {
   return cachedEnabled;
 }
 
-/** テスト用 / hot reload 用のキャッシュリセット (通常は呼ばない)。 */
-export function resetBgAudioDebugCache(): void {
-  cachedEnabled = null;
-}
-
 /**
  * 診断ログを出力する。`isBgAudioDebugEnabled()` が true のときだけ console.info に
  * `[BgAudio]` prefix 付きでデータを出す。

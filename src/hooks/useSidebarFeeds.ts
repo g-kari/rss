@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
 import type { Feed, FeedGroup, FeedView } from "../types";
 import { useUnreadStats } from "../contexts/UnreadStatsContext";
+import { sortByOrder } from "../lib/sort-utils";
 
 /**
  * #747: feeds の構造的内容 (sidebar layout に影響する field) を 1 行にシリアライズする。
@@ -113,10 +114,10 @@ export function useSidebarFeeds({
         notGrouped.push(feed);
       }
     }
-    const grouped = (feedGroups ?? [])
-      .slice()
-      .sort((a, b) => a.order - b.order)
-      .map((g) => ({ group: g, feeds: byGroup.get(g.id) ?? [] }));
+    const grouped = sortByOrder(feedGroups ?? []).map((g) => ({
+      group: g,
+      feeds: byGroup.get(g.id) ?? [],
+    }));
 
     const catMap = new Map<string, Feed[]>();
     const uncategorized: Feed[] = [];

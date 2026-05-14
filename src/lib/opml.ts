@@ -1,6 +1,7 @@
 import { escapeHtml } from "@/lib/html";
 import { toArray } from "@/lib/xml-parser";
 import { stripControlChars } from "@/lib/validation";
+import { sortByOrder } from "@/lib/sort-utils";
 import type { Feed, FeedGroup } from "@/types";
 
 const FEED_GROUP_NAME_MAX_LENGTH = 50;
@@ -43,7 +44,7 @@ function sanitizeFolderName(name: string): string {
 }
 
 export function buildOpml(feeds: Feed[], groups: FeedGroup[]): string {
-  const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
+  const sortedGroups = sortByOrder(groups);
   const groupMap = new Map<string, Feed[]>();
   const ungrouped: Feed[] = [];
   const groupIds = new Set(sortedGroups.map((g) => g.id));
