@@ -344,14 +344,27 @@ git push origin master
 - 変更が **大規模で main opus 自身の context も圧迫する** (200+ 行 diff の Read + 検証) → 次サイクル新 implementer 委譲
 - 検証で **規範違反 / 想定外変更** が発覚 → restore + agent prompt を refine して再委譲
 
-**並列実行時の中断パターン (本プロジェクト実測)**:
+**並列実行時の中断パターン (本プロジェクト実測、複数サイクル累積)**:
 
 - 1 並列: thrash ほぼなし
 - 2 並列: thrash 5% 程度
-- 3 並列 (touch 1 ファイル/各): thrash 10% 程度
-- 3 並列 (touch 3+ ファイル/1 体含む): **thrash 30-60%** (本サイクル実測: 3 並列で 2 体 thrash)
+- 3 並列 (touch 1 ファイル/各、signature 確定済 trivial 置換): thrash 10-20% 程度
+- 3 並列 (touch 2-3 ファイル含む、TDD spec 新規含む): **thrash 30-60%**
 - 6 並列 (1 サイクル全期間): commit 全件成功するが pre-commit auto-fix 衝突発生 (前派生ケース参照)
 
 main opus 側 context も並列体数に比例して圧迫されるため、**touch 多ファイル / 大規模 refactor は 1-2 並列が安全**。
 
-主な使用箇所: useFeeds/useFeedData/useFocusMode の useSyncedRef deps 8 箇所 sweep が implementer thrash で commit 直前に中断 → main opus が `git diff` 検証 + typecheck + 自前 commit `3d96a84a` で吸収。同サイクル B-2 useSpeechSynthesis は完全 revert で次サイクル送り判定
+**Phase 分離の段階別実証パターン**:
+
+複数 Phase に分解した refactor / 新機能 Issue で、各 Phase の touch / 規模を実測することで「**どの粒度なら subagent 委譲で完結するか**」の経験則が累積する。本プロジェクト実測:
+
+- **Phase α (signature / 抽象型定義 / 純粋関数 + spec)**: 1-2 ファイル touch、subagent 委譲で完結率 90%+
+- **Phase β (canonical 流用の既存 hook 置換)**: 1 ファイル touch、subagent 委譲で完結率 80%+ (1 体目は thrash 経験、2 体目は前 commit を canonical 参考に成功)
+- **Phase γ (component 統合 / UI 適用)**: 3-5 ファイル touch、subagent 委譲で完結率 50% 程度、main opus 直接実行が無難
+- **Phase δ (全 caller 一括展開)**: 5+ ファイル touch、subagent 委譲不可、Phase 更分割推奨
+
+主な使用箇所:
+
+- useFeeds/useFeedData/useFocusMode の useSyncedRef deps 8 箇所 sweep が implementer thrash で commit 直前に中断 → main opus が `git diff` 検証 + typecheck + 自前 commit `3d96a84a` で吸収
+- 同サイクル Phase B-2 useSpeechSynthesis は完全 revert で次サイクル送り判定 → 次サイクルで main opus が Phase B-3 commit `1bcc3067` を canonical 参考にして直接 `replace_symbol_body` で実装 → 1 commit `ec315819` で完結 (Phase β 成功事例)
+- #788 Phase 1 (hook + component + spec) を 1 subagent に「+ ImageGallery 適用」まで委譲 → thrash で適用部分 revert、新規 3 ファイルは untracked で残置 → main opus が検証 + commit `dfe05271`、ImageGallery 適用は Phase 2 として次サイクル分離 (Phase α 成功 / Phase γ 失敗 の混合委譲パターン)
