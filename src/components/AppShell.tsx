@@ -197,7 +197,9 @@ export default function AppShell({
       speechSynAdapterRef.current.stop();
     }
     prevEngineRef.current = engine;
-  }, [engine, piperAdapterRef, speechSynAdapterRef]);
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine]);
 
   // #745 Phase B: TTS 再生中 (or 一時停止中) の間、WebAudio の無音 oscillator を継続。
   // これでスマホブラウザは「メディア再生中」と認識し、speechSynthesis のバックグラウンド休眠を回避できる。

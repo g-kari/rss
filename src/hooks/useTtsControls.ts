@@ -77,7 +77,9 @@ export function useTtsControls<R extends number>(
     setRate(next);
     onRateChangeRef.current?.();
     return next;
-  }, [rates, rateRef, onRateChangeRef]);
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rates]);
 
   const setVoiceUri = useCallback(
     (uri: string | null) => {
@@ -86,7 +88,9 @@ export function useTtsControls<R extends number>(
       setVoiceUriState(uri);
       onVoiceChangeRef.current?.();
     },
-    [voiceUriRef, onVoiceChangeRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const setVoiceUriSilent = useCallback(
@@ -96,7 +100,9 @@ export function useTtsControls<R extends number>(
       setVoiceUriState(uri);
       // onVoiceChange は呼ばない (silent)
     },
-    [voiceUriRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const setVolume = useCallback(
@@ -107,7 +113,9 @@ export function useTtsControls<R extends number>(
       setVolumeState(clamped);
       onVolumeChangeRef.current?.();
     },
-    [volumeRef, onVolumeChangeRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   return {

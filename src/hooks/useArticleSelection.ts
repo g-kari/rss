@@ -55,7 +55,8 @@ export function useArticleSelection({
         setMobilePane("view");
       }
     },
-    [listFocusModeRef, setSelectedArticle, markRead, addToHistory, setMobilePane, isDesktop],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    [setSelectedArticle, markRead, addToHistory, setMobilePane, isDesktop],
   );
 
   // listFocusMode が解除されたら overlay も閉じる

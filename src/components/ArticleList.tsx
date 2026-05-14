@@ -309,7 +309,9 @@ function ArticleList({
       onMarkRead(id);
       onGalleryAutoReadRef.current?.(id);
     },
-    [onMarkRead, onGalleryAutoReadRef],
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [onMarkRead],
   );
   useGalleryAutoRead({
     scrollElement: layout === "gallery" ? scrollEl : null,

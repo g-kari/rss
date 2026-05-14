@@ -33,5 +33,6 @@ export function useEngagementToggles(
       handleToggleReadingList: makeHandler(toggleReadingList, "reading_list"),
       handleToggleLike: makeHandler(toggleLike, "like"),
     };
-  }, [articlesRef, toggleBookmark, toggleReadingList, toggleLike, recordEngagement]);
+    // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
+  }, [toggleBookmark, toggleReadingList, toggleLike, recordEngagement]);
 }
