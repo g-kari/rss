@@ -156,6 +156,7 @@ export function useArticleData(
 
   const pollNowRef = useSyncedRef(pollNow);
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   useEffect(() => {
     if (!userId) return;
     let timer: ReturnType<typeof setInterval>;
@@ -173,8 +174,10 @@ export function useArticleData(
       clearInterval(timer);
       document.removeEventListener("visibilitychange", startTimer);
     };
-  }, [userId, isOnlineRef, pollNowRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   useEffect(() => {
     if (!userId) return;
     if (!isOnline) {
@@ -185,7 +188,8 @@ export function useArticleData(
     prevIsOnlineRef.current = true;
     if (!wasOffline) return;
     void pollNowRef.current();
-  }, [userId, isOnline, pollNowRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, isOnline]);
 
   const removeArticlesByFeed = useCallback((feedId: string) => {
     setArticles((prev) => prev.filter((a) => a.feedHash !== feedId));

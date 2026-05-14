@@ -57,6 +57,7 @@ export function useArticleViewProgress(deps: ArticleViewProgressDeps): ArticleVi
   });
 
   // スクロールイベントベースの進捗更新
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const handleScroll = useCallback(
     (e: UIEvent<HTMLElement>) => {
       const el = e.currentTarget;
@@ -76,7 +77,8 @@ export function useArticleViewProgress(deps: ArticleViewProgressDeps): ArticleVi
         onAutoMarkReadRef.current(currentArticleId);
       }
     },
-    [articleIdRef, autoReadEnabledRef, autoReadThresholdRef, onAutoMarkReadRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   return { progressBarRef, handleScroll };

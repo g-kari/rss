@@ -103,14 +103,17 @@ export function useArticleFilters({
   const resetPageRef = useSyncedRef(resetPage);
   const feedViewRef = useSyncedRef(activeFeedView);
 
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   useEffect(() => {
     resetPageRef.current();
     setRawQuery("");
     setAuthorFilter(null);
     setCategoryFilter(null);
-  }, [feedId, selectedGroupId, resetPageRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedId, selectedGroupId]);
 
   // activeFeedView 切り替え時に各フィルターを localStorage から再ロード
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   useEffect(() => {
     setBoolFilters(loadBoolFilters(activeFeedView));
     setDateRange(
@@ -128,19 +131,25 @@ export function useArticleFilters({
       ),
     );
     resetPageRef.current();
-  }, [activeFeedView, resetPageRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFeedView]);
 
   // setBoolFilters は useState setter（常に安定）、resetPageRef は useSyncedRef（常に安定）。
   // ref を依存配列に含めることで eslint-disable なしに同等の効果を得る。
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const toggleUnreadOnly = useCallback(
     () => toggleBoolFilter("unreadOnly", setBoolFilters, resetPageRef.current, feedViewRef.current),
-    [resetPageRef, feedViewRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const toggleBookmarkOnly = useCallback(
     () =>
       toggleBoolFilter("bookmarkOnly", setBoolFilters, resetPageRef.current, feedViewRef.current),
-    [resetPageRef, feedViewRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const toggleReadingListOnly = useCallback(
     () =>
       toggleBoolFilter(
@@ -149,42 +158,56 @@ export function useArticleFilters({
         resetPageRef.current,
         feedViewRef.current,
       ),
-    [resetPageRef, feedViewRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const toggleLikeOnly = useCallback(
     () => toggleBoolFilter("likeOnly", setBoolFilters, resetPageRef.current, feedViewRef.current),
-    [resetPageRef, feedViewRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const toggleNoteOnly = useCallback(
     () => toggleBoolFilter("noteOnly", setBoolFilters, resetPageRef.current, feedViewRef.current),
-    [resetPageRef, feedViewRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const toggleDigestMode = useCallback(
     () => toggleBoolFilter("digestMode", setBoolFilters, resetPageRef.current, feedViewRef.current),
-    [resetPageRef, feedViewRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const updateQuery = useCallback(
     (q: string) => {
       setRawQuery(q);
       resetPageRef.current();
     },
-    [resetPageRef],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
   // dateRangeRef・readingTimeRangeRef・resetPageRef・feedViewRef はいずれも useSyncedRef（常に安定）
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const cycleDateRange = useCallback((): DateRange => {
     const next = cycleValue(DATE_RANGE_CYCLE, dateRangeRef.current);
     storageSet(getFeedViewStorageKey(STORAGE_KEYS.DATE_RANGE, feedViewRef.current), next);
     setDateRange(next);
     resetPageRef.current();
     return next;
-  }, [dateRangeRef, resetPageRef, feedViewRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const cycleReadingTimeRange = useCallback((): ReadingTimeRange => {
     const next = cycleValue(READING_TIME_RANGE_CYCLE, readingTimeRangeRef.current);
     storageSet(getFeedViewStorageKey(STORAGE_KEYS.READING_TIME_RANGE, feedViewRef.current), next);
     setReadingTimeRange(next);
     resetPageRef.current();
     return next;
-  }, [readingTimeRangeRef, resetPageRef, feedViewRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
   const resetAllFilters = useCallback(() => {
     const view = feedViewRef.current;
     const emptyBools = Object.fromEntries(
@@ -202,7 +225,8 @@ export function useArticleFilters({
     setAuthorFilter(null);
     setCategoryFilter(null);
     resetPageRef.current();
-  }, [feedViewRef, resetPageRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     ...boolFilters,
