@@ -757,7 +757,10 @@ ls $(echo "$paths" | sed 's/paths: //; s/"//g; s/,/ /g' | tr ' ' '\n' | head -3)
 - 1 rule で複数 path 群に跨る場合は **広い superset** (`src/**/*.ts`) で OK (subset 列挙は冗長)
 - 「全 code edit でロードしたい」(coding-conventions 等の core rule) は `src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts` のような広いセットで意図通り
 
-主な使用箇所: #728 案 B 部分達成サイクル — 5 件精緻化 (build-check.md dead path 削除 + react-patterns / browser-platform / design-system の subset 重複削除 + quality-checks の グローバル限定) を 1 commit で完結
+主な使用箇所:
+
+- #728 案 B 部分達成サイクル — 5 件精緻化 (build-check.md dead path 削除 + react-patterns / browser-platform / design-system の subset 重複削除 + quality-checks の グローバル限定) を 1 commit で完結
+- 2026-05-14 サイクル — `helper-drift.md` の `app/api/**/*.tsx` (実在 0 件の dead path) 削除 + `nextjs-server-patterns.md` の `src/lib/*.ts` を `src/lib/**/*.ts` に統一 (subdir 追加時の壊れにくさ向上) を 1 commit で完結。`src/cron/**/*.ts` が `src/**/*.ts` に含まれる subset 重複は **意図伝達価値** (core rule は cron も対象を明示) のため保持判断
 
 ## 13. Cloudflare CI/CD の deploy fail と production outage を区別して revert vs fix-forward を判断する
 

@@ -1,6 +1,6 @@
 ---
 description: Next.js App Router / Route Handler / 認証ヘルパー / R2 / RSS パーサー / Cron のサーバーサイドパターン
-paths: "app/**/*.ts,app/**/*.tsx,src/lib/*.ts,src/cron/**/*.ts"
+paths: "app/**/*.ts,app/**/*.tsx,src/lib/**/*.ts,src/cron/**/*.ts"
 ---
 
 # Next.js サーバーサイドパターン

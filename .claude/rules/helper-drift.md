@@ -1,5 +1,5 @@
 ---
-paths: "src/lib/**/*.ts,src/hooks/**/*.ts,app/api/**/*.ts,app/api/**/*.tsx"
+paths: "src/lib/**/*.ts,src/hooks/**/*.ts,app/api/**/*.ts"
 ---
 
 # Helper drift 防止と既存依存の流用判断
