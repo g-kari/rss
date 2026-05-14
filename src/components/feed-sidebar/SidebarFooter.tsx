@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { UserProfile } from "../../types";
-import { buildImageProxyUrl } from "../../lib/image-proxy-url";
+import { FallbackImage } from "../FallbackImage";
 import FooterIconButton from "./FooterIconButton";
 import { useToast } from "../../contexts/ToastContext";
 
@@ -85,11 +85,7 @@ export default function SidebarFooter({
   return (
     <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-1">
       {user.picture ? (
-        <img
-          src={buildImageProxyUrl(user.picture)}
-          alt=""
-          className="w-5 h-5 rounded-full flex-shrink-0"
-        />
+        <FallbackImage url={user.picture} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
       ) : (
         <div className="w-5 h-5 rounded-full bg-surface-subtle flex-shrink-0" />
       )}
