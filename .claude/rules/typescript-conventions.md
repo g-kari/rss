@@ -25,5 +25,5 @@ paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
 ## 関連参照
 
 - 早期 return パスを関数/コンポーネントに切り出すと TypeScript narrowing が失われる対処 → `react-patterns.md`
-- discriminated union 戻り値で `!` (non-null assertion) を消す pattern → `coding-conventions.md` (`assertFeedSubscribed` 派生ケース)
+- discriminated union 戻り値で `!` (non-null assertion) を消す pattern → `react-patterns.md` (「早期 return をコンポーネント / 関数に切り出すと TypeScript narrowing が失われる」の派生ケース「戻り値型を discriminated union にすれば呼び出し元で narrowing が効く」)
 - 同名 enum / type の重複は canonical の `type X = Y` alias に統合 → `helper-drift.md` (`AiErrorType = HttpErrorType` 派生ケース、#733 Step 1 で分割)

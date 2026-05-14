@@ -378,6 +378,7 @@ grep -rn "react-patterns.md" .claude/rules/ --include="*.md" \
 
 - `react-effect-patterns.md` 抽出時 — `coding-conventions.md` から 4 箇所 redirect (`ResizeObserver` / `AbortController` / `モード OFF` / `ブラウザ API 遅延通知`) を grep 検出して同サイクルで全て新ファイル名 `react-effect-patterns.md` に更新。`useEffect 依存キーの slice()` の redirect も同 commit で更新すべきだったが grep 漏れで翌サイクル訂正 (= **教訓: `grep -rn "<抽出元ファイル名>" .claude/rules/` を必ず実行して、抽出対象セクション名の hit を全件確認、見落とすと「broken redirect」と誤認して別 Issue 化する罠**)
 - `react-state-ref.md` 抽出時 — `coding-conventions.md` から `## React state / ref / useEffect パターン` redirect を `react-state-ref.md` + `react-effect-patterns.md` 併記に更新 (state-ref と effect で本体が 2 ファイルに分かれたため両方リンク)。同サイクルで前述の grep 漏れ訂正も吸収
+- 2026-05-14 サイクル — `typescript-conventions.md:28` の redirect が `coding-conventions.md` (`assertFeedSubscribed` 派生ケース) を指していたが、実体は `react-patterns.md` § 「早期 return をコンポーネント / 関数に切り出すと TypeScript narrowing が失われる」の派生ケースに移動済と判明 → redirect を `react-patterns.md` に更新。全 rule redirect の target file 実在 sweep は OK (broken file link 0 件)、section anchor drift sweep で 1 件発見
 
 ### 派生ケース: 「N ファイル mechanical refactor」は wrapper adapter で callsite 不変を保ち scope 圧縮する
 
