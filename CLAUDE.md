@@ -30,7 +30,7 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 
 ### URL が貼られた場合
 
-チャットに URL (http:// / https://) が貼られたときは **Cloudflare Markdown MCP** (`mcp__cloudflare__markdown_from_url`) を使って Markdown に変換する。
+チャットに URL (http:// / https://) が貼られたときは **Cloudflare Markdown MCP** (`mcp__cloudflare-markdown__convert_url_to_markdown`) を使って Markdown に変換する。
 ツールが利用できない場合は `WebFetch` でフォールバックする。
 
 ## スタック
