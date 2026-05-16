@@ -45,10 +45,9 @@ interface ServerSessionData {
   userId: string;
   refreshToken: string;
   expiresAt: number; // Unix 秒
-  // TODO: DBSC バインディング — デバイス鍵が登録された際にセットする
   // DBSC（Device Bound Session Credentials）でセッションをデバイスの TPM に紐付けるための識別子。
-  // ブラウザが /api/auth/dbsc/register で公開鍵を登録した後、このフィールドに sessionId を保存する。
-  // トークンリフレッシュ時にこのフィールドが存在する場合は DBSC チャレンジを要求すること。
+  // ブラウザが /api/auth/dbsc/register で公開鍵を登録した後、attachDbscSession() で sessionId を保存する。
+  // トークンリフレッシュ時にこのフィールドが存在する場合は DBSC チャレンジを要求する。
   // @see https://wicg.github.io/dbsc/
   dbscSessionId?: string;
 }
