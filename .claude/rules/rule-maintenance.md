@@ -581,6 +581,48 @@ grep -nE "^\.claude/skills" .gitignore
 
 主な使用箇所: 2026-05-12 サイクル — 9 件 open Issue 全て判断仰ぎ要 (#714/#755/#756/#757/#758 設計判断 + #733/#728 close 提案 + #750/#753 実装計画) → master commit 0 + judgment コメント 9 件投稿で完結、retrospective-codify で本派生ケースを規範化
 
+### 派生ケース: 5+ サイクル連続 0 changes + `/loop` なし直接送信 = 対話打開シグナル → AskUserQuestion で方向確認
+
+「全 Issue 判断仰ぎ要」サイクルが 5 サイクル以上連続で 0 changes 状態を維持した後、ユーザーが **`/loop` プレフィックスなしで同じ指示文を直接送信** してきたら、これは「ScheduleWakeup 待機ではなく対話で打開して」シグナルと解釈する。AI 側で AskUserQuestion を使って **打開策の選択肢を提示** + ユーザー判断を仰ぐのが適切。
+
+```
+パターン: 長期滞留 + 対話シグナル検出フロー
+  1. Step 0 sweep で「N サイクル連続変化なし」を観測
+  2. ユーザー指示の冒頭が `/loop` でなく素の指示文 (= ScheduleWakeup 経由でなく手動再送) と判定
+  3. 過去サイクルで試した actionable 探索 (sweep 観点) を整理
+  4. 滞留中 Issue から「AI 自走 5 条件全充足だが needs-user-decision 付与済」を抽出
+  5. AskUserQuestion で 3-4 案を提示:
+     - 案 A: AI 自走着手 (推奨、5 条件全充足の N 件)
+     - 案 B: 状況整理 Issue 起票してユーザー優先順位判断仰ぐ
+     - 案 C: 現状維持継続
+     - 案 D: 全 Issue close で整理し直し
+  6. ユーザー応答で着手方針確定 → そのサイクルで progress 達成
+```
+
+**判定基準 (対話シグナル)**:
+
+| 観点                                       | 判定                 |
+| ------------------------------------------ | -------------------- |
+| 直近 N サイクル (N ≥ 5) 連続 0 changes     | 滞留状態確認         |
+| ユーザー指示の冒頭が `/loop` なし          | 対話シグナル         |
+| 過去サイクルで sweep 観点を網羅実施済      | 新規 actionable 枯渇 |
+| 滞留 Issue に AI 自走 5 条件充足のものあり | 打開策の素材あり     |
+
+**How to apply**: 長期滞留状態で対話シグナルを検出したら (5 サイクル連続「変化なし」を返し続けると progress が 0 のまま、ScheduleWakeup を継続するだけでは打開不能、対話打開シグナル検出時の AskUserQuestion は適切な fallback):
+
+1. **過去サイクル sweep の網羅性を確認** — 14 観点 + TODO + Dependabot + Why セクション + type 安全性等が一巡済なら新観点探索は overhead
+2. **滞留 Issue 全件を Step 4 判定基準で再評価** — AI 自走 5 条件全充足の Issue を抽出
+3. **AskUserQuestion で 3-4 案提示** — 推奨案 (案 A: 自走着手) を最初に + その他選択肢 (状況整理 Issue 起票 / 現状維持 / 全 close)
+4. **ユーザー応答後に該当案を即実行** — 案採用後は通常の AI 自走 workflow (実装 + commit + push + Issue close + retrospective)
+
+**反例 (AskUserQuestion が overkill なケース)**:
+
+- 連続 0 changes が 3 サイクル以下 (短期滞留) — 通常の ScheduleWakeup 継続で OK
+- ユーザーが `/loop` プレフィックス付きで送信 = 明示的に自走 cycle 期待 → AskUserQuestion せずに sweep 継続
+- 滞留 Issue に AI 自走 5 条件充足のものが 0 件 = 打開策の素材なし → 対話しても結局「待機」結論にしかならない
+
+主な使用箇所: 2026-05-17 サイクル — 7 サイクル連続 0 changes + `/loop` なし直接送信検出 → AskUserQuestion で 4 案提示 → ユーザー「#789 #790 自走着手 (推奨)」採用 → 2 commit + 2 Issue close (#789) / Phase 1 完了 (#790 open 継続) で打開達成
+
 ### 派生ケース: 調査エージェントの設計方針案コメントは "Issue 本文の前提が誤っている可能性" を検証スコープに含める
 
 調査エージェントに「設計方針 A/B/C 案を出して」と派遣すると、Issue 本文の前提を **疑わずに前提条件として受け入れて** 案を作るケースがある。だが Issue 起票時の前提と実コードが乖離しているケース (subscriber 数 / Provider tree / API 形式 / 重複コード規模 等) が頻繁にある。`#758` 「全 subscriber re-render」が実は subscriber 1 つで分割効果ほぼ無し、`#755` 「sanitize-html 既存依存」が実は未追加、のような事例。
