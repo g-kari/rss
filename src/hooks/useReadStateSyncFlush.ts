@@ -11,7 +11,13 @@ import {
 import type { KeywordFilter, ReadState } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
-import { STORAGE_KEYS, flushDeferredSaves } from "../lib/storage";
+import {
+  STORAGE_KEYS,
+  flushDeferredSaves,
+  storageGet,
+  storageRemove,
+  storageSet,
+} from "../lib/storage";
 import {
   type PendingRefs,
   type PendingSnapshot,
@@ -144,11 +150,11 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
       if (!state) return;
       applyServerState(state);
     });
-    const overflow = localStorage.getItem(STORAGE_KEYS.BEACON_OVERFLOW);
+    const overflow = storageGet(STORAGE_KEYS.BEACON_OVERFLOW);
     if (overflow) {
       saveReadState(overflow).then((result) => {
         if (result.ok) {
-          localStorage.removeItem(STORAGE_KEYS.BEACON_OVERFLOW);
+          storageRemove(STORAGE_KEYS.BEACON_OVERFLOW);
           if (result.state) applyServerState(result.state);
         }
       });
@@ -209,11 +215,8 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
       // prepareFlush 内の extractAndResetPending で既にリセット済み
     } else {
       restorePending(pendingRefs, snapshot);
-      try {
-        localStorage.setItem(STORAGE_KEYS.BEACON_OVERFLOW, body);
-      } catch {
-        /* quota exceeded — データロスト */
-      }
+      // storageSet が内部で try/catch (quota exceeded — データロスト) を吸収する
+      storageSet(STORAGE_KEYS.BEACON_OVERFLOW, body);
     }
   });
 
