@@ -8,6 +8,7 @@ import type { ConfirmOptions } from "./useConfirm";
 import { isArticleRead } from "../lib/article-filter";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "../lib/export-markdown";
 import { exportNotesToReadwise } from "../lib/export-readwise";
+import { computeFeedStructuralSignature } from "../lib/feed-signature";
 import { useSyncedRef } from "./useSyncedRef";
 
 interface Options {
@@ -145,6 +146,12 @@ export function useFeedSidebarActions({
   const notesRef = useSyncedRef(notes);
   const totalUnreadRef = useSyncedRef(totalUnread);
 
+  // #789: feeds reference は 5 分 polling で毎回新規。構造的内容変化なしなら
+  // signature が一致して下流の useMemo を再計算 skip させる (sibling useSidebarFeeds と同 pattern)。
+  const feedsRef = useSyncedRef(feeds);
+  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- feedStructuralSignature が feeds 構造を encode 済 + feedsRef は安定参照
   return useMemo<FeedSidebarActions>(
     () => ({
       onSelectFeed: (id) => {
@@ -153,7 +160,7 @@ export function useFeedSidebarActions({
         setSelectedTag(null);
         setSelectedArticle(null);
         setMobilePane("list");
-        const feed = feeds.find((f) => f.id === id);
+        const feed = feedsRef.current.find((f) => f.id === id);
         if (feed?.view === "pictures" || feed?.view === "videos") {
           onChangeLayout("gallery");
         }
@@ -236,13 +243,13 @@ export function useFeedSidebarActions({
       onRefreshRecommendations: refreshRecommendations,
       onExportMarkdown: (mode) => {
         const ids = mode === "reading_list" ? readingListIdsRef.current : bookmarkIdsRef.current;
-        exportArticlesToMarkdown(articlesRef.current, ids, feeds, mode);
+        exportArticlesToMarkdown(articlesRef.current, ids, feedsRef.current, mode);
       },
       onExportNotes: () => {
-        exportNotesToMarkdown(articlesRef.current, notesRef.current, feeds);
+        exportNotesToMarkdown(articlesRef.current, notesRef.current, feedsRef.current);
       },
       onExportReadwise: () => {
-        exportNotesToReadwise(articlesRef.current, notesRef.current, feeds);
+        exportNotesToReadwise(articlesRef.current, notesRef.current, feedsRef.current);
       },
       onSelectCollection: setSelectedCollectionId,
       onCreateCollection: createCollection,
@@ -250,7 +257,7 @@ export function useFeedSidebarActions({
       onDeleteCollection: deleteCollection,
     }),
     [
-      feeds,
+      feedStructuralSignature,
       setSelectedFeedId,
       setSelectedGroupId,
       setSelectedTag,
