@@ -282,6 +282,7 @@ src/
     useSyntaxHighlight.ts    # 記事本文 <pre><code> のシンタックスハイライト適用
     useMathRender.ts         # 記事本文の数式（KaTeX）レンダリング
     usePopupLock.ts          # ブラウザポップアップの多重表示防止ロック（lib/popup-lock 連携）
+    useModalFocusTrap.ts     # Modal / Dialog 系コンポーネント共通の focus-trap hook（returnFocusRef 内蔵 + Escape close + Tab cycle + initialFocusRef option / isOpen option 対応、Modal.tsx と ConfirmModal.tsx の重複 60 行を集約、#790 Phase 1）
     useMenuKeyboard.ts       # ポータルメニューのキーボードナビゲーション（Arrow Up/Down・ESC・フォーカストラップ）
     useDelayedGalleryItems.ts # 削除された items を 300ms 保持してフェードアウト遷移を可能にする（masonic 中間削除アニメーション用）
     useHeaderScrollVisibility.ts # 下スクロールで header を隠し、上スクロール / 上端で表示する hook（scroll-direction.ts ラッパー、#677）
@@ -383,6 +384,7 @@ src/
     rate-limit-logic.ts      # スライディングウィンドウ判定の純粋関数 (evaluateSlidingWindow) — next/* 非依存でユニットテスト可能
     serialize-async.ts       # 同一キー非同期操作の直列化ユーティリティ (serialized)
     sort-utils.ts            # `order: number` フィールドを持つ配列の安定ソート純粋関数（sortByOrder — useFeedGroups / useCollections の重複ロジックを集約）
+    feed-signature.ts        # feeds の構造的内容を 1 行にシリアライズする純粋関数（computeFeedStructuralSignature — id/title/category/groupId/nsfw/priority/view を encode、useSidebarFeeds と useFeedSidebarActions の useMemo deps 置換で 5 分 polling 時の不要 re-render を抑制、#789）
     obsidian.ts              # Obsidian URI スキーム連携（obsidian://new URI 生成・ファイル名サニタイズ）
     html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
     reading-progress.ts      # 読書進捗計算純粋関数（computeProgress / clampProgress / buildAnchorSelector）
@@ -814,6 +816,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `script-loaded-images.spec.ts`        | `src/lib/content.ts#resolveScriptLoadedImages` — WordPress プラグインの `loadImage(elementId, jpgUrl, gifUrl)` で gif (動的) を優先採用する純粋関数 (digitallover.moe 対応)                                                                       |
 | `serialize-error.spec.ts`             | `src/lib/serialize-error.ts` — エラーシリアライズ                                                                                                                                                                                                 |
 | `sort-utils.spec.ts`                  | `src/lib/sort-utils.ts#sortByOrder` — order 昇順ソート純粋関数（mutate しない / 空配列 / stable sort / readonly 互換、全 8 ケース網羅）                                                                                                           |
+| `feed-signature.spec.ts`              | `src/lib/feed-signature.ts#computeFeedStructuralSignature` — feeds 構造的内容シリアライズ純粋関数（全 field 変化検知 / 順序依存 / 非影響 field 不変 / optional field nullish coalescing、全 13 ケース網羅、#789）                                 |
 | `shared-feed-merge.spec.ts`           | `src/lib/shared-feed.ts#mergeNewArticles`                                                                                                                                                                                                         |
 | `shared-feed.spec.ts`                 | `src/lib/shared-feed.ts` — フィードデータ R2 操作                                                                                                                                                                                                 |
 | `speakerdeck-embed.spec.ts`           | `src/lib/html-embed-transforms.ts` — SpeakerDeck 変換                                                                                                                                                                                             |
