@@ -141,6 +141,50 @@ gh issue edit N --add-label needs-user-decision
 
 主な使用箇所: 2026-05-11 51st cycle 末 — open Issue 9 件中 5 件 (`needs-user-decision`: #745 #720 #715 #682 #674) と 4 件 (自走対象: #733 #728 #714 #709) に分類
 
+### 派生ケース: 監査エージェント finding の起票時にも Step 4 の判断不要スクリーニングを必ず実行する
+
+監査エージェント (perf / a11y / simplify / docs drift / refactor) の finding を Issue 化するとき、エージェントの report に「案 A/B/C 整理」「設計判断要」記述があるからといって機械的に `needs-user-decision` 付与してはならない。エージェントの「設計判断要」判定は **conservative side** であり、実コード verification で AI 自走 5 条件全充足が判明すれば **直接実装着手 + 完了コメント** が正解。
+
+```
+パターン: 監査 finding の判断要否再評価フロー
+  1. 監査エージェントから finding (perf / simplify / refactor 等) を受領
+  2. agent report に「案 A/B/C 比較」「設計判断要」記述あり
+  3. **エージェント判定を鵜呑みにせず、Step 4 表の判定基準を AI 自身で再評価**:
+     - 新規 dep / infra / セキュリティ / モデル / UX 主観評価が含まれるか?
+     - touch > 5 ファイルか?
+     - 既存 pattern の延長で TDD 可能か?
+  4. すべて自走条件充足 → **`needs-user-decision` 付与せず直接実装着手**
+  5. 既存規範違反 sweep (sibling pattern 流用 / 重複削減) は default で 4 に該当
+```
+
+**How to apply**: 監査エージェント finding を Issue 化する前に (エージェントは「念のため案 A/B/C 提示」を default にする傾向があるが、AI 自走 5 条件全充足の規範流用 / 重複削減タイプは判断要素なし、過剰 conservative 起票が `needs-user-decision` 滞留の温床になる):
+
+1. エージェント report の「案 A/B/C 比較」「設計判断要」記述に流されず、Step 4 表で **AI 自身で判定**
+2. AI 自走 5 条件全充足なら **Issue 起票自体せずに直接実装 + 1 commit + クローズコメント** で完結 (Issue tracker 肥大化防止)
+3. もしくは Issue は起票するが **`needs-user-decision` ラベル付けず + 案 A/B/C 整理せず + 「自走着手予定」と本文に明記**
+4. 例外: エージェント finding が 5+ 件並列で発見されたとき、優先順位整理のため Issue 一覧化はする (ただし `needs-user-decision` 付与は判断不要)
+
+**反例 (判断仰ぎが正解のケース)**:
+
+- 監査エージェントが **新規 infra (wasm / Service Worker / IndexedDB)** を推奨 → ユーザー判断要
+- 監査エージェントが **複数案で trade-off が大きい** (例: Pinterest 型 vs Grid 型 / virtuoso 乗り換え) → ユーザー判断要
+- 監査エージェントが **UX 影響あり** (animation / scroll 挙動 / fundamental UX flow) → ユーザー判断要
+
+**判定キーワード** (AI 自走 5 条件全充足 = 判断不要):
+
+| エージェント finding 種別                       | 判断要否                              |
+| ----------------------------------------------- | ------------------------------------- |
+| 既存 sibling pattern 流用 (signature 化 等)     | **不要** (自走着手)                   |
+| 既存 helper / hook 集約 (重複削減)              | **不要** (自走着手)                   |
+| 規範違反 sweep (旧 pattern → 新 pattern 機械的) | **不要** (自走着手)                   |
+| dead code / unused export 削除                  | **不要** (自走着手)                   |
+| docs drift / 型注釈追加                         | **不要** (自走着手)                   |
+| 新規 hook / component 追加 + UX 変化            | **必要** (判断仰ぐ)                   |
+| API endpoint 追加 / schema 変更                 | **必要** (判断仰ぐ)                   |
+| 依存ライブラリ追加 / 乗り換え                   | **必要** (判断仰ぐ)                   |
+
+主な使用箇所: 監査エージェント finding を「案 A/B/C 整理 + needs-user-decision 付与」で起票したが、実は AI 自走 5 条件全充足だった Issue 群 (sibling pattern 流用 / 既存 helper 集約タイプ) — 本派生ケースで「監査 finding でも Step 4 を必ず実行 + 自走条件充足なら起票時から付与しない」を codify、retroactive 着手は信頼性を損ねるため次サイクル以降に持ち越し
+
 ## 設計判断が必要な Issue へのコメントテンプレート
 
 `Step 4` の判断必要スクリーニングで「ユーザー判断必須」と判定された Issue でのみ使用する。要件が曖昧、複数アプローチがある、外部要因に依存する等の場合、即座に実装に着手せず、**以下の構成**で設計方針コメントを残してから別の Issue に移る。
