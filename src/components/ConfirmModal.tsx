@@ -1,15 +1,9 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useRef,
-  useCallback,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from "react";
+import { useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
-import { FOCUSABLE_SELECTOR } from "@/lib/modal-focus";
+import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
 
 interface Props {
   isOpen: boolean;
@@ -37,63 +31,18 @@ export default function ConfirmModal({
   // 同 Modal が並列で複数描画される (portal / 入れ子 dialog) ケースで ID 衝突を防ぐ。
   // canonical: Modal.tsx — `useId()` で生成した値を `aria-labelledby` と `<h2 id>` の両方に紐付ける。
   const titleId = useId();
-  // #687: モーダルを開いたトリガー要素を退避し、閉じるときに同じ要素へフォーカスを戻す
-  // (WCAG 2.4.3 Focus Order)。Modal.tsx と同じパターン。
-  const returnFocusRef = useRef<HTMLElement | null>(null);
   // ConfirmModal は親（App.tsx）で常時マウントされ、内部で isOpen を見て表示制御するため、
   // usePopupLock も isOpen に連動させないとアプリ起動直後から常時ロックが立ってしまい、
   // カラム幅リサイザー等の `hasOpenPopup` で無効化する UI 要素が操作できなくなる (#606)。
   usePopupLock(isOpen);
 
-  useEffect(() => {
-    if (isOpen) {
-      // 開く前のフォーカス位置を保存
-      returnFocusRef.current = document.activeElement as HTMLElement | null;
-      cancelRef.current?.focus();
-    } else {
-      // 閉じる時にトリガー要素へフォーカスを戻す。トリガーが既に DOM から外れている場合はスキップ。
-      const ret = returnFocusRef.current;
-      returnFocusRef.current = null;
-      if (ret && typeof ret.focus === "function" && document.contains(ret)) {
-        ret.focus();
-      }
-    }
-  }, [isOpen]);
-
-  // Escape / Tab を canonical Modal.tsx と同じく onKeyDown で処理。
-  // 旧実装は `document.addEventListener("keydown", ...)` で Escape を捕捉していたが、
-  // ConfirmModal が別 Modal に入れ子で開かれた場合、document リスナーが z-order を
-  // 無視して両方の close handler を発火させる risk があった (canonical との divergence)。
-  const handleKeyDown = useCallback(
-    (e: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "Escape") {
-        onCancel();
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (focusable.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first || document.activeElement === dialog) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last || document.activeElement === dialog) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    },
-    [onCancel],
-  );
+  // #790 Phase 1: focus trap + return focus restore + Escape/Tab cycle を hook に集約。
+  // isOpen 連動 + cancelRef を初期 focus 対象に指定 (Modal.tsx と異なり「キャンセル」を default focus)。
+  const { handleKeyDown } = useModalFocusTrap(dialogRef, {
+    onClose: onCancel,
+    isOpen,
+    initialFocusRef: cancelRef,
+  });
 
   if (!isOpen) return null;
 

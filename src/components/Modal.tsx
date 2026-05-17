@@ -1,9 +1,9 @@
 "use client";
 
-import { useId, useRef, useEffect, useCallback, type ReactNode, type KeyboardEvent } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
-import { FOCUSABLE_SELECTOR } from "@/lib/modal-focus";
+import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
 
 interface Props {
   title: string;
@@ -30,58 +30,12 @@ export default function Modal({
 }: Props) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   usePopupLock();
 
-  useEffect(() => {
-    // モーダルを開いたトリガー要素を退避し、閉じる時に同じ要素へフォーカスを戻す
-    // (WCAG 2.4.3 Focus Order)。トリガーが既に DOM から外れている場合はスキップする。
-    returnFocusRef.current = document.activeElement as HTMLElement | null;
-    const el = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-    if (el) {
-      el.focus();
-    } else {
-      dialogRef.current?.focus();
-    }
-    return () => {
-      const ret = returnFocusRef.current;
-      if (ret && typeof ret.focus === "function" && document.contains(ret)) {
-        ret.focus();
-      }
-    };
-  }, []);
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (focusable.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first || document.activeElement === dialog) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last || document.activeElement === dialog) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    },
-    [onClose],
-  );
+  // #790 Phase 1: focus trap + return focus restore + Escape/Tab cycle を hook に集約。
+  // 旧 useEffect + useCallback はすべて useModalFocusTrap に内包。
+  const { handleKeyDown } = useModalFocusTrap(dialogRef, { onClose });
 
   return createPortal(
     <>
