@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } 
 import type { Feed, UserProfile } from "../types";
 import { apiFetchJson } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
+import { isAbortError } from "../lib/fetch";
 import { useSyncedRef } from "./useSyncedRef";
 
 interface FeedDataState {
@@ -45,7 +46,7 @@ export function useFeedData(
     setFeedLoadError(false);
     fetchFeeds(controller.signal)
       .catch((err) => {
-        if (err.name === "AbortError") return;
+        if (isAbortError(err)) return;
         devError(err);
         onErrorRef.current?.("フィードの読み込みに失敗しました");
         setFeedLoadError(true);

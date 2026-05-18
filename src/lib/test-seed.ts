@@ -9,6 +9,8 @@
  * 実際には呼ばれないが、ロジック自体はサニタイズされた値だけ通す。
  */
 
+import { isValidFeedHash } from "./validation";
+
 export interface SeedFeedInput {
   feedHash: string;
   meta: Record<string, unknown>;
@@ -36,7 +38,6 @@ export interface SeedRequest {
 
 export type ValidationResult = { ok: true; data: SeedRequest } | { ok: false; error: string };
 
-const FEED_HASH_RE = /^[0-9a-f]{16}$/;
 const URL_RE = /^https?:\/\//;
 const MAX_FEEDS = 50;
 const MAX_ARTICLES_PER_FEED = 1000;
@@ -50,7 +51,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
 function validateFeed(input: unknown, idx: number): SeedFeedInput | string {
   if (!isObject(input)) return `feeds[${idx}] is not an object`;
   const { feedHash, meta, articles } = input;
-  if (typeof feedHash !== "string" || !FEED_HASH_RE.test(feedHash))
+  if (typeof feedHash !== "string" || !isValidFeedHash(feedHash))
     return `feeds[${idx}].feedHash invalid`;
   if (!isObject(meta)) return `feeds[${idx}].meta is not an object`;
   if (!Array.isArray(articles)) return `feeds[${idx}].articles is not an array`;
@@ -65,7 +66,7 @@ function validateFeed(input: unknown, idx: number): SeedFeedInput | string {
 function validateSubscription(input: unknown, idx: number): SeedSubscriptionInput | string {
   if (!isObject(input)) return `subscriptions[${idx}] is not an object`;
   const { feedHash, url, customTitle } = input;
-  if (typeof feedHash !== "string" || !FEED_HASH_RE.test(feedHash))
+  if (typeof feedHash !== "string" || !isValidFeedHash(feedHash))
     return `subscriptions[${idx}].feedHash invalid`;
   if (typeof url !== "string" || !URL_RE.test(url)) return `subscriptions[${idx}].url invalid`;
   const out: SeedSubscriptionInput = { feedHash, url };

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FeedGroup, UserProfile } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
+import { isAbortError } from "../lib/fetch";
 import { sortByOrder } from "../lib/sort-utils";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -52,7 +53,7 @@ export function useFeedGroups(
         setGroups(sortByOrder(data));
       })
       .catch((err) => {
-        if (err.name === "AbortError") return;
+        if (isAbortError(err)) return;
         devError(err);
         onErrorRef.current?.("フィードグループの読み込みに失敗しました");
       })
