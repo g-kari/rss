@@ -127,6 +127,19 @@ export function collectImageUrlsFromHtml(html: string): string[] {
     result.push(href);
   }
 
+  // #794: <picture><source srcset="..."> の高解像度 URL を抽出
+  // (Next.js Image / WordPress responsive で本文画像が <picture> のみで配信される
+  // ケースで `<img>` 単体走査だと拾えず「本文画像 1 枚のみ DL」現象を引き起こす)
+  const sourceRe = /<source\b[^>]*\bsrcset=["']([^"']+)["'][^>]*>/gi;
+  let sm: RegExpExecArray | null;
+  while ((sm = sourceRe.exec(html)) !== null) {
+    const src = bestSrcFromSrcset(sm[1]);
+    if (!isCollectableUrl(src, seen)) continue;
+    if (isTooSmallByUrl(src)) continue;
+    seen.add(src);
+    result.push(src);
+  }
+
   const imgRe = /<img\b([^>]*)>/gi;
   let m: RegExpExecArray | null;
   while ((m = imgRe.exec(html)) !== null) {
@@ -170,6 +183,16 @@ export function collectImageUrls(container: Element, seen?: Set<string>): string
     if (!isCollectableUrl(href, s)) continue;
     s.add(href);
     result.push(href);
+  }
+
+  // #794: <picture><source srcset="..."> の高解像度 URL を抽出
+  // <audio>/<video> 内の <source> は通常 `src` 属性を使い srcset は持たないので干渉なし
+  for (const source of container.querySelectorAll("source[srcset]")) {
+    const src = bestSrcFromSrcset(source.getAttribute("srcset") ?? "");
+    if (!isCollectableUrl(src, s)) continue;
+    if (isTooSmallByUrl(src)) continue;
+    s.add(src);
+    result.push(src);
   }
 
   for (const img of container.querySelectorAll("img")) {
