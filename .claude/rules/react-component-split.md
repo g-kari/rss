@@ -543,6 +543,61 @@ Phase 1 (純粋関数 + TDD) 完了 → Phase 2 (UI 統合) 着手前に **ユ�
 
 主な使用箇所: `src/lib/tts-adapter.ts` — Web Speech API → Piper wasm 差し替えの基盤
 
+### 派生ケース: 大規模 UI 置換は「テストモード segregation」で 4 段階に分離する
+
+masonic → 自前 virtualizer / Web Speech API → Piper wasm / Stripe v3 → v5 のような **library 差し替えを伴う大規模 UI 置換** は、いきなり全コードを書き換えるのでなく **テストモード設定 flag で dual implementation 切替 → ユーザー検証 → 旧削除** の 4 段階に分離する。default OFF で既存挙動互換を保ち、ユーザーが本番で動作確認できる経路を確保する。
+
+```
+Phase Xa: テストモード設定追加
+  - localStorage 永続化 boolean flag (default false)
+  - useReaderSettings / 同等の設定 Context に key 追加
+  - UI に「実験的機能」セクション + toggle 配置
+  - touch: 3-5 ファイル / 機能変化なし
+
+Phase Xb: dual implementation
+  - 新規 <NewImpl> コンポーネント (代替実装)
+  - 既存 <Wrapper> 内で `if (flag) <NewImpl> else <OldImpl>` の薄い親で切替
+  - touch: 2-3 ファイル / default OFF のため挙動変化なし
+
+Phase Xc: 動作確認 (ユーザー実機検証)
+  - master 反映後 Cloudflare CI/CD デプロイ完了
+  - ユーザーがテストモード ON で本番動作確認
+  - 異常時は toggle OFF に戻して Issue コメントで報告
+  - バグ判明なら修正 → 再 Phase Xc
+
+Phase X+1: default ON + 旧削除
+  - flag default を true に変更 (or 設定 UI 削除)
+  - 既存 <OldImpl> 経路を削除
+  - 依存 library を package.json から削除 + lockfile 同期
+```
+
+**How to apply**: 大規模 UI 置換を計画するときに以下を判定 (一括書き換えは「動作確認なしで本番投入」になり revert 粒度が大きい、テストモード segregation なら本番でユーザー検証 + bisect 容易):
+
+1. **対象が「library 差し替え / 主要 component 書き換え / fundamental design 変更」** か確認 (touch ≥ 5 ファイル + 既存ユーザー挙動に影響しうる)
+2. **テストモード segregation 4 段階に分割可能か** 検証:
+   - Xa: 設定 flag を localStorage + Context に追加可能か (= 既存設定パターンの延長で書ける)
+   - Xb: dual implementation の薄い親 (`if (flag) ... else ...`) で切替可能か (= 新旧両方が同 Props で動作する形に設計可能)
+   - Xc: ユーザーが本番で検証可能か (= 設定 UI に toggle が表示され、動作確認手順が明確)
+   - X+1: 旧削除でファイル / 依存 library が消えるか (= 旧経路への参照がフラグ分岐のみに集約)
+3. **Phase Xa-Xb は同サイクル or 別サイクル**:
+   - 同サイクル: flag 追加 + dual impl 同時 → 1 master push でテスト可能、ただし touch 増
+   - 別サイクル: Xa で flag のみ → Xb で dual impl → 各 commit が独立で revert 容易 (推奨)
+4. **Phase Xc は AI 着手不可** (ユーザー本人の実機検証必須) — Phase Xb 完了報告コメントに「テストモード ON 手順 + 確認ポイント表」を含める
+5. **Phase X+1 はユーザーから「問題なし → default ON で」承認後** に着手 (検証期間を 1-2 週間設ける運用も可)
+
+**反例 (テストモード segregation が overkill なケース)**:
+
+- **小規模変更** (touch ≤ 3 ファイル + 既存挙動互換) → flag なしで直接書き換え OK
+- **複数 sub-component に拡散しない isolated 変更** (例: 1 純粋関数の signature 変更 + caller も 1 箇所) → dual impl のコスト > 利得
+- **revert 不要が明らか** (例: bug fix で「壊れた状態 → 直った状態」の単方向遷移、戻る価値なし)
+- **ユーザーが UI 検証する手段がない** (バックエンド処理 / CI/CD pipeline 等) → flag より直接 deploy で OK
+
+**「Phase 0/1 純粋関数 + テストモード segregation」の組み合わせ**:
+
+純粋関数層 (`computeXxx` / `selectXxx`) を Phase 0/1 で先行実装 + spec 網羅 → Phase 2a 設定追加 → Phase 2b dual impl (純粋関数を呼ぶ新 component) → Phase 2c 検証 → Phase 3 default ON + 旧削除、の **5 階層 Phase 構造** が library 差し替えの canonical pattern。純粋関数層が先にあると UI 統合層の touch が薄くなる。
+
+主な使用箇所: `#773` masonic → 自前 virtualizer 移行 — Phase 0 (型抽象化 + 純粋関数 2 つ) → Phase 1 (computeMasonryLayout + computeScrollAnchorDelta) → Phase 2a (`gallerySelfMasonryEnabled` flag 追加 + DisplayTabPanel 「実験的機能」セクション) → Phase 2b (`<GalleryMasonrySelf>` + `useMasonryLayout` + 親で dual impl 分岐) → Phase 2c (ユーザー検証待ち) → Phase 3 (default ON + masonic 削除予定)
+
 ### 派生ケース: Phase 2a の「純粋関数 + TDD (part1) → hook 実装 + ライブラリ追加 (part2)」細分でライブラリ追加判断を遅らせる
 
 Phase 0 (型抽象化) 完了済の Issue で Phase 2a (新 engine 実装) に着手するとき、**Phase 2a を更に part1 (ライブラリ追加なしの mapping 純粋関数 + TDD) / part2 (ライブラリ追加 + hook 実装)** に細分すると、ライブラリ追加 commit を遅らせて以下のメリットを得られる:

@@ -695,6 +695,53 @@ useEffect(() => {
 
 主な使用箇所: `useSpeechSynthesis` の `endedCount` ↔ `AutoReadController` の `prevEndedCountRef`
 
+### 派生ケース: fallback chain hook の consumer 通知タイミングは「中間 attempt」と「諦め (最終 attempt)」で分離する
+
+`attempt 0: proxy URL → 1: 原 URL → 2: 諦め` のような **fallback chain を内包する hook** で consumer に `onError` callback を pass-through するとき、**中間 attempt の onError と最終 attempt (諦め) の onError を区別** する。中間でも consumer に通知すると、consumer 側で「alt UI を出した直後に次 attempt で load 成功」のような状態管理矛盾が発生する。
+
+```typescript
+// アンチパターン: すべての attempt で consumer 通知 → 中間 attempt で alt UI チラつき
+export function useImageProxyFallback(url, options?: { onError?: (e) => void }) {
+  const [attempt, setAttempt] = useState(0);
+  const onError = useCallback((e) => {
+    setAttempt((prev) => (prev === 0 && canFallback ? 1 : 2));
+    options?.onError?.(e); // ← attempt 0→1 (中間) でも発火、consumer が誤って fallback UI 表示
+  }, [...]);
+}
+
+// 修正パターン: 諦め (attempt 2) 到達時のみ consumer 通知
+export function useImageProxyFallback(url, options?: { onError?: (e) => void }) {
+  const [attempt, setAttempt] = useState(0);
+  const onError = useCallback((e) => {
+    if (attempt === 0 && canFallback) {
+      setAttempt(1);
+      return; // 中間 attempt は consumer 通知せず fallback 継続
+    }
+    setAttempt(2);
+    if (e) options?.onError?.(e); // 諦めた時点でのみ通知
+  }, [attempt, canFallback, options?.onError]);
+}
+```
+
+**How to apply**: fallback chain (proxy → 原 URL → 諦め / engine A → engine B → 諦め / endpoint primary → secondary → tertiary 等) を提供する hook で consumer callback を受け取るときに以下を判定 (前述「monotonic counter で手動 cancel と自然完了の区別」と同テーマ — API 内部の異なる完了パスを区別して consumer 通知タイミングを分離):
+
+1. **attempt 状態を hook 内部 state で持つ** (`useState<0 | 1 | 2>(0)` 等の有限状態)
+2. **「中間 (fallback 継続中)」と「諦め (最終 attempt 到達)」を 2 値で判別**:
+   - 中間 → setState のみ、consumer 通知 skip
+   - 諦め → setState + consumer.onError 発火
+3. **`onLoad` は全 attempt で consumer 通知 OK** (load 成功は src がどの attempt かに関わらず良いニュース)
+4. **既存 spec が引数なしで `onError()` を呼んでいる場合** は signature を `(e?: SyntheticEvent) => void` で optional 化 + 引数有無で consumer 通知の有無を分岐 (後方互換)
+5. **JSDoc に「中間 vs 諦め」通知タイミングを明記** — consumer が「全 attempt で発火する」と誤解しないため
+6. **TDD spec で「中間で consumer 不発火 / 諦めで consumer 発火」を網羅** (`vi.fn()` で発火回数 + 引数 assert)
+
+**反例 (全 attempt で通知すべきケース)**:
+
+- consumer が **debug / metric collection 目的** で全 attempt を観測したい → 別 callback (`onAttemptChange` 等) を別途提供
+- attempt 数が 2 (chain なし、原 URL → 諦めの 1 fallback のみ) → 中間 / 諦めの区別が無意味、1 callback で OK
+- consumer 側が **attempt ごとに異なる UI を出したい** (例: progressive enhancement で各 src 段階のアニメーション) → 全 attempt で通知する設計が正解
+
+主な使用箇所: `useImageProxyFallback` — `attempt 0: /api/image-proxy → 1: 原 URL → 2: 諦め` の chain、consumer (`FallbackImage` 経由で `<img onError>` consumer) には attempt 2 到達時のみ通知して中間 fallback を意識させない
+
 ## ref の論理リセットポイントを忘れない
 
 「前 tick の値を保持する ref」（例: `prevPlayingRef`, `prevSelectedRef`, `lastFiredAtRef`）は、状態の **論理的なリセットポイント**で同期的にリセットしないと、次の cycle で誤判定の連鎖を起こす。

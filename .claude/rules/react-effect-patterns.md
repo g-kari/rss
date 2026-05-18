@@ -31,6 +31,60 @@ useEffect(() => {
 
 **注意点**: `ResizeObserver` は要素自身のリサイズを検知する。子要素が追加されてコンテナが拡張する場合は通常検知されるが、絶対座標配置で **親コンテナ自身の clientHeight が変わらない** ケースでは発火しない。その場合は `MutationObserver` (subtree childList 監視) との併用や、`requestAnimationFrame` を 2 段で待ってからチェックする手法を組み合わせる。
 
+### 派生ケース: ResizeObserver callback 内の setState は `requestAnimationFrame` で deferred 化する
+
+ResizeObserver の callback 内で **直接 setState** を呼ぶと、**layout → setState → re-render → layout → callback → setState** のループに陥り、ブラウザが「ResizeObserver loop limit exceeded」warning を出す。複数 entries が同一フレームで発火するケース (例: N 個の masonry item を一括 observe) では、entry ごとに setState を呼ぶと re-render が N 回連鎖して再起的に layout を破綻させうる。
+
+```typescript
+// アンチパターン: callback 内で直接 setState → loop limit 警告
+const observer = new ResizeObserver((entries) => {
+  for (const entry of entries) {
+    const h = entry.contentRect.height;
+    setHeight((prev) => prev.set(id, h));
+    // ↑ N 個の entry でそれぞれ setState → N 回 re-render → layout 再評価 → loop
+  }
+});
+
+// 修正パターン: rAF defer で「現フレーム layout 確定後、次フレームで 1 回だけ setState」
+const pendingFrameRef = useRef<number | null>(null);
+
+const observer = new ResizeObserver((entries) => {
+  let changed = false;
+  for (const entry of entries) {
+    const h = entry.contentRect.height;
+    const id = (entry.target as HTMLElement).dataset.itemId;
+    if (!id) continue;
+    const prev = heightsRef.current.get(id);
+    if (prev !== h && h > 0) {
+      heightsRef.current.set(id, h);
+      changed = true;
+    }
+  }
+  if (changed && pendingFrameRef.current === null) {
+    pendingFrameRef.current = requestAnimationFrame(() => {
+      pendingFrameRef.current = null;
+      setLayoutVersion((v) => v + 1); // 1 回だけ setState、同フレームの N entries が集約される
+    });
+  }
+});
+```
+
+**How to apply**: ResizeObserver / MutationObserver / IntersectionObserver の callback 内で state を更新するときに以下を判定 (rAF defer で「現フレーム layout 確定後 → 次フレームで setState」とすれば loop に陥らず、複数 entries も 1 setState に集約できる):
+
+1. **observer callback の登録箇所** を grep — 該当箇所が setState / setLayoutXxx 等で state 変更しているか確認
+2. **複数 entries が同一フレームで発火する可能性** があるなら必ず rAF defer (例: 複数子要素を 1 observer で observe / 親コンテナと子の同時 resize)
+3. **`pendingFrameRef: RefObject<number | null>`** で重複 schedule を防ぐ — `pendingFrameRef.current === null` のときだけ rAF schedule
+4. **rAF callback 内で `pendingFrameRef.current = null` リセット + setState** — 次フレーム以降の新規 schedule を許可
+5. **unmount cleanup で `cancelAnimationFrame`** — pending frame が残ったまま unmount されると stale state 更新が発生
+
+**反例 (rAF defer が不要なケース)**:
+
+- observer の callback が **state 変更を含まない** (ref への書き込みのみ、純粋なログ出力のみ) — re-render trigger がないので loop が成立しない
+- observer 対象が **常に 1 要素** + **層化された re-render** がないシンプルな effect → 直接 setState で OK だが、rAF defer に変えるコストも小さいので予防的採用も妥当
+- ref + 内部書き込みのみで state を介さない設計 (例: layout 計算結果を ref に保存して effect 経由で読む) → setState 自体を回避できる別軸の解
+
+主な使用箇所: `useMasonryLayout` — N 個の masonry item を 1 ResizeObserver で監視、height 変化を `setLayoutVersion(v + 1)` で trigger するために rAF defer を採用 (item ごとの setState 連鎖を 1 frame 1 setState に集約)
+
 ### 派生ケース: IntersectionObserver は `isIntersecting: true` 維持時に新規 callback を発火させない罠
 
 `IntersectionObserver` は **`isIntersecting: false → true` の遷移時にのみ** callback を発火させる。一度 `true` になった後、要素 size 変化や parent scroll で **再評価が走っても、`isIntersecting: true` のままなら新規 callback は来ない**。
