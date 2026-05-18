@@ -57,8 +57,8 @@
     "postcss": "^8.5.14",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
-    "vite": "^8.0.11",
-    "vite-plus": "^0.1.20",
+    "vite": "^8.0.13",
+    "vite-plus": "^0.1.21",
     "vitest": "^4.1.6",
     "wrangler": "^4.92.0"
   },
