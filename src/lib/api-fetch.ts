@@ -23,9 +23,17 @@ export function onApiError(listener: ApiErrorListener): () => void {
   };
 }
 
-function describeStatus(status?: number): string {
+/**
+ * HTTP status code → ユーザー向けエラーメッセージへの分類純粋関数。
+ *
+ * 401 (自社認証失敗、再ログインで解決可) と 403 (権限不足、再ログインで解決しない)
+ * を別メッセージに分離する (#804): 上流 fetch 先で 403 を受けた場合に「再ログイン
+ * してください」が表示されるとユーザーが混乱する。
+ */
+export function describeStatus(status?: number): string {
   if (status === 413) return "送信データが大きすぎます";
-  if (status === 401 || status === 403) return "認証エラー：再ログインしてください";
+  if (status === 401) return "認証エラー：再ログインしてください";
+  if (status === 403) return "アクセス権限がありません";
   if (status === 429) return "リクエスト過多：少し待って再試行してください";
   if (status === 504) return "タイムアウト：時間をおいて再試行してください";
   if (status !== undefined && status >= 500) return "サーバーエラー（時間をおいて再試行）";
