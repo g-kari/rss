@@ -27,6 +27,8 @@ interface GalleryContextMenuProps {
   bookmarkIds: Set<string>;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
+  /** #795: 既読化専用 (既読なら no-op)。「一覧から削除」で使用 */
+  onMarkRead: (id: string) => void;
   onSelectArticle: (article: Article) => void;
   onClose: () => void;
 }
@@ -42,6 +44,7 @@ export default function GalleryContextMenu({
   bookmarkIds,
   onToggleRead,
   onToggleBookmark,
+  onMarkRead,
   onSelectArticle,
   onClose,
 }: GalleryContextMenuProps) {
@@ -300,9 +303,9 @@ export default function GalleryContextMenu({
         <button
           className={btnClass}
           onClick={() => {
-            // 既読時も `toggleRead` を呼ぶ — 「もう一度既読化」は no-op だが UX として
-            // 「既読化された記事一覧画面でも削除メニューを使える」要件 (#795 案 A 採用)
-            onToggleRead(target.article.id);
+            // #795: `markRead` (既読化専用、既読なら no-op) を使う。`toggleRead` だと
+            // 既読記事で「一覧から削除」を押すと未読化されて一覧に戻ってしまうバグ。
+            onMarkRead(target.article.id);
             onClose();
           }}
         >

@@ -621,6 +621,7 @@ function ArticleList({
           bookmarkIds={bookmarkIds}
           onToggleRead={onToggleRead}
           onToggleBookmark={onToggleBookmark}
+          onMarkRead={onMarkRead}
           onSelectArticle={onSelectArticle}
           onClose={() => setGalleryCtxMenu(null)}
         />
