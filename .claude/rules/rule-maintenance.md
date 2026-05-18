@@ -238,6 +238,30 @@ Security audit は他観点 (perf / refactor / UX) より対象ファイルが�
 
 主な使用箇所: 40th cycle broad-scope security audit (5 things) → context overflow で失敗 → 41st cycle で 3 specific check + 対象ファイル絞り込み済 prompt に変更 → 2 finding (1 true positive + 1 false positive) を確実に返却して同サイクル修正完了
 
+### 派生ケース: API endpoint 追加時は「3 点セット」(api-\*.md 本文 / api-spec.md index 表 / globs frontmatter) を同期更新する
+
+`app/api/<new-endpoint>/route.ts` を新規実装したとき、ドキュメント側で**同時に更新すべき 3 箇所**:
+
+1. `.claude/rules/api-<category>.md` の本文 (詳細仕様セクション追記)
+2. `.claude/rules/api-spec.md` の index 表 (該当 `api-<category>.md` 行に endpoint 名を追記)
+3. **`.claude/rules/api-<category>.md` の frontmatter `globs:`** (新 endpoint path も lazy load 対象に含める)
+
+3 つ目を忘れると、新 endpoint route を編集するときに該当ルールがロードされず、AI が仕様詳細を参照できない盲点が残る (= docs drift と paths drift の複合バグ)。
+
+**How to apply**: 新規 endpoint を実装する commit に併せて (rule-maintenance.md § 5 docs drift sweep と § 12 paths sweep を統合運用):
+
+1. **本文追記** で詳細仕様 (クエリ / リクエスト / レスポンス / エラー一覧) を書く
+2. **`api-spec.md` index 表に endpoint 名を追記** して全体 navigation に反映
+3. **`globs:` に新 endpoint path を追加** (例: `app/api/<new>/**`)
+4. 漏れチェック: 同 commit 内で `grep -nE "^globs:" .claude/rules/api-<category>.md` を実行し、新 endpoint path が含まれているか確認
+
+**反例 (3 点セット同期が不要なケース)**:
+
+- 既存 endpoint の **マイナー変更** (エラー code 追加 / クエリパラメータ追加) → 本文のみ更新で OK (globs / index 表は path 単位で書かれているため変化なし)
+- 新規 endpoint が **既存 path prefix の配下** (例: `app/api/feeds/[id]/<new-action>/route.ts`) で globs に該当 wildcard が既に含まれている → 本文 + index 表のみで OK
+
+主な使用箇所: 3 endpoint (video-proxy / piper-voice / wasm) を api-misc.md に追記したサイクル — 当初は本文 + index 表のみで commit しそうになったが、globs frontmatter も同時更新で 3 点セット完成
+
 ### 派生ケース: 規範ルール codify 後は「code drift」も機械的に sweep する
 
 `docs drift` (文書 vs 実コードの乖離) と並んで、**「規範ルール codify 後にコードに残っている旧パターン」= code rule drift** も機械的に sweep する対象。1 ファイル修正 + 規範 codify で満足すると、新規追加された ref / 既存見落としの旧パターンが規範違反として累積する。
