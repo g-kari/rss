@@ -1,5 +1,5 @@
 ---
-globs: "app/api/engagement/**,app/api/stats/**,app/api/ogp/**,app/api/image-proxy/**,app/api/health/**,app/api/release-notes/**,app/api/test/**"
+globs: "app/api/engagement/**,app/api/stats/**,app/api/ogp/**,app/api/image-proxy/**,app/api/video-proxy/**,app/api/health/**,app/api/release-notes/**,app/api/test/**,app/api/piper-voice/**,app/api/wasm/**"
 ---
 
 # API 仕様: エンゲージメント・統計・ユーティリティ
@@ -144,6 +144,49 @@ Content-Type: image/jpeg （または png / gif / webp / svg+xml 等）
 
 ---
 
+## GET /api/video-proxy
+
+外部動画を取得してプロキシする。`/api/image-proxy` と同じく `handleBinaryProxy` 共通 handler 経由で動作し、Cloudflare Cache API（30 日）でキャッシュされる。同一オリジンからのリクエスト（`Sec-Fetch-Site: same-origin` または `Referer` 一致）のみ受け付ける。MIME タイプ検証あり。
+
+### クエリパラメータ
+
+| パラメータ | 型     | 説明                   |
+| ---------- | ------ | ---------------------- |
+| `url`      | string | 必須: 動画の HTTPS URL |
+
+### サイズ上限
+
+- Content-Length あり: `MAX_VIDEO_BYTES`（`src/lib/validation.ts` で定義）
+- Content-Length なし: 10MB
+
+### 成功レスポンス
+
+```
+200 OK
+Content-Type: video/mp4 （または webm / ogg / hls 等の許可された動画 MIME）
+Cache-Control: public, max-age=2592000
+```
+
+### エラー一覧
+
+エラー時は body が `null` のレスポンスを返し、`X-Video-Proxy-Error` ヘッダーで詳細を識別できる（`src/lib/video-error-placeholder.ts`）。
+
+| ステータス | code                    | 説明                                                 |
+| ---------- | ----------------------- | ---------------------------------------------------- |
+| `400`      | —                       | URL が欠損または SSRF 対策で拒否                     |
+| `401`      | —                       | 未認証                                               |
+| `403`      | —                       | 同一オリジン以外からのリクエスト                     |
+| `404`      | `not_found`             | 上流が 404                                           |
+| `403/502`  | `bot_blocked`           | 上流が bot 判定で拒否                                |
+| `415`      | `mime_rejected`         | 許可された動画 MIME 以外                             |
+| `415`      | `content_type_mismatch` | declared Content-Type と magic byte 検出結果が不一致 |
+| `413`      | `too_large`             | サイズ上限超過                                       |
+| `413`      | `size_unknown`          | Content-Length なし + サイズ判定不能                 |
+| `502`      | `network`               | 上流 fetch 失敗                                      |
+| `502`      | `unavailable`           | その他の上流エラー                                   |
+
+---
+
 ## GET /api/health
 
 サービスのヘルスチェック。認証不要。
@@ -239,3 +282,65 @@ e2e テスト専用の R2 全削除 API。`POST /api/test/seed` と同じ環境�
 | ステータス | code | 説明                                    |
 | ---------- | ---- | --------------------------------------- |
 | `404`      | —    | 本番環境 (NODE_ENV === "production" 等) |
+
+---
+
+## GET /api/piper-voice/[file]
+
+Piper TTS engine 用の voice モデル (`.onnx`) と config (`.onnx.json`) を R2 から配信する。voice ファイルは数十 MB のため bundle に含めず R2 セルフホスト。`ALLOWED_FILES` allowlist で任意 R2 オブジェクト参照を防ぐ。詳細は `app/api/piper-voice/[file]/route.ts` 参照。
+
+### パスパラメータ
+
+| パラメータ | 型     | 説明                                              |
+| ---------- | ------ | ------------------------------------------------- |
+| `file`     | string | 必須: `ALLOWED_FILES` に含まれる voice ファイル名 |
+
+現在の許可リスト: `tsukuyomi.onnx` / `tsukuyomi.onnx.json`。
+
+### 成功レスポンス
+
+```
+200 OK
+Content-Type: application/octet-stream（.onnx）または application/json（.onnx.json）
+Cache-Control: public, max-age=31536000, immutable
+```
+
+### エラー一覧
+
+| ステータス | code        | 説明                                                             |
+| ---------- | ----------- | ---------------------------------------------------------------- |
+| `401`      | —           | 未認証                                                           |
+| `404`      | `NOT_FOUND` | `ALLOWED_FILES` 未収載のファイル名、または R2 にオブジェクト無し |
+
+---
+
+## GET /api/wasm/[file]
+
+Piper TTS の `onnxruntime-web` peer-dep wasm および piper-plus phonemizer wasm を R2 から配信する。Cloudflare Workers の単一 asset 25 MiB 上限を回避するため bundle 外で配置。`ALLOWED_FILES` allowlist で厳格に絞る。詳細は `app/api/wasm/[file]/route.ts` 参照。
+
+### パスパラメータ
+
+| パラメータ | 型     | 説明                                                      |
+| ---------- | ------ | --------------------------------------------------------- |
+| `file`     | string | 必須: `ALLOWED_FILES` に含まれる wasm / loader ファイル名 |
+
+現在の許可リスト (10 件):
+
+- `ort-wasm-simd-threaded.wasm` / `.jsep.wasm` / `.asyncify.wasm` / `.jspi.wasm`
+- `ort-wasm-simd-threaded.mjs` / `.jsep.mjs` / `.asyncify.mjs` / `.jspi.mjs`
+- `piper_plus_wasm.js` / `piper_plus_wasm_bg.wasm`
+
+### 成功レスポンス
+
+```
+200 OK
+Content-Type: application/wasm（.wasm）または application/javascript（.js / .mjs）
+Cache-Control: public, max-age=31536000, immutable
+```
+
+### エラー一覧
+
+| ステータス | code        | 説明                                                             |
+| ---------- | ----------- | ---------------------------------------------------------------- |
+| `401`      | —           | 未認証                                                           |
+| `404`      | `NOT_FOUND` | `ALLOWED_FILES` 未収載のファイル名、または R2 にオブジェクト無し |
