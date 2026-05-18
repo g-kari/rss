@@ -310,7 +310,7 @@ describe("usePiperTts (#761 piper-plus / #766 自前 BufferSource 再生)", () =
   it("stop() で playToken が advance され、進行中 synthesize 結果は破棄される", async () => {
     // synthesize を resolve 遅延させて stop の介入余地を作る
     synthesizeWithCloningMock.mockImplementationOnce(
-      (text: string) =>
+      (_text: string) =>
         new Promise((resolve) => {
           setTimeout(
             () =>

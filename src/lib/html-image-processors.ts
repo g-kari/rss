@@ -4,7 +4,6 @@
  * 遅延ロード画像の解決、画像サイズ処理、画像 URL の書き換え等の関数群。
  * html-post-processor.ts から分割。
  */
-import { unescapeHtml } from "./html";
 import { IMAGE_MIN_DIMENSION } from "./image-constants";
 import { rewriteMediaSrcAttrs } from "./html-media-processors";
 import { transformSrcset } from "./html-srcset";
