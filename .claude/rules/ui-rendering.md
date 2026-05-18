@@ -1,6 +1,6 @@
 ---
 description: UI 描画分岐の純粋関数化・N 件条件・デフォルト引数・デザイントークンのパターン
-paths: "src/components/**/*.tsx,src/lib/**/*.ts,src/**/*.css"
+paths: "src/components/**/*.tsx,src/lib/**/*.ts"
 ---
 
 # UI レンダリングパターン

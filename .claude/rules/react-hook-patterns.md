@@ -1,6 +1,6 @@
 ---
 description: React hooks の stale closure 回避・循環依存解消パターン
-paths: "src/hooks/**/*.ts,src/hooks/**/*.tsx"
+paths: "src/hooks/**/*.ts"
 ---
 
 # React Hook パターン
