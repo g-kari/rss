@@ -297,29 +297,29 @@ export default function GalleryContextMenu({
           {isBookmarked ? "ブックマーク解除" : "ブックマーク"}
         </button>
 
-        {!isRead && (
-          <button
-            className={btnClass}
-            onClick={() => {
-              onToggleRead(target.article.id);
-              onClose();
-            }}
+        <button
+          className={btnClass}
+          onClick={() => {
+            // 既読時も `toggleRead` を呼ぶ — 「もう一度既読化」は no-op だが UX として
+            // 「既読化された記事一覧画面でも削除メニューを使える」要件 (#795 案 A 採用)
+            onToggleRead(target.article.id);
+            onClose();
+          }}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 3l6 6M9 3l-6 6" />
-            </svg>
-            一覧から削除
-          </button>
-        )}
+            <path d="M3 3l6 6M9 3l-6 6" />
+          </svg>
+          一覧から削除
+        </button>
       </div>
       <ConfirmModal {...confirmModalProps} />
     </>,
