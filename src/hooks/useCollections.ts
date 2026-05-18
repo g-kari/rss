@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch, apiFetchJson } from "@/lib/api-fetch";
 import { devError } from "@/lib/dev-log";
+import { isAbortError } from "@/lib/fetch";
 import { sortByOrder } from "@/lib/sort-utils";
 import type { Collection, UserProfile } from "@/types";
 import { useSyncedRef } from "./useSyncedRef";
@@ -44,7 +45,7 @@ export function useCollections(
         setCollections(sortByOrder(data));
       })
       .catch((err) => {
-        if (err.name === "AbortError") return;
+        if (isAbortError(err)) return;
         devError(err);
         setLoadError(err instanceof Error ? err : new Error(String(err)));
         onErrorRef.current?.("コレクションの読み込みに失敗しました");
