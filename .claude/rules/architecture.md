@@ -174,6 +174,13 @@ src/
     UserSettingsModal.tsx    # ユーザー設定モーダル（フォントサイズ・行間・コンテンツ幅・自動既読閾値・テーマ）
     SaveUrlModal.tsx         # 任意 URL を手動保存するモーダル（POST /api/articles/save 連携）
     article-view/AutoReadController.tsx  # オートモードの副作用コントローラ（fetch → speak → 次の記事への自動進行）
+    AppShell.tsx             # 27 個の state hook と TTS/audio 管理を一元化し、3 ペイン UI 全体をオーケストレーションするルートコンポーネント
+    FallbackImage.tsx        # 画像 proxy fallback 機能を `useImageProxyFallback` hook でラップした薄い `<img>` ラッパーコンポーネント
+    GalleryMasonrySelf.tsx   # `useMasonryLayout` を使って自前 masonry virtualizer で絶対配置レイアウトを実現するギャラリー (`gallerySelfMasonryEnabled` テストモードで有効化)
+    ImageLightbox.tsx        # ギャラリーの画像クリックで起動する拡大表示モーダル（focus trap・前後ナビゲーション・記事表示機能付き）
+    PiperEngineHost.tsx      # piper-plus WASM TTS engine を `next/dynamic({ ssr: false })` で隔離し、render prop で child に expose する
+    PiperErrorDetailToast.tsx # TTS engine エラーの詳細（code/message/model/voice）を浮き出し toast で表示、クリップボード保存機能付き
+    PiperInitProgressToast.tsx # Piper WASM/model ダウンロード・初期化中の進捗を右下 toast で表示、完了時に自動消去
     FeedAddModal.tsx         # フィード追加ダイアログ（RSS 自動検出・LLM CSS セレクタ推論・Cookie 指定対応）
     BetaRestrictedPage.tsx   # ベータ制限ページ（未許可ユーザー向け表示）
     LandingPage.tsx          # 未ログイン時のランディングページ
@@ -311,6 +318,7 @@ src/
     useFeedPagination.ts     # サーバーフィードページネーション hook（feedHasMorePages 判定 + 単一/全フィード loadMore 分岐。App.tsx から分割）
     useArticleNavigation.ts  # filtered 内での currentIndex + prev/nextArticle 派生 hook（App.tsx から分割）
     useArticleImageMaxWidth.ts # 記事本文 `<img>` の HTML 属性 width/height が無いケースで naturalWidth から max-width を補完する hook（小さい画像の引き伸ばし防止）
+    useMasonryLayout.ts      # ResizeObserver で item 高さ変化を監視し、`computeMasonryLayout` 再計算 + `computeScrollAnchorDelta` で scroll anchor 補正を自動実行する hook（rAF deferred で loop limit 警告回避）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()
@@ -433,6 +441,10 @@ src/
     stats-helpers.ts         # 統計計算ヘルパー（`toDateStr` / `buildDayList`）
     unread-stats-merge.ts    # 未読統計 Map の structural equality 判定純粋関数（equalUnreadByFeed / equalLastPublishedByFeed — `useArticleUnreadStats` の Map 内容比較で reference を安定化、不要 re-render 抑制、#758）
     x-com-fallback.ts        # x.com / twitter.com の TTS / AI fallback 判定純粋関数（isTargetHost / isErrorContent / needsFallback — JS 無効エラー HTML を検出して別 source に切替、#718）
+    cron-prefetch.ts         # 全ユーザーの engagement 集約で top-N feed を特定し、記事の本文・OGP を Cloudflare cron で事前 fetch するロジック
+    engagement-aggregator.ts # 複数ユーザーの engagement 履歴を集約してグローバルフィード人気度スコアで top-N を返す純粋関数
+    gallery-masonry-layout.ts # 画像ギャラリーの列レイアウト計算 (`computeMasonryLayout`) と scroll 巻き戻り補正 (`computeScrollAnchorDelta`) アルゴリズム
+    piper-voices.ts          # piper-plus TTS engine で利用可能な voice 定義と配信方式 (R2 セルフホスト vs HuggingFace 直 fetch) のガイド
   cron/
     fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
 ```
