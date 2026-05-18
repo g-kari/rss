@@ -186,3 +186,53 @@ test.describe("collectImageUrlsFromHtml — anchor href からフル解像度画
     ]);
   });
 });
+
+/**
+ * #794: Modern Next.js Image / WordPress responsive で本文画像が
+ * `<picture><source srcset="...">` のみで配信されるとき、`<img>` 単体走査では
+ * 全く拾われず「本文画像が 1 枚 (OGP) のみ DL」現象が起きる。
+ */
+test.describe("collectImageUrlsFromHtml — <picture><source srcset> から抽出", () => {
+  test("<picture><source srcset> の URL を拾う + <img> fallback も拾う", () => {
+    const html =
+      '<picture><source srcset="https://example.com/large.webp" type="image/webp"><img src="https://example.com/fallback.jpg"></picture>';
+    expect(collectImageUrlsFromHtml(html)).toEqual([
+      "https://example.com/large.webp",
+      "https://example.com/fallback.jpg",
+    ]);
+  });
+
+  test("複数 <source> がある場合は各 srcset の最高解像度を拾う", () => {
+    const html =
+      '<picture><source srcset="https://example.com/a.avif 1x, https://example.com/a@2x.avif 2x" type="image/avif"><source srcset="https://example.com/b.webp"><img src="https://example.com/c.jpg"></picture>';
+    expect(collectImageUrlsFromHtml(html)).toEqual([
+      "https://example.com/a@2x.avif",
+      "https://example.com/b.webp",
+      "https://example.com/c.jpg",
+    ]);
+  });
+
+  test("<source srcset> と <img src> が同 URL なら重複排除", () => {
+    const html =
+      '<picture><source srcset="https://example.com/same.jpg"><img src="https://example.com/same.jpg"></picture>';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/same.jpg"]);
+  });
+
+  test("<source srcset> が data: URI の場合は除外", () => {
+    const html =
+      '<picture><source srcset="data:image/png;base64,AAAA"><img src="https://example.com/ok.jpg"></picture>';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/ok.jpg"]);
+  });
+
+  test("複数の <picture> 要素を跨いで全て拾う (走査順は source 全件 → img 全件)", () => {
+    const html =
+      '<picture><source srcset="https://example.com/1.webp"><img src="https://example.com/1.jpg"></picture>' +
+      '<picture><source srcset="https://example.com/2.webp"><img src="https://example.com/2.jpg"></picture>';
+    expect(collectImageUrlsFromHtml(html)).toEqual([
+      "https://example.com/1.webp",
+      "https://example.com/2.webp",
+      "https://example.com/1.jpg",
+      "https://example.com/2.jpg",
+    ]);
+  });
+});
