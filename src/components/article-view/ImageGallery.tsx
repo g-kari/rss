@@ -2,6 +2,7 @@ import { useRef, useState, type TouchEvent } from "react";
 import { useSyncedRef } from "../../hooks/useSyncedRef";
 import { useEventListener } from "../../hooks/useEventListener";
 import { usePopupLock } from "../../hooks/usePopupLock";
+import { useModalFocusTrap } from "../../hooks/useModalFocusTrap";
 import { FallbackImage } from "../FallbackImage";
 
 interface Props {
@@ -11,15 +12,26 @@ interface Props {
 export default function ImageGallery({ images }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const lightboxTouchRef = useRef<number | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const lightboxRef = useSyncedRef({ lightboxIndex, imageCount: images.length });
 
   // ライトボックス表示中はリサイズバーを無効化する（Issue #81）
   usePopupLock(lightboxIndex !== null);
 
+  // #791: WCAG 2.4.3 Focus Order / 4.1.2 Name/Role/Value 準拠。
+  // useModalFocusTrap (#790 Phase 1 canonical) で open 時に dialog へ focus 移動 +
+  // close 時にトリガーボタン (画像サムネ) へ focus 復元 + Tab cycle + Escape close。
+  const { handleKeyDown: dialogKeyDown } = useModalFocusTrap(dialogRef, {
+    isOpen: lightboxIndex !== null,
+    onClose: () => setLightboxIndex(null),
+  });
+
+  // ArrowLeft / ArrowRight は global keydown で listen (lightbox 内に focus 移動するが、
+  // 画像クリックで focus が <button> に移ったときも Arrow ナビ可能にするため global 維持)。
+  // Escape は dialog onKeyDown (useModalFocusTrap) で処理するため global からは削除。
   useEventListener("keydown", (e) => {
     const { lightboxIndex: idx, imageCount } = lightboxRef.current;
     if (idx === null) return;
-    if (e.key === "Escape") setLightboxIndex(null);
     if (e.key === "ArrowLeft") setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i));
     if (e.key === "ArrowRight")
       setLightboxIndex((i) => (i !== null && i < imageCount - 1 ? i + 1 : i));
@@ -65,7 +77,13 @@ export default function ImageGallery({ images }: Props) {
 
       {lightboxIndex !== null && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="画像拡大表示"
+          tabIndex={-1}
+          onKeyDown={dialogKeyDown}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 outline-none"
           onClick={() => setLightboxIndex(null)}
           onTouchStart={handleLightboxTouchStart}
           onTouchEnd={handleLightboxTouchEnd}
