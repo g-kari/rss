@@ -11,6 +11,8 @@ import {
   type RefObject,
 } from "react";
 import { useMasonry, usePositioner, useResizeObserver } from "masonic";
+import { useReaderSettings } from "../contexts/ReaderSettingsContext";
+import GalleryMasonrySelf from "./GalleryMasonrySelf";
 
 // 各セル wrapper に当てる CSS transition — 参照安定化のため module scope に定義
 const ITEM_TRANSITION_STYLE: CSSProperties = {
@@ -92,7 +94,23 @@ function useContainerMetrics(
   return { width, height, offsetTop };
 }
 
-export default function GalleryMasonry<T>({
+/**
+ * #773 Phase 2b: テストモード設定 (`gallerySelfMasonryEnabled`) で自前 virtualizer 経路に切替。
+ *
+ * - default (`false`): 既存 masonic 経路で従来通り動作
+ * - テストモード ON: `<GalleryMasonrySelf>` で自前 virtualizer 経路 (#773 完全解決の検証用)
+ *
+ * Phase 2c でユーザーがテストモード ON にして動作確認 → Phase 3 で default ON + masonic 削除。
+ */
+export default function GalleryMasonry<T>(props: GalleryMasonryProps<T>) {
+  const { gallerySelfMasonryEnabled } = useReaderSettings();
+  if (gallerySelfMasonryEnabled) {
+    return <GalleryMasonrySelf {...props} />;
+  }
+  return <GalleryMasonryMasonic {...props} />;
+}
+
+function GalleryMasonryMasonic<T>({
   items,
   scrollElement,
   render,
