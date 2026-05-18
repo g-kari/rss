@@ -16,7 +16,7 @@ import {
   type GalleryCardSize,
   type GalleryPageSize,
 } from "../lib/reader-settings";
-import { useStoredSetting } from "./useStoredSetting";
+import { useStoredSetting, useStoredBoolToggle } from "./useStoredSetting";
 import { useState, useCallback } from "react";
 import { storageGet, storageSet } from "../lib/storage";
 import {
@@ -65,6 +65,15 @@ const loadContentWidth = () =>
   loadStoredEnum(STORAGE_KEYS.CONTENT_WIDTH, CONTENT_WIDTH_CYCLE, "medium" as ContentWidth);
 const loadImageDlFolder = (): string => storageGet(STORAGE_KEYS.IMAGE_DL_FOLDER) ?? "";
 const loadImageDlFolderNsfw = (): string => storageGet(STORAGE_KEYS.IMAGE_DL_FOLDER_NSFW) ?? "";
+
+/**
+ * #773 Phase 2a: 自前 masonry layout (テストモード) の有効化フラグ。
+ * default false で既存 masonic 経路を維持。ユーザーが設定 UI で ON にしたときのみ
+ * 自前 virtualizer (Phase 2b で実装) が動作する。
+ */
+function loadGallerySelfMasonryEnabled(): boolean {
+  return storageGet(STORAGE_KEYS.GALLERY_SELF_MASONRY_ENABLED) === "1";
+}
 
 export function useLayoutSettings() {
   const [layout, onChangeLayout] = useStoredSetting<Layout>(loadLayout, STORAGE_KEYS.LAYOUT);
@@ -123,6 +132,12 @@ export function useLayoutSettings() {
     storageSet(STORAGE_KEYS.GALLERY_PAGE_SIZE, String(v));
   }, []);
 
+  // #773 Phase 2a: 自前 masonry layout (テストモード) の有効化フラグ
+  const [gallerySelfMasonryEnabled, toggleGallerySelfMasonryEnabled] = useStoredBoolToggle(
+    loadGallerySelfMasonryEnabled,
+    STORAGE_KEYS.GALLERY_SELF_MASONRY_ENABLED,
+  );
+
   return {
     layout,
     onChangeLayout,
@@ -150,6 +165,8 @@ export function useLayoutSettings() {
     onChangeGalleryAutoScrollSpeed,
     galleryPageSize,
     onChangeGalleryPageSize,
+    gallerySelfMasonryEnabled,
+    toggleGallerySelfMasonryEnabled,
   } as const;
 }
 
