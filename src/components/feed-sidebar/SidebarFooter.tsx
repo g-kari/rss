@@ -57,6 +57,8 @@ export default function SidebarFooter({
   const { success, error: showError } = useToast();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(false);
 
   // 「もっと見る」ドロップダウンの外クリックで閉じる
   useEffect(() => {
@@ -80,6 +82,19 @@ export default function SidebarFooter({
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [moreOpen]);
+
+  // a11y: WAI-ARIA Menu Button Pattern (#792, WCAG 2.4.3 Focus Order)
+  // open 時: 最初の menuitem へ focus / close 時: トリガーボタンへ復元
+  // mount 直後 (moreOpen 初期 false) では復元しないよう wasOpenRef で前回状態を追跡
+  useEffect(() => {
+    if (moreOpen) {
+      moreRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+      wasOpenRef.current = true;
+    } else if (wasOpenRef.current) {
+      buttonRef.current?.focus();
+      wasOpenRef.current = false;
+    }
   }, [moreOpen]);
 
   return (
@@ -191,6 +206,7 @@ export default function SidebarFooter({
       {/* 「もっと見る」ドロップダウン（低頻度ボタン群 #454） */}
       <div className="relative flex-shrink-0" ref={moreRef}>
         <button
+          ref={buttonRef}
           onClick={() => setMoreOpen((v) => !v)}
           className="min-h-[44px] min-w-[44px] flex items-center justify-center text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded"
           title="その他のメニュー"
