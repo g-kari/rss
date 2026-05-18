@@ -1,21 +1,20 @@
 /**
- * #773 Phase 0: 自前 masonry layout の基盤型と純粋関数 (案 a)。
+ * #773 Phase 0 + Phase 1: 自前 masonry layout の基盤型と純粋関数。
  *
  * `masonic` ライブラリの絶対配置 + 画像 load completion 時の aspectRatio 変化で
  * scroll position が巻き戻る問題 (#773) を完全解決するため、masonic を廃止して
- * 自前 virtualizer 独自実装に移行する Phase 0 として、layout 計算の最小コアを
- * 純粋関数 + interface で提供する。
+ * 自前 virtualizer 独自実装に移行する。
  *
- * Phase 0 の責務:
+ * Phase 0 (commit `39325d95`):
  * - 型抽象化 (`MasonryLayoutItem` / `MasonryLayoutResult`)
  * - 列ごとの累積高さ計算 (`computeColumnHeights`)
  * - 最短列選択 (`assignItemToShortestColumn`)
  *
- * Phase 1 (次サイクル以降):
- * - `computeMasonryLayout(items, columnCount, gap?): MasonryLayoutResult`
- * - `computeScrollAnchorDelta(prevPositions, nextPositions, ...)`
+ * Phase 1 (本ファイル):
+ * - 完全な layout 計算 (`computeMasonryLayout` → positions Map + columnHeights)
+ * - scroll anchor 補正アルゴリズム (`computeScrollAnchorDelta` → 本 Issue 完全解決の核)
  *
- * Phase 2 (UI 統合):
+ * Phase 2 (次サイクル以降):
  * - `GalleryMasonry.tsx` 置換 + `useMasonryLayout.ts` hook
  */
 
@@ -104,4 +103,90 @@ export function assignItemToShortestColumn(columnHeights: ReadonlyArray<number>)
     }
   }
   return minIndex;
+}
+
+/**
+ * 各 item の配置先列と top 座標を含む完全な masonry layout を計算する純粋関数。
+ *
+ * `computeColumnHeights` と同じ最短列配置ロジックで、追加で各 item の id をキーとした
+ * positions Map を返す。Phase 2 で `<GalleryMasonry>` がこの結果を使って
+ * `<div style={{ position: absolute, left: col * columnWidth, top }}>` で配置する。
+ *
+ * @param items 配置対象 item 配列 (配置順序通り)
+ * @param columnCount 列数 (≥ 1)
+ * @param gap 列内 item 間の隙間 (px、デフォルト 0)
+ * @returns `MasonryLayoutResult { positions, columnHeights }`
+ *
+ * @example
+ * const layout = computeMasonryLayout(
+ *   [{id:"a", width:100, height:100}, {id:"b", width:100, height:200}],
+ *   2,
+ * );
+ * layout.positions.get("a") // { col: 0, top: 0 }
+ * layout.positions.get("b") // { col: 1, top: 0 }
+ * layout.columnHeights      // [100, 200]
+ */
+export function computeMasonryLayout(
+  items: ReadonlyArray<MasonryLayoutItem>,
+  columnCount: number,
+  gap: number = 0,
+): MasonryLayoutResult {
+  if (columnCount < 1) return { positions: new Map(), columnHeights: [] };
+  const columnHeights = new Array<number>(columnCount).fill(0);
+  const positions = new Map<string, { col: number; top: number }>();
+  for (const item of items) {
+    const targetCol = assignItemToShortestColumn(columnHeights);
+    const isFirstInColumn = columnHeights[targetCol] === 0;
+    const top = columnHeights[targetCol]! + (isFirstInColumn ? 0 : gap);
+    positions.set(item.id, { col: targetCol, top });
+    columnHeights[targetCol] = top + item.height;
+  }
+  return { positions, columnHeights };
+}
+
+/**
+ * 画像 load 完了などで item の高さが変化したとき、scroll position が「巻き戻る」
+ * 現象 (#773 の真因) を防ぐための **scrollTop 補正量** を計算する純粋関数。
+ *
+ * アルゴリズム:
+ * 1. **viewport より上にあった item** (`prev.top < viewportTop`) のみ補正対象
+ *    - viewport 内 item の変化は補正しない (それが「巻き戻り」の主因 → 補正で打ち消すと逆効果)
+ *    - viewport 外の item は scroll に影響しないため不要
+ * 2. 各 item で `next.top - prev.top` を加算 (= 高さ変化が下流にもたらした top の変化分)
+ * 3. 合計 delta を返す → 呼出側で `scrollContainer.scrollTop += delta` を実行
+ *
+ * これにより viewport 上で aspectRatio が変化しても、ユーザーが見ている viewport 内
+ * item の位置は scrollTop 補正で維持される (= 巻き戻りゼロ)。
+ *
+ * 補正対象外:
+ * - `next` に存在しない item (= 削除済) は skip
+ * - `prev` にしか存在しない item (= 削除) も skip (viewport 内 item の補正は別途必要だが
+ *   本 Issue では aspectRatio 変化に限定するため非対応)
+ *
+ * @param prevPositions 変化前の positions Map
+ * @param nextPositions 変化後の positions Map
+ * @param viewportTop scroll コンテナの現在の scrollTop
+ * @returns scrollTop に加算すべき補正量 (px、正なら下方向、負なら上方向)
+ *
+ * @example
+ * // viewport 上の item が aspectRatio 変化で下にずれた
+ * const prev = new Map([["a", { col: 0, top: 0 }], ["b", { col: 0, top: 100 }]]);
+ * const next = new Map([["a", { col: 0, top: 0 }], ["b", { col: 0, top: 150 }]]);
+ * computeScrollAnchorDelta(prev, next, 200) // +50 (b は viewport より上 (100 < 200) で +50 ずれた)
+ */
+export function computeScrollAnchorDelta(
+  prevPositions: ReadonlyMap<string, { col: number; top: number }>,
+  nextPositions: ReadonlyMap<string, { col: number; top: number }>,
+  viewportTop: number,
+): number {
+  let delta = 0;
+  for (const [id, prev] of prevPositions) {
+    const next = nextPositions.get(id);
+    if (!next) continue; // 削除済 item は補正不要
+    // viewport より上にあった item のみ補正対象 (prev.top < viewportTop)
+    if (prev.top < viewportTop) {
+      delta += next.top - prev.top;
+    }
+  }
+  return delta;
 }

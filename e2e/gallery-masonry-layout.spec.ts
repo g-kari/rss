@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 import {
   computeColumnHeights,
   assignItemToShortestColumn,
+  computeMasonryLayout,
+  computeScrollAnchorDelta,
   type MasonryLayoutItem,
 } from "../src/lib/gallery-masonry-layout";
 
@@ -116,5 +118,167 @@ test.describe("computeColumnHeights — 列ごとの累積高さ計算", () => {
     const result2 = computeColumnHeights(items, 3);
     expect(result1).toEqual(result2);
     expect(result1).toEqual([100, 100, 100]);
+  });
+});
+
+test.describe("computeMasonryLayout — positions Map + columnHeights", () => {
+  test("空 items → 空 positions + 全列 0", () => {
+    const result = computeMasonryLayout([], 3);
+    expect(result.positions.size).toBe(0);
+    expect(result.columnHeights).toEqual([0, 0, 0]);
+  });
+
+  test("columnCount < 1 → 空 positions + 空 columnHeights", () => {
+    const result = computeMasonryLayout([item("a", 100)], 0);
+    expect(result.positions.size).toBe(0);
+    expect(result.columnHeights).toEqual([]);
+  });
+
+  test("1 列 + 1 item → position {col:0, top:0}, columnHeights=[100]", () => {
+    const result = computeMasonryLayout([item("a", 100)], 1);
+    expect(result.positions.get("a")).toEqual({ col: 0, top: 0 });
+    expect(result.columnHeights).toEqual([100]);
+  });
+
+  test("1 列 + 3 items + gap=10 → top が累積", () => {
+    const result = computeMasonryLayout([item("a", 100), item("b", 200), item("c", 50)], 1, 10);
+    expect(result.positions.get("a")).toEqual({ col: 0, top: 0 });
+    expect(result.positions.get("b")).toEqual({ col: 0, top: 110 }); // 100 + gap 10
+    expect(result.positions.get("c")).toEqual({ col: 0, top: 320 }); // 110 + 200 + gap 10
+    expect(result.columnHeights).toEqual([370]); // 320 + 50
+  });
+
+  test("3 列 + 3 items 同高 → 各列の top:0", () => {
+    const result = computeMasonryLayout([item("a", 100), item("b", 100), item("c", 100)], 3);
+    expect(result.positions.get("a")).toEqual({ col: 0, top: 0 });
+    expect(result.positions.get("b")).toEqual({ col: 1, top: 0 });
+    expect(result.positions.get("c")).toEqual({ col: 2, top: 0 });
+    expect(result.columnHeights).toEqual([100, 100, 100]);
+  });
+
+  test("3 列 + 4 items 同高 + gap=10 → 4 番目は col 0 の top=110", () => {
+    const result = computeMasonryLayout(
+      [item("a", 100), item("b", 100), item("c", 100), item("d", 100)],
+      3,
+      10,
+    );
+    expect(result.positions.get("d")).toEqual({ col: 0, top: 110 });
+    expect(result.columnHeights).toEqual([210, 100, 100]);
+  });
+
+  test("3 列 + 不均等 → 最短列追加で top が累積", () => {
+    // a:100 → col 0 [100, 0, 0] / pos {col:0, top:0}
+    // b:200 → col 1 / pos {col:1, top:0}
+    // c:50  → col 2 / pos {col:2, top:0}
+    // d:300 → col 2 (50 が最短) / pos {col:2, top:50}
+    const result = computeMasonryLayout(
+      [item("a", 100), item("b", 200), item("c", 50), item("d", 300)],
+      3,
+    );
+    expect(result.positions.get("d")).toEqual({ col: 2, top: 50 });
+    expect(result.columnHeights).toEqual([100, 200, 350]);
+  });
+
+  test("配置決定論性: 同入力で常に同 positions Map", () => {
+    const items = [item("a", 100), item("b", 100), item("c", 100)];
+    const r1 = computeMasonryLayout(items, 3);
+    const r2 = computeMasonryLayout(items, 3);
+    expect([...r1.positions.entries()]).toEqual([...r2.positions.entries()]);
+  });
+});
+
+test.describe("computeScrollAnchorDelta — scroll 補正量計算", () => {
+  test("空 prev → delta=0", () => {
+    expect(computeScrollAnchorDelta(new Map(), new Map(), 100)).toBe(0);
+  });
+
+  test("全 item が viewport 内 (prev.top >= viewportTop) → delta=0", () => {
+    const prev = new Map([
+      ["a", { col: 0, top: 100 }],
+      ["b", { col: 0, top: 200 }],
+    ]);
+    const next = new Map([
+      ["a", { col: 0, top: 100 }],
+      ["b", { col: 0, top: 250 }], // viewport 内変化は補正しない
+    ]);
+    expect(computeScrollAnchorDelta(prev, next, 50)).toBe(0);
+  });
+
+  test("viewport 上の 1 item が下にずれた → delta=+変化分", () => {
+    // viewportTop=200、item a は top=100 (viewport 上) で next.top=150 にずれた
+    const prev = new Map([["a", { col: 0, top: 100 }]]);
+    const next = new Map([["a", { col: 0, top: 150 }]]);
+    expect(computeScrollAnchorDelta(prev, next, 200)).toBe(50);
+  });
+
+  test("viewport 上の 1 item が上にずれた → delta=-変化分", () => {
+    // viewportTop=200、item a は top=100 で next.top=50 にずれた
+    const prev = new Map([["a", { col: 0, top: 100 }]]);
+    const next = new Map([["a", { col: 0, top: 50 }]]);
+    expect(computeScrollAnchorDelta(prev, next, 200)).toBe(-50);
+  });
+
+  test("複数 viewport 上 item が変化 → 合計 delta", () => {
+    // a: top 100 → 150 (+50)
+    // b: top 150 → 200 (+50)
+    // viewportTop=300 で両方 viewport 上
+    const prev = new Map([
+      ["a", { col: 0, top: 100 }],
+      ["b", { col: 1, top: 150 }],
+    ]);
+    const next = new Map([
+      ["a", { col: 0, top: 150 }],
+      ["b", { col: 1, top: 200 }],
+    ]);
+    expect(computeScrollAnchorDelta(prev, next, 300)).toBe(100);
+  });
+
+  test("item 削除 (next にない) → 該当 item を skip", () => {
+    const prev = new Map([
+      ["a", { col: 0, top: 100 }],
+      ["b", { col: 0, top: 200 }],
+    ]);
+    const next = new Map([["a", { col: 0, top: 150 }]]); // b 削除
+    // a のみ補正対象 (+50)、b は skip
+    expect(computeScrollAnchorDelta(prev, next, 300)).toBe(50);
+  });
+
+  test("viewport 内 item と viewport 上 item が混在 → 上 item のみ補正", () => {
+    // a (top 50) は viewport 上、b (top 250) は viewport 内
+    const prev = new Map([
+      ["a", { col: 0, top: 50 }],
+      ["b", { col: 0, top: 250 }],
+    ]);
+    const next = new Map([
+      ["a", { col: 0, top: 80 }], // +30 (補正)
+      ["b", { col: 0, top: 300 }], // viewport 内は無視
+    ]);
+    expect(computeScrollAnchorDelta(prev, next, 200)).toBe(30);
+  });
+
+  test("境界: prev.top === viewportTop → viewport 内扱い (補正対象外)", () => {
+    const prev = new Map([["a", { col: 0, top: 200 }]]);
+    const next = new Map([["a", { col: 0, top: 250 }]]);
+    // top == viewportTop は viewport の最上端で見えている = viewport 内扱い
+    expect(computeScrollAnchorDelta(prev, next, 200)).toBe(0);
+  });
+
+  test("変化なし (prev === next 内容) → delta=0", () => {
+    const prev = new Map([["a", { col: 0, top: 100 }]]);
+    const next = new Map([["a", { col: 0, top: 100 }]]);
+    expect(computeScrollAnchorDelta(prev, next, 200)).toBe(0);
+  });
+
+  test("viewportTop=0 (最上部スクロール) → 全 item が viewport 内扱い → delta=0", () => {
+    const prev = new Map([
+      ["a", { col: 0, top: 100 }],
+      ["b", { col: 0, top: 200 }],
+    ]);
+    const next = new Map([
+      ["a", { col: 0, top: 150 }],
+      ["b", { col: 0, top: 300 }],
+    ]);
+    // viewportTop=0 なので prev.top < 0 を満たす item はなし → delta=0
+    expect(computeScrollAnchorDelta(prev, next, 0)).toBe(0);
   });
 });
