@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback, type KeyboardEvent } from "react";
+import { useState, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Feed, Article } from "../types";
 import { isArticleRead } from "../lib/article-filter";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { usePopupLock } from "../hooks/usePopupLock";
-import { FOCUSABLE_SELECTOR } from "../lib/modal-focus";
+import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 
 interface Props {
   feeds: Feed[];
@@ -39,20 +39,17 @@ export default function FeedQuickSwitchModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  // WCAG 2.4.3: 閉じたときにトリガー要素 (?キー押下した記事一覧 etc.) へフォーカス復元
-  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   usePopupLock();
 
-  useEffect(() => {
-    returnFocusRef.current = document.activeElement as HTMLElement | null;
-    inputRef.current?.focus();
-    return () => {
-      const ret = returnFocusRef.current;
-      returnFocusRef.current = null;
-      if (ret && document.contains(ret)) ret.focus();
-    };
-  }, []);
+  // #790 Phase 2: focus trap + return focus restore + Escape/Tab cycle を hook に集約。
+  // 実装着手時の詳細 API 検証で trapTab option 追加不要と判明 (initialFocusRef option で inputRef を
+  // 初期 focus に指定 + ArrowDown/Up/Enter は input handleKeyDown が独立処理、event bubble での
+  // Escape 重複処理も onClose の idempotent 性で無害)。Phase 1 の signature 拡張提案を撤回。
+  const { handleKeyDown: dialogKeyDown } = useModalFocusTrap(dialogRef, {
+    onClose,
+    initialFocusRef: inputRef,
+  });
 
   const unreadByFeed = useMemo(() => {
     const map = new Map<string, number>();
@@ -122,32 +119,6 @@ export default function FeedQuickSwitchModal({
     }
   }
 
-  // Modal.tsx と同じ focus trap pattern (WCAG 2.1.2 No Keyboard Trap)。
-  // 入力フィールド以外 (clear-query ボタンなど) からの Tab がダイアログ外へ抜けるのを防ぐ。
-  const handleDialogKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab") return;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-    if (focusable.length === 0) {
-      e.preventDefault();
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (e.shiftKey) {
-      if (document.activeElement === first || document.activeElement === dialog) {
-        e.preventDefault();
-        last.focus();
-      }
-    } else {
-      if (document.activeElement === last || document.activeElement === dialog) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-  }, []);
-
   const isSelected = (opt: FeedOption) =>
     opt.id === selectedFeedId || (opt.id === null && selectedFeedId === null);
 
@@ -160,7 +131,7 @@ export default function FeedQuickSwitchModal({
         aria-modal="true"
         aria-label="フィードを素早く切り替え"
         tabIndex={-1}
-        onKeyDown={handleDialogKeyDown}
+        onKeyDown={dialogKeyDown}
         className="fixed z-50 inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[400px] max-h-[65dvh] flex flex-col bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden outline-none"
         onClick={(e) => e.stopPropagation()}
       >
