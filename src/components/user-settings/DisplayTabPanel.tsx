@@ -75,6 +75,9 @@ interface DisplayTabPanelProps {
   // Dedup
   deduplicateByLink: boolean;
   toggleDeduplicateByLink: () => void;
+  // Experimental (#773 Phase 2a)
+  gallerySelfMasonryEnabled: boolean;
+  toggleGallerySelfMasonryEnabled: () => void;
   // Image download folders
   imageDlFolder: string;
   onChangeImageDlFolder: (v: string) => void;
@@ -117,6 +120,8 @@ export default function DisplayTabPanel({
   onChangeTtlDays,
   deduplicateByLink,
   toggleDeduplicateByLink,
+  gallerySelfMasonryEnabled,
+  toggleGallerySelfMasonryEnabled,
   imageDlFolder,
   onChangeImageDlFolder,
   imageDlFolderNsfw,
@@ -436,6 +441,41 @@ export default function DisplayTabPanel({
             </div>
             <span className="text-[11px] text-text-muted mt-0.5">
               チェックしたシェア先が記事ヘッダーにクイックボタンとして表示されます。
+            </span>
+          </div>
+        </div>
+
+        {/* #773 Phase 2a: 自前 masonry layout (テストモード) */}
+        <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
+          <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+            実験的機能
+          </span>
+          <SettingRow label="ギャラリー: 新 layout">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={gallerySelfMasonryEnabled}
+              aria-label={
+                gallerySelfMasonryEnabled
+                  ? "新ギャラリー layout を OFF にする (masonic に戻す)"
+                  : "新ギャラリー layout を ON にする (テスト用)"
+              }
+              onClick={toggleGallerySelfMasonryEnabled}
+              className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+                gallerySelfMasonryEnabled ? "bg-ink" : "bg-border-default"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+                  gallerySelfMasonryEnabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </SettingRow>
+          <div className="flex flex-col gap-1 pl-28">
+            <span className="text-[11px] text-text-muted">
+              画像読み込みで scroll 位置が巻き戻る問題を解決する自前 layout を使用 (#773)。
+              動作が不安定な場合は OFF に戻してください。
             </span>
           </div>
         </div>

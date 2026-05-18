@@ -80,6 +80,8 @@ export const STORAGE_KEYS = {
   GALLERY_MIN_IMAGE_FILTER: "rss-gallery-min-image-filter",
   /** #714 関連: ギャラリー 1 ページの記事件数 (useArticlePagination の chunk サイズ) */
   GALLERY_PAGE_SIZE: "rss-gallery-page-size",
+  /** #773 Phase 2a: 自前 masonry layout (テストモード) の有効化フラグ */
+  GALLERY_SELF_MASONRY_ENABLED: "rss-gallery-self-masonry-enabled",
   BEACON_OVERFLOW: "rss-beacon-overflow",
   TTL_DAYS: "rss-ttl-days",
   DEDUP_BY_LINK: "rss-dedup-by-link",

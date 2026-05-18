@@ -68,6 +68,13 @@ export interface ReaderSettings {
    */
   galleryPageSize: GalleryPageSize;
   onChangeGalleryPageSize: (v: GalleryPageSize) => void;
+  /**
+   * #773 Phase 2a: 自前 masonry layout (テストモード) を有効化するフラグ。
+   * default `false` で既存 masonic 経路を維持。ユーザーが設定 UI で ON にした
+   * ときのみ自前 virtualizer (Phase 2b で実装) が動作。
+   */
+  gallerySelfMasonryEnabled: boolean;
+  toggleGallerySelfMasonryEnabled: () => void;
   deduplicateByLink: boolean;
   toggleDeduplicateByLink: () => void;
   ttlDays: number | null;
