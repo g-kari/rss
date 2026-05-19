@@ -77,11 +77,17 @@ export default function GalleryMasonrySelf<T>({
 
   // columns 明示時 / auto (null) どちらでも「決定した columnCount で width を full 分配」して
   // 右端余白を発生させない。masonic は内部で同様の分配をしていたが、自前実装でも揃える。
+  //
+  // #773 Phase 2c-fix2: 旧実装は `Math.floor` で小数点を切り捨てていたため、列数 auto 時に
+  // (width - (targetCount-1) * gutter) が targetCount で割り切れないと **右端 1〜N px の余白**
+  // が発生していた (例: width=601 / gutter=12 / columnWidth=220 → targetCount=2 / floor(589/2)=294
+  // → 配置末尾は 2*(294+12)-12=600 で 1px 余白)。float 計算でブラウザの sub-pixel rendering に任せて
+  // 余白を解消する。targetCount 算出は floor のまま (列数は整数で確定)。
   const { effectiveColumnWidth, columnCount } = useMemo(() => {
     if (width <= 0) return { effectiveColumnWidth: columnWidth, columnCount: 1 };
     const targetCount =
       columns ?? Math.max(1, Math.floor((width + columnGutter) / (columnWidth + columnGutter)));
-    const calcWidth = Math.floor((width - (targetCount - 1) * columnGutter) / targetCount);
+    const calcWidth = (width - (targetCount - 1) * columnGutter) / targetCount;
     return { effectiveColumnWidth: calcWidth, columnCount: targetCount };
   }, [width, columns, columnGutter, columnWidth]);
 
