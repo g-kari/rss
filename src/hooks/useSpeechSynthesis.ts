@@ -16,7 +16,7 @@ import { useTtsControls } from "./useTtsControls";
 const SPEECH_SUPPORTED = isSpeechSupported();
 
 export const TTS_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0] as const;
-export type TtsRate = (typeof TTS_RATES)[number];
+export type TtsRateStep = (typeof TTS_RATES)[number];
 
 /**
  * Web Speech API (SpeechSynthesis) を使った読み上げ管理フック。`TtsAdapter` (#675 Phase 1a)
@@ -70,7 +70,7 @@ export function useSpeechSynthesis(): TtsAdapter {
     rateRef,
     voiceUriRef,
     volumeRef,
-  } = useTtsControls<TtsRate>({
+  } = useTtsControls<TtsRateStep>({
     rates: TTS_RATES,
     defaultRate: 1.0,
     // Web Speech API は rate/voice/volume 変化で再 speak (utterance を作り直し) する仕様。
