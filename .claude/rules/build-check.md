@@ -67,6 +67,53 @@ SKIP=e2e-test git commit -m "..."  # → e2e-test は Skipped、他 hook は実�
 
 主な使用箇所: `feat/674-piper-phase2b` / `feat/750-booth-fallback-phase1` (wrangler remote dev session 認証 400 で playwright e2e が web server 起動不能 → SKIP=e2e-test で commit、本番デプロイ後の実機検証で別途確認)
 
+## pre-commit hook の e2e 大量 fail は「Executable doesn't exist at」で playwright binary cache 不整合を最初に疑う
+
+`pnpm install` で `@playwright/test` が **minor 更新** (例: 1.59.x → 1.60.x) されると、新 version は **新 Chromium binary 番号** (例: `chromium_headless_shell-1217` → `chromium_headless_shell-1223`) を要求するが、`~/.cache/ms-playwright/` には旧 binary しか存在せず e2e が **大量 fail** する罠。pre-commit hook の summary 出力 (`N failed`) だけ見ると **機能 regression と誤認** しやすい。
+
+```
+症状: pre-commit hook で e2e 多数 fail (10+ 件、無関係な spec が一斉に落ちる)
+真因: playwright Chromium binary cache 不在
+判別シグナル: 単体 spec 実行で「browserType.launch: Executable doesn't exist at <path>」
+修復: npx playwright install <browser> (例: chromium / chrome / firefox / webkit)
+```
+
+### 判別フロー (e2e 大量 fail を観測したら最初に実行)
+
+```bash
+# 1. 失敗 spec 1 件を単体実行してエラーメッセージ全文を読む
+npx playwright test e2e/<failing>.spec.ts:<line> --project=chromium 2>&1 | tail -20
+
+# 2. "Executable doesn't exist at ~/.cache/ms-playwright/<browser>-<version>" を確認
+
+# 3. 該当 browser を install
+npx playwright install chromium   # or chrome / firefox / webkit
+```
+
+### 機能 regression と環境問題の区別
+
+| エラーメッセージ                                       | 真因                          | 対処                                                                            |
+| ------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------- |
+| `browserType.launch: Executable doesn't exist at ...`  | binary cache 不整合 (環境)    | `npx playwright install`                                                        |
+| `Test timeout of Xms exceeded` / `locator(...) failed` | UI / 機能 regression (コード) | 該当 spec の対象実装を Read で確認、機能修正                                    |
+| `connect ECONNREFUSED 127.0.0.1:3000`                  | dev server 起動失敗 (環境)    | next.config.ts `remoteBindings: false` / wrangler login 等の dev infra 設定確認 |
+
+**How to apply**: pre-commit hook の e2e 大量 fail を観測したら以下を判定 (binary cache 不在は機能 regression と完全に独立した環境問題、エラーメッセージ全文を読まずに `N failed` summary だけ見ると 2-3 サイクル消費して撤回 / SKIP=e2e-test 多用に陥る):
+
+1. **大量 fail の summary を見たら即座に「真因切り分け」mode に入る** — `N failed` の数だけで「機能 regression」と即決しない
+2. **失敗 spec 1 件を `npx playwright test e2e/<spec>:<line> --project=chromium` で単体実行** してエラーメッセージ全文を確認
+3. **「Executable doesn't exist at」を見つけたら即 `npx playwright install <browser>`** で修復 (Chromium 含めて ~290 MiB ダウンロード、1-3 分)
+4. 修復後、同 spec を再実行して **pass 確認** → 環境問題確定、commit を SKIP なしで進める
+5. **回帰防止**: `pnpm install` 出力で `@playwright/test` の minor 更新行を見たら、即時に `npx playwright install` を実行する習慣をつける (lock 更新と binary 更新はペアで扱う)
+
+**反例 (binary 不整合でないケース)**:
+
+- e2e fail が **特定 spec 群に集中** (例: TTS 関連だけ落ちる、UI 描画系だけ落ちる) → 機能 regression の可能性高
+- エラーメッセージが **`browser launch` でなく `locator timeout` / `expect failed`** → 機能 regression
+- `npx playwright install` 完了後も同 spec が **fail 継続** → 機能 regression の可能性、別途調査
+
+主な使用箇所: 前々サイクル ws bump の副作用で `@playwright/test 1.59.1 → 1.60.0` が master に反映済 + binary cache `1217` のまま → e2e 21 件 fail を 2 サイクル連続「機能 regression」と誤認 (前々サイクル: 撤回判断 / 前サイクル: SKIP=e2e-test) → 本サイクルでエラーメッセージ全文 (`Executable doesn't exist at chromium_headless_shell-1223`) を読んで真因判明 → `npx playwright install chromium` 1 コマンドで修復完了
+
 ## pre-commit hook の auto-fix 経由で commit が落ちるケースを検知 + 回復する
 
 `check-fix` hook (oxlint + oxfmt auto-fix) は **stash → commit → restore** の 3 段フローで動作するが、auto-fix で format 変更が必要な場合、以下の罠が発生する:
