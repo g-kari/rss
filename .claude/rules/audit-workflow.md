@@ -200,6 +200,44 @@ paths: "e2e/**/*.spec.ts"
 
 主な使用箇所: 41st (security narrow) → 42nd (e2e regression test) → 43rd (perf / a11y / simplify) → 44th (bug / 新機能 / docs drift / Dependabot) で 1 周完了。各サイクルで 4-9 件発見、消化 4-7 件で安定運用
 
+### 派生ケース: 観点別 Issue 起票 agent の prompt 必須 3 要件
+
+observation rotation で派遣する agent や、Step 0 sweep で「全 Issue が判断待ち + 自走着手なし」と判定して **loop directive 第 3 段階 (= コード精査して観点別 Issue 作成)** を発動するときの agent prompt は、3 つの mandatory step を必ず含めないと **既存対応済の提案 / 設計矛盾を含む提案 / 副作用許容しがたい提案** が大量混入する。
+
+3 つの mandatory step (1 つでも欠落すると agent report 品質劣化):
+
+1. **既存実装の現状確認 (`find_symbol` / `get_symbols_overview`)** — 対象モジュールの signature と既存対応状況を agent に最初に確認させる。「対応済リストを prompt で提示」だけでは agent が見落とすケースがある (例: orchestrator 化済 hook を「分割未対応」と誤認)
+2. **対象モジュール間の「保存内容 vs 必要情報」1:1 マッピング検証** — 重複 fetch / 重複 cache / 重複 hook 等の統合提案では、送信元と送信先の field レベル差分を起票時に確認させる。マッピング未検証で起票すると実装着手時に「UX 劣化なしの統合不可能」が露呈する
+3. **依存追加 / 上書き提案の副作用 scope 確認** — `pnpm.overrides` 追加 / dep bump / config 変更等の提案では、`pnpm install` が lock 全体を refresh して semver caret range 内の minor 更新が連鎖する罠を明示。`pnpm outdated` で minor 更新候補を一覧化させて副作用規模を起票時に表面化する
+
+**3 step の何が default 振る舞いより優れているか**:
+
+| step   | agent の default 振る舞い                     | 3 step 適用後                             |
+| ------ | --------------------------------------------- | ----------------------------------------- |
+| step 1 | 「対応済リスト」を prompt で示しても見落とす  | find_symbol で実コード確認 → 見落としゼロ |
+| step 2 | 「重複 fetch あるから統合しよう」型の表面提案 | field 差分検証で「真の統合効果」評価      |
+| step 3 | 「dep bump で解決」型の機械的提案             | 副作用 scope を起票時に表面化             |
+
+**How to apply**: 観点別 Issue 起票 agent を派遣する prompt を書くとき (3 step を skip した agent は「既存対応済の提案 + 設計矛盾の提案 + 副作用過大の提案」を返してきて main thread の検証コストが scope に膨らむ、prompt に組み込めば agent 側で自動的に質を担保できる):
+
+1. **prompt の冒頭セクションに「以下 3 step を必ず実施」を明示** — 1 つでも省略しないよう「ALL を完了してから提案」と強調
+2. **step 1 (find_symbol 確認)**: 対象モジュール名 + 「signature 取得 + 対応済状況を確認」を明記。`serena` MCP の `find_symbol` / `get_symbols_overview` を優先利用するよう指示
+3. **step 2 (1:1 マッピング)**: 統合 / 重複改善型の提案では「送信元と送信先の field レベル差分を必ず確認」を明記。差分があれば設計案 4 案 (schema 拡張 / 別 cache / UX 劣化容認 / 見送り) で trade-off 提示させる
+4. **step 3 (副作用 scope)**: 依存追加 / 上書き型では「`pnpm install` が lock 全体 refresh + 副作用 minor 更新の連鎖リスクを明示」を必須要件として書く
+5. **agent report に「3 step 確認結果」セクションを必須化** — skip された step があれば再派遣 (1 サイクル消費するが品質担保のため許容)
+
+**反例 (3 step が overkill なケース)**:
+
+- agent task が **既知の機械的検出のみ** (例: dead export grep / TODO コメント sweep) → step 1-3 不要、直接実行
+- agent task が **新規 lib 提案 (現状コードベースとの相互作用なし)** → step 1-2 不要
+- agent task が **既存 Issue の調査 (既に Issue 本文で前提固まっている)** → 別系統の「Issue 本文の前提検証」(本ファイル別派生ケース) を適用
+
+主な使用箇所:
+
+- Refactor agent — `useFilteredArticles.ts` を「分割未対応」と誤判定 (実際は `useArticleFilters` / `useArticleSorting` / `useArticlePagination` orchestrator 化済) → step 1 skip が原因
+- `#808` OGP cache 統合 — `useOgpCache` は画像 URL のみ / `useContentLinkPreviews` は 3 field 必要の設計矛盾が起票時に見落とされた → step 2 skip が原因
+- `#807` ws bump — `pnpm.overrides` 追加で副作用 minor 7 件連鎖 + e2e 21 件 fail → step 3 skip が原因
+
 ### 派生ケース: 規範 codify 後の grep sweep を「retrospective 本文に結果引用」+「次サイクル開始時に再 sweep」で二段保証する
 
 `rule-maintenance.md` 派生ケース 5 (規範 codify 後は code drift も機械的に sweep する) と派生ケース 6 (code-quality バグ修正時に同 pattern の grep 検出コマンドを併記 + 後続 sweep を Issue 化) は **「規範 codify 時に検出 grep を併記する」** を要求しているが、それだけでは **「codify 時の grep 結果が 0 件を保証しない」** ため、別ファイルに同種バグが残存していることが後の cycle で判明する。

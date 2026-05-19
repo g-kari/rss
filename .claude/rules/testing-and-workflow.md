@@ -54,6 +54,48 @@ test("正常ケース", () => {
 
 主な使用箇所: `fast-xml-parser` の依存である `fast-xml-builder`（GHSA-2025-attribute-bypass / comment-regex）
 
+### 派生ケース: `pnpm.overrides` 適用時に semver caret range 内の副作用 minor 更新が連鎖する罠
+
+`pnpm install` は overrides 解決時に **lock 全体を refresh** する性質があり、`ws` の override 1 行を追加したつもりでも semver caret range 内の `@playwright/test` / `vite` / `tailwindcss` 等の minor 更新が連鎖して走る。これらの組み合わせで **本来無関係な機能** (modal focus / scroll loadMore / dev-auth-bypass 等) で e2e regression が発生する。
+
+```
+パターン: pnpm.overrides 適用時の副作用 minor 更新
+  1. package.json の pnpm.overrides に "ws": ">=8.20.1" を追加
+  2. pnpm install 実行 → ws override 反映 (audit 0 件) +
+     lock 全体 refresh で minor 更新 7 件連鎖
+     (fast-xml-parser / @playwright/test / vite / tailwindcss / vite-plus
+      / katex / @tailwindcss/postcss)
+  3. pre-commit hook の playwright e2e で 21 件 fail
+     ↑ 真因は @playwright/test 1.59.1 → 1.60.0 等、ws bump とは無関係の minor 更新
+  4. ws の moderate 警告解消の代償として「e2e 21 件 regression」発生
+```
+
+**最小 diff を保証する手法 (採用順)**:
+
+1. **着手前に `pnpm outdated` で minor 更新候補を一覧化** — どの transitive が更新されうるか事前確認
+2. **`pnpm install` 直後に `git diff --stat pnpm-lock.yaml` で更新規模確認** — 想定外の lock 変更があれば一旦撤回
+3. **副作用 minor 更新を bisect して真因 package を特定 → 別 override で pin** — 1-2 サイクル要、scope 拡大
+4. **対応見送り (上流 transitive 更新待ち)** — moderate + devDeps only + 本番 bundle 影響ゼロなら緊急性 low、待機が妥当
+5. **副作用 minor 更新を全面許容 → e2e regression を個別修正** — scope 拡大、優先順位次第
+
+**緊急度の判定軸**:
+
+| 状況                                                       | 推奨対応                        |
+| ---------------------------------------------------------- | ------------------------------- |
+| devDeps only + 本番 bundle 影響ゼロ + Dependabot fixed     | 上流 transitive 更新待ち (案 4) |
+| production 影響あり + critical CVE                         | bisect 戦略で pin (案 3)        |
+| 副作用 e2e regression が limited scope で修正可能 (1-3 件) | 副作用許容で個別修正 (案 5)     |
+
+**How to apply**: CVE 対応 / `pnpm.overrides` 追加するときは (`pnpm install` は対象 override 解決時に lock 全体を refresh する仕様で、semver caret range 内の minor 更新が連鎖して機能 regression を引き起こすリスクが拡散する):
+
+1. **着手前に `pnpm outdated` 実行** で minor 更新候補を一覧化
+2. **`pnpm install` 直後に `git diff --stat pnpm-lock.yaml` で更新規模確認** — 想定外なら一旦撤回 (`git checkout package.json pnpm-lock.yaml` + `pnpm install --frozen-lockfile`)
+3. **pre-commit hook の e2e fail を観測したら `build-check.md` 規範「機能問題は SKIP 不可」に従い撤回判断**
+4. **撤回時は branch 削除 + Issue に副作用調査結果コメント + `needs-user-decision` ラベル付与で判断仰ぐ**
+5. **緊急度判定**: devDeps only + 本番影響ゼロなら案 4 (上流待ち) 推奨
+
+主な使用箇所: `#807` ws bump 自走着手で `pnpm install` 副作用に `@playwright/test 1.60.0` / `vite 8.0.13` 等 7 件 minor 更新連鎖 + e2e 21 件 fail → 撤回 + `needs-user-decision` で判断仰ぐ
+
 ## 大きい retrospective Issue は「技術スタック別フォローアップ Issue」に分割してクローズする
 
 「複数のバグ修正に後追いテストをまとめて追加する」のような **横断的 retrospective Issue** は、進捗管理としては意義があるが **個別 PR の単位として扱いづらい**。残作業の技術スタックが分かれてくると、
