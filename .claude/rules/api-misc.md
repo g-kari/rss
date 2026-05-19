@@ -91,7 +91,7 @@ globs: "app/api/engagement/**,app/api/stats/**,app/api/ogp/**,app/api/image-prox
 
 ## GET /api/ogp
 
-URL から OGP 画像・タイトル・説明を取得する。Cloudflare Cache API（30日・負例は 1日）でキャッシュされる。60 秒あたり最大 30 件のスライディングウィンドウ制限あり。
+URL から OGP 画像・タイトル・説明を取得する。Cloudflare Cache API（30日・負例は 1日）でキャッシュされる。60 秒あたり最大 120 件のスライディングウィンドウ制限あり (#806: ギャラリー一括展開時の 429 抑止のため緩和)。
 
 ### クエリパラメータ
 
