@@ -73,17 +73,17 @@ export default function GalleryMasonrySelf<T>({
   columns = null,
 }: GalleryMasonrySelfProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { width, offsetTop } = useContainerMetrics(containerRef, scrollElement);
+  const { width } = useContainerMetrics(containerRef, scrollElement);
 
-  const effectiveColumnWidth =
-    columns && width > 0
-      ? Math.floor((width - (columns - 1) * columnGutter) / columns)
-      : columnWidth;
-
-  const columnCount = useMemo(() => {
-    if (width <= 0) return 1;
-    return Math.max(1, Math.floor((width + columnGutter) / (effectiveColumnWidth + columnGutter)));
-  }, [width, effectiveColumnWidth, columnGutter]);
+  // columns 明示時 / auto (null) どちらでも「決定した columnCount で width を full 分配」して
+  // 右端余白を発生させない。masonic は内部で同様の分配をしていたが、自前実装でも揃える。
+  const { effectiveColumnWidth, columnCount } = useMemo(() => {
+    if (width <= 0) return { effectiveColumnWidth: columnWidth, columnCount: 1 };
+    const targetCount =
+      columns ?? Math.max(1, Math.floor((width + columnGutter) / (columnWidth + columnGutter)));
+    const calcWidth = Math.floor((width - (targetCount - 1) * columnGutter) / targetCount);
+    return { effectiveColumnWidth: calcWidth, columnCount: targetCount };
+  }, [width, columns, columnGutter, columnWidth]);
 
   const { positions, totalHeight, itemRef } = useMasonryLayout({
     items,
@@ -91,8 +91,6 @@ export default function GalleryMasonrySelf<T>({
     columnCount,
     columnWidth: effectiveColumnWidth,
     gap: columnGutter,
-    scrollElement,
-    containerOffsetTop: offsetTop,
   });
 
   return (
