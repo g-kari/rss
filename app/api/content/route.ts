@@ -121,12 +121,15 @@ async function handleGet(
           },
         );
       }
-      // 4xx はクライアント起因（アクセス不可・存在しない）なのでそのまま返す
-      // 5xx はゲートウェイエラーとして 502 を返す
-      const status = res.status >= 400 && res.status < 500 ? res.status : 502;
-      return apiError("Failed to load page", status, {
-        code: "FETCH_FAILED",
-        retryable: status >= 500,
+      // #804: 上流の 4xx / 5xx を一律 HTTP 502 Bad Gateway に変換する。
+      // 4xx pass-through だと client 側 classify-http-error が "client_error" 判定し
+      // 「ログインし直してください」相当の汎用 fallback を表示してしまい、
+      // 上流 fetch 失敗とサーバー認証エラーが区別不能になっていた (RFC 標準: 502 = upstream gateway 失敗)。
+      // upstreamStatus を response body に含めて debugging visibility を確保。
+      return apiError("Upstream fetch failed", 502, {
+        code: "UPSTREAM_FETCH_FAILED",
+        retryable: true,
+        upstreamStatus: res.status,
       });
     }
 
