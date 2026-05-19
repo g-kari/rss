@@ -99,58 +99,11 @@ const observer = new ResizeObserver((entries) => {
 
 ### 派生ケース: IntersectionObserver は `isIntersecting: true` 維持時に新規 callback を発火させない罠
 
-`IntersectionObserver` は **`isIntersecting: false → true` の遷移時にのみ** callback を発火させる。一度 `true` になった後、要素 size 変化や parent scroll で **再評価が走っても、`isIntersecting: true` のままなら新規 callback は来ない**。
+`IntersectionObserver` は `isIntersecting: false → true` の遷移時にのみ callback を発火させる。一度 true になった後、要素 size 変化や parent scroll で再評価されても true 維持なら新規 callback は来ない。
 
-無限スクロール (sentinel-based loadMore) で以下のシナリオが詰まる典型:
+無限スクロール sentinel-based loadMore で「pageSize 小 + フィルター済 + 単一フィード」のような状況だと、loadMore 後も sentinel が viewport 内に留まって次の callback が発火せず、ユーザーがスクロールしても記事が読み込まれない詰まりが起きる。
 
-```
-1. visible 10 件 → sentinel が viewport 内 (intersect=true) → loadMore 発火 → visible 20 件
-2. visible 20 件でも viewport 高さに満たない (pageSize 小 / フィルター済 / 単一フィード等)
-   → sentinel 依然 viewport 内 (intersect=true 維持)
-3. IntersectionObserver は intersect=true のままで新規 callback を発火させない
-   → 次の loadMore が永久に発火しない → ユーザーから見るとスクロールしても記事が読み込まれない
-```
-
-```typescript
-// アンチパターン: IntersectionObserver 単独 + loadMore 後の sentinel 詰まりに無策
-useEffect(() => {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0].isIntersecting && hasMoreRef.current) {
-        loadMoreRef.current();
-      }
-    },
-    { rootMargin: "600px" },
-  );
-  observer.observe(sentinelRef.current!);
-  return () => observer.disconnect();
-}, []);
-// → コンテンツが少なくて sentinel が viewport 内に留まる場合、初回 1 回 loadMore で詰まる
-
-// 修正パターン: visible.length 変化を deps にした「再 viewport チェック」useEffect 追加
-useEffect(() => {
-  if (!hasMore) return;
-  const el = sentinelRef.current;
-  if (!el) return;
-  const id = setTimeout(() => {
-    if (!hasMoreRef.current) return;
-    const rect = el.getBoundingClientRect();
-    const rootMargin = 600;
-    const inViewport = rect.top < window.innerHeight + rootMargin && rect.bottom > -rootMargin;
-    if (inViewport) {
-      loadMoreRef.current();
-    }
-  }, 0);
-  return () => clearTimeout(id);
-}, [visible.length, hasMore]);
-```
-
-**動作**:
-
-- visible.length 変化 (= loadMore 後) のたびに 1 tick 待ち
-- sentinel の `getBoundingClientRect()` で viewport 内 (rootMargin 含む) かを判定
-- 内なら `loadMore()` をもう 1 回発火 → 連鎖的にロード継続を担保
-- `hasMore: false` になった瞬間に停止 → 無限ループは発生しない
+修正パターン: `visible.length` を deps にした追加 useEffect で `setTimeout(0)` → `getBoundingClientRect()` で viewport 内判定 → loadMore 再発火、を `hasMore: false` まで連鎖させる。
 
 **How to apply**: IntersectionObserver で「intersect=true → 何か処理 → DOM 変化」する設計を書くとき (IO は遷移 trigger のみで、`isIntersecting: true` 維持時の新規 callback は仕様で発火しない、観察対象の DOM size 変化や追加要素 push で再評価しても callback は来ない):
 
@@ -215,30 +168,7 @@ useEffect(() => {
 3. その後 child が sentinel を含む JSX を render → `sentinelRef.current` に DOM 設定される
 4. **だが `useEffect([])` は再実行されない** (deps 空配列) → IO は永久に attach されないまま
 
-```typescript
-// アンチパターン: ref object + useEffect([]) で attach
-const sentinelRef = useRef<HTMLDivElement>(null);
-useEffect(() => {
-  const el = sentinelRef.current;
-  if (!el) return; // ← 初回 render で empty state なら null で早期 return
-  const observer = new IntersectionObserver(...);
-  observer.observe(el);
-  return () => observer.disconnect();
-}, []); // ← 空 deps で 1 回限定実行 → DOM 後mount で再 attach されない
-
-// 修正パターン: callback ref + useState で DOM mount タイミングを検知
-const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
-const sentinelRef = useCallback((el: HTMLDivElement | null) => {
-  setSentinelEl(el);
-}, []);
-
-useEffect(() => {
-  if (!sentinelEl) return;
-  const observer = new IntersectionObserver(...);
-  observer.observe(sentinelEl);
-  return () => observer.disconnect();
-}, [sentinelEl]); // ← DOM mount 時に state 更新 → effect 再評価 → attach 実行
-```
+修正は callback ref + useState パターン: `useState<HTMLElement | null>(null)` で DOM を state 管理 + `useCallback((el) => setSentinelEl(el), [])` を ref として返す + 各 effect の deps に `[sentinelEl]` を含めて DOM mount 時に再評価。
 
 **How to apply**: 「parent hook が ref を返して child component で attach させる」設計を書くときに以下を判定 (`useRef + useEffect([])` 組合せは parent と child の render タイミングが完全同期する保証がないと壊れる、callback ref + useState なら DOM mount タイミングで確実に再評価される):
 
@@ -529,98 +459,7 @@ const articlesKey = articles
 3. **wasm runtime 再 init** (`Worker` + OffscreenCanvas / onnxruntime-web 等で数百 ms)
 4. **接続再確立コスト** (`WebSocket` の handshake / `EventSource` の reconnect)
 
-これを避けるため、resource は **`useRef` で component lifetime 中 1 個だけ保持** し、active 変化では **resource の suspend/resume + 子オブジェクト (oscillator / observer など) の start/stop** だけ切り替える設計が canonical。
-
-```typescript
-// アンチパターン: active 切替の度に new/close → 起動コストが毎回発生
-export function useBackgroundAudio(active: boolean): void {
-  useEffect(() => {
-    if (!active) return;
-    const ctx = new AudioContext(); // 新規生成
-    const osc = ctx.createOscillator();
-    osc.start();
-    return () => {
-      osc.stop();
-      void ctx.close(); // close → 次の active=true で再生成 (OS audio session 切替)
-    };
-  }, [active]);
-}
-
-// 修正パターン: ctx は lifetime 中 1 個、active 変化で suspend/resume + osc start/stop
-export function useBackgroundAudio(active: boolean): void {
-  const ctxRef = useRef<AudioContext | null>(null);
-  const oscRef = useRef<OscillatorNode | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    if (!active) {
-      // oscillator stop + ctx suspend (close せず保持)
-      if (oscRef.current) {
-        try {
-          oscRef.current.stop();
-        } catch {
-          /* already stopped */
-        }
-        oscRef.current = null;
-      }
-      void ctxRef.current?.suspend().catch(() => {
-        /* silent */
-      });
-      return;
-    }
-
-    // active=true: lazy 生成 (初回のみ)
-    if (!ctxRef.current) {
-      const Ctx =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctx) return;
-      try {
-        ctxRef.current = new Ctx();
-      } catch {
-        return;
-      }
-    }
-
-    // suspended なら resume
-    void ctxRef.current.resume().catch(() => {
-      /* silent */
-    });
-
-    // oscillator が無ければ起動 (前回 stop で null 化されている)
-    if (!oscRef.current) {
-      const osc = ctxRef.current.createOscillator();
-      const gain = ctxRef.current.createGain();
-      gain.gain.value = 0;
-      osc.connect(gain);
-      gain.connect(ctxRef.current.destination);
-      osc.start();
-      oscRef.current = osc;
-    }
-  }, [active]);
-
-  // unmount で確実に close + stop
-  useEffect(() => {
-    return () => {
-      if (oscRef.current) {
-        try {
-          oscRef.current.stop();
-        } catch {
-          /* */
-        }
-        oscRef.current = null;
-      }
-      if (ctxRef.current) {
-        void ctxRef.current.close().catch(() => {
-          /* */
-        });
-        ctxRef.current = null;
-      }
-    };
-  }, []);
-}
-```
+これを避けるため、resource は `useRef` で component lifetime 中 1 個だけ保持し、active 変化では resource の `suspend()` / `resume()` + 子オブジェクト (oscillator / observer 等) の start/stop だけ切り替える。lazy 生成 + active false で suspend (close せず保持) + unmount cleanup の別 useEffect で確実に close、の構造。
 
 **How to apply**: ブラウザ API resource を hook で扱うときは (active 切替の度に new/close すると OS audio session 切替コスト + ブラウザの同時インスタンス上限抵触 + wasm 再 init 等のコストが累積する、useRef で lifetime 持続 + suspend/resume なら 1 回コストで済む):
 
