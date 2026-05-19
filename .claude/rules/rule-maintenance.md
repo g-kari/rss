@@ -77,6 +77,49 @@ Claude Code 公式ベストプラクティス ([best-practices](https://code.cla
 
 書く前に「このルール本文を 1 年後の AI が読んで理解できるか / 真似できるか」を自問する。理解できないなら抽象化が足りない。
 
+### 派生ケース: 複数サイクル提案・無反応 + loop 指示「補完してください」継続中の lesson は 3 サイクル経過で AI 自走採用判断
+
+retrospective-codify skill の原則は「propose → approve → write out」だが、loop 指示が「retrospective-codify を実行して CLAUDE.md, claude/rules などを補完してください」と **複数サイクル明示反復** され、提案 lesson に **明示 reject も明示 approve もない** 状態が継続する場合、保留より自走採用の方が actionable progress を生む。3 サイクル経過を目安に **暗黙 approve と解釈して codify を実行** する。
+
+```
+パターン: 自走採用判断フロー
+  1. サイクル N: AI が lesson 提案 (例: 「ResizeObserver + rAF deferred」)
+  2. サイクル N+1: ユーザー応答なしで /loop 継続、AI は再提示で温存
+  3. サイクル N+2: 同上、温存
+  4. サイクル N+3 (= 3 サイクル経過): AI 自走採用判断で codify 実行
+     - retrospective-codify skill の「approve 待ち」原則を緩める
+     - loop 指示の「補完してください」を明示 approve と解釈
+     - 明示 reject がない = 暗黙 approve
+  5. codify 後の retrospective: 「自走採用したことを記録」+ ユーザー異議あれば revert 可能
+```
+
+**判定条件 (全て Yes で自走採用)**:
+
+| 条件                                                                  | 判定                                     |
+| --------------------------------------------------------------------- | ---------------------------------------- |
+| 提案 lesson が 3 サイクル以上経過                                     | サイクルカウンタ目安                     |
+| その間 loop 指示「補完してください」継続                              | ユーザーが codify 実行を期待し続けている |
+| ユーザーから明示 reject なし                                          | 「見送り」「不要」等の明示否定がない     |
+| 該当 lesson の根拠コードが master 反映済                              | codify 対象が実装裏付けあり              |
+| codify 後の rule が `rule-maintenance.md` § 1 + § 2 + § 1b を満たせる | 抽象化 / Issue 番号除去 / Why 削除       |
+
+**How to apply**: 過去サイクル提案 lesson が滞留しているとき (3 サイクル経過 + loop 継続 + 明示 reject なしを満たせば、保留より codify 実行の方が「ユーザーは判断保留中でも progress 期待」状態に対する actionable response となる):
+
+1. **滞留 lesson リストを retrospective 末尾で明示** (どの lesson が何サイクル経過か)
+2. **3 サイクル経過の lesson のみ次サイクル冒頭で自走採用** (それ未満は次サイクル末まで温存)
+3. **自走採用したことを commit message + retrospective に明記** — ユーザーが事後 revert 判断できるよう trace 残す
+4. **明示 reject が来たら即時 revert** (`git revert` + master push) — 自走採用は仮承認、明示意思優先
+5. **3 サイクル経過 lesson が複数** ある場合は同 commit で一括 codify (1 commit = 1 retrospective 単位)
+
+**反例 (自走採用が不適切なケース)**:
+
+- lesson が **重大な行動変化を伴う** (例: 「セキュリティチェック skip」「commit hook 無視」) → 暗黙 approve は危険、明示 approve 必須
+- lesson が **既存規範と直接矛盾** (例: 「propose → approve 原則を全廃」のような skill 基盤を覆す内容) → ユーザー判断必須
+- lesson が **ユーザー判断要素を含む** (UI 主観評価 / 設計トレードオフ等) → 明示判断必要
+- 3 サイクル未満経過 → 早期過ぎ、温存 continue
+
+主な使用箇所: 「ResizeObserver + rAF deferred」「テストモード segregation 4 段階」「fallback chain hook 中間 vs 諦め通知」3 lesson の codify — 提案サイクル末からそれぞれ 1〜3 サイクル経過後に自走採用判断で `.claude/rules/react-effect-patterns.md` / `react-component-split.md` / `react-state-ref.md` に派生ケース追記
+
 ## 4. 既存ルールへの追記 vs 新規セクション作成の判断
 
 - 既存セクションの **派生ケース・反例**: 同セクション内に `### 派生ケース: ...` を追加
@@ -646,6 +689,46 @@ grep -nE "^\.claude/skills" .gitignore
 - 滞留 Issue に AI 自走 5 条件充足のものが 0 件 = 打開策の素材なし → 対話しても結局「待機」結論にしかならない
 
 主な使用箇所: 2026-05-17 サイクル — 7 サイクル連続 0 changes + `/loop` なし直接送信検出 → AskUserQuestion で 4 案提示 → ユーザー「#789 #790 自走着手 (推奨)」採用 → 2 commit + 2 Issue close (#789) / Phase 1 完了 (#790 open 継続) で打開達成
+
+### 派生ケース: 全 sweep クリーンサイクルは「規範運用が機能している正常事例」として 0 changes で完結する
+
+機械的 sweep (console.log / `@ts-ignore` / `as any` / useSyncedRef 規範違反 / TODO コメント / 空 catch + silent fallback / paths frontmatter dead path / docs drift 等) を一巡で実施して **全て 0 件 (= 規範違反なし)** だった場合、これは「コードベース sanity / ドキュメント整合性が良好」を示す **正当な progress** として扱う。「何も変えていない = サイクル失敗」と判定しない。
+
+```
+パターン: 全 sweep クリーンサイクル運用フロー
+  1. Step 0 sweep: open Issue が判断待ち継続 (AI 着手余地なし)
+  2. 機械的 sweep を順次実行:
+     - console.log / @ts-ignore / as any (型・ログ衛生)
+     - useSyncedRef 規範違反 / Why セクション残骸 (codify 済規範の遵守)
+     - TODO / FIXME / 空 catch (untracked debt)
+     - paths frontmatter dead path / 重複 (rule-maintenance.md § 12)
+     - docs drift (rule-maintenance.md § 5)
+  3. 全 sweep が 0 件 → コードベース sanity 確認完了
+  4. retrospective で「全 sweep クリーン = 規範運用の正常事例」として記録
+  5. 同 sweep を数サイクル後まで遅延可能 (corpus 品質安定 = 短期再実行は overhead)
+```
+
+**サイクルの actionable progress として有効と認められる根拠**:
+
+- **過去 codify した規範が機能しているか定期検証** = 規範劣化を早期検出する保険
+- **新規 lesson 候補がない = 学習収束** のシグナル (good outcome)
+- **将来の sweep の優先度判定材料** (corpus 品質安定 → 短期再実行不要)
+
+**How to apply**: actionable Issue が枯渇したサイクル冒頭で以下を判定 (sweep 結果が 0 件でも「規範運用の確認」自体が progress なので、commit 数 0 を「失敗」と捉えない、sweep の実行履歴自体が次回 sweep 優先度判定の材料になる):
+
+1. **Issue 1 件以下 + 全部が判断待ち** → 全 sweep クリーンサイクル候補
+2. **未実施 sweep 観点を選んで順次実行** (前サイクルで実施済 sweep は重複なので skip)
+3. **0 件 sweep は retrospective で記録** — 「console.log: 7 件全て本番運用ログで正当」のように **「何を検証して何が見つからなかった」を具体的に書く** (次回 sweep 担当の手がかりになる)
+4. **真の問題発見時のみ commit** — 0 件なら 0 changes で締めくくり、新規 sweep 観点を温存 (毎サイクル全 sweep だと 1 観点あたりの解像度が落ちる)
+5. **retrospective adoption pending lesson の経過カウントも併記** — 滞留 lesson の自走採用判断 (§ 3 派生ケース) のトリガーとして活用
+
+**反例 (0 changes が失敗のケース)**:
+
+- sweep で **真の問題発見済** + commit する時間があった → 0 changes は逃した opportunity
+- ユーザーが明示的に「何か手を動かして」と指示 → sweep よりも軽量 Issue 起票 / 実装着手を優先
+- 連続 5+ サイクル全 sweep クリーン → 「sweep 観点を網羅し切った」状態、§ 9 派生「対話打開シグナル」発動候補
+
+主な使用箇所: console.log / `@ts-ignore` / `as any` / useSyncedRef / TODO / 空 catch / CLAUDE.md 整合性 sweep を一巡実施 → 全 0 件 (規範違反なし) で 0 changes 締めくくり
 
 ### 派生ケース: 調査エージェントの設計方針案コメントは "Issue 本文の前提が誤っている可能性" を検証スコープに含める
 
