@@ -42,6 +42,42 @@ paths: "src/components/**/*.tsx,src/App.tsx,src/hooks/**/*.ts"
 - 共有 state（local useState）が密結合してサブで取り回しが面倒になるケースは、まず純粋関数化の余地を検討してから分割を進める
 - 1 機能だけ抽出して残りが 400 行以下になるなら、分割するメリット < 移動コスト
 
+### 派生ケース: 500 行超 sweep 時の「分割対象外カテゴリ表」で false positive を予防する
+
+`find src -name "*.ts" -o -name "*.tsx" | xargs wc -l` 等で機械的に 500 行超ファイルを sweep すると、**「行数だけ見て分割推奨」と判定したくなる罠** がある。観点別 Refactor agent が 500 行超ファイルを「分割未対応」と機械的に判定すると、既存対応済 / 純粋関数集約 / 単一目的 lib 等を false positive で大量提案してくる。**sweep の最初に「分割対象外カテゴリ」を除外** してから真の分割候補を絞り込む。
+
+```
+パターン: 500 行超 sweep の分割対象外カテゴリ表
+  | カテゴリ                              | 理由                                                                    | 例                                          |
+  | ------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------- |
+  | orchestrator (既に分割済の薄い親)     | サブディレクトリへの分割が既に実施済、追加分割は Context lift up 等の設計要 | AppShell.tsx / ArticleList.tsx / feed-sidebar/index.tsx / useFilteredArticles.ts |
+  | lib (純粋関数集約)                    | 純粋関数なので機能別分割優先度低、ファイル単位の責務境界明確              | shared-feed.ts / xml-parser.ts / recommendation.ts |
+  | config (定数集約)                     | 単一責務 (定数 / enum / mapping)、分割は逆に追跡困難化                    | shortcuts.ts                                |
+  | cron handler (単一目的 entry point)   | scheduled handler は 1 ファイル完結が canonical                          | cron/fetch.ts                                |
+  | 密結合 hook (engine / adapter)        | state / lifecycle が密結合で分離すると stale closure リスク               | usePiperTts.ts / useSpeechSynthesis.ts       |
+  | 認証 / 暗号 lib                       | セキュリティ critical で分散させると attack surface 増                    | server-auth.ts                              |
+  | parser / serializer                   | 単一目的 (RSS / OPML / JSON-LD)、ロジック塊を分散させると context 切替コスト | xml-parser.ts                               |
+```
+
+**How to apply**: 500 行超 sweep で発見した各ファイルを **新規 Issue 起票判定する前に** 以下を確認 (sweep 結果を機械的に Issue 起票すると分割対象外を 80% 以上含む false positive の山になる、カテゴリ表で先に除外すれば真の分割候補のみ残る):
+
+1. **ファイル種別を判定** — 表のカテゴリに該当するか確認 (`src/lib/` / `src/config/` / `src/cron/` / `src/hooks/use<Engine>Tts.ts` 等の path も判定材料)
+2. **該当カテゴリなら sweep から除外** — Issue 起票しない
+3. **該当しない 500 行超ファイル** (= 真の component / orchestrator で機能別分割可能) のみ評価対象
+4. それでも残る候補は **`audit-workflow.md` 派生「観点別 Issue 起票 agent prompt 必須 3 要件」step 1 (`find_symbol` / `get_symbols_overview` で現状確認)** を agent prompt に必須化、orchestrator として既に分割済かを実コード確認
+5. **本表は永続記録** — 将来の sweep で agent が同じ false positive を出さないよう、agent prompt に本表を引用させる
+
+**反例 (本表の例外として分割すべきケース)**:
+
+- orchestrator でも **30+ props を取る** + **複数機能を集約** している (例: `AppShell.tsx 930` の Context lift up 設計判断) → Issue 起票して **ユーザー判断要 (`needs-user-decision`)** で進める
+- 純粋関数集約でも **テスト不能な巨大関数** が混ざっている → 関数単位の純粋関数化 + spec 追加 (これは「機能別分割」とは別軸)
+- config でも **動的計算 / 副作用** が混入している → config 純粋化 + lib 切り出し (config の責務逸脱)
+
+主な使用箇所:
+
+- 500 行超 sweep で 11 件発見 → 全 11 件が本カテゴリ表で「分割対象外」と判定 (`AppShell.tsx 930` / `feed-sidebar/index.tsx 724` / `ArticleList.tsx 657` / `shared-feed.ts 619` / `shortcuts.ts 609` / `cron/fetch.ts 574` / `usePiperTts.ts 552` / `xml-parser.ts 536` / `useFilteredArticles.ts 536` / `server-auth.ts 518` / `recommendation.ts 517`) → Issue 起票 0 件で完結、`rule-maintenance.md § 9` 派生「全 sweep クリーンサイクル」の正常事例
+- 過去サイクル Refactor agent が `useFilteredArticles.ts 536` を「分割未対応」と機械的判定 → 既に `useArticleFilters` / `useArticleSorting` / `useArticlePagination` orchestrator 化済の事実を見落とし → false positive。本表があれば agent prompt 段階で除外可能
+
 ### Step 内のさらなる最小スコープ化
 
 大規模リファクタを Step 1 / Step 2 / Step 3 に分けても、各 Step 自体が大きい場合がある。**Step 内をさらに細分化して 1 PR を確実に通すパターン**:
