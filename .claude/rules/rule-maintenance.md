@@ -340,12 +340,13 @@ Security audit は他観点 (perf / refactor / UX) より対象ファイルが�
 
 **false positive 比率が高い grep パターンの目安**:
 
-| grep パターン                                           | false positive 比率 | 理由                                                                  |
-| ------------------------------------------------------- | ------------------- | --------------------------------------------------------------------- |
-| `Ref\.current\s*=` (useSyncedRef 規範)                  | 高 (90%+)           | ref ベース hook 一般の代入を全件 hit、規範対象は「render 中代入」のみ |
-| `^const EMPTY[A-Z_]*\s*=` (Object.freeze sentinel 規範) | 低 (~0%)            | module-level EMPTY 名前は freeze 対象とほぼ 1:1 一致                  |
-| `: <Type>\[\] = \[\]` (安定参照規範)                    | 低                  | 型注釈 + 空配列リテラルは判定基準が明確                               |
-| `console\.log\(` (本番ログ規範)                         | 中 (~50%)           | 本番運用 visibility ログ (auth / cron 進捗) が混入、context で識別要  |
+| grep パターン                                                        | false positive 比率 | 理由                                                                             |
+| -------------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------- |
+| `Ref\.current\s*=` (useSyncedRef 規範)                               | 高 (90%+)           | ref ベース hook 一般の代入を全件 hit、規範対象は「render 中代入」のみ            |
+| `^const EMPTY[A-Z_]*\s*=` (Object.freeze sentinel 規範)              | 低 (~0%)            | module-level EMPTY 名前は freeze 対象とほぼ 1:1 一致                             |
+| `: <Type>\[\] = \[\]` (安定参照規範)                                 | 低                  | 型注釈 + 空配列リテラルは判定基準が明確                                          |
+| `console\.log\(` (本番ログ規範)                                      | 中 (~50%)           | 本番運用 visibility ログ (auth / cron 進捗) が混入、context で識別要             |
+| `^export (type\|interface) [A-Z][a-zA-Z]+` (helper-drift 重複名規範) | 中 (~50%)           | 同名でも semantic 違いで意図的並存ありの場合、外部 import 数 + 行 context 評価要 |
 
 **主な使用箇所**:
 
