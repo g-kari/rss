@@ -3,6 +3,7 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { downloadBlob } from "../../lib/download";
+import { apiFetch } from "../../lib/api-fetch";
 
 interface ImportExportTabPanelProps {
   hidden: boolean;
@@ -20,7 +21,7 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
     if (opmlLoading) return;
     setOpmlLoading(true);
     try {
-      const res = await fetch("/api/feeds/export");
+      const res = await apiFetch("/api/feeds/export");
       if (!res.ok) throw new Error("export failed");
       const blob = await res.blob();
       downloadBlob(blob, "feeds.opml");
@@ -45,7 +46,7 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
     setOpmlLoading(true);
     try {
       const text = await file.text();
-      const res = await fetch("/api/feeds/import", {
+      const res = await apiFetch("/api/feeds/import", {
         method: "POST",
         headers: { "Content-Type": "text/xml" },
         body: text,
