@@ -85,6 +85,18 @@ const observer = new ResizeObserver((entries) => {
 
 主な使用箇所: `useMasonryLayout` — N 個の masonry item を 1 ResizeObserver で監視、height 変化を `setLayoutVersion(v + 1)` で trigger するために rAF defer を採用 (item ごとの setState 連鎖を 1 frame 1 setState に集約)
 
+### 派生ケース: scroll 巻き戻り防止は CSS `overflow-anchor: none` を優先する
+
+ユーザー要望「scroll が巻き戻らないようにしたい」は「scroll 位置が変動しない」を意味する。JS で `scrollTop += delta` の能動補正は「scroll 位置を意図的に変える」設計のため認識ズレを生み、補正値の累積過剰で末尾ジャンプ + 無限ロードチェーンを誘発しやすい。
+
+**How to apply**: 絶対座標 virtualizer / masonry layout の巻き戻り対策を実装するとき:
+
+1. container に `[overflow-anchor:none]` を設定して実機確認 — 解消すれば JS 補正は実装しない
+2. CSS で解消しない環境 (古い Safari / translate ベース仮想スクロール) のみ JS 補正を検討、その場合も caller 側で on/off 切替可能な設計に
+3. 「ユーザーは巻き戻らないでほしいと言う、scrollTop を動かしてほしいとは言わない」を明示判断材料に
+
+主な使用箇所: `useMasonryLayout`
+
 ### 派生ケース: IntersectionObserver は `isIntersecting: true` 維持時に新規 callback を発火させない罠
 
 `IntersectionObserver` は **`isIntersecting: false → true` の遷移時にのみ** callback を発火させる。一度 `true` になった後、要素 size 変化や parent scroll で **再評価が走っても、`isIntersecting: true` のままなら新規 callback は来ない**。
