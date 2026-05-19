@@ -9,35 +9,7 @@ paths: "src/hooks/**/*.ts,src/**/*.tsx"
 
 ## state 更新前に「構造的等価性ガード」を入れて reference を安定化する
 
-`useState<Record<string, T>>` のような object/Record state を周期的に再生成 (例: サーバー同期マージ) する処理は、**内容が変わっていなくても新しい reference を作って `setState` を呼ぶ**ことが多い。React は値の === 比較で再 render を skip する閾値を持つが、object の比較は reference 比較のため、**毎回 reference が変わると下流の useMemo が再計算される**。
-
-```typescript
-// アンチパターン: 内容が同じでも毎回新しい reference
-function useReadStateSyncApply() {
-  function applyServerState(state) {
-    if ("snoozedUntil" in state) {
-      const merged = mergeSnoozedUntil(currentSnoozed, state.snoozedUntil);
-      // ↓ merged の中身が currentSnoozed と同じでも新しい object → 再 render
-      setSnoozedUntil(merged);
-    }
-  }
-}
-
-// → useFilteredArticles の useMemo([..., snoozedUntil]) が 2 秒毎に再実行
-//   全記事 (500+) でフィルター pass を再走 → 主スレッド 20-80ms ブロック
-
-// 修正パターン: 構造的等価性ガード
-function useReadStateSyncApply() {
-  function applyServerState(state) {
-    if ("snoozedUntil" in state) {
-      const merged = mergeSnoozedUntil(currentSnoozed, state.snoozedUntil);
-      if (!equalSnoozedUntil(currentSnoozed, merged)) {
-        setSnoozedUntil(merged); // 内容変化ありのみ更新
-      }
-    }
-  }
-}
-```
+`useState<Record<string, T>>` のような object/Record state を周期的に再生成すると、内容変化なしでも reference が変わって下流 useMemo が再計算される。setState 直前に `equalXxx(prev, next)` で構造的等価判定して、変化ありのみ更新する。
 
 **How to apply**: 周期的・冗長な setState 呼出を見つけたら、以下を確認:
 
@@ -61,35 +33,7 @@ function useReadStateSyncApply() {
 
 `equalXxxMap` のような **`if (!eq) setXxx(next)` ガード + useRef 経由の安定 reference** は、`useFilteredArticles` のように **複数の派生 state を 1 つの useMemo で生成する** ケースには使えるが、setup が重い (Map 構造ごとに `equalMap` ヘルパー + ref + 条件 update の 3 点セット)。
 
-別パターンとして、**entity 配列を 1 行 signature string にシリアライズ** して useMemo の deps に渡す方式がある。React の useMemo は deps を `===` で比較するため、signature が同じ string なら自動的に再計算 skip される。
-
-```typescript
-// アンチパターン: feeds reference を直接 deps に → 5 分 polling で毎回再計算
-const { pinnedFeeds, groupedFeeds, ... } = useMemo(() => {
-  // ... 重い sort + filter 群
-}, [feeds, pinnedFeedIds, feedSearch, ...]);
-
-// 修正パターン: structural signature string で deps を置換
-function computeFeedStructuralSignature(feeds: Feed[]): string {
-  const parts: string[] = [];
-  for (const f of feeds) {
-    parts.push(
-      `${f.id}|${f.title ?? ""}|${f.category ?? ""}|${f.groupId ?? ""}|${f.nsfw ? 1 : 0}|${f.priority ?? ""}|${f.view ?? ""}`,
-    );
-  }
-  return parts.join("\n");
-}
-
-const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
-const feedsRef = useRef(feeds);
-feedsRef.current = feeds;
-
-// eslint-disable-next-line react-hooks/exhaustive-deps -- signature が feeds 構造を encode 済
-const { pinnedFeeds, groupedFeeds, ... } = useMemo(() => {
-  const feeds = feedsRef.current; // 構造的等価ガード後の安定 reference を採用
-  // ... 既存ロジック (sort / filter)
-}, [feedStructuralSignature, pinnedFeedIds, feedSearch, ...]);
-```
+別パターンとして、entity 配列を 1 行 signature string にシリアライズして useMemo の deps に渡す方式がある。useMemo は deps を `===` 比較するため、signature が同じ string なら自動的に再計算 skip される。`feedsRef.current` で安定参照を提供 + signature を deps に置換 + `eslint-disable-next-line` で 1 件許容、の 3 点セット。
 
 ### Map ガード vs Signature string の使い分け
 
@@ -124,19 +68,7 @@ const { pinnedFeeds, groupedFeeds, ... } = useMemo(() => {
 
 ### 派生ケース: モジュールレベル sentinel オブジェクトは `Object.freeze` で下流汚染を防ぐ
 
-`useFilteredArticles` のように **多数の派生 props** として `EMPTY_SET` / `EMPTY_ARRAY` 等の sentinel を渡す hook では、freeze されていない sentinel を下流が誤って `.add()` / `.push()` するとプロセス全体で sentinel が汚染され「次回からは empty じゃない」状態になる。`Object.freeze` で runtime safety net を入れる。
-
-```typescript
-// アンチパターン: freeze なし sentinel
-const EMPTY_SET = new Set<string>();
-// 多数の consumer に渡される → 1 箇所で .add() されたら全 consumer が汚染
-//   → 「filter 適用してないのに empty じゃない」連鎖バグ
-
-// 修正パターン: Object.freeze で runtime safety net
-const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
-// 型は Set<string> のまま (consumer 側の型変更を要求しない) +
-// runtime で .add() が TypeError throw する defense in depth
-```
+多数の派生 props として `EMPTY_SET` / `EMPTY_ARRAY` 等の sentinel を渡す hook では、下流が誤って `.add()` / `.push()` するとプロセス全体で sentinel が汚染される (「filter 適用してないのに empty じゃない」連鎖バグ)。`const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>` で runtime safety net を入れる。型は元の mutable のまま (`as cast`) で consumer 側の型変更を要求しない。
 
 **How to apply**: `const EMPTY_X = ...` のような module-level sentinel を新規宣言するとき (`ReadonlySet`/`ReadonlyArray` は consumer 全箇所の型変更要求のため漸進移行と相性が悪い、`Object.freeze + as cast` なら scope 最小で runtime 汚染検知できる):
 
@@ -154,42 +86,7 @@ const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
 
 ### 派生ケース: 複数 state を return する hook は **戻り値全体を `useMemo` で wrap** して Provider value の identity を安定化する
 
-`useSpeechSynthesis` のような **複数 state field + 複数関数を集約した object を return する hook** は、毎 render で新オブジェクト reference を作る。これを Provider value に渡すと、内部 state (`isPlaying` 等) が変わらなくても全 consumer が re-render される。
-
-```typescript
-// アンチパターン: 戻り値が毎 render で新オブジェクト identity
-export function useSpeechSynthesis(): TtsAdapter {
-  const [isPlaying, setIsPlaying] = useState(false);
-  // ... 他 state / callback
-  return {
-    engine: "web-speech",
-    isPlaying,
-    speak,
-    pause,
-    // ... 15 field
-  };
-}
-
-// App.tsx で:
-const ttsAdapter = useSpeechSynthesis();
-// → ttsAdapter は毎 render 新 reference → TtsAdapterProvider value identity が毎 render 変わる
-// → useTtsAdapter() consumer が全員 re-render
-
-// 修正パターン: 戻り値を useMemo で wrap
-export function useSpeechSynthesis(): TtsAdapter {
-  // ... state / callback
-  return useMemo<TtsAdapter>(
-    () => ({
-      engine: "web-speech",
-      isPlaying,
-      speak,
-      pause,
-      // ... 15 field
-    }),
-    [isPlaying, speak, pause /* 他 deps */],
-  );
-}
-```
+複数 state field + 複数関数を集約した object を return する hook は、毎 render で新 reference を作り、Provider value 経由で配下 consumer が全員 re-render する。`return useMemo<ReturnType>(() => ({ ... }), [field1, field2, ...])` で wrap して state 変化時のみ identity 更新する。
 
 **How to apply**: 複数 state / callback を集約した object を返す hook を作るとき (戻り値の identity が毎 render 変わると、Provider value 経由で配下 consumer が全員 re-render する。useMemo wrap で state 変化時のみ identity 更新に切り替えれば、不要 re-render を防げる):
 
@@ -209,32 +106,7 @@ export function useSpeechSynthesis(): TtsAdapter {
 
 ## ライブラリ仕様への依存は `vi.fakeTimers + rerender` で「実挙動の固定スペック」として残す
 
-`useState(() => new Date())` の **mount 時 initializer 1 回固定** や `useMemo([])` の **React は memo を破棄可能** のような **「React 仕様 or ブラウザ API 仕様への依存」** は、コードコメントだけでなく **vitest で実挙動を spec として固定** する。仕様変更で挙動が変わったときに spec が落ちて検知できる。
-
-```typescript
-// 対象実装: const [now] = useState(() => new Date());
-
-// アンチパターン: コメントだけで仕様依存を表明
-// → React が将来 useState initializer の挙動を変えたとき、検知できない
-
-// 修正パターン: vitest で「rerender しても now が固定」を assert
-it("mount 後に時刻を進めて rerender しても、now は mount 時刻のまま固定される", () => {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-05-12T10:00:00Z"));
-
-  const feeds = [{ rateLimitedUntil: "2026-05-12T10:10:00Z", ... }];
-  const { rerender } = render(<FeedHealthModal feeds={feeds} onClose={() => {}} />);
-  expect(screen.getByText("レートリミット中")).toBeInTheDocument();
-
-  // 時刻を 20 分進めて feeds 新インスタンスで rerender
-  vi.setSystemTime(new Date("2026-05-12T10:20:00Z"));
-  rerender(<FeedHealthModal feeds={[...feeds]} onClose={() => {}} />);
-
-  // useState initializer が再実行されない React 仕様に依存
-  // → mount-time now (10:00) で判定継続 → section 残存
-  expect(screen.getByText("レートリミット中")).toBeInTheDocument();
-});
-```
+`useState(() => new Date())` の mount 時 initializer 1 回固定など「React 仕様 or ブラウザ API 仕様への依存」は、コードコメントだけでなく vitest + `vi.fakeTimers + rerender` で実挙動を spec として固定する。仕様変更で挙動が変わったとき spec が落ちて検知できる。
 
 **How to apply**: 実装に「React 仕様 / ブラウザ API 仕様への暗黙的依存」がある箇所を見つけたら (コードコメントだけでは仕様変更時に検知できない、vitest spec で実挙動を固定すれば仕様変更で spec が落ちて早期発見できる):
 
@@ -265,48 +137,7 @@ it("mount 後に時刻を進めて rerender しても、now は mount 時刻の�
 
 ### 派生ケース: `new Ctor()` で呼ばれるブラウザ API は **class 形式** で mock する (`vi.fn()` は this binding が崩れる)
 
-`AudioContext` / `Worker` / `WebSocket` / `EventSource` / `IntersectionObserver` / `ResizeObserver` 等の **`new` 演算子で呼ばれる Web API** を mock するとき、**`vi.fn(() => obj)` を `vi.stubGlobal` で注入すると `new` で呼ばれて `this` binding が崩れ、return が無視される or 想定外オブジェクトが返る**。必ず `class` 形式で mock を構築する。
-
-```typescript
-// アンチパターン: vi.fn() を new で呼ぶと this binding が想定外
-const ContextCtor = vi.fn(() => {
-  const ctx = buildMockCtx();
-  createdContexts.push(ctx);
-  return ctx; // ← `new ContextCtor()` で呼ばれると return が貼り付かないケース有
-});
-vi.stubGlobal("AudioContext", ContextCtor);
-
-// hook 内で `new AudioContext()` → createdContexts に push されないことが起きる
-
-// 修正パターン: class 形式の mock
-class MockAudioContext {
-  destination = {};
-  close = vi.fn(() => Promise.resolve());
-
-  constructor() {
-    createdContexts.push(this); // ← `new` で呼ばれた瞬間に確実に this が積まれる
-  }
-
-  createOscillator() {
-    const osc = { connect: vi.fn(), start: vi.fn(), stop: vi.fn() };
-    createdOscillators.push(osc);
-    return osc;
-  }
-
-  createGain() {
-    const gain = { gain: { value: 1 }, connect: vi.fn() };
-    createdGains.push(gain);
-    return gain;
-  }
-}
-vi.stubGlobal("AudioContext", MockAudioContext);
-```
-
-**JavaScript `new` 仕様の罠**:
-
-- `new fn()`: コンストラクタが **object を return すれば** その object が結果、**primitive (undefined 含む) を return すれば `this` (新しい空オブジェクト)** が結果
-- `vi.fn(() => mockCtx)` の戻り値型は vitest 内部で wrap されており、`new` 呼び出し時に return が object として認識されないケースがある
-- class 構文なら **constructor body 内で `this` をセットアップして `push(this)`** とするので、確実に同じインスタンスが test 側から参照可能
+`AudioContext` / `Worker` / `WebSocket` / `EventSource` / `IntersectionObserver` / `ResizeObserver` 等の `new` 演算子で呼ばれる Web API を mock するとき、`vi.fn(() => obj)` を `vi.stubGlobal` で注入すると `new` で this binding が崩れて return が貼り付かないケースがある。`class MockApiName { constructor() { createdInstances.push(this); } }` で mock を構築すれば確実。
 
 **How to apply**: `new ApiName()` で生成されるブラウザ API を mock するときは (vi.fn() の戻り値が new 演算子で正しく機能しない罠を避けるため、class 形式が唯一安全):
 
@@ -338,29 +169,7 @@ vi.stubGlobal("AudioContext", MockAudioContext);
 
 ### 派生ケース: ハイブリッド API (constructor + 静的メソッド併用) は **全体 stub せず個別メソッドを `Object.defineProperty` で stub** する
 
-`URL` / `Request` / `Response` のように **`new URL()` (constructor) + `URL.createObjectURL()` (静的メソッド)** の両方を使う Web API は、`vi.stubGlobal("URL", { createObjectURL: vi.fn(), ... })` で **全体 stub すると constructor 機能が消失** する。テスト対象が同じファイル内で `new URL(absoluteUrl).hostname` のような constructor 利用箇所を持つと、`TypeError: URL is not a constructor` で全 case fail する典型罠。
-
-```typescript
-// アンチパターン: URL 全体を stub → new URL() が壊れる
-vi.stubGlobal("URL", {
-  createObjectURL: vi.fn((blob) => "blob:mock-1"),
-  revokeObjectURL: vi.fn(),
-});
-// テスト対象内: new URL(href) → TypeError: URL is not a constructor
-
-// 修正パターン: 既存 URL の静的メソッドのみ Object.defineProperty で上書き
-Object.defineProperty(URL, "createObjectURL", {
-  value: vi.fn((blob: Blob) => `blob:mock-${++count}`),
-  configurable: true,
-  writable: true,
-});
-Object.defineProperty(URL, "revokeObjectURL", {
-  value: vi.fn(),
-  configurable: true,
-  writable: true,
-});
-// → constructor (new URL(href)) は native のまま、静的メソッドだけ mock
-```
+`URL` / `Request` / `Response` のように `new URL()` (constructor) + `URL.createObjectURL()` (静的メソッド) の両方を使う Web API は、`vi.stubGlobal("URL", { createObjectURL: vi.fn() })` で全体 stub すると constructor が消失して `TypeError: URL is not a constructor` で全 case fail する。`Object.defineProperty(URL, "createObjectURL", { value: vi.fn(), configurable: true })` で静的メソッドだけ個別 stub すれば constructor は native のまま残る。
 
 **How to apply**: 「constructor + 静的メソッド」の両方を持つ Web API (`URL` / `Request` / `Response` / `Blob` / `File` / `FormData`) を mock するとき (全体 `vi.stubGlobal` は class 形式 mock で動くが、ハイブリッド API では constructor 機能が消失して別箇所の `new` 呼び出しが破壊される):
 
