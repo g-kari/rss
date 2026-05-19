@@ -325,17 +325,32 @@ Security audit は他観点 (perf / refactor / UX) より対象ファイルが�
    - 例: `useSyncedRef` 規範 → `grep -rEnB1 "Ref\.current\s*=" src/hooks/ src/components/`
    - 例: `EMPTY_SENTENCES` 安定参照規範 → `grep -rn ": Sentence\[\] = \[\]" src/`
 2. 数サイクル後の sweep でそのコマンドをそのまま実行
-3. 検出された箇所は **意図的な例外** (perf 最適化等で旧パターン継続) と **規範違反** に分類:
+3. **検出結果から false positive を排除** — grep は記号レベル一致なので **規範対象外の別用途 hit が大量に混入** する。各 hit を行 context で評価して以下のいずれかに分類:
+   - **false positive (規範対象外)** — 例: `useSyncedRef` 規範は「render 中の最新値同期目的」専用だが、grep `Ref.current =` は TTS engine ref / Timer ref / Observer ref / Controller ref / 論理リセット ref / Promise resolve ref / Drag layout ref / setter sync ref 等の **別目的 ref を全件 hit** する。これらは規範違反ではない
+   - **規範対象** — 残った hit のみ次 step で評価
+4. 規範対象 hit を **意図的な例外** (perf 最適化等で旧パターン継続) と **規範違反** に分類:
    - 意図的例外には **その理由をコメント明記** して次回 sweep で再検出されないようにする
    - 規範違反は同サイクルで連続修正
-4. sweep 結果が 0 件になったら sweep 完了 (規範が全コードに浸透)
+5. sweep 結果が **真の規範違反 0 件** になったら sweep 完了 (規範が全コードに浸透)
 
 **反例 (sweep 不要なケース)**:
 
 - 規範が **判断要素を含む** もの (例: 「巨大コンポーネント機能別分割」は何が「巨大」かが文脈依存) → grep だけでは判別不可、人間判断要
 - 規範が **新規追加コードのみ対象** (既存コードは維持) で明示されているもの
 
-主な使用箇所: 2026-05-10 サイクル — `useReadingProgress` を `useSyncedRef` 化 + 規範 codify → 数サイクル後に `grep -rEnB1 "Ref\.current\s*="` sweep で 4 hooks / 5 ref 残骸検出 → 一括連続修正
+**false positive 比率が高い grep パターンの目安**:
+
+| grep パターン                                           | false positive 比率 | 理由                                                                  |
+| ------------------------------------------------------- | ------------------- | --------------------------------------------------------------------- |
+| `Ref\.current\s*=` (useSyncedRef 規範)                  | 高 (90%+)           | ref ベース hook 一般の代入を全件 hit、規範対象は「render 中代入」のみ |
+| `^const EMPTY[A-Z_]*\s*=` (Object.freeze sentinel 規範) | 低 (~0%)            | module-level EMPTY 名前は freeze 対象とほぼ 1:1 一致                  |
+| `: <Type>\[\] = \[\]` (安定参照規範)                    | 低                  | 型注釈 + 空配列リテラルは判定基準が明確                               |
+| `console\.log\(` (本番ログ規範)                         | 中 (~50%)           | 本番運用 visibility ログ (auth / cron 進捗) が混入、context で識別要  |
+
+**主な使用箇所**:
+
+- `useReadingProgress` を `useSyncedRef` 化 + 規範 codify → 数サイクル後に `grep -rEnB1 "Ref\.current\s*="` sweep で 4 hooks / 5 ref 残骸検出 → 一括連続修正
+- 後の sweep で同 grep が 30+ 件 hit するが、各 hit を行 context で評価して **全件 false positive (別目的 ref)** と判定、規範違反 0 件で完結 → 規範運用安定化を実証
 
 ### 派生ケース: code-quality バグ修正時に同 pattern の grep 検出コマンドを併記 + 後続 sweep を Issue 化する
 
