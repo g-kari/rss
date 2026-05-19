@@ -162,9 +162,14 @@ find src/lib -maxdepth 1 -name "*.ts" -type f | xargs -n1 basename | sort > /tmp
 grep -oP "^    [a-z][a-z0-9-]+\.ts" .claude/rules/architecture.md | sed 's/^ *//' | sort -u > /tmp/doc_lib.txt
 comm -23 /tmp/actual_lib.txt /tmp/doc_lib.txt  # 未文書化ファイルのみ出力
 
-# spec ファイルの drift 検出例
+# spec / test ファイルの drift 検出例 (両拡張子混在のため `(spec|test)\.ts` で grep する)
+# `.claude/rules/architecture.md` のテストカバレッジマップは playwright e2e (`.spec.ts`) と
+# vitest unit (`.test.ts`) の両方を同 table 内 entry として混在持つため、片方だけの grep だと
+# 半数 drift を取り逃がす。`(spec|test)\.ts` で網羅する。
 find e2e -name "*.spec.ts" -type f | xargs -n1 basename | sort > /tmp/actual_specs.txt
-grep -oP "\| \`[a-z][a-z0-9-]+\.spec\.ts\`" .claude/rules/architecture.md | sed 's/| `//;s/`//' | sort -u > /tmp/doc_specs.txt
+find src -name "*.test.ts" -type f | xargs -n1 basename | sort -u >> /tmp/actual_specs.txt
+sort -u /tmp/actual_specs.txt -o /tmp/actual_specs.txt
+grep -oP "\| \`[a-z][a-z0-9-]+\.(spec|test)\.ts\`" .claude/rules/architecture.md | sed 's/| `//;s/`//' | sort -u > /tmp/doc_specs.txt
 comm -23 /tmp/actual_specs.txt /tmp/doc_specs.txt
 ```
 
