@@ -141,6 +141,41 @@ gh issue edit N --add-label needs-user-decision
 
 主な使用箇所: 2026-05-11 51st cycle 末 — open Issue 9 件中 5 件 (`needs-user-decision`: #745 #720 #715 #682 #674) と 4 件 (自走対象: #733 #728 #714 #709) に分類
 
+### 派生ケース: 1 Issue 内に複数 problem が混在しているときは各 problem 別に Step 4 判定する
+
+ユーザーが 1 Issue コメントで複数の問題を一度に報告するケース (例: 「列の数自動時に余白 + 大量画像展開で scroll 暴走 + スクロール位置変更しないように + それ以外はよさそう」) で、機械的に「Issue 単位で全体判断必要」と判定すると **自走可能な subset (= 確実な修正) まで判断仰ぎ送りになる**。逆に「Issue 単位で全体自走」と判定すると判断必要 problem まで無断実装してしまうリスク。各 problem を独立に Step 4 判定して subset 自走 + 残は別途設計方針コメントで提示するパターン。
+
+```
+パターン: 1 Issue 複数 problem の分解 handling フロー
+  1. ユーザーコメントを問題 1/2/3/... に分解 (箇条書きで明示)
+  2. 各 problem を Step 4 判断必要表で独立判定
+  3. **判断不要 (自走可能) problem subset のみ** 同サイクルで実装 + commit
+     - commit message に「N 件中 X 件修正」「残は別案件で判断仰ぎ」を明記
+  4. **判断必要 problem subset** は 1 つの統合設計方針コメント (案 A/B/C/D 等) に集約
+     - 「### 問題 X」セクションで各論点別に整理
+     - 全 problem に共通する案 (cooldown / debounce 等) は共通 section に集約
+     - 個別判断項目を末尾「ユーザー判断項目」セクションでリスト化
+  5. **needs-user-decision ラベル付与** + 自走完了 subset の commit hash を冒頭明記
+```
+
+**How to apply**: ユーザーコメントが「『〇〇 + △△ + ××、それ以外はよさそう』」のような複数指摘形式のとき (1 Issue 単位で機械判定すると自走 subset を取りこぼす、各 problem 別判定でサイクル進捗を確実化):
+
+1. **コメントを問題ごとに分解** — 箇条書きまたは番号付きリスト化、ユーザー本文の自然言語を「問題 1: X / 問題 2: Y / 問題 3: Z」と形式化
+2. **各問題を Step 4 判断必要表 (新規 npm/infra/UX 主観/etc.) で独立評価** — 同 Issue 内でも判定結果は problem ごとに異なって OK
+3. **判断不要 problem (純粋関数 1 行修正 / 既存 pattern 延長 / 機能変化なし) のみ自走** — touch ≤ 5 を保つため自走 subset は最小に絞る
+4. **判断必要 problem のみ 1 つの統合設計方針コメントに集約** (個別 comment 連発はノイズ、ユーザーが文脈を失う)
+5. commit message + Issue コメント冒頭で **「N 件中 X 件修正済、残 Y 件は設計判断仰ぎ中」** を明記して全体進捗を可視化
+6. **needs-user-decision ラベル付与** で次サイクル Step 0 sweep で再評価される状態にする
+
+**反例 (一括処理が妥当なケース)**:
+
+- 全 problem が **論理的に密接** (例: 「ボタンが反応しない + クリックすると 2 重発火」は同じ event handler の 1 修正で両方解決) → 分割は不要、単一 commit で完結
+- 全 problem が **判断必要** (cooldown 値 / UX 主観 / 新 infra) → 全件設計方針コメント、自走 subset なし
+- 全 problem が **判断不要** (純粋関数 / 規範遵守 / typo 修正) → 全件自走、設計方針コメント不要
+- problem が **1 件のみ** → 分解不要、通常の Step 4 単独判定
+
+主な使用箇所: #773 Phase 2c 検証フィードバック 3 問題のうち問題 1 (列幅余白 = `Math.floor` 1 行修正、判断不要) は自走 commit、問題 2/3 (無限ロード + scroll 暴走 = cooldown ms / debounce ms の UX 主観評価要) は案 A/B/C/D 統合設計方針コメント投稿 + needs-user-decision 付与で 1 サイクル内で「進捗 + 判断仰ぎ」を両立
+
 ### 派生ケース: 監査エージェント finding の起票時にも Step 4 の判断不要スクリーニングを必ず実行する
 
 監査エージェント (perf / a11y / simplify / docs drift / refactor) の finding を Issue 化するとき、エージェントの report に「案 A/B/C 整理」「設計判断要」記述があるからといって機械的に `needs-user-decision` 付与してはならない。エージェントの「設計判断要」判定は **conservative side** であり、実コード verification で AI 自走 5 条件全充足が判明すれば **直接実装着手 + 完了コメント** が正解。
