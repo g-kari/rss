@@ -20,7 +20,7 @@ import { ogpCooldownKey } from "@/lib/r2";
 
 const FETCH_TIMEOUT_MS = 5_000;
 const OGP_RATE_WINDOW_MS = 60_000; // 60秒ウィンドウ
-const OGP_RATE_MAX_CALLS = 30; // 60秒あたり最大30リクエスト
+const OGP_RATE_MAX_CALLS = 120; // 60秒あたり最大120リクエスト (#806 案 B: ギャラリー一括展開時の 429 抑止のため緩和)
 
 export async function GET(request: Request) {
   return withSession(request, ({ session, env, ctx }) =>
