@@ -26,6 +26,11 @@ export interface PrefetchGalleryResult {
   expandingIds: Set<string>;
   /** 記事の画像を手動で展開（再取得）する */
   retryArticle: (articleId: string) => void;
+  /**
+   * 上流 (`/api/content`) からの 429 でプリフェッチが一時停止中の場合の解除予定時刻 (epoch ms)。
+   * 0 ならレート制限なし。consumer は `useEffect` で値変化を検知して UI 通知に使う (#810)。
+   */
+  rateLimitedUntil: number;
 }
 
 interface Options {
@@ -331,5 +336,5 @@ export function usePrefetchGalleryContents({
     })();
   }, []);
 
-  return { media, failedIds, expandingIds, retryArticle };
+  return { media, failedIds, expandingIds, retryArticle, rateLimitedUntil };
 }
