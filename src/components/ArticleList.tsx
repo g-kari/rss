@@ -18,6 +18,7 @@ import type { Article, Feed, FeedView, Layout } from "../types";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { SelectedArticleCtx } from "../contexts/SelectedArticleContext";
+import { useToast } from "../contexts/ToastContext";
 import { useOgpCache } from "../hooks/useOgpCache";
 import { usePrefetchGalleryContents } from "../hooks/usePrefetchGalleryContents";
 import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
@@ -165,10 +166,25 @@ function ArticleList({
     failedIds: galleryFailedIds,
     expandingIds: galleryExpandingIds,
     retryArticle: galleryRetryArticle,
+    rateLimitedUntil: galleryRateLimitedUntil,
   } = usePrefetchGalleryContents({
     articles: visible,
     enabled: galleryPrefetchEnabled,
   });
+
+  // #810: プリフェッチが上流 429 で一時停止したことを toast でユーザーに通知する。
+  // 同じレート制限期間中の重複通知を防ぐため、最後に通知した期限を ref で覚える。
+  const toast = useToast();
+  const lastRateLimitToastUntilRef = useRef<number>(0);
+  useEffect(() => {
+    if (galleryRateLimitedUntil <= 0) return;
+    if (galleryRateLimitedUntil === lastRateLimitToastUntilRef.current) return;
+    const remainingSec = Math.max(1, Math.ceil((galleryRateLimitedUntil - Date.now()) / 1000));
+    if (remainingSec <= 0) return;
+    lastRateLimitToastUntilRef.current = galleryRateLimitedUntil;
+    const minutes = Math.ceil(remainingSec / 60);
+    toast.info(`ギャラリーの事前取得を一時停止中。約 ${minutes} 分後に自動再開します`);
+  }, [galleryRateLimitedUntil, toast]);
   const prefetchedMediaRef = useSyncedRef(prefetchedMedia);
   const activeFeedViewRef = useSyncedRef(activeFeedView);
   const galleryImagesForItem = useCallback(
