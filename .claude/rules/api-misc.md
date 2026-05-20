@@ -1,5 +1,5 @@
 ---
-globs: "app/api/engagement/**,app/api/stats/**,app/api/ogp/**,app/api/image-proxy/**,app/api/video-proxy/**,app/api/health/**,app/api/release-notes/**,app/api/test/**,app/api/piper-voice/**,app/api/wasm/**"
+paths: "app/api/engagement/**,app/api/stats/**,app/api/ogp/**,app/api/image-proxy/**,app/api/video-proxy/**,app/api/health/**,app/api/release-notes/**,app/api/test/**,app/api/piper-voice/**,app/api/wasm/**"
 description: エンゲージメント / 統計 / 各種ユーティリティ API 仕様 — engagement / stats / ogp / image-proxy / video-proxy / health / release-notes / test seed / piper-voice / wasm の 10 endpoints
 ---
 
