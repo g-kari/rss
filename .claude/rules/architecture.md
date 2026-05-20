@@ -89,6 +89,7 @@ app/
     content/route.ts         # GET /api/content?url=... (フルテキストプロキシ) / DELETE /api/content?url=... (自分の clip Cache のみクリア、#691 で shared cache 削除を撤廃)
     engagement/route.ts      # GET / POST /api/engagement — エンゲージメント記録
     image-proxy/route.ts     # GET /api/image-proxy?url=... (外部画像プロキシ)
+    video-proxy/route.ts     # GET /api/video-proxy?url=... (外部動画プロキシ、handleBinaryProxy 共通 handler 経由)
     ogp/route.ts             # GET /api/ogp?url=... (OGP 画像 URL 取得)
     read-state/route.ts      # GET / POST /api/read-state (既読・ブックマーク・後で読む)
     recommendations/
@@ -107,6 +108,8 @@ app/
     clip/route.ts            # POST /api/clip — SingleFile 拡張からの HTML 受け取り・本文抽出・キャッシュ保存
     health/route.ts          # GET /api/health
     test/seed/route.ts       # POST/DELETE /api/test/seed — e2e テスト専用 R2 シード（NODE_ENV !== "production" + DEV_AUTH_BYPASS_USER_ID セット時のみ動作、本番では 404）
+    piper-voice/[file]/route.ts # GET /api/piper-voice/[file] — Piper TTS engine 用 voice モデル (.onnx) と config (.onnx.json) を R2 から配信 (ALLOWED_FILES allowlist)
+    wasm/[file]/route.ts     # GET /api/wasm/[file] — Piper TTS の onnxruntime-web peer-dep wasm + piper-plus phonemizer wasm を R2 から配信 (Cloudflare Workers 単一 asset 25 MiB 上限回避、ALLOWED_FILES allowlist)
 
 src/
   App.tsx                    # 3ペインレイアウト + 認証状態管理 ('use client')
