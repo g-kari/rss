@@ -120,10 +120,17 @@ fetch('URL_HERE', { headers: { 'User-Agent': 'Mozilla/5.0' } })
 }
 ```
 
-**How to apply**: 自動生成ファイルを参照するスクリプトを追加するときは、想定される実行コマンド (`build` / `dev` / `typecheck` / `check` / `test:e2e` 等) **すべてに pre-script を設置** する。スクリプトが軽量 (数十 ms 以下) なら頻繁に走っても性能影響なし。重いなら以下を検討:
+**How to apply**: 自動生成ファイルを参照するスクリプトを追加するときは、**自動生成ファイルが参照される可能性のある実行コマンド** (`build` / `dev` / `typecheck` / `check` / `check:fix` 等) すべてに pre-script を設置する。スクリプトが軽量 (数十 ms 以下) なら頻繁に走っても性能影響なし。重いなら以下を検討:
 
 - 出力ファイルの存在チェックでスキップする idempotent な実装にする
 - CI でのみ明示的に実行するステップを追加する
+
+**pre-script 省略可能なケース** (auto-gen ファイルが対象外の実行 path):
+
+- **`test:e2e` / `test:unit`**: 自動生成ファイル (例: `src/lib/release-notes-data.ts`) が test 対象外の設計 (e2e の grep filter で除外 / vitest unit 対象でない lib) ならば pre-script 不要。本プロジェクトは `e2e/modal-popup-lock-coverage.spec.ts:60` 等で release-notes-data.ts を test 対象外と明示 + test infra から不参照 → `test:e2e` / `test:unit` の pre-script は意図的省略
+- **`upload:*` / `gen:*`**: 別目的の補助 script で auto-gen ファイル不参照ならば省略可
+
+**省略判断軸**: 「自動生成ファイルを **直接** import / read している実行パスか?」で判定。test path で auto-gen ファイルが対象外なら省略 OK、build / typecheck / lint で参照される可能性があるなら必須。
 
 代替策: 自動生成ファイルを `.gitignore` から外して commit する（trade-off: PR diff が増える、人間が手で編集してしまうリスク）。
 
