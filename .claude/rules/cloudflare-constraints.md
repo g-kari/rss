@@ -286,3 +286,29 @@ export default {
 4. **新規 cron job 追加時** は worker.ts.scheduled 内に呼び出しを追加 + wrangler.toml の cron schedule を確認
 
 主な使用箇所: 2026-05-20 wrangler cron sweep — architecture.md L47 が `fetchAllUsers` (実体は `fetchAllFeeds`) と drift、open-next.config.ts コメントが「scripts/add-scheduled-handler.mjs で注入」と drift → 両者を worker.ts 直接定義の実態に同期 (commit `f1c3de55`)
+
+## compatibility_flags は framework 暗黙利用を前提に「実コード参照 0 件」でも残置する
+
+`wrangler.toml` の `compatibility_flags` (現状 `nodejs_compat` / `global_fetch_strictly_public`) は実コード (src/ + app/ + worker.ts) で直接参照しないことが多い。grep で 0 件だからといって削除してはいけない:
+
+| flag                           | 実コード参照                                                  | 判定                                                                                                                                                                                                    |
+| ------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nodejs_compat`                | src/ + app/ で `node:` prefix import 0 件 (scripts/ のみ使用) | **残置**: `@opennextjs/cloudflare` 生成の `.open-next/worker.js` (Next.js handler) が内部で Node.js builtins (`Buffer` / `process` / `crypto` 等) を要求する暗黙依存があり、削除すると handler が壊れる |
+| `global_fetch_strictly_public` | 直接参照不可能 (Cloudflare runtime フラグ)                    | **残置**: Workers の `fetch()` を public internet のみに制限するセキュリティフラグ、internal service binding (`env.FINDME_RSS.fetch()`) には影響なし                                                    |
+
+**判別 pattern** (`wrangler.toml` の他の設定 (例: `transpilePackages` / `cron` / binding 等) と同じ判定軸):
+
+| flag 由来                                                   | 判定                                                                 |
+| ----------------------------------------------------------- | -------------------------------------------------------------------- |
+| `@opennextjs/cloudflare` / Next.js / framework 公式推奨設定 | **残置** (暗黙利用の可能性、削除前に framework docs 確認必須)        |
+| 自社機能のためにあえて追加 (security / performance)         | 削除前に security / perf 影響評価                                    |
+| 過去 issue で導入経緯不明 + 過去使用例なし                  | **要調査** (git log で導入 commit 確認、framework requirements 検証) |
+
+**How to apply**: `compatibility_flags` を sweep / 削除候補にしたいとき:
+
+1. **直接 grep で実コード参照を確認** — 0 件でも即削除しない
+2. **`git log -S "<flag>" wrangler.toml`** で導入 commit を確認
+3. **framework 公式 docs を確認** — `@opennextjs/cloudflare` README / wrangler docs で必須 / 推奨記載があるか
+4. 削除前に **ローカル `next dev` + production deploy smoke test** で機能 regression 検証必須
+
+主な使用箇所: 2026-05-20 compatibility_flags sweep — `nodejs_compat` / `global_fetch_strictly_public` を「実コード参照 0 件」で発見したが、両方とも framework 暗黙利用 / セキュリティ目的で残置妥当と判定 (commit `465097f3` の binding annotation と同じ判定軸を適用)
