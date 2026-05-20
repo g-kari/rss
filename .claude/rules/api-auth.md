@@ -1,5 +1,6 @@
 ---
 globs: app/api/auth/**
+description: 認証フロー (OAuth2 / セッション管理 / DBSC) の API 仕様 — /api/auth/{login,callback,me,logout,dbsc/*} のリクエスト・レスポンス・Cookie 設定・エラー一覧
 ---
 
 # Auth API 仕様

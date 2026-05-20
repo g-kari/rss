@@ -1,5 +1,6 @@
 ---
 globs: "app/api/ai/**"
+description: AI 機能 (要約・翻訳) の API 仕様 — /api/ai/{summarize,translate} のリクエスト・レスポンス・利用可能モデル・R2 キャッシュキー・エラー一覧
 ---
 
 # API 仕様: AI 機能 (要約・翻訳)

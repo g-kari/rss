@@ -1,5 +1,6 @@
 ---
 paths: "src/components/**/*.tsx,src/hooks/**/*.ts,app/**/*.tsx"
+description: UI / UX 判断軸 — 既存設定 UI 流用で新規 UI を増やさない / 抑制機能 default OFF / 同カテゴリ機能の N 段階セグメント統合 / 自動操作の手動操作で一時停止 UX
 ---
 
 # UI / UX 判断軸

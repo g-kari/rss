@@ -1,5 +1,6 @@
 ---
 globs: "app/api/recommendations/**"
+description: フィード推薦 API 仕様 — /api/recommendations の GET / dismiss / refresh、Workers AI 生成のキャッシュ 204 / 同期再生成 / 5 分クールダウン
 ---
 
 # API 仕様: フィード推薦
