@@ -1,5 +1,5 @@
 ---
-globs: "app/api/articles/**,app/api/read-state/**,app/api/content/**,app/api/clip/**"
+paths: "app/api/articles/**,app/api/read-state/**,app/api/content/**,app/api/clip/**"
 description: 記事 / 既読状態 / 全文コンテンツ / クリップの API 仕様 — /api/{articles,read-state,content,clip} のリクエスト・マージ戦略・エラー一覧 (UPSTREAM_FETCH_FAILED 502 / FETCH_FAILED 等)
 ---
 

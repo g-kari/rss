@@ -1,5 +1,5 @@
 ---
-globs: "app/api/collections/**,app/api/feed-groups/**"
+paths: "app/api/collections/**,app/api/feed-groups/**"
 description: コレクション (記事のお気に入りグループ) とフィードグループ (フィード分類) の API 仕様 — /api/{collections,feed-groups} の CRUD + reorder + 記事追加削除
 ---
 

@@ -1,5 +1,5 @@
 ---
-globs: "app/api/push/**"
+paths: "app/api/push/**"
 description: Web Push 通知 API 仕様 — /api/push/{vapid-key,status,subscribe,unsubscribe,test,config} の VAPID 鍵取得・購読管理・サイレント時間帯設定
 ---
 
