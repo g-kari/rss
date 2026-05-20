@@ -564,18 +564,36 @@ Route Handler では `session.userId` でアクセスする。
 
 ### クールダウン管理（KV）
 
-`RATE_LIMIT` KV namespace にキーとして格納される。
+`RATE_LIMIT` KV namespace にキーとして格納される。本プロジェクトでは **2 形式が混在** している (`src/lib/r2.ts` 参照、#86 simplify F2 で文書化):
+
+**legacy R2-style** (旧来の R2 path 形式を KV キーに流用、既存 live entries 改名不可):
 
 ```
-{userId}:last-full-refresh              # 全フィード一括リフレッシュのクールダウン
-{userId}:ai-cooldown                    # AI エンドポイントのスライディングウィンドウ レートリミット
-{userId}:feed-refresh-{feedHash}        # 単体フィードリフレッシュのクールダウン
-{userId}:feed-reinfer-{feedHash}        # LLM CSS セレクタ再推論のクールダウン
-{userId}:recommendations-refresh        # 推薦リフレッシュのクールダウン
-{userId}:recommendations-gen            # 推薦生成（GET）の同時実行防止クールダウン
-{userId}:feed-add                       # フィード追加のクールダウン
-{userId}:opml-import                    # OPML インポートのクールダウン
+users/{userId}/last-full-refresh.json           # 全フィード一括リフレッシュのクールダウン (refreshCooldownKey)
+users/{userId}/ai-cooldown.json                 # AI エンドポイントのスライディングウィンドウ レートリミット (aiRateLimitKey)
+users/{userId}/feed-refresh-{feedHash}.json     # 単体フィードリフレッシュのクールダウン (singleFeedRefreshCooldownKey)
+users/{userId}/feed-reinfer-{feedHash}.json     # LLM CSS セレクタ再推論のクールダウン (reinferCooldownKey)
+users/{userId}/recommendations-refresh.json     # 推薦リフレッシュのクールダウン (recommendationsCooldownKey)
+users/{userId}/feed-add-cooldown.json           # フィード追加のクールダウン (feedAddCooldownKey)
+users/{userId}/content-fetch-rate-limit.json    # /api/content fetch のスライディングウィンドウ (contentFetchRateLimitKey)
+users/{userId}/clip-cooldown.json               # /api/clip クールダウン (clipCooldownKey)
+users/{userId}/opml-import.json                 # OPML インポートのクールダウン (opmlImportCooldownKey)
 ```
+
+**current KV-style** (`{userId}:xxx` のコロン区切り、新規 cooldown はこの形式で追加):
+
+```
+{userId}:push-subscribe                 # /api/push/subscribe のクールダウン (pushSubscribeCooldownKey)
+{userId}:ogp-cooldown                   # /api/ogp のスライディングウィンドウ (ogpCooldownKey)
+{userId}:engagement-cooldown            # /api/engagement のクールダウン (engagementCooldownKey)
+{userId}:save-article-cooldown          # /api/articles/save のクールダウン (saveArticleCooldownKey)
+```
+
+**運用ルール** (`src/lib/r2.ts` comment より):
+
+- 新規 KV クールダウンキーは必ず `{userId}:xxx` 形式 (current KV-style) で追加
+- 既存 legacy 9 件 (R2-style) は live entries 改名で一時通過状態になるリスクあり、KV migration を別 Issue 化して一括統一
+- `users/` プレフィックスは R2 path を連想させ KV dump で混乱の元 → 統一推奨
 
 ### AI キャッシュ（永続）
 
