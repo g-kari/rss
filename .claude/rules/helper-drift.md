@@ -1,5 +1,6 @@
 ---
 paths: "src/lib/**/*.ts,src/hooks/**/*.ts,app/api/**/*.ts"
+description: Helper drift 防止規範 — 新規 Route Handler / hook 実装時に既存 lib helpers (validation / r2 / api-error) を grep して流用、error code 契約破壊しないか確認、新規 dev dep 追加前に既存 grep、同名 type / enum の alias 化判断
 ---
 
 # Helper drift 防止と既存依存の流用判断

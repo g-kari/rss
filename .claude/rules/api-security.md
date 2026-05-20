@@ -1,5 +1,6 @@
 ---
 paths: "app/api/**/*.ts"
+description: API Route Handler のセキュリティ規範 — 認証 + 所有権チェック二段 / shared cache TTL 短縮で poisoning 影響限定 / dev・e2e endpoint の NODE_ENV + bypass 二重ガード
 ---
 
 # API セキュリティ規範

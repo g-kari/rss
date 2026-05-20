@@ -1,5 +1,6 @@
 ---
 paths: "src/**/*.ts,src/**/*.tsx,app/api/**/*.ts"
+description: Fallback / 派生値の規範 — 同名 boolean 派生分離 / fallback 伝播の意図的制御 / sibling 純粋関数の fallback chain 統一 / 派生 boolean は fallback 前 origin から導出
 ---
 
 # Fallback / 派生値の規範
