@@ -986,6 +986,49 @@ ls $(echo "$paths" | sed 's/paths: //; s/"//g; s/,/ /g' | tr ' ' '\n' | head -3)
 - #728 案 B 部分達成サイクル — 5 件精緻化 (build-check.md dead path 削除 + react-patterns / browser-platform / design-system の subset 重複削除 + quality-checks の グローバル限定) を 1 commit で完結
 - 2026-05-14 サイクル — `helper-drift.md` の `app/api/**/*.tsx` (実在 0 件の dead path) 削除 + `nextjs-server-patterns.md` の `src/lib/*.ts` を `src/lib/**/*.ts` に統一 (subdir 追加時の壊れにくさ向上) を 1 commit で完結。`src/cron/**/*.ts` が `src/**/*.ts` に含まれる subset 重複は **意図伝達価値** (core rule は cron も対象を明示) のため保持判断
 
+### 派生ケース: cross-rule paths overlap (複数 rule が同 path を持つ現象) は設計意図的 multi-aspect loading で正常
+
+ミス B「subset と superset の重複」は **1 ファイル内** の paths 重複を扱うが、**複数 rule 間で同 path を持つ overlap** は別の概念。本プロジェクトでは現状 11 path で複数 rule が overlap している (例: `src/hooks/**/*.ts` を 9 rule が含む、`src/**/*.tsx` を 8 rule が含む)。
+
+これは **設計意図的な multi-aspect loading**: 1 つのファイル編集時に複数観点の規範 (browser platform / helper drift / react patterns / dev investigation / ui judgment 等) を同時に load することで、全観点で違反検知 + 整合性確認できるようにする canonical pattern。
+
+```
+パターン: cross-rule paths overlap 判定
+  1. paths overlap を sweep (python script で path → [rules] map を作る)
+  2. 各 overlap path について、各 rule の責務が異なる観点か確認
+  3. 全 rule が異なる観点 → 設計意図的 multi-aspect loading で正常 (codify 不要)
+  4. 同一観点の rule が複数該当 → 真の redundancy、統合 / 削除を検討
+```
+
+```python
+# 検出フロー (Python ワンライナー):
+import os, re
+rules = {}
+for fn in sorted(os.listdir(".claude/rules")):
+    if not fn.endswith(".md"): continue
+    with open(f".claude/rules/{fn}") as f:
+        content = f.read()
+    m = re.search(r"^paths:\s*\"([^\"]+)\"", content, re.M)
+    if not m: continue
+    for p in [x.strip() for x in m.group(1).split(",")]:
+        rules.setdefault(p, []).append(fn)
+for p, rs in sorted(rules.items()):
+    if len(rs) >= 2:
+        print(f"{p}: {len(rs)} rules — {', '.join(rs)}")
+```
+
+**判別 pattern (真の redundancy vs 設計意図的 overlap)**:
+
+| 状況                                                                                              | 判定                           |
+| ------------------------------------------------------------------------------------------------- | ------------------------------ |
+| 複数 rule が異なる観点 (browser / helper / react / ui / dev etc.) を扱う                          | **設計意図的** (正常)          |
+| 複数 rule が同一観点を扱う (例: react-effect-patterns / react-state-ref が完全に同じトピック範囲) | **真の redundancy** (統合検討) |
+| 1 rule が redirect-only navigation file (coding-conventions.md) + 他 rule が同 path               | **意図伝達価値** (保持判断)    |
+
+**真の redundancy 検出は cross-rule path overlap 自体では判定不可** — 各 rule の **責務 (1st heading + 主要トピック)** を別途確認する必要あり。
+
+主な使用箇所: 2026-05-20 paths overlap sweep — 11 path で複数 rule overlap を検出したが、全件「異なる観点を扱う設計意図的 multi-aspect loading」と判定して 0 件修正で完結 (max 9 rule overlap = src/hooks/ で React + browser + helper + ui + dev の 5 観点を同時 load する canonical pattern)
+
 ## 13. Cloudflare CI/CD の deploy fail と production outage を区別して revert vs fix-forward を判断する
 
 master push 直後の Cloudflare CI/CD ログで「deploy step が失敗」を観測したとき、**「本番が壊れている」と早合点して即 `git revert` push する** のは罠。実際は **CI/CD の deploy step だけが失敗** で、本番は **前回成功した deploy** のまま稼働継続している (= production は無影響) ケースが大半。早合点 revert は以下のコストを生む:
