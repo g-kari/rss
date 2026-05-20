@@ -243,3 +243,46 @@ script は **pnpm hash 化された path を自動解決** (`node_modules/.pnpm/
 - 一時的 PoC で deploy しない (`next dev` 開発のみ) → 不要
 
 主な使用箇所: `#674` Phase 2c (closes `#753`) で `onnxruntime-web@1.26.0` の `ort-wasm-simd-threaded.jsep.wasm` (25.02 MiB) が Cloudflare deploy 上限抵触 → `scripts/remove-bundled-wasm.mjs` で bundle 除外 + `app/api/wasm/[file]/route.ts` + `ort.env.wasm.wasmPaths = "/api/wasm/"` の 4 点セットで配線 (commit `29d0e629`)
+
+## scheduled handler (Cron Trigger) は worker.ts (Custom Worker) で直接定義する
+
+`@opennextjs/cloudflare` の standard entry point (`.open-next/worker.js`) は **scheduled handler を未サポート** (Next.js Route Handler のみ)。Cron Trigger を使うには **Custom Worker (worker.ts) 2 段構成** が canonical。
+
+```typescript
+// worker.ts (Custom Worker、wrangler.toml `main = "./worker.ts"`)
+// @ts-ignore `.open-next/worker.js` はビルド時に生成される
+import { default as handler } from "./.open-next/worker.js";
+import { fetchAllFeeds } from "./src/cron/fetch";
+import { runCronPrefetch } from "./src/lib/cron-prefetch";
+
+export default {
+  // fetch は @opennextjs/cloudflare 生成の handler を delegate (Next.js routing)
+  fetch: handler.fetch as ExportedHandler<CloudflareEnv>["fetch"],
+
+  // scheduled は Custom Worker で直接定義 (Cron Trigger 30 分毎)
+  async scheduled(_controller, env, ctx): Promise<void> {
+    await fetchAllFeeds({
+      RSS_DATA: env.RSS_DATA,
+      FINDME_RSS: env.FINDME_RSS,
+      RATE_LIMIT: env.RATE_LIMIT,
+    });
+    ctx.waitUntil(runCronPrefetch({ RSS_DATA: env.RSS_DATA, RATE_LIMIT: env.RATE_LIMIT }, ctx));
+  },
+} satisfies ExportedHandler<CloudflareEnv>;
+```
+
+**設定の整合性**:
+
+- `wrangler.toml`: `main = "./worker.ts"` (`.open-next/worker.js` でなく)
+- `wrangler.toml`: `[triggers] crons = ["*/30 * * * *"]`
+- `open-next.config.ts`: コメントで「scheduled は worker.ts で定義」を明示 (Cron 注入は不要)
+- `scripts/add-scheduled-handler.mjs`: wrangler.json への **bindings マージ専用** (scheduled handler 注入は実施しない)
+
+**How to apply**: Cron Trigger を追加 / 変更するとき (Custom Worker の存在を知らないと scripts/add-scheduled-handler.mjs に注入しようとして 2 重実装になる):
+
+1. **scheduled handler は worker.ts で直接定義 / 変更** — scripts/add-scheduled-handler.mjs には書かない
+2. **architecture.md の `Cloudflare Workers` セクション + `Cron Trigger` セクションを同期更新** — worker.ts → handler chain を正確に記載
+3. **open-next.config.ts コメント** を最新の architecture と整合させる (drift しやすい注釈)
+4. **新規 cron job 追加時** は worker.ts.scheduled 内に呼び出しを追加 + wrangler.toml の cron schedule を確認
+
+主な使用箇所: 2026-05-20 wrangler cron sweep — architecture.md L47 が `fetchAllUsers` (実体は `fetchAllFeeds`) と drift、open-next.config.ts コメントが「scripts/add-scheduled-handler.mjs で注入」と drift → 両者を worker.ts 直接定義の実態に同期 (commit `f1c3de55`)
