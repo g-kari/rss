@@ -29,7 +29,10 @@ paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
             └─ /api/health            — ヘルスチェック
 
 Cloudflare Workers (@opennextjs/cloudflare)
-  ├─ .open-next/worker.js   → Next.js Route Handlers / SSR
+  ├─ worker.ts              → Custom Worker entry point (wrangler.toml `main = "./worker.ts"`)
+  │                             ├─ fetch: .open-next/worker.js (Next.js handler) を delegate
+  │                             └─ scheduled: fetchAllFeeds + runCronPrefetch (Cron Trigger handler)
+  ├─ .open-next/worker.js   → Next.js Route Handlers / SSR (ビルド時生成)
   └─ .open-next/assets/     → 静的アセット (Cloudflare Assets)
 
 Cloudflare Bindings
@@ -44,7 +47,8 @@ Cloudflare Bindings
   └─ ASSETS (Assets)            — 静的アセット
 
 Cron Trigger (wrangler.toml: */30 * * * *)
-  └─ src/cron/fetch.ts → fetchAllUsers(env) — R2 から全ユーザーの RSS を取得・更新
+  └─ worker.ts#scheduled() → src/cron/fetch.ts#fetchAllFeeds(env) — R2 の全フィードを buildFeedUserMap で集約して RSS 取得・更新
+                          + src/lib/cron-prefetch.ts#runCronPrefetch(env, ctx) — top-N feed の content/OGP を waitUntil で事前 fetch
 ```
 
 ## ディレクトリ構造
