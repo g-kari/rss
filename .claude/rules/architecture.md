@@ -624,7 +624,6 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ（永続）
 [vars]
 AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL  = "https://rss.0g0.xyz"
-BETA_ALLOWED_SUBS = "..."   # カンマ区切り sub リスト (空 = 制限なし)
 VAPID_SUBJECT = "mailto:admin@0g0.xyz"  # Web Push 送信元メール
 ```
 
@@ -633,6 +632,7 @@ VAPID_SUBJECT = "mailto:admin@0g0.xyz"  # Web Push 送信元メール
 ```bash
 npx wrangler secret put CLIENT_ID              # 0g0-id services テーブルに登録された BFF クライアント ID
 npx wrangler secret put CLIENT_SECRET          # 対応するクライアントシークレット
+npx wrangler secret put BETA_ALLOWED_SUBS      # ベータアクセス許可 sub のカンマ区切りリスト (空 = 制限なし、pairwise sub を public repo に晒さないため secret 管理)
 npx wrangler secret put VAPID_PUBLIC_KEY       # Web Push VAPID 公開鍵
 npx wrangler secret put VAPID_PRIVATE_KEY      # Web Push VAPID 秘密鍵
 npx wrangler secret put CLOUDFLARE_API_TOKEN   # 全文取得フォールバック用 (オプション)
