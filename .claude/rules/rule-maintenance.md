@@ -970,7 +970,7 @@ ls $(echo "$paths" | sed 's/paths: //; s/"//g; s/,/ /g' | tr ' ' '\n' | head -3)
 
 **How to apply**: 以下のタイミングで paths frontmatter sweep を実行する:
 
-1. **新規 rule 追加時** — paths を書いた直後に上記検出コマンドで全 rule の paths を一覧、近接重複がないか確認。**description: も同時に書く** (auto-discovery 性のため、欠落していると AI が rule を grep するとき 1 行要約が見えず判断材料が減る — 2026-05-20 sweep で 12 件欠落を一括追加した実例あり)
+1. **新規 rule 追加時** — paths を書いた直後に上記検出コマンドで全 rule の paths を一覧、近接重複がないか確認。**description: も同時に書く** (auto-discovery 性のため、欠落していると AI が rule を grep するとき 1 行要約が見えず判断材料が減る — 2026-05-20 sweep で 12 件欠落を一括追加した実例あり)。**`globs:` ではなく `paths:` を使う** (本プロジェクトの canonical key、Claude Code は `paths:` で conditional loading を解釈する。`globs:` は別エディタ (Cursor IDE 等) の標準で本プロジェクトでは無効化される可能性あり — 2026-05-20 sweep で api-\*.md 8 件の `globs:` を `paths:` に統一した実例あり)
 2. **大規模 rule 分割サイクル末** — 分割で新規 rule が複数追加された後、必ず sweep して dead path / 重複を排除
 3. **親プロジェクトからの rule コピペ後** — paths が親 dir を含んでいないか必ず確認
 4. **paths 削除の判断軸** — 27 行程度の短い rule は paths 削除して常時ロード許容 (paths 設計コスト > 常時ロード コスト)
