@@ -173,6 +173,20 @@ find src \( -name "*.test.ts" -o -name "*.test.tsx" \) -type f | xargs -n1 basen
 sort -u /tmp/actual_specs.txt -o /tmp/actual_specs.txt
 grep -oP "\| \`[A-Za-z][A-Za-z0-9-]+\.(spec|test)\.tsx?\`" .claude/rules/architecture.md | sed 's/| `//;s/`//' | sort -u > /tmp/doc_specs.txt
 comm -23 /tmp/actual_specs.txt /tmp/doc_specs.txt
+
+# ASCII tree listing 内 route.ts drift 検出例 (Flat table listing と別構造、独立 sweep 必要)
+# `.claude/rules/architecture.md` は 2 種類の listing 構造を混在持つため、それぞれ独立 grep が必要:
+# - **ASCII tree listing** (L59-545 等のディレクトリ tree): app/api/ や src/ の階層構造、indent + 親 dir 表記
+# - **Flat table listing** (テストカバレッジマップ): 1 行 1 entry の table 形式 (上の grep でカバー済)
+# Flat table 用 grep だけだと ASCII tree 配下 drift が残る。
+find app/api -name "route.ts" -type f | sed 's|app/api/||' | sort > /tmp/actual_routes.txt
+# 各 route の親 dir 名で architecture.md L59-109 を grep して include 判定
+for route_path in $(cat /tmp/actual_routes.txt); do
+  basename=$(basename $(dirname "$route_path"))  # 親 dir 名 (例: "video-proxy")
+  if ! grep -qE "^[[:space:]]+${basename}/" .claude/rules/architecture.md; then
+    echo "MISSING in ASCII tree listing: app/api/${route_path}"
+  fi
+done
 ```
 
 検出後は各 spec / lib ファイルの先頭 12 行を `head -12` で読んで責務を把握し、1 行 description を書くだけ。**エージェント往復より直接実行が速い** (待機 + 結果整形なし)。
