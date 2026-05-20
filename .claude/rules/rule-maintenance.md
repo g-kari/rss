@@ -191,6 +191,43 @@ done
 
 検出後は各 spec / lib ファイルの先頭 12 行を `head -12` で読んで責務を把握し、1 行 description を書くだけ。**エージェント往復より直接実行が速い** (待機 + 結果整形なし)。
 
+#### redirect の section heading sweep における **意図的 mismatch** の false positive 排除
+
+`coding-conventions.md` 等の **redirect-only ファイル** (`#733` で分割した分散先 trace 用) は、**section heading に「分割前の subtopic 列挙」を保持** している (例: `## URL 比較 / gh api 上流調査 / デバッグ / 自動生成 / 読み上げ整合性 / 同症状別経路`)。一方で **target file の 1st heading は「分割後の包括 theme 名」** (例: `# 開発調査パターン`) になる。
+
+両者の strict heading match を sweep query にすると false positive 大量発生する (現状 10 件 mismatch のうち 0 件が真の drift)。設計意図的に「coding-conventions.md = subtopic 列挙の navigation 用 / target file = 包括 theme 名」の **2 軸 indirection** を維持しているため、strict match 不要。
+
+```bash
+# アンチパターン: heading の strict match を sweep query にする
+# → coding-conventions.md の subtopic 列挙が target file 1st heading と完全一致しないため
+#   false positive が大量発生 (現状 10 件 mismatch、全件設計意図)
+
+# 修正パターン: redirect が指す topic が target file 全体に存在するかで判定
+# (= "Helper drift" や "useEffect" 等の主要キーワードを target file で grep)
+for redirect in $(grep -oE "→ \`?\.claude/rules/[a-z_-]+\.md\`?.*" .claude/rules/coding-conventions.md); do
+  target=$(echo "$redirect" | grep -oE "[a-z_-]+\.md" | head -1)
+  # heading 一致でなく semantic 存在で判定 (主要キーワードを target file で grep)
+  # 例: 直前 heading の最初の単語 (TypeScript / React / Helper drift) が target file に含まれるか
+done
+```
+
+**判別 pattern (将来の sweep で false positive を即時排除)**:
+
+| coding-conventions.md heading 形式                       | target file 1st heading 形式                   | 判定                       |
+| -------------------------------------------------------- | ---------------------------------------------- | -------------------------- |
+| subtopic 列挙 (例: `URL 比較 / gh api / デバッグ / ...`) | 包括 theme (例: `開発調査パターン`)            | **意図的、false positive** |
+| 完全別名 (例: `デフォルト引数値・デザイントークン`)      | 別 theme (例: `UI レンダリングパターン`)       | **意図的、false positive** |
+| 微妙な接続詞差 (例: `+` vs `と`、`規約` 欠落)            | 微妙な差 (例: `... と ...`、`TypeScript 規約`) | **意図的、false positive** |
+| 完全一致                                                 | 完全一致                                       | OK                         |
+
+**真の drift 判定 (target file に topic 自体が無い場合のみ)**:
+
+- redirect 直前 heading の **主要キーワード 1-2 語** (TypeScript / React useEffect / Helper drift 等) を抽出
+- target file 全体に同キーワードが出現するか grep
+- 出現しなければ真の drift (target file 構造変更で topic が完全に消失した可能性)
+
+主な使用箇所: 2026-05-20 redirect integrity sweep — 31 redirects 中 10 件 strict heading mismatch を検出したが、全件設計意図的 subtopic 列挙 vs 包括 theme の 2 軸 indirection と判定して 0 件修正で完結
+
 **How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
 
 1. **タスクが機械的検出可能か** (yes/no で判別できる、grep / find / comm で出せる) → 直接実行
