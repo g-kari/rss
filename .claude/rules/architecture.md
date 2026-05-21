@@ -369,6 +369,7 @@ src/
     keyword-filter.ts        # キーワードフィルタリングマッチング（正規表現対応）
     linkedom-types.ts        # linkedom DOM 操作用の共有型定義（LDElement / LDDocument）
     llm-feed-generator.ts    # LLM で RSS のないサイトからフィード生成
+    loadmore-cooldown.ts     # loadMore 連続発火を抑止する cooldown 判定純粋関数 (#773 案 A、shouldLoadMore / DEFAULT_LOADMORE_COOLDOWN_MS=1000ms)
     lru-cache.ts             # クライアントサイド LRU キャッシュ
     modal-focus.ts           # Modal / Dialog 系コンポーネントで共有する `FOCUSABLE_SELECTOR` 定数（Tab フォーカス可能要素 selector — Modal.tsx / ConfirmModal.tsx / FeedQuickSwitchModal.tsx の重複定義 drift を解消）
     ogp.ts                   # OGP メタデータ取得ロジック
@@ -840,6 +841,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `gallery-prefetch.spec.ts`                      | `src/lib/gallery-prefetch.ts` — `buildArticlesKey` 純粋関数（visible 拡張で確実にキー変化）                                                                                                                                                       |
 | `gallery-display.spec.ts`                       | `src/lib/gallery-display.ts` — `selectGalleryImages` 純粋関数（prefetched / thumb / none の 3 分岐選択）                                                                                                                                          |
 | `gallery-masonry-layout.spec.ts`                | `src/lib/gallery-masonry-layout.ts` — `computeColumnHeights` / `assignItemToShortestColumn` / `computeMasonryLayout` / `computeScrollAnchorDelta` 純粋関数 (#773 Phase 0/1、自前 masonry virtualizer 基盤)                                        |
+| `loadmore-cooldown.spec.ts`                     | `src/lib/loadmore-cooldown.ts` — `shouldLoadMore` 純粋関数 (#773 案 A、loadMore 連続発火を 1000ms cooldown で抑止 / 大量画像展開時の scroll 一気末尾移動 + 無限ロード対策 / 時計戻り fail-open / Infinity cooldown 等 9 ケース網羅)               |
 | `gallery-offviewport.spec.ts`                   | `src/lib/gallery-offviewport.ts` — `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` 純粋関数（masonic で viewport 外 item のみ再配置する設計の判定層、#714 Phase 1、全 17 ケース網羅）                                         |
 | `gallery-explode.spec.ts`                       | `src/lib/gallery-explode.ts` — `explodeArticlesIntoGalleryEntries` 純粋関数（画像/動画 view で 1 記事 N 画像を N カードに分解、`GalleryEntry` 型、Phase 0b、全 10 ケース網羅）                                                                    |
 | `abort-error.spec.ts`                           | `src/lib/fetch.ts#isAbortError` — DOMException AbortError / Error name="AbortError" / 非 abort error の判別 (#625 後追い)                                                                                                                         |
