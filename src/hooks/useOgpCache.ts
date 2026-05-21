@@ -161,11 +161,60 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
   }, []);
 
   // #808 Phase 3a: Context 経由参照のための v2 entry getter (caller は ArticleContentBody
-  // の useContentLinkPreviews で title/description 取得 cache hit 判定に使う、Phase 3b 配線)。
+  // の useContentLinkPreviews で title/description 取得 cache hit 判定に使う)。
   const getEntry = useCallback(
     (url: string): OgpCacheEntry | undefined => ogpCacheV2[url],
     [ogpCacheV2],
   );
 
-  return useMemo<OgpCacheStore>(() => ({ ogpCache, getEntry }), [ogpCache, getEntry]);
+  // #808 Phase 3b: cache に partial entry を書き込む。useContentLinkPreviews が
+  // fetch 結果 (title / description / image) を cache に書き戻すときに使用。既存 entry
+  // とマージされて lazy migration policy (title/description を次 fetch で追記) を実現。
+  // image が未指定なら既存 image を維持、新規 entry の場合は image="" (negative cache) で
+  // 仮設置して title/description のみ持つ entry を作成する。
+  const cacheOgpEntry = useCallback((url: string, partial: Partial<OgpCacheEntry>) => {
+    setOgpCacheV2((prev) => {
+      const existing = prev[url];
+      const nextEntry: OgpCacheEntry = {
+        image: partial.image ?? existing?.image ?? "",
+        ...(partial.title !== undefined || existing?.title !== undefined
+          ? { title: partial.title ?? existing?.title }
+          : {}),
+        ...(partial.description !== undefined || existing?.description !== undefined
+          ? { description: partial.description ?? existing?.description }
+          : {}),
+        ...(partial.fetchedAt !== undefined || existing?.fetchedAt !== undefined
+          ? { fetchedAt: partial.fetchedAt ?? existing?.fetchedAt }
+          : {}),
+      };
+      // 内容変化なしなら reference 不変 (構造的等価ガード)
+      if (
+        existing &&
+        existing.image === nextEntry.image &&
+        existing.title === nextEntry.title &&
+        existing.description === nextEntry.description &&
+        existing.fetchedAt === nextEntry.fetchedAt
+      ) {
+        return prev;
+      }
+      const next = { ...prev, [url]: nextEntry };
+      const keys = Object.keys(next);
+      const result =
+        keys.length > MAX_OGP_CACHE_SIZE
+          ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
+          : next;
+      // saveTimer は外側 useEffect 内の scheduleSave に同期するため、ここでは debounce
+      // を経由せず即時保存。書き込み頻度は anchor 数 × 1 (per article render) で限定的。
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        saveJson(STORAGE_KEYS.OGP_CACHE, result);
+      }, SAVE_DEBOUNCE_MS);
+      return result;
+    });
+  }, []);
+
+  return useMemo<OgpCacheStore>(
+    () => ({ ogpCache, getEntry, cacheOgpEntry }),
+    [ogpCache, getEntry, cacheOgpEntry],
+  );
 }
