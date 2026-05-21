@@ -129,6 +129,7 @@ src/
     ToastContext.tsx          # トースト通知 API の React Context（useToast のグローバル提供）
     TtsAdapterContext.tsx     # TTS engine adapter の React Context（#675 Phase 1b — App.tsx で 1 回だけ生成し、記事ヘッダー TTS / 設定モーダル voice 選択で同一インスタンスを共有）
     UnreadStatsContext.tsx    # 全記事の未読統計 (`unreadByFeed` / `totalUnread` / `lastPublishedByFeed` / `readTodayCount`) の React Context（#702 — App.tsx で `useArticleUnreadStats` を 1 回呼んで `useDocumentTitleBadge` と `useSidebarFeeds` の二重 scan を解消）
+    OgpCacheContext.tsx       # OGP cache store の React Context (#808 Phase 3a、AppShell で useOgpCache を 1 度呼んで OgpCacheStore = { ogpCache, getEntry } を ArticleList + ArticleContentBody の sibling 階層で共有、Provider 外 fallback は null-object で安全)
   components/
     feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection / TagsSection / CollectionsSection / FeedSearchBar）
     feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / FeedTitleContent / feedActions.tsx / types.ts）

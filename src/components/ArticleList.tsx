@@ -19,7 +19,7 @@ import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { SelectedArticleCtx } from "../contexts/SelectedArticleContext";
 import { useToast } from "../contexts/ToastContext";
-import { useOgpCache } from "../hooks/useOgpCache";
+import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import { usePrefetchGalleryContents } from "../hooks/usePrefetchGalleryContents";
 import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
 import { useSyncedRef } from "../hooks/useSyncedRef";
@@ -157,7 +157,9 @@ function ArticleList({
   const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f])), [feeds]);
   const showFeedName = selectedFeedId === null || selectedFeedId === SPECIAL_FEED_IDS.BOOKMARKS;
 
-  const ogpCache = useOgpCache(visible);
+  // #808 Phase 3a: useOgpCache を AppShell に lift up + OgpCacheProvider 経由参照
+  // (Phase 3b で useContentLinkPreviews も同 Context 経由で重複 fetch 統合される設計)
+  const { ogpCache } = useOgpCacheContext();
 
   const galleryPrefetchEnabled =
     layout === "gallery" && (activeFeedView === "pictures" || activeFeedView === "videos");
