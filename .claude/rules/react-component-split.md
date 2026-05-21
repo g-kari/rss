@@ -762,3 +762,75 @@ boundaryTimerRef.current = setInterval(() => {
 **How to apply**: 機能別分割が落ち着いたら、サブコンポーネント間で `git diff` 風の比較を行って **「ほぼ同一の 5 行以上のブロック」** がないか確認する。simplify 監査エージェントに「similar sub-components の重複」を観点として渡すと自動検出可能。
 
 主な使用箇所: `VirtualRow` (`article-list-body/` の 3 サブコンポーネントから virtualizer item wrapper を集約)
+
+### 派生ケース: JSX 描画 helper を「`unknown` 受け純粋関数 + 非 string defensive」で本番 minified TypeError を構造的に防ぐ
+
+本番 minified bundle で `TypeError: e.startsWith is not a function` のような **type narrowing は通っているが runtime で型不整合** が起きるエラーは、ErrorBoundary 配下で UX 全体破壊する。typescript の型システムは安全だが、以下の経路で runtime 型不整合が混入する:
+
+- `JSON.parse(localStorage)` の type assertion (legacy schema 混在)
+- API response の `(await res.json()) as { ... }` で server が想定外型を返す
+- decoder fallback で `cached` 値が後方互換のため string と仮定されているが実態は別型
+
+defensive 対策: **JSX 描画用 helper を component 内 inline でなく `src/lib/<feature>-parse.ts` として純粋関数化 + 入力を `unknown` 受け + 非 string 入力で safe fallback** に切り出す。
+
+```typescript
+// アンチパターン: component 内 inline で型 narrowing を信頼
+function renderSummary(text: string) {
+  return text.split("\n").map((line) => {
+    if (line.startsWith("## ")) { /* ... */ }  // ← line が runtime で非 string ならクラッシュ
+    // ...
+  });
+}
+
+// 修正パターン: lib に純粋関数として切り出し + unknown 受け defensive
+// src/lib/feature-parse.ts
+export function parseLine(line: unknown): { kind: "...", text: string } {
+  if (typeof line !== "string") return { kind: "paragraph", text: "" };
+  if (line.startsWith("## ")) return { kind: "heading", text: line.slice(3) };
+  // ...
+}
+export function parseLines(text: unknown): ReadonlyArray<...> {
+  if (typeof text !== "string") return [];
+  return text.split("\n").map(parseLine);
+}
+
+// component 側
+function renderSummary(text: unknown) {  // ← unknown 受けで minified runtime safe
+  return parseLines(text).map((line, i) => {
+    if (line.kind === "heading") return <p>...{line.text}</p>;
+    // ...
+  });
+}
+```
+
+**TDD spec** で defensive 動作 (非 string 入力 → 空配列 / paragraph 空文字 等) を網羅、heading / bullet / paragraph の各分類も spec で固定。
+
+**How to apply**: 以下のいずれかに該当する component 内 JSX helper を見たら本 pattern を適用 (本番 minified の TypeError は staging では再現しにくく、ErrorBoundary 発火で UX 全体破壊するため defensive が cost-effective):
+
+1. **`.startsWith` / `.endsWith` / `.split` / `.match` 等の string method を呼ぶ helper** — runtime 非 string で TypeError リスク
+2. **`.length` / `.push` / `.map` 等の array/object method を呼ぶ helper** — runtime 非 array で TypeError リスク
+3. **API response / localStorage 値 を直接受ける helper** — type assertion 通過後の runtime 型不整合リスク
+4. **ErrorBoundary 配下の hot path** — エラーで UX 全体破壊する component
+
+修正手順:
+
+1. **helper を `src/lib/<feature>-parse.ts` に純粋関数化** (Phase 1 純粋関数 + TDD 先行と同 pattern)
+2. **入力を `unknown` 型受け** で defensive 設計
+3. **非 string / 非 array 入力で safe fallback** (空配列 / 空 entry / default 値)
+4. **TDD spec で edge case (null / undefined / number / object / array / nested object) を網羅**
+5. **component 側を helper 経由参照に変更**、入力 type も `unknown` 化
+
+**反例 (defensive 不要なケース)**:
+
+- 既知の **controlled input** (定数 / config / 自社 generate 値) で外部由来でない → type 保証されている
+- helper が **string method を呼ばない** (純粋な型変換 / 数値計算等) → defensive 不要
+- ErrorBoundary 配下でない (catch 別経路でハンドリング済) → UX 影響限定的
+
+**真因 fix との関係**:
+
+defensive 対処は **症状抑止** で、真因 (上流 type assertion の通過経路) は別途特定すべき。両者を分離して:
+
+1. defensive fix を **即時 commit** で UX 影響抑止 (本コミットの責務)
+2. 真因深掘り (どの API / cache 経路で非 string が混入するか) を **別 Issue で深掘り** (将来同種 helper の保護対象を絞る判断材料)
+
+主な使用箇所: `#811` ArticleAiPanel.tsx の `renderSummary` で `line.startsWith("## ")` が本番 minified TypeError → `src/lib/ai-summary-parse.ts` に `parseSummaryLine` / `parseSummaryLines` を unknown 受け純粋関数で切り出し + 21 ケース TDD spec で defensive 動作網羅 + component 側を unknown 受け JSX helper に変更 (1 サイクル close、本番 ErrorBoundary 発火即時抑止)
