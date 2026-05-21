@@ -49,6 +49,7 @@ SKIP=e2e-test git commit -m "..."  # → e2e-test は Skipped、他 hook は実�
 1. **typecheck / check / test:unit は pass する** (= コード品質は保証されている)
 2. **e2e fail の原因が環境問題** (wrangler 認証 / network / 一時的 service 障害)
 3. **コミットメッセージで SKIP 理由を明示** (「wrangler 認証エラーで e2e skip、後追い検証」)
+4. **本変更の影響を受ける spec 群を明示的に手動実行して全 pass を確認** + **commit message にエビデンス記載** (例: 「regression spec N 件 + 新規 spec M 件 全 pass、本変更の機能 regression なし」)。これにより SKIP は「環境問題で全体実行できないが、本変更 scope の spec は確実に pass」と論証可能になる
 
 **SKIP を使ってはいけないケース**:
 
