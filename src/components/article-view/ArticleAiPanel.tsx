@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import type { Article, EngagementAction, AiRating } from "../../types";
 import { AI_RATINGS } from "../../types";
 import type { AiError, TranslationProvider } from "../../hooks/useArticleAi";
+import { parseSummaryLines } from "../../lib/ai-summary-parse";
 
 interface ArticleAiPanelProps {
   aiResult: string | null;
@@ -20,33 +21,34 @@ interface ArticleAiPanelProps {
   onRetry?: () => void;
 }
 
-function renderSummary(text: string) {
-  const lines = text.split("\n");
-  return lines
+// #811: parseSummaryLines を経由することで非 string 入力 (decodeCached 旧形式や API edge
+// case で text が undefined/number/object になった場合) でも startsWith TypeError を起こさず
+// 空配列で safe fallback する設計。
+function renderSummary(text: unknown) {
+  return parseSummaryLines(text)
     .map((line, i) => {
-      if (line.startsWith("## ")) {
+      if (line.kind === "heading") {
         return (
           <p
             key={i}
             className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-faint mt-3 mb-1.5 first:mt-0"
           >
-            {line.slice(3)}
+            {line.text}
           </p>
         );
       }
-      if (/^[・\-•]\s/.test(line)) {
-        const content = line.replace(/^[・\-•]\s*/, "");
+      if (line.kind === "bullet") {
         return (
           <div key={i} className="flex gap-2 text-[13px] leading-[1.7] text-text-default">
             <span className="text-text-muted shrink-0 mt-[1px]">·</span>
-            <span>{content}</span>
+            <span>{line.text}</span>
           </div>
         );
       }
-      if (line.trim() === "") return null;
+      if (line.kind === "empty") return null;
       return (
         <p key={i} className="text-[13px] leading-[1.8] text-text-soft">
-          {line}
+          {line.text}
         </p>
       );
     })
