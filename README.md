@@ -543,6 +543,7 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 | React                   | MIT          |
 | Tailwind CSS            | MIT          |
 | @opennextjs/cloudflare  | MIT          |
+| @cloudflare/puppeteer   | Apache-2.0   |
 | @mozilla/readability    | Apache-2.0   |
 | fast-xml-parser         | MIT          |
 | linkedom                | ISC          |
