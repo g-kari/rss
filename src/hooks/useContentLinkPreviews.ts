@@ -4,6 +4,7 @@ import { useEffect, type RefObject } from "react";
 import { apiFetch } from "../lib/api-fetch";
 import type { OgpData } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
+import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 
 const LINK_PREVIEW_CLASS = "ogp-link-preview";
 
@@ -84,11 +85,22 @@ function buildPreviewCard(url: string, ogp: OgpData): HTMLAnchorElement | null {
 /**
  * 記事本文内のスタンドアロンリンクに OGP プレビューカードを DOM 注入する。
  * processedContent が変わるたびに既存カードを削除して再フェッチする。
+ *
+ * #808 Phase 3b: useOgpCacheContext 経由で OGP cache と統合。
+ * - cache hit (image + title or description あり) → fetch を skip して即 card 構築
+ * - cache miss / 不完全 entry → fetch + cacheOgpEntry で cache 更新
+ * - lazy migration policy: v1 cache entry (image のみ、title 未取得) でも本 hook で
+ *   fetch して title/description を追記すれば v2 化が進む
+ *
+ * 同一 URL の重複 fetch は ArticleList (gallery OGP) と本 hook (本文リンクプレビュー)
+ * の間で共有 cache 経由で構造的に統合される (#806 の rate limit 緩和と相乗効果)。
  */
 export function useContentLinkPreviews(
   contentRef: RefObject<HTMLDivElement | null>,
   processedContent: string | null,
 ): void {
+  const { getEntry, cacheOgpEntry } = useOgpCacheContext();
+
   useEffect(() => {
     const el = contentRef.current;
     if (!el || !processedContent) return;
@@ -106,8 +118,33 @@ export function useContentLinkPreviews(
 
     const controller = new AbortController();
 
+    /** 完全な cache entry (image + title or description) なら fetch skip OK */
+    const isCompleteCacheEntry = (url: string): OgpData | null => {
+      const entry = getEntry(url);
+      if (!entry) return null;
+      // title または description があれば fetch skip (画像のみ entry = v1 互換は fetch して title 追記)
+      if (entry.title === undefined && entry.description === undefined) return null;
+      // OgpData の title / description は non-nullable string なので空文字 fallback で互換
+      return {
+        image: entry.image,
+        title: entry.title ?? "",
+        description: entry.description ?? "",
+      };
+    };
+
     for (const anchor of anchors) {
       const url = anchor.href;
+
+      // cache hit (v2 entry で title/description が揃っている) → fetch skip
+      const cached = isCompleteCacheEntry(url);
+      if (cached) {
+        if (!el.isConnected || !anchor.isConnected) continue;
+        const card = buildPreviewCard(url, cached);
+        if (card) anchor.parentElement?.insertAdjacentElement("afterend", card);
+        continue;
+      }
+
+      // cache miss or 不完全 entry → fetch + cache 更新
       apiFetch(`/api/ogp?url=${encodeURIComponent(url)}`, { signal: controller.signal })
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -115,6 +152,13 @@ export function useContentLinkPreviews(
         })
         .then((ogp) => {
           if (!el.isConnected || !anchor.isConnected) return;
+          // cache に書き戻し (image / title / description を蓄積、次回以降の fetch skip)
+          cacheOgpEntry(url, {
+            image: ogp.image ?? "",
+            title: ogp.title,
+            description: ogp.description,
+            fetchedAt: Date.now(),
+          });
           const card = buildPreviewCard(url, ogp);
           if (card) anchor.parentElement?.insertAdjacentElement("afterend", card);
         })
@@ -124,5 +168,5 @@ export function useContentLinkPreviews(
     return () => {
       controller.abort();
     };
-  }, [contentRef, processedContent]);
+  }, [contentRef, processedContent, getEntry, cacheOgpEntry]);
 }
