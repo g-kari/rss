@@ -323,6 +323,41 @@ if (!isUsable(availability)) {
 3. **判定が下りた場合の `devError` は `{ result, options }` の形式** で入力引数も含める
 4. ユーザーから「環境要件は満たしているのに使えない」報告が来たら、**最初に渡している引数値を公式仕様と照合** する (環境調査より先)
 
+### 派生ケース: 規範対象判定軸 — 外部依存ラッパー vs 内部 URL パーサー / boolean validator
+
+silent fallback 規範 (`catch { return null }` に `devError` 必須) は **全ての null 返却 catch に画一適用するのでなく、source の信頼度で対象判定を分ける**。`grep -rEn "^\s*\}\s*catch.*\{$" src/lib/` 等で機械検出した hit 全件を規範対象とすると、毎リクエスト fail し得る validator / parser で diagnostic ログを大量出力する逆効果を招く。
+
+**判定軸**:
+
+| カテゴリ                                | 例                                                                                    | devError 必須? | 理由                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------- |
+| **外部依存ラッパー**                    | Web API / ブラウザネイティブ AI / サードパーティ fetch / 外部 OAuth                   | **必須**       | silent fail で本番ブラックボックス化、ユーザー視点で「ボタンが効かない」状態が永続 |
+| **内部 URL パーサー / parser fallback** | `new URL(...).origin` パース失敗 / RSS XML パース失敗 / config 読込失敗               | **不要**       | 毎リクエスト発生し得る、毎回 diagnostic 出すとログ汚染で真因が埋もれる             |
+| **boolean validator**                   | `isValidUrl(s): boolean` / `isValidSessionId(s): boolean` / `isInPrivateNetwork()` 等 | **不要**       | 検証 false が正常動作、validator は silent が canonical                            |
+
+**判別パターン**:
+
+- **外部依存ラッパー** = ライブラリ / Web API / 外部 fetch を **ユーザー操作トリガーで 1 リクエスト 1 回呼ぶ** (silent fail → 本番調査不能)
+- **内部 URL パーサー / parser fallback** = **毎レコード / 毎処理単位で呼ばれる** (silent fail は別経路に進むだけで UX 影響なし)
+- **boolean validator** = **戻り値が boolean / null** で別経路への分岐入力 (silent fail = false / null 返却が canonical)
+
+**How to apply**: silent `catch { return null }` を見つけたら以下を判定 (devError 併記必須は本番調査性のため必要だが、毎リクエスト fail し得る箇所に併記すると本番ログがノイズで埋まり真の異常を見落とす逆効果):
+
+1. その関数が **何をラップしているか** を確認 (signature + コメント + 呼び出し元 grep)
+2. **「外部依存ラッパー」なら devError 併記必須** (canonical: `browser-summarizer.ts` / `browser-translator.ts`)
+3. **「内部 URL パーサー / boolean validator」なら silent OK** (devError 併記は逆効果)
+4. **判定迷うケース** = 外部 fetch を間接的に経由する helper (例: `fetchFollowSafeRedirects` 内部の URL.origin パース) → 「呼び出し元 (上位 fetch) で devError 済か」を確認、上位で済なら本関数は silent OK
+
+**反例 (規範対象 = devError 必須なケース)**:
+
+- 一見「parser」に見えるが **実は外部 fetch wrapper** (例: `fetchAndParseOpml(url)` で内部 fetch + XML parse 両方を持つ) → 外部依存扱いで devError 必須
+- validator が **実装ロジックが複雑で fail 原因の切り分けに value を持つ** (例: `isValidJwt(s)` で署名検証 + claim 検証 + 期限検証) → 規範対象 (signature 検証失敗等の原因特定が重要)
+
+主な使用箇所:
+
+- 外部依存ラッパー canonical: `browser-summarizer.ts` / `browser-translator.ts` (`catch (err) { devError("[browser-summarizer] summarize failed", err); return null; }`)
+- 内部 URL パーサー canonical: `csrf.ts toOrigin` / `url.ts isValidUrl` / `feed-discovery.ts probeCommonFeedPaths` (silent fallback、devError なし)
+
 ## ブラウザ仕様の最低バージョン定数を 1 箇所に集約する
 
 Chrome / Safari の Web API には「Chrome 138+」「Safari 17+」のような最低バージョン要件がある。これを `getChromeVersion() < 131` のようにマジックナンバーで散らすと、API の stable リリース後に bump し忘れて誤診断 (`flag-disabled` 等) を起こす。
