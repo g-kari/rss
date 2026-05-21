@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { Article, OgpData } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 import { extractBoothFallbackUrl } from "../lib/booth-fallback";
 import { parseOgpCache, type OgpCacheEntry } from "../lib/ogp-cache-schema";
+import type { OgpCacheStore } from "../contexts/OgpCacheContext";
 
 const MAX_OGP_CACHE_SIZE = 2000;
 const SAVE_DEBOUNCE_MS = 500;
@@ -24,7 +25,7 @@ const SAVE_DEBOUNCE_MS = 500;
  * title / description は **未取得時 undefined のまま許容** (次 fetch で追記される lazy
  * migration policy はユーザー指定の合意済み)。
  */
-export function useOgpCache(visible: Article[]): Record<string, string> {
+export function useOgpCache(visible: Article[]): OgpCacheStore {
   // 内部 state は v2 schema (`Record<string, OgpCacheEntry>`)。localStorage 読込時に
   // `parseOgpCache` で v1 / v2 混在を v2 形式へ正規化する。
   const [ogpCacheV2, setOgpCacheV2] = useState<Record<string, OgpCacheEntry>>(() =>
@@ -159,5 +160,12 @@ export function useOgpCache(visible: Article[]): Record<string, string> {
     };
   }, []);
 
-  return ogpCache;
+  // #808 Phase 3a: Context 経由参照のための v2 entry getter (caller は ArticleContentBody
+  // の useContentLinkPreviews で title/description 取得 cache hit 判定に使う、Phase 3b 配線)。
+  const getEntry = useCallback(
+    (url: string): OgpCacheEntry | undefined => ogpCacheV2[url],
+    [ogpCacheV2],
+  );
+
+  return useMemo<OgpCacheStore>(() => ({ ogpCache, getEntry }), [ogpCache, getEntry]);
 }
