@@ -156,6 +156,8 @@ docs drift 監査エージェントの観点:
 
 サブエージェント (`feature-dev:code-reviewer` 等) が rate limit / API 障害で動作しないサイクルでも、**docs drift だけは構造化された機械的タスク** なのでメインエージェントだけで完遂できる。`find` でファイル一覧、`grep` で文書内エントリ抽出、`comm -23` で diff を取れば 5 分程度で網羅検出が可能。
 
+**bash sweep スクリプトの前提**: `**` (recursive glob) を評価するときは **必ず冒頭で `shopt -s globstar` を実行**。bash デフォルトでは globstar は無効で `**/*.ts` が `*/*.ts` (単一階層 wildcard) と同等に扱われ、深い階層が評価されない罠がある。本派生ケース本体の snippet は `find` ベースで `**` 不使用だが、派生 sweep (paths frontmatter 評価 / 未使用 export 検出等) では必須前提。`shopt -s globstar` 宣言なしの sweep スクリプトは `**` glob を含む path 値全件を「実体なし」と誤検出して大量 false positive を生む。
+
 ```bash
 # src/lib/ の drift 検出例
 find src/lib -maxdepth 1 -name "*.ts" -type f | xargs -n1 basename | sort > /tmp/actual_lib.txt
@@ -1102,6 +1104,33 @@ for p, rs in sorted(rules.items()):
 **真の redundancy 検出は cross-rule path overlap 自体では判定不可** — 各 rule の **責務 (1st heading + 主要トピック)** を別途確認する必要あり。
 
 主な使用箇所: 2026-05-20 paths overlap sweep — 11 path で複数 rule overlap を検出したが、全件「異なる観点を扱う設計意図的 multi-aspect loading」と判定して 0 件修正で完結 (max 9 rule overlap = src/hooks/ で React + browser + helper + ui + dev の 5 観点を同時 load する canonical pattern)
+
+### 派生ケース: paths frontmatter の quote-style (quoted vs unquoted) 統一 sweep
+
+`paths: "..."` (QUOTED) と `paths: ...` (UNQUOTED) は YAML 仕様上同義だが、本プロジェクトの canonical は QUOTED 形式。混在は **機能影響ゼロでも sweep スクリプトや検出ツールの誤動作** を引き起こす (例: awk の抽出 pattern `gsub(/^paths: *"|"$/, "")` がクォート期待で書かれていると、UNQUOTED 表記では先頭 prefix を残した文字列で glob 評価 → 22 件規模の false positive 大量検出)。
+
+```bash
+# UNQUOTED entries 検出 sweep
+for f in .claude/rules/*.md; do
+  paths_line=$(awk '/^paths:/ {print; exit}' "$f")
+  [ -z "$paths_line" ] && continue
+  if ! echo "$paths_line" | grep -q 'paths: *"'; then
+    echo "[UNQUOTED] $(basename "$f"): $paths_line"
+  fi
+done
+```
+
+**How to apply**: 新規 rule ファイル追加 / 既存 paths 変更時に quote-style sweep を併走する (機能影響なしでも検出ツールの信頼性確保が future tooling の前提条件):
+
+1. **新規 paths は必ず `"..."` QUOTED 形式で書く** — canonical 統一を維持
+2. **既存 UNQUOTED 検出時は同 commit で QUOTED 化** (paths 値自体は変更しない、quote 追加のみ)
+3. **paths sweep スクリプトを書くときは UNQUOTED 表記も処理可能な抽出 pattern を使う** (例: `awk '/^paths:/ {gsub(/^paths: *"?|"?$/, ""); print}'` で optional quote 対応)
+
+**反例 (UNQUOTED が許容されるケース)**:
+
+- paths 値が **glob 文字 `*` を含まず、コロン `:` も含まない単純 path 文字列** → YAML scalar として安全に解釈、quote 不要 (ただし canonical 統一原則から QUOTED 推奨)
+
+主な使用箇所: paths quote-style sweep で `api-auth.md` / `api-feeds.md` の 2 件 UNQUOTED を検出、他 24 件と統一して false positive 排除した実例
 
 ## 13. Cloudflare CI/CD の deploy fail と production outage を区別して revert vs fix-forward を判断する
 
