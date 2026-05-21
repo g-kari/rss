@@ -191,6 +191,37 @@ done
 
 検出後は各 spec / lib ファイルの先頭 12 行を `head -12` で読んで責務を把握し、1 行 description を書くだけ。**エージェント往復より直接実行が速い** (待機 + 結果整形なし)。
 
+#### API endpoint sweep の **`[id]` ↔ `:id` 表記差** false positive 排除
+
+`app/api/feeds/[id]/route.ts` のような Next.js App Router の dynamic route は **文書側で `:id` 表記** (OpenAPI 風) で記載されているため、`find` で抽出した実 path と直接 `comm` 比較すると **dynamic route 全件が false positive** として大量検出される (`feeds/[id]` / `feeds/[id]/refresh` / `collections/[id]` 等)。
+
+```bash
+# アンチパターン: 正規化なしの直接比較 → dynamic route 全件 false positive
+find app/api -name "route.ts" -type f | sed 's|app/api/||; s|/route\.ts||' | sort > /tmp/actual.txt
+grep -rohE '/api/[a-z_-]+(/\[?[a-z_-]+\]?)*' .claude/rules/api-*.md | sed 's|^/api/||' | sort -u > /tmp/docs.txt
+comm -23 /tmp/actual.txt /tmp/docs.txt
+# → feeds/[id] / collections/[id] / feed-groups/[id] 等 6+ 件の false positive 大量出力
+
+# 修正パターン: 両側を `:id` 形式に正規化してから comm
+sed 's|/\[id\]|/:id|g; s|\[id\]|:id|g' /tmp/actual.txt | sort -u > /tmp/actual_norm.txt
+sed 's|/\[id\]|/:id|g; s|\[id\]|:id|g' /tmp/docs.txt | sort -u > /tmp/docs_norm.txt
+comm -23 /tmp/actual_norm.txt /tmp/docs_norm.txt
+# → 真の drift のみ出力 ([id] 表記差はゼロ)
+```
+
+**How to apply**: API endpoint sweep を実施するときは sort 前に必ず正規化 sed を挟む (Next.js App Router の `[id]` ↔ OpenAPI 風 `:id` は本プロジェクトの標準的な記法ズレ、正規化なしでは dynamic route 全件が機械的に false positive 検出される):
+
+1. **両側 (actual / documented) で同じ正規化** を適用 — 片側だけ正規化すると逆向き false positive を生む
+2. **正規化対象は `[id]` のみで十分** — `[slug]` / `[file]` 等 dynamic segment 名が複数あるなら全 segment を `[a-z]+` で総称正規化: `sed -E 's|/\[[a-z]+\]|/:_|g'`
+3. **既存 dynamic segment 名一覧** を `find app/api -path '*\[*' -name 'route.ts'` で事前確認して正規化漏れを防ぐ
+
+**反例 (正規化が不要なケース)**:
+
+- 文書側も Next.js 風 `[id]` 表記で書かれている (= プロジェクト規約で表記統一済) → 正規化不要、直接比較で OK
+- dynamic route 0 件のプロジェクト → 正規化不要
+
+主な使用箇所: API endpoint sweep で 46 件 actual vs 49 件 documented を比較、正規化なしで 6 件 false positive 検出 → 正規化適用で全件設計通り (真の drift 0 件) と判定した実例
+
 #### redirect の section heading sweep における **意図的 mismatch** の false positive 排除
 
 `coding-conventions.md` 等の **redirect-only ファイル** (`#733` で分割した分散先 trace 用) は、**section heading に「分割前の subtopic 列挙」を保持** している (例: `## URL 比較 / gh api 上流調査 / デバッグ / 自動生成 / 読み上げ整合性 / 同症状別経路`)。一方で **target file の 1st heading は「分割後の包括 theme 名」** (例: `# 開発調査パターン`) になる。
