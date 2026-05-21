@@ -183,6 +183,10 @@ JSON データは全て camelCase。
 
 → `.claude/rules/browser-platform.md` を参照
 
+## デザインシステム (カラートークン / タイポグラフィ / 3 ペインレイアウト / コンポーネントパターン / アイコン)
+
+→ `.claude/rules/design-system.md` を参照
+
 ## 禁止事項
 
 - D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
