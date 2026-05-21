@@ -217,6 +217,8 @@ pnpm run check:fix    # 自動修正付きチェック
 pnpm run typecheck    # tsc --noEmit（完全な型チェック）
 pnpm run test:e2e     # Playwright E2E テスト実行
 pnpm run test:e2e:ui  # Playwright UI モード（デバッグ用）
+pnpm run test:unit    # Vitest ユニットテスト実行（#682 Phase C で導入、~500ms）
+pnpm run test:unit:watch  # Vitest watch モード
 ```
 
 > **デプロイについて**: `master` ブランチへの push で Cloudflare Workers 側が自動ビルド＆デプロイを実行する。ローカルで `deploy` を手動実行する必要はない。
@@ -227,7 +229,8 @@ pnpm run test:e2e:ui  # Playwright UI モード（デバッグ用）
 
 1. **oxlint + oxfmt** — lint & フォーマット自動修正
 2. **tsc --noEmit** — 型チェック
-3. **playwright e2e** — E2E テスト
+3. **vitest unit** — ユニットテスト（#682 Phase C で追加、playwright より高速）
+4. **playwright e2e** — E2E テスト
 
 ```bash
 pre-commit install   # 初回セットアップ
