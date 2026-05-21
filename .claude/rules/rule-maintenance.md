@@ -120,6 +120,31 @@ retrospective-codify skill の原則は「propose → approve → write out」�
 
 主な使用箇所: 「ResizeObserver + rAF deferred」「テストモード segregation 4 段階」「fallback chain hook 中間 vs 諦め通知」3 lesson の codify — 提案サイクル末からそれぞれ 1〜3 サイクル経過後に自走採用判断で `.claude/rules/react-effect-patterns.md` / `react-component-split.md` / `react-state-ref.md` に派生ケース追記
 
+#### 派生ケース: 3 サイクル経過 lesson が「ユーザー判断要素を含む」場合の **自然 expire 判断**
+
+上記反例「lesson がユーザー判断要素を含む (UI 主観評価 / 設計トレードオフ / 新規 dep 追加)」に該当する 3 サイクル経過 lesson は、**自走採用も Issue 起票も適切でない** ことがある。`gh issue create` で 3 案提示するコストが、提案根拠の問題が **現状コードベースで顕在化していない** (例: sweep で「真の問題 0 件」確認済) ケースだと採用優先度 < 維持コスト となり、**自然 expire 判定で pending list から削除** する選択肢を採る。
+
+**自然 expire 判定の必須条件 (全て Yes で expire 判断)**:
+
+1. ユーザー判断要素 (新規 dep / 新 infra / UX 主観評価) を含む
+2. 3 サイクル経過 (温存ライン超過)
+3. 提案根拠の問題が **現状コードベースで顕在化していない** (直近 sweep で「真の問題 0 件」確認済 / corpus 安定)
+4. 同種 lesson を **過去サイクルで 1+ 回提案済** (重複提案リスク回避目的)
+
+**自然 expire の手順**:
+
+1. retrospective の Pending lesson section で「**自然 expire 判定** (理由 + 根拠 cycle)」を明示記載
+2. 該当 lesson を pending list から削除
+3. 将来 **同種問題が顕在化** (例: 真の未使用 export 検出 / 静的解析が必要な観点) → 再度 retrospective で提案 → 別ライフサイクル開始
+
+**反例 (自然 expire が不適切なケース)**:
+
+- 同種問題が **継続的に顕在化** (毎サイクル発見、累積中) → Issue 起票で本格対応
+- ユーザーが明示的に **「次回採用したい」「保留中」** とコメント → 温存継続
+- 提案根拠が **ユーザー作業 (UI 変更 / 設計判断) を待っている** → ユーザー側 ready 待ち
+
+主な使用箇所: 「未使用 export sweep canonical 手法 (ts-prune / knip 導入)」lesson — 直近 sweep で「真の未使用 export = 0 件」確認 + 新規 dep 追加要素含む + 同提案 3 サイクル滞留 → 4 条件全充足で自然 expire 判定、Issue 起票せず pending list から削除
+
 ## 4. 既存ルールへの追記 vs 新規セクション作成の判断
 
 - 既存セクションの **派生ケース・反例**: 同セクション内に `### 派生ケース: ...` を追加
