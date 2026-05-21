@@ -16,7 +16,12 @@ interface ReleaseNotesResponse {
   hasMore: boolean;
 }
 
-function parseMarkdown(md: string): ReactNode[] {
+// #811 派生防御: 入力は `/api/release-notes` API response 由来で type assertion 通過後、
+// runtime で非 string になる経路 (response schema 変更 / network 中断 / cache fallback)
+// での `md.split` / `line.startsWith` TypeError を構造的に防ぐ defensive 設計。
+// 非 string 入力は空配列 fallback で safe (UX 影響: リリースノート空表示 < ErrorBoundary 発火)。
+function parseMarkdown(md: unknown): ReactNode[] {
+  if (typeof md !== "string") return [];
   const lines = md.split("\n");
   const nodes: ReactNode[] = [];
   let key = 0;
