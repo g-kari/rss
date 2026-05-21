@@ -559,6 +559,49 @@ makeArticle("a1", "feed-A", "2026-01-01T00:00:00Z")
 
 主な使用箇所: 47th-49th cycle `#711` (19 spec の `makeArticle/makeFeed` 重複定義集約、11 spec で wrapper adapter 採用 — caller 不変を維持しつつ helpers 集約)
 
+### 派生ケース: 新規 rule ファイル追加サイクル末は「逆方向 cross-reference 検証」で TRUE ORPHAN を検出する
+
+前述派生ケース「抽出対象に外部ファイルから redirect placeholder が指している場合は同サイクルで全て更新する」は **順方向検証** (抽出元 → 外部参照ファイル)。新規 rule ファイル追加では逆方向 — **新ファイルへの参照 (navigation index からの redirect) が抜けていないか** を検証する必要がある。新ファイルが orphan 化すると navigation index (`coding-conventions.md` 等) から辿れず、将来の AI/開発者が rule の存在に気づかない盲点が残る。
+
+```bash
+# 逆方向検証フロー
+# 1. 全 cross-reference を抽出
+grep -rhoE '\.claude/rules/[a-z-]+\.md' .claude/rules/ CLAUDE.md 2>/dev/null | sort -u > /tmp/referenced.txt
+
+# 2. 実体ファイル一覧
+ls -1 .claude/rules/*.md | xargs -n1 basename | sort -u > /tmp/exists.txt
+
+# 3. 実体あるが参照されていない orphan を検出
+comm -13 /tmp/referenced.txt /tmp/exists.txt
+```
+
+検出された各 orphan は **別表記 (markdown link `[name](file.md)` / bare filename / section reference)** で参照されている false positive 可能性があるため個別 grep verification:
+
+```bash
+for orphan in $(comm -13 /tmp/referenced.txt /tmp/exists.txt); do
+  base=$(basename "$orphan" .md)
+  hits=$(grep -rln "$base" .claude/rules/ CLAUDE.md 2>/dev/null | grep -v "/$orphan$")
+  [ -z "$hits" ] && echo "TRUE ORPHAN: $orphan"
+done
+```
+
+TRUE ORPHAN 発見時は navigation index ファイル (`coding-conventions.md` または該当 theme の hub ファイル) に redirect 行を追加して整合性回復。
+
+**How to apply**: 規範分割 / 新規 rule ファイル追加サイクル末に必ず実行 (順方向検証 = 抽出元 → 外部参照だけでは新ファイル orphan を捕捉できない、navigation index 側の追記漏れは 1 ファイル grep で機械的に検出可能):
+
+1. **新規ファイル追加 commit と同サイクル内** で上記検証フローを実行
+2. **TRUE ORPHAN 検出時** は navigation index に redirect 行を追加して同 commit (or 直後 commit) で fix
+3. **複数 orphan 検出時** は新規分のみ修正、既存 orphan は別 Issue 起票 (scope 拡大を防ぐ)
+4. **false positive (別表記参照) は別表記 grep で個別検証** — markdown link / bare filename / section reference 等の表記揺れを許容
+
+**反例 (逆方向検証が不要なケース)**:
+
+- 新規ファイルが **意図的に standalone** (skill のように単独で完結、navigation index から参照しない設計) → orphan 化は意図通り
+- 新規ファイルが **既存ファイルの内部 helper** で navigation index 外 → 同上
+- 新規ファイル名が **既存 redirect の rewrite 候補** (既存 ファイルを分割した新ファイルで本来 redirect 更新が必要だが先送り) → 別 Issue 起票
+
+主な使用箇所: 新規 rule ファイル追加後の navigation index 側追記漏れを 1 ファイル grep で検出、`coding-conventions.md` `## 禁止事項` 直前に `design-system.md` redirect 行追加で TRUE ORPHAN 1 件解消した実例
+
 ## 7. 削除よりも一般化を優先
 
 「もう使わないルール」を見つけても **即削除しない**。まず以下を検討:
