@@ -1,5 +1,5 @@
 ---
-paths: app/api/feeds/**
+paths: "app/api/feeds/**"
 description: Feeds API 仕様 — /api/feeds の CRUD + refresh + OPML import/export + LLM CSS セレクタ再推論 + フィード単位 cache purge (#691 購読チェック必須)
 ---
 
