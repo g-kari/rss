@@ -1,6 +1,14 @@
-import { useEffect, useState, useCallback, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { Article } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
+import { shouldLoadMore, DEFAULT_LOADMORE_COOLDOWN_MS } from "../lib/loadmore-cooldown";
 
 /** デフォルトの 1 ページ件数 (`useFilteredArticles` 経由で UserSettings の値を渡すと上書き) */
 const DEFAULT_PAGE_SIZE = 50;
@@ -22,7 +30,17 @@ export function useArticlePagination(
   setPage: Dispatch<SetStateAction<number>>,
   pageSize: number = DEFAULT_PAGE_SIZE,
 ) {
+  // #773 残問題対応: loadMore cooldown ref + shouldLoadMore guard。
+  // 大量画像展開時の IO sentinel 出入り + secondary cascade effect 連発で
+  // scroll が一気に末尾まで進む / 無限ロード する症状を構造的に防ぐ。
+  // 1000ms 以内の連続 loadMore は抑止 (#773 案 A、loadmore-cooldown.ts spec で網羅)。
+  const lastLoadAtRef = useRef(0);
+
   const loadMore = useCallback(() => {
+    if (!shouldLoadMore(Date.now(), lastLoadAtRef.current, DEFAULT_LOADMORE_COOLDOWN_MS)) {
+      return;
+    }
+    lastLoadAtRef.current = Date.now();
     setPage((p) => p + 1);
   }, [setPage]);
 
