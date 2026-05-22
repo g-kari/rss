@@ -834,3 +834,35 @@ defensive 対処は **症状抑止** で、真因 (上流 type assertion の通�
 2. 真因深掘り (どの API / cache 経路で非 string が混入するか) を **別 Issue で深掘り** (将来同種 helper の保護対象を絞る判断材料)
 
 主な使用箇所: `#811` ArticleAiPanel.tsx の `renderSummary` で `line.startsWith("## ")` が本番 minified TypeError → `src/lib/ai-summary-parse.ts` に `parseSummaryLine` / `parseSummaryLines` を unknown 受け純粋関数で切り出し + 21 ケース TDD spec で defensive 動作網羅 + component 側を unknown 受け JSX helper に変更 (1 サイクル close、本番 ErrorBoundary 発火即時抑止)
+
+#### 派生サブケース: defensive 規範 codify 時は **同 pattern grep sweep + 他箇所適用フロー** をワンセット運用する
+
+defensive 規範 (JSX 描画 helper の unknown 受け化) を 1 箇所 fix + codify した直後に、**同 pattern (`grep -rEn "\.startsWith\(" src/`)** を機械的に sweep して **他箇所の未対処経路を予防的に発見** する。1 箇所適用のみだと「規範 codify 後も別経路で同種症状再発」(本プロジェクト実例: `#811` ArticleAiPanel fix → 前々サイクル ReleaseNotesModal 適用 → `#812` 別経路 avbase.net 系で再発) を招く。
+
+```bash
+# defensive 規範 codify と同時に必ず実行する sweep
+grep -rEn "\.startsWith\(\|\.endsWith\(\|\.split\(\|\.match\(" src/components/ src/hooks/ src/lib/ 2>/dev/null
+```
+
+検出された各 hit を **3 分類**:
+
+| カテゴリ                                                              | 対応                                                                    |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **規範対象** (API response / cache 由来 + ErrorBoundary 配下)         | 同 commit で defensive 適用 (touch ≤ 3) or 別 Issue 起票 (touch > 3)    |
+| **canonical 省略** (controlled input / form / 定数経由 / server-only) | 規範対象外、リスト化のみで適用しない                                    |
+| **判断要** (touch 大 / 設計判断要 / 真因不明)                         | `needs-user-decision` ラベルで Issue 起票 + 設計方針コメント (3 案提示) |
+
+**How to apply**: defensive 規範を 1 箇所適用する commit と同サイクル内で必ず以下を実行 (1 箇所適用のみだと「規範 codify 後も別経路で同種症状再発」を招き、ErrorBoundary 発火 UX 全体破壊が再発する):
+
+1. **同 pattern grep sweep** を実行 (上記 snippet) — `grep -rEn` で全 method 抽出
+2. **各 hit の source 確認** (signature / 呼出元 grep / コメント) で 3 分類
+3. **規範対象 + touch ≤ 3 → 同 commit 適用** (defensive 規範拡張、scope 小なら一括化)
+4. **規範対象 + touch > 3 → 別 Issue 起票** (機能 PR / 別 cycle で fix)
+5. **判断要 → 設計方針コメント + `needs-user-decision`** で次サイクル送り
+
+**反例 (sweep 不要なケース)**:
+
+- defensive 規範が **既に corpus 安定** で類似経路 0 件確認済 → 再 sweep 数サイクル後まで遅延可
+- 規範対象が **本質的に 1 箇所固有** (singleton helper) → sweep しても hit 1 件、運用 overhead
+
+主な使用箇所: `#811` defensive fix と同サイクルで `grep -rEn "\.startsWith\(" src/` を実行 → ReleaseNotesModal を発見 → 前々サイクルで同様 defensive 適用 (commit `0ed5f79f`)、`#812` 別経路発火を 30+ 箇所 sweep で再評価して 3 案設計方針コメント投稿した実例
