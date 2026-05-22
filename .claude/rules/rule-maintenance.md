@@ -421,6 +421,49 @@ grep -E "^compatibility_(date|flags)|^main\s*=" wrangler.toml
 
 主な使用箇所: 本プロジェクトで `next.config.ts` (transpilePackages + turbopack.resolveAlias + initOpenNextCloudflareForDev) × `wrangler.toml` (nodejs_compat + r2_buckets + browser binding) 整合性 sweep、4 つの chained design pattern 全件設計通り (真の drift 0 件) と確認した実例
 
+#### `e2e/helpers/` 配下 helper drift sweep (同名 export + signature 違い識別)
+
+`e2e/helpers/` 配下の test helper file 間で **同名 export が複数 file に存在** すると、import 時の混乱 + helper drift リスクを生む。各 file の export 名 + 使用率を横断 sweep して、重複 export を検出し signature 違いの意図性を判定する。
+
+```bash
+# helpers drift 検出フロー
+for f in e2e/helpers/*.ts; do
+  [ -f "$f" ] || continue
+  base=$(basename "$f" .ts)
+  exports=$(grep -oE "^export (function|const|class|type|interface|async function) [a-zA-Z_][a-zA-Z0-9_]*" "$f" \
+    | sed -E 's/^export (function|const|class|type|interface|async function) //')
+  used_count=$(grep -rl "from.*helpers/$base\b" e2e/ 2>/dev/null | grep -v "/$base\.ts$" | wc -l)
+  echo "$base.ts: $used_count files use, exports: $(echo $exports | tr '\n' ' ')"
+done
+
+# 同名 export 検出 (file 跨り)
+grep -rhE "^export (function|const|class|type|interface|async function) [a-zA-Z_][a-zA-Z0-9_]+" e2e/helpers/ \
+  | sed -E 's/^export (function|const|class|type|interface|async function) ([a-zA-Z_][a-zA-Z0-9_]+).*/\2/' \
+  | sort | uniq -c | awk '$1 > 1 {print}'
+```
+
+**重複 export 検出時の判定軸**:
+
+| 状況                                                             | 判定                                                                          |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 同名 + signature 完全一致                                        | **真の drift** (片方削除 + import を残る側に統一)                             |
+| 同名 + signature 違い + 意味的に分離可能 (例: 一般用 vs seed 用) | **意図的使い分け候補** (rename / wrapper / 現状維持の 3 案でユーザー判断仰ぐ) |
+| 同名 + signature 違い + 意味的差不明                             | 設計判断要、`needs-user-decision` で Issue 起票                               |
+
+**How to apply**: 5-10 サイクル間隔で `e2e/helpers/` 配下の helper drift sweep を実施 (signature 違いの意図性は機械的判定不可、Issue 起票で judgment 委譲が canonical):
+
+1. **各 file の export + 使用率を一括抽出** (上記 snippet)
+2. **同名 export を file 跨りで検出** (`grep -rhE | uniq -c | awk '$1 > 1'` snippet)
+3. **signature 比較** で完全一致 / 違いを判定
+4. **signature 違いは意味的分離意図を内包する可能性が常にあるため、自走 rename / 統合せず Issue 起票** で 3 案 (rename / wrapper / 現状維持) 提示 + `needs-user-decision` ラベル
+
+**反例 (sweep 不要なケース)**:
+
+- helpers 配下が **3 file 以下** で目視確認可能 → sweep overhead > 価値
+- 同名 export が **意図的 facade 経由再 export** (例: `index.ts` の barrel re-export) → 重複 detection の対象外
+
+主な使用箇所: `e2e/helpers/` sweep で `makeArticle` が `article.ts:28` (`Partial<Article> = {}` 一般用) と `seed-r2.ts:92` (`Partial<Article> & { id: string }` seed 用) で **signature 違いの同名 export** と発見 → 3 案 (rename / wrapper / 現状維持) で `#813` Issue 起票 + `needs-user-decision` ラベル付与した実例
+
 **How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
 
 1. **タスクが機械的検出可能か** (yes/no で判別できる、grep / find / comm で出せる) → 直接実行
