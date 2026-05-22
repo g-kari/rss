@@ -457,6 +457,38 @@ gh issue close 712 --comment "完了サマリー"  # ← 明示クローズ + �
 
 主な使用箇所: React.X sweep Issue クローズ時、merge commit に `closes #N` を含めてから `gh issue close N --comment "..."` を実行して "Already closed" エラー → 別途 `gh issue comment` で完了サマリー投稿で復旧
 
+### 派生ケース: `closes #N` 自動クローズ前に **`needs-user-decision` ラベル解除** を必ず実行する
+
+`closes #N` で自動クローズされる commit が含まれる master push の **直前に**、対象 Issue の `needs-user-decision` ラベル解除を `gh issue edit --remove-label needs-user-decision` で実行する。自動クローズ後の Issue は **closed 状態でラベル残置**となり、後の `gh issue list --state closed --label needs-user-decision` 検索でノイズとして混入する。
+
+```bash
+# closes #N を含む commit の merge 前に実行する canonical pattern
+gh issue edit <N> --remove-label needs-user-decision  # ← 先に解除
+git push origin master                                 # ← その後 push (closes #N 自動クローズ)
+```
+
+**判定軸 (ラベル解除タイミング)**:
+
+| 状況                                            | アクション                                                              |
+| ----------------------------------------------- | ----------------------------------------------------------------------- |
+| 採用案で実装着手 + master push 前               | **push 前にラベル解除** (本派生ケース canonical)                        |
+| `gh issue close --comment` 方式 (B 方式)        | `gh issue close` 実行で同時解除可能 (`--remove-label` flag 併用)        |
+| 既に closed 済で stale ラベル発見               | `gh issue edit --remove-label` で個別解除 + sweep ローテーション組込    |
+
+**How to apply**: 採用案で実装着手 + `closes #N` で自動クローズする commit を master push するとき (close 時のラベル解除漏れは Issue tracker sanity を劣化させ、後の sweep で stale label noise を生む):
+
+1. **採用案実装着手判断時**: `needs-user-decision` ラベル付きの Issue を実装着手することを決定
+2. **master push 直前**: `gh issue edit <N> --remove-label needs-user-decision` を実行
+3. **master push** (`closes #N` 自動クローズ + ラベルなし状態で確定)
+4. **完了サマリーコメント投稿** (本セクション既存規範通り `gh issue comment <N>`)
+
+**反例 (ラベル解除不要なケース)**:
+
+- 元から `needs-user-decision` ラベルなしの Issue → 解除不要
+- `gh issue close --comment "..." --remove-label needs-user-decision` で同時実行可能 (B 方式) → 別 step 不要
+
+主な使用箇所: 5 件の closed Issue (#714 / #760 / #789 / #790 / #791) で stale `needs-user-decision` ラベル残置を発見した sweep 経験 — 本派生ケース運用が確立していれば、close 時点で機械的に解除されて stale 状態が発生しなかった。本派生ケース codify 以降は close → ラベル解除をワンセット運用で防止
+
 ## AI が直接実行できないタスクへの対処パターン
 
 ユーザー指示の中には AI セッション内では完結できないタスクがある:

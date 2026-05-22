@@ -187,6 +187,8 @@ docs drift 監査エージェントの観点:
 
 **markdown awk sweep の code block 除外**: markdown ファイル (`.claude/rules/*.md` 等) に対して awk で heading / list / 行頭 pattern を sweep するときは、**code block (` ``` ` で囲まれた region) 内の行を skip する必須前提あり**。code block 内に bash コメント (`# アンチパターン例`) や YAML / Python comment (`# ...`) が含まれると、awk の `/^#+ /` パターンが **コメント行を markdown heading として誤検出**して大量 false positive を生む。canonical pattern (sweep script の冒頭に必ず置く): `/^\`\`\`/ { in_code = !in_code; next }`+`in_code { next }`+ 既存`/^#+ /`処理。本前提宣言なしで heading hierarchy sweep を実施すると、code block 内 bash コメント行を「h1 → h3/h4 SKIP 違反」と誤検出する false positive 大量発火を観測 (実例: 18 件 false positive →`in_code` フラグ追加で真の skip 違反 0 件確認)。
 
+**`gh issue list --label X` の eventual consistency 対応**: `gh issue list --state closed --label needs-user-decision` 等の **label filter sweep** は GitHub Search API 経由で **eventual consistency** (反映遅延 ~数秒-数十秒)。label 一括 remove / add 直後の verification には `gh issue list --label X` でなく **個別 `gh issue view <N> --json labels` (Issue 詳細 API、reactive)** を使う。Search API 結果は反映遅延で stale 状態の hit を含むため、list filter で「残置中」と判定しても実態は既に解除済というケースが頻発する。canonical pattern: 一括操作 → 個別 view API で確実な実態確認 → list filter は数十秒後の再 sweep でクロスチェック。本前提宣言なしで sweep verify すると、削除済 entry が短時間 list に残置表示されて誤判定リスクあり (実例: 5 件 remove 後の即時 list で 2 件 stale 表示 → 個別 view で実体 0 件確認、index 反映遅延と判明)。
+
 ```bash
 # src/lib/ の drift 検出例
 find src/lib -maxdepth 1 -name "*.ts" -type f | xargs -n1 basename | sort > /tmp/actual_lib.txt
