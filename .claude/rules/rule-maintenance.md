@@ -334,6 +334,44 @@ done
 
 主な使用箇所: 2026-05-20 redirect integrity sweep — 31 redirects 中 10 件 strict heading mismatch を検出したが、全件設計意図的 subtopic 列挙 vs 包括 theme の 2 軸 indirection と判定して 0 件修正で完結
 
+#### `wrangler.toml` × `cloudflare-env.d.ts` の **framework 自動 inject** による意図的 mismatch 識別
+
+`wrangler.toml` の binding 名と `cloudflare-env.d.ts` の `CloudflareEnv` interface field を `comm -23` 比較すると、**framework が build 時に自動 inject する binding** が「env 型定義側のみに存在 (drift B)」として誤検出される。本プロジェクトでは `@opennextjs/cloudflare` が `NEXT_INC_CACHE_R2_BUCKET` (Next.js Incremental Cache R2 bucket) を自動 inject する設計で、`wrangler.toml` には明示記載しないのが canonical。
+
+```bash
+# wrangler.toml binding 名抽出
+grep -E "^binding\s*=" wrangler.toml | sed -E 's/.*=\s*"([^"]+)".*/\1/' | sort -u > /tmp/wrangler_bindings.txt
+
+# cloudflare-env.d.ts field 抽出
+grep -E "^\s+[A-Z][A-Z0-9_]*\??:" src/cloudflare-env.d.ts | sed -E 's/^\s+([A-Z][A-Z0-9_]*)\??:.*/\1/' | sort -u > /tmp/env_fields.txt
+
+# drift B: env 型定義のみに存在 → framework 自動 inject 候補
+comm -13 /tmp/wrangler_bindings.txt /tmp/env_fields.txt
+```
+
+**識別パターン** (drift B の各 hit を分類):
+
+| カテゴリ                                            | 判定                                                        |
+| --------------------------------------------------- | ----------------------------------------------------------- |
+| `NEXT_INC_CACHE_R2_BUCKET` / `NEXT_INC_CACHE_KV` 等 | `@opennextjs/cloudflare` 自動 inject                        |
+| `ASSETS` (が wrangler.toml に明示なしの場合)        | Cloudflare Workers Assets 自動 binding                      |
+| `MY_PROJECT_BINDING` 等プロジェクト固有名           | **真の drift** (wrangler.toml 追記漏れ or 型定義不要 entry) |
+
+**真偽判定の verification 手順**:
+
+1. **`architecture.md` で「<framework> 管理」または「自動 inject」記述を確認** — 該当すれば設計意図的 mismatch
+2. **該当 framework の公式 docs / GitHub** で自動 inject binding 一覧を確認 — リスト記載なら canonical
+3. **プロジェクト固有名 (大文字 + プロジェクト prefix)** で framework docs に記載なし → 真の drift (wrangler.toml 追記必要 or 型定義削除)
+
+**How to apply**: wrangler.toml × cloudflare-env.d.ts 整合性 sweep を実施するときに以下を判定 (`@opennextjs/cloudflare` 等 framework が自動 inject する binding は wrangler.toml に明示しないのが設計、`architecture.md` の管理記述を root of truth として false positive 排除):
+
+1. **drift A (wrangler.toml のみに存在)** → 真の drift (型定義追記要)、または wrangler.toml stale 設定
+2. **drift B (env 型定義のみに存在)** → framework 自動 inject 候補、`architecture.md` で「<framework> 管理」記述を確認
+3. **記述あり** → 設計意図的 mismatch (false positive)、何もしない
+4. **記述なし** → 真の drift (型定義削除 or `architecture.md` 補強)
+
+主な使用箇所: wrangler.toml binding 8 件 vs cloudflare-env.d.ts field 9 件 sweep、drift B 1 件 (`NEXT_INC_CACHE_R2_BUCKET`) を検出したが `architecture.md` で「Next.js Incremental Cache (opennextjs 管理)」明記済で設計意図的 mismatch と判定、真の drift 0 件で完結した実例
+
 **How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
 
 1. **タスクが機械的検出可能か** (yes/no で判別できる、grep / find / comm で出せる) → 直接実行
