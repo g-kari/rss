@@ -374,6 +374,51 @@ comm -13 /tmp/wrangler_bindings.txt /tmp/env_fields.txt
 
 主な使用箇所: wrangler.toml binding 8 件 vs cloudflare-env.d.ts field 9 件 sweep、drift B 1 件 (`NEXT_INC_CACHE_R2_BUCKET`) を検出したが `architecture.md` で「Next.js Incremental Cache (opennextjs 管理)」明記済で設計意図的 mismatch と判定、真の drift 0 件で完結した実例
 
+#### `next.config.ts` + `wrangler.toml` の **Next.js + OpenNext + Wrangler chained config 整合性** sweep
+
+本プロジェクトの config 群は **Next.js + OpenNext + Wrangler の連動制約** を満たすための chained design を持ち、単独で読むと意図不明だが相互依存を理解すると設計意図的。`next.config.ts` の `turbopack.resolveAlias.fs/path` ↔ `wrangler.toml` の `compatibility_flags = ["nodejs_compat"]` のように **設定がペアで成立する**設計が複数箇所に存在。
+
+```bash
+# 主要 chained config の抽出
+echo "=== next.config.ts ==="
+grep -E "transpilePackages|serverExternalPackages|resolveAlias|initOpenNextCloudflareForDev" next.config.ts
+
+echo ""
+echo "=== wrangler.toml ==="
+grep -E "^compatibility_(date|flags)|^main\s*=" wrangler.toml
+```
+
+**chained design pattern 識別表** (本プロジェクト実観測):
+
+| `next.config.ts` 側                              | `wrangler.toml` 側                             | 連動意図                                              |
+| ------------------------------------------------ | ---------------------------------------------- | ----------------------------------------------------- |
+| `turbopack.resolveAlias.fs/path` (browser empty) | `compatibility_flags = ["nodejs_compat"]`      | wasm engine の `require("fs")` 双方処理               |
+| `transpilePackages: ["piper-plus", ...]`         | (なし、bundle 戦略は OpenNext + Wrangler 任せ) | wasm dynamic import の ESM transpile                  |
+| `initOpenNextCloudflareForDev({remoteBindings})` | `[[r2_buckets]]` / `[[kv_namespaces]]` 等      | dev mode binding 解決 (remote vs local)               |
+| (`serverExternalPackages` 未設定 + コメント明記) | `[browser]` binding                            | `next/dynamic({ ssr: false })` 隔離 + server 完全除外 |
+
+**verification 手順** (sweep 実施時の判定軸):
+
+1. **各設定の意図確認**: `next.config.ts` のコメントで chained design 意図が明記されているか確認 (例: 「`@opennextjs/cloudflare` は dynamic import の `require("fs")` を browser bundle で empty module に解決させるため `turbopack.resolveAlias` が必須」)
+2. **wrangler.toml 側との対応**: `compatibility_flags` が `nodejs_compat` を含むか、必要 binding が宣言されているか
+3. **意図的に片方のみ存在する設定**: `serverExternalPackages` 未設定 + コメント「server-side では dynamic import 自体が実行されないので影響なし」のような **「意図的省略 + 根拠明記」** が確認できれば canonical
+
+**真の drift 判定**:
+
+- **next.config.ts に `turbopack.resolveAlias.fs` あり + wrangler.toml に `nodejs_compat` flag なし** → 真の drift (片方欠落)
+- **next.config.ts に `transpilePackages: [<lib>]` あり + 実 import 不在** → 真の drift (stale entry)
+- **wrangler.toml に新 binding 追加 + cloudflare-env.d.ts 未更新** → 真の drift (前述 framework auto-inject sweep でカバー)
+
+**How to apply**: Next.js + OpenNext + Wrangler 構成の sweep 実施時 (chained design は単独 config の grep では検出不能、相互依存を踏まえた verification 必須):
+
+1. **両 config の主要設定を grep で抽出** (上記 snippet)
+2. **chained design pattern 識別表** で対応関係を確認
+3. **片方のみ存在する設定はコメントで意図確認** (canonical な意図的省略 vs 真の drift)
+4. **不整合検出時**: `architecture.md` / `next.config.ts` コメント / OpenNext 公式 docs を root of truth として真因確定
+5. **5-10 サイクル間隔の定期 sweep** で Next.js / OpenNext / Wrangler upgrade 後の drift を早期検出
+
+主な使用箇所: 本プロジェクトで `next.config.ts` (transpilePackages + turbopack.resolveAlias + initOpenNextCloudflareForDev) × `wrangler.toml` (nodejs_compat + r2_buckets + browser binding) 整合性 sweep、4 つの chained design pattern 全件設計通り (真の drift 0 件) と確認した実例
+
 **How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
 
 1. **タスクが機械的検出可能か** (yes/no で判別できる、grep / find / comm で出せる) → 直接実行
