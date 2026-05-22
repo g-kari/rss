@@ -262,8 +262,8 @@ src/
     useMobilePane.ts         # モバイル向けペイン切り替え (sidebar/list/view)
     useNSFWMode.ts           # NSFW モード（連打で活性化）
     useStoredSetting.ts      # localStorage 永続化 enum 設定の共通ユーティリティ
-    useSidebarFeeds.ts       # サイドバーのフィード集計・フィルタ・グループ化（タグ集計・ピン留め・グループ・カテゴリ）— 未読数 / lastPublished は UnreadStatsContext から取得 (#702)
-    useArticleUnreadStats.ts # 全記事を 1 回 scan で `unreadByFeed` / `totalUnread` / `lastPublishedByFeed` / `readTodayCount` を計算 (200ms debounce) — App.tsx で 1 度だけ呼んで UnreadStatsProvider に注入 (#702)
+    useSidebarFeeds.ts       # サイドバーのフィード集計・フィルタ・グループ化（タグ集計・ピン留め・グループ・カテゴリ）— 未読数 / lastPublished は UnreadStatsContext から取得
+    useArticleUnreadStats.ts # 全記事を 1 回 scan で `unreadByFeed` / `totalUnread` / `lastPublishedByFeed` / `readTodayCount` を計算 (200ms debounce) — App.tsx で 1 度だけ呼んで UnreadStatsProvider に注入
     useSyncedRef.ts          # stale closure 回避用の最新値 ref ユーティリティ
     useColumnResize.ts       # カラム幅リサイズ操作と localStorage 永続化
     usePortalMenu.ts         # ポータルベースのドロップダウンメニュー位置管理
