@@ -71,6 +71,35 @@ Claude Code 公式ベストプラクティス ([best-practices](https://code.cla
 
 例外: 現在のコード参照（純粋関数名・hook 名・ファイルパス）は残す。これは「今のコードを指すポインタ」であり歴史ではない。
 
+**機械的検出は 2 段 grep で例外判定する**:
+
+```bash
+# Step 1: prefix 形式 (例外候補) — 「主な使用箇所: \`#XXX\` 〜」で始まる Phase / refactor trace
+# 多くは例外条項該当 (現在のコード参照) で保持、目視で「Phase / refactor trace の参照点」か確認
+grep -rEn '^主な使用箇所: `#[0-9]+`' .claude/rules/
+
+# Step 2: 行末タグ形式 (真の違反) — 「〜 (#XXX)」「〜 \`(#XXX)\`」末尾
+# 全件削除対象
+grep -rEn '\(#[0-9]+\)\s*$|\(`#[0-9]+`\)\s*$' .claude/rules/
+```
+
+**判定軸**:
+
+| pattern                                      | 判定                                                 |
+| -------------------------------------------- | ---------------------------------------------------- |
+| `^主な使用箇所: \`#XXX\` 〜` (prefix 形式)   | **例外条項該当** (Phase / refactor trace は保持)     |
+| `〜 (#XXX)` / `〜 \`(#XXX)\`` (行末タグ形式) | **真の規範違反** (機械的削除対象)                    |
+| 文中の `(closes #XXX)` 等 (関係 trace)       | **例外条項該当** (current relationship trace は保持) |
+
+**How to apply**: 5-10 サイクル間隔で `§ 2` 規範違反 sweep を実施 (規範 codify 後も新規 entry 追加サイクルで違反が漏れがち、定期検証が必須):
+
+1. **Step 2 grep で真の違反検出** → 機械的削除
+2. **Step 1 grep で例外候補確認** → 目視判定 (Phase trace なら保持)
+3. **同 commit で削除 + 再 sweep で 0 件確認** → clean 達成
+4. **sweep 結果は retrospective に記録** (次回 sweep 優先度判定材料)
+
+主な使用箇所: `architecture.md:265-266` で `useSidebarFeeds.ts (#702)` / `useArticleUnreadStats.ts (#702)` の行末タグ形式 2 件を sweep で検出 + 機械的削除 + 再 sweep で 0 件確認した実例
+
 ## 3. retrospective-codify 実行時の文体ガイド
 
 セッション末の retrospective でルール追記するときは、**最初から原則 1・2 を満たす形で書く**。「2026-05-09 の #XXX で発覚した教訓」のような書き方をしない。
