@@ -185,6 +185,8 @@ docs drift 監査エージェントの観点:
 
 **identifier 抽出 regex の前提**: `grep -oE` / `awk` で identifier (script 名 / 関数名 / 型名 / endpoint path segment 等) を抽出するときは **`[a-z][a-z0-9:_-]*`** pattern を canonical とする。`[a-z]` クラス単独 (数字なし) は **数字混じり identifier を途中で truncate 抽出する false positive** を生む。例: `pnpm run test:e2e` を `[a-z]` で抽出すると `pnpm run test:e` で truncate されて stale doc false positive 1 件を捏造する。文字クラスに `0-9` を含めることで構造的に解消。該当する典型 identifier: `test:e2e` / `v2` / `oauth2` / `vite-plus` / `react19` / `tailwind4` 等。kebab-case `:` / `_` / `-` も同 pattern で網羅。
 
+**markdown awk sweep の code block 除外**: markdown ファイル (`.claude/rules/*.md` 等) に対して awk で heading / list / 行頭 pattern を sweep するときは、**code block (` ``` ` で囲まれた region) 内の行を skip する必須前提あり**。code block 内に bash コメント (`# アンチパターン例`) や YAML / Python comment (`# ...`) が含まれると、awk の `/^#+ /` パターンが **コメント行を markdown heading として誤検出**して大量 false positive を生む。canonical pattern (sweep script の冒頭に必ず置く): `/^\`\`\`/ { in_code = !in_code; next }`+`in_code { next }`+ 既存`/^#+ /`処理。本前提宣言なしで heading hierarchy sweep を実施すると、code block 内 bash コメント行を「h1 → h3/h4 SKIP 違反」と誤検出する false positive 大量発火を観測 (実例: 18 件 false positive →`in_code` フラグ追加で真の skip 違反 0 件確認)。
+
 ```bash
 # src/lib/ の drift 検出例
 find src/lib -maxdepth 1 -name "*.ts" -type f | xargs -n1 basename | sort > /tmp/actual_lib.txt
