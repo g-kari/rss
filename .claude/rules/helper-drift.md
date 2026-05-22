@@ -148,6 +148,8 @@ grep -nE "<推奨パッケージ名>|<類似機能>" package.json
 - canonical 型の責務とローカル型の責務が **本質的に異なる** 場合 (例: HTTP 由来の error vs AI モデルロード状態) → alias 化せず独立を維持
 - alias 化で **メッセージ文言が canonical と乖離** する場合 → canonical の `formatXxx(type, opts)` を同時に流用すれば文言も統一可能
 
+**How to apply**: 同名 / 同意味の type / enum 重複を発見したら上記「判定フロー」4 step を順次実行、canonical 型に統合可能なら `export type X = CanonicalType;` で alias 化、不可なら反例の理由を明記して独立維持。
+
 主な使用箇所: `useArticleAi.ts` の `AiErrorType = HttpErrorType` 統合 — `classifyHttpError` / `getErrorMessage` 重複定義削除 + 429 で Retry-After ヘッダー秒数表示バグも同時修正
 
 ### 派生ケース: sibling hook 統合前に「内部 silent 副作用経路」を grep して signature を先に確定する

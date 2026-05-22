@@ -1337,6 +1337,8 @@ for p, rs in sorted(rules.items()):
 
 **真の redundancy 検出は cross-rule path overlap 自体では判定不可** — 各 rule の **責務 (1st heading + 主要トピック)** を別途確認する必要あり。
 
+**How to apply**: cross-rule paths overlap を検出したら上記「パターン」4 step (sweep / 観点確認 / 設計意図的判定 / 真の redundancy 統合検討) を順次実行、上記判別 pattern 表で「異なる観点 (設計意図的)」/「同一観点 (真の redundancy)」/「navigation 用 (意図伝達価値)」を分類。
+
 主な使用箇所: 2026-05-20 paths overlap sweep — 11 path で複数 rule overlap を検出したが、全件「異なる観点を扱う設計意図的 multi-aspect loading」と判定して 0 件修正で完結 (max 9 rule overlap = src/hooks/ で React + browser + helper + ui + dev の 5 観点を同時 load する canonical pattern)
 
 ### 派生ケース: paths frontmatter の quote-style (quoted vs unquoted) 統一 sweep

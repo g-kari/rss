@@ -64,6 +64,8 @@ paths: "src/hooks/**/*.ts,src/**/*.tsx"
    - `eslint-disable-next-line react-hooks/exhaustive-deps` でルール除外 + 理由コメント明記
    - `feedsRef.current = feeds` を render 中で書く (`useSyncedRef` 同思想)
 
+**How to apply**: 配列を sort + filter + group して複数派生 state を生成する hook で `equalXxxMap` 個別ガード setup が重く感じたら、上記「選択基準」で signature string パターンを採用、「注意点」3 step (encode field 絞り込み / O(N×c) コスト確認 / `feedsRef.current` で deps 不一致回避) を順次適用。
+
 主な使用箇所: `useSidebarFeeds.ts` の `computeFeedStructuralSignature` — 5 分 polling で feeds reference が新規でも構造変化なしなら 4 派生 state (pinnedFeeds / groupedFeeds / categoryGroups / uncategorizedFeeds) の sort + filter 再計算を skip
 
 ### 派生ケース: モジュールレベル sentinel オブジェクトは `Object.freeze` で下流汚染を防ぐ
