@@ -189,6 +189,8 @@ docs drift 監査エージェントの観点:
 
 **`gh issue list --label X` の eventual consistency 対応**: `gh issue list --state closed --label needs-user-decision` 等の **label filter sweep** は GitHub Search API 経由で **eventual consistency** (反映遅延 ~数秒-数十秒)。label 一括 remove / add 直後の verification には `gh issue list --label X` でなく **個別 `gh issue view <N> --json labels` (Issue 詳細 API、reactive)** を使う。Search API 結果は反映遅延で stale 状態の hit を含むため、list filter で「残置中」と判定しても実態は既に解除済というケースが頻発する。canonical pattern: 一括操作 → 個別 view API で確実な実態確認 → list filter は数十秒後の再 sweep でクロスチェック。本前提宣言なしで sweep verify すると、削除済 entry が短時間 list に残置表示されて誤判定リスクあり (実例: 5 件 remove 後の即時 list で 2 件 stale 表示 → 個別 view で実体 0 件確認、index 反映遅延と判明)。
 
+**markdown awk sweep の frontmatter 境界判定**: markdown ファイル (`.claude/rules/*.md` 等) で awk frontmatter skip を実装するときは、**line 1 開始 + 初回 `---` ペア限定**を canonical とする。`/^---$/ { fm = !fm; next }` 形式は **本文中 horizontal rule (`---`)** で frontmatter フラグが誤切替され、本文の大半が「frontmatter 内」扱いで skip される罠あり。canonical pattern: `awk 'NR == 1 && /^---$/ { fm = 1; next } fm && /^---$/ { fm = 0; next } fm { next } { /* 本文処理 */ }'` で line 1 起点の初回ペア限定に絞れば、本文中 `---` (markdown horizontal rule) との誤切替を構造的に防げる。本前提宣言なしで sweep を実施すると、本文中 horizontal rule 以降の全 section が「frontmatter 内」扱いで skip され、複数 endpoint が「未記載 drift」と誤検出される (実例: api-misc.md 本文中 line 91 `---` で frontmatter フラグ誤切替 → 4 endpoint false positive → 境界 line 1 限定で真の drift 0 件確認)。
+
 ```bash
 # src/lib/ の drift 検出例
 find src/lib -maxdepth 1 -name "*.ts" -type f | xargs -n1 basename | sort > /tmp/actual_lib.txt
