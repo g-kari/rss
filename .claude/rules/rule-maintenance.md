@@ -251,6 +251,52 @@ comm -23 /tmp/actual_norm.txt /tmp/docs_norm.txt
 
 主な使用箇所: API endpoint sweep で 46 件 actual vs 49 件 documented を比較、正規化なしで 6 件 false positive 検出 → 正規化適用で全件設計通り (真の drift 0 件) と判定した実例
 
+#### `package.json` 全 dep × README license 表の drift 検出 (双方向正規化必須)
+
+CLAUDE.md 明示運用ルール「新規依存追加時: `npm info <pkg> license` でライセンス確認し README.md のライセンス表に追記すること」は機能 PR の流れで連携 step が漏れがちで、定期 sweep が必須。検出フローは `[id]` 正規化と同様に **package.json (lowercase + kebab-case) ↔ README (大文字 + 通称)** の双方向正規化が canonical。
+
+```bash
+# 全 dep (production + dev) を抽出 + lowercase 正規化
+node -e "
+const p=require('./package.json');
+const all = [...Object.keys(p.dependencies||{}), ...Object.keys(p.devDependencies||{})];
+console.log(all.map(x => x.toLowerCase()).join('\n'))
+" | sort -u > /tmp/pkg_all.txt
+
+# README license 表記載 pkg を lowercase + 表記正規化
+# 通称 → canonical 名 (Next.js → next, Tailwind CSS → tailwindcss, React → react)
+sed -n '/^### 主要依存ライブラリのライセンス/,/^### /p' README.md \
+  | grep -oE "^\| [a-zA-Z0-9@/_. -]+\|" | sed 's/^| //; s/ *|$//; s/ *$//' \
+  | tr 'A-Z' 'a-z' \
+  | sed 's|^next\.js$|next|; s|^tailwind css$|tailwindcss|' \
+  | sort -u > /tmp/readme_pkgs.txt
+
+# drift A: package.json にあるが README にない (license 追記漏れ候補)
+comm -23 /tmp/pkg_all.txt /tmp/readme_pkgs.txt
+
+# drift B: README にあるが package.json にない (stale entry 候補)
+comm -13 /tmp/pkg_all.txt /tmp/readme_pkgs.txt
+```
+
+**canonical 省略判定** (drift A の各 hit を分類):
+
+| カテゴリ                                                  | README 記載要否                                    |
+| --------------------------------------------------------- | -------------------------------------------------- |
+| **production dep** で実 import あり                       | 必須                                               |
+| **dev tool / build / test / type 定義**                   | 不要 (canonical 省略)                              |
+| **pair-package** (例: `react-dom` ↔ `React` 記載)         | 不要 (親 entry でカバー)                           |
+| **transitive dep** (`piper-plus` 内 `@piper-plus/g2p` 等) | 不要 (親 entry でカバー、明示記載は意図的なら保持) |
+
+**How to apply**: 5-10 サイクル間隔で license drift sweep を実施 (新規 dep 追加の連携漏れは機能 PR で発生しやすく、CLAUDE.md 明示運用ルールの定期検証として価値あり):
+
+1. **`node -e` で全 dep + lowercase 正規化** → `/tmp/pkg_all.txt`
+2. **README license 表抽出 + 双方向正規化** (lowercase + Next.js → next 等) → `/tmp/readme_pkgs.txt`
+3. **`comm -23` で drift A 検出** → 各 hit を canonical 省略分類表で判定
+4. **真の drift (production dep + 実 import あり) のみ README license 表追記** で 1 commit fix
+5. **drift B (stale entry) は別判断** — transitive dep の明示記載は意図的な可能性で確認要
+
+主な使用箇所: license drift sweep で 32 dep × 15 README 記載を双方向正規化比較、表記差 4 件 (`Next.js` / `React` / `Tailwind CSS` / table border) + canonical 省略 16 件 (dev tool) + pair-package 1 件 (`react-dom`) + transitive 1 件 (`@piper-plus/g2p`) を識別、**真の drift 1 件** (`@cloudflare/puppeteer` Apache-2.0、production dynamic import) のみ追記した実例
+
 #### redirect の section heading sweep における **意図的 mismatch** の false positive 排除
 
 `coding-conventions.md` 等の **redirect-only ファイル** (`#733` で分割した分散先 trace 用) は、**section heading に「分割前の subtopic 列挙」を保持** している (例: `## URL 比較 / gh api 上流調査 / デバッグ / 自動生成 / 読み上げ整合性 / 同症状別経路`)。一方で **target file の 1st heading は「分割後の包括 theme 名」** (例: `# 開発調査パターン`) になる。
