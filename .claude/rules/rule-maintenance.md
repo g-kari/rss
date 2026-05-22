@@ -183,6 +183,8 @@ docs drift 監査エージェントの観点:
 
 **bash sweep スクリプトの前提**: `**` (recursive glob) を評価するときは **必ず冒頭で `shopt -s globstar` を実行**。bash デフォルトでは globstar は無効で `**/*.ts` が `*/*.ts` (単一階層 wildcard) と同等に扱われ、深い階層が評価されない罠がある。本派生ケース本体の snippet は `find` ベースで `**` 不使用だが、派生 sweep (paths frontmatter 評価 / 未使用 export 検出等) では必須前提。`shopt -s globstar` 宣言なしの sweep スクリプトは `**` glob を含む path 値全件を「実体なし」と誤検出して大量 false positive を生む。
 
+**identifier 抽出 regex の前提**: `grep -oE` / `awk` で identifier (script 名 / 関数名 / 型名 / endpoint path segment 等) を抽出するときは **`[a-z][a-z0-9:_-]*`** pattern を canonical とする。`[a-z]` クラス単独 (数字なし) は **数字混じり identifier を途中で truncate 抽出する false positive** を生む。例: `pnpm run test:e2e` を `[a-z]` で抽出すると `pnpm run test:e` で truncate されて stale doc false positive 1 件を捏造する。文字クラスに `0-9` を含めることで構造的に解消。該当する典型 identifier: `test:e2e` / `v2` / `oauth2` / `vite-plus` / `react19` / `tailwind4` 等。kebab-case `:` / `_` / `-` も同 pattern で網羅。
+
 ```bash
 # src/lib/ の drift 検出例
 find src/lib -maxdepth 1 -name "*.ts" -type f | xargs -n1 basename | sort > /tmp/actual_lib.txt
