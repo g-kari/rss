@@ -651,12 +651,13 @@ done
 
 **判定軸**:
 
-| 状況                                                                | 対応                                                                   |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| 実 file が **機能 critical** (例: sw.js / \_headers / ci.yml)       | **真の drift**、architecture.md に section 追加 + CLAUDE.md に短い言及 |
-| 実 file が **Next.js / framework convention** (favicon / icon 等)   | **canonical 省略可能** detail、注記レベルで対応 or 省略                |
-| 実 file が **build 成果物** (`.open-next/`/ `.next/`) で gitignored | 対象外                                                                 |
-| 実 file が **新規実装 trace** で安定化前                            | 1-2 cycle 観察後に docs 反映判定                                       |
+| 状況                                                                | 対応                                                                                                                 |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 実 file が **機能 critical** (例: sw.js / \_headers / ci.yml)       | **真の drift**、architecture.md に section 追加 + CLAUDE.md に短い言及                                               |
+| 実 file が **Next.js / framework convention** (favicon / icon 等)   | **canonical 省略可能** detail、注記レベルで対応 or 省略                                                              |
+| 実 file が **build 成果物** (`.open-next/`/ `.next/`) で gitignored | 対象外                                                                                                               |
+| 実 file が **新規実装 trace** で安定化前                            | 1-2 cycle 観察後に docs 反映判定                                                                                     |
+| 実 file が **historical artifact** (planning / 調査 / plan doc)     | **canonical 省略可能** (現状維持) / `docs/archive/` 移動 / 削除の 3 案、judgment 要素含むため Issue 起票で再判断仰ぐ |
 
 **How to apply**: 5-10 サイクル間隔で主要 directory rotation 実施 (各 sweep cycle で 1 directory 集中、5-10 cycle で全主要 directory を巡回):
 
