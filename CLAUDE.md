@@ -43,6 +43,7 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 | 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                                                        |
 | データ         | R2 (`rss-reader-data`) + KV (`RATE_LIMIT`) — 共有フィードデータ + ユーザー別 JSON + レートリミット |
 | AI             | Workers AI (要約・翻訳・フィード推薦)                                                              |
+| 自動更新       | Cloudflare Cron Trigger (30 分ごと)                                                                |
 | デプロイ       | Cloudflare Workers の CI/CD (master push → 自動ビルド＆デプロイ)                                   |
 
 ## デプロイ
