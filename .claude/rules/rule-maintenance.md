@@ -270,6 +270,8 @@ docs drift 監査エージェントの観点:
 
 **awk sweep の `### 派生ケース:` 境界判定**: `### 派生ケース:` 単位で current section をトラックする awk sweep (`How to apply` 含有監査等) では、**「`^### 派生ケース:` のみで current reset / 他 `^### ` (派生ケース内 h3 subsection) は派生ケース内継続扱い」** が canonical。`^### |^## |^# ` 形式で全 h3 境界を reset すると、派生ケース内の **nested h3 subsection** (例: `### Map ガード vs Signature string の使い分け` / `### Signature string パターンの注意点`) で current が誤 reset され、subsection 内の **How to apply** マーカーが「派生ケース外」扱いで検出漏れする false positive 発生。canonical pattern: `/^### 派生ケース:/ { ... current reset ... } /^## |^# / { ... h2/h1 境界 reset ... }` で `^### ` (h3 一般) は無視して subsection 内継続。`react-state-ref.md:32` (signature string パターン派生ケース) で本前提宣言なし sweep が h3 subsection `### Map ガード...` で current 誤 reset → 内側 How to apply 見落とし → false positive 検出した実例。
 
+**heading 重複 sweep の api-\*.md 除外**: `.claude/rules/api-*.md` (API endpoint 仕様) の同 file 内 section heading 重複 sweep では、**`### リクエスト` / `### 成功レスポンス` / `### エラー一覧` / `### クエリパラメータ` / `### パスパラメータ` / `### キャッシュ` 等の共通 child heading は意図的並列**で重複検出対象外。1 file 内に N 個の endpoint section (`## GET /api/foo` / `## POST /api/foo` ...) が並ぶ canonical pattern では、各 endpoint の child として同名 heading が N 個並ぶのが規範。bash snippet で `case "$(basename "$f")" in api-*) continue ;; esac` の除外句を sweep に必ず併用する。本前提宣言なしで heading 重複 sweep を実施すると、api-_.md 8 file で 100+ 件の意図的並列が false positive として誤検出される (実例: 初版 sweep で 8 api ファイル × 各 N endpoint section の標準 child heading が大量 hit → api-_.md 除外で rule files 限定すると真の drift 0 件確認)。
+
 ```bash
 # src/lib/ の drift 検出例
 find src/lib -maxdepth 1 -name "*.ts" -type f | xargs -n1 basename | sort > /tmp/actual_lib.txt
