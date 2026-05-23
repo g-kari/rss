@@ -547,6 +547,52 @@ grep -rhE "^export (function|const|class|type|interface|async function) [a-zA-Z_
 
 主な使用箇所: `e2e/helpers/` sweep で `makeArticle` が `article.ts:28` (`Partial<Article> = {}` 一般用) と `seed-r2.ts:92` (`Partial<Article> & { id: string }` seed 用) で **signature 違いの同名 export** と発見 → 3 案 (rename / wrapper / 現状維持) で `#813` Issue 起票 + `needs-user-decision` ラベル付与した実例
 
+#### `.gitignore` 規則 × tracked file 整合性 sweep (untrack 漏れ検出)
+
+`.gitignore` で ignore 指定済の path が **過去 commit で track 済 + 後から `.gitignore` 追加** 経緯で「既存 tracked file には ignore 規則が適用されない」(Git 仕様) 状態が long-term silent な untrack 漏れとして残置することがある。`git status --short` で `M <ignored-path>` 長期残置を観察したら本パターンを疑う。
+
+```bash
+# 3 段検証 sweep
+# Step 1: .gitignore ignored ディレクトリの全 tracked file 列挙
+for entry in node_modules dist .wrangler .next .open-next .agents .claude/skills .claude/worktrees .claude/.bak .serena; do
+  tracked=$(git ls-files "$entry" 2>/dev/null | head -3)
+  if [ -n "$tracked" ]; then
+    echo "TRACKED in spite of gitignore: $entry → $tracked"
+  fi
+done
+
+# Step 2: 該当 file の意図確認 (過去 commit 履歴 + 直近 2 週間で commit 0 件確認)
+git log --oneline -5 -- <suspect-path>
+git log --since="2 weeks ago" --oneline -- <suspect-path>  # 0 件なら意図的除外運用
+
+# Step 3: directory 内全 file 網羅 untrack 化 (個別 untrack では他 file 見逃し)
+git ls-files <ignored-dir>/  # 全 file 列挙
+git rm --cached <ignored-dir>/<file1> <ignored-dir>/<file2>  # 個別 untrack 一括化
+```
+
+**判定軸**:
+
+| 状況                                                                      | 対応                                                                                |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `.gitignore` ignored + tracked + 直近 commit 0 件                         | **untrack 漏れ確定**、`git rm --cached` で正規化                                    |
+| 規範例外として **意図的 tracked** (例: `!.claude/skills/issue-handling/`) | canonical 例外、保持                                                                |
+| 個別 untrack 後の directory 内残置 file 見逃し                            | **`git ls-files <ignored-dir>` 網羅運用必須** (個別 1 件実行では他 file の累積漏れ) |
+
+**How to apply**: 5-10 サイクル間隔で実施 (`.gitignore` 規則は後から追加されたとき既存 tracked file に適用されない Git 仕様で long-term silent drift が累積しやすい):
+
+1. **`git status --short`** で `M <ignored-path>` 長期残置を観察
+2. **Step 1 sweep** で全 ignored directory の tracked file 列挙
+3. **Step 2 意図確認** で過去 commit 履歴 + 直近 2 週間 commit 0 件確認 → untrack 漏れ確定
+4. **Step 3 directory 内全 file 網羅 untrack 化** (`git ls-files <ignored-dir>` で全件列挙 → 個別 untrack 一括) — 1 件単独 `git rm --cached` では directory 内他 file の untrack 漏れを見逃す
+5. commit + master push で正規化、local file は残置 (動作影響なし)
+
+**反例 (untrack 不要なケース)**:
+
+- `.gitignore` の例外句 (`!path`) で意図的 tracked になっている file → 規範例外、保持
+- 該当 file が **過去 commit で意図的に追加 + 現在も毎 commit で更新** されている → ユーザー意図確認後、`.gitignore` 側削除 or 例外句追加で正規化
+
+主な使用箇所: `.serena/project.yml` (commit `4c9dc7f9`) + `.serena/.gitignore` (commit `2028a4c3`) の 2 件 untrack 漏れを **2 サイクルに跨り** 検出 + 正規化、`git ls-files <ignored-dir>` 網羅運用なしで個別 untrack だと 2 サイクルかかる罠を実証。本派生ケース運用以降は 1 サイクルで directory 内全件正規化可能
+
 **How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
 
 1. **タスクが機械的検出可能か** (yes/no で判別できる、grep / find / comm で出せる) → 直接実行
