@@ -954,3 +954,12 @@ npm run deploy   # @opennextjs/cloudflare build && wrangler deploy
 - **`generate-vapid-keys.mjs`** — VAPID 鍵ペア生成 (Web Push 用、`npm run secret put VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` に貼り付ける手動運用)。
 - **`upload-piper-wasm.mjs`** — Piper TTS engine 用 `onnxruntime-web` 関連 wasm を Cloudflare R2 (`piper-wasm/<file>`) にアップロード (#674 Phase 2c / #753)。`upload:piper-wasm` script、手動運用 (CI/CD 非組込)。
 - **`upload-piper-voices.mjs`** — Piper TTS engine 用 voice モデル (HuggingFace) を Cloudflare R2 にアップロード。`upload:piper-voices` script、手動運用 (CI/CD 非組込)。
+
+## ルート設定ファイル
+
+project root 配下の主要 entry point / config file:
+
+- **`worker.ts`** — Custom Worker entry (wrangler.toml `main = "./worker.ts"`)。`fetch` ハンドラーは `.open-next/worker.js` (Next.js handler) を delegate、`scheduled` ハンドラーは `fetchAllFeeds` + `runCronPrefetch` を実行 (Cron Trigger 30 分ごと、上記「全体像」参照)。
+- **`middleware.ts`** — Next.js middleware。**Content-Security-Policy header をリクエストごとに動的構築** (`nonce` ベース XSS 保護 + `TRUSTED_IFRAME_RULES` から `frame-src` 単一管理 + `connect-src` に HuggingFace / CDN / `cloudflareinsights.com` 等)。security critical な実装。
+- **`next.config.ts`** — Next.js build config。`securityHeaders` (CSP 以外: X-Frame-Options / Permissions-Policy / HSTS 等) + `transpilePackages` (piper-plus / @piper-plus/g2p / onnxruntime-web 等の wasm engine ESM transpile) + `turbopack.resolveAlias` (browser bundle で `fs` / `path` を empty module 解決) + `initOpenNextCloudflareForDev({ remoteBindings: false })` (dev は local miniflare のみ、wrangler login 不要)。chained config 設計は `rule-maintenance.md § 5 派生「Next.js + OpenNext + Wrangler chained config 整合性 sweep」` 参照。
+- **`open-next.config.ts`** — OpenNext (Cloudflare adapter) config。`defineCloudflareConfig({})` の minimal、Cron handler は OpenNext 未サポートのため `worker.ts` (Custom Worker) で直接定義する 2 段構成方針を architectural note として明記。
