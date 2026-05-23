@@ -89,7 +89,7 @@ async function postSeed(baseURL: string, body: SeedRequestBody): Promise<void> {
  *
  * 必要最小限のフィールドだけ指定すれば、他はサンプル値で埋める。
  */
-export function makeArticle(overrides: Partial<Article> & { id: string }): Article {
+export function makeSeedArticle(overrides: Partial<Article> & { id: string }): Article {
   return {
     feedHash: overrides.feedHash ?? "0123456789abcdef",
     guid: overrides.guid ?? overrides.id,

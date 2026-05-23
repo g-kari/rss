@@ -15,7 +15,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { seedFeed, clearTestData, makeArticle } from "./helpers/seed-r2";
+import { seedFeed, clearTestData, makeSeedArticle } from "./helpers/seed-r2";
 
 const BASE_URL = "http://localhost:3000";
 // isValidFeedHash 規約: 16 文字 lowercase hex (computeFeedHash の SHA-256 先頭 16 文字)。
@@ -53,7 +53,7 @@ test.describe("#632 OGP フォールバック (isFetchFailed ブランチ) 回�
 
     // ギャラリーレイアウト + ogImage 持ちの記事 1 件を seed
     const articles = [
-      makeArticle({
+      makeSeedArticle({
         id: "ogp-fallback-001",
         feedHash: FEED_HASH,
         title: "OGP フォールバック対象記事",
@@ -136,7 +136,7 @@ test.describe("#632 OGP フォールバック (isFetchFailed ブランチ) 回�
 
     // ogImage 無しの記事を seed (link は持つ → /api/content prefetch 対象)
     const articles = [
-      makeArticle({
+      makeSeedArticle({
         id: "ogp-fallback-noimg-002",
         feedHash: FEED_HASH,
         title: "OGP 無し記事",
