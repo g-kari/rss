@@ -52,6 +52,8 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 `master` ブランチに push すると Cloudflare Workers 側で自動的にビルド＆デプロイが実行される。
 GitHub Actions (`deploy.yml`) は存在しない。`npm run deploy` をローカルで手動実行する必要もない。
 
+GitHub Actions では **`ci.yml`** (master push / PR で `pnpm check` + `pnpm typecheck`) と **`dependabot-auto-merge.yml`** (patch / minor 自動マージ、major は手動レビュー) が実行される。詳細は `.claude/rules/architecture.md § GitHub Workflows` 参照。
+
 **禁止**: Route Handler に `export const runtime = 'edge'` を書かないこと（`@opennextjs/cloudflare` は Edge Runtime 非対応）。
 
 ## Issue / PR の起票主体マーカー

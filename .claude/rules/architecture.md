@@ -919,3 +919,10 @@ npm run deploy   # @opennextjs/cloudflare build && wrangler deploy
 
 - `.open-next/worker.js` → Workers スクリプト (wrangler.toml の main)
 - `.open-next/assets/` → 静的アセット (Cloudflare Assets)
+
+## GitHub Workflows
+
+`.github/workflows/` 配下に 2 つの workflow が存在する。**`deploy.yml` は存在しない**(本番デプロイは Cloudflare Workers の CI/CD が担う、上記「デプロイ」記載通り)。
+
+- **`ci.yml`** — master push / PR で `pnpm run check` (oxlint + oxfmt + tsgo 型チェック) + `pnpm run typecheck` (`tsc --noEmit`) を実行。pre-commit hook と同等のチェックを CI 側で再実行する canonical 二重保証 (PR 段階で fail 検知)。Node 22 + pnpm + `actions/checkout@v6` + `actions/setup-node@v6` 構成。`permissions: contents: read` で最小権限。
+- **`dependabot-auto-merge.yml`** — Dependabot 作成 PR の **patch / minor バージョンアップ** を CI 通過後に自動 auto-merge (`gh pr merge --auto --squash`)。**major バージョンアップ**は破壊的変更可能性のため手動レビュー必須 (gh pr comment で通知のみ)。`if: github.actor == 'dependabot[bot]'` で Dependabot PR のみ対象、`GITHUB_TOKEN` は自身が approve できない制約あり (PAT 必要なら別途 secrets 登録)。
