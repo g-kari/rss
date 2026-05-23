@@ -56,8 +56,13 @@ Cron Trigger (wrangler.toml: */30 * * * *)
 ```
 app/
   layout.tsx                 # ルートレイアウト (CSS import)
-  page.tsx                   # エントリーポイント (force-dynamic + <App />)
+  page.tsx                   # エントリーポイント (force-dynamic + <ClientApp />)
+  ClientApp.tsx              # next/dynamic で App コンポーネントを ssr: false で読み込む薄い wrapper (SSR 不要のため localStorage 等のブラウザ API を含む全 hooks が動作可能)
   globals.css                # Tailwind v4 + CSS 変数テーマ
+  demo/                      # 認証不要の DEMO ページ (/demo route、production deploy 含む)
+    page.tsx                 # /demo route エントリーポイント (force-dynamic + <DemoApp />)
+    DemoApp.tsx              # fetch interceptor 設定後に App を描画する demo wrapper
+    mock.ts                  # /api/* fetch interceptor。mock user / feeds / articles を返してフル機能 demo を提供する
   api/
     auth/
       login/route.ts         # GET /api/auth/login — OAuth2 開始
