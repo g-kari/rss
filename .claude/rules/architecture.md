@@ -936,3 +936,16 @@ npm run deploy   # @opennextjs/cloudflare build && wrangler deploy
 - **`_headers`** — Cloudflare Pages の HTTP header rule。`/_next/static/*` に `Cache-Control: public,max-age=31536000,immutable` (1 年 immutable cache) を付与、Next.js static chunks の long-term cache 戦略。
 
 他: `favicon.png` / `apple-touch-icon.png` / `icon-192.png` / `icon-512.png` / `icon.svg` (アイコン群) + `og.png` / `og.svg` (OGP 画像) は Next.js convention で省略可能 detail。
+
+## 運用スクリプト (`scripts/`)
+
+`scripts/` 配下は `package.json` の `pre*` hook / `gen:*` / `upload:*` / `deploy` で呼ばれる Node.js script 群 (.mjs)。各 script の役割:
+
+- **`sync-release-notes.mjs`** — `RELEASE_NOTES.md` → `src/lib/release-notes-data.ts` 自動生成。`predev` / `prebuild` / `pretypecheck` / `precheck` / `precheck:fix` の 5 hook で実行、`release-notes-data.ts` は `.gitignore` 対象 (auto-generated)。
+- **`generate-test-coverage-map.mjs`** — e2e spec ファイルから `architecture.md` の `<!-- TEST_COVERAGE_MAP_AUTO_GEN START / END -->` マーカー間にテストカバレッジマップを差し込む。`gen:coverage-map` script、現状 Phase 1 (markers + script 配置済、データ整備は Phase 2 で運用切替予定、`rule-maintenance.md § 10 派生「自動化 infrastructure markers」` 参照)。
+- **`remove-bundled-wasm.mjs`** — `build:cf` post-step。`.open-next/assets/_next/static/media/` 配下の wasm (`onnxruntime-web` の `ort-wasm-simd-threaded.jsep.wasm` 25 MiB 等) を削除して Cloudflare Workers asset 上限 (25 MiB / 件) 抵触を回避、wasm は R2 (`piper-wasm/<file>`) セルフホスト (#674 Phase 2c / closes #753)。
+- **`add-scheduled-handler.mjs`** — `build:cf` post-step。OpenNext 生成の `wrangler.json` に `wrangler.toml` の追加設定をマージ (scheduled handler は `worker.ts` Custom Worker で定義済のため注入は不要、設定 merge のみ)。
+- **`stamp-sw-version.mjs`** — `public/sw.js` の `CACHE_VERSION` をビルド日時ベースの文字列に置換、`deploy` script 冒頭で実行 (デプロイごとに旧キャッシュ自動削除)。
+- **`generate-vapid-keys.mjs`** — VAPID 鍵ペア生成 (Web Push 用、`npm run secret put VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` に貼り付ける手動運用)。
+- **`upload-piper-wasm.mjs`** — Piper TTS engine 用 `onnxruntime-web` 関連 wasm を Cloudflare R2 (`piper-wasm/<file>`) にアップロード (#674 Phase 2c / #753)。`upload:piper-wasm` script、手動運用 (CI/CD 非組込)。
+- **`upload-piper-voices.mjs`** — Piper TTS engine 用 voice モデル (HuggingFace) を Cloudflare R2 にアップロード。`upload:piper-voices` script、手動運用 (CI/CD 非組込)。
