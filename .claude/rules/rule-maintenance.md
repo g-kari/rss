@@ -593,6 +593,44 @@ git rm --cached <ignored-dir>/<file1> <ignored-dir>/<file2>  # 個別 untrack �
 
 主な使用箇所: `.serena/project.yml` (commit `4c9dc7f9`) + `.serena/.gitignore` (commit `2028a4c3`) の 2 件 untrack 漏れを **2 サイクルに跨り** 検出 + 正規化、`git ls-files <ignored-dir>` 網羅運用なしで個別 untrack だと 2 サイクルかかる罠を実証。本派生ケース運用以降は 1 サイクルで directory 内全件正規化可能
 
+#### 高レベル docs (CLAUDE.md) × 詳細 docs (architecture.md / api-spec.md) **comparative sweep**
+
+`CLAUDE.md` (project root の高レベル view) と `architecture.md` / `api-spec.md` (詳細 reference) の **情報整合性 sweep**。機能追加 commit で `architecture.md` (詳細 reference) は更新されるが、`CLAUDE.md` (高レベル view) の更新が漏れがちで、5-10 サイクル経過で drift が累積する。
+
+```bash
+# CLAUDE.md スタック table の各 layer と architecture.md 該当 section を 1:1 比較
+echo "=== CLAUDE.md スタック table ==="
+sed -n '/^## スタック/,/^## /p' CLAUDE.md | grep -E "^\| [^|]+\|"
+
+echo "=== architecture.md Cloudflare Bindings + AI 使途 ==="
+sed -n '/Cloudflare Bindings/,/Cron Trigger/p' .claude/rules/architecture.md
+grep -E "Workers AI|フィード推薦|要約・翻訳" .claude/rules/architecture.md | head -5
+```
+
+**comparison 観点**:
+
+| 高レベル docs            | 詳細 docs                         | drift パターン                                            |
+| ------------------------ | --------------------------------- | --------------------------------------------------------- |
+| CLAUDE.md スタック table | architecture.md Bindings          | binding 追加 (例: KV / BROWSER) で CLAUDE.md 未追記       |
+| CLAUDE.md AI layer       | architecture.md AI 使途 + R2 path | 用途追加 (要約 / 翻訳 / 推薦 / etc.) で CLAUDE.md 未追記  |
+| CLAUDE.md デプロイ       | wrangler.toml CI/CD 設定          | 設定変更 (compatibility_date 等) で高レベル view 古い表記 |
+| README.md スタック       | architecture.md / package.json    | 同上                                                      |
+
+**How to apply**: 5-10 サイクル間隔で実施 (機能追加サイクルで詳細 docs は更新されるが高レベル docs は更新漏れ累積):
+
+1. **CLAUDE.md スタック table を読み込み** (各 layer の技術スタック列挙)
+2. **architecture.md の対応 section と 1:1 比較** (Cloudflare Bindings / AI 使途 / R2 path 構造)
+3. **差分検出**: 詳細 docs に記載があり高レベル docs に未記載の項目を drift A 候補に
+4. **canonical 省略判定**: 高レベル docs は意図的に簡略化されている部分があるため、「**追記しないと運用混乱が生じる」level の項目 (例: KV binding は運用 critical) に絞って同期**
+5. 1 commit で sync、commit message に「architecture.md 既存記載と一致させた canonical 状態に sync」を明記
+
+**反例 (sync 不要なケース)**:
+
+- 高レベル docs が **意図的に detail を省略** (例: Browser Rendering binding は実装 detail で CLAUDE.md スタック高レベル view では canonical 省略)
+- 詳細 docs の記載が **新規実装 trace** で安定化前 (例: 実験的 binding は 1-2 cycle 観察後に高レベル docs 反映判定)
+
+主な使用箇所: CLAUDE.md スタック table sweep で 2 件 drift 検出 (KV `RATE_LIMIT` 未記載 + AI フィード推薦 未記載)、6+ サイクル経過後の再 sweep で `architecture.md` 既存記載と sync して canonical 状態に正規化した実例 (commit `537e4355`)
+
 **How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
 
 1. **タスクが機械的検出可能か** (yes/no で判別できる、grep / find / comm で出せる) → 直接実行
