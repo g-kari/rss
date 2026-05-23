@@ -926,3 +926,13 @@ npm run deploy   # @opennextjs/cloudflare build && wrangler deploy
 
 - **`ci.yml`** — master push / PR で `pnpm run check` (oxlint + oxfmt + tsgo 型チェック) + `pnpm run typecheck` (`tsc --noEmit`) を実行。pre-commit hook と同等のチェックを CI 側で再実行する canonical 二重保証 (PR 段階で fail 検知)。Node 22 + pnpm + `actions/checkout@v6` + `actions/setup-node@v6` 構成。`permissions: contents: read` で最小権限。
 - **`dependabot-auto-merge.yml`** — Dependabot 作成 PR の **patch / minor バージョンアップ** を CI 通過後に自動 auto-merge (`gh pr merge --auto --squash`)。**major バージョンアップ**は破壊的変更可能性のため手動レビュー必須 (gh pr comment で通知のみ)。`if: github.actor == 'dependabot[bot]'` で Dependabot PR のみ対象、`GITHUB_TOKEN` は自身が approve できない制約あり (PAT 必要なら別途 secrets 登録)。
+
+## 静的アセット (`public/`)
+
+`public/` 配下は Next.js conventional な静的 hosting directory。OpenNext build で `.open-next/assets/` に展開され Cloudflare Assets で配信。機能 critical な 3 file:
+
+- **`sw.js`** — 手書き Service Worker (client-side `ServiceWorkerRegistration.tsx` で登録)。`CACHE_VERSION = "rss-v4"` で 3 cache (static / page / api) を管理、API_CACHE_TTL_MS 5 分。stale-while-revalidate で `/api/articles` / `/api/feeds` を cache、`/api/auth/me` はレートリミット (5 秒クールダウン) との衝突回避でネットワーク優先 + オフライン fallback のみ。
+- **`manifest.json`** — PWA manifest (display: standalone / icons: 192/512/svg 各 any+maskable / background_color + theme_color: `#18181b`)。PWA install 機能の root 設定。
+- **`_headers`** — Cloudflare Pages の HTTP header rule。`/_next/static/*` に `Cache-Control: public,max-age=31536000,immutable` (1 年 immutable cache) を付与、Next.js static chunks の long-term cache 戦略。
+
+他: `favicon.png` / `apple-touch-icon.png` / `icon-192.png` / `icon-512.png` / `icon.svg` (アイコン群) + `og.png` / `og.svg` (OGP 画像) は Next.js convention で省略可能 detail。
