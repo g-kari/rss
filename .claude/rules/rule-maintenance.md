@@ -631,6 +631,49 @@ grep -E "Workers AI|フィード推薦|要約・翻訳" .claude/rules/architectu
 
 主な使用箇所: CLAUDE.md スタック table sweep で 2 件 drift 検出 (KV `RATE_LIMIT` 未記載 + AI フィード推薦 未記載)、6+ サイクル経過後の再 sweep で `architecture.md` 既存記載と sync して canonical 状態に正規化した実例 (commit `537e4355`)
 
+##### サブパターン: 実 file system 構造 × docs 記載 comparative sweep
+
+comparative sweep の対象 axis は「高レベル docs × 詳細 docs」だけでなく **「実 file system 構造 × docs 記載」** も含む。`.github/workflows/` / `public/` / `app/api/` / `src/` 等の主要 directory 配下の実体 file が architecture.md / CLAUDE.md / README.md で網羅されているか機械的検出可能で、機能 critical file の docs 未記載が **silent drift として長期間累積**しやすい。
+
+```bash
+# 各主要 directory 配下の実 file × docs 言及件数比較
+for dir in .github/workflows public; do
+  echo "=== $dir ==="
+  find "$dir" -maxdepth 2 -type f 2>/dev/null | while read f; do
+    base=$(basename "$f")
+    count=$(grep -rcE "\b$base\b" CLAUDE.md README.md .claude/rules/architecture.md 2>/dev/null | grep -v ":0$" | wc -l)
+    echo "  $f → $count docs mention"
+  done
+done
+```
+
+**判定軸**:
+
+| 状況                                                                | 対応                                                                   |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 実 file が **機能 critical** (例: sw.js / \_headers / ci.yml)       | **真の drift**、architecture.md に section 追加 + CLAUDE.md に短い言及 |
+| 実 file が **Next.js / framework convention** (favicon / icon 等)   | **canonical 省略可能** detail、注記レベルで対応 or 省略                |
+| 実 file が **build 成果物** (`.open-next/`/ `.next/`) で gitignored | 対象外                                                                 |
+| 実 file が **新規実装 trace** で安定化前                            | 1-2 cycle 観察後に docs 反映判定                                       |
+
+**How to apply**: 5-10 サイクル間隔で主要 directory rotation 実施 (各 sweep cycle で 1 directory 集中、5-10 cycle で全主要 directory を巡回):
+
+1. **対象 directory 選定**: 過去 5+ cycle で sweep していない directory を rotation で選ぶ (`.github/` / `public/` / `app/api/` / `src/` 等)
+2. **bash snippet で実 file × docs 言及件数を機械的比較**
+3. **0 件 mention の file を judging 表で分類** (機能 critical / convention / build 成果物 / 新規)
+4. **真の drift のみ docs 反映**、canonical 省略可能 file は注記レベルで対応 or 省略
+5. **architecture.md に新 section 追加 + CLAUDE.md / README.md に短い言及** がペア追加 canonical
+
+**反例 (sweep 不要なケース)**:
+
+- 対象 directory が **gitignored** (例: `.serena/` / `node_modules/`) — 既に `.gitignore × tracked 整合性 sweep` (8 番目 category) でカバー
+- 対象 directory が **過去 5 cycle 以内で sweep 済** — overhead > 価値、次 cycle に遅延
+
+主な使用箇所:
+
+- `.github/workflows/` sweep で 2 件 drift (ci.yml + dependabot-auto-merge.yml 完全未記載) → architecture.md に「## GitHub Workflows」section + CLAUDE.md デプロイ section に短い言及追加 (commit `65baedc4`)
+- `public/` sweep で 3 件 drift (sw.js + manifest.json + \_headers 完全未記載) → architecture.md に「## 静的アセット (public/)」section 追加 (commit `9a31a665`)、icon / OGP 系は Next.js convention で省略可能 detail として注記
+
 **How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
 
 1. **タスクが機械的検出可能か** (yes/no で判別できる、grep / find / comm で出せる) → 直接実行
