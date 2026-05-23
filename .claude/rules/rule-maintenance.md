@@ -22,6 +22,54 @@ paths: ".claude/rules/**/*.md,CLAUDE.md"
 
 抽象化された原則は新規開発者にも伝えられる。Issue 番号と日付は git log で追える。
 
+**規範構造一貫性 sweep (`### 派生ケース:` の `**How to apply**` 含有監査)**:
+
+各 `### 派生ケース:` は **「具体実行手順を `**How to apply**:` セクションで明示する」** 構造を canonical とする。マーカー欠落の派生ケースは規範品質が劣化し、読み手が「具体的にどう判定するか」を文脈推測する必要が出る。
+
+````bash
+# § 5 派生 前提宣言群 (code block 除外 + frontmatter 境界判定 + 派生ケース境界判定) を併用した sweep
+for f in .claude/rules/*.md; do
+  [ -f "$f" ] || continue
+  awk -v file="$(basename "$f")" '
+    NR == 1 && /^---$/ { fm = 1; next }
+    fm && /^---$/ { fm = 0; next }
+    fm { next }
+    /^```/ { in_code = !in_code; next }
+    in_code { next }
+    /^### 派生ケース:/ {
+      if (current != "" && !has_how) {
+        print file ":" current_line ": MISSING How to apply (" substr(current, 1, 80) ")"
+      }
+      current = $0
+      current_line = NR
+      has_how = 0
+      next
+    }
+    /^## |^# / {  # § 5 派生 6 番目前提: subsection (^### ) は派生ケース内継続扱い、h2/h1 のみ境界
+      if (current != "" && !has_how) {
+        print file ":" current_line ": MISSING How to apply (" substr(current, 1, 80) ")"
+      }
+      current = ""
+      has_how = 0
+    }
+    /\*\*How to apply\*\*/ { if (current != "") has_how = 1 }
+    END {
+      if (current != "" && !has_how) {
+        print file ":" current_line ": MISSING How to apply (" substr(current, 1, 80) ")"
+      }
+    }
+  ' "$f"
+done
+````
+
+**How to apply**: 5-10 サイクル間隔で実行 (規範構造一貫性が新派生ケース追加時に漏れがち):
+
+1. 上記 sweep snippet 実行で MISSING How to apply 検出
+2. 各派生ケースの既存「判定フロー / 選択基準 / パターン」等を How to apply に rename or 新規マーカー追加
+3. 再 sweep で 0 件確認 → 構造一貫性 clean 達成
+
+主な使用箇所: 全 88 派生ケース sweep で 3 件 (`helper-drift.md:134` / `react-state-ref.md:32` / `rule-maintenance.md:1299`) を検出 + 各派生ケースに 1 行 How to apply マーカー追加で構造一貫性 ほぼ達成
+
 ## 1b. Why セクションは default 削除 (Claude Code ベストプラクティス準拠)
 
 Claude Code 公式ベストプラクティス ([best-practices](https://code.claude.com/docs/ja/best-practices)) の引用:
@@ -219,6 +267,8 @@ docs drift 監査エージェントの観点:
 **`gh issue list --label X` の eventual consistency 対応**: `gh issue list --state closed --label needs-user-decision` 等の **label filter sweep** は GitHub Search API 経由で **eventual consistency** (反映遅延 ~数秒-数十秒)。label 一括 remove / add 直後の verification には `gh issue list --label X` でなく **個別 `gh issue view <N> --json labels` (Issue 詳細 API、reactive)** を使う。Search API 結果は反映遅延で stale 状態の hit を含むため、list filter で「残置中」と判定しても実態は既に解除済というケースが頻発する。canonical pattern: 一括操作 → 個別 view API で確実な実態確認 → list filter は数十秒後の再 sweep でクロスチェック。本前提宣言なしで sweep verify すると、削除済 entry が短時間 list に残置表示されて誤判定リスクあり (実例: 5 件 remove 後の即時 list で 2 件 stale 表示 → 個別 view で実体 0 件確認、index 反映遅延と判明)。
 
 **markdown awk sweep の frontmatter 境界判定**: markdown ファイル (`.claude/rules/*.md` 等) で awk frontmatter skip を実装するときは、**line 1 開始 + 初回 `---` ペア限定**を canonical とする。`/^---$/ { fm = !fm; next }` 形式は **本文中 horizontal rule (`---`)** で frontmatter フラグが誤切替され、本文の大半が「frontmatter 内」扱いで skip される罠あり。canonical pattern: `awk 'NR == 1 && /^---$/ { fm = 1; next } fm && /^---$/ { fm = 0; next } fm { next } { /* 本文処理 */ }'` で line 1 起点の初回ペア限定に絞れば、本文中 `---` (markdown horizontal rule) との誤切替を構造的に防げる。本前提宣言なしで sweep を実施すると、本文中 horizontal rule 以降の全 section が「frontmatter 内」扱いで skip され、複数 endpoint が「未記載 drift」と誤検出される (実例: api-misc.md 本文中 line 91 `---` で frontmatter フラグ誤切替 → 4 endpoint false positive → 境界 line 1 限定で真の drift 0 件確認)。
+
+**awk sweep の `### 派生ケース:` 境界判定**: `### 派生ケース:` 単位で current section をトラックする awk sweep (`How to apply` 含有監査等) では、**「`^### 派生ケース:` のみで current reset / 他 `^### ` (派生ケース内 h3 subsection) は派生ケース内継続扱い」** が canonical。`^### |^## |^# ` 形式で全 h3 境界を reset すると、派生ケース内の **nested h3 subsection** (例: `### Map ガード vs Signature string の使い分け` / `### Signature string パターンの注意点`) で current が誤 reset され、subsection 内の **How to apply** マーカーが「派生ケース外」扱いで検出漏れする false positive 発生。canonical pattern: `/^### 派生ケース:/ { ... current reset ... } /^## |^# / { ... h2/h1 境界 reset ... }` で `^### ` (h3 一般) は無視して subsection 内継続。`react-state-ref.md:32` (signature string パターン派生ケース) で本前提宣言なし sweep が h3 subsection `### Map ガード...` で current 誤 reset → 内側 How to apply 見落とし → false positive 検出した実例。
 
 ```bash
 # src/lib/ の drift 検出例
