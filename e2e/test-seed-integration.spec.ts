@@ -10,7 +10,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { seedFeed, clearTestData, makeArticle } from "./helpers/seed-r2";
+import { seedFeed, clearTestData, makeSeedArticle } from "./helpers/seed-r2";
 
 const BASE_URL = "http://localhost:3000";
 
@@ -38,7 +38,7 @@ test.describe("/api/test/seed", () => {
       seedFeed(BASE_URL, {
         feedHash: "abc1234567890def",
         title: "Seeded Test Feed",
-        articles: [makeArticle({ id: "art-1", feedHash: "abc1234567890def" })],
+        articles: [makeSeedArticle({ id: "art-1", feedHash: "abc1234567890def" })],
       }),
     ).resolves.toBeUndefined();
   });

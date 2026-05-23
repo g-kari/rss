@@ -17,7 +17,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { seedFeed, clearTestData, makeArticle } from "./helpers/seed-r2";
+import { seedFeed, clearTestData, makeSeedArticle } from "./helpers/seed-r2";
 
 const BASE_URL = "http://localhost:3000";
 const FEED_HASH = "0772abc7720abc00";
@@ -45,7 +45,7 @@ test.afterEach(async () => {
 /** 50 articles を全て未読として seed する (read state seed 省略で全件 unread) */
 async function seedFiftyUnread() {
   const articles = Array.from({ length: 50 }, (_, i) =>
-    makeArticle({
+    makeSeedArticle({
       id: `art-${String(i).padStart(3, "0")}`,
       feedHash: FEED_HASH,
       title: `テスト記事 ${i}`,

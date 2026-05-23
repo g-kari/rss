@@ -13,7 +13,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { seedFeed, clearTestData, makeArticle } from "./helpers/seed-r2";
+import { seedFeed, clearTestData, makeSeedArticle } from "./helpers/seed-r2";
 
 const BASE_URL = "http://localhost:3000";
 const FEED_HASH = "1e1e02c624abc000";
@@ -50,7 +50,7 @@ test.describe("#624 LoadMoreButton silent fail 回帰テスト", () => {
     // 過去ページが存在するフィードを seed
     // pageCount > 0 にすることで LoadMoreButton が UI に描画される
     const articles = Array.from({ length: 30 }, (_, i) =>
-      makeArticle({
+      makeSeedArticle({
         id: `article-${i.toString().padStart(3, "0")}`,
         feedHash: FEED_HASH,
         title: `記事 ${i}`,
