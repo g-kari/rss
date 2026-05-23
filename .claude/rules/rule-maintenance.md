@@ -254,6 +254,8 @@ docs drift 監査エージェントの観点:
 
 監査タイミングの目安: 大型機能追加が 3-5 件続いた後、または `git log --since="14 days ago" --oneline | wc -l` が 50 を超えたら。
 
+**`app/` 配下追加時の ASCII tree 同時更新義務**: `app/` 配下に **新規 route / page.tsx / layout.tsx / component** を追加するとき、`architecture.md` の `app/` ASCII tree section を **同 commit で必ず更新** する。`app/` は Next.js App Router の public route 定義場所で、未文書化 file は **「機能存在を開発者 / AI が見落とすリスク大」** (実例: `/demo` 認証不要 public route が 4 file 未記載で 1 ヶ月以上放置)。`scripts/` / `public/` / `.github/workflows/` (運用 detail) より優先度高い同期義務として canonical。`How to apply`: `app/` 配下 commit (新規 route 追加 / page.tsx 追加 / layout 階層変更等) には **常に同 commit に `.claude/rules/architecture.md` の `app/` ASCII tree 更新を含める**、もしくは PR レビュー時 / 後追い sweep で同期。実体: `find app -maxdepth 3 -type f -not -path "app/api/*"` で全 file 列挙 → architecture.md `app/` section と 1:1 比較。
+
 ### 派生ケース: サブエージェント rate limit 時は `find + grep + comm` で機械的 diff 検出
 
 サブエージェント (`feature-dev:code-reviewer` 等) が rate limit / API 障害で動作しないサイクルでも、**docs drift だけは構造化された機械的タスク** なのでメインエージェントだけで完遂できる。`find` でファイル一覧、`grep` で文書内エントリ抽出、`comm -23` で diff を取れば 5 分程度で網羅検出が可能。
