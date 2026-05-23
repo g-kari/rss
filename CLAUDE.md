@@ -35,15 +35,15 @@ Next.js 16 + Cloudflare Workers (@opennextjs/cloudflare) の RSS リーダー (S
 
 ## スタック
 
-| レイヤー       | 技術                                                             |
-| -------------- | ---------------------------------------------------------------- |
-| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare                   |
-| フロントエンド | React 19 + TypeScript + Tailwind v4 (`'use client'`)             |
-| API            | Next.js Route Handlers (`app/api/**`)                            |
-| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                      |
-| データ         | R2 (`rss-reader-data`) — 共有フィードデータ + ユーザー別 JSON    |
-| AI             | Workers AI (要約・翻訳)                                          |
-| デプロイ       | Cloudflare Workers の CI/CD (master push → 自動ビルド＆デプロイ) |
+| レイヤー       | 技術                                                                                               |
+| -------------- | -------------------------------------------------------------------------------------------------- |
+| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare                                                     |
+| フロントエンド | React 19 + TypeScript + Tailwind v4 (`'use client'`)                                               |
+| API            | Next.js Route Handlers (`app/api/**`)                                                              |
+| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                                                        |
+| データ         | R2 (`rss-reader-data`) + KV (`RATE_LIMIT`) — 共有フィードデータ + ユーザー別 JSON + レートリミット |
+| AI             | Workers AI (要約・翻訳・フィード推薦)                                                              |
+| デプロイ       | Cloudflare Workers の CI/CD (master push → 自動ビルド＆デプロイ)                                   |
 
 ## デプロイ
 
