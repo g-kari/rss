@@ -1396,6 +1396,44 @@ grep -nE "^\.claude/skills" .gitignore
 
 主な使用箇所: 本 cycle (perf 再走査 5 cycle ぶり) で simplify agent 0 件発見 + main thread 二段保証 sweep 5 観点 全 clean、新規追加コードも規範遵守維持 → 4-5 cycle 連続 clean 観測の retrospective 記録例
 
+##### サブパターン: 個別 sweep 観点 + **規範ファイル全体** の事前予防段階到達は別軸で観測する
+
+「個別 sweep 観点」(`@/` import / 三項 chain / closure `!` 等) の連続 clean カウントとは別軸で、**特定規範ファイル全体の全規範項目が production code 全域で canonical 遵守** という **「規範ファイル単位の事前予防段階」** 観察できる。これは個別観点の累積でなく、agent re-sweep で `Φ` (全違反 0 件) が確認されたとき到達。
+
+**個別観点 vs 規範ファイル単位の違い**:
+
+| 評価単位                                              | 観察方法                                      | 浸透度示唆                                                  |
+| ----------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| **個別 sweep 観点** (例: `@/` absolute import)        | main thread 機械的 grep の連続 clean カウント | 1 規範項目の浸透度                                          |
+| **規範ファイル単位** (例: `browser-platform.md` 全体) | agent 観点別再走査で「該当規範違反 0 件」検出 | **規範 file 全体の浸透度** (= 該当 file 規範の事前予防段階) |
+
+**規範ファイル単位 事前予防段階の判定 (3 条件全充足)**:
+
+1. **agent 観点 sweep で該当規範 file の全項目 0 件** (初回 sweep または 5+ cycle 振り再走査)
+2. **production code 全域で canonical 遵守 (該当 file 規範が new code でも維持)** が agent report で明示
+3. **少なくとも 2 cycle 連続で該当規範 file 違反 0 件** (本サイクル + 前 cycle)
+
+**該当する典型 規範 file**:
+
+| 規範 file                                                                                    | 事前予防段階到達確認方法                            | 観察履歴                                           |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------- |
+| `browser-platform.md` (silent fallback / feature detection / 最低 version 定数 / 永続化 TTL) | browser compat 観点 agent sweep                     | 本 cycle 初回 sweep で 0 件 confirm                |
+| `api-security.md` (auth + ownership 二段 / dev-e2e 二重ガード / SSRF)                        | security narrow 観点 (3 specific check) agent sweep | 5 cycle 前 0 件 + 直近 cycle 0 件 = 2 周連続 clean |
+| `typescript-conventions.md` (strict / interface / hooks import path 統一)                    | refactor 観点 + main thread grep sweep              | 9 cycle 連続 clean (`@/` 規範)                     |
+
+**How to apply**: agent re-sweep 結果が「該当規範 file の全項目 0 件」を確認したとき、retrospective に記録 (個別観点と別軸の指標として、規範 file レベルの浸透度を可視化):
+
+1. **agent report で「規範範囲全体で違反 0 件」を確認** (個別観点別の発見 0 件と区別)
+2. **規範 file 単位の連続 clean カウント** を retrospective 表に追加 (個別観点表と並列)
+3. **2+ cycle 連続で規範 file 全体 0 件** → 「規範 file 全体の事前予防段階」と判定 + 該当 file の sweep 頻度を 5-7 cycle 間隔に間引き可能
+
+**反例 (本サブパターン不適用)**:
+
+- 規範 file の **一部 section のみ** sweep 済 (全項目走査できていない) → 規範 file 全体評価対象外
+- agent report が **抽象的「該当なし」のみ** で具体的 check 項目を明記しない → 評価不可、再 sweep 要
+
+主な使用箇所: 本 cycle (browser compat 初回 sweep) で `browser-platform.md` 全項目 (SpeechSynthesis / AudioContext / MediaSession / share / IntersectionObserver / ResizeObserver / `:has()` / silent fallback / 最低 version 定数) で違反 0 件 + canonical 遵守確認 → **`browser-platform.md` 全体の事前予防段階到達** と判定、agent report で「規範範囲全体で違反 0 件 + canonical 浸透」明示
+
 ### 派生ケース: 調査エージェントの設計方針案コメントは "Issue 本文の前提が誤っている可能性" を検証スコープに含める
 
 調査エージェントに「設計方針 A/B/C 案を出して」と派遣すると、Issue 本文の前提を **疑わずに前提条件として受け入れて** 案を作るケースがある。だが Issue 起票時の前提と実コードが乖離しているケース (subscriber 数 / Provider tree / API 形式 / 重複コード規模 等) が頻繁にある。`#758` 「全 subscriber re-render」が実は subscriber 1 つで分割効果ほぼ無し、`#755` 「sanitize-html 既存依存」が実は未追加、のような事例。
