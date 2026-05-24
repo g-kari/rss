@@ -1,9 +1,9 @@
 "use client";
-import { useCallback, useEffect, useRef, type ComponentProps, type KeyboardEvent } from "react";
+import { useRef, type ComponentProps } from "react";
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
 import { usePopupLock } from "@/hooks/usePopupLock";
-import { FOCUSABLE_SELECTOR } from "@/lib/modal-focus";
+import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
 
 type ArticleViewProps = ComponentProps<typeof ArticleView>;
 
@@ -15,52 +15,13 @@ interface Props {
 
 export default function FocusModeOverlay({ focusMode, exitFocusMode, articleViewProps }: Props) {
   usePopupLock(focusMode);
-  // WCAG 2.4.3: フォーカスモード終了時に元のフォーカス位置へ戻す (#687 ConfirmModal と同パターン)
-  const returnFocusRef = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (focusMode) {
-      returnFocusRef.current = document.activeElement as HTMLElement | null;
-    } else {
-      const ret = returnFocusRef.current;
-      returnFocusRef.current = null;
-      if (ret && document.contains(ret)) ret.focus();
-    }
-  }, [focusMode]);
-
-  // フォーカストラップ: Modal.tsx と同パターン。Tab で最後の要素 → 最初の要素、
-  // Shift+Tab で最初の要素 → 最後の要素へ循環させ、ダイアログ外へ抜けない。
-  // Escape でフォーカスモード終了。
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "Escape") {
-        exitFocusMode();
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (focusable.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first || document.activeElement === dialog) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last || document.activeElement === dialog) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    },
-    [exitFocusMode],
-  );
+  // Modal.tsx / ConfirmModal.tsx と同 canonical pattern: returnFocusRef + Tab cycle + Escape +
+  // 初期 focus + `typeof ret.focus === "function"` safety guard を 1 hook に集約 (#790)。
+  const { handleKeyDown } = useModalFocusTrap(dialogRef, {
+    onClose: exitFocusMode,
+    isOpen: focusMode,
+  });
 
   if (!focusMode) return null;
   return (
