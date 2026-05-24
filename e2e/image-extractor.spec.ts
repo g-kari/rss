@@ -236,3 +236,38 @@ test.describe("collectImageUrlsFromHtml — <picture><source srcset> から抽�
     ]);
   });
 });
+
+test.describe("collectImageUrlsFromHtml — #812 defensive (unknown 受け)", () => {
+  test("undefined は空配列", () => {
+    expect(collectImageUrlsFromHtml(undefined)).toEqual([]);
+  });
+
+  test("null は空配列", () => {
+    expect(collectImageUrlsFromHtml(null)).toEqual([]);
+  });
+
+  test("number は空配列 (非 string 型不一致)", () => {
+    expect(collectImageUrlsFromHtml(42)).toEqual([]);
+  });
+
+  test("object は空配列 (非 string 型不一致、本番 minified TypeError 防御)", () => {
+    expect(collectImageUrlsFromHtml({ content: "<img src='x.jpg'>" })).toEqual([]);
+  });
+
+  test("array は空配列", () => {
+    expect(collectImageUrlsFromHtml(["<img src='x.jpg'>"])).toEqual([]);
+  });
+
+  test("boolean は空配列", () => {
+    expect(collectImageUrlsFromHtml(true)).toEqual([]);
+  });
+
+  test("空文字は空配列", () => {
+    expect(collectImageUrlsFromHtml("")).toEqual([]);
+  });
+
+  test("string は正常動作 (regression)", () => {
+    const html = '<img src="https://example.com/x.jpg" width="200" height="200">';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/x.jpg"]);
+  });
+});

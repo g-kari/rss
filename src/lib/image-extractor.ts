@@ -112,7 +112,16 @@ function isTooSmallByAttrs(
  * - data: URI / 非 proxy・非絶対 URL は除外
  * - width/height 属性（または style）から両辺とも `MIN_IMAGE_SIZE_PX` 未満と判定できる画像は除外
  */
-export function collectImageUrlsFromHtml(html: string): string[] {
+export function collectImageUrlsFromHtml(html: unknown): string[] {
+  // #812 派生防御: client side caller (useArticleViewContent / usePrefetchGalleryContents)
+  // から processedContent 経由で渡される input は `string | null` 型保証だが、runtime で
+  // 非 string が混入する経路 (cache 旧 schema / decode fallback / API edge case) があり、
+  // 後続の RegExp.prototype.exec(html) + 内部 RegExpExecArray[1].startsWith("data:")
+  // で本番 minified bundle TypeError (#812 同種症状) を発火させる。非 string 入力は
+  // 空配列 fallback で safe (UX 影響: 画像 0 件描画 < ErrorBoundary 発火)。
+  // `react-component-split.md § 派生「JSX 描画 helper unknown 受け defensive」` 規範。
+  if (typeof html !== "string") return [];
+
   const seen = new Set<string>();
   const result: string[] = [];
 
