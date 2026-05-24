@@ -173,6 +173,51 @@ sub.requestCookie;                // ← `!` 不要
 
 主な使用箇所: `src/lib/api-feed-guard.ts#FeedSubscribedResult` — `feeds/[id]/{,refresh,reinfer,purge-content-cache}` の subscription guard で `sub: UserSubscription` を `!` なしで取得
 
+### 派生ケース: closure 内で narrowing が失効する罠 — narrowed const 束縛で保持する
+
+TypeScript の **control flow 解析は closure (arrow function / 関数式) 内では narrowing 結果を持ち越せない**。三項演算子の truthy branch で `opts.selectedArticle` が non-null に narrow されても、内側の `(a) => ... opts.selectedArticle.id` arrow function の中では再度 `Article | undefined` 型に戻る。これは TypeScript 仕様 (variable は closure 内で再代入される可能性ありと安全側 default 評価)。
+
+```typescript
+// アンチパターン 1: closure 内で narrowing 失効 → ! が必要 (型エラー回避の見かけ上の妥協)
+const idx = opts.selectedArticle
+  ? list.findIndex((a) => a.id === opts.selectedArticle!.id) // ← closure 内で narrowing 失効、! で誤魔化す
+  : -1;
+
+// アンチパターン 2: closure 内の opts.selectedArticle が undefined になりうると判定 → TS error
+const idx = opts.selectedArticle
+  ? list.findIndex((a) => a.id === opts.selectedArticle.id) // TS error: Object is possibly 'undefined'
+  : -1;
+
+// 修正パターン: narrowed const 束縛で closure 内に narrowing 結果を持ち越す
+const sel = opts.selectedArticle;
+const idx = sel ? list.findIndex((a) => a.id === sel.id) : -1;
+// ↑ sel は const で再代入不能 → closure 内でも narrowing 維持 → ! 不要 + 型安全
+```
+
+**TS 仕様の根拠**:
+
+- **let / var**: closure 外で narrow されても、closure 内では再代入可能性のため最広型 (例: `Article | undefined`) に戻る
+- **const**: 再代入不能のため、closure 内でも narrowing 結果が維持される (control flow 解析が `const` 束縛を信頼)
+- **object property access** (`opts.selectedArticle.id`): property が getter 等で動的変化する可能性のため closure 内で narrowing 失効、`const sel = opts.selectedArticle` で値コピーすれば property access の動的性を排除
+
+**How to apply**: `obj.prop ? closure(obj.prop) : ...` のような三項 + closure の組合せで TS narrowing 失効に直面したら (`!` で誤魔化す vs narrowed const 束縛で型安全 + 規範遵守の選択、後者が canonical):
+
+1. **truthy branch の closure 内で `obj.prop` を参照しているか** を確認
+2. 参照しているなら **closure 直前で `const x = obj.prop;` で束縛**
+3. 三項 + closure を `const x = obj.prop; x ? closure(x) : null` の形に書き換え
+4. **`!` 削除可能性 + typecheck pass** を verify
+5. 既存 `! .id` 等の non-null assertion を `coding-conventions.md § 禁止事項` / `typescript-conventions.md § strict` 観点で sweep する際は本派生 pattern を canonical 解として推奨
+
+**反例 (本派生 pattern 不要なケース)**:
+
+- **closure を使わず直接 access** (`if (obj.prop) { use(obj.prop) }`) → 同一 scope で narrowing 維持、`!` 不要
+- **object property でなく primitive 直接** (`if (x) { closure(x) }` で x が string 等) → narrowing 維持される (closure 内 const-like 扱い)
+- **closure 内で別 property を参照** (closure 内で `obj.differentProp` 等を見る) → そもそも narrowing 対象外、`!` 不要
+
+**agent 誤判定への注意**: code review agent は表面的に「三項演算子 truthy branch で narrowed 済」と判定するが、**closure context での narrowing 失効** までは sometimes 認識しない。`feedback_subagent_verification.md` 規範通り、`!` 削除提案は **実コード Read で「closure 内か」確認 + typecheck pass で verify** が必須 (本サイクル commit `008cc092` で agent 提案を verify 中に closure narrowing 失効を発見、`const sel = ...` 束縛に変更で対応)。
+
+主な使用箇所: `src/hooks/useKeyboardNav.ts:77` — `opts.selectedArticle ? list.findIndex(a => a.id === opts.selectedArticle.id) : -1` で TS error → `const sel = opts.selectedArticle; sel ? list.findIndex(a => a.id === sel.id) : -1` に修正、`!` 削除 + 型安全達成 (本サイクル commit `008cc092`)
+
 ## 三項演算子 chain で同 tag を repeat すると DOM 再利用が壊れて flash する
 
 React reconciler は **同 position + 同 tag の element** は DOM を再利用する (`<div>` → `<div>` で innerHTML 差し替えのみ) が、**三項演算子 chain で異なる branch に同 tag を書いた場合** は **異なる position の element** として扱われ、unmount → mount → DOM 全置換が発生する。子要素を含む大きい `<div dangerouslySetInnerHTML>` 等で発生すると視覚的「フラッシュ」(本文が一瞬消えて再描画) として観測される。
