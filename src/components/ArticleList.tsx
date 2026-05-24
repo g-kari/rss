@@ -158,7 +158,7 @@ function ArticleList({
   const showFeedName = selectedFeedId === null || selectedFeedId === SPECIAL_FEED_IDS.BOOKMARKS;
 
   // #808 Phase 3a: useOgpCache を AppShell に lift up + OgpCacheProvider 経由参照
-  // (Phase 3b で useContentLinkPreviews も同 Context 経由で重複 fetch 統合される設計)
+  // (Phase 3b 完了: useContentLinkPreviews も同 Context 経由で重複 fetch 統合済)
   const { ogpCache } = useOgpCacheContext();
 
   const galleryPrefetchEnabled =

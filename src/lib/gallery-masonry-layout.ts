@@ -21,13 +21,15 @@
 /**
  * masonry layout で扱う最小単位の item。
  *
- * `id` は React key / Map key として使用。`width` / `height` は配置時の高さ計算に使う
- * (本 Phase 0 では `height` のみ参照、`width` は Phase 1 で aspectRatio 計算に使用予定)。
+ * `id` は React key / Map key として使用。Phase 1 実装の `computeMasonryLayout` /
+ * `computeColumnHeights` では `height` のみ参照する設計 (各 item の幅は column 単位で
+ * 均一前提)。`width` field は将来 aspectRatio 補正 (縦長・横長画像で column バランスを
+ * 調整する拡張) を導入する際の予約枠で、Phase 1 完了時点では未参照。
  */
 export interface MasonryLayoutItem {
   /** item の識別子 (React key + position map のキー) */
   id: string;
-  /** item の幅 (px) — Phase 1 で aspectRatio / column-fit 計算に使用 */
+  /** item の幅 (px) — 予約 field、Phase 1 アルゴリズム未参照。将来の aspectRatio 補正で活用検討 */
   width: number;
   /** item の高さ (px) — 列累積高さに加算される値 */
   height: number;
