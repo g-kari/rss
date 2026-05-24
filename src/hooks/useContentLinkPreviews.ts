@@ -5,6 +5,8 @@ import { apiFetch } from "../lib/api-fetch";
 import type { OgpData } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { useOgpCacheContext } from "../contexts/OgpCacheContext";
+import { devError } from "../lib/dev-log";
+import { isAbortError } from "../lib/fetch";
 
 const LINK_PREVIEW_CLASS = "ogp-link-preview";
 
@@ -162,7 +164,14 @@ export function useContentLinkPreviews(
           const card = buildPreviewCard(url, ogp);
           if (card) anchor.parentElement?.insertAdjacentElement("afterend", card);
         })
-        .catch(() => {});
+        .catch((err: unknown) => {
+          // /api/ogp は外部依存ラッパー (apiFetch) を経由する fetch、silent fail させると
+          // 「OGP プレビューが表示されない」症状が DevTools / wrangler tail で追跡不能
+          // (browser-platform.md § silent fallback の禁止 規範対象、外部依存ラッパー
+          // カテゴリで devError 必須)。AbortError は cleanup 経路の正常 abort で noise
+          // になるため除外、それ以外の error は devError で観測性確保。
+          if (!isAbortError(err)) devError("[useContentLinkPreviews] OGP fetch failed", err);
+        });
     }
 
     return () => {
