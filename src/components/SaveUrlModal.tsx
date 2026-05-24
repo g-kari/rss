@@ -1,6 +1,7 @@
 "use client";
 
 import Modal from "./Modal";
+import Spinner from "./Spinner";
 
 interface Props {
   url: string;
@@ -18,7 +19,8 @@ interface Props {
 export default function SaveUrlModal({ url, onUrlChange, saving, error, onSave, onClose }: Props) {
   return (
     <Modal title="URL を保存" onClose={onClose} width="sm:w-[400px]">
-      <div className="p-4">
+      {/* aria-busy: saving 中であることをスクリーンリーダーに通知 (POST /api/articles/save は 1-3 秒) */}
+      <div className="p-4" aria-busy={saving || undefined}>
         <input
           type="url"
           placeholder="https://..."
@@ -29,7 +31,10 @@ export default function SaveUrlModal({ url, onUrlChange, saving, error, onSave, 
           className="w-full text-[13px] bg-surface-base border border-border-default rounded-lg px-3 py-2 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
         />
 
-        <div className="flex gap-2 mt-3">
+        <div className="flex items-center gap-2 mt-3">
+          {/* saving 中の視覚 feedback: ボタン dim だけだと 1-3 秒の fetch 中に「押せたか」不明、
+              Spinner で「進行中」を明示 (canonical: ArticleView / ArticleList でも同 Spinner 使用) */}
+          {saving && <Spinner />}
           <button
             type="button"
             onClick={() => onSave("bookmark")}
