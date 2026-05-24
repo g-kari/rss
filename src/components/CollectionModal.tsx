@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Modal from "@/components/Modal";
+import Spinner from "@/components/Spinner";
 
 interface Props {
   mode: "create" | "rename";
@@ -31,7 +32,9 @@ export default function CollectionModal({ mode, initialName = "", onSubmit, onCl
 
   return (
     <Modal title={mode === "create" ? "コレクション作成" : "コレクション名変更"} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="p-4 space-y-4">
+      {/* aria-busy: submitting 中であることをスクリーンリーダーに通知 (SaveUrlModal canonical 同 pattern)。
+          submit 中の「dim だけ」では SR で「disabled 中 = 入力不正」と「処理中」が区別できない。 */}
+      <form onSubmit={handleSubmit} className="p-4 space-y-4" aria-busy={submitting || undefined}>
         <div>
           <input
             type="text"
@@ -50,7 +53,10 @@ export default function CollectionModal({ mode, initialName = "", onSubmit, onCl
             </p>
           )}
         </div>
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
+          {/* submitting 中の視覚 feedback: dim だけだとボタン押せたか不明、Spinner で進行中を明示
+              (canonical: SaveUrlModal / ArticleView / ArticleList でも同 Spinner 使用)。 */}
+          {submitting && <Spinner />}
           <button
             type="button"
             onClick={onClose}

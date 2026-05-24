@@ -134,18 +134,33 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
     }
     const [headerB64, payloadB64, sigB64] = parts;
 
-    const header = JSON.parse(new TextDecoder().decode(base64urlToBytes(headerB64))) as {
-      alg: string;
-      kid?: string;
-    };
+    // JSON.parse は実行時に any を返すため、attacker が base64url("null") / base64url("[]") /
+    // base64url('"string"') 等の non-object payload を送ると、後続の `header.alg` access で
+    // TypeError 発生 → 認証エラーハンドリングを bypass する経路ができる。
+    // object かつ non-null かつ non-array を assertion 前に確認 (defensive)。
+    const headerRaw: unknown = JSON.parse(new TextDecoder().decode(base64urlToBytes(headerB64)));
+    if (typeof headerRaw !== "object" || headerRaw === null || Array.isArray(headerRaw)) {
+      console.error("[auth/verify] header is not a JSON object", {
+        type: typeof headerRaw,
+        isArray: Array.isArray(headerRaw),
+      });
+      return null;
+    }
+    const header = headerRaw as { alg: string; kid?: string };
     if (header.alg !== "ES256") {
       console.error("[auth/verify] unsupported alg", { alg: header.alg });
       return null;
     }
 
-    const payload = JSON.parse(
-      new TextDecoder().decode(base64urlToBytes(payloadB64)),
-    ) as JWTPayload;
+    const payloadRaw: unknown = JSON.parse(new TextDecoder().decode(base64urlToBytes(payloadB64)));
+    if (typeof payloadRaw !== "object" || payloadRaw === null || Array.isArray(payloadRaw)) {
+      console.error("[auth/verify] payload is not a JSON object", {
+        type: typeof payloadRaw,
+        isArray: Array.isArray(payloadRaw),
+      });
+      return null;
+    }
+    const payload = payloadRaw as JWTPayload;
 
     if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
       console.error("[auth/verify] token expired or no exp", {
