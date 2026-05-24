@@ -5,7 +5,8 @@ import {
   useCallback,
   useMemo,
   useState,
-  type KeyboardEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type SyntheticEvent,
 } from "react";
 import type { Article } from "../../types";
@@ -14,16 +15,38 @@ import { buildImageProxyUrl } from "../../lib/image-proxy-url";
 
 // ── 共通キーボードハンドラ ──────────────────────────────────────────────
 
-/** Enter / Space で記事を選択する共通 onKeyDown ハンドラを生成する */
-export function handleArticleKeyDown(
+/**
+ * Enter / Space で記事を選択する共通 onKeyDown ハンドラを生成する。
+ * React の KeyboardEvent / MouseEvent は DOM global と同名なので、本 file 内では
+ * React 由来の event 型と区別するため呼び出し側 (ListItem 等) で receive される。
+ * 型は React.KeyboardEvent / React.MouseEvent を generic に受けて preventDefault /
+ * key access のみ使用、target element 型に依存しないため `<T>` で generic 化。
+ */
+export function handleArticleKeyDown<T = Element>(
   article: Article,
   onSelectArticle: (a: Article) => void,
-): (e: KeyboardEvent) => void {
-  return (e: KeyboardEvent) => {
+): (e: ReactKeyboardEvent<T>) => void {
+  return (e: ReactKeyboardEvent<T>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onSelectArticle(article);
     }
+  };
+}
+
+/**
+ * 右クリック (contextmenu) で記事メニューを開く共通ハンドラを生成する。
+ * onContextMenu 未設定時 (= 親が menu 未対応) は no-op で event 伝播を許可。
+ * ListItem / MagazineItem / CardItem の同形 useCallback 重複を集約。
+ */
+export function handleArticleContextMenu<T = Element>(
+  article: Article,
+  onContextMenu: ((a: Article, x: number, y: number) => void) | undefined,
+): (e: ReactMouseEvent<T>) => void {
+  return (e: ReactMouseEvent<T>) => {
+    if (!onContextMenu) return;
+    e.preventDefault();
+    onContextMenu(article, e.clientX, e.clientY);
   };
 }
 
