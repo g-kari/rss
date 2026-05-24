@@ -442,7 +442,6 @@ src/
     retry-after.ts           # HTTP Retry-After ヘッダー（delta-seconds / HTTP-date）をミリ秒に変換（クライアント・cron で共有）
     read-state-storage.ts    # ReadState の localStorage 永続化ユーティリティ + ペンディング状態スナップショット
     read-state-prune.ts      # readBeforeTimestamp 以前の publishedAt を持つ既知記事の readId を物理削除する純粋関数 + ttlDays 連動の effective cutoff 算出
-    pagination-eager-load.ts # クライアント側ページネーションの eager load 判定純粋関数（sentinel 交差 / コンテンツが viewport を埋めていない判定の OR）
     gallery-prefetch.ts      # `usePrefetchGalleryContents` の `articlesKey` 生成純粋関数（visible 拡張で確実にキー変化させて effect 再実行をトリガー）
     gallery-display.ts       # `selectGalleryImages` 純粋関数（ギャラリー描画用の画像ソース選択: prefetched / thumb / none の 3 分岐）
     gallery-offviewport.ts   # `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` 純粋関数（masonic ギャラリーで「viewport 外 item のみ positioner.update」する設計の判定層、#714 Phase 1）
@@ -850,7 +849,6 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `read-state-sync-api.spec.ts`                   | `src/lib/type-guards.ts#isReadState` — read-state-sync-api.ts 依存の型ガード検証 (Issue #587)                                                                                                                                                     |
 | `read-state-storage.spec.ts`                    | `src/lib/read-state-storage.ts` — localStorage 永続化                                                                                                                                                                                             |
 | `read-state-prune.spec.ts`                      | `src/lib/read-state-prune.ts` — readBeforeTimestamp 以前の readId 物理削除純粋関数 + `computeEffectiveReadBeforeCutoff`（ttlDays 連動）                                                                                                           |
-| `pagination-eager-load.spec.ts`                 | `src/lib/pagination-eager-load.ts` — `shouldEagerLoad` 判定純粋関数（ギャラリー無限スクロール）                                                                                                                                                   |
 | `gallery-prefetch.spec.ts`                      | `src/lib/gallery-prefetch.ts` — `buildArticlesKey` 純粋関数（visible 拡張で確実にキー変化）                                                                                                                                                       |
 | `gallery-display.spec.ts`                       | `src/lib/gallery-display.ts` — `selectGalleryImages` 純粋関数（prefetched / thumb / none の 3 分岐選択）                                                                                                                                          |
 | `gallery-masonry-layout.spec.ts`                | `src/lib/gallery-masonry-layout.ts` — `computeColumnHeights` / `assignItemToShortestColumn` / `computeMasonryLayout` / `computeScrollAnchorDelta` 純粋関数 (#773 Phase 0/1、自前 masonry virtualizer 基盤)                                        |
