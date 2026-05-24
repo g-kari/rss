@@ -43,10 +43,20 @@ export function generateDbscChallenge(): string {
 export async function importDbscPublicKey(publicKey: string): Promise<CryptoKey> {
   const trimmed = publicKey.trim();
   if (trimmed.startsWith("{")) {
-    // JWK 形式
+    // JWK 形式。
+    // attacker は register endpoint で任意 HTTP body を送れるため、`{` 開始でも
+    // `"null"` / `"[]"` / `"\"str\""` 等の non-object JSON を送られる経路がある。
+    // crypto.subtle.importKey("jwk", null, ...) は TypeError で reject されるが、
+    // 呼出元 verifyDbscResponse の try/catch で「JWK 形式不正」と区別できないため、
+    // 事前に 3 軸 narrowing で non-object を明示拒否する (react-component-split.md §
+    // 派生サブケース「security path の JSON.parse 結果は unknown 受け + 3 軸 narrowing」)。
+    const parsed: unknown = JSON.parse(trimmed);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      throw new Error("JWK must be a JSON object");
+    }
     return crypto.subtle.importKey(
       "jwk",
-      JSON.parse(trimmed) as JsonWebKey,
+      parsed as JsonWebKey,
       { name: "ECDSA", namedCurve: "P-256" },
       false,
       ["verify"],
