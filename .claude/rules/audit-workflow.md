@@ -70,6 +70,54 @@ paths: "e2e/**/*.spec.ts"
 
 主な使用箇所: simplify エージェントが `browser-translator.ts` の silent `catch { return null }` を発見 (規範: browser-platform.md「silent fallback の禁止 — `try/catch → null` には必ず `devError` を添える」/ canonical: `browser-summarizer.ts`)、即修正で `devError` 追加
 
+#### 派生サブケース: agent 提案の secondary issue は canonical 規範 + e2e spec 影響で個別 verify する
+
+agent が **primary issue + secondary issue (2 件以上)** をまとめて提案するとき、primary は正しくても secondary が **canonical 規範矛盾** or **既存 e2e spec の selector 文字列依存と衝突** することがある。各 issue を **個別に canonical 対比 + spec selector 影響** verify してから採用範囲を minimal scope に絞る。
+
+```
+パターン: agent 複合提案の個別 verify フロー
+  1. agent report で primary + secondary が並列で提案される
+  2. 各 issue を独立に以下 3 軸で verify:
+     a. canonical 規範 (.claude/rules/*.md) と整合するか
+     b. canonical 実装ファイル (例: A11yHelpers.tsx) と pattern 一致するか
+     c. 既存 e2e spec の selector / locator 文字列 (例: `[role="status"]`) と衝突しないか
+  3. primary 採用 + secondary 見送りの選別:
+     - canonical 一致 + spec 影響なし → 採用
+     - canonical 矛盾 → 見送り (agent 提案が誤りの可能性)
+     - spec 影響あり → 見送り or spec 同時更新 (scope 拡大、別 Issue 検討)
+  4. commit message で「採用 primary + 見送り secondary の理由」を明示
+```
+
+**典型的な見送りパターン**:
+
+| agent 主張                                 | 見送り理由                                                                        |
+| ------------------------------------------ | --------------------------------------------------------------------------------- |
+| 「role attribute を削除」                  | canonical implementation 既使用 + e2e spec の selector 依存                       |
+| 「class name を統一」                      | 既存 caller の className prop で参照 + テーマ切替の動的注入と衝突                 |
+| 「prop を削除」                            | 既存 caller の type 互換性破壊 + ComponentProps<typeof Child> 経由 forward と衝突 |
+| 「element type 変更 (`<p>` → `<div>` 等)」 | semantic HTML 仕様変更 + 既存 CSS selector (`p.article-content` 等) と衝突        |
+| 「event handler 名を rename」              | 既存 caller の onXxx prop と type 互換性破壊                                      |
+
+**How to apply**: agent 提案 (特に複合提案で secondary 含む) を採用前に以下 (canonical 規範矛盾 + spec selector 依存衝突は agent が認識しない盲点、`feedback_subagent_verification.md` の実コード Read 規範 + e2e spec grep で構造的予防可能):
+
+1. **各 issue を個別に 3 軸 verify** (canonical 規範 / canonical 実装 / e2e spec selector)
+2. **canonical 矛盾の secondary は採用見送り** (agent 主張が誤りの可能性高い)
+3. **spec 影響ありの secondary は scope 評価**: spec 同時更新が容易なら一括採用、scope 大なら別 Issue 起票
+4. **commit message で primary 採用 / secondary 見送り の判断軸を明示** (将来の AI / 開発者の誤判定防止 + agent prompt 改善材料)
+
+**反例 (本派生サブケース不要なケース)**:
+
+- agent が **single issue のみ提案** → 個別 verify 不要、ゴールド sign 評価で十分
+- secondary が **primary と完全独立 + canonical 整合** → 通常採用 (個別 verify は 1 回で済む)
+- agent が canonical pattern を明示引用済 → verify は最小限で OK
+
+主な使用箇所:
+
+- `ToastContainer.tsx` (本サイクル commit `9c1a5c46`) — agent 提案:
+  - Primary (永続 aria-live mount): canonical `A11yHelpers.tsx` 一致 → **採用**
+  - Secondary (`role="status"` 削除): canonical `A11yHelpers.tsx` が `role="status" + aria-live` 両用 (矛盾) + `regression-load-more-fail.spec.ts:101` の `[role="status"]` selector 依存 → **見送り**
+  - 結果: scope minimal で primary のみ 1 行修正 (touch 1 file)、SR announce 改善達成 + e2e spec 影響ゼロ
+
 ### 派生ケース: 高信頼度の独立修正は「Issue 起票せず同サイクルで連続修正」する
 
 監査エージェントの指摘が以下の条件を全て満たす場合、Issue 起票をスキップして **同サイクルで連続修正 → 各 commit を master 反映** が効率的:
