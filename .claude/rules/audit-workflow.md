@@ -393,6 +393,36 @@ grep -rnE "from\s+[\"'].*[/\"']<target>[\"']" src/ app/ \
 
 主な使用箇所: 41st (security narrow) → 42nd (e2e regression test) → 43rd (perf / a11y / simplify) → 44th (bug / 新機能 / docs drift / Dependabot) で 1 周完了。各サイクルで 4-9 件発見、消化 4-7 件で安定運用
 
+#### 派生サブケース: 過去未実施観点 (初回 sweep) は **priority 最高**で hot path 発見余地が累積
+
+ローテーションを **5-7 サイクル継続** すると、最初の派遣観点 (perf / a11y / simplify 等) は再走査で全 sweep clean が増える一方、**過去未実施の新規観点** (TypeScript type safety / e2e regression / browser compatibility / i18n / bundle size 等) には **hot path 発見余地が累積している** 可能性高い。
+
+**初回 sweep 観点の発見傾向** (本プロジェクト実測):
+
+| 観点                       | 初回 sweep 発見件数 | 累積期間   | 備考                                                                 |
+| -------------------------- | ------------------- | ---------- | -------------------------------------------------------------------- |
+| perf (re-render hotspots)  | 2-3 件              | 3-5 cycle  | 構造的 perf bug は codify 後早期消化                                 |
+| a11y                       | 2-3 件              | 3-5 cycle  | ARIA / focus / SR announce は段階的 fix                              |
+| simplify (dead code)       | 1-2 件              | 5-7 cycle  | 規範浸透で新規 dead code 累積 slow                                   |
+| **TypeScript type safety** | **2 件**            | **未測定** | **`any` / `as` cast / null narrowing 累積、初回 sweep で発見余地大** |
+| **e2e regression test**    | (未実施)            | -          | 仮説: bug fix で spec 追加されていない箇所累積                       |
+| **browser compatibility**  | (未実施)            | -          | 仮説: feature detection / polyfill 不足                              |
+| **bundle size**            | (未実施)            | -          | 仮説: 大きな import / tree-shake 漏れ                                |
+
+**How to apply**: ローテーション計画立案時に以下を判定 (初回観点には codify 規範未確立で「あるべき canonical」が agent prompt で示唆できないが、初回でも 2-3 件発見できれば次 cycle 以降に sweep 規範が確立可能、観点ローテーションテーブル拡張で long-term coverage 向上):
+
+1. **過去全 cycle の派遣観点を git log で確認** — 「過去未実施の観点」が残っているか抽出
+2. **未実施観点があれば最古 rotation 観点 (5-7 cycle 前) より優先** (初回 hot path 発見余地大)
+3. **agent prompt に「過去未実施なので canonical 規範未確立、初回 sweep として 1-3 件の候補を発見」と明記** (規範 mapping 不在で agent が困惑するのを予防)
+4. **発見した hot path から fix + retrospective codify で規範化** → 次 cycle 以降の sweep 対象に追加
+
+**反例 (本サブケース不適用)**:
+
+- 既に **全 actionable 観点を実施済** (12+ cycle 経過、ローテーション完全網羅) → 全観点で再走査 mode、初回 sweep 該当なし
+- ユーザーが **特定観点を明示指示** → 指示優先 (本サブケース無視)
+
+主な使用箇所: 本サイクル (12 cycle 経過時点) で TypeScript type safety 観点を **初回 sweep として実施** → 2 件 hot path 発見 (`auth.ts` JWT defensive + `usePiperTts` `as unknown as`)、1 件採用 + 1 件 Issue 起票 (`#820`)。初回 sweep の発見余地累積を実証
+
 ### 派生ケース: 観点別 Issue 起票 agent の prompt 必須 3 要件
 
 observation rotation で派遣する agent や、Step 0 sweep で「全 Issue が判断待ち + 自走着手なし」と判定して **loop directive 第 3 段階 (= コード精査して観点別 Issue 作成)** を発動するときの agent prompt は、3 つの mandatory step を必ず含めないと **既存対応済の提案 / 設計矛盾を含む提案 / 副作用許容しがたい提案** が大量混入する。
