@@ -778,8 +778,10 @@ export default function AppShell({
 
   // #808 Phase 3a: useOgpCache を AppShell 階層 (ArticleList と ArticleContentBody の
   // 共通祖先) で 1 度だけ呼んで OgpCacheProvider に注入。これで ArticleList 側 (gallery
-  // OGP) と ArticleContentBody 側 (本文リンクプレビュー、Phase 3b で統合予定) が
+  // OGP) と ArticleContentBody 側 (本文リンクプレビュー、Phase 3b で統合済) が
   // 同じ cache instance を参照可能になる (state 分裂を構造的に防止)。
+  // Phase 3b 完了: useContentLinkPreviews.ts:102,156 が useOgpCacheContext 経由で
+  // getEntry / cacheOgpEntry を呼ぶ実装になっており、cache hit 率向上 + 重複 fetch 統合済。
   const ogpCacheStore = useOgpCache(filterState.visible);
 
   return (

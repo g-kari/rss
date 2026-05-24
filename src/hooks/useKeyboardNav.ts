@@ -74,7 +74,10 @@ interface KeyboardNavOptions {
 
 function buildContext(opts: KeyboardNavOptions): ShortcutContext {
   const list = opts.filteredArticles;
-  const idx = opts.selectedArticle ? list.findIndex((a) => a.id === opts.selectedArticle!.id) : -1;
+  // narrowed な定数を closure 外で抽出 (closure 内では TS control flow 解析が失われて
+  // ! が必要になるが、外で `const sel = opts.selectedArticle` と束縛すれば narrowed 維持)。
+  const sel = opts.selectedArticle;
+  const idx = sel ? list.findIndex((a) => a.id === sel.id) : -1;
   return {
     ...opts,
     list,

@@ -36,7 +36,11 @@ export function useGallerySwipeNav(scrollElement: HTMLElement | null, enabled: b
     }
 
     function findCurrentCardIndex(cards: HTMLElement[]): number {
-      const containerRect = scrollElement!.getBoundingClientRect();
+      // 同 file の scrollToCard と同 pattern で明示 null check
+      // (typescript-conventions.md「strict: true 前提、! は narrowing が効かないとき以外避ける」+
+      // scrollToCard との pattern 対称性のため、! 削除 + early return 0 で統一)。
+      if (!scrollElement) return 0;
+      const containerRect = scrollElement.getBoundingClientRect();
       const viewportCenter = containerRect.top + containerRect.height / 2;
 
       let closest = 0;
