@@ -1354,6 +1354,48 @@ grep -nE "^\.claude/skills" .gitignore
 
 主な使用箇所: console.log / `@ts-ignore` / `as any` / useSyncedRef / TODO / 空 catch / CLAUDE.md 整合性 sweep を一巡実施 → 全 0 件 (規範違反なし) で 0 changes 締めくくり
 
+#### 派生サブケース: 「6+ cycle 連続 sweep clean」は **規範運用が事前予防段階に進化**している指標として retrospective で明示記録
+
+`全 sweep クリーンサイクル` (本派生ケース本体) を **6+ cycle 連続で観察** したとき、それは codify した規範が「事後検出」段階を超えて **「事前予防」段階に進化** したことを示す。新規追加コード / 修正コードが既に規範遵守済で sweep に hit しない状態。retrospective に **「sweep clean 連続サイクル数」を明示記録** することで、codify 規範の浸透度を定量化できる。
+
+**事後検出 vs 事前予防の段階**:
+
+| 段階                | 状況                                      | sweep clean 連続数 | 対応                                                           |
+| ------------------- | ----------------------------------------- | ------------------ | -------------------------------------------------------------- |
+| 1. 規範未 codify    | sweep で違反 N 件発見                     | 0 cycle            | 規範 codify + fix                                              |
+| 2. 事後検出段階     | sweep で違反 0-1 件、ばらつき             | 1-3 cycle          | 規範運用継続、sweep 維持                                       |
+| 3. 浸透段階         | sweep clean 安定                          | 3-5 cycle          | sweep 観点をローテーション、新観点で監査                       |
+| 4. **事前予防段階** | 6+ cycle 連続 clean、新規追加コードも遵守 | **6+ cycle**       | sweep 頻度を下げる検討 + 規範浸透指標として retrospective 記録 |
+
+**retrospective 記録 format** (本派生サブケース適用時の必須記載):
+
+```markdown
+### 二段保証 sweep clean 連続観測
+
+| 観点                              | 連続 clean サイクル数 | 状態         |
+| --------------------------------- | --------------------- | ------------ |
+| 三項 chain `<div>` repeat         | 4 cycle               | 浸透段階     |
+| closure 内 `!` non-null assertion | 4 cycle               | 浸透段階     |
+| hooks `@/` absolute import        | 5 cycle               | 浸透段階     |
+| ToastContainer 永続 aria-live     | 2 cycle               | 事後検出段階 |
+| api-misc.md error code 整合       | 3 cycle               | 浸透段階     |
+```
+
+**How to apply**: 全 sweep クリーンサイクル時の retrospective で以下を追記 (定量記録で規範浸透度を見える化 + sweep 頻度判断の根拠データとして活用):
+
+1. **各 sweep 観点の連続 clean サイクル数** を表で記録
+2. **6+ cycle 連続 clean 観点** には「事前予防段階」と明示記載
+3. **新規追加コードで sweep hit が出た cycle** はカウンタリセット、retrospective に「事前予防段階から事後検出段階に retro」を明示
+4. **sweep 頻度の最適化**: 事前予防段階の観点は **5-7 cycle 間隔** に間引き可能 (毎 cycle 全実施は overhead > 価値)
+
+**反例 (本サブケース不要なケース)**:
+
+- 該当 sweep 観点が **1-3 cycle しか実施されていない** (連続性データ不足、評価まだ早い)
+- 規範自体が **codify 後 1-2 cycle で更新中** (規範定義が不安定なら浸透度評価は時期尚早)
+- 新規 codify 規範 (本 cycle codify) は sweep 観測前段階で評価対象外
+
+主な使用箇所: 本 cycle (perf 再走査 5 cycle ぶり) で simplify agent 0 件発見 + main thread 二段保証 sweep 5 観点 全 clean、新規追加コードも規範遵守維持 → 4-5 cycle 連続 clean 観測の retrospective 記録例
+
 ### 派生ケース: 調査エージェントの設計方針案コメントは "Issue 本文の前提が誤っている可能性" を検証スコープに含める
 
 調査エージェントに「設計方針 A/B/C 案を出して」と派遣すると、Issue 本文の前提を **疑わずに前提条件として受け入れて** 案を作るケースがある。だが Issue 起票時の前提と実コードが乖離しているケース (subscriber 数 / Provider tree / API 形式 / 重複コード規模 等) が頻繁にある。`#758` 「全 subscriber re-render」が実は subscriber 1 つで分割効果ほぼ無し、`#755` 「sanitize-html 既存依存」が実は未追加、のような事例。
