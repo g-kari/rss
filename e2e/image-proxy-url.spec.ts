@@ -60,3 +60,51 @@ test.describe("isProxiedImageUrl", () => {
     expect(isProxiedImageUrl("")).toBe(false);
   });
 });
+
+// #812 真因 defensive: caller (ArticleContentBody.tsx の `(resolvedOgImage ?? article.ogImage)!` non-null assertion)
+// から non-string が混入する経路 (cache 旧 schema / OGP fetch 失敗 fallback / object 型 ogImage) で
+// `url.startsWith` が TypeError を投げて ErrorBoundary 発火する症状を構造的に防御する。
+test.describe("buildImageProxyUrl — #812 defensive (unknown 受け)", () => {
+  test("undefined は空文字を返す", () => {
+    expect(buildImageProxyUrl(undefined as unknown as string)).toBe("");
+  });
+  test("null は空文字を返す", () => {
+    expect(buildImageProxyUrl(null as unknown as string)).toBe("");
+  });
+  test("number は空文字を返す (本番 minified TypeError 防御)", () => {
+    expect(buildImageProxyUrl(42 as unknown as string)).toBe("");
+  });
+  test("object は空文字を返す (#812 真因: ogImage が { url: ... } 形式で混入する経路)", () => {
+    expect(buildImageProxyUrl({ url: "x.jpg" } as unknown as string)).toBe("");
+  });
+  test("array は空文字を返す", () => {
+    expect(buildImageProxyUrl(["x.jpg"] as unknown as string)).toBe("");
+  });
+  test("boolean は空文字を返す", () => {
+    expect(buildImageProxyUrl(true as unknown as string)).toBe("");
+  });
+  test("空文字は空文字のまま (regression、既存挙動互換)", () => {
+    expect(buildImageProxyUrl("")).toBe("");
+  });
+});
+
+test.describe("isProxiedImageUrl — #812 defensive (unknown 受け)", () => {
+  test("undefined は false", () => {
+    expect(isProxiedImageUrl(undefined as unknown as string)).toBe(false);
+  });
+  test("null は false", () => {
+    expect(isProxiedImageUrl(null as unknown as string)).toBe(false);
+  });
+  test("number は false", () => {
+    expect(isProxiedImageUrl(42 as unknown as string)).toBe(false);
+  });
+  test("object は false (本番 minified TypeError 防御)", () => {
+    expect(isProxiedImageUrl({ url: "x.jpg" } as unknown as string)).toBe(false);
+  });
+  test("array は false", () => {
+    expect(isProxiedImageUrl(["x.jpg"] as unknown as string)).toBe(false);
+  });
+  test("boolean は false", () => {
+    expect(isProxiedImageUrl(true as unknown as string)).toBe(false);
+  });
+});

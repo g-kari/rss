@@ -261,9 +261,16 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
         {/* OGP 画像 (埋め込みなし)。#742: 一覧 (`resolveThumbnail`) と detail でサムネ解決が
             分裂する問題のため、useOgpCache 由来の resolvedOgImage を article.ogImage より優先。
             #741: 小サムネ (< 200px) は naturalWidth で検知して hide する。 */}
-        {!embedInfo && (resolvedOgImage ?? article.ogImage) && (
-          <OgImageThumbnail src={buildImageProxyUrl((resolvedOgImage ?? article.ogImage)!)} />
-        )}
+        {!embedInfo &&
+          (() => {
+            // #812 真因防御: TS 型は `string | null | undefined` を保証するが、cache 旧 schema /
+            // OGP fetch result の object 形式混入 / API edge case 等で runtime 型不整合が発生し、
+            // `buildImageProxyUrl(url).startsWith` で本番 minified bundle TypeError を起こしていた。
+            // 非 string は描画 skip で safe (UX 影響: OGP thumb 0 件 < ErrorBoundary 発火)。
+            const ogImage = resolvedOgImage ?? article.ogImage;
+            if (typeof ogImage !== "string" || ogImage === "") return null;
+            return <OgImageThumbnail src={buildImageProxyUrl(ogImage)} />;
+          })()}
 
         {/* 原文 / 翻訳タブ（翻訳結果がある場合のみ表示） */}
         {translateResult && processedContent && (
