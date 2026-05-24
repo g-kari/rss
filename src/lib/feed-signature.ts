@@ -17,3 +17,21 @@ export function computeFeedStructuralSignature(feeds: Feed[]): string {
   }
   return parts.join("\n");
 }
+
+/**
+ * `Record<articleId, tagId[]>` 形式の articleTagIds を構造的にシリアライズする。
+ * `useReadStateTags` の `setTagIdsState` が 2 秒 debounce flush ごとに新 reference を生成
+ * するが、内容変化なしなら signature 一致で下流 useMemo (tagCounts / sortedTags) を skip。
+ *
+ * `computeFeedStructuralSignature` と同 canonical pattern で全 entry 走査するが、
+ * 1 entry = `articleId|tag1,tag2,...` で `tagId[]` も含めて encode。entry 順序は
+ * Object.keys() の挿入順に依存するが、`useReadStateTags` は同 id に対して同じ順序で
+ * tagIds を維持する設計のため、 sort 不要 (内容変化があれば文字列差分が出る)。
+ */
+export function computeArticleTagIdsSignature(articleTagIds: Record<string, string[]>): string {
+  const parts: string[] = [];
+  for (const [articleId, tagIds] of Object.entries(articleTagIds)) {
+    parts.push(`${articleId}|${tagIds.join(",")}`);
+  }
+  return parts.join("\n");
+}
