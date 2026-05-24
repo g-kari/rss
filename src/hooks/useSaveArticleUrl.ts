@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
+import { classifyHttpError, formatHttpErrorMessage } from "../lib/classify-http-error";
 import { isArticle } from "../lib/type-guards";
 
 interface ToastApi {
@@ -40,11 +41,19 @@ export function useSaveArticleUrl({
         });
         const raw = (await res.json()) as { error?: string };
         if (!res.ok) {
-          toast.error(raw.error ?? "保存に失敗しました");
+          // 429 / 5xx / 4xx を classify-http-error で分類して specific message に。
+          // server の `error` body があれば優先、なければ HTTP 種別ベースのメッセージ。
+          // `useArticleAi.ts` 同 canonical pattern (helper-drift.md 規範)。
+          const errorType = classifyHttpError(res.status);
+          const message = formatHttpErrorMessage(errorType, {
+            retryAfterHeader: res.headers.get("Retry-After"),
+            fallback: raw.error ?? "保存に失敗しました",
+          });
+          toast.error(message);
           return;
         }
         if (!isArticle(raw)) {
-          toast.error("保存に失敗しました");
+          toast.error("保存に失敗しました (サーバー応答形式不正)");
           return;
         }
         prependArticle(raw);
@@ -56,7 +65,8 @@ export function useSaveArticleUrl({
           toast.success("後で読むに追加しました");
         }
       } catch {
-        toast.error("保存に失敗しました");
+        // network error / abort / DNS 等の fetch 失敗
+        toast.error(formatHttpErrorMessage("network"));
       }
     },
     [prependArticle, toggleBookmark, toggleReadingList, toast],
