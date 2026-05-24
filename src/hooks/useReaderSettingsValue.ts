@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { ReaderSettings } from "@/contexts/ReaderSettingsContext";
+import type { ReaderSettings } from "../contexts/ReaderSettingsContext";
 
 /**
  * ReaderSettings オブジェクトを 1 箇所で構築する hook (#650 Step 1l)。

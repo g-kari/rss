@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { apiFetch, apiFetchJson } from "@/lib/api-fetch";
-import { devError } from "@/lib/dev-log";
-import { isAbortError } from "@/lib/fetch";
-import { sortByOrder } from "@/lib/sort-utils";
-import type { Collection, UserProfile } from "@/types";
+import { apiFetch, apiFetchJson } from "../lib/api-fetch";
+import { devError } from "../lib/dev-log";
+import { isAbortError } from "../lib/fetch";
+import { sortByOrder } from "../lib/sort-utils";
+import type { Collection, UserProfile } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 
 export interface CollectionsState {

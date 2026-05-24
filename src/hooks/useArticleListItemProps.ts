@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback } from "react";
-import type { Article, Feed } from "@/types";
-import { type ArticleItemProps, resolveThumbnail } from "@/components/ArticleItems";
-import { isArticleRead } from "@/lib/article-filter";
-import { useSyncedRef } from "@/hooks/useSyncedRef";
+import type { Article, Feed } from "../types";
+import { type ArticleItemProps, resolveThumbnail } from "../components/ArticleItems";
+import { isArticleRead } from "../lib/article-filter";
+import { useSyncedRef } from "./useSyncedRef";
 
 /**
  * `useArticleListItemProps` の入力型。
