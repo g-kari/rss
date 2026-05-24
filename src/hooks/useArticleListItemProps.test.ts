@@ -18,7 +18,7 @@
 import { describe, it, expect } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useArticleListItemProps } from "./useArticleListItemProps";
-import type { Article, Feed } from "@/types";
+import type { Article, Feed } from "../types";
 
 function makeArticle(overrides: Partial<Article> = {}): Article {
   return {
