@@ -883,6 +883,63 @@ grep -rln "<関数名>" src/
 
 主な使用箇所: `#812` (`tr (174u.dwf~cc-l.js:1:22486)`) で `<img>` regex + `startsWith("data:")` 経路を本番 chunk 静的解析で特定、`src/lib/image-extractor.ts:115` `collectImageUrlsFromHtml` の `string` → `unknown` 受け defensive 化 + 8 ケース TDD spec で構造的修正 (commit `8d825f1d`、`#811` defensive 規範の本番 sourcemap なし環境での実証)
 
+#### 派生サブケース: security path の `JSON.parse` 結果は **`unknown` 受け + 3 軸 narrowing** で attacker 入力 bypass を防ぐ
+
+本派生ケース本体は **JSX 描画 helper** (UI render path) の defensive を扱うが、同じ `unknown` 受け + narrowing pattern は **security-critical path** (JWT 検証 / CSRF token parse / API request body 検証 等) にも適用可能で、より重大な bypass を防ぐ。特に `JSON.parse` 結果を直接 `as { ... }` キャストする箇所は、attacker controlled input で **non-object** (`null` / array / primitive) が混入する経路を見落としやすい。
+
+```typescript
+// アンチパターン: JWT header の JSON.parse 結果を直接型キャスト → null / array / primitive で TypeError bypass
+const header = JSON.parse(decoded) as { alg: string; kid?: string };
+if (header.alg !== "ES256") return null;
+// ↑ attacker が base64url("null") / base64url("[]") / base64url('"str"') を送ると、
+//   `null.alg` / `[].alg` / `"str".alg` で TypeError 発生 → 認証エラーハンドリングを bypass
+
+// 修正パターン: unknown 受け + 3 軸 narrowing (typeof / null / Array.isArray)
+const headerRaw: unknown = JSON.parse(decoded);
+if (typeof headerRaw !== "object" || headerRaw === null || Array.isArray(headerRaw)) {
+  console.error("[security] header is not a JSON object", {
+    type: typeof headerRaw,
+    isArray: Array.isArray(headerRaw),
+  });
+  return null;
+}
+const header = headerRaw as { alg: string; kid?: string };
+if (header.alg !== "ES256") return null;
+```
+
+**3 軸 narrowing の意味**:
+
+| check                           | 排除する入力                                      |
+| ------------------------------- | ------------------------------------------------- |
+| `typeof headerRaw !== "object"` | primitive (`"str"` / `42` / `true` / `undefined`) |
+| `headerRaw === null`            | `null` (`typeof null === "object"` の罠回避)      |
+| `Array.isArray(headerRaw)`      | array (`[]` / `[1,2]` も `typeof === "object"`)   |
+
+**該当する典型 security path**:
+
+| 箇所                            | attacker controlled input         | 防御効果                                                              |
+| ------------------------------- | --------------------------------- | --------------------------------------------------------------------- |
+| JWT header / payload parse      | base64url(`"null"` / `"[]"` / 等) | TypeError による認証 bypass を防止                                    |
+| CSRF token JSON parse           | attacker 制御 cookie value        | token signature 検証前の crash 防止                                   |
+| API request body (`req.json()`) | 任意 client controlled JSON       | route handler 内 type assertion 経由の crash 防止                     |
+| Cookie / localStorage 値 parse  | attacker 制御 (XSS) or 旧 schema  | runtime crash → UI broken 状態 (silent fallback < ErrorBoundary 発火) |
+
+**How to apply**: security path や `JSON.parse` 結果に `as { ... }` キャストを書く前に以下 (security path の crash bypass は ErrorBoundary で察知できない silent failure で、attacker が body 経由で attack surface を広げる可能性ある、unknown 受け + 3 軸 narrowing で構造的予防):
+
+1. **対象 path が security-critical** (auth / CSRF / API request body / cookie / localStorage 旧 schema) なら必ず適用
+2. **JSON.parse 結果を `unknown` で受ける** (`const x: unknown = JSON.parse(...)`)
+3. **3 軸 narrowing**: `typeof !== "object" || === null || Array.isArray()` で 3 件すべて check
+4. **non-object 入力で明示 `console.error` + 安全 fallback** (return null / throw / 401 等)
+5. **規範 grep sweep** 同時実行: `grep -rEn "JSON\.parse.*as \{" src/lib/ app/api/ src/hooks/` で他箇所の同 pattern 検出 → 同 commit / 別 Issue で対処
+
+**反例 (本サブパターン不適用)**:
+
+- **controlled input** (定数 / config / 自社 generate 値) → type assertion で OK、defensive 不要
+- **既に schema validator 経由** (zod / yup / valibot 等で parse 済) → validator 出力は type 保証済、追加 narrowing redundant
+- **server-only file で attacker 経由不可** (例: `src/cron/*.ts` 内 R2 fetch 結果 schema 安定) → defensive 不要
+
+主な使用箇所: `src/lib/auth.ts:137-148` (commit `99faf8d6`) — JWT verifyJwt の header / payload JSON.parse を `unknown` 受け + 3 軸 narrowing に変更、`#811` `#812` の UI render path 規範を security path に拡張適用、attacker controlled JWT による TypeError bypass を構造的予防
+
 #### 派生サブケース: defensive 規範 codify 時は **同 pattern grep sweep + 他箇所適用フロー** をワンセット運用する
 
 defensive 規範 (JSX 描画 helper の unknown 受け化) を 1 箇所 fix + codify した直後に、**同 pattern (`grep -rEn "\.startsWith\(" src/`)** を機械的に sweep して **他箇所の未対処経路を予防的に発見** する。1 箇所適用のみだと「規範 codify 後も別経路で同種症状再発」(本プロジェクト実例: `#811` ArticleAiPanel fix → 前々サイクル ReleaseNotesModal 適用 → `#812` 別経路 avbase.net 系で再発) を招く。
