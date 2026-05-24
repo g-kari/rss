@@ -37,7 +37,7 @@ export default function FeedQuickSwitchModal({
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   usePopupLock();
@@ -186,7 +186,7 @@ export default function FeedQuickSwitchModal({
           )}
         </div>
 
-        <ul
+        <div
           ref={listRef}
           id="feed-quick-listbox"
           role="listbox"
@@ -194,45 +194,48 @@ export default function FeedQuickSwitchModal({
           className="overflow-y-auto py-1 flex-1 min-h-0"
         >
           {filtered.length === 0 ? (
-            <li className="px-4 py-6 text-center text-[12px] text-text-muted">
+            <div className="px-4 py-6 text-center text-[12px] text-text-muted">
               見つかりませんでした
-            </li>
+            </div>
           ) : (
+            // WAI-ARIA 1.2: role="option" は role="listbox" の直接子要素である必要がある。
+            // 旧実装の `<li><button role="option"></button></li>` は listitem が間に入り
+            // listbox → option の ownership chain が切れてスクリーンリーダーが activeDescendant を
+            // 正しく announce できない。`<button>` 直配置で ownership を確立する。
             filtered.map((opt, i) => (
-              <li key={opt.id ?? "__all__"}>
-                <button
-                  id={`feed-quick-option-${i}`}
-                  role="option"
-                  aria-selected={i === cursor}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 ${
-                    i === cursor ? "bg-surface-subtle" : "hover:bg-surface-hover"
-                  }`}
-                  onPointerDown={() => {
-                    onSelectFeed(opt.id);
-                    onClose();
-                  }}
-                  onMouseEnter={() => setCursor(i)}
+              <button
+                key={opt.id ?? "__all__"}
+                id={`feed-quick-option-${i}`}
+                role="option"
+                aria-selected={i === cursor}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 ${
+                  i === cursor ? "bg-surface-subtle" : "hover:bg-surface-hover"
+                }`}
+                onPointerDown={() => {
+                  onSelectFeed(opt.id);
+                  onClose();
+                }}
+                onMouseEnter={() => setCursor(i)}
+              >
+                <span
+                  className={`flex-1 text-[13px] truncate ${isSelected(opt) ? "font-medium text-text-strong" : "text-text-default"}`}
                 >
-                  <span
-                    className={`flex-1 text-[13px] truncate ${isSelected(opt) ? "font-medium text-text-strong" : "text-text-default"}`}
-                  >
-                    {opt.label}
+                  {opt.label}
+                </span>
+                {opt.category && (
+                  <span className="text-[10px] text-text-faint truncate max-w-[80px] flex-shrink-0">
+                    {opt.category}
                   </span>
-                  {opt.category && (
-                    <span className="text-[10px] text-text-faint truncate max-w-[80px] flex-shrink-0">
-                      {opt.category}
-                    </span>
-                  )}
-                  {opt.unreadCount > 0 && (
-                    <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
-                      {opt.unreadCount > 99 ? "99+" : opt.unreadCount}
-                    </span>
-                  )}
-                </button>
-              </li>
+                )}
+                {opt.unreadCount > 0 && (
+                  <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
+                    {opt.unreadCount > 99 ? "99+" : opt.unreadCount}
+                  </span>
+                )}
+              </button>
             ))
           )}
-        </ul>
+        </div>
 
         <div className="flex items-center gap-3 px-3 py-2 border-t border-border-subtle flex-shrink-0">
           <span className="text-[10px] text-text-faint">
