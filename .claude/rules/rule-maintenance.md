@@ -206,7 +206,11 @@ retrospective-codify skill の原則は「propose → approve → write out」�
 1. ユーザー判断要素 (新規 dep / 新 infra / UX 主観評価) を含む
 2. 3 サイクル経過 (温存ライン超過)
 3. 提案根拠の問題が **現状コードベースで顕在化していない** (直近 sweep で「真の問題 0 件」確認済 / corpus 安定)
-4. 同種 lesson を **過去サイクルで 1+ 回提案済** (重複提案リスク回避目的)
+4. **以下のいずれか**:
+   - (a) 同種 lesson を **過去サイクルで 1+ 回提案済** (重複提案リスク回避目的)、または
+   - (b) **長期滞留 (≥ 6 サイクル) + UX 影響ゼロ + 規範整合性のみ** (1 度限り提案でも長期 stale + 真因深掘り investment 大で actionable 価値 < 維持コストのとき)
+
+条件 4 の (a) と (b) は OR 関係。(a) は「同種重複案件のリスク管理」観点、(b) は「単独だが滞留しすぎた lesson の expire 観点」で互いに補完。1 度限りの Issue でも 6 サイクル以上滞留 + UX 影響ゼロなら expire 可能。
 
 **自然 expire の手順**:
 
@@ -220,7 +224,10 @@ retrospective-codify skill の原則は「propose → approve → write out」�
 - ユーザーが明示的に **「次回採用したい」「保留中」** とコメント → 温存継続
 - 提案根拠が **ユーザー作業 (UI 変更 / 設計判断) を待っている** → ユーザー側 ready 待ち
 
-主な使用箇所: 「未使用 export sweep canonical 手法 (ts-prune / knip 導入)」lesson — 直近 sweep で「真の未使用 export = 0 件」確認 + 新規 dep 追加要素含む + 同提案 3 サイクル滞留 → 4 条件全充足で自然 expire 判定、Issue 起票せず pending list から削除
+主な使用箇所:
+
+- 「未使用 export sweep canonical 手法 (ts-prune / knip 導入)」lesson — 直近 sweep で「真の未使用 export = 0 件」確認 + 新規 dep 追加要素含む + 同提案 3 サイクル滞留 → 4 条件 (a) で充足、Issue 起票せず pending list から削除
+- `#815` (FeedItem.tsx dead re-export 削除調査) — 6 サイクル滞留 + UX 影響ゼロ + 真因深掘り (TypeScript 型解決パス調査) に大きな investment 必要 + 規範整合性のみで実害なし → 1 度限り提案 (条件 4a 未充足) だが、**条件 4b 「長期滞留 + UX 影響ゼロ」** で自然 expire 判定可能 (Issue close は本判定後にユーザー意思確認してから実施)
 
 ## 4. 既存ルールへの追記 vs 新規セクション作成の判断
 
@@ -680,6 +687,53 @@ done
 
 - `.github/workflows/` sweep で 2 件 drift (ci.yml + dependabot-auto-merge.yml 完全未記載) → architecture.md に「## GitHub Workflows」section + CLAUDE.md デプロイ section に短い言及追加 (commit `65baedc4`)
 - `public/` sweep で 3 件 drift (sw.js + manifest.json + \_headers 完全未記載) → architecture.md に「## 静的アセット (public/)」section 追加 (commit `9a31a665`)、icon / OGP 系は Next.js convention で省略可能 detail として注記
+
+##### サブパターン: API spec (`api-*.md`) 実装 vs docs 整合性 sweep
+
+`.claude/rules/api-*.md` の各 endpoint section と実 Route Handler (`app/api/**/route.ts` + `src/lib/*.ts` の error code 定数) の **response schema / error code / status code** 整合性は、**silent contract break** リスクが極めて高い sweep category。client 開発者が docs を見て実装するとき確実に失敗する。
+
+```bash
+# Pattern A: response schema 形式の drift 検出
+# 各 endpoint route handler の NextResponse.json(X) で X の型を確認 + api-*.md の docs と照合
+for route in $(find app/api -name "route.ts"); do
+  # 1. handler が return している response の型 / shape を grep
+  grep -nE "NextResponse\.json\(" "$route" | head -3
+  # 2. 対応する api-*.md の '### 成功レスポンス' section を Read で確認
+done
+
+# Pattern B: error code constant の drift 検出
+# api-*.md の error 表 + 実 error code constant を comm で比較
+grep -rhoE "code:\s*[\"'][A-Z_]+[\"']" src/lib/ app/api/ --include="*.ts" \
+  | sed -E 's/code:\s*[\"'\'']([A-Z_]+)[\"'\'']/\1/' | sort -u > /tmp/actual_codes.txt
+grep -rhoE "\| \`[A-Z_]+\`" .claude/rules/api-*.md \
+  | sed -E 's/\| \`//; s/\`//' | sort -u > /tmp/doc_codes.txt
+comm -23 /tmp/actual_codes.txt /tmp/doc_codes.txt  # 実装にあるが docs にない (drift)
+comm -13 /tmp/actual_codes.txt /tmp/doc_codes.txt  # docs にあるが実装にない (stale)
+```
+
+**該当する典型 drift パターン**:
+
+| パターン                                                           | 影響                                                        |
+| ------------------------------------------------------------------ | ----------------------------------------------------------- |
+| **response schema 構造 drift** (plain array vs `{entries: [...]}`) | client が `data[0].x` で実装と不一致、永久 undefined access |
+| **error code constant drift** (`COOLDOWN` vs `RATE_LIMITED`)       | client の `error.code === "X"` 分岐が永久 match なし        |
+| **status code drift** (docs `429` vs 実装 `503`)                   | client の HTTP retry strategy / error 表示分岐が誤動作      |
+| **field name 大文字小文字 drift** (`articleId` vs `article_id`)    | snake_case ↔ camelCase 混在で field access が永久 undefined |
+
+**How to apply**: API endpoint 追加 / 修正サイクル + 数サイクル後 (api-\*.md 既存 spec) の二段保証:
+
+1. **endpoint 追加時**: route handler 実装と同 commit に api-\*.md エントリ追加 + response schema / error code を実装に揃える (前 cycle codify `rule-maintenance.md § 5 派生「API endpoint 追加時の 3 点セット」` 適用)
+2. **既存 endpoint sweep (3-5 cycle 間隔)**: 上記 Pattern A + B grep で drift 検出 → 実装が canonical、docs を修正 (本派生サブパターン)
+3. **修正は docs only** (touch 1 file = api-\*.md)、機械的修正で実装影響なし → ゴールド sign 3 条件揃いやすく即着手対象
+4. **真因が「実装 misbehavior」だった場合は逆向き fix** (実装側を docs spec に揃える) も視野、ただし API contract の breaking change リスクで設計判断要 → Issue 起票へ降格
+
+**反例 (本 sweep 不要なケース)**:
+
+- 新規 endpoint で **未 client 投入** (production caller 0 件) → drift してても実害なし、優先度低
+- WebSocket / Stream API 等 **非 JSON response endpoint** → 上記 Pattern A 適用外
+- 多言語化された response (i18n / locale-specific message field) → docs が enum リストでなく description で柔軟対応されている場合、本 sweep でなくドメイン仕様確認要
+
+主な使用箇所: `api-misc.md` GET /api/engagement response schema drift (plain array → `{entries: []}`) + POST 429 error code drift (`COOLDOWN` → `RATE_LIMITED`) — 本サイクル commit `6b537aca` で agent confidence 92 + 95 で発見、ゴールド sign 3 条件揃いで即着手 + 1 commit で 2 件一括 fix
 
 **How to apply**: サブエージェント呼び出しが失敗したら以下を判定:
 
