@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useContext, type KeyboardEvent, type MouseEvent } from "react";
+import { memo, useContext } from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
@@ -10,6 +10,8 @@ import {
   ArticleThumbnail,
   DuplicateBadge,
   ReadingTimeBadge,
+  handleArticleContextMenu,
+  handleArticleKeyDown,
   type ArticleItemProps,
 } from "./shared";
 
@@ -36,23 +38,9 @@ export const CardArticleItem = memo(function CardArticleItem({
 }: ArticleItemProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        onSelectArticle(article);
-      }
-    },
-    [article, onSelectArticle],
-  );
-  const handleContextMenu = useCallback(
-    (e: MouseEvent) => {
-      if (!onContextMenu) return;
-      e.preventDefault();
-      onContextMenu(article, e.clientX, e.clientY);
-    },
-    [article, onContextMenu],
-  );
+  // 共通ハンドラを shared から取得 (重複定義 → import 統一、refactor cycle)。
+  const handleKeyDown = handleArticleKeyDown(article, onSelectArticle);
+  const handleContextMenu = handleArticleContextMenu(article, onContextMenu);
   return (
     <div
       role="article"
