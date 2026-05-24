@@ -29,6 +29,10 @@ export default function Modal({
   height = "",
 }: Props) {
   const titleId = useId();
+  // #814: subtitle がある場合のみ aria-describedby + id wire 化。
+  // ConfirmModal canonical pattern (aria-describedby={titleId + "-desc"}) に揃え、
+  // dialog 説明テキストをスクリーンリーダーが title と一緒に announce できるようにする。
+  const subtitleId = subtitle ? `${titleId}-sub` : undefined;
   const dialogRef = useRef<HTMLDivElement>(null);
 
   usePopupLock();
@@ -45,6 +49,7 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={subtitleId}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
         className={`fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 ${width} ${height} max-h-[90dvh] flex flex-col bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden outline-none`}
@@ -56,7 +61,10 @@ export default function Modal({
               {title}
             </span>
             {subtitle && (
-              <p className="text-[11px] text-text-muted mt-0.5 truncate max-w-[280px]">
+              <p
+                id={subtitleId}
+                className="text-[11px] text-text-muted mt-0.5 truncate max-w-[280px]"
+              >
                 {subtitle}
               </p>
             )}
