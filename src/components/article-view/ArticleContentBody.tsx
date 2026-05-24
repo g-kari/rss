@@ -175,6 +175,21 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
       sanitizedArticleContent && /<[a-z][\s\S]*?>/i.test(sanitizedArticleContent)
     );
 
+    // 本文 HTML 描画は (processedContent ?? wrappedContent) / hasArticleContentHtml の
+    // 2 source を 1 つの useMemo に集約して、**同一 <div ref={contentRef}> element の
+    // dangerouslySetInnerHTML 値だけが更新される** ようにする。旧実装の三項演算子 chain
+    // (`processedContent ? <div/> : hasArticleContentHtml ? <div/> : ...`) は branch 切替
+    // 時に React reconciler が異なる position の element として扱い、`<div>` が unmount →
+    // remount → DOM 全置換 → 本文 flash の原因となっていた (全文取得完了時 / gallery 切替時等)。
+    // 同一 element の __html 値変更なら React は innerHTML 直接書き換えで完了し、
+    // contentRef.current も維持されて useContentLinkPreviews / useSyntaxHighlight 等の
+    // 子 hook の DOM 操作も一貫する。
+    const articleBodyHtml = useMemo<string | null>(() => {
+      if (processedContent) return wrappedContent ?? processedContent;
+      if (hasArticleContentHtml) return sanitizedArticleContent;
+      return null;
+    }, [processedContent, wrappedContent, hasArticleContentHtml, sanitizedArticleContent]);
+
     return (
       <>
         {/* メディア埋め込み */}
@@ -358,21 +373,17 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
               {translateResult.text}
             </p>
           )
-        ) : processedContent ? (
+        ) : articleBodyHtml !== null ? (
+          // 単一 <div ref={contentRef}> に統合: processedContent / hasArticleContentHtml 切替
+          // (= 全文取得完了 / gallery 切替) で element が unmount/remount せず、innerHTML
+          // 値の更新のみで content 切替 → flash 抑止 (DOM reconciler が同 position の同 tag
+          // を再利用する性質を利用)。
           <div
             ref={contentRef}
             className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
             style={getLineHeightStyle(lineHeight)}
             translate="yes"
-            dangerouslySetInnerHTML={{ __html: wrappedContent ?? processedContent }}
-          />
-        ) : hasArticleContentHtml ? (
-          <div
-            ref={contentRef}
-            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
-            style={getLineHeightStyle(lineHeight)}
-            translate="yes"
-            dangerouslySetInnerHTML={{ __html: sanitizedArticleContent! }}
+            dangerouslySetInnerHTML={{ __html: articleBodyHtml }}
           />
         ) : article.summary ? (
           <p
