@@ -104,6 +104,59 @@ paths: "e2e/**/*.spec.ts"
 
 連続修正のときも、各 commit の RELEASE_NOTES 追記 + master 反映 + push は省略しない (デプロイ可能な状態を保つ)。
 
+#### 派生サブケース: 「confidence ≥ 90 + canonical pattern 完全一致 + touch ≤ 2 file」3 条件揃いは **即着手ゴールド sign**
+
+agent 監査結果の中で以下 **3 条件全て** が揃った提案は、verify から commit までの cadence が最短で、サイクルあたりの actionable 消化量を最大化する **ゴールド sign**。**実コード verify を 5 分以内で済ませて連続修正フローへ即投入** する判断を加速する。
+
+**3 条件**:
+
+1. **confidence ≥ 90**: agent 自己評価で 90% 以上 (中身が確実、partial / unclear 表現なし)
+2. **canonical pattern 完全一致**: `.claude/rules/*.md` 既存規範の specific section に直接 mapping (agent report で「規範: ファイル名 § セクション 完全一致」を明記している)
+3. **touch ≤ 2 file**: 修正範囲が小規模 (cross-cutting / Context lift up / state hoisting 不要)
+
+`audit-workflow.md § 派生「規範パターン複製 + 1〜2 ファイル」` を満たすことが必要条件、それに **confidence ≥ 90 + canonical pattern 完全一致** が加わって即着手の確度が出る。
+
+**verify 短縮の手順** (5 分以内):
+
+1. **agent 引用の canonical pattern を `find_symbol` / `Read` で実コード確認** (規範該当 section を実コードと突き合わせ、1-2 分)
+2. **対象 file の signature 確認** (caller 数 + 影響範囲、`find_referencing_symbols` で 1 分)
+3. **agent 提案の diff を mental simulation** (修正後コードを想像、type 整合 + 既存 spec 影響を頭の中で評価、1-2 分)
+4. 3 step 全て pass なら **即着手**、verify でズレ発見なら降格 (Issue 起票 or scope 縮小)
+
+**該当する典型パターン**:
+
+| canonical 規範                                                                | 即着手例                                                                   |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `react-state-ref.md § 派生「複数 state を return する hook を useMemo wrap」` | `useFilteredArticles` 36 field useMemo wrap (1 commit)                     |
+| `react-state-ref.md § 派生「モジュールレベル sentinel は Object.freeze」`     | `OgpCacheContext` null-object freeze (1 commit)                            |
+| `helper-drift.md § 「新規 hook で既存 lib helpers grep」`                     | `useSaveArticleUrl` で `classifyHttpError` 適用 (1 commit)                 |
+| `design-system.md § アイコン / Spinner canonical`                             | `SaveUrlModal` Spinner + aria-busy (1 commit)                              |
+| `react-component-split.md § 派生「JSX 描画 helper unknown 受け defensive」`   | `#811` `ai-summary-parse.ts` / `#812` `image-proxy-url.ts` (1 commit each) |
+| `helper-drift.md § 派生「同名 enum / type alias 化」`                         | `useArticleAi` の `AiErrorType = HttpErrorType` (1 commit)                 |
+
+**反例 (ゴールド sign 不成立で慎重判定が必要なケース)**:
+
+- **confidence 90+ だが canonical なし** → 新規規範策定要素、設計判断要、Issue 起票候補
+- **canonical 一致 + touch ≥ 3 file** → scope そこそこ大、`実装着手前に「影響範囲 vs 利得」で再評価` 派生ケース適用
+- **confidence < 90** → agent 自身が partial / unclear 表現あり、verify でズレ発覚する可能性高い、追加調査要
+
+**How to apply**: agent 監査結果を受領したら以下の順で振り分け (`audit-workflow.md § 派生「規範パターン複製 + 1〜2 ファイル」` の判定表より一歩 specific):
+
+1. **3 条件チェック** (confidence ≥ 90 + canonical 完全一致 + touch ≤ 2 file) を agent report の冒頭で確認
+2. 3 条件揃い → **5 分 verify → 即着手 (本派生サブケース)**
+3. 1 つでも条件未達 → **既存「実装着手前に「影響範囲 vs 利得」で再評価」派生ケースに従う** (scope 縮小 or Issue 起票降格)
+4. retrospective に **「ゴールド sign 該当数 / 採用数」を記録**、3 条件揃いの adoption rate を追跡 (規範浸透度の指標)
+
+**反例 (本派生サブケース不要なケース)**:
+
+- agent が 1 件しか提案していないサイクル → 全体ローテーション戦略が別途必要、3 条件 sign の効用低
+- 設計判断要素 (新規 dep / 新 infra / UX 主観評価) を含む提案 → confidence 90+ でも canonical 不一致で sign 不成立
+
+主な使用箇所:
+
+- 本サイクル UX 候補 1 (`useSaveArticleUrl` classifyHttpError、conf 92 + `helper-drift.md` canonical + touch 1) と候補 2 (`SaveUrlModal` Spinner、conf 88 で sign 微未達だが canonical 強で即着手) — verify から master 反映まで 10 分で完結
+- 前サイクル perf 候補 1 (`useFilteredArticles` useMemo wrap、conf 92 + `react-state-ref.md` canonical + touch 1) — 同上 cadence
+
 ### 派生ケース: 監査エージェントの提案は実装着手前に「影響範囲 vs 利得」で再評価する
 
 監査エージェントは **「fix の概要」だけ提示** することが多く、実装範囲の見積りが甘い (例: 「2 つの hook を統合」と書いてあるが、実は **Context lift up + 4 ファイル変更** が必要なケース)。連続修正の判定表で「規範パターン複製 + 1〜2 ファイル」に該当しても、実際にコードを Read してみたら 5 ファイル超え/Context 設計要となることがある。
