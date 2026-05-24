@@ -157,6 +157,31 @@ agent 監査結果の中で以下 **3 条件全て** が揃った提案は、ver
 - 本サイクル UX 候補 1 (`useSaveArticleUrl` classifyHttpError、conf 92 + `helper-drift.md` canonical + touch 1) と候補 2 (`SaveUrlModal` Spinner、conf 88 で sign 微未達だが canonical 強で即着手) — verify から master 反映まで 10 分で完結
 - 前サイクル perf 候補 1 (`useFilteredArticles` useMemo wrap、conf 92 + `react-state-ref.md` canonical + touch 1) — 同上 cadence
 
+##### サブパターン: 「confidence < 90 + canonical 完全一致 + touch ≤ 2 + 3 サイクル滞留」も **ゴールド sign 代替判定** として即着手可
+
+本サブケース本体は「3 条件揃い」を ゴールド sign としたが、**3 サイクル滞留 lesson** (`rule-maintenance.md § 3 派生「3 サイクル経過で AI 自走採用判断」`) の場合は confidence < 90 でも以下 **代替 3 条件** を満たせば即着手可:
+
+1. **canonical 完全一致**: ゴールド sign 本体と同要件 (`.claude/rules/*.md` 既存規範に直接 mapping)
+2. **touch ≤ 2 file**: 同上 (scope 小規模)
+3. **3 サイクル経過 lesson** (`rule-maintenance.md § 3 派生`): Issue 起票後 3 サイクル滞留 + 明示 reject なし + 反例 (重大な行動変化 / 既存規範矛盾 / ユーザー判断要素 / 3 サイクル未満) 全 No
+
+理由: **3 サイクル滞留自体が品質シグナル** で、agent confidence 値とは独立した「ユーザー反対なし + 規範 mapping 安定 + 長期 verify 期間あり」の証拠。confidence 80 でも canonical 強なら即着手の確度が出る。
+
+**verify 手順 (3 サイクル滞留版)**:
+
+1. **Issue 起票時の前提を Phase 0 で再 verify** — 3 サイクル経過で codebase が変わっている可能性、または起票時の前提が誤っていた可能性 (`feedback_subagent_verification.md` の延長で実コード Read 必須)
+2. **Phase 0 verify で起票時前提のズレ発覚なら descope or 案変更** — 例: `#814` で「ReactNode 仮定で id wire 副作用大」と起票時想定したが、実は `subtitle?: string` 型で副作用ゼロと判明
+3. **ズレ発覚で「案 A が明確な正解」と確定なら即着手** (case A-Revised pattern、`#813` 同様の前例あり)
+4. **ズレなしで起票時案 A/B/C のまま** → ユーザー判断要素残存、温存継続
+
+**反例 (本サブパターン不適用)**:
+
+- **設計判断要素が Phase 0 verify でも解消されない** (例: `#815` の真因深掘り) → 自走採用見送り
+- **3 サイクル経過しても明示反対コメントあり** → 自走採用禁止
+- **重大な行動変化を伴う** (例: 認証 / 暗号 / API contract 破壊) → 自走採用見送り
+
+主な使用箇所: `#814` Modal aria-describedby — agent confidence 80% で ゴールド sign 微未達だったが、3 サイクル滞留 + ConfirmModal canonical 完全一致 + touch 1 file の代替 3 条件で即着手判定、Phase 0 verify で起票時 ReactNode 仮定の誤りを修正 (subtitle?: string 型確認) → 案 A 自走採用 + close (本サイクル commit `c2e118f3`)
+
 ### 派生ケース: 監査エージェントの提案は実装着手前に「影響範囲 vs 利得」で再評価する
 
 監査エージェントは **「fix の概要」だけ提示** することが多く、実装範囲の見積りが甘い (例: 「2 つの hook を統合」と書いてあるが、実は **Context lift up + 4 ファイル変更** が必要なケース)。連続修正の判定表で「規範パターン複製 + 1〜2 ファイル」に該当しても、実際にコードを Read してみたら 5 ファイル超え/Context 設計要となることがある。
