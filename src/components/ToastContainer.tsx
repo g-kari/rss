@@ -28,9 +28,13 @@ const iconColor: Record<ToastItem["type"], string> = {
 export default function ToastContainer() {
   const { toasts, dismiss } = useToast();
 
-  if (toasts.length === 0) return null;
-
-  // undo トーストは「元に戻す」ボタンの存在を SR にも伝えるため assertive + atomic に昇格させる (#611)
+  // WCAG 4.1.3 Status Messages: aria-live region は **toast 到着 _前_ に DOM に存在**
+  // していないと SR (NVDA / JAWS / VoiceOver) が新規内容を announce しない仕様。
+  // 旧実装の `if (toasts.length === 0) return null` だと toast 0 件で region 自体が
+  // unmount → 次 toast 到着で「mount + 内容 insert 同時」になり announce 失敗。
+  // canonical: A11yHelpers.tsx は announcement prop が空文字でも `<div role="status"
+  // aria-live="polite">` を永続 mount している。本コンポーネントも同 pattern で
+  // 常時 region mount + children のみ条件 render に変更。
   const hasUndoToast = toasts.some((t) => t.type === "undo");
 
   return createPortal(
