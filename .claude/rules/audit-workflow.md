@@ -182,6 +182,40 @@ agent 監査結果の中で以下 **3 条件全て** が揃った提案は、ver
 
 主な使用箇所: `#814` Modal aria-describedby — agent confidence 80% で ゴールド sign 微未達だったが、3 サイクル滞留 + ConfirmModal canonical 完全一致 + touch 1 file の代替 3 条件で即着手判定、Phase 0 verify で起票時 ReactNode 仮定の誤りを修正 (subtitle?: string 型確認) → 案 A 自走採用 + close (本サイクル commit `c2e118f3`)
 
+##### サブパターン: 「機械的 sweep refactor 例外」— `touch ≤ 2` 微未達でも一括適用 OK
+
+本サブケース本体 + 「3 サイクル滞留代替判定」は共通条件として `touch ≤ 2 file` を課すが、**機械的 sweep refactor** (sed で 1 コマンド完結する import path 変更 / 機械的 rename 等) の場合は touch ≥ 3 file でも一括適用 OK と例外規定する。
+
+**機械的 sweep refactor の 3 条件** (全充足で touch 例外):
+
+1. **機械的置換** (sed / regex で 1 コマンド完結、人間判断による file 毎の case 分岐なし)
+2. **設計判断不要** (canonical 明確 + 既存挙動互換、`@/` → `../` 等の de facto canonical 統一)
+3. **既存 spec で regression verify 可能** (typecheck pass + 既存 unit test pass で機能担保、新規 spec 追加不要)
+
+`touch ≤ 2` 微未達 (touch 3-5) でも本 3 条件揃いなら **「sweep の atomicity が高い + Phase 分離コスト > 一括 commit 利得」** で一括適用が canonical。Phase 分離するとレビュー単位が「機械的 sweep 1/N、2/N、...」になって意味が薄まる。
+
+**例外を許容する根拠**:
+
+- **diff 量が小さい** (1 行 import path × N file = total N 行修正、N=4 でも 11 行程度)
+- **mental simulation のコストが低い** (各 file の修正は同 pattern、複雑な意味判断なし)
+- **bisect 不要** (機械的置換で binary search 単位が無意味)
+- **revert も簡単** (`git revert <sha>` で一発、scope 限定済)
+
+**反例 (本例外サブパターン不適用)**:
+
+- **機械的でない判断混入**: 各 file で「ここは absolute のまま残す」「ここは relative」のような judgment 要素あり → 機械的でない、Phase 分離で個別判断
+- **type system 変更を伴う**: import path 変更で型推論が変わる可能性 (前 #815 で `FeedItem.tsx` 削除実装試行時の謎の implicit any 罠) → 機械的でない、調査要
+- **import side effect (副作用 import)** を含む: `import "../setup-something"` のような側 effect import は順序依存あり、機械的置換不可
+
+**verify 手順 (機械的 sweep refactor 版)**:
+
+1. **sweep 範囲を grep で全件確認** (touch 対象 file 数 + 各 file の hit 数を把握)
+2. **sed で 1 コマンド機械的置換** (file 跨ぎ + pattern 列挙で 1 sweep 完結)
+3. **typecheck + check + 関連 unit test を 1 サイクルで実行** (regression 検出)
+4. **diff 量を `git diff --stat` で確認**: insertion ≈ deletion (機械的置換の特性) + total line 数 ≤ 数十行 で sweep 適切性 verify
+
+主な使用箇所: `#816` `src/hooks/` `@/` → `../` 統一 (touch 4 file + 計 11 import path 変更) — agent confidence 92% で ゴールド sign 本体の touch ≤ 2 sign 微未達だったが、sed 1 コマンド + 設計判断不要 + 既存 unit test 110/110 pass で regression verify 完了、`useImageDownload` (前 commit `ce85793d`、touch 1) と合計 5 file 統一済で de facto canonical 完全達成 (235 vs 0)
+
 ### 派生ケース: 監査エージェントの提案は実装着手前に「影響範囲 vs 利得」で再評価する
 
 監査エージェントは **「fix の概要」だけ提示** することが多く、実装範囲の見積りが甘い (例: 「2 つの hook を統合」と書いてあるが、実は **Context lift up + 4 ファイル変更** が必要なケース)。連続修正の判定表で「規範パターン複製 + 1〜2 ファイル」に該当しても、実際にコードを Read してみたら 5 ファイル超え/Context 設計要となることがある。
