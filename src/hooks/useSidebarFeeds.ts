@@ -2,7 +2,10 @@ import { useMemo, useRef } from "react";
 import type { Feed, FeedGroup, FeedView } from "../types";
 import { useUnreadStats } from "../contexts/UnreadStatsContext";
 import { sortByOrder } from "../lib/sort-utils";
-import { computeFeedStructuralSignature } from "../lib/feed-signature";
+import {
+  computeArticleTagIdsSignature,
+  computeFeedStructuralSignature,
+} from "../lib/feed-signature";
 
 interface UseSidebarFeedsInput {
   feeds: Feed[];
@@ -41,14 +44,27 @@ export function useSidebarFeeds({
   // 二重 scan が解消される。
   const { unreadByFeed, totalUnread, lastPublishedByFeed, readTodayCount } = useUnreadStats();
 
+  // `useReadStateTags` の `setTagIdsState` が 2 秒 debounce flush ごとに新 reference を
+  // 生成するが、内容変化なしなら signature 一致で tagCounts O(N×M) 全走査を skip。
+  // 同 file の `feedStructuralSignature` 既使用 canonical pattern と完全対称
+  // (`react-state-ref.md § 派生「signature string」`)。
+  const articleTagIdsSignature = useMemo(
+    () => (articleTagIds ? computeArticleTagIdsSignature(articleTagIds) : ""),
+    [articleTagIds],
+  );
+  const articleTagIdsRef = useRef(articleTagIds);
+  articleTagIdsRef.current = articleTagIds;
+
   const tagCounts = useMemo(() => {
     const map = new Map<string, number>();
-    if (!articleTagIds) return map;
-    for (const tags of Object.values(articleTagIds)) {
+    const current = articleTagIdsRef.current;
+    if (!current) return map;
+    for (const tags of Object.values(current)) {
       for (const t of tags) map.set(t, (map.get(t) ?? 0) + 1);
     }
     return map;
-  }, [articleTagIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- articleTagIdsSignature が内容を encode 済、articleTagIdsRef は ref 安定参照
+  }, [articleTagIdsSignature]);
 
   const sortedTags = useMemo(() => {
     const arr = [...tagCounts.entries()];

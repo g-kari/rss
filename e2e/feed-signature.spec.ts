@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { computeFeedStructuralSignature } from "../src/lib/feed-signature";
+import {
+  computeArticleTagIdsSignature,
+  computeFeedStructuralSignature,
+} from "../src/lib/feed-signature";
 import type { Feed } from "../src/types";
 
 /**
@@ -122,5 +125,52 @@ test.describe("computeFeedStructuralSignature — 順序 / 非影響 field", () 
   test("title null は空文字列扱い (オプショナル field)", () => {
     const sig = computeFeedStructuralSignature([makeFeed({ id: "x", title: undefined })]);
     expect(sig).toBe("x||||0||");
+  });
+});
+
+test.describe("computeArticleTagIdsSignature", () => {
+  test("空の articleTagIds は空文字を返す", () => {
+    expect(computeArticleTagIdsSignature({})).toBe("");
+  });
+
+  test("単一 article + 単一 tag", () => {
+    expect(computeArticleTagIdsSignature({ "art-1": ["tag-a"] })).toBe("art-1|tag-a");
+  });
+
+  test("単一 article + 複数 tag は `,` で join される", () => {
+    expect(computeArticleTagIdsSignature({ "art-1": ["tag-a", "tag-b", "tag-c"] })).toBe(
+      "art-1|tag-a,tag-b,tag-c",
+    );
+  });
+
+  test("複数 article entry は `\\n` で join される", () => {
+    expect(
+      computeArticleTagIdsSignature({
+        "art-1": ["tag-a"],
+        "art-2": ["tag-b", "tag-c"],
+      }),
+    ).toBe("art-1|tag-a\nart-2|tag-b,tag-c");
+  });
+
+  test("内容変化なしの新 reference は同 signature を返す (regression 防止)", () => {
+    const a = { "art-1": ["tag-a", "tag-b"] };
+    const b = { "art-1": ["tag-a", "tag-b"] };
+    expect(computeArticleTagIdsSignature(a)).toBe(computeArticleTagIdsSignature(b));
+  });
+
+  test("tag が 1 つ増えると signature 変化", () => {
+    const a = computeArticleTagIdsSignature({ "art-1": ["tag-a"] });
+    const b = computeArticleTagIdsSignature({ "art-1": ["tag-a", "tag-b"] });
+    expect(a).not.toBe(b);
+  });
+
+  test("tag 順序差異で signature 変化 (順序保持の semantics)", () => {
+    const a = computeArticleTagIdsSignature({ "art-1": ["tag-a", "tag-b"] });
+    const b = computeArticleTagIdsSignature({ "art-1": ["tag-b", "tag-a"] });
+    expect(a).not.toBe(b);
+  });
+
+  test("空 tagIds array は articleId だけ encode", () => {
+    expect(computeArticleTagIdsSignature({ "art-1": [] })).toBe("art-1|");
   });
 });
