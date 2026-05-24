@@ -493,44 +493,125 @@ export function useFilteredArticles({
     pageSize,
   );
 
-  return {
-    filtered: deduplicated,
-    visible,
-    hasMore,
-    unreadOnly,
-    toggleUnreadOnly: filters.toggleUnreadOnly,
-    bookmarkOnly,
-    toggleBookmarkOnly: filters.toggleBookmarkOnly,
-    readingListOnly,
-    toggleReadingListOnly: filters.toggleReadingListOnly,
-    likeOnly,
-    toggleLikeOnly: filters.toggleLikeOnly,
-    noteOnly,
-    toggleNoteOnly: filters.toggleNoteOnly,
-    digestMode,
-    toggleDigestMode: filters.toggleDigestMode,
-    sortOrder,
-    toggleSortOrder,
-    dateRange,
-    cycleDateRange: filters.cycleDateRange,
-    query: filters.query,
-    rawQuery: filters.rawQuery,
-    updateQuery: filters.updateQuery,
-    searchRef: filters.searchRef,
-    sentinelRef,
-    globalFilter,
-    setGlobalFilter,
-    notifyArticlesAdded,
-    loadMore,
-    readingTimeRange,
-    cycleReadingTimeRange: filters.cycleReadingTimeRange,
-    authorFilter,
-    setAuthorFilter: filters.setAuthorFilter,
-    categoryFilter,
-    setCategoryFilter: filters.setCategoryFilter,
-    resetAllFilters: filters.resetAllFilters,
-    duplicateInfo,
-  };
+  // ArticleFilterProvider value 経由で配下の全 consumer (ArticleListHeader / CategoryFilter /
+  // SortButton / FilterPills / MarkAllReadButton 等) が依存。useMemo で wrap しないと
+  // 毎 render で新 reference を作って Provider value identity 変化 → 全 consumer re-render する。
+  // react-state-ref.md § 派生「複数 state を return する hook は戻り値全体を useMemo で wrap」適用。
+  return useMemo<FilterState>(
+    () => ({
+      filtered: deduplicated,
+      visible,
+      hasMore,
+      unreadOnly,
+      toggleUnreadOnly: filters.toggleUnreadOnly,
+      bookmarkOnly,
+      toggleBookmarkOnly: filters.toggleBookmarkOnly,
+      readingListOnly,
+      toggleReadingListOnly: filters.toggleReadingListOnly,
+      likeOnly,
+      toggleLikeOnly: filters.toggleLikeOnly,
+      noteOnly,
+      toggleNoteOnly: filters.toggleNoteOnly,
+      digestMode,
+      toggleDigestMode: filters.toggleDigestMode,
+      sortOrder,
+      toggleSortOrder,
+      dateRange,
+      cycleDateRange: filters.cycleDateRange,
+      query: filters.query,
+      rawQuery: filters.rawQuery,
+      updateQuery: filters.updateQuery,
+      searchRef: filters.searchRef,
+      sentinelRef,
+      globalFilter,
+      setGlobalFilter,
+      notifyArticlesAdded,
+      loadMore,
+      readingTimeRange,
+      cycleReadingTimeRange: filters.cycleReadingTimeRange,
+      authorFilter,
+      setAuthorFilter: filters.setAuthorFilter,
+      categoryFilter,
+      setCategoryFilter: filters.setCategoryFilter,
+      resetAllFilters: filters.resetAllFilters,
+      duplicateInfo,
+    }),
+    [
+      deduplicated,
+      visible,
+      hasMore,
+      unreadOnly,
+      filters.toggleUnreadOnly,
+      bookmarkOnly,
+      filters.toggleBookmarkOnly,
+      readingListOnly,
+      filters.toggleReadingListOnly,
+      likeOnly,
+      filters.toggleLikeOnly,
+      noteOnly,
+      filters.toggleNoteOnly,
+      digestMode,
+      filters.toggleDigestMode,
+      sortOrder,
+      toggleSortOrder,
+      dateRange,
+      filters.cycleDateRange,
+      filters.query,
+      filters.rawQuery,
+      filters.updateQuery,
+      filters.searchRef,
+      sentinelRef,
+      globalFilter,
+      setGlobalFilter,
+      notifyArticlesAdded,
+      loadMore,
+      readingTimeRange,
+      filters.cycleReadingTimeRange,
+      authorFilter,
+      filters.setAuthorFilter,
+      categoryFilter,
+      filters.setCategoryFilter,
+      filters.resetAllFilters,
+      duplicateInfo,
+    ],
+  );
 }
 
-export type FilterState = ReturnType<typeof useFilteredArticles>;
+export interface FilterState {
+  filtered: Article[];
+  visible: Article[];
+  hasMore: boolean;
+  unreadOnly: boolean;
+  toggleUnreadOnly: () => void;
+  bookmarkOnly: boolean;
+  toggleBookmarkOnly: () => void;
+  readingListOnly: boolean;
+  toggleReadingListOnly: () => void;
+  likeOnly: boolean;
+  toggleLikeOnly: () => void;
+  noteOnly: boolean;
+  toggleNoteOnly: () => void;
+  digestMode: boolean;
+  toggleDigestMode: () => void;
+  sortOrder: ReturnType<typeof useArticleSorting>["sortOrder"];
+  toggleSortOrder: ReturnType<typeof useArticleSorting>["toggleSortOrder"];
+  dateRange: ReturnType<typeof useArticleFilters>["dateRange"];
+  cycleDateRange: ReturnType<typeof useArticleFilters>["cycleDateRange"];
+  query: string;
+  rawQuery: string;
+  updateQuery: ReturnType<typeof useArticleFilters>["updateQuery"];
+  searchRef: ReturnType<typeof useArticleFilters>["searchRef"];
+  sentinelRef: ReturnType<typeof useArticlePagination>["sentinelRef"];
+  globalFilter: KeywordFilter | null;
+  setGlobalFilter: (filter: KeywordFilter | null) => void;
+  notifyArticlesAdded: ReturnType<typeof useArticlePagination>["notifyArticlesAdded"];
+  loadMore: ReturnType<typeof useArticlePagination>["loadMore"];
+  readingTimeRange: ReturnType<typeof useArticleFilters>["readingTimeRange"];
+  cycleReadingTimeRange: ReturnType<typeof useArticleFilters>["cycleReadingTimeRange"];
+  authorFilter: string | null;
+  setAuthorFilter: ReturnType<typeof useArticleFilters>["setAuthorFilter"];
+  categoryFilter: string | null;
+  setCategoryFilter: ReturnType<typeof useArticleFilters>["setCategoryFilter"];
+  resetAllFilters: ReturnType<typeof useArticleFilters>["resetAllFilters"];
+  duplicateInfo: Map<string, string[]>;
+}

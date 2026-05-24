@@ -37,6 +37,18 @@ export interface OgpCacheStore {
 
 const OgpCacheContext = createContext<OgpCacheStore | null>(null);
 
+// Provider 外 fallback の sentinel。module-level + Object.freeze で
+// (1) identity 安定 (useMemo / useEffect deps に渡しても毎呼び出し再評価されない)
+// (2) 下流が誤って .add() / .push() してもプロセス全体で sentinel が汚染されない safety net。
+// react-state-ref.md § 派生「モジュールレベル sentinel オブジェクトは Object.freeze で下流汚染を防ぐ」適用。
+const NULL_OGP_CACHE_STORE: OgpCacheStore = Object.freeze({
+  ogpCache: Object.freeze({}) as Record<string, string>,
+  getEntry: () => undefined,
+  cacheOgpEntry: () => {
+    /* no-op when Provider is not present */
+  },
+}) as OgpCacheStore;
+
 interface ProviderProps {
   value: OgpCacheStore;
   children: ReactNode;
@@ -50,17 +62,9 @@ export function OgpCacheProvider({ value, children }: ProviderProps) {
  * OGP cache を Context 経由で取得する hook。Provider 外で呼ばれた場合は **null-object**
  * (空 cache + `getEntry` が常に undefined を返す) を返して安全に fallback する設計。
  * これは AppShell の Provider 設置漏れ / test 環境で Provider なしのときに silent fail
- * せずに既存挙動 (cache なし → 都度 fetch) を維持するため。
+ * せずに既存挙動 (cache なし → 都度 fetch) を維持するため。null-object は
+ * module-level sentinel で identity 安定。
  */
 export function useOgpCacheContext(): OgpCacheStore {
-  const ctx = useContext(OgpCacheContext);
-  if (ctx) return ctx;
-  // null-object fallback: Provider 外で呼ばれた場合の safe default
-  return {
-    ogpCache: {},
-    getEntry: () => undefined,
-    cacheOgpEntry: () => {
-      /* no-op when Provider is not present */
-    },
-  };
+  return useContext(OgpCacheContext) ?? NULL_OGP_CACHE_STORE;
 }

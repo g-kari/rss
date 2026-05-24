@@ -2,7 +2,7 @@
 
 import { useState, useCallback, type RefObject } from "react";
 import type { Article } from "../types";
-import { useToast } from "@/contexts/ToastContext";
+import { useToast } from "../contexts/ToastContext";
 import { apiFetch } from "../lib/api-fetch";
 import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
 import { collectImageUrls } from "../lib/image-extractor";
