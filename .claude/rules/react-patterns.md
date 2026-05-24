@@ -173,6 +173,87 @@ sub.requestCookie;                // ← `!` 不要
 
 主な使用箇所: `src/lib/api-feed-guard.ts#FeedSubscribedResult` — `feeds/[id]/{,refresh,reinfer,purge-content-cache}` の subscription guard で `sub: UserSubscription` を `!` なしで取得
 
+## 三項演算子 chain で同 tag を repeat すると DOM 再利用が壊れて flash する
+
+React reconciler は **同 position + 同 tag の element** は DOM を再利用する (`<div>` → `<div>` で innerHTML 差し替えのみ) が、**三項演算子 chain で異なる branch に同 tag を書いた場合** は **異なる position の element** として扱われ、unmount → mount → DOM 全置換が発生する。子要素を含む大きい `<div dangerouslySetInnerHTML>` 等で発生すると視覚的「フラッシュ」(本文が一瞬消えて再描画) として観測される。
+
+```tsx
+// アンチパターン: 三項演算子 chain で <div> を repeat → branch 切替で re-mount
+{
+  htmlSourceA ? (
+    <div ref={contentRef} className="article-content" dangerouslySetInnerHTML={{ __html: htmlA }} />
+  ) : htmlSourceB ? (
+    <div ref={contentRef} className="article-content" dangerouslySetInnerHTML={{ __html: htmlB }} />
+  ) : htmlSourceC ? (
+    <p className="article-content">{plainText}</p>
+  ) : null;
+}
+// → 同じ <div> ref={contentRef} でも、React は「異なる branch position」と扱い、
+//   htmlSourceA → htmlSourceB 切替時に <div> unmount → 新 <div> mount → DOM 全置換 → flash 発生
+
+// 修正パターン: html 計算を useMemo に集約 + 単一 <div> で render
+const articleBodyHtml = useMemo<string | null>(() => {
+  if (htmlSourceA) return htmlA;
+  if (htmlSourceB) return htmlB;
+  return null;
+}, [htmlSourceA, htmlSourceB, htmlA, htmlB]);
+
+{
+  articleBodyHtml !== null ? (
+    <div
+      ref={contentRef}
+      className="article-content"
+      dangerouslySetInnerHTML={{ __html: articleBodyHtml }}
+    />
+  ) : htmlSourceC ? (
+    <p className="article-content">{plainText}</p>
+  ) : null;
+}
+// → 同一 position + 同 tag <div> で React が DOM を再利用、innerHTML 直接書き換えで完了 → flash 抑止
+```
+
+**判定軸: re-mount で flash が起きうるケース**:
+
+| 構造                                                                             | 判定                                                                      |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 三項演算子 chain で同 tag を repeat (`A ? <div/> : B ? <div/> : ...`)            | **re-mount リスク** → useMemo で 1 つに集約推奨                           |
+| 同 branch 内で `__html` 値だけ変わる (`<div ...html={memo}/>` 同 element 内更新) | **DOM 再利用** (innerHTML 直接書き換え)、flash 抑止済                     |
+| 異なる tag の切替 (`<div/>` ↔ `<p/>`)                                            | **必ず re-mount** (element type 違い)、回避には tag 統一が必要            |
+| 同 tag + key 同一 (`<div key="content" .../>` 統一)                              | **DOM 再利用**、key で reconciler に「同 element」と明示                  |
+| portal (`createPortal`) 経由                                                     | portal 内は通常 reconciler 適用、portal 自体の mount/unmount は外側で判定 |
+
+**How to apply**: 三項演算子 chain で **同 tag (`<div>` / `<span>` / `<p>` 等) を 2 回以上 repeat** している箇所を見たら以下を判定 (re-mount による flash は DOM 全置換 + 子要素 unmount/remount + 子 effect 再実行 + scroll position 喪失 + focus 喪失等の副作用 大、構造的に防ぐのが canonical):
+
+1. **三項演算子 chain で同 tag が 2+ 回出現** している場合は flash リスクあり
+2. **2+ branch の `__html` (or children) 計算を 1 つの useMemo に集約**:
+   ```tsx
+   const html = useMemo(() => {
+     if (sourceA) return htmlA;
+     if (sourceB) return htmlB;
+     return null;
+   }, [sourceA, sourceB, htmlA, htmlB]);
+   ```
+3. **単一 element で render** + `html !== null ? <div ...html={html}/> : ...` で分岐
+4. **`<p>` ↔ `<div>` のような tag type 切替** は同様の flash 原因だが、tag 統一 (例: 全て `<div>` で `whitespace-pre-wrap` で text 改行保持) または key 明示で対処
+5. **子 hook が ref に依存** (`useContentLinkPreviews(contentRef, ...)` 等) する場合は **DOM 再利用** で `contentRef.current` が一貫することが重要 (re-mount すると ref が null になる瞬間が発生して副作用乱れる)
+
+**該当する典型 flash トリガー**:
+
+| 状況                               | 観測される flash                                                      |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| RSS 本文 → 全文取得後 content 切替 | 三項演算子 chain で `processedContent` ↔ `hasArticleContentHtml` 切替 |
+| Gallery view で記事カード切替      | 同 ArticleContentBody でも record 切替で content branch 切替          |
+| AI 要約完了で要約タブと本文の切替  | `contentTab === "translate"` 等の branch 切替で同 tag re-mount        |
+| Modal の open/close で内部 content | Modal portal 内の content branch 切替                                 |
+
+**反例 (本パターン適用不要なケース)**:
+
+- **branch が 1 つだけ** (`{html ? <div/> : null}`) → re-mount リスクなし、useMemo 不要
+- **branch tag が全て異なる** (`<div/>` ↔ `<p/>` ↔ `<section/>`) → element type 違いで必ず re-mount、tag 統一が真の解
+- **flash が UX 上問題ない短時間 transition** (例: error toast の表示) → 既存ユーザーが慣れている挙動なら統合不要
+
+主な使用箇所: `ArticleContentBody.tsx` の content 描画 (commit `b0ac3219`) — `processedContent` / `hasArticleContentHtml` / `article.summary` の 3 branch のうち前 2 branch を `articleBodyHtml` useMemo + 単一 `<div ref={contentRef}>` に統合、全文取得完了 / gallery 切替時の re-mount 起因 flash を抑止。Phase 2 (OGP / link preview 遅延 reflow + `<p>` summary との element 切替) は `#817` で別 Issue 起票
+
 ## 子コンポーネントの「自己判断で hidden になる UI」は親で「全件 hidden」を検知して fallback する
 
 子コンポーネントが「自分の都合 (画像が小さすぎる・コンテンツが空・条件不一致など) で `null` を返す」設計のとき、**親はその事実を知らない**ため、全子が `null` を返した結果 **UI が空っぽ** になる症状が発生する。
