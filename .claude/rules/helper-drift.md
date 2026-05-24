@@ -61,6 +61,69 @@ export async function PATCH(request, { params }) {
 
 主な使用箇所: `app/api/collections/[id]/route.ts` / `app/api/auth/dbsc/{challenge,register}/route.ts` の UUID 正規表現 4 箇所重複 → `isValidSessionId` 集約 (リファクタ監査エージェント confidence 92%)
 
+### 派生ケース: 新規 component / hook 追加時は **sibling 配下 shared module を先に grep** して helper 流用を検討する
+
+新規 component / hook を追加するとき、**既存 sibling (同 directory) の `shared.tsx` / `_internal.ts` / `_helpers.ts` 等の集約 module を最初に grep** して既存 helper を見落とさない。他 component を copy-paste でテンプレ作成すると、本来 shared に集約済の handler / hook を **自己再定義** してしまう drift が新規追加サイクルで累積する。
+
+```typescript
+// アンチパターン: copy-paste で sibling shared 確認漏れ → 同形 useCallback 再定義
+// src/components/article-items/NewLayoutItem.tsx (新規追加)
+import { ArticleActions, type ArticleItemProps } from "./shared";  // 既存 import
+
+export const NewLayoutItem = function NewLayoutItem({ article, onSelectArticle, onContextMenu, ... }) {
+  // ↓ sibling `shared.tsx` に handleArticleKeyDown が既存だが grep 漏れで再定義
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onSelectArticle(article);
+      }
+    },
+    [article, onSelectArticle],
+  );
+  // ...
+};
+
+// 修正パターン: sibling shared を必ず grep + import 統一
+import {
+  ArticleActions,
+  handleArticleKeyDown,    // ← shared 既存を使用
+  handleArticleContextMenu, // ← shared 既存を使用
+  type ArticleItemProps,
+} from "./shared";
+
+export const NewLayoutItem = function NewLayoutItem({ article, onSelectArticle, onContextMenu, ... }) {
+  const handleKeyDown = handleArticleKeyDown(article, onSelectArticle);
+  const handleContextMenu = handleArticleContextMenu(article, onContextMenu);
+  // ...
+};
+```
+
+**How to apply**: 新規 component / hook 追加時に以下を判定 (copy-paste base の追加では sibling shared の grep 漏れが構造的に発生するため、明示 step として強制):
+
+1. **新規 file 作成前に sibling directory の `shared.{ts,tsx}` / `_internal.ts` / `_helpers.ts` を Read** で全 export 確認
+2. **コピー元 file の import 文の `from "./shared"` 部分を必ず確認** (copy-paste 時に import を残しても本体ロジックは独自で書きがち)
+3. **新規 file の handler / hook 名と shared export 名を 1:1 grep** で衝突確認
+4. **`grep -rEn "^(export )?(const|function)\s+handle[A-Z]" <sibling-dir>` で sibling shared の全 handler を列挙** → 新規 component で同形 logic を書きそうになったら既存使用に置換
+
+**該当する典型 path** (本プロジェクトの sibling shared 配置):
+
+| directory                             | sibling shared module               | 集約済 helper の典型                                                                           |
+| ------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `src/components/article-items/`       | `shared.tsx`                        | `handleArticleKeyDown` / `handleArticleContextMenu` / `ArticleActions` / `ArticleThumbnail` 等 |
+| `src/components/feed-item/`           | `feedActions.tsx`                   | `buildFeedActions`                                                                             |
+| `src/components/article-list-header/` | `types.ts` / `constants.ts`         | shared type / constant                                                                         |
+| `src/components/article-view/`        | (なし、機能別分割)                  | sub-component import で対応                                                                    |
+| `src/hooks/`                          | (sibling shared なし、各 hook 独立) | 本派生 case 適用外                                                                             |
+
+**反例 (本派生 case 不要なケース)**:
+
+- 新規 component が **完全に独立した責務** (sibling と全く異なる UX、shared helper 流用不可) → grep skip OK
+- sibling directory が **flat 構造で集約 module なし** (`src/hooks/` 等) → 全体 lib grep (helper-drift.md 本体規範) に従う
+- 新規 component が **prototype / 1 回限り experimental** (本番投入未定) → grep 緩和可
+
+主な使用箇所: `ListItem.tsx` / `MagazineItem.tsx` / `CardItem.tsx` の 3 component が `shared.tsx#handleArticleKeyDown` (既存) + 未抽出の `handleContextMenu` を copy-paste で再定義 → 本サイクル refactor agent 発見で shared に集約 (`handleArticleKeyDown` import 統一 + `handleArticleContextMenu` 新規 export 追加)、commit `3f9bd3e4`。本派生 case で新規 component 追加時の構造的予防可能化
+
 ### 派生ケース: helper drift 解消で「同じエンドポイントの既存 error code 契約」を変更してはならない
 
 別 Route Handler から helper (`assertValidFeedHash` / `assertFeedSubscribed` 等) を流用するとき、helper の error code が **既存エンドポイントの API spec に記載されている error code と異なる** ケースがある (例: helper は `INVALID_FEED` を返すが、対象 endpoint の既存 spec は `INVALID_PAYLOAD`)。helper を機械的に置換すると **client 側の error 分岐コードが壊れる** + **api-spec.md と実装が乖離する** という二重損失が発生する。
