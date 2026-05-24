@@ -118,6 +118,91 @@ agent が **primary issue + secondary issue (2 件以上)** をまとめて提�
   - Secondary (`role="status"` 削除): canonical `A11yHelpers.tsx` が `role="status" + aria-live` 両用 (矛盾) + `regression-load-more-fail.spec.ts:101` の `[role="status"]` selector 依存 → **見送り**
   - 結果: scope minimal で primary のみ 1 行修正 (touch 1 file)、SR announce 改善達成 + e2e spec 影響ゼロ
 
+#### 派生サブケース: agent が言及した commit / branch / hash は **`git log` 実在 verify 必須** (fabrication 検出)
+
+agent が **「`fix/xxx-yyy` commit で実装済」** 「`#NNN` で fix 済」のように **specific commit hash / branch 名 / Issue 番号** を主張するとき、これらが **実在しない fabrication** である pattern が発見されている。agent は「過去 fix の延長」「regression 防止」観点を強化するため、想起ベースで存在しない commit を引用するケースがある。
+
+```bash
+# agent 提案で fix commit / branch / Issue 番号が引用されたら必ず実在 verify
+
+# 1. fix commit が存在するか git log で確認
+git log --all --oneline | grep -iE "fix/issue-35|link-null-dedup|<agent 引用 hash>"
+
+# 2. branch 名が実在するか
+git branch -a | grep -iE "<agent 引用 branch>"
+
+# 3. Issue 番号が実在するか
+gh issue view <number> --json state,title 2>/dev/null
+
+# 4. fix 主張の根拠が実コード上に実装されているか (本命の verify)
+grep -rEn "<fix 主張の symbol / pattern>" src/ app/ --include="*.ts" --include="*.tsx"
+```
+
+**典型的な agent fabrication pattern**:
+
+| agent 主張                      | verify 方法                              | 検出効果                            |
+| ------------------------------- | ---------------------------------------- | ----------------------------------- | -------------------------------- |
+| `fix/<branch-name>` commit      | `git log --all --oneline                 | grep <branch>`                      | branch / merge commit の実在確認 |
+| `#NNN` Issue                    | `gh issue view NNN --json state,title`   | Issue / PR 番号の実在 + state 確認  |
+| 「`<symbol>` 実装済」           | `grep -rn "<symbol>" src/ app/`          | 実コード上の symbol 実在 + 機能確認 |
+| 「<file>:<line> で <X> 修正済」 | `Read <file>` で対象 line 周辺コード確認 | 実装内容 vs agent 主張の対比        |
+
+**How to apply**: agent report で specific 引用 (commit / branch / Issue / 実装箇所) を見たら、**実装着手前に必ず実在 verify を実行** (agent fabrication は規範違反でない誤情報、信用して着手すると spec / fix が無駄になる + canonical 想定が崩れる):
+
+1. **fix commit / branch 名引用** → `git log --all --oneline | grep` で実在確認
+2. **Issue / PR 番号引用** → `gh issue view N` / `gh pr view N` で state + title 確認
+3. **「実装済」「修正済」主張** → 実コード grep + Read で具体的実装内容 verify
+4. **fabrication 確定なら採用見送り** + retrospective に「agent fabrication 観測」記録 (agent prompt 改善材料 / 将来の警戒対象)
+
+**反例 (本サブケース不適用)**:
+
+- agent が **抽象的概念のみ提案** (commit / branch / Issue 番号引用なし) → fabrication 対象外、通常 verify
+- agent 引用 commit が **本サイクル内 / 直近 cycle の master log 上で実在確認可能** → fabrication 無し、通常 verify
+- agent が **「実装が canonical pattern と異なる」** のような相対指摘 → fabrication 対象外 (canonical 実在自体は別 verify 必要)
+
+主な使用箇所: 本サイクル e2e regression agent が **「`fix/issue-35-link-null-dedup` commit で mergeNewArticles に link null dedup 実装済」** と主張 → `git log --all --oneline | grep "link-null-dedup"` で **commit 実在せず** + `src/lib/shared-feed.ts` 実コード verify で **mergeNewArticles は article.id (sha256(feedUrl|guid)) ベース dedup で link null ロジック実在しない** と判明 → **agent fabrication 確定、Cand 2 採用見送り** (本派生サブケースで構造的予防可能化)
+
+#### 派生サブケース: agent 推奨の test framework は **対象 spec の framework と整合 verify**
+
+agent が「`vi.spyOn(xxx)` で mock」「`vitest` で spec 追加」を推奨するとき、対象 spec ファイルが **playwright/test** で `vi` API 不在のケースがある。test framework mismatch を見逃すと spec 追加が runtime error で失敗する。
+
+```bash
+# agent test framework 推奨を採用前に必ず実環境 verify
+
+# 1. 対象 spec ファイルの test runner を import 文で確認
+head -3 <target-spec-file>
+# → 'import { test, expect } from "@playwright/test"'  → playwright/test
+# → 'import { describe, it, expect, vi } from "vitest"' → vitest
+
+# 2. agent 推奨 API が利用可能か (vi / @testing-library/react / jest-dom 等)
+grep -nE "import.*vitest|import.*playwright" <target-spec-file>
+```
+
+**判定マトリクス**:
+
+| 既存 spec framework   | agent 推奨 API                  | 整合判定                          |
+| --------------------- | ------------------------------- | --------------------------------- |
+| `@playwright/test`    | `vi.spyOn` / `vi.mock`          | ❌ mismatch (vi 不在)             |
+| `@playwright/test`    | `Object.defineProperty` で mock | ✓ 整合 (DOM global mock 可能)     |
+| `vitest` (`.test.ts`) | `vi.spyOn` / `vi.mock`          | ✓ 整合                            |
+| `vitest`              | `page.goto` / `page.locator`    | ❌ mismatch (playwright API 不在) |
+
+**How to apply**: agent が test 関連 mock / spec 追加を提案したら以下を判定 (test framework mismatch は spec 実行時の runtime error で発覚するが、修正 scope が新 framework 移行に拡大するため、着手前 verify で scope 把握が canonical):
+
+1. **対象 spec file の test runner を import 文で確認** (`@playwright/test` vs `vitest`)
+2. **agent 推奨 API が対象 runner で利用可能か** verify (公式 docs / 既存 spec で使用例検索)
+3. **mismatch なら以下 3 案**:
+   - 案 A: 新規 `.test.ts` (vitest) 追加 + architecture.md カバレッジマップ entry 追加 (scope 中、新 framework 移行価値あり)
+   - 案 B: 既存 framework で mock 達成方法を再検討 (`Object.defineProperty` / DOM stub 等、scope 小)
+   - 案 C: 採用見送り + Issue 起票降格 (scope 設計判断要)
+
+**反例 (本サブケース不適用)**:
+
+- agent が **mock 方法を framework 特定せず提案** (例: 「storage helper を stub」のみ) → 任意 framework で対応可能、verify 不要
+- 対象 spec が **mock 不要 (純粋関数 + 直接 assert)** → framework mismatch 関係なし
+
+主な使用箇所: 本サイクル e2e regression agent が `e2e/lru-cache.spec.ts` (playwright/test) に **`vi.spyOn(storageSet)` mock** 推奨 → 対象 framework が playwright で vi 不在 → 案 A (vitest 新規 .test.ts) で Issue 起票降格 (`#821`)
+
 ### 派生ケース: 高信頼度の独立修正は「Issue 起票せず同サイクルで連続修正」する
 
 監査エージェントの指摘が以下の条件を全て満たす場合、Issue 起票をスキップして **同サイクルで連続修正 → 各 commit を master 反映** が効率的:
