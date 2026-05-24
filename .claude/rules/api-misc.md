@@ -13,15 +13,17 @@ description: エンゲージメント / 統計 / 各種ユーティリティ API
 
 ```json
 // 200 OK
-[
-  {
-    "articleId": "...",
-    "feedHash": "...",
-    "action": "read",
-    "timestamp": "2024-11-01T00:00:00Z",
-    "value": null
-  }
-]
+{
+  "entries": [
+    {
+      "articleId": "...",
+      "feedHash": "...",
+      "action": "read",
+      "timestamp": "2024-11-01T00:00:00Z",
+      "value": null
+    }
+  ]
+}
 ```
 
 ### エラー一覧
@@ -60,7 +62,7 @@ description: エンゲージメント / 統計 / 各種ユーティリティ API
 | ---------- | ----------------- | ------------------------------ |
 | `400`      | `INVALID_PAYLOAD` | 必須フィールド欠損または型不正 |
 | `401`      | —                 | 未認証                         |
-| `429`      | `COOLDOWN`        | 1 秒クールダウン中             |
+| `429`      | `RATE_LIMITED`    | 1 秒クールダウン中             |
 
 ---
 
