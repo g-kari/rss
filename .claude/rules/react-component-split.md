@@ -835,6 +835,54 @@ defensive 対処は **症状抑止** で、真因 (上流 type assertion の通�
 
 主な使用箇所: `#811` ArticleAiPanel.tsx の `renderSummary` で `line.startsWith("## ")` が本番 minified TypeError → `src/lib/ai-summary-parse.ts` に `parseSummaryLine` / `parseSummaryLines` を unknown 受け純粋関数で切り出し + 21 ケース TDD spec で defensive 動作網羅 + component 側を unknown 受け JSX helper に変更 (1 サイクル close、本番 ErrorBoundary 発火即時抑止)
 
+#### 派生サブケース: 本番 sourcemap 404 時は **本番 minified bundle 静的解析** で真因特定可能
+
+本番 sourcemap が deploy されていない (`productionBrowserSourceMaps` 未設定 / `*.js.map` 404) 状態で本番 stack trace の minified symbol (`tr` / `tt` 等) を真因特定するには、**本番 chunk file を直接 fetch + 該当 column offset の byte 抽出**で minified コードを解析する。`grep + src/lib/` cross-reference で source file を特定できる。
+
+```bash
+# Step 1: 本番 chunk file を fetch (Issue stack trace の URL chunk file から)
+curl -s "https://<domain>/_next/static/chunks/<chunk-id>.js" -o /tmp/chunk.js
+
+# Step 2: stack trace の column offset 周辺 byte 抽出 (例: 22486)
+# 1 行 file の特定 byte offset 周辺 600 char を head + tail で抽出
+awk 'BEGIN{ORS=""} {print}' /tmp/chunk.js | head -c <offset+300> | tail -c 600
+
+# Step 3: 抽出した minified pattern から src/lib/ の対応 file を grep で特定
+# (regex / startsWith arg / 周辺 control flow から source 推測)
+grep -rln "<対応する pattern>" src/lib/ src/hooks/
+
+# Step 4: 確定 file の client side caller を grep で確認
+grep -rln "<関数名>" src/
+
+# Step 5: 該当 path を defensive 化 (unknown 受け + 非 string fallback)
+```
+
+**判定軸**:
+
+| 状況                                                                          | アクション                                                                      |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 本番 sourcemap deploy 済 (`*.js.map` 200)                                     | DevTools / source-map-cli で直接 unminified symbol 特定                         |
+| 本番 sourcemap 404 + chunk file 公開                                          | **本番 chunk 静的解析** (本派生サブケース)、curl で byte 抽出 → src grep で特定 |
+| 本番 sourcemap 404 + chunk file も認証必要                                    | dev 環境再現 / 一時 sourcemap deploy (`Option 3b`) でユーザー協力依頼           |
+| stack trace の minified symbol が **同 chunk 内で複数定義** (e.g., `tr` 重複) | column offset を **byte 精度で抽出** + 前後 control flow で識別                 |
+
+**How to apply**: 本番 minified TypeError 報告 (`#812` 同種症状) を受けたら以下のフロー (sourcemap deploy なしでも `<5 min` で真因特定可能、`Option 3b` 一時 deploy より bundle size / 機密漏洩 trade-off ゼロ):
+
+1. **stack trace の chunk URL を抽出** (`https://<domain>/_next/static/chunks/<id>.js:<line>:<col>`)
+2. **`curl -s <chunk-url> -o /tmp/chunk.js`** で本番 chunk 取得
+3. **`awk 'BEGIN{ORS=""} {print}' /tmp/chunk.js | head -c <col+300> | tail -c 600`** で stack trace column 周辺の minified コード抽出
+4. **minified コード内の specific pattern** (regex / 文字列 literal / 周辺関数構造) で `src/lib/` を `grep -rln` 特定
+5. **caller を `grep -rln` で client side 経路確認** (= ErrorBoundary 配下発火 path の整合性確認)
+6. **defensive 化** (unknown 受け + 非 string fallback) + TDD spec 追加 (`undefined / null / number / object / array / boolean / 空文字 / string regression` 8 ケース canonical)
+
+**反例 (静的解析が不要なケース)**:
+
+- 本番 sourcemap deploy 済 → 直接 source map 経由で symbol 特定、本派生サブケース不要
+- minified symbol が **明らかな同 file** (例: `src/lib/<file>.ts` の specific function 名と一致) → 静的解析せず直接 source 確認
+- stack trace の chunk URL が **認証必要 / 私的 deploy** → 本派生サブケース実行不可、`Option 3b` 一時 deploy 必須
+
+主な使用箇所: `#812` (`tr (174u.dwf~cc-l.js:1:22486)`) で `<img>` regex + `startsWith("data:")` 経路を本番 chunk 静的解析で特定、`src/lib/image-extractor.ts:115` `collectImageUrlsFromHtml` の `string` → `unknown` 受け defensive 化 + 8 ケース TDD spec で構造的修正 (commit `8d825f1d`、`#811` defensive 規範の本番 sourcemap なし環境での実証)
+
 #### 派生サブケース: defensive 規範 codify 時は **同 pattern grep sweep + 他箇所適用フロー** をワンセット運用する
 
 defensive 規範 (JSX 描画 helper の unknown 受け化) を 1 箇所 fix + codify した直後に、**同 pattern (`grep -rEn "\.startsWith\(" src/`)** を機械的に sweep して **他箇所の未対処経路を予防的に発見** する。1 箇所適用のみだと「規範 codify 後も別経路で同種症状再発」(本プロジェクト実例: `#811` ArticleAiPanel fix → 前々サイクル ReleaseNotesModal 適用 → `#812` 別経路 avbase.net 系で再発) を招く。
