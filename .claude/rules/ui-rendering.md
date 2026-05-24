@@ -145,3 +145,59 @@ function usePrefetch({ maxPrefetch = 200 }: Options) {
 4. テキスト色も別トークン (`--color-{機能名}-highlight-text`) で揃えると、背景色変更時に文字読みやすさが崩れない
 
 該当パターン: `--color-tts-highlight` / `--color-tts-highlight-text`
+
+## WAI-ARIA role override は semantic HTML を一致させる (`<ul role="listbox">` の罠)
+
+`<ul role="listbox">` のように semantic HTML element の `role` を ARIA で **override** するパターンは、**HTML5 content model 制約と ARIA role の要求が矛盾** することがあり、validity 違反 + 一部スクリーンリーダーで accessibility tree 解釈失敗を引き起こす。代表例:
+
+- `<ul>` の HTML5 content model = `<li>` 0 個以上のみ
+- `role="listbox"` の WAI-ARIA 要求 = direct child は `role="option"`
+- `<ul role="listbox"><li><button role="option">...</button></li></ul>` 構造は **listitem が間に入って ownership chain 切れ** + HTML 仕様外 (ul に button 直配置も同様 validity 違反)
+
+```tsx
+// アンチパターン: ul + li wrapper で listbox option を 2 段 nest
+<ul role="listbox" aria-label="候補">
+  {items.map((opt) => (
+    <li key={opt.id}>
+      <button role="option" aria-selected={...}>{opt.label}</button>
+    </li>
+  ))}
+</ul>
+// → 1. WAI-ARIA: listitem が間に入って listbox → option の ownership 切れ
+//    JAWS / NVDA で aria-activedescendant が accessibility tree で解決できず announce 失敗
+// → 2. HTML5: <ul> content model に <button> 直配置は仕様外 (li only)
+
+// 修正パターン: <div role="listbox"> + <button role="option"> 直配置
+<div role="listbox" aria-label="候補" className="overflow-y-auto py-1">
+  {items.map((opt) => (
+    <button key={opt.id} role="option" aria-selected={...}>{opt.label}</button>
+  ))}
+</div>
+// ↑ semantic HTML (div) + ARIA role (listbox) が直交、content model 制約なし
+//   listbox → option の ownership chain も直接親子で確立、aria-activedescendant 正常 announce
+```
+
+**判定軸: semantic HTML override が必要なケース vs unsafe なケース**:
+
+| 構造                                                     | 判定                                                                          |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `<ul role="listbox">` + `<li role="option">` 妥協        | HTML validity OK + ARIA option 親子確立可、ただし button focus 管理が複雑     |
+| `<ul role="listbox">` + `<button role="option">` 直配置  | **validity 違反** (ul の content model 違反)                                  |
+| `<div role="listbox">` + `<button role="option">` 直配置 | **canonical** (semantic + ARIA 整合、最も clean)                              |
+| `<nav role="navigation">` (semantic 重複)                | role 削除推奨 (nav は既に navigation role を持つ、explicit ARIA は redundant) |
+| `<button>` + `role="link"` 等の reinterpret              | アクセシビリティ低下要因、native element 切替推奨 (`<a>` に変更)              |
+
+**How to apply**: `<element role="...">` で semantic HTML を role で override しようとするとき (WAI-ARIA 仕様準拠 + HTML5 content model 両立を担保しないと、スクリーンリーダー解釈失敗 / validity 違反 / focus 管理混乱の 3 種類のリスクが累積する):
+
+1. **対象要素の HTML5 content model を MDN で確認** (`<ul>` → `<li>` only, `<dl>` → `<dt>/<dd>`, `<table>` → `<thead>/<tbody>` 等)
+2. **対象 ARIA role の WAI-ARIA 仕様 (required parent / required children)** を MDN で確認 (`listbox` → option, `tree` → treeitem, `grid` → row/gridcell)
+3. **content model と ARIA 要求が一致しない場合は `<div role="...">`** で semantic を中立化、ARIA role 単独で意味付け
+4. **role override が必要な特殊ケース** (legacy HTML 構造維持 / SEO で `<ul>` が必須 等) は **`<ul role="listbox"><li role="option">` 妥協案** で content model + ownership 両立 (ただし button focus 管理は別途配線要)
+5. **lint 検出**: oxlint / eslint-plugin-jsx-a11y の `no-redundant-roles` / `role-supports-aria-props` を活用、structural violation は手動 review
+
+**反例 (semantic 維持が canonical なケース)**:
+
+- `<nav>` / `<main>` / `<aside>` / `<header>` / `<footer>` / `<button>` / `<a>` 等 **既に implicit role を持つ semantic element** → ARIA role 不要 (`role="navigation"` 等は redundant)
+- `<div>` で role override せず元のまま (= `role="generic"`) → ARIA tree node として無視される、interactive content であれば semantic element に変更
+
+主な使用箇所: `FeedQuickSwitchModal.tsx:189-235` — 旧 `<ul role="listbox"><li><button role="option">` 構造を `<div role="listbox"><button role="option">` 直配置に変更、WAI-ARIA ownership chain + HTML5 content model 両立、listRef 型も HTMLUListElement → HTMLDivElement に同期

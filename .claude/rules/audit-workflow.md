@@ -132,6 +132,39 @@ paths: "e2e/**/*.spec.ts"
 
 主な使用箇所: perf 監査 (useTotalUnreadCount 統合) — エージェント 85% 信頼度だったが Read で Context lift up 必要と判明 → Issue 起票して降格
 
+#### 派生サブケース: 「caller 0 件判定」agent 結果は **複数 relative path pattern** で grep 再 verify する
+
+simplify / dead code 監査 agent が「caller 0 件 → 削除可能」と判定したとき、**agent の grep pattern が限定的で relative path 経由 (`../X` / `./X`) を見落とす罠** がある。`feedback_subagent_verification.md` ルール「サブエージェント分析結果は Read で再現確認してから採用」を path grep にも厳密適用する。
+
+```bash
+# アンチパターン: agent prompt が単一 path pattern で grep 0 件判定
+# 例: agent は `from "components/X"` 形式の絶対 path 風 import のみ grep
+# → relative path 経由 (`from "../X"` / `from "./X"`) を全く見ない
+
+# 修正パターン: 複数 path pattern を 1 コマンドで網羅 grep
+grep -rnE "from\s+[\"'].*[/\"']<target>[\"']" src/ app/ \
+  --include="*.ts" --include="*.tsx" \
+  --exclude="release-notes-data.ts" 2>/dev/null
+# ↑ 正規表現で path 末尾 `<target>` を match、relative / absolute 両方拾う
+```
+
+**How to apply**: 「caller 0 件」「dead export」判定 agent report を採用するとき、**実装着手前** に必ず以下を実行 (agent caller 検査の見落としは削除実施後に typecheck error 連鎖で発覚し、scope 拡大 + revert で 1 サイクル消費する罠):
+
+1. **複数 path pattern で 1 コマンド grep** 実行 (上記 snippet) — relative path (`../X` / `./X`) / index file 経由 (`from "./feature"` で `feature/index.ts` 解決) / 全 pattern を網羅
+2. **0 件確認 + 削除影響範囲確認の 2 段** で実コード verify:
+   - 0 件確認: 上記 grep で本当に 0 件
+   - 影響範囲: 削除後 typecheck が pass するか dry-run (`git stash` で一旦戻して typecheck 状態を base 状態と比較)
+3. **agent 結果との差分があれば revert + Issue 起票** で次サイクル送り (`audit-workflow.md § 派生「実装着手前に影響範囲 vs 利得で再評価」` で scope 拡大回避)
+4. **逆方向 verify** も併用: 「target file の export 全件を **逆方向** grep して caller list を構築」する方法。`grep -rnE "import .*from.*<target>"` で全 import 文を抽出 → 各 caller を Read で意図確認
+
+**反例 (agent caller 0 件が正しいケース)**:
+
+- target file が **`.md` / `.json` / 設定ファイル** で import されない (path 経由 caller 元から無い)
+- target file が **既に `git rm --cached` で untracked + production deploy 対象外**
+- target file が **新規追加直後で実 caller がまだ無い** (Phase 0 抽象型のみ commit 段階)
+
+主な使用箇所: 候補 4 `FeedItem.tsx` dead re-export 削除提案 — agent simplify confidence 92% で「caller 0 件」と判定したが、`feed-sidebar/index.tsx:17` + `SpecialViewButton.tsx:3` + `CategorySection.tsx:5` + `FeedGroupsSection.tsx:7` の **4 caller** が `../FeedItem` relative path で import 中。削除実施後の typecheck で謎の implicit any 連鎖発生 (`feed-item/index.tsx` 直接 import 経由で type 推論 path が変わる現象) → revert + Issue `#815` 起票で次サイクル送り。本派生サブケースで構造的に予防可能化
+
 ### 派生ケース: 監査エージェントの提案は「prop 受け口」と「配線」を分離して部分達成できる
 
 「Issue 起票へ降格」の前に、**「prop 受け口の追加 (1 ファイル)」と「配線 wiring (3〜4 ファイル + state lift up 等)」を分離** して **prop 受け口だけ同サイクル commit + 配線は別 Issue 起票** という部分達成パターンを採れることがある。「全部か全くやらないか」の二択でなく、安全な前半だけ commit を進められる。
