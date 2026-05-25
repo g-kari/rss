@@ -21,17 +21,12 @@ export type ImageErrorReason =
 /**
  * #749: errorImageSvg の詳細情報 (X-Image-Proxy-* ヘッダーで返す)。
  * デバッグ時にレスポンスヘッダーから実際の失敗理由を取り出せる。
+ *
+ * 同等 type が binary-proxy-handler.ts に `BinaryProxyErrorDetails` として定義済のため
+ * type alias で統合 (helper-drift.md § 同名 enum / type の重複は canonical の alias 化)。
  */
-export interface ImageErrorDetails {
-  /** 上流レスポンスの HTTP status (network エラー時は省略) */
-  upstreamStatus?: number;
-  /** 上流が返した Content-Type */
-  upstreamContentType?: string;
-  /** マジックバイト由来の MIME (Content-Type 検証時のみ) */
-  detectedMime?: string;
-  /** ボディ取得時のサイズ (bytes、Content-Length なしで読み切ったとき) */
-  bodySize?: number;
-}
+import type { BinaryProxyErrorDetails } from "./binary-proxy-handler";
+export type ImageErrorDetails = BinaryProxyErrorDetails;
 
 /**
  * フレーム＋アイコン＋ラベルから SVG 文字列を組み立てる。
