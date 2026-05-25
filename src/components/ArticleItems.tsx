@@ -21,4 +21,3 @@ export {
 
 // ArticleList.tsx が `import { resolveThumbnail } from "./ArticleItems"` している
 export { resolveThumbnail } from "../lib/article-utils";
-export { highlightText } from "../lib/article-ui-helpers";
