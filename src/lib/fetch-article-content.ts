@@ -197,7 +197,10 @@ export async function fetchArticleContent(
     saveContentToCache(cacheKey, content, ctx);
 
     return content;
-  } catch {
+  } catch (err) {
+    // server-side external fetch wrapper の silent fail を wrangler tail で観測可能化
+    // (browser-platform.md § silent fallback 禁止 規範対象判定軸 / canonical: recommendation.ts)
+    console.warn("[fetch-article-content] fetch failed:", url, err);
     return null;
   }
 }

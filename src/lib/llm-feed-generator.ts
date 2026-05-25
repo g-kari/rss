@@ -227,7 +227,10 @@ export async function inferFeedFromUrl(
 
     const siteTitle = extractPageTitle(html) || new URL(url).hostname;
     return { selectors, siteTitle, siteUrl: url };
-  } catch {
+  } catch (err) {
+    // server-side external fetch + AI wrapper の silent fail を wrangler tail で観測可能化
+    // (browser-platform.md § silent fallback 禁止 規範対象判定軸 / canonical: recommendation.ts)
+    console.warn("[llm-feed-generator] inferFeedFromUrl failed:", url, err);
     return null;
   }
 }
