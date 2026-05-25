@@ -57,8 +57,6 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     onChangeGalleryAutoScrollSpeed,
     galleryPageSize,
     onChangeGalleryPageSize,
-    gallerySelfMasonryEnabled,
-    toggleGallerySelfMasonryEnabled,
     deduplicateByLink,
     toggleDeduplicateByLink,
     ttlDays,
@@ -170,8 +168,6 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
         onChangeTtlDays={onChangeTtlDays}
         deduplicateByLink={deduplicateByLink}
         toggleDeduplicateByLink={toggleDeduplicateByLink}
-        gallerySelfMasonryEnabled={gallerySelfMasonryEnabled}
-        toggleGallerySelfMasonryEnabled={toggleGallerySelfMasonryEnabled}
         imageDlFolder={imageDlFolder}
         onChangeImageDlFolder={onChangeImageDlFolder}
         imageDlFolderNsfw={imageDlFolderNsfw}
