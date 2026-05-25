@@ -24,6 +24,7 @@ export default function SessionExpiredModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="session-expired-title"
+      aria-describedby="session-expired-desc"
       tabIndex={-1}
       onKeyDown={handleKeyDown}
     >
@@ -49,7 +50,7 @@ export default function SessionExpiredModal() {
         <h2 id="session-expired-title" className="text-[16px] font-medium text-text-strong mb-2">
           セッションが期限切れになりました
         </h2>
-        <p className="text-[13px] text-text-muted leading-relaxed mb-6">
+        <p id="session-expired-desc" className="text-[13px] text-text-muted leading-relaxed mb-6">
           続行するには再度ログインしてください。
           <br />
           現在の表示内容は保持されます。

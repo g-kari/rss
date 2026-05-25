@@ -338,13 +338,15 @@ pre-commit install   # 初回セットアップ
 
 ### 統計・その他
 
-| メソッド | パス                 | 説明                             |
-| -------- | -------------------- | -------------------------------- |
-| GET      | `/api/stats`         | 読了統計（日別・ヒートマップ等） |
-| GET      | `/api/engagement`    | エンゲージメント記録取得         |
-| POST     | `/api/engagement`    | エンゲージメント記録             |
-| GET      | `/api/release-notes` | リリースノート                   |
-| GET      | `/api/health`        | ヘルスチェック                   |
+| メソッド | パス                      | 説明                                                                 |
+| -------- | ------------------------- | -------------------------------------------------------------------- |
+| GET      | `/api/stats`              | 読了統計（日別・ヒートマップ等）                                     |
+| GET      | `/api/engagement`         | エンゲージメント記録取得                                             |
+| POST     | `/api/engagement`         | エンゲージメント記録                                                 |
+| GET      | `/api/release-notes`      | リリースノート                                                       |
+| GET      | `/api/health`             | ヘルスチェック                                                       |
+| GET      | `/api/piper-voice/[file]` | Piper TTS engine 用 voice モデル (.onnx) と config (.onnx.json) 配信 |
+| GET      | `/api/wasm/[file]`        | Piper TTS / onnxruntime-web wasm 配信 (R2 セルフホスト)              |
 
 ## API エラーレスポンス
 
