@@ -222,7 +222,9 @@ export function useArticleViewState({
     if (!autoTranslate) return false;
     if (!storedContent) return false; // fetch 前は判定不可
     if (translateResult || translateError) return false; // 翻訳完了 or 失敗
-    if (isLikelyJapanese(toPlainText(storedContent).slice(0, 200))) return false;
+    // 200 char だと英文 abstract / byline を含む記事冒頭で日本語判定 false → speak 不要保留が起きる罠を
+    // 防ぐため canonical (browser-translator.ts#detectSourceLanguage) の 500 char sample に統一。
+    if (isLikelyJapanese(toPlainText(storedContent).slice(0, 500))) return false;
     return true;
   }, [autoTranslate, storedContent, translateResult, translateError]);
 

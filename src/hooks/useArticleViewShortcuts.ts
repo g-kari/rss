@@ -114,7 +114,9 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     if (!autoTranslate || !article?.id || !storedContent || translateResult || translateLoading)
       return;
     if (autoTranslateTriggered.current === article.id) return;
-    if (isLikelyJapanese(toPlainText(storedContent).slice(0, 200))) return;
+    // 200 char だと英文 abstract / byline / URL を含む記事冒頭で日本語判定 false → 不要な auto-translate
+    // が起きる罠を防ぐため canonical (browser-translator.ts#detectSourceLanguage) の 500 char sample に統一。
+    if (isLikelyJapanese(toPlainText(storedContent).slice(0, 500))) return;
     // #700: ブラウザ翻訳が使えなくて Workers AI フォールバックを避けたい場合は skip
     if (shouldSkipAutoAi(translatorAvailable, autoAiBrowserOnly)) return;
     autoTranslateTriggered.current = article.id;
