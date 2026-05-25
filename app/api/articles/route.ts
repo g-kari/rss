@@ -186,31 +186,29 @@ export async function GET(request: NextRequest) {
     }
 
     // since 指定あり (差分取得) 経路: キャッシュ bypass
-    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
-
-    // since が指定された場合: feed-last-fetched.json（1 R2 GET）で更新済みフィードだけに絞る
-    // cron が更新するキャッシュファイルを参照することで meta.json の N 件読み込みを排除する
-    const activeSubs = await (async () => {
-      const feedLastFetched = await r2Get<Record<string, string>>(
-        env.RSS_DATA,
-        feedLastFetchedKey(session.userId),
-        {},
-      );
-      return subs.filter((s) => {
-        const lastFetchedAt = feedLastFetched[s.feedHash];
-        // キャッシュ未設定（初回 or cron 未実行）は保守的に含める
-        if (!lastFetchedAt) return true;
-        return new Date(lastFetchedAt).getTime() > sinceMs;
-      });
-    })();
-
-    const [feedArticles, savedArticles, readState] = await Promise.all([
-      getUserLatestArticles(env.RSS_DATA, session.userId, activeSubs),
+    // wave 1: subs / feedLastFetched / savedArticles / readState を並列取得 (R2 GET 直列段数 3 → 2)
+    // feedLastFetched は subs フィルタにのみ使用、savedArticles と readState は subs に非依存なので
+    // 同 wave 並列化可能。getUserLatestArticles のみ activeSubs 確定後の wave 2 await。
+    const [subs, feedLastFetched, savedArticles, readState] = await Promise.all([
+      readUserSubscriptions(env.RSS_DATA, session.userId),
+      r2Get<Record<string, string>>(env.RSS_DATA, feedLastFetchedKey(session.userId), {}),
       r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
       r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
         normalizeReadState,
       ),
     ]);
+
+    // since が指定された場合: feed-last-fetched.json（1 R2 GET）で更新済みフィードだけに絞る
+    // cron が更新するキャッシュファイルを参照することで meta.json の N 件読み込みを排除する
+    const activeSubs = subs.filter((s) => {
+      const lastFetchedAt = feedLastFetched[s.feedHash];
+      // キャッシュ未設定（初回 or cron 未実行）は保守的に含める
+      if (!lastFetchedAt) return true;
+      return new Date(lastFetchedAt).getTime() > sinceMs;
+    });
+
+    // wave 2: activeSubs 確定後に feed articles 取得
+    const feedArticles = await getUserLatestArticles(env.RSS_DATA, session.userId, activeSubs);
 
     // フィードごとのキーワードフィルターを適用（キーワードは小文字化済み）
     const filterMap = buildFilterMap(subs, (s) => s.feedHash);
