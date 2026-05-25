@@ -27,8 +27,12 @@ interface GalleryContextMenuProps {
   bookmarkIds: Set<string>;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
-  /** #795: 既読化専用 (既読なら no-op)。「一覧から削除」で使用 */
-  onMarkRead: (id: string) => void;
+  /**
+   * #844: 「一覧から削除」専用 callback。既読化 (markRead) + ギャラリー表示
+   * から強制除去を組み合わせて呼出元 (ArticleList) で実装する。
+   * 既読記事も含めて確実にギャラリーから消えることを担保する。
+   */
+  onDeleteFromGallery: (id: string) => void;
   onSelectArticle: (article: Article) => void;
   onClose: () => void;
 }
@@ -44,7 +48,7 @@ export default function GalleryContextMenu({
   bookmarkIds,
   onToggleRead,
   onToggleBookmark,
-  onMarkRead,
+  onDeleteFromGallery,
   onSelectArticle,
   onClose,
 }: GalleryContextMenuProps) {
@@ -303,9 +307,10 @@ export default function GalleryContextMenu({
         <button
           className={btnClass}
           onClick={() => {
-            // #795: `markRead` (既読化専用、既読なら no-op) を使う。`toggleRead` だと
-            // 既読記事で「一覧から削除」を押すと未読化されて一覧に戻ってしまうバグ。
-            onMarkRead(target.article.id);
+            // #795 / #844: 既読化 (markRead は既読なら no-op) + ギャラリー表示
+            // からの強制除去を 1 callback に集約。markRead の早期 return で
+            // 既読記事が一覧に残る問題を呼出元の filter 経路で吸収する。
+            onDeleteFromGallery(target.article.id);
             onClose();
           }}
         >

@@ -99,6 +99,11 @@ function getDateGroupLabel(publishedAt: string | null): string {
 
 const getArticleId = (a: Article) => a.id;
 
+// #844: ギャラリー削除済 ID 集合の reset 用 sentinel (mutate 防止のため freeze)。
+// react-state-ref.md 派生「モジュールレベル sentinel オブジェクトは Object.freeze で
+// 下流汚染を防ぐ」に従う。型は元の mutable 型のまま (as cast) で consumer に変更不要。
+const EMPTY_DELETED_SET: Set<string> = Object.freeze(new Set<string>()) as Set<string>;
+
 // ── メインコンポーネント ───────────────────────────────────────────────
 
 function ArticleList({
@@ -205,11 +210,41 @@ function ArticleList({
     [],
   );
 
+  // #844: ギャラリービュ「一覧から削除」で既読記事も確実に消すための強制除去 ID 集合。
+  // root cause: markRead は readIds に既存 ID なら同一 Set ref を返すため、
+  // useDelayedGalleryItems の入力配列 (visible) が不変 → 削除 animation も unmount も発火しない。
+  // 修正: visible を filter してから useDelayedGalleryItems に渡すことで item 集合変化を
+  // 検知させ、delete animation + unmount を確実にトリガーする。
+  const [galleryDeletedIds, setGalleryDeletedIds] = useState<Set<string>>(() => new Set());
+  // フィード / グループ / ビュー / レイアウト切替で reset
+  // (ユーザー視点で「切替後に古い deleted IDs が残って混乱」する状況を回避)。
+  useEffect(() => {
+    setGalleryDeletedIds(EMPTY_DELETED_SET);
+  }, [selectedFeedId, activeFeedView, layout]);
+  const galleryVisible = useMemo(
+    () =>
+      galleryDeletedIds.size === 0
+        ? visible
+        : visible.filter((a) => !galleryDeletedIds.has(getArticleId(a))),
+    [visible, galleryDeletedIds],
+  );
+  const handleGalleryDelete = useCallback(
+    (id: string) => {
+      onMarkRead(id);
+      setGalleryDeletedIds((prev) => {
+        if (prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+    },
+    [onMarkRead],
+  );
   const {
     displayItems: galleryDisplayItems,
     deletingIds: galleryDeletingIds,
     newIds: galleryNewIds,
-  } = useDelayedGalleryItems(visible, getArticleId, 300);
+  } = useDelayedGalleryItems(galleryVisible, getArticleId, 300);
 
   // Phase 1: 画像/動画 view のギャラリー layout のとき、1 記事 N 画像を N カードに分解する。
   // explode flag は galleryPrefetchEnabled と同じ条件 (prefetch 完了画像を使うため一致が必要)。
@@ -639,7 +674,7 @@ function ArticleList({
           bookmarkIds={bookmarkIds}
           onToggleRead={onToggleRead}
           onToggleBookmark={onToggleBookmark}
-          onMarkRead={onMarkRead}
+          onDeleteFromGallery={handleGalleryDelete}
           onSelectArticle={onSelectArticle}
           onClose={() => setGalleryCtxMenu(null)}
         />
