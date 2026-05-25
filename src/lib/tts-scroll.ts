@@ -72,6 +72,10 @@ export function shouldScrollSentence(input: SentenceScrollInput): ScrollDecision
  * `overflow: auto/scroll` を持つ祖先を辿る。見つからなければ `document.scrollingElement`
  * (HTML or BODY) を返す。サーバー側 (document 不在) では null。
  */
+/**
+ * NOTE: `src/hooks/useArticlePagination.ts` にも同名 inline 関数あり (semantics 違い)。
+ * 統合せず両方残すのは意図的 — 詳細は useArticlePagination.ts 側の NOTE 参照。
+ */
 export function findScrollableAncestor(el: HTMLElement | null): HTMLElement | null {
   if (!el || typeof window === "undefined") return null;
   let cur: HTMLElement | null = el.parentElement;

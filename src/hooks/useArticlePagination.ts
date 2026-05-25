@@ -14,6 +14,19 @@ import { shouldLoadMore, DEFAULT_LOADMORE_COOLDOWN_MS } from "../lib/loadmore-co
 const DEFAULT_PAGE_SIZE = 50;
 
 /** sentinel の最寄り scrollable ancestor (`overflow-y: auto/scroll`) を遡って探す */
+/**
+ * NOTE: `src/lib/tts-scroll.ts#findScrollableAncestor` と signature 同じだが semantics 違い。
+ * lib 版は `document.scrollingElement` fallback を持つ (SSR-safe) が、本 hook では
+ * **scrollable な祖先が見つからない場合は null** を返す strict 版を使う。
+ *
+ * 理由: lib 版の fallback を使うと IntersectionObserver の root が body になり、
+ * 末尾 sentinel が intersect=true で常時固定される罠が再発する
+ * (#772 cycle 82 / `.claude/rules/react-effect-patterns.md` 派生「scrollContainer
+ * 末尾 sentinel + IO root=null は intersect=true で常時固定される罠」参照)。
+ *
+ * 統合せず両方残すのは意図的 — lib 版は TTS 自動 scroll の SSR-safe fallback 用、
+ * hook 版は IO root を確実に scrollable element に限定する用途で、semantics 差が必要。
+ */
 function findScrollableAncestor(el: HTMLElement | null): HTMLElement | null {
   let parent: HTMLElement | null = el?.parentElement ?? null;
   while (parent && parent !== document.body) {

@@ -33,6 +33,7 @@ export type VideoErrorReason =
  * type alias で統合 (helper-drift.md § 同名 enum / type の重複は canonical の alias 化)。
  */
 import type { BinaryProxyErrorDetails } from "./binary-proxy-handler";
+import { applyProxyErrorDetailHeaders } from "./proxy-error-headers";
 export type VideoErrorDetails = BinaryProxyErrorDetails;
 
 /** 各 reason に対応する HTTP status (image-proxy と同じ semantic を維持)。 */
@@ -63,17 +64,6 @@ export function errorVideoResponse(
   const headers: Record<string, string> = {
     "X-Video-Proxy-Error": reason,
   };
-  if (details?.upstreamStatus !== undefined) {
-    headers["X-Video-Proxy-Upstream-Status"] = String(details.upstreamStatus);
-  }
-  if (details?.upstreamContentType) {
-    headers["X-Video-Proxy-Upstream-Type"] = details.upstreamContentType;
-  }
-  if (details?.detectedMime) {
-    headers["X-Video-Proxy-Detected-Mime"] = details.detectedMime;
-  }
-  if (details?.bodySize !== undefined) {
-    headers["X-Video-Proxy-Body-Size"] = String(details.bodySize);
-  }
+  applyProxyErrorDetailHeaders(headers, "Video-Proxy", details);
   return new Response(null, { status: REASON_TO_STATUS[reason], headers });
 }
