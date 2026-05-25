@@ -5,7 +5,7 @@ import type { Article } from "../types";
 import { useToast } from "../contexts/ToastContext";
 import { apiFetch } from "../lib/api-fetch";
 import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
-import { collectImageUrls } from "../lib/image-extractor";
+import { collectImageUrls, collectImageUrlsFromHtml } from "../lib/image-extractor";
 import { mimeToExt } from "../lib/image-mime";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { downloadBlob } from "../lib/download";
@@ -78,7 +78,19 @@ export function useImageDownload(
   article: Article | null,
   resolvedOgImage: string | null,
   contentRef: RefObject<HTMLDivElement | null>,
-  options?: { isNsfw?: boolean; dlFolder?: string; dlFolderNsfw?: string },
+  options?: {
+    isNsfw?: boolean;
+    dlFolder?: string;
+    dlFolderNsfw?: string;
+    /**
+     * #843: 全文取得 (`/api/content`) で得た processed HTML 文字列。
+     * 渡された場合は `collectImageUrlsFromHtml` で本文画像を確実に拾う。
+     * `contentRef.current` の DOM 走査だけだと、まだ `<div dangerouslySetInnerHTML>`
+     * が render される前 / summary 描画状態だと「OGP 1 枚しか DL されない」現象を起こす
+     * (ギャラリービューの画像 DL と同じく事前抽出済 URL 配列を入力にする方式に揃える)。
+     */
+    processedContent?: string | null;
+  },
 ): ImageDownloadState {
   const toast = useToast();
   const [downloadingImages, setDownloadingImages] = useState(false);
@@ -103,6 +115,16 @@ export function useImageDownload(
       const proxyUrl = buildImageProxyUrl(ogImgSrc);
       seen.add(proxyUrl);
       toDownload.push(proxyUrl);
+    }
+
+    // #843: processedContent (全文取得済 HTML) があれば優先で全画像を拾う。
+    // contentRef.current の DOM 走査は描画タイミング次第で画像数が漏れるため。
+    if (options?.processedContent) {
+      for (const url of collectImageUrlsFromHtml(options.processedContent)) {
+        if (seen.has(url)) continue;
+        seen.add(url);
+        toDownload.push(url);
+      }
     }
 
     if (contentRef.current) {
@@ -174,6 +196,7 @@ export function useImageDownload(
     options?.isNsfw,
     options?.dlFolder,
     options?.dlFolderNsfw,
+    options?.processedContent,
   ]);
 
   const downloadAllImages = useCallback(() => {
