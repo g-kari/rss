@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type KeyboardEvent } from "react";
+import { useCallback, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { usePopupLock } from "@/hooks/usePopupLock";
-import { FOCUSABLE_SELECTOR } from "@/lib/modal-focus";
+import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
 
 interface ImageLightboxProps {
   imageSrc: string;
@@ -19,9 +19,10 @@ interface ImageLightboxProps {
 
 /**
  * 画像/動画 view のギャラリーで「カードクリック」した際の拡大表示。
- * Modal.tsx canonical pattern (#768) に従い focus trap + focus restoration を実装。
- * Esc / 背景クリック / × ボタンで閉じる。←/→ キーで前後画像へナビゲート。
- * 記事詳細を見たい場合は「記事を表示」ボタンで onSelectArticle を呼ぶ。
+ * Modal.tsx canonical pattern (#768 / #833) に従い `useModalFocusTrap` で
+ * focus trap + returnFocus 復元 + Escape close + Tab cycle を集約。
+ * ←/→ キーは前後画像ナビ専用の別 handler で維持し、それ以外 (Escape / Tab) は
+ * canonical hook の `handleKeyDown` に委譲する。
  */
 export default function ImageLightbox({
   imageSrc,
@@ -32,34 +33,17 @@ export default function ImageLightbox({
   onSelectArticle,
 }: ImageLightboxProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   usePopupLock();
 
-  // mount 時: トリガー要素を退避 + 初期 focus、cleanup で復元 (Modal.tsx と同 pattern)
-  useEffect(() => {
-    returnFocusRef.current = document.activeElement as HTMLElement | null;
-    const el = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-    if (el) {
-      el.focus();
-    } else {
-      dialogRef.current?.focus();
-    }
-    return () => {
-      const ret = returnFocusRef.current;
-      if (ret && typeof ret.focus === "function" && document.contains(ret)) {
-        ret.focus();
-      }
-    };
-  }, []);
+  // #833: focus trap + return focus restore + Escape/Tab cycle を hook に集約。
+  // 旧 useEffect (mount 時退避 + cleanup 復元) と inline Tab/Shift+Tab ロジックは
+  // すべて useModalFocusTrap に内包。
+  const { handleKeyDown: trapKeyDown } = useModalFocusTrap(dialogRef, { onClose });
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
+      // Arrow keydown は前後画像ナビ専用 (Modal.tsx canonical にない責務)
       if (e.key === "ArrowLeft" && onPrev) {
         e.preventDefault();
         onPrev();
@@ -70,30 +54,10 @@ export default function ImageLightbox({
         onNext();
         return;
       }
-      if (e.key !== "Tab") return;
-      // Tab trap: 焦点を modal 内で循環させる (Modal.tsx と同 pattern)
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (focusable.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const first = focusable[0]!;
-      const last = focusable[focusable.length - 1]!;
-      if (e.shiftKey) {
-        if (document.activeElement === first || document.activeElement === dialog) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last || document.activeElement === dialog) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
+      // Escape / Tab / Shift+Tab は canonical hook に委譲
+      trapKeyDown(e);
     },
-    [onClose, onPrev, onNext],
+    [trapKeyDown, onPrev, onNext],
   );
 
   const handleBackgroundClick = useCallback(
