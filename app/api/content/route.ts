@@ -3,7 +3,12 @@ import { withSession, type AuthSession } from "@/lib/server-auth";
 import { apiError, formatError } from "@/lib/api-error";
 import { deleteCfCache, matchCfCache } from "@/lib/cache-helper";
 import { isValidFeedUrl } from "@/lib/url";
-import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fetch";
+import {
+  DEFAULT_FETCH_TIMEOUT_MS,
+  fetchFollowSafeRedirects,
+  isAbortError,
+  readBodyBytes,
+} from "@/lib/fetch";
 import {
   appendPaginatedPages,
   ARTICLE_FETCH_OPTS,
@@ -11,7 +16,6 @@ import {
   buildContentCacheKey,
   extractContent,
   saveContentToCache,
-  FETCH_TIMEOUT_MS,
   MAX_CONTENT_BYTES,
 } from "@/lib/fetch-article-content";
 import { checkSlidingWindow } from "@/lib/rate-limit";
@@ -97,7 +101,7 @@ async function handleGet(
   if (limited) return limited;
 
   try {
-    const res = await fetchFollowSafeRedirects(url, ARTICLE_FETCH_OPTS, FETCH_TIMEOUT_MS);
+    const res = await fetchFollowSafeRedirects(url, ARTICLE_FETCH_OPTS, DEFAULT_FETCH_TIMEOUT_MS);
 
     if (!res.ok) {
       // 上流が 429 を返したら Retry-After をクライアントに pass-through してクールダウン判断を委ねる。

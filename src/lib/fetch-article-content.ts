@@ -32,7 +32,6 @@ export const ARTICLE_FETCH_OPTS = {
     Accept: "text/html,application/xhtml+xml",
   },
 };
-export { DEFAULT_FETCH_TIMEOUT_MS as FETCH_TIMEOUT_MS } from "@/lib/fetch";
 export const MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 /** ページネーション結合後・キャッシュ復元後の最終出力に課す上限（UTF-8 バイト）。R2 1 オブジェクト上限とメモリ消費を抑える */
 export const MAX_RETURNED_CONTENT_BYTES = 5 * 1024 * 1024;
