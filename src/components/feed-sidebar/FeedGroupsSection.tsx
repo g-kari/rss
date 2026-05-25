@@ -4,7 +4,7 @@ import { memo, useRef, useState, type ReactNode } from "react";
 import type { FeedGroup, Feed } from "../../types";
 import { useConfirm } from "@/hooks/useConfirm";
 import ConfirmModal from "@/components/ConfirmModal";
-import { formatCount } from "../FeedItem";
+import { formatCount } from "../feed-item";
 
 function FeedGroupsSectionImpl({
   groups,

@@ -2,7 +2,7 @@
 
 import { memo, type ReactNode } from "react";
 import type { Feed } from "../../types";
-import { formatCount } from "../FeedItem";
+import { formatCount } from "../feed-item";
 
 interface Props {
   categoryGroups: [string, Feed[]][];
