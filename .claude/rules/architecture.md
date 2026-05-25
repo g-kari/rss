@@ -75,7 +75,7 @@ app/
         session/route.ts   # DELETE /api/auth/dbsc/session — DBSC バインド済みデバイス登録解除
     feeds/
       route.ts               # GET (一覧) / POST (追加) /api/feeds
-      [id]/route.ts          # DELETE /api/feeds/:id
+      [id]/route.ts          # DELETE / PATCH /api/feeds/:id
       [id]/refresh/route.ts  # POST /api/feeds/:id/refresh — 単体フィード手動更新
       [id]/reinfer/route.ts  # POST /api/feeds/:id/reinfer — LLM CSS セレクタ再推論
       [id]/purge-content-cache/route.ts # POST /api/feeds/:id/purge-content-cache — フィード全記事の content Cache 一括クリア（CLI 用、#691 で購読チェック必須化）
