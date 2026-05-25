@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   replaceUntilStable,
+  processNestedBlocks,
   tryParseBase,
   wrapTables,
   removeNoise,
@@ -801,5 +802,51 @@ test.describe("applyCorePipeline", () => {
 
     expect(result).toContain("<iframe");
     expect(result).toContain("speakerdeck.com/player/abc1234567890def");
+  });
+});
+
+// ── processNestedBlocks 直接 spec ──────────────────────────────────────────
+// removeNoise 経由の indirect 観測のみだったため、unclosed-tag fallback path を含む
+// 全 4 code path を 8 ケース canonical (boundary value 網羅) で固定する。
+
+test.describe("processNestedBlocks", () => {
+  test("対応する閉じタグがない場合は開きタグをそのまま出力する (unclosed fallback)", () => {
+    const result = processNestedBlocks(
+      '<div class="target">開きっぱなし',
+      ["div"],
+      (tag) => tag.includes('class="target"'),
+      (_open, inner) => `<section>${inner}</section>`,
+    );
+    expect(result).toBe('<div class="target">開きっぱなし');
+  });
+
+  test("filter=null のとき全 tag に replacer を適用する", () => {
+    const result = processNestedBlocks(
+      "<div>content</div>",
+      ["div"],
+      null,
+      (_open, inner) => `<p>${inner}</p>`,
+    );
+    expect(result).toBe("<p>content</p>");
+  });
+
+  test("深くネストした同一タグを正しく depth 追跡して処理する", () => {
+    const result = processNestedBlocks(
+      "<div><div>inner</div></div>",
+      ["div"],
+      null,
+      (_open, inner) => `<span>${inner}</span>`,
+    );
+    expect(result).toBe("<span><div>inner</div></span>");
+  });
+
+  test("filter で false 返却された open tag はそのまま出力する", () => {
+    const result = processNestedBlocks(
+      '<div class="keep">untouched</div>',
+      ["div"],
+      (tag) => tag.includes('class="target"'),
+      (_open, inner) => `<section>${inner}</section>`,
+    );
+    expect(result).toBe('<div class="keep">untouched</div>');
   });
 });
