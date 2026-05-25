@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import type { PiperPlusAudioResult, PiperPlusInstance } from "piper-plus";
 import {
   PIPER_PLUS_VOICES,
   DEFAULT_SPEAKER_EMBEDDING_DIM,
@@ -36,40 +37,11 @@ const BOUNDARY_TICK_MS = 100;
 
 const PIPER_WASM_LOADER_URL = "/api/wasm/piper_plus_wasm.js";
 
-interface PiperPlusAudioResult {
-  play: () => Promise<void>;
-  duration: number;
-  sampleRate: number;
-  samples: Float32Array;
-}
-
-interface PiperPlusInstance {
-  synthesize: (
-    text: string,
-    options?: { language?: string; lengthScale?: number },
-  ) => Promise<PiperPlusAudioResult>;
-  /**
-   * Multi-speaker / voice-cloning model 向け合成 API。speaker embedding (Float32Array) を
-   * 渡して ONNX model の `speaker_embedding` input tensor を埋める。
-   * zero-filled embedding を渡すと default speaker 0 の voice が合成される。
-   */
-  synthesizeWithVoiceCloning: (
-    text: string,
-    speakerEmbedding: Float32Array,
-    options?: { language?: string; lengthScale?: number },
-  ) => Promise<PiperPlusAudioResult>;
-  dispose: () => void;
-}
-
-interface PiperPlusLib {
-  initialize: (options: {
-    model: string;
-    ort: unknown;
-    wasmG2pUrl?: string;
-    zhDictBaseUrl?: string;
-    onProgress?: (info: { stage: string; progress: number; message: string }) => void;
-  }) => Promise<PiperPlusInstance>;
-}
+/**
+ * piper-plus library の `PiperPlus` (factory) の型エイリアス。
+ * raw shape は `src/piper-plus.d.ts` で declare 済 (#820)。
+ */
+type PiperPlusLib = typeof import("piper-plus").PiperPlus;
 
 /** dynamic import で library + onnxruntime-web を 1 回だけ読み込む (singleton) */
 let piperLibPromise: Promise<{ lib: PiperPlusLib; ort: unknown }> | null = null;
@@ -81,7 +53,7 @@ function loadPiperLib(): Promise<{ lib: PiperPlusLib; ort: unknown }> {
         // onnxruntime-web の wasm も同 R2 prefix 配下 (`/api/wasm/`) から fetch
         ort.env.wasm.wasmPaths = "/api/wasm/";
       }
-      const mod = (await import("piper-plus")) as unknown as { PiperPlus: PiperPlusLib };
+      const mod = await import("piper-plus");
       return { lib: mod.PiperPlus, ort };
     })();
   }
