@@ -603,6 +603,24 @@ users/{userId}/opml-import.json                 # OPML インポートのクー�
 - 既存 legacy 9 件 (R2-style) は live entries 改名で一時通過状態になるリスクあり、KV migration を別 Issue 化して一括統一
 - `users/` プレフィックスは R2 path を連想させ KV dump で混乱の元 → 統一推奨
 
+**burst 許容仕様**:
+
+KV ベースのレートリミット (`checkSlidingWindow` / `checkAndUpdateCooldown` / `evaluateSlidingWindow`) は Cloudflare KV の **eventual consistency primitive** (atomic CAS / strict read-after-write 非対応) に依存しており、**~1-3 req 程度の burst が `maxCalls` を超過し得る** best-effort 仕様。
+
+具体的なシナリオ:
+
+1. concurrent な複数 request が KV `get` で stale な count 値を読む (replication 遅延)
+2. 各 request が「未到達」判定で pass する
+3. 全 request が KV `put` で count++ → 結果的に limit 超過 + 既に request 通過済
+
+これは **意図的な設計選択** (KV 軽量設計方針の維持) であり、strict 制限が必要な場合は **D1 / Durable Object への migration** が要件となる (大規模変更、本プロジェクトでは未採用)。
+
+**運用への影響**:
+
+- 新規 KV cooldown / sliding window を追加するとき、`maxCalls` は **~1-3 req の burst 許容** を加味して設定する (例: 「実質上限 10 req/min を期待」なら `maxCalls = 7-9` で burst 込み 10 程度に収まる)
+- セキュリティ critical な制限 (例: brute force 認証、課金境界) には **KV ベースの sliding window を採用しない** ことを検討 (atomic 制約を要求する場合は別 infra)
+- 関連実装の JSDoc に同等仕様コメントを併記済 (`src/lib/rate-limit-logic.ts#evaluateSlidingWindow`)
+
 ### AI キャッシュ（永続）
 
 ```
