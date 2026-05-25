@@ -77,7 +77,9 @@
       "vite": ">=8.0.5",
       "postcss": ">=8.5.13",
       "fast-xml-parser": ">=5.7.0",
-      "fast-xml-builder": ">=1.1.7"
+      "fast-xml-builder": ">=1.1.7",
+      "ws": ">=8.20.1",
+      "protobufjs": "^7.5.8"
     },
     "patchedDependencies": {
       "piper-plus": "patches/piper-plus.patch"
