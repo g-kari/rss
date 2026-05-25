@@ -468,8 +468,11 @@ export async function generateRecommendations(params: {
 }): Promise<RecommendationCache> {
   const { userId, bucket, ai, subscriptions, origin } = params;
 
-  // エンゲージメントログを取得
-  const engagement = await r2Get<EngagementLog>(bucket, engagementKey(userId), { entries: [] });
+  // エンゲージメントログと既存キャッシュを並列取得 (R2 GET 直列段数 -1 / dismissedIds 除外は後段でのみ使用)
+  const [engagement, existingCache] = await Promise.all([
+    r2Get<EngagementLog>(bucket, engagementKey(userId), { entries: [] }),
+    readCache(bucket, userId),
+  ]);
 
   // 購読済み URL / feedHash の Set を構築
   const subscribedUrls = new Set(subscriptions.map((s) => s.url));
@@ -497,7 +500,6 @@ export async function generateRecommendations(params: {
   }
 
   // 既存の dismiss 済みを除外してキャッシュ
-  const existingCache = await readCache(bucket, userId);
   const dismissedIds = new Set(existingCache?.dismissedIds ?? []);
 
   const recommendations = merged

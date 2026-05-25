@@ -2,7 +2,8 @@
 
 import { useCallback } from "react";
 import type { Article, Feed } from "../types";
-import { type ArticleItemProps, resolveThumbnail } from "../components/ArticleItems";
+import type { ArticleItemProps } from "../components/ArticleItems";
+import { resolveThumbnail } from "../lib/article-utils";
 import { isArticleRead } from "../lib/article-filter";
 import { useSyncedRef } from "./useSyncedRef";
 

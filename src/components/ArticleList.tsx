@@ -28,7 +28,7 @@ import { useGallerySwipeNav } from "../hooks/useGallerySwipeNav";
 import { useGalleryAutoScroll } from "../hooks/useGalleryAutoScroll";
 import { useArticleListItemProps } from "../hooks/useArticleListItemProps";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
-import { resolveThumbnail } from "./ArticleItems";
+import { resolveThumbnail } from "../lib/article-utils";
 import ArticleListHeader from "./ArticleListHeader";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
 import ArticleContextMenu, { type ArticleContextMenuTarget } from "./ArticleContextMenu";

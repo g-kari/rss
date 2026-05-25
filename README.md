@@ -525,15 +525,19 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 `package.json` の `pnpm.overrides` は脆弱性対応のためにサブ依存のバージョンを強制固定している。
 各エントリの根拠と、削除可能になる条件は以下の通り:
 
-| パッケージ        | 強制バージョン | 対応 CVE / 理由                                                                                              |
-| ----------------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
-| `path-to-regexp`  | `^6.3.0`       | **CVE-2024-45296** — ReDoS 脆弱性。6.2.x 以下で壊滅的バックトラッキングが発生。                              |
-| `yaml`            | `>=2.8.3`      | **CVE-2025-27789** — Prototype Pollution / DoS。2.8.2 以下で発生、2.8.3 で修正。                             |
-| `brace-expansion` | `>=5.0.5`      | ReDoS 脆弱性対策。特定パターンの展開で壊滅的バックトラッキングが発生する。                                   |
-| `minimatch`       | `>=10.0.0`     | `brace-expansion` 依存の ReDoS 脆弱性に連鎖するため、対応版に固定。                                          |
-| `vite`            | `>=8.0.5`      | パストラバーサル / SSRF 系脆弱性対策（詳細は vite の該当リリースノートを参照）。                             |
-| `postcss`         | `>=8.5.13`     | [CVE-2025-6245](https://github.com/advisories/GHSA-86g3-cmjm-g2xj) ほか — コードインジェクション脆弱性対策。 |
-| `fast-xml-parser` | `>=5.7.0`      | Prototype Pollution / Entity Expansion DoS 対策。5.7.0 で修正。                                              |
+| パッケージ         | 強制バージョン | 対応 CVE / 理由                                                                                              |
+| ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `path-to-regexp`   | `^6.3.0`       | **CVE-2024-45296** — ReDoS 脆弱性。6.2.x 以下で壊滅的バックトラッキングが発生。                              |
+| `yaml`             | `>=2.8.3`      | **CVE-2025-27789** — Prototype Pollution / DoS。2.8.2 以下で発生、2.8.3 で修正。                             |
+| `brace-expansion`  | `>=5.0.5`      | ReDoS 脆弱性対策。特定パターンの展開で壊滅的バックトラッキングが発生する。                                   |
+| `minimatch`        | `>=10.0.0`     | `brace-expansion` 依存の ReDoS 脆弱性に連鎖するため、対応版に固定。                                          |
+| `vite`             | `>=8.0.5`      | パストラバーサル / SSRF 系脆弱性対策（詳細は vite の該当リリースノートを参照）。                             |
+| `postcss`          | `>=8.5.13`     | [CVE-2025-6245](https://github.com/advisories/GHSA-86g3-cmjm-g2xj) ほか — コードインジェクション脆弱性対策。 |
+| `fast-xml-parser`  | `>=5.7.0`      | Prototype Pollution / Entity Expansion DoS 対策。5.7.0 で修正。                                              |
+| `fast-xml-builder` | `>=1.1.7`      | `fast-xml-parser` 系の同根対策 — XML Comment / CDATA Injection / 属性値クォート bypass 系の advisory。       |
+| `glob`             | `>=10`         | `brace-expansion` / `minimatch` 連鎖の ReDoS 対策。古い `glob` が古い `minimatch` を引き連れるのを防ぐ。     |
+| `ws`               | `>=8.20.1`     | uninitialized memory disclosure 系 advisory 対策。dev 系 transitive (vite / wrangler) の連鎖防止。           |
+| `protobufjs`       | `^7.5.8`       | unbounded recursive JSON descriptor expansion による DoS 対策。Workers / wrangler 系 transitive で混入する。 |
 
 > **削除タイミング**: 直接依存（Next.js / vite 等）が対応版に更新されたら該当 `override` を削除できる。
 > 削除前に `pnpm why <pkg>` でバージョンが引き上げ済みであることを確認すること。
