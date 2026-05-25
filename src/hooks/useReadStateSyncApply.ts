@@ -101,25 +101,39 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
 
       // Set 系: computeMergedSet で純粋計算し、変更があれば setState と deferSaveSet を呼ぶ
       // （setState コールバック内での副作用を排除して React Strict Mode の二重実行に対応）
-      const mergedRead = computeMergedSet(localSets.read, state.readIds);
-      if (mergedRead) {
-        setReadIds(mergedRead);
-        deferSaveSet(STORAGE_KEYS.READ_IDS, mergedRead);
-      }
-      const mergedBookmarks = computeMergedSet(localSets.bookmarks, state.bookmarkIds);
-      if (mergedBookmarks) {
-        setBookmarkIds(mergedBookmarks);
-        deferSaveSet(STORAGE_KEYS.BOOKMARK_IDS, mergedBookmarks);
-      }
-      const mergedReadingList = computeMergedSet(localSets.readingList, state.readingListIds);
-      if (mergedReadingList) {
-        setReadingListIds(mergedReadingList);
-        deferSaveSet(STORAGE_KEYS.READING_LIST_IDS, mergedReadingList);
-      }
-      const mergedLikes = computeMergedSet(localSets.likes, state.likeIds);
-      if (mergedLikes) {
-        setLikeIds(mergedLikes);
-        deferSaveSet(STORAGE_KEYS.LIKE_IDS, mergedLikes);
+      // L82-100 の既存ループパターンと統一: SET_KIND_CONFIG マップ + for ループで 4x 重複集約
+      const SET_KIND_CONFIG = {
+        read: { serverIds: state.readIds, setter: setReadIds, storageKey: STORAGE_KEYS.READ_IDS },
+        bookmarks: {
+          serverIds: state.bookmarkIds,
+          setter: setBookmarkIds,
+          storageKey: STORAGE_KEYS.BOOKMARK_IDS,
+        },
+        readingList: {
+          serverIds: state.readingListIds,
+          setter: setReadingListIds,
+          storageKey: STORAGE_KEYS.READING_LIST_IDS,
+        },
+        likes: {
+          serverIds: state.likeIds,
+          setter: setLikeIds,
+          storageKey: STORAGE_KEYS.LIKE_IDS,
+        },
+      } satisfies Record<
+        SetKind,
+        {
+          serverIds: string[];
+          setter: Dispatch<SetStateAction<Set<string>>>;
+          storageKey: string;
+        }
+      >;
+      for (const kind of ["read", "bookmarks", "readingList", "likes"] as SetKind[]) {
+        const { serverIds, setter, storageKey } = SET_KIND_CONFIG[kind];
+        const merged = computeMergedSet(localSets[kind], serverIds);
+        if (merged) {
+          setter(merged);
+          deferSaveSet(storageKey, merged);
+        }
       }
 
       // `"field" in state` チェックの意図:
