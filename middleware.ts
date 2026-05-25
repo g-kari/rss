@@ -31,6 +31,10 @@ const STATIC_CSP_SUFFIX = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  // frame-ancestors: 自サイトを iframe で埋め込む経路を全面禁止 (Clickjacking 対策)。
+  // next.config.ts の X-Frame-Options: DENY と同義だが、CSP 仕様優先のモダンブラウザ
+  // (Chromium 系 / Firefox) では frame-ancestors のみが評価される。defense in depth で両方維持。
+  "frame-ancestors 'none'",
 ].join("; ");
 
 function buildCsp(nonce: string): string {

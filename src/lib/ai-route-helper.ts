@@ -91,9 +91,19 @@ export async function runAiJob(
 
   // プロンプトインジェクション対策:
   // 1. toPlainText で HTML タグを除去
-  // 2. < > をエスケープしてデリミタ破壊を防止
-  // 3. <article> デリミタで囲んでユーザーコンテンツ境界を明示
-  const sanitized = toPlainText(content).slice(0, 8000).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // 2. Llama / Mistral 等 instruct format の control token を strip
+  //    (`<|...|>` / `[INST]` / `</s>` / `<<SYS>>` 等を空文字に置換、Workers AI model 入力汚染防止)
+  // 3. < > をエスケープしてデリミタ破壊を防止 (escape を先に、slice を後に — 末尾境界で
+  //    `&lt;` (4 文字) が途中で切られて壊れる不正 entity を避ける)
+  // 4. <article> デリミタで囲んでユーザーコンテンツ境界を明示
+  const escaped = toPlainText(content)
+    .replace(/<\|[^|]*\|>/g, "") // Llama-3 / Qwen 系 instruct control tokens
+    .replace(/\[\/?INST\]/g, "") // Mistral / Llama-2 instruct delimiter
+    .replace(/<<\/?SYS>>/g, "") // Llama-2 system role delimiter
+    .replace(/<\/?s>/g, "") // sentence boundary (Mistral / Llama)
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const sanitized = escaped.slice(0, 8000);
   const plain = `<article>\n${sanitized}\n</article>`;
 
   let result: string;
