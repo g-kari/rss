@@ -21,11 +21,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const validationErr = assertValidFeedHash(feedHash);
   if (validationErr) return validationErr;
   return withSession(req, async ({ session, env }) => {
-    const guard = await assertFeedSubscribed(env.RSS_DATA, session.userId, feedHash);
+    // assertFeedSubscribed (subs R2 GET) と readFeedMeta (meta R2 GET) を並列化して R2 GET 直列段数を 2 → 1 に。
+    // 既存 feeds/[id] PATCH (commit 92769264) と同 pattern (案 A)。未購読時に meta も無駄 fetch されるが
+    // ownership check の semantics は不変、正常系 hot path を優先する trade-off。
+    const [guard, meta] = await Promise.all([
+      assertFeedSubscribed(env.RSS_DATA, session.userId, feedHash),
+      readFeedMeta(env.RSS_DATA, feedHash),
+    ]);
     if (guard.err) return guard.err;
     const { sub } = guard;
-
-    const meta = await readFeedMeta(env.RSS_DATA, feedHash);
     if (!meta) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
 
     if (!meta.cssSelectors) {
