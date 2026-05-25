@@ -56,17 +56,23 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
       {/* サマリーバー — 装飾 dot は隣接テキストで意味を担保しているため `aria-hidden` で AT から除外 */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle">
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-rose-400 flex-shrink-0" aria-hidden="true" />
+          <span className="w-2 h-2 rounded-full bg-status-error flex-shrink-0" aria-hidden="true" />
           <span className="text-[12px] text-text-muted">エラー {errorFeeds.length}件</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" aria-hidden="true" />
+          <span
+            className="w-2 h-2 rounded-full bg-status-warning flex-shrink-0"
+            aria-hidden="true"
+          />
           <span className="text-[12px] text-text-muted">
             レートリミット {rateLimitedFeeds.length}件
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" aria-hidden="true" />
+          <span
+            className="w-2 h-2 rounded-full bg-status-oversized flex-shrink-0"
+            aria-hidden="true"
+          />
           <span className="text-[12px] text-text-muted">
             オーバーサイズ {oversizeFeeds.length}件
           </span>
@@ -174,7 +180,7 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                 >
                   <div className="flex items-start gap-2">
                     <svg
-                      className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5"
+                      className="w-3.5 h-3.5 text-status-warning flex-shrink-0 mt-0.5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -191,7 +197,7 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                         <span className="text-[13px] font-medium text-text-strong truncate">
                           {feed.title}
                         </span>
-                        <span className="text-[10px] text-amber-400 flex-shrink-0">
+                        <span className="text-[10px] text-status-warning flex-shrink-0">
                           {feed.rateLimitedUntil
                             ? untilLabel(feed.rateLimitedUntil, now.getTime())
                             : ""}
@@ -225,7 +231,7 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                 >
                   <div className="flex items-start gap-2">
                     <svg
-                      className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5"
+                      className="w-3.5 h-3.5 text-status-oversized flex-shrink-0 mt-0.5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"

@@ -22,6 +22,12 @@
   --color-accent-dot: #fb7185; /* rose-400: 未読ドット */
   --color-error: #e11d48; /* rose-600: エラーテキスト (WCAG AA: 4.7:1 on stone-50) */
   --color-bookmark: #fbbf24; /* amber-400: ブックマーク */
+  /* status color (FeedHealthModal / FeedDetailModal、#837):
+   * 4 status を semantic token 化、design-system.md 規範整合 + ダークテーマ追従 */
+  --color-status-error: #e11d48; /* rose-600: エラー (WCAG AA: 4.7:1 on stone-50) */
+  --color-status-warning: #d97706; /* amber-600: rate limited / warning (WCAG AA: 4.5:1 on stone-50) */
+  --color-status-oversized: #4f46e5; /* indigo-600: oversize (WCAG AA: 4.5:1 on stone-50) */
+  --color-status-ok: #059669; /* emerald-600: 正常 (WCAG AA: 4.5:1 on stone-50) */
   --color-highlight: #fef3c7; /* amber-100: 検索ハイライト */
   --color-tts-highlight: #fde68a; /* amber-200: TTS 読み上げ中センテンスハイライト (より目立つ) */
   --color-tts-highlight-text: #1c1917; /* stone-900: TTS ハイライト上のテキスト (高コントラスト) */
@@ -56,6 +62,11 @@
   --color-accent-dot: #6366f1; /* indigo-500 */
   --color-error: #fb7185; /* rose-400: エラーテキスト (WCAG AA: 5.4:1 on zinc-950) */
   --color-bookmark: #fbbf24;
+  /* status color (ダーク, #837): WCAG AA on zinc-950 */
+  --color-status-error: #fb7185; /* rose-400 (WCAG AA: 5.4:1) */
+  --color-status-warning: #fbbf24; /* amber-400 (WCAG AA: 4.6:1) */
+  --color-status-oversized: #818cf8; /* indigo-400 */
+  --color-status-ok: #34d399; /* emerald-400 */
   --color-highlight: rgba(99, 102, 241, 0.18); /* indigo-500/18: 検索ハイライト */
   --color-tts-highlight: rgba(251, 191, 36, 0.3); /* amber-400/30: TTS 読み上げ中 (ダーク) */
   --color-tts-highlight-text: #fef3c7; /* amber-100: ダークテーマ高コントラスト */
