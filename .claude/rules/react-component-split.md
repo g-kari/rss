@@ -632,7 +632,7 @@ Phase X+1: default ON + 旧削除
 
 純粋関数層 (`computeXxx` / `selectXxx`) を Phase 0/1 で先行実装 + spec 網羅 → Phase 2a 設定追加 → Phase 2b dual impl (純粋関数を呼ぶ新 component) → Phase 2c 検証 → Phase 3 default ON + 旧削除、の **5 階層 Phase 構造** が library 差し替えの canonical pattern。純粋関数層が先にあると UI 統合層の touch が薄くなる。
 
-主な使用箇所: `#773` masonic → 自前 virtualizer 移行 — Phase 0 (型抽象化 + 純粋関数 2 つ) → Phase 1 (computeMasonryLayout + computeScrollAnchorDelta) → Phase 2a (`gallerySelfMasonryEnabled` flag 追加 + DisplayTabPanel 「実験的機能」セクション) → Phase 2b (`<GalleryMasonrySelf>` + `useMasonryLayout` + 親で dual impl 分岐) → Phase 2c (ユーザー検証待ち) → Phase 3 (default ON + masonic 削除予定)
+主な使用箇所: `#773` masonic → 自前 virtualizer 移行 — Phase 0 (型抽象化 + 純粋関数 2 つ) → Phase 1 (computeMasonryLayout + computeScrollAnchorDelta) → Phase 2a (`gallerySelfMasonryEnabled` flag 追加 + DisplayTabPanel 「実験的機能」セクション) → Phase 2b (`<GalleryMasonrySelf>` + `useMasonryLayout` + 親で dual impl 分岐) → Phase 2c (ユーザー検証期間) → **Phase 3 完了 (`#822`)** — default ON 化 + `gallerySelfMasonryEnabled` 設定削除 + `<GalleryMasonryMasonic>` 削除 + `masonic` npm dep 削除 + `<GalleryMasonry>` を `<GalleryMasonrySelf>` 呼出の thin wrapper 化 + 設定 UI から「実験的機能」セクション削除 (touch 9 file / 35 insertions, 350 deletions / 機能 regression なし)。5 階層 Phase 完了の長期サイクル跨ぎ実例 (Phase 0 → Phase 3 まで複数サイクル) + 検証期間で本番 issue 報告なしを確認後の最終削除パターン
 
 ### 派生ケース: Phase 2a の「純粋関数 + TDD (part1) → hook 実装 + ライブラリ追加 (part2)」細分でライブラリ追加判断を遅らせる
 
