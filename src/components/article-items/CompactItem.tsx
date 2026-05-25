@@ -1,11 +1,17 @@
 "use client";
 
-import { memo, useCallback, useContext, type KeyboardEvent, type MouseEvent } from "react";
+import { memo, useContext } from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
 import { NoteIcon } from "../article-view/icons";
-import { ArticleActions, DuplicateBadge, type ArticleItemProps } from "./shared";
+import {
+  ArticleActions,
+  DuplicateBadge,
+  handleArticleContextMenu,
+  handleArticleKeyDown,
+  type ArticleItemProps,
+} from "./shared";
 
 export const CompactArticleItem = memo(function CompactArticleItem({
   article,
@@ -27,23 +33,8 @@ export const CompactArticleItem = memo(function CompactArticleItem({
 }: ArticleItemProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        onSelectArticle(article);
-      }
-    },
-    [article, onSelectArticle],
-  );
-  const handleContextMenu = useCallback(
-    (e: MouseEvent) => {
-      if (!onContextMenu) return;
-      e.preventDefault();
-      onContextMenu(article, e.clientX, e.clientY);
-    },
-    [article, onContextMenu],
-  );
+  const handleKeyDown = handleArticleKeyDown(article, onSelectArticle);
+  const handleContextMenu = handleArticleContextMenu(article, onContextMenu);
   return (
     <div
       role="article"
