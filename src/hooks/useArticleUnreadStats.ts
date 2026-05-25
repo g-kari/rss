@@ -82,7 +82,11 @@ export function useArticleUnreadStats(
     for (const a of articles) {
       if (!a.publishedAt) continue;
       const prev = next.get(a.feedHash);
-      if (!prev || a.publishedAt > prev) {
+      // ISO 8601 文字列の lexicographic 比較は timezone offset 形式 (`+09:00`/`+00:00`) と
+      // `.000Z` で同 absolute moment でも `+` (0x2B) < `.` (0x2E) で誤判定する罠を防ぐ。
+      // canonical (read-state-prune.ts:80 / useFilteredArticles.ts / buildSnoozePredicate 44th-47th)
+      // と揃えて Date.parse 絶対時刻比較。
+      if (!prev || Date.parse(a.publishedAt) > Date.parse(prev)) {
         next.set(a.feedHash, a.publishedAt);
       }
     }
