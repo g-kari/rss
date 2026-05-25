@@ -26,6 +26,7 @@ export type ImageErrorReason =
  * type alias で統合 (helper-drift.md § 同名 enum / type の重複は canonical の alias 化)。
  */
 import type { BinaryProxyErrorDetails } from "./binary-proxy-handler";
+import { applyProxyErrorDetailHeaders } from "./proxy-error-headers";
 export type ImageErrorDetails = BinaryProxyErrorDetails;
 
 /**
@@ -101,17 +102,6 @@ export function errorImageSvg(reason: ImageErrorReason, details?: ImageErrorDeta
     "Cache-Control": "public, max-age=3600",
     "X-Image-Proxy-Error": reason,
   };
-  if (details?.upstreamStatus !== undefined) {
-    headers["X-Image-Proxy-Upstream-Status"] = String(details.upstreamStatus);
-  }
-  if (details?.upstreamContentType) {
-    headers["X-Image-Proxy-Upstream-Type"] = details.upstreamContentType;
-  }
-  if (details?.detectedMime) {
-    headers["X-Image-Proxy-Detected-Mime"] = details.detectedMime;
-  }
-  if (details?.bodySize !== undefined) {
-    headers["X-Image-Proxy-Body-Size"] = String(details.bodySize);
-  }
+  applyProxyErrorDetailHeaders(headers, "Image-Proxy", details);
   return new Response(ERROR_SVGS[reason], { headers });
 }
