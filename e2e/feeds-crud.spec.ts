@@ -144,6 +144,42 @@ test.describe("isPrivateHost", () => {
     expect(isPrivateHost("[::1]")).toBe(true);
   });
 
+  // IPv6 SSRF coverage 拡張 (#851) — WHATWG URL の hostname 正規化経由で
+  // 6 種の表記がいずれも private 判定されることを regression spec として担保する。
+  // 実コードの caller はすべて `new URL(input).hostname` を渡すため、展開形式
+  // ([0:0:0:0:0:0:0:1]) や IPv4-mapped IPv6 ([::ffff:127.0.0.1]) も WHATWG URL
+  // が短縮 / 16 進化した形 ([::1] / [::ffff:7f00:1] 等) を isPrivateHost が拾う。
+
+  test("IPv6 ループバック展開形式 [0:0:0:0:0:0:0:1] は WHATWG URL 経由で [::1] に正規化されて private", () => {
+    const { hostname } = new URL("http://[0:0:0:0:0:0:0:1]/");
+    expect(hostname).toBe("[::1]");
+    expect(isPrivateHost(hostname)).toBe(true);
+  });
+
+  test("IPv4-mapped IPv6 ループバック [::ffff:127.0.0.1] は private", () => {
+    const { hostname } = new URL("http://[::ffff:127.0.0.1]/");
+    expect(hostname).toBe("[::ffff:7f00:1]");
+    expect(isPrivateHost(hostname)).toBe(true);
+  });
+
+  test("IPv4-mapped IPv6 プライベート範囲 [::ffff:10.0.0.1] は private", () => {
+    const { hostname } = new URL("http://[::ffff:10.0.0.1]/");
+    expect(hostname).toBe("[::ffff:a00:1]");
+    expect(isPrivateHost(hostname)).toBe(true);
+  });
+
+  test("IPv6 リンクローカル [fe80::1] は private", () => {
+    expect(isPrivateHost("[fe80::1]")).toBe(true);
+  });
+
+  test("IPv6 ユニークローカル [fc00::1] (fc プレフィックス) は private", () => {
+    expect(isPrivateHost("[fc00::1]")).toBe(true);
+  });
+
+  test("IPv6 ユニークローカル [fd12:3456::1] (fd プレフィックス) は private", () => {
+    expect(isPrivateHost("[fd12:3456::1]")).toBe(true);
+  });
+
   test("example.com は public", () => {
     expect(isPrivateHost("example.com")).toBe(false);
   });
