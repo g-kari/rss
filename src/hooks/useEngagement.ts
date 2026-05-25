@@ -63,8 +63,12 @@ export function useEngagement(user: UserProfile | null | undefined) {
         : { articleId, feedHash, action };
       const body = JSON.stringify(payload);
       const blob = new Blob([body], { type: "application/json" });
-      if (!navigator.sendBeacon("/api/engagement", blob)) {
-        // sendBeacon が失敗した場合は localStorage にバッファリング
+      // 古い WebView 等で navigator.sendBeacon が undefined だと `undefined(...)` で TypeError
+      // 発生する罠を feature detection で構造的予防 (browser-platform.md § ブラウザ仕様)。
+      const beaconSent =
+        typeof navigator.sendBeacon === "function" && navigator.sendBeacon("/api/engagement", blob);
+      if (!beaconSent) {
+        // sendBeacon が失敗した場合 (or 未対応 environment) は localStorage にバッファリング
         const buffer = loadJson<BufferEntry[]>(BUFFER_KEY, []);
         buffer.push({ articleId, feedHash, action, ...(value !== undefined && { value }) });
         if (buffer.length > MAX_BUFFER) buffer.splice(0, buffer.length - MAX_BUFFER);

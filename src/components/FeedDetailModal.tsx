@@ -207,6 +207,9 @@ function DetailRow({
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
+    // 非 HTTPS context / 古い Safari / 一部 WebView で navigator.clipboard が undefined の罠を
+    // 構造的予防 (canonical: ShareMenu.tsx の `if (!navigator.clipboard)` guard)。
+    if (!navigator.clipboard) return;
     void navigator.clipboard.writeText(value).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);

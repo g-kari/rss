@@ -210,7 +210,12 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
     const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
     const MAX_BEACON_BYTES = 60_000;
     const blob = new Blob([body], { type: "application/json" });
-    const accepted = blob.size <= MAX_BEACON_BYTES && navigator.sendBeacon("/api/read-state", blob);
+    // 古い WebView 等で navigator.sendBeacon が undefined だと `undefined(...)` で TypeError
+    // 発生する罠を feature detection で構造的予防 (browser-platform.md § ブラウザ仕様)。
+    const accepted =
+      blob.size <= MAX_BEACON_BYTES &&
+      typeof navigator.sendBeacon === "function" &&
+      navigator.sendBeacon("/api/read-state", blob);
     if (accepted) {
       // prepareFlush 内の extractAndResetPending で既にリセット済み
     } else {
