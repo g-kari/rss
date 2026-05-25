@@ -561,7 +561,6 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 | highlight.js            | BSD-3-Clause |
 | katex                   | MIT          |
 | marked                  | MIT          |
-| masonic                 | MIT          |
 | @tanstack/react-virtual | MIT          |
 | piper-plus              | MIT          |
 | @piper-plus/g2p         | MIT          |

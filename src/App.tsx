@@ -8,8 +8,8 @@ import type { TtsAdapter } from "./lib/tts-adapter";
 
 /**
  * Piper wasm engine の hook host を `next/dynamic({ ssr: false })` で隔離する (#674 Phase 2c /
- * closes #753)。`@mintplex-labs/piper-tts-web` 内部 chunk は Emscripten 由来の `require("fs")`
- * を含み、Next.js 16 default の Turbopack 静的解析を壊すため、本 dynamic import で client bundle
+ * closes #753)。`piper-plus` 内部 chunk は Emscripten 由来の `require("fs")` を含み、
+ * Next.js 16 default の Turbopack 静的解析を壊すため、本 dynamic import で client bundle
  * 限定 + ssr 時 skip にする。
  *
  * 構造案 2 + render prop (ユーザー採用案 — Issue #753 2026-05-12T07:02:45Z 判断):

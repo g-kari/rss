@@ -12,10 +12,9 @@ import type { TtsAdapter } from "../lib/tts-adapter";
  * children callback に渡して expose する。
  *
  * Why dynamic import:
- *   `@mintplex-labs/piper-tts-web` 内部 chunk `piper-XXXX.js` は Emscripten 由来で
- *   Node.js fallback `require("fs")` を含む。Next.js 16 default Turbopack が静的解析で
- *   これを解決しようとして build を壊すため、本ファイルを `ssr: false` 下の dynamic chunk
- *   に隔離して client bundle 限定にする。
+ *   `piper-plus` 内部 chunk (Emscripten 生成 wasm ラッパー) は Node.js fallback `require("fs")`
+ *   を含む。Next.js 16 default Turbopack が静的解析でこれを解決しようとして build を壊すため、
+ *   本ファイルを `ssr: false` 下の dynamic chunk に隔離して client bundle 限定にする。
  *
  * Why render prop (構造案 2):
  *   React Rules of Hooks により `usePiperTts` は React component 内でしか呼べない。
