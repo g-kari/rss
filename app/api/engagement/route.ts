@@ -60,7 +60,17 @@ export async function POST(req: NextRequest) {
     // 所有権チェック (#691 と同パターン): リクエストユーザーが対象 feedHash を購読していなければ拒否。
     // 未購読 feedHash でエンゲージメントを記録できると、自分の topFeeds 統計や
     // 推薦生成精度が任意に汚染される (cross-user 影響なしだが self-data corruption)。
-    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
+    //
+    // #846 perf: subs 取得と engagement log 取得は独立 fetch のため Promise.all で並列化。
+    // 正常系で R2 GET 直列段数を 2 → 1 に削減 (latency ~30-80ms 短縮)。
+    // 異常系 (未購読 feedHash) では engagement log を取得してから捨てる R2 GET +1 のトレードオフ
+    // があるが、正常系 hot path 優先で採用 (案 A)。
+    const [subs, log] = await Promise.all([
+      readUserSubscriptions(env.RSS_DATA, session.userId),
+      r2Get<EngagementLog>(env.RSS_DATA, engagementKey(session.userId), {
+        entries: [],
+      }),
+    ]);
     if (!subs.some((s) => s.feedHash === feedHash)) {
       return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
     }
@@ -80,10 +90,6 @@ export async function POST(req: NextRequest) {
       }
       value = rawValue;
     }
-
-    const log = await r2Get<EngagementLog>(env.RSS_DATA, engagementKey(session.userId), {
-      entries: [],
-    });
 
     const entry: EngagementEntry = {
       articleId,
