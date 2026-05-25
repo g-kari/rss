@@ -56,6 +56,22 @@ export async function purgeFeedsCache(
 }
 
 /**
+ * ユーザーの全フィード記事一覧キャッシュ (`/api/articles` の since/feed 無し経路) を
+ * 無効化する。フィードリフレッシュ後に呼んで、cache HIT による stale 表示を防ぐ。
+ *
+ * articles route の cache key と完全一致させること
+ * (app/api/articles/route.ts: `user:${userId}:feed:all:page:1`)。
+ */
+export async function purgeArticlesCache(
+  origin: string,
+  userId: string,
+  ctx: ExecutionContext,
+): Promise<void> {
+  const cacheKey = await buildCacheKey(origin, "articles", `user:${userId}:feed:all:page:1`);
+  ctx.waitUntil(caches.default.delete(cacheKey).catch(() => {}));
+}
+
+/**
  * Cloudflare Cache API のエントリを同期的に削除する。
  * 削除に成功した場合は true、対象キーが無かった場合や削除失敗は false。
  */

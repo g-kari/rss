@@ -128,9 +128,15 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
       }
     };
 
+    // batch loop の `visible.find()` を避けるため、link → Article の Map を 1 度だけ構築
+    // (visible 500 件 × batch 10 件で 5000 ops → 510 ops に削減)
+    const articleByLink = new Map<string, Article>();
+    for (const a of visible) {
+      if (a.link) articleByLink.set(a.link, a);
+    }
     batch.forEach((link, i) => {
       fetchingRef.current.add(link);
-      const article = visible.find((a) => a.link === link);
+      const article = articleByLink.get(link);
       // リロード時の /api/ogp 一斉フェッチ burst を防ぐため、インデックスに応じて遅延する（#762）
       setTimeout(() => {
         apiFetch(`/api/ogp?url=${encodeURIComponent(link)}`)
