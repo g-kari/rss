@@ -710,6 +710,19 @@ test.describe("snoozedUntil — スヌーズ", () => {
     });
     expect(result).toHaveLength(2);
   });
+
+  test("timezone offset 形式の過去 snoozedUntil は表示される (lexicographic 比較バグ防止)", () => {
+    // `"2026-01-01T00:00:00.000+09:00"` (= UTC 前日) を `.000Z` 形式 `now` と
+    // lexicographic 比較すると `"+09:00"` > `".000Z"` で「期限切れだが非表示」になる罠を防ぐ。
+    // canonical: read-state-merge.ts#isLaterIso / useFilteredArticles.ts (44th cycle Date.parse 化)
+    const pastWithOffset = new Date(Date.now() - 24 * 60 * 60 * 1000) // 1 日前
+      .toISOString()
+      .replace("Z", "+00:00"); // `.000Z` → `.000+00:00` で format 揺らぎを再現
+    const result = run([A1, A2], {
+      snoozedUntil: { a1: pastWithOffset },
+    });
+    expect(ids(result)).toContain("a1"); // 期限切れなので表示されるべき
+  });
 });
 
 // ==========================================================================

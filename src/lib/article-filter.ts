@@ -187,9 +187,17 @@ function buildSnoozePredicate(
     break;
   }
   if (!hasAny) return null;
+  // ISO 8601 文字列の lexicographic 比較は timezone offset 形式 (`+09:00` 等) で
+  // 同 absolute moment でも `+` (43) vs `Z` (90) で誤判定する罠を防ぐため、
+  // canonical (`read-state-merge.ts#isLaterIso` / `read-state-prune.ts` /
+  // `useFilteredArticles.ts` 44th cycle Date.parse 化) と揃えて Date.parse 化。
+  const nowMs = Date.parse(now);
   return (a) => {
     const until = snoozedUntil[a.id];
-    return !(until && until > now);
+    if (!until) return true;
+    const untilMs = Date.parse(until);
+    if (isNaN(untilMs)) return true; // 不正 ISO は guard で表示扱い
+    return untilMs <= nowMs;
   };
 }
 
