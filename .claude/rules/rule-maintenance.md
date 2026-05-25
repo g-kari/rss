@@ -1272,6 +1272,48 @@ grep -nE "^\.claude/skills" .gitignore
 
 主な使用箇所: 2026-05-12 サイクル — 9 件 open Issue 全て判断仰ぎ要 (#714/#755/#756/#757/#758 設計判断 + #733/#728 close 提案 + #750/#753 実装計画) → master commit 0 + judgment コメント 9 件投稿で完結、retrospective-codify で本派生ケースを規範化
 
+### 派生ケース: 「全 Issue ユーザー採用済 + 自走 5 条件充足」サイクルは 1 サイクル一括処理 + sequential commit で完結する
+
+「全 Issue 判断仰ぎ要」(前派生ケース) の対極として、**全 open Issue がユーザー本人案採用済 + AI 自走 5 条件全充足** のサイクルが発生する。Step 0 sweep で全件「案 A」「案 B」等の明示採用コメントを検出 + 判断不要スクリーニングで全件自走可能と判定 → 1 サイクルで全 Issue を sequential 処理して complete close 可能。
+
+```
+パターン: 全 Issue 自走可能サイクル運用フロー
+  1. Step 0 sweep で全 open Issue の本人最新コメントを一括抽出
+  2. 全件が「案 X 採用」「これで」「実装して」等の採用語を含むことを確認
+  3. 各 Issue を AI 自走 5 条件で再判定 (touch ≤ 5 / 機能変化なし or 既存挙動互換 /
+     推奨案明示済 / 復元可能 / 判断不要)
+  4. 全件 Yes なら sequential 1 commit per Issue で進める:
+     - 各 Issue ごとに branch 切り → 実装 → check + typecheck → commit →
+       master merge --no-ff → branch -d
+     - 並列ではなく sequential (commit boundary を Issue 単位で明確化、bisect 容易)
+  5. 全 Issue 完了後にまとめて retrospective-codify で本サイクル知見を rule に反映
+```
+
+**「全 Issue 自走可能」サイクル発生条件**:
+
+| 条件                                                | 観察方法                                                              |
+| --------------------------------------------------- | --------------------------------------------------------------------- |
+| 過去サイクルで判断仰ぎコメント投稿が累積            | gh issue view で各 Issue の AI コメント (案 A/B/C 提示) 履歴を確認    |
+| ユーザーが直近サイクルで複数 Issue に明示採用回答済 | Step 0 sweep で「案 A」「案 B」等のキーワード hit 数を計測            |
+| 各 Issue の採用案が AI 自走 5 条件を満たす設計      | Issue 本文の「必要な対応箇所」が touch ≤ 5 / 既存パターン延長で書ける |
+
+**How to apply**: Step 0 sweep で全 open Issue が採用済と判定されたサイクルで以下を実施 (commit 規模が大きくなりがちなので sequential commit で 1 Issue = 1 commit boundary を維持、`closes #N` を各 commit に含めて自動クローズ + 完了サマリーコメントを並行投稿):
+
+1. **全 Issue を採用案 + 自走 5 条件で再分類** (実装着手前に全件分類確定で予期せぬ scope 拡大を防ぐ)
+2. **touch 規模の小さい順に sequential 処理** (CSS 1 file → token 化 3 file → a11y 1 file → algorithm 3 file → Phase 3 9 file の段階順)
+3. **各 Issue で `branch 切り → 実装 → check + typecheck → SKIP=e2e-test (環境問題回避) → commit → master merge → branch 削除`** を 1 セット
+4. **commit message に「closes #N」+ 採用案根拠 + 機能変化なし担保理由 + SKIP=e2e-test の理由** を必ず明記
+5. **5+ Issue を 1 サイクルで処理する場合は context overflow リスクあり** — 後半は serena MCP の `find_symbol` / `replace_symbol_body` で symbol 単位操作に絞り Read 範囲を抑える
+6. **retrospective-codify は最後にまとめて実施** (各 commit で codify すると context 圧迫、サイクル末で 1 commit に集約)
+
+**反例 (sequential 一括処理が overkill なケース)**:
+
+- Issue 数が **2-3 件以下** → 通常の AI 自走フローで OK、本パターンは 4+ Issue 一括処理時の効率化規範
+- 1 Issue でも **AI 自走条件未満** (touch 大規模 / 設計判断要素含む) が混じる → 該当 Issue だけ別サイクル送り、残りで sequential 処理
+- ユーザーが **「優先順位付けて」指示済** → 指示順序優先、touch 規模順より優先
+
+主な使用箇所: 2026-05-25 サイクル — 5 件 open Issue 全て本人案採用済 (#817 案 B / #818 案 A / #822 案 A / #835 案 A / #837 案 A) + AI 自走 5 条件全充足を Step 0 sweep + scoping 確認 → touch 規模小さい順に sequential 処理 (#817 CSS 1 file → #837 token 3 file → #835 a11y 1 file → #818 algorithm 3 file → #822 Phase 3 9 file) → 5 commit + 5 Issue close を 1 サイクルで完結、master 反映済
+
 ### 派生ケース: 5+ サイクル連続 0 changes + `/loop` なし直接送信 = 対話打開シグナル → AskUserQuestion で方向確認
 
 「全 Issue 判断仰ぎ要」サイクルが 5 サイクル以上連続で 0 changes 状態を維持した後、ユーザーが **`/loop` プレフィックスなしで同じ指示文を直接送信** してきたら、これは「ScheduleWakeup 待機ではなく対話で打開して」シグナルと解釈する。AI 側で AskUserQuestion を使って **打開策の選択肢を提示** + ユーザー判断を仰ぐのが適切。
