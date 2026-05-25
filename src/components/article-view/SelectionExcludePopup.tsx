@@ -149,9 +149,11 @@ export default function SelectionExcludePopup({
   }
 
   return (
+    // #850: role="dialog" + aria-modal="false" 矛盾解消で canonical role="menu" + role="menuitem"
+    // パターンに統一 (ArticleContextMenu / ShareMenu / FilterMenu と同じ pattern)。
+    // 選択 popup は 1〜2 ボタンの一時メニュー的 UI、modal でなく menu が WAI-ARIA Authoring Practices に整合。
     <div
-      role="dialog"
-      aria-modal="false"
+      role="menu"
       aria-label="テキスト選択メニュー"
       className="fixed z-50 pointer-events-none"
       style={{ left: popup.x, top: popup.y }}
@@ -160,6 +162,7 @@ export default function SelectionExcludePopup({
         <div className="bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden">
           <button
             ref={firstButtonRef}
+            role="menuitem"
             type="button"
             onMouseDown={doCopyQuote}
             onTouchEnd={doCopyQuote}
@@ -186,6 +189,7 @@ export default function SelectionExcludePopup({
             <>
               <div className="border-t border-border-subtle" />
               <button
+                role="menuitem"
                 type="button"
                 onMouseDown={doExclude}
                 onTouchEnd={doExclude}
