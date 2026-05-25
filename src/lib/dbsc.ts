@@ -95,9 +95,17 @@ export async function verifyDbscResponse(
     if (parts.length !== 3) return false;
     const [headerB64, payloadB64, sigB64] = parts;
 
-    // payload に challenge が含まれていることを確認
+    // payload に challenge が含まれていることを確認。
+    // attacker は任意 HTTP body を送れるため、base64url("null") / base64url("[]") 等の
+    // non-object JSON を送られる経路あり。3 軸 narrowing で non-object を明示拒否する
+    // (react-component-split.md § 派生サブケース「security path の JSON.parse 結果は
+    // unknown 受け + 3 軸 narrowing」、canonical: 同 file importDbscPublicKey)。
     const payloadBytes = base64urlToBytes(payloadB64);
-    const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as Record<string, unknown>;
+    const payloadRaw: unknown = JSON.parse(new TextDecoder().decode(payloadBytes));
+    if (typeof payloadRaw !== "object" || payloadRaw === null || Array.isArray(payloadRaw)) {
+      return false;
+    }
+    const payload = payloadRaw as Record<string, unknown>;
     if (payload["challenge"] !== challenge) return false;
 
     // 公開鍵をインポート

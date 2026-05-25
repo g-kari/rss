@@ -460,9 +460,12 @@ export function getJwtExp(token: string): number | null {
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
-    const payload = JSON.parse(new TextDecoder().decode(base64urlToBytes(parts[1]))) as {
-      exp?: number;
-    };
+    // JWT は attacker controlled input、base64url("null") / base64url("[]") 等の
+    // non-object payload で payload.exp access が TypeError 発生する罠を 3 軸 narrowing で
+    // 構造的予防 (canonical: 同 file verifyJwt / react-component-split.md § 派生サブケース)。
+    const raw: unknown = JSON.parse(new TextDecoder().decode(base64urlToBytes(parts[1])));
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+    const payload = raw as { exp?: number };
     return typeof payload.exp === "number" ? payload.exp : null;
   } catch (err) {
     console.warn("[auth/getJwtExp] failed to parse JWT:", err);
