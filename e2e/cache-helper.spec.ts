@@ -81,6 +81,41 @@ test.describe("buildClipCacheKey — ユーザースコープ clip キャッシ�
     const u = new URL(req.url);
     expect(u.pathname.startsWith("/__cache/clip/u123/")).toBe(true);
   });
+
+  // #849 invariant: 共有化 (家族共有 / 招待リンク等) 拡張時の cross-user 漏洩を構造的に防ぐため、
+  // userId が cache key の path 一部 (hash 入力でなく path セグメント) であることを invariant として固定する。
+  // この invariant が破られると、共有化機能追加時に「user A の clip が user B に return される」漏洩が起こる。
+  test("invariant: userId は cache key の path セグメントとして含まれる (hash 内に隠れない)", async () => {
+    const url = "https://example.com/secret-article";
+    const origin = "https://rss.0g0.xyz";
+    const userId = "alice-789";
+    const req = await buildClipCacheKey(origin, userId, url);
+    const u = new URL(req.url);
+    // userId が path に直接出現することを assert (hash 入力に紛れて消えていない)
+    expect(u.pathname).toContain(`/clip/${userId}/`);
+  });
+
+  test("invariant: 異なる userId × 同一 URL のキー衝突は構造的に発生しない (N=10 拡張ケース)", async () => {
+    const url = "https://example.com/article";
+    const origin = "https://rss.0g0.xyz";
+    const userIds = [
+      "u1",
+      "u2",
+      "alice",
+      "bob",
+      "charlie",
+      "user-with-dash",
+      "user_with_underscore",
+      "user.with.dot",
+      "0123456789abcdef",
+      "very-long-user-id-1234567890abcdefghijklmnopqrstuvwxyz",
+    ];
+    const keys = await Promise.all(userIds.map((uid) => buildClipCacheKey(origin, uid, url)));
+    const urls = keys.map((req) => req.url);
+    const unique = new Set(urls);
+    // 全 userId で unique key (= 衝突 0 件) が生成されることを assert
+    expect(unique.size).toBe(userIds.length);
+  });
 });
 
 test.describe("buildJsonCacheResponse", () => {

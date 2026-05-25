@@ -1,28 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type KeyboardEvent } from "react";
+import { useRef } from "react";
 import { createPortal } from "react-dom";
+import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 
 export default function SessionExpiredModal() {
-  // セッション切れモーダルが出たら自動的にログインリンクへフォーカス。
-  // スクリーンリーダーユーザーがモーダルの出現を検知できるようにし、
-  // キーボード操作でも即座にログインできるようにする (Modal.tsx と同パターン)。
+  // #847: canonical focus trap (useModalFocusTrap) に統合。
+  // セッション切れモーダルは閉じる手段がない (login link のみ) ため、Escape は no-op
+  // (onClose: () => {}) で渡して既存の「閉じない」挙動を維持する。
+  // Tab cycle は dialog 内 focusable が login link 1 件のみのため、結果的に常に
+  // login link へ wrap される (旧手書き実装と等価)。
+  const dialogRef = useRef<HTMLDivElement>(null);
   const loginLinkRef = useRef<HTMLAnchorElement>(null);
-  useEffect(() => {
-    loginLinkRef.current?.focus();
-  }, []);
-
-  // フォーカストラップ: 単一 focusable element (ログインリンク) のみなので、
-  // Tab / Shift+Tab どちらでも常にログインリンクへフォーカスを戻す
-  // (Modal.tsx の focus trap pattern を踏襲)。
-  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab") return;
-    e.preventDefault();
-    loginLinkRef.current?.focus();
-  }, []);
+  const { handleKeyDown } = useModalFocusTrap(dialogRef, {
+    onClose: () => {},
+    initialFocusRef: loginLinkRef,
+  });
 
   return createPortal(
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
       role="dialog"
       aria-modal="true"
