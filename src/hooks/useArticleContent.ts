@@ -6,11 +6,8 @@ import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
 import { classifyHttpError, formatHttpErrorMessage } from "../lib/classify-http-error";
 import { autoReadDebug } from "../lib/auto-read-debug";
-import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
+import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import type { OgpData } from "../types";
-
-/** OGP キャッシュの最大エントリ数（useOgpCache.ts の MAX_OGP_CACHE_SIZE と合わせる） */
-const OGP_CACHE_MAX_ENTRIES = 2000;
 
 /**
  * リロード時に複数の useArticleContent インスタンスが同時に /api/ogp を叩く burst を防ぐ
@@ -58,6 +55,14 @@ export function useArticleContent(
     staggerDelayRef.current = (_ogpMountCounter % OGP_STAGGER_WINDOW) * OGP_STAGGER_MS;
     _ogpMountCounter++;
   }
+
+  // #836: list view (resolveThumbnail) と同一 source of truth (OgpCacheContext) を共有する。
+  // 旧実装は localStorage を同期 read していたため、list 側 useOgpCache が新規取得した
+  // OGP image (Context state には反映済、localStorage には 500ms debounce で書込) を
+  // detail view が観測できず「一覧では出るが詳細では出ない」divergence が発生していた。
+  // Context state は useOgpCache の setOgpCacheV2 で即時更新されるため、getEntry の
+  // identity 変化を deps に含めれば cache 更新が detail view にも即座に反映される。
+  const { getEntry, cacheOgpEntry } = useOgpCacheContext();
 
   const cachedContent = useMemo(
     () => (articleId ? (contentLruCache.get(articleId) ?? null) : null),
@@ -108,13 +113,14 @@ export function useArticleContent(
   useEffect(() => {
     setResolvedOgImage(null);
     if (!articleLink) return;
-    // useOgpCache が localStorage に保存済みのキャッシュを常に確認する (#742):
+    // #836: OgpCacheContext から共有 cache を確認する (#742 fix の発展形)。
+    // list view (useOgpCache) と同一 Context state を共有することで、
+    // 「一覧では取れているが詳細では取れない」「逆方向」両方の divergence を構造的に解消。
     // RSS の `article.ogImage` が tiny thumbnail でも `/api/ogp` から取れる主画像のほうが
-    // 適切なケースがあるため、cache hit があればそれを resolvedOgImage に採用して
-    // ArticleContentBody 側で article.ogImage より優先する。
-    const ogpCache = loadJson<Record<string, string>>(STORAGE_KEYS.OGP_CACHE, {});
-    if (ogpCache[articleLink]) {
-      setResolvedOgImage(ogpCache[articleLink]);
+    // 適切なケースがあるため、cache hit があれば優先して採用する。
+    const cachedEntry = getEntry(articleLink);
+    if (cachedEntry && cachedEntry.image) {
+      setResolvedOgImage(cachedEntry.image);
       return;
     }
     // RSS から ogImage が来ていれば fetch を skip (cache 未登録 + article.ogImage あり)
@@ -131,18 +137,12 @@ export function useArticleContent(
         .then(({ image }) => {
           if (!image) return;
           setResolvedOgImage(image);
-          // useOgpCache と同じ localStorage に保存して、直接開いた記事でも
-          // 次回以降 /api/ogp を再フェッチしないようにする。
-          // 上限超過時は古いキーから切り詰める（useOgpCache と同じ挙動）。
-          const current = loadJson<Record<string, string>>(STORAGE_KEYS.OGP_CACHE, {});
-          const next = { ...current, [articleLink]: image };
-          const keys = Object.keys(next);
-          saveJson(
-            STORAGE_KEYS.OGP_CACHE,
-            keys.length > OGP_CACHE_MAX_ENTRIES
-              ? Object.fromEntries(keys.slice(-OGP_CACHE_MAX_ENTRIES).map((k) => [k, next[k]]))
-              : next,
-          );
+          // OgpCacheContext に書き戻す。useOgpCache 側の cacheOgpEntry が:
+          //  - 内部 state を更新 (list view の Context consumer へ即座に反映)
+          //  - 500ms debounce で localStorage に save (次回起動時の cache hit 用)
+          //  - 上限超過時の切り詰め (#742 の OGP_CACHE_MAX_ENTRIES policy と統一)
+          // を一括で担うため、detail 側で localStorage 直接操作する必要がなくなった。
+          cacheOgpEntry(articleLink, { image });
         })
         .catch((err: unknown) => {
           if (isAbortError(err)) return;
@@ -152,7 +152,10 @@ export function useArticleContent(
       clearTimeout(timerId);
       controller.abort();
     };
-  }, [articleId, articleLink, articleOgImage]);
+    // getEntry は useOgpCache 内で useCallback([ogpCacheV2]) で生成されるため、Context cache
+    // 更新のたびに identity が変化する。これにより list 側 fetch 完了時に detail の useEffect
+    // が再評価され、cache hit で resolvedOgImage が更新される (divergence 解消の core 機構)。
+  }, [articleId, articleLink, articleOgImage, getEntry, cacheOgpEntry]);
 
   const fetchFullContent = useCallback(
     async (onFetched?: (content: string) => void) => {
