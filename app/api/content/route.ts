@@ -3,7 +3,12 @@ import { withSession, type AuthSession } from "@/lib/server-auth";
 import { apiError, formatError } from "@/lib/api-error";
 import { deleteCfCache, matchCfCache } from "@/lib/cache-helper";
 import { isValidFeedUrl } from "@/lib/url";
-import { fetchFollowSafeRedirects, isAbortError, readBodyBytes } from "@/lib/fetch";
+import {
+  DEFAULT_FETCH_TIMEOUT_MS,
+  fetchFollowSafeRedirects,
+  isAbortError,
+  readBodyBytes,
+} from "@/lib/fetch";
 import {
   appendPaginatedPages,
   ARTICLE_FETCH_OPTS,
@@ -11,7 +16,6 @@ import {
   buildContentCacheKey,
   extractContent,
   saveContentToCache,
-  FETCH_TIMEOUT_MS,
   MAX_CONTENT_BYTES,
 } from "@/lib/fetch-article-content";
 import { checkSlidingWindow } from "@/lib/rate-limit";
@@ -67,18 +71,18 @@ async function handleGet(
     return apiError("Invalid URL", 400, { code: "INVALID_URL" });
   }
 
-  const cacheKey = await buildContentCacheKey(reqUrl.origin, url);
-
-  // ユーザーの clip キャッシュを優先確認
-  const clipKey = await buildClipCacheKey(reqUrl.origin, session.userId, url);
-  const clipped = await matchCfCache(clipKey);
+  // clip key と shared cache key を並列構築 (sha256 計算が独立)、
+  // その後 Cache API lookup も並列実行して両方 miss する hot path で直列 2 段の Cache lookup を 1 段に削減。
+  // 優先順位 (clip > shared) は条件分岐順で維持。Cache API read は副作用なしのため安全。
+  const [clipKey, cacheKey] = await Promise.all([
+    buildClipCacheKey(reqUrl.origin, session.userId, url),
+    buildContentCacheKey(reqUrl.origin, url),
+  ]);
+  const [clipped, cached] = await Promise.all([matchCfCache(clipKey), matchCfCache(cacheKey)]);
   if (clipped) {
     const data = (await clipped.json()) as { content: string };
     return NextResponse.json(data, { headers: { "X-Cache": "HIT", "X-Cache-Source": "clip" } });
   }
-
-  // 共有コンテンツキャッシュを確認
-  const cached = await matchCfCache(cacheKey);
   if (cached) {
     const data = (await cached.json()) as { content: string };
     return NextResponse.json(data, { headers: { "X-Cache": "HIT" } });
@@ -97,7 +101,7 @@ async function handleGet(
   if (limited) return limited;
 
   try {
-    const res = await fetchFollowSafeRedirects(url, ARTICLE_FETCH_OPTS, FETCH_TIMEOUT_MS);
+    const res = await fetchFollowSafeRedirects(url, ARTICLE_FETCH_OPTS, DEFAULT_FETCH_TIMEOUT_MS);
 
     if (!res.ok) {
       // 上流が 429 を返したら Retry-After をクライアントに pass-through してクールダウン判断を委ねる。

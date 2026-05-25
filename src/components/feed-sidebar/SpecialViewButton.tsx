@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCount } from "../FeedItem";
+import { formatCount } from "../feed-item";
 
 export default function SpecialViewButton({
   id,

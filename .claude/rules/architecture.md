@@ -184,7 +184,7 @@ src/
     SkeletonSidebar.tsx      # サイドバーのスケルトンスクリーン（初回ロード時 CLS 防止）
     SkeletonArticleList.tsx  # 記事一覧のスケルトンスクリーン（初回ロード時 CLS 防止）
     LayoutIcon.tsx           # レイアウト切り替えボタン用アイコン（compact / list / card / magazine / gallery）
-    GalleryMasonry.tsx       # masonic ベースの Pinterest 型 masonry + 親スクロールコンテナ対応の仮想スクロール
+    GalleryMasonry.tsx       # 自前 virtualizer (GalleryMasonrySelf) の thin wrapper (後方互換用、#773 Phase 3 / #822 で masonic 完全削除済)
     UserSettingsModal.tsx    # ユーザー設定モーダル（フォントサイズ・行間・コンテンツ幅・自動既読閾値・テーマ）
     SaveUrlModal.tsx         # 任意 URL を手動保存するモーダル（POST /api/articles/save 連携）
     article-view/AutoReadController.tsx  # オートモードの副作用コントローラ（fetch → speak → 次の記事への自動進行）
@@ -250,7 +250,7 @@ src/
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
     useArticleAi.ts          # /api/ai/* fetch
     useSpeechSynthesis.ts    # 記事読み上げ（Web Speech API: speak / pause / resume / stop）
-    usePiperTts.ts           # 記事読み上げ（Piper wasm engine: @mintplex-labs/piper-tts-web — predict → Audio 再生、TtsAdapter 実装、`enabled` option でリソース節約）
+    usePiperTts.ts           # 記事読み上げ（Piper wasm engine: piper-plus — synthesize → 自前 BufferSource 再生、TtsAdapter 実装、`enabled` option でリソース節約、#766 / #767）
     useTtsEngineSetting.ts   # TTS engine 切替設定（"web-speech" / "piper"）の localStorage 永続化 + storage event 別タブ同期
     useTtsControls.ts        # TTS engine 共通 rate / voiceUri / volume 制御 hook（useSpeechSynthesis / usePiperTts の重複コードを集約、setVoiceUriSilent variant で error handler 自動 reset の onChange skip 経路を提供、#674 Phase 2b）
     useBackgroundAudio.ts    # スマホでの TTS バックグラウンド継続用 hook（Web Audio 無音 oscillator + HTML `<audio>` element の 2 段構え、Android Chrome 通知欄表示対応、#745 Phase A + Phase D）
@@ -305,7 +305,7 @@ src/
     usePopupLock.ts          # ブラウザポップアップの多重表示防止ロック（lib/popup-lock 連携）
     useModalFocusTrap.ts     # Modal / Dialog 系コンポーネント共通の focus-trap hook（returnFocusRef 内蔵 + Escape close + Tab cycle + initialFocusRef option / isOpen option 対応、Modal.tsx と ConfirmModal.tsx の重複 60 行を集約、#790 Phase 1）
     useMenuKeyboard.ts       # ポータルメニューのキーボードナビゲーション（Arrow Up/Down・ESC・フォーカストラップ）
-    useDelayedGalleryItems.ts # 削除された items を 300ms 保持してフェードアウト遷移を可能にする（masonic 中間削除アニメーション用）
+    useDelayedGalleryItems.ts # 削除された items を 300ms 保持してフェードアウト遷移を可能にする（masonic 時代から自前 virtualizer GalleryMasonrySelf でも継続利用、#822 で masonic 削除後も中間削除アニメーション用に残置）
     useHeaderScrollVisibility.ts # 下スクロールで header を隠し、上スクロール / 上端で表示する hook（scroll-direction.ts ラッパー、#677）
     useConfirm.ts            # window.confirm 代替 hook（Promise ベース確認モーダル。confirmModalProps を ConfirmModal に渡す）
     useMarkAllRead.ts        # 全既読ロジック集約 hook（サブフィルター判定・50件確認・アンドゥ対応）
@@ -444,7 +444,7 @@ src/
     read-state-prune.ts      # readBeforeTimestamp 以前の publishedAt を持つ既知記事の readId を物理削除する純粋関数 + ttlDays 連動の effective cutoff 算出
     gallery-prefetch.ts      # `usePrefetchGalleryContents` の `articlesKey` 生成純粋関数（visible 拡張で確実にキー変化させて effect 再実行をトリガー）
     gallery-display.ts       # `selectGalleryImages` 純粋関数（ギャラリー描画用の画像ソース選択: prefetched / thumb / none の 3 分岐）
-    gallery-offviewport.ts   # `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` 純粋関数（masonic ギャラリーで「viewport 外 item のみ positioner.update」する設計の判定層、#714 Phase 1）
+    gallery-offviewport.ts   # `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` 純粋関数（#714 Phase 1 で masonic ギャラリー用に設計、#822 masonic 削除後は Phase 2 UI 統合未実施で production caller 0 件 — 削除判断は別 Issue で議論中）
     gallery-explode.ts       # `explodeArticlesIntoGalleryEntries` 純粋関数（画像/動画 view で 1 記事 N 画像を N カードに分解、`GalleryEntry` 型、Phase 0b）
     download-history.ts      # 画像 DL 履歴の URL FIFO 管理純粋関数（ギャラリー画像保存時の重複チェック）
     read-state-sync-api.ts   # ReadState のサーバー通信（fetchReadState・saveReadState）

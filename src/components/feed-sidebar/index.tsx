@@ -14,7 +14,7 @@ import dynamic from "next/dynamic";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
 import { useFeedSidebarContext } from "../../contexts/FeedSidebarContext";
 import { useToast } from "../../contexts/ToastContext";
-import FeedItem, { formatCount } from "../FeedItem";
+import FeedItem, { formatCount } from "../feed-item";
 import FeedAddModal from "../FeedAddModal";
 import RecommendationSection from "../RecommendationSection";
 import { useFeedOperations } from "../../hooks/useFeedOperations";

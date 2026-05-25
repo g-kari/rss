@@ -1,5 +1,5 @@
 import type { Article, EngagementEntry, EngagementLog } from "../types";
-import { aggregateGlobalTopFeeds } from "./engagement-aggregator";
+import { aggregateGlobalTopFeeds, type GlobalFeedScore } from "./engagement-aggregator";
 import { engagementKey, r2Get } from "./r2";
 import { readLatestArticles, buildFeedUserMapCached } from "./shared-feed";
 import { buildCacheKey, matchCfCache, buildJsonCacheResponse } from "./cache-helper";
@@ -43,14 +43,19 @@ export const DEFAULT_PREFETCH_OPTIONS: Readonly<PrefetchOptions> = {
  * @param allUsersEntries 各ユーザーの engagement entries 配列
  * @param feedArticles feedHash → 最新記事配列 (publishedAt 降順)
  * @param opts prefetch 設定 (topN / maxArticlesPerFeed / minScore / now)
+ * @param precomputedTopFeeds 呼出側で既に `aggregateGlobalTopFeeds` を実行済の場合に渡す。
+ *   省略時は本関数内で再計算する (spec 互換のため)。`runCronPrefetch` 経路では同 args の重複計算を避けるために渡す。
  * @returns prefetch 対象 URL (重複排除済、feed の優先順位 × 記事の publishedAt 降順)
  */
 export function selectPrefetchTargets(
   allUsersEntries: EngagementEntry[][],
   feedArticles: Map<string, Article[]>,
   opts: PrefetchOptions,
+  precomputedTopFeeds?: GlobalFeedScore[],
 ): string[] {
-  const topFeeds = aggregateGlobalTopFeeds(allUsersEntries, opts.topN, opts.now, opts.minScore);
+  const topFeeds =
+    precomputedTopFeeds ??
+    aggregateGlobalTopFeeds(allUsersEntries, opts.topN, opts.now, opts.minScore);
   const urls: string[] = [];
   const seen = new Set<string>();
   for (const { feedHash } of topFeeds) {
@@ -127,7 +132,7 @@ export async function runCronPrefetch(
       10,
     );
 
-    const urls = selectPrefetchTargets(allEntries, feedArticles, opts);
+    const urls = selectPrefetchTargets(allEntries, feedArticles, opts, topFeeds);
     if (urls.length === 0) return;
 
     await pMapSettled(
