@@ -282,3 +282,84 @@ test.describe("computeScrollAnchorDelta — scroll 補正量計算", () => {
     expect(computeScrollAnchorDelta(prev, next, 0)).toBe(0);
   });
 });
+
+test.describe("#818 aspectRatio 補正 — columnWidth 引数で column 幅 fit", () => {
+  test("columnWidth 省略 (= 0) → 補正なし、既存挙動互換", () => {
+    // item.width=100, item.height=300, columnWidth 省略 → 補正なしで item.height をそのまま使う
+    const result = computeColumnHeights([item("a", 300, 100)], 1);
+    expect(result).toEqual([300]);
+  });
+
+  test("columnWidth = item.width → scale 係数 1、既存挙動互換", () => {
+    // columnWidth = item.width = 100 → (100/100) * 300 = 300
+    const result = computeColumnHeights([item("a", 300, 100)], 1, 0, 100);
+    expect(result).toEqual([300]);
+  });
+
+  test("columnWidth = 2 * item.width → scale 係数 2、画像を拡大したときの高さ", () => {
+    // columnWidth=200, item.width=100, item.height=300 → (200/100) * 300 = 600
+    const result = computeColumnHeights([item("a", 300, 100)], 1, 0, 200);
+    expect(result).toEqual([600]);
+  });
+
+  test("columnWidth = 0.5 * item.width → scale 係数 0.5、画像を縮小したときの高さ", () => {
+    // columnWidth=100, item.width=200, item.height=400 → (100/200) * 400 = 200
+    const result = computeColumnHeights([item("a", 400, 200)], 1, 0, 100);
+    expect(result).toEqual([200]);
+  });
+
+  test("縦長画像と横長画像の混在 → column balance が aspectRatio 補正で改善", () => {
+    // columnWidth=100、縦長 (100x300) と横長 (300x100) を 2 列に配置
+    // 縦長: scale 1 → height 300
+    // 横長: scale 100/300 → height 100*100/300 ≈ 33.33
+    // 順次配置: 縦長を col 0 (h=300)、横長を col 1 (h≈33.33)
+    const result = computeColumnHeights([item("a", 300, 100), item("b", 100, 300)], 2, 0, 100);
+    expect(result[0]).toBe(300);
+    expect(result[1]).toBeCloseTo(33.33, 1);
+  });
+
+  test("computeMasonryLayout でも aspectRatio 補正が positions に反映される", () => {
+    // columnWidth=100、item.width=50 (col 幅の半分)、item.height=200
+    // → scale 2 → effective height = 400
+    const result = computeMasonryLayout([item("a", 200, 50)], 1, 0, 100);
+    expect(result.positions.get("a")).toEqual({ col: 0, top: 0 });
+    expect(result.columnHeights).toEqual([400]);
+  });
+
+  test("defensive: item.width = 0 → 補正なし (除算 NaN/Infinity 回避)", () => {
+    const result = computeColumnHeights([{ id: "a", width: 0, height: 300 }], 1, 0, 100);
+    expect(result).toEqual([300]); // 補正 skip で元の height 使用
+  });
+
+  test("defensive: item.width = 負値 → 補正なし", () => {
+    const result = computeColumnHeights([{ id: "a", width: -50, height: 300 }], 1, 0, 100);
+    expect(result).toEqual([300]);
+  });
+
+  test("defensive: item.width = Infinity → 補正なし", () => {
+    const result = computeColumnHeights([{ id: "a", width: Infinity, height: 300 }], 1, 0, 100);
+    expect(result).toEqual([300]);
+  });
+
+  test("defensive: item.width = NaN → 補正なし", () => {
+    const result = computeColumnHeights([{ id: "a", width: NaN, height: 300 }], 1, 0, 100);
+    expect(result).toEqual([300]);
+  });
+
+  test("defensive: columnWidth = 負値 → 補正なし", () => {
+    const result = computeColumnHeights([item("a", 300, 100)], 1, 0, -50);
+    expect(result).toEqual([300]);
+  });
+
+  test("defensive: columnWidth = Infinity → 補正なし", () => {
+    const result = computeColumnHeights([item("a", 300, 100)], 1, 0, Infinity);
+    expect(result).toEqual([300]);
+  });
+
+  test("gap と aspectRatio 補正の併用 → 各 item の補正後 height + gap で累積", () => {
+    // columnWidth=100、2 item で scale 2 (effective height 400 each) + gap 20
+    // → 400 + gap 20 + 400 = 820
+    const result = computeColumnHeights([item("a", 200, 50), item("b", 200, 50)], 1, 20, 100);
+    expect(result).toEqual([820]);
+  });
+});
