@@ -28,6 +28,20 @@ export interface SlidingWindowResult {
  * @param windowMs ウィンドウ幅 (ms)
  * @param maxCalls ウィンドウ内最大許可数
  * @returns SlidingWindowResult
+ *
+ * **burst 許容仕様** (#852):
+ * Cloudflare KV は eventual consistency primitive (atomic CAS / strict
+ * read-after-write 非対応) のため、本関数を呼ぶ callsite (`checkSlidingWindow`)
+ * は **~1-3 req 程度の burst** が `maxCalls` を超過し得る:
+ *
+ * 1. concurrent な複数 request が KV `get` で stale な count を読む
+ * 2. 各 request が「未到達」判定で pass
+ * 3. 全 request が KV `put` で count++ → 既に request 通過済
+ *
+ * これは「best-effort rate-limit + burst 許容」の意図的仕様であり、
+ * strict 制限が必要な場合は D1 / Durable Object への migration が要件
+ * (本プロジェクトは KV 軽量設計方針を維持)。各 endpoint の `maxCalls`
+ * は burst 想定 (~1-3 req) を加味して設定すること。
  */
 export function evaluateSlidingWindow(
   now: number,
