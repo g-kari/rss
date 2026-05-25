@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { KeywordFilter } from "../../types";
 import { usePopupLock } from "../../hooks/usePopupLock";
 import { useToast } from "@/contexts/ToastContext";
@@ -90,6 +90,38 @@ export default function SelectionExcludePopup({
   const toast = useToast();
   const displayText = popup.text.length > 24 ? `${popup.text.slice(0, 24)}…` : popup.text;
 
+  // #835 案 A: keyboard 専用ユーザー向けの focus 移動 + Escape close + Enter/Space 実行を実装。
+  // 先頭ボタンへ focus 移動は `preventScroll: true` で scroll 副作用を抑止し、
+  // text selection 解除リスク軽減を試みる (環境により selection が解除される場合は
+  // 既存の copy / exclude action は依然動作するため UX 機能は維持される)。
+  const firstButtonRef = useRef<HTMLButtonElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    // popup 出現時の active element を記憶しておき close 時に focus 復元
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
+    firstButtonRef.current?.focus({ preventScroll: true });
+    return () => {
+      // ref で保存した element が DOM 上に残っていれば focus 復元
+      const el = returnFocusRef.current;
+      if (el && typeof el.focus === "function" && document.contains(el)) {
+        el.focus({ preventScroll: true });
+      }
+    };
+  }, []);
+
+  // Escape で close (selection は維持されたまま閉じる)
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   function doCopyQuote(e: { preventDefault: () => void }) {
     e.preventDefault();
     const quote = `> ${popup.text.replace(/\n/g, "\n> ")}\n\n— [${article.title}](${article.link})`;
@@ -117,13 +149,22 @@ export default function SelectionExcludePopup({
   }
 
   return (
-    <div className="fixed z-50 pointer-events-none" style={{ left: popup.x, top: popup.y }}>
+    <div
+      role="dialog"
+      aria-modal="false"
+      aria-label="テキスト選択メニュー"
+      className="fixed z-50 pointer-events-none"
+      style={{ left: popup.x, top: popup.y }}
+    >
       <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 transform">
         <div className="bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden">
           <button
+            ref={firstButtonRef}
+            type="button"
             onMouseDown={doCopyQuote}
             onTouchEnd={doCopyQuote}
-            className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors whitespace-nowrap w-full"
+            onClick={doCopyQuote}
+            className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle focus:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink transition-colors whitespace-nowrap w-full"
           >
             <svg
               width="10"
@@ -145,9 +186,11 @@ export default function SelectionExcludePopup({
             <>
               <div className="border-t border-border-subtle" />
               <button
+                type="button"
                 onMouseDown={doExclude}
                 onTouchEnd={doExclude}
-                className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors whitespace-nowrap w-full"
+                onClick={doExclude}
+                className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle focus:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink transition-colors whitespace-nowrap w-full"
               >
                 <svg
                   width="10"
