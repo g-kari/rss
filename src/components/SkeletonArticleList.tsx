@@ -179,7 +179,12 @@ const skeletonMap: Record<Layout, () => JSX.Element> = {
 export default function SkeletonArticleList({ layout = "list" }: Props) {
   const Body = skeletonMap[layout];
   return (
-    <div className="flex flex-col h-full bg-surface-base border-r border-border-default">
+    <div
+      className="flex flex-col h-full bg-surface-base border-r border-border-default"
+      role="status"
+      aria-busy="true"
+      aria-label="記事一覧を読み込み中"
+    >
       <SkeletonHeader />
       <Body />
     </div>
