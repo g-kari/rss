@@ -462,7 +462,7 @@ src/
     gallery-masonry-layout.ts # 画像ギャラリーの列レイアウト計算 (`computeMasonryLayout`) と scroll 巻き戻り補正 (`computeScrollAnchorDelta`) アルゴリズム
     piper-voices.ts          # piper-plus TTS engine で利用可能な voice 定義と配信方式 (R2 セルフホスト vs HuggingFace 直 fetch) のガイド
   cron/
-    fetch.ts                 # fetchArticles(userId, env) / fetchAllUsers(env)
+    fetch.ts                 # fetchArticles(env, userId) / fetchAllFeeds(env)
 ```
 
 ## データフロー
@@ -794,7 +794,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `embed-utils.spec.ts`                           | `src/lib/embed-utils.ts` — iframe embed 処理ユーティリティ                                                                                                                                                                                                                      |
 | `export-markdown.spec.ts`                       | `src/lib/export-markdown.ts` — Markdown エクスポート                                                                                                                                                                                                                            |
 | `export-readwise.spec.ts`                       | `src/lib/export-readwise.ts` — Readwise CSV エクスポート                                                                                                                                                                                                                        |
-| `feed-actions.spec.ts`                          | `src/components/feed-item/feedActions.ts#buildFeedActions` — FeedItem actions 配列構築純粋関数                                                                                                                                                                                  |
+| `feed-actions.spec.ts`                          | `src/components/feed-item/feedActions.tsx#buildFeedActions` — FeedItem actions 配列構築純粋関数                                                                                                                                                                                 |
 | `feed-discovery.spec.ts`                        | `src/lib/feed-discovery.ts` — RSS 自動探索                                                                                                                                                                                                                                      |
 | `feed-group-drop.spec.ts`                       | `src/lib/feed-group-drop.ts` — D&D 競合解決ロジック                                                                                                                                                                                                                             |
 | `feedview-storage-key.spec.ts`                  | `src/lib/storage.ts#getFeedViewStorageKey` — articles/pictures/videos/social ビュー別 localStorage key 生成                                                                                                                                                                     |
