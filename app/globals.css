@@ -187,6 +187,26 @@ body {
   letter-spacing: 0.02em;
   overflow-wrap: break-word;
   word-break: break-word;
+  /* #817 Phase 2: OGP / link preview / 全文取得完了時の遅延 DOM 挿入による
+   * reflow flash を視覚的に緩和。will-change で browser に内容変化を hint。 */
+  will-change: contents;
+}
+
+/* #817 Phase 2: 遅延ロードで本文に後から挿入される OGP / link preview 画像を
+ * フェードインさせ、reflow による視覚的 flash を緩和する。
+ * (画像本体は load 後に DOM 挿入されるため、CSS animation でフェードイン演出。) */
+.article-content img.ogp-link-preview-image,
+.article-content .ogp-link-preview-image img {
+  animation: article-content-fade-in 180ms ease-out;
+}
+
+@keyframes article-content-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* #672 Phase 2: TTS 読み上げ中のセンテンスハイライト
