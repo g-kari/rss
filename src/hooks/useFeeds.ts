@@ -134,8 +134,7 @@ export function useFeeds(
         updateFeed(feed);
         mergeArticles(await apiFetchJson<Article[]>("/api/articles"));
       } catch (err) {
-        if (process.env.NODE_ENV !== "production")
-          devError(`[${endpoint}] feed action failed:`, err);
+        devError(`[${endpoint}] feed action failed:`, err);
         onErrorRef.current?.(errorMessage);
       }
     },
