@@ -30,14 +30,14 @@ function isAiError(err: unknown): err is { status: number; headers?: Record<stri
  * URL 検証・コンテンツ取得・キャッシュ確認・AI 実行・キャッシュ保存を担う。
  *
  * ## 処理フロー
- * 1. リクエストボディから url / articleId を取得
- * 2. articleId がある場合は R2 キャッシュを確認（ヒット時は AI 呼び出しをスキップ）
+ * 1. リクエストボディから url を取得
+ * 2. url ベース SHA-256 で R2 キャッシュを確認 (ヒット時は AI 呼び出しをスキップ、#698 で url ベースに変更)
  * 3. スライディングウィンドウ レートリミット（60 秒間に最大 10 回、AI 実行分のみカウント）
  * 4. /api/content と共有する Cloudflare Cache から記事コンテンツを取得
  * 5. Workers AI を呼び出して結果を取得
  * 6. 結果を R2 キャッシュに保存（fire-and-forget）
  *
- * @param request - リクエストオブジェクト（ボディに url / articleId を含む）
+ * @param request - リクエストオブジェクト（ボディに url を含む）
  * @param session - 認証済みセッション（レートリミットのキーに userId を使用）
  * @param env - Cloudflare バインディング (RSS_DATA, AI)
  * @param ctx - ExecutionContext (waitUntil 用)

@@ -18,7 +18,7 @@ description: エンゲージメント / 統計 / 各種ユーティリティ API
     {
       "articleId": "...",
       "feedHash": "...",
-      "action": "read",
+      "action": "bookmark",
       "timestamp": "2024-11-01T00:00:00Z",
       "value": null
     }
@@ -44,7 +44,7 @@ description: エンゲージメント / 統計 / 各種ユーティリティ API
 {
   "articleId": "string", // 必須
   "feedHash": "string", // 必須
-  "action": "string", // 必須: "read" | "like" | "bookmark" 等
+  "action": "string", // 必須: "fetch_full" | "open_original" | "reading_list" | "bookmark" | "like" | "ai_feedback"
   "value": null // オプション
 }
 ```

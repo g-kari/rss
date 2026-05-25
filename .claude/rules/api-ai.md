@@ -14,7 +14,6 @@ description: AI 機能 (要約・翻訳) の API 仕様 — /api/ai/{summarize,t
 ```json
 {
   "url": "string", // 必須: 記事の http(s) URL
-  "articleId": "string", // オプション: R2 キャッシュキー
   "model": "string" // オプション: 使用モデル (下記参照)
 }
 ```
@@ -31,8 +30,8 @@ description: AI 機能 (要約・翻訳) の API 仕様 — /api/ai/{summarize,t
 
 ### キャッシュ
 
-- R2 キー: `ai-cache/summary/{articleId}`
-- `articleId` が省略された場合はキャッシュなし
+- R2 キー: `ai-cache/summary/{url の SHA-256}` (#698 で url ベースに変更、cross-user poisoning 対策)
+- 常時 cache 有効、`url` が同一なら user 間で cache 共有
 
 ### 成功レスポンス
 
@@ -63,14 +62,13 @@ description: AI 機能 (要約・翻訳) の API 仕様 — /api/ai/{summarize,t
 ```json
 {
   "url": "string", // 必須: 記事の http(s) URL
-  "articleId": "string", // オプション: R2 キャッシュキー
   "model": "string" // オプション: 使用モデル (summarize と同じ一覧)
 }
 ```
 
 ### キャッシュ
 
-- R2 キー: `ai-cache/translation/{articleId}`
+- R2 キー: `ai-cache/translation/{url の SHA-256}` (#698 で url ベースに変更、cross-user poisoning 対策)
 
 ### 成功レスポンス
 
