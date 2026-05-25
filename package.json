@@ -35,7 +35,6 @@
     "katex": "^0.16.46",
     "linkedom": "^0.18.12",
     "marked": "^18.0.4",
-    "masonic": "^4.1.0",
     "onnxruntime-web": "^1.26.0",
     "piper-plus": "^0.6.0",
     "react": "^19.2.6",

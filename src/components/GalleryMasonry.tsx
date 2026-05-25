@@ -1,25 +1,9 @@
 "use client";
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ComponentType,
-  type CSSProperties,
-  type RefObject,
-} from "react";
-import { useMasonry, usePositioner, useResizeObserver } from "masonic";
-import { useReaderSettings } from "../contexts/ReaderSettingsContext";
+import type { ComponentType } from "react";
 import GalleryMasonrySelf from "./GalleryMasonrySelf";
 
-// 各セル wrapper に当てる CSS transition — 参照安定化のため module scope に定義
-const ITEM_TRANSITION_STYLE: CSSProperties = {
-  transition: "top 0.3s ease, left 0.3s ease",
-};
-
-interface GalleryMasonryProps<T> {
+export interface GalleryMasonryProps<T> {
   items: T[];
   scrollElement: HTMLElement | null;
   render: ComponentType<{ data: T; index: number; width: number }>;
@@ -30,134 +14,17 @@ interface GalleryMasonryProps<T> {
   columns?: number | null;
 }
 
-function useParentScroller(el: HTMLElement | null, fps = 12) {
-  const [scrollTop, setScrollTop] = useState(0);
-  const [isScrolling, setIsScrolling] = useState(false);
-
-  useEffect(() => {
-    if (!el) return;
-    setScrollTop(el.scrollTop);
-
-    let rafId: number | null = null;
-    let stopTimer: number | null = null;
-    const stopDelay = Math.max(40, Math.round(1000 / fps));
-
-    const handler = () => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        setScrollTop(el.scrollTop);
-        setIsScrolling(true);
-        rafId = null;
-        if (stopTimer !== null) window.clearTimeout(stopTimer);
-        stopTimer = window.setTimeout(() => setIsScrolling(false), stopDelay);
-      });
-    };
-
-    el.addEventListener("scroll", handler, { passive: true });
-    return () => {
-      el.removeEventListener("scroll", handler);
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      if (stopTimer !== null) window.clearTimeout(stopTimer);
-    };
-  }, [el, fps]);
-
-  return { scrollTop, isScrolling };
-}
-
-function useContainerMetrics(
-  containerRef: RefObject<HTMLElement | null>,
-  scrollElement: HTMLElement | null,
-) {
-  const [width, setWidth] = useState(0);
-  const [height, setHeight] = useState(0);
-  const [offsetTop, setOffsetTop] = useState(0);
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container || !scrollElement) return;
-
-    const measure = () => {
-      setWidth(container.clientWidth);
-      setHeight(scrollElement.clientHeight);
-      const containerRect = container.getBoundingClientRect();
-      const scrollRect = scrollElement.getBoundingClientRect();
-      setOffsetTop(containerRect.top - scrollRect.top + scrollElement.scrollTop);
-    };
-    measure();
-
-    const ro = new ResizeObserver(measure);
-    ro.observe(container);
-    ro.observe(scrollElement);
-    return () => ro.disconnect();
-  }, [containerRef, scrollElement]);
-
-  return { width, height, offsetTop };
-}
-
 /**
- * #773 Phase 2b: テストモード設定 (`gallerySelfMasonryEnabled`) で自前 virtualizer 経路に切替。
+ * #773 Phase 3 (#822): masonic 完全削除済み、自前 virtualizer (`GalleryMasonrySelf`) の thin wrapper。
  *
- * - default (`false`): 既存 masonic 経路で従来通り動作
- * - テストモード ON: `<GalleryMasonrySelf>` で自前 virtualizer 経路 (#773 完全解決の検証用)
+ * Phase 0-2c で `masonic` ↔ 自前 virtualizer dual implementation を維持していたが、
+ * Phase 2c のユーザー検証完了後、Phase 3 で `gallerySelfMasonryEnabled` テストモード設定 +
+ * `<GalleryMasonryMasonic>` 経路 + `masonic` dependency を削除。本ファイルは外部の
+ * `<GalleryMasonry>` 参照 (caller 側) との後方互換のために残置している thin wrapper。
  *
- * Phase 2c でユーザーがテストモード ON にして動作確認 → Phase 3 で default ON + masonic 削除。
+ * 既存 caller の import path / props 互換は維持。GalleryMasonrySelf を直接 import する形に
+ * 段階移行可能 (ただし caller 全件移行後の本ファイル削除は別 Issue で対応)。
  */
 export default function GalleryMasonry<T>(props: GalleryMasonryProps<T>) {
-  const { gallerySelfMasonryEnabled } = useReaderSettings();
-  if (gallerySelfMasonryEnabled) {
-    return <GalleryMasonrySelf {...props} />;
-  }
-  return <GalleryMasonryMasonic {...props} />;
-}
-
-function GalleryMasonryMasonic<T>({
-  items,
-  scrollElement,
-  render,
-  itemKey,
-  columnWidth = 220,
-  columnGutter = 12,
-  overscanBy = 6,
-  columns = null,
-}: GalleryMasonryProps<T>) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { width, height, offsetTop } = useContainerMetrics(containerRef, scrollElement);
-  const { scrollTop, isScrolling } = useParentScroller(scrollElement);
-
-  const effectiveColumnWidth =
-    columns && width > 0
-      ? Math.floor((width - (columns - 1) * columnGutter) / columns)
-      : columnWidth;
-
-  const itemsIdentity = useMemo(() => {
-    if (!itemKey) return items.length;
-    return items.map((item, i) => itemKey(item, i)).join("\t");
-  }, [items, itemKey]);
-
-  const positioner = usePositioner({ width, columnWidth: effectiveColumnWidth, columnGutter }, [
-    itemsIdentity,
-  ]);
-  const resizeObserver = useResizeObserver(positioner);
-
-  const content = useMasonry({
-    positioner,
-    resizeObserver,
-    items,
-    height,
-    scrollTop: Math.max(0, scrollTop - offsetTop),
-    isScrolling,
-    overscanBy,
-    render,
-    itemKey,
-    // positioner 再生成で top/left が動いた際に CSS transition でスルスル遷移させる（値が同じなら発動しない）
-    itemStyle: ITEM_TRANSITION_STYLE,
-  });
-
-  return (
-    // [overflow-anchor:none]: masonic の absolute 配置アイテムが再配置される際に
-    // ブラウザの scroll anchor 補正でスクロール位置が巻き戻るのを防ぐ (#773)
-    <div ref={containerRef} className="relative [overflow-anchor:none]">
-      {width > 0 ? content : null}
-    </div>
-  );
+  return <GalleryMasonrySelf {...props} />;
 }

@@ -1,6 +1,28 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
-## 2026-05-12 (latest)
+## 2026-05-25 (latest)
+
+### リファクタリングっ + パフォーマンス改善っ
+
+- **#822 #773 Phase 3 完了 — masonic dependency 完全削除で bundle size 削減!📦** — ギャラリービュー scroll 巻き戻り問題 (#773) を完全解決した自前 virtualizer (`GalleryMasonrySelf`) を default 経路に昇格〜🎀 `gallerySelfMasonryEnabled` テストモード設定 + `<GalleryMasonryMasonic>` (旧 masonic ベース) 経路 + `masonic` npm dependency をすべて削除しちゃったよ〜✨ 全ユーザーが自前 virtualizer 経路で動作するようになり、bundle から `masonic@^4.1.0` (約 30+ 関連 transitive 依存) が完全除去〜📊 `<GalleryMasonry>` は外部 caller との後方互換のため `GalleryMasonrySelf` を呼ぶ thin wrapper として残置〜🛡️ Phase 2c の検証期間で本番動作確認済、`gallerySelfMasonryEnabled` localStorage key も削除〜🌸 (テストモード segregation 4 段階規範の完了サイクル)
+
+### a11y 改善っ
+
+- **#835 SelectionExcludePopup の keyboard navigation + ARIA 改善!⌨️🎀** — テキスト選択時に出る「引用をコピー」「除外」popup に WCAG AA 準拠の keyboard 対応を追加しちゃったよ〜✨ `role="dialog"` + `aria-label="テキスト選択メニュー"` で SR ユーザーに popup 出現を通知、popup 出現時に先頭ボタンへ自動 focus (preventScroll で text selection 解除リスク軽減)、Escape で close + selection 維持、`focus-visible:ring-2 focus-visible:ring-ink` で keyboard focus 視覚化、元 element への return focus 復元〜🛡️ keyboard 専用ユーザーが popup の機能を完全に使えるようになりましたわ〜🌸
+
+### UX 改善っ
+
+- **#817 Phase 2 記事本文 flash 抑止 — OGP/link preview の遅延ロードを CSS で視覚的緩和!✨** — Phase 1 (`b0ac3219`) で element type 切替由来の re-mount を構造的に解決した続編〜🎀 Phase 2 では `app/globals.css` の `.article-content` に `will-change: contents` + `.ogp-link-preview-image` への 180ms フェードイン animation を追加しちゃったよ〜💫 後から DOM に挿入される OGP / link preview 画像の「ガクッと現れる」感が視覚的に緩和されますわ〜🌸
+
+### デザインシステム改善っ
+
+- **#837 FeedHealth/FeedDetail の status color を semantic token 化!🎨💖** — `app/globals.css` に 4 status token (`--color-status-error` / `--color-status-warning` / `--color-status-oversized` / `--color-status-ok`) を light + dark 両対応で新規定義したよ〜✨ `FeedHealthModal` / `FeedDetailModal` の raw Tailwind palette (`bg-rose-400` / `bg-amber-400` 等) を `bg-status-error` / `bg-status-warning` 等の semantic class に全置換〜🎀 WCAG AA コントラスト比 (light 4.5-4.7:1 on stone-50、dark 4.6-5.4:1 on zinc-950) も担保、テーマ切替で status 色が自動追従〜🛡️ (design-system.md 規範整合)
+
+### 激アツ新機能っ (基盤実装)
+
+- **#818 gallery masonry layout に aspectRatio 補正実装!📐✨** — `src/lib/gallery-masonry-layout.ts` の `computeColumnHeights` / `computeMasonryLayout` に **optional `columnWidth` parameter** を追加、`(columnWidth / item.width) * item.height` で column 幅に fit した height を計算する aspectRatio 補正アルゴリズムを実装しちゃったよ〜🎀 縦長・横長画像の混在時に column バランスが取れるようになる基盤、defensive (width 0/負値/NaN/Infinity 全網羅)、12 新規 TDD spec で動作固定〜🛡️ caller (`GalleryMasonrySelf`) で画像 natural width / height を items に渡す UI 統合経路は次 Phase で別 Issue 化予定〜🌸
+
+## 2026-05-12
 
 ### 激アツ新機能っ
 
