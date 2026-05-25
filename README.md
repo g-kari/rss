@@ -252,26 +252,28 @@ pre-commit install   # 初回セットアップ
 
 ### フィード
 
-| メソッド | パス                     | 説明                   |
-| -------- | ------------------------ | ---------------------- |
-| GET      | `/api/feeds`             | フィード一覧取得       |
-| POST     | `/api/feeds`             | フィード追加 `{ url }` |
-| DELETE   | `/api/feeds/:id`         | フィード削除           |
-| PATCH    | `/api/feeds/:id`         | フィード設定更新       |
-| POST     | `/api/feeds/:id/refresh` | 単体フィード手動更新   |
-| POST     | `/api/feeds/:id/reinfer` | LLM CSS セレクタ再推論 |
-| POST     | `/api/feeds/refresh`     | 全フィード手動更新     |
-| POST     | `/api/feeds/import`      | OPML インポート        |
-| GET      | `/api/feeds/export`      | OPML エクスポート      |
+| メソッド | パス                                 | 説明                                                                        |
+| -------- | ------------------------------------ | --------------------------------------------------------------------------- |
+| GET      | `/api/feeds`                         | フィード一覧取得                                                            |
+| POST     | `/api/feeds`                         | フィード追加 `{ url }`                                                      |
+| DELETE   | `/api/feeds/:id`                     | フィード削除                                                                |
+| PATCH    | `/api/feeds/:id`                     | フィード設定更新                                                            |
+| POST     | `/api/feeds/:id/refresh`             | 単体フィード手動更新                                                        |
+| POST     | `/api/feeds/:id/reinfer`             | LLM CSS セレクタ再推論                                                      |
+| POST     | `/api/feeds/refresh`                 | 全フィード手動更新                                                          |
+| POST     | `/api/feeds/import`                  | OPML インポート                                                             |
+| GET      | `/api/feeds/export`                  | OPML エクスポート                                                           |
+| POST     | `/api/feeds/:id/purge-content-cache` | フィード全記事の content / clip Cache 一括クリア (CLI 用、購読チェック必須) |
 
 ### フィードグループ
 
-| メソッド | パス                   | 説明                                                             |
-| -------- | ---------------------- | ---------------------------------------------------------------- |
-| GET      | `/api/feed-groups`     | グループ一覧取得（`order` 昇順ソート）                           |
-| POST     | `/api/feed-groups`     | グループ新規作成 `{ name }` → 201 Created で `FeedGroup` を返す  |
-| PATCH    | `/api/feed-groups/:id` | グループ更新 `{ name?, order?, collapsed?, muted? }`（部分更新） |
-| DELETE   | `/api/feed-groups/:id` | グループ削除（所属購読の `groupId` は自動クリアを試みる）        |
+| メソッド | パス                       | 説明                                                             |
+| -------- | -------------------------- | ---------------------------------------------------------------- |
+| GET      | `/api/feed-groups`         | グループ一覧取得（`order` 昇順ソート）                           |
+| POST     | `/api/feed-groups`         | グループ新規作成 `{ name }` → 201 Created で `FeedGroup` を返す  |
+| PATCH    | `/api/feed-groups/:id`     | グループ更新 `{ name?, order?, collapsed?, muted? }`（部分更新） |
+| DELETE   | `/api/feed-groups/:id`     | グループ削除（所属購読の `groupId` は自動クリアを試みる）        |
+| POST     | `/api/feed-groups/reorder` | グループ並べ替え `{ orderedIds: string[] }` で一括更新           |
 
 - レスポンス型は `FeedGroup = { id, name, order, collapsed?, muted?, createdAt }`
 - POST 時の `order` は既存グループの最大値 + 1 で自動採番される
@@ -290,14 +292,16 @@ pre-commit install   # 初回セットアップ
 
 ### 記事
 
-| メソッド | パス                       | 説明                                    |
-| -------- | -------------------------- | --------------------------------------- |
-| GET      | `/api/articles`            | 記事一覧取得                            |
-| POST     | `/api/articles/save`       | 記事保存                                |
-| GET      | `/api/content?url=...`     | 記事フルテキスト取得プロキシ            |
-| GET      | `/api/ogp?url=...`         | OGP 画像 URL 取得                       |
-| GET      | `/api/image-proxy?url=...` | 外部画像プロキシ                        |
-| POST     | `/api/clip`                | SingleFile 拡張からの HTML クリップ保存 |
+| メソッド | パス                       | 説明                                                   |
+| -------- | -------------------------- | ------------------------------------------------------ |
+| GET      | `/api/articles`            | 記事一覧取得                                           |
+| POST     | `/api/articles/save`       | 記事保存                                               |
+| GET      | `/api/content?url=...`     | 記事フルテキスト取得プロキシ                           |
+| DELETE   | `/api/content?url=...`     | 自分の clip cache を削除 (共有 cache は触らない、冪等) |
+| GET      | `/api/ogp?url=...`         | OGP 画像 URL 取得                                      |
+| GET      | `/api/image-proxy?url=...` | 外部画像プロキシ                                       |
+| GET      | `/api/video-proxy?url=...` | 外部動画プロキシ (image-proxy と同 handler)            |
+| POST     | `/api/clip`                | SingleFile 拡張からの HTML クリップ保存                |
 
 ### 既読・ブックマーク状態
 
@@ -323,13 +327,14 @@ pre-commit install   # 初回セットアップ
 
 ### Web Push 通知
 
-| メソッド | パス                    | 説明                       |
-| -------- | ----------------------- | -------------------------- |
-| GET      | `/api/push/vapid-key`   | VAPID 公開鍵取得           |
-| GET      | `/api/push/status`      | サブスクリプション状態確認 |
-| POST     | `/api/push/subscribe`   | Push 通知登録              |
-| POST     | `/api/push/unsubscribe` | Push 通知解除              |
-| POST     | `/api/push/test`        | テスト通知送信             |
+| メソッド | パス                    | 説明                                                           |
+| -------- | ----------------------- | -------------------------------------------------------------- |
+| GET      | `/api/push/vapid-key`   | VAPID 公開鍵取得                                               |
+| GET      | `/api/push/status`      | サブスクリプション状態確認                                     |
+| POST     | `/api/push/subscribe`   | Push 通知登録                                                  |
+| POST     | `/api/push/unsubscribe` | Push 通知解除                                                  |
+| POST     | `/api/push/test`        | テスト通知送信                                                 |
+| GET/PUT  | `/api/push/config`      | 通知設定 (disabledFeeds / silent 時間帯 / timezone) 取得・更新 |
 
 ### 統計・その他
 

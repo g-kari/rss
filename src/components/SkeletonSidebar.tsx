@@ -6,7 +6,12 @@
  */
 export default function SkeletonSidebar() {
   return (
-    <div className="flex flex-col h-full bg-surface-elevated border-r border-border-default">
+    <div
+      className="flex flex-col h-full bg-surface-elevated border-r border-border-default"
+      role="status"
+      aria-busy="true"
+      aria-label="サイドバーを読み込み中"
+    >
       {/* ヘッダー */}
       <div className="flex items-center justify-between px-3 py-3 border-b border-border-subtle">
         <div className="h-4 w-20 rounded bg-surface-subtle animate-pulse" />
