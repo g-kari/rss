@@ -145,7 +145,11 @@ export function useMasonryLayout<T>({
       width: columnWidth,
       height: heightsRef.current.get(id) ?? DEFAULT_ITEM_HEIGHT,
     }));
-    return computeMasonryLayout(layoutItems, columnCount, gap);
+    // #818: columnWidth を渡して aspectRatio 補正を有効化。caller が `width: columnWidth`
+    // を渡している現状 (DOM measure で fit 済み height を取得) では scale 1 で既存挙動互換、
+    // 将来 caller が画像 natural width / height を渡せるよう拡張すれば縦長・横長混在の
+    // column balance 改善が発動する。
+    return computeMasonryLayout(layoutItems, columnCount, gap, columnWidth);
     // heightsRef.current は ref で mutate されるため layoutVersion を依存に入れて変化検知
     // eslint-disable-next-line react-hooks/exhaustive-deps -- layoutVersion で height 変化を検知
   }, [itemIds, columnCount, columnWidth, gap, layoutVersion]);
