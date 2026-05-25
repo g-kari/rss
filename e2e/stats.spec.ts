@@ -150,6 +150,13 @@ test.describe("computeCurrentStreak", () => {
     const activeDays = new Set(["2024-11-29", "2024-11-30", "2024-12-01", "2024-12-02"]);
     expect(computeCurrentStreak(activeDays, now)).toBe(4);
   });
+
+  test("年をまたぐ連続日数を正しくカウントする", () => {
+    // setUTCDate(d - 1) チェーンで 1/01 → 12/31 への前月繰り上がりが正しく動作するかを担保
+    const now = new Date("2025-01-02T12:00:00Z");
+    const activeDays = new Set(["2024-12-30", "2024-12-31", "2025-01-01", "2025-01-02"]);
+    expect(computeCurrentStreak(activeDays, now)).toBe(4);
+  });
 });
 
 test.describe("computeWeeklyTotal", () => {
