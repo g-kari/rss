@@ -477,8 +477,9 @@ body {
 .article-content .msg--alert,
 .article-content .warn,
 .article-content .alert {
-  border-left-color: #fb7185;
-  background: rgba(251, 113, 133, 0.06);
+  /* CSS variable 経由で light/dark テーマ追従 (design-system.md § 禁止 16進カラー hardcode 規範) */
+  border-left-color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
 
 /* details / summary (アコーディオン) */

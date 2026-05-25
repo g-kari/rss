@@ -143,7 +143,8 @@ export default function NSFWEyeAnimation({ onComplete }: Props) {
             left: 0,
             right: 0,
             textAlign: "center",
-            color: "#6366f1",
+            // text label のみ theme 追従 (eye SVG presentation attributes は artistic intent で固定色維持)
+            color: "var(--color-accent-dot)",
             fontSize: 13,
             letterSpacing: "0.3em",
             textTransform: "uppercase",
