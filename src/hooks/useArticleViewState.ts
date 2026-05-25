@@ -287,6 +287,9 @@ export function useArticleViewState({
     isNsfw,
     dlFolder: imageDlFolder,
     dlFolderNsfw: imageDlFolderNsfw,
+    // #843: 全文取得済 HTML を渡して collectImageUrlsFromHtml で本文画像を確実に拾う
+    // (DOM 走査だけだと render タイミング次第で OGP 1 枚だけになる現象を防ぐ)
+    processedContent,
   });
 
   usePopupLock(confirmingDownload);
