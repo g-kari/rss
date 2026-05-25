@@ -117,33 +117,3 @@ export async function diagnoseTranslatorAvailability(): Promise<{
     return { available: false, reason: "not-available" };
   }
 }
-
-/**
- * Chrome Translator API で翻訳を実行する。
- *
- * @returns 翻訳結果。以下のケースでは `null` を返し、呼び出し側はサーバー AI にフォールバックする:
- *   - API 非対応環境
- *   - 言語ペアが `"downloading"` / `"unavailable"`
- *   - 原文言語がターゲット言語と同じ（翻訳不要）
- *   - 例外発生時
- */
-export async function translateInBrowser(
-  text: string,
-  targetLanguage: string = "ja",
-): Promise<string | null> {
-  if (!isTranslatorApiSupported() || !window.Translator) return null;
-
-  const sourceLanguage = await detectSourceLanguage(text);
-  if (sourceLanguage === targetLanguage) return null;
-
-  try {
-    const availability = await window.Translator.availability({ sourceLanguage, targetLanguage });
-    if (!shouldUseBrowserTranslation(availability)) return null;
-
-    const translator = await window.Translator.create({ sourceLanguage, targetLanguage });
-    return await translator.translate(text);
-  } catch (err) {
-    devError("[browser-translator] translate failed", err);
-    return null;
-  }
-}
