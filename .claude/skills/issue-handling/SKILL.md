@@ -832,6 +832,38 @@ grep -rn "<SymbolName>" e2e/ src/
 
 主な使用箇所: 38th cycle 新機能監査 — Feature 1 (タグサイドバーフィルター) を 92% で提案されたが `src/components/feed-sidebar/TagsSection.tsx` で **既実装** と判明 → false positive 判定して Issue 起票せず
 
+### 派生ケース: perf / security / refactor 監査エージェントの「最適化未実施」「防御欠落」主張も実コード verify する
+
+「新機能監査の機能 X 未実装」主張だけでなく、**perf / security / refactor 監査エージェント** が「最適化 Y が未実施」「防御 Z が欠落」を主張するケースも、**既最適化箇所 / 既設防御の見落とし誤検知** が頻発する。エージェントは grep + 読解で対象ファイルの「該当行付近」だけを確認し、**ファイル冒頭の helper / pure function 定義 + 中央付近のガード適用箇所** を見落としやすい。
+
+```
+パターン: perf / security / refactor 監査結果の検証フロー
+  1. エージェント report 受領 (例: "Finding 2: useFilteredArticles の computedFeedCategoryMap 不安定 (信頼度 92%)")
+  2. エージェントが指摘する file を **冒頭から末尾まで grep** で関連語句確認:
+     - perf 「最適化未実施」: helper / cache / Map / memoize / equal* / structuralEqual / 構造的等価 等の語で grep
+     - security 「防御欠落」: validate / sanitize / verify / regex / escape 等の語で grep
+     - refactor 「重複あり」: 集約 helper の名前 / 期待される共通関数名で grep
+  3. 既実装と判定:
+     - false positive として Issue 起票しない
+     - 既起票なら「Finding N 既実装」コメントで scope 縮小 (他 Finding は judgement 継続)
+  4. 未実装と確認:
+     - Issue 起票で案 A/B/C 提示
+```
+
+**How to apply**: perf / security / refactor 監査エージェント report 受領時に必ず実行 (新機能監査と同様、Issue 起票前の 1〜2 分 verify がユーザー判断時間の無駄を防ぐ、エージェントは「同 file 内の helper / ガード」を見落とすことが多い):
+
+1. **エージェントが指摘した file 全体を `search_for_pattern` or `grep`** で `equalStringMap` / `sanitize` / `validate` 等の関連 helper を確認
+2. **エージェントが指摘した line 番号の前後 50 行を Read** で「該当箇所周辺の既設ガード」を確認 (helper が file 冒頭で定義 + 中央で apply パターン)
+3. **既実装と判明したら Issue 起票しない、既起票なら「Finding N 既実装」コメントで scope 縮小**
+4. 未実装と確認した場合のみ案 A/B/C 提示で Issue 起票
+
+**反例 (検証不要なケース)**:
+
+- **エージェント report が既実装の helper を引用** (例: 「`equalStringMap` で既ガード済の computedFeedCategoryMap を改善案 X で...」) → エージェントが既実装を前提に論じている → 検証不要
+- **「既存 helper の signature 変更」「既存ガードの規範違反 sweep」** (例: 「既存 `equalDigestLimitMap` を `equalStringMap` に統合可能」) → 既実装前提で論じている → 検証不要
+
+主な使用箇所: 60th cycle perf 監査 — Finding 2 (`computedFeedCategoryMap` 不安定、信頼度 92%) を提案されたが `src/hooks/useFilteredArticles.ts:40` (`equalStringMap` 定義) + `line 216` (ガード適用) + `line 226` (`computedFeedTitleByHash` も同様ガード) で **既実装** と判明 → Issue #866 で Finding 2 を scope 縮小コメント、Finding 1/3 のみユーザー判断仰ぎ継続
+
 ### 派生ケース: 調査エージェントの「関数 A が機能 B を含む」のような構造的仮定は、当該関数を Read で開いて検証する
 
 調査エージェント (Explore / feature-dev:code-explorer) が **「関数 A は機能 B を内包する」「pipeline P は処理 Q を含む」「helper H は X / Y を組み合わせる」** のような **複合関数の内部構造に関する仮定** を提示した場合、エージェントが **その関数を実際に開いて確認していない可能性** が高い。エージェントは「呼出関係」を `grep` で見るだけで「関数本体の内訳」までは Read していないことがある。
