@@ -82,6 +82,14 @@ export function compareByDateDesc(
 }
 
 /** publishedAt のみを持つオブジェクト（ParsedItem 等）の降順比較。null は末尾 */
+/**
+ * `ParsedItem` (xml-parser) など `createdAt` を持たない型を sort する用途。
+ * `compareByDateDesc` (`Article` 向け) と異なり fallback chain は `publishedAt ?? ""` のみで
+ * `createdAt` fallback と id tiebreak を意図的に持たない。`ParsedItem` 型に `createdAt` が
+ * 存在しないため (#862 Finding A 案 A)、規範違反ではなく意図的相違として明文化している。
+ * RSS parse 直後の上限切り捨て (`fetchAndParseFeed` の `FEED_MAX_ITEMS` 超え時 sort) など、
+ * `publishedAt` だけで安定降順すれば十分なケースで使う。
+ */
 export function compareByPublishedAtDesc(
   a: { publishedAt: string | null },
   b: { publishedAt: string | null },
