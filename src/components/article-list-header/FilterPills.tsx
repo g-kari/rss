@@ -238,6 +238,7 @@ export default function FilterPills({
       <button
         onClick={onOpenGlobalFilter}
         title="すべてのフィードにキーワードフィルターを設定"
+        aria-label="グローバルフィルター設定"
         className={`flex items-center gap-1 px-2 h-6 rounded-full text-[11px] transition-all duration-200 ${
           globalFilterActive
             ? "text-text-strong bg-surface-subtle"

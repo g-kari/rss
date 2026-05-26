@@ -152,6 +152,7 @@ export default function SearchBar() {
                       removeSaved(s.id);
                     }}
                     title="保存検索を削除"
+                    aria-label="保存検索を削除"
                   >
                     <svg
                       width="8"
@@ -209,6 +210,7 @@ export default function SearchBar() {
                   removeFromHistory(q);
                 }}
                 title="履歴から削除"
+                aria-label="履歴から削除"
               >
                 <svg
                   width="8"
