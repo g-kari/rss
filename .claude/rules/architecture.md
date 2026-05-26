@@ -746,6 +746,60 @@ const match = matchesKeywordFilter(article, compiledFilter);
 
 ---
 
+## Hooks 層設計 (`src/hooks/`)
+
+`src/hooks/` には 118 ファイル の React Hook が配置される。`AppShell.tsx` の状態管理を機能別に分割した結果として大規模化したが、責務境界を明確にするため以下の **カテゴリ分類 + 命名規則** に従う。
+
+### カテゴリ分類
+
+| Prefix             | 件数 | 責務                                                           |
+| ------------------ | ---- | -------------------------------------------------------------- |
+| `useArticle*`      | 20   | 記事単体の表示・操作・状態 (内容取得・選択・ハイライト・進捗)  |
+| `useReadState*` 系 | 8    | 既読・読書ステータス (Set 管理・TTL 計算・persistence)         |
+| `useFeed*`         | 10   | フィード一覧・操作 (CRUD・選択・グループ・並び順)              |
+| `useAuto*`         | 4    | 自動化機能 (autoLoadMore / autoRead / autoReset / autoSummary) |
+| `useGallery*`      | 4    | ギャラリーレイアウト (列・自動スクロール・遅延描画)            |
+| `useTts*`          | 3    | TTS engine 共通制御 (rate / voice / volume / highlight 同期)   |
+| `useEngagement*`   | 3    | エンゲージメント計算 (スコア集計・ダイジェスト順序)            |
+| `useCollection*`   | 2    | 任意 URL コレクション (CRUD・記事 ID Set)                      |
+| その他             | ~64  | App-shell サブフック (`useAppModal*` / `useFeedSidebar*` 等)   |
+
+### 命名規則
+
+- **`use<Subject><Action>`**: 動詞は subject の責務を表す (例: `useArticleSelection`, `useFeedOperations`)
+- **`use<Subject><State>`**: 状態 hook は名詞単数 / 集約 hook は `*Props` / `*State` 接尾辞 (例: `useArticleViewProps`, `useAppModalState`)
+- **`use<Engine><Capability>`**: 横断 capability は engine 名 + 機能 (例: `useTtsHighlight`, `useMediaSession`)
+- **`use<Subject><Modifier>`**: option 化された亜種は modifier suffix (例: `useDelayedGalleryItems` / `useImageProxyFallback`)
+
+### 設計原則
+
+| 原則                                                    | 例                                                                                 |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **副作用は `useEffect` cleanup で必ず解放**             | `useBackgroundAudio` の oscillator stop / `useGalleryAutoScroll` の interval clear |
+| **state 多数を return する hook は `useMemo` でラップ** | `useArticleViewProps` / `useReaderSettingsValue` (40+ field 集約)                  |
+| **render 中の最新値同期は `useSyncedRef`**              | `react-state-ref.md § useSyncedRef 規範` 参照                                      |
+| **silent fallback 禁止**: 失敗時は `devError` 添える    | `browser-platform.md § silent fallback の禁止` 参照                                |
+| **canonical pattern 流用** で sibling drift を避ける    | `useMenuKeyboard` (menu / popup 共通) / `useModalFocusTrap` (Modal 共通)           |
+
+### 巨大 hook 分割の判断軸
+
+ファイル行数が 300 行を超える、または state 6+ + useEffect 4+ を 1 hook が持つ場合は分割を検討:
+
+- **責務単位で抽出** (例: `useArticleViewState` → `useArticleViewProgress` / `useArticleViewTts` / `useArticleViewShortcuts`)
+- **orchestrator + sub-hook** 構造 (例: `useFilteredArticles` = `useArticleFilters` + `useArticleSorting` + `useArticlePagination`)
+- **詳細**: `react-component-split.md § 大きいコンポーネント / hook の機能別分割` 参照
+
+### Phase 2 / Phase 3 (将来サイクル)
+
+本章は概要レベル。詳細な category 別責務・利用パターン・cross-hook 依存関係は別途追加予定:
+
+- **Phase 2**: `src/lib/` (130+ files) 機能別グループ化の subsection 追加
+- **Phase 3**: 全 hook の JSDoc `@param` / `@returns` 注釈整備 (IDE hover 改善)
+
+詳細は Issue #865 を参照。
+
+---
+
 ## テストカバレッジマップ
 
 `e2e/*.spec.ts` 各ファイルと対象モジュールの対応表。

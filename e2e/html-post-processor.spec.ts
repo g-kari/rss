@@ -27,9 +27,11 @@ test.describe("replaceUntilStable", () => {
   });
 
   test("多段バイパスを潰す（<scr<script></script>ipt>）", () => {
+    // \s* を end tag 前に許容して </script > (末尾スペースあり) 形式もマッチ。
+    // production の sanitize-html は DOMPurify を使うため本 regex は test fixture のみで利用。
     const result = replaceUntilStable(
       "<scr<script></script>ipt>alert(1)</script>",
-      /<script\b[^>]*>[\s\S]*?<\/script>/gi,
+      /<script\b[^>]*>[\s\S]*?<\/script\s*>/gi,
     );
     expect(result).not.toContain("<script>");
     expect(result).not.toContain("alert(1)");

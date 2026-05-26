@@ -31,34 +31,47 @@ function makeFilter(
 }
 
 // ── hasCatastrophicBacktracking (normalizeFilter 経由) ──────────
+//
+// 以下の test は normalizeFilter() の ReDoS 検出ロジックを検証するための fixture で、
+// 意図的に catastrophic backtracking 可能な regex を文字列として渡す。
+// normalizeFilter() 内の hasCatastrophicBacktracking() が事前検出して null を返すため、
+// これら fixture が実際に RegExp として compile される経路は存在しない。
+// GitHub code-scanning (js/redos) は文字列内の regex を解析して警告するが、
+// 本 spec の意図 (= ReDoS 検出機能の入力) であるため意図的に維持する。
 
 test.describe("hasCatastrophicBacktracking", () => {
   test("ネストした量指定子 (a+)+ を検出して null にする", () => {
+    // lgtm[js/redos] — intentional fixture for ReDoS detection test
     const compiled = normalizeFilter(makeFilter(["/(a+)+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("ネストした量指定子 (a{2,})+ を検出して null にする", () => {
+    // lgtm[js/redos] — intentional fixture for ReDoS detection test
     const compiled = normalizeFilter(makeFilter(["/(a{2,})+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("ネストした量指定子 ((ab)+)+ を検出して null にする", () => {
+    // lgtm[js/redos] — intentional fixture for ReDoS detection test
     const compiled = normalizeFilter(makeFilter(["/((ab)+)+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("交互化グループ (a|aa)+ を検出して null にする", () => {
+    // lgtm[js/redos] — intentional fixture for ReDoS detection test
     const compiled = normalizeFilter(makeFilter(["/(a|aa)+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("交互化グループ (foo|foobar)* を検出して null にする", () => {
+    // lgtm[js/redos] — intentional fixture for ReDoS detection test
     const compiled = normalizeFilter(makeFilter(["/(foo|foobar)*/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("文字クラス内 ) を含むパターン ([a-z)]+)+ を検出して null にする", () => {
+    // lgtm[js/redos] — intentional fixture for ReDoS detection test
     const compiled = normalizeFilter(makeFilter(["/([a-z)]+)+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
@@ -195,6 +208,7 @@ test.describe("sanitizeKeywords", () => {
   });
 
   test("ReDoS パターンを除去する", () => {
+    // lgtm[js/redos] — intentional fixture for sanitizeKeywords ReDoS removal test
     const result = sanitizeKeywords(["/(a+)+/", "safe", "/hello/"]);
     expect(result).toEqual(["safe", "/hello/"]);
   });
@@ -295,6 +309,7 @@ test.describe("matchesKeywordFilter", () => {
 
   test("ReDoS パターン (null) は不マッチ扱い", () => {
     const compiled: CompiledKeywordFilter = {
+      // lgtm[js/redos] — intentional fixture: includePatterns[0] is pre-set to null
       include: ["/(a+)+/"],
       exclude: [],
       includePatterns: [null],
