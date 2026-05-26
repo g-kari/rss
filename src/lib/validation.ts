@@ -219,6 +219,19 @@ export function isValidSessionId(value: string): boolean {
   return SESSION_ID_RE.test(value);
 }
 
+/**
+ * ユーザー ID として有効かどうかを判定する。
+ * JWT の sub クレーム / R2 キー（users/{userId}/...）に直接埋め込まれる値で、
+ * パストラバーサル防止のためセーフな文字のみ許可する。
+ *
+ * 信頼境界を越える userId（JWT 検証直後 / R2 から読み出した sessions/<id>.json の userId 等）
+ * はこの関数で必ず再検証する。
+ */
+const USER_ID_RE = /^[A-Za-z0-9_\-@.]{1,128}$/;
+export function isValidUserId(value: string): boolean {
+  return USER_ID_RE.test(value);
+}
+
 /** Cookie ヘッダー値として安全な文字列か検証する（HTTP ヘッダーインジェクション・Cookie jar poison 防止） */
 export function isValidCookieHeader(value: string): boolean {
   // 長さ上限を 2000 文字に制限（HTTP ヘッダー全体 8KB 制限に対して余裕を確保）

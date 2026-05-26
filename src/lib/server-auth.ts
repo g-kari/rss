@@ -8,7 +8,7 @@ import { checkAndUpdateCooldown } from "./rate-limit";
 import { generateDbscChallenge } from "./dbsc";
 import { isBetaAllowed } from "./beta-allowed";
 import { getDevBypassUserId } from "./dev-auth-bypass";
-import { isValidSessionId } from "./validation";
+import { isValidSessionId, isValidUserId } from "./validation";
 
 // CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
 export { isCsrfViolation } from "./csrf";
@@ -212,7 +212,7 @@ function sessionFromPayload(
 ): AuthSession | null {
   // sub は R2 キー（users/{sub}/...）に直接埋め込まれるため、
   // パストラバーサル対策としてセーフな文字のみ許可する
-  if (!/^[A-Za-z0-9_\-@.]{1,128}$/.test(payload.sub)) return null;
+  if (!isValidUserId(payload.sub)) return null;
   if (!isBetaAllowed(payload.sub)) return null;
   return { userId: payload.sub, refreshedTokens };
 }
@@ -257,6 +257,12 @@ export async function getAuthSession(): Promise<AuthSession | null | { dbscChall
     // 防御的検証: R2 から読み出した dbscSessionId を再度 UUID 形式チェック（パストラバーサル防止）
     if (!isValidSessionId(sessionData.dbscSessionId)) {
       console.warn("[server-auth] invalid dbscSessionId in stored session, treating as unbound");
+      return null;
+    }
+    // sessions/<id>.json は server controlled だが、defense-in-depth として
+    // R2 キー（users/{userId}/...）埋め込み前に userId も再検証する (#863)。
+    if (!isValidUserId(sessionData.userId)) {
+      console.warn("[server-auth] invalid userId in stored session, treating as unauthenticated");
       return null;
     }
     const challenge = generateDbscChallenge();
