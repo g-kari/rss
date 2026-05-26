@@ -1,7 +1,7 @@
 "use client";
 
 import type { Article } from "@/types";
-import type { GalleryEntry } from "@/lib/gallery-explode";
+import { isGalleryEntry, type GalleryEntry } from "@/lib/gallery-explode";
 import GalleryMasonry from "@/components/GalleryMasonry";
 import {
   getGalleryCardWidth,
@@ -34,13 +34,6 @@ interface Props {
   contextValue: GalleryItemContextValue;
 }
 
-function isEntryArray(items: Article[] | GalleryEntry[]): items is GalleryEntry[] {
-  // discriminated union (#769): _type field で Article との判別を行う。
-  // 旧実装は `article` field の存在チェックだったが、Article が将来 `article` 名の field を
-  // 持つと誤判定するリスクがあったため、明示的な discriminant 文字列に切替。
-  return items.length > 0 && (items[0] as GalleryEntry)._type === "gallery-entry";
-}
-
 /**
  * gallery レイアウトのボディ。自前 virtualizer (GalleryMasonrySelf) と
  * Provider のラッピングを担う。
@@ -67,7 +60,9 @@ export default function GalleryBody({
   // 双子 JSX (GalleryEntry[] / Article[]) は GalleryMasonry の generic <T> を items 型で確定する
   // ために維持する。`Article[] | GalleryEntry[]` → `(Article | GalleryEntry)[]` への union widen は
   // TypeScript で自動推論されず、JSX 統合は型 cast が増えて却って読みづらくなる (#769 で検討の結果保留)。
-  const useEntries = isEntryArray(items);
+  // discriminated union (#769) の type guard を gallery-explode.ts から流用 (sibling drift 解消)。
+  // items の Array 型を narrow するため非空チェック + 先頭要素 guard を組合せる。
+  const useEntries: boolean = items.length > 0 && isGalleryEntry(items[0]!);
   return (
     <div className="p-2 mx-auto">
       <GalleryItemCtx.Provider value={contextValue}>

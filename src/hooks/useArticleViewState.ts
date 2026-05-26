@@ -12,8 +12,7 @@ import type { Sentence } from "../lib/tts-sentences";
 const EMPTY_SENTENCES = Object.freeze([] as Sentence[]) as Sentence[];
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
-import { isLikelyJapanese } from "../lib/article-utils";
-import { toPlainText } from "../lib/html";
+import { isStoredContentJapanese } from "../lib/article-utils";
 import { useArticleContent } from "./useArticleContent";
 import { useArticleAi } from "./useArticleAi";
 import { useImageDownload } from "./useImageDownload";
@@ -224,7 +223,7 @@ export function useArticleViewState({
     if (translateResult || translateError) return false; // 翻訳完了 or 失敗
     // 200 char だと英文 abstract / byline を含む記事冒頭で日本語判定 false → speak 不要保留が起きる罠を
     // 防ぐため canonical (browser-translator.ts#detectSourceLanguage) の 500 char sample に統一。
-    if (isLikelyJapanese(toPlainText(storedContent).slice(0, 500))) return false;
+    if (isStoredContentJapanese(storedContent)) return false;
     return true;
   }, [autoTranslate, storedContent, translateResult, translateError]);
 
