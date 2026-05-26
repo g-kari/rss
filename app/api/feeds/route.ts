@@ -212,11 +212,14 @@ export async function POST(request: Request) {
       ...(cookie ? { requestCookie: cookie } : {}),
     };
     subs.push(newSub);
-    await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
-    // ユーザーインデックスに追加（cron の R2 LIST 削減）
-    await addUserToIndex(env.RSS_DATA, session.userId);
-    // フィード追加時に feedUserMap KV キャッシュを無効化
-    await env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY);
+    // 3 つの独立ストレージ書き込みを並列化 (R2 subscriptions + R2 user index + KV delete)
+    await Promise.all([
+      writeUserSubscriptions(env.RSS_DATA, session.userId, subs),
+      // ユーザーインデックスに追加（cron の R2 LIST 削減）
+      addUserToIndex(env.RSS_DATA, session.userId),
+      // フィード追加時に feedUserMap KV キャッシュを無効化
+      env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY),
+    ]);
 
     const origin = new URL(request.url).origin;
     await purgeFeedsCache(origin, session.userId, ctx);

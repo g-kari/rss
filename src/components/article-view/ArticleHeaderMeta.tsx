@@ -65,7 +65,7 @@ export default function ArticleHeaderMeta({
         </button>
       )}
       {article.publishedAt && !isNaN(new Date(article.publishedAt).getTime()) && (
-        <time className="tracking-[0.04em]">
+        <time dateTime={article.publishedAt} className="tracking-[0.04em]">
           {new Date(article.publishedAt).toLocaleDateString("ja-JP", {
             year: "numeric",
             month: "long",

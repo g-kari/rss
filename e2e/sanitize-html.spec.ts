@@ -871,3 +871,42 @@ test.describe("sanitizeHtml — XSS バイパスパターン検証 (Issue #487)"
     expect(clean).not.toContain("script");
   });
 });
+
+test.describe("sanitizeHtml — HTML コメント除去 (defense-in-depth)", () => {
+  test("通常の HTML コメントを除去する", () => {
+    const result = sanitizeHtml("<p>前</p><!-- これはコメント --><p>後</p>");
+    expect(result).not.toContain("<!--");
+    expect(result).not.toContain("コメント");
+    expect(result).toContain("前");
+    expect(result).toContain("後");
+  });
+
+  test("コメント内に script タグが埋め込まれていても除去される", () => {
+    // コメント内部の script を本文として再解釈する古いブラウザ / parser bypass を防ぐ
+    const dirty = "<p>前</p><!--<script>alert(1)</script>--><p>後</p>";
+    const clean = sanitizeHtml(dirty);
+    expect(clean).not.toContain("<!--");
+    expect(clean).not.toContain("script");
+    expect(clean).not.toContain("alert");
+  });
+
+  test("複数行に渡るコメントも除去する", () => {
+    const dirty = "<p>前</p><!--\n  multi\n  line\n  comment\n--><p>後</p>";
+    const clean = sanitizeHtml(dirty);
+    expect(clean).not.toContain("<!--");
+    expect(clean).not.toContain("multi");
+  });
+
+  test("複数のコメントが混在しても全件除去する", () => {
+    const dirty = "<!--A--><p>本文1</p><!--B--><p>本文2</p><!--C-->";
+    const clean = sanitizeHtml(dirty);
+    expect(clean).not.toContain("<!--");
+    expect(clean).toContain("本文1");
+    expect(clean).toContain("本文2");
+  });
+
+  test("コメントなし HTML は変化なく通過する", () => {
+    const html = "<p>本文のみ</p>";
+    expect(sanitizeHtml(html)).toBe(html);
+  });
+});

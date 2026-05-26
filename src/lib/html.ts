@@ -319,6 +319,8 @@ type ReplaceFn = (substring: string, ...args: string[]) => string;
 const HTML_SANITIZE_RULES: ReadonlyArray<[RegExp, string | ReplaceFn]> = [
   // 不可視 Unicode 文字（後続パターンのバイパス防止のため最初に除去）
   [/[­​-‍⁠﻿]/g, ""],
+  // HTML コメント除去（コメント内部に script/iframe 等を埋め込んだ defense-in-depth bypass を防ぐ）
+  [/<!--[\s\S]*?-->/g, ""],
   // コンテンツごと除去するブロック要素（統合: script / style / noscript / template / object / textarea / select / foreignObject / animateMotion）
   [
     /<(?:script|style|noscript|template|object|textarea|select|foreignObject|animateMotion)\b[^>]*>[\s\S]*?<\/(?:script|style|noscript|template|object|textarea|select|foreignObject|animateMotion)\b[^>]*>/gi,

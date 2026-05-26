@@ -27,11 +27,11 @@ function isGalleryEntry(data: Article | GalleryEntry): data is GalleryEntry {
 }
 
 /**
- * masonic の render 引数として渡す GalleryArticleItem ラッパー。
- * memo でラップしておかないと masonic 側の再計算で全カードが再レンダーされ
+ * gallery virtualizer の render 引数として渡す GalleryArticleItem ラッパー。
+ * memo でラップしておかないと virtualizer 側の再計算で全カードが再レンダーされ
  * チカチカするため、`render` の identity を安定化させる。
  *
- * Phase 1: `data` は Article (従来) または GalleryEntry (画像/動画 view で展開済) の
+ * `data` は Article (従来) または GalleryEntry (画像/動画 view で展開済) の
  * いずれも受け取れる。entry なら entry.article + forcedImageSrc を使う。
  */
 const GalleryCardRenderer = memo(function GalleryCardRenderer({

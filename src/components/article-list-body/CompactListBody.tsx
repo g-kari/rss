@@ -41,7 +41,7 @@ export default function CompactListBody({
             animating={deletingIds.size > 0 || newIds.size > 0}
           >
             {item.type === "header" ? (
-              <div className="px-4 pt-3 pb-1">
+              <div className="px-4 pt-3 pb-1" role="separator" aria-label={item.label}>
                 <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
                   {item.label}
                 </span>
