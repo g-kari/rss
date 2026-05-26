@@ -21,7 +21,11 @@ export default function SaveUrlModal({ url, onUrlChange, saving, error, onSave, 
     <Modal title="URL を保存" onClose={onClose} width="sm:w-[400px]">
       {/* aria-busy: saving 中であることをスクリーンリーダーに通知 (POST /api/articles/save は 1-3 秒) */}
       <div className="p-4" aria-busy={saving || undefined}>
+        <label htmlFor="save-url-input" className="sr-only">
+          保存する URL
+        </label>
         <input
+          id="save-url-input"
           type="url"
           placeholder="https://..."
           value={url}
