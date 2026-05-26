@@ -546,6 +546,37 @@ observation rotation で派遣する agent や、Step 0 sweep で「全 Issue �
 - `#808` OGP cache 統合 — `useOgpCache` は画像 URL のみ / `useContentLinkPreviews` は 3 field 必要の設計矛盾が起票時に見落とされた → step 2 skip が原因
 - `#807` ws bump — `pnpm.overrides` 追加で副作用 minor 7 件連鎖 + e2e 21 件 fail → step 3 skip が原因
 
+#### 派生サブケース: 「既存 open Issue と重複しないこと」の agent prompt 指示は **AI 側 finding receipt 時 verify** で二段保証する
+
+監査エージェントへの agent prompt に「既存 open Issue N1 / N2 / ... と重複しないこと」を明示しても、**エージェントが完全に避けるとは限らない** ことがある (テキスト解析だけで重複判定する性質上、tracking 漏れが発生)。AI 側で finding 受領後に **本人の頭で重複 verify** する step を二段目に置くことで、重複 Issue の二重起票 / commit を構造的に予防する。
+
+```
+パターン: agent finding receipt の重複 verify フロー
+  1. agent prompt に「既存 open Issue #N1 / #N2 / ... と重複しないこと」明示 (一段目)
+  2. agent finding 受領
+  3. AI 側で各 finding について以下を verify (二段目):
+     - finding の Path / 主題が既存 open Issue の本文と一致しないか
+     - finding の修正案が既存 Issue の設計方針コメント案と同じ箇所を touch しないか
+  4. 重複 finding 検出 → 同 cycle で除外、retrospective に「重複排除 N 件」明示
+  5. 重複 finding を実装した後に発覚 → revert + 既存 Issue へのコメント追記
+```
+
+**How to apply**: agent finding を採用判断する前に必ず実行 (agent prompt の Issue 除外指示は LLM テキスト解析の限界で完全保証ではないため、AI 側の二段保証が canonical):
+
+1. **finding 受領時に finding ごとに既存 open Issue list で grep 検証** — `gh issue list --state open --json number,title` で全 open Issue タイトル + 該当 finding の主題 / Path を 1:1 比較
+2. **Path / Symbol レベルで重複** → 既存 Issue の延長 (Phase 追加 / 修正案変更) で対応、新規 Issue 化しない
+3. **問題領域は同じだが Path 別** → 既存 Issue にコメント追記 (派生問題として trace) or 新規 Issue 化 (judgment 要、`needs-user-decision`)
+4. **重複 0 件確認後に finding を採用** → 自走実装 or 新規 Issue 化
+5. **重複検出 N 件は retrospective に明示記録** — agent prompt 改善材料 (例: 次回派遣で「具体的に Path を avoid」と prompt 強化)
+
+**反例 (本サブケース不要なケース)**:
+
+- finding が **全く新規 Path** (既存 Issue が touch していない area) → 重複 verify skip 可、直接採用
+- 既存 open Issue が **0 件** (起票履歴ゼロサイクル) → 重複対象なし、verify skip 可
+- agent prompt の Issue 除外指示が **特定 Path / Symbol 単位** で詳細記載済 (= LLM 側で誤判定リスク低い) → verify は formal 確認のみで OK
+
+主な使用箇所: 本サイクル refactor agent が ArticleDetailOverlay の useModalFocusTrap 統合を Finding 1 として返却 → AI 側 verify で **既存 #855 と完全重複** と判明 → 同サイクル自走実装対象から除外、起票も skip。agent prompt で「#855 を除外」と指示済だったが LLM 側で重複判定漏れ → 本サブケース運用で構造的予防が canonical
+
 ### 派生ケース: 規範 codify 後の grep sweep を「retrospective 本文に結果引用」+「次サイクル開始時に再 sweep」で二段保証する
 
 `rule-maintenance.md` 派生ケース 5 (規範 codify 後は code drift も機械的に sweep する) と派生ケース 6 (code-quality バグ修正時に同 pattern の grep 検出コマンドを併記 + 後続 sweep を Issue 化) は **「規範 codify 時に検出 grep を併記する」** を要求しているが、それだけでは **「codify 時の grep 結果が 0 件を保証しない」** ため、別ファイルに同種バグが残存していることが後の cycle で判明する。
