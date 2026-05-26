@@ -19,9 +19,13 @@ export async function POST(req: Request) {
     const { env } = await getCloudflareContext({ async: true });
     const sessionData = await getServerSession(env.RSS_DATA, sessionId);
     if (sessionData) {
-      await revokeToken(sessionData.refreshToken).catch(() => {});
+      await Promise.all([
+        revokeToken(sessionData.refreshToken).catch(() => {}),
+        deleteServerSession(env.RSS_DATA, sessionId),
+      ]);
+    } else {
+      await deleteServerSession(env.RSS_DATA, sessionId);
     }
-    await deleteServerSession(env.RSS_DATA, sessionId);
   }
 
   const res = NextResponse.json({ ok: true });
