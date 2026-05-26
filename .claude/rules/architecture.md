@@ -139,7 +139,6 @@ src/
     feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection / TagsSection / CollectionsSection / FeedSearchBar）
     feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / FeedTitleContent / feedActions.tsx / types.ts）
     article-items/           # レイアウト別記事アイテム（index.tsx / shared.tsx / CompactItem / ListItem / CardItem / MagazineItem / GalleryItem）
-    FeedItem.tsx             # フィードアイテム（コンテキストメニュー付き）
     FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
     FeedHealthModal.tsx      # フィードヘルス監視モーダル（エラー・レートリミット・オーバーサイズのフィードを一覧表示）
@@ -212,7 +211,6 @@ src/
     article-view/ArticleContentBody.tsx     # 記事本文描画ボディ（ArticleView から分割）
     article-view/EmptyArticleView.tsx       # 記事未選択時のプレースホルダ表示
     article-view/FetchFullContentArea.tsx   # 「全文取得」CTA 領域（ボタン・retry・進捗）
-    article-view/AddToCollectionMenu.tsx    # 記事をコレクションに追加するインラインメニュー
     user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel / FeedManagementTabPanel / ImportExportTabPanel / TtsVoiceSection / shared）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
