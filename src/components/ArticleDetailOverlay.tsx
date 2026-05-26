@@ -63,6 +63,8 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
     if (ret && document.contains(ret)) ret.focus();
   }, [open]);
 
+  // capture-phase (`true`) + e.stopPropagation() で他 keyboard shortcut hook より優先的に Escape を捕捉する意図的設計。
+  // canonical な useModalFocusTrap は bubble-phase なので統合しない (statement of intent: sibling drift 維持)。
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {

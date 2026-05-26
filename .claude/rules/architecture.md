@@ -445,7 +445,6 @@ src/
     read-state-prune.ts      # readBeforeTimestamp 以前の publishedAt を持つ既知記事の readId を物理削除する純粋関数 + ttlDays 連動の effective cutoff 算出
     gallery-prefetch.ts      # `usePrefetchGalleryContents` の `articlesKey` 生成純粋関数（visible 拡張で確実にキー変化させて effect 再実行をトリガー）
     gallery-display.ts       # `selectGalleryImages` 純粋関数（ギャラリー描画用の画像ソース選択: prefetched / thumb / none の 3 分岐）
-    gallery-offviewport.ts   # `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` 純粋関数（#714 Phase 1 で masonic ギャラリー用に設計、#822 masonic 削除後は Phase 2 UI 統合未実施で production caller 0 件 — 削除判断は別 Issue で議論中）
     gallery-explode.ts       # `explodeArticlesIntoGalleryEntries` 純粋関数（画像/動画 view で 1 記事 N 画像を N カードに分解、`GalleryEntry` 型、Phase 0b）
     download-history.ts      # 画像 DL 履歴の URL FIFO 管理純粋関数（ギャラリー画像保存時の重複チェック）
     read-state-sync-api.ts   # ReadState のサーバー通信（fetchReadState・saveReadState）
@@ -874,7 +873,6 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `gallery-display.spec.ts`                       | `src/lib/gallery-display.ts` — `selectGalleryImages` 純粋関数（prefetched / thumb / none の 3 分岐選択）                                                                                                                                                                        |
 | `gallery-masonry-layout.spec.ts`                | `src/lib/gallery-masonry-layout.ts` — `computeColumnHeights` / `assignItemToShortestColumn` / `computeMasonryLayout` / `computeScrollAnchorDelta` 純粋関数 (#773 Phase 0/1、自前 masonry virtualizer 基盤)                                                                      |
 | `loadmore-cooldown.spec.ts`                     | `src/lib/loadmore-cooldown.ts` — `shouldLoadMore` 純粋関数 (#773 案 A、loadMore 連続発火を 1000ms cooldown で抑止 / 大量画像展開時の scroll 一気末尾移動 + 無限ロード対策 / 時計戻り fail-open / Infinity cooldown 等 9 ケース網羅)                                             |
-| `gallery-offviewport.spec.ts`                   | `src/lib/gallery-offviewport.ts` — `isOffViewport` / `computeLastVisibleIndex` / `partitionByViewport` 純粋関数（masonic で viewport 外 item のみ再配置する設計の判定層、#714 Phase 1、全 17 ケース網羅）                                                                       |
 | `gallery-explode.spec.ts`                       | `src/lib/gallery-explode.ts` — `explodeArticlesIntoGalleryEntries` 純粋関数（画像/動画 view で 1 記事 N 画像を N カードに分解、`GalleryEntry` 型、Phase 0b、全 10 ケース網羅）                                                                                                  |
 | `abort-error.spec.ts`                           | `src/lib/fetch.ts#isAbortError` — DOMException AbortError / Error name="AbortError" / 非 abort error の判別 (#625 後追い)                                                                                                                                                       |
 | `tts-adapter.spec.ts`                           | `src/lib/tts-adapter.ts` — `speechSynthesisVoiceToTtsVoice` / `TtsAdapter` 型契約 / `TtsVoice` と既存 `selectTtsVoice` `groupVoicesByLang` の互換 (#675 Phase 1a)                                                                                                               |
