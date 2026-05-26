@@ -383,6 +383,7 @@ src/
     ogp-cache-schema.ts      # OGP cache schema 拡張 + lazy migration 純粋関数 (#808 Phase 1、v1 string → v2 object 変換 / title・description は次 fetch で追記する lazy migration / parseOgpCacheEntry / parseOgpCache / getOgpImage)
     ai-summary-parse.ts      # AI summary text の line 分類純粋関数 (#811、parseSummaryLine / parseSummaryLines、heading / bullet / empty / paragraph、非 string 入力は safe fallback で TypeError 防御)
     binary-proxy-handler.ts  # image / video / 将来追加 binary 型のプロキシ共通 handler（handleBinaryProxy — auth ガード → URL 検証 → cache lookup → upstream fetch → mime 検証 → cachePutAsync を 1 箇所集約、image-proxy / video-proxy route から thin wrapper で呼ぶ、#757）
+    proxy-error-headers.ts   # binary proxy (image / video / 将来 audio 等) のエラーレスポンスに optional Details field を `X-${prefix}-*` ヘッダーとして付与する共通 helper（`image-error-placeholder.ts` と `video-error-placeholder.ts` の重複 8 行を helper-drift 規範で集約、#856）
     booth-fallback.ts        # x.com / twitter.com 系フィードで summary 内の booth.pm URL を thumbnail fallback として抽出する純粋関数（extractBoothFallbackUrl — #750 Phase 1）
     opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
     recommendation.ts        # フィード推薦ロジック
