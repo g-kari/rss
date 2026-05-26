@@ -149,14 +149,17 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
-      const [feedArticles, savedArticles, readState] = await Promise.all([
-        getUserLatestArticles(env.RSS_DATA, session.userId, subs),
+      // wave 1: subs / savedArticles / readState を並列取得 (R2 GET 直列段数 3 → 2)
+      // savedArticles と readState は subs に非依存なので同 wave で並列化可能。
+      // getUserLatestArticles のみ subs 引数を使うため wave 2 で await (since 経路と同型)。
+      const [subs, savedArticles, readState] = await Promise.all([
+        readUserSubscriptions(env.RSS_DATA, session.userId),
         r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
         r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
           normalizeReadState,
         ),
       ]);
+      const feedArticles = await getUserLatestArticles(env.RSS_DATA, session.userId, subs);
 
       const filterMap = buildFilterMap(subs, (s) => s.feedHash);
       const filteredFeedArticles = applyKeywordFilterMap(feedArticles, filterMap);

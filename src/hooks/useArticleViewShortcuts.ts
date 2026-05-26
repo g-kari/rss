@@ -5,8 +5,7 @@ import type { Article } from "../types";
 import type { AiOperationResult } from "./useArticleAi";
 import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
-import { isLikelyJapanese } from "../lib/article-utils";
-import { toPlainText } from "../lib/html";
+import { isStoredContentJapanese } from "../lib/article-utils";
 import { shouldSkipAutoAi } from "../lib/auto-ai-fallback";
 
 export interface ArticleViewShortcutsDeps {
@@ -116,7 +115,7 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     if (autoTranslateTriggered.current === article.id) return;
     // 200 char だと英文 abstract / byline / URL を含む記事冒頭で日本語判定 false → 不要な auto-translate
     // が起きる罠を防ぐため canonical (browser-translator.ts#detectSourceLanguage) の 500 char sample に統一。
-    if (isLikelyJapanese(toPlainText(storedContent).slice(0, 500))) return;
+    if (isStoredContentJapanese(storedContent)) return;
     // #700: ブラウザ翻訳が使えなくて Workers AI フォールバックを避けたい場合は skip
     if (shouldSkipAutoAi(translatorAvailable, autoAiBrowserOnly)) return;
     autoTranslateTriggered.current = article.id;

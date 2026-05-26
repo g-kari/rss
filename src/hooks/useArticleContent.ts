@@ -237,7 +237,7 @@ export function useArticleContent(
           });
           return;
         }
-        setFetchError("ネットワークエラー");
+        setFetchError(formatHttpErrorMessage("network"));
         autoReadDebug("useArticleContent.fetch-network-error", {
           articleId,
           err: err instanceof Error ? err.message : String(err),

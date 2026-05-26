@@ -34,6 +34,17 @@ export interface GalleryEntry {
   key: string;
 }
 
+/**
+ * `Article | GalleryEntry` 判別用 type guard。
+ *
+ * discriminated union (#769): `_type: "gallery-entry"` field で明示判別する。
+ * 旧実装は GalleryBody / GalleryCardRenderer の 2 ファイルで `(item as GalleryEntry)._type === "gallery-entry"`
+ * を sibling drift していたため canonical をここに集約。
+ */
+export function isGalleryEntry(item: Article | GalleryEntry): item is GalleryEntry {
+  return (item as GalleryEntry)._type === "gallery-entry";
+}
+
 export interface ExplodeOptions {
   /** true なら 1 article N image → N entry に展開、false なら 1 article 1 entry */
   explode: boolean;

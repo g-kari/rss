@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, withJsonBody } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { readFeedGroups, writeFeedGroups, FEED_GROUP_NAME_MAX_LENGTH } from "@/lib/feed-groups";
+import {
+  readFeedGroups,
+  writeFeedGroups,
+  FEED_GROUP_NAME_MAX_LENGTH,
+  MAX_FEED_GROUPS_PER_USER,
+} from "@/lib/feed-groups";
 import { readUserSubscriptions, writeUserSubscriptions } from "@/lib/shared-feed";
 import { parseName } from "@/lib/validation";
 
@@ -29,8 +34,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     if ("order" in body) {
-      if (typeof body.order !== "number" || !Number.isInteger(body.order)) {
-        return apiError("order must be an integer", 400, { code: "INVALID_ORDER" });
+      // defense-in-depth: 整数だけでなく非負 + MAX_FEED_GROUPS_PER_USER 以下に制限。
+      // Number.MIN_SAFE_INTEGER / Number.MAX_SAFE_INTEGER 等を送ると sortByOrder 順序や
+      // feeds/import の `++maxOrder` 初期化が破壊される。
+      if (
+        typeof body.order !== "number" ||
+        !Number.isInteger(body.order) ||
+        body.order < 0 ||
+        body.order > MAX_FEED_GROUPS_PER_USER
+      ) {
+        return apiError(
+          `order must be a non-negative integer within ${MAX_FEED_GROUPS_PER_USER}`,
+          400,
+          { code: "INVALID_ORDER" },
+        );
       }
       group.order = body.order;
     }

@@ -7,7 +7,15 @@ import type {
   ReadingTimeRange,
   SortOrder,
 } from "../types";
-import { stripHtml } from "./html";
+import { stripHtml, toPlainText } from "./html";
+
+/**
+ * `isStoredContentJapanese` で参照する HTML 本文先頭の sample char 数。
+ *
+ * 200 char だと英文 abstract / byline を含む記事冒頭で日本語判定 false → 自動翻訳誤発動 / TTS 言語選定誤り
+ * が起きる罠を防ぐため、canonical (`browser-translator.ts#detectSourceLanguage`) の 500 char sample に統一。
+ */
+export const JAPANESE_SAMPLE_CHARS = 500;
 
 /** CJK 統合漢字・ひらがな・カタカナ・拡張A（読了速度判定用） */
 const CJK_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g;
@@ -26,6 +34,17 @@ export function isLikelyJapanese(text: string): boolean {
   if (plain.length < 20) return true;
   const cjk = (plain.match(CJK_WIDE_PATTERN) ?? []).length;
   return cjk / plain.length > 0.03;
+}
+
+/**
+ * storedContent (HTML) を `toPlainText` + 先頭 `JAPANESE_SAMPLE_CHARS` で sampling してから
+ * `isLikelyJapanese` 判定するヘルパー。useArticleViewShortcuts / useArticleViewState の sibling drift 解消。
+ *
+ * `null` / 空文字列は `false` を返す (= 日本語でないとして扱う、自動翻訳 trigger スキップ条件)。
+ */
+export function isStoredContentJapanese(storedContent: string | null | undefined): boolean {
+  if (!storedContent) return false;
+  return isLikelyJapanese(toPlainText(storedContent).slice(0, JAPANESE_SAMPLE_CHARS));
 }
 
 /**

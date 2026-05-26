@@ -77,7 +77,9 @@ export const ListArticleItem = memo(function ListArticleItem({
           </p>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+          <time dateTime={article.publishedAt ?? undefined} className="text-[11px] text-text-faint">
+            {timeAgo(article.publishedAt)}
+          </time>
           {article.author && (
             <span className="text-[11px] text-text-faint truncate max-w-[100px]">
               {article.author}

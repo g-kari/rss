@@ -84,9 +84,12 @@ export const CardArticleItem = memo(function CardArticleItem({
         )}
         <div className="flex items-center justify-between mt-auto pt-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[10px] text-text-faint flex-shrink-0">
+            <time
+              dateTime={article.publishedAt ?? undefined}
+              className="text-[10px] text-text-faint flex-shrink-0"
+            >
               {timeAgo(article.publishedAt)}
-            </span>
+            </time>
             {article.author && (
               <span className="text-[10px] text-text-faint truncate">{article.author}</span>
             )}

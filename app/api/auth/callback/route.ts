@@ -149,25 +149,30 @@ export async function GET(request: Request) {
     name: tokens.user.name,
     picture: tokens.user.picture,
   };
-  await r2Put(env.RSS_DATA, `users/${sub}/profile.json`, profile);
+  // DBSC 登録トリガー: 対応ブラウザに Secure-Session-Registration を送って TPM 鍵ペア生成を開始させる
+  // ブラウザはヘッダーを受け取ると /api/auth/dbsc/register に公開鍵を POST する
+  // @see https://wicg.github.io/dbsc/
+  // dbscChallenge は同期生成 (crypto) のため Promise.all 前に確定。
+  const dbscChallenge = generateDbscChallenge();
 
-  // refresh_token をサーバーサイドセッションとして R2 に保存し、ブラウザには session_id のみを渡す
-  const sessionId = await createServerSession(env.RSS_DATA, sub, tokens.refresh_token);
+  // 3 つの独立 R2 PUT を並列化 (d33ae105 と同型)。書き込み先 key が独立 + sessionId は内部で
+  // crypto.randomUUID() 同期生成のため他 PUT に非依存。後段の setSessionCookie / Secure-Session-Registration
+  // ヘッダ設定は Promise.all 完了後に実行されるため順序保証あり。
+  const [, sessionId] = await Promise.all([
+    r2Put(env.RSS_DATA, `users/${sub}/profile.json`, profile),
+    // refresh_token をサーバーサイドセッションとして R2 に保存し、ブラウザには session_id のみを渡す
+    createServerSession(env.RSS_DATA, sub, tokens.refresh_token),
+    r2Put(env.RSS_DATA, `users/${sub}/dbsc-pending-challenge.json`, {
+      challenge: dbscChallenge,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    }),
+  ]);
 
   // ?login=1 でクライアントにログイン直後であることを伝える（R2 整合性ラグ対策リトライ用）
   const res = NextResponse.redirect(new URL("/?login=1", appBaseUrl));
   res.cookies.delete("auth_state");
   setAccessTokenCookies(res, tokens.access_token);
   setSessionCookie(res, sessionId);
-
-  // DBSC 登録トリガー: 対応ブラウザに Secure-Session-Registration を送って TPM 鍵ペア生成を開始させる
-  // ブラウザはヘッダーを受け取ると /api/auth/dbsc/register に公開鍵を POST する
-  // @see https://wicg.github.io/dbsc/
-  const dbscChallenge = generateDbscChallenge();
-  await r2Put(env.RSS_DATA, `users/${sub}/dbsc-pending-challenge.json`, {
-    challenge: dbscChallenge,
-    expiresAt: Date.now() + 5 * 60 * 1000,
-  });
   res.headers.set(
     "Secure-Session-Registration",
     buildSecureSessionRegistrationHeader(dbscChallenge),
