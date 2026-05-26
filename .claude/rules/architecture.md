@@ -800,6 +800,76 @@ const match = matchesKeywordFilter(article, compiledFilter);
 
 ---
 
+## src/lib/ 層設計 (`src/lib/`)
+
+`src/lib/` には 136 ファイル の純粋関数 / ヘルパー / ラッパーが配置される。Workers + ブラウザ両環境で再利用される基盤レイヤーとして責務境界を明確にするため、以下の **機能別グループ + 採用すべき canonical pattern** に従う。
+
+### グループ分類
+
+| グループ                    | 主な責務                                                          | 代表ファイル                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **HTML 処理 pipeline**      | 本文抽出・ノイズ除去・画像/動画/embed 変換・sanitize              | `content.ts` / `html-post-processor.ts` / `html-noise-removal.ts` / `html-image-processors.ts` / `html-video-processors.ts` / `html.ts` / `readability-extractor.ts` / `regex-extractor.ts`                                                                                                                                                                                                                                                                                                                                                          |
+| **画像 / 動画プロキシ**     | binary proxy 共通 handler + MIME 検証 + エラー応答 + 観測性ヘッダ | `binary-proxy-handler.ts` / `image-mime.ts` / `video-mime.ts` / `image-error-placeholder.ts` / `video-error-placeholder.ts` / `proxy-error-headers.ts` / `image-proxy-security.ts` / `image-proxy-url.ts`                                                                                                                                                                                                                                                                                                                                            |
+| **認証 / セキュリティ**     | JWT 検証・session/refresh 管理・CSRF・DBSC・入力 validation・SSRF | `auth.ts` / `server-auth.ts` / `csrf.ts` / `dbsc.ts` / `validation.ts` / `url.ts` / `beta-allowed.ts` / `dev-auth-bypass.ts`                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **R2 / KV / Cache 操作**    | R2 read/write・SHA256・cache key・LRU・rate-limit                 | `r2.ts` / `shared-feed.ts` / `cache-helper.ts` / `sw-cache.ts` / `lru-cache.ts` / `rate-limit.ts` / `rate-limit-logic.ts`                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **記事 / フィード処理**     | RSS パース・記事フィルタ・既読マージ・TTL・signature              | `xml-parser.ts` / `article-filter.ts` / `article-utils.ts` / `article-ttl.ts` / `read-state-merge.ts` / `read-state-prune.ts` / `feed-discovery.ts` / `feed-signature.ts` / `feed-groups.ts`                                                                                                                                                                                                                                                                                                                                                         |
+| **AI / TTS**                | Workers AI / browser AI / TTS adapter / voice 選択 / sentence     | `ai-cache.ts` / `ai-route-helper.ts` / `ai-models.ts` / `browser-summarizer.ts` / `browser-translator.ts` / `tts-adapter.ts` / `tts-text.ts` / `tts-voice.ts` / `tts-sentences.ts` / `tts-dom.ts`                                                                                                                                                                                                                                                                                                                                                    |
+| **OGP / Embed / fallback**  | OGP 取得・cache schema・embed 変換・x.com / booth.pm fallback     | `ogp.ts` / `ogp-cache-ttl.ts` / `ogp-cache-schema.ts` / `embed-utils.ts` / `x-com-fallback.ts` / `booth-fallback.ts` / `favicon.ts`                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **ギャラリー / レイアウト** | masonry 計算・autoscroll・loadmore cooldown・scroll direction     | `gallery-display.ts` / `gallery-prefetch.ts` / `gallery-explode.ts` / `gallery-autoscroll.ts` / `gallery-masonry-layout.ts` / `loadmore-cooldown.ts` / `scroll-direction.ts`                                                                                                                                                                                                                                                                                                                                                                         |
+| **自動モード / 自動既読**   | autoMode 状態遷移・persist・debug gate                            | `auto-read.ts` / `auto-read-persist.ts` / `auto-read-debug.ts` / `auto-ai-fallback.ts` / `bgaudio-debug.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **エンゲージメント / 推薦** | engagement score・top-N 集約・recommendation・cron prefetch       | `engagement-score.ts` / `engagement-aggregator.ts` / `recommendation.ts` / `cron-prefetch.ts` / `download-history.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **API / fetch ヘルパー**    | apiError 整形・authenticated fetch・HTTP エラー分類・retry        | `api-error.ts` / `api-fetch.ts` / `api-feed-guard.ts` / `classify-http-error.ts` / `retry-after.ts` / `fetch.ts` / `fetch-article-content.ts`                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **エクスポート / 変換**     | Markdown / Readwise / OPML 変換・Obsidian URI                     | `export-markdown.ts` / `export-readwise.ts` / `html-to-markdown.ts` / `opml.ts` / `obsidian.ts` / `clip.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **プラットフォーム / 基盤** | storage / dev-log / serialize / concurrency / type guards         | `storage.ts` / `dev-log.ts` / `serialize-error.ts` / `serialize-async.ts` / `concurrency.ts` / `type-guards.ts` / `modal-focus.ts` / `popup-lock.ts`                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **その他**                  | Push silent hours / RSSHub / keyword filter / 全文検索 / stats    | `web-push.ts` / `push-silent-hours.ts` / `rsshub.ts` / `keyword-filter.ts` / `full-text-search.ts` / `stats-helpers.ts` / `unread-stats-merge.ts` / `reading-progress.ts` / `reader-settings.ts` / `sort-utils.ts` / `test-seed.ts` / `inline-nav.ts` / `mime-utils.ts` / `image-constants.ts` / `image-extractor.ts` / `json-ld-images.ts` / `linkedom-types.ts` / `translate-html.ts` / `llm-feed-generator.ts` / `download.ts` / `piper-voices.ts` / `collections.ts` / `feed-group-drop.ts` / `read-state-storage.ts` / `read-state-sync-api.ts` |
+
+### 命名規則
+
+- **`<feature>-<aspect>.ts`**: 機能 + 観点で分割 (例: `ogp-cache-ttl.ts` / `ogp-cache-schema.ts` / `read-state-merge.ts` / `read-state-prune.ts`)
+- **`<feature>-utils.ts`**: 汎用ユーティリティの集約 (例: `mime-utils.ts` / `sort-utils.ts` / `article-utils.ts` / `stats-helpers.ts`)
+- **`<engine>-<capability>.ts`**: engine + 機能 (例: `tts-adapter.ts` / `tts-text.ts` / `piper-voices.ts` / `browser-summarizer.ts`)
+- **`<feature>-fallback.ts`**: 特定サイト / 条件向け fallback (例: `x-com-fallback.ts` / `booth-fallback.ts` / `auto-ai-fallback.ts`)
+- **`<feature>-debug.ts`**: localStorage gate 付き本番デバッグログ (例: `auto-read-debug.ts` / `bgaudio-debug.ts`)
+- **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `article-utils.test.ts` / `booth-fallback.test.ts` / `html-media-processors.test.ts` / `lru-cache.test.ts` / `mime-utils.test.ts` / `proxy-error-headers.test.ts` / `video-error-placeholder.test.ts`)、playwright e2e は `e2e/*.spec.ts`
+
+### 設計原則
+
+| 原則                                                                  | 例                                                                                                     |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **純粋関数優先**: 副作用なし + 入出力 deterministic                   | `auto-read.ts#shouldStartAutoSpeak` / `gallery-display.ts#selectGalleryImages` / `tts-text.ts`         |
+| **Workers + ブラウザ両環境互換**                                      | `next/*` import 禁止 (Route Handler 専用は `server-auth.ts` 等に集約)、`globalThis` 経由でブラウザ API |
+| **silent fallback 禁止**: `try/catch → null` には `devError` を添える | `browser-platform.md § silent fallback の禁止` 参照                                                    |
+| **helper drift 防止**: 新規追加前に既存 helper を grep                | `helper-drift.md § 新規 Route Handler / hook を書くときは既存 lib helpers を先に grep` 参照            |
+| **type alias で重複定義を canonical 化**                              | `useArticleAi.ts` の `AiErrorType = HttpErrorType`、`classify-http-error.ts` 経由で統一                |
+| **TDD 必須**: 新規純粋関数は `.spec.ts` or `.test.ts` で全分岐網羅    | `selectGalleryImages` 5 分岐 / `classifyHttpError` 30 ケース等                                         |
+
+### 新規 lib 追加時の判断軸
+
+1. **既存グループに該当するか確認** — 上記表で responsible group を特定
+2. **既存 helper の流用検討** — `helper-drift.md` 規範に従い `validation.ts` / `r2.ts` / `api-error.ts` 等を grep
+3. **ファイル名は `<feature>-<aspect>.ts` で命名** — 同 feature の関連ファイルが file system 上で隣接するように
+4. **type alias で重複定義を避ける** — 既存 type と semantic が同じなら `export type X = CanonicalType;`
+5. **テスト**: 純粋関数なら `.test.ts` (vitest) で追加、Cloudflare binding 依存なら `e2e/*.spec.ts` (playwright)
+6. **architecture.md 更新**: 新規 lib 追加と同 commit で本セクション + ASCII tree (line 396 付近) + テストカバレッジマップに entry 追加
+
+### 巨大 lib 分割の判断軸
+
+ファイル行数が 500 行を超える、または 3 つ以上の異なる責務を 1 ファイルに持つ場合は分割を検討:
+
+- **責務単位で抽出** (例: `html-post-processor.ts` → `html-noise-removal.ts` / `html-image-processors.ts` / `html-video-processors.ts` / `html-media-processors.ts` / `html-srcset.ts` / `html-embed-transforms.ts`)
+- **pipeline orchestrator + step 関数** 構造 (例: `content.ts` がオーケストレーター、各 step が独立 lib)
+- **`<feature>-<aspect>.ts` 命名で分割後の親子関係を可読化** (例: `ogp.ts` → `ogp-cache-ttl.ts` / `ogp-cache-schema.ts` で同 feature の aspect 別ファイル)
+
+### Phase 3 (将来サイクル)
+
+本章は概要レベル。詳細な group 別 cross-dependencies / Workers vs ブラウザ環境マトリクス・新規 import 推奨順序は別途追加予定:
+
+- **Phase 3**: 全 hook の JSDoc `@param` / `@returns` 注釈整備 (IDE hover 改善)、touch 15+ file で AI 自走条件外、ユーザー判断仰ぎ継続
+
+詳細は Issue #865 を参照。
+
+---
+
 ## テストカバレッジマップ
 
 `e2e/*.spec.ts` 各ファイルと対象モジュールの対応表。
