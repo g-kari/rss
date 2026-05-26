@@ -46,7 +46,9 @@ export default function CategoryFilter({
         <button
           onClick={() => setCategoryDropdownOpen((v) => !v)}
           title="カテゴリでフィルター"
-          className={`flex items-center gap-1 px-2 h-6 rounded-full text-[11px] transition-all duration-200 ${
+          aria-haspopup="menu"
+          aria-expanded={categoryDropdownOpen}
+          className={`flex items-center gap-1 px-2 h-6 max-md:min-h-[44px] max-md:min-w-[44px] rounded-full text-[11px] transition-all duration-200 ${
             categoryDropdownOpen
               ? "text-text-strong bg-surface-subtle"
               : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
@@ -68,10 +70,15 @@ export default function CategoryFilter({
         </button>
       )}
       {categoryDropdownOpen && (
-        <div className="absolute left-0 top-full mt-1 z-20 min-w-[120px] bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden">
+        <div
+          role="menu"
+          aria-label="カテゴリ選択"
+          className="absolute left-0 top-full mt-1 z-20 min-w-[120px] bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden"
+        >
           {feedCategories.map((cat) => (
             <button
               key={cat}
+              role="menuitem"
               onClick={() => {
                 setCategoryFilter(cat);
                 setCategoryDropdownOpen(false);
