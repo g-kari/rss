@@ -24,8 +24,12 @@ export default function FeedSearchBar({ value, onChange }: Props) {
           <circle cx="4.5" cy="4.5" r="3" />
           <line x1="7" y1="7" x2="10" y2="10" strokeLinecap="round" />
         </svg>
+        <label htmlFor="feed-search-input" className="sr-only">
+          フィードを検索
+        </label>
         <input
           ref={inputRef}
+          id="feed-search-input"
           type="text"
           placeholder="フィードを検索..."
           value={value}
