@@ -6,8 +6,9 @@ import {
   writeCollections,
   COLLECTION_NAME_MAX_LENGTH,
   MAX_ARTICLES_PER_COLLECTION,
+  MAX_COLLECTIONS_PER_USER,
 } from "@/lib/collections";
-import { isValidSessionId, parseName } from "@/lib/validation";
+import { isValidSessionId, parseName, extractIds } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,23 +37,35 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     if ("order" in body) {
-      if (typeof body.order !== "number" || !Number.isInteger(body.order)) {
-        return apiError("order must be an integer", 400, { code: "INVALID_ORDER" });
+      // defense-in-depth: 整数だけでなく非負 + MAX_COLLECTIONS_PER_USER 以下に制限。
+      // Number.MIN_SAFE_INTEGER / Number.MAX_SAFE_INTEGER 等を送ると sort 順序が破壊される。
+      if (
+        typeof body.order !== "number" ||
+        !Number.isInteger(body.order) ||
+        body.order < 0 ||
+        body.order > MAX_COLLECTIONS_PER_USER
+      ) {
+        return apiError(
+          `order must be a non-negative integer within ${MAX_COLLECTIONS_PER_USER}`,
+          400,
+          { code: "INVALID_ORDER" },
+        );
       }
       collection.order = body.order;
     }
 
     if ("addArticleIds" in body) {
-      if (
-        !Array.isArray(body.addArticleIds) ||
-        !body.addArticleIds.every((v) => typeof v === "string")
-      ) {
-        return apiError("addArticleIds must be a string array", 400, {
+      // defense-in-depth: extractIds で MAX_ID_LENGTH (128) を per-element 強制し、
+      // 巨大 ID 文字列 (1 件 500B 等) で R2 オブジェクトを膨張させる自己 DoS を防止。
+      // read-state route の canonical pattern と整合。
+      const addIds = extractIds(body.addArticleIds, MAX_ARTICLES_PER_COLLECTION);
+      if (addIds === null) {
+        return apiError("addArticleIds must be a valid string array", 400, {
           code: "INVALID_ARTICLE_IDS",
         });
       }
       const existing = new Set(collection.articleIds);
-      for (const aid of body.addArticleIds as string[]) {
+      for (const aid of addIds) {
         if (!existing.has(aid)) {
           collection.articleIds.push(aid);
           existing.add(aid);
@@ -70,15 +83,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     if ("removeArticleIds" in body) {
-      if (
-        !Array.isArray(body.removeArticleIds) ||
-        !body.removeArticleIds.every((v) => typeof v === "string")
-      ) {
-        return apiError("removeArticleIds must be a string array", 400, {
+      const removeIds = extractIds(body.removeArticleIds, MAX_ARTICLES_PER_COLLECTION);
+      if (removeIds === null) {
+        return apiError("removeArticleIds must be a valid string array", 400, {
           code: "INVALID_ARTICLE_IDS",
         });
       }
-      const toRemove = new Set(body.removeArticleIds as string[]);
+      const toRemove = new Set(removeIds);
       collection.articleIds = collection.articleIds.filter((aid) => !toRemove.has(aid));
     }
 
