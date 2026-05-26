@@ -87,6 +87,7 @@ export default function SearchBar() {
             value={savingName}
             onChange={(e) => setSavingName(e.target.value)}
             placeholder="保存名を入力"
+            aria-label="検索を保存するための名前"
             className="flex-1 text-[11px] bg-transparent outline-none text-text-strong placeholder-text-faint"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
