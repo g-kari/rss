@@ -24,13 +24,16 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     if (err) return err;
     // 購読から削除するだけ（共有フィードデータは残す）
     const remainingSubs = subs.filter((s) => s.feedHash !== feedHash);
-    await writeUserSubscriptions(env.RSS_DATA, session.userId, remainingSubs);
-    // 購読がゼロになったユーザーはインデックスから削除（cron の R2 LIST 削減）
-    if (remainingSubs.length === 0) {
-      await removeUserFromIndex(env.RSS_DATA, session.userId);
-    }
-    // フィード削除時に feedUserMap KV キャッシュを無効化
-    await env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY);
+    // POST と同型 (d33ae105): writeUserSubscriptions + removeUserFromIndex (条件付き) + KV delete を並列化
+    await Promise.all([
+      writeUserSubscriptions(env.RSS_DATA, session.userId, remainingSubs),
+      // 購読がゼロになったユーザーはインデックスから削除（cron の R2 LIST 削減）
+      remainingSubs.length === 0
+        ? removeUserFromIndex(env.RSS_DATA, session.userId)
+        : Promise.resolve(),
+      // フィード削除時に feedUserMap KV キャッシュを無効化
+      env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY),
+    ]);
     const origin = new URL(request.url).origin;
     await purgeFeedsCache(origin, session.userId, ctx);
     return NextResponse.json({ ok: true });
