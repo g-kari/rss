@@ -1064,7 +1064,7 @@ TTS wasm 採用判断のように、ユーザーが「案 X 採用」「段階�
 
 主な使用箇所: 同サイクル起票 #859 (案 B = masonic 削除後 dead lib + spec 削除) + #855 (案 B = capture-phase 意図 JSDoc 追加) を 1 commit 一括で即時自走採用、両 Issue close
 
-#### 派生サブケース: 他サイクル起票 + `needs-user-decision` 付きでも「推奨案 = 案 B 現状維持系 / 案 C suppress+防御強化系 / Phase 1 docs only」なら条件 5 (サイクル経過) を免除して即時自走可能
+#### 派生サブケース: 他サイクル起票 + `needs-user-decision` 付きでも「推奨案 = 案 B 現状維持系 / 案 C suppress+防御強化系 / Phase N docs only」なら条件 5 (サイクル経過) を免除して即時自走可能
 
 本派生ケース本体は **同サイクル起票** の Issue に限定したが、**他サイクル起票 + `needs-user-decision` ラベル付き** の滞留 Issue でも、以下 **代替 4 条件** を満たせば条件 5 (サイクル経過) を免除して即時自走可能。
 
@@ -1073,16 +1073,16 @@ TTS wasm 採用判断のように、ユーザーが「案 X 採用」「段階�
 1. **AI 自身が起票時に「案 X 推奨」を明示済** (Issue 本文に推奨案 + 理由が記載されている)
 2. **推奨案が production code 無影響 or 完全互換** (docs only / spec only / suppress comment / regex 防御強化 等)
 3. **touch ≤ 2 file** (最小スコープ、cross-cutting でない)
-4. **Phase 分離 Issue なら Phase 1 = docs only / spec only に限定** (Phase 2/3 で機能影響あり Phase は除外)
+4. **Phase 分離 Issue なら該当 Phase 自体が docs only / spec only に限定** (Phase 番号でなく Phase 内容で判定、機能影響あり Phase は除外)
 
-理由: **AI 自身の推奨案 + production 無影響 + Phase 1 docs/spec only** は機能的に「判断保留と等価 + 規範整合性向上 / セキュリティ防御強化」で、ユーザー応答を待っても答えが「採用」以外になる蓋然性が低い。`needs-user-decision` ラベルの本来目的「ユーザー UX 判断 / 新規 dep / セキュリティ方針判断を仰ぐ」は本サブケース対象 Issue では実質的に存在しない (= AI が自信を持って推奨明示)。
+理由: **AI 自身の推奨案 + production 無影響 + 該当 Phase が docs/spec only** は機能的に「判断保留と等価 + 規範整合性向上 / セキュリティ防御強化」で、ユーザー応答を待っても答えが「採用」以外になる蓋然性が低い。`needs-user-decision` ラベルの本来目的「ユーザー UX 判断 / 新規 dep / セキュリティ方針判断を仰ぐ」は本サブケース対象 Issue では実質的に存在しない (= AI が自信を持って推奨明示)。
 
 **該当する典型ケース**:
 
 | 推奨案タイプ                                    | 例                                                                                |
 | ----------------------------------------------- | --------------------------------------------------------------------------------- |
 | 案 C = suppress comment + 防御強化 (production 無影響) | code-scanning alerts 抑制 (e2e spec fixture に `// lgtm[js/redos]` + regex `</script\s*>` 拡張) |
-| Phase 1 = docs only (architecture.md 章追加 / subsection 追加) | hooks 層設計 / lib グループ化 / 命名規則 章追加                              |
+| Phase N = docs only (architecture.md 章追加 / subsection 追加) | hooks 層設計 / lib グループ化 / 命名規則 章追加 (N は番号不問、Phase 1 でも Phase 2 でも該当)  |
 | 案 B = 現状維持 + 規範整合性向上 (他サイクル起票)     | docs sync / dead code 削除 / sibling drift 意図明示 JSDoc                        |
 
 **How to apply**: Step 0 sweep で全 open Issue が判断待ち滞留状態でも (代替 4 条件で「`needs-user-decision` ラベル付き = ユーザー UX 判断必須」の機械的解釈を緩和、AI が自信を持って推奨明示済 + production 無影響なら自走 5 条件と整合):
@@ -1092,9 +1092,9 @@ TTS wasm 採用判断のように、ユーザーが「案 X 採用」「段階�
    - 推奨案明示済か (案 X 推奨 + 理由)
    - production code 無影響 or 完全互換か (docs / spec / suppress / 防御強化)
    - touch ≤ 2 file か
-   - Phase 分離なら Phase 1 docs/spec only か
+   - Phase 分離なら該当 Phase が docs/spec only か (番号でなく内容判定)
 3. **全充足なら自走採用** → ラベル解除 (`gh issue edit N --remove-label needs-user-decision`) + commit + push + 完了サマリーコメント
-4. **Phase 分離 Issue は Phase 1 のみ自走、Phase 2/3 は open 継続 + Phase 完了報告コメント** (issue-handling skill「大規模 Issue は Phase 分離で着手」規範遵守)
+4. **Phase 分離 Issue は該当 Phase のみ自走、他 Phase (機能変化あり) は open 継続 + Phase 完了報告コメント** (issue-handling skill「大規模 Issue は Phase 分離で着手」規範遵守)。`needs-user-decision` ラベルは残 Phase が機能変化あり / touch 大規模なら維持
 5. **commit message に「他サイクル起票 + needs-user-decision 付き + 代替 4 条件全充足 + 自走採用根拠」** を明示
 
 **反例 (即時自走不可なケース)**:
@@ -1103,10 +1103,12 @@ TTS wasm 採用判断のように、ユーザーが「案 X 採用」「段階�
 - 推奨案が **UX 主観評価要素含む** (例: 「絵文字選定」「色変更」「animation 採用」) → 代替条件 2 違反 (production 影響)
 - 推奨案が **新規 dep / infra 採用を伴う** → 代替条件 2 違反
 - touch ≥ 3 file → 代替条件 3 違反、通常 5 条件再評価へ
-- Phase 分離 Issue で **Phase 1 自体に機能変化を含む** (例: hook 追加 / API endpoint 追加) → 代替条件 4 違反
+- Phase 分離 Issue で **該当 Phase 自体に機能変化を含む** (例: hook 追加 / API endpoint 追加) → 代替条件 4 違反
 - AI 起票時の推奨案が **「対応見送り」「現状維持」のみで案 A/B/C 比較なし** → 代替条件 1 違反 (推奨案明示なしと等価)
 
 主な使用箇所:
 
-- `#867` (他サイクル起票 + `needs-user-decision` 付き、case C 推奨明示済 = e2e spec fixture suppress comment + regex 防御強化 / production 無影響 / touch 2 file) を本サイクル即時自走採用 + close
-- `#865` (他サイクル起票 + `needs-user-decision` 付き、案 B Phase 1 推奨明示済 = architecture.md hooks 層設計章追加 / docs only / touch 1 file) を本サイクル即時自走採用 + Phase 1 完了報告コメント + Phase 2/3 open 継続
+- `#867` (他サイクル起票 + `needs-user-decision` 付き、case C 推奨明示済 = e2e spec fixture suppress comment + regex 防御強化 / production 無影響 / touch 2 file) を即時自走採用 + close
+- `#865` (他サイクル起票 + `needs-user-decision` 付き、案 B Phase 1 推奨明示済 = architecture.md hooks 層設計章追加 / docs only / touch 1 file) を即時自走採用 + Phase 1 完了報告コメント + Phase 2/3 open 継続
+- `#865` 後続サイクル (Phase 2 = architecture.md src/lib/ グループ化章追加 / docs only / touch 1 file) を同代替 4 条件で即時自走採用 + Phase 2 完了報告コメント + Phase 3 (touch 15+ file の JSDoc 整備、機能変化なしだが touch 規模で AI 自走条件外) open 継続。**Phase 番号でなく Phase 内容で判定** することの実証 (Phase 2 でも条件 4 充足なら自走可能)。同 Issue 内の **Phase 3 は touch ≥ 3 で代替条件 3 違反** で自走不可、判断仰ぎ継続
+- **新規 helper の追加 + 既存 inline regex の helper-drift 解消** で機能変化なし regex 防御強化 (`#863` = `isValidUserId` 純粋関数追加 + `sessionFromPayload` inline regex を helper 経由に書き換え + DBSC 分岐に defense-in-depth 追加 / touch 2 file) も「regex 防御強化系」に該当、即時自走採用
