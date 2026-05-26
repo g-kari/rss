@@ -775,6 +775,43 @@ docs drift 監査エージェントが「未文書化ファイル」「削除済
 
 主な使用箇所: 40th cycle docs drift 監査 — agent が 5 件 drift 主張 → 検証で gitignored 4 件 (release-notes-data.ts / \_test-import\*.spec.ts × 2 / auth-utils-edge.spec.ts) + scan 範囲限定 1 件 (shortcuts.ts は src/config/ に実在) と判明、**真の drift = 0** で Issue 起票却下
 
+### 派生ケース: 観点別並列エージェント report で **半数以上が context-only mode / speculative 分析を自己宣言** したら、その finding は採用候補から外して main thread の機械的 sweep に切替える
+
+Issue tracker 滞留 8+ 件状態でさらに観点別並列エージェント (5-6 体) を派遣すると、各 agent の finding 領域が既存 Issue で消化済 + 新規 finding 枯渇により、agent が **「context-only mode で finding を組み立てる」「likely / presumably 等の speculative 表現で実コード未検証の主張を出す」「READ-ONLY 制約と自己解釈してファイル read を skip する」** モードに退化する傾向がある。Report の半数以上にこれらシグナルが含まれる場合、得られる finding 全件が低品質で **採用候補から外すのが canonical**。main thread の機械的 sweep (削除済 file の docs 残置 / closed Issue stale label / `find + grep + comm` による drift 検出) に切替えた方が actionable finding を効率的に発見できる。
+
+```
+パターン: 並列 agent report 品質シグナル検出フロー
+  1. 5+ 並列派遣後の各 report を比較
+  2. 以下のシグナルを agent ごとに集計:
+     - "likely" / "presumably" / "based on the loaded context" 連発
+     - "READ-ONLY mode" / "text-only response" / "cannot modify files" 自己宣言
+     - finding に file path はあるが内容は generic (例: 「a11y 改善余地」のみで具体行なし)
+     - 存在しない file path の指摘 (実コード grep で 0 件 hit)
+     - 既実装の機能を「未実装」と誤判定
+  3. 半数 (3+ / 5 体) でこれらシグナル検出 → 全 finding 採用候補から外す
+  4. main thread の機械的 sweep に切替:
+     - architecture.md vs find 結果 comparative sweep
+     - closed Issue --label needs-user-decision sweep (個別 view で eventual consistency 対応)
+     - production code の TODO(#N) / FIXME sweep
+     - 直近 deleted file が docs に残置していないか sweep
+```
+
+**How to apply**: 観点別並列 agent 派遣後の report 受領時に以下を判定 (Issue tracker 滞留時の並列派遣は agent が finding 枯渇で speculative 分析モードに退化しやすく、得られる finding を採用するより main thread sweep で実体ベース drift を発見する方が確実):
+
+1. **各 agent report を品質シグナルチェック** — 上記 5 種のシグナルを集計
+2. **半数以上のシグナル検出 → 全 finding を採用候補から外す** (false positive verify cost > 真の finding 価値)
+3. **main thread sweep に切替** — `find src/ -name "<basename>"` / `git check-ignore` / `grep -rn` 等の機械的検出で 5-10 分以内に drift 検出可能
+4. **次回派遣時の prompt 改善**: 「context-only mode 禁止、実コード Read で必ず verify」「`likely` / `presumably` 表現禁止」「finding は file:line 指定必須」を明示
+5. **agent 派遣数を 2-3 体に絞る** (滞留 8+ 件状態では各 agent の finding 領域が狭く、5+ 並列はコスト > 価値)
+
+**反例 (並列派遣が正解のケース)**:
+
+- Issue tracker 滞留 **3 件以下** + 新規領域監査 (例: 大型 refactor 後の影響範囲調査) → 5+ 並列で finding 領域多様化が機能
+- 各観点が **明確に分離** (例: security narrow check 3 specific files + docs drift specific files) → context overflow / speculation 退化リスク低
+- agent が **特定 file group 指定済** で「これだけ read して」と prompt 限定 → speculation 退化リスク低
+
+主な使用箇所: 2026-05-26 batch7 — Issue tracker 12 件滞留状態で観点別 5 体並列派遣 → a11y agent (存在しない `ArticleListItem.tsx` 指摘 + 既実装 `max-md:min-h-[44px]` を「未実装」誤判定) / docs agent (`based on the loaded context` で speculative "likely" 分析 + READ-ONLY mode 自己宣言) / perf agent (internal monolog のみで finding 0 件) の 3 体が品質劣化 → 全 finding 採用見送り → main thread の機械的 sweep (architecture.md L142/L215 dead file reference + closed Issue 6 件 stale `needs-user-decision` label) で 8 件 actionable finding を 5 分以内に発見、1 commit で完結
+
 ### 派生ケース: Security audit エージェントの XSS 主張は **データフロー上流 (source)** を必ず遡って sanitize 済か確認する
 
 Security audit エージェントが `dangerouslySetInnerHTML` / `innerHTML` を XSS 脆弱性として指摘するとき、**末端 (描画 UI) からしか追跡せず、source (server-side processing) を遡らない傾向**がある。本プロジェクトでは `postProcess` pipeline の最終ステップで必ず `sanitizeHtml` を経由しているため、UI 側で再度 `sanitizeHtml` 呼び出すのは redundant。逆に過剰 sanitize はレンダリングに必要なタグ (例: TTS span) を破壊するリスクあり。
