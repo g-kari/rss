@@ -217,7 +217,7 @@ pnpm run check:fix    # 自動修正付きチェック
 pnpm run typecheck    # tsc --noEmit（完全な型チェック）
 pnpm run test:e2e     # Playwright E2E テスト実行
 pnpm run test:e2e:ui  # Playwright UI モード（デバッグ用）
-pnpm run test:unit    # Vitest ユニットテスト実行（#682 Phase C で導入、~500ms）
+pnpm run test:unit    # Vitest ユニットテスト実行（~500ms）
 pnpm run test:unit:watch  # Vitest watch モード
 ```
 
@@ -229,7 +229,7 @@ pnpm run test:unit:watch  # Vitest watch モード
 
 1. **oxlint + oxfmt** — lint & フォーマット自動修正
 2. **tsc --noEmit** — 型チェック
-3. **vitest unit** — ユニットテスト（#682 Phase C で追加、playwright より高速）
+3. **vitest unit** — ユニットテスト（playwright より高速）
 4. **playwright e2e** — E2E テスト
 
 ```bash

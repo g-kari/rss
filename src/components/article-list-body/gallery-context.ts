@@ -4,7 +4,7 @@ import type { GalleryEntry } from "@/lib/gallery-explode";
 import type { ResolveItemProps } from "./types";
 
 /**
- * GalleryMasonry の render コンポーネントは masonic 制約により最少の props だけを
+ * GalleryMasonry の render コンポーネントは virtualizer 設計上、最少の props だけを
  * 受け取るため、各カードに必要な情報は React Context 経由で渡す。
  */
 export interface GalleryItemContextValue {
@@ -26,7 +26,7 @@ export interface GalleryItemContextValue {
   onSelectImage?: (imageSrc: string, article: Article) => void;
   /**
    * forcedImageSrc が min-px フィルタで hidden になった際の通知 (entry.key 単位)。
-   * 親で hidden entry を items 配列から除外して masonic の空白セルを消す。
+   * 親で hidden entry を items 配列から除外して virtualizer の空白セルを消す。
    */
   onHideForcedImage?: (entryKey: string) => void;
 }

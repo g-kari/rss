@@ -42,7 +42,8 @@ function isEntryArray(items: Article[] | GalleryEntry[]): items is GalleryEntry[
 }
 
 /**
- * gallery レイアウトのボディ。masonic 仮想化と Provider のラッピングを担う。
+ * gallery レイアウトのボディ。自前 virtualizer (GalleryMasonrySelf) と
+ * Provider のラッピングを担う。
  */
 export default function GalleryBody({
   items,
