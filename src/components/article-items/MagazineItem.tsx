@@ -81,7 +81,12 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
         )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-text-faint">{timeAgo(article.publishedAt)}</span>
+            <time
+              dateTime={article.publishedAt ?? undefined}
+              className="text-[11px] text-text-faint"
+            >
+              {timeAgo(article.publishedAt)}
+            </time>
             <ReadingTimeBadge article={article} />
             {duplicateFeedNames && duplicateFeedNames.length > 0 && (
               <DuplicateBadge feedNames={duplicateFeedNames} />

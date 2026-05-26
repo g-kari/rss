@@ -283,9 +283,12 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
         </h3>
         <div className="mt-1.5 flex items-center justify-between">
           <div className="flex items-center gap-1 min-w-0">
-            <span className="text-[10px] text-text-faint flex-shrink-0">
+            <time
+              dateTime={article.publishedAt ?? undefined}
+              className="text-[10px] text-text-faint flex-shrink-0"
+            >
               {timeAgo(article.publishedAt)}
-            </span>
+            </time>
             {duplicateFeedNames && duplicateFeedNames.length > 0 && (
               <DuplicateBadge feedNames={duplicateFeedNames} />
             )}

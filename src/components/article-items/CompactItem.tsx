@@ -75,9 +75,12 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       {hasNote && (
         <NoteIcon className="text-amber-400 flex-shrink-0 [@media(hover:hover)]:group-hover:hidden" />
       )}
-      <span className="text-[11px] text-text-faint flex-shrink-0 [@media(hover:hover)]:group-hover:hidden">
+      <time
+        dateTime={article.publishedAt ?? undefined}
+        className="text-[11px] text-text-faint flex-shrink-0 [@media(hover:hover)]:group-hover:hidden"
+      >
         {timeAgo(article.publishedAt)}
-      </span>
+      </time>
       <ArticleActions
         className="flex items-center gap-0.5 flex-shrink-0 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto"
         isRead={isRead}
