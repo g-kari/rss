@@ -5,7 +5,11 @@ import type { Article } from "../types";
 import { useToast } from "../contexts/ToastContext";
 import { apiFetch } from "../lib/api-fetch";
 import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
-import { collectImageUrls, collectImageUrlsFromHtml } from "../lib/image-extractor";
+import {
+  collectImageUrls,
+  collectImageUrlsFromHtml,
+  normalizeImageUrlForDedup,
+} from "../lib/image-extractor";
 import { mimeToExt } from "../lib/image-mime";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { downloadBlob } from "../lib/download";
@@ -107,28 +111,38 @@ export function useImageDownload(
     if (!article) return;
 
     // 収集: OGP 画像 + 本文内の img タグ（重複排除）
+    // #885: 重複判定は normalize 後 URL で行う (image-extractor.ts と同 pattern)。
+    // OGP / processedContent / DOM 走査の 3 経路で「同一画像の異なる解像度 URL」が拾われても
+    // 1 件に集約する。push 自体は元の URL を使うことで最初に見つけた解像度を優先する。
     const seen = new Set<string>();
     const toDownload: string[] = [];
+    const tryAdd = (rawUrl: string): void => {
+      const key = normalizeImageUrlForDedup(rawUrl);
+      if (seen.has(key)) return;
+      seen.add(key);
+      toDownload.push(rawUrl);
+    };
 
     const ogImgSrc = article.ogImage ?? resolvedOgImage;
     if (ogImgSrc) {
-      const proxyUrl = buildImageProxyUrl(ogImgSrc);
-      seen.add(proxyUrl);
-      toDownload.push(proxyUrl);
+      tryAdd(buildImageProxyUrl(ogImgSrc));
     }
 
     // #843: processedContent (全文取得済 HTML) があれば優先で全画像を拾う。
     // contentRef.current の DOM 走査は描画タイミング次第で画像数が漏れるため。
     if (options?.processedContent) {
       for (const url of collectImageUrlsFromHtml(options.processedContent)) {
-        if (seen.has(url)) continue;
-        seen.add(url);
-        toDownload.push(url);
+        tryAdd(url);
       }
     }
 
     if (contentRef.current) {
-      toDownload.push(...collectImageUrls(contentRef.current, seen));
+      // collectImageUrls 内部の seen も normalize 済みキーで管理されるので、
+      // ここで OGP / processedContent で見つけた画像との dedup を共有 Set 経由で実現する
+      for (const url of collectImageUrls(contentRef.current, seen)) {
+        // collectImageUrls 側ですでに seen 反映済だが、念のため tryAdd 経由で再 dedup
+        tryAdd(url);
+      }
     }
 
     if (toDownload.length === 0) {

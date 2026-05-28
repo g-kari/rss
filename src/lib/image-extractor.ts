@@ -23,14 +23,65 @@ export function bestSrcFromSrcset(srcset: string): string {
   return last.split(/\s+/)[0] ?? "";
 }
 
-/** data: URI・重複・非 http/proxy URL を除外して収集対象かどうかを判定する */
-function isCollectableUrl(src: string, seen: Set<string>): boolean {
+/** data: URI・非 http/proxy URL を除外して収集対象かどうかを判定する (重複判定は別途 normalizeImageUrlForDedup で実施) */
+function isCollectableUrl(src: string): boolean {
   return (
     !!src &&
-    !seen.has(src) &&
     !src.startsWith("data:") &&
     (src.startsWith("/api/image-proxy?") || src.startsWith("http"))
   );
+}
+
+/**
+ * 画像 URL を「同一画像の異なる解像度」レベルで正規化する純粋関数 (#885)。
+ *
+ * 同一画像 (例: `image.jpg` / `image-300x200.jpg` / `image.webp`) が
+ * 異なる URL として複数経路 (`<a href>` / `<picture source>` / `<img src>`) から
+ * 抽出された場合に、normalize 後の stem が一致すれば同一画像扱いで dedup できるようにする。
+ *
+ * - 末尾の画像拡張子 (.jpg/.jpeg/.png/.gif/.webp/.avif/.svg) を strip
+ * - 末尾の WordPress 風 size suffix (`-WIDTHxHEIGHT`、例 `-300x200`) を strip
+ * - クエリ文字列・フラグメントは無視 (`url.pathname` のみ使用)
+ * - image-proxy URL は内部 url パラメータをデコードして normalize
+ * - 不正 URL / origin 不明は元の URL をそのまま返す (fallback)
+ *
+ * 例:
+ *   `https://example.com/img-large.jpg`        → `https://example.com/img-large`
+ *   `https://example.com/img-large-300x200.jpg` → `https://example.com/img-large`
+ *   `https://example.com/img-large.webp`        → `https://example.com/img-large`
+ *   `https://example.com/photo1.jpg`            → `https://example.com/photo1` (`photo2.jpg` とは別物)
+ */
+export function normalizeImageUrlForDedup(src: string): string {
+  if (!src) return src;
+  // image-proxy URL は内部 url を抽出して normalize
+  let target = src;
+  if (src.startsWith("/api/image-proxy?url=")) {
+    try {
+      target = decodeURIComponent(src.slice("/api/image-proxy?url=".length));
+    } catch {
+      return src;
+    }
+  }
+  // 相対 URL や絶対 URL を URL constructor で parse (相対は base 不要なものは throw する)
+  let u: URL;
+  try {
+    u = new URL(target);
+  } catch {
+    return src;
+  }
+  const pathname = u.pathname;
+  const lastSlash = pathname.lastIndexOf("/");
+  if (lastSlash === -1) return src;
+  const dir = pathname.slice(0, lastSlash + 1);
+  const filename = pathname.slice(lastSlash + 1);
+  if (!filename) return src;
+  // 末尾の画像拡張子を strip
+  const extMatch = /\.(jpe?g|png|gif|webp|avif|svg)$/i.exec(filename);
+  const stem = extMatch ? filename.slice(0, -extMatch[0].length) : filename;
+  // 末尾の `-WIDTHxHEIGHT` size suffix を strip (例: `-300x200`)
+  const sizeSuffixMatch = /-\d+x\d+$/.exec(stem);
+  const normalizedStem = sizeSuffixMatch ? stem.slice(0, -sizeSuffixMatch[0].length) : stem;
+  return `${u.origin}${dir}${normalizedStem}`;
 }
 
 /**
@@ -125,15 +176,25 @@ export function collectImageUrlsFromHtml(html: unknown): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
 
+  // #885: 重複判定は normalize 後 URL で行うことで「同一画像の異なる解像度 URL」
+  // (例: `<a href="img.jpg"><picture><source srcset="img.webp"><img src="img-300x200.jpg">`)
+  // の 3 重抽出を防ぐ。push 自体は元の URL を使うことで最初に見つけた解像度 (= a href 経由
+  // のフル解像度) を優先採用する。
+  function tryAdd(rawUrl: string): void {
+    const key = normalizeImageUrlForDedup(rawUrl);
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(rawUrl);
+  }
+
   // #667: <a href="image-url"> を先に走査してフル解像度画像を拾う
   const aRe = /<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi;
   let am: RegExpExecArray | null;
   while ((am = aRe.exec(html)) !== null) {
     const href = am[1];
     if (!isImageHref(href)) continue;
-    if (!isCollectableUrl(href, seen)) continue;
-    seen.add(href);
-    result.push(href);
+    if (!isCollectableUrl(href)) continue;
+    tryAdd(href);
   }
 
   // #794: <picture><source srcset="..."> の高解像度 URL を抽出
@@ -143,10 +204,9 @@ export function collectImageUrlsFromHtml(html: unknown): string[] {
   let sm: RegExpExecArray | null;
   while ((sm = sourceRe.exec(html)) !== null) {
     const src = bestSrcFromSrcset(sm[1]);
-    if (!isCollectableUrl(src, seen)) continue;
+    if (!isCollectableUrl(src)) continue;
     if (isTooSmallByUrl(src)) continue;
-    seen.add(src);
-    result.push(src);
+    tryAdd(src);
   }
 
   const imgRe = /<img\b([^>]*)>/gi;
@@ -158,14 +218,13 @@ export function collectImageUrlsFromHtml(html: unknown): string[] {
       const srcset = /\bsrcset=["']([^"']+)["']/i.exec(attrs)?.[1] ?? "";
       src = bestSrcFromSrcset(srcset);
     }
-    if (!isCollectableUrl(src, seen)) continue;
+    if (!isCollectableUrl(src)) continue;
     if (isTooSmallByUrl(src)) continue;
     const widthAttr = /\bwidth=["']([^"']+)["']/i.exec(attrs)?.[1];
     const heightAttr = /\bheight=["']([^"']+)["']/i.exec(attrs)?.[1];
     const styleAttr = /\bstyle=["']([^"']+)["']/i.exec(attrs)?.[1];
     if (isTooSmallByAttrs(widthAttr, heightAttr, styleAttr)) continue;
-    seen.add(src);
-    result.push(src);
+    tryAdd(src);
   }
   return result;
 }
@@ -185,23 +244,29 @@ export function collectImageUrls(container: Element, seen?: Set<string>): string
   const s = seen ?? new Set<string>();
   const result: string[] = [];
 
+  // #885: 重複判定は normalize 後 URL で行う (collectImageUrlsFromHtml と同 pattern)
+  function tryAdd(rawUrl: string): void {
+    const key = normalizeImageUrlForDedup(rawUrl);
+    if (s.has(key)) return;
+    s.add(key);
+    result.push(rawUrl);
+  }
+
   // #667: <a href="image-url"> を先に走査してフル解像度画像を拾う
   for (const a of container.querySelectorAll("a[href]")) {
     const href = (a as HTMLAnchorElement).getAttribute("href") ?? "";
     if (!isImageHref(href)) continue;
-    if (!isCollectableUrl(href, s)) continue;
-    s.add(href);
-    result.push(href);
+    if (!isCollectableUrl(href)) continue;
+    tryAdd(href);
   }
 
   // #794: <picture><source srcset="..."> の高解像度 URL を抽出
   // <audio>/<video> 内の <source> は通常 `src` 属性を使い srcset は持たないので干渉なし
   for (const source of container.querySelectorAll("source[srcset]")) {
     const src = bestSrcFromSrcset(source.getAttribute("srcset") ?? "");
-    if (!isCollectableUrl(src, s)) continue;
+    if (!isCollectableUrl(src)) continue;
     if (isTooSmallByUrl(src)) continue;
-    s.add(src);
-    result.push(src);
+    tryAdd(src);
   }
 
   for (const img of container.querySelectorAll("img")) {
@@ -210,7 +275,7 @@ export function collectImageUrls(container: Element, seen?: Set<string>): string
     if (!src || src.startsWith("data:")) {
       src = bestSrcFromSrcset(el.getAttribute("srcset") ?? "");
     }
-    if (!isCollectableUrl(src, s)) continue;
+    if (!isCollectableUrl(src)) continue;
     if (isTooSmallByUrl(src)) continue;
     const nw = el.naturalWidth;
     const nh = el.naturalHeight;
@@ -225,8 +290,7 @@ export function collectImageUrls(container: Element, seen?: Set<string>): string
     ) {
       continue;
     }
-    s.add(src);
-    result.push(src);
+    tryAdd(src);
   }
   return result;
 }
