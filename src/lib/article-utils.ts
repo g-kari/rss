@@ -15,7 +15,7 @@ import { stripHtml, toPlainText } from "./html";
  * 200 char だと英文 abstract / byline を含む記事冒頭で日本語判定 false → 自動翻訳誤発動 / TTS 言語選定誤り
  * が起きる罠を防ぐため、canonical (`browser-translator.ts#detectSourceLanguage`) の 500 char sample に統一。
  */
-export const JAPANESE_SAMPLE_CHARS = 500;
+const JAPANESE_SAMPLE_CHARS = 500;
 
 /** CJK 統合漢字・ひらがな・カタカナ・拡張A（読了速度判定用） */
 const CJK_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g;
