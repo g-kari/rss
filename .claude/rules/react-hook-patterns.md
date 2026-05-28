@@ -85,3 +85,38 @@ onBoundaryRef.current = highlight.handleBoundary; // 後付けで assign
 **How to apply**: hook 同士で「片方の output が他方の input、その output 先が更にもう片方の internal 処理を呼ぶ」三角関係を見つけたら、callback 用 ref を 1 つ前に作って両 hook に渡す。Hook A 内部では `ref.current?.(...)` で安全に呼び出し (null チェック必須)、Hook B から取得した callback を効果的に **後付け assign** する。assign は render 中で OK (ref はマウント前から不変)。
 
 主な使用箇所: `useArticleViewTts` ↔ `useTtsHighlight` の boundary 配線
+
+## hook 数変化は「全 render で一律変化 (OK)」と「render 間で差 (NG)」を区別する
+
+React の `Uncaught Error: Rendered more hooks than during the previous render` は **同一コンポーネントの異なる render 間で hook 数が変化** することを禁じるルール。**全 render で一律に増減** する変更 (例: dead hook 削除 / 新規 hook の無条件追加) は **全 render で同じ hook 数** を維持するため violation にならない。
+
+```typescript
+// 一律削減 (OK): 全 render で useRef × 1 削減、render 間差なし
+export function useFoo(): void {
+-  const deadRef = useRef<number>(0);  // 削除
+  const liveRef = useRef<number>(0);
+  useEffect(() => { ... });
+}
+
+// render 間差 (NG): 条件分岐で hook 呼び出し数が変動
+export function useBar(flag: boolean) {
+  useEffect(() => { ... });
+  if (flag) useEffect(() => { ... });  // ← flag の値で hook 数が変わる → violation
+}
+```
+
+**How to apply**: hook 数を変える変更 commit で pre-commit e2e に `Rendered more hooks` 系 React error が出たとき (本変更が真因か、master HEAD 既存 React bug の影響かを区別する):
+
+1. **本変更が hook 数を「全 render で一律」変化させているか確認** (条件分岐 / early return 内の hook 呼び出し追加削除でない、無条件 hook 呼び出しの増減のみ)
+2. **一律変化なら React rules of hooks 違反にならない** — pre-commit e2e fail は他の master HEAD 既存 bug の影響
+3. **失敗 spec の stack trace を確認** で本変更が touch していない hook (例: `useOgpCache` 等) が指されているか確認 → 既存 bug 起源と確定
+4. **build-check.md 派生「React runtime error 切り分け」規範に従い SKIP=e2e-test 適用** + commit message に「本変更は hook 数一律変化で React rendering 無関係」明示
+5. **本変更影響範囲 spec を単体実行で全 pass 確認** + commit message にエビデンス記載
+
+**反例 (本変更が真因のケース)**:
+
+- 本変更が **条件分岐 / early return 内に hook 呼び出しを追加** → render 間差発生、本変更 trigger 確定
+- 本変更が **既存 hook の deps 配列を変更** で hook 数 indirect に変化 → 本変更 trigger 候補
+- 本変更前は e2e pass、本変更後に大量 fail + stack trace が本変更 touch ファイルを指す → 本変更 trigger 確定
+
+主な使用箇所: `useReadingProgress` の `useRef × 1` (`progressRef`) を削除したとき、全 render で hook 数が一律 1 減少 = render 間差なし → React rules of hooks 違反にならず、pre-commit e2e fail は master HEAD 既存 `useOgpCache` hook order regression の影響と判定して SKIP=e2e-test で commit
