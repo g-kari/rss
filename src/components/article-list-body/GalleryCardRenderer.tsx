@@ -4,6 +4,7 @@ import { memo, useCallback, useContext, useRef, type TouchEvent } from "react";
 import type { Article } from "@/types";
 import { isGalleryEntry, type GalleryEntry } from "@/lib/gallery-explode";
 import { GalleryArticleItem } from "@/components/ArticleItems";
+import { useSyncedRef } from "@/hooks/useSyncedRef";
 import { GalleryItemCtx } from "./gallery-context";
 
 const GALLERY_CARD_WRAPPER_STYLE_VISIBLE = {
@@ -39,16 +40,28 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
   const entry = isGalleryEntry(data) ? data : null;
   const article = entry ? entry.article : (data as Article);
 
+  // `article` / `index` は virtualizer の render で毎回新 reference になりがちで
+  // 直接 deps に列挙すると `handleTouchStart` が再生成されて memo Wrapper を貫通する。
+  // 起動時の最新値だけ使えれば十分なので useSyncedRef で安定参照経由に切替。
+  const articleRef = useSyncedRef(article);
+  const indexRef = useSyncedRef(index);
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
       if (!ctx) return;
       const touch = e.touches[0];
       touchPos.current = { x: touch.clientX, y: touch.clientY };
       longPressTimer.current = setTimeout(() => {
-        ctx.onGalleryLongPress(article, index, touchPos.current.x, touchPos.current.y);
+        ctx.onGalleryLongPress(
+          articleRef.current,
+          indexRef.current,
+          touchPos.current.x,
+          touchPos.current.y,
+        );
       }, 500);
     },
-    [ctx, article, index],
+    // useSyncedRef の戻り値は identity 不変のため deps から除外 (react-hook-patterns.md 規範)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ctx],
   );
 
   const handleTouchEnd = useCallback(() => {

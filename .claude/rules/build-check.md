@@ -6,13 +6,13 @@ description: rss プロジェクト固有のビルドチェックコマンド (n
 
 **重要**: dokodemo-claude ルートの `.claude/rules/build-check.md` には `npm run check-all` / `npm run type-check` / `npm run lint` 等の指示があるが、**rss プロジェクトでは存在しない**。実体は以下:
 
-| 目的                 | 実コマンド          | 内容                      |
-| -------------------- | ------------------- | ------------------------- |
-| Lint + 整形チェック  | `npm run check`     | `vp check` (oxlint+oxfmt) |
-| Lint + 整形 自動修正 | `npm run check:fix` | `vp check --fix`          |
-| 型チェック           | `npm run typecheck` | `tsc --noEmit`            |
-| E2E テスト           | `npm run test:e2e`  | Playwright                |
-| ビルド               | `npm run build`     | `next build`              |
+| 目的                 | 実コマンド          | 内容                           |
+| -------------------- | ------------------- | ------------------------------ |
+| Lint + 整形チェック  | `npm run check`     | `vp check` (oxlint+oxfmt+tsgo) |
+| Lint + 整形 自動修正 | `npm run check:fix` | `vp check --fix`               |
+| 型チェック           | `npm run typecheck` | `tsc --noEmit`                 |
+| E2E テスト           | `npm run test:e2e`  | Playwright                     |
+| ビルド               | `npm run build`     | `next build`                   |
 
 ## コミット前フロー
 

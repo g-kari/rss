@@ -226,6 +226,7 @@ src/
     useFeedSelection.ts      # フィード・グループ・タグ・記事・コレクション選択状態管理 + URL クエリパラメータ同期
     useCollections.ts        # /api/collections CRUD + 楽観的更新（create / rename / delete / addArticle / removeArticle）
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
+    useThemePresets.ts       # テーマプリセット (theme/fontSize/fontFamily/lineHeight/contentWidth) を `theme-preset.ts` 経由で localStorage 保存・復元する hook（DisplayTabPanel のプリセット保存/適用 UI で利用）
     useThemePreference.ts    # テーマ（light/dark）+ DOM 同期（useUIState から分割）
     useFocusMode.ts          # フォーカスモード制御（focusMode / listFocusMode / window.history 連携 / \\ Shift+\\ Escape キー）— useUIState から分割
     useAutoReadMode.ts       # オートモード（自動全文取得 → 読み上げ → 次の記事へ）の状態管理
@@ -414,6 +415,8 @@ src/
     html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
     reading-progress.ts      # 読書進捗計算純粋関数（computeProgress / clampProgress / buildAnchorSelector）
     reader-settings.ts       # リーダー表示設定（フォントサイズ 6段階・行間 5段階・コンテンツ幅 3段階）
+    article-filter-equality.ts # `useFilteredArticles` の構造的等価判定純粋関数群（equalDigestLimitMap / equalStringMap / equalCompiledFilterMap — `equalMap<V>` generic 経由で 5 分ポーリングの reference 安定化、unread-stats-merge.ts と同 pattern）
+    theme-preset.ts          # テーマプリセット永続化純粋関数（parseThemePresets / serializeThemePresets — `useThemePresets` から呼ぶ JSON 安全パース + 上限ガード）
     article-ttl.ts           # 記事 TTL 管理（30日超過・非保護の期限切れ記事フィルタリング）
     clip.ts                  # SingleFile POST リクエストバリデーション（validateClipRequest）
     api-error.ts             # API エラー整形ヘルパー（ApiError 型 / apiError() 関数）

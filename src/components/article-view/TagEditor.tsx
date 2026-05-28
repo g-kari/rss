@@ -74,6 +74,7 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
             type="button"
             onClick={() => setEditing(true)}
             title="タグを追加"
+            aria-label="タグを追加"
             className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
           >
             + タグ

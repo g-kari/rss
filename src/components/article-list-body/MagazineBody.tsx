@@ -27,6 +27,7 @@ export default function MagazineBody({
 }: Props) {
   if (items.length === 0) return null;
   const featured = items[0];
+  const isAnimating = deletingIds.size > 0 || newIds.size > 0;
   return (
     <>
       <div className="p-2">
@@ -44,7 +45,7 @@ export default function MagazineBody({
                 key={vItem.key}
                 vItem={vItem}
                 measureRef={virtualizer.measureElement}
-                animating={deletingIds.size > 0 || newIds.size > 0}
+                animating={isAnimating}
               >
                 <CompactArticleItem
                   {...resolveItemProps(a, vItem.index + 1, deletingIds.has(a.id), newIds.has(a.id))}

@@ -28,6 +28,7 @@ export default function CompactListBody({
   resolveItemProps,
 }: Props) {
   if (items.length === 0) return null;
+  const isAnimating = deletingIds.size > 0 || newIds.size > 0;
   return (
     <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
       {virtualizer.getVirtualItems().map((vItem) => {
@@ -38,7 +39,7 @@ export default function CompactListBody({
             key={vItem.key}
             vItem={vItem}
             measureRef={virtualizer.measureElement}
-            animating={deletingIds.size > 0 || newIds.size > 0}
+            animating={isAnimating}
           >
             {item.type === "header" ? (
               <div className="px-4 pt-3 pb-1" role="separator" aria-label={item.label}>
