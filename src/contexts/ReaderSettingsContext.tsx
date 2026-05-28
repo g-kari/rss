@@ -19,6 +19,11 @@ export interface ReaderSettings {
   fontFamily: FontFamily;
   onChangeFontFamily: (family: FontFamily) => void;
   theme: Theme;
+  /**
+   * theme を明示的にセットする (theme preset 適用などで使用)。
+   * UI で theme 単体を切り替えるトグルは別途 `toggleTheme` を `AppShell` レベルで提供する。
+   */
+  setTheme: (v: Theme) => void;
   focusMode: boolean;
   toggleFocusMode: () => void;
   autoReadEnabled: boolean;

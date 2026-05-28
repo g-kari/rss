@@ -16,6 +16,15 @@ interface Props {
   onAdd: (collectionId: string, articleId: string) => Promise<void>;
   onRemove: (collectionId: string, articleId: string) => Promise<void>;
   onCreateNew?: (name: string) => Promise<Collection | { error: string }>;
+  /**
+   * Bookmark カスタム collection (案 B snapshot)。
+   * `bookmarkIds.size > 0` のとき、各 collection 行末尾に「ブックマーク全件追加」ボタンを表示する。
+   * クリック時に `confirm()` で確認後 `onAddBulk(collectionId, [...bookmarkIds])` を呼ぶ。
+   * ReadOnly Set として扱う (consumer 側で mutation しない)。
+   */
+  bookmarkIds?: ReadonlySet<string>;
+  /** bulk 追加 callback (bookmarkIds.size > 0 + onAddBulk 提供時のみ menu item 表示) */
+  onAddBulk?: (collectionId: string, articleIds: readonly string[]) => Promise<void>;
 }
 
 /**
@@ -32,6 +41,8 @@ export default function CollectionDropdown({
   onAdd,
   onRemove,
   onCreateNew,
+  bookmarkIds,
+  onAddBulk,
 }: Props) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const toast = useToast();
@@ -39,6 +50,25 @@ export default function CollectionDropdown({
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   const inCount = collections.filter((c) => c.articleIds.includes(articleId)).length;
+  // Bookmark snapshot 一括追加が可能か (bookmarkIds.size > 0 + onAddBulk + collection 1 件以上)
+  const bookmarkCount = bookmarkIds?.size ?? 0;
+  const canBulkAddBookmarks = bookmarkCount > 0 && !!onAddBulk && collections.length > 0;
+
+  const handleBulkAdd = async (collection: Collection): Promise<void> => {
+    if (!onAddBulk || !bookmarkIds || bookmarkIds.size === 0) return;
+    // confirm で誤操作防止 (snapshot 方式のため、後から undo できない)
+    const ok = window.confirm(
+      `${bookmarkIds.size} 件のブックマーク記事を「${collection.name}」に追加しますか？`,
+    );
+    if (!ok) return;
+    setOpen(false);
+    try {
+      await onAddBulk(collection.id, Array.from(bookmarkIds));
+      toast.success(`「${collection.name}」に ${bookmarkIds.size} 件追加しました`);
+    } catch {
+      toast.error("ブックマーク一括追加に失敗しました");
+    }
+  };
 
   return (
     <>
@@ -111,6 +141,25 @@ export default function CollectionDropdown({
                     </button>
                   );
                 })}
+                {canBulkAddBookmarks && (
+                  <>
+                    <div className="border-t border-border-subtle my-1" />
+                    <p className="px-3 py-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+                      ブックマーク全件追加 ({bookmarkCount})
+                    </p>
+                    {collections.map((c) => (
+                      <button
+                        key={`bulk-${c.id}`}
+                        role="menuitem"
+                        onClick={() => void handleBulkAdd(c)}
+                        className="w-full px-3 py-1.5 text-left text-[13px] text-text-muted hover:text-text-strong hover:bg-surface-hover transition-colors flex items-center gap-2"
+                      >
+                        <span className="w-4 text-center">↳</span>
+                        <span>「{c.name}」へ</span>
+                      </button>
+                    ))}
+                  </>
+                )}
                 {onCreateNew && (
                   <>
                     <div className="border-t border-border-subtle my-1" />

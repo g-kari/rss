@@ -106,7 +106,7 @@ export default function AppShell({
 
   const isDesktop = useDesktopMediaQuery();
 
-  const { theme, toggleTheme } = useThemePreference();
+  const { theme, toggleTheme, setTheme } = useThemePreference();
   const {
     layout,
     onChangeLayout,
@@ -271,6 +271,7 @@ export default function AppShell({
     renameCollection,
     deleteCollection,
     addArticleToCollection,
+    addArticlesToCollection,
     removeArticleFromCollection,
     loadError: collectionsLoadError,
     retryCollections,
@@ -323,6 +324,7 @@ export default function AppShell({
     fontFamily,
     onChangeFontFamily,
     theme,
+    setTheme,
     focusMode,
     toggleFocusMode,
     autoReadEnabled,
@@ -748,6 +750,7 @@ export default function AppShell({
     clearArticleTags,
     collections,
     addArticleToCollection,
+    addArticlesToCollection,
     removeArticleFromCollection,
     createCollection,
     autoMode,

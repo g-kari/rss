@@ -91,6 +91,8 @@ export const STORAGE_KEYS = {
   ARTICLE_DETAIL_OVERLAY_WIDTH: "rss-article-detail-overlay-width",
   /** #874 候補 1: コレクションサイドバーの並び順設定 */
   COLLECTION_SORT_BY: "rss-collection-sort-by",
+  /** Theme preset (theme + font + lineHeight + contentWidth の組み合わせ保存、案 B localStorage) */
+  THEME_PRESETS: "rss-theme-presets",
 } as const;
 
 /**

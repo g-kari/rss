@@ -24,6 +24,10 @@ interface Props {
   /* コレクション */
   collections?: Collection[];
   onAddToCollection?: (collectionId: string, articleId: string) => Promise<void>;
+  /** Bookmark カスタム collection (案 B snapshot) — bookmarkIds 全件を bulk 追加 */
+  onAddBulkToCollection?: (collectionId: string, articleIds: readonly string[]) => Promise<void>;
+  /** Bookmark カスタム collection 用の bookmark Set (snapshot として bulk 追加対象) */
+  bookmarkIds?: ReadonlySet<string>;
   onRemoveFromCollection?: (collectionId: string, articleId: string) => Promise<void>;
   onCreateCollection?: (name: string) => Promise<Collection | { error: string }>;
 
@@ -53,6 +57,8 @@ export default function ArticleHeaderEngagement({
   onSetNote,
   collections,
   onAddToCollection,
+  onAddBulkToCollection,
+  bookmarkIds,
   onRemoveFromCollection,
   onCreateCollection,
   focusMode,
@@ -163,6 +169,8 @@ export default function ArticleHeaderEngagement({
           onAdd={onAddToCollection}
           onRemove={onRemoveFromCollection}
           onCreateNew={onCreateCollection}
+          bookmarkIds={bookmarkIds}
+          onAddBulk={onAddBulkToCollection}
         />
       )}
       <button

@@ -34,6 +34,8 @@ interface UseArticleViewPropsOptions {
   clearArticleTags: (articleId: string) => void;
   collections: Collection[];
   addArticleToCollection: (collectionId: string, articleId: string) => Promise<void>;
+  /** Bookmark カスタム collection (案 B snapshot) — `bookmarkIds` を bulk 追加する */
+  addArticlesToCollection: (collectionId: string, articleIds: readonly string[]) => Promise<void>;
   removeArticleFromCollection: (collectionId: string, articleId: string) => Promise<void>;
   createCollection: (name: string) => Promise<Collection | { error: string }>;
   autoMode: boolean;
@@ -73,6 +75,7 @@ export function useArticleViewProps({
   clearArticleTags,
   collections,
   addArticleToCollection,
+  addArticlesToCollection,
   removeArticleFromCollection,
   createCollection,
   autoMode,
@@ -110,6 +113,8 @@ export function useArticleViewProps({
       onClearArticleTags: clearArticleTags,
       collections,
       onAddToCollection: addArticleToCollection,
+      onAddBulkToCollection: addArticlesToCollection,
+      bookmarkIds,
       onRemoveFromCollection: removeArticleFromCollection,
       onCreateCollection: createCollection,
       autoMode,
@@ -143,6 +148,7 @@ export function useArticleViewProps({
       clearArticleTags,
       collections,
       addArticleToCollection,
+      addArticlesToCollection,
       removeArticleFromCollection,
       createCollection,
       autoMode,
