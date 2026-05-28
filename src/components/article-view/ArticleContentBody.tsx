@@ -431,9 +431,9 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
 );
 
 /** OGP 画像。naturalWidth < 200px は小サムネと判定して自然サイズで中央配置に切替 (#741, #764)。
- *  #764: 一覧 (`resolveThumbnail`) はサイズチェックなしで表示するため list/detail で divergence が
- *  発生していた。hide すると「サムネ全く表示されない」UX 劣化になるので、w-full / aspect-video を外して
- *  自然サイズ中央配置にすることで「w-full の中で小さく見える」#741 問題も同時に解消する。 */
+ *  #876: aspect-video (16:9) + object-contain は正方形・縦長画像で letterbox が生じて画像が
+ *  natural より小さく表示される。aspect-video を外し自然アスペクト比で w-full に収めることで
+ *  正方形 1000x1000 → 800px 幅で 800x800 / 縦長 600x800 → 800px 幅で 800x1066 等が letterbox なしで表示される。 */
 const OG_THUMBNAIL_MIN_WIDTH = 200;
 function OgImageThumbnail({ src }: { src: string }) {
   const [isSmall, setIsSmall] = useState(false);
@@ -444,7 +444,7 @@ function OgImageThumbnail({ src }: { src: string }) {
       className={
         isSmall
           ? "max-w-[200px] mx-auto rounded-lg mb-6"
-          : "w-full rounded-lg object-contain bg-surface-subtle mb-6 aspect-video"
+          : "w-full h-auto rounded-lg bg-surface-subtle mb-6"
       }
       loading="lazy"
       onLoad={(e) => {
