@@ -43,17 +43,15 @@ export function useReadingProgress({
   articleId,
   contentRef,
   onProgressChange,
-}: UseReadingProgressOptions): { progress: number } {
+}: UseReadingProgressOptions): void {
   // 現在の最大可視インデックスを ref で管理（クロージャ汚染防止）
   const maxIndexRef = useRef<number>(0);
-  const progressRef = useRef<number>(0);
   const onProgressChangeRef = useSyncedRef(onProgressChange);
 
   // 記事切り替え時にリセット + アンカー復元
   useEffect(() => {
     if (!articleId) return;
     maxIndexRef.current = 0;
-    progressRef.current = 0;
 
     // 保存済みアンカーにスクロール復元
     const saved = loadProgress(articleId);
@@ -84,7 +82,6 @@ export function useReadingProgress({
             maxIndexRef.current = idx;
             const raw = computeProgress(idx, children.length);
             const clamped = clampProgress(raw);
-            progressRef.current = clamped;
             const anchor = buildAnchorSelector(idx);
             if (articleId) {
               saveProgress(articleId, { progress: clamped, anchor });
@@ -104,6 +101,4 @@ export function useReadingProgress({
     // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId]);
-
-  return { progress: progressRef.current };
 }
