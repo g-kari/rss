@@ -153,7 +153,7 @@ export default function ImageGallery({ images }: Props) {
           <FallbackImage
             url={images[lightboxIndex]}
             alt=""
-            className="max-w-[90vw] max-h-[90vh] object-contain rounded"
+            className="max-w-[96vw] max-h-[96vh] object-contain rounded"
             onClick={(e) => e.stopPropagation()}
           />
           <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-[12px] tabular-nums">

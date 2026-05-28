@@ -76,7 +76,7 @@ export default function ImageLightbox({
       aria-label="画像拡大表示"
       tabIndex={-1}
       onKeyDown={handleKeyDown}
-      className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4 outline-none"
+      className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center outline-none"
       onClick={handleBackgroundClick}
     >
       {/* 閉じるボタン (右上) */}
@@ -140,18 +140,18 @@ export default function ImageLightbox({
         </svg>
       </button>
 
-      {/* 中央: 画像 + メタ */}
-      <div className="max-w-full max-h-full flex flex-col items-center gap-3">
+      {/* 中央: 画像 + メタ (#886: 余白を限界まで削減して画像を最大表示) */}
+      <div className="max-w-full max-h-full flex flex-col items-center gap-2">
         {/* #842: image-proxy を優先 — imageSrc が原 URL のままだと CORS 違反 / hotlink ブロックで読めないサイトがあるため、buildImageProxyUrl で proxy 経由に統一する。既に /api/image-proxy 経由なら no-op。 */}
         {/* eslint-disable-next-line @next/next/no-img-element -- proxy 経由でも next/image の domain 検証より柔軟、ライトボックスの単発描画 */}
         <img
           src={buildImageProxyUrl(imageSrc)}
           alt={article.title || "(画像)"}
-          className="max-w-full max-h-[80vh] object-contain"
+          className="max-w-[96vw] max-h-[90vh] object-contain"
           onClick={(e) => e.stopPropagation()}
         />
         <div
-          className="flex flex-col items-center gap-2 text-white max-w-2xl"
+          className="flex flex-col items-center gap-1.5 text-white max-w-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           <p className="text-[13px] line-clamp-2 text-center px-3">
