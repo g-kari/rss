@@ -40,9 +40,9 @@ Cloudflare Bindings
   ├─ NEXT_INC_CACHE_R2_BUCKET (R2) — Next.js Incremental Cache (opennextjs 管理)
   ├─ RATE_LIMIT (KV)            — レートリミット・クールダウン管理
   ├─ AI                         — Workers AI モデル
-  ├─ IMAGES                     — Cloudflare Images binding (OpenNext 推奨設定 `6582e81f` で導入、実コード参照 0 件 / @opennextjs/cloudflare 内部利用の可能性あり、削除前要検証)
+  ├─ IMAGES                     — Cloudflare Images binding (OpenNext 推奨設定 `6582e81f` で導入、実コード参照 0 件 / @opennextjs/cloudflare 内部利用の可能性あり、削除前要検証 / 次回 OpenNext メジャー更新時に削除可否を再評価)
   ├─ BROWSER (Browser Rendering) — Cloudflare Browser Rendering REST API (#768 で導入、booth.pm 等 Workers IP block サイトの OGP fallback fetch 用)
-  ├─ WORKER_SELF_REFERENCE (Service) — 自身の Worker へのサービスバインディング (OpenNext 推奨設定 `6582e81f` で導入、実コード参照 0 件 / @opennextjs/cloudflare 内部 cache 等で利用の可能性あり、削除前要検証)
+  ├─ WORKER_SELF_REFERENCE (Service) — 自身の Worker へのサービスバインディング (OpenNext 推奨設定 `6582e81f` で導入、実コード参照 0 件 / @opennextjs/cloudflare 内部 cache 等で利用の可能性あり、削除前要検証 / 次回 OpenNext メジャー更新時に削除可否を再評価)
   ├─ FINDME_RSS (Service)       — findme-rss サービスバインディング (cron/fetch.ts で findme-rss.0g0.xyz 経由 RSS 取得時に使用、bot 検出回避用)
   └─ ASSETS (Assets)            — 静的アセット (`.open-next/assets` 自動配信、実コード参照不要)
 
