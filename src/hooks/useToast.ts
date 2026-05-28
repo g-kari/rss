@@ -23,6 +23,10 @@ const UNDO_DURATION = 10000;
 
 let nextId = 0;
 
+/**
+ * トースト通知の state + API (`success` / `error` / `info` / `undo` + dismiss) を集約管理する hook。`ToastProvider` 経由で配下に提供する用途。
+ * @returns `ToastApi` (`{ toasts, success, error, info, undo, dismiss }`)
+ */
 export function useToastState(): ToastApi {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());

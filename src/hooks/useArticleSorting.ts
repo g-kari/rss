@@ -4,6 +4,12 @@ import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, storageSet, loadStoredEnum, getFeedViewStorageKey } from "../lib/storage";
 import { cycleValue, SORT_ORDER_CYCLE } from "../lib/article-utils";
 
+/**
+ * 記事一覧の sort 順 state を localStorage に永続化しつつ管理する hook。sort 切替時は resetPage で先頭ページに戻す。
+ * @param resetPage - sort 切替時に呼ばれる reset callback
+ * @param activeFeedView - 対象 feedView ("articles" / "saved" 等、localStorage key 分離用)
+ * @returns `{ sortOrder, cycleSortOrder }` 現在の sort + cycle 用 callback
+ */
 export function useArticleSorting(resetPage: () => void, activeFeedView: FeedView = "articles") {
   const [sortOrder, setSortOrder] = useState<SortOrder>(() =>
     loadStoredEnum(

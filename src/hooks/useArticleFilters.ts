@@ -65,6 +65,11 @@ interface UseArticleFiltersOptions {
   activeFeedView?: FeedView;
 }
 
+/**
+ * 記事フィルター state を管理する hook (unread/bookmark/readingList/like/note/digest、日付範囲、読了時間範囲、検索クエリ、author/category)。
+ * @param options - feedId / selectedGroupId / resetPage callback / activeFeedView を含む options
+ * @returns 各 filter state + toggle/cycle/reset の callback 群 (`{ unreadOnly, dateRange, query, toggleUnreadOnly, cycleDateRange, resetAllFilters, ... }`)
+ */
 export function useArticleFilters({
   feedId,
   selectedGroupId,

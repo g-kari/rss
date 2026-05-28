@@ -93,6 +93,10 @@ function buildContext(opts: KeyboardNavOptions): ShortcutContext {
   };
 }
 
+/**
+ * グローバルキーボードナビゲーション (j/k で記事移動 / m で既読 / b でブックマーク / 等) を window に attach する hook。
+ * @param options - 各 action の callback と選択中記事 / 一覧を含む `KeyboardNavOptions`
+ */
 export function useKeyboardNav(options: KeyboardNavOptions): void {
   const ref = useSyncedRef(options);
 

@@ -14,6 +14,11 @@ function ensureKatexCSS(): void {
   import("katex/dist/katex.min.css");
 }
 
+/**
+ * `processedContent` 描画後の DOM 内の数式 (`$...$` / `$$...$$`) を KaTeX で描画する hook。
+ * @param contentRef - 数式を含む `<div dangerouslySetInnerHTML>` の ref
+ * @param processedContent - 本文 HTML (変化トリガー)
+ */
 export function useMathRender(
   contentRef: RefObject<HTMLDivElement | null>,
   processedContent: string | null,

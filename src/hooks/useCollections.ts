@@ -22,6 +22,10 @@ export interface CollectionsState {
   removeArticleFromCollection: (collectionId: string, articleId: string) => Promise<void>;
 }
 
+/**
+ * 任意 URL コレクション (`/api/collections`) の取得・操作を集約する hook。CRUD + ロード state + エラー復帰用 refetch を提供。
+ * @returns `CollectionsState` (`{ collections, loading, loadError, refetch, createCollection, updateCollection, deleteCollection, ... }`)
+ */
 export function useCollections(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,

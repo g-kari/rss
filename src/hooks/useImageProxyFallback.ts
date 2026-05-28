@@ -18,6 +18,12 @@ export interface UseImageProxyFallbackReturn {
   attempt: 0 | 1 | 2;
 }
 
+/**
+ * 画像 src の fallback chain (attempt 0: proxy URL → 1: 原 URL → 2: 諦め) を管理する hook。consumer の `onError` は最終 attempt 到達時のみ発火。
+ * @param url - 元画像 URL
+ * @param options - `UseImageProxyFallbackOptions` (`onLoad` / `onError` callback)
+ * @returns `{ currentSrc, onLoad, onError, attempt }` 描画用 src + event handler + 現在の attempt
+ */
 export function useImageProxyFallback(
   originalUrl: string,
   options?: UseImageProxyFallbackOptions,

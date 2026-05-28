@@ -41,6 +41,11 @@ interface UseArticleViewPropsOptions {
   onToggleAutoMode: () => void;
 }
 
+/**
+ * `ArticleView` コンポーネント向けの大量 props を集約して memo 化する hook。bookmark / readingList / like / note / tag / 各種 setter を 1 オブジェクトに集約。
+ * @param options - selectedArticle + 各種 state / callback を含む options
+ * @returns `<ArticleView>` に spread 渡しできる props オブジェクト
+ */
 export function useArticleViewProps({
   selectedArticle,
   bookmarkIds,

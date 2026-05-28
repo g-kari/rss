@@ -5,6 +5,11 @@ import { apiFetch } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
 import { scoreFeedEngagement, topScoredFeeds } from "../lib/engagement-score";
 
+/**
+ * ダイジェストモード向けに engagement score 順で並べたフィード ID 配列を取得する hook。`/api/engagement` から取得して memo 化。
+ * @param user - ログイン中ユーザー (null / undefined のときは fetch を skip)
+ * @returns engagement score 降順のフィード ID 配列
+ */
 export function useDigestFeedOrder(user: UserProfile | null | undefined): string[] {
   const [feedOrder, setFeedOrder] = useState<string[]>([]);
 

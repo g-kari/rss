@@ -20,6 +20,12 @@ interface FeedDataState {
   refreshFeedsList: () => Promise<Feed[]>;
 }
 
+/**
+ * フィード本体配列を `/api/feeds` から取得して state 管理する hook (`useFeeds` のサブフック)。
+ * @param user - ログイン中ユーザー (null / undefined のときは fetch を skip)
+ * @param onError - エラー時の通知 callback
+ * @returns `FeedDataState` (`{ feeds, setFeeds, loadingFeeds, fetchFeeds, ... }`)
+ */
 export function useFeedData(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,

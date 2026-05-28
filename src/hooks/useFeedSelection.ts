@@ -28,6 +28,12 @@ export interface FeedSelectionState {
   clearFeedGroupArticleSelection: () => void;
 }
 
+/**
+ * フィード / グループ / タグ / コレクション / 記事の選択 state を集約管理する hook。複合操作 (`selectFeedClearingArticle` / `clearFeedGroupArticleSelection`) も提供。
+ * @param articles - 全記事配列 (selected article の resolve に使用)
+ * @param feedGroups - 全フィードグループ配列
+ * @returns `FeedSelectionState` (各 setter + 複合 callback)
+ */
 export function useFeedSelection(articles: Article[], feedGroups: FeedGroup[]): FeedSelectionState {
   const searchParams = useSearchParams();
   const router = useRouter();

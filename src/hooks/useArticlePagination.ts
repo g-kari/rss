@@ -37,6 +37,14 @@ function findScrollableAncestor(el: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
+/**
+ * 記事一覧のページネーション (sentinel + IntersectionObserver による無限スクロール + secondary viewport check による fill-viewport cascade) を提供する hook。
+ * @param filtered - フィルター済記事配列
+ * @param page - 現在のページ番号 (1 始まり)
+ * @param setPage - ページ番号 setter
+ * @param pageSize - 1 ページの記事数 (default `DEFAULT_PAGE_SIZE`)
+ * @returns `{ visible, hasMore, loadMore, sentinelRef }` 表示対象 + ロード state + sentinel callback ref
+ */
 export function useArticlePagination(
   filtered: Article[],
   page: number,

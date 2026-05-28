@@ -3,6 +3,12 @@
 import { useState, useCallback } from "react";
 import { storageSet } from "../lib/storage";
 
+/**
+ * 文字列 enum 設定を localStorage に永続化する汎用 hook。
+ * @param load - 初期値ロード関数 (localStorage から読み出して T に復元)
+ * @param key - localStorage key
+ * @returns `[value, onChange]` 現在値 + setter
+ */
 export function useStoredSetting<T extends string>(
   load: () => T,
   key: string,
