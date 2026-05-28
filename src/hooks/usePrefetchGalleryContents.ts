@@ -9,14 +9,14 @@ import { parseRetryAfter } from "../lib/retry-after";
 import { buildArticlesKey, collectGalleryMediaFromHtml } from "../lib/gallery-prefetch";
 import { useSyncedRef } from "./useSyncedRef";
 
-export interface PrefetchedMedia {
+interface PrefetchedMedia {
   /** 本文から抽出した画像 URL（重複排除済み） */
   images: string[];
   /** 本文から抽出した信頼済み iframe の src（YouTube / Vimeo / ニコニコ 等） */
   embeds: string[];
 }
 
-export interface PrefetchGalleryResult {
+interface PrefetchGalleryResult {
   media: Map<string, PrefetchedMedia>;
   /** fetch 失敗した記事 ID のセット（429 以外の非 200 レスポンス） */
   failedIds: Set<string>;

@@ -83,6 +83,7 @@ export default function Modal({
               stroke="currentColor"
               strokeWidth="1.5"
               strokeLinecap="round"
+              aria-hidden="true"
             >
               <path d="M2 2l10 10M12 2l-10 10" />
             </svg>

@@ -410,7 +410,7 @@ src/
     rate-limit.ts            # KV ベースのクールダウン・スライディングウィンドウ レートリミット (checkAndUpdateCooldown / checkSlidingWindow)
     rate-limit-logic.ts      # スライディングウィンドウ判定の純粋関数 (evaluateSlidingWindow) — next/* 非依存でユニットテスト可能
     serialize-async.ts       # 同一キー非同期操作の直列化ユーティリティ (serialized)
-    sort-utils.ts            # `order: number` フィールドを持つ配列の安定ソート純粋関数（sortByOrder — useFeedGroups / useCollections の重複ロジックを集約）
+    sort-utils.ts            # `order: number` フィールドを持つ配列の安定ソート純粋関数（sortByOrder / computeNextOrder — useFeedGroups / useCollections の重複ロジックを集約 + sortCollectionsBy / COLLECTION_SORT_BY_CYCLE / COLLECTION_SORT_BY_LABELS — コレクション sort 軸切替 UI 用）
     feed-signature.ts        # feeds 構造 + articleTagIds 構造を 1 行にシリアライズする純粋関数（computeFeedStructuralSignature — id/title/category/groupId/nsfw/priority/view を encode + computeArticleTagIdsSignature — Record<articleId, tagId[]> を encode、useSidebarFeeds と useFeedSidebarActions の useMemo deps 置換で 5 分 polling / 2 秒 debounce 時の不要 re-render を抑制、#789）
     obsidian.ts              # Obsidian URI スキーム連携（obsidian://new URI 生成・ファイル名サニタイズ）
     html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
