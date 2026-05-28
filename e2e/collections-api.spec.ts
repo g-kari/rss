@@ -132,6 +132,45 @@ test.describe("コレクションへの記事追加", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Bookmark snapshot 一括追加 (案 B) — `addArticlesToCollection` の挙動
+// addArticleIds と同じ pure logic だが、bookmarkIds 全件 snapshot を 1 リクエストで
+// 追加する用途のため、空配列 / 全件 / 既存重複の 3 ケースを明示的に網羅する。
+// ---------------------------------------------------------------------------
+
+test.describe("Bookmark snapshot 一括追加 (案 B)", () => {
+  function makeCollection(articleIds: string[] = []): Collection {
+    return {
+      id: "col-bookmark-snapshot",
+      name: "Bookmark Snapshot",
+      articleIds,
+      createdAt: "2026-01-01T00:00:00Z",
+      order: 0,
+    };
+  }
+
+  test("空のブックマーク集合を追加しても collection は変化しない (no-op)", () => {
+    const col = makeCollection(["existing-1", "existing-2"]);
+    const result = addArticleIds(col, []);
+    expect(result.articleIds).toEqual(["existing-1", "existing-2"]);
+  });
+
+  test("複数のブックマーク ID を一括 snapshot 追加できる", () => {
+    const col = makeCollection([]);
+    const bookmarkIds = ["bm-1", "bm-2", "bm-3", "bm-4"];
+    const result = addArticleIds(col, bookmarkIds);
+    expect(result.articleIds).toEqual(["bm-1", "bm-2", "bm-3", "bm-4"]);
+  });
+
+  test("既に collection に含まれるブックマーク ID は重複しない", () => {
+    const col = makeCollection(["bm-1", "bm-3"]);
+    const bookmarkIds = ["bm-1", "bm-2", "bm-3", "bm-4"];
+    const result = addArticleIds(col, bookmarkIds);
+    // bm-1 / bm-3 は既存、bm-2 / bm-4 のみ追加
+    expect(result.articleIds).toEqual(["bm-1", "bm-3", "bm-2", "bm-4"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // コレクションからの記事削除
 // ---------------------------------------------------------------------------
 

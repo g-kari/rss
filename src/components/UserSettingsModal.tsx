@@ -25,6 +25,8 @@ interface Props {
  */
 export default function UserSettingsModal({ onClose, feeds }: Props) {
   const {
+    theme,
+    setTheme,
     fontSize,
     onChangeFontSize,
     fontFamily,
@@ -138,6 +140,8 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
 
       <DisplayTabPanel
         hidden={activeTab !== "display"}
+        theme={theme}
+        setTheme={setTheme}
         fontSize={fontSize}
         onChangeFontSize={onChangeFontSize}
         fontFamily={fontFamily}

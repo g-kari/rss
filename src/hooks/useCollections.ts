@@ -19,6 +19,13 @@ export interface CollectionsState {
   renameCollection: (id: string, name: string) => Promise<Collection | { error: string }>;
   deleteCollection: (id: string) => Promise<boolean>;
   addArticleToCollection: (collectionId: string, articleId: string) => Promise<void>;
+  /**
+   * 複数の記事 ID を一括で collection に追加する (案 B snapshot)。
+   * API 側 (PATCH /api/collections/:id) が `addArticleIds: string[]` を natively 受けるため
+   * 1 リクエストで完結 (個別 addArticleToCollection の N 回直列呼出より rate limit / latency が有利)。
+   * サーバー側で既存 ID は dedup される。
+   */
+  addArticlesToCollection: (collectionId: string, articleIds: readonly string[]) => Promise<void>;
   removeArticleFromCollection: (collectionId: string, articleId: string) => Promise<void>;
 }
 
@@ -153,6 +160,52 @@ export function useCollections(
     [onError],
   );
 
+  const addArticlesToCollection = useCallback(
+    async (collectionId: string, articleIds: readonly string[]): Promise<void> => {
+      // 空配列は no-op (API 呼出も skip)
+      if (articleIds.length === 0) return;
+      // optimistic update: 既存 articleIds と重複しないものだけ追加
+      const idsArr = Array.from(articleIds);
+      let prevSnapshot: string[] | null = null;
+      setCollections((prev) =>
+        prev.map((c) => {
+          if (c.id !== collectionId) return c;
+          prevSnapshot = c.articleIds;
+          const existing = new Set(c.articleIds);
+          const merged = [...c.articleIds];
+          for (const aid of idsArr) {
+            if (!existing.has(aid)) {
+              merged.push(aid);
+              existing.add(aid);
+            }
+          }
+          return { ...c, articleIds: merged };
+        }),
+      );
+      try {
+        // API は addArticleIds: string[] を natively 受ける + サーバー側で dedup されるため
+        // 1 リクエストで完結 (個別 PATCH を直列呼出するより rate limit / latency 有利)
+        await apiFetchJson<Collection>(`/api/collections/${collectionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ addArticleIds: idsArr }),
+        });
+      } catch (err) {
+        devError(err);
+        onError?.("コレクションへの一括追加に失敗しました");
+        // rollback: snapshot が取れていれば元の articleIds に戻す
+        if (prevSnapshot !== null) {
+          const snapshot: string[] = prevSnapshot;
+          setCollections((prev) =>
+            prev.map((c) => (c.id === collectionId ? { ...c, articleIds: snapshot } : c)),
+          );
+        }
+        throw err;
+      }
+    },
+    [onError],
+  );
+
   const removeArticleFromCollection = useCallback(
     async (collectionId: string, articleId: string): Promise<void> => {
       setCollections((prev) =>
@@ -190,6 +243,7 @@ export function useCollections(
     renameCollection,
     deleteCollection,
     addArticleToCollection,
+    addArticlesToCollection,
     removeArticleFromCollection,
   };
 }
