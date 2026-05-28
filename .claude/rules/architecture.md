@@ -332,6 +332,7 @@ src/
     useArticleNavigation.ts  # filtered 内での currentIndex + prev/nextArticle 派生 hook（App.tsx から分割）
     useArticleImageMaxWidth.ts # 記事本文 `<img>` の HTML 属性 width/height が無いケースで naturalWidth から max-width を補完する hook（小さい画像の引き伸ばし防止）
     useMasonryLayout.ts      # ResizeObserver で item 高さ変化を監視し、`computeMasonryLayout` 再計算 + `computeScrollAnchorDelta` で scroll anchor 補正を自動実行する hook（rAF deferred で loop limit 警告回避）
+    useAsyncFetch.ts         # 非同期 fetch 共通 hook（loading + error + AbortController + auto-fetch + transform ボイラープレートを集約、`useReadingStats` / `useEngagementEntries` / `useRecommendations` / `useFeedGroups` で使用）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # withSession() / requireSession() / applyRefreshedTokens()

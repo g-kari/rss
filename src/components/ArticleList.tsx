@@ -11,6 +11,7 @@ import {
   type MouseEvent,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import dynamic from "next/dynamic";
 import { useDelayedGalleryItems } from "@/hooks/useDelayedGalleryItems";
 import { useEventListener } from "@/hooks/useEventListener";
 import { usePopupLock } from "@/hooks/usePopupLock";
@@ -33,7 +34,6 @@ import { resolveThumbnail } from "../lib/article-utils";
 import ArticleListHeader from "./ArticleListHeader";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
 import ArticleContextMenu, { type ArticleContextMenuTarget } from "./ArticleContextMenu";
-import ImageLightbox from "./ImageLightbox";
 import LoadMoreButton from "./LoadMoreButton";
 import ArticleListEmptyState from "./ArticleListEmptyState";
 import { explodeArticlesIntoGalleryEntries, type GalleryEntry } from "../lib/gallery-explode";
@@ -45,6 +45,8 @@ import {
   type GalleryItemContextValue,
   type FlatItem,
 } from "./article-list-body";
+
+const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
 
 interface Props {
   feeds: Feed[];
