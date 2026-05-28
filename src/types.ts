@@ -153,6 +153,8 @@ export type Layout = "compact" | "list" | "card" | "magazine" | "gallery";
 export type FontSize = "small" | "medium" | "large";
 export type FontFamily = "sans" | "serif" | "mono";
 export type SortOrder = "newest" | "oldest" | "readingTimeAsc";
+/** コレクション並び順 (`#874` 候補 1) — order 手動 / 作成日新→旧 / 記事数多→少 / 名前 a-z */
+export type CollectionSortBy = "order" | "createdAtDesc" | "articleCountDesc" | "nameAsc";
 export type ReadingTimeRange = "all" | "short" | "medium" | "long";
 
 /** 記事に対するユーザーアクション種別 */

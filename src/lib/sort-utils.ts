@@ -7,6 +7,8 @@
  * 元の配列を mutate せず新しい配列を返す (sort は in-place なので spread が必須)。
  */
 
+import type { Collection, CollectionSortBy } from "../types";
+
 export interface HasOrder {
   order: number;
 }
@@ -20,3 +22,57 @@ export interface HasOrder {
 export function sortByOrder<T extends HasOrder>(list: readonly T[]): T[] {
   return [...list].sort((a, b) => a.order - b.order);
 }
+
+/**
+ * コレクションを指定の sort 軸で並び替える純粋関数 (`#874` 候補 1)。
+ *
+ * - `order`: ユーザー手動並び順 (デフォルト、`sortByOrder` と同等)
+ * - `createdAtDesc`: 作成日時 新→旧 (ISO 8601 absolute 時刻ベース、tz 形式違いに耐性)
+ * - `articleCountDesc`: 記事数 多→少 (同数は order 昇順 fallback)
+ * - `nameAsc`: 名前 a-z (localeCompare で日本語含む正しい辞書順)
+ *
+ * 元の配列を mutate せず新しい配列を返す。
+ */
+export function sortCollectionsBy(
+  collections: readonly Collection[],
+  sortBy: CollectionSortBy,
+): Collection[] {
+  const list = [...collections];
+  switch (sortBy) {
+    case "createdAtDesc":
+      return list.sort((a, b) => {
+        const ta = Date.parse(a.createdAt);
+        const tb = Date.parse(b.createdAt);
+        if (isNaN(ta) && isNaN(tb)) return a.order - b.order;
+        if (isNaN(ta)) return 1;
+        if (isNaN(tb)) return -1;
+        return tb - ta;
+      });
+    case "articleCountDesc":
+      return list.sort((a, b) => {
+        const diff = b.articleIds.length - a.articleIds.length;
+        return diff !== 0 ? diff : a.order - b.order;
+      });
+    case "nameAsc":
+      return list.sort((a, b) => a.name.localeCompare(b.name));
+    case "order":
+    default:
+      return list.sort((a, b) => a.order - b.order);
+  }
+}
+
+/** コレクション sort 軸の cycle 順序 (UI ボタン押下で順次切替) */
+export const COLLECTION_SORT_BY_CYCLE: CollectionSortBy[] = [
+  "order",
+  "createdAtDesc",
+  "articleCountDesc",
+  "nameAsc",
+];
+
+/** コレクション sort 軸の表示ラベル */
+export const COLLECTION_SORT_BY_LABELS: Record<CollectionSortBy, string> = {
+  order: "手動並び順",
+  createdAtDesc: "作成日新→旧",
+  articleCountDesc: "記事数多→少",
+  nameAsc: "名前 a-z",
+};
