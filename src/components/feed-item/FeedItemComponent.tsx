@@ -17,6 +17,7 @@ const FeedDetailModal = dynamic(() => import("../FeedDetailModal"), { ssr: false
 import { useEventListener } from "@/hooks/useEventListener";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { formatCount } from "@/lib/article-utils";
+import { computeContextMenuPosition } from "@/lib/context-menu-position";
 import type { FeedItemProps } from "./types";
 import {
   ContextMenuPortal,
@@ -211,15 +212,12 @@ export default function FeedItem({
     const estimatedMenuHeight = visibleActions.length * 34;
 
     if (menuAnchor) {
-      const left = Math.min(menuAnchor.x, window.innerWidth - MIN_MENU_WIDTH - 4);
-      const spaceBelow = window.innerHeight - menuAnchor.y;
-      if (spaceBelow >= estimatedMenuHeight) {
-        return { top: menuAnchor.y, left: Math.max(4, left) };
-      }
-      return {
-        bottom: window.innerHeight - menuAnchor.y,
-        left: Math.max(4, left),
-      };
+      return computeContextMenuPosition(
+        menuAnchor.x,
+        menuAnchor.y,
+        MIN_MENU_WIDTH,
+        estimatedMenuHeight,
+      );
     }
 
     if (!menuBtnRect) return { top: 0, right: 0 };
