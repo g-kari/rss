@@ -24,10 +24,15 @@ export interface OpmlOutline {
   outline?: OpmlOutline | OpmlOutline[];
 }
 
+/** OPML title を制御文字除去 + 長さ制限 (MAX_TITLE_LENGTH) で sanitize する。 */
 function sanitizeTitle(title: string): string {
   return stripControlChars(title).slice(0, MAX_TITLE_LENGTH);
 }
 
+/**
+ * OPML siteUrl (`htmlUrl` 属性) を sanitize する。
+ * 空文字 / 長さ超過 / parse 失敗 / http(s) 以外のスキームはすべて空文字を返す。
+ */
 function sanitizeSiteUrl(url: string): string {
   if (!url || url.length > MAX_SITE_URL_LENGTH) return "";
   try {
@@ -39,10 +44,20 @@ function sanitizeSiteUrl(url: string): string {
   }
 }
 
+/** フォルダ名を制御文字除去 + 長さ制限 (FEED_GROUP_NAME_MAX_LENGTH) で sanitize する。 */
 function sanitizeFolderName(name: string): string {
   return stripControlChars(name).slice(0, FEED_GROUP_NAME_MAX_LENGTH);
 }
 
+/**
+ * feed 一覧 + feed group を OPML 2.0 XML 文字列にシリアライズする。
+ * group に属する feed は `<outline>` ネストで、所属なし feed は body 直下に列挙する。
+ * title / url / siteUrl は escapeHtml で XML エスケープされ、空 group は出力されない。
+ *
+ * @param feeds - シリアライズ対象の feed 配列
+ * @param groups - feed の親 group 配列。`sortByOrder` で表示順に整列して出力する
+ * @returns OPML 2.0 形式の XML 文字列 (UTF-8 宣言 + `<opml version="2.0">` ルート)
+ */
 export function buildOpml(feeds: Feed[], groups: FeedGroup[]): string {
   const sortedGroups = sortByOrder(groups);
   const groupMap = new Map<string, Feed[]>();
@@ -91,6 +106,17 @@ export function buildOpml(feeds: Feed[], groups: FeedGroup[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<opml version="2.0">\n  <head>\n    <title>RSS Reader Feeds</title>\n  </head>\n  <body>\n${outlines}\n  </body>\n</opml>`;
 }
 
+/**
+ * OPML `<outline>` tree を再帰走査して feed の URL / title / siteUrl / 所属 folder 名を抽出する。
+ * 深さ制限 (`MAX_OPML_DEPTH = 10`) で循環参照や攻撃的な深ネストを防ぐ。
+ * `@_xmlUrl` を持つ outline は feed として results に push、持たないが子 outline がある場合は folder と判断して
+ * `@_title` / `@_text` を folder 名として子に伝播する。
+ *
+ * @param outline - 走査対象の OPML outline (root から再帰呼び出しされる)
+ * @param depth - 再帰深度。MAX_OPML_DEPTH を超えると空配列を返す
+ * @param folder - 親 folder 名。子 feed の `folder` フィールドにそのまま入る
+ * @returns 抽出された feed エントリ配列
+ */
 export function extractFeeds(outline: OpmlOutline, depth = 0, folder?: string): FeedEntry[] {
   if (depth > MAX_OPML_DEPTH) return [];
   const results: FeedEntry[] = [];

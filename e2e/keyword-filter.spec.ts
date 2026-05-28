@@ -42,36 +42,42 @@ function makeFilter(
 test.describe("hasCatastrophicBacktracking", () => {
   test("ネストした量指定子 (a+)+ を検出して null にする", () => {
     // lgtm[js/redos] — intentional fixture for ReDoS detection test
+    // codeql[js/redos] — intentional fixture (production 経路で compile されない、hasCatastrophicBacktracking 検証用)
     const compiled = normalizeFilter(makeFilter(["/(a+)+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("ネストした量指定子 (a{2,})+ を検出して null にする", () => {
     // lgtm[js/redos] — intentional fixture for ReDoS detection test
+    // codeql[js/redos] — intentional fixture (production 経路で compile されない、hasCatastrophicBacktracking 検証用)
     const compiled = normalizeFilter(makeFilter(["/(a{2,})+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("ネストした量指定子 ((ab)+)+ を検出して null にする", () => {
     // lgtm[js/redos] — intentional fixture for ReDoS detection test
+    // codeql[js/redos] — intentional fixture (production 経路で compile されない、hasCatastrophicBacktracking 検証用)
     const compiled = normalizeFilter(makeFilter(["/((ab)+)+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("交互化グループ (a|aa)+ を検出して null にする", () => {
     // lgtm[js/redos] — intentional fixture for ReDoS detection test
+    // codeql[js/redos] — intentional fixture (production 経路で compile されない、hasCatastrophicBacktracking 検証用)
     const compiled = normalizeFilter(makeFilter(["/(a|aa)+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("交互化グループ (foo|foobar)* を検出して null にする", () => {
     // lgtm[js/redos] — intentional fixture for ReDoS detection test
+    // codeql[js/redos] — intentional fixture (production 経路で compile されない、hasCatastrophicBacktracking 検証用)
     const compiled = normalizeFilter(makeFilter(["/(foo|foobar)*/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });
 
   test("文字クラス内 ) を含むパターン ([a-z)]+)+ を検出して null にする", () => {
     // lgtm[js/redos] — intentional fixture for ReDoS detection test
+    // codeql[js/redos] — intentional fixture (production 経路で compile されない、hasCatastrophicBacktracking 検証用)
     const compiled = normalizeFilter(makeFilter(["/([a-z)]+)+/"]));
     expect(compiled.includePatterns[0]).toBeNull();
   });

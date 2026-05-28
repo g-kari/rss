@@ -76,3 +76,33 @@ export function formatHttpErrorMessage(
 export function isRetryableHttpError(type: HttpErrorType): boolean {
   return type === "rate_limit" || type === "server_error" || type === "network";
 }
+
+/**
+ * `!res.ok` 応答を整形 + 分類して `{ message, type }` を返す共通 helper (#869)。
+ *
+ * `useArticleContent` / `useArticleAi` で重複していた以下の処理を集約:
+ *   1. `classifyHttpError(res.status)` で type 判定
+ *   2. `res.json().catch(() => ({}))` で body 取得 (Cloudflare HTML エラーページ等の parse fail を捕捉)
+ *   3. `formatHttpErrorMessage(type, { retryAfterHeader, fallback: body.error ?? fallback })`
+ *
+ * @param res - `!res.ok` ガード済の Response オブジェクト
+ * @param fallback - server からの `body.error` が無い場合に表示するデフォルトメッセージ
+ * @param opts.onParseError - body の JSON parse 失敗時に呼ばれる callback (debug log 用)
+ * @returns `{ message: ユーザー向けメッセージ, type: HttpErrorType }`
+ */
+export async function buildFetchErrorMessage(
+  res: Response,
+  fallback: string,
+  opts?: { onParseError?: (err: unknown) => void },
+): Promise<{ message: string; type: HttpErrorType }> {
+  const type = classifyHttpError(res.status);
+  const body = (await res.json().catch((err) => {
+    opts?.onParseError?.(err);
+    return {};
+  })) as { error?: string };
+  const message = formatHttpErrorMessage(type, {
+    retryAfterHeader: res.headers.get("Retry-After"),
+    fallback: body.error ?? fallback,
+  });
+  return { message, type };
+}

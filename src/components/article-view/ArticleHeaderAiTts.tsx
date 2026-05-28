@@ -92,6 +92,7 @@ export default function ArticleHeaderAiTts({
               if (article.link) doRunAi(article.link, article.id);
             }}
             disabled={aiLoading || fetching}
+            aria-busy={aiLoading || fetching}
             title={
               aiError ? `AI 要約エラー: ${aiError.message ?? "失敗しました"} (a)` : "AI 要約 (a)"
             }
@@ -109,6 +110,7 @@ export default function ArticleHeaderAiTts({
           <button
             onClick={handleTranslate}
             disabled={translateLoading || fetching}
+            aria-busy={translateLoading || fetching}
             title={
               translateError
                 ? `AI 翻訳エラー: ${translateError.message ?? "失敗しました"} (z)`
@@ -134,6 +136,7 @@ export default function ArticleHeaderAiTts({
             void downloadAllImages();
           }}
           disabled={downloadingImages}
+          aria-busy={downloadingImages}
           title="記事内の画像をすべてダウンロード"
           aria-label="画像をダウンロード"
           className="p-2 -m-2 lg:p-0 lg:m-0 text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50 flex items-center gap-1 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"

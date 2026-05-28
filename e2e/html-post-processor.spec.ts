@@ -29,6 +29,7 @@ test.describe("replaceUntilStable", () => {
   test("多段バイパスを潰す（<scr<script></script>ipt>）", () => {
     // \s* を end tag 前に許容して </script > (末尾スペースあり) 形式もマッチ。
     // production の sanitize-html は DOMPurify を使うため本 regex は test fixture のみで利用。
+    // codeql[js/bad-tag-filter] — intentional fixture (production は DOMPurify、本 regex は replaceUntilStable 単体検証用)
     const result = replaceUntilStable(
       "<scr<script></script>ipt>alert(1)</script>",
       /<script\b[^>]*>[\s\S]*?<\/script\s*>/gi,
