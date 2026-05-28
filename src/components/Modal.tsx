@@ -4,6 +4,7 @@ import { useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
+import Backdrop from "./Backdrop";
 
 interface Props {
   title: string;
@@ -43,7 +44,7 @@ export default function Modal({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[49] bg-black/30" onPointerDown={onClose} />
+      <Backdrop onPointerDown={onClose} />
       <div
         ref={dialogRef}
         role="dialog"

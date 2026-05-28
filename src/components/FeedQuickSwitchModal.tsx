@@ -7,6 +7,7 @@ import { isArticleRead } from "../lib/article-filter";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { usePopupLock } from "../hooks/usePopupLock";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
+import Backdrop from "./Backdrop";
 
 interface Props {
   feeds: Feed[];
@@ -124,7 +125,7 @@ export default function FeedQuickSwitchModal({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[49] bg-black/30" onPointerDown={onClose} />
+      <Backdrop onPointerDown={onClose} />
       <div
         ref={dialogRef}
         role="dialog"
