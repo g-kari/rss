@@ -1309,6 +1309,52 @@ grep -nE "^\.claude/skills" .gitignore
 
 主な使用箇所: 2026-05-12 サイクル — 9 件 open Issue 全て判断仰ぎ要 (#714/#755/#756/#757/#758 設計判断 + #733/#728 close 提案 + #750/#753 実装計画) → master commit 0 + judgment コメント 9 件投稿で完結、retrospective-codify で本派生ケースを規範化
 
+#### サブパターン: 全 Issue 判断仰ぎ要 + 同日起票 状態でも観点別並列 explorer agent で自走 finding を発掘する
+
+「全 Issue 判断仰ぎ要」状態かつ **滞留 Issue が同日起票で 3 サイクル経過に未到達** (= AI 自走 5 条件の経過条件未充足) で、本派生ケース本体の「commit 0 + judgment コメント N 件で完結」を選びたくなる場面でも、**並列 explorer agent (simplify / perf / docs drift 観点) で「滞留 Issue とは別軸の自走 finding」を発掘** すれば 1 commit 実装完結に切替可能。「滞留 Issue 起源の判断仰ぎ作業」と「コードベース sweep 起源の自走作業」は **独立した progress 軸** で、片方が枯渇しても他方で actionable 確保可能。
+
+```
+パターン: 観点別並列調査 → 自走 finding 抽出フロー
+  1. Step 0 sweep で滞留 Issue 全件が「同日起票 + needs-user-decision」と確認
+  2. 通常パスは「commit 0 + judgment コメント」だが actionable progress 量が薄い
+  3. 並列 explorer agent (3-5 体) を派遣して観点別 sweep:
+     - simplify: dead export / helper drift / 重複 inline
+     - perf: dynamic import 漏れ / bundle 削減余地
+     - docs drift: architecture.md / api-spec.md 未掲載
+  4. agent report の各 finding を AI 自走 5 条件で再判定:
+     - touch ≤ 5 / 機能変化なし / 推奨案明示済 / 復元可能 / TDD で担保
+  5. 充足 finding 全件を 1 commit に集約して実装着手 (Issue 紐付け不要)
+  6. master 反映 + retrospective-codify でサイクル完結
+```
+
+**判断軸 (本サブパターン採用 vs commit 0 完結)**:
+
+| 観点                                             | 判定                                                       |
+| ------------------------------------------------ | ---------------------------------------------------------- |
+| 滞留 Issue が **全件同日起票**                   | 3 サイクル経過条件未充足、判断仰ぎ即実装パス使えず         |
+| 直近で大規模 audit sweep 実施済                  | 残余 finding 枯渇可能性あり、ただし観点を変えれば発掘可能  |
+| 過去サイクルで **同観点 sweep 未実施 / 5+ 経過** | 観点別並列調査の真の finding 発掘期待値高い                |
+| agent report で **自走 5 条件全充足 finding 1+** | **本サブパターン採用、commit 0 完結より優れた actionable** |
+| agent report で **自走条件充足 finding 0 件**    | commit 0 + judgment コメント完結 (本派生ケース本体に従う)  |
+
+**How to apply**: 全 Issue 判断仰ぎ要状態で観点別並列 explorer agent を派遣し、自走 5 条件全充足 finding を発掘する (滞留 Issue 起源の作業と並行して別軸の actionable を確保する canonical pattern):
+
+1. **Step 0 sweep で全 Issue 滞留確認** + 同日起票なら経過条件未充足を判定
+2. **観点別 explorer agent 3 体並列派遣** (simplify / perf / docs drift / UX 等から rotation) — `run_in_background: true` で並列起動、各 agent 最大 3 finding に制限
+3. **agent report 受領後、各 finding を AI 自走 5 条件で再判定** — agent 信頼度 % は採用判断の補助軸
+4. **充足 finding を 1 commit に集約実装** — Issue 紐付け不要、commit message に「観点別 agent 派遣 → N finding 集約自走」を明記
+5. **不充足 finding (touch 大規模 / 信頼度 70% 未満 / 設計判断要素) は採用見送り or 別途 Issue 起票** で次サイクル送り
+6. **本派生サブパターン適用時の reservation** — agent report が **半数以上 speculative / context-only mode 退化** している場合は本サブケース不適用 (`§ 5 派生「観点別並列エージェント report で半数以上が context-only mode / speculative 分析を自己宣言したら」` 規範優先)
+
+**反例 (本サブパターン不適用ケース)**:
+
+- 観点別 agent が **0 件 finding** (corpus 品質安定で発掘なし) → 本派生ケース本体「commit 0 + judgment コメント」で完結
+- agent report 全件が **信頼度 70% 未満** または **speculative 分析** → false positive verify cost > 採用価値、本派生ケース本体で完結
+- 滞留 Issue が **1-2 サイクル経過で十分多い** → 観点別 sweep より滞留 Issue の判断仰ぎ品質向上 (案精緻化) を優先
+- 直近サイクルで **同観点 agent 実施済 + 残余 0 件** → 観点 rotation 必要、新観点で派遣
+
+主な使用箇所: 2026-05-29 サイクル — 8 件 open Issue 全件 `needs-user-decision` + 同日起票で経過条件未充足 → simplify / perf / UX+docs 3 体並列 explorer 派遣 → 6 finding 受領 → AI 自走 5 条件全充足 4 件 (perf ImageLightbox+FeedAddModal dynamic / simplify computeNextOrder+HasOrder dead export / docs useAsyncFetch.ts) を 1 commit 集約 (touch 6 file / +20 / -9) → master 反映、滞留 Issue 起源の commit 0 完結より actionable progress を確保
+
 ### 派生ケース: 「全 Issue ユーザー採用済 + 自走 5 条件充足」サイクルは 1 サイクル一括処理 + sequential commit で完結する
 
 「全 Issue 判断仰ぎ要」(前派生ケース) の対極として、**全 open Issue がユーザー本人案採用済 + AI 自走 5 条件全充足** のサイクルが発生する。Step 0 sweep で全件「案 A」「案 B」等の明示採用コメントを検出 + 判断不要スクリーニングで全件自走可能と判定 → 1 サイクルで全 Issue を sequential 処理して complete close 可能。
