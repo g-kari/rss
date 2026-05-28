@@ -10,7 +10,7 @@ import { toPlainText } from "../lib/html";
 import { DEFAULT_AI_MODEL } from "../lib/ai-models";
 import { STORAGE_KEYS, storageGet } from "../lib/storage";
 import {
-  classifyHttpError,
+  buildFetchErrorMessage,
   formatHttpErrorMessage,
   type HttpErrorType,
 } from "../lib/classify-http-error";
@@ -159,11 +159,8 @@ function useAiOperation(
           signal: controller.signal,
         });
         if (!res.ok) {
-          const type = classifyHttpError(res.status);
-          const message = formatHttpErrorMessage(type, {
-            retryAfterHeader: res.headers.get("Retry-After"),
-            fallback: errorMessage,
-          });
+          // #869: useArticleContent と同じ pattern に統合。body.error が来れば優先 fallback。
+          const { message, type } = await buildFetchErrorMessage(res, errorMessage);
           setError({ type, message });
           return;
         }

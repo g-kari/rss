@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
-import { classifyHttpError, formatHttpErrorMessage } from "../lib/classify-http-error";
+import { buildFetchErrorMessage, formatHttpErrorMessage } from "../lib/classify-http-error";
 import { autoReadDebug } from "../lib/auto-read-debug";
 import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import type { OgpData } from "../types";
@@ -182,24 +182,18 @@ export function useArticleContent(
         const res = await apiFetch(`/api/content?url=${encodeURIComponent(articleLink)}`, {
           signal: controller.signal,
         });
-        // #688: 非 2xx をサイレント無視せず HttpErrorType に分類して
-        // 429 のときは Retry-After を秒数表示に整形 (useArticleAi と同じパターン)
+        // #688 / #869: 非 2xx を `buildFetchErrorMessage` で集約整形 (useArticleAi と統合)。
+        // #693 (#688 後追い): JSON parse 失敗 (Cloudflare HTML エラーページ等) を捕捉して
+        // onParseError callback で debug log を出す。これがないと本番で「fallback メッセージ
+        // のみ表示 → 実際のレスポンス body が一切わからない」観測性ギャップが残る。
         if (!res.ok) {
-          const type = classifyHttpError(res.status);
-          // #693 (#688 後追い): JSON parse 失敗 (Cloudflare HTML エラーページ等) を捕捉して
-          // catch 内でも debug log を出す。これがないと本番で「fallback メッセージのみ表示
-          // → 実際のレスポンス body が一切わからない」観測性ギャップが残る。
-          const body = (await res.json().catch((parseErr) => {
-            autoReadDebug("useArticleContent.fetch-json-parse-failed", {
-              articleId,
-              httpStatus: res.status,
-              parseError: String(parseErr).slice(0, 100),
-            });
-            return {};
-          })) as { error?: string };
-          const message = formatHttpErrorMessage(type, {
-            retryAfterHeader: res.headers.get("Retry-After"),
-            fallback: body.error ?? "取得できませんでした",
+          const { message, type } = await buildFetchErrorMessage(res, "取得できませんでした", {
+            onParseError: (parseErr) =>
+              autoReadDebug("useArticleContent.fetch-json-parse-failed", {
+                articleId,
+                httpStatus: res.status,
+                parseError: String(parseErr).slice(0, 100),
+              }),
           });
           setFetchError(message);
           autoReadDebug("useArticleContent.fetch-http-error", {
