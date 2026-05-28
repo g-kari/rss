@@ -862,7 +862,10 @@ grep -rn "<SymbolName>" e2e/ src/
 - **エージェント report が既実装の helper を引用** (例: 「`equalStringMap` で既ガード済の computedFeedCategoryMap を改善案 X で...」) → エージェントが既実装を前提に論じている → 検証不要
 - **「既存 helper の signature 変更」「既存ガードの規範違反 sweep」** (例: 「既存 `equalDigestLimitMap` を `equalStringMap` に統合可能」) → 既実装前提で論じている → 検証不要
 
-主な使用箇所: 60th cycle perf 監査 — Finding 2 (`computedFeedCategoryMap` 不安定、信頼度 92%) を提案されたが `src/hooks/useFilteredArticles.ts:40` (`equalStringMap` 定義) + `line 216` (ガード適用) + `line 226` (`computedFeedTitleByHash` も同様ガード) で **既実装** と判明 → Issue #866 で Finding 2 を scope 縮小コメント、Finding 1/3 のみユーザー判断仰ぎ継続
+主な使用箇所:
+
+- 60th cycle perf 監査 — Finding 2 (`computedFeedCategoryMap` 不安定、信頼度 92%) を提案されたが `src/hooks/useFilteredArticles.ts:40` (`equalStringMap` 定義) + `line 216` (ガード適用) + `line 226` (`computedFeedTitleByHash` も同様ガード) で **既実装** と判明 → Issue #866 で Finding 2 を scope 縮小コメント、Finding 1/3 のみユーザー判断仰ぎ継続
+- 61st cycle security 監査 — Finding 1 (AI prompt delimiter `</article>` 早期終了) を提案されたが `src/lib/ai-route-helper.ts:104-105` で `/</g` + `/>/g` の全 `<` / `>` escape により本文中 `</article>` も完全 escape 済 = **既実装** と判明 → Issue #860 で Finding 1 を scope 縮小コメント、Finding 2/3 のみユーザー判断仰ぎ継続。**perf に続いて security 監査でも同パターンの false positive を 2 件連続検出**、領域横断で再発するシグナルとして verify 規範遵守の重要性が再強化された (信頼度 90%+ でも領域問わず既実装誤検知し得る、起票時 + 自走着手前の 2 回 verify が canonical)
 
 ### 派生ケース: 調査エージェントの「関数 A が機能 B を含む」のような構造的仮定は、当該関数を Read で開いて検証する
 
