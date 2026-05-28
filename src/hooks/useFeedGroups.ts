@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import type { FeedGroup, UserProfile } from "../types";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
-import { isAbortError } from "../lib/fetch";
 import { sortByOrder } from "../lib/sort-utils";
-import { useSyncedRef } from "./useSyncedRef";
+import { useAsyncFetch } from "./useAsyncFetch";
 
 /** `useFeedGroups` の戻り値型 */
 export interface FeedGroupsState {
@@ -31,57 +30,71 @@ export interface FeedGroupsState {
  * ログイン後に `/api/feed-groups` を取得し、サーバー側の応答を元にローカル state を更新する。
  * エラーハンドリングは呼び出し元（FeedSidebar 等）が `{ error }` メッセージを使って UI 表示する想定。
  *
+ * #839: 取得部の loading + AbortController + try/finally ボイラープレートを `useAsyncFetch<T>` に集約。
+ * CRUD 部 (create / rename / setCollapsed / setMuted / delete / reorder) は楽観的更新で `setData` を直接使う。
+ *
  * @param user - ログイン中のユーザー（`null`/`undefined` のときは fetch しない）
  */
 export function useFeedGroups(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,
 ): FeedGroupsState {
-  const [groups, setGroups] = useState<FeedGroup[]>([]);
-  const [loading, setLoading] = useState(false);
-  const onErrorRef = useSyncedRef(onError);
+  const {
+    data: groupsData,
+    loading,
+    setData: setGroupsRaw,
+  } = useAsyncFetch<FeedGroup[]>(user ? "/api/feed-groups" : null, {
+    auto: true,
+    deps: [user],
+    initialData: [],
+    transform: (raw) => sortByOrder(raw as FeedGroup[]),
+    formatError: (err) => {
+      devError(err);
+      return "フィードグループの読み込みに失敗しました";
+    },
+    onError,
+  });
 
+  // user が null になったら明示的に [] にリセット (既存挙動互換)
   useEffect(() => {
-    if (!user) {
-      setGroups([]);
-      return;
-    }
-    const controller = new AbortController();
-    setLoading(true);
-    apiFetchJson<FeedGroup[]>("/api/feed-groups", { signal: controller.signal })
-      .then((data) => {
-        setGroups(sortByOrder(data));
-      })
-      .catch((err) => {
-        if (isAbortError(err)) return;
-        devError(err);
-        onErrorRef.current?.("フィードグループの読み込みに失敗しました");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onErrorRef は ref 経由で最新値を参照するため deps 不要
-  }, [user]);
+    if (!user) setGroupsRaw([]);
+  }, [user, setGroupsRaw]);
 
-  const createGroup = useCallback(async (name: string): Promise<FeedGroup | { error: string }> => {
-    const trimmed = name.trim();
-    if (!trimmed) return { error: "グループ名を入力してください" };
-    const res = await apiFetch("/api/feed-groups", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: trimmed }),
-    });
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
-      if (data.code === "DUPLICATE_NAME") return { error: "同名のグループが既に存在します" };
-      if (data.code === "FEED_GROUP_LIMIT_EXCEEDED") return { error: "グループの上限に達しました" };
-      return { error: data.error ?? "グループの作成に失敗しました" };
-    }
-    const created = (await res.json()) as FeedGroup;
-    setGroups((prev) => sortByOrder([...prev, created]));
-    return created;
-  }, []);
+  const groups = groupsData ?? [];
+
+  /** 戻り値が常に非 null になる型安全な setter */
+  const setGroups = useCallback(
+    (updater: FeedGroup[] | ((prev: FeedGroup[]) => FeedGroup[])): void => {
+      setGroupsRaw((prev) => {
+        const base = prev ?? [];
+        return typeof updater === "function" ? updater(base) : updater;
+      });
+    },
+    [setGroupsRaw],
+  );
+
+  const createGroup = useCallback(
+    async (name: string): Promise<FeedGroup | { error: string }> => {
+      const trimmed = name.trim();
+      if (!trimmed) return { error: "グループ名を入力してください" };
+      const res = await apiFetch("/api/feed-groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
+        if (data.code === "DUPLICATE_NAME") return { error: "同名のグループが既に存在します" };
+        if (data.code === "FEED_GROUP_LIMIT_EXCEEDED")
+          return { error: "グループの上限に達しました" };
+        return { error: data.error ?? "グループの作成に失敗しました" };
+      }
+      const created = (await res.json()) as FeedGroup;
+      setGroups((prev) => sortByOrder([...prev, created]));
+      return created;
+    },
+    [setGroups],
+  );
 
   const renameGroup = useCallback(
     async (id: string, name: string): Promise<FeedGroup | { error: string }> => {
@@ -101,7 +114,7 @@ export function useFeedGroups(
       setGroups((prev) => sortByOrder(prev.map((g) => (g.id === updated.id ? updated : g))));
       return updated;
     },
-    [],
+    [setGroups],
   );
 
   const setCollapsed = useCallback(
@@ -120,7 +133,7 @@ export function useFeedGroups(
         setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, collapsed: !collapsed } : g)));
       }
     },
-    [onError],
+    [onError, setGroups],
   );
 
   const setMuted = useCallback(
@@ -139,7 +152,7 @@ export function useFeedGroups(
         setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, muted: !muted } : g)));
       }
     },
-    [onError],
+    [onError, setGroups],
   );
 
   const deleteGroup = useCallback(
@@ -152,7 +165,7 @@ export function useFeedGroups(
       setGroups((prev) => prev.filter((g) => g.id !== id));
       return true;
     },
-    [onError],
+    [onError, setGroups],
   );
 
   const reorderGroup = useCallback(
@@ -200,7 +213,7 @@ export function useFeedGroups(
         }
       }
     },
-    [onError],
+    [onError, setGroups],
   );
 
   return {

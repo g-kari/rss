@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { RecommendedFeed, UserProfile } from "../types";
 import { apiFetch } from "../lib/api-fetch";
+import { useAsyncFetch } from "./useAsyncFetch";
 
 interface UseRecommendationsResult {
   recommendations: RecommendedFeed[];
@@ -13,11 +14,14 @@ interface UseRecommendationsResult {
   refreshing: boolean;
 }
 
+/**
+ * #839: `useAsyncFetch<T>` で auto-fetch + loading + error ボイラープレートを集約。
+ *
+ * 多段 fetch (`/api/recommendations` が 204 → POST `/refresh` fallback) は custom `fetcher` で実装。
+ * `dismiss` / `refresh` は `setData` 経由で楽観的更新する。`refreshing` は独立 state で維持。
+ */
 export function useRecommendations(user: UserProfile | null | undefined): UseRecommendationsResult {
-  const [recommendations, setRecommendations] = useState<RecommendedFeed[]>([]);
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const triggerRefresh = useCallback(async (): Promise<RecommendedFeed[]> => {
     const res = await apiFetch("/api/recommendations/refresh", { method: "POST" });
@@ -26,41 +30,39 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
     return data.recommendations ?? [];
   }, []);
 
-  const loadRecommendations = useCallback(async () => {
-    const res = await apiFetch("/api/recommendations");
-    if (res.status === 204) {
-      const items = await triggerRefresh().catch(() => []);
-      setRecommendations(items);
-      setError(null);
-      return;
-    }
-    if (!res.ok) {
-      setError("推薦の読み込みに失敗しました");
-      return;
-    }
-    const data = (await res.json()) as { recommendations: RecommendedFeed[] };
-    setRecommendations(data.recommendations ?? []);
-    setError(null);
-  }, [triggerRefresh]);
+  const {
+    data: recommendations,
+    loading,
+    error,
+    setData: setRecommendations,
+    setError,
+  } = useAsyncFetch<RecommendedFeed[]>(user ? "/api/recommendations" : null, {
+    auto: true,
+    deps: [user],
+    initialData: [],
+    formatError: () => "推薦の読み込みに失敗しました",
+    fetcher: async (endpoint, signal) => {
+      const res = await apiFetch(endpoint, { signal });
+      if (res.status === 204) {
+        return await triggerRefresh().catch(() => []);
+      }
+      if (!res.ok) throw new Error("推薦の読み込みに失敗しました");
+      const data = (await res.json()) as { recommendations?: RecommendedFeed[] };
+      return data.recommendations ?? [];
+    },
+  });
 
-  useEffect(() => {
-    if (!user) return;
-    setLoading(true);
-    loadRecommendations()
-      .catch(() => {
-        setError("推薦の読み込みに失敗しました");
-      })
-      .finally(() => setLoading(false));
-  }, [user, loadRecommendations]);
-
-  const dismiss = useCallback((id: string) => {
-    setRecommendations((prev) => prev.filter((r) => r.id !== id));
-    apiFetch("/api/recommendations/dismiss", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    }).catch(() => {});
-  }, []);
+  const dismiss = useCallback(
+    (id: string) => {
+      setRecommendations((prev) => (prev ?? []).filter((r) => r.id !== id));
+      apiFetch("/api/recommendations/dismiss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      }).catch(() => {});
+    },
+    [setRecommendations],
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -73,7 +75,14 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
     } finally {
       setRefreshing(false);
     }
-  }, [triggerRefresh]);
+  }, [triggerRefresh, setRecommendations, setError]);
 
-  return { recommendations, loading, error, dismiss, refresh, refreshing };
+  return {
+    recommendations: recommendations ?? [],
+    loading,
+    error,
+    dismiss,
+    refresh,
+    refreshing,
+  };
 }
