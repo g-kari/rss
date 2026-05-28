@@ -70,16 +70,16 @@ Next.js 16 + Cloudflare Workers で動くパーソナル RSS リーダー。`rss
 
 ## 技術スタック
 
-| レイヤー       | 技術                                                                                     |
-| -------------- | ---------------------------------------------------------------------------------------- |
-| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare                                           |
-| フロントエンド | React 19 + TypeScript + Tailwind CSS v4                                                  |
-| API            | Next.js Route Handlers (`app/api/**`)                                                    |
-| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                                              |
-| データ         | Cloudflare R2 (`rss-reader-data`) + KV (`RATE_LIMIT`) — ユーザー別 JSON + レートリミット |
-| AI             | Workers AI (要約・翻訳・フィード推薦)                                                    |
-| 自動更新       | Cloudflare Cron Trigger（30分ごと）                                                      |
-| デプロイ       | Cloudflare Workers CI/CD（master push で自動ビルド＆デプロイ）                           |
+| レイヤー       | 技術                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------- |
+| フレームワーク | Next.js 16 App Router + @opennextjs/cloudflare                                                                |
+| フロントエンド | React 19 + TypeScript + Tailwind CSS v4                                                                       |
+| API            | Next.js Route Handlers (`app/api/**`)                                                                         |
+| 認証           | 0g0 ID (OAuth2 + ES256 JWT)                                                                                   |
+| データ         | Cloudflare R2 (`rss-reader-data`) + KV (`RATE_LIMIT`) — 共有フィードデータ + ユーザー別 JSON + レートリミット |
+| AI             | Workers AI (要約・翻訳・フィード推薦)                                                                         |
+| 自動更新       | Cloudflare Cron Trigger（30分ごと）                                                                           |
+| デプロイ       | Cloudflare Workers CI/CD（master push で自動ビルド＆デプロイ）                                                |
 
 ## キーボードショートカット
 

@@ -5,6 +5,7 @@ import type { Article, OgpData } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
+import { devError } from "../lib/dev-log";
 import { extractBoothFallbackUrl } from "../lib/booth-fallback";
 import { parseOgpCache, type OgpCacheEntry } from "../lib/ogp-cache-schema";
 import type { OgpCacheStore } from "../contexts/OgpCacheContext";
@@ -123,7 +124,8 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
         } else {
           noImageRef.current.add(link);
         }
-      } catch {
+      } catch (err) {
+        devError("[useOgpCache] booth fallback OGP fetch failed", link, err);
         noImageRef.current.add(link);
       }
     };

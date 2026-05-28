@@ -1,5 +1,11 @@
 /** 読了統計計算用の純粋関数 */
 
+/**
+ * 統計に「読了」としてカウントするエンゲージメントアクション。
+ * `computeWeeklyTotal` / `aggregateStatsForFeed` から共通参照される。
+ */
+export const READ_ACTIONS: ReadonlySet<string> = new Set(["fetch_full", "open_original"]);
+
 /** ISO 8601 文字列から "YYYY-MM-DD" 部分を返す */
 export function toDateStr(ts: string): string {
   return ts.slice(0, 10);
@@ -54,7 +60,6 @@ export function computeWeeklyTotal(
   now: Date,
 ): number {
   const mondayIso = getMondayIso(now);
-  const READ_ACTIONS = new Set(["fetch_full", "open_original"]);
   return entries.filter((e) => READ_ACTIONS.has(e.action) && e.timestamp >= mondayIso).length;
 }
 
@@ -74,7 +79,6 @@ export function aggregateStatsForFeed(
   yearlyHeatmap: { date: string; count: number }[];
   weeklyTotal: number;
 } {
-  const READ_ACTIONS = new Set(["fetch_full", "open_original"]);
   const filtered = entries.filter((e) => e.feedHash === feedHash && READ_ACTIONS.has(e.action));
 
   const dailyMap = new Map<string, number>();
