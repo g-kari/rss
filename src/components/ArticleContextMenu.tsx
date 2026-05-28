@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
+import { computeContextMenuPosition } from "../lib/context-menu-position";
 
 export interface ArticleContextMenuTarget {
   article: Article;
@@ -129,16 +130,7 @@ export default function ArticleContextMenu({
         aria-label="記事操作メニュー"
         onKeyDown={handleKeyDown}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
-        style={(() => {
-          const MIN_W = 180;
-          const EST_H = 144;
-          const left = Math.min(target.x, window.innerWidth - MIN_W - 4);
-          const spaceBelow = window.innerHeight - target.y;
-          if (spaceBelow >= EST_H) {
-            return { top: target.y, left: Math.max(4, left) };
-          }
-          return { bottom: window.innerHeight - target.y, left: Math.max(4, left) };
-        })()}
+        style={computeContextMenuPosition(target.x, target.y, 180, 144)}
         onClick={(e) => e.stopPropagation()}
       >
         <button

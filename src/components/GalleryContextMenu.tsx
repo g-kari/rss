@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
+import { computeContextMenuPosition } from "../lib/context-menu-position";
 import { downloadBlob } from "../lib/download";
 import { addUrlToHistory, MAX_DOWNLOAD_HISTORY } from "../lib/download-history";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
@@ -164,16 +165,7 @@ export default function GalleryContextMenu({
       <div className="fixed inset-0 z-[49]" onPointerDown={onClose} />
       <div
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[160px]"
-        style={(() => {
-          const MIN_W = 160;
-          const EST_H = 170;
-          const left = Math.min(target.x, window.innerWidth - MIN_W - 4);
-          const spaceBelow = window.innerHeight - target.y;
-          if (spaceBelow >= EST_H) {
-            return { top: target.y, left: Math.max(4, left) };
-          }
-          return { bottom: window.innerHeight - target.y, left: Math.max(4, left) };
-        })()}
+        style={computeContextMenuPosition(target.x, target.y, 160, 170)}
         onClick={(e) => e.stopPropagation()}
       >
         {target.thumb && (
