@@ -152,7 +152,7 @@ export interface Article {
 export type Layout = "compact" | "list" | "card" | "magazine" | "gallery";
 export type FontSize = "small" | "medium" | "large";
 export type FontFamily = "sans" | "serif" | "mono";
-export type SortOrder = "newest" | "oldest";
+export type SortOrder = "newest" | "oldest" | "readingTimeAsc";
 export type ReadingTimeRange = "all" | "short" | "medium" | "long";
 
 /** 記事に対するユーザーアクション種別 */

@@ -405,6 +405,40 @@ test.describe("ソート順 — newest / oldest", () => {
   });
 });
 
+test.describe("ソート順 — readingTimeAsc (#874 候補 2)", () => {
+  // readingTime は content/summary 文字数で決まる。文字数を意図的に変えて短文 → 長文の順序を作る。
+  const shortArticle = makeArticle("short", "feed1", {
+    publishedAt: "2024-06-01T00:00:00Z",
+    content: "Short content.",
+  });
+  const mediumArticle = makeArticle("medium", "feed1", {
+    publishedAt: "2024-06-02T00:00:00Z",
+    content: Array.from({ length: 300 }, () => "word").join(" "),
+  });
+  const longArticle = makeArticle("long", "feed1", {
+    publishedAt: "2024-06-03T00:00:00Z",
+    content: Array.from({ length: 800 }, () => "word").join(" "),
+  });
+
+  test("sortOrder=readingTimeAsc のとき読了時間が短い順に並ぶ", () => {
+    // 入力順は publishedAt 降順 (newest first): long, medium, short
+    const result = run([longArticle, mediumArticle, shortArticle], {
+      sortOrder: "readingTimeAsc",
+    });
+    expect(ids(result)).toEqual(["short", "medium", "long"]);
+  });
+
+  test("sortOrder=readingTimeAsc + HISTORY フィードは historyOrder を優先する", () => {
+    const result = run([longArticle, mediumArticle, shortArticle], {
+      feedId: SPECIAL_FEED_IDS.HISTORY,
+      historyIds: new Set(["short", "medium", "long"]),
+      historyOrder: ["long", "short", "medium"],
+      sortOrder: "readingTimeAsc",
+    });
+    expect(ids(result)).toEqual(["long", "short", "medium"]);
+  });
+});
+
 test.describe("ソート順 — HISTORY（閲覧順）", () => {
   test("HISTORY フィードは historyOrder の順に並ぶ", () => {
     const h1 = makeArticle("h1", "feed1");

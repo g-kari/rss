@@ -143,10 +143,11 @@ export const LAYOUT_LABELS: Record<Layout, string> = {
   gallery: "ギャラリー",
 };
 
-export const SORT_ORDER_CYCLE: SortOrder[] = ["newest", "oldest"];
+export const SORT_ORDER_CYCLE: SortOrder[] = ["newest", "oldest", "readingTimeAsc"];
 export const SORT_ORDER_LABELS: Record<SortOrder, string> = {
   newest: "新しい順",
   oldest: "古い順",
+  readingTimeAsc: "読了時間順",
 };
 
 export const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month"];
