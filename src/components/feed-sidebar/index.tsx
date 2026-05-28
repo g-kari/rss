@@ -15,7 +15,6 @@ import { useArticleFilter } from "../../contexts/ArticleFilterContext";
 import { useFeedSidebarContext } from "../../contexts/FeedSidebarContext";
 import { useToast } from "../../contexts/ToastContext";
 import FeedItem, { formatCount } from "../feed-item";
-import FeedAddModal from "../FeedAddModal";
 import RecommendationSection from "../RecommendationSection";
 import { useFeedOperations } from "../../hooks/useFeedOperations";
 import { useSidebarFeeds } from "../../hooks/useSidebarFeeds";
@@ -33,6 +32,7 @@ import CollectionsSection from "./CollectionsSection";
 import FeedSearchBar from "./FeedSearchBar";
 
 const ReadingStatsModal = dynamic(() => import("../ReadingStatsModal"), { ssr: false });
+const FeedAddModal = dynamic(() => import("../FeedAddModal"), { ssr: false });
 const SaveUrlModal = dynamic(() => import("../SaveUrlModal"), { ssr: false });
 const ReleaseNotesModal = dynamic(() => import("../ReleaseNotesModal"), { ssr: false });
 const FeedHealthModal = dynamic(() => import("../FeedHealthModal"), { ssr: false });

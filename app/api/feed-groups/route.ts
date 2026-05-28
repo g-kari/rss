@@ -8,7 +8,7 @@ import {
   FEED_GROUP_NAME_MAX_LENGTH,
 } from "@/lib/feed-groups";
 import { parseName } from "@/lib/validation";
-import { sortByOrder } from "@/lib/sort-utils";
+import { computeNextOrder, sortByOrder } from "@/lib/sort-utils";
 import type { FeedGroup } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -35,11 +35,10 @@ export async function POST(request: NextRequest) {
       return apiError("name already exists", 409, { code: "DUPLICATE_NAME" });
     }
 
-    const nextOrder = groups.reduce((max, g) => Math.max(max, g.order), -1) + 1;
     const group: FeedGroup = {
       id: crypto.randomUUID(),
       name,
-      order: nextOrder,
+      order: computeNextOrder(groups),
       createdAt: new Date().toISOString(),
     };
 

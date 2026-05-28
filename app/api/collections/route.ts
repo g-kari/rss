@@ -8,7 +8,7 @@ import {
   COLLECTION_NAME_MAX_LENGTH,
 } from "@/lib/collections";
 import { parseName } from "@/lib/validation";
-import { sortByOrder } from "@/lib/sort-utils";
+import { computeNextOrder, sortByOrder } from "@/lib/sort-utils";
 import type { Collection } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -35,13 +35,12 @@ export async function POST(request: NextRequest) {
       return apiError("name already exists", 409, { code: "DUPLICATE_NAME" });
     }
 
-    const nextOrder = collections.reduce((max, c) => Math.max(max, c.order), -1) + 1;
     const collection: Collection = {
       id: crypto.randomUUID(),
       name,
       articleIds: [],
       createdAt: new Date().toISOString(),
-      order: nextOrder,
+      order: computeNextOrder(collections),
     };
 
     collections.push(collection);

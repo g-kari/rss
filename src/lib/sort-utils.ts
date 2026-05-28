@@ -9,7 +9,7 @@
 
 import type { Collection, CollectionSortBy } from "../types";
 
-export interface HasOrder {
+interface HasOrder {
   order: number;
 }
 
@@ -21,6 +21,16 @@ export interface HasOrder {
  */
 export function sortByOrder<T extends HasOrder>(list: readonly T[]): T[] {
   return [...list].sort((a, b) => a.order - b.order);
+}
+
+/**
+ * 既存配列の `order` 最大値 + 1 を返す純粋関数。
+ *
+ * 新規 entity 追加時に使う「次の order 値」算出ロジックの集約。
+ * 空配列なら 0 を返す (`max(-1, ...) + 1`)。
+ */
+export function computeNextOrder<T extends HasOrder>(items: readonly T[]): number {
+  return items.reduce((max, item) => Math.max(max, item.order), -1) + 1;
 }
 
 /**
