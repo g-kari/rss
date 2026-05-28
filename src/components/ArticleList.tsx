@@ -23,6 +23,7 @@ import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import { usePrefetchGalleryContents } from "../hooks/usePrefetchGalleryContents";
 import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
 import { useSyncedRef } from "../hooks/useSyncedRef";
+import { computeFeedStructuralSignature } from "../lib/feed-signature";
 import { useGalleryAutoRead } from "../hooks/useGalleryAutoRead";
 import { useGallerySwipeNav } from "../hooks/useGallerySwipeNav";
 import { useGalleryAutoScroll } from "../hooks/useGalleryAutoScroll";
@@ -159,7 +160,18 @@ function ArticleList({
     onChangeGalleryAutoScrollSpeed,
   } = useReaderSettings();
 
-  const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f])), [feeds]);
+  // #868: feeds 構造の signature で下流 memo を安定化。5 分 polling で feeds reference が
+  // 新規でも内容変化なしなら signature 同じ → feedMap も同一 reference を維持して
+  // useArticleListItemProps の resolveItemProps callback / virtual list item memo の
+  // invalidate を防ぐ (sibling useSidebarFeeds.ts の canonical pattern に揃える)。
+  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+  const feedsRef = useRef(feeds);
+  feedsRef.current = feeds;
+  const feedMap = useMemo(
+    () => new Map(feedsRef.current.map((f) => [f.id, f])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- feedStructuralSignature が feeds 構造を encode 済、feedsRef は ref 安定参照
+    [feedStructuralSignature],
+  );
   const showFeedName = selectedFeedId === null || selectedFeedId === SPECIAL_FEED_IDS.BOOKMARKS;
 
   // #808 Phase 3a: useOgpCache を AppShell に lift up + OgpCacheProvider 経由参照
