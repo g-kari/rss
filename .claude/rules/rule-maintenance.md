@@ -788,6 +788,9 @@ Issue tracker 滞留 8+ 件状態でさらに観点別並列エージェント (
      - finding に file path はあるが内容は generic (例: 「a11y 改善余地」のみで具体行なし)
      - 存在しない file path の指摘 (実コード grep で 0 件 hit)
      - 既実装の機能を「未実装」と誤判定
+     - **既存規範 (JSDoc コメント / `.claude/rules/*.md` の codify 済 sibling drift 維持等) を見落として「重複」「統合可能」と報告** (例: `findScrollableAncestor` 両 file の JSDoc に「統合せず両方残すのは意図的」明記済を見落とし)
+     - **既設置済 metadata (frontmatter `description:` / paths 等) の grep verify 漏れで「N 件欠落」「dead path」と検出** (例: 全 35 file に description あるのに「12 file 欠落」と主張 / 存在しない path `app/api/**/*.tsx` を「dead path」と fabricate)
+     - **hypothetical コード例 (アンチパターン例 / 修正パターン例) の signature を「実コードと不一致 = docs drift」と検出** (アンチパターン例は「もしこういう実装だったら」の hypothetical で実コード描写ではない、signature mismatch は drift でない)
   3. 半数 (3+ / 5 体) でこれらシグナル検出 → 全 finding 採用候補から外す
   4. main thread の機械的 sweep に切替:
      - architecture.md vs find 結果 comparative sweep
