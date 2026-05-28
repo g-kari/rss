@@ -16,6 +16,8 @@ export const CONTENT_WIDTH_PREVIEW_PCT: Record<ContentWidth, number> = {
   full: 100,
 };
 
+// value:0 = "無制限" (明示的 unlimited)。null = "未設定" (default 30 日適用)。
+// consumer 側で `ttlDays ?? 30` する場合、0 と null の意味乖離に注意 (0 ?? 30 = 0、null ?? 30 = 30)。
 export const TTL_OPTIONS: { value: number; label: string }[] = [
   { value: 7, label: "7日" },
   { value: 14, label: "14日" },
@@ -95,6 +97,35 @@ export function SegmentGroup<T extends string | number>({
         );
       })}
     </div>
+  );
+}
+
+export function ToggleSwitch({
+  checked,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+        checked ? "bg-ink" : "bg-border-default"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
   );
 }
 

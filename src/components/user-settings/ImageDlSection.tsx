@@ -2,7 +2,7 @@
 
 import { ARTICLE_TTL_DAYS } from "../../lib/article-ttl";
 import { SHARE_TARGETS, type ShareTargetId } from "../article-view/shareTargets";
-import { SettingRow, TTL_OPTIONS } from "./shared";
+import { SettingRow, TTL_OPTIONS, ToggleSwitch } from "./shared";
 
 interface ImageDlSectionProps {
   ttlDays: number | null;
@@ -55,26 +55,15 @@ export default function ImageDlSection({
       </SettingRow>
 
       <SettingRow label="重複記事の非表示">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={deduplicateByLink}
-          aria-label={
+        <ToggleSwitch
+          checked={deduplicateByLink}
+          onChange={() => toggleDeduplicateByLink()}
+          ariaLabel={
             deduplicateByLink
               ? "クロスフィード重複排除を OFF にする"
               : "クロスフィード重複排除を ON にする"
           }
-          onClick={toggleDeduplicateByLink}
-          className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-            deduplicateByLink ? "bg-ink" : "bg-border-default"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-              deduplicateByLink ? "translate-x-5" : "translate-x-0"
-            }`}
-          />
-        </button>
+        />
       </SettingRow>
       <div className="flex flex-col gap-1 pl-28">
         <span className="text-[11px] text-text-muted">
