@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { KeywordFilter } from "../../types";
 import { usePopupLock } from "../../hooks/usePopupLock";
+import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { useToast } from "@/contexts/ToastContext";
 
 const MAX_SELECTION_LENGTH = 100;
@@ -90,17 +91,19 @@ export default function SelectionExcludePopup({
   const toast = useToast();
   const displayText = popup.text.length > 24 ? `${popup.text.slice(0, 24)}…` : popup.text;
 
-  // #835 案 A: keyboard 専用ユーザー向けの focus 移動 + Escape close + Enter/Space 実行を実装。
-  // 先頭ボタンへ focus 移動は `preventScroll: true` で scroll 副作用を抑止し、
-  // text selection 解除リスク軽減を試みる (環境により selection が解除される場合は
-  // 既存の copy / exclude action は依然動作するため UX 機能は維持される)。
-  const firstButtonRef = useRef<HTMLButtonElement | null>(null);
+  // #864 案 A: canonical な useMenuKeyboard helper に移行 (ArticleContextMenu / ShareMenu /
+  // FilterMenu と同 pattern)。Tab cycle / Arrow ナビ / Home / End / Escape を一括導入 (a11y 改善)。
+  // useMenuKeyboard は requestAnimationFrame で先頭 menuitem に focus、Escape で setOpen(false)
+  // + btnRef.current?.focus() を実行する。本 popup には trigger button が存在しないため、
+  // btnRef はダミー (no-op) を渡し、close 時の focus 復元は returnFocusRef 経由の cleanup
+  // useEffect で「popup 出現直前の active element」へ戻す (button へではなく)。
+  const dummyBtnRef = useRef<HTMLButtonElement | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
 
   useEffect(() => {
     // popup 出現時の active element を記憶しておき close 時に focus 復元
     returnFocusRef.current = document.activeElement as HTMLElement | null;
-    firstButtonRef.current?.focus({ preventScroll: true });
     return () => {
       // ref で保存した element が DOM 上に残っていれば focus 復元
       const el = returnFocusRef.current;
@@ -109,18 +112,6 @@ export default function SelectionExcludePopup({
       }
     };
   }, []);
-
-  // Escape で close (selection は維持されたまま閉じる)
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
 
   function doCopyQuote(e: { preventDefault: () => void }) {
     e.preventDefault();
@@ -153,15 +144,16 @@ export default function SelectionExcludePopup({
     // パターンに統一 (ArticleContextMenu / ShareMenu / FilterMenu と同じ pattern)。
     // 選択 popup は 1〜2 ボタンの一時メニュー的 UI、modal でなく menu が WAI-ARIA Authoring Practices に整合。
     <div
+      ref={menuRef}
       role="menu"
       aria-label="テキスト選択メニュー"
+      onKeyDown={handleKeyDown}
       className="fixed z-50 pointer-events-none"
       style={{ left: popup.x, top: popup.y }}
     >
       <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 transform">
         <div className="bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden">
           <button
-            ref={firstButtonRef}
             role="menuitem"
             type="button"
             onMouseDown={doCopyQuote}

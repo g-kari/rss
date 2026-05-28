@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type CSSProperties, type RefObject } from "react";
+import { useRef, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { Feed, FeedGroup, FeedView } from "../../types";
 import type { Action } from "./types";
@@ -25,15 +25,9 @@ export function ContextMenuPortal({
   onClose,
   btnRef,
 }: ContextMenuProps) {
+  // #864 案 A: useMenuKeyboard が Escape / Tab / Arrow を統合提供する。
+  // 旧来の manual `document.addEventListener("keydown", ..., Escape close)` は重複のため削除。
   const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), btnRef);
-
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleGlobalKeyDown);
-    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [onClose]);
 
   return createPortal(
     <>
@@ -84,13 +78,10 @@ interface MuteMenuProps {
 }
 
 export function MuteMenuPortal({ menuPortalStyle, onClose, onMute }: MuteMenuProps) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // #864 案 A: ContextMenuPortal と同 pattern。useMenuKeyboard で Escape / Tab / Arrow を統合。
+  // 親 trigger button への focus 復元は親が管理するため、btnRef はダミー (no-op) を渡す。
+  const dummyBtnRef = useRef<HTMLButtonElement | null>(null);
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
 
   return createPortal(
     <>
@@ -102,7 +93,9 @@ export function MuteMenuPortal({ menuPortalStyle, onClose, onMute }: MuteMenuPro
         }}
       />
       <div
+        ref={menuRef}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
         role="menu"
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[160px]"
         style={menuPortalStyle}
@@ -157,13 +150,9 @@ interface ViewMenuProps {
 }
 
 export function ViewMenuPortal({ feed, menuPortalStyle, onClose, onSetView }: ViewMenuProps) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // #864 案 A: useMenuKeyboard 統合 (Mute/Digest/Group portal と同 pattern)。
+  const dummyBtnRef = useRef<HTMLButtonElement | null>(null);
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
 
   return createPortal(
     <>
@@ -175,7 +164,9 @@ export function ViewMenuPortal({ feed, menuPortalStyle, onClose, onSetView }: Vi
         }}
       />
       <div
+        ref={menuRef}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
         role="menu"
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
         style={menuPortalStyle}
@@ -242,13 +233,9 @@ export function DigestMenuPortal({
   onClose,
   onSetDigestLimit,
 }: DigestMenuProps) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // #864 案 A: useMenuKeyboard 統合 (Mute/View/Group portal と同 pattern)。
+  const dummyBtnRef = useRef<HTMLButtonElement | null>(null);
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
 
   return createPortal(
     <>
@@ -260,8 +247,10 @@ export function DigestMenuPortal({
         }}
       />
       <div
+        ref={menuRef}
         role="menu"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
         style={menuPortalStyle}
       >
@@ -314,13 +303,9 @@ export function GroupMenuPortal({
   onClose,
   onSetGroup,
 }: GroupMenuProps) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // #864 案 A: useMenuKeyboard 統合 (Mute/View/Digest portal と同 pattern)。
+  const dummyBtnRef = useRef<HTMLButtonElement | null>(null);
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
 
   return createPortal(
     <>
@@ -332,8 +317,10 @@ export function GroupMenuPortal({
         }}
       />
       <div
+        ref={menuRef}
         role="menu"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px] max-h-[60vh] overflow-y-auto"
         style={menuPortalStyle}
       >
