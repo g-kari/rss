@@ -92,6 +92,24 @@ function isHttpUrl(s: string): boolean {
 }
 
 /**
+ * URL の hostname + pathname を抽出して比較 key にする純粋関数 (#875)。
+ *
+ * クエリパラメータ違いの同一画像を同一視するために使う。PR TIMES (`prcdn.freetls.fastly.net`)
+ * のように `og:image` と本文 `<img src>` で **path 部分は同じだがクエリパラメータが違う**
+ * CDN URL が同一画像であることを path 一致で判定する。
+ *
+ * URL parse 失敗時は元文字列を fallback として返す (= 文字列完全一致判定に degrade)。
+ */
+function urlPathKey(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.hostname}${u.pathname}`;
+  } catch {
+    return url;
+  }
+}
+
+/**
  * 抽出済みコンテンツに、JSON-LD の主要画像が **不足していれば補完する**。
  *
  * 用途: Readability が画像主体ページで本文を取りこぼした場合のフォールバック。
@@ -101,13 +119,28 @@ function isHttpUrl(s: string): boolean {
  * `<div hidden>` を選ぶ理由: 本文中に直接 `<img>` を挿入すると Readability の
  * 結果と重複表示・順序破壊が起きるため、クライアント側 ImageGallery が拾える形で
  * 後付けする。`extractThumbListImgs` と同じ手法。
+ *
+ * #875: 本文 `<img>` と JSON-LD URL を **path 部分一致** で比較するため、クエリパラメータ
+ * 違いの同一画像 (PR TIMES の `og:image` `width=2400` vs 本文 `width=1950` 等) を構造的に
+ * 同一視して重複追加を防ぐ。本文 src は `postProcess` で `&` → `&amp;` encode されている
+ * ケースを考慮して decode してから URL parse する。
  */
 export function appendMissingJsonLdImages(
   extractedContent: string,
   jsonLdImageUrls: string[],
 ): string {
   if (jsonLdImageUrls.length === 0) return extractedContent;
-  const missing = jsonLdImageUrls.filter((url) => !extractedContent.includes(url));
+  // 本文 <img src=...> の path key 集合を構築
+  const existingPathKeys = new Set<string>();
+  for (const m of extractedContent.matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["']/gi)) {
+    const src = m[1];
+    if (src) {
+      // HTML エンティティ &amp; を & に decode してから URL parse (postProcess 後の本文対応)
+      const decoded = src.replace(/&amp;/g, "&");
+      existingPathKeys.add(urlPathKey(decoded));
+    }
+  }
+  const missing = jsonLdImageUrls.filter((url) => !existingPathKeys.has(urlPathKey(url)));
   if (missing.length === 0) return extractedContent;
   const imgs = missing.map((url) => `<img src="${escapeAttr(url)}" alt="" />`).join("");
   return extractedContent + `<div hidden>${imgs}</div>`;
