@@ -433,7 +433,13 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
 /** OGP 画像。naturalWidth < 200px は小サムネと判定して自然サイズで中央配置に切替 (#741, #764)。
  *  #876: aspect-video (16:9) + object-contain は正方形・縦長画像で letterbox が生じて画像が
  *  natural より小さく表示される。aspect-video を外し自然アスペクト比で w-full に収めることで
- *  正方形 1000x1000 → 800px 幅で 800x800 / 縦長 600x800 → 800px 幅で 800x1066 等が letterbox なしで表示される。 */
+ *  正方形 1000x1000 → 800px 幅で 800x800 / 縦長 600x800 → 800px 幅で 800x1066 等が letterbox なしで表示される。
+ *
+ *  #876 follow-up: 「次の記事へ遷移すると小さくなる」報告の root cause は `isSmall` state が
+ *  src 変更で reset されず stale な true が残ること (`react-state-ref.md` 「ref の論理リセットポイントを忘れない」)。
+ *  onLoad で `setIsSmall(naturalWidth < MIN)` と **常に** 再評価することで、新画像の naturalWidth に
+ *  基づいて isSmall を deterministic に決定する (`if (cond) setTrue` パターンは false 方向への遷移を逃す)。
+ *  src 変更時の useEffect reset でも同等だが、onLoad のみで完結する方が flicker が少ない (中間 reset → onLoad の 2 段更新を回避)。 */
 const OG_THUMBNAIL_MIN_WIDTH = 200;
 function OgImageThumbnail({ src }: { src: string }) {
   const [isSmall, setIsSmall] = useState(false);
@@ -448,7 +454,7 @@ function OgImageThumbnail({ src }: { src: string }) {
       }
       loading="lazy"
       onLoad={(e) => {
-        if (e.currentTarget.naturalWidth < OG_THUMBNAIL_MIN_WIDTH) setIsSmall(true);
+        setIsSmall(e.currentTarget.naturalWidth < OG_THUMBNAIL_MIN_WIDTH);
       }}
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = "none";
