@@ -52,6 +52,10 @@ function loadAiModel(): WorkersAiModelId {
 
 export { AI_MODELS, type WorkersAiModelId };
 
+/**
+ * オート系設定 (auto-read / auto-translate / auto-summarize / auto-AI-browser-only / dedup-by-link / threshold / AI model) を localStorage に永続化しつつ管理する hook。
+ * @returns 各設定の現在値 + toggle/setter callback (`{ autoReadEnabled, toggleAutoRead, autoReadThreshold, cycleAutoReadThreshold, aiModel, onChangeAiModel, ... }`)
+ */
 export function useAutoReadSettings() {
   const [autoReadEnabled, toggleAutoRead] = useStoredBoolToggle(
     loadAutoReadEnabled,

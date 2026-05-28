@@ -34,6 +34,12 @@ interface FeedsState {
   skipRemainingPages: (feedId: string | null) => void;
 }
 
+/**
+ * フィード一覧 + 関連 state (feed data / feedGroups / categories / sidebarFeeds 等) を集約取得する hook。
+ * @param user - ログイン中ユーザー (null / undefined のときは fetch を skip)
+ * @param onError - エラー時の通知 callback
+ * @returns `FeedsState` (フィード配列 + groups + categories + 操作 callback 群)
+ */
 export function useFeeds(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,

@@ -1,6 +1,13 @@
 import { useMemo } from "react";
 import type { Feed, FeedGroup } from "../types";
 
+/**
+ * フィード一覧から派生する除外用 ID Set (NSFW / 選択グループ所属 / muted) を memo 化して返す hook。
+ * @param feeds - 全フィード配列
+ * @param feedGroups - 全フィードグループ配列 (グループ muted 判定用)
+ * @param selectedGroupId - 選択中グループ ID (null なら groupFeedIds は undefined)
+ * @returns `{ nsfwFeedIds, groupFeedIds, mutedFeedIds }` 各 Set<string>
+ */
 export function useFeedFilters(
   feeds: Feed[],
   feedGroups: FeedGroup[],

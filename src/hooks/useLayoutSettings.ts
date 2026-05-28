@@ -66,6 +66,10 @@ const loadContentWidth = () =>
 const loadImageDlFolder = (): string => storageGet(STORAGE_KEYS.IMAGE_DL_FOLDER) ?? "";
 const loadImageDlFolderNsfw = (): string => storageGet(STORAGE_KEYS.IMAGE_DL_FOLDER_NSFW) ?? "";
 
+/**
+ * 表示レイアウト設定 (layout / fontSize / カラム数 / 等) を localStorage に永続化しつつ管理する hook。
+ * @returns 各設定値 + setter callback (`{ layout, onChangeLayout, fontSize, onChangeFontSize, ... }`)
+ */
 export function useLayoutSettings() {
   const [layout, onChangeLayout] = useStoredSetting<Layout>(loadLayout, STORAGE_KEYS.LAYOUT);
   const [fontSize, onChangeFontSize] = useStoredSetting<FontSize>(

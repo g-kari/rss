@@ -18,6 +18,10 @@ export interface FeedPatchActions {
   setDigestLimit: (feed: Feed, limit: number | null) => Promise<void>;
 }
 
+/**
+ * フィードの部分更新 (PATCH) callback 群を提供する hook。NSFW / priority / category / group 等の toggle/setter を集約。
+ * @returns `FeedPatchActions` (`{ patchFeed, toggleNsfwFeed, togglePriorityFeed, setCategoryFeed, setGroupFeed, ... }`)
+ */
 export function useFeedPatch(
   updateFeed: (feed: Feed) => void,
   onError?: (msg: string) => void,

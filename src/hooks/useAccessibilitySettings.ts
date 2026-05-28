@@ -12,6 +12,10 @@ function loadTextJustify(): boolean {
   return storageGet(STORAGE_KEYS.TEXT_JUSTIFY) === "true";
 }
 
+/**
+ * アクセシビリティ設定 (line-height / textJustify / fontFamily / 等) を localStorage に永続化しつつ管理する hook。
+ * @returns 各設定値 + setter callback (`{ lineHeight, onChangeLineHeight, textJustify, toggleTextJustify, ... }`)
+ */
 export function useAccessibilitySettings() {
   const [lineHeight, onChangeLineHeight] = useStoredSetting<LineHeight>(
     loadLineHeight,

@@ -13,6 +13,10 @@ function loadTheme(): Theme {
     : "light";
 }
 
+/**
+ * テーマ設定 (light / dark) を localStorage に永続化しつつ `<html data-theme>` 属性に同期する hook。
+ * @returns `{ theme, toggleTheme, setTheme }` 現在のテーマ + 切替 callback
+ */
 export function useThemePreference() {
   const [theme, setTheme] = useState<Theme>(loadTheme);
 
