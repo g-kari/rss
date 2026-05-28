@@ -4,6 +4,7 @@ import { useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
+import Backdrop from "./Backdrop";
 
 interface Props {
   isOpen: boolean;
@@ -48,7 +49,7 @@ export default function ConfirmModal({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[49] bg-black/30" onPointerDown={onCancel} />
+      <Backdrop onPointerDown={onCancel} />
       <div
         ref={dialogRef}
         role="dialog"

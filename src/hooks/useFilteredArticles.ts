@@ -5,6 +5,11 @@ import { useGracePeriod } from "./useGracePeriod";
 import { filterByStructure, applyStateFilterAndSort } from "../lib/article-filter";
 import { createReadingTimeCache } from "../lib/article-utils";
 import { buildFilterMap, normalizeFilter, type CompiledKeywordFilter } from "../lib/keyword-filter";
+import {
+  equalDigestLimitMap,
+  equalStringMap,
+  equalCompiledFilterMap,
+} from "../lib/article-filter-equality";
 import { useArticleFilters } from "./useArticleFilters";
 import { useArticleSorting } from "./useArticleSorting";
 import { useArticlePagination } from "./useArticlePagination";
@@ -14,58 +19,6 @@ import { useArticlePagination } from "./useArticlePagination";
 const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
 const EMPTY_STR_ARRAY = Object.freeze([] as string[]) as string[];
 const EMPTY_FEED_ARRAY = Object.freeze([] as Feed[]) as Feed[];
-
-/**
- * 2 つの digestLimit Map が構造的に等しいか判定する純粋関数 (perf F2)。
- *
- * 5 分ポーリング等で `feeds` reference が変わるたびに `digestLimitMap` が新規生成
- * されるが、`digestLimit` 値自体は通常変化しない。本関数で旧 reference を保持して
- * `filtered` useMemo の不要な O(n log n) 再 sort を回避する (#686 equalSnoozedUntil 同パターン)。
- */
-function equalDigestLimitMap(a: Map<string, number>, b: Map<string, number>): boolean {
-  if (a === b) return true;
-  if (a.size !== b.size) return false;
-  for (const [key, val] of a) {
-    if (b.get(key) !== val) return false;
-  }
-  return true;
-}
-
-/**
- * `Map<string, string>` の構造的等価判定。
- *
- * `feedCategoryMap` / `feedTitleByHash` 等、5 分ポーリングで `feeds` reference が
- * 変わるたびに rebuild されるが内容自体は通常変化しない Map に適用する。
- * `equalDigestLimitMap` の string 値版 (perf 監査 37th cycle, confidence 95%)。
- */
-function equalStringMap(a: Map<string, string>, b: Map<string, string>): boolean {
-  if (a === b) return true;
-  if (a.size !== b.size) return false;
-  for (const [key, val] of a) {
-    if (b.get(key) !== val) return false;
-  }
-  return true;
-}
-
-/**
- * `Map<string, CompiledKeywordFilter>` の構造的等価判定 (perf 監査 43rd cycle, confidence 88%)。
- *
- * `buildFilterMap` は `compiledCache` 経由で同一フィルター内容に対して同じ
- * `CompiledKeywordFilter` reference を返すため、値は reference 比較で十分。
- * 5 分ポーリングで `feeds` reference が変わっても、フィルター設定が変化していなければ
- * 旧 Map reference を維持して `structuralFiltered` の O(n) 再フィルタを回避する。
- */
-function equalCompiledFilterMap(
-  a: Map<string, CompiledKeywordFilter>,
-  b: Map<string, CompiledKeywordFilter>,
-): boolean {
-  if (a === b) return true;
-  if (a.size !== b.size) return false;
-  for (const [key, val] of a) {
-    if (b.get(key) !== val) return false;
-  }
-  return true;
-}
 
 /** フィード選択に関する状態 */
 export interface FeedSelectionOptions {
