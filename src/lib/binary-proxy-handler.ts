@@ -18,7 +18,7 @@
  */
 import { formatError } from "@/lib/api-error";
 import { isValidPublicUrl } from "@/lib/url";
-import { buildCacheKey, cachePutAsync, matchCfCache } from "@/lib/cache-helper";
+import { buildCacheKey, cachePutAsync, deleteCfCache, matchCfCache } from "@/lib/cache-helper";
 import {
   DEFAULT_FETCH_TIMEOUT_MS,
   fetchFollowSafeRedirects,
@@ -137,15 +137,37 @@ export async function handleBinaryProxy<Reason extends string>(
 
   const cached = await matchCfCache(cacheKey);
   if (cached) {
-    return new Response(cached.body, {
-      headers: {
-        "Content-Type": cached.headers.get("Content-Type") ?? options.defaultCacheContentType,
-        "Cache-Control": `public, max-age=${options.cacheTtlSec}`,
-        "X-Cache": "HIT",
-        "Cross-Origin-Resource-Policy": "same-origin",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    // #853 (security 案 B): cache poisoning 防御として cache 取り出し時に MIME 再検証する。
+    // 攻撃者制御 URL の upstream が後から別 MIME を返すケースで cache に poisoned content
+    // が残ったままになるシナリオを防ぐ。magic byte 検証で mismatch を検出したら cache を
+    // 即時削除し、upstream 再 fetch (cache miss 経路) へフォールバックする。
+    // 発火タイミング: cache get 直後 (response 構築前) — デフォルト判断
+    // cache invalidate ロジック: 即時削除 — デフォルト判断
+    const cachedBody = cached.body ? await readBodyBytes(cached.body, options.maxBytes) : null;
+    if (cachedBody !== null) {
+      const cachedDetectedMime = options.detectMimeType(cachedBody);
+      if (cachedDetectedMime && options.allowedContentTypes.has(cachedDetectedMime)) {
+        return new Response(cachedBody, {
+          headers: {
+            "Content-Type": cached.headers.get("Content-Type") ?? options.defaultCacheContentType,
+            "Cache-Control": `public, max-age=${options.cacheTtlSec}`,
+            "X-Cache": "HIT",
+            "Cross-Origin-Resource-Policy": "same-origin",
+            "X-Content-Type-Options": "nosniff",
+          },
+        });
+      }
+      console.error(
+        `[${options.label}] cache poisoning detected: url=${url} cached-content-type="${cached.headers.get("Content-Type") ?? ""}" detected="${cachedDetectedMime ?? "null"}" — invalidating cache and re-fetching upstream`,
+      );
+      await deleteCfCache(cacheKey);
+    } else {
+      // body 読み込み失敗 (size 超過 / 不在) も poisoned とみなして invalidate
+      console.error(
+        `[${options.label}] cache body unreadable: url=${url} — invalidating cache and re-fetching upstream`,
+      );
+      await deleteCfCache(cacheKey);
+    }
   }
 
   try {
