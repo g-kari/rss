@@ -789,14 +789,13 @@ const match = matchesKeywordFilter(article, compiledFilter);
 - **orchestrator + sub-hook** 構造 (例: `useFilteredArticles` = `useArticleFilters` + `useArticleSorting` + `useArticlePagination`)
 - **詳細**: `react-component-split.md § 大きいコンポーネント / hook の機能別分割` 参照
 
-### Phase 2 / Phase 3 (将来サイクル)
+### 詳細化の進捗
 
-本章は概要レベル。詳細な category 別責務・利用パターン・cross-hook 依存関係は別途追加予定:
+本章は概要レベルから段階的に拡充されている:
 
-- **Phase 2**: `src/lib/` (130+ files) 機能別グループ化の subsection 追加
-- **Phase 3**: 全 hook の JSDoc `@param` / `@returns` 注釈整備 (IDE hover 改善)
-
-詳細は Issue #865 を参照。
+- **Phase 1 (完了)**: 本章「Hooks 層設計」section 自体 (カテゴリ分類 / 命名規則 / 設計原則)
+- **Phase 2 (完了)**: `src/lib/` (130+ files) 機能別グループ化の subsection (下記参照)
+- **Phase 3 (完了)**: 主要 public export hook 20 件に JSDoc `@param` / `@returns` 注釈追加 (IDE hover 改善、残 hook は新規追加サイクルで漸進整備)
 
 ---
 
@@ -860,13 +859,13 @@ const match = matchesKeywordFilter(article, compiledFilter);
 - **pipeline orchestrator + step 関数** 構造 (例: `content.ts` がオーケストレーター、各 step が独立 lib)
 - **`<feature>-<aspect>.ts` 命名で分割後の親子関係を可読化** (例: `ogp.ts` → `ogp-cache-ttl.ts` / `ogp-cache-schema.ts` で同 feature の aspect 別ファイル)
 
-### Phase 3 (将来サイクル)
+### 拡充候補 (将来サイクル)
 
-本章は概要レベル。詳細な group 別 cross-dependencies / Workers vs ブラウザ環境マトリクス・新規 import 推奨順序は別途追加予定:
+本 subsection は機能別グループ化レベル。以下は将来の docs sweep 候補:
 
-- **Phase 3**: 全 hook の JSDoc `@param` / `@returns` 注釈整備 (IDE hover 改善)、touch 15+ file で AI 自走条件外、ユーザー判断仰ぎ継続
-
-詳細は Issue #865 を参照。
+- group 別 cross-dependencies の図示
+- Workers vs ブラウザ環境マトリクス (各 lib がどちらで動くか)
+- 新規 import 時の推奨順序 (canonical helper 優先 / type alias 統一)
 
 ---
 
