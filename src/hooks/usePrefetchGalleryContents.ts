@@ -5,10 +5,8 @@ import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { contentLruCache } from "../lib/lru-cache";
 import { isAbortError } from "../lib/fetch";
-import { collectImageUrlsFromHtml } from "../lib/image-extractor";
-import { collectIframeUrlsFromHtml } from "../lib/embed-utils";
 import { parseRetryAfter } from "../lib/retry-after";
-import { buildArticlesKey } from "../lib/gallery-prefetch";
+import { buildArticlesKey, collectGalleryMediaFromHtml } from "../lib/gallery-prefetch";
 import { useSyncedRef } from "./useSyncedRef";
 
 export interface PrefetchedMedia {
@@ -106,10 +104,10 @@ async function fetchAndCacheArticle(
     if (!data.content) return null;
 
     contentLruCache.set(article.id, data.content);
-    const entry: PrefetchedMedia = {
-      images: collectImageUrlsFromHtml(data.content),
-      embeds: collectIframeUrlsFromHtml(data.content),
-    };
+    // #866 案 A: 2 helper (image / iframe) を 1 関数呼び出しに集約して
+    // 入力検証 + parsing pass を 1 箇所にまとめ、prefetch のホットパスの
+    // function call boundary を削減する。
+    const entry: PrefetchedMedia = collectGalleryMediaFromHtml(data.content);
     opts.setMedia((prev) => {
       const next = new Map(prev);
       next.set(article.id, entry);
@@ -127,8 +125,11 @@ async function fetchAndCacheArticle(
  * 画像・動画カテゴリのギャラリー表示で、記事本文を事前にバックグラウンド取得するフック。
  *
  * - `contentLruCache` に既に存在する記事はスキップして二重フェッチを避ける
- * - 取得した HTML を `collectImageUrlsFromHtml` / `collectIframeUrlsFromHtml` に通して
- *   画像配列・動画埋込み配列を抽出し、state の Map として公開する
+ * - 取得した HTML を `collectGalleryMediaFromHtml` に通して画像配列・動画埋込み配列を
+ *   1 関数呼び出しで抽出し、state の Map として公開する (#866 案 A — 旧実装は
+ *   `collectImageUrlsFromHtml` / `collectIframeUrlsFromHtml` を 2 callsite × 2 helper
+ *   = 4 回呼んでおり、600+ articles × prefetch スケールで regex parsing コストが
+ *   累積していた)
  * - 並列数を `concurrency` で制御、`articles` 配列の先頭 `maxPrefetch` 件のみ対象
  * - 各 fetch 完了後に `requestDelayMs` 待機して連続リクエストのバーストを抑制
  * - 1 件でも 429 レスポンスを受信したら以降の全フェッチを abort して連鎖的な 429 を防止
@@ -208,10 +209,9 @@ export function usePrefetchGalleryContents({
     for (const a of pending) {
       const cached = contentLruCache.get(a.id);
       if (cached) {
-        fromCache.set(a.id, {
-          images: collectImageUrlsFromHtml(cached),
-          embeds: collectIframeUrlsFromHtml(cached),
-        });
+        // #866 案 A: LRU cache hit 経路でも collectGalleryMediaFromHtml で
+        // image / iframe 抽出を 1 関数呼び出しに集約
+        fromCache.set(a.id, collectGalleryMediaFromHtml(cached));
       } else {
         toFetch.push(a);
       }
