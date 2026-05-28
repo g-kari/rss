@@ -7,7 +7,7 @@ import {
   CONTENT_WIDTH_CYCLE,
   CONTENT_WIDTH_LABELS,
 } from "../../lib/reader-settings";
-import { SettingRow, SegmentGroup } from "./shared";
+import { SettingRow, SegmentGroup, ToggleSwitch } from "./shared";
 
 interface LayoutSectionProps {
   lineHeight: LineHeight;
@@ -53,22 +53,11 @@ export default function LayoutSection({
       </SettingRow>
 
       <SettingRow label="両端揃え">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={textJustify}
-          aria-label={textJustify ? "両端揃えを OFF にする" : "両端揃えを ON にする"}
-          onClick={() => onChangeTextJustify(!textJustify)}
-          className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-            textJustify ? "bg-ink" : "bg-border-default"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-              textJustify ? "translate-x-5" : "translate-x-0"
-            }`}
-          />
-        </button>
+        <ToggleSwitch
+          checked={textJustify}
+          onChange={onChangeTextJustify}
+          ariaLabel={textJustify ? "両端揃えを OFF にする" : "両端揃えを ON にする"}
+        />
       </SettingRow>
     </>
   );

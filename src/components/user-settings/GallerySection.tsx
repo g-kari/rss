@@ -19,6 +19,14 @@ import {
 } from "../../lib/gallery-autoscroll";
 import { SettingRow, SegmentGroup } from "./shared";
 
+const GALLERY_AUTO_SCROLL_LABELS: Record<GalleryAutoScrollSpeed, string> = {
+  off: "OFF",
+  slow: "遅",
+  medium: "中",
+  fast: "速",
+  slideshow: "スライドショー",
+};
+
 interface GallerySectionProps {
   galleryColumns: (typeof GALLERY_COLUMNS_CYCLE)[number];
   onChangeGalleryColumns: (v: (typeof GALLERY_COLUMNS_CYCLE)[number]) => void;
@@ -107,16 +115,7 @@ export default function GallerySection({
         <SegmentGroup
           options={GALLERY_AUTO_SCROLL_SPEEDS.map((v) => ({
             value: v,
-            label:
-              v === "off"
-                ? "OFF"
-                : v === "slow"
-                  ? "遅"
-                  : v === "medium"
-                    ? "中"
-                    : v === "fast"
-                      ? "速"
-                      : "スライドショー",
+            label: GALLERY_AUTO_SCROLL_LABELS[v],
           }))}
           value={galleryAutoScrollSpeed}
           onChange={onChangeGalleryAutoScrollSpeed}
