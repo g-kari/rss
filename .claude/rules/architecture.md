@@ -211,7 +211,7 @@ src/
     article-view/ArticleContentBody.tsx     # 記事本文描画ボディ（ArticleView から分割）
     article-view/EmptyArticleView.tsx       # 記事未選択時のプレースホルダ表示
     article-view/FetchFullContentArea.tsx   # 「全文取得」CTA 領域（ボタン・retry・進捗）
-    user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel / FeedManagementTabPanel / ImportExportTabPanel / TtsVoiceSection / shared）
+    user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel orchestrator + FontSection / LayoutSection / GallerySection / AutoReadSection / ImageDlSection / FeedManagementTabPanel / ImportExportTabPanel / TtsVoiceSection / shared、#880 で DisplayTabPanel を機能別 5 Section に分割）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
     useAuth.ts               # /api/auth/me fetch → user / betaRestricted
