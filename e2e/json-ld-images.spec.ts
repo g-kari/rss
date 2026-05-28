@@ -152,4 +152,38 @@ test.describe("appendMissingJsonLdImages — 抽出結果に不足分の画像�
     ]);
     expect(result).toContain(`src="https://example.com/img.jpg?a=1&amp;b=2&amp;c=&quot;x&quot;"`);
   });
+
+  // #875: 同一画像のクエリパラメータ違い (PR TIMES 系 CDN URL) を path 一致で同一視
+  test("クエリパラメータ違いの同一画像は補完しない (PR TIMES 真因 fixture)", () => {
+    const content = `<p>text</p><img src="https://prcdn.freetls.fastly.net/release_image/34617/489/X-3840x2160.png?width=1950&height=1350&quality=85,65&format=jpeg" />`;
+    const jsonLdUrl =
+      "https://prcdn.freetls.fastly.net/release_image/34617/489/X-3840x2160.png?format=jpeg&auto=webp&fit=bounds&width=2400&height=1260";
+    const result = appendMissingJsonLdImages(content, [jsonLdUrl]);
+    expect(result).toBe(content);
+  });
+
+  test("path が同じでも hostname が異なる場合は補完する (CDN 別扱い)", () => {
+    const content = `<p>text</p><img src="https://cdn-a.example.com/path/img.jpg?w=1000" />`;
+    const jsonLdUrl = "https://cdn-b.example.com/path/img.jpg?w=2000";
+    const result = appendMissingJsonLdImages(content, [jsonLdUrl]);
+    expect(result).toContain(`src="${jsonLdUrl.replace(/&/g, "&amp;")}"`);
+  });
+
+  test("不正な URL の jsonLdUrl は文字列完全一致 fallback で判定", () => {
+    // URL parse fail → 文字列完全一致 fallback
+    const content = `<p>text</p>`;
+    const jsonLdUrl = "not-a-valid-url";
+    const result = appendMissingJsonLdImages(content, [jsonLdUrl]);
+    // 不正 URL も「不足」として追加される (文字列完全一致 fallback で false → missing 扱い)
+    expect(result).toContain(`src="not-a-valid-url"`);
+  });
+
+  test("HTML エンティティ &amp; encoded された本文 img も path 一致判定で同一視", () => {
+    // postProcess 後の本文は & が &amp; に escape されているケース
+    const content = `<p>text</p><img src="https://prcdn.freetls.fastly.net/release_image/34617/489/X-3840x2160.png?width=1950&amp;height=1350&amp;quality=85,65&amp;format=jpeg" />`;
+    const jsonLdUrl =
+      "https://prcdn.freetls.fastly.net/release_image/34617/489/X-3840x2160.png?format=jpeg&width=2400";
+    const result = appendMissingJsonLdImages(content, [jsonLdUrl]);
+    expect(result).toBe(content);
+  });
 });
