@@ -164,11 +164,55 @@ export default function ArticleListEmptyState({
               <p className="text-[12px] text-text-faint">ブックマークはありません</p>
             </>
           ) : readingListOnly ? (
-            <p className="text-[12px] text-text-faint">後で読むリストは空です</p>
+            <>
+              {/* 後で読む (時計アイコン): ArticleHeaderEngagement の readingList ボタンと同 SVG path */}
+              <svg
+                className="w-6 h-6 text-text-faint mb-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              <p className="text-[12px] text-text-faint">後で読むリストは空です</p>
+            </>
           ) : likeOnly ? (
-            <p className="text-[12px] text-text-faint">いいねした記事はありません</p>
+            <>
+              {/* いいね (ハートアイコン): ArticleHeaderEngagement の like ボタンと同 SVG path */}
+              <svg
+                className="w-6 h-6 text-text-faint mb-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+              <p className="text-[12px] text-text-faint">いいねした記事はありません</p>
+            </>
           ) : noteOnly ? (
-            <p className="text-[12px] text-text-faint">メモ付きの記事はありません</p>
+            <>
+              {/* メモ (鉛筆アイコン): ArticleHeaderEngagement の note ボタンと同 SVG path */}
+              <svg
+                className="w-6 h-6 text-text-faint mb-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              <p className="text-[12px] text-text-faint">メモ付きの記事はありません</p>
+            </>
           ) : (
             <p className="text-[12px] text-text-faint">記事がありません</p>
           )}

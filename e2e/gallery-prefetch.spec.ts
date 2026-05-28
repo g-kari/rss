@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { buildArticlesKey } from "../src/lib/gallery-prefetch";
+import { buildArticlesKey, collectGalleryMediaFromHtml } from "../src/lib/gallery-prefetch";
+import { collectImageUrlsFromHtml } from "../src/lib/image-extractor";
+import { collectIframeUrlsFromHtml } from "../src/lib/embed-utils";
 import { makeArticle as makeBaseArticle } from "./helpers/article";
 
 const makeArticle = (id: string, link?: string) =>
@@ -76,5 +78,85 @@ test.describe("buildArticlesKey (#669)", () => {
     const a1 = [makeArticle("p1"), makeArticle("p2")];
     const a2 = [makeArticle("p1"), makeArticle("p2")]; // 別参照だが内容同じ
     expect(buildArticlesKey(a1)).toBe(buildArticlesKey(a2));
+  });
+});
+
+// #866 案 A: collectGalleryMediaFromHtml は collectImageUrlsFromHtml +
+// collectIframeUrlsFromHtml を 1 関数呼び出しに集約した combined helper。
+// 戻り値の images / embeds が既存 2 helper の個別呼出と完全互換 (順序含む)
+// であることを保証する regression spec。
+test.describe("collectGalleryMediaFromHtml (#866 案 A)", () => {
+  test("空文字 → 空配列ペア", () => {
+    expect(collectGalleryMediaFromHtml("")).toEqual({ images: [], embeds: [] });
+  });
+
+  test("非 string 入力 (null / undefined / number / object) → 空配列ペア (#812 defensive)", () => {
+    expect(collectGalleryMediaFromHtml(null)).toEqual({ images: [], embeds: [] });
+    expect(collectGalleryMediaFromHtml(undefined)).toEqual({ images: [], embeds: [] });
+    expect(collectGalleryMediaFromHtml(42)).toEqual({ images: [], embeds: [] });
+    expect(collectGalleryMediaFromHtml({ content: "<img src='x.jpg'>" })).toEqual({
+      images: [],
+      embeds: [],
+    });
+    expect(collectGalleryMediaFromHtml(["<img src='x.jpg'>"])).toEqual({
+      images: [],
+      embeds: [],
+    });
+    expect(collectGalleryMediaFromHtml(true)).toEqual({ images: [], embeds: [] });
+  });
+
+  test("image のみ含む HTML → images に抽出、embeds は空", () => {
+    const html = '<div><img src="https://example.com/photo.jpg" width="800" height="600"></div>';
+    const result = collectGalleryMediaFromHtml(html);
+    expect(result.images).toEqual(["https://example.com/photo.jpg"]);
+    expect(result.embeds).toEqual([]);
+  });
+
+  test("YouTube iframe のみ含む HTML → embeds に抽出、images は空", () => {
+    const html = '<div><iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe></div>';
+    const result = collectGalleryMediaFromHtml(html);
+    expect(result.images).toEqual([]);
+    expect(result.embeds).toEqual(["https://www.youtube.com/embed/dQw4w9WgXcQ"]);
+  });
+
+  test("image + iframe 両方含む HTML → 両方抽出", () => {
+    const html = `
+      <article>
+        <img src="https://example.com/a.jpg" width="800" height="600">
+        <iframe src="https://www.youtube.com/embed/abc123XYZ_0"></iframe>
+        <img src="https://example.com/b.jpg" width="800" height="600">
+      </article>
+    `;
+    const result = collectGalleryMediaFromHtml(html);
+    expect(result.images).toEqual(["https://example.com/a.jpg", "https://example.com/b.jpg"]);
+    expect(result.embeds).toEqual(["https://www.youtube.com/embed/abc123XYZ_0"]);
+  });
+
+  // 既存挙動互換性の最重要 regression: combined helper の出力が
+  // 既存 2 helper を個別に呼んだ結果と完全一致 (順序含む)
+  test("既存挙動互換性: images / embeds が個別呼出と完全一致", () => {
+    const html = `
+      <article>
+        <a href="https://example.com/full.jpg">link</a>
+        <picture>
+          <source srcset="https://example.com/responsive.jpg 1x, https://example.com/responsive@2x.jpg 2x">
+        </picture>
+        <img src="https://example.com/inline.jpg" width="800" height="600">
+        <iframe src="https://www.youtube.com/embed/abc123XYZ_0"></iframe>
+        <iframe src="https://player.vimeo.com/video/123456789"></iframe>
+      </article>
+    `;
+    const combined = collectGalleryMediaFromHtml(html);
+    expect(combined.images).toEqual(collectImageUrlsFromHtml(html));
+    expect(combined.embeds).toEqual(collectIframeUrlsFromHtml(html));
+  });
+
+  test("既存挙動互換性: image / iframe どちらもない HTML でも個別呼出と一致", () => {
+    const html = "<p>テキストのみ</p><blockquote>引用</blockquote>";
+    const combined = collectGalleryMediaFromHtml(html);
+    expect(combined.images).toEqual(collectImageUrlsFromHtml(html));
+    expect(combined.embeds).toEqual(collectIframeUrlsFromHtml(html));
+    expect(combined.images).toEqual([]);
+    expect(combined.embeds).toEqual([]);
   });
 });

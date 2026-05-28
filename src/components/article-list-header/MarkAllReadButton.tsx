@@ -31,7 +31,7 @@ export default function MarkAllReadButton({ onMarkAllRead }: MarkAllReadButtonPr
       onClick={handleClick}
       aria-label={confirmMarkAll ? "全記事を既読にする（確認）" : "全て既読にする"}
       title={confirmMarkAll ? "もう一度押すと全て既読にします" : `${SHORTCUT_MAP["m"]} (m)`}
-      className={`flex items-center justify-center rounded-full transition-all duration-200 ${
+      className={`relative overflow-hidden flex items-center justify-center rounded-full transition-all duration-200 ${
         confirmMarkAll
           ? "px-2 h-6 text-[10px] font-medium text-error border border-rose-400 hover:bg-rose-400/10"
           : "w-6 h-6 text-text-faint hover:text-text-muted hover:bg-surface-subtle"
@@ -53,6 +53,17 @@ export default function MarkAllReadButton({ onMarkAllRead }: MarkAllReadButtonPr
           <circle cx="6" cy="6" r="4.5" />
           <path d="M3.5 6l1.8 1.8L8.5 4" />
         </svg>
+      )}
+      {confirmMarkAll && (
+        // 確認状態のカウントダウン進捗バー: 3 秒で 100% → 0% に縮む細線。
+        // ToastContainer の `undoProgress` keyframe (globals.css) を再利用し、
+        // animationDuration: "3s" で setTimeout(3000) と同期させる。
+        // CSS animation 完結のため 1 秒ごとの re-render は不要 (ui-rendering.md カラー規範: text-error と整合の rose-400)。
+        <span
+          aria-hidden="true"
+          className="absolute bottom-0 left-0 h-0.5 bg-rose-400 animate-undo-progress"
+          style={{ animationDuration: "3s" }}
+        />
       )}
     </button>
   );
