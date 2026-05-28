@@ -4,6 +4,7 @@ import { useState, useCallback, type RefObject } from "react";
 import type { Article } from "../types";
 import { useToast } from "../contexts/ToastContext";
 import { apiFetch } from "../lib/api-fetch";
+import { devError } from "../lib/dev-log";
 import { STORAGE_KEYS, loadSet, saveSet } from "../lib/storage";
 import {
   collectImageUrls,
@@ -60,7 +61,8 @@ async function fetchOne(url: string, originalIndex: number): Promise<Fetched | n
       // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
     }
     return { originalIndex, blob, ext };
-  } catch {
+  } catch (err) {
+    devError("[useImageDownload] fetch failed", url, err);
     return null;
   }
 }
