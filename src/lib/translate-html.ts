@@ -14,6 +14,7 @@ import {
   isTranslatorApiSupported,
   shouldUseBrowserTranslation,
 } from "./browser-translator";
+import { devError } from "./dev-log";
 
 /** 翻訳対象から除外するタグ（コード・実行系・埋め込み） */
 const SKIP_TAGS = new Set([
@@ -182,7 +183,8 @@ export async function translateHtmlInBrowser(
     await translateAndApply(texts, attrs, translator);
 
     return root.innerHTML;
-  } catch {
+  } catch (err) {
+    devError("[translate-html] translateHtmlInBrowser failed", err);
     return null;
   }
 }
