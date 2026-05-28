@@ -1,6 +1,6 @@
-import type { Article, DateRange, ReadingTimeRange } from "../types";
+import type { Article, DateRange, ReadingTimeRange, SortOrder } from "../types";
 import { type CompiledKeywordFilter, matchesKeywordFilter } from "./keyword-filter";
-import { getDateRangeStart, readingTime } from "./article-utils";
+import { createReadingTimeCache, getDateRangeStart, readingTime } from "./article-utils";
 import { compileSearchQuery, type SearchContext } from "./full-text-search";
 import { SPECIAL_FEED_IDS } from "./storage";
 
@@ -95,7 +95,7 @@ export interface ArticleStateQueryOptions {
 /** 検索・日付・ソート等の表示オプション */
 export interface ArticleDisplayOptions {
   query: string;
-  sortOrder: "newest" | "oldest";
+  sortOrder: SortOrder;
   dateRange: DateRange;
   /** 現在選択中 or 直前まで選択していた記事ID（フィルタ対象外） */
   activeIds: Set<string>;
@@ -344,7 +344,7 @@ export interface StateFilterOptions {
   likeOnly: boolean;
   noteOnly: boolean;
   noteIds: Set<string>;
-  sortOrder: "newest" | "oldest";
+  sortOrder: SortOrder;
   activeIds: Set<string>;
   readBeforeTimestamp: string | null;
   historyOrder: string[];
@@ -389,7 +389,10 @@ export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOp
   const { activeIds } = opts;
   const statePredicate = buildStatePredicate(opts);
 
-  const needsSort = opts.feedId === SPECIAL_FEED_IDS.HISTORY || opts.sortOrder === "oldest";
+  const needsSort =
+    opts.feedId === SPECIAL_FEED_IDS.HISTORY ||
+    opts.sortOrder === "oldest" ||
+    opts.sortOrder === "readingTimeAsc";
   const isDigestFeed = opts.feedId === SPECIAL_FEED_IDS.DIGEST;
   const needsDigest = !!(
     (opts.digestMode || isDigestFeed) &&
@@ -411,6 +414,9 @@ export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOp
     list.sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
   } else if (opts.sortOrder === "oldest") {
     list.reverse();
+  } else if (opts.sortOrder === "readingTimeAsc") {
+    const getMins = createReadingTimeCache();
+    list.sort((a, b) => getMins(a) - getMins(b));
   }
 
   if (needsDigest) {
