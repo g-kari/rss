@@ -3,6 +3,7 @@ import {
   MIN_IMAGE_SIZE_PX,
   bestSrcFromSrcset,
   collectImageUrlsFromHtml,
+  normalizeImageUrlForDedup,
 } from "../src/lib/image-extractor";
 
 /**
@@ -224,15 +225,17 @@ test.describe("collectImageUrlsFromHtml — <picture><source srcset> から抽�
     expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/ok.jpg"]);
   });
 
-  test("複数の <picture> 要素を跨いで全て拾う (走査順は source 全件 → img 全件)", () => {
+  test("複数の <picture> 要素を跨いで全て拾う (#885 の dedup で webp/jpg 同 stem は集約)", () => {
+    // #885 以前は `["1.webp", "2.webp", "1.jpg", "2.jpg"]` 4 件返していたが、
+    // webp / jpg は同一画像の異なる解像度フォーマットなので normalize 後 stem 一致で
+    // 1 件に集約される (走査順は source 全件 → img 全件、jpg は source で既に
+    // 集約済の stem と一致するため skip)
     const html =
       '<picture><source srcset="https://example.com/1.webp"><img src="https://example.com/1.jpg"></picture>' +
       '<picture><source srcset="https://example.com/2.webp"><img src="https://example.com/2.jpg"></picture>';
     expect(collectImageUrlsFromHtml(html)).toEqual([
       "https://example.com/1.webp",
       "https://example.com/2.webp",
-      "https://example.com/1.jpg",
-      "https://example.com/2.jpg",
     ]);
   });
 });
@@ -269,5 +272,105 @@ test.describe("collectImageUrlsFromHtml — #812 defensive (unknown 受け)", ()
   test("string は正常動作 (regression)", () => {
     const html = '<img src="https://example.com/x.jpg" width="200" height="200">';
     expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/x.jpg"]);
+  });
+});
+
+test.describe("normalizeImageUrlForDedup (#885)", () => {
+  test("末尾の拡張子を strip する", () => {
+    expect(normalizeImageUrlForDedup("https://example.com/img.jpg")).toBe(
+      "https://example.com/img",
+    );
+  });
+
+  test("拡張子違いの同 stem は同一に正規化", () => {
+    const a = normalizeImageUrlForDedup("https://example.com/img.jpg");
+    const b = normalizeImageUrlForDedup("https://example.com/img.webp");
+    expect(a).toBe(b);
+  });
+
+  test("WordPress 風 `-WxH` size suffix を strip", () => {
+    expect(normalizeImageUrlForDedup("https://example.com/img-300x200.jpg")).toBe(
+      "https://example.com/img",
+    );
+  });
+
+  test("size suffix なしと同 stem は同一に正規化", () => {
+    const a = normalizeImageUrlForDedup("https://example.com/img.jpg");
+    const b = normalizeImageUrlForDedup("https://example.com/img-300x200.jpg");
+    expect(a).toBe(b);
+  });
+
+  test("異なる stem は別の正規化結果になる", () => {
+    const a = normalizeImageUrlForDedup("https://example.com/photo1.jpg");
+    const b = normalizeImageUrlForDedup("https://example.com/photo2.jpg");
+    expect(a).not.toBe(b);
+  });
+
+  test("同じ filename でもディレクトリが違うと別物", () => {
+    const a = normalizeImageUrlForDedup("https://example.com/post1/img.jpg");
+    const b = normalizeImageUrlForDedup("https://example.com/post2/img.jpg");
+    expect(a).not.toBe(b);
+  });
+
+  test("image-proxy URL は内部 url を抽出して正規化", () => {
+    const proxied = `/api/image-proxy?url=${encodeURIComponent("https://example.com/img-300x200.jpg")}`;
+    expect(normalizeImageUrlForDedup(proxied)).toBe("https://example.com/img");
+  });
+
+  test("拡張子なし URL はそのまま (stem のみ抽出)", () => {
+    expect(normalizeImageUrlForDedup("https://example.com/no-ext")).toBe(
+      "https://example.com/no-ext",
+    );
+  });
+
+  test("不正 URL は元のまま fallback", () => {
+    expect(normalizeImageUrlForDedup("not-a-url")).toBe("not-a-url");
+  });
+
+  test("空文字は空文字", () => {
+    expect(normalizeImageUrlForDedup("")).toBe("");
+  });
+});
+
+test.describe("collectImageUrlsFromHtml — 同一画像 dedup (#885)", () => {
+  test("<a href> + <picture><source> + <img> の 3 重抽出は 1 件に集約", () => {
+    const html = `
+      <a href="https://example.com/img-large.jpg">
+        <picture>
+          <source srcset="https://example.com/img-large.webp 2x">
+          <img src="https://example.com/img-large-300x200.jpg" width="600" height="400">
+        </picture>
+      </a>
+    `;
+    // <a href> 経由のフル解像度が最初に拾われて push される
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/img-large.jpg"]);
+  });
+
+  test("<a href> + <img> の同 stem 異 size suffix は 1 件", () => {
+    const html =
+      '<a href="https://example.com/photo.jpg"><img src="https://example.com/photo-300x200.jpg" width="600" height="400"></a>';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/photo.jpg"]);
+  });
+
+  test("異なる画像は別々に保持される", () => {
+    const html = `
+      <img src="https://example.com/dog.jpg" width="600" height="400">
+      <img src="https://example.com/cat.jpg" width="600" height="400">
+    `;
+    expect(collectImageUrlsFromHtml(html)).toEqual([
+      "https://example.com/dog.jpg",
+      "https://example.com/cat.jpg",
+    ]);
+  });
+
+  test("同 stem でもディレクトリが違えば別物として保持", () => {
+    const html = `
+      <img src="https://example.com/post1/img.jpg" width="600" height="400">
+      <img src="https://example.com/post2/img.jpg" width="600" height="400">
+    `;
+    expect(collectImageUrlsFromHtml(html)).toEqual([
+      "https://example.com/post1/img.jpg",
+      "https://example.com/post2/img.jpg",
+    ]);
   });
 });
