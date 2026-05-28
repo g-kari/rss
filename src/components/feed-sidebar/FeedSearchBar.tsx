@@ -20,6 +20,7 @@ export default function FeedSearchBar({ value, onChange }: Props) {
           stroke="currentColor"
           strokeWidth="1.5"
           className="text-text-faint flex-shrink-0"
+          aria-hidden="true"
         >
           <circle cx="4.5" cy="4.5" r="3" />
           <line x1="7" y1="7" x2="10" y2="10" strokeLinecap="round" />
@@ -60,6 +61,7 @@ export default function FeedSearchBar({ value, onChange }: Props) {
               stroke="currentColor"
               strokeWidth="1.5"
               strokeLinecap="round"
+              aria-hidden="true"
             >
               <line x1="2" y1="2" x2="8" y2="8" />
               <line x1="8" y1="2" x2="2" y2="8" />

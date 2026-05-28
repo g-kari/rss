@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, type RefObject, type UIEvent } from "re
 import { useSyncedRef } from "./useSyncedRef";
 import { useReadingProgress, loadProgress } from "./useReadingProgress";
 
-export interface ArticleViewProgressDeps {
+interface ArticleViewProgressDeps {
   articleId: string | undefined;
   contentRef: RefObject<HTMLDivElement | null>;
   autoReadEnabled: boolean;
@@ -12,7 +12,7 @@ export interface ArticleViewProgressDeps {
   onAutoMarkRead?: (articleId: string) => void;
 }
 
-export interface ArticleViewProgressResult {
+interface ArticleViewProgressResult {
   progressBarRef: RefObject<HTMLDivElement | null>;
   handleScroll: (e: UIEvent<HTMLElement>) => void;
 }

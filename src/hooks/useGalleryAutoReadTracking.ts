@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-export interface GalleryAutoReadTrackingState {
+interface GalleryAutoReadTrackingState {
   /** 自動既読として既に処理済みの記事 ID */
   galleryAutoReadIds: Set<string>;
   /** 1 件追加 (重複は無視) */
   handleGalleryAutoRead: (id: string) => void;
 }
 
-export interface GalleryAutoReadTrackingOptions {
+interface GalleryAutoReadTrackingOptions {
   /** リセットトリガーとなる選択 ID 群 (フィード/グループ/ビュー/レイアウトの切替) */
   selectedFeedId: string | null;
   selectedGroupId: string | null;
