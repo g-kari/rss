@@ -93,11 +93,12 @@ npx playwright install chromium   # or chrome / firefox / webkit
 
 ### 機能 regression と環境問題の区別
 
-| エラーメッセージ                                       | 真因                          | 対処                                                                            |
-| ------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------- |
-| `browserType.launch: Executable doesn't exist at ...`  | binary cache 不整合 (環境)    | `npx playwright install`                                                        |
-| `Test timeout of Xms exceeded` / `locator(...) failed` | UI / 機能 regression (コード) | 該当 spec の対象実装を Read で確認、機能修正                                    |
-| `connect ECONNREFUSED 127.0.0.1:3000`                  | dev server 起動失敗 (環境)    | next.config.ts `remoteBindings: false` / wrangler login 等の dev infra 設定確認 |
+| エラーメッセージ                                                                  | 真因                                 | 対処                                                                            |
+| --------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------- |
+| `browserType.launch: Executable doesn't exist at ...`                             | binary cache 不整合 (環境)           | `npx playwright install`                                                        |
+| `Test timeout of Xms exceeded` / `locator(...) failed`                            | UI / 機能 regression (コード)        | 該当 spec の対象実装を Read で確認、機能修正                                    |
+| `connect ECONNREFUSED 127.0.0.1:3000`                                             | dev server 起動失敗 (環境)           | next.config.ts `remoteBindings: false` / wrangler login 等の dev infra 設定確認 |
+| `Uncaught Error: Rendered more hooks than the previous render` / `Hooks can only` | React runtime bug (master HEAD 既存) | 本変更影響 verify + 別 Issue 起票 + 環境問題系として SKIP=e2e-test 適用         |
 
 **How to apply**: pre-commit hook の e2e 大量 fail を観測したら以下を判定 (binary cache 不在は機能 regression と完全に独立した環境問題、エラーメッセージ全文を読まずに `N failed` summary だけ見ると 2-3 サイクル消費して撤回 / SKIP=e2e-test 多用に陥る):
 
@@ -114,6 +115,43 @@ npx playwright install chromium   # or chrome / firefox / webkit
 - `npx playwright install` 完了後も同 spec が **fail 継続** → 機能 regression の可能性、別途調査
 
 主な使用箇所: 前々サイクル ws bump の副作用で `@playwright/test 1.59.1 → 1.60.0` が master に反映済 + binary cache `1217` のまま → e2e 21 件 fail を 2 サイクル連続「機能 regression」と誤認 (前々サイクル: 撤回判断 / 前サイクル: SKIP=e2e-test) → 本サイクルでエラーメッセージ全文 (`Executable doesn't exist at chromium_headless_shell-1223`) を読んで真因判明 → `npx playwright install chromium` 1 コマンドで修復完了
+
+### 派生サブケース: binary cache OK + e2e 大量 fail のとき「Rendered more hooks」型 React runtime error を疑う
+
+binary cache が揃っているのに pre-commit hook の e2e が大量 fail するとき、本変更が機能 regression を起こしているのか、master HEAD に既存の React runtime bug が存在するのか判定する必要がある。React は SSR と CSR、または条件分岐内の hook 呼出で **`Uncaught Error: Rendered more hooks than during the previous render`** / **`Hooks can only be called inside a function component`** 等の runtime error を起こし、これが全 spec の startup を破壊して大量 fail に見える。
+
+```
+パターン: binary cache 揃い + e2e 大量 fail 真因切り分けフロー
+  1. binary 確認 (`ls ~/.cache/ms-playwright/`) で必要 chromium が揃っているか
+  2. 失敗 spec 1 件を `npx playwright test e2e/<spec> --project=chromium 2>&1 | tail -50` で単体実行
+  3. エラーメッセージ全文を grep:
+     - "Executable doesn't exist at" → binary cache 不整合 (本派生ケース本体)
+     - "Test timeout of Xms exceeded" → UI / 機能 regression (本変更が trigger)
+     - "Uncaught Error: Rendered more hooks" / "Hooks can only be called" → React runtime bug
+     - "connect ECONNREFUSED" → dev server 起動失敗
+  4. React runtime bug が判明したら、本変更との関連を判定:
+     - 本変更が touch した file が hook 呼出 / SSR/CSR 境界 / next/dynamic({ ssr: false }) 境界に影響するか?
+     - touch ファイルが pure semantic 変更 (aria 属性 / className / 文字列) のみなら影響なし
+     - 影響なしなら master HEAD の既存 bug、本サイクルでは別 Issue 起票 + SKIP=e2e-test 適用
+     - 影響ありなら本変更が trigger、修正してから commit
+```
+
+**How to apply**: binary cache OK + e2e 大量 fail を観測したら以下を判定 (React runtime error は binary cache 不整合と並ぶ「環境 vs コード regression vs 既存 bug」の独立判断軸、エラーメッセージ全文を読まず `N failed` summary だけ見ると 1-2 サイクル消費して撤回 / SKIP 多用に陥る):
+
+1. **binary cache の存在確認** (`ls ~/.cache/ms-playwright/chromium*`) — 揃っていれば binary 問題でないと確定
+2. **失敗 spec 1 件を単体実行** + エラーメッセージ全文を `tail -50` で確認
+3. **React runtime error の signature を grep**: `Rendered more hooks` / `Hooks can only` / `Cannot read property of undefined` の React-specific phrase 検出
+4. **本変更が React rendering に影響するか判定** — semantic-only 変更 (aria 属性 / className / 文字列定数) は React rendering 数に影響しない
+5. **影響なしなら master HEAD の既存 bug** として別 Issue 起票 (issue-handling skill「設計判断が必要な Issue へのコメントテンプレート」適用) + 本変更は SKIP=e2e-test で commit (環境問題系と同等扱い、commit message に「React runtime bug 既存 / 本変更は rendering 無関係」エビデンス明記)
+6. **本変更影響範囲 spec を単体実行で pass 確認** + commit message に「本変更影響範囲 spec: N 件 pass」を必ず記載
+
+**反例 (React runtime error が本変更 trigger のケース)**:
+
+- 本変更が **新規 hook 追加** / **既存 hook の deps 配列変更** / **Provider tree 変更** / **`next/dynamic({ ssr: false })` 境界追加** → React rendering 数に影響、本変更が trigger 可能性高
+- 本変更前は e2e 全 pass、本変更後に大量 fail → 本変更 trigger 確定、修正してから commit
+- 該当 React runtime error が **本変更で touch した hook / component** の line を stack trace で指している → 本変更 trigger
+
+主な使用箇所: ToastContainer.tsx の `role="status"` 削除 + SVG `aria-hidden` 追加 commit で pre-commit e2e が大量 fail → binary cache 揃い (chromium 1223 + 1217 両方) 確認後に単体実行で `Uncaught Error: Rendered more hooks than during the previous render at useOgpCache.ts:31` (master HEAD 既存 bug) 判明 → semantic-only 変更で React rendering 無関係と確定 → SKIP=e2e-test + 別 Issue 起票 (`useOgpCache` hook order regression) で fix-forward
 
 ## pre-commit hook の auto-fix 経由で commit が落ちるケースを検知 + 回復する
 
