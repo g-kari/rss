@@ -104,10 +104,16 @@ async function probeCommonFeedPaths(baseUrl: string): Promise<string | null> {
 /**
  * URL から RSS/Atom フィード URL を探索する。
  *
+ * 初期 URL を `isValidFeedUrl` で検証してから fetch を実行する。
+ * `fetchFollowSafeRedirects` はリダイレクト先のみ検証し初期 URL は素通しするため、
+ * `recommendation.ts` の Brave Search / JSON-LD 由来 URL を直接渡す経路で
+ * プライベートネットワーク (RFC1918) への SSRF が成立しないようガードする。
+ *
  * @param url 探索対象の URL（RSS 直リンク、またはサイトのトップページなど）
  * @returns 発見したフィード URL。見つからない場合は null。
  */
 export async function discoverFeedUrl(url: string): Promise<string | null> {
+  if (!isValidFeedUrl(url)) return null;
   try {
     const res = await fetchFollowSafeRedirects(
       url,

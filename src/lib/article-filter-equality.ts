@@ -12,14 +12,25 @@ import type { CompiledKeywordFilter } from "./keyword-filter";
  * `src/lib/read-state-merge.ts#equalSnoozedUntil` と同 pattern。
  */
 
-/** `Map<string, number>` の構造的等価判定 (digestLimitMap 用) */
-export function equalDigestLimitMap(a: Map<string, number>, b: Map<string, number>): boolean {
+/**
+ * `Map<string, V>` の構造的等価判定 generic helper。
+ *
+ * 値は `===` で比較するので `V` は primitive (`number` / `string`) または
+ * 同一性が外部で保証された参照型 (例: `CompiledKeywordFilter` は `buildFilterMap` の
+ * `compiledCache` で同一フィルター内容に対して同 reference を返す前提) に限る。
+ */
+function equalMap<V>(a: Map<string, V>, b: Map<string, V>): boolean {
   if (a === b) return true;
   if (a.size !== b.size) return false;
   for (const [key, val] of a) {
     if (b.get(key) !== val) return false;
   }
   return true;
+}
+
+/** `Map<string, number>` の構造的等価判定 (digestLimitMap 用) */
+export function equalDigestLimitMap(a: Map<string, number>, b: Map<string, number>): boolean {
+  return equalMap(a, b);
 }
 
 /**
@@ -27,19 +38,13 @@ export function equalDigestLimitMap(a: Map<string, number>, b: Map<string, numbe
  *
  * `feedCategoryMap` / `feedTitleByHash` 等、5 分ポーリングで `feeds` reference が
  * 変わるたびに rebuild されるが内容自体は通常変化しない Map に適用する。
- * `equalDigestLimitMap` の string 値版 (perf 監査 37th cycle, confidence 95%)。
  */
 export function equalStringMap(a: Map<string, string>, b: Map<string, string>): boolean {
-  if (a === b) return true;
-  if (a.size !== b.size) return false;
-  for (const [key, val] of a) {
-    if (b.get(key) !== val) return false;
-  }
-  return true;
+  return equalMap(a, b);
 }
 
 /**
- * `Map<string, CompiledKeywordFilter>` の構造的等価判定 (perf 監査 43rd cycle, confidence 88%)。
+ * `Map<string, CompiledKeywordFilter>` の構造的等価判定。
  *
  * `buildFilterMap` は `compiledCache` 経由で同一フィルター内容に対して同じ
  * `CompiledKeywordFilter` reference を返すため、値は reference 比較で十分。
@@ -50,10 +55,5 @@ export function equalCompiledFilterMap(
   a: Map<string, CompiledKeywordFilter>,
   b: Map<string, CompiledKeywordFilter>,
 ): boolean {
-  if (a === b) return true;
-  if (a.size !== b.size) return false;
-  for (const [key, val] of a) {
-    if (b.get(key) !== val) return false;
-  }
-  return true;
+  return equalMap(a, b);
 }

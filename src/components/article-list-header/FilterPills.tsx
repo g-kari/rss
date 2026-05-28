@@ -210,6 +210,7 @@ export default function FilterPills({
         <button
           onClick={() => setAuthorFilter(null)}
           title={`著者「${authorFilter}」フィルターを解除`}
+          aria-label={`著者「${authorFilter}」フィルターを解除`}
           className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
         >
           <span className="truncate">{authorFilter}</span>

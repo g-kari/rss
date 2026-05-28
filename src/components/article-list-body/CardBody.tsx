@@ -25,6 +25,7 @@ export default function CardBody({
   resolveItemProps,
 }: Props) {
   if (rows.length === 0) return null;
+  const isAnimating = deletingIds.size > 0 || newIds.size > 0;
   return (
     <div style={{ height: virtualizer.getTotalSize() + 16, position: "relative" }}>
       {virtualizer.getVirtualItems().map((vItem) => {
@@ -35,7 +36,7 @@ export default function CardBody({
             key={vItem.key}
             vItem={vItem}
             measureRef={virtualizer.measureElement}
-            animating={deletingIds.size > 0 || newIds.size > 0}
+            animating={isAnimating}
             extraStyle={{ padding: "4px 8px" }}
           >
             <div className="grid grid-cols-2 gap-2">
