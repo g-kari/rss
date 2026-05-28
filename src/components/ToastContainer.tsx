@@ -46,11 +46,11 @@ export default function ToastContainer() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          role="status"
           className={`pointer-events-auto flex flex-col border-l-4 ${borderColor[toast.type]} bg-surface-elevated rounded-lg shadow-lg min-w-[240px] max-w-[360px] animate-fade-up overflow-hidden`}
         >
           <div className="flex items-start gap-2.5 px-3.5 py-2.5">
             <svg
+              aria-hidden="true"
               width="16"
               height="16"
               viewBox="0 0 24 24"
@@ -85,6 +85,7 @@ export default function ToastContainer() {
               aria-label="閉じる"
             >
               <svg
+                aria-hidden="true"
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
