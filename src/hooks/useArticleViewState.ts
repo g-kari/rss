@@ -289,6 +289,9 @@ export function useArticleViewState({
     // #843: 全文取得済 HTML を渡して collectImageUrlsFromHtml で本文画像を確実に拾う
     // (DOM 走査だけだと render タイミング次第で OGP 1 枚だけになる現象を防ぐ)
     processedContent,
+    // #843 (再修正): ユーザーが画面で見ている「画像一覧」(ImageGallery) と
+    // DL 対象を一致させるため galleryImages を最優先で渡す。
+    galleryImages,
   });
 
   usePopupLock(confirmingDownload);

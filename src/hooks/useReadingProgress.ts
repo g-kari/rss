@@ -66,38 +66,59 @@ export function useReadingProgress({
   }, [articleId]);
 
   // IntersectionObserver で可視インデックスを追跡
+  //
+  // #888 Bug 2 (IntersectionObserver attach タイミング): articleId 変更時、
+  // contentRef.current.children は dangerouslySetInnerHTML が非同期で commit される
+  // 前にこの effect が走る場合があり、children.length === 0 で早期 return して
+  // IntersectionObserver が永遠に attach されない。MutationObserver で contentRef の
+  // childList を監視し、children が後から現れた時点で IntersectionObserver を
+  // 再 attach することで構造的に解消する。
   useEffect(() => {
     if (!articleId || !contentRef.current) return;
 
     const container = contentRef.current;
-    const children = Array.from(container.children) as HTMLElement[];
-    if (children.length === 0) return;
+    let intersectionObserver: IntersectionObserver | null = null;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const idx = children.indexOf(entry.target as HTMLElement);
-          if (idx > maxIndexRef.current) {
-            maxIndexRef.current = idx;
-            const raw = computeProgress(idx, children.length);
-            const clamped = clampProgress(raw);
-            const anchor = buildAnchorSelector(idx);
-            if (articleId) {
-              saveProgress(articleId, { progress: clamped, anchor });
+    const attach = (): void => {
+      const children = Array.from(container.children) as HTMLElement[];
+      if (children.length === 0) return;
+
+      intersectionObserver?.disconnect();
+      intersectionObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const idx = children.indexOf(entry.target as HTMLElement);
+            if (idx > maxIndexRef.current) {
+              maxIndexRef.current = idx;
+              const raw = computeProgress(idx, children.length);
+              const clamped = clampProgress(raw);
+              const anchor = buildAnchorSelector(idx);
+              if (articleId) {
+                saveProgress(articleId, { progress: clamped, anchor });
+              }
+              onProgressChangeRef.current?.(clamped);
             }
-            onProgressChangeRef.current?.(clamped);
           }
-        }
-      },
-      { threshold: 0.5 },
-    );
+        },
+        { threshold: 0.5 },
+      );
 
-    for (const child of children) {
-      observer.observe(child);
-    }
+      for (const child of children) {
+        intersectionObserver.observe(child);
+      }
+    };
 
-    return () => observer.disconnect();
+    attach();
+
+    // children が後から DOM に追加されたら再 attach (#888 Bug 2)
+    const mutationObserver = new MutationObserver(attach);
+    mutationObserver.observe(container, { childList: true });
+
+    return () => {
+      intersectionObserver?.disconnect();
+      mutationObserver.disconnect();
+    };
     // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId]);

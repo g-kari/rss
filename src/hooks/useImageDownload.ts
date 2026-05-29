@@ -36,9 +36,17 @@ type Fetched = { originalIndex: number; blob: Blob; ext: string };
  * 以下の条件を満たさない画像は null を返してスキップする:
  * - フェッチ失敗 / 非 2xx
  * - 透明 GIF（64 bytes 以下 — 1×1 トラッキングピクセル）
- * - 短辺 IMAGE_MIN_DIMENSION 未満（アイコン・スペーサー等）
+ * - 短辺 IMAGE_MIN_DIMENSION 未満 (skipSizeCheck=false のときのみ、アイコン・スペーサー等)
+ *
+ * #843: ユーザー要望「画像一覧の画像をそのまま保存」を担保するため、galleryImages 由来の
+ * URL は skipSizeCheck=true で size check を完全に skip する (画面に見えている画像は
+ * 既にユーザーが「保存したい」と認識した画像であり、サイズで再判定する必要はない)。
  */
-async function fetchOne(url: string, originalIndex: number): Promise<Fetched | null> {
+async function fetchOne(
+  url: string,
+  originalIndex: number,
+  skipSizeCheck: boolean,
+): Promise<Fetched | null> {
   try {
     const res = await apiFetch(url);
     if (!res.ok) return null;
@@ -52,13 +60,15 @@ async function fetchOne(url: string, originalIndex: number): Promise<Fetched | n
     const blob = await res.blob();
     // 小さい画像（アイコン・トラッキングピクセル等）を除外
     // createImageBitmap で実寸を確認し、短辺が IMAGE_MIN_DIMENSION 未満はスキップ
-    try {
-      const bmp = await createImageBitmap(blob);
-      const { width, height } = bmp;
-      bmp.close();
-      if (width < IMAGE_MIN_DIMENSION || height < IMAGE_MIN_DIMENSION) return null;
-    } catch {
-      // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
+    if (!skipSizeCheck) {
+      try {
+        const bmp = await createImageBitmap(blob);
+        const { width, height } = bmp;
+        bmp.close();
+        if (width < IMAGE_MIN_DIMENSION || height < IMAGE_MIN_DIMENSION) return null;
+      } catch {
+        // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
+      }
     }
     return { originalIndex, blob, ext };
   } catch (err) {
@@ -96,6 +106,14 @@ export function useImageDownload(
      * (ギャラリービューの画像 DL と同じく事前抽出済 URL 配列を入力にする方式に揃える)。
      */
     processedContent?: string | null;
+    /**
+     * #843: 記事詳細「画像一覧」(ImageGallery) に表示中の画像 URL 配列。
+     * ユーザーが画面で見ている「画像一覧」と DL される画像群を一致させるため、
+     * 渡された場合はこれを最優先で全件 DL 候補に追加する。
+     * (processedContent からの抽出は subset / superset で差異が出る可能性があるため、
+     * UX 「見えている画像をそのまま保存」要望には galleryImages 直接渡しが canonical)
+     */
+    galleryImages?: readonly string[];
   },
 ): ImageDownloadState {
   const toast = useToast();
@@ -118,20 +136,34 @@ export function useImageDownload(
     // 1 件に集約する。push 自体は元の URL を使うことで最初に見つけた解像度を優先する。
     const seen = new Set<string>();
     const toDownload: string[] = [];
-    const tryAdd = (rawUrl: string): void => {
+    // #843: ユーザーが画面で見ている画像 (galleryImages 由来) は size check skip 対象。
+    const trustedNoSizeCheck = new Set<string>();
+    const tryAdd = (rawUrl: string, trusted: boolean = false): void => {
       const key = normalizeImageUrlForDedup(rawUrl);
       if (seen.has(key)) return;
       seen.add(key);
       toDownload.push(rawUrl);
+      if (trusted) trustedNoSizeCheck.add(rawUrl);
     };
 
     const ogImgSrc = article.ogImage ?? resolvedOgImage;
     if (ogImgSrc) {
-      tryAdd(buildImageProxyUrl(ogImgSrc));
+      tryAdd(
+        buildImageProxyUrl(ogImgSrc),
+        true /* OGP もユーザーに見えているので size check skip */,
+      );
     }
 
-    // #843: processedContent (全文取得済 HTML) があれば優先で全画像を拾う。
-    // contentRef.current の DOM 走査は描画タイミング次第で画像数が漏れるため。
+    // #843: ユーザーが画面で見ている「画像一覧」(ImageGallery) と DL される画像を
+    // 一致させるため、galleryImages があれば最優先で全件採用する。trusted=true で size check skip。
+    if (options?.galleryImages) {
+      for (const url of options.galleryImages) {
+        tryAdd(url, true);
+      }
+    }
+
+    // #843: processedContent (全文取得済 HTML) があれば本文画像を補完で拾う。
+    // galleryImages とほぼ同じ集合だが、`<a href>` フル解像度等の補集合が拾える可能性あり。
     if (options?.processedContent) {
       for (const url of collectImageUrlsFromHtml(options.processedContent)) {
         tryAdd(url);
@@ -171,7 +203,9 @@ export function useImageDownload(
     for (let batchStart = 0; batchStart < toDownload.length; batchStart += FETCH_BATCH_SIZE) {
       const batch = toDownload.slice(batchStart, batchStart + FETCH_BATCH_SIZE);
       const results = await Promise.all(
-        batch.map((url, batchIdx) => fetchOne(url, batchStart + batchIdx)),
+        batch.map((url, batchIdx) =>
+          fetchOne(url, batchStart + batchIdx, trustedNoSizeCheck.has(url)),
+        ),
       );
 
       fetchedCount += batch.length;
@@ -213,6 +247,7 @@ export function useImageDownload(
     options?.dlFolder,
     options?.dlFolderNsfw,
     options?.processedContent,
+    options?.galleryImages,
   ]);
 
   const downloadAllImages = useCallback(() => {
