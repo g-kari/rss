@@ -432,6 +432,37 @@ localStorage.removeItem("rss-debug-autoread"); // OFF
 
 主な使用箇所: `auto-read-debug.ts` — 本番でのオートモード再現診断
 
+### 派生ケース: 2 つ目以降の debug helper を追加するときは `createDebugHelper` factory 経由で集約する
+
+最初に 1 ファイルだけ `xxx-debug.ts` を作ったあと、別機能で 2 つ目 (`yyy-debug.ts`) を作るとき、3 関数セット (`evaluate` / `isEnabled` / `log`) の **DEBUG_KEY と prefix だけ違う 同 pattern を 2 重定義する** ことになる。N 個に増えると helper drift の温床。`src/lib/debug-helper.ts` の `createDebugHelper(debugKey, consolePrefix)` factory を経由して thin wrapper で再 export する canonical pattern を採用する。
+
+```typescript
+// canonical (2 つ目以降の debug helper):
+// src/lib/yyy-debug.ts
+import { createDebugHelper, evaluateDebugEnabled } from "./debug-helper";
+
+const helper = createDebugHelper("rss-debug-yyy", "[Yyy]");
+
+/** 純粋判定: storage の値から enabled かを判定 (テスタビリティのため分離)。 */
+export const evaluateYyyDebugEnabled = evaluateDebugEnabled;
+export const isYyyDebugEnabled = helper.isEnabled;
+export const yyyDebug = helper.log;
+```
+
+**How to apply**: `src/lib/<feature>-debug.ts` を新規追加するときに以下を判定 (`evaluate` 関数は副作用なし pure function で全 feature 共通、cache + console 出力 logic も `debugKey` / `consolePrefix` 以外完全同一、factory 経由で重複削減 + 将来の logic 変更 (例: `console.info` → 別 logger、cache 戦略変更) を 1 箇所に集約):
+
+1. **既存 debug helper が 0 件** (project 初の debug helper 追加) → 直接 3 関数を file 内に書く + spec 追加で OK (factory 採用は次の helper 追加時の判断に遅延可能)
+2. **既存 debug helper が 1 件以上** → 既存 file を factory 経由 wrapper に同サイクル refactor + 新 file も factory 経由で実装 (drift 累積防止)
+3. **既存 spec が `evaluateXxxDebugEnabled` を import** → wrapper で同名 `export const evaluateXxxDebugEnabled = evaluateDebugEnabled` alias を維持 (spec 影響ゼロ)
+4. **factory 採用判断は `createDebugHelper` 採用と TDD spec 維持の同 commit で完結** (refactor + 新規追加を分けない、関心事は「debug helper drift 削減」で一致)
+
+**反例 (factory 採用が overkill なケース)**:
+
+- debug helper が **1 件のみで将来追加予定なし** (例: 単発機能で localStorage gate 1 個のみ) → factory 不要、3 関数 inline で OK
+- debug helper の **logic が特殊** (例: WebSocket gate / IndexedDB gate / multi-key gate 等で 3 関数 pattern に収まらない) → factory 外で独自実装
+
+主な使用箇所: `auto-read-debug.ts` (#678) と `bgaudio-debug.ts` (#745 Phase C) が 47 行同 pattern 重複していた状態を `debug-helper.ts` `createDebugHelper` factory 経由 wrapper に集約 → 各 wrapper 36 行に縮減 (新 file 50 行追加 + 25 行削減で net +25 行、ただし将来 N 個追加時に N×17 行削減効果)
+
 ### 派生ケース: AbortController / Ref ベースの状態遷移バグは「ref の差分」をログに出す
 
 `AbortController.abort()` / `useRef` の値変化が原因の連鎖バグ (記事切替時の fetch abort / 画像キャッシュの上書き / hook 識別子のドリフト) は、**「どの瞬間にどの ref がどの値だったか」** が分かるログがないと解析不能になる。エージェントを派遣しても複数仮説が出て断定できないことが多い。本番環境で再現できるなら、**ref の状態スナップショット** を各遷移ポイントで出力する設計に切り替える。

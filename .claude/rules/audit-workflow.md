@@ -599,6 +599,60 @@ observation rotation で派遣する agent や、Step 0 sweep で「全 Issue �
 
 主な使用箇所: `isLaterIso` / `pruneOldReadIds` の lexicographic ISO 比較バグを codify したが、`useFilteredArticles.ts` 同種バグが 6 cycle 後の bug 監査エージェントで発見 → 二段保証を追加運用ルール化
 
+### 派生ケース: 監査役 subagent も 4 体並列で半数が autocompact thrashing で failed する → 3 体上限 + 派遣前 prompt narrowing で品質担保
+
+`audit-workflow.md § 「コード監査は専門エージェント並行派遣 → 高信頼指摘を選別 Issue 化」` 本体で「3 体並列が最適点、4 体以上は観点被り」と書かれているが、**4 体並列の追加リスク**として **sonnet モデルの autocompact thrashing による中断率上昇** がある。本サイクル実観測: 4 体並列 (refactor / perf / security / UX) のうち **2 体 (50%) が context overflow で中断** + 1 体 (25%) が scope 誤解 (broad-scope prompt → 直近 commit レビューに転落) = **75% 品質劣化**。完走した 1 体 (refactor) の finding 2 件 (canonical 規範完全一致) のみが usable で、他 3 体は採用候補ゼロ。
+
+**autocompact thrashing 中断 vs 「context-only mode / speculative 分析自己宣言」(`§ 派生「観点別並列エージェント report で半数以上が context-only mode / speculative 分析を自己宣言したら」` 規範) の違い**:
+
+| 状態                            | シグナル                             | 対応                                 |
+| ------------------------------- | ------------------------------------ | ------------------------------------ |
+| autocompact thrashing 中断      | agent report 自体が短文 + 失敗宣言   | 派遣前 prompt narrowing で予防       |
+| context-only / speculative 完走 | agent report が「likely」連発 + 完走 | 受領後 finding 全件採用見送り (既存) |
+
+**4 体並列の autocompact thrashing リスクが高い prompt 特徴**:
+
+1. **focus area が broad-scope** (例: "find performance optimization opportunities" / "audit a11y across the codebase") — agent が全 src/ + app/ を navigate しようとして context 圧迫
+2. **対象 file path が未指定** (agent に「どの file を Read するか」を判断させると探索的 navigation で context 圧迫)
+3. **expected finding 数の上限なし** (agent が「もっと finding を見つけよう」と多 file Read で context 圧迫)
+4. **output format strict 化なし** (agent が verbose な分析 paragraph を生成して context 圧迫)
+5. **false positive 防止 rule が長文** (agent prompt 自体が長くなって context 圧迫の根本原因に)
+
+**派遣前 prompt narrowing の必須要素** (autocompact thrashing 予防、3 体以下並列でも適用):
+
+1. **focus area を 1-3 specific check に絞る** (例: 「dead exports + sibling drift + docs sync」の 3 観点限定)
+2. **対象 file / directory path を明示** (例: 「対象: `src/lib/*.ts` (1 階層のみ) + `app/api/auth/dbsc/`」)
+3. **expected finding 数を `max 4` に絞る** (信頼度 90+ のみ)
+4. **output format を `## Finding N` テンプレートで strict 化** (line range + grep evidence + confidence 必須)
+5. **false positive 防止 rule は「過去 cycle で発見された 3-5 具体例」のみ列挙** (規範全文引用は context 食う)
+6. **「Use serena MCP tools」を明示** (find_symbol で 1 symbol だけ読む navigation を強制)
+7. **「Read 範囲を制限」を明示** (file 全文 Read 禁止、symbol 単位 Read のみ)
+
+**4 体以上が必要な特殊ケース vs 3 体に絞るべきケース**:
+
+| 状況                                                                                | 並列体数推奨            |
+| ----------------------------------------------------------------------------------- | ----------------------- |
+| Issue tracker 滞留 0-3 件 + 新規領域監査要 (大型 refactor 直後等)                   | 3-4 体 (観点多様化価値) |
+| Issue tracker 滞留 4+ 件 + 全件判断待ち                                             | 2-3 体 (本派生ケース)   |
+| 直近 cycle で同観点 sweep 済 + 残余 finding 枯渇予想                                | 2 体 + 観点別変更       |
+| 各観点が **明確に narrow scope** (例: 「`src/lib/<X>.ts` の TypeScript narrowing」) | 4 体可 (overflow 低)    |
+
+**How to apply**: 監査 agent 並列派遣前に以下を判定 (4 体並列で 50% 中断率を観測したら、次サイクル以降は 3 体上限 + 派遣前 prompt narrowing が canonical、broad-scope prompt は sonnet モデルの autocompact thrashing で 1 サイクル丸ごと無駄になるリスク):
+
+1. **並列体数を 3 体以下に絞る** (Issue tracker 滞留時は 2-3 体)
+2. **各 agent prompt に上記 narrowing 7 要件を全充足** (focus area / target path / max finding 数 / output format / false positive 防止 / serena 強制 / Read 範囲制限)
+3. **3 体派遣後、1 体でも autocompact thrashing で failed したら、次サイクルは prompt narrowing 強化** (false positive 防止 rule を 3-5 例に絞る、target path を更狭める)
+4. **派遣前 prompt の長さを `wc -w` で計測**: 800 word 超過なら narrowing 不足、500 word 程度が optimal
+5. **完走 agent の finding は採用継続** (本派生ケースは「並列体数 + prompt 設計」予防策、完走 agent の finding 品質は別途 verify で評価)
+
+**反例 (4 体並列が成功するケース)**:
+
+- 各観点が **完全に独立した narrow file group** を担当 (overlap ゼロ + 各 prompt 200 word 程度) → 4 体並列 OK
+- agent prompt で **完了基準を strict に定義** (「3 finding 検出または「該当なし」確認で報告」等) → exploratory navigation 抑制
+- 直近 cycle で同観点 sweep 実施済 (corpus 知識安定) で agent が前回 finding を base に差分検出 → context 効率
+
+主な使用箇所: 本サイクル 4 体並列 (refactor + perf + security + UX) — refactor のみ完走 (2 finding usable) / perf + UX が autocompact thrashing で failed (385s / 329s 経過後中断、0 finding) / security が scope 誤解で 0 finding → 完走 1 体の finding 2 件を 2 commit (docs sync + factory 重複削減) で master 反映、本派生ケース codify で次サイクル以降は 3 体上限 + prompt narrowing 強化が canonical
+
 ### 派生ケース: subagent (implementer 役) への refactor 委譲 prompt は touch ≤ 3 ファイル + signature 確定済 trivial 置換に絞る
 
 sonnet モデルで動く subagent (implementer 役) に **3 ファイル超えの refactor** を委譲すると、agent 側で対象ファイル全件 Read + 既存 spec Read + 設計判断で **context overflow (autocompact thrashing) を起こして中断** する典型的な罠がある。Security audit エージェントで同様の罠 (broad-scope prompt → context overflow → 中断) は本ファイル別派生ケースで既知だが、**implementer 役の refactor タスクでも同じ罠が成立する**。
