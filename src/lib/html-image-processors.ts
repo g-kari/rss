@@ -66,8 +66,9 @@ export function fixLazyImages(html: string): string {
     const dataSrcMatch = fixed.match(/\bdata-src=["']([^"']+)["']/i);
     if (dataSrcMatch) {
       const resolved = dataSrcMatch[1].replace(/\{width\}/g, "800");
-      if (/\bsrc=["'][^"']*["']/i.test(fixed)) {
-        fixed = fixed.replace(/\bsrc=["'][^"']*["']/i, `src="${resolved}"`);
+      // `(?<![a-zA-Z-])src=` で `data-src=` の中の `src=` 部分への誤マッチを除外 (#895)。
+      if (/(?<![a-zA-Z-])src=["'][^"']*["']/i.test(fixed)) {
+        fixed = fixed.replace(/(?<![a-zA-Z-])src=["'][^"']*["']/i, `src="${resolved}"`);
       } else {
         // src 属性なしの遅延ロード画像: src を先頭に追加
         fixed = ` src="${resolved}"` + fixed;
@@ -77,8 +78,12 @@ export function fixLazyImages(html: string): string {
     // data-srcset を srcset に昇格（遅延ロード対応）
     const dataSrcsetMatch = fixed.match(/\bdata-srcset=["']([^"']+)["']/i);
     if (dataSrcsetMatch) {
-      if (/\bsrcset=["'][^"']*["']/i.test(fixed)) {
-        fixed = fixed.replace(/\bsrcset=["'][^"']*["']/i, `srcset="${dataSrcsetMatch[1]}"`);
+      // `(?<![a-zA-Z-])srcset=` で `data-srcset=` の中の `srcset=` 部分への誤マッチを除外 (#895)。
+      if (/(?<![a-zA-Z-])srcset=["'][^"']*["']/i.test(fixed)) {
+        fixed = fixed.replace(
+          /(?<![a-zA-Z-])srcset=["'][^"']*["']/i,
+          `srcset="${dataSrcsetMatch[1]}"`,
+        );
       } else {
         fixed += ` srcset="${dataSrcsetMatch[1]}"`;
       }

@@ -329,6 +329,41 @@ test.describe("rewriteImageUrls", () => {
     expect(result).toContain(encodeURIComponent("https://a.com/1.jpg"));
     expect(result).toContain(encodeURIComponent("https://b.com/2.jpg"));
   });
+
+  // #895 regression: `\bsrc=` 正規表現が `data-src=` の `-src=` 部分にも誤マッチして
+  // data-src の値も proxy 化していた regex バグを `(?<![a-zA-Z-])` で除外する。
+  test("data-src の値は proxy 化されない (#895 regression)", () => {
+    const html = '<img src="https://example.com/main.jpg" data-src="https://example.com/lazy.jpg">';
+    const result = rewriteImageUrls(html);
+    expect(result).toContain(
+      `src="/api/image-proxy?url=${encodeURIComponent("https://example.com/main.jpg")}"`,
+    );
+    expect(result).toContain('data-src="https://example.com/lazy.jpg"');
+    expect(result).not.toContain(
+      `data-src="/api/image-proxy?url=${encodeURIComponent("https://example.com/lazy.jpg")}"`,
+    );
+  });
+
+  test("data-srcset の値は proxy 化されない (#895 regression)", () => {
+    const html =
+      '<img src="https://example.com/m.jpg" data-srcset="https://example.com/s.jpg 480w, https://example.com/l.jpg 1024w">';
+    const result = rewriteImageUrls(html);
+    expect(result).toContain(
+      'data-srcset="https://example.com/s.jpg 480w, https://example.com/l.jpg 1024w"',
+    );
+    expect(result).not.toContain(
+      `data-srcset="/api/image-proxy?url=${encodeURIComponent("https://example.com/s.jpg")}`,
+    );
+  });
+
+  test("src 属性のみの img (data-src あり) は src のみ proxy 化 (#895 regression)", () => {
+    // fixLazyImages を経由した後の状態を再現: <img src="X" data-src="X">
+    const html = '<img src="https://example.com/x.jpg" data-src="https://example.com/x.jpg">';
+    const result = rewriteImageUrls(html);
+    // src は proxy 化、data-src は元 URL のまま
+    const matches = result.match(/\/api\/image-proxy\?url=/g) ?? [];
+    expect(matches.length).toBe(1);
+  });
 });
 
 // ── transformZennLinkEmbeds ─────────────────────────────────────

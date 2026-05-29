@@ -26,7 +26,9 @@ export interface RewriteMediaSrcOptions {
 }
 
 function rewriteSrcAttr(attrs: string, proxyPath: string): string {
-  return attrs.replace(/\bsrc=["'](https?:\/\/[^"']+)["']/gi, (match, src: string) => {
+  // `(?<![a-zA-Z-])` で `data-src=` / `lowsrc=` 等の prefix を除外 (#895)。
+  // `\bsrc=` だと `data-src=` の `-src=` 部分にも誤マッチして data-src の値も proxy 化される regex バグ。
+  return attrs.replace(/(?<![a-zA-Z-])src=["'](https?:\/\/[^"']+)["']/gi, (match, src: string) => {
     // 冪等性ガード: 既プロキシ化済なら skip (src が `https?://` で始まるので通常マッチしないが念のため)
     if (src.startsWith(`/api/${proxyPath}?`)) return match;
     return `src="/api/${proxyPath}?url=${encodeURIComponent(unescapeHtml(src))}"`;
@@ -34,7 +36,8 @@ function rewriteSrcAttr(attrs: string, proxyPath: string): string {
 }
 
 function rewriteSrcsetAttr(attrs: string, proxyPath: string): string {
-  return attrs.replace(/\bsrcset=["']([^"']+)["']/gi, (_match, srcset: string) => {
+  // `(?<![a-zA-Z-])` で `data-srcset=` 等の prefix を除外 (#895)。`\bsrcset=` は誤マッチする。
+  return attrs.replace(/(?<![a-zA-Z-])srcset=["']([^"']+)["']/gi, (_match, srcset: string) => {
     const proxied = transformSrcset(srcset, (url) => {
       if (!/^https?:\/\//i.test(url)) return url;
       return `/api/${proxyPath}?url=${encodeURIComponent(unescapeHtml(url))}`;
