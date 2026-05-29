@@ -70,8 +70,8 @@ app/
       me/route.ts            # GET /api/auth/me — セッション確認・自動リフレッシュ
       logout/route.ts        # POST /api/auth/logout — トークン失効・cookie クリア
       dbsc/
-        register/route.ts  # POST /api/auth/dbsc/register — DBSC 公開鍵登録スタブ (TODO: TPM 鍵バインド実装)
-        challenge/route.ts # POST /api/auth/dbsc/challenge — DBSC チャレンジ発行・検証スタブ
+        register/route.ts  # POST /api/auth/dbsc/register — DBSC 公開鍵登録 (P-256 公開鍵 import / challenge 検証 / R2 DbscSession 保存 / セッション binding)
+        challenge/route.ts # POST /api/auth/dbsc/challenge — DBSC チャレンジ発行 + ES256 署名検証 (`verifyDbscResponse` 経由)
         session/route.ts   # DELETE /api/auth/dbsc/session — DBSC バインド済みデバイス登録解除
     feeds/
       route.ts               # GET (一覧) / POST (追加) /api/feeds
