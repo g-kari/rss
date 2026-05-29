@@ -855,6 +855,52 @@ grep -rn "<SymbolName>" e2e/ src/
 
 主な使用箇所: `buildImageSlider` (production caller 0 だが spec 5 ケースが re-export hub 経由 import → 同サイクル削除を撤回 → Issue 起票で判断仰ぐ)
 
+#### 派生サブケース: dead export 監査エージェントの「production caller 0」主張は **same-file internal caller** を `grep -n <symbol> <same-file>` で必ず確認する
+
+`spec import 確認` (本派生ケース本体) に加えて、エージェント report で「production caller 0」と主張された symbol は、**同一 file 内の internal caller を別 grep** で必ず verify する。エージェントは **cross-file `grep -r` で外部 import 0 件 = dead** と判定しがちだが、`src/lib/url.ts` 内の `MAX_URL_LENGTH` が同 file の `isValidUrl()` 関数で使われるパターン、`src/lib/server-auth.ts` 内の `applyRefreshedTokens` が同 file の `withSessionRefresh` wrapper で使われるパターン等、**module-internal helper として`export` keyword を持ちつつ実際は同一 file 完結で使われている symbol** を「dead」と誤判定する false positive が頻発する。
+
+```bash
+# dead export verify の 2 段必須確認
+# Step 1: cross-file 参照 (エージェント既存判定の再確認)
+grep -rn "<SymbolName>" src/ app/ e2e/ --exclude-dir=node_modules
+
+# Step 2: same-file internal caller (派生サブケース で追加必須)
+grep -n "<SymbolName>" <file-containing-export>
+# 出力で <symbol> 定義行以外の hit があれば → same-file internal caller あり、dead でない
+```
+
+**判定パターン** (本派生サブケース で表を拡張):
+
+| cross-file 参照 | same-file internal caller | spec 参照 | 判定                                                |
+| --------------- | ------------------------- | --------- | --------------------------------------------------- |
+| 0 件            | 0 件                      | 0 件      | **真の dead** (export 削除 + helper も削除可)       |
+| 0 件            | 1+ 件                     | 0 件      | **export keyword 削除可** (module-private 化、helper 自体は保持) |
+| 0 件            | 1+ 件                     | 1+ 件     | **export 維持** (spec が internal helper を import) |
+| 1+ 件           | -                         | -         | dead でない (cross-file 利用中)                     |
+
+**How to apply**: dead export 監査エージェント report 受領時に必ず実行 (エージェントは cross-file grep のみで「production caller 0」と判定するが、same-file internal caller を見落とすケースが頻発、本サブケース verify なしで採用すると false positive のまま Issue 起票 / 着手 / 削除実装に進む):
+
+1. **エージェント report の各 dead export 候補 symbol を列挙**
+2. **Step 1 (cross-file)** で `grep -rn "<symbol>" src/ app/ e2e/` 実行 — 0 件なら Step 2 へ
+3. **Step 2 (same-file)** で `grep -n "<symbol>" <symbol-defining-file>` 実行 — 定義行以外の hit を確認
+4. **same-file caller あり** → 「真の dead でない」と判定して **エージェント report を却下** + Issue 起票見送り
+5. **same-file caller も 0 件** → 本派生ケース本体の spec 参照確認 (Step 3) へ進む
+
+**反例 (verify 不要なケース)**:
+
+- エージェント report が **既に same-file caller 数を明示** (例: 「same-file caller 0 件、cross-file caller 0 件、spec 参照 0 件」3 軸全て report 済) → verify 簡略化可
+- 対象 symbol が **`type` / `interface` / `const enum` 等の型定義のみ** で関数 caller 概念がない → same-file usage は型注釈経由で grep 困難、cross-file 参照のみで判定 OK
+
+主な使用箇所:
+
+- `isImageHref` (`src/lib/image-extractor.ts:96`、cross-file caller 0 件だが same-file L195 / L258 で internal caller あり)
+- `MAX_URL_LENGTH` (`src/lib/url.ts:105`、cross-file caller 0 件だが same-file L122 で internal caller あり)
+- `applyRefreshedTokens` (`src/lib/server-auth.ts:341`、cross-file caller 0 件だが same-file L385 の `withSessionRefresh` 経由 internal caller あり)
+- `applyRefreshedTokensToResponse` (`src/lib/server-auth.ts:512`、cross-file caller 0 件だが same-file L495 で internal caller あり)
+- `isAutoReadDebugEnabled` (`src/lib/auto-read-debug.ts:26`、cross-file caller 0 件だが same-file L42 の `debugLog` 内で internal caller あり)
+
+→ 監査エージェント report で **5/5 件全件が false positive** と判明、Issue 起票せず却下した実例 (本派生サブケース codify の trigger)
+
 ### 派生ケース: 新機能監査エージェントの「機能 X 未実装」主張は実コード grep で必ず実存確認する
 
 新機能監査 (`focus area: 新機能開発の余地`) でエージェントが **「機能 X が実装されていない」「機能 Y が無いので追加可能」** を主張するケースは、**bug / perf 監査より誤検知率が高い**。エージェントは新規追加 file (例: `TagsSection.tsx`) を見落として「未実装」と判定することがある。
