@@ -832,17 +832,18 @@ grep -rn "<SymbolName>" e2e/ src/
 
 主な使用箇所: 38th cycle 新機能監査 — Feature 1 (タグサイドバーフィルター) を 92% で提案されたが `src/components/feed-sidebar/TagsSection.tsx` で **既実装** と判明 → false positive 判定して Issue 起票せず
 
-### 派生ケース: perf / security / refactor 監査エージェントの「最適化未実施」「防御欠落」主張も実コード verify する
+### 派生ケース: perf / security / refactor / code-review 監査エージェントの「最適化未実施」「防御欠落」「silent fallback 違反」主張も実コード verify する
 
-「新機能監査の機能 X 未実装」主張だけでなく、**perf / security / refactor 監査エージェント** が「最適化 Y が未実施」「防御 Z が欠落」を主張するケースも、**既最適化箇所 / 既設防御の見落とし誤検知** が頻発する。エージェントは grep + 読解で対象ファイルの「該当行付近」だけを確認し、**ファイル冒頭の helper / pure function 定義 + 中央付近のガード適用箇所** を見落としやすい。
+「新機能監査の機能 X 未実装」主張だけでなく、**perf / security / refactor / code-review 監査エージェント** が「最適化 Y が未実施」「防御 Z が欠落」「silent fallback 規範違反」を主張するケースも、**既最適化箇所 / 既設防御 / 既設 devError 呼出の見落とし誤検知** が頻発する。エージェントは grep + 読解で対象ファイルの「該当行付近」だけを確認し、**ファイル冒頭の helper / pure function 定義 + 中央付近のガード適用箇所 + catch block 内の既設 logger 呼出** を見落としやすい。
 
 ```
-パターン: perf / security / refactor 監査結果の検証フロー
+パターン: perf / security / refactor / code-review 監査結果の検証フロー
   1. エージェント report 受領 (例: "Finding 2: useFilteredArticles の computedFeedCategoryMap 不安定 (信頼度 92%)")
   2. エージェントが指摘する file を **冒頭から末尾まで grep** で関連語句確認:
      - perf 「最適化未実施」: helper / cache / Map / memoize / equal* / structuralEqual / 構造的等価 等の語で grep
      - security 「防御欠落」: validate / sanitize / verify / regex / escape 等の語で grep
      - refactor 「重複あり」: 集約 helper の名前 / 期待される共通関数名で grep
+     - code-review 「silent fallback 違反」: devError / console.error / 関連 logger / dev-log import 等で grep + catch block 全体を Read で開いて `catch (err)` 受領 + logger 呼出を確認
   3. 既実装と判定:
      - false positive として Issue 起票しない
      - 既起票なら「Finding N 既実装」コメントで scope 縮小 (他 Finding は judgement 継続)
@@ -850,22 +851,25 @@ grep -rn "<SymbolName>" e2e/ src/
      - Issue 起票で案 A/B/C 提示
 ```
 
-**How to apply**: perf / security / refactor 監査エージェント report 受領時に必ず実行 (新機能監査と同様、Issue 起票前の 1〜2 分 verify がユーザー判断時間の無駄を防ぐ、エージェントは「同 file 内の helper / ガード」を見落とすことが多い):
+**How to apply**: perf / security / refactor / code-review 監査エージェント report 受領時に必ず実行 (新機能監査と同様、Issue 起票前の 1〜2 分 verify がユーザー判断時間の無駄を防ぐ、エージェントは「同 file 内の helper / ガード / catch block 内 logger」を見落とすことが多い):
 
-1. **エージェントが指摘した file 全体を `search_for_pattern` or `grep`** で `equalStringMap` / `sanitize` / `validate` 等の関連 helper を確認
+1. **エージェントが指摘した file 全体を `search_for_pattern` or `grep`** で `equalStringMap` / `sanitize` / `validate` / `devError` / `console.error` 等の関連 helper を確認
 2. **エージェントが指摘した line 番号の前後 50 行を Read** で「該当箇所周辺の既設ガード」を確認 (helper が file 冒頭で定義 + 中央で apply パターン)
-3. **既実装と判明したら Issue 起票しない、既起票なら「Finding N 既実装」コメントで scope 縮小**
-4. 未実装と確認した場合のみ案 A/B/C 提示で Issue 起票
+3. **catch block 違反主張 (code-review) は catch 行を含む 5-10 行を Read** で `} catch {` (silent) vs `} catch (err) { devError(...); return null; }` (canonical) を判別 — エージェントは line 範囲指摘のみで `catch (err)` の err 受領 + logger 呼出を見落としやすい
+4. **既実装と判明したら Issue 起票しない、既起票なら「Finding N 既実装」コメントで scope 縮小**
+5. 未実装と確認した場合のみ案 A/B/C 提示で Issue 起票
 
 **反例 (検証不要なケース)**:
 
 - **エージェント report が既実装の helper を引用** (例: 「`equalStringMap` で既ガード済の computedFeedCategoryMap を改善案 X で...」) → エージェントが既実装を前提に論じている → 検証不要
 - **「既存 helper の signature 変更」「既存ガードの規範違反 sweep」** (例: 「既存 `equalDigestLimitMap` を `equalStringMap` に統合可能」) → 既実装前提で論じている → 検証不要
+- **エージェント report に catch block 全体の引用** (`} catch (err) { ... }` まで含む 3-5 行 quote) → 引用先を信頼可能、追加 Read 不要
 
 主な使用箇所:
 
 - 60th cycle perf 監査 — Finding 2 (`computedFeedCategoryMap` 不安定、信頼度 92%) を提案されたが `src/hooks/useFilteredArticles.ts:40` (`equalStringMap` 定義) + `line 216` (ガード適用) + `line 226` (`computedFeedTitleByHash` も同様ガード) で **既実装** と判明 → Issue #866 で Finding 2 を scope 縮小コメント、Finding 1/3 のみユーザー判断仰ぎ継続
 - 61st cycle security 監査 — Finding 1 (AI prompt delimiter `</article>` 早期終了) を提案されたが `src/lib/ai-route-helper.ts:104-105` で `/</g` + `/>/g` の全 `<` / `>` escape により本文中 `</article>` も完全 escape 済 = **既実装** と判明 → Issue #860 で Finding 1 を scope 縮小コメント、Finding 2/3 のみユーザー判断仰ぎ継続。**perf に続いて security 監査でも同パターンの false positive を 2 件連続検出**、領域横断で再発するシグナルとして verify 規範遵守の重要性が再強化された (信頼度 90%+ でも領域問わず既実装誤検知し得る、起票時 + 自走着手前の 2 回 verify が canonical)
+- 本サイクル code-review 監査 — Issue #889 Finding 2 (`translateHtmlInBrowser` silent fallback 規範違反、信頼度 88%) を提案されたが `src/lib/translate-html.ts:17` (`devError` import) + `line 186-189` (`} catch (err) { devError("[translate-html] translateHtmlInBrowser failed", err); return null; }` canonical pattern) で **既実装** と判明 → Issue #889 で Finding 2 を scope 縮小コメント、Finding 1 (timeout 設計) のみユーザー判断仰ぎ継続。**perf / security に続いて code-review 監査でも同パターンの false positive を 3 件連続検出**、`browser-platform.md § silent fallback の禁止` 規範が確立している領域では canonical pattern (`catch (err)` + `devError` 呼出) 既存実装が多数存在し、code-reviewer は `} catch {` のテキスト形状 + line 範囲のみで誤検知しやすい (信頼度 88% でも領域問わず再発)
 
 ### 派生ケース: 調査エージェントの「関数 A が機能 B を含む」のような構造的仮定は、当該関数を Read で開いて検証する
 
