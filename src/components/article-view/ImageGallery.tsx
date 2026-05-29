@@ -1,4 +1,5 @@
-import { useRef, useState, type TouchEvent } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
+import { createPortal } from "react-dom";
 import { useSyncedRef } from "../../hooks/useSyncedRef";
 import { useEventListener } from "../../hooks/useEventListener";
 import { usePopupLock } from "../../hooks/usePopupLock";
@@ -11,9 +12,18 @@ interface Props {
 
 export default function ImageGallery({ images }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
   const lightboxTouchRef = useRef<number | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lightboxRef = useSyncedRef({ lightboxIndex, imageCount: images.length });
+
+  // #894: lightbox を document.body へ portal して、ArticleDetailOverlay の
+  // animate-slide-in-right の transform 由来 containing block から逃がす
+  // (transform を持つ祖先要素は position: fixed の containing block になるため、
+  // portal なしだと lightbox が記事詳細領域に閉じ込められて全画面表示できない)。
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // ライトボックス表示中はリサイズバーを無効化する（Issue #81）
   usePopupLock(lightboxIndex !== null);
@@ -75,92 +85,99 @@ export default function ImageGallery({ images }: Props) {
         </div>
       </section>
 
-      {lightboxIndex !== null && (
-        <div
-          ref={dialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label="画像拡大表示"
-          tabIndex={-1}
-          onKeyDown={dialogKeyDown}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 outline-none"
-          onClick={() => setLightboxIndex(null)}
-          onTouchStart={handleLightboxTouchStart}
-          onTouchEnd={handleLightboxTouchEnd}
-        >
-          <button
-            className="absolute top-4 right-4 text-white/70 hover:text-white"
+      {lightboxIndex !== null &&
+        mounted &&
+        createPortal(
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="画像拡大表示"
+            tabIndex={-1}
+            onKeyDown={dialogKeyDown}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 outline-none"
             onClick={() => setLightboxIndex(null)}
-            aria-label="閉じる"
+            onTouchStart={handleLightboxTouchStart}
+            onTouchEnd={handleLightboxTouchEnd}
           >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          {lightboxIndex > 0 && (
             <button
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-              onClick={(e) => {
-                e.stopPropagation();
-                setLightboxIndex(lightboxIndex - 1);
-              }}
-              aria-label="前の画像"
+              className="absolute top-4 right-4 text-white/70 hover:text-white"
+              onClick={() => setLightboxIndex(null)}
+              aria-label="閉じる"
             >
               <svg
-                width="32"
-                height="32"
+                width="24"
+                height="24"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={1.5}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15.75 19.5L8.25 12l7.5-7.5"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-          )}
-          {lightboxIndex < images.length - 1 && (
-            <button
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-              onClick={(e) => {
-                e.stopPropagation();
-                setLightboxIndex(lightboxIndex + 1);
-              }}
-              aria-label="次の画像"
-            >
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
+            {lightboxIndex > 0 && (
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex(lightboxIndex - 1);
+                }}
+                aria-label="前の画像"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
-          )}
-          <FallbackImage
-            url={images[lightboxIndex]}
-            alt=""
-            className="max-w-[96vw] max-h-[96vh] object-contain rounded"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-[12px] tabular-nums">
-            {lightboxIndex + 1} / {images.length}
-          </p>
-        </div>
-      )}
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 19.5L8.25 12l7.5-7.5"
+                  />
+                </svg>
+              </button>
+            )}
+            {lightboxIndex < images.length - 1 && (
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex(lightboxIndex + 1);
+                }}
+                aria-label="次の画像"
+              >
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8.25 4.5l7.5 7.5-7.5 7.5"
+                  />
+                </svg>
+              </button>
+            )}
+            <FallbackImage
+              url={images[lightboxIndex]}
+              alt=""
+              className="max-w-[96vw] max-h-[96vh] object-contain rounded"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-[12px] tabular-nums">
+              {lightboxIndex + 1} / {images.length}
+            </p>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

@@ -767,6 +767,21 @@ export default function AppShell({
     toast,
   });
 
+  // #808 Phase 3a: useOgpCache を AppShell 階層 (ArticleList と ArticleContentBody の
+  // 共通祖先) で 1 度だけ呼んで OgpCacheProvider に注入。これで ArticleList 側 (gallery
+  // OGP) と ArticleContentBody 側 (本文リンクプレビュー、Phase 3b で統合済) が
+  // 同じ cache instance を参照可能になる (state 分裂を構造的に防止)。
+  // Phase 3b 完了: useContentLinkPreviews.ts:102,156 が useOgpCacheContext 経由で
+  // getEntry / cacheOgpEntry を呼ぶ実装になっており、cache hit 率向上 + 重複 fetch 統合済。
+  //
+  // #892 (master 既存 React runtime bug fix): useOgpCache は AppLandingState() / !user
+  // の早期 return より「前」で呼ぶ必要がある。auth loading 中 (landingNode != null) は
+  // 早期 return して useOgpCache が呼ばれず、auth 完了 (landingNode == null) で
+  // useOgpCache が呼ばれる。render 間で hook 呼出数が変動して
+  // `Rendered more hooks than during the previous render` を発火させる
+  // Rules of Hooks 違反。hook は早期 return より上で無条件に呼ぶことで構造的に解消。
+  const ogpCacheStore = useOgpCache(filterState.visible);
+
   // ロード中 / ベータ制限 / 未ログイン の早期 return パスを集約 (#650 Step 2)
   const landingNode = AppLandingState({ user, betaRestricted });
   if (landingNode) return landingNode;
@@ -774,14 +789,6 @@ export default function AppShell({
   if (!user) return null;
 
   const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
-
-  // #808 Phase 3a: useOgpCache を AppShell 階層 (ArticleList と ArticleContentBody の
-  // 共通祖先) で 1 度だけ呼んで OgpCacheProvider に注入。これで ArticleList 側 (gallery
-  // OGP) と ArticleContentBody 側 (本文リンクプレビュー、Phase 3b で統合済) が
-  // 同じ cache instance を参照可能になる (state 分裂を構造的に防止)。
-  // Phase 3b 完了: useContentLinkPreviews.ts:102,156 が useOgpCacheContext 経由で
-  // getEntry / cacheOgpEntry を呼ぶ実装になっており、cache hit 率向上 + 重複 fetch 統合済。
-  const ogpCacheStore = useOgpCache(filterState.visible);
 
   return (
     <AppProviders
