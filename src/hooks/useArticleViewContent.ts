@@ -15,6 +15,9 @@ const SHORT_CONTENT_THRESHOLD = 400;
 // useArticleViewContent の wrapSentencesInHtml ガードに使う (TTS 非対応環境では
 // 高コストな linkedom DOM parse を skip)。
 const SPEECH_SUPPORTED = isSpeechSupported();
+// hasImages 判定の `<img>` 検出 regex は hook body で毎 render 評価されるため、
+// module-scope で 1 回だけ compile する。
+const IMG_TAG_RE = /<img\b/i;
 
 export interface ArticleViewContentResult {
   embedInfo: ReturnType<typeof extractEmbedInfo>;
@@ -85,7 +88,7 @@ export function useArticleViewContent(
   const hasFullContent = !!storedContent || !canFetch;
   const hasImages =
     !!(article?.ogImage ?? resolvedOgImage) ||
-    !!(processedContent && /<img\b/i.test(processedContent));
+    !!(processedContent && IMG_TAG_RE.test(processedContent));
   // readingTime() は内部で stripHtml (8 regex passes) を呼ぶため、
   // useMemo で processedContent / article.summary 変化時のみ再計算する。
   // これがないと TTS state 変化や reader settings 開閉などの親 re-render で毎回
