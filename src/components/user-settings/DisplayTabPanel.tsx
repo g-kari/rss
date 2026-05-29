@@ -21,6 +21,8 @@ import { useThemePresets } from "../../hooks/useThemePresets";
 import { THEME_PRESET_NAME_MAX_LENGTH, THEME_PRESET_NAME_MIN_LENGTH } from "../../lib/theme-preset";
 import type { Theme } from "../../hooks/useThemePreference";
 import { useState } from "react";
+import { useTextInputModal } from "../../hooks/useTextInputModal";
+import TextInputModal from "../TextInputModal";
 
 interface DisplayTabPanelProps {
   hidden: boolean;
@@ -118,6 +120,7 @@ export default function DisplayTabPanel({
 }: DisplayTabPanelProps) {
   const { presets, savePreset, deletePreset } = useThemePresets();
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
+  const { requestTextInput, textInputModalProps } = useTextInputModal();
 
   const handleApplyPreset = () => {
     const target = presets.find((p) => p.id === selectedPresetId);
@@ -131,18 +134,18 @@ export default function DisplayTabPanel({
     onChangeContentWidth(target.contentWidth);
   };
 
-  const handleSaveCurrent = () => {
-    const raw = typeof window !== "undefined" ? window.prompt("preset 名 (1-30 文字)") : null;
-    if (raw === null) return;
-    const name = raw.trim();
-    if (name.length < THEME_PRESET_NAME_MIN_LENGTH || name.length > THEME_PRESET_NAME_MAX_LENGTH) {
-      if (typeof window !== "undefined") {
-        window.alert(
-          `preset 名は ${THEME_PRESET_NAME_MIN_LENGTH}-${THEME_PRESET_NAME_MAX_LENGTH} 文字で指定してください`,
-        );
-      }
-      return;
-    }
+  // #881: window.prompt/alert を useTextInputModal に置き換え。validation 失敗時は
+  // モーダル内エラー表示で再入力を促す (旧 alert は dismiss するしかなかった)。
+  const handleSaveCurrent = async () => {
+    const name = await requestTextInput({
+      title: "プリセットを保存",
+      description: `${THEME_PRESET_NAME_MIN_LENGTH}-${THEME_PRESET_NAME_MAX_LENGTH} 文字で入力してください`,
+      placeholder: "preset 名",
+      minLength: THEME_PRESET_NAME_MIN_LENGTH,
+      maxLength: THEME_PRESET_NAME_MAX_LENGTH,
+      submitLabel: "保存",
+    });
+    if (name === null) return;
     savePreset(name, { theme, fontSize, fontFamily, lineHeight, contentWidth });
   };
 
@@ -280,6 +283,7 @@ export default function DisplayTabPanel({
           変更は即座にプレビューに反映され、自動的に保存されますわ。
         </p>
       </div>
+      <TextInputModal {...textInputModalProps} />
     </div>
   );
 }
