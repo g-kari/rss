@@ -42,6 +42,29 @@ test.describe("collectImageUrlsFromHtml — 基本動作", () => {
     expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/c@2x.jpg"]);
   });
 
+  test("#897: src=data:..., srcset 無、data-src あり → data-src を採用 (kai-you.net lazy load)", () => {
+    const html =
+      '<img src="data:image/svg+xml;base64,PHN2Zw==" data-src="https://example.com/lazy.jpg" alt="">';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/lazy.jpg"]);
+  });
+
+  test("#897: src が空 + data-src あり → data-src を採用", () => {
+    const html = '<img data-src="https://example.com/lazy2.jpg" alt="">';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/lazy2.jpg"]);
+  });
+
+  test("#897: src が通常 URL なら data-src は無視 (既存挙動互換)", () => {
+    const html =
+      '<img src="https://example.com/real.jpg" data-src="https://example.com/should-not-pick.jpg">';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/real.jpg"]);
+  });
+
+  test("#897: src=data:, srcset で拾える場合は data-src を見ない (既存 fallback 優先)", () => {
+    const html =
+      '<img src="data:image/gif;base64,AAAA" srcset="https://example.com/srcset.jpg" data-src="https://example.com/datasrc.jpg">';
+    expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/srcset.jpg"]);
+  });
+
   test("重複 URL は一度だけ収集される", () => {
     const html = '<img src="https://example.com/d.jpg"><img src="https://example.com/d.jpg">';
     expect(collectImageUrlsFromHtml(html)).toEqual(["https://example.com/d.jpg"]);

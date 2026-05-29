@@ -218,6 +218,13 @@ export function collectImageUrlsFromHtml(html: unknown): string[] {
       const srcset = /\bsrcset=["']([^"']+)["']/i.exec(attrs)?.[1] ?? "";
       src = bestSrcFromSrcset(srcset);
     }
+    // #897: raw HTML 走査では `<img src="data:..." data-src="real-url">` lazy load
+    // pattern (kai-you.net 等) で srcset が無い場合に data-src を最終 fallback とする。
+    // postProcess の fixLazyImages が走る前の raw HTML 経路 (gallery-prefetch /
+    // useArticleViewContent 等) で本文画像を確実に拾うため。
+    if (!src || src.startsWith("data:")) {
+      src = /\bdata-src=["']([^"']+)["']/i.exec(attrs)?.[1] ?? src;
+    }
     if (!isCollectableUrl(src)) continue;
     if (isTooSmallByUrl(src)) continue;
     const widthAttr = /\bwidth=["']([^"']+)["']/i.exec(attrs)?.[1];
@@ -274,6 +281,12 @@ export function collectImageUrls(container: Element, seen?: Set<string>): string
     let src = el.currentSrc || el.getAttribute("src") || "";
     if (!src || src.startsWith("data:")) {
       src = bestSrcFromSrcset(el.getAttribute("srcset") ?? "");
+    }
+    // #897: live DOM 経路でも raw HTML 経路と同じ fallback chain を維持する
+    // (`collectImageUrlsFromHtml` と sibling 規範整合)。fixLazyImages 適用済 DOM
+    // では data-src は既に src に統合済のため通常は no-op、未統合 DOM での safety net。
+    if (!src || src.startsWith("data:")) {
+      src = el.getAttribute("data-src") ?? src;
     }
     if (!isCollectableUrl(src)) continue;
     if (isTooSmallByUrl(src)) continue;
