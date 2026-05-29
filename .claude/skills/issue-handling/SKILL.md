@@ -219,7 +219,16 @@ commit `<short-hash>` (`<commit message subject>`) で既に完了:
 
 1. **Step 0 sweep で着手対象と判定した Issue の「必要な対応箇所」を読む** — touch file を全件抽出
 2. **各 touch file に対して `git log --oneline -- <file>` を実行** + commit message に `(#<Issue 番号> scope-X 自走採用)` 表記を grep
-3. 発見 → scope-reduction コメント投稿 + 残課題 scope を再判定 (自走可能 / 判断仰ぎ継続)
+3. **発見時は新規 scope-reduction コメント投稿前に必ず過去 AI コメント側の重複有無を確認**:
+
+   ```bash
+   gh issue view <N> --json comments \
+     --jq '.comments[] | select(.body | test("scope-A 自走採用|scope 縮小|scope-A 完了|は既に対応済"))
+           | "[" + .createdAt + "] " + (.body | .[0:200])'
+   ```
+
+   a. **hit あり (1 件以上)** → 既に投稿済、新規 scope-reduction コメント投稿は **skip** (重複ノイズ防止) + 残課題 scope 再判定のみ実施
+   b. **hit なし** → 新規 scope-reduction コメント投稿 + 残課題 scope を再判定 (自走可能 / 判断仰ぎ継続)
 4. 未発見 → 通常の自走着手フロー
 5. **scope-reduction コメント投稿は新規 code change 不要** (本文整理のみ、merge / push 不要)
 
@@ -227,9 +236,13 @@ commit `<short-hash>` (`<commit message subject>`) で既に完了:
 
 - Issue 起票が **同サイクル内** で自走着手前 (= 過去 scope-X 自走採用が物理的に発生していない) → verify 不要 (起票直後の自走判定パターン)
 - Issue 本文に **「Phase A 完了報告」「scope-A 完了済」記述が既存** (= 過去 AI が scope-reduction コメント投稿済) → 本文だけで判定可能、git log verify skip OK
+- Issue **コメント側** に **過去 AI が scope-reduction コメント 1 件以上投稿済** (上記 grep で `scope-A 自走採用` / `scope 縮小` / `scope-A 完了` / `は既に対応済` キーワード hit) → 新規 scope-reduction コメント投稿は **skip** (重複ノイズ防止、Issue コメント欄が同内容で 5 件以上連続投稿されるとユーザー読解負荷増 + Issue 履歴のシグナル/ノイズ比劣化)。git log verify 自体は cost 5 秒なので実行は維持して残課題 scope 再判定だけは確実に
 - Issue が **dead code 削除単独** (touch 1 file + 1 problem) で複数 subset 構造を持たない → verify 対象外
 
-主な使用箇所: 89th cycle で `#888` case A の Bug 1 (戻り値 `progress` dead value 削除) を「案 B 現状維持系 dead code 削除」派生サブケース判定で自走着手準備中、`git log --oneline -- src/hooks/useReadingProgress.ts` で commit `0869b8ac` (`dead code 削除: useReadingProgress 戻り値 progress + progressRef 廃止 (#888 scope-A 自走採用)`) を発見 → Issue 本文は当時のまま (Bug 1 + Bug 2 同居) で stale 状態と判明 → scope-reduction コメント投稿で Bug 2 単独に scope 縮小 (本派生サブケース codify の trigger)
+主な使用箇所:
+
+- 89th cycle で `#888` case A の Bug 1 (戻り値 `progress` dead value 削除) を「案 B 現状維持系 dead code 削除」派生サブケース判定で自走着手準備中、`git log --oneline -- src/hooks/useReadingProgress.ts` で commit `0869b8ac` (`dead code 削除: useReadingProgress 戻り値 progress + progressRef 廃止 (#888 scope-A 自走採用)`) を発見 → Issue 本文は当時のまま (Bug 1 + Bug 2 同居) で stale 状態と判明 → scope-reduction コメント投稿で Bug 2 単独に scope 縮小 (本派生サブケース codify の trigger)
+- post-90th cycle (2026-05-29) で `#888` に対して同 verify フローを実行 → commit `0869b8ac` 再発見 → ただし `gh issue view 888 --json comments` で **過去 AI scope-reduction コメント 4 件** (2026-05-28T21:18 / 21:25 / 2026-05-29T01:33 / 02:36 / 03:42) が連続投稿済と判明、5 件目の重複投稿を skip 判定 → 本派生サブケース に「Step 3 で gh issue view コメント側 grep 確認」step 格上げ + 反例エントリ追加の trigger
 
 ### 派生ケース: 監査エージェント finding の起票時にも Step 4 の判断不要スクリーニングを必ず実行する
 
