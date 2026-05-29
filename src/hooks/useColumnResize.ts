@@ -1,4 +1,10 @@
-import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 
 interface ColumnConfig {
@@ -22,6 +28,15 @@ const COLUMN_CONFIGS: Record<"sidebar" | "list", ColumnConfig> = {
     maxWidth: 600,
   },
 };
+
+/**
+ * 各カラムの幅制限 (px)。`ColumnResizeHandles` の WAI-ARIA Separator pattern
+ * `aria-valuemin` / `aria-valuemax` 表示に流用する。
+ */
+export const COLUMN_LIMITS = {
+  sidebar: { min: COLUMN_CONFIGS.sidebar.minWidth, max: COLUMN_CONFIGS.sidebar.maxWidth },
+  list: { min: COLUMN_CONFIGS.list.minWidth, max: COLUMN_CONFIGS.list.maxWidth },
+} as const;
 
 /**
  * localStorage から保存済み幅を読み込む。
@@ -116,5 +131,21 @@ export function useColumnResize() {
     storageSet(storageKey, String(defaultWidth));
   }
 
-  return { sidebarWidth, listWidth, handleResizeStart, resetWidth };
+  /**
+   * キーボード操作 (WAI-ARIA Separator pattern の ArrowLeft / ArrowRight 等) で
+   * 現在幅を deltaPx ぶん変化させる。`minWidth` / `maxWidth` で自動クランプ、localStorage 同期保存。
+   *
+   * (#887 WCAG 2.1.1 Keyboard 準拠のため追加)
+   */
+  const nudgeWidth = useCallback((column: "sidebar" | "list", deltaPx: number) => {
+    const { minWidth, maxWidth, storageKey } = COLUMN_CONFIGS[column];
+    const setter = column === "sidebar" ? setSidebarWidth : setListWidth;
+    setter((prev) => {
+      const next = Math.max(minWidth, Math.min(maxWidth, prev + deltaPx));
+      if (next !== prev) storageSet(storageKey, String(next));
+      return next;
+    });
+  }, []);
+
+  return { sidebarWidth, listWidth, handleResizeStart, resetWidth, nudgeWidth };
 }

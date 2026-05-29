@@ -53,6 +53,7 @@ interface AppOverlaysProps {
   listWidth: number;
   onResizeStart: ComponentProps<typeof ColumnResizeHandles>["onResizeStart"];
   resetWidth: ComponentProps<typeof ColumnResizeHandles>["onResetWidth"];
+  nudgeWidth: ComponentProps<typeof ColumnResizeHandles>["onNudgeWidth"];
 }
 
 /**
@@ -88,6 +89,7 @@ export function AppOverlays({
   listWidth,
   onResizeStart,
   resetWidth,
+  nudgeWidth,
 }: AppOverlaysProps) {
   return (
     <>
@@ -124,6 +126,7 @@ export function AppOverlays({
         listWidth={listWidth}
         onResizeStart={onResizeStart}
         onResetWidth={resetWidth}
+        onNudgeWidth={nudgeWidth}
       />
     </>
   );
