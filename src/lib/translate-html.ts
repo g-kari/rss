@@ -16,6 +16,14 @@ import {
 } from "./browser-translator";
 import { devError } from "./dev-log";
 
+/**
+ * Translator.create() のタイムアウト (ms)。
+ *
+ * `availability === "downloading"` 状態で create() がモデル DL 完了まで resolve しない罠を防ぐ。
+ * 30s は実 DL 時間 (Edge 端末で ~10-15s) + 安全マージン。
+ */
+const TRANSLATOR_CREATE_TIMEOUT_MS = 30_000;
+
 /** 翻訳対象から除外するタグ（コード・実行系・埋め込み） */
 const SKIP_TAGS = new Set([
   "SCRIPT",
@@ -168,7 +176,19 @@ export async function translateHtmlInBrowser(
     const availability = await window.Translator.availability({ sourceLanguage, targetLanguage });
     if (!shouldUseBrowserTranslation(availability)) return null;
 
-    const translator = await window.Translator.create({ sourceLanguage, targetLanguage });
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const translator = await Promise.race([
+      window.Translator.create({ sourceLanguage, targetLanguage }).finally(() => {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+      }),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () =>
+            reject(new Error(`Translator.create timeout after ${TRANSLATOR_CREATE_TIMEOUT_MS}ms`)),
+          TRANSLATOR_CREATE_TIMEOUT_MS,
+        );
+      }),
+    ]);
 
     const doc = new DOMParser().parseFromString(`<div id="__t_root">${html}</div>`, "text/html");
     const root = doc.getElementById("__t_root");
