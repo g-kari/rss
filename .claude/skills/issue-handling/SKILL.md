@@ -176,6 +176,61 @@ gh issue edit N --add-label needs-user-decision
 
 主な使用箇所: #773 Phase 2c 検証フィードバック 3 問題のうち問題 1 (列幅余白 = `Math.floor` 1 行修正、判断不要) は自走 commit、問題 2/3 (無限ロード + scroll 暴走 = cooldown ms / debounce ms の UX 主観評価要) は案 A/B/C/D 統合設計方針コメント投稿 + needs-user-decision 付与で 1 サイクル内で「進捗 + 判断仰ぎ」を両立
 
+#### 派生サブケース: partial scope 自走採用済 Issue は再着手前に `git log --oneline -- <file>` で過去 commit を必ず verify + 発見時は scope-reduction コメント運用
+
+「1 Issue 内に複数 problem」を分解して subset (Bug 1) のみ過去サイクルで自走採用した場合、**Issue 本文は当時の Bug 1 + Bug 2 同居のまま自動更新されず stale 化** する。次サイクル AI が Issue 本文だけ読んで自走着手判定すると、既に master 反映済の subset を二重実装着手する手戻り (file 全文 Read + consumer destructure 確認 + AI 自走 5 条件 verify の context 消費) が発生する。
+
+```
+パターン: partial scope 自走採用後の再着手 verify フロー
+  1. Issue が自走候補と判定 (AI 自走 5 条件 / 代替 4 条件 / 派生サブケース 案 B 現状維持系 判定)
+  2. **着手準備の最初に `git log --oneline -- <touch 予定 file>` を実行**
+     - `<touch 予定 file>` は Issue 本文「必要な対応箇所」セクションで列挙されたもの全件
+     - commit message に `(#<Issue 番号> scope-A 自走採用)` / `(#<Issue 番号> scope-B 自走採用)` 等の表記がないか scan
+  3. 過去 scope-X 自走採用 commit 発見:
+     a. **対応済 subset の特定** (commit message から scope-X = Bug 1 等を特定)
+     b. **残課題 subset の評価** (Issue 本文の残 problem を再判定、自走可能なら継続、判断要なら停止)
+     c. **scope-reduction コメント投稿** (commit hash + 完了 subset + 残課題 scope を明示)
+  4. 過去 scope-X 自走採用 commit なし → 通常の自走着手フローで進行
+```
+
+**Why**: AI partial scope 自走採用後の Issue 本文は手動更新義務がない (commit message のみが source of truth)。次サイクル AI が本文だけで判定すると stale 状態を「未着手」と誤認、context 消費 + 二重着手未遂のリスクがある。`git log --oneline -- <file>` 1 コマンドで verify 可能なため、自走着手前のチェックポイントに組み込むのが canonical。
+
+**scope-reduction コメントテンプレート**:
+
+```markdown
+> 🤖 **AI 投稿 (Claude Code)** — scope 縮小報告。
+
+## <subset 名> は既に対応済
+
+commit `<short-hash>` (`<commit message subject>`) で既に完了:
+
+- <変更内容 1>
+- <変更内容 2>
+- <consumer 側 touch 有無>
+
+## 残課題: <残 subset 名> のみ
+
+<残課題の判断要素 (touch file 数 / 機能変化 / 設計判断要素)> のため、自走 5 条件を満たさず引き続きユーザー判断を仰ぎます。
+
+本 Issue scope は **<残 subset 名> 単独** に縮小されます。
+```
+
+**How to apply**: 同 Issue を複数サイクルにわたって参照する判断時に必ず実行 (`git log --oneline -- <file>` 1 コマンドで 5 秒、誤判定回避の cost-effective check):
+
+1. **Step 0 sweep で着手対象と判定した Issue の「必要な対応箇所」を読む** — touch file を全件抽出
+2. **各 touch file に対して `git log --oneline -- <file>` を実行** + commit message に `(#<Issue 番号> scope-X 自走採用)` 表記を grep
+3. 発見 → scope-reduction コメント投稿 + 残課題 scope を再判定 (自走可能 / 判断仰ぎ継続)
+4. 未発見 → 通常の自走着手フロー
+5. **scope-reduction コメント投稿は新規 code change 不要** (本文整理のみ、merge / push 不要)
+
+**反例 (verify skip 可能なケース)**:
+
+- Issue 起票が **同サイクル内** で自走着手前 (= 過去 scope-X 自走採用が物理的に発生していない) → verify 不要 (起票直後の自走判定パターン)
+- Issue 本文に **「Phase A 完了報告」「scope-A 完了済」記述が既存** (= 過去 AI が scope-reduction コメント投稿済) → 本文だけで判定可能、git log verify skip OK
+- Issue が **dead code 削除単独** (touch 1 file + 1 problem) で複数 subset 構造を持たない → verify 対象外
+
+主な使用箇所: 89th cycle で `#888` case A の Bug 1 (戻り値 `progress` dead value 削除) を「案 B 現状維持系 dead code 削除」派生サブケース判定で自走着手準備中、`git log --oneline -- src/hooks/useReadingProgress.ts` で commit `0869b8ac` (`dead code 削除: useReadingProgress 戻り値 progress + progressRef 廃止 (#888 scope-A 自走採用)`) を発見 → Issue 本文は当時のまま (Bug 1 + Bug 2 同居) で stale 状態と判明 → scope-reduction コメント投稿で Bug 2 単独に scope 縮小 (本派生サブケース codify の trigger)
+
 ### 派生ケース: 監査エージェント finding の起票時にも Step 4 の判断不要スクリーニングを必ず実行する
 
 監査エージェント (perf / a11y / simplify / docs drift / refactor) の finding を Issue 化するとき、エージェントの report に「案 A/B/C 整理」「設計判断要」記述があるからといって機械的に `needs-user-decision` 付与してはならない。エージェントの「設計判断要」判定は **conservative side** であり、実コード verification で AI 自走 5 条件全充足が判明すれば **直接実装着手 + 完了コメント** が正解。
