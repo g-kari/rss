@@ -20,7 +20,11 @@ import {
   transformSlideShareEmbedLinks,
 } from "./html-embed-transforms";
 import { removeNoise } from "./html-noise-removal";
-import { fixLazyImages, removeSmallThumbnailImages } from "./html-image-processors";
+import {
+  fixLazyImages,
+  removeSmallThumbnailImages,
+  dedupeAdjacentDuplicateImages,
+} from "./html-image-processors";
 
 // ── re-export: html-noise-removal.ts ────────────────────────────
 // removeDivsByClass / replaceBlocksByClass は html-noise-removal.ts の
@@ -35,6 +39,7 @@ export {
   fixImageDimensions,
   rewriteImageUrls,
   removeSmallThumbnailImages,
+  dedupeAdjacentDuplicateImages,
 } from "./html-image-processors";
 
 // ── re-export: html-embed-transforms.ts ─────────────────────────
@@ -173,6 +178,10 @@ export function postProcess(content: string, pageUrl = ""): string {
   h = transformZennLinkEmbeds(h);
   h = transformZennMermaidEmbeds(h, pageUrl);
   h = fixLazyImages(h);
+  // #893: lazy load + noscript fallback で同一 src の <img> が連続する pattern を集約。
+  // fixLazyImages で data-src を src に昇格した直後に呼ぶことで PR TIMES 系
+  // (`<img data-src=X src=data:...><img src=X>`) の重複描画を防ぐ。
+  h = dedupeAdjacentDuplicateImages(h);
   h = removeSmallThumbnailImages(h);
   return applyCorePipeline(h, pageUrl);
 }

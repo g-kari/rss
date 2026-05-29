@@ -55,6 +55,24 @@ function resolveRelativeUrl(url: string, base: URL): string {
 }
 
 /**
+ * 同一 src の隣接 <img> を最初の 1 個に集約する純粋関数 (#893)。
+ *
+ * lazy-load + noscript fallback pattern (例: PR TIMES `prcdn.freetls.fastly.net`) で
+ * 元 HTML が `<img data-src="X" src="data:..."><img src="X">` のように同じ画像を 2 個
+ * 並べて記述するケースで、`fixLazyImages` が 1 個目の data-src を src に昇格した結果
+ * 同一 src の <img> が連続する。これを最初の 1 個 (属性込み) に集約することで重複描画と
+ * 重複帯域消費を防ぐ。
+ *
+ * 冪等性: 集約後の HTML には同一 src 連続パターンが残らないため `f(f(x)) === f(x)`。
+ */
+export function dedupeAdjacentDuplicateImages(html: string): string {
+  return html.replace(
+    /(<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>)(?:\s*<img\b[^>]*\bsrc=["']\2["'][^>]*>)+/gi,
+    "$1",
+  );
+}
+
+/**
  * JS 遅延ロード画像と Shopify サムネイルを高解像度に解決する。
  * - data-src が有効 URL（{width} プレースホルダー含む）→ 800px 幅に解決して src を上書き
  * - src の Shopify サイズサフィックス（_300x300 等）→ _800x に置換
