@@ -10,38 +10,26 @@
  *   localStorage.setItem("rss-debug-bgaudio", "1") → リロード → TTS 再生 → スマホで background へ
  *   DevTools (リモート debug) の Console を確認 → 結果を Issue にペースト
  *   localStorage.removeItem("rss-debug-bgaudio") で OFF
+ *
+ * 実装は `debug-helper.ts` の `createDebugHelper` factory に集約済。本 file は thin wrapper で、
+ * e2e spec の import 互換性 (`evaluateBgAudioDebugEnabled` 等の export 名) を維持する。
  */
 
-const DEBUG_KEY = "rss-debug-bgaudio";
+import { createDebugHelper, evaluateDebugEnabled } from "./debug-helper";
 
-let cachedEnabled: boolean | null = null;
+const helper = createDebugHelper("rss-debug-bgaudio", "[BgAudio]");
 
 /** 純粋判定: storage の値から enabled かを判定 (テスタビリティのため分離)。 */
-export function evaluateBgAudioDebugEnabled(storedValue: string | null): boolean {
-  return storedValue === "1";
-}
+export const evaluateBgAudioDebugEnabled = evaluateDebugEnabled;
 
 /**
  * 診断ログが有効かどうか。`localStorage` の `rss-debug-bgaudio` をキャッシュして
  * 高頻度の effect 内呼び出しでも localStorage アクセスを最小化する。
  */
-export function isBgAudioDebugEnabled(): boolean {
-  if (cachedEnabled !== null) return cachedEnabled;
-  if (typeof window === "undefined") return false;
-  try {
-    cachedEnabled = evaluateBgAudioDebugEnabled(window.localStorage.getItem(DEBUG_KEY));
-  } catch {
-    cachedEnabled = false;
-  }
-  return cachedEnabled;
-}
+export const isBgAudioDebugEnabled = helper.isEnabled;
 
 /**
  * 診断ログを出力する。`isBgAudioDebugEnabled()` が true のときだけ console.info に
  * `[BgAudio]` prefix 付きでデータを出す。
  */
-export function bgAudioDebug(label: string, data: Record<string, unknown>): void {
-  if (!isBgAudioDebugEnabled()) return;
-  // eslint-disable-next-line no-console -- 診断ログは本番でも明示的に有効化された時のみ出力
-  console.info(`[BgAudio] ${label}`, data);
-}
+export const bgAudioDebug = helper.log;
