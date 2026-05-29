@@ -227,7 +227,7 @@ export default function AppShell({
   useOnlineRecoveryToast(isOnline, toast);
 
   // カラム幅（PC）
-  const { sidebarWidth, listWidth, handleResizeStart, resetWidth } = useColumnResize();
+  const { sidebarWidth, listWidth, handleResizeStart, resetWidth, nudgeWidth } = useColumnResize();
 
   const {
     feeds,
@@ -844,6 +844,7 @@ export default function AppShell({
               listWidth={listWidth}
               onResizeStart={handleResizeStart}
               resetWidth={resetWidth}
+              nudgeWidth={nudgeWidth}
             />
             <AppSidebarPane
               mobilePane={mobilePane}
