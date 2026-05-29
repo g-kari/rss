@@ -189,7 +189,7 @@ src/
     article-view/AutoReadController.tsx  # オートモードの副作用コントローラ（fetch → speak → 次の記事への自動進行）
     AppShell.tsx             # 27 個の state hook と TTS/audio 管理を一元化し、3 ペイン UI 全体をオーケストレーションするルートコンポーネント
     FallbackImage.tsx        # 画像 proxy fallback 機能を `useImageProxyFallback` hook でラップした薄い `<img>` ラッパーコンポーネント
-    GalleryMasonrySelf.tsx   # `useMasonryLayout` を使って自前 masonry virtualizer で絶対配置レイアウトを実現するギャラリー (`gallerySelfMasonryEnabled` テストモードで有効化)
+    GalleryMasonrySelf.tsx   # `useMasonryLayout` を使って自前 masonry virtualizer で絶対配置レイアウトを実現するギャラリー (#773 Phase 3 / #822 で default ON 化、`<GalleryMasonry>` の thin wrapper 経由で全 caller が使用)
     ImageLightbox.tsx        # ギャラリーの画像クリックで起動する拡大表示モーダル（focus trap・前後ナビゲーション・記事表示機能付き）
     PiperEngineHost.tsx      # piper-plus WASM TTS engine を `next/dynamic({ ssr: false })` で隔離し、render prop で child に expose する
     PiperErrorDetailToast.tsx # TTS engine エラーの詳細（code/message/model/voice）を浮き出し toast で表示、クリップボード保存機能付き
