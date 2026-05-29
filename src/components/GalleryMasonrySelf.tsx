@@ -51,17 +51,15 @@ function useContainerMetrics(
 }
 
 /**
- * #773 Phase 2b: masonic 廃止のための自前 masonry virtualizer。
+ * #773 Phase 2b → Phase 3 (#822) で default ON 化された自前 masonry virtualizer。
  *
- * テストモード設定 (`gallerySelfMasonryEnabled`) が ON の時のみ `<GalleryMasonry>` から呼ばれる。
+ * `<GalleryMasonry>` (thin wrapper) 経由で全 caller が使用。
  * 全 item を absolute 配置で render + ResizeObserver で全 height 変化を捕捉し、
  * 画像 load 完了時の aspectRatio 変化を viewport 上で検知して scrollTop 補正する。
  *
- * masonic との差分:
+ * masonic との差分 (Phase 3 で masonic 完全削除済):
  * - masonic は viewport 外を skip し overscanBy 範囲のみ render → 真因捕捉できず
  * - 自前は全件 absolute render → 計算コスト増だが scroll 巻き戻り完全解消
- *
- * Phase 2c で動作確認 + 必要に応じて virtualization 追加検討。
  */
 export default function GalleryMasonrySelf<T>({
   items,
