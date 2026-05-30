@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import type { Article, Feed, FeedView, KeywordFilter } from "../types";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { useGracePeriod } from "./useGracePeriod";
@@ -219,14 +219,17 @@ export function useFilteredArticles({
   // フィルター呼出のたびに重い stripHtml + 8 regex pass を回避する。
   //
   // perf 監査 (#2): readingTimeRange === "all" のときは buildReadingTimePredicate が
-  // 早期 return null で cache を呼ばないため、cache 生成自体を skip して allocation を省く。
-  // #746: cache は article.id で識別し、`mergeUniqueArticles` (#693) の immutability 契約により
-  // 既存 article object identity は polling 横断で保たれる。よって deps から articles を外しても
-  // stale データは発生せず、polling 毎の cache 破棄 (500+ articles × O(content length) 再走) を防げる。
-  const readingTimeCache = useMemo(
-    () => (readingTimeRange === "all" ? undefined : createReadingTimeCache()),
-    [readingTimeRange],
-  );
+  // 早期 return null で cache を呼ばないため、cache 参照自体を skip して allocation を省く。
+  // #924: useRef + useEffect パターンに変更。readingTimeRange の切り替え時は cache を
+  // 再生成しない。articles が変化したときのみ cache をリセットすることで、フィルター切り替え
+  // のたびに 500 件分の stripHtml + 正規表現 8 パスが再計算される問題を解消。
+  const readingTimeCacheRef = useRef(createReadingTimeCache());
+
+  useEffect(() => {
+    readingTimeCacheRef.current = createReadingTimeCache();
+  }, [articles]);
+
+  const readingTimeCache = readingTimeRange === "all" ? undefined : readingTimeCacheRef.current;
 
   const isBookmarksFeed = feedId === SPECIAL_FEED_IDS.BOOKMARKS;
   const isReadingListFeed = feedId === SPECIAL_FEED_IDS.READING_LIST;
