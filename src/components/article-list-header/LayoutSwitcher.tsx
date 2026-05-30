@@ -2,7 +2,8 @@
 
 import type { Layout } from "../../types";
 import LayoutIcon from "../LayoutIcon";
-import { LAYOUTS, LAYOUT_LABELS } from "./constants";
+import { LAYOUT_CYCLE } from "../../lib/article-utils";
+import { LAYOUT_ARIA_LABELS } from "./constants";
 
 interface LayoutSwitcherProps {
   layout: Layout;
@@ -19,7 +20,7 @@ export default function LayoutSwitcher({
 }: LayoutSwitcherProps) {
   return (
     <div className="flex items-center gap-0.5">
-      {LAYOUTS.map((l) => (
+      {LAYOUT_CYCLE.map((l) => (
         <button
           key={l}
           onClick={() => onChangeLayout(l)}
@@ -28,8 +29,8 @@ export default function LayoutSwitcher({
               ? "text-text-strong bg-surface-subtle"
               : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
           }`}
-          title={LAYOUT_LABELS[l]}
-          aria-label={LAYOUT_LABELS[l]}
+          title={LAYOUT_ARIA_LABELS[l]}
+          aria-label={LAYOUT_ARIA_LABELS[l]}
           aria-pressed={layout === l}
         >
           <LayoutIcon layout={l} />
