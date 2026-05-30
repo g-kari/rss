@@ -16,6 +16,7 @@ import {
   transformSlideShareEmbedLinks,
   postProcess,
 } from "./html-post-processor";
+import { tryParseBase } from "./url";
 import { extractWithReadability } from "./readability-extractor";
 import { extractWithRegex } from "./regex-extractor";
 import { extractJsonLdImages, appendMissingJsonLdImages } from "./json-ld-images";

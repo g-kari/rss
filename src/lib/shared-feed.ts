@@ -9,7 +9,7 @@
  */
 
 import type { SharedFeedMeta, UserSubscription, Feed, Article } from "../types";
-import { r2Get, r2Put, sha256Hex } from "./r2";
+import { r2Get, r2Put, sha256Hex, feedLastFetchedKey } from "./r2";
 import { compareByDateDesc } from "./article-utils";
 import { pMap } from "./concurrency";
 
@@ -430,17 +430,45 @@ export async function getUserFeeds(bucket: R2Bucket, userId: string): Promise<Fe
 /**
  * ユーザーの全購読フィードの latest.json を並行取得してマージ・ソートした記事一覧を返す。
  * 各フィードから最新 PAGE_SIZE 件ずつ取得する。
+ *
+ * @param since ISO 文字列または ms 数値文字列。指定すると feed-last-fetched.json を 1 回読んで
+ *   since 以降に更新されたフィードのみ R2 GET する（N+1 GET 削減）。
+ *   subs が呼び出し元で既にフィルタ済みの場合は内部フィルタはスキップされる。
  */
 export async function getUserLatestArticles(
   bucket: R2Bucket,
   userId: string,
   subs?: UserSubscription[],
+  since?: string,
 ): Promise<Article[]> {
   const resolvedSubs = subs ?? (await readUserSubscriptions(bucket, userId));
   if (resolvedSubs.length === 0) return [];
 
+  // since が指定されており、かつ呼び出し元が subs を渡していない場合のみ内部フィルタを適用する。
+  // 呼び出し元が既にフィルタ済み subs を渡している場合（route.ts の since 経路等）は
+  // feed-last-fetched.json の追加読み込みをスキップしてパフォーマンスを維持する。
+  let activeSubs = resolvedSubs;
+  if (since !== undefined && subs === undefined) {
+    const sinceMs = Date.parse(since);
+    if (!Number.isNaN(sinceMs)) {
+      const lastFetched = await r2Get<Record<string, string>>(
+        bucket,
+        feedLastFetchedKey(userId),
+        {},
+      );
+      activeSubs = resolvedSubs.filter((s) => {
+        const lastFetchedAt = lastFetched[s.feedHash];
+        // キャッシュ未設定（初回 or cron 未実行）は保守的に含める
+        if (!lastFetchedAt) return true;
+        return Date.parse(lastFetchedAt) > sinceMs;
+      });
+    }
+  }
+
+  if (activeSubs.length === 0) return [];
+
   const pages = await pMap(
-    resolvedSubs,
+    activeSubs,
     (s) => readLatestArticles(bucket, s.feedHash),
     R2_CONCURRENCY,
   );
