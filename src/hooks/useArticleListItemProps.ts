@@ -70,6 +70,17 @@ export function useArticleListItemProps({
   const onToggleBookmarkRef = useSyncedRef(onToggleBookmark);
   const onToggleReadingListRef = useSyncedRef(onToggleReadingList);
 
+  const stableOnSelectArticle = useCallback(
+    (a: Article, event?: ReactMouseEvent) => onSelectArticleRef.current(a, event),
+    [],
+  );
+  const stableOnToggleRead = useCallback((id: string) => onToggleReadRef.current(id), []);
+  const stableOnToggleBookmark = useCallback((id: string) => onToggleBookmarkRef.current(id), []);
+  const stableOnToggleReadingList = useCallback(
+    (id: string) => onToggleReadingListRef.current?.(id),
+    [],
+  );
+
   const resolveItemProps = useCallback(
     (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => {
       const feed = feedMap.get(article.feedHash);
@@ -88,13 +99,11 @@ export function useArticleListItemProps({
         query,
         duplicateFeedNames: duplicateInfo?.get(article.id),
         totalCount: filteredCount,
-        onSelectArticle: (a: Article, event?: ReactMouseEvent) =>
-          onSelectArticleRef.current(a, event),
-        onToggleRead: (id: string) => onToggleReadRef.current(id),
-        onToggleBookmark: (id: string) => onToggleBookmarkRef.current(id),
-        onToggleReadingList: onToggleReadingListRef.current
-          ? (id: string) => onToggleReadingListRef.current?.(id)
-          : undefined,
+        onSelectArticle: stableOnSelectArticle,
+        onToggleRead: stableOnToggleRead,
+        onToggleBookmark: stableOnToggleBookmark,
+        onToggleReadingList:
+          onToggleReadingListRef.current !== undefined ? stableOnToggleReadingList : undefined,
         onContextMenu,
       };
     },
