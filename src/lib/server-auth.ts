@@ -41,7 +41,7 @@ export const SESSION_COOKIE = "session_id";
 const SESSION_MAX_AGE_SECS = 30 * 24 * 60 * 60; // 30日
 
 /** サーバーサイドセッション（R2 保存内容） */
-interface ServerSessionData {
+export interface ServerSessionData {
   userId: string;
   refreshToken: string;
   expiresAt: number; // Unix 秒
@@ -55,6 +55,17 @@ interface ServerSessionData {
 /** sessionId を R2 キーに変換。UUID 形式でない場合はパストラバーサル防止のため null を返す */
 function buildSessionKey(sessionId: string): string | null {
   return isValidSessionId(sessionId) ? `sessions/${sessionId}.json` : null;
+}
+
+function isServerSessionData(v: unknown): v is ServerSessionData {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    !Array.isArray(v) &&
+    typeof (v as ServerSessionData).userId === "string" &&
+    typeof (v as ServerSessionData).refreshToken === "string" &&
+    typeof (v as ServerSessionData).expiresAt === "number"
+  );
 }
 
 /** R2 にセッションを作成し、生成した sessionId を返す */
@@ -83,12 +94,16 @@ export async function getServerSession(
   try {
     const obj = await r2.get(key);
     if (!obj) return null;
-    const data = (await obj.json()) as ServerSessionData;
-    if (data.expiresAt < Math.floor(Date.now() / 1000)) {
+    const raw: unknown = await obj.json();
+    if (!isServerSessionData(raw)) {
+      console.error("[server-auth] invalid session data from R2", { type: typeof raw });
+      return null;
+    }
+    if (raw.expiresAt < Math.floor(Date.now() / 1000)) {
       r2.delete(key).catch(() => {});
       return null;
     }
-    return data;
+    return raw;
   } catch (err) {
     console.warn("[getServerSession] R2 read failed:", sessionId.slice(0, 8), err);
     return null;
