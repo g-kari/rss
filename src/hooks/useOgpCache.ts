@@ -34,14 +34,24 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
   );
 
   // 戻り値 BC 維持: caller は image URL のみ参照 (= v1 形式) なので、内部 v2 から image
-  // のみ pluck した Record を memoize して返す。ogpCacheV2 が更新されるたびに新 reference
-  // を生成するが、resolveThumbnail caller は useSyncedRef で安定参照を維持しているため
-  // identity 変化による再 render impact は限定的。
+  // のみ pluck した Record を memoize して返す。
+  // 構造的等価ガード (#914): ogpCacheV2 が更新されても、pluck 後の {key → image} の
+  // 内容 (キー集合 + 各値) が前回と完全一致する場合は前回と同じ reference を返す。
+  // OGP fetch 完了のたびに Consumer が全 re-render される identity churn を回避する。
+  const ogpCachePrevRef = useRef<Record<string, string>>({});
   const ogpCache = useMemo<Record<string, string>>(() => {
+    const prev = ogpCachePrevRef.current;
     const result: Record<string, string> = {};
     for (const [key, entry] of Object.entries(ogpCacheV2)) {
       result[key] = entry.image;
     }
+    // 新旧の内容が同一なら旧 reference を返して identity を安定化する
+    const prevKeys = Object.keys(prev);
+    const nextKeys = Object.keys(result);
+    if (prevKeys.length === nextKeys.length && nextKeys.every((k) => prev[k] === result[k])) {
+      return prev;
+    }
+    ogpCachePrevRef.current = result;
     return result;
   }, [ogpCacheV2]);
 
