@@ -934,6 +934,8 @@ export default function AppShell({
                 duplicateInfo,
                 anchorTrigger,
                 onAddFeed: openFeedAddModal,
+                onSnoozeArticle: snoozeArticle,
+                onAddTag: addTag,
               }}
             />
             <AppViewPane
