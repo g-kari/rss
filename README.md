@@ -21,7 +21,7 @@ Next.js 16 + Cloudflare Workers で動くパーソナル RSS リーダー。`rss
 
 ### 1. サインイン
 
-[rss.0g0.xyz](https://rss.0g0.xyz) を開き「**Google でログイン**」をクリック。
+[rss.0g0.xyz](https://rss.0g0.xyz) を開き「**0g0 ID でログイン**」をクリック。
 0g0 ID (OAuth2) 経由で認証が完了するとメイン画面に遷移します。
 
 ### 2. フィードを追加する

@@ -9,6 +9,7 @@ import {
   equalDigestLimitMap,
   equalStringMap,
   equalCompiledFilterMap,
+  equalViewFeedIds,
 } from "../lib/article-filter-equality";
 import { useArticleFilters } from "./useArticleFilters";
 import { useArticleSorting } from "./useArticleSorting";
@@ -198,7 +199,7 @@ export function useFilteredArticles({
     stableDigestLimitMapRef.current = computedDigestLimitMap;
   }
   const digestLimitMap = stableDigestLimitMapRef.current;
-  const viewFeedIds = useMemo(() => {
+  const computedViewFeedIds = useMemo(() => {
     if (!activeFeedView) return undefined;
     const ids = new Set<string>();
     for (const f of feeds) {
@@ -210,6 +211,11 @@ export function useFilteredArticles({
     }
     return ids;
   }, [feeds, activeFeedView]);
+  const stableViewFeedIdsRef = useRef<Set<string> | undefined>(undefined);
+  if (!equalViewFeedIds(stableViewFeedIdsRef.current, computedViewFeedIds)) {
+    stableViewFeedIdsRef.current = computedViewFeedIds;
+  }
+  const viewFeedIds = stableViewFeedIdsRef.current;
   const normalizedGlobalFilter = useMemo(
     () => (globalFilter ? normalizeFilter(globalFilter) : null),
     [globalFilter],

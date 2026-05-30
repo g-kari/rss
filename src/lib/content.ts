@@ -37,12 +37,7 @@ import { devError } from "./dev-log";
  * ギャラリーが存在しない場合は空配列を返す。
  */
 function extractThumbListImgs(html: string, pageUrl: string): string[] {
-  let origin = "";
-  try {
-    origin = new URL(pageUrl).origin;
-  } catch {
-    /* ignore */
-  }
+  const origin = tryParseBase(pageUrl)?.origin ?? "";
   if (!origin) return [];
 
   const seen = new Set<string>();

@@ -3,6 +3,7 @@ import {
   equalDigestLimitMap,
   equalStringMap,
   equalCompiledFilterMap,
+  equalViewFeedIds,
 } from "../src/lib/article-filter-equality";
 import type { CompiledKeywordFilter } from "../src/lib/keyword-filter";
 
@@ -123,5 +124,43 @@ test.describe("equalCompiledFilterMap", () => {
       ["b", mockFilter2],
     ]);
     expect(equalCompiledFilterMap(a, b)).toBe(false);
+  });
+});
+
+test.describe("equalViewFeedIds", () => {
+  test("両方 undefined は true", () => {
+    expect(equalViewFeedIds(undefined, undefined)).toBe(true);
+  });
+
+  test("同一 reference は true", () => {
+    const s = new Set(["a", "b"]);
+    expect(equalViewFeedIds(s, s)).toBe(true);
+  });
+
+  test("一方が undefined のとき false", () => {
+    expect(equalViewFeedIds(new Set(["a"]), undefined)).toBe(false);
+    expect(equalViewFeedIds(undefined, new Set(["a"]))).toBe(false);
+  });
+
+  test("内容が同じ別 reference は true", () => {
+    const a = new Set(["feed-1", "feed-2"]);
+    const b = new Set(["feed-2", "feed-1"]);
+    expect(equalViewFeedIds(a, b)).toBe(true);
+  });
+
+  test("size が違うと false", () => {
+    const a = new Set(["feed-1"]);
+    const b = new Set(["feed-1", "feed-2"]);
+    expect(equalViewFeedIds(a, b)).toBe(false);
+  });
+
+  test("要素が違うと false", () => {
+    const a = new Set(["feed-1", "feed-2"]);
+    const b = new Set(["feed-1", "feed-3"]);
+    expect(equalViewFeedIds(a, b)).toBe(false);
+  });
+
+  test("空 Set 同士は true", () => {
+    expect(equalViewFeedIds(new Set(), new Set())).toBe(true);
   });
 });

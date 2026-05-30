@@ -6,7 +6,7 @@
  * 2. HTML なら `<link rel="alternate" type="application/rss+xml">` タグを検索
  * 3. 見つからなければ一般的なパス (/feed, /rss など) を並列プローブ
  */
-import { isValidFeedUrl } from "./url";
+import { isValidFeedUrl, tryParseBase } from "./url";
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "./fetch";
 
 /** フィード探索時の外部フェッチタイムアウト（ミリ秒）*/
@@ -71,12 +71,8 @@ function extractFeedLinkFromHtml(html: string, baseUrl: string): string | null {
  * 最初に見つかったフィード URL を返す。見つからなければ null。
  */
 async function probeCommonFeedPaths(baseUrl: string): Promise<string | null> {
-  let origin: string;
-  try {
-    origin = new URL(baseUrl).origin;
-  } catch {
-    return null;
-  }
+  const origin = tryParseBase(baseUrl)?.origin;
+  if (!origin) return null;
 
   const results = await Promise.allSettled(
     COMMON_FEED_PATHS.map(async (path) => {

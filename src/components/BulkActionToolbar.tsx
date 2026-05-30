@@ -127,6 +127,7 @@ export default function BulkActionToolbar({
                 }
               }}
               placeholder="タグ名を入力"
+              aria-label="タグ名を入力"
               autoFocus
               className="rounded-full border border-border-default bg-surface-base px-3 py-1 text-sm text-text-default focus:outline-none focus:border-ink"
             />

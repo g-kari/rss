@@ -177,6 +177,7 @@ export default function ArticleHeaderEngagement({
         onClick={onToggleFocusMode}
         title={focusMode ? "フォーカスモード終了 (\\)" : "フォーカスモード (\\)"}
         aria-label={focusMode ? "フォーカスモード終了" : "フォーカスモード"}
+        aria-pressed={focusMode}
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg

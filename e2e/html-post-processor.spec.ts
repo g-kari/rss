@@ -2,7 +2,6 @@ import { test, expect } from "@playwright/test";
 import {
   replaceUntilStable,
   processNestedBlocks,
-  tryParseBase,
   wrapTables,
   removeNoise,
   transformZennLinkEmbeds,
@@ -17,6 +16,7 @@ import {
   postProcessMarkdownContent,
   applyCorePipeline,
 } from "../src/lib/html-post-processor";
+import { tryParseBase } from "../src/lib/url";
 
 // ── replaceUntilStable ──────────────────────────────────────────
 

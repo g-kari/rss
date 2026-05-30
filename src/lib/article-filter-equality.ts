@@ -57,3 +57,20 @@ export function equalCompiledFilterMap(
 ): boolean {
   return equalMap(a, b);
 }
+
+/**
+ * `Set<string> | undefined` の構造的等価判定 (viewFeedIds 用)。
+ *
+ * `activeFeedView` が変化しない限り viewFeedIds の内容は変化しないが、
+ * feeds の reference 変化 (5 分ポーリング) で useMemo が毎回新規 Set を生成する。
+ * stable ref ガード経由で reference を安定化して下流 useMemo の不要再計算を防ぐ。
+ */
+export function equalViewFeedIds(a: Set<string> | undefined, b: Set<string> | undefined): boolean {
+  if (a === b) return true;
+  if (a === undefined || b === undefined) return false;
+  if (a.size !== b.size) return false;
+  for (const id of a) {
+    if (!b.has(id)) return false;
+  }
+  return true;
+}

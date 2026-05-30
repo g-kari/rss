@@ -41,8 +41,6 @@ export {
   removeSmallThumbnailImages,
   dedupeAdjacentDuplicateImages,
 } from "./html-image-processors";
-// tryParseBase は url.ts に移動済み (#907)
-export { tryParseBase } from "./url";
 
 // ── re-export: html-embed-transforms.ts ─────────────────────────
 // extractZennEmbedContent は html-embed-transforms.ts 内部利用のみで

@@ -53,7 +53,11 @@ export async function GET() {
   let env: CloudflareEnv;
   try {
     ({ env } = await getCloudflareContext({ async: true }));
-  } catch {
+  } catch (err) {
+    console.error(
+      "[auth/me] getCloudflareContext failed:",
+      err instanceof Error ? err.message : String(err),
+    );
     return NextResponse.json({ user: null });
   }
 

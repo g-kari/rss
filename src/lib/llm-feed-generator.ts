@@ -9,7 +9,7 @@
  */
 
 import { parseHTML } from "linkedom/worker";
-import { isValidFeedUrl, isAbsoluteHttpUrl } from "./url";
+import { isValidFeedUrl, isAbsoluteHttpUrl, tryParseBase } from "./url";
 import { fetchFollowSafeRedirects } from "./fetch";
 import type { SelectorConfig } from "../types";
 import type { ParsedFeed, ParsedItem } from "./xml-parser";
@@ -53,13 +53,7 @@ export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] 
     return [];
   }
 
-  const origin = (() => {
-    try {
-      return new URL(baseUrl).origin;
-    } catch {
-      return "";
-    }
-  })();
+  const origin = tryParseBase(baseUrl)?.origin ?? "";
 
   const nodes: LinkNode[] = [];
   const seen = new Set<string>();
@@ -89,11 +83,7 @@ export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] 
 
     // SSRF ガード + 同一オリジン縛り（外部ドメインは除外）
     if (!isValidFeedUrl(abs)) continue;
-    try {
-      if (new URL(abs).origin !== origin) continue;
-    } catch {
-      continue;
-    }
+    if (tryParseBase(abs)?.origin !== origin) continue;
     if (seen.has(abs)) continue;
     seen.add(abs);
 
