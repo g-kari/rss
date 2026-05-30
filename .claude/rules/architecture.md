@@ -136,6 +136,7 @@ src/
     TtsAdapterContext.tsx     # TTS engine adapter の React Context（#675 Phase 1b — App.tsx で 1 回だけ生成し、記事ヘッダー TTS / 設定モーダル voice 選択で同一インスタンスを共有）
     UnreadStatsContext.tsx    # 全記事の未読統計 (`unreadByFeed` / `totalUnread` / `lastPublishedByFeed` / `readTodayCount`) の React Context（#702 — App.tsx で `useArticleUnreadStats` を 1 回呼んで `useDocumentTitleBadge` と `useSidebarFeeds` の二重 scan を解消）
     OgpCacheContext.tsx       # OGP cache store の React Context (#808 Phase 3a/3b、AppShell で useOgpCache を 1 度呼んで OgpCacheStore = { ogpCache, getEntry, cacheOgpEntry } を ArticleList + ArticleContentBody の sibling 階層で共有、Provider 外 fallback は null-object で安全)
+    BulkSelectionContext.ts   # 記事バルク選択状態の React Context（選択中の記事 ID Set を BulkActionToolbar と ArticleList で共有）
   components/
     feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection / TagsSection / CollectionsSection / FeedSearchBar）
     feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / FeedTitleContent / feedActions.tsx / types.ts）
@@ -156,6 +157,8 @@ src/
     ArticleView.tsx          # 記事本文
     Modal.tsx                # 汎用モーダル基盤コンポーネント
     ConfirmModal.tsx         # 確認ダイアログモーダル（window.confirm 代替。useConfirm hook と組み合わせて使う）
+    Backdrop.tsx             # モーダル背景オーバーレイ（ConfirmModal / FeedQuickSwitchModal が利用）
+    BulkActionToolbar.tsx    # 記事バルク選択時の操作ツールバー（ArticleList に常駐、BulkSelectionContext 連携・一括既読・ブックマーク・スヌーズ・タグ追加）
     ThreePaneLayout.tsx      # 3ペイン CSS Grid レイアウトコンテナ（sidebarWidth / listWidth / listFocusMode props）
     ToastContainer.tsx       # トースト通知コンテナ（右下スタック・3種別・自動消去・ポータル描画）
     RecommendationSection.tsx # フィード推薦セクション
@@ -310,6 +313,7 @@ src/
     useConfirm.ts            # window.confirm 代替 hook（Promise ベース確認モーダル。confirmModalProps を ConfirmModal に渡す）
     useTextInputModal.ts     # window.prompt / window.alert 代替 hook（Promise ベース入力モーダル、TextInputModal と組み合わせて使う、#881）
     useMarkAllRead.ts        # 全既読ロジック集約 hook（サブフィルター判定・50件確認・アンドゥ対応）
+    useBulkArticleSelection.ts # 記事バルク選択状態管理 hook（BulkSelectionContext と BulkActionToolbar を橋渡し、Shift+click 範囲選択対応）
     useArticleViewProps.ts   # ArticleView に渡す props オブジェクトの useMemo 集約 hook（App.tsx から分割）
     useReaderSettingsValue.ts # ReaderSettingsProvider に渡す value オブジェクトを 1 箇所で構築する useMemo 集約 hook（App.tsx Step 1l から分割・40 フィールド集約）
     useCollectionArticleIds.ts # 選択中コレクションに含まれる記事 ID の Set を導出する hook（App.tsx Step 1t から分割）
@@ -838,7 +842,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 - **`<engine>-<capability>.ts`**: engine + 機能 (例: `tts-adapter.ts` / `tts-text.ts` / `piper-voices.ts` / `browser-summarizer.ts`)
 - **`<feature>-fallback.ts`**: 特定サイト / 条件向け fallback (例: `x-com-fallback.ts` / `booth-fallback.ts` / `auto-ai-fallback.ts`)
 - **`<feature>-debug.ts`**: localStorage gate 付き本番デバッグログ (例: `auto-read-debug.ts` / `bgaudio-debug.ts`)
-- **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `article-utils.test.ts` / `booth-fallback.test.ts` / `html-media-processors.test.ts` / `lru-cache.test.ts` / `mime-utils.test.ts` / `proxy-error-headers.test.ts` / `video-error-placeholder.test.ts`)、playwright e2e は `e2e/*.spec.ts`
+- **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `article-utils.test.ts` / `booth-fallback.test.ts` / `bulk-selection.test.ts` / `html-media-processors.test.ts` / `lru-cache.test.ts` / `mime-utils.test.ts` / `proxy-error-headers.test.ts` / `url.test.ts` / `video-error-placeholder.test.ts`)、playwright e2e は `e2e/*.spec.ts`
 
 ### 設計原則
 
@@ -975,6 +979,8 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `linkedom-types.spec.ts`                        | `src/lib/linkedom-types.ts` — DOM 型ガード                                                                                                                                                                                                                                                                                                                 |
 | `llm-feed-generator.spec.ts`                    | `src/lib/llm-feed-generator.ts` — LLM CSS セレクタ推論                                                                                                                                                                                                                                                                                                     |
 | `lru-cache.spec.ts`                             | `src/lib/lru-cache.ts` — LRU キャッシュ                                                                                                                                                                                                                                                                                                                    |
+| `bulk-selection.test.ts`                        | `src/lib/bulk-selection.ts` — `computeBulkSelectionRange` / `addRangeToSelection` / `resetSelectionToSingle` 純粋関数（Shift+click による記事範囲選択計算）                                                                                                                                                                                                |
+| `url.test.ts`                                   | `src/lib/url.ts#isAbsoluteHttpUrl` — http(s) / 相対 URL / 非 http スキームの判別（vitest unit）                                                                                                                                                                                                                                                            |
 | `lru-cache.test.ts`                             | `src/lib/lru-cache.ts#flush` — try/finally エラー耐性 (storageSet/storageRemove throw 時に finally で pending クリア / 次回 flush が二重書き込みしないこと) を vi.mock + queueMicrotask override で verify (#821、5 ケース網羅)                                                                                                                            |
 | `modal-focus-trap.spec.ts`                      | モーダルのフォーカストラップ                                                                                                                                                                                                                                                                                                                               |
 | `confirm-modal-focus.spec.ts`                   | ConfirmModal が閉じたときのトリガー要素へのフォーカス復元 (#687, WCAG 2.4.3)                                                                                                                                                                                                                                                                               |
