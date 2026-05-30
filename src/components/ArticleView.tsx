@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { memo, useCallback, type UIEvent } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../types";
 import { getContentWidthStyle } from "../lib/reader-settings";
@@ -9,7 +10,8 @@ import EmptyArticleView from "./article-view/EmptyArticleView";
 import ArticleNavigation from "./article-view/ArticleNavigation";
 import SelectionExcludePopup from "./article-view/SelectionExcludePopup";
 import ArticleHeader from "./article-view/ArticleHeader";
-import ArticleAiPanel from "./article-view/ArticleAiPanel";
+
+const ArticleAiPanel = dynamic(() => import("./article-view/ArticleAiPanel"), { ssr: false });
 import ArticleContentBody from "./article-view/ArticleContentBody";
 import ArticleNotePanel from "./article-view/ArticleNotePanel";
 import ImageDownloadModal from "./article-view/ImageDownloadModal";
