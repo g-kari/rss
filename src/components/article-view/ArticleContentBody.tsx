@@ -1,6 +1,15 @@
 "use client";
 
-import { useRef, useEffect, useState, useMemo, forwardRef, useImperativeHandle } from "react";
+import {
+  useRef,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+  type KeyboardEvent,
+} from "react";
 import type { Article, EngagementAction } from "../../types";
 import { AI_RATINGS } from "../../types";
 import type { EmbedInfo } from "../../lib/embed-utils";
