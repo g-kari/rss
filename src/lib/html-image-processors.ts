@@ -7,17 +7,9 @@
 import { IMAGE_MIN_DIMENSION } from "./image-constants";
 import { rewriteMediaSrcAttrs } from "./html-media-processors";
 import { transformSrcset } from "./html-srcset";
-import { isAbsoluteHttpUrl } from "./url";
+import { isAbsoluteHttpUrl, tryParseBase } from "./url";
 
-/** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */
-export function tryParseBase(pageUrl: string): URL | null {
-  if (!pageUrl) return null;
-  try {
-    return new URL(pageUrl);
-  } catch {
-    return null;
-  }
-}
+export { tryParseBase };
 
 /**
  * srcset 属性内の各 URL に変換関数を適用するヘルパー。

@@ -274,3 +274,13 @@ export function isZennDevUrl(pageUrl: string): boolean {
     return false;
   }
 }
+
+/** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */
+export function tryParseBase(pageUrl: string): URL | null {
+  if (!pageUrl) return null;
+  try {
+    return new URL(pageUrl);
+  } catch {
+    return null;
+  }
+}

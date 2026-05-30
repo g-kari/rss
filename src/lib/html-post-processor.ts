@@ -12,7 +12,8 @@
 import { sanitizeHtml } from "./html";
 import { processNestedBlocks } from "./html-noise-removal";
 import { isAbsoluteHttpUrl } from "./url";
-import { tryParseBase, fixImageDimensions, rewriteImageUrls } from "./html-image-processors";
+import { fixImageDimensions, rewriteImageUrls } from "./html-image-processors";
+import { tryParseBase } from "./url";
 import { rewriteVideoUrls } from "./html-video-processors";
 import {
   transformZennLinkEmbeds,
@@ -35,13 +36,14 @@ export { replaceUntilStable, processNestedBlocks, removeNoise } from "./html-noi
 
 // ── re-export: html-image-processors.ts ─────────────────────────
 export {
-  tryParseBase,
   fixLazyImages,
   fixImageDimensions,
   rewriteImageUrls,
   removeSmallThumbnailImages,
   dedupeAdjacentDuplicateImages,
 } from "./html-image-processors";
+// tryParseBase は url.ts に移動済み (#907)
+export { tryParseBase } from "./url";
 
 // ── re-export: html-embed-transforms.ts ─────────────────────────
 // extractZennEmbedContent は html-embed-transforms.ts 内部利用のみで
