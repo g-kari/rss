@@ -150,7 +150,11 @@ export async function appendPaginatedPages(
       const { content, html } = await extractContent(result.bytes, result.ct, nextUrl);
       allContents.push(content);
       nextUrl = detectNextPageUrl(html, nextUrl);
-    } catch {
+    } catch (err) {
+      console.warn(
+        "[appendPaginatedPages] page fetch failed, stopping pagination:",
+        err instanceof Error ? err.message : String(err),
+      );
       break;
     }
   }
