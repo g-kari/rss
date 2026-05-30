@@ -430,6 +430,21 @@ export function requireString(value: unknown, maxLength = 128): string | null {
  * if (!parsed.ok) return parsed.error;
  * const body = parsed.data;
  */
+/**
+ * リクエストボディを JSON としてパースし、型 T にキャストして返す。
+ *
+ * **注意**: ランタイムの型検証は行わない。`JSON.parse` の結果を `as T` でキャストするのみ。
+ * 返却された `data` は必ず以下のいずれかで型安全性を確保すること:
+ * - フィールドを `unknown` として受け取り、`typeof` / カスタム型ガードで narrowing (#927)
+ * - Zod・valibot 等の schema validator でバリデーション (新規 dep が必要)
+ *
+ * 安全な使用例:
+ * ```typescript
+ * const parsed = await parseJsonBody<{ url?: unknown }>(req);
+ * if (!parsed.ok) return parsed.error;
+ * if (typeof parsed.data.url !== 'string') return apiError('Bad Request', 400);
+ * ```
+ */
 export async function parseJsonBody<T>(
   request: Request,
 ): Promise<{ ok: true; data: T } | { ok: false; error: NextResponse }> {
