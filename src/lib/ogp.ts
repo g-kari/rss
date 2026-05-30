@@ -1,7 +1,7 @@
 import { fetchFollowSafeRedirects, readBodyBytesPartial } from "./fetch";
 import { unescapeHtml, extractOgMeta, stripHtml } from "./html";
 import { decodeBytesToString, detectCharset } from "./content";
-import { isValidFeedUrl, isValidPublicUrl } from "./url";
+import { isValidFeedUrl, isValidPublicUrl, isAbsoluteHttpUrl } from "./url";
 
 /** OGP フェッチのデフォルトタイムアウト（ミリ秒） */
 const DEFAULT_FETCH_TIMEOUT_MS = 5_000;
@@ -282,7 +282,7 @@ export function extractExternalUrls(html: string): string[] {
 
   while ((match = hrefRegex.exec(html)) !== null) {
     const href = unescapeHtml(match[1].trim());
-    if (!href || !/^https?:\/\//i.test(href)) continue;
+    if (!href || !isAbsoluteHttpUrl(href)) continue;
     if (!isValidFeedUrl(href)) continue;
 
     try {

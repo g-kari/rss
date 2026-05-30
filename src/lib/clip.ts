@@ -5,7 +5,7 @@
  * バリデーション純粋関数。
  */
 
-import { isPrivateHost } from "./url";
+import { isPrivateHost, isAbsoluteHttpUrl } from "./url";
 
 // ===== リクエスト検証 =====
 
@@ -40,7 +40,7 @@ export function validateClipRequest(req: ClipRequest): ValidateResult {
     return { ok: false, error: "url は空でない文字列が必要です" };
   }
 
-  if (!/^https?:\/\//i.test(url)) {
+  if (!isAbsoluteHttpUrl(url)) {
     return { ok: false, error: "url は http:// または https:// で始まる必要があります" };
   }
 

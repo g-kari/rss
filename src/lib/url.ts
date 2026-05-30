@@ -256,6 +256,11 @@ export function normalizeUrlForCache(url: string): string {
   }
 }
 
+/** URL が http/https スキームで始まるか判定する絶対 URL ガード。 */
+export function isAbsoluteHttpUrl(s: string): boolean {
+  return /^https?:\/\//i.test(s);
+}
+
 /**
  * pageUrl が zenn.dev ドメインかどうかを URL パースで厳密に検証する。
  * includes() による部分文字列マッチは "zenn.dev.evil.com" でバイパスできるため、

@@ -12,6 +12,8 @@
  * 含まれているかを検証・補完できる。
  */
 
+import { isAbsoluteHttpUrl } from "./url";
+
 /**
  * HTML から JSON-LD の `image` フィールドを全て収集する。
  *
@@ -88,7 +90,7 @@ function collectImageUrls(image: unknown, urls: Set<string>): void {
 }
 
 function isHttpUrl(s: string): boolean {
-  return /^https?:\/\//i.test(s.trim());
+  return isAbsoluteHttpUrl(s.trim());
 }
 
 /**

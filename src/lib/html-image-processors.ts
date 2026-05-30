@@ -7,6 +7,7 @@
 import { IMAGE_MIN_DIMENSION } from "./image-constants";
 import { rewriteMediaSrcAttrs } from "./html-media-processors";
 import { transformSrcset } from "./html-srcset";
+import { isAbsoluteHttpUrl } from "./url";
 
 /** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */
 export function tryParseBase(pageUrl: string): URL | null {
@@ -36,7 +37,7 @@ export function tryParseBase(pageUrl: string): URL | null {
  * 本関数では危険スキームの URL を原文のまま返し、後段の sanitizeHtml が除去できるようにする。
  */
 function resolveRelativeUrl(url: string, base: URL): string {
-  if (/^https?:\/\//i.test(url)) return url;
+  if (isAbsoluteHttpUrl(url)) return url;
   const lower = url.toLowerCase();
   if (
     lower.startsWith("data:") ||

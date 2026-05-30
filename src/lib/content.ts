@@ -21,6 +21,7 @@ import { extractWithReadability } from "./readability-extractor";
 import { extractWithRegex } from "./regex-extractor";
 import { extractJsonLdImages, appendMissingJsonLdImages } from "./json-ld-images";
 import { extractOgMeta, escapeHtml } from "./html";
+import { isAbsoluteHttpUrl } from "./url";
 
 /**
  * inside-games.jp 等の thumb-list / capt-thumb-list ギャラリー UL を検出し、
@@ -296,11 +297,7 @@ export function resolveScriptLoadedImages(html: string): string {
     )) {
       const [, elementId, jpgUrl, gifUrl] = callMatch;
       const preferred =
-        gifUrl && /^https?:\/\//i.test(gifUrl)
-          ? gifUrl
-          : /^https?:\/\//i.test(jpgUrl)
-            ? jpgUrl
-            : null;
+        gifUrl && isAbsoluteHttpUrl(gifUrl) ? gifUrl : isAbsoluteHttpUrl(jpgUrl) ? jpgUrl : null;
       if (preferred) idToUrl.set(elementId, preferred);
     }
   }
@@ -313,7 +310,7 @@ export function resolveScriptLoadedImages(html: string): string {
     if (!url) return _match;
     // 既に有効な src があれば変更しない
     const srcMatch = attrs.match(/\bsrc\s*=\s*["']([^"']*)["']/i);
-    if (srcMatch && /^https?:\/\//i.test(srcMatch[1])) return _match;
+    if (srcMatch && isAbsoluteHttpUrl(srcMatch[1])) return _match;
     // src を上書き or 先頭に追加
     const newAttrs = /\bsrc\s*=/i.test(attrs)
       ? attrs.replace(/\bsrc\s*=\s*["'][^"']*["']/i, `src="${url}"`)

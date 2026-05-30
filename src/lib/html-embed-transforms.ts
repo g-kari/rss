@@ -6,7 +6,7 @@
  * html-post-processor.ts から分割。
  */
 import { escapeHtml } from "./html";
-import { isZennDevUrl } from "./url";
+import { isZennDevUrl, isAbsoluteHttpUrl } from "./url";
 
 /**
  * Zenn embed の <span> から data-content 属性を URL デコードして取り出す共通ヘルパー。
@@ -44,7 +44,7 @@ export function transformZennLinkEmbeds(content: string): string {
       const url = extractZennEmbedContent(spanMatch);
       if (url === null) return spanMatch;
       // javascript: / data: 等の危険スキームをブロック（XSS 防止）
-      if (!/^https?:\/\//i.test(url)) return spanMatch;
+      if (!isAbsoluteHttpUrl(url)) return spanMatch;
       // URL に " < > & が含まれる場合にHTML属性から脱出されないようHTMLエスケープ
       const escaped = escapeHtml(url);
       return `<p><a href="${escaped}" target="_blank" rel="noopener noreferrer">${escaped}</a></p>`;

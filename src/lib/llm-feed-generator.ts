@@ -9,7 +9,7 @@
  */
 
 import { parseHTML } from "linkedom/worker";
-import { isValidFeedUrl } from "./url";
+import { isValidFeedUrl, isAbsoluteHttpUrl } from "./url";
 import { fetchFollowSafeRedirects } from "./fetch";
 import type { SelectorConfig } from "../types";
 import type { ParsedFeed, ParsedItem } from "./xml-parser";
@@ -282,7 +282,7 @@ export function scrapeFeed(
     }
     // javascript: / data: 等の危険スキームを排除（XSS 防止）
     // xml-parser の safeUrl() と同じ基準で http(s) のみ許可する
-    if (!/^https?:\/\//i.test(link)) continue;
+    if (!isAbsoluteHttpUrl(link)) continue;
     if (seen.has(link)) continue;
     seen.add(link);
 

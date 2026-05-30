@@ -1,6 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { unescapeHtml, stripHtml, stripHtmlWithBreaks } from "./html";
 import { applyCorePipeline } from "./html-post-processor";
+import { isAbsoluteHttpUrl } from "./url";
 
 /** XML 属性を持つノード（fast-xml-parser の属性プレフィックス "@_" 付き） */
 interface XmlAttr {
@@ -254,7 +255,7 @@ function safeUrl(url: string): string {
   // 先頭の ASCII 制御文字・空白も除去（ブラウザの URL 正規化に倣う）
   const decoded = unescapeHtml(url).replace(/^[\u0000-\u0020\u007F]+/, "");
   // decoded を返すことで HTML エンティティ（&amp; 等）を正規化した URL を格納する
-  return /^https?:\/\//i.test(decoded) ? decoded : "";
+  return isAbsoluteHttpUrl(decoded) ? decoded : "";
 }
 
 /** XmlAttr または XmlAttr[] から最初の @_url を取得する */

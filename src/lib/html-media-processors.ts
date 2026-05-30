@@ -15,6 +15,7 @@
 
 import { unescapeHtml } from "./html";
 import { transformSrcset } from "./html-srcset";
+import { isAbsoluteHttpUrl } from "./url";
 
 export interface RewriteMediaSrcOptions {
   /** 対象タグ名の配列 (例: `["img"]` / `["video", "source"]`) */
@@ -39,7 +40,7 @@ function rewriteSrcsetAttr(attrs: string, proxyPath: string): string {
   // `(?<![a-zA-Z-])` で `data-srcset=` 等の prefix を除外 (#895)。`\bsrcset=` は誤マッチする。
   return attrs.replace(/(?<![a-zA-Z-])srcset=["']([^"']+)["']/gi, (_match, srcset: string) => {
     const proxied = transformSrcset(srcset, (url) => {
-      if (!/^https?:\/\//i.test(url)) return url;
+      if (!isAbsoluteHttpUrl(url)) return url;
       return `/api/${proxyPath}?url=${encodeURIComponent(unescapeHtml(url))}`;
     });
     return `srcset="${proxied}"`;

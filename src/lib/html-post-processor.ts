@@ -11,6 +11,7 @@
  */
 import { sanitizeHtml } from "./html";
 import { processNestedBlocks } from "./html-noise-removal";
+import { isAbsoluteHttpUrl } from "./url";
 import { tryParseBase, fixImageDimensions, rewriteImageUrls } from "./html-image-processors";
 import { rewriteVideoUrls } from "./html-video-processors";
 import {
@@ -87,7 +88,7 @@ export function fixExternalLinks(html: string, pageUrl = ""): string {
 
     let newAttrs = attrs;
 
-    if (base && !/^https?:\/\//i.test(href) && !href.startsWith("data:")) {
+    if (base && !isAbsoluteHttpUrl(href) && !href.startsWith("data:")) {
       try {
         const absolute = new URL(href, base).href;
         newAttrs = newAttrs.replace(/\bhref\s*=\s*["'][^"']*["']/i, `href="${absolute}"`);
