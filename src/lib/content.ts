@@ -9,7 +9,6 @@
  */
 import {
   replaceUntilStable,
-  tryParseBase,
   rewriteImageUrls,
   transformZennLinkEmbeds,
   transformZennMermaidEmbeds,
@@ -21,7 +20,7 @@ import { extractWithReadability } from "./readability-extractor";
 import { extractWithRegex } from "./regex-extractor";
 import { extractJsonLdImages, appendMissingJsonLdImages } from "./json-ld-images";
 import { extractOgMeta, escapeHtml } from "./html";
-import { isAbsoluteHttpUrl } from "./url";
+import { isAbsoluteHttpUrl, tryParseBase } from "./url";
 import { devError } from "./dev-log";
 
 /**
