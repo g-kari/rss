@@ -1,10 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  parseOgpCacheEntry,
-  parseOgpCache,
-  getOgpImage,
-  type OgpCacheEntry,
-} from "../src/lib/ogp-cache-schema";
+import { parseOgpCacheEntry, parseOgpCache } from "../src/lib/ogp-cache-schema";
 
 /**
  * #808 Phase 1: OGP cache schema 拡張 + lazy migration 純粋関数 spec。
@@ -120,26 +115,5 @@ test.describe("parseOgpCache — Record 一括正規化", () => {
     expect(parseOgpCache("string")).toEqual({});
     expect(parseOgpCache(42)).toEqual({});
     expect(parseOgpCache(["a"])).toEqual({});
-  });
-});
-
-test.describe("getOgpImage — v1/v2 compat layer", () => {
-  test("v2 OgpCacheEntry から image 取得", () => {
-    const entry: OgpCacheEntry = { image: "https://x/og.jpg", title: "T" };
-    expect(getOgpImage(entry)).toBe("https://x/og.jpg");
-  });
-
-  test("v1 string からそのまま返す", () => {
-    expect(getOgpImage("https://x/og.jpg")).toBe("https://x/og.jpg");
-  });
-
-  test("空文字 (negative cache) は空文字を返す (null と区別)", () => {
-    expect(getOgpImage({ image: "" })).toBe("");
-    expect(getOgpImage("")).toBe("");
-  });
-
-  test("undefined / null は null を返す", () => {
-    expect(getOgpImage(undefined)).toBe(null);
-    expect(getOgpImage(null)).toBe(null);
   });
 });

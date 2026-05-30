@@ -114,22 +114,3 @@ export function parseOgpCache(raw: unknown): Record<string, OgpCacheEntry> {
   }
   return result;
 }
-
-/**
- * `OgpCacheEntry` から image URL を取り出す純粋関数。
- *
- * v1 (string) / v2 (object) どちらの形式でも image を取得可能にする (`useContentLinkPreviews`
- * 等の consumer が Phase 2 で Context 経由 migration を受けるまでの compat layer)。
- *
- * @returns image URL (空文字含む) または null (entry なし)
- *
- * @example
- * getOgpImage({ image: "https://x/og.jpg" })  // "https://x/og.jpg"
- * getOgpImage("https://x/og.jpg")             // "https://x/og.jpg"
- * getOgpImage(undefined)                      // null
- */
-export function getOgpImage(entry: OgpCacheEntry | string | undefined | null): string | null {
-  if (entry == null) return null;
-  if (typeof entry === "string") return entry;
-  return entry.image;
-}
