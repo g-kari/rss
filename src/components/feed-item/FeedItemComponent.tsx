@@ -233,8 +233,7 @@ export default function FeedItem({
   const canDrag = !editing && !categoryEditing && !!onDragStartFeed;
   return (
     <div
-      role="option"
-      aria-selected={isSelected}
+      aria-current={isSelected ? "true" : undefined}
       aria-label={feed.title || feed.url}
       tabIndex={isSelected ? 0 : -1}
       onClick={
