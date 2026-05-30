@@ -9,8 +9,6 @@ import { rewriteMediaSrcAttrs } from "./html-media-processors";
 import { transformSrcset } from "./html-srcset";
 import { isAbsoluteHttpUrl, tryParseBase } from "./url";
 
-export { tryParseBase };
-
 /**
  * srcset 属性内の各 URL に変換関数を適用するヘルパー。
  * 形式: "url1 descriptor1, url2 descriptor2, ..."

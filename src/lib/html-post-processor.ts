@@ -11,9 +11,8 @@
  */
 import { sanitizeHtml } from "./html";
 import { processNestedBlocks } from "./html-noise-removal";
-import { isAbsoluteHttpUrl } from "./url";
+import { isAbsoluteHttpUrl, tryParseBase } from "./url";
 import { fixImageDimensions, rewriteImageUrls } from "./html-image-processors";
-import { tryParseBase } from "./url";
 import { rewriteVideoUrls } from "./html-video-processors";
 import {
   transformZennLinkEmbeds,
