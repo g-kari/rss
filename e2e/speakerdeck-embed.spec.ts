@@ -8,6 +8,7 @@ import {
   transformSpeakerDeckScriptEmbeds,
   transformSlideShareEmbedLinks,
 } from "../src/lib/html-post-processor";
+import { extractMainContent } from "../src/lib/content";
 
 // ── extractEmbedInfo: SpeakerDeck player URL ─────────────────
 
@@ -187,6 +188,66 @@ test.describe("transformSlideShareEmbedLinks", () => {
     const result = transformSlideShareEmbedLinks(html);
     expect(result).toContain("embed_code/111");
     expect(result).toContain("embed_code/222");
+  });
+});
+
+// ── extractMainContent: SpeakerDeck og:video (#896) ─────────────
+// SpeakerDeck はCSR (クライアントサイドレンダリング) サービスのため、
+// 静的 HTML には <script class="speakerdeck-embed"> が存在しない。
+// <meta property="og:video"> にプレイヤー URL が含まれるため、それを利用する。
+
+test.describe("extractMainContent — SpeakerDeck og:video 注入 (#896)", () => {
+  const PLAYER_ID = "0c10de77615947f082ce9f8daa5c5569";
+  const PLAYER_URL = `https://speakerdeck.com/player/${PLAYER_ID}`;
+
+  test("og:video が speakerdeck player URL なら iframe を本文先頭に注入する", () => {
+    const html = `<!DOCTYPE html><html><head>
+      <meta property="og:video" content="${PLAYER_URL}">
+      <meta property="og:title" content="My Talk">
+    </head><body>
+      <article><p>スライドの説明文です。画像が並んでいます。</p>
+        <img src="https://files.speakerdeck.com/presentations/${PLAYER_ID}/slide_1.jpg">
+        <img src="https://files.speakerdeck.com/presentations/${PLAYER_ID}/slide_2.jpg">
+      </article>
+    </body></html>`;
+    const { content } = extractMainContent(html, "https://speakerdeck.com/user/my-talk");
+    expect(content).toContain(`src="${PLAYER_URL}"`);
+    expect(content).toContain("iframe");
+    expect(content).toContain("padding-bottom:56.25%");
+  });
+
+  test("og:video がない場合は iframe を注入しない", () => {
+    const html = `<!DOCTYPE html><html><head>
+      <title>Normal Article</title>
+    </head><body>
+      <article><p>普通の記事本文です。</p></article>
+    </body></html>`;
+    const { content } = extractMainContent(html, "https://example.com/article");
+    expect(content).not.toContain("speakerdeck.com/player/");
+  });
+
+  test("og:video が speakerdeck 以外のドメインなら注入しない", () => {
+    const html = `<!DOCTYPE html><html><head>
+      <meta property="og:video" content="https://evil.com/player/abc123">
+    </head><body>
+      <article><p>テスト記事。</p></article>
+    </body></html>`;
+    const { content } = extractMainContent(html, "https://evil.com/article");
+    expect(content).not.toContain("evil.com/player/");
+  });
+
+  test("og:video に speakerdeck player URL が既に本文にある場合は重複しない (冪等)", () => {
+    const html = `<!DOCTYPE html><html><head>
+      <meta property="og:video" content="${PLAYER_URL}">
+    </head><body>
+      <article>
+        <iframe src="${PLAYER_URL}" allowfullscreen></iframe>
+        <p>説明テキスト。</p>
+      </article>
+    </body></html>`;
+    const { content } = extractMainContent(html, "https://speakerdeck.com/user/my-talk");
+    const count = (content.match(/speakerdeck\.com\/player\//g) ?? []).length;
+    expect(count).toBe(1);
   });
 });
 

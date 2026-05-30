@@ -20,6 +20,7 @@ import {
 import { extractWithReadability } from "./readability-extractor";
 import { extractWithRegex } from "./regex-extractor";
 import { extractJsonLdImages, appendMissingJsonLdImages } from "./json-ld-images";
+import { extractOgMeta, escapeHtml } from "./html";
 
 /**
  * inside-games.jp 等の thumb-list / capt-thumb-list ギャラリー UL を検出し、
@@ -331,6 +332,25 @@ export function extractMainContent(
   html: string,
   pageUrl: string,
 ): { content: string; source: "readability" | "regex" } {
+  // SpeakerDeck は CSR サービスのため静的 HTML に <script class="speakerdeck-embed"> が
+  // 存在しない。代わりに <meta property="og:video"> にプレイヤー URL が含まれる (#896)。
+  // any transform の前に元 HTML から og:video を抽出する。
+  const ogVideo = extractOgMeta(html, "video");
+  const speakdeckPlayerUrl = /^https:\/\/speakerdeck\.com\/player\/[a-f0-9]+/i.test(ogVideo)
+    ? ogVideo
+    : null;
+  const augmentWithSpeakerDeck = (content: string): string => {
+    if (!speakdeckPlayerUrl) return content;
+    // 既に speakerdeck player iframe が含まれていれば追加しない (冪等)
+    if (/speakerdeck\.com\/player\//.test(content)) return content;
+    return (
+      `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
+      `<iframe src="${escapeHtml(speakdeckPlayerUrl)}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" loading="lazy" allowfullscreen title="SpeakerDeck スライド"></iframe>` +
+      `</div>\n` +
+      content
+    );
+  };
+
   // JS で動的に src を設定する loadImage('id', url, ...) パターンを静的解決する。
   // preClean で <script> が除去される前に行う必要がある。
   let preprocessed = resolveScriptLoadedImages(html);
@@ -378,16 +398,22 @@ export function extractMainContent(
       // rcImgCount が 0 の場合 rcImgCount * 2 = 0 となり条件が常に true になるため
       // Math.max(1, ...) で「regex に最低 1 枚以上の img がある」ことを保証する
       if (regexImgCount >= Math.max(1, rcImgCount * 2)) {
-        return { content: augmentWithJsonLd(regexContent) + buildGallery(), source: "regex" };
+        return {
+          content: augmentWithSpeakerDeck(augmentWithJsonLd(regexContent)) + buildGallery(),
+          source: "regex",
+        };
       }
     }
     return {
-      content: augmentWithJsonLd(postProcess(rc, pageUrl)) + buildGallery(),
+      content: augmentWithSpeakerDeck(augmentWithJsonLd(postProcess(rc, pageUrl))) + buildGallery(),
       source: "readability",
     };
   }
   const regexContent = extractWithRegex(preprocessed, pageUrl);
-  return { content: augmentWithJsonLd(regexContent) + buildGallery(), source: "regex" };
+  return {
+    content: augmentWithSpeakerDeck(augmentWithJsonLd(regexContent)) + buildGallery(),
+    source: "regex",
+  };
 }
 
 /**
