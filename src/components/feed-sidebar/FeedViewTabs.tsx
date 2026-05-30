@@ -1,6 +1,6 @@
 "use client";
 
-import { type DragEvent, type ReactNode, useCallback, useState } from "react";
+import { type DragEvent, type KeyboardEvent, type ReactNode, useCallback, useState } from "react";
 import type { FeedView } from "../../types";
 
 const DRAG_DATA_TYPE = "application/x-rss-feed-id";
@@ -119,10 +119,31 @@ export default function FeedViewTabs({
     [onDropFeedOnView],
   );
 
+  const handleTabKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      const currentIndex = FEED_VIEW_TABS.findIndex((t) => t.id === activeView);
+      let nextIndex = -1;
+      if (e.key === "ArrowRight") nextIndex = (currentIndex + 1) % FEED_VIEW_TABS.length;
+      else if (e.key === "ArrowLeft")
+        nextIndex = (currentIndex - 1 + FEED_VIEW_TABS.length) % FEED_VIEW_TABS.length;
+      else if (e.key === "Home") nextIndex = 0;
+      else if (e.key === "End") nextIndex = FEED_VIEW_TABS.length - 1;
+      if (nextIndex < 0) return;
+      e.preventDefault();
+      const nextTab = FEED_VIEW_TABS[nextIndex];
+      onChangeView(nextTab.id);
+      // フォーカスを次のタブボタンに移動 (roving tabindex pattern)
+      const nextEl = document.getElementById(`feed-view-tab-${nextTab.id}`);
+      nextEl?.focus();
+    },
+    [activeView, onChangeView],
+  );
+
   return (
     <div
       role="tablist"
       aria-label="フィードビュー"
+      onKeyDown={handleTabKeyDown}
       className="flex items-center gap-0.5 px-2 py-1.5 border-b border-border-subtle"
     >
       {FEED_VIEW_TABS.map((t) => {
@@ -131,8 +152,11 @@ export default function FeedViewTabs({
         return (
           <button
             key={t.id}
+            id={`feed-view-tab-${t.id}`}
             role="tab"
             aria-selected={isActive}
+            aria-controls={`feed-view-panel-${t.id}`}
+            tabIndex={isActive ? 0 : -1}
             onClick={() => onChangeView(t.id)}
             onDragOver={handleDragOver}
             onDragEnter={(e) => handleDragEnter(e, t.id)}

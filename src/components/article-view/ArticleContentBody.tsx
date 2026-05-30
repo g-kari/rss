@@ -1,6 +1,15 @@
 "use client";
 
-import { useRef, useEffect, useState, useMemo, forwardRef, useImperativeHandle } from "react";
+import {
+  useRef,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+  type KeyboardEvent,
+} from "react";
 import type { Article, EngagementAction } from "../../types";
 import { AI_RATINGS } from "../../types";
 import type { EmbedInfo } from "../../lib/embed-utils";
@@ -22,6 +31,13 @@ import { FONT_SIZE_CLASSES, FONT_FAMILY_CLASSES } from "../../lib/article-utils"
 import { getLineHeightStyle } from "../../lib/reader-settings";
 import ImageGallery from "./ImageGallery";
 import FetchFullContentArea from "./FetchFullContentArea";
+
+// WAI-ARIA Authoring Practices: role=tab キーボードナビゲーション (#903) で使用するタブ定義
+// モジュールレベルに置いて useCallback deps に含めない (参照安定)
+const CONTENT_TABS: { id: ContentTab; label: string }[] = [
+  { id: "original", label: "原文" },
+  { id: "translate", label: "翻訳" },
+];
 
 interface ArticleContentBodyProps {
   article: Article;
@@ -190,6 +206,28 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
       return null;
     }, [processedContent, wrappedContent, hasArticleContentHtml, sanitizedArticleContent]);
 
+    // WAI-ARIA Authoring Practices: role=tablist のキーボードナビゲーション (#903)
+    // UserSettingsModal.tsx の canonical パターンを移植
+    const handleTabKeyDown = useCallback(
+      (e: KeyboardEvent<HTMLDivElement>) => {
+        const currentIndex = CONTENT_TABS.findIndex((t) => t.id === contentTab);
+        let nextIndex = -1;
+        if (e.key === "ArrowRight") nextIndex = (currentIndex + 1) % CONTENT_TABS.length;
+        else if (e.key === "ArrowLeft")
+          nextIndex = (currentIndex - 1 + CONTENT_TABS.length) % CONTENT_TABS.length;
+        else if (e.key === "Home") nextIndex = 0;
+        else if (e.key === "End") nextIndex = CONTENT_TABS.length - 1;
+        if (nextIndex < 0) return;
+        e.preventDefault();
+        const nextTab = CONTENT_TABS[nextIndex];
+        setContentTab(nextTab.id);
+        // フォーカスを次のタブボタンに移動 (roving tabindex pattern)
+        const nextEl = document.getElementById(`content-tab-${nextTab.id}`);
+        nextEl?.focus();
+      },
+      [contentTab, setContentTab],
+    );
+
     return (
       <>
         {/* メディア埋め込み */}
@@ -292,10 +330,15 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
           <div
             className="mb-4 flex items-center gap-1 border-b border-border-default"
             role="tablist"
+            aria-label="コンテンツ表示切替"
+            onKeyDown={handleTabKeyDown}
           >
             <button
+              id="content-tab-original"
               role="tab"
               aria-selected={contentTab === "original"}
+              aria-controls="content-panel-original"
+              tabIndex={contentTab === "original" ? 0 : -1}
               onClick={() => setContentTab("original")}
               className={`px-3 py-2 text-[11px] tracking-[0.08em] uppercase transition-colors duration-150 border-b-2 -mb-px ${
                 contentTab === "original"
@@ -306,8 +349,11 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
               原文
             </button>
             <button
+              id="content-tab-translate"
               role="tab"
               aria-selected={contentTab === "translate"}
+              aria-controls="content-panel-translate"
+              tabIndex={contentTab === "translate" ? 0 : -1}
               onClick={() => setContentTab("translate")}
               className={`px-3 py-2 text-[11px] tracking-[0.08em] uppercase transition-colors duration-150 border-b-2 -mb-px ${
                 contentTab === "translate"
@@ -357,58 +403,69 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
           </div>
         )}
 
-        {/* 本文 */}
+        {/* 本文 (#903: role=tabpanel + aria-labelledby でタブと対応付け) */}
         {contentTab === "translate" && translateResult ? (
-          translateResult.isHtml ? (
-            <div
-              className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
-              style={getLineHeightStyle(lineHeight)}
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(translateResult.text) }}
-            />
-          ) : (
-            <p
-              className={`article-content whitespace-pre-wrap ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
-              style={getLineHeightStyle(lineHeight)}
-            >
-              {translateResult.text}
-            </p>
-          )
-        ) : articleBodyHtml !== null ? (
-          // 単一 <div ref={contentRef}> に統合: processedContent / hasArticleContentHtml 切替
-          // (= 全文取得完了 / gallery 切替) で element が unmount/remount せず、innerHTML
-          // 値の更新のみで content 切替 → flash 抑止 (DOM reconciler が同 position の同 tag
-          // を再利用する性質を利用)。
-          <div
-            ref={contentRef}
-            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
-            style={getLineHeightStyle(lineHeight)}
-            translate="yes"
-            dangerouslySetInnerHTML={{ __html: articleBodyHtml }}
-          />
-        ) : article.summary ? (
-          <p
-            className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
-            style={getLineHeightStyle(lineHeight)}
-          >
-            {article.summary}
-          </p>
-        ) : !embedInfo ? (
-          <div className="text-center py-12">
-            <p className="text-[12px] text-text-faint mb-4 tracking-[0.04em]">
-              本文のプレビューはありません
-            </p>
-            {article.link && (
-              <a
-                href={article.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12px] text-text-soft hover:text-text-default tracking-[0.06em] underline-offset-4 hover:underline transition-all duration-200"
+          <div id="content-panel-translate" role="tabpanel" aria-labelledby="content-tab-translate">
+            {translateResult.isHtml ? (
+              <div
+                className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
+                style={getLineHeightStyle(lineHeight)}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(translateResult.text) }}
+              />
+            ) : (
+              <p
+                className={`article-content whitespace-pre-wrap ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
+                style={getLineHeightStyle(lineHeight)}
               >
-                元記事を開く
-              </a>
+                {translateResult.text}
+              </p>
             )}
           </div>
-        ) : null}
+        ) : (
+          // 原文パネル (#903: translateResult がある場合は role=tabpanel で明示、ない場合は通常表示)
+          <div
+            id="content-panel-original"
+            role={translateResult ? "tabpanel" : undefined}
+            aria-labelledby={translateResult ? "content-tab-original" : undefined}
+          >
+            {articleBodyHtml !== null ? (
+              // 単一 <div ref={contentRef}> に統合: processedContent / hasArticleContentHtml 切替
+              // (= 全文取得完了 / gallery 切替) で element が unmount/remount せず、innerHTML
+              // 値の更新のみで content 切替 → flash 抑止 (DOM reconciler が同 position の同 tag
+              // を再利用する性質を利用)。
+              <div
+                ref={contentRef}
+                className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
+                style={getLineHeightStyle(lineHeight)}
+                translate="yes"
+                dangerouslySetInnerHTML={{ __html: articleBodyHtml }}
+              />
+            ) : article.summary ? (
+              <p
+                className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
+                style={getLineHeightStyle(lineHeight)}
+              >
+                {article.summary}
+              </p>
+            ) : !embedInfo ? (
+              <div className="text-center py-12">
+                <p className="text-[12px] text-text-faint mb-4 tracking-[0.04em]">
+                  本文のプレビューはありません
+                </p>
+                {article.link && (
+                  <a
+                    href={article.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[12px] text-text-soft hover:text-text-default tracking-[0.06em] underline-offset-4 hover:underline transition-all duration-200"
+                  >
+                    元記事を開く
+                  </a>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {/* 画像一覧（2枚以上あれば記事末尾に表示） */}
         {galleryImages.length >= 2 && <ImageGallery images={galleryImages} />}
