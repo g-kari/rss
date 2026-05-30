@@ -67,7 +67,7 @@ export function sortCollectionsBy(
       return list.sort((a, b) => a.name.localeCompare(b.name));
     case "order":
     default:
-      return list.sort((a, b) => a.order - b.order);
+      return sortByOrder(list);
   }
 }
 

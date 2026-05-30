@@ -1,6 +1,7 @@
 import type { ReadState } from "../types";
 import { apiFetch } from "./api-fetch";
 import { isReadState } from "./type-guards";
+import { devError } from "./dev-log";
 
 export interface SaveResult {
   ok: boolean;
@@ -15,7 +16,7 @@ export async function fetchReadState(): Promise<ReadState | null> {
     const data: unknown = await res.json();
     return isReadState(data) ? data : null;
   } catch (err) {
-    console.warn("ReadState sync failed:", err);
+    devError("[read-state-sync-api] fetchReadState failed", err);
     return null;
   }
 }
@@ -32,7 +33,7 @@ export async function saveReadState(body: string): Promise<SaveResult> {
     if (!isReadState(data)) return { ok: false };
     return { ok: true, state: data };
   } catch (err) {
-    console.warn("ReadState sync failed:", err);
+    devError("[read-state-sync-api] saveReadState failed", err);
     return { ok: false };
   }
 }

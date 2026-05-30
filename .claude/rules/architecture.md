@@ -157,6 +157,7 @@ src/
     ArticleView.tsx          # 記事本文
     Modal.tsx                # 汎用モーダル基盤コンポーネント
     ConfirmModal.tsx         # 確認ダイアログモーダル（window.confirm 代替。useConfirm hook と組み合わせて使う）
+    TextInputModal.tsx       # window.prompt / window.alert 代替入力モーダル（useTextInputModal と組み合わせて使う）
     Backdrop.tsx             # モーダル背景オーバーレイ（ConfirmModal / FeedQuickSwitchModal が利用）
     BulkActionToolbar.tsx    # 記事バルク選択時の操作ツールバー（ArticleList に常駐、BulkSelectionContext 連携・一括既読・ブックマーク・スヌーズ・タグ追加）
     ThreePaneLayout.tsx      # 3ペイン CSS Grid レイアウトコンテナ（sidebarWidth / listWidth / listFocusMode props）
