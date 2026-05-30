@@ -308,7 +308,10 @@ function buildQueryPredicate(opts: ArticleFilterOptions): ((a: Article) => boole
   // 記事数分 (1000+ 件) 実行されてフィルタリング体感ラグの原因になる。
   const evaluator = compileSearchQuery(opts.query);
   if (!evaluator) return null;
-  const ctx: SearchContext = { feedTitleByHash: opts.feedTitleByHash ?? EMPTY_FEED_TITLE_MAP };
+  const ctx: SearchContext = {
+    feedTitleByHash: opts.feedTitleByHash ?? EMPTY_FEED_TITLE_MAP,
+    tagsByArticleId: opts.articleTags ?? undefined,
+  };
   return (a) => evaluator(a, ctx);
 }
 

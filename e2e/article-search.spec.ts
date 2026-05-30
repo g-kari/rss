@@ -11,6 +11,7 @@ import { matchesAdvancedQuery, type SearchContext } from "../src/lib/full-text-s
 const EMPTY_CTX: SearchContext = { feedTitleByHash: new Map() };
 
 const BASE = {
+  id: "base-article",
   feedHash: "",
   title: "TypeScript で始める関数型プログラミング",
   summary: "モナドとファンクターの使い方を解説します。",
@@ -21,7 +22,14 @@ const BASE = {
 const match = (
   article:
     | typeof BASE
-    | { feedHash: string; title: string; summary: string; author?: string; categories?: string[] },
+    | {
+        id: string;
+        feedHash: string;
+        title: string;
+        summary: string;
+        author?: string;
+        categories?: string[];
+      },
   query: string,
 ) => matchesAdvancedQuery(article, query, EMPTY_CTX);
 
@@ -54,12 +62,12 @@ test.describe("matchesAdvancedQuery — author 検索", () => {
   });
 
   test("author が undefined のときエラーにならない", () => {
-    const a = { feedHash: "", title: "foo", summary: "bar" };
+    const a = { id: "a", feedHash: "", title: "foo", summary: "bar" };
     expect(match(a, "山田")).toBe(false);
   });
 
   test("author が空文字のときエラーにならない", () => {
-    const a = { feedHash: "", title: "foo", summary: "bar", author: "" };
+    const a = { id: "a", feedHash: "", title: "foo", summary: "bar", author: "" };
     expect(match(a, "山田")).toBe(false);
   });
 });
@@ -74,12 +82,12 @@ test.describe("matchesAdvancedQuery — categories 検索", () => {
   });
 
   test("categories が undefined のときエラーにならない", () => {
-    const a = { feedHash: "", title: "foo", summary: "bar" };
+    const a = { id: "a", feedHash: "", title: "foo", summary: "bar" };
     expect(match(a, "関数型")).toBe(false);
   });
 
   test("categories が空配列のときエラーにならない", () => {
-    const a = { feedHash: "", title: "foo", summary: "bar", categories: [] };
+    const a = { id: "a", feedHash: "", title: "foo", summary: "bar", categories: [] };
     expect(match(a, "TypeScript")).toBe(false);
   });
 });
