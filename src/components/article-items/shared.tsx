@@ -24,7 +24,7 @@ import { buildImageProxyUrl } from "../../lib/image-proxy-url";
  */
 export function handleArticleKeyDown<T = Element>(
   article: Article,
-  onSelectArticle: (a: Article) => void,
+  onSelectArticle: (a: Article, event?: ReactMouseEvent) => void,
 ): (e: ReactKeyboardEvent<T>) => void {
   return (e: ReactKeyboardEvent<T>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -73,7 +73,7 @@ export interface ArticleItemProps {
   /** role="feed" 内の総記事数（aria-setsize 用） */
   totalCount?: number;
   // 親の安定参照をそのまま渡す（子側でクロージャを生成してメモ比較を壊さない）
-  onSelectArticle: (a: Article) => void;
+  onSelectArticle: (a: Article, event?: ReactMouseEvent) => void;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
   /** 後で読むのトグル（#633、card/magazine のみホバーボタンで使用） */

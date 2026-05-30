@@ -8,11 +8,13 @@ import {
   useMemo,
   useState,
   type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { selectGalleryDisplayMode, selectGalleryImages } from "../../lib/gallery-display";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
+import { BulkSelectionCtx } from "../../contexts/BulkSelectionContext";
 import { NoteIcon } from "../article-view/icons";
 import {
   ArticleActions,
@@ -50,6 +52,8 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
 }: Omit<ArticleItemProps, "index" | "isDeleting"> & GalleryItemExtraProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
+  const bulkIds = useContext(BulkSelectionCtx);
+  const isBulkSelected = useMemo(() => bulkIds.has(article.id), [bulkIds, article.id]);
   // Phase 1: forcedImageSrc が指定されたら、prefetched / thumb fallback を無視して
   // この 1 枚だけ表示する (画像/動画 view の 1 記事 N 画像分解時)。
   // forcedImageSrc 未指定 → 従来通り selectGalleryImages で prefetched/thumb/none を選択。
@@ -91,13 +95,16 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   const fallbackToNoImage = allFiltered && !thumb && !forcedImageSrc;
   // Phase 1: forcedImageSrc + onSelectImage が両方あれば画像ライトボックスを開く、
   // 無ければ従来通り記事詳細を開く。
-  const handleClick = useCallback(() => {
-    if (forcedImageSrc && onSelectImage) {
-      onSelectImage(forcedImageSrc, article);
-    } else {
-      onSelectArticle(article);
-    }
-  }, [article, forcedImageSrc, onSelectImage, onSelectArticle]);
+  const handleClick = useCallback(
+    (e?: ReactMouseEvent) => {
+      if (forcedImageSrc && onSelectImage) {
+        onSelectImage(forcedImageSrc, article);
+      } else {
+        onSelectArticle(article, e);
+      }
+    },
+    [article, forcedImageSrc, onSelectImage, onSelectArticle],
+  );
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -257,11 +264,11 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
       role="article"
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
-      onClick={handleClick}
+      onClick={(e) => handleClick(e)}
       onKeyDown={handleKeyDown}
       className={`group relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isNew ? "animate-fade-up" : ""
-      } border ${
+      } border ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
         isSelected
           ? "border-text-strong bg-surface-elevated"
           : "border-border-default hover:border-text-muted bg-surface-elevated"

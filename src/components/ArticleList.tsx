@@ -19,8 +19,12 @@ import type { Article, Feed, FeedView, Layout } from "../types";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { SelectedArticleCtx } from "../contexts/SelectedArticleContext";
+import { BulkSelectionCtx } from "../contexts/BulkSelectionContext";
 import { useToast } from "../contexts/ToastContext";
 import { useOgpCacheContext } from "../contexts/OgpCacheContext";
+import { useBulkArticleSelection } from "../hooks/useBulkArticleSelection";
+import { computeBulkSelectionRange } from "../lib/bulk-selection";
+import BulkActionToolbar from "./BulkActionToolbar";
 import { usePrefetchGalleryContents } from "../hooks/usePrefetchGalleryContents";
 import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
 import { useSyncedRef } from "../hooks/useSyncedRef";
@@ -524,6 +528,39 @@ function ArticleList({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・magazineVirtualizer・flatItemsRef・visibleRef・nonGalleryDisplayItemsRef は安定参照。記事選択・レイアウト変更・手動アンカー時のみスクロール
   }, [selectedArticleId, layout, anchorTrigger]);
 
+  // #883 Phase A.1: 一括選択 state + Shift+click ハンドラ
+  const bulkSelection = useBulkArticleSelection();
+  const anchorArticleIdRef = useRef<string | null>(null);
+
+  // filtered 配列の ID リスト (Shift+click 範囲計算用)
+  const filteredIdsRef = useSyncedRef(filtered);
+
+  const handleSelectArticleWithBulk = useCallback(
+    (article: Article, event?: MouseEvent) => {
+      if (event?.shiftKey && anchorArticleIdRef.current) {
+        event.preventDefault();
+        const articleIds = filteredIdsRef.current.map((a) => a.id);
+        const rangeIds = computeBulkSelectionRange(
+          articleIds,
+          anchorArticleIdRef.current,
+          article.id,
+        );
+        bulkSelection.addRange(rangeIds);
+      } else {
+        bulkSelection.clear();
+        anchorArticleIdRef.current = article.id;
+        onSelectArticle(article);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filteredIdsRef は useSyncedRef の安定参照のため deps 不要
+    [bulkSelection, onSelectArticle],
+  );
+
+  const handleBulkMarkRead = useCallback(
+    (ids: string[]) => ids.forEach((id) => onMarkRead(id)),
+    [onMarkRead],
+  );
+
   const { resolveItemProps } = useArticleListItemProps({
     feedMap,
     readIds,
@@ -536,7 +573,7 @@ function ArticleList({
     duplicateInfo,
     filteredCount: filtered.length,
     ogpCache,
-    onSelectArticle,
+    onSelectArticle: handleSelectArticleWithBulk,
     onToggleRead,
     onToggleBookmark,
     onToggleReadingList,
@@ -584,140 +621,147 @@ function ArticleList({
   );
 
   return (
-    <section
-      aria-label="記事一覧"
-      className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-base"
-    >
-      <ArticleListHeader
-        layout={layout}
-        onChangeLayout={onChangeLayout}
-        listFocusMode={listFocusMode}
-        onToggleListFocusMode={onToggleListFocusMode}
-        onMobileBack={onMobileBack}
-        onMarkAllRead={onMarkAllRead}
-        filteredCount={filtered.length}
-        selectedFeedId={selectedFeedId}
-        feeds={feeds}
-      />
+    <BulkSelectionCtx.Provider value={bulkSelection.selectedIds}>
+      <section
+        aria-label="記事一覧"
+        className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-base"
+      >
+        <ArticleListHeader
+          layout={layout}
+          onChangeLayout={onChangeLayout}
+          listFocusMode={listFocusMode}
+          onToggleListFocusMode={onToggleListFocusMode}
+          onMobileBack={onMobileBack}
+          onMarkAllRead={onMarkAllRead}
+          filteredCount={filtered.length}
+          selectedFeedId={selectedFeedId}
+          feeds={feeds}
+        />
 
-      <SelectedArticleCtx.Provider value={selectedArticleId ?? null}>
-        <div
-          ref={scrollContainerRef}
-          role="feed"
-          aria-label="記事"
-          aria-busy={loading}
-          className="flex-1 min-h-0 overflow-y-auto [overflow-anchor:none]"
-        >
-          <ArticleListEmptyState
-            loading={loading}
-            fetchError={fetchError}
-            filteredCount={filtered.length}
-            feedsCount={feeds.length}
-            wasJustCleared={wasJustCleared}
-            query={query}
-            unreadOnly={unreadOnly}
-            bookmarkOnly={bookmarkOnly}
-            readingListOnly={readingListOnly}
-            likeOnly={likeOnly}
-            noteOnly={noteOnly}
-            onRetry={onRetry}
-            onAddFeed={onAddFeed}
-          />
-
-          {/* compact / list — 仮想スクロール (#651 Step 3: サブコンポーネント化) */}
-          {(layout === "compact" || layout === "list") && (
-            <CompactListBody
-              items={flatItems}
-              layout={layout}
-              deletingIds={nonGalleryDeletingIds}
-              newIds={nonGalleryNewIds}
-              virtualizer={listVirtualizer}
-              resolveItemProps={resolveItemProps}
+        <SelectedArticleCtx.Provider value={selectedArticleId ?? null}>
+          <div
+            ref={scrollContainerRef}
+            role="feed"
+            aria-label="記事"
+            aria-busy={loading}
+            className="flex-1 min-h-0 overflow-y-auto [overflow-anchor:none]"
+          >
+            <ArticleListEmptyState
+              loading={loading}
+              fetchError={fetchError}
+              filteredCount={filtered.length}
+              feedsCount={feeds.length}
+              wasJustCleared={wasJustCleared}
+              query={query}
+              unreadOnly={unreadOnly}
+              bookmarkOnly={bookmarkOnly}
+              readingListOnly={readingListOnly}
+              likeOnly={likeOnly}
+              noteOnly={noteOnly}
+              onRetry={onRetry}
+              onAddFeed={onAddFeed}
             />
-          )}
 
-          {/* card — 2 列グリッド行単位の仮想化 */}
-          {layout === "card" && (
-            <CardBody
-              rows={cardRows}
-              deletingIds={nonGalleryDeletingIds}
-              newIds={nonGalleryNewIds}
-              virtualizer={cardVirtualizer}
-              resolveItemProps={resolveItemProps}
-            />
-          )}
+            {/* compact / list — 仮想スクロール (#651 Step 3: サブコンポーネント化) */}
+            {(layout === "compact" || layout === "list") && (
+              <CompactListBody
+                items={flatItems}
+                layout={layout}
+                deletingIds={nonGalleryDeletingIds}
+                newIds={nonGalleryNewIds}
+                virtualizer={listVirtualizer}
+                resolveItemProps={resolveItemProps}
+              />
+            )}
 
-          {/* magazine — 先頭フィーチャー + 仮想化コンパクトリスト */}
-          {layout === "magazine" && (
-            <MagazineBody
-              items={nonGalleryDisplayItems}
-              deletingIds={nonGalleryDeletingIds}
-              newIds={nonGalleryNewIds}
-              virtualizer={magazineVirtualizer}
-              resolveItemProps={resolveItemProps}
-            />
-          )}
+            {/* card — 2 列グリッド行単位の仮想化 */}
+            {layout === "card" && (
+              <CardBody
+                rows={cardRows}
+                deletingIds={nonGalleryDeletingIds}
+                newIds={nonGalleryNewIds}
+                virtualizer={cardVirtualizer}
+                resolveItemProps={resolveItemProps}
+              />
+            )}
 
-          {/* gallery — masonic 型 masonry */}
-          {layout === "gallery" && (
-            <GalleryBody
-              items={galleryEntries ?? galleryDisplayItems}
-              scrollElement={scrollEl}
-              galleryCardSize={galleryCardSize}
-              galleryColumns={galleryColumns}
-              galleryColumnsFocus={galleryColumnsFocus}
-              listFocusMode={listFocusMode}
-              contextValue={galleryCtxValue}
-            />
-          )}
+            {/* magazine — 先頭フィーチャー + 仮想化コンパクトリスト */}
+            {layout === "magazine" && (
+              <MagazineBody
+                items={nonGalleryDisplayItems}
+                deletingIds={nonGalleryDeletingIds}
+                newIds={nonGalleryNewIds}
+                virtualizer={magazineVirtualizer}
+                resolveItemProps={resolveItemProps}
+              />
+            )}
 
-          {/* IntersectionObserver の sentinel — スクロール時に client side で page+=1 する */}
-          <div ref={sentinelRef} className="h-32" aria-hidden />
-          {/* LoadMoreButton はクライアント側 visible が現 filtered を満たし終えてから
+            {/* gallery — masonic 型 masonry */}
+            {layout === "gallery" && (
+              <GalleryBody
+                items={galleryEntries ?? galleryDisplayItems}
+                scrollElement={scrollEl}
+                galleryCardSize={galleryCardSize}
+                galleryColumns={galleryColumns}
+                galleryColumnsFocus={galleryColumnsFocus}
+                listFocusMode={listFocusMode}
+                contextValue={galleryCtxValue}
+              />
+            )}
+
+            {/* IntersectionObserver の sentinel — スクロール時に client side で page+=1 する */}
+            <div ref={sentinelRef} className="h-32" aria-hidden />
+            {/* LoadMoreButton はクライアント側 visible が現 filtered を満たし終えてから
               (hasMore=false) かつサーバー側に過去ページが残っている場合のみ表示する。
               ユーザー仕様: 「最初 500 件のうち pageSize 件ずつ表示 → 500 全部表示後に次 500 取得」 */}
-          {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
-            <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
-          )}
-        </div>
-      </SelectedArticleCtx.Provider>
-      {galleryCtxMenu && (
-        <GalleryContextMenu
-          target={galleryCtxMenu}
-          readIds={readIds}
-          bookmarkIds={bookmarkIds}
-          onToggleRead={onToggleRead}
-          onToggleBookmark={onToggleBookmark}
-          onDeleteFromGallery={handleGalleryDelete}
-          onSelectArticle={onSelectArticle}
-          onClose={() => setGalleryCtxMenu(null)}
-        />
-      )}
-      {lightboxState && (
-        <ImageLightbox
-          imageSrc={lightboxState.images[lightboxState.imageIndex]!}
-          article={lightboxState.article}
-          onPrev={lightboxState.imageIndex > 0 ? handleLightboxPrev : null}
-          onNext={
-            lightboxState.imageIndex < lightboxState.images.length - 1 ? handleLightboxNext : null
-          }
-          onClose={handleLightboxClose}
-          onSelectArticle={onSelectArticle}
-        />
-      )}
-      {articleCtxMenu && onToggleReadingList && readingListIds && (
-        <ArticleContextMenu
-          target={articleCtxMenu}
-          readIds={readIds}
-          bookmarkIds={bookmarkIds}
-          readingListIds={readingListIds}
-          onToggleRead={onToggleRead}
-          onToggleBookmark={onToggleBookmark}
-          onToggleReadingList={onToggleReadingList}
-          onClose={() => setArticleCtxMenu(null)}
-        />
-      )}
-    </section>
+            {!hasMore && feedHasMorePages && onLoadMoreFeedArticles && (
+              <LoadMoreButton onLoad={onLoadMoreFeedArticles} />
+            )}
+          </div>
+        </SelectedArticleCtx.Provider>
+        {galleryCtxMenu && (
+          <GalleryContextMenu
+            target={galleryCtxMenu}
+            readIds={readIds}
+            bookmarkIds={bookmarkIds}
+            onToggleRead={onToggleRead}
+            onToggleBookmark={onToggleBookmark}
+            onDeleteFromGallery={handleGalleryDelete}
+            onSelectArticle={onSelectArticle}
+            onClose={() => setGalleryCtxMenu(null)}
+          />
+        )}
+        {lightboxState && (
+          <ImageLightbox
+            imageSrc={lightboxState.images[lightboxState.imageIndex]!}
+            article={lightboxState.article}
+            onPrev={lightboxState.imageIndex > 0 ? handleLightboxPrev : null}
+            onNext={
+              lightboxState.imageIndex < lightboxState.images.length - 1 ? handleLightboxNext : null
+            }
+            onClose={handleLightboxClose}
+            onSelectArticle={onSelectArticle}
+          />
+        )}
+        {articleCtxMenu && onToggleReadingList && readingListIds && (
+          <ArticleContextMenu
+            target={articleCtxMenu}
+            readIds={readIds}
+            bookmarkIds={bookmarkIds}
+            readingListIds={readingListIds}
+            onToggleRead={onToggleRead}
+            onToggleBookmark={onToggleBookmark}
+            onToggleReadingList={onToggleReadingList}
+            onClose={() => setArticleCtxMenu(null)}
+          />
+        )}
+      </section>
+      <BulkActionToolbar
+        selectedIds={bulkSelection.selectedIds}
+        onBulkMarkRead={handleBulkMarkRead}
+        onClear={bulkSelection.clear}
+      />
+    </BulkSelectionCtx.Provider>
   );
 }
 

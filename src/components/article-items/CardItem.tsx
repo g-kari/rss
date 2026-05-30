@@ -1,9 +1,10 @@
 "use client";
 
-import { memo, useContext } from "react";
+import { memo, useMemo, useContext } from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
+import { BulkSelectionCtx } from "../../contexts/BulkSelectionContext";
 import { NoteIcon } from "../article-view/icons";
 import {
   ArticleActions,
@@ -38,6 +39,8 @@ export const CardArticleItem = memo(function CardArticleItem({
 }: ArticleItemProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
+  const bulkIds = useContext(BulkSelectionCtx);
+  const isBulkSelected = useMemo(() => bulkIds.has(article.id), [bulkIds, article.id]);
   // 共通ハンドラを shared から取得 (重複定義 → import 統一、refactor cycle)。
   const handleKeyDown = handleArticleKeyDown(article, onSelectArticle);
   const handleContextMenu = handleArticleContextMenu(article, onContextMenu);
@@ -48,12 +51,12 @@ export const CardArticleItem = memo(function CardArticleItem({
       aria-posinset={index + 1}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
-      onClick={() => onSelectArticle(article)}
+      onClick={(e) => onSelectArticle(article, e)}
       onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
       className={`group relative flex flex-col cursor-pointer rounded-lg border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
-      } ${
+      } ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
         isSelected
           ? "border-text-strong bg-surface-elevated"
           : "border-border-default hover:border-text-muted bg-surface-elevated"

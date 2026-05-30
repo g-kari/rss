@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import type { Article, Feed } from "../types";
 import type { ArticleItemProps } from "../components/ArticleItems";
 import { resolveThumbnail } from "../lib/article-utils";
@@ -27,7 +27,7 @@ interface Params {
   duplicateInfo?: Map<string, string[]>;
   filteredCount: number;
   ogpCache: Record<string, string>;
-  onSelectArticle: (a: Article) => void;
+  onSelectArticle: (a: Article, event?: ReactMouseEvent) => void;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
   onToggleReadingList?: (id: string) => void;
@@ -88,7 +88,8 @@ export function useArticleListItemProps({
         query,
         duplicateFeedNames: duplicateInfo?.get(article.id),
         totalCount: filteredCount,
-        onSelectArticle: (a: Article) => onSelectArticleRef.current(a),
+        onSelectArticle: (a: Article, event?: ReactMouseEvent) =>
+          onSelectArticleRef.current(a, event),
         onToggleRead: (id: string) => onToggleReadRef.current(id),
         onToggleBookmark: (id: string) => onToggleBookmarkRef.current(id),
         onToggleReadingList: onToggleReadingListRef.current

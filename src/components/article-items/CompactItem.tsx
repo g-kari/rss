@@ -1,9 +1,10 @@
 "use client";
 
-import { memo, useContext } from "react";
+import { memo, useMemo, useContext } from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
+import { BulkSelectionCtx } from "../../contexts/BulkSelectionContext";
 import { NoteIcon } from "../article-view/icons";
 import {
   ArticleActions,
@@ -33,6 +34,8 @@ export const CompactArticleItem = memo(function CompactArticleItem({
 }: ArticleItemProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
+  const bulkIds = useContext(BulkSelectionCtx);
+  const isBulkSelected = useMemo(() => bulkIds.has(article.id), [bulkIds, article.id]);
   const handleKeyDown = handleArticleKeyDown(article, onSelectArticle);
   const handleContextMenu = handleArticleContextMenu(article, onContextMenu);
   return (
@@ -42,12 +45,12 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       aria-posinset={index + 1}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
-      onClick={() => onSelectArticle(article)}
+      onClick={(e) => onSelectArticle(article, e)}
       onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
       className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
-      } ${
+      } ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
         isSelected
           ? "bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]"
           : "hover:bg-surface-hover"
