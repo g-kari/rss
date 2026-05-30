@@ -89,7 +89,8 @@ export async function getServerSession(
       return null;
     }
     return data;
-  } catch {
+  } catch (err) {
+    console.warn("[getServerSession] R2 read failed:", sessionId.slice(0, 8), err);
     return null;
   }
 }

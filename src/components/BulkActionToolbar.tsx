@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import SnoozeModal from "./SnoozeModal";
 
 interface Props {
@@ -24,6 +24,7 @@ export default function BulkActionToolbar({
   const [showSnoozeModal, setShowSnoozeModal] = useState(false);
   const [showTagInput, setShowTagInput] = useState(false);
   const [tagInputValue, setTagInputValue] = useState("");
+  const tagButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleMarkRead = useCallback(() => {
     if (count === 0) return;
@@ -53,6 +54,7 @@ export default function BulkActionToolbar({
     onBulkAddTag([...selectedIds], tagInputValue.trim());
     setTagInputValue("");
     setShowTagInput(false);
+    tagButtonRef.current?.focus();
     onClear();
   }, [tagInputValue, selectedIds, onBulkAddTag, onClear]);
 
@@ -66,6 +68,9 @@ export default function BulkActionToolbar({
         className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-4 py-2 shadow-lg"
       >
         <span className="text-sm font-medium text-text-strong">{count} 件選択中</span>
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          {count} 件選択中
+        </span>
         <button
           type="button"
           onClick={handleMarkRead}
@@ -96,6 +101,7 @@ export default function BulkActionToolbar({
         )}
         {onBulkAddTag && !showTagInput && (
           <button
+            ref={tagButtonRef}
             type="button"
             onClick={handleOpenTagInput}
             className="rounded-full bg-ink px-3 py-1 text-sm font-medium text-ink-text transition-all duration-200 hover:bg-ink-hover"
@@ -117,6 +123,7 @@ export default function BulkActionToolbar({
                 if (e.key === "Escape") {
                   setShowTagInput(false);
                   setTagInputValue("");
+                  tagButtonRef.current?.focus();
                 }
               }}
               placeholder="タグ名を入力"

@@ -11,7 +11,7 @@
 
 import { stripHtml } from "./html";
 
-export type SearchField = "title" | "author" | "feed" | "category" | "content";
+export type SearchField = "title" | "author" | "feed" | "category" | "content" | "tag";
 
 const FIELD_NAMES: ReadonlySet<SearchField> = new Set([
   "title",
@@ -19,6 +19,7 @@ const FIELD_NAMES: ReadonlySet<SearchField> = new Set([
   "feed",
   "category",
   "content",
+  "tag",
 ]);
 
 export type SearchNode =
@@ -28,6 +29,7 @@ export type SearchNode =
   | { kind: "OR"; children: SearchNode[] };
 
 export interface SearchableArticle {
+  id: string;
   feedHash: string;
   title: string;
   summary: string;
@@ -39,6 +41,8 @@ export interface SearchableArticle {
 export interface SearchContext {
   /** feedHash → フィード表示名 (feed: 検索に使用) */
   feedTitleByHash: ReadonlyMap<string, string>;
+  /** articleId → タグ配列 (tag: 検索に使用) */
+  tagsByArticleId?: Readonly<Record<string, readonly string[]>>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -191,6 +195,8 @@ function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: Sear
       return (ctx.feedTitleByHash.get(article.feedHash) ?? "").toLowerCase();
     case "content":
       return stripHtml(article.content ?? "").toLowerCase();
+    case "tag":
+      return (ctx.tagsByArticleId?.[article.id] ?? []).join(" ").toLowerCase();
   }
 }
 
