@@ -86,6 +86,8 @@ interface Props {
   duplicateInfo?: Map<string, string[]>;
   /** #684: 値が変化するたびに「選択中記事へ強制スクロール」を再実行するトリガーカウンタ */
   anchorTrigger?: number;
+  onSnoozeArticle?: (id: string, durationMs: number) => void;
+  onAddTag?: (articleId: string, tag: string) => void;
 }
 
 function getDateGroupLabel(publishedAt: string | null): string {
@@ -143,6 +145,8 @@ function ArticleList({
   onGalleryAutoRead,
   duplicateInfo,
   anchorTrigger,
+  onSnoozeArticle,
+  onAddTag,
 }: Props) {
   const {
     filtered,
@@ -561,6 +565,29 @@ function ArticleList({
     [onMarkRead],
   );
 
+  const handleBulkToggleBookmark = useCallback(
+    (ids: string[]) => {
+      for (const id of ids) onToggleBookmark(id);
+    },
+    [onToggleBookmark],
+  );
+
+  const handleBulkSnooze = useCallback(
+    (ids: string[], durationMs: number) => {
+      if (!onSnoozeArticle) return;
+      for (const id of ids) onSnoozeArticle(id, durationMs);
+    },
+    [onSnoozeArticle],
+  );
+
+  const handleBulkAddTag = useCallback(
+    (ids: string[], tag: string) => {
+      if (!onAddTag) return;
+      for (const id of ids) onAddTag(id, tag);
+    },
+    [onAddTag],
+  );
+
   const { resolveItemProps } = useArticleListItemProps({
     feedMap,
     readIds,
@@ -759,6 +786,9 @@ function ArticleList({
       <BulkActionToolbar
         selectedIds={bulkSelection.selectedIds}
         onBulkMarkRead={handleBulkMarkRead}
+        onBulkToggleBookmark={handleBulkToggleBookmark}
+        onBulkSnooze={onSnoozeArticle ? handleBulkSnooze : undefined}
+        onBulkAddTag={onAddTag ? handleBulkAddTag : undefined}
         onClear={bulkSelection.clear}
       />
     </BulkSelectionCtx.Provider>
