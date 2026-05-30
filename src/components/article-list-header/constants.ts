@@ -1,8 +1,6 @@
 import type { Layout, DateRange } from "../../types";
 
-export const LAYOUTS: Layout[] = ["compact", "list", "card", "magazine", "gallery"];
-
-export const LAYOUT_LABELS: Record<Layout, string> = {
+export const LAYOUT_ARIA_LABELS: Record<Layout, string> = {
   compact: "コンパクト表示",
   list: "リスト表示",
   card: "カード表示",
