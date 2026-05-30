@@ -29,8 +29,6 @@ import {
 import FeedTitleContent from "./FeedTitleContent";
 import { buildFeedActions } from "./feedActions";
 
-export { formatCount };
-
 /** Enter/Escape キーに対応したインプット用キーハンドラーを生成する。 */
 function makeInputKeyHandler(onEnter: () => void | Promise<void>, onEscape: () => void) {
   return (e: KeyboardEvent<HTMLInputElement>) => {
