@@ -49,6 +49,7 @@ Cloudflare Bindings
 Cron Trigger (wrangler.toml: */30 * * * *)
   └─ worker.ts#scheduled() → src/cron/fetch.ts#fetchAllFeeds(env) — R2 の全フィードを buildFeedUserMap で集約して RSS 取得・更新
                           + src/lib/cron-prefetch.ts#runCronPrefetch(env, ctx) — top-N feed の content/OGP を waitUntil で事前 fetch
+                            (内部で src/lib/engagement-aggregator.ts#aggregateGlobalTopFeeds を呼び出し、全ユーザーの engagement 履歴からグローバル人気度スコアで top-N feed を集約)
 ```
 
 ## ディレクトリ構造
@@ -387,6 +388,7 @@ src/
     ai-summary-parse.ts      # AI summary text の line 分類純粋関数 (#811、parseSummaryLine / parseSummaryLines、heading / bullet / empty / paragraph、非 string 入力は safe fallback で TypeError 防御)
     binary-proxy-handler.ts  # image / video / 将来追加 binary 型のプロキシ共通 handler（handleBinaryProxy — auth ガード → URL 検証 → cache lookup → upstream fetch → mime 検証 → cachePutAsync を 1 箇所集約、image-proxy / video-proxy route から thin wrapper で呼ぶ、#757）
     proxy-error-headers.ts   # binary proxy (image / video / 将来 audio 等) のエラーレスポンスに optional Details field を `X-${prefix}-*` ヘッダーとして付与する共通 helper（`image-error-placeholder.ts` と `video-error-placeholder.ts` の重複 8 行を helper-drift 規範で集約、#856）
+    bulk-selection.ts        # Shift+click による記事範囲選択の計算ユーティリティ
     booth-fallback.ts        # x.com / twitter.com 系フィードで summary 内の booth.pm URL を thumbnail fallback として抽出する純粋関数（extractBoothFallbackUrl — #750 Phase 1）
     opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
     recommendation.ts        # フィード推薦ロジック
