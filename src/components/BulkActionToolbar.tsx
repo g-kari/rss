@@ -126,6 +126,7 @@ export default function BulkActionToolbar({
             <button
               type="button"
               onClick={handleAddTag}
+              aria-label="タグを追加する"
               className="rounded-full bg-ink px-3 py-1 text-sm font-medium text-ink-text transition-all duration-200 hover:bg-ink-hover"
             >
               追加

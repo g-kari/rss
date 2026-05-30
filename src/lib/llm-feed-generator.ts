@@ -15,6 +15,7 @@ import type { SelectorConfig } from "../types";
 import type { ParsedFeed, ParsedItem } from "./xml-parser";
 import type { LDDocument, LDElement } from "./linkedom-types";
 import { isParsedHtmlResult } from "./linkedom-types";
+import { devError } from "./dev-log";
 
 // workers-types 未掲載のためキャスト。CSS セレクタ推論には精度の高いモデルを使用する
 const MODEL: AiModelId = "@cf/meta/llama-3.3-70b-instruct-fp8-fast" as AiModelId;
@@ -160,7 +161,8 @@ export async function inferSelectors(
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(match[0]);
-    } catch {
+    } catch (err) {
+      devError("[llm-feed-generator] inferSelectors response JSON parse failed", err);
       return null;
     }
     // AI レスポンスは信頼できないため、object であることをランタイム検証する
@@ -187,7 +189,8 @@ export async function inferSelectors(
       model: MODEL,
       generatedAt: new Date().toISOString(),
     };
-  } catch {
+  } catch (err) {
+    devError("[llm-feed-generator] inferSelectors failed", err);
     return null;
   }
 }

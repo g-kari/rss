@@ -78,15 +78,20 @@ export function useArticleUnreadStats(
   // articles のみ依存: feedHash → 最新 publishedAt
   // readIds 変化 (j キー連打 / mark-all-read) では再計算しない
   const lastPublishedByFeed = useMemo(() => {
+    // feedHash → タイムスタンプ (ms) で比較して二重 Date.parse を回避 (#901)。
+    // 比較ループ内では数値 Map を使い、publishedAt は「勝者」確定後に 1 回だけ文字列 Map に格納。
+    const tsMap = new Map<string, number>();
     const next = new Map<string, string>();
     for (const a of articles) {
       if (!a.publishedAt) continue;
-      const prev = next.get(a.feedHash);
+      const ts = Date.parse(a.publishedAt);
+      const prevTs = tsMap.get(a.feedHash);
       // ISO 8601 文字列の lexicographic 比較は timezone offset 形式 (`+09:00`/`+00:00`) と
       // `.000Z` で同 absolute moment でも `+` (0x2B) < `.` (0x2E) で誤判定する罠を防ぐ。
       // canonical (read-state-prune.ts:80 / useFilteredArticles.ts / buildSnoozePredicate 44th-47th)
       // と揃えて Date.parse 絶対時刻比較。
-      if (!prev || Date.parse(a.publishedAt) > Date.parse(prev)) {
+      if (prevTs === undefined || ts > prevTs) {
+        tsMap.set(a.feedHash, ts);
         next.set(a.feedHash, a.publishedAt);
       }
     }

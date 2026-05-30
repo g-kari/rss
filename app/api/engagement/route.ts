@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
       !feedHash ||
       !isValidFeedHash(feedHash) ||
       !action ||
+      typeof action !== "string" ||
       !VALID_ACTIONS.includes(action as EngagementAction)
     ) {
       return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
