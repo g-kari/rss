@@ -157,7 +157,7 @@ export default function FeedViewTabs({
             id={`feed-view-tab-${t.id}`}
             role="tab"
             aria-selected={isActive}
-            aria-controls={`feed-view-panel-${t.id}`}
+            aria-controls="feed-view-panel"
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChangeView(t.id)}
             onDragOver={handleDragOver}

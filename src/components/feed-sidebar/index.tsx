@@ -400,8 +400,13 @@ function FeedSidebar({
       {/* フィード検索（インライン常時表示） */}
       {feeds.length > 0 && <FeedSearchBar value={feedSearch} onChange={setFeedSearch} />}
 
-      {/* フィードリスト */}
-      <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2">
+      {/* フィードリスト (FeedViewTabs の tabpanel) */}
+      <nav
+        id="feed-view-panel"
+        role="tabpanel"
+        aria-labelledby={`feed-view-tab-${activeFeedView}`}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2"
+      >
         <button
           type="button"
           onClick={() => onSelectFeed(null)}
