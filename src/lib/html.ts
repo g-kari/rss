@@ -172,6 +172,13 @@ function sanitizeStyleAttr(style: string): string {
       // いずれも現代ブラウザでは動作しないが、念のため除去する。
       .replace(/-moz-binding\s*:[^;]*(;|$)/gi, "")
       .replace(/\bbehavior\s*:[^;]*(;|$)/gi, "")
+      // filter: progid:DXImageTransform / -ms-filter: IE 7/8 独自の CSS filter プロパティ。
+      // DXImageTransform.Microsoft.AlphaImageLoader(src=...) で外部 JS URL を src 経由で実行できた。
+      // 現代ブラウザでは動作しないが、sanitizeStyleAttr 単体での防御として明示的に除去する。
+      // （sanitizeHtml の上位ルールで src=javascript: が偶発的に除去されるが、
+      //   単体での防御を保証するために追加する。）
+      .replace(/progid\s*:[^\s;]*(;|$)/gi, "")
+      .replace(/-ms-filter\s*:[^;]*(;|$)/gi, "")
   );
 }
 

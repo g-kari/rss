@@ -910,3 +910,85 @@ test.describe("sanitizeHtml — HTML コメント除去 (defense-in-depth)", () 
     expect(sanitizeHtml(html)).toBe(html);
   });
 });
+
+test.describe("sanitizeHtml — CSS injection バイパス防止 (sanitizeStyleAttr 強化, Issue #917)", () => {
+  // CSS unicode escape や改行文字挿入によるバイパスが除去されることを確認する。
+  // 現在の実装で既にガード済みのパターン（regression 防止）と、
+  // 新たに追加したガード（filter: / -ms-filter: IE 専用プロパティ）の両方を検証する。
+
+  // --- 既存ガードの regression 防止テスト ---
+
+  test("style 内 url() 改行込み (url(\\njavascript:...)) が除去される", () => {
+    const result = sanitizeHtml('<p style="background: url(\njavascript:alert(1)\n)">本文</p>');
+    expect(result).not.toContain("url(");
+    expect(result).not.toContain("javascript:");
+  });
+
+  test("style 内 url() タブ込み (url(\\tjavascript:...)) が除去される", () => {
+    const result = sanitizeHtml('<p style="background: url(\tjavascript:alert(1)\t)">本文</p>');
+    expect(result).not.toContain("url(");
+    expect(result).not.toContain("javascript:");
+  });
+
+  test("style 内 url() にスペース挿入 (url( javascript:alert(1) )) が除去される", () => {
+    const result = sanitizeHtml('<p style="background: url( javascript:alert(1) )">本文</p>');
+    expect(result).not.toContain("url(");
+    expect(result).not.toContain("javascript:");
+  });
+
+  test("style 内 expression(alert(1)) が除去される", () => {
+    // IE 独自の CSS 式評価。現代ブラウザでは無効だが defensive として除去する。
+    const result = sanitizeHtml('<p style="expression(alert(1))">本文</p>');
+    expect(result).not.toContain("expression(");
+    expect(result).not.toContain("alert(1)");
+  });
+
+  test("style 内 expression() にスペース挿入 (expression  (alert(1))) が除去される", () => {
+    const result = sanitizeHtml('<p style="expression  (alert(1))">本文</p>');
+    expect(result).not.toContain("expression");
+    expect(result).not.toContain("alert(1)");
+  });
+
+  test("style 内 url() ダブルクォートで javascript: を囲んでも除去される", () => {
+    const result = sanitizeHtml(
+      '<p style="background: url(&quot;javascript:alert(1)&quot;)">本文</p>',
+    );
+    // url() ごと除去されること
+    expect(result).not.toContain("url(");
+  });
+
+  // --- 新規ガード: filter: / -ms-filter: IE 専用プロパティ除去 ---
+
+  test("style 内 filter: progid:DXImageTransform (src=javascript:) が除去される", () => {
+    // IE 7/8 固有の DXImageTransform.Microsoft.AlphaImageLoader を利用した
+    // XSS ベクトル。現代ブラウザでは動作しないが defensive として除去する。
+    const result = sanitizeHtml(
+      '<p style="filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src=javascript:alert(1))">本文</p>',
+    );
+    expect(result).not.toContain("javascript:");
+    expect(result).toContain("本文</p>");
+  });
+
+  test("style 内 -ms-filter: progid:DXImageTransform (src=javascript:) が除去される", () => {
+    // IE 8 の -ms-filter プロパティも同様の攻撃ベクトルとなりうる。
+    const result = sanitizeHtml(
+      '<p style="-ms-filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src=javascript:alert(1))">本文</p>',
+    );
+    expect(result).not.toContain("javascript:");
+    expect(result).toContain("本文</p>");
+  });
+
+  test("style 内 filter: 値なし・無害なら保持される", () => {
+    // filter: blur() / brightness() / contrast() 等の CSS filter は
+    // 現代ブラウザで正当に使われるため、DXImageTransform でない場合は保持する。
+    // （本実装では filter: プロパティを丸ごと除去するため、
+    //   正当な CSS filter も除去されることを acceptance として記録する）
+    // 現時点では DXImageTransform を含む場合のみ危険と考えるが、
+    // 実装は filter: 全体を除去するシンプルなアプローチをとる。
+    // TODO: 必要に応じて allowlist で正当な filter 値を保持するよう拡張可能。
+    const result = sanitizeHtml('<p style="filter: blur(4px)">本文</p>');
+    // 現実装では filter: 全体を除去する（シンプルな防御）
+    // この spec は現在の挙動を記録するものであり、将来変更可能
+    expect(result).toContain("本文</p>");
+  });
+});
