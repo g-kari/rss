@@ -22,6 +22,7 @@ import { extractWithRegex } from "./regex-extractor";
 import { extractJsonLdImages, appendMissingJsonLdImages } from "./json-ld-images";
 import { extractOgMeta, escapeHtml } from "./html";
 import { isAbsoluteHttpUrl } from "./url";
+import { devError } from "./dev-log";
 
 /**
  * inside-games.jp 等の thumb-list / capt-thumb-list ギャラリー UL を検出し、
@@ -258,14 +259,18 @@ export async function fetchMarkdownFromHtml(
       `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/tomarkdown`,
       { method: "POST", headers: { Authorization: `Bearer ${apiToken}` }, body: formData },
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      devError("[content] fetchMarkdownFromHtml upstream error", { status: res.status });
+      return null;
+    }
 
     const json = (await res.json()) as {
       result: { data?: string; error?: string }[];
       success: boolean;
     };
     return json.success ? (json.result[0]?.data ?? null) : null;
-  } catch {
+  } catch (err) {
+    devError("[content] fetchMarkdownFromHtml failed", err);
     return null;
   }
 }
