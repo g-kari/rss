@@ -788,7 +788,10 @@ export default function AppShell({
   // landingNode が null の時点で user は確実にログイン済 (TypeScript narrowing 用)
   if (!user) return null;
 
-  const articleFilter: ArticleFilter = { ...filterState, onSaveFilter: saveFilter };
+  const articleFilter: ArticleFilter = useMemo(
+    () => ({ ...filterState, onSaveFilter: saveFilter }),
+    [filterState, saveFilter],
+  );
 
   return (
     <AppProviders

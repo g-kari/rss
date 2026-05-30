@@ -108,7 +108,8 @@ export function extractWithReadability(html: string, url: string): string | null
     }).parse();
     const content = article?.content ?? null;
     return content ? restoreTrustedEmbeds(content, embeds) : null;
-  } catch {
+  } catch (err) {
+    console.error("[readability] extractWithReadability failed:", err);
     return null;
   }
 }

@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { r2Get, engagementKey } from "@/lib/r2";
 import type { EngagementEntry, EngagementLog } from "@/types";
-import { toDateStr, buildDayList, getMondayIso, computeCurrentStreak } from "@/lib/stats-helpers";
+import {
+  toDateStr,
+  buildDayList,
+  getMondayIso,
+  computeCurrentStreak,
+  READ_ACTIONS,
+} from "@/lib/stats-helpers";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 
 const STATS_WINDOW_MS = 60 * 1000; // 60秒
@@ -22,8 +28,6 @@ export interface ReadingStats {
   /** 連続活動日数（直近から遡って途切れた日数） */
   currentStreak: number;
 }
-
-const READ_ACTIONS: EngagementEntry["action"][] = ["fetch_full", "open_original"];
 
 export async function GET(request: Request) {
   return withSession(request, async ({ session, env }) => {
@@ -55,7 +59,7 @@ export async function GET(request: Request) {
     let allTimeTotal = 0;
 
     for (const e of entries) {
-      const isRead = READ_ACTIONS.includes(e.action);
+      const isRead = READ_ACTIONS.has(e.action);
       if (isRead) {
         const d = toDateStr(e.timestamp);
         if (dayCounts.has(d)) dayCounts.set(d, (dayCounts.get(d) ?? 0) + 1);
