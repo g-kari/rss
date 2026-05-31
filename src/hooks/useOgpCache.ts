@@ -6,6 +6,8 @@ import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
+import { isAbortError } from "../lib/fetch";
+import { OGP_STAGGER_MS } from "../lib/ogp-cache-ttl";
 import { extractBoothFallbackUrl } from "../lib/booth-fallback";
 import { parseOgpCache, type OgpCacheEntry } from "../lib/ogp-cache-schema";
 import type { OgpCacheStore } from "../contexts/OgpCacheContext";
@@ -85,8 +87,7 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
 
     // 一度に最大10件まで並列フェッチ（429防止）
     const OGP_BATCH_SIZE = 10;
-    // リロード時の一斉フェッチ burst を防ぐインデックスごとの遅延（ms）
-    const OGP_STAGGER_MS = 150;
+    // OGP_STAGGER_MS は ogp-cache-ttl.ts の共有定数を使用
     const batch = toFetch.slice(0, OGP_BATCH_SIZE);
 
     const scheduleSave = (data: Record<string, OgpCacheEntry>) => {
@@ -163,7 +164,10 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
               return tryBoothFallback(link, article);
             }
           })
-          .catch(() => tryBoothFallback(link, article))
+          .catch((err: unknown) => {
+            if (!isAbortError(err)) devError("[useOgpCache] primary OGP fetch failed", link, err);
+            return tryBoothFallback(link, article);
+          })
           .finally(() => {
             fetchingRef.current.delete(link);
           });

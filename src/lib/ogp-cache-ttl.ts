@@ -12,6 +12,9 @@
  * と同じ TTL なので独立定数は不要。
  */
 
+/** OGP burst 防止用のリクエスト間ステガー遅延 (ms) */
+export const OGP_STAGGER_MS = 150;
+
 /** 通常の OGP 取得成功時の cache TTL (30 日) */
 export const OGP_CACHE_TTL_SEC = 30 * 24 * 60 * 60;
 

@@ -4,9 +4,11 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
+import { devError } from "../lib/dev-log";
 import { buildFetchErrorMessage, formatHttpErrorMessage } from "../lib/classify-http-error";
 import { autoReadDebug } from "../lib/auto-read-debug";
 import { useOgpCacheContext } from "../contexts/OgpCacheContext";
+import { OGP_STAGGER_MS } from "../lib/ogp-cache-ttl";
 import type { OgpData } from "../types";
 
 /**
@@ -14,7 +16,7 @@ import type { OgpData } from "../types";
  * モジュールレベルの連番カウンター。hook インターフェースは変えずに stagger を実現する。
  */
 let _ogpMountCounter = 0;
-const OGP_STAGGER_MS = 150;
+// OGP_STAGGER_MS は ogp-cache-ttl.ts の共有定数を import
 const OGP_STAGGER_WINDOW = 10; // 10 件ごとにカウンターを wrap する
 
 /**
@@ -146,6 +148,7 @@ export function useArticleContent(
         })
         .catch((err: unknown) => {
           if (isAbortError(err)) return;
+          devError("[useArticleContent] OGP fetch failed", articleLink, err);
         });
     }, delay);
     return () => {
