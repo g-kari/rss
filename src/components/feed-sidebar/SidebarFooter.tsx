@@ -32,6 +32,10 @@ interface Props {
   onOpenHelp: () => void;
   onToggleTheme: () => void;
   onLogout: () => void;
+  /** 今日の読了数（未定義時は非表示） */
+  readTodayCount?: number;
+  /** 週間目標件数（未定義時は目標なし表示） */
+  weeklyGoal?: number;
 }
 
 export default function SidebarFooter({
@@ -53,6 +57,8 @@ export default function SidebarFooter({
   onOpenHelp,
   onToggleTheme,
   onLogout,
+  readTodayCount,
+  weeklyGoal,
 }: Props) {
   const { success, error: showError } = useToast();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -183,6 +189,13 @@ export default function SidebarFooter({
           d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.5M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
         />
       </FooterIconButton>
+
+      {readTodayCount !== undefined && (
+        <span className="text-[10px] text-text-muted tabular-nums" title="今日の読了数 / 週間目標">
+          今日 {readTodayCount}
+          {weeklyGoal ? "/" + weeklyGoal : ""}件
+        </span>
+      )}
 
       <FooterIconButton
         onClick={onToggleTheme}

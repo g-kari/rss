@@ -13,6 +13,7 @@ import type {
 import dynamic from "next/dynamic";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
 import { useFeedSidebarContext } from "../../contexts/FeedSidebarContext";
+import { useUnreadStats } from "../../contexts/UnreadStatsContext";
 import { useToast } from "../../contexts/ToastContext";
 import FeedItem from "../feed-item";
 import { formatCount } from "../../lib/article-utils";
@@ -20,7 +21,7 @@ import RecommendationSection from "../RecommendationSection";
 import { useFeedOperations } from "../../hooks/useFeedOperations";
 import { useSidebarFeeds } from "../../hooks/useSidebarFeeds";
 import { useFeedDragDrop } from "../../hooks/useFeedDragDrop";
-import { SPECIAL_FEED_IDS } from "../../lib/storage";
+import { SPECIAL_FEED_IDS, STORAGE_KEYS } from "../../lib/storage";
 import FeedGroupsSection from "./FeedGroupsSection";
 import FeedViewTabs from "./FeedViewTabs";
 import SpecialViewButton from "./SpecialViewButton";
@@ -174,6 +175,8 @@ function FeedSidebar({
   } = useFeedSidebarContext();
   const { onSaveFilter } = useArticleFilter();
   const toast = useToast();
+  const { readTodayCount: ctxReadTodayCount } = useUnreadStats();
+  const weeklyGoal = Number(localStorage.getItem(STORAGE_KEYS.WEEKLY_GOAL)) || undefined;
   const [newUrl, setNewUrl] = useState("");
   const [newCookie, setNewCookie] = useState("");
   const [newCssSelector, setNewCssSelector] = useState("");
@@ -696,6 +699,8 @@ function FeedSidebar({
         onOpenHelp={onOpenHelp}
         onToggleTheme={onToggleTheme}
         onLogout={logout}
+        readTodayCount={ctxReadTodayCount}
+        weeklyGoal={weeklyGoal}
       />
       {/* OPML hidden input */}
       <input
