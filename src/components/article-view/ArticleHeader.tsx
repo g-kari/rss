@@ -191,6 +191,7 @@ export default function ArticleHeader({
         tags={tags}
         onAddTag={onAddTag}
         onRemoveTag={onRemoveTag}
+        feedName={feeds?.find((f) => f.id === article.feedHash)?.title}
       />
 
       <div

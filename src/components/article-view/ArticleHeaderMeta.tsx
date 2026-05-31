@@ -22,6 +22,7 @@ interface Props {
   tags?: readonly string[];
   onAddTag?: (articleId: string, tag: string) => void;
   onRemoveTag?: (articleId: string, tag: string) => void;
+  feedName?: string;
 }
 
 /**
@@ -41,6 +42,7 @@ export default function ArticleHeaderMeta({
   tags,
   onAddTag,
   onRemoveTag,
+  feedName,
 }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -63,6 +65,11 @@ export default function ArticleHeaderMeta({
             <path d="M10 3L5 8l5 5" />
           </svg>
         </button>
+      )}
+      {feedName && (
+        <span className="text-[11px] text-text-muted truncate max-w-[120px]" title={feedName}>
+          {feedName}
+        </span>
       )}
       {article.publishedAt && !isNaN(new Date(article.publishedAt).getTime()) && (
         <time dateTime={article.publishedAt} className="tracking-[0.04em]">
