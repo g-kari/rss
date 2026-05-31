@@ -89,6 +89,7 @@ export default function ArticleHeaderEngagement({
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="M12 6v6l4 2" />
             <circle cx="12" cy="12" r="9" />
@@ -108,6 +109,7 @@ export default function ArticleHeaderEngagement({
             fill={isBookmarked ? "currentColor" : "none"}
             stroke="currentColor"
             strokeWidth={1.5}
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -132,6 +134,7 @@ export default function ArticleHeaderEngagement({
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
@@ -160,6 +163,7 @@ export default function ArticleHeaderEngagement({
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -192,6 +196,7 @@ export default function ArticleHeaderEngagement({
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           {focusMode ? (
             <>

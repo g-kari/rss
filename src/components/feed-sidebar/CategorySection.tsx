@@ -35,6 +35,8 @@ function CategorySectionImpl({
         className="w-full px-4 pt-2.5 pb-0.5 flex items-center gap-1 group"
         onClick={() => onToggleCollapseCategory?.(cat)}
         title={isCollapsed ? "展開" : "折りたたむ"}
+        aria-expanded={!isCollapsed}
+        aria-label={isCollapsed ? `${cat} を展開` : `${cat} を折りたたむ`}
       >
         <svg
           width="10"
@@ -42,6 +44,7 @@ function CategorySectionImpl({
           viewBox="0 0 10 10"
           className={`flex-shrink-0 text-text-muted transition-transform duration-150 ${isCollapsed ? "-rotate-90" : ""}`}
           fill="currentColor"
+          aria-hidden="true"
         >
           <path d="M5 7L1 3h8L5 7z" />
         </svg>

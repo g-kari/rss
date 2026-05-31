@@ -89,6 +89,7 @@ export default function ArticleHeaderShare({
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <rect x={3} y={7} width={12} height={8} rx={1} />
           <path d="M6 7V3h6v4" />

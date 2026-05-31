@@ -443,6 +443,7 @@ src/
     feed-group-drop.ts       # フィードグループへのドラッグ&ドロップ時の競合解決ロジック
     image-proxy-url.ts       # 画像プロキシ URL ビルダー / プロキシ済み判定
     image-proxy-security.ts  # 画像プロキシリクエストの MIME / Content-Type / オリジン検証
+    browser-ai-common.ts     # Summarizer / Translator 等 Chrome 組み込みブラウザ AI 共通ユーティリティ（BrowserAiAvailability 型・共通判定ロジックを集約、browser-summarizer.ts / browser-translator.ts から参照）
     browser-translator.ts    # ブラウザネイティブ翻訳 API（Translator）の利用可否判定・言語検出
     browser-summarizer.ts    # ブラウザネイティブ要約 API（Summarizer）の利用可否判定・要約実行
     translate-html.ts        # HTML DOM 内の翻訳対象テキスト抽出・翻訳適用
