@@ -7,7 +7,7 @@ interface UseReadingStatsResult {
   stats: ReadingStats | null;
   loading: boolean;
   error: string | null;
-  fetch: () => void;
+  fetch: () => Promise<void>;
 }
 
 /**
@@ -32,8 +32,6 @@ export function useReadingStats(): UseReadingStatsResult {
     stats,
     loading,
     error,
-    fetch: () => {
-      void refetch();
-    },
+    fetch: refetch,
   };
 }

@@ -45,7 +45,9 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
     navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
       .then((sub) => setSubscribed(sub !== null))
-      .catch(() => {});
+      .catch((err: unknown) => {
+        devError("[usePushNotifications] getSubscription failed", err);
+      });
   }, [user]);
 
   const toggle = useCallback(async () => {
