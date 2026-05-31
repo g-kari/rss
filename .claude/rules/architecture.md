@@ -848,7 +848,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 - **`<engine>-<capability>.ts`**: engine + 機能 (例: `tts-adapter.ts` / `tts-text.ts` / `piper-voices.ts` / `browser-summarizer.ts`)
 - **`<feature>-fallback.ts`**: 特定サイト / 条件向け fallback (例: `x-com-fallback.ts` / `booth-fallback.ts` / `auto-ai-fallback.ts`)
 - **`<feature>-debug.ts`**: localStorage gate 付き本番デバッグログ (例: `auto-read-debug.ts` / `bgaudio-debug.ts`)
-- **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `article-utils.test.ts` / `booth-fallback.test.ts` / `bulk-selection.test.ts` / `html-media-processors.test.ts` / `lru-cache.test.ts` / `mime-utils.test.ts` / `proxy-error-headers.test.ts` / `url.test.ts` / `video-error-placeholder.test.ts`)、playwright e2e は `e2e/*.spec.ts`
+- **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `article-utils.test.ts` / `binary-proxy-handler.test.ts` / `booth-fallback.test.ts` / `bulk-selection.test.ts` / `context-menu-position.test.ts` / `html-image-processors.test.ts` / `html-media-processors.test.ts` / `lru-cache.test.ts` / `mime-utils.test.ts` / `proxy-error-headers.test.ts` / `url.test.ts` / `video-error-placeholder.test.ts`)、playwright e2e は `e2e/*.spec.ts`
 
 ### 設計原則
 

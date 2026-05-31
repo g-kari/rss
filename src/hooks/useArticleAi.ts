@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { type LruCache, aiLruCache, aiTranslateLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
+import { devError } from "../lib/dev-log";
 import { translateHtmlInBrowser } from "../lib/translate-html";
 import { summarizeInBrowser } from "../lib/browser-summarizer";
 import { toPlainText } from "../lib/html";
@@ -145,8 +146,8 @@ function useAiOperation(
             setLoading(false);
             return;
           }
-        } catch {
-          /* サーバー AI にフォールバック */
+        } catch (err) {
+          devError("[useArticleAi] browser localProcessor failed, falling back to server AI", err);
         }
       }
 

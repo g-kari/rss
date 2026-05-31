@@ -27,10 +27,12 @@ export default function CategoryFilter({
         <button
           onClick={() => setCategoryFilter(null)}
           title={`カテゴリ「${categoryFilter}」フィルターを解除`}
+          aria-label={`カテゴリ「${categoryFilter}」フィルターを解除`}
           className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
         >
           <span className="truncate">{categoryFilter}</span>
           <svg
+            aria-hidden="true"
             width="8"
             height="8"
             viewBox="0 0 8 8"
