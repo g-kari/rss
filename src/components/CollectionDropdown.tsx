@@ -124,7 +124,8 @@ export default function CollectionDropdown({
                   return (
                     <button
                       key={c.id}
-                      role="menuitem"
+                      role="menuitemcheckbox"
+                      aria-checked={isIn}
                       onClick={async () => {
                         try {
                           if (isIn) await onRemove(c.id, articleId);
