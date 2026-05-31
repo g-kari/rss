@@ -4,6 +4,9 @@ interface Props {
   isActive: boolean;
   onClick: () => void;
   title: string;
+  /** 安定したアクセシビリティ名。指定時は aria-label に使用し、title はツールチップのみに使う。
+   *  未指定時は title にフォールバックする。 */
+  ariaLabel?: string;
   activeClass: string;
   inactiveClass: string;
   children: ReactNode;
@@ -13,6 +16,7 @@ export default function ToggleIconButton({
   isActive,
   onClick,
   title,
+  ariaLabel,
   activeClass,
   inactiveClass,
   children,
@@ -21,7 +25,7 @@ export default function ToggleIconButton({
     <button
       onClick={onClick}
       title={title}
-      aria-label={title}
+      aria-label={ariaLabel ?? title}
       aria-pressed={isActive}
       className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${isActive ? activeClass : inactiveClass}`}
     >

@@ -11,6 +11,10 @@ interface Props {
   onBulkSnooze?: (ids: string[], durationMs: number) => void;
   onBulkAddTag?: (ids: string[], tag: string) => void;
   onClear: () => void;
+  /** 選択中の全記事がブックマーク済みかどうか (aria-pressed に使用) */
+  isBookmarked?: boolean;
+  /** 選択中の全記事が後で読むに登録済みかどうか (aria-pressed に使用) */
+  isInReadingList?: boolean;
 }
 
 export default function BulkActionToolbar({
@@ -21,6 +25,8 @@ export default function BulkActionToolbar({
   onBulkSnooze,
   onBulkAddTag,
   onClear,
+  isBookmarked,
+  isInReadingList,
 }: Props) {
   const count = selectedIds.size;
   const [showSnoozeModal, setShowSnoozeModal] = useState(false);
@@ -89,7 +95,8 @@ export default function BulkActionToolbar({
             type="button"
             onClick={handleToggleBookmark}
             className="rounded-full bg-ink px-3 py-1 text-sm font-medium text-ink-text transition-all duration-200 hover:bg-ink-hover"
-            aria-label="選択した記事をまとめてブックマークする"
+            aria-label={isBookmarked ? "ブックマーク解除" : "ブックマーク追加"}
+            aria-pressed={isBookmarked ?? false}
           >
             ブックマーク
           </button>
@@ -99,7 +106,8 @@ export default function BulkActionToolbar({
             type="button"
             onClick={handleToggleReadingList}
             className="rounded-full bg-ink px-3 py-1 text-sm font-medium text-ink-text transition-all duration-200 hover:bg-ink-hover"
-            aria-label="選択した記事をまとめて後で読むに追加する"
+            aria-label={isInReadingList ? "後で読むから解除" : "後で読むに追加"}
+            aria-pressed={isInReadingList ?? false}
           >
             後で読む
           </button>

@@ -809,6 +809,15 @@ function ArticleList({
         onBulkSnooze={onSnoozeArticle ? handleBulkSnooze : undefined}
         onBulkAddTag={onAddTag ? handleBulkAddTag : undefined}
         onClear={bulkSelection.clear}
+        isBookmarked={
+          bulkSelection.selectedIds.size > 0 &&
+          [...bulkSelection.selectedIds].every((id) => bookmarkIds.has(id))
+        }
+        isInReadingList={
+          readingListIds != null &&
+          bulkSelection.selectedIds.size > 0 &&
+          [...bulkSelection.selectedIds].every((id) => readingListIds.has(id))
+        }
       />
     </BulkSelectionCtx.Provider>
   );
