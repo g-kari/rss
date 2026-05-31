@@ -162,8 +162,10 @@ export default function FeedAddModal({
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
             aria-expanded={cookieOpen}
             aria-controls="feed-add-cookie-section"
+            aria-label={cookieOpen ? "Cookie 設定を閉じる" : "Cookie を設定（任意）"}
           >
-            {cookieOpen ? "▾ Cookie を隠す" : "▸ Cookie を設定（任意）"}
+            <span aria-hidden="true">{cookieOpen ? "▾" : "▸"}</span>
+            {cookieOpen ? " Cookie を隠す" : " Cookie を設定（任意）"}
           </button>
           {cookieOpen && (
             <div id="feed-add-cookie-section">
@@ -189,10 +191,14 @@ export default function FeedAddModal({
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
             aria-expanded={cssSelectorOpen}
             aria-controls="feed-add-selector-section"
+            aria-label={
+              cssSelectorOpen
+                ? "CSS セレクタ設定を閉じる"
+                : "CSS セレクタを指定（RSS のないサイト用）"
+            }
           >
-            {cssSelectorOpen
-              ? "▾ CSS セレクタを隠す"
-              : "▸ CSS セレクタを指定（RSS のないサイト用）"}
+            <span aria-hidden="true">{cssSelectorOpen ? "▾" : "▸"}</span>
+            {cssSelectorOpen ? " CSS セレクタを隠す" : " CSS セレクタを指定（RSS のないサイト用）"}
           </button>
           {cssSelectorOpen && (
             <div id="feed-add-selector-section" className="mt-1 space-y-1">

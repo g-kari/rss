@@ -17,7 +17,11 @@ export function useMenuKeyboard(
 
   const getItems = useCallback((): HTMLElement[] => {
     if (!menuRef.current) return [];
-    return Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    return Array.from(
+      menuRef.current.querySelectorAll<HTMLElement>(
+        '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]',
+      ),
+    );
   }, []);
 
   // メニュー開時に最初の項目にフォーカス
