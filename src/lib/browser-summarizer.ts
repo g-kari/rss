@@ -19,6 +19,19 @@ import { devError } from "./dev-log";
 
 type Availability = "available" | "downloadable" | "downloading" | "unavailable";
 
+/** Summarizer / Translator 共通の availability 型 (#952)。 */
+export type BrowserAiAvailability = Availability;
+
+/**
+ * 判定された availability に基づいてブラウザ AI (Summarizer / Translator) を
+ * 使用できるかを返す共通ヘルパー (#952)。
+ * - `available`: 即時利用可能
+ * - `downloadable`: モデル未 DL だが create() が自動 DL するため利用可
+ */
+export function shouldUseBrowserAi(availability: BrowserAiAvailability): boolean {
+  return availability === "available" || availability === "downloadable";
+}
+
 interface BrowserSummarizer {
   summarize(text: string): Promise<string>;
 }
@@ -94,7 +107,7 @@ export function isSummarizerApiSupported(): boolean {
 }
 
 export function shouldUseBrowserSummarizer(availability: Availability): boolean {
-  return availability === "available" || availability === "downloadable";
+  return shouldUseBrowserAi(availability);
 }
 
 export type SummarizerUnavailableReason =

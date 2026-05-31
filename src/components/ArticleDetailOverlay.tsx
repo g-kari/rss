@@ -26,6 +26,9 @@ interface Props {
 const MIN_WIDTH = 360;
 const MAX_WIDTH = 1200;
 const DEFAULT_WIDTH = 560;
+/** Arrow キー 1 押下あたりの移動量 (px)。WAI-ARIA Separator pattern 慣習値。 */
+const RESIZE_STEP_PX = 8;
+const RESIZE_STEP_PX_SHIFT = 32;
 
 function loadWidth(): number {
   const n = parseInt(storageGet(STORAGE_KEYS.ARTICLE_DETAIL_OVERLAY_WIDTH) ?? "", 10);
@@ -102,6 +105,29 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
     }
   }, []);
 
+  function handleResizeKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    const step = e.shiftKey ? RESIZE_STEP_PX_SHIFT : RESIZE_STEP_PX;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      const dir = e.key === "ArrowLeft" ? 1 : -1; // 左ドラッグ = 幅増加と同じ方向
+      const next = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, width + dir * step));
+      setWidth(next);
+      storageSet(STORAGE_KEYS.ARTICLE_DETAIL_OVERLAY_WIDTH, String(next));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setWidth(MAX_WIDTH);
+      storageSet(STORAGE_KEYS.ARTICLE_DETAIL_OVERLAY_WIDTH, String(MAX_WIDTH));
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setWidth(MIN_WIDTH);
+      storageSet(STORAGE_KEYS.ARTICLE_DETAIL_OVERLAY_WIDTH, String(MIN_WIDTH));
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setWidth(DEFAULT_WIDTH);
+      storageSet(STORAGE_KEYS.ARTICLE_DETAIL_OVERLAY_WIDTH, String(DEFAULT_WIDTH));
+    }
+  }
+
   function handleResizeStart(e: ReactMouseEvent) {
     e.preventDefault();
     dragRef.current = { startX: e.clientX, startWidth: width };
@@ -148,10 +174,15 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
       >
         <div
           onMouseDown={handleResizeStart}
-          className="absolute top-0 left-0 h-full w-1.5 cursor-col-resize hover:bg-border-default/60 transition-colors z-10"
-          aria-label="パネル幅をドラッグでリサイズ"
+          onKeyDown={handleResizeKeyDown}
+          tabIndex={0}
+          className="absolute top-0 left-0 h-full w-1.5 cursor-col-resize hover:bg-border-default/60 focus-visible:bg-border-default/60 transition-colors z-10 outline-none"
+          aria-label="パネル幅をドラッグまたは Arrow キーでリサイズ"
           role="separator"
           aria-orientation="vertical"
+          aria-valuenow={width}
+          aria-valuemin={MIN_WIDTH}
+          aria-valuemax={MAX_WIDTH}
         />
         <button
           onClick={onClose}

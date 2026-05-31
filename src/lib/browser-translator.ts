@@ -9,9 +9,10 @@
 
 import { isLikelyJapanese } from "./article-utils";
 import { devError } from "./dev-log";
-import { parseChromeMajorVersion } from "./browser-summarizer";
+import { parseChromeMajorVersion, shouldUseBrowserAi } from "./browser-summarizer";
+import type { BrowserAiAvailability } from "./browser-summarizer";
 
-type Availability = "available" | "downloadable" | "downloading" | "unavailable";
+type Availability = BrowserAiAvailability;
 
 interface BrowserTranslator {
   translate(text: string): Promise<string>;
@@ -76,7 +77,7 @@ export async function detectSourceLanguage(text: string): Promise<string> {
  * - `downloading` / `unavailable`: サーバー AI にフォールバック推奨
  */
 export function shouldUseBrowserTranslation(availability: Availability): boolean {
-  return availability === "available" || availability === "downloadable";
+  return shouldUseBrowserAi(availability);
 }
 
 export type TranslatorUnavailableReason =

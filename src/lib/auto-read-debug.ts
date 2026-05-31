@@ -25,3 +25,6 @@ export const evaluateAutoReadDebugEnabled = evaluateDebugEnabled;
  * `[AutoRead]` prefix 付きでデータを出す。
  */
 export const autoReadDebug = helper.log;
+
+/** デバッグモードが有効かどうかを返す (3 関数セットの設定取得枠 #953)。 */
+export const isAutoReadDebugEnabled = helper.isEnabled;

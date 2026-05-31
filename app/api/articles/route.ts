@@ -240,17 +240,22 @@ export async function GET(request: NextRequest) {
         ? filteredFeedArticles
         : filterExpiredArticles(filteredFeedArticles, protectedIds, readState.ttlDays ?? undefined);
 
-    // publishedAt でフィルタして差分のみ返す
+    // publishedAt でフィルタして差分のみ返す。Date.parse O(N) 重複を Map で事前計算 (#949)
+    const feedTsCache = new Map(
+      ttlFilteredArticles.map((a) => [a.id, a.publishedAt ? Date.parse(a.publishedAt) : NaN]),
+    );
     const finalFeedArticles = ttlFilteredArticles.filter((a) => {
-      if (!a.publishedAt) return false;
-      return Date.parse(a.publishedAt) > sinceMs;
+      const ts = feedTsCache.get(a.id) ?? NaN;
+      return !isNaN(ts) && ts > sinceMs;
     });
 
     // since 指定時は手動保存記事もフィルタリングする
-    const finalSavedArticles = savedArticles.filter((a) => {
-      const ts = a.publishedAt ?? a.createdAt;
-      return Date.parse(ts) > sinceMs;
-    });
+    const savedTsCache = new Map(
+      savedArticles.map((a) => [a.id, Date.parse(a.publishedAt ?? a.createdAt)]),
+    );
+    const finalSavedArticles = savedArticles.filter(
+      (a) => (savedTsCache.get(a.id) ?? NaN) > sinceMs,
+    );
 
     const all = [...finalSavedArticles, ...finalFeedArticles].sort(compareByDateDesc);
     return NextResponse.json(all, {
