@@ -18,6 +18,12 @@ interface UseModalFocusTrapOptions {
    * ConfirmModal は cancelRef を渡してキャンセルボタンを初期 focus にする。
    */
   initialFocusRef?: RefObject<HTMLElement | null>;
+  /**
+   * true にすると Escape listener を capture phase (document レベル) で登録する。
+   * ArticleDetailOverlay のように他の keyboard shortcut より優先して Escape を捕捉したい場合に使用。
+   * デフォルト false (既存の bubble-phase 動作、後方互換)。
+   */
+  captureEscape?: boolean;
 }
 
 interface UseModalFocusTrapResult {
@@ -42,7 +48,7 @@ export function useModalFocusTrap(
   dialogRef: RefObject<HTMLDivElement | null>,
   options: UseModalFocusTrapOptions,
 ): UseModalFocusTrapResult {
-  const { onClose, isOpen, initialFocusRef } = options;
+  const { onClose, isOpen, initialFocusRef, captureEscape = false } = options;
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // open / mount 時に focus セットアップ + returnFocusRef 保存。
@@ -71,9 +77,24 @@ export function useModalFocusTrap(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dialogRef / initialFocusRef は ref で identity 安定 (deps 不要)
   }, [openState]);
 
+  // captureEscape: true の場合、capture phase で Escape を document レベルで捕捉する。
+  // 他の keyboard shortcut hook より優先的に Escape を処理したい場合に使用 (ArticleDetailOverlay 等)。
+  useEffect(() => {
+    if (!captureEscape || !openState) return;
+    function onCaptureKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onCaptureKey, true);
+    return () => document.removeEventListener("keydown", onCaptureKey, true);
+  }, [captureEscape, openState, onClose]);
+
   const handleKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "Escape") {
+      // captureEscape: true の場合、Escape は capture phase で処理済みなので bubble phase では無視
+      if (e.key === "Escape" && !captureEscape) {
         onClose();
         return;
       }
@@ -99,7 +120,7 @@ export function useModalFocusTrap(
         }
       }
     },
-    [dialogRef, onClose],
+    [dialogRef, onClose, captureEscape],
   );
 
   return { handleKeyDown };
