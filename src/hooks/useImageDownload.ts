@@ -13,7 +13,7 @@ import {
 } from "../lib/image-extractor";
 import { mimeToExt } from "../lib/image-mime";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
-import { downloadBlob } from "../lib/download";
+import { downloadBlob, applyFolderPrefix } from "../lib/download";
 import { IMAGE_MIN_DIMENSION } from "../lib/image-constants";
 
 interface ImageDownloadState {
@@ -66,8 +66,9 @@ async function fetchOne(
         const { width, height } = bmp;
         bmp.close();
         if (width < IMAGE_MIN_DIMENSION || height < IMAGE_MIN_DIMENSION) return null;
-      } catch {
+      } catch (err) {
         // ビットマップ生成失敗（SVG 等）はサイズ不明のためそのままダウンロード
+        devError("[useImageDownload] createImageBitmap failed", err);
       }
     }
     return { originalIndex, blob, ext };
@@ -75,11 +76,6 @@ async function fetchOne(
     devError("[useImageDownload] fetch failed", url, err);
     return null;
   }
-}
-
-function applyFolderPrefix(folder: string, filename: string): string {
-  const trimmed = folder.trim().replace(/\/+$/, "");
-  return trimmed ? `${trimmed}/${filename}` : filename;
 }
 
 /**

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { computeContextMenuPosition } from "../lib/context-menu-position";
-import { downloadBlob } from "../lib/download";
+import { downloadBlob, applyFolderPrefix } from "../lib/download";
 import { addUrlToHistory, MAX_DOWNLOAD_HISTORY } from "../lib/download-history";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
@@ -36,11 +36,6 @@ interface GalleryContextMenuProps {
   onDeleteFromGallery: (id: string) => void;
   onSelectArticle: (article: Article) => void;
   onClose: () => void;
-}
-
-function applyFolderPrefix(folder: string, filename: string): string {
-  const trimmed = folder.trim().replace(/\/+$/, "");
-  return trimmed ? `${trimmed}/${filename}` : filename;
 }
 
 export default function GalleryContextMenu({
