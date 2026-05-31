@@ -4,6 +4,7 @@
  * autoMode フラグを `localStorage` に保存し、リロード後も
  * 「保存から N 時間以内なら自動再開」する。N 時間超過なら自動的に OFF 扱い。
  */
+import { devError } from "./dev-log";
 
 /** 既定の有効期限 (ms): 1 時間。ユーザー要望に基づく値 (#679)。 */
 export const AUTO_READ_RESUME_TTL_MS = 60 * 60 * 1000;
@@ -26,7 +27,8 @@ export function parsePersistedAutoReadState(raw: string | null): PersistedAutoRe
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (err) {
+    devError("[auto-read-persist] parsePersistedAutoReadState: JSON.parse failed", { raw, err });
     return null;
   }
   if (!parsed || typeof parsed !== "object") return null;

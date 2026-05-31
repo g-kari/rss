@@ -57,6 +57,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       role="article"
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
+      aria-labelledby={`article-title-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={(e) => onSelectArticle(article, e)}
@@ -75,6 +76,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
         className={`w-1 h-1 rounded-full flex-shrink-0 ${!isRead ? "bg-accent-dot" : "bg-transparent"}`}
       />
       <span
+        id={`article-title-${article.id}`}
         className={`text-[13px] truncate flex-1 transition-colors duration-200 ${
           isRead ? "text-text-muted font-normal" : "text-text-strong font-medium"
         }`}

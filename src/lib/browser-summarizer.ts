@@ -19,12 +19,10 @@ import { devError } from "./dev-log";
 import {
   type BrowserAiAvailability,
   shouldUseBrowserAi,
-  parseChromeMajorVersion,
   getChromeVersionSafe,
 } from "./browser-ai-common";
 
 export type { BrowserAiAvailability };
-export { shouldUseBrowserAi, parseChromeMajorVersion };
 
 interface BrowserSummarizer {
   summarize(text: string): Promise<string>;

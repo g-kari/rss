@@ -63,6 +63,7 @@ export const CardArticleItem = memo(function CardArticleItem({
       role="article"
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
+      aria-labelledby={`article-title-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={(e) => onSelectArticle(article, e)}
@@ -88,6 +89,7 @@ export const CardArticleItem = memo(function CardArticleItem({
           <span className="text-[10px] text-text-faint truncate tracking-[0.04em]">{feedName}</span>
         )}
         <h3
+          id={`article-title-${article.id}`}
           className={`text-[12px] leading-snug line-clamp-2 ${
             isRead ? "text-text-muted font-normal" : "text-text-strong font-medium"
           }`}
