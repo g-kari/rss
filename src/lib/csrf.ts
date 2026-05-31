@@ -1,18 +1,7 @@
+import { tryParseBase } from "./url";
+
 /** CSRF 保護を必須とする HTTP メソッド（状態変更系） */
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-
-/**
- * 与えられた URL 文字列を Origin (scheme + host[:port]) に正規化する。
- * パースに失敗した場合は null を返す。
- */
-function toOrigin(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    return new URL(url).origin;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * CSRF 対策: 状態変更系リクエスト (POST/PUT/PATCH/DELETE) について
@@ -32,7 +21,7 @@ function toOrigin(url: string | null | undefined): string | null {
  */
 export function isCsrfViolation(req: Request, appBaseUrl: string | undefined): boolean {
   if (!STATE_CHANGING_METHODS.has(req.method.toUpperCase())) return false;
-  const expectedOrigin = toOrigin(appBaseUrl);
+  const expectedOrigin = appBaseUrl ? (tryParseBase(appBaseUrl)?.origin ?? null) : null;
   // appBaseUrl が未設定または不正な URL の場合は fail-closed で拒否する
   if (!expectedOrigin) return true;
   const origin = req.headers.get("origin");
@@ -40,8 +29,8 @@ export function isCsrfViolation(req: Request, appBaseUrl: string | undefined): b
   // "null" やパース不能な値でも Referer にフォールバックしないことで、
   // sandbox iframe / data: からのリクエストによる bypass を防ぐ
   if (origin !== null) {
-    return toOrigin(origin) !== expectedOrigin;
+    return (origin ? (tryParseBase(origin)?.origin ?? null) : null) !== expectedOrigin;
   }
   const referer = req.headers.get("referer");
-  return toOrigin(referer) !== expectedOrigin;
+  return (referer ? (tryParseBase(referer)?.origin ?? null) : null) !== expectedOrigin;
 }

@@ -8,10 +8,11 @@ import {
   MAX_FEED_GROUPS_PER_USER,
 } from "@/lib/feed-groups";
 import { readUserSubscriptions, writeUserSubscriptions } from "@/lib/shared-feed";
-import { parseName } from "@/lib/validation";
+import { parseName, isValidSessionId } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isValidSessionId(id)) return apiError("Invalid feed group id", 400, { code: "INVALID_ID" });
   return withJsonBody<{
     name?: unknown;
     order?: unknown;
@@ -73,6 +74,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isValidSessionId(id)) return apiError("Invalid feed group id", 400, { code: "INVALID_ID" });
   return withSession(request, async ({ session, env }) => {
     const groups = await readFeedGroups(env.RSS_DATA, session.userId);
     if (!groups.some((g) => g.id === id)) {
