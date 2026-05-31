@@ -358,6 +358,8 @@ export interface StateFilterOptions {
   digestLimitMap?: Map<string, number>;
   /** digestMode 時のフィードスコア順リスト（高スコア順 feedHash[]） */
   feedEngagementOrder?: string[];
+  /** readingTimeAsc ソート時に使う読了時間キャッシュ関数 (毎呼出での再生成を回避) */
+  getReadingTimeMs?: (a: Article) => number;
 }
 
 export function filterByStructure(articles: Article[], opts: ArticleFilterOptions): Article[] {
@@ -419,7 +421,7 @@ export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOp
   } else if (opts.sortOrder === "oldest") {
     list.reverse();
   } else if (opts.sortOrder === "readingTimeAsc") {
-    const getMins = createReadingTimeCache();
+    const getMins = opts.getReadingTimeMs ?? createReadingTimeCache();
     list.sort((a, b) => getMins(a) - getMins(b));
   }
 

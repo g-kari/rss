@@ -42,6 +42,7 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props)
         className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
+          aria-hidden="true"
           className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"
           viewBox="0 0 24 24"
           fill="none"

@@ -82,6 +82,7 @@ export default function ConfirmModal({
           </button>
           <button
             onClick={onConfirm}
+            aria-describedby={danger ? `${titleId}-desc` : undefined}
             className={`min-h-[44px] px-4 py-2 text-[12px] rounded-lg transition-colors ${
               danger
                 ? "bg-rose-500 hover:bg-rose-600 text-white"
