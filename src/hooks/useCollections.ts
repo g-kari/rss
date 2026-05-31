@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { apiFetch, apiFetchJson } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
-import { isAbortError } from "../lib/fetch";
 import { sortByOrder } from "../lib/sort-utils";
 import type { Collection, UserProfile } from "../types";
-import { useSyncedRef } from "./useSyncedRef";
+import { useAsyncFetch } from "./useAsyncFetch";
 
 export interface CollectionsState {
   collections: Collection[];
   loading: boolean;
   /** コレクション取得失敗時のエラー（null = エラーなし） */
-  loadError: Error | null;
+  loadError: string | null;
   /** コレクション再取得を試みる */
   retryCollections: () => void;
   createCollection: (name: string) => Promise<Collection | { error: string }>;
@@ -31,47 +30,51 @@ export interface CollectionsState {
 
 /**
  * 任意 URL コレクション (`/api/collections`) の取得・操作を集約する hook。CRUD + ロード state + エラー復帰用 refetch を提供。
- * @returns `CollectionsState` (`{ collections, loading, loadError, refetch, createCollection, updateCollection, deleteCollection, ... }`)
+ *
+ * #975: 初期フェッチ部の loading + AbortController + try/finally ボイラープレートを `useAsyncFetch<T>` に集約。
+ * CRUD 部 (create / rename / delete / addArticle / removeArticle 等) は楽観的更新で `setData` を直接使う。
+ *
+ * @returns `CollectionsState` (`{ collections, loading, loadError, retryCollections, createCollection, ... }`)
  */
 export function useCollections(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,
 ): CollectionsState {
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<Error | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const onErrorRef = useSyncedRef(onError);
+  const {
+    data: collectionsData,
+    loading,
+    error: loadError,
+    refetch: retryCollections,
+    setData: setCollectionsRaw,
+  } = useAsyncFetch<Collection[]>(user ? "/api/collections" : null, {
+    auto: true,
+    deps: [user],
+    initialData: [],
+    transform: (raw) => sortByOrder(raw as Collection[]),
+    formatError: (err) => {
+      devError(err);
+      return "コレクションの読み込みに失敗しました";
+    },
+    onError,
+  });
 
+  // user が null になったら明示的に [] にリセット (既存挙動互換)
   useEffect(() => {
-    if (!user) {
-      setCollections([]);
-      return;
-    }
-    const controller = new AbortController();
-    setLoading(true);
-    setLoadError(null);
-    apiFetchJson<Collection[]>("/api/collections", { signal: controller.signal })
-      .then((data) => {
-        setCollections(sortByOrder(data));
-      })
-      .catch((err) => {
-        if (isAbortError(err)) return;
-        devError(err);
-        setLoadError(err instanceof Error ? err : new Error(String(err)));
-        onErrorRef.current?.("コレクションの読み込みに失敗しました");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onErrorRef は ref 経由・retryCount は再フェッチトリガー
-  }, [user, retryCount]);
+    if (!user) setCollectionsRaw([]);
+  }, [user, setCollectionsRaw]);
 
-  const retryCollections = useCallback(() => {
-    setLoadError(null);
-    setRetryCount((n) => n + 1);
-  }, []);
+  const collections = collectionsData ?? [];
+
+  /** 戻り値が常に非 null になる型安全な setter */
+  const setCollections = useCallback(
+    (updater: Collection[] | ((prev: Collection[]) => Collection[])): void => {
+      setCollectionsRaw((prev) => {
+        const base = prev ?? [];
+        return typeof updater === "function" ? updater(base) : updater;
+      });
+    },
+    [setCollectionsRaw],
+  );
 
   const createCollection = useCallback(
     async (name: string): Promise<Collection | { error: string }> => {

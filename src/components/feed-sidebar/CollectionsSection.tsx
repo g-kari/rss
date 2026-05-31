@@ -15,7 +15,7 @@ interface Props {
   selectedCollectionId: string | null;
   onSelectCollection: (id: string | null) => void;
   onCreateCollection?: (name: string) => Promise<Collection | { error: string }>;
-  loadError?: Error | null;
+  loadError?: string | null;
   onRetryCollections?: () => void;
 }
 
