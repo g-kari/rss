@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
       const lastFetchedAt = feedLastFetched[s.feedHash];
       // キャッシュ未設定（初回 or cron 未実行）は保守的に含める
       if (!lastFetchedAt) return true;
-      return new Date(lastFetchedAt).getTime() > sinceMs;
+      return Date.parse(lastFetchedAt) > sinceMs;
     });
 
     // wave 2: activeSubs 確定後に feed articles 取得
@@ -227,13 +227,13 @@ export async function GET(request: NextRequest) {
     // publishedAt でフィルタして差分のみ返す
     const finalFeedArticles = ttlFilteredArticles.filter((a) => {
       if (!a.publishedAt) return false;
-      return new Date(a.publishedAt).getTime() > sinceMs;
+      return Date.parse(a.publishedAt) > sinceMs;
     });
 
     // since 指定時は手動保存記事もフィルタリングする
     const finalSavedArticles = savedArticles.filter((a) => {
       const ts = a.publishedAt ?? a.createdAt;
-      return new Date(ts).getTime() > sinceMs;
+      return Date.parse(ts) > sinceMs;
     });
 
     const all = [...finalSavedArticles, ...finalFeedArticles].sort(compareByDateDesc);

@@ -97,6 +97,7 @@ export default function ArticleHeaderAiTts({
               aiError ? `AI 要約エラー: ${aiError.message ?? "失敗しました"} (a)` : "AI 要約 (a)"
             }
             aria-label="AI 要約"
+            aria-pressed={!!aiResult}
             className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               aiResult
                 ? "border-ink bg-ink text-ink-text"
@@ -117,6 +118,7 @@ export default function ArticleHeaderAiTts({
                 : "AI 翻訳（日本語）(z)"
             }
             aria-label="AI 翻訳"
+            aria-pressed={!!translateResult}
             className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               translateResult
                 ? "border-ink bg-ink text-ink-text"
@@ -155,6 +157,7 @@ export default function ArticleHeaderAiTts({
           onClick={onTtsToggle}
           title={ttsPlaying || ttsPaused ? "読み上げを停止" : "読み上げ (P)"}
           aria-label={ttsPlaying || ttsPaused ? "読み上げを停止" : "読み上げ"}
+          aria-pressed={ttsPlaying || ttsPaused}
           className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${
             ttsPlaying || ttsPaused
               ? "text-ink hover:text-text-muted"
