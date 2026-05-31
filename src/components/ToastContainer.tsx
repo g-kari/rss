@@ -39,6 +39,7 @@ export default function ToastContainer() {
 
   return createPortal(
     <div
+      role={hasUndoToast ? "alert" : "status"}
       aria-live={hasUndoToast ? "assertive" : "polite"}
       aria-atomic="true"
       className="fixed bottom-4 right-4 z-50 flex flex-col-reverse gap-2 pointer-events-none"

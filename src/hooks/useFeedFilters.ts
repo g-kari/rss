@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Feed, FeedGroup } from "../types";
 import { equalViewFeedIds } from "../lib/article-filter-equality";
 
@@ -30,6 +30,20 @@ export function useFeedFilters(
     return ids;
   }, [selectedGroupId, feeds]);
 
+  // mutedUntil 期限切れで再評価するためのカウンタ。期限切れ時刻に setTimeout で increment する。
+  const [mutedTick, setMutedTick] = useState(0);
+  useEffect(() => {
+    const nowMs = Date.now();
+    const earliest = feeds.reduce<number>((min, f) => {
+      if (!f.mutedUntil) return min;
+      const t = Date.parse(f.mutedUntil);
+      return t > nowMs ? Math.min(min, t) : min;
+    }, Infinity);
+    if (!isFinite(earliest)) return;
+    const id = setTimeout(() => setMutedTick((v) => v + 1), earliest - nowMs + 100);
+    return () => clearTimeout(id);
+  }, [feeds, mutedTick]);
+
   const mutedFeedIdsRef = useRef<Set<string>>(new Set());
   const mutedFeedIds = useMemo(() => {
     const now = new Date().toISOString();
@@ -47,7 +61,7 @@ export function useFeedFilters(
     if (equalViewFeedIds(mutedFeedIdsRef.current, ids)) return mutedFeedIdsRef.current;
     mutedFeedIdsRef.current = ids;
     return ids;
-  }, [feeds, feedGroups]);
+  }, [feeds, feedGroups, mutedTick]);
 
   return { nsfwFeedIds, groupFeedIds, mutedFeedIds };
 }

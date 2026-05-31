@@ -121,7 +121,8 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
       const data = (await res.json()) as { sent: number; expired: number; remaining: number };
       if (data.expired > 0) return `送信完了 (期限切れ ${data.expired} 件を削除しました)`;
       return `テスト通知を ${data.sent} 件送信しました`;
-    } catch {
+    } catch (err) {
+      devError("[usePushNotifications] sendTest failed", err);
       return "ネットワークエラーが発生しました";
     }
   }, []);

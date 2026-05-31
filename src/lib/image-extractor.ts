@@ -109,13 +109,16 @@ function parseSizeAttr(value: string | null | undefined): number | null {
   return m ? Number(m[1]) : null;
 }
 
+const STYLE_WIDTH_RE = /\bwidth\s*:\s*(\d+(?:\.\d+)?)\s*px/i;
+const STYLE_HEIGHT_RE = /\bheight\s*:\s*(\d+(?:\.\d+)?)\s*px/i;
+
 /** style 文字列から `width: 60px` / `height: 60px` の数値を取り出す。px 以外は null */
 function parseSizeFromStyle(
   style: string | null | undefined,
   prop: "width" | "height",
 ): number | null {
   if (!style) return null;
-  const re = new RegExp(`\\b${prop}\\s*:\\s*(\\d+(?:\\.\\d+)?)\\s*px`, "i");
+  const re = prop === "width" ? STYLE_WIDTH_RE : STYLE_HEIGHT_RE;
   const m = re.exec(style);
   return m ? Number(m[1]) : null;
 }

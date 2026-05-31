@@ -54,10 +54,16 @@ function rewriteSrcsetAttr(attrs: string, proxyPath: string): string {
  * - image: `rewriteMediaSrcAttrs(html, { tags: ["img"], proxyPath: "image-proxy", srcset: true })`
  * - video: `rewriteMediaSrcAttrs(html, { tags: ["video", "source"], proxyPath: "video-proxy" })`
  */
+const _tagReCache = new Map<string, RegExp>();
+
 export function rewriteMediaSrcAttrs(html: string, opts: RewriteMediaSrcOptions): string {
   let result = html;
   for (const tag of opts.tags) {
-    const tagRe = new RegExp(`<${tag}\\b([^>]*)>`, "gi");
+    let tagRe = _tagReCache.get(tag);
+    if (!tagRe) {
+      tagRe = new RegExp(`<${tag}\\b([^>]*)>`, "gi");
+      _tagReCache.set(tag, tagRe);
+    }
     result = result.replace(tagRe, (_match, attrs: string) => {
       let rewritten = rewriteSrcAttr(attrs, opts.proxyPath);
       if (opts.srcset) {

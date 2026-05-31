@@ -19,7 +19,8 @@ const helper = createDebugHelper("rss-debug-autoread", "[AutoRead]");
 
 /** 純粋判定: storage の値から enabled かを判定 (テスタビリティのため分離)。 */
 export const evaluateAutoReadDebugEnabled = evaluateDebugEnabled;
-
+/** ランタイム有効判定 (localStorage キャッシュ付き)。 */
+export const isAutoReadDebugEnabled = helper.isEnabled;
 /**
  * 診断ログを出力する。`rss-debug-autoread = "1"` のときだけ console.info に
  * `[AutoRead]` prefix 付きでデータを出す。

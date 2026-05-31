@@ -73,7 +73,8 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
       const items = await triggerRefresh();
       setRecommendations(items);
       setError(null);
-    } catch {
+    } catch (err) {
+      devError("[useRecommendations] refresh failed", err);
       setError("推薦の読み込みに失敗しました");
     } finally {
       setRefreshing(false);
