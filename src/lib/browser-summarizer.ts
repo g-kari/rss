@@ -83,8 +83,6 @@ declare global {
 /** Summarizer API が stable で利用可能になった最低 Chrome メジャーバージョン (公式: 138)。 */
 export const MIN_SUMMARIZER_CHROME_VERSION = 138;
 
-const getChromeVersion = getChromeVersionSafe;
-
 export function isSummarizerApiSupported(): boolean {
   return typeof self !== "undefined" && "Summarizer" in self;
 }
@@ -106,7 +104,7 @@ export async function diagnoseSummarizerAvailability(): Promise<{
     const isChromiumBased =
       typeof navigator !== "undefined" && /Chrome\//.test(navigator.userAgent);
     if (!isChromiumBased) return { available: false, reason: "not-chromium" };
-    const chromeVersion = getChromeVersion();
+    const chromeVersion = getChromeVersionSafe();
     if (chromeVersion !== null && chromeVersion < MIN_SUMMARIZER_CHROME_VERSION) {
       return { available: false, reason: "chrome-too-old" };
     }

@@ -27,6 +27,3 @@ export const evaluateBgAudioDebugEnabled = evaluateDebugEnabled;
  * `[BgAudio]` prefix 付きでデータを出す。
  */
 export const bgAudioDebug = helper.log;
-
-/** デバッグモードが有効かどうかを返す (3 関数セットの設定取得枠 #953)。 */
-export const isBgAudioDebugEnabled = helper.isEnabled;
