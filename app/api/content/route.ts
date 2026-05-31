@@ -63,6 +63,12 @@ async function handleGet(
   env: { RSS_DATA: R2Bucket; RATE_LIMIT: KVNamespace },
   ctx: ExecutionContext,
 ): Promise<NextResponse> {
+  // #978: cross-origin cache-filling CSRF ガード (fail-open: null は古いブラウザ/curl として通過)
+  const secFetchSite = request.headers.get("sec-fetch-site");
+  if (secFetchSite !== null && secFetchSite !== "same-origin" && secFetchSite !== "none") {
+    return apiError("Forbidden", 403, { code: "CSRF_ORIGIN_MISMATCH" });
+  }
+
   const reqUrl = new URL(request.url);
   const url = reqUrl.searchParams.get("url");
   if (!url) return apiError("url is required", 400, { code: "INVALID_URL" });

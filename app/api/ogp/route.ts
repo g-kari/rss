@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
+import { apiError } from "@/lib/api-error";
 import { isValidFeedUrl, isValidPublicUrl } from "@/lib/url";
 import {
   buildCacheKey,
@@ -34,6 +35,12 @@ async function handleGet(
   env: { RATE_LIMIT: KVNamespace; BROWSER: Fetcher },
   ctx: ExecutionContext,
 ): Promise<NextResponse> {
+  // #978: cross-origin cache-filling CSRF ガード (fail-open: null は古いブラウザ/curl として通過)
+  const secFetchSite = request.headers.get("sec-fetch-site");
+  if (secFetchSite !== null && secFetchSite !== "same-origin" && secFetchSite !== "none") {
+    return apiError("Forbidden", 403, { code: "CSRF_ORIGIN_MISMATCH" });
+  }
+
   const reqUrl = new URL(request.url);
   const url = reqUrl.searchParams.get("url");
   // #768: cache buster — `?refresh=1` で cache lookup を skip して必ず上流再取得
