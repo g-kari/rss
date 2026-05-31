@@ -1,13 +1,12 @@
 import { test, expect } from "@playwright/test";
 import {
   isSummarizerApiSupported,
-  shouldUseBrowserSummarizer,
   diagnoseSummarizerAvailability,
   summarizeInBrowser,
   MIN_SUMMARIZER_CHROME_VERSION,
   SUMMARIZER_OPTIONS,
 } from "../src/lib/browser-summarizer";
-import { parseChromeMajorVersion } from "../src/lib/browser-ai-common";
+import { parseChromeMajorVersion, shouldUseBrowserAi } from "../src/lib/browser-ai-common";
 
 /**
  * Chrome Summarizer API ラッパーの純粋関数テスト。
@@ -29,24 +28,24 @@ test.describe("isSummarizerApiSupported — Node 環境", () => {
 });
 
 // ==========================================================================
-// shouldUseBrowserSummarizer — availability 判定
+// shouldUseBrowserAi — availability 判定
 // ==========================================================================
 
-test.describe("shouldUseBrowserSummarizer — availability 判定", () => {
+test.describe("shouldUseBrowserAi — availability 判定", () => {
   test("available は要約可", () => {
-    expect(shouldUseBrowserSummarizer("available")).toBe(true);
+    expect(shouldUseBrowserAi("available")).toBe(true);
   });
 
   test("downloadable は要約可（create() が自動DL）", () => {
-    expect(shouldUseBrowserSummarizer("downloadable")).toBe(true);
+    expect(shouldUseBrowserAi("downloadable")).toBe(true);
   });
 
   test("downloading 中はフォールバック対象", () => {
-    expect(shouldUseBrowserSummarizer("downloading")).toBe(false);
+    expect(shouldUseBrowserAi("downloading")).toBe(false);
   });
 
   test("unavailable はフォールバック対象", () => {
-    expect(shouldUseBrowserSummarizer("unavailable")).toBe(false);
+    expect(shouldUseBrowserAi("unavailable")).toBe(false);
   });
 });
 

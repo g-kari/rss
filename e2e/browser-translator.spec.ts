@@ -1,8 +1,6 @@
 import { test, expect } from "@playwright/test";
-import {
-  isTranslatorApiSupported,
-  shouldUseBrowserTranslation,
-} from "../src/lib/browser-translator";
+import { isTranslatorApiSupported } from "../src/lib/browser-translator";
+import { shouldUseBrowserAi } from "../src/lib/browser-ai-common";
 
 /**
  * Chrome Translator API ラッパーの純粋関数テスト。
@@ -17,20 +15,20 @@ test.describe("isTranslatorApiSupported — Node 環境", () => {
   });
 });
 
-test.describe("shouldUseBrowserTranslation — availability 判定", () => {
+test.describe("shouldUseBrowserAi — availability 判定", () => {
   test("available は翻訳可", () => {
-    expect(shouldUseBrowserTranslation("available")).toBe(true);
+    expect(shouldUseBrowserAi("available")).toBe(true);
   });
 
   test("downloadable は翻訳可（create() が自動DL）", () => {
-    expect(shouldUseBrowserTranslation("downloadable")).toBe(true);
+    expect(shouldUseBrowserAi("downloadable")).toBe(true);
   });
 
   test("downloading 中はフォールバック対象", () => {
-    expect(shouldUseBrowserTranslation("downloading")).toBe(false);
+    expect(shouldUseBrowserAi("downloading")).toBe(false);
   });
 
   test("unavailable はフォールバック対象", () => {
-    expect(shouldUseBrowserTranslation("unavailable")).toBe(false);
+    expect(shouldUseBrowserAi("unavailable")).toBe(false);
   });
 });

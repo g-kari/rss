@@ -57,7 +57,7 @@ export async function detectSourceLanguage(text: string): Promise<string> {
   if (typeof window !== "undefined" && window.LanguageDetector) {
     try {
       const availability = await window.LanguageDetector.availability();
-      if (shouldUseBrowserTranslation(availability)) {
+      if (shouldUseBrowserAi(availability)) {
         const detector = await window.LanguageDetector.create();
         const results = await detector.detect(sample);
         const top = results[0];
@@ -68,16 +68,6 @@ export async function detectSourceLanguage(text: string): Promise<string> {
     }
   }
   return isLikelyJapanese(sample) ? "ja" : "en";
-}
-
-/**
- * 判定された availability に基づいてブラウザ翻訳を使用できるかを返す。
- * - `available`: 即時翻訳可能
- * - `downloadable`: モデル未DLだが `Translator.create()` が自動DLするため利用可
- * - `downloading` / `unavailable`: サーバー AI にフォールバック推奨
- */
-export function shouldUseBrowserTranslation(availability: Availability): boolean {
-  return shouldUseBrowserAi(availability);
 }
 
 export type TranslatorUnavailableReason =
@@ -110,7 +100,7 @@ export async function diagnoseTranslatorAvailability(): Promise<{
       sourceLanguage: "en",
       targetLanguage: "ja",
     });
-    if (shouldUseBrowserTranslation(availability)) return { available: true, reason: null };
+    if (shouldUseBrowserAi(availability)) return { available: true, reason: null };
     return { available: false, reason: "not-available" };
   } catch (err) {
     devError("[browser-translator] diagnose availability failed", err);
