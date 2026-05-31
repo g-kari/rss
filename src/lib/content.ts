@@ -288,6 +288,10 @@ export async function markdownToHtml(md: string): Promise<string> {
  * 本物の動的画像で、jpg 側は 404 を返すケースがあるため (実測: jpg=404, gif=200)。
  * gif が無い / 不正なら jpg にフォールバック。
  */
+/**
+ * @internal テスト用 export — 本番の呼び出し元は extractMainContent のみ。
+ * 本関数はテスト (e2e/script-loaded-images.spec.ts) の import のために export されている。
+ */
 export function resolveScriptLoadedImages(html: string): string {
   const idToUrl = new Map<string, string>();
   for (const scriptMatch of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi)) {

@@ -129,8 +129,8 @@ export async function translateAndApply(
             item.node.data = translated;
           }
         })
-        .catch(() => {
-          /* 個別失敗は無視（元のテキストが残る） */
+        .catch((err) => {
+          devError("[translate-html] node translation failed", err);
         }),
     );
   }
@@ -143,8 +143,8 @@ export async function translateAndApply(
             item.el.setAttribute(item.attr, translated);
           }
         })
-        .catch(() => {
-          /* 個別失敗は無視 */
+        .catch((err) => {
+          devError("[translate-html] node translation failed (attr)", err);
         }),
     );
   }

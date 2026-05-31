@@ -262,6 +262,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   return (
     <div
       role="article"
+      aria-labelledby={`article-title-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={(e) => handleClick(e)}
@@ -282,6 +283,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
           </span>
         )}
         <h3
+          id={`article-title-${article.id}`}
           className={`text-[12px] leading-snug line-clamp-3 mt-0.5 ${
             isRead ? "text-text-muted" : "text-text-strong"
           }`}
