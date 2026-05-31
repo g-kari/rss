@@ -9,11 +9,8 @@
  * フォールバックに回す。
  */
 
-import {
-  detectSourceLanguage,
-  isTranslatorApiSupported,
-  shouldUseBrowserTranslation,
-} from "./browser-translator";
+import { detectSourceLanguage, isTranslatorApiSupported } from "./browser-translator";
+import { shouldUseBrowserAi } from "./browser-ai-common";
 import { devError } from "./dev-log";
 
 /**
@@ -174,7 +171,7 @@ export async function translateHtmlInBrowser(
 
   try {
     const availability = await window.Translator.availability({ sourceLanguage, targetLanguage });
-    if (!shouldUseBrowserTranslation(availability)) return null;
+    if (!shouldUseBrowserAi(availability)) return null;
 
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const translator = await Promise.race([

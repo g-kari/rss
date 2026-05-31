@@ -89,10 +89,6 @@ export function isSummarizerApiSupported(): boolean {
   return typeof self !== "undefined" && "Summarizer" in self;
 }
 
-export function shouldUseBrowserSummarizer(availability: BrowserAiAvailability): boolean {
-  return shouldUseBrowserAi(availability);
-}
-
 export type SummarizerUnavailableReason =
   | "not-chromium"
   | "chrome-too-old"
@@ -118,7 +114,7 @@ export async function diagnoseSummarizerAvailability(): Promise<{
   }
   try {
     const availability = await globalThis.Summarizer!.availability(SUMMARIZER_OPTIONS);
-    if (shouldUseBrowserSummarizer(availability)) return { available: true, reason: null };
+    if (shouldUseBrowserAi(availability)) return { available: true, reason: null };
     if (availability === "downloading") return { available: false, reason: "model-downloading" };
     return { available: false, reason: "model-unavailable" };
   } catch (err) {
@@ -140,7 +136,7 @@ export async function summarizeInBrowser(text: string): Promise<string | null> {
 
   try {
     const availability = await globalThis.Summarizer.availability(SUMMARIZER_OPTIONS);
-    if (!shouldUseBrowserSummarizer(availability)) {
+    if (!shouldUseBrowserAi(availability)) {
       devError("[browser-summarizer] availability not usable:", availability);
       return null;
     }
