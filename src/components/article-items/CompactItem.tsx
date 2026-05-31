@@ -1,6 +1,13 @@
 "use client";
 
-import { memo, useMemo, useContext } from "react";
+import {
+  memo,
+  useMemo,
+  useCallback,
+  useContext,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
@@ -36,8 +43,15 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   const isSelected = selectedId === article.id;
   const bulkIds = useContext(BulkSelectionCtx);
   const isBulkSelected = useMemo(() => bulkIds.has(article.id), [bulkIds, article.id]);
-  const handleKeyDown = handleArticleKeyDown(article, onSelectArticle);
-  const handleContextMenu = handleArticleContextMenu(article, onContextMenu);
+  const handleKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLElement>) => handleArticleKeyDown(article, onSelectArticle)(e),
+    [article, onSelectArticle],
+  );
+  const handleContextMenu = useCallback(
+    (e: ReactMouseEvent<HTMLElement>) => handleArticleContextMenu(article, onContextMenu)(e),
+    [article, onContextMenu],
+  );
+  const timeAgoText = useMemo(() => timeAgo(article.publishedAt), [article.publishedAt]);
   return (
     <div
       role="article"
@@ -82,7 +96,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
         dateTime={article.publishedAt ?? undefined}
         className="text-[11px] text-text-faint flex-shrink-0 [@media(hover:hover)]:group-hover:hidden"
       >
-        {timeAgo(article.publishedAt)}
+        {timeAgoText}
       </time>
       <ArticleActions
         className="flex items-center gap-0.5 flex-shrink-0 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto"
