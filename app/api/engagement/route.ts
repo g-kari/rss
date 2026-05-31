@@ -49,6 +49,8 @@ export async function POST(req: NextRequest) {
     const action = requireString(body.action, MAX_ID_LENGTH);
     if (
       !articleId ||
+      // 制御文字 / 非 ASCII を除外して R2 engagement log の汚染を防ぐ (defense-in-depth)
+      !/^[\x20-\x7E]{1,128}$/.test(articleId) ||
       !feedHash ||
       // assertValidFeedHash 未使用は意図的 — engagement の error code は INVALID_PAYLOAD (api-misc.md)。
       // assertValidFeedHash は INVALID_FEED を返すため、error code 契約を壊さないよう直接呼出を維持。

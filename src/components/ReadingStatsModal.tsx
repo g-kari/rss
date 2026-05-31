@@ -314,9 +314,17 @@ export default function ReadingStatsModal({
           </div>
         )}
         {error && (
-          <p role="alert" className="text-[13px] text-error">
-            {error}
-          </p>
+          <div className="flex items-center gap-2">
+            <p role="alert" className="text-[13px] text-error">
+              {error}
+            </p>
+            <button
+              onClick={fetchStats}
+              className="text-[12px] text-text-muted hover:text-text-strong underline underline-offset-2 transition-colors"
+            >
+              再試行
+            </button>
+          </div>
         )}
         {stats && !loading && (
           <>
