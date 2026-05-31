@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { Article, Feed } from "../types";
 import { isArticleRead } from "../lib/article-filter";
+import { computeFeedStructuralSignature } from "../lib/feed-signature";
 
 export interface InboxFeedStat {
   feedId: string;
@@ -23,8 +24,18 @@ export function useInboxProgress(
   readIds: Set<string>,
   readBeforeTimestamp: string | null,
 ): InboxFeedStat[] {
+  // perf: feeds の reference がポーリングで変わるたびに O(n_articles) 再計算が走るのを抑制する。
+  // feedStructuralSignature が変化したときのみ feedMap を再構築し、
+  // articles スキャンの useMemo の deps は feedMap に置く。
+  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+
+  const feedMap = useMemo(
+    () => new Map(feeds.map((f) => [f.id, f.title])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- feeds の内容変化のみ追跡
+    [feedStructuralSignature],
+  );
+
   return useMemo(() => {
-    const feedMap = new Map(feeds.map((f) => [f.id, f.title]));
     const totals = new Map<string, number>();
     const unreads = new Map<string, number>();
 
@@ -50,5 +61,5 @@ export function useInboxProgress(
 
     // 未読数が多い順にソート、同数なら未読率が低い順
     return stats.sort((a, b) => b.unread - a.unread || a.readRatio - b.readRatio).slice(0, 10);
-  }, [articles, feeds, readIds, readBeforeTimestamp]);
+  }, [articles, feedMap, readIds, readBeforeTimestamp]);
 }
