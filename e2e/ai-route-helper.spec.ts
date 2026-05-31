@@ -95,3 +95,11 @@ test.describe("VALID_MODEL_IDS", () => {
 // #698: articleId 形式バリデーション (旧仕様) は ai-route-helper.ts から完全削除
 // (cross-user cache poisoning 対策で url ベースの sha256 hash key に切替)
 // 旧 articleId regex の spec はここで一括削除済 (commit history で過去経緯を参照)。
+
+// #935: runAiJob の空レスポンス処理
+// Workers AI が空の response を返した場合、502 エラー (code: "AI_ERROR", retryable: true)
+// を返してクライアント側でバックオフ処理できるようにした。
+// runAiJob は Cloudflare バインディング (R2, AI, KV) に依存しているため
+// 直接 spec は困難だが、以下の動作を実装で保証:
+// - response.response が undefined / "" のとき console.warn + 502 エラーを返す
+// - 502 エラーの場合はキャッシュしないのでレートリミットを無駄消費しない

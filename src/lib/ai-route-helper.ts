@@ -144,7 +144,15 @@ export async function runAiJob(
     });
   }
 
-  if (result) ctx.waitUntil(setAiCacheByUrl(env.RSS_DATA, url, result, cacheType));
+  if (!result) {
+    console.warn("[runAiJob] AI returned empty response, treating as AI_ERROR", { url, model });
+    return apiError("AI処理中にエラーが発生しました", 502, {
+      code: "AI_ERROR",
+      retryable: true,
+    });
+  }
+
+  ctx.waitUntil(setAiCacheByUrl(env.RSS_DATA, url, result, cacheType));
 
   return NextResponse.json({ result });
 }
