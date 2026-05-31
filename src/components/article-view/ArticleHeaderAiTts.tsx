@@ -165,7 +165,14 @@ export default function ArticleHeaderAiTts({
           }`}
         >
           {ttsPlaying ? (
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" stroke="none">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="currentColor"
+              stroke="none"
+              aria-hidden="true"
+            >
               <rect x="2" y="2" width="10" height="10" rx="2" />
             </svg>
           ) : ttsPaused ? (
@@ -178,6 +185,7 @@ export default function ArticleHeaderAiTts({
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <path d="M2 5H5L9 2V12L5 9H2V5Z" />
               <path d="M11 4.5C11 4.5 12.5 6 12.5 7C12.5 8 11 9.5 11 9.5" strokeDasharray="2 1.5" />
@@ -192,6 +200,7 @@ export default function ArticleHeaderAiTts({
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <path d="M2 5H5L9 2V12L5 9H2V5Z" />
               <path d="M11 4.5C11 4.5 12.5 6 12.5 7C12.5 8 11 9.5 11 9.5" />
