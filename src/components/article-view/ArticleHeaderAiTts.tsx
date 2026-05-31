@@ -96,7 +96,7 @@ export default function ArticleHeaderAiTts({
             title={
               aiError ? `AI 要約エラー: ${aiError.message ?? "失敗しました"} (a)` : "AI 要約 (a)"
             }
-            aria-label="AI 要約"
+            aria-label={aiResult ? "AI 要約を閉じる" : "AI 要約"}
             aria-pressed={!!aiResult}
             className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               aiResult
@@ -117,7 +117,7 @@ export default function ArticleHeaderAiTts({
                 ? `AI 翻訳エラー: ${translateError.message ?? "失敗しました"} (z)`
                 : "AI 翻訳（日本語）(z)"
             }
-            aria-label="AI 翻訳"
+            aria-label={translateResult ? "AI 翻訳を閉じる" : "AI 翻訳"}
             aria-pressed={!!translateResult}
             className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               translateResult
