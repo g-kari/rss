@@ -21,7 +21,7 @@ import RecommendationSection from "../RecommendationSection";
 import { useFeedOperations } from "../../hooks/useFeedOperations";
 import { useSidebarFeeds } from "../../hooks/useSidebarFeeds";
 import { useFeedDragDrop } from "../../hooks/useFeedDragDrop";
-import { SPECIAL_FEED_IDS, STORAGE_KEYS } from "../../lib/storage";
+import { SPECIAL_FEED_IDS, STORAGE_KEYS, storageGet } from "../../lib/storage";
 import FeedGroupsSection from "./FeedGroupsSection";
 import FeedViewTabs from "./FeedViewTabs";
 import SpecialViewButton from "./SpecialViewButton";
@@ -176,7 +176,10 @@ function FeedSidebar({
   const { onSaveFilter } = useArticleFilter();
   const toast = useToast();
   const { readTodayCount: ctxReadTodayCount } = useUnreadStats();
-  const weeklyGoal = Number(localStorage.getItem(STORAGE_KEYS.WEEKLY_GOAL)) || undefined;
+  const [weeklyGoal] = useState<number | undefined>(() => {
+    const v = Number(storageGet(STORAGE_KEYS.WEEKLY_GOAL));
+    return v || undefined;
+  });
   const [newUrl, setNewUrl] = useState("");
   const [newCookie, setNewCookie] = useState("");
   const [newCssSelector, setNewCssSelector] = useState("");
