@@ -2,18 +2,15 @@
 
 import { useState, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import type { Feed, Article } from "../types";
-import { isArticleRead } from "../lib/article-filter";
+import type { Feed } from "../types";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { usePopupLock } from "../hooks/usePopupLock";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
+import { useUnreadStats } from "../contexts/UnreadStatsContext";
 import Backdrop from "./Backdrop";
 
 interface Props {
   feeds: Feed[];
-  articles: Article[];
-  readIds: Set<string>;
-  readBeforeTimestamp: string | null;
   selectedFeedId: string | null;
   onSelectFeed: (id: string | null) => void;
   onClose: () => void;
@@ -28,9 +25,6 @@ interface FeedOption {
 
 export default function FeedQuickSwitchModal({
   feeds,
-  articles,
-  readIds,
-  readBeforeTimestamp,
   selectedFeedId,
   onSelectFeed,
   onClose,
@@ -52,20 +46,7 @@ export default function FeedQuickSwitchModal({
     initialFocusRef: inputRef,
   });
 
-  const unreadByFeed = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const article of articles) {
-      if (!isArticleRead(article, readIds, readBeforeTimestamp)) {
-        map.set(article.feedHash, (map.get(article.feedHash) ?? 0) + 1);
-      }
-    }
-    return map;
-  }, [articles, readIds, readBeforeTimestamp]);
-
-  const totalUnread = useMemo(
-    () => [...unreadByFeed.values()].reduce((a, b) => a + b, 0),
-    [unreadByFeed],
-  );
+  const { unreadByFeed, totalUnread } = useUnreadStats();
 
   const allOptions: FeedOption[] = useMemo(
     () => [
