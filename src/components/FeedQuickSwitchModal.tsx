@@ -130,12 +130,15 @@ export default function FeedQuickSwitchModal({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="フィードを素早く切り替え"
+        aria-labelledby="feed-quick-switch-title"
         tabIndex={-1}
         onKeyDown={dialogKeyDown}
         className="fixed z-50 inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[400px] max-h-[65dvh] flex flex-col bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden outline-none"
         onClick={(e) => e.stopPropagation()}
       >
+        <h2 id="feed-quick-switch-title" className="sr-only">
+          フィードを素早く切り替え
+        </h2>
         <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-border-subtle flex-shrink-0">
           <svg
             width="13"

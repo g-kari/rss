@@ -23,3 +23,9 @@ export function parseChromeMajorVersion(userAgent: string): number | null {
   const match = /Chrome\/(\d+)/.exec(userAgent);
   return match ? parseInt(match[1], 10) : null;
 }
+
+/** `navigator.userAgent` から Chrome のメジャーバージョンを安全に取得する。SSR 環境では null を返す。 */
+export function getChromeVersionSafe(): number | null {
+  if (typeof navigator === "undefined") return null;
+  return parseChromeMajorVersion(navigator.userAgent);
+}

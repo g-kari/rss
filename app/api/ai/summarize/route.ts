@@ -7,7 +7,7 @@ import { runAiJob } from "@/lib/ai-route-helper";
  * @body `{ url: string, model?: WorkersAiModelId }`
  * @returns 200 `{ result: string }` — マークダウン形式の要約
  * @error 400 `INVALID_URL`
- * @error 429 `RATE_LIMITED` — 60秒間 10回（70B は 3回）超過
+ * @error 429 `RATE_LIMITED` — 60秒間 20回（70B は 3回）超過
  * @error 502 `CONTENT_FETCH_FAILED` — 記事コンテンツ取得失敗
  * @error 502 `AI_ERROR` — AI 処理エラー
  * @error 503 `SERVICE_UNAVAILABLE` — Workers AI 過負荷

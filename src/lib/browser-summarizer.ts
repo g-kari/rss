@@ -20,6 +20,7 @@ import {
   type BrowserAiAvailability,
   shouldUseBrowserAi,
   parseChromeMajorVersion,
+  getChromeVersionSafe,
 } from "./browser-ai-common";
 
 export type { BrowserAiAvailability };
@@ -84,10 +85,7 @@ declare global {
 /** Summarizer API が stable で利用可能になった最低 Chrome メジャーバージョン (公式: 138)。 */
 export const MIN_SUMMARIZER_CHROME_VERSION = 138;
 
-function getChromeVersion(): number | null {
-  if (typeof navigator === "undefined") return null;
-  return parseChromeMajorVersion(navigator.userAgent);
-}
+const getChromeVersion = getChromeVersionSafe;
 
 export function isSummarizerApiSupported(): boolean {
   return typeof self !== "undefined" && "Summarizer" in self;

@@ -9,7 +9,7 @@
 
 import { isLikelyJapanese } from "./article-utils";
 import { devError } from "./dev-log";
-import { parseChromeMajorVersion, shouldUseBrowserAi } from "./browser-ai-common";
+import { getChromeVersionSafe, shouldUseBrowserAi } from "./browser-ai-common";
 import type { BrowserAiAvailability } from "./browser-ai-common";
 
 type Availability = BrowserAiAvailability;
@@ -99,8 +99,7 @@ export async function diagnoseTranslatorAvailability(): Promise<{
   if (typeof window.Translator === "undefined") {
     const isChromiumBased = /Chrome\//.test(navigator.userAgent);
     if (!isChromiumBased) return { available: false, reason: "not-chromium" };
-    const chromeVersion =
-      typeof navigator !== "undefined" ? parseChromeMajorVersion(navigator.userAgent) : null;
+    const chromeVersion = getChromeVersionSafe();
     if (chromeVersion !== null && chromeVersion < MIN_TRANSLATOR_CHROME_VERSION) {
       return { available: false, reason: "chrome-too-old" };
     }

@@ -6,6 +6,7 @@
  */
 
 import type { FeedView } from "../types";
+import { devError } from "./dev-log";
 
 // ── キー定数 ──────────────────────────────────────────────────
 
@@ -111,7 +112,8 @@ export function getFeedViewStorageKey(baseKey: string, feedView: FeedView): stri
 export function storageGet(key: string): string | null {
   try {
     return localStorage.getItem(key);
-  } catch {
+  } catch (err) {
+    devError("[storage] localStorage.getItem failed", { key, err });
     return null;
   }
 }
