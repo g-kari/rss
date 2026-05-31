@@ -46,10 +46,10 @@ export function useFeedFilters(
 
   const mutedFeedIdsRef = useRef<Set<string>>(new Set());
   const mutedFeedIds = useMemo(() => {
-    const now = new Date().toISOString();
+    const nowMs = Date.now();
     const ids = new Set<string>();
     for (const f of feeds) {
-      if (f.mutedUntil && f.mutedUntil > now) ids.add(f.id);
+      if (f.mutedUntil && Date.parse(f.mutedUntil) > nowMs) ids.add(f.id);
     }
     // グループミュート: muted グループに所属するフィードを追加で除外
     const mutedGroupIds = new Set(feedGroups.filter((g) => g.muted).map((g) => g.id));

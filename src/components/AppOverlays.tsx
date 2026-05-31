@@ -96,10 +96,9 @@ export function AppOverlays({
   const selectedCount = useContext(BulkSelectionCtx).size;
   return (
     <>
-      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        {selectedCount > 0 ? `${selectedCount}件選択中` : ""}
-      </div>
-      <A11yHelpers announcement={articleAnnouncement} />
+      <A11yHelpers
+        announcement={selectedCount > 0 ? `${selectedCount}件選択中` : articleAnnouncement}
+      />
       <OfflineBanner isOnline={isOnline} hasPendingChanges={hasPendingChanges} />
       <ToastContainer />
       <PiperInitProgressToast />

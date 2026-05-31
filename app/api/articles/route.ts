@@ -230,7 +230,7 @@ export async function GET(request: NextRequest) {
 
     // フィードごとのキーワードフィルターを適用（キーワードは小文字化済み）
     const sinceFilterCache = new Map<string, CompiledKeywordFilter>();
-    const filterMap = buildFilterMap(subs, (s) => s.feedHash, sinceFilterCache);
+    const filterMap = buildFilterMap(activeSubs, (s) => s.feedHash, sinceFilterCache);
     const filteredFeedArticles = applyKeywordFilterMap(feedArticles, filterMap);
 
     // TTL フィルタ: 保護対象（bookmark/readingList/like/snooze/notes）以外の古い記事を除外
