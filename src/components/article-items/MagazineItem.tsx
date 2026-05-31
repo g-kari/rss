@@ -59,6 +59,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   return (
     <div
       role="article"
+      aria-setsize={-1}
       aria-labelledby={`article-title-${article.id}`}
       aria-describedby={`article-hint-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
