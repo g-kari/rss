@@ -7,6 +7,7 @@ interface Props {
   selectedIds: ReadonlySet<string>;
   onBulkMarkRead: (ids: string[]) => void;
   onBulkToggleBookmark?: (ids: string[]) => void;
+  onBulkToggleReadingList?: (ids: string[]) => void;
   onBulkSnooze?: (ids: string[], durationMs: number) => void;
   onBulkAddTag?: (ids: string[], tag: string) => void;
   onClear: () => void;
@@ -16,6 +17,7 @@ export default function BulkActionToolbar({
   selectedIds,
   onBulkMarkRead,
   onBulkToggleBookmark,
+  onBulkToggleReadingList,
   onBulkSnooze,
   onBulkAddTag,
   onClear,
@@ -37,6 +39,12 @@ export default function BulkActionToolbar({
     onBulkToggleBookmark([...selectedIds]);
     onClear();
   }, [count, selectedIds, onBulkToggleBookmark, onClear]);
+
+  const handleToggleReadingList = useCallback(() => {
+    if (count === 0 || !onBulkToggleReadingList) return;
+    onBulkToggleReadingList([...selectedIds]);
+    onClear();
+  }, [count, selectedIds, onBulkToggleReadingList, onClear]);
 
   const handleOpenSnooze = useCallback(() => {
     setShowTagInput(false);
@@ -87,6 +95,16 @@ export default function BulkActionToolbar({
             aria-label="選択した記事をまとめてブックマークする"
           >
             ブックマーク
+          </button>
+        )}
+        {onBulkToggleReadingList && (
+          <button
+            type="button"
+            onClick={handleToggleReadingList}
+            className="rounded-full bg-ink px-3 py-1 text-sm font-medium text-ink-text transition-all duration-200 hover:bg-ink-hover"
+            aria-label="選択した記事をまとめて後で読むに追加する"
+          >
+            後で読む
           </button>
         )}
         {onBulkSnooze && (

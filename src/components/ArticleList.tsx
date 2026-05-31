@@ -572,6 +572,14 @@ function ArticleList({
     [onToggleBookmark],
   );
 
+  const handleBulkToggleReadingList = useCallback(
+    (ids: string[]) => {
+      if (!onToggleReadingList) return;
+      for (const id of ids) onToggleReadingList(id);
+    },
+    [onToggleReadingList],
+  );
+
   const handleBulkSnooze = useCallback(
     (ids: string[], durationMs: number) => {
       if (!onSnoozeArticle) return;
@@ -787,6 +795,7 @@ function ArticleList({
         selectedIds={bulkSelection.selectedIds}
         onBulkMarkRead={handleBulkMarkRead}
         onBulkToggleBookmark={handleBulkToggleBookmark}
+        onBulkToggleReadingList={onToggleReadingList ? handleBulkToggleReadingList : undefined}
         onBulkSnooze={onSnoozeArticle ? handleBulkSnooze : undefined}
         onBulkAddTag={onAddTag ? handleBulkAddTag : undefined}
         onClear={bulkSelection.clear}
