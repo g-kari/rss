@@ -180,9 +180,14 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
 
   // #808 Phase 3a: Context 経由参照のための v2 entry getter (caller は ArticleContentBody
   // の useContentLinkPreviews で title/description 取得 cache hit 判定に使う)。
+  // useSyncedRef で ogpCacheV2 の最新値を保持し、getEntry の identity を安定化。
+  // OGP が 1 件取得されるたびに getEntry identity が更新されて OgpCacheStore 全体の
+  // useMemo が invalidate され ArticleList 以下が re-render されるのを防ぐ。
+  const ogpCacheV2Ref = useSyncedRef(ogpCacheV2);
   const getEntry = useCallback(
-    (url: string): OgpCacheEntry | undefined => ogpCacheV2[url],
-    [ogpCacheV2],
+    (url: string): OgpCacheEntry | undefined => ogpCacheV2Ref.current[url],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- useSyncedRef の戻り値は identity 不変 (react-hook-patterns.md 規範)
+    [],
   );
 
   // #808 Phase 3b: cache に partial entry を書き込む。useContentLinkPreviews が

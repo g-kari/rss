@@ -782,16 +782,18 @@ export default function AppShell({
   // Rules of Hooks 違反。hook は早期 return より上で無条件に呼ぶことで構造的に解消。
   const ogpCacheStore = useOgpCache(filterState.visible);
 
+  // #892 Rules of Hooks 修正: articleFilter の useMemo は早期 return より前で呼ぶ必要がある。
+  // useOgpCache と同様に、hook は render 間で呼出数が一定でなければならない。
+  const articleFilter: ArticleFilter = useMemo(
+    () => ({ ...filterState, onSaveFilter: saveFilter }),
+    [filterState, saveFilter],
+  );
+
   // ロード中 / ベータ制限 / 未ログイン の早期 return パスを集約 (#650 Step 2)
   const landingNode = AppLandingState({ user, betaRestricted });
   if (landingNode) return landingNode;
   // landingNode が null の時点で user は確実にログイン済 (TypeScript narrowing 用)
   if (!user) return null;
-
-  const articleFilter: ArticleFilter = useMemo(
-    () => ({ ...filterState, onSaveFilter: saveFilter }),
-    [filterState, saveFilter],
-  );
 
   return (
     <AppProviders

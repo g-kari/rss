@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
     if (
       !articleId ||
       !feedHash ||
+      // assertValidFeedHash 未使用は意図的 — engagement の error code は INVALID_PAYLOAD (api-misc.md)。
+      // assertValidFeedHash は INVALID_FEED を返すため、error code 契約を壊さないよう直接呼出を維持。
       !isValidFeedHash(feedHash) ||
       !action ||
       typeof action !== "string" ||

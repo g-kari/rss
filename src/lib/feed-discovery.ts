@@ -133,7 +133,8 @@ export async function discoverFeedUrl(url: string): Promise<string | null> {
     if (fromLink) return fromLink;
 
     return probeCommonFeedPaths(url);
-  } catch {
+  } catch (err) {
+    console.warn("[feed-discovery] discoverFeedUrl failed:", url, err);
     return null;
   }
 }
