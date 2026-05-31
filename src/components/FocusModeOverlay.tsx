@@ -1,5 +1,5 @@
 "use client";
-import { useRef, type ComponentProps } from "react";
+import { useId, useRef, type ComponentProps } from "react";
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
 import { usePopupLock } from "@/hooks/usePopupLock";
@@ -15,6 +15,7 @@ interface Props {
 
 export default function FocusModeOverlay({ focusMode, exitFocusMode, articleViewProps }: Props) {
   usePopupLock(focusMode);
+  const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   // Modal.tsx / ConfirmModal.tsx と同 canonical pattern: returnFocusRef + Tab cycle + Escape +
   // 初期 focus + `typeof ret.focus === "function"` safety guard を 1 hook に集約 (#790)。
@@ -32,8 +33,11 @@ export default function FocusModeOverlay({ focusMode, exitFocusMode, articleView
       className="fixed inset-0 z-50 bg-surface-base animate-slide-up overflow-hidden flex flex-col outline-none"
       role="dialog"
       aria-modal="true"
-      aria-label="フォーカスモード"
+      aria-labelledby={titleId}
     >
+      <h2 id={titleId} className="sr-only">
+        フォーカスモード
+      </h2>
       <button
         onClick={exitFocusMode}
         className="absolute top-4 right-4 z-10 p-2 text-text-faint hover:text-text-muted transition-colors duration-200"

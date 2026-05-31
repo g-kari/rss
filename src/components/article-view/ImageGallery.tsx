@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type TouchEvent } from "react";
+import { useEffect, useId, useRef, useState, type TouchEvent } from "react";
 import { createPortal } from "react-dom";
 import { useSyncedRef } from "../../hooks/useSyncedRef";
 import { useEventListener } from "../../hooks/useEventListener";
@@ -13,6 +13,7 @@ interface Props {
 export default function ImageGallery({ images }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const titleId = useId();
   const lightboxTouchRef = useRef<number | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lightboxRef = useSyncedRef({ lightboxIndex, imageCount: images.length });
@@ -92,7 +93,7 @@ export default function ImageGallery({ images }: Props) {
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-label="画像拡大表示"
+            aria-labelledby={titleId}
             tabIndex={-1}
             onKeyDown={dialogKeyDown}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 outline-none"
@@ -100,6 +101,9 @@ export default function ImageGallery({ images }: Props) {
             onTouchStart={handleLightboxTouchStart}
             onTouchEnd={handleLightboxTouchEnd}
           >
+            <h2 id={titleId} className="sr-only">
+              画像拡大表示
+            </h2>
             <button
               className="absolute top-4 right-4 text-white/70 hover:text-white"
               onClick={() => setLightboxIndex(null)}

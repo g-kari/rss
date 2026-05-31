@@ -1,6 +1,7 @@
 "use client";
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type ComponentProps,
@@ -36,6 +37,7 @@ function loadWidth(): number {
 
 export default function ArticleDetailOverlay({ open, onClose, articleViewProps }: Props) {
   usePopupLock(open);
+  const titleId = useId();
   const [width, setWidth] = useState<number>(() => loadWidth());
   const [mounted, setMounted] = useState(false);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -109,8 +111,11 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
       className="fixed inset-0 z-50 flex justify-end outline-none"
       role="dialog"
       aria-modal="true"
-      aria-label="記事詳細パネル"
+      aria-labelledby={titleId}
     >
+      <h2 id={titleId} className="sr-only">
+        記事詳細パネル
+      </h2>
       <div
         className="absolute inset-0 bg-black/30 animate-fade-in"
         onClick={onClose}
