@@ -9,7 +9,12 @@ import {
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
-import { applyKeywordFilter, applyKeywordFilterMap, buildFilterMap } from "@/lib/keyword-filter";
+import {
+  applyKeywordFilter,
+  applyKeywordFilterMap,
+  buildFilterMap,
+  type CompiledKeywordFilter,
+} from "@/lib/keyword-filter";
 import { compareByDateDesc } from "@/lib/article-utils";
 import { buildProtectedIds, filterExpiredArticles } from "@/lib/article-ttl";
 import { assertValidFeedHash } from "@/lib/api-error";
@@ -170,7 +175,8 @@ export async function GET(request: NextRequest) {
       ]);
       const feedArticles = await getUserLatestArticles(env.RSS_DATA, session.userId, subs);
 
-      const filterMap = buildFilterMap(subs, (s) => s.feedHash);
+      const filterCache = new Map<string, CompiledKeywordFilter>();
+      const filterMap = buildFilterMap(subs, (s) => s.feedHash, filterCache);
       const filteredFeedArticles = applyKeywordFilterMap(feedArticles, filterMap);
       const protectedIds = buildProtectedIds(readState);
       const ttlFilteredArticles =
@@ -223,7 +229,8 @@ export async function GET(request: NextRequest) {
     const feedArticles = await getUserLatestArticles(env.RSS_DATA, session.userId, activeSubs);
 
     // フィードごとのキーワードフィルターを適用（キーワードは小文字化済み）
-    const filterMap = buildFilterMap(subs, (s) => s.feedHash);
+    const sinceFilterCache = new Map<string, CompiledKeywordFilter>();
+    const filterMap = buildFilterMap(subs, (s) => s.feedHash, sinceFilterCache);
     const filteredFeedArticles = applyKeywordFilterMap(feedArticles, filterMap);
 
     // TTL フィルタ: 保護対象（bookmark/readingList/like/snooze/notes）以外の古い記事を除外
