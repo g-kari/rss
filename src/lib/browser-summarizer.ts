@@ -16,21 +16,14 @@
  */
 
 import { devError } from "./dev-log";
+import {
+  type BrowserAiAvailability,
+  shouldUseBrowserAi,
+  parseChromeMajorVersion,
+} from "./browser-ai-common";
 
-type Availability = "available" | "downloadable" | "downloading" | "unavailable";
-
-/** Summarizer / Translator 共通の availability 型 (#952)。 */
-export type BrowserAiAvailability = Availability;
-
-/**
- * 判定された availability に基づいてブラウザ AI (Summarizer / Translator) を
- * 使用できるかを返す共通ヘルパー (#952)。
- * - `available`: 即時利用可能
- * - `downloadable`: モデル未 DL だが create() が自動 DL するため利用可
- */
-export function shouldUseBrowserAi(availability: BrowserAiAvailability): boolean {
-  return availability === "available" || availability === "downloadable";
-}
+export type { BrowserAiAvailability };
+export { shouldUseBrowserAi, parseChromeMajorVersion };
 
 interface BrowserSummarizer {
   summarize(text: string): Promise<string>;
@@ -49,7 +42,7 @@ interface BrowserSummarizerConstructor {
     length?: "short" | "medium" | "long";
     expectedInputLanguages?: readonly string[];
     outputLanguage?: string;
-  }): Promise<Availability>;
+  }): Promise<BrowserAiAvailability>;
   create(options?: {
     type?: "headline" | "tldr" | "teaser" | "key-points";
     length?: "short" | "medium" | "long";
@@ -91,12 +84,6 @@ declare global {
 /** Summarizer API が stable で利用可能になった最低 Chrome メジャーバージョン (公式: 138)。 */
 export const MIN_SUMMARIZER_CHROME_VERSION = 138;
 
-/** UA 文字列から Chrome のメジャーバージョンを抽出する純粋関数。Edge 等の Chromium ベースも対象。 */
-export function parseChromeMajorVersion(userAgent: string): number | null {
-  const match = /Chrome\/(\d+)/.exec(userAgent);
-  return match ? parseInt(match[1], 10) : null;
-}
-
 function getChromeVersion(): number | null {
   if (typeof navigator === "undefined") return null;
   return parseChromeMajorVersion(navigator.userAgent);
@@ -106,7 +93,7 @@ export function isSummarizerApiSupported(): boolean {
   return typeof self !== "undefined" && "Summarizer" in self;
 }
 
-export function shouldUseBrowserSummarizer(availability: Availability): boolean {
+export function shouldUseBrowserSummarizer(availability: BrowserAiAvailability): boolean {
   return shouldUseBrowserAi(availability);
 }
 

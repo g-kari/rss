@@ -9,8 +9,8 @@
 
 import { isLikelyJapanese } from "./article-utils";
 import { devError } from "./dev-log";
-import { parseChromeMajorVersion, shouldUseBrowserAi } from "./browser-summarizer";
-import type { BrowserAiAvailability } from "./browser-summarizer";
+import { parseChromeMajorVersion, shouldUseBrowserAi } from "./browser-ai-common";
+import type { BrowserAiAvailability } from "./browser-ai-common";
 
 type Availability = BrowserAiAvailability;
 
