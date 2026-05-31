@@ -251,7 +251,10 @@ function FeedSidebar({
     e.preventDefault();
     const result = await addFeed(
       newUrl,
-      handleCloseFeedAdd,
+      () => {
+        toast.success("フィードを追加しました");
+        handleCloseFeedAdd();
+      },
       newCookie || undefined,
       newCssSelector || undefined,
       newUseRsshub,

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { RecommendedFeed } from "../types";
 import { useToast } from "@/contexts/ToastContext";
+import Spinner from "./Spinner";
 
 interface Props {
   recommendations: RecommendedFeed[];
@@ -63,7 +64,10 @@ export default function RecommendationSection({
 
       {/* ローディング */}
       {loading && recommendations.length === 0 && (
-        <div className="px-4 py-2 text-[11px] text-text-faint">読み込み中...</div>
+        <div className="px-4 py-3 flex items-center gap-2" aria-live="polite" aria-busy="true">
+          <Spinner className="w-3 h-3 text-text-faint" />
+          <span className="text-[11px] text-text-faint">読み込み中...</span>
+        </div>
       )}
 
       {/* エラー */}

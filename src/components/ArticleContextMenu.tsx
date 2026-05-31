@@ -152,6 +152,7 @@ export default function ArticleContextMenu({
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="M2 6l3 3 5-5" />
           </svg>
@@ -176,6 +177,7 @@ export default function ArticleContextMenu({
             strokeLinecap="round"
             strokeLinejoin="round"
             className={isBookmarked ? "text-bookmark" : ""}
+            aria-hidden="true"
           >
             <path d="M1 1h9v11l-4.5-3L1 12V1z" />
           </svg>
@@ -199,6 +201,7 @@ export default function ArticleContextMenu({
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <circle cx="6" cy="6" r="4.5" />
             <path d="M6 3.5v2.7L7.6 7" />
@@ -224,6 +227,7 @@ export default function ArticleContextMenu({
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <path d="M3 3l6 6M9 3l-6 6" />
             </svg>
@@ -248,6 +252,7 @@ export default function ArticleContextMenu({
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <circle cx="6" cy="6" r="4.5" />
               <path d="M6 3.5V6l1.5 1.5" />

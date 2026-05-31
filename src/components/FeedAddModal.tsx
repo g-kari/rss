@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import Modal from "./Modal";
+import { isAbsoluteHttpUrl } from "../lib/url";
 
 const PROGRESS_STEPS = [
   { at: 0, label: "フィードを確認中..." },
@@ -77,22 +78,12 @@ export default function FeedAddModal({
     };
   }, [adding]);
 
-  // Issue #459: URL バリデーションユーティリティ
-  function isValidHttpUrl(value: string): boolean {
-    try {
-      const u = new URL(value);
-      return u.protocol === "http:" || u.protocol === "https:";
-    } catch {
-      return false;
-    }
-  }
-
   function handleUrlChange(value: string) {
     onUrlChange(value);
     if (value === "") {
       setUrlValid(null);
     } else {
-      setUrlValid(isValidHttpUrl(value));
+      setUrlValid(isAbsoluteHttpUrl(value));
     }
   }
 
@@ -100,7 +91,7 @@ export default function FeedAddModal({
   function handlePaste(e: ClipboardEvent<HTMLInputElement>) {
     const pasted = e.clipboardData.getData("text");
     setTimeout(() => {
-      if (isValidHttpUrl(pasted)) {
+      if (isAbsoluteHttpUrl(pasted)) {
         onUrlChange(pasted);
         setUrlValid(true);
         const form = e.currentTarget.closest("form");
