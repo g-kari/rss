@@ -3,14 +3,20 @@ import { sha256Hex } from "@/lib/r2";
 
 /**
  * Cloudflare Cache API 用のキャッシュキーを生成する。
- * `/__cache/{type}/{sha256(normalizedUrl)}` 形式の合成 URL を Request としてラップする。
+ * `/__cache/{type}/{key}` 形式の合成 URL を Request としてラップする。
+ * `url` が `http://` / `https://` で始まる外部 URL の場合は sha256Hex(normalizeUrlForCache(url)) をキーとし、
+ * それ以外の内部合成キー（`user:${userId}:...` 等）はハッシュをスキップしてそのまま使用する。
  *
  * @param origin - リクエスト元のオリジン（例: "https://rss.0g0.xyz"）
- * @param type   - キャッシュ名前空間（例: "content" / "image" / "ogp"）
- * @param url    - キャッシュ対象の外部 URL（正規化してからハッシュ化される）
+ * @param type   - キャッシュ名前空間（例: "content" / "image" / "ogp" / "articles" / "feeds"）
+ * @param url    - 外部 URL（正規化→ハッシュ化）または内部合成キー（そのまま使用）
  */
 export async function buildCacheKey(origin: string, type: string, url: string): Promise<Request> {
-  return new Request(`${origin}/__cache/${type}/${await sha256Hex(normalizeUrlForCache(url))}`);
+  const key =
+    url.startsWith("http://") || url.startsWith("https://")
+      ? await sha256Hex(normalizeUrlForCache(url))
+      : url; // 内部合成キー（user:... 等）はハッシュ不要
+  return new Request(`${origin}/__cache/${type}/${key}`);
 }
 
 /**
