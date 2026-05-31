@@ -64,6 +64,7 @@ export const CardArticleItem = memo(function CardArticleItem({
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
+      aria-describedby={`article-hint-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={(e) => onSelectArticle(article, e)}
@@ -78,6 +79,9 @@ export const CardArticleItem = memo(function CardArticleItem({
       }`}
       style={isNew ? { animationDelay: `${Math.min(index, 20) * 25}ms` } : undefined}
     >
+      <span id={`article-hint-${article.id}`} className="sr-only">
+        Enterで記事を開く
+      </span>
       {thumb && (
         <ArticleThumbnail
           thumb={thumb}

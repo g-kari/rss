@@ -58,6 +58,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
+      aria-describedby={`article-hint-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={(e) => onSelectArticle(article, e)}
@@ -72,6 +73,9 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       }`}
       style={isNew ? { animationDelay: `${Math.min(index, 20) * 15}ms` } : undefined}
     >
+      <span id={`article-hint-${article.id}`} className="sr-only">
+        Enterで記事を開く
+      </span>
       <span
         className={`w-1 h-1 rounded-full flex-shrink-0 ${!isRead ? "bg-accent-dot" : "bg-transparent"}`}
       />

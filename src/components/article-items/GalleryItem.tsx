@@ -264,6 +264,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
     <div
       role="article"
       aria-labelledby={`article-title-${article.id}`}
+      aria-describedby={`article-hint-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={(e) => handleClick(e)}
@@ -276,6 +277,9 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
           : "border-border-default hover:border-text-muted bg-surface-elevated"
       }`}
     >
+      <span id={`article-hint-${article.id}`} className="sr-only">
+        Enterで記事を開く
+      </span>
       {renderImage()}
       <div className="p-2.5">
         {showFeedName && feedName && (

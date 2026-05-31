@@ -62,6 +62,7 @@ export const ListArticleItem = memo(function ListArticleItem({
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
+      aria-describedby={`article-hint-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={(e) => onSelectArticle(article, e)}
@@ -76,6 +77,9 @@ export const ListArticleItem = memo(function ListArticleItem({
       }`}
       style={isNew ? { animationDelay: `${Math.min(index, 20) * 25}ms` } : undefined}
     >
+      <span id={`article-hint-${article.id}`} className="sr-only">
+        Enterで記事を開く
+      </span>
       <div className="flex-1 min-w-0">
         {showFeedName && feedName && (
           <span className="text-[10px] text-text-faint tracking-[0.04em] mb-0.5 block truncate">
