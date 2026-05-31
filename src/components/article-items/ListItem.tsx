@@ -1,6 +1,13 @@
 "use client";
 
-import { memo, useMemo, useContext } from "react";
+import {
+  memo,
+  useMemo,
+  useCallback,
+  useContext,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
@@ -40,8 +47,15 @@ export const ListArticleItem = memo(function ListArticleItem({
   const bulkIds = useContext(BulkSelectionCtx);
   const isBulkSelected = useMemo(() => bulkIds.has(article.id), [bulkIds, article.id]);
   // 共通ハンドラを shared から取得 (重複定義 → import 統一、refactor cycle)。
-  const handleKeyDown = handleArticleKeyDown(article, onSelectArticle);
-  const handleContextMenu = handleArticleContextMenu(article, onContextMenu);
+  const handleKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLElement>) => handleArticleKeyDown(article, onSelectArticle)(e),
+    [article, onSelectArticle],
+  );
+  const handleContextMenu = useCallback(
+    (e: ReactMouseEvent<HTMLElement>) => handleArticleContextMenu(article, onContextMenu)(e),
+    [article, onContextMenu],
+  );
+  const timeAgoText = useMemo(() => timeAgo(article.publishedAt), [article.publishedAt]);
   return (
     <div
       role="article"
@@ -81,7 +95,7 @@ export const ListArticleItem = memo(function ListArticleItem({
         )}
         <div className="flex items-center gap-2">
           <time dateTime={article.publishedAt ?? undefined} className="text-[11px] text-text-faint">
-            {timeAgo(article.publishedAt)}
+            {timeAgoText}
           </time>
           {article.author && (
             <span className="text-[11px] text-text-faint truncate max-w-[100px]">

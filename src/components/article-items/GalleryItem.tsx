@@ -54,6 +54,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   const isSelected = selectedId === article.id;
   const bulkIds = useContext(BulkSelectionCtx);
   const isBulkSelected = useMemo(() => bulkIds.has(article.id), [bulkIds, article.id]);
+  const timeAgoText = useMemo(() => timeAgo(article.publishedAt), [article.publishedAt]);
   // Phase 1: forcedImageSrc が指定されたら、prefetched / thumb fallback を無視して
   // この 1 枚だけ表示する (画像/動画 view の 1 記事 N 画像分解時)。
   // forcedImageSrc 未指定 → 従来通り selectGalleryImages で prefetched/thumb/none を選択。
@@ -296,7 +297,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
               dateTime={article.publishedAt ?? undefined}
               className="text-[10px] text-text-faint flex-shrink-0"
             >
-              {timeAgo(article.publishedAt)}
+              {timeAgoText}
             </time>
             {duplicateFeedNames && duplicateFeedNames.length > 0 && (
               <DuplicateBadge feedNames={duplicateFeedNames} />
