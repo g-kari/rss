@@ -209,6 +209,7 @@ export default function FeedQuickSwitchModal({
                 id={`feed-quick-option-${i}`}
                 role="option"
                 aria-selected={i === cursor}
+                tabIndex={-1}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 ${
                   i === cursor ? "bg-surface-subtle" : "hover:bg-surface-hover"
                 }`}

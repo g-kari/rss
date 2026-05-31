@@ -23,13 +23,7 @@ const helper = createDebugHelper("rss-debug-bgaudio", "[BgAudio]");
 export const evaluateBgAudioDebugEnabled = evaluateDebugEnabled;
 
 /**
- * 診断ログが有効かどうか。`localStorage` の `rss-debug-bgaudio` をキャッシュして
- * 高頻度の effect 内呼び出しでも localStorage アクセスを最小化する。
- */
-export const isBgAudioDebugEnabled = helper.isEnabled;
-
-/**
- * 診断ログを出力する。`isBgAudioDebugEnabled()` が true のときだけ console.info に
+ * 診断ログを出力する。`rss-debug-bgaudio = "1"` のときだけ console.info に
  * `[BgAudio]` prefix 付きでデータを出す。
  */
 export const bgAudioDebug = helper.log;

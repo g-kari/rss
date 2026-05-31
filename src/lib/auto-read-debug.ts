@@ -21,13 +21,7 @@ const helper = createDebugHelper("rss-debug-autoread", "[AutoRead]");
 export const evaluateAutoReadDebugEnabled = evaluateDebugEnabled;
 
 /**
- * 診断ログが有効かどうか。`localStorage` の `rss-debug-autoread` をキャッシュして
- * 高頻度の effect 内呼び出しでも localStorage アクセスを最小化する。
- */
-export const isAutoReadDebugEnabled = helper.isEnabled;
-
-/**
- * 診断ログを出力する。`isAutoReadDebugEnabled()` が true のときだけ console.info に
+ * 診断ログを出力する。`rss-debug-autoread = "1"` のときだけ console.info に
  * `[AutoRead]` prefix 付きでデータを出す。
  */
 export const autoReadDebug = helper.log;

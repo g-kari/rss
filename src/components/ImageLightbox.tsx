@@ -93,6 +93,7 @@ export default function ImageLightbox({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          aria-hidden="true"
         >
           <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round" />
         </svg>
@@ -114,6 +115,7 @@ export default function ImageLightbox({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          aria-hidden="true"
         >
           <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -135,6 +137,7 @@ export default function ImageLightbox({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          aria-hidden="true"
         >
           <path d="M8 4l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
