@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         },
         {
           role: "user",
-          content: `次の<article>タグ内のテキストを日本語に翻訳してください。翻訳結果のみを返してください。\n\n${plain}`,
+          content: `次の<article>タグ内のテキストを日本語に翻訳してください。翻訳結果のみを返してください。\n\n<article>${plain}</article>`,
         },
       ],
       "translation",

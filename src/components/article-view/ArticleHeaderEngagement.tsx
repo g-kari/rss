@@ -66,7 +66,11 @@ export default function ArticleHeaderEngagement({
 }: Props) {
   return (
     <>
-      <div className="flex items-center rounded-full border border-border-default overflow-hidden">
+      <div
+        role="group"
+        aria-label="エンゲージメント"
+        className="flex items-center rounded-full border border-border-default overflow-hidden"
+      >
         <EngagementSegmentButton
           isActive={isInReadingList}
           onClick={() => {

@@ -38,7 +38,7 @@ export async function POST(request: Request) {
           `- ポイントは記事の主要な事実・情報を漏らさない\n` +
           `- まとめは必ず句点(。)で終える\n` +
           `- フォーマット外のテキストは出力しない\n\n` +
-          plain,
+          `<article>${plain}</article>`,
       },
     ]),
   );

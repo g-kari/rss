@@ -12,7 +12,7 @@ import { isZennDevUrl, isAbsoluteHttpUrl } from "./url";
  * Zenn embed の <span> から data-content 属性を URL デコードして取り出す共通ヘルパー。
  * デコード失敗時または属性が存在しない場合は null を返す。
  */
-export function extractZennEmbedContent(spanMatch: string): string | null {
+function extractZennEmbedContent(spanMatch: string): string | null {
   const dcMatch = spanMatch.match(/\bdata-content=["']([^"']+)["']/i);
   if (!dcMatch) return null;
   try {
