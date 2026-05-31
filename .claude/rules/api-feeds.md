@@ -193,12 +193,12 @@ OPML ファイルから複数フィードを一括インポートする。
 
 ### エラー一覧
 
-| ステータス | code                   | 説明                                                                                          |
-| ---------- | ---------------------- | --------------------------------------------------------------------------------------------- |
-| `400`      | `INVALID_OPML`         | OPML 形式が不正                                                                               |
-| `415`      | `INVALID_CONTENT_TYPE` | Content-Type が text/xml・application/xml・text/plain・application/x-www-form-urlencoded 以外 |
-| `422`      | `FEED_LIMIT_REACHED`   | フィード上限に達している                                                                      |
-| `429`      | `COOLDOWN`             | インポートクールダウン中                                                                      |
+| ステータス | code                   | 説明                                                       |
+| ---------- | ---------------------- | ---------------------------------------------------------- |
+| `400`      | `INVALID_OPML`         | OPML 形式が不正                                            |
+| `415`      | `INVALID_CONTENT_TYPE` | Content-Type が text/xml・application/xml・text/plain 以外 |
+| `422`      | `FEED_LIMIT_REACHED`   | フィード上限に達している                                   |
+| `429`      | `COOLDOWN`             | インポートクールダウン中                                   |
 
 ---
 

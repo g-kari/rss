@@ -62,8 +62,7 @@ export async function POST(request: Request) {
     const isValidContentType =
       contentType.startsWith("text/xml") ||
       contentType.startsWith("application/xml") ||
-      contentType.startsWith("text/plain") ||
-      contentType.startsWith("application/x-www-form-urlencoded");
+      contentType.startsWith("text/plain");
     if (!isValidContentType) {
       return NextResponse.json(
         { error: "Unsupported Media Type", code: "INVALID_CONTENT_TYPE" },
