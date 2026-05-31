@@ -940,6 +940,7 @@ export default function AppShell({
                 anchorTrigger,
                 onAddFeed: openFeedAddModal,
                 onSnoozeArticle: snoozeArticle,
+                onContextMenuSnooze: (article) => handleShowSnoozeMenu(article.id),
                 onAddTag: addTag,
               }}
             />

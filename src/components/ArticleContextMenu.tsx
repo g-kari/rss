@@ -19,6 +19,7 @@ interface ArticleContextMenuProps {
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
   onToggleReadingList: (id: string) => void;
+  onSnooze?: (article: Article) => void;
   onClose: () => void;
 }
 
@@ -45,6 +46,7 @@ export default function ArticleContextMenu({
   onToggleRead,
   onToggleBookmark,
   onToggleReadingList,
+  onSnooze,
   onClose,
 }: ArticleContextMenuProps) {
   const isRead = readIds.has(target.article.id);
@@ -226,6 +228,31 @@ export default function ArticleContextMenu({
               <path d="M3 3l6 6M9 3l-6 6" />
             </svg>
             一覧から削除（既読化）
+          </button>
+        )}
+        {onSnooze && (
+          <button
+            role="menuitem"
+            className={btnClass}
+            onClick={() => {
+              onSnooze(target.article);
+              onClose();
+            }}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="6" cy="6" r="4.5" />
+              <path d="M6 3.5V6l1.5 1.5" />
+            </svg>
+            スヌーズ
           </button>
         )}
       </div>

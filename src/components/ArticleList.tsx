@@ -87,6 +87,8 @@ interface Props {
   /** #684: 値が変化するたびに「選択中記事へ強制スクロール」を再実行するトリガーカウンタ */
   anchorTrigger?: number;
   onSnoozeArticle?: (id: string, durationMs: number) => void;
+  /** コンテキストメニューから記事をスヌーズするコールバック (#933) */
+  onContextMenuSnooze?: (article: Article) => void;
   onAddTag?: (articleId: string, tag: string) => void;
 }
 
@@ -146,6 +148,7 @@ function ArticleList({
   duplicateInfo,
   anchorTrigger,
   onSnoozeArticle,
+  onContextMenuSnooze,
   onAddTag,
 }: Props) {
   const {
@@ -787,6 +790,7 @@ function ArticleList({
             onToggleRead={onToggleRead}
             onToggleBookmark={onToggleBookmark}
             onToggleReadingList={onToggleReadingList}
+            onSnooze={onContextMenuSnooze}
             onClose={() => setArticleCtxMenu(null)}
           />
         )}
