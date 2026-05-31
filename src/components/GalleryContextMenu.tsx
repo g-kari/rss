@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
@@ -157,19 +157,92 @@ export default function GalleryContextMenu({
     [buildSafeTitle, downloadImage, confirm, downloadHistory],
   );
 
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const getItems = useCallback((): HTMLElement[] => {
+    if (!menuRef.current) return [];
+    return Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+  }, []);
+
+  // メニュー開時に最初の項目にフォーカス (rAF で portal 挿入後を待つ)
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      const items = getItems();
+      if (items.length > 0) items[0].focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [getItems]);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      const items = getItems();
+      if (items.length === 0) return;
+      const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+
+      switch (e.key) {
+        case "ArrowDown": {
+          e.preventDefault();
+          const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+          items[next].focus();
+          break;
+        }
+        case "ArrowUp": {
+          e.preventDefault();
+          const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+          items[prev].focus();
+          break;
+        }
+        case "Home": {
+          e.preventDefault();
+          items[0].focus();
+          break;
+        }
+        case "End": {
+          e.preventDefault();
+          items[items.length - 1].focus();
+          break;
+        }
+        case "Escape": {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+          break;
+        }
+        case "Tab": {
+          // フォーカストラップ: メニュー外に出さない
+          e.preventDefault();
+          if (e.shiftKey) {
+            const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+            items[prev].focus();
+          } else {
+            const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+            items[next].focus();
+          }
+          break;
+        }
+      }
+    },
+    [getItems, onClose],
+  );
+
   const btnClass =
-    "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left";
+    "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle focus-visible:bg-surface-subtle focus-visible:outline-none transition-colors text-left";
 
   return createPortal(
     <>
       <div className="fixed inset-0 z-[49]" onPointerDown={onClose} />
       <div
+        ref={menuRef}
+        role="menu"
+        aria-label="ギャラリー操作メニュー"
+        onKeyDown={handleKeyDown}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[160px]"
         style={computeContextMenuPosition(target.x, target.y, 160, 170)}
         onClick={(e) => e.stopPropagation()}
       >
         {target.thumb && (
           <button
+            role="menuitem"
             className={btnClass}
             onClick={() => {
               const url = target.thumb!;
@@ -203,6 +276,7 @@ export default function GalleryContextMenu({
             従来どおり「画像を一括保存 (N 枚)」を表示する。 */}
         {target.images && target.images.length >= 1 && (
           <button
+            role="menuitem"
             className={btnClass}
             onClick={() => {
               downloadAllImages(target.images!, target.article);
@@ -230,6 +304,7 @@ export default function GalleryContextMenu({
         )}
 
         <button
+          role="menuitem"
           className={btnClass}
           onClick={() => {
             onSelectArticle(target.article);
@@ -253,6 +328,7 @@ export default function GalleryContextMenu({
         </button>
 
         <button
+          role="menuitem"
           className={btnClass}
           onClick={() => {
             onToggleRead(target.article.id);
@@ -275,6 +351,7 @@ export default function GalleryContextMenu({
         </button>
 
         <button
+          role="menuitem"
           className={btnClass}
           onClick={() => {
             onToggleBookmark(target.article.id);
@@ -297,6 +374,7 @@ export default function GalleryContextMenu({
         </button>
 
         <button
+          role="menuitem"
           className={btnClass}
           onClick={() => {
             // #795 / #844: 既読化 (markRead は既読なら no-op) + ギャラリー表示

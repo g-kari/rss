@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { Feed } from "../../types";
 import { NsfwIcon, StarIcon, FilterIcon } from "../article-view/icons";
 
@@ -12,6 +13,10 @@ interface Props {
 }
 
 export default function FeedTitleContent({ feed, isSelected, isStale, isMuted, hasFilter }: Props) {
+  const isRateLimited = useMemo(
+    () => !!(feed.rateLimitedUntil && new Date(feed.rateLimitedUntil) > new Date()),
+    [feed.rateLimitedUntil],
+  );
   return (
     <div className="flex-1 min-w-0">
       <span className="flex items-center gap-1 min-w-0">
@@ -94,7 +99,7 @@ export default function FeedTitleContent({ feed, isSelected, isStale, isMuted, h
             </svg>
           </span>
         )}
-        {feed.rateLimitedUntil && new Date(feed.rateLimitedUntil) > new Date() && (
+        {isRateLimited && (
           <span title="レートリミット中" className="flex-shrink-0 text-amber-500">
             <svg
               width="8"

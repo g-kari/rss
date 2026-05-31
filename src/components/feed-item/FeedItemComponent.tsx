@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   useCallback,
+  useMemo,
   type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
@@ -74,7 +75,10 @@ export default function FeedItem({
     !feed.fetchError &&
     lastPublishedAt !== undefined &&
     Date.now() - new Date(lastPublishedAt).getTime() > STALE_THRESHOLD_MS;
-  const isMuted = !!(feed.mutedUntil && feed.mutedUntil > new Date().toISOString());
+  const isMuted = useMemo(
+    () => !!(feed.mutedUntil && feed.mutedUntil > new Date().toISOString()),
+    [feed.mutedUntil],
+  );
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [categoryEditing, setCategoryEditing] = useState(false);

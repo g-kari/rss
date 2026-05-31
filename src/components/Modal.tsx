@@ -58,9 +58,9 @@ export default function Modal({
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle flex-shrink-0">
           <div>
-            <span id={titleId} className="text-[13px] font-medium text-text-strong">
+            <h2 id={titleId} className="text-[13px] font-medium text-text-strong">
               {title}
-            </span>
+            </h2>
             {subtitle && (
               <p
                 id={subtitleId}

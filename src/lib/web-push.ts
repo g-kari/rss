@@ -247,7 +247,8 @@ export async function sendPush(
       body: encryptedBody.buffer,
       signal: controller.signal,
     });
-  } catch {
+  } catch (err) {
+    console.warn("[web-push] sendPush failed:", subscription.endpoint, err);
     return { ok: false, gone: false };
   } finally {
     clearTimeout(timeoutId);
