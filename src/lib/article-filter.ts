@@ -319,7 +319,8 @@ function buildQueryPredicate(opts: ArticleFilterOptions): ((a: Article) => boole
 function buildDatePredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
   const rangeStart = getDateRangeStart(opts.dateRange);
   if (!rangeStart) return null;
-  return (a) => !!(a.publishedAt && new Date(a.publishedAt) >= rangeStart);
+  const rangeStartMs = rangeStart.getTime();
+  return (a) => !!(a.publishedAt && Date.parse(a.publishedAt) >= rangeStartMs);
 }
 
 /**

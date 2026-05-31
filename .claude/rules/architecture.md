@@ -26,6 +26,10 @@ paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
             ├─ /api/push/*            — Web Push 通知サブスクリプション管理
             ├─ /api/clip              — SingleFile 拡張からの HTML クリップ保存
             ├─ /api/release-notes     — リリースノート
+            ├─ /api/stats             — 読了統計 (日別・年間ヒートマップ・フィード別)
+            ├─ /api/video-proxy       — 外部動画プロキシ
+            ├─ /api/piper-voice/*     — Piper TTS voice モデル (.onnx) 配信 (R2)
+            ├─ /api/wasm/*            — Piper TTS wasm ファイル配信 (R2、25 MiB 上限回避)
             └─ /api/health            — ヘルスチェック
 
 Cloudflare Workers (@opennextjs/cloudflare)

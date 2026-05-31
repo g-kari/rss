@@ -17,6 +17,8 @@ import {
 
 const AI_WINDOW_MS = 60 * 1000;
 const AI_MAX_CALLS = 20;
+// KV eventual consistency により ~1-3 req の burst 許容あり (architecture.md § KV burst 許容仕様)
+// 実効上限 = AI_MAX_CALLS_70B + burst ≈ 3+3 = 6。70B は課金コストが高いため厳しめに設定
 const AI_MAX_CALLS_70B = 3;
 
 type AiMessage = { role: "system" | "user"; content: string };
