@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { Feed, FeedGroup } from "../types";
+import { equalViewFeedIds } from "../lib/article-filter-equality";
 
 /**
  * フィード一覧から派生する除外用 ID Set (NSFW / 選択グループ所属 / muted) を memo 化して返す hook。
@@ -13,7 +14,13 @@ export function useFeedFilters(
   feedGroups: FeedGroup[],
   selectedGroupId: string | null,
 ) {
-  const nsfwFeedIds = useMemo(() => new Set(feeds.filter((f) => f.nsfw).map((f) => f.id)), [feeds]);
+  const nsfwFeedIdsRef = useRef<Set<string>>(new Set());
+  const nsfwFeedIds = useMemo(() => {
+    const next = new Set(feeds.filter((f) => f.nsfw).map((f) => f.id));
+    if (equalViewFeedIds(nsfwFeedIdsRef.current, next)) return nsfwFeedIdsRef.current;
+    nsfwFeedIdsRef.current = next;
+    return next;
+  }, [feeds]);
 
   // 選択中グループに所属するフィード ID セット — useFilteredArticles / markBulkRead 等で共有
   const groupFeedIds = useMemo(() => {
@@ -23,6 +30,7 @@ export function useFeedFilters(
     return ids;
   }, [selectedGroupId, feeds]);
 
+  const mutedFeedIdsRef = useRef<Set<string>>(new Set());
   const mutedFeedIds = useMemo(() => {
     const now = new Date().toISOString();
     const ids = new Set<string>();
@@ -36,6 +44,8 @@ export function useFeedFilters(
         if (f.groupId && mutedGroupIds.has(f.groupId)) ids.add(f.id);
       }
     }
+    if (equalViewFeedIds(mutedFeedIdsRef.current, ids)) return mutedFeedIdsRef.current;
+    mutedFeedIdsRef.current = ids;
     return ids;
   }, [feeds, feedGroups]);
 
