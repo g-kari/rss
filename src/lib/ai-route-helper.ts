@@ -8,7 +8,12 @@ import { aiRateLimitKey } from "@/lib/r2";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 import { apiError } from "@/lib/api-error";
 
-import { isWorkersAiModelId, type WorkersAiModelId, DEFAULT_AI_MODEL } from "./ai-models";
+import {
+  isWorkersAiModelId,
+  type WorkersAiModelId,
+  DEFAULT_AI_MODEL,
+  LARGE_MODEL_IDS,
+} from "./ai-models";
 
 const AI_WINDOW_MS = 60 * 1000;
 const AI_MAX_CALLS = 20;
@@ -63,7 +68,7 @@ export async function runAiJob(
 
   const model: WorkersAiModelId = isWorkersAiModelId(body.model) ? body.model : DEFAULT_AI_MODEL;
 
-  const is70b = model === "@cf/meta/llama-3.1-70b-instruct";
+  const is70b = LARGE_MODEL_IDS.has(model);
 
   // #698: cache key を url ベースに変更 (cross-user poisoning 対策)
   // 攻撃者は自身が制御する url の cache しか書けないため、被害ユーザーの cache を汚染できない

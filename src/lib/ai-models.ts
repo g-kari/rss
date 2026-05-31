@@ -12,6 +12,8 @@ export const DEFAULT_AI_MODEL: WorkersAiModelId = "@cf/meta/llama-3.1-8b-instruc
 
 export const VALID_MODEL_IDS = AI_MODELS.map((m) => m.id) as ReadonlyArray<WorkersAiModelId>;
 
+export const LARGE_MODEL_IDS: ReadonlySet<string> = new Set(["@cf/meta/llama-3.1-70b-instruct"]);
+
 export function isWorkersAiModelId(v: unknown): v is WorkersAiModelId {
   return typeof v === "string" && (VALID_MODEL_IDS as readonly string[]).includes(v);
 }
