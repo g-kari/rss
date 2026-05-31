@@ -134,20 +134,27 @@ export function useContentLinkPreviews(
       };
     };
 
+    /** 1 バッチあたりの最大同時 OGP fetch 数（429 防止） */
+    const OGP_BATCH_SIZE = 10;
+
+    // Phase 1: cache hit は即時カード挿入、cache miss anchor を収集
+    const fetchTargets: HTMLAnchorElement[] = [];
     for (const anchor of anchors) {
       const url = anchor.href;
-
-      // cache hit (v2 entry で title/description が揃っている) → fetch skip
       const cached = isCompleteCacheEntry(url);
       if (cached) {
         if (!el.isConnected || !anchor.isConnected) continue;
         const card = buildPreviewCard(url, cached);
         if (card) anchor.parentElement?.insertAdjacentElement("afterend", card);
-        continue;
+      } else {
+        fetchTargets.push(anchor);
       }
+    }
 
-      // cache miss or 不完全 entry → fetch + cache 更新
-      apiFetch(`/api/ogp?url=${encodeURIComponent(url)}`, { signal: controller.signal })
+    // Phase 2: cache miss anchor を OGP_BATCH_SIZE 件ずつ Promise.all で並列 fetch
+    const fetchOgpForAnchor = (anchor: HTMLAnchorElement): Promise<void> => {
+      const url = anchor.href;
+      return apiFetch(`/api/ogp?url=${encodeURIComponent(url)}`, { signal: controller.signal })
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json() as Promise<OgpData>;
@@ -172,7 +179,16 @@ export function useContentLinkPreviews(
           // になるため除外、それ以外の error は devError で観測性確保。
           if (!isAbortError(err)) devError("[useContentLinkPreviews] OGP fetch failed", err);
         });
-    }
+    };
+
+    // OGP_BATCH_SIZE 件ずつ chunk に分割して順次 Promise.all 実行
+    (async () => {
+      for (let i = 0; i < fetchTargets.length; i += OGP_BATCH_SIZE) {
+        if (controller.signal.aborted) break;
+        const chunk = fetchTargets.slice(i, i + OGP_BATCH_SIZE);
+        await Promise.all(chunk.map(fetchOgpForAnchor));
+      }
+    })();
 
     return () => {
       controller.abort();
