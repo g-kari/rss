@@ -118,11 +118,15 @@ export async function runAiJob(
     if (isAiError(err)) {
       if (err.status === 429) {
         const retryAfter = err.headers?.["retry-after"];
-        return apiError("rate_limited", 429, {
+        const res = apiError("rate_limited", 429, {
           code: "RATE_LIMITED",
           retryable: true,
           ...(retryAfter ? { retryAfter } : {}),
         });
+        // rate-limit.ts の checkSlidingWindow と同パターン: HTTP ヘッダー Retry-After も付与して
+        // クライアントの retry-after.ts が正しく backoff できるようにする
+        if (retryAfter) res.headers.set("Retry-After", String(retryAfter));
+        return res;
       }
       if (err.status === 401) {
         return apiError("unauthorized", 401, { code: "UNAUTHORIZED" });

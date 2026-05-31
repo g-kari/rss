@@ -762,7 +762,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 
 ## Hooks 層設計 (`src/hooks/`)
 
-`src/hooks/` には 118 ファイル の React Hook が配置される。`AppShell.tsx` の状態管理を機能別に分割した結果として大規模化したが、責務境界を明確にするため以下の **カテゴリ分類 + 命名規則** に従う。
+`src/hooks/` には 122 ファイル の React Hook が配置される。`AppShell.tsx` の状態管理を機能別に分割した結果として大規模化したが、責務境界を明確にするため以下の **カテゴリ分類 + 命名規則** に従う。
 
 ### カテゴリ分類
 
@@ -808,14 +808,14 @@ const match = matchesKeywordFilter(article, compiledFilter);
 本章は概要レベルから段階的に拡充されている:
 
 - **Phase 1 (完了)**: 本章「Hooks 層設計」section 自体 (カテゴリ分類 / 命名規則 / 設計原則)
-- **Phase 2 (完了)**: `src/lib/` (130+ files) 機能別グループ化の subsection (下記参照)
+- **Phase 2 (完了)**: `src/lib/` (133 files) 機能別グループ化の subsection (下記参照)
 - **Phase 3 (完了)**: 主要 public export hook 20 件に JSDoc `@param` / `@returns` 注釈追加 (IDE hover 改善、残 hook は新規追加サイクルで漸進整備)
 
 ---
 
 ## src/lib/ 層設計 (`src/lib/`)
 
-`src/lib/` には 136 ファイル の純粋関数 / ヘルパー / ラッパーが配置される。Workers + ブラウザ両環境で再利用される基盤レイヤーとして責務境界を明確にするため、以下の **機能別グループ + 採用すべき canonical pattern** に従う。
+`src/lib/` には 133 ファイル の純粋関数 / ヘルパー / ラッパーが配置される。Workers + ブラウザ両環境で再利用される基盤レイヤーとして責務境界を明確にするため、以下の **機能別グループ + 採用すべき canonical pattern** に従う。
 
 ### グループ分類
 

@@ -273,7 +273,7 @@ export function parseSnoozedUntil(raw: unknown, maxSnoozed = 500): Record<string
       k.length > 0 &&
       k.length <= MAX_ID_LENGTH &&
       isValidIso8601(v) &&
-      v > now // 期限切れを除去
+      Date.parse(v) > Date.parse(now) // 期限切れを除去 (タイムゾーン付き ISO 8601 対応: "+09:00" 等は文字列比較で誤廃棄するため ms 比較に変更)
     ) {
       result[k] = v;
     }
