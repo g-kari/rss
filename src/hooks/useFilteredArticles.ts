@@ -387,6 +387,11 @@ export function useFilteredArticles({
       return { deduplicated: filtered, duplicateInfo: new Map<string, string[]>() };
     }
 
+    // perf #930: filtered 全件の timestamp を事前計算して比較ループ内の Date.parse 再呼出を省く
+    const tsCache = new Map<string, number>(
+      filtered.map((a) => [a.id, Date.parse(a.publishedAt ?? a.createdAt ?? "")]),
+    );
+
     // link → 同一リンクを持つ記事グループ（1 パスで構築）
     const linkGroups = new Map<string, Article[]>();
     let hasDupes = false;
@@ -420,10 +425,10 @@ export function useFilteredArticles({
       // sibling 規範 (`read-state-merge.ts#isLaterIso` / `read-state-prune.ts`) と揃えて
       // `Date.parse` 絶対時刻ベース比較に変更。不正 ISO 文字列は NaN guard で除外。
       let best = group[0];
-      let bestTs = Date.parse(best.publishedAt ?? best.createdAt ?? "");
+      let bestTs = tsCache.get(best.id) ?? NaN;
       for (let i = 1; i < group.length; i++) {
         const curr = group[i];
-        const currTs = Date.parse(curr.publishedAt ?? curr.createdAt ?? "");
+        const currTs = tsCache.get(curr.id) ?? NaN;
         if (!isNaN(currTs) && (isNaN(bestTs) || currTs > bestTs)) {
           best = curr;
           bestTs = currTs;
