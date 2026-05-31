@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import type { RecommendedFeed, UserProfile } from "../types";
 import { apiFetch } from "../lib/api-fetch";
+import { devError } from "../lib/dev-log";
 import { useAsyncFetch } from "./useAsyncFetch";
 
 interface UseRecommendationsResult {
@@ -59,7 +60,9 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
-      }).catch(() => {});
+      }).catch((err: unknown) => {
+        devError("[useRecommendations] dismiss failed", err);
+      });
     },
     [setRecommendations],
   );
