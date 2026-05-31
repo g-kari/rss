@@ -7,7 +7,7 @@ import type { LDDocument } from "./linkedom-types";
  * Readability 退避用プレースホルダークラス名。
  * Readability の classesToPreserve オプションで保持され、placeholder <p> タグを識別するのに使う。
  */
-export const EMBED_PLACEHOLDER_CLASS = "rss-reader-preserved-embed";
+const EMBED_PLACEHOLDER_CLASS = "rss-reader-preserved-embed";
 
 /**
  * iframe / video / audio タグを Readability 実行前に `<p>` プレースホルダーに退避する。
@@ -63,7 +63,7 @@ function restoreTrustedEmbeds(html: string, embeds: string[]): string {
  * - 不要な属性を除去（data-content / data-src は保持）
  * - <style> / <script> を除去
  */
-export function preClean(html: string): string {
+function preClean(html: string): string {
   let h = html;
   h = h.replace(/<picture\b[^>]*>([\s\S]*?)<\/picture\b[^>]*>/gi, (_m, inner: string) => {
     const img = inner.match(/<img\b[^>]*>/i);
