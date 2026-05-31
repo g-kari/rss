@@ -76,9 +76,6 @@ export default function BulkActionToolbar({
         className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-4 py-2 shadow-lg"
       >
         <span className="text-sm font-medium text-text-strong">{count} 件選択中</span>
-        <span className="sr-only" aria-live="polite" aria-atomic="true">
-          {count} 件選択中
-        </span>
         <button
           type="button"
           onClick={handleMarkRead}

@@ -1,6 +1,8 @@
 "use client";
 
+import { useContext } from "react";
 import type { ComponentProps } from "react";
+import { BulkSelectionCtx } from "@/contexts/BulkSelectionContext";
 import A11yHelpers from "./A11yHelpers";
 import OfflineBanner from "./OfflineBanner";
 import ToastContainer from "./ToastContainer";
@@ -91,8 +93,12 @@ export function AppOverlays({
   resetWidth,
   nudgeWidth,
 }: AppOverlaysProps) {
+  const selectedCount = useContext(BulkSelectionCtx).size;
   return (
     <>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {selectedCount > 0 ? `${selectedCount}件選択中` : ""}
+      </div>
       <A11yHelpers announcement={articleAnnouncement} />
       <OfflineBanner isOnline={isOnline} hasPendingChanges={hasPendingChanges} />
       <ToastContainer />
