@@ -1,6 +1,5 @@
 "use client";
 import {
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -13,7 +12,7 @@ import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { STORAGE_KEYS, storageGet, storageSet } from "@/lib/storage";
-import { FOCUSABLE_SELECTOR } from "@/lib/modal-focus";
+import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
 
 type ArticleViewProps = ComponentProps<typeof ArticleView>;
 
@@ -41,69 +40,18 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
   const [mounted, setMounted] = useState(false);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  // WCAG 2.4.3: パネルが閉じたら開いたトリガー要素にフォーカスを戻す (Modal.tsx と同パターン)
-  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // open 切替時の focus 退避・初期 focus・復元 (Modal.tsx と同パターン)
-  useEffect(() => {
-    if (open) {
-      returnFocusRef.current = document.activeElement as HTMLElement | null;
-      // mounted 後 (createPortal が描画後) に dialog 内の最初の focusable を取得
-      // useState の setMounted は別 effect なので setTimeout で 1 tick 待つ
-      const id = window.setTimeout(() => {
-        const el = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-        if (el) el.focus();
-        else dialogRef.current?.focus();
-      }, 0);
-      return () => window.clearTimeout(id);
-    }
-    const ret = returnFocusRef.current;
-    returnFocusRef.current = null;
-    if (ret && document.contains(ret)) ret.focus();
-  }, [open]);
-
-  // capture-phase (`true`) + e.stopPropagation() で他 keyboard shortcut hook より優先的に Escape を捕捉する意図的設計。
-  // canonical な useModalFocusTrap は bubble-phase なので統合しない (statement of intent: sibling drift 維持)。
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
-    }
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
-  }, [open, onClose]);
-
-  // フォーカストラップ: Modal.tsx と同パターン (Tab で循環、Shift+Tab で逆循環)
-  const handleKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab") return;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-    if (focusable.length === 0) {
-      e.preventDefault();
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (e.shiftKey) {
-      if (document.activeElement === first || document.activeElement === dialog) {
-        e.preventDefault();
-        last.focus();
-      }
-    } else {
-      if (document.activeElement === last || document.activeElement === dialog) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-  }, []);
+  // capture-phase Escape + Tab cycle focus trap を useModalFocusTrap に委譲。
+  // captureEscape: true により他の keyboard shortcut hook より優先的に Escape を捕捉する。
+  const { handleKeyDown } = useModalFocusTrap(dialogRef, {
+    onClose,
+    isOpen: open,
+    captureEscape: true,
+  });
 
   function handleResizeKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
     const step = e.shiftKey ? RESIZE_STEP_PX_SHIFT : RESIZE_STEP_PX;
