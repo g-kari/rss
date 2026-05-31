@@ -69,7 +69,7 @@ interface Props {
   selectedTag?: string | null;
   articleTagIds?: Record<string, string[]>;
   collections?: Collection[];
-  collectionsLoadError?: Error | null;
+  collectionsLoadError?: string | null;
   onRetryCollections?: () => void;
   selectedCollectionId?: string | null;
   feedGroups?: FeedGroup[];
