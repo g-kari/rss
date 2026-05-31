@@ -73,8 +73,9 @@ export interface MasonryLayoutResult {
 /**
  * 列ごとの最終的な累積高さを計算する純粋関数。
  *
- * 各 item を **最短列** に順次配置 (tie の場合は最小 index 列)、その列の累積高さに
- * `item.height` を加算する。2 番目以降の item は `gap` も加算する (列内 item 間の隙間)。
+ * `computeMasonryLayout` を呼び出して positions + columnHeights を計算し、
+ * columnHeights のみを返す thin wrapper。ループロジックは `computeMasonryLayout`
+ * に一元化されているため、`effectiveItemHeight` 仕様変更時に 1 箇所の修正で済む (#994)。
  *
  * #818: optional `columnWidth` で aspectRatio 補正を有効化できる。`columnWidth > 0` かつ
  * `item.width > 0` のとき、`(columnWidth / item.width) * item.height` で column 幅に fit
@@ -101,15 +102,7 @@ export function computeColumnHeights(
   gap: number = 0,
   columnWidth: number = 0,
 ): number[] {
-  if (columnCount < 1) return [];
-  const columnHeights = new Array<number>(columnCount).fill(0);
-  for (const item of items) {
-    const targetCol = assignItemToShortestColumn(columnHeights);
-    const isFirstInColumn = columnHeights[targetCol] === 0;
-    const h = effectiveItemHeight(item, columnWidth);
-    columnHeights[targetCol] = columnHeights[targetCol]! + h + (isFirstInColumn ? 0 : gap);
-  }
-  return columnHeights;
+  return computeMasonryLayout(items, columnCount, gap, columnWidth).columnHeights;
 }
 
 /**
@@ -142,8 +135,9 @@ export function assignItemToShortestColumn(columnHeights: ReadonlyArray<number>)
 /**
  * 各 item の配置先列と top 座標を含む完全な masonry layout を計算する純粋関数。
  *
- * `computeColumnHeights` と同じ最短列配置ロジックで、追加で各 item の id をキーとした
- * positions Map を返す。Phase 2 で `<GalleryMasonry>` がこの結果を使って
+ * 最短列配置ロジックの正規実装。positions Map と columnHeights の両方を返す。
+ * `computeColumnHeights` はこの関数の thin wrapper として columnHeights のみを返す。
+ * Phase 2 で `<GalleryMasonry>` がこの結果を使って
  * `<div style={{ position: absolute, left: col * columnWidth, top }}>` で配置する。
  *
  * @param items 配置対象 item 配列 (配置順序通り)
