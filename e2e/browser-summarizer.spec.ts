@@ -4,10 +4,10 @@ import {
   shouldUseBrowserSummarizer,
   diagnoseSummarizerAvailability,
   summarizeInBrowser,
-  parseChromeMajorVersion,
   MIN_SUMMARIZER_CHROME_VERSION,
   SUMMARIZER_OPTIONS,
 } from "../src/lib/browser-summarizer";
+import { parseChromeMajorVersion } from "../src/lib/browser-ai-common";
 
 /**
  * Chrome Summarizer API ラッパーの純粋関数テスト。

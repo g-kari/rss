@@ -59,6 +59,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   return (
     <div
       role="article"
+      aria-labelledby={`article-title-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={(e) => onSelectArticle(article, e)}
@@ -85,6 +86,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
           </span>
         )}
         <h3
+          id={`article-title-${article.id}`}
           className={`text-[14px] leading-snug font-medium mt-0.5 mb-1.5 ${
             isRead ? "text-text-muted" : "text-text-strong"
           }`}

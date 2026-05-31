@@ -61,6 +61,7 @@ export const ListArticleItem = memo(function ListArticleItem({
       role="article"
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
+      aria-labelledby={`article-title-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
       id={`article-${article.id}`}
       onClick={(e) => onSelectArticle(article, e)}
@@ -82,6 +83,7 @@ export const ListArticleItem = memo(function ListArticleItem({
           </span>
         )}
         <h3
+          id={`article-title-${article.id}`}
           className={`text-[13px] leading-snug line-clamp-2 mb-1 transition-colors duration-200 ${
             isRead ? "text-text-muted font-normal" : "text-text-strong font-medium"
           }`}
