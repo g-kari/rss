@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, withJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { r2Get, r2Put, readStateKey } from "@/lib/r2";
+import { r2Get, r2Put, readStateKey, readStateCooldownKey } from "@/lib/r2";
 import type { ReadState } from "@/types";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
 import {
@@ -25,6 +25,8 @@ import {
   type ReadStateUpdate,
 } from "@/lib/read-state-merge";
 
+const READ_STATE_COOLDOWN_MS = 3_000;
+
 /**
  * GET /api/read-state — 既読・ブックマーク・スヌーズ・メモなどの状態を取得する
  *
@@ -47,6 +49,13 @@ export async function GET(request: Request) {
  */
 export async function POST(req: NextRequest) {
   return withJsonBody<ReadStateUpdate>(req, async ({ body, session, env }) => {
+    const limited = await applyCooldown(
+      env.RATE_LIMIT,
+      readStateCooldownKey(session.userId),
+      READ_STATE_COOLDOWN_MS,
+    );
+    if (limited) return limited;
+
     const readIds = extractIds(body.readIds, MAX_READ_IDS);
     const bookmarkIds = extractIds(body.bookmarkIds, MAX_BOOKMARK_IDS);
     const readingListIds = extractIds(body.readingListIds, MAX_READING_LIST_IDS);

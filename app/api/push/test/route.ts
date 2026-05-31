@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
-import { withSession } from "@/lib/server-auth";
+import { withSession, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { r2Get, r2Put, userPushKey } from "@/lib/r2";
+import { r2Get, r2Put, userPushKey, pushTestCooldownKey } from "@/lib/r2";
 import { sendPushToAll } from "@/lib/web-push";
 import type { PushConfig } from "@/types";
+
+const PUSH_TEST_COOLDOWN_MS = 30_000;
 
 /** テスト Push 通知を送信する（デバッグ用） */
 export async function POST(request: Request) {
   return withSession(request, async ({ session, env }) => {
+    const limited = await applyCooldown(
+      env.RATE_LIMIT,
+      pushTestCooldownKey(session.userId),
+      PUSH_TEST_COOLDOWN_MS,
+    );
+    if (limited) return limited;
+
     const vapidPublic = process.env.VAPID_PUBLIC_KEY;
     const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
 

@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withJsonBody } from "@/lib/server-auth";
+import { withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readFeedGroups, writeFeedGroups } from "@/lib/feed-groups";
+import { feedGroupsWriteCooldownKey } from "@/lib/r2";
 import { sortByOrder } from "@/lib/sort-utils";
+
+const FEED_GROUPS_WRITE_COOLDOWN_MS = 2_000;
 
 export async function POST(request: NextRequest) {
   return withJsonBody<{ orderedIds?: unknown }>(request, async ({ body, session, env }) => {
+    const limited = await applyCooldown(
+      env.RATE_LIMIT,
+      feedGroupsWriteCooldownKey(session.userId),
+      FEED_GROUPS_WRITE_COOLDOWN_MS,
+    );
+    if (limited) return limited;
+
     const { orderedIds } = body;
     if (!Array.isArray(orderedIds) || orderedIds.some((id) => typeof id !== "string")) {
       return apiError("orderedIds must be a string array", 400, { code: "INVALID_ORDERED_IDS" });

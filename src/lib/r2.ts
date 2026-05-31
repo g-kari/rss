@@ -80,6 +80,10 @@ export const pushSubscribeCooldownKey = (userId: string) => `${userId}:push-subs
 export const ogpCooldownKey = (userId: string) => `${userId}:ogp-cooldown`;
 export const engagementCooldownKey = (userId: string) => `${userId}:engagement-cooldown`;
 export const saveArticleCooldownKey = (userId: string) => `${userId}:save-article-cooldown`;
+export const pushTestCooldownKey = (userId: string) => `${userId}:push-test`;
+export const readStateCooldownKey = (userId: string) => `${userId}:read-state`;
+export const feedGroupsWriteCooldownKey = (userId: string) => `${userId}:feed-groups-write`;
+export const collectionsWriteCooldownKey = (userId: string) => `${userId}:collections-write`;
 
 // R2 (not KV) — feed-last-fetched は R2 path のまま
 export const feedLastFetchedKey = (userId: string) => userKey(userId, "feed-last-fetched.json");

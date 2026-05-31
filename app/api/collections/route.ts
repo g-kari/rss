@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withSession, withJsonBody } from "@/lib/server-auth";
+import { withSession, withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import {
   readCollections,
@@ -9,7 +9,10 @@ import {
 } from "@/lib/collections";
 import { parseName } from "@/lib/validation";
 import { computeNextOrder, sortByOrder } from "@/lib/sort-utils";
+import { collectionsWriteCooldownKey } from "@/lib/r2";
 import type { Collection } from "@/types";
+
+const COLLECTIONS_WRITE_COOLDOWN_MS = 2_000;
 
 export async function GET(request: NextRequest) {
   return withSession(request, async ({ session, env }) => {
@@ -20,6 +23,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   return withJsonBody<{ name?: unknown }>(request, async ({ body, session, env }) => {
+    const limited = await applyCooldown(
+      env.RATE_LIMIT,
+      collectionsWriteCooldownKey(session.userId),
+      COLLECTIONS_WRITE_COOLDOWN_MS,
+    );
+    if (limited) return limited;
+
     const nameResult = parseName(body.name, COLLECTION_NAME_MAX_LENGTH);
     if (!nameResult.ok)
       return apiError(nameResult.message, nameResult.status, { code: nameResult.code });
