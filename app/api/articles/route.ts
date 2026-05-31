@@ -20,9 +20,38 @@ import {
   cachePutAsync,
   matchCfCache,
 } from "@/lib/cache-helper";
-import type { Article, ReadState } from "@/types";
+import type { Article, KeywordFilter, ReadState, UserSubscription } from "@/types";
 
 const ARTICLES_CACHE_TTL_SEC = 30;
+
+/** feedHash 経路で必要な R2 データを並列取得するヘルパー */
+async function fetchFeedData(
+  rssData: R2Bucket,
+  userId: string,
+  feedHash: string,
+  page: number,
+): Promise<[UserSubscription[], Article[], ReadState]> {
+  const fetchArticles =
+    page >= 2 ? readArticlePage(rssData, feedHash, page) : readLatestArticles(rssData, feedHash);
+  return Promise.all([
+    readUserSubscriptions(rssData, userId),
+    fetchArticles,
+    r2Get<Partial<ReadState>>(rssData, readStateKey(userId), {}).then(normalizeReadState),
+  ]);
+}
+
+/** キーワードフィルター + TTL フィルターを適用するヘルパー */
+function applyArticleFilters(
+  articles: Article[],
+  sub: { filter?: KeywordFilter },
+  readState: ReadState,
+): Article[] {
+  const protectedIds = buildProtectedIds(readState);
+  const keywordFiltered = applyKeywordFilter(articles, sub.filter);
+  return readState.ttlDays === 0
+    ? keywordFiltered
+    : filterExpiredArticles(keywordFiltered, protectedIds, readState.ttlDays ?? undefined);
+}
 
 export async function GET(request: NextRequest) {
   return withSession(request, async ({ session, env, ctx }) => {
@@ -66,27 +95,17 @@ export async function GET(request: NextRequest) {
           });
         }
 
-        const fetchArticles =
-          page >= 2
-            ? readArticlePage(env.RSS_DATA, feedHash, page)
-            : readLatestArticles(env.RSS_DATA, feedHash);
-        const [subs, articles, readState] = await Promise.all([
-          readUserSubscriptions(env.RSS_DATA, session.userId),
-          fetchArticles,
-          r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
-            normalizeReadState,
-          ),
-        ]);
+        const [subs, articles, readState] = await fetchFeedData(
+          env.RSS_DATA,
+          session.userId,
+          feedHash,
+          page,
+        );
         const sub = subs.find((s) => s.feedHash === feedHash);
         if (!sub) {
           return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
         }
-        const protectedIds = buildProtectedIds(readState);
-        const keywordFiltered = applyKeywordFilter(articles, sub.filter);
-        const filtered =
-          readState.ttlDays === 0
-            ? keywordFiltered
-            : filterExpiredArticles(keywordFiltered, protectedIds, readState.ttlDays ?? undefined);
+        const filtered = applyArticleFilters(articles, sub, readState);
 
         cachePutAsync(
           cacheKey,
@@ -103,27 +122,17 @@ export async function GET(request: NextRequest) {
       }
 
       // since 指定あり (差分取得) 経路: キャッシュ bypass
-      const fetchArticles =
-        page >= 2
-          ? readArticlePage(env.RSS_DATA, feedHash, page)
-          : readLatestArticles(env.RSS_DATA, feedHash);
-      const [subs, articles, readState] = await Promise.all([
-        readUserSubscriptions(env.RSS_DATA, session.userId),
-        fetchArticles,
-        r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
-          normalizeReadState,
-        ),
-      ]);
+      const [subs, articles, readState] = await fetchFeedData(
+        env.RSS_DATA,
+        session.userId,
+        feedHash,
+        page,
+      );
       const sub = subs.find((s) => s.feedHash === feedHash);
       if (!sub) {
         return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
       }
-      const protectedIds = buildProtectedIds(readState);
-      const keywordFiltered = applyKeywordFilter(articles, sub.filter);
-      const filtered =
-        readState.ttlDays === 0
-          ? keywordFiltered
-          : filterExpiredArticles(keywordFiltered, protectedIds, readState.ttlDays ?? undefined);
+      const filtered = applyArticleFilters(articles, sub, readState);
       return NextResponse.json(filtered, {
         headers: {
           "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
