@@ -13,10 +13,12 @@ const FRAME_SRC = [
 const STATIC_CSP_SUFFIX = [
   // Tailwind のインライン style は 'unsafe-inline' が必要
   "style-src 'self' 'unsafe-inline'",
-  // 外部画像は /api/image-proxy 経由。
+  // 外部画像は /api/image-proxy 経由。外部ドメインを直接許可しない (#923)。
+  // 全ての外部画像は buildImageProxyUrl / rewriteImageUrls で /api/image-proxy 経由に書き換えられるため、
+  // img-src に外部ドメインを直接記載する必要はなく、記載するとプロキシを bypass できる抜け穴になる。
   // favicon.ts は canvas.toBlob() + URL.createObjectURL() で Blob URL を使用するため data: 不要。
   // blob: は createObjectURL で生成した URL の読み込みに必要（同一オリジン内のみ有効、XSS リスクなし）。
-  "img-src 'self' blob: https://qiita-user-contents.imgix.net https://game.watch.impress.co.jp",
+  "img-src 'self' blob:",
   FRAME_SRC,
   // ポッドキャスト等のメディアは HTTPS のみ
   "media-src https:",
