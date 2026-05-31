@@ -341,10 +341,15 @@ function ArticleList({
 
   // ── 記事コンテキストメニュー (#633 A3、compact / list / card / magazine 用) ──
   const [articleCtxMenu, setArticleCtxMenu] = useState<ArticleContextMenuTarget | null>(null);
+  // #976: Escape 後にフォーカスを返却するトリガー要素を ref で保持
+  const articleCtxMenuTriggerElRef = useRef<HTMLElement | null>(null);
   usePopupLock(!!articleCtxMenu);
   useEventListener("scroll", () => setArticleCtxMenu(null), window, true);
   useEventListener("resize", () => setArticleCtxMenu(null));
   const handleArticleContextMenu = useCallback((article: Article, x: number, y: number) => {
+    // 右クリック座標からトリガー要素を特定 (Escape 後のフォーカス返却用)
+    articleCtxMenuTriggerElRef.current =
+      (document.elementFromPoint(x, y) as HTMLElement | null) ?? null;
     setArticleCtxMenu({ article, x, y });
   }, []);
 
@@ -792,6 +797,7 @@ function ArticleList({
             onToggleReadingList={onToggleReadingList}
             onSnooze={onContextMenuSnooze}
             onClose={() => setArticleCtxMenu(null)}
+            returnFocusEl={articleCtxMenuTriggerElRef.current}
           />
         )}
       </section>

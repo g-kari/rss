@@ -21,6 +21,12 @@ interface ArticleContextMenuProps {
   onToggleReadingList: (id: string) => void;
   onSnooze?: (article: Article) => void;
   onClose: () => void;
+  /**
+   * #976: Escape / onClose 後にフォーカスを返却する先の要素。
+   * キーボードユーザーが Escape でメニューを閉じた際に、
+   * リスト先頭から Tab し直す必要をなくす (WCAG 2.4.3 Focus Order)。
+   */
+  returnFocusEl?: HTMLElement | null;
 }
 
 /**
@@ -34,8 +40,8 @@ interface ArticleContextMenuProps {
  * - `role="menu"` / `role="menuitem"` でセマンティック付与
  * - メニュー開時に最初の項目へ自動フォーカス
  * - ArrowDown/Up/Home/End/Tab で項目間移動
- * - Escape で onClose
- * - 右クリック起点なのでトリガーボタンへのフォーカス復元はなし
+ * - Escape で onClose + returnFocusEl へフォーカス返却 (#976, WCAG 2.4.3)
+ * - 右クリック起点が多いが `returnFocusEl` prop でトリガー要素へフォーカス復元可能
  *   (`useMenuKeyboard` は btnRef 必須のため独自実装)
  */
 export default function ArticleContextMenu({
@@ -48,6 +54,7 @@ export default function ArticleContextMenu({
   onToggleReadingList,
   onSnooze,
   onClose,
+  returnFocusEl,
 }: ArticleContextMenuProps) {
   const isRead = readIds.has(target.article.id);
   const isBookmarked = bookmarkIds.has(target.article.id);
@@ -101,6 +108,9 @@ export default function ArticleContextMenu({
           e.preventDefault();
           e.stopPropagation();
           onClose();
+          // #976: Escape でメニューを閉じた後、トリガー要素にフォーカスを返却
+          // キーボードユーザーがリスト先頭から Tab し直す必要をなくす (WCAG 2.4.3)
+          returnFocusEl?.focus();
           break;
         }
         case "Tab": {
@@ -117,7 +127,7 @@ export default function ArticleContextMenu({
         }
       }
     },
-    [getItems, onClose],
+    [getItems, onClose, returnFocusEl],
   );
 
   const btnClass =
