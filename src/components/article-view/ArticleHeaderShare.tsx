@@ -76,6 +76,25 @@ export default function ArticleHeaderShare({
           onSaveGlobalFilter={onSaveGlobalFilter}
         />
       )}
+      <button
+        onClick={() => window.print()}
+        title="印刷"
+        aria-label="印刷"
+        className="p-2 -m-2 lg:p-0 lg:m-0 text-text-faint hover:text-text-muted transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
+      >
+        <svg
+          viewBox="0 0 18 18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x={3} y={7} width={12} height={8} rx={1} />
+          <path d="M6 7V3h6v4" />
+          <path d="M6 13h6M6 11h2" />
+        </svg>
+      </button>
     </>
   );
 }
