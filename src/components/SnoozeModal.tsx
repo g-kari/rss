@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Modal from "./Modal";
 
 interface SnoozeOption {
@@ -68,10 +68,9 @@ interface Props {
   onSnooze: (durationMs: number) => void;
   onClose: () => void;
   /**
-   * #748: snooze で article が DOM から消えた場合のフォーカス復元先。
-   * Modal の returnFocusRef は `document.contains` ガードで silent skip するため、
-   * 本 prop で呼び出し元が snooze trigger 時に snapshot した安定 element を渡すと
-   * unmount 時に確実にフォーカスが戻る (WCAG 2.4.3 Focus Order)。
+   * #748 / #981: snooze で article が DOM から消えた場合のフォーカス復元先。
+   * Modal の returnFocusEl prop に渡すことで、unmount 時に確実にフォーカスが戻る (WCAG 2.4.3 Focus Order)。
+   * 呼び出し元が snooze trigger 時に snapshot した安定 element を渡すこと。
    */
   returnFocusEl?: HTMLElement | null;
 }
@@ -94,18 +93,14 @@ export default function SnoozeModal({ articleTitle, onSnooze, onClose, returnFoc
   const customMs = customDateTime ? new Date(customDateTime).getTime() - Date.now() : 0;
   const customValid = customDateTime !== "" && customMs > 0;
 
-  // #748: snooze 完了で article が DOM から消えると Modal の returnFocusRef は silent skip するため、
-  // 呼び出し元から渡された安定 element に明示的にフォーカスを戻す (Modal cleanup の後で実行)。
-  useEffect(() => {
-    return () => {
-      if (returnFocusEl && document.contains(returnFocusEl)) {
-        returnFocusEl.focus();
-      }
-    };
-  }, [returnFocusEl]);
-
   return (
-    <Modal title="スヌーズ" subtitle={articleTitle} onClose={onClose} width="sm:w-[320px]">
+    <Modal
+      title="スヌーズ"
+      subtitle={articleTitle}
+      onClose={onClose}
+      width="sm:w-[320px]"
+      returnFocusEl={returnFocusEl}
+    >
       <div className="py-1">
         {options.map((opt) => (
           <button

@@ -24,6 +24,12 @@ interface UseModalFocusTrapOptions {
    * デフォルト false (既存の bubble-phase 動作、後方互換)。
    */
   captureEscape?: boolean;
+  /**
+   * close/unmount 時に復元するフォーカス先を上書きする。
+   * SnoozeModal のように「モーダル open 後に元要素が DOM から消える」ケースで使用。
+   * 省略時は Modal open 前の document.activeElement に戻る。
+   */
+  returnFocusEl?: HTMLElement | null;
 }
 
 interface UseModalFocusTrapResult {
@@ -39,16 +45,17 @@ interface UseModalFocusTrapResult {
  * - open 時に initialFocusRef または最初の focusable に focus
  * - Escape キーで onClose 発火
  * - Tab / Shift+Tab で dialog 内 focus cycle (端で wrap)
- * - close 時 / unmount 時に returnFocusRef へ focus 復元 (元要素が DOM 内に残っている場合のみ)
+ * - close 時 / unmount 時に returnFocusEl (指定時) または returnFocusRef へ focus 復元
  *
  * Modal.tsx (mount=open): `useModalFocusTrap(dialogRef, { onClose })`
  * ConfirmModal.tsx (常時 mount + isOpen): `useModalFocusTrap(dialogRef, { onClose: onCancel, isOpen, initialFocusRef: cancelRef })`
+ * SnoozeModal.tsx 経由 Modal.tsx: `useModalFocusTrap(dialogRef, { onClose, returnFocusEl })`
  */
 export function useModalFocusTrap(
   dialogRef: RefObject<HTMLDivElement | null>,
   options: UseModalFocusTrapOptions,
 ): UseModalFocusTrapResult {
-  const { onClose, isOpen, initialFocusRef, captureEscape = false } = options;
+  const { onClose, isOpen, initialFocusRef, captureEscape = false, returnFocusEl } = options;
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // open / mount 時に focus セットアップ + returnFocusRef 保存。
@@ -65,8 +72,9 @@ export function useModalFocusTrap(
         dialogRef.current;
       target?.focus();
       return () => {
-        // 閉じる時にトリガー要素へフォーカスを戻す。トリガーが既に DOM から外れている場合はスキップ。
-        const ret = returnFocusRef.current;
+        // 閉じる時にトリガー要素へフォーカスを戻す。
+        // returnFocusEl が指定されている場合はそちらを優先 (SnoozeModal のように open 後に元要素が DOM から消えるケース)。
+        const ret = returnFocusEl ?? returnFocusRef.current;
         returnFocusRef.current = null;
         if (ret && typeof ret.focus === "function" && document.contains(ret)) {
           ret.focus();
@@ -74,7 +82,7 @@ export function useModalFocusTrap(
       };
     }
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- dialogRef / initialFocusRef は ref で identity 安定 (deps 不要)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dialogRef / initialFocusRef / returnFocusEl は ref で identity 安定 (deps 不要)
   }, [openState]);
 
   // captureEscape: true の場合、capture phase で Escape を document レベルで捕捉する。

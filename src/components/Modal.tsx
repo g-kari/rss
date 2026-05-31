@@ -19,6 +19,12 @@ interface Props {
    * 固定高さの Tailwind class (例: `sm:h-[640px]`) を渡すと jump を抑止できる。
    */
   height?: string;
+  /**
+   * Escape/close 後にフォーカスを戻す要素を明示的に指定する。
+   * 省略時は Modal open 前の document.activeElement に戻る。
+   * SnoozeModal のように「open 後に元要素が DOM から消える」ケースに使用 (#981)。
+   */
+  returnFocusEl?: HTMLElement | null;
 }
 
 export default function Modal({
@@ -28,6 +34,7 @@ export default function Modal({
   children,
   width = "sm:w-[480px]",
   height = "",
+  returnFocusEl,
 }: Props) {
   const titleId = useId();
   // #814: subtitle がある場合のみ aria-describedby + id wire 化。
@@ -40,7 +47,7 @@ export default function Modal({
 
   // #790 Phase 1: focus trap + return focus restore + Escape/Tab cycle を hook に集約。
   // 旧 useEffect + useCallback はすべて useModalFocusTrap に内包。
-  const { handleKeyDown } = useModalFocusTrap(dialogRef, { onClose });
+  const { handleKeyDown } = useModalFocusTrap(dialogRef, { onClose, returnFocusEl });
 
   return createPortal(
     <>
