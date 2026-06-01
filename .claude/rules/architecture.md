@@ -127,7 +127,7 @@ app/
 
 src/
   App.tsx                    # 3ペインレイアウト + 認証状態管理 ('use client')
-  types.ts                   # Feed / Article / UserProfile / AuthSession 型
+  types.ts                   # Feed / Article / UserProfile 型 ※ AuthSession は src/lib/server-auth.ts に定義
   cloudflare-env.d.ts        # CloudflareEnv 拡張 (RSS_DATA, RATE_LIMIT, AI, IMAGES, FINDME_RSS 等)
   config/
     shortcuts.ts             # キーボードショートカット Single Source of Truth（ShortcutDef / ShortcutGroup / SHORTCUT_DEFS / KEYBOARD_SHORTCUTS）— useKeyboardNav と KeyboardShortcutsModal の両方が参照
@@ -345,7 +345,7 @@ src/
     useAsyncFetch.ts         # 非同期 fetch 共通 hook（loading + error + AbortController + auto-fetch + transform ボイラープレートを集約、`useReadingStats` / `useEngagementEntries` / `useRecommendations` / `useFeedGroups` で使用）
   lib/
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
-    server-auth.ts           # withSession() / withJsonBody() / withBinarySession() / requireSession() / applyRefreshedTokens() / applyCooldown() / requireString() / assertSameOrigin() / parseJsonBody() / setAccessTokenCookies() / setSessionCookie() / bindDbscToServerSession() / deduplicatedRefresh()
+    server-auth.ts           # ServerSessionData / AuthSession インターフェース + withSession() / withJsonBody() / withBinarySession() / requireSession() / applyRefreshedTokens() / applyRefreshedTokensToResponse() / applyCooldown() / requireString() / assertSameOrigin() / parseJsonBody() / setAccessTokenCookies() / setSessionCookie() / createServerSession() / getServerSession() / updateServerSession() / deleteServerSession() / getAuthSession() / bindDbscToServerSession() / deduplicatedRefresh()
     beta-allowed.ts          # isBetaAllowed() — BETA_ALLOWED_SUBS チェック（next/* 非依存・拒否時に sub prefix を console.warn）
     r2.ts                    # r2Get() / r2Put() / sha256Hex()
     xml-parser.ts            # fast-xml-parser ラッパー (RSS 2.0 + Atom)
