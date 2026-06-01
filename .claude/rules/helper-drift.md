@@ -124,6 +124,68 @@ export const NewLayoutItem = function NewLayoutItem({ article, onSelectArticle, 
 
 主な使用箇所: `ListItem.tsx` / `MagazineItem.tsx` / `CardItem.tsx` の 3 component が `shared.tsx#handleArticleKeyDown` (既存) + 未抽出の `handleContextMenu` を copy-paste で再定義 → 本サイクル refactor agent 発見で shared に集約 (`handleArticleKeyDown` import 統一 + `handleArticleContextMenu` 新規 export 追加)、commit `3f9bd3e4`。本派生 case で新規 component 追加時の構造的予防可能化
 
+#### 派生サブケース: 同形 `useCallback` 8 行ブロックが 4+ コンポーネントで重複するときは shared に `useXxxHandlers` hook を追加する
+
+sibling shared の pure handler functions (`handleArticleKeyDown` / `handleArticleContextMenu` 等) を各 component が個別に `useCallback` でラップする同形 8 行ブロックが **4 コンポーネント以上** に重複した場合、pure handler を呼ぶ `useCallback` 自体を集約した **`useXxxHandlers` hook** を shared に追加して重複を解消する。
+
+```typescript
+// アンチパターン: CompactItem / ListItem / CardItem / MagazineItem の全 4 コンポーネントで同形 8 行重複
+const handleKeyDown = useCallback(
+  (e: ReactKeyboardEvent<HTMLElement>) => handleArticleKeyDown(article, onSelectArticle)(e),
+  [article, onSelectArticle],
+);
+const handleContextMenu = useCallback(
+  (e: ReactMouseEvent<HTMLElement>) => handleArticleContextMenu(article, onContextMenu)(e),
+  [article, onContextMenu],
+);
+
+// 修正パターン: shared.tsx に useArticleHandlers hook を追加して 1 行に集約
+// (shared.tsx に追加)
+export function useArticleHandlers(
+  article: Article,
+  onSelectArticle: (a: Article, event?: ReactMouseEvent) => void,
+  onContextMenu: ((a: Article, x: number, y: number) => void) | undefined,
+): {
+  handleKeyDown: (e: ReactKeyboardEvent<HTMLElement>) => void;
+  handleContextMenu: (e: ReactMouseEvent<HTMLElement>) => void;
+} {
+  const handleKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLElement>) => handleArticleKeyDown(article, onSelectArticle)(e),
+    [article, onSelectArticle],
+  );
+  const handleContextMenu = useCallback(
+    (e: ReactMouseEvent<HTMLElement>) => handleArticleContextMenu(article, onContextMenu)(e),
+    [article, onContextMenu],
+  );
+  return { handleKeyDown, handleContextMenu };
+}
+
+// 各コンポーネントは 1 行に簡素化
+const { handleKeyDown, handleContextMenu } = useArticleHandlers(
+  article,
+  onSelectArticle,
+  onContextMenu,
+);
+```
+
+**How to apply**: sibling shared の pure handler を `useCallback` で呼ぶ同形ブロックが 4+ コンポーネントで重複しているとき (3 コンポーネント以下は重複許容でも可読性損なわないが、4+ になると新規 component 追加時の確認対象が増え drift 温床になる):
+
+1. **重複件数を確認** (`grep -rln "useCallback" <dir>` + 中身比較): 3 件以下は shared の pure handler 呼び出しで十分、4 件以上なら hook 化判断
+2. **hook シグネチャは pure handler と同じ引数** を受け取り、`useCallback` の deps も pure handler の引数と一致させる
+3. **hook 名は `use<Subject>Handlers`** (例: `useArticleHandlers`、`use<Component>EventHandlers` 等) で「複数 handler を返す hook」と判別可能に
+4. **sibling shared の同 file に追記** (新規 file を作らず `shared.tsx` 内に handler 関数と並べる)
+5. **既存 component を新 hook に置き換え** + typecheck で deps 整合確認
+
+**判断軸: pure handler 直接呼び出し vs `useXxxHandlers` hook 化**:
+
+| 状況                                              | 判断                                       |
+| ------------------------------------------------- | ------------------------------------------ |
+| 3 コンポーネント以下の重複                        | pure handler 直接呼び出し (hook 化不要)    |
+| 4+ コンポーネントで同形 `useCallback` ブロック    | `useXxxHandlers` hook を shared に追加     |
+| 新規 component を追加するたびに同形コードが増える | hook 化で「追加時に 1 行で済む」基盤を作る |
+
+主な使用箇所: `src/components/article-items/shared.tsx#useArticleHandlers` — CompactItem / ListItem / CardItem / MagazineItem の 4 コンポーネントで `handleKeyDown` / `handleContextMenu` の同形 `useCallback` 8 行ブロックが重複 → hook 化で各 component 1 行に簡素化
+
 ### 派生ケース: helper drift 解消で「同じエンドポイントの既存 error code 契約」を変更してはならない
 
 別 Route Handler から helper (`assertValidFeedHash` / `assertFeedSubscribed` 等) を流用するとき、helper の error code が **既存エンドポイントの API spec に記載されている error code と異なる** ケースがある (例: helper は `INVALID_FEED` を返すが、対象 endpoint の既存 spec は `INVALID_PAYLOAD`)。helper を機械的に置換すると **client 側の error 分岐コードが壊れる** + **api-spec.md と実装が乖離する** という二重損失が発生する。

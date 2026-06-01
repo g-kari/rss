@@ -201,3 +201,47 @@ function usePrefetch({ maxPrefetch = 200 }: Options) {
 - `<div>` で role override せず元のまま (= `role="generic"`) → ARIA tree node として無視される、interactive content であれば semantic element に変更
 
 主な使用箇所: `FeedQuickSwitchModal.tsx:189-235` — 旧 `<ul role="listbox"><li><button role="option">` 構造を `<div role="listbox"><button role="option">` 直配置に変更、WAI-ARIA ownership chain + HTML5 content model 両立、listRef 型も HTMLUListElement → HTMLDivElement に同期
+
+## `role="menuitem"` 内の装飾的 SVG には `aria-hidden="true"` を付ける
+
+`role="menuitem"` を持つ要素 (コンテキストメニューの各行) にインライン SVG アイコンを配置するとき、SVG が **装飾的 (ラベルの補足アイコン)** の場合は `aria-hidden="true"` を必ず付ける。付けないとスクリーンリーダーが SVG の内容 (path data 等) を menuitem のラベルと誤って読み上げる、または「グラフィック」を余分にアナウンスする。
+
+```tsx
+// アンチパターン: SVG に aria-hidden なし → スクリーンリーダーが余分にアナウンス
+<button role="menuitem" onClick={...}>
+  <svg viewBox="0 0 16 16" fill="currentColor">
+    <path d="..." />
+  </svg>
+  保存
+</button>
+
+// 修正パターン: 装飾的 SVG に aria-hidden="true"
+<button role="menuitem" onClick={...}>
+  <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+    <path d="..." />
+  </svg>
+  保存
+</button>
+```
+
+**ArticleContextMenu が canonical 実装**。新規にコンテキストメニューを追加するとき (GalleryContextMenu / FeedContextMenu 等)、`ArticleContextMenu.tsx` の各 `role="menuitem"` 要素を参照してすべての SVG に `aria-hidden="true"` が付いているか確認する。
+
+**How to apply**: コンテキストメニューコンポーネントに `role="menuitem"` を持つ要素を実装するとき (SVG への `aria-hidden` 追加漏れはスクリーンリーダーで UX 劣化、lint では自動検出されないため explicit sweep が必要):
+
+1. **同 component 内で `role="menuitem"` を grep** して全件を列挙
+2. 各 menuitem 内の `<svg>` タグに `aria-hidden="true"` があるか確認
+3. 未付与なら追加 — `aria-label` / `title` を持つ **意味的 SVG** は例外 (スクリーンリーダーに読み上げさせる意図がある)
+4. **canonical sweep コマンド**:
+   ```bash
+   grep -nE "role=\"menuitem\"" src/components/<ContextMenu>.tsx | head -5
+   # 各 menuitem 内の <svg> を確認
+   grep -n "aria-hidden" src/components/<ContextMenu>.tsx | wc -l
+   ```
+5. **sibling コンポーネントへの横展開**: 同じパターンを持つ sibling (例: ArticleContextMenu → GalleryContextMenu) にも適用。一方に追加したら他方も sweep する。
+
+**反例 (`aria-hidden` が不要なケース)**:
+
+- SVG が **`aria-label` または `<title>` を持ち、意味的な情報を提供している** (例: スクリーンリーダーに図形の説明を読ませたいアイコン) → `aria-hidden` 不要
+- SVG が **button / link の唯一のコンテンツ** で、ラベルテキストがない → `aria-label` を button 側に付けた上でアイコン SVG には `aria-hidden` 付与
+
+主な使用箇所: `GalleryContextMenu.tsx` — 5 件の `role="menuitem"` 内 SVG に `aria-hidden="true"` 追加 (`ArticleContextMenu.tsx` canonical パターンの横展開)

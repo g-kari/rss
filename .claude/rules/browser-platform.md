@@ -380,6 +380,61 @@ if (chromeVersion !== null && chromeVersion < MIN_SUMMARIZER_CHROME_VERSION) {
 
 主な使用箇所: `src/lib/browser-summarizer.ts#MIN_SUMMARIZER_CHROME_VERSION` / `src/lib/browser-translator.ts#MIN_TRANSLATOR_CHROME_VERSION`
 
+### 派生ケース: 複数ファイルで重複している「Chromium 検出 + SSR ガード」ブロックは共通 helper に集約する
+
+`browser-summarizer.ts` / `browser-translator.ts` 等の **複数のブラウザ AI ラッパーが同一の Chromium 検出ブロック** (SSR ガード `typeof navigator !== "undefined"` + `/Chrome\//.test(navigator.userAgent)` + バージョン比較) を持つとき、各ファイルに同コードを重複させると、検出ロジック変更 (新 Edge 対応 / SSR 判定方法変更等) が 1 箇所で済まなくなる。共通 helper (`checkChromiumCompatibility`) に集約することで変更箇所を 1 箇所に限定する。
+
+```typescript
+// アンチパターン: browser-summarizer.ts と browser-translator.ts で同形 8 行重複
+// browser-summarizer.ts
+const isChromiumBased = typeof navigator !== "undefined" && /Chrome\//.test(navigator.userAgent);
+if (!isChromiumBased) return { available: false, reason: "not-chromium" };
+const chromeVersion = getChromeVersionSafe();
+if (chromeVersion !== null && chromeVersion < MIN_SUMMARIZER_CHROME_VERSION) {
+  return { available: false, reason: "chrome-too-old" };
+}
+
+// browser-translator.ts — 同形ブロックを再定義
+const isChromiumBased = typeof navigator !== "undefined" && /Chrome\//.test(navigator.userAgent);
+if (!isChromiumBased) return { available: false, reason: "not-chromium" };
+const chromeVersion = getChromeVersionSafe();
+if (chromeVersion !== null && chromeVersion < MIN_TRANSLATOR_CHROME_VERSION) {
+  return { available: false, reason: "chrome-too-old" };
+}
+
+// 修正パターン: browser-ai-common.ts に checkChromiumCompatibility を集約
+// SSR ガード (typeof navigator) も内包
+export function checkChromiumCompatibility(
+  minVersion: number,
+): { compatible: true } | { compatible: false; reason: "not-chromium" | "chrome-too-old" } {
+  const isChromiumBased = typeof navigator !== "undefined" && /Chrome\//.test(navigator.userAgent);
+  if (!isChromiumBased) return { compatible: false, reason: "not-chromium" };
+  const chromeVersion = getChromeVersionSafe();
+  if (chromeVersion !== null && chromeVersion < minVersion) {
+    return { compatible: false, reason: "chrome-too-old" };
+  }
+  return { compatible: true };
+}
+
+// 各 wrapper は 1 行の呼び出しに簡素化
+const compat = checkChromiumCompatibility(MIN_SUMMARIZER_CHROME_VERSION);
+if (!compat.compatible) return { available: false, reason: compat.reason };
+```
+
+**How to apply**: 新規ブラウザ AI API ラッパーを追加するとき、または既存ラッパーで Chromium 検出ブロックを書こうとしたとき (SSR ガード内包の検出ブロックはプロジェクト全体で統一仕様が必要で、各ファイルで独自定義すると SSR 判定方法変更時に N 箇所修正が発生する):
+
+1. **`src/lib/browser-ai-common.ts` の `checkChromiumCompatibility` を使う** (新規ファイルに同形ブロックを書かない)
+2. **戻り値の discriminated union** (`{ compatible: true }` / `{ compatible: false; reason }`) を活用して呼び出し元で `if (!compat.compatible) return { available: false, reason: compat.reason };` で返す
+3. **SSR ガードは `checkChromiumCompatibility` 内に内包済** のため caller 側に `typeof navigator` チェックを別途書かない
+4. **新規 browser compat 判定ロジック** (OS detection / Safari version 等) を追加する場合も `browser-ai-common.ts` に追記して集約を維持
+
+**反例 (helper 化不要なケース)**:
+
+- Chromium 検出が **1 ファイル限定** (他ファイルでの流用予定なし) → inline で OK、将来 2 ファイル目が出たタイミングで集約
+- **Chromium 以外の検出** (Safari / Firefox / iOS) で `checkChromiumCompatibility` の仕様と異なる → 別 helper に切り出す
+
+主な使用箇所: `src/lib/browser-ai-common.ts#checkChromiumCompatibility` — `browser-summarizer.ts` / `browser-translator.ts` の重複 8 行ブロックを 1 箇所に集約、SSR ガード (`typeof navigator !== "undefined"`) も内包
+
 ## 本番環境のデバッグは「localStorage gate + 専用 debug ヘルパー」で出す
 
 ユーザー報告のバグが「本番でしか再現しない」「DevTools 開いても何も出ない」状態のとき、原因究明には本番環境での詳細ログが必要だが、**全ユーザーの DevTools を恒常的に汚す** のは UX 上 NG。
