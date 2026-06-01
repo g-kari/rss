@@ -29,6 +29,7 @@ function CategorySectionImpl({
   for (const [cat, catFeeds] of categoryGroups) {
     const isCollapsed = collapsedCategories.has(cat);
     const catUnread = catFeeds.reduce((sum, f) => sum + (unreadByFeed.get(f.id) ?? 0), 0);
+    const catContentId = `category-${cat}-content`;
     elements.push(
       <button
         key={`cat-header-${cat}`}
@@ -37,6 +38,7 @@ function CategorySectionImpl({
         title={isCollapsed ? "展開" : "折りたたむ"}
         aria-expanded={!isCollapsed}
         aria-label={isCollapsed ? `${cat} を展開` : `${cat} を折りたたむ`}
+        aria-controls={catContentId}
       >
         <svg
           width="10"
@@ -60,11 +62,11 @@ function CategorySectionImpl({
         )}
       </button>,
     );
-    if (!isCollapsed) {
-      catFeeds.forEach((feed, i) => {
-        elements.push(renderFeed(feed, false, offset + i));
-      });
-    }
+    elements.push(
+      <div key={`cat-content-${cat}`} id={catContentId} hidden={isCollapsed || undefined}>
+        {catFeeds.map((feed, i) => renderFeed(feed, false, offset + i))}
+      </div>,
+    );
     offset += catFeeds.length;
   }
 

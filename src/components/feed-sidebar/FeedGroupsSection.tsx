@@ -216,6 +216,7 @@ function FeedGroupsSectionImpl({
                 title={isCollapsed ? "展開" : "折りたたむ"}
                 aria-label={isCollapsed ? `${group.name} を展開` : `${group.name} を折りたたむ`}
                 aria-expanded={!isCollapsed}
+                aria-controls={`group-${group.id}-content`}
               >
                 <svg
                   width="10"
@@ -460,14 +461,15 @@ function FeedGroupsSectionImpl({
                 {editError}
               </div>
             )}
-            {!isCollapsed &&
-              feeds.length > 0 &&
-              feeds.map((feed, i) => <div key={feed.id}>{renderFeed(feed, startIdx + i)}</div>)}
-            {!isCollapsed && feeds.length === 0 && (
-              <div className="px-8 py-1 text-[10px] text-text-faint">
-                フィードメニューから「グループに移動」で追加できます
-              </div>
-            )}
+            <div id={`group-${group.id}-content`} hidden={isCollapsed || undefined}>
+              {feeds.length > 0
+                ? feeds.map((feed, i) => <div key={feed.id}>{renderFeed(feed, startIdx + i)}</div>)
+                : !isCollapsed && (
+                    <div className="px-8 py-1 text-[10px] text-text-faint">
+                      フィードメニューから「グループに移動」で追加できます
+                    </div>
+                  )}
+            </div>
           </div>
         );
       })}
