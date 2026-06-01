@@ -36,7 +36,7 @@ export async function sha256Hex(text: string): Promise<string> {
 }
 
 /** ユーザーデータの R2 キーを生成する汎用ヘルパー */
-const userKey = (userId: string, name: string): string => `users/${userId}/${name}`;
+export const userKey = (userId: string, name: string): string => `users/${userId}/${name}`;
 
 export const userPushKey = (userId: string) => userKey(userId, "push.json");
 export const savedArticlesKey = (userId: string) => userKey(userId, "saved.json");

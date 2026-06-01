@@ -74,7 +74,7 @@ function walkJsonLd(node: unknown, urls: Set<string>): void {
 
 function collectImageUrls(image: unknown, urls: Set<string>): void {
   if (typeof image === "string") {
-    if (isHttpUrl(image)) urls.add(image);
+    if (isAbsoluteHttpUrl(image.trim())) urls.add(image);
     return;
   }
   if (Array.isArray(image)) {
@@ -87,10 +87,6 @@ function collectImageUrls(image: unknown, urls: Set<string>): void {
     if (typeof obj.url === "string") collectImageUrls(obj.url, urls);
     if (typeof obj.contentUrl === "string") collectImageUrls(obj.contentUrl, urls);
   }
-}
-
-function isHttpUrl(s: string): boolean {
-  return isAbsoluteHttpUrl(s.trim());
 }
 
 /**

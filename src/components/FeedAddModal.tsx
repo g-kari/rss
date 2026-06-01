@@ -161,7 +161,6 @@ export default function FeedAddModal({
             onClick={() => onCookieOpenChange(!cookieOpen)}
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
             aria-expanded={cookieOpen}
-            aria-controls="feed-add-cookie-section"
             aria-label={cookieOpen ? "Cookie 設定を閉じる" : "Cookie を設定（任意）"}
           >
             <span aria-hidden="true">{cookieOpen ? "▾" : "▸"}</span>
@@ -190,7 +189,6 @@ export default function FeedAddModal({
             onClick={() => onCssSelectorOpenChange(!cssSelectorOpen)}
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
             aria-expanded={cssSelectorOpen}
-            aria-controls="feed-add-selector-section"
             aria-label={
               cssSelectorOpen
                 ? "CSS セレクタ設定を閉じる"

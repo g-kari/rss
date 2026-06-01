@@ -4,6 +4,8 @@ import { devError } from "../lib/dev-log";
 import { scoreFeedEngagement, topScoredFeeds } from "../lib/engagement-score";
 import { useAsyncFetch } from "./useAsyncFetch";
 
+const EMPTY_FEED_ORDER = Object.freeze([] as string[]) as string[];
+
 /**
  * ダイジェストモード向けに engagement score 順で並べたフィード ID 配列を取得する hook。`/api/engagement` から取得して memo 化。
  * @param user - ログイン中ユーザー (null / undefined のときは fetch を skip)
@@ -19,5 +21,5 @@ export function useDigestFeedOrder(user: UserProfile | null | undefined): string
     },
     onError: (msg) => devError("[useDigestFeedOrder] engagement fetch failed", msg),
   });
-  return data ?? [];
+  return data ?? EMPTY_FEED_ORDER;
 }
