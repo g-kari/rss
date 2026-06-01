@@ -32,7 +32,7 @@
     "@tanstack/react-virtual": "^3.13.25",
     "fast-xml-parser": "^5.8.0",
     "highlight.js": "^11.11.1",
-    "katex": "^0.16.46",
+    "katex": "^0.17.0",
     "linkedom": "^0.18.12",
     "marked": "^18.0.4",
     "onnxruntime-web": "^1.26.0",
