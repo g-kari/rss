@@ -151,7 +151,7 @@ export default function ArticleHeaderEngagement({
             }
           }}
           title={note ? "メモを編集" : "メモを追加"}
-          ariaLabel="メモ"
+          ariaLabel={note ? "メモを編集" : "メモを追加"}
           activeClass="text-amber-400 hover:text-text-muted"
           inactiveClass="text-text-faint hover:text-amber-400"
         >

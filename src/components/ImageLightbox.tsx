@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, type KeyboardEvent } from "react";
+import { useCallback, useId, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
@@ -33,6 +33,7 @@ export default function ImageLightbox({
   onClose,
   onSelectArticle,
 }: ImageLightboxProps) {
+  const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
 
   usePopupLock();
@@ -73,12 +74,15 @@ export default function ImageLightbox({
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      aria-label="画像拡大表示"
+      aria-labelledby={titleId}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
       className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center outline-none"
       onClick={handleBackgroundClick}
     >
+      <h2 id={titleId} className="sr-only">
+        画像拡大表示
+      </h2>
       {/* 閉じるボタン (右上) */}
       <button
         type="button"
