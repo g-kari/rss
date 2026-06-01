@@ -29,3 +29,12 @@ export function getChromeVersionSafe(): number | null {
   if (typeof navigator === "undefined") return null;
   return parseChromeMajorVersion(navigator.userAgent);
 }
+
+/**
+ * Summarizer / Translator 等のブラウザ組み込み AI API が stable で利用可能になった
+ * 最低 Chrome メジャーバージョン (公式: 138)。
+ *
+ * 各 API ファイル (`browser-summarizer.ts` / `browser-translator.ts`) は
+ * このファイルを canonical 定義として re-export alias を使用する。
+ */
+export const MIN_BROWSER_AI_CHROME_VERSION = 138;

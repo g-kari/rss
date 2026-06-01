@@ -9,7 +9,11 @@
 
 import { isLikelyJapanese } from "./article-utils";
 import { devError } from "./dev-log";
-import { getChromeVersionSafe, shouldUseBrowserAi } from "./browser-ai-common";
+import {
+  getChromeVersionSafe,
+  shouldUseBrowserAi,
+  MIN_BROWSER_AI_CHROME_VERSION,
+} from "./browser-ai-common";
 import type { BrowserAiAvailability } from "./browser-ai-common";
 
 type Availability = BrowserAiAvailability;
@@ -39,8 +43,8 @@ declare global {
   }
 }
 
-/** Translator API が stable で利用可能になった最低 Chrome メジャーバージョン (公式: 138)。 */
-export const MIN_TRANSLATOR_CHROME_VERSION = 138;
+/** Translator API が stable で利用可能になった最低 Chrome メジャーバージョン。`browser-ai-common.ts` の canonical 定義への re-export alias。 */
+export const MIN_TRANSLATOR_CHROME_VERSION = MIN_BROWSER_AI_CHROME_VERSION;
 
 /** Translator API が window 上に実装されているかをチェックする。 */
 export function isTranslatorApiSupported(): boolean {
