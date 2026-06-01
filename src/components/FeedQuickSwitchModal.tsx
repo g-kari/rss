@@ -145,6 +145,7 @@ export default function FeedQuickSwitchModal({
             role="combobox"
             aria-autocomplete="list"
             aria-expanded="true"
+            aria-haspopup="listbox"
             aria-controls="feed-quick-listbox"
             aria-activedescendant={filtered[cursor] ? `feed-quick-option-${cursor}` : undefined}
             className="flex-1 bg-transparent text-[13px] text-text-strong placeholder-text-faint outline-none"

@@ -43,72 +43,78 @@ const AUDIT_SCHEMA = {
 
 phase("実装+監査");
 
-// ====================================================================
-// Issue #1021: Codex 対応 — AGENTS.md シンボリックリンク作成
-// ====================================================================
 const implPrompt = [
   "あなたは RSS リーダープロジェクト (" + REPO + ") の実装担当エージェントです。",
   "以下の Issue を順番に実装し、各 Issue ごとに独立した commit を作成してください。",
   "各変更後に cd " +
     REPO +
-    " && pnpm run check && pnpm run typecheck を実行してから commit すること",
+    " && pnpm run check && pnpm run typecheck を実行してから commit すること。",
+  "pre-commit hook が走るので SKIP=e2e-test git commit を使うこと (e2e は wrangler 認証が必要なため)。",
+  "commit 後は必ず git log --oneline -1 で commit hash を確認してから次に進むこと。",
   "",
-  "=== Issue #1021: Codex 対応 — CLAUDE.md 制御ファイルの Codex 用シンボリックリンク ===",
-  "背景: Claude Code は CLAUDE.md を制御ファイルとして使用するが、OpenAI Codex CLI は AGENTS.md を使用する。",
-  "  同じ内容を両ツールで利用できるようにシンボリックリンクを作成する。",
+  "=== Issue #1043: a11y: FeedQuickSwitchModal と SearchBar の combobox に aria-haspopup='listbox' が欠落 (WAI-ARIA 1.2) ===",
+  "背景: FeedQuickSwitchModal.tsx:145 と SearchBar.tsx:171 の role='combobox' に aria-haspopup='listbox' が欠落。",
+  "  WAI-ARIA 1.2 §6.6.1 では combobox のポップアップが listbox の場合 aria-haspopup='listbox' が必須。",
   "",
   "実装手順:",
   "1. cd " + REPO,
-  "2. AGENTS.md が存在しないか確認: ls AGENTS.md 2>/dev/null || echo 'not found'",
-  "3. 存在しない場合、相対シンボリックリンク作成: ln -sf CLAUDE.md AGENTS.md",
-  "4. 確認: ls -la AGENTS.md",
-  "5. git add AGENTS.md && git commit -m 'feat: AGENTS.md → CLAUDE.md シンボリックリンク追加 (Codex 対応, closes #1021)'",
-  "6. git push origin master",
-  "7. Issue クローズコメント投稿:",
-  "   gh issue comment 1021 --body '> 🤖 **AI 投稿 (Claude Code)** — Issue #1021 対応完了。\\n\\n## 対応内容\\n\\n`AGENTS.md → CLAUDE.md` シンボリックリンクを追加しました。\\n\\nOpenAI Codex CLI は `AGENTS.md` を制御ファイルとして参照するため、既存の `CLAUDE.md` へのシンボリックリンクを作成することで同一の設定・ルールを両ツールで共有できます。\\n\\n## 確認方法\\n\\n```bash\\nls -la AGENTS.md\\n# AGENTS.md -> CLAUDE.md と表示されること\\n```\\n\\n## commit\\n\\n`git log --oneline -1` で確認してください。'",
+  "2. FeedQuickSwitchModal.tsx の combobox 確認:",
+  "   grep -n 'role=\"combobox\"\\|aria-haspopup\\|aria-expanded' src/components/FeedQuickSwitchModal.tsx | head -10",
+  "3. SearchBar.tsx の combobox 確認:",
+  "   grep -n 'role=\"combobox\"\\|aria-haspopup\\|aria-expanded' src/components/article-list-header/SearchBar.tsx | head -10",
+  "4. 両ファイルの role='combobox' 要素に aria-haspopup='listbox' を追加",
+  "   (既存の aria-expanded / aria-controls の後に追加するのが自然)",
+  "5. pnpm run check && pnpm run typecheck",
+  "6. SKIP=e2e-test git commit -m 'a11y: FeedQuickSwitchModal / SearchBar の combobox に aria-haspopup=\"listbox\" 追加 (WAI-ARIA 1.2, closes #1043)'",
+  "7. git log --oneline -1 で commit hash を確認して記録",
+  "8. git push origin master",
+  "9. Issue クローズコメント投稿:",
+  '   gh issue comment 1043 --body \'> 🤖 **AI 投稿 (Claude Code)** — #1043 対応完了。\n\n## 対応内容\n\n`FeedQuickSwitchModal.tsx` と `SearchBar.tsx` の `role="combobox"` 要素に `aria-haspopup="listbox"` を追加しました。\n\nWAI-ARIA 1.2 §6.6.1 に従い、listbox をポップアップとして持つ combobox に必須属性を付与。\n\nmaster 反映済み。自動デプロイされます。\'',
   "",
-  "=== Issue #946: スヌーズショートカット — Case B 確定クローズ ===",
-  "背景: #619 でユーザーが「処理残していいけどオミットします。」と明示。スヌーズ shortcut は意図的にオミット済み。",
-  "  Case B (現状維持) が #619 のユーザー判断で確定しているため、Issue をクローズする。",
+  "=== Issue #1042: a11y: EngagementSegmentButton のデスクトップタッチターゲットに lg:min-w/h-[24px] が未設定 (WCAG 2.5.8) ===",
+  "背景: EngagementSegmentButton.tsx:42 の className にモバイル向け min-w/h-[44px] はあるがデスクトップ向け lg:min-w/h-[24px] がない。",
+  "  commit 56f7c87f で ToggleIconButton に同じクラスを追加済み (canonical pattern)。",
   "",
   "実装手順:",
-  "1. needs-user-decision ラベル解除: gh issue edit 946 --remove-label needs-user-decision",
-  "2. クローズコメント投稿:",
-  "   gh issue comment 946 --body '> 🤖 **AI 投稿 (Claude Code)** — #619 のユーザー判断を確認。\\n\\n## 判断確定: 案 B（現状維持）\\n\\n#619 「スヌーズ機能いる？」でユーザーが「処理残していいけどオミットします。」と明示されていました。\\nスヌーズショートカット `z` は意図的なオミットであることが確認できたため、本 Issue は **案 B（現状維持）** として完了とします。\\n\\nバックエンド実装 (`snoozeArticle` / `snoozedUntil`) は将来再有効化する選択肢として残っています。'",
-  "3. Issue クローズ: gh issue close 946",
+  "1. cd " + REPO,
+  "2. EngagementSegmentButton.tsx の現状確認:",
+  "   grep -n 'className\\|min-w\\|min-h' src/components/article-view/EngagementSegmentButton.tsx",
+  "3. ToggleIconButton の canonical pattern 確認:",
+  "   grep -n 'lg:min-w\\|lg:min-h' src/components/article-view/ToggleIconButton.tsx",
+  "4. EngagementSegmentButton.tsx に lg:min-w-[24px] lg:min-h-[24px] を追加",
+  "   (モバイル向け max-md:min-w-[44px] max-md:min-h-[44px] と対で追加する)",
+  "5. pnpm run check && pnpm run typecheck",
+  "6. SKIP=e2e-test git commit -m 'a11y: EngagementSegmentButton デスクトップタッチターゲット lg:min-w/h-[24px] 追加 (WCAG 2.5.8, closes #1042)'",
+  "7. git log --oneline -1 で commit hash を確認して記録",
+  "8. git push origin master",
+  "9. Issue クローズコメント投稿:",
+  "   gh issue comment 1042 --body '> 🤖 **AI 投稿 (Claude Code)** — #1042 対応完了。\n\n## 対応内容\n\n`EngagementSegmentButton.tsx` に `lg:min-w-[24px] lg:min-h-[24px]` を追加しました。\n\n`ToggleIconButton` (commit `56f7c87f`) と同じデスクトップタッチターゲット最小値を明示的に設定。\n\nmaster 反映済み。自動デプロイされます。'",
   "",
-  "=== Issue #908: /api/articles サーバーサイド全文検索 — 案 A / 案 B コスト試算 ===",
-  "背景: ユーザーが「A,Bで試算して」とコメント。R2 コストを試算してから実装判断をする必要がある。",
+  "=== Issue #1039 の部分対応: SortButton SVG aria-hidden 追加 (問題 1 のみ) ===",
+  "背景: #1039 には 3 つの問題があり、問題 1 (SVG aria-hidden) のみ自走可能。",
+  "  問題 2 (aria-pressed) と問題 3 (touch target) は UX 判断が必要なので手をつけない。",
   "",
-  "試算して以下コメントを投稿してください:",
-  "gh issue comment 908 --body '<試算結果>",
-  "試算内容:",
-  "- 案 A (GET /api/articles?q=...): R2 全ページスキャンコスト",
-  "  * PAGE_SIZE=500 × MAX_PAGES=500 = 最大 250,000 記事",
-  "  * 1 検索 = 最大 500 R2 Class B 操作 (読み取り)",
-  "  * R2 Class B: $0.36 / 100万操作",
-  "  * 1 検索あたりコスト: 500 / 1,000,000 × $0.36 = $0.00018",
-  "  * 月 1,000 回検索: $0.18/月 (R2 コストのみ)",
-  "  * 懸念: 全ページ逐次読み取りなので応答遅延が大きい",
+  "実装手順:",
+  "1. cd " + REPO,
+  "2. SortButton.tsx の SVG を確認:",
+  "   grep -n '<svg\\|aria-hidden' src/components/article-list-header/SortButton.tsx",
+  "3. 3 つの SVG (line 26, 39, 52 付近) に aria-hidden='true' を追加",
+  "4. pnpm run check && pnpm run typecheck",
+  "5. SKIP=e2e-test git commit -m 'a11y: SortButton SVG に aria-hidden=\"true\" 追加 (#1039 問題 1/3 対応)'",
+  "   (closes キーワードは付けない。問題 2/3 が残っているため Issue はクローズしない)",
+  "6. git log --oneline -1 で commit hash を確認して記録",
+  "7. git push origin master",
+  "8. Issue に部分対応コメント投稿:",
+  "   gh issue comment 1039 --body '> 🤖 **AI 投稿 (Claude Code)** — #1039 問題 1 (SVG aria-hidden) 自走対応。\n\n## 問題 1 対応済み (commit を確認)\n\n`SortButton.tsx` の 3 つのインライン SVG に `aria-hidden=\"true\"` を追加しました。\n\n## 残課題 (問題 2/3)\n\n- **問題 2**: `aria-pressed` — `sortOrder` 状態の機械可読表現。UX 判断 (どのボタンに aria-pressed をどの値で付与するか) が必要。\n- **問題 3**: モバイルタッチターゲット 44px 拡大 — 既存 class 構成との兼ね合いで UX 判断が必要。\n\n引き続き needs-user-decision 状態を維持します。'",
   "",
-  "- 案 B (KV 転置インデックス): KV 書き込み/読み取りコスト",
-  "  * Cron (30分ごと) での KV 書き込み: KV write = $5 / 100万操作",
-  "  * インデックス更新頻度: 48回/日 × 30日 = 1,440回/月",
-  "  * KV 1MB/key 上限: 250,000 記事の転置インデックスは複数 key 分割必須",
-  "  * 実装複雑度が高く、KV 書き込みコストが蓄積する",
-  "  * 月インデックス更新コスト試算: 1,440 × (分割 key 数) / 1,000,000 × $5",
-  "",
-  "バナー: > 🤖 **AI 投稿 (Claude Code)** から始めること",
-  "コメントに試算数値と推奨案を明記し、実装前にユーザー確認を促すこと",
-  "",
-  "=== 最後に push ===",
-  "cd " + REPO + " && git status",
+  "=== 最後に push 確認 ===",
+  "cd " + REPO + " && git status && git log --oneline -5",
 ].join("\n");
 
 const [implResult, auditResults] = await parallel([
   () =>
     agent(implPrompt, {
-      label: "実装エージェント",
+      label: "実装エージェント (#1043 + #1042 + #1039 部分)",
       phase: "実装+監査",
       schema: IMPL_SCHEMA,
     }),
@@ -121,6 +127,7 @@ const [implResult, auditResults] = await parallel([
             ") の simplify/dead code 観点で監査を実施してください。" +
             "未使用 export, 重複ロジック, 不要な thin wrapper を探してください。" +
             "same-file internal caller と spec 参照も必ず確認してから dead と判定してください。" +
+            "以下はすでに対応済み Issue のため除外してください: #1034, #1035, #1036, #1037, #1038。" +
             "信頼度 80% 以上の finding のみ、最大 3 件を JSON で返してください。",
           {
             label: "simplify監査",
@@ -134,7 +141,10 @@ const [implResult, auditResults] = await parallel([
           "RSS リーダープロジェクト (" +
             REPO +
             ") の accessibility (a11y) 観点で監査を実施してください。" +
-            "ARIA 属性の欠落, focus trap, キーボードナビゲーション, タッチターゲット 44px 未満, 類似コンポーネント間の乖離を調査してください。" +
+            "ARIA 属性の欠落, focus trap, キーボードナビゲーション, タッチターゲット, 類似コンポーネント間の乖離を調査してください。" +
+            "以下はすでに対応済み・起票済みのため除外してください: " +
+            "ShareMenu/CollectionDropdown focus (#1035), GalleryContextMenu SVG (#1038), SortButton (#1039), " +
+            "BulkActionToolbar roving tabindex (#1040), FeedQuickSwitchModal/SearchBar aria-haspopup (#1043), EngagementSegmentButton (#1042)。" +
             "信頼度 80% 以上の finding のみ、最大 3 件を JSON で返してください。",
           {
             label: "a11y監査",
@@ -149,7 +159,7 @@ const [implResult, auditResults] = await parallel([
             REPO +
             ") の docs-drift 観点で監査を実施してください。" +
             "architecture.md に記載があるが実コードに存在しないファイル・シンボル、" +
-            "実コードにあるが docs に未記載の主要 hook / lib を調査してください。" +
+            "実コードにあるが docs に未記載の主要な新機能 hook / lib (2025年以降に追加されたもの優先) を調査してください。" +
             "信頼度 80% 以上の finding のみ、最大 3 件を JSON で返してください。",
           {
             label: "docs-drift監査",
@@ -185,9 +195,12 @@ if (allFindings.length > 0) {
     "RSS リポジトリ (" +
       REPO +
       ") で以下の監査 finding から GitHub Issue を起票してください。\n" +
-      "起票ルール: AI 起票バナー必須 ('> 🤖 AI 起票 (Claude Code)'), " +
-      "needs-user-decision ラベルは新規 dep/infra/UX 主観評価が必要なもののみ, " +
-      "実コードで false positive でないか必ず verify してから起票すること, 重複 Issue は起票しない, 最大 4 件\n\n" +
+      "起票ルール:\n" +
+      "- AI 起票バナー必須 ('> 🤖 AI 起票 (Claude Code)')\n" +
+      "- needs-user-decision ラベルは新規 dep/infra/UX 主観評価が必要なもののみ\n" +
+      "- 実コードで false positive でないか必ず verify してから起票\n" +
+      "- 重複 Issue は起票しない (gh issue list --state open で確認)\n" +
+      "- 最大 4 件\n\n" +
       "Findings:\n" +
       JSON.stringify(allFindings, null, 2),
     { label: "新規Issue起票", phase: "起票" },
@@ -201,12 +214,13 @@ await agent(
     REPO +
     ") で今回実装した内容から学んだパターンを .claude/rules に反映してください。\n\n" +
     "今回の実装内容:\n" +
-    "1. #1021: AGENTS.md → CLAUDE.md シンボリックリンクで Codex 対応\n" +
-    "2. #946: #619 ユーザー判断 (オミット確定) を確認して Case B で Issue クローズ\n" +
-    "3. #908: R2 コスト試算コメント投稿 (案 A / 案 B 比較)\n\n" +
+    "1. #1043: FeedQuickSwitchModal / SearchBar combobox に aria-haspopup='listbox' 追加 (WAI-ARIA 1.2)\n" +
+    "2. #1042: EngagementSegmentButton に lg:min-w/h-[24px] 追加 (WCAG 2.5.8)\n" +
+    "3. #1039 問題 1: SortButton SVG に aria-hidden='true' 追加 (問題 2/3 は needs-user-decision 継続)\n\n" +
     "既存ルールと重複する内容は追加しないこと。新しいパターンのみ追記。\n" +
-    "変更した場合は git add + commit + push してください。",
+    "変更した場合は git add + commit + push してください。\n" +
+    "変更がなければ何もしなくて構いません。",
   { label: "retrospective-codify", phase: "回顧" },
 );
 
-return { success: true, implementedIssues: ["#1021", "#946", "#908"] };
+return { success: true, implementedIssues: ["#1043", "#1042", "#1039-partial"] };

@@ -171,6 +171,7 @@ export default function SearchBar() {
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={listboxOpen}
+        aria-haspopup="listbox"
         aria-controls={listboxOpen ? "search-suggestion-listbox" : undefined}
         aria-activedescendant={activeDescendantId}
         className="w-full text-[12px] bg-surface-base border border-border-default rounded-lg pl-2.5 pr-9 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
