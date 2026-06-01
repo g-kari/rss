@@ -40,7 +40,7 @@ export default function FocusModeOverlay({ focusMode, exitFocusMode, articleView
       </h2>
       <button
         onClick={exitFocusMode}
-        className="absolute top-4 right-4 z-10 p-2 text-text-faint hover:text-text-muted transition-colors duration-200"
+        className="absolute top-4 right-4 z-10 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-text-faint hover:text-text-muted transition-colors duration-200"
         aria-label="フォーカスモード終了"
         title="フォーカスモード終了 (Esc)"
       >

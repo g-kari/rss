@@ -105,6 +105,7 @@ export default function SnoozeModal({ articleTitle, onSnooze, onClose, returnFoc
         {options.map((opt) => (
           <button
             key={opt.label}
+            type="button"
             onClick={() => {
               onSnooze(opt.durationMs);
               onClose();
@@ -128,6 +129,7 @@ export default function SnoozeModal({ articleTitle, onSnooze, onClose, returnFoc
             className="w-full px-2 py-1.5 text-[13px] bg-surface-subtle text-text-strong border border-border-default rounded-md focus:outline-none focus:border-ink"
           />
           <button
+            type="button"
             onClick={() => {
               if (!customValid) return;
               onSnooze(customMs);

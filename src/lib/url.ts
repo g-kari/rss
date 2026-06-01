@@ -267,12 +267,8 @@ export function isAbsoluteHttpUrl(s: string): boolean {
  * hostname を正確に検証する。
  */
 export function isZennDevUrl(pageUrl: string): boolean {
-  try {
-    const h = new URL(pageUrl).hostname;
-    return h === "zenn.dev" || h.endsWith(".zenn.dev");
-  } catch {
-    return false;
-  }
+  const h = tryParseBase(pageUrl)?.hostname;
+  return !!h && (h === "zenn.dev" || h.endsWith(".zenn.dev"));
 }
 
 /** pageUrl を URL オブジェクトにパースする。無効・空の場合は null を返す。 */

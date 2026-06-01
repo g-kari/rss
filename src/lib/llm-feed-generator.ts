@@ -168,7 +168,10 @@ export async function inferSelectors(
     if (!isParsedHtmlResult(testParsed)) return null;
     try {
       testParsed.document.querySelectorAll(parsed.articleLink);
-    } catch {
+    } catch (err) {
+      devError("[llm-feed-generator] LLM selector failed querySelectorAll validation", {
+        selector: parsed.articleLink,
+      });
       return null;
     }
 
