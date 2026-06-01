@@ -245,3 +245,157 @@ function usePrefetch({ maxPrefetch = 200 }: Options) {
 - SVG が **button / link の唯一のコンテンツ** で、ラベルテキストがない → `aria-label` を button 側に付けた上でアイコン SVG には `aria-hidden` 付与
 
 主な使用箇所: `GalleryContextMenu.tsx` — 5 件の `role="menuitem"` 内 SVG に `aria-hidden="true"` 追加 (`ArticleContextMenu.tsx` canonical パターンの横展開)
+
+## アイコン専用ボタンの SVG には `aria-hidden="true"` を付ける
+
+`role="menuitem"` に限らず、**`aria-label` を持つボタン (`<button aria-label="...">`) の唯一コンテンツがインライン SVG の場合**も `aria-hidden="true"` が必要。付けないとスクリーンリーダーが `aria-label` に加えて SVG の内容 (path data / group 等) を重複して読み上げたり「グラフィック」を余分にアナウンスしたりする。
+
+```tsx
+// アンチパターン: aria-label あるのに SVG に aria-hidden なし → 重複読み上げ
+<button
+  aria-label="現在: 新しい順 — 古い順に切り替え (s)"
+>
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor">
+    <path d="M6 1v10M2 7l4 4 4-4" />
+  </svg>
+</button>
+
+// 修正パターン: aria-hidden="true" でスクリーンリーダーから SVG を隠す
+<button
+  aria-label="現在: 新しい順 — 古い順に切り替え (s)"
+>
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+    aria-hidden="true">
+    <path d="M6 1v10M2 7l4 4 4-4" />
+  </svg>
+</button>
+```
+
+`role="menuitem"` 内 SVG のルール (`ui-rendering.md § role="menuitem" 内の装飾的 SVG...`) と合わせて、**「ボタンのラベルは `aria-label` または可視テキストが担う → SVG は装飾に徹する」** が原則。
+
+**How to apply**: `aria-label` を持つボタンにインライン SVG を配置するとき (`aria-label` がスクリーンリーダーに伝えるラベルと SVG の implicit label が二重になるため `aria-hidden` で SVG を明示除外する):
+
+1. **ボタンに `aria-label` または `aria-labelledby` があるか確認** — ある場合、内部 SVG はすべて装飾扱い
+2. 各 `<svg>` タグに `aria-hidden="true"` を追加
+3. **例外**: SVG が `<title>` や `aria-label` で固有の意味を持ち、ボタン全体のラベルと異なる補足情報を提供する場合は `aria-hidden` 不要 (ただし本プロジェクトでそのケースは稀)
+4. **canonical sweep**:
+   ```bash
+   grep -rEn 'aria-label=' src/components/ | grep '<button\|<a ' | grep -v 'aria-hidden' | head -10
+   # 各 hit のインライン SVG が aria-hidden を持つか確認
+   ```
+
+**反例 (`aria-hidden` が不要なケース)**:
+
+- ボタンに可視テキストラベルがあり SVG はその視覚的補完 (例: `<button>保存 <svg .../></button>`) → `aria-hidden` 推奨だが省略しても major issue でない
+- SVG 自体に `<title>` または `aria-label` があり、ボタン外から参照される図形説明として機能する → `aria-hidden` 付けると情報が消える
+
+主な使用箇所: `SortButton.tsx` — `aria-label` を持つ sort 切替ボタンの 3 種類の SVG アイコンに `aria-hidden="true"` 追加
+
+## combobox input には WAI-ARIA APG の 5 属性セットを揃える
+
+`<input type="text">` を検索サジェスト・クイック切替の combobox として機能させるとき、WAI-ARIA APG (Authoring Practices Guide) の **combobox pattern** に従って 5 属性を揃える。1 つでも欠けるとスクリーンリーダーが listbox との関連を解釈できない。
+
+```tsx
+// アンチパターン: role="combobox" だけ宣言して他が不完全
+<input
+  role="combobox"
+  aria-expanded={open}
+  // aria-haspopup・aria-controls・aria-autocomplete・aria-activedescendant が欠落
+/>
+
+// 修正パターン: 5 属性フルセット
+<input
+  role="combobox"
+  aria-autocomplete="list"
+  aria-expanded={open}
+  aria-haspopup="listbox"
+  aria-controls={open ? "listbox-id" : undefined}
+  aria-activedescendant={highlightedItem ? `option-${highlightedIndex}` : undefined}
+/>
+// 対応する listbox:
+<div
+  id="listbox-id"
+  role="listbox"
+  aria-label="候補"
+>
+  {items.map((item, i) => (
+    <button
+      key={item.id}
+      id={`option-${i}`}
+      role="option"
+      aria-selected={i === cursor}
+    >
+      {item.label}
+    </button>
+  ))}
+</div>
+```
+
+**5 属性の意味**:
+
+| 属性                    | 値例                             | 役割                                               |
+| ----------------------- | -------------------------------- | -------------------------------------------------- |
+| `role="combobox"`       | (固定)                           | input が combobox であることを宣言                 |
+| `aria-autocomplete`     | `"list"`                         | 候補リストが表示される補完方式を宣言               |
+| `aria-expanded`         | `{open}`                         | listbox が開いているか (boolean state)             |
+| `aria-haspopup`         | `"listbox"`                      | 開くポップアップの role を宣言 (WAI-ARIA 1.2 必須) |
+| `aria-controls`         | `{open ? "listbox-id" : undef}`  | 関連 listbox の id を指定                          |
+| `aria-activedescendant` | `{option-${index} or undefined}` | 現在キーボードでハイライト中の option id           |
+
+`aria-haspopup="listbox"` は WAI-ARIA 1.2 で combobox に対して明示が求められており、省略すると古い仕様の `aria-haspopup="true"` (= menu を連想させる) と混同され NVDA / JAWS 等で誤った role アナウンスが起きる。
+
+**How to apply**: `<input>` に `role="combobox"` を付けるとき (5 属性の 1 つでも欠けると AT が listbox との関連を解釈できずキーボードナビが機能しない):
+
+1. **`role="combobox"` を付ける** — これだけで他の 4 属性の追加義務が発生すると認識する
+2. **`aria-haspopup="listbox"` を確認** — `"menu"` / `"true"` ではなく `"listbox"` を明示
+3. **`aria-controls`** に listbox の `id` を渡す — listbox が非表示のとき `undefined` に戻す
+4. **listbox 側の `id`** と `aria-controls` の値が一致することを確認
+5. **option 側の `id`** フォーマット (例: `option-${i}`) が `aria-activedescendant` のフォーマットと一致することを確認
+
+**canonical 実装**: `FeedQuickSwitchModal.tsx` (feed-quick-option-${i} / feed-quick-listbox) および `SearchBar.tsx` (search-suggestion-listbox)。
+
+**反例 (5 属性フルセットが不要なケース)**:
+
+- `<input>` に `role="combobox"` を付けない純粋な検索フォーム → combobox pattern 適用外
+- native `<select>` → ブラウザが暗黙に処理するため ARIA 属性不要
+- `aria-expanded` を常時 `true` に固定するケース (例: 常時表示 listbox) → `aria-controls` のみで OK だが `aria-haspopup` は記述すべき
+
+主な使用箇所: `FeedQuickSwitchModal.tsx:148` と `SearchBar.tsx:174` — combobox input に `aria-haspopup="listbox"` を含む 5 属性を追加し WAI-ARIA APG combobox pattern に準拠
+
+## モバイル 44px / デスクトップ 24px のタッチターゲット二重指定
+
+**WCAG 2.5.8 (Target Size Minimum)** に従い、モバイルでは 44px、デスクトップでは 24px のタッチターゲット最小寸法を確保する。Tailwind のブレークポイントで `max-md:` (モバイル) と `lg:` (デスクトップ) を組み合わせて両端末に対応する。
+
+```tsx
+// アンチパターン: モバイルのみ 44px でデスクトップ指定なし → デスクトップで 0px になりうる
+<button className="max-md:min-w-[44px] max-md:min-h-[44px] ...">
+
+// アンチパターン: デスクトップのみ指定 → モバイルでタッチターゲット不足
+<button className="lg:min-w-[24px] lg:min-h-[24px] ...">
+
+// 修正パターン: 両方を明示して全端末をカバー
+<button className="max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] ...">
+```
+
+**サイズ根拠**:
+
+| 端末                    | 最小タッチターゲット | 規準                                          |
+| ----------------------- | -------------------- | --------------------------------------------- |
+| モバイル (< 768px)      | 44 × 44 px           | WCAG 2.5.5 推奨 / Apple HIG / Material Design |
+| デスクトップ (≥ 1024px) | 24 × 24 px           | WCAG 2.5.8 Minimum / Pointer Accuracy を考慮  |
+
+デスクトップ 24px 指定は **ボタン寸法を 24px に強制する** のではなく、**クリックヒット領域の最小値を宣言する**もの。実際のビジュアルサイズ (SVG アイコン 12px 等) はコンテナの `flex items-center justify-center` で中央配置し、24px のクリック領域内に収める。
+
+**How to apply**: ヘッダー / ツールバー / セグメントボタン等の小さいアイコンボタンを実装するとき (モバイル 44px はタッチ精度確保、デスクトップ 24px は過剰な空白を防ぎながら WCAG 2.5.8 を満たす最小クリック領域):
+
+1. **ボタンが小さいアイコン (SVG 12-16px 程度) を単体で表示するか確認**
+2. Yes なら `max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px]` を className に追加
+3. **`flex items-center justify-center`** をセットで付けて内部アイコンを中央配置
+4. **モバイル専用 / デスクトップ専用の片方だけ追加するのは NG** — 両ブレークポイントをセットで管理する
+
+**反例 (二重指定が不要なケース)**:
+
+- ボタンに可視テキストラベルがあり元々のサイズが 24px 以上確保されている → 自然にターゲットを満たす
+- `padding` で十分なクリック領域がある (例: `py-2 px-4` で高さ 40px 確保) → min-h/w の追加は不要
+
+主な使用箇所: `EngagementSegmentButton.tsx` — 後で読む / ブックマーク / いいね 3 連トグルに `max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px]` を追加
