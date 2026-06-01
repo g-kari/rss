@@ -110,6 +110,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <circle cx="5" cy="5" r="4" />
           <line x1="5" y1="4" x2="5" y2="7" />
@@ -161,6 +162,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <path d="M1 2.5h4l1 1.5-1 1.5H1z" />
           <line x1="6" y1="4" x2="9" y2="4" />
@@ -189,6 +191,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <rect x="1" y="2" width="8" height="6" rx="1" />
           <line x1="1" y1="4" x2="9" y2="4" />
@@ -223,6 +226,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <rect x="1" y="1.5" width="8" height="7" rx="1" />
           <line x1="1" y1="4" x2="9" y2="4" />
@@ -252,6 +256,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <line x1="1" y1="2.5" x2="9" y2="2.5" />
           <line x1="1" y1="5" x2="7" y2="5" />
@@ -281,6 +286,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           {isMuted ? (
             <>
@@ -324,6 +330,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <path d="M5 1L6.5 4H9L7 6l.5 3L5 7.5 2.5 9 3 6 1 4h2.5z" />
         </svg>
@@ -344,6 +351,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <path d="M1.5 5l2.5 2.5L8.5 2.5" />
         </svg>
@@ -366,6 +374,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeLinecap="round"
           strokeLinejoin="round"
           className={loadingAction === "retry" ? "animate-spin" : ""}
+          aria-hidden="true"
         >
           <path d="M8.5 2A4 4 0 1 0 9 5.5" />
           <polyline points="7,0.5 8.5,2 7,3.5" />
@@ -392,6 +401,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           strokeLinecap="round"
           strokeLinejoin="round"
           className={loadingAction === "reinfer" ? "animate-spin" : ""}
+          aria-hidden="true"
         >
           <path d="M5 1a4 4 0 0 1 4 4" />
           <path d="M9 5a4 4 0 0 1-4 4" />
@@ -415,6 +425,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
+          aria-hidden="true"
         >
           <line x1="1" y1="1" x2="9" y2="9" />
           <line x1="9" y1="1" x2="1" y2="9" />
