@@ -36,6 +36,8 @@ interface GalleryContextMenuProps {
   onDeleteFromGallery: (id: string) => void;
   onSelectArticle: (article: Article) => void;
   onClose: () => void;
+  /** Escape / close 後にフォーカスを返す要素 (WCAG 2.4.3) */
+  returnFocusEl?: HTMLElement | null;
 }
 
 export default function GalleryContextMenu({
@@ -47,6 +49,7 @@ export default function GalleryContextMenu({
   onDeleteFromGallery,
   onSelectArticle,
   onClose,
+  returnFocusEl,
 }: GalleryContextMenuProps) {
   const { imageDlFolder, imageDlFolderNsfw } = useReaderSettings();
   const toast = useToast();
@@ -201,6 +204,7 @@ export default function GalleryContextMenu({
           e.preventDefault();
           e.stopPropagation();
           onClose();
+          returnFocusEl?.focus();
           break;
         }
         case "Tab": {
@@ -217,7 +221,7 @@ export default function GalleryContextMenu({
         }
       }
     },
-    [getItems, onClose],
+    [getItems, onClose, returnFocusEl],
   );
 
   const btnClass =

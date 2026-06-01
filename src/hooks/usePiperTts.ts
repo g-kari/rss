@@ -317,11 +317,6 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
             if (token !== playTokenRef.current) return;
             const errMsg = err instanceof Error ? err.message : String(err);
             const errName = err instanceof Error ? err.name : "";
-            const errStack = err instanceof Error ? err.stack : "";
-            console.error(
-              `[usePiperTts] synthesize failed voiceId=${voice.id} model=${voice.model} chunkIndex=${i}/${chunks.length}`,
-              { name: errName, message: errMsg, stack: errStack, raw: err },
-            );
             devError("[usePiperTts] synthesize failed", {
               voiceId: voice.id,
               chunkIndex: i,

@@ -402,7 +402,7 @@ export async function withSession(
   const requestId = crypto.randomUUID().slice(0, 8);
   const url = new URL(req.url);
   console.log(
-    `[access] ${req.method} ${url.pathname} userId=${result.session.userId} requestId=${requestId}`,
+    `[access] ${req.method} ${url.pathname} userId=${result.session.userId.slice(0, 8)} requestId=${requestId}`,
   );
   try {
     const response = await handler({ session: result.session, env, ctx });
@@ -527,7 +527,7 @@ export async function withBinarySession(
   const requestId = crypto.randomUUID().slice(0, 8);
   const url = new URL(req.url);
   console.log(
-    `[access] ${req.method} ${url.pathname} userId=${result.session.userId} requestId=${requestId}`,
+    `[access] ${req.method} ${url.pathname} userId=${result.session.userId.slice(0, 8)} requestId=${requestId}`,
   );
   try {
     const response = await handler({ session: result.session, env, ctx });

@@ -33,6 +33,7 @@ export default function BulkActionToolbar({
   const [showTagInput, setShowTagInput] = useState(false);
   const [tagInputValue, setTagInputValue] = useState("");
   const tagButtonRef = useRef<HTMLButtonElement>(null);
+  const snoozeButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleMarkRead = useCallback(() => {
     if (count === 0) return;
@@ -114,6 +115,7 @@ export default function BulkActionToolbar({
         )}
         {onBulkSnooze && (
           <button
+            ref={snoozeButtonRef}
             type="button"
             onClick={handleOpenSnooze}
             className="rounded-full bg-ink px-3 py-1 text-sm font-medium text-ink-text transition-all duration-200 hover:bg-ink-hover"
@@ -176,6 +178,7 @@ export default function BulkActionToolbar({
       {showSnoozeModal && onBulkSnooze && (
         <SnoozeModal
           articleTitle={`${count} 件の記事`}
+          returnFocusEl={snoozeButtonRef.current}
           onSnooze={(durationMs) => {
             onBulkSnooze([...selectedIds], durationMs);
             setShowSnoozeModal(false);
