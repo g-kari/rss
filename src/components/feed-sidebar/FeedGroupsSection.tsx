@@ -223,6 +223,7 @@ function FeedGroupsSectionImpl({
                   viewBox="0 0 10 10"
                   className={`transition-transform duration-150 ${isCollapsed ? "-rotate-90" : ""}`}
                   fill="currentColor"
+                  aria-hidden="true"
                 >
                   <path d="M5 7L1 3h8L5 7z" />
                 </svg>
