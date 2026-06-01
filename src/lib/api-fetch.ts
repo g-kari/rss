@@ -142,3 +142,14 @@ export async function apiFetchJson<T>(input: string, init?: RequestInit): Promis
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<T>;
 }
+
+/**
+ * エラーレスポンスのボディを JSON としてパースし、`code` / `error` フィールドを返す。
+ * パース失敗時は空オブジェクトを返す。
+ *
+ * @param res - パース対象の Response
+ * @returns `{ code?: string; error?: string }`
+ */
+export async function tryParseErrorBody(res: Response): Promise<{ code?: string; error?: string }> {
+  return (res.json() as Promise<{ code?: string; error?: string }>).catch(() => ({}));
+}

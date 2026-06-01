@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { apiFetch, apiFetchJson } from "../lib/api-fetch";
+import { apiFetch, apiFetchJson, tryParseErrorBody } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
 import { sortByOrder } from "../lib/sort-utils";
 import type { Collection, UserProfile } from "../types";
@@ -86,7 +86,7 @@ export function useCollections(
         body: JSON.stringify({ name: trimmed }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
+        const data = await tryParseErrorBody(res);
         if (data.code === "DUPLICATE_NAME") return { error: "同名のコレクションが既に存在します" };
         if (data.code === "COLLECTION_LIMIT_EXCEEDED")
           return { error: "コレクションの上限に達しました" };
@@ -109,7 +109,7 @@ export function useCollections(
         body: JSON.stringify({ name: trimmed }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
+        const data = await tryParseErrorBody(res);
         if (data.code === "DUPLICATE_NAME") return { error: "同名のコレクションが既に存在します" };
         return { error: data.error ?? "コレクション名の変更に失敗しました" };
       }

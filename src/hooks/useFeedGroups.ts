@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import type { FeedGroup, UserProfile } from "../types";
-import { apiFetch, apiFetchJson } from "../lib/api-fetch";
+import { apiFetch, apiFetchJson, tryParseErrorBody } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
 import { sortByOrder } from "../lib/sort-utils";
 import { useAsyncFetch } from "./useAsyncFetch";
@@ -83,7 +83,7 @@ export function useFeedGroups(
         body: JSON.stringify({ name: trimmed }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
+        const data = await tryParseErrorBody(res);
         if (data.code === "DUPLICATE_NAME") return { error: "同名のグループが既に存在します" };
         if (data.code === "FEED_GROUP_LIMIT_EXCEEDED")
           return { error: "グループの上限に達しました" };
@@ -106,7 +106,7 @@ export function useFeedGroups(
         body: JSON.stringify({ name: trimmed }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
+        const data = await tryParseErrorBody(res);
         if (data.code === "DUPLICATE_NAME") return { error: "同名のグループが既に存在します" };
         return { error: data.error ?? "グループ名の変更に失敗しました" };
       }
