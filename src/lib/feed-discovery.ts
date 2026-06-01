@@ -110,6 +110,7 @@ async function probeCommonFeedPaths(baseUrl: string): Promise<string | null> {
  */
 export async function discoverFeedUrl(url: string): Promise<string | null> {
   if (!isValidFeedUrl(url)) return null;
+  const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
   try {
     const res = await fetchFollowSafeRedirects(
       url,
@@ -134,7 +135,7 @@ export async function discoverFeedUrl(url: string): Promise<string | null> {
 
     return probeCommonFeedPaths(url);
   } catch (err) {
-    console.warn("[feed-discovery] discoverFeedUrl failed:", url, err);
+    console.warn("[feed-discovery] discoverFeedUrl failed:", logUrl, err);
     return null;
   }
 }

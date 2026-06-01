@@ -207,6 +207,7 @@ export async function inferFeedFromUrl(
   cookie?: string,
   excludeSelectors?: string[],
 ): Promise<{ selectors: SelectorConfig; siteTitle: string; siteUrl: string } | null> {
+  const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
   try {
     const headers: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
     if (cookie) headers["Cookie"] = cookie;
@@ -226,7 +227,7 @@ export async function inferFeedFromUrl(
   } catch (err) {
     // server-side external fetch + AI wrapper の silent fail を wrangler tail で観測可能化
     // (browser-platform.md § silent fallback 禁止 規範対象判定軸 / canonical: recommendation.ts)
-    console.warn("[llm-feed-generator] inferFeedFromUrl failed:", url, err);
+    console.warn("[llm-feed-generator] inferFeedFromUrl failed:", logUrl, err);
     return null;
   }
 }

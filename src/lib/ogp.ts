@@ -189,19 +189,21 @@ export async function fetchPageOgpMeta(
   url: string,
   timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS,
 ): Promise<OgpMetaWithError> {
+  const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
   const empty = { title: "", description: "", image: "" } as const;
   try {
     const fetchUrl = normalizeOgpFetchUrl(url);
+    const logFetchUrl = fetchUrl.replace(/[\r\n]/g, "").slice(0, 256);
     const headers = buildFetchHeaders(fetchUrl);
     const res = await fetchFollowSafeRedirects(fetchUrl, { headers }, timeoutMs);
     if (!res.ok) {
       console.error(
-        `[ogp] upstream not ok: url=${url} fetchUrl=${fetchUrl} status=${res.status} content-type="${res.headers.get("content-type") ?? ""}"`,
+        `[ogp] upstream not ok: url=${logUrl} fetchUrl=${logFetchUrl} status=${res.status} content-type="${res.headers.get("content-type") ?? ""}"`,
       );
       return { ...empty, errorReason: "non_ok_status", upstreamStatus: res.status };
     }
     if (!res.body) {
-      console.error(`[ogp] no body: url=${url} status=${res.status}`);
+      console.error(`[ogp] no body: url=${logUrl} status=${res.status}`);
       return { ...empty, errorReason: "no_body", upstreamStatus: res.status };
     }
 
@@ -224,7 +226,7 @@ export async function fetchPageOgpMeta(
     // og: tags が含まれていない or bot 検出で challenge page が返された可能性
     if (!title && !description && !image) {
       console.error(
-        `[ogp] no meta tags extracted: url=${url} status=${res.status} content-type="${contentType}" bytes=${bytes.length} html-preview="${html.slice(0, 200).replace(/\s+/g, " ")}"`,
+        `[ogp] no meta tags extracted: url=${logUrl} status=${res.status} content-type="${contentType}" bytes=${bytes.length} html-preview="${html.slice(0, 200).replace(/\s+/g, " ")}"`,
       );
       return { ...empty, errorReason: "no_meta_tags", upstreamStatus: res.status };
     }
@@ -232,7 +234,7 @@ export async function fetchPageOgpMeta(
     return { title, description, image, errorReason: null, upstreamStatus: res.status };
   } catch (err) {
     console.error(
-      `[ogp] fetch threw: url=${url} err=${err instanceof Error ? err.name + ": " + err.message : String(err)}`,
+      `[ogp] fetch threw: url=${logUrl} err=${err instanceof Error ? err.name + ": " + err.message : String(err)}`,
     );
     return { ...empty, errorReason: "fetch_throw", upstreamStatus: null };
   }

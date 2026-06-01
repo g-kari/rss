@@ -179,6 +179,7 @@ export async function fetchArticleContent(
 ): Promise<string | null> {
   if (!isValidFeedUrl(url)) return null;
 
+  const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
   const cacheKey = await buildContentCacheKey(origin, url);
   const cached = await matchCfCache(cacheKey);
   if (cached) {
@@ -203,7 +204,7 @@ export async function fetchArticleContent(
   } catch (err) {
     // server-side external fetch wrapper の silent fail を wrangler tail で観測可能化
     // (browser-platform.md § silent fallback 禁止 規範対象判定軸 / canonical: recommendation.ts)
-    console.warn("[fetch-article-content] fetch failed:", url, err);
+    console.warn("[fetch-article-content] fetch failed:", logUrl, err);
     return null;
   }
 }
