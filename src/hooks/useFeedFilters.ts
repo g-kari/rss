@@ -67,9 +67,8 @@ export function useFeedFilters(
     if (equalViewFeedIds(mutedFeedIdsRef.current, ids)) return mutedFeedIdsRef.current;
     mutedFeedIdsRef.current = ids;
     return ids;
-    // mutedTick は parsedUntil が feeds 変化なしで変わらなくても nowMs 再評価のトリガーとして必要
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feeds, feedGroups, mutedTick, parsedUntil]);
+    // mutedTick は nowMs の再評価トリガーとして deps に含める必要がある (exhaustive-deps lint は誤検知)
+  }, [feeds, feedGroups, mutedTick, parsedUntil]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { nsfwFeedIds, groupFeedIds, mutedFeedIds };
 }
