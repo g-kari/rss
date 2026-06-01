@@ -73,7 +73,7 @@ export function formatHttpErrorMessage(
  * `HttpErrorType` がリトライで解決する見込みがあるかを返す。
  * 自動リトライ実装時の判定材料 (Phase 2 用)。
  */
-export function isRetryableHttpError(type: HttpErrorType): boolean {
+function isRetryableHttpError(type: HttpErrorType): boolean {
   return type === "rate_limit" || type === "server_error" || type === "network";
 }
 

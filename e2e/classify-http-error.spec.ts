@@ -1,10 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  classifyHttpError,
-  formatHttpErrorMessage,
-  isRetryableHttpError,
-  type HttpErrorType,
-} from "../src/lib/classify-http-error";
+import { classifyHttpError, formatHttpErrorMessage } from "../src/lib/classify-http-error";
 
 test.describe("classifyHttpError (#688)", () => {
   test("429 → rate_limit", () => {
@@ -120,39 +115,5 @@ test.describe("formatHttpErrorMessage (#688)", () => {
   });
 });
 
-test.describe("isRetryableHttpError (#688)", () => {
-  test("rate_limit はリトライ可能", () => {
-    expect(isRetryableHttpError("rate_limit")).toBe(true);
-  });
-
-  test("server_error はリトライ可能 (一時障害想定)", () => {
-    expect(isRetryableHttpError("server_error")).toBe(true);
-  });
-
-  test("network はリトライ可能 (オフライン復帰など)", () => {
-    expect(isRetryableHttpError("network")).toBe(true);
-  });
-
-  test("client_error はリトライ不可 (URL 不正など根本対処要)", () => {
-    expect(isRetryableHttpError("client_error")).toBe(false);
-  });
-
-  test("unknown はリトライ不可 (原因不明で再試行しても同じ)", () => {
-    expect(isRetryableHttpError("unknown")).toBe(false);
-  });
-
-  test("HttpErrorType の全分岐に対して定義済", () => {
-    const all: HttpErrorType[] = [
-      "network",
-      "rate_limit",
-      "server_error",
-      "client_error",
-      "unknown",
-    ];
-    for (const type of all) {
-      // 例外なく boolean を返すこと
-      const result = isRetryableHttpError(type);
-      expect(typeof result).toBe("boolean");
-    }
-  });
-});
+// isRetryableHttpError は module-private (export なし)。
+// Phase 2 でリトライ自動化を実装する際に export を再追加することで再利用可能。
