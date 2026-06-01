@@ -134,3 +134,16 @@ export async function POST(req: NextRequest) {
 **なぜ二重ガード**: ガード 1（NODE_ENV）は production ビルドで dead code 化を保証する。ガード 2（getDevBypassUserId）は staging などの非 production 環境でも誤って公開しないための実行時安全網。
 
 主な使用箇所: `app/api/test/seed/route.ts`（e2e テスト用 R2 シード）
+
+## sec-fetch-site: null の fail-open 動作はリスク受容済み (Issue #1006)
+
+app/api/ogp/route.ts と app/api/content/route.ts の sec-fetch-site ガードは
+null 値 (curl / 古いブラウザ) を fail-open で通過させている。
+
+現状の防御 (リスク受容根拠):
+
+- withSession による認証必須 — 攻撃者は自分の認証済みセッションを使う必要があり攻撃面は限定的
+- computeOgpCacheTtl で fallback 経路の shared cache TTL を 1 日に短縮
+- 古いブラウザ / curl の正規ユーザー向け互換性を維持
+
+将来の追加緩和: sec-fetch-site:null + session あり → TTL を 1 時間に短縮して攻撃影響範囲を最小化
