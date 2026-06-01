@@ -58,7 +58,11 @@ export async function purgeFeedsCache(
   ctx: ExecutionContext,
 ): Promise<void> {
   const cacheKey = await buildCacheKey(origin, "feeds", `user:${userId}`);
-  ctx.waitUntil(caches.default.delete(cacheKey).catch(() => {}));
+  ctx.waitUntil(
+    caches.default
+      .delete(cacheKey)
+      .catch((err) => console.error("[cache-helper] purgeFeedsCache delete failed:", err)),
+  );
 }
 
 /**
@@ -74,7 +78,11 @@ export async function purgeArticlesCache(
   ctx: ExecutionContext,
 ): Promise<void> {
   const cacheKey = await buildCacheKey(origin, "articles", `user:${userId}:feed:all:page:1`);
-  ctx.waitUntil(caches.default.delete(cacheKey).catch(() => {}));
+  ctx.waitUntil(
+    caches.default
+      .delete(cacheKey)
+      .catch((err) => console.error("[cache-helper] purgeArticlesCache delete failed:", err)),
+  );
 }
 
 /**
