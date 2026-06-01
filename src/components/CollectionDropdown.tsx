@@ -104,7 +104,10 @@ export default function CollectionDropdown({
             <div
               className="fixed inset-0 z-[49]"
               onPointerDown={(e) => {
-                if (!menuRef.current?.contains(e.target as Node)) setOpen(false);
+                if (!menuRef.current?.contains(e.target as Node)) {
+                  setOpen(false);
+                  btnRef.current?.focus();
+                }
               }}
             />
             <div
