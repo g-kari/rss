@@ -8,6 +8,7 @@ import { isAbortError } from "../lib/fetch";
 import { parseRetryAfter } from "../lib/retry-after";
 import { buildArticlesKey, collectGalleryMediaFromHtml } from "../lib/gallery-prefetch";
 import { useSyncedRef } from "./useSyncedRef";
+import { devError } from "../lib/dev-log";
 
 interface PrefetchedMedia {
   /** 本文から抽出した画像 URL（重複排除済み） */
@@ -255,8 +256,11 @@ export function usePrefetchGalleryContents({
             // fetch は完走させる。再開は rateLimitedUntil リセット → effect 再実行で処理。
           },
         });
-      } catch {
-        // ネットワークエラーはサイレント — サムネイル拡張は best-effort
+      } catch (err) {
+        devError("[usePrefetchGalleryContents] fetchOne network error", {
+          articleId: article.id,
+          err,
+        });
       } finally {
         inflight.delete(article.id);
       }

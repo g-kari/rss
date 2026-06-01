@@ -4,6 +4,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { downloadBlob } from "../../lib/download";
 import { apiFetch } from "../../lib/api-fetch";
+import { devError } from "../../lib/dev-log";
 
 interface ImportExportTabPanelProps {
   hidden: boolean;
@@ -26,7 +27,8 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
       const blob = await res.blob();
       downloadBlob(blob, "feeds.opml");
       toast.success("エクスポート完了");
-    } catch {
+    } catch (err) {
+      devError("[ImportExportTabPanel] handleExport failed", err);
       toast.error("エクスポートに失敗しました");
     } finally {
       setOpmlLoading(false);
@@ -57,7 +59,8 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
       } else {
         toast.success(`${data.added ?? 0}件追加、${data.skipped ?? 0}件スキップ`);
       }
-    } catch {
+    } catch (err) {
+      devError("[ImportExportTabPanel] handleImport failed", err);
       toast.error("インポートに失敗しました");
     } finally {
       setOpmlLoading(false);
@@ -69,7 +72,8 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
       await navigator.clipboard.writeText(CLIP_URL);
       setClipUrlCopied(true);
       setTimeout(() => setClipUrlCopied(false), 2000);
-    } catch {
+    } catch (err) {
+      devError("[ImportExportTabPanel] handleCopyClipUrl failed", err);
       toast.error("コピーに失敗しました");
     }
   };
