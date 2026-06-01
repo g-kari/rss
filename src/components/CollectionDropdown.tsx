@@ -112,73 +112,71 @@ export default function CollectionDropdown({
               role="menu"
               aria-label="コレクションに追加"
               onKeyDown={handleKeyDown}
-              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
+              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px] py-1"
               style={{ top: pos.top, right: pos.right }}
             >
-              <div className="py-1">
-                {collections.length === 0 && (
-                  <p className="px-3 py-2 text-[11px] text-text-muted">コレクションがありません</p>
-                )}
-                {collections.map((c) => {
-                  const isIn = c.articleIds.includes(articleId);
-                  return (
+              {collections.length === 0 && (
+                <p className="px-3 py-2 text-[11px] text-text-muted">コレクションがありません</p>
+              )}
+              {collections.map((c) => {
+                const isIn = c.articleIds.includes(articleId);
+                return (
+                  <button
+                    key={c.id}
+                    role="menuitemcheckbox"
+                    aria-checked={isIn}
+                    onClick={async () => {
+                      try {
+                        if (isIn) await onRemove(c.id, articleId);
+                        else await onAdd(c.id, articleId);
+                      } catch {
+                        toast.error("コレクションの更新に失敗しました");
+                      }
+                    }}
+                    className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-surface-hover transition-colors"
+                  >
+                    <span className="w-4 text-center text-text-muted">{isIn ? "✓" : ""}</span>
+                    <span className={isIn ? "text-text-strong" : "text-text-default"}>
+                      {c.name}
+                    </span>
+                  </button>
+                );
+              })}
+              {canBulkAddBookmarks && (
+                <>
+                  <div className="border-t border-border-subtle my-1" />
+                  <p className="px-3 py-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+                    ブックマーク全件追加 ({bookmarkCount})
+                  </p>
+                  {collections.map((c) => (
                     <button
-                      key={c.id}
-                      role="menuitemcheckbox"
-                      aria-checked={isIn}
-                      onClick={async () => {
-                        try {
-                          if (isIn) await onRemove(c.id, articleId);
-                          else await onAdd(c.id, articleId);
-                        } catch {
-                          toast.error("コレクションの更新に失敗しました");
-                        }
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-surface-hover transition-colors"
-                    >
-                      <span className="w-4 text-center text-text-muted">{isIn ? "✓" : ""}</span>
-                      <span className={isIn ? "text-text-strong" : "text-text-default"}>
-                        {c.name}
-                      </span>
-                    </button>
-                  );
-                })}
-                {canBulkAddBookmarks && (
-                  <>
-                    <div className="border-t border-border-subtle my-1" />
-                    <p className="px-3 py-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-                      ブックマーク全件追加 ({bookmarkCount})
-                    </p>
-                    {collections.map((c) => (
-                      <button
-                        key={`bulk-${c.id}`}
-                        role="menuitem"
-                        onClick={() => void handleBulkAdd(c)}
-                        className="w-full px-3 py-1.5 text-left text-[13px] text-text-muted hover:text-text-strong hover:bg-surface-hover transition-colors flex items-center gap-2"
-                      >
-                        <span className="w-4 text-center">↳</span>
-                        <span>「{c.name}」へ</span>
-                      </button>
-                    ))}
-                  </>
-                )}
-                {onCreateNew && (
-                  <>
-                    <div className="border-t border-border-subtle my-1" />
-                    <button
+                      key={`bulk-${c.id}`}
                       role="menuitem"
-                      onClick={() => {
-                        setOpen(false);
-                        setShowCreateModal(true);
-                      }}
+                      onClick={() => void handleBulkAdd(c)}
                       className="w-full px-3 py-1.5 text-left text-[13px] text-text-muted hover:text-text-strong hover:bg-surface-hover transition-colors flex items-center gap-2"
                     >
-                      <span className="w-4 text-center">+</span>
-                      <span>新規コレクション</span>
+                      <span className="w-4 text-center">↳</span>
+                      <span>「{c.name}」へ</span>
                     </button>
-                  </>
-                )}
-              </div>
+                  ))}
+                </>
+              )}
+              {onCreateNew && (
+                <>
+                  <div className="border-t border-border-subtle my-1" />
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      setOpen(false);
+                      setShowCreateModal(true);
+                    }}
+                    className="w-full px-3 py-1.5 text-left text-[13px] text-text-muted hover:text-text-strong hover:bg-surface-hover transition-colors flex items-center gap-2"
+                  >
+                    <span className="w-4 text-center">+</span>
+                    <span>新規コレクション</span>
+                  </button>
+                </>
+              )}
             </div>
           </>,
           document.body,

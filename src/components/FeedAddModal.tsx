@@ -161,27 +161,26 @@ export default function FeedAddModal({
             onClick={() => onCookieOpenChange(!cookieOpen)}
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
             aria-expanded={cookieOpen}
+            aria-controls="feed-add-cookie-section"
             aria-label={cookieOpen ? "Cookie 設定を閉じる" : "Cookie を設定（任意）"}
           >
             <span aria-hidden="true">{cookieOpen ? "▾" : "▸"}</span>
             {cookieOpen ? " Cookie を隠す" : " Cookie を設定（任意）"}
           </button>
-          {cookieOpen && (
-            <div id="feed-add-cookie-section">
-              <label htmlFor="feed-add-cookie" className="sr-only">
-                Cookie
-              </label>
-              <input
-                id="feed-add-cookie"
-                type="text"
-                placeholder="例: age_check_done=1"
-                value={cookie}
-                onChange={(e) => onCookieChange(e.target.value)}
-                disabled={adding}
-                className="mt-1 w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
-              />
-            </div>
-          )}
+          <div id="feed-add-cookie-section" hidden={!cookieOpen}>
+            <label htmlFor="feed-add-cookie" className="sr-only">
+              Cookie
+            </label>
+            <input
+              id="feed-add-cookie"
+              type="text"
+              placeholder="例: age_check_done=1"
+              value={cookie}
+              onChange={(e) => onCookieChange(e.target.value)}
+              disabled={adding}
+              className="mt-1 w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
+            />
+          </div>
 
           {/* CSS セレクタ手動指定（RSS なし・LLM 推論失敗時のフォールバック） */}
           <button
@@ -189,6 +188,7 @@ export default function FeedAddModal({
             onClick={() => onCssSelectorOpenChange(!cssSelectorOpen)}
             className="mt-2 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
             aria-expanded={cssSelectorOpen}
+            aria-controls="feed-add-selector-section"
             aria-label={
               cssSelectorOpen
                 ? "CSS セレクタ設定を閉じる"
@@ -198,25 +198,23 @@ export default function FeedAddModal({
             <span aria-hidden="true">{cssSelectorOpen ? "▾" : "▸"}</span>
             {cssSelectorOpen ? " CSS セレクタを隠す" : " CSS セレクタを指定（RSS のないサイト用）"}
           </button>
-          {cssSelectorOpen && (
-            <div id="feed-add-selector-section" className="mt-1 space-y-1">
-              <label htmlFor="feed-add-css-selector" className="sr-only">
-                CSS セレクタ
-              </label>
-              <input
-                id="feed-add-css-selector"
-                type="text"
-                placeholder="例: ul.news-list li a"
-                value={cssSelector}
-                onChange={(e) => onCssSelectorChange(e.target.value)}
-                disabled={adding}
-                className="w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
-              />
-              <p className="text-[11px] text-text-faint">
-                記事リンク（&lt;a&gt;タグ）を指すセレクタを入力してください
-              </p>
-            </div>
-          )}
+          <div id="feed-add-selector-section" hidden={!cssSelectorOpen} className="mt-1 space-y-1">
+            <label htmlFor="feed-add-css-selector" className="sr-only">
+              CSS セレクタ
+            </label>
+            <input
+              id="feed-add-css-selector"
+              type="text"
+              placeholder="例: ul.news-list li a"
+              value={cssSelector}
+              onChange={(e) => onCssSelectorChange(e.target.value)}
+              disabled={adding}
+              className="w-full text-[12px] bg-surface-base border border-border-default rounded-lg px-2.5 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200 font-mono"
+            />
+            <p className="text-[11px] text-text-faint">
+              記事リンク（&lt;a&gt;タグ）を指すセレクタを入力してください
+            </p>
+          </div>
 
           {/* RSSHub 連携 (Twitter / YouTube / GitHub など RSS のないサイトを自動変換) */}
           <label className="mt-3 flex items-center gap-2 text-[11px] text-text-muted hover:text-text-default cursor-pointer select-none">
