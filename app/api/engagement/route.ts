@@ -17,6 +17,9 @@ const VALID_ACTIONS: EngagementAction[] = [
   "like",
   "ai_feedback",
 ];
+function isEngagementAction(s: string): s is EngagementAction {
+  return (VALID_ACTIONS as string[]).includes(s);
+}
 // AI フィードバック評価値は src/types.ts の AI_RATINGS を SSOT として使う (#4 simplify 監査)
 const VALID_AI_FEEDBACK_VALUES = AI_RATINGS;
 const VALID_AI_FEEDBACK_TARGETS = ["summary", "translate"] as const;
@@ -57,7 +60,7 @@ export async function POST(req: NextRequest) {
       !isValidFeedHash(feedHash) ||
       !action ||
       typeof action !== "string" ||
-      !VALID_ACTIONS.includes(action as EngagementAction)
+      !isEngagementAction(action)
     ) {
       return apiError("Invalid payload", 400, { code: "INVALID_PAYLOAD" });
     }
@@ -99,7 +102,7 @@ export async function POST(req: NextRequest) {
     const entry: EngagementEntry = {
       articleId,
       feedHash,
-      action: action as EngagementAction,
+      action,
       timestamp: new Date().toISOString(),
       ...(value !== undefined && { value }),
     };
