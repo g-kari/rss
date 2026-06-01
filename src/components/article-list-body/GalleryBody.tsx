@@ -2,7 +2,7 @@
 
 import type { Article } from "@/types";
 import { isGalleryEntry, type GalleryEntry } from "@/lib/gallery-explode";
-import GalleryMasonry from "@/components/GalleryMasonry";
+import GalleryMasonry from "@/components/GalleryMasonrySelf";
 import {
   getGalleryCardWidth,
   type GalleryCardSize,
