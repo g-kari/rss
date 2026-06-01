@@ -25,6 +25,18 @@ export function replaceUntilStable(str: string, pattern: RegExp, replacement = "
   return curr;
 }
 
+const _escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const _nestedTagReCache = new Map<string, RegExp>();
+function getTagPattern(tags: string[]): RegExp {
+  const key = tags.join(",");
+  let re = _nestedTagReCache.get(key);
+  if (!re) {
+    re = new RegExp(`<(\\/)?(?:${tags.map(_escapeRe).join("|")})\\b[^>]*>`, "gi");
+    _nestedTagReCache.set(key, re);
+  }
+  return re;
+}
+
 /**
  * ネストを考慮してブロック要素を処理する汎用ヘルパー。
  * 非貪欲マッチ `[\s\S]*?` はネストした同名要素の最初の閉じタグで終了してしまうため、
@@ -41,8 +53,7 @@ export function processNestedBlocks(
   filter: ((openTag: string) => boolean) | null,
   replacer: (openTag: string, inner: string) => string,
 ): string {
-  const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const tagPattern = new RegExp(`<(\\/)?(?:${tags.map(escapeRe).join("|")})\\b[^>]*>`, "gi");
+  const tagPattern = getTagPattern(tags);
 
   // matchAll で全開閉タグを一括収集（インデックス付き）
   const matches = [...html.matchAll(tagPattern)];
