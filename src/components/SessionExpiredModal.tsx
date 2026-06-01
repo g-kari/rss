@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { createPortal } from "react-dom";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
+import { usePopupLock } from "../hooks/usePopupLock";
 
 export default function SessionExpiredModal() {
   // #847: canonical focus trap (useModalFocusTrap) に統合。
@@ -16,6 +17,9 @@ export default function SessionExpiredModal() {
     onClose: () => {},
     initialFocusRef: loginLinkRef,
   });
+
+  // #1033: hasOpenPopup フラグを立てて ColumnResizeHandles 等の背景インタラクティブ要素を無効化
+  usePopupLock();
 
   return createPortal(
     <div
