@@ -19,7 +19,7 @@ import { devError } from "./dev-log";
 import {
   type BrowserAiAvailability,
   shouldUseBrowserAi,
-  getChromeVersionSafe,
+  checkChromiumCompatibility,
   MIN_BROWSER_AI_CHROME_VERSION,
 } from "./browser-ai-common";
 
@@ -102,13 +102,8 @@ export async function diagnoseSummarizerAvailability(): Promise<{
   reason: SummarizerUnavailableReason;
 }> {
   if (typeof self === "undefined" || !("Summarizer" in self)) {
-    const isChromiumBased =
-      typeof navigator !== "undefined" && /Chrome\//.test(navigator.userAgent);
-    if (!isChromiumBased) return { available: false, reason: "not-chromium" };
-    const chromeVersion = getChromeVersionSafe();
-    if (chromeVersion !== null && chromeVersion < MIN_SUMMARIZER_CHROME_VERSION) {
-      return { available: false, reason: "chrome-too-old" };
-    }
+    const compat = checkChromiumCompatibility(MIN_SUMMARIZER_CHROME_VERSION);
+    if (!compat.compatible) return { available: false, reason: compat.reason };
     return { available: false, reason: "flag-disabled" };
   }
   try {

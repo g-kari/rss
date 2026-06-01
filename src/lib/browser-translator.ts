@@ -10,7 +10,7 @@
 import { isLikelyJapanese } from "./article-utils";
 import { devError } from "./dev-log";
 import {
-  getChromeVersionSafe,
+  checkChromiumCompatibility,
   shouldUseBrowserAi,
   MIN_BROWSER_AI_CHROME_VERSION,
 } from "./browser-ai-common";
@@ -98,14 +98,9 @@ export async function diagnoseTranslatorAvailability(): Promise<{
   available: boolean;
   reason: TranslatorUnavailableReason;
 }> {
-  if (typeof window === "undefined") return { available: false, reason: "not-chromium" };
-  if (typeof window.Translator === "undefined") {
-    const isChromiumBased = /Chrome\//.test(navigator.userAgent);
-    if (!isChromiumBased) return { available: false, reason: "not-chromium" };
-    const chromeVersion = getChromeVersionSafe();
-    if (chromeVersion !== null && chromeVersion < MIN_TRANSLATOR_CHROME_VERSION) {
-      return { available: false, reason: "chrome-too-old" };
-    }
+  if (typeof window === "undefined" || typeof window.Translator === "undefined") {
+    const compat = checkChromiumCompatibility(MIN_TRANSLATOR_CHROME_VERSION);
+    if (!compat.compatible) return { available: false, reason: compat.reason };
     return { available: false, reason: "flag-disabled" };
   }
   try {

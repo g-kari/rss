@@ -38,3 +38,27 @@ export function getChromeVersionSafe(): number | null {
  * このファイルを canonical 定義として re-export alias を使用する。
  */
 export const MIN_BROWSER_AI_CHROME_VERSION = 138;
+
+/**
+ * Chromium ベースかつ指定バージョン以上かを判定する共通ヘルパー。
+ *
+ * `diagnoseSummarizerAvailability` / `diagnoseTranslatorAvailability` の
+ * 重複していた 8 行 Chromium 検出ブロックをここに集約。
+ * SSR ガード (`typeof navigator !== "undefined"`) も内包する。
+ *
+ * @returns
+ * - `{ compatible: true }` — Chromium + minVersion 以上。呼び出し元は次の判定へ進む。
+ * - `{ compatible: false, reason: "not-chromium" }` — 非 Chromium / SSR。
+ * - `{ compatible: false, reason: "chrome-too-old" }` — バージョン不足。
+ */
+export function checkChromiumCompatibility(
+  minVersion: number,
+): { compatible: true } | { compatible: false; reason: "not-chromium" | "chrome-too-old" } {
+  const isChromiumBased = typeof navigator !== "undefined" && /Chrome\//.test(navigator.userAgent);
+  if (!isChromiumBased) return { compatible: false, reason: "not-chromium" };
+  const chromeVersion = getChromeVersionSafe();
+  if (chromeVersion !== null && chromeVersion < minVersion) {
+    return { compatible: false, reason: "chrome-too-old" };
+  }
+  return { compatible: true };
+}
