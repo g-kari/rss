@@ -139,7 +139,7 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
         />
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 text-text-faint hover:text-text-muted transition-colors duration-200"
+          className="absolute top-4 right-4 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-text-faint hover:text-text-muted transition-colors duration-200"
           aria-label="記事詳細パネルを閉じる"
           title="閉じる (Esc)"
         >

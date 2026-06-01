@@ -103,7 +103,10 @@ export async function diagnoseTranslatorAvailability(): Promise<{
     if (shouldUseBrowserAi(availability)) return { available: true, reason: null };
     return { available: false, reason: "not-available" };
   } catch (err) {
-    devError("[browser-translator] diagnose availability failed", err);
+    devError("[browser-translator] diagnose availability failed", {
+      err,
+      options: { sourceLanguage: "en", targetLanguage: "ja" },
+    });
     return { available: false, reason: "not-available" };
   }
 }

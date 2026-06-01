@@ -3,6 +3,7 @@ import {
   equalDigestLimitMap,
   equalStringMap,
   equalCompiledFilterMap,
+  equalStringSet,
   equalViewFeedIds,
 } from "../src/lib/article-filter-equality";
 import type { CompiledKeywordFilter } from "../src/lib/keyword-filter";
@@ -124,6 +125,35 @@ test.describe("equalCompiledFilterMap", () => {
       ["b", mockFilter2],
     ]);
     expect(equalCompiledFilterMap(a, b)).toBe(false);
+  });
+});
+
+test.describe("equalStringSet", () => {
+  test("同一 reference は true", () => {
+    const s = new Set(["a", "b"]);
+    expect(equalStringSet(s, s)).toBe(true);
+  });
+
+  test("内容が同じ別 reference は true", () => {
+    const a = new Set(["x", "y", "z"]);
+    const b = new Set(["z", "y", "x"]);
+    expect(equalStringSet(a, b)).toBe(true);
+  });
+
+  test("size が違うと false", () => {
+    const a = new Set(["a"]);
+    const b = new Set(["a", "b"]);
+    expect(equalStringSet(a, b)).toBe(false);
+  });
+
+  test("要素が違うと false", () => {
+    const a = new Set(["a", "b"]);
+    const b = new Set(["a", "c"]);
+    expect(equalStringSet(a, b)).toBe(false);
+  });
+
+  test("空 Set 同士は true", () => {
+    expect(equalStringSet(new Set(), new Set())).toBe(true);
   });
 });
 

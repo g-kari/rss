@@ -135,7 +135,10 @@ export async function summarizeInBrowser(text: string): Promise<string | null> {
   try {
     const availability = await globalThis.Summarizer.availability(SUMMARIZER_OPTIONS);
     if (!shouldUseBrowserAi(availability)) {
-      devError("[browser-summarizer] availability not usable:", availability);
+      devError("[browser-summarizer] availability not usable:", {
+        availability,
+        options: SUMMARIZER_OPTIONS,
+      });
       return null;
     }
 

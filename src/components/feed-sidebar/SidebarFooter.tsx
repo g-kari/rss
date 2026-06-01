@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { UserProfile } from "../../types";
 import { FallbackImage } from "../FallbackImage";
 import FooterIconButton from "./FooterIconButton";
+import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { useToast } from "../../contexts/ToastContext";
 
 interface Props {
@@ -64,7 +65,7 @@ export default function SidebarFooter({
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const wasOpenRef = useRef(false);
+  const { menuRef, handleKeyDown } = useMenuKeyboard(moreOpen, setMoreOpen, buttonRef);
 
   // 「もっと見る」ドロップダウンの外クリックで閉じる
   useEffect(() => {
@@ -76,31 +77,6 @@ export default function SidebarFooter({
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [moreOpen]);
-
-  // a11y: Escape キーでドロップダウンを閉じる (WCAG 2.1.1 / menu button pattern)
-  useEffect(() => {
-    if (!moreOpen) return;
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setMoreOpen(false);
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [moreOpen]);
-
-  // a11y: WAI-ARIA Menu Button Pattern (#792, WCAG 2.4.3 Focus Order)
-  // open 時: 最初の menuitem へ focus / close 時: トリガーボタンへ復元
-  // mount 直後 (moreOpen 初期 false) では復元しないよう wasOpenRef で前回状態を追跡
-  useEffect(() => {
-    if (moreOpen) {
-      moreRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
-      wasOpenRef.current = true;
-    } else if (wasOpenRef.current) {
-      buttonRef.current?.focus();
-      wasOpenRef.current = false;
-    }
   }, [moreOpen]);
 
   return (
@@ -236,9 +212,11 @@ export default function SidebarFooter({
 
         {moreOpen && (
           <div
+            ref={menuRef}
             role="menu"
             aria-label="その他のメニュー"
             className="absolute bottom-full right-0 mb-1 w-52 bg-surface-elevated border border-border-default rounded-lg shadow-lg py-1 z-50"
+            onKeyDown={handleKeyDown}
           >
             {/* OPMLインポート */}
             <button
