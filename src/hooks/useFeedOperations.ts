@@ -73,12 +73,9 @@ export function useFeedOperations({
         }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          canRetryWithSelector?: boolean;
-        };
+        const data = await tryParseErrorBody(res);
         notify(data.error ?? "フィードの追加に失敗しました");
-        return { canRetryWithSelector: data.canRetryWithSelector };
+        return { canRetryWithSelector: data.canRetryWithSelector as boolean | undefined };
       }
       const feed = (await res.json()) as Feed;
       invalidateSwCache(["/api/feeds", "/api/articles"]);

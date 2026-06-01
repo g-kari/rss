@@ -150,6 +150,10 @@ export async function apiFetchJson<T>(input: string, init?: RequestInit): Promis
  * @param res - パース対象の Response
  * @returns `{ code?: string; error?: string }`
  */
-export async function tryParseErrorBody(res: Response): Promise<{ code?: string; error?: string }> {
-  return (res.json() as Promise<{ code?: string; error?: string }>).catch(() => ({}));
+export async function tryParseErrorBody(
+  res: Response,
+): Promise<{ code?: string; error?: string; [key: string]: unknown }> {
+  return (res.json() as Promise<{ code?: string; error?: string; [key: string]: unknown }>).catch(
+    () => ({}),
+  );
 }

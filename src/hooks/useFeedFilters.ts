@@ -30,26 +30,32 @@ export function useFeedFilters(
     return ids;
   }, [selectedGroupId, feeds]);
 
+  // mutedUntil を一度だけ parse してキャッシュ — useEffect と mutedFeedIds の両方で参照
+  const parsedUntil = useMemo(
+    () => new Map(feeds.map((f) => [f.id, f.mutedUntil ? Date.parse(f.mutedUntil) : null])),
+    [feeds],
+  );
+
   // mutedUntil 期限切れで再評価するためのカウンタ。期限切れ時刻に setTimeout で increment する。
   const [mutedTick, setMutedTick] = useState(0);
   useEffect(() => {
     const nowMs = Date.now();
     const earliest = feeds.reduce<number>((min, f) => {
-      if (!f.mutedUntil) return min;
-      const t = Date.parse(f.mutedUntil);
-      return t > nowMs ? Math.min(min, t) : min;
+      const t = parsedUntil.get(f.id);
+      return t != null && t > nowMs ? Math.min(min, t) : min;
     }, Infinity);
     if (!isFinite(earliest)) return;
     const id = setTimeout(() => setMutedTick((v) => v + 1), earliest - nowMs + 100);
     return () => clearTimeout(id);
-  }, [feeds, mutedTick]);
+  }, [feeds, mutedTick, parsedUntil]);
 
   const mutedFeedIdsRef = useRef<Set<string>>(new Set());
   const mutedFeedIds = useMemo(() => {
     const nowMs = Date.now();
     const ids = new Set<string>();
     for (const f of feeds) {
-      if (f.mutedUntil && Date.parse(f.mutedUntil) > nowMs) ids.add(f.id);
+      const t = parsedUntil.get(f.id);
+      if (t != null && t > nowMs) ids.add(f.id);
     }
     // グループミュート: muted グループに所属するフィードを追加で除外
     const mutedGroupIds = new Set(feedGroups.filter((g) => g.muted).map((g) => g.id));
@@ -61,7 +67,9 @@ export function useFeedFilters(
     if (equalViewFeedIds(mutedFeedIdsRef.current, ids)) return mutedFeedIdsRef.current;
     mutedFeedIdsRef.current = ids;
     return ids;
-  }, [feeds, feedGroups, mutedTick]);
+    // mutedTick は parsedUntil が feeds 変化なしで変わらなくても nowMs 再評価のトリガーとして必要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feeds, feedGroups, mutedTick, parsedUntil]);
 
   return { nsfwFeedIds, groupFeedIds, mutedFeedIds };
 }

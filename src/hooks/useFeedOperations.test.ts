@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../lib/api-fetch", () => ({
   apiFetch: vi.fn(),
   apiFetchJson: vi.fn(),
+  tryParseErrorBody: vi.fn(async (res: Response) => res.json().catch(() => ({}))),
 }));
 
 vi.mock("../lib/sw-cache", () => ({
