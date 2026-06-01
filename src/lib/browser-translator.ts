@@ -46,6 +46,15 @@ declare global {
 /** Translator API が stable で利用可能になった最低 Chrome メジャーバージョン。`browser-ai-common.ts` の canonical 定義への re-export alias。 */
 export const MIN_TRANSLATOR_CHROME_VERSION = MIN_BROWSER_AI_CHROME_VERSION;
 
+/**
+ * `window.Translator.availability()` および `window.Translator.create()` に渡す
+ * 共通オプション。複数箇所でインライン重複せず TRANSLATOR_OPTIONS を参照する。
+ */
+export const TRANSLATOR_OPTIONS = {
+  sourceLanguage: "en",
+  targetLanguage: "ja",
+} as const;
+
 /** Translator API が window 上に実装されているかをチェックする。 */
 export function isTranslatorApiSupported(): boolean {
   return typeof window !== "undefined" && typeof window.Translator !== "undefined";
@@ -100,16 +109,13 @@ export async function diagnoseTranslatorAvailability(): Promise<{
     return { available: false, reason: "flag-disabled" };
   }
   try {
-    const availability = await window.Translator.availability({
-      sourceLanguage: "en",
-      targetLanguage: "ja",
-    });
+    const availability = await window.Translator.availability(TRANSLATOR_OPTIONS);
     if (shouldUseBrowserAi(availability)) return { available: true, reason: null };
     return { available: false, reason: "not-available" };
   } catch (err) {
     devError("[browser-translator] diagnose availability failed", {
       err,
-      options: { sourceLanguage: "en", targetLanguage: "ja" },
+      options: TRANSLATOR_OPTIONS,
     });
     return { available: false, reason: "not-available" };
   }
