@@ -1133,3 +1133,32 @@ project root 配下の主要 entry point / config file:
 - **`middleware.ts`** — Next.js middleware。**Content-Security-Policy header をリクエストごとに動的構築** (`nonce` ベース XSS 保護 + `TRUSTED_IFRAME_RULES` から `frame-src` 単一管理 + `connect-src` に HuggingFace / CDN / `cloudflareinsights.com` 等)。security critical な実装。
 - **`next.config.ts`** — Next.js build config。`securityHeaders` (CSP 以外: X-Frame-Options / Permissions-Policy / HSTS 等) + `transpilePackages` (piper-plus / @piper-plus/g2p / onnxruntime-web 等の wasm engine ESM transpile) + `turbopack.resolveAlias` (browser bundle で `fs` / `path` を empty module 解決) + `initOpenNextCloudflareForDev({ remoteBindings: false })` (dev は local miniflare のみ、wrangler login 不要)。chained config 設計は `rule-maintenance.md § 5 派生「Next.js + OpenNext + Wrangler chained config 整合性 sweep」` 参照。
 - **`open-next.config.ts`** — OpenNext (Cloudflare adapter) config。`defineCloudflareConfig({})` の minimal、Cron handler は OpenNext 未サポートのため `worker.ts` (Custom Worker) で直接定義する 2 段構成方針を architectural note として明記。
+- **`AGENTS.md`** — `CLAUDE.md` へのシンボリックリンク (`ln -s CLAUDE.md AGENTS.md`)。OpenAI Codex など `AGENTS.md` を project instructions として読む AI ツールが Claude Code と同じ規範ファイルを参照できるようにする互換層。`CLAUDE.md` 本体は 1 箇所でメンテナンスし、`AGENTS.md` は symlink のままにする (二重管理防止)。
+
+## AI ツール互換性
+
+### AGENTS.md → CLAUDE.md シンボリックリンク (Codex 対応)
+
+Claude Code は `CLAUDE.md` を読むが、OpenAI Codex など他の AI coding agent は `AGENTS.md` をプロジェクト指示ファイルとして読む。両ツールを同じ規範で動かすには **`AGENTS.md` を `CLAUDE.md` への symlink として作成** する。
+
+```bash
+# プロジェクトルートで実行
+ln -s CLAUDE.md AGENTS.md
+git add AGENTS.md
+git commit -m "compat: AGENTS.md → CLAUDE.md symlink で Codex 対応"
+```
+
+**判断軸**:
+
+| 状況                                                              | 対応                                         |
+| ----------------------------------------------------------------- | -------------------------------------------- |
+| `AGENTS.md` が存在しない + Codex 等の別 AI ツールを使う予定がある | symlink 作成                                 |
+| `AGENTS.md` が独立ファイルで Claude Code と別の指示を持つ         | symlink 化しない (意図的な分離)              |
+| `AGENTS.md` を symlink にした後、Claude Code 指示を変更したい     | `CLAUDE.md` を編集するだけで両方に反映される |
+
+**How to apply**: 別 AI ツール (Codex 等) をプロジェクトに導入するとき、または Issue 対応で `AGENTS.md` の追加を要求されたとき:
+
+1. `ls -la AGENTS.md 2>/dev/null` で既存確認
+2. 存在しなければ `ln -s CLAUDE.md AGENTS.md`
+3. `git add AGENTS.md && git commit` — symlink はバイナリ追加でなく参照として commit される
+4. `CLAUDE.md` の内容を維持し続けるだけでよい (メンテナンス負荷ゼロ)
