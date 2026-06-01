@@ -136,7 +136,7 @@ export default function SnoozeModal({ articleTitle, onSnooze, onClose, returnFoc
               onClose();
             }}
             disabled={!customValid}
-            className="w-full px-3 py-1.5 text-[12px] bg-ink text-ink-text rounded-md hover:bg-ink-hover disabled:bg-surface-subtle disabled:text-text-faint transition-colors"
+            className="w-full px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] bg-ink text-ink-text rounded-md hover:bg-ink-hover disabled:bg-surface-subtle disabled:text-text-faint transition-colors"
           >
             この日時までスヌーズ
           </button>

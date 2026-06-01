@@ -51,7 +51,7 @@ export default function ArticleHeaderShare({
               }}
               title={target.label}
               aria-label={target.label}
-              className="p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
+              className="p-2 -m-2 lg:p-0 lg:m-0 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
             >
               {target.icon}
             </button>
@@ -80,7 +80,7 @@ export default function ArticleHeaderShare({
         onClick={() => window.print()}
         title="印刷"
         aria-label="印刷"
-        className="p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
+        className="p-2 -m-2 lg:p-0 lg:m-0 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
       >
         <svg
           viewBox="0 0 18 18"

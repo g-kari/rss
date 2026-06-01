@@ -171,6 +171,7 @@ export default function CollectionDropdown({
                     role="menuitem"
                     onClick={() => {
                       setOpen(false);
+                      btnRef.current?.focus();
                       setShowCreateModal(true);
                     }}
                     className="w-full px-3 py-1.5 text-left text-[13px] text-text-muted hover:text-text-strong hover:bg-surface-hover transition-colors flex items-center gap-2"
