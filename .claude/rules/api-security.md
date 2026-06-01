@@ -135,6 +135,35 @@ export async function POST(req: NextRequest) {
 
 主な使用箇所: `app/api/test/seed/route.ts`（e2e テスト用 R2 シード）
 
+## サーバーログに URL を出力するときはログインジェクションを防ぐ
+
+`console.error` / `console.warn` 等のサーバーサイドログに外部入力 URL を埋め込むとき、**CRLF (`\r\n`) を除去** して出力行数を 1 行に限定し、**先頭 256 文字に切り詰め** てログ肥大を防ぐ。
+
+```typescript
+// アンチパターン: raw URL をそのままログに埋め込む
+console.error(`[image-proxy] upstream not ok: url=${url} status=${res.status}`);
+// 攻撃者が url="https://evil.com/\r\nFAKE_LOG_ENTRY: something" を渡すと
+// ログに偽エントリが挿入される (ログインジェクション)
+
+// 修正パターン: CRLF 除去 + 上限 256 文字で sanitize してから使用
+const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
+console.error(`[image-proxy] upstream not ok: url=${logUrl} status=${res.status}`);
+```
+
+**How to apply**: サーバーサイドで外部入力 (URL / User-Agent / ヘッダー値 等) をログに含めるとき:
+
+1. **`/[\r\n]/g` で CR / LF を空文字列に除去** — ログ改行による偽エントリ挿入 (CRLF injection) を防ぐ
+2. **`.slice(0, 256)` で上限を設ける** — 巨大 URL によるログ肥大 / ストレージ枯渇を防ぐ
+3. **使い回す変数名は `logXxx`** で sanitize 済みとインライン混入の差を可読化 (`logUrl` / `logHeader` 等)
+4. **反復使用するなら変数に切り出す** — 同一 URL を複数の `console.error` で使う場合は `const logUrl = ...` 1 行で定義して全参照箇所が自動的に sanitize 済みになる
+
+**反例 (sanitize が不要なケース)**:
+
+- ログに出力する文字列が **内部定数 / 列挙値** (攻撃者が制御できない) → sanitize 不要
+- ログが **開発環境 (NODE_ENV !== "production") 専用** (`devError`) → 本番ログ汚染リスクなし
+
+主な使用箇所: `src/lib/binary-proxy-handler.ts` — `const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256)` を handler 先頭で定義して以降の全 `console.error` / `console.warn` で共有
+
 ## sec-fetch-site: null の fail-open 動作はリスク受容済み (Issue #1006)
 
 app/api/ogp/route.ts と app/api/content/route.ts の sec-fetch-site ガードは

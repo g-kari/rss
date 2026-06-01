@@ -259,3 +259,43 @@ export function collectImageUrls(container: Element): string[] {
 - **広告画像が a タグで囲まれている UI** — 通常は広告自体が削除済み (`removeNoise` パイプライン) なので残らない
 
 主な使用箇所: `collectImageUrls` / `collectImageUrlsFromHtml` (`image-extractor.ts`) — wallhaven 等の thumb→full 構造で OGP のみ DL されるバグ修正
+
+## 動的タグ組合せを受け取る HTML 処理関数はモジュールレベル Map で RegExp をキャッシュする
+
+`processNestedBlocks(html, tags, ...)` / `rewriteMediaSrcAttrs(html, { tags })` のように **呼び出しごとにタグ名が変わる可能性がある HTML 処理関数** では、関数内で `new RegExp(...)` を毎回生成せず、**モジュールレベルの `Map<string, RegExp>` でキャッシュ** する。
+
+```typescript
+// アンチパターン: 呼び出しごとに RegExp を再生成
+function processBlocks(html: string, tags: string[]): string {
+  const re = new RegExp(`<(\\/)?(?:${tags.join("|")})\\b[^>]*>`, "gi");
+  //  ↑ 同じ tags 配列でも呼び出しのたびに生成 → キャッシュ効果ゼロ
+  return html.replace(re, ...);
+}
+
+// 修正パターン: モジュールレベル Map でキャッシュ
+const _tagReCache = new Map<string, RegExp>();
+
+function getTagPattern(tags: string[]): RegExp {
+  const key = tags.join(",");   // カンマ区切りで cache key を構築
+  let re = _tagReCache.get(key);
+  if (!re) {
+    re = new RegExp(`<(\\/)?(?:${tags.map(escapeRe).join("|")})\\b[^>]*>`, "gi");
+    _tagReCache.set(key, re);
+  }
+  return re;
+}
+```
+
+**How to apply**: HTML 処理関数に「タグ名を引数で受け取る」設計を追加するとき (タグ種別が少数の固定セットでも、呼び出し頻度が高い HTML 後処理 pipeline では RegExp 生成コストが積み上がる):
+
+1. **cache key はタグ配列を `join(",")` した文字列** — 同一タグセットを確実にキャッシュヒットさせる (配列 reference は同じでも毎回異なるオブジェクト)
+2. **Map 変数名は `_<name>ReCache` (先頭アンダースコア)** でモジュールプライベート・キャッシュ用途を明示
+3. **パターン内のタグ名は必ず `escapeRe` (正規表現メタ文字エスケープ) を通す** — タグ名に記号が含まれた場合の誤 match を防ぐ
+4. **同一ファイルに複数のタグ系 cache が必要なら別 Map 変数で分離** (`_tagReCache` / `_nestedTagReCache` 等、用途が異なる RegExp を混在させない)
+
+**反例 (Map キャッシュが不要なケース)**:
+
+- タグが **ハードコードされた固定値** (`"div"` / `"img"` 等) — モジュール初期化時に 1 回 `const re = /.../<gi` で定義すれば十分
+- 処理対象の HTML が **小規模 (記事 1 件以下)** で呼び出し頻度が低い — キャッシュ設計コスト > RegExp 生成コスト
+
+主な使用箇所: `html-noise-removal.ts#_nestedTagReCache` (tags 配列を join した key で RegExp を cache) / `html-media-processors.ts#_tagReCache` (tag ごとに RegExp を cache)
