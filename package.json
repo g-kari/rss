@@ -29,7 +29,7 @@
   "dependencies": {
     "@cloudflare/puppeteer": "^1.1.0",
     "@mozilla/readability": "^0.6.0",
-    "@tanstack/react-virtual": "^3.13.25",
+    "@tanstack/react-virtual": "^3.13.26",
     "fast-xml-parser": "^5.8.0",
     "highlight.js": "^11.11.1",
     "katex": "^0.17.0",
