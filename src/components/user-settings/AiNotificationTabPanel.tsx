@@ -12,7 +12,7 @@ import {
 import { AI_MODELS, type WorkersAiModelId } from "../../lib/ai-models";
 import { useToast } from "@/contexts/ToastContext";
 import { useDebounce } from "../../hooks/useDebounce";
-import { apiFetch } from "@/lib/api-fetch";
+import { apiFetch } from "../../lib/api-fetch";
 import { SettingRow } from "./shared";
 
 interface AiNotificationTabPanelProps {

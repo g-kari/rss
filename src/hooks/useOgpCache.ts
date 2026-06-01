@@ -64,9 +64,12 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
   const seenLinksRef = useRef<Set<string>>(new Set());
 
   // count:last-id sentinel — O(1) で記事追加/削除を検知 (全 ID を join する O(n) GC 圧を回避)
+  // visible 配列参照を deps に入れると slice の度に useMemo が再実行されるため primitive 2 値で代替
+  const visibleLen = visible.length;
+  const visibleLastId = visible.at(-1)?.id ?? "";
   const linksKey = useMemo(
-    () => (visible.length > 0 ? `${visible.length}:${visible[visible.length - 1]?.id ?? ""}` : ""),
-    [visible],
+    () => (visibleLen > 0 ? `${visibleLen}:${visibleLastId}` : ""),
+    [visibleLen, visibleLastId],
   );
 
   useEffect(() => {
