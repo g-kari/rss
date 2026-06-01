@@ -29,6 +29,31 @@ paths: "src/hooks/**/*.ts,src/**/*.tsx"
 
 主な使用箇所: `equalSnoozedUntil` / `useReadStateSyncApply` (2 秒毎の主スレッドブロック解消)
 
+### 派生ケース: `stateRef` 経由キャプチャを使う等価ガードは関数形式 setter で実装する
+
+`if (!equal(capture, next)) setter(next)` の形 (capture = stateRef.current の事前取得) は、コールバックが非同期バリアを越えると `capture` が brief stale になる可能性を防げない。関数形式 setter `setter((prev) => equal(prev, next) ? prev : next)` の `prev` は React が保証する「呼び出し時点の最新 state」なので staleRef の影響を構造的に排除できる。
+
+```ts
+// アンチパターン: staleRef (localSets) 経由キャプチャで等価ガード
+const merged = computeMergedSet(localSets[kind], serverIds);
+if (merged && !equalStringSet(localSets[kind], merged)) {
+  setter(merged); // stateRef が brief stale の場合、同一内容でも identity 変化
+}
+
+// 修正パターン: 関数形式 setter で prev (最新 state) と比較
+const merged = computeMergedSet(localSets[kind], serverIds);
+if (merged) {
+  setter((prev) => (equalStringSet(prev, merged) ? prev : merged));
+}
+```
+
+**How to apply**: R2 同期コールバック / ポーリング受信等で「キャプチャした ref 値から merged を計算 → setter」するパターンを見つけたら (ref キャプチャ後に非同期バリアがあると staleRef 状態が発生し得る、`prev` は常に最新 state 保証):
+
+1. `setter(merged)` → `setter((prev) => equal(prev, merged) ? prev : merged)` に変換
+2. `deferSave` 等の副作用は `if (merged)` の条件内で通常通り呼ぶ (内容同一でも save が必要なら変更不要)
+
+主な使用箇所: `useReadStateSyncApply.ts` の `computeMergedSet` 結果適用 — `localSets` は stateRef キャプチャ、`setter(merged)` を関数形式に変換して equalStringSet ガードを追加
+
 ### 派生ケース: deps 配列に直接渡せる「structural signature string」パターン
 
 `equalXxxMap` のような **`if (!eq) setXxx(next)` ガード + useRef 経由の安定 reference** は、`useFilteredArticles` のように **複数の派生 state を 1 つの useMemo で生成する** ケースには使えるが、setup が重い (Map 構造ごとに `equalMap` ヘルパー + ref + 条件 update の 3 点セット)。
