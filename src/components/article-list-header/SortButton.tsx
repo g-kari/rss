@@ -32,6 +32,7 @@ export default function SortButton({ sortOrder, onToggle }: SortButtonProps) {
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <path d="M6 1v10M2 7l4 4 4-4" />
         </svg>
@@ -45,6 +46,7 @@ export default function SortButton({ sortOrder, onToggle }: SortButtonProps) {
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <path d="M6 11V1M2 5l4-4 4 4" />
         </svg>
@@ -58,6 +60,7 @@ export default function SortButton({ sortOrder, onToggle }: SortButtonProps) {
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <circle cx="6" cy="6" r="4.5" />
           <path d="M6 3.2V6l1.7 1.7" />
