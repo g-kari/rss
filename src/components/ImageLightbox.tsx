@@ -84,7 +84,7 @@ export default function ImageLightbox({
         type="button"
         onClick={onClose}
         aria-label="閉じる"
-        className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors"
+        className="absolute top-3 right-3 w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors"
       >
         <svg
           width="16"
@@ -106,7 +106,7 @@ export default function ImageLightbox({
         disabled={!onPrev}
         aria-disabled={!onPrev}
         aria-label="前の画像"
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/40"
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/40"
       >
         <svg
           width="20"
@@ -128,7 +128,7 @@ export default function ImageLightbox({
         disabled={!onNext}
         aria-disabled={!onNext}
         aria-label="次の画像"
-        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/40"
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/40"
       >
         <svg
           width="20"

@@ -94,6 +94,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                     strokeWidth={1.5}
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    aria-hidden="true"
                   >
                     <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                   </svg>
@@ -138,6 +139,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                   strokeWidth={1.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
                   <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -163,6 +165,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                   strokeWidth={1.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <rect x="3" y="3" width="18" height="18" rx="2" />
                   <path d="M7 15V9l2.5 3 2.5-3v6M16 15v-4.5M14 12.5h4" />
@@ -186,6 +189,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                   strokeWidth={1.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <path d="M6 9V2h12v7" />
                   <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
@@ -224,6 +228,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                       strokeWidth={1.5}
                       strokeLinecap="round"
                       strokeLinejoin="round"
+                      aria-hidden="true"
                     >
                       <rect x="3" y="3" width="18" height="18" rx="2" />
                       <path d="M7 15V9l2.5 3 2.5-3v6M16 9v6M13 12h6" />
@@ -261,6 +266,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                       strokeWidth={1.5}
                       strokeLinecap="round"
                       strokeLinejoin="round"
+                      aria-hidden="true"
                     >
                       <path d="M12 2C8 2 5 5.5 5 9c0 2.5 1.2 4.7 3 6l1 5h6l1-5c1.8-1.3 3-3.5 3-6 0-3.5-3-7-7-7z" />
                     </svg>

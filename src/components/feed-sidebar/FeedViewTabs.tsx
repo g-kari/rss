@@ -17,6 +17,7 @@ export const FEED_VIEW_TABS: { id: FeedView; label: string; icon: ReactNode }[] 
         fill="none"
         stroke="currentColor"
         strokeWidth={1.5}
+        aria-hidden="true"
       >
         <line x1="2.5" y1="3" x2="9.5" y2="3" />
         <line x1="2.5" y1="6" x2="9.5" y2="6" />
@@ -35,6 +36,7 @@ export const FEED_VIEW_TABS: { id: FeedView; label: string; icon: ReactNode }[] 
         fill="none"
         stroke="currentColor"
         strokeWidth={1.5}
+        aria-hidden="true"
       >
         <rect x="1.5" y="2" width="9" height="8" rx="1" />
         <circle cx="4.5" cy="5" r="1" fill="currentColor" />
@@ -53,6 +55,7 @@ export const FEED_VIEW_TABS: { id: FeedView; label: string; icon: ReactNode }[] 
         fill="none"
         stroke="currentColor"
         strokeWidth={1.5}
+        aria-hidden="true"
       >
         <rect x="1.5" y="2.5" width="9" height="7" rx="1" />
         <path d="M5 5 L7.5 6 L5 7 Z" fill="currentColor" stroke="none" />
@@ -70,6 +73,7 @@ export const FEED_VIEW_TABS: { id: FeedView; label: string; icon: ReactNode }[] 
         fill="none"
         stroke="currentColor"
         strokeWidth={1.5}
+        aria-hidden="true"
       >
         <circle cx="3" cy="4" r="1.5" />
         <circle cx="9" cy="4" r="1.5" />
