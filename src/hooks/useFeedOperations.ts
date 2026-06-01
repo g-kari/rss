@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ChangeEvent } from "react";
 import type { Feed } from "../types";
-import { apiFetch, apiFetchJson } from "../lib/api-fetch";
+import { apiFetch, apiFetchJson, tryParseErrorBody } from "../lib/api-fetch";
 import { invalidateSwCache } from "../lib/sw-cache";
 import { useAutoReset } from "./useAutoReset";
 
@@ -123,7 +123,7 @@ export function useFeedOperations({
         body: text,
       });
       if (!res.ok) {
-        const data = (await res.json()) as { error: string };
+        const data = await tryParseErrorBody(res);
         showImportMessage({ text: data.error ?? "インポートに失敗しました", isError: true });
         return;
       }
