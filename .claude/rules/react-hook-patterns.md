@@ -120,3 +120,73 @@ export function useBar(flag: boolean) {
 - 本変更前は e2e pass、本変更後に大量 fail + stack trace が本変更 touch ファイルを指す → 本変更 trigger 確定
 
 主な使用箇所: `useReadingProgress` の `useRef × 1` (`progressRef`) を削除したとき、全 render で hook 数が一律 1 減少 = render 間差なし → React rules of hooks 違反にならず、pre-commit e2e fail は master HEAD 既存 `useOgpCache` hook order regression の影響と判定して SKIP=e2e-test で commit
+
+## 同一 hook 内で `useEffect` と `useMemo` 両方から参照する `Date.parse` 結果は `useMemo` の `Map<id, timestamp>` にキャッシュする
+
+`useEffect` と `useMemo` の **両方で同じ items の `Date.parse(item.mutedUntil)` を呼ぶ** hook は、render ごとに重複計算が発生する。`useMemo` で `Map<id, timestamp>` を作り、`useEffect` / `useMemo` 両方がその Map を参照する設計に変更することで重複 `Date.parse` を 1 回に集約できる。
+
+```typescript
+// アンチパターン: useEffect と useMemo が両方 Date.parse を独自に呼ぶ
+useEffect(() => {
+  const now = Date.now();
+  const toUnmute = feeds.filter((f) => {
+    if (!f.mutedUntil) return false;
+    return Date.parse(f.mutedUntil) <= now; // ← useEffect 内で Date.parse
+  });
+  // ...
+}, [feeds]);
+
+const mutedFeedIds = useMemo(() => {
+  const now = Date.now();
+  return new Set(
+    feeds
+      .filter((f) => f.mutedUntil && Date.parse(f.mutedUntil) > now) // ← useMemo 内でも Date.parse
+      .map((f) => f.id),
+  );
+}, [feeds]);
+
+// 修正パターン: useMemo で Map<id, timestamp> をキャッシュして両方から参照
+const parsedUntilMap = useMemo(
+  () =>
+    new Map(
+      feeds.filter((f) => f.mutedUntil).map((f) => [f.id, Date.parse(f.mutedUntil!)] as const),
+    ),
+  [feeds],
+);
+
+useEffect(() => {
+  const now = Date.now();
+  const toUnmute = feeds.filter((f) => {
+    const until = parsedUntilMap.get(f.id);
+    return until !== undefined && until <= now; // ← Map から O(1) 参照
+  });
+  // ...
+}, [feeds, parsedUntilMap]);
+
+const mutedFeedIds = useMemo(() => {
+  const now = Date.now();
+  return new Set(
+    feeds
+      .filter((f) => {
+        const until = parsedUntilMap.get(f.id);
+        return until !== undefined && until > now; // ← Map から O(1) 参照
+      })
+      .map((f) => f.id),
+  );
+}, [feeds, parsedUntilMap]);
+```
+
+**How to apply**: hook 内で同じ items の `Date.parse` を `useEffect` と `useMemo` の両方で呼んでいるとき (重複 parse は N 件 × 2 箇所の計算コストに加え、`Date.parse` の結果が両箇所で一致しない可能性の認知負荷も生む):
+
+1. **`useMemo` で `Map<id, timestamp>` を作成** — deps に items 配列を含める
+2. **`useEffect` の deps に Map を追加** + Map 経由で `parsedUntilMap.get(item.id)` で参照
+3. **`useMemo` (フィルタ) も Map 経由に変更** + deps に Map を追加
+4. **`undefined` チェックを `!== undefined` で明示** — `until !== undefined && until <= now` の形、`!until` だと `0` (1970年) を誤排除する罠あり
+
+**反例 (Map キャッシュが不要なケース)**:
+
+- `Date.parse` を呼ぶ箇所が **1 つだけ** (`useEffect` か `useMemo` のどちらか一方のみ) → 重複なし、inline で OK
+- items が **常に 0-2 件** で計算コストが無視できる → overhead より冗長性のなさを優先して inline
+- `mutedUntil` 等のフィールドが **頻繁に変化** して Map の安定性が低い → `useMemo` の deps も毎回 miss して恩恵なし
+
+主な使用箇所: `useFeedFilters.ts` — `feeds` 配列の `mutedUntil` フィールドを `parsedUntilMap` にキャッシュして `useEffect` (期限切れ mute 解除) と `useMemo` (mutedFeedIds 集合) の両方から参照

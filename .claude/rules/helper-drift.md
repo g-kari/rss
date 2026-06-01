@@ -377,3 +377,44 @@ if (!res.ok) {
 - `tryParseErrorBody` が返す型では **narrowing 不十分** (例: 追加フィールドが型安全に必要) → 専用 parse helper を作成
 
 主な使用箇所: `useCollections.ts` / `useFeedGroups.ts` — 各 hook に 2 件ずつ (計 4 件) の inline `res.json().catch` 重複を `tryParseErrorBody` に集約
+
+### 派生ケース: `tryParseErrorBody` の戻り型に index signature を追加して追加フィールドに型アサーションアクセスする
+
+`tryParseErrorBody` の戻り型 `{ code?: string; error?: string }` に **`[key: string]: unknown`** index signature を追加すると、caller が `canRetryWithSelector` 等の API 固有の追加フィールドに安全にアクセスできる。index signature なしで追加フィールドを読もうとすると `Property 'X' does not exist on type` の型エラーが発生するため、`as { canRetryWithSelector?: boolean }` のような型アサーションが必要になる。
+
+```typescript
+// api-fetch.ts の tryParseErrorBody 戻り型
+export async function tryParseErrorBody(
+  res: Response,
+): Promise<{ code?: string; error?: string; [key: string]: unknown }> {
+  return res.json().catch(() => ({})) as Promise<{
+    code?: string;
+    error?: string;
+    [key: string]: unknown;
+  }>;
+}
+
+// caller 側: 型アサーションで API 固有フィールドにアクセス
+if (!res.ok) {
+  const body = await tryParseErrorBody(res);
+  const canRetry = (body as { canRetryWithSelector?: boolean }).canRetryWithSelector;
+  if (canRetry) {
+    /* ... */
+  }
+  throw new Error(body.error ?? `HTTP ${res.status}`);
+}
+```
+
+**How to apply**: `tryParseErrorBody` の戻り値で `code` / `error` 以外のフィールドにアクセスしたいとき (index signature なしだと型エラー、`as` キャストが型ルールに反しない):
+
+1. **`api-fetch.ts` の `tryParseErrorBody` 戻り型に `[key: string]: unknown` が含まれているか確認** — `grep -n "tryParseErrorBody" src/lib/api-fetch.ts`
+2. 含まれていなければ **index signature を追加** (呼び出し元の変更なし、下位互換)
+3. **caller で `(body as { extraField?: T }).extraField` 形式でアクセス** — 型アサーションは 1 回のみ、アクセスパスを明示
+4. **追加フィールドが 3 種類以上 / 複数 caller で使う** なら専用の parse helper を別途作成する方が canonical (本パターンは 1-2 フィールドの ad-hoc アクセス向け)
+
+**反例 (index signature + アサーション不要なケース)**:
+
+- 追加フィールドが多く全て型安全に扱いたい → `tryParseErrorBody` を呼ばず専用型の `res.json().catch` inline か別名 helper
+- 追加フィールドが `code` / `error` のどちらかの別名 → 既存フィールドを流用または helper 戻り型に直接追加
+
+主な使用箇所: `useFeedOperations.ts#addFeed` — `/api/feeds` POST の `canRetryWithSelector` フィールドに `(body as { canRetryWithSelector?: boolean }).canRetryWithSelector` でアクセス、index signature 追加で型エラー解消

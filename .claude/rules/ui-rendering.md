@@ -246,6 +246,57 @@ function usePrefetch({ maxPrefetch = 200 }: Options) {
 
 主な使用箇所: `GalleryContextMenu.tsx` — 5 件の `role="menuitem"` 内 SVG に `aria-hidden="true"` 追加 (`ArticleContextMenu.tsx` canonical パターンの横展開)
 
+### 派生ケース: `icon` プロパティとして JSX を返す `buildXxxActions` 系関数の SVG も `aria-hidden` が必要
+
+`buildFeedActions` / `buildArticleActions` 等の **アクション配列ビルダー関数** では `icon: <svg ...>` として JSX を直接返す設計がある。これらの SVG は後で `role="menuitem"` ボタン内の `{action.icon}` として描画されるため、ビルダー関数の icon 定義時点で `aria-hidden="true"` を付ける必要がある。
+
+```typescript
+// アンチパターン: ビルダー関数で aria-hidden なし SVG を icon に渡す
+function buildFeedActions(props) {
+  return [
+    {
+      key: "detail",
+      label: "詳細を見る",
+      icon: (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+          {/* aria-hidden="true" なし → role="menuitem" ボタン内で余分に読み上げ */}
+          <circle cx="5" cy="5" r="4" />
+        </svg>
+      ),
+    },
+  ];
+}
+
+// 修正パターン: ビルダー関数でも aria-hidden="true" を付ける
+function buildFeedActions(props) {
+  return [
+    {
+      key: "detail",
+      label: "詳細を見る",
+      icon: (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
+          aria-hidden="true">
+          <circle cx="5" cy="5" r="4" />
+        </svg>
+      ),
+    },
+  ];
+}
+```
+
+**How to apply**: `action.icon` / `item.icon` のような JSX を返すプロパティを持つアクション配列ビルダーを編集するとき (icon の SVG は最終的に `role="menuitem"` ボタン内で `{action.icon}` として展開されるため、ビルダー側で `aria-hidden` を付けるのが責務が明確):
+
+1. **ビルダー関数内のすべての `icon: (<svg ...)` 定義を grep** — `grep -n "icon:.*<svg" src/components/<feature>/xxxActions.tsx`
+2. 各 SVG タグに `aria-hidden="true"` があるか確認
+3. 未付与なら追加
+
+**反例 (`aria-hidden` が不要なケース)**:
+
+- icon が **SVG でなくテキスト / emoji** の場合 → テキストは自動的にスクリーンリーダーで読まれる (意図的な場合はそのまま)
+- icon SVG が **`<title>` や `aria-label` を持ち意味的情報を提供している** 場合 → `aria-hidden` 付与すると情報が消える
+
+主な使用箇所: `feedActions.tsx` — `buildFeedActions` 内の全 icon SVG に `aria-hidden="true"` 追加、`SidebarFooter.tsx` — `role="menuitem"` 内の装飾 SVG に `aria-hidden="true"` 追加
+
 ## アイコン専用ボタンの SVG には `aria-hidden="true"` を付ける
 
 `role="menuitem"` に限らず、**`aria-label` を持つボタン (`<button aria-label="...">`) の唯一コンテンツがインライン SVG の場合**も `aria-hidden="true"` が必要。付けないとスクリーンリーダーが `aria-label` に加えて SVG の内容 (path data / group 等) を重複して読み上げたり「グラフィック」を余分にアナウンスしたりする。
