@@ -56,6 +56,7 @@ export const ChevronSmall = ({
 
 export const XIcon = (
   <svg
+    aria-hidden="true"
     width="10"
     height="10"
     viewBox="0 0 24 24"

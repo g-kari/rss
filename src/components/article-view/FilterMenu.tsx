@@ -92,6 +92,7 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
                 className={MENU_ITEM_CLS}
               >
                 <svg
+                  aria-hidden="true"
                   width="10"
                   height="10"
                   viewBox="0 0 24 24"
