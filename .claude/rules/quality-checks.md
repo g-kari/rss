@@ -278,3 +278,54 @@ test("ギャラリー画面で X が描画される", async ({ page }) => {
 **反例**: spec が pass した時点で「バグなしと判定して終了」しない。pure function は OK でも view layer で消えている可能性が常にある。
 
 主な使用箇所: digitallover.moe で `<video>` が表示されない bug 報告 → extractMainContent 経由の TDD spec が pass → CSS で `.article-content video` rule 欠落と判明 → defensive 対応で `.article-content video { width: 100%; height: auto; ... }` 追加 + regression spec を残す
+
+### 派生ケース: TDD spec を書く前に実コード Read で既存ガードの存在を確認して False Positive 判定する
+
+「setter が無駄に呼ばれている」「null チェックが抜けている」型の Issue 指摘に対して、**spec を書く前に実装を Read して既存のガード (null return / early return / 条件分岐) で問題が構造的に防がれていないかを確認する**。guard が実装済みと確認できれば spec 不要で false positive close できる。spec 作成コストを節約しつつ、正確な判定が可能。
+
+```typescript
+// Issue 指摘例:
+// "computeMergedSet で変更なし時もステートセッターが呼ばれる (不要な再レンダー)"
+
+// 実コードを Read して確認:
+function computeMergedSet(local: Set<string>, serverValues: string[]): Set<string> | null {
+  const newValues = serverValues.filter((v) => !local.has(v));
+  if (newValues.length === 0) return null; // ← 変更なし → null を返す
+  return new Set([...local, ...newValues]);
+}
+
+// caller:
+const merged = computeMergedSet(localSets[kind], serverIds);
+if (merged !== null) {
+  // ← null チェックで setter 呼出をガード
+  setState(merged);
+  deferSave(merged);
+}
+// → setter は変更があるときのみ呼ばれる。Issue は false positive。
+```
+
+```
+判定フロー:
+  1. Issue「X という問題がある」を受け取る
+  2. 問題発生の前提条件を整理 (例: 「変更なし時に setter が呼ばれる」)
+  3. 関連する実装を Read:
+     a. 問題の発生源 (例: computeMergedSet の戻り値)
+     b. caller 側のガード (例: `if (merged !== null) setState(...)`)
+  4. ガードが実装済み → false positive 判定 → Issue close
+  5. ガードが未実装 → true positive → TDD spec を書いて修正
+```
+
+**How to apply**: Issue が「関数が不要な処理を行っている / 呼ばれている」型の指摘を含むとき (spec を先に書くと false positive でも作業コストを消費するため、実コード Read で先に構造を確認する方が効率的):
+
+1. **問題の前提条件を1文で整理**: 「どの条件のとき問題が発生するはずか」(例: 「新しい値がない (newValues.length === 0) のとき setter が呼ばれる」)
+2. **関連関数の戻り値を Read で確認**: 前提条件を満たすときに関数が何を返すか
+3. **caller のガード処理を Read で確認**: 戻り値が問題の条件を示す場合 (null / false / 0 等) に caller が setter 呼出をスキップしているか
+4. **ガード確認済 → false positive として close**: 「既存の `if (merged !== null)` ガードで setter 不呼出確認済み」として issue close コメントを書く
+5. **ガード未確認 → true positive として TDD 着手**: `quality-checks.md` 本体「TDD spec が Red にならないとき」フローを適用
+
+**反例 (Read 省略 → spec 先行が正しいケース)**:
+
+- 実装が複数ファイル / 複雑な依存関係にまたがっていて Read だけでは全経路追跡が困難 → spec を先に書いて動作で確認
+- Issue に「特定入力で crash した」等の再現情報があり、実際の動作確認が必要 → spec で再現から開始
+
+主な使用箇所: `useReadStateSyncApply.ts#computeMergedSet` の null return ガード確認 — 「setter が毎回呼ばれる」Issue を受け取り、`computeMergedSet` が変更なし時に `null` を返し caller が `if (merged !== null)` でガードしていることを Read で確認して false positive 判定 + close
