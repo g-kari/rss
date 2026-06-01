@@ -40,7 +40,7 @@ export default function ArticleHeaderShare({
   return (
     <>
       {enabledShareTargets.length > 0 && article.link && (
-        <div className="flex items-center gap-1">
+        <div role="group" aria-label="クイックシェア" className="flex items-center gap-1">
           {enabledShareTargets.map((target) => (
             <button
               key={target.id}
