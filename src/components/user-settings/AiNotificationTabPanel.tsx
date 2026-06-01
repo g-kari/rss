@@ -13,6 +13,7 @@ import { AI_MODELS, type WorkersAiModelId } from "../../lib/ai-models";
 import { useToast } from "@/contexts/ToastContext";
 import { useDebounce } from "../../hooks/useDebounce";
 import { apiFetch } from "../../lib/api-fetch";
+import { devError } from "../../lib/dev-log";
 import { SettingRow } from "./shared";
 
 interface AiNotificationTabPanelProps {
@@ -89,7 +90,9 @@ export default function AiNotificationTabPanel({
         // config ロード完了後から自動保存を有効化
         silentHoursLoaded.current = true;
       })
-      .catch(() => {});
+      .catch((err) => {
+        devError("[AiNotificationTabPanel] push config fetch failed", err);
+      });
   }, []);
 
   const saveSilentHours = useCallback(
