@@ -440,6 +440,48 @@ function highlight(): ReactNode {
 
 主な使用箇所: `article-ui-helpers.ts` (default `import React, { type ReactNode }` → named `import { Fragment, createElement, type ReactNode }` に変換)
 
+## `usePortalMenu` の backdrop-dismiss で `setOpen(false)` と `btnRef.current?.focus()` はペアで呼ぶ
+
+`usePortalMenu` hook は `open / setOpen / toggle / pos / btnRef` を expose する。backdrop (`fixed inset-0`) の `onPointerDown` で外側タップを検知して `setOpen(false)` を呼ぶとき、**`btnRef.current?.focus()` を忘れると WCAG 2.4.3 (Focus Order) 違反** になる。フォーカスがどこへも復元されず、キーボードユーザーが文書の先頭に飛ばされるため。
+
+```tsx
+// アンチパターン: setOpen だけで focus 復元なし
+<div
+  className="fixed inset-0 z-[49]"
+  onPointerDown={(e) => {
+    if (!menuRef.current?.contains(e.target as Node)) setOpen(false);
+    // ← フォーカスがどこへも戻らない
+  }}
+/>
+
+// 修正パターン: setOpen + btnRef.current?.focus() のペア
+<div
+  className="fixed inset-0 z-[49]"
+  onPointerDown={(e) => {
+    if (!menuRef.current?.contains(e.target as Node)) {
+      setOpen(false);
+      btnRef.current?.focus(); // ← WCAG 2.4.3: focus をトリガーボタンへ戻す
+    }
+  }}
+/>
+```
+
+**SnoozeMenu / FilterMenu が canonical 実装**。新規に `usePortalMenu` を使うコンポーネントを追加するとき、既存の SnoozeMenu / FilterMenu の backdrop 部分をテンプレートとして使う。
+
+**How to apply**: `usePortalMenu` を用いた portal dropdown を実装するときに以下を確認 (backdrop の `onPointerDown` で `setOpen(false)` だけを書いて focus 復元を忘れるパターンが ShareMenu / CollectionDropdown で実際に発生、canonical パターンを持つ SnoozeMenu / FilterMenu と視覚的に diff してから commit):
+
+1. **backdrop の `onPointerDown` handler に `btnRef.current?.focus()`** が含まれているか確認
+2. 含まれていなければ `setOpen(false)` の直後に追加
+3. `usePortalMenu` を返す `btnRef` は `useRef<HTMLButtonElement>` 型で、ボタン要素の `ref={btnRef}` に binding 済であることを確認
+4. `Escape` キー close は `useMenuKeyboard` が担保するため backdrop handler への追記は不要
+
+**反例 (focus 復元が不要なケース)**:
+
+- ドロップダウンが **keyboard 操作されない想定の純粋マウス UI** — 本プロジェクトではすべてキーボードサポートが必要なため非該当
+- `usePortalMenu` を使わず **独立した focus trap** で開閉する modal — `useModalFocusTrap` が focus 復元を内包するため別途不要
+
+主な使用箇所: `ShareMenu.tsx` / `CollectionDropdown.tsx` — backdrop `onPointerDown` で `setOpen(false)` のみ → `btnRef.current?.focus()` 追加で WCAG 2.4.3 準拠 (closes #1035)
+
 ## React useEffect 副作用パターン
 
 → `.claude/rules/react-effect-patterns.md` を参照 (#733 Step で分割)

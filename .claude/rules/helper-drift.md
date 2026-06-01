@@ -275,3 +275,43 @@ utterance.onerror = (e) => {
 - silent 経路の副作用 (callback 内容) が **本質的に冪等** (同じ値で呼んでも害なし) → callback 経由でも OK
 
 主な使用箇所: `useTtsControls` の `useSpeechSynthesis` voice-unavailable silent reset 経路 — agent 委譲時に grep を怠った結果 signature 修正が必要と判明 → Phase 分離で次サイクル送り
+
+### 派生ケース: エラーレスポンス JSON parse + fallback の inline 重複は `tryParseErrorBody` helper に集約する
+
+`useCollections.ts` / `useFeedGroups.ts` 等の hook で `!res.ok` 分岐内に `res.json().catch(() => ({}))` を inline で書くパターンが複数 hook に散在すると、同じ「JSON parse 失敗時は空オブジェクト返却」ロジックが重複 drift する。`api-fetch.ts` に `tryParseErrorBody` として helper 集約するのが canonical。
+
+```typescript
+// アンチパターン: 各 hook に inline で重複
+// useCollections.ts
+if (!res.ok) {
+  const body = await (res.json() as Promise<{ code?: string; error?: string }>).catch(() => ({}));
+  throw new Error(body.error ?? `HTTP ${res.status}`);
+}
+
+// useFeedGroups.ts (同 pattern が 2〜4 箇所)
+if (!res.ok) {
+  const body = await (res.json() as Promise<{ code?: string; error?: string }>).catch(() => ({}));
+  throw new Error(body.error ?? `HTTP ${res.status}`);
+}
+
+// 修正パターン: api-fetch.ts に集約
+// import { tryParseErrorBody } from "../lib/api-fetch";
+if (!res.ok) {
+  const body = await tryParseErrorBody(res);
+  throw new Error(body.error ?? `HTTP ${res.status}`);
+}
+```
+
+**How to apply**: hook / Route Handler でエラーレスポンスの JSON parse に `res.json().catch()` を書きたくなったら (同 pattern が 2 箇所以上で発生した段階で helper drift):
+
+1. **`api-fetch.ts` に `tryParseErrorBody` が既にあるか grep** — `grep -n "tryParseErrorBody" src/lib/api-fetch.ts`
+2. あれば **`import { tryParseErrorBody } from "../lib/api-fetch"` で流用**
+3. なければ `api-fetch.ts` に **`export async function tryParseErrorBody(res: Response): Promise<{ code?: string; error?: string }>`** を追加してから流用
+4. `helper-drift.md` 本規範「新規 Route Handler / hook を書くときは既存 lib helpers を先に grep」の延長として適用
+
+**反例 (inline で OK なケース)**:
+
+- エラーレスポンスの shape が `{ code?: string; error?: string }` 以外の **特殊 schema** で parse ロジックが固有 → inline 可、または別名 helper
+- `tryParseErrorBody` が返す型では **narrowing 不十分** (例: 追加フィールドが型安全に必要) → 専用 parse helper を作成
+
+主な使用箇所: `useCollections.ts` / `useFeedGroups.ts` — 各 hook に 2 件ずつ (計 4 件) の inline `res.json().catch` 重複を `tryParseErrorBody` に集約
