@@ -21,8 +21,6 @@ const helper = createDebugHelper("rss-debug-bgaudio", "[BgAudio]");
 
 /** 純粋判定: storage の値から enabled かを判定 (テスタビリティのため分離)。 */
 export const evaluateBgAudioDebugEnabled = evaluateDebugEnabled;
-/** ランタイム有効判定 (localStorage キャッシュ付き)。 */
-export const isBgAudioDebugEnabled = helper.isEnabled;
 /**
  * 診断ログを出力する。`rss-debug-bgaudio = "1"` のときだけ console.info に
  * `[BgAudio]` prefix 付きでデータを出す。

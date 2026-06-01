@@ -192,13 +192,12 @@ src/
     SkeletonSidebar.tsx      # サイドバーのスケルトンスクリーン（初回ロード時 CLS 防止）
     SkeletonArticleList.tsx  # 記事一覧のスケルトンスクリーン（初回ロード時 CLS 防止）
     LayoutIcon.tsx           # レイアウト切り替えボタン用アイコン（compact / list / card / magazine / gallery）
-    GalleryMasonry.tsx       # 自前 virtualizer (GalleryMasonrySelf) の thin wrapper (後方互換用、#773 Phase 3 / #822 で masonic 完全削除済)
     UserSettingsModal.tsx    # ユーザー設定モーダル（フォントサイズ・行間・コンテンツ幅・自動既読閾値・テーマ）
     SaveUrlModal.tsx         # 任意 URL を手動保存するモーダル（POST /api/articles/save 連携）
     article-view/AutoReadController.tsx  # オートモードの副作用コントローラ（fetch → speak → 次の記事への自動進行）
     AppShell.tsx             # 27 個の state hook と TTS/audio 管理を一元化し、3 ペイン UI 全体をオーケストレーションするルートコンポーネント
     FallbackImage.tsx        # 画像 proxy fallback 機能を `useImageProxyFallback` hook でラップした薄い `<img>` ラッパーコンポーネント
-    GalleryMasonrySelf.tsx   # `useMasonryLayout` を使って自前 masonry virtualizer で絶対配置レイアウトを実現するギャラリー (#773 Phase 3 / #822 で default ON 化、`<GalleryMasonry>` の thin wrapper 経由で全 caller が使用)
+    GalleryMasonrySelf.tsx   # `useMasonryLayout` を使って自前 masonry virtualizer で絶対配置レイアウトを実現するギャラリー (#773 Phase 3 / #822 で default ON 化、`GalleryBody.tsx` が直接 import して使用)
     ImageLightbox.tsx        # ギャラリーの画像クリックで起動する拡大表示モーダル（focus trap・前後ナビゲーション・記事表示機能付き）
     PiperEngineHost.tsx      # piper-plus WASM TTS engine を `next/dynamic({ ssr: false })` で隔離し、render prop で child に expose する
     PiperErrorDetailToast.tsx # TTS engine エラーの詳細（code/message/model/voice）を浮き出し toast で表示、クリップボード保存機能付き
@@ -848,7 +847,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 - **`<engine>-<capability>.ts`**: engine + 機能 (例: `tts-adapter.ts` / `tts-text.ts` / `piper-voices.ts` / `browser-summarizer.ts`)
 - **`<feature>-fallback.ts`**: 特定サイト / 条件向け fallback (例: `x-com-fallback.ts` / `booth-fallback.ts` / `auto-ai-fallback.ts`)
 - **`<feature>-debug.ts`**: localStorage gate 付き本番デバッグログ (例: `auto-read-debug.ts` / `bgaudio-debug.ts`)
-- **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `article-utils.test.ts` / `binary-proxy-handler.test.ts` / `booth-fallback.test.ts` / `bulk-selection.test.ts` / `context-menu-position.test.ts` / `html-image-processors.test.ts` / `html-media-processors.test.ts` / `lru-cache.test.ts` / `mime-utils.test.ts` / `proxy-error-headers.test.ts` / `url.test.ts` / `video-error-placeholder.test.ts`)、playwright e2e は `e2e/*.spec.ts`
+- **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `src/lib/*.test.ts` 例: `article-utils.test.ts` / `binary-proxy-handler.test.ts` 等 12 件、`src/hooks/*.test.ts` / `src/hooks/*.test.tsx` 例: `useArticleListItemProps.test.ts` / `usePiperTts.test.ts` 等 10 件、`src/hooks/__tests__/*.test.ts` / `src/components/*.test.tsx` 例: `FeedHealthModal.test.tsx`)、playwright e2e は `e2e/*.spec.ts`
 
 ### 設計原則
 
