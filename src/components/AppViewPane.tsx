@@ -24,7 +24,7 @@ interface AppViewPaneProps {
  */
 export function AppViewPane({ mobilePane, isDesktop, articleViewProps }: AppViewPaneProps) {
   return (
-    <MobilePane pane="view" currentPane={mobilePane} isDesktop={isDesktop} as="main">
+    <MobilePane pane="view" currentPane={mobilePane} isDesktop={isDesktop}>
       <ErrorBoundary label="記事表示">
         <ArticleView {...articleViewProps} />
       </ErrorBoundary>

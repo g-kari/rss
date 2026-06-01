@@ -78,7 +78,7 @@ export default function BulkActionToolbar({
   return (
     <>
       <div
-        role="toolbar"
+        role="group"
         aria-label="記事一括操作"
         className="fixed bottom-4 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-full border border-border-default bg-surface-elevated px-4 py-2 shadow-lg"
       >

@@ -42,6 +42,7 @@ export function AppListPane({
       pane="list"
       currentPane={mobilePane}
       isDesktop={isDesktop}
+      as="main"
       id="main-content"
       tabIndex={-1}
       className="focus:outline-none"
