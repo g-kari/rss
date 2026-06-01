@@ -410,6 +410,60 @@ grep -rnE "from\s+[\"'].*[/\"']<target>[\"']" src/ app/ \
 
 主な使用箇所: 候補 4 `FeedItem.tsx` dead re-export 削除提案 — agent simplify confidence 92% で「caller 0 件」と判定したが、`feed-sidebar/index.tsx:17` + `SpecialViewButton.tsx:3` + `CategorySection.tsx:5` + `FeedGroupsSection.tsx:7` の **4 caller** が `../FeedItem` relative path で import 中。削除実施後の typecheck で謎の implicit any 連鎖発生 (`feed-item/index.tsx` 直接 import 経由で type 推論 path が変わる現象) → revert + Issue `#815` 起票で次サイクル送り。本派生サブケースで構造的に予防可能化
 
+#### 派生サブケース: spec に import があっても production caller 0 件なら export 削除可能 (Case A)
+
+「caller 0 件」grep で **spec / test ファイルからの import のみが hit** するケースは **Case A** と呼ぶ。production コードからは未使用なため `export` キーワードを削除してモジュールプライベート化 + spec の import / describe ブロックを削除しても、機能 regression は発生しない。
+
+```bash
+# Case A の判定フロー
+grep -rnE "from\s+[\"'].*classify-http-error[\"']" src/ app/ e2e/ \
+  --include="*.ts" --include="*.tsx" 2>/dev/null
+# 出力:
+#   e2e/classify-http-error.spec.ts:1: import { isRetryableHttpError } from ...
+# ↑ spec のみ hit → Case A 確定 (production caller 0 件)
+
+# src/ / app/ 配下が 0 件なら export 削除可能
+grep -rnE "from\s+[\"'].*classify-http-error[\"']" src/ app/ \
+  --include="*.ts" --include="*.tsx" 2>/dev/null
+# 出力: (空)  → production caller 0 件確認
+```
+
+**Case A での修正手順**:
+
+1. **対象シンボルの `export` キーワードを削除** — module-private 化 (ファイル内で引き続き使用可能)
+2. **spec の対象 import 行を削除** — TypeScript は未使用 import をエラーにする (`noUnusedLocals` / lint)
+3. **spec の対象 describe / it ブロックを削除** — export 削除後は spec が unit test として機能しなくなる
+4. **typecheck pass を確認** — `npm run typecheck` で型エラーがないことを確認
+5. **将来の再 export に備えてコメントを残す** (任意) — 「Phase 2 で自動リトライ実装時に export を再追加」等
+
+**Case A が成立する条件 (全て Yes で採用)**:
+
+| 条件                                             | 確認方法                                                         |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| production caller が 0 件 (`src/` / `app/` grep) | `grep -rnE "from.*<target>" src/ app/ --include="*.ts{,x}"` = 空 |
+| spec caller のみ hit                             | `grep -rnE "from.*<target>" e2e/ --include="*.ts"` に hit        |
+| 対象シンボルがファイル内で引き続き使用される     | 削除後のファイル内部で呼び出し箇所が存在するか確認               |
+| typecheck が pass する                           | `npm run typecheck` 実行                                         |
+
+**Case B (export 削除に caller 修正が必要なケース)**:
+
+- `src/` / `app/` 配下の production コードから import されているとき → export 削除前に全 caller を修正するか、module-private 化自体を見送る
+
+**How to apply**: dead export を module-private 化するとき (spec の import だけ残っているケースは Case A として安全に削除可能、production caller の有無だけ確認すれば spec import は障壁にならない):
+
+1. **grep を `src/ app/` と `e2e/` で別々に実行** — production / spec の分離確認
+2. **`src/ app/` が 0 件** → Case A 確定、export 削除 + spec 削除を進める
+3. **`src/ app/` に hit あり** → Case B、production caller 修正または見送り判断
+4. **spec 削除スコープ**: spec の describe ブロックを削除するだけでよく、spec ファイル自体は他テストを含む限り残す
+5. **commit message に「Case A: spec import があっても production caller 0 件のため削除可」** を明記してレビュアーへの説明を内包
+
+**反例 (spec import があっても export 維持すべきケース)**:
+
+- 対象シンボルが **将来の Phase 2 実装で即座に使われる予定** で spec が Phase 2 の契約テスト代わりになっている → spec を TDD の仕様書として維持する場合は export 維持 + 「Phase 2 で production caller を追加」方針
+- 対象シンボルが **外部パッケージとして公開** (OSS / npm publish) を想定している → production 内部 caller 0 件でも API として維持要
+
+主な使用箇所: `classify-http-error.ts` の `isRetryableHttpError` — `e2e/classify-http-error.spec.ts` からの import のみ hit、`src/ app/` は 0 件 → Case A 確定で `export` 削除 + spec の import / describe ブロック削除。typecheck pass、Phase 2 の自動リトライ実装時に `export` を再追加するだけで再利用可能な状態を維持
+
 ### 派生ケース: 監査エージェントの提案は「prop 受け口」と「配線」を分離して部分達成できる
 
 「Issue 起票へ降格」の前に、**「prop 受け口の追加 (1 ファイル)」と「配線 wiring (3〜4 ファイル + state lift up 等)」を分離** して **prop 受け口だけ同サイクル commit + 配線は別 Issue 起票** という部分達成パターンを採れることがある。「全部か全くやらないか」の二択でなく、安全な前半だけ commit を進められる。

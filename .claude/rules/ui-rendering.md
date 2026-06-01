@@ -399,3 +399,67 @@ function usePrefetch({ maxPrefetch = 200 }: Options) {
 - `padding` で十分なクリック領域がある (例: `py-2 px-4` で高さ 40px 確保) → min-h/w の追加は不要
 
 主な使用箇所: `EngagementSegmentButton.tsx` — 後で読む / ブックマーク / いいね 3 連トグルに `max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px]` を追加
+
+## 折りたたみボタン (WAI-ARIA Disclosure) には aria-expanded + aria-controls + コンテンツ id の三点セットを揃える
+
+`<button>` で折りたたみ / 展開 UI を実装するとき、**WAI-ARIA Disclosure Pattern** に従って 3 属性を揃える。`aria-expanded` だけでは AT (スクリーンリーダー) がどのコンテンツを制御しているか特定できず、仮想カーソルナビゲーションで折りたたみと展開先が切り離されて見える。
+
+```tsx
+// アンチパターン: aria-expanded だけで aria-controls が欠落
+<button
+  aria-expanded={!isCollapsed}
+  aria-label={isCollapsed ? "展開" : "折りたたむ"}
+  onClick={onToggle}
+>
+  <svg aria-hidden="true">...</svg>
+  カテゴリ名
+</button>
+<div hidden={isCollapsed}>
+  {/* コンテンツ — id がないため AT から関連付け不能 */}
+</div>
+
+// 修正パターン: aria-expanded + aria-controls + コンテンツ id の三点セット
+const contentId = `category-${cat}-content`;
+<button
+  aria-expanded={!isCollapsed}
+  aria-controls={contentId}
+  aria-label={isCollapsed ? `${cat} を展開` : `${cat} を折りたたむ`}
+  onClick={onToggle}
+>
+  <svg aria-hidden="true">...</svg>
+  カテゴリ名
+</button>
+<div id={contentId} hidden={isCollapsed || undefined}>
+  {/* コンテンツ — id でボタンと関連付け可能 */}
+</div>
+```
+
+**三点セットの意味**:
+
+| 属性 / 属性値                   | 役割                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| `aria-expanded={!isCollapsed}`  | AT に開閉状態を伝える (true = 展開中 / false = 折りたたみ中)             |
+| `aria-controls={contentId}`     | 制御するコンテンツ要素の `id` を指定 — AT の仮想カーソルが関連付けを解釈 |
+| `id={contentId}` (コンテンツ側) | ボタン側 `aria-controls` と一致する値を設定                              |
+| `hidden={isCollapsed}`          | HTML `hidden` 属性で AT に「折りたたみ中は読み上げ対象外」を伝える       |
+
+`aria-controls` の値は **`${area}-${uniqueKey}-content` 形式** でスコープを明確化する (例: `category-news-content` / `group-42-content`)。ページ内に同種コンポーネントが複数並ぶ場合でも id が衝突しないようにする。
+
+`hidden` 属性は `hidden={isCollapsed || undefined}` と書く。`hidden={false}` は HTML の `hidden` 属性を `hidden="false"` に展開してしまう React の罠があり、AT が「非表示」として扱う。`undefined` を渡すと属性自体が省略される。
+
+**canonical 実装**: `FeedAddModal.tsx` (modal の内部 section の開閉)、`CategorySection.tsx` (カテゴリ折りたたみ)、`FeedGroupsSection.tsx` (グループ折りたたみ)。
+
+**How to apply**: `<button>` で折りたたみ / 展開 UI を実装するとき (三点セットのうち一つでも欠けると AT がボタンとコンテンツの関連を解釈できず、キーボードユーザーがどこを制御しているか把握できなくなる):
+
+1. **コンテンツ側に一意な `id` を設定** — 同種コンポーネントが複数並ぶなら `${prefix}-${uniqueKey}-content` 形式
+2. **ボタン側に `aria-controls={contentId}`** を追加
+3. **`aria-expanded={!isCollapsed}`** を確認 — 展開中が `true`、折りたたみ中が `false`
+4. **`hidden` 属性は `hidden={isCollapsed || undefined}`** — `hidden={false}` は `hidden="false"` になる React 罠を回避
+5. **ボタン内 SVG には `aria-hidden="true"`** — `aria-label` があれば SVG は装飾扱い (`ui-rendering.md § アイコン専用ボタンの SVG` 参照)
+
+**反例 (三点セットの一部が省略可能なケース)**:
+
+- **`aria-controls` 省略可能 (稀)**: 折りたたみボタンとコンテンツが DOM 上で直接隣接 + WAI-ARIA 1.2 の実装が AT 側で `aria-controls` なしでも推測できる場合。ただし本プロジェクトでは三点セット揃えを canonical とする
+- **`hidden` 属性の代替**: `className` で `display:none` の切り替えも AT には同等に機能するが、`hidden` 属性は HTML セマンティクスとしてより明示的
+
+主な使用箇所: `CategorySection.tsx` / `FeedGroupsSection.tsx` — 折りたたみボタンに `aria-controls={catContentId}` / `aria-controls={\`group-${group.id}-content\`}`を追加、対応コンテンツ div に`id`+`hidden` 属性を追加して WAI-ARIA Disclosure pattern に準拠
