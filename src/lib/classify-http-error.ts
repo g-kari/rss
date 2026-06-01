@@ -70,14 +70,6 @@ export function formatHttpErrorMessage(
 }
 
 /**
- * `HttpErrorType` がリトライで解決する見込みがあるかを返す。
- * 自動リトライ実装時の判定材料 (Phase 2 用)。
- */
-function isRetryableHttpError(type: HttpErrorType): boolean {
-  return type === "rate_limit" || type === "server_error" || type === "network";
-}
-
-/**
  * `!res.ok` 応答を整形 + 分類して `{ message, type }` を返す共通 helper (#869)。
  *
  * `useArticleContent` / `useArticleAi` で重複していた以下の処理を集約:
