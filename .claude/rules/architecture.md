@@ -770,17 +770,17 @@ const match = matchesKeywordFilter(article, compiledFilter);
 
 ### カテゴリ分類
 
-| Prefix             | 件数 | 責務                                                           |
-| ------------------ | ---- | -------------------------------------------------------------- |
-| `useArticle*`      | 20   | 記事単体の表示・操作・状態 (内容取得・選択・ハイライト・進捗)  |
-| `useReadState*` 系 | 8    | 既読・読書ステータス (Set 管理・TTL 計算・persistence)         |
-| `useFeed*`         | 10   | フィード一覧・操作 (CRUD・選択・グループ・並び順)              |
-| `useAuto*`         | 4    | 自動化機能 (autoLoadMore / autoRead / autoReset / autoSummary) |
-| `useGallery*`      | 4    | ギャラリーレイアウト (列・自動スクロール・遅延描画)            |
-| `useTts*`          | 3    | TTS engine 共通制御 (rate / voice / volume / highlight 同期)   |
-| `useEngagement*`   | 3    | エンゲージメント計算 (スコア集計・ダイジェスト順序)            |
-| `useCollection*`   | 2    | 任意 URL コレクション (CRUD・記事 ID Set)                      |
-| その他             | ~64  | App-shell サブフック (`useAppModal*` / `useFeedSidebar*` 等)   |
+| Prefix             | 件数 | 責務                                                                                                   |
+| ------------------ | ---- | ------------------------------------------------------------------------------------------------------ |
+| `useArticle*`      | 20   | 記事単体の表示・操作・状態 (内容取得・選択・ハイライト・進捗)                                          |
+| `useReadState*` 系 | 8    | 既読・読書ステータス (Set 管理・TTL 計算・persistence)                                                 |
+| `useFeed*`         | 10   | フィード一覧・操作 (CRUD・選択・グループ・並び順)                                                      |
+| `useAuto*`         | 4    | 自動化機能 (autoLoadMore / autoRead / autoReadSettings / autoReset)                                    |
+| `useGallery*`      | 4    | ギャラリー自動既読・自動スクロール・スワイプナビ (AutoRead / AutoReadTracking / AutoScroll / SwipeNav) |
+| `useTts*`          | 3    | TTS engine 共通制御 (rate / voice / volume / highlight 同期)                                           |
+| `useEngagement*`   | 3    | エンゲージメント計算 (スコア集計・ダイジェスト順序)                                                    |
+| `useCollection*`   | 2    | 任意 URL コレクション (CRUD・記事 ID Set)                                                              |
+| その他             | ~68  | App-shell サブフック (`useAppModal*` / `useFeedSidebar*` 等)                                           |
 
 ### 命名規則
 
