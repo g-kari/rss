@@ -50,6 +50,30 @@ export function handleArticleContextMenu<T = Element>(
   };
 }
 
+/**
+ * 4 コンポーネント (CompactItem / ListItem / CardItem / MagazineItem) で同形の
+ * `useCallback` 8 行ブロックを集約した hook。
+ * `handleArticleKeyDown` / `handleArticleContextMenu` を useCallback でメモ化して返す。
+ */
+export function useArticleHandlers(
+  article: Article,
+  onSelectArticle: (a: Article, event?: ReactMouseEvent) => void,
+  onContextMenu: ((a: Article, x: number, y: number) => void) | undefined,
+): {
+  handleKeyDown: (e: ReactKeyboardEvent<HTMLElement>) => void;
+  handleContextMenu: (e: ReactMouseEvent<HTMLElement>) => void;
+} {
+  const handleKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLElement>) => handleArticleKeyDown(article, onSelectArticle)(e),
+    [article, onSelectArticle],
+  );
+  const handleContextMenu = useCallback(
+    (e: ReactMouseEvent<HTMLElement>) => handleArticleContextMenu(article, onContextMenu)(e),
+    [article, onContextMenu],
+  );
+  return { handleKeyDown, handleContextMenu };
+}
+
 // ── 共通 Props ──────────────────────────────────────────────────────────
 
 export interface ArticleItemProps {

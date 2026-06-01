@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  memo,
-  useMemo,
-  useCallback,
-  useContext,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { memo, useMemo, useContext } from "react";
 import { timeAgo } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
@@ -16,8 +9,7 @@ import { NoteIcon } from "../article-view/icons";
 import {
   ArticleActions,
   DuplicateBadge,
-  handleArticleContextMenu,
-  handleArticleKeyDown,
+  useArticleHandlers,
   type ArticleItemProps,
 } from "./shared";
 
@@ -43,13 +35,10 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   const isSelected = selectedId === article.id;
   const bulkIds = useContext(BulkSelectionCtx);
   const isBulkSelected = useMemo(() => bulkIds.has(article.id), [bulkIds, article.id]);
-  const handleKeyDown = useCallback(
-    (e: ReactKeyboardEvent<HTMLElement>) => handleArticleKeyDown(article, onSelectArticle)(e),
-    [article, onSelectArticle],
-  );
-  const handleContextMenu = useCallback(
-    (e: ReactMouseEvent<HTMLElement>) => handleArticleContextMenu(article, onContextMenu)(e),
-    [article, onContextMenu],
+  const { handleKeyDown, handleContextMenu } = useArticleHandlers(
+    article,
+    onSelectArticle,
+    onContextMenu,
   );
   const timeAgoText = useMemo(() => timeAgo(article.publishedAt), [article.publishedAt]);
   return (
