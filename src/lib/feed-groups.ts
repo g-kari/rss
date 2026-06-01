@@ -1,11 +1,11 @@
-import { r2Get, r2Put } from "@/lib/r2";
+import { r2Get, r2Put, userKey } from "@/lib/r2";
 import type { FeedGroup } from "@/types";
 
 export const MAX_FEED_GROUPS_PER_USER = 100;
 export const FEED_GROUP_NAME_MAX_LENGTH = 50;
 
 export function feedGroupsKey(userId: string): string {
-  return `users/${userId}/feed-groups.json`;
+  return userKey(userId, "feed-groups.json");
 }
 
 export async function readFeedGroups(bucket: R2Bucket, userId: string): Promise<FeedGroup[]> {

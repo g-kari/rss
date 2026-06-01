@@ -9,7 +9,7 @@
  */
 
 import type { SharedFeedMeta, UserSubscription, Feed, Article } from "../types";
-import { r2Get, r2Put, sha256Hex, feedLastFetchedKey } from "./r2";
+import { r2Get, r2Put, sha256Hex, feedLastFetchedKey, userKey } from "./r2";
 import { compareByDateDesc } from "./article-utils";
 import { pMap } from "./concurrency";
 
@@ -62,7 +62,7 @@ function pageKey(feedHash: string, page: number): string {
 }
 
 function subsKey(userId: string): string {
-  return `users/${userId}/subscriptions.json`;
+  return userKey(userId, "subscriptions.json");
 }
 
 // ── SharedFeedMeta CRUD ───────────────────────────────────────────

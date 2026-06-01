@@ -4,7 +4,7 @@ import type {
   RecommendationCache,
   UserSubscription,
 } from "../types";
-import { r2Get, r2Put, sha256Hex, engagementKey } from "./r2";
+import { r2Get, r2Put, sha256Hex, engagementKey, userKey } from "./r2";
 import { scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
 import { discoverFeedUrl } from "./feed-discovery";
 import { buildFeedUserMap, readFeedMeta, readLatestArticles, R2_CONCURRENCY } from "./shared-feed";
@@ -87,7 +87,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 時間
 const MAX_RECOMMENDATIONS = 20;
 
 function r2Key(userId: string) {
-  return `users/${userId}/recommendations.json`;
+  return userKey(userId, "recommendations.json");
 }
 
 /** キャッシュが有効か判定する */

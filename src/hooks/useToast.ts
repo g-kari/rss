@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 
 export interface ToastItem {
   id: string;
@@ -83,5 +83,8 @@ export function useToastState(): ToastApi {
     [show],
   );
 
-  return { toasts, success, error, info, undo, dismiss };
+  return useMemo<ToastApi>(
+    () => ({ toasts, success, error, info, undo, dismiss }),
+    [toasts, success, error, info, undo, dismiss],
+  );
 }

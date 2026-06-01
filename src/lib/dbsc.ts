@@ -15,6 +15,7 @@
  */
 
 import { base64urlToBytes } from "./auth";
+import { devError } from "./dev-log";
 
 /**
  * サーバーサイドに保存する DBSC セッション情報（R2 保存用）
@@ -122,7 +123,8 @@ export async function verifyDbscResponse(
       sigBytes,
       signedData,
     );
-  } catch {
+  } catch (err) {
+    devError("[dbsc] verifyDbscResponse threw — JWK import または署名 API エラー", err);
     return false;
   }
 }

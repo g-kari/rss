@@ -68,7 +68,13 @@ export async function POST(req: NextRequest) {
 
       // 期限切れチェック
       if (storedChallenge.expiresAt < Date.now()) {
-        env.RSS_DATA.delete(challengeKey).catch(() => {});
+        env.RSS_DATA.delete(challengeKey).catch((e) => {
+          console.warn(
+            "[dbsc/challenge] R2 delete expired challenge failed:",
+            challengeKey.slice(-8),
+            e,
+          );
+        });
         return apiError("Challenge expired", 401);
       }
 

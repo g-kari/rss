@@ -100,7 +100,13 @@ export async function getServerSession(
       return null;
     }
     if (raw.expiresAt < Math.floor(Date.now() / 1000)) {
-      r2.delete(key).catch(() => {});
+      r2.delete(key).catch((e) => {
+        console.warn(
+          "[getServerSession] R2 delete expired session failed:",
+          sessionId.slice(0, 8),
+          e,
+        );
+      });
       return null;
     }
     return raw;
@@ -133,7 +139,9 @@ export async function updateServerSession(
 export async function deleteServerSession(r2: R2Bucket, sessionId: string): Promise<void> {
   const key = buildSessionKey(sessionId);
   if (!key) return;
-  await r2.delete(key).catch(() => {});
+  await r2.delete(key).catch((e) => {
+    console.warn("[deleteServerSession] R2 delete failed:", sessionId.slice(0, 8), e);
+  });
 }
 
 /**
