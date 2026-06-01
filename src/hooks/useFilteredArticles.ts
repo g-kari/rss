@@ -11,6 +11,7 @@ import {
   equalCompiledFilterMap,
   equalViewFeedIds,
 } from "../lib/article-filter-equality";
+import { equalSnoozedUntil } from "../lib/read-state-merge";
 import { useArticleFilters } from "./useArticleFilters";
 import { useArticleSorting } from "./useArticleSorting";
 import { useArticlePagination } from "./useArticlePagination";
@@ -216,6 +217,14 @@ export function useFilteredArticles({
     stableViewFeedIdsRef.current = computedViewFeedIds;
   }
   const viewFeedIds = stableViewFeedIdsRef.current;
+  // perf #1015: snoozedUntil (Record<string, string>) は R2 同期ごとに新 reference が生成される。
+  // equalSnoozedUntil で構造的等価ガードを追加して内容不変時の O(n) structuralFiltered 再計算を回避。
+  // equalSnoozedUntil は read-state-merge.ts 既エクスポート済み (#686 対応)。
+  const stableSnoozedUntilRef = useRef<Record<string, string>>(snoozedUntil ?? {});
+  if (!equalSnoozedUntil(stableSnoozedUntilRef.current, snoozedUntil ?? {})) {
+    stableSnoozedUntilRef.current = snoozedUntil ?? {};
+  }
+  const stableSnoozedUntil = stableSnoozedUntilRef.current;
   const normalizedGlobalFilter = useMemo(
     () => (globalFilter ? normalizeFilter(globalFilter) : null),
     [globalFilter],
@@ -291,7 +300,7 @@ export function useFilteredArticles({
         nsfwFeedIds,
         globalFilter: normalizedGlobalFilter,
         readBeforeTimestamp: null,
-        snoozedUntil,
+        snoozedUntil: stableSnoozedUntil,
         readingTimeRange,
         readingTimeCache,
         mutedFeedIds,
@@ -320,7 +329,7 @@ export function useFilteredArticles({
       nsfwMode,
       nsfwFeedIds,
       normalizedGlobalFilter,
-      snoozedUntil,
+      stableSnoozedUntil,
       readingTimeRange,
       mutedFeedIds,
       authorFilter,
