@@ -145,13 +145,16 @@ export function useFeedSidebarActions({
   const readingListIdsRef = useSyncedRef(readingListIds);
   const notesRef = useSyncedRef(notes);
   const totalUnreadRef = useSyncedRef(totalUnread);
+  // toast は App.tsx の useToast() から毎 render 新規オブジェクトになるため useSyncedRef でラップして deps から外す。
+  // FeedSidebar が toast 更新のたびに再レンダリングされる問題を回避する (#1041)。
+  const toastRef = useSyncedRef(toast);
 
   // #789: feeds reference は 5 分 polling で毎回新規。構造的内容変化なしなら
   // signature が一致して下流の useMemo を再計算 skip させる (sibling useSidebarFeeds と同 pattern)。
   const feedsRef = useSyncedRef(feeds);
   const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- feedStructuralSignature が feeds 構造を encode 済 + feedsRef は安定参照
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- feedStructuralSignature が feeds 構造を encode 済 + feedsRef/toastRef は安定参照
   return useMemo<FeedSidebarActions>(
     () => ({
       onSelectFeed: (id) => {
@@ -199,7 +202,7 @@ export function useFeedSidebarActions({
           });
           if (!ok) return;
         }
-        markAllReadWithUndo(feedId, toast);
+        markAllReadWithUndo(feedId, toastRef.current);
       },
       onToggleTheme: toggleTheme,
       onOpenSettings: () => setShowSettings(true),
@@ -270,7 +273,6 @@ export function useFeedSidebarActions({
       appendFeeds,
       markAllReadWithUndo,
       markBulkRead,
-      toast,
       confirm,
       toggleTheme,
       setShowSettings,
