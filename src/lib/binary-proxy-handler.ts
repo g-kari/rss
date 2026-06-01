@@ -132,6 +132,7 @@ export async function handleBinaryProxy<Reason extends string>(
   const url = reqUrl.searchParams.get("url");
   if (!url) return new Response(null, { status: 400 });
   if (!isValidPublicUrl(url)) return new Response(null, { status: 400 });
+  const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
 
   const cacheKey = await buildCacheKey(reqUrl.origin, options.cacheType, url);
 
@@ -158,13 +159,13 @@ export async function handleBinaryProxy<Reason extends string>(
         });
       }
       console.error(
-        `[${options.label}] cache poisoning detected: url=${url} cached-content-type="${cached.headers.get("Content-Type") ?? ""}" detected="${cachedDetectedMime ?? "null"}" — invalidating cache and re-fetching upstream`,
+        `[${options.label}] cache poisoning detected: url=${logUrl} cached-content-type="${cached.headers.get("Content-Type") ?? ""}" detected="${cachedDetectedMime ?? "null"}" — invalidating cache and re-fetching upstream`,
       );
       await deleteCfCache(cacheKey);
     } else {
       // body 読み込み失敗 (size 超過 / 不在) も poisoned とみなして invalidate
       console.error(
-        `[${options.label}] cache body unreadable: url=${url} — invalidating cache and re-fetching upstream`,
+        `[${options.label}] cache body unreadable: url=${logUrl} — invalidating cache and re-fetching upstream`,
       );
       await deleteCfCache(cacheKey);
     }
@@ -190,7 +191,7 @@ export async function handleBinaryProxy<Reason extends string>(
 
     if (!res.ok) {
       console.error(
-        `[${options.label}] upstream not ok: url=${url} status=${res.status} content-type="${ct}"`,
+        `[${options.label}] upstream not ok: url=${logUrl} status=${res.status} content-type="${ct}"`,
       );
       const reason =
         res.status === 404
@@ -207,7 +208,7 @@ export async function handleBinaryProxy<Reason extends string>(
     const needsMagicCheck = ct === "application/octet-stream" || ct === "";
 
     if (!needsMagicCheck && !options.allowedContentTypes.has(ct)) {
-      console.error(`[${options.label}] MIME rejected: url=${url} content-type="${ct}"`);
+      console.error(`[${options.label}] MIME rejected: url=${logUrl} content-type="${ct}"`);
       return options.errorResponse(options.reasonMap.mimeRejected, {
         upstreamStatus: res.status,
         upstreamContentType: ct,
@@ -218,7 +219,7 @@ export async function handleBinaryProxy<Reason extends string>(
     const clBytes = contentLength ? parseInt(contentLength, 10) : NaN;
     if (contentLength && clBytes > options.maxBytes) {
       console.error(
-        `[${options.label}] too large (Content-Length): url=${url} cl=${clBytes} max=${options.maxBytes}`,
+        `[${options.label}] too large (Content-Length): url=${logUrl} cl=${clBytes} max=${options.maxBytes}`,
       );
       return options.errorResponse(options.reasonMap.tooLarge, {
         upstreamStatus: res.status,
@@ -233,7 +234,7 @@ export async function handleBinaryProxy<Reason extends string>(
         : options.maxBytesNoContentLength;
 
     if (!res.body) {
-      console.error(`[${options.label}] no body: url=${url} content-type="${ct}"`);
+      console.error(`[${options.label}] no body: url=${logUrl} content-type="${ct}"`);
       return options.errorResponse(options.reasonMap.unavailable, {
         upstreamStatus: res.status,
         upstreamContentType: ct,
@@ -242,7 +243,7 @@ export async function handleBinaryProxy<Reason extends string>(
     const merged = await readBodyBytes(res.body, effectiveMax);
     if (merged === null) {
       console.error(
-        `[${options.label}] size unknown over limit: url=${url} content-type="${ct}" cl-header=${contentLength ?? "none"} effective-max=${effectiveMax}`,
+        `[${options.label}] size unknown over limit: url=${logUrl} content-type="${ct}" cl-header=${contentLength ?? "none"} effective-max=${effectiveMax}`,
       );
       return options.errorResponse(
         contentLength ? options.reasonMap.tooLarge : options.reasonMap.sizeUnknown,
@@ -256,7 +257,7 @@ export async function handleBinaryProxy<Reason extends string>(
     const mimeType = options.detectMimeType(merged);
     if (!mimeType || !options.allowedContentTypes.has(mimeType)) {
       console.error(
-        `[${options.label}] magic bytes detection failed: url=${url} content-type="${ct}" detected="${mimeType ?? "null"}" body-size=${merged.byteLength}`,
+        `[${options.label}] magic bytes detection failed: url=${logUrl} content-type="${ct}" detected="${mimeType ?? "null"}" body-size=${merged.byteLength}`,
       );
       return options.errorResponse(options.reasonMap.contentTypeMismatch, {
         upstreamStatus: res.status,
@@ -269,7 +270,7 @@ export async function handleBinaryProxy<Reason extends string>(
     // 追加 consistency check (image-proxy のみ使用): declared vs detected 不一致を拒否
     if (options.isConsistentMime && !options.isConsistentMime(ct, mimeType)) {
       console.error(
-        `[${options.label}] content-type mismatch: url=${url} declared="${ct}" detected="${mimeType}"`,
+        `[${options.label}] content-type mismatch: url=${logUrl} declared="${ct}" detected="${mimeType}"`,
       );
       return options.errorResponse(options.reasonMap.contentTypeMismatch, {
         upstreamStatus: res.status,
