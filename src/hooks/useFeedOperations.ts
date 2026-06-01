@@ -73,7 +73,10 @@ export function useFeedOperations({
         }),
       });
       if (!res.ok) {
-        const data = (await res.json()) as { error: string; canRetryWithSelector?: boolean };
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          canRetryWithSelector?: boolean;
+        };
         notify(data.error ?? "フィードの追加に失敗しました");
         return { canRetryWithSelector: data.canRetryWithSelector };
       }
