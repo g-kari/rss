@@ -63,8 +63,11 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seenLinksRef = useRef<Set<string>>(new Set());
 
-  // 記事 ID ベースの軽量キー（全リンクを join する O(n) 文字列計算を回避）
-  const linksKey = useMemo(() => visible.map((a) => a.id).join(","), [visible]);
+  // count:last-id sentinel — O(1) で記事追加/削除を検知 (全 ID を join する O(n) GC 圧を回避)
+  const linksKey = useMemo(
+    () => (visible.length > 0 ? `${visible.length}:${visible[visible.length - 1]?.id ?? ""}` : ""),
+    [visible],
+  );
 
   useEffect(() => {
     if (!linksKey) return;

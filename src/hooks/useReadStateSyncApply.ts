@@ -11,6 +11,7 @@ import type { KeywordFilter, ReadState } from "../types";
 import { STORAGE_KEYS, deferSaveSet, saveJson, storageSet } from "../lib/storage";
 import { type SetKind, type PendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
 import { equalSnoozedUntil, equalNotes, equalTagIds } from "../lib/read-state-merge";
+import { equalStringSet } from "../lib/article-filter-equality";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
 export interface SetStateDispatchers {
@@ -131,7 +132,9 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
         const { serverIds, setter, storageKey } = SET_KIND_CONFIG[kind];
         const merged = computeMergedSet(localSets[kind], serverIds);
         if (merged) {
-          setter(merged);
+          // 構造的等価ガード: prev と内容が同じなら identity を維持して不要 re-render を防ぐ
+          // (stateRef が brief に stale だった場合でも prev が最新 state を保証)
+          setter((prev) => (equalStringSet(prev, merged) ? prev : merged));
           deferSaveSet(storageKey, merged);
         }
       }

@@ -59,6 +59,22 @@ export function equalCompiledFilterMap(
 }
 
 /**
+ * `Set<string>` の構造的等価判定。
+ *
+ * R2 同期レスポンス受信時に `useReadStateSyncApply` で `computeMergedSet` が新 Set を
+ * 返した場合でも、実際の内容が前回 state と同じなら identity を安定化して
+ * `useArticleListItemProps.resolveItemProps` の不要 re-render を防ぐ。
+ */
+export function equalStringSet(a: Set<string>, b: Set<string>): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const id of a) {
+    if (!b.has(id)) return false;
+  }
+  return true;
+}
+
+/**
  * `Set<string> | undefined` の構造的等価判定 (viewFeedIds 用)。
  *
  * `activeFeedView` が変化しない限り viewFeedIds の内容は変化しないが、
