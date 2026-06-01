@@ -43,6 +43,8 @@ export interface SearchContext {
   feedTitleByHash: ReadonlyMap<string, string>;
   /** articleId → タグ配列 (tag: 検索に使用) */
   tagsByArticleId?: Readonly<Record<string, readonly string[]>>;
+  /** defaultHaystack 結果キャッシュ。クエリ変更ごとの stripHtml 重複実行を回避 (#1000) */
+  haystackCache?: Map<string, string>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -201,6 +203,10 @@ function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: Sear
 }
 
 function defaultHaystack(article: SearchableArticle, ctx: SearchContext): string {
+  if (ctx.haystackCache) {
+    const cached = ctx.haystackCache.get(article.id);
+    if (cached !== undefined) return cached;
+  }
   // 既存 articleMatchesQuery 互換 + content も対象に
   const parts = [
     article.title,
@@ -210,7 +216,9 @@ function defaultHaystack(article: SearchableArticle, ctx: SearchContext): string
     stripHtml(article.content ?? ""),
     ctx.feedTitleByHash.get(article.feedHash) ?? "",
   ];
-  return parts.join(" \u0001 ").toLowerCase();
+  const result = parts.join("  ").toLowerCase();
+  ctx.haystackCache?.set(article.id, result);
+  return result;
 }
 
 function evaluate(node: SearchNode, article: SearchableArticle, ctx: SearchContext): boolean {

@@ -235,6 +235,11 @@ export function useFilteredArticles({
     readingTimeCacheRef.current = createReadingTimeCache();
   }, [articles]);
 
+  const haystackCacheRef = useRef(new Map<string, string>());
+  useEffect(() => {
+    haystackCacheRef.current = new Map();
+  }, [articles]);
+
   const readingTimeCache = readingTimeRange === "all" ? undefined : readingTimeCacheRef.current;
 
   const isBookmarksFeed = feedId === SPECIAL_FEED_IDS.BOOKMARKS;
@@ -299,6 +304,7 @@ export function useFilteredArticles({
         selectedTag,
         articleTags: articleTagsForDeps,
         collectionArticleIds,
+        haystackCache: haystackCacheRef.current,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避
     [

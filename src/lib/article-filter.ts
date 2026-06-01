@@ -73,6 +73,8 @@ export interface ArticleContentFilterOptions {
    * `createReadingTimeCache()` で生成し、articles 配列の reference 変化時に再生成する。
    */
   readingTimeCache?: (article: Article) => number;
+  /** defaultHaystack 結果キャッシュ。クエリ変更ごとの stripHtml 重複実行を回避 (#1000) */
+  haystackCache?: Map<string, string>;
 }
 
 /** 記事状態フィルター（既読・ブックマーク・リーディングリスト等）に関するクエリオプション */
@@ -311,6 +313,7 @@ function buildQueryPredicate(opts: ArticleFilterOptions): ((a: Article) => boole
   const ctx: SearchContext = {
     feedTitleByHash: opts.feedTitleByHash ?? EMPTY_FEED_TITLE_MAP,
     tagsByArticleId: opts.articleTags ?? undefined,
+    haystackCache: opts.haystackCache,
   };
   return (a) => evaluator(a, ctx);
 }
