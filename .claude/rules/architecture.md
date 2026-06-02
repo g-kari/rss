@@ -377,7 +377,8 @@ src/
     gallery-autoscroll.ts    # ギャラリー自動スクロール純粋関数（5 段階速度: off/slow/medium/fast/slideshow、computeContinuousScrollDelta / computeSlideshowJump / parseGalleryAutoScrollSpeed、#690）
     auto-read-debug.ts       # オートモード診断ログ用 localStorage gate ヘルパー（rss-debug-autoread キーで autoReadDebug を有効化、#678）
     bgaudio-debug.ts         # useBackgroundAudio 診断ログ用 localStorage gate ヘルパー（rss-debug-bgaudio キーで bgaudioDebug を有効化、#745 Phase C）
-    debug-helper.ts          # createDebugHelper factory（{ storageKey, expected, prefix } で evaluator + logger 関数ペアを生成、auto-read-debug.ts / bgaudio-debug.ts の共通基盤）
+    piper-debug.ts           # usePiperTts (Piper wasm TTS engine) 診断ログ用 localStorage gate ヘルパー（rss-debug-piper キーで piperDebug を有効化、#1055）
+    debug-helper.ts          # createDebugHelper factory（{ storageKey, expected, prefix } で evaluator + logger 関数ペアを生成、auto-read-debug.ts / bgaudio-debug.ts / piper-debug.ts の共通基盤）
     auto-read-persist.ts     # オートモード ON 状態を localStorage に保存・1 時間 TTL で復元する純粋関数（shouldRestore / parsePersisted、#679）
     scroll-direction.ts      # スクロール方向判定純粋関数（computeScrollDirection / computeHeaderVisibility、#677 ArticleHeader sticky toggle 用）
     inline-nav.ts            # インラインナビ領域クリック位置判定純粋関数（whichSideClicked）
@@ -846,7 +847,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 - **`<feature>-utils.ts`**: 汎用ユーティリティの集約 (例: `mime-utils.ts` / `sort-utils.ts` / `article-utils.ts` / `stats-helpers.ts`)
 - **`<engine>-<capability>.ts`**: engine + 機能 (例: `tts-adapter.ts` / `tts-text.ts` / `piper-voices.ts` / `browser-summarizer.ts`)
 - **`<feature>-fallback.ts`**: 特定サイト / 条件向け fallback (例: `x-com-fallback.ts` / `booth-fallback.ts` / `auto-ai-fallback.ts`)
-- **`<feature>-debug.ts`**: localStorage gate 付き本番デバッグログ (例: `auto-read-debug.ts` / `bgaudio-debug.ts`)
+- **`<feature>-debug.ts`**: localStorage gate 付き本番デバッグログ (例: `auto-read-debug.ts` / `bgaudio-debug.ts` / `piper-debug.ts`)
 - **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `src/lib/*.test.ts` 例: `article-utils.test.ts` / `binary-proxy-handler.test.ts` 等 12 件、`src/hooks/*.test.ts` / `src/hooks/*.test.tsx` 例: `useArticleListItemProps.test.ts` / `usePiperTts.test.ts` 等 10 件、`src/hooks/__tests__/*.test.ts` / `src/components/*.test.tsx` 例: `FeedHealthModal.test.tsx`)、playwright e2e は `e2e/*.spec.ts`
 
 ### 設計原則
@@ -910,6 +911,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `auto-read.spec.ts`                             | `src/lib/auto-read.ts` — オートモード状態遷移判定純粋関数                                                                                                                                                                                                                                                                                                  |
 | `auto-read-debug.spec.ts`                       | `src/lib/auto-read-debug.ts` — `evaluateAutoReadDebugEnabled` localStorage gate 純粋判定 (#678)                                                                                                                                                                                                                                                            |
 | `bgaudio-debug.spec.ts`                         | `src/lib/bgaudio-debug.ts` — `evaluateBgAudioDebugEnabled` localStorage gate 純粋判定 (#745 Phase C 案 B、`auto-read-debug.ts` の `evaluateAutoReadDebugEnabled` と同 pattern: 厳密一致 "1" のみ true)                                                                                                                                                     |
+| `piper-debug.spec.ts`                           | `src/lib/piper-debug.ts` — `evaluatePiperDebugEnabled` localStorage gate 純粋判定 (#1055、`bgaudio-debug.ts` / `auto-read-debug.ts` と同 pattern: 厳密一致 "1" のみ true)                                                                                                                                                                                  |
 | `auto-read-persist.spec.ts`                     | `src/lib/auto-read-persist.ts` — `parsePersistedAutoReadState` / `serializeAutoReadState` / `shouldRestoreAutoMode` (1 時間 TTL 復元) (#679)                                                                                                                                                                                                               |
 | `auto-ai-fallback.spec.ts`                      | `src/lib/auto-ai-fallback.ts` — `shouldSkipAutoAi` 純粋関数（#700 ブラウザ AI のみ使う設定の skip 判定 全 4 ケース）                                                                                                                                                                                                                                       |
 | `gallery-autoscroll.spec.ts`                    | `src/lib/gallery-autoscroll.ts` — 5 段階速度 enum / 連続スクロール delta 計算 / スライドショー jump 計算 / 不正値 fallback 全 22 ケース (#690)                                                                                                                                                                                                             |

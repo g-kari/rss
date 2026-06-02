@@ -144,7 +144,8 @@ export function storageListKeys(prefix?: string): string[] {
   try {
     const all = Object.keys(localStorage);
     return prefix ? all.filter((k) => k.startsWith(prefix)) : all;
-  } catch {
+  } catch (err) {
+    devError("[storage] localStorage keys enumeration failed", { prefix, err });
     return [];
   }
 }
