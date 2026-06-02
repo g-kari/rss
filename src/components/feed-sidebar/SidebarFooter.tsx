@@ -39,6 +39,10 @@ interface Props {
   weeklyGoal?: number;
 }
 
+/** 「もっと見る」ドロップダウン内 menuitem ボタンの共通クラス文字列 (#1057 で逐語的重複を集約)。 */
+const MENUITEM_CLASS =
+  "w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors";
+
 export default function SidebarFooter({
   user,
   theme,
@@ -231,7 +235,7 @@ export default function SidebarFooter({
               }}
               disabled={importing}
               role="menuitem"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover disabled:opacity-40 transition-colors"
+              className={`${MENUITEM_CLASS} disabled:opacity-40`}
             >
               <svg
                 className="w-3.5 h-3.5 flex-shrink-0"
@@ -257,7 +261,7 @@ export default function SidebarFooter({
                 setMoreOpen(false);
               }}
               role="menuitem"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+              className={MENUITEM_CLASS}
             >
               <svg
                 className="w-3.5 h-3.5 flex-shrink-0"
@@ -285,7 +289,7 @@ export default function SidebarFooter({
                     setMoreOpen(false);
                   }}
                   role="menuitem"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+                  className={MENUITEM_CLASS}
                 >
                   <svg
                     className="w-3.5 h-3.5 flex-shrink-0"
@@ -309,7 +313,7 @@ export default function SidebarFooter({
                     setMoreOpen(false);
                   }}
                   role="menuitem"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+                  className={MENUITEM_CLASS}
                 >
                   <svg
                     className="w-3.5 h-3.5 flex-shrink-0"
@@ -338,7 +342,7 @@ export default function SidebarFooter({
                   setMoreOpen(false);
                 }}
                 role="menuitem"
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+                className={MENUITEM_CLASS}
               >
                 <svg
                   className="w-3.5 h-3.5 flex-shrink-0"
@@ -366,7 +370,7 @@ export default function SidebarFooter({
                   setMoreOpen(false);
                 }}
                 role="menuitem"
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+                className={MENUITEM_CLASS}
               >
                 <svg
                   className="w-3.5 h-3.5 flex-shrink-0"
@@ -393,7 +397,7 @@ export default function SidebarFooter({
                 setMoreOpen(false);
               }}
               role="menuitem"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+              className={MENUITEM_CLASS}
             >
               <svg
                 className="w-3.5 h-3.5 flex-shrink-0"
@@ -419,7 +423,7 @@ export default function SidebarFooter({
                 setMoreOpen(false);
               }}
               role="menuitem"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+              className={MENUITEM_CLASS}
             >
               <svg
                 className="w-3.5 h-3.5 flex-shrink-0"
@@ -446,7 +450,7 @@ export default function SidebarFooter({
                   setMoreOpen(false);
                 }}
                 role="menuitem"
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors"
+                className={MENUITEM_CLASS}
               >
                 <svg
                   className="w-3.5 h-3.5 flex-shrink-0"
