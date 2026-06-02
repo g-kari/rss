@@ -12,7 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id: feedHash } = await params;
   const validationErr = assertValidFeedHash(feedHash);
   if (validationErr) return validationErr;
-  return withSession(req, async ({ session, env, ctx }) => {
+  return withSession(req, async ({ session, env, ctx, origin }) => {
     // 購読チェック — 未購読フィードへの refresh は 404 で拒否。
     // canonical: `purge-content-cache/route.ts` (#691) / `reinfer/route.ts` / `feeds/[id]/route.ts`。
     // 認証チェックの直後 + cooldown KV 書き込みの前に置く理由:
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const feed = await fetchSingleFeed(env, session.userId, feedHash);
     if (!feed) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
     // refresh 後の `/api/articles` cache HIT で stale 一覧を返さないよう purge
-    await purgeArticlesCache(new URL(req.url).origin, session.userId, ctx);
+    await purgeArticlesCache(origin, session.userId, ctx);
     return NextResponse.json(feed);
   });
 }

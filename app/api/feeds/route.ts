@@ -38,8 +38,7 @@ const LAST_ACCESSED_UPDATE_INTERVAL_MS = 60 * 60 * 1000; // 1 時間
 const FEEDS_CACHE_TTL_SEC = 30;
 
 export async function GET(request: Request) {
-  return withSession(request, async ({ session, env, ctx }) => {
-    const origin = new URL(request.url).origin;
+  return withSession(request, async ({ session, env, ctx, origin }) => {
     const cacheKey = await buildCacheKey(origin, "feeds", `user:${session.userId}`);
     const cached = await matchCfCache(cacheKey);
     if (cached) {
@@ -98,7 +97,7 @@ export async function POST(request: Request) {
     cookie?: unknown;
     cssSelector?: unknown;
     useRsshub?: unknown;
-  }>(request, async ({ body, session, env, ctx }) => {
+  }>(request, async ({ body, session, env, ctx, origin }) => {
     const limited = await applyCooldown(
       env.RATE_LIMIT,
       feedAddCooldownKey(session.userId),
@@ -221,7 +220,6 @@ export async function POST(request: Request) {
       env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY),
     ]);
 
-    const origin = new URL(request.url).origin;
     await purgeFeedsCache(origin, session.userId, ctx);
 
     // バックグラウンドで初回記事取得（Cookie はユーザー個別で渡す）

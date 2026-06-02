@@ -19,7 +19,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const { id: feedHash } = await params;
   const validationErr = assertValidFeedHash(feedHash);
   if (validationErr) return validationErr;
-  return withSession(request, async ({ session, env, ctx }) => {
+  return withSession(request, async ({ session, env, ctx, origin }) => {
     const { subs, err } = await assertFeedSubscribed(env.RSS_DATA, session.userId, feedHash);
     if (err) return err;
     // 購読から削除するだけ（共有フィードデータは残す）
@@ -34,7 +34,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       // フィード削除時に feedUserMap KV キャッシュを無効化
       env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY),
     ]);
-    const origin = new URL(request.url).origin;
     await purgeFeedsCache(origin, session.userId, ctx);
     return NextResponse.json({ ok: true });
   });
@@ -54,7 +53,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     mutedUntil?: unknown;
     view?: unknown;
     digestLimit?: unknown;
-  }>(request, async ({ body, session, env, ctx }) => {
+  }>(request, async ({ body, session, env, ctx, origin }) => {
     // subscriptions と meta を並列で読み込む（独立しているため）
     // groupId が含まれる場合は feed-groups も同時に取得する
     const hasGroupId = "groupId" in body && body.groupId !== null;
@@ -182,7 +181,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
 
-    const origin = new URL(request.url).origin;
     await purgeFeedsCache(origin, session.userId, ctx);
 
     return NextResponse.json(assembleClientFeed(meta, sub));

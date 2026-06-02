@@ -50,7 +50,7 @@ const parser = new XMLParser({
 const OPML_IMPORT_COOLDOWN_MS = 60 * 1000; // 60秒
 
 export async function POST(request: Request) {
-  return withSession(request, async ({ session, env, ctx }) => {
+  return withSession(request, async ({ session, env, ctx, origin }) => {
     const limited = await applyCooldown(
       env.RATE_LIMIT,
       opmlImportCooldownKey(session.userId),
@@ -191,7 +191,6 @@ export async function POST(request: Request) {
     const addedCount = newSubs.length;
 
     if (addedCount > 0) {
-      const origin = new URL(request.url).origin;
       // R2 PUT と Cache API DELETE は互いに依存しないため並列化（合計レイテンシ短縮）
       await Promise.all([
         writeUserSubscriptions(env.RSS_DATA, session.userId, subs),
