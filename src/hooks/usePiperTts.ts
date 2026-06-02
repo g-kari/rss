@@ -11,6 +11,7 @@ import type { TtsAdapter, TtsErrorCode, TtsVoice } from "../lib/tts-adapter";
 
 import { splitIntoSentences } from "../lib/tts-sentences";
 import { devError } from "../lib/dev-log";
+import { piperDebug } from "../lib/piper-debug";
 import { useTtsControls } from "./useTtsControls";
 
 /**
@@ -182,10 +183,10 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       ttsInstanceRef.current = null;
       ttsVoiceIdRef.current = null;
     }
-    // 本番デバッグ用ログ (#761): library load / initialize の段階を可視化
-    console.info(`[usePiperTts] initializing voice=${voice.id} model=${voice.model}`);
+    // 本番デバッグ用ログ (#761): library load / initialize の段階を可視化 (#1055 で piperDebug に統一)
+    piperDebug("initializing", { voiceId: voice.id, model: voice.model });
     const { lib, ort } = await loadPiperLib();
-    console.info(`[usePiperTts] library loaded, calling PiperPlus.initialize`);
+    piperDebug("library loaded, calling PiperPlus.initialize", { voiceId: voice.id });
     // 初期化開始時に progress を初期状態に
     setInitProgress({ stage: "starting", progress: 0, message: "初期化を開始しています..." });
     const instance = await lib.initialize({
@@ -212,7 +213,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       // (piper-plus は `pinyin_single.json` 取得失敗時に "zh will use passthrough" で続行)。
       zhDictBaseUrl: new URL("/api/wasm/", window.location.origin).toString(),
     });
-    console.info(`[usePiperTts] PiperPlus.initialize complete for voice=${voice.id}`);
+    piperDebug("PiperPlus.initialize complete", { voiceId: voice.id });
     ttsInstanceRef.current = instance;
     ttsVoiceIdRef.current = voice.id;
     // 初期化完了で progress を non-null のまま「完了」表示にして自動で消える
