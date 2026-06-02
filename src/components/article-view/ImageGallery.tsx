@@ -116,6 +116,7 @@ export default function ImageGallery({ images }: Props) {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={1.5}
+                aria-hidden="true"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -136,6 +137,7 @@ export default function ImageGallery({ images }: Props) {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={1.5}
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -161,6 +163,7 @@ export default function ImageGallery({ images }: Props) {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={1.5}
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"

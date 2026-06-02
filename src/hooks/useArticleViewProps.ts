@@ -1,6 +1,7 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../types";
+import { computeFeedStructuralSignature } from "../lib/feed-signature";
 
 interface UseArticleViewPropsOptions {
   selectedArticle: Article | null;
@@ -82,6 +83,13 @@ export function useArticleViewProps({
   onAutoModeStop,
   onToggleAutoMode,
 }: UseArticleViewPropsOptions) {
+  // #908 起票元 perf 監査: feeds は useFeedData が毎 fetch で新 reference を作り 5 分 poll で churn する。
+  // raw feeds を deps に入れると articleViewProps の identity が毎 poll 変わり <ArticleView> memo が
+  // 毎回 bail out して subtree 全再描画する。canonical signature-string パターン (ArticleList / useSidebarFeeds)
+  // に揃え、構造シグネチャを deps にして feedsRef.current で安定値を渡す。
+  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+  const feedsRef = useRef(feeds);
+  feedsRef.current = feeds;
   return useMemo(
     () => ({
       article: selectedArticle,
@@ -99,7 +107,7 @@ export function useArticleViewProps({
       nextArticle,
       onSelectPrev: prevArticle ? () => selectArticle(prevArticle) : undefined,
       onSelectNext: nextArticle ? () => selectArticle(nextArticle) : undefined,
-      feeds,
+      feeds: feedsRef.current,
       onSnooze: snoozeArticle,
       note: selectedArticle ? notes[selectedArticle.id] : undefined,
       onSetNote: setNote,
@@ -121,6 +129,7 @@ export function useArticleViewProps({
       onAutoModeStop,
       onToggleAutoMode,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- feedStructuralSignature が feeds 構造を encode 済、feedsRef.current は ref 安定参照 (canonical: ArticleList / useSidebarFeeds)
     [
       selectedArticle,
       bookmarkIds,
@@ -135,7 +144,7 @@ export function useArticleViewProps({
       prevArticle,
       nextArticle,
       selectArticle,
-      feeds,
+      feedStructuralSignature,
       snoozeArticle,
       notes,
       setNote,

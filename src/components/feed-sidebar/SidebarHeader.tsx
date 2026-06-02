@@ -67,6 +67,7 @@ export default function SidebarHeader({
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
+          aria-hidden="true"
         >
           <line x1="5.5" y1="1" x2="5.5" y2="10" />
           <line x1="1" y1="5.5" x2="10" y2="5.5" />
@@ -87,6 +88,7 @@ export default function SidebarHeader({
           stroke="currentColor"
           strokeWidth="1.5"
           className={refreshing ? "animate-spin" : ""}
+          aria-hidden="true"
         >
           <path strokeLinecap="round" d="M9.5 2A4.5 4.5 0 1 0 10 6.5" />
           <polyline strokeLinecap="round" strokeLinejoin="round" points="7.5,0.5 9.5,2 8,4" />
