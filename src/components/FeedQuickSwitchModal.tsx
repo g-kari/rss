@@ -130,6 +130,7 @@ export default function FeedQuickSwitchModal({
             strokeWidth="1.5"
             strokeLinecap="round"
             className="text-text-muted flex-shrink-0"
+            aria-hidden="true"
           >
             <circle cx="6" cy="6" r="4.5" />
             <path d="M9.5 9.5l2.5 2.5" />
@@ -165,6 +166,7 @@ export default function FeedQuickSwitchModal({
                 stroke="currentColor"
                 strokeWidth="1.5"
                 strokeLinecap="round"
+                aria-hidden="true"
               >
                 <path d="M2 2l8 8M10 2l-8 8" />
               </svg>

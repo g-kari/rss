@@ -64,6 +64,21 @@ export function readingTime(html: string): number {
 }
 
 /**
+ * 記事の代表タイムスタンプ（ISO 文字列）を返す。publishedAt を優先し、null なら createdAt に
+ * フォールバックする。`isArticleRead` (article-filter.ts) / `pruneOldReadIds` (read-state-prune.ts) /
+ * `filterExpiredArticles` (article-ttl.ts) / `compareByDateDesc` など「記事の日時を判定軸にする
+ * sibling 純粋関数」はすべてこの fallback chain を共有し、publishedAt が null の手動保存記事
+ * (`feedHash: "__saved__"`) や RSS で publishedAt 抜けの記事で挙動が乖離しないようにする
+ * (fallback-derivation.md「sibling 純粋関数は fallback chain を完全に揃える」)。
+ */
+export function getArticleTimestamp(article: {
+  publishedAt: string | null;
+  createdAt: string;
+}): string {
+  return article.publishedAt ?? article.createdAt;
+}
+
+/**
  * publishedAt（なければ createdAt にフォールバック）で降順比較。
  * Array.prototype.sort のコンパレータとして使用する。
  * publishedAt が null のアイテムは createdAt を基準に並ぶ。
@@ -72,8 +87,8 @@ export function compareByDateDesc(
   a: { publishedAt: string | null; createdAt: string; id?: string },
   b: { publishedAt: string | null; createdAt: string; id?: string },
 ): number {
-  const aDate = a.publishedAt ?? a.createdAt;
-  const bDate = b.publishedAt ?? b.createdAt;
+  const aDate = getArticleTimestamp(a);
+  const bDate = getArticleTimestamp(b);
   if (bDate < aDate) return -1;
   if (bDate > aDate) return 1;
   // 同日付の場合は id で安定ソート（id は sha256 由来の決定論的な値）

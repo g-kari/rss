@@ -72,7 +72,12 @@ export default function SidebarFooter({
     if (!moreOpen) return;
     function handleClickOutside(e: MouseEvent) {
       if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        // フォーカスがメニュー内にある状態で外クリック dismiss する場合のみ
+        // トリガーボタンへフォーカスを戻す (WCAG 2.4.3 Focus Order)。
+        // メニュー外の別要素をクリックした場合はそのフォーカスを奪わない。
+        const focusInMenu = menuRef.current?.contains(document.activeElement) ?? false;
         setMoreOpen(false);
+        if (focusInMenu) buttonRef.current?.focus();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);

@@ -5,6 +5,7 @@ import {
   createReadingTimeCache,
   compareByDateDesc,
   compareByPublishedAtDesc,
+  getArticleTimestamp,
 } from "../src/lib/article-utils";
 import type { Article } from "../src/types";
 import { makeArticle as makeBaseArticle } from "./helpers/article";
@@ -476,5 +477,31 @@ test.describe("compareByDateDesc vs compareByPublishedAtDesc — 仕様差分の
     expect(compareByDateDesc(newCreated, oldPublished)).toBe(-1);
     // ByPublishedAt: null は "" → "" < "2020..." → oldPublished が前
     expect(compareByPublishedAtDesc(newCreated, oldPublished)).toBe(1);
+  });
+});
+
+/**
+ * getArticleTimestamp — 記事の代表タイムスタンプ fallback chain (#1063)。
+ * isArticleRead / pruneOldReadIds / filterExpiredArticles / compareByDateDesc が共有する
+ * `publishedAt ?? createdAt` を集約した純粋関数。
+ */
+test.describe("getArticleTimestamp — publishedAt ?? createdAt fallback", () => {
+  test("publishedAt があれば publishedAt を返す", () => {
+    expect(
+      getArticleTimestamp({
+        publishedAt: "2026-05-01T00:00:00Z",
+        createdAt: "2026-01-01T00:00:00Z",
+      }),
+    ).toBe("2026-05-01T00:00:00Z");
+  });
+
+  test("publishedAt が null なら createdAt にフォールバックする", () => {
+    expect(getArticleTimestamp({ publishedAt: null, createdAt: "2026-01-01T00:00:00Z" })).toBe(
+      "2026-01-01T00:00:00Z",
+    );
+  });
+
+  test("publishedAt が空文字列なら createdAt でなく空文字列を返す (?? は null/undefined のみ fallback)", () => {
+    expect(getArticleTimestamp({ publishedAt: "", createdAt: "2026-01-01T00:00:00Z" })).toBe("");
   });
 });
