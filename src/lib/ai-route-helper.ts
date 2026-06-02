@@ -18,8 +18,11 @@ import {
 const AI_WINDOW_MS = 60 * 1000;
 const AI_MAX_CALLS = 20;
 // KV eventual consistency により ~1-3 req の burst 許容あり (architecture.md § KV burst 許容仕様)
-// 実効上限 = AI_MAX_CALLS_70B + burst ≈ 3+3 = 6。70B は課金コストが高いため厳しめに設定
-const AI_MAX_CALLS_70B = 3;
+// 実効上限 = AI_MAX_CALLS_70B + burst ≈ 5+3 = 8 (#934 案 A)。
+// 旧値 3 は 8B の 20 と非対称に厳しく、burst 込み実効上限 6 + 正常リトライも阻害しうるため 5 に調整。
+// 70B は課金コストが高いため最小限の引き上げに留める (推奨レンジ 5-7 の最保守値)。
+// Cloudflare AI 課金計画に応じて調整可。
+const AI_MAX_CALLS_70B = 5;
 
 type AiMessage = { role: "system" | "user"; content: string };
 
