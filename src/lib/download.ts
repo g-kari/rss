@@ -1,7 +1,7 @@
 /** createObjectURL → <a> クリック → revoke のブラウザダウンロードパターン */
 
 /** revokeObjectURL の遅延時間（ブラウザ保存ダイアログがクローズする猶予） */
-export const REVOKE_DELAY_MS = 1000;
+const REVOKE_DELAY_MS = 1000;
 
 /** フォルダプレフィックスをファイル名に付与する。空フォルダ・末尾スラッシュを安全に処理する。 */
 export function applyFolderPrefix(folder: string, filename: string): string {
