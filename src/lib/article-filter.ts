@@ -1,6 +1,11 @@
 import type { Article, DateRange, ReadingTimeRange, SortOrder } from "../types";
 import { type CompiledKeywordFilter, matchesKeywordFilter } from "./keyword-filter";
-import { createReadingTimeCache, getDateRangeStart, readingTime } from "./article-utils";
+import {
+  createReadingTimeCache,
+  getArticleTimestamp,
+  getDateRangeStart,
+  readingTime,
+} from "./article-utils";
 import { compileSearchQuery, type SearchContext } from "./full-text-search";
 import { SPECIAL_FEED_IDS } from "./storage";
 
@@ -21,7 +26,7 @@ export function isArticleRead(
 ): boolean {
   if (readIds.has(article.id)) return true;
   if (!readBeforeTimestamp) return false;
-  const ts = article.publishedAt ?? article.createdAt;
+  const ts = getArticleTimestamp(article);
   if (!ts) return false;
   return Date.parse(ts) <= Date.parse(readBeforeTimestamp);
 }

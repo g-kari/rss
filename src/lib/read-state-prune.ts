@@ -1,4 +1,5 @@
 import type { Article } from "../types";
+import { getArticleTimestamp } from "./article-utils";
 
 /**
  * `readBeforeTimestamp` 以前の publishedAt を持つ既知記事の readId を物理削除する純粋関数。
@@ -33,7 +34,7 @@ export function pruneOldReadIds(
     // フォールバックチェーンを採る。これがないと `feedHash: "__saved__"` の
     // 手動保存記事 (publishedAt が null) などで isArticleRead は createdAt で
     // 既読扱いするのに pruneOldReadIds は何もせず、readIds が永久に蓄積する。
-    const tsRaw = article.publishedAt ?? article.createdAt;
+    const tsRaw = getArticleTimestamp(article);
     if (!tsRaw) continue;
     const ts = Date.parse(tsRaw);
     if (isNaN(ts)) continue;

@@ -1,4 +1,5 @@
 import type { Article, ReadState } from "@/types";
+import { getArticleTimestamp } from "@/lib/article-utils";
 
 /** 既読以外のアクションがない記事を除外するデフォルト TTL 日数 */
 export const ARTICLE_TTL_DAYS = 30;
@@ -39,7 +40,7 @@ export function filterExpiredArticles(
   const now = Date.now();
   return articles.filter((a) => {
     if (protectedIds.has(a.id)) return true;
-    const dateStr = a.publishedAt ?? a.createdAt;
+    const dateStr = getArticleTimestamp(a);
     if (!dateStr) return true; // 日時不明は安全側（保持）
     const age = now - new Date(dateStr).getTime();
     return age <= ttlMs;
