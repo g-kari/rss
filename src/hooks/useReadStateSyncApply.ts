@@ -10,7 +10,7 @@ import {
 import type { KeywordFilter, ReadState } from "../types";
 import { STORAGE_KEYS, deferSaveSet, saveJson, storageSet } from "../lib/storage";
 import { type SetKind, type PendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
-import { equalSnoozedUntil, equalNotes, equalTagIds } from "../lib/read-state-merge";
+import { equalSnoozedUntil, equalNotes, equalTagIds, isLaterIso } from "../lib/read-state-merge";
 import { equalStringSet } from "../lib/article-filter-equality";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
@@ -167,7 +167,9 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
         const snoozed = state.snoozedUntil;
         const result: Record<string, string> = { ...snoozed };
         for (const [id, until] of Object.entries(stateRef.current.snoozedUntil)) {
-          if (!result[id] || until > result[id]) result[id] = until;
+          // canonical mergeSnoozed (read-state-merge.ts) と同じ Date.parse 比較に揃える。
+          // ISO 文字列の lexicographic 比較は timezone suffix で誤判定しうるため避ける。
+          if (!result[id] || isLaterIso(until, result[id])) result[id] = until;
         }
         const merged = pruneExpiredSnoozes(result);
         // #686: 内容変化なしなら setState を skip して reference を保持する。
@@ -179,7 +181,7 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
         }
       }
       if ("notes" in state) {
-        const merged = { ...stateRef.current.notes, ...(state.notes ?? {}) };
+        const merged = { ...stateRef.current.notes, ...state.notes };
         // #686 同等の構造的等価性ガード: 内容変化なしなら setState を skip し
         // reference を保持する。useFilteredArticles の noteIds useMemo が notes を
         // 依存に持つため、reference 不安定だと 2 秒毎の同期で全記事フィルター pass
