@@ -126,6 +126,21 @@ export default function SearchBar() {
             return;
           }
         }
+        // Shift+Delete でハイライト中の候補を削除 (WCAG 2.1.1: マウス hover の
+        // 削除アイコンと等価のキーボード操作。Chrome / Firefox のオートコンプリート
+        // 候補削除と同 convention。Shift 併用で text 編集の Delete と衝突回避)。
+        if (e.key === "Delete" && e.shiftKey) {
+          const item = items[cursor];
+          if (item) {
+            e.preventDefault();
+            if (item.kind === "saved") {
+              removeSaved(item.id);
+            } else {
+              removeFromHistory(item.query);
+            }
+            return;
+          }
+        }
       }
       if (e.key === "Enter" && rawQuery.trim().length >= 2) {
         addToHistory(rawQuery.trim());
@@ -142,6 +157,8 @@ export default function SearchBar() {
       items,
       cursor,
       applyHistoryItem,
+      removeSaved,
+      removeFromHistory,
     ],
   );
 
@@ -314,7 +331,8 @@ export default function SearchBar() {
                   </span>
                   {/* nested <button> は HTML5 spec で非推奨 (interactive content nesting)。
                       role="presentation" の span に onMouseDown を載せ、option クリックと
-                      区別する。stopPropagation で親 button の onMouseDown を発火させない。 */}
+                      区別する。stopPropagation で親 button の onMouseDown を発火させない。
+                      キーボード操作は input の Shift+Delete で等価提供 (WCAG 2.1.1、handleSearchKeyDown)。 */}
                   <span
                     role="presentation"
                     onMouseDown={(e) => {
