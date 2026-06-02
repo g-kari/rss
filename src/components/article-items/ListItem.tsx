@@ -10,6 +10,7 @@ import {
   ArticleActions,
   ArticleThumbnail,
   DuplicateBadge,
+  ReadingProgressBar,
   ReadingTimeBadge,
   useArticleHandlers,
   type ArticleItemProps,
@@ -29,6 +30,7 @@ export const ListArticleItem = memo(function ListArticleItem({
   query,
   duplicateFeedNames,
   totalCount,
+  readingProgress,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -56,7 +58,7 @@ export const ListArticleItem = memo(function ListArticleItem({
       onClick={(e) => onSelectArticle(article, e)}
       onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
-      className={`group flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
+      className={`group relative flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
         isSelected
@@ -114,6 +116,9 @@ export const ListArticleItem = memo(function ListArticleItem({
           onToggleBookmark={() => onToggleBookmark(article.id)}
         />
       </div>
+      {readingProgress !== null && readingProgress !== undefined && (
+        <ReadingProgressBar progress={readingProgress} />
+      )}
     </div>
   );
 });

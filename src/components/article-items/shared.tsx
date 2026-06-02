@@ -96,6 +96,8 @@ export interface ArticleItemProps {
   duplicateFeedNames?: string[];
   /** role="feed" 内の総記事数（aria-setsize 用） */
   totalCount?: number;
+  /** 読書進捗 (0〜1)。途中まで読んだ記事のみ非 null (#932、5〜95% の partial のみ)。 */
+  readingProgress?: number | null;
   // 親の安定参照をそのまま渡す（子側でクロージャを生成してメモ比較を壊さない）
   onSelectArticle: (a: Article, event?: ReactMouseEvent) => void;
   onToggleRead: (id: string) => void;
@@ -232,6 +234,21 @@ export function ReadingTimeBadge({
     return src ? readingTime(src) : 0;
   }, [article.content, article.summary]);
   return mins > 1 ? <span className={className}>約{mins}分</span> : null;
+}
+
+/**
+ * 途中まで読んだ記事の読書進捗を示す細いバー (#932)。
+ * item root を `relative` にした上で最下部に絶対配置する layout 非依存の表示。
+ * progress は 0〜1。装飾的なので aria-hidden。
+ */
+export function ReadingProgressBar({ progress }: { progress: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute bottom-0 left-0 h-0.5 bg-accent-dot/60 rounded-full pointer-events-none"
+      style={{ width: `${Math.round(progress * 100)}%` }}
+    />
+  );
 }
 
 export function DuplicateBadge({ feedNames }: { feedNames: string[] }) {

@@ -10,6 +10,7 @@ import {
   ArticleActions,
   ArticleThumbnail,
   DuplicateBadge,
+  ReadingProgressBar,
   ReadingTimeBadge,
   useArticleHandlers,
   type ArticleItemProps,
@@ -30,6 +31,7 @@ export const CardArticleItem = memo(function CardArticleItem({
   query,
   duplicateFeedNames,
   totalCount,
+  readingProgress,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -134,6 +136,9 @@ export const CardArticleItem = memo(function CardArticleItem({
           />
         </div>
       </div>
+      {readingProgress !== null && readingProgress !== undefined && (
+        <ReadingProgressBar progress={readingProgress} />
+      )}
     </div>
   );
 });

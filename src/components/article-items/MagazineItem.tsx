@@ -10,6 +10,7 @@ import {
   ArticleActions,
   ArticleThumbnail,
   DuplicateBadge,
+  ReadingProgressBar,
   ReadingTimeBadge,
   useArticleHandlers,
   type ArticleItemProps,
@@ -28,6 +29,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   showFeedName,
   query,
   duplicateFeedNames,
+  readingProgress,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -125,6 +127,9 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
           </div>
         </div>
       </div>
+      {readingProgress !== null && readingProgress !== undefined && (
+        <ReadingProgressBar progress={readingProgress} />
+      )}
     </div>
   );
 });
