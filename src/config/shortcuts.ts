@@ -149,10 +149,9 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
+      const readBeforeMs = ctx.readBeforeTimestamp ? Date.parse(ctx.readBeforeTimestamp) : null;
       ctx.navigateTo(
-        ctx.list
-          .slice(ctx.idx + 1)
-          .find((a) => !isArticleRead(a, ctx.readIds, ctx.readBeforeTimestamp)),
+        ctx.list.slice(ctx.idx + 1).find((a) => !isArticleRead(a, ctx.readIds, readBeforeMs)),
       );
     },
   },
@@ -163,11 +162,12 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
+      const readBeforeMs = ctx.readBeforeTimestamp ? Date.parse(ctx.readBeforeTimestamp) : null;
       ctx.navigateTo(
         ctx.list
           .slice(0, ctx.idx < 0 ? undefined : ctx.idx)
           .reverse()
-          .find((a) => !isArticleRead(a, ctx.readIds, ctx.readBeforeTimestamp)),
+          .find((a) => !isArticleRead(a, ctx.readIds, readBeforeMs)),
       );
     },
   },
@@ -178,9 +178,8 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     group: "navigation",
     handler: (ctx, e) => {
       e.preventDefault();
-      const unread = ctx.list.filter(
-        (a) => !isArticleRead(a, ctx.readIds, ctx.readBeforeTimestamp),
-      );
+      const readBeforeMs = ctx.readBeforeTimestamp ? Date.parse(ctx.readBeforeTimestamp) : null;
+      const unread = ctx.list.filter((a) => !isArticleRead(a, ctx.readIds, readBeforeMs));
       const pool = unread.length > 0 ? unread : ctx.list;
       if (pool.length === 0) return;
       const candidates =
@@ -366,8 +365,9 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     description: "全既読にする",
     group: "article",
     handler: async (ctx) => {
+      const readBeforeMs = ctx.readBeforeTimestamp ? Date.parse(ctx.readBeforeTimestamp) : null;
       const unreadCount = ctx.list.filter(
-        (a) => !isArticleRead(a, ctx.readIds, ctx.readBeforeTimestamp),
+        (a) => !isArticleRead(a, ctx.readIds, readBeforeMs),
       ).length;
       if (unreadCount >= 50) {
         const ok = ctx.confirm

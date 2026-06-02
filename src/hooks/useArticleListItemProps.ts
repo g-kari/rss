@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
 import type { Article, Feed } from "../types";
 import type { ArticleItemProps } from "../components/ArticleItems";
 import { resolveThumbnail } from "../lib/article-utils";
@@ -81,13 +81,19 @@ export function useArticleListItemProps({
     [],
   );
 
+  // #968: readBeforeTimestamp を 1 回だけ ms 化して resolveItemProps (記事ごとに呼ばれる) に渡す。
+  const readBeforeMs = useMemo(
+    () => (readBeforeTimestamp ? Date.parse(readBeforeTimestamp) : null),
+    [readBeforeTimestamp],
+  );
+
   const resolveItemProps = useCallback(
     (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => {
       const feed = feedMap.get(article.feedHash);
       return {
         article,
         index,
-        isRead: isArticleRead(article, readIds, readBeforeTimestamp),
+        isRead: isArticleRead(article, readIds, readBeforeMs),
         isBookmarked: bookmarkIds.has(article.id),
         isInReadingList: readingListIds?.has(article.id) ?? false,
         isDeleting,
@@ -109,7 +115,7 @@ export function useArticleListItemProps({
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelect*・onToggle* は useSyncedRef の安定参照経由で最新値を参照するため deps 不要
     [
-      readBeforeTimestamp,
+      readBeforeMs,
       feedMap,
       ogpCacheRef,
       showFeedName,

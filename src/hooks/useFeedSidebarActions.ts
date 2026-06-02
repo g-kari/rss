@@ -187,11 +187,13 @@ export function useFeedSidebarActions({
       onFeedRenamed: updateFeed,
       onFeedsImported: appendFeeds,
       onMarkAllRead: async (feedId) => {
+        // #968: readBeforeTimestamp を 1 回だけ ms 化してフィルター内 isArticleRead に渡す。
+        const readBeforeMs = readBeforeTimestampRef.current
+          ? Date.parse(readBeforeTimestampRef.current)
+          : null;
         const count = feedId
           ? articlesRef.current.filter(
-              (a) =>
-                a.feedHash === feedId &&
-                !isArticleRead(a, readIdsRef.current, readBeforeTimestampRef.current),
+              (a) => a.feedHash === feedId && !isArticleRead(a, readIdsRef.current, readBeforeMs),
             ).length
           : totalUnreadRef.current;
         if (count >= 50) {

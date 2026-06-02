@@ -107,8 +107,12 @@ export function useArticleUnreadStats(
     const byFeed = new Map<string, number>();
     let total = 0;
     let todayRead = 0;
+    // #968: readBeforeTimestamp を 1 回だけ ms 化してループ内 isArticleRead に渡す。
+    const readBeforeMs = debouncedReadBeforeTimestamp
+      ? Date.parse(debouncedReadBeforeTimestamp)
+      : null;
     for (const a of articles) {
-      if (!isArticleRead(a, debouncedReadIds, debouncedReadBeforeTimestamp)) {
+      if (!isArticleRead(a, debouncedReadIds, readBeforeMs)) {
         byFeed.set(a.feedHash, (byFeed.get(a.feedHash) ?? 0) + 1);
         total++;
       } else if (a.publishedAt?.slice(0, 10) === today) {
