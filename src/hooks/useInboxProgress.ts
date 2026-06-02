@@ -38,11 +38,13 @@ export function useInboxProgress(
   return useMemo(() => {
     const totals = new Map<string, number>();
     const unreads = new Map<string, number>();
+    // #968: readBeforeTimestamp を 1 回だけ ms 化してループ内 isArticleRead に渡す。
+    const readBeforeMs = readBeforeTimestamp ? Date.parse(readBeforeTimestamp) : null;
 
     for (const a of articles) {
       const fid = a.feedHash;
       totals.set(fid, (totals.get(fid) ?? 0) + 1);
-      if (!isArticleRead(a, readIds, readBeforeTimestamp)) {
+      if (!isArticleRead(a, readIds, readBeforeMs)) {
         unreads.set(fid, (unreads.get(fid) ?? 0) + 1);
       }
     }

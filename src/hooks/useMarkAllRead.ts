@@ -50,6 +50,8 @@ export function useMarkAllRead({
   confirm,
 }: Options) {
   const onMarkAllRead = useCallback(async () => {
+    // #968: readBeforeTimestamp を 1 回だけ ms 化して isArticleRead に渡す。
+    const readBeforeMs = readBeforeTimestamp ? Date.parse(readBeforeTimestamp) : null;
     const hasSubFilter =
       (groupFeedIds && groupFeedIds.size > 0) ||
       selectedCollectionId ||
@@ -57,9 +59,7 @@ export function useMarkAllRead({
       activeFeedView;
 
     if (hasSubFilter) {
-      const ids = filtered
-        .filter((a) => !isArticleRead(a, readIds, readBeforeTimestamp))
-        .map((a) => a.id);
+      const ids = filtered.filter((a) => !isArticleRead(a, readIds, readBeforeMs)).map((a) => a.id);
       if (ids.length === 0) return;
       if (ids.length >= 50) {
         const ok = await confirm({
@@ -75,7 +75,7 @@ export function useMarkAllRead({
 
     const unreadCount = selectedFeedId
       ? articles.filter(
-          (a) => a.feedHash === selectedFeedId && !isArticleRead(a, readIds, readBeforeTimestamp),
+          (a) => a.feedHash === selectedFeedId && !isArticleRead(a, readIds, readBeforeMs),
         ).length
       : totalUnread;
 

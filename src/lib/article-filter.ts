@@ -17,18 +17,23 @@ const EMPTY_FEED_TITLE_MAP = Object.freeze(new Map<string, string>()) as Readonl
 
 /**
  * 記事が既読かどうかを判定する。
- * readIds に含まれる場合、または readBeforeTimestamp 以前に公開された場合は既読扱い。
+ * readIds に含まれる場合、または readBeforeMs (= readBeforeTimestamp を ms 化した値) 以前に
+ * 公開された場合は既読扱い。
+ *
+ * #968: readBeforeTimestamp (string) でなく ms 化済みの数値を受け取る。呼び出し元で
+ * `readBeforeTimestamp ? Date.parse(readBeforeTimestamp) : null` を 1 回だけ計算して渡すことで、
+ * 500+ 記事のフィルターパスで同一文字列を毎回 parse する無駄を排除する。
  */
 export function isArticleRead(
   article: Article,
   readIds: Set<string>,
-  readBeforeTimestamp: string | null,
+  readBeforeMs: number | null,
 ): boolean {
   if (readIds.has(article.id)) return true;
-  if (!readBeforeTimestamp) return false;
+  if (readBeforeMs === null) return false;
   const ts = getArticleTimestamp(article);
   if (!ts) return false;
-  return Date.parse(ts) <= Date.parse(readBeforeTimestamp);
+  return Date.parse(ts) <= readBeforeMs;
 }
 
 /** フィード構造・選択に関するフィルターオプション */
@@ -252,11 +257,13 @@ function buildStatePredicate(opts: StateFilterOptions): ((a: Article) => boolean
     readBeforeTimestamp,
   } = opts;
   if (!unreadOnly && !bookmarkOnly && !readingListOnly && !likeOnly && !noteOnly) return null;
+  // #968: ループ外で 1 回だけ ms 化して isArticleRead に渡す。
+  const readBeforeMs = readBeforeTimestamp ? Date.parse(readBeforeTimestamp) : null;
   return (a) => {
     if (
       unreadOnly &&
       feedId !== SPECIAL_FEED_IDS.HISTORY &&
-      isArticleRead(a, readIds, readBeforeTimestamp)
+      isArticleRead(a, readIds, readBeforeMs)
     )
       return false;
     if (bookmarkOnly && !bookmarkIds.has(a.id)) return false;
@@ -446,9 +453,11 @@ export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOp
     // これにより既読消化が進むと「既読は全件表示 + 未読が常に digestLimit 件確保」となり、
     // 同一フィード内の既読を踏破した後は他フィードの未読が表示される。
     const feedCount = new Map<string, number>();
+    // #968: ループ外で 1 回だけ ms 化して isArticleRead に渡す。
+    const readBeforeMs = opts.readBeforeTimestamp ? Date.parse(opts.readBeforeTimestamp) : null;
     return list.filter((a) => {
       if (activeIds.has(a.id)) return true;
-      const isRead = isArticleRead(a, opts.readIds, opts.readBeforeTimestamp);
+      const isRead = isArticleRead(a, opts.readIds, readBeforeMs);
       // 既読は count を増やさず常に通過させる（digestLimit を超えても表示する）
       if (isRead) return true;
       const limit = opts.digestLimitMap?.get(a.feedHash);
