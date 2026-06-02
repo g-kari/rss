@@ -49,7 +49,7 @@ function mergeSnoozed(
   existing: Record<string, string> | null | undefined,
   incoming: Record<string, string> | null | undefined,
 ): Record<string, string> | null {
-  const merged: Record<string, string> = { ...(existing ?? {}) };
+  const merged: Record<string, string> = { ...existing };
   for (const [id, until] of Object.entries(incoming ?? {})) {
     const prev = merged[id];
     // ISO 8601 文字列の lexicographic 比較は timezone suffix で誤判定する
@@ -64,7 +64,7 @@ function mergeNotes(
   existing: Record<string, string> | null | undefined,
   incoming: Record<string, string> | null | undefined,
 ): Record<string, string> | null {
-  const merged: Record<string, string> = { ...(existing ?? {}), ...(incoming ?? {}) };
+  const merged: Record<string, string> = { ...existing, ...incoming };
   return Object.keys(merged).length > 0 ? merged : null;
 }
 
@@ -116,7 +116,7 @@ function mergeTags(
  * code-quality #1 (`isLaterIso8601` in `read-state-prune.ts`) と同じ sibling 規範
  * (`coding-conventions.md` 「同じデータに動作する sibling 純粋関数は fallback chain を完全に揃える」)。
  */
-function isLaterIso(a: string, b: string): boolean {
+export function isLaterIso(a: string, b: string): boolean {
   const ta = Date.parse(a);
   const tb = Date.parse(b);
   if (isNaN(ta) || isNaN(tb)) return false;

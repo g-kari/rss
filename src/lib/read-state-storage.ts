@@ -68,10 +68,12 @@ export function restorePending(refs: PendingRefs, snapshot: PendingSnapshot): vo
 }
 
 export function pruneExpiredSnoozes(snoozed: Record<string, string>): Record<string, string> {
-  const now = new Date().toISOString();
+  // ISO 文字列の lexicographic 比較は timezone suffix で誤判定しうるため Date.parse の数値比較で
+  // 「until が現在より未来か」を判定する (read-state-merge.ts#isLaterIso と同じ規範)。
+  const nowMs = Date.now();
   const result: Record<string, string> = {};
   for (const [id, until] of Object.entries(snoozed)) {
-    if (until > now) result[id] = until;
+    if (Date.parse(until) > nowMs) result[id] = until;
   }
   return result;
 }
