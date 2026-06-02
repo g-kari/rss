@@ -9,6 +9,7 @@ import { NoteIcon } from "../article-view/icons";
 import {
   ArticleActions,
   DuplicateBadge,
+  ReadingProgressBar,
   useArticleHandlers,
   type ArticleItemProps,
 } from "./shared";
@@ -26,6 +27,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   query,
   duplicateFeedNames,
   totalCount,
+  readingProgress,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -53,7 +55,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       onClick={(e) => onSelectArticle(article, e)}
       onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
-      className={`group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
+      className={`group relative flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
         isSelected
@@ -100,6 +102,9 @@ export const CompactArticleItem = memo(function CompactArticleItem({
         onToggleRead={() => onToggleRead(article.id)}
         onToggleBookmark={() => onToggleBookmark(article.id)}
       />
+      {readingProgress !== null && readingProgress !== undefined && (
+        <ReadingProgressBar progress={readingProgress} />
+      )}
     </div>
   );
 });

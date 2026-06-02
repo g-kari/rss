@@ -22,6 +22,7 @@ import {
   DuplicateBadge,
   FilterableGalleryImage,
   GalleryExpandButton,
+  ReadingProgressBar,
   type ArticleItemProps,
   type GalleryItemExtraProps,
 } from "./shared";
@@ -37,6 +38,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   showFeedName,
   query,
   duplicateFeedNames,
+  readingProgress,
   onSelectArticle,
   onToggleRead,
   onToggleBookmark,
@@ -326,6 +328,9 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
           </div>
         </div>
       </div>
+      {readingProgress !== null && readingProgress !== undefined && (
+        <ReadingProgressBar progress={readingProgress} />
+      )}
     </div>
   );
 });

@@ -5,6 +5,7 @@ import type { Article, Feed } from "../types";
 import type { ArticleItemProps } from "../components/ArticleItems";
 import { resolveThumbnail } from "../lib/article-utils";
 import { isArticleRead } from "../lib/article-filter";
+import { loadProgress } from "./useReadingProgress";
 import { useSyncedRef } from "./useSyncedRef";
 
 /**
@@ -90,10 +91,16 @@ export function useArticleListItemProps({
   const resolveItemProps = useCallback(
     (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => {
       const feed = feedMap.get(article.feedHash);
+      // #932: 途中まで読んだ記事 (5〜95%) のみ進捗バー表示用に値を渡す。
+      // visible 分のみ呼ばれる + localStorage getItem は高速なため per-item read で十分。
+      const rawProgress = loadProgress(article.id)?.progress;
+      const readingProgress =
+        rawProgress != null && rawProgress > 0.05 && rawProgress < 0.95 ? rawProgress : null;
       return {
         article,
         index,
         isRead: isArticleRead(article, readIds, readBeforeMs),
+        readingProgress,
         isBookmarked: bookmarkIds.has(article.id),
         isInReadingList: readingListIds?.has(article.id) ?? false,
         isDeleting,
