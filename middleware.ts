@@ -60,6 +60,9 @@ function buildCsp(nonce: string): string {
   //   `'unsafe-eval'` 追加で増えるリスクは「nonce 付き script 内での eval 利用」に限定される
   //   (CSP 全体としては既存のスクリプト出所制限が継続)。長期的には Service Worker fetch
   //   interceptor / piper-plus library の upstream resolve で本緩和を撤回する余地あり。
+  //   TODO(#943): ルート別 CSP 出し分け (案 A) は SPA では request 時に Piper 使用有無を
+  //   判定できず不可。piper-plus が `new Function` bypass を不要にする upstream 解決 (案 B) が
+  //   実現したら patches/piper-plus.patch ごと撤回して 'unsafe-eval' を削除すること。
   return `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' 'unsafe-eval' https://static.cloudflareinsights.com; ${STATIC_CSP_SUFFIX}`;
 }
 
