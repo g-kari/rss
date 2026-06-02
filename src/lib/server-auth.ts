@@ -392,6 +392,8 @@ export async function withSession(
     session: AuthSession;
     env: CloudflareEnv;
     ctx: ExecutionContext;
+    /** req.url から導出した origin (#1020: 各 Route Handler の new URL(req.url).origin 重複を解消)。 */
+    origin: string;
   }) => Promise<NextResponse>,
 ): Promise<NextResponse> {
   const csrf = assertSameOrigin(req, process.env.APP_BASE_URL);
@@ -405,7 +407,7 @@ export async function withSession(
     `[access] ${req.method} ${url.pathname} userId=${result.session.userId.slice(0, 8)} requestId=${requestId}`,
   );
   try {
-    const response = await handler({ session: result.session, env, ctx });
+    const response = await handler({ session: result.session, env, ctx, origin: url.origin });
     return applyRefreshedTokens(response, result.session);
   } catch (err) {
     // スタックトレースにシークレットが含まれるリスクを避けるため、メッセージのみをログに出力する
@@ -478,6 +480,7 @@ export async function withJsonBody<T>(
     session: AuthSession;
     env: CloudflareEnv;
     ctx: ExecutionContext;
+    origin: string;
   }) => Promise<NextResponse>,
 ): Promise<NextResponse> {
   return withSession(req, async (params) => {
@@ -517,6 +520,7 @@ export async function withBinarySession(
     session: AuthSession;
     env: CloudflareEnv;
     ctx: ExecutionContext;
+    origin: string;
   }) => Promise<Response>,
 ): Promise<Response> {
   const csrf = assertSameOrigin(req, process.env.APP_BASE_URL);
@@ -530,7 +534,7 @@ export async function withBinarySession(
     `[access] ${req.method} ${url.pathname} userId=${result.session.userId.slice(0, 8)} requestId=${requestId}`,
   );
   try {
-    const response = await handler({ session: result.session, env, ctx });
+    const response = await handler({ session: result.session, env, ctx, origin: url.origin });
     return applyRefreshedTokensToResponse(response, result.session);
   } catch (err) {
     const name = err instanceof Error ? err.name : "UnknownError";

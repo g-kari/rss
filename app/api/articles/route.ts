@@ -59,7 +59,7 @@ function applyArticleFilters(
 }
 
 export async function GET(request: NextRequest) {
-  return withSession(request, async ({ session, env, ctx }) => {
+  return withSession(request, async ({ session, env, ctx, origin }) => {
     const { searchParams } = new URL(request.url);
     const feedHash = searchParams.get("feed");
     const page = parseInt(searchParams.get("page") ?? "1", 10);
@@ -87,7 +87,6 @@ export async function GET(request: NextRequest) {
     if (feedHash) {
       // since 指定なし (= 差分取得でない) 経路のみ Cloudflare Cache を利用
       if (sinceParam === null) {
-        const origin = new URL(request.url).origin;
         const cacheKey = await buildCacheKey(
           origin,
           "articles",
@@ -150,7 +149,6 @@ export async function GET(request: NextRequest) {
 
     // since 指定なし (= 差分取得でない) 経路のみ Cloudflare Cache を利用
     if (sinceMs === null) {
-      const origin = new URL(request.url).origin;
       const cacheKey = await buildCacheKey(
         origin,
         "articles",
