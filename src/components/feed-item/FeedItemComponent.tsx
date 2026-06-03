@@ -379,6 +379,7 @@ export default function FeedItem({
           menuPortalStyle={menuPortalStyle}
           onClose={() => setMuteOpen(false)}
           onMute={onMute}
+          btnRef={menuButtonRef}
         />
       )}
       {viewOpen && onSetView && (
@@ -387,6 +388,7 @@ export default function FeedItem({
           menuPortalStyle={menuPortalStyle}
           onClose={() => setViewOpen(false)}
           onSetView={onSetView}
+          btnRef={menuButtonRef}
         />
       )}
       {digestOpen && onSetDigestLimit && (
@@ -395,6 +397,7 @@ export default function FeedItem({
           menuPortalStyle={menuPortalStyle}
           onClose={() => setDigestOpen(false)}
           onSetDigestLimit={onSetDigestLimit}
+          btnRef={menuButtonRef}
         />
       )}
       {groupOpen && onSetGroup && (
@@ -404,6 +407,7 @@ export default function FeedItem({
           menuPortalStyle={menuPortalStyle}
           onClose={() => setGroupOpen(false)}
           onSetGroup={onSetGroup}
+          btnRef={menuButtonRef}
         />
       )}
     </div>
