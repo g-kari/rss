@@ -163,7 +163,13 @@ export const ArticleActions = memo(function ArticleActions({
             <circle cx="6" cy="6" r="4.5" />
           </svg>
         ) : (
-          <svg aria-hidden="true" width={icon} height={icon} viewBox="0 0 12 12" fill="currentColor">
+          <svg
+            aria-hidden="true"
+            width={icon}
+            height={icon}
+            viewBox="0 0 12 12"
+            fill="currentColor"
+          >
             <circle cx="6" cy="6" r="3.5" />
           </svg>
         )}
