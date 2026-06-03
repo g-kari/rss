@@ -84,6 +84,7 @@ export const pushTestCooldownKey = (userId: string) => `${userId}:push-test`;
 export const readStateCooldownKey = (userId: string) => `${userId}:read-state`;
 export const feedGroupsWriteCooldownKey = (userId: string) => `${userId}:feed-groups-write`;
 export const collectionsWriteCooldownKey = (userId: string) => `${userId}:collections-write`;
+export const dismissCooldownKey = (userId: string) => `${userId}:dismiss-cooldown`;
 
 // R2 (not KV) — feed-last-fetched は R2 path のまま
 export const feedLastFetchedKey = (userId: string) => userKey(userId, "feed-last-fetched.json");

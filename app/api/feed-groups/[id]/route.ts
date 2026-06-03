@@ -8,7 +8,7 @@ import {
   MAX_FEED_GROUPS_PER_USER,
 } from "@/lib/feed-groups";
 import { readUserSubscriptions, writeUserSubscriptions } from "@/lib/shared-feed";
-import { parseName, isValidSessionId } from "@/lib/validation";
+import { parseName, parseOrder, isValidSessionId } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,19 +38,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // defense-in-depth: 整数だけでなく非負 + MAX_FEED_GROUPS_PER_USER 以下に制限。
       // Number.MIN_SAFE_INTEGER / Number.MAX_SAFE_INTEGER 等を送ると sortByOrder 順序や
       // feeds/import の `++maxOrder` 初期化が破壊される。
-      if (
-        typeof body.order !== "number" ||
-        !Number.isInteger(body.order) ||
-        body.order < 0 ||
-        body.order > MAX_FEED_GROUPS_PER_USER
-      ) {
-        return apiError(
-          `order must be a non-negative integer within ${MAX_FEED_GROUPS_PER_USER}`,
-          400,
-          { code: "INVALID_ORDER" },
-        );
-      }
-      group.order = body.order;
+      const orderResult = parseOrder(body.order, MAX_FEED_GROUPS_PER_USER);
+      if (!orderResult.ok)
+        return apiError(orderResult.message, orderResult.status, { code: orderResult.code });
+      group.order = orderResult.order;
     }
 
     if ("collapsed" in body) {

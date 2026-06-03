@@ -5,6 +5,7 @@ import {
   parseNotes,
   parseSnoozedUntil,
   isValidBase64url,
+  parseOrder,
   MAX_ID_LENGTH,
   MAX_NOTE_LENGTH,
 } from "../src/lib/validation";
@@ -424,6 +425,75 @@ test.describe("isValidBase64url", () => {
     test("3 文字 + パディング (% 4 == 3) は OK", () => {
       // "AAA=" — 2 byte
       expect(isValidBase64url("AAA=", 0, 100)).toBe(true);
+    });
+  });
+});
+
+// ── parseOrder ────────────────────────────────────────────────
+
+test.describe("parseOrder", () => {
+  const MAX = 100;
+
+  test.describe("正常ケース", () => {
+    test("0 は OK (非負整数の下限)", () => {
+      const result = parseOrder(0, MAX);
+      expect(result).toEqual({ ok: true, order: 0 });
+    });
+
+    test("max ちょうどは OK", () => {
+      const result = parseOrder(MAX, MAX);
+      expect(result).toEqual({ ok: true, order: MAX });
+    });
+
+    test("中間の整数は OK", () => {
+      const result = parseOrder(42, MAX);
+      expect(result).toEqual({ ok: true, order: 42 });
+    });
+  });
+
+  test.describe("異常ケース", () => {
+    test("非数値 (string) は INVALID_ORDER", () => {
+      const result = parseOrder("5", MAX);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.code).toBe("INVALID_ORDER");
+        expect(result.status).toBe(400);
+        expect(result.message).toBe(`order must be a non-negative integer within ${MAX}`);
+      }
+    });
+
+    test("非整数 (小数) は INVALID_ORDER", () => {
+      const result = parseOrder(1.5, MAX);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.code).toBe("INVALID_ORDER");
+    });
+
+    test("負数は INVALID_ORDER", () => {
+      const result = parseOrder(-1, MAX);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.code).toBe("INVALID_ORDER");
+    });
+
+    test("max 超過は INVALID_ORDER", () => {
+      const result = parseOrder(MAX + 1, MAX);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.code).toBe("INVALID_ORDER");
+    });
+
+    test("Number.MAX_SAFE_INTEGER は INVALID_ORDER (sortByOrder 破壊防止)", () => {
+      const result = parseOrder(Number.MAX_SAFE_INTEGER, MAX);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.code).toBe("INVALID_ORDER");
+    });
+
+    test("NaN は INVALID_ORDER", () => {
+      const result = parseOrder(NaN, MAX);
+      expect(result.ok).toBe(false);
+    });
+
+    test("undefined は INVALID_ORDER", () => {
+      const result = parseOrder(undefined, MAX);
+      expect(result.ok).toBe(false);
     });
   });
 });
