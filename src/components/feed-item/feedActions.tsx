@@ -5,12 +5,6 @@ import { NsfwIcon, StarIcon, FilterIcon } from "../article-view/icons";
 import type { Action } from "./types";
 
 /**
- * FeedAction は既存の `Action` 型のエイリアス。
- * `visible` という名前を期待する呼び出し側はないが、外部から見て分かりやすい名前として再エクスポートしておく。
- */
-export type FeedAction = Action;
-
-/**
  * `buildFeedActions` が必要とする props。
  * FeedItemComponent.tsx 内の actions 配列がクロージャ経由で参照していた値・ハンドラを集約する。
  */

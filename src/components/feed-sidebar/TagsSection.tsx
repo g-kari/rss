@@ -21,6 +21,7 @@ export default function TagsSection({ sortedTags, selectedTag, onSelectTag }: Pr
           <button
             key={tag}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onSelectTag(isSelected ? null : tag)}
             className={`w-full px-4 py-1.5 flex items-center justify-between gap-2 text-left transition-colors ${
               isSelected

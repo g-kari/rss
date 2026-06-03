@@ -124,6 +124,7 @@ export default function CollectionsSection({
           <button
             key={c.id}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onSelectCollection(isSelected ? null : c.id)}
             className={`w-full px-4 py-1.5 flex items-center justify-between gap-2 text-left transition-colors ${
               isSelected
