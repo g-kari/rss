@@ -150,6 +150,7 @@ export const ArticleActions = memo(function ArticleActions({
       >
         {isRead ? (
           <svg
+            aria-hidden="true"
             width={icon}
             height={icon}
             viewBox="0 0 12 12"
@@ -162,7 +163,7 @@ export const ArticleActions = memo(function ArticleActions({
             <circle cx="6" cy="6" r="4.5" />
           </svg>
         ) : (
-          <svg width={icon} height={icon} viewBox="0 0 12 12" fill="currentColor">
+          <svg aria-hidden="true" width={icon} height={icon} viewBox="0 0 12 12" fill="currentColor">
             <circle cx="6" cy="6" r="3.5" />
           </svg>
         )}
@@ -179,6 +180,7 @@ export const ArticleActions = memo(function ArticleActions({
         }`}
       >
         <svg
+          aria-hidden="true"
           width={bicon.w}
           height={bicon.h}
           viewBox="0 0 11 13"
@@ -204,6 +206,7 @@ export const ArticleActions = memo(function ArticleActions({
           }`}
         >
           <svg
+            aria-hidden="true"
             width={icon}
             height={icon}
             viewBox="0 0 12 12"
