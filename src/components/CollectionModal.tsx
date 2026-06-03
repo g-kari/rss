@@ -41,14 +41,16 @@ export default function CollectionModal({ mode, initialName = "", onSubmit, onCl
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="コレクション名"
+            aria-label="コレクション名"
             maxLength={50}
             autoFocus
             aria-required
             aria-invalid={error ? true : undefined}
+            aria-describedby={error ? "collection-name-error" : undefined}
             className="w-full px-3 py-2 text-[13px] bg-surface-base border border-border-default rounded-lg text-text-strong placeholder:text-text-faint focus:outline-none focus:ring-1 focus:ring-text-muted"
           />
           {error && (
-            <p role="alert" className="mt-1 text-[11px] text-error">
+            <p id="collection-name-error" role="alert" className="mt-1 text-[11px] text-error">
               {error}
             </p>
           )}
