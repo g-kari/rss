@@ -5,10 +5,15 @@ import { r2Get, savedArticlesKey, readStateKey, feedLastFetchedKey } from "@/lib
 import {
   getUserLatestArticles,
   MAX_PAGES,
+  MAX_USER_ARTICLES,
+  R2_CONCURRENCY,
   readArticlePage,
+  readFeedMeta,
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
+import { compileSearchQuery, type SearchContext } from "@/lib/full-text-search";
+import { pMap } from "@/lib/concurrency";
 import {
   applyKeywordFilter,
   applyKeywordFilterMap,
@@ -64,6 +69,7 @@ export async function GET(request: NextRequest) {
     const feedHash = searchParams.get("feed");
     const page = parseInt(searchParams.get("page") ?? "1", 10);
     const sinceParam = searchParams.get("since");
+    const q = searchParams.get("q"); // #908 案 A: サーバーサイド全文検索クエリ
     // since はミリ秒 Unix タイムスタンプとして受け取る。
     // 数値以外の文字列 (例: "abc") が渡されると parseInt が NaN を返し、
     // 後段の new Date(...).getTime() > NaN が常に false になり全フィード/記事が
@@ -72,6 +78,54 @@ export async function GET(request: NextRequest) {
       sinceParam !== null && /^\d+$/.test(sinceParam) ? parseInt(sinceParam, 10) : null;
     if (sinceParam !== null && sinceMs === null) {
       return apiError("Invalid since", 400, { code: "INVALID_SINCE" });
+    }
+
+    // #908 案 A: q 指定時はサーバーサイド全文検索。全購読フィードの全ページ (latest + p2..pageCount)
+    // を R2 走査してクエリ評価し、マッチした記事を返す。クライアントのページ内検索 (useFullTextSearch)
+    // と異なりロード済みに限定されず全ページ横断で検索できる。全ページ走査のためレスポンスは遅め
+    // (R2 アクセスコスト + latency、ユーザー承認済)。クエリ構文は client と同じ full-text-search.ts を共有。
+    if (q !== null) {
+      const matcher = compileSearchQuery(q);
+      // 空クエリ / パース不能は 0 件 (述語なし扱いで全件返すと検索 UX に反するため)
+      if (!matcher) return NextResponse.json([]);
+      const [subs, savedArticles, readState] = await Promise.all([
+        readUserSubscriptions(env.RSS_DATA, session.userId),
+        r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
+        r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
+          normalizeReadState,
+        ),
+      ]);
+      const feedTitleByHash = new Map<string, string>();
+      const perFeedArticles = await pMap(
+        subs,
+        async (sub) => {
+          const meta = await readFeedMeta(env.RSS_DATA, sub.feedHash);
+          feedTitleByHash.set(sub.feedHash, sub.customTitle || meta?.title || "");
+          const pageCount = Math.min(meta?.pageCount ?? 1, MAX_PAGES);
+          const reads: Promise<Article[]>[] = [readLatestArticles(env.RSS_DATA, sub.feedHash)];
+          for (let p = 2; p <= pageCount; p++) {
+            reads.push(readArticlePage(env.RSS_DATA, sub.feedHash, p));
+          }
+          return (await Promise.all(reads)).flat();
+        },
+        R2_CONCURRENCY,
+      );
+      const searchCtx: SearchContext = {
+        feedTitleByHash,
+        tagsByArticleId: readState.tagIds ?? undefined,
+      };
+      // savedArticles も検索対象に含める。id ベース dedup でページ重複を除去しつつクエリ評価。
+      const seen = new Set<string>();
+      const matched: Article[] = [];
+      for (const a of [...savedArticles, ...perFeedArticles.flat()]) {
+        if (seen.has(a.id)) continue;
+        seen.add(a.id);
+        if (matcher(a, searchCtx)) matched.push(a);
+      }
+      matched.sort(compareByDateDesc);
+      return NextResponse.json(matched.slice(0, MAX_USER_ARTICLES), {
+        headers: { "Cache-Control": "private, max-age=30" },
+      });
     }
 
     if (feedHash) {
