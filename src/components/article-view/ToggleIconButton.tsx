@@ -27,7 +27,7 @@ export default function ToggleIconButton({
       title={title}
       aria-label={ariaLabel ?? title}
       aria-pressed={isActive}
-      className={`p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${isActive ? activeClass : inactiveClass}`}
+      className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${isActive ? activeClass : inactiveClass}`}
     >
       {children}
     </button>

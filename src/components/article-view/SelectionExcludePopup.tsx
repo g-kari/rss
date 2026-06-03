@@ -162,6 +162,7 @@ export default function SelectionExcludePopup({
             className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle focus:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink transition-colors whitespace-nowrap w-full"
           >
             <svg
+              aria-hidden="true"
               width="10"
               height="10"
               viewBox="0 0 24 24"
@@ -189,6 +190,7 @@ export default function SelectionExcludePopup({
                 className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle focus:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink transition-colors whitespace-nowrap w-full"
               >
                 <svg
+                  aria-hidden="true"
                   width="10"
                   height="10"
                   viewBox="0 0 24 24"
