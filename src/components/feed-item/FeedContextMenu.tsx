@@ -122,6 +122,7 @@ export function MuteMenuPortal({ menuPortalStyle, onClose, onMute, btnRef }: Mut
               className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
             >
               <svg
+                aria-hidden="true"
                 width="10"
                 height="10"
                 viewBox="0 0 24 24"
@@ -358,6 +359,7 @@ export function GroupMenuPortal({
             className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left disabled:opacity-40"
           >
             <svg
+              aria-hidden="true"
               width="10"
               height="10"
               viewBox="0 0 10 10"
