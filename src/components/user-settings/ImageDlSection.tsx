@@ -74,6 +74,7 @@ export default function ImageDlSection({
       <SettingRow label="画像保存フォルダー">
         <input
           type="text"
+          aria-label="画像保存フォルダー"
           placeholder="フォルダ名（空欄: デフォルト）"
           value={imageDlFolder}
           onChange={(e) => onChangeImageDlFolder(e.target.value)}
@@ -84,6 +85,7 @@ export default function ImageDlSection({
       <SettingRow label="画像DL先(NSFW)">
         <input
           type="text"
+          aria-label="画像DL先(NSFW)"
           placeholder="フォルダ名（空欄: 通常と同じ）"
           value={imageDlFolderNsfw}
           onChange={(e) => onChangeImageDlFolderNsfw(e.target.value)}

@@ -253,6 +253,7 @@ export default function AiNotificationTabPanel({
 
         <SettingRow label="Workers AI モデル">
           <select
+            aria-label="Workers AI モデル"
             value={aiModel}
             onChange={(e) => onChangeAiModel(e.target.value as WorkersAiModelId)}
             className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
@@ -298,6 +299,7 @@ export default function AiNotificationTabPanel({
             <SettingRow label="開始時刻">
               <input
                 type="time"
+                aria-label="サイレント時間帯 開始時刻"
                 value={silentStart}
                 onChange={(e) => setSilentStart(e.target.value)}
                 className="px-2 py-1 text-[13px] rounded-md border border-border-default bg-surface-elevated text-text-default focus:outline-none focus:border-ink transition-colors"
@@ -306,6 +308,7 @@ export default function AiNotificationTabPanel({
             <SettingRow label="終了時刻">
               <input
                 type="time"
+                aria-label="サイレント時間帯 終了時刻"
                 value={silentEnd}
                 onChange={(e) => setSilentEnd(e.target.value)}
                 className="px-2 py-1 text-[13px] rounded-md border border-border-default bg-surface-elevated text-text-default focus:outline-none focus:border-ink transition-colors"
@@ -314,6 +317,7 @@ export default function AiNotificationTabPanel({
             {timezones.length > 0 && (
               <SettingRow label="タイムゾーン">
                 <select
+                  aria-label="サイレント時間帯 タイムゾーン"
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
                   className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"

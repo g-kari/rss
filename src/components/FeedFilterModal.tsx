@@ -18,10 +18,12 @@ function TagInput({
   tags,
   onChange,
   placeholder,
+  id,
 }: {
   tags: string[];
   onChange: (tags: string[]) => void;
   placeholder?: string;
+  id?: string;
 }) {
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +98,7 @@ function TagInput({
       })}
       <input
         ref={inputRef}
+        id={id}
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
@@ -144,24 +147,40 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
       <div className="p-5 flex flex-col gap-4">
         {/* 含むキーワード */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-medium text-text-muted uppercase tracking-[0.1em]">
+          <label
+            htmlFor="feed-filter-include"
+            className="text-[11px] font-medium text-text-muted uppercase tracking-[0.1em]"
+          >
             含むキーワード
             <span className="ml-1 font-normal normal-case text-text-faint">
               （いずれかにマッチで表示）
             </span>
           </label>
-          <TagInput tags={include} onChange={setInclude} placeholder="Enter または , で追加" />
+          <TagInput
+            id="feed-filter-include"
+            tags={include}
+            onChange={setInclude}
+            placeholder="Enter または , で追加"
+          />
         </div>
 
         {/* 除外キーワード */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-medium text-text-muted uppercase tracking-[0.1em]">
+          <label
+            htmlFor="feed-filter-exclude"
+            className="text-[11px] font-medium text-text-muted uppercase tracking-[0.1em]"
+          >
             除外キーワード
             <span className="ml-1 font-normal normal-case text-text-faint">
               （いずれかにマッチで非表示）
             </span>
           </label>
-          <TagInput tags={exclude} onChange={setExclude} placeholder="Enter または , で追加" />
+          <TagInput
+            id="feed-filter-exclude"
+            tags={exclude}
+            onChange={setExclude}
+            placeholder="Enter または , で追加"
+          />
         </div>
 
         {/* 正規表現ヒント */}
