@@ -96,6 +96,7 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
                 className={MENU_ITEM_CLS}
               >
                 <svg
+                  aria-hidden="true"
                   width="10"
                   height="10"
                   viewBox="0 0 24 24"
