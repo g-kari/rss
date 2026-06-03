@@ -3,6 +3,7 @@ import { withJsonBody, requireString, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { readCache, writeCache } from "@/lib/recommendation";
 import { MAX_ID_LENGTH, MAX_DISMISSED_IDS } from "@/lib/validation";
+import { dismissCooldownKey } from "@/lib/r2";
 
 const DISMISS_COOLDOWN_MS = 2 * 1000; // 2秒
 
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     const limited = await applyCooldown(
       env.RATE_LIMIT,
-      `${session.userId}:dismiss-cooldown`,
+      dismissCooldownKey(session.userId),
       DISMISS_COOLDOWN_MS,
     );
     if (limited) return limited;

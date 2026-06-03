@@ -107,6 +107,28 @@ export function parseName(raw: unknown, maxLength: number): ParseNameResult {
   return { ok: true, name };
 }
 
+export type ParseOrderResult =
+  | { ok: true; order: number }
+  | { ok: false; message: string; status: 400; code: string };
+
+/**
+ * `order` フィールドの defense-in-depth バリデーション純粋関数。
+ * 非負整数かつ `max` 以下のみ許容する (Number.MIN/MAX_SAFE_INTEGER 等で
+ * sortByOrder 順序や `++maxOrder` 初期化が破壊されるのを防ぐ)。
+ * feed-groups / collections の [id] PATCH ハンドラで共有する (helper drift 解消)。
+ */
+export function parseOrder(raw: unknown, max: number): ParseOrderResult {
+  if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 0 || raw > max) {
+    return {
+      ok: false,
+      message: `order must be a non-negative integer within ${max}`,
+      status: 400,
+      code: "INVALID_ORDER",
+    };
+  }
+  return { ok: true, order: raw };
+}
+
 /** base64url 形式かつ指定バイト範囲に収まるかを検証する */
 export function isValidBase64url(value: string, minBytes: number, maxBytes: number): boolean {
   if (!/^[A-Za-z0-9_-]+=*$/.test(value)) return false;

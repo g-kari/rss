@@ -8,7 +8,7 @@ import {
   MAX_ARTICLES_PER_COLLECTION,
   MAX_COLLECTIONS_PER_USER,
 } from "@/lib/collections";
-import { isValidSessionId, parseName, extractIds } from "@/lib/validation";
+import { isValidSessionId, parseName, parseOrder, extractIds } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -39,19 +39,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if ("order" in body) {
       // defense-in-depth: 整数だけでなく非負 + MAX_COLLECTIONS_PER_USER 以下に制限。
       // Number.MIN_SAFE_INTEGER / Number.MAX_SAFE_INTEGER 等を送ると sort 順序が破壊される。
-      if (
-        typeof body.order !== "number" ||
-        !Number.isInteger(body.order) ||
-        body.order < 0 ||
-        body.order > MAX_COLLECTIONS_PER_USER
-      ) {
-        return apiError(
-          `order must be a non-negative integer within ${MAX_COLLECTIONS_PER_USER}`,
-          400,
-          { code: "INVALID_ORDER" },
-        );
-      }
-      collection.order = body.order;
+      const orderResult = parseOrder(body.order, MAX_COLLECTIONS_PER_USER);
+      if (!orderResult.ok)
+        return apiError(orderResult.message, orderResult.status, { code: orderResult.code });
+      collection.order = orderResult.order;
     }
 
     if ("addArticleIds" in body) {
