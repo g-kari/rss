@@ -68,6 +68,7 @@ function HeatmapCalendar({ data }: HeatmapCalendarProps) {
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
 
   const max = Math.max(...data.map((d) => d.count), 1);
+  const total = data.reduce((sum, d) => sum + d.count, 0);
 
   // 日曜始まりで 53 週 × 7 日のグリッドを構築
   // data[0] が最も古い日なので、その曜日（UTC 日曜=0）に合わせてパディング
@@ -112,7 +113,11 @@ function HeatmapCalendar({ data }: HeatmapCalendarProps) {
   const CELL = 11; // px (cell size + gap)
 
   return (
-    <div className="relative overflow-x-auto">
+    <div
+      className="relative overflow-x-auto"
+      role="img"
+      aria-label={`過去1年の読書アクティビティ ヒートマップ。合計 ${total} 件`}
+    >
       {/* 月ラベル行 */}
       <div className="flex mb-1" style={{ paddingLeft: 0 }}>
         {weeks.map((_, wi) => {
@@ -463,7 +468,11 @@ export default function ReadingStatsModal({
                         <span className="text-[12px] text-text-default truncate flex-1 min-w-0">
                           {title}
                         </span>
-                        <div className="flex-shrink-0 w-20">
+                        <div
+                          className="flex-shrink-0 w-20"
+                          role="img"
+                          aria-label={`未読消化率 ${pct}%`}
+                        >
                           <div className="h-1.5 bg-surface-subtle rounded-full overflow-hidden">
                             <div
                               className="h-full rounded-full transition-all duration-300"
