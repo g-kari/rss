@@ -42,6 +42,7 @@ export default function RecommendationSection({
             onClick={onRefresh}
             disabled={refreshing}
             title="おすすめを更新"
+            aria-label="おすすめを更新"
             className="text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50"
           >
             <svg
@@ -53,6 +54,7 @@ export default function RecommendationSection({
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
               className={refreshing ? "animate-spin" : ""}
             >
               <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
