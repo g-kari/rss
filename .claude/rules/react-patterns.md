@@ -197,7 +197,8 @@ const idx = sel ? list.findIndex((a) => a.id === sel.id) : -1;
 **TS 仕様の根拠**:
 
 - **let / var**: closure 外で narrow されても、closure 内では再代入可能性のため最広型 (例: `Article | undefined`) に戻る
-- **const**: 再代入不能のため、closure 内でも narrowing 結果が維持される (control flow 解析が `const` 束縛を信頼)
+- **const + 即時呼出 closure** (array callback `.findIndex((a) => ...)` / `.map()` 等、**その場で同期実行される** closure): 再代入不能 + 呼出タイミングが narrowing 直後に確定するため、narrowing 結果が維持される (control flow 解析が `const` 束縛を信頼) → `!` 不要
+- **const + 巻き上げ named function declaration** (`function resolve() { ... }` のように **定義後に複数回・遅延して呼ばれ得る** 関数): const でも narrowing が**失効する**。関数が narrowing 前後どのタイミングで呼ばれるか静的確定不能なため TS は安全側評価する → `!` non-null assertion が**必須**で、削除すると `TS18047: possibly null` になる。この場合は `!` が冗長でなく正当な型ガード (narrowed const 束縛への書き換えでも解決不能、関数を呼出元 scope 内のインライン arrow に変えない限り `!` が必要)
 - **object property access** (`opts.selectedArticle.id`): property が getter 等で動的変化する可能性のため closure 内で narrowing 失効、`const sel = opts.selectedArticle` で値コピーすれば property access の動的性を排除
 
 **How to apply**: `obj.prop ? closure(obj.prop) : ...` のような三項 + closure の組合せで TS narrowing 失効に直面したら (`!` で誤魔化す vs narrowed const 束縛で型安全 + 規範遵守の選択、後者が canonical):
@@ -214,7 +215,7 @@ const idx = sel ? list.findIndex((a) => a.id === sel.id) : -1;
 - **object property でなく primitive 直接** (`if (x) { closure(x) }` で x が string 等) → narrowing 維持される (closure 内 const-like 扱い)
 - **closure 内で別 property を参照** (closure 内で `obj.differentProp` 等を見る) → そもそも narrowing 対象外、`!` 不要
 
-**agent 誤判定への注意**: code review agent は表面的に「三項演算子 truthy branch で narrowed 済」と判定するが、**closure context での narrowing 失効** までは sometimes 認識しない。`feedback_subagent_verification.md` 規範通り、`!` 削除提案は **実コード Read で「closure 内か」確認 + typecheck pass で verify** が必須 (本サイクル commit `008cc092` で agent 提案を verify 中に closure narrowing 失効を発見、`const sel = ...` 束縛に変更で対応)。
+**agent 誤判定への注意**: code review / type safety agent は表面的に「const + early return で narrowed 済 → `!` は冗長」と判定するが、**(1) closure context での narrowing 失効**、および **(2) 巻き上げ named function declaration では const でも narrowing 失効** までは sometimes 認識しない。`feedback_subagent_verification.md` 規範通り、`!` 削除提案は **実コード Read で「closure 内か / hoisted function 内か」確認 + typecheck pass で verify** が必須 (agent 提案を verify 中に closure narrowing 失効を発見して `const sel = ...` 束縛に変更で対応した実例、および hoisted `function resolve()` 内の `base!` 削除を typecheck `TS18047` で「実は必須」と判明して却下した実例の両方あり)。**特に「hoisted function 内の const narrowing は維持される」と誤読しやすい** ので、`!` 削除は必ず typecheck で実証してから採用する。
 
 主な使用箇所: `src/hooks/useKeyboardNav.ts:77` — `opts.selectedArticle ? list.findIndex(a => a.id === opts.selectedArticle.id) : -1` で TS error → `const sel = opts.selectedArticle; sel ? list.findIndex(a => a.id === sel.id) : -1` に修正、`!` 削除 + 型安全達成 (本サイクル commit `008cc092`)
 
