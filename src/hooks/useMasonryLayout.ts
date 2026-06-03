@@ -58,6 +58,8 @@ export function useMasonryLayout<T>({
   const [layoutVersion, setLayoutVersion] = useState(0);
   const pendingFrameRef = useRef<number | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
+  // id ごとの callback ref を Map にキャッシュして identity を安定化する (itemRef 参照)
+  const itemRefCacheRef = useRef<Map<string, (el: HTMLDivElement | null) => void>>(new Map());
 
   // items の id 配列 (itemKey が無ければ index ベース)
   const itemIds = useMemo(() => {
@@ -103,13 +105,21 @@ export function useMasonryLayout<T>({
       }
       elementsRef.current.clear();
       heightsRef.current.clear();
+      itemRefCacheRef.current.clear();
     },
     [],
   );
 
-  // 各 item の DOM 要素を観察対象として登録する callback ref factory
-  const itemRef = useCallback(
-    (id: string) => (el: HTMLDivElement | null) => {
+  // 各 item の DOM 要素を観察対象として登録する callback ref。
+  // id ごとの callback を Map にキャッシュして同一 id に同一 closure を返す。
+  // (毎 render `(el) => {...}` の新 arrow を返すと React が ref を detach/re-attach し続け、
+  //  detach 側の height cache delete → re-attach 側の再 measure → setLayoutVersion の
+  //  自己持続ループを gallery 全 item で誘発するため、identity 安定化が必須)
+  const itemRef = useCallback((id: string) => {
+    const cache = itemRefCacheRef.current;
+    const cached = cache.get(id);
+    if (cached) return cached;
+    const cb = (el: HTMLDivElement | null) => {
       const observer = observerRef.current;
       const prev = elementsRef.current.get(id);
       if (prev && prev !== el) {
@@ -134,9 +144,10 @@ export function useMasonryLayout<T>({
         elementsRef.current.delete(id);
         heightsRef.current.delete(id);
       }
-    },
-    [],
-  );
+    };
+    cache.set(id, cb);
+    return cb;
+  }, []);
 
   // layout 計算 (layoutVersion 変化で再実行)
   const result: MasonryLayoutResult = useMemo(() => {
