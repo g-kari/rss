@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type CSSProperties, type RefObject } from "react";
+import { type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { Feed, FeedGroup, FeedView } from "../../types";
 import type { Action } from "./types";
@@ -42,6 +42,7 @@ export function ContextMenuPortal({
       <div
         ref={menuRef}
         role="menu"
+        aria-label="フィード操作メニュー"
         onKeyDown={handleKeyDown}
         onClick={(e) => e.stopPropagation()}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[120px]"
@@ -76,13 +77,13 @@ interface MuteMenuProps {
   menuPortalStyle: CSSProperties;
   onClose: () => void;
   onMute: (mutedUntil: string | null) => Promise<void>;
+  btnRef: RefObject<HTMLButtonElement | null>;
 }
 
-export function MuteMenuPortal({ menuPortalStyle, onClose, onMute }: MuteMenuProps) {
+export function MuteMenuPortal({ menuPortalStyle, onClose, onMute, btnRef }: MuteMenuProps) {
   // #864 案 A: ContextMenuPortal と同 pattern。useMenuKeyboard で Escape / Tab / Arrow を統合。
-  // 親 trigger button への focus 復元は親が管理するため、btnRef はダミー (no-op) を渡す。
-  const dummyBtnRef = useRef<HTMLButtonElement | null>(null);
-  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
+  // Escape close 時に trigger (⋮) button へ focus 復元するため btnRef を渡す (#1068, WCAG 2.4.3)。
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), btnRef);
 
   return createPortal(
     <>
@@ -98,6 +99,7 @@ export function MuteMenuPortal({ menuPortalStyle, onClose, onMute }: MuteMenuPro
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
         role="menu"
+        aria-label="ミュート期間"
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[160px]"
         style={menuPortalStyle}
       >
@@ -148,12 +150,19 @@ interface ViewMenuProps {
   menuPortalStyle: CSSProperties;
   onClose: () => void;
   onSetView: (view: FeedView | null) => Promise<void>;
+  btnRef: RefObject<HTMLButtonElement | null>;
 }
 
-export function ViewMenuPortal({ feed, menuPortalStyle, onClose, onSetView }: ViewMenuProps) {
+export function ViewMenuPortal({
+  feed,
+  menuPortalStyle,
+  onClose,
+  onSetView,
+  btnRef,
+}: ViewMenuProps) {
   // #864 案 A: useMenuKeyboard 統合 (Mute/Digest/Group portal と同 pattern)。
-  const dummyBtnRef = useRef<HTMLButtonElement | null>(null);
-  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
+  // Escape close 時に trigger (⋮) button へ focus 復元するため btnRef を渡す (#1068, WCAG 2.4.3)。
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), btnRef);
 
   return createPortal(
     <>
@@ -169,6 +178,7 @@ export function ViewMenuPortal({ feed, menuPortalStyle, onClose, onSetView }: Vi
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
         role="menu"
+        aria-label="表示カテゴリ"
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
         style={menuPortalStyle}
       >
@@ -226,6 +236,7 @@ interface DigestMenuProps {
   menuPortalStyle: CSSProperties;
   onClose: () => void;
   onSetDigestLimit: (limit: number | null) => Promise<void>;
+  btnRef: RefObject<HTMLButtonElement | null>;
 }
 
 export function DigestMenuPortal({
@@ -233,10 +244,11 @@ export function DigestMenuPortal({
   menuPortalStyle,
   onClose,
   onSetDigestLimit,
+  btnRef,
 }: DigestMenuProps) {
   // #864 案 A: useMenuKeyboard 統合 (Mute/View/Group portal と同 pattern)。
-  const dummyBtnRef = useRef<HTMLButtonElement | null>(null);
-  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
+  // Escape close 時に trigger (⋮) button へ focus 復元するため btnRef を渡す (#1068, WCAG 2.4.3)。
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), btnRef);
 
   return createPortal(
     <>
@@ -250,6 +262,7 @@ export function DigestMenuPortal({
       <div
         ref={menuRef}
         role="menu"
+        aria-label="ダイジェスト件数"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
@@ -295,6 +308,7 @@ interface GroupMenuProps {
   menuPortalStyle: CSSProperties;
   onClose: () => void;
   onSetGroup: (groupId: string | null) => Promise<void>;
+  btnRef: RefObject<HTMLButtonElement | null>;
 }
 
 export function GroupMenuPortal({
@@ -303,10 +317,11 @@ export function GroupMenuPortal({
   menuPortalStyle,
   onClose,
   onSetGroup,
+  btnRef,
 }: GroupMenuProps) {
   // #864 案 A: useMenuKeyboard 統合 (Mute/View/Digest portal と同 pattern)。
-  const dummyBtnRef = useRef<HTMLButtonElement | null>(null);
-  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
+  // Escape close 時に trigger (⋮) button へ focus 復元するため btnRef を渡す (#1068, WCAG 2.4.3)。
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), btnRef);
 
   return createPortal(
     <>
@@ -320,6 +335,7 @@ export function GroupMenuPortal({
       <div
         ref={menuRef}
         role="menu"
+        aria-label="グループに移動"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
         className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px] max-h-[60vh] overflow-y-auto"

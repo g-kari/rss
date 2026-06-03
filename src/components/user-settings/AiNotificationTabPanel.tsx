@@ -14,7 +14,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { useDebounce } from "../../hooks/useDebounce";
 import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
-import { SettingRow } from "./shared";
+import { SettingRow, ToggleSwitch } from "./shared";
 
 interface AiNotificationTabPanelProps {
   hidden: boolean;
@@ -162,64 +162,31 @@ export default function AiNotificationTabPanel({
     >
       <div className="flex flex-col gap-5 px-5 py-4">
         <SettingRow label="自動翻訳">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={autoTranslate}
-            aria-label={autoTranslate ? "自動翻訳を OFF にする" : "自動翻訳を ON にする"}
-            onClick={toggleAutoTranslate}
-            className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-              autoTranslate ? "bg-ink" : "bg-border-default"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-                autoTranslate ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <ToggleSwitch
+            checked={autoTranslate}
+            onChange={() => toggleAutoTranslate()}
+            ariaLabel={autoTranslate ? "自動翻訳を OFF にする" : "自動翻訳を ON にする"}
+          />
         </SettingRow>
 
         <SettingRow label="自動要約">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={autoSummarize}
-            aria-label={autoSummarize ? "自動要約を OFF にする" : "自動要約を ON にする"}
-            onClick={toggleAutoSummarize}
-            className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-              autoSummarize ? "bg-ink" : "bg-border-default"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-                autoSummarize ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <ToggleSwitch
+            checked={autoSummarize}
+            onChange={() => toggleAutoSummarize()}
+            ariaLabel={autoSummarize ? "自動要約を OFF にする" : "自動要約を ON にする"}
+          />
         </SettingRow>
 
         <SettingRow label="ブラウザ AI のみ使う">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={autoAiBrowserOnly}
-            aria-label={
+          <ToggleSwitch
+            checked={autoAiBrowserOnly}
+            onChange={() => toggleAutoAiBrowserOnly()}
+            ariaLabel={
               autoAiBrowserOnly
                 ? "ブラウザ AI のみ使う設定を OFF にする"
                 : "ブラウザ AI のみ使う設定を ON にする"
             }
-            onClick={toggleAutoAiBrowserOnly}
-            className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-              autoAiBrowserOnly ? "bg-ink" : "bg-border-default"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-                autoAiBrowserOnly ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          />
         </SettingRow>
         <p className="text-[11px] text-text-muted pl-28 -mt-2">
           ON のとき、ブラウザネイティブ AI (Chrome 翻訳・要約)
@@ -310,26 +277,15 @@ export default function AiNotificationTabPanel({
               Push 通知設定
             </span>
             <SettingRow label="フィードエラー通知">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={errorNotificationsEnabled}
-                aria-label={
+              <ToggleSwitch
+                checked={errorNotificationsEnabled}
+                onChange={() => toggleErrorNotifications()}
+                ariaLabel={
                   errorNotificationsEnabled
                     ? "フィードエラー通知を OFF にする"
                     : "フィードエラー通知を ON にする"
                 }
-                onClick={toggleErrorNotifications}
-                className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
-                  errorNotificationsEnabled ? "bg-ink" : "bg-border-default"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-                    errorNotificationsEnabled ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
+              />
             </SettingRow>
             <div className="flex flex-col gap-1 pl-28">
               <span className="text-[11px] text-text-muted">
