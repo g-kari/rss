@@ -98,6 +98,7 @@ export default function GallerySection({
         <div className="flex items-center gap-2 w-full">
           <input
             type="range"
+            aria-label="最小画像サイズ"
             min={GALLERY_MIN_IMAGE_PX_MIN}
             max={GALLERY_MIN_IMAGE_PX_MAX}
             step={GALLERY_MIN_IMAGE_PX_STEP}
