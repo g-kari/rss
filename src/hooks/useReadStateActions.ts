@@ -13,6 +13,7 @@ import { useSyncedRef } from "./useSyncedRef";
 import { STORAGE_KEYS, SPECIAL_FEED_IDS, deferSaveSet, saveJson, storageSet } from "../lib/storage";
 import { MAX_NOTE_LENGTH } from "../lib/validation";
 import { pruneExpiredSnoozes } from "../lib/read-state-storage";
+import { isLaterIso } from "../lib/read-state-merge";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
 export interface ReadStateActionDeps {
@@ -143,7 +144,8 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       if (!feedId) {
         const now = new Date().toISOString();
         setReadBeforeTimestamp((prev) => {
-          const next = !prev || now > prev ? now : prev;
+          // ISO 比較は isLaterIso (Date.parse) 経由。raw `>` は offset 形式で cutoff 後退 (#1083)。
+          const next = !prev || isLaterIso(now, prev) ? now : prev;
           storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
           return next;
         });

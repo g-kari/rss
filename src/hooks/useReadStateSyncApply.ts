@@ -157,7 +157,9 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
       if ("readBeforeTimestamp" in state && state.readBeforeTimestamp) {
         const rbt = state.readBeforeTimestamp;
         const prev = stateRef.current.readBeforeTimestamp;
-        const next = !prev || rbt > prev ? rbt : prev;
+        // ISO 文字列の比較は Date.parse 経由 (isLaterIso) で行う。raw `>` は timezone offset 形式で
+        // 実 instant と異なる lexicographic 判定をして cutoff が後退する (#1083)。
+        const next = !prev || isLaterIso(rbt, prev) ? rbt : prev;
         if (next !== prev) {
           storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, next);
           setReadBeforeTimestamp(next);
