@@ -349,6 +349,7 @@ export default function SearchBar() {
                     className="opacity-0 group-hover:opacity-100 w-4 h-4 inline-flex items-center justify-center rounded text-text-faint hover:text-text-muted transition-opacity flex-shrink-0"
                   >
                     <svg
+                      aria-hidden="true"
                       width="8"
                       height="8"
                       viewBox="0 0 8 8"
