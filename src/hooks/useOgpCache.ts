@@ -10,6 +10,7 @@ import { isAbortError } from "../lib/fetch";
 import { OGP_STAGGER_MS } from "../lib/ogp-cache-ttl";
 import { extractBoothFallbackUrl } from "../lib/booth-fallback";
 import { parseOgpCache, type OgpCacheEntry } from "../lib/ogp-cache-schema";
+import { mergeWithLruEviction } from "../lib/ogp-cache-lru";
 import type { OgpCacheStore } from "../contexts/OgpCacheContext";
 
 const MAX_OGP_CACHE_SIZE = 2000;
@@ -110,12 +111,8 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
         // 更新して title / description を保持する。
         const existing = prev[link];
         const nextEntry: OgpCacheEntry = existing ? { ...existing, image } : { image };
-        const next = { ...prev, [link]: nextEntry };
-        const keys = Object.keys(next);
-        const result =
-          keys.length > MAX_OGP_CACHE_SIZE
-            ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
-            : next;
+        // #1088 Finding 2: true-LRU eviction (再アクセス entry を末尾移動して recency 反映)。
+        const result = mergeWithLruEviction(prev, link, nextEntry, MAX_OGP_CACHE_SIZE);
         scheduleSave(result);
         return result;
       });
@@ -230,12 +227,8 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
       ) {
         return prev;
       }
-      const next = { ...prev, [url]: nextEntry };
-      const keys = Object.keys(next);
-      const result =
-        keys.length > MAX_OGP_CACHE_SIZE
-          ? Object.fromEntries(keys.slice(-MAX_OGP_CACHE_SIZE).map((k) => [k, next[k]]))
-          : next;
+      // #1088 Finding 2: true-LRU eviction (再アクセス entry を末尾移動して recency 反映)。
+      const result = mergeWithLruEviction(prev, url, nextEntry, MAX_OGP_CACHE_SIZE);
       // saveTimer は外側 useEffect 内の scheduleSave に同期するため、ここでは debounce
       // を経由せず即時保存。書き込み頻度は anchor 数 × 1 (per article render) で限定的。
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
