@@ -76,6 +76,7 @@ export default function CollectionsSection({
             className="ml-auto w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
           >
             <svg
+              aria-hidden="true"
               width="9"
               height="9"
               viewBox="0 0 9 9"
@@ -102,9 +103,11 @@ export default function CollectionsSection({
           <button
             onClick={() => onCreateCollection("")}
             className={`${showSortButton ? "" : "ml-auto"} w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all`}
+            aria-label="コレクションを作成"
             title="コレクションを作成"
           >
             <svg
+              aria-hidden="true"
               width="9"
               height="9"
               viewBox="0 0 9 9"
