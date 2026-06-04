@@ -6,6 +6,7 @@ import { devError } from "../lib/dev-log";
 import { sortByOrder } from "../lib/sort-utils";
 import type { Collection, UserProfile } from "../types";
 import { useAsyncFetch } from "./useAsyncFetch";
+import { useSyncedRef } from "./useSyncedRef";
 
 export interface CollectionsState {
   collections: Collection[];
@@ -64,6 +65,8 @@ export function useCollections(
   }, [user, setCollectionsRaw]);
 
   const collections = collectionsData ?? [];
+  // addArticlesToCollection が「今回追加した id」を updater 外で同期計算するための最新参照
+  const collectionsRef = useSyncedRef(collections);
 
   /** 戻り値が常に非 null になる型安全な setter */
   const setCollections = useCallback(
@@ -167,19 +170,25 @@ export function useCollections(
     async (collectionId: string, articleIds: readonly string[]): Promise<void> => {
       // 空配列は no-op (API 呼出も skip)
       if (articleIds.length === 0) return;
-      // optimistic update: 既存 articleIds と重複しないものだけ追加
       const idsArr = Array.from(articleIds);
-      let prevSnapshot: string[] | null = null;
+      // #1087: 「今回新規に追加する id」を updater 外で同期計算する (React 18 の遅延 updater で
+      // outer 変数代入が rollback 時点に未確定になる罠を回避、Strict Mode 二重実行にも安全)。
+      // target が local state に無い場合は addedIds 空 (optimistic は no-op、rollback も不要だが
+      // PATCH は送る、既存挙動互換)。
+      const target = collectionsRef.current.find((c) => c.id === collectionId);
+      const existing = new Set(target?.articleIds ?? []);
+      const addedIds = target ? idsArr.filter((aid) => !existing.has(aid)) : [];
+
+      // optimistic update: 既存 articleIds と重複しないものだけ追加 (最新 state に適用)
       setCollections((prev) =>
         prev.map((c) => {
           if (c.id !== collectionId) return c;
-          prevSnapshot = c.articleIds;
-          const existing = new Set(c.articleIds);
+          const set = new Set(c.articleIds);
           const merged = [...c.articleIds];
           for (const aid of idsArr) {
-            if (!existing.has(aid)) {
+            if (!set.has(aid)) {
               merged.push(aid);
-              existing.add(aid);
+              set.add(aid);
             }
           }
           return { ...c, articleIds: merged };
@@ -196,17 +205,24 @@ export function useCollections(
       } catch (err) {
         devError(err);
         onError?.("コレクションへの一括追加に失敗しました");
-        // rollback: snapshot が取れていれば元の articleIds に戻す
-        if (prevSnapshot !== null) {
-          const snapshot: string[] = prevSnapshot;
-          setCollections((prev) =>
-            prev.map((c) => (c.id === collectionId ? { ...c, articleIds: snapshot } : c)),
+        // 差分 rollback: 今回追加した addedIds だけを最新 state から除去する。
+        // 旧実装は articleIds 配列を snapshot で丸ごと復元していたため、一括追加の PATCH
+        // in-flight 中に確定した別の追加/削除 (addArticleToCollection / removeArticleFromCollection)
+        // が巻き戻されて消失していた。差分復元で window 中の別操作は保持する。
+        if (addedIds.length > 0) {
+          const addedSet = new Set(addedIds);
+          setCollections((cur) =>
+            cur.map((c) =>
+              c.id === collectionId
+                ? { ...c, articleIds: c.articleIds.filter((id) => !addedSet.has(id)) }
+                : c,
+            ),
           );
         }
         throw err;
       }
     },
-    [onError],
+    [onError, collectionsRef],
   );
 
   const removeArticleFromCollection = useCallback(
