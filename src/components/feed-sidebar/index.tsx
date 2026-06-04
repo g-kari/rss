@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, memo, type FormEvent } from "react";
+import { useState, useEffect, useRef, useCallback, memo, type FormEvent } from "react";
 import type {
   Feed,
   Article,
@@ -216,6 +216,12 @@ function FeedSidebar({
     draggedFeedInGroup,
   } = useFeedDragDrop({ feeds, onSetFeedView, onSetGroupFeed });
 
+  // #1076: FeedItem に渡す drag end handler を stable 化 (memo(FeedItem) を無効化しないため)
+  const handleFeedDragEnd = useCallback(() => {
+    setDraggedFeedId(null);
+    setDragOverGroupId(null);
+  }, [setDraggedFeedId, setDragOverGroupId]);
+
   const {
     adding,
     error,
@@ -299,33 +305,24 @@ function FeedSidebar({
         isPinned={isPinned}
         animationIndex={globalIdx}
         lastPublishedAt={lastPublishedByFeed.get(feed.id)}
-        onSelect={() => onSelectFeed(feed.id)}
-        onMarkAllRead={() => onMarkAllRead(feed.id)}
-        onDelete={() => deleteFeed(feed.id)}
-        onTogglePin={() => onTogglePinFeed(feed.id)}
-        onRename={(title) => renameFeed(feed.id, title)}
-        onRetry={() => onRetryFeed(feed.id)}
-        onReinfer={onReinferFeed ? () => onReinferFeed(feed.id) : undefined}
-        onFilterSave={(filter) => onSaveFilter(feed.id, filter)}
-        onToggleNsfw={() => onToggleNsfwFeed(feed)}
-        onTogglePriority={() => onTogglePriorityFeed(feed)}
-        onSetCategory={
-          onSetCategoryFeed ? (category) => onSetCategoryFeed(feed, category) : undefined
-        }
+        onSelect={onSelectFeed}
+        onMarkAllRead={onMarkAllRead}
+        onDelete={deleteFeed}
+        onTogglePin={onTogglePinFeed}
+        onRename={renameFeed}
+        onRetry={onRetryFeed}
+        onReinfer={onReinferFeed}
+        onFilterSave={onSaveFilter}
+        onToggleNsfw={onToggleNsfwFeed}
+        onTogglePriority={onTogglePriorityFeed}
+        onSetCategory={onSetCategoryFeed}
         groups={feedGroups}
-        onSetGroup={onSetGroupFeed ? (groupId) => onSetGroupFeed(feed, groupId) : undefined}
-        onMute={onMuteFeed ? (mutedUntil) => onMuteFeed(feed, mutedUntil) : undefined}
-        onSetView={onSetFeedView ? (view) => onSetFeedView(feed, view) : undefined}
-        onSetDigestLimit={onSetDigestLimit ? (limit) => onSetDigestLimit(feed, limit) : undefined}
-        onDragStartFeed={onSetGroupFeed ? (id) => setDraggedFeedId(id) : undefined}
-        onDragEndFeed={
-          onSetGroupFeed
-            ? () => {
-                setDraggedFeedId(null);
-                setDragOverGroupId(null);
-              }
-            : undefined
-        }
+        onSetGroup={onSetGroupFeed}
+        onMute={onMuteFeed}
+        onSetView={onSetFeedView}
+        onSetDigestLimit={onSetDigestLimit}
+        onDragStartFeed={onSetGroupFeed ? setDraggedFeedId : undefined}
+        onDragEndFeed={onSetGroupFeed ? handleFeedDragEnd : undefined}
         isDragging={draggedFeedId === feed.id}
       />
     );

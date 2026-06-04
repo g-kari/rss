@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  memo,
   useRef,
   useState,
   useCallback,
@@ -9,6 +10,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
+import type { FeedView, KeywordFilter } from "../../types";
 import dynamic from "next/dynamic";
 import { useConfirm } from "@/hooks/useConfirm";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -44,7 +46,7 @@ function makeInputKeyHandler(onEnter: () => void | Promise<void>, onEscape: () =
 
 const STALE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000; // 30日
 
-export default function FeedItem({
+function FeedItem({
   feed,
   count,
   isSelected,
@@ -98,6 +100,30 @@ export default function FeedItem({
 
   const { confirm, confirmModalProps } = useConfirm();
 
+  // #1076: parent の stable callback に feed / feed.id を bind する wrapper。
+  // これらは FeedItem の子 (buildFeedActions / portals / modals) でのみ使われ、子は FeedItem
+  // 再 render 時にのみ再 render されるため plain const で十分 (FeedItem 自身の memo は props で判定)。
+  const handleSelect = () => onSelect(feed.id);
+  const handleMarkAllRead = () => onMarkAllRead(feed.id);
+  const handleDelete = () => onDelete(feed.id);
+  const handleTogglePin = () => onTogglePin(feed.id);
+  const handleToggleNsfw = onToggleNsfw ? () => onToggleNsfw(feed) : undefined;
+  const handleTogglePriority = onTogglePriority ? () => onTogglePriority(feed) : undefined;
+  const handleSetCategory = onSetCategory
+    ? (category: string | null) => onSetCategory(feed, category)
+    : undefined;
+  const handleSetGroup = onSetGroup
+    ? (groupId: string | null) => onSetGroup(feed, groupId)
+    : undefined;
+  const handleMute = onMute ? (mutedUntil: string | null) => onMute(feed, mutedUntil) : undefined;
+  const handleSetView = onSetView ? (view: FeedView | null) => onSetView(feed, view) : undefined;
+  const handleSetDigestLimit = onSetDigestLimit
+    ? (limit: number | null) => onSetDigestLimit(feed, limit)
+    : undefined;
+  const handleFilterSave = onFilterSave
+    ? (filter: KeywordFilter | null) => onFilterSave(feed.id, filter)
+    : undefined;
+
   usePopupLock(menuOpen || muteOpen || groupOpen || viewOpen || digestOpen);
 
   useEventListener("scroll", () => setMenuOpen(false), window, true);
@@ -119,8 +145,8 @@ export default function FeedItem({
     setEditing(false);
     const trimmed = editTitle.trim();
     if (!trimmed || trimmed === (feed.title || feed.url)) return;
-    await onRename(trimmed);
-  }, [editTitle, feed.title, feed.url, onRename]);
+    await onRename(feed.id, trimmed);
+  }, [editTitle, feed.id, feed.title, feed.url, onRename]);
 
   const handleKeyDown = makeInputKeyHandler(commitEdit, () => setEditing(false));
 
@@ -128,22 +154,22 @@ export default function FeedItem({
     if (loadingAction) return;
     setLoadingAction("retry");
     try {
-      await onRetry();
+      await onRetry(feed.id);
     } finally {
       setLoadingAction(null);
     }
-  }, [onRetry, loadingAction]);
+  }, [onRetry, feed.id, loadingAction]);
 
   const handleReinfer = useCallback(async () => {
     if (loadingAction || !onReinfer) return;
     setLoadingAction("reinfer");
     setMenuOpen(false);
     try {
-      await onReinfer();
+      await onReinfer(feed.id);
     } finally {
       setLoadingAction(null);
     }
-  }, [onReinfer, loadingAction]);
+  }, [onReinfer, feed.id, loadingAction]);
 
   const startCategoryEdit = useCallback(() => {
     setEditCategory(feed.category ?? "");
@@ -156,8 +182,8 @@ export default function FeedItem({
     const trimmed = editCategory.trim();
     const newCategory = trimmed === "" ? null : trimmed;
     if (newCategory === (feed.category ?? null)) return;
-    await onSetCategory?.(newCategory);
-  }, [editCategory, feed.category, onSetCategory]);
+    await onSetCategory?.(feed, newCategory);
+  }, [editCategory, feed, onSetCategory]);
 
   const handleCategoryKeyDown = makeInputKeyHandler(commitCategoryEdit, () =>
     setCategoryEditing(false),
@@ -174,15 +200,15 @@ export default function FeedItem({
     hasFilter: !!hasFilter,
     loadingAction,
     groups,
-    onTogglePriority,
-    onToggleNsfw,
-    onFilterSave,
-    onSetCategory,
-    onSetGroup,
-    onSetView,
-    onSetDigestLimit,
-    onMute,
-    onReinfer,
+    onTogglePriority: handleTogglePriority,
+    onToggleNsfw: handleToggleNsfw,
+    onFilterSave: handleFilterSave,
+    onSetCategory: handleSetCategory,
+    onSetGroup: handleSetGroup,
+    onSetView: handleSetView,
+    onSetDigestLimit: handleSetDigestLimit,
+    onMute: handleMute,
+    onReinfer: onReinfer ? handleReinfer : undefined,
     setMenuOpen,
     setDetailOpen,
     setFilterModalOpen,
@@ -191,11 +217,11 @@ export default function FeedItem({
     setViewOpen,
     setDigestOpen,
     setMuteOpen,
-    onTogglePin,
-    onMarkAllRead,
+    onTogglePin: handleTogglePin,
+    onMarkAllRead: handleMarkAllRead,
     handleRetry,
     handleReinfer,
-    onDelete,
+    onDelete: handleDelete,
     confirmDelete: () =>
       confirm({
         title: "フィードの削除",
@@ -245,7 +271,7 @@ export default function FeedItem({
           ? undefined
           : () => {
               setMenuOpen(false);
-              onSelect();
+              handleSelect();
             }
       }
       onKeyDown={
@@ -255,7 +281,7 @@ export default function FeedItem({
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 setMenuOpen(false);
-                onSelect();
+                handleSelect();
               }
             }
       }
@@ -365,51 +391,56 @@ export default function FeedItem({
           btnRef={menuButtonRef}
         />
       )}
-      {filterModalOpen && onFilterSave && (
+      {filterModalOpen && handleFilterSave && (
         <FeedFilterModal
           feed={feed}
           onClose={() => setFilterModalOpen(false)}
-          onSave={onFilterSave}
+          onSave={handleFilterSave}
         />
       )}
       {detailOpen && <FeedDetailModal feed={feed} onClose={() => setDetailOpen(false)} />}
       <ConfirmModal {...confirmModalProps} />
-      {muteOpen && onMute && (
+      {muteOpen && handleMute && (
         <MuteMenuPortal
           menuPortalStyle={menuPortalStyle}
           onClose={() => setMuteOpen(false)}
-          onMute={onMute}
+          onMute={handleMute}
           btnRef={menuButtonRef}
         />
       )}
-      {viewOpen && onSetView && (
+      {viewOpen && handleSetView && (
         <ViewMenuPortal
           feed={feed}
           menuPortalStyle={menuPortalStyle}
           onClose={() => setViewOpen(false)}
-          onSetView={onSetView}
+          onSetView={handleSetView}
           btnRef={menuButtonRef}
         />
       )}
-      {digestOpen && onSetDigestLimit && (
+      {digestOpen && handleSetDigestLimit && (
         <DigestMenuPortal
           feed={feed}
           menuPortalStyle={menuPortalStyle}
           onClose={() => setDigestOpen(false)}
-          onSetDigestLimit={onSetDigestLimit}
+          onSetDigestLimit={handleSetDigestLimit}
           btnRef={menuButtonRef}
         />
       )}
-      {groupOpen && onSetGroup && (
+      {groupOpen && handleSetGroup && (
         <GroupMenuPortal
           feed={feed}
           groups={groups ?? []}
           menuPortalStyle={menuPortalStyle}
           onClose={() => setGroupOpen(false)}
-          onSetGroup={onSetGroup}
+          onSetGroup={handleSetGroup}
           btnRef={menuButtonRef}
         />
       )}
     </div>
   );
 }
+
+// #1076: memo() で wrap して、無関係 prop 変化 (検索キーストローク / selectedFeedId / polling) 由来の
+// 親 re-render 時に props 不変な FeedItem の再 render を skip する。renderFeed が stable callback を
+// 直渡しする (index.tsx) ことで shallow-equal が機能する (sibling FeedGroupsSection / CategorySection 同様)。
+export default memo(FeedItem);
