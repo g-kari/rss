@@ -6,6 +6,7 @@ import { apiFetch, apiFetchJson, tryParseErrorBody } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
 import { sortByOrder } from "../lib/sort-utils";
 import { useAsyncFetch } from "./useAsyncFetch";
+import { useSyncedRef } from "./useSyncedRef";
 
 /** `useFeedGroups` の戻り値型 */
 export interface FeedGroupsState {
@@ -61,6 +62,8 @@ export function useFeedGroups(
   }, [user, setGroupsRaw]);
 
   const groups = groupsData ?? [];
+  // reorderGroup が swap 対象を updater 外で同期計算するための最新 groups 参照
+  const groupsRef = useSyncedRef(groups);
 
   /** 戻り値が常に非 null になる型安全な setter */
   const setGroups = useCallback(
@@ -170,35 +173,30 @@ export function useFeedGroups(
 
   const reorderGroup = useCallback(
     async (id: string, direction: "up" | "down"): Promise<void> => {
-      let prevSnapshot: FeedGroup[] | undefined;
-      let newOrderedIds: string[] | undefined;
-      setGroups((prev) => {
-        prevSnapshot = prev;
-        const sorted = sortByOrder(prev);
-        const idx = sorted.findIndex((g) => g.id === id);
-        if (idx === -1) return prev;
-        const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
-        if (neighborIdx < 0 || neighborIdx >= sorted.length) return prev;
-        const self = sorted[idx];
-        const neighbor = sorted[neighborIdx];
-        if (!self || !neighbor) return prev;
-        const selfId = self.id;
-        const neighborId = neighbor.id;
-        const selfOrder = self.order;
-        const neighborOrder = neighbor.order;
-        const next = sortByOrder(
-          prev.map((g) => {
-            if (g.id === selfId) return { ...g, order: neighborOrder };
-            if (g.id === neighborId) return { ...g, order: selfOrder };
-            return g;
-          }),
-        );
-        newOrderedIds = next.map((g) => g.id);
-        return next;
-      });
-      if (!newOrderedIds) return;
-      const orderedIds = newOrderedIds;
-      const snapshot = prevSnapshot;
+      // swap 対象は groupsRef から updater 外で同期計算する (React 18 の遅延 updater で
+      // outer 変数代入がチェック時点で未確定になる罠を回避、Strict Mode の二重実行にも安全)。
+      const sorted = sortByOrder(groupsRef.current);
+      const idx = sorted.findIndex((g) => g.id === id);
+      if (idx === -1) return;
+      const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (neighborIdx < 0 || neighborIdx >= sorted.length) return;
+      const self = sorted[idx];
+      const neighbor = sorted[neighborIdx];
+      if (!self || !neighbor) return;
+      const selfId = self.id;
+      const neighborId = neighbor.id;
+      const selfOrder = self.order;
+      const neighborOrder = neighbor.order;
+
+      const swap = (g: FeedGroup): FeedGroup => {
+        if (g.id === selfId) return { ...g, order: neighborOrder };
+        if (g.id === neighborId) return { ...g, order: selfOrder };
+        return g;
+      };
+      // 楽観的更新 (最新 state に対して swap を適用)
+      setGroups((prev) => sortByOrder(prev.map(swap)));
+      const orderedIds = sortByOrder(groupsRef.current.map(swap)).map((g) => g.id);
+
       try {
         await apiFetchJson<FeedGroup[]>("/api/feed-groups/reorder", {
           method: "POST",
@@ -208,12 +206,22 @@ export function useFeedGroups(
       } catch (err) {
         devError(err);
         onError?.("グループの並び替えに失敗しました");
-        if (snapshot) {
-          setGroups(sortByOrder(snapshot));
-        }
+        // #1087: rollback は swap した 2 group の order のみを元値に戻す差分復元。
+        // 旧実装は `setGroups(sortByOrder(snapshot))` で全 groups を丸ごと復元していたため、
+        // reorder の PATCH in-flight 中に確定した別 group の rename/collapse/mute が巻き戻されて
+        // 消失していた。差分復元で window 中の他フィールド変更 (他 group / 他フィールド) は保持する。
+        setGroups((cur) =>
+          sortByOrder(
+            cur.map((g) => {
+              if (g.id === selfId) return { ...g, order: selfOrder };
+              if (g.id === neighborId) return { ...g, order: neighborOrder };
+              return g;
+            }),
+          ),
+        );
       }
     },
-    [onError, setGroups],
+    [onError, setGroups, groupsRef],
   );
 
   return {
