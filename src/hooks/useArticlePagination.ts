@@ -8,7 +8,11 @@ import {
 } from "react";
 import type { Article } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
-import { shouldLoadMore, DEFAULT_LOADMORE_COOLDOWN_MS } from "../lib/loadmore-cooldown";
+import {
+  shouldLoadMore,
+  cooldownRemainingMs,
+  DEFAULT_LOADMORE_COOLDOWN_MS,
+} from "../lib/loadmore-cooldown";
 
 /** デフォルトの 1 ページ件数 (`useFilteredArticles` 経由で UserSettings の値を渡すと上書き) */
 const DEFAULT_PAGE_SIZE = 50;
@@ -139,20 +143,40 @@ export function useArticlePagination(
   //
   // filter cycle で visible.length が同値 (10→10) でも `filtered.length` 変動で再評価され、
   // filter 切替後の cascade を担保する。
+  // #1085: cooldown と cascade の deadlock 解消。
+  // 旧実装は `loadMoreRef.current()` を呼ぶだけで、#773 cooldown (1000ms) に抑止されると
+  // `setPage` が呼ばれず `visible.length` が変わらない → deps 不変で effect が再発火しない →
+  // pageSize 小 + 短い viewport で under-fill のまま停止する罠があった。
+  // cooldown で抑止されたら「諦める」代わりに残り cooldown 時間後に retry をスケジュールする。
+  // shouldLoadMore は壊さない (cooldown を bypass せず待つだけ) ため #773 の burst 防止
+  // (1000ms に最大 1 回) は維持される。loadMore が実際に発火すれば setPage → visible.length
+  // 変化 → effect 再発火で cleanup され、次の effect 実行が cascade を継続する。
   useEffect(() => {
     if (!hasMore) return;
     if (!sentinelEl) return;
     const scrollRoot = findScrollableAncestor(sentinelEl);
     if (!scrollRoot) return;
-    const id = setTimeout(() => {
+    let retryId: ReturnType<typeof setTimeout> | null = null;
+    const attempt = () => {
       if (!hasMoreRef.current) return;
       const isContentShort = scrollRoot.scrollHeight <= scrollRoot.clientHeight;
-      if (isContentShort) {
+      if (!isContentShort) return;
+      const remaining = cooldownRemainingMs(Date.now(), lastLoadAtRef.current);
+      if (remaining === 0) {
+        // cooldown 満了 → loadMore 発火 (setPage → visible.length 変化 → effect 再発火)
         loadMoreRef.current();
+      } else {
+        // cooldown 中 → 残り時間 + 余白後に再試行 (visible.length は変わらないので effect は
+        // 再発火しない。この deferred retry が cascade を継続させる)
+        retryId = setTimeout(attempt, remaining + 16);
       }
-    }, 0);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMoreRef / hasMoreRef は安定参照
+    };
+    const id = setTimeout(attempt, 0);
+    return () => {
+      clearTimeout(id);
+      if (retryId !== null) clearTimeout(retryId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMoreRef / hasMoreRef は安定参照、lastLoadAtRef は useRef 安定参照
   }, [visible.length, hasMore, filtered.length, sentinelEl]);
 
   return { visible, hasMore, sentinelRef, notifyArticlesAdded, loadMore } as const;

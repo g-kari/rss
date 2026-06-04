@@ -40,7 +40,42 @@ export function shouldLoadMore(
   lastLoadAt: number,
   cooldownMs: number = DEFAULT_LOADMORE_COOLDOWN_MS,
 ): boolean {
-  if (lastLoadAt === 0) return true;
-  if (now < lastLoadAt) return true;
-  return now - lastLoadAt >= cooldownMs;
+  return cooldownRemainingMs(now, lastLoadAt, cooldownMs) === 0;
+}
+
+/**
+ * 次回 loadMore が許可されるまでの残り cooldown 時間 (ms) を返す純粋関数。
+ *
+ * `shouldLoadMore` が true (= loadMore 許可) のとき 0 を返す。false のときは
+ * cooldown 満了までの残り ms を返す。`shouldLoadMore(...) === (cooldownRemainingMs(...) === 0)`
+ * の不変条件を保つ。
+ *
+ * #1085 対応: secondary cascade effect (fill-viewport) が cooldown で抑止されたとき、
+ * 「諦める」代わりに「残り時間後に retry をスケジュール」するために残り時間を計算する。
+ * これにより #773 の burst 防止 (1000ms に最大 1 回) を壊さずに、pageSize 小 + 短い
+ * viewport で cascade が cooldown と deadlock して under-fill のまま停止する罠を解消する。
+ *
+ * `lastLoadAt = 0` (未発火) / `now < lastLoadAt` (時計戻り) は 0 (= 即許可) を返す。
+ *
+ * @param now 現在時刻 (Date.now() の戻り値想定)
+ * @param lastLoadAt 直近 loadMore 発火時刻 (0 = 未発火)
+ * @param cooldownMs cooldown 期間 (デフォルト DEFAULT_LOADMORE_COOLDOWN_MS)
+ * @returns 残り cooldown ms (0 = 即 loadMore 許可)
+ *
+ * @example
+ * cooldownRemainingMs(2000, 0)                  // 0 (初回)
+ * cooldownRemainingMs(2000, 1000, 1000)         // 0 (1000ms 経過、境界値)
+ * cooldownRemainingMs(1999, 1000, 1000)         // 1 (999ms 経過、残り 1ms)
+ * cooldownRemainingMs(1500, 1000, 1000)         // 500 (500ms 経過、残り 500ms)
+ * cooldownRemainingMs(500, 1000, 1000)          // 0 (時計戻り、fail-open)
+ */
+export function cooldownRemainingMs(
+  now: number,
+  lastLoadAt: number,
+  cooldownMs: number = DEFAULT_LOADMORE_COOLDOWN_MS,
+): number {
+  if (lastLoadAt === 0) return 0;
+  if (now < lastLoadAt) return 0;
+  const elapsed = now - lastLoadAt;
+  return elapsed >= cooldownMs ? 0 : cooldownMs - elapsed;
 }
