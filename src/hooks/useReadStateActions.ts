@@ -113,34 +113,37 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
     [setReadIds],
   );
 
+  // 今回新規に既読化した id 配列を返す。markAllReadWithUndo の差分復元 (#1086) で使用する。
+  // id 計算と pending 更新は updater 外で行う (markBulkRead と同じ stateRef ベース pattern、
+  // setState callback 内副作用を排除して React Strict Mode の二重実行に対応)。
   const markAllRead = useCallback(
-    (feedId: string | null) => {
+    (feedId: string | null): string[] => {
+      const arts = articlesRef.current;
+      const { read, bookmarks, readingList, likes } = stateRef.current;
+      const specialSets: Partial<Record<string, Set<string>>> = {
+        [SPECIAL_FEED_IDS.BOOKMARKS]: bookmarks,
+        [SPECIAL_FEED_IDS.READING_LIST]: readingList,
+        [SPECIAL_FEED_IDS.LIKES]: likes,
+        [SPECIAL_FEED_IDS.HISTORY]: historyIdsRef.current ?? new Set<string>(),
+      };
+      const specialSet = feedId ? (specialSets[feedId] ?? null) : null;
+      const ids =
+        specialSet !== null
+          ? arts.filter((a) => specialSet.has(a.id)).map((a) => a.id)
+          : feedId
+            ? arts.filter((a) => a.feedHash === feedId).map((a) => a.id)
+            : arts.map((a) => a.id);
+      const addedIds = ids.filter((id) => !read.has(id));
+
       setReadIds((prev) => {
-        const arts = articlesRef.current;
-        const { bookmarks, readingList, likes } = stateRef.current;
-        const specialSets: Partial<Record<string, Set<string>>> = {
-          [SPECIAL_FEED_IDS.BOOKMARKS]: bookmarks,
-          [SPECIAL_FEED_IDS.READING_LIST]: readingList,
-          [SPECIAL_FEED_IDS.LIKES]: likes,
-          [SPECIAL_FEED_IDS.HISTORY]: historyIdsRef.current ?? new Set<string>(),
-        };
-        const specialSet = feedId ? (specialSets[feedId] ?? null) : null;
-        const ids =
-          specialSet !== null
-            ? arts.filter((a) => specialSet.has(a.id)).map((a) => a.id)
-            : feedId
-              ? arts.filter((a) => a.feedHash === feedId).map((a) => a.id)
-              : arts.map((a) => a.id);
         const next = new Set([...prev, ...ids]);
         deferSaveSet(STORAGE_KEYS.READ_IDS, next);
-        for (const id of ids) {
-          if (!prev.has(id)) {
-            pendingAddedRef.current.read.add(id);
-            pendingRemovedRef.current.read.delete(id);
-          }
-        }
         return next;
       });
+      for (const id of addedIds) {
+        pendingAddedRef.current.read.add(id);
+        pendingRemovedRef.current.read.delete(id);
+      }
       if (!feedId) {
         const now = new Date().toISOString();
         setReadBeforeTimestamp((prev) => {
@@ -151,6 +154,7 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
         });
       }
       scheduleSyncRef.current();
+      return addedIds;
     },
     [
       historyIdsRef,
@@ -166,22 +170,33 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
 
   const markAllReadWithUndo = useCallback(
     (feedId: string | null, toast: ToastApi) => {
-      const prevReadIds = new Set(stateRef.current.read);
       const prevReadBeforeTimestamp = stateRef.current.readBeforeTimestamp;
-      const prevPendingAdded = new Set(pendingAddedRef.current.read);
+      // markAllRead が pendingRemoved から delete する前のスナップショット。
+      // undo で「元々 pendingRemoved にあった addedId」だけを復元するために使う。
       const prevPendingRemoved = new Set(pendingRemovedRef.current.read);
 
-      markAllRead(feedId);
+      const addedIds = markAllRead(feedId);
 
       toast.undo("全て既読にしました", () => {
-        setReadIds(prevReadIds);
-        deferSaveSet(STORAGE_KEYS.READ_IDS, prevReadIds);
+        // 差分復元 (#1086): markAllRead が今回追加した addedIds だけを巻き戻す。
+        // 旧実装は read Set / pending-ref を丸ごと上書きしていたため、undo window 中の
+        // 別操作 (別記事の既読化 / 解除) が失われていた。差分復元で window 中の操作は保持する。
+        setReadIds((cur) => {
+          const next = new Set(cur);
+          for (const id of addedIds) next.delete(id);
+          deferSaveSet(STORAGE_KEYS.READ_IDS, next);
+          return next;
+        });
+        for (const id of addedIds) {
+          // markAllRead が立てた pending-add を取り消す
+          pendingAddedRef.current.read.delete(id);
+          // markAllRead が pendingRemoved から消した id は、元々あったなら復元する
+          if (prevPendingRemoved.has(id)) pendingRemovedRef.current.read.add(id);
+        }
         if (!feedId) {
           setReadBeforeTimestamp(prevReadBeforeTimestamp);
           storageSet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP, prevReadBeforeTimestamp ?? "");
         }
-        pendingAddedRef.current.read = prevPendingAdded;
-        pendingRemovedRef.current.read = prevPendingRemoved;
         scheduleSyncRef.current();
       });
     },
