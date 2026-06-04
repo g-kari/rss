@@ -8,6 +8,8 @@ export interface ReadStateRemovedIds {
   likeIds?: string[];
   /** tagIds マップから完全に削除する articleId 配列 */
   tagIds?: string[];
+  /** notes マップから完全に削除する articleId 配列 (#1084 cross-device note 削除) */
+  notes?: string[];
 }
 
 /** POST /api/read-state の入力型（追加分 + 削除差分） */
@@ -63,8 +65,21 @@ function mergeSnoozed(
 function mergeNotes(
   existing: Record<string, string> | null | undefined,
   incoming: Record<string, string> | null | undefined,
+  removedKeys: readonly string[] | undefined,
 ): Record<string, string> | null {
-  const merged: Record<string, string> = { ...existing, ...incoming };
+  // #1084: tags と対称な removal channel。removedKeys に含まれる articleId は merge 対象から
+  // 除外して削除を伝播する (旧実装は `{...existing, ...incoming}` で削除を伝播できず、削除した
+  // note が次 sync で復活していた)。
+  const removedSet = new Set(removedKeys ?? []);
+  const merged: Record<string, string> = {};
+  for (const [k, v] of Object.entries(existing ?? {})) {
+    if (removedSet.has(k)) continue;
+    merged[k] = v;
+  }
+  for (const [k, v] of Object.entries(incoming ?? {})) {
+    if (removedSet.has(k)) continue;
+    merged[k] = v;
+  }
   return Object.keys(merged).length > 0 ? merged : null;
 }
 
@@ -172,7 +187,7 @@ export function mergeReadStateUpdate(
   const readBeforeTimestamp = chooseLater(existing.readBeforeTimestamp, update.readBeforeTimestamp);
 
   const snoozedUntil = mergeSnoozed(existing.snoozedUntil, update.snoozedUntil);
-  const notes = mergeNotes(existing.notes, update.notes);
+  const notes = mergeNotes(existing.notes, update.notes, removed.notes);
   const tagIds = mergeTags(existing.tagIds, update.tagIds, removed.tagIds);
 
   return {

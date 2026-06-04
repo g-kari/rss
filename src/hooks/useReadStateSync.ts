@@ -18,6 +18,7 @@ export interface ReadStateSyncDeps {
   globalFilterDirtyRef: MutableRefObject<boolean>;
   pendingTagChangedRef: MutableRefObject<Set<string>>;
   pendingTagRemovedRef: MutableRefObject<Set<string>>;
+  pendingNotesRemovedRef: MutableRefObject<Set<string>>;
   dispatchers: SetStateDispatchers;
   otherDispatchers: OtherStateDispatchers;
 }
@@ -38,6 +39,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     globalFilterDirtyRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
+    pendingNotesRemovedRef,
     dispatchers,
     otherDispatchers,
   } = deps;
@@ -48,6 +50,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
+    pendingNotesRemovedRef,
     dispatchers,
     otherDispatchers,
   });
@@ -60,6 +63,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
+    pendingNotesRemovedRef,
     globalFilterDirtyRef,
     applyServerState,
     lastServerSyncRef,

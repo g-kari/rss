@@ -34,6 +34,8 @@ export interface PendingRefs {
   pendingRemovedRef: { current: PendingSets };
   pendingTagChangedRef: { current: Set<string> };
   pendingTagRemovedRef: { current: Set<string> };
+  /** 削除した note の articleId を track する (#1084 cross-device note 削除) */
+  pendingNotesRemovedRef: { current: Set<string> };
   globalFilterDirtyRef: { current: boolean };
 }
 
@@ -42,6 +44,7 @@ export interface PendingSnapshot {
   removed: PendingSets;
   tagChanged: Set<string>;
   tagRemoved: Set<string>;
+  notesRemoved: Set<string>;
   wasGfDirty: boolean;
 }
 
@@ -50,13 +53,15 @@ export function extractAndResetPending(refs: PendingRefs): PendingSnapshot {
   const removed = snapshotPendingSets(refs.pendingRemovedRef.current);
   const tagChanged = new Set(refs.pendingTagChangedRef.current);
   const tagRemoved = new Set(refs.pendingTagRemovedRef.current);
+  const notesRemoved = new Set(refs.pendingNotesRemovedRef.current);
   const wasGfDirty = refs.globalFilterDirtyRef.current;
   refs.pendingAddedRef.current = emptyPendingSets();
   refs.pendingRemovedRef.current = emptyPendingSets();
   refs.pendingTagChangedRef.current = new Set();
   refs.pendingTagRemovedRef.current = new Set();
+  refs.pendingNotesRemovedRef.current = new Set();
   refs.globalFilterDirtyRef.current = false;
-  return { added, removed, tagChanged, tagRemoved, wasGfDirty };
+  return { added, removed, tagChanged, tagRemoved, notesRemoved, wasGfDirty };
 }
 
 export function restorePending(refs: PendingRefs, snapshot: PendingSnapshot): void {
@@ -64,6 +69,7 @@ export function restorePending(refs: PendingRefs, snapshot: PendingSnapshot): vo
   mergePendingSets(refs.pendingRemovedRef.current, snapshot.removed);
   for (const k of snapshot.tagChanged) refs.pendingTagChangedRef.current.add(k);
   for (const k of snapshot.tagRemoved) refs.pendingTagRemovedRef.current.add(k);
+  for (const k of snapshot.notesRemoved) refs.pendingNotesRemovedRef.current.add(k);
   if (snapshot.wasGfDirty) refs.globalFilterDirtyRef.current = true;
 }
 
@@ -113,6 +119,7 @@ export function serializeReadState(
   tagChanges: TagChanges,
   includeGlobalFilter: boolean,
   ttlDays: number | null,
+  notesRemovedKeys: readonly string[] = [],
 ): string {
   const pruned = pruneExpiredSnoozes(snoozedUntil);
   const changedTags: Record<string, string[]> = {};
@@ -135,6 +142,7 @@ export function serializeReadState(
       readingListIds: [...removed.readingList],
       likeIds: [...removed.likes],
       tagIds: [...tagChanges.removedKeys],
+      notes: [...notesRemovedKeys],
     },
   };
   if (includeGlobalFilter) payload.globalFilter = globalFilter;

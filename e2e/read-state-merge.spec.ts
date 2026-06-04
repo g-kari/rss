@@ -144,6 +144,39 @@ test("notes は update 優先でキー単位マージ（既存にあるキーは
   });
 });
 
+test("removedIds.notes に含まれる articleId は notes から除去される (#1084 cross-device note 削除)", () => {
+  const existing: ReadState = {
+    ...emptyState(),
+    notes: { a: "note-a", b: "note-b" },
+  };
+  // 端末 A が note `a` を削除 → removedIds.notes で伝播
+  const result = mergeReadStateUpdate(existing, {
+    removedIds: { notes: ["a"] },
+  });
+  expect(result.notes).toEqual({ b: "note-b" });
+});
+
+test("removedIds.notes は incoming.notes にも適用される（削除優先）", () => {
+  const existing: ReadState = { ...emptyState(), notes: { a: "old" } };
+  // incoming で a を再送しつつ removedIds.notes でも a を指定 → 削除が優先
+  const result = mergeReadStateUpdate(existing, {
+    notes: { a: "resurrect-attempt", c: "note-c" },
+    removedIds: { notes: ["a"] },
+  });
+  expect(result.notes).toEqual({ c: "note-c" });
+});
+
+test("シナリオ: 端末Aが note 削除 → removedIds で伝播して端末B由来の union で復活しない (#1084)", () => {
+  // 端末 B (server) が note `x` を保持。端末 A が `x` を削除して removedIds.notes で送信。
+  const serverState: ReadState = { ...emptyState(), notes: { x: "from-server", y: "keep" } };
+  const result = mergeReadStateUpdate(serverState, {
+    notes: {}, // A の現在 notes は空
+    removedIds: { notes: ["x"] },
+  });
+  // x は復活せず削除が伝播、y は保持
+  expect(result.notes).toEqual({ y: "keep" });
+});
+
 test("空の update はすべて既存値を保持する", () => {
   const existing: ReadState = {
     readIds: ["a"],

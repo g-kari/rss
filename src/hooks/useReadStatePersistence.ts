@@ -59,6 +59,7 @@ export interface ReadStatePersistenceResult {
   globalFilterRef: RefObject<KeywordFilter | null>;
   pendingAddedRef: MutableRefObject<PendingSets>;
   pendingRemovedRef: MutableRefObject<PendingSets>;
+  pendingNotesRemovedRef: MutableRefObject<Set<string>>;
   globalFilterDirtyRef: MutableRefObject<boolean>;
   getSetStateDispatchers: () => SetStateDispatchers;
   getOtherStateDispatchers: () => OtherStateDispatchers;
@@ -116,6 +117,7 @@ export function useReadStatePersistence(
   // --- Refs ---
   const pendingAddedRef = useRef<PendingSets>(emptyPendingSets());
   const pendingRemovedRef = useRef<PendingSets>(emptyPendingSets());
+  const pendingNotesRemovedRef = useRef<Set<string>>(new Set());
   const globalFilterDirtyRef = useRef(false);
 
   const stateRef = useRef<ReadStateSets>({
@@ -194,6 +196,7 @@ export function useReadStatePersistence(
     setTtlDaysState,
     pendingAddedRef,
     pendingRemovedRef,
+    pendingNotesRemovedRef,
     globalFilterDirtyRef,
     scheduleSyncRef,
   });
@@ -227,6 +230,7 @@ export function useReadStatePersistence(
     globalFilterRef,
     pendingAddedRef,
     pendingRemovedRef,
+    pendingNotesRemovedRef,
     globalFilterDirtyRef,
     getSetStateDispatchers: (): SetStateDispatchers => ({
       read: setReadIds,

@@ -326,6 +326,8 @@ export interface ReadStatePayload {
     readingListIds: string[];
     likeIds: string[];
     tagIds: string[];
+    /** notes マップから完全に削除する articleId 配列 (#1084 cross-device note 削除) */
+    notes: string[];
   };
   /** キーが存在する場合のみサーバー側で上書きする（他端末設定保護） */
   globalFilter?: KeywordFilter | null;

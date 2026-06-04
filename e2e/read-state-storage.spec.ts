@@ -86,6 +86,7 @@ test("serializeReadState は正しい JSON ペイロードを生成する", () =
       },
       false,
       null,
+      ["art5"],
     ),
   );
   expect(result.readIds).toEqual(["r1"]);
@@ -98,7 +99,25 @@ test("serializeReadState は正しい JSON ペイロードを生成する", () =
   expect(result.tagIds).toEqual({ art3: ["tag1"] });
   expect(result.removedIds.likeIds).toEqual(["l1"]);
   expect(result.removedIds.tagIds).toEqual(["art4"]);
+  expect(result.removedIds.notes).toEqual(["art5"]); // #1084 notes removal channel
   expect(result.globalFilter).toBeUndefined();
+});
+
+test("serializeReadState は notesRemovedKeys 未指定時に removedIds.notes を空配列にする (#1084 後方互換)", () => {
+  const result = JSON.parse(
+    serializeReadState(
+      emptyPendingSets(),
+      emptyPendingSets(),
+      null,
+      null,
+      {},
+      {},
+      { changedKeys: new Set(), removedKeys: new Set(), currentTags: {} },
+      false,
+      null,
+    ),
+  );
+  expect(result.removedIds.notes).toEqual([]);
 });
 
 test("serializeReadState は includeGlobalFilter=true で globalFilter を含める", () => {
