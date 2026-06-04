@@ -75,6 +75,12 @@ export function useReadStateToggles(deps: ToggleDeps): ToggleResult {
       (id: string): void => {
         pendingRemovedRef.current[kind].add(id);
         pendingAddedRef.current[kind].delete(id);
+        // scheduleSyncRef で isDirty / hasPendingChanges を立ててから syncImmediately で
+        // 即時 flush に collapse する。schedule なしで syncImmediately 単独だと、先行 add が
+        // ない孤立 removal では `if (!isDirtyRef && timer===null) return` で early-return され、
+        // 削除がサーバーに送信されないまま滞留する (correctness 監査 finding)。add 経路 (recordAdd)
+        // が schedule() を呼ぶのと対称化しつつ、removal の即時性は syncImmediately で維持する。
+        scheduleSyncRef.current();
         syncImmediatelyRef.current();
       };
     return {
