@@ -20,10 +20,15 @@ export interface FeedPatchActions {
 
 /**
  * フィードの部分更新 (PATCH) callback 群を提供する hook。NSFW / priority / category / group 等の toggle/setter を集約。
+ *
+ * #1087: 楽観的更新 / rollback / 成功確定はいずれも `mergeFeedFields` (field 単位マージ) で行う。
+ * 旧実装は `updateFeed(feed)` (full Feed 置換) で rollback していたため、同一 feed の別フィールドの
+ * 並行 PATCH を巻き戻していた。変更フィールドのみを最新 state にマージすれば clobber しない。
+ * @param mergeFeedFields - 指定 feed の一部フィールドを最新 state にマージする setter
  * @returns `FeedPatchActions` (`{ patchFeed, toggleNsfwFeed, togglePriorityFeed, setCategoryFeed, setGroupFeed, ... }`)
  */
 export function useFeedPatch(
-  updateFeed: (feed: Feed) => void,
+  mergeFeedFields: (id: string, fields: Partial<Feed>) => void,
   onError?: (msg: string) => void,
 ): FeedPatchActions {
   const patchFeed = useCallback(
@@ -41,35 +46,42 @@ export function useFeedPatch(
   );
 
   /**
-   * 楽観的更新パターン:
-   * 1. optimisticFeed でローカル state を即時更新（サーバー応答を待たない）
+   * 楽観的更新パターン (field 単位マージで並行更新を clobber しない):
+   * 1. optimisticFeed と feed の差分フィールドのみを最新 state にマージ
    * 2. PATCH リクエストを送信
-   * 3. 成功時はサーバー応答で確定 / 失敗時は元の feed にロールバック + onError 通知
+   * 3. 成功時はサーバー応答の同フィールドで確定 / 失敗時は変更フィールドのみ元値に rollback + onError 通知
    */
   const applyFeedPatchOptimistic = useCallback(
     async (feed: Feed, optimisticFeed: Feed, patch: FeedPatchPayload): Promise<Feed | null> => {
-      // 楽観的更新
-      updateFeed(optimisticFeed);
+      // 変更フィールド = optimisticFeed が feed と異なるキー。これだけをマージ/rollback 対象にする。
+      const changedKeys = (Object.keys(optimisticFeed) as (keyof Feed)[]).filter(
+        (k) => optimisticFeed[k] !== feed[k],
+      );
+      const pick = (src: Feed): Partial<Feed> =>
+        Object.fromEntries(changedKeys.map((k) => [k, src[k]])) as Partial<Feed>;
+
+      // 楽観的更新 (変更フィールドのみ最新 state にマージ)
+      mergeFeedFields(feed.id, pick(optimisticFeed));
       try {
         const updated = await patchFeed(feed.id, patch);
         if (updated) {
-          // サーバー応答で確定（楽観的更新との差分を解消）
-          updateFeed(updated);
+          // サーバー応答の同フィールドで確定 (他フィールドの並行変更は保持)
+          mergeFeedFields(feed.id, pick(updated));
           return updated;
         }
-        // res.ok=false の場合はロールバック + ユーザー通知
-        updateFeed(feed);
+        // res.ok=false: 変更フィールドのみ元値に rollback + ユーザー通知
+        mergeFeedFields(feed.id, pick(feed));
         onError?.("変更の保存に失敗しました");
         return null;
       } catch (err) {
         devError("[useFeedPatch] patch failed:", err);
-        // エラーはロールバック + ユーザー通知
-        updateFeed(feed);
+        // エラーは変更フィールドのみ元値に rollback + ユーザー通知
+        mergeFeedFields(feed.id, pick(feed));
         onError?.("変更の保存に失敗しました");
         return null;
       }
     },
-    [patchFeed, updateFeed, onError],
+    [patchFeed, mergeFeedFields, onError],
   );
 
   const toggleNsfwFeed = useCallback(
@@ -130,15 +142,16 @@ export function useFeedPatch(
 
   const saveFilter = useCallback(
     async (feedId: string, filter: KeywordFilter | null) => {
-      // saveFilter はフィードオブジェクトなしで呼ばれるため楽観的更新なし（サーバー応答後に確定）
+      // saveFilter はフィードオブジェクトなしで呼ばれるため楽観的更新なし（サーバー応答後に確定）。
+      // filter フィールドのみマージして他フィールドの並行変更を保持する。
       const updated = await patchFeed(feedId, { filter });
       if (updated) {
-        updateFeed(updated);
+        mergeFeedFields(feedId, { filter: updated.filter });
       } else {
         throw new Error("フィルターの保存に失敗しました");
       }
     },
-    [patchFeed, updateFeed],
+    [patchFeed, mergeFeedFields],
   );
 
   const setDigestLimit = useCallback(
