@@ -24,6 +24,7 @@ interface FeedsState {
   prependArticle: (article: Article) => void;
   removeFeed: (id: string) => void;
   updateFeed: (feed: Feed) => void;
+  mergeFeedFields: (id: string, fields: Partial<Feed>) => void;
   appendFeeds: (feeds: Feed[]) => Promise<void>;
   refreshFeeds: () => Promise<void>;
   retryFeed: (feedId: string) => Promise<void>;
@@ -55,6 +56,7 @@ export function useFeeds(
     onFeedAdded,
     removeFeedFromList,
     updateFeed,
+    mergeFeedFields,
     appendFeeds: appendFeedsToList,
     refreshFeedsList,
   } = useFeedData(user, onError);
@@ -189,6 +191,7 @@ export function useFeeds(
     prependArticle,
     removeFeed,
     updateFeed,
+    mergeFeedFields,
     appendFeeds,
     refreshFeeds,
     retryFeed,

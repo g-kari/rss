@@ -241,6 +241,7 @@ export default function AppShell({
     prependArticle,
     removeFeed,
     updateFeed,
+    mergeFeedFields,
     appendFeeds,
     refreshFeeds,
     retryFeed,
@@ -447,7 +448,7 @@ export default function AppShell({
     setFeedView,
     saveFilter,
     setDigestLimit,
-  } = useFeedPatch(updateFeed, toast.error);
+  } = useFeedPatch(mergeFeedFields, toast.error);
 
   // フィード削除時、削除対象が現在選択中なら選択も解除する (#650 Step 1u)。
   // selectFeedClearingArticle(null) は useFeedSelection が提供するアトミック解除操作。

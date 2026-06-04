@@ -16,6 +16,7 @@ interface FeedDataState {
   onFeedAdded: (feed: Feed) => void;
   removeFeedFromList: (id: string) => void;
   updateFeed: (feed: Feed) => void;
+  mergeFeedFields: (id: string, fields: Partial<Feed>) => void;
   appendFeeds: (feeds: Feed[]) => void;
   refreshFeedsList: () => Promise<Feed[]>;
 }
@@ -95,6 +96,13 @@ export function useFeedData(
     setFeeds((prev) => prev.map((f) => (f.id === feed.id ? feed : f)));
   }, []);
 
+  // #1087: 指定 feed の一部フィールドのみを最新 state にマージする (full 置換しない)。
+  // 楽観的更新の rollback で feed 全体を stale snapshot で置換すると、同一 feed の別フィールドの
+  // 並行更新を巻き戻すバグがあった。field 単位マージなら他フィールドの並行変更を保持できる。
+  const mergeFeedFields = useCallback((id: string, fields: Partial<Feed>) => {
+    setFeeds((prev) => prev.map((f) => (f.id === id ? { ...f, ...fields } : f)));
+  }, []);
+
   const appendFeeds = useCallback((newFeeds: Feed[]) => {
     setFeeds((prev) => [...prev, ...newFeeds]);
   }, []);
@@ -108,6 +116,7 @@ export function useFeedData(
     onFeedAdded,
     removeFeedFromList,
     updateFeed,
+    mergeFeedFields,
     appendFeeds,
     refreshFeedsList,
   };
