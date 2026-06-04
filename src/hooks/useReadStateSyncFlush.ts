@@ -67,6 +67,7 @@ function prepareFlush(
     },
     snapshot.wasGfDirty,
     stateRef.current.ttlDays,
+    [...snapshot.notesRemoved],
   );
   return { snapshot, body };
 }
@@ -80,6 +81,7 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
+    pendingNotesRemovedRef,
     globalFilterDirtyRef,
     applyServerState,
     lastServerSyncRef,
@@ -90,6 +92,7 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
+    pendingNotesRemovedRef,
     globalFilterDirtyRef,
   };
 

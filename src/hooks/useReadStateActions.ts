@@ -38,6 +38,8 @@ export interface ReadStateActionDeps {
     readingList: Set<string>;
     likes: Set<string>;
   }>;
+  /** 削除した note の articleId を track する (#1084 cross-device note 削除) */
+  pendingNotesRemovedRef: MutableRefObject<Set<string>>;
   globalFilterDirtyRef: MutableRefObject<boolean>;
   scheduleSyncRef: RefObject<() => void>;
 }
@@ -67,6 +69,7 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
     setTtlDaysState,
     pendingAddedRef,
     pendingRemovedRef,
+    pendingNotesRemovedRef,
     globalFilterDirtyRef,
     scheduleSyncRef,
   } = deps;
@@ -236,6 +239,8 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
         saveJson(STORAGE_KEYS.NOTES, next);
         return next;
       });
+      // note を設定したら removal pending を解除 (削除→再設定の打ち消し、#1084)
+      pendingNotesRemovedRef.current.delete(articleId);
       scheduleSyncRef.current();
     },
     // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
@@ -252,6 +257,9 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
         saveJson(STORAGE_KEYS.NOTES, next);
         return next;
       });
+      // #1084: 削除した note key を removal channel で track (tags の pendingTagRemovedRef と対称)。
+      // serializeReadState が removedIds.notes として送信 → server mergeNotes が honor → 復活を防ぐ。
+      pendingNotesRemovedRef.current.add(articleId);
       scheduleSyncRef.current();
     },
     // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)

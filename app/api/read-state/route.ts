@@ -71,13 +71,15 @@ export async function POST(req: NextRequest) {
     const removedReadingListIds = extractIds(removedRaw.readingListIds, MAX_READING_LIST_IDS);
     const removedLikeIds = extractIds(removedRaw.likeIds, MAX_LIKE_IDS);
     const removedTagKeys = extractIds(removedRaw.tagIds, MAX_REMOVED_TAG_KEYS);
+    const removedNotesKeys = extractIds(removedRaw.notes, MAX_NOTES);
 
     if (
       !removedReadIds ||
       !removedBookmarkIds ||
       !removedReadingListIds ||
       !removedLikeIds ||
-      !removedTagKeys
+      !removedTagKeys ||
+      !removedNotesKeys
     ) {
       return apiError("Payload too large", 413, { code: "PAYLOAD_TOO_LARGE" });
     }
@@ -113,6 +115,7 @@ export async function POST(req: NextRequest) {
         readingListIds: removedReadingListIds,
         likeIds: removedLikeIds,
         tagIds: removedTagKeys,
+        notes: removedNotesKeys,
       },
       readBeforeTimestamp: rbt,
       snoozedUntil,

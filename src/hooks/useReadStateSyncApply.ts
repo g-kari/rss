@@ -56,6 +56,7 @@ export interface ApplyServerStateDeps {
   pendingRemovedRef: MutableRefObject<PendingSets>;
   pendingTagChangedRef: MutableRefObject<Set<string>>;
   pendingTagRemovedRef: MutableRefObject<Set<string>>;
+  pendingNotesRemovedRef: MutableRefObject<Set<string>>;
   dispatchers: SetStateDispatchers;
   otherDispatchers: OtherStateDispatchers;
 }
@@ -67,6 +68,7 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
+    pendingNotesRemovedRef,
     dispatchers,
     otherDispatchers,
   } = deps;
@@ -197,7 +199,18 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
         }
       }
       if ("notes" in state) {
-        const merged = { ...stateRef.current.notes, ...state.notes };
+        // #1084: pending 削除 (pendingNotesRemovedRef) の key は server-wins union から除外して
+        // 削除した note の復活を防ぐ (tags channel の pendingTagRemovedRef と対称)。
+        const serverNotes = state.notes ?? {};
+        const merged: Record<string, string> = {};
+        for (const [k, v] of Object.entries(stateRef.current.notes)) {
+          if (pendingNotesRemovedRef.current.has(k)) continue;
+          merged[k] = v;
+        }
+        for (const [k, v] of Object.entries(serverNotes)) {
+          if (pendingNotesRemovedRef.current.has(k)) continue;
+          merged[k] = v; // server-wins (同 key は server 値で上書き)
+        }
         // #686 同等の構造的等価性ガード: 内容変化なしなら setState を skip し
         // reference を保持する。useFilteredArticles の noteIds useMemo が notes を
         // 依存に持つため、reference 不安定だと 2 秒毎の同期で全記事フィルター pass
