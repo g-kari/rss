@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   mergeReadStateUpdate,
+  equalStringRecord,
   equalSnoozedUntil,
   equalNotes,
   equalTagIds,
@@ -404,6 +405,26 @@ test.describe("equalNotes", () => {
   test("空文字列の値も区別される", () => {
     expect(equalNotes({ a1: "" }, { a1: "" })).toBe(true);
     expect(equalNotes({ a1: "" }, { a1: "x" })).toBe(false);
+  });
+});
+
+test.describe("equalStringRecord (canonical)", () => {
+  test("equalSnoozedUntil / equalNotes は equalStringRecord の alias (identity 一致)", () => {
+    // helper drift 防止: 3 export は同一実装でなければならない
+    expect(equalSnoozedUntil).toBe(equalStringRecord);
+    expect(equalNotes).toBe(equalStringRecord);
+  });
+
+  test("基本等価判定 (空 / 同内容別 reference / キー順序非依存)", () => {
+    expect(equalStringRecord({}, {})).toBe(true);
+    expect(equalStringRecord({ a: "1", b: "2" }, { a: "1", b: "2" })).toBe(true);
+    expect(equalStringRecord({ a: "1", b: "2" }, { b: "2", a: "1" })).toBe(true);
+  });
+
+  test("差異検出 (キー数 / キー名 / 値)", () => {
+    expect(equalStringRecord({ a: "1" }, {})).toBe(false);
+    expect(equalStringRecord({ a: "1" }, { b: "1" })).toBe(false);
+    expect(equalStringRecord({ a: "1" }, { a: "2" })).toBe(false);
   });
 });
 
