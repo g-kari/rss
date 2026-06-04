@@ -113,7 +113,7 @@ function mergeTags(
  * 不正な ISO 文字列は `NaN` 比較で false を返す (= 既存値を優先) ため、
  * 万一壊れた input が来てもデータ消失しない。
  *
- * code-quality #1 (`isLaterIso8601` in `read-state-prune.ts`) と同じ sibling 規範
+ * code-quality #1 (`read-state-prune.ts` の `Date.parse` 比較) と同じ sibling 規範
  * (`coding-conventions.md` 「同じデータに動作する sibling 純粋関数は fallback chain を完全に揃える」)。
  */
 export function isLaterIso(a: string, b: string): boolean {
@@ -206,26 +206,29 @@ export function normalizeReadState(stored: Partial<ReadState>): ReadState {
 }
 
 /**
- * 2 つの snoozedUntil マップが構造的に等しいかを判定する (#686)。
+ * 2 つの `Record<string, string>` マップが構造的に等しいかを判定する純粋関数 (#686)。
  *
  * `useReadStateSyncApply` のサーバーマージ処理は、内容が変わっていなくても
- * `setSnoozedUntil(new Object)` を呼んで reference を更新してしまう。これにより
- * `useFilteredArticles` の `structuralFiltered` useMemo が 2 秒毎に再実行されて
- * 全記事フィルター pass で 20-80ms の主スレッドブロックを発生させていた。
+ * `setState(new Object)` を呼んで reference を更新してしまう。これにより
+ * `useFilteredArticles` の useMemo (`structuralFiltered` / `noteIds` Set 等) が
+ * 2 秒毎に再実行されて全記事フィルター pass で 20-80ms の主スレッドブロックを発生させる。
  *
- * 本関数を `setSnoozedUntil` 前のガードに使えば、内容変化なしの場合は state 更新を
- * skip して reference を保持し、useMemo の不要な再実行を回避できる。
+ * 本関数を setState 前のガードに使えば、内容変化なしの場合は state 更新を skip して
+ * reference を保持し、useMemo の不要な再実行を回避できる。
  *
  * 等価判定:
  *   - キー集合が同じ
- *   - 各キーの値 (ISO 8601 文字列) が同じ
+ *   - 各キーの値 (string) が同じ
  *
  * 実装上の注意:
- *   - `Object.entries` でループするので O(n) (snoozed は最大 500 件制約あり)
- *   - 値は ISO 8601 文字列なので === で比較可
+ *   - O(n) ループ (snoozed は最大 500 件 / notes は最大 1,000 件の上限制約あり)
+ *   - 値は string なので === で比較可
  *   - キー順序は問わない (Record なので順序は無関係)
+ *
+ * canonical: Map 用は `article-filter-equality.ts#equalMap<V>`、Set 用は `equalStringSet`。
+ * 本関数は `Record<string, string>` 用の canonical。
  */
-export function equalSnoozedUntil(a: Record<string, string>, b: Record<string, string>): boolean {
+export function equalStringRecord(a: Record<string, string>, b: Record<string, string>): boolean {
   if (a === b) return true;
   const aKeys = Object.keys(a);
   const bKeys = Object.keys(b);
@@ -236,30 +239,11 @@ export function equalSnoozedUntil(a: Record<string, string>, b: Record<string, s
   return true;
 }
 
-/**
- * 2 つの notes マップが構造的に等しいかを判定する。
- *
- * `equalSnoozedUntil` と同じ #686 の構造的等価性ガード適用例。
- * notes は `Record<articleId, noteText>` 形式で、`useFilteredArticles` の
- * 派生計算 (例: `noteIds` Set) が依存するため、reference 不安定だと 2 秒毎の
- * サーバー同期サイクルで全記事フィルター pass が再走する。
- *
- * 等価判定:
- *   - キー集合が同じ
- *   - 各キーの noteText (string) が同じ
- *
- * O(n) ループ。`maxNotes` の上限制約 (1,000 件) があるため十分高速。
- */
-export function equalNotes(a: Record<string, string>, b: Record<string, string>): boolean {
-  if (a === b) return true;
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
-  if (aKeys.length !== bKeys.length) return false;
-  for (const key of aKeys) {
-    if (a[key] !== b[key]) return false;
-  }
-  return true;
-}
+/** snoozedUntil マップ (`Record<articleId, ISO 8601>`) の構造的等価判定。`equalStringRecord` の意味付き alias (#686)。 */
+export const equalSnoozedUntil = equalStringRecord;
+
+/** notes マップ (`Record<articleId, noteText>`) の構造的等価判定。`equalStringRecord` の意味付き alias (#686)。 */
+export const equalNotes = equalStringRecord;
 
 /**
  * 2 つの tagIds マップが構造的に等しいかを判定する。
