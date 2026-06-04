@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import type { Feed, FeedGroup, FeedView, KeywordFilter } from "../../types";
 
+// #1076: callback は feedId / feed を引数で受ける stable 参照に統一する。
+// renderFeed が feed ごとに inline closure を生成すると memo(FeedItem) が shallow-equal で
+// 無効化されゼロ効果になるため、parent の stable callback を直渡しして FeedItem 内で
+// feed / feed.id を bind する設計 (useArticleListItemProps の resolveItemProps と同 pattern)。
 export interface FeedItemProps {
   feed: Feed;
   count: number;
@@ -8,22 +12,22 @@ export interface FeedItemProps {
   isPinned: boolean;
   animationIndex: number;
   lastPublishedAt?: string;
-  onSelect: () => void;
-  onMarkAllRead: () => void;
-  onDelete: () => void;
-  onTogglePin: () => void;
-  onRename: (title: string) => Promise<void>;
-  onRetry: () => Promise<void>;
-  onReinfer?: () => Promise<void>;
-  onFilterSave?: (filter: KeywordFilter | null) => Promise<void>;
-  onToggleNsfw?: () => void;
-  onTogglePriority?: () => void;
-  onSetCategory?: (category: string | null) => Promise<void>;
+  onSelect: (feedId: string) => void;
+  onMarkAllRead: (feedId: string) => void;
+  onDelete: (feedId: string) => void;
+  onTogglePin: (feedId: string) => void;
+  onRename: (feedId: string, title: string) => Promise<void>;
+  onRetry: (feedId: string) => Promise<void>;
+  onReinfer?: (feedId: string) => Promise<void>;
+  onFilterSave?: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
+  onToggleNsfw?: (feed: Feed) => void;
+  onTogglePriority?: (feed: Feed) => void;
+  onSetCategory?: (feed: Feed, category: string | null) => Promise<void>;
   groups?: FeedGroup[];
-  onSetGroup?: (groupId: string | null) => Promise<void>;
-  onMute?: (mutedUntil: string | null) => Promise<void>;
-  onSetView?: (view: FeedView | null) => Promise<void>;
-  onSetDigestLimit?: (limit: number | null) => Promise<void>;
+  onSetGroup?: (feed: Feed, groupId: string | null) => Promise<void>;
+  onMute?: (feed: Feed, mutedUntil: string | null) => Promise<void>;
+  onSetView?: (feed: Feed, view: FeedView | null) => Promise<void>;
+  onSetDigestLimit?: (feed: Feed, limit: number | null) => Promise<void>;
   onDragStartFeed?: (feedId: string) => void;
   onDragEndFeed?: () => void;
   isDragging?: boolean;
