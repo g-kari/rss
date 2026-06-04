@@ -33,9 +33,19 @@ export interface OtherStateDispatchers {
 /**
  * ローカル Set にサーバー値をマージした新しい Set を返す純粋関数。
  * 変更がない場合は null を返す（setState の不要な呼び出しを回避する）。
+ *
+ * `pendingRemoved` (= まだサーバーに flush されていないローカル削除) に含まれる id は
+ * server がまだ旧 id を返してくるため、honor せずに union すると **削除が同期往復で復活する**
+ * data resurrection が起きる。tags channel (本 file の `pendingTagRemovedRef` 経路) は
+ * 既にこのガードを持つが、read/bookmarks/readingList/likes の 4 Set 経路では欠落していた。
+ * `pendingRemoved` を渡して server 値からも除外し、tags channel と対称化する。
  */
-function computeMergedSet(local: Set<string>, serverValues: string[]): Set<string> | null {
-  const newValues = serverValues.filter((v) => !local.has(v));
+export function computeMergedSet(
+  local: Set<string>,
+  serverValues: string[],
+  pendingRemoved?: Set<string>,
+): Set<string> | null {
+  const newValues = serverValues.filter((v) => !local.has(v) && !(pendingRemoved?.has(v) ?? false));
   if (newValues.length === 0) return null;
   return new Set([...local, ...newValues]);
 }
@@ -130,7 +140,11 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
       >;
       for (const kind of ["read", "bookmarks", "readingList", "likes"] as SetKind[]) {
         const { serverIds, setter, storageKey } = SET_KIND_CONFIG[kind];
-        const merged = computeMergedSet(localSets[kind], serverIds);
+        const merged = computeMergedSet(
+          localSets[kind],
+          serverIds,
+          pendingRemovedRef.current[kind],
+        );
         if (merged) {
           // 構造的等価ガード: prev と内容が同じなら identity を維持して不要 re-render を防ぐ
           // (stateRef が brief に stale だった場合でも prev が最新 state を保証)
