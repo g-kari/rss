@@ -1,14 +1,22 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { KeywordFilter } from "../../types";
 import { usePopupLock } from "../../hooks/usePopupLock";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { useToast } from "@/contexts/ToastContext";
+import {
+  computeSelectionPopupLayout,
+  type SelectionPopupLayout,
+} from "../../lib/selection-popup-position";
 
 const MAX_SELECTION_LENGTH = 100;
 
 export interface SelectionPopupState {
+  /** 選択範囲の水平中央 (px、viewport 座標) */
   x: number;
-  y: number;
+  /** 選択範囲の上端 (px、viewport 座標) */
+  top: number;
+  /** 選択範囲の下端 (px、viewport 座標) */
+  bottom: number;
   text: string;
 }
 
@@ -36,7 +44,12 @@ export function useSelectionExclude(containerRef: RefObject<HTMLElement | null>)
         return;
       }
       const rect = range.getBoundingClientRect();
-      setPopup({ x: rect.left + rect.width / 2, y: rect.top, text });
+      setPopup({
+        x: rect.left + rect.width / 2,
+        top: rect.top,
+        bottom: rect.bottom,
+        text,
+      });
     }
 
     // PC: pointerup で即時評価（debounce をキャンセルして二重発火を防ぐ）
@@ -101,6 +114,27 @@ export default function SelectionExcludePopup({
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const { menuRef, handleKeyDown } = useMenuKeyboard(true, (_v: boolean) => onClose(), dummyBtnRef);
 
+  // #1089: popup を実測して viewport 内にクランプする。初回 render で box を測り、
+  // computeSelectionPopupLayout で left / top / placement を決定する (測定前は不可視で flicker 防止)。
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const [layout, setLayout] = useState<SelectionPopupLayout | null>(null);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const rect = box.getBoundingClientRect();
+    setLayout(
+      computeSelectionPopupLayout({
+        anchorX: popup.x,
+        selectionTop: popup.top,
+        selectionBottom: popup.bottom,
+        popupWidth: rect.width,
+        popupHeight: rect.height,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+      }),
+    );
+  }, [popup.x, popup.top, popup.bottom, popup.text]);
+
   useEffect(() => {
     // popup 出現時の active element を記憶しておき close 時に focus 復元
     returnFocusRef.current = document.activeElement as HTMLElement | null;
@@ -149,9 +183,20 @@ export default function SelectionExcludePopup({
       aria-label="テキスト選択メニュー"
       onKeyDown={handleKeyDown}
       className="fixed z-50 pointer-events-none"
-      style={{ left: popup.x, top: popup.y }}
+      style={{
+        left: layout?.left ?? popup.x,
+        top: layout?.top ?? popup.top,
+        // 測定前は不可視にして領域外 flash を防ぐ
+        visibility: layout ? "visible" : "hidden",
+      }}
     >
-      <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 transform">
+      <div ref={boxRef} className="pointer-events-auto">
+        {/* below 配置時は box の上に上向き三角 */}
+        {layout?.placement === "below" && (
+          <div className="flex justify-center -mb-px">
+            <div className="w-2 h-2 bg-surface-elevated border-l border-t border-border-default rotate-45 translate-y-1" />
+          </div>
+        )}
         <div className="bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden">
           <button
             role="menuitem"
@@ -208,10 +253,12 @@ export default function SelectionExcludePopup({
             </>
           )}
         </div>
-        {/* 吹き出し三角 */}
-        <div className="flex justify-center -mt-px">
-          <div className="w-2 h-2 bg-surface-elevated border-r border-b border-border-default rotate-45 -translate-y-1" />
-        </div>
+        {/* above 配置時 (測定前含む) は box の下に下向き三角 */}
+        {(layout?.placement ?? "above") === "above" && (
+          <div className="flex justify-center -mt-px">
+            <div className="w-2 h-2 bg-surface-elevated border-r border-b border-border-default rotate-45 -translate-y-1" />
+          </div>
+        )}
       </div>
     </div>
   );
