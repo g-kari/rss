@@ -3,6 +3,7 @@ import { usePortalMenu } from "../../hooks/usePortalMenu";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { MENU_ITEM_CLS } from "./constants";
 import { useToast } from "@/contexts/ToastContext";
+import Backdrop from "../Backdrop";
 
 const SNOOZE_OPTIONS = [
   { label: "1時間後", durationMs: 60 * 60 * 1000 },
@@ -57,8 +58,8 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props)
       {open &&
         createPortal(
           <>
-            <div
-              className="fixed inset-0 z-[49]"
+            <Backdrop
+              transparent
               onPointerDown={() => {
                 setOpen(false);
                 btnRef.current?.focus();
