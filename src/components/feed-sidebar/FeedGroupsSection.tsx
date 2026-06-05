@@ -233,6 +233,7 @@ function FeedGroupsSectionImpl({
                 <input
                   ref={editInputRef}
                   type="text"
+                  aria-label="グループ名を編集"
                   value={editingName}
                   onChange={(e) => setEditingName(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
