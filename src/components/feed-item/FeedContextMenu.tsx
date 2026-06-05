@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { Feed, FeedGroup, FeedView } from "../../types";
 import type { Action } from "./types";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
+import Backdrop from "../Backdrop";
 
 const MUTE_OPTIONS = [
   { label: "1時間", durationMs: 60 * 60 * 1000 },
@@ -32,8 +33,8 @@ export function ContextMenuPortal({
   return createPortal(
     <>
       {/* backdrop: タップ貫通防止 */}
-      <div
-        className="fixed inset-0 z-[49]"
+      <Backdrop
+        transparent
         onPointerDown={(e) => {
           e.stopPropagation();
           onClose();
@@ -87,8 +88,8 @@ export function MuteMenuPortal({ menuPortalStyle, onClose, onMute, btnRef }: Mut
 
   return createPortal(
     <>
-      <div
-        className="fixed inset-0 z-[49]"
+      <Backdrop
+        transparent
         onPointerDown={(e) => {
           e.stopPropagation();
           onClose();
@@ -167,8 +168,8 @@ export function ViewMenuPortal({
 
   return createPortal(
     <>
-      <div
-        className="fixed inset-0 z-[49]"
+      <Backdrop
+        transparent
         onPointerDown={(e) => {
           e.stopPropagation();
           onClose();
@@ -253,8 +254,8 @@ export function DigestMenuPortal({
 
   return createPortal(
     <>
-      <div
-        className="fixed inset-0 z-[49]"
+      <Backdrop
+        transparent
         onPointerDown={(e) => {
           e.stopPropagation();
           onClose();
@@ -326,8 +327,8 @@ export function GroupMenuPortal({
 
   return createPortal(
     <>
-      <div
-        className="fixed inset-0 z-[49]"
+      <Backdrop
+        transparent
         onPointerDown={(e) => {
           e.stopPropagation();
           onClose();

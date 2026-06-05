@@ -10,6 +10,7 @@ import { addUrlToHistory, MAX_DOWNLOAD_HISTORY } from "../lib/download-history";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useToast } from "../contexts/ToastContext";
+import Backdrop from "./Backdrop";
 import { useConfirm } from "../hooks/useConfirm";
 import ConfirmModal from "./ConfirmModal";
 
@@ -229,7 +230,7 @@ export default function GalleryContextMenu({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[49]" onPointerDown={onClose} />
+      <Backdrop transparent onPointerDown={onClose} />
       <div
         ref={menuRef}
         role="menu"
