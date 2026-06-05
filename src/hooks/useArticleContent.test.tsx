@@ -175,4 +175,43 @@ describe("useArticleContent — OGP cache resolution (#836)", () => {
     // detail view の useEffect が新 getEntry の identity 変化で再評価 → cache hit で更新
     expect(result.current.resolvedOgImage).toBe(newImage);
   });
+
+  it("getEntry identity が stable でも ogpCache 値変化で resolvedOgImage が反映される (#1088 Finding 1)", () => {
+    // 本番の useOgpCache は getEntry / cacheOgpEntry を useCallback([]) + useSyncedRef で
+    // identity 永続 stable に保つ。前テストは rerender 毎に getEntry を作り直すため本番挙動を
+    // 再現できていなかった (effect deps の getEntry 変化で再発火 = 偽の cross-view repair)。
+    // 本テストは stable な関数参照を共有して「ogpCache[link] の値変化」のみで再評価されるかを
+    // assert する (= 真の cross-view repair)。
+    const link = "https://example.com/article-6";
+    const newImage = "https://cdn.example.com/list-fetched-6.jpg";
+    const backing: Record<string, OgpCacheEntry> = {};
+    const stableGetEntry = (url: string) => backing[url];
+    const stableCacheOgpEntry = () => {};
+    const makeRealStore = (): OgpCacheStore => ({
+      ogpCache: Object.fromEntries(Object.entries(backing).map(([k, v]) => [k, v.image])),
+      getEntry: stableGetEntry, // ← identity 永続 stable (本番再現)
+      cacheOgpEntry: stableCacheOgpEntry, // ← identity 永続 stable
+    });
+
+    let currentStore = makeRealStore();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <OgpCacheProvider value={currentStore}>{children}</OgpCacheProvider>
+    );
+
+    const { result, rerender } = renderHook(
+      () => useArticleContent("a6", link, "https://feed.example.com/tiny.jpg"),
+      { wrapper },
+    );
+    expect(result.current.resolvedOgImage).toBeNull();
+
+    // list view が cache に書き込む (backing 更新) → 新 store (ogpCache 値は変化、getEntry は stable)
+    backing[link] = { image: newImage };
+    currentStore = makeRealStore();
+    act(() => {
+      rerender();
+    });
+
+    // getEntry identity は不変だが ogpCache[link] 値変化で effect 再発火 → cache hit で更新
+    expect(result.current.resolvedOgImage).toBe(newImage);
+  });
 });
