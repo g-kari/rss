@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, type KeyboardEvent } from "react"
 import { createPortal } from "react-dom";
 import type { Feed } from "../types";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
+import { formatCount } from "../lib/article-utils";
 import { usePopupLock } from "../hooks/usePopupLock";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 import { useUnreadStats } from "../contexts/UnreadStatsContext";
@@ -218,7 +219,7 @@ export default function FeedQuickSwitchModal({
                 )}
                 {opt.unreadCount > 0 && (
                   <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
-                    {opt.unreadCount > 99 ? "99+" : opt.unreadCount}
+                    {formatCount(opt.unreadCount)}
                   </span>
                 )}
               </button>

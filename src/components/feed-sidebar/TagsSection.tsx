@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCount } from "../../lib/article-utils";
+
 interface Props {
   sortedTags: [string, number][];
   selectedTag: string | null;
@@ -32,7 +34,7 @@ export default function TagsSection({ sortedTags, selectedTag, onSelectTag }: Pr
           >
             <span className="text-[13px] truncate">#{tag}</span>
             <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
-              {count > 99 ? "99+" : count}
+              {formatCount(count)}
             </span>
           </button>
         );

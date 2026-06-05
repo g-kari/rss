@@ -8,7 +8,7 @@ import {
   sortCollectionsBy,
 } from "../../lib/sort-utils";
 import { STORAGE_KEYS, loadStoredEnum, storageSet } from "../../lib/storage";
-import { cycleValue } from "../../lib/article-utils";
+import { cycleValue, formatCount } from "../../lib/article-utils";
 
 interface Props {
   collections: Collection[];
@@ -138,7 +138,7 @@ export default function CollectionsSection({
           >
             <span className="text-[13px] truncate">{c.name}</span>
             <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
-              {c.articleIds.length > 99 ? "99+" : c.articleIds.length}
+              {formatCount(c.articleIds.length)}
             </span>
           </button>
         );
