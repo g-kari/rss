@@ -183,13 +183,17 @@ URL から記事メタデータ（OGP タイトル・画像）を取得して保
 
 ### エラー一覧
 
-| ステータス | code                    | 説明                                                                                      |
-| ---------- | ----------------------- | ----------------------------------------------------------------------------------------- |
-| `400`      | `INVALID_URL`           | URL が空または http(s) 以外                                                               |
-| `401`      | —                       | 未認証                                                                                    |
-| `429`      | `RATE_LIMITED`          | レートリミット超過                                                                        |
-| `502`      | `UPSTREAM_FETCH_FAILED` | 上流 fetch が 4xx / 5xx で失敗 (response body に `upstreamStatus: <status>` を含む、#804) |
-| `502`      | `FETCH_FAILED`          | 自社 fetch がネットワークエラー / タイムアウト等で失敗 (network / DNS / abort、retryable) |
+| ステータス | code                       | 説明                                                                                      |
+| ---------- | -------------------------- | ----------------------------------------------------------------------------------------- |
+| `400`      | `INVALID_URL`              | URL が空または http(s) 以外                                                               |
+| `401`      | —                          | 未認証                                                                                    |
+| `413`      | `PAYLOAD_TOO_LARGE`        | 取得ページがサイズ上限を超過                                                              |
+| `415`      | `UNSUPPORTED_CONTENT_TYPE` | 取得先が HTML ページでない                                                                |
+| `429`      | `RATE_LIMITED`             | レートリミット超過                                                                        |
+| `502`      | `UPSTREAM_FETCH_FAILED`    | 上流 fetch が 4xx / 5xx で失敗 (response body に `upstreamStatus: <status>` を含む、#804) |
+| `502`      | `FETCH_FAILED`             | 自社 fetch がネットワークエラー / タイムアウト等で失敗 (network / DNS / abort、retryable) |
+| `502`      | `EMPTY_BODY`               | 上流レスポンスに body がない                                                              |
+| `504`      | `TIMEOUT`                  | 上流 fetch がタイムアウト (retryable)                                                     |
 
 ---
 
