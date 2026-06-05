@@ -35,6 +35,7 @@ export default function ArticleNotePanel({
         <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">メモ</p>
       </div>
       <textarea
+        aria-label="この記事へのメモ"
         value={noteText}
         onChange={(e) => setNoteText(e.target.value)}
         onBlur={handleNoteBlur}
