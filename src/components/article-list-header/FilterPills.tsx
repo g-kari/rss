@@ -92,6 +92,7 @@ export default function FilterPills({
         title={`${SHORTCUT_MAP["u"]} (u)`}
       >
         <svg
+          aria-hidden="true"
           width="12"
           height="12"
           viewBox="0 0 12 12"
@@ -118,6 +119,7 @@ export default function FilterPills({
         title={`${SHORTCUT_MAP["T"]} (T)`}
       >
         <svg
+          aria-hidden="true"
           width="12"
           height="12"
           viewBox="0 0 12 12"
@@ -154,6 +156,7 @@ export default function FilterPills({
           title={`${SHORTCUT_MAP["D"]} (D)`}
         >
           <svg
+            aria-hidden="true"
             width="12"
             height="12"
             viewBox="0 0 12 12"
@@ -174,6 +177,7 @@ export default function FilterPills({
         title={`${SHORTCUT_MAP["d"]}: ${DATE_RANGE_LABELS[dateRange]} (d)`}
       >
         <svg
+          aria-hidden="true"
           width="12"
           height="12"
           viewBox="0 0 12 12"
@@ -193,6 +197,7 @@ export default function FilterPills({
         title={`読了時間フィルター: ${READING_TIME_RANGE_LABELS[readingTimeRange]}`}
       >
         <svg
+          aria-hidden="true"
           width="12"
           height="12"
           viewBox="0 0 12 12"
