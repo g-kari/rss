@@ -88,6 +88,7 @@ description: コレクション (記事のお気に入りグループ) とフィ
 | ---------- | ---------------------------------- | --------------------------------------------------- |
 | `400`      | `INVALID_ID`                       | コレクション ID が不正                              |
 | `400`      | `INVALID_NAME`                     | name が空または長すぎる                             |
+| `400`      | `INVALID_ORDER`                    | order が整数でない / 範囲外                         |
 | `400`      | `INVALID_ARTICLE_IDS`              | addArticleIds / removeArticleIds が文字列配列でない |
 | `401`      | —                                  | 未認証                                              |
 | `404`      | `COLLECTION_NOT_FOUND`             | コレクションが存在しない                            |
@@ -214,6 +215,7 @@ description: コレクション (記事のお気に入りグループ) とフィ
 | ---------- | ---------------------- | -------------------------------- |
 | `400`      | `INVALID_ID`           | フィードグループ ID が不正       |
 | `400`      | `INVALID_NAME`         | name が空または長すぎる          |
+| `400`      | `INVALID_ORDER`        | order が整数でない / 範囲外      |
 | `400`      | `INVALID_COLLAPSED`    | collapsed が boolean でない      |
 | `400`      | `INVALID_MUTED`        | muted が boolean でない          |
 | `401`      | —                      | 未認証                           |
