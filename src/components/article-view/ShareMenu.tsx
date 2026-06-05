@@ -9,6 +9,7 @@ import { buildObsidianUri } from "../../lib/obsidian";
 import { isAbortError } from "../../lib/fetch";
 import { MENU_ITEM_CLS } from "./constants";
 import { SHARE_TARGETS, triggerShareTarget } from "./shareTargets";
+import Backdrop from "../Backdrop";
 
 interface Props {
   article: Article;
@@ -57,13 +58,11 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
       {open &&
         createPortal(
           <>
-            <div
-              className="fixed inset-0 z-[49]"
-              onPointerDown={(e) => {
-                if (!menuRef.current?.contains(e.target as Node)) {
-                  setOpen(false);
-                  btnRef.current?.focus();
-                }
+            <Backdrop
+              transparent
+              onPointerDown={() => {
+                setOpen(false);
+                btnRef.current?.focus();
               }}
             />
             <div

@@ -7,6 +7,7 @@ import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 const FeedFilterModal = dynamic(() => import("../FeedFilterModal"), { ssr: false });
 import { MENU_ITEM_CLS } from "./constants";
 import { ExcludeOptionsSection, useFilterMenuState } from "./filter-shared";
+import Backdrop from "../Backdrop";
 
 interface Props {
   article: Article;
@@ -68,8 +69,8 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
       {open &&
         createPortal(
           <>
-            <div
-              className="fixed inset-0 z-[49]"
+            <Backdrop
+              transparent
               onPointerDown={() => {
                 setOpen(false);
                 btnRef.current?.focus();

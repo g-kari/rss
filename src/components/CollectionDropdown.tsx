@@ -7,6 +7,7 @@ import type { Collection } from "../types";
 import { useToast } from "@/contexts/ToastContext";
 import { usePortalMenu } from "../hooks/usePortalMenu";
 import { useMenuKeyboard } from "../hooks/useMenuKeyboard";
+import Backdrop from "./Backdrop";
 
 const CollectionModal = dynamic(() => import("./CollectionModal"), { ssr: false });
 
@@ -101,13 +102,11 @@ export default function CollectionDropdown({
       {open &&
         createPortal(
           <>
-            <div
-              className="fixed inset-0 z-[49]"
-              onPointerDown={(e) => {
-                if (!menuRef.current?.contains(e.target as Node)) {
-                  setOpen(false);
-                  btnRef.current?.focus();
-                }
+            <Backdrop
+              transparent
+              onPointerDown={() => {
+                setOpen(false);
+                btnRef.current?.focus();
               }}
             />
             <div
