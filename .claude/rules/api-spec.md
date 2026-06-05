@@ -16,6 +16,19 @@ paths: "app/api/**/route.ts"
 
 未認証の場合は `401` を返す（`withSession` / `withJsonBody` が自動処理）。
 
+### 共通エラーコード (shared middleware 由来)
+
+以下は `withSession` / `withJsonBody` / `requireSession` / `assertSameOrigin` 等の共有ミドルウェアが返す横断的なエラーコード。各エンドポイントの「エラー一覧」では原則省略する（このセクションを参照）。
+
+| ステータス | code                      | 説明                                                                   |
+| ---------- | ------------------------- | ---------------------------------------------------------------------- |
+| `400`      | `INVALID_JSON`            | リクエストボディが不正な JSON (`withJsonBody`)                         |
+| `401`      | —                         | 未認証 (`withSession` / `requireSession`)                              |
+| `401`      | `DBSC_CHALLENGE_REQUIRED` | DBSC セッションチャレンジが必要（バインド済みデバイスの再検証）        |
+| `401`      | `TOKEN_ROTATED`           | アクセストークンがローテーションされた（新トークン発行済、リトライ要） |
+| `403`      | `CSRF_ORIGIN_MISMATCH`    | Origin ヘッダーが許可オリジンと不一致（POST/PUT/DELETE の CSRF 検証）  |
+| `500`      | `INTERNAL_ERROR`          | サーバー内部エラー（`incident` ID 付きで返る）                         |
+
 ---
 
 ## エンドポイント一覧 (per-file に分割済)
