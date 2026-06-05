@@ -321,6 +321,7 @@ function FeedItem({
         <input
           ref={inputRef}
           type="text"
+          aria-label="フィード名を編集"
           value={editTitle}
           onChange={(e) => setEditTitle(e.target.value)}
           onBlur={() => {
