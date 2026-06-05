@@ -62,9 +62,13 @@ export function useArticleContent(
   // 旧実装は localStorage を同期 read していたため、list 側 useOgpCache が新規取得した
   // OGP image (Context state には反映済、localStorage には 500ms debounce で書込) を
   // detail view が観測できず「一覧では出るが詳細では出ない」divergence が発生していた。
-  // Context state は useOgpCache の setOgpCacheV2 で即時更新されるため、getEntry の
-  // identity 変化を deps に含めれば cache 更新が detail view にも即座に反映される。
-  const { getEntry, cacheOgpEntry } = useOgpCacheContext();
+  //
+  // #1088 Finding 1: 旧実装は effect deps に `getEntry` の identity 変化を当てにしていたが、
+  // `getEntry` は useOgpCache 内で `useCallback([])` + `useSyncedRef` で identity 永続 stable
+  // のため Context cache 更新では effect が再発火せず、cross-view repair が dead だった。
+  // 構造的等価ガード済の `ogpCache` (image-only Record) から `ogpCache[articleLink]` の値を
+  // deps に含めることで、list 側 fetch 完了で cache に書き込まれた image を detail が即座に拾う。
+  const { ogpCache, cacheOgpEntry } = useOgpCacheContext();
 
   const cachedContent = useMemo(
     () => (articleId ? (contentLruCache.get(articleId) ?? null) : null),
@@ -111,20 +115,27 @@ export function useArticleContent(
 
   // OGP 画像の動的解決
   // AbortController で記事切り替え時に前の記事のフェッチを中断し、
-  // 古い OGP 画像が新しい記事に適用されるレースコンディションを防ぐ
+  // 古い OGP 画像が新しい記事に適用されるレースコンディションを防ぐ。
+  //
+  // #1088 Finding 1: `ogpCache[articleLink]` を deps に含めて Context cache の値変化に
+  // 反応させる。cache hit があれば即 resolvedOgImage に反映して return するため、cache
+  // 書き込み (cacheOgpEntry) で本 effect が再発火しても再 fetch ループにはならない。
+  const cachedImage = articleLink ? ogpCache[articleLink] : undefined;
   useEffect(() => {
-    setResolvedOgImage(null);
-    if (!articleLink) return;
+    if (!articleLink) {
+      setResolvedOgImage(null);
+      return;
+    }
     // #836: OgpCacheContext から共有 cache を確認する (#742 fix の発展形)。
     // list view (useOgpCache) と同一 Context state を共有することで、
     // 「一覧では取れているが詳細では取れない」「逆方向」両方の divergence を構造的に解消。
     // RSS の `article.ogImage` が tiny thumbnail でも `/api/ogp` から取れる主画像のほうが
-    // 適切なケースがあるため、cache hit があれば優先して採用する。
-    const cachedEntry = getEntry(articleLink);
-    if (cachedEntry && cachedEntry.image) {
-      setResolvedOgImage(cachedEntry.image);
+    // 適切なケースがあるため、cache hit があれば優先して採用する (null flash も回避)。
+    if (cachedImage) {
+      setResolvedOgImage(cachedImage);
       return;
     }
+    setResolvedOgImage(null);
     // RSS から ogImage が来ていれば fetch を skip (cache 未登録 + article.ogImage あり)
     if (articleOgImage) return;
     const controller = new AbortController();
@@ -155,10 +166,11 @@ export function useArticleContent(
       clearTimeout(timerId);
       controller.abort();
     };
-    // getEntry は useOgpCache 内で useCallback([ogpCacheV2]) で生成されるため、Context cache
-    // 更新のたびに identity が変化する。これにより list 側 fetch 完了時に detail の useEffect
-    // が再評価され、cache hit で resolvedOgImage が更新される (divergence 解消の core 機構)。
-  }, [articleId, articleLink, articleOgImage, getEntry, cacheOgpEntry]);
+    // `cachedImage` (= ogpCache[articleLink]) を deps に含めることで、list 側 fetch 完了で
+    // Context cache に書き込まれた image を detail view が即座に拾う (#1088 Finding 1、
+    // cross-view repair の core 機構)。`cacheOgpEntry` は identity 永続 stable で再発火に寄与
+    // しないが、本 effect 内で呼ぶため deps に残す。
+  }, [articleId, articleLink, articleOgImage, cachedImage, cacheOgpEntry]);
 
   const fetchFullContent = useCallback(
     async (onFetched?: (content: string) => void) => {
