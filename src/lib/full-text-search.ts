@@ -45,6 +45,14 @@ export interface SearchContext {
   tagsByArticleId?: Readonly<Record<string, readonly string[]>>;
   /** defaultHaystack 結果キャッシュ。クエリ変更ごとの stripHtml 重複実行を回避 (#1000) */
   haystackCache?: Map<string, string>;
+  /**
+   * content: フィールド検索の stripHtml 結果キャッシュ (#1091)。
+   * `defaultHaystack` (haystackCache) は title/summary/author/categories/content/feed を結合した
+   * 全体を保持するのに対し、こちらは content フィールド単体の stripHtml 済みテキストを保持する
+   * (別 source なので per-field で別 Map に持つ)。`content:<term>` 検索のキーストロークごとの
+   * 重複 stripHtml を回避する。
+   */
+  contentHaystackCache?: Map<string, string>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -195,8 +203,15 @@ function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: Sear
       return (article.categories ?? []).join(" ").toLowerCase();
     case "feed":
       return (ctx.feedTitleByHash.get(article.feedHash) ?? "").toLowerCase();
-    case "content":
-      return stripHtml(article.content ?? "").toLowerCase();
+    case "content": {
+      if (ctx.contentHaystackCache) {
+        const cached = ctx.contentHaystackCache.get(article.id);
+        if (cached !== undefined) return cached;
+      }
+      const result = stripHtml(article.content ?? "").toLowerCase();
+      ctx.contentHaystackCache?.set(article.id, result);
+      return result;
+    }
     case "tag":
       return (ctx.tagsByArticleId?.[article.id] ?? []).join(" ").toLowerCase();
   }

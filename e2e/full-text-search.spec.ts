@@ -147,6 +147,36 @@ test.describe("matchesAdvancedQuery — フィールド指定", () => {
   });
 });
 
+test.describe("content: フィールド検索の haystack キャッシュ (#1091)", () => {
+  test("content: 検索後に contentHaystackCache へ stripHtml 結果が書き込まれる", () => {
+    const cache = new Map<string, string>();
+    const ctx: SearchContext = { feedTitleByHash: new Map(), contentHaystackCache: cache };
+    expect(matchesAdvancedQuery(BASE, "content:圏論", ctx)).toBe(true);
+    // cache に article.id キーで stripHtml + toLowerCase 済みの本文が保存される
+    const cached = cache.get(BASE.id);
+    expect(cached).toBeDefined();
+    expect(cached).not.toContain("<p>"); // タグは除去済み
+    expect(cached).toContain("圏論");
+    expect(cached).toContain("functor"); // toLowerCase 済み (元は Functor)
+  });
+
+  test("contentHaystackCache に既存値があればそれを使う (再 stripHtml しない)", () => {
+    // cache を poison して「cache が読まれる」ことを証明する
+    const cache = new Map<string, string>([[BASE.id, "poisoned-cached-value"]]);
+    const ctx: SearchContext = { feedTitleByHash: new Map(), contentHaystackCache: cache };
+    // cache 値にマッチ
+    expect(matchesAdvancedQuery(BASE, "content:poisoned", ctx)).toBe(true);
+    // 実際の本文 (圏論) は cache で上書きされているのでマッチしない (= 再計算していない証拠)
+    expect(matchesAdvancedQuery(BASE, "content:圏論", ctx)).toBe(false);
+  });
+
+  test("contentHaystackCache 未指定でも従来通り content: 検索は機能する", () => {
+    const ctx: SearchContext = { feedTitleByHash: new Map() };
+    expect(matchesAdvancedQuery(BASE, "content:圏論", ctx)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "content:TypeScript", ctx)).toBe(false);
+  });
+});
+
 test.describe("matchesAdvancedQuery — OR / AND / NOT", () => {
   test("OR: どちらか一方マッチで true", () => {
     expect(matchesAdvancedQuery(BASE, "Rust OR TypeScript", CTX)).toBe(true);
