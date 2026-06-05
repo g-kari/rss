@@ -249,6 +249,13 @@ export function useFilteredArticles({
     haystackCacheRef.current = new Map();
   }, [articles]);
 
+  // content: フィールド検索の stripHtml 結果キャッシュ (#1091)。
+  // defaultHaystack と別 source なので per-field で別 Map に持つ。articles 変化で reset。
+  const contentHaystackCacheRef = useRef(new Map<string, string>());
+  useEffect(() => {
+    contentHaystackCacheRef.current = new Map();
+  }, [articles]);
+
   const readingTimeCache = readingTimeRange === "all" ? undefined : readingTimeCacheRef.current;
 
   const isBookmarksFeed = feedId === SPECIAL_FEED_IDS.BOOKMARKS;
@@ -314,6 +321,7 @@ export function useFilteredArticles({
         articleTags: articleTagsForDeps,
         collectionArticleIds,
         haystackCache: haystackCacheRef.current,
+        contentHaystackCache: contentHaystackCacheRef.current,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避
     [
