@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
+import StatBar from "./reading-stats/StatBar";
+import StatCard from "./reading-stats/StatCard";
 import { useReadingStats } from "../hooks/useReadingStats";
 import { useInboxProgress } from "../hooks/useInboxProgress";
 import { useEngagementEntries } from "../hooks/useEngagementEntries";
@@ -17,29 +19,6 @@ interface Props {
   readIds: Set<string>;
   readBeforeTimestamp?: string | null;
   onClose: () => void;
-}
-
-function Bar({ value, max }: { value: number; max: number }) {
-  const pct = max === 0 ? 0 : Math.round((value / max) * 100);
-  return (
-    <div className="flex-1 h-1.5 bg-surface-subtle rounded-full overflow-hidden">
-      <div
-        className="h-full bg-ink rounded-full transition-all duration-300"
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex flex-col gap-0.5 bg-surface-subtle rounded-lg px-3 py-2">
-      <span className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-        {label}
-      </span>
-      <span className="text-[20px] font-light text-text-strong tabular-nums">{value}</span>
-    </div>
-  );
 }
 
 const LEVEL_CLASSES: Record<0 | 1 | 2 | 3 | 4, string> = {
@@ -393,7 +372,7 @@ export default function ReadingStatsModal({
                       <span className="text-[11px] text-text-faint w-10 flex-shrink-0 text-right tabular-nums">
                         {label}
                       </span>
-                      <Bar value={count} max={maxDaily} />
+                      <StatBar value={count} max={maxDaily} />
                       <span className="text-[11px] text-text-muted w-5 text-right tabular-nums flex-shrink-0">
                         {count}
                       </span>
@@ -434,7 +413,7 @@ export default function ReadingStatsModal({
                         >
                           {title}
                         </span>
-                        <Bar value={score} max={maxScore} />
+                        <StatBar value={score} max={maxScore} />
                         <span className="text-[11px] text-text-muted w-7 text-right tabular-nums flex-shrink-0">
                           {score}
                         </span>
