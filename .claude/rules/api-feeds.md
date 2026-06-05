@@ -41,7 +41,7 @@ description: Feeds API 仕様 — /api/feeds の CRUD + refresh + OPML import/ex
 | `409`      | `FEED_EXISTS`        | 同一フィードが既に登録済み                                 |
 | `422`      | `NO_FEED_FOUND`      | RSS フィードが見つからず LLM 推論も失敗                    |
 | `422`      | `FEED_LIMIT_REACHED` | フィード上限 (20件) に達している                           |
-| `429`      | `COOLDOWN`           | 30 秒クールダウン中                                        |
+| `429`      | `RATE_LIMITED`       | 30 秒クールダウン中                                        |
 
 ### 処理フロー
 
@@ -247,10 +247,10 @@ Content-Disposition: attachment; filename="feeds.opml"
 
 ### エラー一覧
 
-| ステータス | code       | 説明               |
-| ---------- | ---------- | ------------------ |
-| `401`      | —          | 未認証             |
-| `429`      | `COOLDOWN` | 2 分クールダウン中 |
+| ステータス | code           | 説明               |
+| ---------- | -------------- | ------------------ |
+| `401`      | —              | 未認証             |
+| `429`      | `RATE_LIMITED` | 2 分クールダウン中 |
 
 ---
 
@@ -277,7 +277,7 @@ Content-Disposition: attachment; filename="feeds.opml"
 | ---------- | ---------------- | ---------------------------- |
 | `400`      | `INVALID_FEED`   | feedHash の形式が不正        |
 | `404`      | `FEED_NOT_FOUND` | 指定したフィードが存在しない |
-| `429`      | `COOLDOWN`       | 30 秒クールダウン中          |
+| `429`      | `RATE_LIMITED`   | 30 秒クールダウン中          |
 
 ---
 
@@ -307,7 +307,7 @@ LLM による CSS セレクタを再推論する。LLM スクレイピングフ�
 | `401`      | —                | 未認証                                           |
 | `404`      | `FEED_NOT_FOUND` | 指定したフィードが購読一覧または R2 に存在しない |
 | `422`      | `REINFER_FAILED` | LLM によるセレクタ再推論に失敗                   |
-| `429`      | `COOLDOWN`       | 60 秒クールダウン中                              |
+| `429`      | `RATE_LIMITED`   | 60 秒クールダウン中                              |
 
 ---
 
