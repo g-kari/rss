@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { computeContextMenuPosition } from "../lib/context-menu-position";
+import Backdrop from "./Backdrop";
 
 export interface ArticleContextMenuTarget {
   article: Article;
@@ -135,7 +136,7 @@ export default function ArticleContextMenu({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[49]" onPointerDown={onClose} />
+      <Backdrop transparent onPointerDown={onClose} />
       <div
         ref={menuRef}
         role="menu"

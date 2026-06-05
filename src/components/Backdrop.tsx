@@ -1,7 +1,9 @@
 "use client";
 
+import { type PointerEventHandler } from "react";
+
 /**
- * Modal / Dialog / Quick-switch / portal dropdown menu などのオーバーレイ UI で共通の backdrop。
+ * Modal / Dialog / Quick-switch / portal dropdown menu / context menu などのオーバーレイ UI で共通の backdrop。
  *
  * Modal.tsx / ConfirmModal.tsx / FeedQuickSwitchModal.tsx で同 JSX
  * (`<div className="fixed inset-0 z-[49] bg-black/30" onPointerDown={...} />`)
@@ -17,9 +19,9 @@
  *   backdrop (z-49) の手前にあるため、backdrop への pointerdown は常に menu 外 = 無条件 close でよい
  */
 interface Props {
-  /** backdrop の押下開始時に呼ばれる close callback */
-  onPointerDown: () => void;
-  /** true で暗転なし (dropdown menu の click-catcher 用)。default false (modal の暗転 backdrop) */
+  /** backdrop の押下開始時に呼ばれる close callback (引数なし caller は event を無視するだけで互換、context menu は e.stopPropagation() に使う) */
+  onPointerDown: PointerEventHandler<HTMLDivElement>;
+  /** true で暗転なし (dropdown menu / context menu の click-catcher 用)。default false (modal の暗転 backdrop) */
   transparent?: boolean;
 }
 
