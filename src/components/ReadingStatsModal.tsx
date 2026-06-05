@@ -7,6 +7,7 @@ import { useReadingStats } from "../hooks/useReadingStats";
 import { useInboxProgress } from "../hooks/useInboxProgress";
 import { useEngagementEntries } from "../hooks/useEngagementEntries";
 import { aggregateStatsForFeed } from "../lib/stats-helpers";
+import { countToLevel } from "../lib/reading-stats-level";
 import { storageGet, storageSet, STORAGE_KEYS } from "../lib/storage";
 import type { Article, Feed } from "../types";
 
@@ -39,16 +40,6 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
       <span className="text-[20px] font-light text-text-strong tabular-nums">{value}</span>
     </div>
   );
-}
-
-/** count を 0〜4 のレベルに変換（0=なし, 1=少, 2=中, 3=多, 4=最多） */
-function countToLevel(count: number, max: number): 0 | 1 | 2 | 3 | 4 {
-  if (count === 0 || max === 0) return 0;
-  const ratio = count / max;
-  if (ratio <= 0.25) return 1;
-  if (ratio <= 0.5) return 2;
-  if (ratio <= 0.75) return 3;
-  return 4;
 }
 
 const LEVEL_CLASSES: Record<0 | 1 | 2 | 3 | 4, string> = {
