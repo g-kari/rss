@@ -171,7 +171,14 @@ export async function translateHtmlInBrowser(
 
   try {
     const availability = await window.Translator.availability({ sourceLanguage, targetLanguage });
-    if (!shouldUseBrowserAi(availability)) return null;
+    if (!shouldUseBrowserAi(availability)) {
+      devError("[translate-html] availability not usable:", {
+        availability,
+        sourceLanguage,
+        targetLanguage,
+      });
+      return null;
+    }
 
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const translator = await Promise.race([
