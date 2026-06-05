@@ -2,7 +2,7 @@
 
 import { ARTICLE_TTL_DAYS } from "../../lib/article-ttl";
 import { SHARE_TARGETS, type ShareTargetId } from "../article-view/shareTargets";
-import { SettingRow, TTL_OPTIONS, ToggleSwitch } from "./shared";
+import { SegmentGroup, SettingRow, TTL_OPTIONS, ToggleSwitch } from "./shared";
 
 interface ImageDlSectionProps {
   ttlDays: number | null;
@@ -32,26 +32,12 @@ export default function ImageDlSection({
   return (
     <>
       <SettingRow label="記事保持期間">
-        <div className="flex gap-1">
-          {TTL_OPTIONS.map((opt) => {
-            const current = ttlDays ?? 30;
-            const isSelected = opt.value === current;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => onChangeTtlDays(opt.value === ARTICLE_TTL_DAYS ? null : opt.value)}
-                className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${
-                  isSelected
-                    ? "bg-ink text-ink-text"
-                    : "text-text-muted hover:text-text-default hover:bg-surface-hover"
-                }`}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
+        <SegmentGroup
+          options={TTL_OPTIONS}
+          value={ttlDays ?? ARTICLE_TTL_DAYS}
+          onChange={(v) => onChangeTtlDays(v === ARTICLE_TTL_DAYS ? null : v)}
+          ariaLabel="記事保持期間"
+        />
       </SettingRow>
 
       <SettingRow label="重複記事の非表示">
