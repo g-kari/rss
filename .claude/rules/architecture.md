@@ -170,7 +170,8 @@ src/
     KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
     ReleaseNotesModal.tsx    # リリースノートモーダル
     SnoozeModal.tsx          # 記事スヌーズ設定モーダル（1時間後・明日の朝・来週など）
-    ReadingStatsModal.tsx    # 読了統計モーダル（日別グラフ・年間ヒートマップ・週間目標）
+    ReadingStatsModal.tsx    # 読了統計モーダル orchestrator（reading-stats/ の sub-component を合成、505→260 行に分割）
+    reading-stats/           # ReadingStatsModal サブコンポーネント群（StatBar / StatCard / HeatmapCalendar / WeeklyGoalSection）
     FeedQuickSwitchModal.tsx # フィードクイック切り替えモーダル（キーボードナビ対応）
     CollectionDropdown.tsx   # コレクション追加/削除ドロップダウン（CollectionModal 連携）
     CollectionModal.tsx      # コレクション作成・名前変更モーダル
@@ -428,6 +429,7 @@ src/
     obsidian.ts              # Obsidian URI スキーム連携（obsidian://new URI 生成・ファイル名サニタイズ）
     html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
     reading-progress.ts      # 読書進捗計算純粋関数（computeProgress / clampProgress / buildAnchorSelector）
+    reading-stats-level.ts   # ヒートマップ濃淡レベル算出純粋関数（countToLevel — count/max 比を 0-4 レベルに変換、ReadingStatsModal 分割で抽出）
     reader-settings.ts       # リーダー表示設定（フォントサイズ 6段階・行間 5段階・コンテンツ幅 3段階）
     article-filter-equality.ts # `useFilteredArticles` の構造的等価判定純粋関数群（equalDigestLimitMap / equalStringMap / equalCompiledFilterMap / equalStringSet / equalViewFeedIds — `equalMap<V>` generic 経由 + Set 等価ガード）
     theme-preset.ts          # テーマプリセット永続化純粋関数（parseThemePresets / serializeThemePresets — `useThemePresets` から呼ぶ JSON 安全パース + 上限ガード）
@@ -1043,6 +1045,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `download-history.spec.ts`                      | `src/lib/download-history.ts` — 画像 DL 履歴の FIFO 管理純粋関数                                                                                                                                                                                                                                                                                           |
 | `reader-settings.spec.ts`                       | `src/lib/reader-settings.ts` — リーダー設定バリデーション                                                                                                                                                                                                                                                                                                  |
 | `reading-progress.spec.ts`                      | `src/lib/reading-progress.ts` — 読書進捗計算                                                                                                                                                                                                                                                                                                               |
+| `reading-stats-level.test.ts`                   | `src/lib/reading-stats-level.ts` — `countToLevel` ヒートマップ濃淡レベル算出純粋関数（0除算ガード / ratio `<=` 境界 0.25/0.5/0.75 / count > max、12 ケース全分岐網羅、ReadingStatsModal 分割で抽出）                                                                                                                                                         |
 | `recommendation.spec.ts`                        | `src/lib/recommendation.ts` — `sanitizeForPrompt` / `isCacheValid`                                                                                                                                                                                                                                                                                         |
 | `refresh-tokens.spec.ts`                        | `src/lib/auth.ts` — リフレッシュトークンフロー                                                                                                                                                                                                                                                                                                             |
 | `regex-extractor.spec.ts`                       | `src/lib/regex-extractor.ts` — 正規表現ベース本文抽出                                                                                                                                                                                                                                                                                                      |
