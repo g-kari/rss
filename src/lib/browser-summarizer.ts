@@ -112,7 +112,7 @@ export async function diagnoseSummarizerAvailability(): Promise<{
     if (availability === "downloading") return { available: false, reason: "model-downloading" };
     return { available: false, reason: "model-unavailable" };
   } catch (err) {
-    devError("[browser-summarizer] availability() threw", err);
+    devError("[browser-summarizer] availability() threw", { err, options: SUMMARIZER_OPTIONS });
     return { available: false, reason: "model-unavailable" };
   }
 }
