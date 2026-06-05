@@ -374,8 +374,10 @@ function FeedItem({
           className={`p-1 -mr-1 max-md:min-w-[44px] max-md:min-h-[44px] max-md:flex max-md:items-center max-md:justify-center text-text-faint hover:text-text-default transition-opacity duration-150 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 ${menuOpen ? "!opacity-100" : ""}`}
           title="操作メニュー（右クリックでも開けます）"
           aria-label="操作メニューを開く"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
             <circle cx="6" cy="2" r="1.2" />
             <circle cx="6" cy="6" r="1.2" />
             <circle cx="6" cy="10" r="1.2" />
