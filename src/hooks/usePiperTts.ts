@@ -115,6 +115,10 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   const onBoundaryRef = useRef<((charIndex: number) => void) | null>(null);
   const boundaryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
+  // #1114 pause/resume 用: pause した時刻 (resume で elapsed から paused 期間を除外) +
+  // 現 chunk の offset (resume で boundary timer を同 offset で再起動)。
+  const pausedAtRef = useRef<number | null>(null);
+  const currentChunkOffsetRef = useRef(0);
   // 進行中の AudioBufferSourceNode を保持 (#766)。stop() / resetPlaybackState() で
   // source.stop() を呼んで piper-plus 内の再生を確実に停止する。
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
@@ -165,6 +169,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     releaseAudioSource();
     currentTextRef.current = "";
     onBoundaryRef.current = null;
+    pausedAtRef.current = null; // #1114: stop / 完了で pause 状態を確実にクリア
     setIsPlaying(false);
     setIsPaused(false);
   }, [clearBoundaryTimer, releaseAudioSource]);
@@ -250,6 +255,32 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     },
     // onVolumeChange も指定しない (volume 変化で再 speak しない usePiperTts 仕様)
   });
+
+  /**
+   * boundary timer (highlight 駆動) を chunkOffset 込みで起動する (#1114 で speak chunk loop から抽出)。
+   * startTimeRef は呼び出し側が管理する (speak は Date.now() で初期化、resume は paused 期間を調整)。
+   * resume で同 offset での再起動に使うため chunkOffset を currentChunkOffsetRef にも保持する。
+   * (rateRef を参照するため useTtsControls の後に定義する)
+   */
+  const startBoundaryTimer = useCallback(
+    (chunkOffset: number) => {
+      clearBoundaryTimer();
+      currentChunkOffsetRef.current = chunkOffset;
+      if (!onBoundaryRef.current) return;
+      boundaryTimerRef.current = setInterval(() => {
+        const cb = onBoundaryRef.current;
+        if (!cb) return;
+        const elapsedMs = Date.now() - startTimeRef.current;
+        const localCharIndex = Math.floor((elapsedMs * ESTIMATED_CPS * rateRef.current) / 1000);
+        const globalCharIndex = Math.min(
+          chunkOffset + localCharIndex,
+          currentTextRef.current.length,
+        );
+        cb(globalCharIndex);
+      }, BOUNDARY_TICK_MS);
+    },
+    [clearBoundaryTimer, rateRef],
+  );
 
   const stop = useCallback(() => {
     if (!supported) return;
@@ -345,23 +376,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
 
           // chunk 開始: boundary timer を re-init して累積 offset 込みで全体 charIndex 計算
           startTimeRef.current = Date.now();
-          clearBoundaryTimer();
-          if (onBoundaryRef.current) {
-            const chunkOffset = chunk.start;
-            boundaryTimerRef.current = setInterval(() => {
-              const cb = onBoundaryRef.current;
-              if (!cb) return;
-              const elapsedMs = Date.now() - startTimeRef.current;
-              const localCharIndex = Math.floor(
-                (elapsedMs * ESTIMATED_CPS * rateRef.current) / 1000,
-              );
-              const globalCharIndex = Math.min(
-                chunkOffset + localCharIndex,
-                currentTextRef.current.length,
-              );
-              cb(globalCharIndex);
-            }, BOUNDARY_TICK_MS);
-          }
+          startBoundaryTimer(chunk.start);
 
           // #766: 自前 AudioContext + BufferSourceNode 再生 (stop 確実化)
           try {
@@ -446,14 +461,32 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
 
   const pause = useCallback(() => {
     if (!supported) return;
-    // piper-plus AudioResult.play() 中の pause API は library に無いため non-op
-    // (将来 streaming synthesis + AudioContext.suspend で実装余地あり)
-  }, [supported]);
+    if (!isPlaying || isPaused) return;
+    // #1114: 自前 AudioContext を suspend して BufferSource 再生を一時停止 +
+    // boundary timer (highlight 進行) を止める。pause 時刻を記録して resume で elapsed 調整。
+    audioContextSingleton
+      ?.suspend()
+      .catch((err) => devError("[usePiperTts] AudioContext suspend failed", err));
+    clearBoundaryTimer();
+    pausedAtRef.current = Date.now();
+    setIsPaused(true);
+  }, [supported, isPlaying, isPaused, clearBoundaryTimer]);
 
   const resume = useCallback(() => {
     if (!supported) return;
-    // 同上 — pause 対応待ち
-  }, [supported]);
+    if (!isPaused) return;
+    // #1114: AudioContext を resume + paused 期間を startTimeRef から除外して
+    // boundary timer を同 chunk offset で再起動 (highlight が音声とずれないように)。
+    audioContextSingleton
+      ?.resume()
+      .catch((err) => devError("[usePiperTts] AudioContext resume failed", err));
+    if (pausedAtRef.current !== null) {
+      startTimeRef.current += Date.now() - pausedAtRef.current;
+      pausedAtRef.current = null;
+    }
+    startBoundaryTimer(currentChunkOffsetRef.current);
+    setIsPaused(false);
+  }, [supported, isPaused, startBoundaryTimer]);
 
   // アンマウント時に instance dispose
   useEffect(() => {
