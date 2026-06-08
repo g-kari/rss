@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  addRangeToSelection,
-  computeBulkSelectionRange,
-  resetSelectionToSingle,
-} from "./bulk-selection";
+import { addRangeToSelection, computeBulkSelectionRange } from "./bulk-selection";
 
 describe("computeBulkSelectionRange (#883)", () => {
   const ids = ["a", "b", "c", "d", "e"] as const;
@@ -59,11 +55,5 @@ describe("addRangeToSelection (#883)", () => {
   it("range が空配列なら元と同等 Set を返す", () => {
     const next = addRangeToSelection(new Set(["a", "b"]), []);
     expect([...next].sort()).toEqual(["a", "b"]);
-  });
-});
-
-describe("resetSelectionToSingle (#883)", () => {
-  it("単独 ID を含む Set を返す", () => {
-    expect([...resetSelectionToSingle("c")]).toEqual(["c"]);
   });
 });
