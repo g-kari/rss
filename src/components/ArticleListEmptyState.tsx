@@ -55,6 +55,7 @@ export default function ArticleListEmptyState({
           aria-live="assertive"
         >
           <svg
+            aria-hidden="true"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -84,6 +85,7 @@ export default function ArticleListEmptyState({
       {!loading && !fetchError && filteredCount === 0 && !wasJustCleared && feedsCount === 0 && (
         <div className="flex flex-col items-center justify-center h-40 gap-2 animate-fade-in">
           <svg
+            aria-hidden="true"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -115,6 +117,7 @@ export default function ArticleListEmptyState({
           {query ? (
             <>
               <svg
+                aria-hidden="true"
                 className="w-6 h-6 text-text-faint mb-1"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -132,6 +135,7 @@ export default function ArticleListEmptyState({
           ) : unreadOnly ? (
             <>
               <svg
+                aria-hidden="true"
                 className="w-6 h-6 text-text-faint mb-1"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -149,6 +153,7 @@ export default function ArticleListEmptyState({
           ) : bookmarkOnly ? (
             <>
               <svg
+                aria-hidden="true"
                 className="w-6 h-6 text-text-faint mb-1"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -167,6 +172,7 @@ export default function ArticleListEmptyState({
             <>
               {/* 後で読む (時計アイコン): ArticleHeaderEngagement の readingList ボタンと同 SVG path */}
               <svg
+                aria-hidden="true"
                 className="w-6 h-6 text-text-faint mb-1"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -184,6 +190,7 @@ export default function ArticleListEmptyState({
             <>
               {/* いいね (ハートアイコン): ArticleHeaderEngagement の like ボタンと同 SVG path */}
               <svg
+                aria-hidden="true"
                 className="w-6 h-6 text-text-faint mb-1"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -200,6 +207,7 @@ export default function ArticleListEmptyState({
             <>
               {/* メモ (鉛筆アイコン): ArticleHeaderEngagement の note ボタンと同 SVG path */}
               <svg
+                aria-hidden="true"
                 className="w-6 h-6 text-text-faint mb-1"
                 fill="none"
                 viewBox="0 0 24 24"
