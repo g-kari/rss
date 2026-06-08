@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import { type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import Backdrop from "../Backdrop";
+import { BASE_MENU_CLASS } from "../../lib/menu-class";
 
 interface Props {
   /** トリガーボタンの ref (useMenuKeyboard の focus 管理用) */
@@ -14,10 +15,6 @@ interface Props {
   className?: string;
   children: ReactNode;
 }
-
-/** 全 context menu portal 共通の menu 本体 class (背景・枠・角丸・影・overflow) */
-const BASE_MENU_CLASS =
-  "fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden";
 
 /**
  * FeedContextMenu 内の context menu portal 共通シェル。タップ貫通防止 Backdrop

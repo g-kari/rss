@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import type { KeyboardEvent, ReactNode, RefObject } from "react";
 import Backdrop from "../Backdrop";
+import { BASE_MENU_CLASS } from "../../lib/menu-class";
 
 interface Props {
   /** メニュー本体の ref (useMenuKeyboard 由来) */
@@ -16,10 +17,6 @@ interface Props {
   className?: string;
   children: ReactNode;
 }
-
-/** 全 portal dropdown 共通の menu 本体 class (背景・枠・角丸・影・overflow) */
-const BASE_MENU_CLASS =
-  "fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden";
 
 /**
  * portal dropdown メニューの共通シェル。透明 Backdrop (click-catcher) +

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { computeContextMenuPosition } from "../lib/context-menu-position";
+import { BASE_MENU_CLASS } from "../lib/menu-class";
 import { downloadBlob, applyFolderPrefix } from "../lib/download";
 import { addUrlToHistory, MAX_DOWNLOAD_HISTORY } from "../lib/download-history";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
@@ -236,7 +237,7 @@ export default function GalleryContextMenu({
         role="menu"
         aria-label="ギャラリー操作メニュー"
         onKeyDown={handleKeyDown}
-        className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[160px]"
+        className={`${BASE_MENU_CLASS} min-w-[160px]`}
         style={computeContextMenuPosition(target.x, target.y, 160, 170)}
         onClick={(e) => e.stopPropagation()}
       >
