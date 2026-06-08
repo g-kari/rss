@@ -381,6 +381,13 @@ function FeedSidebar({
     ],
   );
 
+  // FeedGroupsSection (memo) に渡す signature 変換 wrapper も stable 化する。
+  // inline arrow だと renderFeed を useCallback 化しても memo(FeedGroupsSection) が毎 render 失敗する。
+  const renderGroupFeed = useCallback(
+    (feed: Feed, startIdx: number) => renderFeed(feed, false, pinnedFeeds.length + startIdx),
+    [renderFeed, pinnedFeeds.length],
+  );
+
   return (
     <aside
       role="navigation"
@@ -639,7 +646,7 @@ function FeedSidebar({
           <FeedGroupsSection
             groups={groupedFeeds}
             unreadByFeed={unreadByFeed}
-            renderFeed={(feed, startIdx) => renderFeed(feed, false, pinnedFeeds.length + startIdx)}
+            renderFeed={renderGroupFeed}
             selectedGroupId={selectedGroupId}
             onSelect={onSelectGroup}
             onCreate={onCreateFeedGroup}
