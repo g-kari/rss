@@ -1,6 +1,6 @@
 import type { Article, Feed } from "@/types";
 import { downloadBlob } from "@/lib/download";
-import { stripHtml } from "@/lib/html";
+import { buildFeedTitleMap, clampSummaryText } from "@/lib/export-shared";
 
 /** JSON エクスポートの 1 記事エントリ */
 export interface ExportedArticleJson {
@@ -37,7 +37,7 @@ export function buildArticlesJson(
   mode: "bookmark" | "reading_list",
   now: Date = new Date(),
 ): ArticlesJsonExport {
-  const feedMap = new Map(feeds.map((f) => [f.id, f]));
+  const feedTitleMap = buildFeedTitleMap(feeds);
   const selected = articles.filter((a) => ids.has(a.id));
   const label = mode === "reading_list" ? "後で読む" : "ブックマーク";
   return {
@@ -47,10 +47,10 @@ export function buildArticlesJson(
     articles: selected.map((a) => ({
       title: a.title,
       url: a.link,
-      feedTitle: feedMap.get(a.feedHash)?.title ?? "不明なフィード",
+      feedTitle: feedTitleMap.get(a.feedHash) ?? "不明なフィード",
       author: a.author ?? null,
       publishedAt: a.publishedAt ?? null,
-      summary: a.summary ? stripHtml(a.summary).slice(0, 300) : "",
+      summary: clampSummaryText(a.summary),
     })),
   };
 }
@@ -102,7 +102,7 @@ export function buildNotesJson(
   now: Date = new Date(),
 ): NotesJsonExport {
   const noteIds = new Set(Object.keys(notes));
-  const feedMap = new Map(feeds.map((f) => [f.id, f]));
+  const feedTitleMap = buildFeedTitleMap(feeds);
   const selected = articles.filter((a) => noteIds.has(a.id));
   return {
     exportedAt: now.toISOString(),
@@ -110,7 +110,7 @@ export function buildNotesJson(
     notes: selected.map((a) => ({
       title: a.title,
       url: a.link,
-      feedTitle: feedMap.get(a.feedHash)?.title ?? "不明なフィード",
+      feedTitle: feedTitleMap.get(a.feedHash) ?? "不明なフィード",
       note: notes[a.id] ?? "",
     })),
   };

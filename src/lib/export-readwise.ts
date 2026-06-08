@@ -1,5 +1,6 @@
 import type { Article, Feed } from "@/types";
 import { downloadBlob } from "@/lib/download";
+import { buildFeedTitleMap } from "@/lib/export-shared";
 
 /** RFC 4180 ベースの CSV エスケープ。すべての値を `"` で囲み、内部の `"` を二重化する */
 function csvEscape(s: string): string {
@@ -27,7 +28,7 @@ export function buildReadwiseCsv(
   notes: Record<string, string>,
   feeds: Feed[],
 ): string {
-  const feedMap = new Map(feeds.map((f) => [f.id, f]));
+  const feedTitleMap = buildFeedTitleMap(feeds);
   const lines: string[] = [READWISE_HEADER];
 
   for (const article of articles) {
@@ -35,8 +36,7 @@ export function buildReadwiseCsv(
     if (!note || note.trim().length === 0) continue;
 
     const highlight = note.split(/\r?\n/)[0] ?? article.title;
-    const feed = feedMap.get(article.feedHash);
-    const author = feed?.title ?? "";
+    const author = feedTitleMap.get(article.feedHash) ?? "";
     const date = toYmd(article.publishedAt) || toYmd(article.createdAt);
 
     lines.push(
