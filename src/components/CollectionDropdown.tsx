@@ -63,6 +63,10 @@ export default function CollectionDropdown({
     );
     if (!ok) return;
     setOpen(false);
+    // WCAG 2.4.3: menu を閉じたらトリガーボタンへ focus を戻す (backdrop / 新規コレクション
+    // close 経路と対称、usePortalMenu backdrop-dismiss 規範)。menuitem 押下で portal が
+    // unmount されると focus が body に落ちるのを防ぐ。
+    btnRef.current?.focus();
     try {
       await onAddBulk(collection.id, Array.from(bookmarkIds));
       toast.success(`「${collection.name}」に ${bookmarkIds.size} 件追加しました`);
