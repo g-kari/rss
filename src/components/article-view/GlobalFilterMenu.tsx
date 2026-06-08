@@ -1,4 +1,3 @@
-import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import type { Article, KeywordFilter } from "../../types";
 import { useToast } from "@/contexts/ToastContext";
@@ -7,7 +6,7 @@ import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 const FeedFilterModal = dynamic(() => import("../FeedFilterModal"), { ssr: false });
 import { MENU_ITEM_CLS } from "./constants";
 import { ExcludeOptionsSection, useFilterMenuState } from "./filter-shared";
-import Backdrop from "../Backdrop";
+import PortalMenuShell from "./PortalMenuShell";
 
 interface Props {
   article: Article;
@@ -64,63 +63,53 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
           <path d="M19 17v2l1 1" />
         </svg>
       </button>
-      {open &&
-        createPortal(
-          <>
-            <Backdrop
-              transparent
-              onPointerDown={() => {
-                setOpen(false);
-                btnRef.current?.focus();
-              }}
-            />
-            <div
-              ref={menuRef}
-              role="menu"
-              aria-label="グローバルフィルター設定"
-              onKeyDown={handleKeyDown}
-              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[220px] max-h-[320px] overflow-y-auto"
-              style={{ top: pos.top, right: pos.right }}
+      {open && (
+        <PortalMenuShell
+          menuRef={menuRef}
+          btnRef={btnRef}
+          setOpen={setOpen}
+          handleKeyDown={handleKeyDown}
+          pos={pos}
+          ariaLabel="グローバルフィルター設定"
+          className="min-w-[220px] max-h-[320px] overflow-y-auto"
+        >
+          <div className="px-3 pt-2 pb-1">
+            <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+              グローバルフィルター
+            </p>
+            <p className="text-[10px] text-text-faint mt-0.5">全フィードに適用</p>
+          </div>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setModalOpen(true);
+            }}
+            className={MENU_ITEM_CLS}
+          >
+            <svg
+              aria-hidden="true"
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="flex-shrink-0"
             >
-              <div className="px-3 pt-2 pb-1">
-                <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-                  グローバルフィルター
-                </p>
-                <p className="text-[10px] text-text-faint mt-0.5">全フィードに適用</p>
-              </div>
-              <button
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  setModalOpen(true);
-                }}
-                className={MENU_ITEM_CLS}
-              >
-                <svg
-                  aria-hidden="true"
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="flex-shrink-0"
-                >
-                  <path d="M3 4h18M7 8h10M11 12h2" />
-                </svg>
-                フィルター設定を開く
-              </button>
-              <ExcludeOptionsSection
-                label="全フィードから除外する"
-                options={excludeOptions}
-                onExclude={handleExclude}
-              />
-            </div>
-          </>,
-          document.body,
-        )}
+              <path d="M3 4h18M7 8h10M11 12h2" />
+            </svg>
+            フィルター設定を開く
+          </button>
+          <ExcludeOptionsSection
+            label="全フィードから除外する"
+            options={excludeOptions}
+            onExclude={handleExclude}
+          />
+        </PortalMenuShell>
+      )}
       {modalOpen && (
         <FeedFilterModal
           title="グローバルフィルター"
