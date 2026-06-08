@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { computeProgress, buildAnchorSelector, clampProgress } from "../src/lib/reading-progress";
+import {
+  computeProgress,
+  buildAnchorSelector,
+  clampProgress,
+  scopeAnchorToContent,
+} from "../src/lib/reading-progress";
 
 // ===== computeProgress =====
 
@@ -88,5 +93,31 @@ test.describe("clampProgress — 進捗の正規化", () => {
 
   test("100 を超える値は 100 に丸める", () => {
     expect(clampProgress(110)).toBe(100);
+  });
+});
+
+// ===== scopeAnchorToContent =====
+
+test.describe("scopeAnchorToContent — contentRef スコープ用 :scope 変換", () => {
+  test(".article-content prefix を :scope に置換する", () => {
+    expect(scopeAnchorToContent(".article-content > :nth-child(3)")).toBe(":scope > :nth-child(3)");
+  });
+
+  test("buildAnchorSelector の出力をそのまま変換できる", () => {
+    expect(scopeAnchorToContent(buildAnchorSelector(2))).toBe(":scope > :nth-child(3)");
+  });
+
+  test("空文字はそのまま返す", () => {
+    expect(scopeAnchorToContent("")).toBe("");
+  });
+
+  test(".article-content で始まらないセレクタはそのまま返す", () => {
+    expect(scopeAnchorToContent(".other > :nth-child(2)")).toBe(".other > :nth-child(2)");
+  });
+
+  test("単語境界を尊重する (.article-contentX には誤マッチしない)", () => {
+    expect(scopeAnchorToContent(".article-contentX > :nth-child(2)")).toBe(
+      ".article-contentX > :nth-child(2)",
+    );
   });
 });

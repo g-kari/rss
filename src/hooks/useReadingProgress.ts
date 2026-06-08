@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import { computeProgress, clampProgress, buildAnchorSelector } from "../lib/reading-progress";
+import {
+  computeProgress,
+  clampProgress,
+  buildAnchorSelector,
+  scopeAnchorToContent,
+} from "../lib/reading-progress";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -58,8 +63,18 @@ export function useReadingProgress({
     if (saved?.anchor) {
       // DOM 更新後に実行
       const timer = setTimeout(() => {
-        const el = document.querySelector(saved.anchor);
-        el?.scrollIntoView({ block: "start", behavior: "instant" });
+        // contentRef.current (= .article-content 自身) を起点に :scope 相対で検索する。
+        // document.querySelector だと listFocusMode で .article-content が複数存在するとき
+        // 別記事の要素にマッチしうる (#scope-anchor)。不正な anchor (legacy/corrupt) は無視。
+        const root = contentRef.current;
+        if (!root) return;
+        try {
+          root
+            .querySelector(scopeAnchorToContent(saved.anchor))
+            ?.scrollIntoView({ block: "start", behavior: "instant" });
+        } catch {
+          /* 不正な anchor selector は無視 */
+        }
       }, 100);
       return () => clearTimeout(timer);
     }
