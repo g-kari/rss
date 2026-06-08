@@ -215,3 +215,45 @@ describe("useArticleContent — OGP cache resolution (#836)", () => {
     expect(result.current.resolvedOgImage).toBe(newImage);
   });
 });
+
+describe("useArticleContent — 記事切替後の fetchError leak 防止 (#abort-guard sibling, #1115 と同型)", () => {
+  it("記事切替 (abort) 後に旧記事の fetch error が新記事に leak しない", async () => {
+    // apiFetch を手動 resolve できる deferred promise にする
+    let resolveFetch: ((res: Response) => void) | null = null;
+    mockApiFetch.mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    const { store } = makeStore();
+    const wrapper = wrapWith(store);
+
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => useArticleContent(id, "https://a.example.com/article", ""),
+      { initialProps: { id: "article-A" }, wrapper },
+    );
+
+    // 記事 A の全文取得を開始 (apiFetch は deferred で pending)
+    act(() => {
+      void result.current.fetchFullContent();
+    });
+    expect(result.current.fetching).toBe(true);
+
+    // 記事 B へ切替 → articleId effect が controller A を abort + fetchError クリア
+    act(() => {
+      rerender({ id: "article-B" });
+    });
+    expect(result.current.fetchError).toBe("");
+
+    // 旧記事 A の fetch が遅れて 500 エラーで resolve (abort 後)
+    await act(async () => {
+      resolveFetch?.(new Response(JSON.stringify({ error: "A の取得失敗" }), { status: 500 }));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // abort recheck により旧記事の error は新記事に leak しない
+    expect(result.current.fetchError).toBe("");
+  });
+});
