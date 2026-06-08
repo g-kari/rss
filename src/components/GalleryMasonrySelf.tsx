@@ -27,7 +27,6 @@ function useContainerMetrics(
   scrollElement: HTMLElement | null,
 ) {
   const [width, setWidth] = useState(0);
-  const [offsetTop, setOffsetTop] = useState(0);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -35,19 +34,17 @@ function useContainerMetrics(
 
     const measure = () => {
       setWidth(container.clientWidth);
-      const containerRect = container.getBoundingClientRect();
-      const scrollRect = scrollElement.getBoundingClientRect();
-      setOffsetTop(containerRect.top - scrollRect.top + scrollElement.scrollTop);
     };
     measure();
 
     const ro = new ResizeObserver(measure);
     ro.observe(container);
+    // scrollElement の resize でも container 幅が変わりうるため再 measure する
     ro.observe(scrollElement);
     return () => ro.disconnect();
   }, [containerRef, scrollElement]);
 
-  return { width, offsetTop };
+  return { width };
 }
 
 /**
