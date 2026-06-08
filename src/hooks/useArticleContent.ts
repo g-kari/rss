@@ -197,6 +197,11 @@ export function useArticleContent(
         const res = await apiFetch(`/api/content?url=${encodeURIComponent(articleLink)}`, {
           signal: controller.signal,
         });
+        // 記事切替 (abort) が apiFetch resolve 後に起きると catch の isAbortError では捕捉できず、
+        // 旧記事の fetchError を setFetchError して新記事に leak する。各 await 後に abort recheck
+        // する (#1115 useArticleAi と同じ sibling pattern、fetchedState は id-tag 済だが
+        // fetchError は未 keyed のため本 guard が必要)。
+        if (controller.signal.aborted) return;
         // #688 / #869: 非 2xx を `buildFetchErrorMessage` で集約整形 (useArticleAi と統合)。
         // #693 (#688 後追い): JSON parse 失敗 (Cloudflare HTML エラーページ等) を捕捉して
         // onParseError callback で debug log を出す。これがないと本番で「fallback メッセージ
@@ -210,6 +215,7 @@ export function useArticleContent(
                 parseError: String(parseErr).slice(0, 100),
               }),
           });
+          if (controller.signal.aborted) return;
           setFetchError(message);
           autoReadDebug("useArticleContent.fetch-http-error", {
             articleId,
@@ -219,6 +225,7 @@ export function useArticleContent(
           return;
         }
         const data = (await res.json()) as { content?: string; error?: string };
+        if (controller.signal.aborted) return;
         if (data.content) {
           if (articleId) contentLruCache.set(articleId, data.content);
           setFetchedState({ id: articleId ?? "", content: data.content });
