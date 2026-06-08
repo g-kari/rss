@@ -96,6 +96,7 @@ export default function LoadMoreButton({ onLoad }: Props) {
             strokeWidth="1.6"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="M6 1v10M2 7l4 4 4-4" />
           </svg>
