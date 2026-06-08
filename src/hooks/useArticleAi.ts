@@ -95,7 +95,7 @@ function encodeForCache(result: AiOperationResult): string {
  * 戻り値が `null` の場合は Workers AI にフォールバックする。
  * 翻訳では Chrome Translator API をここに差し込む。
  */
-function useAiOperation(
+export function useAiOperation(
   endpoint: string,
   lruCache: LruCache,
   errorMessage: string,
@@ -159,13 +159,19 @@ function useAiOperation(
           body: JSON.stringify({ url, model }),
           signal: controller.signal,
         });
+        // 記事切替 (reset → abort) が apiFetch resolve 後に起きると catch の isAbortError では
+        // 捕捉できず stale result を setResult してしまうため、各 await 後に abort recheck する
+        // (local-processor path の signal.aborted guard と対称)。
+        if (controller.signal.aborted) return;
         if (!res.ok) {
           // #869: useArticleContent と同じ pattern に統合。body.error が来れば優先 fallback。
           const { message, type } = await buildFetchErrorMessage(res, errorMessage);
+          if (controller.signal.aborted) return;
           setError({ type, message });
           return;
         }
         const data = (await res.json()) as { result?: string; error?: string };
+        if (controller.signal.aborted) return;
         if (data.result) {
           const entry: AiOperationResult = {
             text: data.result,
@@ -186,7 +192,9 @@ function useAiOperation(
           message: formatHttpErrorMessage("network", { fallback: errorMessage }),
         });
       } finally {
-        setLoading(false);
+        // abort 済 (記事切替で新 run が loading を所有) なら旧 run の loading 解除を skip し、
+        // 新 run の loading=true を clobber しない。
+        if (!controller.signal.aborted) setLoading(false);
       }
     },
     [endpoint, lruCache, errorMessage, localProcessor],
