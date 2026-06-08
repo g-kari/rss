@@ -98,8 +98,10 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
     e.preventDefault();
     const nextTab = TABS[nextIndex];
     setActiveTab(nextTab.id);
-    // フォーカスを次のタブボタンに移動 (roving tabindex pattern)
-    const nextEl = document.getElementById(`tab-${nextTab.id}`);
+    // フォーカスを次のタブボタンに移動 (roving tabindex pattern)。tablist (e.currentTarget) に
+    // scope して querySelector する (document.getElementById だと同名 id が複数 mount したとき
+    // 別 instance に focus が移る scope 漏れになる、#tablist-scope canonical)。
+    const nextEl = e.currentTarget.querySelector<HTMLElement>(`#tab-${nextTab.id}`);
     nextEl?.focus();
   };
 

@@ -138,8 +138,9 @@ export default function FeedViewTabs({
       e.preventDefault();
       const nextTab = FEED_VIEW_TABS[nextIndex];
       onChangeView(nextTab.id);
-      // フォーカスを次のタブボタンに移動 (roving tabindex pattern)
-      const nextEl = document.getElementById(`feed-view-tab-${nextTab.id}`);
+      // フォーカスを次のタブボタンに移動 (roving tabindex pattern)。tablist (e.currentTarget) に
+      // scope して querySelector する (document.getElementById の scope 漏れ防止、#tablist-scope canonical)。
+      const nextEl = e.currentTarget.querySelector<HTMLElement>(`#feed-view-tab-${nextTab.id}`);
       nextEl?.focus();
     },
     [activeView, onChangeView],
