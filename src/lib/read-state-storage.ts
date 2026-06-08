@@ -34,6 +34,8 @@ export interface PendingRefs {
   pendingRemovedRef: { current: PendingSets };
   pendingTagChangedRef: { current: Set<string> };
   pendingTagRemovedRef: { current: Set<string> };
+  /** 編集した note の articleId を track する (#1113 flush 中の編集巻き戻り防止、tags の pendingTagChangedRef と対称) */
+  pendingNotesChangedRef: { current: Set<string> };
   /** 削除した note の articleId を track する (#1084 cross-device note 削除) */
   pendingNotesRemovedRef: { current: Set<string> };
   globalFilterDirtyRef: { current: boolean };
@@ -44,6 +46,7 @@ export interface PendingSnapshot {
   removed: PendingSets;
   tagChanged: Set<string>;
   tagRemoved: Set<string>;
+  notesChanged: Set<string>;
   notesRemoved: Set<string>;
   wasGfDirty: boolean;
 }
@@ -53,15 +56,17 @@ export function extractAndResetPending(refs: PendingRefs): PendingSnapshot {
   const removed = snapshotPendingSets(refs.pendingRemovedRef.current);
   const tagChanged = new Set(refs.pendingTagChangedRef.current);
   const tagRemoved = new Set(refs.pendingTagRemovedRef.current);
+  const notesChanged = new Set(refs.pendingNotesChangedRef.current);
   const notesRemoved = new Set(refs.pendingNotesRemovedRef.current);
   const wasGfDirty = refs.globalFilterDirtyRef.current;
   refs.pendingAddedRef.current = emptyPendingSets();
   refs.pendingRemovedRef.current = emptyPendingSets();
   refs.pendingTagChangedRef.current = new Set();
   refs.pendingTagRemovedRef.current = new Set();
+  refs.pendingNotesChangedRef.current = new Set();
   refs.pendingNotesRemovedRef.current = new Set();
   refs.globalFilterDirtyRef.current = false;
-  return { added, removed, tagChanged, tagRemoved, notesRemoved, wasGfDirty };
+  return { added, removed, tagChanged, tagRemoved, notesChanged, notesRemoved, wasGfDirty };
 }
 
 export function restorePending(refs: PendingRefs, snapshot: PendingSnapshot): void {
@@ -69,6 +74,7 @@ export function restorePending(refs: PendingRefs, snapshot: PendingSnapshot): vo
   mergePendingSets(refs.pendingRemovedRef.current, snapshot.removed);
   for (const k of snapshot.tagChanged) refs.pendingTagChangedRef.current.add(k);
   for (const k of snapshot.tagRemoved) refs.pendingTagRemovedRef.current.add(k);
+  for (const k of snapshot.notesChanged) refs.pendingNotesChangedRef.current.add(k);
   for (const k of snapshot.notesRemoved) refs.pendingNotesRemovedRef.current.add(k);
   if (snapshot.wasGfDirty) refs.globalFilterDirtyRef.current = true;
 }

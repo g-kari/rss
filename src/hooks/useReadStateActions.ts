@@ -38,6 +38,8 @@ export interface ReadStateActionDeps {
     readingList: Set<string>;
     likes: Set<string>;
   }>;
+  /** 編集した note の articleId を track する (#1113 flush 中の編集巻き戻り防止) */
+  pendingNotesChangedRef: MutableRefObject<Set<string>>;
   /** 削除した note の articleId を track する (#1084 cross-device note 削除) */
   pendingNotesRemovedRef: MutableRefObject<Set<string>>;
   globalFilterDirtyRef: MutableRefObject<boolean>;
@@ -69,6 +71,7 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
     setTtlDaysState,
     pendingAddedRef,
     pendingRemovedRef,
+    pendingNotesChangedRef,
     pendingNotesRemovedRef,
     globalFilterDirtyRef,
     scheduleSyncRef,
@@ -241,6 +244,9 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       });
       // note を設定したら removal pending を解除 (削除→再設定の打ち消し、#1084)
       pendingNotesRemovedRef.current.delete(articleId);
+      // #1113: 編集 key を changed channel で track (tags の pendingTagChangedRef と対称)。
+      // flush の await 中に再編集された note が server-wins マージで巻き戻るのを防ぐ。
+      pendingNotesChangedRef.current.add(articleId);
       scheduleSyncRef.current();
     },
     // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
@@ -260,6 +266,8 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
       // #1084: 削除した note key を removal channel で track (tags の pendingTagRemovedRef と対称)。
       // serializeReadState が removedIds.notes として送信 → server mergeNotes が honor → 復活を防ぐ。
       pendingNotesRemovedRef.current.add(articleId);
+      // #1113: 削除は changed channel から除外 (削除が編集に優先、tags の pendingTagChangedRef.delete と対称)。
+      pendingNotesChangedRef.current.delete(articleId);
       scheduleSyncRef.current();
     },
     // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)

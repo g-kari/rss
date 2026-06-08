@@ -70,6 +70,7 @@ function setup(articles: Article[], initialRead: string[] = []): Harness {
     });
     const pendingAddedRef = useRef(emptyPending());
     const pendingRemovedRef = useRef(emptyPending());
+    const pendingNotesChangedRef = useRef<Set<string>>(new Set());
     const pendingNotesRemovedRef = useRef<Set<string>>(new Set());
     const globalFilterDirtyRef = useRef(false);
     const scheduleSyncRef = useRef<() => void>(() => {});
@@ -95,6 +96,7 @@ function setup(articles: Article[], initialRead: string[] = []): Harness {
       setTtlDaysState: noop,
       pendingAddedRef,
       pendingRemovedRef,
+      pendingNotesChangedRef,
       pendingNotesRemovedRef,
       globalFilterDirtyRef,
       scheduleSyncRef,

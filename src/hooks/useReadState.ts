@@ -81,6 +81,7 @@ export function useReadState(
     globalFilterRef: persistence.globalFilterRef,
     pendingAddedRef: persistence.pendingAddedRef,
     pendingRemovedRef: persistence.pendingRemovedRef,
+    pendingNotesChangedRef: persistence.pendingNotesChangedRef,
     pendingNotesRemovedRef: persistence.pendingNotesRemovedRef,
     globalFilterDirtyRef: persistence.globalFilterDirtyRef,
     pendingTagChangedRef: tags.pendingTagChangedRef,
