@@ -422,6 +422,54 @@ const fetchFullContent = useCallback(async () => {
 
 主な使用箇所: `useArticleContent.ts` の `fetchAbortControllerRef = { controller, articleId }` 構造
 
+### 派生ケース: 同一 hook 内の sibling async path は **全 await→setState 境界で abort guard を対称化**する
+
+`await fetch` / `await processor()` の後に setState する async path が 1 hook 内に複数 (sibling) あるとき、**片方だけ abort guard (`if (controller.signal.aborted) return;`) を持ち、もう片方が持たない非対称**が起きやすい。`catch (err) { if (isAbortError(err)) return; }` は **fetch reject (= 通信中 abort) のみ捕捉**し、**apiFetch resolve 後〜setState 間の abort window は無防備**。記事/対象切替が resolve 後に起きると、旧対象の結果/エラーが新対象の view に leak する。
+
+```typescript
+// アンチパターン: local path は guard あり、server path は guard なし (非対称)
+if (localProcessor) {
+  const local = await localProcessor(input);
+  if (controller.signal.aborted) return; // ✅ guard あり
+  setResult(local);
+}
+const res = await apiFetch(url, { signal: controller.signal });
+// ❌ guard なし → abort が resolve 後に起きると stale setResult
+const data = await res.json();
+setResult(data); // 旧対象の結果が新対象に leak
+
+// 修正パターン: 全 await→setState 境界で abort recheck (sibling 対称化)
+const res = await apiFetch(url, { signal: controller.signal });
+if (controller.signal.aborted) return; // ✅
+if (!res.ok) {
+  const msg = await buildFetchErrorMessage(res, fallback);
+  if (controller.signal.aborted) return; // ✅ error path も
+  setError(msg);
+  return;
+}
+const data = await res.json();
+if (controller.signal.aborted) return; // ✅ parse window も
+setResult(data);
+// finally も abort-aware に: if (!controller.signal.aborted) setLoading(false);
+```
+
+**How to apply**: AbortController を使う hook で「`await` の後に setState する path が複数ある」とき (`catch` の isAbortError は通信中 abort のみ捕捉、resolve 後の window は無防備で sibling 間非対称が leak を生む):
+
+1. **hook 内の全 `await` (apiFetch / res.json / buildFetchErrorMessage / localProcessor 等) を列挙** し、各 await の後に setState があるか確認
+2. **1 つでも `if (controller.signal.aborted) return;` recheck がある path があれば、他の全 path も同じ recheck を持つか確認** (sibling 対称性)
+3. **欠落 path に recheck を追加** — 各 await→setState 境界に置く (network window / parse window / error-body parse window すべて)
+4. **finally の loading 解除も abort-aware に** (`if (!controller.signal.aborted) setLoading(false);`) — 旧 run が新 run の loading=true を clobber しない
+5. **id-tag (`{ id: targetId, value }` + 派生で `state.id === currentId` filter) で防御済みの state は recheck 不要** だが、**id-tag されていない sibling state (error 等) は recheck 必須**
+6. **grep sweep**: `grep -rln "new AbortController" src/hooks/` で全 hook 列挙 → 各 hook の `isAbortError` 有無 + `signal.aborted` recheck 有無 + `await apiFetch` 有無を比較して非対称を検出
+
+**反例 (recheck 不要なケース)**:
+
+- setState の値が **id-tag されている** (`fetchedState.id === articleId` で derived filter) → stale value は表示されない、recheck は defense-in-depth で optional
+- cache 書き込みが **対象自身の id でキー付け** (`contentLruCache.set(article.id, ...)` で「現在の対象」でなく「fetch した対象」の id) → cross-target 汚染なし、recheck 不要 (usePrefetchGalleryContents)
+- `useAsyncFetch` のように **共通基盤で既に aborted recheck 済** → 個別 hook で重複不要
+
+主な使用箇所: `read-state-merge` notes channel (#1113 pendingNotesChangedRef) / `useArticleAi.useAiOperation` server-fetch path (#1115) / `useArticleContent` fetchError path — いずれも sibling の片方に guard があり片方になかった非対称を対称化。`usePrefetchGalleryContents` (article.id keyed) / `useFeedData` (isAbortError catch) は防御済みで sweep 対象外と確認
+
 `articles` のような **配列全体を対象に処理したい** useEffect で、依存配列キーを `articles.slice(0, N).map(a => a.id).join(...)` のように作ると、**N+1 件目以降の追加・削除を検知できなくなる**。
 
 ```typescript
