@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { computeContextMenuPosition } from "../lib/context-menu-position";
+import { BASE_MENU_CLASS } from "../lib/menu-class";
 import Backdrop from "./Backdrop";
 
 export interface ArticleContextMenuTarget {
@@ -142,7 +143,7 @@ export default function ArticleContextMenu({
         role="menu"
         aria-label="記事操作メニュー"
         onKeyDown={handleKeyDown}
-        className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
+        className={`${BASE_MENU_CLASS} min-w-[180px]`}
         style={computeContextMenuPosition(target.x, target.y, 180, 144)}
         onClick={(e) => e.stopPropagation()}
       >
