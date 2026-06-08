@@ -37,13 +37,3 @@ export function addRangeToSelection(
   for (const id of rangeIds) next.add(id);
   return next;
 }
-
-/**
- * 通常 click 時の選択遷移純粋関数 (Phase A 既定動作)。
- *
- * 既に 1 件以上選択済の場合は bulk 状態を解除して新 anchor のみ単独選択にする。
- * (Inoreader / Feedly canonical: 通常 click は anchor をリセット)
- */
-export function resetSelectionToSingle(targetId: string): Set<string> {
-  return new Set([targetId]);
-}
