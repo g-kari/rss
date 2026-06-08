@@ -12,6 +12,7 @@ export default function EmptyArticleView({ onMobileBack }: Props) {
           aria-label="記事一覧に戻る"
         >
           <svg
+            aria-hidden="true"
             width="16"
             height="16"
             viewBox="0 0 16 16"
@@ -27,6 +28,7 @@ export default function EmptyArticleView({ onMobileBack }: Props) {
       )}
       <div className="text-center animate-fade-in">
         <svg
+          aria-hidden="true"
           className="w-8 h-8 mx-auto mb-3 text-text-faint"
           fill="none"
           viewBox="0 0 24 24"
