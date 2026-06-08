@@ -1,6 +1,6 @@
 import type { Article, Feed } from "@/types";
 import { downloadBlob } from "@/lib/download";
-import { stripHtml } from "@/lib/html";
+import { buildFeedTitleMap, clampSummaryText } from "@/lib/export-shared";
 
 /** Markdown のリンク構文を壊す文字をエスケープする */
 function escapeMarkdown(s: string): string {
@@ -21,7 +21,7 @@ export function exportArticlesToMarkdown(
   feeds: Feed[],
   mode: "bookmark" | "reading_list",
 ): void {
-  const feedMap = new Map(feeds.map((f) => [f.id, f]));
+  const feedTitleMap = buildFeedTitleMap(feeds);
   const selected = articles.filter((a) => ids.has(a.id));
 
   if (selected.length === 0) return;
@@ -43,8 +43,7 @@ export function exportArticlesToMarkdown(
   }
 
   for (const [feedHash, feedArticles] of byFeed) {
-    const feed = feedMap.get(feedHash);
-    lines.push(`## ${escapeMarkdown(feed?.title ?? "不明なフィード")}`, "");
+    lines.push(`## ${escapeMarkdown(feedTitleMap.get(feedHash) ?? "不明なフィード")}`, "");
 
     for (const article of feedArticles) {
       lines.push(`### [${escapeMarkdown(article.title)}](${article.link})`, "");
@@ -58,10 +57,8 @@ export function exportArticlesToMarkdown(
       }
       if (meta.length > 0) lines.push(meta.join(" | "), "");
 
-      if (article.summary) {
-        const plain = stripHtml(article.summary).slice(0, 300);
-        if (plain) lines.push(plain, "");
-      }
+      const plain = clampSummaryText(article.summary);
+      if (plain) lines.push(plain, "");
 
       lines.push("---", "");
     }
@@ -85,7 +82,7 @@ export function exportNotesToMarkdown(
   feeds: Feed[],
 ): void {
   const noteIds = new Set(Object.keys(notes));
-  const feedMap = new Map(feeds.map((f) => [f.id, f]));
+  const feedTitleMap = buildFeedTitleMap(feeds);
   const selected = articles.filter((a) => noteIds.has(a.id));
 
   if (selected.length === 0) return;
@@ -106,8 +103,7 @@ export function exportNotesToMarkdown(
   }
 
   for (const [feedHash, feedArticles] of byFeed) {
-    const feed = feedMap.get(feedHash);
-    lines.push(`## ${escapeMarkdown(feed?.title ?? "不明なフィード")}`, "");
+    lines.push(`## ${escapeMarkdown(feedTitleMap.get(feedHash) ?? "不明なフィード")}`, "");
 
     for (const article of feedArticles) {
       lines.push(`### [${escapeMarkdown(article.title)}](${article.link})`, "");
