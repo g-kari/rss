@@ -5,7 +5,14 @@ export default function LandingPage() {
     <div className="min-h-screen bg-surface-base font-sans antialiased flex flex-col">
       <header className="px-8 py-4 flex items-center justify-between border-b border-border-subtle">
         <div className="flex items-center gap-2">
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" className="text-text-strong">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 22 22"
+            fill="none"
+            className="text-text-strong"
+            aria-hidden="true"
+          >
             <rect
               width="22"
               height="22"
@@ -71,6 +78,7 @@ export default function LandingPage() {
         >
           0g0 ID でログイン
           <svg
+            aria-hidden="true"
             width="14"
             height="14"
             viewBox="0 0 14 14"

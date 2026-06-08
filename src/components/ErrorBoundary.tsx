@@ -42,7 +42,14 @@ export default class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="flex flex-col items-center justify-center h-full bg-surface-elevated text-center px-6 gap-3">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="text-text-faint">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 32 32"
+            fill="none"
+            className="text-text-faint"
+            aria-hidden="true"
+          >
             <rect
               width="32"
               height="32"

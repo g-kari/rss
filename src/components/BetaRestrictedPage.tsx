@@ -3,7 +3,14 @@
 export default function BetaRestrictedPage() {
   return (
     <div className="min-h-screen bg-surface-base font-sans antialiased flex flex-col items-center justify-center px-8 text-center">
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="mb-6 text-text-faint">
+      <svg
+        width="40"
+        height="40"
+        viewBox="0 0 40 40"
+        fill="none"
+        className="mb-6 text-text-faint"
+        aria-hidden="true"
+      >
         <rect
           width="40"
           height="40"
