@@ -1,9 +1,8 @@
-import { createPortal } from "react-dom";
 import { usePortalMenu } from "../../hooks/usePortalMenu";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { MENU_ITEM_CLS } from "./constants";
 import { useToast } from "@/contexts/ToastContext";
-import Backdrop from "../Backdrop";
+import PortalMenuShell from "./PortalMenuShell";
 
 const SNOOZE_OPTIONS = [
   { label: "1時間後", durationMs: 60 * 60 * 1000 },
@@ -55,60 +54,50 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props)
           <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
         </svg>
       </button>
-      {open &&
-        createPortal(
-          <>
-            <Backdrop
-              transparent
-              onPointerDown={() => {
-                setOpen(false);
-                btnRef.current?.focus();
-              }}
-            />
-            <div
-              ref={menuRef}
-              role="menu"
-              aria-label="スヌーズ"
-              onKeyDown={handleKeyDown}
-              className="fixed z-50 bg-surface-elevated border border-border-default rounded-lg shadow-lg overflow-hidden min-w-[180px]"
-              style={{ top: pos.top, right: pos.right }}
-            >
-              <div className="px-3 pt-2 pb-1">
-                <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-                  スヌーズ
-                </p>
-              </div>
-              <div className="border-t border-border-subtle">
-                {SNOOZE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.durationMs}
-                    role="menuitem"
-                    onClick={() => handleSnooze(opt.durationMs, opt.label)}
-                    className={MENU_ITEM_CLS}
-                  >
-                    <svg
-                      aria-hidden="true"
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="flex-shrink-0"
-                    >
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M12 7v5l3 3" />
-                    </svg>
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>,
-          document.body,
-        )}
+      {open && (
+        <PortalMenuShell
+          menuRef={menuRef}
+          btnRef={btnRef}
+          setOpen={setOpen}
+          handleKeyDown={handleKeyDown}
+          pos={pos}
+          ariaLabel="スヌーズ"
+          className="min-w-[180px]"
+        >
+          <div className="px-3 pt-2 pb-1">
+            <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+              スヌーズ
+            </p>
+          </div>
+          <div className="border-t border-border-subtle">
+            {SNOOZE_OPTIONS.map((opt) => (
+              <button
+                key={opt.durationMs}
+                role="menuitem"
+                onClick={() => handleSnooze(opt.durationMs, opt.label)}
+                className={MENU_ITEM_CLS}
+              >
+                <svg
+                  aria-hidden="true"
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="flex-shrink-0"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 3" />
+                </svg>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </PortalMenuShell>
+      )}
     </>
   );
 }
