@@ -222,7 +222,10 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
         const nextTab = CONTENT_TABS[nextIndex];
         setContentTab(nextTab.id);
         // フォーカスを次のタブボタンに移動 (roving tabindex pattern)
-        const nextEl = document.getElementById(`content-tab-${nextTab.id}`);
+        // tablist (e.currentTarget) に scope して querySelector する。document.getElementById だと
+        // listFocusMode で ArticleContentBody が二重 mount したとき content-tab-* id が重複し、
+        // 別 instance のタブに focus が移る (#tablist-scope)。
+        const nextEl = e.currentTarget.querySelector<HTMLElement>(`#content-tab-${nextTab.id}`);
         nextEl?.focus();
       },
       [contentTab, setContentTab],
