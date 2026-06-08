@@ -296,40 +296,6 @@ function FeedSidebar({
     window.location.href = "/api/feeds/export";
   }
 
-  function renderFeed(feed: Feed, isPinned: boolean, globalIdx: number) {
-    const count = unreadByFeed.get(feed.id) ?? 0;
-    return (
-      <FeedItem
-        key={feed.id}
-        feed={feed}
-        count={count}
-        isSelected={selectedFeedId === feed.id}
-        isPinned={isPinned}
-        animationIndex={globalIdx}
-        lastPublishedAt={lastPublishedByFeed.get(feed.id)}
-        onSelect={onSelectFeed}
-        onMarkAllRead={onMarkAllRead}
-        onDelete={deleteFeed}
-        onTogglePin={onTogglePinFeed}
-        onRename={renameFeed}
-        onRetry={onRetryFeed}
-        onReinfer={onReinferFeed}
-        onFilterSave={onSaveFilter}
-        onToggleNsfw={onToggleNsfwFeed}
-        onTogglePriority={onTogglePriorityFeed}
-        onSetCategory={onSetCategoryFeed}
-        groups={feedGroups}
-        onSetGroup={onSetGroupFeed}
-        onMute={onMuteFeed}
-        onSetView={onSetFeedView}
-        onSetDigestLimit={onSetDigestLimit}
-        onDragStartFeed={onSetGroupFeed ? setDraggedFeedId : undefined}
-        onDragEndFeed={onSetGroupFeed ? handleFeedDragEnd : undefined}
-        isDragging={draggedFeedId === feed.id}
-      />
-    );
-  }
-
   const {
     sortedTags,
     unreadByFeed,
@@ -351,6 +317,69 @@ function FeedSidebar({
   });
 
   const totalUnread = totalUnreadProp ?? totalUnreadCalc;
+
+  // #1076 同様: memo(CategorySection) / memo(FeedGroupsSection) を無効化しないため
+  // renderFeed を useCallback で stable 化する (feedSearch / inputOpen 等の無関係な
+  // state 変化での全フィードリスト再 render を防ぐ)。
+  const renderFeed = useCallback(
+    (feed: Feed, isPinned: boolean, globalIdx: number) => {
+      const count = unreadByFeed.get(feed.id) ?? 0;
+      return (
+        <FeedItem
+          key={feed.id}
+          feed={feed}
+          count={count}
+          isSelected={selectedFeedId === feed.id}
+          isPinned={isPinned}
+          animationIndex={globalIdx}
+          lastPublishedAt={lastPublishedByFeed.get(feed.id)}
+          onSelect={onSelectFeed}
+          onMarkAllRead={onMarkAllRead}
+          onDelete={deleteFeed}
+          onTogglePin={onTogglePinFeed}
+          onRename={renameFeed}
+          onRetry={onRetryFeed}
+          onReinfer={onReinferFeed}
+          onFilterSave={onSaveFilter}
+          onToggleNsfw={onToggleNsfwFeed}
+          onTogglePriority={onTogglePriorityFeed}
+          onSetCategory={onSetCategoryFeed}
+          groups={feedGroups}
+          onSetGroup={onSetGroupFeed}
+          onMute={onMuteFeed}
+          onSetView={onSetFeedView}
+          onSetDigestLimit={onSetDigestLimit}
+          onDragStartFeed={onSetGroupFeed ? setDraggedFeedId : undefined}
+          onDragEndFeed={onSetGroupFeed ? handleFeedDragEnd : undefined}
+          isDragging={draggedFeedId === feed.id}
+        />
+      );
+    },
+    [
+      unreadByFeed,
+      lastPublishedByFeed,
+      selectedFeedId,
+      onSelectFeed,
+      onMarkAllRead,
+      deleteFeed,
+      onTogglePinFeed,
+      renameFeed,
+      onRetryFeed,
+      onReinferFeed,
+      onSaveFilter,
+      onToggleNsfwFeed,
+      onTogglePriorityFeed,
+      onSetCategoryFeed,
+      feedGroups,
+      onSetGroupFeed,
+      onMuteFeed,
+      onSetFeedView,
+      onSetDigestLimit,
+      setDraggedFeedId,
+      handleFeedDragEnd,
+      draggedFeedId,
+    ],
+  );
 
   return (
     <aside
