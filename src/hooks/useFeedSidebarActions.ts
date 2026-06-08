@@ -8,7 +8,7 @@ import type { ConfirmOptions } from "./useConfirm";
 import { isArticleRead } from "../lib/article-filter";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "../lib/export-markdown";
 import { exportNotesToReadwise } from "../lib/export-readwise";
-import { exportArticlesToJson } from "../lib/export-json";
+import { exportArticlesToJson, exportNotesToJson } from "../lib/export-json";
 import { computeFeedStructuralSignature } from "../lib/feed-signature";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -257,6 +257,9 @@ export function useFeedSidebarActions({
       },
       onExportNotes: () => {
         exportNotesToMarkdown(articlesRef.current, notesRef.current, feedsRef.current);
+      },
+      onExportNotesJson: () => {
+        exportNotesToJson(articlesRef.current, notesRef.current, feedsRef.current);
       },
       onExportReadwise: () => {
         exportNotesToReadwise(articlesRef.current, notesRef.current, feedsRef.current);

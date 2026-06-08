@@ -71,3 +71,63 @@ export function exportArticlesToJson(
   const blob = new Blob([content], { type: "application/json; charset=utf-8" });
   downloadBlob(blob, `${data.label}_${data.exportedAt.slice(0, 10)}.json`);
 }
+
+/** メモ JSON エクスポートの 1 エントリ */
+export interface ExportedNoteJson {
+  title: string;
+  url: string;
+  feedTitle: string;
+  note: string;
+}
+
+/** メモ JSON エクスポートのトップレベル構造 */
+export interface NotesJsonExport {
+  exportedAt: string;
+  count: number;
+  notes: ExportedNoteJson[];
+}
+
+/**
+ * メモ付き記事を構造化 JSON オブジェクトに変換する純粋関数。
+ *
+ * @param articles 全記事一覧
+ * @param notes articleId → メモ本文 のマップ
+ * @param feeds フィード一覧（フィード名の解決用、`Feed.id === feedHash`）
+ * @param now exportedAt に使う現在時刻（テスト容易化のため引数化、既定は実行時刻）
+ */
+export function buildNotesJson(
+  articles: Article[],
+  notes: Record<string, string>,
+  feeds: Feed[],
+  now: Date = new Date(),
+): NotesJsonExport {
+  const noteIds = new Set(Object.keys(notes));
+  const feedMap = new Map(feeds.map((f) => [f.id, f]));
+  const selected = articles.filter((a) => noteIds.has(a.id));
+  return {
+    exportedAt: now.toISOString(),
+    count: selected.length,
+    notes: selected.map((a) => ({
+      title: a.title,
+      url: a.link,
+      feedTitle: feedMap.get(a.feedHash)?.title ?? "不明なフィード",
+      note: notes[a.id] ?? "",
+    })),
+  };
+}
+
+/**
+ * メモ付き記事を JSON ファイルとしてダウンロードする。
+ * 対象が 0 件のときは何もしない。
+ */
+export function exportNotesToJson(
+  articles: Article[],
+  notes: Record<string, string>,
+  feeds: Feed[],
+): void {
+  const data = buildNotesJson(articles, notes, feeds);
+  if (data.count === 0) return;
+  const content = JSON.stringify(data, null, 2);
+  const blob = new Blob([content], { type: "application/json; charset=utf-8" });
+  downloadBlob(blob, `メモ_${data.exportedAt.slice(0, 10)}.json`);
+}

@@ -18,6 +18,7 @@ interface Props {
   onExportMarkdown?: (mode: "bookmark" | "reading_list") => void;
   onExportJson?: (mode: "bookmark" | "reading_list") => void;
   onExportNotes?: () => void;
+  onExportNotesJson?: () => void;
   onExportReadwise?: () => void;
   noteCount?: number;
   install?: { canInstall: boolean; onInstall: () => void };
@@ -55,6 +56,7 @@ export default function SidebarFooter({
   onExportMarkdown,
   onExportJson,
   onExportNotes,
+  onExportNotesJson,
   onExportReadwise,
   noteCount,
   install,
@@ -416,6 +418,34 @@ export default function SidebarFooter({
                   />
                 </svg>
                 メモを Markdown で出力 ({noteCount}件)
+              </button>
+            )}
+
+            {/* メモ JSON エクスポート */}
+            {onExportNotesJson && (noteCount ?? 0) > 0 && (
+              <button
+                onClick={() => {
+                  onExportNotesJson();
+                  setMoreOpen(false);
+                }}
+                role="menuitem"
+                className={MENUITEM_CLASS}
+              >
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
+                  />
+                </svg>
+                メモを JSON で出力 ({noteCount}件)
               </button>
             )}
 

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { buildArticlesJson } from "../src/lib/export-json";
+import { buildArticlesJson, buildNotesJson } from "../src/lib/export-json";
 import { makeArticle } from "./helpers/article";
 import { makeFeed } from "./helpers/feed";
 
@@ -97,5 +97,54 @@ test.describe("buildArticlesJson", () => {
     delete (noDate as { publishedAt?: string | null }).publishedAt;
     const r2 = buildArticlesJson([noDate], new Set(["a2"]), [], "bookmark", NOW);
     expect(r2.articles[0].publishedAt).toBeNull();
+  });
+});
+
+test.describe("buildNotesJson", () => {
+  test("メモのない記事は空 / count 0", () => {
+    const result = buildNotesJson([makeArticle({ id: "a1" })], {}, [], NOW);
+    expect(result.count).toBe(0);
+    expect(result.notes).toEqual([]);
+  });
+
+  test("exportedAt は now の ISO 文字列", () => {
+    const result = buildNotesJson([], {}, [], NOW);
+    expect(result.exportedAt).toBe("2026-06-08T12:34:56.000Z");
+  });
+
+  test("メモのある記事のみ抽出し note 本文を含める", () => {
+    const articles = [
+      makeArticle({ id: "a1", title: "記事1" }),
+      makeArticle({ id: "a2", title: "記事2" }),
+    ];
+    const result = buildNotesJson(articles, { a1: "これはメモ" }, [], NOW);
+    expect(result.count).toBe(1);
+    expect(result.notes[0].title).toBe("記事1");
+    expect(result.notes[0].note).toBe("これはメモ");
+  });
+
+  test("feedTitle は Feed.id === article.feedHash で解決", () => {
+    const article = makeArticle({ id: "a1", feedHash: "feed-x" });
+    const feed = makeFeed({ id: "feed-x", title: "技術ブログ" });
+    const result = buildNotesJson([article], { a1: "メモ" }, [feed], NOW);
+    expect(result.notes[0].feedTitle).toBe("技術ブログ");
+  });
+
+  test("対応 Feed がないと feedTitle は「不明なフィード」", () => {
+    const article = makeArticle({ id: "a1", feedHash: "missing" });
+    const result = buildNotesJson([article], { a1: "メモ" }, [], NOW);
+    expect(result.notes[0].feedTitle).toBe("不明なフィード");
+  });
+
+  test("url は article.link", () => {
+    const article = makeArticle({ id: "a1", link: "https://example.com/x" });
+    const result = buildNotesJson([article], { a1: "メモ" }, [], NOW);
+    expect(result.notes[0].url).toBe("https://example.com/x");
+  });
+
+  test("改行を含むメモ本文もそのまま保持", () => {
+    const article = makeArticle({ id: "a1" });
+    const result = buildNotesJson([article], { a1: "1行目\n2行目" }, [], NOW);
+    expect(result.notes[0].note).toBe("1行目\n2行目");
   });
 });
