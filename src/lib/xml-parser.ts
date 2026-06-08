@@ -481,7 +481,10 @@ export function parseFeed(xml: string): ParsedFeed {
             "",
         );
         return {
-          guid: str(entry.id),
+          // <id> 欠落の Atom entry は link を fallback にする (RSS 2.0 `guid ?? link` /
+          // RDF `guid ?? rdf:about ?? link` と対称)。fallback がないと id-less entry が全て
+          // guid="" → 同一 article id に collapse して dedup で 1 件以外失われる。
+          guid: str(entry.id) || link,
           title: stripHtml(str(entry.title)),
           link,
           summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),

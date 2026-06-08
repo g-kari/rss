@@ -621,3 +621,43 @@ test.describe("parseFeed — summary 文字数制限緩和 (#721)", () => {
     expect(result.items[0].summary.length).toBe(1500);
   });
 });
+
+test.describe("parseFeed — Atom <id> 欠落時の link fallback (#atom-guid-fallback)", () => {
+  test("id-less Atom entry は link を guid に採用し、別 entry が collapse しない", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>No-ID Atom</title>
+  <entry>
+    <title>記事 1</title>
+    <link href="https://example.com/a"/>
+    <summary>本文 1</summary>
+  </entry>
+  <entry>
+    <title>記事 2</title>
+    <link href="https://example.com/b"/>
+    <summary>本文 2</summary>
+  </entry>
+</feed>`;
+    const result = parseFeed(xml);
+    expect(result.items).toHaveLength(2);
+    // guid が link fallback で互いに異なる (両方 "" に collapse しない)
+    expect(result.items[0].guid).toBe("https://example.com/a");
+    expect(result.items[1].guid).toBe("https://example.com/b");
+    expect(result.items[0].guid).not.toBe(result.items[1].guid);
+  });
+
+  test("<id> がある Atom entry は従来通り id を guid に採用する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>With ID</title>
+  <entry>
+    <id>urn:uuid:abc</id>
+    <title>記事</title>
+    <link href="https://example.com/c"/>
+    <summary>本文</summary>
+  </entry>
+</feed>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].guid).toBe("urn:uuid:abc");
+  });
+});
