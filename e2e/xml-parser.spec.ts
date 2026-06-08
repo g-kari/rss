@@ -661,3 +661,40 @@ test.describe("parseFeed — Atom <id> 欠落時の link fallback (#atom-guid-fa
     expect(result.items[0].guid).toBe("urn:uuid:abc");
   });
 });
+
+test.describe("parseFeed — RSS 2.0 の dc:date fallback (#rss2-dcdate)", () => {
+  test("pubDate がなく dc:date のみの RSS 2.0 item は dc:date を publishedAt に採用する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>DC Date RSS</title>
+    <item>
+      <title>記事</title>
+      <link>https://example.com/dc</link>
+      <guid>https://example.com/dc</guid>
+      <dc:date>2026-02-15T10:00:00Z</dc:date>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].publishedAt).toBe(new Date("2026-02-15T10:00:00Z").toISOString());
+  });
+
+  test("pubDate と dc:date が両方あるとき pubDate を優先する (RSS 2.0 native 優先)", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Both Dates</title>
+    <item>
+      <title>記事</title>
+      <link>https://example.com/both</link>
+      <guid>https://example.com/both</guid>
+      <pubDate>Wed, 01 Jan 2025 00:00:00 GMT</pubDate>
+      <dc:date>2026-02-15T10:00:00Z</dc:date>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].publishedAt).toBe(new Date("2025-01-01T00:00:00Z").toISOString());
+  });
+});
