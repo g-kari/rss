@@ -50,12 +50,39 @@ export function computeMergedSet(
   return new Set([...local, ...newValues]);
 }
 
+/**
+ * notes の local ∪ server マージ純粋関数 (server-wins)。computeMergedSet と同様に、
+ * まだ flush されていないローカル変更を server 値から守る:
+ * - `pendingRemoved`: 削除した note key を server 値から除外 (resurrection 防止、#1084)
+ * - `pendingChanged`: 編集中の note key を server 値で上書きしない (flush await 中の
+ *   再編集巻き戻り防止、tags channel の pendingTagChangedRef と対称、#1113)
+ */
+export function computeMergedNotes(
+  localNotes: Record<string, string>,
+  serverNotes: Record<string, string>,
+  pendingRemoved: Set<string>,
+  pendingChanged: Set<string>,
+): Record<string, string> {
+  const merged: Record<string, string> = {};
+  for (const [k, v] of Object.entries(localNotes)) {
+    if (pendingRemoved.has(k)) continue;
+    merged[k] = v;
+  }
+  for (const [k, v] of Object.entries(serverNotes)) {
+    if (pendingRemoved.has(k)) continue;
+    if (pendingChanged.has(k)) continue; // local 編集中の key は server 値で上書きしない
+    merged[k] = v; // server-wins
+  }
+  return merged;
+}
+
 export interface ApplyServerStateDeps {
   stateRef: MutableRefObject<ReadStateSets>;
   pendingAddedRef: MutableRefObject<PendingSets>;
   pendingRemovedRef: MutableRefObject<PendingSets>;
   pendingTagChangedRef: MutableRefObject<Set<string>>;
   pendingTagRemovedRef: MutableRefObject<Set<string>>;
+  pendingNotesChangedRef: MutableRefObject<Set<string>>;
   pendingNotesRemovedRef: MutableRefObject<Set<string>>;
   dispatchers: SetStateDispatchers;
   otherDispatchers: OtherStateDispatchers;
@@ -68,6 +95,7 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
+    pendingNotesChangedRef,
     pendingNotesRemovedRef,
     dispatchers,
     otherDispatchers,
@@ -199,18 +227,12 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
         }
       }
       if ("notes" in state) {
-        // #1084: pending 削除 (pendingNotesRemovedRef) の key は server-wins union から除外して
-        // 削除した note の復活を防ぐ (tags channel の pendingTagRemovedRef と対称)。
-        const serverNotes = state.notes ?? {};
-        const merged: Record<string, string> = {};
-        for (const [k, v] of Object.entries(stateRef.current.notes)) {
-          if (pendingNotesRemovedRef.current.has(k)) continue;
-          merged[k] = v;
-        }
-        for (const [k, v] of Object.entries(serverNotes)) {
-          if (pendingNotesRemovedRef.current.has(k)) continue;
-          merged[k] = v; // server-wins (同 key は server 値で上書き)
-        }
+        const merged = computeMergedNotes(
+          stateRef.current.notes,
+          state.notes ?? {},
+          pendingNotesRemovedRef.current,
+          pendingNotesChangedRef.current,
+        );
         // #686 同等の構造的等価性ガード: 内容変化なしなら setState を skip し
         // reference を保持する。useFilteredArticles の noteIds useMemo が notes を
         // 依存に持つため、reference 不安定だと 2 秒毎の同期で全記事フィルター pass

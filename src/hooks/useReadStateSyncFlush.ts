@@ -81,6 +81,7 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
+    pendingNotesChangedRef,
     pendingNotesRemovedRef,
     globalFilterDirtyRef,
     applyServerState,
@@ -92,6 +93,7 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
     pendingRemovedRef,
     pendingTagChangedRef,
     pendingTagRemovedRef,
+    pendingNotesChangedRef,
     pendingNotesRemovedRef,
     globalFilterDirtyRef,
   };
