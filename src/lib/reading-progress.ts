@@ -58,3 +58,17 @@ export function buildAnchorSelector(index: number): string {
   // :nth-child は 1 始まり
   return `.article-content > :nth-child(${index + 1})`;
 }
+
+/**
+ * `buildAnchorSelector` が生成する `.article-content > :nth-child(N)` を、
+ * contentRef.current (= .article-content 要素自身) を起点に `querySelector` するための
+ * `:scope` 相対セレクタへ変換する。
+ *
+ * 復元時に `document.querySelector` で global 検索すると、listFocusMode の overlay と
+ * メインビューで `.article-content` が複数存在するとき document 順で最初 (別記事) に
+ * マッチする。`element.querySelector(":scope > :nth-child(N)")` で自身の subtree に限定する。
+ * 先頭が `.article-content` でないセレクタ (将来変更時) はそのまま返す。
+ */
+export function scopeAnchorToContent(anchor: string): string {
+  return anchor.replace(/^\.article-content\b/, ":scope");
+}
