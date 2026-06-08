@@ -41,6 +41,7 @@ type MockSource = {
 };
 
 let createdSources: MockSource[] = [];
+let createdContexts: MockAudioContext[] = [];
 let startErrorOnce: Error | null = null;
 /**
  * true なら start() は natural-end (`source.onended`) を発火させない。
@@ -53,7 +54,7 @@ class MockAudioContext {
   destination = {} as AudioDestinationNode;
 
   constructor() {
-    /* no-op */
+    createdContexts.push(this);
   }
 
   createBuffer(_ch: number, length: number, sampleRate: number): AudioBuffer {
@@ -122,6 +123,7 @@ function resetMocks() {
   synthesizeWithCloningMock.mockReset();
   disposeMock.mockReset();
   createdSources = [];
+  createdContexts = [];
   startErrorOnce = null;
   suppressNaturalEnd = false;
 
@@ -251,6 +253,39 @@ describe("usePiperTts (#761 piper-plus / #766 自前 BufferSource 再生)", () =
     act(() => result.current.speak("こんにちは"));
     await waitFor(() => expect(result.current.endedCount).toBeGreaterThan(0));
     expect(result.current.isPlaying).toBe(false);
+  });
+
+  it("#1114 pause() で AudioContext.suspend + isPaused=true", async () => {
+    suppressNaturalEnd = true; // 自然完了させず再生中状態を維持
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:tsukuyomi"));
+    act(() => result.current.speak("こんにちは"));
+    await waitFor(() => expect(result.current.isPlaying).toBe(true));
+    act(() => result.current.pause());
+    expect(result.current.isPaused).toBe(true);
+    expect(createdContexts.at(-1)?.state).toBe("suspended");
+  });
+
+  it("#1114 resume() で AudioContext.resume + isPaused=false", async () => {
+    suppressNaturalEnd = true;
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:tsukuyomi"));
+    act(() => result.current.speak("こんにちは"));
+    await waitFor(() => expect(result.current.isPlaying).toBe(true));
+    act(() => result.current.pause());
+    expect(result.current.isPaused).toBe(true);
+    act(() => result.current.resume());
+    expect(result.current.isPaused).toBe(false);
+    expect(createdContexts.at(-1)?.state).toBe("running");
+  });
+
+  it("#1114 再生中でない時 pause() は no-op (isPaused 変わらず)", async () => {
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.pause());
+    expect(result.current.isPaused).toBe(false);
   });
 
   it("synthesize 失敗で errorCount++ + lastError=model-error", async () => {
