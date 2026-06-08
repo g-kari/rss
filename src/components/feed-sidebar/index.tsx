@@ -170,6 +170,7 @@ function FeedSidebar({
     onExportMarkdown,
     onExportJson,
     onExportNotes,
+    onExportNotesJson,
     onExportReadwise,
     onSelectCollection,
     onCreateCollection,
@@ -696,6 +697,7 @@ function FeedSidebar({
         onExportMarkdown={onExportMarkdown}
         onExportJson={onExportJson}
         onExportNotes={onExportNotes}
+        onExportNotesJson={onExportNotesJson}
         onExportReadwise={onExportReadwise}
         noteCount={noteCount}
         install={install}

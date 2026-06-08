@@ -43,6 +43,7 @@ export interface FeedSidebarActions {
   onExportMarkdown?: (mode: "bookmark" | "reading_list") => void;
   onExportJson?: (mode: "bookmark" | "reading_list") => void;
   onExportNotes?: () => void;
+  onExportNotesJson?: () => void;
   onExportReadwise?: () => void;
   onSelectCollection?: (id: string | null) => void;
   onCreateCollection?: (name: string) => Promise<Collection | { error: string }>;
