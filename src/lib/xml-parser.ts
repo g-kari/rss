@@ -454,7 +454,10 @@ export function parseFeed(xml: string): ParsedFeed {
           content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(item)),
           author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
-          publishedAt: parseDate(str(item.pubDate) || null),
+          // RSS 2.0 native は pubDate。一部 feed は Dublin Core (dc:date) のみで日付を提供する
+          // ため fallback にする (dc:creator を既に読んでおり dc:date も RSS2_SKIP_KEYS 済 =
+          // date として消費する前提、RDF の dc:date || pubDate と対称)。
+          publishedAt: parseDate(str(item.pubDate) || str(item["dc:date"]) || null),
           categories: toArray(item.category)
             .map((c) => str(c))
             .filter(Boolean),
