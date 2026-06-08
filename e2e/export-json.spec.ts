@@ -1,0 +1,101 @@
+import { test, expect } from "@playwright/test";
+import { buildArticlesJson } from "../src/lib/export-json";
+import { makeArticle } from "./helpers/article";
+import { makeFeed } from "./helpers/feed";
+
+const NOW = new Date("2026-06-08T12:34:56.000Z");
+
+test.describe("buildArticlesJson", () => {
+  test("空の ids では count 0 + articles 空配列", () => {
+    const result = buildArticlesJson([makeArticle()], new Set(), [], "bookmark", NOW);
+    expect(result.count).toBe(0);
+    expect(result.articles).toEqual([]);
+  });
+
+  test("mode bookmark の label は「ブックマーク」", () => {
+    const result = buildArticlesJson([], new Set(), [], "bookmark", NOW);
+    expect(result.label).toBe("ブックマーク");
+  });
+
+  test("mode reading_list の label は「後で読む」", () => {
+    const result = buildArticlesJson([], new Set(), [], "reading_list", NOW);
+    expect(result.label).toBe("後で読む");
+  });
+
+  test("exportedAt は now の ISO 文字列", () => {
+    const result = buildArticlesJson([], new Set(), [], "bookmark", NOW);
+    expect(result.exportedAt).toBe("2026-06-08T12:34:56.000Z");
+  });
+
+  test("対象 ID の記事のみ抽出し count と一致する", () => {
+    const articles = [
+      makeArticle({ id: "a1" }),
+      makeArticle({ id: "a2" }),
+      makeArticle({ id: "a3" }),
+    ];
+    const result = buildArticlesJson(articles, new Set(["a1", "a3"]), [], "bookmark", NOW);
+    expect(result.count).toBe(2);
+    expect(result.articles.map((a) => a.title)).toHaveLength(2);
+  });
+
+  test("feedTitle は Feed.id === article.feedHash で解決される", () => {
+    const article = makeArticle({ id: "a1", feedHash: "feed-x" });
+    const feed = makeFeed({ id: "feed-x", title: "技術ブログ" });
+    const result = buildArticlesJson([article], new Set(["a1"]), [feed], "bookmark", NOW);
+    expect(result.articles[0].feedTitle).toBe("技術ブログ");
+  });
+
+  test("対応 Feed がないと feedTitle は「不明なフィード」", () => {
+    const article = makeArticle({ id: "a1", feedHash: "missing" });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0].feedTitle).toBe("不明なフィード");
+  });
+
+  test("url は article.link", () => {
+    const article = makeArticle({ id: "a1", link: "https://example.com/x" });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0].url).toBe("https://example.com/x");
+  });
+
+  test("summary は HTML 除去される", () => {
+    const article = makeArticle({ id: "a1", summary: "<p>こんにちは<b>世界</b></p>" });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0].summary).toBe("こんにちは世界");
+  });
+
+  test("summary は 300 文字に clamp される", () => {
+    const article = makeArticle({ id: "a1", summary: "あ".repeat(500) });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0].summary).toHaveLength(300);
+  });
+
+  test("summary が空なら空文字", () => {
+    const article = makeArticle({ id: "a1", summary: "" });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0].summary).toBe("");
+  });
+
+  test("author 未設定なら null", () => {
+    const article = makeArticle({ id: "a1" });
+    delete (article as { author?: string }).author;
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0].author).toBeNull();
+  });
+
+  test("author 設定済みならその値", () => {
+    const article = makeArticle({ id: "a1", author: "山田太郎" });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0].author).toBe("山田太郎");
+  });
+
+  test("publishedAt はそのまま渡る / 無ければ null", () => {
+    const withDate = makeArticle({ id: "a1", publishedAt: "2026-05-01T00:00:00Z" });
+    const r1 = buildArticlesJson([withDate], new Set(["a1"]), [], "bookmark", NOW);
+    expect(r1.articles[0].publishedAt).toBe("2026-05-01T00:00:00Z");
+
+    const noDate = makeArticle({ id: "a2" });
+    delete (noDate as { publishedAt?: string | null }).publishedAt;
+    const r2 = buildArticlesJson([noDate], new Set(["a2"]), [], "bookmark", NOW);
+    expect(r2.articles[0].publishedAt).toBeNull();
+  });
+});

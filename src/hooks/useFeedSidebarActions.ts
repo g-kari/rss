@@ -8,6 +8,7 @@ import type { ConfirmOptions } from "./useConfirm";
 import { isArticleRead } from "../lib/article-filter";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "../lib/export-markdown";
 import { exportNotesToReadwise } from "../lib/export-readwise";
+import { exportArticlesToJson } from "../lib/export-json";
 import { computeFeedStructuralSignature } from "../lib/feed-signature";
 import { useSyncedRef } from "./useSyncedRef";
 
@@ -249,6 +250,10 @@ export function useFeedSidebarActions({
       onExportMarkdown: (mode) => {
         const ids = mode === "reading_list" ? readingListIdsRef.current : bookmarkIdsRef.current;
         exportArticlesToMarkdown(articlesRef.current, ids, feedsRef.current, mode);
+      },
+      onExportJson: (mode) => {
+        const ids = mode === "reading_list" ? readingListIdsRef.current : bookmarkIdsRef.current;
+        exportArticlesToJson(articlesRef.current, ids, feedsRef.current, mode);
       },
       onExportNotes: () => {
         exportNotesToMarkdown(articlesRef.current, notesRef.current, feedsRef.current);

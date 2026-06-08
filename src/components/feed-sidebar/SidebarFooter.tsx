@@ -16,6 +16,7 @@ interface Props {
   onShowStats: () => void;
   onExportOpml: () => void;
   onExportMarkdown?: (mode: "bookmark" | "reading_list") => void;
+  onExportJson?: (mode: "bookmark" | "reading_list") => void;
   onExportNotes?: () => void;
   onExportReadwise?: () => void;
   noteCount?: number;
@@ -52,6 +53,7 @@ export default function SidebarFooter({
   onShowStats,
   onExportOpml,
   onExportMarkdown,
+  onExportJson,
   onExportNotes,
   onExportReadwise,
   noteCount,
@@ -331,6 +333,60 @@ export default function SidebarFooter({
                     />
                   </svg>
                   後で読む → Markdown
+                </button>
+              </>
+            )}
+
+            {/* JSONエクスポート */}
+            {onExportJson && (
+              <>
+                <button
+                  onClick={() => {
+                    onExportJson("bookmark");
+                    setMoreOpen(false);
+                  }}
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
+                    />
+                  </svg>
+                  ブックマーク → JSON
+                </button>
+                <button
+                  onClick={() => {
+                    onExportJson("reading_list");
+                    setMoreOpen(false);
+                  }}
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
+                    />
+                  </svg>
+                  後で読む → JSON
                 </button>
               </>
             )}

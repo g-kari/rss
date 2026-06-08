@@ -41,6 +41,7 @@ export interface FeedSidebarActions {
   onDismissRecommendation?: (id: string) => void;
   onRefreshRecommendations?: () => void;
   onExportMarkdown?: (mode: "bookmark" | "reading_list") => void;
+  onExportJson?: (mode: "bookmark" | "reading_list") => void;
   onExportNotes?: () => void;
   onExportReadwise?: () => void;
   onSelectCollection?: (id: string | null) => void;

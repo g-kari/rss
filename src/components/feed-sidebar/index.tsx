@@ -168,6 +168,7 @@ function FeedSidebar({
     onDismissRecommendation,
     onRefreshRecommendations,
     onExportMarkdown,
+    onExportJson,
     onExportNotes,
     onExportReadwise,
     onSelectCollection,
@@ -693,6 +694,7 @@ function FeedSidebar({
         onShowFeedHealth={() => setShowFeedHealth(true)}
         onExportOpml={exportOpml}
         onExportMarkdown={onExportMarkdown}
+        onExportJson={onExportJson}
         onExportNotes={onExportNotes}
         onExportReadwise={onExportReadwise}
         noteCount={noteCount}
