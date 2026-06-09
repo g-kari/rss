@@ -25,7 +25,7 @@ export function parseChromeMajorVersion(userAgent: string): number | null {
 }
 
 /** `navigator.userAgent` から Chrome のメジャーバージョンを安全に取得する。SSR 環境では null を返す。 */
-export function getChromeVersionSafe(): number | null {
+function getChromeVersionSafe(): number | null {
   if (typeof navigator === "undefined") return null;
   return parseChromeMajorVersion(navigator.userAgent);
 }
