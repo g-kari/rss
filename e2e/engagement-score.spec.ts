@@ -289,3 +289,41 @@ test.describe("topScoredFeeds — 統合: scoreFeedEngagement との連携", () 
     expect(top[0]).toBe("feedNew");
   });
 });
+
+test.describe("timeDecay 防御 — 不正 / 未来 timestamp (#timedecay-guard)", () => {
+  test("不正 timestamp の entry は score 0 (NaN を伝播しない)", () => {
+    const entries: EngagementEntry[] = [
+      { articleId: "a1", feedHash: "feedBad", action: "like", timestamp: "not-a-date" },
+    ];
+    const scores = scoreFeedEngagement(entries, NOW);
+    expect(scores.get("feedBad") ?? 0).toBe(0);
+    expect(Number.isNaN(scores.get("feedBad") ?? 0)).toBe(false);
+  });
+
+  test("正常 + 不正 timestamp 混在 feed は正常分のみ集計される (NaN 合計で脱落しない)", () => {
+    const entries: EngagementEntry[] = [
+      entry("feedMix", "like", 0), // 正常 (decay ≈ 1.0 → 5.0)
+      { articleId: "a2", feedHash: "feedMix", action: "bookmark", timestamp: "" }, // 不正 → 0
+    ];
+    const scores = scoreFeedEngagement(entries, NOW);
+    const s = scores.get("feedMix") ?? NaN;
+    expect(Number.isFinite(s)).toBe(true);
+    expect(s).toBeCloseTo(5.0, 1); // 正常 like 分のみ
+  });
+
+  test("未来 timestamp (時計戻り) は decay を 1.0 に clamp し増幅しない", () => {
+    const entries: EngagementEntry[] = [
+      {
+        articleId: "a3",
+        feedHash: "feedFuture",
+        action: "like",
+        timestamp: new Date(NOW + 30 * DAY_MS).toISOString(),
+      },
+    ];
+    const scores = scoreFeedEngagement(entries, NOW);
+    const s = scores.get("feedFuture") ?? NaN;
+    // decay <= 1.0 にクランプ → 5.0 (weight) を超えない
+    expect(s).toBeLessThanOrEqual(5.0);
+    expect(s).toBeCloseTo(5.0, 1);
+  });
+});
