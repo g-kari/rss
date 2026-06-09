@@ -101,21 +101,42 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
   const userRef = useSyncedRef(user);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirtyRef = useRef(false);
+  // flush 実行中フラグ。await saveReadState の最中に online / visibilitychange / beforeunload
+  // 経由で 2 回目の flushToServer が並行起動すると、prepareFlush が pending を全リセット済の状態で
+  // 失敗パスの restorePending が別 flush のリセット済 ref に古い id を重複混入させる race を防ぐ。
+  const isFlushingRef = useRef(false);
+  // in-flight 中に来た flush 要求。完了後に 1 度だけ再 flush して取りこぼしを防ぐ。
+  const flushAgainRef = useRef(false);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
 
   const flushToServer = useCallback(async () => {
     if (!userRef.current) return;
-    const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
-    const result = await saveReadState(body);
-    if (result.ok && result.state) {
-      setHasPendingChanges(false);
-      applyServerState(result.state);
-    } else {
-      restorePending(pendingRefs, snapshot);
-      setHasPendingChanges(true);
+    if (isFlushingRef.current) {
+      // 進行中の flush 完了後に再実行を予約 (並行 flush で snapshot/restore が交錯するのを防ぐ)
+      flushAgainRef.current = true;
+      return;
+    }
+    isFlushingRef.current = true;
+    try {
+      const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
+      const result = await saveReadState(body);
+      if (result.ok && result.state) {
+        setHasPendingChanges(false);
+        applyServerState(result.state);
+      } else {
+        restorePending(pendingRefs, snapshot);
+        setHasPendingChanges(true);
+      }
+    } finally {
+      isFlushingRef.current = false;
+      if (flushAgainRef.current) {
+        flushAgainRef.current = false;
+        void flushToServer();
+      }
     }
     // useSyncedRef の戻り値は identity 不変のため deps 配列から除外 (react-hook-patterns.md 規範)
     // pendingRefs / globalFilterRef / stateRef / userRef はいずれも ref (identity 不変)
+    // flushToServer 自己参照 (in-flight 後の再 flush) も deps 不要 (関数 identity は安定)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyServerState]);
 
