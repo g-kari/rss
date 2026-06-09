@@ -17,13 +17,13 @@ type BufferEntry = {
 };
 
 /** バッファに積まれた未送信エントリを R2 に送信する */
-async function flushBuffer(): Promise<void> {
-  const buffer = loadJson<BufferEntry[]>(BUFFER_KEY, []);
-  if (buffer.length === 0) return;
+export async function flushBuffer(): Promise<void> {
+  const snapshot = loadJson<BufferEntry[]>(BUFFER_KEY, []);
+  if (snapshot.length === 0) return;
 
   // 成功したエントリのみバッファから除去（一部失敗しても成功分は重複送信しない）
   const results = await Promise.allSettled(
-    buffer.map((entry) =>
+    snapshot.map((entry) =>
       apiFetch("/api/engagement", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -31,8 +31,14 @@ async function flushBuffer(): Promise<void> {
       }),
     ),
   );
-  const remaining = buffer.filter((_, i) => results[i].status === "rejected");
-  saveJson(BUFFER_KEY, remaining);
+  // await 中に recordEngagement が末尾追加した entry を失わないよう再 load する。
+  // stale な snapshot をそのまま saveJson で書き戻すと concurrent 追加分が消える
+  // (read-modify-write across await の stale write-back、#1124 と同 class の lost update)。
+  // snapshot 分のうち失敗分 + await 中に末尾追加された分 (index snapshot.length 以降) を保持する。
+  const current = loadJson<BufferEntry[]>(BUFFER_KEY, []);
+  const failedFromSnapshot = snapshot.filter((_, i) => results[i].status === "rejected");
+  const addedDuringFlush = current.slice(snapshot.length);
+  saveJson(BUFFER_KEY, [...failedFromSnapshot, ...addedDuringFlush]);
 }
 
 /**
