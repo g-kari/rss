@@ -217,7 +217,11 @@ export function getDateRangeStart(range: DateRange): Date | null {
  */
 export function timeAgo(iso: string | null): string {
   if (!iso) return "";
-  const diff = Date.now() - new Date(iso).getTime();
+  // 不正 date (corrupt R2 lastErrorAt 等) は toLocaleDateString が "Invalid Date" を
+  // 表示してしまうため、空文字で返す (#811/#812 の unknown 受け defensive と同方針)。
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const diff = Date.now() - t;
   if (diff < 60_000) return "たった今";
   const mins = Math.floor(diff / 60_000);
   if (mins < 60) return `${mins}分前`;

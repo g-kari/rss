@@ -154,6 +154,12 @@ test.describe("timeAgo — 特殊入力", () => {
     const future = new Date(Date.now() + 60_000).toISOString();
     expect(timeAgo(future)).toBe("たった今");
   });
+
+  test("不正な日付文字列は空文字列を返す（Invalid Date 表示を防ぐ）", () => {
+    expect(timeAgo("not-a-date")).toBe("");
+    expect(timeAgo("")).toBe("");
+    expect(timeAgo("2026-13-45T99:99:99Z")).toBe("");
+  });
 });
 
 test.describe("timeAgo — たった今（1 分未満）", () => {
