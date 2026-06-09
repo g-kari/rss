@@ -106,6 +106,29 @@ test.describe("hasCatastrophicBacktracking", () => {
     const compiled = normalizeFilter(makeFilter(["/(a+)/"]));
     expect(compiled.includePatterns[0]).toBeInstanceOf(RegExp);
   });
+
+  test("グループなし隣接量指定子 a*a*a*c を検出して null にする (ReDoS)", () => {
+    // lgtm[js/redos] — intentional fixture for ReDoS detection test
+    // codeql[js/redos] — intentional fixture (production 経路で compile されない)
+    const compiled = normalizeFilter(makeFilter(["/a*a*a*c/"]));
+    expect(compiled.includePatterns[0]).toBeNull();
+  });
+
+  test("グループなし隣接量指定子 \\d*\\d* を検出して null にする (ReDoS)", () => {
+    // lgtm[js/redos] — intentional fixture for ReDoS detection test
+    const compiled = normalizeFilter(makeFilter(["/\\d*\\d*/"]));
+    expect(compiled.includePatterns[0]).toBeNull();
+  });
+
+  test("異なるアトムの隣接量指定子 a*b* は安全 (オーバーラップなし)", () => {
+    const compiled = normalizeFilter(makeFilter(["/a*b*/"]));
+    expect(compiled.includePatterns[0]).toBeInstanceOf(RegExp);
+  });
+
+  test("セパレータで区切られた量指定子 \\d+-\\d+ は安全", () => {
+    const compiled = normalizeFilter(makeFilter(["/\\d+-\\d+/"]));
+    expect(compiled.includePatterns[0]).toBeInstanceOf(RegExp);
+  });
 });
 
 // ── isRegexKeyword (normalizeFilter 経由) ──────────────────────
