@@ -41,6 +41,12 @@ function hasCatastrophicBacktracking(pattern: string): boolean {
   // {n,} / {n,m} を + に正規化してから検査することで、(a{2,})+ のような
   // 上限なし繰り返しをネストした量指定子として検出できるようにする
   const normalized = stripped.replace(/\{\d+,\d*\}/g, "+");
+  // グループ化されていない隣接同一アトムの上限なし量指定子 (a*a* / \d*\d* / .*.* 等) を検出。
+  // 以降のチェックは全て括弧グループ `(...)` を前提とするため、ungrouped な
+  // `a*a*a*...c` 型 (同一文字に複数の量指定子が連続) の指数的バックトラッキングを
+  // 取りこぼす。stripped 後 (char class / escape は X) の文字列で「アトム + 量指定子」が
+  // 同一アトムで隣接する構造を backreference で検出する。
+  if (/([^()|])[+*]\1[+*]/.test(normalized)) return true;
   // グループ内に量指定子があり、そのグループ自体にも量指定子がある構造を検出
   // ※ {n,} / {n,m} は正規化済みで + になっているため + と * のみ検査すれば十分
   if (/\([^)]*[+*][^)]*\)[+*?]/.test(normalized)) return true;
