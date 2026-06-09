@@ -50,6 +50,8 @@ interface RawParsedXml {
       title?: XmlTextNode;
       link?: string;
       item?: FeedItem | FeedItem[];
+      /** channel-level 著者 (item に author がないとき fallback、Atom feed.author / JSON feedAuthors と対称) */
+      "dc:creator"?: XmlTextNode;
     };
   };
   feed?: {
@@ -63,6 +65,8 @@ interface RawParsedXml {
     channel?: {
       title?: XmlTextNode;
       link?: string;
+      /** channel-level 著者 (item に author がないとき fallback) */
+      "dc:creator"?: XmlTextNode;
     };
     item?: FeedItem | FeedItem[];
   };
@@ -453,7 +457,11 @@ export function parseFeed(xml: string): ParsedFeed {
           summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),
           content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(item)),
-          author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
+          // item に著者がないとき channel-level dc:creator に fallback (Atom feed.author /
+          // JSON feedAuthors と対称、単一著者ブログの channel dc:creator のみ提供パターン対応)。
+          author: stripHtml(
+            str(item["dc:creator"]) || authorStr(item.author) || str(ch["dc:creator"]),
+          ).trim(),
           // RSS 2.0 native は pubDate。一部 feed は Dublin Core (dc:date) のみで日付を提供する
           // ため fallback にする (dc:creator を既に読んでおり dc:date も RSS2_SKIP_KEYS 済 =
           // date として消費する前提、RDF の dc:date || pubDate と対称)。
@@ -527,7 +535,10 @@ export function parseFeed(xml: string): ParsedFeed {
           summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),
           content: applyCorePipeline(raw, link),
           ogImage: safeUrl(extractImage(item)),
-          author: stripHtml(str(item["dc:creator"]) || authorStr(item.author)).trim(),
+          // item に著者がないとき channel-level dc:creator に fallback (RSS 2.0 / Atom / JSON と対称)。
+          author: stripHtml(
+            str(item["dc:creator"]) || authorStr(item.author) || str(rdf.channel?.["dc:creator"]),
+          ).trim(),
           // RSS 1.0 は dc:date（ISO 8601）が主要。pubDate は一部サイト独自の拡張として存在しうるためフォールバックに使う
           publishedAt: parseDate(str(item["dc:date"]) || str(item.pubDate) || null),
           categories: toArray(item.category)
