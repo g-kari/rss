@@ -14,12 +14,14 @@ function escapeMarkdown(s: string): string {
  * @param ids エクスポート対象の記事 ID セット
  * @param feeds フィード一覧（フィード名の解決用）
  * @param mode 出力ファイル名に使うラベル
+ * @param labelOverride 指定時は mode 由来ラベルの代わりに使う（コレクション名等）。見出し / ファイル名に反映
  */
 export function exportArticlesToMarkdown(
   articles: Article[],
   ids: Set<string>,
   feeds: Feed[],
   mode: "bookmark" | "reading_list",
+  labelOverride?: string,
 ): void {
   const feedTitleMap = buildFeedTitleMap(feeds);
   const selected = articles.filter((a) => ids.has(a.id));
@@ -31,7 +33,7 @@ export function exportArticlesToMarkdown(
     month: "2-digit",
     day: "2-digit",
   });
-  const label = mode === "reading_list" ? "後で読む" : "ブックマーク";
+  const label = labelOverride ?? (mode === "reading_list" ? "後で読む" : "ブックマーク");
   const lines: string[] = [`# ${label} — ${today}`, "", `> ${selected.length} 件`, ""];
 
   // フィードごとにグループ化

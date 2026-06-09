@@ -641,6 +641,8 @@ export default function AppShell({
     createCollection,
     renameCollection,
     deleteCollection,
+    collectionArticleIds: collectionArticleIds ?? new Set<string>(),
+    selectedCollectionName: collections.find((c) => c.id === selectedCollectionId)?.name ?? null,
   });
 
   const { selectArticle, articleDetailOverlayOpen, closeArticleDetailOverlay } =

@@ -172,6 +172,9 @@ function FeedSidebar({
     onExportNotes,
     onExportNotesJson,
     onExportReadwise,
+    onExportCollectionMarkdown,
+    onExportCollectionJson,
+    selectedCollectionName,
     onSelectCollection,
     onCreateCollection,
   } = useFeedSidebarContext();
@@ -735,6 +738,9 @@ function FeedSidebar({
         onExportNotes={onExportNotes}
         onExportNotesJson={onExportNotesJson}
         onExportReadwise={onExportReadwise}
+        onExportCollectionMarkdown={onExportCollectionMarkdown}
+        onExportCollectionJson={onExportCollectionJson}
+        selectedCollectionName={selectedCollectionName}
         noteCount={noteCount}
         install={install}
         push={push}
