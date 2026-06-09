@@ -134,7 +134,10 @@ export function fixImageDimensions(html: string, pageUrl = ""): string {
     let a = attrs.replace(
       /\s+style\s*=\s*(?:"([^"]*)"|'([^']*)')/gi,
       (_s, dq: string, sq: string) => {
-        const s2 = (dq ?? sq).replace(/\b(?:width|height)\s*:[^;]+;?/gi, "").trim();
+        // standalone な width: / height: のみ除去する。\b だと max-width / min-width /
+        // line-height の hyphen 直後で boundary が成立して `max-width: 100%` を `max-` に
+        // 破壊するため、直前が word 文字 / hyphen でないことを lookbehind で保証する。
+        const s2 = (dq ?? sq).replace(/(?<![\w-])(?:width|height)\s*:[^;]+;?/gi, "").trim();
         return s2 ? ` style="${s2}"` : "";
       },
     );
