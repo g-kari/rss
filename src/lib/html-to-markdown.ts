@@ -239,11 +239,19 @@ export function htmlToMarkdown(html: string): string {
 
 /** YAML 文字列値を安全にクォートする（ダブルクォート含む場合はシングルクォートで囲む） */
 function yamlValue(value: string): string {
-  if (value.includes('"') || value.includes("\\") || value.includes(":") || value.includes("#")) {
+  // frontmatter のスカラ値は単一行が妥当。生の改行 (RSS title の CDATA / 整形由来) を
+  // クォート内にそのまま入れると flow scalar が複数行に跨り invalid YAML になるため空白化する。
+  const singleLine = value.replace(/[\r\n]+/g, " ");
+  if (
+    singleLine.includes('"') ||
+    singleLine.includes("\\") ||
+    singleLine.includes(":") ||
+    singleLine.includes("#")
+  ) {
     // シングルクォートエスケープ: ' → ''
-    return `'${value.replace(/'/g, "''")}'`;
+    return `'${singleLine.replace(/'/g, "''")}'`;
   }
-  return `"${value}"`;
+  return `"${singleLine}"`;
 }
 
 /**

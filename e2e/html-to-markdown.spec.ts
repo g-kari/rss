@@ -190,4 +190,27 @@ test.describe("generateFrontmatter", () => {
     expect(result).toContain("title:");
     // クラッシュしないこと
   });
+
+  test("title の生改行は空白化されて単一行 YAML になる (invalid YAML 防止)", () => {
+    const article = makeArticle({ title: "Line1\nLine2" });
+    const feed = makeFeed({ title: "Feed\r\nName" });
+    const result = generateFrontmatter(article, feed);
+    const titleLines = result.split("\n").filter((l) => l.startsWith("title:"));
+    expect(titleLines).toHaveLength(1);
+    expect(titleLines[0]).toContain("Line1 Line2");
+    const feedLines = result.split("\n").filter((l) => l.startsWith("feed:"));
+    expect(feedLines).toHaveLength(1);
+    expect(feedLines[0]).toContain("Feed Name");
+    // 改行分割した行に "Line2" 単独 (orphan) が現れない
+    expect(result.split("\n")).not.toContain("Line2");
+  });
+
+  test("author の生改行も空白化される", () => {
+    const article = makeArticle({ title: "T", author: "First\nSecond" });
+    const feed = makeFeed();
+    const result = generateFrontmatter(article, feed);
+    const authorLines = result.split("\n").filter((l) => l.startsWith("author:"));
+    expect(authorLines).toHaveLength(1);
+    expect(authorLines[0]).toContain("First Second");
+  });
 });
