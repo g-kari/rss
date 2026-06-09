@@ -827,7 +827,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 
 ## src/lib/ 層設計 (`src/lib/`)
 
-`src/lib/` には 133 ファイル の純粋関数 / ヘルパー / ラッパーが配置される。Workers + ブラウザ両環境で再利用される基盤レイヤーとして責務境界を明確にするため、以下の **機能別グループ + 採用すべき canonical pattern** に従う。
+`src/lib/` には 141 ファイル の純粋関数 / ヘルパー / ラッパーが配置される。Workers + ブラウザ両環境で再利用される基盤レイヤーとして責務境界を明確にするため、以下の **機能別グループ + 採用すべき canonical pattern** に従う。
 
 ### グループ分類
 
