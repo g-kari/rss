@@ -36,10 +36,11 @@ export function buildArticlesJson(
   feeds: Feed[],
   mode: "bookmark" | "reading_list",
   now: Date = new Date(),
+  labelOverride?: string,
 ): ArticlesJsonExport {
   const feedTitleMap = buildFeedTitleMap(feeds);
   const selected = articles.filter((a) => ids.has(a.id));
-  const label = mode === "reading_list" ? "後で読む" : "ブックマーク";
+  const label = labelOverride ?? (mode === "reading_list" ? "後で読む" : "ブックマーク");
   return {
     exportedAt: now.toISOString(),
     label,
@@ -64,8 +65,9 @@ export function exportArticlesToJson(
   ids: Set<string>,
   feeds: Feed[],
   mode: "bookmark" | "reading_list",
+  labelOverride?: string,
 ): void {
-  const data = buildArticlesJson(articles, ids, feeds, mode);
+  const data = buildArticlesJson(articles, ids, feeds, mode, new Date(), labelOverride);
   if (data.count === 0) return;
   const content = JSON.stringify(data, null, 2);
   const blob = new Blob([content], { type: "application/json; charset=utf-8" });

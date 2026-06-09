@@ -75,6 +75,10 @@ interface Options {
   createCollection: (name: string) => Promise<Collection | { error: string }>;
   renameCollection: (id: string, name: string) => Promise<Collection | { error: string }>;
   deleteCollection: (id: string) => Promise<boolean>;
+  /** 選択中コレクションの記事 ID Set (export 用、未選択時は空) */
+  collectionArticleIds: Set<string>;
+  /** 選択中コレクション名 (export ラベル + メニュー表示判定用、未選択時 null) */
+  selectedCollectionName: string | null;
 }
 
 /**
@@ -136,6 +140,8 @@ export function useFeedSidebarActions({
   createCollection,
   renameCollection,
   deleteCollection,
+  collectionArticleIds,
+  selectedCollectionName,
 }: Options): FeedSidebarActions {
   // readIds / articles は記事を読むたびに変化するため useSyncedRef でラップして deps から外す。
   // これにより FeedSidebar 全体が readIds 更新のたびに再レンダリングされる問題を回避する。
@@ -146,6 +152,8 @@ export function useFeedSidebarActions({
   const readingListIdsRef = useSyncedRef(readingListIds);
   const notesRef = useSyncedRef(notes);
   const totalUnreadRef = useSyncedRef(totalUnread);
+  // 選択中コレクションの記事 ID Set は選択切替で変化するため useSyncedRef でラップ
+  const collectionArticleIdsRef = useSyncedRef(collectionArticleIds);
   // toast は App.tsx の useToast() から毎 render 新規オブジェクトになるため useSyncedRef でラップして deps から外す。
   // FeedSidebar が toast 更新のたびに再レンダリングされる問題を回避する (#1041)。
   const toastRef = useSyncedRef(toast);
@@ -264,6 +272,29 @@ export function useFeedSidebarActions({
       onExportReadwise: () => {
         exportNotesToReadwise(articlesRef.current, notesRef.current, feedsRef.current);
       },
+      // 選択中コレクションを Markdown / JSON で export (#1112 案 A)。labelOverride に
+      // コレクション名を渡して見出し / ファイル名に反映。mode は labelOverride 優先のため dummy。
+      onExportCollectionMarkdown: () => {
+        if (!selectedCollectionName) return;
+        exportArticlesToMarkdown(
+          articlesRef.current,
+          collectionArticleIdsRef.current,
+          feedsRef.current,
+          "bookmark",
+          selectedCollectionName,
+        );
+      },
+      onExportCollectionJson: () => {
+        if (!selectedCollectionName) return;
+        exportArticlesToJson(
+          articlesRef.current,
+          collectionArticleIdsRef.current,
+          feedsRef.current,
+          "bookmark",
+          selectedCollectionName,
+        );
+      },
+      selectedCollectionName,
       onSelectCollection: setSelectedCollectionId,
       onCreateCollection: createCollection,
       onRenameCollection: renameCollection,
@@ -316,6 +347,7 @@ export function useFeedSidebarActions({
       createCollection,
       renameCollection,
       deleteCollection,
+      selectedCollectionName,
     ],
   );
 }

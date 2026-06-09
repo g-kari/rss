@@ -22,6 +22,11 @@ test.describe("buildArticlesJson", () => {
     expect(result.label).toBe("後で読む");
   });
 
+  test("labelOverride 指定時は mode 由来でなく override が label になる (#1112 コレクション export)", () => {
+    const result = buildArticlesJson([], new Set(), [], "bookmark", NOW, "お気に入り");
+    expect(result.label).toBe("お気に入り");
+  });
+
   test("exportedAt は now の ISO 文字列", () => {
     const result = buildArticlesJson([], new Set(), [], "bookmark", NOW);
     expect(result.exportedAt).toBe("2026-06-08T12:34:56.000Z");

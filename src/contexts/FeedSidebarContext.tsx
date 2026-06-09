@@ -45,6 +45,12 @@ export interface FeedSidebarActions {
   onExportNotes?: () => void;
   onExportNotesJson?: () => void;
   onExportReadwise?: () => void;
+  /** 選択中コレクションを Markdown export (#1112、コレクション選択時のみ SidebarFooter に表示) */
+  onExportCollectionMarkdown?: () => void;
+  /** 選択中コレクションを JSON export (#1112) */
+  onExportCollectionJson?: () => void;
+  /** 選択中コレクション名 (export メニュー項目の表示判定 + ラベル、未選択時 null) */
+  selectedCollectionName?: string | null;
   onSelectCollection?: (id: string | null) => void;
   onCreateCollection?: (name: string) => Promise<Collection | { error: string }>;
   onRenameCollection?: (id: string, name: string) => Promise<Collection | { error: string }>;
