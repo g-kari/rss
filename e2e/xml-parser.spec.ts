@@ -698,3 +698,56 @@ test.describe("parseFeed — RSS 2.0 の dc:date fallback (#rss2-dcdate)", () =>
     expect(result.items[0].publishedAt).toBe(new Date("2025-01-01T00:00:00Z").toISOString());
   });
 });
+
+test.describe("parseFeed — channel-level 著者 fallback (#channel-author)", () => {
+  test("RSS 2.0: item に著者がないとき channel dc:creator を採用する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>単一著者ブログ</title>
+    <dc:creator>山田太郎</dc:creator>
+    <item>
+      <title>記事</title>
+      <link>https://example.com/1</link>
+      <guid>https://example.com/1</guid>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].author).toBe("山田太郎");
+  });
+
+  test("RSS 2.0: item に著者があれば item を優先する (channel は使わない)", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>ブログ</title>
+    <dc:creator>channel著者</dc:creator>
+    <item>
+      <title>記事</title>
+      <link>https://example.com/2</link>
+      <guid>https://example.com/2</guid>
+      <dc:creator>item著者</dc:creator>
+    </item>
+  </channel>
+</rss>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].author).toBe("item著者");
+  });
+
+  test("RSS 1.0 (RDF): item に著者がないとき channel dc:creator を採用する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel rdf:about="https://example.com/">
+    <title>RDF ブログ</title>
+    <dc:creator>佐藤花子</dc:creator>
+  </channel>
+  <item rdf:about="https://example.com/r1">
+    <title>記事</title>
+    <link>https://example.com/r1</link>
+  </item>
+</rdf:RDF>`;
+    const result = parseFeed(xml);
+    expect(result.items[0].author).toBe("佐藤花子");
+  });
+});
