@@ -16,9 +16,18 @@ const ACTION_WEIGHTS: Record<EngagementAction, number> = {
 /**
  * 時間減衰: 半減期 7 日の指数減衰。
  * 7日前: 0.5、14日前: 0.25、30日前: 約 0.095
+ *
+ * R2 由来の engagement.json は外部データで legacy / 破損 timestamp が混入しうるため防御する:
+ * - 不正 / 欠落 timestamp (NaN) は decay=0 (スコア寄与なし)。NaN が score 合計に伝播すると
+ *   正常 entry 混在 feed が NaN 合計で top-N から脱落 + sort 不安定になるのを防ぐ。
+ * - 未来 timestamp (時計戻り、ageMs < 0) は Math.max(0, ageMs) で decay 上限 1.0 に clamp。
+ *   負の指数で score が増幅 (94917 倍等) して top-N を独占するのを防ぐ
+ *   (auto-read-persist の clock-back ガードと同方針)。
  */
 function timeDecay(timestamp: string, now: number): number {
-  const ageMs = now - new Date(timestamp).getTime();
+  const t = new Date(timestamp).getTime();
+  if (!Number.isFinite(t)) return 0;
+  const ageMs = Math.max(0, now - t);
   const halfLifeMs = 7 * 24 * 60 * 60 * 1000;
   return Math.pow(0.5, ageMs / halfLifeMs);
 }
