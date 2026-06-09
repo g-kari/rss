@@ -343,6 +343,19 @@ export function buildBatchedPushPayload(feedEntries: FeedNewArticles[]): PushPay
   };
 }
 
+/**
+ * disabledFeeds (ユーザーが通知 OFF にした feedHash) を除外する。
+ * 新着記事 push と error push の両経路で適用して、通知 OFF フィードからの
+ * 通知漏れ (新着・エラーともに) を防ぐ。
+ */
+export function filterDisabledFeeds<T extends { feedHash: string }>(
+  feeds: T[],
+  disabledFeeds: Record<string, boolean> | undefined,
+): T[] {
+  if (!disabledFeeds) return feeds;
+  return feeds.filter((f) => !disabledFeeds[f.feedHash]);
+}
+
 async function sendPushAll(
   env: FetchEnv,
   userFeedMap: Map<string, FeedNewArticles[]>,
@@ -361,11 +374,12 @@ async function sendPushAll(
       if (isInSilentHours(config)) return;
 
       const feedEntries = userFeedMap.get(userId) ?? [];
-      const errorFeeds = userFeedErrorMap.get(userId) ?? [];
+      const errorFeeds = filterDisabledFeeds(
+        userFeedErrorMap.get(userId) ?? [],
+        config.disabledFeeds,
+      );
 
-      const enabledEntries = config.disabledFeeds
-        ? feedEntries.filter((e) => !config.disabledFeeds![e.feedHash])
-        : feedEntries;
+      const enabledEntries = filterDisabledFeeds(feedEntries, config.disabledFeeds);
 
       let remaining = config.subscriptions;
 

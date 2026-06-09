@@ -9,6 +9,7 @@ import {
   applyFeedSuccess,
   applyFeedRateLimit,
   applyFeedError,
+  filterDisabledFeeds,
   RateLimitError,
   type FeedNewArticles,
 } from "../src/cron/fetch";
@@ -423,5 +424,37 @@ test.describe("applyFeedError", () => {
     const meta = makeMeta({ fetchError: null });
     applyFeedError(meta, null);
     expect(meta.fetchError).toBeTruthy();
+  });
+});
+
+test.describe("filterDisabledFeeds", () => {
+  const mk = (feedHash: string): FeedNewArticles => ({
+    feedHash,
+    feedTitle: `feed-${feedHash}`,
+    articles: [],
+  });
+
+  test("disabledFeeds が undefined のとき全件返す", () => {
+    const feeds = [mk("a"), mk("b")];
+    expect(filterDisabledFeeds(feeds, undefined)).toEqual(feeds);
+  });
+
+  test("disabledFeeds で true の feedHash を除外する", () => {
+    const feeds = [mk("a"), mk("b"), mk("c")];
+    const result = filterDisabledFeeds(feeds, { b: true });
+    expect(result.map((f) => f.feedHash)).toEqual(["a", "c"]);
+  });
+
+  test("disabledFeeds で false の feedHash は除外しない", () => {
+    const feeds = [mk("a"), mk("b")];
+    const result = filterDisabledFeeds(feeds, { b: false });
+    expect(result.map((f) => f.feedHash)).toEqual(["a", "b"]);
+  });
+
+  test("error feed 経路でも同じフィルタが効く (新着・エラー両経路の対称性)", () => {
+    // error push は { feedHash, feedTitle } で渡る → 同 helper で OFF フィードを除外できる
+    const errorFeeds = [mk("x"), mk("disabled-feed")];
+    const result = filterDisabledFeeds(errorFeeds, { "disabled-feed": true });
+    expect(result.map((f) => f.feedHash)).toEqual(["x"]);
   });
 });
