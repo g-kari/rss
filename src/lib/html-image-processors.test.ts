@@ -6,7 +6,7 @@
  * fixLazyImages 後に同一 src の <img> が 2 個連続する状況を集約する純粋関数の挙動を固定する。
  */
 import { describe, it, expect } from "vitest";
-import { dedupeAdjacentDuplicateImages } from "./html-image-processors";
+import { dedupeAdjacentDuplicateImages, fixImageDimensions } from "./html-image-processors";
 
 describe("dedupeAdjacentDuplicateImages", () => {
   it("同一 src の隣接 <img> 2 個を 1 個に集約 (最初を残す)", () => {
@@ -77,5 +77,42 @@ describe("dedupeAdjacentDuplicateImages", () => {
   it("src 属性のない <img> は触らない", () => {
     const html = '<img alt="no src"><img alt="no src">';
     expect(dedupeAdjacentDuplicateImages(html)).toBe(html);
+  });
+});
+
+describe("fixImageDimensions — inline style クリーンアップ (#style-regex)", () => {
+  it("max-width / line-height を保護しつつ standalone width: を除去する", () => {
+    // width/height 属性なし → keepDimensions=false (max-width 付与なし)、style クリーンアップのみ
+    const html = '<img style="max-width: 100%; width: 50px; line-height: 1.5; color: red">';
+    const out = fixImageDimensions(html);
+    expect(out).toContain("max-width: 100%");
+    expect(out).toContain("line-height: 1.5");
+    expect(out).toContain("color: red");
+    // standalone width: 50px は除去される
+    expect(out).not.toContain("width: 50px");
+    // max- / line- のような破壊された断片が残らない
+    expect(out).not.toContain("max- ");
+    expect(out).not.toContain("line- ");
+  });
+
+  it("min-width を保護する", () => {
+    const html = '<img style="min-width: 200px; color: blue">';
+    const out = fixImageDimensions(html);
+    expect(out).toContain("min-width: 200px");
+    expect(out).toContain("color: blue");
+  });
+
+  it("standalone height: のみの style は除去後に空 style を残さない", () => {
+    const html = '<img style="height: 30px">';
+    const out = fixImageDimensions(html);
+    expect(out).not.toContain("style=");
+  });
+
+  it("冪等性: 2 回適用しても max-width が破壊されない", () => {
+    const html = '<img style="max-width: 100%; color: red">';
+    const once = fixImageDimensions(html);
+    const twice = fixImageDimensions(once);
+    expect(twice).toBe(once);
+    expect(twice).toContain("max-width: 100%");
   });
 });
