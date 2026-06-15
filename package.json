@@ -51,7 +51,7 @@
     "@types/react-dom": "^19.0.0",
     "@typescript/native-preview": "7.0.0-dev.20260611.2",
     "esbuild": "^0.28.0",
-    "happy-dom": "^20.10.1",
+    "happy-dom": "^20.10.2",
     "next": "~16.2.7",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
