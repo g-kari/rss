@@ -41,7 +41,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260604.1",
+    "@cloudflare/workers-types": "^4.20260611.1",
     "@opennextjs/cloudflare": "^1.19.11",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.3.0",
@@ -59,7 +59,7 @@
     "vite": "^8.0.16",
     "vite-plus": "^0.1.24",
     "vitest": "^4.1.8",
-    "wrangler": "^4.98.0"
+    "wrangler": "^4.100.0"
   },
   "packageManager": "pnpm@10.29.3",
   "pnpm": {
