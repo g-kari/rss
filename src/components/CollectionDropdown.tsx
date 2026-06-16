@@ -47,7 +47,7 @@ export default function CollectionDropdown({
 }: Props) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const toast = useToast();
-  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
+  const { open, setOpen, toggle, pos, btnRef, menuId } = usePortalMenu();
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   const inCount = collections.filter((c) => c.articleIds.includes(articleId)).length;
@@ -84,6 +84,7 @@ export default function CollectionDropdown({
         aria-label="コレクションに追加"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${
           inCount > 0 ? "text-indigo-400" : "text-text-faint hover:text-text-muted"
         }`}
@@ -110,6 +111,7 @@ export default function CollectionDropdown({
           setOpen={setOpen}
           handleKeyDown={handleKeyDown}
           pos={pos}
+          menuId={menuId}
           ariaLabel="コレクションに追加"
           className="min-w-[180px] py-1"
         >

@@ -16,8 +16,18 @@ interface Props {
 
 export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFilter }: Props) {
   const toast = useToast();
-  const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
-    useFilterMenuState(article, globalFilter);
+  const {
+    open,
+    setOpen,
+    toggle,
+    pos,
+    btnRef,
+    menuId,
+    modalOpen,
+    setModalOpen,
+    hasFilter,
+    excludeOptions,
+  } = useFilterMenuState(article, globalFilter);
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   function handleExclude(value: string) {
@@ -46,6 +56,7 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
         aria-label="グローバルフィルター設定"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
@@ -70,6 +81,7 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
           setOpen={setOpen}
           handleKeyDown={handleKeyDown}
           pos={pos}
+          menuId={menuId}
           ariaLabel="グローバルフィルター設定"
           className="min-w-[220px] max-h-[320px] overflow-y-auto"
         >

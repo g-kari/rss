@@ -13,6 +13,8 @@ interface Props {
   /** usePortalMenu が算出する viewport 絶対位置 */
   pos: { top: number; right: number };
   ariaLabel: string;
+  /** WAI-ARIA disclosure 関連付け用の menu container id (usePortalMenu の useId 由来) */
+  menuId: string;
   /** min-w / max-h 等のメニュー個別 class (BASE_MENU_CLASS に追記される) */
   className?: string;
   children: ReactNode;
@@ -32,6 +34,7 @@ export default function PortalMenuShell({
   handleKeyDown,
   pos,
   ariaLabel,
+  menuId,
   className = "",
   children,
 }: Props) {
@@ -46,6 +49,7 @@ export default function PortalMenuShell({
       />
       <div
         ref={menuRef}
+        id={menuId}
         role="menu"
         aria-label={ariaLabel}
         onKeyDown={handleKeyDown}

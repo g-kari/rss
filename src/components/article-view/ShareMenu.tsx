@@ -18,7 +18,7 @@ interface Props {
 
 export default function ShareMenu({ article, feed, contentHtml }: Props) {
   const toast = useToast();
-  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
+  const { open, setOpen, toggle, pos, btnRef, menuId } = usePortalMenu();
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   function copyText(text: string, successMsg: string) {
@@ -38,6 +38,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
         aria-label="共有"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
@@ -61,6 +62,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
           setOpen={setOpen}
           handleKeyDown={handleKeyDown}
           pos={pos}
+          menuId={menuId}
           ariaLabel="共有"
           className="min-w-[140px]"
         >

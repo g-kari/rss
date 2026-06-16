@@ -46,14 +46,25 @@ export function useFilterMenuState(
   article: Article,
   currentFilter: KeywordFilter | null | undefined,
 ) {
-  const { open, setOpen, toggle, pos, btnRef } = usePortalMenu();
+  const { open, setOpen, toggle, pos, btnRef, menuId } = usePortalMenu();
   const [modalOpen, setModalOpen] = useState(false);
   const hasFilter = !!(
     currentFilter &&
     (currentFilter.include.length > 0 || currentFilter.exclude.length > 0)
   );
   const excludeOptions = useMemo(() => buildExcludeOptions(article), [article]);
-  return { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions };
+  return {
+    open,
+    setOpen,
+    toggle,
+    pos,
+    btnRef,
+    menuId,
+    modalOpen,
+    setModalOpen,
+    hasFilter,
+    excludeOptions,
+  };
 }
 
 /** FilterMenu / GlobalFilterMenu 共通の除外オプション一覧 */

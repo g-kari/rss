@@ -16,8 +16,18 @@ interface Props {
 
 export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
   const toast = useToast();
-  const { open, setOpen, toggle, pos, btnRef, modalOpen, setModalOpen, hasFilter, excludeOptions } =
-    useFilterMenuState(article, feed.filter);
+  const {
+    open,
+    setOpen,
+    toggle,
+    pos,
+    btnRef,
+    menuId,
+    modalOpen,
+    setModalOpen,
+    hasFilter,
+    excludeOptions,
+  } = useFilterMenuState(article, feed.filter);
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
 
   async function handleExclude(value: string) {
@@ -50,6 +60,7 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
         aria-label="フィルター設定"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${open || hasFilter ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
@@ -72,6 +83,7 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
           setOpen={setOpen}
           handleKeyDown={handleKeyDown}
           pos={pos}
+          menuId={menuId}
           ariaLabel="フィルター設定"
           className="min-w-[200px] max-h-[320px] overflow-y-auto"
         >
