@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useMemo } from "react";
 import type { Feed } from "../../types";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
 import { SHORTCUT_MAP } from "../../config/shortcuts";
 import { READING_TIME_RANGE_LABELS } from "../../lib/article-utils";
-import { useEventListener } from "../../hooks/useEventListener";
 import FilterPillButton from "./FilterPillButton";
 import { DATE_RANGE_LABELS } from "./constants";
 import SortButton from "./SortButton";
@@ -67,21 +66,9 @@ export default function FilterPills({
     Boolean(categoryFilter) ||
     rawQuery.length > 0;
 
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
-  const categoryDropdownRef = useRef<HTMLDivElement>(null);
-
   const feedCategories = useMemo(
     () => [...new Set(feeds.map((f) => f.category).filter((c): c is string => c != null))].sort(),
     [feeds],
-  );
-
-  useEventListener(
-    "mousedown",
-    (e) => {
-      if (!categoryDropdownOpen) return;
-      if (!categoryDropdownRef.current?.contains(e.target as Node)) setCategoryDropdownOpen(false);
-    },
-    document,
   );
 
   return (
@@ -236,9 +223,6 @@ export default function FilterPills({
         feedCategories={feedCategories}
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
-        categoryDropdownRef={categoryDropdownRef}
-        categoryDropdownOpen={categoryDropdownOpen}
-        setCategoryDropdownOpen={setCategoryDropdownOpen}
       />
       <SortButton sortOrder={sortOrder} onToggle={toggleSortOrder} />
       <button
