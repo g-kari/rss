@@ -187,7 +187,7 @@ export default function ArticleHeaderEngagement({
         title={focusMode ? "フォーカスモード終了 (\\)" : "フォーカスモード (\\)"}
         aria-label={focusMode ? "フォーカスモード終了" : "フォーカスモード"}
         aria-pressed={focusMode}
-        className={`p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+        className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
           className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"

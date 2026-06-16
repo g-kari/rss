@@ -84,7 +84,7 @@ export default function CollectionDropdown({
         aria-label="コレクションに追加"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`p-2 -m-2 lg:p-0 lg:m-0 transition-colors duration-200 ${
+        className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${
           inCount > 0 ? "text-indigo-400" : "text-text-faint hover:text-text-muted"
         }`}
       >

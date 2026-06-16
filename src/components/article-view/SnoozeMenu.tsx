@@ -39,7 +39,7 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props)
         aria-label="スヌーズ"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+        className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${open ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
           aria-hidden="true"

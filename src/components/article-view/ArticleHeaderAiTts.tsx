@@ -141,7 +141,7 @@ export default function ArticleHeaderAiTts({
           aria-busy={downloadingImages}
           title="記事内の画像をすべてダウンロード"
           aria-label="画像をダウンロード"
-          className="p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50 flex items-center gap-1 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
+          className="p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50 flex items-center gap-1 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
         >
           {downloadingImages && imageDownloadProgress ? (
             <span className="text-[10px] tabular-nums tracking-tight">
@@ -158,7 +158,7 @@ export default function ArticleHeaderAiTts({
           title={ttsPlaying || ttsPaused ? "読み上げを停止" : "読み上げ (P)"}
           aria-label={ttsPlaying || ttsPaused ? "読み上げを停止" : "読み上げ"}
           aria-pressed={ttsPlaying || ttsPaused}
-          className={`p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${
+          className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${
             ttsPlaying || ttsPaused
               ? "text-ink hover:text-text-muted"
               : "text-text-faint hover:text-text-muted"
@@ -221,7 +221,7 @@ export default function ArticleHeaderAiTts({
           }
           aria-label={autoMode ? "オートモード OFF" : "オートモード ON"}
           aria-pressed={autoMode}
-          className={`p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${
+          className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px] ${
             autoMode ? "text-ink hover:text-text-muted" : "text-text-faint hover:text-text-muted"
           }`}
         >
@@ -249,7 +249,7 @@ export default function ArticleHeaderAiTts({
           onClick={ttsCycleRate}
           title={`読み上げ速度: ${ttsRate}x → 次: ${cycleValue(TTS_RATES, ttsRate)}x（クリック / Shift+R）`}
           aria-label={`読み上げ速度 ${ttsRate}倍`}
-          className={`p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 text-[10px] font-medium tabular-nums leading-none ${
+          className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 text-[10px] font-medium tabular-nums leading-none ${
             ttsPlaying || ttsPaused
               ? "text-ink hover:text-text-muted"
               : "text-text-faint hover:text-text-muted"
@@ -263,7 +263,7 @@ export default function ArticleHeaderAiTts({
           onClick={ttsCycleVolume}
           title={`音量: ${Math.round(ttsVolume * 100)}% → クリックで切替（フル / 半 / ミュート）`}
           aria-label={`音量 ${Math.round(ttsVolume * 100)}パーセント`}
-          className="p-2 -m-2 lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] text-ink hover:text-text-muted transition-colors duration-200"
+          className="p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] text-ink hover:text-text-muted transition-colors duration-200"
         >
           {ttsVolume >= 0.99 ? (
             <svg
