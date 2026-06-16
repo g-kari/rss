@@ -606,6 +606,7 @@ function ArticleList({
 
   const { resolveItemProps } = useArticleListItemProps({
     feedMap,
+    articles: filtered,
     readIds,
     readBeforeTimestamp,
     bookmarkIds,

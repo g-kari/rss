@@ -340,5 +340,12 @@ export function usePrefetchGalleryContents({
     })();
   }, []);
 
-  return { media, failedIds, expandingIds, retryArticle, rateLimitedUntil };
+  // react-state-ref.md「複数 state を return する hook は戻り値全体を useMemo で wrap」:
+  // 戻り値は ArticleList で field destructure された後、galleryCtxValue (`ArticleList.tsx`)
+  // の useMemo に流れ込んで Provider value の identity を制御する。useMemo wrap で
+  // state 変化時のみ identity 更新に絞り、Gallery card consumer の不要 re-render を防ぐ。
+  return useMemo(
+    () => ({ media, failedIds, expandingIds, retryArticle, rateLimitedUntil }),
+    [media, failedIds, expandingIds, retryArticle, rateLimitedUntil],
+  );
 }

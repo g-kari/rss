@@ -16,6 +16,12 @@ import { buildImageProxyUrl } from "../../lib/image-proxy-url";
 // ── 共通キーボードハンドラ ──────────────────────────────────────────────
 
 /**
+ * 内部 helper: `useArticleHandlers` 経由で参照する。
+ * 子コンポーネント (CompactItem / ListItem / CardItem / MagazineItem) から直接 import せず、
+ * 必ず `useArticleHandlers` hook 経由で利用すること。pure handler の独立 export は
+ * `useArticleHandlers` 内部での再利用 + 将来の sibling component 拡張時の retain 用途で、
+ * 外部 caller を想定していない。
+ *
  * Enter / Space で記事を選択する共通 onKeyDown ハンドラを生成する。
  * React の KeyboardEvent / MouseEvent は DOM global と同名なので、本 file 内では
  * React 由来の event 型と区別するため呼び出し側 (ListItem 等) で receive される。
@@ -35,6 +41,12 @@ export function handleArticleKeyDown<T = Element>(
 }
 
 /**
+ * 内部 helper: `useArticleHandlers` 経由で参照する。
+ * 子コンポーネント (CompactItem / ListItem / CardItem / MagazineItem) から直接 import せず、
+ * 必ず `useArticleHandlers` hook 経由で利用すること。pure handler の独立 export は
+ * `useArticleHandlers` 内部での再利用 + 将来の sibling component 拡張時の retain 用途で、
+ * 外部 caller を想定していない。
+ *
  * 右クリック (contextmenu) で記事メニューを開く共通ハンドラを生成する。
  * onContextMenu 未設定時 (= 親が menu 未対応) は no-op で event 伝播を許可。
  * ListItem / MagazineItem / CardItem の同形 useCallback 重複を集約。

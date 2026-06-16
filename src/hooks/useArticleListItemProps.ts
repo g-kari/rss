@@ -18,6 +18,11 @@ import { useSyncedRef } from "./useSyncedRef";
  */
 interface Params {
   feedMap: Map<string, Feed>;
+  /**
+   * フィルタ済み記事配列 (#1134): 読書進捗の per-item localStorage hit を
+   * Map<id, progress> 1 回構築に集約するため hook 側で受け取る。
+   */
+  articles: Article[];
   readIds: Set<string>;
   readBeforeTimestamp: string | null;
   bookmarkIds: Set<string>;
@@ -49,6 +54,7 @@ interface Params {
  */
 export function useArticleListItemProps({
   feedMap,
+  articles,
   readIds,
   readBeforeTimestamp,
   bookmarkIds,
@@ -88,12 +94,24 @@ export function useArticleListItemProps({
     [readBeforeTimestamp],
   );
 
+  // #1134: 読書進捗を articles 配列単位で Map に集約。per-row resolveItemProps 呼出での
+  // localStorage.getItem + JSON.parse を articles 変化時の 1 回構築に縮約。
+  // j/k 高速操作で identity churn しても loadProgress は再走査されない。
+  const progressMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of articles) {
+      const p = loadProgress(a.id)?.progress;
+      if (p != null) map.set(a.id, p);
+    }
+    return map;
+  }, [articles]);
+
   const resolveItemProps = useCallback(
     (article: Article, index: number, isDeleting?: boolean, isNew?: boolean): ArticleItemProps => {
       const feed = feedMap.get(article.feedHash);
-      // #932: 途中まで読んだ記事 (5〜95%) のみ進捗バー表示用に値を渡す。
-      // visible 分のみ呼ばれる + localStorage getItem は高速なため per-item read で十分。
-      const rawProgress = loadProgress(article.id)?.progress;
+      // #932 / #1134: 途中まで読んだ記事 (5〜95%) のみ進捗バー表示用に値を渡す。
+      // progressMap は articles 単位で構築済 (per-row localStorage hit 回避)。
+      const rawProgress = progressMap.get(article.id);
       const readingProgress =
         rawProgress != null && rawProgress > 0.05 && rawProgress < 0.95 ? rawProgress : null;
       return {
@@ -124,6 +142,7 @@ export function useArticleListItemProps({
     [
       readBeforeMs,
       feedMap,
+      progressMap,
       ogpCacheRef,
       showFeedName,
       query,

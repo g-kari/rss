@@ -126,8 +126,17 @@ export default function SnoozeModal({ articleTitle, onSnooze, onClose, returnFoc
             value={customDateTime}
             min={minDateTime}
             onChange={(e) => setCustomDateTime(e.target.value)}
+            aria-invalid={customDateTime !== "" && !customValid}
+            aria-describedby={
+              customDateTime !== "" && !customValid ? "snooze-custom-error" : undefined
+            }
             className="w-full px-2 py-1.5 text-[13px] bg-surface-subtle text-text-strong border border-border-default rounded-md focus:outline-none focus:border-ink"
           />
+          {customDateTime !== "" && !customValid && (
+            <p id="snooze-custom-error" role="alert" className="text-[11px] text-error">
+              過去の日時は指定できません
+            </p>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -136,6 +145,9 @@ export default function SnoozeModal({ articleTitle, onSnooze, onClose, returnFoc
               onClose();
             }}
             disabled={!customValid}
+            aria-describedby={
+              customDateTime !== "" && !customValid ? "snooze-custom-error" : undefined
+            }
             className="w-full px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] bg-ink text-ink-text rounded-md hover:bg-ink-hover disabled:bg-surface-subtle disabled:text-text-faint transition-colors"
           >
             この日時までスヌーズ

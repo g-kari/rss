@@ -3,7 +3,7 @@ import type { Article, Feed, FeedView, KeywordFilter } from "../types";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { useGracePeriod } from "./useGracePeriod";
 import { filterByStructure, applyStateFilterAndSort } from "../lib/article-filter";
-import { createReadingTimeCache } from "../lib/article-utils";
+import { createReadingTimeCache, getArticleTimestamp } from "../lib/article-utils";
 import { buildFilterMap, normalizeFilter, type CompiledKeywordFilter } from "../lib/keyword-filter";
 import {
   equalDigestLimitMap,
@@ -412,8 +412,9 @@ export function useFilteredArticles({
     }
 
     // perf #930: filtered 全件の timestamp を事前計算して比較ループ内の Date.parse 再呼出を省く
+    // fallback-derivation.md: sibling 純粋関数の fallback chain は canonical helper を経由して揃える
     const tsCache = new Map<string, number>(
-      filtered.map((a) => [a.id, Date.parse(a.publishedAt ?? a.createdAt ?? "")]),
+      filtered.map((a) => [a.id, Date.parse(getArticleTimestamp(a))]),
     );
 
     // link → 同一リンクを持つ記事グループ（1 パスで構築）
