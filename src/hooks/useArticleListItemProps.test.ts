@@ -57,6 +57,7 @@ interface SetupParams {
 function defaultParams(overrides: SetupParams = {}) {
   return {
     feedMap: new Map<string, Feed>([["feed-1", makeFeed()]]),
+    articles: [makeArticle()],
     readIds: overrides.readIds ?? new Set<string>(),
     readBeforeTimestamp: null,
     bookmarkIds: overrides.bookmarkIds ?? new Set<string>(),
