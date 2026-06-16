@@ -185,6 +185,14 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
       () => (article.content ? sanitizeHtml(article.content) : null),
       [article.content],
     );
+    // 翻訳結果 HTML の sanitize もメモ化。translate タブが mount 中、親 re-render
+    // (toolbar / fontSize / contentTab 等) のたびに inline sanitizeHtml が走るのを防ぐ。
+    // canonical は同 file の `sanitizedArticleContent` パターン。
+    const sanitizedTranslateHtml = useMemo(
+      () =>
+        translateResult?.isHtml && translateResult.text ? sanitizeHtml(translateResult.text) : null,
+      [translateResult?.isHtml, translateResult?.text],
+    );
     // sanitize 後に意味のあるリッチ HTML (タグを含む) が残っているか確認。
     // 単なる plain text なら summary との重複なので fallback 不要。
     const hasArticleContentHtml = !!(
@@ -409,11 +417,11 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
         {/* 本文 (#903: role=tabpanel + aria-labelledby でタブと対応付け) */}
         {contentTab === "translate" && translateResult ? (
           <div id="content-panel-translate" role="tabpanel" aria-labelledby="content-tab-translate">
-            {translateResult.isHtml ? (
+            {translateResult.isHtml && sanitizedTranslateHtml !== null ? (
               <div
                 className={`article-content ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} ${textJustify ? "text-justify" : ""}`}
                 style={getLineHeightStyle(lineHeight)}
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(translateResult.text) }}
+                dangerouslySetInnerHTML={{ __html: sanitizedTranslateHtml }}
               />
             ) : (
               <p
