@@ -1,6 +1,11 @@
 import type { Article, Feed } from "@/types";
 import { downloadBlob } from "@/lib/download";
-import { buildFeedTitleMap, clampSummaryText } from "@/lib/export-shared";
+import {
+  buildArticleMetaLine,
+  buildFeedTitleMap,
+  clampSummaryText,
+  groupArticlesByFeed,
+} from "@/lib/export-shared";
 
 /** Markdown のリンク構文を壊す文字をエスケープする */
 function escapeMarkdown(s: string): string {
@@ -36,28 +41,14 @@ export function exportArticlesToMarkdown(
   const label = labelOverride ?? (mode === "reading_list" ? "後で読む" : "ブックマーク");
   const lines: string[] = [`# ${label} — ${today}`, "", `> ${selected.length} 件`, ""];
 
-  // フィードごとにグループ化
-  const byFeed = new Map<string, Article[]>();
-  for (const article of selected) {
-    const list = byFeed.get(article.feedHash) ?? [];
-    list.push(article);
-    byFeed.set(article.feedHash, list);
-  }
-
-  for (const [feedHash, feedArticles] of byFeed) {
+  for (const [feedHash, feedArticles] of groupArticlesByFeed(selected)) {
     lines.push(`## ${escapeMarkdown(feedTitleMap.get(feedHash) ?? "不明なフィード")}`, "");
 
     for (const article of feedArticles) {
       lines.push(`### [${escapeMarkdown(article.title)}](${article.link})`, "");
 
-      const meta: string[] = [];
-      if (article.publishedAt) {
-        meta.push(`**公開日**: ${new Date(article.publishedAt).toLocaleDateString("ja-JP")}`);
-      }
-      if (article.author) {
-        meta.push(`**著者**: ${article.author}`);
-      }
-      if (meta.length > 0) lines.push(meta.join(" | "), "");
+      const metaLine = buildArticleMetaLine(article);
+      if (metaLine) lines.push(metaLine, "");
 
       const plain = clampSummaryText(article.summary);
       if (plain) lines.push(plain, "");
@@ -96,28 +87,14 @@ export function exportNotesToMarkdown(
   });
   const lines: string[] = [`# メモ — ${today}`, "", `> ${selected.length} 件`, ""];
 
-  // フィードごとにグループ化
-  const byFeed = new Map<string, Article[]>();
-  for (const article of selected) {
-    const list = byFeed.get(article.feedHash) ?? [];
-    list.push(article);
-    byFeed.set(article.feedHash, list);
-  }
-
-  for (const [feedHash, feedArticles] of byFeed) {
+  for (const [feedHash, feedArticles] of groupArticlesByFeed(selected)) {
     lines.push(`## ${escapeMarkdown(feedTitleMap.get(feedHash) ?? "不明なフィード")}`, "");
 
     for (const article of feedArticles) {
       lines.push(`### [${escapeMarkdown(article.title)}](${article.link})`, "");
 
-      const meta: string[] = [];
-      if (article.publishedAt) {
-        meta.push(`**公開日**: ${new Date(article.publishedAt).toLocaleDateString("ja-JP")}`);
-      }
-      if (article.author) {
-        meta.push(`**著者**: ${article.author}`);
-      }
-      if (meta.length > 0) lines.push(meta.join(" | "), "");
+      const metaLine = buildArticleMetaLine(article);
+      if (metaLine) lines.push(metaLine, "");
 
       const noteText = notes[article.id];
       if (noteText) {
