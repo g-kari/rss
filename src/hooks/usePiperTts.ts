@@ -182,8 +182,9 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     if (ttsInstanceRef.current) {
       try {
         ttsInstanceRef.current.dispose();
-      } catch {
-        /* silent */
+      } catch (err) {
+        devError("[usePiperTts] dispose failed", err);
+        piperDebug("dispose-failed", { error: String(err) });
       }
       ttsInstanceRef.current = null;
       ttsVoiceIdRef.current = null;
@@ -385,7 +386,9 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
             if (ctx.state === "suspended") {
               try {
                 await ctx.resume();
-              } catch {
+              } catch (err) {
+                devError("[usePiperTts] resume failed", err);
+                piperDebug("resume-failed", { error: String(err) });
                 /* resume failure はそのまま再生 (start 時に NotAllowedError) */
               }
             }
@@ -496,8 +499,9 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       if (ttsInstanceRef.current) {
         try {
           ttsInstanceRef.current.dispose();
-        } catch {
-          /* silent */
+        } catch (err) {
+          devError("[usePiperTts] dispose failed", err);
+          piperDebug("dispose-failed", { error: String(err) });
         }
         ttsInstanceRef.current = null;
         ttsVoiceIdRef.current = null;
