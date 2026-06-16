@@ -855,7 +855,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 - **`<engine>-<capability>.ts`**: engine + 機能 (例: `tts-adapter.ts` / `tts-text.ts` / `piper-voices.ts` / `browser-summarizer.ts`)
 - **`<feature>-fallback.ts`**: 特定サイト / 条件向け fallback (例: `x-com-fallback.ts` / `booth-fallback.ts` / `auto-ai-fallback.ts`)
 - **`<feature>-debug.ts`**: localStorage gate 付き本番デバッグログ (例: `auto-read-debug.ts` / `bgaudio-debug.ts` / `piper-debug.ts`)
-- **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `src/lib/*.test.ts` 例: `article-utils.test.ts` / `binary-proxy-handler.test.ts` 等 12 件、`src/hooks/*.test.ts` / `src/hooks/*.test.tsx` 例: `useArticleListItemProps.test.ts` / `usePiperTts.test.ts` 等 10 件、`src/hooks/__tests__/*.test.ts` / `src/components/*.test.tsx` 例: `FeedHealthModal.test.tsx`)、playwright e2e は `e2e/*.spec.ts`
+- **`.test.ts` vs `.spec.ts`**: vitest unit test は `.test.ts` (現状 `src/lib/*.test.ts` 例: `article-utils.test.ts` / `binary-proxy-handler.test.ts` 等 13 件、`src/hooks/*.test.ts` / `src/hooks/*.test.tsx` 例: `useArticleListItemProps.test.ts` / `usePiperTts.test.ts` 等 17 件、`src/hooks/__tests__/*.test.ts` / `src/components/*.test.tsx` 例: `FeedHealthModal.test.tsx`)、playwright e2e は `e2e/*.spec.ts`
 
 ### 設計原則
 
