@@ -74,10 +74,26 @@ export function useArticleUnreadStats(
   // FeedSidebar の不要 re-render を防ぐ (`react-state-ref.md` の規範)。
   const lastPublishedRef = useRef<Map<string, string>>(new Map());
   const unreadByFeedRef = useRef<Map<string, number>>(new Map());
+  // signature 早期 return ガード (#1141): articles reference 変化でも structural signature
+  // (length + 末尾 5 件 id@publishedAt) が一致なら Date.parse 全件 skip。ポーリングで
+  // 新規 array reference (構造同一) が頻発するときの 500+ 記事 Date.parse 累積を防ぐ。
+  const lastPublishedSignatureRef = useRef<string | null>(null);
 
   // articles のみ依存: feedHash → 最新 publishedAt
   // readIds 変化 (j キー連打 / mark-all-read) では再計算しない
   const lastPublishedByFeed = useMemo(() => {
+    // signature 早期 return: articles の length + 末尾 5 件 id+publishedAt で構造変化検出。
+    // 中間挿入/削除は稀 (ポーリングは末尾追加が default)、末尾 5 件 signature で実用充足。
+    const tailSignature = articles
+      .slice(-5)
+      .map((a) => `${a.id}@${a.publishedAt ?? ""}`)
+      .join("|");
+    const signature = `${articles.length}:${tailSignature}`;
+    if (signature === lastPublishedSignatureRef.current) {
+      return lastPublishedRef.current;
+    }
+    lastPublishedSignatureRef.current = signature;
+
     // feedHash → タイムスタンプ (ms) で比較して二重 Date.parse を回避 (#901)。
     // 比較ループ内では数値 Map を使い、publishedAt は「勝者」確定後に 1 回だけ文字列 Map に格納。
     const tsMap = new Map<string, number>();
