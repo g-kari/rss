@@ -245,15 +245,3 @@ export function toggleSetItem(
     return next;
   });
 }
-
-/**
- * crypto.randomUUID() を安全に呼び出すヘルパー。
- *
- * `crypto` が未定義またはメソッドが存在しない環境（一部テスト環境 / 古いブラウザ）では
- * Date.now() + Math.random() を組み合わせた簡易 ID を返す。
- */
-export function safeRandomUUID(): string {
-  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}

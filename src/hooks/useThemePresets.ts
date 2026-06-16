@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { STORAGE_KEYS, safeRandomUUID, storageGet, storageSet } from "../lib/storage";
+import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import {
   parseThemePresets,
   serializeThemePresets,
@@ -45,7 +45,7 @@ export function useThemePresets(): UseThemePresetsResult {
   const savePreset = useCallback(
     (name: string, snapshot: Omit<ThemePreset, "id" | "name" | "createdAt">) => {
       setPresets((prev) => {
-        const id = safeRandomUUID();
+        const id = crypto.randomUUID();
         const next: ThemePreset = {
           id,
           name,

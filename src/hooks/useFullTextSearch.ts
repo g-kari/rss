@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { STORAGE_KEYS, safeRandomUUID } from "../lib/storage";
+import { STORAGE_KEYS } from "../lib/storage";
 import { useLocalStorageHistory } from "./useLocalStorageHistory";
 
 const MAX_SAVED = 20;
@@ -38,7 +38,7 @@ export function useFullTextSearch() {
       const trimmedQuery = query.trim();
       if (!trimmedName || !trimmedQuery) return;
       const entry: SavedSearch = {
-        id: safeRandomUUID(),
+        id: crypto.randomUUID(),
         name: trimmedName,
         query: trimmedQuery,
         createdAt: new Date().toISOString(),
