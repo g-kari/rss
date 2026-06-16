@@ -104,75 +104,73 @@ export default function ImageGallery({ images }: Props) {
             <h2 id={titleId} className="sr-only">
               画像拡大表示
             </h2>
+            {/* #1143: canonical pattern (ImageLightbox.tsx) に揃え。44px タッチターゲット + 境界 disabled 化 */}
             <button
-              className="absolute top-4 right-4 text-white/70 hover:text-white"
+              type="button"
+              className="absolute top-3 right-3 w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors"
               onClick={() => setLightboxIndex(null)}
               aria-label="閉じる"
             >
               <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={1.5}
+                strokeWidth={2}
                 aria-hidden="true"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round" />
               </svg>
             </button>
-            {lightboxIndex > 0 && (
-              <button
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxIndex(lightboxIndex - 1);
-                }}
-                aria-label="前の画像"
+            {/* 前へボタン (常時 mount、境界では disabled) */}
+            <button
+              type="button"
+              disabled={lightboxIndex === 0}
+              aria-disabled={lightboxIndex === 0}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/40"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex(lightboxIndex - 1);
+              }}
+              aria-label="前の画像"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
               >
-                <svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 19.5L8.25 12l7.5-7.5"
-                  />
-                </svg>
-              </button>
-            )}
-            {lightboxIndex < images.length - 1 && (
-              <button
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxIndex(lightboxIndex + 1);
-                }}
-                aria-label="次の画像"
+                <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {/* 次へボタン (常時 mount、境界では disabled) */}
+            <button
+              type="button"
+              disabled={lightboxIndex >= images.length - 1}
+              aria-disabled={lightboxIndex >= images.length - 1}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/40"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex(lightboxIndex + 1);
+              }}
+              aria-label="次の画像"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
               >
-                <svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M8.25 4.5l7.5 7.5-7.5 7.5"
-                  />
-                </svg>
-              </button>
-            )}
+                <path d="M8 4l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
             <FallbackImage
               url={images[lightboxIndex]}
               alt=""
