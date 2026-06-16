@@ -32,6 +32,9 @@ export default function SaveUrlModal({ url, onUrlChange, saving, error, onSave, 
           onChange={(e) => onUrlChange(e.target.value)}
           disabled={saving}
           autoFocus
+          aria-required
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? "save-url-error" : undefined}
           className="w-full text-[13px] bg-surface-base border border-border-default rounded-lg px-3 py-2 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
         />
 
@@ -65,7 +68,7 @@ export default function SaveUrlModal({ url, onUrlChange, saving, error, onSave, 
         </div>
 
         {error && (
-          <p role="alert" className="mt-2 text-[12px] text-error">
+          <p id="save-url-error" role="alert" className="mt-2 text-[12px] text-error">
             {error}
           </p>
         )}
