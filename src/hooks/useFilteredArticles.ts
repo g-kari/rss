@@ -8,6 +8,7 @@ import { buildFilterMap, normalizeFilter, type CompiledKeywordFilter } from "../
 import {
   equalDigestLimitMap,
   equalStringMap,
+  equalStringSet,
   equalCompiledFilterMap,
   equalViewFeedIds,
 } from "../lib/article-filter-equality";
@@ -138,10 +139,19 @@ export function useFilteredArticles({
   const activeIdsRef = useRef(activeIds);
   activeIdsRef.current = activeIds;
 
-  const noteIds = useMemo(() => {
+  // perf: notes は R2 同期 (~2s 間隔) で内容不変でも reference が変わる。
+  // sibling (feedFilterMap / feedCategoryMap / digestLimitMap / snoozedUntil) と
+  // 同じく `equalStringSet` で構造的等価ガードを追加し、`noteOnly` フィルター適用時の
+  // 下流 `structuralFiltered` 再計算 (500+ articles, 15-40ms ブロック) を回避する。
+  const computedNoteIds = useMemo(() => {
     const keys = Object.keys(notes ?? {});
     return keys.length > 0 ? new Set(keys) : EMPTY_SET;
   }, [notes]);
+  const stableNoteIdsRef = useRef<Set<string>>(EMPTY_SET);
+  if (!equalStringSet(stableNoteIdsRef.current, computedNoteIds)) {
+    stableNoteIdsRef.current = computedNoteIds;
+  }
+  const noteIds = stableNoteIdsRef.current;
 
   const filterCompileCacheRef = useRef<Map<string, CompiledKeywordFilter>>(new Map());
 
