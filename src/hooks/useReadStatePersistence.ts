@@ -11,7 +11,31 @@ import {
 } from "react";
 import type { Article, KeywordFilter } from "../types";
 import { useSyncedRef } from "./useSyncedRef";
-import { STORAGE_KEYS, saveSet, loadSet, loadJson, storageGet } from "../lib/storage";
+import {
+  STORAGE_KEYS,
+  saveSet,
+  loadSet,
+  loadJsonObject,
+  loadJsonRecord,
+  storageGet,
+} from "../lib/storage";
+
+// #1146 Phase 2: corrupted localStorage 由来の primitive / null / 型不正 entry で
+// `Object.keys()` / spread / property access が TypeError → ErrorBoundary 発火するのを
+// 防ぐ narrow 関数群。invalid entry は silent fallback で record / object から排除。
+const isString = (v: unknown): v is string => typeof v === "string";
+const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every(isString);
+const isKeywordFilter = (v: unknown): v is KeywordFilter => {
+  if (typeof v !== "object" || v === null) return false;
+  const f = v as Record<string, unknown>;
+  return (
+    isStringArray(f.include) &&
+    isStringArray(f.exclude) &&
+    (f.matchCategories === undefined || typeof f.matchCategories === "boolean")
+  );
+};
+const isKeywordFilterOrNull = (v: unknown): v is KeywordFilter | null =>
+  v === null || isKeywordFilter(v);
 import { type PendingSets, emptyPendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
 import { pruneOldReadIds, computeEffectiveReadBeforeCutoff } from "../lib/read-state-prune";
 import { useReadStateToggles } from "./useReadStateToggles";
@@ -93,13 +117,13 @@ export function useReadStatePersistence(
   );
   const [likeIds, setLikeIds] = useState<Set<string>>(() => loadSet(STORAGE_KEYS.LIKE_IDS));
   const [notes, setNotesState] = useState<Record<string, string>>(() =>
-    loadJson<Record<string, string>>(STORAGE_KEYS.NOTES, {}),
+    loadJsonRecord<string>(STORAGE_KEYS.NOTES, {}, isString),
   );
   const [tagIds, setTagIdsState] = useState<Record<string, string[]>>(() =>
-    loadJson<Record<string, string[]>>(STORAGE_KEYS.TAGS, {}),
+    loadJsonRecord<string[]>(STORAGE_KEYS.TAGS, {}, isStringArray),
   );
   const [globalFilter, setGlobalFilterState] = useState<KeywordFilter | null>(() =>
-    loadJson<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null),
+    loadJsonObject<KeywordFilter | null>(STORAGE_KEYS.GLOBAL_FILTER, null, isKeywordFilterOrNull),
   );
   const globalFilterRef = useSyncedRef<KeywordFilter | null>(globalFilter);
   const [ttlDays, setTtlDaysState] = useState<number | null>(() => {
@@ -112,7 +136,7 @@ export function useReadStatePersistence(
     storageGet(STORAGE_KEYS.READ_BEFORE_TIMESTAMP),
   );
   const [snoozedUntil, setSnoozedUntil] = useState<Record<string, string>>(() =>
-    pruneExpiredSnoozes(loadJson<Record<string, string>>(STORAGE_KEYS.SNOOZED_UNTIL, {})),
+    pruneExpiredSnoozes(loadJsonRecord<string>(STORAGE_KEYS.SNOOZED_UNTIL, {}, isString)),
   );
 
   // --- Refs ---
