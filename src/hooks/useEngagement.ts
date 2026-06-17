@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import type { EngagementAction, UserProfile } from "../types";
-import { loadJson, saveJson } from "../lib/storage";
+import { loadJsonArray, saveJson } from "../lib/storage";
 import { apiFetch } from "../lib/api-fetch";
 
 const BUFFER_KEY = "rss-engagement-buffer";
@@ -16,9 +16,26 @@ type BufferEntry = {
   value?: string;
 };
 
+/**
+ * #1146 Phase 1: corrupted localStorage で primitive / null / 型不正 entry が混入しても
+ * `.push()` / property access で TypeError を起こさないよう narrow する。`action` は
+ * server 側で再 validate されるため string であれば受領 (canonical: server-side が
+ * source of truth)。invalid entry は array から排除されるだけで silent fallback。
+ */
+function isBufferEntry(v: unknown): v is BufferEntry {
+  if (typeof v !== "object" || v === null) return false;
+  const e = v as Record<string, unknown>;
+  return (
+    typeof e.articleId === "string" &&
+    typeof e.feedHash === "string" &&
+    typeof e.action === "string" &&
+    (e.value === undefined || typeof e.value === "string")
+  );
+}
+
 /** バッファに積まれた未送信エントリを R2 に送信する */
 export async function flushBuffer(): Promise<void> {
-  const snapshot = loadJson<BufferEntry[]>(BUFFER_KEY, []);
+  const snapshot = loadJsonArray<BufferEntry>(BUFFER_KEY, [], isBufferEntry);
   if (snapshot.length === 0) return;
 
   // 成功したエントリのみバッファから除去（一部失敗しても成功分は重複送信しない）
@@ -35,7 +52,7 @@ export async function flushBuffer(): Promise<void> {
   // stale な snapshot をそのまま saveJson で書き戻すと concurrent 追加分が消える
   // (read-modify-write across await の stale write-back、#1124 と同 class の lost update)。
   // snapshot 分のうち失敗分 + await 中に末尾追加された分 (index snapshot.length 以降) を保持する。
-  const current = loadJson<BufferEntry[]>(BUFFER_KEY, []);
+  const current = loadJsonArray<BufferEntry>(BUFFER_KEY, [], isBufferEntry);
   const failedFromSnapshot = snapshot.filter((_, i) => results[i].status === "rejected");
   const addedDuringFlush = current.slice(snapshot.length);
   saveJson(BUFFER_KEY, [...failedFromSnapshot, ...addedDuringFlush]);
@@ -75,7 +92,7 @@ export function useEngagement(user: UserProfile | null | undefined) {
         typeof navigator.sendBeacon === "function" && navigator.sendBeacon("/api/engagement", blob);
       if (!beaconSent) {
         // sendBeacon が失敗した場合 (or 未対応 environment) は localStorage にバッファリング
-        const buffer = loadJson<BufferEntry[]>(BUFFER_KEY, []);
+        const buffer = loadJsonArray<BufferEntry>(BUFFER_KEY, [], isBufferEntry);
         buffer.push({ articleId, feedHash, action, ...(value !== undefined && { value }) });
         if (buffer.length > MAX_BUFFER) buffer.splice(0, buffer.length - MAX_BUFFER);
         saveJson(BUFFER_KEY, buffer);
