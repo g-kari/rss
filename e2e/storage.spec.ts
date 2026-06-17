@@ -5,6 +5,9 @@ import {
   flushDeferredSaves,
   loadSet,
   saveSet,
+  loadJsonRecord,
+  loadJsonArray,
+  loadJsonObject,
 } from "../src/lib/storage";
 
 // Node 環境では localStorage が存在しないが、storage.ts はすべての localStorage アクセスを
@@ -95,5 +98,61 @@ test.describe("loadSet / saveSet — localStorage 利用不可時の安全性", 
 
   test("Node 環境で saveSet を呼んでも例外にならない", () => {
     expect(() => saveSet("__test_save__", new Set(["a"]))).not.toThrow();
+  });
+});
+
+// ============================================================================
+// #1146 Phase 0: typed wrapper helpers (loadJsonRecord / loadJsonArray /
+// loadJsonObject) の defensive 動作。実 localStorage アクセスでなく内部 narrowing 経路の
+// 単体検証 (`stored` を直接 set してから読む形式を取れないため Node 環境では fallback
+// 経路を通る → 各 validate 関数の 1:1 narrowing を直接テスト)。
+// ============================================================================
+
+const isString = (v: unknown): v is string => typeof v === "string";
+const isNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+test.describe("loadJsonRecord — non-object 入力で fallback", () => {
+  test("Node 環境 (localStorage 不在) では fallback が返る", () => {
+    const result = loadJsonRecord<string>("__nx_record_1__", { a: "x" }, isString);
+    expect(result).toEqual({ a: "x" });
+  });
+
+  test("fallback の reference が clone でなく直接返ることを確認 (内容比較)", () => {
+    const fallback = { hello: "world" };
+    const result = loadJsonRecord<string>("__nx_record_2__", fallback, isString);
+    expect(result).toEqual(fallback);
+  });
+});
+
+test.describe("loadJsonArray — non-array 入力で fallback", () => {
+  test("Node 環境では fallback が返る", () => {
+    const result = loadJsonArray<string>("__nx_array_1__", ["seed"], isString);
+    expect(result).toEqual(["seed"]);
+  });
+
+  test("空 fallback も問題なく返る", () => {
+    const result = loadJsonArray<number>("__nx_array_2__", [], isNumber);
+    expect(result).toEqual([]);
+  });
+});
+
+test.describe("loadJsonObject — validate false で fallback", () => {
+  type Profile = { id: string; name: string };
+  const isProfile = (v: unknown): v is Profile =>
+    typeof v === "object" &&
+    v !== null &&
+    typeof (v as Profile).id === "string" &&
+    typeof (v as Profile).name === "string";
+
+  test("Node 環境では fallback が返る", () => {
+    const fallback: Profile = { id: "default", name: "Anonymous" };
+    const result = loadJsonObject<Profile>("__nx_obj_1__", fallback, isProfile);
+    expect(result).toEqual(fallback);
+  });
+
+  test("validate が null を許容する union 型 fallback も成立", () => {
+    const isProfileOrNull = (v: unknown): v is Profile | null => v === null || isProfile(v);
+    const result = loadJsonObject<Profile | null>("__nx_obj_2__", null, isProfileOrNull);
+    expect(result).toBeNull();
   });
 });

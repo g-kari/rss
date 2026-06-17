@@ -170,6 +170,59 @@ export function saveJson<T>(key: string, value: T): void {
   storageSet(key, JSON.stringify(value));
 }
 
+/**
+ * `Record<string, V>` 形式で保存された値を defensive に読み込む (#1146 Phase 0)。
+ *
+ * `loadJson<T>` の `as T` cast は runtime validation なしで `JSON.parse` 結果を `T` に
+ * narrow するため、attacker-controlled / corrupted localStorage で primitive / null / array
+ * が混入すると caller の `.push()` / `.filter()` / spread で TypeError → ErrorBoundary
+ * 発火で UX 全体破壊する。本 wrapper は:
+ *   1. `loadJson<unknown>` で raw を取得 (silent fallback)
+ *   2. 非 object / null / array を fallback に置換
+ *   3. 各 value を `isValidValue` で 1:1 narrowing して invalid entry を排除
+ * canonical: `useOgpCache.ts` の `parseOgpCache(loadJson<unknown>(...))` pattern。
+ */
+export function loadJsonRecord<V>(
+  key: string,
+  fallback: Record<string, V>,
+  isValidValue: (v: unknown) => v is V,
+): Record<string, V> {
+  const raw = loadJson<unknown>(key, fallback);
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return fallback;
+  const result: Record<string, V> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (isValidValue(v)) result[k] = v;
+  }
+  return result;
+}
+
+/**
+ * `T[]` 形式で保存された値を defensive に読み込む (#1146 Phase 0)。
+ *
+ * 非 array は fallback に置換、各要素を `isValidElement` で narrowing して invalid を排除。
+ */
+export function loadJsonArray<T>(
+  key: string,
+  fallback: T[],
+  isValidElement: (v: unknown) => v is T,
+): T[] {
+  const raw = loadJson<unknown>(key, fallback);
+  if (!Array.isArray(raw)) return fallback;
+  return raw.filter(isValidElement);
+}
+
+/**
+ * 単一 object として保存された値を defensive に読み込む (#1146 Phase 0)。
+ *
+ * `validate` が false を返した値は fallback に置換 (`UserProfile | null` /
+ * `KeywordFilter | null` 等の nullable union 受け)。non-null fallback でも `null` 戻り値
+ * 許容したい caller は `validate` 内で `v === null` を許容する形で signature を満たす。
+ */
+export function loadJsonObject<T>(key: string, fallback: T, validate: (v: unknown) => v is T): T {
+  const raw = loadJson<unknown>(key, fallback);
+  return validate(raw) ? raw : fallback;
+}
+
 // ── Set<string> ヘルパー ─────────────────────────────────────
 
 /** JSON 配列として保存された Set<string> を読み込む */
