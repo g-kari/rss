@@ -49,6 +49,8 @@ interface KeyboardNavOptions {
   toggleReadingListOnly: () => void;
   likeOnly: boolean;
   toggleLikeOnly: () => void;
+  noteOnly: boolean;
+  toggleNoteOnly: () => void;
   digestMode: boolean;
   toggleDigestMode: () => void;
   toggleSortOrder: () => SortOrder;

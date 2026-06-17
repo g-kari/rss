@@ -42,6 +42,7 @@ export interface ShortcutContext {
   bookmarkOnly: boolean;
   readingListOnly: boolean;
   likeOnly: boolean;
+  noteOnly: boolean;
   digestMode: boolean;
   navigateTo: (article: Article | undefined) => void;
   onSelectFeed: (id: string | null) => void;
@@ -59,6 +60,7 @@ export interface ShortcutContext {
   toggleBookmarkOnly: () => void;
   toggleReadingListOnly: () => void;
   toggleLikeOnly: () => void;
+  toggleNoteOnly: () => void;
   toggleDigestMode: () => void;
   toggleSortOrder: () => SortOrder;
   cycleDateRange: () => DateRange;
@@ -417,6 +419,16 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     handler: (ctx) => {
       ctx.toggleLikeOnly();
       ctx.showToast(filterToastMsg(ctx.likeOnly, "いいねフィルター"));
+    },
+  },
+  {
+    keys: ["N"],
+    displayKey: "N",
+    description: "メモありフィルター切替",
+    group: "filter",
+    handler: (ctx) => {
+      ctx.toggleNoteOnly();
+      ctx.showToast(filterToastMsg(ctx.noteOnly, "メモありフィルター"));
     },
   },
   {

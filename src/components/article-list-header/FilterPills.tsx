@@ -131,7 +131,7 @@ export default function FilterPills({
       <FilterPillButton
         active={noteOnly}
         onClick={toggleNoteOnly}
-        title="メモありフィルター切替"
+        title={`${SHORTCUT_MAP["N"]} (N)`}
         variant="note"
       >
         ✎
