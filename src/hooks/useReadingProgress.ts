@@ -7,7 +7,7 @@ import {
   buildAnchorSelector,
   scopeAnchorToContent,
 } from "../lib/reading-progress";
-import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
+import { STORAGE_KEYS, loadJsonObject, saveJson } from "../lib/storage";
 import { useSyncedRef } from "./useSyncedRef";
 
 interface ProgressEntry {
@@ -15,14 +15,24 @@ interface ProgressEntry {
   anchor: string;
 }
 
+// #1146 Phase 4: corrupted localStorage 由来の primitive / 型不正値で property access が
+// TypeError → ErrorBoundary 発火するのを防ぐ。null も valid (進捗未保存状態)。
+function isProgressEntryOrNull(v: unknown): v is ProgressEntry | null {
+  if (v === null) return true;
+  if (typeof v !== "object") return false;
+  const e = v as Record<string, unknown>;
+  return typeof e.progress === "number" && typeof e.anchor === "string";
+}
+
 function saveProgress(articleId: string, entry: ProgressEntry): void {
   saveJson(`${STORAGE_KEYS.READING_PROGRESS_PREFIX}${articleId}`, entry);
 }
 
 export function loadProgress(articleId: string): ProgressEntry | null {
-  return loadJson<ProgressEntry | null>(
+  return loadJsonObject<ProgressEntry | null>(
     `${STORAGE_KEYS.READING_PROGRESS_PREFIX}${articleId}`,
     null,
+    isProgressEntryOrNull,
   );
 }
 

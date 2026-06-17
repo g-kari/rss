@@ -2,7 +2,29 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { UserProfile } from "../types";
-import { STORAGE_KEYS, storageGet, storageSet, storageRemove, loadJson } from "../lib/storage";
+import {
+  STORAGE_KEYS,
+  storageGet,
+  storageSet,
+  storageRemove,
+  loadJsonObject,
+} from "../lib/storage";
+
+// #1146 Phase 4: corrupted localStorage 由来の primitive / 型不正値で property access が
+// TypeError → ErrorBoundary 発火するのを防ぐ。null も valid (キャッシュ無効 + 認証中の
+// loading 状態を表現する nullable union 受け)。
+const isUserProfileOrNull = (v: unknown): v is UserProfile | null => {
+  if (v === null) return true;
+  if (typeof v !== "object") return false;
+  const p = v as Record<string, unknown>;
+  return (
+    typeof p.id === "string" &&
+    typeof p.sub === "string" &&
+    typeof p.email === "string" &&
+    typeof p.name === "string" &&
+    (p.picture === null || typeof p.picture === "string")
+  );
+};
 
 /**
  * `useAuth` フックの戻り値型。
@@ -64,7 +86,9 @@ export function useAuth(): AuthState {
   const [user, setUser] = useState<UserProfile | null | undefined>(() => {
     // オフライン時のために localStorage からキャッシュを復元する（初回ロード時のちらつき防止も兼ねる）
     const raw = storageGet(STORAGE_KEYS.CACHED_USER);
-    return raw ? loadJson<UserProfile | null>(STORAGE_KEYS.CACHED_USER, null) : undefined;
+    return raw
+      ? loadJsonObject<UserProfile | null>(STORAGE_KEYS.CACHED_USER, null, isUserProfileOrNull)
+      : undefined;
   });
   const [betaRestricted, setBetaRestricted] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
