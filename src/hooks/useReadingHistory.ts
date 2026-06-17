@@ -24,6 +24,12 @@ export function useReadingHistory() {
   const { items: history, prepend } = useLocalStorageHistory<HistoryEntry>(
     STORAGE_KEYS.HISTORY,
     MAX_HISTORY,
+    [],
+    (v): v is HistoryEntry => {
+      if (typeof v !== "object" || v === null) return false;
+      const e = v as Record<string, unknown>;
+      return typeof e.articleId === "string" && typeof e.viewedAt === "string";
+    },
   );
 
   const addToHistory = useCallback(

@@ -15,7 +15,12 @@ export function useSearchHistory() {
     prepend,
     remove,
     clear,
-  } = useLocalStorageHistory<string>(STORAGE_KEYS.SEARCH_HISTORY, MAX_HISTORY);
+  } = useLocalStorageHistory<string>(
+    STORAGE_KEYS.SEARCH_HISTORY,
+    MAX_HISTORY,
+    [],
+    (v): v is string => typeof v === "string",
+  );
 
   const addToHistory = useCallback(
     (query: string) => {

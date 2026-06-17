@@ -30,7 +30,21 @@ export function useFullTextSearch() {
     prepend,
     remove,
     clear,
-  } = useLocalStorageHistory<SavedSearch>(STORAGE_KEYS.SAVED_SEARCHES, MAX_SAVED);
+  } = useLocalStorageHistory<SavedSearch>(
+    STORAGE_KEYS.SAVED_SEARCHES,
+    MAX_SAVED,
+    [],
+    (v): v is SavedSearch => {
+      if (typeof v !== "object" || v === null) return false;
+      const s = v as Record<string, unknown>;
+      return (
+        typeof s.id === "string" &&
+        typeof s.name === "string" &&
+        typeof s.query === "string" &&
+        typeof s.createdAt === "string"
+      );
+    },
+  );
 
   const save = useCallback(
     (name: string, query: string) => {
