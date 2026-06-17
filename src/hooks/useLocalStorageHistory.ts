@@ -1,26 +1,25 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { loadJson, loadJsonArray, saveJson } from "../lib/storage";
+import { loadJsonArray, saveJson } from "../lib/storage";
 
 /**
  * localStorage に配列を永続化する汎用フック。
  * 先頭追加・重複排除・上限制御・削除・クリアをサポートする。
  *
- * #1146 Phase 3: caller が `isValidElement` narrow 関数を渡すと defensive 強化。
- * 渡さない場合は従来通り `loadJson<T[]>` (`as T[]`) で受ける legacy 経路。caller は
- * 段階的に narrow 関数を渡す形で型安全性を強化する。
+ * #1146 Phase 3 で全 caller (`useSearchHistory` / `useReadingHistory` /
+ * `useFullTextSearch`) が `isValidElement` narrow 関数を渡す形に統一済。corrupted
+ * localStorage 由来の `.push()` / `.filter()` で TypeError → ErrorBoundary 発火を構造的に
+ * 予防 (`loadJsonArray` 経由 → invalid element は silent fallback で配列から排除)。
  */
 export function useLocalStorageHistory<T>(
   storageKey: string,
   maxSize: number,
-  initial: T[] = [],
-  isValidElement?: (v: unknown) => v is T,
+  initial: T[],
+  isValidElement: (v: unknown) => v is T,
 ) {
   const [items, setItems] = useState<T[]>(() =>
-    isValidElement
-      ? loadJsonArray<T>(storageKey, initial, isValidElement)
-      : loadJson<T[]>(storageKey, initial),
+    loadJsonArray<T>(storageKey, initial, isValidElement),
   );
 
   /**
