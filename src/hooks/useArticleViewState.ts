@@ -252,7 +252,11 @@ export function useArticleViewState({
   });
 
   // --- Reading progress ---
-  const { progressBarRef, handleScroll } = useArticleViewProgress({
+  const {
+    progressBarRef,
+    handleScroll,
+    progress: readingProgress,
+  } = useArticleViewProgress({
     articleId: article?.id,
     contentRef,
     autoReadEnabled,
@@ -370,5 +374,6 @@ export function useArticleViewState({
     hasImages,
     readingMins,
     handleScroll,
+    readingProgress,
   };
 }

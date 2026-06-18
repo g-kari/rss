@@ -17,6 +17,7 @@ import ArticleNotePanel from "./article-view/ArticleNotePanel";
 import ImageDownloadModal from "./article-view/ImageDownloadModal";
 import InlineArticleNav from "./article-view/InlineArticleNav";
 import AutoReadController from "./article-view/AutoReadController";
+import { shouldShowBackToTopFab } from "../lib/article-view-fab";
 
 interface Props {
   article: Article | null;
@@ -178,6 +179,7 @@ function ArticleView({
     hasImages,
     readingMins,
     handleScroll,
+    readingProgress,
   } = useArticleViewState({
     article,
     isBookmarked,
@@ -403,6 +405,34 @@ function ArticleView({
         onAutoMarkRead={onAutoMarkRead}
         onAutoModeStop={onAutoModeStop ?? (() => {})}
       />
+      {/* #1149: 「先頭へ戻る」FAB (案 B 閾値 30% + 案 C TTS 中非表示の併用)。
+          canonical: ImageGallery.tsx の 44px round button pattern。
+          mainRef.scrollTop = 0 は useArticleViewState.ts:114 の既存 pattern。 */}
+      {shouldShowBackToTopFab(readingProgress, ttsPlaying, ttsPaused) && (
+        <button
+          type="button"
+          onClick={() => {
+            if (mainRef.current) mainRef.current.scrollTop = 0;
+          }}
+          aria-label="記事の先頭へ戻る"
+          title="先頭へ戻る"
+          className="fixed bottom-6 right-6 z-40 w-11 h-11 rounded-full bg-ink/85 text-ink-text hover:bg-ink shadow-lg flex items-center justify-center transition-colors"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M10 16V4M4 10l6-6 6 6" />
+          </svg>
+        </button>
+      )}
     </main>
   );
 }
