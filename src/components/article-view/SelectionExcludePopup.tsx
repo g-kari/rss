@@ -3,6 +3,7 @@ import type { KeywordFilter } from "../../types";
 import { usePopupLock } from "../../hooks/usePopupLock";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { useToast } from "@/contexts/ToastContext";
+import { useArticleFilter } from "@/contexts/ArticleFilterContext";
 import {
   computeSelectionPopupLayout,
   type SelectionPopupLayout,
@@ -102,6 +103,10 @@ export default function SelectionExcludePopup({
 }: Props) {
   usePopupLock();
   const toast = useToast();
+  // #1148: 選択語で検索 menuitem 用。`ArticleFilterContext` 経由で `updateQuery` を取得して
+  // prop chain を回避 (`ArticleHeaderMeta` の onSetQuery 経由 chip と同じ最終 effect だが、
+  // context 経由で touch を 1 file に抑える軽量設計)。
+  const { updateQuery } = useArticleFilter();
   const displayText = popup.text.length > 24 ? `${popup.text.slice(0, 24)}…` : popup.text;
 
   // #864 案 A: canonical な useMenuKeyboard helper に移行 (ArticleContextMenu / ShareMenu /
@@ -173,6 +178,13 @@ export default function SelectionExcludePopup({
     onClose();
   }
 
+  function doSearch(e: { preventDefault: () => void }) {
+    e.preventDefault();
+    updateQuery(popup.text);
+    toast.info(`「${displayText}」で検索`);
+    onClose();
+  }
+
   return (
     // #850: role="dialog" + aria-modal="false" 矛盾解消で canonical role="menu" + role="menuitem"
     // パターンに統一 (ArticleContextMenu / ShareMenu / FilterMenu と同じ pattern)。
@@ -222,6 +234,32 @@ export default function SelectionExcludePopup({
               <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
             </svg>
             <span>引用をコピー</span>
+          </button>
+          <div className="border-t border-border-subtle" />
+          <button
+            role="menuitem"
+            type="button"
+            onMouseDown={doSearch}
+            onTouchEnd={doSearch}
+            onClick={doSearch}
+            className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle focus:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink transition-colors whitespace-nowrap w-full"
+          >
+            <svg
+              aria-hidden="true"
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="flex-shrink-0 text-text-muted"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <span>「{displayText}」で検索</span>
           </button>
           {onSaveGlobalFilter && (
             <>
