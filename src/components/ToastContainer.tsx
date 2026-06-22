@@ -55,7 +55,7 @@ function ToastCard({ toast, dismiss }: { toast: ToastItem; dismiss: (id: string)
               toast.onUndo!();
               dismiss(toast.id);
             }}
-            className="flex-shrink-0 text-[13px] font-medium text-text-strong hover:text-ink-hover transition-colors"
+            className="flex-shrink-0 max-md:min-h-[44px] max-md:min-w-[44px] lg:min-h-[24px] lg:min-w-[24px] flex items-center justify-center text-[13px] font-medium text-text-strong hover:text-ink-hover transition-colors"
           >
             元に戻す
           </button>
@@ -63,7 +63,7 @@ function ToastCard({ toast, dismiss }: { toast: ToastItem; dismiss: (id: string)
         <button
           type="button"
           onClick={() => dismiss(toast.id)}
-          className="flex-shrink-0 mt-px text-text-faint hover:text-text-muted transition-colors"
+          className="flex-shrink-0 mt-px max-md:min-h-[44px] max-md:min-w-[44px] lg:min-h-[24px] lg:min-w-[24px] flex items-center justify-center text-text-faint hover:text-text-muted transition-colors"
           aria-label="閉じる"
         >
           <svg

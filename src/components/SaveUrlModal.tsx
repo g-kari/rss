@@ -46,7 +46,7 @@ export default function SaveUrlModal({ url, onUrlChange, saving, error, onSave, 
             type="button"
             onClick={() => onSave("bookmark")}
             disabled={saving || !url.trim()}
-            className="flex-1 text-[12px] tracking-[0.04em] py-2 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
+            className="flex-1 min-h-[44px] text-[12px] tracking-[0.04em] py-2 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
           >
             ブックマーク
           </button>
@@ -54,14 +54,14 @@ export default function SaveUrlModal({ url, onUrlChange, saving, error, onSave, 
             type="button"
             onClick={() => onSave("reading_list")}
             disabled={saving || !url.trim()}
-            className="flex-1 text-[12px] tracking-[0.04em] py-2 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
+            className="flex-1 min-h-[44px] text-[12px] tracking-[0.04em] py-2 bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
           >
             後で読む
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="text-[12px] px-4 py-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200"
+            className="min-h-[44px] text-[12px] px-4 py-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200"
           >
             キャンセル
           </button>

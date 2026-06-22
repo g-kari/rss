@@ -110,7 +110,7 @@ export default function SnoozeModal({ articleTitle, onSnooze, onClose, returnFoc
               onSnooze(opt.durationMs);
               onClose();
             }}
-            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-surface-hover transition-colors text-left"
+            className="w-full flex items-center justify-between px-4 py-2.5 max-md:min-h-[44px] lg:min-h-[24px] hover:bg-surface-hover transition-colors text-left"
           >
             <span className="text-[13px] text-text-strong">{opt.label}</span>
             <span className="text-[11px] text-text-muted tabular-nums">{opt.sublabel}</span>
