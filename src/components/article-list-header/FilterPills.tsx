@@ -207,6 +207,7 @@ export default function FilterPills({
         >
           <span className="truncate">{authorFilter}</span>
           <svg
+            aria-hidden="true"
             width="8"
             height="8"
             viewBox="0 0 8 8"
@@ -257,6 +258,7 @@ export default function FilterPills({
           className="flex items-center gap-1 px-2 h-6 rounded-full text-[11px] text-text-faint hover:text-text-strong hover:bg-surface-subtle transition-all duration-200"
         >
           <svg
+            aria-hidden="true"
             width="12"
             height="12"
             viewBox="0 0 12 12"

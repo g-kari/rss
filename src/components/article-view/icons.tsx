@@ -1,5 +1,6 @@
 export const DownloadIcon = () => (
   <svg
+    aria-hidden="true"
     width="14"
     height="14"
     viewBox="0 0 24 24"
@@ -15,6 +16,7 @@ export const DownloadIcon = () => (
 
 export const ExternalLinkIcon = ({ size = 14 }: { size?: number }) => (
   <svg
+    aria-hidden="true"
     className={`w-[${size}px] h-[${size}px]`}
     width={size}
     height={size}
@@ -41,6 +43,7 @@ export const ChevronSmall = ({
   direction: "left" | "right";
 }) => (
   <svg
+    aria-hidden="true"
     width={width}
     height={height}
     viewBox="0 0 12 12"
