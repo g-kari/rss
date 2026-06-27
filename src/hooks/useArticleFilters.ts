@@ -281,5 +281,3 @@ export function useArticleFilters({
     ],
   );
 }
-
-export type ArticleFilterState = ReturnType<typeof useArticleFilters>;
