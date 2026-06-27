@@ -3,6 +3,7 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import type { Feed } from "../types";
 import { apiFetch, apiFetchJson, tryParseErrorBody } from "../lib/api-fetch";
+import { devError } from "../lib/dev-log";
 import { invalidateSwCache } from "../lib/sw-cache";
 import { useAutoReset } from "./useAutoReset";
 
@@ -81,7 +82,8 @@ export function useFeedOperations({
       invalidateSwCache(["/api/feeds", "/api/articles"]);
       onSuccess();
       onFeedAdded(feed);
-    } catch {
+    } catch (err) {
+      devError("[useFeedOperations] addFeed failed", err);
       notify("ネットワークエラーが発生しました");
     } finally {
       setAdding(false);
@@ -93,7 +95,8 @@ export function useFeedOperations({
       await apiFetchJson(`/api/feeds/${id}`, { method: "DELETE" });
       invalidateSwCache(["/api/feeds", "/api/articles"]);
       onFeedDeleted(id);
-    } catch {
+    } catch (err) {
+      devError("[useFeedOperations] deleteFeed failed", err);
       notify("フィードの削除に失敗しました");
     }
   }
@@ -106,7 +109,8 @@ export function useFeedOperations({
         body: JSON.stringify({ title }),
       });
       onFeedRenamed(updated);
-    } catch {
+    } catch (err) {
+      devError("[useFeedOperations] renameFeed failed", err);
       notify("フィードのタイトル変更に失敗しました");
     }
   }
@@ -136,7 +140,8 @@ export function useFeedOperations({
         text: data.added > 0 ? `${data.added}件インポートしました` : "すべて登録済みです",
         isError: false,
       });
-    } catch {
+    } catch (err) {
+      devError("[useFeedOperations] handleImportFile failed", err);
       showImportMessage({ text: "インポートに失敗しました", isError: true });
     } finally {
       setImporting(false);
