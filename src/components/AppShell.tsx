@@ -61,6 +61,7 @@ import ThreePaneLayout from "./ThreePaneLayout";
 import AppProviders from "./AppProviders";
 import { useReaderSettingsValue } from "../hooks/useReaderSettingsValue";
 import { type ArticleFilter } from "../contexts/ArticleFilterContext";
+import { type Article } from "../types";
 import { useBackgroundAudio } from "../hooks/useBackgroundAudio";
 import { useMediaSession } from "../hooks/useMediaSession";
 import { useSyncedRef } from "../hooks/useSyncedRef";
@@ -672,6 +673,23 @@ export default function AppShell({
   const [openFeedAddTrigger, setOpenFeedAddTrigger] = useState(0);
   const openFeedAddModal = useCallback(() => setOpenFeedAddTrigger((c) => c + 1), []);
 
+  const onMobileBackToSidebar = useCallback(() => setMobilePane("sidebar"), [setMobilePane]);
+  const onContextMenuSnoozeArticle = useCallback(
+    (article: Article) => handleShowSnoozeMenu(article.id),
+    [handleShowSnoozeMenu],
+  );
+  const pushApi = useMemo(
+    () => ({
+      supported: pushSupported,
+      subscribed: pushSubscribed,
+      loading: pushLoading,
+      error: pushError,
+      onToggle: togglePush,
+      onSendTest: sendPushTest,
+    }),
+    [pushSupported, pushSubscribed, pushLoading, pushError, togglePush, sendPushTest],
+  );
+
   useKeyboardNav({
     filteredArticles: filtered,
     feeds,
@@ -896,14 +914,7 @@ export default function AppShell({
                 install,
                 loadError: feedLoadError ? "フィードの読み込みに失敗しました" : null,
                 onRetry: retryFeedList,
-                push: {
-                  supported: pushSupported,
-                  subscribed: pushSubscribed,
-                  loading: pushLoading,
-                  error: pushError,
-                  onToggle: togglePush,
-                  onSendTest: sendPushTest,
-                },
+                push: pushApi,
                 openFeedAddTrigger,
               }}
             />
@@ -925,7 +936,7 @@ export default function AppShell({
                 fetchError,
                 onRetry: retryInitialLoad,
                 onChangeLayout,
-                onMobileBack: () => setMobilePane("sidebar"),
+                onMobileBack: onMobileBackToSidebar,
                 onSelectArticle: selectArticle,
                 onToggleRead: toggleRead,
                 onToggleBookmark: toggleBookmark,
@@ -943,7 +954,7 @@ export default function AppShell({
                 anchorTrigger,
                 onAddFeed: openFeedAddModal,
                 onSnoozeArticle: snoozeArticle,
-                onContextMenuSnooze: (article) => handleShowSnoozeMenu(article.id),
+                onContextMenuSnooze: onContextMenuSnoozeArticle,
                 onAddTag: addTag,
               }}
             />
