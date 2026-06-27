@@ -16,12 +16,11 @@ import { equalSnoozedUntil } from "../lib/read-state-merge";
 import { useArticleFilters } from "./useArticleFilters";
 import { useArticleSorting } from "./useArticleSorting";
 import { useArticlePagination } from "./useArticlePagination";
-
-// Object.freeze で sentinel が下流で .add() / .push() されても runtime throw する safety net。
-// useDelayedGalleryItems.ts の EMPTY_SET と同じ pattern。
-const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
-const EMPTY_STR_ARRAY = Object.freeze([] as string[]) as string[];
-const EMPTY_FEED_ARRAY = Object.freeze([] as Feed[]) as Feed[];
+import {
+  EMPTY_STRING_SET as EMPTY_SET,
+  EMPTY_STRING_ARRAY as EMPTY_STR_ARRAY,
+  EMPTY_FEED_ARRAY,
+} from "../lib/empty-sentinels";
 
 /** フィード選択に関する状態 */
 export interface FeedSelectionOptions {

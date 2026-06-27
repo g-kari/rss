@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { EMPTY_STRING_SET as EMPTY_SET } from "../lib/empty-sentinels";
 
 interface Result<T> {
   /** masonic に渡す表示用配列 — 削除予定アイテムも一時的に含む */
@@ -26,8 +27,6 @@ interface Result<T> {
  * 注意: `items` と `getId` の identity が変わるたびに判定を走らせるため、
  *   呼び出し側は `visible` を `useMemo` で安定化し、`getId` は `useCallback` or module scope 関数にすること。
  */
-const EMPTY_SET = Object.freeze(new Set<string>()) as Set<string>;
-
 export function useDelayedGalleryItems<T>(
   items: T[],
   getId: (item: T) => string,
