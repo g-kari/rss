@@ -124,7 +124,7 @@ export default function ArticleHeaderEngagement({
           onClick={() => onToggleLike(article.id)}
           title={isLiked ? "いいね解除 (I)" : "いいね (I)"}
           ariaLabel={isLiked ? "いいね解除" : "いいね"}
-          activeClass="bg-rose-400 text-white"
+          activeClass="bg-like text-white"
           inactiveHoverClass="hover:text-error"
         >
           <svg
@@ -152,8 +152,8 @@ export default function ArticleHeaderEngagement({
           }}
           title={note ? "メモを編集" : "メモを追加"}
           ariaLabel={note ? "メモを編集" : "メモを追加"}
-          activeClass="text-amber-400 hover:text-text-muted"
-          inactiveClass="text-text-faint hover:text-amber-400"
+          activeClass="text-memo hover:text-text-muted"
+          inactiveClass="text-text-faint hover:text-memo"
         >
           <svg
             width="14"

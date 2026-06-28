@@ -87,7 +87,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
         </span>
       )}
       {hasNote && (
-        <NoteIcon className="text-amber-400 flex-shrink-0 [@media(hover:hover)]:group-hover:hidden" />
+        <NoteIcon className="text-memo flex-shrink-0 [@media(hover:hover)]:group-hover:hidden" />
       )}
       <time
         dateTime={article.publishedAt ?? undefined}

@@ -13,29 +13,31 @@ paths: "src/components/**/*.tsx,app/globals.css"
 
 コンポーネントでは **セマンティックトークン** を使う。石版色やzinc値を直接書かない。
 
-| トークン           | ライト (stone)     | ダーク (zinc)      | 用途                                                         |
-| ------------------ | ------------------ | ------------------ | ------------------------------------------------------------ |
-| `surface-base`     | stone-50           | zinc-950           | メイン背景                                                   |
-| `surface-elevated` | white              | zinc-900           | サイドバー・カード                                           |
-| `surface-subtle`   | stone-100          | zinc-800           | 選択済みアイテム                                             |
-| `surface-hover`    | stone-50           | zinc-800/50        | ホバー状態                                                   |
-| `border-default`   | stone-200          | zinc-800           | 主ボーダー                                                   |
-| `border-subtle`    | stone-100          | zinc-800/50        | 薄ボーダー                                                   |
-| `text-strong`      | stone-800          | zinc-200           | 見出し・選択中                                               |
-| `text-default`     | stone-600          | zinc-300           | 通常テキスト                                                 |
-| `text-soft`        | stone-500          | zinc-400           | 本文                                                         |
-| `text-muted`       | stone-500          | zinc-400           | バッジ数字・ラベル                                           |
-| `text-faint`       | stone-500          | zinc-400           | タイムスタンプ・空状態 (WCAG AA: ~4.6:1 / ~5.75:1 (WCAG AA)) |
-| `status-error`     | rose-600 (#e11d48) | rose-400 (#fb7185) | エラー状態                                                   |
-| `ink`              | stone-800          | zinc-200           | 主アクション背景                                             |
-| `ink-hover`        | stone-700          | zinc-300           | 主アクションホバー                                           |
-| `ink-text`         | white              | zinc-950           | 主アクション上のテキスト                                     |
-| `accent-dot`       | rose-400           | indigo-500         | 未読ドット                                                   |
-| `error`            | rose-600           | rose-400           | エラーテキスト (WCAG AA: 4.7:1 / 5.4:1)                      |
-| `bookmark`         | amber-400          | amber-400          | ブックマーク                                                 |
-| `toast-success`    | emerald-500        | emerald-500        | ToastContainer success icon (#1169 Phase 1)                  |
-| `toast-error`      | rose-500           | rose-500           | ToastContainer error icon (#1169 Phase 1)                    |
-| `toast-undo`       | amber-500          | amber-500          | ToastContainer undo icon + progress bar (#1169 Phase 1)      |
+| トークン           | ライト (stone)     | ダーク (zinc)      | 用途                                                                |
+| ------------------ | ------------------ | ------------------ | ------------------------------------------------------------------- |
+| `surface-base`     | stone-50           | zinc-950           | メイン背景                                                          |
+| `surface-elevated` | white              | zinc-900           | サイドバー・カード                                                  |
+| `surface-subtle`   | stone-100          | zinc-800           | 選択済みアイテム                                                    |
+| `surface-hover`    | stone-50           | zinc-800/50        | ホバー状態                                                          |
+| `border-default`   | stone-200          | zinc-800           | 主ボーダー                                                          |
+| `border-subtle`    | stone-100          | zinc-800/50        | 薄ボーダー                                                          |
+| `text-strong`      | stone-800          | zinc-200           | 見出し・選択中                                                      |
+| `text-default`     | stone-600          | zinc-300           | 通常テキスト                                                        |
+| `text-soft`        | stone-500          | zinc-400           | 本文                                                                |
+| `text-muted`       | stone-500          | zinc-400           | バッジ数字・ラベル                                                  |
+| `text-faint`       | stone-500          | zinc-400           | タイムスタンプ・空状態 (WCAG AA: ~4.6:1 / ~5.75:1 (WCAG AA))        |
+| `status-error`     | rose-600 (#e11d48) | rose-400 (#fb7185) | エラー状態                                                          |
+| `ink`              | stone-800          | zinc-200           | 主アクション背景                                                    |
+| `ink-hover`        | stone-700          | zinc-300           | 主アクションホバー                                                  |
+| `ink-text`         | white              | zinc-950           | 主アクション上のテキスト                                            |
+| `accent-dot`       | rose-400           | indigo-500         | 未読ドット                                                          |
+| `error`            | rose-600           | rose-400           | エラーテキスト (WCAG AA: 4.7:1 / 5.4:1)                             |
+| `bookmark`         | amber-400          | amber-400          | ブックマーク                                                        |
+| `toast-success`    | emerald-500        | emerald-500        | ToastContainer success icon (#1169 Phase 1)                         |
+| `toast-error`      | rose-500           | rose-500           | ToastContainer error icon (#1169 Phase 1)                           |
+| `toast-undo`       | amber-500          | amber-500          | ToastContainer undo icon + progress bar (#1169 Phase 1)             |
+| `memo`             | amber-400          | amber-400          | NoteIcon メモあり indicator (#1169 Phase 2、bookmark と別 semantic) |
+| `like`             | rose-400           | rose-400           | EngagementSegmentButton いいね active 背景 (#1169 Phase 2)          |
 
 **使用例**: `bg-surface-base`, `text-text-strong`, `border-border-default`, `bg-ink`, `text-ink-text`, `text-error`
 
