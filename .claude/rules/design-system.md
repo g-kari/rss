@@ -33,6 +33,9 @@ paths: "src/components/**/*.tsx,app/globals.css"
 | `accent-dot`       | rose-400           | indigo-500         | 未読ドット                                                   |
 | `error`            | rose-600           | rose-400           | エラーテキスト (WCAG AA: 4.7:1 / 5.4:1)                      |
 | `bookmark`         | amber-400          | amber-400          | ブックマーク                                                 |
+| `toast-success`    | emerald-500        | emerald-500        | ToastContainer success icon (#1169 Phase 1)                  |
+| `toast-error`      | rose-500           | rose-500           | ToastContainer error icon (#1169 Phase 1)                    |
+| `toast-undo`       | amber-500          | amber-500          | ToastContainer undo icon + progress bar (#1169 Phase 1)      |
 
 **使用例**: `bg-surface-base`, `text-text-strong`, `border-border-default`, `bg-ink`, `text-ink-text`, `text-error`
 

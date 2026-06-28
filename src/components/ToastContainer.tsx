@@ -19,10 +19,10 @@ const iconPath: Record<ToastItem["type"], string> = {
 };
 
 const iconColor: Record<ToastItem["type"], string> = {
-  success: "text-emerald-500",
-  error: "text-rose-500",
+  success: "text-toast-success",
+  error: "text-toast-error",
   info: "text-text-muted",
-  undo: "text-amber-500",
+  undo: "text-toast-undo",
 };
 
 function ToastCard({ toast, dismiss }: { toast: ToastItem; dismiss: (id: string) => void }) {
@@ -83,7 +83,7 @@ function ToastCard({ toast, dismiss }: { toast: ToastItem; dismiss: (id: string)
       </div>
       {toast.type === "undo" && (
         <div className="h-0.5 w-full bg-border-subtle">
-          <div className="h-full bg-amber-500 animate-undo-progress" />
+          <div className="h-full bg-toast-undo animate-undo-progress" />
         </div>
       )}
     </div>

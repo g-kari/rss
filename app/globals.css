@@ -28,6 +28,12 @@
   --color-status-warning: #d97706; /* amber-600: rate limited / warning (WCAG AA: 4.5:1 on stone-50) */
   --color-status-oversized: #4f46e5; /* indigo-600: oversize (WCAG AA: 4.5:1 on stone-50) */
   --color-status-ok: #059669; /* emerald-600: 正常 (WCAG AA: 4.5:1 on stone-50) */
+  /* toast color (#1169 Phase 1): ToastContainer の type 別 icon / progress bar 色。
+   * 短時間 + icon + text + border の redundant signal で color-only 違反でなく、
+   * surface-elevated 上での visual 一貫性のため light/dark 同色 (500 系) を維持。 */
+  --color-toast-success: #10b981; /* emerald-500: 成功 toast (surface-elevated 上で十分視認) */
+  --color-toast-error: #f43f5e; /* rose-500: エラー toast (text-text-strong とは色相区別) */
+  --color-toast-undo: #f59e0b; /* amber-500: undo toast icon + progress bar (再操作可能性を表現) */
   --color-highlight: #fef3c7; /* amber-100: 検索ハイライト */
   --color-tts-highlight: #fde68a; /* amber-200: TTS 読み上げ中センテンスハイライト (より目立つ) */
   --color-tts-highlight-text: #1c1917; /* stone-900: TTS ハイライト上のテキスト (高コントラスト) */
@@ -67,6 +73,10 @@
   --color-status-warning: #fbbf24; /* amber-400 (WCAG AA: 4.6:1) */
   --color-status-oversized: #818cf8; /* indigo-400 */
   --color-status-ok: #34d399; /* emerald-400 */
+  /* toast color (#1169 Phase 1): light theme と同色 (surface-elevated zinc-900 上で 5-8:1 確保) */
+  --color-toast-success: #10b981; /* emerald-500 (WCAG AA: ~6.5:1 on zinc-900) */
+  --color-toast-error: #f43f5e; /* rose-500 (WCAG AA: ~5.0:1 on zinc-900) */
+  --color-toast-undo: #f59e0b; /* amber-500 (WCAG AAA: ~8.0:1 on zinc-900) */
   --color-highlight: rgba(99, 102, 241, 0.18); /* indigo-500/18: 検索ハイライト */
   --color-tts-highlight: rgba(251, 191, 36, 0.3); /* amber-400/30: TTS 読み上げ中 (ダーク) */
   --color-tts-highlight-text: #fef3c7; /* amber-100: ダークテーマ高コントラスト */
