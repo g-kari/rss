@@ -43,7 +43,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260625.1",
     "@opennextjs/cloudflare": "^1.20.0",
-    "@playwright/test": "^1.61.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.3.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
