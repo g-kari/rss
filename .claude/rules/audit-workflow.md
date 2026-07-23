@@ -315,6 +315,37 @@ agent 監査結果の中で以下 **3 条件全て** が揃った提案は、ver
 
 主な使用箇所: `#814` Modal aria-describedby — agent confidence 80% で ゴールド sign 微未達だったが、3 サイクル滞留 + ConfirmModal canonical 完全一致 + touch 1 file の代替 3 条件で即着手判定、Phase 0 verify で起票時 ReactNode 仮定の誤りを修正 (subtitle?: string 型確認) → 案 A 自走採用 + close (本サイクル commit `c2e118f3`)
 
+##### サブパターン: 「perf / simplify Issue で 既存挙動完全互換 + 復元可能」の代替 4 条件は 3 サイクル滞留待ちなく同日自走採用
+
+代替 3 条件は `canonical 完全一致 + touch ≤ 2 + 3 サイクル滞留` を課すが、**perf / simplify カテゴリの Issue (既存挙動を変えない refactor / 最適化)** の場合は **同日自走採用** を認める。3 サイクル滞留の意義は「明示 reject 期間の確保」だが、既存挙動完全互換 + 復元可能な変更なら reject 期間を待たずとも revert cost が最小で、progress 優位性が上回る。confidence < 90 でも既存挙動互換の担保が待機期間を代替する。
+
+**代替 4 条件 (全充足で同日自走採用)**:
+
+1. **touch ≤ 2 file**: 影響範囲 scope 小
+2. **AI 推奨案明示済**: Issue 本文で案 A/B/C + 推奨案 + 根拠が明記されている (末尾が「ユーザー判断: 案 A / 案 B のどちらで進めますか？」の起票形式でも可)
+3. **既存挙動完全互換**: perf 最適化 / simplify refactor 系で入出力型 / return signature / caller への副作用が no-change
+4. **復元可能**: `git revert <sha>` 1 コマンドで戻せる scope (依存 commit なし / Phase 分割不要)
+
+理由: perf / simplify Issue の「案 A 推奨 + 案 B 代替 + ユーザー判断仰ぐ」構造は AI 起票時の設計案 pattern だが、実は「案 A に明確な優位性 (touch 少 / 実装量少 / 保守容易) + 案 B は overkill」なケースが大半。この構造の Issue で 3 サイクル滞留を必ず待つと、「明示的な採用コメントを書くほどではないがコード上 perf は改善したい」ユーザー状態で actionable progress が遅延する。既存挙動完全互換 + 復元可能な変更は revert cost が最小、reject 期間を経由せず自走採用しても事後 revert で trivially 巻き戻せる。
+
+**How to apply**: perf / simplify カテゴリの Issue (重複計算集約 / helper 集約 / hook 内部最適化等) を受領したら以下を判定 (代替 3 条件との違いは「3 サイクル滞留待ちなし + agent confidence 要件なし」、既存挙動互換の担保が待機期間を代替する):
+
+1. **Issue 本文が案 A/B/C + 推奨案明示 pattern か** を確認 (「ユーザー判断: どちらで？」で終わる AI 起票形式が典型)
+2. **推奨案の touch 見積 ≤ 2 file** を実コード Read で確認 (Issue 本文の見積は誤ることがある)
+3. **既存挙動完全互換 verify**: 入出力型 / return signature / caller への副作用が no-change を実コードで確認
+4. **復元可能性 verify**: 依存 commit なし + Phase 分割不要 + `git revert` 1 コマンドで戻せる scope
+5. 4 条件全充足なら **同日自走採用 + commit message に「代替4条件自走採用」を明記** (ユーザーが事後 revert 判断できるよう trace 残す)
+6. **明示 reject コメントが来たら即時 revert** (代替 3 条件と同じ運用)
+
+**反例 (代替 4 条件不適用)**:
+
+- **挙動変化を含む** (behavior change / UX change / bugfix 兼 refactor) → 4 条件不成立、代替 3 条件 or 通常フロー
+- **touch ≥ 3 file** (context 複数箇所への波及、reviewer 認知負荷増) → 4 条件不成立、代替 3 条件 or Phase 分割
+- **依存 commit あり** (前 commit で helper 追加 + 本 commit で使用等の chain) → 復元 non-trivial、Phase 分割 or 通常フロー
+- **設計判断要素残存** (新規規範策定要素 / API contract 変更 / 新 dep 追加) → 通常フロー、ユーザー判断必須
+
+主な使用箇所: `useFeedFilters` の `mutedUntil` `Date.parse` を `parsedUntil` Map に集約する perf Issue — agent confidence 80% + 同日起票で ゴールド sign / 代替 3 条件どちらも不成立だったが、touch 1 file + 案 A/B 明示済 + 既存挙動完全互換 + revert 1 コマンドの代替 4 条件全充足で同日自走採用
+
 ##### サブパターン: 「機械的 sweep refactor 例外」— `touch ≤ 2` 微未達でも一括適用 OK
 
 本サブケース本体 + 「3 サイクル滞留代替判定」は共通条件として `touch ≤ 2 file` を課すが、**機械的 sweep refactor** (sed で 1 コマンド完結する import path 変更 / 機械的 rename 等) の場合は touch ≥ 3 file でも一括適用 OK と例外規定する。
