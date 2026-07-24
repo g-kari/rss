@@ -358,6 +358,64 @@ silent fallback 規範 (`catch { return null }` に `devError` 必須) は **全
 - 外部依存ラッパー canonical: `browser-summarizer.ts` / `browser-translator.ts` (`catch (err) { devError("[browser-summarizer] summarize failed", err); return null; }`)
 - 内部 URL パーサー canonical: `csrf.ts toOrigin` / `url.ts isValidUrl` / `feed-discovery.ts probeCommonFeedPaths` (silent fallback、devError なし)
 
+#### サブパターン: cron / server-side batch path の parse fallback は「毎レコード」でも devError 必須 (wrangler tail 観測可能化)
+
+上記「判定軸」の **「内部 URL パーサー / parser fallback = 毎レコード処理で silent OK」** 分類は、**ユーザー UX へ直接影響が伝播する path** には適用しない。cron scheduled handler / worker.ts の scheduled batch から呼ばれる `parseHTML` / `parseXML` / `parseJSON` の catch は「毎レコード fallback」に見えても、silent fail すると **ユーザー可視の症状 (フィード記事が突然 0 件 / feed 更新が止まる)** が発生し、本番 wrangler tail での調査可能化が必須。分類上は「内部 parser」でも、**「fail 経路が UX に silent に伝播する server-side batch」= 外部依存ラッパー等価の devError 必須側** に降格させる。
+
+```typescript
+// アンチパターン: cron 本番経路の scrapeFeed で parseHTML 失敗が silent
+// src/lib/llm-feed-generator.ts (cron → src/cron/fetch.ts → worker.ts scheduled)
+async function scrapeFeed(siteUrl: string, html: string): Promise<Feed> {
+  try {
+    const dom = parseHTML(html);
+    // ... extract items ...
+    return { title, siteUrl, items };
+  } catch {
+    // ↓ silent fallback: フィード記事が突然 0 件になる症状の原因が本番調査不能
+    return { title: siteTitle, siteUrl, items: [] };
+  }
+}
+
+// 修正パターン: 同ファイル内 canonical (既存 inferSelectors 経路) の devError 呼出と統一
+import { devError } from "./dev-log";
+
+async function scrapeFeed(siteUrl: string, html: string): Promise<Feed> {
+  try {
+    const dom = parseHTML(html);
+    // ... extract items ...
+    return { title, siteUrl, items };
+  } catch (err) {
+    devError("[llm-feed-generator] scrapeFeed: parseHTML failed", { siteUrl, err });
+    return { title: siteTitle, siteUrl, items: [] };
+  }
+}
+```
+
+**判定強化条件 (「内部 parser」分類でも devError 必須に降格するトリガー)**:
+
+| 条件                                                                       | 判定                       |
+| -------------------------------------------------------------------------- | -------------------------- |
+| **cron / scheduled handler / batch 経路から呼ばれる**                      | 本サブパターン適用候補     |
+| **fail 時に user-visible UX 劣化** (feed 記事 0 件 / 更新停止 / 空白表示)  | devError 必須側へ降格      |
+| **同 file 内で他 catch が既に devError 済** (drift 状態 = 規範対象確立済) | 残 catch にも devError 追加 |
+| **本番調査は wrangler tail が唯一の観測手段** (server-side, DevTools 不可) | devError 必須              |
+
+**How to apply**: server-side (cron / scheduled handler / batch worker) の parse / fetch catch を書くとき、または同 file 内 drift 解消 sweep を実施するとき (「内部 parser で silent OK」判定は browser-side の毎リクエスト fail 想定で、cron 本番経路では silent fail が UX 劣化として直接伝播する ← wrangler tail が本番調査の唯一手段のため devError 必須):
+
+1. **catch 経路の呼び出し元 trace** — cron / scheduled / batch から呼ばれるか確認
+2. **fail 時のユーザー症状を想定** — user-visible UX 劣化 (0 件 / 空白 / 停止) が発生するなら本サブパターン適用
+3. **同 file 内既存 catch の devError 有無を確認** — 3 経路 devError 済 + 2 経路 silent のような drift 状態なら残 catch も統一 (drift 解消 sweep として着手)
+4. **`catch (err)` で err を受領する形に変更** + `devError("[<file>] <function>: <what failed>", { <context>, err })` — context には URL / siteUrl / feedId 等の判別材料を含める
+5. **dev-only log なので本番 log noise 増加ゼロ** — `devError` は `NODE_ENV !== "production"` ガードで本番出力なし、trade-off は「dev DevTools ログ noise 微増」のみ
+
+**反例 (本サブパターン不適用ケース)**:
+
+- browser-side hook (React component 起因の per-user-action) → 本規範本体「外部依存ラッパー / 内部 parser」判定軸に従う
+- server-side でも **fail 時に上位で明示エラー応答** を返す Route Handler (`/api/*/route.ts`) → 「上流 API プロキシのエラー観測性は server-side log + response header の二段」規範に従う (本サブパターンは cron / scheduled batch 特化)
+- cron でも **fail が上位で catch + retry queue 投入** されている path → 上位で観測可能なため本 catch は silent OK
+
+主な使用箇所: `src/lib/llm-feed-generator.ts` の `extractLinkStructure` / `scrapeFeed` — 同 file 内 3 catch (`inferSelectors` JSON parse / セレクタ検証 / 汎用 catch) が既に devError 済 + 2 catch が silent の drift 状態 → cron 本番経路で `scrapeFeed` silent fail が「フィード記事 0 件」症状の本番調査を不能化していた → 2 catch に devError 追加で同 file 内 5 catch 全件 canonical 統一 + wrangler tail 観測可能化
+
 ## ブラウザ仕様の最低バージョン定数を 1 箇所に集約する
 
 Chrome / Safari の Web API には「Chrome 138+」「Safari 17+」のような最低バージョン要件がある。これを `getChromeVersion() < 131` のようにマジックナンバーで散らすと、API の stable リリース後に bump し忘れて誤診断 (`flag-disabled` 等) を起こす。

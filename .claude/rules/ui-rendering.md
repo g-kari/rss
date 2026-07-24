@@ -514,3 +514,64 @@ const contentId = `category-${cat}-content`;
 - **`hidden` 属性の代替**: `className` で `display:none` の切り替えも AT には同等に機能するが、`hidden` 属性は HTML セマンティクスとしてより明示的
 
 主な使用箇所: `CategorySection.tsx` / `FeedGroupsSection.tsx` — 折りたたみボタンに `aria-controls={catContentId}` / `aria-controls={\`group-${group.id}-content\`}`を追加、対応コンテンツ div に`id`+`hidden` 属性を追加して WAI-ARIA Disclosure pattern に準拠
+
+## dialog タイトルは `<h2 id={titleId}>` で見出し landmark 化する (`<p id={titleId}>` は screen reader rotor / H キーで辿れない)
+
+`role="dialog"` + `aria-labelledby={titleId}` を持つモーダルで、参照先を `<p id={titleId}>` として実装すると WCAG 1.3.1 (Info and Relationships) 違反 + screen reader UX 劣化。**`aria-labelledby` は id 参照で label 自体は読み上げ可能だが、role として heading と認識されず「dialog with paragraph text」に degrade する** + rotor / H キーの見出しナビゲーションが機能しない。
+
+```tsx
+// アンチパターン: dialog タイトルが <p> で見出し landmark 不在
+<div
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby={titleId}
+>
+  <p id={titleId} className="text-text-strong text-[14px] font-medium mb-2">
+    画像をダウンロード
+  </p>
+  {/* ... */}
+</div>
+
+// 修正パターン: <h2 id={titleId}> で見出し化 (ConfirmModal.tsx / Modal.tsx canonical と統一)
+<div
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby={titleId}
+>
+  <h2 id={titleId} className="text-text-strong text-[14px] font-medium mb-2">
+    画像をダウンロード
+  </h2>
+  {/* ... */}
+</div>
+```
+
+**canonical 実装**:
+
+| file                                                       | title tag                                              | 用途                                       |
+| ---------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------ |
+| `src/components/ConfirmModal.tsx`                          | `<h2 id={titleId} className="text-[13px] ...">`        | 確認 dialog canonical (`useId()` で id 生成) |
+| `src/components/Modal.tsx`                                 | `<h2 id={titleId} className="text-[13px] ...">`        | 汎用 dialog canonical (`useId()` で id 生成) |
+| `src/components/article-view/ImageDownloadModal.tsx` (修正前)| `<p id={titleId} ...>` (drift)                          | canonical 逸脱 → `<h2>` に統一             |
+
+**How to apply**: `role="dialog"` + `aria-labelledby={titleId}` を書いたら参照先も `<h2 id={titleId}>` で揃える (`<p>` / `<span>` / `<div>` id 参照は AT で「dialog with paragraph text」に degrade、rotor / H キー見出しナビが機能しない、WCAG 1.3.1 違反):
+
+1. **`role="dialog"` を書いたら `aria-labelledby={titleId}` の参照先 tag を必ず `<h2>` にする** — `<p>` / `<span>` / `<div>` は heading role でなく WCAG 1.3.1 違反
+2. **`titleId` は `useId()` で生成** — 同 page 内複数 dialog マウント時の id 衝突を回避 (`ConfirmModal.tsx` / `Modal.tsx` canonical に準拠)
+3. **`<h2>` の className は既存 `<p>` の className をそのまま流用** — visual style は変えず role のみ変更で機能変化なし
+4. **`aria-describedby={titleId + "-desc"}` を使う場合は description 側 tag は `<p>` で OK** (heading と description は別役割)
+5. **canonical sweep**:
+   ```bash
+   grep -rEn 'role="dialog"' src/components/ | while read line; do
+     file=$(echo "$line" | cut -d: -f1)
+     # 同 file 内 <p id={titleId} / <span id={titleId} / <div id={titleId} を検出
+     grep -nE '<(p|span|div) id=\{titleId\}' "$file" && echo "  → DRIFT: $file"
+   done
+   ```
+
+**反例 (`<h2>` 使用が不適切なケース)**:
+
+- **`role="alertdialog"` の場合も同様に `<h2>` 推奨** (`alertdialog` は `dialog` の subtype、heading landmark 要件は同じ)
+- **`role="dialog"` を使わず popover / tooltip として実装** (`role="tooltip"` / `role="menu"`) → heading landmark 不要、`<h2>` 強制しない
+- **dialog 内に既に `<h1>` / `<h2>` が存在** して semantic hierarchy が構築済 → 追加の title tag は `<h3>` 以降が適切 (稀ケース、ネスト dialog 等)
+
+主な使用箇所: `src/components/article-view/ImageDownloadModal.tsx:40` — `<p id={titleId} className="text-text-strong text-[14px] font-medium mb-2">` を `<h2 id={titleId} className="text-text-strong text-[14px] font-medium mb-2">` に変更 (className 同じ、tag のみ変更) で ConfirmModal.tsx:64 / Modal.tsx:67 canonical に統一。同 file docstring 明記の「#1064 で ConfirmModal canonical に統一」に整合

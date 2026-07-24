@@ -495,6 +495,76 @@ grep -rnE "from\s+[\"'].*classify-http-error[\"']" src/ app/ \
 
 主な使用箇所: `classify-http-error.ts` の `isRetryableHttpError` — `e2e/classify-http-error.spec.ts` からの import のみ hit、`src/ app/` は 0 件 → Case A 確定で `export` 削除 + spec の import / describe ブロック削除。typecheck pass、Phase 2 の自動リトライ実装時に `export` を再追加するだけで再利用可能な状態を維持
 
+##### Case Z (Case A サブパターン): hook 戻り値型 `interface` は spec import すら無くても `export` のみ削除 (interface 自体は同 file 内で戻り値型注釈として維持)
+
+Case A (production 0 件 + spec 1+ 件) の更に下位に、**production 0 件 + spec 0 件 + 同 file 内で戻り値型注釈でのみ使用** される「Case Z」がある。典型は hook の戻り値型 `Result` / `State` / `Deps` / `Options` suffix interface — hook consumer は destructure (`const { flush, saving } = useReadStateSyncFlush(...)`) で type inference に依存しており、`export interface FlushResult` の `export` keyword は完全に dead な public API surface。**interface 定義自体は戻り値型注釈として同 file 内で使用継続**するので削除不可、`export` keyword のみを削除 (module-private 化)。
+
+```typescript
+// アンチパターン: hook 戻り値型が export 済だが cross-file 参照 0 件
+// src/hooks/useReadStateSyncFlush.ts
+export interface FlushResult {  // ← 全 caller は type inference 経由、export dead
+  flush: () => Promise<void>;
+  saving: boolean;
+}
+
+export function useReadStateSyncFlush(deps: Deps): FlushResult {
+  // ...
+  return { flush, saving };
+}
+
+// consumer: const { flush, saving } = useReadStateSyncFlush(...) で型推論
+// → FlushResult を明示 import する caller は production / spec 全体で 0 件
+
+// 修正パターン: export keyword のみ削除、interface 定義は戻り値型注釈として維持
+interface FlushResult {  // ← module-private 化
+  flush: () => Promise<void>;
+  saving: boolean;
+}
+
+export function useReadStateSyncFlush(deps: Deps): FlushResult {
+  return { flush, saving };
+}
+// consumer 側は変更なし (type inference で動作継続)
+```
+
+**Case Z 判定条件 (全て Yes で採用)**:
+
+| 条件                                                           | 確認方法                                                                  |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| production caller 0 件 (`src/` / `app/` grep で明示 import 0)  | `grep -rnE "\\b<TypeName>\\b" src/ app/ --include="*.ts*"` = 定義 file のみ |
+| spec caller 0 件 (`e2e/` / `*.test.ts` grep で明示 import 0)   | `grep -rnE "\\b<TypeName>\\b" e2e/ src/ --include="*.spec.ts" --include="*.test.ts"` = 0 |
+| 同 file 内で戻り値型注釈として使用 (削除不可、export のみ dead) | 定義 file 内で `: <TypeName>` の注釈使用が 1+ 件                          |
+| consumer が destructure 経由の type inference で動作            | `const { ... } = useHook(...)` パターンで明示型宣言なし                    |
+
+**Case A / Case Z の違い**:
+
+| 観点                | Case A                            | Case Z                                          |
+| ------------------- | --------------------------------- | ----------------------------------------------- |
+| spec caller         | あり (spec import 1+ 件)           | **なし** (完全 dead public surface)             |
+| 修正内容            | export 削除 + spec import 削除    | **export 削除のみ** (interface 定義は維持)       |
+| interface 自体      | シンボル削除も検討可能            | **削除不可** (戻り値型注釈で使用継続)            |
+| commit message 注記 | 「Case A: spec import も削除」    | 「Case Z: 戻り値型注釈維持 + export のみ削除」   |
+
+**How to apply**: hook 戻り値型 interface (`Result` / `State` / `Deps` / `Options` suffix) を発見したら以下を判定 (hook consumer は destructure type inference に依存するため export keyword は dead public API surface になりやすい、Case A より更に安全な module-private 化パターン):
+
+1. **cross-file 参照を suffix pattern で一括 sweep** — `for name in FlushResult ToggleResult ActionResult State PushNotificationState; do grep -rn "\\b$name\\b" src/ e2e/ --include="*.ts*"; done` で定義 + 使用場所を全件抽出
+2. **各 hit が「定義 file の 2 箇所 (interface 宣言 + 戻り値型注釈)」のみ** = Case Z 確定候補
+3. **spec / production caller 0 件を確認** — 明示 `import type { FlushResult } from ...` が全体で 0 件なら Case Z 確定
+4. **`export` keyword のみ削除** — interface 定義自体は戻り値型注釈として残す (削除すると戻り値型が inline object type に置換されて可読性劣化)
+5. **typecheck pass 確認** — consumer 側の type inference が interface 定義に依存しているため、interface 自体を残せば destructure は動作継続
+6. **commit message に「Case Z: hook 戻り値型 interface の export keyword 削除、戻り値型注釈は同 file 内で使用継続」** を明記して Case A との違いを履歴に残す
+
+**反例 (Case Z 不適用 = export 維持ケース)**:
+
+- interface が **将来 caller 追加予定** で TDD spec に契約テストがある → Case A の反例と同じく export 維持
+- interface が **同 file 内の他 export function からも戻り値型として使用** され、その function に cross-file caller あり → 削除すると caller で `import type` 追加が必要になり scope 拡大
+- interface が **type union の member として public interface に含まれる** (例: `export type Result = FlushResult | ReadResult`) → union 経由で export 済、直接 export は redundant だが削除で public API 挙動変わる可能性 → 慎重判断
+
+主な使用箇所:
+
+- `useReadStateSyncFlush.ts` の `FlushResult` / `useReadStateActions.ts` の `ReadStateActionResult` / `useReadStateToggles.ts` の `ToggleResult` / `usePushNotifications.ts` の `PushNotificationState` — 4 件全て cross-file 参照 0 件 (定義 file 内で戻り値型注釈のみ) を確認 → 4 file 一括で `export` keyword 削除 (caebaabb sweep の `Result` / `State` suffix 拡張)
+- 先行 canonical: caebaabb commit の `GalleryAutoReadTrackingState` / `PrefetchedMedia` / `ArticleViewProgressDeps` 3 件 (audit 観点別 7 finding 集約自走の一部として Case Z 適用済)
+
 ### 派生ケース: 監査エージェントの提案は「prop 受け口」と「配線」を分離して部分達成できる
 
 「Issue 起票へ降格」の前に、**「prop 受け口の追加 (1 ファイル)」と「配線 wiring (3〜4 ファイル + state lift up 等)」を分離** して **prop 受け口だけ同サイクル commit + 配線は別 Issue 起票** という部分達成パターンを採れることがある。「全部か全くやらないか」の二択でなく、安全な前半だけ commit を進められる。
