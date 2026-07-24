@@ -37,9 +37,9 @@ export default function ImageDownloadModal({
         className="bg-surface-elevated border border-border-default rounded-xl p-6 shadow-xl max-w-sm mx-4 w-full outline-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <p id={titleId} className="text-text-strong text-[14px] font-medium mb-2">
+        <h2 id={titleId} className="text-text-strong text-[14px] font-medium mb-2">
           {isAlreadyDownloaded ? "再ダウンロード" : "画像をダウンロード"}
-        </p>
+        </h2>
         <p id={`${titleId}-desc`} className="text-text-soft text-[13px] mb-5">
           {isAlreadyDownloaded
             ? "この記事の画像はすでに保存済みです。再度ダウンロードしますか？"
