@@ -23,6 +23,8 @@ import {
 } from "../lib/article-utils";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { isArticleRead } from "../lib/article-filter";
+import { isAbortError } from "../lib/fetch";
+import { devError } from "../lib/dev-log";
 
 export interface ShortcutContext {
   list: Article[];
@@ -483,7 +485,12 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
         if (typeof navigator.share === "function") {
           navigator
             .share({ url: ctx.selectedArticle.link, title: ctx.selectedArticle.title })
-            .catch(() => {});
+            .catch((err) => {
+              // ユーザーキャンセル (AbortError) は silent skip (canonical: ShareMenu.tsx:74-79)
+              if (isAbortError(err)) return;
+              devError("[shortcut c] navigator.share failed", err);
+              ctx.showToast("シェアに失敗しました");
+            });
         } else {
           clipboardWrite(ctx.selectedArticle.link, "リンクをコピーしました", ctx.showToast);
         }
