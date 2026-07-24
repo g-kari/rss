@@ -277,6 +277,56 @@ grep -nE "<推奨パッケージ名>|<類似機能>" package.json
 
 主な使用箇所: `useArticleAi.ts` の `AiErrorType = HttpErrorType` 統合 — `classifyHttpError` / `getErrorMessage` 重複定義削除 + 429 で Retry-After ヘッダー秒数表示バグも同時修正
 
+### 派生ケース: `Map<K, V>` 等価判定 helper の重複は generic + `ReadonlyMap` 引数で canonical 集約 + 既存 named export は thin wrapper で残置
+
+「Map の size + key/value 比較」ロジックが複数 file (例: `unread-stats-merge.ts#equalUnreadByFeed` + `equalLastPublishedByFeed` / `article-filter-equality.ts#equalMap`) で inline 重複するケース。value 型 (`number` / `string` / etc.) が違うだけで size compare + `for (const [k, v] of a) { if (b.get(k) !== v) return false }` の構造は同じ。canonical の `equalMap<V>(a, b): boolean` に集約するが、**既存 named export を thin wrapper として残置** して caller signature 維持 + 実装は canonical 1 箇所に集約する。
+
+canonical 側で以下 2 点を先に修正して安全に統合:
+
+1. **`Map<string, V>` → `ReadonlyMap<string, V>`** に緩和 (`Map` / `ReadonlyMap` どちらの caller からも呼べる superset、`Map extends ReadonlyMap` なので既存 `Map` caller に破壊なし)
+2. **`function equalMap<V>` に `export` 追加** して外 file から import 可能に
+
+```typescript
+// canonical: article-filter-equality.ts
+export function equalMap<V>(a: ReadonlyMap<string, V>, b: ReadonlyMap<string, V>): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [key, val] of a) {
+    if (!b.has(key)) return false;
+    if (b.get(key) !== val) return false;
+  }
+  return true;
+}
+
+// wrapper: unread-stats-merge.ts (caller signature 維持)
+import { equalMap } from "./article-filter-equality";
+export function equalUnreadByFeed(
+  a: ReadonlyMap<string, number>,
+  b: ReadonlyMap<string, number>,
+): boolean {
+  return equalMap(a, b);
+}
+```
+
+wrapper 残置は `rule-maintenance.md § 6 派生「wrapper adapter で callsite 不変を保ち scope 圧縮する」` と同じ trade-off — caller 側 書き換え diff 回避 + 実装 canonical 1 箇所集約 の canonical pattern。
+
+**How to apply**: `equalXxxMap` / `equalXxxByYyy` 名の Map 等価判定 helper を実装 or 発見したら (`Map` / `ReadonlyMap` 変換の generic 一段昇格は caller 破壊ゼロで scope 最小、named wrapper は semantic 明示性を維持):
+
+1. **同ロジック helper を grep**: `grep -rn "for (const \[.*\] of a)" src/lib/ | grep "b.get\|b.has"` で size compare + get 比較 pattern を全件列挙
+2. **canonical 候補 (最古 / 最も一般的 / 既に export 済) の 1 つを選択** — 通常は既に他 helper (`equalDigestLimitMap` / `equalStringMap` 等) を集約している hub file
+3. **canonical を `ReadonlyMap<string, V>` generic + `export` に昇格** — この 2 修正は既存 caller 破壊なし (safe widening)
+4. **重複 file の同ロジック関数を wrapper に置換** — 実装 body を `return equalMap(a, b);` 1 行に、named export + signature (arg 型) は変更しない
+5. **JSDoc に統合済 note 追記** (「内部実装は `equalMap` generic に委譲、named export は signature 維持のため残置」) — 次回 sweep での重複再検出防止
+6. **TDD**: 既存 named wrapper の spec が pass すれば regression なし、追加 spec 不要 (canonical `equalMap` に既存 spec があれば流用)
+
+**反例 (wrapper 残置が不要 / 全 caller 直接置換が canonical なケース)**:
+
+- **caller が 1-2 箇所のみ** — wrapper 残置のオーバーヘッド > caller 書き換え、直接 `equalMap(a, b)` で置換
+- **wrapper の named export が semantic 情報を持たない** (例: `equalMapV1` / `equalMapCopy` 等の一時名) — semantic 価値なしなら削除 + caller 直接置換
+- **generic に含まれない特殊比較** (`Object.is` / deep equal / 数値許容誤差等) が値比較に必要 — canonical `===` に統合不可、独立維持
+
+主な使用箇所: `unread-stats-merge.ts` の `equalUnreadByFeed` / `equalLastPublishedByFeed` 2 関数 (計 12 行 inline 実装) を `article-filter-equality.ts#equalMap<V>` 経由に統合 — canonical を `ReadonlyMap` generic + export に昇格 + wrapper 残置で caller (unread stats context) 側 diff ゼロ、実装 22 → 6 行に圧縮
+
 ### 派生ケース: sibling hook 統合前に「内部 silent 副作用経路」を grep して signature を先に確定する
 
 2 つの hook (例: `useSpeechSynthesis` / `usePiperTts`) で **rate/voice/volume 制御コードが ~120 行重複** していて共通化したくなる、というケース。同じ public API (state + setter) でも、片方の hook が **内部で silent に state を書き換える経路** (例: error event handler 内で `setVoiceUriState(null)` を直接呼ぶ + `onChange` callback を呼ばない自動 reset) を持っていることがある。この経路を見落として共通 hook の `setVoiceUri(uri)` 経由に置き換えると、`onChange` callback で `speak()` 等の副作用が**再発火する罠**になる。

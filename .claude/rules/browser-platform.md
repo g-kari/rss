@@ -393,12 +393,12 @@ async function scrapeFeed(siteUrl: string, html: string): Promise<Feed> {
 
 **判定強化条件 (「内部 parser」分類でも devError 必須に降格するトリガー)**:
 
-| 条件                                                                       | 判定                       |
-| -------------------------------------------------------------------------- | -------------------------- |
-| **cron / scheduled handler / batch 経路から呼ばれる**                      | 本サブパターン適用候補     |
-| **fail 時に user-visible UX 劣化** (feed 記事 0 件 / 更新停止 / 空白表示)  | devError 必須側へ降格      |
-| **同 file 内で他 catch が既に devError 済** (drift 状態 = 規範対象確立済) | 残 catch にも devError 追加 |
-| **本番調査は wrangler tail が唯一の観測手段** (server-side, DevTools 不可) | devError 必須              |
+| 条件                                                                       | 判定                        |
+| -------------------------------------------------------------------------- | --------------------------- |
+| **cron / scheduled handler / batch 経路から呼ばれる**                      | 本サブパターン適用候補      |
+| **fail 時に user-visible UX 劣化** (feed 記事 0 件 / 更新停止 / 空白表示)  | devError 必須側へ降格       |
+| **同 file 内で他 catch が既に devError 済** (drift 状態 = 規範対象確立済)  | 残 catch にも devError 追加 |
+| **本番調査は wrangler tail が唯一の観測手段** (server-side, DevTools 不可) | devError 必須               |
 
 **How to apply**: server-side (cron / scheduled handler / batch worker) の parse / fetch catch を書くとき、または同 file 内 drift 解消 sweep を実施するとき (「内部 parser で silent OK」判定は browser-side の毎リクエスト fail 想定で、cron 本番経路では silent fail が UX 劣化として直接伝播する ← wrangler tail が本番調査の唯一手段のため devError 必須):
 
@@ -415,6 +415,65 @@ async function scrapeFeed(siteUrl: string, html: string): Promise<Feed> {
 - cron でも **fail が上位で catch + retry queue 投入** されている path → 上位で観測可能なため本 catch は silent OK
 
 主な使用箇所: `src/lib/llm-feed-generator.ts` の `extractLinkStructure` / `scrapeFeed` — 同 file 内 3 catch (`inferSelectors` JSON parse / セレクタ検証 / 汎用 catch) が既に devError 済 + 2 catch が silent の drift 状態 → cron 本番経路で `scrapeFeed` silent fail が「フィード記事 0 件」症状の本番調査を不能化していた → 2 catch に devError 追加で同 file 内 5 catch 全件 canonical 統一 + wrangler tail 観測可能化
+
+#### サブパターン: user action browser API wrapper (`navigator.share` / `clipboard.write` / `exitFullscreen` 等) の catch は `isAbortError` (= user cancel) 除外 + devError + toast 通知の 3 点セット
+
+`navigator.share()` / `navigator.clipboard.write()` / `document.exitFullscreen()` 等 **user action trigger の browser API** は、Promise reject の内訳が **`AbortError` (= user cancel / permission dismiss)** と **非 AbortError (= true failure)** の 2 系統に分かれる。silent `.catch(() => {})` bare catch は両者を同一視して user cancel の正常 flow を「失敗」扱い + 真の失敗を silent 化する二重罠に落ちる。canonical は 3 点セット:
+
+1. **`if (isAbortError(err)) return;`** で user cancel を silent skip (toast なし、devError なし)
+2. **`devError("[<caller>] <api> failed", err)`** で真の失敗を wrangler tail / DevTools 観測可能化
+3. **`toast.error(...)`** または `ctx.showToast(...)` で user-visible 通知 (user action の feedback として必須)
+
+```typescript
+// アンチパターン: bare catch で user cancel と失敗を同一視
+navigator.share({ url, title }).catch(() => {});
+// → user がシェアシートを閉じただけで silent、真の失敗も silent、両方 debuggability ゼロ
+
+// 修正パターン: 3 点セット (canonical: src/components/article-view/ShareMenu.tsx)
+import { isAbortError } from "@/lib/fetch";
+import { devError } from "@/lib/dev-log";
+
+navigator.share({ url, title }).catch((err) => {
+  if (isAbortError(err)) return; // user cancel = silent skip
+  devError("[ShareMenu] navigator.share failed", err);
+  toast.error("シェアに失敗しました");
+});
+```
+
+`react-effect-patterns.md § isAbortError` の canonical は **`await fetch` 中の AbortController.abort()** で fire する AbortError (= 非同期処理中断) を扱うが、本サブパターンは **user が browser UI (シェアシート / permission dialog) を dismiss したときに fire する AbortError** で発生元が別。判定関数 `isAbortError` は共用 (`DOMException.name === "AbortError"` 検出) で流用可能。
+
+**該当する典型 API**:
+
+| API                         | AbortError の発生条件           | 真の失敗の例                                 |
+| --------------------------- | ------------------------------- | -------------------------------------------- |
+| `navigator.share()`         | user がシェアシートを閉じた     | permission 拒否 / URL 不正 / OS 側エラー     |
+| `navigator.clipboard.*()`   | user が permission dialog dismiss | permission 拒否 / focus 喪失 / doc 非 secure |
+| `document.exitFullscreen()` | user が ESC / OS gesture で解除 | fullscreen state 不整合                      |
+| `element.requestPointerLock()` | user が dismiss              | permission 拒否 / element 非表示             |
+
+**How to apply**: user action trigger の browser API wrapper を実装 or 発見したら (bare `.catch(() => {})` は `browser-platform.md § 「外部依存ラッパー」silent fallback` 規範違反 + user cancel と真の失敗を同一視する二重罠):
+
+1. **`.catch(...)` の err 引数を必ず受領** (`.catch(() => {})` / `.catch(_ => {})` は禁止、`err` を受けて分岐必須)
+2. **1 行目に `if (isAbortError(err)) return;`** で user cancel を silent skip — `@/lib/fetch` の `isAbortError` を import (react-effect-patterns.md canonical と共用)
+3. **2 行目に `devError("[<caller>] <api> failed", err)`** で真の失敗を dev 観測可能化 — caller prefix (`[ShareMenu]` / `[shortcut c]` 等) で追跡可能に
+4. **3 行目に user-visible 通知** — `toast.error(...)` / `ctx.showToast(...)` / 各 UI の error surface で「<action> に失敗しました」を表示
+5. **canonical sweep**:
+   ```bash
+   grep -rEn 'navigator\.(share|clipboard)|exitFullscreen|requestPointerLock' src/ \
+     | grep -v '\.spec\.ts' | xargs -I {} sh -c 'grep -A 3 "{}" | grep -q "isAbortError" || echo "DRIFT: {}"'
+   ```
+6. **caller から離れた config file (`src/config/shortcuts.ts` 等) の宣言型 handler は canonical component (`ShareMenu.tsx` 等) を参照** — シェア/コピー等の UX が同じ場合は toast 文言も統一 (「シェアに失敗しました」等)
+
+**反例 (3 点セットが overkill なケース)**:
+
+- **user action でない background API call** (`Notification.requestPermission()` の初回自動 request 等) → user cancel = 通常 flow の分岐、toast 不要
+- **fallback UI が視覚的に自明** (シェア → clipboard コピーに自動 fallback + "コピーしました" toast 表示) → 真の失敗 catch は 2 点セット (`isAbortError` + devError) で OK、toast は fallback 側が担当
+- **spec / test 環境の mock 呼出** — vitest 環境の `navigator.share` は不在なので `typeof navigator.share === "function"` guard 済なら catch 到達しない
+
+主な使用箇所:
+
+- canonical: `src/components/article-view/ShareMenu.tsx` — `navigator.share({...}).catch((err) => { if (isAbortError(err)) return; console.error(...); toast.error("シェアに失敗しました"); })` の 3 点セット完全形
+- drift 解消例: `src/config/shortcuts.ts` の shortcut c (share) handler — 元は `.catch(() => {})` bare catch で silent fallback 規範違反、canonical ShareMenu と同じ 3 点セット (`isAbortError` + `devError` + `ctx.showToast`) に統一
 
 ## ブラウザ仕様の最低バージョン定数を 1 箇所に集約する
 

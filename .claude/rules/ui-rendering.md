@@ -547,11 +547,11 @@ const contentId = `category-${cat}-content`;
 
 **canonical 実装**:
 
-| file                                                       | title tag                                              | 用途                                       |
-| ---------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------ |
-| `src/components/ConfirmModal.tsx`                          | `<h2 id={titleId} className="text-[13px] ...">`        | 確認 dialog canonical (`useId()` で id 生成) |
-| `src/components/Modal.tsx`                                 | `<h2 id={titleId} className="text-[13px] ...">`        | 汎用 dialog canonical (`useId()` で id 生成) |
-| `src/components/article-view/ImageDownloadModal.tsx` (修正前)| `<p id={titleId} ...>` (drift)                          | canonical 逸脱 → `<h2>` に統一             |
+| file                                                          | title tag                                       | 用途                                         |
+| ------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------- |
+| `src/components/ConfirmModal.tsx`                             | `<h2 id={titleId} className="text-[13px] ...">` | 確認 dialog canonical (`useId()` で id 生成) |
+| `src/components/Modal.tsx`                                    | `<h2 id={titleId} className="text-[13px] ...">` | 汎用 dialog canonical (`useId()` で id 生成) |
+| `src/components/article-view/ImageDownloadModal.tsx` (修正前) | `<p id={titleId} ...>` (drift)                  | canonical 逸脱 → `<h2>` に統一               |
 
 **How to apply**: `role="dialog"` + `aria-labelledby={titleId}` を書いたら参照先も `<h2 id={titleId}>` で揃える (`<p>` / `<span>` / `<div>` id 参照は AT で「dialog with paragraph text」に degrade、rotor / H キー見出しナビが機能しない、WCAG 1.3.1 違反):
 
@@ -575,3 +575,107 @@ const contentId = `category-${cat}-content`;
 - **dialog 内に既に `<h1>` / `<h2>` が存在** して semantic hierarchy が構築済 → 追加の title tag は `<h3>` 以降が適切 (稀ケース、ネスト dialog 等)
 
 主な使用箇所: `src/components/article-view/ImageDownloadModal.tsx:40` — `<p id={titleId} className="text-text-strong text-[14px] font-medium mb-2">` を `<h2 id={titleId} className="text-text-strong text-[14px] font-medium mb-2">` に変更 (className 同じ、tag のみ変更) で ConfirmModal.tsx:64 / Modal.tsx:67 canonical に統一。同 file docstring 明記の「#1064 で ConfirmModal canonical に統一」に整合
+
+## 択一トグル button 群 (rating / segment / like-neutral-bad 3 択) には `aria-pressed` で active state を露出する
+
+`<button>` を「複数選択肢から現在値を 1 つ選ぶ」トグル UI として実装するとき (要約評価: 良い/普通/悪い、翻訳評価、like/neutral/bad セグメント等)、視覚的な選択状態を CSS だけで表現すると screen reader ユーザーが「今どれが選ばれているか」を認識できない。**`aria-pressed={rating === currentRating}`** を各 button に付けて WAI-ARIA Button toggle state を露出する。
+
+```tsx
+// アンチパターン: 視覚的 active state のみ (CSS class)、aria-pressed なし
+{(["good", "neutral", "bad"] as const).map((rating) => (
+  <button
+    key={rating}
+    aria-label={`要約の評価: ${rating}`}
+    className={cn(
+      "px-2 py-1",
+      summaryRating === rating && "bg-accent text-accent-fg", // 視覚のみ
+    )}
+    onClick={() => setSummaryRating(rating)}
+  >
+    {label}
+  </button>
+))}
+// → NVDA / VoiceOver は「ボタン, 要約の評価: 良い」としか読まず、選択済みか判別不可
+
+// 修正パターン: aria-pressed で active state 露出 (canonical: EngagementSegmentButton)
+{(["good", "neutral", "bad"] as const).map((rating) => (
+  <button
+    key={rating}
+    aria-label={`要約の評価: ${rating}`}
+    aria-pressed={summaryRating === rating}   // ← ラジオ的意味なら "true" / "false"
+    className={cn("px-2 py-1", summaryRating === rating && "bg-accent")}
+    onClick={() => setSummaryRating(rating)}
+  >
+    {label}
+  </button>
+))}
+```
+
+**`aria-pressed` vs `aria-selected` vs `role="radio"` の使い分け**:
+
+| UI 種別                                                            | canonical role / attr                                | 選定基準                                                       |
+| ------------------------------------------------------------------ | ---------------------------------------------------- | -------------------------------------------------------------- |
+| **択一トグル button 群** (rating 3 択 / segment button)            | `<button aria-pressed={...}>`                        | button role 維持、AT に「toggle button」として announce        |
+| **listbox 内 option** (combobox / drop-down suggestion)            | `<button role="option" aria-selected={...}>`         | listbox ownership chain が必要、`aria-activedescendant` と連動 |
+| **フォーム的 radio group** (submit 時に値送信、TAB でグループ移動) | `<input type="radio">` or `role="radio" + radiogroup` | keyboard TAB navigation が radiogroup 単位、form 送信意味論     |
+
+**canonical 実装**: `src/components/article-list/EngagementSegmentButton.tsx` — 「後で読む / ブックマーク / いいね」3 連トグルで `aria-pressed` + `max-md:min-w-[44px]` を canonical 化 (WCAG 2.5.5 タッチターゲットと併走)。
+
+**How to apply**: `.map((option) => <button ...>)` で 3+ 択の button group を実装 or 発見したら (択一トグル UI に `aria-pressed` 欠落は WCAG 4.1.2 (Name, Role, Value) 違反 + screen reader で active state 不可視、視覚 CSS class の active style と 1:1 で対応させる):
+
+1. **button group が「複数選択肢から 1 つ選ぶ」構造か** を確認 — `.map((rating) => <button>)` で render + click で state 更新の pattern
+2. **canonical `EngagementSegmentButton.tsx` を確認** して `aria-pressed={value === currentValue}` の 1:1 対応形式を流用
+3. **各 button に `aria-pressed={<option value> === <current state>}` を付与** — 視覚 active state (`className` の `bg-accent` 等) と同じ条件式を使う (視覚と AT で乖離させない)
+4. **`aria-label` と併用**: `aria-label` は選択肢の名前 (「要約の評価: 良い」)、`aria-pressed` は選択状態 (true/false) で役割分離
+5. **canonical sweep**:
+   ```bash
+   # rating / segment / toggle 系 button group を検出
+   grep -rEn '\.map\(\(([a-z]+)\) => \(' src/components/ | grep '<button' | head -10
+   # 該当 button に aria-pressed があるか file 単位で確認
+   grep -L 'aria-pressed' <hit files>
+   ```
+6. **sibling コンポーネントへの横展開**: canonical (`EngagementSegmentButton`) → 同種択一トグル (`ArticleAiPanel` 要約評価 / `ArticleContentBody` 翻訳評価 / etc.) を grep で列挙 → aria-pressed 未付与を一括修正
+
+**反例 (`aria-pressed` が不要 / 別 attr が正しいケース)**:
+
+- **`role="option"` を持つ listbox 内 button** → `aria-pressed` でなく `aria-selected` を使う (combobox pattern、`ui-rendering.md § combobox input 5 属性`)
+- **択一でない独立トグル (単一 mute button 等)** → `aria-pressed` 適用 OK (WAI-ARIA `button` state)、択一制約なし
+- **form の radio group** で `<input type="radio">` を使っている → native radio が role/state 自動提供、`aria-pressed` 追加不要 (重複 announce)
+- **視覚的 active state を持たない一時押下 button** (submit / cancel 等) → toggle でない、`aria-pressed` 不要
+
+主な使用箇所:
+
+- canonical: `src/components/article-list/EngagementSegmentButton.tsx` — 3 連トグル (後で読む / ブックマーク / いいね) の aria-pressed 基準実装
+- sibling drift 解消例: `src/components/article-view/ArticleAiPanel.tsx:106` (要約評価 3 択) + `src/components/article-view/ArticleContentBody.tsx:386` (翻訳評価 3 択) — 各 3 button (計 6 button) に `aria-pressed={<rating>Rating === rating}` 追加で canonical 統一 + WCAG 4.1.2 準拠
+
+### 派生ケース: code-review agent の「canonical あり + sibling drift 検出」finding は「同種 button group の全 sibling を canonical に横展開」で 1 commit 一括解消する
+
+code-review agent (`copilot-review` / `feature-dev:code-reviewer` 等) が「canonical (`EngagementSegmentButton` の aria-pressed) 存在 + sibling (`ArticleAiPanel` / `ArticleContentBody` の rating button group) に欠落」を finding として提示するとき、finding 単位で 1 button ずつ修正すると commit boundary が薄まる。**同種 UI pattern の全 sibling を grep で列挙 → 1 commit で一括横展開** が canonical。
+
+```
+パターン: sibling drift 横展開判定フロー
+  1. agent finding: 「X (canonical) に aria-pressed あり、Y (sibling) に欠落」
+  2. canonical の実装形式を 1 分で確認 (aria-pressed={value === currentValue} 等)
+  3. 同種 pattern (rating / segment / toggle) の全 sibling を grep 列挙:
+     grep -rEn '\.map\(.*rating.*=>' src/components/ | grep -v spec
+  4. 各 sibling で aria-pressed 有無を確認 (未付与を全列挙)
+  5. 1 commit で全 sibling に aria-pressed 追加
+  6. commit message に canonical file + sibling drift 対象 file 全件明記
+```
+
+**How to apply**: code-review agent の a11y / semantic drift 系 finding を受領したら (finding 単位の逐次修正は commit atomicity 低下、同種 pattern の一括横展開で 1 commit = 1 concern を維持):
+
+1. **finding を単発でなく「同種 pattern の sibling drift」として一般化** — agent が指摘した 1 pattern を全 codebase で grep 列挙
+2. **canonical file を確定** — agent finding の「参照 canonical」を Read で 1 分確認、実装形式 (attr 名 / 値式 pattern) を把握
+3. **sibling を grep で列挙** — canonical と同種 UI pattern (rating / segment / toggle 等) を含む file を全件抽出
+4. **各 sibling で該当 attr 有無を verify** — grep -L で attr 未付与 file を確定
+5. **1 commit で全 sibling 一括修正** — `audit-workflow.md § サブパターン「機械的 sweep refactor 例外」` 参照 (touch ≥ 3 file でも一括 OK)
+6. **commit message に「canonical: <file> / sibling drift 解消: <files>」明記** — 将来の sweep での重複検出防止 + trace 残す
+
+**反例 (sibling drift 一括横展開が不適用なケース)**:
+
+- **agent finding の canonical が 1 sibling しか持たない** (真の drift でなく 1:1 修正) → 単発 fix で OK
+- **各 sibling で attr 値式が semantic に違う** (例: 一部は aria-pressed / 一部は aria-selected が正解) → 一括修正でなく個別判断、agent finding を 2 系統に分けて 2 commit
+- **touch ≥ 6 file** (機械的 sweep refactor 例外の許容範囲超) → Phase 分離 (canonical への横展開を UI 群単位で 2-3 commit に分ける)
+
+主な使用箇所: agent finding「EngagementSegmentButton canonical に aria-pressed あり、AI 評価 6 button (ArticleAiPanel 3 + ArticleContentBody 3) に欠落」→ 2 file / 6 button を 1 commit で一括 aria-pressed 追加 + commit message に「canonical: EngagementSegmentButton」明記した実例
