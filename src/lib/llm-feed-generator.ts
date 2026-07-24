@@ -49,7 +49,8 @@ export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] 
     const parsed: unknown = parseHTML(html);
     if (!isParsedHtmlResult(parsed)) return [];
     doc = parsed.document;
-  } catch {
+  } catch (err) {
+    devError("[llm-feed-generator] extractLinkStructure: parseHTML failed", err);
     return [];
   }
 
@@ -249,7 +250,8 @@ export function scrapeFeed(
     const parsed: unknown = parseHTML(html);
     if (!isParsedHtmlResult(parsed)) return { title: siteTitle, siteUrl, items: [] };
     doc = parsed.document;
-  } catch {
+  } catch (err) {
+    devError("[llm-feed-generator] scrapeFeed: parseHTML failed", { siteUrl, err });
     return { title: siteTitle, siteUrl, items: [] };
   }
 
