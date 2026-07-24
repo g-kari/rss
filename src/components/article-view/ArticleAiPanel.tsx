@@ -106,6 +106,7 @@ export default function ArticleAiPanel({
                   key={rating}
                   title={rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}
                   aria-label={`要約の評価: ${rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}`}
+                  aria-pressed={summaryRating === rating}
                   onClick={() => {
                     if (summaryRating === rating) return;
                     setSummaryRating(rating);

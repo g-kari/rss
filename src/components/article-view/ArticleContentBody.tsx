@@ -386,6 +386,7 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
                     key={rating}
                     title={rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}
                     aria-label={`翻訳の評価: ${rating === "good" ? "良い" : rating === "neutral" ? "普通" : "悪い"}`}
+                    aria-pressed={translateRating === rating}
                     onClick={() => {
                       if (translateRating === rating) return;
                       setTranslateRating(rating);
