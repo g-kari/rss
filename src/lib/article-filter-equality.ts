@@ -18,8 +18,11 @@ import type { CompiledKeywordFilter } from "./keyword-filter";
  * 値は `===` で比較するので `V` は primitive (`number` / `string`) または
  * 同一性が外部で保証された参照型 (例: `CompiledKeywordFilter` は `buildFilterMap` の
  * `compiledCache` で同一フィルター内容に対して同 reference を返す前提) に限る。
+ *
+ * 引数は `ReadonlyMap` を受けるので `Map` / `ReadonlyMap` どちらの caller からも
+ * 呼べる (`unread-stats-merge.ts` の `equalUnreadByFeed` 等が `ReadonlyMap` 前提)。
  */
-function equalMap<V>(a: Map<string, V>, b: Map<string, V>): boolean {
+export function equalMap<V>(a: ReadonlyMap<string, V>, b: ReadonlyMap<string, V>): boolean {
   if (a === b) return true;
   if (a.size !== b.size) return false;
   for (const [key, val] of a) {

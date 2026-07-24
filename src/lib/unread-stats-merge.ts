@@ -10,8 +10,12 @@
  * 構造的等価性ガード (`react-state-ref.md` の規範) を導入する。本ファイルはその比較関数を
  * pure として切り出して TDD 可能にする。
  *
- * `read-state-merge.ts#equalSnoozedUntil` と同パターン。
+ * 内部実装は `article-filter-equality.ts#equalMap` generic に委譲 (#1200 helper drift 解消)。
+ * 既存 caller 向けの named export (`equalUnreadByFeed` / `equalLastPublishedByFeed`) は
+ * signature 維持のため残置。`read-state-merge.ts#equalSnoozedUntil` と同パターン。
  */
+
+import { equalMap } from "./article-filter-equality";
 
 /**
  * `Map<string, number>` の structural equality 判定 (`unreadByFeed` 用)。
@@ -25,13 +29,7 @@ export function equalUnreadByFeed(
   a: ReadonlyMap<string, number>,
   b: ReadonlyMap<string, number>,
 ): boolean {
-  if (a === b) return true;
-  if (a.size !== b.size) return false;
-  for (const [key, value] of a) {
-    if (!b.has(key)) return false;
-    if (b.get(key) !== value) return false;
-  }
-  return true;
+  return equalMap(a, b);
 }
 
 /**
@@ -42,11 +40,5 @@ export function equalLastPublishedByFeed(
   a: ReadonlyMap<string, string>,
   b: ReadonlyMap<string, string>,
 ): boolean {
-  if (a === b) return true;
-  if (a.size !== b.size) return false;
-  for (const [key, value] of a) {
-    if (!b.has(key)) return false;
-    if (b.get(key) !== value) return false;
-  }
-  return true;
+  return equalMap(a, b);
 }
