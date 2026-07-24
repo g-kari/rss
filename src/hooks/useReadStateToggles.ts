@@ -43,7 +43,7 @@ export interface ToggleDeps {
   syncImmediatelyRef: RefObject<() => void>;
 }
 
-export interface ToggleResult {
+interface ToggleResult {
   toggleRead: (id: string) => void;
   toggleBookmark: (id: string) => void;
   toggleReadingList: (id: string) => void;

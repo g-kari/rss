@@ -6,7 +6,7 @@ import { apiFetch } from "../lib/api-fetch";
 import { base64urlToBytes } from "../lib/auth";
 import { devError } from "../lib/dev-log";
 
-export interface PushNotificationState {
+interface PushNotificationState {
   /** ブラウザが Web Push をサポートしているか */
   supported: boolean;
   /** 現在のブラウザで購読中か */

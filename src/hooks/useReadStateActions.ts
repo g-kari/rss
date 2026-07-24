@@ -46,7 +46,7 @@ export interface ReadStateActionDeps {
   scheduleSyncRef: RefObject<() => void>;
 }
 
-export interface ReadStateActionResult {
+interface ReadStateActionResult {
   markRead: (articleId: string) => void;
   markBulkRead: (articleIds: string[]) => void;
   markAllRead: (feedId: string | null) => void;

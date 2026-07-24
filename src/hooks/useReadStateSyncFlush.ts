@@ -36,7 +36,7 @@ export interface FlushDeps extends PendingRefs {
   lastServerSyncRef: MutableRefObject<number>;
 }
 
-export interface FlushResult {
+interface FlushResult {
   scheduleSyncToServer: () => void;
   syncImmediately: () => void;
   hasPendingChanges: boolean;
