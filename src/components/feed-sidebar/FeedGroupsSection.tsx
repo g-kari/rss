@@ -125,6 +125,7 @@ function FeedGroupsSectionImpl({
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
+              aria-hidden="true"
             >
               <line x1="4.5" y1="1" x2="4.5" y2="8" strokeLinecap="round" />
               <line x1="1" y1="4.5" x2="8" y2="4.5" strokeLinecap="round" />
@@ -298,6 +299,7 @@ function FeedGroupsSectionImpl({
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    aria-hidden="true"
                   >
                     <path d="M1.5 4.5v3h2L6.5 10V2L3.5 4.5z" />
                     <line x1="8" y1="4" x2="11" y2="8" />
@@ -326,6 +328,7 @@ function FeedGroupsSectionImpl({
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        aria-hidden="true"
                       >
                         <path d="M1 5.5L4 8l5-6" />
                       </svg>
@@ -350,6 +353,7 @@ function FeedGroupsSectionImpl({
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        aria-hidden="true"
                       >
                         <path d="M2 6l3-3 3 3" />
                       </svg>
@@ -374,6 +378,7 @@ function FeedGroupsSectionImpl({
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        aria-hidden="true"
                       >
                         <path d="M2 4l3 3 3-3" />
                       </svg>
@@ -401,6 +406,7 @@ function FeedGroupsSectionImpl({
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        aria-hidden="true"
                       >
                         <path d="M7 1.5l1.5 1.5L3 8.5H1.5V7z" />
                       </svg>
@@ -425,6 +431,7 @@ function FeedGroupsSectionImpl({
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        aria-hidden="true"
                       >
                         <path d="M1.5 4.5v3h2L6.5 10V2L3.5 4.5z" />
                         <path d="M9 3.5a3 3 0 010 5" />
@@ -448,6 +455,7 @@ function FeedGroupsSectionImpl({
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="1.5"
+                        aria-hidden="true"
                       >
                         <line x1="1" y1="1" x2="9" y2="9" />
                         <line x1="9" y1="1" x2="1" y2="9" />
