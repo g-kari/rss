@@ -502,7 +502,8 @@ Case A (production 0 件 + spec 1+ 件) の更に下位に、**production 0 件 
 ```typescript
 // アンチパターン: hook 戻り値型が export 済だが cross-file 参照 0 件
 // src/hooks/useReadStateSyncFlush.ts
-export interface FlushResult {  // ← 全 caller は type inference 経由、export dead
+export interface FlushResult {
+  // ← 全 caller は type inference 経由、export dead
   flush: () => Promise<void>;
   saving: boolean;
 }
@@ -516,7 +517,8 @@ export function useReadStateSyncFlush(deps: Deps): FlushResult {
 // → FlushResult を明示 import する caller は production / spec 全体で 0 件
 
 // 修正パターン: export keyword のみ削除、interface 定義は戻り値型注釈として維持
-interface FlushResult {  // ← module-private 化
+interface FlushResult {
+  // ← module-private 化
   flush: () => Promise<void>;
   saving: boolean;
 }
@@ -529,21 +531,21 @@ export function useReadStateSyncFlush(deps: Deps): FlushResult {
 
 **Case Z 判定条件 (全て Yes で採用)**:
 
-| 条件                                                           | 確認方法                                                                  |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| production caller 0 件 (`src/` / `app/` grep で明示 import 0)  | `grep -rnE "\\b<TypeName>\\b" src/ app/ --include="*.ts*"` = 定義 file のみ |
-| spec caller 0 件 (`e2e/` / `*.test.ts` grep で明示 import 0)   | `grep -rnE "\\b<TypeName>\\b" e2e/ src/ --include="*.spec.ts" --include="*.test.ts"` = 0 |
-| 同 file 内で戻り値型注釈として使用 (削除不可、export のみ dead) | 定義 file 内で `: <TypeName>` の注釈使用が 1+ 件                          |
-| consumer が destructure 経由の type inference で動作            | `const { ... } = useHook(...)` パターンで明示型宣言なし                    |
+| 条件                                                            | 確認方法                                                                                 |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| production caller 0 件 (`src/` / `app/` grep で明示 import 0)   | `grep -rnE "\\b<TypeName>\\b" src/ app/ --include="*.ts*"` = 定義 file のみ              |
+| spec caller 0 件 (`e2e/` / `*.test.ts` grep で明示 import 0)    | `grep -rnE "\\b<TypeName>\\b" e2e/ src/ --include="*.spec.ts" --include="*.test.ts"` = 0 |
+| 同 file 内で戻り値型注釈として使用 (削除不可、export のみ dead) | 定義 file 内で `: <TypeName>` の注釈使用が 1+ 件                                         |
+| consumer が destructure 経由の type inference で動作            | `const { ... } = useHook(...)` パターンで明示型宣言なし                                  |
 
 **Case A / Case Z の違い**:
 
-| 観点                | Case A                            | Case Z                                          |
-| ------------------- | --------------------------------- | ----------------------------------------------- |
-| spec caller         | あり (spec import 1+ 件)           | **なし** (完全 dead public surface)             |
-| 修正内容            | export 削除 + spec import 削除    | **export 削除のみ** (interface 定義は維持)       |
-| interface 自体      | シンボル削除も検討可能            | **削除不可** (戻り値型注釈で使用継続)            |
-| commit message 注記 | 「Case A: spec import も削除」    | 「Case Z: 戻り値型注釈維持 + export のみ削除」   |
+| 観点                | Case A                         | Case Z                                         |
+| ------------------- | ------------------------------ | ---------------------------------------------- |
+| spec caller         | あり (spec import 1+ 件)       | **なし** (完全 dead public surface)            |
+| 修正内容            | export 削除 + spec import 削除 | **export 削除のみ** (interface 定義は維持)     |
+| interface 自体      | シンボル削除も検討可能         | **削除不可** (戻り値型注釈で使用継続)          |
+| commit message 注記 | 「Case A: spec import も削除」 | 「Case Z: 戻り値型注釈維持 + export のみ削除」 |
 
 **How to apply**: hook 戻り値型 interface (`Result` / `State` / `Deps` / `Options` suffix) を発見したら以下を判定 (hook consumer は destructure type inference に依存するため export keyword は dead public API surface になりやすい、Case A より更に安全な module-private 化パターン):
 
