@@ -223,7 +223,7 @@ interface BraveSearchResponse {
  * 検索結果の URL から discoverFeedUrl() で RSS フィードを発見する。
  * BRAVE_SEARCH_API_KEY が未設定の場合は即座に [] を返す。
  */
-export async function generateWebSearchFeeds(
+async function generateWebSearchFeeds(
   topics: string[],
   subscribedUrls: Set<string>,
 ): Promise<RecommendedFeed[]> {
@@ -292,7 +292,7 @@ export async function generateWebSearchFeeds(
  * 他ユーザーの購読数が多いフィードを推薦する。
  * subscribedFeedHashes に含まれるフィード（既購読）は除外する。
  */
-export async function generatePopularFeeds(
+async function generatePopularFeeds(
   bucket: R2Bucket,
   subscribedFeedHashes: Set<string>,
 ): Promise<RecommendedFeed[]> {
@@ -344,7 +344,7 @@ const HIGH_SIGNAL_ACTIONS = new Set(["bookmark", "like", "fetch_full"]);
  * 記事本文内のリンクから RSS フィードを発見する。
  * キャッシュミスの記事はスキップ（外部 fetch は行わない）。
  */
-export async function generateLinkDiscoveryFeeds(
+async function generateLinkDiscoveryFeeds(
   bucket: R2Bucket,
   engagement: EngagementLog,
   subscribedUrls: Set<string>,

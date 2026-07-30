@@ -10,10 +10,11 @@ import { isBetaAllowed } from "./beta-allowed";
 import { getDevBypassUserId } from "./dev-auth-bypass";
 import { isValidSessionId, isValidUserId } from "./validation";
 
-// CSRF 判定ロジックは next/* を含まない形でユニットテスト可能にするため `./csrf` に分離している。
-export { isCsrfViolation } from "./csrf";
-export { getJwtExp } from "./auth";
-// isBetaAllowed も同様に next/* に依存しないため `./beta-allowed` に分離している。
+// CSRF 判定ロジック (`./csrf`) と JWT exp パース (`./auth`) は next/* を含まない形で
+// ユニットテスト可能にするため別モジュールに分離してある。spec / 外部 caller は
+// いずれも `./csrf` / `./auth` を直参照するため、ここでの再エクスポートは不要。
+// isBetaAllowed も同様に next/* に依存しないため `./beta-allowed` に分離しているが、
+// こちらは `@/lib/server-auth` 経由で参照する caller があるため再エクスポートを残す。
 export { isBetaAllowed } from "./beta-allowed";
 
 /**
