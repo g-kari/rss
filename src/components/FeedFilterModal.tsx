@@ -78,7 +78,7 @@ function TagInput({
                 e.stopPropagation();
                 removeTag(i);
               }}
-              className="text-text-faint hover:text-text-default transition-colors"
+              className="max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] inline-flex items-center justify-center text-text-faint hover:text-text-default transition-colors"
               aria-label="削除"
             >
               <svg
@@ -206,7 +206,7 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
           <button
             onClick={() => void handleSave()}
             disabled={saving}
-            className="flex-1 py-2 text-[12px] tracking-[0.04em] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
+            className="flex-1 min-h-[44px] py-2 text-[12px] tracking-[0.04em] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
           >
             {saving ? "保存中..." : "保存"}
           </button>
@@ -214,7 +214,7 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
             <button
               onClick={() => void doSave(null)}
               disabled={saving}
-              className="px-4 py-2 text-[12px] text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200 disabled:opacity-40"
+              className="min-h-[44px] px-4 py-2 text-[12px] text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200 disabled:opacity-40"
             >
               クリア
             </button>
@@ -222,7 +222,7 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
           <button
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 text-[12px] text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200 disabled:opacity-40"
+            className="min-h-[44px] px-4 py-2 text-[12px] text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-all duration-200 disabled:opacity-40"
           >
             キャンセル
           </button>

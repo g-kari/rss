@@ -62,14 +62,14 @@ export default function CollectionModal({ mode, initialName = "", onSubmit, onCl
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-[13px] text-text-default hover:text-text-strong transition-colors"
+            className="min-h-[44px] px-3 py-1.5 text-[13px] text-text-default hover:text-text-strong transition-colors"
           >
             キャンセル
           </button>
           <button
             type="submit"
             disabled={!name.trim() || submitting}
-            className="px-3 py-1.5 text-[13px] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-50"
+            className="min-h-[44px] px-3 py-1.5 text-[13px] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-50"
           >
             {mode === "create" ? "作成" : "変更"}
           </button>

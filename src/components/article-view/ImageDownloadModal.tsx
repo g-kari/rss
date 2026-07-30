@@ -48,13 +48,13 @@ export default function ImageDownloadModal({
         <div className="flex gap-2 justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-1.5 rounded-lg text-[13px] text-text-muted hover:text-text-default transition-colors"
+            className="min-h-[44px] px-4 py-1.5 rounded-lg text-[13px] text-text-muted hover:text-text-default transition-colors"
           >
             キャンセル
           </button>
           <button
             onClick={() => void onConfirm()}
-            className="px-4 py-1.5 rounded-lg text-[13px] bg-ink hover:bg-ink-hover text-ink-text transition-colors"
+            className="min-h-[44px] px-4 py-1.5 rounded-lg text-[13px] bg-ink hover:bg-ink-hover text-ink-text transition-colors"
           >
             ダウンロード
           </button>

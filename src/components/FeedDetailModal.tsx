@@ -238,11 +238,13 @@ function DetailRow({
       {copyable && (
         <button
           onClick={handleCopy}
-          className={`flex-shrink-0 transition-colors ${copied ? "text-text-default" : "text-text-faint hover:text-text-default"}`}
+          className={`flex-shrink-0 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] inline-flex items-center justify-center transition-colors ${copied ? "text-text-default" : "text-text-faint hover:text-text-default"}`}
           title={copied ? "コピーしました" : "コピー"}
+          aria-label={copied ? `${label}をコピーしました` : `${label}をコピー`}
         >
           {copied ? (
             <svg
+              aria-hidden="true"
               width="10"
               height="10"
               viewBox="0 0 10 10"
@@ -256,6 +258,7 @@ function DetailRow({
             </svg>
           ) : (
             <svg
+              aria-hidden="true"
               width="10"
               height="10"
               viewBox="0 0 10 10"

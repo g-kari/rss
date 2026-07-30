@@ -40,7 +40,7 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
             type="button"
             onClick={() => onRemoveTag(articleId, t)}
             aria-label={`タグ「${t}」を削除`}
-            className="text-text-muted hover:text-text-strong transition-colors leading-none"
+            className="max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] inline-flex items-center justify-center text-text-muted hover:text-text-strong transition-colors leading-none"
           >
             ×
           </button>

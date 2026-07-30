@@ -83,7 +83,7 @@ export default function PiperErrorDetailToast() {
         <button
           type="button"
           onClick={handleClose}
-          className="text-[14px] leading-none text-text-muted hover:text-text-strong px-1"
+          className="max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] inline-flex items-center justify-center text-[14px] leading-none text-text-muted hover:text-text-strong px-1"
           aria-label="閉じる"
         >
           ×
@@ -116,7 +116,7 @@ export default function PiperErrorDetailToast() {
       <button
         type="button"
         onClick={handleCopy}
-        className="mt-1 self-end text-[11px] px-3 py-1 rounded-md bg-ink text-ink-text hover:bg-ink-hover transition-all duration-200"
+        className="mt-1 self-end min-h-[44px] px-3 py-1 inline-flex items-center justify-center text-[11px] rounded-md bg-ink text-ink-text hover:bg-ink-hover transition-all duration-200"
       >
         {copyLabel}
       </button>
