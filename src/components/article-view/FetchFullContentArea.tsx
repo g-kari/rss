@@ -149,7 +149,9 @@ export default function FetchFullContentArea({
       )}
       {fetchError && (
         <div className="flex items-center gap-2">
-          <p className="text-[11px] text-error">{fetchError}</p>
+          <p role="alert" className="text-[11px] text-error">
+            {fetchError}
+          </p>
           <button
             onClick={handleFetchClick}
             disabled={fetching}

@@ -124,7 +124,7 @@ export default function TextInputModal({
               }`}
             />
             {showError && !isValid && (
-              <p id={`${titleId}-error`} className="mt-2 text-[11px] text-error">
+              <p id={`${titleId}-error`} role="alert" className="mt-2 text-[11px] text-error">
                 {minLength === maxLength
                   ? `${minLength} 文字で入力してください`
                   : `${minLength}-${maxLength} 文字で入力してください`}

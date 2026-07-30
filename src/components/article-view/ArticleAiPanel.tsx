@@ -135,7 +135,7 @@ export default function ArticleAiPanel({
         </div>
       )}
       {aiError && (
-        <div className="mb-6 flex flex-col gap-2">
+        <div role="alert" className="mb-6 flex flex-col gap-2">
           <div className="flex items-start gap-2">
             <svg
               aria-hidden="true"

@@ -614,7 +614,9 @@ function FeedSidebar({
 
         {loadError && feeds.length === 0 && (
           <div className="px-4 py-3 text-center">
-            <p className="text-[12px] text-error mb-2">{loadError}</p>
+            <p role="alert" className="text-[12px] text-error mb-2">
+              {loadError}
+            </p>
             {onRetry && (
               <button
                 type="button"
