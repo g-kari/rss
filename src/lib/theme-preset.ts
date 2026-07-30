@@ -135,10 +135,17 @@ export function parseThemePresets(raw: string | null | undefined): ThemePreset[]
  * - 入力配列を直接 mutate しない
  */
 export function serializeThemePresets(presets: readonly ThemePreset[]): string {
-  let limited: readonly ThemePreset[] = presets;
-  if (presets.length > MAX_THEME_PRESETS) {
-    const sorted = [...presets].sort((a, b) => b.createdAt - a.createdAt);
-    limited = sorted.slice(0, MAX_THEME_PRESETS);
-  }
-  return JSON.stringify(limited);
+  return JSON.stringify(capPresetsByRecent(presets));
+}
+
+/**
+ * MAX_THEME_PRESETS 超過時に createdAt 降順で新しいものだけ残す。
+ *
+ * `serializeThemePresets` (persist 側) と `useThemePresets#savePreset` (visible state 側) の
+ * 双方から呼ぶことで、保存後の visible state と persisted state の cap ロジックが構造的に
+ * 一致することを保証する。入力配列は mutate しない。
+ */
+export function capPresetsByRecent(presets: readonly ThemePreset[]): readonly ThemePreset[] {
+  if (presets.length <= MAX_THEME_PRESETS) return presets;
+  return [...presets].sort((a, b) => b.createdAt - a.createdAt).slice(0, MAX_THEME_PRESETS);
 }

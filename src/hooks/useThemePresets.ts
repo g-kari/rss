@@ -5,7 +5,7 @@ import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import {
   parseThemePresets,
   serializeThemePresets,
-  MAX_THEME_PRESETS,
+  capPresetsByRecent,
   type ThemePreset,
 } from "../lib/theme-preset";
 
@@ -57,13 +57,9 @@ export function useThemePresets(): UseThemePresetsResult {
           createdAt: Date.now(),
         };
         // 上限超過時は serializeThemePresets が古い順に切り捨てるが、state も同じ scope に
-        // 揃えて保存後の visible state が persisted state と一致するようにする
-        let merged = [...prev, next];
-        if (merged.length > MAX_THEME_PRESETS) {
-          merged = [...merged]
-            .sort((a, b) => b.createdAt - a.createdAt)
-            .slice(0, MAX_THEME_PRESETS);
-        }
+        // 揃えて保存後の visible state が persisted state と一致するようにする。
+        // 両者が構造的に同期するよう cap ロジックは capPresetsByRecent canonical に集約。
+        const merged = capPresetsByRecent([...prev, next]) as ThemePreset[];
         persistPresets(merged);
         return merged;
       });

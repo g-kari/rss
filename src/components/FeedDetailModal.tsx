@@ -7,6 +7,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { apiFetch } from "@/lib/api-fetch";
 import { devError } from "@/lib/dev-log";
 import { isAbortError } from "@/lib/fetch";
+import { timeAgo } from "@/lib/article-utils";
 
 interface Props {
   feed: Feed;
@@ -81,7 +82,7 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
             label="最終取得"
             value={
               feed.lastFetchedAt
-                ? `${formatRelativeTime(feed.lastFetchedAt)}（${new Date(feed.lastFetchedAt).toLocaleString("ja-JP")}）`
+                ? `${timeAgo(feed.lastFetchedAt)}（${new Date(feed.lastFetchedAt).toLocaleString("ja-JP")}）`
                 : "未取得"
             }
           />
@@ -99,7 +100,7 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
           {feed.lastErrorAt && (
             <DetailRow
               label="最終エラー"
-              value={`${formatRelativeTime(feed.lastErrorAt)}（${new Date(feed.lastErrorAt).toLocaleString("ja-JP")}）`}
+              value={`${timeAgo(feed.lastErrorAt)}（${new Date(feed.lastErrorAt).toLocaleString("ja-JP")}）`}
               error
             />
           )}
@@ -283,15 +284,4 @@ function getHealthStatus(feed: Feed): { color: string; label: string } {
   )
     return { color: "bg-status-warning", label: "注意" };
   return { color: "bg-status-ok", label: "正常" };
-}
-
-function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "たった今";
-  if (mins < 60) return `${mins}分前`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}時間前`;
-  const days = Math.floor(hours / 24);
-  return `${days}日前`;
 }

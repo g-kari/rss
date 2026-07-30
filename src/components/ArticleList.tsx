@@ -41,6 +41,7 @@ import ArticleContextMenu, { type ArticleContextMenuTarget } from "./ArticleCont
 import LoadMoreButton from "./LoadMoreButton";
 import ArticleListEmptyState from "./ArticleListEmptyState";
 import { explodeArticlesIntoGalleryEntries, type GalleryEntry } from "../lib/gallery-explode";
+import { EMPTY_STRING_SET } from "../lib/empty-sentinels";
 import {
   CompactListBody,
   CardBody,
@@ -109,11 +110,6 @@ function getDateGroupLabel(publishedAt: string | null): string {
 }
 
 const getArticleId = (a: Article) => a.id;
-
-// #844: ギャラリー削除済 ID 集合の reset 用 sentinel (mutate 防止のため freeze)。
-// react-state-ref.md 派生「モジュールレベル sentinel オブジェクトは Object.freeze で
-// 下流汚染を防ぐ」に従う。型は元の mutable 型のまま (as cast) で consumer に変更不要。
-const EMPTY_DELETED_SET: Set<string> = Object.freeze(new Set<string>()) as Set<string>;
 
 // ── メインコンポーネント ───────────────────────────────────────────────
 
@@ -244,7 +240,7 @@ function ArticleList({
   // フィード / グループ / ビュー / レイアウト切替で reset
   // (ユーザー視点で「切替後に古い deleted IDs が残って混乱」する状況を回避)。
   useEffect(() => {
-    setGalleryDeletedIds(EMPTY_DELETED_SET);
+    setGalleryDeletedIds(EMPTY_STRING_SET);
   }, [selectedFeedId, activeFeedView, layout]);
   const galleryVisible = useMemo(
     () =>
