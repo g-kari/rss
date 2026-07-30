@@ -9,6 +9,7 @@ import {
   storageRemove,
   loadJsonObject,
 } from "../lib/storage";
+import { devError } from "../lib/dev-log";
 
 // #1146 Phase 4: corrupted localStorage 由来の primitive / 型不正値で property access が
 // TypeError → ErrorBoundary 発火するのを防ぐ。null も valid (キャッシュ無効 + 認証中の
@@ -205,7 +206,8 @@ export function useAuth(): AuthState {
           return next;
         });
         scheduleNextRefresh();
-      } catch {
+      } catch (err) {
+        devError("[useAuth] checkAuth failed", err);
         if (mounted) {
           if (isFirstPostLogin) {
             // ログイン直後のネットワークエラーはリトライ（LP に飛ばさない）

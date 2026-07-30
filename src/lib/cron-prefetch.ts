@@ -138,8 +138,17 @@ export async function runCronPrefetch(
     await pMapSettled(
       urls,
       async (url) => {
-        await fetchArticleContent(url, origin, ctx).catch(() => null);
-        await prefetchOgp(url, origin).catch(() => null);
+        // 失敗は throw させず log のみ (cron 本体の RSS 取得を阻害しない)。
+        // wrangler tail で per-URL の失敗理由を追えるようにする。
+        await fetchArticleContent(url, origin, ctx).catch((err) =>
+          console.error("[cron-prefetch] fetchArticleContent failed:", {
+            url,
+            err: formatError(err),
+          }),
+        );
+        await prefetchOgp(url, origin).catch((err) =>
+          console.error("[cron-prefetch] prefetchOgp failed:", { url, err: formatError(err) }),
+        );
       },
       5,
     );

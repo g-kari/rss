@@ -322,8 +322,9 @@ export function usePrefetchGalleryContents({
           // signal なし（手動リトライは unmount まで継続させる）
           // 429 は failedIds に追加しない（レート制限は一時的なもの）—— onRateLimit 未指定
         });
-      } catch {
+      } catch (err) {
         // ネットワークエラー → failedIds に戻す
+        devError("[usePrefetchGalleryContents] retryArticle failed", { articleId, err });
         setFailedIds((prev) => {
           const next = new Set(prev);
           next.add(articleId);

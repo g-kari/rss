@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { classifyHttpError, formatHttpErrorMessage } from "../lib/classify-http-error";
+import { devError } from "../lib/dev-log";
 import { isArticle } from "../lib/type-guards";
 
 interface ToastApi {
@@ -64,8 +65,9 @@ export function useSaveArticleUrl({
           toggleReadingList(raw.id);
           toast.success("後で読むに追加しました");
         }
-      } catch {
+      } catch (err) {
         // network error / abort / DNS 等の fetch 失敗
+        devError("[useSaveArticleUrl] apiFetch failed", err);
         toast.error(formatHttpErrorMessage("network"));
       }
     },
