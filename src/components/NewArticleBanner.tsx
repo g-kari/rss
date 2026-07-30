@@ -31,7 +31,7 @@ export default function NewArticleBanner({
             .querySelector<HTMLElement>('[role="feed"][aria-label="記事"]')
             ?.scrollTo({ top: 0, behavior: "smooth" });
         }}
-        className="flex items-center gap-3 px-4 py-2 cursor-pointer rounded-l-full"
+        className="flex items-center gap-3 px-4 py-2 max-md:min-h-[44px] lg:min-h-[24px] cursor-pointer rounded-l-full"
       >
         <span className="w-1.5 h-1.5 rounded-full bg-accent-dot flex-shrink-0" aria-hidden />
         新着記事 {newArticleCount} 件

@@ -35,7 +35,7 @@ export default function ArticleListHeader({
             {onMobileBack && (
               <button
                 onClick={onMobileBack}
-                className="lg:hidden -ml-1 mr-1 p-1.5 text-text-muted hover:text-text-strong transition-colors"
+                className="lg:hidden -ml-1 mr-1 p-1.5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center text-text-muted hover:text-text-strong transition-colors"
                 aria-label="フィード一覧に戻る"
               >
                 <svg

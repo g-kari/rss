@@ -8,7 +8,7 @@ export default function EmptyArticleView({ onMobileBack }: Props) {
       {onMobileBack && (
         <button
           onClick={onMobileBack}
-          className="lg:hidden absolute top-3 left-3 p-1.5 text-text-muted hover:text-text-strong transition-colors"
+          className="lg:hidden absolute top-3 left-3 p-1.5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center text-text-muted hover:text-text-strong transition-colors"
           aria-label="記事一覧に戻る"
         >
           <svg
@@ -47,7 +47,7 @@ export default function EmptyArticleView({ onMobileBack }: Props) {
         {onMobileBack && (
           <button
             onClick={onMobileBack}
-            className="mt-2 text-[11px] text-text-muted hover:text-text-strong transition-colors"
+            className="mt-2 px-3 max-md:min-h-[44px] lg:min-h-[24px] inline-flex items-center justify-center text-[11px] text-text-muted hover:text-text-strong transition-colors"
           >
             ← 一覧に戻る
           </button>

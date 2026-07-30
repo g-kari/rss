@@ -34,7 +34,7 @@ export default function MarkAllReadButton({ onMarkAllRead }: MarkAllReadButtonPr
       className={`relative overflow-hidden flex items-center justify-center rounded-full transition-all duration-200 ${
         confirmMarkAll
           ? "px-2 h-6 text-[10px] font-medium text-error border border-rose-400 hover:bg-rose-400/10"
-          : "w-6 h-6 text-text-faint hover:text-text-muted hover:bg-surface-subtle"
+          : "w-6 h-6 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted hover:bg-surface-subtle"
       }`}
     >
       {confirmMarkAll ? (

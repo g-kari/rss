@@ -118,7 +118,7 @@ export default function ArticleAiPanel({
                       `${rating}:summary`,
                     );
                   }}
-                  className={`text-[14px] leading-none transition-all duration-150 ${
+                  className={`max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center text-[14px] leading-none transition-all duration-150 ${
                     summaryRating === rating
                       ? "opacity-100 scale-110"
                       : summaryRating !== null
