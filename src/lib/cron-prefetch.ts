@@ -2,7 +2,7 @@ import type { Article, EngagementEntry, EngagementLog } from "../types";
 import { aggregateGlobalTopFeeds, type GlobalFeedScore } from "./engagement-aggregator";
 import { engagementKey, r2Get } from "./r2";
 import { readLatestArticles, buildFeedUserMapCached } from "./shared-feed";
-import { buildCacheKey, matchCfCache, buildJsonCacheResponse } from "./cache-helper";
+import { buildCacheKey, matchCfCache, cachePut, buildJsonCacheResponse } from "./cache-helper";
 import { fetchArticleContent } from "./fetch-article-content";
 import { fetchPageOgpMeta } from "./ogp";
 import { isValidPublicUrl, isValidFeedUrl } from "./url";
@@ -82,7 +82,7 @@ async function prefetchOgp(url: string, origin: string): Promise<void> {
   const image = isValidPublicUrl(unescapeHtml(rawImage)) ? rawImage : "";
   const hasContent = !!(image || title || description);
   const ttl = computeOgpCacheTtl({ hasContent, isFallback: false });
-  await caches.default.put(cacheKey, buildJsonCacheResponse({ image, title, description }, ttl));
+  await cachePut(cacheKey, buildJsonCacheResponse({ image, title, description }, ttl));
 }
 
 /**

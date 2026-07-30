@@ -22,16 +22,32 @@ Route Handler に `export const runtime = 'edge'` を書いてはいけない。
 
 ## dev サーバーで `globalThis.caches` は未定義
 
-`next dev` 環境では Cloudflare の Cache API (`caches.default`) は mock されず、参照すると
-`ReferenceError: caches is not defined` が発生する。Cache API を使う Route Handler は dev で 500 を返す。
+`next dev` 環境では Cloudflare の Cache API (`caches.default`) は mock されず、`caches` global 自体が
+未定義。素で参照すると `ReferenceError: caches is not defined` が発生する。
 
-**影響を受ける route**: `/api/feeds`, `/api/content`, `/api/ogp` ほか `cache-helper.ts` を経由するルート。
+**対処済み**: `cache-helper.ts` の内部 `getCfCache()` が `typeof caches === "undefined"` を判定して
+`null` を返し、全 helper (`matchCfCache` / `cachePut` / `cachePutAsync` / `deleteCfCache` /
+`purgeFeedsCache` / `purgeArticlesCache`) が **cache bypass** (常に MISS / put は no-op) として動作する。
+dev でも `/api/feeds` / `/api/articles` / `/api/content` / `/api/ogp` は 200 を返す。
+本番 Workers runtime では `caches.default` が常に定義済のため挙動変化なし。
 
-**e2e テストでの回避策**:
+**規約**: Cache API を触るときは **必ず `cache-helper.ts` の helper 経由** で呼ぶ。
+`caches.default` を Route Handler / lib から直接参照するとガードを迂回して dev で 500 に戻る。
 
-- これらのルートを e2e から直接呼ばない（API 経由の確認は本番デプロイ後の smoke test に任せる）
-- 確認したい状態は **R2 を直接読む** か、**UI 経由で表示確認** する（UI レイヤーは Cache API 失敗時のフォールバックで動く設計）
-- どうしても dev で API レスポンスを検証したい場合は、`buildCacheKey` をスタブする global mock を導入する（未実装。必要なら別 Issue 化）
+```typescript
+// アンチパターン: 直接参照 → dev で ReferenceError → 500
+const cached = await caches.default.match(cacheKey);
+await caches.default.put(cacheKey, res);
+
+// 修正パターン: helper 経由 (dev では自動 bypass)
+import { matchCfCache, cachePut } from "@/lib/cache-helper";
+const cached = await matchCfCache(cacheKey);
+await cachePut(cacheKey, res);
+```
+
+**残る制約**: dev では cache が常に MISS になるため **HIT 経路の検証はできない**。
+`X-Cache: HIT` を伴う挙動確認は本番デプロイ後の smoke test に任せる
+(`e2e/articles-cache.spec.ts` は MISS 経路のみを assert する設計)。
 
 新しい外部フェッチを追加する際は、e2e カバレッジ手段（UI 経由 or R2 直接読み）を実装と同時に検討すること。
 
