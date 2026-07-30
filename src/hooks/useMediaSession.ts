@@ -88,8 +88,8 @@ export function useMediaSession({ article, ttsAdapter }: UseMediaSessionOptions)
         ms.setActionHandler("play", null);
         ms.setActionHandler("pause", null);
         ms.setActionHandler("stop", null);
-      } catch {
-        /* silent */
+      } catch (err) {
+        devError("[useMediaSession] unmount cleanup failed", err);
       }
     };
   }, []);

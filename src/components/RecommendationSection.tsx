@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { RecommendedFeed } from "../types";
 import { useToast } from "@/contexts/ToastContext";
+import { devError } from "@/lib/dev-log";
 import Spinner from "./Spinner";
 
 interface Props {
@@ -113,7 +114,8 @@ export default function RecommendationSection({
                 try {
                   await onAddFeed(rec.feedUrl);
                   onDismiss(rec.id);
-                } catch {
+                } catch (err) {
+                  devError("[RecommendationSection] onAddFeed failed", err);
                   toast.error("フィードの追加に失敗しました");
                 } finally {
                   setAddingId(null);

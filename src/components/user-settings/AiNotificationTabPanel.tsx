@@ -114,7 +114,8 @@ export default function AiNotificationTabPanel({
         } else {
           toast.error("保存に失敗しました");
         }
-      } catch {
+      } catch (err) {
+        devError("[AiNotificationTabPanel] push config PUT (silent hours) failed", err);
         toast.error("保存に失敗しました");
       } finally {
         setPushConfigLoading(false);
@@ -134,8 +135,9 @@ export default function AiNotificationTabPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ errorNotificationsEnabled: next }),
       });
-    } catch {
+    } catch (err) {
       // ロールバック
+      devError("[AiNotificationTabPanel] push config PUT (errorNotifications) failed", err);
       setErrorNotificationsEnabled(!next);
       toast.error("保存に失敗しました");
     }

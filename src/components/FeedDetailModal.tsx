@@ -5,6 +5,7 @@ import type { Feed } from "../types";
 import Modal from "./Modal";
 import { useToast } from "@/contexts/ToastContext";
 import { apiFetch } from "@/lib/api-fetch";
+import { devError } from "@/lib/dev-log";
 
 interface Props {
   feed: Feed;
@@ -47,7 +48,8 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
       } else {
         toast.error("Push 通知設定の変更に失敗しました");
       }
-    } catch {
+    } catch (err) {
+      devError("[FeedDetailModal] push config PUT failed", err);
       toast.error("Push 通知設定の変更に失敗しました");
     } finally {
       setPushLoading(false);

@@ -6,6 +6,7 @@ import type { Collection } from "../types";
 import { useToast } from "@/contexts/ToastContext";
 import { usePortalMenu } from "../hooks/usePortalMenu";
 import { useMenuKeyboard } from "../hooks/useMenuKeyboard";
+import { devError } from "../lib/dev-log";
 import PortalMenuShell from "./article-view/PortalMenuShell";
 
 const CollectionModal = dynamic(() => import("./CollectionModal"), { ssr: false });
@@ -70,7 +71,8 @@ export default function CollectionDropdown({
     try {
       await onAddBulk(collection.id, Array.from(bookmarkIds));
       toast.success(`「${collection.name}」に ${bookmarkIds.size} 件追加しました`);
-    } catch {
+    } catch (err) {
+      devError("[CollectionDropdown] onAddBulk failed", err);
       toast.error("ブックマーク一括追加に失敗しました");
     }
   };
@@ -129,7 +131,8 @@ export default function CollectionDropdown({
                   try {
                     if (isIn) await onRemove(c.id, articleId);
                     else await onAdd(c.id, articleId);
-                  } catch {
+                  } catch (err) {
+                    devError("[CollectionDropdown] collection update failed", err);
                     toast.error("コレクションの更新に失敗しました");
                   }
                 }}

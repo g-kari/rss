@@ -6,6 +6,7 @@ import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 const FeedFilterModal = dynamic(() => import("../FeedFilterModal"), { ssr: false });
 import { MENU_ITEM_CLS } from "./constants";
 import { ExcludeOptionsSection, useFilterMenuState } from "./filter-shared";
+import { devError } from "../../lib/dev-log";
 import PortalMenuShell from "./PortalMenuShell";
 
 interface Props {
@@ -46,7 +47,8 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
     try {
       await onSaveFilter(feed.id, newFilter);
       toast.success(`「${value}」を除外キーワードに追加しました`);
-    } catch {
+    } catch (err) {
+      devError("[FilterMenu] onSaveFilter failed", err);
       toast.error("フィルターの保存に失敗しました");
     }
   }
