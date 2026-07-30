@@ -38,6 +38,12 @@
    * bookmark (amber-400) / error (rose-600) と semantic 別、light/dark 同色で visual 一貫性。 */
   --color-memo: #fbbf24; /* amber-400: メモあり indicator (NoteIcon、bookmark と semantic 別) */
   --color-like: #fb7185; /* rose-400: いいね active (error と semantic 別、accent-dot と同 hue) */
+  /* action / border color (#1169 Phase 3): 破壊的アクション button と入力エラー border。
+   * status-error (テキスト用 rose-600) とは用途が別 (bg / border) のため独立 token。
+   * light/dark 同色 — 既存の raw palette 値をそのまま移設しており視覚変化なし。 */
+  --color-action-danger: #f43f5e; /* rose-500: 破壊的アクション button 背景 (白文字で 4.8:1) */
+  --color-action-danger-hover: #e11d48; /* rose-600: 同 hover (白文字で 6.1:1) */
+  --color-border-error: #fb7185; /* rose-400: 入力バリデーションエラーの border */
   --color-highlight: #fef3c7; /* amber-100: 検索ハイライト */
   --color-tts-highlight: #fde68a; /* amber-200: TTS 読み上げ中センテンスハイライト (より目立つ) */
   --color-tts-highlight-text: #1c1917; /* stone-900: TTS ハイライト上のテキスト (高コントラスト) */
@@ -84,6 +90,10 @@
   /* engagement color (#1169 Phase 2): light theme と同色 (visual consistency) */
   --color-memo: #fbbf24; /* amber-400 (WCAG AA: 4.6:1 on zinc-950) */
   --color-like: #fb7185; /* rose-400 (WCAG AA: 5.4:1 on zinc-950、bg として使用) */
+  /* action / border color (#1169 Phase 3): light theme と同色 (visual consistency) */
+  --color-action-danger: #f43f5e; /* rose-500 */
+  --color-action-danger-hover: #e11d48; /* rose-600 */
+  --color-border-error: #fb7185; /* rose-400 */
   --color-highlight: rgba(99, 102, 241, 0.18); /* indigo-500/18: 検索ハイライト */
   --color-tts-highlight: rgba(251, 191, 36, 0.3); /* amber-400/30: TTS 読み上げ中 (ダーク) */
   --color-tts-highlight-text: #fef3c7; /* amber-100: ダークテーマ高コントラスト */

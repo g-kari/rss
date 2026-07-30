@@ -138,7 +138,7 @@ export default function FeedAddModal({
               className={[
                 "w-full text-[13px] bg-surface-base border rounded-lg px-3 py-2 text-text-strong placeholder-text-faint outline-none transition-colors duration-200",
                 urlValid === false
-                  ? "border-rose-400 focus:border-rose-400"
+                  ? "border-border-error focus:border-border-error"
                   : urlValid === true
                     ? "border-text-muted focus:border-text-muted"
                     : "border-border-default focus:border-text-muted",

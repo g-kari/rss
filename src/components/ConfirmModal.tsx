@@ -85,7 +85,7 @@ export default function ConfirmModal({
             aria-describedby={danger ? `${titleId}-desc` : undefined}
             className={`min-h-[44px] px-4 py-2 text-[12px] rounded-lg transition-colors ${
               danger
-                ? "bg-rose-500 hover:bg-rose-600 text-white"
+                ? "bg-action-danger hover:bg-action-danger-hover text-white"
                 : "bg-ink hover:bg-ink-hover text-ink-text"
             }`}
           >
