@@ -212,7 +212,7 @@ function ArticleView({
   }
 
   return (
-    <main
+    <article
       ref={mainRef}
       aria-label="記事本文"
       className="h-full overflow-y-auto overflow-x-hidden bg-surface-elevated animate-fade-in relative"
@@ -433,7 +433,7 @@ function ArticleView({
           </svg>
         </button>
       )}
-    </main>
+    </article>
   );
 }
 

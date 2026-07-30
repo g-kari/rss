@@ -4,7 +4,7 @@ interface Props {
 
 export default function EmptyArticleView({ onMobileBack }: Props) {
   return (
-    <main className="h-full relative overflow-y-auto flex items-center justify-center bg-surface-base">
+    <article className="h-full relative overflow-y-auto flex items-center justify-center bg-surface-base">
       {onMobileBack && (
         <button
           onClick={onMobileBack}
@@ -53,6 +53,6 @@ export default function EmptyArticleView({ onMobileBack }: Props) {
           </button>
         )}
       </div>
-    </main>
+    </article>
   );
 }

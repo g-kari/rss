@@ -455,16 +455,24 @@ function FeedSidebar({
         aria-labelledby={`feed-view-tab-${activeFeedView}`}
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2"
       >
-        <button
-          type="button"
-          onClick={() => onSelectFeed(null)}
-          className={`group flex items-center justify-between gap-2 px-4 min-h-[44px] w-full cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset ${
+        {/* #1222: 「すべて」button 内に「全て既読」button を nest すると HTML5 content model
+            違反 (interactive content の入れ子) になるため、外枠を div にして 2 button を
+            sibling として並置する (canonical: FeedGroupsSection / SpecialViewButton)。 */}
+        <div
+          className={`group flex items-center justify-between gap-2 px-4 min-h-[44px] w-full transition-all duration-200 ${
             selectedFeedId === null
               ? "text-text-strong bg-surface-subtle"
               : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
           }`}
         >
-          <span className="text-[13px] tracking-[0.02em] truncate min-w-0">すべて</span>
+          <button
+            type="button"
+            onClick={() => onSelectFeed(null)}
+            aria-current={selectedFeedId === null ? "page" : undefined}
+            className="flex-1 min-w-0 text-left text-[13px] tracking-[0.02em] truncate cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset"
+          >
+            すべて
+          </button>
           <span className="flex items-center gap-1 flex-shrink-0">
             {totalUnread > 0 && (
               <span className="text-[11px] text-text-muted tabular-nums">
@@ -472,16 +480,16 @@ function FeedSidebar({
               </span>
             )}
             {totalUnread > 0 && (
-              <span className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150">
+              <span className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-150">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMarkAllRead(null);
-                  }}
-                  className="p-0.5 text-text-faint hover:text-text-default transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded"
+                  type="button"
+                  onClick={() => onMarkAllRead(null)}
+                  className="p-0.5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] inline-flex items-center justify-center text-text-faint hover:text-text-default transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded"
                   title="全て既読 (m)"
+                  aria-label="すべてのフィードを全て既読にする"
                 >
                   <svg
+                    aria-hidden="true"
                     width="10"
                     height="10"
                     viewBox="0 0 10 10"
@@ -497,7 +505,7 @@ function FeedSidebar({
               </span>
             )}
           </span>
-        </button>
+        </div>
 
         {[
           { id: SPECIAL_FEED_IDS.DIGEST, label: "ダイジェスト", count: undefined },

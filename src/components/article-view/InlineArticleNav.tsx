@@ -27,8 +27,10 @@ export default function InlineArticleNav({
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseLeave}
-      role="navigation"
-      aria-label="前後の記事へ移動 — 左半分クリックで前、右半分クリックで次"
+      // #1227: マウス hover / クリック専用の装飾 zone。キーボード操作可能な
+      // prev/next は canonical の ArticleNavigation.tsx が提供するため、
+      // role="navigation" を名乗らず AT からは明示除外する (WCAG 2.1.1 / 4.1.2)。
+      aria-hidden="true"
     >
       <div className="flex-1 overflow-hidden flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         {prevArticle && onSelectPrev && (

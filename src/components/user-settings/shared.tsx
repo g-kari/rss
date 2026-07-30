@@ -66,6 +66,10 @@ export function SegmentGroup<T extends string | number>({
         ? (currentIndex + 1) % options.length
         : (currentIndex - 1 + options.length) % options.length;
     onChange(options[nextIndex].value);
+    // WAI-ARIA APG Radio Group: 選択切替と同時に focus も移動する (roving tabindex pattern)。
+    // tabIndex は active な radio のみ 0 のため、focus を移さないと Tab 復帰時に
+    // 選択済 radio へ戻れず WCAG 2.4.7 違反になる。canonical: FeedViewTabs.tsx
+    e.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="radio"]')[nextIndex]?.focus();
   };
 
   return (
