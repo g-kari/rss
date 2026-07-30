@@ -69,7 +69,10 @@ export default function BulkActionToolbar({
     onBulkAddTag([...selectedIds], tagInputValue.trim());
     setTagInputValue("");
     setShowTagInput(false);
-    tagButtonRef.current?.focus();
+    // #1274: ここで tagButtonRef.current?.focus() は常に no-op だった
+    // (この時点では入力欄が描画中でボタン未 mount、かつ直後の onClear() で
+    //  count === 0 になり toolbar 自体が unmount される)。dead code のため削除し、
+    //  focus は記事一覧側へ自然に落ちる挙動を意図として明示する。
     onClear();
   }, [tagInputValue, selectedIds, onBulkAddTag, onClear]);
 
@@ -148,7 +151,11 @@ export default function BulkActionToolbar({
                 if (e.key === "Escape") {
                   setShowTagInput(false);
                   setTagInputValue("");
-                  tagButtonRef.current?.focus();
+                  // #1274: この時点では「タグ追加」ボタンが未 mount (showTagInput=true の
+                  // 描画のまま) で ref が null のため直接呼ぶと silent no-op になる。
+                  // discrete event の同期 flush 後に走る microtask へ遅延させて
+                  // remount 後のボタンへ focus を戻す (WCAG 2.4.3)。
+                  queueMicrotask(() => tagButtonRef.current?.focus());
                 }
               }}
               placeholder="タグ名を入力"

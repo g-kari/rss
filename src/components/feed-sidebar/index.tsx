@@ -391,9 +391,11 @@ function FeedSidebar({
     [renderFeed, pinnedFeeds.length],
   );
 
+  // #1207: <aside role="navigation"> は WAI-ARIA in HTML の landmark role override 制約に
+  // 反する (aside の implicit complementary role を navigation で上書きしていた)。
+  // navigation landmark を意図しているので semantic HTML 側を <nav> に揃える。
   return (
-    <aside
-      role="navigation"
+    <nav
       aria-label="フィード一覧"
       className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated"
     >
@@ -449,7 +451,9 @@ function FeedSidebar({
       {feeds.length > 0 && <FeedSearchBar value={feedSearch} onChange={setFeedSearch} />}
 
       {/* フィードリスト (FeedViewTabs の tabpanel) */}
-      <nav
+      {/* #1207: tabpanel は landmark ではないため <nav> の implicit navigation role を
+          上書きする形になっていた。role 側を活かして semantic HTML を中立な <div> にする。 */}
+      <div
         id="feed-view-panel"
         role="tabpanel"
         aria-labelledby={`feed-view-tab-${activeFeedView}`}
@@ -731,7 +735,7 @@ function FeedSidebar({
           onToggleCollapseCategory={onToggleCollapseCategory}
           renderFeed={renderFeed}
         />
-      </nav>
+      </div>
 
       {/* ユーザー情報 */}
       <SidebarFooter
@@ -787,7 +791,7 @@ function FeedSidebar({
           onClose={() => setShowStats(false)}
         />
       )}
-    </aside>
+    </nav>
   );
 }
 
