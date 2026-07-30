@@ -1,3 +1,4 @@
+import { isValidUserId } from "@/lib/validation";
 import type { UserProfile } from "@/types";
 
 /**
@@ -17,7 +18,7 @@ export function getDevBypassUserId(): string | null {
   if (process.env.NODE_ENV === "production") return null;
   const id = process.env.DEV_AUTH_BYPASS_USER_ID;
   if (!id) return null;
-  if (!/^[A-Za-z0-9_\-@.]{1,128}$/.test(id)) return null;
+  if (!isValidUserId(id)) return null;
   return id;
 }
 

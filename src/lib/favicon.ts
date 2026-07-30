@@ -1,3 +1,4 @@
+import { formatCount } from "./article-utils";
 import { devError } from "./dev-log";
 
 /** ベース画像をキャッシュして再読み込みを避ける */
@@ -37,7 +38,7 @@ export async function updateFaviconBadge(count: number): Promise<void> {
     ctx.drawImage(img, 0, 0, 32, 32);
 
     if (count > 0) {
-      const label = count > 99 ? "99+" : String(count);
+      const label = formatCount(count);
       const r = label.length >= 3 ? 9 : 8;
       const cx = 32 - r;
       const cy = r;

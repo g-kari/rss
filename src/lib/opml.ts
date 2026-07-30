@@ -2,9 +2,9 @@ import { escapeHtml } from "@/lib/html";
 import { toArray } from "@/lib/xml-parser";
 import { stripControlChars } from "@/lib/validation";
 import { sortByOrder } from "@/lib/sort-utils";
+import { FEED_GROUP_NAME_MAX_LENGTH } from "@/lib/feed-groups";
 import type { Feed, FeedGroup } from "@/types";
 
-const FEED_GROUP_NAME_MAX_LENGTH = 50;
 const MAX_OPML_DEPTH = 10;
 const MAX_TITLE_LENGTH = 500;
 const MAX_SITE_URL_LENGTH = 2048;
