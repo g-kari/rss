@@ -34,7 +34,7 @@ export function useAutoLoadMoreArticles(
   const [loadedCount, setLoadedCount] = useState(0);
 
   // フィード切り替え・フィルター変更時にカウントをリセット
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- resetDeps は caller が渡す動的配列で lint が静的解析できない
   useEffect(() => {
     autoLoadCountRef.current = 0;
     setLoadedCount(0);

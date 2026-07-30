@@ -79,8 +79,12 @@ export interface ShortcutContext {
   cycleTtsRate: () => number;
   /** #684: 記事一覧を選択中記事にスクロール (アンカー) */
   anchorListToSelected?: () => void;
-  /** window.confirm の代替。未指定時は window.confirm にフォールバック。 */
-  confirm?: (message: string) => Promise<boolean>;
+  /**
+   * 確認ダイアログ。`useConfirm` + `ConfirmModal` の canonical 実装を注入する。
+   * `window.confirm` は `coding-conventions.md` の禁止事項のため fallback も持たない
+   * (唯一の consumer である `useKeyboardNav` → `AppShell` が常に注入する)。
+   */
+  confirm: (message: string) => Promise<boolean>;
 }
 
 /** ショートカットのグループ分類 */
@@ -387,9 +391,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
         (a) => !isArticleRead(a, ctx.readIds, readBeforeMs),
       ).length;
       if (unreadCount >= 50) {
-        const ok = ctx.confirm
-          ? await ctx.confirm(`${unreadCount}件の記事を全既読にしますか？`)
-          : window.confirm(`${unreadCount}件の記事を全既読にしますか？`);
+        const ok = await ctx.confirm(`${unreadCount}件の記事を全既読にしますか？`);
         if (!ok) return;
       }
       ctx.markAllRead(ctx.selectedFeedId);
