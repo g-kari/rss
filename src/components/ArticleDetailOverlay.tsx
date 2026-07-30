@@ -9,6 +9,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import Backdrop from "./Backdrop";
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
 import { usePopupLock } from "@/hooks/usePopupLock";
@@ -116,13 +117,11 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
       <h2 id={titleId} className="sr-only">
         記事詳細パネル
       </h2>
+      {/* #1259: raw div + onClick だと本文テキスト選択の drag → パネル外 release でも
+          close していたため Backdrop canonical (onPointerDown) に統一 */}
+      <Backdrop onPointerDown={onClose} />
       <div
-        className="absolute inset-0 bg-black/30 animate-fade-in"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div
-        className="relative h-full bg-surface-base shadow-2xl animate-slide-in-right flex flex-col overflow-hidden"
+        className="relative z-50 h-full bg-surface-base shadow-2xl animate-slide-in-right flex flex-col overflow-hidden"
         style={{ width: `${width}px` }}
       >
         <div

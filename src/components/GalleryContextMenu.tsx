@@ -12,6 +12,7 @@ import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useToast } from "../contexts/ToastContext";
 import Backdrop from "./Backdrop";
+import { MENU_ITEM_CLS } from "./article-view/constants";
 import { useConfirm } from "../hooks/useConfirm";
 import ConfirmModal from "./ConfirmModal";
 
@@ -231,9 +232,6 @@ export default function GalleryContextMenu({
     [getItems, closeAndRestore],
   );
 
-  const btnClass =
-    "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle focus-visible:bg-surface-subtle focus-visible:outline-none transition-colors text-left";
-
   return createPortal(
     <>
       <Backdrop transparent onPointerDown={closeAndRestore} />
@@ -249,7 +247,7 @@ export default function GalleryContextMenu({
         {target.thumb && (
           <button
             role="menuitem"
-            className={btnClass}
+            className={MENU_ITEM_CLS}
             onClick={() => {
               const url = target.thumb!;
               const safeTitle = buildSafeTitle(target.article.title);
@@ -284,7 +282,7 @@ export default function GalleryContextMenu({
         {target.images && target.images.length >= 1 && (
           <button
             role="menuitem"
-            className={btnClass}
+            className={MENU_ITEM_CLS}
             onClick={() => {
               downloadAllImages(target.images!, target.article);
               closeAndRestore();
@@ -313,7 +311,7 @@ export default function GalleryContextMenu({
 
         <button
           role="menuitem"
-          className={btnClass}
+          className={MENU_ITEM_CLS}
           onClick={() => {
             onSelectArticle(target.article);
             closeAndRestore();
@@ -338,7 +336,7 @@ export default function GalleryContextMenu({
 
         <button
           role="menuitem"
-          className={btnClass}
+          className={MENU_ITEM_CLS}
           onClick={() => {
             onToggleRead(target.article.id);
             closeAndRestore();
@@ -362,7 +360,7 @@ export default function GalleryContextMenu({
 
         <button
           role="menuitem"
-          className={btnClass}
+          className={MENU_ITEM_CLS}
           onClick={() => {
             onToggleBookmark(target.article.id);
             closeAndRestore();
@@ -386,7 +384,7 @@ export default function GalleryContextMenu({
 
         <button
           role="menuitem"
-          className={btnClass}
+          className={MENU_ITEM_CLS}
           onClick={() => {
             // #795 / #844: 既読化 (markRead は既読なら no-op) + ギャラリー表示
             // からの強制除去を 1 callback に集約。markRead の早期 return で

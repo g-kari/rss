@@ -6,6 +6,8 @@ import type { Collection } from "../types";
 import { useToast } from "@/contexts/ToastContext";
 import { usePortalMenu } from "../hooks/usePortalMenu";
 import { useMenuKeyboard } from "../hooks/useMenuKeyboard";
+import { useConfirm } from "../hooks/useConfirm";
+import ConfirmModal from "./ConfirmModal";
 import { devError } from "../lib/dev-log";
 import PortalMenuShell from "./article-view/PortalMenuShell";
 
@@ -50,6 +52,7 @@ export default function CollectionDropdown({
   const toast = useToast();
   const { open, setOpen, toggle, pos, btnRef, menuId } = usePortalMenu();
   const { menuRef, handleKeyDown } = useMenuKeyboard(open, setOpen, btnRef);
+  const { confirm, confirmModalProps } = useConfirm();
 
   const inCount = collections.filter((c) => c.articleIds.includes(articleId)).length;
   // Bookmark snapshot 一括追加が可能か (bookmarkIds.size > 0 + onAddBulk + collection 1 件以上)
@@ -58,10 +61,13 @@ export default function CollectionDropdown({
 
   const handleBulkAdd = async (collection: Collection): Promise<void> => {
     if (!onAddBulk || !bookmarkIds || bookmarkIds.size === 0) return;
-    // confirm で誤操作防止 (snapshot 方式のため、後から undo できない)
-    const ok = window.confirm(
-      `${bookmarkIds.size} 件のブックマーク記事を「${collection.name}」に追加しますか？`,
-    );
+    // #1198: 誤操作防止の確認 (snapshot 方式のため後から undo できない)。
+    // window.confirm は canonical (useConfirm + ConfirmModal) に統一済 — GalleryContextMenu 参照。
+    const ok = await confirm({
+      title: "一括追加の確認",
+      message: `${bookmarkIds.size} 件のブックマーク記事を「${collection.name}」に追加しますか？`,
+      confirmLabel: "追加",
+    });
     if (!ok) return;
     setOpen(false);
     // WCAG 2.4.3: menu を閉じたらトリガーボタンへ focus を戻す (backdrop / 新規コレクション
@@ -181,6 +187,7 @@ export default function CollectionDropdown({
           )}
         </PortalMenuShell>
       )}
+      <ConfirmModal {...confirmModalProps} />
       {showCreateModal && onCreateNew && (
         <CollectionModal
           mode="create"

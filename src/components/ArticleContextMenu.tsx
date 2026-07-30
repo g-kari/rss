@@ -6,6 +6,7 @@ import type { Article } from "../types";
 import { computeContextMenuPosition } from "../lib/context-menu-position";
 import { BASE_MENU_CLASS } from "../lib/menu-class";
 import Backdrop from "./Backdrop";
+import { MENU_ITEM_CLS } from "./article-view/constants";
 
 export interface ArticleContextMenuTarget {
   article: Article;
@@ -135,9 +136,6 @@ export default function ArticleContextMenu({
     [getItems, closeAndRestore],
   );
 
-  const btnClass =
-    "w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle focus-visible:bg-surface-subtle focus-visible:outline-none transition-colors text-left";
-
   return createPortal(
     <>
       <Backdrop transparent onPointerDown={closeAndRestore} />
@@ -152,7 +150,7 @@ export default function ArticleContextMenu({
       >
         <button
           role="menuitem"
-          className={btnClass}
+          className={MENU_ITEM_CLS}
           onClick={() => {
             onToggleRead(target.article.id);
             closeAndRestore();
@@ -176,7 +174,7 @@ export default function ArticleContextMenu({
 
         <button
           role="menuitem"
-          className={btnClass}
+          className={MENU_ITEM_CLS}
           onClick={() => {
             onToggleBookmark(target.article.id);
             closeAndRestore();
@@ -201,7 +199,7 @@ export default function ArticleContextMenu({
 
         <button
           role="menuitem"
-          className={btnClass}
+          className={MENU_ITEM_CLS}
           onClick={() => {
             onToggleReadingList(target.article.id);
             closeAndRestore();
@@ -227,7 +225,7 @@ export default function ArticleContextMenu({
         {!isRead && (
           <button
             role="menuitem"
-            className={btnClass}
+            className={MENU_ITEM_CLS}
             onClick={() => {
               onToggleRead(target.article.id);
               closeAndRestore();
@@ -252,7 +250,7 @@ export default function ArticleContextMenu({
         {onSnooze && (
           <button
             role="menuitem"
-            className={btnClass}
+            className={MENU_ITEM_CLS}
             onClick={() => {
               onSnooze(target.article);
               closeAndRestore();

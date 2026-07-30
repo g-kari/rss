@@ -62,8 +62,10 @@ export default function ImageLightbox({
     [trapKeyDown, onPrev, onNext],
   );
 
-  const handleBackgroundClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+  // #1259: onClick だと拡大画像を drag → 背景で release したときも close していたため
+  // onPointerDown に統一 (自身が backdrop 兼 dialog root のため Backdrop.tsx 導入は構造上困難)。
+  const handleBackgroundPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.target === e.currentTarget) onClose();
     },
     [onClose],
@@ -78,7 +80,7 @@ export default function ImageLightbox({
       tabIndex={-1}
       onKeyDown={handleKeyDown}
       className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center outline-none"
-      onClick={handleBackgroundClick}
+      onPointerDown={handleBackgroundPointerDown}
     >
       <h2 id={titleId} className="sr-only">
         画像拡大表示

@@ -2,6 +2,8 @@
 
 import { useId, useRef } from "react";
 import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
+import { usePopupLock } from "@/hooks/usePopupLock";
+import Backdrop from "../Backdrop";
 
 interface ImageDownloadModalProps {
   isAlreadyDownloaded: boolean;
@@ -20,12 +22,14 @@ export default function ImageDownloadModal({
   // #1064: ConfirmModal canonical の dialog focus 管理 (focus trap + return focus + Escape/Tab cycle) に統一。
   // 条件付きマウント (mount=open) のため isOpen 未指定 (Modal.tsx pattern)、最初の focusable (キャンセル) に初期 focus。
   const { handleKeyDown } = useModalFocusTrap(dialogRef, { onClose: onCancel });
+  // #1228: 他 dialog 9 file と同じく popup 多重表示ロックを取得 (conditional mount のため引数不要)。
+  usePopupLock();
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={onCancel}
-    >
+    <>
+      {/* #1199: raw div + onClick だと本文 drag → 外で release でも close するため
+          Backdrop canonical (onPointerDown) に統一 */}
+      <Backdrop onPointerDown={onCancel} />
       <div
         ref={dialogRef}
         role="dialog"
@@ -34,7 +38,7 @@ export default function ImageDownloadModal({
         aria-describedby={`${titleId}-desc`}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
-        className="bg-surface-elevated border border-border-default rounded-xl p-6 shadow-xl max-w-sm mx-4 w-full outline-none"
+        className="fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[360px] bg-surface-elevated border border-border-default rounded-xl p-6 shadow-xl outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-text-strong text-[14px] font-medium mb-2">
@@ -60,6 +64,6 @@ export default function ImageDownloadModal({
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
