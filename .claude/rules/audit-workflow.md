@@ -201,7 +201,7 @@ grep -nE "import.*vitest|import.*playwright" <target-spec-file>
 - agent が **mock 方法を framework 特定せず提案** (例: 「storage helper を stub」のみ) → 任意 framework で対応可能、verify 不要
 - 対象 spec が **mock 不要 (純粋関数 + 直接 assert)** → framework mismatch 関係なし
 
-主な使用箇所: 本サイクル e2e regression agent が `e2e/lru-cache.spec.ts` (playwright/test) に **`vi.spyOn(storageSet)` mock** 推奨 → 対象 framework が playwright で vi 不在 → 案 A (vitest 新規 .test.ts) で Issue 起票降格 (`#821`)
+主な使用箇所: 本サイクル e2e regression agent が `e2e/lru-cache.spec.ts` (playwright/test) に **`vi.spyOn(storageSet)` mock** 推奨 → 対象 framework が playwright で vi 不在 → 案 A (vitest 新規 .test.ts) で Issue 起票降格
 
 ### 派生ケース: 高信頼度の独立修正は「Issue 起票せず同サイクルで連続修正」する
 
