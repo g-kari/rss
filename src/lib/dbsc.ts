@@ -16,6 +16,7 @@
 
 import { base64urlToBytes } from "./auth";
 import { devError } from "./dev-log";
+import { isPlainObject } from "./type-guards";
 
 /**
  * サーバーサイドに保存する DBSC セッション情報（R2 保存用）
@@ -52,7 +53,7 @@ export async function importDbscPublicKey(publicKey: string): Promise<CryptoKey>
     // 事前に 3 軸 narrowing で non-object を明示拒否する (react-component-split.md §
     // 派生サブケース「security path の JSON.parse 結果は unknown 受け + 3 軸 narrowing」)。
     const parsed: unknown = JSON.parse(trimmed);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    if (!isPlainObject(parsed)) {
       throw new Error("JWK must be a JSON object");
     }
     return crypto.subtle.importKey(
@@ -103,7 +104,7 @@ export async function verifyDbscResponse(
     // unknown 受け + 3 軸 narrowing」、canonical: 同 file importDbscPublicKey)。
     const payloadBytes = base64urlToBytes(payloadB64);
     const payloadRaw: unknown = JSON.parse(new TextDecoder().decode(payloadBytes));
-    if (typeof payloadRaw !== "object" || payloadRaw === null || Array.isArray(payloadRaw)) {
+    if (!isPlainObject(payloadRaw)) {
       return false;
     }
     const payload = payloadRaw as Record<string, unknown>;

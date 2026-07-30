@@ -16,6 +16,7 @@
  */
 
 import { fetchWithTimeout } from "@/lib/fetch";
+import { isPlainObject } from "./type-guards";
 
 export interface JWTPayload {
   sub: string;
@@ -140,7 +141,7 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
     // TypeError 発生 → 認証エラーハンドリングを bypass する経路ができる。
     // object かつ non-null かつ non-array を assertion 前に確認 (defensive)。
     const headerRaw: unknown = JSON.parse(new TextDecoder().decode(base64urlToBytes(headerB64)));
-    if (typeof headerRaw !== "object" || headerRaw === null || Array.isArray(headerRaw)) {
+    if (!isPlainObject(headerRaw)) {
       console.error("[auth/verify] header is not a JSON object", {
         type: typeof headerRaw,
         isArray: Array.isArray(headerRaw),
@@ -154,7 +155,7 @@ export async function verifyJwt(token: string, authBaseUrl: string): Promise<JWT
     }
 
     const payloadRaw: unknown = JSON.parse(new TextDecoder().decode(base64urlToBytes(payloadB64)));
-    if (typeof payloadRaw !== "object" || payloadRaw === null || Array.isArray(payloadRaw)) {
+    if (!isPlainObject(payloadRaw)) {
       console.error("[auth/verify] payload is not a JSON object", {
         type: typeof payloadRaw,
         isArray: Array.isArray(payloadRaw),
@@ -465,7 +466,7 @@ export function getJwtExp(token: string): number | null {
     // non-object payload で payload.exp access が TypeError 発生する罠を 3 軸 narrowing で
     // 構造的予防 (canonical: 同 file verifyJwt / react-component-split.md § 派生サブケース)。
     const raw: unknown = JSON.parse(new TextDecoder().decode(base64urlToBytes(parts[1])));
-    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+    if (!isPlainObject(raw)) return null;
     const payload = raw as { exp?: number };
     return typeof payload.exp === "number" ? payload.exp : null;
   } catch (err) {

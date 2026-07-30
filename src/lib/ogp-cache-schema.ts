@@ -1,3 +1,4 @@
+import { isPlainObject } from "./type-guards";
 /**
  * #808 Phase 1: OGP cache schema 拡張 + lazy migration 純粋関数。
  *
@@ -72,7 +73,7 @@ export function parseOgpCacheEntry(raw: unknown): OgpCacheEntry | null {
   }
 
   // v2: object value → field 検証
-  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (!isPlainObject(raw)) return null;
   const obj = raw as Record<string, unknown>;
   if (typeof obj.image !== "string") return null;
 
@@ -106,7 +107,7 @@ export function parseOgpCacheEntry(raw: unknown): OgpCacheEntry | null {
  * // }
  */
 export function parseOgpCache(raw: unknown): Record<string, OgpCacheEntry> {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return {};
+  if (!isPlainObject(raw)) return {};
   const result: Record<string, OgpCacheEntry> = {};
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     const entry = parseOgpCacheEntry(value);

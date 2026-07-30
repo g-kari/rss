@@ -21,6 +21,7 @@ import { fetchArticles } from "@/cron/fetch";
 import { readFeedGroups, writeFeedGroups, MAX_FEED_GROUPS_PER_USER } from "@/lib/feed-groups";
 import { extractFeeds, type FeedEntry, type OpmlOutline } from "@/lib/opml";
 import { MAX_OPML_ENTRIES } from "@/lib/validation";
+import { computeNextOrder } from "@/lib/sort-utils";
 
 interface RawParsedOpml {
   opml?: {
@@ -151,7 +152,7 @@ export async function POST(request: Request) {
     if (folderNames.length > 0) {
       const existingGroups = await readFeedGroups(env.RSS_DATA, session.userId);
       const existingNameSet = new Set(existingGroups.map((g) => g.name));
-      let maxOrder = existingGroups.reduce((max, g) => Math.max(max, g.order), 0);
+      let nextOrder = computeNextOrder(existingGroups);
       const newGroups: FeedGroup[] = [];
 
       for (const name of folderNames) {
@@ -165,7 +166,7 @@ export async function POST(request: Request) {
           const group: FeedGroup = {
             id: crypto.randomUUID(),
             name,
-            order: ++maxOrder,
+            order: nextOrder++,
             createdAt: new Date().toISOString(),
           };
           newGroups.push(group);

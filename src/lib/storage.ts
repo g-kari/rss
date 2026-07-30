@@ -7,6 +7,7 @@
 
 import type { FeedView } from "../types";
 import { devError } from "./dev-log";
+import { isPlainObject } from "./type-guards";
 
 // ── キー定数 ──────────────────────────────────────────────────
 
@@ -188,7 +189,7 @@ export function loadJsonRecord<V>(
   isValidValue: (v: unknown) => v is V,
 ): Record<string, V> {
   const raw = loadJson<unknown>(key, fallback);
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return fallback;
+  if (!isPlainObject(raw)) return fallback;
   const result: Record<string, V> = {};
   for (const [k, v] of Object.entries(raw)) {
     if (isValidValue(v)) result[k] = v;

@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { addRangeToSelection } from "../lib/bulk-selection";
 
 /**
  * 記事一括選択の state 管理 hook (#883 Phase A)。
@@ -22,11 +23,7 @@ export function useBulkArticleSelection(): BulkArticleSelectionState {
 
   const addRange = useCallback((rangeIds: readonly string[]) => {
     if (rangeIds.length === 0) return;
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      for (const id of rangeIds) next.add(id);
-      return next;
-    });
+    setSelectedIds((prev) => addRangeToSelection(prev, rangeIds));
   }, []);
 
   const clear = useCallback(() => {

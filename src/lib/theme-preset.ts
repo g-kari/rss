@@ -16,6 +16,7 @@ import { FONT_SIZE_CYCLE, FONT_FAMILY_CYCLE } from "./article-utils";
 import type { LineHeight, ContentWidth } from "./reader-settings";
 import { LINE_HEIGHT_CYCLE, CONTENT_WIDTH_CYCLE } from "./reader-settings";
 import type { Theme } from "../hooks/useThemePreference";
+import { isPlainObject } from "./type-guards";
 
 /** 1 preset として保存できる設定値の組み合わせ */
 export interface ThemePreset {
@@ -78,7 +79,7 @@ function isValidId(v: unknown): v is string {
  * (`parseThemePresets` から各 entry の validation に利用)
  */
 function parseThemePresetEntry(raw: unknown): ThemePreset | null {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  if (!isPlainObject(raw)) return null;
   const r = raw as Record<string, unknown>;
   if (!isValidId(r.id)) return null;
   if (!isValidName(r.name)) return null;

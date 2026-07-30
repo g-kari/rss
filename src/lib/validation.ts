@@ -1,3 +1,4 @@
+import { isPlainObject } from "./type-guards";
 /** 各種入力バリデーションユーティリティ */
 
 // ---------------------------------------------------------------------------
@@ -114,7 +115,7 @@ export type ParseOrderResult =
 /**
  * `order` フィールドの defense-in-depth バリデーション純粋関数。
  * 非負整数かつ `max` 以下のみ許容する (Number.MIN/MAX_SAFE_INTEGER 等で
- * sortByOrder 順序や `++maxOrder` 初期化が破壊されるのを防ぐ)。
+ * sortByOrder 順序や `computeNextOrder` 初期化が破壊されるのを防ぐ)。
  * feed-groups / collections の [id] PATCH ハンドラで共有する (helper drift 解消)。
  */
 export function parseOrder(raw: unknown, max: number): ParseOrderResult {
@@ -173,7 +174,7 @@ export function extractIds(raw: unknown, max: number): string[] | null {
  * - MAX_NOTES 件を超える場合は先頭 maxNotes 件に切り詰め（DoS 対策）
  */
 export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string> | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (!isPlainObject(raw)) return null;
   const result: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     if (Object.keys(result).length >= maxNotes) break;
@@ -200,7 +201,7 @@ export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string
  * - maxArticles 件を超える場合は先頭から切り詰め（DoS 対策）
  */
 export function parseTagIds(raw: unknown, maxArticles = 1000): Record<string, string[]> | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (!isPlainObject(raw)) return null;
   const result: Record<string, string[]> = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     if (Object.keys(result).length >= maxArticles) break;
@@ -285,7 +286,7 @@ export function isValidCookieHeader(value: string): boolean {
  * - 期限切れのエントリを除去する
  */
 export function parseSnoozedUntil(raw: unknown, maxSnoozed = 500): Record<string, string> | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (!isPlainObject(raw)) return null;
   const now = new Date().toISOString();
   const result: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw)) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSyncedRef } from "../hooks/useSyncedRef";
 import Spinner from "./Spinner";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -11,13 +12,12 @@ interface Props {
 export default function LoadMoreButton({ onLoad }: Props) {
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
-  const onLoadRef = useRef(onLoad);
   const containerRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
-  const toastRef = useRef(toast);
-
-  onLoadRef.current = onLoad;
-  toastRef.current = toast;
+  // react-hook-patterns.md § stale closure 回避パターン: render ごとの手動代入でなく
+  // useSyncedRef に統一する。
+  const onLoadRef = useSyncedRef(onLoad);
+  const toastRef = useSyncedRef(toast);
 
   useEffect(() => {
     const el = containerRef.current;

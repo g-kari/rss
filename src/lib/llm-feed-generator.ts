@@ -17,6 +17,7 @@ import type { ParsedFeed, ParsedItem } from "./xml-parser";
 import type { LDDocument, LDElement } from "./linkedom-types";
 import { isParsedHtmlResult } from "./linkedom-types";
 import { devError } from "./dev-log";
+import { isPlainObject } from "./type-guards";
 
 // workers-types 未掲載のためキャスト。CSS セレクタ推論には精度の高いモデルを使用する
 const MODEL: AiModelId = "@cf/meta/llama-3.3-70b-instruct-fp8-fast" as AiModelId;
@@ -158,7 +159,7 @@ export async function inferSelectors(
       return null;
     }
     // AI レスポンスは信頼できないため、object であることをランタイム検証する
-    if (parsedJson === null || typeof parsedJson !== "object" || Array.isArray(parsedJson)) {
+    if (!isPlainObject(parsedJson)) {
       return null;
     }
     const parsed = parsedJson as Record<string, unknown>;

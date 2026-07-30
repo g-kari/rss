@@ -1,4 +1,5 @@
 import type { Article, KeywordFilter } from "../types";
+import { isPlainObject } from "./type-guards";
 
 const MAX_KEYWORD_LENGTH = 100;
 const MAX_KEYWORDS_PER_ARRAY = 500;
@@ -233,8 +234,7 @@ export function applyKeywordFilter(articles: Article[], filter?: KeywordFilter):
  * include / exclude が配列でない場合は空配列として扱う。
  */
 export function parseKeywordFilter(raw: unknown): KeywordFilter | null {
-  if (raw == null) return null;
-  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (!isPlainObject(raw)) return null;
   const obj = raw as Record<string, unknown>;
   const filter: KeywordFilter = {
     include: sanitizeKeywords(Array.isArray(obj.include) ? obj.include : []),

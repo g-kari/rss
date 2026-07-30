@@ -10,6 +10,7 @@
  */
 
 import { isValidFeedHash } from "./validation";
+import { isPlainObject } from "./type-guards";
 
 export interface SeedFeedInput {
   feedHash: string;
@@ -44,9 +45,8 @@ const MAX_ARTICLES_PER_FEED = 1000;
 const MAX_SUBSCRIPTIONS = 50;
 const MAX_ID_ARRAY_LEN = 10000;
 
-function isObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
+// #1283: plain object 判定は type-guards.ts の canonical helper に集約済。
+const isObject = isPlainObject;
 
 function validateFeed(input: unknown, idx: number): SeedFeedInput | string {
   if (!isObject(input)) return `feeds[${idx}] is not an object`;
