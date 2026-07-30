@@ -73,7 +73,7 @@ export default function CollectionsSection({
             onClick={cycleSortBy}
             aria-label={`コレクション並び順: ${COLLECTION_SORT_BY_LABELS[sortBy]} (クリックで切替)`}
             title={`並び順: ${COLLECTION_SORT_BY_LABELS[sortBy]}`}
-            className="ml-auto w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
+            className="ml-auto w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
           >
             <svg
               aria-hidden="true"
@@ -102,7 +102,7 @@ export default function CollectionsSection({
         {!loadError && onCreateCollection && (
           <button
             onClick={() => onCreateCollection("")}
-            className={`${showSortButton ? "" : "ml-auto"} w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all`}
+            className={`${showSortButton ? "" : "ml-auto"} w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all`}
             aria-label="コレクションを作成"
             title="コレクションを作成"
           >

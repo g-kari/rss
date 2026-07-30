@@ -50,7 +50,7 @@ export default function FeedSearchBar({ value, onChange }: Props) {
               onChange("");
               inputRef.current?.focus();
             }}
-            className="flex-shrink-0 text-text-faint hover:text-text-muted transition-colors duration-150"
+            className="flex-shrink-0 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center text-text-faint hover:text-text-muted transition-colors duration-150"
             aria-label="検索をクリア"
           >
             <svg

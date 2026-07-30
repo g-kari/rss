@@ -52,7 +52,7 @@ export default function SidebarHeader({
       <button
         onClick={onToggleInput}
         disabled={!isOnline}
-        className={`w-5 h-5 flex items-center justify-center rounded transition-all duration-200 disabled:opacity-40 ${
+        className={`w-5 h-5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded transition-all duration-200 disabled:opacity-40 ${
           inputOpen
             ? "text-text-default bg-surface-subtle"
             : "text-text-faint hover:text-text-default hover:bg-surface-subtle"
@@ -76,7 +76,7 @@ export default function SidebarHeader({
       <button
         onClick={onRefresh}
         disabled={refreshing || !isOnline}
-        className="w-5 h-5 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all duration-200 disabled:opacity-40"
+        className="w-5 h-5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all duration-200 disabled:opacity-40"
         title={!isOnline ? "オフラインです" : "フィードを更新"}
         aria-label={!isOnline ? "オフライン" : refreshing ? "フィードを更新中" : "フィードを更新"}
       >

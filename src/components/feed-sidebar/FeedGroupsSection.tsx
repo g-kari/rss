@@ -114,7 +114,7 @@ function FeedGroupsSectionImpl({
               setCreateError(null);
               setTimeout(() => createInputRef.current?.focus(), 0);
             }}
-            className="ml-auto w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
+            className="ml-auto w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
             title="グループを作成"
             aria-label="グループを作成"
           >
@@ -213,7 +213,7 @@ function FeedGroupsSectionImpl({
             >
               <button
                 onClick={() => void onToggleCollapse?.(group.id, !isCollapsed)}
-                className="flex-shrink-0 w-4 h-4 flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-subtle"
+                className="flex-shrink-0 w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-subtle"
                 title={isCollapsed ? "展開" : "折りたたむ"}
                 aria-label={isCollapsed ? `${group.name} を展開` : `${group.name} を折りたたむ`}
                 aria-expanded={!isCollapsed}
@@ -286,7 +286,7 @@ function FeedGroupsSectionImpl({
                     e.stopPropagation();
                     void onToggleMute(group.id, false);
                   }}
-                  className="w-4 h-4 flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-subtle"
+                  className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-subtle"
                   title="ミュートを解除"
                   aria-label={`${group.name} のミュートを解除`}
                 >
@@ -315,7 +315,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         onMarkAllRead(feeds.map((f) => f.id));
                       }}
-                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
                       title="グループ内の記事を既読にする"
                       aria-label={`${group.name} の記事を全て既読にする`}
                     >
@@ -340,7 +340,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         void onReorder(group.id, "up");
                       }}
-                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
                       title="上へ移動"
                       aria-label={`${group.name} を上へ移動`}
                     >
@@ -365,7 +365,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         void onReorder(group.id, "down");
                       }}
-                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
                       title="下へ移動"
                       aria-label={`${group.name} を下へ移動`}
                     >
@@ -393,7 +393,7 @@ function FeedGroupsSectionImpl({
                         setEditError(null);
                         setTimeout(() => editInputRef.current?.select(), 0);
                       }}
-                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
                       title="名前変更"
                       aria-label={`${group.name} の名前を変更`}
                     >
@@ -418,7 +418,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         void onToggleMute(group.id, true);
                       }}
-                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
                       title="グループをミュート（一覧から非表示）"
                       aria-label={`${group.name} をミュート`}
                     >
@@ -444,7 +444,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         void handleDelete(group);
                       }}
-                      className="w-4 h-4 flex items-center justify-center rounded text-text-faint hover:text-error hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-error hover:bg-surface-subtle"
                       title="グループを削除"
                       aria-label={`${group.name} を削除`}
                     >
