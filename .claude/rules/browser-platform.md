@@ -444,12 +444,12 @@ navigator.share({ url, title }).catch((err) => {
 
 **該当する典型 API**:
 
-| API                         | AbortError の発生条件           | 真の失敗の例                                 |
-| --------------------------- | ------------------------------- | -------------------------------------------- |
-| `navigator.share()`         | user がシェアシートを閉じた     | permission 拒否 / URL 不正 / OS 側エラー     |
-| `navigator.clipboard.*()`   | user が permission dialog dismiss | permission 拒否 / focus 喪失 / doc 非 secure |
-| `document.exitFullscreen()` | user が ESC / OS gesture で解除 | fullscreen state 不整合                      |
-| `element.requestPointerLock()` | user が dismiss              | permission 拒否 / element 非表示             |
+| API                            | AbortError の発生条件             | 真の失敗の例                                 |
+| ------------------------------ | --------------------------------- | -------------------------------------------- |
+| `navigator.share()`            | user がシェアシートを閉じた       | permission 拒否 / URL 不正 / OS 側エラー     |
+| `navigator.clipboard.*()`      | user が permission dialog dismiss | permission 拒否 / focus 喪失 / doc 非 secure |
+| `document.exitFullscreen()`    | user が ESC / OS gesture で解除   | fullscreen state 不整合                      |
+| `element.requestPointerLock()` | user が dismiss                   | permission 拒否 / element 非表示             |
 
 **How to apply**: user action trigger の browser API wrapper を実装 or 発見したら (bare `.catch(() => {})` は `browser-platform.md § 「外部依存ラッパー」silent fallback` 規範違反 + user cancel と真の失敗を同一視する二重罠):
 
