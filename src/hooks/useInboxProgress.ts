@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { Article, Feed } from "../types";
 import { isArticleRead } from "../lib/article-filter";
-import { computeFeedStructuralSignature } from "../lib/feed-signature";
+import { useFeedStructuralSignature } from "./useFeedStructuralSignature";
 
 export interface InboxFeedStat {
   feedId: string;
@@ -27,7 +27,7 @@ export function useInboxProgress(
   // perf: feeds の reference がポーリングで変わるたびに O(n_articles) 再計算が走るのを抑制する。
   // feedStructuralSignature が変化したときのみ feedMap を再構築し、
   // articles スキャンの useMemo の deps は feedMap に置く。
-  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+  const feedStructuralSignature = useFeedStructuralSignature(feeds);
 
   const feedMap = useMemo(
     () => new Map(feeds.map((f) => [f.id, f.title])),

@@ -9,8 +9,8 @@ import { isArticleRead } from "../lib/article-filter";
 import { exportArticlesToMarkdown, exportNotesToMarkdown } from "../lib/export-markdown";
 import { exportNotesToReadwise } from "../lib/export-readwise";
 import { exportArticlesToJson, exportNotesToJson } from "../lib/export-json";
-import { computeFeedStructuralSignature } from "../lib/feed-signature";
 import { useSyncedRef } from "./useSyncedRef";
+import { useFeedStructuralSignature } from "./useFeedStructuralSignature";
 
 interface Options {
   feeds: Feed[];
@@ -161,7 +161,7 @@ export function useFeedSidebarActions({
   // #789: feeds reference は 5 分 polling で毎回新規。構造的内容変化なしなら
   // signature が一致して下流の useMemo を再計算 skip させる (sibling useSidebarFeeds と同 pattern)。
   const feedsRef = useSyncedRef(feeds);
-  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+  const feedStructuralSignature = useFeedStructuralSignature(feeds);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- feedStructuralSignature が feeds 構造を encode 済 + feedsRef/toastRef は安定参照
   return useMemo<FeedSidebarActions>(

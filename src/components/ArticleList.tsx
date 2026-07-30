@@ -28,7 +28,6 @@ import BulkActionToolbar from "./BulkActionToolbar";
 import { usePrefetchGalleryContents } from "../hooks/usePrefetchGalleryContents";
 import { extractEmbedThumbnailUrl } from "../lib/embed-utils";
 import { useSyncedRef } from "../hooks/useSyncedRef";
-import { computeFeedStructuralSignature } from "../lib/feed-signature";
 import { useGalleryAutoRead } from "../hooks/useGalleryAutoRead";
 import { useGallerySwipeNav } from "../hooks/useGallerySwipeNav";
 import { useGalleryAutoScroll } from "../hooks/useGalleryAutoScroll";
@@ -39,6 +38,7 @@ import ArticleListHeader from "./ArticleListHeader";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
 import ArticleContextMenu, { type ArticleContextMenuTarget } from "./ArticleContextMenu";
 import LoadMoreButton from "./LoadMoreButton";
+import { useFeedStructuralSignature } from "../hooks/useFeedStructuralSignature";
 import ArticleListEmptyState from "./ArticleListEmptyState";
 import { explodeArticlesIntoGalleryEntries, type GalleryEntry } from "../lib/gallery-explode";
 import { EMPTY_STRING_SET } from "../lib/empty-sentinels";
@@ -173,7 +173,7 @@ function ArticleList({
   // 新規でも内容変化なしなら signature 同じ → feedMap も同一 reference を維持して
   // useArticleListItemProps の resolveItemProps callback / virtual list item memo の
   // invalidate を防ぐ (sibling useSidebarFeeds.ts の canonical pattern に揃える)。
-  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+  const feedStructuralSignature = useFeedStructuralSignature(feeds);
   const feedsRef = useRef(feeds);
   feedsRef.current = feeds;
   const feedMap = useMemo(

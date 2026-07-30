@@ -243,6 +243,7 @@ src/
     useFeedDragDrop.ts       # フィードの D&D 状態管理（draggedFeedId・dragOverGroupId・dragOverUngrouped）+ drop ハンドラー（onView / onGroup）
     useFeedPatch.ts          # フィード属性の PATCH 操作（nsfw・priority・category・groupId・mutedUntil・filter・view）を集約
     useFeedSelection.ts      # フィード・グループ・タグ・記事・コレクション選択状態管理 + URL クエリパラメータ同期
+    useFeedStructuralSignature.ts # feeds 構造 signature の memo 化 hook（5 sibling site の inline useMemo を集約、#1265）
     useCollections.ts        # /api/collections CRUD + 楽観的更新（create / rename / delete / addArticle / removeArticle）
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useThemePresets.ts       # テーマプリセット (theme/fontSize/fontFamily/lineHeight/contentWidth) を `theme-preset.ts` 経由で localStorage 保存・復元する hook（DisplayTabPanel のプリセット保存/適用 UI で利用）
@@ -786,7 +787,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 
 ## Hooks 層設計 (`src/hooks/`)
 
-`src/hooks/` には 122 ファイル の React Hook が配置される。`AppShell.tsx` の状態管理を機能別に分割した結果として大規模化したが、責務境界を明確にするため以下の **カテゴリ分類 + 命名規則** に従う。
+`src/hooks/` には 123 ファイル の React Hook が配置される。`AppShell.tsx` の状態管理を機能別に分割した結果として大規模化したが、責務境界を明確にするため以下の **カテゴリ分類 + 命名規則** に従う。
 
 ### カテゴリ分類
 

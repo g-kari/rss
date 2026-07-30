@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useRef } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../types";
-import { computeFeedStructuralSignature } from "../lib/feed-signature";
+import { useFeedStructuralSignature } from "./useFeedStructuralSignature";
 
 interface UseArticleViewPropsOptions {
   selectedArticle: Article | null;
@@ -87,7 +87,7 @@ export function useArticleViewProps({
   // raw feeds を deps に入れると articleViewProps の identity が毎 poll 変わり <ArticleView> memo が
   // 毎回 bail out して subtree 全再描画する。canonical signature-string パターン (ArticleList / useSidebarFeeds)
   // に揃え、構造シグネチャを deps にして feedsRef.current で安定値を渡す。
-  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+  const feedStructuralSignature = useFeedStructuralSignature(feeds);
   const feedsRef = useRef(feeds);
   feedsRef.current = feeds;
   return useMemo(

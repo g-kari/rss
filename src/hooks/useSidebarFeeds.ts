@@ -2,10 +2,8 @@ import { useMemo, useRef } from "react";
 import type { Feed, FeedGroup, FeedView } from "../types";
 import { useUnreadStats } from "../contexts/UnreadStatsContext";
 import { sortByOrder } from "../lib/sort-utils";
-import {
-  computeArticleTagIdsSignature,
-  computeFeedStructuralSignature,
-} from "../lib/feed-signature";
+import { computeArticleTagIdsSignature } from "../lib/feed-signature";
+import { useFeedStructuralSignature } from "./useFeedStructuralSignature";
 
 interface UseSidebarFeedsInput {
   feeds: Feed[];
@@ -75,7 +73,7 @@ export function useSidebarFeeds({
   // #747: feeds の構造的内容を signature 化して下流 useMemo の deps に使う。
   // 5 分 polling で `feeds` reference が新規でも内容変化なしなら signature 同じ → useMemo skip。
   // signature 計算は N feeds × 数文字 concat で軽量 (1000 feeds でも < 1ms)。
-  const feedStructuralSignature = useMemo(() => computeFeedStructuralSignature(feeds), [feeds]);
+  const feedStructuralSignature = useFeedStructuralSignature(feeds);
 
   // useMemo の deps から feeds を外して signature に置換。
   // feeds reference は useMemo の closure 経由でアクセスするため、内側ロジックは変更不要。
