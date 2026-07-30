@@ -4,6 +4,8 @@ import { usePopupLock } from "../../hooks/usePopupLock";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { useToast } from "@/contexts/ToastContext";
 import { useArticleFilter } from "@/contexts/ArticleFilterContext";
+import { isAbortError } from "../../lib/fetch";
+import { devError } from "../../lib/dev-log";
 import {
   computeSelectionPopupLayout,
   type SelectionPopupLayout,
@@ -158,7 +160,11 @@ export default function SelectionExcludePopup({
     navigator.clipboard
       .writeText(quote)
       .then(() => toast.success("引用をコピーしました"))
-      .catch(() => toast.error("コピーに失敗しました"));
+      .catch((err) => {
+        if (isAbortError(err)) return;
+        devError("[SelectionExcludePopup] doCopyQuote clipboard.writeText failed", err);
+        toast.error("コピーに失敗しました");
+      });
     onClose();
   }
 

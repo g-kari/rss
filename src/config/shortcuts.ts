@@ -114,7 +114,12 @@ function clipboardWrite(text: string, successMsg: string, showToast: (msg: strin
   navigator.clipboard
     .writeText(text)
     .then(() => showToast(successMsg))
-    .catch(() => showToast("コピーに失敗しました"));
+    .catch((err) => {
+      // ユーザーキャンセル (permission dialog dismiss) は無視 (canonical: shortcut 'c' navigator.share)
+      if (isAbortError(err)) return;
+      devError("[shortcuts] clipboard.writeText failed", err);
+      showToast("コピーに失敗しました");
+    });
 }
 
 function buildFeedOrder(feeds: Feed[], pinnedFeedIds: Set<string>): (Feed | null)[] {
@@ -314,10 +319,18 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
         ctx.selectedFeedId !== null &&
         Object.values<string>(SPECIAL_FEED_IDS).includes(ctx.selectedFeedId);
       if (ctx.selectedFeedId && !isSpecial) {
-        ctx.retryFeed(ctx.selectedFeedId).catch(() => {});
+        ctx.retryFeed(ctx.selectedFeedId).catch((err) => {
+          if (isAbortError(err)) return;
+          devError("[shortcut r] retryFeed failed", err);
+          ctx.showToast("フィードの更新に失敗しました");
+        });
         ctx.showToast("フィードを更新中...");
       } else {
-        ctx.refreshFeeds().catch(() => {});
+        ctx.refreshFeeds().catch((err) => {
+          if (isAbortError(err)) return;
+          devError("[shortcut r] refreshFeeds failed", err);
+          ctx.showToast("全フィードの更新に失敗しました");
+        });
         ctx.showToast("全フィードを更新中...");
       }
     },

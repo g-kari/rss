@@ -6,6 +6,7 @@ import { storageGet, STORAGE_KEYS } from "../../lib/storage";
 import { articleToMarkdown } from "../../lib/html-to-markdown";
 import { buildObsidianUri } from "../../lib/obsidian";
 import { isAbortError } from "../../lib/fetch";
+import { devError } from "../../lib/dev-log";
 import { MENU_ITEM_CLS } from "./constants";
 import { SHARE_TARGETS, triggerShareTarget } from "./shareTargets";
 import PortalMenuShell from "./PortalMenuShell";
@@ -26,7 +27,11 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
     navigator.clipboard
       .writeText(text)
       .then(() => toast.success(successMsg))
-      .catch(() => toast.error("コピーに失敗しました"));
+      .catch((err) => {
+        if (isAbortError(err)) return;
+        devError("[ShareMenu] copyText clipboard.writeText failed", err);
+        toast.error("コピーに失敗しました");
+      });
   }
 
   return (
@@ -110,7 +115,11 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                       );
                     }
                   })
-                  .catch(() => toast.error("コピーに失敗しました"));
+                  .catch((err) => {
+                    if (isAbortError(err)) return;
+                    devError("[ShareMenu] triggerShareTarget failed", err);
+                    toast.error("コピーに失敗しました");
+                  });
               }}
               className={MENU_ITEM_CLS}
             >
@@ -207,7 +216,11 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                     navigator.clipboard
                       .writeText(md)
                       .then(() => toast.success("Markdown をコピーしました"))
-                      .catch(() => toast.error("コピーに失敗しました"));
+                      .catch((err) => {
+                        if (isAbortError(err)) return;
+                        devError("[ShareMenu] markdown clipboard.writeText failed", err);
+                        toast.error("コピーに失敗しました");
+                      });
                   } catch {
                     toast.error("Markdown 生成に失敗しました");
                   }

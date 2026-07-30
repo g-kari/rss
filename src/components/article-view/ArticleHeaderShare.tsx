@@ -6,6 +6,8 @@ import FilterMenu from "./FilterMenu";
 import GlobalFilterMenu from "./GlobalFilterMenu";
 import { useHeaderShareTargets } from "../../hooks/useHeaderShareTargets";
 import { SHARE_TARGETS, triggerShareTarget } from "./shareTargets";
+import { isAbortError } from "../../lib/fetch";
+import { devError } from "../../lib/dev-log";
 
 interface Props {
   article: Article;
@@ -45,9 +47,11 @@ export default function ArticleHeaderShare({
             <button
               key={target.id}
               onClick={() => {
-                triggerShareTarget(target, article.link!, article.title).catch(() =>
-                  onShareError("コピーに失敗しました"),
-                );
+                triggerShareTarget(target, article.link!, article.title).catch((err) => {
+                  if (isAbortError(err)) return;
+                  devError("[ArticleHeaderShare] triggerShareTarget failed", err);
+                  onShareError("コピーに失敗しました");
+                });
               }}
               title={target.label}
               aria-label={target.label}

@@ -6,6 +6,7 @@ import Modal from "./Modal";
 import { useToast } from "@/contexts/ToastContext";
 import { apiFetch } from "@/lib/api-fetch";
 import { devError } from "@/lib/dev-log";
+import { isAbortError } from "@/lib/fetch";
 
 interface Props {
   feed: Feed;
@@ -207,15 +208,23 @@ function DetailRow({
   error?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const toast = useToast();
 
   function handleCopy() {
     // 非 HTTPS context / 古い Safari / 一部 WebView で navigator.clipboard が undefined の罠を
     // 構造的予防 (canonical: ShareMenu.tsx の `if (!navigator.clipboard)` guard)。
     if (!navigator.clipboard) return;
-    void navigator.clipboard.writeText(value).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    void navigator.clipboard
+      .writeText(value)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch((err) => {
+        if (isAbortError(err)) return;
+        devError("[FeedDetailModal] clipboard.writeText failed", err);
+        toast.error("コピーに失敗しました");
+      });
   }
   return (
     <div className="flex gap-2">
