@@ -92,7 +92,8 @@ export async function purgeArticlesCache(
 export async function deleteCfCache(cacheKey: Request): Promise<boolean> {
   try {
     return await caches.default.delete(cacheKey);
-  } catch {
+  } catch (err) {
+    console.error("[cache-helper] deleteCfCache failed:", err);
     return false;
   }
 }

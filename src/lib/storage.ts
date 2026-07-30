@@ -122,8 +122,8 @@ export function storageGet(key: string): string | null {
 export function storageSet(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
-  } catch {
-    /* storage full — 無視 */
+  } catch (err) {
+    devError("[storage] localStorage.setItem failed (storage quota / permission)", { key, err });
   }
 }
 
@@ -131,8 +131,8 @@ export function storageSet(key: string, value: string): void {
 export function storageRemove(key: string): void {
   try {
     localStorage.removeItem(key);
-  } catch {
-    /* ignore */
+  } catch (err) {
+    devError("[storage] localStorage.removeItem failed", { key, err });
   }
 }
 

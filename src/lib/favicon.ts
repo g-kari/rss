@@ -1,3 +1,5 @@
+import { devError } from "./dev-log";
+
 /** ベース画像をキャッシュして再読み込みを避ける */
 let baseImg: HTMLImageElement | null = null;
 /** 前回生成した Blob URL。次回更新時に revoke してメモリリークを防ぐ */
@@ -68,7 +70,8 @@ export async function updateFaviconBadge(count: number): Promise<void> {
     if (prevBlobUrl) URL.revokeObjectURL(prevBlobUrl);
     prevBlobUrl = URL.createObjectURL(blob);
     link.href = prevBlobUrl;
-  } catch {
-    // ファビコン更新失敗は無視（ブラウザ互換性問題など）
+  } catch (err) {
+    // ファビコン更新失敗は UI に影響しないため握り潰すが、調査手がかりは残す
+    devError("[favicon] updateFaviconBadge failed", err);
   }
 }
