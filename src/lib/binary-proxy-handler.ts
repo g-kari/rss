@@ -18,6 +18,7 @@
  */
 import { formatError } from "@/lib/api-error";
 import { isValidPublicUrl } from "@/lib/url";
+import { sanitizeLogUrl } from "@/lib/log-sanitize";
 import { buildCacheKey, cachePutAsync, deleteCfCache, matchCfCache } from "@/lib/cache-helper";
 import {
   DEFAULT_FETCH_TIMEOUT_MS,
@@ -132,7 +133,7 @@ export async function handleBinaryProxy<Reason extends string>(
   const url = reqUrl.searchParams.get("url");
   if (!url) return new Response(null, { status: 400 });
   if (!isValidPublicUrl(url)) return new Response(null, { status: 400 });
-  const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
+  const logUrl = sanitizeLogUrl(url);
 
   const cacheKey = await buildCacheKey(reqUrl.origin, options.cacheType, url);
 

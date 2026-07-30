@@ -3,6 +3,7 @@ import { unescapeHtml, extractOgMeta, stripHtml } from "./html";
 import { decodeBytesToString, detectCharset } from "./content";
 import { isValidFeedUrl, isValidPublicUrl, isAbsoluteHttpUrl } from "./url";
 import { X_COM_HOSTS } from "./x-com-fallback";
+import { sanitizeLogUrl } from "./log-sanitize";
 
 /** OGP フェッチのデフォルトタイムアウト（ミリ秒） */
 const DEFAULT_FETCH_TIMEOUT_MS = 5_000;
@@ -180,11 +181,11 @@ export async function fetchPageOgpMeta(
   url: string,
   timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS,
 ): Promise<OgpMetaWithError> {
-  const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
+  const logUrl = sanitizeLogUrl(url);
   const empty = { title: "", description: "", image: "" } as const;
   try {
     const fetchUrl = normalizeOgpFetchUrl(url);
-    const logFetchUrl = fetchUrl.replace(/[\r\n]/g, "").slice(0, 256);
+    const logFetchUrl = sanitizeLogUrl(fetchUrl);
     const headers = buildFetchHeaders(fetchUrl);
     const res = await fetchFollowSafeRedirects(fetchUrl, { headers }, timeoutMs);
     if (!res.ok) {

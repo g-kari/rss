@@ -10,6 +10,7 @@ import {
   matchCfCache,
 } from "@/lib/cache-helper";
 import { DEFAULT_FETCH_TIMEOUT_MS, fetchFollowSafeRedirects, readBodyBytes } from "@/lib/fetch";
+import { sanitizeLogUrl } from "@/lib/log-sanitize";
 import {
   decodeBytesToString,
   detectCharset,
@@ -179,7 +180,7 @@ export async function fetchArticleContent(
 ): Promise<string | null> {
   if (!isValidFeedUrl(url)) return null;
 
-  const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
+  const logUrl = sanitizeLogUrl(url);
   const cacheKey = await buildContentCacheKey(origin, url);
   const cached = await matchCfCache(cacheKey);
   if (cached) {

@@ -8,6 +8,7 @@ import {
   fetchFollowSafeRedirects,
   readBodyBytesPartial,
   computeNextFetchEarliestAt,
+  RSS_USER_AGENT,
 } from "../lib/fetch";
 import { sendPushToAll, type PushPayload } from "../lib/web-push";
 import { parseRetryAfter as parseRetryAfterRaw } from "../lib/retry-after";
@@ -178,7 +179,7 @@ async function fetchAndScrapeWithSelectors(
   requestCookie?: string,
 ): Promise<{ articles: Article[]; existingLatest: Article[] | null }> {
   const selectors = meta.cssSelectors!;
-  const headers: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
+  const headers: Record<string, string> = { "User-Agent": RSS_USER_AGENT };
   if (requestCookie) headers["Cookie"] = requestCookie;
   const fetchUrl = appendAccessKeyIfRsshub(meta.url, getRSSHubInstance(), getRSSHubAccessKey());
   const res = await fetchViaBinding(env, fetchUrl, { headers });
@@ -208,7 +209,7 @@ async function fetchAndParseFeed(
     return fetchAndScrapeWithSelectors(env, meta, options.requestCookie);
   }
 
-  const reqHeaders: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
+  const reqHeaders: Record<string, string> = { "User-Agent": RSS_USER_AGENT };
   if (options.requestCookie) reqHeaders["Cookie"] = options.requestCookie;
   if (options.conditional) {
     if (meta.etag) reqHeaders["If-None-Match"] = meta.etag;

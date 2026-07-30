@@ -3,6 +3,15 @@ import { isValidFeedUrl } from "@/lib/url";
 /** 外部 HTTP フェッチのデフォルトタイムアウト（ミリ秒）*/
 export const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
+/**
+ * 外部 RSS / HTML fetch 用の User-Agent。
+ *
+ * internal service (0g0-id 等) への fetch は URL suffix 付きの別 UA
+ * (`auth.ts` の `INTERNAL_SERVICE_USER_AGENT` / 既定 `rss-reader/1.0 (+https://rss.0g0.xyz)`)
+ * を使う。両者は意図的に別系統なので統合しないこと。
+ */
+export const RSS_USER_AGENT = "rss-reader/1.0";
+
 /** AbortController によるキャンセル・タイムアウト由来のエラーかを判定する */
 export function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === "AbortError";

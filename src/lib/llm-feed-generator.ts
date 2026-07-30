@@ -10,7 +10,8 @@
 
 import { parseHTML } from "linkedom/worker";
 import { isValidFeedUrl, isAbsoluteHttpUrl, tryParseBase } from "./url";
-import { fetchFollowSafeRedirects } from "./fetch";
+import { fetchFollowSafeRedirects, RSS_USER_AGENT } from "./fetch";
+import { sanitizeLogUrl } from "./log-sanitize";
 import type { SelectorConfig } from "../types";
 import type { ParsedFeed, ParsedItem } from "./xml-parser";
 import type { LDDocument, LDElement } from "./linkedom-types";
@@ -208,9 +209,9 @@ export async function inferFeedFromUrl(
   cookie?: string,
   excludeSelectors?: string[],
 ): Promise<{ selectors: SelectorConfig; siteTitle: string; siteUrl: string } | null> {
-  const logUrl = url.replace(/[\r\n]/g, "").slice(0, 256);
+  const logUrl = sanitizeLogUrl(url);
   try {
-    const headers: Record<string, string> = { "User-Agent": "rss-reader/1.0" };
+    const headers: Record<string, string> = { "User-Agent": RSS_USER_AGENT };
     if (cookie) headers["Cookie"] = cookie;
     const res = await fetchFollowSafeRedirects(url, { headers }, FETCH_TIMEOUT_MS);
     if (!res.ok) return null;
