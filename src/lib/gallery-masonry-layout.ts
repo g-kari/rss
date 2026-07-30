@@ -95,6 +95,11 @@ export interface MasonryLayoutResult {
  * // aspectRatio 補正: columnWidth=200, item.width=100, item.height=300
  * //   → effective height = (200/100) * 300 = 600 (画像を 2 倍に拡大したときの高さ)
  * computeColumnHeights([{id:"a", width:100, height:300}], 1, 0, 200) // [600]
+ *
+ * @internal production caller 0。`computeMasonryLayout` の thin wrapper で同 file 内 caller も無いが、
+ * `e2e/gallery-masonry-layout.spec.ts` が直接 import して単体検証しているため export は維持する
+ * (dead export ではない)。cross-file の production caller が増えない限り、
+ * 監査 sweep で dead export として再検出しないこと。
  */
 export function computeColumnHeights(
   items: ReadonlyArray<MasonryLayoutItem>,
@@ -118,6 +123,11 @@ export function computeColumnHeights(
  * assignItemToShortestColumn([100, 200, 150]) // 0 (最小高さ)
  * assignItemToShortestColumn([100, 100, 200]) // 0 (tie 時最小 index)
  * assignItemToShortestColumn([])              // 0 (defensive)
+ *
+ * @internal production caller 0。同 file の `computeMasonryLayout` が internal caller。
+ * `e2e/gallery-masonry-layout.spec.ts` が直接 import して単体検証しているため export は維持する
+ * (dead export ではない)。cross-file の production caller が増えない限り、
+ * 監査 sweep で dead export として再検出しないこと。
  */
 export function assignItemToShortestColumn(columnHeights: ReadonlyArray<number>): number {
   if (columnHeights.length === 0) return 0;

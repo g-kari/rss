@@ -10,6 +10,12 @@ export const COLLECTION_NAME_MAX_LENGTH = 50;
  */
 export const MAX_ARTICLES_PER_COLLECTION = 1000;
 
+/**
+@internal production caller 0。同 file の `readCollections` / `writeCollections` が internal caller。
+ * `e2e/collections-api.spec.ts` が直接 import して単体検証しているため export は維持する
+ * (dead export ではない)。cross-file の production caller が増えない限り、
+ * 監査 sweep で dead export として再検出しないこと。
+ */
 export function collectionsKey(userId: string): string {
   return userKey(userId, "collections.json");
 }

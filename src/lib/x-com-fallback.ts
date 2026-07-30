@@ -63,6 +63,11 @@ const JS_ERROR_PATTERNS: readonly RegExp[] = [
 /**
  * 与えられた content が JavaScript 無効時のエラーページかを判定する。
  * 先頭 500 文字のみチェック (長文記事の本文中に偶然含まれる場合の false positive を防ぐ)。
+ *
+ * @internal production caller 0。同 file の `needsXComOgpFallback` が internal caller。
+ * `e2e/x-com-fallback.spec.ts` が直接 import して単体検証しているため export は維持する
+ * (dead export ではない)。cross-file の production caller が増えない限り、
+ * 監査 sweep で dead export として再検出しないこと。
  */
 export function isJsDisabledContent(content: string | null | undefined): boolean {
   if (!content) return false;

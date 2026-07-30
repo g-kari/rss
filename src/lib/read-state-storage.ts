@@ -13,6 +13,12 @@ export function emptyPendingSets(): PendingSets {
   };
 }
 
+/**
+@internal production caller 0。同 file の `extractAndResetPending` が internal caller。
+ * `e2e/read-state-storage.spec.ts` が直接 import して単体検証しているため export は維持する
+ * (dead export ではない)。cross-file の production caller が増えない限り、
+ * 監査 sweep で dead export として再検出しないこと。
+ */
 export function snapshotPendingSets(pending: PendingSets): PendingSets {
   return {
     read: new Set(pending.read),
@@ -22,6 +28,12 @@ export function snapshotPendingSets(pending: PendingSets): PendingSets {
   };
 }
 
+/**
+@internal production caller 0。同 file の `restorePending` が internal caller。
+ * `e2e/read-state-storage.spec.ts` が直接 import して単体検証しているため export は維持する
+ * (dead export ではない)。cross-file の production caller が増えない限り、
+ * 監査 sweep で dead export として再検出しないこと。
+ */
 export function mergePendingSets(target: PendingSets, source: PendingSets): void {
   for (const kind of Object.keys(target) as SetKind[]) {
     for (const id of source[kind]) target[kind].add(id);
