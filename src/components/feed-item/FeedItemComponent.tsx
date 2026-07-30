@@ -336,6 +336,7 @@ function FeedItem({
           ref={categoryInputRef}
           type="text"
           value={editCategory}
+          aria-label="カテゴリ名を編集"
           placeholder="カテゴリ名（空で解除）"
           onChange={(e) => setEditCategory(e.target.value)}
           onBlur={() => {

@@ -52,6 +52,7 @@ export default function WeeklyGoalSection({ weeklyTotal }: { weeklyTotal: number
               ref={inputRef}
               type="number"
               min={1}
+              aria-label="週間目標（件）"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={commitEdit}
@@ -63,6 +64,7 @@ export default function WeeklyGoalSection({ weeklyTotal }: { weeklyTotal: number
               onClick={startEdit}
               className="text-text-muted hover:text-text-strong transition-colors cursor-text"
               title="目標を変更"
+              aria-label={`週間目標: ${goal} 件（クリックして変更）`}
             >
               {goal}
             </button>

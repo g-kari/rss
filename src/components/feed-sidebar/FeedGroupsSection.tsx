@@ -152,6 +152,7 @@ function FeedGroupsSectionImpl({
             onBlur={() => {
               if (!createError) void commitCreate();
             }}
+            aria-label="新しいグループ名"
             placeholder="グループ名"
             maxLength={50}
             className="w-full text-[12px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted placeholder-text-faint"

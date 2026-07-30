@@ -79,7 +79,7 @@ function TagInput({
                 removeTag(i);
               }}
               className="max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] inline-flex items-center justify-center text-text-faint hover:text-text-default transition-colors"
-              aria-label="削除"
+              aria-label={`「${tag}」を削除`}
             >
               <svg
                 aria-hidden="true"

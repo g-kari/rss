@@ -136,7 +136,13 @@ export default function FeedQuickSwitchModal({
             <circle cx="6" cy="6" r="4.5" />
             <path d="M9.5 9.5l2.5 2.5" />
           </svg>
+          {/* #1239: placeholder 依存をやめて sr-only label で accessible name を与える
+              (canonical: SearchBar / FeedSearchBar) */}
+          <label htmlFor="feed-quick-switch-input" className="sr-only">
+            フィードを検索
+          </label>
           <input
+            id="feed-quick-switch-input"
             ref={inputRef}
             type="text"
             value={query}

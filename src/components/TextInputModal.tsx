@@ -105,7 +105,13 @@ export default function TextInputModal({
                 {description}
               </p>
             )}
+            {/* #1209: placeholder 依存をやめて sr-only label で accessible name を与える
+                (canonical: SearchBar / FeedSearchBar)。dialog title をそのまま label にする */}
+            <label htmlFor={`${titleId}-input`} className="sr-only">
+              {title}
+            </label>
             <input
+              id={`${titleId}-input`}
               ref={inputRef}
               type="text"
               value={value}
