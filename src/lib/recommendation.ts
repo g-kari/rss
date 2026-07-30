@@ -11,6 +11,7 @@ import { buildFeedUserMap, readFeedMeta, readLatestArticles, R2_CONCURRENCY } fr
 import { pMap } from "./concurrency";
 import { fetchWithTimeout } from "./fetch";
 import { buildContentCacheKey } from "./fetch-article-content";
+import { matchCfCache } from "./cache-helper";
 
 // gemma-3-12b-it: 日本語・英語混在タイトルのトピック抽出に使用
 const MODEL: AiModelId = "@cf/google/gemma-3-12b-it" as AiModelId;
@@ -398,7 +399,7 @@ async function generateLinkDiscoveryFeeds(
   for (const { link, title } of articleLinks) {
     try {
       const cacheKey = await buildContentCacheKey(origin, link);
-      const cached = await caches.default.match(cacheKey);
+      const cached = await matchCfCache(cacheKey);
       if (!cached) continue;
 
       const data = (await cached.json()) as { content: string };
