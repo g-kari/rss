@@ -29,6 +29,8 @@ import {
 
 export const GalleryArticleItem = memo(function GalleryArticleItem({
   article,
+  index,
+  totalCount,
   isRead,
   isBookmarked,
   isNew,
@@ -51,7 +53,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   forcedImageKey,
   onSelectImage,
   onHideForcedImage,
-}: Omit<ArticleItemProps, "index" | "isDeleting"> & GalleryItemExtraProps) {
+}: Omit<ArticleItemProps, "isDeleting"> & GalleryItemExtraProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
   const bulkIds = useContext(BulkSelectionCtx);
@@ -265,7 +267,8 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   return (
     <div
       role="article"
-      aria-setsize={-1}
+      aria-setsize={totalCount ?? -1}
+      aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
       aria-describedby={`article-hint-${article.id}`}
       tabIndex={isSelected ? 0 : -1}

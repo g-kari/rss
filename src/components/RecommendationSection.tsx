@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { RecommendedFeed } from "../types";
 import { useToast } from "@/contexts/ToastContext";
 import { devError } from "@/lib/dev-log";
@@ -27,6 +27,7 @@ export default function RecommendationSection({
 }: Props) {
   const toast = useToast();
   const [expanded, setExpanded] = useState(false);
+  const listId = useId();
   const [addingId, setAddingId] = useState<string | null>(null);
 
   const visible = expanded ? recommendations : recommendations.slice(0, 5);
@@ -95,78 +96,82 @@ export default function RecommendationSection({
         </div>
       )}
 
-      {/* 提案リスト */}
-      {visible.map((rec) => (
-        <div
-          key={rec.id}
-          className="group relative flex items-start gap-2 px-4 py-1.5 hover:bg-surface-hover transition-colors duration-200"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] text-text-default truncate tracking-[0.02em]">
-              {rec.title}
+      {/* 提案リスト (#1219: disclosure トグルの aria-controls 対象) */}
+      <div id={listId}>
+        {visible.map((rec) => (
+          <div
+            key={rec.id}
+            className="group relative flex items-start gap-2 px-4 py-1.5 hover:bg-surface-hover transition-colors duration-200"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] text-text-default truncate tracking-[0.02em]">
+                {rec.title}
+              </div>
+              <div className="text-[11px] text-text-faint truncate">{rec.reason}</div>
             </div>
-            <div className="text-[11px] text-text-faint truncate">{rec.reason}</div>
-          </div>
-          <div className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-within:opacity-100 transition-opacity duration-150 flex-shrink-0">
-            <button
-              onClick={async () => {
-                setAddingId(rec.id);
-                try {
-                  await onAddFeed(rec.feedUrl);
-                  onDismiss(rec.id);
-                } catch (err) {
-                  devError("[RecommendationSection] onAddFeed failed", err);
-                  toast.error("フィードの追加に失敗しました");
-                } finally {
-                  setAddingId(null);
-                }
-              }}
-              disabled={addingId === rec.id}
-              title="購読する"
-              aria-label={`${rec.title}を購読する`}
-              className="text-text-faint hover:text-text-strong focus-visible:opacity-100 transition-colors duration-200 disabled:opacity-50"
-            >
-              <svg
-                aria-hidden="true"
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
+            <div className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-within:opacity-100 transition-opacity duration-150 flex-shrink-0">
+              <button
+                onClick={async () => {
+                  setAddingId(rec.id);
+                  try {
+                    await onAddFeed(rec.feedUrl);
+                    onDismiss(rec.id);
+                  } catch (err) {
+                    devError("[RecommendationSection] onAddFeed failed", err);
+                    toast.error("フィードの追加に失敗しました");
+                  } finally {
+                    setAddingId(null);
+                  }
+                }}
+                disabled={addingId === rec.id}
+                title="購読する"
+                aria-label={`${rec.title}を購読する`}
+                className="text-text-faint hover:text-text-strong focus-visible:opacity-100 transition-colors duration-200 disabled:opacity-50"
               >
-                <line x1="6" y1="2" x2="6" y2="10" />
-                <line x1="2" y1="6" x2="10" y2="6" />
-              </svg>
-            </button>
-            <button
-              onClick={() => onDismiss(rec.id)}
-              title="非表示"
-              aria-label={`${rec.title}を非表示`}
-              className="text-text-faint hover:text-text-muted focus-visible:opacity-100 transition-colors duration-200"
-            >
-              <svg
-                aria-hidden="true"
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <line x1="6" y1="2" x2="6" y2="10" />
+                  <line x1="2" y1="6" x2="10" y2="6" />
+                </svg>
+              </button>
+              <button
+                onClick={() => onDismiss(rec.id)}
+                title="非表示"
+                aria-label={`${rec.title}を非表示`}
+                className="text-text-faint hover:text-text-muted focus-visible:opacity-100 transition-colors duration-200"
               >
-                <line x1="3" y1="3" x2="9" y2="9" />
-                <line x1="9" y1="3" x2="3" y2="9" />
-              </svg>
-            </button>
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                >
+                  <line x1="3" y1="3" x2="9" y2="9" />
+                  <line x1="9" y1="3" x2="3" y2="9" />
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {/* もっと見る */}
       {recommendations.length > 5 && (
         <button
           onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          aria-controls={listId}
           className="w-full px-4 py-1 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200 text-left"
         >
           {expanded ? "折りたたむ" : `他 ${recommendations.length - 5} 件を表示`}

@@ -173,7 +173,7 @@ export default function ImageGallery({ images }: Props) {
             </button>
             <FallbackImage
               url={images[lightboxIndex]}
-              alt=""
+              alt={`画像 ${lightboxIndex + 1} / ${images.length}`}
               className="max-w-[96vw] max-h-[96vh] object-contain rounded"
               onClick={(e) => e.stopPropagation()}
             />

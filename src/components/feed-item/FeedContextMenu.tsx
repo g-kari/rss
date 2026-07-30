@@ -153,7 +153,8 @@ export function ViewMenuPortal({
           return (
             <button
               key={opt.id}
-              role="menuitem"
+              role="menuitemradio"
+              aria-checked={current}
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
@@ -217,7 +218,8 @@ export function DigestMenuPortal({
           return (
             <button
               key={String(opt.value)}
-              role="menuitem"
+              role="menuitemradio"
+              aria-checked={current}
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
@@ -269,7 +271,8 @@ export function GroupMenuPortal({
       </div>
       <div className="border-t border-border-subtle">
         <button
-          role="menuitem"
+          role="menuitemradio"
+          aria-checked={!feed.groupId}
           onClick={(e) => {
             e.stopPropagation();
             onClose();
@@ -303,7 +306,8 @@ export function GroupMenuPortal({
             return (
               <button
                 key={g.id}
-                role="menuitem"
+                role="menuitemradio"
+                aria-checked={isCurrent}
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose();

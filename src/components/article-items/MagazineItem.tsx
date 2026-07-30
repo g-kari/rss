@@ -18,6 +18,8 @@ import {
 
 export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticleItem({
   article,
+  index,
+  totalCount,
   isRead,
   isBookmarked,
   isInReadingList,
@@ -35,7 +37,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   onToggleBookmark,
   onToggleReadingList,
   onContextMenu,
-}: Omit<ArticleItemProps, "index">) {
+}: ArticleItemProps) {
   const selectedId = useContext(SelectedArticleCtx);
   const isSelected = selectedId === article.id;
   const bulkIds = useContext(BulkSelectionCtx);
@@ -49,7 +51,8 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   return (
     <div
       role="article"
-      aria-setsize={-1}
+      aria-setsize={totalCount ?? -1}
+      aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
       aria-describedby={`article-hint-${article.id}`}
       tabIndex={isSelected ? 0 : -1}
