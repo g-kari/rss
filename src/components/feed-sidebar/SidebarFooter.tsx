@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { UserProfile } from "../../types";
 import { FallbackImage } from "../FallbackImage";
 import FooterIconButton from "./FooterIconButton";
@@ -77,6 +77,8 @@ export default function SidebarFooter({
 }: Props) {
   const { success, error: showError } = useToast();
   const [moreOpen, setMoreOpen] = useState(false);
+  // #1194: disclosure 3 点セット (aria-expanded / aria-controls / menu id)
+  const moreMenuId = useId();
   const moreRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { menuRef, handleKeyDown } = useMenuKeyboard(moreOpen, setMoreOpen, buttonRef);
@@ -222,6 +224,7 @@ export default function SidebarFooter({
           aria-label="その他のメニュー"
           aria-expanded={moreOpen}
           aria-haspopup="menu"
+          aria-controls={moreOpen ? moreMenuId : undefined}
         >
           <svg aria-hidden="true" className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
             <circle cx="5" cy="12" r="1.5" />
@@ -233,6 +236,7 @@ export default function SidebarFooter({
         {moreOpen && (
           <div
             ref={menuRef}
+            id={moreMenuId}
             role="menu"
             aria-label="その他のメニュー"
             className="absolute bottom-full right-0 mb-1 w-52 bg-surface-elevated border border-border-default rounded-lg shadow-lg py-1 z-50"

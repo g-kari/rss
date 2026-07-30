@@ -7,6 +7,8 @@ import { BASE_MENU_CLASS } from "../../lib/menu-class";
 interface Props {
   /** トリガーボタンの ref (useMenuKeyboard の focus 管理用) */
   btnRef: RefObject<HTMLButtonElement | null>;
+  /** disclosure 3 点セット用の menu id (トリガー側 aria-controls と対応、#1194) */
+  menuId: string;
   onClose: () => void;
   /** menuAnchor から算出した viewport 絶対位置 style */
   menuPortalStyle: CSSProperties;
@@ -28,6 +30,7 @@ interface Props {
  */
 export default function ContextMenuShell({
   btnRef,
+  menuId,
   onClose,
   menuPortalStyle,
   ariaLabel,
@@ -51,6 +54,7 @@ export default function ContextMenuShell({
       />
       <div
         ref={menuRef}
+        id={menuId}
         role="menu"
         aria-label={ariaLabel}
         onKeyDown={handleKeyDown}

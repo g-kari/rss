@@ -17,16 +17,19 @@ interface ContextMenuProps {
   menuPortalStyle: CSSProperties;
   onClose: () => void;
   btnRef: RefObject<HTMLButtonElement | null>;
+  menuId: string;
 }
 export function ContextMenuPortal({
   visibleActions,
   menuPortalStyle,
   onClose,
   btnRef,
+  menuId,
 }: ContextMenuProps) {
   return (
     <ContextMenuShell
       btnRef={btnRef}
+      menuId={menuId}
       onClose={onClose}
       menuPortalStyle={menuPortalStyle}
       ariaLabel="フィード操作メニュー"
@@ -60,12 +63,20 @@ interface MuteMenuProps {
   onClose: () => void;
   onMute: (mutedUntil: string | null) => Promise<void>;
   btnRef: RefObject<HTMLButtonElement | null>;
+  menuId: string;
 }
 
-export function MuteMenuPortal({ menuPortalStyle, onClose, onMute, btnRef }: MuteMenuProps) {
+export function MuteMenuPortal({
+  menuPortalStyle,
+  onClose,
+  onMute,
+  btnRef,
+  menuId,
+}: MuteMenuProps) {
   return (
     <ContextMenuShell
       btnRef={btnRef}
+      menuId={menuId}
       onClose={onClose}
       menuPortalStyle={menuPortalStyle}
       ariaLabel="ミュート期間"
@@ -118,6 +129,7 @@ interface ViewMenuProps {
   onClose: () => void;
   onSetView: (view: FeedView | null) => Promise<void>;
   btnRef: RefObject<HTMLButtonElement | null>;
+  menuId: string;
 }
 
 export function ViewMenuPortal({
@@ -126,10 +138,12 @@ export function ViewMenuPortal({
   onClose,
   onSetView,
   btnRef,
+  menuId,
 }: ViewMenuProps) {
   return (
     <ContextMenuShell
       btnRef={btnRef}
+      menuId={menuId}
       onClose={onClose}
       menuPortalStyle={menuPortalStyle}
       ariaLabel="表示カテゴリ"
@@ -189,6 +203,7 @@ interface DigestMenuProps {
   onClose: () => void;
   onSetDigestLimit: (limit: number | null) => Promise<void>;
   btnRef: RefObject<HTMLButtonElement | null>;
+  menuId: string;
 }
 
 export function DigestMenuPortal({
@@ -197,10 +212,12 @@ export function DigestMenuPortal({
   onClose,
   onSetDigestLimit,
   btnRef,
+  menuId,
 }: DigestMenuProps) {
   return (
     <ContextMenuShell
       btnRef={btnRef}
+      menuId={menuId}
       onClose={onClose}
       menuPortalStyle={menuPortalStyle}
       ariaLabel="ダイジェスト件数"
@@ -246,6 +263,7 @@ interface GroupMenuProps {
   onClose: () => void;
   onSetGroup: (groupId: string | null) => Promise<void>;
   btnRef: RefObject<HTMLButtonElement | null>;
+  menuId: string;
 }
 
 export function GroupMenuPortal({
@@ -255,10 +273,12 @@ export function GroupMenuPortal({
   onClose,
   onSetGroup,
   btnRef,
+  menuId,
 }: GroupMenuProps) {
   return (
     <ContextMenuShell
       btnRef={btnRef}
+      menuId={menuId}
       onClose={onClose}
       menuPortalStyle={menuPortalStyle}
       ariaLabel="グループに移動"

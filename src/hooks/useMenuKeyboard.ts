@@ -11,7 +11,8 @@ import { useEffect, useRef, useCallback, type KeyboardEvent, type RefObject } fr
 export function useMenuKeyboard(
   open: boolean,
   setOpen: (v: boolean) => void,
-  btnRef: RefObject<HTMLButtonElement | null>,
+  /** close 時に focus を戻す要素。context menu では右クリック起点の任意 element も渡す (#1201) */
+  btnRef: RefObject<HTMLElement | null>,
 ) {
   const menuRef = useRef<HTMLDivElement>(null);
 

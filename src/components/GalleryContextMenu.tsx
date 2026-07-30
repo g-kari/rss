@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useMenuKeyboard } from "../hooks/useMenuKeyboard";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { computeContextMenuPosition } from "../lib/context-menu-position";
@@ -164,73 +165,11 @@ export default function GalleryContextMenu({
     [buildSafeTitle, downloadImage, confirm, downloadHistory],
   );
 
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const getItems = useCallback((): HTMLElement[] => {
-    if (!menuRef.current) return [];
-    return Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'));
-  }, []);
-
-  // メニュー開時に最初の項目にフォーカス (rAF で portal 挿入後を待つ)
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      const items = getItems();
-      if (items.length > 0) items[0].focus();
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [getItems]);
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      const items = getItems();
-      if (items.length === 0) return;
-      const currentIndex = items.indexOf(document.activeElement as HTMLElement);
-
-      switch (e.key) {
-        case "ArrowDown": {
-          e.preventDefault();
-          const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
-          items[next].focus();
-          break;
-        }
-        case "ArrowUp": {
-          e.preventDefault();
-          const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
-          items[prev].focus();
-          break;
-        }
-        case "Home": {
-          e.preventDefault();
-          items[0].focus();
-          break;
-        }
-        case "End": {
-          e.preventDefault();
-          items[items.length - 1].focus();
-          break;
-        }
-        case "Escape": {
-          e.preventDefault();
-          e.stopPropagation();
-          closeAndRestore();
-          break;
-        }
-        case "Tab": {
-          // フォーカストラップ: メニュー外に出さない
-          e.preventDefault();
-          if (e.shiftKey) {
-            const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
-            items[prev].focus();
-          } else {
-            const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
-            items[next].focus();
-          }
-          break;
-        }
-      }
-    },
-    [getItems, closeAndRestore],
-  );
+  // #1201: Arrow / Home / End / Escape / Tab トラップ + 開時 auto-focus は canonical
+  // useMenuKeyboard に集約。returnFocusEl は ref 経由で渡す (hook が RefObject 契約のため)。
+  const returnFocusRef = useRef<HTMLElement | null>(returnFocusEl ?? null);
+  returnFocusRef.current = returnFocusEl ?? null;
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, () => onClose(), returnFocusRef);
 
   return createPortal(
     <>

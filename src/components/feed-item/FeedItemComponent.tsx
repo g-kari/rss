@@ -2,6 +2,7 @@
 
 import {
   memo,
+  useId,
   useRef,
   useState,
   useCallback,
@@ -95,6 +96,9 @@ function FeedItem({
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+  // #1194: disclosure 3 点セット (aria-expanded / aria-controls / menu id)。
+  // ⋮ button から開く 5 portal はいずれも同 button がトリガーのため menuId を共有する。
+  const menuId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -263,6 +267,10 @@ function FeedItem({
   const canDrag = !editing && !categoryEditing && !!onDragStartFeed;
   return (
     <div
+      // #1197: click / Enter / Space で feed を選択する interactive 要素だが、
+      // draggable と内側 button 群の都合で native <button> にできないため role で補う
+      // (sibling canonical: FeedGroupsSection / TagsSection は native <button>)。
+      role="button"
       aria-current={isSelected ? "true" : undefined}
       aria-label={feed.title || feed.url}
       tabIndex={isSelected ? 0 : -1}
@@ -378,6 +386,9 @@ function FeedItem({
           aria-label="操作メニューを開く"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
+          aria-controls={
+            menuOpen || muteOpen || viewOpen || digestOpen || groupOpen ? menuId : undefined
+          }
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
             <circle cx="6" cy="2" r="1.2" />
@@ -393,6 +404,7 @@ function FeedItem({
           menuPortalStyle={menuPortalStyle}
           onClose={() => setMenuOpen(false)}
           btnRef={menuButtonRef}
+          menuId={menuId}
         />
       )}
       {filterModalOpen && handleFilterSave && (
@@ -410,6 +422,7 @@ function FeedItem({
           onClose={() => setMuteOpen(false)}
           onMute={handleMute}
           btnRef={menuButtonRef}
+          menuId={menuId}
         />
       )}
       {viewOpen && handleSetView && (
@@ -419,6 +432,7 @@ function FeedItem({
           onClose={() => setViewOpen(false)}
           onSetView={handleSetView}
           btnRef={menuButtonRef}
+          menuId={menuId}
         />
       )}
       {digestOpen && handleSetDigestLimit && (
@@ -428,6 +442,7 @@ function FeedItem({
           onClose={() => setDigestOpen(false)}
           onSetDigestLimit={handleSetDigestLimit}
           btnRef={menuButtonRef}
+          menuId={menuId}
         />
       )}
       {groupOpen && handleSetGroup && (
@@ -438,6 +453,7 @@ function FeedItem({
           onClose={() => setGroupOpen(false)}
           onSetGroup={handleSetGroup}
           btnRef={menuButtonRef}
+          menuId={menuId}
         />
       )}
     </div>

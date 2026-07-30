@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type KeyboardEvent } from "react";
+import { useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useMenuKeyboard } from "../hooks/useMenuKeyboard";
 import type { Article } from "../types";
 import { computeContextMenuPosition } from "../lib/context-menu-position";
 import { BASE_MENU_CLASS } from "../lib/menu-class";
@@ -62,7 +63,6 @@ export default function ArticleContextMenu({
   const isRead = readIds.has(target.article.id);
   const isBookmarked = bookmarkIds.has(target.article.id);
   const isInReadingList = readingListIds.has(target.article.id);
-  const menuRef = useRef<HTMLDivElement>(null);
   // WCAG 2.4.3: menuitem click / Escape / backdrop dismiss の全 close 経路で
   // トリガー要素へ focus を返す canonical helper (#976 の Escape 分岐を全経路に横展開)。
   const closeAndRestore = useCallback(() => {
@@ -70,71 +70,11 @@ export default function ArticleContextMenu({
     returnFocusEl?.focus();
   }, [onClose, returnFocusEl]);
 
-  const getItems = useCallback((): HTMLElement[] => {
-    if (!menuRef.current) return [];
-    return Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'));
-  }, []);
-
-  // メニュー開時に最初の項目にフォーカス (rAF で portal 挿入後を待つ)
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      const items = getItems();
-      if (items.length > 0) items[0].focus();
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [getItems]);
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      const items = getItems();
-      if (items.length === 0) return;
-      const currentIndex = items.indexOf(document.activeElement as HTMLElement);
-
-      switch (e.key) {
-        case "ArrowDown": {
-          e.preventDefault();
-          const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
-          items[next].focus();
-          break;
-        }
-        case "ArrowUp": {
-          e.preventDefault();
-          const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
-          items[prev].focus();
-          break;
-        }
-        case "Home": {
-          e.preventDefault();
-          items[0].focus();
-          break;
-        }
-        case "End": {
-          e.preventDefault();
-          items[items.length - 1].focus();
-          break;
-        }
-        case "Escape": {
-          e.preventDefault();
-          e.stopPropagation();
-          closeAndRestore();
-          break;
-        }
-        case "Tab": {
-          // フォーカストラップ: メニュー外に出さない
-          e.preventDefault();
-          if (e.shiftKey) {
-            const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
-            items[prev].focus();
-          } else {
-            const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
-            items[next].focus();
-          }
-          break;
-        }
-      }
-    },
-    [getItems, closeAndRestore],
-  );
+  // #1201: Arrow / Home / End / Escape / Tab トラップ + 開時 auto-focus は canonical
+  // useMenuKeyboard に集約。returnFocusEl は ref 経由で渡す (hook が RefObject 契約のため)。
+  const returnFocusRef = useRef<HTMLElement | null>(returnFocusEl ?? null);
+  returnFocusRef.current = returnFocusEl ?? null;
+  const { menuRef, handleKeyDown } = useMenuKeyboard(true, () => onClose(), returnFocusRef);
 
   return createPortal(
     <>
