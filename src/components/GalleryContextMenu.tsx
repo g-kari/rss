@@ -60,6 +60,12 @@ export default function GalleryContextMenu({
   const isBookmarked = bookmarkIds.has(target.article.id);
 
   const dlFolder = target.isNsfw && imageDlFolderNsfw ? imageDlFolderNsfw : imageDlFolder;
+  // WCAG 2.4.3: menuitem click / Escape / backdrop dismiss の全 close 経路で
+  // トリガー要素へ focus を返す canonical helper (#976 の Escape 分岐を全経路に横展開)。
+  const closeAndRestore = useCallback(() => {
+    onClose();
+    returnFocusEl?.focus();
+  }, [onClose, returnFocusEl]);
 
   // DL 済み URL 履歴（localStorage 永続化、再 DL 時に確認ダイアログを出す #648）
   const [downloadHistory, setDownloadHistory] = useState<string[]>(() => {
@@ -205,8 +211,7 @@ export default function GalleryContextMenu({
         case "Escape": {
           e.preventDefault();
           e.stopPropagation();
-          onClose();
-          returnFocusEl?.focus();
+          closeAndRestore();
           break;
         }
         case "Tab": {
@@ -223,7 +228,7 @@ export default function GalleryContextMenu({
         }
       }
     },
-    [getItems, onClose, returnFocusEl],
+    [getItems, closeAndRestore],
   );
 
   const btnClass =
@@ -231,7 +236,7 @@ export default function GalleryContextMenu({
 
   return createPortal(
     <>
-      <Backdrop transparent onPointerDown={onClose} />
+      <Backdrop transparent onPointerDown={closeAndRestore} />
       <div
         ref={menuRef}
         role="menu"
@@ -251,7 +256,7 @@ export default function GalleryContextMenu({
               const ext = url.split(".").pop()?.split("?")[0] ?? "";
               const filename = ext ? `${safeTitle}-1.${ext}` : `${safeTitle}-1`;
               downloadImage(url, filename);
-              onClose();
+              closeAndRestore();
             }}
           >
             <svg
@@ -282,7 +287,7 @@ export default function GalleryContextMenu({
             className={btnClass}
             onClick={() => {
               downloadAllImages(target.images!, target.article);
-              onClose();
+              closeAndRestore();
             }}
           >
             <svg
@@ -311,7 +316,7 @@ export default function GalleryContextMenu({
           className={btnClass}
           onClick={() => {
             onSelectArticle(target.article);
-            onClose();
+            closeAndRestore();
           }}
         >
           <svg
@@ -336,7 +341,7 @@ export default function GalleryContextMenu({
           className={btnClass}
           onClick={() => {
             onToggleRead(target.article.id);
-            onClose();
+            closeAndRestore();
           }}
         >
           <svg
@@ -360,7 +365,7 @@ export default function GalleryContextMenu({
           className={btnClass}
           onClick={() => {
             onToggleBookmark(target.article.id);
-            onClose();
+            closeAndRestore();
           }}
         >
           <svg
@@ -387,7 +392,7 @@ export default function GalleryContextMenu({
             // からの強制除去を 1 callback に集約。markRead の早期 return で
             // 既読記事が一覧に残る問題を呼出元の filter 経路で吸収する。
             onDeleteFromGallery(target.article.id);
-            onClose();
+            closeAndRestore();
           }}
         >
           <svg

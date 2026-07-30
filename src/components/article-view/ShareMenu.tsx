@@ -24,6 +24,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
 
   function copyText(text: string, successMsg: string) {
     setOpen(false);
+    btnRef.current?.focus();
     navigator.clipboard
       .writeText(text)
       .then(() => toast.success(successMsg))
@@ -76,6 +77,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
               role="menuitem"
               onClick={() => {
                 setOpen(false);
+                btnRef.current?.focus();
                 navigator.share({ url: article.link!, title: article.title }).catch((err) => {
                   // ユーザーキャンセルは無視（AbortError は意図した中断）
                   if (isAbortError(err)) return;
@@ -107,6 +109,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
               role="menuitem"
               onClick={() => {
                 setOpen(false);
+                btnRef.current?.focus();
                 triggerShareTarget(target, article.link!, article.title)
                   .then((r) => {
                     if (r.copied) {
@@ -180,6 +183,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
             role="menuitem"
             onClick={() => {
               setOpen(false);
+              btnRef.current?.focus();
               window.print();
             }}
             className={MENU_ITEM_CLS}
@@ -209,6 +213,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                   try {
                     const md = articleToMarkdown(article, feed, contentHtml);
                     setOpen(false);
+                    btnRef.current?.focus();
                     if (!navigator.clipboard) {
                       toast.error("クリップボードが使えません");
                       return;
@@ -255,6 +260,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                       content: md,
                     });
                     setOpen(false);
+                    btnRef.current?.focus();
                     const a = document.createElement("a");
                     a.href = uri;
                     a.click();

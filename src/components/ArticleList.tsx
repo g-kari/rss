@@ -339,6 +339,7 @@ function ArticleList({
   const [articleCtxMenu, setArticleCtxMenu] = useState<ArticleContextMenuTarget | null>(null);
   // #976: Escape 後にフォーカスを返却するトリガー要素を ref で保持
   const articleCtxMenuTriggerElRef = useRef<HTMLElement | null>(null);
+  const galleryCtxMenuTriggerElRef = useRef<HTMLElement | null>(null);
   usePopupLock(!!articleCtxMenu);
   useEventListener("scroll", () => setArticleCtxMenu(null), window, true);
   useEventListener("resize", () => setArticleCtxMenu(null));
@@ -357,6 +358,9 @@ function ArticleList({
       const images = galleryImagesForItem(article.id);
       const thumb = resolveThumbnail(article, ogpCacheRef.current) ?? null;
       const isNsfw = !!feedMap.get(article.feedHash)?.nsfw;
+      // 右クリック座標からトリガー要素を特定 (Escape / backdrop 後のフォーカス返却用)
+      galleryCtxMenuTriggerElRef.current =
+        (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null) ?? null;
       setGalleryCtxMenu({ article, thumb, images, x: e.clientX, y: e.clientY, isNsfw });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ogpCacheRef は useSyncedRef の安定参照のため deps 不要
@@ -368,6 +372,8 @@ function ArticleList({
       const images = galleryImagesForItem(article.id);
       const thumb = resolveThumbnail(article, ogpCacheRef.current) ?? null;
       const isNsfw = !!feedMap.get(article.feedHash)?.nsfw;
+      galleryCtxMenuTriggerElRef.current =
+        (document.elementFromPoint(x, y) as HTMLElement | null) ?? null;
       setGalleryCtxMenu({ article, thumb, images, x, y, isNsfw });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ogpCacheRef は useSyncedRef の安定参照のため deps 不要
@@ -769,6 +775,7 @@ function ArticleList({
             onDeleteFromGallery={handleGalleryDelete}
             onSelectArticle={onSelectArticle}
             onClose={() => setGalleryCtxMenu(null)}
+            returnFocusEl={galleryCtxMenuTriggerElRef.current}
           />
         )}
         {lightboxState && (

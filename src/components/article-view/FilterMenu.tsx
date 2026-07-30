@@ -93,6 +93,10 @@ export default function FilterMenu({ article, feed, onSaveFilter }: Props) {
             role="menuitem"
             onClick={() => {
               setOpen(false);
+              // WCAG 2.4.3: modal を開く前にトリガーボタンへ focus を戻し、
+              // modal 側 focus trap の returnFocusRef が正しく btnRef を記録できるようにする
+              // (canonical: CollectionDropdown)
+              btnRef.current?.focus();
               setModalOpen(true);
             }}
             className={MENU_ITEM_CLS}

@@ -22,9 +22,9 @@ interface Props {
  * (useMenuKeyboard) を 1 箇所に集約する。ContextMenuPortal / MuteMenuPortal /
  * ViewMenuPortal / DigestMenuPortal / GroupMenuPortal の重複ボイラープレートを統合。
  *
- * article-view の PortalMenuShell とは contract が異なる (focus 復元なし /
- * pos でなく menuPortalStyle / Backdrop stopPropagation / menu onClick stopPropagation) ため
- * 別シェルとして分離している。
+ * focus 復元は Escape (useMenuKeyboard) / backdrop dismiss の両経路で行う。
+ * article-view の PortalMenuShell とは contract が異なる (pos でなく menuPortalStyle /
+ * Backdrop stopPropagation / menu onClick stopPropagation) ため別シェルとして分離している。
  */
 export default function ContextMenuShell({
   btnRef,
@@ -44,6 +44,9 @@ export default function ContextMenuShell({
         onPointerDown={(e) => {
           e.stopPropagation();
           onClose();
+          // WCAG 2.4.3: backdrop dismiss でもトリガーボタンへ focus を戻す
+          // (canonical: article-view/PortalMenuShell.tsx)
+          btnRef.current?.focus();
         }}
       />
       <div

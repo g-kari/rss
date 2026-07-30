@@ -62,6 +62,12 @@ export default function ArticleContextMenu({
   const isBookmarked = bookmarkIds.has(target.article.id);
   const isInReadingList = readingListIds.has(target.article.id);
   const menuRef = useRef<HTMLDivElement>(null);
+  // WCAG 2.4.3: menuitem click / Escape / backdrop dismiss の全 close 経路で
+  // トリガー要素へ focus を返す canonical helper (#976 の Escape 分岐を全経路に横展開)。
+  const closeAndRestore = useCallback(() => {
+    onClose();
+    returnFocusEl?.focus();
+  }, [onClose, returnFocusEl]);
 
   const getItems = useCallback((): HTMLElement[] => {
     if (!menuRef.current) return [];
@@ -109,10 +115,7 @@ export default function ArticleContextMenu({
         case "Escape": {
           e.preventDefault();
           e.stopPropagation();
-          onClose();
-          // #976: Escape でメニューを閉じた後、トリガー要素にフォーカスを返却
-          // キーボードユーザーがリスト先頭から Tab し直す必要をなくす (WCAG 2.4.3)
-          returnFocusEl?.focus();
+          closeAndRestore();
           break;
         }
         case "Tab": {
@@ -129,7 +132,7 @@ export default function ArticleContextMenu({
         }
       }
     },
-    [getItems, onClose, returnFocusEl],
+    [getItems, closeAndRestore],
   );
 
   const btnClass =
@@ -137,7 +140,7 @@ export default function ArticleContextMenu({
 
   return createPortal(
     <>
-      <Backdrop transparent onPointerDown={onClose} />
+      <Backdrop transparent onPointerDown={closeAndRestore} />
       <div
         ref={menuRef}
         role="menu"
@@ -152,7 +155,7 @@ export default function ArticleContextMenu({
           className={btnClass}
           onClick={() => {
             onToggleRead(target.article.id);
-            onClose();
+            closeAndRestore();
           }}
         >
           <svg
@@ -176,7 +179,7 @@ export default function ArticleContextMenu({
           className={btnClass}
           onClick={() => {
             onToggleBookmark(target.article.id);
-            onClose();
+            closeAndRestore();
           }}
         >
           <svg
@@ -201,7 +204,7 @@ export default function ArticleContextMenu({
           className={btnClass}
           onClick={() => {
             onToggleReadingList(target.article.id);
-            onClose();
+            closeAndRestore();
           }}
         >
           <svg
@@ -227,7 +230,7 @@ export default function ArticleContextMenu({
             className={btnClass}
             onClick={() => {
               onToggleRead(target.article.id);
-              onClose();
+              closeAndRestore();
             }}
           >
             <svg
@@ -252,7 +255,7 @@ export default function ArticleContextMenu({
             className={btnClass}
             onClick={() => {
               onSnooze(target.article);
-              onClose();
+              closeAndRestore();
             }}
           >
             <svg
