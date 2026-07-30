@@ -122,7 +122,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
       show: !!onTogglePriority,
       className:
         feed.priority === "high"
-          ? "text-amber-400 hover:text-amber-300"
+          ? "text-feed-star hover:text-feed-star-hover"
           : "text-text-faint hover:text-text-default",
     },
     {
@@ -132,7 +132,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
       onClick: () => onToggleNsfw?.(),
       show: !!onToggleNsfw,
       className: feed.nsfw
-        ? "text-error hover:text-rose-300"
+        ? "text-error hover:text-error-hover"
         : "text-text-faint hover:text-text-default",
     },
     {
@@ -308,7 +308,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
       },
       show: !!onMute,
       className: isMuted
-        ? "text-amber-500 hover:text-amber-400"
+        ? "text-feed-mute hover:text-feed-mute-hover"
         : "text-text-faint hover:text-text-default",
     },
     {
@@ -377,7 +377,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
       onClick: handleRetry,
       disabled: loadingAction === "retry",
       className: feed.fetchError
-        ? "text-error hover:text-rose-300"
+        ? "text-error hover:text-error-hover"
         : "text-text-faint hover:text-text-default",
       variant: feed.fetchError ? ("danger" as const) : undefined,
     },

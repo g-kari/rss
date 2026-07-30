@@ -44,6 +44,15 @@
   --color-action-danger: #f43f5e; /* rose-500: 破壊的アクション button 背景 (白文字で 4.8:1) */
   --color-action-danger-hover: #e11d48; /* rose-600: 同 hover (白文字で 6.1:1) */
   --color-border-error: #fb7185; /* rose-400: 入力バリデーションエラーの border */
+  /* feed action / collection color (#1169 Phase 4): feed 操作アイコンの active 色と
+   * コレクション所属 indicator。いずれも既存 raw palette の値をそのまま移設 (視覚変化なし)。
+   * bookmark (amber-400) とは semantic 別 (star = 優先度、mute = 通知抑止)。 */
+  --color-feed-star: #fbbf24; /* amber-400: スター付き (priority high) active */
+  --color-feed-star-hover: #fcd34d; /* amber-300: 同 hover */
+  --color-feed-mute: #f59e0b; /* amber-500: ミュート中 active */
+  --color-feed-mute-hover: #fbbf24; /* amber-400: 同 hover */
+  --color-error-hover: #fda4af; /* rose-300: error 系アイコンの hover (nsfw / fetchError) */
+  --color-collection-indicator: #818cf8; /* indigo-400: コレクション所属あり indicator */
   --color-highlight: #fef3c7; /* amber-100: 検索ハイライト */
   --color-tts-highlight: #fde68a; /* amber-200: TTS 読み上げ中センテンスハイライト (より目立つ) */
   --color-tts-highlight-text: #1c1917; /* stone-900: TTS ハイライト上のテキスト (高コントラスト) */
@@ -94,6 +103,13 @@
   --color-action-danger: #f43f5e; /* rose-500 */
   --color-action-danger-hover: #e11d48; /* rose-600 */
   --color-border-error: #fb7185; /* rose-400 */
+  /* feed action / collection color (#1169 Phase 4): light theme と同色 */
+  --color-feed-star: #fbbf24; /* amber-400 */
+  --color-feed-star-hover: #fcd34d; /* amber-300 */
+  --color-feed-mute: #f59e0b; /* amber-500 */
+  --color-feed-mute-hover: #fbbf24; /* amber-400 */
+  --color-error-hover: #fda4af; /* rose-300 */
+  --color-collection-indicator: #818cf8; /* indigo-400 */
   --color-highlight: rgba(99, 102, 241, 0.18); /* indigo-500/18: 検索ハイライト */
   --color-tts-highlight: rgba(251, 191, 36, 0.3); /* amber-400/30: TTS 読み上げ中 (ダーク) */
   --color-tts-highlight-text: #fef3c7; /* amber-100: ダークテーマ高コントラスト */
