@@ -20,7 +20,7 @@ import {
  *
  * `enabled=false` のとき: 一切のオーバーヘッドなし (interval も起動しない、purefn もスキップ)
  */
-export interface TtsHighlightState {
+interface TtsHighlightState {
   /** 現在 active なセンテンスの index (sentences 配列内の位置)。-1 = 非アクティブ */
   activeSentenceIndex: number;
   /** speak 呼び出し時に utterance.onboundary に注入するコールバック (charIndex を内部 state に反映) */

@@ -76,7 +76,7 @@ export function computeMergedNotes(
   return merged;
 }
 
-export interface ApplyServerStateDeps {
+interface ApplyServerStateDeps {
   stateRef: MutableRefObject<ReadStateSets>;
   pendingAddedRef: MutableRefObject<PendingSets>;
   pendingRemovedRef: MutableRefObject<PendingSets>;

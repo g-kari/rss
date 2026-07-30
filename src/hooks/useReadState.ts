@@ -7,7 +7,7 @@ import { useReadStatePersistence } from "./useReadStatePersistence";
 import { useReadStateSync } from "./useReadStateSync";
 import { useReadStateTags } from "./useReadStateTags";
 
-export interface ReadStateResult {
+interface ReadStateResult {
   readIds: Set<string>;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;

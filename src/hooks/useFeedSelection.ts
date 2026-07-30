@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Article, FeedGroup } from "../types";
 
-export interface FeedSelectionState {
+interface FeedSelectionState {
   selectedFeedId: string | null;
   setSelectedFeedId: (id: string | null) => void;
   selectedGroupId: string | null;

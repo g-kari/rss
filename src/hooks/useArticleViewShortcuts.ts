@@ -8,7 +8,7 @@ import { useEventListener } from "./useEventListener";
 import { isStoredContentJapanese } from "../lib/article-utils";
 import { shouldSkipAutoAi } from "../lib/auto-ai-fallback";
 
-export interface ArticleViewShortcutsDeps {
+interface ArticleViewShortcutsDeps {
   article: Article | null;
   storedContent: string | null;
   fetching: boolean;

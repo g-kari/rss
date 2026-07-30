@@ -44,7 +44,7 @@ import { useSyncedRef } from "./useSyncedRef";
  *
  * 戻り値の `setData` は CRUD 操作で fetch を介さず楽観的更新する hook (useFeedGroups 等) 用。
  */
-export interface UseAsyncFetchOptions<T> {
+interface UseAsyncFetchOptions<T> {
   /** mount + endpoint/deps 変化時に自動 fetch (default: false = lazy) */
   auto?: boolean;
   /** auto モードの追加 deps */
@@ -62,7 +62,7 @@ export interface UseAsyncFetchOptions<T> {
 }
 
 /** `useAsyncFetch` の戻り値型 */
-export interface UseAsyncFetchResult<T> {
+interface UseAsyncFetchResult<T> {
   data: T | null;
   loading: boolean;
   error: string | null;

@@ -17,7 +17,7 @@ import {
  *   (id / createdAt は hook 内で自動生成、上限超過時は最古を切り捨て)
  * - `deletePreset`: 指定 id の preset を削除
  */
-export interface UseThemePresetsResult {
+interface UseThemePresetsResult {
   presets: ThemePreset[];
   savePreset: (name: string, snapshot: Omit<ThemePreset, "id" | "name" | "createdAt">) => void;
   deletePreset: (id: string) => void;

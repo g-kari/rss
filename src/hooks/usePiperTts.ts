@@ -88,7 +88,7 @@ function getAudioContext(): AudioContext | null {
   return audioContextSingleton;
 }
 
-export interface UsePiperTtsOptions {
+interface UsePiperTtsOptions {
   enabled?: boolean;
 }
 

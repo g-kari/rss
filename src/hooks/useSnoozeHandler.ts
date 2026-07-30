@@ -16,7 +16,7 @@ interface UseSnoozeHandlerOptions {
   toast: ToastApi;
 }
 
-export interface SnoozeHandlerState {
+interface SnoozeHandlerState {
   /** スヌーズ対象記事のタイトル (UI モーダル表示用、対象なしなら空文字) */
   snoozeArticleTitle: string;
   /** スヌーズを実行: 既読化マーク + toast + 次記事へ自動遷移 */

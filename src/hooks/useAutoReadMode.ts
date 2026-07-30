@@ -8,7 +8,7 @@ import {
   shouldRestoreAutoMode,
 } from "../lib/auto-read-persist";
 
-export interface UseAutoReadModeResult {
+interface UseAutoReadModeResult {
   autoMode: boolean;
   toggleAutoMode: () => void;
   enableAutoMode: () => void;

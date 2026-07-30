@@ -9,7 +9,7 @@ import { useAsyncFetch } from "./useAsyncFetch";
 import { useSyncedRef } from "./useSyncedRef";
 
 /** `useFeedGroups` の戻り値型 */
-export interface FeedGroupsState {
+interface FeedGroupsState {
   groups: FeedGroup[];
   loading: boolean;
   /** 作成成功時は新規 FeedGroup、失敗時は `{ error: string }` を返す */

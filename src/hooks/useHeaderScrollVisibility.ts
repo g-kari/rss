@@ -3,7 +3,7 @@
 import { type RefObject, type UIEvent, useCallback, useRef, useState } from "react";
 import { computeHeaderVisibility, computeScrollDirection } from "../lib/scroll-direction";
 
-export interface HeaderScrollVisibilityResult {
+interface HeaderScrollVisibilityResult {
   /** 表示可否 (true で表示・false で隠す) */
   headerVisible: boolean;
   /** スクロールイベントから direction 判定して headerVisible を更新するハンドラ */

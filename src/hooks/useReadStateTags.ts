@@ -12,13 +12,13 @@ import { normalizeTagName, normalizeTagArray } from "../lib/read-state-storage";
 import { useSyncedRef } from "./useSyncedRef";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
-export interface ReadStateTagsDeps {
+interface ReadStateTagsDeps {
   stateRef: MutableRefObject<ReadStateSets>;
   setTagIdsState: Dispatch<SetStateAction<Record<string, string[]>>>;
   scheduleSyncToServer: () => void;
 }
 
-export interface ReadStateTagsResult {
+interface ReadStateTagsResult {
   addTag: (articleId: string, tag: string) => void;
   removeTag: (articleId: string, tag: string) => void;
   setArticleTags: (articleId: string, tags: readonly string[]) => void;

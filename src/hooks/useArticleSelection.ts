@@ -14,7 +14,7 @@ interface UseArticleSelectionOptions {
   listFocusMode: boolean;
 }
 
-export interface ArticleSelectionState {
+interface ArticleSelectionState {
   /** 記事選択 (副作用: 既読化・履歴追加・モバイル pane 切替 or overlay 開) */
   selectArticle: (article: Article) => void;
   /** ArticleDetailOverlay (listFocusMode 専用の右スライド overlay) の開閉状態 */

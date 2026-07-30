@@ -1,7 +1,7 @@
 import { useCallback, useState, type SyntheticEvent } from "react";
 import { buildImageProxyUrl, isProxiedImageUrl } from "../lib/image-proxy-url";
 
-export interface UseImageProxyFallbackOptions {
+interface UseImageProxyFallbackOptions {
   /** 画像 load 成功時に consumer に転送される (attempt 0 / 1 いずれの src でも) */
   onLoad?: (e: SyntheticEvent<HTMLImageElement>) => void;
   /**

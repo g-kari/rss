@@ -20,7 +20,7 @@ interface Callbacks {
   onError?: (msg: string) => void;
 }
 
-export interface ImportMessage {
+interface ImportMessage {
   text: string;
   isError: boolean;
 }

@@ -6,7 +6,7 @@ import { apiFetch } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
 import { isFeed } from "../lib/type-guards";
 
-export interface FeedPatchActions {
+interface FeedPatchActions {
   patchFeed: (id: string, body: FeedPatchPayload) => Promise<Feed | null>;
   toggleNsfwFeed: (feed: Feed) => Promise<Feed | null>;
   togglePriorityFeed: (feed: Feed) => Promise<Feed | null>;

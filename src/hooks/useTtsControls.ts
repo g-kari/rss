@@ -6,7 +6,7 @@ import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { clampTtsVolume, parseTtsVolume } from "../lib/tts-volume";
 import { useSyncedRef } from "./useSyncedRef";
 
-export interface UseTtsControlsOptions<R extends number> {
+interface UseTtsControlsOptions<R extends number> {
   rates: readonly R[];
   defaultRate: R;
   /** 呼び出し側が rate 変化時に実行したい副作用 (例: speak 再起動)。不要なら省略 */

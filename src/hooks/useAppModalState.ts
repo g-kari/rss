@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useEventListener } from "./useEventListener";
 
-export interface AppModalState {
+interface AppModalState {
   showHelp: boolean;
   setShowHelp: (v: boolean) => void;
   showFeedSwitcher: boolean;

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { Article } from "../types";
 
-export interface ArticleNavigationState {
+interface ArticleNavigationState {
   /** 現在記事の filtered 配列内 index (-1 = 未選択 / 不在) */
   currentIndex: number;
   /** 前後記事 (端は null) */

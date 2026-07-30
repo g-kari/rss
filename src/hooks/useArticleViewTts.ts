@@ -8,7 +8,7 @@ import { useTtsAdapter } from "../contexts/TtsAdapterContext";
 import { useToast } from "../contexts/ToastContext";
 import { useEventListener } from "./useEventListener";
 
-export interface ArticleViewTtsResult {
+interface ArticleViewTtsResult {
   ttsSupported: boolean;
   ttsPlaying: boolean;
   ttsPaused: boolean;

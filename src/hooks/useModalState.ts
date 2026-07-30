@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export interface ModalState {
+interface ModalState {
   /** スヌーズ対象の記事 ID（null = スヌーズモーダル非表示） */
   snoozeTargetId: string | null;
   setSnoozeTargetId: (id: string | null) => void;

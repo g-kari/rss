@@ -3,14 +3,14 @@
 import { useCallback, useMemo } from "react";
 import type { Feed } from "../types";
 
-export interface FeedPaginationState {
+interface FeedPaginationState {
   /** サーバー側に未取得ページが残っているか (全フィード/単一フィード対応) */
   feedHasMorePages: boolean;
   /** 過去ページをサーバーから読み込み、`notifyArticlesAdded` を呼ぶ */
   handleLoadMoreFeedArticles: () => Promise<void>;
 }
 
-export interface FeedPaginationOptions {
+interface FeedPaginationOptions {
   selectedFeedId: string | null;
   feeds: Feed[];
   loadedFeedPages: Map<string, number>;

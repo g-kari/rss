@@ -9,7 +9,7 @@ import type { SetStateDispatchers, OtherStateDispatchers } from "./useReadStateS
 import { useApplyServerState } from "./useReadStateSyncApply";
 import { useReadStateSyncFlush } from "./useReadStateSyncFlush";
 
-export interface ReadStateSyncDeps {
+interface ReadStateSyncDeps {
   user: UserProfile | null | undefined;
   stateRef: MutableRefObject<ReadStateSets>;
   globalFilterRef: RefObject<KeywordFilter | null>;
@@ -24,7 +24,7 @@ export interface ReadStateSyncDeps {
   otherDispatchers: OtherStateDispatchers;
 }
 
-export interface ReadStateSyncResult {
+interface ReadStateSyncResult {
   scheduleSyncToServer: () => void;
   syncImmediately: () => void;
   hasPendingChanges: boolean;

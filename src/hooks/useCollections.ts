@@ -8,7 +8,7 @@ import type { Collection, UserProfile } from "../types";
 import { useAsyncFetch } from "./useAsyncFetch";
 import { useSyncedRef } from "./useSyncedRef";
 
-export interface CollectionsState {
+interface CollectionsState {
   collections: Collection[];
   loading: boolean;
   /** コレクション取得失敗時のエラー（null = エラーなし） */

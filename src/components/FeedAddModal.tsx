@@ -129,8 +129,12 @@ export default function FeedAddModal({
               disabled={adding}
               autoFocus
               aria-required
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? "feed-add-error" : undefined}
+              aria-invalid={error || urlValid === false ? true : undefined}
+              aria-describedby={
+                [error ? "feed-add-error" : null, urlValid === false ? "feed-add-url-error" : null]
+                  .filter(Boolean)
+                  .join(" ") || undefined
+              }
               className={[
                 "w-full text-[13px] bg-surface-base border rounded-lg px-3 py-2 text-text-strong placeholder-text-faint outline-none transition-colors duration-200",
                 urlValid === false
@@ -141,18 +145,26 @@ export default function FeedAddModal({
               ].join(" ")}
             />
             {urlValid === true && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-[12px] pointer-events-none">
+              <span
+                aria-hidden="true"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-[12px] pointer-events-none"
+              >
                 ✓
               </span>
             )}
             {urlValid === false && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-error text-[12px] pointer-events-none">
+              <span
+                aria-hidden="true"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-error text-[12px] pointer-events-none"
+              >
                 ✗
               </span>
             )}
           </div>
           {urlValid === false && (
-            <p className="text-[11px] text-error mt-1">有効な http(s) URL を入力してください</p>
+            <p id="feed-add-url-error" role="alert" className="text-[11px] text-error mt-1">
+              有効な http(s) URL を入力してください
+            </p>
           )}
 
           {/* Cookie オプション（年齢確認ゲート等の突破用） */}

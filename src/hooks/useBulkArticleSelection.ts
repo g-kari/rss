@@ -12,7 +12,7 @@ import { addRangeToSelection } from "../lib/bulk-selection";
  * Set state の merge / reset のみを担う。anchor 管理は ArticleList 側 (filtered
  * 配列にアクセス可能な layer) で `useRef` を使う設計。
  */
-export interface BulkArticleSelectionState {
+interface BulkArticleSelectionState {
   selectedIds: ReadonlySet<string>;
   addRange: (rangeIds: readonly string[]) => void;
   clear: () => void;

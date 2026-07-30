@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 
-export interface TextInputModalOptions {
+interface TextInputModalOptions {
   title: string;
   description?: string;
   placeholder?: string;

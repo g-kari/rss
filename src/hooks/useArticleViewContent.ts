@@ -19,7 +19,7 @@ const SPEECH_SUPPORTED = isSpeechSupported();
 // module-scope で 1 回だけ compile する。
 const IMG_TAG_RE = /<img\b/i;
 
-export interface ArticleViewContentResult {
+interface ArticleViewContentResult {
   embedInfo: ReturnType<typeof extractEmbedInfo>;
   processedContent: string | null;
   /** sentence span でラップされた HTML — TTS ハイライトに使用 (#672 Phase 2) */
