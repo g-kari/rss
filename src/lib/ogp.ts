@@ -2,6 +2,7 @@ import { fetchFollowSafeRedirects, readBodyBytesPartial } from "./fetch";
 import { unescapeHtml, extractOgMeta, stripHtml } from "./html";
 import { decodeBytesToString, detectCharset } from "./content";
 import { isValidFeedUrl, isValidPublicUrl, isAbsoluteHttpUrl } from "./url";
+import { X_COM_HOSTS } from "./x-com-fallback";
 
 /** OGP フェッチのデフォルトタイムアウト（ミリ秒） */
 const DEFAULT_FETCH_TIMEOUT_MS = 5_000;
@@ -23,16 +24,6 @@ const FETCH_HEADERS: Record<string, string> = {
  */
 const BOT_UA_HOSTS = new Set(["vxtwitter.com", "fxtwitter.com", "fixupx.com"]);
 const BOT_USER_AGENT = "Twitterbot/1.0";
-
-/** x.com / twitter.com は OGP を返さないため、代替ホスト vxtwitter.com に差し替える */
-const TWITTER_LIKE_HOSTS = new Set([
-  "x.com",
-  "www.x.com",
-  "mobile.x.com",
-  "twitter.com",
-  "www.twitter.com",
-  "mobile.twitter.com",
-]);
 
 /**
  * fetch 先ホストに応じたリクエストヘッダーを返す。
@@ -59,7 +50,7 @@ export function buildFetchHeaders(fetchUrl: string): Record<string, string> {
 export function normalizeOgpFetchUrl(url: string): string {
   try {
     const u = new URL(url);
-    if (TWITTER_LIKE_HOSTS.has(u.hostname.toLowerCase())) {
+    if (X_COM_HOSTS.has(u.hostname.toLowerCase())) {
       u.hostname = "vxtwitter.com";
       return u.toString();
     }
@@ -247,25 +238,21 @@ export async function fetchPageOgpMeta(
 export function isTwitterLikeUrl(url: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    return TWITTER_LIKE_HOSTS.has(host) || BOT_UA_HOSTS.has(host);
+    return X_COM_HOSTS.has(host) || BOT_UA_HOSTS.has(host);
   } catch {
     return false;
   }
 }
 
-/** フォールバック URL 抽出時にスキップするホスト群（自己参照的なリンク） */
-const SKIP_HOSTS_FOR_FALLBACK = new Set([
-  "x.com",
-  "www.x.com",
-  "mobile.x.com",
-  "twitter.com",
-  "www.twitter.com",
-  "mobile.twitter.com",
+/**
+ * フォールバック URL 抽出時にスキップするホスト群（自己参照的なリンク）。
+ * X/Twitter base host + Twitter 補助 host + OGP プロキシ host の superset。
+ */
+const SKIP_HOSTS_FOR_FALLBACK = new Set<string>([
+  ...X_COM_HOSTS,
   "t.co",
   "pic.twitter.com",
-  "vxtwitter.com",
-  "fxtwitter.com",
-  "fixupx.com",
+  ...BOT_UA_HOSTS,
 ]);
 
 /** 画像ファイル拡張子（OGP ではなく直接画像のためスキップ） */

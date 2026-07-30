@@ -12,7 +12,12 @@
  * を優先的に使う。
  */
 
-const X_COM_HOSTS = new Set([
+/**
+ * x.com / twitter.com 系の base host 集合 (canonical)。
+ * `isXComHost` の判定元であると同時に、`ogp.ts` の fetch URL 差し替え /
+ * fallback スキップ判定からも流用される単一 source of truth。
+ */
+export const X_COM_HOSTS: ReadonlySet<string> = new Set([
   "x.com",
   "www.x.com",
   "mobile.x.com",
