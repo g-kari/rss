@@ -14,9 +14,14 @@ import type { ShortcutContext } from "../src/config/shortcuts";
 test.describe("SHORTCUT_DEFS — filter group の完全性", () => {
   const filterEntries = SHORTCUT_DEFS.filter((d) => d.group === "filter");
 
-  test("filter group に 6 件のエントリ (unreadOnly / bookmarkOnly / readingListOnly / likeOnly / noteOnly / digestMode)", () => {
-    const keys = filterEntries.map((d) => d.keys[0]).sort();
-    expect(keys).toEqual(["B", "D", "I", "N", "T", "u"]);
+  test("filter group に sibling filter 6 種 (unreadOnly / bookmarkOnly / readingListOnly / likeOnly / noteOnly / digestMode) が揃う", () => {
+    // 完全性 (6 種すべて存在) を検証する superset assert。
+    // exact equality にすると filter group への新規追加 (日付 "d" / ソート順 "s" /
+    // 読了時間 "w" 等) のたびに spec が stale 化して無関係な fail を出すため。
+    const keys = filterEntries.map((d) => d.keys[0]);
+    for (const required of ["B", "D", "I", "N", "T", "u"]) {
+      expect(keys, `filter group に "${required}" が存在すること`).toContain(required);
+    }
   });
 
   test("各 filter entry に description + handler 必須", () => {
@@ -49,7 +54,10 @@ test.describe("SHORTCUT_DEFS — N (noteOnly) handler 動作", () => {
       },
     } as unknown as ShortcutContext;
 
-    noteDef!.handler!(ctx, new KeyboardEvent("keydown", { key: "N" }));
+    // 本 spec は page を使わない純粋 unit test で Node 上で走るため、DOM global の
+    // `KeyboardEvent` は実行時に存在しない。N handler は `(ctx) => {...}` で event を
+    // 参照しないので、最小の cast オブジェクトで代替する。
+    noteDef!.handler!(ctx, { key: "N" } as unknown as KeyboardEvent);
 
     expect(toggleCalled).toBe(1);
     expect(toastMsg).toContain("メモありフィルター");
