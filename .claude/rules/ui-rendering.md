@@ -582,42 +582,46 @@ const contentId = `category-${cat}-content`;
 
 ```tsx
 // アンチパターン: 視覚的 active state のみ (CSS class)、aria-pressed なし
-{(["good", "neutral", "bad"] as const).map((rating) => (
-  <button
-    key={rating}
-    aria-label={`要約の評価: ${rating}`}
-    className={cn(
-      "px-2 py-1",
-      summaryRating === rating && "bg-accent text-accent-fg", // 視覚のみ
-    )}
-    onClick={() => setSummaryRating(rating)}
-  >
-    {label}
-  </button>
-))}
+{
+  (["good", "neutral", "bad"] as const).map((rating) => (
+    <button
+      key={rating}
+      aria-label={`要約の評価: ${rating}`}
+      className={cn(
+        "px-2 py-1",
+        summaryRating === rating && "bg-accent text-accent-fg", // 視覚のみ
+      )}
+      onClick={() => setSummaryRating(rating)}
+    >
+      {label}
+    </button>
+  ));
+}
 // → NVDA / VoiceOver は「ボタン, 要約の評価: 良い」としか読まず、選択済みか判別不可
 
 // 修正パターン: aria-pressed で active state 露出 (canonical: EngagementSegmentButton)
-{(["good", "neutral", "bad"] as const).map((rating) => (
-  <button
-    key={rating}
-    aria-label={`要約の評価: ${rating}`}
-    aria-pressed={summaryRating === rating}   // ← ラジオ的意味なら "true" / "false"
-    className={cn("px-2 py-1", summaryRating === rating && "bg-accent")}
-    onClick={() => setSummaryRating(rating)}
-  >
-    {label}
-  </button>
-))}
+{
+  (["good", "neutral", "bad"] as const).map((rating) => (
+    <button
+      key={rating}
+      aria-label={`要約の評価: ${rating}`}
+      aria-pressed={summaryRating === rating} // ← ラジオ的意味なら "true" / "false"
+      className={cn("px-2 py-1", summaryRating === rating && "bg-accent")}
+      onClick={() => setSummaryRating(rating)}
+    >
+      {label}
+    </button>
+  ));
+}
 ```
 
 **`aria-pressed` vs `aria-selected` vs `role="radio"` の使い分け**:
 
-| UI 種別                                                            | canonical role / attr                                | 選定基準                                                       |
-| ------------------------------------------------------------------ | ---------------------------------------------------- | -------------------------------------------------------------- |
-| **択一トグル button 群** (rating 3 択 / segment button)            | `<button aria-pressed={...}>`                        | button role 維持、AT に「toggle button」として announce        |
-| **listbox 内 option** (combobox / drop-down suggestion)            | `<button role="option" aria-selected={...}>`         | listbox ownership chain が必要、`aria-activedescendant` と連動 |
-| **フォーム的 radio group** (submit 時に値送信、TAB でグループ移動) | `<input type="radio">` or `role="radio" + radiogroup` | keyboard TAB navigation が radiogroup 単位、form 送信意味論     |
+| UI 種別                                                            | canonical role / attr                                 | 選定基準                                                       |
+| ------------------------------------------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------- |
+| **択一トグル button 群** (rating 3 択 / segment button)            | `<button aria-pressed={...}>`                         | button role 維持、AT に「toggle button」として announce        |
+| **listbox 内 option** (combobox / drop-down suggestion)            | `<button role="option" aria-selected={...}>`          | listbox ownership chain が必要、`aria-activedescendant` と連動 |
+| **フォーム的 radio group** (submit 時に値送信、TAB でグループ移動) | `<input type="radio">` or `role="radio" + radiogroup` | keyboard TAB navigation が radiogroup 単位、form 送信意味論    |
 
 **canonical 実装**: `src/components/article-list/EngagementSegmentButton.tsx` — 「後で読む / ブックマーク / いいね」3 連トグルで `aria-pressed` + `max-md:min-w-[44px]` を canonical 化 (WCAG 2.5.5 タッチターゲットと併走)。
 
