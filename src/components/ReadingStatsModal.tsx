@@ -98,6 +98,7 @@ export default function ReadingStatsModal({
                   aria-label="全体統計に戻る"
                 >
                   <svg
+                    aria-hidden="true"
                     className="w-3 h-3"
                     fill="none"
                     viewBox="0 0 24 24"

@@ -275,6 +275,7 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
           <div className="mb-6 flex flex-col gap-2">
             <div className="flex items-start gap-2">
               <svg
+                aria-hidden="true"
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
@@ -304,6 +305,7 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
                 className="self-start flex items-center gap-1.5 px-3 py-1.5 text-[11px] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200"
               >
                 <svg
+                  aria-hidden="true"
                   width="14"
                   height="14"
                   viewBox="0 0 24 24"

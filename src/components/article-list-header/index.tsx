@@ -39,6 +39,7 @@ export default function ArticleListHeader({
                 aria-label="フィード一覧に戻る"
               >
                 <svg
+                  aria-hidden="true"
                   width="16"
                   height="16"
                   viewBox="0 0 16 16"

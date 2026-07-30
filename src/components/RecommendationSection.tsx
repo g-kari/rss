@@ -125,6 +125,7 @@ export default function RecommendationSection({
               className="text-text-faint hover:text-text-strong focus-visible:opacity-100 transition-colors duration-200 disabled:opacity-50"
             >
               <svg
+                aria-hidden="true"
                 width="12"
                 height="12"
                 viewBox="0 0 12 12"
@@ -143,6 +144,7 @@ export default function RecommendationSection({
               className="text-text-faint hover:text-text-muted focus-visible:opacity-100 transition-colors duration-200"
             >
               <svg
+                aria-hidden="true"
                 width="12"
                 height="12"
                 viewBox="0 0 12 12"

@@ -58,6 +58,7 @@ function renderSummary(text: unknown) {
 function RetryIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="14"
       height="14"
       viewBox="0 0 24 24"
@@ -137,6 +138,7 @@ export default function ArticleAiPanel({
         <div className="mb-6 flex flex-col gap-2">
           <div className="flex items-start gap-2">
             <svg
+              aria-hidden="true"
               width="14"
               height="14"
               viewBox="0 0 24 24"
