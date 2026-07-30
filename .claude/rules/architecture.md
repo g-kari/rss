@@ -220,6 +220,16 @@ src/
     article-view/ArticleContentBody.tsx     # 記事本文描画ボディ（ArticleView から分割）
     article-view/EmptyArticleView.tsx       # 記事未選択時のプレースホルダ表示
     article-view/FetchFullContentArea.tsx   # 「全文取得」CTA 領域（ボタン・retry・進捗）
+    article-view/ArticleAiPanel.tsx         # AI 要約結果 / AI エラー + 評価ボタンの描画
+    article-view/ArticleNotePanel.tsx       # 記事ごとの個人メモ編集パネル（useArticleNote 連携）
+    article-view/ArticleNavigation.tsx      # 前後記事へのキーボード対応 prev/next ボタン（canonical）
+    article-view/InlineArticleNav.tsx       # 本文上部の hover 専用 prev/next クリック領域（AT からは aria-hidden、#1227）
+    article-view/ImageGallery.tsx           # 記事本文の画像ギャラリー + lightbox 拡大表示
+    article-view/ImageDownloadModal.tsx     # 画像一括ダウンロードの確認ダイアログ
+    article-view/SnoozeMenu.tsx             # 記事スヌーズの portal ドロップダウン（menuitem click focus 復元 canonical）
+    article-view/TagEditor.tsx              # 記事タグの追加 / 削除インライン UI
+    article-view/ToggleIconButton.tsx       # ヘッダー系トグルアイコンボタンの共通テンプレート
+    article-view/filter-shared.tsx          # FilterMenu / GlobalFilterMenu 共通の state hook + 除外候補セクション
     user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel orchestrator + FontSection / LayoutSection / GallerySection / AutoReadSection / ImageDlSection / FeedManagementTabPanel / ImportExportTabPanel / TtsVoiceSection / shared、#880 で DisplayTabPanel を機能別 5 Section に分割）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
