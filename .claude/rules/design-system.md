@@ -58,6 +58,18 @@ paths: "src/components/**/*.tsx,app/globals.css"
 
 **禁止**: 16進数カラー (`#...`) をコンポーネントにハードコードしない。`app/globals.css` 内の CSS 変数定義のみ例外。
 
+**例外: テーマ非依存の装飾イラスト**
+
+全画面オーバーレイ上に描く装飾 SVG イラストのように、**自前の背景を持ちテーマ切替の影響を受けない**
+図版は、内部パレットを semantic token 化しない。イラストとしての色の同一性 (虹彩の色・瞳孔の黒など) は
+テーマではなく図版そのものの属性であり、token 化すると 1 component 専用 token が増えるだけで
+再利用性も生まれないため。
+
+該当時はコンポーネント側 JSDoc に「テーマ非依存の装飾イラストのため raw hex を意図的に使用」と
+明記して、監査 sweep で規範違反として再検出されないようにする。
+
+現行の該当箇所: `src/components/NSFWEyeAnimation.tsx` (`bg-black` 固定オーバーレイ上の目のアニメーション)
+
 ## テーマ切り替え
 
 - `document.documentElement.dataset.theme = 'dark' | 'light'` で切り替え

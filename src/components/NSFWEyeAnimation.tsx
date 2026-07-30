@@ -8,6 +8,16 @@ interface Props {
 
 type Phase = "closed" | "opening" | "open" | "fading";
 
+/**
+ * NSFW モード起動時の全画面「目が開く」演出。
+ *
+ * SVG 内の raw hex カラー (虹彩 / 瞳孔 / 白目 / 輪郭) は **意図的**。
+ * 本 component は `bg-black` の固定オーバーレイ上に描画されテーマ切替の影響を受けないため、
+ * 色は図版そのものの属性であって UI chrome ではない。
+ * semantic token 化すると 1 component 専用 token が増えるだけなので行わない
+ * (design-system.md § 例外: テーマ非依存の装飾イラスト)。
+ */
+
 export default function NSFWEyeAnimation({ onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>("closed");
 
