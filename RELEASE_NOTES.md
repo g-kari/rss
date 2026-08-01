@@ -22,6 +22,8 @@
 
 - **api-spec.md の index 表に api-security.md エントリを追加したよ!📝** — `api-security.md` (認証 + 所有権チェック二段 / shared cache TTL 短縮 / dev-e2e endpoint 二重ガード) が index 表未記載だった drift を修正〜🎀 endpoint 別仕様ではなく Route Handler 実装時に参照する **横断規範** として明示的にエントリ追加、これで 9 つの `api-*.md` ファイル全てが index から辿れる状態になりましたわ〜🌸
 
+- **cloudflare-constraints.md に `turbopack.root` 明示指定規範を codify したよ!📝** — 2026-08-01 冒頭で修正した Turbopack workspace root 誤推論警告修正の canonical pattern を新セクションとして追加〜🎀 誤推論の実害 (モジュール解決基準の外れ / 環境依存 / warning noise) + アンチパターン/修正パターンのコード例 + How to apply (`import.meta.dirname` 明示指定手順) + 反例を網羅、将来 monorepo 配下 clone 環境で同種問題に遭遇した AI/開発者が即対応できる状態になりましたわ〜🌸
+
 ### セキュリティ対策っ
 
 - **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
