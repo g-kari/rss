@@ -80,6 +80,56 @@ initOpenNextCloudflareForDev({ remoteBindings: false });
 
 主な使用箇所: `next.config.ts` — `initOpenNextCloudflareForDev({ remoteBindings: false })` で wrangler login 不要 + playwright e2e の web server 安定起動 (#674 Phase 2b 配線時に判明)
 
+## `turbopack.root` を明示指定して monorepo clone 環境での workspace root 誤推論を回避する
+
+本リポジトリは単体運用 (github.com/g-kari/rss) だが、開発環境では **dokodemo-claude モノレポ配下に clone される** ことがあり、そのとき **親側の `pnpm-lock.yaml` を検出した Turbopack が親ディレクトリを workspace root と誤推論** して以下の warning を出す:
+
+```
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+  We detected multiple lockfiles and selected the directory of <parent-pnpm-lock.yaml>
+  as the root directory.
+  To silence this warning, set `turbopack.root` in your next.config.
+```
+
+誤推論の実害:
+
+1. **モジュール解決の基準がリポジトリ外に外れる** — 親モノレポ側の `node_modules` を参照するため、depend version 不整合が発生する潜在リスク
+2. **dev / CI / Cloudflare CI/CD で workspace root が環境依存** — 単体 clone 環境と monorepo clone 環境で挙動が異なり、reproducibility が損なわれる
+3. **warning ノイズ** — 本物の warning を noise が埋没させる
+
+```typescript
+// アンチパターン: turbopack.root 未指定
+const nextConfig: NextConfig = {
+  turbopack: {
+    resolveAlias: {/* ... */},
+  },
+};
+// → monorepo clone 環境で workspace root 誤推論警告発生
+
+// 修正パターン: turbopack.root を import.meta.dirname で明示固定
+const nextConfig: NextConfig = {
+  turbopack: {
+    root: import.meta.dirname, // 本 next.config.ts の配置 dir を workspace root に固定
+    resolveAlias: {/* ... */},
+  },
+};
+// → dev / CI / Cloudflare CI/CD のどこでも同じ root に固定、warning ゼロ
+```
+
+**How to apply**: Next.js プロジェクトを monorepo 配下に clone される可能性のあるリポジトリで作成 / 変更するときは、必ず `turbopack.root: import.meta.dirname` を明示指定 (単体 clone 前提でも monorepo 配下で dev 起動される場面が発生するため、明示指定は defensive):
+
+1. **`next.config.ts` の `turbopack` セクションに `root: import.meta.dirname`** を追加
+2. **`import.meta.dirname`** は ESM 環境で本 file 配置 dir を返す標準 API (Node.js 20.11+ / Next.js 16 default で利用可能)
+3. **`__dirname` は使わない** — CommonJS 専用で Next.js 16 の ESM `next.config.ts` では未定義
+4. **絶対 path も避ける** — 開発者ごとの clone 場所差異で reproducibility 破綻
+
+**反例 (turbopack.root 明示指定が不要なケース)**:
+
+- Next.js プロジェクトが **絶対に monorepo 配下に clone されない** (社内工事プロジェクト等で clone 場所が固定) → 単体前提で省略可、ただし将来の環境変化リスクあり
+- Next.js プロジェクト自体が **monorepo の worksapce root として設計** (`pnpm-workspace.yaml` を持つ) → workspace root は明示的にそのプロジェクト、Turbopack の推論も正しく機能
+
+主な使用箇所: `next.config.ts` — dokodemo-claude モノレポ配下 clone 時の workspace root 誤推論警告を `turbopack.root: import.meta.dirname` で解消 (dev / CI / Cloudflare CI/CD 全経路で workspace root 一致)
+
 ## wasm / 内部 chunk import を持つブラウザ専用ライブラリは `transpilePackages` に追加する
 
 `@mintplex-labs/piper-tts-web` (onnxruntime-web peer-dep) のように **dist/ 配下に複数の内部 chunk file** (`piper-XXXX.js` 等) を持ち、それらを **dynamic import で chunk 分割 load** するブラウザ専用ライブラリは、Next.js Turbopack の dev/build で **内部 chunk 解決失敗** (`Module not found`) を起こすケースがある。`transpilePackages` に追加することで Next.js transformer を通し、chunk 解決の path resolution を補正できる。
