@@ -223,7 +223,7 @@ src/
     article-view/ArticleAiPanel.tsx         # AI 要約結果 / AI エラー + 評価ボタンの描画
     article-view/ArticleNotePanel.tsx       # 記事ごとの個人メモ編集パネル（useArticleNote 連携）
     article-view/ArticleNavigation.tsx      # 前後記事へのキーボード対応 prev/next ボタン（canonical）
-    article-view/InlineArticleNav.tsx       # 本文上部の hover 専用 prev/next クリック領域（AT からは aria-hidden、#1227）
+    article-view/InlineArticleNav.tsx       # 本文上部の hover 専用 prev/next クリック領域（AT からは aria-hidden）
     article-view/ImageGallery.tsx           # 記事本文の画像ギャラリー + lightbox 拡大表示
     article-view/ImageDownloadModal.tsx     # 画像一括ダウンロードの確認ダイアログ
     article-view/SnoozeMenu.tsx             # 記事スヌーズの portal ドロップダウン（menuitem click focus 復元 canonical）
@@ -246,7 +246,7 @@ src/
     useFeedDragDrop.ts       # フィードの D&D 状態管理（draggedFeedId・dragOverGroupId・dragOverUngrouped）+ drop ハンドラー（onView / onGroup）
     useFeedPatch.ts          # フィード属性の PATCH 操作（nsfw・priority・category・groupId・mutedUntil・filter・view）を集約
     useFeedSelection.ts      # フィード・グループ・タグ・記事・コレクション選択状態管理 + URL クエリパラメータ同期
-    useFeedStructuralSignature.ts # feeds 構造 signature の memo 化 hook（5 sibling site の inline useMemo を集約、#1265）
+    useFeedStructuralSignature.ts # feeds 構造 signature の memo 化 hook（5 sibling site の inline useMemo を集約）
     useCollections.ts        # /api/collections CRUD + 楽観的更新（create / rename / delete / addArticle / removeArticle）
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useThemePresets.ts       # テーマプリセット (theme/fontSize/fontFamily/lineHeight/contentWidth) を `theme-preset.ts` 経由で localStorage 保存・復元する hook（DisplayTabPanel のプリセット保存/適用 UI で利用）
@@ -272,7 +272,7 @@ src/
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
     useArticleAi.ts          # /api/ai/* fetch
     useSpeechSynthesis.ts    # 記事読み上げ（Web Speech API: speak / pause / resume / stop）
-    usePiperTts.ts           # 記事読み上げ（Piper wasm engine: piper-plus — synthesize → 自前 BufferSource 再生、TtsAdapter 実装、`enabled` option でリソース節約、#766 / #767）
+    usePiperTts.ts           # 記事読み上げ（Piper wasm engine: piper-plus — synthesize → 自前 BufferSource 再生、TtsAdapter 実装、`enabled` option でリソース節約）
     useTtsEngineSetting.ts   # TTS engine 切替設定（"web-speech" / "piper"）の localStorage 永続化 + storage event 別タブ同期
     useTtsControls.ts        # TTS engine 共通 rate / voiceUri / volume 制御 hook（useSpeechSynthesis / usePiperTts の重複コードを集約、setVoiceUriSilent variant で error handler 自動 reset の onChange skip 経路を提供、#674 Phase 2b）
     useBackgroundAudio.ts    # スマホでの TTS バックグラウンド継続用 hook（Web Audio 無音 oscillator + HTML `<audio>` element の 2 段構え、Android Chrome 通知欄表示対応、#745 Phase A + Phase D）
@@ -298,7 +298,7 @@ src/
     useDebounce.ts           # デバウンスユーティリティ
     useAutoReadSettings.ts   # 自動既読閾値・自動翻訳・自動要約・autoAiBrowserOnly (#700) 設定（useUIState から分割）
     useBrowserAiAvailability.ts # ブラウザネイティブ AI (Chrome Translator / Summarizer) の利用可否を mount 時に診断する hook（#700 auto-trigger 判定用）
-    useGalleryAutoScroll.ts  # ギャラリー自動スクロール hook（連続/スライドショー両モード + 手動操作で OFF 復帰、#690）
+    useGalleryAutoScroll.ts  # ギャラリー自動スクロール hook（連続/スライドショー両モード + 手動操作で OFF 復帰）
     useAutoReset.ts          # 値セット後に自動リセット (duration 経過後に初期値へ戻す)
     useEventListener.ts      # DOM イベントリスナーライフサイクル管理 (window / document 対応)
     useInboxProgress.ts      # フィード別未読消化率を計算 (unread 数・readRatio、最大 10 件)
@@ -328,9 +328,9 @@ src/
     useModalFocusTrap.ts     # Modal / Dialog 系コンポーネント共通の focus-trap hook（returnFocusRef 内蔵 + Escape close + Tab cycle + initialFocusRef option / isOpen option 対応、Modal.tsx と ConfirmModal.tsx の重複 60 行を集約、#790 Phase 1）
     useMenuKeyboard.ts       # ポータルメニューのキーボードナビゲーション（Arrow Up/Down・ESC・フォーカストラップ）
     useDelayedGalleryItems.ts # 削除された items を 300ms 保持してフェードアウト遷移を可能にする（masonic 時代から自前 virtualizer GalleryMasonrySelf でも継続利用、#822 で masonic 削除後も中間削除アニメーション用に残置）
-    useHeaderScrollVisibility.ts # 下スクロールで header を隠し、上スクロール / 上端で表示する hook（scroll-direction.ts ラッパー、#677）
+    useHeaderScrollVisibility.ts # 下スクロールで header を隠し、上スクロール / 上端で表示する hook（scroll-direction.ts ラッパー）
     useConfirm.ts            # window.confirm 代替 hook（Promise ベース確認モーダル。confirmModalProps を ConfirmModal に渡す）
-    useTextInputModal.ts     # window.prompt / window.alert 代替 hook（Promise ベース入力モーダル、TextInputModal と組み合わせて使う、#881）
+    useTextInputModal.ts     # window.prompt / window.alert 代替 hook（Promise ベース入力モーダル、TextInputModal と組み合わせて使う）
     useMarkAllRead.ts        # 全既読ロジック集約 hook（サブフィルター判定・50件確認・アンドゥ対応）
     useBulkArticleSelection.ts # 記事バルク選択状態管理 hook（BulkSelectionContext と BulkActionToolbar を橋渡し、Shift+click 範囲選択対応）
     useArticleViewProps.ts   # ArticleView に渡す props オブジェクトの useMemo 集約 hook（App.tsx から分割）
@@ -384,17 +384,17 @@ src/
     ai-cache.ts              # AI 結果 R2 キャッシュ
     ai-route-helper.ts       # AI Route Handler 共通処理
     api-fetch.ts             # 認証付きクライアントサイド fetch ラッパー
-    api-feed-guard.ts        # フィード API の subscription guard（assertFeedSubscribed — discriminated union 戻り値で `if (guard.err) return guard.err;` 後の `sub: UserSubscription` narrowing が効く、#691）
+    api-feed-guard.ts        # フィード API の subscription guard（assertFeedSubscribed — discriminated union 戻り値で `if (guard.err) return guard.err;` 後の `sub: UserSubscription` narrowing が効く）
     embed-utils.ts           # iframe embed 処理ユーティリティ
     engagement-score.ts      # エンゲージメントスコア計算ロジック
     auto-ai-fallback.ts      # 自動翻訳・自動要約のブラウザ AI フォールバック判定純粋関数（shouldSkipAutoAi — #700 ブラウザ AI のみ使う設定）
     auto-read.ts             # オートモードの状態遷移判定純粋関数（isAutoReadFinished / shouldTriggerAutoFetch / shouldStartAutoSpeak）
-    gallery-autoscroll.ts    # ギャラリー自動スクロール純粋関数（5 段階速度: off/slow/medium/fast/slideshow、computeContinuousScrollDelta / computeSlideshowJump / parseGalleryAutoScrollSpeed、#690）
-    auto-read-debug.ts       # オートモード診断ログ用 localStorage gate ヘルパー（rss-debug-autoread キーで autoReadDebug を有効化、#678）
+    gallery-autoscroll.ts    # ギャラリー自動スクロール純粋関数（5 段階速度: off/slow/medium/fast/slideshow、computeContinuousScrollDelta / computeSlideshowJump / parseGalleryAutoScrollSpeed）
+    auto-read-debug.ts       # オートモード診断ログ用 localStorage gate ヘルパー（rss-debug-autoread キーで autoReadDebug を有効化）
     bgaudio-debug.ts         # useBackgroundAudio 診断ログ用 localStorage gate ヘルパー（rss-debug-bgaudio キーで bgaudioDebug を有効化、#745 Phase C）
-    piper-debug.ts           # usePiperTts (Piper wasm TTS engine) 診断ログ用 localStorage gate ヘルパー（rss-debug-piper キーで piperDebug を有効化、#1055）
+    piper-debug.ts           # usePiperTts (Piper wasm TTS engine) 診断ログ用 localStorage gate ヘルパー（rss-debug-piper キーで piperDebug を有効化）
     debug-helper.ts          # createDebugHelper factory（{ storageKey, expected, prefix } で evaluator + logger 関数ペアを生成、auto-read-debug.ts / bgaudio-debug.ts / piper-debug.ts の共通基盤）
-    auto-read-persist.ts     # オートモード ON 状態を localStorage に保存・1 時間 TTL で復元する純粋関数（shouldRestore / parsePersisted、#679）
+    auto-read-persist.ts     # オートモード ON 状態を localStorage に保存・1 時間 TTL で復元する純粋関数（shouldRestore / parsePersisted）
     scroll-direction.ts      # スクロール方向判定純粋関数（computeScrollDirection / computeHeaderVisibility、#677 ArticleHeader sticky toggle 用）
     inline-nav.ts            # インラインナビ領域クリック位置判定純粋関数（whichSideClicked）
     test-seed.ts             # /api/test/seed のリクエストボディ検証純粋関数（validateSeedRequest）
@@ -407,14 +407,14 @@ src/
     modal-focus.ts           # Modal / Dialog 系コンポーネントで共有する `FOCUSABLE_SELECTOR` 定数（Tab フォーカス可能要素 selector — Modal.tsx / ConfirmModal.tsx / FeedQuickSwitchModal.tsx の重複定義 drift を解消）
     menu-class.ts            # 全 dropdown / context menu 共通の container class 定数 `BASE_MENU_CLASS`（背景・枠・角丸・影・overflow — PortalMenuShell / ContextMenuShell / ArticleContextMenu / GalleryContextMenu の 4 箇所重複を集約）
     context-menu-position.ts # コンテキストメニュー / ポップアップの viewport-aware ポジショニング純粋関数（computeContextMenuPosition — ArticleContextMenu / GalleryContextMenu / FeedItemComponent menuAnchor 分岐の inline IIFE 重複を集約、refactor 監査 finding）
-    selection-popup-position.ts # テキスト選択ポップアップ (SelectionExcludePopup) の viewport-aware ポジショニング純粋関数（computeSelectionPopupLayout — popup 実測サイズを受けて viewport 左右端 / 上端のはみ出しを補正、#1089）
+    selection-popup-position.ts # テキスト選択ポップアップ (SelectionExcludePopup) の viewport-aware ポジショニング純粋関数（computeSelectionPopupLayout — popup 実測サイズを受けて viewport 左右端 / 上端のはみ出しを補正）
     ogp.ts                   # OGP メタデータ取得ロジック
-    ogp-cache-ttl.ts         # OGP cache TTL 算出純粋関数（computeOgpCacheTtl — Twitter fallback 経路の TTL を 1 日に短縮して poisoning 影響範囲を限定、#706）
+    ogp-cache-ttl.ts         # OGP cache TTL 算出純粋関数（computeOgpCacheTtl — Twitter fallback 経路の TTL を 1 日に短縮して poisoning 影響範囲を限定）
     ogp-cache-schema.ts      # OGP cache schema 拡張 + lazy migration 純粋関数 (#808 Phase 1、v1 string → v2 object 変換 / title・description は次 fetch で追記する lazy migration / parseOgpCacheEntry / parseOgpCache / getOgpImage)
     ogp-cache-lru.ts         # OGP cache の true-LRU eviction 純粋関数（mergeWithLruEviction — 旧 FIFO eviction を LRU に修正、#1088 Finding 2）
     ai-summary-parse.ts      # AI summary text の line 分類純粋関数 (#811、parseSummaryLine / parseSummaryLines、heading / bullet / empty / paragraph、非 string 入力は safe fallback で TypeError 防御)
-    binary-proxy-handler.ts  # image / video / 将来追加 binary 型のプロキシ共通 handler（handleBinaryProxy — auth ガード → URL 検証 → cache lookup → upstream fetch → mime 検証 → cachePutAsync を 1 箇所集約、image-proxy / video-proxy route から thin wrapper で呼ぶ、#757）
-    proxy-error-headers.ts   # binary proxy (image / video / 将来 audio 等) のエラーレスポンスに optional Details field を `X-${prefix}-*` ヘッダーとして付与する共通 helper（`image-error-placeholder.ts` と `video-error-placeholder.ts` の重複 8 行を helper-drift 規範で集約、#856）
+    binary-proxy-handler.ts  # image / video / 将来追加 binary 型のプロキシ共通 handler（handleBinaryProxy — auth ガード → URL 検証 → cache lookup → upstream fetch → mime 検証 → cachePutAsync を 1 箇所集約、image-proxy / video-proxy route から thin wrapper で呼ぶ）
+    proxy-error-headers.ts   # binary proxy (image / video / 将来 audio 等) のエラーレスポンスに optional Details field を `X-${prefix}-*` ヘッダーとして付与する共通 helper（`image-error-placeholder.ts` と `video-error-placeholder.ts` の重複 8 行を helper-drift 規範で集約）
     bulk-selection.ts        # Shift+click による記事範囲選択の計算ユーティリティ
     booth-fallback.ts        # x.com / twitter.com 系フィードで summary 内の booth.pm URL を thumbnail fallback として抽出する純粋関数（extractBoothFallbackUrl — #750 Phase 1）
     opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
@@ -431,7 +431,7 @@ src/
     image-mime.ts            # 画像 MIME タイプ検証（ホワイトリスト方式・マジックバイト対応）
     image-error-placeholder.ts # 画像エラー時の SVG プレースホルダー生成（errorImageSvg — reason 細分化 + X-Image-Proxy-* ヘッダー二段観測性）
     video-mime.ts            # 動画 MIME タイプ検証（mp4 / webm / ogg / hls 等のホワイトリスト + マジックバイト）
-    video-error-placeholder.ts # 動画エラー時のプレースホルダー応答（errorVideoResponse — body: null + X-Video-Proxy-Error ヘッダー、#751）
+    video-error-placeholder.ts # 動画エラー時のプレースホルダー応答（errorVideoResponse — body: null + X-Video-Proxy-Error ヘッダー）
     mime-utils.ts            # MIME 共通ユーティリティ（parseFtypBrand — ISO BMFF ftyp box ブランド抽出）
     favicon.ts               # ファビコン未読バッジ
     web-push.ts              # Web Push 送信ヘルパー
@@ -444,7 +444,7 @@ src/
     rate-limit-logic.ts      # スライディングウィンドウ判定の純粋関数 (evaluateSlidingWindow) — next/* 非依存でユニットテスト可能
     serialize-async.ts       # 同一キー非同期操作の直列化ユーティリティ (serialized)
     sort-utils.ts            # `order: number` フィールドを持つ配列の安定ソート純粋関数（sortByOrder / computeNextOrder — useFeedGroups / useCollections の重複ロジックを集約 + sortCollectionsBy / COLLECTION_SORT_BY_CYCLE / COLLECTION_SORT_BY_LABELS — コレクション sort 軸切替 UI 用）
-    feed-signature.ts        # feeds 構造 + articleTagIds 構造を 1 行にシリアライズする純粋関数（computeFeedStructuralSignature — id/title/category/groupId/nsfw/priority/view を encode + computeArticleTagIdsSignature — Record<articleId, tagId[]> を encode、useSidebarFeeds と useFeedSidebarActions の useMemo deps 置換で 5 分 polling / 2 秒 debounce 時の不要 re-render を抑制、#789）
+    feed-signature.ts        # feeds 構造 + articleTagIds 構造を 1 行にシリアライズする純粋関数（computeFeedStructuralSignature — id/title/category/groupId/nsfw/priority/view を encode + computeArticleTagIdsSignature — Record<articleId, tagId[]> を encode、useSidebarFeeds と useFeedSidebarActions の useMemo deps 置換で 5 分 polling / 2 秒 debounce 時の不要 re-render を抑制）
     obsidian.ts              # Obsidian URI スキーム連携（obsidian://new URI 生成・ファイル名サニタイズ）
     html-to-markdown.ts      # HTML → Markdown 変換（linkedom/DOM 対応）・YAML frontmatter 生成
     reading-progress.ts      # 読書進捗計算純粋関数（computeProgress / clampProgress / buildAnchorSelector）
@@ -471,7 +471,7 @@ src/
     translate-html.ts        # HTML DOM 内の翻訳対象テキスト抽出・翻訳適用
     tts-adapter.ts           # TTS engine 抽象化（TtsAdapter / TtsVoice / TtsEngineId 型 + speechSynthesisVoiceToTtsVoice 変換）— #675 Phase 1a で追加、#674 Piper wasm の差し替え基盤
     tts-text.ts              # TTS 読み上げ用テキスト前処理純粋関数（URL を「リンク」に置換）
-    tts-volume.ts            # TTS 音量設定純粋関数（clampTtsVolume / parseTtsVolume — `[0.0, 1.0]` クランプ + localStorage 復元時の安全フォールバック、#699）
+    tts-volume.ts            # TTS 音量設定純粋関数（clampTtsVolume / parseTtsVolume — `[0.0, 1.0]` クランプ + localStorage 復元時の安全フォールバック）
     tts-voice.ts             # TTS 音声選択純粋関数（selectTtsVoice / groupVoicesByLang — Web Speech API voice 列挙の優先順位・言語別グループ化）
     tts-sentences.ts         # TTS sentence tracking 純粋関数（splitIntoSentences / findSentenceAtCharIndex / estimateCharIndexByElapsed / selectActiveCharIndex — boundary + 推定の融合）
     tts-dom.ts               # TTS ハイライト用 HTML センテンス span ラップ純粋関数（wrapSentencesInHtml — linkedom 使用、`<pre>` `<code>` `<script>` `<style>` `<noscript>` 除外）
@@ -495,8 +495,8 @@ src/
     log-sanitize.ts          # ログ出力用 URL サニタイズ（sanitizeLogUrl — CRLF 除去 + 最大長 truncate、ログインジェクション対策）
     dev-auth-bypass.ts       # dev / e2e 専用認証バイパス（getDevBypassUserId / buildDevBypassProfile — `DEV_AUTH_BYPASS_USER_ID` + `NODE_ENV !== "production"` 二重ガード）
     stats-helpers.ts         # 統計計算ヘルパー（`toDateStr` / `buildDayList`）
-    unread-stats-merge.ts    # 未読統計 Map の structural equality 判定純粋関数（equalUnreadByFeed / equalLastPublishedByFeed — `useArticleUnreadStats` の Map 内容比較で reference を安定化、不要 re-render 抑制、#758）
-    x-com-fallback.ts        # x.com / twitter.com の TTS / AI fallback 判定純粋関数（isTargetHost / isErrorContent / needsFallback — JS 無効エラー HTML を検出して別 source に切替、#718）
+    unread-stats-merge.ts    # 未読統計 Map の structural equality 判定純粋関数（equalUnreadByFeed / equalLastPublishedByFeed — `useArticleUnreadStats` の Map 内容比較で reference を安定化、不要 re-render 抑制）
+    x-com-fallback.ts        # x.com / twitter.com の TTS / AI fallback 判定純粋関数（isTargetHost / isErrorContent / needsFallback — JS 無効エラー HTML を検出して別 source に切替）
     cron-prefetch.ts         # 全ユーザーの engagement 集約で top-N feed を特定し、記事の本文・OGP を Cloudflare cron で事前 fetch するロジック
     engagement-aggregator.ts # 複数ユーザーの engagement 履歴を集約してグローバルフィード人気度スコアで top-N を返す純粋関数
     gallery-masonry-layout.ts # 画像ギャラリーの列レイアウト計算 (`computeMasonryLayout`) と scroll 巻き戻り補正 (`computeScrollAnchorDelta`) アルゴリズム
