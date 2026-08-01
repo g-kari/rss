@@ -26,3 +26,8 @@ e2e/auth-utils-edge.spec.ts
 
 .claude/scheduled_tasks.lock
 .workflow-tools/
+
+# AI エージェントが作業中に生成する repo root 直下のスクラッチファイル
+# (audit output / grep 中間結果 等)。誤 commit 防止のため無視。
+/scratchpad_*.txt
+/scratchpad/
