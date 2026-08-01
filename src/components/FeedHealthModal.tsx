@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { Feed } from "@/types";
 import { timeAgo } from "@/lib/article-utils";
 import Modal from "./Modal";
@@ -108,13 +108,7 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
 
         {/* エラーフィード */}
         {errorFeeds.length > 0 && (
-          <section className="px-4 pt-4 pb-2" aria-labelledby="fhm-section-errors">
-            <h3
-              id="fhm-section-errors"
-              className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2"
-            >
-              エラー
-            </h3>
+          <FeedHealthSection id="fhm-section-errors" title="エラー">
             <ul className="flex flex-col gap-2">
               {errorFeeds.map((feed) => (
                 <li
@@ -160,18 +154,12 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                 </li>
               ))}
             </ul>
-          </section>
+          </FeedHealthSection>
         )}
 
         {/* レートリミットフィード */}
         {rateLimitedFeeds.length > 0 && (
-          <section className="px-4 pt-4 pb-2" aria-labelledby="fhm-section-rate-limited">
-            <h3
-              id="fhm-section-rate-limited"
-              className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2"
-            >
-              レートリミット中
-            </h3>
+          <FeedHealthSection id="fhm-section-rate-limited" title="レートリミット中">
             <ul className="flex flex-col gap-2">
               {rateLimitedFeeds.map((feed) => (
                 <li
@@ -211,18 +199,12 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                 </li>
               ))}
             </ul>
-          </section>
+          </FeedHealthSection>
         )}
 
         {/* オーバーサイズフィード */}
         {oversizeFeeds.length > 0 && (
-          <section className="px-4 pt-4 pb-2" aria-labelledby="fhm-section-oversize">
-            <h3
-              id="fhm-section-oversize"
-              className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2"
-            >
-              オーバーサイズ
-            </h3>
+          <FeedHealthSection id="fhm-section-oversize" title="オーバーサイズ">
             <ul className="flex flex-col gap-2">
               {oversizeFeeds.map((feed) => (
                 <li
@@ -265,11 +247,44 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                 </li>
               ))}
             </ul>
-          </section>
+          </FeedHealthSection>
         )}
 
         <div className="h-4" />
       </div>
     </Modal>
+  );
+}
+
+/**
+ * FeedHealthModal の 3 section (エラー / レートリミット / オーバーサイズ) 共通の
+ * Disclosure landmark shell (`<section aria-labelledby>` + `<h3 id>` typography)
+ * を集約する file-local helper (`react-component-split.md § 派生ケース「同形 JSX
+ * ラッパーが 3 回以上重複」canonical`)。
+ *
+ * `<h3>` typography (`text-[10px] font-medium tracking-[0.25em] uppercase
+ * text-text-muted`) は `design-system.md § タイポグラフィ` の canonical
+ * セクションヘッダー、a11y 9th (`c1c3ef20`) で `<h3>` + `<section aria-labelledby>`
+ * の canonical mirror として ReadingStatsModal / 他 modal に周知済。
+ */
+function FeedHealthSection({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="px-4 pt-4 pb-2" aria-labelledby={id}>
+      <h3
+        id={id}
+        className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2"
+      >
+        {title}
+      </h3>
+      {children}
+    </section>
   );
 }
