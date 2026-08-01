@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MAX_TAG_NAME_LENGTH, MAX_TAGS_PER_ARTICLE } from "../../lib/validation";
 
 interface Props {
@@ -14,11 +14,17 @@ interface Props {
  * 記事に付与されたユーザータグの編集コンポーネント。
  * - 表示: #タグ のバッジ一覧（× ボタンで削除）
  * - 追加: + ボタンクリックで入力欄を開く → Enter で確定
+ *
+ * WCAG 2.4.3 (Focus Order): 編集モード終了 (Enter/Escape/blur) と ×
+ * ボタンクリックによる要素 unmount で focus が document.body に落ちる
+ * のを防ぐため、`+ タグ` ボタンに focus を復元する。
  */
 export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const addButtonRef = useRef<HTMLButtonElement | null>(null);
+  const prevEditingRef = useRef(editing);
   const canAdd = tags.length < MAX_TAGS_PER_ARTICLE;
 
   const commit = useCallback(() => {
@@ -27,6 +33,16 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
     setDraft("");
     setEditing(false);
   }, [draft, articleId, onAddTag]);
+
+  // WCAG 2.4.3: 編集モード終了 (true → false 遷移) 時に `+ タグ` ボタンへ focus 復元。
+  // `<input>` unmount 直後 `<button>` remount のタイミングで useEffect が commit 後に
+  // 発火するため ref が populated 済で focus 可能。
+  useEffect(() => {
+    if (prevEditingRef.current && !editing) {
+      addButtonRef.current?.focus();
+    }
+    prevEditingRef.current = editing;
+  }, [editing]);
 
   return (
     <>
@@ -38,7 +54,13 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
           <span>#{t}</span>
           <button
             type="button"
-            onClick={() => onRemoveTag(articleId, t)}
+            onClick={() => {
+              // WCAG 2.4.3: × ボタン unmount 前に `+ タグ` ボタンへ focus 移動。
+              // canAdd が false (MAX 到達中) の境界ケースでは addButtonRef が null で focus
+              // が body に落ちるが、common case (通常削除) はカバーする。
+              addButtonRef.current?.focus();
+              onRemoveTag(articleId, t);
+            }}
             aria-label={`タグ「${t}」を削除`}
             className="max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] inline-flex items-center justify-center text-text-muted hover:text-text-strong transition-colors leading-none"
           >
@@ -71,6 +93,7 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
       ) : (
         canAdd && (
           <button
+            ref={addButtonRef}
             type="button"
             onClick={() => setEditing(true)}
             title="タグを追加"
