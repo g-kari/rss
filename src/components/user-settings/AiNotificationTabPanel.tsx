@@ -26,6 +26,17 @@ const TIMEZONES: readonly string[] = Object.freeze(
   typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [],
 );
 
+// React elements は immutable props object のため module-level 再利用が安全。
+// UserSettingsModal は useReaderSettings Context を subscribe しており、
+// `galleryMinImagePx` <input type="range"> スライダードラッグの秒間数十回 onChange で
+// 4 tab panel 全てが re-render するため、hidden tab 内で 440 React 要素を毎 render
+// allocate すると reconciliation コストが累積する。module-level hoist で 1 回生成に集約。
+const TIMEZONE_OPTIONS = TIMEZONES.map((tz) => (
+  <option key={tz} value={tz}>
+    {tz}
+  </option>
+));
+
 interface AiNotificationTabPanelProps {
   hidden: boolean;
   autoTranslate: boolean;
@@ -333,11 +344,7 @@ export default function AiNotificationTabPanel({
                   className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
                 >
                   <option value="">未設定</option>
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz}
-                    </option>
-                  ))}
+                  {TIMEZONE_OPTIONS}
                 </select>
               </SettingRow>
             )}
