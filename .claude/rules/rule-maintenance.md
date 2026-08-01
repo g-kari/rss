@@ -265,6 +265,14 @@ docs drift 監査エージェントの観点:
 
 **security critical file 追加時の同期義務**: `middleware.ts` (Next.js middleware、CSP / nonce / frame-src 等) / 認証関連 (`src/lib/auth.ts` / `server-auth.ts` / `dbsc.ts`) / CSRF (`src/lib/csrf.ts`) / SSRF (`src/lib/url.ts`) 等 **security critical file** の追加 / 設定変更時、`architecture.md` の関連 section (`## ルート設定ファイル` / `## 認証フロー` / etc.) を **同 commit で必ず更新** する。`app/` ASCII tree と並列の優先度高い同期義務として canonical。未文書化リスクは「security implementation が docs 未記載で開発者 / AI が見落とし、後追い変更時に意図しない CSP 緩和等が発生」(実例: `middleware.ts` の動的 CSP 構築 + `TRUSTED_IFRAME_RULES` 単一管理が 4 ヶ月以上 docs 未記載で放置、前々々々サイクル発見)。`How to apply`: security critical file commit には **常に同 commit に architecture.md 関連 section 更新を含める**、もしくは PR レビュー時 / 後追い sweep で同期。判定基準: 「CSP / nonce / token / signature / sanitize / origin 検証等の文字列が含まれる commit」は security critical 候補。
 
+**file / spec 削除時の docs 同期義務**: `src/lib/*.ts` / `src/hooks/*.ts` / `src/components/**/*.tsx` / `e2e/*.spec.ts` / `src/**/*.test.ts?` を **削除する commit** では、`architecture.md` の ASCII tree entry + テストカバレッジマップ entry + `src/lib/` グループ表 + `src/hooks/` カテゴリ表を **同 commit で必ず削除同期** する。**追加時の義務 (line 894 の「新規 lib 追加時の判断軸」6 番目 + 上記 `app/` / security critical) と対称**で、削除時の同期漏れが最も見落とされやすい drift 源。ASCII tree entry / coverage map entry / group 表 3 か所同時削除が canonical。`How to apply`: `git rm` / Delete tool で file 削除する commit を作るとき、必ず以下 3 か所を同 commit で確認 + 削除:
+
+1. **ASCII tree entry** (architecture.md `src/lib/` / `src/hooks/` / `src/components/` / `e2e/` 該当行)
+2. **テストカバレッジマップ entry** (spec / test file 削除時、`| \`<file>.spec.ts\` | ... |` table 行)
+3. **グループ表 / カテゴリ表 entry** (lib は「グループ分類」表 / hook は「カテゴリ分類」表)
+
+`How to detect`: comparative sweep で `find` 結果と docs entry を `comm -23` 比較すれば削除漏れ検出可能 (実例: `sanitize-dompurify.spec.ts` を dead spec として削除した 5 サイクル前 commit で coverage map entry 削除漏れ → 本サイクル comparative sweep で発見 + 削除で 190 = 190 完全一致復帰)。**追加時と同様、削除時も同 commit 同期が canonical、後追い sweep は 4-5 サイクル遅延の drift 温床**。
+
 ### 派生ケース: サブエージェント rate limit 時は `find + grep + comm` で機械的 diff 検出
 
 サブエージェント (`feature-dev:code-reviewer` 等) が rate limit / API 障害で動作しないサイクルでも、**docs drift だけは構造化された機械的タスク** なのでメインエージェントだけで完遂できる。`find` でファイル一覧、`grep` で文書内エントリ抽出、`comm -23` で diff を取れば 5 分程度で網羅検出が可能。
