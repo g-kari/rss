@@ -451,7 +451,7 @@ src/
     reading-stats-level.ts   # ヒートマップ濃淡レベル算出純粋関数（countToLevel — count/max 比を 0-4 レベルに変換、ReadingStatsModal 分割で抽出）
     article-view-fab.ts      # 記事詳細本文「先頭へ戻る」FAB 表示判定純粋関数（shouldShowBackToTopFab — progress > 30 + TTS 非再生時のみ表示、#1149 案 C）
     reader-settings.ts       # リーダー表示設定（フォントサイズ 6段階・行間 5段階・コンテンツ幅 3段階）
-    article-filter-equality.ts # `useFilteredArticles` の構造的等価判定純粋関数群（equalDigestLimitMap / equalStringMap / equalCompiledFilterMap / equalStringSet / equalViewFeedIds — `equalMap<V>` generic 経由 + Set 等価ガード）
+    article-filter-equality.ts # `useFilteredArticles` の構造的等価判定純粋関数群（equalDigestLimitMap / equalStringMap / equalCompiledFilterMap / equalStringSet / equalViewFeedIds / equalKeywordFilter — `equalMap<V>` generic 経由 + Set 等価ガード）
     theme-preset.ts          # テーマプリセット永続化純粋関数（parseThemePresets / serializeThemePresets — `useThemePresets` から呼ぶ JSON 安全パース + 上限ガード）
     article-ttl.ts           # 記事 TTL 管理（30日超過・非保護の期限切れ記事フィルタリング）
     clip.ts                  # SingleFile POST リクエストバリデーション（validateClipRequest）
