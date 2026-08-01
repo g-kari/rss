@@ -14,6 +14,8 @@
 
 - **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
 
+- **client component 3 files の console.error を devError canonical に統一!🧹** — `LoadMoreButton.tsx` (2 sites) / `GalleryContextMenu.tsx` (1 site) / `article-view/ShareMenu.tsx` (1 site) の合計 4 箇所で **catch + toast.error + console.error** の sibling drift を **canonical `devError` pattern** に横展開したよ〜✨ production browser console のノイズ削減 + `browser-platform.md § silent fallback の禁止` 規範遵守〜🛡️ `ErrorBoundary.tsx` の `componentDidCatch` は React error boundary の production 診断ログとして意図的に console.error を残置、`src/lib/*.ts` (`auth.ts` / `server-auth.ts` 等) は Cloudflare Workers server-side で `wrangler tail` 取得のため console.\* が canonical で対象外〜🎀
+
 ## 2026-07-31
 
 ### 激アツ新機能っ
