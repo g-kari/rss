@@ -10,15 +10,15 @@
 
 - **機械的に安全な lint warning を 5 件一掃したよ!🧹** — `pnpm check` の warning 数を 10 → 5 に半減しちゃったの〜✨ 内訳は **未使用 type import 削除** (`app/api/stats/route.ts` の `EngagementEntry`)、**silent fallback 観測性向上** (`llm-feed-generator.ts` の catch (err) を `devError` 引数に渡す canonical pattern に統一)、**`new Array()` を `Array.from()` に置換** (`concurrency.ts` の `pMap` / `gallery-masonry-layout.ts` の `columnHeights` 初期化)、**dead spec 削除** (`e2e/sanitize-dompurify.spec.ts` — dompurify 調査完了で `package.json` 削除済) の 5 件〜🎀 残り 5 warnings は intentional な URL / HTML / RSS 制御文字正規化のみで、code comment で documented 済〜🛡️
 
-### セキュリティ対策っ
-
-- **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
-
 - **client component 3 files の console.error を devError canonical に統一!🧹** — `LoadMoreButton.tsx` (2 sites) / `GalleryContextMenu.tsx` (1 site) / `article-view/ShareMenu.tsx` (1 site) の合計 4 箇所で **catch + toast.error + console.error** の sibling drift を **canonical `devError` pattern** に横展開したよ〜✨ production browser console のノイズ削減 + `browser-platform.md § silent fallback の禁止` 規範遵守〜🛡️ `ErrorBoundary.tsx` の `componentDidCatch` は React error boundary の production 診断ログとして意図的に console.error を残置、`src/lib/*.ts` (`auth.ts` / `server-auth.ts` 等) は Cloudflare Workers server-side で `wrangler tail` 取得のため console.\* が canonical で対象外〜🎀
 
 - **意図的な no-control-regex に eslint-disable-next-line 注釈を追加して lint warnings を 5 → 0 にしたよ!✨** — URL サニタイズ (`html.ts` / `xml-parser.ts:260`) / XML 1.0 仕様準拠 (`xml-parser.ts:155`) / `stripControlChars` helper (`validation.ts`) / AI prompt injection 対策 (`recommendation.ts`) の 5 site 全て **既に code comment で intent documented 済** の意図的 use を、理由付き `eslint-disable-next-line` 注釈で明示〜🎀 `pnpm check` が 0 warnings + 0 errors 状態になって、将来の真の warning が noise に埋もれる構造リスクを予防いたしましたわ〜🛡️ `recommendation.ts` は oxfmt が method chain 内 line comment 対応のため `()` wrap にリフォーム (functional behavior 変化なし)〜🌸
 
 - **serialize-error.ts の JSDoc 順序を整えたよ!📝** — `formatError` が後追いで追加された際に、`serializeError` 用の JSDoc (Cloudflare Workers log の JSON.stringify 挙動 / cause 再帰展開の説明) が `formatError` の直前に残ってしまう drift を修正〜🎀 各 JSDoc を対応する関数の直前に再配置、機能変化なし・コメントの物理配置変更のみですわ〜🌸
+
+### セキュリティ対策っ
+
+- **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
 
 ## 2026-07-31
 
