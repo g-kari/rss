@@ -48,6 +48,7 @@ export function useReadStateSync(deps: ReadStateSyncDeps): ReadStateSyncResult {
 
   const { applyServerState, lastServerSyncRef } = useApplyServerState({
     stateRef,
+    globalFilterRef,
     pendingAddedRef,
     pendingRemovedRef,
     pendingTagChangedRef,

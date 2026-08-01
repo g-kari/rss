@@ -1,3 +1,4 @@
+import type { KeywordFilter } from "../types";
 import type { CompiledKeywordFilter } from "./keyword-filter";
 
 /**
@@ -90,6 +91,37 @@ export function equalViewFeedIds(a: Set<string> | undefined, b: Set<string> | un
   if (a.size !== b.size) return false;
   for (const id of a) {
     if (!b.has(id)) return false;
+  }
+  return true;
+}
+
+/**
+ * `KeywordFilter | null` の構造的等価判定 (globalFilter 用)。
+ *
+ * `useReadStateSyncApply.applyServerState` で `state.globalFilter` は
+ * `JSON.parse` 経由で毎同期 fresh object になる。sibling 3 field
+ * (`snoozedUntil` / `notes` / `tagIds`) と同じく setState ガード経由で reference を
+ * 保持しないと、`useFilteredArticles.normalizedGlobalFilter` useMemo が
+ * 再 compile され `structuralFiltered` O(N) filter が 500+ 記事に対して
+ * 2 秒毎に走る (perf コスト 20-80ms/sync)。
+ *
+ * 比較は order-sensitive (`include` / `exclude` 配列): user がフィルター key
+ * を並べ替えるケースは稀で、順序変更も content 変化として扱う方が deterministic。
+ */
+export function equalKeywordFilter(
+  a: KeywordFilter | null | undefined,
+  b: KeywordFilter | null | undefined,
+): boolean {
+  if (a === b) return true;
+  if (a == null || b == null) return a == null && b == null;
+  if (a.include.length !== b.include.length) return false;
+  if (a.exclude.length !== b.exclude.length) return false;
+  if ((a.matchCategories ?? false) !== (b.matchCategories ?? false)) return false;
+  for (let i = 0; i < a.include.length; i++) {
+    if (a.include[i] !== b.include[i]) return false;
+  }
+  for (let i = 0; i < a.exclude.length; i++) {
+    if (a.exclude[i] !== b.exclude[i]) return false;
   }
   return true;
 }

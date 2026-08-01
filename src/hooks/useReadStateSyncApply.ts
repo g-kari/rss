@@ -5,13 +5,14 @@ import {
   useRef,
   type Dispatch,
   type MutableRefObject,
+  type RefObject,
   type SetStateAction,
 } from "react";
 import type { KeywordFilter, ReadState } from "../types";
 import { STORAGE_KEYS, deferSaveSet, saveJson, storageSet } from "../lib/storage";
 import { type SetKind, type PendingSets, pruneExpiredSnoozes } from "../lib/read-state-storage";
 import { equalSnoozedUntil, equalNotes, equalTagIds, isLaterIso } from "../lib/read-state-merge";
-import { equalStringSet } from "../lib/article-filter-equality";
+import { equalKeywordFilter, equalStringSet } from "../lib/article-filter-equality";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
 export interface SetStateDispatchers {
@@ -78,6 +79,7 @@ export function computeMergedNotes(
 
 interface ApplyServerStateDeps {
   stateRef: MutableRefObject<ReadStateSets>;
+  globalFilterRef: RefObject<KeywordFilter | null>;
   pendingAddedRef: MutableRefObject<PendingSets>;
   pendingRemovedRef: MutableRefObject<PendingSets>;
   pendingTagChangedRef: MutableRefObject<Set<string>>;
@@ -91,6 +93,7 @@ interface ApplyServerStateDeps {
 export function useApplyServerState(deps: ApplyServerStateDeps) {
   const {
     stateRef,
+    globalFilterRef,
     pendingAddedRef,
     pendingRemovedRef,
     pendingTagChangedRef,
@@ -190,8 +193,14 @@ export function useApplyServerState(deps: ApplyServerStateDeps) {
       // この区別により、別デバイスでの設定変更と古いデータ形式の両方を正しく扱える。
       if ("globalFilter" in state) {
         const serverFilter = state.globalFilter ?? null;
-        saveJson(STORAGE_KEYS.GLOBAL_FILTER, serverFilter);
-        setGlobalFilterState(serverFilter);
+        // sibling 3 field (snoozedUntil / notes / tagIds) と同じ構造的等価性ガード:
+        // JSON.parse 経由で毎同期 fresh object になるため、ガードなしだと
+        // useFilteredArticles.normalizedGlobalFilter useMemo が再 compile → structuralFiltered
+        // O(N) filter が 500+ 記事に対して 2 秒毎に走る (perf コスト 20-80ms/sync)。
+        if (!equalKeywordFilter(globalFilterRef.current, serverFilter)) {
+          saveJson(STORAGE_KEYS.GLOBAL_FILTER, serverFilter);
+          setGlobalFilterState(serverFilter);
+        }
       }
       if ("ttlDays" in state) {
         const ttl = state.ttlDays ?? null;

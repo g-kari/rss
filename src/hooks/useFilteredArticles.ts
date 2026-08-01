@@ -420,12 +420,6 @@ export function useFilteredArticles({
       return { deduplicated: filtered, duplicateInfo: new Map<string, string[]>() };
     }
 
-    // perf #930: filtered 全件の timestamp を事前計算して比較ループ内の Date.parse 再呼出を省く
-    // fallback-derivation.md: sibling 純粋関数の fallback chain は canonical helper を経由して揃える
-    const tsCache = new Map<string, number>(
-      filtered.map((a) => [a.id, Date.parse(getArticleTimestamp(a))]),
-    );
-
     // link → 同一リンクを持つ記事グループ（1 パスで構築）
     const linkGroups = new Map<string, Article[]>();
     let hasDupes = false;
@@ -444,6 +438,14 @@ export function useFilteredArticles({
     if (!hasDupes) {
       return { deduplicated: filtered, duplicateInfo: new Map<string, string[]>() };
     }
+
+    // perf: filtered 全件の timestamp を事前計算して比較ループ内の Date.parse 再呼出を省く。
+    // hasDupes 早期リターン後に配置することで、単一フィード等の重複なしケースで
+    // 500 件の Date.parse 呼出 (~1-2.5ms) を skip できる。
+    // fallback-derivation.md: sibling 純粋関数の fallback chain は canonical helper を経由して揃える
+    const tsCache = new Map<string, number>(
+      filtered.map((a) => [a.id, Date.parse(getArticleTimestamp(a))]),
+    );
 
     // 代表記事の ID セットと、代表 ID → 他フィード名一覧を 1 パスで構築
     const info = new Map<string, string[]>();
