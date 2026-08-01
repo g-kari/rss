@@ -203,7 +203,7 @@ export default function FilterPills({
           onClick={() => setAuthorFilter(null)}
           title={`著者「${authorFilter}」フィルターを解除`}
           aria-label={`著者「${authorFilter}」フィルターを解除`}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
+          className="flex items-center gap-1 px-2 py-0.5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-[10px] font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
         >
           <span className="truncate">{authorFilter}</span>
           <svg
@@ -230,7 +230,7 @@ export default function FilterPills({
         onClick={onOpenGlobalFilter}
         title="すべてのフィードにキーワードフィルターを設定"
         aria-label="グローバルフィルター設定"
-        className={`flex items-center gap-1 px-2 h-6 rounded-full text-[11px] transition-all duration-200 ${
+        className={`flex items-center gap-1 px-2 h-6 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-[11px] transition-all duration-200 ${
           globalFilterActive
             ? "text-text-strong bg-surface-subtle"
             : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
@@ -255,7 +255,7 @@ export default function FilterPills({
           onClick={resetAllFilters}
           title="すべてのフィルターをクリア"
           aria-label="すべてのフィルターをクリア"
-          className="flex items-center gap-1 px-2 h-6 rounded-full text-[11px] text-text-faint hover:text-text-strong hover:bg-surface-subtle transition-all duration-200"
+          className="flex items-center gap-1 px-2 h-6 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-[11px] text-text-faint hover:text-text-strong hover:bg-surface-subtle transition-all duration-200"
         >
           <svg
             aria-hidden="true"
