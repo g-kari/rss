@@ -37,6 +37,9 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
   // WCAG 2.4.3: 編集モード終了 (true → false 遷移) 時に `+ タグ` ボタンへ focus 復元。
   // `<input>` unmount 直後 `<button>` remount のタイミングで useEffect が commit 後に
   // 発火するため ref が populated 済で focus 可能。
+  // 境界ケース (× onClick と共有): MAX-1 個の状態で入力 → commit() で MAX 到達 →
+  // canAdd が false になり addButton unmount → addButtonRef が null で focus が body
+  // に落ちる。common case (MAX 未達成での編集終了) はカバー。
   useEffect(() => {
     if (prevEditingRef.current && !editing) {
       addButtonRef.current?.focus();
