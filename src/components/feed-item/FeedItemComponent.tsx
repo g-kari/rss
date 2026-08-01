@@ -385,7 +385,7 @@ function FeedItem({
           title="操作メニュー（右クリックでも開けます）"
           aria-label="操作メニューを開く"
           aria-haspopup="menu"
-          aria-expanded={menuOpen}
+          aria-expanded={menuOpen || muteOpen || viewOpen || digestOpen || groupOpen}
           aria-controls={
             menuOpen || muteOpen || viewOpen || digestOpen || groupOpen ? menuId : undefined
           }
