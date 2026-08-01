@@ -134,18 +134,18 @@ export default function ReadingStatsModal({
             {/* 年間ヒートマップ */}
             {displayYearlyHeatmap && displayYearlyHeatmap.length > 0 && (
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
                   過去 1 年
-                </span>
+                </h3>
                 <HeatmapCalendar data={displayYearlyHeatmap} />
               </div>
             )}
 
             {/* 直近 7 日バーグラフ */}
             <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+              <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
                 直近 7 日
-              </span>
+              </h3>
               <div className="flex flex-col gap-1.5">
                 {(displayDailyReadCounts ?? []).map(({ date, count }) => {
                   const label = new Date(date + "T00:00:00Z").toLocaleDateString("ja-JP", {
@@ -171,9 +171,9 @@ export default function ReadingStatsModal({
             {/* TOP フィード */}
             {stats.topFeeds.length > 0 && (
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
                   よく読むフィード
-                </span>
+                </h3>
                 <div className="flex flex-col gap-1.5">
                   {stats.topFeeds.map(({ feedHash, score }, i) => {
                     const title = feedMap.get(feedHash) ?? feedHash.slice(0, 12) + "…";
@@ -213,9 +213,9 @@ export default function ReadingStatsModal({
             {/* フィード別未読消化率 */}
             {inboxStats.length > 0 && (
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
                   フィード別 未読消化率
-                </span>
+                </h3>
                 <div className="flex flex-col gap-1.5">
                   {inboxStats.map(({ feedId, title, unread, readRatio }) => {
                     const pct = Math.round(readRatio * 100);
