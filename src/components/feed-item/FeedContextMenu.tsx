@@ -4,6 +4,8 @@ import { type CSSProperties, type RefObject } from "react";
 import type { Feed, FeedGroup, FeedView } from "../../types";
 import type { Action } from "./types";
 import ContextMenuShell from "./ContextMenuShell";
+import { MenuSectionHeader } from "./MenuSectionHeader";
+import { MenuRadioOption } from "./MenuRadioOption";
 
 const MUTE_OPTIONS = [
   { label: "1時間", durationMs: 60 * 60 * 1000 },
@@ -82,11 +84,7 @@ export function MuteMenuPortal({
       ariaLabel="ミュート期間"
       className="min-w-[160px]"
     >
-      <div className="px-3 pt-2 pb-1">
-        <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-          ミュート期間
-        </p>
-      </div>
+      <MenuSectionHeader title="ミュート期間" />
       <div className="border-t border-border-subtle">
         {MUTE_OPTIONS.map((opt) => (
           <button
@@ -149,11 +147,7 @@ export function ViewMenuPortal({
       ariaLabel="表示カテゴリ"
       className="min-w-[180px]"
     >
-      <div className="px-3 pt-2 pb-1">
-        <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-          表示カテゴリ
-        </p>
-      </div>
+      <MenuSectionHeader title="表示カテゴリ" />
       <div className="border-t border-border-subtle">
         {(
           [
@@ -162,27 +156,15 @@ export function ViewMenuPortal({
             { id: "videos" as const, label: "動画" },
             { id: "social" as const, label: "SNS" },
           ] as const
-        ).map((opt) => {
-          const current = (feed.view ?? "articles") === opt.id;
-          return (
-            <button
-              key={opt.id}
-              role="menuitemradio"
-              aria-checked={current}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-                if (!current) void onSetView(opt.id);
-              }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left ${current ? "text-text-strong bg-surface-subtle" : "text-text-default"}`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${current ? "bg-accent-dot" : "bg-transparent border border-text-faint"}`}
-              />
-              <span className="truncate">{opt.label}</span>
-            </button>
-          );
-        })}
+        ).map((opt) => (
+          <MenuRadioOption
+            key={opt.id}
+            checked={(feed.view ?? "articles") === opt.id}
+            label={opt.label}
+            onSelect={() => void onSetView(opt.id)}
+            onClose={onClose}
+          />
+        ))}
       </div>
     </ContextMenuShell>
   );
@@ -223,34 +205,19 @@ export function DigestMenuPortal({
       ariaLabel="ダイジェスト件数"
       className="min-w-[180px]"
     >
-      <div className="px-3 pt-2 pb-1">
-        <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-          ダイジェスト件数
-        </p>
-      </div>
+      <MenuSectionHeader title="ダイジェスト件数" />
       <div className="border-t border-border-subtle">
-        {DIGEST_OPTIONS.map((opt) => {
-          const current =
-            opt.value === null ? feed.digestLimit === undefined : feed.digestLimit === opt.value;
-          return (
-            <button
-              key={String(opt.value)}
-              role="menuitemradio"
-              aria-checked={current}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-                if (!current) void onSetDigestLimit(opt.value);
-              }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left ${current ? "text-text-strong bg-surface-subtle" : "text-text-default"}`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${current ? "bg-accent-dot" : "bg-transparent border border-text-faint"}`}
-              />
-              <span className="truncate">{opt.label}</span>
-            </button>
-          );
-        })}
+        {DIGEST_OPTIONS.map((opt) => (
+          <MenuRadioOption
+            key={String(opt.value)}
+            checked={
+              opt.value === null ? feed.digestLimit === undefined : feed.digestLimit === opt.value
+            }
+            label={opt.label}
+            onSelect={() => void onSetDigestLimit(opt.value)}
+            onClose={onClose}
+          />
+        ))}
       </div>
     </ContextMenuShell>
   );
@@ -284,11 +251,7 @@ export function GroupMenuPortal({
       ariaLabel="グループに移動"
       className="min-w-[180px] max-h-[60vh] overflow-y-auto"
     >
-      <div className="px-3 pt-2 pb-1">
-        <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
-          グループに移動
-        </p>
-      </div>
+      <MenuSectionHeader title="グループに移動" />
       <div className="border-t border-border-subtle">
         <button
           role="menuitemradio"
@@ -321,27 +284,15 @@ export function GroupMenuPortal({
             サイドバーで先にグループを作成してください
           </div>
         ) : (
-          groups.map((g) => {
-            const isCurrent = feed.groupId === g.id;
-            return (
-              <button
-                key={g.id}
-                role="menuitemradio"
-                aria-checked={isCurrent}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose();
-                  if (!isCurrent) void onSetGroup(g.id);
-                }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left ${isCurrent ? "text-text-strong bg-surface-subtle" : "text-text-default"}`}
-              >
-                <span
-                  className={`w-2 h-2 rounded-full flex-shrink-0 ${isCurrent ? "bg-accent-dot" : "bg-transparent border border-text-faint"}`}
-                />
-                <span className="truncate">{g.name}</span>
-              </button>
-            );
-          })
+          groups.map((g) => (
+            <MenuRadioOption
+              key={g.id}
+              checked={feed.groupId === g.id}
+              label={g.name}
+              onSelect={() => void onSetGroup(g.id)}
+              onClose={onClose}
+            />
+          ))
         )}
       </div>
     </ContextMenuShell>
