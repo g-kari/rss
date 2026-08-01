@@ -12,6 +12,7 @@ import { addUrlToHistory, MAX_DOWNLOAD_HISTORY } from "../lib/download-history";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useToast } from "../contexts/ToastContext";
+import { devError } from "../lib/dev-log";
 import Backdrop from "./Backdrop";
 import { MENU_ITEM_CLS } from "./article-view/constants";
 import { useConfirm } from "../hooks/useConfirm";
@@ -131,7 +132,7 @@ export default function GalleryContextMenu({
         downloadBlob(blob, finalFilename);
         recordDownloaded(url);
       } catch (err) {
-        console.error("[GalleryContextMenu] image download failed", err);
+        devError("[GalleryContextMenu] image download failed", err);
         toast.error("画像の保存に失敗しました");
       }
     },

@@ -81,7 +81,7 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                 navigator.share({ url: article.link!, title: article.title }).catch((err) => {
                   // ユーザーキャンセルは無視（AbortError は意図した中断）
                   if (isAbortError(err)) return;
-                  console.error("[ShareMenu] navigator.share failed", err);
+                  devError("[ShareMenu] navigator.share failed", err);
                   toast.error("シェアに失敗しました");
                 });
               }}

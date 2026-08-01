@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import Spinner from "./Spinner";
 import { useToast } from "@/contexts/ToastContext";
+import { devError } from "@/lib/dev-log";
 
 interface Props {
   onLoad: () => Promise<void>;
@@ -32,7 +33,7 @@ export default function LoadMoreButton({ onLoad }: Props) {
             .current()
             .catch((err) => {
               if (!cancelled) {
-                console.error("[LoadMoreButton] onLoad failed", err);
+                devError("[LoadMoreButton] onLoad failed", err);
                 toastRef.current.error("過去記事の取得に失敗しました");
               }
             })
@@ -73,7 +74,7 @@ export default function LoadMoreButton({ onLoad }: Props) {
           try {
             await onLoad();
           } catch (err) {
-            console.error("[LoadMoreButton] onLoad failed", err);
+            devError("[LoadMoreButton] onLoad failed", err);
             toast.error("過去記事の取得に失敗しました");
           } finally {
             loadingRef.current = false;
