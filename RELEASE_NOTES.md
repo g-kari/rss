@@ -48,6 +48,8 @@
 
 - **FeedDetailModal Push トグルを canonical ToggleSwitch に統一 (WCAG 2.5.8)!⌨️** — auditor-a11y agent 2 回目派遣 (confidence 88%) が発見した inline switch drift を修正〜🎀 FeedDetailModal に h-5 w-9 (20×36 px) で inline 実装されていた `<button role="switch">` を、user-settings/shared.tsx の canonical `<ToggleSwitch>` (h-6 w-11 = 24×44 px) に置換 + `disabled` prop を canonical に追加 (pushLoading 一時無効化用)〜💫 20 px 高が WCAG 2.5.8 (Level AA, Target Size Minimum) の 24×24 px フロアを下回っていた違反を解消、settings 内の他 switch と統一されて低視力 / モバイルタッチユーザーに友好な 24×44 px タッチターゲットに〜🛡️ 既存 3 caller (AutoReadSection / AiNotificationTabPanel / ImageDlSection) への影響ゼロで sibling drift 解消完了ですわ〜🌸
 
+- **readNormalizedReadState canonical helper で 6 sites の helper-drift を解消!🧹** — auditor-simplify agent 2 回目派遣 (confidence 92%) が発見した helper-drift を修正〜🎀 `articles/route.ts` (4 sites) + `read-state/route.ts` (2 sites) で `r2Get<Partial<ReadState>>(rssData, readStateKey(userId), {}).then(normalizeReadState)` を inline 実装していた重複を、`src/lib/read-state-merge.ts` に canonical `readNormalizedReadState(rssData, userId)` helper を追加して 6 sites 全て 1 行呼出しに置換〜💫 将来 per-request cache / schema versioning / migration を追加する場合の 6 sites 同期修正リスクを構造的解消、副次効果として 3 個の未使用 import (`normalizeReadState` / `readStateKey` / `r2Get` / `ReadState` type) が削除できましたわ〜🌸
+
 ### ドキュメント整備っ
 
 - **TagEditor useEffect の MAX 到達境界ケース注記追加!📝** — 前サイクル a11y 修正 (`ff9e13bc`) の code-reviewer verify で発見された minor observation を反映〜🎀 useEffect 経路 (MAX-1 個 → commit で MAX 到達 → addButton unmount) にも × onClick と対称の境界ケースがあることを JSDoc に明記して、boundary 条件が両経路で対称化されている旨を可視化いたしましたわ〜🌸
