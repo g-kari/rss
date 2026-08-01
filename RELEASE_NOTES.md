@@ -16,6 +16,8 @@
 
 - **client component 3 files の console.error を devError canonical に統一!🧹** — `LoadMoreButton.tsx` (2 sites) / `GalleryContextMenu.tsx` (1 site) / `article-view/ShareMenu.tsx` (1 site) の合計 4 箇所で **catch + toast.error + console.error** の sibling drift を **canonical `devError` pattern** に横展開したよ〜✨ production browser console のノイズ削減 + `browser-platform.md § silent fallback の禁止` 規範遵守〜🛡️ `ErrorBoundary.tsx` の `componentDidCatch` は React error boundary の production 診断ログとして意図的に console.error を残置、`src/lib/*.ts` (`auth.ts` / `server-auth.ts` 等) は Cloudflare Workers server-side で `wrangler tail` 取得のため console.\* が canonical で対象外〜🎀
 
+- **意図的な no-control-regex に eslint-disable-next-line 注釈を追加して lint warnings を 5 → 0 にしたよ!✨** — URL サニタイズ (`html.ts` / `xml-parser.ts:260`) / XML 1.0 仕様準拠 (`xml-parser.ts:155`) / `stripControlChars` helper (`validation.ts`) / AI prompt injection 対策 (`recommendation.ts`) の 5 site 全て **既に code comment で intent documented 済** の意図的 use を、理由付き `eslint-disable-next-line` 注釈で明示〜🎀 `pnpm check` が 0 warnings + 0 errors 状態になって、将来の真の warning が noise に埋もれる構造リスクを予防いたしましたわ〜🛡️ `recommendation.ts` は oxfmt が method chain 内 line comment 対応のため `()` wrap にリフォーム (functional behavior 変化なし)〜🌸
+
 ## 2026-07-31
 
 ### 激アツ新機能っ
