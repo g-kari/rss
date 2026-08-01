@@ -172,7 +172,7 @@ export async function inferSelectors(
     try {
       testParsed.document.querySelectorAll(parsed.articleLink);
     } catch (err) {
-      devError("[llm-feed-generator] LLM selector failed querySelectorAll validation", {
+      devError("[llm-feed-generator] LLM selector failed querySelectorAll validation", err, {
         selector: parsed.articleLink,
       });
       return null;

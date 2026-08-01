@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { r2Get, engagementKey } from "@/lib/r2";
-import type { EngagementEntry, EngagementLog } from "@/types";
+import type { EngagementLog } from "@/types";
 import {
   toDateStr,
   buildDayList,

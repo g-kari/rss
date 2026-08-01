@@ -171,7 +171,7 @@ export function computeMasonryLayout(
   columnWidth: number = 0,
 ): MasonryLayoutResult {
   if (columnCount < 1) return { positions: new Map(), columnHeights: [] };
-  const columnHeights = new Array<number>(columnCount).fill(0);
+  const columnHeights: number[] = Array.from({ length: columnCount }, () => 0);
   const positions = new Map<string, { col: number; top: number }>();
   for (const item of items) {
     const targetCol = assignItemToShortestColumn(columnHeights);
