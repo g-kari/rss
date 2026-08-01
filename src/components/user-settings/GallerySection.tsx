@@ -17,7 +17,7 @@ import {
   GALLERY_AUTO_SCROLL_SPEEDS,
   type GalleryAutoScrollSpeed,
 } from "../../lib/gallery-autoscroll";
-import { SettingRow, SegmentGroup } from "./shared";
+import { SettingRow, SegmentGroup, buildLabeledOptions } from "./shared";
 
 const GALLERY_AUTO_SCROLL_LABELS: Record<GalleryAutoScrollSpeed, string> = {
   off: "OFF",
@@ -60,10 +60,7 @@ export default function GallerySection({
     <>
       <SettingRow label="ギャラリー列数">
         <SegmentGroup
-          options={GALLERY_COLUMNS_CYCLE.map((v) => ({
-            value: v,
-            label: GALLERY_COLUMNS_LABELS[v],
-          }))}
+          options={buildLabeledOptions(GALLERY_COLUMNS_CYCLE, GALLERY_COLUMNS_LABELS)}
           value={galleryColumns}
           onChange={onChangeGalleryColumns}
           ariaLabel="ギャラリー列数"
@@ -72,10 +69,7 @@ export default function GallerySection({
 
       <SettingRow label="フォーカス時列数">
         <SegmentGroup
-          options={GALLERY_COLUMNS_CYCLE.map((v) => ({
-            value: v,
-            label: GALLERY_COLUMNS_FOCUS_LABELS[v],
-          }))}
+          options={buildLabeledOptions(GALLERY_COLUMNS_CYCLE, GALLERY_COLUMNS_FOCUS_LABELS)}
           value={galleryColumnsFocus}
           onChange={onChangeGalleryColumnsFocus}
           ariaLabel="フォーカスモード時のギャラリー列数"
@@ -84,10 +78,7 @@ export default function GallerySection({
 
       <SettingRow label="カードサイズ">
         <SegmentGroup
-          options={GALLERY_CARD_SIZE_CYCLE.map((v) => ({
-            value: v,
-            label: GALLERY_CARD_SIZE_LABELS[v],
-          }))}
+          options={buildLabeledOptions(GALLERY_CARD_SIZE_CYCLE, GALLERY_CARD_SIZE_LABELS)}
           value={galleryCardSize}
           onChange={onChangeGalleryCardSize}
           ariaLabel="カードサイズ"
@@ -114,10 +105,7 @@ export default function GallerySection({
 
       <SettingRow label="自動スクロール">
         <SegmentGroup
-          options={GALLERY_AUTO_SCROLL_SPEEDS.map((v) => ({
-            value: v,
-            label: GALLERY_AUTO_SCROLL_LABELS[v],
-          }))}
+          options={buildLabeledOptions(GALLERY_AUTO_SCROLL_SPEEDS, GALLERY_AUTO_SCROLL_LABELS)}
           value={galleryAutoScrollSpeed}
           onChange={onChangeGalleryAutoScrollSpeed}
           ariaLabel="ギャラリー自動スクロール速度"
@@ -130,10 +118,7 @@ export default function GallerySection({
 
       <SettingRow label="1ページの件数">
         <SegmentGroup
-          options={GALLERY_PAGE_SIZE_CYCLE.map((v) => ({
-            value: v,
-            label: GALLERY_PAGE_SIZE_LABELS[v],
-          }))}
+          options={buildLabeledOptions(GALLERY_PAGE_SIZE_CYCLE, GALLERY_PAGE_SIZE_LABELS)}
           value={galleryPageSize}
           onChange={onChangeGalleryPageSize}
           ariaLabel="1 ページの記事件数"

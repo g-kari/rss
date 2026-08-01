@@ -43,9 +43,23 @@ export function SettingRow({ label, children }: { label: string; children: React
   );
 }
 
-interface SegmentOption<T> {
+export interface SegmentOption<T> {
   value: T;
   label: string;
+}
+
+// SegmentGroup options 構築の canonical helper。9 site (FontSection 2 + LayoutSection 2 +
+// GallerySection 5) で `<CYCLE>.map((v) => ({ value: v, label: <LABELS>[v] }))` 同形 pattern
+// を集約 (`helper-drift.md § 派生ケース「同形 useCallback 8 行ブロックが 4+ で重複」` +
+// `react-component-split.md § 派生ケース「同形 JSX ラッパーが 3 回以上重複」` canonical)。
+// per-render `.map` allocation を維持しつつ、シグネチャ集約で新 SegmentOption field 追加時の
+// 9 site 同期修正義務を 1 箇所に閉じ込める。`AutoReadSection` の `${v}%` dynamic label は
+// 対象外 (label が LABELS Record でなく template literal のため semantic gap)。
+export function buildLabeledOptions<T extends string | number>(
+  cycle: readonly T[],
+  labels: Record<T, string>,
+): SegmentOption<T>[] {
+  return cycle.map((v) => ({ value: v, label: labels[v] }));
 }
 
 export function SegmentGroup<T extends string | number>({

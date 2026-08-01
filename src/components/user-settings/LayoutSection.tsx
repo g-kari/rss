@@ -7,7 +7,7 @@ import {
   CONTENT_WIDTH_CYCLE,
   CONTENT_WIDTH_LABELS,
 } from "../../lib/reader-settings";
-import { SettingRow, SegmentGroup, ToggleSwitch } from "./shared";
+import { SettingRow, SegmentGroup, ToggleSwitch, buildLabeledOptions } from "./shared";
 
 interface LayoutSectionProps {
   lineHeight: LineHeight;
@@ -30,10 +30,7 @@ export default function LayoutSection({
     <>
       <SettingRow label="行間">
         <SegmentGroup
-          options={LINE_HEIGHT_CYCLE.map((v) => ({
-            value: v,
-            label: LINE_HEIGHT_LABELS[v],
-          }))}
+          options={buildLabeledOptions(LINE_HEIGHT_CYCLE, LINE_HEIGHT_LABELS)}
           value={lineHeight}
           onChange={onChangeLineHeight}
           ariaLabel="行間"
@@ -42,10 +39,7 @@ export default function LayoutSection({
 
       <SettingRow label="コンテンツ幅">
         <SegmentGroup
-          options={CONTENT_WIDTH_CYCLE.map((v) => ({
-            value: v,
-            label: CONTENT_WIDTH_LABELS[v],
-          }))}
+          options={buildLabeledOptions(CONTENT_WIDTH_CYCLE, CONTENT_WIDTH_LABELS)}
           value={contentWidth}
           onChange={onChangeContentWidth}
           ariaLabel="コンテンツ幅"

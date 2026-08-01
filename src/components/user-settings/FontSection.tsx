@@ -7,7 +7,7 @@ import {
   FONT_FAMILY_CYCLE,
   FONT_FAMILY_LABELS,
 } from "../../lib/article-utils";
-import { SettingRow, SegmentGroup } from "./shared";
+import { SettingRow, SegmentGroup, buildLabeledOptions } from "./shared";
 
 interface FontSectionProps {
   fontSize: FontSize;
@@ -26,10 +26,7 @@ export default function FontSection({
     <>
       <SettingRow label="フォントサイズ">
         <SegmentGroup
-          options={FONT_SIZE_CYCLE.map((v) => ({
-            value: v,
-            label: FONT_SIZE_LABELS[v],
-          }))}
+          options={buildLabeledOptions(FONT_SIZE_CYCLE, FONT_SIZE_LABELS)}
           value={fontSize}
           onChange={onChangeFontSize}
           ariaLabel="フォントサイズ"
@@ -38,10 +35,7 @@ export default function FontSection({
 
       <SettingRow label="フォント">
         <SegmentGroup
-          options={FONT_FAMILY_CYCLE.map((v) => ({
-            value: v,
-            label: FONT_FAMILY_LABELS[v],
-          }))}
+          options={buildLabeledOptions(FONT_FAMILY_CYCLE, FONT_FAMILY_LABELS)}
           value={fontFamily}
           onChange={onChangeFontFamily}
           ariaLabel="フォント"
