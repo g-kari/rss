@@ -75,23 +75,33 @@ export default function TtsVoiceSection() {
       </span>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="tts-engine-select" className="text-[12px] font-medium text-text-default">
-          エンジン
-        </label>
         {canSwitchEngine && setEngine ? (
-          <select
-            id="tts-engine-select"
-            value={engine}
-            onChange={(e) => setEngine(e.target.value as "web-speech" | "piper")}
-            className="text-[12px] bg-surface-elevated border border-border-default rounded px-2 py-1.5 text-text-default hover:border-text-muted focus:outline-none focus:border-text-strong transition-colors duration-200"
-          >
-            <option value="web-speech">ブラウザ標準 (Web Speech API)</option>
-            <option value="piper">Piper (wasm: 自然な日本語読み上げ / モデル DL 要)</option>
-          </select>
+          <>
+            <label
+              htmlFor="tts-engine-select"
+              className="text-[12px] font-medium text-text-default"
+            >
+              エンジン
+            </label>
+            <select
+              id="tts-engine-select"
+              value={engine}
+              onChange={(e) => setEngine(e.target.value as "web-speech" | "piper")}
+              className="text-[12px] bg-surface-elevated border border-border-default rounded px-2 py-1.5 text-text-default hover:border-text-muted focus:outline-none focus:border-text-strong transition-colors duration-200"
+            >
+              <option value="web-speech">ブラウザ標準 (Web Speech API)</option>
+              <option value="piper">Piper (wasm: 自然な日本語読み上げ / モデル DL 要)</option>
+            </select>
+          </>
         ) : (
-          <span className="text-[12px] text-text-soft">
-            {engine === "web-speech" ? "ブラウザ標準 (Web Speech API)" : engine}
-          </span>
+          <>
+            {/* 単一 engine のみのため <select> 非レンダー、label htmlFor の dangling reference
+                回避のため <label> でなく <span> でラベル表示 (WCAG 1.3.1 Info and Relationships)。 */}
+            <span className="text-[12px] font-medium text-text-default">エンジン</span>
+            <span className="text-[12px] text-text-soft">
+              {engine === "web-speech" ? "ブラウザ標準 (Web Speech API)" : engine}
+            </span>
+          </>
         )}
         {engine === "piper" && (
           <span className="text-[11px] text-text-muted">

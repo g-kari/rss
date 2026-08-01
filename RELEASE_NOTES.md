@@ -1,6 +1,12 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
-## 2026-08-01 (latest)
+## 2026-08-02 (latest)
+
+### a11y 改善っ
+
+- **user-settings 2 件の a11y drift を解消したよ (WCAG 1.3.1 + 2.5.5/2.5.8)!⌨️** — auditor-a11y agent 10 回目派遣 (**chain 5 開始**: 前 4 chain 全 3 観点完成の canonical continuation、未 audit user-settings sub-components 全体を新規 target 化、confidence 95% + 85%) が発見した 2 finding を修正〜🎀 **Finding 1**: DisplayTabPanel.tsx:211-221 のプリセット削除 `×` ボタンが `px-1.5 py-0.5` のみで **モバイル ~24×20px + デスクトップ hit box が canonical 24×24px を下回る** WCAG 2.5.5 (Level AAA) + 2.5.8 (Level AA) 違反状態を解消、canonical (`TagEditor.tsx:68` / `FeedFilterModal.tsx:81` / `FeedGroupsSection.tsx:448` の × delete button 3 sibling) `max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] inline-flex items-center justify-center` を完全複製で統一〜💫 **Finding 2**: TtsVoiceSection.tsx:78-95 の engine `<label htmlFor="tts-engine-select">` が常時レンダーされる一方で `<select id="tts-engine-select">` は `canSwitchEngine && setEngine` 条件下 (Phase 2b では default `false`) のみレンダーされる **dangling label reference** で WCAG 1.3.1 (Level A) 違反状態を解消、canonical (同 file voice select L141-160 の常時レンダー label + select pair) を mirror して engine label + select を fragment で条件三項内に移動、else 分岐は `<label>` でなく `<span>` でラベル表示 (単一 engine のため htmlFor 不要な semantic 判定)〜🛡️ 両者 touch 1 file / 各 ≤10 line 変更、機能変化ゼロ (visual + behavior 完全同一、a11y semantic 改善のみ)、screen reader (NVDA / JAWS / VoiceOver) の label 意味的接続 + モバイル motor-impaired ユーザーの誤タップ防止が構造的解消いたしましたわ〜🌸 axe-core critical rule (`label`) + WCAG 2.5.8 (Target Size Minimum、Level AA) 両違反解消の chain 5 a11y 10th cycle 完成、次サイクル simplify 10th → perf 11th 順序で 3 観点 rotation 継続予定〜✨
+
+## 2026-08-01
 
 ### バグ修正っ
 

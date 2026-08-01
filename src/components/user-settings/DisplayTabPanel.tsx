@@ -215,7 +215,7 @@ export default function DisplayTabPanel({
                         if (selectedPresetId === p.id) setSelectedPresetId("");
                       }}
                       aria-label={`プリセット「${p.name}」を削除`}
-                      className="text-text-muted hover:text-error transition-colors px-1.5 py-0.5 rounded"
+                      className="max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] inline-flex items-center justify-center text-text-muted hover:text-error transition-colors px-1.5 py-0.5 rounded"
                     >
                       ×
                     </button>
