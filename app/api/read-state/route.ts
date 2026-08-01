@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession, withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { r2Get, r2Put, readStateKey, readStateCooldownKey } from "@/lib/r2";
-import type { ReadState } from "@/types";
+import { r2Put, readStateKey, readStateCooldownKey } from "@/lib/r2";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
 import {
   extractIds,
@@ -21,7 +20,7 @@ import {
 } from "@/lib/validation";
 import {
   mergeReadStateUpdate,
-  normalizeReadState,
+  readNormalizedReadState,
   type ReadStateUpdate,
 } from "@/lib/read-state-merge";
 
@@ -35,8 +34,7 @@ const READ_STATE_COOLDOWN_MS = 3_000;
 export async function GET(request: Request) {
   return withSession(request, async ({ session, env }) => {
     // Partial で受け取り、欠落フィールドを [] で補完する（古いデータ形式との互換性）
-    const stored = await r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {});
-    return NextResponse.json(normalizeReadState(stored));
+    return NextResponse.json(await readNormalizedReadState(env.RSS_DATA, session.userId));
   });
 }
 
@@ -94,8 +92,7 @@ export async function POST(req: NextRequest) {
     const tagIds = parseTagIds(body.tagIds, MAX_TAGGED_ARTICLES);
 
     // 既存 ReadState を読み込んで差分マージする（他端末の変更を失わない）
-    const stored = await r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {});
-    const existing = normalizeReadState(stored);
+    const existing = await readNormalizedReadState(env.RSS_DATA, session.userId);
 
     // ttlDays: 0（無制限）または 1〜365 の整数、null（デフォルト復帰）のみ許可
     const rawTtl = body.ttlDays;

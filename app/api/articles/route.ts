@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withSession } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { r2Get, savedArticlesKey, readStateKey, feedLastFetchedKey } from "@/lib/r2";
+import { r2Get, savedArticlesKey, feedLastFetchedKey } from "@/lib/r2";
 import {
   getUserLatestArticles,
   MAX_PAGES,
@@ -23,7 +23,7 @@ import {
 import { compareByDateDesc } from "@/lib/article-utils";
 import { buildProtectedIds, filterExpiredArticles } from "@/lib/article-ttl";
 import { assertValidFeedHash } from "@/lib/api-error";
-import { normalizeReadState } from "@/lib/read-state-merge";
+import { readNormalizedReadState } from "@/lib/read-state-merge";
 import {
   buildCacheKey,
   buildJsonCacheResponse,
@@ -46,7 +46,7 @@ async function fetchFeedData(
   return Promise.all([
     readUserSubscriptions(rssData, userId),
     fetchArticles,
-    r2Get<Partial<ReadState>>(rssData, readStateKey(userId), {}).then(normalizeReadState),
+    readNormalizedReadState(rssData, userId),
   ]);
 }
 
@@ -91,9 +91,7 @@ export async function GET(request: NextRequest) {
       const [subs, savedArticles, readState] = await Promise.all([
         readUserSubscriptions(env.RSS_DATA, session.userId),
         r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
-        r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
-          normalizeReadState,
-        ),
+        readNormalizedReadState(env.RSS_DATA, session.userId),
       ]);
       const feedTitleByHash = new Map<string, string>();
       const perFeedArticles = await pMap(
@@ -221,9 +219,7 @@ export async function GET(request: NextRequest) {
       const [subs, savedArticles, readState] = await Promise.all([
         readUserSubscriptions(env.RSS_DATA, session.userId),
         r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
-        r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
-          normalizeReadState,
-        ),
+        readNormalizedReadState(env.RSS_DATA, session.userId),
       ]);
       const feedArticles = await getUserLatestArticles(env.RSS_DATA, session.userId, subs);
 
@@ -263,9 +259,7 @@ export async function GET(request: NextRequest) {
       readUserSubscriptions(env.RSS_DATA, session.userId),
       r2Get<Record<string, string>>(env.RSS_DATA, feedLastFetchedKey(session.userId), {}),
       r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
-      r2Get<Partial<ReadState>>(env.RSS_DATA, readStateKey(session.userId), {}).then(
-        normalizeReadState,
-      ),
+      readNormalizedReadState(env.RSS_DATA, session.userId),
     ]);
 
     // since が指定された場合: feed-last-fetched.json（1 R2 GET）で更新済みフィードだけに絞る

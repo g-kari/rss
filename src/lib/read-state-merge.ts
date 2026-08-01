@@ -1,4 +1,5 @@
 import type { KeywordFilter, ReadState } from "../types";
+import { r2Get, readStateKey } from "./r2";
 
 /** POST /api/read-state で送信する削除差分 */
 export interface ReadStateRemovedIds {
@@ -218,6 +219,25 @@ export function normalizeReadState(stored: Partial<ReadState>): ReadState {
     tagIds: stored.tagIds ?? null,
     ttlDays: stored.ttlDays ?? null,
   };
+}
+
+/**
+ * R2 から user の ReadState を読み込んで normalize する canonical helper。
+ *
+ * 6 sites (articles/route.ts 4 箇所 + read-state/route.ts 2 箇所) で
+ * `r2Get<Partial<ReadState>>(rssData, readStateKey(userId), {}).then(normalizeReadState)`
+ * を inline 実装していた helper-drift を集約 (`helper-drift.md § 新規 Route Handler で
+ * 既存 lib helpers を grep`)。
+ *
+ * 将来 ReadState 読み込み経路に per-request cache / schema versioning / migration を
+ * 追加する場合、6 sites 全 edit する compile-time 保証がない状態を解消。
+ */
+export async function readNormalizedReadState(
+  rssData: R2Bucket,
+  userId: string,
+): Promise<ReadState> {
+  const stored = await r2Get<Partial<ReadState>>(rssData, readStateKey(userId), {});
+  return normalizeReadState(stored);
 }
 
 /**
