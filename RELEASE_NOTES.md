@@ -16,6 +16,10 @@
 
 - **serialize-error.ts の JSDoc 順序を整えたよ!📝** — `formatError` が後追いで追加された際に、`serializeError` 用の JSDoc (Cloudflare Workers log の JSON.stringify 挙動 / cause 再帰展開の説明) が `formatError` の直前に残ってしまう drift を修正〜🎀 各 JSDoc を対応する関数の直前に再配置、機能変化なし・コメントの物理配置変更のみですわ〜🌸
 
+### ドキュメント整備っ
+
+- **architecture.md の article-view/ 配下 3 ファイル drift を修正したよ!📝** — tree structure から漏れていた `SelectionExcludePopup.tsx` (テキスト選択 popup) / `icons.tsx` (SVG アイコン共通) / `constants.ts` (`MENU_ITEM_CLS` ドロップダウン共通スタイル) に explicit entry を追加〜🎀 いずれも summary line の 等 で暗黙カバーされていた state で、actual file 確認 + comparative sweep で判明した drift ですわ〜🌸
+
 ### セキュリティ対策っ
 
 - **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
