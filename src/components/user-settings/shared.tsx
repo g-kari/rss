@@ -18,14 +18,17 @@ const CONTENT_WIDTH_PREVIEW_PCT: Record<ContentWidth, number> = {
 
 // value:0 = "無制限" (明示的 unlimited)。null = "未設定" (default 30 日適用)。
 // consumer 側で `ttlDays ?? 30` する場合、0 と null の意味乖離に注意 (0 ?? 30 = 0、null ?? 30 = 30)。
-export const TTL_OPTIONS: { value: number; label: string }[] = [
+// `Object.freeze` は canonical `empty-sentinels.ts` sentinel 3 件と同じ runtime safety net
+// (`react-state-ref.md § 派生「モジュールレベル sentinel オブジェクト」`)。
+// `as {...}[]` cast で consumer 側の型変更を要求しない canonical parallels pattern。
+export const TTL_OPTIONS = Object.freeze([
   { value: 7, label: "7日" },
   { value: 14, label: "14日" },
   { value: 30, label: "30日" },
   { value: 60, label: "60日" },
   { value: 90, label: "90日" },
   { value: 0, label: "無制限" },
-];
+]) as { value: number; label: string }[];
 
 const PREVIEW_TEXT =
   "吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。" +

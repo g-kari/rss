@@ -17,10 +17,14 @@ import { devError } from "../../lib/dev-log";
 import { SettingRow, ToggleSwitch } from "./shared";
 
 // Intl.supportedValuesOf("timeZone") はセッション不変な ~440 件の timezone 配列を返す。
-// component body で呼ぶと keystroke / debounce 起点の re-render ごとに ICU list の再構築 +
-// 440 <option> の new-identity reconciliation が走るため module-level constant に集約する。
-const TIMEZONES: readonly string[] =
-  typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+// component body で呼ぶと keystroke / debounce 起点の re-render ごとに ICU list の
+// 再構築 + `.map` closure allocation が走るため module-level constant に集約する
+// (<option> 子要素の reconciliation は `key={tz}` 駆動なのでこの hoist では変わらない)。
+// `Object.freeze` は canonical `empty-sentinels.ts` sentinel 3 件と同じ runtime safety net
+// (`react-state-ref.md § 派生「モジュールレベル sentinel オブジェクト」`)。
+const TIMEZONES: readonly string[] = Object.freeze(
+  typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [],
+);
 
 interface AiNotificationTabPanelProps {
   hidden: boolean;
