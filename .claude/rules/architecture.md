@@ -798,7 +798,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | ------------------ | ---- | ------------------------------------------------------------------------------------------------------ |
 | `useArticle*`      | 20   | 記事単体の表示・操作・状態 (内容取得・選択・ハイライト・進捗)                                          |
 | `useReadState*` 系 | 8    | 既読・読書ステータス (Set 管理・TTL 計算・persistence)                                                 |
-| `useFeed*`         | 10   | フィード一覧・操作 (CRUD・選択・グループ・並び順)                                                      |
+| `useFeed*`         | 11   | フィード一覧・操作 (CRUD・選択・グループ・並び順)                                                      |
 | `useAuto*`         | 4    | 自動化機能 (autoLoadMore / autoRead / autoReadSettings / autoReset)                                    |
 | `useGallery*`      | 4    | ギャラリー自動既読・自動スクロール・スワイプナビ (AutoRead / AutoReadTracking / AutoScroll / SwipeNav) |
 | `useTts*`          | 3    | TTS engine 共通制御 (rate / voice / volume / highlight 同期)                                           |
