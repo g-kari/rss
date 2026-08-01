@@ -39,11 +39,19 @@ export default function NSFWEyeAnimation({ onComplete }: Props) {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
       style={{ opacity: isFading ? 0 : 1, transition: isFading ? "opacity 0.7s ease-in" : "none" }}
     >
       <div style={{ width: 480, position: "relative" }}>
-        <svg viewBox="0 0 480 200" width="480" height="200" style={{ display: "block" }}>
+        <svg
+          viewBox="0 0 480 200"
+          width="480"
+          height="200"
+          style={{ display: "block" }}
+          aria-hidden="true"
+        >
           {/* 白目（sclera） */}
           <path
             d="M 30,100 Q 240,0 450,100 Q 240,200 30,100 Z"
