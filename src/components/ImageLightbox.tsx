@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId, useRef, type KeyboardEvent } from "react";
+import { useCallback, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import { buildImageProxyUrl } from "../lib/image-proxy-url";
@@ -86,12 +86,7 @@ export default function ImageLightbox({
         画像拡大表示
       </h2>
       {/* 閉じるボタン (右上) */}
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="閉じる"
-        className="absolute top-3 right-3 w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors"
-      >
+      <LightboxRoundButton positionClass="top-3 right-3" ariaLabel="閉じる" onClick={onClose}>
         <svg
           width="16"
           height="16"
@@ -103,16 +98,14 @@ export default function ImageLightbox({
         >
           <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round" />
         </svg>
-      </button>
+      </LightboxRoundButton>
 
       {/* 前へボタン (常時 mount、境界では disabled) */}
-      <button
-        type="button"
-        onClick={() => onPrev?.()}
+      <LightboxRoundButton
+        positionClass="left-3 top-1/2 -translate-y-1/2"
         disabled={!onPrev}
-        aria-disabled={!onPrev}
-        aria-label="前の画像"
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/40"
+        ariaLabel="前の画像"
+        onClick={() => onPrev?.()}
       >
         <svg
           width="20"
@@ -125,16 +118,14 @@ export default function ImageLightbox({
         >
           <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </button>
+      </LightboxRoundButton>
 
       {/* 次へボタン (常時 mount、境界では disabled) */}
-      <button
-        type="button"
-        onClick={() => onNext?.()}
+      <LightboxRoundButton
+        positionClass="right-3 top-1/2 -translate-y-1/2"
         disabled={!onNext}
-        aria-disabled={!onNext}
-        aria-label="次の画像"
-        className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/40"
+        ariaLabel="次の画像"
+        onClick={() => onNext?.()}
       >
         <svg
           width="20"
@@ -147,7 +138,7 @@ export default function ImageLightbox({
         >
           <path d="M8 4l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </button>
+      </LightboxRoundButton>
 
       {/* 中央: 画像 + メタ (#886: 余白を限界まで削減して画像を最大表示) */}
       <div className="max-w-full max-h-full flex flex-col items-center gap-2">
@@ -180,5 +171,41 @@ export default function ImageLightbox({
       </div>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * ImageLightbox 内で 3 site (close / prev / next) が同形使用する round-button
+ * chrome の file-local helper (`react-component-split.md § 派生ケース「同形 JSX
+ * ラッパーが 3 回以上重複」canonical`)。backdrop-specific styling (`bg-black/40`)
+ * のため sibling module に export せず co-located 維持。
+ *
+ * `disabled:*` prefix は Tailwind の disabled attr 有無で自動 gate、close button
+ * (disabled 非使用) にも harmless 適用で 3 site で完全共通 className を実現。
+ */
+function LightboxRoundButton({
+  positionClass,
+  disabled,
+  ariaLabel,
+  onClick,
+  children,
+}: {
+  positionClass: string;
+  disabled?: boolean;
+  ariaLabel: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-disabled={disabled}
+      aria-label={ariaLabel}
+      className={`absolute ${positionClass} w-11 h-11 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/40`}
+    >
+      {children}
+    </button>
   );
 }
