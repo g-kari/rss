@@ -45,3 +45,4 @@ paths: "app/api/**/route.ts"
 | `api-collections.md`     | `/api/collections/*` / `/api/feed-groups/*`                                                                                                                                                        |
 | `api-recommendations.md` | `/api/recommendations/*` (GET / dismiss / refresh)                                                                                                                                                 |
 | `api-misc.md`            | `/api/engagement` / `/api/stats` / `/api/ogp` / `/api/image-proxy` / `/api/video-proxy` / `/api/health` / `/api/release-notes` / `/api/test/seed` / `/api/piper-voice/[file]` / `/api/wasm/[file]` |
+| `api-security.md`        | 横断規範 — 認証 + 所有権チェック二段 / shared cache TTL 短縮で poisoning 影響限定 / dev・e2e endpoint の NODE_ENV + bypass 二重ガード (endpoint 別仕様でなく Route Handler 実装時に参照)           |
