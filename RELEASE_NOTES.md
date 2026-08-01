@@ -36,6 +36,10 @@
 
 - **rule-maintenance.md § 5 に「前サイクル codify の retroactive verify」canonical pattern を追加したよ!📝** — 過去 4 サイクル連続で「codify → retroactive verify → 類似 drift 発見」chain が成立した実績 (削除同期 + trace tag 20 件 + useFeed* count + `src/lib/*.test.ts` count) を retrospective-codify〜🎀 各サイクル冒頭で直近 3 サイクル codify した規範を retroactive sweep する運用手順 + 該当 drift カテゴリ 4 種実例表 + 反例 (判断要素含む規範 / 1 箇所固有 pattern) + historical snapshot は growth していても pattern 維持なら更新見送り の判断軸を明文化〜🌸
 
+### パフォーマンス改善っ
+
+- **globalFilter 等価ガード追加 + tsCache 早期リターン後移動で 2 件の perf drift を解消!⚡** — auditor-perf agent (confidence 85% + 88%) が発見した既存 canonical pattern からの sibling drift を修正〜🎀 **1件目**: `useReadStateSyncApply.applyServerState` で `state.globalFilter` が JSON.parse 経由で毎同期 fresh object になるにも関わらず sibling 3 field (snoozedUntil / notes / tagIds) と違って equality guard がなかった件を、`article-filter-equality.ts` に `equalKeywordFilter` 追加 + `globalFilterRef.current` で guard するように修正〜💫 これにより `useFilteredArticles.normalizedGlobalFilter` useMemo 再 compile 起源の 500+ 記事 O(N) filter が 2 秒毎に走る perf コスト (20-80ms/sync) を解消〜🛡️ **2件目**: `useFilteredArticles.ts` の `tsCache = new Map(filtered.map(...))` 構築が `hasDupes` 早期リターン前にあり、単一フィード等の重複なしケース (common case) で 500 件の `Date.parse` (~1-2.5ms) が discarded されていた件を、hasDupes 早期リターン後に 1 行 reorder〜🎀 読書中 5-30 executions/min で ~5-75ms/分の waste を解消いたしましたわ〜🌸
+
 ### セキュリティ対策っ
 
 - **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
