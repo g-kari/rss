@@ -1,4 +1,4 @@
-import type { Layout, DateRange } from "../../types";
+import type { Layout } from "../../types";
 
 export const LAYOUT_ARIA_LABELS: Record<Layout, string> = {
   compact: "コンパクト表示",
@@ -6,13 +6,6 @@ export const LAYOUT_ARIA_LABELS: Record<Layout, string> = {
   card: "カード表示",
   magazine: "マガジン表示",
   gallery: "ギャラリー表示",
-};
-
-export const DATE_RANGE_LABELS: Record<DateRange, string> = {
-  all: "日付",
-  today: "今日",
-  week: "今週",
-  month: "今月",
 };
 
 export const PILL_BASE_CLASS =
