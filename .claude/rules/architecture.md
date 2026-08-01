@@ -230,6 +230,9 @@ src/
     article-view/TagEditor.tsx              # 記事タグの追加 / 削除インライン UI
     article-view/ToggleIconButton.tsx       # ヘッダー系トグルアイコンボタンの共通テンプレート
     article-view/filter-shared.tsx          # FilterMenu / GlobalFilterMenu 共通の state hook + 除外候補セクション
+    article-view/SelectionExcludePopup.tsx  # テキスト選択時に出る「引用をコピー」「除外」popup（keyboard navigation + WCAG AA 準拠、focus trap / Escape close / focus 復元）
+    article-view/icons.tsx                  # article-view sub-components 共通の SVG アイコン群（DownloadIcon / ExternalLinkIcon 等）
+    article-view/constants.ts               # ドロップダウン / コンテキストメニュー項目の共通スタイル定数（MENU_ITEM_CLS — ShareMenu / FilterMenu / GlobalFilterMenu / SnoozeMenu / ArticleContextMenu / GalleryContextMenu で共有）
     user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel orchestrator + FontSection / LayoutSection / GallerySection / AutoReadSection / ImageDlSection / FeedManagementTabPanel / ImportExportTabPanel / TtsVoiceSection / shared、#880 で DisplayTabPanel を機能別 5 Section に分割）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
