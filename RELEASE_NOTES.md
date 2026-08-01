@@ -18,6 +18,8 @@
 
 - **意図的な no-control-regex に eslint-disable-next-line 注釈を追加して lint warnings を 5 → 0 にしたよ!✨** — URL サニタイズ (`html.ts` / `xml-parser.ts:260`) / XML 1.0 仕様準拠 (`xml-parser.ts:155`) / `stripControlChars` helper (`validation.ts`) / AI prompt injection 対策 (`recommendation.ts`) の 5 site 全て **既に code comment で intent documented 済** の意図的 use を、理由付き `eslint-disable-next-line` 注釈で明示〜🎀 `pnpm check` が 0 warnings + 0 errors 状態になって、将来の真の warning が noise に埋もれる構造リスクを予防いたしましたわ〜🛡️ `recommendation.ts` は oxfmt が method chain 内 line comment 対応のため `()` wrap にリフォーム (functional behavior 変化なし)〜🌸
 
+- **serialize-error.ts の JSDoc 順序を整えたよ!📝** — `formatError` が後追いで追加された際に、`serializeError` 用の JSDoc (Cloudflare Workers log の JSON.stringify 挙動 / cause 再帰展開の説明) が `formatError` の直前に残ってしまう drift を修正〜🎀 各 JSDoc を対応する関数の直前に再配置、機能変化なし・コメントの物理配置変更のみですわ〜🌸
+
 ## 2026-07-31
 
 ### 激アツ新機能っ
