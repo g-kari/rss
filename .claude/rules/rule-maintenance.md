@@ -1694,9 +1694,9 @@ paths は **そのファイルが置かれたディレクトリの project root*
 paths: "src/components/**/*.tsx,src/**/*.tsx,app/globals.css"
 
 # 修正パターン: superset のみ残すか、subset のみ残すか (ロード意図で選択)
-paths: "src/components/**/*.tsx,app/globals.css"  # design-system は components 専用なら subset
+paths: "src/components/**/*.tsx,app/globals.css" # design-system は components 専用なら subset
 # OR
-paths: "src/**/*.tsx,app/globals.css"  # 広く適用するなら superset
+paths: "src/**/*.tsx,app/globals.css" # 広く適用するなら superset
 ```
 
 重複は **挙動には影響しない** (paths は OR で評価) が、後の rule reader が「2 つ書いてある意図」を疑う認知負荷が発生する。

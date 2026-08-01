@@ -87,9 +87,7 @@ initOpenNextCloudflareForDev({ remoteBindings: false });
 ```typescript
 // アンチパターン: dynamic import だけ + transpilePackages 未設定
 // next.config.ts
-const nextConfig: NextConfig = {
-  /* 既存設定 */
-};
+const nextConfig: NextConfig = {/* 既存設定 */};
 
 // hook 内:
 const piperLib = await import("@mintplex-labs/piper-tts-web");

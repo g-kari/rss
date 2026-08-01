@@ -137,9 +137,7 @@ export function needsFallback(link, content): boolean {
 // アンチパターン: 失敗の理由が一切表に出ない
 export async function summarizeInBrowser(text: string): Promise<string | null> {
   try {
-    const summarizer = await globalThis.Summarizer.create({
-      /* ... */
-    });
+    const summarizer = await globalThis.Summarizer.create({/* ... */});
     return await summarizer.summarize(text);
   } catch {
     return null; // ← 何が起きたか開発者にもユーザーにも分からない

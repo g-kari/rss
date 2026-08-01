@@ -140,12 +140,12 @@ grep -rEn "<fix 主張の symbol / pattern>" src/ app/ --include="*.ts" --includ
 
 **典型的な agent fabrication pattern**:
 
-| agent 主張                      | verify 方法                              | 検出効果                            |
+| agent 主張 | verify 方法 | 検出効果 |
 | ------------------------------- | ---------------------------------------- | ----------------------------------- | -------------------------------- |
-| `fix/<branch-name>` commit      | `git log --all --oneline                 | grep <branch>`                      | branch / merge commit の実在確認 |
-| `#NNN` Issue                    | `gh issue view NNN --json state,title`   | Issue / PR 番号の実在 + state 確認  |
-| 「`<symbol>` 実装済」           | `grep -rn "<symbol>" src/ app/`          | 実コード上の symbol 実在 + 機能確認 |
-| 「<file>:<line> で <X> 修正済」 | `Read <file>` で対象 line 周辺コード確認 | 実装内容 vs agent 主張の対比        |
+| `fix/<branch-name>` commit | `git log --all --oneline                 | grep <branch>` | branch / merge commit の実在確認 |
+| `#NNN` Issue | `gh issue view NNN --json state,title` | Issue / PR 番号の実在 + state 確認 |
+| 「`<symbol>` 実装済」 | `grep -rn "<symbol>" src/ app/` | 実コード上の symbol 実在 + 機能確認 |
+| 「<file>:<line> で <X> 修正済」 | `Read <file>` で対象 line 周辺コード確認 | 実装内容 vs agent 主張の対比 |
 
 **How to apply**: agent report で specific 引用 (commit / branch / Issue / 実装箇所) を見たら、**実装着手前に必ず実在 verify を実行** (agent fabrication は規範違反でない誤情報、信用して着手すると spec / fix が無駄になる + canonical 想定が崩れる):
 
