@@ -30,6 +30,8 @@
 
 - **architecture.md の Issue 番号 trace tag 20 件を一掃したよ!🧹** — `rule-maintenance.md § 2「ルール本文に Issue 番号タグ (#XXX) を埋め込まない」` 規範に対して、ASCII tree entries に `、#NNNN）` / `、#N / #N）` 形式で残置していた trace tag 20 件を機械的 sed で削除〜🎀 前サイクル codify を retroactive verify する過程で発見した真の drift、コード参照 (ファイルパス / 関数名) は保持しつつ trace tag のみ除去して規範遵守状態に復帰〜🌸
 
+- **architecture.md カテゴリ分類表の `useFeed*` 件数を 10 → 11 に修正したよ!📊** — commit `da968807` (2026-07-31) で `useFeedStructuralSignature.ts` を追加した際、hook カテゴリ分類表の件数更新が漏れていた drift を発見・修正〜🎀 前サイクル codify 済 `rule-maintenance.md § 5「file/spec 追加/削除時の docs 同期義務」` を retroactive verify する過程で、8 prefix 中 useFeed のみ actual count と乖離していると判明、他 7 prefix (useArticle 20 / useReadState 8 / useAuto 4 / useGallery 4 / useTts 3 / useEngagement 3 / useCollection 2) は全て drift なしで確認済〜🌸
+
 ### セキュリティ対策っ
 
 - **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
