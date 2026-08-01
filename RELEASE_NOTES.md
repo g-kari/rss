@@ -26,6 +26,8 @@
 
 - **architecture.md テストカバレッジマップの stale entry を削除!🧹** — commit `caebbc56` で `e2e/sanitize-dompurify.spec.ts` を dead spec として削除した際に、カバレッジマップ側の同期更新が漏れていた 1 件 stale entry を削除〜🎀 4 サイクル連続 sweep clean 状態で発見した真の drift、コードカバレッジマップ整合性 sweep により actual 190 files = documented 190 の完全一致に復帰〜🌸
 
+- **rule-maintenance.md § 5 に file/spec 削除時の docs 同期義務を retrospective-codify したよ!📝** — 前サイクル発見の drift (sanitize-dompurify.spec.ts の 5 サイクル遅延) を、追加時の義務と対称の **削除時義務** として明文化〜🎀 対象 (`src/lib/*.ts` / `src/hooks/*.ts` / `src/components/**/*.tsx` / `e2e/*.spec.ts` / `src/**/*.test.ts?`) + 同期対象 3 か所 (ASCII tree + カバレッジマップ + グループ/カテゴリ表) + `find + comm -23` comparative sweep の検出方法を記述、将来の drift 累積を構造的に予防いたしましたわ〜🌸
+
 ### セキュリティ対策っ
 
 - **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
