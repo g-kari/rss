@@ -78,6 +78,13 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
     }
   }, []);
 
+  const handleRetry = useCallback(() => {
+    if (!ctx) return;
+    ctx.galleryRetryArticle(articleRef.current.id);
+    // useSyncedRef の戻り値は identity 不変のため deps から除外 (handleTouchStart と同 canonical)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx]);
+
   if (!ctx) return null;
   const isDeleting = ctx.deletingIds.has(article.id);
   const isNew = ctx.newIds.has(article.id);
@@ -95,7 +102,7 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
         galleryMinImagePx={ctx.galleryMinImagePx}
         isFetchFailed={ctx.galleryFailedIds.has(article.id)}
         isExpanding={ctx.galleryExpandingIds.has(article.id)}
-        onRetry={() => ctx.galleryRetryArticle(article.id)}
+        onRetry={handleRetry}
         onSelectImage={ctx.onSelectImage}
         // discriminated union (#770): forcedImage 3 props は「entry mode (3 値必須)」or
         // 「null mode (全部 undefined)」のどちらか一方を spread で渡す。TS の union narrow が
