@@ -64,7 +64,7 @@ export default function CategoryFilter({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        className={`flex items-center gap-1 px-2 h-6 max-md:min-h-[44px] max-md:min-w-[44px] rounded-full text-[11px] transition-all duration-200 ${
+        className={`flex items-center gap-1 px-2 h-6 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-[11px] transition-all duration-200 ${
           open
             ? "text-text-strong bg-surface-subtle"
             : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
