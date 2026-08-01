@@ -34,6 +34,8 @@
 
 - **architecture.md `src/lib/*.test.ts` 件数を 13 → 16 に修正したよ!📊** — 2026-07-30〜07-31 で `log-sanitize.test.ts` / `type-guards.test.ts` / `cache-helper.test.ts` の 3 件を追加した際、L874 の件数参照更新が漏れていた drift を修正〜🎀 前々サイクル codify を retroactive verify する過程で発見した本サイクル 2 件目の count drift、他 count 参照 (src/lib 143 / その他 hooks ~68 / src/hooks test 17) は全て canonical で確認済〜🌸
 
+- **rule-maintenance.md § 5 に「前サイクル codify の retroactive verify」canonical pattern を追加したよ!📝** — 過去 4 サイクル連続で「codify → retroactive verify → 類似 drift 発見」chain が成立した実績 (削除同期 + trace tag 20 件 + useFeed* count + `src/lib/*.test.ts` count) を retrospective-codify〜🎀 各サイクル冒頭で直近 3 サイクル codify した規範を retroactive sweep する運用手順 + 該当 drift カテゴリ 4 種実例表 + 反例 (判断要素含む規範 / 1 箇所固有 pattern) + historical snapshot は growth していても pattern 維持なら更新見送り の判断軸を明文化〜🌸
+
 ### セキュリティ対策っ
 
 - **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
