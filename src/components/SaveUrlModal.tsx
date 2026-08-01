@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 
@@ -17,21 +18,25 @@ interface Props {
  * ブックマーク / 後で読む の 2 モードで保存可能。
  */
 export default function SaveUrlModal({ url, onUrlChange, saving, error, onSave, onClose }: Props) {
+  // Modal focus trap の default 「first focusable = close ボタン」を override して
+  // URL input を初期 focus に。WCAG 2.4.3 (Focus Order) 準拠 + キーボードユーザーが
+  // 開いた直後に Tab なしで直接 URL 入力できる canonical (ConfirmModal.tsx:45 の cancelRef と同 pattern)。
+  const urlInputRef = useRef<HTMLInputElement>(null);
   return (
-    <Modal title="URL を保存" onClose={onClose} width="sm:w-[400px]">
+    <Modal title="URL を保存" onClose={onClose} width="sm:w-[400px]" initialFocusRef={urlInputRef}>
       {/* aria-busy: saving 中であることをスクリーンリーダーに通知 (POST /api/articles/save は 1-3 秒) */}
       <div className="p-4" aria-busy={saving || undefined}>
         <label htmlFor="save-url-input" className="sr-only">
           保存する URL
         </label>
         <input
+          ref={urlInputRef}
           id="save-url-input"
           type="url"
           placeholder="https://..."
           value={url}
           onChange={(e) => onUrlChange(e.target.value)}
           disabled={saving}
-          autoFocus
           aria-required
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "save-url-error" : undefined}

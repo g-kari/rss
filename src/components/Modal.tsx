@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
@@ -25,6 +25,12 @@ interface Props {
    * SnoozeModal のように「open 後に元要素が DOM から消える」ケースに使用 (#981)。
    */
   returnFocusEl?: HTMLElement | null;
+  /**
+   * open 時に初期 focus する要素の ref。省略時は最初の focusable (通常は close ボタン)。
+   * SaveUrlModal のように「入力主体の Modal」で URL input を初期 focus にする用途。
+   * ConfirmModal.tsx:45 (cancelRef) の canonical と同 pattern を Modal.tsx にも propagate。
+   */
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }
 
 export default function Modal({
@@ -35,6 +41,7 @@ export default function Modal({
   width = "sm:w-[480px]",
   height = "",
   returnFocusEl,
+  initialFocusRef,
 }: Props) {
   const titleId = useId();
   // #814: subtitle がある場合のみ aria-describedby + id wire 化。
@@ -47,7 +54,11 @@ export default function Modal({
 
   // #790 Phase 1: focus trap + return focus restore + Escape/Tab cycle を hook に集約。
   // 旧 useEffect + useCallback はすべて useModalFocusTrap に内包。
-  const { handleKeyDown } = useModalFocusTrap(dialogRef, { onClose, returnFocusEl });
+  const { handleKeyDown } = useModalFocusTrap(dialogRef, {
+    onClose,
+    returnFocusEl,
+    initialFocusRef,
+  });
 
   return createPortal(
     <>

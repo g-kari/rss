@@ -30,29 +30,33 @@ function parseMarkdown(md: unknown): ReactNode[] {
   while (i < lines.length) {
     const line = lines[i];
 
+    // Modal wrapper の dialog title は `<h2 id={titleId}>` (Modal.tsx:68 canonical) のため、
+    // 内部で render する heading は h3 以降にシフト。WCAG 1.3.1 (Info and Relationships) と
+    // rotor 見出しナビの順序整合性のため、旧 h1/h2/h3 → h3/h4/h5 に降格。
+    // className は視覚 style として保持 (visual 変化なし、semantic tag のみ変化)。
     if (line.startsWith("# ")) {
       nodes.push(
-        <h1 key={key++} className="text-[18px] font-light text-text-strong mb-4 mt-2">
+        <h3 key={key++} className="text-[18px] font-light text-text-strong mb-4 mt-2">
           {line.slice(2)}
-        </h1>,
+        </h3>,
       );
     } else if (line.startsWith("## ")) {
       nodes.push(
-        <h2
+        <h4
           key={key++}
           className="text-[13px] font-medium text-text-strong mt-5 mb-2 pb-1 border-b border-border-subtle"
         >
           {line.slice(3)}
-        </h2>,
+        </h4>,
       );
     } else if (line.startsWith("### ")) {
       nodes.push(
-        <h3
+        <h5
           key={key++}
           className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted mt-3 mb-1"
         >
           {line.slice(4)}
-        </h3>,
+        </h5>,
       );
     } else if (line.startsWith("- ")) {
       const items: ReactNode[] = [];
