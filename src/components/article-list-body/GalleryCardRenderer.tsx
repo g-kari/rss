@@ -78,12 +78,15 @@ const GalleryCardRenderer = memo(function GalleryCardRenderer({
     }
   }, []);
 
-  const handleRetry = useCallback(() => {
-    if (!ctx) return;
-    ctx.galleryRetryArticle(articleRef.current.id);
+  const handleRetry = useCallback(
+    () => {
+      if (!ctx) return;
+      ctx.galleryRetryArticle(articleRef.current.id);
+    },
     // useSyncedRef の戻り値は identity 不変のため deps から除外 (handleTouchStart と同 canonical)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx]);
+    [ctx],
+  );
 
   if (!ctx) return null;
   const isDeleting = ctx.deletingIds.has(article.id);
