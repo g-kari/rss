@@ -108,10 +108,13 @@ export function ToggleSwitch({
   checked,
   onChange,
   ariaLabel,
+  disabled,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   ariaLabel?: string;
+  /** loading / API 呼出中の一時無効化。WCAG 2.5.8 準拠 24×44px を維持 */
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -119,8 +122,9 @@ export function ToggleSwitch({
       role="switch"
       aria-checked={checked}
       aria-label={ariaLabel}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 rounded-full transition-colors duration-150 ${
+      className={`relative h-6 w-11 rounded-full transition-colors duration-150 disabled:opacity-50 ${
         checked ? "bg-ink" : "bg-border-default"
       }`}
     >

@@ -8,6 +8,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { devError } from "@/lib/dev-log";
 import { isAbortError } from "@/lib/fetch";
 import { timeAgo } from "@/lib/article-utils";
+import { ToggleSwitch } from "./user-settings/shared";
 
 interface Props {
   feed: Feed;
@@ -158,23 +159,12 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
           <DetailSection title="Push 通知">
             <div className="flex items-center gap-3">
               <span className="text-text-muted w-[100px]">このフィード</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!pushDisabled}
-                aria-label={pushDisabled ? "Push 通知を有効にする" : "Push 通知を無効にする"}
+              <ToggleSwitch
+                checked={!pushDisabled}
+                onChange={handlePushToggle}
+                ariaLabel={pushDisabled ? "Push 通知を有効にする" : "Push 通知を無効にする"}
                 disabled={pushLoading}
-                onClick={handlePushToggle}
-                className={`relative h-5 w-9 rounded-full transition-colors duration-150 disabled:opacity-50 ${
-                  !pushDisabled ? "bg-ink" : "bg-border-default"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-surface-elevated shadow transition-transform duration-150 ${
-                    !pushDisabled ? "translate-x-4" : "translate-x-0"
-                  }`}
-                />
-              </button>
+              />
               <span className="text-text-muted">{pushDisabled ? "無効" : "有効"}</span>
             </div>
           </DetailSection>
