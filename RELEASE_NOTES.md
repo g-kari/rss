@@ -46,6 +46,8 @@
 
 - **TagEditor 編集モード終了 + タグ削除時の focus 復元 (WCAG 2.4.3)!⌨️** — auditor-a11y agent (confidence 85%) が発見した focus loss を修正〜🎀 編集モード終了 (Enter / Escape / blur) 時に `<input>` unmount → `<button>` remount するが focus 復元されず document.body に落ちる件 + × ボタンクリックでタグ削除時に × 自体が unmount → 同様の focus loss を解消しちゃったの〜✨ `addButtonRef` (「+ タグ」ボタン) + `useEffect` で editing 遷移監視 + × onClick で unmount 前に focus 移動、canonical pattern (`react-patterns.md § usePortalMenu` / `SnoozeMenu.tsx`) と整合〜🛡️ キーボードユーザーが記事ヘッダー内で位置を失って Tab やり直しになる WCAG 2.4.3 (Focus Order) 違反が構造的に解消いたしましたわ〜🌸
 
+- **FeedDetailModal Push トグルを canonical ToggleSwitch に統一 (WCAG 2.5.8)!⌨️** — auditor-a11y agent 2 回目派遣 (confidence 88%) が発見した inline switch drift を修正〜🎀 FeedDetailModal に h-5 w-9 (20×36 px) で inline 実装されていた `<button role="switch">` を、user-settings/shared.tsx の canonical `<ToggleSwitch>` (h-6 w-11 = 24×44 px) に置換 + `disabled` prop を canonical に追加 (pushLoading 一時無効化用)〜💫 20 px 高が WCAG 2.5.8 (Level AA, Target Size Minimum) の 24×24 px フロアを下回っていた違反を解消、settings 内の他 switch と統一されて低視力 / モバイルタッチユーザーに友好な 24×44 px タッチターゲットに〜🛡️ 既存 3 caller (AutoReadSection / AiNotificationTabPanel / ImageDlSection) への影響ゼロで sibling drift 解消完了ですわ〜🌸
+
 ### ドキュメント整備っ
 
 - **TagEditor useEffect の MAX 到達境界ケース注記追加!📝** — 前サイクル a11y 修正 (`ff9e13bc`) の code-reviewer verify で発見された minor observation を反映〜🎀 useEffect 経路 (MAX-1 個 → commit で MAX 到達 → addButton unmount) にも × onClick と対称の境界ケースがあることを JSDoc に明記して、boundary 条件が両経路で対称化されている旨を可視化いたしましたわ〜🌸
