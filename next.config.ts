@@ -91,6 +91,15 @@ const nextConfig: NextConfig = {
   // browser bundle 解決時のみ empty module に向けて build を通す
   // (server bundle には `next/dynamic({ ssr: false })` で含まれないため影響なし)。
   turbopack: {
+    // workspace root を本プロジェクトに固定する。
+    //
+    // 本リポジトリは単体運用 (github.com/g-kari/rss) だが、開発環境では
+    // dokodemo-claude モノレポ配下に clone されることがあり、そのとき親側の
+    // `pnpm-lock.yaml` を検出した Turbopack が **親ディレクトリを workspace root と
+    // 誤推論**して「Next.js inferred your workspace root, but it may not be correct」
+    // 警告を出す (モジュール解決の基準がリポジトリ外に外れる)。
+    // 明示指定で dev / CI / Cloudflare CI/CD のどこでも同じ root に固定する。
+    root: import.meta.dirname,
     resolveAlias: {
       fs: { browser: "./src/lib/empty-module.js" },
       path: { browser: "./src/lib/empty-module.js" },
