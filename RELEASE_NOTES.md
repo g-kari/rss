@@ -6,6 +6,10 @@
 
 - **Turbopack の workspace root 誤推論警告を解消したよ!🔧** — dokodemo-claude モノレポ配下に clone された環境で、親側の `pnpm-lock.yaml` を Turbopack が検出しちゃって「Next.js inferred your workspace root, but it may not be correct」警告が出てた問題を修正〜🛡️ `next.config.ts` の `turbopack.root` に `import.meta.dirname` を明示指定して、dev / CI / Cloudflare CI/CD のどこでも同じ root に固定されるようになりましたわ〜✨ モジュール解決がリポジトリ外に外れるリスクもゼロに〜🎀
 
+### リファクタリングっ + 内部品質っ
+
+- **機械的に安全な lint warning を 5 件一掃したよ!🧹** — `pnpm check` の warning 数を 10 → 5 に半減しちゃったの〜✨ 内訳は **未使用 type import 削除** (`app/api/stats/route.ts` の `EngagementEntry`)、**silent fallback 観測性向上** (`llm-feed-generator.ts` の catch (err) を `devError` 引数に渡す canonical pattern に統一)、**`new Array()` を `Array.from()` に置換** (`concurrency.ts` の `pMap` / `gallery-masonry-layout.ts` の `columnHeights` 初期化)、**dead spec 削除** (`e2e/sanitize-dompurify.spec.ts` — dompurify 調査完了で `package.json` 削除済) の 5 件〜🎀 残り 5 warnings は intentional な URL / HTML / RSS 制御文字正規化のみで、code comment で documented 済〜🛡️
+
 ## 2026-07-31
 
 ### 激アツ新機能っ
