@@ -16,6 +16,12 @@ import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
 import { SettingRow, ToggleSwitch } from "./shared";
 
+// Intl.supportedValuesOf("timeZone") はセッション不変な ~440 件の timezone 配列を返す。
+// component body で呼ぶと keystroke / debounce 起点の re-render ごとに ICU list の再構築 +
+// 440 <option> の new-identity reconciliation が走るため module-level constant に集約する。
+const TIMEZONES: readonly string[] =
+  typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+
 interface AiNotificationTabPanelProps {
   hidden: boolean;
   autoTranslate: boolean;
@@ -63,8 +69,6 @@ export default function AiNotificationTabPanel({
   const [errorNotificationsEnabled, setErrorNotificationsEnabled] = useState(true);
   const [pushConfigLoading, setPushConfigLoading] = useState(false);
   const silentHoursLoaded = useRef(false);
-  const timezones =
-    typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -316,7 +320,7 @@ export default function AiNotificationTabPanel({
                 className="px-2 py-1 text-[13px] rounded-md border border-border-default bg-surface-elevated text-text-default focus:outline-none focus:border-ink transition-colors"
               />
             </SettingRow>
-            {timezones.length > 0 && (
+            {TIMEZONES.length > 0 && (
               <SettingRow label="タイムゾーン">
                 <select
                   aria-label="サイレント時間帯 タイムゾーン"
@@ -325,7 +329,7 @@ export default function AiNotificationTabPanel({
                   className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
                 >
                   <option value="">未設定</option>
-                  {timezones.map((tz) => (
+                  {TIMEZONES.map((tz) => (
                     <option key={tz} value={tz}>
                       {tz}
                     </option>
