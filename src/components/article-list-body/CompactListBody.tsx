@@ -42,7 +42,7 @@ export default function CompactListBody({
             animating={isAnimating}
           >
             {item.type === "header" ? (
-              <div className="px-4 pt-3 pb-1" role="separator" aria-label={item.label}>
+              <div className="px-4 pt-3 pb-1" role="heading" aria-level={3}>
                 <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
                   {item.label}
                 </span>
