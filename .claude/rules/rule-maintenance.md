@@ -769,12 +769,12 @@ comm -13 /tmp/actual_codes.txt /tmp/doc_codes.txt  # docs にあるが実装に�
 
 **該当した典型 drift カテゴリ**:
 
-| カテゴリ | 実例 | 発見サイクル |
-|---------|------|-------------|
-| file 削除時の docs 未更新 | `sanitize-dompurify.spec.ts` カバレッジマップ残置 | N |
-| ルール規範遵守漏れ | architecture.md 内 `#N）` trace tag 20 件 | N+1 |
-| file 追加時の count 未更新 | `useFeed*` カテゴリ表 10 → 11 | N+2 |
-| file 追加時の count 未更新 | `src/lib/*.test.ts` 13 → 16 | N+3 |
+| カテゴリ                   | 実例                                              | 発見サイクル |
+| -------------------------- | ------------------------------------------------- | ------------ |
+| file 削除時の docs 未更新  | `sanitize-dompurify.spec.ts` カバレッジマップ残置 | N            |
+| ルール規範遵守漏れ         | architecture.md 内 `#N）` trace tag 20 件         | N+1          |
+| file 追加時の count 未更新 | `useFeed*` カテゴリ表 10 → 11                     | N+2          |
+| file 追加時の count 未更新 | `src/lib/*.test.ts` 13 → 16                       | N+3          |
 
 **How to apply**: 各サイクル冒頭 Step 0 sweep の後、以下を追加実施 (retroactive verify は「codify 直後の規範適用効果」+ 「過去 drift 発掘」の二重機能で、count 参照 / trace tag / 削除同期 など機械的検出可能な pattern に特に有効):
 
