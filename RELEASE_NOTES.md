@@ -50,6 +50,8 @@
 
 - **readNormalizedReadState canonical helper で 6 sites の helper-drift を解消!🧹** — auditor-simplify agent 2 回目派遣 (confidence 92%) が発見した helper-drift を修正〜🎀 `articles/route.ts` (4 sites) + `read-state/route.ts` (2 sites) で `r2Get<Partial<ReadState>>(rssData, readStateKey(userId), {}).then(normalizeReadState)` を inline 実装していた重複を、`src/lib/read-state-merge.ts` に canonical `readNormalizedReadState(rssData, userId)` helper を追加して 6 sites 全て 1 行呼出しに置換〜💫 将来 per-request cache / schema versioning / migration を追加する場合の 6 sites 同期修正リスクを構造的解消、副次効果として 3 個の未使用 import (`normalizeReadState` / `readStateKey` / `r2Get` / `ReadState` type) が削除できましたわ〜🌸
 
+- **user-settings/shared.tsx の module-internal 3 export を private 化 (dead export 解消)!🧹** — auditor-simplify agent 3 回目派遣 (confidence 92%、article-view sub-components とは異なる新規領域 `user-settings/*TabPanel.tsx` group を audit) が発見した dead export を修正〜🎀 `CONTENT_WIDTH_PREVIEW_PCT` / `PREVIEW_TEXT` / `SegmentOption<T>` の 3 export が shared.tsx 内 (`PreviewArea` / `SegmentGroup`) でのみ consume されており cross-file caller 0 件の状態を、`export` keyword 削除で module-private 化〜💫 「public 使用向けである」誤ったシグナルを消して、`PREVIEW_TEXT` (Japanese preview copy「吾輩は猫である」) を将来編集する際に「外部 consumer が居ないか」を毎回 grep 確認する認知負荷を解消〜🛡️ `issue-handling.md § dead export 監査 派生サブケース「same-file internal caller」判定` の canonical 適用 (`TTL_OPTIONS` は `ImageDlSection` から cross-file 使用済で export 維持、agent 判定通り 3 exports のみ)、touch 1 file / 3 line / consumer 変更ゼロですわ〜🌸
+
 ### ドキュメント整備っ
 
 - **TagEditor useEffect の MAX 到達境界ケース注記追加!📝** — 前サイクル a11y 修正 (`ff9e13bc`) の code-reviewer verify で発見された minor observation を反映〜🎀 useEffect 経路 (MAX-1 個 → commit で MAX 到達 → addButton unmount) にも × onClick と対称の境界ケースがあることを JSDoc に明記して、boundary 条件が両経路で対称化されている旨を可視化いたしましたわ〜🌸

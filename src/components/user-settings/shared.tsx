@@ -9,7 +9,7 @@ import { FONT_SIZE_CLASSES, FONT_FAMILY_CLASSES } from "../../lib/article-utils"
 // プレビュー領域内でのコンテンツ幅の視覚比率 (modal ~480px 内に収まる表示比率)
 // 実値は 640 / 720 / 900 / none だが、モーダル内では全部が収まって見分けが付かないため
 // 比率ベースで相対的な広さを表現する
-export const CONTENT_WIDTH_PREVIEW_PCT: Record<ContentWidth, number> = {
+const CONTENT_WIDTH_PREVIEW_PCT: Record<ContentWidth, number> = {
   narrow: 55,
   medium: 70,
   wide: 85,
@@ -27,7 +27,7 @@ export const TTL_OPTIONS: { value: number; label: string }[] = [
   { value: 0, label: "無制限" },
 ];
 
-export const PREVIEW_TEXT =
+const PREVIEW_TEXT =
   "吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。" +
   "The quick brown fox jumps over the lazy dog. RSS リーダーの表示設定をプレビューしながら調整できますわ。";
 
@@ -40,7 +40,7 @@ export function SettingRow({ label, children }: { label: string; children: React
   );
 }
 
-export interface SegmentOption<T> {
+interface SegmentOption<T> {
   value: T;
   label: string;
 }
