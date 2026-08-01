@@ -751,6 +751,47 @@ comm -13 /tmp/actual_codes.txt /tmp/doc_codes.txt  # docs にあるが実装に�
 
 主な使用箇所: 2026-05-10 サイクル — 3 体並列サブエージェント全員 rate limit → 直接 `find + grep + comm` で 10 件 drift 検出 → 1 commit omnibus 修正
 
+### 派生ケース: 前サイクル codify 済規範の retroactive verify で連鎖 drift 発見する
+
+新規 codify した規範 (例: 「file/spec 削除時の docs 同期義務」) を **次サイクル冒頭で retroactive verify** すると、規範適用対象の既存箇所で drift が高確率で発見される。「規範 codify 直後の適用効果測定」に加えて **「過去に規範が周知されていなかった時代の残置 drift の発掘」** としても機能する。4 サイクル連続で真の drift 発見の実績あり (`sanitize-dompurify.spec.ts` カバレッジ残置 → `trace tag 20 件` → `useFeed*` 件数 → `src/lib/*.test.ts` 件数)。
+
+```
+パターン: retroactive verify chain
+  1. サイクル N: 新規 drift 発見 (例: docs 削除同期漏れ)
+  2. サイクル N: retrospective-codify で規範化
+  3. サイクル N+1 冒頭: 規範を retroactive apply
+     - 規範対象 pattern を全 codebase / 全 docs で sweep
+     - 過去に見逃されていた類似 drift を機械的に検出
+  4. 発見した drift を 1 commit で修正
+  5. サイクル N+2 冒頭: 前サイクル codify の retroactive verify を継続
+     - 「codify → apply → sweep → 発見 → 修正」の chain が複数サイクル持続
+```
+
+**該当した典型 drift カテゴリ**:
+
+| カテゴリ | 実例 | 発見サイクル |
+|---------|------|-------------|
+| file 削除時の docs 未更新 | `sanitize-dompurify.spec.ts` カバレッジマップ残置 | N |
+| ルール規範遵守漏れ | architecture.md 内 `#N）` trace tag 20 件 | N+1 |
+| file 追加時の count 未更新 | `useFeed*` カテゴリ表 10 → 11 | N+2 |
+| file 追加時の count 未更新 | `src/lib/*.test.ts` 13 → 16 | N+3 |
+
+**How to apply**: 各サイクル冒頭 Step 0 sweep の後、以下を追加実施 (retroactive verify は「codify 直後の規範適用効果」+ 「過去 drift 発掘」の二重機能で、count 参照 / trace tag / 削除同期 など機械的検出可能な pattern に特に有効):
+
+1. **直近 3 サイクル以内に codify した規範** を rule-maintenance.md commit log で確認
+2. **各規範の適用対象 pattern (file path / count / trace tag / import 等) を grep で全 sweep**
+3. **未検出 drift があれば同 commit で修正** + retrospective に「retroactive verify chain 継続」を明記
+4. **drift 0 件 (規範完全浸透) を 3 サイクル連続確認できたら chain 終了** (`§ 9 派生「事前予防段階」` へ移行)
+5. **historical snapshot 系統計 (例: 「#816 時点で 235 vs 0」)** は growth していても **pattern (ratio / 傾向) 維持なら更新見送り** — 絶対数の drift は rule 妥当性影響なし
+
+**反例 (retroactive verify が overkill なケース)**:
+
+- codify した規範が **判断要素含む** (例: 「UX 主観評価」「セキュリティ trade-off」) → 機械的 sweep 不可能、通常の judgment cycle に戻す
+- codify 対象が **1 箇所固有 pattern** (singleton helper 等) → 他箇所への横展開余地なし、retroactive verify 対象外
+- 直近サイクルで **retroactive verify 実施済 + 0 件確認** → 次サイクル送りで overhead 削減
+
+主な使用箇所: 2026-08-01 の 4 サイクル連続 drift 発見 chain (`31bd1268` → `973534d1` → `c534a78d` → `309b34a9`) — 「codify → retroactive verify → sweep で類似 drift 発見」の canonical pattern を実証。特に count 参照 (useFeed* / src/lib/*.test.ts) は 2 サイクル連続で発見され、「count 参照は追加時 update-on-add が漏れやすい pattern」と判明
+
 ### 派生ケース: docs drift 監査エージェントの結果は **gitignored ファイル除外 + scan 対象ディレクトリ確認** で false positive を排除する
 
 docs drift 監査エージェントが「未文書化ファイル」「削除済ファイル」と判定しても、**自動的に Issue 化してはならない**。エージェントは `find` で全ファイルを列挙するが、以下 2 種の false positive を高頻度で発生させる:
