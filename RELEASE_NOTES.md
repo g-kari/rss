@@ -40,6 +40,10 @@
 
 - **globalFilter 等価ガード追加 + tsCache 早期リターン後移動で 2 件の perf drift を解消!⚡** — auditor-perf agent (confidence 85% + 88%) が発見した既存 canonical pattern からの sibling drift を修正〜🎀 **1件目**: `useReadStateSyncApply.applyServerState` で `state.globalFilter` が JSON.parse 経由で毎同期 fresh object になるにも関わらず sibling 3 field (snoozedUntil / notes / tagIds) と違って equality guard がなかった件を、`article-filter-equality.ts` に `equalKeywordFilter` 追加 + `globalFilterRef.current` で guard するように修正〜💫 これにより `useFilteredArticles.normalizedGlobalFilter` useMemo 再 compile 起源の 500+ 記事 O(N) filter が 2 秒毎に走る perf コスト (20-80ms/sync) を解消〜🛡️ **2件目**: `useFilteredArticles.ts` の `tsCache = new Map(filtered.map(...))` 構築が `hasDupes` 早期リターン前にあり、単一フィード等の重複なしケース (common case) で 500 件の `Date.parse` (~1-2.5ms) が discarded されていた件を、hasDupes 早期リターン後に 1 行 reorder〜🎀 読書中 5-30 executions/min で ~5-75ms/分の waste を解消いたしましたわ〜🌸
 
+### a11y 改善っ
+
+- **TagEditor 編集モード終了 + タグ削除時の focus 復元 (WCAG 2.4.3)!⌨️** — auditor-a11y agent (confidence 85%) が発見した focus loss を修正〜🎀 編集モード終了 (Enter / Escape / blur) 時に `<input>` unmount → `<button>` remount するが focus 復元されず document.body に落ちる件 + × ボタンクリックでタグ削除時に × 自体が unmount → 同様の focus loss を解消しちゃったの〜✨ `addButtonRef` (「+ タグ」ボタン) + `useEffect` で editing 遷移監視 + × onClick で unmount 前に focus 移動、canonical pattern (`react-patterns.md § usePortalMenu` / `SnoozeMenu.tsx`) と整合〜🛡️ キーボードユーザーが記事ヘッダー内で位置を失って Tab やり直しになる WCAG 2.4.3 (Focus Order) 違反が構造的に解消いたしましたわ〜🌸
+
 ### セキュリティ対策っ
 
 - **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
