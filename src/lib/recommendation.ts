@@ -34,17 +34,20 @@ function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
  * 記事タイトルなど日本語・英数字の正当な文字は保持する。
  */
 export function sanitizeForPrompt(text: string, maxLength = 120): string {
-  return text
-    .normalize("NFKC")
-    .replace(/[\x00-\x1F\x7F\u200B-\u200D\u2028\u2029\u202A-\u202E\uFEFF]/g, " ")
-    .replace(/<\|[^>|]*\|>/g, " ")
-    .replace(/<<\/?SYS>>/gi, " ")
-    .replace(/\[\/?(?:INST|SYSTEM|USER|ASSISTANT)\]/gi, " ")
-    .replace(/<\/?s>/g, " ")
-    .replace(/[-=#*`"'~_]{3,}/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, maxLength);
+  return (
+    text
+      .normalize("NFKC")
+      // eslint-disable-next-line no-control-regex -- AI prompt 入力から制御文字 / zero-width / prompt injection パターンを除去
+      .replace(/[\x00-\x1F\x7F\u200B-\u200D\u2028\u2029\u202A-\u202E\uFEFF]/g, " ")
+      .replace(/<\|[^>|]*\|>/g, " ")
+      .replace(/<<\/?SYS>>/gi, " ")
+      .replace(/\[\/?(?:INST|SYSTEM|USER|ASSISTANT)\]/gi, " ")
+      .replace(/<\/?s>/g, " ")
+      .replace(/[-=#*`"'~_]{3,}/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, maxLength)
+  );
 }
 
 /** フィード URL とプレフィックスから短縮 ID を生成する */

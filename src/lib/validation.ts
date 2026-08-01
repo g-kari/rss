@@ -76,6 +76,7 @@ export const CONTENT_MAX_CALLS = 120;
 
 /** 制御文字（U+0000–U+001F, U+007F）を除去する */
 export function stripControlChars(value: string): string {
+  // eslint-disable-next-line no-control-regex -- 制御文字除去は本関数の目的そのもの
   return value.replace(/[\u0000-\u001F\u007F]/g, "");
 }
 

@@ -105,6 +105,7 @@ function hasDangerousScheme(val: string): boolean {
     })
     // U+0000-U+0020: ASCII 制御文字・空白, U+007F: DEL
     // U+00A0: NO-BREAK SPACE（&#160; / &nbsp; のデコード後残留対策）
+    // eslint-disable-next-line no-control-regex -- 危険プロトコル検出前の URL サニタイズで制御文字除去が仕様
     .replace(/[\u0000-\u0020\u007F\u00A0]/g, "");
   return /^(?:javascript|vbscript|data):/i.test(decoded);
 }

@@ -152,6 +152,7 @@ function preprocessXml(xml: string): string {
   const noBom = xml.charCodeAt(0) === 0xfeff ? xml.slice(1) : xml;
   const start = noBom.search(/<(\?xml\b|rss\b|feed\b|rdf:RDF\b)/i);
   const trimmed = start > 0 ? noBom.slice(start) : noBom;
+  // eslint-disable-next-line no-control-regex -- XML 1.0 仕様で不正な制御文字を除去
   return trimmed.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
 }
 
@@ -257,6 +258,7 @@ function safeUrl(url: string): string {
   if (!url) return "";
   // unescapeHtml: エンティティデコード + ゼロ幅文字除去
   // 先頭の ASCII 制御文字・空白も除去（ブラウザの URL 正規化に倣う）
+  // eslint-disable-next-line no-control-regex -- URL 正規化でブラウザに倣い ASCII 制御文字を除去
   const decoded = unescapeHtml(url).replace(/^[\u0000-\u0020\u007F]+/, "");
   // decoded を返すことで HTML エンティティ（&amp; 等）を正規化した URL を格納する
   return isAbsoluteHttpUrl(decoded) ? decoded : "";
