@@ -24,16 +24,34 @@ function isProgressEntryOrNull(v: unknown): v is ProgressEntry | null {
   return typeof e.progress === "number" && typeof e.anchor === "string";
 }
 
+/**
+ * Module-level cache で `loadProgress` の localStorage.getItem + JSON.parse を回避。
+ *
+ * `useArticleListItemProps.progressMap` が `filtered` 変化毎 (j/k spam + unreadOnly 時
+ * 頻繁) に articles 全件 loadProgress を呼ぶ hot path で、300-500 記事 × sync localStorage
+ * read + JSON parse = 3-15ms/keystroke の main-thread block が発生していた。
+ *
+ * cache 一貫性: `saveProgress` (本 module 内 sole writer、`STORAGE_KEYS.READING_PROGRESS_PREFIX`
+ * の別 writer なし) で write と同時に cache 更新。cross-tab 書き込みでは stale 状態が
+ * 起きるが、progress bar 表示の UX 影響は軽微 (次 keystroke で再 read)。
+ */
+const progressCache = new Map<string, ProgressEntry | null>();
+
 function saveProgress(articleId: string, entry: ProgressEntry): void {
   saveJson(`${STORAGE_KEYS.READING_PROGRESS_PREFIX}${articleId}`, entry);
+  progressCache.set(articleId, entry);
 }
 
 export function loadProgress(articleId: string): ProgressEntry | null {
-  return loadJsonObject<ProgressEntry | null>(
+  const cached = progressCache.get(articleId);
+  if (cached !== undefined) return cached; // null もヒット (undefined = 未 populated)
+  const value = loadJsonObject<ProgressEntry | null>(
     `${STORAGE_KEYS.READING_PROGRESS_PREFIX}${articleId}`,
     null,
     isProgressEntryOrNull,
   );
+  progressCache.set(articleId, value);
+  return value;
 }
 
 // ── フック ────────────────────────────────────────────────────

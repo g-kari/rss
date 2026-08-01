@@ -93,19 +93,37 @@ interface Props {
   onAddTag?: (articleId: string, tag: string) => void;
 }
 
-function getDateGroupLabel(publishedAt: string | null): string {
-  if (!publishedAt) return "日付不明";
-  const d = new Date(publishedAt);
-  if (isNaN(d.getTime())) return "日付不明";
+/**
+ * バッチ境界の timestamp を事前計算した結果 (今日/昨日/今週/今月の各 start)。
+ * `flatItems` useMemo で 1 バッチにつき 1 回計算し、記事ごとの classifier
+ * (`classifyDateGroup`) に渡すことで N 記事 × 5 Date 生成を N 記事 × 0 に削減。
+ */
+interface DateGroupBoundaries {
+  todayStartMs: number;
+  yesterdayStartMs: number;
+  weekStartMs: number;
+  monthStartMs: number;
+}
+
+function computeDateGroupBoundaries(): DateGroupBoundaries {
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterdayStart = new Date(todayStart.getTime() - 86400000);
-  const weekStart = new Date(todayStart.getTime() - 7 * 86400000);
-  const monthStart = new Date(todayStart.getTime() - 30 * 86400000);
-  if (d >= todayStart) return "今日";
-  if (d >= yesterdayStart) return "昨日";
-  if (d >= weekStart) return "今週";
-  if (d >= monthStart) return "今月";
+  const todayStartMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return {
+    todayStartMs,
+    yesterdayStartMs: todayStartMs - 86400000,
+    weekStartMs: todayStartMs - 7 * 86400000,
+    monthStartMs: todayStartMs - 30 * 86400000,
+  };
+}
+
+function classifyDateGroup(publishedAt: string | null, b: DateGroupBoundaries): string {
+  if (!publishedAt) return "日付不明";
+  const ts = Date.parse(publishedAt);
+  if (isNaN(ts)) return "日付不明";
+  if (ts >= b.todayStartMs) return "今日";
+  if (ts >= b.yesterdayStartMs) return "昨日";
+  if (ts >= b.weekStartMs) return "今週";
+  if (ts >= b.monthStartMs) return "今月";
   return "それ以前";
 }
 
@@ -423,8 +441,10 @@ function ArticleList({
     if (layout !== "compact" && layout !== "list") return [];
     const items: FlatItem[] = [];
     let lastLabel = "";
+    // perf: バッチ境界の 4 timestamp を 1 回だけ計算 (旧: 記事 N 件 × 5 Date 生成)。
+    const boundaries = computeDateGroupBoundaries();
     nonGalleryDisplayItems.forEach((a, i) => {
-      const label = getDateGroupLabel(a.publishedAt);
+      const label = classifyDateGroup(a.publishedAt, boundaries);
       if (label !== lastLabel) {
         items.push({ type: "header", label, key: `header-${label}-${i}` });
         lastLabel = label;
