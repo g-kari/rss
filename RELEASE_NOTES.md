@@ -44,6 +44,10 @@
 
 - **TagEditor 編集モード終了 + タグ削除時の focus 復元 (WCAG 2.4.3)!⌨️** — auditor-a11y agent (confidence 85%) が発見した focus loss を修正〜🎀 編集モード終了 (Enter / Escape / blur) 時に `<input>` unmount → `<button>` remount するが focus 復元されず document.body に落ちる件 + × ボタンクリックでタグ削除時に × 自体が unmount → 同様の focus loss を解消しちゃったの〜✨ `addButtonRef` (「+ タグ」ボタン) + `useEffect` で editing 遷移監視 + × onClick で unmount 前に focus 移動、canonical pattern (`react-patterns.md § usePortalMenu` / `SnoozeMenu.tsx`) と整合〜🛡️ キーボードユーザーが記事ヘッダー内で位置を失って Tab やり直しになる WCAG 2.4.3 (Focus Order) 違反が構造的に解消いたしましたわ〜🌸
 
+### ドキュメント整備っ
+
+- **TagEditor useEffect の MAX 到達境界ケース注記追加!📝** — 前サイクル a11y 修正 (`ff9e13bc`) の code-reviewer verify で発見された minor observation を反映〜🎀 useEffect 経路 (MAX-1 個 → commit で MAX 到達 → addButton unmount) にも × onClick と対称の境界ケースがあることを JSDoc に明記して、boundary 条件が両経路で対称化されている旨を可視化いたしましたわ〜🌸
+
 ### セキュリティ対策っ
 
 - **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
