@@ -10,6 +10,10 @@
 
 - **機械的に安全な lint warning を 5 件一掃したよ!🧹** — `pnpm check` の warning 数を 10 → 5 に半減しちゃったの〜✨ 内訳は **未使用 type import 削除** (`app/api/stats/route.ts` の `EngagementEntry`)、**silent fallback 観測性向上** (`llm-feed-generator.ts` の catch (err) を `devError` 引数に渡す canonical pattern に統一)、**`new Array()` を `Array.from()` に置換** (`concurrency.ts` の `pMap` / `gallery-masonry-layout.ts` の `columnHeights` 初期化)、**dead spec 削除** (`e2e/sanitize-dompurify.spec.ts` — dompurify 調査完了で `package.json` 削除済) の 5 件〜🎀 残り 5 warnings は intentional な URL / HTML / RSS 制御文字正規化のみで、code comment で documented 済〜🛡️
 
+### セキュリティ対策っ
+
+- **sharp を 0.34.5 → 0.35.3 に bump して libvips 継承脆弱性を解消したよ!🔒** — Dependabot alert #50 (high severity) 対応〜🛡️ libvips 由来の 4 CVE (`CVE-2026-33327` / `CVE-2026-33328` / `CVE-2026-35590` / `CVE-2026-35591`) を一掃しちゃったの〜✨ `pnpm.overrides` に `"sharp": ">=0.35.0"` を追加して transitive dep (next / wrangler+miniflare 経由) 全経路を 0.35.3 に統一〜🎀 sharp は dev-only 依存で production runtime (Cloudflare Workers) に bundle されず (本 repo は Cloudflare Images = `ImagesBinding` を使用)、実質的な exploit 経路はないけど security alert 解消 + transitive dep hygiene の観点で対応いたしましたわ〜🌸
+
 ## 2026-07-31
 
 ### 激アツ新機能っ
