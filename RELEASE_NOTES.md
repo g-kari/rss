@@ -1,6 +1,12 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
-## 2026-07-31 (latest)
+## 2026-08-01 (latest)
+
+### バグ修正っ
+
+- **Turbopack の workspace root 誤推論警告を解消したよ!🔧** — dokodemo-claude モノレポ配下に clone された環境で、親側の `pnpm-lock.yaml` を Turbopack が検出しちゃって「Next.js inferred your workspace root, but it may not be correct」警告が出てた問題を修正〜🛡️ `next.config.ts` の `turbopack.root` に `import.meta.dirname` を明示指定して、dev / CI / Cloudflare CI/CD のどこでも同じ root に固定されるようになりましたわ〜✨ モジュール解決がリポジトリ外に外れるリスクもゼロに〜🎀
+
+## 2026-07-31
 
 ### 激アツ新機能っ
 
