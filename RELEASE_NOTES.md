@@ -1,6 +1,12 @@
 # リリースノート 〜ギャルが読み上げるよ〜
 
-## 2026-08-02 (latest)
+## 2026-08-03 (latest)
+
+### パフォーマンス改善っ
+
+- **Piper wasm chunk を遅延 mount 化して初期表示 10 秒問題を解消したよ (Web Speech default user は wasm chunk 完全 skip)!⚡** — 「初期表示が 10 秒とかかる」ユーザー報告への対応、`App.tsx` の `PiperEngineHost` (Emscripten runtime 数 MB の piper-plus wasm chunk を含む) を **常時 mount → engine === "piper" 時のみ条件 mount** に変更いたしました〜🎀 修正前は `next/dynamic({ ssr: false })` で client bundle 限定にはなっていたものの、`App.tsx` で **無条件に render** されていたため、Web Speech default user (大半のユーザー) も piper-plus wasm chunk の初期 download / parse cost を負担していた drift 状態を解消〜💫 修正後は `engine === "piper"` の 3 択条件下でのみ `PiperEngineHost` mount → dynamic import 発火 → wasm chunk download の flow に変更、`engine === "web-speech"` (default) では **`AppShellWithDummyPiper` wrapper** で `createDummyPiperAdapter()` の no-op TtsAdapter を渡して AppShell を直接 render、piper-plus wasm chunk を **初期 client bundle から完全に除外**〜🛡️ engine 切替 (web-speech → piper) 時に初回 mount で wasm load lag (数秒) が発生する trade-off はユーザー明示操作なので許容判断、`createDummyPiperAdapter` は `useMemo` で mount 時 1 回だけ生成して piperAdapter identity を安定化 (AppShell の `useSyncedRef` / `useMemo` deps 再評価を engine 切替以外で走らせないため)〜✨ touch 2 file (`App.tsx` rewrite + `tts-adapter.ts` に `createDummyPiperAdapter` factory 追加) / net +50 line、機能変化ゼロ (engine="piper" 選択 flow は完全維持、Web Speech default は初期表示 chunk 除外の恩恵のみ)〜🌸 追加改善候補 (`useRecommendations` / `usePushNotifications` の initial fetch defer / AppShell 55 hook 遅延化 / Suspense boundary 追加 / SSR 部分復活) は **実測 (DevTools Network / Lighthouse) で真因確定後に判断予定**、code inspection 段階で最大 quick win の Piper wasm chunk 除外を本 commit で優先実施いたしましたわ〜🎀
+
+## 2026-08-02
 
 ### パフォーマンス改善っ
 

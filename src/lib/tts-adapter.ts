@@ -228,6 +228,37 @@ export interface TtsAdapter {
 }
 
 /**
+ * Piper wasm engine 未 mount 時 (engine === "web-speech" default) に AppShell へ渡す
+ * no-op TtsAdapter。`piper-plus` wasm chunk (Emscripten runtime 数 MB) を初期 load から
+ * 除外するため PiperEngineHost を条件 mount 化した結果、非 mount 時に本 dummy adapter を
+ * 使う。engine 切替で "piper" に遷移した瞬間に PiperEngineHost が mount して実 adapter に
+ * 差し替わる。engine 切替時の stop() 呼出 (AppShell.tsx useSyncedRef 経由) は本 no-op で
+ * 無害。設計意図は "Web Speech default user は piper chunk を触らない" 一点に絞る。
+ */
+export function createDummyPiperAdapter(): TtsAdapter {
+  return {
+    engine: "piper",
+    supported: false,
+    isPlaying: false,
+    isPaused: false,
+    endedCount: 0,
+    errorCount: 0,
+    lastError: null,
+    rate: 1,
+    cycleRate: () => 1,
+    volume: 1,
+    setVolume: () => {},
+    voices: [],
+    voiceUri: null,
+    setVoiceUri: () => {},
+    speak: () => {},
+    pause: () => {},
+    resume: () => {},
+    stop: () => {},
+  };
+}
+
+/**
  * `SpeechSynthesisVoice` (Web Speech API) を抽象 `TtsVoice` 型として扱うための変換ヘルパー。
  *
  * SpeechSynthesisVoice は仕様上 voiceURI / name / lang / default を持つため、
