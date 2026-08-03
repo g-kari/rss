@@ -100,11 +100,17 @@ export function useArticleData(
   const fetchAndSetArticles = useCallback(async (): Promise<Article[]> => {
     const fetchedAt = Date.now();
     const data = await apiFetchJson<Article[]>("/api/articles");
-    setArticles(data);
+    // サーバー側 response に id / link / guid 重複が混入する経路 (複数 feed で同記事 /
+    // shared-feed merge のズレ等) を防御するため、fetch 完了時にも dedup 適用。polling /
+    // loadMore は既に mergeUniqueArticles 経由で dedup 済、initial fetch のみ素通しだった
+    // drift を解消。重複が filtered まで伝播すると `useArticleNavigation` の
+    // `findIndex + index+1` pattern が同 id 記事へ遷移して「次の記事に進めない」バグを生む。
+    const deduped = mergeUniqueArticles([], data);
+    setArticles(deduped);
     setLoadedFeedPages(new Map());
-    latestArticleIdRef.current = data[0]?.id ?? null;
+    latestArticleIdRef.current = deduped[0]?.id ?? null;
     lastPollTimeRef.current = fetchedAt;
-    return data;
+    return deduped;
   }, []);
 
   const mergeArticles = useCallback((fresh: Article[]) => {
