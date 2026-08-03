@@ -52,7 +52,7 @@
     "@typescript/native-preview": "7.0.0-dev.20260702.3",
     "esbuild": "^0.28.1",
     "happy-dom": "^20.11.1",
-    "next": "~16.2.11",
+    "next": "~16.2.12",
     "postcss": "^8.5.22",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
