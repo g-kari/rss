@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { RecommendedFeed, UserProfile } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
@@ -24,6 +24,20 @@ interface UseRecommendationsResult {
 export function useRecommendations(user: UserProfile | null | undefined): UseRecommendationsResult {
   const [refreshing, setRefreshing] = useState(false);
 
+  // 初期表示 critical path から除外するため、fetch trigger を initial paint 後まで defer。
+  // 推薦は sidebar section (常時表示) だが「推薦を再取得」等の user action まで空リストで
+  // 十分 (default empty[] を useAsyncFetch initialData で保証済)、initial network cost を
+  // Piper wasm chunk 除外と同 pattern で critical path から除外する。
+  const [deferReady, setDeferReady] = useState(false);
+  useEffect(() => {
+    if (!user) {
+      setDeferReady(false);
+      return;
+    }
+    const id = setTimeout(() => setDeferReady(true), 0);
+    return () => clearTimeout(id);
+  }, [user]);
+
   const triggerRefresh = useCallback(async (): Promise<RecommendedFeed[]> => {
     const res = await apiFetch("/api/recommendations/refresh", { method: "POST" });
     if (!res.ok) return [];
@@ -37,9 +51,9 @@ export function useRecommendations(user: UserProfile | null | undefined): UseRec
     error,
     setData: setRecommendations,
     setError,
-  } = useAsyncFetch<RecommendedFeed[]>(user ? "/api/recommendations" : null, {
+  } = useAsyncFetch<RecommendedFeed[]>(user && deferReady ? "/api/recommendations" : null, {
     auto: true,
-    deps: [user],
+    deps: [user, deferReady],
     initialData: [],
     formatError: () => "推薦の読み込みに失敗しました",
     fetcher: async (endpoint, signal) => {

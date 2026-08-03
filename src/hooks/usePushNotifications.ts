@@ -34,9 +34,22 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // マウント時: ブラウザのサポート確認と現在の購読状態を取得
+  // 初期表示 critical path から除外するため、service worker ready 待ち + getSubscription
+  // を initial paint 後まで defer (設定モーダル open まで実質不要、subscribed state は
+  // toggle 呼出時に refresh されるため defer による UX 影響ゼロ)。
+  const [deferReady, setDeferReady] = useState(false);
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setDeferReady(false);
+      return;
+    }
+    const id = setTimeout(() => setDeferReady(true), 0);
+    return () => clearTimeout(id);
+  }, [user]);
+
+  // マウント時: ブラウザのサポート確認と現在の購読状態を取得 (initial paint 後まで defer)
+  useEffect(() => {
+    if (!user || !deferReady) return;
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
 
@@ -48,7 +61,7 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
       .catch((err: unknown) => {
         devError("[usePushNotifications] getSubscription failed", err);
       });
-  }, [user]);
+  }, [user, deferReady]);
 
   const toggle = useCallback(async () => {
     if (!supported || loading) return;
