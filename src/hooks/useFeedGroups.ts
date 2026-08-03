@@ -1,12 +1,29 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { FeedGroup, UserProfile } from "../types";
 import { apiFetch, apiFetchJson, tryParseErrorBody } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
 import { sortByOrder } from "../lib/sort-utils";
+import { STORAGE_KEYS, storageSet, loadJsonObject } from "../lib/storage";
 import { useAsyncFetch } from "./useAsyncFetch";
 import { useSyncedRef } from "./useSyncedRef";
+
+// localStorage cache 復元用の minimal type guard (canonical: useCollections#isCollectionArray、
+// useFeedData#isFeedArray、useAuth#isUserProfileOrNull と同 pattern)。
+const isFeedGroupArray = (v: unknown): v is FeedGroup[] => {
+  if (!Array.isArray(v)) return false;
+  return v.every((g) => {
+    if (typeof g !== "object" || g === null) return false;
+    const p = g as Record<string, unknown>;
+    return (
+      typeof p.id === "string" &&
+      typeof p.name === "string" &&
+      typeof p.order === "number" &&
+      typeof p.createdAt === "string"
+    );
+  });
+};
 
 /** `useFeedGroups` の戻り値型 */
 interface FeedGroupsState {
@@ -40,6 +57,12 @@ export function useFeedGroups(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,
 ): FeedGroupsState {
+  // 初期表示 optimistic 復元 (canonical: useFeedData Phase 3 / useCollections Phase 4)。
+  const cachedGroups = useMemo(
+    () => loadJsonObject<FeedGroup[]>(STORAGE_KEYS.CACHED_FEED_GROUPS, [], isFeedGroupArray),
+    [],
+  );
+
   const {
     data: groupsData,
     loading,
@@ -47,8 +70,13 @@ export function useFeedGroups(
   } = useAsyncFetch<FeedGroup[]>(user ? "/api/feed-groups" : null, {
     auto: true,
     deps: [user],
-    initialData: [],
-    transform: (raw) => sortByOrder(raw as FeedGroup[]),
+    initialData: cachedGroups,
+    // fetch 成功時に cache 更新 (次回 initial 表示で使用)。エラー時は cache 維持で offline UX 継続。
+    transform: (raw) => {
+      const sorted = sortByOrder(raw as FeedGroup[]);
+      storageSet(STORAGE_KEYS.CACHED_FEED_GROUPS, JSON.stringify(sorted));
+      return sorted;
+    },
     formatError: (err) => {
       devError(err);
       return "フィードグループの読み込みに失敗しました";

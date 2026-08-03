@@ -1,12 +1,30 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { apiFetch, apiFetchJson, tryParseErrorBody } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
 import { sortByOrder } from "../lib/sort-utils";
+import { STORAGE_KEYS, storageSet, loadJsonObject } from "../lib/storage";
 import type { Collection, UserProfile } from "../types";
 import { useAsyncFetch } from "./useAsyncFetch";
 import { useSyncedRef } from "./useSyncedRef";
+
+// localStorage cache 復元用の minimal type guard (canonical: useFeedData#isFeedArray、
+// useAuth#isUserProfileOrNull と同 pattern)。必須 field のみ検証で stale cache でも crash 防止。
+const isCollectionArray = (v: unknown): v is Collection[] => {
+  if (!Array.isArray(v)) return false;
+  return v.every((c) => {
+    if (typeof c !== "object" || c === null) return false;
+    const p = c as Record<string, unknown>;
+    return (
+      typeof p.id === "string" &&
+      typeof p.name === "string" &&
+      Array.isArray(p.articleIds) &&
+      typeof p.createdAt === "string" &&
+      typeof p.order === "number"
+    );
+  });
+};
 
 interface CollectionsState {
   collections: Collection[];
@@ -41,6 +59,13 @@ export function useCollections(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,
 ): CollectionsState {
+  // 初期表示 optimistic 復元 (canonical: useFeedData Phase 3)。mount 時 1 回だけ localStorage
+  // read で auth 完了 → /api/collections fetch 待ちの collections section empty state を回避。
+  const cachedCollections = useMemo(
+    () => loadJsonObject<Collection[]>(STORAGE_KEYS.CACHED_COLLECTIONS, [], isCollectionArray),
+    [],
+  );
+
   const {
     data: collectionsData,
     loading,
@@ -50,8 +75,14 @@ export function useCollections(
   } = useAsyncFetch<Collection[]>(user ? "/api/collections" : null, {
     auto: true,
     deps: [user],
-    initialData: [],
-    transform: (raw) => sortByOrder(raw as Collection[]),
+    initialData: cachedCollections,
+    // fetch 成功時に cache 更新 (次回 initial 表示で使用)。エラー時は cache 維持で offline / 一時的
+    // network 障害でも前回 collections 表示継続 (useAuth CACHED_USER と同挙動)。
+    transform: (raw) => {
+      const sorted = sortByOrder(raw as Collection[]);
+      storageSet(STORAGE_KEYS.CACHED_COLLECTIONS, JSON.stringify(sorted));
+      return sorted;
+    },
     formatError: (err) => {
       devError(err);
       return "コレクションの読み込みに失敗しました";

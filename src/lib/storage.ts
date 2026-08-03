@@ -57,6 +57,10 @@ export const STORAGE_KEYS = {
   /** #1300 初期表示 optimistic 復元: 前回セッションの feeds を localStorage cache から
    *  useState initializer で復元。fetch 完了で最新に上書き。useAuth CACHED_USER と同 pattern。 */
   CACHED_FEEDS: "rss-cached-feeds",
+  /** #1300 Phase 4: useCollections initial fetch の empty state を localStorage cache 復元で解消 */
+  CACHED_COLLECTIONS: "rss-cached-collections",
+  /** #1300 Phase 4: useFeedGroups initial fetch の empty state を localStorage cache 復元で解消 */
+  CACHED_FEED_GROUPS: "rss-cached-feed-groups",
   COLLAPSED_CATEGORIES: "rss-collapsed-cats",
   WEEKLY_GOAL: "rss-weekly-goal",
   SCROLL_POSITIONS: "rss-scroll-positions",
