@@ -5,7 +5,26 @@ import type { Feed, UserProfile } from "../types";
 import { apiFetchJson } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
 import { isAbortError } from "../lib/fetch";
+import { STORAGE_KEYS, storageSet, loadJsonObject } from "../lib/storage";
 import { useSyncedRef } from "./useSyncedRef";
+
+// localStorage cache 復元用の minimal type guard。canonical parallels: useAuth の
+// `isUserProfileOrNull` (必須 field のみ検証、optional field は許容)。
+// stale cache の場合でも id / url / title / siteUrl があれば sidebar 表示は成立し、
+// fetch 完了で最新に上書きされる。全 field 検証は overkill (Feed は 12+ field で maintenance 負荷大)。
+const isFeedArray = (v: unknown): v is Feed[] => {
+  if (!Array.isArray(v)) return false;
+  return v.every((f) => {
+    if (typeof f !== "object" || f === null) return false;
+    const p = f as Record<string, unknown>;
+    return (
+      typeof p.id === "string" &&
+      typeof p.url === "string" &&
+      typeof p.title === "string" &&
+      typeof p.siteUrl === "string"
+    );
+  });
+};
 
 interface FeedDataState {
   feeds: Feed[];
@@ -31,7 +50,12 @@ export function useFeedData(
   user: UserProfile | null | undefined,
   onError?: (msg: string) => void,
 ): FeedDataState {
-  const [feeds, setFeeds] = useState<Feed[]>([]);
+  // 初期表示 optimistic 復元: 前回セッションの feeds を localStorage cache から復元して
+  // auth 完了 → /api/feeds fetch 待ちの sidebar empty state (数百 ms - 数秒) を回避。
+  // useAuth の CACHED_USER と同 pattern (useState initializer で復元、fetch 完了で上書き)。
+  const [feeds, setFeeds] = useState<Feed[]>(() =>
+    loadJsonObject<Feed[]>(STORAGE_KEYS.CACHED_FEEDS, [], isFeedArray),
+  );
   const [loadingFeeds, setLoadingFeeds] = useState(false);
   const [feedLoadError, setFeedLoadError] = useState(false);
   const onErrorRef = useSyncedRef(onError);
@@ -41,6 +65,9 @@ export function useFeedData(
   const fetchFeeds = useCallback(async (signal?: AbortSignal): Promise<Feed[]> => {
     const data = await apiFetchJson<Feed[]>("/api/feeds", { signal });
     setFeeds(data);
+    // fetch 成功時に cache 更新 (次回 initial 表示で使用)。エラー時 (catch) は cache 維持
+    // で offline / 一時的 network 障害でも前回 feeds 表示継続 (useAuth CACHED_USER と同挙動)。
+    storageSet(STORAGE_KEYS.CACHED_FEEDS, JSON.stringify(data));
     return data;
   }, []);
 

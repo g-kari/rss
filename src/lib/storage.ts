@@ -54,6 +54,9 @@ export const STORAGE_KEYS = {
   READING_TIME_RANGE: "rss-reading-time-range",
   NOTE_ONLY: "rss-note-only",
   CACHED_USER: "rss-cached-user",
+  /** #1300 初期表示 optimistic 復元: 前回セッションの feeds を localStorage cache から
+   *  useState initializer で復元。fetch 完了で最新に上書き。useAuth CACHED_USER と同 pattern。 */
+  CACHED_FEEDS: "rss-cached-feeds",
   COLLAPSED_CATEGORIES: "rss-collapsed-cats",
   WEEKLY_GOAL: "rss-weekly-goal",
   SCROLL_POSITIONS: "rss-scroll-positions",
