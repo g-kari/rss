@@ -89,6 +89,56 @@ test.describe("parseFeed — JSON Feed v1.1 基本", () => {
     const result = parseFeed(BASIC_JSON_FEED);
     expect(result.items[1].content).toContain("プレーンテキスト");
   });
+
+  test("空の content_html の場合は content_text を本文に使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [{ id: "1", content_html: "", content_text: "テキスト本文" }],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].content).toBe("テキスト本文");
+    expect(result.items[0].summary).toBe("テキスト本文");
+  });
+
+  test("content_html と content_text が空の場合は summary を本文に使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [{ id: "1", content_html: "", content_text: "", summary: "要約本文" }],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].content).toBe("要約本文");
+    expect(result.items[0].summary).toBe("要約本文");
+  });
+
+  test("非空の content_html を content_text より優先する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          content_html: "<p>HTML本文</p>",
+          content_text: "テキスト本文",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].content).toContain("HTML本文");
+    expect(result.items[0].content).not.toContain("テキスト本文");
+  });
+
+  test("すべての本文候補が空の場合は content と summary を空にする", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [{ id: "1", content_html: "", content_text: "", summary: "" }],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].content).toBe("");
+    expect(result.items[0].summary).toBe("");
+  });
 });
 
 test.describe("parseFeed — JSON Feed v1.0 互換", () => {

@@ -454,8 +454,9 @@ function getJsonFeedLanguage(itemLanguage: unknown, feedLanguage: unknown): stri
 function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
   const feedAuthors = data.authors ?? (data.author ? [data.author] : []);
   const items: ParsedItem[] = (data.items ?? []).map((item) => {
-    const raw = item.content_html ?? item.content_text ?? item.summary ?? "";
-    const isHtml = !!item.content_html;
+    const html = item.content_html || "";
+    const isHtml = !!html;
+    const raw = isHtml ? html : item.content_text || item.summary || "";
     const link = safeUrl(item.url ?? "") || safeUrl(item.external_url ?? "");
     const content = isHtml ? applyCorePipeline(raw, link) : raw;
     const summary = item.summary
