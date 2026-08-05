@@ -96,20 +96,22 @@ function matchesCompiledEntry(kw: string, pattern: RegExp | null, text: string):
  * - 最大件数でスライス
  */
 export function sanitizeKeywords(arr: unknown[]): string[] {
-  return [
-    ...new Set(
-      arr
-        .filter((x): x is string => typeof x === "string")
-        .map((s) => s.trim().slice(0, MAX_KEYWORD_LENGTH))
-        .filter(Boolean)
-        .filter((kw) => {
-          if (!isRegexKeyword(kw)) return true;
-          // サーバー側でも ReDoS パターンを除外する
-          const pattern = kw.slice(1, -1);
-          return !hasCatastrophicBacktracking(pattern);
-        }),
-    ),
-  ].slice(0, MAX_KEYWORDS_PER_ARRAY);
+  const keywords: string[] = [];
+  const seen = new Set<string>();
+  for (const value of arr) {
+    if (typeof value !== "string") continue;
+    const keyword = value.trim().slice(0, MAX_KEYWORD_LENGTH);
+    if (!keyword || seen.has(keyword)) continue;
+    if (isRegexKeyword(keyword)) {
+      // サーバー側でも ReDoS パターンを除外する
+      const pattern = keyword.slice(1, -1);
+      if (hasCatastrophicBacktracking(pattern)) continue;
+    }
+    seen.add(keyword);
+    keywords.push(keyword);
+    if (keywords.length >= MAX_KEYWORDS_PER_ARRAY) break;
+  }
+  return keywords;
 }
 
 /**
