@@ -17,10 +17,11 @@ import { collectIframeUrlsFromHtml } from "./embed-utils";
  * visible 拡張を確実に検知する。
  */
 export function buildArticlesKey(articles: Article[]): string {
-  return articles
-    .filter((a) => Boolean(a.link))
-    .map((a) => a.id)
-    .join("\0");
+  const ids: string[] = [];
+  for (const article of articles) {
+    if (article.link) ids.push(article.id);
+  }
+  return ids.join("\0");
 }
 
 /**
