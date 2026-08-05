@@ -68,7 +68,7 @@ export function buildSavedSearchesJson(
   return {
     exportedAt: now.toISOString(),
     count: searches.length,
-    searches: searches.map(({ id, name, query, createdAt }) => ({ id, name, query, createdAt })),
+    searches: [...searches],
   };
 }
 
