@@ -200,6 +200,26 @@ test.describe("buildArticlesJson", () => {
     const r2 = buildArticlesJson([noDate], new Set(["a2"]), [], "bookmark", NOW);
     expect(r2.articles[0].publishedAt).toBeNull();
   });
+
+  test("categories は記事の値と順序を保持する", () => {
+    const article = makeArticle({ id: "a1", categories: ["TypeScript", "Web"] });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0]).toMatchObject({ categories: ["TypeScript", "Web"] });
+  });
+
+  test("categories 未設定なら空配列を出力する", () => {
+    const article = makeArticle({ id: "a1", categories: undefined });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0]).toMatchObject({ categories: [] });
+  });
+
+  test("categories は元記事と独立した配列として出力する", () => {
+    const categories = ["TypeScript"];
+    const article = makeArticle({ id: "a1", categories });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    categories.push("Web");
+    expect(result.articles[0]).toMatchObject({ categories: ["TypeScript"] });
+  });
 });
 
 test.describe("buildNotesJson", () => {

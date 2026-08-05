@@ -91,6 +91,7 @@ export interface ExportedArticleJson {
   feedTitle: string;
   author: string | null;
   publishedAt: string | null;
+  categories: string[];
   /** summary を HTML 除去 + 300 文字 clamp したプレーンテキスト */
   summary: string;
 }
@@ -133,6 +134,7 @@ export function buildArticlesJson(
       feedTitle: feedTitleMap.get(a.feedHash) ?? "不明なフィード",
       author: a.author ?? null,
       publishedAt: a.publishedAt ?? null,
+      categories: [...(a.categories ?? [])],
       summary: clampSummaryText(a.summary),
     })),
   };
