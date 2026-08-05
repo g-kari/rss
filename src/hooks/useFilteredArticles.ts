@@ -198,15 +198,13 @@ export function useFilteredArticles({
   // 再 sort を回避する。`feeds` の lastFetchedAt 更新で reference 変化が頻発する一方、
   // digestLimit 設定は安定していることが多いため大半のポーリングで再計算が不要になる。
   const stableDigestLimitMapRef = useRef<Map<string, number>>(new Map());
-  const computedDigestLimitMap = useMemo(
-    () =>
-      new Map(
-        feeds
-          .filter((f) => f.digestLimit !== undefined)
-          .map((f) => [f.id, f.digestLimit!] as [string, number]),
-      ),
-    [feeds],
-  );
+  const computedDigestLimitMap = useMemo(() => {
+    const digestLimitMap = new Map<string, number>();
+    for (const feed of feeds) {
+      if (feed.digestLimit !== undefined) digestLimitMap.set(feed.id, feed.digestLimit);
+    }
+    return digestLimitMap;
+  }, [feeds]);
   if (!equalDigestLimitMap(stableDigestLimitMapRef.current, computedDigestLimitMap)) {
     stableDigestLimitMapRef.current = computedDigestLimitMap;
   }
