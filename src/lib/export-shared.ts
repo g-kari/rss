@@ -3,6 +3,7 @@ import { stripHtml } from "@/lib/html";
 
 /** ID Set に含まれる記事だけを入力順を保って返す。 */
 export function selectArticlesByIds(articles: Article[], ids: ReadonlySet<string>): Article[] {
+  if (ids.size === 0) return [];
   return articles.filter((article) => ids.has(article.id));
 }
 
