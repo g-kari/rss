@@ -62,7 +62,8 @@ export function buildOpml(feeds: Feed[], groups: FeedGroup[]): string {
   const sortedGroups = sortByOrder(groups);
   const groupMap = new Map<string, Feed[]>();
   const ungrouped: Feed[] = [];
-  const groupIds = new Set(sortedGroups.map((g) => g.id));
+  const groupIds = new Set<string>();
+  for (const group of sortedGroups) groupIds.add(group.id);
 
   for (const f of feeds) {
     if (f.groupId && groupIds.has(f.groupId)) {
