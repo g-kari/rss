@@ -93,6 +93,14 @@ test.describe("parseSearchQuery — 基本", () => {
     });
   });
 
+  test("フィールド指定 published:2026-04 は TERM with field", () => {
+    expect(parseSearchQuery("published:2026-04")).toEqual({
+      kind: "TERM",
+      field: "published",
+      value: "2026-04",
+    });
+  });
+
   test("否定 -foo は NOT", () => {
     const ast = parseSearchQuery("-foo");
     expect(ast?.kind).toBe("NOT");
@@ -228,6 +236,26 @@ test.describe("matchesAdvancedQuery — フィールド指定", () => {
   test("guid が空または未設定でも guid: 検索は安全に非一致を返す", () => {
     expect(matchesAdvancedQuery({ ...BASE, guid: "" }, "guid:g1", CTX)).toBe(false);
     expect(matchesAdvancedQuery({ ...BASE, guid: undefined }, "guid:g1", CTX)).toBe(false);
+  });
+
+  test("published: は公開日時のISO文字列だけにマッチする", () => {
+    expect(matchesAdvancedQuery(BASE, "published:2026-04", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "published:2026-05", CTX)).toBe(false);
+    const sameTextInTitle = { ...BASE, title: "2026-04", publishedAt: "2025-01-01T00:00:00Z" };
+    expect(matchesAdvancedQuery(sameTextInTitle, "published:2026-04", CTX)).toBe(false);
+  });
+
+  test("published: はフレーズと否定構文を組み合わせられる", () => {
+    expect(matchesAdvancedQuery(BASE, 'published:"2026-04-01T00:00"', CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "-published:2026-05", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "-published:2026-04", CTX)).toBe(false);
+  });
+
+  test("publishedAt が null または未設定でも published: 検索は安全に非一致を返す", () => {
+    expect(matchesAdvancedQuery({ ...BASE, publishedAt: null }, "published:2026", CTX)).toBe(false);
+    expect(matchesAdvancedQuery({ ...BASE, publishedAt: undefined }, "published:2026", CTX)).toBe(
+      false,
+    );
   });
 
   test("language:ja は language メタデータにのみマッチする", () => {
