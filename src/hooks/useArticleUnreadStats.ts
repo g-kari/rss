@@ -84,10 +84,13 @@ export function useArticleUnreadStats(
   const lastPublishedByFeed = useMemo(() => {
     // signature 早期 return: articles の length + 末尾 5 件 id+publishedAt で構造変化検出。
     // 中間挿入/削除は稀 (ポーリングは末尾追加が default)、末尾 5 件 signature で実用充足。
-    const tailSignature = articles
-      .slice(-5)
-      .map((a) => `${a.id}@${a.publishedAt ?? ""}`)
-      .join("|");
+    const tailStart = Math.max(0, articles.length - 5);
+    let tailSignature = "";
+    for (let i = tailStart; i < articles.length; i++) {
+      if (i > tailStart) tailSignature += "|";
+      const article = articles[i];
+      tailSignature += `${article.id}@${article.publishedAt ?? ""}`;
+    }
     const signature = `${articles.length}:${tailSignature}`;
     if (signature === lastPublishedSignatureRef.current) {
       return lastPublishedRef.current;
