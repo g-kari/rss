@@ -318,7 +318,8 @@ export async function mergeNewArticles(
 
   if (brandNew.length === 0) {
     // タイトル・サマリー等の更新のみ（ID は同じ）
-    const existingMap = new Map(latest.map((a) => [a.id, a]));
+    const existingMap = new Map<string, Article>();
+    for (const article of latest) existingMap.set(article.id, article);
     let changed = false;
     for (const a of fetchedArticles) {
       const ex = existingMap.get(a.id);
