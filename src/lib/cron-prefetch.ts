@@ -108,7 +108,11 @@ export async function runCronPrefetch(
 ): Promise<void> {
   try {
     const { feedUserMap } = await buildFeedUserMapCached(env.RSS_DATA, env.RATE_LIMIT);
-    const userIds = [...new Set([...feedUserMap.values()].flat())];
+    const userIdSet = new Set<string>();
+    for (const userIds of feedUserMap.values()) {
+      for (const userId of userIds) userIdSet.add(userId);
+    }
+    const userIds = [...userIdSet];
     if (userIds.length === 0) return;
 
     const allEntries = await Promise.all(
