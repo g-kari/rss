@@ -160,25 +160,23 @@ export function aggregateStatsForFeed(
   yearlyHeatmap: { date: string; count: number }[];
   weeklyTotal: number;
 } {
-  const dailyMap = new Map<string, number>();
-  const yearlyMap = new Map<string, number>();
+  const countsByDay = new Map<string, number>();
   const mondayIso = getMondayIso(now);
   let weeklyTotal = 0;
   for (const e of entries) {
     if (e.feedHash !== feedHash || !READ_ACTIONS.has(e.action)) continue;
     const day = toDateStr(e.timestamp);
-    dailyMap.set(day, (dailyMap.get(day) ?? 0) + 1);
-    yearlyMap.set(day, (yearlyMap.get(day) ?? 0) + 1);
+    countsByDay.set(day, (countsByDay.get(day) ?? 0) + 1);
     if (e.timestamp >= mondayIso) weeklyTotal++;
   }
 
   const dailyReadCounts = buildDayList(now, 7).map((date) => ({
     date,
-    count: dailyMap.get(date) ?? 0,
+    count: countsByDay.get(date) ?? 0,
   }));
   const yearlyHeatmap = buildDayList(now, 365).map((date) => ({
     date,
-    count: yearlyMap.get(date) ?? 0,
+    count: countsByDay.get(date) ?? 0,
   }));
   return { dailyReadCounts, yearlyHeatmap, weeklyTotal };
 }
