@@ -367,6 +367,14 @@ export function generateFrontmatter(article: Article, feed: Feed): string {
     }
   }
 
+  if (article.metadata?.length) {
+    lines.push("metadata:");
+    for (const { key, value } of article.metadata) {
+      lines.push(`  - key: ${yamlValue(key)}`);
+      lines.push(`    value: ${yamlValue(value)}`);
+    }
+  }
+
   lines.push("---");
   return lines.join("\n");
 }

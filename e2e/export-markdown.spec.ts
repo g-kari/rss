@@ -259,6 +259,38 @@ test.describe("articleToMarkdown — frontmatter の内容", () => {
       "categories:",
     );
   });
+
+  test("metadata は元の順序で key/value 配列として出力する", () => {
+    const article = makeArticle({
+      metadata: [
+        { key: "dc:source", value: "共同通信" },
+        { key: "business_form", value: "株式会社" },
+      ],
+    });
+    const result = generateFrontmatter(article, makeFeed());
+    expect(result).toContain(
+      `metadata:\n  - key: 'dc:source'\n    value: "共同通信"\n  - key: "business_form"\n    value: "株式会社"`,
+    );
+  });
+
+  test("metadata のキーと値へ YAML エスケープを適用する", () => {
+    const article = makeArticle({
+      metadata: [{ key: "dc:source", value: `O'Reilly: "News"\n速報` }],
+    });
+    const result = generateFrontmatter(article, makeFeed());
+    expect(result).toContain(
+      `metadata:\n  - key: 'dc:source'\n    value: 'O''Reilly: "News" 速報'`,
+    );
+  });
+
+  test("metadata が未設定または空配列ならフィールドを省略する", () => {
+    expect(generateFrontmatter(makeArticle({ metadata: undefined }), makeFeed())).not.toContain(
+      "metadata:",
+    );
+    expect(generateFrontmatter(makeArticle({ metadata: [] }), makeFeed())).not.toContain(
+      "metadata:",
+    );
+  });
 });
 
 // ===== generateFrontmatter — エッジケース =====
