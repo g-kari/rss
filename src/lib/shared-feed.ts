@@ -356,7 +356,10 @@ export async function mergeNewArticles(
 
   // knownIds を更新: latest ページ ID を末尾に置いて切り詰め時に必ず残るようにする
   // historical / overflowNewIds / latestPageIds は互いに disjoint のため dedup 不要
-  const latestPageIds = new Set(merged.slice(0, PAGE_SIZE).map((a) => a.id));
+  const latestPageIds = new Set<string>();
+  for (let i = 0; i < merged.length && i < PAGE_SIZE; i++) {
+    latestPageIds.add(merged[i].id);
+  }
   const prevKnown = meta.knownIds ?? latest.map((a) => a.id);
   const historical = prevKnown.filter((id) => !latestPageIds.has(id));
   const overflowNewIds: string[] = [];
