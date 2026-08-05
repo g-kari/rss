@@ -30,7 +30,11 @@ export function useInboxProgress(
   const feedStructuralSignature = useFeedStructuralSignature(feeds);
 
   const feedMap = useMemo(
-    () => new Map(feeds.map((f) => [f.id, f.title])),
+    () => {
+      const map = new Map<string, string>();
+      for (const feed of feeds) map.set(feed.id, feed.title);
+      return map;
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- feeds の内容変化のみ追跡
     [feedStructuralSignature],
   );
