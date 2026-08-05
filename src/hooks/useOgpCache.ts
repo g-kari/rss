@@ -76,9 +76,13 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
   useEffect(() => {
     if (!linksKey) return;
 
-    // linksKey.split() の代わりに visible から直接リンクを取得
-    const allLinks = visible.map((a) => a.link).filter((l): l is string => l != null);
-    const newLinks = allLinks.filter((link) => !seenLinksRef.current.has(link));
+    // linksKey.split() の代わりに visible から直接リンクを取得し、新規リンクだけを収集
+    // (同一 render 内の重複は従来どおり保持し、seenLinks への登録タイミングも維持)
+    const newLinks: string[] = [];
+    for (const article of visible) {
+      const link = article.link;
+      if (link != null && !seenLinksRef.current.has(link)) newLinks.push(link);
+    }
     if (newLinks.length === 0) return;
 
     for (const link of newLinks) seenLinksRef.current.add(link);
