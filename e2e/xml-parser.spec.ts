@@ -751,3 +751,63 @@ test.describe("parseFeed — channel-level 著者 fallback (#channel-author)", (
     expect(result.items[0].author).toBe("佐藤花子");
   });
 });
+
+test.describe("parseFeed — Atom alternate link の優先 (#1327)", () => {
+  test("feed と entry は enclosure より rel=alternate を優先する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Podcast</title>
+  <link rel="self" href="https://example.com/feed.xml" />
+  <link rel="enclosure" href="https://example.com/feed-cover.jpg" />
+  <link rel="alternate" href="https://example.com/" />
+  <entry>
+    <id>episode-1</id>
+    <title>Episode 1</title>
+    <link rel="enclosure" href="https://cdn.example.com/episode-1.mp3" />
+    <link rel="alternate" href="https://example.com/episodes/1" />
+  </entry>
+</feed>`;
+
+    const result = parseFeed(xml);
+    expect(result.siteUrl).toBe("https://example.com/");
+    expect(result.items[0].link).toBe("https://example.com/episodes/1");
+  });
+
+  test("rel 省略の link を alternate として優先する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Default relation</title>
+  <link rel="related" href="https://example.com/about" />
+  <link href="https://example.com/" />
+  <entry>
+    <id>post-1</id>
+    <title>Post 1</title>
+    <link rel="related" href="https://example.com/authors/1" />
+    <link href="https://example.com/posts/1" />
+  </entry>
+</feed>`;
+
+    const result = parseFeed(xml);
+    expect(result.siteUrl).toBe("https://example.com/");
+    expect(result.items[0].link).toBe("https://example.com/posts/1");
+  });
+
+  test("alternate 相当がなければ最初の non-self link にフォールバックする", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Nonstandard feed</title>
+  <link rel="self" href="https://example.com/feed.xml" />
+  <link rel="related" href="https://example.com/about" />
+  <entry>
+    <id>asset-1</id>
+    <title>Asset 1</title>
+    <link rel="self" href="https://example.com/entries/1.xml" />
+    <link rel="enclosure" href="https://cdn.example.com/asset-1.pdf" />
+  </entry>
+</feed>`;
+
+    const result = parseFeed(xml);
+    expect(result.siteUrl).toBe("https://example.com/about");
+    expect(result.items[0].link).toBe("https://cdn.example.com/asset-1.pdf");
+  });
+});

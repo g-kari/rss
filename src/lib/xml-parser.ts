@@ -170,6 +170,23 @@ export function toArray<T>(val: T | T[] | undefined): T[] {
 }
 
 /**
+ * Atom の表示先リンクを選ぶ。
+ * RFC 4287 に従い rel="alternate" と rel 省略を優先し、非標準フィードとの互換性のため
+ * alternate 相当がなければ従来どおり最初の non-self link へフォールバックする。
+ */
+function getAtomAlternateHref(links: XmlAttr[]): string {
+  return (
+    links.find((link) => {
+      const rel = link["@_rel"];
+      return rel === undefined || rel === "alternate";
+    })?.["@_href"] ??
+    links.find((link) => link["@_rel"] !== "self")?.["@_href"] ??
+    links[0]?.["@_href"] ??
+    ""
+  );
+}
+
+/**
  * 日付文字列を ISO 8601 形式に変換する。
  * `new Date().toISOString()` は Invalid Date に対して RangeError を投げるため、
  * NaN チェックを挟んで不正な日付文字列は null を返す。
@@ -515,16 +532,12 @@ export function parseFeed(xml: string): ParsedFeed {
     const feedLinks = toArray<{ "@_rel"?: string; "@_href"?: string }>(feed.link);
     return {
       title: stripHtml(str(feed.title)),
-      siteUrl: feedLinks.find((l) => l["@_rel"] !== "self")?.["@_href"] ?? "",
+      siteUrl: getAtomAlternateHref(feedLinks),
       items: toArray(feed.entry).map((entry) => {
         // Atom の link は isArray 設定により常に XmlAttr[] になる
         const entryLinks = toArray<XmlAttr>(entry.link as XmlAttr | XmlAttr[] | undefined);
         const raw = unwrapCdata(str(entry.content ?? entry.summary ?? ""));
-        const link = safeUrl(
-          entryLinks.find((l) => l["@_rel"] !== "self")?.["@_href"] ??
-            entryLinks[0]?.["@_href"] ??
-            "",
-        );
+        const link = safeUrl(getAtomAlternateHref(entryLinks));
         return {
           // <id> 欠落の Atom entry は link を fallback にする (RSS 2.0 `guid ?? link` /
           // RDF `guid ?? rdf:about ?? link` と対称)。fallback がないと id-less entry が全て
