@@ -238,7 +238,10 @@ export function useFeedSidebarActions({
       onReorderFeedGroup: reorderGroup,
       onMarkAllReadInGroup: (feedIds) => {
         const feedSet = new Set(feedIds);
-        const ids = articlesRef.current.filter((a) => feedSet.has(a.feedHash)).map((a) => a.id);
+        const ids: string[] = [];
+        for (const article of articlesRef.current) {
+          if (feedSet.has(article.feedHash)) ids.push(article.id);
+        }
         if (ids.length > 0) markBulkRead(ids);
       },
       onMuteFeed: muteFeed,
