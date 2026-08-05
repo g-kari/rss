@@ -385,6 +385,18 @@ export function articleBodyToPlainText(article: Article, contentHtml?: string): 
   return htmlToPlainText(contentHtml || article.summary || "");
 }
 
+/** 記事のプレーンテキスト保存用コンテンツと安全なファイル名を生成する。 */
+export function buildArticleTextFile(
+  article: Article,
+  contentHtml?: string,
+): { content: string; filename: string } {
+  const basename = sanitizeObsidianFilename(article.title) || "article";
+  return {
+    content: articleBodyToPlainText(article, contentHtml),
+    filename: `${basename}.txt`,
+  };
+}
+
 /** 記事の Markdown ダウンロード用コンテンツと安全なファイル名を生成する。 */
 export function buildArticleMarkdownFile(
   article: Article,

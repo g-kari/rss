@@ -4,6 +4,7 @@ import {
   articleToMarkdownCitation,
   articleToMarkdown,
   buildArticleMarkdownFile,
+  buildArticleTextFile,
   generateFrontmatter,
   htmlToMarkdown,
 } from "../src/lib/html-to-markdown";
@@ -33,6 +34,28 @@ test.describe("articleBodyToPlainText — 記事本文のプレーンテキス�
     const article = makeArticle({ summary: "" });
 
     expect(articleBodyToPlainText(article)).toBe("");
+  });
+});
+
+// ===== buildArticleTextFile =====
+
+test.describe("buildArticleTextFile — 記事テキストファイル生成", () => {
+  test("安全な .txt ファイル名とプレーンテキスト本文を返す", () => {
+    const article = makeArticle({ title: 'repo/name: "test" <#1>', summary: "<p>要約</p>" });
+
+    const result = buildArticleTextFile(article, "<h2>見出し</h2><p>保存する本文</p>");
+
+    expect(result.filename).toBe("repo-name- test 1.txt");
+    expect(result.content).toBe("見出し\n保存する本文");
+  });
+
+  test("タイトルが空の場合は article.txt を使う", () => {
+    const article = makeArticle({ title: "", summary: "<p>RSS の要約</p>" });
+
+    expect(buildArticleTextFile(article)).toEqual({
+      content: "RSS の要約",
+      filename: "article.txt",
+    });
   });
 });
 

@@ -9,6 +9,7 @@ import {
   articleToMarkdownCitation,
   articleToMarkdownLink,
   buildArticleMarkdownFile,
+  buildArticleTextFile,
 } from "../../lib/html-to-markdown";
 import { downloadBlob } from "../../lib/download";
 import { buildObsidianUri } from "../../lib/obsidian";
@@ -257,6 +258,39 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
               <path d="M9 11h6M9 15h6" />
             </svg>
             本文をテキストコピー
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              try {
+                const { content, filename } = buildArticleTextFile(article, contentHtml);
+                downloadBlob(new Blob([content], { type: "text/plain; charset=utf-8" }), filename);
+                setOpen(false);
+                btnRef.current?.focus();
+                toast.success("テキストをダウンロードしました");
+              } catch (err) {
+                devError("[ShareMenu] text download failed", err);
+                toast.error("テキストのダウンロードに失敗しました");
+              }
+            }}
+            className={MENU_ITEM_CLS}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3v12" />
+              <path d="M7 10l5 5 5-5" />
+              <path d="M4 20h16" />
+            </svg>
+            テキストをダウンロード
           </button>
           {feed && (
             <>
