@@ -55,6 +55,12 @@ test.describe("buildDayList", () => {
     expect(result).toEqual(["2024-11-15"]);
   });
 
+  test("days=0 以下では空配列を返す", () => {
+    const now = new Date("2024-11-15T12:00:00Z");
+    expect(buildDayList(now, 0)).toEqual([]);
+    expect(buildDayList(now, -1)).toEqual([]);
+  });
+
   test("days=3 のとき 3 日分を昇順で返す", () => {
     const now = new Date("2024-11-15T12:00:00Z");
     const result = buildDayList(now, 3);

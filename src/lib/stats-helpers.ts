@@ -38,6 +38,7 @@ export function toDateStr(ts: string): string {
 
 /** `now` から過去 `days` 日分の日付文字列配列を昇順で返す（末尾が today） */
 export function buildDayList(now: Date, days: number): string[] {
+  if (days <= 0) return [];
   const result: string[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
