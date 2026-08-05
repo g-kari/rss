@@ -215,6 +215,15 @@ function str(val: unknown): string {
   return String(val);
 }
 
+function parseCategories(value: XmlTextNode | XmlTextNode[] | undefined): string[] {
+  const categories: string[] = [];
+  for (const item of toArray(value)) {
+    const category = str(item);
+    if (category) categories.push(category);
+  }
+  return categories;
+}
+
 /**
  * RSS アイテムからカスタムフィールド値を抽出する。
  * skipKeys に含まれる標準フィールドと属性キー（@_ 接頭辞）は除外する。
@@ -544,9 +553,7 @@ export function parseFeed(xml: string): ParsedFeed {
           // ため fallback にする (dc:creator を既に読んでおり dc:date も RSS2_SKIP_KEYS 済 =
           // date として消費する前提、RDF の dc:date || pubDate と対称)。
           publishedAt: parseDate(str(item.pubDate) || str(item["dc:date"]) || null),
-          categories: toArray(item.category)
-            .map((c) => str(c))
-            .filter(Boolean),
+          categories: parseCategories(item.category),
           metadata: extractMetadata(item, RSS2_SKIP_KEYS),
         };
       }),
@@ -615,9 +622,7 @@ export function parseFeed(xml: string): ParsedFeed {
           ).trim(),
           // RSS 1.0 は dc:date（ISO 8601）が主要。pubDate は一部サイト独自の拡張として存在しうるためフォールバックに使う
           publishedAt: parseDate(str(item["dc:date"]) || str(item.pubDate) || null),
-          categories: toArray(item.category)
-            .map((c) => str(c))
-            .filter(Boolean),
+          categories: parseCategories(item.category),
           metadata: extractMetadata(item, RDF_SKIP_KEYS),
         };
       }),
