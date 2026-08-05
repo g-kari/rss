@@ -8,7 +8,8 @@ import { Fragment, createElement, type ReactNode } from "react";
  * サーバーサイドから必要な関数は article-utils.ts を参照すること。
  */
 export function highlightText(text: string, query: string): ReactNode {
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const normalizedQuery = query.trim().toLowerCase();
+  const terms = normalizedQuery ? normalizedQuery.split(/\s+/) : [];
   if (terms.length === 0) return text;
 
   // 全ワードの出現位置を収集
