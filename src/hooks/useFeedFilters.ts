@@ -59,7 +59,10 @@ export function useFeedFilters(
       if (t != null && t > nowMs) ids.add(f.id);
     }
     // グループミュート: muted グループに所属するフィードを追加で除外
-    const mutedGroupIds = new Set(feedGroups.filter((g) => g.muted).map((g) => g.id));
+    const mutedGroupIds = new Set<string>();
+    for (const group of feedGroups) {
+      if (group.muted) mutedGroupIds.add(group.id);
+    }
     if (mutedGroupIds.size > 0) {
       for (const f of feeds) {
         if (f.groupId && mutedGroupIds.has(f.groupId)) ids.add(f.id);
