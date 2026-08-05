@@ -58,13 +58,16 @@ export function aggregateGlobalTopFeeds(
     }
   }
 
-  return [...agg.entries()]
-    .filter(([, { totalScore }]) => totalScore >= minScore)
-    .sort((a, b) => b[1].totalScore - a[1].totalScore)
-    .slice(0, limit)
-    .map(([feedHash, { totalScore, userCount }]) => ({
-      feedHash,
-      totalScore,
-      userCount,
-    }));
+  const eligible: Array<[string, { totalScore: number; userCount: number }]> = [];
+  for (const entry of agg) {
+    if (entry[1].totalScore >= minScore) eligible.push(entry);
+  }
+
+  eligible.sort((a, b) => b[1].totalScore - a[1].totalScore);
+  const top = eligible.slice(0, limit);
+  const result: GlobalFeedScore[] = [];
+  for (const [feedHash, { totalScore, userCount }] of top) {
+    result.push({ feedHash, totalScore, userCount });
+  }
+  return result;
 }
