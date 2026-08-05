@@ -1,6 +1,6 @@
 ---
 name: issue-handling
-description: rss プロジェクト固有の GitHub Issue 対応ルール集 — 処理前チェックリスト、設計判断が必要な Issue へのコメントテンプレート、タイトルのみ Issue 対応、自動クローズ後のコメント運用、AI 直接実行できないタスクの橋渡し、過去返信の訂正パターン、最小スコープ判断軸、自走採用条件、forward reference 禁止、TODO(#N) トレーサビリティなど。`gh issue view` / `gh issue close` / `gh issue comment` / `gh issue list` を呼ぶ前後で必ず参照する。
+description: rss プロジェクト固有の GitHub Issue 対応ルール集 — 処理前チェックリスト、open Issue 0 件時の自走開発、設計判断が必要な Issue へのコメントテンプレート、タイトルのみ Issue 対応、自動クローズ後のコメント運用、AI 直接実行できないタスクの橋渡し、過去返信の訂正パターン、最小スコープ判断軸、自走採用条件、forward reference 禁止、TODO(#N) トレーサビリティなど。`gh issue view` / `gh issue close` / `gh issue comment` / `gh issue list` を呼ぶ前後で必ず参照する。
 ---
 
 # Issue 対応ルール
@@ -140,6 +140,42 @@ gh issue edit N --add-label needs-user-decision
 - CSP / ドメイン whitelist 設計 (例: Qiita CDN 列挙)
 
 主な使用箇所: 2026-05-11 51st cycle 末 — open Issue 9 件中 5 件 (`needs-user-decision`: #745 #720 #715 #682 #674) と 4 件 (自走対象: #733 #728 #714 #709) に分類
+
+### Step 5: open Issue が 0 件なら自走開発へ移る
+
+Step 0 の一覧取得結果が空なら、Issue 対応だけでサイクルを終了せず、**新規機能開発 / リファクタリング / パフォーマンス改善**のいずれか 1 件を選んで実装する。
+
+```bash
+# Step 0 後に 0 件を明示確認する
+gh issue list --state open --limit 1 --json number
+# => [] のときだけ本 Step を適用
+```
+
+**適用範囲**:
+
+- open Issue が本当に **0 件**のときだけ適用する
+- open Issue が `needs-user-decision` のみでも 1 件以上ある場合は適用せず、「ユーザー判断仰ぎ Issue を AI 自走で採用する判断基準と透明性担保」に従う
+- 実装のためだけの仮 Issue は起票しない。小さな改善を直接実装し、commit と最終報告を記録にする
+
+**候補の選び方**: 次の順番を固定せず、実コードで最も根拠が強い候補を 1 件だけ選ぶ。
+
+| カテゴリ | 採用条件 | 必須の完了証拠 |
+|---|---|---|
+| 新規機能開発 | 既存機能・既存 UI・既存 API の自然な延長で、要件を客観的に確定できる | 追加した振る舞いを固定するテスト |
+| リファクタリング | 重複、dead code、責務過多、既存規範からの drift を実コードで確認できる | 既存テスト pass + 挙動不変の説明 |
+| パフォーマンス改善 | hot path、不要な再計算・I/O・render、アルゴリズム上の無駄を特定できる | before/after の時間、処理回数、計算量のいずれか |
+
+**自走条件**:
+
+1. 対象コード、関連テスト、`git log --oneline -- <file>` を確認し、未実装・未対応であることを検証する
+2. touch を原則 5 ファイル以下に収め、1 commit で revert 可能にする
+3. 新規 dependency / infra / R2・KV・D1 key / CSP・認証変更 / モデル・API 選定 / 主観的 UX 判断 / 新規 asset を含めない
+4. 既存 helper・component・API pattern を流用し、変更対象に一致する `.claude/rules/*.md` を実装前に読む
+5. 変更種別に応じたテストと `pnpm check` / `pnpm typecheck` を実行する
+
+ユーザーの本指示により、上記条件を満たす**小規模な新規機能**については Step 4 の「機能変化なし」条件だけを免除できる。Step 4 の判断必要要素や本 Step の他条件は免除しない。候補が判断必要要素を含む場合は実装せず、別カテゴリの安全な候補を探す。
+
+**完了報告**には、選択カテゴリ、選定根拠、変更内容、検証結果を含める。パフォーマンス改善では測定値、リファクタリングでは挙動不変、新規機能では追加仕様を明記する。
 
 ### 派生ケース: 1 Issue 内に複数 problem が混在しているときは各 problem 別に Step 4 判定する
 
