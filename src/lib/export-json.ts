@@ -92,6 +92,7 @@ export interface ExportedArticleJson {
   author: string | null;
   publishedAt: string | null;
   categories: string[];
+  metadata: Array<{ key: string; value: string }>;
   /** summary を HTML 除去 + 300 文字 clamp したプレーンテキスト */
   summary: string;
 }
@@ -135,6 +136,7 @@ export function buildArticlesJson(
       author: a.author ?? null,
       publishedAt: a.publishedAt ?? null,
       categories: [...(a.categories ?? [])],
+      metadata: (a.metadata ?? []).map(({ key, value }) => ({ key, value })),
       summary: clampSummaryText(a.summary),
     })),
   };

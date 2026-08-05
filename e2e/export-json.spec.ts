@@ -220,6 +220,40 @@ test.describe("buildArticlesJson", () => {
     categories.push("Web");
     expect(result.articles[0]).toMatchObject({ categories: ["TypeScript"] });
   });
+
+  test("metadata は記事のキー・値と順序を保持する", () => {
+    const article = makeArticle({
+      id: "a1",
+      metadata: [
+        { key: "dc:source", value: "共同通信" },
+        { key: "business_form", value: "株式会社" },
+      ],
+    });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0]).toMatchObject({
+      metadata: [
+        { key: "dc:source", value: "共同通信" },
+        { key: "business_form", value: "株式会社" },
+      ],
+    });
+  });
+
+  test("metadata 未設定なら空配列を出力する", () => {
+    const article = makeArticle({ id: "a1", metadata: undefined });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0]).toMatchObject({ metadata: [] });
+  });
+
+  test("metadata は配列と各要素を元記事から独立させる", () => {
+    const metadata = [{ key: "source", value: "配信元" }];
+    const article = makeArticle({ id: "a1", metadata });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    metadata[0]!.value = "変更後";
+    metadata.push({ key: "language", value: "ja" });
+    expect(result.articles[0]).toMatchObject({
+      metadata: [{ key: "source", value: "配信元" }],
+    });
+  });
 });
 
 test.describe("buildNotesJson", () => {
