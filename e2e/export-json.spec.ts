@@ -153,6 +153,30 @@ test.describe("buildArticlesJson", () => {
     expect(result.articles[0].feedTitle).toBe("不明なフィード");
   });
 
+  test("guid は配信元の値をそのまま出力する", () => {
+    const article = makeArticle({ id: "a1", guid: "urn:uuid:source-item-123" });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0].guid).toBe("urn:uuid:source-item-123");
+  });
+
+  test("feedUrl は feedHash に対応する購読URLを出力し、記事URLと区別する", () => {
+    const article = makeArticle({
+      id: "a1",
+      feedHash: "feed-x",
+      link: "https://example.com/articles/1",
+    });
+    const feed = makeFeed({ id: "feed-x", url: "https://example.com/feed.xml" });
+    const result = buildArticlesJson([article], new Set(["a1"]), [feed], "bookmark", NOW);
+    expect(result.articles[0].feedUrl).toBe("https://example.com/feed.xml");
+    expect(result.articles[0].url).toBe("https://example.com/articles/1");
+  });
+
+  test("対応 Feed がないと feedUrl は null", () => {
+    const article = makeArticle({ id: "a1", feedHash: "missing" });
+    const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);
+    expect(result.articles[0].feedUrl).toBeNull();
+  });
+
   test("url は article.link", () => {
     const article = makeArticle({ id: "a1", link: "https://example.com/x" });
     const result = buildArticlesJson([article], new Set(["a1"]), [], "bookmark", NOW);

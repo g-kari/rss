@@ -88,7 +88,9 @@ export function buildSavedSearchesJsonFile(
 export interface ExportedArticleJson {
   title: string;
   url: string;
+  guid: string;
   feedTitle: string;
+  feedUrl: string | null;
   author: string | null;
   publishedAt: string | null;
   categories: string[];
@@ -123,6 +125,7 @@ export function buildArticlesJson(
   labelOverride?: string,
 ): ArticlesJsonExport {
   const feedTitleMap = buildFeedTitleMap(feeds);
+  const feedUrlMap = new Map(feeds.map((feed) => [feed.id, feed.url]));
   const selected = articles.filter((a) => ids.has(a.id));
   const label = labelOverride ?? (mode === "reading_list" ? "後で読む" : "ブックマーク");
   return {
@@ -132,7 +135,9 @@ export function buildArticlesJson(
     articles: selected.map((a) => ({
       title: a.title,
       url: a.link,
+      guid: a.guid,
       feedTitle: feedTitleMap.get(a.feedHash) ?? "不明なフィード",
+      feedUrl: feedUrlMap.get(a.feedHash) ?? null,
       author: a.author ?? null,
       publishedAt: a.publishedAt ?? null,
       categories: [...(a.categories ?? [])],
