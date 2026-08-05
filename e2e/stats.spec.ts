@@ -5,7 +5,35 @@ import {
   getMondayIso,
   computeCurrentStreak,
   computeWeeklyTotal,
+  buildReadingHistoryCsv,
+  buildReadingHistoryCsvFile,
 } from "../src/lib/stats-helpers";
+
+test.describe("buildReadingHistoryCsv", () => {
+  test("UTF-8 BOM と CRLF 付きで日別読了件数を入力順に出力する", () => {
+    const csv = buildReadingHistoryCsv([
+      { date: "2026-08-03", count: 2 },
+      { date: "2026-08-04", count: 0 },
+      { date: "2026-08-05", count: 5 },
+    ]);
+
+    expect(csv).toBe("\uFEFF日付,読了数\r\n2026-08-03,2\r\n2026-08-04,0\r\n2026-08-05,5\r\n");
+  });
+
+  test("空配列ではヘッダーだけの有効な CSV を返す", () => {
+    expect(buildReadingHistoryCsv([])).toBe("\uFEFF日付,読了数\r\n");
+  });
+
+  test("エクスポート日を含むファイル名と CSV 本文を返す", () => {
+    const result = buildReadingHistoryCsvFile(
+      [{ date: "2026-08-05", count: 1 }],
+      new Date("2026-08-05T03:00:00Z"),
+    );
+
+    expect(result.filename).toBe("reading-history_2026-08-05.csv");
+    expect(result.content).toContain("2026-08-05,1");
+  });
+});
 
 test.describe("toDateStr", () => {
   test("ISO 8601 の先頭 10 文字を返す", () => {

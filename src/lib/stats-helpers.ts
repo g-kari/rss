@@ -6,6 +6,30 @@
  */
 export const READ_ACTIONS: ReadonlySet<string> = new Set(["fetch_full", "open_original"]);
 
+const READING_HISTORY_CSV_HEADER = "日付,読了数";
+
+/** 過去の読了件数を UTF-8 BOM + CRLF の CSV に変換する。 */
+export function buildReadingHistoryCsv(
+  dailyReadCounts: readonly { date: string; count: number }[],
+): string {
+  const lines = [
+    READING_HISTORY_CSV_HEADER,
+    ...dailyReadCounts.map(({ date, count }) => `${date},${count}`),
+  ];
+  return `\uFEFF${lines.join("\r\n")}\r\n`;
+}
+
+/** 読書履歴 CSV の本文とエクスポート日入りファイル名を組み立てる。 */
+export function buildReadingHistoryCsvFile(
+  dailyReadCounts: readonly { date: string; count: number }[],
+  exportedAt: Date,
+): { content: string; filename: string } {
+  return {
+    content: buildReadingHistoryCsv(dailyReadCounts),
+    filename: `reading-history_${exportedAt.toISOString().slice(0, 10)}.csv`,
+  };
+}
+
 /** ISO 8601 文字列から "YYYY-MM-DD" 部分を返す */
 export function toDateStr(ts: string): string {
   return ts.slice(0, 10);

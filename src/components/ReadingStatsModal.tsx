@@ -10,7 +10,10 @@ import WeeklyGoalSection from "./reading-stats/WeeklyGoalSection";
 import { useReadingStats } from "../hooks/useReadingStats";
 import { useInboxProgress } from "../hooks/useInboxProgress";
 import { useEngagementEntries } from "../hooks/useEngagementEntries";
-import { aggregateStatsForFeed } from "../lib/stats-helpers";
+import { useToast } from "../contexts/ToastContext";
+import { aggregateStatsForFeed, buildReadingHistoryCsvFile } from "../lib/stats-helpers";
+import { downloadBlob } from "../lib/download";
+import { devError } from "../lib/dev-log";
 import type { Article, Feed } from "../types";
 
 interface Props {
@@ -28,6 +31,7 @@ export default function ReadingStatsModal({
   readBeforeTimestamp,
   onClose,
 }: Props) {
+  const toast = useToast();
   const { stats, loading, error, fetch: fetchStats } = useReadingStats();
   const {
     entries: engagementEntries,
@@ -64,6 +68,19 @@ export default function ReadingStatsModal({
   const maxDaily = displayDailyReadCounts
     ? Math.max(...displayDailyReadCounts.map((d) => d.count), 1)
     : 1;
+
+  function downloadReadingHistory() {
+    if (!stats) return;
+
+    try {
+      const { content, filename } = buildReadingHistoryCsvFile(stats.yearlyHeatmap, new Date());
+      downloadBlob(new Blob([content], { type: "text/csv; charset=utf-8" }), filename);
+      toast.success("読書履歴 CSV を保存しました");
+    } catch (err) {
+      devError("[ReadingStatsModal] CSV download failed", err);
+      toast.error("読書履歴 CSV の保存に失敗しました");
+    }
+  }
 
   return (
     <Modal title="読書統計" onClose={onClose} width="sm:w-[560px]">
@@ -120,6 +137,29 @@ export default function ReadingStatsModal({
                 )}
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={downloadReadingHistory}
+              className="self-end flex items-center gap-1.5 px-2 py-1 text-[11px] text-text-muted hover:text-text-strong max-md:min-h-[44px] lg:min-h-[24px] transition-colors"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 3v12" />
+                <path d="M7 10l5 5 5-5" />
+                <path d="M4 20h16" />
+              </svg>
+              過去 1 年を CSV で保存
+            </button>
 
             {/* サマリーカード */}
             <div className="grid grid-cols-3 gap-2">
