@@ -1,6 +1,6 @@
 import { createElement, type ReactNode } from "react";
 
-export type ShareTargetId = "x" | "bluesky" | "line" | "hatena" | "slack" | "discord";
+export type ShareTargetId = "x" | "bluesky" | "line" | "hatena" | "email" | "slack" | "discord";
 
 export interface ShareTarget {
   id: ShareTargetId;
@@ -135,6 +135,28 @@ export const SHARE_TARGETS: ShareTarget[] = [
         },
         "B!",
       ),
+    ),
+  },
+  {
+    id: "email",
+    label: "メールで共有",
+    buildUrl: (link, title) =>
+      `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${title}\n${link}`)}`,
+    icon: createElement(
+      "svg",
+      {
+        width: 12,
+        height: 12,
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: "currentColor",
+        strokeWidth: 1.5,
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        "aria-hidden": "true",
+      },
+      createElement("rect", { x: 3, y: 5, width: 18, height: 14, rx: 2 }),
+      createElement("path", { d: "M3 7l9 6 9-6" }),
     ),
   },
   {

@@ -11,10 +11,11 @@ const VALID_SHARE_TARGET_IDS: ReadonlySet<string> = new Set([
   "bluesky",
   "line",
   "hatena",
+  "email",
   "slack",
   "discord",
 ]);
-const isShareTargetId = (v: unknown): v is ShareTargetId =>
+export const isShareTargetId = (v: unknown): v is ShareTargetId =>
   typeof v === "string" && VALID_SHARE_TARGET_IDS.has(v);
 
 export function useHeaderShareTargets(): [ShareTargetId[], (ids: ShareTargetId[]) => void] {

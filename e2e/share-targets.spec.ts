@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { triggerShareTarget, type ShareTarget } from "../src/components/article-view/shareTargets";
+import {
+  SHARE_TARGETS,
+  triggerShareTarget,
+  type ShareTarget,
+} from "../src/components/article-view/shareTargets";
+import { isShareTargetId } from "../src/hooks/useHeaderShareTargets";
 
 /**
  * triggerShareTarget の純粋関数テスト (DI で navigator/window 不要)。
@@ -10,6 +15,22 @@ import { triggerShareTarget, type ShareTarget } from "../src/components/article-
 
 const FAKE_LINK = "https://example.com/article";
 const FAKE_TITLE = "Test Article";
+
+test.describe("メール共有ターゲット", () => {
+  test("件名と本文をエンコードした mailto URL を生成する", () => {
+    const email = SHARE_TARGETS.find((target) => target.id === "email");
+
+    expect(email).toBeDefined();
+    expect(email!.buildUrl("https://example.com/article?a=1&b=2", "日本語 & TypeScript?")).toBe(
+      "mailto:?subject=%E6%97%A5%E6%9C%AC%E8%AA%9E%20%26%20TypeScript%3F&body=%E6%97%A5%E6%9C%AC%E8%AA%9E%20%26%20TypeScript%3F%0Ahttps%3A%2F%2Fexample.com%2Farticle%3Fa%3D1%26b%3D2",
+    );
+  });
+
+  test("保存済みクイック共有 ID として email を復元できる", () => {
+    expect(isShareTargetId("email")).toBe(true);
+    expect(isShareTargetId("unknown")).toBe(false);
+  });
+});
 
 function buildTarget(overrides: Partial<ShareTarget>): ShareTarget {
   return {
