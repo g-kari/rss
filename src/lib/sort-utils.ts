@@ -70,7 +70,7 @@ export function sortCollectionsBy(
       return list.sort((a, b) => b.name.localeCompare(a.name));
     case "order":
     default:
-      return sortByOrder(list);
+      return list.sort((a, b) => a.order - b.order);
   }
 }
 
