@@ -49,10 +49,15 @@ export function evaluateSlidingWindow(
   windowMs: number,
   maxCalls: number,
 ): SlidingWindowResult {
-  const recent = stored.filter((t) => now - t < windowMs);
+  const recent: number[] = [];
+  let oldest = now;
+  for (const timestamp of stored) {
+    if (now - timestamp >= windowMs) continue;
+    recent.push(timestamp);
+    if (recent.length === 1 || timestamp < oldest) oldest = timestamp;
+  }
   if (recent.length >= maxCalls) {
-    const oldest = recent.length > 0 ? Math.min(...recent) : now;
-    const retryAfterSec = Math.ceil((windowMs - (now - oldest)) / 1000);
+    const retryAfterSec = Math.ceil((windowMs - (now - (recent.length > 0 ? oldest : now))) / 1000);
     return { allowed: false, retryAfterSec, recent };
   }
   return { allowed: true, recent: [...recent, now] };
