@@ -7,6 +7,8 @@ description: この RSS Reader リポジトリで GitHub Issue / PR の閲覧・
 
 この skill は Claude Code と Codex で共有するワークフローへの Codex 用入口。
 
+外部の Issue 自動処理 skill / plugin や別 workflow は起動しない。安全判定を含む処理は、以下の正本だけで完結させる。
+
 作業を始める前に、リポジトリルートの
 `.claude/skills/issue-handling/SKILL.md` を先頭から末尾まで読み、その指示に従うこと。
 参照先から相対パスで指定されたファイルは、参照先のディレクトリを基準に解決する。

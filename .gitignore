@@ -11,8 +11,12 @@ playwright-report/
 .playwright-mcp/
 demo-*.png
 src/lib/release-notes-data.ts
-.agents/
-.claude/skills/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/issue-handling/
+!.agents/skills/issue-handling/**
+.claude/skills/*
 !.claude/skills/issue-handling/
 !.claude/skills/issue-handling/**
 .claude/worktrees/
