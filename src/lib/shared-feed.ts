@@ -428,10 +428,13 @@ export async function getUserFeeds(bucket: R2Bucket, userId: string): Promise<Fe
   if (subs.length === 0) return [];
 
   const metas = await pMap(subs, (s) => readFeedMeta(bucket, s.feedHash), R2_CONCURRENCY);
-  return subs.flatMap((sub, i) => {
+  const feeds: Feed[] = [];
+  for (let i = 0; i < subs.length; i++) {
+    const sub = subs[i];
     const meta = metas[i];
-    return meta ? [assembleClientFeed(meta, sub)] : [];
-  });
+    if (meta) feeds.push(assembleClientFeed(meta, sub));
+  }
+  return feeds;
 }
 
 /**
