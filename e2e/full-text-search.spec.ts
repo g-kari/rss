@@ -85,6 +85,14 @@ test.describe("parseSearchQuery — 基本", () => {
     });
   });
 
+  test("フィールド指定 guid:urn:uuid は TERM with field", () => {
+    expect(parseSearchQuery("guid:urn:uuid")).toEqual({
+      kind: "TERM",
+      field: "guid",
+      value: "urn:uuid",
+    });
+  });
+
   test("否定 -foo は NOT", () => {
     const ast = parseSearchQuery("-foo");
     expect(ast?.kind).toBe("NOT");
@@ -202,6 +210,24 @@ test.describe("matchesAdvancedQuery — フィールド指定", () => {
 
   test("link が空でも url: 検索は安全に非一致を返す", () => {
     expect(matchesAdvancedQuery({ ...BASE, link: "" }, "url:example.com", CTX)).toBe(false);
+  });
+
+  test("guid: は配信元GUIDのみに大文字小文字を区別せずマッチする", () => {
+    const article = { ...BASE, guid: "URN:UUID:Source-Item-123" };
+    expect(matchesAdvancedQuery(article, "guid:urn:uuid:source-item", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(article, "guid:TypeScript", CTX)).toBe(false);
+  });
+
+  test("guid: はフレーズと否定構文を組み合わせられる", () => {
+    const article = { ...BASE, guid: "urn:uuid:source item 123" };
+    expect(matchesAdvancedQuery(article, 'guid:"uuid:source item"', CTX)).toBe(true);
+    expect(matchesAdvancedQuery(article, "-guid:other", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(article, "-guid:source", CTX)).toBe(false);
+  });
+
+  test("guid が空または未設定でも guid: 検索は安全に非一致を返す", () => {
+    expect(matchesAdvancedQuery({ ...BASE, guid: "" }, "guid:g1", CTX)).toBe(false);
+    expect(matchesAdvancedQuery({ ...BASE, guid: undefined }, "guid:g1", CTX)).toBe(false);
   });
 
   test("language:ja は language メタデータにのみマッチする", () => {

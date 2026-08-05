@@ -1,7 +1,7 @@
 /**
  * 全フィード横断のフルテキスト検索 (Issue #102)
  *
- * - フィールド指定: title:foo / author:bar / feed:baz / category:qux / summary:hello / content:hello / url:example.com / language:ja / metadata:source
+ * - フィールド指定: title:foo / author:bar / feed:baz / category:qux / summary:hello / content:hello / url:example.com / guid:urn:uuid / language:ja / metadata:source
  * - フレーズ検索: "hello world"
  * - 否定: -foo / -title:foo
  * - 暗黙 AND, 明示 OR ("foo OR bar")
@@ -20,6 +20,7 @@ export type SearchField =
   | "content"
   | "tag"
   | "url"
+  | "guid"
   | "language"
   | "metadata";
 
@@ -32,6 +33,7 @@ const FIELD_NAMES: ReadonlySet<SearchField> = new Set([
   "content",
   "tag",
   "url",
+  "guid",
   "language",
   "metadata",
 ]);
@@ -49,6 +51,7 @@ export interface SearchableArticle {
   feedHash: string;
   title: string;
   link?: string;
+  guid?: string;
   summary: string;
   content?: string;
   author?: string;
@@ -236,6 +239,8 @@ function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: Sear
       return (ctx.tagsByArticleId?.[article.id] ?? []).join(" ").toLowerCase();
     case "url":
       return (article.link ?? "").toLowerCase();
+    case "guid":
+      return (article.guid ?? "").toLowerCase();
     case "language":
       return (article.metadata ?? [])
         .filter((entry) => LANGUAGE_METADATA_KEYS.has(entry.key.toLowerCase()))
