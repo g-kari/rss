@@ -15,6 +15,9 @@ interface XmlAttr {
 /** fast-xml-parser がテキストノードをオブジェクト化した場合の形 */
 type XmlTextNode = { "#text"?: string | number } | string | number | null | undefined;
 
+/** RSS / Atom の著者ノード（Atom person construct またはRSSテキスト） */
+type FeedAuthor = XmlTextNode | { name?: XmlTextNode };
+
 /** RSS 2.0 guid ノード（isPermaLink 省略時は仕様上 true） */
 interface RssGuid {
   "#text"?: string | number;
@@ -31,7 +34,7 @@ interface FeedItem {
   "dc:creator"?: XmlTextNode;
   "dc:date"?: string;
   "@_rdf:about"?: string;
-  author?: XmlTextNode | { name?: XmlTextNode };
+  author?: FeedAuthor | FeedAuthor[];
   pubDate?: string;
   published?: string;
   updated?: string;
@@ -64,7 +67,7 @@ interface RawParsedXml {
     title?: XmlTextNode;
     link?: XmlAttr | XmlAttr[];
     entry?: FeedItem | FeedItem[];
-    author?: { name?: XmlTextNode };
+    author?: FeedAuthor | FeedAuthor[];
   };
   /** RSS 1.0 / RDF Site Summary */
   "rdf:RDF"?: {
@@ -265,11 +268,12 @@ const RDF_SKIP_KEYS = new Set([...RSS2_SKIP_KEYS, "@_rdf:about"]);
 
 /** author フィールドから表示名を取得する（Atom の author.name / RSS の dc:creator 両対応） */
 function authorStr(author: FeedItem["author"]): string {
-  if (!author) return "";
-  if (typeof author === "object" && author !== null && "name" in author) {
-    return str((author as { name?: unknown }).name);
-  }
-  return str(author);
+  return toArray<FeedAuthor>(author)
+    .map((entry) =>
+      typeof entry === "object" && entry !== null && "name" in entry ? str(entry.name) : str(entry),
+    )
+    .filter(Boolean)
+    .join(", ");
 }
 
 /**

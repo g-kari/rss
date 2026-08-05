@@ -884,3 +884,56 @@ test.describe("parseFeed — Atom alternate link の優先 (#1327)", () => {
     expect(result.items[0].link).toBe("https://cdn.example.com/asset-1.pdf");
   });
 });
+
+test.describe("parseFeed — Atom の複数著者 (#1332)", () => {
+  test("entry の複数 author を元の順序で結合し、空名を除外する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Multi-author feed</title>
+  <entry>
+    <id>post-1</id>
+    <title>共同執筆記事</title>
+    <link href="https://example.com/posts/1" />
+    <author><name>著者A</name></author>
+    <author><name></name></author>
+    <author><name>著者B</name></author>
+  </entry>
+</feed>`;
+
+    const result = parseFeed(xml);
+    expect(result.items[0].author).toBe("著者A, 著者B");
+  });
+
+  test("entry に author がなければ feed の複数 author を継承する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Editorial feed</title>
+  <author><name>編集者A</name></author>
+  <author><name>編集者B</name></author>
+  <entry>
+    <id>post-2</id>
+    <title>編集部記事</title>
+    <link href="https://example.com/posts/2" />
+  </entry>
+</feed>`;
+
+    const result = parseFeed(xml);
+    expect(result.items[0].author).toBe("編集者A, 編集者B");
+  });
+
+  test("単一 author の既存挙動を維持する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Single-author feed</title>
+  <entry>
+    <id>post-3</id>
+    <title>単著記事</title>
+    <link href="https://example.com/posts/3" />
+    <author><name>単著者</name></author>
+  </entry>
+</feed>`;
+
+    const result = parseFeed(xml);
+    expect(result.items[0].author).toBe("単著者");
+  });
+});
